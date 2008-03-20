@@ -32,8 +32,8 @@ typedef void (*agent_passkey_cb) (struct agent *agent, DBusError *err,
 
 typedef void (*agent_remove_cb) (struct agent *agent, void *user_data);
 
-struct agent *agent_create(const char *name, const char *path,
-				const char *address,
+struct agent *agent_create(struct adapter *adapter, const char *name,
+				const char *path, const char *address,
 				agent_remove_cb cb, void *remove_cb_data);
 
 int agent_destroy(struct agent *agent, gboolean exited);

@@ -150,14 +150,15 @@ static gboolean agent_timeout(struct agent *agent)
 	return FALSE;
 }
 
-struct agent *agent_create(const char *name, const char *path,
-				const char *address,
+struct agent *agent_create(struct adapter *adapter, const char *name,
+				const char *path, const char *address,
 				agent_remove_cb cb, void *remove_cb_data)
 {
 	struct agent *agent;
 
 	agent = g_new0(struct agent, 1);
 
+	agent->adapter = adapter;
 	agent->name = g_strdup(name);
 	agent->path = g_strdup(path);
 	agent->remove_cb = cb;

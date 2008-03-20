@@ -3836,7 +3836,7 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 
 	name = dbus_message_get_sender(msg);
 
-	agent = agent_create(name, path, NULL,
+	agent = agent_create(adapter, name, path, NULL,
 				(agent_remove_cb) agent_removed, adapter);
 	if (!agent) {
 		dbus_message_unref(reply);
