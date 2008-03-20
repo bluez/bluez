@@ -112,6 +112,9 @@ static void agent_free(struct agent *agent)
 	if (agent->request) {
 		DBusError err;
 
+		dbus_error_init(&err);
+		dbus_set_error_const(&err, "org.bluez.Error.Failed", "Canceled");
+
 		if (agent->request->type == AGENT_REQUEST_PASSKEY) {
 			agent_passkey_cb cb = agent->request->cb;
 			cb(agent, &err, NULL, agent->request->user_data);
@@ -119,6 +122,8 @@ static void agent_free(struct agent *agent)
 			agent_cb cb = agent->request->cb;
 			cb(agent, &err, agent->request->user_data);
 		}
+
+		dbus_error_free(&err);
 
 		send_cancel_request(agent->request);
 	}
