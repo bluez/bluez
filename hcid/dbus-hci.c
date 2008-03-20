@@ -829,11 +829,6 @@ int hcid_dbus_stop_device(uint16_t id)
 
 	release_passkey_agents(adapter, NULL);
 
-	if (adapter->agent) {
-		agent_destroy(adapter->agent, FALSE);
-		adapter->agent = NULL;
-	}
-
 	if (adapter->discov_requestor) {
 		name_listener_remove(connection, adapter->discov_requestor,
 					(name_cb_t) discover_devices_req_exit,
