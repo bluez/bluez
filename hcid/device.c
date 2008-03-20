@@ -757,10 +757,10 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	bdaddr_t src, dst;
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX + 1], path[MAX_PATH_LENGTH];
 	char buf[64];
 	const char *ptr;
-	char *str, *name;
+	char *str, *name, *ppath;
 	dbus_bool_t boolean;
 	uint32_t class;
 
@@ -839,6 +839,12 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	/* UUIDs */
 	dbus_message_iter_append_dict_entry(&dict, "UUIDs",
 			DBUS_TYPE_ARRAY, device->uuids);
+
+	/* Adapter */
+	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
+	ppath = path;
+	dbus_message_iter_append_dict_entry(&dict, "Adapter",
+			DBUS_TYPE_STRING, &ppath);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
