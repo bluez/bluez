@@ -2130,6 +2130,24 @@ static void create_device_req_free(struct create_device_req *create)
 	create = NULL;
 }
 
+struct device *adapter_get_device(struct adapter *adapter, const char *src)
+{
+	struct device *device;
+	GSList *l;
+
+	if (!adapter)
+		return NULL;
+
+	l = g_slist_find_custom(adapter->devices,
+				src, (GCompareFunc) device_address_cmp);
+	if (!l)
+		return NULL;
+
+	device = l->data;
+
+	return device;
+}
+
 static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 						struct adapter *adapter)
 {
