@@ -1009,9 +1009,10 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	if (!adapter->agent)
 		goto old_fallback;
 
-	device = adapter_get_device(adapter, &ci->bdaddr);
+	ba2str(&ci->bdaddr, addr);
+
+	device = adapter_get_device(adapter, addr);
 	if (!device) {
-		ba2str(&ci->bdaddr, addr);
 		device = device_create(connection, adapter, addr, NULL);
 		device->created = TRUE;
 	}
