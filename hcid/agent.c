@@ -200,6 +200,8 @@ static void agent_request_free(struct agent_request *req)
 {
 	if (req->call)
 		dbus_pending_call_unref(req->call);
+	if (req->agent && req->agent->request)
+		req->agent->request = NULL;
 	g_free(req);
 }
 
