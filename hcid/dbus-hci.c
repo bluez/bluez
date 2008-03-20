@@ -953,6 +953,9 @@ static void passkey_cb(struct agent *agent, DBusError *err, const char *passkey,
 		return;
 	}
 
+	str2ba(adapter->address, &sba);
+	str2ba(device->address, &dba);
+
 	if (err) {
 		if (device->created)
 			device_remove(connection, device);
@@ -962,9 +965,6 @@ static void passkey_cb(struct agent *agent, DBusError *err, const char *passkey,
 	}
 
 	device->created = FALSE;
-
-	str2ba(adapter->address, &sba);
-	str2ba(device->address, &dba);
 
 	len = strlen(passkey);
 
