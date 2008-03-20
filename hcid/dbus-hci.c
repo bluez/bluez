@@ -937,9 +937,54 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 		adapter->bonding->auth_active = 1;
 }
 
+static void passkey_cb(struct agent *agent, DBusError *err, const char *passkey,
+			struct device *device)
+{
+	struct adapter *adapter = device->adapter;
+	pin_code_reply_cp pr;
+	bdaddr_t sba, dba;
+	size_t len;
+	int dev;
+
+	dev = hci_open_dev(adapter->dev_id);
+	if (dev < 0) {
+		error("hci_open_dev(%d): %s (%d)", adapter->dev_id,
+				strerror(errno), errno);
+		return;
+	}
+
+	if (err) {
+		if (device->created)
+			device_remove(connection, device);
+		hci_send_cmd(dev, OGF_LINK_CTL,
+				OCF_PIN_CODE_NEG_REPLY, 6, &dba);
+		goto done;
+	}
+
+	device->created = FALSE;
+
+	str2ba(adapter->address, &sba);
+	str2ba(device->address, &dba);
+
+	len = strlen(passkey);
+
+	set_pin_length(&sba, len);
+
+	memset(&pr, 0, sizeof(pr));
+	bacpy(&pr.bdaddr, &dba);
+	memcpy(pr.pin_code, passkey, len);
+	pr.pin_len = len;
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
+
+done:
+	hci_close_dev(dev);
+}
+
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	char path[MAX_PATH_LENGTH], addr[18];
+	struct adapter *adapter;
+	struct device *device;
 	int id;
 
 	ba2str(sba, addr);
@@ -950,8 +995,36 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 		return -1;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+	if (!hcid_dbus_use_experimental())
+		goto old_fallback;
 
+	snprintf(path, sizeof(path), "/hci%d", id);
+
+	if (!dbus_connection_get_object_user_data(connection, path,
+							(void *) &adapter)) {
+		error("Getting %s path data failed!", path);
+		goto old_fallback;
+	}
+
+	if (!adapter->agent)
+		goto old_fallback;
+
+	device = adapter_get_device(adapter, &ci->bdaddr);
+	if (!device) {
+		ba2str(&ci->bdaddr, addr);
+		device = device_create(connection, adapter, addr, NULL);
+		device->created = TRUE;
+	}
+
+	if (!device)
+		return -ENODEV;
+
+	return agent_request_passkey(adapter->agent, device,
+					(agent_passkey_cb) passkey_cb,
+					device);
+
+old_fallback:
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 	return handle_passkey_request_old(connection, dev, path, sba, &ci->bdaddr);
 }
 
