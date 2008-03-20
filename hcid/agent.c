@@ -332,7 +332,7 @@ static DBusPendingCall *passkey_request_new(struct agent *agent,
 	DBusPendingCall *call;
 
 	message = dbus_message_new_method_call(agent->name, agent->path,
-					"org.bluez.Agent", "PasskeyRequest");
+					"org.bluez.Agent", "RequestPasskey");
 	if (message == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return NULL;
