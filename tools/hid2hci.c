@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
 	if (num <= 0) {
 		if (!quiet)
 			fprintf(stderr, "No devices in %s mode found\n",
-							mode ? "HID" : "HCI");
+							mode ? "HCI" : "HID");
 		exit(1);
 	}
 
