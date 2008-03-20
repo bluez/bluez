@@ -3813,26 +3813,12 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 static DBusHandlerResult update_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
-	dbus_uint32_t handle;
-	const char *sender, *record;
-	int err;
+	struct adapter *adapter = data;
+	bdaddr_t src;
 
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &handle,
-			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
+	str2ba(adapter->address, &src);
 
-	sender = dbus_message_get_sender(msg);
-
-	err = update_xml_record(conn, sender, handle, record);
-	if (err < 0)
-		return error_failed_errno(conn, msg, err);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return send_message_and_unref(conn, reply);
+	return update_xml_record(conn, msg, &src);
 }
 
 static DBusHandlerResult remove_service_record(DBusConnection *conn,

@@ -31,8 +31,8 @@ DBusHandlerResult database_message(DBusConnection *conn,
 
 int add_xml_record(DBusConnection *conn, const char *sender,
 				const char *record, dbus_uint32_t *handle);
-int update_xml_record(DBusConnection *conn, const char *sender,
-				dbus_uint32_t handle, const char *record);
+DBusHandlerResult update_xml_record(DBusConnection *conn,
+				DBusMessage *msg, bdaddr_t *src);
 int remove_record(DBusConnection *conn, const char *sender,
 						dbus_uint32_t handle);
 

@@ -314,25 +314,19 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 	return update_record(conn, msg, handle, sdp_record);
 }
 
-int update_xml_record(DBusConnection *conn, const char *sender,
-				dbus_uint32_t handle, const char *record)
+DBusHandlerResult update_xml_record(DBusConnection *conn,
+				DBusMessage *msg, bdaddr_t *src)
 {
-	return -EIO;
-}
-
-static DBusHandlerResult update_service_record_from_xml(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *record;
 	struct record_data *user_record;
 	sdp_record_t *sdp_record;
+	const char *record;
 	dbus_uint32_t handle;
 	int len;
 
 	if (dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_UINT32, &handle,
-			DBUS_TYPE_STRING, &record,
-			DBUS_TYPE_INVALID) == FALSE)
+				DBUS_TYPE_UINT32, &handle,
+				DBUS_TYPE_STRING, &record,
+				DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
 	len = (record ? strlen(record) : 0);
@@ -351,6 +345,12 @@ static DBusHandlerResult update_service_record_from_xml(DBusConnection *conn,
 	}
 
 	return update_record(conn, msg, handle, sdp_record);
+}
+
+static DBusHandlerResult update_service_record_from_xml(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return update_xml_record(conn, msg, BDADDR_ANY);
 }
 
 int remove_record(DBusConnection *conn, const char *sender,
