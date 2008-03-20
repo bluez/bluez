@@ -994,7 +994,7 @@ struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 
 void device_destroy(struct device *device, DBusConnection *conn)
 {
- 	debug("Removing device %s", device->path);
+	debug("Removing device %s", device->path);
 
 	dbus_connection_destroy_object_path(conn, device->path);
 }

@@ -768,8 +768,8 @@ int hcid_dbus_start_device(uint16_t id)
 			dbus_connection_emit_signal(connection, "/",
 						MANAGER_INTERFACE,
 						"DefaultAdapterChanged",
-					    	DBUS_TYPE_OBJECT_PATH, &ptr,
-					    	DBUS_TYPE_INVALID);
+						DBUS_TYPE_OBJECT_PATH, &ptr,
+						DBUS_TYPE_INVALID);
 
 		dbus_connection_emit_signal(connection, BASE_PATH,
 					    MANAGER_INTERFACE,
@@ -1011,11 +1011,24 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, l->data);
 		g_free(d);
 
-		if (!status)
+		if (!status) {
 			send_adapter_signal(connection, adapter->dev_id,
 						"BondingCreated",
 						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_INVALID);
+
+			if (hcid_dbus_use_experimental()) {
+				struct device *device;
+				gboolean paired = TRUE;
+
+				device = adapter_get_device(adapter, paddr);
+				if (device) {
+					dbus_connection_emit_property_changed(connection,
+						device->path, DEVICE_INTERFACE,
+						"Paired", DBUS_TYPE_BOOLEAN, &paired);
+				}
+			}
+		}
 	}
 
 	release_passkey_agents(adapter, peer);
@@ -1617,7 +1630,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 			name_status = NAME_SENT;
 
 		if (hcid_dbus_use_experimental()) {
-			emit_device_found(path, paddr,
+			emit_device_found(path + ADAPTER_PATH_INDEX, paddr,
 					"Address", DBUS_TYPE_STRING, &paddr,
 					"Class", DBUS_TYPE_UINT32, &class,
 					"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
@@ -1627,7 +1640,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 		g_free(name);
 	} else if (hcid_dbus_use_experimental()) {
-		emit_device_found(path, paddr,
+		emit_device_found(path + ADAPTER_PATH_INDEX, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
 				"Class", DBUS_TYPE_UINT32, &class,
 				"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
@@ -1663,6 +1676,29 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 				DBUS_TYPE_UINT32, &class,
 				DBUS_TYPE_INVALID);
 
+	if (hcid_dbus_use_experimental()) {
+		char path[MAX_PATH_LENGTH];
+		struct device *device;
+		struct adapter *adapter;
+		GSList *l;
+
+		snprintf(path, sizeof(path), "hci%d", id);
+
+		dbus_connection_get_object_user_data(connection, path,
+							(void *) &adapter);
+		if (!adapter)
+			return;
+
+		l = g_slist_find_custom(adapter->devices, paddr,
+				(GCompareFunc) device_address_cmp);
+		if (!l)
+			return;
+
+		device = l->data;
+		dbus_connection_emit_property_changed(connection,
+					device->path, DEVICE_INTERFACE,
+					"Class", DBUS_TYPE_UINT32, &class);
+	}
 }
 
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
@@ -1696,13 +1732,25 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 						"RemoteNameFailed",
 						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_INVALID);
-	else
+	else {
 		dbus_connection_emit_signal(connection, path,
 						ADAPTER_INTERFACE,
 						"RemoteNameUpdated",
 						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_STRING, &name,
 						DBUS_TYPE_INVALID);
+
+		if (hcid_dbus_use_experimental()) {
+			struct device *device;
+
+			device = adapter_get_device(adapter, paddr);
+			if (device) {
+				dbus_connection_emit_property_changed(connection,
+						device->path, DEVICE_INTERFACE,
+						"Name", DBUS_TYPE_STRING, &name);
+			}
+		}
+	}
 
 	/* remove from remote name request list */
 	found_device_remove(&adapter->found_devices, peer);
@@ -1803,6 +1851,19 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 						"RemoteDeviceConnected",
 						DBUS_TYPE_STRING, &paddr,
 						DBUS_TYPE_INVALID);
+
+		if (hcid_dbus_use_experimental()) {
+			struct device *device;
+			gboolean connected = TRUE;
+
+			device = adapter_get_device(adapter, paddr);
+			if (device) {
+				dbus_connection_emit_property_changed(connection,
+					device->path, DEVICE_INTERFACE,
+					"Connected", DBUS_TYPE_BOOLEAN,
+					&connected);
+			}
+		}
 
 		/* add in the active connetions list */
 		active_conn_append(&adapter->active_conn, peer, handle);
@@ -1906,6 +1967,19 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					"RemoteDeviceDisconnected",
 					DBUS_TYPE_STRING, &paddr,
 					DBUS_TYPE_INVALID);
+
+	if (hcid_dbus_use_experimental()) {
+		struct device *device;
+		gboolean connected = FALSE;
+
+		device = adapter_get_device(adapter, paddr);
+		if (device) {
+			dbus_connection_emit_property_changed(connection,
+						device->path, DEVICE_INTERFACE,
+						"Connected", DBUS_TYPE_BOOLEAN,
+						&connected);
+		}
+	}
 
 	adapter->active_conn = g_slist_remove(adapter->active_conn, dev);
 	g_free(dev);

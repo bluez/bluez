@@ -720,6 +720,37 @@ static DBusHandlerResult adapter_get_discoverable_to(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
+static void resolve_paths(DBusMessage *msg, char **old_path, char **new_path)
+{
+	const char *path = dbus_message_get_path(msg);
+
+	if (!path)
+		return;
+
+	if (old_path)
+		*old_path = NULL;
+
+	if (new_path)
+		*new_path = NULL;
+
+	/* old path calls */
+	if (g_str_has_prefix(path, BASE_PATH)) {
+		if (old_path)
+			*old_path = g_strdup(path);
+
+		if (hcid_dbus_use_experimental() && new_path)
+			*new_path = g_strdup(path + ADAPTER_PATH_INDEX);
+
+		return;
+	}
+
+	if (old_path)
+		*old_path = g_strconcat(BASE_PATH, path);
+
+	if (new_path)
+		*new_path = g_strdup(path);
+}
+
 static DBusHandlerResult set_discoverable_timeout(DBusConnection *conn,
 							DBusMessage *msg,
 							uint32_t timeout,
@@ -728,6 +759,7 @@ static DBusHandlerResult set_discoverable_timeout(DBusConnection *conn,
 	struct adapter *adapter = data;
 	DBusMessage *reply;
 	bdaddr_t bdaddr;
+	char *old_path, *new_path;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -748,19 +780,22 @@ static DBusHandlerResult set_discoverable_timeout(DBusConnection *conn,
 	str2ba(adapter->address, &bdaddr);
 	write_discoverable_timeout(&bdaddr, timeout);
 
-	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+	resolve_paths(msg, &old_path, &new_path);
+
+	dbus_connection_emit_signal(conn, old_path,
 					ADAPTER_INTERFACE,
 					"DiscoverableTimeoutChanged",
 					DBUS_TYPE_UINT32, &timeout,
 					DBUS_TYPE_INVALID);
-	if (hcid_dbus_use_experimental()) {
-		dbus_connection_emit_property_changed(conn,
-						dbus_message_get_path(msg),
+	if (new_path) {
+		dbus_connection_emit_property_changed(conn, new_path,
 						ADAPTER_INTERFACE,
 						"DiscoverableTimeout",
 						DBUS_TYPE_UINT32, &timeout);
 	}
 
+	g_free(old_path);
+	g_free(new_path);
 	return send_message_and_unref(conn, reply);
 }
 
@@ -1152,6 +1187,7 @@ static int set_name(DBusConnection *conn, DBusMessage *msg, const char *name,
 	DBusMessage *reply;
 	bdaddr_t bdaddr;
 	int ecode;
+	char *new_path;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
 		error("Name change failed: the supplied name isn't valid UTF-8");
@@ -1174,14 +1210,16 @@ done:
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	if (hcid_dbus_use_experimental()) {
-		dbus_connection_emit_property_changed(conn,
-						dbus_message_get_path(msg),
+	resolve_paths(msg, NULL, &new_path);
+
+	if (new_path) {
+		dbus_connection_emit_property_changed(conn, new_path,
 						ADAPTER_INTERFACE,
 						"Name", DBUS_TYPE_STRING,
 						&name);
 	}
 
+	g_free(new_path);
 	return send_message_and_unref(conn, reply);
 }
 
@@ -1855,7 +1893,7 @@ static DBusHandlerResult adapter_set_remote_alias(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	char *alias, *addr;
+	char *alias, *addr, *old_path, *new_path;
 	bdaddr_t bdaddr;
 	int ecode;
 
@@ -1880,12 +1918,27 @@ static DBusHandlerResult adapter_set_remote_alias(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+	resolve_paths(msg, &old_path, &new_path);
+
+	dbus_connection_emit_signal(conn, old_path,
 					ADAPTER_INTERFACE, "RemoteAliasChanged",
 					DBUS_TYPE_STRING, &addr,
 					DBUS_TYPE_STRING, &alias,
 					DBUS_TYPE_INVALID);
 
+	if (new_path) {
+		struct device *device;
+
+		device = adapter_get_device(adapter, addr);
+		if (device) {
+			dbus_connection_emit_property_changed(conn,
+					device->path, DEVICE_INTERFACE,
+					"Alias", DBUS_TYPE_STRING, &alias);
+		}
+	}
+
+	g_free(old_path);
+	g_free(new_path);
 	return send_message_and_unref(conn, reply);
 }
 
@@ -2436,7 +2489,7 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 	GSList *l;
 	DBusMessage *reply;
 	char filename[PATH_MAX + 1];
-	char *addr_ptr, *str;
+	char *addr_ptr, *str, *old_path, *new_path;
 	bdaddr_t bdaddr;
 	int dd;
 
@@ -2494,10 +2547,24 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 		}
 	}
 
+	resolve_paths(msg, &old_path, &new_path);
+
 	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
 					ADAPTER_INTERFACE, "BondingRemoved",
 					DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
+
+	if (new_path) {
+		struct device *device;
+		gboolean paired = FALSE;
+
+		device = adapter_get_device(adapter, addr_ptr);
+		if (device) {
+			dbus_connection_emit_property_changed(conn,
+					device->path, DEVICE_INTERFACE,
+					"Paired", DBUS_TYPE_BOOLEAN, &paired);
+		}
+	}
 
 	reply = dbus_message_new_method_return(msg);
 
@@ -3108,6 +3175,7 @@ static DBusHandlerResult adapter_set_trusted(DBusConnection *conn,
 	DBusMessage *reply;
 	bdaddr_t local;
 	const char *address;
+	char *old_path, *new_path;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
@@ -3125,10 +3193,24 @@ static DBusHandlerResult adapter_set_trusted(DBusConnection *conn,
 
 	write_trust(&local, address, GLOBAL_TRUST, TRUE);
 
-	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+	resolve_paths(msg, &old_path, &new_path);
+
+	dbus_connection_emit_signal(conn, old_path,
 					ADAPTER_INTERFACE, "TrustAdded",
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
+
+	if (new_path) {
+		struct device *device;
+		gboolean trust = TRUE;
+
+		device = adapter_get_device(adapter, address);
+		if (device) {
+			dbus_connection_emit_property_changed(conn,
+					device->path, DEVICE_INTERFACE,
+					"Trusted", DBUS_TYPE_BOOLEAN, &trust);
+		}
+	}
 
 	return send_message_and_unref(conn, reply);
 }
@@ -3174,6 +3256,7 @@ static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *address;
 	bdaddr_t local;
+	char *old_path, *new_path;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
@@ -3191,10 +3274,24 @@ static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
 
 	write_trust(&local, address, GLOBAL_TRUST, FALSE);
 
-	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+	resolve_paths(msg, &old_path, &new_path);
+
+	dbus_connection_emit_signal(conn, old_path,
 					ADAPTER_INTERFACE, "TrustRemoved",
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
+
+	if (new_path) {
+		struct device *device;
+		gboolean trust = FALSE;
+
+		device = adapter_get_device(adapter, address);
+		if (device) {
+			dbus_connection_emit_property_changed(conn,
+					device->path, DEVICE_INTERFACE,
+					"Trusted", DBUS_TYPE_BOOLEAN, &trust);
+		}
+	}
 
 	return send_message_and_unref(conn, reply);
 }
