@@ -520,20 +520,15 @@ void dbus_message_iter_append_dict(DBusMessageIter *iter,
 	va_end(var_args);
 }
 
-dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
-						const char *path,
-						const char *interface,
-						const char *name,
-						int first,
-						va_list var_args)
+static gboolean check_signal(DBusConnection *conn, const char *path,
+				const char *interface, const char *name,
+				const char **args)
 {
 	struct generic_data *data = NULL;
 	struct interface_data *iface;
 	DBusSignalVTable *sig_data;
-	DBusMessage *signal;
-	dbus_bool_t ret;
-	const char *signature, *args = NULL;
 
+	*args = NULL;
 	if (!dbus_connection_get_object_path_data(conn, path,
 					(void *) &data) || !data) {
 		error("dbus_connection_emit_signal: path %s isn't registered",
@@ -551,15 +546,32 @@ dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
 
 	for (sig_data = iface->signals; sig_data && sig_data->name; sig_data++) {
 		if (!strcmp(sig_data->name, name)) {
-			args = sig_data->signature;
+			*args = sig_data->signature;
 			break;
 		}
 	}
 
-	if (!args) {
+	if (!*args) {
 		error("No signal named %s on interface %s", name, interface);
 		return FALSE;
 	}
+
+	return TRUE;
+}
+
+dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
+						const char *path,
+						const char *interface,
+						const char *name,
+						int first,
+						va_list var_args)
+{
+	DBusMessage *signal;
+	dbus_bool_t ret;
+	const char *signature, *args;
+
+	if (!check_signal(conn, path, interface, name, &args))
+		return FALSE;
 
 	signal = dbus_message_new_signal(path, interface, name);
 	if (!signal) {
@@ -610,6 +622,10 @@ dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 	DBusMessage *signal;
 	DBusMessageIter iter;
 	gboolean ret;
+	const char *signature, *args;
+
+	if (!check_signal(conn, path, interface, "PropertyChanged", &args))
+		return FALSE;
 
 	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
 
@@ -624,8 +640,17 @@ dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
 	dbus_message_iter_append_variant(&iter, type, value);
 
+	signature = dbus_message_get_signature(signal);
+	if (strcmp(args, signature) != 0) {
+		error("%s.%s: expected signature'%s' but got '%s'",
+				interface, name, args, signature);
+		ret = FALSE;
+		goto fail;
+	}
+
 	ret = dbus_connection_send(conn, signal, NULL);
 
+fail:
 	dbus_message_unref(signal);
 	return ret;
 }
