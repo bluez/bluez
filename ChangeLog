@@ -1,3 +1,6 @@
+ver 3.29:
+	Fix memory leak in sdp_get_uuidseq_attr function.
+
 ver 3.28:
 	Add support for MCAP UUIDs.
 
