@@ -1,7 +1,7 @@
 
 plugindir = $(libdir)/bluetooth/plugins
 
-plugin_LTLIBRARIES = libecho.la
+noinst_LTLIBRARIES = libecho.la
 
 libecho_la_SOURCES = echo.c
 
