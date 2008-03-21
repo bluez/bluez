@@ -1,3 +1,12 @@
+ver 3.29:
+	Introduce new D-Bus based API.
+	Add more SBC optimizations.
+	Add support for PS3 remote devices.
+	Fix alignment trap in SDP server.
+
+	Note:
+	This version needs at least bluez-libs-3.29
+
 ver 3.28:
 	Add support for role switch for audio service.
 	Add disconnect timer for audio service.
