@@ -25,27 +25,21 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
-#include <signal.h>
-#include <glib.h>
-
+#include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 
+#include <glib.h>
+#include <dbus/dbus.h>
+
+#include "plugin.h"
 #include "dbus.h"
 #include "logging.h"
-
 #include "manager.h"
-#include "hal.h"
 
 #define IFACE_PREFIX "bnep%d"
 #define GN_IFACE "pan0"
 #define NAP_IFACE "pan1"
-
-static GMainLoop *main_loop;
 
 static struct network_conf conf = {
 	.connection_enabled = TRUE,
@@ -58,11 +52,6 @@ static struct network_conf conf = {
 	.nap_iface = NULL,
 	.security = TRUE
 };
-
-static void sig_term(int sig)
-{
-	g_main_loop_quit(main_loop);
-}
 
 static void read_config(const char *file)
 {
@@ -165,63 +154,31 @@ done:
 		conf.security ? "true" : "false");
 }
 
-int main(int argc, char *argv[])
+static DBusConnection *conn;
+
+static int network_init(void)
 {
-	DBusConnection *conn;
-	struct sigaction sa;
-
-	start_logging("network", "Bluetooth Network daemon");
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_flags = SA_NOCLDSTOP;
-	sa.sa_handler = sig_term;
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGINT,  &sa, NULL);
-
-	sa.sa_handler = SIG_IGN;
-	sigaction(SIGCHLD, &sa, NULL);
-	sigaction(SIGPIPE, &sa, NULL);
-
-	enable_debug();
+	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (conn == NULL)
+		return -EIO;
 
 	read_config(CONFIGDIR "/network.conf");
 
-	main_loop = g_main_loop_new(NULL, FALSE);
-
-	conn = dbus_bus_system_setup_with_main_loop(NULL, NULL, NULL);
-	if (!conn) {
-		g_main_loop_unref(main_loop);
-		exit(1);
-	}
-
-	hal_init(conn);
-
-	hal_create_device(NULL);
-
-	if (network_init(conn, &conf) < 0) {
+	if (network_manager_init(conn, &conf) < 0) {
 		dbus_connection_unref(conn);
-		g_main_loop_unref(main_loop);
-		exit(1);
+		return -EIO;
 	}
 
-	if (argc > 1 && !strcmp(argv[1], "-s"))
-		register_external_service(conn, "network", "Network service", "");
-
-	g_main_loop_run(main_loop);
-
-	network_exit();
-
-	hal_remove_device(NULL);
-
-	hal_cleanup();
-
-	dbus_connection_unref(conn);
-
-	g_main_loop_unref(main_loop);
-
-	info("Exit");
-
-	stop_logging();
+	register_external_service(conn, "network", "Network service", "");
 
 	return 0;
 }
+
+static void network_exit(void)
+{
+	network_manager_exit();
+
+	dbus_connection_unref(conn);
+}
+
+BLUETOOTH_PLUGIN_DEFINE("network", network_init, network_exit)

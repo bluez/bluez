@@ -1003,7 +1003,7 @@ static DBusMethodVTable manager_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-int network_init(DBusConnection *conn, struct network_conf *service_conf)
+int network_manager_init(DBusConnection *conn, struct network_conf *service_conf)
 {
 	DBusMethodVTable *methods = NULL;
 	DBusSignalVTable *signals = NULL;
@@ -1078,7 +1078,7 @@ int network_init(DBusConnection *conn, struct network_conf *service_conf)
 	return 0;
 }
 
-void network_exit(void)
+void network_manager_exit(void)
 {
 	if (conf->server_enabled)
 		server_exit();

@@ -39,5 +39,5 @@ struct network_conf {
 	char *nap_iface;
 };
 
-int network_init(DBusConnection *conn, struct network_conf *service_conf);
-void network_exit(void);
+int network_manager_init(DBusConnection *conn, struct network_conf *service_conf);
+void network_manager_exit(void);

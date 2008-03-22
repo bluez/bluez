@@ -1,5 +1,0 @@
-[Bluetooth Service]
-Identifier=network
-Name=Network service
-Description=Bluetooth Personal Area Network service
-Autostart=false
