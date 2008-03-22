@@ -1160,7 +1160,7 @@ static DBusSignalVTable manager_signals[] = {
 	{ NULL, NULL }
 };
 
-int input_init(DBusConnection *conn)
+int input_manager_init(DBusConnection *conn)
 {
 	dbus_connection_set_exit_on_disconnect(conn, TRUE);
 
@@ -1192,7 +1192,7 @@ int input_init(DBusConnection *conn)
 	return 0;
 }
 
-void input_exit(void)
+void input_manager_exit(void)
 {
 	dbus_connection_destroy_object_path(connection, INPUT_PATH);
 

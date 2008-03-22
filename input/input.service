@@ -1,5 +1,0 @@
-[Bluetooth Service]
-Identifier=input
-Name=Input service
-Description=Bluetooth HID based Input service
-Autostart=true

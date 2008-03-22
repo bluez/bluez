@@ -25,76 +25,37 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
-#include <signal.h>
 
 #include <dbus/dbus.h>
 
-#include <glib.h>
-
+#include "plugin.h"
 #include "dbus.h"
-#include "logging.h"
-
 #include "manager.h"
 
-static GMainLoop *main_loop;
+static DBusConnection *conn;
 
-static void sig_term(int sig)
+static int input_init(void)
 {
-	g_main_loop_quit(main_loop);
-}
+	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (conn == NULL)
+		return -EIO;
 
-int main(int argc, char *argv[])
-{
-	DBusConnection *conn;
-	struct sigaction sa;
-
-	start_logging("input", "Bluetooth Input daemon");
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_flags = SA_NOCLDSTOP;
-	sa.sa_handler = sig_term;
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGINT,  &sa, NULL);
-
-	sa.sa_handler = SIG_IGN;
-	sigaction(SIGCHLD, &sa, NULL);
-	sigaction(SIGPIPE, &sa, NULL);
-
-	enable_debug();
-
-	main_loop = g_main_loop_new(NULL, FALSE);
-
-	conn = dbus_bus_system_setup_with_main_loop(NULL, NULL, NULL);
-	if (!conn) {
-		g_main_loop_unref(main_loop);
-		exit(1);
-	}
-
-	if (input_init(conn) < 0) {
+	if (input_manager_init(conn) < 0) {
 		dbus_connection_unref(conn);
-		g_main_loop_unref(main_loop);
-		exit(1);
+		return -EIO;
 	}
 
-	if (argc > 1 && !strcmp(argv[1], "-s"))
-		register_external_service(conn, "input", "Input service", "");
-
-	g_main_loop_run(main_loop);
-
-	input_exit();
-
-	dbus_connection_unref(conn);
-
-	g_main_loop_unref(main_loop);
-
-	info("Exit");
-
-	stop_logging();
+	register_external_service(conn, "input", "Input service", "");
 
 	return 0;
 }
+
+static void input_exit(void)
+{
+	input_manager_exit();
+
+	dbus_connection_unref(conn);
+}
+
+BLUETOOTH_PLUGIN_DEFINE("input", input_init, input_exit)

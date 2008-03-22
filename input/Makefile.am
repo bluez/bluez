@@ -1,16 +1,10 @@
 
 if INPUTSERVICE
-if CONFIGFILES
-confdir = $(sysconfdir)/bluetooth
+plugindir = $(libdir)/bluetooth/plugins
 
-conf_DATA = input.service
-endif
+plugin_LTLIBRARIES = libinput.la
 
-servicedir = $(libdir)/bluetooth
-
-service_PROGRAMS = bluetoothd-service-input
-
-bluetoothd_service_input_SOURCES = main.c \
+libinput_la_SOURCES = main.c \
 	manager.h manager.c \
 	server.h server.c device.h device.c storage.h storage.c \
 	fakehid.c fakehid.h
@@ -19,10 +13,12 @@ LDADD = $(top_builddir)/common/libhelper.a \
 		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 endif
 
+AM_LDFLAGS = -module -avoid-version -export-symbols-regex bluetooth_plugin_desc
+
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
-INCLUDES = -I$(top_srcdir)/common
+INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/hcid
 
-EXTRA_DIST = input.service input-api.txt test-input
+EXTRA_DIST = input-api.txt test-input
 
 MAINTAINERCLEANFILES = Makefile.in

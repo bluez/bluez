@@ -24,5 +24,5 @@
 #define INPUT_PATH "/org/bluez/input"
 #define INPUT_MANAGER_INTERFACE	"org.bluez.input.Manager"
 
-int input_init(DBusConnection *conn);
-void input_exit(void);
+int input_manager_init(DBusConnection *conn);
+void input_manager_exit(void);
