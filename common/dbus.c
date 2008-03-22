@@ -878,10 +878,22 @@ int set_nonblocking(int fd)
 	return 0;
 }
 
+static void external_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply;
+
+	debug("Service register reply");
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_message_unref(reply);
+}
+
 void register_external_service(DBusConnection *conn, const char *identifier,
 				const char *name, const char *description)
 {
-	DBusMessage *msg, *reply;
+	DBusMessage *msg;
+	DBusPendingCall *call;
 
 	info("Registering service");
 
@@ -896,14 +908,13 @@ void register_external_service(DBusConnection *conn, const char *identifier,
 			DBUS_TYPE_STRING, &name,
 			DBUS_TYPE_STRING, &description, DBUS_TYPE_INVALID);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
-	if (!reply) {
+	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
 		error("Can't register service");
+		dbus_message_unref(msg);
 		return;
 	}
 
-	dbus_message_unref(msg);
-	dbus_message_unref(reply);
+	dbus_pending_call_set_notify(call, external_reply, NULL, NULL);
 
-	dbus_connection_flush(conn);
+	dbus_message_unref(msg);
 }
