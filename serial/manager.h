@@ -26,6 +26,6 @@
 
 #define MAX_PATH_LENGTH			32
 
-int serial_init(DBusConnection *conn);
-void serial_exit(void);
+int serial_manager_init(DBusConnection *conn);
+void serial_manager_exit(void);
 int rfcomm_release(int16_t id);

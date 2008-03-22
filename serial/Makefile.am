@@ -1,27 +1,23 @@
 
 if SERIALSERVICE
-if CONFIGFILES
-confdir = $(sysconfdir)/bluetooth
+plugindir = $(libdir)/bluetooth/plugins
 
-conf_DATA = serial.service
-endif
+plugin_LTLIBRARIES = libserial.la
 
-servicedir = $(libdir)/bluetooth
-
-service_PROGRAMS = bluetoothd-service-serial
-
-bluetoothd_service_serial_SOURCES = main.c \
+libserial_la_SOURCES = main.c \
 		manager.h manager.c port.h port.c \
 		storage.h storage.c
 
 LDADD = $(top_builddir)/common/libhelper.a \
-                @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 endif
+
+AM_LDFLAGS = -module -avoid-version -export-symbols-regex bluetooth_plugin_desc
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
-INCLUDES = -I$(top_srcdir)/common
+INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/hcid
 
-EXTRA_DIST = serial.service serial-api.txt test-serial
+EXTRA_DIST = serial-api.txt test-serial
 
 MAINTAINERCLEANFILES = Makefile.in

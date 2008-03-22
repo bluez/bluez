@@ -2392,7 +2392,7 @@ static void register_stored(void)
 	closedir(dir);
 }
 
-int serial_init(DBusConnection *conn)
+int serial_manager_init(DBusConnection *conn)
 {
 
 	if (rfcomm_ctl < 0) {
@@ -2427,7 +2427,7 @@ int serial_init(DBusConnection *conn)
 	return 0;
 }
 
-void serial_exit(void)
+void serial_manager_exit(void)
 {
 	dbus_connection_destroy_object_path(connection, SERIAL_MANAGER_PATH);
 
