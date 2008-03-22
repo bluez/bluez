@@ -848,8 +848,6 @@ int main(int argc, char *argv[])
 		enable_debug();
 	}
 
-	plugin_init();
-
 	/* Create and bind HCI socket */
 	if ((hcid.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		error("Can't open HCI socket: %s (%d)",
@@ -901,6 +899,12 @@ int main(int argc, char *argv[])
 		error("Unable to get on D-Bus");
 		exit(1);
 	}
+
+	/* Loading plugins has to be done after D-Bus has been setup since
+	 * the plugins might wanna expose some paths on the bus. However the
+	 * best order of how to init various subsystems of the Bluetooth
+	 * daemon needs to be re-worked. */
+	plugin_init();
 
 	init_security_data();
 
