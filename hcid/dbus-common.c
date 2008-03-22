@@ -313,6 +313,9 @@ void hcid_dbus_exit(void)
 	for (i = 0; children[i]; i++) {
 		char dev_path[MAX_PATH_LENGTH];
 
+		if (children[i][0] != 'h')
+			continue;
+
 		snprintf(dev_path, sizeof(dev_path), "%s/%s", BASE_PATH,
 				children[i]);
 
