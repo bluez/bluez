@@ -15,8 +15,12 @@ MAINTAINERCLEANFILES = Makefile.in
 
 all-local:
 	@$(LN_S) -f $(top_srcdir)/input/.libs/libinput.so
+	@$(LN_S) -f $(top_srcdir)/audio/.libs/libaudio.so
+	@$(LN_S) -f $(top_srcdir)/serial/.libs/libserial.so
 	@$(LN_S) -f $(top_srcdir)/network/.libs/libnetwork.so
 
 clean-local:
 	@rm -f libnetwork.so
+	@rm -f libserial.so
+	@rm -f libaudio.so
 	@rm -f libinput.so
