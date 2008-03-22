@@ -12,3 +12,11 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/hcid
 
 MAINTAINERCLEANFILES = Makefile.in
+
+all-local:
+	@$(LN_S) -f $(top_srcdir)/input/.libs/libinput.so
+	@$(LN_S) -f $(top_srcdir)/network/.libs/libnetwork.so
+
+clean-local:
+	@rm -f libnetwork.so
+	@rm -f libinput.so
