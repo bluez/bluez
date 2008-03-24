@@ -415,11 +415,6 @@ dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
 	return TRUE;
 }
 
-static void append_array_item_string(const char *val, DBusMessageIter *iter)
-{
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &val);
-}
-
 void dbus_message_iter_append_variant(DBusMessageIter *iter, int type, void *val)
 {
 	DBusMessageIter value;
@@ -459,10 +454,15 @@ void dbus_message_iter_append_variant(DBusMessageIter *iter, int type, void *val
 	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, sig, &value);
 
 	if (type == DBUS_TYPE_ARRAY) {
+		int i;
+		const char ***str_array = val;
+
 		dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_STRING_AS_STRING, &array);
-		g_slist_foreach((GSList*) val, (GFunc) append_array_item_string,
-			&array);
+
+		for (i = 0; (*str_array)[i]; i++)
+			dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
+							&((*str_array)[i]));
 
 		dbus_message_iter_close_container(&value, &array);
 	} else

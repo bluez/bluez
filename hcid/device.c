@@ -748,6 +748,30 @@ static DBusHandlerResult disconnect(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static gboolean device_is_paired(struct device *device)
+{
+	struct adapter *adapter = device->adapter;
+	char filename[PATH_MAX + 1], *str;
+	gboolean ret;
+
+	create_name(filename, PATH_MAX, STORAGEDIR,
+			adapter->address, "linkkeys");
+	str = textfile_caseget(filename, device->address);
+	ret = str ? TRUE : FALSE;
+	g_free(str);
+
+	return ret;
+}
+
+static char *device_get_name(struct device *device)
+{
+	struct adapter *adapter = device->adapter;
+	char filename[PATH_MAX + 1];
+
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "names");
+	return textfile_caseget(filename, device->address);
+}
+
 static DBusHandlerResult get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -757,12 +781,14 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	bdaddr_t src, dst;
-	char filename[PATH_MAX + 1], path[MAX_PATH_LENGTH];
+	char path[MAX_PATH_LENGTH];
 	char buf[64];
 	const char *ptr;
-	char *str, *name, *ppath;
+	char *name, *ppath, **uuids;
 	dbus_bool_t boolean;
 	uint32_t class;
+	int i;
+	GSList *l;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -780,8 +806,7 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 			&device->address);
 
 	/* Name */
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "names");
-	name = textfile_caseget(filename, device->address);
+	name = device_get_name(device);
 	if (name) {
 		dbus_message_iter_append_dict_entry(&dict, "Name",
 				DBUS_TYPE_STRING, &name);
@@ -808,16 +833,7 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	}
 
 	/* Paired */
-	create_name(filename, PATH_MAX, STORAGEDIR,
-			adapter->address, "linkkeys");
-	str = textfile_caseget(filename, device->address);
-	if (str) {
-		boolean = TRUE;
-		free(str);
-	} else {
-		boolean = FALSE;
-	}
-
+	boolean = device_is_paired(device);
 	dbus_message_iter_append_dict_entry(&dict, "Paired",
 			DBUS_TYPE_BOOLEAN, &boolean);
 
@@ -837,8 +853,12 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 			DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* UUIDs */
+	uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
+	for (i = 0, l = device->uuids; l; l = l->next, i++)
+		uuids[i] = l->data;
 	dbus_message_iter_append_dict_entry(&dict, "UUIDs",
-			DBUS_TYPE_ARRAY, device->uuids);
+			DBUS_TYPE_ARRAY, &uuids);
+	g_free(uuids);
 
 	/* Adapter */
 	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
