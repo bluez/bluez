@@ -879,7 +879,7 @@ static DBusHandlerResult set_alias(DBusConnection *conn, DBusMessage *msg,
 	DBusMessage *reply;
 	bdaddr_t bdaddr;
 	int ecode;
-	char *str, filename[PATH_MAX + 1];
+	char *str, filename[PATH_MAX + 1], path[MAX_PATH_LENGTH];
 
 	str2ba(device->address, &bdaddr);
 
@@ -901,11 +901,19 @@ static DBusHandlerResult set_alias(DBusConnection *conn, DBusMessage *msg,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
+
+	dbus_connection_emit_signal(conn, path,
+					ADAPTER_INTERFACE, "RemoteAliasChanged",
+					DBUS_TYPE_STRING, &device->address,
+					DBUS_TYPE_STRING, &str,
+					DBUS_TYPE_INVALID);
+
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Alias",
 					DBUS_TYPE_STRING, &str);
 
-	free(str);
+	g_free(str);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -917,6 +925,7 @@ static DBusHandlerResult set_trust(DBusConnection *conn, DBusMessage *msg,
 	struct adapter *adapter = device->adapter;
 	DBusMessage *reply;
 	bdaddr_t local;
+	char path[MAX_PATH_LENGTH];
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -925,6 +934,13 @@ static DBusHandlerResult set_trust(DBusConnection *conn, DBusMessage *msg,
 	str2ba(adapter->address, &local);
 
 	write_trust(&local, device->address, GLOBAL_TRUST, value);
+
+	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
+
+	dbus_connection_emit_signal(conn, path,
+					ADAPTER_INTERFACE, "TrustAdded",
+					DBUS_TYPE_STRING, &device->address,
+					DBUS_TYPE_INVALID);
 
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Trusted",
