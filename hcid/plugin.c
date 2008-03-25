@@ -60,49 +60,49 @@ gboolean plugin_init(void)
 {
 	GDir *dir;
 	const gchar *file;
-	gchar *filename;
 
-	debug("Loading plugins");
+	debug("Loading plugins %s", PLUGINDIR);
 
 	dir = g_dir_open(PLUGINDIR, 0, NULL);
-	if (dir != NULL) {
-		while ((file = g_dir_read_name(dir)) != NULL) {
-			GModule *module;
-			struct bluetooth_plugin_desc *desc;
+	if (!dir)
+		return FALSE;
 
-			if (g_str_has_prefix(file, "lib") == FALSE)
-				continue;
+	while ((file = g_dir_read_name(dir)) != NULL) {
+		GModule *module;
+		struct bluetooth_plugin_desc *desc;
+		gchar *filename;
 
-			filename = g_build_filename(PLUGINDIR, file, NULL);
+		if (g_str_has_prefix(file, "lib") == FALSE)
+			continue;
 
-			module = g_module_open(filename, 0);
-			if (module == NULL) {
-				error("Can't load plugin %s", filename);
-				continue;
-			}
+		filename = g_build_filename(PLUGINDIR, file, NULL);
 
-			g_free(filename);
-
-			debug("%s", g_module_name(module));
-
-			if (g_module_symbol(module, "bluetooth_plugin_desc",
-						(gpointer) &desc) == FALSE) {
-				error("Can't load plugin description");
-				g_module_close(module);
-				continue;
-			}
-
-			if (desc == NULL || desc->init == NULL) {
-				g_module_close(module);
-				continue;
-			}
-
-			if (add_plugin(module, desc) == FALSE)
-				g_module_close(module);
+		module = g_module_open(filename, 0);
+		g_free(filename);
+		if (module == NULL) {
+			error("Can't load plugin %s", filename);
+			continue;
 		}
 
-		g_dir_close(dir);
+		debug("%s", g_module_name(module));
+
+		if (g_module_symbol(module, "bluetooth_plugin_desc",
+					(gpointer) &desc) == FALSE) {
+			error("Can't load plugin description");
+			g_module_close(module);
+			continue;
+		}
+
+		if (desc == NULL || desc->init == NULL) {
+			g_module_close(module);
+			continue;
+		}
+
+		if (add_plugin(module, desc) == FALSE)
+			g_module_close(module);
 	}
+
+	g_dir_close(dir);
 
 	return TRUE;
 }
