@@ -78,11 +78,13 @@ gboolean plugin_init(void)
 		filename = g_build_filename(PLUGINDIR, file, NULL);
 
 		module = g_module_open(filename, 0);
-		g_free(filename);
 		if (module == NULL) {
 			error("Can't load plugin %s", filename);
+			g_free(filename);
 			continue;
 		}
+
+		g_free(filename);
 
 		debug("%s", g_module_name(module));
 
