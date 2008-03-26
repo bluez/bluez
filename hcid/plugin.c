@@ -27,6 +27,10 @@
 
 #include <glib.h>
 #include <gmodule.h>
+#include <string.h>
+
+#include <sys/stat.h>
+#include <errno.h>
 
 #include "plugin.h"
 #include "logging.h"
@@ -71,11 +75,20 @@ gboolean plugin_init(void)
 		GModule *module;
 		struct bluetooth_plugin_desc *desc;
 		gchar *filename;
+		struct stat st;
 
-		if (g_str_has_prefix(file, "lib") == FALSE)
+		if (g_str_has_prefix(file, "lib") == FALSE ||
+				g_str_has_suffix(file, ".so") == FALSE)
 			continue;
 
 		filename = g_build_filename(PLUGINDIR, file, NULL);
+
+		if (stat(filename, &st) < 0) {
+			error("Can't load plugin %s: %s (%d)", filename,
+				strerror(errno), errno);
+			g_free(filename);
+			continue;
+		}
 
 		module = g_module_open(filename, 0);
 		if (module == NULL) {
