@@ -29,8 +29,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <net/if.h>
 
@@ -133,7 +131,7 @@ static void add_lang_attr(sdp_record_t *r)
 	sdp_list_free(langs, 0);
 }
 
-sdp_record_t *server_record_new(const char *name, uint16_t id)
+static sdp_record_t *server_record_new(const char *name, uint16_t id)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
 	uuid_t root_uuid, pan, l2cap, bnep;
@@ -692,7 +690,7 @@ void server_exit()
 	connection = NULL;
 }
 
-uint32_t register_server_record(struct network_server *ns)
+static uint32_t register_server_record(struct network_server *ns)
 {
 	sdp_record_t *record;
 
