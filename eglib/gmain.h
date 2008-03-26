@@ -227,9 +227,11 @@ gchar *g_strdup(const gchar *str);
 gchar* g_strdup_printf(const gchar *format, ...);
 gchar* g_strdelimit(gchar *string, const gchar *delimiters, gchar new_delim);
 gchar *g_strconcat(const gchar *string1, ...);
+gsize g_strlcat(gchar *dest, const gchar *src, gsize dest_size);
 gchar **g_strsplit(const gchar *string, const gchar *delimiter, gint max_tokens);
 gboolean g_str_equal(gconstpointer v1, gconstpointer v2);
 gboolean g_str_has_prefix(const gchar *str, const gchar *prefix);
+gboolean g_str_has_suffix(const gchar *str, const gchar *suffix);
 
 #define g_new(struct_type, n_structs) \
 	((struct_type *) g_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
@@ -287,7 +289,7 @@ gchar *g_string_free(GString *string, gboolean free_segment);
 
 typedef enum {
 	G_MARKUP_DO_NOT_USE_THIS_UNSUPPORTED_FLAG	= 1 << 0,
-	G_MARKUP_TREAT_CDATA_AS_TEXT			= 1 << 1  
+	G_MARKUP_TREAT_CDATA_AS_TEXT			= 1 << 1
 } GMarkupParseFlags;
 
 typedef struct _GMarkupParseContext GMarkupParseContext;
@@ -312,7 +314,7 @@ struct _GMarkupParser {
 	/* text is not nul-terminated */
 	void (*text) (GMarkupParseContext *context,
 			const gchar *text,
-			gsize text_len,  
+			gsize text_len,
 			gpointer user_data,
 			GError **error);
 
@@ -323,7 +325,7 @@ struct _GMarkupParser {
 	/* text is not nul-terminated. */
 	void (*passthrough) (GMarkupParseContext *context,
 			const gchar *passthrough_text,
-			gsize text_len,  
+			gsize text_len,
 			gpointer user_data,
 			GError **error);
 

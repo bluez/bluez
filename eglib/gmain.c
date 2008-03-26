@@ -1355,6 +1355,37 @@ gchar *g_strconcat(const gchar *string1, ...)
 	return concat;
 }
 
+gsize g_strlcat(gchar *dest, const gchar *src, gsize dest_size)
+{
+	gchar *d = dest;
+	const gchar *s = src;
+	gsize bytes_left = dest_size;
+	gsize dlength;  /* Logically, MIN(strlen(d), dest_size) */
+
+	if (!d || !s)
+		return 0;
+
+	/* Find the end of dst and adjust bytes left but don't go past end */
+	while (*d != 0 && bytes_left-- != 0)
+		d++;
+	dlength = d - dest;
+	bytes_left = dest_size - dlength;
+
+	if (bytes_left == 0)
+		return dlength + strlen(s);
+
+	while (*s != 0) {
+		if (bytes_left != 1) {
+			*d++ = *s;
+			bytes_left--;
+		}
+		s++;
+	}
+	*d = 0;
+
+	return dlength + (s - src);  /* count does not include NULL */
+}
+
 gchar **g_strsplit(const gchar *string, const gchar *delimiter, gint max_tokens)
 {
 	GSList *string_list = NULL, *slist;
@@ -1425,6 +1456,23 @@ gboolean g_str_has_prefix(const gchar *str, const gchar *prefix)
 		return FALSE;
 
 	return strncmp(str, prefix, prefix_len) == 0;
+}
+
+gboolean g_str_has_suffix(const gchar *str, const gchar *suffix)
+{
+	int str_len;
+	int suffix_len;
+
+	if (!str || !suffix)
+		return FALSE;
+
+	str_len = strlen(str);
+	suffix_len = strlen(suffix);
+
+	if (str_len < suffix_len)
+		return FALSE;
+
+	return strcmp(str + str_len - suffix_len, suffix) == 0;
 }
 
 /* GKeyFile */
@@ -1718,7 +1766,20 @@ void g_markup_parse_context_free(GMarkupParseContext *context)
 static gchar *g_build_pathname_va(const gchar *first_element,
 						va_list args, gpointer *data)
 {
-	return NULL;
+	gchar result[PATH_MAX], *element;
+
+	strncpy(result, first_element, PATH_MAX);
+	element = va_arg(args, gchar *);
+
+	while (element) {
+		g_strlcat(result, "/", PATH_MAX);
+		g_strlcat(result, element, PATH_MAX);
+		element = va_arg(args, gchar *);
+	}
+
+	va_end(args);
+
+	return g_strdup(result);
 }
 
 gchar *g_build_filename(const gchar *first_element, ...)
