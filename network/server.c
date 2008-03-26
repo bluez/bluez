@@ -51,6 +51,7 @@
 #include "error.h"
 #include "textfile.h"
 #include "dbus-helper.h"
+#include "sdpd.h"
 
 #define NETWORK_SERVER_INTERFACE "org.bluez.network.Server"
 #define SETUP_TIMEOUT		1000
@@ -132,8 +133,7 @@ static void add_lang_attr(sdp_record_t *r)
 	sdp_list_free(langs, 0);
 }
 
-static int create_server_record(sdp_buf_t *buf, const char *name,
-					uint16_t id)
+sdp_record_t *server_record_new(const char *name, uint16_t id)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
 	uuid_t root_uuid, pan, l2cap, bnep;
@@ -145,60 +145,64 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 	uint16_t net_access_type = 0xfffe;
 	uint32_t max_net_access_rate = 0;
 	const char *desc = "BlueZ PAN service";
-	sdp_record_t record;
-	int ret;
+	sdp_record_t *record;
 
-	memset(&record, 0, sizeof(sdp_record_t));
+	record = sdp_record_alloc();
+	if (!record)
+		return NULL;
+
+	record->attrlist = NULL;
+	record->pattern = NULL;
 
 	switch (id) {
 	case BNEP_SVC_NAP:
 		sdp_uuid16_create(&pan, NAP_SVCLASS_ID);
 		svclass = sdp_list_append(NULL, &pan);
-		sdp_set_service_classes(&record, svclass);
+		sdp_set_service_classes(record, svclass);
 
 		sdp_uuid16_create(&profile[0].uuid, NAP_PROFILE_ID);
 		profile[0].version = 0x0100;
 		pfseq = sdp_list_append(NULL, &profile[0]);
-		sdp_set_profile_descs(&record, pfseq);
+		sdp_set_profile_descs(record, pfseq);
 
-		sdp_set_info_attr(&record, name, NULL, desc);
+		sdp_set_info_attr(record, name, NULL, desc);
 
-		sdp_attr_add_new(&record, SDP_ATTR_NET_ACCESS_TYPE,
+		sdp_attr_add_new(record, SDP_ATTR_NET_ACCESS_TYPE,
 					SDP_UINT16, &net_access_type);
-		sdp_attr_add_new(&record, SDP_ATTR_MAX_NET_ACCESSRATE,
+		sdp_attr_add_new(record, SDP_ATTR_MAX_NET_ACCESSRATE,
 					SDP_UINT32, &max_net_access_rate);
 		break;
 	case BNEP_SVC_GN:
 		sdp_uuid16_create(&pan, GN_SVCLASS_ID);
 		svclass = sdp_list_append(NULL, &pan);
-		sdp_set_service_classes(&record, svclass);
+		sdp_set_service_classes(record, svclass);
 
 		sdp_uuid16_create(&profile[0].uuid, GN_PROFILE_ID);
 		profile[0].version = 0x0100;
 		pfseq = sdp_list_append(NULL, &profile[0]);
-		sdp_set_profile_descs(&record, pfseq);
+		sdp_set_profile_descs(record, pfseq);
 
-		sdp_set_info_attr(&record, name, NULL, desc);
+		sdp_set_info_attr(record, name, NULL, desc);
 		break;
 	case BNEP_SVC_PANU:
 		sdp_uuid16_create(&pan, PANU_SVCLASS_ID);
 		svclass = sdp_list_append(NULL, &pan);
-		sdp_set_service_classes(&record, svclass);
+		sdp_set_service_classes(record, svclass);
 
 		sdp_uuid16_create(&profile[0].uuid, PANU_PROFILE_ID);
 		profile[0].version = 0x0100;
 		pfseq = sdp_list_append(NULL, &profile[0]);
-		sdp_set_profile_descs(&record, pfseq);
+		sdp_set_profile_descs(record, pfseq);
 
-		sdp_set_info_attr(&record, name, NULL, desc);
+		sdp_set_info_attr(record, name, NULL, desc);
 		break;
 	default:
-		return -1;
+		return NULL;
 	}
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
-	sdp_set_browse_groups(&record, root);
+	sdp_set_browse_groups(record, root);
 
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
 	proto[0] = sdp_list_append(NULL, &l2cap);
@@ -234,17 +238,12 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 	apseq = sdp_list_append(apseq, proto[1]);
 
 	aproto = sdp_list_append(NULL, apseq);
-	sdp_set_access_protos(&record, aproto);
+	sdp_set_access_protos(record, aproto);
 
-	add_lang_attr(&record);
+	add_lang_attr(record);
 
-	sdp_attr_add_new(&record, SDP_ATTR_SECURITY_DESC,
+	sdp_attr_add_new(record, SDP_ATTR_SECURITY_DESC,
 				SDP_UINT16, &security_desc);
-
-	if (sdp_gen_record_pdu(&record, buf) < 0)
-		ret = -1;
-	else
-		ret = 0;
 
 	sdp_data_free(p);
 	sdp_data_free(v);
@@ -255,10 +254,8 @@ static int create_server_record(sdp_buf_t *buf, const char *name,
 	sdp_list_free(proto[1], NULL);
 	sdp_list_free(svclass, NULL);
 	sdp_list_free(pfseq, NULL);
-	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
-	sdp_list_free(record.pattern, free);
 
-	return ret;
+	return record;
 }
 
 static ssize_t send_bnep_ctrl_rsp(int sk, uint16_t response)
@@ -695,133 +692,25 @@ void server_exit()
 	connection = NULL;
 }
 
-static uint32_t add_server_record(struct network_server *ns)
+uint32_t register_server_record(struct network_server *ns)
 {
-	DBusMessage *msg, *reply;
-	DBusError derr;
-	dbus_uint32_t rec_id;
-	sdp_buf_t buf;
+	sdp_record_t *record;
 
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "AddServiceRecord");
-	if (!msg) {
-		error("Can't allocate new method call");
-		return 0;
-	}
-
-	if (create_server_record(&buf, ns->name, ns->id) < 0) {
+	record = server_record_new(ns->name, ns->id);
+	if (!record) {
 		error("Unable to allocate new service record");
-		dbus_message_unref(msg);
 		return 0;
 	}
 
-	dbus_message_append_args(msg, DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-				&buf.data, buf.data_size, DBUS_TYPE_INVALID);
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(connection,
-			msg, -1, &derr);
-
-	free(buf.data);
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
-		error("Adding service record failed: %s", derr.message);
-		dbus_error_free(&derr);
+	if (add_record_to_server(&ns->src, record) < 0) {
+		error("Failed to register service record");
+		sdp_record_free(record);
 		return 0;
 	}
 
-	dbus_message_get_args(reply, &derr, DBUS_TYPE_UINT32, &rec_id,
-				DBUS_TYPE_INVALID);
+	debug("register_server_record: got record id 0x%x", record->handle);
 
-	if (dbus_error_is_set(&derr)) {
-		error("Invalid arguments to AddServiceRecord reply: %s", derr.message);
-		dbus_message_unref(reply);
-		dbus_error_free(&derr);
-		return 0;
-	}
-
-	dbus_message_unref(reply);
-
-	debug("add_server_record: got record id 0x%x", rec_id);
-
-	return rec_id;
-}
-
-static int update_server_record(struct network_server *ns)
-{
-	DBusMessage *msg, *reply;
-	DBusError derr;
-	sdp_buf_t buf;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "UpdateServiceRecord");
-	if (!msg) {
-		error("Can't allocate new method call");
-		return -ENOMEM;
-	}
-
-	if (create_server_record(&buf, ns->name, ns->id) < 0) {
-		error("Unable to allocate new service record");
-		dbus_message_unref(msg);
-		return -1;
-	}
-
-	dbus_message_append_args(msg,
-			DBUS_TYPE_UINT32, &ns->record_id,
-			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-			&buf.data, buf.data_size, DBUS_TYPE_INVALID);
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(connection,
-			msg, -1, &derr);
-
-	free(buf.data);
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
-		error("Update service record failed: %s", derr.message);
-		dbus_error_free(&derr);
-		return -1;
-	}
-
-	dbus_message_unref(reply);
-
-	return 0;
-}
-
-static int remove_server_record(uint32_t rec_id)
-{
-	DBusMessage *msg, *reply;
-	DBusError derr;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "RemoveServiceRecord");
-	if (!msg) {
-		error("Can't allocate new method call");
-		return -ENOMEM;
-	}
-
-	dbus_message_append_args(msg,
-			DBUS_TYPE_UINT32, &rec_id,
-			DBUS_TYPE_INVALID);
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(connection,
-			msg, -1, &derr);
-
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr)) {
-		error("Removing service record 0x%x failed: %s",
-						rec_id, derr.message);
-		dbus_error_free(&derr);
-		return -1;
-	}
-
-	dbus_message_unref(reply);
-
-	return 0;
+	return record->handle;
 }
 
 static DBusHandlerResult get_uuid(DBusConnection *conn,
@@ -868,7 +757,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	/* Add the service record */
-	ns->record_id = add_server_record(ns);
+	ns->record_id = register_server_record(ns);
 	if (!ns->record_id) {
 		dbus_message_unref(reply);
 		return error_failed(conn, msg,
@@ -909,7 +798,7 @@ static DBusHandlerResult disable(DBusConnection *conn,
 
 	/* Remove the service record */
 	if (ns->record_id) {
-		remove_server_record(ns->record_id);
+		remove_record_from_server(ns->record_id);
 		ns->record_id = 0;
 	}
 
@@ -969,12 +858,16 @@ static DBusHandlerResult set_name(DBusConnection *conn,
 		g_free(ns->name);
 	ns->name = g_strdup(name);
 
-	if (ns->enable) {
-		if (update_server_record(ns) < 0) {
+	if (ns->enable && ns->record_id) {
+		uint32_t handle = register_server_record(ns);
+		if (!handle) {
 			dbus_message_unref(reply);
 			return error_failed(conn, msg,
 				"Service record attribute update failed");
 		}
+
+		remove_record_from_server(ns->record_id);
+		ns->record_id = handle;
 	}
 
 	store_property(&ns->src, ns->id, "name", ns->name);
@@ -1078,7 +971,7 @@ static void server_free(struct network_server *ns)
 
 	/* FIXME: Missing release/free all bnepX interfaces */
 	if (ns->record_id)
-		remove_server_record(ns->record_id);
+		remove_record_from_server(ns->record_id);
 
 	if (ns->iface)
 		g_free(ns->iface);
@@ -1198,7 +1091,7 @@ int server_register_from_file(const char *path, const bdaddr_t *src,
 	str = textfile_get(filename, "enabled");
 	if (str) {
 		if (strcmp("1", str) == 0) {
-			ns->record_id = add_server_record(ns);
+			ns->record_id = register_server_record(ns);
 			ns->enable = TRUE;
 		}
 		g_free(str);

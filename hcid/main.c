@@ -900,12 +900,6 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	/* Loading plugins has to be done after D-Bus has been setup since
-	 * the plugins might wanna expose some paths on the bus. However the
-	 * best order of how to init various subsystems of the Bluetooth
-	 * daemon needs to be re-worked. */
-	plugin_init();
-
 	init_security_data();
 
 	/* Create event loop */
@@ -928,6 +922,12 @@ int main(int argc, char *argv[])
 	}
 
 	notify_init();
+
+	/* Loading plugins has to be done after D-Bus has been setup since
+	 * the plugins might wanna expose some paths on the bus. However the
+	 * best order of how to init various subsystems of the Bluetooth
+	 * daemon needs to be re-worked. */
+	plugin_init();
 
 	init_services(CONFIGDIR);
 
