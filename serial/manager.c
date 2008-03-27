@@ -58,6 +58,7 @@
 #include "port.h"
 #include "storage.h"
 #include "manager.h"
+#include "sdpd.h"
 
 #define BASE_UUID			"00000000-0000-1000-8000-00805F9B34FB"
 #define SERIAL_PROXY_INTERFACE		"org.bluez.serial.Proxy"
@@ -1052,31 +1053,32 @@ static int str2uuid(uuid_t *uuid, const char *string)
 	return -1;
 }
 
-static int create_proxy_record(sdp_buf_t *buf, const char *uuid128, uint8_t channel)
+static sdp_record_t *proxy_record_new(const char *uuid128, uint8_t channel)
 {
 	sdp_list_t *apseq, *aproto, *profiles, *proto[2], *root, *svclass_id;
 	uuid_t uuid, root_uuid, l2cap, rfcomm;
 	sdp_profile_desc_t profile;
-	sdp_record_t record;
+	sdp_record_t *record;
 	sdp_data_t *ch;
-	int ret;
 
-	memset(&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
+	record = sdp_record_alloc();
+	if (!record)
+		return NULL;
+
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
-	sdp_set_browse_groups(&record, root);
+	sdp_set_browse_groups(record, root);
 	sdp_list_free(root, NULL);
 
 	str2uuid(&uuid, uuid128);
 	svclass_id = sdp_list_append(NULL, &uuid);
-	sdp_set_service_classes(&record, svclass_id);
+	sdp_set_service_classes(record, svclass_id);
 	sdp_list_free(svclass_id, NULL);
 
 	sdp_uuid16_create(&profile.uuid, SERIAL_PORT_PROFILE_ID);
 	profile.version = 0x0100;
 	profiles = sdp_list_append(NULL, &profile);
-	sdp_set_profile_descs(&record, profiles);
+	sdp_set_profile_descs(record, profiles);
 	sdp_list_free(profiles, NULL);
 
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
@@ -1090,24 +1092,20 @@ static int create_proxy_record(sdp_buf_t *buf, const char *uuid128, uint8_t chan
 	apseq = sdp_list_append(apseq, proto[1]);
 
 	aproto = sdp_list_append(NULL, apseq);
-	sdp_set_access_protos(&record, aproto);
+	sdp_set_access_protos(record, aproto);
 
-	add_lang_attr(&record);
+	add_lang_attr(record);
 
-	sdp_set_info_attr(&record, "Port Proxy Entity",
+	sdp_set_info_attr(record, "Port Proxy Entity",
 				NULL, "Port Proxy Entity");
-
-	ret = sdp_gen_record_pdu(&record, buf);
 
 	sdp_data_free(ch);
 	sdp_list_free(proto[0], NULL);
 	sdp_list_free(proto[1], NULL);
 	sdp_list_free(apseq, NULL);
 	sdp_list_free(aproto, NULL);
-	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
-	sdp_list_free(record.pattern, free);
 
-	return ret;
+	return record;
 }
 
 static GIOError channel_write(GIOChannel *chan, char *buf, size_t size)
@@ -1166,87 +1164,6 @@ static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 		return FALSE;
 
 	return TRUE;
-}
-
-static uint32_t add_proxy_record(DBusConnection *conn, sdp_buf_t *buf)
-{
-	DBusMessage *msg, *reply;
-	DBusError derr;
-	dbus_uint32_t rec_id;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-			"org.bluez.Database", "AddServiceRecord");
-	if (!msg) {
-		error("Can't allocate new method call");
-		return 0;
-	}
-
-	dbus_message_append_args(msg,
-			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-			&buf->data, buf->data_size,
-			DBUS_TYPE_INVALID);
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
-
-	free(buf->data);
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr) ||
-			dbus_set_error_from_message(&derr, reply)) {
-		error("Adding service record failed: %s", derr.message);
-		dbus_error_free(&derr);
-		return 0;
-	}
-
-	dbus_message_get_args(reply, &derr,
-			DBUS_TYPE_UINT32, &rec_id,
-			DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&derr)) {
-		error("Invalid arguments to AddServiceRecord reply: %s",
-				derr.message);
-		dbus_message_unref(reply);
-		dbus_error_free(&derr);
-		return 0;
-	}
-
-	dbus_message_unref(reply);
-
-	return rec_id;
-}
-
-static int remove_proxy_record(DBusConnection *conn, uint32_t rec_id)
-{
-	DBusMessage *msg, *reply;
-	DBusError derr;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "RemoveServiceRecord");
-	if (!msg) {
-		error("Can't allocate new method call");
-		return -ENOMEM;
-	}
-
-	dbus_message_append_args(msg,
-			DBUS_TYPE_UINT32, &rec_id,
-			DBUS_TYPE_INVALID);
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &derr);
-
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr)) {
-		error("Removing service record 0x%x failed: %s",
-						rec_id, derr.message);
-		dbus_error_free(&derr);
-		return -1;
-	}
-
-	dbus_message_unref(reply);
-
-	return 0;
 }
 
 static inline int unix_socket_connect(const char *address)
@@ -1432,7 +1349,7 @@ static void listen_watch_notify(gpointer data)
 		prx->local_watch = 0;
 	}
 
-	remove_proxy_record(connection, prx->record_id);
+	remove_record_from_server(prx->record_id);
 	prx->record_id = 0;
 }
 
@@ -1441,7 +1358,7 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 {
 	struct proxy *prx = data;
 	GIOChannel *io;
-	sdp_buf_t buf;
+	sdp_record_t *record;
 	int sk;
 
 	if (prx->listen_watch)
@@ -1456,15 +1373,20 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 		return error_failed(conn, msg, strerr);
 	}
 
-	/* Create the record */
-	create_proxy_record(&buf, prx->uuid128, prx->channel);
-
-	/* Register the record */
-	prx->record_id = add_proxy_record(conn, &buf);
-	if (!prx->record_id) {
+	record = proxy_record_new(prx->uuid128, prx->channel);
+	if (!record) {
 		close(sk);
+		return error_failed(conn, msg,
+			"Unable to allocate new service record");
+	}
+
+	if (add_record_to_server(&prx->src, record) < 0) {
+		close(sk);
+		sdp_record_free(record);
 		return error_failed(conn, msg, "Service registration failed");
 	}
+
+	prx->record_id = record->handle;
 
 	/* Add incomming connection watch */
 	io = g_io_channel_unix_new(sk);
