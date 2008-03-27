@@ -229,7 +229,7 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 		/* FIXME: forward error as is */
 		if (dbus_error_has_name(&derr,
 				"org.bluez.Error.ConnectionAttemptFailed"))
-			error_connection_attempt_failed(pr->conn, pr->msg, 
+			error_connection_attempt_failed(pr->conn, pr->msg,
 					EINVAL);
 		else
 			error_not_supported(pr->conn, pr->msg);
@@ -511,60 +511,6 @@ static DBusHandlerResult find_connection(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-char *find_adapter(DBusConnection *conn, bdaddr_t *src)
-{
-	DBusMessage *msg, *reply;
-	DBusError derr;
-	char address[18], *addr_ptr = address;
-	char *path, *ret;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-						"org.bluez.Manager",
-						"FindAdapter");
-	if (!msg) {
-		error("Unable to allocate new method call");
-		return NULL;
-	}
-
-	ba2str(src, address);
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
-				 DBUS_TYPE_INVALID);
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1,
-								&derr);
-
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr) ||
-				dbus_set_error_from_message(&derr, reply)) {
-		error("FindAdapter(%s) failed: %s", address, derr.message);
-		dbus_error_free(&derr);
-		return NULL;
-	}
-
-	dbus_error_init(&derr);
-	dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&derr)) {
-		error("Unable to get message args");
-		dbus_message_unref(reply);
-		dbus_error_free(&derr);
-		return FALSE;
-	}
-
-	ret = g_strdup(path);
-
-	dbus_message_unref(reply);
-
-	debug("Got path %s for adapter with address %s", ret, address);
-
-	return ret;
-}
-
 static DBusHandlerResult create_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -610,7 +556,8 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 
 	pr = g_new0(struct pending_reply, 1);
 
-	pr->adapter_path = find_adapter(conn, &src);
+	/* FIXME just to maintain compatibility */
+	pr->adapter_path = g_strdup_printf("/org/bluez/hci%d", dev_id);
 	if (!pr->adapter_path) {
 		pending_reply_free (pr);
 		return error_failed(conn, msg, "Adapter not available");
