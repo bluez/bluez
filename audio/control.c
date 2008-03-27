@@ -53,6 +53,7 @@
 #include "manager.h"
 #include "avdtp.h"
 #include "control.h"
+#include "sdpd.h"
 
 #define AVCTP_PSM 23
 
@@ -171,27 +172,28 @@ struct control {
 	struct avctp *session;
 };
 
-static int avrcp_ct_record(sdp_buf_t *buf)
+static sdp_record_t *avrcp_ct_record()
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avctp, avrct;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[2];
-	sdp_record_t record;
+	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
 	uint16_t lp = AVCTP_PSM, ver = 0x0103, feat = 0x000f;
-	int ret = 0;
 
-	memset(&record, 0, sizeof(sdp_record_t));
+	record = sdp_record_alloc();
+	if (!record)
+		return NULL;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
-	sdp_set_browse_groups(&record, root);
+	sdp_set_browse_groups(record, root);
 
 	/* Service Class ID List */
 	sdp_uuid16_create(&avrct, AV_REMOTE_SVCLASS_ID);
 	svclass_id = sdp_list_append(0, &avrct);
-	sdp_set_service_classes(&record, svclass_id);
+	sdp_set_service_classes(record, svclass_id);
 
 	/* Protocol Descriptor List */
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
@@ -207,23 +209,18 @@ static int avrcp_ct_record(sdp_buf_t *buf)
 	apseq = sdp_list_append(apseq, proto[1]);
 
 	aproto = sdp_list_append(0, apseq);
-	sdp_set_access_protos(&record, aproto);
+	sdp_set_access_protos(record, aproto);
 
 	/* Bluetooth Profile Descriptor List */
 	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
 	profile[0].version = ver;
 	pfseq = sdp_list_append(0, &profile[0]);
-	sdp_set_profile_descs(&record, pfseq);
+	sdp_set_profile_descs(record, pfseq);
 
 	features = sdp_data_alloc(SDP_UINT16, &feat);
-	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
+	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
-	sdp_set_info_attr(&record, "AVRCP CT", 0, 0);
-
-	if (sdp_gen_record_pdu(&record, buf) < 0)
-		ret = -1;
-	else
-		ret = 0;
+	sdp_set_info_attr(record, "AVRCP CT", 0, 0);
 
 	free(psm);
 	free(version);
@@ -234,33 +231,32 @@ static int avrcp_ct_record(sdp_buf_t *buf)
 	sdp_list_free(aproto, 0);
 	sdp_list_free(root, 0);
 	sdp_list_free(svclass_id, 0);
-	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
-	sdp_list_free(record.pattern, free);
 
-	return ret;
+	return record;
 }
 
-static int avrcp_tg_record(sdp_buf_t *buf)
+static sdp_record_t *avrcp_tg_record()
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avctp, avrtg;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[2];
-	sdp_record_t record;
+	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
 	uint16_t lp = AVCTP_PSM, ver = 0x0103, feat = 0x000f;
-	int ret = 0;
 
-	memset(&record, 0, sizeof(sdp_record_t));
+	record = sdp_record_alloc();
+	if (!record)
+		return NULL;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
-	sdp_set_browse_groups(&record, root);
+	sdp_set_browse_groups(record, root);
 
 	/* Service Class ID List */
 	sdp_uuid16_create(&avrtg, AV_REMOTE_TARGET_SVCLASS_ID);
 	svclass_id = sdp_list_append(0, &avrtg);
-	sdp_set_service_classes(&record, svclass_id);
+	sdp_set_service_classes(record, svclass_id);
 
 	/* Protocol Descriptor List */
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
@@ -276,23 +272,18 @@ static int avrcp_tg_record(sdp_buf_t *buf)
 	apseq = sdp_list_append(apseq, proto[1]);
 
 	aproto = sdp_list_append(0, apseq);
-	sdp_set_access_protos(&record, aproto);
+	sdp_set_access_protos(record, aproto);
 
 	/* Bluetooth Profile Descriptor List */
 	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
 	profile[0].version = ver;
 	pfseq = sdp_list_append(0, &profile[0]);
-	sdp_set_profile_descs(&record, pfseq);
+	sdp_set_profile_descs(record, pfseq);
 
 	features = sdp_data_alloc(SDP_UINT16, &feat);
-	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
+	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
-	sdp_set_info_attr(&record, "AVRCP TG", 0, 0);
-
-	if (sdp_gen_record_pdu(&record, buf) < 0)
-		ret = -1;
-	else
-		ret = 0;
+	sdp_set_info_attr(record, "AVRCP TG", 0, 0);
 
 	free(psm);
 	free(version);
@@ -303,10 +294,8 @@ static int avrcp_tg_record(sdp_buf_t *buf)
 	sdp_list_free(pfseq, 0);
 	sdp_list_free(root, 0);
 	sdp_list_free(svclass_id, 0);
-	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
-	sdp_list_free(record.pattern, free);
 
-	return ret;
+	return record;
 }
 
 static GIOChannel *avctp_server_socket(gboolean master)
@@ -981,7 +970,7 @@ void avrcp_disconnect(struct device *dev)
 
 int avrcp_init(DBusConnection *conn, GKeyFile *config)
 {
-	sdp_buf_t buf;
+	sdp_record_t *record;
 	gboolean tmp, master = TRUE;
 	GError *err = NULL;
 
@@ -999,31 +988,31 @@ int avrcp_init(DBusConnection *conn, GKeyFile *config)
 
 	connection = dbus_connection_ref(conn);
 
-	if (avrcp_tg_record(&buf) < 0) {
+	record = avrcp_tg_record();
+	if (!record) {
 		error("Unable to allocate new service record");
 		return -1;
 	}
 
-	tg_record_id = add_service_record(conn, &buf);
-	free(buf.data);
-
-	if (!tg_record_id) {
+	if (add_record_to_server(BDADDR_ANY, record) < 0) {
 		error("Unable to register AVRCP target service record");
+		sdp_record_free(record);
 		return -1;
 	}
+	tg_record_id = record->handle;
 
-	if (avrcp_ct_record(&buf) < 0) {
+	record = avrcp_ct_record();
+	if (!record) {
 		error("Unable to allocate new service record");
 		return -1;
 	}
 
-	ct_record_id = add_service_record(conn, &buf);
-	free(buf.data);
-
-	if (!ct_record_id) {
+	if (add_record_to_server(BDADDR_ANY, record) < 0) {
 		error("Unable to register AVRCP controller service record");
+		sdp_record_free(record);
 		return -1;
 	}
+	ct_record_id = record->handle;
 
 	avctp_server = avctp_server_socket(master);
 	if (!avctp_server)
@@ -1044,11 +1033,11 @@ void avrcp_exit(void)
 	g_io_channel_unref(avctp_server);
 	avctp_server = NULL;
 
-	remove_service_record(connection, ct_record_id);
+	remove_record_from_server(ct_record_id);
 	ct_record_id = 0;
 
-	remove_service_record(connection, ct_record_id);
-	ct_record_id = 0;
+	remove_record_from_server(tg_record_id);
+	tg_record_id = 0;
 
 	dbus_connection_unref(connection);
 	connection = NULL;

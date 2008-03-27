@@ -1,23 +1,20 @@
 
 if AUDIOSERVICE
-if CONFIGFILES
-confdir = $(sysconfdir)/bluetooth
+plugindir = $(libdir)/bluetooth/plugins
 
-conf_DATA = audio.service audio.conf
-endif
+plugin_LTLIBRARIES = libaudio.la
 
-servicedir = $(libdir)/bluetooth
-
-service_PROGRAMS = bluetoothd-service-audio
-
-bluetoothd_service_audio_SOURCES = main.c \
-	manager.h manager.c headset.h headset.c ipc.h ipc.c unix.h unix.c \
+libaudio_la_SOURCES = main.c \
+	manager.h manager.c headset.h headset.c \
+	ipc.h ipc.c unix.h unix.c \
 	device.h device.c gateway.h gateway.c \
-	sink.c sink.h avdtp.c avdtp.h a2dp.c a2dp.h control.c control.h
+	sink.c sink.h avdtp.c avdtp.h \
+	a2dp.c a2dp.h control.c control.h
 
-bluetoothd_service_audio_LDADD = $(top_builddir)/common/libhelper.a \
-				@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
-
+libaudio_la_LDFLAGS = -module -avoid-version -export-symbols-regex bluetooth_plugin_desc
+libaudio_la_LIBADD = $(top_builddir)/common/libhelper.a \
+		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+libaudio_la_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 if ALSA
 alsadir = $(libdir)/alsa-lib
 
@@ -54,11 +51,8 @@ libgstbluetooth_la_CFLAGS = @GSTREAMER_CFLAGS@ @SBC_CFLAGS@
 endif
 endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
+INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/hcid -I$(top_srcdir)/sdpd
 
-INCLUDES = -I$(top_srcdir)/common
-
-EXTRA_DIST = audio.service audio.conf audio-api.txt test-audio asound.conf
+EXTRA_DIST = audio.conf audio-api.txt test-audio asound.conf
 
 MAINTAINERCLEANFILES = Makefile.in
-

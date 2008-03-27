@@ -42,6 +42,7 @@
 #include "avdtp.h"
 #include "sink.h"
 #include "a2dp.h"
+#include "sdpd.h"
 
 /* The duration that streams without users are allowed to stay in
  * STREAMING state. */
@@ -915,31 +916,32 @@ static struct avdtp_sep_ind mpeg_ind = {
 	.reconfigure		= reconf_ind
 };
 
-static int a2dp_source_record(sdp_buf_t *buf)
+static sdp_record_t *a2dp_source_record()
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avdtp, a2src;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[2];
-	sdp_record_t record;
+	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
 	uint16_t lp = AVDTP_UUID, ver = 0x0100, feat = 0x000F;
-	int ret = 0;
 
-	memset(&record, 0, sizeof(sdp_record_t));
+	record = sdp_record_alloc();
+	if (!record)
+		return NULL;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
-	sdp_set_browse_groups(&record, root);
+	sdp_set_browse_groups(record, root);
 
 	sdp_uuid16_create(&a2src, AUDIO_SOURCE_SVCLASS_ID);
 	svclass_id = sdp_list_append(0, &a2src);
-	sdp_set_service_classes(&record, svclass_id);
+	sdp_set_service_classes(record, svclass_id);
 
 	sdp_uuid16_create(&profile[0].uuid, ADVANCED_AUDIO_PROFILE_ID);
 	profile[0].version = 0x0100;
 	pfseq = sdp_list_append(0, &profile[0]);
-	sdp_set_profile_descs(&record, pfseq);
+	sdp_set_profile_descs(record, pfseq);
 
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
 	proto[0] = sdp_list_append(0, &l2cap);
@@ -954,17 +956,12 @@ static int a2dp_source_record(sdp_buf_t *buf)
 	apseq = sdp_list_append(apseq, proto[1]);
 
 	aproto = sdp_list_append(0, apseq);
-	sdp_set_access_protos(&record, aproto);
+	sdp_set_access_protos(record, aproto);
 
 	features = sdp_data_alloc(SDP_UINT16, &feat);
-	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
+	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
-	sdp_set_info_attr(&record, "Audio Source", 0, 0);
-
-	if (sdp_gen_record_pdu(&record, buf) < 0)
-		ret = -1;
-	else
-		ret = 0;
+	sdp_set_info_attr(record, "Audio Source", 0, 0);
 
 	free(psm);
 	free(version);
@@ -975,15 +972,13 @@ static int a2dp_source_record(sdp_buf_t *buf)
 	sdp_list_free(aproto, 0);
 	sdp_list_free(root, 0);
 	sdp_list_free(svclass_id, 0);
-	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
-	sdp_list_free(record.pattern, free);
 
-	return ret;
+	return record;
 }
 
-static int a2dp_sink_record(sdp_buf_t *buf)
+static sdp_record_t *a2dp_sink_record()
 {
-	return -1;
+	return NULL;
 }
 
 static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
@@ -991,9 +986,9 @@ static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
 {
 	struct a2dp_sep *sep;
 	GSList **l;
-	int (*create_record)(sdp_buf_t *buf);
+	sdp_record_t *(*create_record)(void);
 	uint32_t *record_id;
-	sdp_buf_t buf;
+	sdp_record_t *record;
 	struct avdtp_sep_ind *ind;
 
 	sep = g_new0(struct a2dp_sep, 1);
@@ -1022,22 +1017,22 @@ static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
 	if (*record_id != 0)
 		goto add;
 
-	memset(&buf, 0, sizeof(buf));
-	if (create_record(&buf) < 0) {
+	record = create_record();
+	if (!record) {
 		error("Unable to allocate new service record");
 		avdtp_unregister_sep(sep->sep);
 		g_free(sep);
 		return NULL;
 	}
 
-	*record_id = add_service_record(conn, &buf);
-	free(buf.data);
-	if (!*record_id) {
-		error("Unable to register A2DP service record");
+	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+		error("Unable to register A2DP service record");\
+		sdp_record_free(record);
 		avdtp_unregister_sep(sep->sep);
 		g_free(sep);
 		return NULL;
 	}
+	*record_id = record->handle;
 
 add:
 	*l = g_slist_append(*l, sep);
@@ -1156,12 +1151,12 @@ void a2dp_exit()
 	sources = NULL;
 
 	if (source_record_id) {
-		remove_service_record(connection, source_record_id);
+		remove_record_from_server(source_record_id);
 		source_record_id = 0;
 	}
 
 	if (sink_record_id) {
-		remove_service_record(connection, sink_record_id);
+		remove_record_from_server(sink_record_id);
 		sink_record_id = 0;
 	}
 

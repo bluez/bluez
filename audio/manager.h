@@ -36,11 +36,9 @@ struct enabled_interfaces {
 
 typedef void (*create_dev_cb_t) (struct device *dev, void *user_data);
 
-int audio_init(DBusConnection *conn, GKeyFile *config);
-void audio_exit(void);
+int audio_manager_init(DBusConnection *conn, GKeyFile *config);
+void audio_manager_exit(void);
 
-uint32_t add_service_record(DBusConnection *conn, sdp_buf_t *buf);
-int remove_service_record(DBusConnection *conn, uint32_t rec_id);
 gboolean server_is_enabled(uint16_t svc);
 
 struct device *manager_find_device(bdaddr_t *bda, const char *interface,

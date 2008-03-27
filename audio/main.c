@@ -26,28 +26,20 @@
 #include <config.h>
 #endif
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <signal.h>
-
-#include <glib.h>
-#include <dbus/dbus.h>
+#include <errno.h>
+#include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 
+#include <glib.h>
+#include <dbus/dbus.h>
+
+#include "plugin.h"
 #include "dbus.h"
 #include "logging.h"
 #include "unix.h"
 #include "device.h"
 #include "manager.h"
-
-static GMainLoop *main_loop = NULL;
-
-static void sig_term(int sig)
-{
-	g_main_loop_quit(main_loop);
-}
 
 static GKeyFile *load_config_file(const char *file)
 {
@@ -66,64 +58,42 @@ static GKeyFile *load_config_file(const char *file)
 	return keyfile;
 }
 
-int main(int argc, char *argv[])
+static DBusConnection *conn;
+
+static int audio_init(void)
 {
-	DBusConnection *conn;
-	struct sigaction sa;
 	GKeyFile *config;
 
-	start_logging("audio", "Bluetooth Audio daemon");
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_flags = SA_NOCLDSTOP;
-	sa.sa_handler = sig_term;
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGINT,  &sa, NULL);
-
-	sa.sa_handler = SIG_IGN;
-	sigaction(SIGCHLD, &sa, NULL);
-	sigaction(SIGPIPE, &sa, NULL);
-
-	enable_debug();
+	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (conn == NULL)
+		return -EIO;
 
 	config = load_config_file(CONFIGDIR "/audio.conf");
 
-	main_loop = g_main_loop_new(NULL, FALSE);
-
-	conn = dbus_bus_system_setup_with_main_loop(NULL, NULL, NULL);
-	if (!conn) {
-		g_main_loop_unref(main_loop);
-		exit(1);
-	}
-
 	if (unix_init() < 0) {
 		error("Unable to setup unix socket");
-		exit(1);
+		return -EIO;
 	}
 
-	if (audio_init(conn, config) < 0) {
-		error("Audio init failed!");
-		exit(1);
+	if (audio_manager_init(conn, config) < 0) {
+		dbus_connection_unref(conn);
+		return -EIO;
 	}
 
-	if (argc > 1 && !strcmp(argv[1], "-s"))
-		register_external_service(conn, "audio", "Audio service", "");
-	if (config)
-		g_key_file_free(config);
+	g_key_file_free(config);
 
-	g_main_loop_run(main_loop);
+	register_external_service(conn, "audio", "audio service", "");
 
-	audio_exit();
+	return 0;
+}
+
+static void audio_exit(void)
+{
+	audio_manager_exit();
 
 	unix_exit();
 
 	dbus_connection_unref(conn);
-
-	g_main_loop_unref(main_loop);
-
-	info("Exit");
-
-	stop_logging();
-
-	return 0;
 }
+
+BLUETOOTH_PLUGIN_DEFINE("audio", audio_init, audio_exit)

@@ -62,6 +62,7 @@
 #include "sink.h"
 #include "control.h"
 #include "manager.h"
+#include "sdpd.h"
 
 typedef enum {
 	HEADSET	= 1 << 0,
@@ -1164,33 +1165,34 @@ static void manager_unregister(DBusConnection *conn, void *data)
 	}
 }
 
-static int hsp_ag_record(sdp_buf_t *buf, uint8_t ch)
+static sdp_record_t *hsp_ag_record(uint8_t ch)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, svclass_uuid, ga_svclass_uuid;
 	uuid_t l2cap_uuid, rfcomm_uuid;
 	sdp_profile_desc_t profile;
+	sdp_record_t *record;
 	sdp_list_t *aproto, *proto[2];
-	sdp_record_t record;
 	sdp_data_t *channel;
-	int ret;
 
-	memset(&record, 0, sizeof(sdp_record_t));
+	record = sdp_record_alloc();
+	if (!record)
+		return NULL;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
-	sdp_set_browse_groups(&record, root);
+	sdp_set_browse_groups(record, root);
 
 	sdp_uuid16_create(&svclass_uuid, HEADSET_AGW_SVCLASS_ID);
 	svclass_id = sdp_list_append(0, &svclass_uuid);
 	sdp_uuid16_create(&ga_svclass_uuid, GENERIC_AUDIO_SVCLASS_ID);
 	svclass_id = sdp_list_append(svclass_id, &ga_svclass_uuid);
-	sdp_set_service_classes(&record, svclass_id);
+	sdp_set_service_classes(record, svclass_id);
 
 	sdp_uuid16_create(&profile.uuid, HEADSET_PROFILE_ID);
 	profile.version = 0x0100;
 	pfseq = sdp_list_append(0, &profile);
-	sdp_set_profile_descs(&record, pfseq);
+	sdp_set_profile_descs(record, pfseq);
 
 	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
 	proto[0] = sdp_list_append(0, &l2cap_uuid);
@@ -1203,14 +1205,9 @@ static int hsp_ag_record(sdp_buf_t *buf, uint8_t ch)
 	apseq = sdp_list_append(apseq, proto[1]);
 
 	aproto = sdp_list_append(0, apseq);
-	sdp_set_access_protos(&record, aproto);
+	sdp_set_access_protos(record, aproto);
 
-	sdp_set_info_attr(&record, "Headset Audio Gateway", 0, 0);
-
-	if (sdp_gen_record_pdu(&record, buf) < 0)
-		ret = -1;
-	else
-		ret = 0;
+	sdp_set_info_attr(record, "Headset Audio Gateway", 0, 0);
 
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
@@ -1220,42 +1217,41 @@ static int hsp_ag_record(sdp_buf_t *buf, uint8_t ch)
 	sdp_list_free(aproto, 0);
 	sdp_list_free(root, 0);
 	sdp_list_free(svclass_id, 0);
-	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
-	sdp_list_free(record.pattern, free);
 
-	return ret;
+	return record;
 }
 
-static int hfp_ag_record(sdp_buf_t *buf, uint8_t ch, uint32_t feat)
+static sdp_record_t *hfp_ag_record(uint8_t ch, uint32_t feat)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, svclass_uuid, ga_svclass_uuid;
 	uuid_t l2cap_uuid, rfcomm_uuid;
 	sdp_profile_desc_t profile;
 	sdp_list_t *aproto, *proto[2];
-	sdp_record_t record;
+	sdp_record_t *record;
 	sdp_data_t *channel, *features;
 	uint8_t netid = 0x01;
 	uint16_t sdpfeat;
 	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
-	int ret;
 
-	memset(&record, 0, sizeof(sdp_record_t));
+	record = sdp_record_alloc();
+	if (!record)
+		return NULL;
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
-	sdp_set_browse_groups(&record, root);
+	sdp_set_browse_groups(record, root);
 
 	sdp_uuid16_create(&svclass_uuid, HANDSFREE_AGW_SVCLASS_ID);
 	svclass_id = sdp_list_append(0, &svclass_uuid);
 	sdp_uuid16_create(&ga_svclass_uuid, GENERIC_AUDIO_SVCLASS_ID);
 	svclass_id = sdp_list_append(svclass_id, &ga_svclass_uuid);
-	sdp_set_service_classes(&record, svclass_id);
+	sdp_set_service_classes(record, svclass_id);
 
 	sdp_uuid16_create(&profile.uuid, HANDSFREE_PROFILE_ID);
 	profile.version = 0x0105;
 	pfseq = sdp_list_append(0, &profile);
-	sdp_set_profile_descs(&record, pfseq);
+	sdp_set_profile_descs(record, pfseq);
 
 	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
 	proto[0] = sdp_list_append(0, &l2cap_uuid);
@@ -1269,19 +1265,14 @@ static int hfp_ag_record(sdp_buf_t *buf, uint8_t ch, uint32_t feat)
 
 	sdpfeat = (uint16_t) feat & 0xF;
 	features = sdp_data_alloc(SDP_UINT16, &sdpfeat);
-	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
+	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
 	aproto = sdp_list_append(0, apseq);
-	sdp_set_access_protos(&record, aproto);
+	sdp_set_access_protos(record, aproto);
 
-	sdp_set_info_attr(&record, "Hands-Free Audio Gateway", 0, 0);
+	sdp_set_info_attr(record, "Hands-Free Audio Gateway", 0, 0);
 
-	sdp_attr_add(&record, SDP_ATTR_EXTERNAL_NETWORK, network);
-
-	if (sdp_gen_record_pdu(&record, buf) < 0)
-		ret = -1;
-	else
-		ret = 0;
+	sdp_attr_add(record, SDP_ATTR_EXTERNAL_NETWORK, network);
 
 	sdp_data_free(channel);
 	sdp_list_free(proto[0], 0);
@@ -1291,93 +1282,8 @@ static int hfp_ag_record(sdp_buf_t *buf, uint8_t ch, uint32_t feat)
 	sdp_list_free(aproto, 0);
 	sdp_list_free(root, 0);
 	sdp_list_free(svclass_id, 0);
-	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
-	sdp_list_free(record.pattern, free);
 
-	return ret;
-}
-
-uint32_t add_service_record(DBusConnection *conn, sdp_buf_t *buf)
-{
-	DBusMessage *msg, *reply;
-	DBusError derr;
-	dbus_uint32_t rec_id;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-						"org.bluez.Database",
-						"AddServiceRecord");
-	if (!msg) {
-		error("Can't allocate new method call");
-		return 0;
-	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-						&buf->data, buf->data_size,
-							DBUS_TYPE_INVALID);
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(connection,
-							msg, -1, &derr);
-
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr) ||
-			dbus_set_error_from_message(&derr, reply)) {
-		error("Adding service record failed: %s", derr.message);
-		dbus_error_free(&derr);
-		return 0;
-	}
-
-	dbus_message_get_args(reply, &derr, DBUS_TYPE_UINT32, &rec_id,
-							DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&derr)) {
-		error("Invalid arguments to AddServiceRecord reply: %s",
-								derr.message);
-		dbus_message_unref(reply);
-		dbus_error_free(&derr);
-		return 0;
-	}
-
-	dbus_message_unref(reply);
-
-	debug("add_service_record: got record id 0x%x", rec_id);
-
-	return rec_id;
-}
-
-int remove_service_record(DBusConnection *conn, uint32_t rec_id)
-{
-	DBusMessage *msg, *reply;
-	DBusError derr;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-						"org.bluez.Database",
-						"RemoveServiceRecord");
-	if (!msg) {
-		error("Can't allocate new method call");
-		return 0;
-	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_UINT32, &rec_id,
-							DBUS_TYPE_INVALID);
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(connection,
-							msg, -1, &derr);
-
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr)) {
-		error("Removing service record 0x%x failed: %s",
-						rec_id, derr.message);
-		dbus_error_free(&derr);
-		return 0;
-	}
-
-	dbus_message_unref(reply);
-
-	return 0;
+	return record;
 }
 
 static void auth_cb(DBusPendingCall *call, void *data)
@@ -1543,7 +1449,7 @@ static GIOChannel *server_socket(uint8_t *channel, gboolean master)
 static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 {
 	uint8_t chan = DEFAULT_HS_AG_CHANNEL;
-	sdp_buf_t buf;
+	sdp_record_t *record;
 	gboolean hfp = TRUE, master = TRUE;
 	GError *err = NULL;
 	uint32_t features;
@@ -1577,19 +1483,20 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	if (!hs_server)
 		return -1;
 
-	if (hsp_ag_record(&buf, chan) < 0) {
+	record = hsp_ag_record(chan);
+	if (!record) {
 		error("Unable to allocate new service record");
 		return -1;
 	}
 
-	hs_record_id = add_service_record(conn, &buf);
-	free(buf.data);
-	if (!hs_record_id) {
+	if (add_record_to_server(BDADDR_ANY, record) < 0) {
 		error("Unable to register HS AG service record");
+		sdp_record_free(record);
 		g_io_channel_unref(hs_server);
 		hs_server = NULL;
 		return -1;
 	}
+	hs_record_id = record->handle;
 
 	g_io_add_watch(hs_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				(GIOFunc) ag_io_cb, NULL);
@@ -1605,19 +1512,20 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	if (!hf_server)
 		return -1;
 
-	if (hfp_ag_record(&buf, chan, features) < 0) {
+	record = hfp_ag_record(chan, features);
+	if (!record) {
 		error("Unable to allocate new service record");
 		return -1;
 	}
 
-	hf_record_id = add_service_record(conn, &buf);
-	free(buf.data);
-	if (!hf_record_id) {
-		error("Unable to register HS AG service record");
+	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+		error("Unable to register HF AG service record");
+		sdp_record_free(record);
 		g_io_channel_unref(hf_server);
-		hs_server = NULL;
+		hf_server = NULL;
 		return -1;
 	}
+	hf_record_id = record->handle;
 
 	g_io_add_watch(hf_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			(GIOFunc) ag_io_cb, NULL);
@@ -1628,7 +1536,7 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 static void server_exit(void)
 {
 	if (hs_record_id) {
-		remove_service_record(connection, hs_record_id);
+		remove_record_from_server(hs_record_id);
 		hs_record_id = 0;
 	}
 
@@ -1638,7 +1546,7 @@ static void server_exit(void)
 	}
 
 	if (hf_record_id) {
-		remove_service_record(connection, hf_record_id);
+		remove_record_from_server(hf_record_id);
 		hf_record_id = 0;
 	}
 
@@ -1648,7 +1556,7 @@ static void server_exit(void)
 	}
 }
 
-int audio_init(DBusConnection *conn, GKeyFile *config)
+int audio_manager_init(DBusConnection *conn, GKeyFile *config)
 {
 	char *str;
 	GError *err = NULL;
@@ -1731,11 +1639,11 @@ int audio_init(DBusConnection *conn, GKeyFile *config)
 
 	return 0;
 failed:
-	audio_exit();
+	audio_manager_exit();
 	return -1;
 }
 
-void audio_exit(void)
+void audio_manager_exit(void)
 {
 	server_exit();
 
