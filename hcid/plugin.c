@@ -92,7 +92,7 @@ gboolean plugin_init(void)
 
 		module = g_module_open(filename, 0);
 		if (module == NULL) {
-			error("Can't load plugin %s", filename);
+			error("Can't load plugin: %s", g_module_error());
 			g_free(filename);
 			continue;
 		}
