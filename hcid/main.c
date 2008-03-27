@@ -934,6 +934,8 @@ int main(int argc, char *argv[])
 	/* Start event processor */
 	g_main_loop_run(event_loop);
 
+	plugin_cleanup();
+
 	if (sdp)
 		stop_sdp_server();
 
@@ -946,8 +948,6 @@ int main(int argc, char *argv[])
 	notify_close();
 
 	cleanup_sdp_session();
-
-	plugin_cleanup();
 
 	g_main_loop_unref(event_loop);
 
