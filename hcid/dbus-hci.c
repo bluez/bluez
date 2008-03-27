@@ -1147,7 +1147,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	if (dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		adapter->discov_active = 1;
-		/* 
+		/*
 		 * Cancel pending remote name request and clean the device list
 		 * when inquiry is supported in periodic inquiry idle state.
 		 */
@@ -1219,7 +1219,7 @@ int found_device_req_name(struct adapter *adapter)
 		char peer_addr[18];
 		const char *signal = NULL, *paddr = peer_addr;
 
-		 /* flag to indicate the current remote name requested */ 
+		 /* flag to indicate the current remote name requested */
 		dev->name_status = NAME_REQUESTED;
 
 		memset(&rp, 0, sizeof(rp));
@@ -1446,7 +1446,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 						ADAPTER_INTERFACE,
 						"PeriodicDiscovery",
 						DBUS_TYPE_BOOLEAN,
-						&adapter->discov_active);
+						&adapter->pdiscov_active);
 		}
 	}
 
@@ -1526,7 +1526,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 					"PeriodicDiscoveryStopped",
 					DBUS_TYPE_INVALID);
 
-	if (!hcid_dbus_use_experimental()) {
+	if (hcid_dbus_use_experimental()) {
 		dbus_connection_emit_property_changed(connection, ptr,
 						ADAPTER_INTERFACE,
 						"PeriodicDiscovery",
