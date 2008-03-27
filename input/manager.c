@@ -452,8 +452,7 @@ static void create_bonding_reply(DBusPendingCall *call, void *data)
 static void finish_sdp_transaction(bdaddr_t *dba)
 {
 	char address[18], *addr_ptr = address;
-	DBusMessage *msg, *reply;
-	DBusError derr;
+	DBusMessage *msg;
 
 	ba2str(dba, address);
 
@@ -468,20 +467,7 @@ static void finish_sdp_transaction(bdaddr_t *dba)
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
 					DBUS_TYPE_INVALID);
 
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(connection, msg,
-								-1, &derr);
-
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr) || dbus_set_error_from_message(&derr, reply)) {
-		error("FinishRemoteServiceTransaction(%s) failed: %s",
-				address, derr.message);
-		dbus_error_free(&derr);
-		return;
-	}
-
-	dbus_message_unref(reply);
+	send_message_and_unref(connection, msg);
 }
 
 static int create_bonding(struct pending_req *pr)

@@ -380,8 +380,7 @@ int device_remove_stored(struct device *dev)
 void device_finish_sdp_transaction(struct device *dev)
 {
 	char address[18], *addr_ptr = address;
-	DBusMessage *msg, *reply;
-	DBusError derr;
+	DBusMessage *msg;
 
 	ba2str(&dev->dst, address);
 
@@ -396,21 +395,7 @@ void device_finish_sdp_transaction(struct device *dev)
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
 				 DBUS_TYPE_INVALID);
 
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(dev->conn,
-							msg, -1, &derr);
-
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr) ||
-				dbus_set_error_from_message(&derr, reply)) {
-		error("FinishRemoteServiceTransaction(%s) failed: %s",
-						address, derr.message);
-		dbus_error_free(&derr);
-		return;
-	}
-
-	dbus_message_unref(reply);
+	send_message_and_unref(dev->conn, msg);
 }
 
 #if 0
