@@ -938,7 +938,8 @@ static DBusHandlerResult set_trust(DBusConnection *conn, DBusMessage *msg,
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
 
 	dbus_connection_emit_signal(conn, path,
-					ADAPTER_INTERFACE, "TrustAdded",
+					ADAPTER_INTERFACE,
+					value ? "TrustAdded" : "TrustRemoved",
 					DBUS_TYPE_STRING, &device->address,
 					DBUS_TYPE_INVALID);
 
