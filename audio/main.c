@@ -82,7 +82,7 @@ static int audio_init(void)
 
 	g_key_file_free(config);
 
-	register_external_service(conn, "audio", "audio service", "");
+	register_external_service(conn, "audio", "Audio service", "");
 
 	return 0;
 }
