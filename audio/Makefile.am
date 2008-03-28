@@ -11,6 +11,8 @@ libaudio_la_SOURCES = main.c \
 	sink.c sink.h avdtp.c avdtp.h \
 	a2dp.c a2dp.h control.c control.h
 
+libaudio_la_LDFLAGS = -module -avoid-version -export-symbols-regex bluetooth_plugin_desc
+
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 
@@ -49,8 +51,6 @@ libgstbluetooth_la_LIBADD = @SBC_LIBS@ @GSTREAMER_LIBS@ -lgstaudio-0.10 -lgstrtp
 libgstbluetooth_la_CFLAGS = @GSTREAMER_CFLAGS@ @SBC_CFLAGS@
 endif
 endif
-
-AM_LDFLAGS = -module -avoid-version -export-symbols-regex bluetooth_plugin_desc
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
