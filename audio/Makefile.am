@@ -12,7 +12,9 @@ libaudio_la_SOURCES = main.c \
 	a2dp.c a2dp.h control.c control.h
 
 libaudio_la_LDFLAGS = -module -avoid-version -export-symbols-regex bluetooth_plugin_desc
-libaudio_la_LIBADD = $(top_builddir)/common/libhelper.a \
+# libaudio_la_LIBADD = $(top_builddir)/common/libhelper.a \
+# 		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+LDADD = $(top_builddir)/common/libhelper.a \
 		@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 libaudio_la_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
 if ALSA
