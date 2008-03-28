@@ -73,44 +73,17 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static char *get_dev_name(DBusConnection *conn, const char *adapter_path,
-				bdaddr_t *bda)
+static char *get_dev_name(DBusConnection *conn, bdaddr_t *src, bdaddr_t *bda)
 {
-	DBusMessage *msg, *reply;
-	DBusError derr;
-	const char *name;
-	char address[18], *addr_ptr = address, *ret;
+	char address[18], filename[PATH_MAX + 1];
 
-	msg = dbus_message_new_method_call("org.bluez", adapter_path,
-					"org.bluez.Adapter", "GetRemoteName");
-	if (!msg)
-		return NULL;
+	ba2str(src, address);
+
+	/* check if it is in the cache */
+	create_name(filename, PATH_MAX, STORAGEDIR, address, "names");
 
 	ba2str(bda, address);
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
-					DBUS_TYPE_INVALID);
-
-	dbus_error_init(&derr);
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1,
-								&derr);
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(&derr)) {
-		error("%s GetRemoteName(): %s", adapter_path, derr.message);
-		dbus_error_free(&derr);
-		return NULL;
-	}
-
-	if (!dbus_message_get_args(reply, NULL,
-					DBUS_TYPE_STRING, &name,
-					DBUS_TYPE_INVALID))
-		return NULL;
-
-	ret = g_strdup(name);
-
-	dbus_message_unref(reply);
-
-	return ret;
+	return textfile_caseget(filename, address);
 }
 
 static DBusHandlerResult device_get_name(DBusConnection *conn,
@@ -257,7 +230,7 @@ struct device *device_register(DBusConnection *conn,
 		return NULL;
 	}
 
-	dev->name = get_dev_name(conn, dev->adapter_path, bda);
+	dev->name = get_dev_name(conn, &src, bda);
 	dev->path = g_strdup(path);
 	bacpy(&dev->dst, bda);
 	bacpy(&dev->src, &src);
