@@ -770,7 +770,7 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	GIOChannel *ctl_io, *child_io;
 	uint16_t mtu = 0;
-	int opt, daemonize = 1, debug = 0, sdp = 0, experimental = 0;
+	int opt, daemonize = 1, debug = 0, experimental = 0;
 
 	/* Default HCId settings */
 	memset(&hcid, 0, sizeof(hcid));
@@ -788,7 +788,7 @@ int main(int argc, char *argv[])
 
 	init_defaults();
 
-	while ((opt = getopt(argc, argv, "ndsm:xf:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ndm:xf:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
@@ -796,10 +796,6 @@ int main(int argc, char *argv[])
 
 		case 'd':
 			debug = 1;
-			break;
-
-		case 's':
-			sdp = 1;
 			break;
 
 		case 'm':
@@ -915,11 +911,8 @@ int main(int argc, char *argv[])
 	/* Initialize already connected devices */
 	init_all_devices(hcid.sock);
 
-	if (sdp) {
-		set_sdp_server_enable();
-		start_sdp_server(mtu, hcid.deviceid, SDP_SERVER_COMPAT);
-		set_service_classes_callback(update_service_classes);
-	}
+	start_sdp_server(mtu, hcid.deviceid, SDP_SERVER_COMPAT);
+	set_service_classes_callback(update_service_classes);
 
 	notify_init();
 
@@ -936,8 +929,7 @@ int main(int argc, char *argv[])
 
 	plugin_cleanup();
 
-	if (sdp)
-		stop_sdp_server();
+	stop_sdp_server();
 
 	free_device_opts();
 

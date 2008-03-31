@@ -55,8 +55,6 @@
 #include "dbus-security.h"
 #include "dbus-database.h"
 
-static int sdp_server_enable = 0;
-
 static GSList *records = NULL;
 
 struct record_data {
@@ -83,10 +81,7 @@ static void exit_callback(const char *name, void *user_data)
 
 	records = g_slist_remove(records, user_record);
 
-	if (sdp_server_enable)
-		remove_record_from_server(user_record->handle);
-	else
-		unregister_sdp_record(user_record->handle);
+	remove_record_from_server(user_record->handle);
 
 	if (user_record->sender)
 		g_free(user_record->sender);
@@ -112,41 +107,27 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 	if (len <= 0)
 		return error_invalid_arguments(conn, msg, NULL);
 
+	sdp_record = sdp_extract_pdu(record, &scanned);
+	if (!sdp_record) {
+		error("Parsing of service record failed");
+		return error_failed_errno(conn, msg, EIO);
+	}
+
+	if (scanned != len) {
+		error("Size mismatch of service record");
+		sdp_record_free(sdp_record);
+		return error_failed_errno(conn, msg, EIO);
+	}
+
+	if (add_record_to_server(BDADDR_ANY, sdp_record) < 0) {
+		error("Failed to register service record");
+		sdp_record_free(sdp_record);
+		return error_failed_errno(conn, msg, EIO);
+	}
+
 	user_record = g_new0(struct record_data, 1);
 
-	if (sdp_server_enable) {
-		sdp_record = sdp_extract_pdu(record, &scanned);
-		if (!sdp_record) {
-			error("Parsing of service record failed");
-			g_free(user_record);
-			return error_failed_errno(conn, msg, EIO);
-		}
-
-		if (scanned != len) {
-			error("Size mismatch of service record");
-			g_free(user_record);
-			sdp_record_free(sdp_record);
-			return error_failed_errno(conn, msg, EIO);
-		}
-
-		if (add_record_to_server(BDADDR_ANY, sdp_record) < 0) {
-			error("Failed to register service record");
-			g_free(user_record);
-			sdp_record_free(sdp_record);
-			return error_failed_errno(conn, msg, EIO);
-		}
-
-		user_record->handle = sdp_record->handle;
-	} else {
-		uint32_t size = len;
-
-		if (register_sdp_binary((uint8_t *) record, size,
-						&user_record->handle) < 0) {
-			error("Failed to register service record");
-			g_free(user_record);
-			return error_failed_errno(conn, msg, errno);
-		}
-	}
+	user_record->handle = sdp_record->handle;
 
 	sender = dbus_message_get_sender(msg);
 
@@ -172,36 +153,21 @@ int add_xml_record(DBusConnection *conn, const char *sender, bdaddr_t *src,
 	struct record_data *user_record;
 	sdp_record_t *sdp_record;
 
-	user_record = g_new0(struct record_data, 1);
-
 	sdp_record = sdp_xml_parse_record(record, strlen(record));
 	if (!sdp_record) {
 		error("Parsing of XML service record failed");
-		g_free(user_record);
 		return -EIO;
 	}
 
-	if (sdp_server_enable) {
-		if (add_record_to_server(src, sdp_record) < 0) {
-			error("Failed to register service record");
-			g_free(user_record);
-			sdp_record_free(sdp_record);
-			return -EIO;
-		}
-
-		user_record->handle = sdp_record->handle;
-	} else {
-		if (register_sdp_record(src, sdp_record) < 0) {
-			error("Failed to register service record");
-			g_free(user_record);
-			sdp_record_free(sdp_record);
-			return -EIO;
-		}
-
-		user_record->handle = sdp_record->handle;
-
+	if (add_record_to_server(src, sdp_record) < 0) {
+		error("Failed to register service record");
 		sdp_record_free(sdp_record);
+		return -EIO;
 	}
+
+	user_record = g_new0(struct record_data, 1);
+
+	user_record->handle = sdp_record->handle;
 
 	user_record->sender = g_strdup(sender);
 
@@ -247,29 +213,17 @@ static DBusHandlerResult update_record(DBusConnection *conn, DBusMessage *msg,
 {
 	int err;
 
-	if (sdp_server_enable) {
-		if (remove_record_from_server(handle) < 0) {
-			sdp_record_free(sdp_record);
-			return error_not_available(conn, msg);
-		}
-
-		sdp_record->handle = handle;
-		err = add_record_to_server(src, sdp_record);
-		if (err < 0) {
-			sdp_record_free(sdp_record);
-			error("Failed to update the service record");
-			return error_failed_errno(conn, msg, EIO);
-		}
-	} else {
-		sdp_data_t *d = sdp_data_alloc(SDP_UINT32, &handle);
-		sdp_attr_replace(sdp_record, SDP_ATTR_RECORD_HANDLE, d);
-
-		err = update_sdp_record(handle, sdp_record);
+	if (remove_record_from_server(handle) < 0) {
 		sdp_record_free(sdp_record);
-		if (err < 0) {
-			error("Failed to update the service record");
-			return error_failed_errno(conn, msg, EIO);
-		}
+		return error_not_available(conn, msg);
+	}
+
+	sdp_record->handle = handle;
+	err = add_record_to_server(src, sdp_record);
+	if (err < 0) {
+		sdp_record_free(sdp_record);
+		error("Failed to update the service record");
+		return error_failed_errno(conn, msg, EIO);
 	}
 
 	return send_message_and_unref(conn,
@@ -366,10 +320,7 @@ int remove_record(DBusConnection *conn, const char *sender,
 
 	records = g_slist_remove(records, user_record);
 
-	if (sdp_server_enable)
-		remove_record_from_server(handle);
-	else
-		unregister_sdp_record(handle);
+	remove_record_from_server(handle);
 
 	if (user_record->sender)
 		g_free(user_record->sender);
@@ -560,9 +511,4 @@ DBusHandlerResult database_message(DBusConnection *conn,
 	}
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-void set_sdp_server_enable(void)
-{
-	sdp_server_enable = 1;
 }
