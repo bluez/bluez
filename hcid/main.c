@@ -760,7 +760,7 @@ static void usage(void)
 {
 	printf("hcid - HCI daemon ver %s\n", VERSION);
 	printf("Usage: \n");
-	printf("\thcid [-n] [-d] [-s] [-m mtu] [-f config file]\n");
+	printf("\thcid [-n] [-d] [-m mtu] [-f config file]\n");
 }
 
 int main(int argc, char *argv[])
