@@ -163,6 +163,9 @@ static void unix_ipc_error(struct unix_client *client, int type, int err)
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
 	bt_audio_rsp_msg_header_t *rsp_hdr = (void *) buf;
 
+	if (!g_slist_find(clients, client))
+		return;
+
 	memset(buf, 0, sizeof(buf));
 	rsp_hdr->msg_h.msg_type = type;
 	rsp_hdr->posix_errno = err;
