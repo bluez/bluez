@@ -1,40 +1,12 @@
-* Get encryption key size
-Date: 2006/04/11
-Description: This method is not implemented
-
 * record doesn't exist and not available
 Date: 2006/04/11
 Description: Review these errors. The usage of "Does not exists"
 and "Not available" are confusing.
 
-* Authorization and services methods errors
-Date: 2006/11/26
-Define/review the errors for authorization and services methods
-
-* D-Bus policies for Service Agents
-Date: 2006/11/26
-Define D-Bus policies to avoid clients call the service agent methods
-directly.
-
 * Resolve Name
 Date: 2006/11/26
 Re-design the name resolving to avoid adapter busy "state" with paging when
 the remote device is not reachable.
-
-* Service Agent path
-Date: 2006/11/28
-If a client sends a message to an invalid service agent path it is necessary
-reply a standard message. eg: invalid service or service not registered
-It is not correct register a fallback '/', maybe should be better filter the
-message(use add_match) and check if the path belongs to the service list.
-The manager path is a fallback path, but the service path can not include
-'/org/bluez' prefix.
-
-* Authorization path
-Date: 2006/12/04
-AuthorizeService and CancelAuthorizationProcess are not compliant with the dbus-api.
-Currently, only the messages sent to the manager path(base) "/org/bluez" are
-accepted. Adapter paths must be handled too.
 
 * "void" in the D-Bus API has confuse meaning
 Date: 2006/12/04
@@ -47,8 +19,3 @@ org.bluez.AuthorizationAgent.Release
 Date: 2006/12/04
 When stopping the adapter/unregistering the adapter D-Bus path pending
 authorization requests must be cancelled.
-
-* Service agent automatic start
-Date: 2006/12/04
-Currently, service agent "auto start" feature is hardcoded. It is necessary define
-requirements to make it configurable.
