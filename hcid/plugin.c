@@ -46,6 +46,9 @@ static gboolean add_plugin(GModule *module, struct bluetooth_plugin_desc *desc)
 {
 	struct bluetooth_plugin *plugin;
 
+	if (desc->init() < 0)
+		return FALSE;
+
 	plugin = g_try_new0(struct bluetooth_plugin, 1);
 	if (plugin == NULL)
 		return FALSE;
@@ -54,8 +57,6 @@ static gboolean add_plugin(GModule *module, struct bluetooth_plugin_desc *desc)
 	plugin->desc = desc;
 
 	plugins = g_slist_append(plugins, plugin);
-
-	desc->init();
 
 	return TRUE;
 }
@@ -113,8 +114,10 @@ gboolean plugin_init(void)
 			continue;
 		}
 
-		if (add_plugin(module, desc) == FALSE)
+		if (add_plugin(module, desc) == FALSE) {
+			error("Can't init plugin %s", g_module_name(module));
 			g_module_close(module);
+		}
 	}
 
 	g_dir_close(dir);
