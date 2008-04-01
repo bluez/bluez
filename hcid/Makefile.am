@@ -1,5 +1,4 @@
 
-if HCID
 if CONFIGFILES
 confdir = $(sysconfdir)/bluetooth
 
@@ -8,7 +7,6 @@ conf_DATA = hcid.conf
 statedir = $(localstatedir)/lib/bluetooth
 
 state_DATA =
-endif
 endif
 
 noinst_LIBRARIES = libhciserver.a
@@ -23,7 +21,6 @@ libhciserver_a_SOURCES = hcid.h security.c storage.c \
 	dbus-hci.h dbus-hci.c dbus-sdp.c dbus-sdp.h \
 	telephony.h telephony.c agent.h agent.c
 
-if HCID
 sbin_PROGRAMS = hcid
 
 hcid_SOURCES = main.c
@@ -32,7 +29,6 @@ hcid_LDADD = libhciserver.a \
 	$(top_builddir)/sdpd/libsdpserver.a \
 	$(top_builddir)/common/libhelper.a \
 	@GMODULE_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
-endif
 
 if MAINTAINER_MODE
 plugindir = $(abs_top_srcdir)/plugins
@@ -47,10 +43,8 @@ INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 
 BUILT_SOURCES = parser.h
 
-if HCID
 if MANPAGES
 man_MANS = hcid.8 hcid.conf.5
-endif
 endif
 
 AM_YFLAGS = -d

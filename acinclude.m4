@@ -170,8 +170,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	input_enable=yes
 	serial_enable=yes
 	network_enable=yes
-	hcid_enable=yes
-	sdpd_enable=no
 	hidd_enable=no
 	pand_enable=no
 	dund_enable=no
@@ -203,8 +201,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
 		dbus_enable=${enableval}
 		alsa_enable=${enableval}
-		hcid_enable=${enableval}
-		sdpd_enable=${enableval}
 		hidd_enable=${enableval}
 		pand_enable=${enableval}
 		dund_enable=${enableval}
@@ -260,14 +256,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
 		network_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(hcid, AC_HELP_STRING([--enable-hcid], [install HCI daemon]), [
-		hcid_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(sdpd, AC_HELP_STRING([--enable-sdpd], [install SDP daemon]), [
-		sdpd_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(hidd, AC_HELP_STRING([--enable-hidd], [install HID daemon]), [
@@ -377,8 +365,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(SERIALSERVICE, test "${serial_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
-	AM_CONDITIONAL(HCID, test "${hcid_enable}" = "yes")
-	AM_CONDITIONAL(SDPD, test "${sdpd_enable}" = "yes")
 	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")
 	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")
 	AM_CONDITIONAL(DUND, test "${dund_enable}" = "yes")
