@@ -915,6 +915,7 @@ void register_external_service(DBusConnection *conn, const char *identifier,
 	}
 
 	dbus_pending_call_set_notify(call, external_reply, NULL, NULL);
+	dbus_pending_call_unref(call);
 
 	dbus_message_unref(msg);
 }
