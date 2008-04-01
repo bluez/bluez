@@ -51,7 +51,7 @@ sbin_PROGRAMS = hciattach hciconfig $(bccmd_programs) $(avctrl_programs) $(hid2h
 
 bin_PROGRAMS = $(tools_programs) $(dfutool_programs) $(dfubabel_programs)
 
-noinst_PROGRAMS = hcisecfilter ppporc
+noinst_PROGRAMS = hcisecfilter ppporc avinfo
 
 hciattach_SOURCES = hciattach.c hciattach_st.c
 hciattach_LDADD = @BLUEZ_LIBS@
@@ -68,6 +68,9 @@ l2ping_LDADD = @BLUEZ_LIBS@
 sdptool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 ciptool_LDADD = @BLUEZ_LIBS@
+
+avinfo_SOURCES = avinfo.c
+avinfo_LDADD = @BLUEZ_LIBS@
 endif
 
 ppporc_LDADD = @BLUEZ_LIBS@
