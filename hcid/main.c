@@ -770,7 +770,7 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	GIOChannel *ctl_io, *child_io;
 	uint16_t mtu = 0;
-	int opt, daemonize = 1, debug = 0, experimental = 0;
+	int opt, daemonize = 1, debug = 0, sdp = 1, experimental = 0;
 
 	/* Default HCId settings */
 	memset(&hcid, 0, sizeof(hcid));
@@ -788,7 +788,7 @@ int main(int argc, char *argv[])
 
 	init_defaults();
 
-	while ((opt = getopt(argc, argv, "ndm:xf:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ndsm:xf:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
@@ -796,6 +796,10 @@ int main(int argc, char *argv[])
 
 		case 'd':
 			debug = 1;
+			break;
+
+		case 's':
+			sdp = 1;
 			break;
 
 		case 'm':
