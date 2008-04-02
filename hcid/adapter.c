@@ -700,9 +700,9 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	if (!mode)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	adapter->last_mode = str2mode(adapter->address, mode);
+	adapter->global_mode = str2mode(adapter->address, mode);
 
-	if (adapter->sessions && adapter->last_mode > adapter->mode) {
+	if (adapter->sessions && adapter->global_mode > adapter->mode) {
 		reply = dbus_message_new_method_return(msg);
 		if (!reply)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -3459,9 +3459,9 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 			return error_invalid_arguments(conn, msg, NULL);
 		dbus_message_iter_get_basic(&sub, &mode);
 
-		adapter->last_mode = str2mode(adapter->address, mode);
+		adapter->global_mode = str2mode(adapter->address, mode);
 
-		if (adapter->sessions && adapter->last_mode > adapter->mode) {
+		if (adapter->sessions && adapter->global_mode > adapter->mode) {
 			reply = dbus_message_new_method_return(msg);
 			if (!reply)
 				return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -3483,11 +3483,12 @@ static void session_exit(const char *name, void *data)
 
 	adapter->sessions = g_slist_remove(adapter->sessions, req);
 
-	if (!adapter->sessions)
-		debug("Falling back to %d mode", mode2str(adapter->last_mode));
+	if (!adapter->sessions) {
+		debug("Falling back to %d mode", mode2str(adapter->global_mode));
 		/* FIXME: fallback to previous mode
-		set_mode(req->conn, req->msg, adapter->last_mode, adapter);
+		set_mode(req->conn, req->msg, adapter->global_mode, adapter);
 		*/
+	}
 	dbus_connection_unref(req->conn);
 	dbus_message_unref(req->msg);
 	g_free(req);
@@ -3557,7 +3558,7 @@ static DBusHandlerResult request_mode(DBusConnection *conn,
 			(name_cb_t) session_exit, req);
 
 	if (!adapter->sessions)
-		adapter->last_mode = adapter->mode;
+		adapter->global_mode = adapter->mode;
 	adapter->sessions = g_slist_append(adapter->sessions, req);
 
 	/* No need to change mode */
