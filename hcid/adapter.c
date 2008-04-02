@@ -3450,7 +3450,7 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 	return error_invalid_arguments(conn, msg, NULL);
 }
 
-void request_mode_cb(struct agent *agent, DBusError *err, void *data)
+static void request_mode_cb(struct agent *agent, DBusError *err, void *data)
 {
 	struct mode_req *req = data;
 	DBusMessage *derr;
