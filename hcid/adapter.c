@@ -685,6 +685,75 @@ done:
 	return send_message_and_unref(conn, reply);
 }
 
+gint find_session(struct mode_req *req, DBusMessage *msg)
+{
+	const char *name = dbus_message_get_sender(req->msg);
+	const char *sender = dbus_message_get_sender(msg);
+
+	return strcmp(name, sender);
+}
+
+static void confirm_mode_cb(struct agent *agent, DBusError *err, void *data)
+{
+	struct mode_req *req = data;
+	DBusMessage *derr;
+
+	if (err && dbus_error_is_set(err)) {
+		derr = dbus_message_new_error(req->msg, err->name, err->message);
+		dbus_connection_send_and_unref(req->conn, derr);
+		goto cleanup;
+	}
+
+	set_mode(req->conn, req->msg, req->mode, req->adapter);
+
+	if (!g_slist_find_custom(req->adapter->sessions, req->msg,
+			(GCompareFunc) find_session))
+		goto cleanup;
+
+	return;
+
+cleanup:
+	dbus_connection_unref(req->conn);
+	dbus_message_unref(req->msg);
+	if (req->id)
+		name_listener_id_remove(req->id);
+	g_free(req);
+}
+
+static DBusHandlerResult confirm_mode(DBusConnection *conn, DBusMessage *msg,
+					const char *mode, void *data)
+{
+	struct adapter *adapter = data;
+	struct mode_req *req;
+	DBusMessage *reply;
+	int ret;
+
+	if (!adapter->agent) {
+		reply = dbus_message_new_method_return(msg);
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+		return send_message_and_unref(conn, reply);
+	}
+
+	req = g_new0(struct mode_req, 1);
+	req->adapter = adapter;
+	req->conn = dbus_connection_ref(conn);
+	req->msg = dbus_message_ref(msg);
+	req->mode = str2mode(adapter->address, mode);
+
+	ret = agent_confirm_mode_change(adapter->agent, mode, confirm_mode_cb,
+					req);
+	if (ret < 0) {
+		dbus_connection_unref(req->conn);
+		dbus_message_unref(req->msg);
+		g_free(req);
+		return error_invalid_arguments(conn, msg, NULL);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -702,13 +771,16 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 
 	adapter->global_mode = str2mode(adapter->address, mode);
 
-	if (adapter->sessions && adapter->global_mode > adapter->mode) {
+	if (adapter->global_mode == adapter->mode) {
 		reply = dbus_message_new_method_return(msg);
 		if (!reply)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 		return send_message_and_unref(conn, reply);
 	}
+
+	if (adapter->sessions && adapter->global_mode < adapter->mode)
+		return confirm_mode(conn, msg, mode, data);
 
 	return set_mode(conn, msg, str2mode(adapter->address, mode), data);
 }
@@ -3461,13 +3533,16 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 
 		adapter->global_mode = str2mode(adapter->address, mode);
 
-		if (adapter->sessions && adapter->global_mode > adapter->mode) {
+		if (adapter->global_mode == adapter->mode) {
 			reply = dbus_message_new_method_return(msg);
 			if (!reply)
 				return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 			return send_message_and_unref(conn, reply);
 		}
+
+		if (adapter->sessions && adapter->global_mode < adapter->mode)
+			return confirm_mode(conn, msg, mode, data);
 
 		return set_mode(conn, msg, str2mode(adapter->address, mode),
 				data);
@@ -3484,7 +3559,7 @@ static void session_exit(const char *name, void *data)
 	adapter->sessions = g_slist_remove(adapter->sessions, req);
 
 	if (!adapter->sessions) {
-		debug("Falling back to %d mode", mode2str(adapter->global_mode));
+		debug("Falling back to '%s' mode", mode2str(adapter->global_mode));
 		/* FIXME: fallback to previous mode
 		set_mode(req->conn, req->msg, adapter->global_mode, adapter);
 		*/
@@ -3492,36 +3567,6 @@ static void session_exit(const char *name, void *data)
 	dbus_connection_unref(req->conn);
 	dbus_message_unref(req->msg);
 	g_free(req);
-}
-
-static void request_mode_cb(struct agent *agent, DBusError *err, void *data)
-{
-	struct mode_req *req = data;
-	DBusMessage *derr;
-
-	if (err && dbus_error_is_set(err)) {
-		derr = dbus_message_new_error(req->msg, err->name, err->message);
-		dbus_connection_send_and_unref(req->conn, derr);
-		goto cleanup;
-	}
-
-	set_mode(req->conn, req->msg, req->mode, req->adapter);
-
-	return;
-
-cleanup:
-	dbus_connection_unref(req->conn);
-	dbus_message_unref(req->msg);
-	name_listener_id_remove(req->id);
-	g_free(req);
-}
-
-gint find_session(struct mode_req *req, DBusMessage *msg)
-{
-	const char *name = dbus_message_get_sender(req->msg);
-	const char *sender = dbus_message_get_sender(msg);
-
-	return strcmp(name, sender);
 }
 
 static DBusHandlerResult request_mode(DBusConnection *conn,
@@ -3570,7 +3615,7 @@ static DBusHandlerResult request_mode(DBusConnection *conn,
 		return send_message_and_unref(conn, reply);
 	}
 
-	ret = agent_confirm_mode_change(adapter->agent, mode, request_mode_cb,
+	ret = agent_confirm_mode_change(adapter->agent, mode, confirm_mode_cb,
 					req);
 	if (ret < 0) {
 		dbus_connection_unref(req->conn);
