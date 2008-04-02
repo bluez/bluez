@@ -81,7 +81,8 @@ struct mode_req {
 	struct adapter	*adapter;
 	DBusConnection	*conn;		/* Connection reference */
 	DBusMessage	*msg;		/* Message reference */
-	char		*mode;		/* Requested mode */
+	uint8_t		mode;		/* Requested mode */
+	guint		id;		/* Listener id */
 };
 
 static const char *service_cls[] = {
@@ -556,17 +557,17 @@ static DBusHandlerResult adapter_get_mode(DBusConnection *conn,
 }
 
 static DBusHandlerResult set_mode(DBusConnection *conn, DBusMessage *msg,
-				const char *mode, void *data)
+				uint8_t new_mode, void *data)
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
 	uint8_t scan_enable;
-	uint8_t new_mode, current_scan = adapter->scan_enable;
+	uint8_t current_scan = adapter->scan_enable;
 	bdaddr_t local;
 	gboolean limited;
 	int err, dd;
+	const char *mode;
 
-	new_mode = str2mode(adapter->address, mode);
 	switch(new_mode) {
 	case MODE_OFF:
 		scan_enable = SCAN_DISABLED;
@@ -664,7 +665,7 @@ static DBusHandlerResult set_mode(DBusConnection *conn, DBusMessage *msg,
 			if (adapter->timeout_id)
 				g_source_remove(adapter->timeout_id);
 
-			if (adapter->discov_timeout != 0)
+			if (!adapter->sessions && !adapter->discov_timeout)
 				adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
 						discov_timeout_handler, adapter);
 		}
@@ -687,7 +688,9 @@ done:
 static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct adapter *adapter = data;
 	const char *mode;
+	DBusMessage *reply;
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &mode,
@@ -697,7 +700,17 @@ static DBusHandlerResult adapter_set_mode(DBusConnection *conn,
 	if (!mode)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	return set_mode(conn, msg, mode, data);
+	adapter->last_mode = str2mode(adapter->address, mode);
+
+	if (adapter->sessions && adapter->last_mode > adapter->mode) {
+		reply = dbus_message_new_method_return(msg);
+		if (!reply)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+		return send_message_and_unref(conn, reply);
+	}
+
+	return set_mode(conn, msg, str2mode(adapter->address, mode), data);
 }
 
 static DBusHandlerResult adapter_get_discoverable_to(DBusConnection *conn,
@@ -3393,6 +3406,7 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 static DBusHandlerResult set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct adapter *adapter = data;
 	DBusMessageIter iter;
 	DBusMessageIter sub;
 	const char *property;
@@ -3439,15 +3453,44 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 			return adapter_stop_periodic(conn, msg, data);
 	} else if (g_str_equal("Mode", property)) {
 		const char *mode;
+		DBusMessage *reply;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
 			return error_invalid_arguments(conn, msg, NULL);
 		dbus_message_iter_get_basic(&sub, &mode);
 
-		return set_mode(conn, msg, mode, data);
+		adapter->last_mode = str2mode(adapter->address, mode);
+
+		if (adapter->sessions && adapter->last_mode > adapter->mode) {
+			reply = dbus_message_new_method_return(msg);
+			if (!reply)
+				return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+			return send_message_and_unref(conn, reply);
+		}
+
+		return set_mode(conn, msg, str2mode(adapter->address, mode),
+				data);
 	}
 
 	return error_invalid_arguments(conn, msg, NULL);
+}
+
+static void session_exit(const char *name, void *data)
+{
+	struct mode_req *req = data;
+	struct adapter *adapter = req->adapter;
+
+	adapter->sessions = g_slist_remove(adapter->sessions, req);
+
+	if (!adapter->sessions)
+		debug("Falling back to %d mode", mode2str(adapter->last_mode));
+		/* FIXME: fallback to previous mode
+		set_mode(req->conn, req->msg, adapter->last_mode, adapter);
+		*/
+	dbus_connection_unref(req->conn);
+	dbus_message_unref(req->msg);
+	g_free(req);
 }
 
 static void request_mode_cb(struct agent *agent, DBusError *err, void *data)
@@ -3463,11 +3506,21 @@ static void request_mode_cb(struct agent *agent, DBusError *err, void *data)
 
 	set_mode(req->conn, req->msg, req->mode, req->adapter);
 
+	return;
+
 cleanup:
 	dbus_connection_unref(req->conn);
 	dbus_message_unref(req->msg);
-	g_free(req->mode);
+	name_listener_id_remove(req->id);
 	g_free(req);
+}
+
+gint find_session(struct mode_req *req, DBusMessage *msg)
+{
+	const char *name = dbus_message_get_sender(req->msg);
+	const char *sender = dbus_message_get_sender(msg);
+
+	return strcmp(name, sender);
 }
 
 static DBusHandlerResult request_mode(DBusConnection *conn,
@@ -3488,6 +3541,25 @@ static DBusHandlerResult request_mode(DBusConnection *conn,
 	if (new_mode != MODE_CONNECTABLE && new_mode != MODE_DISCOVERABLE)
 		return error_invalid_arguments(conn, msg, NULL);
 
+	if (!adapter->agent)
+		return error_failed(conn, msg, "No agent registered");
+
+	if (g_slist_find_custom(adapter->sessions, msg,
+			(GCompareFunc) find_session))
+		return error_failed(conn, msg, "Mode already requested");
+
+	req = g_new0(struct mode_req, 1);
+	req->adapter = adapter;
+	req->conn = dbus_connection_ref(conn);
+	req->msg = dbus_message_ref(msg);
+	req->mode = new_mode;
+	req->id = name_listener_add(conn, dbus_message_get_sender(msg),
+			(name_cb_t) session_exit, req);
+
+	if (!adapter->sessions)
+		adapter->last_mode = adapter->mode;
+	adapter->sessions = g_slist_append(adapter->sessions, req);
+
 	/* No need to change mode */
 	if (adapter->mode >= new_mode) {
 		reply = dbus_message_new_method_return(msg);
@@ -3497,20 +3569,12 @@ static DBusHandlerResult request_mode(DBusConnection *conn,
 		return send_message_and_unref(conn, reply);
 	}
 
-	if (!adapter->agent)
-		return error_failed(conn, msg, "No agent registered");
-
-	req = g_new0(struct mode_req, 1);
-	req->adapter = adapter;
-	req->conn = dbus_connection_ref(conn);
-	req->msg = dbus_message_ref(msg);
-	req->mode = g_strdup(mode);
 	ret = agent_confirm_mode_change(adapter->agent, mode, request_mode_cb,
 					req);
 	if (ret < 0) {
 		dbus_connection_unref(req->conn);
 		dbus_message_unref(req->msg);
-		g_free(req->mode);
+		name_listener_id_remove(req->id);
 		g_free(req);
 		return error_invalid_arguments(conn, msg, NULL);
 	}

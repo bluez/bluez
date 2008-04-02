@@ -88,6 +88,7 @@ struct adapter {
 	uint32_t discov_timeout;	/* discoverable time(msec) */
 	uint8_t scan_enable;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
 	uint8_t mode;			/* off, connectable, discoverable, limited */
+	uint8_t last_mode;		/* last mode changed */
 	uint8_t class[3];		/* device class */
 	int discov_active;		/* standard discovery active: includes name resolution step */
 	int pdiscov_active;		/* periodic discovery active */
@@ -109,6 +110,7 @@ struct adapter {
 	struct pending_dc_info *pending_dc;
 	struct create_device_req *create;
 	GSList *devices;		/* Devices structure pointers */
+	GSList *sessions;		/* Request Mode sessions */
 };
 
 dbus_bool_t adapter_init(DBusConnection *conn, const char *path);
