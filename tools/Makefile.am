@@ -69,7 +69,6 @@ sdptool_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 ciptool_LDADD = @BLUEZ_LIBS@
 
-avinfo_SOURCES = avinfo.c
 avinfo_LDADD = @BLUEZ_LIBS@
 endif
 
