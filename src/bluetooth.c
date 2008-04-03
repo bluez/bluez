@@ -435,6 +435,8 @@ char *bt_compidtostr(int compid)
 		return "Continental Automotive Systems";
 	case 76:
 		return "Apple, Inc.";
+	case 77:
+		return "Staccato Communications, Inc.";
 	case 65535:
 		return "internal use";
 	default:
