@@ -1,3 +1,6 @@
+ver 3.30:
+	Add another company identifier.
+
 ver 3.29:
 	Fix memory leak in sdp_get_uuidseq_attr function.
 
