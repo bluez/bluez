@@ -51,7 +51,7 @@ void release_services(DBusConnection *conn);
 
 void append_available_services(DBusMessageIter *iter);
 
-struct service *search_service(DBusConnection *conn, const char *pattern);
+struct service *search_service(const char *pattern);
 
 int service_start(struct service *service, DBusConnection *conn);
 

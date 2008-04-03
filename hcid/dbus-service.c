@@ -826,7 +826,7 @@ void release_services(DBusConnection *conn)
 	services = NULL;
 }
 
-struct service *search_service(DBusConnection *conn, const char *pattern)
+struct service *search_service(const char *pattern)
 {
 	GSList *l;
 

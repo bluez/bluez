@@ -389,7 +389,7 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	service = search_service(conn, ident);
+	service = search_service(ident);
 	if (!service)
 		return error_service_does_not_exist(conn, msg);
 
@@ -421,7 +421,7 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	service = search_service(conn, sender);
+	service = search_service(sender);
 	if (!service) {
 		debug("Got RequestAuthorization from non-service owner %s",
 				sender);
@@ -464,7 +464,7 @@ static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	service = search_service(conn, sender);
+	service = search_service(sender);
 	if (!service)
 		return error_not_authorized(conn, msg);
 

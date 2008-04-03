@@ -270,7 +270,7 @@ static DBusHandlerResult find_service(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
 
-	service = search_service(conn, pattern);
+	service = search_service(pattern);
 	if (!service)
 		return error_no_such_service(conn, msg);
 
@@ -320,7 +320,7 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
 
-	service = search_service(conn, pattern);
+	service = search_service(pattern);
 	if (!service)
 		return error_no_such_service(conn, msg);
 
