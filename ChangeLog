@@ -1,3 +1,17 @@
+ver 3.30:
+	Convert audio service into a plugin.
+	Convert input service into a plugin.
+	Convert serial service into a plugin.
+	Convert network service into a plugin.
+	Emit old device signals when a property is changed.
+	Fix missing DiscoverDevices and CancelDiscovery methods.
+	Add basic support for Bluetooth sessions.
+	Add avinfo utility for AVDTP/A2DP classification.
+	Remove build option for deprecated sdpd binary.
+
+	Note:
+	This version needs at least bluez-libs-3.30
+
 ver 3.29:
 	Introduce new D-Bus based API.
 	Add more SBC optimizations.
