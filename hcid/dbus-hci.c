@@ -1006,12 +1006,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	ba2str(&ci->bdaddr, addr);
 
-	device = adapter_find_device(adapter, addr);
-	if (!device) {
-		device = device_create(connection, adapter, addr, NULL);
-		device->created = TRUE;
-	}
-
+	device = adapter_get_device(connection, adapter, addr);
 	if (!device)
 		return -ENODEV;
 
