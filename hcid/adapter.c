@@ -2014,7 +2014,7 @@ static DBusHandlerResult adapter_set_remote_alias(DBusConnection *conn,
 	if (new_path) {
 		struct device *device;
 
-		device = adapter_get_device(adapter, addr);
+		device = adapter_find_device(adapter, addr);
 		if (device) {
 			dbus_connection_emit_property_changed(conn,
 					device->path, DEVICE_INTERFACE,
@@ -2267,7 +2267,7 @@ static void create_device_req_free(struct create_device_req *create)
 	g_free(create);
 }
 
-struct device *adapter_get_device(struct adapter *adapter, const char *dest)
+struct device *adapter_find_device(struct adapter *adapter, const char *dest)
 {
 	struct device *device;
 	GSList *l;
@@ -2281,6 +2281,34 @@ struct device *adapter_get_device(struct adapter *adapter, const char *dest)
 		return NULL;
 
 	device = l->data;
+
+	return device;
+}
+
+struct device *adapter_get_device(DBusConnection *conn,
+				struct adapter *adapter, const gchar *address)
+{
+	struct device *device;
+	char path[MAX_PATH_LENGTH];
+
+	if (!adapter)
+		return NULL;
+
+	device = adapter_find_device(adapter, address);
+	if (device)
+		return device;
+
+	device = device_create(conn, adapter, address, NULL);
+	if (!device)
+		return NULL;
+
+	snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
+
+	adapter->devices = g_slist_append(adapter->devices, device);
+	dbus_connection_emit_signal(conn, path,
+				ADAPTER_INTERFACE, "DeviceCreated",
+				DBUS_TYPE_OBJECT_PATH, &device->path,
+				DBUS_TYPE_INVALID);
 
 	return device;
 }
@@ -2643,7 +2671,7 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 		struct device *device;
 		gboolean paired = FALSE;
 
-		device = adapter_get_device(adapter, addr_ptr);
+		device = adapter_find_device(adapter, addr_ptr);
 		if (device) {
 			dbus_connection_emit_property_changed(conn,
 					device->path, DEVICE_INTERFACE,
@@ -3289,7 +3317,7 @@ static DBusHandlerResult adapter_set_trusted(DBusConnection *conn,
 		struct device *device;
 		gboolean trust = TRUE;
 
-		device = adapter_get_device(adapter, address);
+		device = adapter_find_device(adapter, address);
 		if (device) {
 			dbus_connection_emit_property_changed(conn,
 					device->path, DEVICE_INTERFACE,
@@ -3370,7 +3398,7 @@ static DBusHandlerResult adapter_remove_trust(DBusConnection *conn,
 		struct device *device;
 		gboolean trust = FALSE;
 
-		device = adapter_get_device(adapter, address);
+		device = adapter_find_device(adapter, address);
 		if (device) {
 			dbus_connection_emit_property_changed(conn,
 					device->path, DEVICE_INTERFACE,

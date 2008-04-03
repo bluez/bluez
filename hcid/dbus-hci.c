@@ -1006,7 +1006,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	ba2str(&ci->bdaddr, addr);
 
-	device = adapter_get_device(adapter, addr);
+	device = adapter_find_device(adapter, addr);
 	if (!device) {
 		device = device_create(connection, adapter, addr, NULL);
 		device->created = TRUE;
@@ -1090,7 +1090,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 				struct device *device;
 				gboolean paired = TRUE;
 
-				device = adapter_get_device(adapter, paddr);
+				device = adapter_get_device(connection, adapter, paddr);
 				if (device) {
 					dbus_connection_emit_property_changed(connection,
 						device->path, DEVICE_INTERFACE,
@@ -1807,7 +1807,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 		if (hcid_dbus_use_experimental()) {
 			struct device *device;
 
-			device = adapter_get_device(adapter, paddr);
+			device = adapter_find_device(adapter, paddr);
 			if (device) {
 				dbus_connection_emit_property_changed(connection,
 						device->path, DEVICE_INTERFACE,
@@ -1920,7 +1920,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 			struct device *device;
 			gboolean connected = TRUE;
 
-			device = adapter_get_device(adapter, paddr);
+			device = adapter_find_device(adapter, paddr);
 			if (device) {
 				dbus_connection_emit_property_changed(connection,
 					device->path, DEVICE_INTERFACE,
@@ -2036,7 +2036,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		struct device *device;
 		gboolean connected = FALSE;
 
-		device = adapter_get_device(adapter, paddr);
+		device = adapter_find_device(adapter, paddr);
 		if (device) {
 			dbus_connection_emit_property_changed(connection,
 						device->path, DEVICE_INTERFACE,
