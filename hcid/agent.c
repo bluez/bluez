@@ -127,6 +127,16 @@ static void agent_request_free(struct agent_request *req)
 	g_free(req);
 }
 
+static void agent_exited(const char *name, struct agent *agent)
+{
+	struct adapter *adapter = agent->adapter;
+
+	debug("Agent %s exited without calling Unregister", name);
+
+	agent_destroy(agent, TRUE);
+	adapter->agent = NULL;
+}
+
 static void agent_free(struct agent *agent)
 {
 	if (!agent)
@@ -160,8 +170,11 @@ static void agent_free(struct agent *agent)
 	if (agent->timeout)
 		g_source_remove(agent->timeout);
 
-	if (!agent->exited)
+	if (!agent->exited) {
+		name_listener_remove(connection, agent->name,
+				(name_cb_t) agent_exited, agent);
 		agent_release(agent);
+	}
 
 	g_free(agent->name);
 	g_free(agent->path);
@@ -203,6 +216,8 @@ struct agent *agent_create(struct adapter *adapter, const char *name,
 		agent->timeout = g_timeout_add(AGENT_TIMEOUT,
 						(GSourceFunc) agent_timeout, agent);
 	}
+
+	name_listener_add(connection, name, (name_cb_t) agent_exited, agent);
 
 	return agent;
 }

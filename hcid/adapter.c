@@ -3940,15 +3940,6 @@ static DBusHandlerResult find_device(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static void agent_exited(const char *name, struct adapter *adapter)
-{
-	debug("Agent %s exited without calling Unregister", name);
-
-	agent_destroy(adapter->agent, TRUE);
-
-	adapter->agent = NULL;
-}
-
 static void agent_removed(struct agent *agent, struct adapter *adapter)
 {
 	if (adapter->agent == agent)
@@ -3985,8 +3976,6 @@ static DBusHandlerResult register_agent(DBusConnection *conn,
 
 	adapter->agent = agent;
 
-	name_listener_add(conn, name, (name_cb_t) agent_exited, adapter);
-
 	return send_message_and_unref(conn, reply);
 }
 
@@ -4009,9 +3998,6 @@ static DBusHandlerResult unregister_agent(DBusConnection *conn,
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	name_listener_remove(conn, name, (name_cb_t) agent_exited,
-				adapter);
 
 	agent_destroy(adapter->agent, FALSE);
 	adapter->agent = NULL;
