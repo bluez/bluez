@@ -1,6 +1,10 @@
 
 plugindir = $(libdir)/bluetooth/plugins
 
+plugin_LTLIBRARIES = libstorage.la
+
+libstorage_la_SOURCES = storage.c
+
 noinst_LTLIBRARIES = libecho.la
 
 libecho_la_SOURCES = echo.c
