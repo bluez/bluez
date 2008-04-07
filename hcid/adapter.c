@@ -2302,6 +2302,7 @@ struct device *adapter_get_device(DBusConnection *conn,
 	if (!device)
 		return NULL;
 
+	device->temporary = TRUE;
 	snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
 
 	adapter->devices = g_slist_append(adapter->devices, device);
@@ -3746,6 +3747,7 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 	if (!device)
 		goto failed;
 
+	device->temporary = FALSE;
 	/* Reply create device request */
 	reply = dbus_message_new_method_return(adapter->create->msg);
 	if (!reply)

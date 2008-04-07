@@ -638,8 +638,10 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	struct device *device;
 
 	device = device_create(connection, adapter, key, uuids);
-	if (device)
+	if (device) {
+		device->temporary = FALSE;
 		adapter->devices = g_slist_append(adapter->devices, device);
+	}
 }
 
 static void create_stored_device_from_linkkeys(char *key, char *value,
@@ -653,8 +655,10 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 		return;
 
 	device = device_create(connection, adapter, key, NULL);
-	if (device)
+	if (device) {
+		device->temporary = FALSE;
 		adapter->devices = g_slist_append(adapter->devices, device);
+	}
 }
 
 static void register_devices(bdaddr_t *src, struct adapter *adapter)
@@ -952,14 +956,14 @@ static void passkey_cb(struct agent *agent, DBusError *err, const char *passkey,
 	str2ba(device->address, &dba);
 
 	if (err) {
-		if (device->created)
+		if (device->temporary)
 			device_remove(connection, device);
 		hci_send_cmd(dev, OGF_LINK_CTL,
 				OCF_PIN_CODE_NEG_REPLY, 6, &dba);
 		goto done;
 	}
 
-	device->created = FALSE;
+	device->temporary = FALSE;
 
 	len = strlen(passkey);
 
@@ -1087,6 +1091,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 				device = adapter_get_device(connection, adapter, paddr);
 				if (device) {
+					device->temporary = FALSE;
 					dbus_connection_emit_property_changed(connection,
 						device->path, DEVICE_INTERFACE,
 						"Paired", DBUS_TYPE_BOOLEAN, &paired);
@@ -2037,6 +2042,8 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 						device->path, DEVICE_INTERFACE,
 						"Connected", DBUS_TYPE_BOOLEAN,
 						&connected);
+			if (device->temporary)
+				device_remove(connection, device);
 		}
 	}
 

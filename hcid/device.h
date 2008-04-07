@@ -29,7 +29,7 @@ struct device {
 	gchar		*path;
 	struct adapter	*adapter;
 	GSList		*uuids;
-	gboolean	created;
+	gboolean	temporary;
 };
 
 struct device *device_create(DBusConnection *conn, struct adapter *adapter,
