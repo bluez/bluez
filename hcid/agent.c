@@ -279,7 +279,7 @@ static DBusPendingCall *agent_call_authorize(struct agent *agent,
 
 	dbus_message_append_args(message,
 				DBUS_TYPE_OBJECT_PATH, &device_path,
-				DBUS_TYPE_OBJECT_PATH, &uuid,
+				DBUS_TYPE_STRING, &uuid,
 				DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(connection, message,
