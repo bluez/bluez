@@ -114,6 +114,23 @@
 #define MPEG_SAMPLING_FREQ_44100	(1 << 1)
 #define MPEG_SAMPLING_FREQ_48000	1
 
+#define MPEG_BIT_RATE_VBR		0x8000
+#define MPEG_BIT_RATE_320000		0x4000
+#define MPEG_BIT_RATE_256000		0x2000
+#define MPEG_BIT_RATE_224000		0x1000
+#define MPEG_BIT_RATE_192000		0x0800
+#define MPEG_BIT_RATE_160000		0x0400
+#define MPEG_BIT_RATE_128000		0x0200
+#define MPEG_BIT_RATE_112000		0x0100
+#define MPEG_BIT_RATE_96000		0x0080
+#define MPEG_BIT_RATE_80000		0x0040
+#define MPEG_BIT_RATE_64000		0x0020
+#define MPEG_BIT_RATE_56000		0x0010
+#define MPEG_BIT_RATE_48000		0x0008
+#define MPEG_BIT_RATE_40000		0x0004
+#define MPEG_BIT_RATE_32000		0x0002
+#define MPEG_BIT_RATE_FREE		0x0001
+
 struct avdtp_service_capability {
 	uint8_t category;
 	uint8_t length;
@@ -245,7 +262,83 @@ struct getcap_resp {
 
 static void print_mpeg12(struct mpeg_codec_cap *mpeg)
 {
-	printf("\tMedia Codec: MPEG12\n");
+	printf("\tMedia Codec: MPEG12\n\t\tChannel Modes: ");
+
+	if (mpeg->channel_mode & MPEG_CHANNEL_MODE_MONO)
+		printf("Mono ");
+	if (mpeg->channel_mode & MPEG_CHANNEL_MODE_DUAL_CHANNEL)
+		printf("DualChannel ");
+	if (mpeg->channel_mode & MPEG_CHANNEL_MODE_STEREO)
+		printf("Stereo ");
+	if (mpeg->channel_mode & MPEG_CHANNEL_MODE_JOINT_STEREO)
+		printf("JointStereo");
+
+	printf("\n\t\tFrequencies: ");
+	if (mpeg->frequency & MPEG_SAMPLING_FREQ_16000)
+		printf("16Khz ");
+	if (mpeg->frequency & MPEG_SAMPLING_FREQ_22050)
+		printf("22.05Khz ");
+	if (mpeg->frequency & MPEG_SAMPLING_FREQ_24000)
+		printf("24Khz ");
+	if (mpeg->frequency & MPEG_SAMPLING_FREQ_32000)
+		printf("32Khz ");
+	if (mpeg->frequency & MPEG_SAMPLING_FREQ_44100)
+		printf("44.1Khz ");
+	if (mpeg->frequency & MPEG_SAMPLING_FREQ_48000)
+		printf("48Khz ");
+
+	printf("\n\t\tCRC: %s", mpeg->crc ? "Yes" : "No");
+
+	printf("\n\t\tLayer: ");
+	if (mpeg->layer & MPEG_LAYER_MP1)
+		printf("1 ");
+	if (mpeg->layer & MPEG_LAYER_MP2)
+		printf("2 ");
+	if (mpeg->layer & MPEG_LAYER_MP3)
+		printf("3 ");
+
+	printf("\n\t\tBit Rate: ");
+	if (mpeg->bitrate & MPEG_BIT_RATE_FREE)
+		printf("Free format");
+	else {
+		if (mpeg->bitrate & MPEG_BIT_RATE_32000)
+			printf("32kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_40000)
+			printf("40kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_48000)
+			printf("48kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_56000)
+			printf("56kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_64000)
+			printf("64kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_80000)
+			printf("80kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_96000)
+			printf("96kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_112000)
+			printf("112kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_128000)
+			printf("128kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_160000)
+			printf("160kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_192000)
+			printf("192kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_224000)
+			printf("224kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_256000)
+			printf("256kbps ");
+		if (mpeg->bitrate & MPEG_BIT_RATE_320000)
+			printf("320kbps ");
+	}
+
+	printf("\n\t\tVBR: %s", mpeg->bitrate & MPEG_BIT_RATE_VBR ? "Yes" :
+		"No");
+
+	printf("\n\t\tPayload Format: ");
+	if (mpeg->mpf)
+		printf("RFC-2250 RFC-3119\n");
+	else
+		printf("RFC-2250\n");
 }
 
 static void print_sbc(struct sbc_codec_cap *sbc)
