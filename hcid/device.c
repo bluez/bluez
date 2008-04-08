@@ -59,10 +59,17 @@
 #include "dbus-common.h"
 #include "dbus-hci.h"
 #include "error.h"
+#include "glib-helper.h"
 
 #define MAX_DEVICES 16
 
 #define DEVICE_INTERFACE "org.bluez.Device"
+
+struct browse_req {
+	DBusConnection *conn;
+	DBusMessage *msg;
+	struct device *device;
+};
 
 struct hci_peer {
 	struct timeval lastseen;
@@ -1035,13 +1042,7 @@ struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 	return device;
 }
 
-void device_remove(DBusConnection *conn, struct device *device)
-{
-	device_destroy(device, conn);
-	device_free(device);
-}
-
-void device_destroy(struct device *device, DBusConnection *conn)
+void device_remove(struct device *device, DBusConnection *conn)
 {
 	debug("Removing device %s", device->path);
 
@@ -1051,4 +1052,96 @@ void device_destroy(struct device *device, DBusConnection *conn)
 gint device_address_cmp(struct device *device, const gchar *address)
 {
 	return strcasecmp(device->address, address);
+}
+
+static void browse_cb(gpointer user_data, sdp_list_t *recs, int err)
+{
+	sdp_list_t *seq, *next, *svcclass;
+	struct browse_req *req = user_data;
+	struct device *device = req->device;
+	struct adapter *adapter = device->adapter;
+	bdaddr_t src, dst;
+	char **uuids;
+	int i;
+	GSList *l;
+	DBusMessage *reply;
+
+	if (err < 0)
+		return;
+
+	for (seq = recs; seq; seq = next) {
+		sdp_record_t *rec = (sdp_record_t *) seq->data;
+
+		if (!rec)
+			break;
+
+		svcclass = NULL;
+		if (sdp_get_service_classes(rec, &svcclass) == 0) {
+			/* Extract the first element and skip the remainning */
+			gchar *uuid_str = bt_uuid2string(svcclass->data);
+			if (uuid_str) {
+				if (!g_slist_find_custom(device->uuids, uuid_str,
+							(GCompareFunc) strcmp))
+					device->uuids = g_slist_insert_sorted(device->uuids,
+						uuid_str, (GCompareFunc) strcmp);
+				else
+					g_free(uuid_str);
+			}
+			sdp_list_free(svcclass, free);
+		}
+
+		next = seq->next;
+	}
+
+	sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
+
+	/* Store the device's profiles in the filesystem */
+	str2ba(adapter->address, &src);
+	str2ba(device->address, &dst);
+	if (device->uuids) {
+		gchar *str = bt_list2string(device->uuids);
+		write_device_profiles(&src, &dst, str);
+		g_free(str);
+	} else
+		write_device_profiles(&src, &dst, "");
+
+	uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
+	for (i = 0, l = device->uuids; l; l = l->next, i++)
+		uuids[i] = l->data;
+
+	dbus_connection_emit_property_changed(req->conn, device->path,
+					DEVICE_INTERFACE, "UUIDs",
+					DBUS_TYPE_ARRAY, &uuids);
+	g_free(uuids);
+
+	/* Reply create device request */
+	reply = dbus_message_new_method_return(req->msg);
+	if (!reply)
+		return;
+
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
+					DBUS_TYPE_INVALID);
+
+	send_message_and_unref(req->conn, reply);
+
+	dbus_message_unref(req->msg);
+	dbus_connection_unref(req->conn);
+	g_free(req);
+}
+
+int device_browse(struct device *device, DBusConnection *conn,
+			DBusMessage *msg)
+{
+	struct adapter *adapter = device->adapter;
+	struct browse_req *req;
+	bdaddr_t src, dst;
+
+	req = g_new0(struct browse_req, 1);
+	req->conn = dbus_connection_ref(conn);
+	req->msg = dbus_message_ref(msg);
+	req->device = device;
+
+	str2ba(adapter->address, &src);
+	str2ba(device->address, &dst);
+	return bt_discover_services(&src, &dst, browse_cb, req, NULL);
 }

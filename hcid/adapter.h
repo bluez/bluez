@@ -53,9 +53,9 @@ struct remote_dev_info {
 };
 
 struct bonding_request_info {
-	bdaddr_t bdaddr;
 	DBusConnection *conn;
-	DBusMessage *rq;
+	DBusMessage *msg;
+	bdaddr_t bdaddr;
 	GIOChannel *io;
 	guint io_id;
 	int hci_status;
@@ -107,7 +107,6 @@ struct adapter {
 	struct bonding_request_info *bonding;
 	GSList *pin_reqs;
 	struct pending_dc_info *pending_dc;
-	struct create_device_req *create;
 	GSList *devices;		/* Devices structure pointers */
 	GSList *sessions;		/* Request Mode sessions */
 };

@@ -69,14 +69,6 @@
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 
-struct create_device_req {
-	char		address[18];	/* Destination address */
-	DBusConnection	*conn;		/* Connection reference */
-	DBusMessage	*msg;		/* Message reference */
-	guint		id;		/* Listener id */
-	char		*agent_path;	/* Agent object path */
-};
-
 struct mode_req {
 	struct adapter	*adapter;
 	DBusConnection	*conn;		/* Connection reference */
@@ -239,18 +231,26 @@ int pending_remote_name_cancel(struct adapter *adapter)
 	return err;
 }
 
-static struct bonding_request_info *bonding_request_new(bdaddr_t *peer,
-							DBusConnection *conn,
-							DBusMessage *msg)
+static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
+							DBusMessage *msg,
+							struct adapter *adapter,
+							const char *address)
 {
 	struct bonding_request_info *bonding;
+	struct device *device;
 
 	bonding = g_new0(struct bonding_request_info, 1);
 
-	bacpy(&bonding->bdaddr, peer);
-
 	bonding->conn = dbus_connection_ref(conn);
-	bonding->rq = dbus_message_ref(msg);
+	bonding->msg = dbus_message_ref(msg);
+
+	/* FIXME: should be removed on 4.0 */
+	if (hcid_dbus_use_experimental()) {
+		device = adapter_get_device(conn, adapter, address);
+		device->temporary = TRUE;
+	}
+
+	str2ba(address, &bonding->bdaddr);
 
 	return bonding;
 }
@@ -2254,17 +2254,9 @@ static void reply_authentication_failure(struct bonding_request_info *bonding)
 	status = bonding->hci_status ?
 			bonding->hci_status : HCI_AUTHENTICATION_FAILURE;
 
-	reply = new_authentication_return(bonding->rq, status);
+	reply = new_authentication_return(bonding->msg, status);
 	if (reply)
 		send_message_and_unref(bonding->conn, reply);
-}
-
-static void create_device_req_free(struct create_device_req *create)
-{
-	dbus_connection_unref(create->conn);
-	dbus_message_unref(create->msg);
-	g_free(create->agent_path);
-	g_free(create);
 }
 
 struct device *adapter_find_device(struct adapter *adapter, const char *dest)
@@ -2334,7 +2326,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 
 	if (cond & G_IO_NVAL) {
 		error_authentication_canceled(adapter->bonding->conn,
-						adapter->bonding->rq);
+						adapter->bonding->msg);
 		goto cleanup;
 	}
 
@@ -2343,7 +2335,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 
 		if (!adapter->bonding->auth_active)
 			error_connection_attempt_failed(adapter->bonding->conn,
-							adapter->bonding->rq,
+							adapter->bonding->msg,
 							ENETDOWN);
 		else
 			reply_authentication_failure(adapter->bonding);
@@ -2357,7 +2349,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
 		error("Can't get socket error: %s (%d)",
 				strerror(errno), errno);
-		error_failed_errno(adapter->bonding->conn, adapter->bonding->rq,
+		error_failed_errno(adapter->bonding->conn, adapter->bonding->msg,
 				errno);
 		goto failed;
 	}
@@ -2367,7 +2359,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 			reply_authentication_failure(adapter->bonding);
 		else
 			error_connection_attempt_failed(adapter->bonding->conn,
-							adapter->bonding->rq,
+							adapter->bonding->msg,
 							ret);
 		goto failed;
 	}
@@ -2376,7 +2368,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &cinfo, &len) < 0) {
 		error("Can't get connection info: %s (%d)",
 				strerror(errno), errno);
-		error_failed_errno(adapter->bonding->conn, adapter->bonding->rq,
+		error_failed_errno(adapter->bonding->conn, adapter->bonding->msg,
 				errno);
 		goto failed;
 	}
@@ -2384,7 +2376,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
 		error_no_such_adapter(adapter->bonding->conn,
-					adapter->bonding->rq);
+					adapter->bonding->msg);
 		goto failed;
 	}
 
@@ -2405,7 +2397,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	if (hci_send_req(dd, &rq, 500) < 0) {
 		error("Unable to send HCI request: %s (%d)",
 					strerror(errno), errno);
-		error_failed_errno(adapter->bonding->conn, adapter->bonding->rq,
+		error_failed_errno(adapter->bonding->conn, adapter->bonding->msg,
 				errno);
 		hci_close_dev(dd);
 		goto failed;
@@ -2414,7 +2406,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	if (rp.status) {
 		error("HCI_Authentication_Requested failed with status 0x%02x",
 				rp.status);
-		error_failed_errno(adapter->bonding->conn, adapter->bonding->rq,
+		error_failed_errno(adapter->bonding->conn, adapter->bonding->msg,
 				bt_error(rp.status));
 		hci_close_dev(dd);
 		goto failed;
@@ -2436,17 +2428,11 @@ failed:
 
 cleanup:
 	name_listener_remove(adapter->bonding->conn,
-				dbus_message_get_sender(adapter->bonding->rq),
+				dbus_message_get_sender(adapter->bonding->msg),
 				(name_cb_t) create_bond_req_exit, adapter);
 
 	bonding_request_free(adapter->bonding);
 	adapter->bonding = NULL;
-
-	if (adapter->create) {
-		name_listener_id_remove(adapter->create->id);
-		create_device_req_free(adapter->create);
-		adapter->create = NULL;
-	}
 
 	return FALSE;
 }
@@ -2489,7 +2475,7 @@ static DBusHandlerResult create_bonding(DBusConnection *conn, DBusMessage *msg,
 	if (sk < 0)
 		return error_connection_attempt_failed(conn, msg, 0);
 
-	adapter->bonding = bonding_request_new(&bdaddr, conn, msg);
+	adapter->bonding = bonding_request_new(conn, msg, adapter, address);
 	if (!adapter->bonding) {
 		close(sk);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -2532,33 +2518,33 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 {
 	struct adapter *adapter = data;
 	DBusMessage *reply;
-	bdaddr_t peer_bdaddr;
-	const char *peer_addr;
+	const char *address;
+	bdaddr_t bdaddr;
 	GSList *l;
+	struct bonding_request_info *bonding = adapter->bonding;
 
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
 
-	if (check_address(peer_addr) < 0)
+	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	str2ba(peer_addr, &peer_bdaddr);
-
-	if (!adapter->bonding || bacmp(&adapter->bonding->bdaddr, &peer_bdaddr))
+	str2ba(address, &bdaddr);
+	if (!bonding || bacmp(&bonding->bdaddr, &bdaddr))
 		return error_bonding_not_in_progress(conn, msg);
 
-	if (strcmp(dbus_message_get_sender(adapter->bonding->rq),
+	if (strcmp(dbus_message_get_sender(adapter->bonding->msg),
 				dbus_message_get_sender(msg)))
 		return error_not_authorized(conn, msg);
 
 	adapter->bonding->cancel = 1;
 
-	l = g_slist_find_custom(adapter->pin_reqs, &peer_bdaddr, pin_req_cmp);
+	l = g_slist_find_custom(adapter->pin_reqs, &bdaddr, pin_req_cmp);
 	if (l) {
 		struct pending_pin_info *pin_req = l->data;
 
@@ -2579,7 +2565,7 @@ static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
 			}
 
 			hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY,
-					6, &peer_bdaddr);
+					6, &bdaddr);
 
 			hci_close_dev(dd);
 		}
@@ -3688,77 +3674,29 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static void create_device_exit(const char *name, struct adapter *adapter)
+static DBusHandlerResult create_device(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
-	create_device_req_free(adapter->create);
-	adapter->create = NULL;
-}
-
-static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
-{
-	sdp_list_t *seq, *next, *svcclass;
-	struct adapter *adapter = user_data;
+	struct adapter *adapter = data;
 	struct device *device;
-	DBusMessage *reply;
-	GSList *uuids;
-	bdaddr_t src, dst;
+	const gchar *address;
 
-	/* Onwer exitted? */
-	if  (!adapter->create) {
-		sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
-		return;
-	}
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
+						DBUS_TYPE_INVALID) == FALSE)
+		return error_invalid_arguments(conn, msg, NULL);
 
-	if (err < 0) {
-		error_connection_attempt_failed(adapter->create->conn,
-						adapter->create->msg, -err);
-		goto failed;
-	}
+	if (adapter_find_device(adapter, address))
+		return error_already_exists(conn, msg, "Device already exists");
 
-	uuids = NULL;
-	for (seq = recs; seq; seq = next) {
-		sdp_record_t *rec = (sdp_record_t *) seq->data;
-
-		if (!rec)
-			break;
-
-		svcclass = NULL;
-		if (sdp_get_service_classes(rec, &svcclass) == 0) {
-			/* Extract the first element and skip the remainning */
-			gchar *uuid_str = bt_uuid2string(svcclass->data);
-			if (uuid_str) {
-				if (!g_slist_find_custom(uuids, uuid_str,
-							(GCompareFunc) strcmp))
-					uuids = g_slist_insert_sorted(uuids,
-						uuid_str, (GCompareFunc) strcmp);
-				else
-					g_free(uuid_str);
-			}
-			sdp_list_free(svcclass, free);
-		}
-
-		next = seq->next;
-	}
-
-	sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
-
-	device = device_create(adapter->create->conn, adapter,
-				adapter->create->address, uuids);
+	device = device_create(conn, adapter, address, NULL);
 	if (!device)
-		goto failed;
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	device->temporary = FALSE;
-	/* Reply create device request */
-	reply = dbus_message_new_method_return(adapter->create->msg);
-	if (!reply)
-		goto failed;
 
-	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
-					DBUS_TYPE_INVALID);
-	send_message_and_unref(adapter->create->conn, reply);
+	device_browse(device, conn, msg);
 
-	dbus_connection_emit_signal(adapter->create->conn,
-				dbus_message_get_path(adapter->create->msg),
+	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
 				ADAPTER_INTERFACE,
 				"DeviceCreated",
 				DBUS_TYPE_OBJECT_PATH, &device->path,
@@ -3766,88 +3704,7 @@ static void discover_services_cb(gpointer user_data, sdp_list_t *recs, int err)
 
 	adapter->devices = g_slist_append(adapter->devices, device);
 
-	/* Store the device's profiles in the filesystem */
-	str2ba(adapter->address, &src);
-	str2ba(adapter->create->address, &dst);
-	if (uuids) {
-		gchar *str = bt_list2string(uuids);
-		write_device_profiles(&src, &dst, str);
-		g_free(str);
-	} else
-		write_device_profiles(&src, &dst, "");
-
-	if (adapter->create->agent_path)
-		create_bonding(adapter->create->conn, adapter->create->msg,
-				adapter->create->address,
-				adapter->create->agent_path, adapter);
-
-failed:
-	name_listener_id_remove(adapter->create->id);
-	create_device_req_free(adapter->create);
-	adapter->create = NULL;
-}
-
-static DBusHandlerResult discover_services(DBusConnection *conn,
-				DBusMessage *msg, const char *address,
-				const char *agent_path, void *data)
-{
-	struct adapter *adapter = data;
-	struct create_device_req *create;
-	bdaddr_t src, dst;
-	int err;
-	GSList *l;
-
-	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg, NULL);
-
-	l = g_slist_find_custom(adapter->devices, address,
-			(GCompareFunc) device_address_cmp);
-	if (l && agent_path)
-		return create_bonding(conn, msg, address, agent_path, data);
-	else if (l && !agent_path)
-		return error_already_exists(conn, msg, "Device already exists");
-
-	if (adapter->create) {
-		adapter->create->agent_path = g_strdup(agent_path);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-
-	str2ba(adapter->address, &src);
-	str2ba(address, &dst);
-	err = bt_discover_services(&src, &dst,
-			discover_services_cb, adapter, NULL);
-	if (err < 0) {
-		error("Discover services failed!");
-		return error_connection_attempt_failed(conn, msg, -err);
-	}
-
-	create = g_new0(struct create_device_req, 1);
-	create->conn = dbus_connection_ref(conn);
-	create->msg = dbus_message_ref(msg);
-	create->id = name_listener_add(conn,
-			dbus_message_get_sender(msg),
-			(name_cb_t) create_device_exit, adapter);
-	strcpy(create->address, address);
-	create->agent_path = g_strdup(agent_path);
-	adapter->create = create;
-
 	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-static DBusHandlerResult create_device(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct adapter *adapter = data;
-	const gchar *address;
-
-	if (adapter->create)
-		return error_in_progress(conn, msg, "CreateDevice in progress");
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
-
-	return discover_services(conn, msg, address, NULL, data);
 }
 
 static DBusHandlerResult create_paired_device(DBusConnection *conn,
@@ -3861,7 +3718,7 @@ static DBusHandlerResult create_paired_device(DBusConnection *conn,
 						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	return discover_services(conn, msg, address, agent_path, data);
+	return create_bonding(conn, msg, address, agent_path, data);
 }
 
 static gint device_path_cmp(struct device *device, const gchar *path)
@@ -3905,7 +3762,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 			DBUS_TYPE_OBJECT_PATH, &device->path,
 			DBUS_TYPE_INVALID);
 
-	device_destroy(device, conn);
+	device_remove(device, conn);
 	adapter->devices = g_slist_remove(adapter->devices, device);
 
 	return send_message_and_unref(conn, reply);

@@ -69,8 +69,8 @@ void bonding_request_free(struct bonding_request_info *bonding)
 	if (!bonding)
 		return;
 
-	if (bonding->rq)
-		dbus_message_unref(bonding->rq);
+	if (bonding->msg)
+		dbus_message_unref(bonding->msg);
 
 	if (bonding->conn)
 		dbus_connection_unref(bonding->conn);
@@ -332,9 +332,9 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 
 	/* pending bonding */
 	if (adapter->bonding) {
-		error_authentication_canceled(connection, adapter->bonding->rq);
+		error_authentication_canceled(connection, adapter->bonding->msg);
 		name_listener_remove(connection,
-					dbus_message_get_sender(adapter->bonding->rq),
+					dbus_message_get_sender(adapter->bonding->msg),
 					(name_cb_t) create_bond_req_exit,
 					adapter);
 		if (adapter->bonding->io_id)
@@ -471,7 +471,7 @@ int unregister_adapter_path(const char *path)
 
 	if (adapter->devices) {
 		g_slist_foreach(adapter->devices,
-				(GFunc) device_destroy, connection);
+				(GFunc) device_remove, connection);
 		g_slist_free(adapter->devices);
 	}
 
@@ -956,8 +956,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, const char *passkey,
 	str2ba(device->address, &dba);
 
 	if (err) {
-		if (device->temporary)
-			device_remove(connection, device);
+
 		hci_send_cmd(dev, OGF_LINK_CTL,
 				OCF_PIN_CODE_NEG_REPLY, 6, &dba);
 		goto done;
@@ -1050,6 +1049,10 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	const char *paddr = peer_addr;
 	GSList *l;
 	int id;
+	DBusMessage *reply;
+	struct device *device;
+	struct bonding_request_info *bonding;
+	void *d;
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -1074,50 +1077,60 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 						peer);
 
 	l = g_slist_find_custom(adapter->pin_reqs, peer, pin_req_cmp);
-	if (l) {
-		void *d = l->data;
-		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, l->data);
-		g_free(d);
+	if (!l || status)
+		goto proceed;
 
-		if (!status) {
-			send_adapter_signal(connection, adapter->dev_id,
-						"BondingCreated",
-						DBUS_TYPE_STRING, &paddr,
-						DBUS_TYPE_INVALID);
+	d = l->data;
+	adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, l->data);
+	g_free(d);
 
-			if (hcid_dbus_use_experimental()) {
-				struct device *device;
-				gboolean paired = TRUE;
+	send_adapter_signal(connection, adapter->dev_id, "BondingCreated",
+				DBUS_TYPE_STRING, &paddr, DBUS_TYPE_INVALID);
 
-				device = adapter_get_device(connection, adapter, paddr);
-				if (device) {
-					device->temporary = FALSE;
-					dbus_connection_emit_property_changed(connection,
-						device->path, DEVICE_INTERFACE,
-						"Paired", DBUS_TYPE_BOOLEAN, &paired);
-				}
-			}
+	if (hcid_dbus_use_experimental()) {
+		struct device *device;
+		gboolean paired = TRUE;
+
+		device = adapter_get_device(connection, adapter, paddr);
+		if (device) {
+			dbus_connection_emit_property_changed(connection,
+				device->path, DEVICE_INTERFACE,
+				"Paired", DBUS_TYPE_BOOLEAN, &paired);
 		}
 	}
 
+proceed:
+
 	release_passkey_agents(adapter, peer);
 
-	if (!adapter->bonding || bacmp(&adapter->bonding->bdaddr, peer))
+	bonding = adapter->bonding;
+	if (!bonding || bacmp(&bonding->bdaddr, peer))
 		return; /* skip: no bonding req pending */
 
-	if (adapter->bonding->cancel) {
+	if (bonding->cancel) {
 		/* reply authentication canceled */
-		error_authentication_canceled(connection, adapter->bonding->rq);
-	} else {
-		DBusMessage *reply;
-		/* reply authentication success or an error */
-		reply = new_authentication_return(adapter->bonding->rq,
-							status);
-		send_message_and_unref(connection, reply);
+		error_authentication_canceled(connection, bonding->msg);
+		goto cleanup;
 	}
 
+	/* reply authentication success or an error */
+	if (dbus_message_is_method_call(bonding->msg, ADAPTER_INTERFACE,
+					"CreateBonding")) {
+		reply = new_authentication_return(bonding->msg, status);
+		send_message_and_unref(connection, reply);
+	} else if ((device = adapter_find_device(adapter, paddr))) {
+		if (status) {
+			reply = new_authentication_return(bonding->msg, status);
+			send_message_and_unref(connection, reply);
+		} else {
+			device->temporary = FALSE;
+			device_browse(device, bonding->conn, bonding->msg);
+		}
+	}
+
+cleanup:
 	name_listener_remove(connection,
-				dbus_message_get_sender(adapter->bonding->rq),
+				dbus_message_get_sender(adapter->bonding->msg),
 				(name_cb_t) create_bond_req_exit, adapter);
 
 	if (adapter->bonding->io_id)
@@ -1996,15 +2009,15 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		if (adapter->bonding->cancel) {
 			/* reply authentication canceled */
 			error_authentication_canceled(connection,
-							adapter->bonding->rq);
+							adapter->bonding->msg);
 		} else {
-			reply = new_authentication_return(adapter->bonding->rq,
+			reply = new_authentication_return(adapter->bonding->msg,
 							HCI_AUTHENTICATION_FAILURE);
 			send_message_and_unref(connection, reply);
 		}
 
 		name_listener_remove(connection,
-					dbus_message_get_sender(adapter->bonding->rq),
+					dbus_message_get_sender(adapter->bonding->msg),
 					(name_cb_t) create_bond_req_exit,
 					adapter);
 		if (adapter->bonding->io_id)
@@ -2042,8 +2055,11 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 						device->path, DEVICE_INTERFACE,
 						"Connected", DBUS_TYPE_BOOLEAN,
 						&connected);
-			if (device->temporary)
-				device_remove(connection, device);
+			if (device->temporary) {
+				adapter->devices = g_slist_remove(adapter->devices,
+								device);
+				device_remove(device, connection);
+			}
 		}
 	}
 
