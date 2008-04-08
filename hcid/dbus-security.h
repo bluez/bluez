@@ -43,8 +43,9 @@ void cancel_passkey_agent_requests(GSList *agents, const char *path, bdaddr_t *d
 DBusHandlerResult handle_authorize_request_old(DBusConnection *conn,
 					DBusMessage *msg,
 					struct service *service,
+					const char *path,
 					const char *address,
-					const char *path);
+					const char *uuid);
 
 DBusHandlerResult cancel_authorize_request_old(DBusConnection *conn,
 						DBusMessage *msg,

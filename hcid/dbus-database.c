@@ -409,14 +409,15 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 static DBusHandlerResult request_authorization(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	const char *sender, *address, *path;
+	const char *sender, *address, *uuid;
 	struct service *service;
+	char path[MAX_PATH_LENGTH];
 	bdaddr_t bdaddr;
 	gboolean trusted;
 	int adapter_id;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-			DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID) == FALSE)
+			DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
 	sender = dbus_message_get_sender(msg);
@@ -449,7 +450,9 @@ static DBusHandlerResult request_authorization(DBusConnection *conn,
 		return send_message_and_unref(conn, reply);
 	}
 
-	return handle_authorize_request_old(conn, msg, service, address, path);
+	snprintf(path, sizeof(path), "/org/bluez/hci%d", adapter_id);
+	return handle_authorize_request_old(conn, msg,
+				service, path, address, uuid);
 }
 
 static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,

@@ -695,7 +695,7 @@ static DBusPendingCall *auth_agent_call_authorize(struct authorization_agent *ag
 						const char *adapter_path,
 						const char *service_path,
 						const char *address,
-						const char *path)
+						const char *uuid)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
@@ -711,7 +711,7 @@ static DBusPendingCall *auth_agent_call_authorize(struct authorization_agent *ag
 				DBUS_TYPE_STRING, &adapter_path,
 				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_STRING, &service_path,
-				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_STRING, &uuid,
 				DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(agent->conn, message,
@@ -728,13 +728,11 @@ static DBusPendingCall *auth_agent_call_authorize(struct authorization_agent *ag
 DBusHandlerResult handle_authorize_request_old(DBusConnection *conn,
 					DBusMessage *msg,
 					struct service *service,
+					const char *path,
 					const char *address,
 					const char *uuid)
 {
 	struct auth_agent_req *req;
-	char adapter_path[PATH_MAX];
-	bdaddr_t bdaddr;
-	int adapter_id;
 
 	debug("handle_authorize_request");
 
@@ -743,23 +741,11 @@ DBusHandlerResult handle_authorize_request_old(DBusConnection *conn,
 		return error_auth_agent_does_not_exist(conn, msg);
 	}
 
-	str2ba(address, &bdaddr);
-
-	adapter_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
-	if (adapter_id < 0)
-		return error_not_connected(conn, msg);
-
-	debug("Found %s connected to hci%d", address, adapter_id);
-
-	snprintf(adapter_path, sizeof(adapter_path), "/org/bluez/hci%d",
-			adapter_id);
-
-	req = auth_agent_req_new(msg, default_auth_agent, adapter_path,
+	req = auth_agent_req_new(msg, default_auth_agent, path,
 					address, service->object_path, uuid);
 
-	req->call = auth_agent_call_authorize(default_auth_agent, adapter_path,
-						service->object_path, address,
-						uuid);
+	req->call = auth_agent_call_authorize(default_auth_agent, path,
+					service->object_path, address, uuid);
 	if (!req->call) {
 		auth_agent_req_free(req);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
