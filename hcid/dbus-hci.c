@@ -2055,11 +2055,9 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 						device->path, DEVICE_INTERFACE,
 						"Connected", DBUS_TYPE_BOOLEAN,
 						&connected);
-			if (device->temporary) {
-				adapter->devices = g_slist_remove(adapter->devices,
-								device);
-				device_remove(device, connection);
-			}
+			if (device->temporary)
+				adapter_remove_device(connection, adapter,
+							device);
 		}
 	}
 

@@ -2306,6 +2306,28 @@ struct device *adapter_get_device(DBusConnection *conn,
 	return device;
 }
 
+void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
+				struct device *device)
+{
+	char path[MAX_PATH_LENGTH];
+	bdaddr_t src;
+
+	str2ba(adapter->address, &src);
+	delete_entry(&src, "profiles", device->address);
+	delete_entry(&src, "linkkey", device->address);
+
+	snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
+
+	dbus_connection_emit_signal(conn, path,
+			ADAPTER_INTERFACE,
+			"DeviceRemoved",
+			DBUS_TYPE_OBJECT_PATH, &device->path,
+			DBUS_TYPE_INVALID);
+
+	device_remove(device, conn);
+	adapter->devices = g_slist_remove(adapter->devices, device);
+}
+
 static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 						struct adapter *adapter)
 {
@@ -3734,7 +3756,6 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	DBusMessage *reply;
 	const char *path;
 	GSList *l;
-	bdaddr_t src;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -3751,19 +3772,7 @@ static DBusHandlerResult remove_device(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	str2ba(adapter->address, &src);
-	delete_entry(&src, "profiles", device->address);
-	delete_entry(&src, "linkkey", device->address);
-
-	dbus_connection_emit_signal(conn,
-			dbus_message_get_path(msg),
-			ADAPTER_INTERFACE,
-			"DeviceRemoved",
-			DBUS_TYPE_OBJECT_PATH, &device->path,
-			DBUS_TYPE_INVALID);
-
-	device_remove(device, conn);
-	adapter->devices = g_slist_remove(adapter->devices, device);
+	adapter_remove_device(conn, adapter, device);
 
 	return send_message_and_unref(conn, reply);
 }

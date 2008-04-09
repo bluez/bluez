@@ -118,6 +118,9 @@ struct device *adapter_get_device(DBusConnection *conn,
 
 struct device *adapter_find_device(struct adapter *adapter, const char *dest);
 
+void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
+				struct device *device);
+
 const char *major_class_str(uint32_t class);
 
 const char *minor_class_str(uint32_t class);
