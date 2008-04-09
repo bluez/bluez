@@ -36,6 +36,7 @@
 
 #include <glib.h>
 
+#include "dbus.h"
 #include "plugin.h"
 #include "server.h"
 #include "logging.h"

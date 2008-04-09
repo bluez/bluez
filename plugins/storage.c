@@ -27,6 +27,7 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include "dbus.h"
 #include "plugin.h"
 #include "logging.h"
 

@@ -27,6 +27,7 @@
 
 #include <errno.h>
 
+#include <bluetooth/bluetooth.h>
 #include <dbus/dbus.h>
 
 #include "plugin.h"
