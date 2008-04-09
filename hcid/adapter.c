@@ -2298,10 +2298,6 @@ struct device *adapter_get_device(DBusConnection *conn,
 	snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
 
 	adapter->devices = g_slist_append(adapter->devices, device);
-	dbus_connection_emit_signal(conn, path,
-				ADAPTER_INTERFACE, "DeviceCreated",
-				DBUS_TYPE_OBJECT_PATH, &device->path,
-				DBUS_TYPE_INVALID);
 
 	return device;
 }
@@ -2318,11 +2314,13 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 
 	snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
 
-	dbus_connection_emit_signal(conn, path,
-			ADAPTER_INTERFACE,
-			"DeviceRemoved",
-			DBUS_TYPE_OBJECT_PATH, &device->path,
-			DBUS_TYPE_INVALID);
+	if (!device->temporary) {
+		dbus_connection_emit_signal(conn, path,
+				ADAPTER_INTERFACE,
+				"DeviceRemoved",
+				DBUS_TYPE_OBJECT_PATH, &device->path,
+				DBUS_TYPE_INVALID);
+	}
 
 	device_remove(device, conn);
 	adapter->devices = g_slist_remove(adapter->devices, device);
@@ -3687,6 +3685,10 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 
 	for (l = adapter->devices; l; l = l->next) {
 		struct device *device = l->data;
+
+		if (device->temporary)
+			continue;
+
 		dbus_message_iter_append_basic(&array_iter,
 				DBUS_TYPE_OBJECT_PATH, &device->path);
 	}

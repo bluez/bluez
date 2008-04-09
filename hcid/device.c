@@ -1114,6 +1114,11 @@ static void browse_cb(gpointer user_data, sdp_list_t *recs, int err)
 					DBUS_TYPE_ARRAY, &uuids);
 	g_free(uuids);
 
+	dbus_connection_emit_signal(req->conn, dbus_message_get_path(req->msg),
+				ADAPTER_INTERFACE, "DeviceCreated",
+				DBUS_TYPE_OBJECT_PATH, &device->path,
+				DBUS_TYPE_INVALID);
+
 	/* Reply create device request */
 	reply = dbus_message_new_method_return(req->msg);
 	if (!reply)
