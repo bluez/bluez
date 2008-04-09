@@ -38,7 +38,7 @@ struct agent *agent_create(struct adapter *adapter, const char *name,
 
 int agent_destroy(struct agent *agent, gboolean exited);
 
-int agent_authorize(struct agent *agent, struct device *device,
+int agent_authorize(struct agent *agent, const char *path,
 			const char *uuid, agent_cb cb, void *user_data);
 
 int agent_request_passkey(struct agent *agent, struct device *device,

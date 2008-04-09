@@ -55,7 +55,6 @@
 #include "dbus-error.h"
 #include "manager.h"
 #include "adapter.h"
-#include "device.h"
 #include "dbus-hci.h"
 #include "dbus-service.h"
 #include "dbus-database.h"

@@ -31,3 +31,9 @@ struct bluetooth_plugin_desc {
 		struct bluetooth_plugin_desc bluetooth_plugin_desc = { \
 			name, init, exit \
 		};
+
+
+typedef void (*plugin_auth_cb) (DBusError *derr, void *user_data);
+int plugin_req_auth(bdaddr_t *src, bdaddr_t *dst,
+		const char *uuid, plugin_auth_cb cb, void *user_data);
+int plugin_cancel_auth(bdaddr_t *src);

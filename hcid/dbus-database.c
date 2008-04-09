@@ -406,7 +406,7 @@ static DBusHandlerResult unregister_service(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult request_authorization(DBusConnection *conn,
+static DBusHandlerResult request_authorization_old(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	const char *sender, *address, *uuid;
@@ -482,7 +482,7 @@ static DBusMethodVTable database_methods[] = {
 	{ "RemoveServiceRecord",		remove_service_record,		"u",	""	},
 	{ "RegisterService",			register_service,		"sss",	""	},
 	{ "UnregisterService",			unregister_service,		"s",	""	},
-	{ "RequestAuthorization",		request_authorization,		"ss",	""	},
+	{ "RequestAuthorization",		request_authorization_old,	"ss",	""	},
 	{ "CancelAuthorizationRequest",		cancel_authorization_request,	"ss",	""	},
 	{ NULL, NULL, NULL, NULL }
 };

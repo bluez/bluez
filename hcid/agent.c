@@ -339,7 +339,7 @@ done:
 }
 
 int agent_authorize(struct agent *agent,
-			struct device *device,
+			const char *path,
 			const char *uuid,
 			agent_cb cb,
 			void *user_data)
@@ -351,7 +351,7 @@ int agent_authorize(struct agent *agent,
 
 	req = agent_request_new(agent, AGENT_REQUEST_AUTHORIZE, cb, user_data);
 
-	req->call = agent_call_authorize(agent, device->path, uuid);
+	req->call = agent_call_authorize(agent, path, uuid);
 	if (!req->call) {
 		agent_request_free(req);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
@@ -360,7 +360,7 @@ int agent_authorize(struct agent *agent,
 	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
 	agent->request = req;
 
-	debug("authorize request was sent for %s", device->path);
+	debug("authorize request was sent for %s", path);
 
 	return 0;
 }
