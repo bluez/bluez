@@ -118,6 +118,9 @@ struct device *adapter_get_device(DBusConnection *conn,
 
 struct device *adapter_find_device(struct adapter *adapter, const char *dest);
 
+struct device *adapter_create_device(DBusConnection *conn,
+				struct adapter *adapter, const char *address);
+
 void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 				struct device *device);
 

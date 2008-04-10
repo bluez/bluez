@@ -231,10 +231,17 @@ int pending_remote_name_cancel(struct adapter *adapter)
 	return err;
 }
 
+static void device_agent_removed(struct agent *agent, struct device *device)
+{
+	if (device->agent == agent)
+		device->agent = NULL;
+}
+
 static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 							DBusMessage *msg,
 							struct adapter *adapter,
-							const char *address)
+							const char *address,
+							const char *agent_path)
 {
 	struct bonding_request_info *bonding;
 	struct device *device;
@@ -244,10 +251,18 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	bonding->conn = dbus_connection_ref(conn);
 	bonding->msg = dbus_message_ref(msg);
 
-	/* FIXME: should be removed on 4.0 */
 	if (hcid_dbus_use_experimental()) {
 		device = adapter_get_device(conn, adapter, address);
+		if (!device)
+			return NULL;
+
 		device->temporary = TRUE;
+
+		if (agent_path && strcmp(agent_path, "/"))
+			device->agent = agent_create(adapter,
+				dbus_message_get_sender(msg), agent_path,
+				NULL, (agent_remove_cb) device_agent_removed,
+				device);
 	}
 
 	str2ba(address, &bonding->bdaddr);
@@ -2277,18 +2292,11 @@ struct device *adapter_find_device(struct adapter *adapter, const char *dest)
 	return device;
 }
 
-struct device *adapter_get_device(DBusConnection *conn,
-				struct adapter *adapter, const gchar *address)
+struct device *adapter_create_device(DBusConnection *conn,
+				struct adapter *adapter, const char *address)
 {
 	struct device *device;
 	char path[MAX_PATH_LENGTH];
-
-	if (!adapter)
-		return NULL;
-
-	device = adapter_find_device(adapter, address);
-	if (device)
-		return device;
 
 	device = device_create(conn, adapter, address, NULL);
 	if (!device)
@@ -2324,6 +2332,21 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 
 	device_remove(device, conn);
 	adapter->devices = g_slist_remove(adapter->devices, device);
+}
+
+struct device *adapter_get_device(DBusConnection *conn,
+				struct adapter *adapter, const gchar *address)
+{
+	struct device *device;
+
+	if (!adapter)
+		return NULL;
+
+	device = adapter_find_device(adapter, address);
+	if (device)
+		return device;
+
+	return adapter_create_device(conn, adapter, address);
 }
 
 static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
@@ -2495,7 +2518,8 @@ static DBusHandlerResult create_bonding(DBusConnection *conn, DBusMessage *msg,
 	if (sk < 0)
 		return error_connection_attempt_failed(conn, msg, 0);
 
-	adapter->bonding = bonding_request_new(conn, msg, adapter, address);
+	adapter->bonding = bonding_request_new(conn, msg, adapter, address,
+						agent_path);
 	if (!adapter->bonding) {
 		close(sk);
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;

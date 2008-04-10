@@ -60,6 +60,7 @@
 #include "dbus-hci.h"
 #include "error.h"
 #include "glib-helper.h"
+#include "agent.h"
 
 #define MAX_DEVICES 16
 
@@ -737,6 +738,8 @@ int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr)
 
 static void device_free(struct device *device)
 {
+	if (device->agent)
+		agent_destroy(device->agent, FALSE);
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
 	g_slist_free(device->uuids);
 	g_free(device->address);

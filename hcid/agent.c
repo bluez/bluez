@@ -129,18 +129,18 @@ static void agent_request_free(struct agent_request *req)
 
 static void agent_exited(const char *name, struct agent *agent)
 {
-	struct adapter *adapter = agent->adapter;
-
 	debug("Agent %s exited without calling Unregister", name);
 
 	agent_destroy(agent, TRUE);
-	adapter->agent = NULL;
 }
 
 static void agent_free(struct agent *agent)
 {
 	if (!agent)
 		return;
+
+	if (agent->remove_cb)
+		agent->remove_cb(agent, agent->remove_cb_data);
 
 	if (agent->request) {
 		DBusError err;
@@ -188,9 +188,6 @@ static gboolean agent_timeout(struct agent *agent)
 	debug("Agent at %s, %s timed out", agent->name, agent->path);
 
 	agent->timeout = 0;
-
-	if (agent->remove_cb)
-		agent->remove_cb(agent, agent->remove_cb_data);
 
 	agent_free(agent);
 
@@ -331,11 +328,8 @@ done:
 	agent->request = NULL;
 	agent_request_free(req);
 
-	if (agent->addr) {
-		if (agent->remove_cb)
-			agent->remove_cb(agent, agent->remove_cb_data);
+	if (agent->addr)
 		agent_free(agent);
-	}
 }
 
 int agent_authorize(struct agent *agent,
@@ -454,11 +448,8 @@ done:
 	dbus_pending_call_cancel(req->call);
 	agent_request_free(req);
 
-	if (agent->addr) {
-		if (agent->remove_cb)
-			agent->remove_cb(agent, agent->remove_cb_data);
+	if (agent->addr)
 		agent_free(agent);
-	}
 }
 
 int agent_request_passkey(struct agent *agent, struct device *device,

@@ -30,6 +30,7 @@ struct device {
 	struct adapter	*adapter;
 	GSList		*uuids;
 	gboolean	temporary;
+	struct agent	*agent;
 };
 
 struct device *device_create(DBusConnection *conn, struct adapter *adapter,

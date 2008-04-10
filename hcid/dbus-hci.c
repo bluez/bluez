@@ -962,8 +962,6 @@ static void passkey_cb(struct agent *agent, DBusError *err, const char *passkey,
 		goto done;
 	}
 
-	device->temporary = FALSE;
-
 	len = strlen(passkey);
 
 	set_pin_length(&sba, len);
@@ -983,6 +981,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	char path[MAX_PATH_LENGTH], addr[18];
 	struct adapter *adapter;
 	struct device *device;
+	struct agent *agent;
 	int id;
 
 	ba2str(sba, addr);
@@ -1004,16 +1003,20 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 		goto old_fallback;
 	}
 
-	if (!adapter->agent)
-		goto old_fallback;
-
 	ba2str(&ci->bdaddr, addr);
 
-	device = adapter_get_device(connection, adapter, addr);
-	if (!device)
-		return -ENODEV;
+	device = adapter_find_device(adapter, addr);
+	agent = device && device->agent ? device->agent : adapter->agent;
+	if (!agent)
+		goto old_fallback;
 
-	return agent_request_passkey(adapter->agent, device,
+	if (!device) {
+		device = adapter_create_device(connection, adapter, addr);
+		if (!device)
+			return -ENODEV;
+	}
+
+	return agent_request_passkey(agent, device,
 					(agent_passkey_cb) passkey_cb,
 					device);
 
@@ -1093,6 +1096,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 		device = adapter_get_device(connection, adapter, paddr);
 		if (device) {
+			device->temporary = FALSE;
 			dbus_connection_emit_property_changed(connection,
 				device->path, DEVICE_INTERFACE,
 				"Paired", DBUS_TYPE_BOOLEAN, &paired);
