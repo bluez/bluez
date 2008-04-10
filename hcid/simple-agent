@@ -14,6 +14,12 @@ class Agent(dbus.service.Object):
 		mainloop.quit()
 
 	@dbus.service.method("org.bluez.Agent",
+					in_signature="os", out_signature="")
+	def Authorize(self, device, uuid):
+		print "Authorize (" + device + ", " + uuid + ")"
+		return
+
+	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="s")
 	def RequestPasskey(self, device):
 		print "RequestPasskey (" + device + ")"
