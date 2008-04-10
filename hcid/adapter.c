@@ -2310,7 +2310,7 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 
 	str2ba(adapter->address, &src);
 	delete_entry(&src, "profiles", device->address);
-	delete_entry(&src, "linkkey", device->address);
+	delete_entry(&src, "linkkeys", device->address);
 
 	snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
 
