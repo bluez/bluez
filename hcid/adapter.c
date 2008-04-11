@@ -233,8 +233,7 @@ int pending_remote_name_cancel(struct adapter *adapter)
 
 static void device_agent_removed(struct agent *agent, struct device *device)
 {
-	if (device->agent == agent)
-		device->agent = NULL;
+	device->agent = NULL;
 }
 
 static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
@@ -245,11 +244,6 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 {
 	struct bonding_request_info *bonding;
 	struct device *device;
-
-	bonding = g_new0(struct bonding_request_info, 1);
-
-	bonding->conn = dbus_connection_ref(conn);
-	bonding->msg = dbus_message_ref(msg);
 
 	if (hcid_dbus_use_experimental()) {
 		device = adapter_get_device(conn, adapter, address);
@@ -264,6 +258,11 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 				NULL, (agent_remove_cb) device_agent_removed,
 				device);
 	}
+
+	bonding = g_new0(struct bonding_request_info, 1);
+
+	bonding->conn = dbus_connection_ref(conn);
+	bonding->msg = dbus_message_ref(msg);
 
 	str2ba(address, &bonding->bdaddr);
 
@@ -3789,6 +3788,9 @@ static DBusHandlerResult create_paired_device(DBusConnection *conn,
 						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg, NULL);
+
 	return create_bonding(conn, msg, address, agent_path, data);
 }
 
@@ -3859,8 +3861,7 @@ static DBusHandlerResult find_device(DBusConnection *conn,
 
 static void agent_removed(struct agent *agent, struct adapter *adapter)
 {
-	if (adapter->agent == agent)
-		adapter->agent = NULL;
+	adapter->agent = NULL;
 }
 
 static DBusHandlerResult register_agent(DBusConnection *conn,
