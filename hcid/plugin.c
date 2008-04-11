@@ -240,9 +240,26 @@ int plugin_req_auth(bdaddr_t *src, bdaddr_t *dst,
 int plugin_cancel_auth(bdaddr_t *src)
 {
 	struct adapter *adapter = ba2adapter(src);
+	struct device *device;
+	struct agent *agent;
+	char address[18];
 
-	if (!adapter || !adapter->agent)
+	if (!adapter)
 		return -EPERM;
 
-	return agent_cancel(adapter->agent);
+	ba2str(src, address);
+	device = adapter_find_device(adapter, address);
+	if (!device)
+		return -EPERM;
+
+	/*
+	 * FIXME: Cancel fails if authorization is requested to adapter's
+	 * agent and in the meanwhile CreatePairedDevice is called.
+	 */
+
+	agent = (device->agent ? : adapter->agent);
+	if (!agent)
+		return -EPERM;
+
+	return agent_cancel(agent);
 }
