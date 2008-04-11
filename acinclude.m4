@@ -61,6 +61,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
-		CFLAGS="$CFLAGS -g"
+		CFLAGS="$CFLAGS -g -O0"
 	fi
 ])
