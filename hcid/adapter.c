@@ -2321,6 +2321,7 @@ static DBusHandlerResult remove_bonding(DBusConnection *conn, DBusMessage *msg,
 	bdaddr_t src, dst;
 	GSList *l;
 	int dev, err;
+	gboolean paired;
 
 	str2ba(adapter->address, &src);
 	str2ba(address, &dst);
@@ -2334,11 +2335,17 @@ static DBusHandlerResult remove_bonding(DBusConnection *conn, DBusMessage *msg,
 
 	/* textfile_del doesn't return an error when the key is not found */
 	str = textfile_caseget(filename, address);
-	if (!str && msg)
+	paired = str ? TRUE : FALSE;
+	g_free(str);
+
+	if (!paired && msg) {
+		hci_close_dev(dev);
 		return error_bonding_does_not_exist(conn, msg);
+	}
 
 	/* Delete the link key from storage */
 	if (textfile_casedel(filename, address) < 0 && msg) {
+		hci_close_dev(dev);
 		err = errno;
 		return error_failed_errno(conn, msg, err);
 	}
@@ -2364,7 +2371,7 @@ static DBusHandlerResult remove_bonding(DBusConnection *conn, DBusMessage *msg,
 
 	hci_close_dev(dev);
 
-	if (str) {
+	if (paired) {
 		snprintf(path, MAX_PATH_LENGTH, BASE_PATH "/hci%d",
 			adapter->dev_id);
 		dbus_connection_emit_signal(conn, path,
@@ -2377,7 +2384,7 @@ static DBusHandlerResult remove_bonding(DBusConnection *conn, DBusMessage *msg,
 	if (!device)
 		goto proceed;
 
-	if (str) {
+	if (paired) {
 		gboolean paired = FALSE;
 		dbus_connection_emit_property_changed(conn, device->path,
 					DEVICE_INTERFACE, "Paired",
