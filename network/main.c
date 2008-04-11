@@ -57,7 +57,7 @@ static void read_config(const char *file)
 {
 	GKeyFile *keyfile;
 	GError *err = NULL;
-	const char *disabled;
+	char *disabled;
 
 	keyfile = g_key_file_new();
 
@@ -79,6 +79,7 @@ static void read_config(const char *file)
 		if (strstr(disabled, "Server"))
 			conf.server_enabled = FALSE;
 	}
+	g_free(disabled);
 
 	conf.security = !g_key_file_get_boolean(keyfile, "General",
 						"DisableSecurity", &err);
