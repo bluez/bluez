@@ -1056,6 +1056,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct device *device;
 	struct bonding_request_info *bonding;
 	void *d;
+	gboolean paired = TRUE;
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -1090,17 +1091,12 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	send_adapter_signal(connection, adapter->dev_id, "BondingCreated",
 				DBUS_TYPE_STRING, &paddr, DBUS_TYPE_INVALID);
 
-	if (hcid_dbus_use_experimental()) {
-		struct device *device;
-		gboolean paired = TRUE;
-
-		device = adapter_get_device(connection, adapter, paddr);
-		if (device) {
-			device->temporary = FALSE;
-			dbus_connection_emit_property_changed(connection,
-				device->path, DEVICE_INTERFACE,
-				"Paired", DBUS_TYPE_BOOLEAN, &paired);
-		}
+	device = adapter_get_device(connection, adapter, paddr);
+	if (device) {
+		device->temporary = FALSE;
+		dbus_connection_emit_property_changed(connection, device->path,
+					DEVICE_INTERFACE, "Paired",
+					DBUS_TYPE_BOOLEAN, &paired);
 	}
 
 proceed:
@@ -1958,9 +1954,11 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	char path[MAX_PATH_LENGTH], local_addr[18], peer_addr[18];
 	const char *paddr = peer_addr;
 	struct adapter *adapter;
+	struct device *device;
 	struct active_conn_info *dev;
 	GSList *l;
 	int id;
+	gboolean connected = FALSE;
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -2049,25 +2047,18 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					DBUS_TYPE_STRING, &paddr,
 					DBUS_TYPE_INVALID);
 
-	if (hcid_dbus_use_experimental()) {
-		struct device *device;
-		gboolean connected = FALSE;
-
-		device = adapter_find_device(adapter, paddr);
-		if (device) {
-			dbus_connection_emit_property_changed(connection,
-						device->path, DEVICE_INTERFACE,
-						"Connected", DBUS_TYPE_BOOLEAN,
-						&connected);
-			if (device->temporary)
-				adapter_remove_device(connection, adapter,
-							device);
-		}
-	}
-
 	adapter->active_conn = g_slist_remove(adapter->active_conn, dev);
 	g_free(dev);
 
+	device = adapter_find_device(adapter, paddr);
+	if (device) {
+		dbus_connection_emit_property_changed(connection,
+					device->path, DEVICE_INTERFACE,
+					"Connected", DBUS_TYPE_BOOLEAN,
+					&connected);
+		if (device->temporary)
+			adapter_remove_device(connection, adapter, device);
+	}
 }
 
 int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)

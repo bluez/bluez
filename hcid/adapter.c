@@ -2310,19 +2310,106 @@ struct device *adapter_create_device(DBusConnection *conn,
 	return device;
 }
 
+static DBusHandlerResult remove_bonding(DBusConnection *conn, DBusMessage *msg,
+					const char *address, void *data)
+{
+	struct adapter *adapter = data;
+	struct device *device;
+	DBusMessage *reply;
+	char path[MAX_PATH_LENGTH], filename[PATH_MAX + 1];
+	char *str;
+	bdaddr_t src, dst;
+	GSList *l;
+	int dev, err;
+
+	str2ba(adapter->address, &src);
+	str2ba(address, &dst);
+
+	dev = hci_open_dev(adapter->dev_id);
+	if (dev < 0 && msg)
+		return error_no_such_adapter(conn, msg);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
+			"linkkeys");
+
+	/* textfile_del doesn't return an error when the key is not found */
+	str = textfile_caseget(filename, address);
+	if (!str && msg)
+		return error_bonding_does_not_exist(conn, msg);
+
+	/* Delete the link key from storage */
+	if (textfile_casedel(filename, address) < 0 && msg) {
+		err = errno;
+		return error_failed_errno(conn, msg, err);
+	}
+
+	/* Delete the link key from the Bluetooth chip */
+	hci_delete_stored_link_key(dev, &dst, 0, 1000);
+
+	/* find the connection */
+	l = g_slist_find_custom(adapter->active_conn, &dst,
+				active_conn_find_by_bdaddr);
+	if (l) {
+		struct active_conn_info *con = l->data;
+		/* Send the HCI disconnect command */
+		if ((hci_disconnect(dev, htobs(con->handle),
+					HCI_OE_USER_ENDED_CONNECTION, 500) < 0)
+					&& msg){
+			int err = errno;
+			error("Disconnect failed");
+			hci_close_dev(dev);
+			return error_failed_errno(conn, msg, err);
+		}
+	}
+
+	hci_close_dev(dev);
+
+	if (str) {
+		snprintf(path, MAX_PATH_LENGTH, BASE_PATH "/hci%d",
+			adapter->dev_id);
+		dbus_connection_emit_signal(conn, path,
+					ADAPTER_INTERFACE, "BondingRemoved",
+					DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_INVALID);
+	}
+
+	device = adapter_find_device(adapter, address);
+	if (!device)
+		goto proceed;
+
+	if (str) {
+		gboolean paired = FALSE;
+		dbus_connection_emit_property_changed(conn, device->path,
+					DEVICE_INTERFACE, "Paired",
+					DBUS_TYPE_BOOLEAN, &paired);
+	}
+
+proceed:
+	if(!msg)
+		goto done;
+
+	reply = dbus_message_new_method_return(msg);
+
+	return send_message_and_unref(conn, reply);
+
+done:
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+
 void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 				struct device *device)
 {
-	char path[MAX_PATH_LENGTH];
 	bdaddr_t src;
+	char path[MAX_PATH_LENGTH];
 
 	str2ba(adapter->address, &src);
 	delete_entry(&src, "profiles", device->address);
-	delete_entry(&src, "linkkeys", device->address);
 
-	snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
+	remove_bonding(conn, NULL, device->address, adapter);
 
 	if (!device->temporary) {
+		snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
 		dbus_connection_emit_signal(conn, path,
 				ADAPTER_INTERFACE,
 				"DeviceRemoved",
@@ -2630,91 +2717,20 @@ static DBusHandlerResult adapter_remove_bonding(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	GSList *l;
-	DBusMessage *reply;
-	char filename[PATH_MAX + 1];
-	char *addr_ptr, *str, *old_path, *new_path;
-	bdaddr_t bdaddr;
-	int dd;
+	char *address;
 
 	if (!adapter->up)
 		return error_not_ready(conn, msg);
 
 	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &addr_ptr,
+				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_INVALID))
 		return error_invalid_arguments(conn, msg, NULL);
 
-	if (check_address(addr_ptr) < 0)
+	if (check_address(address) < 0)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return error_no_such_adapter(conn, msg);
-
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
-			"linkkeys");
-
-	/* textfile_del doesn't return an error when the key is not found */
-	str = textfile_caseget(filename, addr_ptr);
-	if (!str) {
-		hci_close_dev(dd);
-		return error_bonding_does_not_exist(conn, msg);
-	}
-
-	free(str);
-
-	/* Delete the link key from storage */
-	if (textfile_casedel(filename, addr_ptr) < 0) {
-		int err = errno;
-		hci_close_dev(dd);
-		return error_failed_errno(conn, msg, err);
-	}
-
-	str2ba(addr_ptr, &bdaddr);
-
-	/* Delete the link key from the Bluetooth chip */
-	hci_delete_stored_link_key(dd, &bdaddr, 0, 1000);
-
-	/* find the connection */
-	l = g_slist_find_custom(adapter->active_conn, &bdaddr,
-			active_conn_find_by_bdaddr);
-	if (l) {
-		struct active_conn_info *con = l->data;
-		/* Send the HCI disconnect command */
-		if (hci_disconnect(dd, htobs(con->handle),
-					HCI_OE_USER_ENDED_CONNECTION, 500) < 0) {
-			int err = errno;
-			error("Disconnect failed");
-			hci_close_dev(dd);
-			return error_failed_errno(conn, msg, err);
-		}
-	}
-
-	resolve_paths(msg, &old_path, &new_path);
-
-	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
-					ADAPTER_INTERFACE, "BondingRemoved",
-					DBUS_TYPE_STRING, &addr_ptr,
-					DBUS_TYPE_INVALID);
-
-	if (new_path) {
-		struct device *device;
-		gboolean paired = FALSE;
-
-		device = adapter_find_device(adapter, addr_ptr);
-		if (device) {
-			dbus_connection_emit_property_changed(conn,
-					device->path, DEVICE_INTERFACE,
-					"Paired", DBUS_TYPE_BOOLEAN, &paired);
-		}
-	}
-
-	reply = dbus_message_new_method_return(msg);
-
-	hci_close_dev(dd);
-
-	return send_message_and_unref(conn, reply);
+	return remove_bonding(conn, msg, address, data);
 }
 
 static DBusHandlerResult adapter_has_bonding(DBusConnection *conn,
