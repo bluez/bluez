@@ -198,6 +198,7 @@ int plugin_req_auth(bdaddr_t *src, bdaddr_t *dst,
 	struct plugin_auth *auth;
 	struct adapter *adapter;
 	struct device *device;
+	struct agent *agent;
 	char address[18];
 
 	adapter = ba2adapter(src);
@@ -222,7 +223,8 @@ int plugin_req_auth(bdaddr_t *src, bdaddr_t *dst,
 	 * UUID128 in the trusted file.
 	 */
 
-	if (!adapter->agent)
+	agent = (device->agent ? : adapter->agent);
+	if (!agent)
 		return -EPERM;
 
 	auth = g_try_new0(struct plugin_auth, 1);
@@ -232,7 +234,7 @@ int plugin_req_auth(bdaddr_t *src, bdaddr_t *dst,
 	auth->cb = cb;
 	auth->user_data = user_data;
 
-	return agent_authorize(adapter->agent, device->path, uuid, agent_auth_cb, auth);
+	return agent_authorize(agent, device->path, uuid, agent_auth_cb, auth);
 }
 
 int plugin_cancel_auth(bdaddr_t *src)
