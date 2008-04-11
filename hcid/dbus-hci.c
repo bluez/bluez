@@ -1093,7 +1093,17 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	device = adapter_get_device(connection, adapter, paddr);
 	if (device) {
+		char *ptr = path + ADAPTER_PATH_INDEX;
+
 		device->temporary = FALSE;
+
+		dbus_connection_emit_signal(connection, ptr,
+					ADAPTER_INTERFACE,
+					"DeviceCreated",
+					DBUS_TYPE_OBJECT_PATH,
+					&device->path,
+					DBUS_TYPE_INVALID);
+
 		dbus_connection_emit_property_changed(connection, device->path,
 					DEVICE_INTERFACE, "Paired",
 					DBUS_TYPE_BOOLEAN, &paired);
