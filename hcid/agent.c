@@ -200,6 +200,9 @@ struct agent *agent_create(struct adapter *adapter, const char *name,
 {
 	struct agent *agent;
 
+	if (adapter->agent && g_str_equal(adapter->agent->name, name))
+		return NULL;
+
 	agent = g_new0(struct agent, 1);
 
 	agent->adapter = adapter;
