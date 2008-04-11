@@ -116,9 +116,9 @@ AC_DEFUN([AC_PATH_GSTREAMER], [
 ])
 
 AC_DEFUN([AC_PATH_PULSE], [
-        PKG_CHECK_MODULES(PULSE, libpulse, pulse_found=yes, pulse_found=no)
-        AC_SUBST(PULSE_CFLAGS)
-        AC_SUBST(PULSE_LIBS)
+	PKG_CHECK_MODULES(PULSE, libpulse, pulse_found=yes, pulse_found=no)
+	AC_SUBST(PULSE_CFLAGS)
+	AC_SUBST(PULSE_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_ALSA], [
@@ -270,7 +270,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		dund_enable=${enableval}
 	])
 
-	
 	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
 		test_enable=${enableval}
 	])
@@ -324,7 +323,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
-		CFLAGS="$CFLAGS -g"
+		CFLAGS="$CFLAGS -g -O0"
 	fi
 
 	if (test "${pie_enable}" = "yes" && test "${ac_cv_prog_cc_pie}" = "yes"); then
