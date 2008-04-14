@@ -46,6 +46,7 @@
 
 #include "logging.h"
 #include "dbus.h"
+#include "plugin.h"
 #include "error.h"
 #include "textfile.h"
 #include "dbus-helper.h"
@@ -289,20 +290,15 @@ static void cancel_authorization(struct setup_session *s)
 	send_message_and_unref(connection, msg);
 }
 
-static void authorization_callback(DBusPendingCall *pcall, void *data)
+static void connection_setup(struct setup_session *s)
 {
-	struct setup_session *s = data;
 	struct network_server *ns = NULL;
-	DBusMessage *reply = dbus_pending_call_steal_reply(pcall);
 	char path[MAX_PATH_LENGTH], devname[16];
 	uint16_t response = BNEP_CONN_NOT_ALLOWED;
-	DBusError derr;
 	const char *bridge;
 
-	if (!g_slist_find(setup_sessions, s)) {
-		dbus_message_unref(reply);
+	if (!g_slist_find(setup_sessions, s))
 		return;
-	}
 
 	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(s->dst_role));
 	dbus_connection_get_object_user_data(connection, path, (void *) &ns);
@@ -310,17 +306,6 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	/* Server can be disabled in the meantime */
 	if (ns == NULL || ns->enable == FALSE)
 		goto failed;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("Access denied: %s", derr.message);
-		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
-			debug("Canceling authorization request");
-			cancel_authorization(s);
-		}
-		dbus_error_free(&derr);
-		goto failed;
-	}
 
 	memset(devname, 0, 16);
 	strncpy(devname, prefix, strlen(prefix));
@@ -349,7 +334,6 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 
 failed:
 	send_bnep_ctrl_rsp(s->nsk, response);
-	dbus_message_unref(reply);
 }
 
 static void setup_watch_destroy(void *data)
@@ -377,24 +361,61 @@ static void setup_watch_destroy(void *data)
 	setup_free(s);
 }
 
-static int authorize_connection(struct setup_session *s)
+static void req_auth_cb_old(DBusPendingCall *pcall, void *user_data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(pcall);
+	struct setup_session *s = user_data;
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("Access denied: %s", derr.message);
+		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
+			cancel_authorization(s);
+		}
+		dbus_error_free(&derr);
+	} else
+		connection_setup(s);
+
+	dbus_message_unref(reply);
+}
+
+static void req_auth_cb(DBusError *derr, void *user_data)
+{
+	struct setup_session *s = user_data;
+
+	if (!g_slist_find(setup_sessions, s))
+		return;
+
+	if (derr) {
+		error("Access denied: %s", derr->message);
+		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
+			bdaddr_t dst;
+			str2ba(s->address, &dst);
+			plugin_cancel_auth(&dst);
+		}
+	} else 
+		connection_setup(s);
+
+	setup_watch_destroy(s);
+}
+
+static int req_auth_old(const char *address, const char *uuid, void *user_data)
 {
 	DBusMessage *msg;
 	DBusPendingCall *pending;
-	const char *uuid;
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 				"org.bluez.Database", "RequestAuthorization");
 	if (!msg) {
-		error("Unable to allocat new RequestAuthorization method call");
+		error("Unable to allocate new RequestAuthorization method call");
 		return -ENOMEM;
 	}
 
-	uuid = bnep_uuid(s->dst_role);
-	debug("Requesting authorization for %s UUID:%s", s->address, uuid);
+	debug("Requesting authorization for %s UUID:%s", address, uuid);
 
 	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &s->address,
+			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
@@ -406,11 +427,27 @@ static int authorize_connection(struct setup_session *s)
 	}
 
 	dbus_pending_call_set_notify(pending,
-			authorization_callback, s, setup_watch_destroy);
+			req_auth_cb_old, user_data, setup_watch_destroy);
 	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 
 	return 0;
+}
+
+static int authorize_connection(bdaddr_t *src, struct setup_session *s)
+{
+	const char *uuid;
+	bdaddr_t dst;
+	int ret_val;
+
+	uuid =  bnep_uuid(s->dst_role);
+	str2ba(s->address, &dst);
+
+	ret_val = plugin_req_auth(src, &dst, uuid, req_auth_cb, s);
+	if (ret_val < 0)
+		return req_auth_old(s->address, uuid, s);
+	else
+		return ret_val;
 }
 
 static uint16_t inline chk_role(uint16_t dst_role, uint16_t src_role)
@@ -509,7 +546,7 @@ static gboolean connect_setup_event(GIOChannel *chan,
 	}
 
 	/* Wait authorization before reply success */
-	if (authorize_connection(s) < 0) {
+	if (authorize_connection(&ns->src, s) < 0) {
 		response = BNEP_CONN_NOT_ALLOWED;
 		goto reply;
 	}
