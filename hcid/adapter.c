@@ -3766,12 +3766,6 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 
 	device_browse(device, conn, msg);
 
-	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
-				ADAPTER_INTERFACE,
-				"DeviceCreated",
-				DBUS_TYPE_OBJECT_PATH, &device->path,
-				DBUS_TYPE_INVALID);
-
 	adapter->devices = g_slist_append(adapter->devices, device);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
