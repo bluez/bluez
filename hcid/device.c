@@ -1070,7 +1070,7 @@ static void browse_cb(gpointer user_data, sdp_list_t *recs, int err)
 	DBusMessage *reply;
 
 	if (err < 0)
-		return;
+		goto proceed;
 
 	for (seq = recs; seq; seq = next) {
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
@@ -1117,6 +1117,7 @@ static void browse_cb(gpointer user_data, sdp_list_t *recs, int err)
 					DBUS_TYPE_ARRAY, &uuids);
 	g_free(uuids);
 
+proceed:
 	dbus_connection_emit_signal(req->conn, dbus_message_get_path(req->msg),
 				ADAPTER_INTERFACE, "DeviceCreated",
 				DBUS_TYPE_OBJECT_PATH, &device->path,
@@ -1125,13 +1126,14 @@ static void browse_cb(gpointer user_data, sdp_list_t *recs, int err)
 	/* Reply create device request */
 	reply = dbus_message_new_method_return(req->msg);
 	if (!reply)
-		return;
+		goto fail;
 
 	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
 					DBUS_TYPE_INVALID);
 
 	send_message_and_unref(req->conn, reply);
 
+fail:
 	dbus_message_unref(req->msg);
 	dbus_connection_unref(req->conn);
 	g_free(req);
