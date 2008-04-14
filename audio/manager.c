@@ -63,6 +63,7 @@
 #include "control.h"
 #include "manager.h"
 #include "sdpd.h"
+#include "plugin.h"
 
 typedef enum {
 	HEADSET	= 1 << 0,
@@ -1286,11 +1287,9 @@ static sdp_record_t *hfp_ag_record(uint8_t ch, uint32_t feat)
 	return record;
 }
 
-static void auth_cb(DBusPendingCall *call, void *data)
+static void auth_cb(DBusError *derr, void *user_data)
 {
-	struct device *device = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError err;
+	struct device *device = user_data;
 	const char *uuid;
 
 	if (get_hfp_active(device))
@@ -1298,14 +1297,14 @@ static void auth_cb(DBusPendingCall *call, void *data)
 	else
 		uuid = HSP_AG_UUID;
 
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, reply)) {
-		error("Access denied: %s", err.message);
-		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
+	if (derr && dbus_error_is_set(derr)) {
+		error("Access denied: %s", derr->message);
+		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			manager_cancel_authorize(&device->dst, uuid, NULL);
+			if (plugin_cancel_auth(&device->dst) < 0)
+				manager_cancel_authorize(&device->dst, uuid,
+							NULL);
 		}
-		dbus_error_free(&err);
 
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 	} else {
@@ -1318,6 +1317,17 @@ static void auth_cb(DBusPendingCall *call, void *data)
 		debug("Accepted headset connection from %s for %s",
 						hs_address, device->path);
 	}
+}
+
+static void auth_cb_old(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_error_init(&err);
+	dbus_set_error_from_message(&err, reply);
+	auth_cb(&err, data);
+	dbus_error_free(&err);
 
 	dbus_message_unref(reply);
 }
@@ -1378,9 +1388,14 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	if (!manager_authorize(&device->dst, uuid, auth_cb, device, NULL))
+	if (plugin_req_auth(&device->src, &device->dst, uuid, auth_cb,
+				device) == 0)
+		goto proceed;
+	else if (!manager_authorize(&device->dst, uuid, auth_cb_old, device,
+				NULL))
 		goto failed;
 
+proceed:
 	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
 	return TRUE;
