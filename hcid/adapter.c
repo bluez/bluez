@@ -3755,6 +3755,9 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
+	if (check_address(address) < 0)
+		return error_invalid_arguments(conn, msg, NULL);
+
 	if (adapter_find_device(adapter, address))
 		return error_already_exists(conn, msg, "Device already exists");
 
