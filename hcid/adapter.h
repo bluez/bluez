@@ -136,3 +136,5 @@ GSList *service_classes_str(uint32_t class);
 int pending_remote_name_cancel(struct adapter *adapter);
 
 void dc_pending_timeout_cleanup(struct adapter *adapter);
+
+void remove_pending_device(struct adapter *adapter);

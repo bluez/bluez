@@ -333,6 +333,9 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 	/* pending bonding */
 	if (adapter->bonding) {
 		error_authentication_canceled(connection, adapter->bonding->msg);
+
+		remove_pending_device(adapter);
+
 		name_listener_remove(connection,
 					dbus_message_get_sender(adapter->bonding->msg),
 					(name_cb_t) create_bond_req_exit,
@@ -2434,6 +2437,8 @@ void create_bond_req_exit(const char *name, struct adapter *adapter)
 		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
 		g_free(p);
 	}
+
+	remove_pending_device(adapter);
 
 	g_io_channel_close(adapter->bonding->io);
 	if (adapter->bonding->io_id)

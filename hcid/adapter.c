@@ -2442,6 +2442,19 @@ struct device *adapter_get_device(DBusConnection *conn,
 	return adapter_create_device(conn, adapter, address);
 }
 
+void remove_pending_device(struct adapter *adapter)
+{
+	struct device *device;
+	char address[18];
+
+	ba2str(&adapter->bonding->bdaddr, address);
+	device = adapter_find_device(adapter, address);
+	if (!device)
+		return;
+
+	adapter_remove_device(adapter->bonding->conn, adapter, device);
+}
+
 static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 						struct adapter *adapter)
 {
@@ -2561,6 +2574,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 
 failed:
 	g_io_channel_close(io);
+	remove_pending_device(adapter);
 
 cleanup:
 	name_listener_remove(adapter->bonding->conn,
