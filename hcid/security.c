@@ -187,6 +187,38 @@ static void check_pending_hci_req(int dev_id, int event)
 	hci_req_queue_process(dev_id);
 }
 
+static int get_handle(int dev, bdaddr_t *sba, bdaddr_t *dba, uint16_t *handle)
+{
+	struct hci_conn_list_req *cl;
+	struct hci_conn_info *ci;
+	char addr[18];
+	int i;
+
+	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
+
+	ba2str(sba, addr);
+	cl->dev_id = hci_devid(addr);
+	cl->conn_num = 10;
+	ci = cl->conn_info;
+
+	if (ioctl(dev, HCIGETCONNLIST, (void *) cl) < 0) {
+		g_free(cl);
+		return -EIO;
+	}
+
+	for (i = 0; i < cl->conn_num; i++, ci++) {
+		if (bacmp(&ci->bdaddr, dba) == 0) {
+			*handle = ci->handle;
+			g_free(cl);
+			return 0;
+		}
+	}
+
+	g_free(cl);
+
+	return -ENOENT;
+}
+
 static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
 {
 	struct hci_conn_list_req *cl;
@@ -270,17 +302,27 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
 	char sa[18], da[18];
-	int dev_id;
+	int dev_id, err;
 
 	ba2str(sba, sa); ba2str(dba, da);
 	info("link_key_notify (sba=%s, dba=%s)", sa, da);
 
 	dev_id = hci_devid(sa);
 
-	write_link_key(sba, dba, evt->link_key, evt->key_type,
+	err = write_link_key(sba, dba, evt->link_key, evt->key_type,
 						io_data[dev_id].pin_length);
+	if (err < 0) {
+		uint16_t handle;
 
-	hcid_dbus_bonding_process_complete(sba, dba, 0);
+		error("write_link_key: %s (%d)", strerror(-err), -err);
+
+		hcid_dbus_bonding_process_complete(sba, dba, HCI_MEMORY_FULL);
+
+		if (get_handle(dev, sba, dba, &handle) == 0)
+			hci_disconnect(dev, htobs(handle),
+					HCI_OE_LOW_RESOURCES, 500);
+	} else
+		hcid_dbus_bonding_process_complete(sba, dba, 0);
 
 	io_data[dev_id].pin_length = -1;
 }
