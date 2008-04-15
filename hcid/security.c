@@ -672,7 +672,8 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 	if (evt->link_type != ACL_LINK)
 		return;
 
-	hcid_dbus_conn_complete(sba, evt->status, evt->handle, &evt->bdaddr);
+	hcid_dbus_conn_complete(sba, evt->status, btohs(evt->handle),
+				&evt->bdaddr);
 
 	if (evt->status)
 		return;
@@ -715,7 +716,8 @@ static inline void disconn_complete(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_disconn_complete *evt = ptr;
 
-	hcid_dbus_disconn_complete(sba, evt->status, evt->handle, evt->reason);
+	hcid_dbus_disconn_complete(sba, evt->status, btohs(evt->handle),
+					evt->reason);
 }
 
 static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
@@ -723,7 +725,7 @@ static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
 	evt_auth_complete *evt = ptr;
 	bdaddr_t dba;
 
-	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0) 
+	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0)
 		return;
 
 	if (evt->status)

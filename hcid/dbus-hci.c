@@ -1998,7 +1998,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	}
 
 	l = g_slist_find_custom(adapter->active_conn, &handle,
-			active_conn_find_by_handle);
+				active_conn_find_by_handle);
 
 	if (!l)
 		return;

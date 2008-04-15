@@ -2176,7 +2176,7 @@ gboolean dc_pending_timeout_handler(void *data)
 	}
 
 	/* Send the HCI disconnect command */
-	if (hci_disconnect(dd, pending_dc->conn_handle,
+	if (hci_disconnect(dd, htobs(pending_dc->conn_handle),
 				HCI_OE_USER_ENDED_CONNECTION,
 				500) < 0) {
 		int err = errno;
