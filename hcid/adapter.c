@@ -250,8 +250,6 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 		if (!device)
 			return NULL;
 
-		device->temporary = TRUE;
-
 		if (agent_path && strcmp(agent_path, "/"))
 			device->agent = agent_create(adapter,
 				dbus_message_get_sender(msg), agent_path,
@@ -2452,7 +2450,8 @@ void remove_pending_device(struct adapter *adapter)
 	if (!device)
 		return;
 
-	adapter_remove_device(adapter->bonding->conn, adapter, device);
+	if (device->temporary)
+		adapter_remove_device(adapter->bonding->conn, adapter, device);
 }
 
 static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
