@@ -80,39 +80,39 @@
 #define SBC_SAMPLING_FREQ_16000		(1 << 3)
 #define SBC_SAMPLING_FREQ_32000		(1 << 2)
 #define SBC_SAMPLING_FREQ_44100		(1 << 1)
-#define SBC_SAMPLING_FREQ_48000		1
+#define SBC_SAMPLING_FREQ_48000		(1 << 0)
 
 #define SBC_CHANNEL_MODE_MONO		(1 << 3)
 #define SBC_CHANNEL_MODE_DUAL_CHANNEL	(1 << 2)
 #define SBC_CHANNEL_MODE_STEREO		(1 << 1)
-#define SBC_CHANNEL_MODE_JOINT_STEREO	1
+#define SBC_CHANNEL_MODE_JOINT_STEREO	(1 << 0)
 
 #define SBC_BLOCK_LENGTH_4		(1 << 3)
 #define SBC_BLOCK_LENGTH_8		(1 << 2)
 #define SBC_BLOCK_LENGTH_12		(1 << 1)
-#define SBC_BLOCK_LENGTH_16		1
+#define SBC_BLOCK_LENGTH_16		(1 << 0)
 
 #define SBC_SUBBANDS_4			(1 << 1)
-#define SBC_SUBBANDS_8			1
+#define SBC_SUBBANDS_8			(1 << 0)
 
 #define SBC_ALLOCATION_SNR		(1 << 1)
-#define SBC_ALLOCATION_LOUDNESS		1
+#define SBC_ALLOCATION_LOUDNESS		(1 << 0)
 
 #define MPEG_CHANNEL_MODE_MONO		(1 << 3)
 #define MPEG_CHANNEL_MODE_DUAL_CHANNEL	(1 << 2)
 #define MPEG_CHANNEL_MODE_STEREO	(1 << 1)
-#define MPEG_CHANNEL_MODE_JOINT_STEREO	1
+#define MPEG_CHANNEL_MODE_JOINT_STEREO	(1 << 0)
 
 #define MPEG_LAYER_MP1			(1 << 2)
 #define MPEG_LAYER_MP2			(1 << 1)
-#define MPEG_LAYER_MP3			1
+#define MPEG_LAYER_MP3			(1 << 0)
 
 #define MPEG_SAMPLING_FREQ_16000	(1 << 5)
 #define MPEG_SAMPLING_FREQ_22050	(1 << 4)
 #define MPEG_SAMPLING_FREQ_24000	(1 << 3)
 #define MPEG_SAMPLING_FREQ_32000	(1 << 2)
 #define MPEG_SAMPLING_FREQ_44100	(1 << 1)
-#define MPEG_SAMPLING_FREQ_48000	1
+#define MPEG_SAMPLING_FREQ_48000	(1 << 0)
 
 #define MPEG_BIT_RATE_VBR		0x8000
 #define MPEG_BIT_RATE_320000		0x4000
@@ -380,7 +380,8 @@ static void print_sbc(struct sbc_codec_cap *sbc)
 	if (sbc->block_length & SBC_BLOCK_LENGTH_16)
 		printf("16 ");
 
-	printf("\n\t\tBitpool Range: %d-%d\n", sbc->min_bitpool, sbc->max_bitpool);
+	printf("\n\t\tBitpool Range: %d-%d\n",
+				sbc->min_bitpool, sbc->max_bitpool);
 }
 
 static void print_media_codec(struct avdtp_media_codec_capability *cap)
@@ -389,11 +390,9 @@ static void print_media_codec(struct avdtp_media_codec_capability *cap)
 	case A2DP_CODEC_SBC:
 		print_sbc((void *) cap);
 		break;
-
 	case A2DP_CODEC_MPEG12:
 		print_mpeg12((void *) cap);
 		break;
-
 	default:
 		printf("\tMedia Codec: Unknown\n");
 	}
@@ -425,6 +424,7 @@ static void print_caps(void *data, int size)
 			print_media_codec((void *) cap->data);
 			break;
 		}
+
 		processed += 2 + cap->length;
 		data += 2 + cap->length;
 	}
@@ -457,7 +457,8 @@ static int avdtp_send(int sk, void *data, int len)
 		ret = -EIO;
 
 	if (ret < 0) {
-		printf("Unable to send message: %s (%d)\n", strerror(-ret), -ret);
+		printf("Unable to send message: %s (%d)\n",
+						strerror(-ret), -ret);
 		return ret;
 	}
 
@@ -471,8 +472,8 @@ static int avdtp_receive(int sk, void *data, int len)
 	ret = recv(sk, data, len, 0);
 
 	if (ret < 0) {
-		printf("Unable to receive message: %s (%d)\n", strerror(errno),
-			errno);
+		printf("Unable to receive message: %s (%d)\n",
+						strerror(errno), errno);
 		return -errno;
 	}
 
@@ -500,7 +501,7 @@ int avdtp_get_caps(int sk, int seid)
 		return ret;
 
 	if (ret < (sizeof(struct getcap_resp) + 4 +
-				sizeof(struct avdtp_media_codec_capability))) {
+			sizeof(struct avdtp_media_codec_capability))) {
 		printf("Invalid capabilities\n");
 		return -1;
 	}
@@ -537,11 +538,9 @@ int avdtp_discover(int sk)
 		case AVDTP_SEP_TYPE_SOURCE:
 			type = "Source";
 			break;
-
 		case AVDTP_SEP_TYPE_SINK:
 			type = "Sink";
 			break;
-
 		default:
 			type = "Invalid";
 		}
@@ -550,21 +549,20 @@ int avdtp_discover(int sk)
 		case AVDTP_MEDIA_TYPE_AUDIO:
 			media = "Audio";
 			break;
-
 		case AVDTP_MEDIA_TYPE_VIDEO:
-			media = "Audio";
+			media = "Video";
 			break;
-
 		case AVDTP_MEDIA_TYPE_MULTIMEDIA:
-			media = "Audio";
+			media = "Multimedia";
 			break;
-
 		default:
 			media = "Invalid";
 		}
 
-		printf("Stream End-Point #%d: %s %s %s\n", discover->seps[i].seid, media, type,
-			discover->seps[i].inuse ? "*" : "");
+		printf("Stream End-Point #%d: %s %s %s\n",
+					discover->seps[i].seid, media, type,
+					discover->seps[i].inuse ? "*" : "");
+
 		avdtp_get_caps(sk, discover->seps[i].seid);
 	}
 
