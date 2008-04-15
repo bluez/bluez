@@ -60,7 +60,6 @@
 #include "manager.h"
 #include "sdpd.h"
 
-#define BASE_UUID			"00000000-0000-1000-8000-00805F9B34FB"
 #define SERIAL_PROXY_INTERFACE		"org.bluez.serial.Proxy"
 #define BUF_SIZE			1024
 
@@ -729,6 +728,7 @@ static int get_handles(struct pending_connect *pc, const char *uuid,
 static int pattern2uuid128(const char *pattern, char *uuid, size_t size)
 {
 	uint16_t cls;
+	int i;
 
 	/* Friendly name */
 	cls = str2class(pattern);
@@ -742,15 +742,20 @@ static int pattern2uuid128(const char *pattern, char *uuid, size_t size)
 	}
 
 	/* UUID 128*/
-	if ((strlen(pattern) == 36) &&
-		(strncasecmp(BASE_UUID, pattern, 3) == 0) &&
-		(strncasecmp(BASE_UUID + 8, pattern + 8, 28) == 0)) {
+	if (strlen(pattern) != 36)
+		return -EINVAL;
 
-		strncpy(uuid, pattern, size);
-		return 0;
+	for (i = 0; i < 36; i++) {
+		if (i == 8 || i == 13 || i == 18 || i == 23) {
+			if (pattern[i] != '-')
+				return -EINVAL;
+
+		} else if (!g_ascii_isxdigit(pattern[i]))
+			return -EINVAL;
 	}
 
-	return -EINVAL;
+	strncpy(uuid, pattern, size);
+	return 0;
 }
 
 static int pattern2long(const char *pattern, long *pval)
