@@ -1084,12 +1084,15 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 						peer);
 
 	l = g_slist_find_custom(adapter->pin_reqs, peer, pin_req_cmp);
-	if (!l || status)
+	if (!l)
 		goto proceed;
 
 	d = l->data;
 	adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, l->data);
 	g_free(d);
+
+	if (status)
+		goto proceed;
 
 	send_adapter_signal(connection, adapter->dev_id, "BondingCreated",
 				DBUS_TYPE_STRING, &paddr, DBUS_TYPE_INVALID);
