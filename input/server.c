@@ -46,6 +46,10 @@
 #include "server.h"
 #include "storage.h"
 
+#include "plugin.h"
+
+static const char* HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";
+
 static DBusConnection *connection = NULL;
 
 static void cancel_authorization(const char *addr)
@@ -101,6 +105,22 @@ static void authorization_callback(DBusPendingCall *pcall, void *data)
 	dbus_message_unref(reply);
 }
 
+static void auth_callback(DBusError *derr, void *user_data)
+{
+	struct authorization_data *auth = user_data;
+
+	if (derr) {
+		error("Access denied: %s", derr->message);
+		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY))
+			plugin_cancel_auth(&auth->dst);
+
+		input_device_close_channels(&auth->src, &auth->dst);
+	} else
+		input_device_connadd(&auth->src, &auth->dst);
+
+	g_free(auth);
+}
+
 static int authorize_device(bdaddr_t *src, bdaddr_t *dst)
 {
 	struct authorization_data *auth;
@@ -108,12 +128,24 @@ static int authorize_device(bdaddr_t *src, bdaddr_t *dst)
 	DBusPendingCall *pending;
 	char addr[18];
 	const char *paddr = addr;
-	const char *uuid = ""; /* FIXME: */
+	int retval;
 
+	auth = g_new0(struct authorization_data, 1);
+	bacpy(&auth->src, src);
+	bacpy(&auth->dst, dst);
+
+	retval = plugin_req_auth(src, dst, HID_UUID,
+				auth_callback, auth);
+	if (retval < 0)
+		goto fallback;
+
+	return retval;
+
+fallback:
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 				"org.bluez.Database", "RequestAuthorization");
 	if (!msg) {
-		error("Unable to allocat new RequestAuthorization method call");
+		error("Unable to allocate new RequestAuthorization method call");
 		return -ENOMEM;
 	}
 
@@ -121,16 +153,13 @@ static int authorize_device(bdaddr_t *src, bdaddr_t *dst)
 	ba2str(dst, addr);
 	dbus_message_append_args(msg,
 			DBUS_TYPE_STRING, &paddr,
-			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_STRING, &HID_UUID,
 			DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(connection,
 				msg, &pending, -1) == FALSE)
 		return -EACCES;
 
-	auth = g_new0(struct authorization_data, 1);
-	bacpy(&auth->src, src);
-	bacpy(&auth->dst, dst);
 	dbus_pending_call_set_notify(pending, authorization_callback, auth, g_free);
 	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
