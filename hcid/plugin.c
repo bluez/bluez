@@ -106,7 +106,7 @@ gboolean plugin_init(void)
 			continue;
 		}
 
-		module = g_module_open(filename, 0);
+		module = g_module_open(filename, G_MODULE_BIND_LOCAL);
 		if (module == NULL) {
 			error("Can't load plugin: %s", g_module_error());
 			g_free(filename);
@@ -179,7 +179,7 @@ static struct adapter *ba2adapter(bdaddr_t *src)
 	if (dbus_connection_get_object_user_data(conn,
 			path, (void *) &adapter) == FALSE)
 		return NULL;
-	
+
 	return adapter;
 }
 
@@ -217,7 +217,7 @@ int plugin_req_auth(bdaddr_t *src, bdaddr_t *dst,
 	if (!device)
 		return -EPERM;
 
-	/* 
+	/*
 	 * FIXME: Trusted device? Currently, service are based on a friendly
 	 * name, it is necessary convert UUID128 to friendly name or store the
 	 * UUID128 in the trusted file.

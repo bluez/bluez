@@ -344,7 +344,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AM_CONDITIONAL(GLIB, true)
 	else
 		AC_SUBST([GLIB_CFLAGS], ['-I$(top_srcdir)/eglib'])
-		AC_SUBST([GLIB_LIBS], ['$(top_builddir)/eglib/libeglib.la -ldl'])
+		AC_SUBST([GLIB_LIBS], ['$(top_builddir)/eglib/libeglib.la -ldl -rdynamic'])
 		AC_SUBST([GMODULE_CFLAGS], [''])
 		AC_SUBST([GMODULE_LIBS], [''])
 		AM_CONDITIONAL(GLIB, false)
