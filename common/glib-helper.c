@@ -26,16 +26,25 @@
 #endif
 
 #include <errno.h>
+#include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/rfcomm.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
 #include "glib-helper.h"
+
+struct io_context {
+	GIOChannel		*io;
+	bt_io_callback_t	cb;
+	gpointer		user_data;
+};
 
 struct search_context {
 	bdaddr_t		src;
@@ -44,6 +53,7 @@ struct search_context {
 	bt_callback_t		cb;
 	bt_destroy_t		destroy;
 	gpointer		user_data;
+	uuid_t			uuid;
 };
 
 static void search_context_cleanup(struct search_context *ctxt)
@@ -94,7 +104,8 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 	} while (scanned < size);
 
 done:
-	ctxt->cb(ctxt->user_data, recs, err);
+	if (ctxt->cb)
+		ctxt->cb(ctxt->user_data, recs, err);
 
 	search_context_cleanup(ctxt);
 }
@@ -117,7 +128,8 @@ static gboolean search_process_cb(GIOChannel *chan,
 
 failed:
 	if (err) {
-		ctxt->cb(ctxt->user_data, NULL, -err);
+		if (ctxt->cb)
+			ctxt->cb(ctxt->user_data, NULL, -err);
 		search_context_cleanup(ctxt);
 	}
 
@@ -129,7 +141,6 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond, gpointer user
 	struct search_context *ctxt = user_data;
 	sdp_list_t *search, *attrids;
 	uint32_t range = 0x0000ffff;
-	uuid_t uuid;
 	socklen_t len;
 	int sk, err = 0;
 
@@ -149,8 +160,7 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond, gpointer user
 		goto failed;
 	}
 
-	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
-	search = sdp_list_append(NULL, &uuid);
+	search = sdp_list_append(NULL, &ctxt->uuid);
 	attrids = sdp_list_append(NULL, &range);
 	if (sdp_service_search_attr_async(ctxt->session,
 				search, SDP_ATTR_REQ_RANGE, attrids) < 0) {
@@ -169,45 +179,75 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond, gpointer user
 	return FALSE;
 
 failed:
-	ctxt->cb(ctxt->user_data, NULL, -err);
+	if (ctxt->cb)
+		ctxt->cb(ctxt->user_data, NULL, -err);
 	search_context_cleanup(ctxt);
 
 	return FALSE;
 }
 
-int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
-		bt_callback_t cb, void *user_data, bt_destroy_t destroy)
+static int create_search_context(struct search_context **ctxt,
+				const bdaddr_t *src, const bdaddr_t *dst,
+				uuid_t uuid)
 {
-	struct search_context *ctxt;
 	sdp_session_t *s;
 	GIOChannel *chan;
 
-	if (!cb)
+	if (!ctxt)
 		return -EINVAL;
 
 	s = sdp_connect(src, dst, SDP_NON_BLOCKING);
 	if (!s)
 		return -errno;
 
-	ctxt = g_try_malloc0(sizeof(struct search_context));
-	if (!ctxt) {
+	*ctxt = g_try_malloc0(sizeof(struct search_context));
+	if (!*ctxt) {
 		sdp_close(s);
 		return -ENOMEM;
 	}
 
-	bacpy(&ctxt->src, src);
-	bacpy(&ctxt->dst, dst);
-	ctxt->session	= s;
+	bacpy(&(*ctxt)->src, src);
+	bacpy(&(*ctxt)->dst, dst);
+	(*ctxt)->session = s;
+	(*ctxt)->uuid = uuid;
+
+	chan = g_io_channel_unix_new(sdp_get_socket(s));
+	g_io_add_watch(chan, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			connect_watch, *ctxt);
+	g_io_channel_unref(chan);
+
+	return 0;
+}
+
+int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
+			uuid_t uuid, bt_callback_t cb, void *user_data,
+			bt_destroy_t destroy)
+{
+	struct search_context *ctxt;
+	int err;
+
+	if (!cb)
+		return -EINVAL;
+
+	err = create_search_context(&ctxt, src, dst, uuid);
+	if (err < 0)
+		return err;
+
 	ctxt->cb	= cb;
 	ctxt->destroy	= destroy;
 	ctxt->user_data	= user_data;
 
-	chan = g_io_channel_unix_new(sdp_get_socket(s));
-	g_io_add_watch(chan, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			connect_watch, ctxt);
-	g_io_channel_unref(chan);
-
 	return 0;
+}
+
+int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
+		bt_callback_t cb, void *user_data, bt_destroy_t destroy)
+{
+	uuid_t uuid;
+
+	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
+
+	return bt_search_service(src, dst, uuid, cb, user_data, destroy);
 }
 
 char *bt_uuid2string(uuid_t *uuid)
@@ -300,4 +340,132 @@ GSList *bt_string2list(const gchar *str)
 	g_free(uuids);
 
 	return l;
+}
+
+static gboolean rfcomm_connect_cb(GIOChannel *io, GIOCondition cond,
+				struct io_context *io_ctxt)
+{
+	int sk, err, ret;
+	socklen_t len;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	len = sizeof(ret);
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ret != 0)
+		err = -ret;
+
+	io_ctxt->io = NULL;
+
+done:
+	if (io_ctxt->cb)
+		io_ctxt->cb(io, err, io_ctxt->user_data);
+	if (io_ctxt->io) {
+		g_io_channel_close(io_ctxt->io);
+		g_io_channel_unref(io_ctxt->io);
+	}
+	g_free(io_ctxt);
+
+	return FALSE;
+}
+
+static int rfcomm_connect(struct io_context *io_ctxt, const bdaddr_t *src,
+				const bdaddr_t *dst, int channel)
+{
+	struct sockaddr_rc addr;
+	int sk, err;
+
+	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0)
+		return -errno;
+
+	io_ctxt->io = g_io_channel_unix_new(sk);
+	if (!io_ctxt->io)
+		return -ENOMEM;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, src);
+	addr.rc_channel = 0;
+
+	err = bind(sk, (struct sockaddr *) &addr, sizeof(addr));
+	if (err < 0)
+		return err;
+
+	if (g_io_channel_set_flags(io_ctxt->io, G_IO_FLAG_NONBLOCK, NULL) !=
+			G_IO_STATUS_NORMAL)
+		return -EPERM;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, dst);
+	addr.rc_channel = channel;
+
+	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
+
+	if (err < 0 && !(errno == EAGAIN || errno == EINPROGRESS))
+		return err;
+
+	g_io_add_watch(io_ctxt->io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+			(GIOFunc) rfcomm_connect_cb, io_ctxt);
+
+	return 0;
+}
+
+static int create_io_context(struct io_context **io_ctxt, bt_io_callback_t cb,
+				void *user_data)
+{
+	*io_ctxt = g_try_malloc0(sizeof(struct search_context));
+	if (!*io_ctxt)
+		return -ENOMEM;
+
+	(*io_ctxt)->cb = cb;
+	(*io_ctxt)->user_data = user_data;
+
+	return 0;
+}
+
+int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
+			sdp_record_t *record, bt_io_callback_t cb,
+			void *user_data)
+{
+	struct io_context *io_ctxt;
+	sdp_list_t *protos;
+	int err, channel = -1;
+
+	if (!record)
+		return -EINVAL;
+
+	if (!sdp_get_access_protos(record, &protos)) {
+		channel = sdp_get_proto_port(protos, RFCOMM_UUID);
+		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
+					NULL);
+		sdp_list_free(protos, NULL);
+	}
+
+	if (channel < 0)
+		return -EINVAL;
+
+	err = create_io_context(&io_ctxt, cb, user_data);
+	if (err < 0)
+		return err;
+
+	err = rfcomm_connect(io_ctxt, src, dst, channel);
+	if (err < 0) {
+		if (io_ctxt->io) {
+			g_io_channel_close(io_ctxt->io);
+			g_io_channel_unref(io_ctxt->io);
+		}
+		g_free(io_ctxt);
+		return err;
+	}
+
+	return 0;
 }

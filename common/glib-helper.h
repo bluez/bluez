@@ -21,12 +21,21 @@
  *
  */
 
+typedef void (*bt_io_callback_t) (GIOChannel *io, int err, gpointer user_data);
 typedef void (*bt_callback_t) (gpointer user_data, sdp_list_t *recs, int err);
 typedef void (*bt_destroy_t) (gpointer user_data);
 
 int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
 		bt_callback_t cb, void *user_data, bt_destroy_t destroy);
 
+int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
+			uuid_t uuid, bt_callback_t cb, void *user_data,
+			bt_destroy_t destroy);
+
 gchar *bt_uuid2string(uuid_t *uuid);
 gchar *bt_list2string(GSList *list);
 GSList *bt_string2list(const gchar *str);
+
+int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
+			sdp_record_t *record, bt_io_callback_t cb,
+			void *user_data);
