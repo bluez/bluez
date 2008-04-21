@@ -24,6 +24,9 @@
 
 #define AUDIO_GATEWAY_INTERFACE "org.bluez.audio.Gateway"
 
+#define DEFAULT_HSP_HS_CHANNEL 6
+#define DEFAULT_HFP_HS_CHANNEL 7
+
 int gateway_init(DBusConnection *conn, gboolean disable_hfp, gboolean sco_hci);
 
 void gateway_exit(void);
