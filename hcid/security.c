@@ -318,9 +318,16 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 
 		hcid_dbus_bonding_process_complete(sba, dba, HCI_MEMORY_FULL);
 
-		if (get_handle(dev, sba, dba, &handle) == 0)
-			hci_disconnect(dev, htobs(handle),
-					HCI_OE_LOW_RESOURCES, 500);
+		if (get_handle(dev, sba, dba, &handle) == 0) {
+			disconnect_cp cp;
+
+			memset(&cp, 0, sizeof(cp));
+			cp.handle = htobs(handle);
+			cp.reason = HCI_OE_LOW_RESOURCES;
+
+			hci_send_cmd(dev, OGF_LINK_CTL, OCF_DISCONNECT,
+					DISCONNECT_CP_SIZE, &cp);
+		}
 	} else
 		hcid_dbus_bonding_process_complete(sba, dba, 0);
 
