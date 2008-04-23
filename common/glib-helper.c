@@ -470,7 +470,7 @@ static int l2cap_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 }
 
 static int rfcomm_connect(struct io_context *io_ctxt, const bdaddr_t *src,
-				const bdaddr_t *dst, int channel)
+				const bdaddr_t *dst, uint8_t channel)
 {
 	struct sockaddr_rc addr;
 	int sk, err;
@@ -525,25 +525,10 @@ static void io_context_cleanup(struct io_context *io_ctxt)
 }
 
 int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
-			sdp_record_t *record, bt_io_callback_t cb,
-			void *user_data)
+			uint8_t channel, bt_io_callback_t cb, void *user_data)
 {
 	struct io_context *io_ctxt;
-	sdp_list_t *protos;
-	int err, channel = -1;
-
-	if (!record)
-		return -EINVAL;
-
-	if (!sdp_get_access_protos(record, &protos)) {
-		channel = sdp_get_proto_port(protos, RFCOMM_UUID);
-		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
-					NULL);
-		sdp_list_free(protos, NULL);
-	}
-
-	if (channel < 0)
-		return -EINVAL;
+	int err;
 
 	err = create_io_context(&io_ctxt, cb, user_data);
 	if (err < 0)
