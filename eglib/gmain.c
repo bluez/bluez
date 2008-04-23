@@ -201,6 +201,52 @@ gint g_io_channel_unix_get_fd(GIOChannel *channel)
 	return channel->fd;
 }
 
+static int set_flags(int fd, long flags)
+{
+	long arg;
+
+	arg = fcntl(fd, F_GETFL);
+	if (arg < 0)
+		return -errno;
+
+	/* Return if already set */
+	if ((arg & flags) == flags)
+		return 0;
+
+	arg |= flags;
+	if (fcntl(fd, F_SETFL, arg) < 0)
+		return -errno;
+
+	return 0;
+}
+
+GIOStatus g_io_channel_set_flags(GIOChannel *channel, GIOFlags flags,
+				GError **error)
+{
+	int err, fd;
+	long fd_flags = 0;
+
+	if (!channel || channel->closed)
+		return G_IO_STATUS_ERROR;
+
+	fd = g_io_channel_unix_get_fd(channel);
+
+	if (flags & G_IO_FLAG_APPEND)
+		fd_flags |= O_APPEND;
+	if (flags & G_IO_FLAG_NONBLOCK)
+		fd_flags |= O_NONBLOCK;
+
+	err = set_flags(fd, fd_flags);
+	if (err < 0) {
+		if (error)
+			g_set_error(error, 0, 0, "Unable to set flags: %s",
+					strerror(-err));
+		return G_IO_STATUS_ERROR;
+	}
+
+	return G_IO_STATUS_NORMAL;
+}
+
 struct io_watch {
 	guint id;
 	GIOChannel *channel;

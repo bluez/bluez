@@ -58,6 +58,17 @@ typedef enum {
 	G_IO_STATUS_AGAIN	= 2
 } GIOStatus;
 
+typedef enum {
+	G_IO_FLAG_APPEND	= 1 << 0,
+	G_IO_FLAG_NONBLOCK	= 1 << 1,
+	G_IO_FLAG_IS_READABLE	= 1 << 2,
+	G_IO_FLAG_IS_WRITEABLE	= 1 << 3,
+	G_IO_FLAG_IS_SEEKABLE	= 1 << 4,
+	G_IO_FLAG_MASK		= (1 << 5) - 1,
+	G_IO_FLAG_GET_MASK	= G_IO_FLAG_MASK,
+	G_IO_FLAG_SET_MASK	= G_IO_FLAG_APPEND | G_IO_FLAG_NONBLOCK
+} GIOFlags;
+
 #ifndef FALSE
 #define FALSE (0)
 #endif
@@ -77,6 +88,21 @@ typedef enum {
 
 #undef CLAMP
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
+/* GError */
+
+typedef guint32 GQuark;
+
+typedef struct {
+	GQuark       domain;
+	gint         code;
+	gchar       *message;
+} GError;
+
+void g_set_error(GError **err, GQuark domain, gint code,
+			const gchar *format, ...);
+GError* g_error_new_literal(GQuark domain, gint code, const gchar *message);
+void g_error_free(GError *err);
 
 typedef enum {
 	G_IO_IN		= POLLIN,
@@ -109,6 +135,8 @@ GIOChannel *g_io_channel_ref(GIOChannel *channel);
 void g_io_channel_unref(GIOChannel *channel);
 void g_io_channel_set_close_on_unref(GIOChannel *channel, gboolean do_close);
 gint g_io_channel_unix_get_fd(GIOChannel *channel);
+GIOStatus g_io_channel_set_flags(GIOChannel *channel, GIOFlags flags,
+				GError **error);
 guint g_io_add_watch(GIOChannel *channel, GIOCondition condition,
 					GIOFunc func, gpointer user_data);
 guint g_io_add_watch_full(GIOChannel *channel, gint priority,
@@ -122,21 +150,6 @@ void g_main_loop_unref(GMainLoop *loop);
 guint g_timeout_add(guint interval, GSourceFunc function, gpointer data);
 guint g_idle_add(GSourceFunc function, gpointer data);
 gboolean g_source_remove(guint tag);
-
-/* GError */
-
-typedef guint32 GQuark;
-
-typedef struct {
-	GQuark       domain;
-	gint         code;
-	gchar       *message;
-} GError;
-
-void g_set_error(GError **err, GQuark domain, gint code,
-			const gchar *format, ...);
-GError* g_error_new_literal(GQuark domain, gint code, const gchar *message);
-void g_error_free(GError *err);
 
 /* Spawning related functions */
 
