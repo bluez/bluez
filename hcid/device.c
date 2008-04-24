@@ -1057,7 +1057,7 @@ gint device_address_cmp(struct device *device, const gchar *address)
 	return strcasecmp(device->address, address);
 }
 
-static void browse_cb(gpointer user_data, sdp_list_t *recs, int err)
+static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	sdp_list_t *seq, *next, *svcclass;
 	struct browse_req *req = user_data;
