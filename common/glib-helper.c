@@ -108,7 +108,7 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 
 done:
 	if (ctxt->cb)
-		ctxt->cb(ctxt->user_data, recs, err);
+		ctxt->cb(recs, err, ctxt->user_data);
 
 	search_context_cleanup(ctxt);
 }
@@ -132,7 +132,7 @@ static gboolean search_process_cb(GIOChannel *chan,
 failed:
 	if (err) {
 		if (ctxt->cb)
-			ctxt->cb(ctxt->user_data, NULL, -err);
+			ctxt->cb(NULL, err, ctxt->user_data);
 		search_context_cleanup(ctxt);
 	}
 
@@ -183,7 +183,7 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond, gpointer user
 
 failed:
 	if (ctxt->cb)
-		ctxt->cb(ctxt->user_data, NULL, -err);
+		ctxt->cb(NULL, -err, ctxt->user_data);
 	search_context_cleanup(ctxt);
 
 	return FALSE;
@@ -191,7 +191,7 @@ failed:
 
 static int create_search_context(struct search_context **ctxt,
 				const bdaddr_t *src, const bdaddr_t *dst,
-				uuid_t uuid)
+				uuid_t *uuid)
 {
 	sdp_session_t *s;
 	GIOChannel *chan;
@@ -212,7 +212,7 @@ static int create_search_context(struct search_context **ctxt,
 	bacpy(&(*ctxt)->src, src);
 	bacpy(&(*ctxt)->dst, dst);
 	(*ctxt)->session = s;
-	(*ctxt)->uuid = uuid;
+	(*ctxt)->uuid = *uuid;
 
 	chan = g_io_channel_unix_new(sdp_get_socket(s));
 	g_io_add_watch(chan, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
@@ -223,7 +223,7 @@ static int create_search_context(struct search_context **ctxt,
 }
 
 int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
-			uuid_t uuid, bt_callback_t cb, void *user_data,
+			uuid_t *uuid, bt_callback_t cb, void *user_data,
 			bt_destroy_t destroy)
 {
 	struct search_context *ctxt;
@@ -250,7 +250,7 @@ int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
 
 	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
 
-	return bt_search_service(src, dst, uuid, cb, user_data, destroy);
+	return bt_search_service(src, dst, &uuid, cb, user_data, destroy);
 }
 
 char *bt_uuid2string(uuid_t *uuid)
@@ -419,8 +419,10 @@ static int sco_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 	bacpy(&addr.sco_bdaddr, src);
 
 	err = bind(sk, (struct sockaddr *) &addr, sizeof(addr));
-	if (err < 0)
+	if (err < 0) {
+		close(sk);
 		return -errno;
+	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
@@ -451,8 +453,10 @@ static int l2cap_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 	bacpy(&l2a.l2_bdaddr, src);
 
 	err = bind(sk, (struct sockaddr *) &l2a, sizeof(l2a));
-	if (err < 0)
+	if (err < 0) {
+		close(sk);
 		return -errno;
+	}
 
 	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
@@ -484,8 +488,10 @@ static int rfcomm_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 	bacpy(&addr.rc_bdaddr, src);
 
 	err = bind(sk, (struct sockaddr *) &addr, sizeof(addr));
-	if (err < 0)
+	if (err < 0) {
+		close(sk);
 		return -errno;
+	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
