@@ -37,6 +37,7 @@
 #include <bluetooth/hidp.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/rfcomm.h>
+#include <bluetooth/sdp.h>
 
 #include <glib.h>
 
@@ -53,6 +54,7 @@
 #include "manager.h"
 #include "storage.h"
 #include "fakehid.h"
+#include "glib-helper.h"
 
 #define INPUT_DEVICE_INTERFACE	"org.bluez.input.Device"
 
@@ -368,38 +370,18 @@ failed:
 	return FALSE;
 }
 
-static gboolean rfcomm_connect_cb(GIOChannel *chan,
-			GIOCondition cond, struct device *idev)
+static void rfcomm_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 {
+	struct device *idev = user_data;
 	struct fake_input *fake;
 	DBusMessage *reply;
 	const char *path;
-	socklen_t len;
-	int ret, err;
 
 	fake = idev->fake;
 	fake->rfcomm = g_io_channel_unix_get_fd(chan);
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		err = EIO;
+	if (err < 0)
 		goto failed;
-	}
-
-	len = sizeof(ret);
-	if (getsockopt(fake->rfcomm, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
-		goto failed;
-	}
-
-	if (ret != 0) {
-		err = ret;
-		error("connect(): %s (%d)", strerror(err), err);
-		goto failed;
-	}
 
 	/*
 	 * FIXME: Some headsets required a sco connection
@@ -429,85 +411,27 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
 
-	return FALSE;
+	return;
 
 failed:
 	error_connection_attempt_failed(idev->conn,
 			idev->pending_connect, err);
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
-
-	g_io_channel_close(chan);
-
-	return FALSE;
 }
 
 static int rfcomm_connect(struct device *idev)
 {
-	struct sockaddr_rc addr;
-	GIOChannel *io;
-	int sk, err;
+	int err;
 
-	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sk < 0) {
-		err = errno;
-		error("socket: %s (%d)", strerror(err), err);
-		return -err;
+	err = bt_rfcomm_connect(&idev->src, &idev->dst, idev->fake->ch,
+			rfcomm_connect_cb, idev);
+	if (err < 0) {
+		error("connect() failed: %s (%d)", strerror(-err), -err);
+		return err;
 	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, &idev->src);
-	addr.rc_channel =  0;
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = errno;
-		error("bind: %s (%d)", strerror(err), err);
-		goto failed;
-	}
-
-	if (set_nonblocking(sk) < 0) {
-		err = errno;
-		error("Set non blocking: %s (%d)", strerror(err), err);
-		goto failed;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, &idev->dst);
-	addr.rc_channel = idev->fake->ch;
-
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, FALSE);
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		char peer[18]; /* FIXME: debug purpose */
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			err = errno;
-			error("connect() failed: %s (%d)",
-					strerror(err), err);
-			g_io_channel_unref(io);
-			goto failed;
-		}
-
-		ba2str(&idev->dst, peer);
-		debug("RFCOMM connection in progress: %s channel:%d", peer, idev->fake->ch);
-		g_io_add_watch(io, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				(GIOFunc) rfcomm_connect_cb, idev);
-	} else {
-		debug("Connect succeeded with first try");
-		rfcomm_connect_cb(io, G_IO_OUT, idev);
-	}
-
-	g_io_channel_unref(io);
 
 	return 0;
-
-failed:
-	close(sk);
-	errno = err;
-
-	return -err;
 }
 
 static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -628,41 +552,16 @@ cleanup:
 	return err;
 }
 
-static gboolean interrupt_connect_cb(GIOChannel *chan,
-			GIOCondition cond, struct device *idev)
+static void interrupt_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 {
-	int isk, ret, err;
-	socklen_t len;
+	struct device *idev = user_data;
 
-	isk = g_io_channel_unix_get_fd(chan);
-
-	if (cond & G_IO_NVAL) {
-		err = EHOSTDOWN;
-		isk = -1;
+	if (err < 0) {
+		error("connect(): %s (%d)", strerror(-err), -err);
 		goto failed;
 	}
 
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		err = EHOSTDOWN;
-		error("Hangup or error on HIDP interrupt socket");
-		goto failed;
-
-	}
-
-	len = sizeof(ret);
-	if (getsockopt(isk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
-		goto failed;
-	}
-
-	if (ret != 0) {
-		err = ret;
-		error("connect(): %s (%d)", strerror(ret), ret);
-		goto failed;
-	}
-
-	idev->intr_sk = isk;
+	idev->intr_sk = g_io_channel_unix_get_fd(chan);
 	err = hidp_connadd(&idev->src, &idev->dst,
 			idev->ctrl_sk, idev->intr_sk, idev->name);
 	if (err < 0)
@@ -683,78 +582,43 @@ static gboolean interrupt_connect_cb(GIOChannel *chan,
 	goto cleanup;
 failed:
 	error_connection_attempt_failed(idev->conn,
-		idev->pending_connect, err);
-	if (isk > 0)
-		close(isk);
-	close(idev->ctrl_sk);
+		idev->pending_connect, -err);
 	idev->intr_sk = -1;
 	idev->ctrl_sk = -1;
 
 cleanup:
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
-
-	return FALSE;
 }
 
-static gboolean control_connect_cb(GIOChannel *chan,
-			GIOCondition cond, struct device *idev)
+static void control_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 {
-	int ret, csk, err;
-	socklen_t len;
+	struct device *idev = user_data;
 
-	csk = g_io_channel_unix_get_fd(chan);
-
-	if (cond & G_IO_NVAL) {
-		err = EHOSTDOWN;
-		csk = -1;
-		goto failed;
-	}
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		err = EHOSTDOWN;
-		error("Hangup or error on HIDP control socket");
+	if (err < 0) {
+		error("connect(): %s (%d)", strerror(-err), -err);
 		goto failed;
 	}
 
 	/* Set HID control channel */
-	idev->ctrl_sk = csk;
-
-	len = sizeof(ret);
-	if (getsockopt(csk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
-		goto failed;
-	}
-
-	if (ret != 0) {
-		err = ret;
-		error("connect(): %s (%d)", strerror(ret), ret);
-		goto failed;
-	}
+	idev->ctrl_sk = g_io_channel_unix_get_fd(chan);
 
 	/* Connect to the HID interrupt channel */
-	if (l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_INTR,
-				(GIOFunc) interrupt_connect_cb, idev) < 0) {
-
-		err = errno;
-		error("L2CAP connect failed:%s (%d)", strerror(errno), errno);
+	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_INTR,
+			interrupt_connect_cb, idev);
+	if (err < 0) {
+		error("L2CAP connect failed:%s (%d)", strerror(-err), -err);
 		goto failed;
 	}
 
-	return FALSE;
+	return;
 
 failed:
-	if (csk > 0)
-		close(csk);
-
 	idev->ctrl_sk = -1;
 	error_connection_attempt_failed(idev->conn,
-			idev->pending_connect, err);
+			idev->pending_connect, -err);
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
-
-	return FALSE;
 }
 
 static int fake_disconnect(struct device *idev)
@@ -874,6 +738,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 {
 	struct device *idev = data;
 	struct fake_input *fake = idev->fake;
+	int err;
 
 	if (idev->pending_connect)
 		return error_in_progress(conn, msg,
@@ -900,14 +765,13 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	}
 
 	/* HID devices */
-	if (l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL,
-				(GIOFunc) control_connect_cb, idev) < 0) {
-		int err = errno;
-
-		error("L2CAP connect failed: %s(%d)", strerror(err), err);
+	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL,
+			control_connect_cb, idev);
+	if (err < 0) {
+		error("L2CAP connect failed: %s(%d)", strerror(-err), -err);
 		dbus_message_unref(idev->pending_connect);
 		idev->pending_connect = NULL;
-		return error_connection_attempt_failed(conn, msg, err);
+		return error_connection_attempt_failed(conn, msg, -err);
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
