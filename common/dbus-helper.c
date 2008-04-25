@@ -446,6 +446,9 @@ void dbus_message_iter_append_variant(DBusMessageIter *iter, int type, void *val
 	case DBUS_TYPE_ARRAY:
 		sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING;
 		break;
+	case DBUS_TYPE_OBJECT_PATH:
+		sig = DBUS_TYPE_OBJECT_PATH_AS_STRING;
+		break;
 	default:
 		error("Could not append variant with type %d", type);
 		return;
