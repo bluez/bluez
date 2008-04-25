@@ -57,6 +57,7 @@
 #include "manager.h"
 #include "error.h"
 #include "headset.h"
+#include "glib-helper.h"
 
 #define DC_TIMEOUT 3000
 
@@ -148,7 +149,7 @@ struct event {
 
 static int rfcomm_connect(struct device *device, headset_stream_cb_t cb,
 				void *user_data, unsigned int *cb_id);
-static int get_handles(struct device *device, headset_stream_cb_t cb,
+static int get_records(struct device *device, headset_stream_cb_t cb,
 			void *user_data, unsigned int *cb_id);
 
 static int headset_send(struct headset *hs, char *format, ...)
@@ -733,33 +734,15 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
-static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
-					struct device *dev)
+static void rfcomm_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 {
-	struct headset *hs;
-	struct pending_connect *p;
+	struct device *dev = user_data;
+	struct headset *hs = dev->headset;
+	struct pending_connect *p = hs->pending;
 	char hs_address[18];
-	int sk, ret;
-	socklen_t len;
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	hs = dev->headset;
-	p = hs->pending;
-
-	sk = g_io_channel_unix_get_fd(chan);
-
-	len = sizeof(ret);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		p->err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(p->err), p->err);
-		goto failed;
-	}
-
-	if (ret != 0) {
-		p->err = ret;
-		error("connect(): %s (%d)", strerror(ret), ret);
+	if (err < 0) {
+		error("connect(): %s (%d)", strerror(-err), -err);
 		goto failed;
 	}
 
@@ -779,7 +762,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	/* In HFP mode wait for Service Level Connection */
 	if (hs->hfp_active)
-		return FALSE;
+		return;
 
 	headset_set_state(dev, HEADSET_STATE_CONNECTED);
 
@@ -787,7 +770,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 		p->err = sco_connect(dev, NULL, NULL, NULL);
 		if (p->err < 0)
 			goto failed;
-		return FALSE;
+		return;
 	}
 
 	if (p->msg) {
@@ -797,7 +780,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	pending_connect_finalize(dev);
 
-	return FALSE;
+	return;
 
 failed:
 	if (p->msg)
@@ -807,56 +790,30 @@ failed:
 		headset_set_state(dev, HEADSET_STATE_CONNECTED);
 	else
 		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
-
-	return FALSE;
 }
 
-static void get_record_reply(DBusPendingCall *call, void *data)
+static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
-	DBusMessage *reply;
-	DBusError derr;
-	uint8_t *array;
-	int array_len, record_len, err = EIO, ch = -1;
+	struct device *dev = user_data;
+	struct headset *hs = dev->headset;
+	struct pending_connect *p = hs->pending;
+	int ch = -1;
 	sdp_record_t *record = NULL;
 	sdp_list_t *protos, *classes = NULL;
 	uuid_t uuid;
-	struct device *dev = data;
-	struct headset *hs = dev->headset;
-	struct pending_connect *p = hs->pending;
 
-	reply = dbus_pending_call_steal_reply(call);
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("GetRemoteServiceRecord failed: %s", derr.message);
-		dbus_error_free(&derr);
+	if (err < 0) {
+		error("Unable to get service record: %s (%d)", strerror(-err),
+			-err);
 		goto failed_not_supported;
 	}
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-				&array, &array_len,
-				DBUS_TYPE_INVALID)) {
-		error("Unable to get args from GetRecordReply: %s", derr.message);
-		dbus_error_free(&derr);
+	if (!recs || !recs->data) {
+		error("No records found");
 		goto failed_not_supported;
 	}
 
-	if (!array) {
-		error("get_record_reply: Unable to get handle array from reply");
-		goto failed_not_supported;
-	}
-
-	record = sdp_extract_pdu(array, &record_len);
-	if (!record) {
-		error("Unable to extract service record from reply");
-		goto failed_not_supported;
-	}
-
-	if (record_len != array_len)
-		debug("warning: array len (%d) != record len (%d)",
-				array_len, record_len);
+	record = recs->data;
 
 	if (sdp_get_service_classes(record, &classes) < 0) {
 		error("Unable to get service classes from record");
@@ -909,9 +866,6 @@ static void get_record_reply(DBusPendingCall *call, void *data)
 
 	sdp_list_free(classes, free);
 	sdp_record_free(record);
-	dbus_message_unref(reply);
-
-	device_finish_sdp_transaction(dev);
 
 	return;
 
@@ -926,157 +880,20 @@ failed:
 		sdp_list_free(classes, free);
 	if (record)
 		sdp_record_free(record);
-	if (reply)
-		dbus_message_unref(reply);
-	pending_connect_finalize(dev);
-	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
-	device_finish_sdp_transaction(dev);
-}
-
-static void get_handles_reply(DBusPendingCall *call, void *data)
-{
-	DBusMessage *msg = NULL, *reply;
-	DBusPendingCall *pending;
-	DBusError derr;
-	struct device *dev = data;
-	struct headset *hs = dev->headset;
-	struct pending_connect *p = hs->pending;
-	char address[18], *addr_ptr = address;
-	dbus_uint32_t *array = NULL;
-	dbus_uint32_t handle;
-	int array_len;
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("GetRemoteServiceHandles failed: %s", derr.message);
-		if (p->msg) {
-			if (dbus_error_has_name(&derr,
-						"org.bluez.Error.ConnectionAttemptFailed"))
-				error_connection_attempt_failed(dev->conn, p->msg,
-								EHOSTDOWN);
-			else
-				error_not_supported(dev->conn, p->msg);
-		}
-		dbus_error_free(&derr);
-		goto failed;
-	}
-
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
-				&array, &array_len,
-				DBUS_TYPE_INVALID)) {
-		error("Unable to get args from reply: %s", derr.message);
-		dbus_error_free(&derr);
-		if (p->msg)
-			error_not_supported(dev->conn, p->msg);
-		goto failed;
-	}
-
-	if (!array) {
-		error("get_handles_reply: Unable to get handle array from reply");
-		if (p->msg)
-			error_not_supported(dev->conn, p->msg);
-		goto failed;
-	}
-
-	if (array_len < 1) {
-		if (hs->search_hfp) {
-			debug("No record handles found for hfp");
-			hs->search_hfp = FALSE;
-			get_handles(dev, NULL, NULL, NULL);
-			dbus_message_unref(reply);
-			return;
-		}
-
-		debug("No record handles found for hsp");
-
-		if (p->msg)
-			error_not_supported(dev->conn, p->msg);
-		goto failed;
-	}
-
-	if (array_len > 1)
-		debug("Multiple records found. Using the first one.");
-
-	msg = dbus_message_new_method_call("org.bluez", dev->adapter_path,
-						"org.bluez.Adapter",
-						"GetRemoteServiceRecord");
-	if (!msg) {
-		error("Unable to allocate new method call");
-		if (p->msg)
-			error_out_of_memory(dev->conn, p->msg);
-		goto failed;
-	}
-
-	ba2str(&dev->dst, address);
-
-	handle = array[0];
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
-					DBUS_TYPE_UINT32, &handle,
-					DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(dev->conn, msg, &pending, -1)) {
-		error("Sending GetRemoteServiceRecord failed");
-		if (p->msg)
-			error_connection_attempt_failed(dev->conn, p->msg, EIO);
-		goto failed;
-	}
-
-	dbus_pending_call_set_notify(pending, get_record_reply, dev, NULL);
-	dbus_pending_call_unref(pending);
-	dbus_message_unref(msg);
-	dbus_message_unref(reply);
-
-	return;
-
-failed:
-	if (msg)
-		dbus_message_unref(msg);
-	dbus_message_unref(reply);
-	p->err = EIO;
 	pending_connect_finalize(dev);
 	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 }
 
-static int get_handles(struct device *device, headset_stream_cb_t cb,
+static int get_records(struct device *device, headset_stream_cb_t cb,
 			void *user_data, unsigned int *cb_id)
 {
-	DBusPendingCall *pending;
 	struct headset *hs = device->headset;
-	const char *hs_svc;
-	const char *addr_ptr;
-	char hs_address[18];
-	DBusMessage *msg;
+	uuid_t uuid;
 
-	msg = dbus_message_new_method_call("org.bluez", device->adapter_path,
-						"org.bluez.Adapter",
-						"GetRemoteServiceHandles");
-	if (!msg) {
-		error("Could not create a new dbus message");
-		return -ENOMEM;
-	}
-
-	if (hs->search_hfp)
-		hs_svc = "hfp";
-	else
-		hs_svc = "hsp";
-
-	ba2str(&device->dst, hs_address);
-	addr_ptr = hs_address;
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
-					DBUS_TYPE_STRING, &hs_svc,
-					DBUS_TYPE_INVALID);
+	sdp_uuid16_create(&uuid, hs->search_hfp ? HANDSFREE_SVCLASS_ID :
+				HEADSET_SVCLASS_ID);
 
 	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
-	if (!dbus_connection_send_with_reply(device->conn, msg, &pending, -1)) {
-		error("Sending GetRemoteServiceHandles failed");
-		dbus_message_unref(msg);
-		return -EIO;
-	}
 
 	pending_connect_init(hs, HEADSET_STATE_CONNECTED);
 
@@ -1088,75 +905,30 @@ static int get_handles(struct device *device, headset_stream_cb_t cb,
 			*cb_id = id;
 	}
 
-	dbus_pending_call_set_notify(pending, get_handles_reply, device, NULL);
-
-	if (hs->pending)
-		hs->pending->call = pending;
-	else
-		dbus_pending_call_unref(pending);
-
-	dbus_message_unref(msg);
-
-	return 0;
+	return bt_search_service(&device->src, &device->dst, &uuid,
+			get_record_cb, device, NULL);
 }
 
 static int rfcomm_connect(struct device *dev, headset_stream_cb_t cb,
 				void *user_data, unsigned int *cb_id)
 {
 	struct headset *hs = dev->headset;
-	struct sockaddr_rc addr;
-	GIOChannel *io;
 	char address[18];
-	int sk, err;
+	int err;
 
 	if (hs->rfcomm_ch < 0)
-		return get_handles(dev, cb, user_data, cb_id);
+		return get_records(dev, cb, user_data, cb_id);
 
 	ba2str(&dev->dst, address);
 
 	debug("%s: Connecting to %s channel %d", dev->path, address,
 		hs->rfcomm_ch);
 
-	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sk < 0) {
-		err = errno;
-		error("socket(BTPROTO_RFCOMM): %s (%d)", strerror(err), err);
-		return -err;
-	}
-
-	io = g_io_channel_unix_new(sk);
-	if (!io) {
-		close(sk);
-		return -ENOMEM;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
-	addr.rc_channel = 0;
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = errno;
-		error("bind: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	if (set_nonblocking(sk) < 0) {
-		err = errno;
-		goto failed;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, &dev->dst);
-	addr.rc_channel = hs->rfcomm_ch;
-
-	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
-
-	if (err < 0 && !(errno == EAGAIN || errno == EINPROGRESS)) {
-		err = errno;
-		error("connect() failed: %s (%d)", strerror(err), err);
-		goto failed;
+	err = bt_rfcomm_connect(&dev->src, &dev->dst, hs->rfcomm_ch,
+			rfcomm_connect_cb, dev);
+	if (err < 0) {
+		error("connect() failed: %s (%d)", strerror(-err), -err);
+		return err;
 	}
 
 	headset_set_state(dev, HEADSET_STATE_CONNECT_IN_PROGRESS);
@@ -1170,17 +942,7 @@ static int rfcomm_connect(struct device *dev, headset_stream_cb_t cb,
 			*cb_id = id;
 	}
 
-	g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-			(GIOFunc) rfcomm_connect_cb, dev);
-
-	hs->pending->io = io;
-
 	return 0;
-
-failed:
-	g_io_channel_close(io);
-	g_io_channel_unref(io);
-	return -err;
 }
 
 static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg,
