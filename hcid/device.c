@@ -133,7 +133,7 @@ static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("Can't open device hci%d",
+		error("Can't open device hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
@@ -491,7 +491,7 @@ static int digi_revision(uint16_t dev_id, char *revision, size_t size)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("Can't open device hci%d",
+		error("Can't open device hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		return -errno;
 	}
@@ -874,7 +874,7 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
 	ppath = path;
 	dbus_message_iter_append_dict_entry(&dict, "Adapter",
-			DBUS_TYPE_STRING, &ppath);
+			DBUS_TYPE_OBJECT_PATH, &ppath);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
