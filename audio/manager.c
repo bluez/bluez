@@ -1382,6 +1382,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 
 		debug("Accepted headset connection from %s for %s",
 						hs_address, device->path);
+		headset_set_state(device, HEADSET_STATE_CONNECTED);
 	}
 }
 
