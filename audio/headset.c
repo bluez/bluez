@@ -290,109 +290,62 @@ static unsigned int connect_cb_new(struct headset *hs,
 	return cb->id;
 }
 
-static gboolean sco_connect_cb(GIOChannel *chan, GIOCondition cond,
-				struct device *device)
+static void sco_connect_cb(GIOChannel *chan, int err,
+				gpointer user_data)
 {
-	struct headset *hs;
-	int ret, sk;
-	socklen_t len;
-	struct pending_connect *p;
+	int sk;
+	struct device *dev = user_data;
+	struct headset *hs = dev->headset;
+	struct pending_connect *p = hs->pending;
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
+	if (err < 0) {
+		error("connect(): %s (%d)", strerror(-err), -err);
 
-	hs = device->headset;
-	p = hs->pending;
+		if (p->msg)
+			error_connection_attempt_failed(dev->conn, p->msg, p->err);
+
+		pending_connect_finalize(dev);
+		if (hs->rfcomm)
+			headset_set_state(dev, HEADSET_STATE_CONNECTED);
+		else
+			headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+
+		return;
+	}
+
+	debug("SCO socket opened for headset %s", dev->path);
 
 	sk = g_io_channel_unix_get_fd(chan);
-
-	len = sizeof(ret);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		p->err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(p->err),
-				p->err);
-		goto failed;
-	}
-
-	if (ret != 0) {
-		p->err = ret;
-		error("connect(): %s (%d)", strerror(ret), ret);
-		goto failed;
-	}
-
-	debug("SCO socket opened for headset %s", device->path);
 
 	info("SCO fd=%d", sk);
 	hs->sco = chan;
 	p->io = NULL;
 
-	pending_connect_finalize(device);
+	if (p->msg) {
+		DBusMessage *reply = dbus_message_new_method_return(p->msg);
+		send_message_and_unref(dev->conn, reply);
+	}
+
+	pending_connect_finalize(dev);
 
 	fcntl(sk, F_SETFL, 0);
 
-	headset_set_state(device, HEADSET_STATE_PLAYING);
-
-	return FALSE;
-
-failed:
-	pending_connect_finalize(device);
-	if (hs->rfcomm)
-		headset_set_state(device, HEADSET_STATE_CONNECTED);
-	else
-		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
-
-	return FALSE;
+	headset_set_state(dev, HEADSET_STATE_PLAYING);
 }
 
 static int sco_connect(struct device *dev, headset_stream_cb_t cb,
 			void *user_data, unsigned int *cb_id)
 {
 	struct headset *hs = dev->headset;
-	struct sockaddr_sco addr;
-	GIOChannel *io;
-	int sk, err;
+	int err;
 
 	if (hs->state != HEADSET_STATE_CONNECTED)
 		return -EINVAL;
 
-	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
-	if (sk < 0) {
-		err = errno;
-		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
+	err = bt_sco_connect(&dev->src, &dev->dst, sco_connect_cb, dev);
+	if (err < 0) {
+		error("connect: %s (%d)", strerror(-err), -err);
 		return -err;
-	}
-
-	io = g_io_channel_unix_new(sk);
-	if (!io) {
-		close(sk);
-		return -ENOMEM;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sco_family = AF_BLUETOOTH;
-	bacpy(&addr.sco_bdaddr, BDADDR_ANY);
-
-	if (bind(sk, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		err = errno;
-		error("socket(BTPROTO_SCO): %s (%d)", strerror(err), err);
-		goto failed;
-	}
-
-	if (set_nonblocking(sk) < 0) {
-		err = errno;
-		goto failed;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sco_family = AF_BLUETOOTH;
-	bacpy(&addr.sco_bdaddr, &dev->dst);
-
-	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
-
-	if (err < 0 && !(errno == EAGAIN || errno == EINPROGRESS)) {
-		err = errno;
-		error("connect: %s (%d)", strerror(errno), errno);
-		goto failed;
 	}
 
 	headset_set_state(dev, HEADSET_STATE_PLAY_IN_PROGRESS);
@@ -406,17 +359,7 @@ static int sco_connect(struct device *dev, headset_stream_cb_t cb,
 			*cb_id = id;
 	}
 
-	g_io_add_watch(io, G_IO_OUT | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
-			(GIOFunc) sco_connect_cb, dev);
-
-	hs->pending->io = io;
-
 	return 0;
-
-failed:
-	g_io_channel_close(io);
-	g_io_channel_unref(io);
-	return -err;
 }
 
 static void hfp_slc_complete(struct device *dev)
