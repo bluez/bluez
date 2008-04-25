@@ -1190,12 +1190,12 @@ static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg,
 	struct headset *hs = device->headset;
 	DBusMessage *reply = NULL;
 
+	if (hs->state < HEADSET_STATE_PLAY_IN_PROGRESS)
+		return error_not_connected(conn, msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	if (hs->state < HEADSET_STATE_PLAY_IN_PROGRESS)
-		return error_not_connected(conn, msg);
 
 	headset_set_state(device, HEADSET_STATE_CONNECTED);
 	send_message_and_unref(conn, reply);
