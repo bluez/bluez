@@ -348,7 +348,7 @@ GSList *bt_string2list(const gchar *str)
 static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 				struct io_context *io_ctxt)
 {
-	int sk, err, ret;
+	int sk, err = 0, ret;
 	socklen_t len;
 
 	if (cond & G_IO_NVAL)
