@@ -46,6 +46,7 @@
 #include "manager.h"
 #include "control.h"
 #include "avdtp.h"
+#include "glib-helper.h"
 
 #include <bluetooth/l2cap.h>
 
@@ -1506,41 +1507,29 @@ failed:
 	return FALSE;
 }
 
-static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
-					gpointer data)
+static void l2cap_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 {
-	struct avdtp *session = data;
+	struct avdtp *session = user_data;
 	struct l2cap_options l2o;
 	socklen_t len;
-	int ret, err, sk;
+	int sk;
 	char address[18];
-
-	if (cond & G_IO_NVAL)
-		return FALSE;
 
 	if (!g_slist_find(sessions, session)) {
 		debug("l2cap_connect_cb: session got removed");
-		return FALSE;
+		return;
+	}
+
+	if (err < 0) {
+		error("connect(): %s (%d)", strerror(-err), -err);
+		goto failed;
 	}
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	len = sizeof(ret);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
-		goto failed;
-	}
-
-	if (ret != 0) {
-		err = ret;
-		error("connect(): %s (%d)", strerror(err), err);
-		goto failed;
-	}
-
-	if (cond & G_IO_HUP) {
-		err = EIO;
-		goto failed;
+	if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
+		session->sock = sk;
+		session->state = AVDTP_SESSION_STATE_CONNECTING;
 	}
 
 	ba2str(&session->dst, address);
@@ -1583,11 +1572,9 @@ static gboolean l2cap_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	process_queue(session);
 
-	return FALSE;
+	return;
 
 failed:
-	close(sk);
-
 	if (session->pending_open) {
 		avdtp_sep_set_state(session, session->pending_open->lsep,
 					AVDTP_STATE_IDLE);
@@ -1595,66 +1582,19 @@ failed:
 	} else
 		connection_lost(session, -err);
 
-	return FALSE;
+	return;
 }
 
 static int l2cap_connect(struct avdtp *session)
 {
-	struct sockaddr_l2 l2a;
-	GIOChannel *io;
-	int sk;
+	int err;
 
-	memset(&l2a, 0, sizeof(l2a));
-	l2a.l2_family = AF_BLUETOOTH;
-	bacpy(&l2a.l2_bdaddr, &session->src);
-
-	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sk < 0) {
-		error("Cannot create L2CAP socket. %s(%d)", strerror(errno),
-				errno);
-		return -errno;
+	err = bt_l2cap_connect(&session->src, &session->dst, htobs(AVDTP_PSM),
+				l2cap_connect_cb, session);
+	if (err < 0) {
+		error("Connect failed. %s(%d)", strerror(-err), -err);
+		return err;
 	}
-
-	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a)) < 0) {
-		error("Bind failed. %s (%d)", strerror(errno), errno);
-		return -errno;
-	}
-
-	memset(&l2a, 0, sizeof(l2a));
-	l2a.l2_family = AF_BLUETOOTH;
-	bacpy(&l2a.l2_bdaddr, &session->dst);
-	l2a.l2_psm = htobs(AVDTP_PSM);
-
-	if (set_nonblocking(sk) < 0) {
-		error("Set non blocking: %s (%d)", strerror(errno), errno);
-		return -errno;
-	}
-
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, FALSE);
-
-	if (connect(sk, (struct sockaddr *) &l2a, sizeof(l2a)) < 0) {
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			error("Connect failed. %s(%d)", strerror(errno),
-					errno);
-			g_io_channel_close(io);
-			g_io_channel_unref(io);
-			return -errno;
-		}
-
-		g_io_add_watch(io, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				(GIOFunc) l2cap_connect_cb, session);
-
-		if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
-			session->sock = sk;
-			session->state = AVDTP_SESSION_STATE_CONNECTING;
-		}
-
-
-	} else
-		l2cap_connect_cb(io, G_IO_OUT, session);
-
-	g_io_channel_unref(io);
 
 	return 0;
 }
