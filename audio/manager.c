@@ -64,6 +64,7 @@
 #include "manager.h"
 #include "sdpd.h"
 #include "plugin.h"
+#include "glib-helper.h"
 
 typedef enum {
 	HEADSET	= 1 << 0,
@@ -87,7 +88,6 @@ struct audio_sdp_data {
 
 	DBusMessage *msg;	/* Method call or NULL */
 
-	GSList *handles;	/* uint32_t * */
 	GSList *records;	/* sdp_record_t * */
 
 	audio_sdp_state_t state;
@@ -121,9 +121,7 @@ static struct enabled_interfaces enabled = {
 	.control	= TRUE,
 };
 
-static void get_next_record(struct audio_sdp_data *data);
-static DBusHandlerResult get_handles(const char *uuid,
-					struct audio_sdp_data *data);
+static DBusHandlerResult get_records(uuid_t *uuid, struct audio_sdp_data *data);
 
 static struct device *create_device(bdaddr_t *bda)
 {
@@ -329,8 +327,6 @@ static void finish_sdp(struct audio_sdp_data *data, gboolean success)
 	debug("Audio service discovery completed with %s",
 			success ? "success" : "failure");
 
-	device_finish_sdp_transaction(data->device);
-
 	if (!success)
 		goto done;
 
@@ -390,237 +386,66 @@ done:
 	}
 	if (data->msg)
 		dbus_message_unref(data->msg);
-	g_slist_foreach(data->handles, (GFunc) g_free, NULL);
-	g_slist_free(data->handles);
 	g_slist_foreach(data->records, (GFunc) sdp_record_free, NULL);
 	g_slist_free(data->records);
 	g_free(data);
 }
 
-static void get_record_reply(DBusPendingCall *call,
-				struct audio_sdp_data *data)
+static void get_records_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
-	DBusMessage *reply;
-	DBusError derr;
-	uint8_t *array;
-	int array_len, record_len;
-	sdp_record_t *record;
+	struct audio_sdp_data *data = user_data;
+	sdp_list_t *seq;
+	uuid_t uuid;
 
-	reply = dbus_pending_call_steal_reply(call);
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		/* FIXME : forward error message as is */
-		error("GetRemoteServiceRecord failed: %s", derr.message);
-		if (dbus_error_has_name(&derr,
-					"org.bluez.Error.ConnectionAttemptFailed"))
-			error_connection_attempt_failed(connection, data->msg,
-				EHOSTDOWN);
-		else
-			error_failed(connection, data->msg, derr.message);
-		dbus_error_free(&derr);
-		goto failed;
-	}
-
-	if (!dbus_message_get_args(reply, NULL,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &array, &array_len,
-				DBUS_TYPE_INVALID)) {
-		error_failed(connection, data->msg,
-				"Unable to get args from GetRecordReply");
-		goto failed;
-	}
-
-	record = sdp_extract_pdu(array, &record_len);
-	if (!record) {
-		error("Unable to extract service record from reply");
-		goto done;
-	}
-
-	if (record_len != array_len)
-		debug("warning: array len (%d) != record len (%d)",
-				array_len, record_len);
-
-	data->records = g_slist_append(data->records, record);
-
-done:
-	dbus_message_unref(reply);
-
-	if (data->handles)
-		get_next_record(data);
-	else
-		finish_sdp(data, TRUE);
-
-	return;
-
-failed:
-	if (reply)
-		dbus_message_unref(reply);
-	finish_sdp(data, FALSE);
-}
-
-static void get_next_record(struct audio_sdp_data *data)
-{
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-	char address[18], *ptr = address;
-	dbus_uint32_t *handle;
-
-	msg = dbus_message_new_method_call("org.bluez",
-						data->device->adapter_path,
-						"org.bluez.Adapter",
-						"GetRemoteServiceRecord");
-	if (!msg) {
-		error("Unable to allocate new method call");
-		error_out_of_memory(connection, data->msg);
+	if (err < 0) {
+		error_connection_attempt_failed(connection, data->msg, -err);
 		finish_sdp(data, FALSE);
 		return;
 	}
 
-	handle = data->handles->data;
+	for (seq = recs; seq; seq = seq->next) {
+		sdp_record_t *rec = (sdp_record_t *) seq->data;
 
-	data->handles = g_slist_remove(data->handles, data->handles->data);
+		if (!rec)
+			break;
 
-	ba2str(&data->device->dst, address);
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &ptr,
-					DBUS_TYPE_UINT32, handle,
-					DBUS_TYPE_INVALID);
-
-	g_free(handle);
-
-	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
-		error("Sending GetRemoteServiceRecord failed");
-		error_connection_attempt_failed(connection, data->msg, EIO);
-		finish_sdp(data, FALSE);
-		return;
+		data->records = g_slist_append(data->records, rec);
 	}
 
-	dbus_pending_call_set_notify(pending,
-			(DBusPendingCallNotifyFunction) get_record_reply,
-			data, NULL);
-	dbus_pending_call_unref(pending);
-	dbus_message_unref(msg);
-}
-
-static GSList *find_handle(GSList *handles, dbus_uint32_t handle)
-{
-	while (handles) {
-		if (*(dbus_uint32_t *) handles->data == handle)
-			return handles;
-		handles = handles->next;
-	}
-
-	return NULL;
-}
-
-static void get_handles_reply(DBusPendingCall *call,
-				struct audio_sdp_data *data)
-{
-	DBusMessage *reply;
-	DBusError derr;
-	dbus_uint32_t *array = NULL;
-	int array_len, i;
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		/* FIXME : forward error message as is */
-		error("GetRemoteServiceHandles failed: %s", derr.message);
-		if (dbus_error_has_name(&derr,
-					"org.bluez.Error.ConnectionAttemptFailed"))
-			error_connection_attempt_failed(connection, data->msg,
-							EHOSTDOWN);
-		else
-			error_failed(connection, data->msg, derr.message);
-		dbus_error_free(&derr);
-		goto failed;
-	}
-
-	if (!dbus_message_get_args(reply, NULL,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
-				&array, &array_len,
-				DBUS_TYPE_INVALID)) {
-		error_failed(connection, data->msg,
-				"Unable to get args from reply");
-		goto failed;
-	}
-
-	for (i = 0; i < array_len; i++) {
-		if (!find_handle(data->handles, array[i])) {
-			dbus_uint32_t *handle = g_new(dbus_uint32_t, 1);
-			*handle = array[i];
-			data->handles = g_slist_append(data->handles, handle);
-		}
-	}
+	sdp_list_free(recs, NULL);
 
 	data->state++;
 
 	switch (data->state) {
 	case ADVANCED_AUDIO:
-		get_handles(ADVANCED_AUDIO_UUID, data);
+		sdp_uuid16_create(&uuid, ADVANCED_AUDIO_SVCLASS_ID);
 		break;
 	case AV_REMOTE:
-		get_handles(AVRCP_REMOTE_UUID, data);
+		sdp_uuid16_create(&uuid, AV_REMOTE_SVCLASS_ID);
 		break;
 	default:
-		if (data->handles)
-			get_next_record(data);
-		else
-			finish_sdp(data, TRUE);
+		finish_sdp(data, TRUE);
+		return;
 	}
 
-	dbus_message_unref(reply);
-
-	return;
-
-failed:
-	dbus_message_unref(reply);
-	finish_sdp(data, FALSE);
+	get_records(&uuid, data);
 }
 
-static DBusHandlerResult get_handles(const char *uuid,
-					struct audio_sdp_data *data)
+static DBusHandlerResult get_records(uuid_t *uuid, struct audio_sdp_data *data)
 {
-	DBusPendingCall *pending;
-	char address[18];
-	const char *ptr = address;
-	DBusMessage *msg;
+	struct device *device = data->device;
+	int err;
 
-	msg = dbus_message_new_method_call("org.bluez",
-						data->device->adapter_path,
-						"org.bluez.Adapter",
-						"GetRemoteServiceHandles");
-	if (!msg) {
-		error_failed(connection, data->msg,
-				"Could not create a new dbus message");
-		goto failed;
-	}
+	err = bt_search_service(&device->src, &device->dst, uuid,
+				get_records_cb, data, NULL);
+	if (!err)
+		return DBUS_HANDLER_RESULT_HANDLED;
 
-	ba2str(&data->device->dst, address);
+	if (data->msg)
+		error_connection_attempt_failed(connection, data->msg, -err);
 
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &ptr,
-					DBUS_TYPE_STRING, &uuid,
-					DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(connection, msg, &pending, -1)) {
-		error_failed(connection, data->msg,
-				"Sending GetRemoteServiceHandles failed");
-		goto failed;
-	}
-
-	dbus_pending_call_set_notify(pending,
-			(DBusPendingCallNotifyFunction) get_handles_reply,
-			data, NULL);
-	dbus_pending_call_unref(pending);
-	dbus_message_unref(msg);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-
-failed:
-	if (msg)
-		dbus_message_unref(msg);
 	finish_sdp(data, FALSE);
+
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
@@ -630,6 +455,7 @@ static DBusHandlerResult resolve_services(DBusMessage *msg,
 						void *user_data)
 {
 	struct audio_sdp_data *sdp_data;
+	uuid_t uuid;
 
 	sdp_data = g_new0(struct audio_sdp_data, 1);
 	if (msg)
@@ -638,7 +464,9 @@ static DBusHandlerResult resolve_services(DBusMessage *msg,
 	sdp_data->cb = cb;
 	sdp_data->cb_data = user_data;
 
-	return get_handles(GENERIC_AUDIO_UUID, sdp_data);
+	sdp_uuid16_create(&uuid, GENERIC_AUDIO_SVCLASS_ID);
+
+	return get_records(&uuid, sdp_data);
 }
 
 struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
