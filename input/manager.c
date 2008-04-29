@@ -60,8 +60,8 @@ struct pending_req {
 	bdaddr_t	dst;		/* Peer BT address */
 	DBusConnection	*conn;
 	DBusMessage	*msg;
-	sdp_record_t	*pnp_rec;
-	sdp_record_t	*hid_rec;
+	sdp_list_t	*pnp_recs;
+	sdp_list_t	*hid_recs;
 	int		ctrl_sock;
 };
 
@@ -107,11 +107,11 @@ static void pending_req_free(struct pending_req *pr)
 	if (pr->msg)
 		dbus_message_unref(pr->msg);
 
-	if (pr->pnp_rec)
-		sdp_record_free(pr->pnp_rec);
+	if (pr->pnp_recs)
+		sdp_list_free(pr->pnp_recs, (sdp_free_func_t) sdp_record_free);
 
-	if (pr->hid_rec)
-		sdp_record_free(pr->hid_rec);
+	if (pr->hid_recs)
+		sdp_list_free(pr->hid_recs, (sdp_free_func_t) sdp_record_free);
 
 	g_free(pr);
 }
@@ -226,9 +226,9 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 		goto failed;
 	}
 
-	extract_hid_record(pr->hid_rec, &hidp);
-	if (pr->pnp_rec)
-		extract_pnp_record(pr->pnp_rec, &hidp);
+	extract_hid_record(pr->hid_recs->data, &hidp);
+	if (pr->pnp_recs)
+		extract_pnp_record(pr->pnp_recs->data, &hidp);
 
 	store_device_info(&pr->src, &pr->dst, &hidp);
 
@@ -364,13 +364,14 @@ static void hid_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto fail;
 	}
 
-	pr->hid_rec = recs->data;
+	pr->hid_recs = recs;
 
 	if (strcmp("CreateSecureDevice", dbus_message_get_member(pr->msg)) == 0) {
 		sdp_data_t *d;
 
 		/* Pairing mandatory for keyboard and combo */
-		d = sdp_data_get(pr->hid_rec, SDP_ATTR_HID_DEVICE_SUBCLASS);
+		d = sdp_data_get(pr->hid_recs->data,
+				SDP_ATTR_HID_DEVICE_SUBCLASS);
 		if (d && (d->val.uint8 & 0x40) &&
 				!has_bonding(&pr->src, &pr->dst)) {
 			if (create_bonding(pr) < 0) {
@@ -418,7 +419,7 @@ static void pnp_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto fail;
 	}
 
-	pr->pnp_rec = recs->data;
+	pr->pnp_recs = recs;
 	sdp_uuid16_create(&uuid, HID_SVCLASS_ID);
 	err = bt_search_service(&pr->src, &pr->dst, &uuid, hid_record_cb,
 			pr, NULL);
