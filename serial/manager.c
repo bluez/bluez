@@ -59,6 +59,7 @@
 #include "storage.h"
 #include "manager.h"
 #include "sdpd.h"
+#include "glib-helper.h"
 
 #define SERIAL_PROXY_INTERFACE		"org.bluez.serial.Proxy"
 #define BUF_SIZE			1024
@@ -346,39 +347,20 @@ static int rfcomm_bind(bdaddr_t *src, bdaddr_t *dst, int16_t dev_id, uint8_t ch)
 	return id;
 }
 
-static gboolean rfcomm_connect_cb(GIOChannel *chan,
-		GIOCondition cond, struct pending_connect *pc)
+static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, gpointer user_data)
 {
+	struct pending_connect *pc = user_data;
 	struct rfcomm_dev_req req;
-	int sk, err, fd, ret;
-	socklen_t len;
+	int sk, err, fd;
 
 	if (pc->canceled) {
 		error_canceled(pc->conn, pc->msg, "Connection canceled");
 		goto fail;
 	}
 
-	if (cond & G_IO_NVAL) {
-		/* Avoid close invalid file descriptor */
-		g_io_channel_unref(pc->io);
-		pc->io = NULL;
-		error_canceled(pc->conn, pc->msg, "Connection canceled");
-		goto fail;
-	}
-
-	sk = g_io_channel_unix_get_fd(chan);
-	len = sizeof(ret);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)",
-				strerror(err), err);
-		error_connection_attempt_failed(pc->conn, pc->msg, err);
-		goto fail;
-	}
-
-	if (ret != 0) {
-		error("connect(): %s (%d)", strerror(ret), ret);
-		error_connection_attempt_failed(pc->conn, pc->msg, ret);
+	if (err_cb < 0) {
+		error("connect(): %s (%d)", strerror(err_cb), err_cb);
+		error_connection_attempt_failed(pc->conn, pc->msg, err_cb);
 		goto fail;
 	}
 
@@ -391,6 +373,7 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	str2ba(pc->bda, &req.dst);
 	req.channel = pc->channel;
 
+	sk = g_io_channel_unix_get_fd(chan);
 	pc->id = ioctl(sk, RFCOMMCREATEDEV, &req);
 	if (pc->id < 0) {
 		err = errno;
@@ -405,65 +388,11 @@ static gboolean rfcomm_connect_cb(GIOChannel *chan,
 	fd = port_open(pc);
 	if (fd < 0)
 		/* Open in progress: Wait the callback */
-		return FALSE;
+		return;
 
 	open_notify(fd, 0, pc);
 fail:
 	pending_connect_remove(pc);
-	return FALSE;
-}
-
-static int rfcomm_connect(struct pending_connect *pc)
-{
-	struct sockaddr_rc addr;
-	int sk, err;
-
-	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sk < 0)
-		return -errno;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family	= AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, &pc->src);
-	addr.rc_channel	= 0;
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
-		goto fail;
-
-	if (set_nonblocking(sk) < 0)
-		goto fail;
-
-	pc->io = g_io_channel_unix_new(sk);
-	addr.rc_family	= AF_BLUETOOTH;
-	str2ba(pc->bda, &addr.rc_bdaddr);
-	addr.rc_channel	= pc->channel;
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		/* BlueZ returns EAGAIN eventhough it should return EINPROGRESS */
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			error("connect() failed: %s (%d)",
-					strerror(errno), errno);
-			g_io_channel_unref(pc->io);
-			pc->io = NULL;
-			goto fail;
-		}
-
-		debug("Connect in progress");
-		pc->io_id = g_io_add_watch(pc->io,
-				G_IO_OUT | G_IO_ERR | G_IO_NVAL | G_IO_HUP,
-				(GIOFunc) rfcomm_connect_cb, pc);
-	} else {
-		debug("Connect succeeded with first try");
-		(void) rfcomm_connect_cb(pc->io, G_IO_OUT, pc);
-	}
-
-	return 0;
-fail:
-	err = errno;
-	close(sk);
-	errno = err;
-
-	return -err;
 }
 
 static void record_reply(DBusPendingCall *call, void *data)
@@ -475,6 +404,7 @@ static void record_reply(DBusPendingCall *call, void *data)
 	sdp_list_t *protos;
 	DBusError derr;
 	int len, scanned, ch, err;
+	bdaddr_t dst;
 
 	/* Owner exited? */
 	if (!g_slist_find(pending_connects, data)) {
@@ -540,15 +470,16 @@ static void record_reply(DBusPendingCall *call, void *data)
 		error_not_supported(pc->conn, pc->msg);
 		goto fail;
 	}
+
+	str2ba(pc->bda, &dst);
+
 	if (dbus_message_has_member(pc->msg, "CreatePort")) {
 		char path[MAX_PATH_LENGTH], port_name[16];
 		const char *ppath = path;
 		sdp_data_t *d;
 		char *svcname = NULL;
 		DBusMessage *reply;
-		bdaddr_t dst;
 
-		str2ba(pc->bda, &dst);
 		err = rfcomm_bind(&pc->src, &dst, -1, ch);
 		if (err < 0) {
 			error_failed_errno(pc->conn, pc->msg, -err);
@@ -585,7 +516,8 @@ static void record_reply(DBusPendingCall *call, void *data)
 	} else {
 		/* ConnectService */
 		pc->channel = ch;
-		err = rfcomm_connect(pc);
+
+		err = bt_rfcomm_connect(&pc->src, &dst, ch, rfcomm_connect_cb, pc);
 		if (err < 0) {
 			error("RFCOMM connection failed");
 			error_connection_attempt_failed(pc->conn,
@@ -1923,7 +1855,7 @@ static DBusHandlerResult connect_service_from_devid(DBusConnection *conn,
 				const char *bda, const char *pattern)
 {
 	struct pending_connect *pending, *pc;
-	bdaddr_t src;
+	bdaddr_t src, dst;
 	long val;
 	int err;
 	char uuid[MAX_LEN_UUID_STR];
@@ -1991,7 +1923,11 @@ static DBusHandlerResult connect_service_from_devid(DBusConnection *conn,
 	pending_connects = g_slist_append(pending_connects, pc);
 
 	pc->channel = val;
-	err = rfcomm_connect(pc);
+
+	str2ba(pc->bda, &dst);
+
+	err = bt_rfcomm_connect(&pc->src, &dst, val, rfcomm_connect_cb, pc);
+
 	if (err < 0) {
 		const char *strerr = strerror(-err);
 		error("RFCOMM connect failed: %s(%d)", strerr, -err);
