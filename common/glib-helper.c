@@ -63,7 +63,6 @@ static void search_context_cleanup(struct search_context *ctxt)
 {
 	if (ctxt->destroy)
 		ctxt->destroy(ctxt->user_data);
-	sdp_close(ctxt->session);
 	g_free(ctxt);
 }
 
@@ -107,9 +106,9 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 	} while (scanned < size);
 
 done:
+	sdp_close(ctxt->session);
 	if (ctxt->cb)
 		ctxt->cb(recs, err, ctxt->user_data);
-
 	search_context_cleanup(ctxt);
 }
 
@@ -131,6 +130,7 @@ static gboolean search_process_cb(GIOChannel *chan,
 
 failed:
 	if (err) {
+		sdp_close(ctxt->session);
 		if (ctxt->cb)
 			ctxt->cb(NULL, err, ctxt->user_data);
 		search_context_cleanup(ctxt);
@@ -182,6 +182,7 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond, gpointer user
 	return FALSE;
 
 failed:
+	sdp_close(ctxt->session);
 	if (ctxt->cb)
 		ctxt->cb(NULL, -err, ctxt->user_data);
 	search_context_cleanup(ctxt);
