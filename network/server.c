@@ -66,9 +66,12 @@ struct setup_session {
 	uint16_t	dst_role;	/* Destination role */
 	uint16_t	src_role;	/* Source role */
 	int		nsk;		/* L2CAP socket */
-	int		attempts;	/* Setup msg received */
-	guint		watch;		/* BNEP setup watch */
-	guint		timeout;	/* Max setup time */
+	guint		watch;		/* BNEP socket watch */
+};
+
+struct timeout {
+	guint	id;		/* Timeout id */
+	guint	watch;		/* BNEP socket watch */
 };
 
 /* Main server structure */
@@ -86,9 +89,48 @@ struct network_server {
 
 static GIOChannel *bnep_io = NULL;
 static DBusConnection *connection = NULL;
-static GSList *setup_sessions = NULL;
+static struct setup_session *setup = NULL;
+static GSList *servers = NULL;
 static const char *prefix = NULL;
 static gboolean security = TRUE;
+
+static struct setup_session *setup_session_new(gchar *address,
+		uint16_t dst_role, uint16_t src_role, int nsk, guint watch)
+{
+	struct setup_session *setup;
+
+	setup = g_new0(struct setup_session, 1);
+	setup->address = g_strdup(address);
+	setup->dst_role = dst_role;
+	setup->src_role = src_role;
+	setup->nsk = nsk;
+	setup->watch = watch;
+
+	return setup;
+}
+
+static void setup_session_free(struct setup_session *setup)
+{
+	g_source_remove(setup->watch);
+	g_free(setup->address);
+	g_free(setup);
+}
+
+static struct network_server *server_find(bdaddr_t *src, uint16_t role)
+{
+	struct network_server *ns;
+	GSList *l;
+
+	for (l = servers; l; l = l->next) {
+		ns = l->data;
+		if (bacmp(&ns->src, src) != 0)
+			continue;
+		if (ns->id == role)
+			return ns;
+	}
+
+	return NULL;
+}
 
 static int store_property(bdaddr_t *src, uint16_t id,
 			const char *key, const char *value)
@@ -105,17 +147,6 @@ static int store_property(bdaddr_t *src, uint16_t id,
 		create_name(filename, PATH_MAX, STORAGEDIR, addr, "panu");
 
 	return textfile_put(filename, key, value);
-}
-
-static void setup_free(struct setup_session *s)
-{
-	g_free(s->address);
-	g_free(s);
-}
-
-static int setup_cmp(const struct setup_session *s, const char *addr)
-{
-	return strcmp(s->address, addr);
 }
 
 static void add_lang_attr(sdp_record_t *r)
@@ -257,18 +288,18 @@ static sdp_record_t *server_record_new(const char *name, uint16_t id)
 	return record;
 }
 
-static ssize_t send_bnep_ctrl_rsp(int sk, uint16_t response)
+static ssize_t send_bnep_ctrl_rsp(int sk, uint16_t val)
 {
 	struct bnep_control_rsp rsp;
 
 	rsp.type = BNEP_CONTROL;
 	rsp.ctrl = BNEP_SETUP_CONN_RSP;
-	rsp.resp = htons(response);
+	rsp.resp = htons(val);
 
 	return send(sk, &rsp, sizeof(rsp), 0);
 }
 
-static void cancel_authorization(struct setup_session *s)
+static void cancel_authorization_old()
 {
 	DBusMessage *msg;
 	const char *uuid;
@@ -281,39 +312,34 @@ static void cancel_authorization(struct setup_session *s)
 		return;
 	}
 
-	uuid = bnep_uuid(s->dst_role);
+	uuid = bnep_uuid(setup->dst_role);
 	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &s->address,
+			DBUS_TYPE_STRING, &setup->address,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
 	send_message_and_unref(connection, msg);
 }
 
-static void connection_setup(struct setup_session *s)
+static int server_connadd(struct network_server *ns, int nsk,
+			const gchar *address, uint16_t dst_role)
 {
-	struct network_server *ns = NULL;
-	char path[MAX_PATH_LENGTH], devname[16];
-	uint16_t response = BNEP_CONN_NOT_ALLOWED;
+	char devname[16];
 	const char *bridge;
-
-	if (!g_slist_find(setup_sessions, s))
-		return;
-
-	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(s->dst_role));
-	dbus_connection_get_object_user_data(connection, path, (void *) &ns);
+	int err;
 
 	/* Server can be disabled in the meantime */
-	if (ns == NULL || ns->enable == FALSE)
-		goto failed;
+	if (ns->enable == FALSE)
+		return -EPERM;
 
 	memset(devname, 0, 16);
 	strncpy(devname, prefix, strlen(prefix));
 
-	if (bnep_connadd(s->nsk, s->dst_role, devname) < 0)
-		goto failed;
+	err = bnep_connadd(nsk, dst_role, devname);
+	if (err < 0)
+		return err;
 
-	info("Authorization succedded. New connection: %s", devname);
+	info("Added new connection: %s", devname);
 
 	bridge = bridge_get_name(ns->id);
 	if (bridge) {
@@ -321,83 +347,85 @@ static void connection_setup(struct setup_session *s)
 			error("Can't add %s to the bridge %s: %s(%d)",
 					devname, bridge, strerror(errno),
 					errno);
-			goto failed;
+			return -EPERM;
 		}
 
 		bnep_if_up(devname, 0);
 	} else
 		bnep_if_up(devname, ns->id);
 
-	response = BNEP_SUCCESS;
+	ns->clients = g_slist_append(ns->clients, g_strdup(address));
 
-	ns->clients = g_slist_append(ns->clients, g_strdup(s->address));
-
-failed:
-	send_bnep_ctrl_rsp(s->nsk, response);
-}
-
-static void setup_watch_destroy(void *data)
-{
-	struct setup_session *s;
-	GSList *l;
-
-	/*
-	 * Remote initiated: socket HUP
-	 * Authorization: denied/accepted
-	 */
-	l = g_slist_find(setup_sessions, data);
-	if (!l)
-		return;
-
-	s = l->data;
-
-	setup_sessions = g_slist_remove(setup_sessions, s);
-
-	/* Remove active watches */
-	if (s->watch)
-		g_source_remove(s->watch);
-	if (s->timeout)
-		g_source_remove(s->timeout);
-	setup_free(s);
+	return 0;
 }
 
 static void req_auth_cb_old(DBusPendingCall *pcall, void *user_data)
 {
+	struct network_server *ns = user_data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(pcall);
-	struct setup_session *s = user_data;
 	DBusError derr;
+	uint16_t val;
+
+	if (!setup) {
+		info("Authorization cancelled: Client exited");
+		return;
+	}
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Access denied: %s", derr.message);
 		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
-			cancel_authorization(s);
+			cancel_authorization_old();
 		}
 		dbus_error_free(&derr);
-	} else
-		connection_setup(s);
+		val = BNEP_CONN_NOT_ALLOWED;
+		goto done;
+	}
 
+	if (server_connadd(ns, setup->nsk,
+			setup->address, setup->dst_role) < 0)
+		val = BNEP_CONN_NOT_ALLOWED;
+	else
+		val = BNEP_SUCCESS;
+
+done:
+	send_bnep_ctrl_rsp(setup->nsk, val);
 	dbus_message_unref(reply);
+	setup_session_free(setup);
+	setup = NULL;
 }
 
 static void req_auth_cb(DBusError *derr, void *user_data)
 {
-	struct setup_session *s = user_data;
+	struct network_server *ns = user_data;
+	uint16_t val;
 
-	if (!g_slist_find(setup_sessions, s))
+	if (!setup) {
+		info("Authorization cancelled: Client exited");
 		return;
+	}
 
 	if (derr) {
 		error("Access denied: %s", derr->message);
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			bdaddr_t dst;
-			str2ba(s->address, &dst);
+			str2ba(setup->address, &dst);
 			plugin_cancel_auth(&dst);
 		}
-	} else 
-		connection_setup(s);
+		val = BNEP_CONN_NOT_ALLOWED;
+		goto done;
+	}
 
-	setup_watch_destroy(s);
+	if (server_connadd(ns, setup->nsk,
+			setup->address, setup->dst_role) < 0)
+		val = BNEP_CONN_NOT_ALLOWED;
+	else
+		val = BNEP_SUCCESS;
+
+done:
+	send_bnep_ctrl_rsp(setup->nsk, val);
+	setup_session_free(setup);
+	setup = NULL;
 }
 
 static int req_auth_old(const char *address, const char *uuid, void *user_data)
@@ -427,30 +455,30 @@ static int req_auth_old(const char *address, const char *uuid, void *user_data)
 	}
 
 	dbus_pending_call_set_notify(pending,
-			req_auth_cb_old, user_data, setup_watch_destroy);
+			req_auth_cb_old, user_data, NULL);
 	dbus_pending_call_unref(pending);
 	dbus_message_unref(msg);
 
 	return 0;
 }
 
-static int authorize_connection(bdaddr_t *src, struct setup_session *s)
+static int authorize_connection(struct network_server *ns, const char *address)
 {
 	const char *uuid;
 	bdaddr_t dst;
 	int ret_val;
 
-	uuid =  bnep_uuid(s->dst_role);
-	str2ba(s->address, &dst);
+	uuid =  bnep_uuid(ns->id);
+	str2ba(address, &dst);
 
-	ret_val = plugin_req_auth(src, &dst, uuid, req_auth_cb, s);
+	ret_val = plugin_req_auth(&ns->src, &dst, uuid, req_auth_cb, ns);
 	if (ret_val < 0)
-		return req_auth_old(s->address, uuid, s);
+		return req_auth_old(address, uuid, ns);
 	else
 		return ret_val;
 }
 
-static uint16_t inline chk_role(uint16_t dst_role, uint16_t src_role)
+static uint16_t inline bnep_setup_chk(uint16_t dst_role, uint16_t src_role)
 {
 	/* Allowed PAN Profile scenarios */
 	switch (dst_role) {
@@ -471,108 +499,145 @@ static uint16_t inline chk_role(uint16_t dst_role, uint16_t src_role)
 	return BNEP_CONN_INVALID_DST;
 }
 
-static gboolean connect_setup_event(GIOChannel *chan,
-					GIOCondition cond, gpointer data)
+static uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req,
+				uint16_t *dst_role, uint16_t *src_role)
 {
-	struct setup_session *s = data;
-	struct network_server *ns = NULL;
-	struct bnep_setup_conn_req *req;
-	unsigned char pkt[BNEP_MTU];
-	char path[MAX_PATH_LENGTH];
-	uint16_t response;
-	uint8_t *pservice;
-	ssize_t r;
-	int sk;
+	uint8_t *dest, *source;
+
+	dest = req->service;
+	source = req->service + req->uuid_size;
+
+	switch (req->uuid_size) {
+	case 2: /* UUID16 */
+		*dst_role = ntohs(bt_get_unaligned((uint16_t *) dest));
+		*src_role = ntohs(bt_get_unaligned((uint16_t *) source));
+		break;
+	case 4: /* UUID32 */
+	case 16: /* UUID128 */
+		*dst_role = ntohl(bt_get_unaligned((uint32_t *) dest));
+		*src_role = ntohl(bt_get_unaligned((uint32_t *) source));
+		break;
+	default:
+		return BNEP_CONN_INVALID_SVC;
+	}
+
+	return 0;
+}
+
+static gboolean bnep_setup(GIOChannel *chan,
+			GIOCondition cond, gpointer user_data)
+{
+	struct timeout *to = user_data;
+	struct network_server *ns;
+	uint8_t packet[BNEP_MTU];
+	struct bnep_setup_conn_req *req = (void *) packet;
+	struct sockaddr_l2 sa;
+	socklen_t size;
+	char address[18];
+	uint16_t rsp, src_role, dst_role;
+	int n, sk;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		error("Hangup or error on BNEP socket");
-		/* If there is a pending authorization */
-		if (s->attempts)
-			cancel_authorization(s);
 		return FALSE;
 	}
 
 	sk = g_io_channel_unix_get_fd(chan);
-	memset(pkt, 0, sizeof(pkt));
-	r = recv(sk, pkt, sizeof(pkt) - 1, 0);
 
-	req = (struct bnep_setup_conn_req *) pkt;
-	/*
-	 * FIXME: According to BNEP SPEC the UUID size can be
-	 * 2-16 bytes. Currently only 2 bytes size is supported
-	 */
-	if (req->uuid_size != 2 || r != (sizeof(*req) + req->uuid_size * 2)) {
-		error("Invalid BNEP packet size");
-		response = BNEP_CONN_INVALID_SVC;
-		goto reply;
-	}
-
-	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ) {
-		error("Invalid BNEP control packet content");
+	/* Reading BNEP_SETUP_CONNECTION_REQUEST_MSG */
+	n = read(sk, packet, sizeof(packet));
+	if (n < 0) {
+		error("read(): %s(%d)", strerror(errno), errno);
 		return FALSE;
 	}
 
-	pservice = req->service;
-	/* Getting destination service: considering 2 bytes size */
-	s->dst_role = ntohs(bt_get_unaligned((uint16_t *) pservice));
-	pservice += req->uuid_size;
-	/* Getting source service: considering 2 bytes size */
-	s->src_role = ntohs(bt_get_unaligned((uint16_t *) pservice));
+	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ)
+		return FALSE;
 
-	response = chk_role(s->src_role, s->dst_role);
-	if (response)
+	rsp = bnep_setup_decode(req, &dst_role, &src_role);
+	if (rsp)
 		goto reply;
 
-	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH"/%s", bnep_name(s->dst_role));
-	dbus_connection_get_object_user_data(connection, path, (void *) &ns);
+	rsp = bnep_setup_chk(dst_role, src_role);
+	if (rsp)
+		goto reply;
 
-	if (ns == NULL || ns->enable == FALSE) {
-		response = BNEP_CONN_NOT_ALLOWED;
+	size = sizeof(sa);
+	if (getsockname(sk, (struct sockaddr *) &sa, &size) < 0) {
+		rsp = BNEP_CONN_NOT_ALLOWED;
 		goto reply;
 	}
 
-	if (s->timeout) {
-		g_source_remove(s->timeout);
-		s->timeout = 0;
+	ba2str(&sa.l2_bdaddr, address);
+	ns = server_find(&sa.l2_bdaddr, dst_role);
+	if (!ns || ns->enable == FALSE) {
+		error("Server unavailable: %s (0x%x)", address, dst_role);
+		rsp = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
 	}
 
-	if (++s->attempts > MAX_SETUP_ATTEMPTS) {
-		/* Retransmission */
-		response = BNEP_CONN_NOT_ALLOWED;
+	if (getpeername(sk, (struct sockaddr *) &sa, &size) < 0) {
+		rsp = BNEP_CONN_NOT_ALLOWED;
+		goto reply;
+	}
+
+	ba2str(&sa.l2_bdaddr, address);
+
+	if (setup) {
+		error("Connection rejected: Pending authorization");
+		rsp = BNEP_CONN_NOT_ALLOWED;
 		goto reply;
 	}
 
 	/* Wait authorization before reply success */
-	if (authorize_connection(&ns->src, s) < 0) {
-		response = BNEP_CONN_NOT_ALLOWED;
+	if (authorize_connection(ns, address) < 0) {
+		rsp = BNEP_CONN_NOT_ALLOWED;
 		goto reply;
 	}
 
+	setup = setup_session_new(address, dst_role, src_role, sk, to->watch);
+
+	g_source_remove(to->id);
+	to->id = 0;
+
 	return TRUE;
+
 reply:
-	send_bnep_ctrl_rsp(sk, response);
+	send_bnep_ctrl_rsp(sk, rsp);
+
 	return FALSE;
 }
 
-static gboolean setup_timeout(void *data)
+static void setup_destroy(void *user_data)
 {
-	setup_watch_destroy(data);
+	struct timeout *to = user_data;
+
+	if (to->id)
+		g_source_remove(to->id);
+
+	g_free(to);
+}
+
+static gboolean timeout_cb(void *user_data)
+{
+	struct timeout *to = user_data;
+
+	to->id = 0;
+	g_source_remove(to->watch);
+
 	return FALSE;
 }
 
 static gboolean connect_event(GIOChannel *chan,
-				GIOCondition cond, gpointer data)
+				GIOCondition cond, gpointer user_data)
 {
 	struct sockaddr_l2 addr;
-	struct setup_session *s;
+	struct timeout *to;
 	GIOChannel *io;
 	socklen_t addrlen;
-	char peer[18];
-	bdaddr_t dst;
-	unsigned short psm;
 	int sk, nsk;
 
 	if (cond & G_IO_NVAL)
@@ -590,38 +655,25 @@ static gboolean connect_event(GIOChannel *chan,
 	addrlen = sizeof(addr);
 
 	nsk = accept(sk, (struct sockaddr *) &addr, &addrlen);
-	if (nsk < 0)
-		return TRUE;
-
-	bacpy(&dst, &addr.l2_bdaddr);
-	psm = btohs(addr.l2_psm);
-	ba2str(&dst, peer);
-
-	info("Connection from: %s on PSM %d", peer, psm);
-
-	if (g_slist_find_custom(setup_sessions, peer,
-				(GCompareFunc) setup_cmp)) {
-		error("Pending connection setup session");
-		close(nsk);
+	if (nsk < 0) {
+		error("accept(): %s(%d)", strerror(errno), errno);
 		return TRUE;
 	}
 
-	s = g_new0(struct setup_session, 1);
-	s->address = g_strdup(peer);
-	s->nsk = nsk;
-
 	io = g_io_channel_unix_new(nsk);
 	g_io_channel_set_close_on_unref(io, TRUE);
-	/* New watch for BNEP setup */
-	s->watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			connect_setup_event, s, &setup_watch_destroy);
+
+	/*
+	 * BNEP_SETUP_CONNECTION_REQUEST_MSG shall be received and
+	 * user shall authorize the incomming connection before
+	 * the time expires.
+	 */
+	to = g_malloc0(sizeof(struct timeout));
+	to->id = g_timeout_add(SETUP_TIMEOUT, timeout_cb, to);
+	to->watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				bnep_setup, to, setup_destroy);
 	g_io_channel_unref(io);
-
-	/* Remove the timeout at the first valid msg */
-	s->timeout = g_timeout_add(SETUP_TIMEOUT, setup_timeout, s);
-
-	setup_sessions = g_slist_append(setup_sessions, s);
 
 	return TRUE;
 }
@@ -708,12 +760,6 @@ fail:
 
 void server_exit()
 {
-	if (setup_sessions) {
-		g_slist_foreach(setup_sessions, (GFunc) setup_free, NULL);
-		g_slist_free(setup_sessions);
-		setup_sessions = NULL;
-	}
-
 	if (bnep_io != NULL) {
 		g_io_channel_close(bnep_io);
 		g_io_channel_unref(bnep_io);
@@ -1034,6 +1080,7 @@ static void server_unregister(DBusConnection *conn, void *data)
 
 	info("Unregistered server path:%s", ns->path);
 
+	servers = g_slist_remove(servers, ns);
 	server_free(ns);
 }
 
@@ -1094,6 +1141,8 @@ int server_register(const char *path, bdaddr_t *src, uint16_t id)
 	ns->id = id;
 	bacpy(&ns->src, src);
 
+	servers = g_slist_append(servers, ns);
+
 	info("Registered server path:%s", path);
 
 	return 0;
@@ -1148,6 +1197,8 @@ int server_register_from_file(const char *path, const bdaddr_t *src,
 		dbus_connection_destroy_object_path(connection, path);
 		return -1;
 	}
+
+	servers = g_slist_append(servers, ns);
 
 	info("Registered server path:%s", path);
 
