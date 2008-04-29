@@ -1589,7 +1589,7 @@ static int l2cap_connect(struct avdtp *session)
 {
 	int err;
 
-	err = bt_l2cap_connect(&session->src, &session->dst, htobs(AVDTP_PSM),
+	err = bt_l2cap_connect(&session->src, &session->dst, AVDTP_PSM,
 				l2cap_connect_cb, session);
 	if (err < 0) {
 		error("Connect failed. %s(%d)", strerror(-err), -err);
