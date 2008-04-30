@@ -62,7 +62,7 @@ struct pending_req {
 	DBusMessage	*msg;
 	sdp_list_t	*pnp_recs;
 	sdp_list_t	*hid_recs;
-	int		ctrl_sock;
+	GIOChannel	*ctrl_channel;
 };
 
 static GSList *device_paths = NULL;	/* Input registered paths */
@@ -259,7 +259,8 @@ failed:
 	error_connection_attempt_failed(pr->conn, pr->msg, err);
 
 cleanup:
-	close(pr->ctrl_sock);
+	g_io_channel_close(pr->ctrl_channel);
+	g_io_channel_unref(pr->ctrl_channel);
 	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
 	pending_req_free(pr);
@@ -278,7 +279,7 @@ static void control_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 	}
 
 	/* Set HID control channel */
-	pr->ctrl_sock = g_io_channel_unix_get_fd(chan);
+	pr->ctrl_channel = chan;
 
 	/* Connect to the HID interrupt channel */
 	err = bt_l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_INTR,

@@ -580,6 +580,7 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 		dbus_message_new_method_return(idev->pending_connect));
 
 	goto cleanup;
+
 failed:
 	error_connection_attempt_failed(idev->conn,
 		idev->pending_connect, -err);
