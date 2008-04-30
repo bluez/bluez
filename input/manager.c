@@ -260,6 +260,8 @@ failed:
 
 cleanup:
 	close(pr->ctrl_sock);
+	g_io_channel_close(chan);
+	g_io_channel_unref(chan);
 	pending_req_free(pr);
 
 	if (hidp.rd_data)
