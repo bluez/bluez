@@ -33,6 +33,7 @@
 #include <dbus/dbus.h>
 
 #include "plugin.h"
+#include "dbus-service.h"
 #include "dbus.h"
 #include "logging.h"
 #include "manager.h"
@@ -181,7 +182,7 @@ static int network_init(void)
 		return -EIO;
 	}
 
-	register_uuids("network", &uuids);
+	register_uuids("network", uuids);
 
 	register_external_service(conn, "network", "Network service", "");
 

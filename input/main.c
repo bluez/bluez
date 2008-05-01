@@ -28,9 +28,11 @@
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>
+#include <glib.h>
 #include <dbus/dbus.h>
 
 #include "plugin.h"
+#include "dbus-service.h"
 #include "dbus.h"
 #include "manager.h"
 
@@ -54,7 +56,7 @@ static int input_init(void)
 		return -EIO;
 	}
 
-	register_uuids("input", &uuids);
+	register_uuids("input", uuids);
 
 	register_external_service(conn, "input", "Input service", "");
 

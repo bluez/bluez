@@ -35,6 +35,7 @@
 #include <dbus/dbus.h>
 
 #include "plugin.h"
+#include "dbus-service.h"
 #include "dbus.h"
 #include "logging.h"
 #include "unix.h"
@@ -96,7 +97,7 @@ static int audio_init(void)
 
 	g_key_file_free(config);
 
-	register_uuids("audio", &uuids);
+	register_uuids("audio", uuids);
 
 	register_external_service(conn, "audio", "Audio service", "");
 
