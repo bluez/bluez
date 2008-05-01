@@ -45,8 +45,7 @@
 #include "device.h"
 #include "server.h"
 #include "storage.h"
-
-#include "plugin.h"
+#include "dbus-service.h"
 
 static const char* HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";
 
@@ -111,7 +110,7 @@ static void auth_callback(DBusError *derr, void *user_data)
 	if (derr) {
 		error("Access denied: %s", derr->message);
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY))
-			plugin_cancel_auth(&auth->dst);
+			service_cancel_auth(&auth->dst);
 
 		input_device_close_channels(&auth->src, &auth->dst);
 	} else
@@ -133,7 +132,7 @@ static int authorize_device(bdaddr_t *src, bdaddr_t *dst)
 	bacpy(&auth->src, src);
 	bacpy(&auth->dst, dst);
 
-	retval = plugin_req_auth(src, dst, HID_UUID,
+	retval = service_req_auth(src, dst, HID_UUID,
 				auth_callback, auth);
 	if (retval < 0)
 		goto fallback;

@@ -66,3 +66,8 @@ int service_unregister(DBusConnection *conn, struct service *service);
 
 void register_uuids(const char *name, const char **uuids);
 void unregister_uuids(const char *name);
+
+typedef void (*service_auth_cb) (DBusError *derr, void *user_data);
+int service_req_auth(bdaddr_t *src, bdaddr_t *dst,
+		const char *uuid, service_auth_cb cb, void *user_data);
+int service_cancel_auth(bdaddr_t *src);

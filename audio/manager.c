@@ -49,7 +49,9 @@
 #include <dbus/dbus.h>
 
 #include "dbus-helper.h"
-#include "dbus.h"
+#include "glib-helper.h"
+
+#include "dbus-service.h"
 #include "logging.h"
 #include "textfile.h"
 #include "ipc.h"
@@ -63,8 +65,6 @@
 #include "control.h"
 #include "manager.h"
 #include "sdpd.h"
-#include "plugin.h"
-#include "glib-helper.h"
 
 typedef enum {
 	HEADSET	= 1 << 0,
@@ -1195,7 +1195,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 		error("Access denied: %s", derr->message);
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			if (plugin_cancel_auth(&device->dst) < 0)
+			if (service_cancel_auth(&device->dst) < 0)
 				manager_cancel_authorize(&device->dst, uuid,
 							NULL);
 		}
@@ -1283,7 +1283,7 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	if (plugin_req_auth(&device->src, &device->dst, uuid, auth_cb,
+	if (service_req_auth(&device->src, &device->dst, uuid, auth_cb,
 				device) == 0)
 		goto proceed;
 	else if (!manager_authorize(&device->dst, uuid, auth_cb_old, device,

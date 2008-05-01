@@ -29,14 +29,13 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
 
 #include <glib.h>
-#include <dbus/dbus.h>
+
+#include "dbus.h"
 
 #include "plugin.h"
 #include "dbus-service.h"
-#include "dbus.h"
 #include "logging.h"
 #include "unix.h"
 #include "device.h"

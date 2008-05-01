@@ -31,12 +31,11 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
 #include "dbus.h"
+
 #include "plugin.h"
 #include "server.h"
 #include "logging.h"

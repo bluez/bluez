@@ -28,12 +28,11 @@
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>
-#include <glib.h>
-#include <dbus/dbus.h>
+
+#include "dbus.h"
 
 #include "plugin.h"
 #include "dbus-service.h"
-#include "dbus.h"
 #include "manager.h"
 
 #define HID_UUID "00001124-0000-1000-8000-00805f9b34fb"
