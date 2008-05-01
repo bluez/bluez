@@ -422,7 +422,10 @@ static DBusHandlerResult request_authorization_old(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	service = search_service(sender);
+	service = search_service_by_uuid(uuid);
+	if (!service)
+		service = search_service(sender);
+
 	if (!service) {
 		debug("Got RequestAuthorization from non-service owner %s",
 				sender);
@@ -458,20 +461,23 @@ static DBusHandlerResult request_authorization_old(DBusConnection *conn,
 static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	const char *sender, *address, *path;
+	const char *sender, *address, *uuid;
 	struct service *service;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-			DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID) == FALSE)
+			DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
 	sender = dbus_message_get_sender(msg);
 
-	service = search_service(sender);
+	service = search_service_by_uuid(uuid);
+	if (!service)
+		service = search_service(sender);
+
 	if (!service)
 		return error_not_authorized(conn, msg);
 
-	return cancel_authorize_request_old(conn, msg, service, address, path);
+	return cancel_authorize_request_old(conn, msg, service, address, uuid);
 }
 
 static DBusMethodVTable database_methods[] = {

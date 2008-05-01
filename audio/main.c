@@ -41,6 +41,20 @@
 #include "device.h"
 #include "manager.h"
 
+static const char *uuids[] = {
+	GENERIC_AUDIO_UUID,
+	HSP_HS_UUID,
+	HSP_AG_UUID,
+	HFP_HS_UUID,
+	HFP_AG_UUID,
+	ADVANCED_AUDIO_UUID,
+	A2DP_SOURCE_UUID,
+	A2DP_SINK_UUID,
+	AVRCP_REMOTE_UUID,
+	AVRCP_TARGET_UUID,
+	NULL
+};
+
 static GKeyFile *load_config_file(const char *file)
 {
 	GError *err = NULL;
@@ -81,6 +95,8 @@ static int audio_init(void)
 	}
 
 	g_key_file_free(config);
+
+	register_uuids("audio", &uuids);
 
 	register_external_service(conn, "audio", "Audio service", "");
 

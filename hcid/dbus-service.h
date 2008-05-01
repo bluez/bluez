@@ -53,6 +53,8 @@ void append_available_services(DBusMessageIter *iter);
 
 struct service *search_service(const char *pattern);
 
+struct service *search_service_by_uuid(const char *uuid);
+
 int service_start(struct service *service, DBusConnection *conn);
 
 int init_services(const char *path);
@@ -61,3 +63,6 @@ int service_register(DBusConnection *conn, const char *bus_name, const char *ide
 				const char *name, const char *description);
 
 int service_unregister(DBusConnection *conn, struct service *service);
+
+void register_uuids(const char *name, const char **uuids);
+void unregister_uuids(const char *name);

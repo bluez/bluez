@@ -41,6 +41,17 @@
 #define GN_IFACE "pan0"
 #define NAP_IFACE "pan1"
 
+#define PANU_UUID "00001115-0000-1000-8000-00805f9b34fb"
+#define NAP_UUID "00001116-0000-1000-8000-00805f9b34fb"
+#define GN_UUID "00001117-0000-1000-8000-00805f9b34fb"
+
+static const char *uuids[] = {
+	PANU_UUID,
+	NAP_UUID,
+	GN_UUID,
+	NULL
+};
+
 static struct network_conf conf = {
 	.connection_enabled = TRUE,
 	.server_enabled = TRUE,
@@ -169,6 +180,8 @@ static int network_init(void)
 		dbus_connection_unref(conn);
 		return -EIO;
 	}
+
+	register_uuids("network", &uuids);
 
 	register_external_service(conn, "network", "Network service", "");
 

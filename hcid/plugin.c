@@ -38,6 +38,7 @@
 #include <dbus/dbus.h>
 
 #include "dbus-helper.h"
+#include "dbus-service.h"
 #include "adapter.h"
 #include "dbus-hci.h"
 #include "agent.h"
@@ -210,18 +211,15 @@ int plugin_req_auth(bdaddr_t *src, bdaddr_t *dst,
 				dst, active_conn_find_by_bdaddr))
 		return -ENOTCONN;
 
-	/* FIXME: Is there a plugin that exports this service? */
-
 	ba2str(dst, address);
 	device = adapter_find_device(adapter, address);
 	if (!device)
 		return -EPERM;
 
-	/*
-	 * FIXME: Trusted device? Currently, service are based on a friendly
-	 * name, it is necessary convert UUID128 to friendly name or store the
-	 * UUID128 in the trusted file.
-	 */
+	if (!search_service_by_uuid(uuid))
+		return -EPERM;
+
+	/* FIXME: Missing check trusted file entries */
 
 	agent = (device->agent ? : adapter->agent);
 	if (!agent)

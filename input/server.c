@@ -55,7 +55,6 @@ static DBusConnection *connection = NULL;
 static void cancel_authorization(const char *addr)
 {
 	DBusMessage *msg;
-	const char *uuid = "";
 
 	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
 						"org.bluez.Database",
@@ -67,7 +66,7 @@ static void cancel_authorization(const char *addr)
 
 	dbus_message_append_args(msg,
 			DBUS_TYPE_STRING, &addr,
-			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_STRING, &HID_UUID,
 			DBUS_TYPE_INVALID);
 
 	send_message_and_unref(connection, msg);

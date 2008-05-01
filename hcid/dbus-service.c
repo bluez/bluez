@@ -65,7 +65,13 @@
 
 #define NAME_MATCH "interface=" DBUS_INTERFACE_DBUS ",member=NameOwnerChanged"
 
+struct service_uuids {
+	char *name;
+	char **uuids;
+};
+
 static GSList *services = NULL;
+static GSList *services_uuids = NULL;
 static GSList *removed = NULL;
 
 static void service_free(struct service *service)
@@ -829,6 +835,12 @@ void release_services(DBusConnection *conn)
 struct service *search_service(const char *pattern)
 {
 	GSList *l;
+	const char *bus_id;
+
+	/* Workaround for plugins: share the same bus id */
+	bus_id = dbus_bus_get_unique_name(get_dbus_connection());
+	if (!strcmp(bus_id, pattern))
+		return NULL;
 
 	for (l = services; l != NULL; l = l->next) {
 		struct service *service = l->data;
@@ -1060,22 +1072,25 @@ int service_register(DBusConnection *conn, const char *bus_name, const char *ide
 				const char *name, const char *description)
 {
 	struct service *service;
-
-	if (!conn)
-		return -1;
+	const char *sender;
 
 	service = create_external_service(ident, name, description);
 	if (!service)
 		return -1;
 
-	service->bus_name = g_strdup(bus_name);
+	if (!bus_name) {
+		sender = dbus_bus_get_unique_name(get_dbus_connection());
+		service->bus_name = g_strdup(sender);
+	} else
+		service->bus_name = g_strdup(bus_name);
 
 	if (register_service(service) < 0) {
 		service_free(service);
 		return -1;
 	}
 
-	name_listener_add(conn, bus_name, (name_cb_t) external_service_exit,
+	if (conn && bus_name)
+		name_listener_add(conn, bus_name, (name_cb_t) external_service_exit,
 				service);
 
 	dbus_connection_emit_signal(get_dbus_connection(), service->object_path,
@@ -1088,4 +1103,96 @@ int service_register(DBusConnection *conn, const char *bus_name, const char *ide
 int service_unregister(DBusConnection *conn, struct service *service)
 {
 	return unregister_service_for_connection(conn, service);
+}
+
+static gint name_cmp(struct service_uuids *su, const char *name)
+{
+	return strcmp(su->name, name);
+}
+
+static gint uuid_cmp(struct service_uuids *su, const char *uuid)
+{
+	int i;
+
+	for (i = 0; su->uuids[i]; i++) {
+		if (!strcasecmp(su->uuids[i], uuid))
+			return 0;
+	}
+
+	return -1;
+}
+
+struct service *search_service_by_uuid(const char *uuid)
+{
+	struct service_uuids *su;
+	struct service *service;
+	GSList *l;
+
+	if (!services_uuids)
+		return NULL;
+
+	l = g_slist_find_custom(services_uuids, uuid, (GCompareFunc) uuid_cmp);
+	if (!l)
+		return NULL;
+
+	su = l->data;
+	service = search_service(su->name);
+	if (!service)
+		return NULL;
+
+	return service;
+}
+
+void register_uuids(const char *name, const char **uuids)
+{
+	struct service_uuids *su;
+	int i;
+
+	if (!name)
+		return;
+
+	su = g_new0(struct service_uuids, 1);
+	su->name = g_strdup(name);
+
+	for (i = 0; uuids[i]; i++);
+
+	su->uuids = g_new0(char *, i + 1);
+
+	for (i = 0; uuids[i]; i++)
+		su->uuids[i] = g_strdup(uuids[i]);
+
+	services_uuids = g_slist_append(services_uuids, su);
+}
+
+static void service_uuids_free(struct service_uuids *su)
+{
+	int i;
+
+	if (!su)
+		return;
+
+	g_free(su->name);
+
+	for (i = 0; su->uuids[i]; i++)
+		g_free(su->uuids[i]);
+
+	g_free(su);
+}
+
+void unregister_uuids(const char *name)
+{
+	struct service_uuids *su;
+	GSList *l;
+
+	if (!services_uuids)
+		return;
+
+	l = g_slist_find_custom(services_uuids, name, (GCompareFunc) name_cmp);
+	if (!l)
+		return;
+
+	su = l->data;
+	services_uuids = g_slist_remove(services_uuids, su);
+
+	service_uuids_free(su);
 }

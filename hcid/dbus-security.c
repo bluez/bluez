@@ -766,7 +766,7 @@ static DBusHandlerResult auth_agent_send_cancel(DBusMessage *msg,
 					const char *adapter_path,
 					struct service *service,
 					const char *address,
-					const char *path)
+					const char *uuid)
 {
 	struct auth_agent_req *req = NULL;
 	DBusMessage *message;
@@ -777,7 +777,7 @@ static DBusHandlerResult auth_agent_send_cancel(DBusMessage *msg,
 		if (!strcmp(adapter_path, req->adapter_path) &&
 			!strcmp(address, req->address) &&
 			!strcmp(service->object_path, req->service_path) &&
-			!strcmp(path, req->uuid))
+			!strcmp(uuid, req->uuid))
 			break;
 	}
 
@@ -801,7 +801,7 @@ DBusHandlerResult cancel_authorize_request_old(DBusConnection *conn,
 						DBusMessage *msg,
 						struct service *service,
 						const char *address,
-						const char *path)
+						const char *uuid)
 {
 	char adapter_path[PATH_MAX];
 	int adapter_id;
@@ -820,7 +820,7 @@ DBusHandlerResult cancel_authorize_request_old(DBusConnection *conn,
 			adapter_id);
 
 	return auth_agent_send_cancel(msg, default_auth_agent, adapter_path,
-						service, address, path);
+						service, address, uuid);
 }
 
 static DBusMethodVTable security_methods[] = {

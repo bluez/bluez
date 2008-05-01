@@ -34,6 +34,13 @@
 #include "dbus.h"
 #include "manager.h"
 
+#define HID_UUID "00001124-0000-1000-8000-00805f9b34fb"
+
+static const char *uuids[] = {
+	HID_UUID,
+	NULL
+};
+
 static DBusConnection *conn;
 
 static int input_init(void)
@@ -46,6 +53,8 @@ static int input_init(void)
 		dbus_connection_unref(conn);
 		return -EIO;
 	}
+
+	register_uuids("input", &uuids);
 
 	register_external_service(conn, "input", "Input service", "");
 
