@@ -1236,6 +1236,7 @@ static void agent_auth_cb(struct agent *agent, DBusError *derr, void *user_data)
 
 	g_free(auth);
 }
+
 int service_req_auth(bdaddr_t *src, bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data)
 {
@@ -1243,7 +1244,9 @@ int service_req_auth(bdaddr_t *src, bdaddr_t *dst,
 	struct adapter *adapter;
 	struct device *device;
 	struct agent *agent;
+	struct service *service;
 	char address[18];
+	gboolean trusted;
 
 	adapter = ba2adapter(src);
 	if (!adapter)
@@ -1259,10 +1262,18 @@ int service_req_auth(bdaddr_t *src, bdaddr_t *dst,
 	if (!device)
 		return -EPERM;
 
-	if (!search_service_by_uuid(uuid))
+	service = search_service_by_uuid(uuid);
+	if (!service)
 		return -EPERM;
 
-	/* FIXME: Missing check trusted file entries */
+	trusted = read_trust(src, address, GLOBAL_TRUST);
+	if (!trusted)
+		trusted = read_trust(BDADDR_ANY, address, service->ident);
+
+	if (trusted) {
+		cb(NULL, user_data);
+		return 0;
+	}
 
 	agent = (device->agent ? : adapter->agent);
 	if (!agent)

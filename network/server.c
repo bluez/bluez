@@ -592,13 +592,15 @@ static gboolean bnep_setup(GIOChannel *chan,
 		goto reply;
 	}
 
+	setup = setup_session_new(address, dst_role, src_role, sk, to->watch);
+
 	/* Wait authorization before reply success */
 	if (authorize_connection(ns, address) < 0) {
+		setup_session_free(setup);
+		setup = NULL;
 		rsp = BNEP_CONN_NOT_ALLOWED;
 		goto reply;
 	}
-
-	setup = setup_session_new(address, dst_role, src_role, sk, to->watch);
 
 	g_source_remove(to->id);
 	to->id = 0;
