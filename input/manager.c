@@ -226,6 +226,9 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 		goto failed;
 	}
 
+	g_io_channel_close(chan);
+	g_io_channel_unref(chan);
+
 	extract_hid_record(pr->hid_recs->data, &hidp);
 	if (pr->pnp_recs)
 		extract_pnp_record(pr->pnp_recs->data, &hidp);
@@ -261,8 +264,6 @@ failed:
 cleanup:
 	g_io_channel_close(pr->ctrl_channel);
 	g_io_channel_unref(pr->ctrl_channel);
-	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
 	pending_req_free(pr);
 
 	if (hidp.rd_data)
