@@ -40,6 +40,7 @@
 #include <bluetooth/sdp.h>
 
 #include "dbus.h"
+#include "dbus-service.h"
 #include "logging.h"
 
 #include "device.h"
@@ -2679,34 +2680,23 @@ int avdtp_unregister_sep(struct avdtp_local_sep *sep)
 	return 0;
 }
 
-static void auth_cb(DBusPendingCall *call, void *data)
+static void auth_cb(DBusError *derr, void *user_data)
 {
-	GIOChannel *io;
-	struct avdtp *session = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError err;
+	struct avdtp *session = user_data;
 	struct device *dev;
+	GIOChannel *io;
 
-	dbus_pending_call_unref(session->pending_auth);
-	session->pending_auth = NULL;
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, reply)) {
-		error("Access denied: %s", err.message);
-
-		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
+	if (derr && dbus_error_is_set(derr)) {
+		error("Access denied: %s", derr->message);
+		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			manager_cancel_authorize(&session->dst,
+			if (service_cancel_auth(&session->dst) < 0)
+				manager_cancel_authorize(&session->dst,
 							ADVANCED_AUDIO_UUID,
 							NULL);
 		}
 
-		dbus_error_free(&err);
-
 		connection_lost(session, -EACCES);
-
-		dbus_message_unref(reply);
-
 		return;
 	}
 
@@ -2728,6 +2718,23 @@ static void auth_cb(DBusPendingCall *call, void *data)
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_cb, session);
 	g_io_channel_unref(io);
+}
+
+static void auth_cb_old(DBusPendingCall *call, void *data)
+{
+	struct avdtp *session = data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_pending_call_unref(session->pending_auth);
+	session->pending_auth = NULL;
+
+	dbus_error_init(&err);
+	dbus_set_error_from_message(&err, reply);
+	auth_cb(&err, data);
+	dbus_error_free(&err);
+
+	dbus_message_unref(reply);
 }
 
 static gboolean avdtp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
@@ -2796,13 +2803,6 @@ static gboolean avdtp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		return TRUE;
 	}
 
-	if (!manager_authorize(&dst, ADVANCED_AUDIO_UUID, auth_cb, session,
-				&session->pending_auth)) {
-		close(cli_sk);
-		avdtp_unref(session);
-		return TRUE;
-	}
-
 	session->mtu = l2o.imtu;
 	session->sock = cli_sk;
 
@@ -2810,6 +2810,14 @@ static gboolean avdtp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	session->io = g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) session_cb, session);
 	g_io_channel_unref(io);
+
+	if (service_req_auth(&src, &dst, ADVANCED_AUDIO_UUID, auth_cb, session) == 0)
+		return TRUE;
+	else if (!manager_authorize(&dst, ADVANCED_AUDIO_UUID, auth_cb_old,
+				session, &session->pending_auth)) {
+		close(cli_sk);
+		avdtp_unref(session);
+	}
 
 	return TRUE;
 }

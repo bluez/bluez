@@ -47,6 +47,7 @@
 
 #include "dbus.h"
 #include "dbus-helper.h"
+#include "dbus-service.h"
 #include "logging.h"
 #include "uinput.h"
 #include "device.h"
@@ -657,32 +658,22 @@ failed:
 	avctp_unref(session);
 	return FALSE;
 }
-
-static void auth_cb(DBusPendingCall *call, void *data)
+static void auth_cb(DBusError *derr, void *user_data)
 {
+	struct avctp *session = user_data;
 	GIOChannel *io;
-	struct avctp *session = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError err;
 
-	dbus_pending_call_unref(session->pending_auth);
-	session->pending_auth = NULL;
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, reply)) {
-		error("Access denied: %s", err.message);
-
-		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
+	if (derr && dbus_error_is_set(derr)) {
+		error("Access denied: %s", derr->message);
+		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			manager_cancel_authorize(&session->dst,
+			if (service_cancel_auth(&session->dst) < 0)
+				manager_cancel_authorize(&session->dst,
 							AVRCP_TARGET_UUID,
 							NULL);
 		}
 
 		avctp_unref(session);
-
-		dbus_message_unref(reply);
-
 		return;
 	}
 
@@ -704,6 +695,19 @@ static void auth_cb(DBusPendingCall *call, void *data)
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_cb, session);
 	g_io_channel_unref(io);
+}
+
+static void auth_cb_old(DBusPendingCall *call, void *data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_error_init(&err);
+	dbus_set_error_from_message(&err, reply);
+	auth_cb(&err, data);
+	dbus_error_free(&err);
+
+	dbus_message_unref(reply);
 }
 
 static gboolean avctp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
@@ -775,11 +779,19 @@ static gboolean avctp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	}
 
 	session->state = AVCTP_STATE_CONNECTING;
+	session->mtu = l2o.imtu;
+	session->sock = cli_sk;
+
+	io = g_io_channel_unix_new(session->sock);
+	session->io = g_io_add_watch(io, flags, (GIOFunc) session_cb, session);
+	g_io_channel_unref(io);
 
 	if (avdtp_is_connected(&src, &dst))
 		goto proceed;
 
-	if (!manager_authorize(&dst, AVRCP_TARGET_UUID, auth_cb, session,
+	if (service_req_auth(&src, &dst, AVRCP_TARGET_UUID, auth_cb, session) == 0)
+		goto proceed;
+	else if (!manager_authorize(&dst, AVRCP_TARGET_UUID, auth_cb_old, session,
 				&session->pending_auth)) {
 		close(cli_sk);
 		avctp_unref(session);
@@ -787,10 +799,6 @@ static gboolean avctp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
 	}
 
 proceed:
-	session->mtu = l2o.imtu;
-	session->sock = cli_sk;
-
-	io = g_io_channel_unix_new(session->sock);
 	if (!session->pending_auth) {
 		session->state = AVCTP_STATE_CONNECTED;
 		session->dev = manager_device_connected(&dst,
@@ -804,9 +812,6 @@ proceed:
 						"Connected",
 						DBUS_TYPE_INVALID);
 	}
-
-	session->io = g_io_add_watch(io, flags, (GIOFunc) session_cb, session);
-	g_io_channel_unref(io);
 
 	return TRUE;
 }
