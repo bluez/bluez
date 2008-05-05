@@ -345,6 +345,10 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, gpointer user_data)
 	struct rfcomm_dev_req req;
 	int sk, err, fd;
 
+	/* Owner exited? */
+	if (!g_slist_find(pending_connects, pc))
+		return;
+
 	if (pc->canceled) {
 		error_canceled(pc->conn, pc->msg, "Connection canceled");
 		goto fail;
