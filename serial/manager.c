@@ -375,6 +375,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, gpointer user_data)
 
 	sk = g_io_channel_unix_get_fd(chan);
 	pc->id = ioctl(sk, RFCOMMCREATEDEV, &req);
+	g_io_channel_unref(chan);
 	if (pc->id < 0) {
 		err = errno;
 		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
