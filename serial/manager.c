@@ -360,13 +360,14 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, gpointer user_data)
 
 	memset(&req, 0, sizeof(req));
 	req.dev_id = -1;
-	req.flags = (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP);
+	req.flags = (1 << RFCOMM_REUSE_DLC);
 	bacpy(&req.src, &pc->src);
 	str2ba(pc->bda, &req.dst);
 	req.channel = pc->channel;
 
 	sk = g_io_channel_unix_get_fd(chan);
 	pc->id = ioctl(sk, RFCOMMCREATEDEV, &req);
+	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
 	if (pc->id < 0) {
 		err = errno;
