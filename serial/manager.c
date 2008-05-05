@@ -76,8 +76,6 @@ struct pending_connect {
 	char		*pattern;	/* Connection request pattern */
 	bdaddr_t	src;
 	uint8_t		channel;
-	guint		io_id;		/* GIOChannel watch id */
-	GIOChannel	*io;		/* GIOChannel for RFCOMM connect */
 	char		*dev;		/* tty device name */
 	int		id;		/* RFCOMM device id */
 	int		ntries;		/* Open attempts */
@@ -154,12 +152,6 @@ static void pending_connect_free(struct pending_connect *pc)
 		g_free(pc->adapter_path);
 	if (pc->dev)
 		g_free(pc->dev);
-	if (pc->io_id > 0)
-		g_source_remove(pc->io_id);
-	if (pc->io) {
-		g_io_channel_close(pc->io);
-		g_io_channel_unref(pc->io);
-	}
 	g_free(pc);
 }
 
