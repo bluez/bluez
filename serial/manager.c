@@ -359,8 +359,8 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, gpointer user_data)
 	}
 
 	if (err_cb < 0) {
-		error("connect(): %s (%d)", strerror(err_cb), err_cb);
-		error_connection_attempt_failed(pc->conn, pc->msg, err_cb);
+		error("connect(): %s (%d)", strerror(-err_cb), -err_cb);
+		error_connection_attempt_failed(pc->conn, pc->msg, -err_cb);
 		goto fail;
 	}
 
