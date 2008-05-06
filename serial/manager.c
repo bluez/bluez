@@ -2295,6 +2295,8 @@ void serial_manager_exit(void)
 	dbus_connection_unref(connection);
 	connection = NULL;
 
+	port_release_all();
+
 	if (rfcomm_ctl >= 0)
 		close(rfcomm_ctl);
 }

@@ -328,6 +328,19 @@ int port_remove_listener(const char *owner, const char *dev)
 	return 0;
 }
 
+void port_release_all(void)
+{
+	struct rfcomm_node *node;
+	GSList *l;
+
+	for (l = connected_nodes; l; l = l->next) {
+		node = l->data;
+
+		connected_nodes = g_slist_remove(connected_nodes, node);
+		rfcomm_node_free(node);
+	}
+}
+
 int port_register(DBusConnection *conn, int16_t id, bdaddr_t *src,
 		  bdaddr_t *dst, const char *dev, char *ppath, const char *svc)
 {
