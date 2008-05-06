@@ -54,7 +54,6 @@ int bridge_init(const char *gn_iface, const char *nap_iface)
 	if (stat("/sys/module/bridge", &st) < 0)
 		return -EOPNOTSUPP;
 #endif
-
 	bridge_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (bridge_socket < 0) {
 		error("Failed to open bridge socket: %s (%d)",
@@ -64,6 +63,7 @@ int bridge_init(const char *gn_iface, const char *nap_iface)
 
 	gn_bridge = gn_iface;
 	nap_bridge = nap_iface;
+
 	return 0;
 }
 
@@ -83,6 +83,8 @@ int bridge_create(int id)
 	if (err < 0)
 		return -errno;
 
+	info("bridge %s created", name);
+
 	return 0;
 }
 
@@ -98,6 +100,8 @@ int bridge_remove(int id)
 	err = ioctl(bridge_socket, SIOCBRDELBR, name);
 	if (err < 0)
 		return -errno;
+
+	info("bridge %s removed", name);
 
 	return 0;
 }
@@ -122,9 +126,7 @@ int bridge_add_interface(int id, const char *dev)
 	if (err < 0)
 		return err;
 
-	/* Only run scripts in GN bridges */
-	if (id != BNEP_SVC_GN)
-		return 0;
+	info("bridge %s: interface %s added", name, dev);
 
 	err = bnep_if_up(name, id);
 	if (err < 0)
