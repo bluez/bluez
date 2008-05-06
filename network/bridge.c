@@ -119,6 +119,7 @@ int bridge_add_interface(int id, const char *dev)
 	if (ifindex == 0)
 		return -ENODEV;
 
+	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, name, IFNAMSIZ);
 	ifr.ifr_ifindex = ifindex;
 

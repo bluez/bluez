@@ -90,6 +90,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 						DBUS_TYPE_INVALID);
 	}
 	info("%s disconnected", nc->dev);
+	bnep_if_down(nc->dev);
 	nc->state = DISCONNECTED;
 	memset(nc->dev, 0, 16);
 	strncpy(nc->dev, prefix, strlen(prefix));

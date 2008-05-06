@@ -164,6 +164,7 @@ int bnep_kill_connection(bdaddr_t *dst)
 {
 	struct bnep_conndel_req req;
 
+	memset(&req, 0, sizeof(req));
 	baswap((bdaddr_t *)&req.dst, dst);
 	req.flags = 0;
 	if (ioctl(ctl, BNEPCONNDEL, &req)) {
@@ -192,10 +193,12 @@ int bnep_kill_all_connections(void)
 	}
 
 	for (i=0; i < req.cnum; i++) {
-		struct bnep_conndel_req req;
-		memcpy(req.dst, ci[i].dst, ETH_ALEN);
-		req.flags = 0;
-		ioctl(ctl, BNEPCONNDEL, &req);
+		struct bnep_conndel_req del;
+
+		memset(&del, 0, sizeof(del));
+		memcpy(del.dst, ci[i].dst, ETH_ALEN);
+		del.flags = 0;
+		ioctl(ctl, BNEPCONNDEL, &del);
 	}
 	return 0;
 }
@@ -204,6 +207,7 @@ int bnep_connadd(int sk, uint16_t role, char *dev)
 {
 	struct bnep_connadd_req req;
 
+	memset(&req, 0, sizeof(req));
 	strncpy(req.device, dev, 16);
 	req.device[15] = '\0';
 	req.sock = sk;
@@ -223,17 +227,31 @@ static void bnep_setup(gpointer data)
 {
 }
 
+static int bnep_exec(const char **argv)
+{
+	int pid;
+	GSpawnFlags flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
+
+	if (!g_spawn_async(NULL, (char **) argv, NULL, flags, bnep_setup, NULL,
+				&pid, NULL)) {
+		error("Unable to execute %s %s", *argv[0], *argv[1]);
+		return -EINVAL;
+	}
+
+	return pid;
+}
+
 int bnep_if_up(const char *devname, uint16_t id)
 {
-	int sd, err, pid;
+	int sd, err;
 	struct ifreq ifr;
 	const char *argv[5];
-	struct bnep_data *bnep;
-	GSpawnFlags flags;
+	struct bnep_data *bnep = NULL;
 	GSList *l;
 
 	/* Check if a script is running */
-	if ((l = g_slist_find_custom(pids, devname, find_devname))) {
+	l = g_slist_find_custom(pids, devname, find_devname);
+	if (l) {
 		bnep = l->data;
 
 		if (bnep->script && !strcmp(bnep->script, "avahi-autoipd")) {
@@ -242,13 +260,8 @@ int bnep_if_up(const char *devname, uint16_t id)
 			argv[2] = "--refresh";
 			argv[3] = NULL;
 
-			flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
-			g_spawn_async(NULL, (char **) argv, NULL, flags,
-					bnep_setup, (gpointer) devname, &pid,
-					NULL);
+			bnep->pid = bnep_exec(argv);
 		}
-
-		return bnep->pid;
 	}
 
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
@@ -264,6 +277,9 @@ int bnep_if_up(const char *devname, uint16_t id)
 			err);
 		return -err;
 	}
+
+	if (bnep)
+		return bnep->pid;
 
 	bnep = g_new0(struct bnep_data, 1);
 	bnep->devname = g_strdup(devname);
@@ -291,15 +307,8 @@ int bnep_if_up(const char *devname, uint16_t id)
 	} else
 		argv[2] = NULL;
 
-	flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
-	if (!g_spawn_async(NULL, (char **) argv, NULL, flags, bnep_setup,
-				(gpointer) devname, &pid, NULL)) {
-		error("Unable to execute %s", argv[0]);
-		return -EINVAL;
-	}
-
-	bnep->pid = pid;
-	g_child_watch_add(pid, script_exited, bnep);
+	bnep->pid = bnep_exec(argv);
+	g_child_watch_add(bnep->pid, script_exited, bnep);
 
 done:
 	pids = g_slist_append(pids, bnep);
@@ -325,7 +334,7 @@ int bnep_if_down(const char *devname)
 	if (!bnep->pid)
 		goto done;
 
-	if (bnep->script && !strcmp (bnep->script, "avahi-autoipd")) {
+	if (bnep->script && !strcmp(bnep->script, "avahi-autoipd")) {
 		argv[0] = bnep->script;
 		argv[1] = devname;
 		argv[2] = "--kill";
@@ -352,12 +361,7 @@ done:
 	ifr.ifr_flags &= ~IFF_UP;
 
 	/* Bring down the interface */
-	if ((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
-		err = errno;
-		error("Could not bring down %d. %s(%d)", devname, strerror(err),
-			err);
-		return -err;
-	}
+	ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr);
 
 	pids = g_slist_remove(pids, bnep);
 
