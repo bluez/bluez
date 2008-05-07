@@ -1017,15 +1017,18 @@ static DBusSignalVTable device_signals[] = {
 struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 					const gchar *address, GSList *uuids)
 {
+	gchar *address_up;
 	struct device *device;
 
 	device = g_try_malloc0(sizeof(struct device));
 	if (device == NULL)
 		return NULL;
 
+	address_up = g_ascii_strup(address, -1);
 	device->path = g_strdup_printf("/hci%d/dev_%s",
-				adapter->dev_id, address);
+				adapter->dev_id, address_up);
 	g_strdelimit(device->path, ":", '_');
+	g_free(address_up);
 
 	debug("Creating device %s", device->path);
 
