@@ -283,7 +283,7 @@ static void control_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 	pr->ctrl_channel = chan;
 
 	/* Connect to the HID interrupt channel */
-	err = bt_l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_INTR,
+	err = bt_l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_INTR, 0,
 			interrupt_connect_cb, pr);
 	if (err < 0) {
 		error("L2CAP connect failed:%s (%d)", strerror(-err), -err);
@@ -317,7 +317,7 @@ static void create_bonding_reply(DBusPendingCall *call, void *data)
 
 	dbus_message_unref(reply);
 
-	err = bt_l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_CTRL,
+	err = bt_l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_CTRL, 0,
 			control_connect_cb, pr);
 	if (err < 0) {
 		error("L2CAP connect failed:%s (%d)", strerror(-err), -err);
@@ -391,7 +391,7 @@ static void hid_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	}
 
 	/* No encryption or link key already exists -- connect control channel */
-	err = bt_l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_CTRL,
+	err = bt_l2cap_connect(&pr->src, &pr->dst, L2CAP_PSM_HIDP_CTRL, 0,
 			control_connect_cb, pr);
 	if (err < 0) {
 		error("L2CAP connect failed:%s (%d)", strerror(-err), -err);

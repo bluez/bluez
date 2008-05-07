@@ -440,14 +440,25 @@ static int sco_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 }
 
 static int l2cap_connect(struct io_context *io_ctxt, const bdaddr_t *src,
-				const bdaddr_t *dst, uint16_t psm)
+				const bdaddr_t *dst, uint16_t psm,
+				uint16_t mtu)
 {
+	struct l2cap_options l2o;
+	socklen_t olen;
 	struct sockaddr_l2 l2a;
 	int sk, err;
 
 	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (sk < 0)
 		return -errno;
+
+	if (mtu) {
+		memset(&l2o, 0, sizeof(l2o));
+		olen = sizeof(l2o);
+		getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen);
+		l2o.imtu = l2o.omtu = mtu;
+		setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o));
+	}
 
 	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
@@ -551,7 +562,7 @@ int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
 }
 
 int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
-			uint16_t psm, bt_io_callback_t cb, void *user_data)
+			uint16_t psm, uint16_t mtu, bt_io_callback_t cb, void *user_data)
 {
 	struct io_context *io_ctxt;
 	int err;
@@ -560,7 +571,7 @@ int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	if (err < 0)
 		return err;
 
-	err = l2cap_connect(io_ctxt, src, dst, psm);
+	err = l2cap_connect(io_ctxt, src, dst, psm, mtu);
 	if (err < 0) {
 		io_context_cleanup(io_ctxt);
 		return err;

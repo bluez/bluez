@@ -36,6 +36,7 @@
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
+#include <bluetooth/sdp.h>
 
 #include <glib.h>
 
@@ -43,6 +44,7 @@
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "textfile.h"
+#include "glib-helper.h"
 
 #include "error.h"
 #include "common.h"
@@ -221,102 +223,30 @@ out:
 	return err;
 }
 
-static gboolean l2cap_connect_cb(GIOChannel *chan,
-			GIOCondition cond, gpointer data)
+static void connect_cb(GIOChannel *chan, int err, gpointer data)
 {
 	struct network_conn *nc = data;
-	socklen_t len;
-	int sk, ret;
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_ERR | G_IO_HUP))
-		goto failed;
-
-	sk = g_io_channel_unix_get_fd(chan);
-
-	len = sizeof(ret);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(errno), errno);
+	if (err < 0) {
+		error("l2cap connect(): %s (%d)", strerror(-err), -err);
 		goto failed;
 	}
 
-	if (ret != 0) {
-		error("connect(): %s (%d)", strerror(errno), errno);
+	nc->sk = g_io_channel_unix_get_fd(chan);
+
+	err = bnep_connect(nc);
+	if (err < 0) {
+		error("bnep connect(): %s (%d)", strerror(-err), -err);
+		g_io_channel_close(chan);
+		g_io_channel_unref(chan);
 		goto failed;
 	}
 
-	if (bnep_connect(nc)) {
-		error("connect(): %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
+	return;
 
-	return FALSE;
 failed:
 	nc->state = DISCONNECTED;
-	error_connection_attempt_failed(connection, nc->msg, errno);
-	g_io_channel_close(chan);
-	return FALSE;
-}
-
-static int l2cap_connect(struct network_conn *nc)
-{
-	struct l2cap_options l2o;
-	struct sockaddr_l2 l2a;
-	socklen_t olen;
-	char addr[18];
-	GIOChannel *io;
-
-	ba2str(&nc->dst, addr);
-	info("Connecting to %s", addr);
-
-	/* Setup L2CAP options according to BNEP spec */
-	memset(&l2o, 0, sizeof(l2o));
-	olen = sizeof(l2o);
-	getsockopt(nc->sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen);
-	l2o.imtu = l2o.omtu = BNEP_MTU;
-	setsockopt(nc->sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o));
-
-	memset(&l2a, 0, sizeof(l2a));
-	l2a.l2_family = AF_BLUETOOTH;
-	bacpy(&l2a.l2_bdaddr, &nc->src);
-
-	if (bind(nc->sk, (struct sockaddr *) &l2a, sizeof(l2a)) < 0) {
-		error("Bind failed. %s(%d)", strerror(errno), errno);
-		return -errno;
-	}
-
-	memset(&l2a, 0, sizeof(l2a));
-	l2a.l2_family = AF_BLUETOOTH;
-	bacpy(&l2a.l2_bdaddr, &nc->dst);
-	l2a.l2_psm = htobs(BNEP_PSM);
-
-	if (set_nonblocking(nc->sk) < 0) {
-		error("Set non blocking: %s (%d)", strerror(errno), errno);
-		return -errno;
-	}
-
-	io = g_io_channel_unix_new(nc->sk);
-	g_io_channel_set_close_on_unref(io, FALSE);
-
-	if (connect(nc->sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			error("Connect failed. %s(%d)", strerror(errno),
-					errno);
-			g_io_channel_close(io);
-			g_io_channel_unref(io);
-			return -errno;
-		}
-		g_io_add_watch(io, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				(GIOFunc) l2cap_connect_cb, nc);
-
-	} else {
-		l2cap_connect_cb(io, G_IO_OUT, nc);
-	}
-
-	g_io_channel_unref(io);
-	return 0;
+	error_connection_attempt_failed(connection, nc->msg, -err);
 }
 
 static DBusHandlerResult get_adapter(DBusConnection *conn, DBusMessage *msg,
@@ -448,6 +378,7 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 {
 	struct network_conn *nc = data;
 	DBusError derr;
+	int err;
 
 	if (nc->state != DISCONNECTED) {
 		error_failed(conn, msg, "Device already connected");
@@ -462,16 +393,12 @@ static DBusHandlerResult connection_connect(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	nc->sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	nc->state = CONNECTING;
-	if (nc->sk < 0) {
-		error("Cannot create L2CAP socket. %s(%d)", strerror(errno),
-				errno);
-		goto fail;
-	}
-
 	nc->msg = dbus_message_ref(msg);
-	if (l2cap_connect(nc) < 0) {
+
+	err = bt_l2cap_connect(&nc->src, &nc->dst, BNEP_PSM, BNEP_MTU,
+				connect_cb, nc);
+	if (err < 0) {
 		error("Connect failed. %s(%d)", strerror(errno), errno);
 		goto fail;
 	}

@@ -605,7 +605,7 @@ static void control_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 	idev->ctrl_sk = g_io_channel_unix_get_fd(chan);
 
 	/* Connect to the HID interrupt channel */
-	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_INTR,
+	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_INTR, 0,
 			interrupt_connect_cb, idev);
 	if (err < 0) {
 		error("L2CAP connect failed:%s (%d)", strerror(-err), -err);
@@ -766,7 +766,7 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	}
 
 	/* HID devices */
-	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL,
+	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL, 0,
 			control_connect_cb, idev);
 	if (err < 0) {
 		error("L2CAP connect failed: %s(%d)", strerror(-err), -err);
