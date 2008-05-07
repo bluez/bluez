@@ -680,7 +680,7 @@ static int pattern2uuid128(const char *pattern, char *uuid, size_t size)
 			if (pattern[i] != '-')
 				return -EINVAL;
 
-		} else if (!g_ascii_isxdigit(pattern[i]))
+		} else if (!isxdigit(pattern[i]))
 			return -EINVAL;
 	}
 
