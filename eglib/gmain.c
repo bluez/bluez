@@ -1479,6 +1479,24 @@ gchar **g_strsplit(const gchar *string, const gchar *delimiter, gint max_tokens)
 	return str_array;
 }
 
+gchar *g_ascii_strup(const gchar *str, gssize len)
+{
+	int i;
+	gchar *s;
+
+	s = g_strdup(str);
+	if (!s)
+		return NULL;
+
+	if (len < 0)
+		len = strlen(s);
+
+	for (i = 0; i < len; i++)
+		s[i] = toupper(s[i]);
+
+	return s;
+}
+
 gboolean g_str_equal(gconstpointer v1, gconstpointer v2)
 {
 	const gchar *string1 = v1;

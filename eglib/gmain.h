@@ -242,6 +242,7 @@ gchar* g_strdelimit(gchar *string, const gchar *delimiters, gchar new_delim);
 gchar *g_strconcat(const gchar *string1, ...);
 gsize g_strlcat(gchar *dest, const gchar *src, gsize dest_size);
 gchar **g_strsplit(const gchar *string, const gchar *delimiter, gint max_tokens);
+gchar *g_ascii_strup(const gchar *str, gssize len);
 gboolean g_str_equal(gconstpointer v1, gconstpointer v2);
 gboolean g_str_has_prefix(const gchar *str, const gchar *prefix);
 gboolean g_str_has_suffix(const gchar *str, const gchar *suffix);
