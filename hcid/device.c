@@ -129,19 +129,20 @@ void init_adapters(void)
 
 static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 {
-	int dd;
+	int dd, err;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
+		err = errno;
 		error("Can't open device hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		return -errno;
+					dev_id, strerror(err), err);
+		return -err;
 	}
 
 	if (hci_read_bd_addr(dd, bdaddr, 2000) < 0) {
-		int err = errno;
+		err = errno;
 		error("Can't read address for hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					dev_id, strerror(err), err);
 		hci_close_dev(dd);
 		return -err;
 	}
@@ -262,15 +263,16 @@ int start_adapter(uint16_t dev_id)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("Can't open device hci%d",
-					dev_id, strerror(errno), errno);
-		return -errno;
+		err = errno;
+		error("Can't open device hci%d: %s (%d)",
+					dev_id, strerror(err), err);
+		return -err;
 	}
 
 	if (hci_read_local_version(dd, &ver, 1000) < 0) {
-		int err = errno;
+		err = errno;
 		error("Can't read version info for hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					dev_id, strerror(err), err);
 		hci_close_dev(dd);
 		return -err;
 	}
@@ -364,9 +366,9 @@ setup:
 		goto done;
 
 	if (hci_write_inquiry_mode(dd, inqmode, 1000) < 0) {
-		int err = errno;
+		err = errno;
 		error("Can't write inquiry mode for hci%d: %s (%d)",
-						dev_id, strerror(errno), err);
+						dev_id, strerror(err), err);
 		hci_close_dev(dd);
 		return -err;
 	}
@@ -402,9 +404,10 @@ int update_adapter(uint16_t dev_id)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("Can't open device hci%d",
-					dev_id, strerror(errno), errno);
-		return -errno;
+		int err = errno;
+		error("Can't open device hci%d: %s (%d)",
+					dev_id, strerror(err), err);
+		return -err;
 	}
 
 	update_ext_inquiry_response(dd, dev);
@@ -487,13 +490,14 @@ static int digi_revision(uint16_t dev_id, char *revision, size_t size)
 	struct hci_request rq;
 	unsigned char req[] = { 0x07 };
 	unsigned char buf[102];
-	int dd;
+	int dd, err;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
+		err = errno;
 		error("Can't open device hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		return -errno;
+					dev_id, strerror(err), err);
+		return -err;
 	}
 
 	memset(&rq, 0, sizeof(rq));
@@ -505,9 +509,9 @@ static int digi_revision(uint16_t dev_id, char *revision, size_t size)
 	rq.rlen   = sizeof(buf);
 
 	if (hci_send_req(dd, &rq, 2000) < 0) {
-		int err = errno;
+		err = errno;
 		error("Can't read revision for hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					dev_id, strerror(err), err);
 		hci_close_dev(dd);
 		return -err;
 	}
@@ -587,9 +591,10 @@ int set_simple_pairing_mode(uint16_t dev_id, uint8_t mode)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("Can't open device hci%d",
-					dev_id, strerror(errno), errno);
-		return -errno;
+		int err = errno;
+		error("Can't open device hci%d: %s (%d)",
+					dev_id, strerror(err), err);
+		return -err;
 	}
 
 	update_ext_inquiry_response(dd, dev);
@@ -602,7 +607,7 @@ int set_simple_pairing_mode(uint16_t dev_id, uint8_t mode)
 int get_device_name(uint16_t dev_id, char *name, size_t size)
 {
 	char tmp[249];
-	int dd;
+	int dd, err;
 
 	ASSERT_DEV_ID;
 
@@ -610,15 +615,16 @@ int get_device_name(uint16_t dev_id, char *name, size_t size)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("Can't open device hci%d",
-					dev_id, strerror(errno), errno);
-		return -errno;
+		err = errno;
+		error("Can't open device hci%d: %s (%d)",
+					dev_id, strerror(err), err);
+		return -err;
 	}
 
 	if (hci_read_local_name(dd, sizeof(tmp), tmp, 2000) < 0) {
-		int err = errno;
+		err = errno;
 		error("Can't read name for hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					dev_id, strerror(err), err);
 		hci_close_dev(dd);
 		return -err;
 	}
@@ -633,7 +639,7 @@ int get_device_name(uint16_t dev_id, char *name, size_t size)
 int set_device_name(uint16_t dev_id, const char *name)
 {
 	struct hci_dev *dev;
-	int dd;
+	int dd, err;
 
 	ASSERT_DEV_ID;
 
@@ -641,15 +647,16 @@ int set_device_name(uint16_t dev_id, const char *name)
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("Can't open device hci%d",
-					dev_id, strerror(errno), errno);
-		return -errno;
+		err = errno;
+		error("Can't open device hci%d: %s (%d)",
+					dev_id, strerror(err), err);
+		return -err;
 	}
 
 	if (hci_write_local_name(dd, name, 5000) < 0) {
-		int err = errno;
+		err = errno;
 		error("Can't write name for hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					dev_id, strerror(err), err);
 		hci_close_dev(dd);
 		return -err;
 	}
