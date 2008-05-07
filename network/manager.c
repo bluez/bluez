@@ -44,6 +44,7 @@
 #include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"
+#include "glib-helper.h"
 
 #define NETWORK_MANAGER_INTERFACE "org.bluez.network.Manager"
 
@@ -213,47 +214,26 @@ static DBusHandlerResult remove_path(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static void pan_record_reply(DBusPendingCall *call, void *data)
+static void records_cb(sdp_list_t *recs, int err, gpointer data)
 {
 	struct pending_reply *pr = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError derr;
-	int len, scanned;
-	uint8_t *rec_bin;
+	int len;
 	sdp_data_t *d;
 	sdp_record_t *rec = NULL;
 	char name[MAX_NAME_SIZE], *desc = NULL;
 
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		/* FIXME: forward error as is */
-		if (dbus_error_has_name(&derr,
-				"org.bluez.Error.ConnectionAttemptFailed"))
-			error_connection_attempt_failed(pr->conn, pr->msg,
-					EINVAL);
-		else
-			error_not_supported(pr->conn, pr->msg);
-
-		error("GetRemoteServiceRecord failed: %s(%s)", derr.name,
-			derr.message);
+	if (err < 0) {
+		error_connection_attempt_failed(pr->conn, pr->msg, -err);
 		goto fail;
 	}
 
-	if (!dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &rec_bin, &len,
-				DBUS_TYPE_INVALID)) {
+	if (!recs || !recs->data) {
 		error_not_supported(pr->conn, pr->msg);
-		error("%s: %s", derr.name, derr.message);
+		error("Invalid PAN service record");
 		goto fail;
 	}
 
-	if (len == 0) {
-		error_not_supported(pr->conn, pr->msg);
-		error("Invalid PAN service record length");
-		goto fail;
-	}
-
-	rec = sdp_extract_pdu(rec_bin, &scanned);
+	rec = recs->data;
 
 	/* Concat remote name and service name */
 	memset(name, 0, MAX_NAME_SIZE);
@@ -276,6 +256,8 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 				d->unitSize, d->val.str);
 	}
 
+	sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
+
 	if (connection_register(pr->path, &pr->src, &pr->dst, pr->id, name,
 				desc) < 0) {
 		error_failed(pr->conn, pr->msg, "D-Bus path registration failed");
@@ -286,123 +268,10 @@ static void pan_record_reply(DBusPendingCall *call, void *data)
 	connection_paths = g_slist_append(connection_paths, g_strdup(pr->path));
 
 	create_path(pr->conn, pr->msg, pr->path, "ConnectionCreated");
+
 fail:
-
-	if (desc)
-		g_free(desc);
-
-	sdp_record_free(rec);
-	dbus_error_free(&derr);
+	g_free(desc);
 	pending_reply_free(pr);
-	dbus_message_unref(reply);
-}
-
-static int get_record(struct pending_reply *pr, uint32_t handle,
-					DBusPendingCallNotifyFunction cb)
-{
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-
-	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
-			"org.bluez.Adapter", "GetRemoteServiceRecord");
-	if (!msg)
-		return -1;
-
-	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &pr->addr,
-			DBUS_TYPE_UINT32, &handle,
-			DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
-		error("Can't send D-Bus message.");
-		dbus_message_unref(msg);
-		return -1;
-	}
-
-	dbus_pending_call_set_notify(pending, cb, pr, NULL);
-	dbus_message_unref(msg);
-	dbus_pending_call_unref(pending);
-
-	return 0;
-}
-
-static void pan_handle_reply(DBusPendingCall *call, void *data)
-{
-	struct pending_reply *pr = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError derr;
-	uint32_t *phandle;
-	int len;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		/* FIXME : forward error as is */
-		if (dbus_error_has_name(&derr,
-				"org.bluez.Error.ConnectionAttemptFailed"))
-			error_connection_attempt_failed(pr->conn, pr->msg,
-					EINVAL);
-		else
-			error_not_supported(pr->conn, pr->msg);
-
-		error("GetRemoteServiceHandles: %s(%s)", derr.name,
-				derr.message);
-		goto fail;
-	}
-
-	if (!dbus_message_get_args(reply, &derr,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &phandle,
-				&len, DBUS_TYPE_INVALID)) {
-		error_not_supported(pr->conn, pr->msg);
-		error("%s: %s", derr.name, derr.message);
-		goto fail;
-	}
-
-	if (!len) {
-		error_not_supported(pr->conn, pr->msg);
-		goto fail;
-	}
-
-	if (get_record(pr, *phandle, pan_record_reply) < 0) {
-		error_not_supported(pr->conn, pr->msg);
-		goto fail;
-	}
-
-	dbus_message_unref(reply);
-	return;
-fail:
-	dbus_error_free(&derr);
-	pending_reply_free(pr);
-}
-
-static int get_handles(struct pending_reply *pr,
-			DBusPendingCallNotifyFunction cb)
-{
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-	const char *uuid;
-
-	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
-			"org.bluez.Adapter", "GetRemoteServiceHandles");
-	if (!msg)
-		return -1;
-
-	uuid = bnep_uuid(pr->id);
-	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &pr->addr,
-			DBUS_TYPE_STRING, &uuid,
-			DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(pr->conn, msg, &pending, -1) == FALSE) {
-		error("Can't send D-Bus message.");
-		dbus_message_unref(msg);
-		return -1;
-	}
-
-	dbus_pending_call_set_notify(pending, cb, pr, NULL);
-	dbus_message_unref(msg);
-	dbus_pending_call_unref(pending);
-
-	return 0;
 }
 
 static DBusHandlerResult list_servers(DBusConnection *conn, DBusMessage *msg,
@@ -520,9 +389,10 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	const char *str;
 	bdaddr_t src;
 	uint16_t id;
-	int dev_id;
+	int dev_id, err;
 	char key[32];
 	GSList *l;
+	uuid_t uuid;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -573,8 +443,13 @@ static DBusHandlerResult create_connection(DBusConnection *conn,
 	snprintf(pr->path, MAX_PATH_LENGTH,
 			NETWORK_PATH"/connection%d", net_uid++);
 
-	if (get_handles(pr, pan_handle_reply) < 0)
+	sdp_uuid16_create(&uuid, pr->id);
+	err = bt_search_service(&pr->src, &pr->dst, &uuid, records_cb, pr,
+				NULL);
+	if (err < 0) {
+		pending_reply_free(pr);
 		return error_not_supported(conn, msg);
+	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
