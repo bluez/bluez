@@ -461,7 +461,7 @@ int service_start(struct service *service, DBusConnection *conn)
 	dbus_error_init(&derr);
 	dbus_bus_add_match(conn, NAME_MATCH, &derr);
 	if (dbus_error_is_set(&derr)) {
-		error("Add match \"%s\" failed: %s", derr.message);
+		error("Add match \"%s\" failed: %s", NAME_MATCH, derr.message);
 		dbus_error_free(&derr);
 		dbus_connection_remove_filter(conn, service_filter, service);
 		return -1;
