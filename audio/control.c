@@ -328,13 +328,13 @@ static GIOChannel *avctp_server_socket(gboolean master)
 	addr.l2_psm = htobs(AVCTP_PSM);
 
 	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("AVCTP server bind: %s", strerror(errno), errno);
+		error("AVCTP server bind: %s (%d)", strerror(errno), errno);
 		close(sock);
 		return NULL;
 	}
 
 	if (listen(sock, 4) < 0) {
-		error("AVCTP server listen: %s", strerror(errno), errno);
+		error("AVCTP server listen: %s (%d)", strerror(errno), errno);
 		close(sock);
 		return NULL;
 	}

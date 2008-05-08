@@ -1337,13 +1337,13 @@ static GIOChannel *server_socket(uint8_t *channel, gboolean master)
 	addr.rc_channel = channel ? *channel : 0;
 
 	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("server bind: %s", strerror(errno), errno);
+		error("server bind: %s (%d)", strerror(errno), errno);
 		close(sock);
 		return NULL;
 	}
 
 	if (listen(sock, 1) < 0) {
-		error("server listen: %s", strerror(errno), errno);
+		error("server listen: %s (%d)", strerror(errno), errno);
 		close(sock);
 		return NULL;
 	}
