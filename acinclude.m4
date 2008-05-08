@@ -128,12 +128,6 @@ AC_DEFUN([AC_PATH_ALSA], [
 	AC_SUBST(ALSA_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_HAL], [
-	PKG_CHECK_MODULES(HAL, hal >= 0.5.8, hal_found=yes, hal_found=no)
-	AC_SUBST(HAL_CFLAGS)
-	AC_SUBST(HAL_LIBS)
-])
-
 AC_DEFUN([AC_PATH_USB], [
 	PKG_CHECK_MODULES(USB, libusb, usb_found=yes, usb_found=no)
 	AC_SUBST(USB_CFLAGS)
@@ -161,7 +155,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	pie_enable=no
 	sndfile_enable=${sndfile_found}
 	inotify_enable=${inotify_found}
-	hal_enable=${hal_found}
 	usb_enable=${usb_found}
 	alsa_enable=${alsa_found}
 	glib_enable=no
@@ -220,10 +213,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(inotify, AC_HELP_STRING([--enable-inotify], [enable inotify support]), [
 		inotify_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(hal, AC_HELP_STRING([--enable-hal], [enable HAL support]), [
-		hal_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
@@ -355,7 +344,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
 	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
-	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes" && test "${hal_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(SBC, test "${alsa_enable}" = "yes" || test "${gstreamer_enable}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
