@@ -38,9 +38,6 @@ DBusConnection *init_dbus_direct(const char *address);
 DBusConnection *dbus_bus_system_setup_with_main_loop(const char *name,
 				void (*disconnect_cb)(void *), void *user_data);
 
-DBusHandlerResult simple_introspect(DBusConnection *conn,
-					DBusMessage *msg, void *user_data);
-
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
 guint name_listener_add(DBusConnection *connection, const char *name,

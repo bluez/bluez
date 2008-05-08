@@ -827,33 +827,6 @@ DBusConnection *dbus_bus_system_setup_with_main_loop(const char *name,
 	return init_dbus(name, disconnect_cb, user_data);
 }
 
-static char simple_xml[] = DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>";
-
-DBusHandlerResult simple_introspect(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	DBusMessage *reply;
-	const char *path, *ptr = simple_xml;
-
-	path = dbus_message_get_path(msg);
-
-	info("Introspect path:%s", path);
-
-	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING)) {
-		error("Unexpected signature to introspect call");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
-}
-
 int set_nonblocking(int fd)
 {
 	long arg;
