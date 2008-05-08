@@ -60,9 +60,4 @@ static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn, DBu
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-int set_nonblocking(int fd);
-
-void register_external_service(DBusConnection *conn, const char *identifier,
-				const char *name, const char *description);
-
 #endif /* __H_BLUEZ_DBUS_H__ */

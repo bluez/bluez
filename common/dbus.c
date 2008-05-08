@@ -826,27 +826,3 @@ DBusConnection *dbus_bus_system_setup_with_main_loop(const char *name,
 {
 	return init_dbus(name, disconnect_cb, user_data);
 }
-
-int set_nonblocking(int fd)
-{
-	long arg;
-
-	arg = fcntl(fd, F_GETFL);
-	if (arg < 0) {
-		error("fcntl(F_GETFL): %s (%d)", strerror(errno), errno);
-		return -errno;
-	}
-
-	/* Return if already nonblocking */
-	if (arg & O_NONBLOCK)
-		return 0;
-
-	arg |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, arg) < 0) {
-		error("fcntl(F_SETFL, O_NONBLOCK): %s (%d)",
-				strerror(errno), errno);
-		return -errno;
-	}
-
-	return 0;
-}

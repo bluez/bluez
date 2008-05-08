@@ -43,6 +43,25 @@
 
 #include "glib-helper.h"
 
+int set_nonblocking(int fd)
+{
+	long arg;
+
+	arg = fcntl(fd, F_GETFL);
+	if (arg < 0)
+		return -errno;
+
+	/* Return if already nonblocking */
+	if (arg & O_NONBLOCK)
+		return 0;
+
+	arg |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, arg) < 0)
+		return -errno;
+
+	return 0;
+}
+
 struct io_context {
 	GIOChannel		*io;
 	bt_io_callback_t	cb;

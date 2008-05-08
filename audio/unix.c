@@ -40,7 +40,6 @@
 #include <glib.h>
 
 #include "logging.h"
-#include "dbus.h"
 #include "ipc.h"
 #include "device.h"
 #include "manager.h"
@@ -49,6 +48,7 @@
 #include "headset.h"
 #include "sink.h"
 #include "unix.h"
+#include "glib-helper.h"
 
 typedef enum {
 	TYPE_NONE,

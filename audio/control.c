@@ -55,6 +55,7 @@
 #include "avdtp.h"
 #include "control.h"
 #include "sdpd.h"
+#include "glib-helper.h"
 
 #define AVCTP_PSM 23
 
