@@ -38,13 +38,14 @@
 #include <bluetooth/hci_lib.h>
 
 #include <glib.h>
+#include <dbus/dbus.h>
 
 #include "logging.h"
-#include "dbus.h"
 
 #include "device.h"
 #include "server.h"
 #include "storage.h"
+#include "dbus-helper.h"
 #include "dbus-service.h"
 
 static const char* HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";

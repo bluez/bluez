@@ -36,12 +36,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <glib.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 
-#include "dbus.h"
+#include <glib.h>
+
+#include <gdbus.h>
+
 #include "dbus-helper.h"
 #include "logging.h"
 

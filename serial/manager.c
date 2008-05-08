@@ -40,8 +40,6 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <glib.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
@@ -49,7 +47,10 @@
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/rfcomm.h>
 
-#include "dbus.h"
+#include <glib.h>
+
+#include <gdbus.h>
+
 #include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"

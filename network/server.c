@@ -45,7 +45,6 @@
 #include <glib.h>
 
 #include "logging.h"
-#include "dbus.h"
 #include "error.h"
 #include "textfile.h"
 #include "dbus-helper.h"

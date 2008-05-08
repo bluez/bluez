@@ -52,7 +52,6 @@
 #include <gdbus.h>
 
 #include "hcid.h"
-#include "dbus.h"
 #include "dbus-helper.h"
 #include "dbus-error.h"
 #include "manager.h"

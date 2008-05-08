@@ -45,7 +45,6 @@
 
 #include <dbus/dbus.h>
 
-#include "dbus.h"
 #include "dbus-helper.h"
 #include "hcid.h"
 #include "server.h"

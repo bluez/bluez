@@ -26,27 +26,16 @@
 #endif
 
 #include <stdio.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
 
 #include <glib.h>
-
 #include <dbus/dbus.h>
 
-#ifdef NEED_DBUS_WATCH_GET_UNIX_FD
-#define dbus_watch_get_unix_fd dbus_watch_get_fd
-#endif
+#include "gdbus.h"
 
-#ifdef HAVE_DBUS_GLIB
-#include <dbus/dbus-glib-lowlevel.h>
-#endif
-
-#include "dbus.h"
-#include "logging.h"
+#define info(fmt...)
+#define error(fmt...)
+#define debug(fmt...)
 
 static guint listener_id = 0;
 static GSList *name_listeners = NULL;

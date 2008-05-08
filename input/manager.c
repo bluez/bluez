@@ -42,7 +42,6 @@
 
 #include <dbus/dbus.h>
 
-#include "dbus.h"
 #include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"

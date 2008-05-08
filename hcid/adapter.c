@@ -48,8 +48,9 @@
 
 #include <dbus/dbus.h>
 
+#include <gdbus.h>
+
 #include "hcid.h"
-#include "dbus.h"
 
 #include "adapter.h"
 #include "device.h"

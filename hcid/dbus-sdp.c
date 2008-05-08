@@ -49,7 +49,8 @@
 
 #include <dbus/dbus.h>
 
-#include "dbus.h"
+#include <gdbus.h>
+
 #include "dbus-helper.h"
 #include "hcid.h"
 #include "textfile.h"

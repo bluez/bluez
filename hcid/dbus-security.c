@@ -42,9 +42,9 @@
 
 #include <dbus/dbus.h>
 
-#include "adapter.h"
+#include <gdbus.h>
 
-#include "dbus.h"
+#include "adapter.h"
 #include "dbus-helper.h"
 #include "hcid.h"
 #include "dbus-common.h"

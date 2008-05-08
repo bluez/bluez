@@ -29,7 +29,8 @@
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 
-#include "dbus.h"
+#include <glib.h>
+#include <dbus/dbus.h>
 
 #include "plugin.h"
 #include "dbus-service.h"

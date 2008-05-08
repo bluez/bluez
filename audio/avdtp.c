@@ -34,12 +34,12 @@
 #include <signal.h>
 #include <netinet/in.h>
 
-#include <glib.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 
-#include "dbus.h"
+#include <glib.h>
+#include <dbus/dbus.h>
+
 #include "dbus-service.h"
 #include "logging.h"
 

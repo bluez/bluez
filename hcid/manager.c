@@ -43,10 +43,11 @@
 
 #include <dbus/dbus.h>
 
+#include <gdbus.h>
+
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
-#include "dbus.h"
 #include "dbus-helper.h"
 #include "dbus-common.h"
 #include "error.h"

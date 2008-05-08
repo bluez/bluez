@@ -41,7 +41,6 @@
 
 #include "dbus-helper.h"
 
-#include "dbus.h"
 #include "logging.h"
 
 #include "sdpd.h"

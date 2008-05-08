@@ -40,6 +40,15 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 				GDBusDisconnectFunction function,
 				void *user_data, DBusFreeFunction destroy);
 
+typedef void (*name_cb_t)(const char *name, void *user_data);
+
+guint name_listener_add(DBusConnection *connection, const char *name,
+				name_cb_t func, void *user_data);
+int name_listener_remove(DBusConnection *connection, const char *name,
+				name_cb_t func, void *user_data);
+gboolean name_listener_id_remove(guint id);
+int name_listener_indicate_disconnect(DBusConnection *connection);
+
 #ifdef __cplusplus
 }
 #endif

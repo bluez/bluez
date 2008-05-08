@@ -32,16 +32,15 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 
-#include <glib.h>
-#include <dbus/dbus.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "dbus.h"
+#include <glib.h>
+#include <dbus/dbus.h>
+
 #include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"

@@ -40,10 +40,8 @@
 #include <bluetooth/sdp.h>
 
 #include <glib.h>
-
 #include <dbus/dbus.h>
 
-#include "dbus.h"
 #include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"

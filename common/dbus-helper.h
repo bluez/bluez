@@ -20,8 +20,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
 #include <stdarg.h>
-#include <dbus.h>
+#include <dbus/dbus.h>
 
 #define DBUS_TYPE_STRING_ARRAY_AS_STRING (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING)
 #define DBUS_TYPE_BYTE_ARRAY_AS_STRING   (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING)
@@ -93,3 +94,14 @@ dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 						const char *interface,
 						const char *name,
 						int type, void *value);
+
+static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	if (msg) {
+		dbus_connection_send(conn, msg, NULL);
+		dbus_message_unref(msg);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}

@@ -34,10 +34,8 @@
 
 #include <bluetooth/bluetooth.h>
 
-#include "dbus.h"
 #include "logging.h"
 
-#include "dbus-service.h"
 #include "plugin.h"
 
 static GSList *plugins = NULL;
