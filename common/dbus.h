@@ -47,9 +47,6 @@ int name_listener_remove(DBusConnection *connection, const char *name,
 gboolean name_listener_id_remove(guint id);
 int name_listener_indicate_disconnect(DBusConnection *connection);
 
-dbus_bool_t dbus_bus_get_unix_process_id(DBusConnection *conn, const char *name,
-						unsigned long *pid);
-
 static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn, DBusMessage *msg)
 {
 	if (msg) {
