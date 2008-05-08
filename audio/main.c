@@ -96,15 +96,19 @@ static int audio_init(void)
 
 	g_key_file_free(config);
 
-	register_uuids("audio", uuids);
+	register_service("audio");
 
-	register_external_service(conn, "audio", "Audio service", "");
+	register_uuids("audio", uuids);
 
 	return 0;
 }
 
 static void audio_exit(void)
 {
+	unregister_uuids("audio");
+
+	unregister_service("audio");
+
 	audio_manager_exit();
 
 	unix_exit();

@@ -312,8 +312,10 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 static DBusHandlerResult activate_service(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	DBusMessage *reply;
 	const char *pattern;
 	struct service *service;
+	const char *busname = "org.bluez";
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &pattern,
@@ -324,29 +326,14 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 	if (!service)
 		return error_no_such_service(conn, msg);
 
-	if (service->bus_name) {
-		DBusMessage *reply;
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-		reply = dbus_message_new_method_return(msg);
-		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &busname,
+							DBUS_TYPE_INVALID);
 
-		dbus_message_append_args(reply,
-					DBUS_TYPE_STRING, &service->bus_name,
-					DBUS_TYPE_INVALID);
-
-		return send_message_and_unref(conn, reply);
-	}
-
-	if (service->pid)
-		return error_service_start_in_progress(conn, msg);
-
-	if (service_start(service, conn) < 0)
-		return error_failed_errno(conn, msg, ENOEXEC);
-
-	service->action = dbus_message_ref(msg);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return send_message_and_unref(conn, reply);
 }
 
 static DBusMethodVTable old_manager_methods[] = {

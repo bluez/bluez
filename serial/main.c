@@ -34,6 +34,7 @@
 
 #include "plugin.h"
 #include "dbus.h"
+#include "dbus-service.h"
 #include "manager.h"
 
 static DBusConnection *conn;
@@ -49,13 +50,15 @@ static int serial_init(void)
 		return -EIO;
 	}
 
-	register_external_service(conn, "serial", "Serial service", "");
+	register_service("serial");
 
 	return 0;
 }
 
 static void serial_exit(void)
 {
+	unregister_service("serial");
+
 	serial_manager_exit();
 
 	dbus_connection_unref(conn);

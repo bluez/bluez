@@ -353,57 +353,34 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult register_service(DBusConnection *conn,
+static DBusHandlerResult register_service_old(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
-	const char *sender, *ident, *name, *desc;
+	const char *ident, *name, *desc;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &ident,
 			DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &desc,
 						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	sender = dbus_message_get_sender(msg);
-
-	if (service_register(conn, sender, ident, name, desc) < 0)
-		return error_failed_errno(conn, msg, EIO);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return send_message_and_unref(conn, reply);
+	return error_failed_errno(conn, msg, EIO);
 }
 
-static DBusHandlerResult unregister_service(DBusConnection *conn,
+static DBusHandlerResult unregister_service_old(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
-	const char *sender, *ident;
 	struct service *service;
+	const char *ident;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &ident,
 						DBUS_TYPE_INVALID) == FALSE)
 		return error_invalid_arguments(conn, msg, NULL);
 
-	sender = dbus_message_get_sender(msg);
-
 	service = search_service(ident);
 	if (!service)
 		return error_service_does_not_exist(conn, msg);
 
-	if (!service->external || strcmp(sender, service->bus_name))
-		return error_not_authorized(conn, msg);
-
-	if (service_unregister(conn, service) < 0)
-		return error_failed_errno(conn, msg, EIO);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return send_message_and_unref(conn, reply);
+	return error_failed_errno(conn, msg, EIO);
 }
 
 static DBusHandlerResult request_authorization_old(DBusConnection *conn,
@@ -486,8 +463,8 @@ static DBusMethodVTable database_methods[] = {
 	{ "UpdateServiceRecord",		update_service_record,		"uay",	""	},
 	{ "UpdateServiceRecordFromXML",		update_service_record_from_xml,	"us",	""	},
 	{ "RemoveServiceRecord",		remove_service_record,		"u",	""	},
-	{ "RegisterService",			register_service,		"sss",	""	},
-	{ "UnregisterService",			unregister_service,		"s",	""	},
+	{ "RegisterService",			register_service_old,		"sss",	""	},
+	{ "UnregisterService",			unregister_service_old,		"s",	""	},
 	{ "RequestAuthorization",		request_authorization_old,	"ss",	""	},
 	{ "CancelAuthorizationRequest",		cancel_authorization_request,	"ss",	""	},
 	{ NULL, NULL, NULL, NULL }

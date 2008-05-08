@@ -922,8 +922,6 @@ int main(int argc, char *argv[])
 	 * daemon needs to be re-worked. */
 	plugin_init();
 
-	init_services(CONFIGDIR);
-
 	/* Start event processor */
 	g_main_loop_run(event_loop);
 

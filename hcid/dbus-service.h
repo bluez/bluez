@@ -22,29 +22,10 @@
  *
  */
 
-#define START_REPLY_TIMEOUT	5000
-
 struct service {
-	char *filename;
 	char *object_path;
-
-	DBusMessage *action;	/* Either Start or Stop method call */
-
-	guint startup_timer;
-	guint shutdown_timer;
-
-	/* These are set when the service is running */
-	GPid pid;		/* Process id */
-	char *bus_name;		/* D-Bus unique name */
-
-	/* Information parsed from the service file */
-	char *name;
-	char *descr;
 	char *ident;
-	gboolean autostart;
-
-	/* Services without a *.service file */
-	gboolean external;
+	char *name;
 };
 
 void release_services(DBusConnection *conn);
@@ -55,17 +36,13 @@ struct service *search_service(const char *pattern);
 
 struct service *search_service_by_uuid(const char *uuid);
 
-int service_start(struct service *service, DBusConnection *conn);
-
-int init_services(const char *path);
-
-int service_register(DBusConnection *conn, const char *bus_name, const char *ident,
-				const char *name, const char *description);
-
 int service_unregister(DBusConnection *conn, struct service *service);
 
-void register_uuids(const char *name, const char **uuids);
-void unregister_uuids(const char *name);
+int register_service(const char *ident);
+void unregister_service(const char *ident);
+
+void register_uuids(const char *ident, const char **uuids);
+void unregister_uuids(const char *ident);
 
 typedef void (*service_auth_cb) (DBusError *derr, void *user_data);
 int service_req_auth(bdaddr_t *src, bdaddr_t *dst,

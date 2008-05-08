@@ -180,15 +180,19 @@ static int network_init(void)
 		return -EIO;
 	}
 
-	register_uuids("network", uuids);
+	register_service("network");
 
-	register_external_service(conn, "network", "Network service", "");
+	register_uuids("network", uuids);
 
 	return 0;
 }
 
 static void network_exit(void)
 {
+	unregister_uuids("network");
+
+	unregister_service("network");
+
 	network_manager_exit();
 
 	dbus_connection_unref(conn);

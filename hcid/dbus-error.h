@@ -51,4 +51,3 @@ DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMes
 DBusHandlerResult error_sdp_failed(DBusConnection *conn, DBusMessage *msg, int err);
 DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_service_start_in_progress(DBusConnection *conn, DBusMessage *msg);
