@@ -1,12 +1,5 @@
 
-noinst_PROGRAMS = bluetoothd passkey-agent auth-agent \
-					bluetoothd-service-echo
-
-bluetoothd_service_echo_SOURCES = echo.c
-
-bluetoothd_service_echo_LDADD = \
-	$(top_builddir)/common/libhelper.a \
-	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+noinst_PROGRAMS = bluetoothd passkey-agent auth-agent
 
 if CONFIGFILES
 dbusdir = $(sysconfdir)/dbus-1/system.d
@@ -21,7 +14,7 @@ bluetoothd_SOURCES = main.c system.h \
 bluetoothd_LDADD = \
 	$(top_builddir)/common/libhelper.a \
 	$(top_builddir)/sdpd/libsdpserver.a \
-	@GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+	@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 
 passkey_agent_SOURCES = passkey-agent.c
 
@@ -31,11 +24,10 @@ auth_agent_SOURCES = auth-agent.c
 
 auth_agent_LDADD = @DBUS_LIBS@
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
 
-EXTRA_DIST = bluetooth.conf echo.service \
-			test-manager test-database
+EXTRA_DIST = bluetooth.conf test-manager test-database
 
 MAINTAINERCLEANFILES = Makefile.in

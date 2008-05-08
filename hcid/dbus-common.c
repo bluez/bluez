@@ -49,6 +49,8 @@
 
 #include <dbus/dbus.h>
 
+#include <gdbus.h>
+
 #include "hcid.h"
 #include "dbus.h"
 #include "dbus-helper.h"
@@ -336,7 +338,8 @@ int hcid_dbus_init(void)
 {
 	DBusConnection *conn;
 
-	conn = init_dbus(BLUEZ_NAME, disconnect_callback, NULL);
+	conn = dbus_bus_system_setup_with_main_loop(BLUEZ_NAME,
+						disconnect_callback, NULL);
 	if (!conn)
 		return -1;
 

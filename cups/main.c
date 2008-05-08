@@ -38,10 +38,9 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include <glib.h>
+#include <gdbus.h>
 
 #include "cups.h"
-#include "dbus.h"
 #include "sdp-xml.h"
 
 extern int sdp_search_spp(sdp_session_t *sdp, uint8_t *channel);
@@ -456,7 +455,7 @@ static gboolean list_printers(void)
 	char *adapter, *match;
 	guint len;
 
-	conn = init_dbus(NULL, NULL, NULL);
+	conn = dbus_bus_system_setup_with_main_loop("org.bluez", NULL, NULL);
 	if (conn == NULL)
 		return FALSE;
 

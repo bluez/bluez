@@ -20,3 +20,24 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
+#ifndef __GDBUS_H
+#define __GDBUS_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <dbus/dbus.h>
+#include <glib.h>
+
+void setup_dbus_with_main_loop(DBusConnection *conn);
+
+DBusConnection *dbus_bus_system_setup_with_main_loop(const char *name,
+				void (*disconnect_cb)(void *), void *user_data);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __GDBUS_H */

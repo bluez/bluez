@@ -37,6 +37,8 @@
 
 #include <dbus/dbus.h>
 
+#include <gdbus.h>
+
 #include "dbus-helper.h"
 
 #include "dbus.h"
@@ -56,7 +58,8 @@ static DBusConnection *system_bus = NULL;
 
 static int setup_dbus(void)
 {
-	system_bus = init_dbus("org.bluez", NULL, NULL);
+	system_bus = dbus_bus_system_setup_with_main_loop("org.bluez",
+								NULL, NULL);
 	if (!system_bus)
 		return -1;
 

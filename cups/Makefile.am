@@ -7,10 +7,10 @@ cups_PROGRAMS = bluetooth
 bluetooth_SOURCES = main.c cups.h sdp.c spp.c hcrp.c
 
 bluetooth_LDADD = $(top_builddir)/common/libhelper.a \
-			@DBUS_LIBS@ @GLIB_LIBS@ @BLUEZ_LIBS@ 
+		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@ 
 endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
