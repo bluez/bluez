@@ -1068,69 +1068,6 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 	return 0;
 }
 
-int l2cap_connect(bdaddr_t *src, bdaddr_t *dst, unsigned short psm,
-						GIOFunc cb, void *data)
-{
-	GIOChannel *io;
-	struct sockaddr_l2 addr;
-	struct l2cap_options opts;
-	int sk, err;
-
-	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sk < 0)
-		return -1;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family  = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, src);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0)
-		goto failed;
-
-	if (set_nonblocking(sk) < 0)
-		goto failed;
-
-	memset(&opts, 0, sizeof(opts));
-#if 0
-	opts.imtu = HIDP_DEFAULT_MTU;
-	opts.omtu = HIDP_DEFAULT_MTU;
-	opts.flush_to = 0xffff;
-
-	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0)
-		goto failed;
-#endif
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family  = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, dst);
-	addr.l2_psm = htobs(psm);
-
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, FALSE);
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			g_io_channel_unref(io);
-			goto failed;
-		}
-
-		g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				(GIOFunc) cb, data);
-	} else
-		cb(io, G_IO_OUT, data);
-
-	g_io_channel_unref(io);
-
-	return 0;
-
-failed:
-	err = errno;
-	close(sk);
-	errno = err;
-
-	return -1;
-}
-
 static struct device *find_device(bdaddr_t *src, bdaddr_t *dst)
 {
 	struct device *idev;
