@@ -38,11 +38,8 @@ struct service *search_service_by_uuid(const char *uuid);
 
 int service_unregister(DBusConnection *conn, struct service *service);
 
-int register_service(const char *ident);
+int register_service(const char *ident, const char **uuids);
 void unregister_service(const char *ident);
-
-void register_uuids(const char *ident, const char **uuids);
-void unregister_uuids(const char *ident);
 
 typedef void (*service_auth_cb) (DBusError *derr, void *user_data);
 int service_req_auth(bdaddr_t *src, bdaddr_t *dst,

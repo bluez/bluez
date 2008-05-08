@@ -180,17 +180,13 @@ static int network_init(void)
 		return -EIO;
 	}
 
-	register_service("network");
-
-	register_uuids("network", uuids);
+	register_service("network", uuids);
 
 	return 0;
 }
 
 static void network_exit(void)
 {
-	unregister_uuids("network");
-
 	unregister_service("network");
 
 	network_manager_exit();

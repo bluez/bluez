@@ -50,7 +50,7 @@ static int serial_init(void)
 		return -EIO;
 	}
 
-	register_service("serial");
+	register_service("serial", NULL);
 
 	return 0;
 }

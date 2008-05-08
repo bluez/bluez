@@ -55,17 +55,13 @@ static int input_init(void)
 		return -EIO;
 	}
 
-	register_service("input");
-
-	register_uuids("input", uuids);
+	register_service("input", uuids);
 
 	return 0;
 }
 
 static void input_exit(void)
 {
-	unregister_uuids("input");
-
 	unregister_service("input");
 
 	input_manager_exit();

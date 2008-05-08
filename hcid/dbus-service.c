@@ -481,6 +481,98 @@ int service_unregister(DBusConnection *conn, struct service *service)
 	return unregister_service_for_connection(conn, service);
 }
 
+static gint name_cmp(struct service_uuids *su, const char *name)
+{
+	return strcmp(su->name, name);
+}
+
+static gint uuid_cmp(struct service_uuids *su, const char *uuid)
+{
+	int i;
+
+	for (i = 0; su->uuids[i]; i++) {
+		if (!strcasecmp(su->uuids[i], uuid))
+			return 0;
+	}
+
+	return -1;
+}
+
+struct service *search_service_by_uuid(const char *uuid)
+{
+	struct service_uuids *su;
+	struct service *service;
+	GSList *l;
+
+	if (!services_uuids)
+		return NULL;
+
+	l = g_slist_find_custom(services_uuids, uuid, (GCompareFunc) uuid_cmp);
+	if (!l)
+		return NULL;
+
+	su = l->data;
+	service = search_service(su->name);
+	if (!service)
+		return NULL;
+
+	return service;
+}
+
+static void register_uuids(const char *ident, const char **uuids)
+{
+	struct service_uuids *su;
+	int i;
+
+	if (!ident)
+		return;
+
+	su = g_new0(struct service_uuids, 1);
+	su->name = g_strdup(ident);
+
+	for (i = 0; uuids[i]; i++);
+
+	su->uuids = g_new0(char *, i + 1);
+
+	for (i = 0; uuids[i]; i++)
+		su->uuids[i] = g_strdup(uuids[i]);
+
+	services_uuids = g_slist_append(services_uuids, su);
+}
+
+static void service_uuids_free(struct service_uuids *su)
+{
+	int i;
+
+	if (!su)
+		return;
+
+	g_free(su->name);
+
+	for (i = 0; su->uuids[i]; i++)
+		g_free(su->uuids[i]);
+
+	g_free(su);
+}
+
+static void unregister_uuids(const char *ident)
+{
+	struct service_uuids *su;
+	GSList *l;
+
+	if (!services_uuids)
+		return;
+
+	l = g_slist_find_custom(services_uuids, ident, (GCompareFunc) name_cmp);
+	if (!l)
+		return;
+
+	su = l->data;
+	services_uuids = g_slist_remove(services_uuids, su);
+
+	service_uuids_free(su);
+}
+
 static struct service *create_external_service(const char *ident)
 {
 	struct service *service;
@@ -509,7 +601,7 @@ static struct service *create_external_service(const char *ident)
 	return service;
 }
 
-int register_service(const char *ident)
+int register_service(const char *ident, const char **uuids)
 {
 	DBusConnection *conn = get_dbus_connection();
 	struct service *service;
@@ -553,6 +645,9 @@ int register_service(const char *ident)
 
 	services = g_slist_append(services, service);
 
+	if (uuids)
+		register_uuids(ident, uuids);
+
 	dbus_connection_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
 				"ServiceAdded",
 				DBUS_TYPE_STRING, &service->object_path,
@@ -567,98 +662,7 @@ int register_service(const char *ident)
 
 void unregister_service(const char *ident)
 {
-}
-
-static gint name_cmp(struct service_uuids *su, const char *name)
-{
-	return strcmp(su->name, name);
-}
-
-static gint uuid_cmp(struct service_uuids *su, const char *uuid)
-{
-	int i;
-
-	for (i = 0; su->uuids[i]; i++) {
-		if (!strcasecmp(su->uuids[i], uuid))
-			return 0;
-	}
-
-	return -1;
-}
-
-struct service *search_service_by_uuid(const char *uuid)
-{
-	struct service_uuids *su;
-	struct service *service;
-	GSList *l;
-
-	if (!services_uuids)
-		return NULL;
-
-	l = g_slist_find_custom(services_uuids, uuid, (GCompareFunc) uuid_cmp);
-	if (!l)
-		return NULL;
-
-	su = l->data;
-	service = search_service(su->name);
-	if (!service)
-		return NULL;
-
-	return service;
-}
-
-void register_uuids(const char *ident, const char **uuids)
-{
-	struct service_uuids *su;
-	int i;
-
-	if (!ident)
-		return;
-
-	su = g_new0(struct service_uuids, 1);
-	su->name = g_strdup(ident);
-
-	for (i = 0; uuids[i]; i++);
-
-	su->uuids = g_new0(char *, i + 1);
-
-	for (i = 0; uuids[i]; i++)
-		su->uuids[i] = g_strdup(uuids[i]);
-
-	services_uuids = g_slist_append(services_uuids, su);
-}
-
-static void service_uuids_free(struct service_uuids *su)
-{
-	int i;
-
-	if (!su)
-		return;
-
-	g_free(su->name);
-
-	for (i = 0; su->uuids[i]; i++)
-		g_free(su->uuids[i]);
-
-	g_free(su);
-}
-
-void unregister_uuids(const char *ident)
-{
-	struct service_uuids *su;
-	GSList *l;
-
-	if (!services_uuids)
-		return;
-
-	l = g_slist_find_custom(services_uuids, ident, (GCompareFunc) name_cmp);
-	if (!l)
-		return;
-
-	su = l->data;
-	services_uuids = g_slist_remove(services_uuids, su);
-
-	service_uuids_free(su);
+	unregister_uuids(ident);
 }
 
 static struct adapter *ba2adapter(bdaddr_t *src)
