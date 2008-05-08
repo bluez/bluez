@@ -58,8 +58,7 @@ static DBusConnection *system_bus = NULL;
 
 static int setup_dbus(void)
 {
-	system_bus = dbus_bus_system_setup_with_main_loop("org.bluez",
-								NULL, NULL);
+	system_bus = g_dbus_setup_bus(DBUS_BUS_SYSTEM, "org.bluez", NULL);
 	if (!system_bus)
 		return -1;
 

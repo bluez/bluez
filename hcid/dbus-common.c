@@ -338,10 +338,15 @@ int hcid_dbus_init(void)
 {
 	DBusConnection *conn;
 
-	conn = dbus_bus_system_setup_with_main_loop(BLUEZ_NAME,
-						disconnect_callback, NULL);
+	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, BLUEZ_NAME, NULL);
 	if (!conn)
 		return -1;
+
+	if (g_dbus_set_disconnect_function(conn, disconnect_callback,
+							NULL, NULL) == FALSE) {
+		dbus_connection_unref(conn);
+		return -1;
+	}
 
 	if (hcid_dbus_use_experimental()) {
 		debug("Registering experimental manager path");

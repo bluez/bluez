@@ -455,7 +455,7 @@ static gboolean list_printers(void)
 	char *adapter, *match;
 	guint len;
 
-	conn = dbus_bus_system_setup_with_main_loop("org.bluez", NULL, NULL);
+	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 	if (conn == NULL)
 		return FALSE;
 

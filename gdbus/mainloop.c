@@ -235,7 +235,7 @@ static void dispatch_status_cb(DBusConnection *conn,
 }
 #endif
 
-void setup_dbus_with_main_loop(DBusConnection *conn)
+static void setup_dbus_with_main_loop(DBusConnection *conn)
 {
 #ifdef HAVE_DBUS_GLIB
 	debug("Using D-Bus GLib connection setup");
@@ -253,66 +253,61 @@ void setup_dbus_with_main_loop(DBusConnection *conn)
 #endif
 }
 
-static DBusConnection *init_dbus(const char *name,
-				void (*disconnect_cb)(void *), void *user_data)
+DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
+							DBusError *error)
 {
-	struct disconnect_data *dc_data;
 	DBusConnection *conn;
-	DBusError err;
 
-	dbus_error_init(&err);
+	conn = dbus_bus_get(type, error);
 
-	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
+	if (error != NULL) {
+		if (dbus_error_is_set(error) == TRUE)
+			return NULL;
+	}
 
-	if (dbus_error_is_set(&err)) {
-		error("Can't connect to system message bus: %s", err.message);
-		dbus_error_free(&err);
+	if (conn == NULL)
 		return NULL;
+
+	if (name != NULL) {
+		if (dbus_bus_request_name(conn, name,
+				DBUS_NAME_FLAG_DO_NOT_QUEUE, error) !=
+				DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
+			dbus_connection_unref(conn);
+			return NULL;
+		}
+
+		if (error != NULL) {
+			if (dbus_error_is_set(error) == TRUE) {
+				dbus_connection_unref(conn);
+				return NULL;
+			}
+		}
 	}
 
 	setup_dbus_with_main_loop(conn);
 
-	if (name) {
-		dbus_error_init(&err);
-
-		if (dbus_bus_request_name(conn, name, 0, &err) !=
-				DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
-			error("Could not become the primary owner of %s", name);
-			dbus_connection_unref(conn);
-			return NULL;
-		}
-
-		if (dbus_error_is_set(&err)) {
-			error("Can't get bus name %s: %s", name, err.message);
-			dbus_error_free(&err);
-			dbus_connection_unref(conn);
-			return NULL;
-		}
-	}
-
-	if (!disconnect_cb)
-		return conn;
-
-	dc_data = g_new(struct disconnect_data, 1);
-
-	dc_data->disconnect_cb = disconnect_cb;
-	dc_data->user_data = user_data;
-
-	dbus_connection_set_exit_on_disconnect(conn, FALSE);
-
-	if (!dbus_connection_add_filter(conn, disconnect_filter,
-				dc_data, g_free)) {
-		error("Can't add D-Bus disconnect filter");
-		g_free(dc_data);
-		dbus_connection_unref(conn);
-		return NULL;
-	}
-
 	return conn;
 }
 
-DBusConnection *dbus_bus_system_setup_with_main_loop(const char *name,
-				void (*disconnect_cb)(void *), void *user_data)
+gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
+				GDBusDisconnectFunction function,
+				void *user_data, DBusFreeFunction destroy)
 {
-	return init_dbus(name, disconnect_cb, user_data);
+	struct disconnect_data *dc_data;
+
+	dc_data = g_new(struct disconnect_data, 1);
+
+	dc_data->disconnect_cb = function;
+	dc_data->user_data = user_data;
+
+	dbus_connection_set_exit_on_disconnect(connection, FALSE);
+
+	if (dbus_connection_add_filter(connection, disconnect_filter,
+						dc_data, g_free) == FALSE) {
+		error("Can't add D-Bus disconnect filter");
+		g_free(dc_data);
+		return FALSE;
+	}
+
+	return TRUE;
 }
