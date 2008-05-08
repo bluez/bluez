@@ -40,7 +40,6 @@
 #include "dbus-helper.h"
 
 #include "dbus.h"
-#include "notify.h"
 #include "logging.h"
 
 #include "sdpd.h"
@@ -205,8 +204,6 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	notify_init();
-
 	if (setup_dbus() < 0) {
 		g_main_loop_unref(main_loop);
 		exit(1);
@@ -223,8 +220,6 @@ int main(int argc, char *argv[])
 	stop_sdp_server();
 
 	cleanup_dbus();
-
-	notify_close();
 
 	g_main_loop_unref(main_loop);
 

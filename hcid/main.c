@@ -48,8 +48,6 @@
 
 #include <dbus/dbus.h>
 
-#include "notify.h"
-
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
@@ -918,8 +916,6 @@ int main(int argc, char *argv[])
 	start_sdp_server(mtu, hcid.deviceid, SDP_SERVER_COMPAT);
 	set_service_classes_callback(update_service_classes);
 
-	notify_init();
-
 	/* Loading plugins has to be done after D-Bus has been setup since
 	 * the plugins might wanna expose some paths on the bus. However the
 	 * best order of how to init various subsystems of the Bluetooth
@@ -940,8 +936,6 @@ int main(int argc, char *argv[])
 	agent_exit();
 
 	hcid_dbus_exit();
-
-	notify_close();
 
 	cleanup_sdp_session();
 

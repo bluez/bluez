@@ -35,7 +35,6 @@
 
 #include "dbus-helper.h"
 #include "logging.h"
-#include "notify.h"
 
 #include "system.h"
 #include "service.h"
@@ -271,30 +270,11 @@ static DBusMethodVTable service_table[] = {
 	{ }
 };
 
-static void config_notify(int action, const char *name, void *data)
-{
-	switch (action) {
-	case NOTIFY_CREATE:
-		debug("File %s/%s created", CONFIGDIR, name);
-		break;
-
-	case NOTIFY_DELETE:
-		debug("File %s/%s deleted", CONFIGDIR, name);
-		break;
-
-	case NOTIFY_MODIFY:
-		debug("File %s/%s modified", CONFIGDIR, name);
-		break;
-	}
-}
-
 int service_init(DBusConnection *conn)
 {
 	connection = dbus_connection_ref(conn);
 
 	info("Starting service framework");
-
-	notify_add(CONFIGDIR, config_notify, NULL);
 
 	if (dbus_connection_create_object_path(connection,
 				"/org/bluez/service", NULL, NULL) == FALSE) {
@@ -317,8 +297,6 @@ int service_init(DBusConnection *conn)
 void service_exit(void)
 {
 	info("Stopping service framework");
-
-	notify_remove(CONFIGDIR);
 
 	dbus_connection_unregister_interface(connection,
 				"/org/bluez/service", SERVICE_INTERFACE);

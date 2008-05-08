@@ -48,7 +48,6 @@
 #include "dbus.h"
 #include "dbus-helper.h"
 #include "hcid.h"
-#include "notify.h"
 #include "server.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
@@ -957,58 +956,6 @@ static gint service_filename_cmp(struct service *service, const char *filename)
 	return strcmp(service->filename, filename);
 }
 
-static void service_notify(int action, const char *name, void *user_data)
-{
-	GSList *l;
-	struct service *service;
-	size_t len;
-	char fullpath[PATH_MAX];
-
-	debug("Received notify event %d for %s", action, name);
-
-	len = strlen(name);
-	if (len < (strlen(SERVICE_SUFFIX) + 1))
-		return;
-
-	if (strcmp(name + (len - strlen(SERVICE_SUFFIX)), SERVICE_SUFFIX))
-		return;
-
-	switch (action) {
-	case NOTIFY_CREATE:
-		debug("%s was created", name);
-		snprintf(fullpath, sizeof(fullpath) - 1, "%s/%s", CONFIGDIR, name);
-		service = create_service(fullpath);
-		if (!service) {
-			error("Unable to read %s", fullpath);
-			break;
-		}
-
-		if (register_service(service) < 0) {
-			error("Unable to register service");
-			service_free(service);
-			break;
-		}
-
-		if (service->autostart)
-			service_start(service, get_dbus_connection());
-
-		break;
-	case NOTIFY_DELETE:
-		debug("%s was deleted", name);
-		l = g_slist_find_custom(services, name,
-					(GCompareFunc) service_filename_cmp);
-		if (l)
-			unregister_service(l->data);
-		break;
-	case NOTIFY_MODIFY:
-		debug("%s was modified", name);
-		break;
-	default:
-		debug("Unknown notify action %d", action);
-		break;
-	}
-}
-
 int init_services(const char *path)
 {
 	DIR *d;
@@ -1051,8 +998,6 @@ int init_services(const char *path)
 	}
 
 	closedir(d);
-
-	notify_add(path, service_notify, NULL);
 
 	return 0;
 }

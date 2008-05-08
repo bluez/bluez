@@ -138,11 +138,6 @@ AC_DEFUN([AC_PATH_USB], [
 		AC_DEFINE(NEED_USB_INTERRUPT_READ, 1, [Define to 1 if you need the usb_interrupt_read() function.]))
 ])
 
-AC_DEFUN([AC_PATH_INOTIFY], [
-	AC_CHECK_LIB(c ,inotify_init, inotify_found=yes, inotify_found=no)
-	AC_CHECK_HEADERS(sys/inotify.h, dummy=yes, inotify_found=no)
-])
-
 AC_DEFUN([AC_PATH_SNDFILE], [
 	PKG_CHECK_MODULES(SNDFILE, sndfile, sndfile_found=yes, sndfile_found=no)
 	AC_SUBST(SNDFILE_CFLAGS)
@@ -154,7 +149,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	debug_enable=no
 	pie_enable=no
 	sndfile_enable=${sndfile_found}
-	inotify_enable=${inotify_found}
 	usb_enable=${usb_found}
 	alsa_enable=${alsa_found}
 	glib_enable=no
@@ -209,10 +203,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		hid2hci_enable=${enableval}
 		dfutool_enable=${enableval}
 		dfubabel_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(inotify, AC_HELP_STRING([--enable-inotify], [enable inotify support]), [
-		inotify_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
@@ -343,7 +333,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_SUBST([SBC_LIBS], ['$(top_builddir)/sbc/libsbc.la'])
 
 	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
-	AM_CONDITIONAL(INOTIFY, test "${inotify_enable}" = "yes" && test "${inotify_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(SBC, test "${alsa_enable}" = "yes" || test "${gstreamer_enable}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")

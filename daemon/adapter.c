@@ -29,7 +29,6 @@
 
 #include "dbus-helper.h"
 #include "logging.h"
-#include "notify.h"
 
 #include "system.h"
 #include "adapter.h"
