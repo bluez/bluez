@@ -29,12 +29,12 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include <dbus/dbus.h>
-
 #include <bluetooth/sdp.h>
 
+#include <dbus/dbus.h>
+#include <gdbus.h>
+
 #include "hcid.h"
-#include "dbus-helper.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
 #include "error.h"

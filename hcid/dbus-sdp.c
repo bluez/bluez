@@ -46,12 +46,9 @@
 #include <netinet/in.h>
 
 #include <glib.h>
-
 #include <dbus/dbus.h>
-
 #include <gdbus.h>
 
-#include "dbus-helper.h"
 #include "hcid.h"
 #include "textfile.h"
 #include "adapter.h"

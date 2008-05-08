@@ -48,10 +48,8 @@
 #include <bluetooth/rfcomm.h>
 
 #include <glib.h>
-
 #include <gdbus.h>
 
-#include "dbus-helper.h"
 #include "logging.h"
 #include "textfile.h"
 

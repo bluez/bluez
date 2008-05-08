@@ -39,9 +39,9 @@
 #include <bluetooth/sdp.h>
 
 #include <glib.h>
+#include <gdbus.h>
 
 #include "logging.h"
-#include "dbus-helper.h"
 #include "textfile.h"
 #include "glib-helper.h"
 

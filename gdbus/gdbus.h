@@ -40,6 +40,88 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 				GDBusDisconnectFunction function,
 				void *user_data, DBusFreeFunction destroy);
 
+#define DBUS_TYPE_STRING_ARRAY_AS_STRING (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING)
+#define DBUS_TYPE_BYTE_ARRAY_AS_STRING   (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING)
+
+DBusHandlerResult dbus_connection_send_and_unref(DBusConnection *connection,
+							DBusMessage *message);
+
+dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
+					const char *path, void *user_data,
+					DBusObjectPathUnregisterFunction function);
+
+dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
+							const char *path);
+
+dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
+							const char *path,
+							void **data_p);
+
+typedef struct DBusMethodVTable DBusMethodVTable;
+
+struct DBusMethodVTable {
+	const char *name;
+	DBusObjectPathMessageFunction message_function;
+	const char *signature;
+	const char *reply;
+};
+
+typedef struct DBusSignalVTable DBusSignalVTable;
+
+struct DBusSignalVTable {
+	const char *name;
+	const char *signature;
+};
+
+typedef struct DBusPropertyVTable DBusPropertyVTable;
+
+struct DBusPropertyVTable {
+	const char *name;
+};
+
+dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
+					const char *path, const char *name,
+					DBusMethodVTable *methods,
+					DBusSignalVTable *signals,
+					DBusPropertyVTable *properties);
+
+dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
+					const char *path, const char *name);
+void dbus_message_iter_append_variant(DBusMessageIter *iter, int type, void *val);
+void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
+					const char *key, int type, void *val);
+void dbus_message_iter_append_dict_valist(DBusMessageIter *iter,
+					const char *first_key,
+					va_list var_args);
+void dbus_message_iter_append_dict(DBusMessageIter *iter,
+					const char *first_key, ...);
+dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
+					const char *interface, const char *name,
+					int first, ...);
+
+dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
+						const char *path,
+						const char *interface,
+						const char *name,
+						int first,
+						va_list var_args);
+dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
+						const char *path,
+						const char *interface,
+						const char *name,
+						int type, void *value);
+
+static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	if (msg) {
+		dbus_connection_send(conn, msg, NULL);
+		dbus_message_unref(msg);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
 guint name_listener_add(DBusConnection *connection, const char *name,

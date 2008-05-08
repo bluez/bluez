@@ -43,11 +43,11 @@
 #include <netinet/in.h>
 
 #include <glib.h>
+#include <gdbus.h>
 
 #include "logging.h"
 #include "error.h"
 #include "textfile.h"
-#include "dbus-helper.h"
 #include "dbus-service.h"
 #include "sdpd.h"
 

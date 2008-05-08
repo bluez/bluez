@@ -31,7 +31,8 @@
 #include <string.h>
 #include <errno.h>
 
-#include "dbus-helper.h"
+#include <gdbus.h>
+
 #include "error.h"
 
 /**

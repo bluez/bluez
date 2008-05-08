@@ -26,8 +26,8 @@
 #endif
 
 #include <dbus/dbus.h>
+#include <gdbus.h>
 
-#include "dbus-helper.h"
 #include "logging.h"
 
 #include "system.h"

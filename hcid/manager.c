@@ -48,7 +48,6 @@
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
-#include "dbus-helper.h"
 #include "dbus-common.h"
 #include "error.h"
 #include "dbus-error.h"

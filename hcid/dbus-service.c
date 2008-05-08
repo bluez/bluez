@@ -42,10 +42,9 @@
 #include <bluetooth/sdp.h>
 
 #include <glib.h>
-
 #include <dbus/dbus.h>
+#include <gdbus.h>
 
-#include "dbus-helper.h"
 #include "hcid.h"
 #include "server.h"
 #include "dbus-common.h"

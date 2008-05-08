@@ -25,16 +25,17 @@
 #include <config.h>
 #endif
 
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <glib.h>
-
 #include <dbus/dbus.h>
 
-#include "logging.h"
+#include "gdbus.h"
 
-#include "dbus-helper.h"
+#define info(fmt...)
+#define error(fmt...)
+#define debug(fmt...)
 
 struct generic_data {
 	void *user_data;
