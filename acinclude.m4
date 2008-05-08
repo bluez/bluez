@@ -329,6 +329,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AM_CONDITIONAL(GLIB, false)
 	fi
 
+	AC_SUBST([GDBUS_CFLAGS], ['-I$(top_srcdir)/gdbus'])
+	AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la'])
+
 	AC_SUBST([SBC_CFLAGS], ['-I$(top_srcdir)/sbc'])
 	AC_SUBST([SBC_LIBS], ['$(top_builddir)/sbc/libsbc.la'])
 
