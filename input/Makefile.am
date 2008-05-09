@@ -13,7 +13,8 @@ LDADD = $(top_builddir)/common/libhelper.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 endif
 
-AM_LDFLAGS = -module -avoid-version -export-symbols-regex bluetooth_plugin_desc
+AM_LDFLAGS = -module -avoid-version -no-undefined \
+			-export-symbols-regex bluetooth_plugin_desc
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 

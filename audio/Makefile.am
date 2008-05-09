@@ -11,7 +11,8 @@ libaudio_la_SOURCES = main.c \
 	sink.c sink.h avdtp.c avdtp.h \
 	a2dp.c a2dp.h control.c control.h
 
-libaudio_la_LDFLAGS = -module -avoid-version -export-symbols-regex bluetooth_plugin_desc
+libaudio_la_LDFLAGS = -module -avoid-version -no-undefined \
+			-export-symbols-regex bluetooth_plugin_desc
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
