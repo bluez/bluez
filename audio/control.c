@@ -816,51 +816,36 @@ proceed:
 	return TRUE;
 }
 
-static gboolean avctp_connect_cb(GIOChannel *chan, GIOCondition cond,
-					gpointer data)
+static void avctp_connect_cb(GIOChannel *chan, int err, gpointer data)
 {
 	struct avctp *session = data;
 	struct l2cap_options l2o;
 	socklen_t len;
-	int ret, err, sk;
+	int sk;
 	char address[18];
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	sk = g_io_channel_unix_get_fd(chan);
+	if (err < 0) {
+		avctp_unref(session);
+		error("AVCTP connect(%s): %s (%d)", address, strerror(-err),
+				-err);
+		return;
+	}
 
 	ba2str(&session->dst, address);
-
-	len = sizeof(ret);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		err = errno;
-		error("getsockopt(SO_ERROR): %s (%d)", strerror(err), err);
-		goto failed;
-	}
-
-	if (ret != 0) {
-		err = ret;
-		error("AVCTP connect(%s): %s (%d)", address, strerror(err),
-				err);
-		goto failed;
-	}
-
-	if (cond & G_IO_HUP) {
-		err = EIO;
-		goto failed;
-	}
-
 	debug("AVCTP: connected to %s", address);
+
+	g_io_channel_set_close_on_unref(chan, FALSE);
+	sk = g_io_channel_unix_get_fd(chan);
+	session->sock = sk;
 
 	memset(&l2o, 0, sizeof(l2o));
 	len = sizeof(l2o);
-	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
-				&len) < 0) {
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0) {
 		err = errno;
+		avctp_unref(session);
 		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(err),
 				err);
-		goto failed;
+		return;
 	}
 
 	init_uinput(session);
@@ -875,23 +860,13 @@ static gboolean avctp_connect_cb(GIOChannel *chan, GIOCondition cond,
 	session->io = g_io_add_watch(chan,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_cb, session);
-	return FALSE;
-
-failed:
-	close(sk);
-
-	avctp_unref(session);
-
-	return FALSE;
 }
 
 gboolean avrcp_connect(struct device *dev)
 {
 	struct control *control = dev->control;
 	struct avctp *session;
-	struct sockaddr_l2 l2a;
-	GIOChannel *io;
-	int sk;
+	int err;
 
 	if (control->session)
 		return TRUE;
@@ -903,62 +878,19 @@ gboolean avrcp_connect(struct device *dev)
 	}
 
 	session->dev = dev;
+	session->state = AVCTP_STATE_CONNECTING;
 
-	memset(&l2a, 0, sizeof(l2a));
-	l2a.l2_family = AF_BLUETOOTH;
-	bacpy(&l2a.l2_bdaddr, &dev->src);
-
-	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sk < 0) {
-		error("Cannot create L2CAP socket. %s(%d)", strerror(errno),
-				errno);
-		goto failed;
+	err = bt_l2cap_connect(&dev->src, &dev->dst, AVCTP_PSM, 0,
+				avctp_connect_cb, session);
+	if (err < 0) {
+		avctp_unref(session);
+		error("Connect failed. %s(%d)", strerror(-err), -err);
+		return FALSE;
 	}
-
-	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a)) < 0) {
-		error("Bind failed. %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	memset(&l2a, 0, sizeof(l2a));
-	l2a.l2_family = AF_BLUETOOTH;
-	bacpy(&l2a.l2_bdaddr, &dev->dst);
-	l2a.l2_psm = htobs(AVCTP_PSM);
-
-	if (set_nonblocking(sk) < 0) {
-		error("Set non blocking: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, FALSE);
-	session->sock = sk;
-
-	if (connect(sk, (struct sockaddr *) &l2a, sizeof(l2a)) < 0) {
-		if (!(errno == EAGAIN || errno == EINPROGRESS)) {
-			error("Connect failed. %s(%d)", strerror(errno),
-					errno);
-			g_io_channel_close(io);
-			g_io_channel_unref(io);
-			goto failed;
-		}
-
-		session->state = AVCTP_STATE_CONNECTING;
-
-		g_io_add_watch(io, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				(GIOFunc) avctp_connect_cb, session);
-	} else
-		avctp_connect_cb(io, G_IO_OUT, session);
-
-	g_io_channel_unref(io);
 
 	control->session = session;
 
 	return TRUE;
-
-failed:
-	avctp_unref(session);
-	return FALSE;
 }
 
 void avrcp_disconnect(struct device *dev)
