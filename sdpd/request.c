@@ -238,13 +238,12 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 {
 	int status = 0, i, plen, mlen, mtu, scanned;
 	sdp_list_t *pattern = NULL;
-	uint16_t expected, actual;
+	uint16_t expected, actual, rsp_count = 0;
 	uint8_t dtd;
 	sdp_cont_state_t *cstate = NULL;
 	uint8_t *pCacheBuffer = NULL;
 	int handleSize = 0;
 	uint32_t cStateId = 0;
-	short rsp_count = 0;
 	short *pTotalRecordCount, *pCurrentRecordCount;
 	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
 
