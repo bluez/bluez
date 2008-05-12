@@ -365,6 +365,63 @@ GSList *bt_string2list(const gchar *str)
 	return l;
 }
 
+static gboolean listen_cb(GIOChannel *chan, GIOCondition cond,
+				struct io_context *io_ctxt)
+{
+	int srv_sk, cli_sk, err = 0, ret;
+	GIOChannel *io;
+	socklen_t len;
+	struct sockaddr_rc addr;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	len = sizeof(ret);
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		g_io_channel_close(chan);
+		g_io_channel_unref(chan);
+		g_free(io_ctxt);
+		return FALSE;
+	}
+
+	srv_sk = g_io_channel_unix_get_fd(chan);
+
+	len = sizeof(struct sockaddr_rc);
+	cli_sk = accept(srv_sk, (struct sockaddr *) &addr, &len);
+	if (cli_sk < 0) {
+		if (io_ctxt->cb)
+			io_ctxt->cb(NULL, -errno, io_ctxt->user_data);
+		return TRUE;
+	}
+
+	io = g_io_channel_unix_new(cli_sk);
+	if (!io)
+		err = -ENOMEM;
+
+	if (io_ctxt->cb)
+		io_ctxt->cb(io, err, io_ctxt->user_data);
+
+	return TRUE;
+}
+
+static int transport_listen(struct io_context *io_ctxt, int fd)
+{
+	int err;
+
+	err = listen(fd, 1);
+	if (err < 0)
+		return -errno;
+
+	io_ctxt->io = g_io_channel_unix_new(fd);
+	if (!io_ctxt->io)
+		return -ENOMEM;
+
+	g_io_add_watch(io_ctxt->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+			(GIOFunc) listen_cb, io_ctxt);
+
+	return 0;
+}
+
 static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 				struct io_context *io_ctxt)
 {
@@ -504,25 +561,67 @@ static int l2cap_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 	return 0;
 }
 
+static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
+				uint8_t channel, uint32_t flags,
+				struct sockaddr_rc *addr)
+{
+	int sk, err, opt;
+
+	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if (sk < 0)
+		return -errno;
+
+	if (flags) {
+		opt = flags;
+		err = setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt));
+		if (err < 0) {
+			close(sk);
+			return -errno;
+		}
+	}
+
+	memset(addr, 0, sizeof(*addr));
+	addr->rc_family = AF_BLUETOOTH;
+	bacpy(&addr->rc_bdaddr, src);
+	addr->rc_channel = channel;
+
+	err = bind(sk, (struct sockaddr *) addr, sizeof(*addr));
+	if (err < 0) {
+		close(sk);
+		return -errno;
+	}
+
+	return sk;
+}
+
+static int rfcomm_listen(struct io_context *io_ctxt, const bdaddr_t *src,
+				uint8_t channel, uint32_t flags)
+{
+	struct sockaddr_rc addr;
+	int sk, err;
+
+	sk = rfcomm_bind(io_ctxt, src, channel, flags, &addr);
+	if (sk < 0)
+		return sk;
+
+	err = transport_listen(io_ctxt, sk);
+	if (err < 0) {
+		close(sk);
+		return err;
+	}
+
+	return 0;
+}
+
 static int rfcomm_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 				const bdaddr_t *dst, uint8_t channel)
 {
 	struct sockaddr_rc addr;
 	int sk, err;
 
-	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	sk = rfcomm_bind(io_ctxt, src, 0, 0, &addr);
 	if (sk < 0)
-		return -errno;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, src);
-
-	err = bind(sk, (struct sockaddr *) &addr, sizeof(addr));
-	if (err < 0) {
-		close(sk);
-		return -errno;
-	}
+		return sk;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
@@ -559,6 +658,25 @@ static void io_context_cleanup(struct io_context *io_ctxt)
 		g_io_channel_unref(io_ctxt->io);
 	}
 	g_free(io_ctxt);
+}
+
+GIOChannel *bt_rfcomm_listen(const bdaddr_t *src, uint8_t channel, uint32_t flags,
+			bt_io_callback_t cb, void *user_data)
+{
+	struct io_context *io_ctxt;
+	int err;
+
+	err = create_io_context(&io_ctxt, cb, user_data);
+	if (err < 0)
+		return NULL;
+
+	err = rfcomm_listen(io_ctxt, src, channel, flags);
+	if (err < 0) {
+		io_context_cleanup(io_ctxt);
+		return NULL;
+	}
+
+	return io_ctxt->io;
 }
 
 int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
