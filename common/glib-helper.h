@@ -42,6 +42,9 @@ GIOChannel *bt_rfcomm_listen(const bdaddr_t *src, uint8_t channel,
 			uint32_t flags, bt_io_callback_t cb, void *user_data);
 int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			uint8_t channel, bt_io_callback_t cb, void *user_data);
+
+GIOChannel *bt_l2cap_listen(const bdaddr_t *src, uint16_t psm, uint16_t mtu,
+			uint32_t flags, bt_io_callback_t cb, void *user_data);
 int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			uint16_t psm, uint16_t mtu, bt_io_callback_t cb,
 			void *user_data);
