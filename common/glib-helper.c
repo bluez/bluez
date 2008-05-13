@@ -63,6 +63,7 @@ int set_nonblocking(int fd)
 }
 
 struct io_context {
+	int			fd;
 	GIOChannel		*io;
 	bt_io_callback_t	cb;
 	gpointer		user_data;
@@ -404,15 +405,15 @@ static gboolean listen_cb(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 }
 
-static int transport_listen(struct io_context *io_ctxt, int fd)
+static int transport_listen(struct io_context *io_ctxt)
 {
 	int err;
 
-	err = listen(fd, 1);
+	err = listen(io_ctxt->fd, 1);
 	if (err < 0)
 		return -errno;
 
-	io_ctxt->io = g_io_channel_unix_new(fd);
+	io_ctxt->io = g_io_channel_unix_new(io_ctxt->fd);
 	if (!io_ctxt->io)
 		return -ENOMEM;
 
@@ -458,12 +459,12 @@ done:
 	return FALSE;
 }
 
-static int transport_connect(struct io_context *io_ctxt, int fd,
-				struct sockaddr *addr, socklen_t addrlen)
+static int transport_connect(struct io_context *io_ctxt, struct sockaddr *addr,
+				socklen_t addrlen)
 {
 	int err;
 
-	io_ctxt->io = g_io_channel_unix_new(fd);
+	io_ctxt->io = g_io_channel_unix_new(io_ctxt->fd);
 	if (!io_ctxt->io)
 		return -ENOMEM;
 
@@ -471,7 +472,7 @@ static int transport_connect(struct io_context *io_ctxt, int fd,
 	if (err != G_IO_STATUS_NORMAL)
 		return -EPERM;
 
-	err = connect(fd, addr, addrlen);
+	err = connect(io_ctxt->fd, addr, addrlen);
 	if (err < 0 && !(errno == EAGAIN || errno == EINPROGRESS))
 		return -errno;
 
@@ -505,7 +506,7 @@ static int sco_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 	addr.sco_family = AF_BLUETOOTH;
 	bacpy(&addr.sco_bdaddr, dst);
 
-	err = transport_connect(io_ctxt, sk, (struct sockaddr *) &addr,
+	err = transport_connect(io_ctxt, (struct sockaddr *) &addr,
 				sizeof(addr));
 	if (err < 0) {
 		close(sk);
@@ -519,26 +520,27 @@ static int l2cap_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 			uint16_t psm, uint16_t mtu, uint32_t flags,
 			struct sockaddr_l2 *addr)
 {
-	int sk, err;
+	int err;
 	struct l2cap_options l2o;
 
-	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sk < 0)
+	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+	if (io_ctxt->fd < 0)
 		return -errno;
 
 	if (mtu) {
 		socklen_t olen = sizeof(l2o);
 		memset(&l2o, 0, olen);
-		getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen);
+		getsockopt(io_ctxt->fd, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen);
 		l2o.imtu = l2o.omtu = mtu;
-		setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o));
+		setsockopt(io_ctxt->fd, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o));
 	}
 
 	if (flags) {
 		int opt = flags;
-		err = setsockopt(sk, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt));
+		err = setsockopt(io_ctxt->fd, SOL_L2CAP, L2CAP_LM, &opt,
+				sizeof(opt));
 		if (err < 0) {
-			close(sk);
+			close(io_ctxt->fd);
 			return -errno;
 		}
 	}
@@ -548,28 +550,28 @@ static int l2cap_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 	bacpy(&addr->l2_bdaddr, src);
 	addr->l2_psm = htobs(psm);
 
-	err = bind(sk, (struct sockaddr *) addr, sizeof(*addr));
+	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
 	if (err < 0) {
-		close(sk);
+		close(io_ctxt->fd);
 		return -errno;
 	}
 
-	return sk;
+	return 0;
 }
 
 static int l2cap_listen(struct io_context *io_ctxt, const bdaddr_t *src,
 			uint16_t psm, uint16_t mtu, uint32_t flags)
 {
 	struct sockaddr_l2 addr;
-	int sk, err;
+	int err;
 
-	sk = l2cap_bind(io_ctxt, src, psm, mtu, flags, &addr);
-	if (sk < 0)
-		return sk;
+	err = l2cap_bind(io_ctxt, src, psm, mtu, flags, &addr);
+	if (err < 0)
+		return err;
 
-	err = transport_listen(io_ctxt, sk);
+	err = transport_listen(io_ctxt);
 	if (err < 0) {
-		close(sk);
+		close(io_ctxt->fd);
 		return err;
 	}
 
@@ -581,21 +583,21 @@ static int l2cap_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 				uint16_t mtu)
 {
 	struct sockaddr_l2 l2a;
-	int sk, err;
+	int err;
 
-	sk = l2cap_bind(io_ctxt, src, 0, mtu, 0, &l2a);
-	if (sk < 0)
-		return sk;
+	err = l2cap_bind(io_ctxt, src, 0, mtu, 0, &l2a);
+	if (err < 0)
+		return err;
 
 	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
 	bacpy(&l2a.l2_bdaddr, dst);
 	l2a.l2_psm = htobs(psm);
 
-	err = transport_connect(io_ctxt, sk, (struct sockaddr *) &l2a,
+	err = transport_connect(io_ctxt, (struct sockaddr *) &l2a,
 				sizeof(l2a));
 	if (err < 0) {
-		close(sk);
+		close(io_ctxt->fd);
 		return err;
 	}
 
@@ -606,17 +608,18 @@ static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 				uint8_t channel, uint32_t flags,
 				struct sockaddr_rc *addr)
 {
-	int sk, err;
+	int err;
 
-	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sk < 0)
+	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if ( io_ctxt->fd < 0)
 		return -errno;
 
 	if (flags) {
 		int opt = flags;
-		err = setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt));
+		err = setsockopt(io_ctxt->fd, SOL_RFCOMM, RFCOMM_LM, &opt,
+				sizeof(opt));
 		if (err < 0) {
-			close(sk);
+			close(io_ctxt->fd);
 			return -errno;
 		}
 	}
@@ -626,28 +629,28 @@ static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 	bacpy(&addr->rc_bdaddr, src);
 	addr->rc_channel = channel;
 
-	err = bind(sk, (struct sockaddr *) addr, sizeof(*addr));
+	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
 	if (err < 0) {
-		close(sk);
+		close(io_ctxt->fd);
 		return -errno;
 	}
 
-	return sk;
+	return 0;
 }
 
 static int rfcomm_listen(struct io_context *io_ctxt, const bdaddr_t *src,
 				uint8_t channel, uint32_t flags)
 {
 	struct sockaddr_rc addr;
-	int sk, err;
+	int err;
 
-	sk = rfcomm_bind(io_ctxt, src, channel, flags, &addr);
-	if (sk < 0)
-		return sk;
+	err = rfcomm_bind(io_ctxt, src, channel, flags, &addr);
+	if (err < 0)
+		return err;
 
-	err = transport_listen(io_ctxt, sk);
+	err = transport_listen(io_ctxt);
 	if (err < 0) {
-		close(sk);
+		close(io_ctxt->fd);
 		return err;
 	}
 
@@ -658,21 +661,21 @@ static int rfcomm_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 				const bdaddr_t *dst, uint8_t channel)
 {
 	struct sockaddr_rc addr;
-	int sk, err;
+	int err;
 
-	sk = rfcomm_bind(io_ctxt, src, 0, 0, &addr);
-	if (sk < 0)
-		return sk;
+	err = rfcomm_bind(io_ctxt, src, 0, 0, &addr);
+	if (err < 0)
+		return err;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
 	bacpy(&addr.rc_bdaddr, dst);
 	addr.rc_channel = channel;
 
-	err = transport_connect(io_ctxt, sk, (struct sockaddr *) &addr,
+	err = transport_connect(io_ctxt, (struct sockaddr *) &addr,
 				sizeof(addr));
 	if (err < 0) {
-		close(sk);
+		close(io_ctxt->fd);
 		return err;
 	}
 
