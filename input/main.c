@@ -34,6 +34,7 @@
 
 #include "plugin.h"
 #include "dbus-service.h"
+#include "logging.h"
 #include "manager.h"
 
 #define HID_UUID "00001124-0000-1000-8000-00805f9b34fb"
@@ -45,16 +46,39 @@ static const char *uuids[] = {
 
 static DBusConnection *conn;
 
+static GKeyFile *load_config_file(const char *file)
+{
+	GKeyFile *keyfile;
+	GError *err = NULL;
+
+	keyfile = g_key_file_new();
+
+	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
+		error("Parsing %s failed: %s", file, err->message);
+		g_error_free(err);
+		g_key_file_free(keyfile);
+		return NULL;
+	}
+
+	return keyfile;
+}
+
 static int input_init(void)
 {
+	GKeyFile *config;
+
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (conn == NULL)
 		return -EIO;
 
-	if (input_manager_init(conn) < 0) {
+	config = load_config_file(CONFIGDIR "/input.conf");
+
+	if (input_manager_init(conn, config) < 0) {
 		dbus_connection_unref(conn);
 		return -EIO;
 	}
+
+	g_key_file_free(config);
 
 	register_service("input", uuids);
 

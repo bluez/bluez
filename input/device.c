@@ -67,6 +67,7 @@ struct device;
 struct device {
 	bdaddr_t		src;
 	bdaddr_t		dst;
+	int			timeout;
 	char			*name;
 	uint8_t			major;
 	uint8_t			minor;
@@ -84,7 +85,8 @@ struct device {
 
 GSList *devices = NULL;
 
-static struct device *device_new(bdaddr_t *src, bdaddr_t *dst, uint8_t subclass)
+static struct device *device_new(bdaddr_t *src, bdaddr_t *dst,
+					uint8_t subclass, int timeout)
 {
 	struct device *idev;
 	uint32_t cls;
@@ -105,6 +107,7 @@ static struct device *device_new(bdaddr_t *src, bdaddr_t *dst, uint8_t subclass)
 
 	bacpy(&idev->src, src);
 	bacpy(&idev->dst, dst);
+	idev->timeout = timeout;
 
 	read_device_name(src, dst, &idev->name);
 
@@ -498,11 +501,11 @@ static guint create_watch(int sk, GIOFunc cb, struct device *idev)
 }
 
 static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
-		int ctrl_sk, int intr_sk, const char *name)
+		int ctrl_sk, int intr_sk, int timeout, const char *name)
 {
 	struct hidp_connadd_req req;
 	char addr[18];
-	int ctl, err, timeout = 30;
+	int ctl, err;
 
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
 	if (ctl < 0) {
@@ -516,7 +519,7 @@ static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 	req.ctrl_sock = ctrl_sk;
 	req.intr_sock = intr_sk;
 	req.flags     = 0;
-	req.idle_to   = timeout * 60;
+	req.idle_to   = timeout;
 
 	err = get_stored_device_info(src, dst, &req);
 	if (err < 0) {
@@ -561,7 +564,8 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 
 	idev->intr_sk = g_io_channel_unix_get_fd(chan);
 	err = hidp_connadd(&idev->src, &idev->dst,
-			idev->ctrl_sk, idev->intr_sk, idev->name);
+				idev->ctrl_sk, idev->intr_sk,
+					idev->timeout, idev->name);
 	if (err < 0)
 		goto failed;
 
@@ -964,7 +968,7 @@ int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
 	const char *path;
 	int err;
 
-	idev = device_new(src, dst, hid->subclass);
+	idev = device_new(src, dst, hid->subclass, hid->idle_to);
 	if (!idev)
 		return -EINVAL;
 
@@ -994,7 +998,7 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 	const char *path;
 	int err;
 
-	idev = device_new(src, dst, 0);
+	idev = device_new(src, dst, 0, 0);
 	if (!idev)
 		return -EINVAL;
 
@@ -1165,7 +1169,8 @@ int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
 		fake->priv = fake_hid;
 		err = fake_hid_connadd(fake, idev->intr_sk, fake_hid);
 	} else
-		err = hidp_connadd(src, dst, idev->ctrl_sk, idev->intr_sk, idev->name);
+		err = hidp_connadd(src, dst, idev->ctrl_sk, idev->intr_sk,
+						idev->timeout, idev->name);
 	if (err < 0)
 		goto error;
 

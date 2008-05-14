@@ -63,6 +63,8 @@ struct pending_req {
 	GIOChannel	*ctrl_channel;
 };
 
+static int idle_timeout = 0;
+
 static GSList *device_paths = NULL;	/* Input registered paths */
 
 static DBusConnection *connection = NULL;
@@ -226,6 +228,8 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, gpointer user_data)
 
 	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
+
+	hidp.idle_to = idle_timeout * 60;
 
 	extract_hid_record(pr->hid_recs->data, &hidp);
 	if (pr->pnp_recs)
@@ -753,9 +757,18 @@ static DBusSignalVTable manager_signals[] = {
 	{ NULL, NULL }
 };
 
-int input_manager_init(DBusConnection *conn)
+int input_manager_init(DBusConnection *conn, GKeyFile *config)
 {
-	dbus_connection_set_exit_on_disconnect(conn, TRUE);
+	GError *err = NULL;
+ 
+	if (config) {
+		idle_timeout = g_key_file_get_integer(config, "General",
+						"IdleTimeout", &err);
+		if (err) {
+			debug("input.conf: %s", err->message);
+			g_error_free(err);
+		}
+	}
 
 	if (!dbus_connection_create_object_path(conn, INPUT_PATH,
 						NULL, manager_unregister)) {
