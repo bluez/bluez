@@ -43,6 +43,8 @@
 
 #include "glib-helper.h"
 
+typedef int (*resolver_t) (int fd, bdaddr_t *src, bdaddr_t *dst);
+
 int set_nonblocking(int fd)
 {
 	long arg;
@@ -66,6 +68,7 @@ struct io_context {
 	int			fd;
 	GIOChannel		*io;
 	bt_io_callback_t	cb;
+	resolver_t		resolver;
 	gpointer		user_data;
 };
 
@@ -366,18 +369,91 @@ GSList *bt_string2list(const gchar *str)
 	return l;
 }
 
+static inline int resolve_names(int fd, struct sockaddr *host,
+			struct sockaddr *peer, socklen_t len)
+{
+	int err;
+	socklen_t namelen;
+
+	namelen = len;
+	err = getsockname(fd, host, &namelen);
+	if (err < 0)
+		return err;
+
+	namelen = len;
+	err = getpeername(fd, peer, &namelen);
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+
+static int rfcomm_resolver(int fd, bdaddr_t *src, bdaddr_t *dst)
+{
+	struct sockaddr_rc host, peer;
+	socklen_t len;
+	int err;
+
+	len = sizeof(host);
+	err = resolve_names(fd, (struct sockaddr *) &host,
+			(struct sockaddr *) &peer, len);
+	if (err < 0)
+		return err;
+
+	bacpy(src, &host.rc_bdaddr);
+	bacpy(dst, &peer.rc_bdaddr);
+
+	return 0;
+}
+
+static int l2cap_resolver(int fd, bdaddr_t *src, bdaddr_t *dst)
+{
+	struct sockaddr_l2 host, peer;
+	socklen_t len;
+	int err;
+
+	len = sizeof(host);
+	err = resolve_names(fd, (struct sockaddr *) &host,
+			(struct sockaddr *) &peer, len);
+	if (err < 0)
+		return err;
+
+	bacpy(src, &host.l2_bdaddr);
+	bacpy(dst, &peer.l2_bdaddr);
+
+	return 0;
+}
+
+static int sco_resolver(int fd, bdaddr_t *src, bdaddr_t *dst)
+{
+	struct sockaddr_sco host, peer;
+	socklen_t len;
+	int err;
+
+	len = sizeof(host);
+	err = resolve_names(fd, (struct sockaddr *) &host,
+			(struct sockaddr *) &peer, len);
+	if (err < 0)
+		return err;
+
+	bacpy(src, &host.sco_bdaddr);
+	bacpy(dst, &peer.sco_bdaddr);
+
+	return 0;
+}
+
 static gboolean listen_cb(GIOChannel *chan, GIOCondition cond,
 				struct io_context *io_ctxt)
 {
-	int srv_sk, cli_sk, err = 0, ret;
+	int fd, err = 0;
 	GIOChannel *io;
+	struct sockaddr addr;
 	socklen_t len;
-	struct sockaddr_rc addr;
+	bdaddr_t src, dst;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	len = sizeof(ret);
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		g_io_channel_close(chan);
 		g_io_channel_unref(chan);
@@ -385,22 +461,31 @@ static gboolean listen_cb(GIOChannel *chan, GIOCondition cond,
 		return FALSE;
 	}
 
-	srv_sk = g_io_channel_unix_get_fd(chan);
+	len = sizeof(addr);
+	fd = accept(io_ctxt->fd, &addr, &len);
+	if (fd < 0)
+		goto drop;
 
-	len = sizeof(struct sockaddr_rc);
-	cli_sk = accept(srv_sk, (struct sockaddr *) &addr, &len);
-	if (cli_sk < 0) {
-		if (io_ctxt->cb)
-			io_ctxt->cb(NULL, -errno, io_ctxt->user_data);
-		return TRUE;
+	if (io_ctxt->resolver) {
+		err = io_ctxt->resolver(fd, &src, &dst);
+		if (err < 0) {
+			close(fd);
+			goto drop;
+		}
 	}
 
-	io = g_io_channel_unix_new(cli_sk);
+	io = g_io_channel_unix_new(fd);
 	if (!io)
 		err = -ENOMEM;
 
 	if (io_ctxt->cb)
-		io_ctxt->cb(io, err, io_ctxt->user_data);
+		io_ctxt->cb(io, err, &src, &dst, io_ctxt->user_data);
+
+	return TRUE;
+
+drop:
+	if (io_ctxt->cb)
+		io_ctxt->cb(NULL, -errno, NULL, NULL, io_ctxt->user_data);
 
 	return TRUE;
 }
@@ -426,16 +511,15 @@ static int transport_listen(struct io_context *io_ctxt)
 static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 				struct io_context *io_ctxt)
 {
-	int sk, err = 0, ret;
+	int err = 0, ret;
 	socklen_t len;
+	bdaddr_t src, dst;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	sk = g_io_channel_unix_get_fd(io);
-
 	len = sizeof(ret);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+	if (getsockopt(io_ctxt->fd, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
 		err = -errno;
 		goto done;
 	}
@@ -445,11 +529,17 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 		goto done;
 	}
 
+	if (io_ctxt->resolver) {
+		err = io_ctxt->resolver(io_ctxt->fd, &src, &dst);
+		if (err < 0)
+			goto done;
+	}
+
 	io_ctxt->io = NULL;
 
 done:
 	if (io_ctxt->cb)
-		io_ctxt->cb(io, err, io_ctxt->user_data);
+		io_ctxt->cb(io, err, &src, &dst, io_ctxt->user_data);
 	if (io_ctxt->io) {
 		g_io_channel_close(io_ctxt->io);
 		g_io_channel_unref(io_ctxt->io);
@@ -682,14 +772,15 @@ static int rfcomm_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 	return 0;
 }
 
-static int create_io_context(struct io_context **io_ctxt, bt_io_callback_t cb,
-				void *user_data)
+static int create_io_context(struct io_context **io_ctxt, gpointer cb,
+			gpointer resolver, gpointer user_data)
 {
 	*io_ctxt = g_try_malloc0(sizeof(struct search_context));
 	if (!*io_ctxt)
 		return -ENOMEM;
 
 	(*io_ctxt)->cb = cb;
+	(*io_ctxt)->resolver = resolver;
 	(*io_ctxt)->user_data = user_data;
 
 	return 0;
@@ -710,7 +801,7 @@ GIOChannel *bt_rfcomm_listen(const bdaddr_t *src, uint8_t channel, uint32_t flag
 	struct io_context *io_ctxt;
 	int err;
 
-	err = create_io_context(&io_ctxt, cb, user_data);
+	err = create_io_context(&io_ctxt, cb, rfcomm_resolver, user_data);
 	if (err < 0)
 		return NULL;
 
@@ -729,7 +820,7 @@ int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	struct io_context *io_ctxt;
 	int err;
 
-	err = create_io_context(&io_ctxt, cb, user_data);
+	err = create_io_context(&io_ctxt, cb, rfcomm_resolver, user_data);
 	if (err < 0)
 		return err;
 
@@ -748,7 +839,7 @@ GIOChannel *bt_l2cap_listen(const bdaddr_t *src, uint16_t psm, uint16_t mtu,
 	struct io_context *io_ctxt;
 	int err;
 
-	err = create_io_context(&io_ctxt, cb, user_data);
+	err = create_io_context(&io_ctxt, cb, l2cap_resolver, user_data);
 	if (err < 0)
 		return NULL;
 
@@ -762,12 +853,13 @@ GIOChannel *bt_l2cap_listen(const bdaddr_t *src, uint16_t psm, uint16_t mtu,
 }
 
 int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
-			uint16_t psm, uint16_t mtu, bt_io_callback_t cb, void *user_data)
+			uint16_t psm, uint16_t mtu, bt_io_callback_t cb,
+			void *user_data)
 {
 	struct io_context *io_ctxt;
 	int err;
 
-	err = create_io_context(&io_ctxt, cb, user_data);
+	err = create_io_context(&io_ctxt, cb, l2cap_resolver, user_data);
 	if (err < 0)
 		return err;
 
@@ -786,7 +878,7 @@ int bt_sco_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	struct io_context *io_ctxt;
 	int err;
 
-	err = create_io_context(&io_ctxt, cb, user_data);
+	err = create_io_context(&io_ctxt, cb, sco_resolver, user_data);
 	if (err < 0)
 		return err;
 

@@ -72,7 +72,8 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static char *get_dev_name(DBusConnection *conn, bdaddr_t *src, bdaddr_t *bda)
+static char *get_dev_name(DBusConnection *conn, const bdaddr_t *src,
+			const bdaddr_t *bda)
 {
 	char address[18], filename[PATH_MAX + 1];
 
@@ -191,7 +192,7 @@ static void device_unregister(DBusConnection *conn, void *data)
 }
 
 struct device *device_register(DBusConnection *conn,
-					const char *path, bdaddr_t *bda)
+					const char *path, const bdaddr_t *bda)
 {
 	struct device *dev;
 	bdaddr_t src;

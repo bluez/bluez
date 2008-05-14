@@ -337,7 +337,8 @@ static int rfcomm_bind(bdaddr_t *src, bdaddr_t *dst, int16_t dev_id, uint8_t ch)
 	return id;
 }
 
-static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, gpointer user_data)
+static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer user_data)
 {
 	struct pending_connect *pc = user_data;
 	struct rfcomm_dev_req req;

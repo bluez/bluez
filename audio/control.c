@@ -816,7 +816,8 @@ proceed:
 	return TRUE;
 }
 
-static void avctp_connect_cb(GIOChannel *chan, int err, gpointer data)
+static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer data)
 {
 	struct avctp *session = data;
 	struct l2cap_options l2o;

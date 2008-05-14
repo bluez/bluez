@@ -371,7 +371,8 @@ failed:
 	return FALSE;
 }
 
-static void rfcomm_connect_cb(GIOChannel *chan, int err, gpointer user_data)
+static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer user_data)
 {
 	struct device *idev = user_data;
 	struct fake_input *fake;
@@ -553,7 +554,8 @@ cleanup:
 	return err;
 }
 
-static void interrupt_connect_cb(GIOChannel *chan, int err, gpointer user_data)
+static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer user_data)
 {
 	struct device *idev = user_data;
 
@@ -594,7 +596,8 @@ cleanup:
 	idev->pending_connect = NULL;
 }
 
-static void control_connect_cb(GIOChannel *chan, int err, gpointer user_data)
+static void control_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer user_data)
 {
 	struct device *idev = user_data;
 

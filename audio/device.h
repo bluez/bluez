@@ -70,7 +70,7 @@ struct device {
 };
 
 struct device *device_register(DBusConnection *conn,
-					const char *path, bdaddr_t *bda);
+					const char *path, const bdaddr_t *bda);
 
 int device_store(struct device *device, gboolean is_default);
 

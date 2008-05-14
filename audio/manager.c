@@ -122,7 +122,7 @@ static struct enabled_interfaces enabled = {
 
 static DBusHandlerResult get_records(uuid_t *uuid, struct audio_sdp_data *data);
 
-static struct device *create_device(bdaddr_t *bda)
+static struct device *create_device(const bdaddr_t *bda)
 {
 	static int device_id = 0;
 	char path[128];
@@ -468,7 +468,7 @@ static DBusHandlerResult resolve_services(DBusMessage *msg,
 	return get_records(&uuid, sdp_data);
 }
 
-struct device *manager_device_connected(bdaddr_t *bda, const char *uuid)
+struct device *manager_device_connected(const bdaddr_t *bda, const char *uuid)
 {
 	struct device *device;
 	const char *path;
@@ -1726,7 +1726,7 @@ gboolean manager_authorize(bdaddr_t *dba, const char *uuid,
 	return TRUE;
 }
 
-struct device *manager_find_device(bdaddr_t *bda, const char *interface,
+struct device *manager_find_device(const bdaddr_t *bda, const char *interface,
 					gboolean connected)
 {
 	GSList *l;

@@ -222,7 +222,8 @@ out:
 	return err;
 }
 
-static void connect_cb(GIOChannel *chan, int err, gpointer data)
+static void connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer data)
 {
 	struct network_conn *nc = data;
 

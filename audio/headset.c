@@ -288,8 +288,8 @@ static unsigned int connect_cb_new(struct headset *hs,
 	return cb->id;
 }
 
-static void sco_connect_cb(GIOChannel *chan, int err,
-				gpointer user_data)
+static void sco_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer user_data)
 {
 	int sk;
 	struct device *dev = user_data;
@@ -675,7 +675,8 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
-static void rfcomm_connect_cb(GIOChannel *chan, int err, gpointer user_data)
+static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer user_data)
 {
 	struct device *dev = user_data;
 	struct headset *hs = dev->headset;

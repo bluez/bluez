@@ -1508,7 +1508,8 @@ failed:
 	return FALSE;
 }
 
-static void l2cap_connect_cb(GIOChannel *chan, int err, gpointer user_data)
+static void l2cap_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer user_data)
 {
 	struct avdtp *session = user_data;
 	struct l2cap_options l2o;

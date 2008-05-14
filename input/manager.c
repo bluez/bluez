@@ -212,7 +212,9 @@ static void extract_pnp_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 	req->version = pdlist ? pdlist->val.uint16 : 0x0000;
 }
 
-static void interrupt_connect_cb(GIOChannel *chan, int err, gpointer user_data)
+static void interrupt_connect_cb(GIOChannel *chan, int err,
+			const bdaddr_t *src, const bdaddr_t *dst,
+			gpointer user_data)
 {
 	struct pending_req *pr = user_data;
 	struct hidp_connadd_req hidp;
@@ -272,7 +274,8 @@ cleanup:
 		g_free(hidp.rd_data);
 }
 
-static void control_connect_cb(GIOChannel *chan, int err, gpointer user_data)
+static void control_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer user_data)
 {
 	struct pending_req *pr = user_data;
 
