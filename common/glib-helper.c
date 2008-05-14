@@ -376,11 +376,13 @@ static inline int resolve_names(int fd, struct sockaddr *host,
 	socklen_t namelen;
 
 	namelen = len;
+	memset(host, 0, len);
 	err = getsockname(fd, host, &namelen);
 	if (err < 0)
 		return err;
 
 	namelen = len;
+	memset(peer, 0, len);
 	err = getpeername(fd, peer, &namelen);
 	if (err < 0)
 		return err;
@@ -462,6 +464,7 @@ static gboolean listen_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	len = sizeof(addr);
+	memset(&addr, 0, len);
 	fd = accept(io_ctxt->fd, &addr, &len);
 	if (fd < 0)
 		goto drop;
