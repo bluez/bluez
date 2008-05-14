@@ -285,6 +285,11 @@ gboolean g_key_file_get_boolean(GKeyFile *key_file,
 				const gchar *key,
 				GError **error);
 
+gint g_key_file_get_integer(GKeyFile *key_file,
+				const gchar *group_name,
+				const gchar *key,
+				GError **error);
+
 /* GString */
 
 typedef struct {

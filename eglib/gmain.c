@@ -1703,6 +1703,25 @@ gboolean g_key_file_get_boolean(GKeyFile *key_file,
 	return ret;
 }
 
+gint g_key_file_get_integer(GKeyFile *key_file,
+				const gchar *group_name,
+				const gchar *key,
+				GError **error)
+{
+	int ret;
+	gchar *str;
+
+	str = g_key_file_get_string(key_file, group_name, key, error);
+	if (!str)
+		return 0;
+
+	ret = atoi(str);
+
+	g_free(str);
+	
+	return ret;
+}
+
 /* GString */
 
 #define MY_MAXSIZE ((gsize)-1)
