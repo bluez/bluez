@@ -2940,14 +2940,15 @@ int avdtp_init(GKeyFile *config)
 	if (avdtp_server)
 		return 0;
 
-	tmp = g_key_file_get_boolean(config, "General", "Master",
-			&err);
-	if (err) {
-		debug("audio.conf: %s", err->message);
-		g_error_free(err);
-		err = NULL;
-	} else
-		master = tmp;
+	if (config) {
+		tmp = g_key_file_get_boolean(config, "General",
+							"Master", &err);
+		if (err) {
+			debug("audio.conf: %s", err->message);
+			g_error_free(err);
+		} else
+			master = tmp;
+	}
 
 	avdtp_server = avdtp_server_socket(master);
 	if (!avdtp_server)
