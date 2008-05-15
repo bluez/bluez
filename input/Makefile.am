@@ -20,6 +20,6 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/hcid
 
-EXTRA_DIST = input-api.txt test-input
+EXTRA_DIST = input.conf input-api.txt test-input
 
 MAINTAINERCLEANFILES = Makefile.in
