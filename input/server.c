@@ -205,7 +205,8 @@ static GIOChannel *intr_io = NULL;
 int server_start(DBusConnection *conn)
 {
 	ctrl_io = bt_l2cap_listen(BDADDR_ANY, L2CAP_PSM_HIDP_CTRL, 0, 0,
-			connect_event_cb, (void *) L2CAP_PSM_HIDP_CTRL);
+				connect_event_cb,
+				GUINT_TO_POINTER(L2CAP_PSM_HIDP_CTRL));
 	if (!ctrl_io) {
 		error("Failed to listen on control channel");
 		return -1;
@@ -213,7 +214,8 @@ int server_start(DBusConnection *conn)
 	g_io_channel_set_close_on_unref(ctrl_io, TRUE);
 
 	intr_io = bt_l2cap_listen(BDADDR_ANY, L2CAP_PSM_HIDP_INTR, 0, 0,
-			connect_event_cb, (void *) L2CAP_PSM_HIDP_INTR);
+				connect_event_cb,
+				GUINT_TO_POINTER(L2CAP_PSM_HIDP_INTR));
 	if (!intr_io) {
 		error("Failed to listen on interrupt channel");
 		g_io_channel_unref(ctrl_io);
