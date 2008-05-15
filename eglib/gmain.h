@@ -28,6 +28,10 @@ typedef const void *	gconstpointer;
 typedef size_t	gsize;
 typedef ssize_t	gssize;
 
+#ifndef GPOINTER_TO_UINT
+#define GPOINTER_TO_UINT(p)	((guint)  (p))
+#endif
+
 #ifndef SSIZE_MAX
 #define SSIZE_MAX	INT_MAX
 #endif
