@@ -1073,7 +1073,7 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 	return 0;
 }
 
-static struct device *find_device(bdaddr_t *src, bdaddr_t *dst)
+static struct device *find_device(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct device *idev;
 	GSList *list;
@@ -1097,7 +1097,7 @@ gboolean input_device_is_registered(bdaddr_t *src, bdaddr_t *dst)
 		return TRUE;
 }
 
-int input_device_set_channel(bdaddr_t *src, bdaddr_t *dst, int psm, int nsk)
+int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm, int nsk)
 {
 	struct device *idev = find_device(src, dst);
 	if (!idev)
@@ -1115,7 +1115,7 @@ int input_device_set_channel(bdaddr_t *src, bdaddr_t *dst, int psm, int nsk)
 	return 0;
 }
 
-int input_device_close_channels(bdaddr_t *src, bdaddr_t *dst)
+int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct device *idev = find_device(src, dst);
 	if (!idev)

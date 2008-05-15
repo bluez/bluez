@@ -122,7 +122,7 @@ static void auth_callback(DBusError *derr, void *user_data)
 	g_free(auth);
 }
 
-static int authorize_device(bdaddr_t *src, bdaddr_t *dst)
+static int authorize_device(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct authorization_data *auth;
 	DBusMessage *msg;
