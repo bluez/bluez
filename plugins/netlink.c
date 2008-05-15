@@ -34,12 +34,43 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include <glib.h>
+
 #include "plugin.h"
 #include "logging.h"
 
 static struct nl_handle *handle;
 static struct nl_cache *cache;
 static struct genl_family *family;
+
+static GIOChannel *channel;
+
+static gboolean channel_callback(GIOChannel *chan,
+					GIOCondition cond, void *user_data)
+{
+	int err;
+
+	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
+		return FALSE;
+
+	debug("Message available on netlink channel");
+
+	err = nl_recvmsgs_default(handle);
+
+	return TRUE;
+}
+
+static int create_channel(int fd)
+{
+	channel = g_io_channel_unix_new(fd);
+	if (channel == NULL)
+		return -ENOMEM;
+
+	g_io_add_watch(channel, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+						channel_callback, NULL);
+
+	return 0;
+}
 
 static int netlink_init(void)
 {
@@ -72,11 +103,21 @@ static int netlink_init(void)
 		return -ENOENT;
 	}
 
+	if (create_channel(nl_socket_get_fd(handle)) < 0)  {
+		error("Failed to create netlink IO channel");
+		genl_family_put(family);
+		nl_cache_free(cache);
+		nl_handle_destroy(handle);
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 
 static void netlink_exit(void)
 {
+	g_io_channel_unref(channel);
+
 	genl_family_put(family);
 	nl_cache_free(cache);
 	nl_handle_destroy(handle);
