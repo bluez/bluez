@@ -49,7 +49,7 @@ struct device *manager_device_connected(const bdaddr_t *bda, const char *uuid);
 gboolean manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
 				void *user_data);
 
-gboolean manager_authorize(bdaddr_t *dba, const char *uuid,
+gboolean manager_authorize(const bdaddr_t *dba, const char *uuid,
 				DBusPendingCallNotifyFunction cb,
 				void *user_data,
 				DBusPendingCall **pending);

@@ -1610,7 +1610,7 @@ void manager_cancel_authorize(bdaddr_t *dba, const char *uuid,
 	send_message_and_unref(connection, cancel);
 }
 
-gboolean manager_authorize(bdaddr_t *dba, const char *uuid,
+gboolean manager_authorize(const bdaddr_t *dba, const char *uuid,
 				DBusPendingCallNotifyFunction cb,
 				void *user_data,
 				DBusPendingCall **pending)

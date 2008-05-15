@@ -2130,7 +2130,7 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 	}
 }
 
-static struct avdtp *find_session(bdaddr_t *src, bdaddr_t *dst)
+static struct avdtp *find_session(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	GSList *l;
 
@@ -2146,7 +2146,7 @@ static struct avdtp *find_session(bdaddr_t *src, bdaddr_t *dst)
 	return NULL;
 }
 
-static struct avdtp *avdtp_get_internal(bdaddr_t *src, bdaddr_t *dst)
+static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct avdtp *session;
 
