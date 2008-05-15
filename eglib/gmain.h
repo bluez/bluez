@@ -32,6 +32,10 @@ typedef ssize_t	gssize;
 #define GPOINTER_TO_UINT(p)	((guint)  (p))
 #endif
 
+#ifndef GUINT_TO_POINTER
+#define GUINT_TO_POINTER(u)	((gpointer)  (u))
+#endif
+
 #ifndef SSIZE_MAX
 #define SSIZE_MAX	INT_MAX
 #endif
