@@ -1226,32 +1226,16 @@ static void auth_cb_old(DBusPendingCall *call, void *data)
 	dbus_message_unref(reply);
 }
 
-static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
+static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer data)
 {
-	int srv_sk, cli_sk;
-	struct sockaddr_rc addr;
-	socklen_t size;
 	const char *uuid;
 	struct device *device;
 	gboolean hfp_active;
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		error("Hangup or error on rfcomm server socket");
-		g_io_channel_close(chan);
-		raise(SIGTERM);
-		return FALSE;
-	}
-
-	srv_sk = g_io_channel_unix_get_fd(chan);
-
-	size = sizeof(struct sockaddr_rc);
-	cli_sk = accept(srv_sk, (struct sockaddr *) &addr, &size);
-	if (cli_sk < 0) {
-		error("accept: %s (%d)", strerror(errno), errno);
-		return TRUE;
+	if (err < 0) {
+		error("accept: %s (%d)", strerror(-err), -err);
+		return;
 	}
 
 	if (chan == hsp_ag_server) {
@@ -1262,103 +1246,42 @@ static gboolean ag_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
 		uuid = HFP_AG_UUID;
 	}
 
-	device = manager_device_connected(&addr.rc_bdaddr, uuid);
-	if (!device) {
-		close(cli_sk);
-		return TRUE;
-	}
+	device = manager_device_connected(dst, uuid);
+	if (!device)
+		goto drop;
 
 	if (headset_get_state(device) > HEADSET_STATE_DISCONNECTED) {
 		debug("Refusing new connection since one already exists");
-		close(cli_sk);
-		return TRUE;
+		goto drop;
 	}
 
 	set_hfp_active(device, hfp_active);
 
-	if (headset_connect_rfcomm(device, cli_sk) < 0) {
+	if (headset_connect_rfcomm(device, chan) < 0) {
 		error("Allocating new GIOChannel failed!");
-		close(cli_sk);
-		return TRUE;
+		goto drop;
 	}
 
 	if (service_req_auth(&device->src, &device->dst, uuid, auth_cb,
 				device) == 0)
-		goto proceed;
+		headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 	else if (!manager_authorize(&device->dst, uuid, auth_cb_old, device,
 				NULL))
-		goto failed;
+		headset_close_rfcomm(device);
 
-proceed:
-	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
+	return;
 
-	return TRUE;
-
-failed:
-	headset_close_rfcomm(device);
-
-	return TRUE;
+drop:
+	g_io_channel_close(chan);
+	g_io_channel_unref(chan);
+	return;
 }
 
-static gboolean hs_io_cb(GIOChannel *chan, GIOCondition cond, void *data)
+static void hs_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+		const bdaddr_t *dst, void *data)
 {
 	/*Stub*/
-	return TRUE;
-}
-
-static GIOChannel *server_socket(uint8_t *channel, gboolean master)
-{
-	int sock, lm;
-	struct sockaddr_rc addr;
-	socklen_t sa_len;
-	GIOChannel *io;
-
-	sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sock < 0) {
-		error("server socket: %s (%d)", strerror(errno), errno);
-		return NULL;
-	}
-
-	lm = RFCOMM_LM_SECURE;
-
-	if (master)
-		lm |= RFCOMM_LM_MASTER;
-
-	if (setsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
-		error("server setsockopt: %s (%d)", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, BDADDR_ANY);
-	addr.rc_channel = channel ? *channel : 0;
-
-	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("server bind: %s (%d)", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	if (listen(sock, 1) < 0) {
-		error("server listen: %s (%d)", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	sa_len = sizeof(struct sockaddr_rc);
-	getsockname(sock, (struct sockaddr *) &addr, &sa_len);
-	*channel = addr.rc_channel;
-
-	io = g_io_channel_unix_new(sock);
-	if (!io) {
-		error("Unable to allocate new io channel");
-		close(sock);
-		return NULL;
-	}
-
-	return io;
+	return;
 }
 
 static int headset_server_init(DBusConnection *conn, GKeyFile *config)
@@ -1367,7 +1290,7 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	sdp_record_t *record;
 	gboolean hfp = TRUE, master = TRUE;
 	GError *err = NULL;
-	uint32_t features;
+	uint32_t features, flags;
 
 	if (!enabled.headset)
 		return 0;
@@ -1394,7 +1317,13 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 			hfp = tmp;
 	}
 
-	hsp_ag_server = server_socket(&chan, master);
+	flags = RFCOMM_LM_SECURE;
+
+	if (master)
+		flags |= RFCOMM_LM_MASTER;
+
+	hsp_ag_server = bt_rfcomm_listen(BDADDR_ANY, chan, flags, ag_io_cb,
+				NULL);
 	if (!hsp_ag_server)
 		return -1;
 
@@ -1413,10 +1342,6 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	}
 	hsp_ag_record_id = record->handle;
 
-	g_io_add_watch(hsp_ag_server,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			(GIOFunc) ag_io_cb, NULL);
-
 	features = headset_config_init(config);
 
 	if (!hfp)
@@ -1424,7 +1349,8 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 
 	chan = DEFAULT_HF_AG_CHANNEL;
 
-	hfp_ag_server = server_socket(&chan, master);
+	hfp_ag_server = bt_rfcomm_listen(BDADDR_ANY, chan, flags, ag_io_cb,
+				NULL);
 	if (!hfp_ag_server)
 		return -1;
 
@@ -1443,10 +1369,6 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	}
 	hfp_ag_record_id = record->handle;
 
-	g_io_add_watch(hfp_ag_server,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			(GIOFunc) ag_io_cb, NULL);
-
 	return 0;
 }
 
@@ -1456,6 +1378,7 @@ static int gateway_server_init(DBusConnection *conn, GKeyFile *config)
 	sdp_record_t *record;
 	gboolean master = TRUE;
 	GError *err = NULL;
+	uint32_t flags;
 
 	if (!enabled.gateway)
 		return 0;
@@ -1473,7 +1396,13 @@ static int gateway_server_init(DBusConnection *conn, GKeyFile *config)
 			master = tmp;
 	}
 
-	hsp_hs_server = server_socket(&chan, master);
+	flags = RFCOMM_LM_SECURE;
+
+	if (master)
+		flags |= RFCOMM_LM_MASTER;
+
+	hsp_hs_server = bt_rfcomm_listen(BDADDR_ANY, chan, flags, hs_io_cb,
+				NULL);
 	if (!hsp_hs_server)
 		return -1;
 
@@ -1490,11 +1419,9 @@ static int gateway_server_init(DBusConnection *conn, GKeyFile *config)
 		hsp_hs_server = NULL;
 		return -1;
 	}
+
 	hsp_hs_record_id = record->handle;
 
-	g_io_add_watch(hsp_hs_server,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			(GIOFunc) hs_io_cb, NULL);
 	return 0;
 }
 

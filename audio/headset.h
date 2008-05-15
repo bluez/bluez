@@ -59,7 +59,7 @@ gboolean get_hfp_active(struct device *dev);
 void set_hfp_active(struct device *dev, gboolean active);
 
 void headset_set_authorized(struct device *dev);
-int headset_connect_rfcomm(struct device *dev, int sock);
+int headset_connect_rfcomm(struct device *dev, GIOChannel *chan);
 int headset_close_rfcomm(struct device *dev);
 
 headset_state_t headset_get_state(struct device *dev);

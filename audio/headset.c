@@ -1732,11 +1732,11 @@ void set_hfp_active(struct device *dev, gboolean active)
 	hs->hfp_active = active;
 }
 
-int headset_connect_rfcomm(struct device *dev, int sock)
+int headset_connect_rfcomm(struct device *dev, GIOChannel *io)
 {
 	struct headset *hs = dev->headset;
 
-	hs->tmp_rfcomm = g_io_channel_unix_new(sock);
+	hs->tmp_rfcomm = io;
 
 	return hs->tmp_rfcomm ? 0 : -EINVAL;
 }

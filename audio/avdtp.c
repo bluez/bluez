@@ -2738,140 +2738,79 @@ static void auth_cb_old(DBusPendingCall *call, void *data)
 	dbus_message_unref(reply);
 }
 
-static gboolean avdtp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
+static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+		const bdaddr_t *dst, gpointer data)
 {
-	int srv_sk, cli_sk;
+	int sk;
 	socklen_t size;
-	struct sockaddr_l2 addr;
 	struct l2cap_options l2o;
-	bdaddr_t src, dst;
 	struct avdtp *session;
-	GIOChannel *io;
 	char address[18];
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		error("Hangup or error on AVDTP server socket");
-		g_io_channel_close(chan);
-		raise(SIGTERM);
-		return FALSE;
+	if (err < 0) {
+		error("accept: %s (%d)", strerror(-err), -err);
+		return;
 	}
 
-	srv_sk = g_io_channel_unix_get_fd(chan);
+	sk = g_io_channel_unix_get_fd(chan);
 
-	size = sizeof(struct sockaddr_l2);
-	cli_sk = accept(srv_sk, (struct sockaddr *) &addr, &size);
-	if (cli_sk < 0) {
-		error("AVDTP accept: %s (%d)", strerror(errno), errno);
-		return TRUE;
-	}
-
-	bacpy(&dst, &addr.l2_bdaddr);
-
-	ba2str(&dst, address);
+	ba2str(dst, address);
 	debug("AVDTP: incoming connect from %s", address);
-
-	size = sizeof(struct sockaddr_l2);
-	if (getsockname(cli_sk, (struct sockaddr *) &addr, &size) < 0) {
-		error("getsockname: %s (%d)", strerror(errno), errno);
-		close(cli_sk);
-		return TRUE;
-	}
-
-	bacpy(&src, &addr.l2_bdaddr);
 
 	memset(&l2o, 0, sizeof(l2o));
 	size = sizeof(l2o);
-	if (getsockopt(cli_sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &size) < 0) {
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &size) < 0) {
 		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(errno),
 			errno);
-		close(cli_sk);
-		return TRUE;
+		goto drop;
 	}
 
-	session = avdtp_get_internal(&src, &dst);
+	session = avdtp_get_internal((bdaddr_t *) src, (bdaddr_t *) dst);
 
 	if (session->pending_open && session->pending_open->open_acp) {
-		handle_transport_connect(session, cli_sk, l2o.imtu, l2o.omtu);
-		return TRUE;
+		handle_transport_connect(session, sk, l2o.imtu, l2o.omtu);
+		return;
 	}
 
 	if (session->sock >= 0) {
 		error("Refusing unexpected connect from %s", address);
-		close(cli_sk);
-		return TRUE;
+		goto drop;
 	}
 
 	session->mtu = l2o.imtu;
-	session->sock = cli_sk;
+	session->sock = sk;
 
-	io = g_io_channel_unix_new(session->sock);
-	session->io = g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+	session->io = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) session_cb, session);
-	g_io_channel_unref(io);
+	g_io_channel_unref(chan);
 
-	if (service_req_auth(&src, &dst, ADVANCED_AUDIO_UUID, auth_cb, session) == 0)
-		return TRUE;
-	else if (!manager_authorize(&dst, ADVANCED_AUDIO_UUID, auth_cb_old,
+	if (service_req_auth((bdaddr_t *) src, (bdaddr_t *) dst, ADVANCED_AUDIO_UUID,
+			auth_cb, session) == 0)
+		return;
+	else if (!manager_authorize((bdaddr_t *) dst, ADVANCED_AUDIO_UUID, auth_cb_old,
 				session, &session->pending_auth)) {
-		close(cli_sk);
 		avdtp_unref(session);
+		goto drop;
 	}
 
-	return TRUE;
+	return;
+
+drop:
+	g_io_channel_close(chan);
+	g_io_channel_unref(chan);
 }
 
 static GIOChannel *avdtp_server_socket(gboolean master)
 {
-	int sock, lm;
-	struct sockaddr_l2 addr;
-	GIOChannel *io;
-
-	sock = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sock < 0) {
-		error("AVDTP server socket: %s (%d)", strerror(errno), errno);
-		return NULL;
-	}
+	int lm;
 
 	lm = L2CAP_LM_SECURE;
 
 	if (master)
 		lm |= L2CAP_LM_MASTER;
 
-	if (setsockopt(sock, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
-		error("AVDTP server setsockopt: %s (%d)", strerror(errno),
-				errno);
-		close(sock);
-		return NULL;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, BDADDR_ANY);
-	addr.l2_psm = htobs(AVDTP_PSM);
-
-	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("AVDTP server bind: %s (%d)", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	if (listen(sock, 4) < 0) {
-		error("AVDTP server listen: %s (%d)", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	io = g_io_channel_unix_new(sock);
-	if (!io) {
-		error("Unable to allocate new io channel");
-		close(sock);
-		return NULL;
-	}
-
-	return io;
+	return bt_l2cap_listen(BDADDR_ANY, AVDTP_PSM, 0, lm, avdtp_server_cb,
+			NULL);
 }
 
 const char *avdtp_strerror(struct avdtp_error *err)
@@ -2953,9 +2892,6 @@ int avdtp_init(GKeyFile *config)
 	avdtp_server = avdtp_server_socket(master);
 	if (!avdtp_server)
 		return -1;
-
-	g_io_add_watch(avdtp_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			(GIOFunc) avdtp_server_cb, NULL);
 
 	return 0;
 }
