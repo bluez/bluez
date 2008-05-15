@@ -2765,7 +2765,7 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
-	session = avdtp_get_internal((bdaddr_t *) src, (bdaddr_t *) dst);
+	session = avdtp_get_internal(src, dst);
 
 	if (session->pending_open && session->pending_open->open_acp) {
 		handle_transport_connect(session, sk, l2o.imtu, l2o.omtu);
@@ -2784,11 +2784,11 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 					(GIOFunc) session_cb, session);
 	g_io_channel_unref(chan);
 
-	if (service_req_auth((bdaddr_t *) src, (bdaddr_t *) dst, ADVANCED_AUDIO_UUID,
-			auth_cb, session) == 0)
+	if (service_req_auth(src, dst, ADVANCED_AUDIO_UUID, auth_cb,
+			session) == 0)
 		return;
-	else if (!manager_authorize((bdaddr_t *) dst, ADVANCED_AUDIO_UUID, auth_cb_old,
-				session, &session->pending_auth)) {
+	else if (!manager_authorize(dst, ADVANCED_AUDIO_UUID, auth_cb_old,
+			session, &session->pending_auth)) {
 		avdtp_unref(session);
 		goto drop;
 	}
