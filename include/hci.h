@@ -869,6 +869,10 @@ typedef struct {
 } __attribute__ ((packed)) read_transmit_power_level_rp;
 #define READ_TRANSMIT_POWER_LEVEL_RP_SIZE 4
 
+#define OCF_READ_SYNC_FLOW_ENABLE	0x002E
+
+#define OCF_WRITE_SYNC_FLOW_ENABLE	0x002F
+
 #define OCF_SET_CONTROLLER_TO_HOST_FC	0x0031
 
 #define OCF_HOST_BUFFER_SIZE		0x0033
