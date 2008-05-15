@@ -36,6 +36,7 @@ int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 			bt_destroy_t destroy);
 
 gchar *bt_uuid2string(uuid_t *uuid);
+int bt_string2uuid(uuid_t *uuid, const char *string);
 gchar *bt_list2string(GSList *list);
 GSList *bt_string2list(const gchar *str);
 
