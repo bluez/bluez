@@ -78,7 +78,8 @@ static int input_init(void)
 		return -EIO;
 	}
 
-	g_key_file_free(config);
+	if (config)
+		g_key_file_free(config);
 
 	register_service("input", uuids);
 
