@@ -36,6 +36,7 @@
 #include <bluetooth/hidp.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -47,6 +48,7 @@
 #include "server.h"
 #include "storage.h"
 #include "dbus-service.h"
+#include "glib-helper.h"
 
 static const char* HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";
 
@@ -166,86 +168,35 @@ fallback:
 	return 0;
 }
 
-static gboolean connect_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+static void connect_event_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+				const bdaddr_t *dst, gpointer data)
 {
-	struct sockaddr_l2 addr;
-	socklen_t addrlen;
-	bdaddr_t src, dst;
-	unsigned char psm;
-	int sk, nsk;
+	int sk, psm = GPOINTER_TO_UINT(data);
+
+	if (err < 0) {
+		error("accept: %s (%d)", strerror(-err), -err);
+		return;
+	}
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	memset(&addr, 0, sizeof(addr));
-	addrlen = sizeof(addr);
-
-	nsk = accept(sk, (struct sockaddr *) &addr, &addrlen);
-	if (nsk < 0)
-		return TRUE;
-
-	bacpy(&dst, &addr.l2_bdaddr);
-	psm = btohs(addr.l2_psm);
-
-	memset(&addr, 0, sizeof(addr));
-	addrlen = sizeof(addr);
-
-	if (getsockname(nsk, (struct sockaddr *) &addr, &addrlen) < 0) {
-		close(nsk);
-		return TRUE;
-	}
-
-	bacpy(&src, &addr.l2_bdaddr);
-
 	debug("Incoming connection on PSM %d", psm);
 
-	if (input_device_set_channel(&src, &dst, psm, nsk) < 0) {
+	if (input_device_set_channel(src, dst, psm, sk) < 0) {
 		/* Send unplug virtual cable to unknown devices */
 		if (psm == L2CAP_PSM_HIDP_CTRL) {
 			unsigned char unplug[] = { 0x15 };
 			int err;
-			err = write(nsk, unplug, sizeof(unplug));
+			err = write(sk, unplug, sizeof(unplug));
 		}
-		close(nsk);
-		return TRUE;
-	}
-
-	if ((psm == L2CAP_PSM_HIDP_INTR) && (authorize_device(&src, &dst) < 0))
-		input_device_close_channels(&src, &dst);
-
-	return TRUE;
-}
-
-static GIOChannel *setup_l2cap(unsigned int psm)
-{
-	GIOChannel *io;
-	struct sockaddr_l2 addr;
-	int sk;
-
-	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sk < 0)
-		return NULL;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, BDADDR_ANY);
-	addr.l2_psm = htobs(psm);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);
-		return NULL;
+		return;
 	}
 
-	if (listen(sk, 10) < 0) {
-		close(sk);
-		return NULL;
-	}
+	if ((psm == L2CAP_PSM_HIDP_INTR) && (authorize_device(src, dst) < 0))
+		input_device_close_channels(src, dst);
 
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
-
-	g_io_add_watch(io, G_IO_IN, connect_event, NULL);
-
-	return io;
+	return;
 }
 
 static GIOChannel *ctrl_io = NULL;
@@ -253,14 +204,16 @@ static GIOChannel *intr_io = NULL;
 
 int server_start(DBusConnection *conn)
 {
-	ctrl_io = setup_l2cap(L2CAP_PSM_HIDP_CTRL);
+	ctrl_io = bt_l2cap_listen(BDADDR_ANY, L2CAP_PSM_HIDP_CTRL, 0, 0,
+			connect_event_cb, (void *) L2CAP_PSM_HIDP_CTRL);
 	if (!ctrl_io) {
 		error("Failed to listen on control channel");
 		return -1;
 	}
 	g_io_channel_set_close_on_unref(ctrl_io, TRUE);
 
-	intr_io = setup_l2cap(L2CAP_PSM_HIDP_INTR);
+	intr_io = bt_l2cap_listen(BDADDR_ANY, L2CAP_PSM_HIDP_INTR, 0, 0,
+			connect_event_cb, (void *) L2CAP_PSM_HIDP_INTR);
 	if (!intr_io) {
 		error("Failed to listen on interrupt channel");
 		g_io_channel_unref(ctrl_io);
