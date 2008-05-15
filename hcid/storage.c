@@ -45,7 +45,7 @@
 #include "textfile.h"
 #include "hcid.h"
 
-static inline int create_filename(char *buf, size_t size, bdaddr_t *bdaddr, const char *name)
+static inline int create_filename(char *buf, size_t size, const bdaddr_t *bdaddr, const char *name)
 {
 	char addr[18];
 
@@ -623,7 +623,7 @@ int write_trust(bdaddr_t *local, const char *addr, const char *service,
 	return ret;
 }
 
-gboolean read_trust(bdaddr_t *local, const char *addr, const char *service)
+gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service)
 {
 	char filename[PATH_MAX + 1], *str;
 	GSList *services;

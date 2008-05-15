@@ -663,7 +663,7 @@ void unregister_service(const char *ident)
 	unregister_uuids(ident);
 }
 
-static struct adapter *ba2adapter(bdaddr_t *src)
+static struct adapter *ba2adapter(const bdaddr_t *src)
 {
 	DBusConnection *conn = get_dbus_connection();
 	struct adapter *adapter = NULL;
@@ -693,7 +693,7 @@ static void agent_auth_cb(struct agent *agent, DBusError *derr, void *user_data)
 	g_free(auth);
 }
 
-int service_req_auth(bdaddr_t *src, bdaddr_t *dst,
+int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data)
 {
 	struct service_auth *auth;
