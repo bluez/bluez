@@ -77,7 +77,7 @@ static int netlink_init(void)
 
 static void netlink_exit(void)
 {
-	nl_handle_destroy(handle);
+	genl_family_put(family);
 	nl_cache_free(cache);
 	nl_handle_destroy(handle);
 }
