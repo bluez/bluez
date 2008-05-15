@@ -138,6 +138,12 @@ AC_DEFUN([AC_PATH_USB], [
 		AC_DEFINE(NEED_USB_INTERRUPT_READ, 1, [Define to 1 if you need the usb_interrupt_read() function.]))
 ])
 
+AC_DEFUN([AC_PATH_NETLINK], [
+	PKG_CHECK_MODULES(NETLINK, libnl-1, netlink_found=yes, netlink_found=no)
+	AC_SUBST(NETLINK_CFLAGS)
+	AC_SUBST(NETLINK_LIBS)
+])
+
 AC_DEFUN([AC_PATH_SNDFILE], [
 	PKG_CHECK_MODULES(SNDFILE, sndfile, sndfile_found=yes, sndfile_found=no)
 	AC_SUBST(SNDFILE_CFLAGS)
@@ -149,6 +155,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	debug_enable=no
 	pie_enable=no
 	sndfile_enable=${sndfile_found}
+	netlink_enable=${netlink_found}
 	usb_enable=${usb_found}
 	alsa_enable=${alsa_found}
 	glib_enable=no
@@ -336,6 +343,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_SUBST([SBC_LIBS], ['$(top_builddir)/sbc/libsbc.la'])
 
 	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
+	AM_CONDITIONAL(NETLINK, test "${netlink_enable}" = "yes" && test "${netlink_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(SBC, test "${alsa_enable}" = "yes" || test "${gstreamer_enable}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
