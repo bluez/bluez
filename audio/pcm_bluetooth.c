@@ -421,7 +421,11 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 	}
 
 	/* wake up any client polling at us */
-	return write(data->pipefd[1], &c, 1);
+	err = write(data->pipefd[1], &c, 1);
+	if (err < 0)
+		return err;
+
+	return 0;
 }
 
 static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
