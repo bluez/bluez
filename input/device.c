@@ -530,7 +530,7 @@ static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 
 	if (req.subclass & 0x40) {
 		err = encrypt_link(src, dst);
-		if (err < 0 && err != -ENOKEY)
+		if (err < 0 && err != -EACCES)
 			goto cleanup;
 	}
 
