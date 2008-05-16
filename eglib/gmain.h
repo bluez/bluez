@@ -262,6 +262,8 @@ void g_strfreev(gchar **str_array);
 	((struct_type *) g_try_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
 #define g_try_new0(struct_type, n_structs) \
 	((struct_type *) g_try_malloc0 (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
+#define g_renew(struct_type, mem, n_structs) \
+	((struct_type *) g_realloc ((mem), ((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
 
 /* GKeyFile */
 
