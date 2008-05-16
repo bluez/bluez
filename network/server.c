@@ -50,6 +50,7 @@
 #include "textfile.h"
 #include "dbus-service.h"
 #include "sdpd.h"
+#include "glib-helper.h"
 
 #define NETWORK_SERVER_INTERFACE "org.bluez.network.Server"
 #define SETUP_TIMEOUT		1000
@@ -632,37 +633,17 @@ static gboolean timeout_cb(void *user_data)
 	return FALSE;
 }
 
-static gboolean connect_event(GIOChannel *chan,
-				GIOCondition cond, gpointer user_data)
+static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
+				const bdaddr_t *dst, gpointer user_data)
 {
-	struct sockaddr_l2 addr;
 	struct timeout *to;
-	GIOChannel *io;
-	socklen_t addrlen;
-	int sk, nsk;
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		error("Hangup or error on L2CAP socket PSM 15");
-		g_io_channel_close(chan);
-		return FALSE;
-	}
-
-	sk = g_io_channel_unix_get_fd(chan);
-
-	memset(&addr, 0, sizeof(addr));
-	addrlen = sizeof(addr);
-
-	nsk = accept(sk, (struct sockaddr *) &addr, &addrlen);
-	if (nsk < 0) {
+	if (err < 0) {
 		error("accept(): %s(%d)", strerror(errno), errno);
-		return TRUE;
+		return;
 	}
 
-	io = g_io_channel_unix_new(nsk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	g_io_channel_set_close_on_unref(chan, TRUE);
 
 	/*
 	 * BNEP_SETUP_CONNECTION_REQUEST_MSG shall be received and
@@ -671,92 +652,35 @@ static gboolean connect_event(GIOChannel *chan,
 	 */
 	to = g_malloc0(sizeof(struct timeout));
 	to->id = g_timeout_add(SETUP_TIMEOUT, timeout_cb, to);
-	to->watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+	to->watch = g_io_add_watch_full(chan, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				bnep_setup, to, setup_destroy);
-	g_io_channel_unref(io);
+	g_io_channel_unref(chan);
 
-	return TRUE;
+	return;
 }
 
 int server_init(DBusConnection *conn, const char *iface_prefix,
 		gboolean secure)
 {
-	struct l2cap_options l2o;
-	struct sockaddr_l2 l2a;
-	socklen_t olen;
-	int sk, lm, err;
-
-	/* Create L2CAP socket and bind it to PSM BNEP */
-	sk = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sk < 0) {
-		err = errno;
-		error("Cannot create L2CAP socket. %s(%d)",
-					strerror(err), err);
-		return -err;
-	}
-
-	memset(&l2a, 0, sizeof(l2a));
-	l2a.l2_family = AF_BLUETOOTH;
-	bacpy(&l2a.l2_bdaddr, BDADDR_ANY);
-	l2a.l2_psm = htobs(BNEP_PSM);
-
-	if (bind(sk, (struct sockaddr *) &l2a, sizeof(l2a))) {
-		err = errno;
-		error("Bind failed. %s(%d)", strerror(err), err);
-		goto fail;
-	}
-
-	/* Setup L2CAP options according to BNEP spec */
-	memset(&l2o, 0, sizeof(l2o));
-	olen = sizeof(l2o);
-	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &olen) < 0) {
-		err = errno;
-		error("Failed to get L2CAP options. %s(%d)",
-					strerror(err), err);
-		goto fail;
-	}
-
-	l2o.imtu = l2o.omtu = BNEP_MTU;
-	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o)) < 0) {
-		err = errno;
-		error("Failed to set L2CAP options. %s(%d)",
-					strerror(err), err);
-		goto fail;
-	}
+	int lm;
 
 	lm = secure ? L2CAP_LM_SECURE : 0;
-	if (lm && setsockopt(sk, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
-		err = errno;
-		error("Failed to set link mode. %s(%d)",
-					strerror(err), err);
-		goto fail;
-	}
+
 	security = secure;
-
-	if (listen(sk, 1) < 0) {
-		err = errno;
-		error("Listen failed. %s(%d)", strerror(err), err);
-		goto fail;
-	}
-
 	connection = dbus_connection_ref(conn);
 	prefix = iface_prefix;
 
-	bnep_io = g_io_channel_unix_new(sk);
+	bnep_io = bt_l2cap_listen(BDADDR_ANY, BNEP_PSM, BNEP_MTU, lm,
+			connect_event, NULL);
+	if (!bnep_io)
+		return -1;
 	g_io_channel_set_close_on_unref(bnep_io, FALSE);
-	g_io_add_watch(bnep_io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-							connect_event, NULL);
 
 	if (bridge_create(BNEP_SVC_GN) < 0)
 		error("Can't create GN bridge");
 
 	return 0;
-fail:
-
-	close(sk);
-	errno = err;
-	return -err;
 }
 
 void server_exit()
