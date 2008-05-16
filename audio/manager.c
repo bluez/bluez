@@ -1460,53 +1460,47 @@ static void server_exit(void)
 
 int audio_manager_init(DBusConnection *conn, GKeyFile *config)
 {
-	char *str;
-	GError *err = NULL;
+	char **list;
+	int i;
 
 	connection = dbus_connection_ref(conn);
 
-	if (config) {
-		str = g_key_file_get_string(config, "General", "Enable", &err);
+	if (!config)
+		goto proceed;
 
-		if (err) {
-			debug("audio.conf: %s", err->message);
-			g_error_free(err);
-			err = NULL;
-		} else {
-			if (strstr(str, "Headset"))
-				enabled.headset = TRUE;
-			if (strstr(str, "Gateway"))
-				enabled.gateway = TRUE;
-			if (strstr(str, "Sink"))
-				enabled.sink = TRUE;
-			if (strstr(str, "Source"))
-				enabled.source = TRUE;
-			if (strstr(str, "Control"))
-				enabled.control = TRUE;
-			g_free(str);
-		}
-
-		str = g_key_file_get_string(config, "General", "Disable", &err);
-
-		if (err) {
-			debug("audio.conf: %s", err->message);
-			g_error_free(err);
-			err = NULL;
-		} else {
-			if (strstr(str, "Headset"))
-				enabled.headset = FALSE;
-			if (strstr(str, "Gateway"))
-				enabled.gateway = FALSE;
-			if (strstr(str, "Sink"))
-				enabled.sink = FALSE;
-			if (strstr(str, "Source"))
-				enabled.source = FALSE;
-			if (strstr(str, "Control"))
-				enabled.control = FALSE;
-			g_free(str);
-		}
+	list = g_key_file_get_string_list(config, "General", "Enable",
+						NULL, NULL);
+	for (i = 0; list && list[i] != NULL; i++) {
+		if (g_str_equal(list[i], "Headset"))
+			enabled.headset = TRUE;
+		else if (g_str_equal(list[i], "Gateway"))
+			enabled.gateway = TRUE;
+		else if (g_str_equal(list[i], "Sink"))
+			enabled.sink = TRUE;
+		else if (g_str_equal(list[i], "Source"))
+			enabled.source = TRUE;
+		else if (g_str_equal(list[i], "Control"))
+			enabled.control = TRUE;
 	}
+	g_strfreev(list);
 
+	list = g_key_file_get_string_list(config, "General", "Disable",
+						NULL, NULL);
+	for (i = 0; list && list[i] != NULL; i++) {
+		if (g_str_equal(list[i], "Headset"))
+			enabled.headset = FALSE;
+		else if (g_str_equal(list[i], "Gateway"))
+			enabled.gateway = FALSE;
+		else if (g_str_equal(list[i], "Sink"))
+			enabled.sink = FALSE;
+		else if (g_str_equal(list[i], "Source"))
+			enabled.source = FALSE;
+		else if (g_str_equal(list[i], "Control"))
+			enabled.control = FALSE;
+	}
+	g_strfreev(list);
+
+proceed:
 	if (!dbus_connection_create_object_path(conn, AUDIO_MANAGER_PATH,
 						NULL, manager_unregister)) {
 		error("D-Bus failed to register %s path", AUDIO_MANAGER_PATH);

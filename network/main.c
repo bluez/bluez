@@ -68,7 +68,7 @@ static void read_config(const char *file)
 {
 	GKeyFile *keyfile;
 	GError *err = NULL;
-	char *disabled;
+	char **disabled;
 
 	keyfile = g_key_file_new();
 
@@ -78,19 +78,22 @@ static void read_config(const char *file)
 		goto done;
 	}
 
-	disabled = g_key_file_get_string(keyfile, "General",
-					"Disable", &err);
+	disabled = g_key_file_get_string_list(keyfile, "General",
+						"Disable", NULL, &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
 		g_error_free(err);
 		err = NULL;
 	} else {
-		if (strstr(disabled, "Connection"))
-			conf.connection_enabled = FALSE;
-		if (strstr(disabled, "Server"))
-			conf.server_enabled = FALSE;
+		int i;
+		for (i = 0; disabled[i] != NULL; i++) {
+			if (g_str_equal(disabled[i], "Connection"))
+				conf.connection_enabled = FALSE;
+			else if (g_str_equal(disabled[i], "Server"))
+				conf.server_enabled = FALSE;
+		}
+		g_strfreev(disabled);
 	}
-	g_free(disabled);
 
 	conf.security = !g_key_file_get_boolean(keyfile, "General",
 						"DisableSecurity", &err);
