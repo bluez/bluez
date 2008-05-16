@@ -744,50 +744,6 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static int rfcomm_listen(bdaddr_t *src, uint8_t *channel, int opts)
-{
-	struct sockaddr_rc laddr;
-	socklen_t alen;
-	int err, sk;
-
-	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sk < 0)
-		return -errno;
-
-	if (setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &opts, sizeof(opts)) < 0)
-		goto fail;
-
-	memset(&laddr, 0, sizeof(laddr));
-	laddr.rc_family = AF_BLUETOOTH;
-	bacpy(&laddr.rc_bdaddr, src);
-	laddr.rc_channel = (channel ? *channel : 0);
-
-	alen = sizeof(laddr);
-	if (bind(sk, (struct sockaddr *) &laddr, alen) < 0)
-		goto fail;
-
-	if (listen(sk, 1) < 0)
-		goto fail;
-
-	if (!channel)
-		return sk;
-
-	memset(&laddr, 0, sizeof(laddr));
-	if (getsockname(sk, (struct sockaddr *)&laddr, &alen) < 0)
-		goto fail;
-
-	*channel = laddr.rc_channel;
-
-	return sk;
-
-fail:
-	err = errno;
-	close(sk);
-	errno = err;
-
-	return -err;
-}
-
 static void add_lang_attr(sdp_record_t *r)
 {
 	sdp_lang_attr_t base_lang;
@@ -1017,32 +973,21 @@ static inline int tty_open(const char *tty, struct termios *ti)
 	return sk;
 }
 
-static gboolean connect_event(GIOChannel *chan,
-			GIOCondition cond, gpointer data)
+static void connect_event_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+				const bdaddr_t *dst, gpointer data)
 {
 	struct proxy *prx = data;
-	struct sockaddr_rc raddr;
 	GIOChannel *rio, *lio;
-	socklen_t alen;
-	int sk, rsk, lsk;
+	int rsk, lsk;
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		g_io_channel_close(chan);
-		return FALSE;
+	if (err < 0) {
+		error("accept: %s (%d)", strerror(-err), -err);
+		return;
 	}
 
-	sk = g_io_channel_unix_get_fd(chan);
+	rsk = g_io_channel_unix_get_fd(chan);
 
-	memset(&raddr, 0, sizeof(raddr));
-	alen = sizeof(raddr);
-	rsk = accept(sk, (struct sockaddr *) &raddr, &alen);
-	if (rsk < 0)
-		return TRUE;
-
-	bacpy(&prx->dst, &raddr.rc_bdaddr);
+	bacpy(&prx->dst, dst);
 
 	switch (prx->type) {
 	case UNIX_SOCKET_PROXY:
@@ -1059,8 +1004,8 @@ static gboolean connect_event(GIOChannel *chan,
 	}
 
 	if (lsk < 0) {
-		close(rsk);
-		return TRUE;
+		g_io_channel_unref(chan);
+		return;
 	}
 
 	rio = g_io_channel_unix_new(rsk);
@@ -1079,7 +1024,7 @@ static gboolean connect_event(GIOChannel *chan,
 	g_io_channel_unref(rio);
 	g_io_channel_unref(lio);
 
-	return TRUE;
+	return;
 }
 
 static void listen_watch_notify(gpointer data)
@@ -1108,42 +1053,40 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 	struct proxy *prx = data;
 	GIOChannel *io;
 	sdp_record_t *record;
-	int sk;
 
 	if (prx->listen_watch)
 		return error_failed(conn, msg, "Already enabled");
 
 	/* Listen */
-	/* FIXME: missing options */
-	sk = rfcomm_listen(&prx->src, &prx->channel, 0);
-	if (sk < 0) {
+	io = bt_rfcomm_listen_allocate(&prx->src, &prx->channel, 0,
+				connect_event_cb, prx);
+	if (!io) {
 		const char *strerr = strerror(errno);
 		error("RFCOMM listen socket failed: %s(%d)", strerr, errno);
 		return error_failed(conn, msg, strerr);
 	}
 
+	g_io_channel_set_close_on_unref(io, TRUE);
+
 	record = proxy_record_new(prx->uuid128, prx->channel);
 	if (!record) {
-		close(sk);
+		g_io_channel_unref(io);
 		return error_failed(conn, msg,
 			"Unable to allocate new service record");
 	}
 
 	if (add_record_to_server(&prx->src, record) < 0) {
-		close(sk);
 		sdp_record_free(record);
+		g_io_channel_unref(io);
 		return error_failed(conn, msg, "Service registration failed");
 	}
 
 	prx->record_id = record->handle;
 
 	/* Add incomming connection watch */
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
 	prx->listen_watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			connect_event, prx, listen_watch_notify);
-	g_io_channel_unref(io);
+			G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			NULL, prx, listen_watch_notify);
 
 	return send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
