@@ -740,7 +740,7 @@ static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 	int err;
 
 	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if ( io_ctxt->fd < 0)
+	if (io_ctxt->fd < 0)
 		return -errno;
 
 	if (flags) {
@@ -756,7 +756,7 @@ static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 	memset(addr, 0, sizeof(*addr));
 	addr->rc_family = AF_BLUETOOTH;
 	bacpy(&addr->rc_bdaddr, src);
-	addr->rc_channel = *channel;
+	addr->rc_channel = channel ? *channel : 0;
 
 	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
 	if (err < 0) {
@@ -764,7 +764,8 @@ static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 		return -errno;
 	}
 
-	*channel = addr->rc_channel;
+	if (channel)
+		*channel = addr->rc_channel;
 
 	return 0;
 }
@@ -794,7 +795,7 @@ static int rfcomm_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 	struct sockaddr_rc addr;
 	int err;
 
-	err = rfcomm_bind(io_ctxt, src, 0, 0, &addr);
+	err = rfcomm_bind(io_ctxt, src, NULL, 0, &addr);
 	if (err < 0)
 		return err;
 
