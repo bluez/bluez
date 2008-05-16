@@ -1539,6 +1539,19 @@ gboolean g_str_has_suffix(const gchar *str, const gchar *suffix)
 	return strcmp(str + str_len - suffix_len, suffix) == 0;
 }
 
+void g_strfreev(gchar **str_array)
+{
+	int i;
+
+	if (str_array == NULL)
+		return;
+
+	for(i = 0; str_array[i] != NULL; i++)
+		g_free(str_array[i]);
+
+	g_free(str_array);
+}
+
 /* GKeyFile */
 
 struct _GKeyFile {
@@ -1718,8 +1731,15 @@ gint g_key_file_get_integer(GKeyFile *key_file,
 	ret = atoi(str);
 
 	g_free(str);
-	
+
 	return ret;
+}
+
+gchar **g_key_file_get_string_list(GKeyFile *key_file, const gchar *group_name,
+					const gchar *key, gsize *length,
+					GError **error)
+{
+	return g_new0(gchar *, 1);
 }
 
 /* GString */

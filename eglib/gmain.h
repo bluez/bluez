@@ -252,6 +252,7 @@ gchar *g_ascii_strup(const gchar *str, gssize len);
 gboolean g_str_equal(gconstpointer v1, gconstpointer v2);
 gboolean g_str_has_prefix(const gchar *str, const gchar *prefix);
 gboolean g_str_has_suffix(const gchar *str, const gchar *suffix);
+void g_strfreev(gchar **str_array);
 
 #define g_new(struct_type, n_structs) \
 	((struct_type *) g_malloc (((gsize) sizeof (struct_type)) * ((gsize) (n_structs))))
@@ -296,6 +297,10 @@ gint g_key_file_get_integer(GKeyFile *key_file,
 				const gchar *key,
 				GError **error);
 
+gchar **g_key_file_get_string_list(GKeyFile *key_file,
+					const gchar *group_name,
+					const gchar *key, gsize *length,
+					GError **error);
 /* GString */
 
 typedef struct {
