@@ -734,7 +734,7 @@ static int l2cap_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 }
 
 static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
-				uint8_t channel, uint32_t flags,
+				uint8_t *channel, uint32_t flags,
 				struct sockaddr_rc *addr)
 {
 	int err;
@@ -756,7 +756,7 @@ static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 	memset(addr, 0, sizeof(*addr));
 	addr->rc_family = AF_BLUETOOTH;
 	bacpy(&addr->rc_bdaddr, src);
-	addr->rc_channel = channel;
+	addr->rc_channel = *channel;
 
 	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
 	if (err < 0) {
@@ -764,11 +764,13 @@ static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 		return -errno;
 	}
 
+	*channel = addr->rc_channel;
+
 	return 0;
 }
 
 static int rfcomm_listen(struct io_context *io_ctxt, const bdaddr_t *src,
-				uint8_t channel, uint32_t flags)
+				uint8_t *channel, uint32_t flags)
 {
 	struct sockaddr_rc addr;
 	int err;
@@ -834,8 +836,8 @@ static void io_context_cleanup(struct io_context *io_ctxt)
 	g_free(io_ctxt);
 }
 
-GIOChannel *bt_rfcomm_listen(const bdaddr_t *src, uint8_t channel, uint32_t flags,
-			bt_io_callback_t cb, void *user_data)
+GIOChannel *rfcomm_listen_internal(const bdaddr_t *src, uint8_t *channel,
+			uint32_t flags, bt_io_callback_t cb, void *user_data)
 {
 	struct io_context *io_ctxt;
 	int err;
@@ -851,6 +853,26 @@ GIOChannel *bt_rfcomm_listen(const bdaddr_t *src, uint8_t channel, uint32_t flag
 	}
 
 	return io_ctxt->io;
+}
+
+GIOChannel *bt_rfcomm_listen_allocate(const bdaddr_t *src, uint8_t *channel,
+			uint32_t flags, bt_io_callback_t cb, void *user_data)
+{
+	if (!channel)
+		return NULL;
+
+	*channel = 0;
+
+	return rfcomm_listen_internal(src, channel, flags, cb, user_data);
+}
+
+GIOChannel *bt_rfcomm_listen(const bdaddr_t *src, uint8_t channel,
+			uint32_t flags, bt_io_callback_t cb, void *user_data)
+{
+	if (channel < 1 || channel > 30)
+		return NULL;
+
+	return rfcomm_listen_internal(src, &channel, flags, cb, user_data);
 }
 
 int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
