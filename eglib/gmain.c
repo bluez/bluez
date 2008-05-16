@@ -1739,7 +1739,31 @@ gchar **g_key_file_get_string_list(GKeyFile *key_file, const gchar *group_name,
 					const gchar *key, gsize *length,
 					GError **error)
 {
-	return g_new0(gchar *, 1);
+	gchar *str, *item, **list;
+	int items = 0;
+
+	str = g_key_file_get_string(key_file, group_name, key, error);
+	if (!str)
+		return NULL;
+
+	items = 0;
+	list = g_new0(char *, 1);
+
+	item = strtok(str, ",");
+	while (item) {
+		items++;
+
+		list = g_renew(char *, list, items + 1);
+
+		list[items - 1] = g_strdup(item);
+		list[items] = NULL;
+
+		item = strtok(NULL, ",");
+	}
+
+	g_free(str);
+
+	return list;
 }
 
 /* GString */
