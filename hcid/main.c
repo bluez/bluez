@@ -64,6 +64,23 @@ struct device_opts *parser_device;
 static struct device_list *device_list = NULL;
 static int child_pipe[2];
 
+static GKeyFile *load_config(const char *file)
+{
+	GError *err = NULL;
+	GKeyFile *keyfile;
+
+	keyfile = g_key_file_new();
+
+	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
+		error("Parsing %s failed: %s", file, err->message);
+		g_error_free(err);
+		g_key_file_free(keyfile);
+		return NULL;
+	}
+
+	return keyfile;
+}
+
 static inline void init_device_defaults(struct device_opts *device_opts)
 {
 	memset(device_opts, 0, sizeof(*device_opts));
@@ -769,6 +786,7 @@ int main(int argc, char *argv[])
 	GIOChannel *ctl_io, *child_io;
 	uint16_t mtu = 0;
 	int opt, daemonize = 1, debug = 0, sdp = 1, experimental = 0;
+	GKeyFile *config;
 
 	/* Default HCId settings */
 	memset(&hcid, 0, sizeof(hcid));
@@ -871,6 +889,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	config = load_config(CONFIGDIR "/main.conf");
+
 	if (read_config(hcid.config_file) < 0)
 		error("Config load failed");
 
@@ -920,7 +940,7 @@ int main(int argc, char *argv[])
 	 * the plugins might wanna expose some paths on the bus. However the
 	 * best order of how to init various subsystems of the Bluetooth
 	 * daemon needs to be re-worked. */
-	plugin_init();
+	plugin_init(config);
 
 	/* Start event processor */
 	g_main_loop_run(event_loop);
@@ -938,6 +958,9 @@ int main(int argc, char *argv[])
 	cleanup_sdp_session();
 
 	g_main_loop_unref(event_loop);
+
+	if (config)
+		g_key_file_free(config);
 
 	info("Exit");
 

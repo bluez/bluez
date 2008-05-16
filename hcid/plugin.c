@@ -64,10 +64,39 @@ static gboolean add_plugin(GModule *module, struct bluetooth_plugin_desc *desc)
 	return TRUE;
 }
 
-gboolean plugin_init(void)
+static gboolean is_disabled(const char *name, char **list)
+{
+	int i;
+
+	for (i = 0; list[i] != NULL; i++) {
+		char *str;
+		gboolean equal;
+
+		str = g_strdup_printf("lib%s.so", list[i]);
+
+		equal = g_str_equal(str, name);
+
+		g_free(str);
+
+		if (equal)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+gboolean plugin_init(GKeyFile *config)
 {
 	GDir *dir;
 	const gchar *file;
+	gchar **disabled;
+
+	if (config)
+		disabled = g_key_file_get_string_list(config, "General",
+							"DisablePlugins",
+							NULL, NULL);
+	else
+		disabled = NULL;
 
 	debug("Loading plugins %s", PLUGINDIR);
 
@@ -83,6 +112,9 @@ gboolean plugin_init(void)
 
 		if (g_str_has_prefix(file, "lib") == FALSE ||
 				g_str_has_suffix(file, ".so") == FALSE)
+			continue;
+
+		if (disabled && is_disabled(file, disabled))
 			continue;
 
 		filename = g_build_filename(PLUGINDIR, file, NULL);
@@ -124,6 +156,8 @@ gboolean plugin_init(void)
 	}
 
 	g_dir_close(dir);
+
+	g_strfreev(disabled);
 
 	return TRUE;
 }
