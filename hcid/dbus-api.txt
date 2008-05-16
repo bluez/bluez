@@ -241,7 +241,7 @@ Database hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Database
-Object path	/org/bluez or /org/bluez/{hci0,hci1,...}
+Object path	/org/bluez
 
 Methods		void RegisterService(string identifier, string name, string description)
 
