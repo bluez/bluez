@@ -1,3 +1,6 @@
+ver 3.32:
+	Add OCF constants for synchronous flow control enabling.
+
 ver 3.31:
 	Don't optimize when debug is enabled.
 
