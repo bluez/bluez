@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/param.h>
 #include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>

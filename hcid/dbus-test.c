@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/param.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
