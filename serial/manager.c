@@ -118,7 +118,7 @@ struct proxy {
 	struct termios  proxy_ti;	/* Proxy TTY settings */
 	uint8_t		channel;	/* RFCOMM channel */
 	uint32_t	record_id;	/* Service record id */
-	guint		listen_watch;	/* Server listen watch */
+	GIOChannel	*io;		/* Server listen */
 	guint		rfcomm_watch;	/* RFCOMM watch: Remote */
 	guint		local_watch;	/* Local watch: TTY or Unix socket */
 };
@@ -129,6 +129,25 @@ static GSList *ports_paths = NULL;
 static GSList *proxies_paths = NULL;
 static int rfcomm_ctl = -1;
 static int sk_counter = 0;
+
+static void disable_proxy(struct proxy *prx)
+{
+	if (prx->rfcomm_watch) {
+		g_source_remove(prx->rfcomm_watch);
+		prx->rfcomm_watch = 0;
+	}
+
+	if (prx->local_watch) {
+		g_source_remove(prx->local_watch);
+		prx->local_watch = 0;
+	}
+
+	remove_record_from_server(prx->record_id);
+	prx->record_id = 0;
+
+	g_io_channel_unref(prx->io);
+	prx->io = NULL;
+}
 
 static void proxy_free(struct proxy *prx)
 {
@@ -978,116 +997,87 @@ static void connect_event_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 				const bdaddr_t *dst, gpointer data)
 {
 	struct proxy *prx = data;
-	GIOChannel *rio, *lio;
-	int rsk, lsk;
+	GIOChannel *io;
+	int sk;
 
 	if (err < 0) {
 		error("accept: %s (%d)", strerror(-err), -err);
 		return;
 	}
 
-	rsk = g_io_channel_unix_get_fd(chan);
-
 	bacpy(&prx->dst, dst);
 
 	switch (prx->type) {
 	case UNIX_SOCKET_PROXY:
-		lsk = unix_socket_connect(prx->address);
+		sk = unix_socket_connect(prx->address);
 		break;
 	case TTY_PROXY:
-		lsk = tty_open(prx->address, &prx->proxy_ti);
+		sk = tty_open(prx->address, &prx->proxy_ti);
 		break;
 	case TCP_SOCKET_PROXY:
-		lsk = tcp_socket_connect(prx->address);
+		sk = tcp_socket_connect(prx->address);
 		break;
 	default:
-		lsk = -1;
+		sk = -1;
 	}
 
-	if (lsk < 0) {
+	if (sk < 0) {
 		g_io_channel_unref(chan);
 		return;
 	}
 
-	rio = g_io_channel_unix_new(rsk);
-	g_io_channel_set_close_on_unref(rio, TRUE);
-	lio = g_io_channel_unix_new(lsk);
-	g_io_channel_set_close_on_unref(lio, TRUE);
+	g_io_channel_set_close_on_unref(chan, TRUE);
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
 
-	prx->rfcomm_watch = g_io_add_watch(rio,
+	prx->rfcomm_watch = g_io_add_watch(chan,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				forward_data, lio);
+				forward_data, io);
 
-	prx->local_watch = g_io_add_watch(lio,
+	prx->local_watch = g_io_add_watch(io,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				forward_data, rio);
+				forward_data, chan);
 
-	g_io_channel_unref(rio);
-	g_io_channel_unref(lio);
+	g_io_channel_unref(chan);
+	g_io_channel_unref(io);
 
 	return;
-}
-
-static void listen_watch_notify(gpointer data)
-{
-	struct proxy *prx = data;
-
-	prx->listen_watch = 0;
-
-	if (prx->rfcomm_watch) {
-		g_source_remove(prx->rfcomm_watch);
-		prx->rfcomm_watch = 0;
-	}
-
-	if (prx->local_watch) {
-		g_source_remove(prx->local_watch);
-		prx->local_watch = 0;
-	}
-
-	remove_record_from_server(prx->record_id);
-	prx->record_id = 0;
 }
 
 static DBusHandlerResult proxy_enable(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct proxy *prx = data;
-	GIOChannel *io;
 	sdp_record_t *record;
 
-	if (prx->listen_watch)
+	if (prx->io)
 		return error_failed(conn, msg, "Already enabled");
 
 	/* Listen */
-	io = bt_rfcomm_listen_allocate(&prx->src, &prx->channel, 0,
+	prx->io = bt_rfcomm_listen_allocate(&prx->src, &prx->channel, 0,
 				connect_event_cb, prx);
-	if (!io) {
+	if (!prx->io) {
 		const char *strerr = strerror(errno);
 		error("RFCOMM listen socket failed: %s(%d)", strerr, errno);
 		return error_failed(conn, msg, strerr);
 	}
 
-	g_io_channel_set_close_on_unref(io, TRUE);
+	g_io_channel_set_close_on_unref(prx->io, TRUE);
 
 	record = proxy_record_new(prx->uuid128, prx->channel);
 	if (!record) {
-		g_io_channel_unref(io);
+		g_io_channel_unref(prx->io);
 		return error_failed(conn, msg,
 			"Unable to allocate new service record");
 	}
 
 	if (add_record_to_server(&prx->src, record) < 0) {
 		sdp_record_free(record);
-		g_io_channel_unref(io);
+		g_io_channel_unref(prx->io);
 		return error_failed(conn, msg, "Service registration failed");
 	}
 
 	prx->record_id = record->handle;
-
-	/* Add incomming connection watch */
-	prx->listen_watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
-			G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			NULL, prx, listen_watch_notify);
 
 	return send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
@@ -1098,11 +1088,11 @@ static DBusHandlerResult proxy_disable(DBusConnection *conn,
 {
 	struct proxy *prx = data;
 
-	if (!prx->listen_watch)
+	if (!prx->io)
 		return error_failed(conn, msg, "Not enabled");
 
-	/* Remove the watches and unregister the record: see watch notify */
-	g_source_remove(prx->listen_watch);
+	/* Remove the watches and unregister the record */
+	disable_proxy(prx);
 
 	return send_message_and_unref(conn,
 			dbus_message_new_method_return(msg));
@@ -1137,7 +1127,7 @@ static DBusHandlerResult proxy_get_info(DBusConnection *conn,
 		dbus_message_iter_append_dict_entry(&dict, "channel",
 				DBUS_TYPE_BYTE, &prx->channel);
 
-	boolean = (prx->listen_watch ? TRUE : FALSE);
+	boolean = (prx->io ? TRUE : FALSE);
 	dbus_message_iter_append_dict_entry(&dict, "enabled",
 			DBUS_TYPE_BOOLEAN, &boolean);
 
@@ -1328,8 +1318,6 @@ static void proxy_handler_unregister(DBusConnection *conn, void *data)
 	}
 
 done:
-	if (prx->listen_watch)
-		g_source_remove(prx->listen_watch);
 
 	proxy_free(prx);
 }
