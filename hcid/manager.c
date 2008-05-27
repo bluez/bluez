@@ -356,19 +356,20 @@ static DBusSignalVTable old_manager_signals[] = {
 	{ NULL, NULL }
 };
 
+static inline DBusMessage *no_such_adapter(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
+							"No such adapter");
+}
+
 static DBusMessage *default_adapter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
 
-	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		// FIXME return error_invalid_arguments(conn, msg, NULL);
-		return NULL;
-
 	if (default_adapter_id < 0)
-		// FIXME return error_no_such_adapter(conn, msg);
-		return NULL;
+		return no_such_adapter(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -391,10 +392,8 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 	const char *pattern;
 	int dev_id;
 
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID))
-		// FIXME return error_invalid_arguments(conn, msg, NULL);
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
+							DBUS_TYPE_INVALID))
 		return NULL;
 
 	/* hci_devid() would make sense to use here, except it
@@ -405,16 +404,13 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 		dev_id = find_by_address(pattern);
 
 	if (dev_id < 0)
-		// FIXME return error_no_such_adapter(conn, msg);
-		return NULL;
+		return no_such_adapter(msg);
 
 	if (hci_devinfo(dev_id, &di) < 0)
-		// FIXME return error_no_such_adapter(conn, msg);
-		return NULL;
+		return no_such_adapter(msg);
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
-		// FIXME return error_no_such_adapter(conn, msg);
-		return NULL;
+		return no_such_adapter(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -440,8 +436,7 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0)
-		// FIXME return error_failed_errno(conn, msg, errno);
-		return NULL;
+		return create_errno_message(msg, errno);
 
 	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 
@@ -449,11 +444,10 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 	dr = dl->dev_req;
 
 	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
-		//int err = errno;
+		int err = errno;
 		close(sk);
 		g_free(dl);
-		// FIXME return error_failed_errno(conn, msg, err);
-		return NULL;
+		return create_errno_message(msg, err);
 	}
 
 	dr = dl->dev_req;

@@ -27,6 +27,8 @@
 
 #define ERROR_INTERFACE "org.bluez.Error"
 
+DBusMessage *create_errno_message(DBusMessage *msg, int err);
+
 DBusHandlerResult error_device_unreachable(DBusConnection *conn,
 						DBusMessage *msg);
 

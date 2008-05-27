@@ -35,6 +35,12 @@
 
 #include "error.h"
 
+DBusMessage *create_errno_message(DBusMessage *msg, int err)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							strerror(err));
+}
+
 /**
   org.bluez.Error.DeviceUnreachable:
 
