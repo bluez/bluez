@@ -510,11 +510,34 @@ fail:
 	pending_req_free(pr);
 }
 
-static DBusHandlerResult create_device(DBusConnection *conn,
+static inline DBusMessage *adapter_not_available(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+						"Adapter not available");
+}
+
+static inline DBusMessage *already_exists(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyExists",
+						"Input Already exists");
+}
+
+static inline DBusMessage *not_supported(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotSupported",
+							"Not supported");
+}
+
+static inline DBusMessage *does_not_exist(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyExists",
+							"Input doesn't exist");
+}
+
+static DBusMessage *create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct pending_req *pr;
-	DBusError derr;
 	const char *addr;
 	bdaddr_t src, dst;
 	uint32_t cls = 0;
@@ -522,39 +545,34 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 	uuid_t uuid;
 	bt_callback_t cb;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_STRING, &addr,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &addr,
+							DBUS_TYPE_INVALID))
+		return NULL;
 
 	/* Get the default adapter */
 	dev_id = hci_get_route(NULL);
 	if (dev_id < 0) {
 		error("Bluetooth adapter not available");
-		return error_failed(conn, msg, "Adapter not available");
+		return adapter_not_available(msg);
 	}
 
 	if (hci_devba(dev_id, &src) < 0) {
 		error("Can't get local adapter device info");
-		return error_failed(conn, msg, "Adapter not available");
+		return adapter_not_available(msg);
 	}
 
 	str2ba(addr, &dst);
 	if (input_device_is_registered(&src, &dst))
-		return error_already_exists(conn, msg, "Input Already exists");
+		return already_exists(msg);
 
 	if (read_device_class(&src, &dst, &cls) < 0) {
 		error("Device class not available");
-		return error_not_supported(conn, msg);
+		return not_supported(msg);
 	}
 
 	pr = pending_req_new(conn, msg, &src, &dst);
 	if (!pr)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	switch (cls & 0x1f00) {
 		case 0x0500: /* Peripheral */
@@ -568,57 +586,51 @@ static DBusHandlerResult create_device(DBusConnection *conn,
 			break;
 		default:
 			pending_req_free(pr);
-			return error_not_supported(conn, msg);
+			return not_supported(msg);
 	}
 
 	err = bt_search_service(&src, &dst, &uuid, cb, pr, NULL);
 	if (err < 0) {
 		pending_req_free(pr);
-		return error_not_supported(conn, msg);
+		return not_supported(msg);
 	}
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
-static DBusHandlerResult remove_device(DBusConnection *conn,
+static DBusMessage *remove_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	DBusError derr;
 	GSList *l;
 	const char *path;
 	int err;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &path,
+							DBUS_TYPE_INVALID))
+		return NULL;
 
 	l = g_slist_find_custom(device_paths, path, (GCompareFunc) strcmp);
 	if (!l)
-		return error_does_not_exist(conn, msg, "Input doesn't exist");
+		return does_not_exist(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	err = input_device_unregister(conn, path);
 	if (err < 0) {
 		dbus_message_unref(reply);
-		return error_failed_errno(conn, msg, -err);
+		return create_errno_message(msg, -err);
 	}
 
 	g_free(l->data);
 	device_paths = g_slist_remove(device_paths, l->data);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult list_devices(DBusConnection *conn,
+static DBusMessage *list_devices(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter, iter_array;
@@ -627,7 +639,7 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -641,10 +653,10 @@ static DBusHandlerResult list_devices(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &iter_array);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static void manager_unregister(DBusConnection *conn, void *data)
+static void manager_unregister(void *data)
 {
 	info("Unregistered manager path");
 
@@ -746,18 +758,20 @@ static void register_stored_inputs(void)
 	closedir(dir);
 }
 
-static DBusMethodVTable manager_methods[] = {
-	{ "ListDevices",		list_devices,	"",	"as"	},
-	{ "CreateDevice",		create_device,	"s",	"s"	},
-	{ "CreateSecureDevice",		create_device,	"s",	"s"	},
-	{ "RemoveDevice",		remove_device,	"s",	""	},
-	{ NULL, NULL, NULL, NULL },
+static GDBusMethodTable manager_methods[] = {
+	{ "ListDevices",	"",	"as",	list_devices },
+	{ "CreateDevice",	"s",	"s",	create_device,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "CreateSecureDevice",	"s",	"s",	create_device,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "RemoveDevice",	"s",	"",	remove_device },
+	{ }
 };
 
-static DBusSignalVTable manager_signals[] = {
+static GDBusSignalTable manager_signals[] = {
 	{ "DeviceCreated",	"s"	},
 	{ "DeviceRemoved",	"s"	},
-	{ NULL, NULL }
+	{ }
 };
 
 int input_manager_init(DBusConnection *conn, GKeyFile *config)
@@ -773,19 +787,11 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 		}
 	}
 
-	if (!dbus_connection_create_object_path(conn, INPUT_PATH,
-						NULL, manager_unregister)) {
-		error("D-Bus failed to register %s path", INPUT_PATH);
-		return -1;
-	}
-
-	if (!dbus_connection_register_interface(conn, INPUT_PATH,
-						INPUT_MANAGER_INTERFACE,
-						manager_methods,
-						manager_signals, NULL)) {
+	if (g_dbus_register_interface(conn, INPUT_PATH, INPUT_MANAGER_INTERFACE,
+					manager_methods, manager_signals, NULL,
+					NULL, manager_unregister) == FALSE) {
 		error("Failed to register %s interface to %s",
 				INPUT_MANAGER_INTERFACE, INPUT_PATH);
-		dbus_connection_destroy_object_path(connection, INPUT_PATH);
 		return -1;
 	}
 
@@ -803,7 +809,8 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 
 void input_manager_exit(void)
 {
-	dbus_connection_destroy_object_path(connection, INPUT_PATH);
+	g_dbus_unregister_interface(connection, INPUT_PATH,
+						INPUT_MANAGER_INTERFACE);
 
 	server_stop();
 
