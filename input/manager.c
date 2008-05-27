@@ -332,7 +332,7 @@ static int create_bonding(struct pending_req *pr)
 	char address[18], *addr_ptr = address;
 
 	msg = dbus_message_new_method_call("org.bluez", pr->adapter_path,
-					   "org.bluez.Adapter", "CreateBonding");
+					"org.bluez.Adapter", "CreateBonding");
 	if (!msg) {
 		error("Unable to allocate new method call");
 		return -1;
@@ -589,7 +589,6 @@ static DBusMessage *create_device(DBusConnection *conn,
 static DBusMessage *remove_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	GSList *l;
 	const char *path;
 	int err;
@@ -602,20 +601,14 @@ static DBusMessage *remove_device(DBusConnection *conn,
 	if (!l)
 		return does_not_exist(msg);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
 	err = input_device_unregister(conn, path);
-	if (err < 0) {
-		dbus_message_unref(reply);
+	if (err < 0)
 		return create_errno_message(msg, -err);
-	}
 
 	g_free(l->data);
 	device_paths = g_slist_remove(device_paths, l->data);
 
-	return reply;
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *list_devices(DBusConnection *conn,

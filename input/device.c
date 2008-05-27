@@ -402,7 +402,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	/* Replying to the requestor */
 	reply = dbus_message_new_method_return(idev->pending_connect);
-	send_message_and_unref(idev->conn, reply);
+	g_dbus_send_message(idev->conn, reply);
 
 	/* Sending the Connected signal */
 	path = dbus_message_get_path(idev->pending_connect);
@@ -545,6 +545,7 @@ static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 	}
 
 	err = ioctl(ctl, HIDPCONNADD, &req);
+
 cleanup:
 	close(ctl);
 
@@ -580,8 +581,7 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			DBUS_TYPE_INVALID);
 
 	/* Replying to the requestor */
-	send_message_and_unref(idev->conn,
-		dbus_message_new_method_return(idev->pending_connect));
+	g_dbus_send_reply(idev->conn, idev->pending_connect, DBUS_TYPE_INVALID);
 
 	goto cleanup;
 
@@ -698,6 +698,7 @@ static int disconnect(struct device *idev, uint32_t flags)
 	close(ctl);
 
 	return 0;
+
 fail:
 	err = errno;
 	close(ctl);
@@ -736,10 +737,28 @@ static int is_connected(struct device *idev)
 		return 1;
 }
 
+static inline DBusMessage *in_progress(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
+				"Device connection already in progress");
+}
+
+static inline DBusMessage *already_connected(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyConnected",
+					"Already connected to a device");
+}
+
+static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
+				err ? strerror(err) : "Connection attempt failed");
+}
+
 /*
  * Input Device methods
  */
-static DBusHandlerResult device_connect(DBusConnection *conn,
+static DBusMessage *device_connect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
@@ -747,11 +766,10 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 	int err;
 
 	if (idev->pending_connect)
-		return error_in_progress(conn, msg,
-				"Device connection already in progress");
+		return in_progress(msg);
 
 	if (is_connected(idev))
-		return error_already_connected(conn, msg);
+		return already_connected(msg);
 
 	idev->pending_connect = dbus_message_ref(msg);
 
@@ -763,153 +781,103 @@ static DBusHandlerResult device_connect(DBusConnection *conn,
 			error("Connect failed: %s(%d)", str, err);
 			dbus_message_unref(idev->pending_connect);
 			idev->pending_connect = NULL;
-			return error_connection_attempt_failed(conn,
-					msg, err);
+			return connection_attempt_failed(msg, err);
 		}
 		fake->flags |= FI_FLAG_CONNECTED;
-		return DBUS_HANDLER_RESULT_HANDLED;
+		return NULL;
 	}
 
 	/* HID devices */
-	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL, 0,
-			control_connect_cb, idev);
+	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL,
+						0, control_connect_cb, idev);
 	if (err < 0) {
 		error("L2CAP connect failed: %s(%d)", strerror(-err), -err);
 		dbus_message_unref(idev->pending_connect);
 		idev->pending_connect = NULL;
-		return error_connection_attempt_failed(conn, msg, -err);
+		return connection_attempt_failed(msg, -err);
 	}
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
-static DBusHandlerResult device_disconnect(DBusConnection *conn,
+static DBusMessage *device_disconnect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
+	int err;
 
-	if (disconnect(idev, 0) < 0)
-		return error_failed_errno(conn, msg, errno);
+	err = disconnect(idev, 0);
+	if (err < 0)
+		return create_errno_message(msg, -err);
 
-	/* Replying to the requestor */
-	return send_message_and_unref(conn,
-			dbus_message_new_method_return(msg));
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult device_is_connected(DBusConnection *conn,
+static DBusMessage *device_is_connected(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
-	DBusMessage *reply;
-	dbus_bool_t connected;
+	dbus_bool_t connected = is_connected(idev);
 
-	connected = is_connected(idev);
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_BOOLEAN, &connected,
-			DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_BOOLEAN, &connected,
+							DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult device_get_adapter(DBusConnection *conn,
+static DBusMessage *device_get_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
-	DBusMessage *reply;
 	char addr[18];
 	const char *paddr = addr;
 
 	ba2str(&idev->src, addr);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &paddr,
-			DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &paddr,
+							DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult device_get_address(DBusConnection *conn,
+static DBusMessage *device_get_address(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
-	DBusMessage *reply;
 	char addr[18];
 	const char *paddr = addr;
 
 	ba2str(&idev->dst, addr);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &paddr,
-			DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &paddr,
+							DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult device_get_name(DBusConnection *conn,
+static DBusMessage *device_get_name(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
-	DBusMessage *reply;
 	const char *pname = (idev->name ? idev->name : "");
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &pname,
-			DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &pname,
+							DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult device_get_product_id(DBusConnection *conn,
+static DBusMessage *device_get_product_id(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
-	DBusMessage *reply;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_UINT16, &idev->product,
-			DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_UINT16, &idev->product,
+							DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult device_get_vendor_id(DBusConnection *conn,
+static DBusMessage *device_get_vendor_id(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct device *idev = data;
-	DBusMessage *reply;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_UINT16, &idev->vendor,
-			DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_UINT16, &idev->vendor,
+							DBUS_TYPE_INVALID);
 }
 
-static void device_unregister(DBusConnection *conn, void *data)
+static void device_unregister(void *data)
 {
 	struct device *idev = data;
 
@@ -918,22 +886,23 @@ static void device_unregister(DBusConnection *conn, void *data)
 	device_free(idev);
 }
 
-static DBusMethodVTable device_methods[] = {
-	{ "Connect",		device_connect,		"",	"" 	},
-	{ "Disconnect",		device_disconnect,	"",	"" 	},
-	{ "IsConnected",	device_is_connected,	"",	"b"	},
-	{ "GetAdapter",		device_get_adapter,	"",	"s"	},
-	{ "GetAddress",		device_get_address,	"",	"s"	},
-	{ "GetName",		device_get_name,	"",	"s"	},
-	{ "GetProductId",	device_get_product_id,	"",	"q"	},
-	{ "GetVendorId",	device_get_vendor_id,	"",	"q"	},
-	{ NULL, NULL, NULL, NULL }
+static GDBusMethodTable device_methods[] = {
+	{ "Connect",		"",	"",	device_connect,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "Disconnect",		"",	"",	device_disconnect	},
+	{ "IsConnected",	"",	"b",	device_is_connected	},
+	{ "GetAdapter",		"",	"s",	device_get_adapter	},
+	{ "GetAddress",		"",	"s",	device_get_address	},
+	{ "GetName",		"",	"s",	device_get_name		},
+	{ "GetProductId",	"",	"q",	device_get_product_id	},
+	{ "GetVendorId",	"",	"q",	device_get_vendor_id	},
+	{ }
 };
 
-static DBusSignalVTable device_signals[] = {
+static GDBusSignalTable device_signals[] = {
 	{ "Connected",		""	},
 	{ "Disconnected",	""	},
-	{ NULL, NULL }
+	{ }
 };
 
 /*
@@ -941,19 +910,11 @@ static DBusSignalVTable device_signals[] = {
  */
 static int register_path(DBusConnection *conn, const char *path, struct device *idev)
 {
-	if (!dbus_connection_create_object_path(conn, path,
-						idev, device_unregister)) {
-		error("Input device path registration failed");
-		return -EINVAL;
-	}
-
-	if (!dbus_connection_register_interface(conn, path,
-						INPUT_DEVICE_INTERFACE,
-						device_methods,
-						device_signals, NULL)) {
+	if (g_dbus_register_interface(conn, path, INPUT_DEVICE_INTERFACE,
+					device_methods, device_signals, NULL,
+					NULL, device_unregister) == FALSE) {
 		error("Failed to register %s interface to %s",
-				INPUT_DEVICE_INTERFACE, path);
-		dbus_connection_destroy_object_path(conn, path);
+					INPUT_DEVICE_INTERFACE, path);
 		return -1;
 	}
 
