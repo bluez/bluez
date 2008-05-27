@@ -127,9 +127,80 @@ static void print_arguments(GString *gstr, const char *sig, const char *directio
 	}
 }
 
+static void generate_old_interface_xml(GString *gstr, struct interface_data *iface)
+{
+	DBusMethodVTable *method;
+	DBusSignalVTable *signal;
+	DBusPropertyVTable *property;
+
+	for (method = iface->old_methods; method && method->name; method++) {
+		/* debug("%s: adding method %s.%s",
+					path, iface->name, method->name); */
+		if (!strlen(method->signature) && !strlen(method->reply))
+			g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
+								method->name);
+		else {
+			g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n",
+								method->name);
+			print_arguments(gstr, method->signature, "in");
+			print_arguments(gstr, method->reply, "out");
+			g_string_append_printf(gstr, "\t\t</method>\n");
+		}
+	}
+
+	for (signal = iface->old_signals; signal && signal->name; signal++) {
+		/* debug("%s: adding signal %s.%s",
+					path, iface->name, signal->name); */
+		if (!strlen(signal->signature))
+			g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
+								signal->name);
+		else {
+			g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n",
+								signal->name);
+			print_arguments(gstr, signal->signature, NULL);
+			g_string_append_printf(gstr, "\t\t</signal>\n");
+		}
+	}
+
+	for (property = iface->old_properties; property && property->name; property++) {
+		debug("%s: adding property %s.%s",
+					path, iface->name, property->name);
+	}
+}
+
+static void generate_interface_xml(GString *gstr, struct interface_data *iface)
+{
+	GDBusMethodTable *method;
+	GDBusSignalTable *signal;
+
+	for (method = iface->methods; method && method->name; method++) {
+		if (!strlen(method->signature) && !strlen(method->reply))
+			g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
+								method->name);
+		else {
+			g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n",
+								method->name);
+			print_arguments(gstr, method->signature, "in");
+			print_arguments(gstr, method->reply, "out");
+			g_string_append_printf(gstr, "\t\t</method>\n");
+		}
+	}
+
+	for (signal = iface->signals; signal && signal->name; signal++) {
+		if (!strlen(signal->signature))
+			g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
+								signal->name);
+		else {
+			g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n",
+								signal->name);
+			print_arguments(gstr, signal->signature, NULL);
+			g_string_append_printf(gstr, "\t\t</signal>\n");
+		}
+	}
+}
+
 static void generate_introspection_xml(DBusConnection *conn,
-					struct generic_data *data,
-					const char *path)
+				struct generic_data *data, const char *path)
 {
 	GSList *list;
 	GString *gstr;
@@ -144,45 +215,12 @@ static void generate_introspection_xml(DBusConnection *conn,
 
 	for (list = data->interfaces; list; list = list->next) {
 		struct interface_data *iface = list->data;
-		DBusMethodVTable *method;
-		DBusSignalVTable *signal;
-		DBusPropertyVTable *property;
 
-		g_string_append_printf(gstr, "\t<interface name=\"%s\">\n", iface->name);
+		g_string_append_printf(gstr, "\t<interface name=\"%s\">\n",
+								iface->name);
 
-		for (method = iface->old_methods; method && method->name; method++) {
-			/* debug("%s: adding method %s.%s",
-					path, iface->name, method->name); */
-			if (!strlen(method->signature) && !strlen(method->reply))
-				g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
-							method->name);
-			else {
-				g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n",
-							method->name);
-				print_arguments(gstr, method->signature, "in");
-				print_arguments(gstr, method->reply, "out");
-				g_string_append_printf(gstr, "\t\t</method>\n");
-			}
-		}
-
-		for (signal = iface->old_signals; signal && signal->name; signal++) {
-			/* debug("%s: adding signal %s.%s",
-					path, iface->name, signal->name); */
-			if (!strlen(signal->signature))
-				g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
-							signal->name);
-			else {
-				g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n",
-							signal->name);
-				print_arguments(gstr, signal->signature, NULL);
-				g_string_append_printf(gstr, "\t\t</signal>\n");
-			}
-		}
-
-		for (property = iface->old_properties; property && property->name; property++) {
-			debug("%s: adding property %s.%s",
-					path, iface->name, property->name);
-		}
+		generate_interface_xml(gstr, iface);
+		generate_old_interface_xml(gstr, iface);
 
 		g_string_append_printf(gstr, "\t</interface>\n");
 	}
@@ -191,7 +229,8 @@ static void generate_introspection_xml(DBusConnection *conn,
 		goto done;
 
 	for (i = 0; children[i]; i++)
-		g_string_append_printf(gstr, "\t<node name=\"%s\"/>\n", children[i]);
+		g_string_append_printf(gstr, "\t<node name=\"%s\"/>\n",
+								children[i]);
 
 	dbus_free_string_array(children);
 
