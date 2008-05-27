@@ -179,6 +179,12 @@ DBusMessage *g_dbus_create_reply(DBusMessage *message, int type, ...);
 DBusMessage *g_dbus_create_reply_valist(DBusMessage *message,
 						int type, va_list args);
 
+gboolean g_dbus_send_message(DBusConnection *connection, DBusMessage *message);
+gboolean g_dbus_send_reply(DBusConnection *connection,
+				DBusMessage *message, int type, ...);
+gboolean g_dbus_send_reply_valist(DBusConnection *connection,
+				DBusMessage *message, int type, va_list args);
+
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
 guint name_listener_add(DBusConnection *connection, const char *name,
