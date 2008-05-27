@@ -46,9 +46,15 @@ struct generic_data {
 
 struct interface_data {
 	char *name;
-	DBusMethodVTable *methods;
-	DBusSignalVTable *signals;
-	DBusPropertyVTable *properties;
+	GDBusMethodTable *methods;
+	GDBusSignalTable *signals;
+	GDBusPropertyTable *properties;
+	void *user_data;
+	GDBusDestroyFunction destroy;
+
+	DBusMethodVTable *old_methods;
+	DBusSignalVTable *old_signals;
+	DBusPropertyVTable *old_properties;
 };
 
 DBusHandlerResult dbus_connection_send_and_unref(DBusConnection *connection,
@@ -143,7 +149,7 @@ static void generate_introspection_xml(DBusConnection *conn,
 
 		g_string_append_printf(gstr, "\t<interface name=\"%s\">\n", iface->name);
 
-		for (method = iface->methods; method && method->name; method++) {
+		for (method = iface->old_methods; method && method->name; method++) {
 			/* debug("%s: adding method %s.%s",
 					path, iface->name, method->name); */
 			if (!strlen(method->signature) && !strlen(method->reply))
@@ -158,7 +164,7 @@ static void generate_introspection_xml(DBusConnection *conn,
 			}
 		}
 
-		for (signal = iface->signals; signal && signal->name; signal++) {
+		for (signal = iface->old_signals; signal && signal->name; signal++) {
 			/* debug("%s: adding signal %s.%s",
 					path, iface->name, signal->name); */
 			if (!strlen(signal->signature))
@@ -172,7 +178,7 @@ static void generate_introspection_xml(DBusConnection *conn,
 			}
 		}
 
-		for (property = iface->properties; property && property->name; property++) {
+		for (property = iface->old_properties; property && property->name; property++) {
 			debug("%s: adding property %s.%s",
 					path, iface->name, property->name);
 		}
@@ -262,7 +268,7 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 	if (!iface)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	for (current = iface->methods;
+	for (current = iface->old_methods;
 			current->name && current->message_function; current++) {
 		if (!dbus_message_is_method_call(message, iface->name,
 							current->name))
@@ -379,9 +385,9 @@ dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
 	iface = g_new0(struct interface_data, 1);
 
 	iface->name = g_strdup(name);
-	iface->methods = methods;
-	iface->signals = signals;
-	iface->properties = properties;
+	iface->old_methods = methods;
+	iface->old_signals = signals;
+	iface->old_properties = properties;
 
 	data->interfaces = g_slist_append(data->interfaces, iface);
 
@@ -548,7 +554,7 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 		return FALSE;
 	}
 
-	for (sig_data = iface->signals; sig_data && sig_data->name; sig_data++) {
+	for (sig_data = iface->old_signals; sig_data && sig_data->name; sig_data++) {
 		if (!strcmp(sig_data->name, name)) {
 			*args = sig_data->signature;
 			break;
@@ -667,11 +673,57 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 					void *user_data,
 					GDBusDestroyFunction destroy)
 {
-	return FALSE;
+	struct generic_data *data = NULL;
+	struct interface_data *iface;
+
+	if (!dbus_connection_get_object_path_data(connection, path,
+						(void *) &data) || !data)
+		return FALSE;
+
+	if (find_interface(data->interfaces, name))
+		return FALSE;
+
+	iface = g_new0(struct interface_data, 1);
+
+	iface->name = g_strdup(name);
+	iface->methods = methods;
+	iface->signals = signals;
+	iface->properties = properties;
+	iface->user_data = user_data;
+	iface->destroy = destroy;
+
+	data->interfaces = g_slist_append(data->interfaces, iface);
+
+	g_free(data->introspect);
+	data->introspect = NULL;
+
+	return TRUE;
 }
 
 gboolean g_dbus_unregister_interface(DBusConnection *connection,
 					const char *path, const char *name)
 {
-	return FALSE;
+	struct generic_data *data = NULL;
+	struct interface_data *iface;
+
+	if (!dbus_connection_get_object_path_data(connection, path,
+						(void *) &data) || !data)
+		return FALSE;
+
+	iface = find_interface(data->interfaces, name);
+	if (!iface)
+		return FALSE;
+
+	data->interfaces = g_slist_remove(data->interfaces, iface);
+
+	if (iface->destroy)
+		iface->destroy(iface->user_data);
+
+	g_free(iface->name);
+	g_free(iface);
+
+	g_free(data->introspect);
+	data->introspect = NULL;
+
+	return TRUE;
 }
