@@ -50,7 +50,6 @@
 #include <gdbus.h>
 
 #include "hcid.h"
-#include "dbus-error.h"
 #include "manager.h"
 #include "adapter.h"
 #include "dbus-hci.h"
@@ -65,8 +64,6 @@
 
 #define MAX_CONN_NUMBER		10
 #define RECONNECT_RETRY_TIMEOUT	5000
-
-static sdp_session_t *sess = NULL;
 
 static int experimental = 0;
 
@@ -349,85 +346,4 @@ int hcid_dbus_init(void)
 	set_dbus_connection(conn);
 
 	return 0;
-}
-
-static inline sdp_session_t *get_sdp_session(void)
-{
-	if (!sess) {
-		sess = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
-		if (!sess) {
-			error("Can't connect to SDP daemon:(%s, %d)",
-						strerror(errno), errno);
-		}
-	}
-
-	return sess;
-}
-
-void cleanup_sdp_session(void)
-{
-	if (sess)
-		sdp_close(sess);
-
-	sess = NULL;
-}
-
-int register_sdp_binary(uint8_t *data, uint32_t size, uint32_t *handle)
-{
-	int err;
-
-	if (!get_sdp_session())
-		return -1;
-
-	err = sdp_device_record_register_binary(sess, BDADDR_ANY,
-						data, size, 0, handle);
-	if (err < 0)
-		cleanup_sdp_session();
-
-	return err;
-}
-
-int register_sdp_record(bdaddr_t *src, sdp_record_t *rec)
-{
-	int err;
-
-	if (!get_sdp_session())
-		return -1;
-
-	err = sdp_device_record_register(sess, src, rec, 0);
-	if (err < 0)
-		cleanup_sdp_session();
-
-	return err;
-}
-
-int update_sdp_record(uint32_t handle, sdp_record_t *rec)
-{
-	if (!get_sdp_session())
-		return -1;
-
-	/* Update on the server */
-	rec->handle = handle;
-	if (sdp_device_record_update(sess, BDADDR_ANY, rec)) {
-		cleanup_sdp_session();
-		error("Service Record update failed: %s(%d).\n",
-						strerror(errno), errno);
-		return -1;
-	}
-
-	return 0;
-}
-
-int unregister_sdp_record(uint32_t handle)
-{
-	int err;
-
-	if (!sess)
-		return -ENOENT;
-
-	err = sdp_device_record_unregister_binary(sess, BDADDR_ANY, handle);
-	if (err < 0)
-		cleanup_sdp_session();
-
-	return err;
 }

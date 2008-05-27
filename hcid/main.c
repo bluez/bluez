@@ -955,8 +955,6 @@ int main(int argc, char *argv[])
 
 	hcid_dbus_exit();
 
-	cleanup_sdp_session();
-
 	g_main_loop_unref(event_loop);
 
 	if (config)
