@@ -218,7 +218,6 @@ static void interrupt_connect_cb(GIOChannel *chan, int err,
 {
 	struct pending_req *pr = user_data;
 	struct hidp_connadd_req hidp;
-	DBusMessage *reply;
 	const char *path;
 
 	memset(&hidp, 0, sizeof(hidp));
@@ -252,16 +251,11 @@ static void interrupt_connect_cb(GIOChannel *chan, int err,
 
 	device_paths = g_slist_append(device_paths, g_strdup(path));
 
-	/* Replying to the requestor */
-	reply = dbus_message_new_method_return(pr->msg);
-
-	dbus_message_append_args(reply,
-				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID);
-
-	send_message_and_unref(pr->conn, reply);
+	g_dbus_send_reply(pr->conn, pr->msg,  DBUS_TYPE_STRING, &path,
+							DBUS_TYPE_INVALID);
 
 	goto cleanup;
+
 failed:
 	error_connection_attempt_failed(pr->conn, pr->msg, err);
 
@@ -447,7 +441,6 @@ fail:
 static void headset_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct pending_req *pr = user_data;
-	DBusMessage *reply;
 	sdp_record_t *rec;
 	sdp_list_t *protos;
 	const char *path;
@@ -498,13 +491,8 @@ static void headset_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	device_paths = g_slist_append(device_paths, g_strdup(path));
 
-	reply = dbus_message_new_method_return(pr->msg);
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
-	send_message_and_unref(pr->conn, reply);
+	g_dbus_send_reply(pr->conn, pr->msg, DBUS_TYPE_STRING, &path,
+							DBUS_TYPE_INVALID);
 
 fail:
 	pending_req_free(pr);

@@ -50,7 +50,7 @@
 #include "dbus-service.h"
 #include "glib-helper.h"
 
-static const char* HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";
+static const char *HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";
 
 static DBusConnection *connection = NULL;
 
@@ -71,7 +71,7 @@ static void cancel_authorization(const char *addr)
 			DBUS_TYPE_STRING, &HID_UUID,
 			DBUS_TYPE_INVALID);
 
-	send_message_and_unref(connection, msg);
+	g_dbus_send_message(connection, msg);
 }
 
 struct authorization_data {
