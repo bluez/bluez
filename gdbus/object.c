@@ -361,12 +361,14 @@ done:
 static struct generic_data *object_path_ref(DBusConnection *connection,
 							const char *path)
 {
-	struct generic_data *data = NULL;
+	struct generic_data *data;
 
 	if (dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) || !data) {
-		data->refcount++;
-		return data;
+						(void *) &data) == TRUE) {
+		if (data != NULL) {
+			data->refcount++;
+			return data;
+		}
 	}
 
 	data = g_new0(struct generic_data, 1);
@@ -391,8 +393,11 @@ static void object_path_unref(DBusConnection *connection, const char *path)
 {
 	struct generic_data *data = NULL;
 
-	if (!dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) || !data)
+	if (dbus_connection_get_object_path_data(connection, path,
+						(void *) &data) == FALSE)
+		return;
+
+	if (data == NULL)
 		return;
 
 	data->refcount--;
@@ -784,8 +789,11 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 	struct generic_data *data = NULL;
 	struct interface_data *iface;
 
-	if (!dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) || !data)
+	if (dbus_connection_get_object_path_data(connection, path,
+						(void *) &data) == FALSE)
+		return FALSE;
+
+	if (data == NULL)
 		return FALSE;
 
 	iface = find_interface(data->interfaces, name);
