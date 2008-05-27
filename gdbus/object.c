@@ -294,12 +294,13 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 {
 	struct generic_data *data = user_data;
 	struct interface_data *iface;
+	GDBusMethodTable *method;
 	DBusMethodVTable *current;
 	const char *interface;
 
 	if (dbus_message_is_method_call(message,
 					DBUS_INTERFACE_INTROSPECTABLE,
-					"Introspect"))
+								"Introspect"))
 		return introspect(connection, message, data);
 
 	interface = dbus_message_get_interface(message);
@@ -307,6 +308,43 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 	iface = find_interface(data->interfaces, interface);
 	if (!iface)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	for (method = iface->methods;
+			method->name && method->function; method++) {
+		DBusMessage *reply;
+
+		if (dbus_message_is_method_call(message, iface->name,
+							method->name) == FALSE)
+			continue;
+
+		if (dbus_message_has_signature(message,
+						method->signature) == FALSE)
+			continue;
+
+		if (method->function == NULL)
+			continue;
+
+		reply = method->function(connection, message, iface->user_data);
+
+		if (method->flags & G_DBUS_METHOD_FLAG_NOREPLY) {
+			if (reply != NULL)
+				dbus_message_unref(reply);
+			return DBUS_HANDLER_RESULT_HANDLED;
+		}
+
+		if (method->flags & G_DBUS_METHOD_FLAG_ASYNC) {
+			if (reply == NULL)
+				return DBUS_HANDLER_RESULT_HANDLED;
+		}
+
+		if (reply == NULL)
+			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+		dbus_connection_send(connection, reply, NULL);
+		dbus_message_unref(reply);
+
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
 
 	for (current = iface->old_methods;
 			current->name && current->message_function; current++) {
