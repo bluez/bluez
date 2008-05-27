@@ -171,6 +171,11 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 gboolean g_dbus_unregister_interface(DBusConnection *connection,
 					const char *path, const char *name);
 
+DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
+					const char *format, va_list args);
+DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
+						const char *format, ...);
+
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
 guint name_listener_add(DBusConnection *connection, const char *name,

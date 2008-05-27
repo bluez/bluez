@@ -850,3 +850,24 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 
 	return TRUE;
 }
+
+DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
+					const char *format, va_list args)
+{
+	return dbus_message_new_error(message, name, format);
+}
+
+DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
+						const char *format, ...)
+{
+	va_list args;
+	DBusMessage *reply;
+
+	va_start(args, format);
+
+	reply = g_dbus_create_error_valist(message, name, format, args);
+
+	va_end(args);
+
+	return reply;
+}
