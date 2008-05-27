@@ -912,7 +912,7 @@ static int register_path(DBusConnection *conn, const char *path, struct device *
 {
 	if (g_dbus_register_interface(conn, path, INPUT_DEVICE_INTERFACE,
 					device_methods, device_signals, NULL,
-					NULL, device_unregister) == FALSE) {
+					idev, device_unregister) == FALSE) {
 		error("Failed to register %s interface to %s",
 					INPUT_DEVICE_INTERFACE, path);
 		return -1;
