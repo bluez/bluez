@@ -196,7 +196,7 @@ struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst);
 void avdtp_unref(struct avdtp *session);
 struct avdtp *avdtp_ref(struct avdtp *session);
 
-gboolean avdtp_is_connected(bdaddr_t *src, bdaddr_t *dst);
+gboolean avdtp_is_connected(const bdaddr_t *src, const bdaddr_t *dst);
 
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 							void *data, int size);

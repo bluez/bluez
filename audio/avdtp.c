@@ -2186,7 +2186,7 @@ struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
 	return avdtp_ref(session);
 }
 
-gboolean avdtp_is_connected(bdaddr_t *src, bdaddr_t *dst)
+gboolean avdtp_is_connected(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct avdtp *session;
 

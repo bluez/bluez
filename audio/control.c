@@ -299,57 +299,7 @@ static sdp_record_t *avrcp_tg_record()
 	return record;
 }
 
-static GIOChannel *avctp_server_socket(gboolean master)
-{
-	int sock, lm;
-	struct sockaddr_l2 addr;
-	GIOChannel *io;
-
-	sock = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sock < 0) {
-		error("AVCTP server socket: %s (%d)", strerror(errno), errno);
-		return NULL;
-	}
-
-	lm = L2CAP_LM_SECURE;
-
-	if (master)
-		lm |= L2CAP_LM_MASTER;
-
-	if (setsockopt(sock, SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0) {
-		error("AVCTP server setsockopt: %s (%d)", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, BDADDR_ANY);
-	addr.l2_psm = htobs(AVCTP_PSM);
-
-	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("AVCTP server bind: %s (%d)", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	if (listen(sock, 4) < 0) {
-		error("AVCTP server listen: %s (%d)", strerror(errno), errno);
-		close(sock);
-		return NULL;
-	}
-
-	io = g_io_channel_unix_new(sock);
-	if (!io) {
-		error("Unable to allocate new io channel");
-		close(sock);
-		return NULL;
-	}
-
-	return io;
-}
-
-static struct avctp *find_session(bdaddr_t *src, bdaddr_t *dst)
+static struct avctp *find_session(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	GSList *l;
 
@@ -365,101 +315,7 @@ static struct avctp *find_session(bdaddr_t *src, bdaddr_t *dst)
 	return NULL;
 }
 
-static void avctp_unref(struct avctp *session)
-{
-	sessions = g_slist_remove(sessions, session);
-
-	if (session->pending_auth) {
-		manager_cancel_authorize(&session->dst, AVRCP_TARGET_UUID,
-						NULL);
-		dbus_pending_call_cancel(session->pending_auth);
-		dbus_pending_call_unref(session->pending_auth);
-	}
-
-	if (session->state == AVCTP_STATE_CONNECTED)
-		dbus_connection_emit_signal(session->dev->conn,
-						session->dev->path,
-						AUDIO_CONTROL_INTERFACE,
-						"Disconnected",
-						DBUS_TYPE_INVALID);
-	if (session->sock >= 0)
-		close(session->sock);
-	if (session->io)
-		g_source_remove(session->io);
-
-	if (session->dev)
-		session->dev->control->session = NULL;
-
-	if (session->uinput >= 0) {
-		ioctl(session->uinput, UI_DEV_DESTROY);
-		close(session->uinput);
-	}
-
-	g_free(session);
-}
-
-static int uinput_create(char *name)
-{
-	struct uinput_dev dev;
-	int fd, err;
-
-	fd = open("/dev/uinput", O_RDWR);
-	if (fd < 0) {
-		fd = open("/dev/input/uinput", O_RDWR);
-		if (fd < 0) {
-			fd = open("/dev/misc/uinput", O_RDWR);
-			if (fd < 0) {
-				err = errno;
-				error("Can't open input device: %s (%d)",
-							strerror(err), err);
-				return -err;
-			}
-		}
-	}
-
-	memset(&dev, 0, sizeof(dev));
-	if (name)
-		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE);
-
-	dev.id.bustype = BUS_BLUETOOTH;
-	dev.id.vendor  = 0x0000;
-	dev.id.product = 0x0000;
-	dev.id.version = 0x0000;
-
-	if (write(fd, &dev, sizeof(dev)) < 0) {
-		err = errno;
-		error("Can't write device information: %s (%d)",
-						strerror(err), err);
-		close(fd);
-		errno = err;
-		return -err;
-	}
-
-	ioctl(fd, UI_SET_EVBIT, EV_KEY);
-	ioctl(fd, UI_SET_EVBIT, EV_REL);
-	ioctl(fd, UI_SET_EVBIT, EV_REP);
-	ioctl(fd, UI_SET_EVBIT, EV_SYN);
-
-	ioctl(fd, UI_SET_KEYBIT, KEY_PLAYPAUSE);
-	ioctl(fd, UI_SET_KEYBIT, KEY_STOP);
-	ioctl(fd, UI_SET_KEYBIT, KEY_NEXTSONG);
-	ioctl(fd, UI_SET_KEYBIT, KEY_PREVIOUSSONG);
-	ioctl(fd, UI_SET_KEYBIT, KEY_REWIND);
-	ioctl(fd, UI_SET_KEYBIT, KEY_FORWARD);
-
-	if (ioctl(fd, UI_DEV_CREATE, NULL) < 0) {
-		err = errno;
-		error("Can't create uinput device: %s (%d)",
-						strerror(err), err);
-		close(fd);
-		errno = err;
-		return -err;
-	}
-
-	return fd;
-}
-
-static struct avctp *avctp_get(bdaddr_t *src, bdaddr_t *dst)
+static struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct avctp *session;
 
@@ -484,21 +340,6 @@ static struct avctp *avctp_get(bdaddr_t *src, bdaddr_t *dst)
 	sessions = g_slist_append(sessions, session);
 
 	return session;
-}
-
-static void init_uinput(struct avctp *session)
-{
-	char address[18], *name;
-
-	ba2str(&session->dst, address);
-
-	name = session->dev->name ? session->dev->name : address;
-
-	session->uinput = uinput_create(name);
-	if (session->uinput < 0)
-		error("AVRCP: failed to init uinput for %s", name);
-	else
-		debug("AVRCP: uinput initialized for %s", name);
 }
 
 static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
@@ -573,6 +414,39 @@ static void handle_panel_passthrough(struct avctp *session,
 		debug("AVRCP: unknown button 0x%02X %s", operands[0] & 0x7F, status);
 		break;
 	}
+}
+
+static void avctp_unref(struct avctp *session)
+{
+	sessions = g_slist_remove(sessions, session);
+
+	if (session->pending_auth) {
+		manager_cancel_authorize(&session->dst, AVRCP_TARGET_UUID,
+						NULL);
+		dbus_pending_call_cancel(session->pending_auth);
+		dbus_pending_call_unref(session->pending_auth);
+	}
+
+	if (session->state == AVCTP_STATE_CONNECTED)
+		dbus_connection_emit_signal(session->dev->conn,
+						session->dev->path,
+						AUDIO_CONTROL_INTERFACE,
+						"Disconnected",
+						DBUS_TYPE_INVALID);
+	if (session->sock >= 0)
+		close(session->sock);
+	if (session->io)
+		g_source_remove(session->io);
+
+	if (session->dev)
+		session->dev->control->session = NULL;
+
+	if (session->uinput >= 0) {
+		ioctl(session->uinput, UI_DEV_DESTROY);
+		close(session->uinput);
+	}
+
+	g_free(session);
 }
 
 static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
@@ -658,6 +532,83 @@ failed:
 	avctp_unref(session);
 	return FALSE;
 }
+
+static int uinput_create(char *name)
+{
+	struct uinput_dev dev;
+	int fd, err;
+
+	fd = open("/dev/uinput", O_RDWR);
+	if (fd < 0) {
+		fd = open("/dev/input/uinput", O_RDWR);
+		if (fd < 0) {
+			fd = open("/dev/misc/uinput", O_RDWR);
+			if (fd < 0) {
+				err = errno;
+				error("Can't open input device: %s (%d)",
+							strerror(err), err);
+				return -err;
+			}
+		}
+	}
+
+	memset(&dev, 0, sizeof(dev));
+	if (name)
+		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE);
+
+	dev.id.bustype = BUS_BLUETOOTH;
+	dev.id.vendor  = 0x0000;
+	dev.id.product = 0x0000;
+	dev.id.version = 0x0000;
+
+	if (write(fd, &dev, sizeof(dev)) < 0) {
+		err = errno;
+		error("Can't write device information: %s (%d)",
+						strerror(err), err);
+		close(fd);
+		errno = err;
+		return -err;
+	}
+
+	ioctl(fd, UI_SET_EVBIT, EV_KEY);
+	ioctl(fd, UI_SET_EVBIT, EV_REL);
+	ioctl(fd, UI_SET_EVBIT, EV_REP);
+	ioctl(fd, UI_SET_EVBIT, EV_SYN);
+
+	ioctl(fd, UI_SET_KEYBIT, KEY_PLAYPAUSE);
+	ioctl(fd, UI_SET_KEYBIT, KEY_STOP);
+	ioctl(fd, UI_SET_KEYBIT, KEY_NEXTSONG);
+	ioctl(fd, UI_SET_KEYBIT, KEY_PREVIOUSSONG);
+	ioctl(fd, UI_SET_KEYBIT, KEY_REWIND);
+	ioctl(fd, UI_SET_KEYBIT, KEY_FORWARD);
+
+	if (ioctl(fd, UI_DEV_CREATE, NULL) < 0) {
+		err = errno;
+		error("Can't create uinput device: %s (%d)",
+						strerror(err), err);
+		close(fd);
+		errno = err;
+		return -err;
+	}
+
+	return fd;
+}
+
+static void init_uinput(struct avctp *session)
+{
+	char address[18], *name;
+
+	ba2str(&session->dst, address);
+
+	name = session->dev->name ? session->dev->name : address;
+
+	session->uinput = uinput_create(name);
+	if (session->uinput < 0)
+		error("AVRCP: failed to init uinput for %s", name);
+	else
+		debug("AVRCP: uinput initialized for %s", name);
+}
+
 static void auth_cb(DBusError *derr, void *user_data)
 {
 	struct avctp *session = user_data;
@@ -710,98 +661,65 @@ static void auth_cb_old(DBusPendingCall *call, void *data)
 	dbus_message_unref(reply);
 }
 
-static gboolean avctp_server_cb(GIOChannel *chan, GIOCondition cond, void *data)
+static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+				const bdaddr_t *dst, gpointer data)
 {
-	int srv_sk, cli_sk;
 	socklen_t size;
-	struct sockaddr_l2 addr;
 	struct l2cap_options l2o;
-	bdaddr_t src, dst;
 	struct avctp *session;
-	GIOChannel *io;
 	GIOCondition flags = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 	char address[18];
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		error("Hangup or error on AVCTP server socket");
-		g_io_channel_close(chan);
-		raise(SIGTERM);
-		return FALSE;
+	if (err < 0) {
+		error("AVCTP server socket: %s (%d)", strerror(-err), -err);
+		return;
 	}
 
-	srv_sk = g_io_channel_unix_get_fd(chan);
-
-	size = sizeof(struct sockaddr_l2);
-	cli_sk = accept(srv_sk, (struct sockaddr *) &addr, &size);
-	if (cli_sk < 0) {
-		error("AVCTP accept: %s (%d)", strerror(errno), errno);
-		return TRUE;
-	}
-
-	bacpy(&dst, &addr.l2_bdaddr);
-
-	ba2str(&dst, address);
-	debug("AVCTP: incoming connect from %s", address);
-
-	size = sizeof(struct sockaddr_l2);
-	if (getsockname(cli_sk, (struct sockaddr *) &addr, &size) < 0) {
-		error("getsockname: %s (%d)", strerror(errno), errno);
-		close(cli_sk);
-		return TRUE;
-	}
-
-	bacpy(&src, &addr.l2_bdaddr);
-
-	memset(&l2o, 0, sizeof(l2o));
-	size = sizeof(l2o);
-	if (getsockopt(cli_sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &size) < 0) {
-		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(errno),
-			errno);
-		close(cli_sk);
-		return TRUE;
-	}
-
-	session = avctp_get(&src, &dst);
+	session = avctp_get(src, dst);
 
 	if (!session) {
 		error("Unable to create new AVCTP session");
-		close(cli_sk);
-		return TRUE;
+		goto drop;
 	}
 
 	if (session->sock >= 0) {
 		error("Refusing unexpected connect from %s", address);
-		close(cli_sk);
-		return TRUE;
+		goto drop;
 	}
 
 	session->state = AVCTP_STATE_CONNECTING;
-	session->mtu = l2o.imtu;
-	session->sock = cli_sk;
+	session->sock = g_io_channel_unix_get_fd(chan);
 
-	io = g_io_channel_unix_new(session->sock);
-	session->io = g_io_add_watch(io, flags, (GIOFunc) session_cb, session);
-	g_io_channel_unref(io);
-
-	if (avdtp_is_connected(&src, &dst))
-		goto proceed;
-
-	if (service_req_auth(&src, &dst, AVRCP_TARGET_UUID, auth_cb, session) == 0)
-		goto proceed;
-	else if (!manager_authorize(&dst, AVRCP_TARGET_UUID, auth_cb_old, session,
-				&session->pending_auth)) {
-		close(cli_sk);
+	memset(&l2o, 0, sizeof(l2o));
+	size = sizeof(l2o);
+	if (getsockopt(session->sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &size) < 0) {
+		err = errno;
+		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(err),
+				err);
 		avctp_unref(session);
-		return TRUE;
+		goto drop;
+	}
+
+	session->mtu = l2o.imtu;
+	session->io = g_io_add_watch(chan, flags, (GIOFunc) session_cb,
+				session);
+	g_io_channel_unref(chan);
+
+	if (avdtp_is_connected(src, dst))
+		goto proceed;
+
+	if (service_req_auth(src, dst, AVRCP_TARGET_UUID, auth_cb, session) == 0)
+		goto proceed;
+	else if (!manager_authorize(dst, AVRCP_TARGET_UUID, auth_cb_old, session,
+				&session->pending_auth)) {
+		avctp_unref(session);
+		goto drop;
 	}
 
 proceed:
 	if (!session->pending_auth) {
 		session->state = AVCTP_STATE_CONNECTED;
-		session->dev = manager_device_connected(&dst,
+		session->dev = manager_device_connected(dst,
 							AVRCP_TARGET_UUID);
 		session->dev->control->session = session;
 		init_uinput(session);
@@ -813,7 +731,31 @@ proceed:
 						DBUS_TYPE_INVALID);
 	}
 
-	return TRUE;
+	return;
+
+drop:
+	g_io_channel_close(chan);
+	g_io_channel_unref(chan);
+}
+
+static GIOChannel *avctp_server_socket(gboolean master)
+{
+	int lm;
+	GIOChannel *io;
+
+	lm = L2CAP_LM_SECURE;
+
+	if (master)
+		lm |= L2CAP_LM_MASTER;
+
+	io = bt_l2cap_listen(BDADDR_ANY, AVCTP_PSM, 0, lm, avctp_server_cb,
+				NULL);
+	if (!io) {
+		error("Unable to allocate new io channel");
+		return NULL;
+	}
+
+	return io;
 }
 
 static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
@@ -856,7 +798,6 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 					DBUS_TYPE_INVALID);
 
 	session->state = AVCTP_STATE_CONNECTED;
-
 	session->mtu = l2o.imtu;
 	session->io = g_io_add_watch(chan,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
@@ -956,9 +897,6 @@ int avrcp_init(DBusConnection *conn, GKeyFile *config)
 	avctp_server = avctp_server_socket(master);
 	if (!avctp_server)
 		return -1;
-
-	g_io_add_watch(avctp_server, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			(GIOFunc) avctp_server_cb, NULL);
 
 	return 0;
 }
