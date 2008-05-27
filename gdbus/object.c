@@ -658,3 +658,20 @@ fail:
 	dbus_message_unref(signal);
 	return ret;
 }
+
+gboolean g_dbus_register_interface(DBusConnection *connection,
+					const char *path, const char *name,
+					GDBusMethodTable *methods,
+					GDBusSignalTable *signals,
+					GDBusPropertyTable *properties,
+					void *user_data,
+					GDBusDestroyFunction destroy)
+{
+	return FALSE;
+}
+
+gboolean g_dbus_unregister_interface(DBusConnection *connection,
+					const char *path, const char *name)
+{
+	return FALSE;
+}

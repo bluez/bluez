@@ -122,6 +122,8 @@ static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+typedef void (* GDBusDestroyFunction) (void *user_data);
+
 typedef DBusMessage * (* GDBusMethodFunction) (DBusConnection *connection,
 					DBusMessage *message, void *user_data);
 
@@ -158,6 +160,16 @@ typedef struct {
 	const char *type;
 	GDBusPropertyFlags flags;
 } GDBusPropertyTable;
+
+gboolean g_dbus_register_interface(DBusConnection *connection,
+					const char *path, const char *name,
+					GDBusMethodTable *methods,
+					GDBusSignalTable *signals,
+					GDBusPropertyTable *properties,
+					void *user_data,
+					GDBusDestroyFunction destroy);
+gboolean g_dbus_unregister_interface(DBusConnection *connection,
+					const char *path, const char *name);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
