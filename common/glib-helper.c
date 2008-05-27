@@ -250,7 +250,7 @@ int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 			uuid_t *uuid, bt_callback_t cb, void *user_data,
 			bt_destroy_t destroy)
 {
-	struct search_context *ctxt;
+	struct search_context *ctxt = NULL;
 	int err;
 
 	if (!cb)
