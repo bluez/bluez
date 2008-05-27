@@ -309,7 +309,7 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 	if (!iface)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	for (method = iface->methods;
+	for (method = iface->methods; method &&
 			method->name && method->function; method++) {
 		DBusMessage *reply;
 
@@ -319,9 +319,6 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 
 		if (dbus_message_has_signature(message,
 						method->signature) == FALSE)
-			continue;
-
-		if (method->function == NULL)
 			continue;
 
 		reply = method->function(connection, message, iface->user_data);
@@ -346,7 +343,7 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	for (current = iface->old_methods;
+	for (current = iface->old_methods; current &&
 			current->name && current->message_function; current++) {
 		if (!dbus_message_is_method_call(message, iface->name,
 							current->name))
