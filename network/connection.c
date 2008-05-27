@@ -50,8 +50,6 @@
 #include "common.h"
 #include "connection.h"
 
-#define NETWORK_CONNECTION_INTERFACE "org.bluez.network.Connection"
-
 typedef enum {
 	CONNECTED,
 	CONNECTING,

@@ -21,6 +21,8 @@
  *
  */
 
+#define NETWORK_CONNECTION_INTERFACE "org.bluez.network.Connection"
+
 int connection_init(DBusConnection *conn, const char *iface_prefix);
 void connection_exit();
 int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
