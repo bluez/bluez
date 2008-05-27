@@ -78,6 +78,36 @@ struct __service_16 {
 static DBusConnection *connection = NULL;
 static const char *prefix = NULL;
 
+static inline DBusMessage *not_supported(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							"Not suported");
+}
+
+static inline DBusMessage *already_connected(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+						"Device already connected");
+}
+
+static inline DBusMessage *not_connected(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+						"Device not connected");
+}
+
+static inline DBusMessage *no_pending_connect(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+					"Device has no pending connect");
+}
+
+static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
+				err ? strerror(err) : "Connection attempt failed");
+}
+
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
@@ -89,17 +119,20 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
 	}
+
 	info("%s disconnected", nc->dev);
+
 	bnep_if_down(nc->dev);
 	nc->state = DISCONNECTED;
 	memset(nc->dev, 0, 16);
 	strncpy(nc->dev, prefix, strlen(prefix));
 	g_io_channel_close(chan);
+
 	return FALSE;
 }
 
 static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
-				gpointer data)
+							gpointer data)
 {
 	struct network_conn *nc = data;
 	struct bnep_control_rsp *rsp;
@@ -165,12 +198,11 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 					"Connected",
 					DBUS_TYPE_INVALID);
 
-	reply = dbus_message_new_method_return(nc->msg);
-
 	pdev = nc->dev;
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &pdev,
-					DBUS_TYPE_INVALID);
-	send_message_and_unref(connection, reply);
+
+	reply = g_dbus_create_reply(nc->msg, DBUS_TYPE_STRING, &pdev,
+							DBUS_TYPE_INVALID);
+	g_dbus_send_message(connection, reply);
 
 	nc->state = CONNECTED;
 
@@ -179,12 +211,15 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 			(GIOFunc) bnep_watchdog_cb, nc);
 	return FALSE;
+
 failed:
 	if (nc->state != DISCONNECTED) {
 		nc->state = DISCONNECTED;
-		error_connection_attempt_failed(connection, nc->msg, EIO);
+		reply = connection_attempt_failed(nc->msg, EIO);
+		g_dbus_send_message(connection, reply);
 		g_io_channel_close(chan);
 	}
+
 	return FALSE;
 }
 
@@ -225,6 +260,7 @@ static void connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer data)
 {
 	struct network_conn *nc = data;
+	DBusMessage *reply;
 
 	if (err < 0) {
 		error("l2cap connect(): %s (%d)", strerror(-err), -err);
@@ -245,233 +281,151 @@ static void connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 failed:
 	nc->state = DISCONNECTED;
-	error_connection_attempt_failed(connection, nc->msg, -err);
+
+	reply = connection_attempt_failed(nc->msg, -err);
+	g_dbus_send_message(connection, reply);
 }
 
-static DBusHandlerResult get_adapter(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *get_adapter(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
 	struct network_conn *nc = data;
-	DBusMessage *reply;
 	char addr[18];
 	const char *paddr = addr;
 
 	ba2str(&nc->src, addr);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &paddr,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &paddr,
+							DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult get_address(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *get_address(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
 	struct network_conn *nc = data;
-	DBusMessage *reply;
 	char addr[18];
 	const char *paddr = addr;
 
 	ba2str(&nc->dst, addr);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &paddr,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &paddr,
+							DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult get_uuid(DBusConnection *conn, DBusMessage *msg,
-					void *data)
-{
-	struct network_conn *nc = data;
-	const char *uuid;
-	DBusMessage *reply;
-
-	uuid = bnep_uuid(nc->id);
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &uuid,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
-}
-
-static DBusHandlerResult get_name(DBusConnection *conn, DBusMessage *msg,
-					void *data)
-{
-	struct network_conn *nc = data;
-	DBusMessage *reply;
-
-	if (!nc->name) {
-		error_failed(conn, msg, "Cannot find service name");
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &nc->name,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
-
-}
-
-static DBusHandlerResult get_description(DBusConnection *conn,
+static DBusMessage *get_uuid(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
-	DBusMessage *reply;
+	const char *uuid;
 
-	if (!nc->desc) {
-		error_failed(conn, msg, "Cannot find service description");
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+	uuid = bnep_uuid(nc->id);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &nc->desc,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &uuid,
+							DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult get_interface(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static DBusMessage *get_name(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct network_conn *nc = data;
+
+	if (!nc->name)
+		return not_supported(msg);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &nc->name,
+							DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *get_description(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct network_conn *nc = data;
+
+	if (!nc->desc)
+		return not_supported(msg);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &nc->desc,
+							DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *get_interface(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
 	const char *pdev = nc->dev;
-	DBusMessage *reply;
 
-	if (nc->state != CONNECTED) {
-		error_failed(conn, msg, "Device not connected");
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+	if (nc->state != CONNECTED)
+		return not_connected(msg);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &pdev,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &pdev,
+						DBUS_TYPE_INVALID);
 }
 
 /* Connect and initiate BNEP session */
-static DBusHandlerResult connection_connect(DBusConnection *conn,
+static DBusMessage *connection_connect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
-	DBusError derr;
 	int err;
 
-	if (nc->state != DISCONNECTED) {
-		error_failed(conn, msg, "Device already connected");
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+	if (nc->state != DISCONNECTED)
+		return already_connected(msg);
 
 	nc->state = CONNECTING;
 	nc->msg = dbus_message_ref(msg);
 
 	err = bt_l2cap_connect(&nc->src, &nc->dst, BNEP_PSM, BNEP_MTU,
-				connect_cb, nc);
+							connect_cb, nc);
 	if (err < 0) {
 		error("Connect failed. %s(%d)", strerror(errno), errno);
-		goto fail;
-	}
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-fail:
-	if (nc->msg) {
 		dbus_message_unref(nc->msg);
 		nc->msg = NULL;
+		nc->state = DISCONNECTED;
+		return connection_attempt_failed(msg, -err);
 	}
-	nc->state = DISCONNECTED;
-	error_connection_attempt_failed(conn, msg, errno);
-	return DBUS_HANDLER_RESULT_HANDLED;
+
+	return NULL;
 }
 
-static DBusHandlerResult connection_cancel(DBusConnection *conn,
+static DBusMessage *connection_cancel(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
-	DBusMessage *reply;
 
-	if (nc->state != CONNECTING) {
-		error_failed(conn, msg, "Device has no pending connect");
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+	if (nc->state != CONNECTING)
+		return no_pending_connect(msg);
 
 	close(nc->sk);
 	nc->state = DISCONNECTED;
 
-	reply = dbus_message_new_method_return(msg);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult connection_disconnect(DBusConnection *conn,
+static DBusMessage *connection_disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
-	DBusMessage *reply;
 
-	if (nc->state != CONNECTED) {
-		error_failed(conn, msg, "Device not connected");
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+	if (nc->state != CONNECTED)
+		return not_connected(msg);
 
 	bnep_if_down(nc->dev);
 	bnep_kill_connection(&nc->dst);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult is_connected(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static DBusMessage *is_connected(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
-	DBusMessage *reply;
-	gboolean up;
+	gboolean up = (nc->state == CONNECTED);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	up = (nc->state == CONNECTED);
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &up,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_BOOLEAN, &up,
+						DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult get_info(DBusConnection *conn,
+static DBusMessage *get_info(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
@@ -483,8 +437,8 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 	const char *paddr = raddr;
 
 	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	if (reply == NULL)
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -506,7 +460,7 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
 static void connection_free(struct network_conn *nc)
@@ -527,12 +481,12 @@ static void connection_free(struct network_conn *nc)
 
 	if (nc->desc)
 		g_free(nc->desc);
-	
+
 	g_free(nc);
 	nc = NULL;
 }
 
-static void connection_unregister(DBusConnection *conn, void *data)
+static void connection_unregister(void *data)
 {
 	struct network_conn *nc = data;
 
@@ -541,25 +495,26 @@ static void connection_unregister(DBusConnection *conn, void *data)
 	connection_free(nc);
 }
 
-static DBusMethodVTable connection_methods[] = {
-	{ "GetAdapter",		get_adapter,		"",	"s"	},
-	{ "GetAddress",		get_address,		"",	"s"	},
-	{ "GetUUID",		get_uuid,		"",	"s"	},
-	{ "GetName",		get_name,		"",	"s"	},
-	{ "GetDescription",	get_description,	"",	"s"	},
-	{ "GetInterface",	get_interface,		"",	"s"	},
-	{ "Connect",		connection_connect,	"",	"s"	},
-	{ "CancelConnect",	connection_cancel,	"",	""	},
-	{ "Disconnect",		connection_disconnect,	"",	""	},
-	{ "IsConnected",	is_connected,		"",	"b"	},
-	{ "GetInfo",		get_info,		"",	"a{sv}" },
-	{ NULL, NULL, NULL, NULL }
+static GDBusMethodTable connection_methods[] = {
+	{ "GetAdapter",		"",	"s",	get_adapter		},
+	{ "GetAddress",		"",	"s",	get_address		},
+	{ "GetUUID",		"",	"s",	get_uuid		},
+	{ "GetName",		"",	"s",	get_name		},
+	{ "GetDescription",	"",	"s",	get_description		},
+	{ "GetInterface",	"",	"s",	get_interface		},
+	{ "Connect",		"",	"s",	connection_connect,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "CancelConnect",	"",	"",	connection_cancel	},
+	{ "Disconnect",		"",	"",	connection_disconnect	},
+	{ "IsConnected",	"",	"b",	is_connected		},
+	{ "GetInfo",		"",	"a{sv}",get_info		},
+	{ }
 };
 
-static DBusSignalVTable connection_signals[] = {
+static GDBusSignalTable connection_signals[] = {
 	{ "Connected",		""	},
 	{ "Disconnected",	""	},
-	{ NULL, NULL }
+	{ }
 };
 
 int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
@@ -579,20 +534,13 @@ int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 
 	nc = g_new0(struct network_conn, 1);
 
-	/* register path */
-	if (!dbus_connection_create_object_path(connection, path, nc,
-						connection_unregister)) {
-		connection_free(nc);
-		return -1;
-	}
-
-	if (!dbus_connection_register_interface(connection, path,
-						NETWORK_CONNECTION_INTERFACE,
-						connection_methods,
-						connection_signals, NULL)) {
+	if (g_dbus_register_interface(connection, path,
+					NETWORK_CONNECTION_INTERFACE,
+					connection_methods,
+					connection_signals, NULL,
+					nc, connection_unregister) == FALSE) {
 		error("D-Bus failed to register %s interface",
 				NETWORK_CONNECTION_INTERFACE);
-		dbus_connection_destroy_object_path(connection, path);
 		return -1;
 	}
 
