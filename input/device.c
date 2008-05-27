@@ -990,12 +990,40 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 	return err;
 }
 
+static struct device *find_device(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	GSList *list;
+
+	for (list = devices; list != NULL; list = list->next) {
+		struct device *idev = list->data;
+
+		if (!bacmp(&idev->src, src) && !bacmp(&idev->dst, dst))
+			return idev;
+	}
+
+	return NULL;
+}
+
+static struct device *find_device_by_path(const char *path)
+{
+	GSList *list;
+
+	for (list = devices; list != NULL; list = list->next) {
+		struct device *idev = list->data;
+
+		if (strcmp(idev->path, path) == 0)
+			return idev;
+	}
+
+	return NULL;
+}
+
 int input_device_unregister(DBusConnection *conn, const char *path)
 {
 	struct device *idev;
 
-	if (!dbus_connection_get_object_user_data(conn,
-				path, (void *) &idev) || !idev)
+	idev = find_device_by_path(path);
+	if (idev == NULL)
 		return -EINVAL;
 
 	if (idev->pending_connect) {
@@ -1018,35 +1046,18 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 	if (idev->intr_watch) {
 		g_source_remove(idev->intr_watch);
 		dbus_connection_emit_signal(conn,
-				path,
-				INPUT_DEVICE_INTERFACE,
-				"Disconnected",
-				DBUS_TYPE_INVALID);
+				path, INPUT_DEVICE_INTERFACE,
+				"Disconnected", DBUS_TYPE_INVALID);
 	}
-
-	dbus_connection_destroy_object_path(conn, path);
 
 	dbus_connection_emit_signal(conn, INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceRemoved" ,
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
 
+	g_dbus_unregister_interface(conn, path, INPUT_DEVICE_INTERFACE);
+
 	return 0;
-}
-
-static struct device *find_device(const bdaddr_t *src, const bdaddr_t *dst)
-{
-	struct device *idev;
-	GSList *list;
-
-	for (list = devices; list != NULL; list = list->next) {
-		idev = list->data;
-
-		if (!bacmp(&idev->src, src) && !bacmp(&idev->dst, dst))
-			return idev;
-	}
-
-	return NULL;
 }
 
 gboolean input_device_is_registered(bdaddr_t *src, bdaddr_t *dst)
