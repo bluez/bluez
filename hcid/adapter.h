@@ -58,6 +58,7 @@ struct bonding_request_info {
 	bdaddr_t bdaddr;
 	GIOChannel *io;
 	guint io_id;
+	guint listener_id;
 	int hci_status;
 	int cancel;
 	int auth_active;
@@ -98,7 +99,9 @@ struct adapter {
 	GSList *found_devices;
 	GSList *oor_devices;	/* out of range device list */
 	char *pdiscov_requestor;	/* periodic discovery requestor unique name */
+	guint pdiscov_listener;
 	char *discov_requestor;		/* discovery requestor unique name */
+	guint discov_listener;
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
 	GSList *passkey_agents;
 	struct agent *agent;		/* For the new API */

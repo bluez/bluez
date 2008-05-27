@@ -70,6 +70,7 @@ struct agent {
 	guint timeout;
 	agent_remove_cb remove_cb;
 	void *remove_cb_data;
+	guint listener_id;
 };
 
 struct agent_request {
@@ -125,8 +126,10 @@ static void agent_request_free(struct agent_request *req)
 	g_free(req);
 }
 
-static void agent_exited(const char *name, struct agent *agent)
+static void agent_exited(const char *name, void *user_data)
 {
+	struct agent *agent = user_data;
+
 	debug("Agent %s exited without calling Unregister", name);
 
 	agent_destroy(agent, TRUE);
@@ -169,8 +172,7 @@ static void agent_free(struct agent *agent)
 		g_source_remove(agent->timeout);
 
 	if (!agent->exited) {
-		name_listener_remove(connection, agent->name,
-				(name_cb_t) agent_exited, agent);
+		name_listener_id_remove(agent->listener_id);
 		agent_release(agent);
 	}
 
@@ -215,7 +217,8 @@ struct agent *agent_create(struct adapter *adapter, const char *name,
 						(GSourceFunc) agent_timeout, agent);
 	}
 
-	name_listener_add(connection, name, (name_cb_t) agent_exited, agent);
+	agent->listener_id = name_listener_add(connection, name, agent_exited,
+						agent);
 
 	return agent;
 }

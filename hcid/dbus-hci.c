@@ -334,10 +334,8 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 
 		remove_pending_device(adapter);
 
-		name_listener_remove(connection,
-					dbus_message_get_sender(adapter->bonding->msg),
-					(name_cb_t) create_bond_req_exit,
-					adapter);
+		name_listener_id_remove(adapter->bonding->listener_id);
+
 		if (adapter->bonding->io_id)
 			g_source_remove(adapter->bonding->io_id);
 		g_io_channel_close(adapter->bonding->io);
@@ -418,18 +416,15 @@ int unregister_adapter_path(const char *path)
 	}
 
 	if (adapter->discov_requestor) {
-		name_listener_remove(connection,
-				adapter->discov_requestor,
-				(name_cb_t) discover_devices_req_exit, adapter);
+		name_listener_id_remove(adapter->discov_listener);
+		adapter->discov_listener = 0;
 		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 	}
 
 	if (adapter->pdiscov_requestor) {
-		name_listener_remove(connection,
-				adapter->pdiscov_requestor,
-				(name_cb_t) periodic_discover_req_exit,
-				adapter);
+		name_listener_id_remove(adapter->pdiscov_listener);
+		adapter->pdiscov_listener = 0;
 		g_free(adapter->pdiscov_requestor);
 		adapter->pdiscov_requestor = NULL;
 	}
@@ -835,17 +830,15 @@ int hcid_dbus_stop_device(uint16_t id)
 	release_passkey_agents(adapter, NULL);
 
 	if (adapter->discov_requestor) {
-		name_listener_remove(connection, adapter->discov_requestor,
-					(name_cb_t) discover_devices_req_exit,
-					adapter);
+		name_listener_id_remove(adapter->discov_listener);
+		adapter->discov_listener = 0;
 		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 	}
 
 	if (adapter->pdiscov_requestor) {
-		name_listener_remove(connection, adapter->pdiscov_requestor,
-					(name_cb_t) periodic_discover_req_exit,
-					adapter);
+		name_listener_id_remove(adapter->pdiscov_listener);
+		adapter->pdiscov_listener = 0;
 		g_free(adapter->pdiscov_requestor);
 		adapter->pdiscov_requestor = NULL;
 	}
@@ -1143,9 +1136,7 @@ proceed:
 	}
 
 cleanup:
-	name_listener_remove(connection,
-				dbus_message_get_sender(adapter->bonding->msg),
-				(name_cb_t) create_bond_req_exit, adapter);
+	name_listener_id_remove(adapter->bonding->listener_id);
 
 	if (adapter->bonding->io_id)
 		g_source_remove(adapter->bonding->io_id);
@@ -1417,8 +1408,8 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	adapter->found_devices = NULL;
 
 	if (adapter->discov_requestor) {
-		name_listener_remove(connection, adapter->discov_requestor,
-				(name_cb_t) discover_devices_req_exit, adapter);
+		name_listener_id_remove(adapter->discov_listener);
+		adapter->discov_listener = 0;
 		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 
@@ -1525,9 +1516,8 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	adapter->oor_devices = NULL;
 
 	if (adapter->pdiscov_requestor) {
-		name_listener_remove(connection, adapter->pdiscov_requestor,
-					(name_cb_t) periodic_discover_req_exit,
-					adapter);
+		name_listener_id_remove(adapter->pdiscov_listener);
+		adapter->pdiscov_listener = 0;
 		g_free(adapter->pdiscov_requestor);
 		adapter->pdiscov_requestor = NULL;
 	}
@@ -1858,8 +1848,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	/* The discovery completed signal must be sent only for discover
 	 * devices request WITH name resolving */
 	if (adapter->discov_requestor) {
-		name_listener_remove(connection, adapter->discov_requestor,
-				(name_cb_t) discover_devices_req_exit, adapter);
+		name_listener_id_remove(adapter->discov_listener);
+		adapter->discov_listener = 0;
 		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 
@@ -2032,10 +2022,8 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 			send_message_and_unref(connection, reply);
 		}
 
-		name_listener_remove(connection,
-					dbus_message_get_sender(adapter->bonding->msg),
-					(name_cb_t) create_bond_req_exit,
-					adapter);
+		name_listener_id_remove(adapter->bonding->listener_id);
+
 		if (adapter->bonding->io_id)
 			g_source_remove(adapter->bonding->io_id);
 		g_io_channel_close(adapter->bonding->io);
@@ -2404,59 +2392,6 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	}
 }
 
-void create_bond_req_exit(const char *name, struct adapter *adapter)
-{
-	char path[MAX_PATH_LENGTH];
-	GSList *l;
-
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
-
-	debug("CreateConnection requestor (%s) exited before bonding was completed",
-			name);
-
-	cancel_passkey_agent_requests(adapter->passkey_agents, path,
-					&adapter->bonding->bdaddr);
-	release_passkey_agents(adapter, &adapter->bonding->bdaddr);
-
-	l = g_slist_find_custom(adapter->pin_reqs, &adapter->bonding->bdaddr,
-			pin_req_cmp);
-	if (l) {
-		struct pending_pin_info *p = l->data;
-
-		if (!p->replied) {
-			int dd;
-
-			dd = hci_open_dev(adapter->dev_id);
-			if (dd >= 0) {
-				hci_send_cmd(dd, OGF_LINK_CTL,
-						OCF_PIN_CODE_NEG_REPLY,
-						6, &adapter->bonding->bdaddr);
-				hci_close_dev(dd);
-			}
-		}
-
-		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
-		g_free(p);
-	}
-
-	remove_pending_device(adapter);
-
-	g_io_channel_close(adapter->bonding->io);
-	if (adapter->bonding->io_id)
-		g_source_remove(adapter->bonding->io_id);
-	bonding_request_free(adapter->bonding);
-	adapter->bonding = NULL;
-}
-
-void discover_devices_req_exit(const char *name, struct adapter *adapter)
-{
-	debug("DiscoverDevices requestor (%s) exited", name);
-
-	/* Cleanup the discovered devices list and send the command to cancel
-	 * inquiry or cancel remote name request. The return can be ignored. */
-	cancel_discovery(adapter);
-}
-
 static int inquiry_cancel(int dd, int to)
 {
 	struct hci_request rq;
@@ -2566,17 +2501,6 @@ cleanup:
 		adapter->discov_type &= ~RESOLVE_NAME;
 
 	return err;
-}
-
-void periodic_discover_req_exit(const char *name, struct adapter *adapter)
-{
-	debug("PeriodicDiscovery requestor (%s) exited", name);
-
-	/* Cleanup the discovered devices list and send the cmd to exit from
-	 * periodic inquiry or cancel remote name request. The return value can
-	 * be ignored. */
-
-	cancel_periodic_discovery(adapter);
 }
 
 static int periodic_inquiry_exit(int dd, int to)

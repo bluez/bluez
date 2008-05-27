@@ -54,10 +54,7 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 
 int get_default_dev_id(void);
 
-void create_bond_req_exit(const char *name, struct adapter *adapter);
-void discover_devices_req_exit(const char *name, struct adapter *adapter);
 int cancel_discovery(struct adapter *adapter);
-void periodic_discover_req_exit(const char *name, struct adapter *adapter);
 int cancel_periodic_discovery(struct adapter *adapter);
 
 int active_conn_find_by_bdaddr(const void *data, const void *user_data);

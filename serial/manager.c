@@ -257,7 +257,7 @@ static void open_notify(int fd, int err, struct pending_connect *pc)
 
 	/* Add the RFCOMM connection listener */
 	port_add_listener(pc->conn, pc->id, &dst, fd,
-			pc->dev, dbus_message_get_sender(pc->msg));
+				pc->dev, dbus_message_get_sender(pc->msg));
 }
 
 static gboolean open_continue(struct pending_connect *pc)

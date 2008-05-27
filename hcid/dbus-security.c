@@ -64,6 +64,7 @@ struct passkey_agent {
 	GSList *pending_requests;
 	int exited;
 	guint timeout;
+	guint listener_id;
 };
 
 struct pending_agent_request {
@@ -82,6 +83,7 @@ struct authorization_agent {
 	char *name;
 	char *path;
 	GSList *pending_requests;
+	guint listener_id;
 };
 
 struct auth_agent_req {
@@ -134,8 +136,9 @@ static void passkey_agent_free(struct passkey_agent *agent)
 	g_free(agent);
 }
 
-static void agent_exited(const char *name, struct adapter *adapter)
+static void agent_exited(const char *name, void *user_data)
 {
+	struct adapter *adapter = user_data;
 	GSList *cur, *next;
 
 	debug("Passkey agent %s exited without calling Unregister", name);
@@ -287,7 +290,8 @@ static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
 	ref.addr = NULL;
 	ref.path = NULL;
 	if (!g_slist_find_custom(adapter->passkey_agents, &ref, (GCompareFunc) agent_cmp))
-		name_listener_add(conn, ref.name, (name_cb_t) agent_exited, adapter);
+		agent->listener_id = name_listener_add(conn, ref.name,
+							agent_exited, adapter);
 
 	agent->timeout = g_timeout_add(AGENT_TIMEOUT, (GSourceFunc)agent_timeout, agent);
 
@@ -330,8 +334,7 @@ static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
 
 	agent = match->data;
 
-	name_listener_remove(agent->conn, agent->name,
-			(name_cb_t) agent_exited, adapter);
+	name_listener_id_remove(agent->listener_id);
 
 	adapter->passkey_agents = g_slist_remove(adapter->passkey_agents, agent);
 	agent->exited = 1;
@@ -408,8 +411,7 @@ static DBusHandlerResult unregister_default_passkey_agent(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	name_listener_remove(conn, default_agent->name,
-			(name_cb_t) default_agent_exited, NULL);
+	name_listener_id_remove(default_agent->listener_id);
 
 	info("Default passkey agent (%s, %s) unregistered",
 			default_agent->name, default_agent->path);
@@ -555,8 +557,7 @@ static void auth_agent_release(struct authorization_agent *agent)
 	send_message_and_unref(agent->conn, message);
 
 	if (agent == default_auth_agent)
-		name_listener_remove(agent->conn, agent->name,
-				(name_cb_t) default_auth_agent_exited, NULL);
+		name_listener_id_remove(agent->listener_id);
 }
 
 static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
@@ -625,8 +626,7 @@ static DBusHandlerResult unregister_default_auth_agent(DBusConnection *conn,
 	if (!reply)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	name_listener_remove(conn, default_auth_agent->name,
-			(name_cb_t) default_auth_agent_exited, NULL);
+	name_listener_id_remove(default_auth_agent->listener_id);
 
 	info("Default authorization agent (%s, %s) unregistered",
 		default_auth_agent->name, default_auth_agent->path);
@@ -1280,17 +1280,17 @@ static void release_agent(struct passkey_agent *agent)
 	send_message_and_unref(agent->conn, message);
 
 	if (agent == default_agent)
-		name_listener_remove(agent->conn, agent->name,
-				(name_cb_t) default_agent_exited, NULL);
+		name_listener_id_remove(agent->listener_id);
 	else {
 		struct passkey_agent ref;
 
-		/* Only remove the name listener if there are no more agents for this name */
+		/* Only remove the name listener if there are no more agents
+		 * for this name */
 		memset(&ref, 0, sizeof(ref));
 		ref.name = agent->name;
-		if (!g_slist_find_custom(agent->adapter->passkey_agents, &ref, (GCompareFunc) agent_cmp))
-			name_listener_remove(agent->conn, ref.name,
-					(name_cb_t) agent_exited, agent->adapter);
+		if (!g_slist_find_custom(agent->adapter->passkey_agents, &ref,
+						(GCompareFunc) agent_cmp))
+			name_listener_id_remove(agent->listener_id);
 	}
 }
 

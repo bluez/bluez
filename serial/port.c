@@ -60,6 +60,7 @@ struct rfcomm_node {
 	char		*owner;		/* Bus name */
 	GIOChannel	*io;		/* Connected node IO Channel */
 	guint		io_id;		/* IO Channel ID */
+	guint		listener_id;
 };
 
 static GSList *connected_nodes = NULL;
@@ -243,8 +244,10 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 	g_free(node);
 }
 
-static void connection_owner_exited(const char *name, struct rfcomm_node *node)
+static void connection_owner_exited(const char *name, void *user_data)
 {
+	struct rfcomm_node *node = user_data;
+
 	debug("Connect requestor %s exited. Releasing %s node",
 						name, node->device);
 
@@ -262,8 +265,7 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 {
 	debug("RFCOMM node %s was disconnected", node->device);
 
-	name_listener_remove(node->conn, node->owner,
-			(name_cb_t) connection_owner_exited, node);
+	name_listener_id_remove(node->listener_id);
 
 	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
@@ -286,7 +288,7 @@ static void port_handler_unregister(DBusConnection *conn, void *data)
 	rfcomm_node_free(node);
 }
 
-int port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
+void port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 			int fd, const char *dev, const char *owner)
 {
 	struct rfcomm_node *node;
@@ -304,8 +306,8 @@ int port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 	connected_nodes = g_slist_append(connected_nodes, node);
 
 	/* Service connection listener */
-	return name_listener_add(conn, owner,
-			(name_cb_t) connection_owner_exited, node);
+	node->listener_id = name_listener_add(conn, owner,
+						connection_owner_exited, node);
 }
 
 int port_remove_listener(const char *owner, const char *dev)
@@ -318,8 +320,7 @@ int port_remove_listener(const char *owner, const char *dev)
 	if (strcmp(node->owner, owner) != 0)
 		return -EPERM;
 
-	name_listener_remove(node->conn, owner,
-			(name_cb_t) connection_owner_exited, node);
+	name_listener_id_remove(node->listener_id);
 
 	connected_nodes = g_slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);

@@ -58,6 +58,7 @@ static GSList *records = NULL;
 struct record_data {
 	uint32_t handle;
 	char *sender;
+	guint listener_id;
 };
 
 static struct record_data *find_record(uint32_t handle, const char *sender)
@@ -133,7 +134,9 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 
 	records = g_slist_append(records, user_record);
 
-	name_listener_add(conn, sender, exit_callback, user_record);
+	user_record->listener_id = name_listener_add(conn, sender,
+							exit_callback,
+							user_record);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -314,7 +317,7 @@ int remove_record(DBusConnection *conn, const char *sender,
 	if (!user_record)
 		return -1;
 
-	name_listener_remove(conn, sender, exit_callback, user_record);
+	name_listener_id_remove(user_record->listener_id);
 
 	records = g_slist_remove(records, user_record);
 
