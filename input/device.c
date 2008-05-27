@@ -371,6 +371,24 @@ failed:
 	return FALSE;
 }
 
+static inline DBusMessage *in_progress(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
+				"Device connection already in progress");
+}
+
+static inline DBusMessage *already_connected(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyConnected",
+					"Already connected to a device");
+}
+
+static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
+				err ? strerror(err) : "Connection attempt failed");
+}
+
 static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer user_data)
 {
@@ -416,8 +434,9 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	return;
 
 failed:
-	error_connection_attempt_failed(idev->conn,
-			idev->pending_connect, err);
+	reply = connection_attempt_failed(idev->pending_connect, err);
+	g_dbus_send_message(idev->conn, reply);
+
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
 }
@@ -559,6 +578,7 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer user_data)
 {
 	struct device *idev = user_data;
+	DBusMessage *reply;
 
 	if (err < 0) {
 		error("connect(): %s (%d)", strerror(-err), -err);
@@ -586,8 +606,9 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	goto cleanup;
 
 failed:
-	error_connection_attempt_failed(idev->conn,
-		idev->pending_connect, -err);
+	reply = connection_attempt_failed(idev->pending_connect, -err);
+	g_dbus_send_message(idev->conn, reply);
+
 	idev->intr_sk = -1;
 	idev->ctrl_sk = -1;
 
@@ -735,24 +756,6 @@ static int is_connected(struct device *idev)
 		return 0;
 	else
 		return 1;
-}
-
-static inline DBusMessage *in_progress(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
-				"Device connection already in progress");
-}
-
-static inline DBusMessage *already_connected(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyConnected",
-					"Already connected to a device");
-}
-
-static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
-				err ? strerror(err) : "Connection attempt failed");
 }
 
 /*
