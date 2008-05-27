@@ -70,21 +70,6 @@ static sdp_session_t *sess = NULL;
 
 static int experimental = 0;
 
-service_handler_func_t find_service_handler(struct service_data *handlers, DBusMessage *msg)
-{
-	struct service_data *current;
-	const char *name;
-
-	name = dbus_message_get_member(msg);
-
-	for (current = handlers; current->name != NULL; current++) {
-		if (!strcmp(current->name, name))
-			return current->handler_func;
-	}
-
-	return NULL;
-}
-
 int str2uuid(uuid_t *uuid, const char *string)
 {
 	uint16_t svclass, data1, data2, data3, data5;

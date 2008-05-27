@@ -27,17 +27,6 @@
 
 #define MAX_PATH_LENGTH 64
 
-typedef DBusHandlerResult (*service_handler_func_t) (DBusConnection *conn,
-							DBusMessage *msg,
-							void *user_data);
-
-struct service_data {
-	const char		*name;
-	service_handler_func_t	handler_func;
-};
-
-service_handler_func_t find_service_handler(struct service_data *services, DBusMessage *msg);
-
 int str2uuid(uuid_t *uuid, const char *string);
 
 int l2raw_connect(const char *local, const bdaddr_t *remote);
@@ -45,8 +34,6 @@ int l2raw_connect(const char *local, const bdaddr_t *remote);
 int find_conn(int s, int dev_id, long arg);
 
 #define check_address(address) bachk(address)
-
-DBusHandlerResult handle_method_call(DBusConnection *conn, DBusMessage *msg, void *data);
 
 void hcid_dbus_exit(void);
 int hcid_dbus_init(void);
