@@ -654,6 +654,7 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 {
 	struct generic_data *data = NULL;
 	struct interface_data *iface;
+	GDBusSignalTable *signal;
 	DBusSignalVTable *sig_data;
 
 	*args = NULL;
@@ -670,6 +671,13 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 		error("dbus_connection_emit_signal: %s does not implement %s",
 				path, interface);
 		return FALSE;
+	}
+
+	for (signal = iface->signals; signal && signal->name; signal++) {
+		if (!strcmp(signal->name, name)) {
+			*args = signal->signature;
+			break;
+		}
 	}
 
 	for (sig_data = iface->old_signals; sig_data && sig_data->name; sig_data++) {
