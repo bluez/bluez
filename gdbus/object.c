@@ -42,6 +42,7 @@ struct generic_data {
 	DBusObjectPathUnregisterFunction unregister_function;
 	GSList *interfaces;
 	char *introspect;
+	unsigned int refcount;
 };
 
 struct interface_data {
@@ -318,27 +319,65 @@ done:
 	g_free(parent_path);
 }
 
+static struct generic_data *object_path_ref(DBusConnection *connection,
+							const char *path)
+{
+	struct generic_data *data = NULL;
+
+	if (dbus_connection_get_object_path_data(connection, path,
+						(void *) &data) || !data) {
+		data->refcount++;
+		return data;
+	}
+
+	data = g_new0(struct generic_data, 1);
+
+	data->introspect = g_strdup(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>");
+
+	data->refcount = 1;
+
+	if (!dbus_connection_register_object_path(connection, path,
+						&generic_table, data)) {
+		g_free(data->introspect);
+		g_free(data);
+		return NULL;
+	}
+
+	invalidate_parent_data(connection, path);
+
+	return data;
+}
+
+static void object_path_unref(DBusConnection *connection, const char *path)
+{
+	struct generic_data *data = NULL;
+
+	if (!dbus_connection_get_object_path_data(connection, path,
+						(void *) &data) || !data)
+		return;
+
+	data->refcount--;
+
+	if (data->refcount > 0)
+		return;
+
+	invalidate_parent_data(connection, path);
+
+	dbus_connection_unregister_object_path(connection, path);
+}
+
 dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 					const char *path, void *user_data,
 					DBusObjectPathUnregisterFunction function)
 {
 	struct generic_data *data;
 
-	data = g_new0(struct generic_data, 1);
+	data = object_path_ref(connection, path);
+	if (data == NULL)
+		return FALSE;
 
 	data->user_data = user_data;
 	data->unregister_function = function;
-
-	data->introspect = g_strdup(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE "<node></node>");
-
-	if (!dbus_connection_register_object_path(connection, path,
-						&generic_table, data)) {
-		g_free(data->introspect);
-		g_free(data);
-		return FALSE;
-	}
-
-	invalidate_parent_data(connection, path);
 
 	return TRUE;
 }
@@ -346,9 +385,9 @@ dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
 							const char *path)
 {
-	invalidate_parent_data(connection, path);
+	object_path_unref(connection, path);
 
-	return dbus_connection_unregister_object_path(connection, path);
+	return TRUE;
 }
 
 dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
@@ -673,11 +712,11 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 					void *user_data,
 					GDBusDestroyFunction destroy)
 {
-	struct generic_data *data = NULL;
+	struct generic_data *data;
 	struct interface_data *iface;
 
-	if (!dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) || !data)
+	data = object_path_ref(connection, path);
+	if (data == NULL)
 		return FALSE;
 
 	if (find_interface(data->interfaces, name))
@@ -724,6 +763,8 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 
 	g_free(data->introspect);
 	data->introspect = NULL;
+
+	object_path_unref(connection, path);
 
 	return TRUE;
 }
