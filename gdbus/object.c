@@ -879,3 +879,34 @@ DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
 
 	return reply;
 }
+
+DBusMessage *g_dbus_create_reply_valist(DBusMessage *message,
+						int type, va_list args)
+{
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(message);
+	if (reply == NULL)
+		return NULL;
+
+	if (dbus_message_append_args_valist(reply, type, args) == FALSE) {
+		dbus_message_unref(reply);
+		return NULL;
+	}
+
+	return reply;
+}
+
+DBusMessage *g_dbus_create_reply(DBusMessage *message, int type, ...)
+{
+	va_list args;
+	DBusMessage *reply;
+
+	va_start(args, type);
+
+	reply = g_dbus_create_reply_valist(message, type, args);
+
+	va_end(args);
+
+	return reply;
+}

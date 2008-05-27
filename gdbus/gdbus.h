@@ -175,6 +175,9 @@ DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
 					const char *format, va_list args);
 DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
 						const char *format, ...);
+DBusMessage *g_dbus_create_reply(DBusMessage *message, int type, ...);
+DBusMessage *g_dbus_create_reply_valist(DBusMessage *message,
+						int type, va_list args);
 
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
