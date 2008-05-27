@@ -305,12 +305,13 @@ static int ps3remote_setup_uinput(struct fake_input *fake,
 	fake->uinput = open("/dev/input/uinput", O_RDWR);
 	if (fake->uinput < 0) {
 		fake->uinput = open("/dev/uinput", O_RDWR);
-		if (fake->uinput < 0)
+		if (fake->uinput < 0) {
 			fake->uinput = open("/dev/misc/uinput", O_RDWR);
 			if (fake->uinput < 0) {
 				error("Error opening uinput device file");
 				return 1;
 			}
+		}
 	}
 
 	memset(&dev, 0, sizeof(dev));
