@@ -122,6 +122,43 @@ static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+typedef DBusMessage * (* GDBusMethodFunction) (DBusConnection *connection,
+					DBusMessage *message, void *user_data);
+
+typedef enum {
+	G_DBUS_METHOD_FLAG_DEPRECATED = (1 << 0),
+	G_DBUS_METHOD_FLAG_NOREPLY    = (1 << 1),
+	G_DBUS_METHOD_FLAG_ASYNC      = (1 << 2),
+} GDBusMethodFlags;
+
+typedef enum {
+	G_DBUS_SIGNAL_FLAG_DEPRECATED = (1 << 0),
+} GDBusSignalFlags;
+
+typedef enum {
+	G_DBUS_PROPERTY_FLAG_DEPRECATED = (1 << 0),
+} GDBusPropertyFlags;
+
+typedef struct {
+	const char *name;
+	const char *signature;
+	const char *reply;
+	GDBusMethodFunction function;
+	GDBusMethodFlags flags;
+} GDBusMethodTable;
+
+typedef struct {
+	const char *name;
+	const char *signature;
+	GDBusSignalFlags flags;
+} GDBusSignalTable;
+
+typedef struct {
+	const char *name;
+	const char *type;
+	GDBusPropertyFlags flags;
+} GDBusPropertyTable;
+
 typedef void (*name_cb_t)(const char *name, void *user_data);
 
 guint name_listener_add(DBusConnection *connection, const char *name,
