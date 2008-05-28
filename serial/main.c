@@ -31,8 +31,7 @@
 
 #include <bluetooth/bluetooth.h>
 
-#include <glib.h>
-#include <dbus/dbus.h>
+#include <gdbus.h>
 
 #include "plugin.h"
 #include "device.h"
@@ -40,18 +39,54 @@
 #include "dbus-service.h"
 #include "manager.h"
 
+#define SERIAL_INTERFACE "org.bluez.Serial"
+
+static DBusMessage *serial_connect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	const char *target, *device = "/dev/rfcomm0";
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &target,
+						DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &device,
+							DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *serial_disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	const char *device;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &device,
+						DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static GDBusMethodTable serial_methods[] = {
+	{ "Connect",    "s", "s", serial_connect    },
+	{ "Disconnect", "s", "",  serial_disconnect },
+	{ }
+};
+
 static DBusConnection *conn;
 
 static int serial_probe(const char *path)
 {
 	debug("path %s", path);
 
-	return 0;
+	return g_dbus_register_interface(conn, path, SERIAL_INTERFACE,
+				serial_methods, NULL, NULL, NULL, NULL);
 }
 
 static void serial_remove(const char *path)
 {
 	debug("path %s", path);
+
+	g_dbus_unregister_interface(conn, path, SERIAL_INTERFACE);
 }
 
 static struct btd_device_driver serial_driver = {
