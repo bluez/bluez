@@ -52,59 +52,10 @@
 
 static const char *HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";
 
-static DBusConnection *connection = NULL;
-
-static void cancel_authorization(const char *addr)
-{
-	DBusMessage *msg;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-						"org.bluez.Database",
-						"CancelAuthorizationRequest");
-	if (!msg) {
-		error("Unable to allocate new method call");
-		return;
-	}
-
-	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &addr,
-			DBUS_TYPE_STRING, &HID_UUID,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(connection, msg);
-}
-
 struct authorization_data {
 	bdaddr_t src;
 	bdaddr_t dst;
 };
-
-static void authorization_callback(DBusPendingCall *pcall, void *data)
-{
-	struct authorization_data *auth = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(pcall);
-	DBusError derr;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply) != TRUE) {
-		dbus_message_unref(reply);
-		input_device_connadd(&auth->src, &auth->dst);
-		return;
-	}
-
-	error("Authorization denied: %s", derr.message);
-	if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
-		char addr[18];
-		memset(addr, 0, sizeof(addr));
-		ba2str(&auth->dst, addr);
-		cancel_authorization(addr);
-	}
-
-	input_device_close_channels(&auth->src, &auth->dst);
-
-	dbus_error_free(&derr);
-	dbus_message_unref(reply);
-}
 
 static void auth_callback(DBusError *derr, void *user_data)
 {
@@ -125,47 +76,13 @@ static void auth_callback(DBusError *derr, void *user_data)
 static int authorize_device(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct authorization_data *auth;
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-	char addr[18];
-	const char *paddr = addr;
-	int retval;
 
 	auth = g_new0(struct authorization_data, 1);
 	bacpy(&auth->src, src);
 	bacpy(&auth->dst, dst);
 
-	retval = service_req_auth(src, dst, HID_UUID,
+	return service_req_auth(src, dst, HID_UUID,
 				auth_callback, auth);
-	if (retval < 0)
-		goto fallback;
-
-	return retval;
-
-fallback:
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "RequestAuthorization");
-	if (!msg) {
-		error("Unable to allocate new RequestAuthorization method call");
-		return -ENOMEM;
-	}
-
-	memset(addr, 0, sizeof(addr));
-	ba2str(dst, addr);
-	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &paddr,
-			DBUS_TYPE_STRING, &HID_UUID,
-			DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(connection,
-				msg, &pending, -1) == FALSE)
-		return -EACCES;
-
-	dbus_pending_call_set_notify(pending, authorization_callback, auth, g_free);
-	dbus_pending_call_unref(pending);
-	dbus_message_unref(msg);
-
-	return 0;
 }
 
 static void connect_event_cb(GIOChannel *chan, int err, const bdaddr_t *src,
@@ -202,7 +119,7 @@ static void connect_event_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 static GIOChannel *ctrl_io = NULL;
 static GIOChannel *intr_io = NULL;
 
-int server_start(DBusConnection *conn)
+int server_start(void)
 {
 	ctrl_io = bt_l2cap_listen(BDADDR_ANY, L2CAP_PSM_HIDP_CTRL, 0, 0,
 				connect_event_cb,
@@ -222,8 +139,6 @@ int server_start(DBusConnection *conn)
 		ctrl_io = NULL;
 	}
 	g_io_channel_set_close_on_unref(intr_io, TRUE);
-
-	connection = conn;
 
 	return 0;
 }

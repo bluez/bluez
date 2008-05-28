@@ -783,7 +783,7 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 	/* Register well known HID devices */
 	register_stored_inputs();
 
-	server_start(connection);
+	server_start();
 
 	return 0;
 }

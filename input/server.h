@@ -21,5 +21,5 @@
  *
  */
 
-int server_start(DBusConnection *conn);
+int server_start(void);
 void server_stop(void);
