@@ -48,6 +48,12 @@ Methods		dict GetProperties()
 					 org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Rejected
 
+		void ReleaseMode()
+
+			Releases a mode requested via RequestMode.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+
 		void DiscoverDevices()
 
 			This method starts the device discovery procedure. This
