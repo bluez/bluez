@@ -39,3 +39,15 @@ void device_remove(struct device *device, DBusConnection *conn);
 gint device_address_cmp(struct device *device, const gchar *address);
 int device_browse(struct device *device, DBusConnection *conn,
 			DBusMessage *msg);
+
+#define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
+
+struct btd_device_driver {
+	const char *name;
+	const char **uuids;
+	int (*probe) (const char *path);
+	void (*remove) (const char *path);
+};
+
+int btd_register_device_driver(struct btd_device_driver *driver);
+void btd_unregister_device_driver(struct btd_device_driver *driver);

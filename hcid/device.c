@@ -1163,3 +1163,23 @@ int device_browse(struct device *device, DBusConnection *conn,
 	str2ba(device->address, &dst);
 	return bt_discover_services(&src, &dst, browse_cb, req, NULL);
 }
+
+static GSList *drivers = NULL;
+
+int btd_register_device_driver(struct btd_device_driver *driver)
+{
+	const char **uuid;
+
+	drivers = g_slist_append(drivers, driver);
+
+	for (uuid = driver->uuids; *uuid; uuid++) {
+		debug("name %s uuid %s", driver->name, *uuid);
+	}
+
+	return 0;
+}
+
+void btd_unregister_device_driver(struct btd_device_driver *driver)
+{
+	drivers = g_slist_remove(drivers, driver);
+}

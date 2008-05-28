@@ -35,10 +35,31 @@
 #include <dbus/dbus.h>
 
 #include "plugin.h"
+#include "device.h"
+#include "logging.h"
 #include "dbus-service.h"
 #include "manager.h"
 
 static DBusConnection *conn;
+
+static int serial_probe(const char *path)
+{
+	debug("path %s", path);
+
+	return 0;
+}
+
+static void serial_remove(const char *path)
+{
+	debug("path %s", path);
+}
+
+static struct btd_device_driver serial_driver = {
+	.name	= "serial",
+	.uuids	= BTD_UUIDS("spp", "dun"),
+	.probe	= serial_probe,
+	.remove	= serial_remove,
+};
 
 static int serial_init(void)
 {
@@ -53,11 +74,15 @@ static int serial_init(void)
 
 	register_service("serial", NULL);
 
+	btd_register_device_driver(&serial_driver);
+
 	return 0;
 }
 
 static void serial_exit(void)
 {
+	btd_unregister_device_driver(&serial_driver);
+
 	unregister_service("serial");
 
 	serial_manager_exit();
