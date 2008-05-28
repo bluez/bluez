@@ -3795,6 +3795,27 @@ static DBusHandlerResult request_mode(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult release_mode(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct adapter *adapter = data;
+	DBusMessage *reply;
+	GSList *l;
+
+	l = g_slist_find_custom(adapter->sessions, msg,
+			(GCompareFunc) find_session);
+	if (!l)
+		return error_failed(conn, msg, "No Mode to release");
+
+	session_exit(dbus_message_get_sender(msg), l->data);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	return send_message_and_unref(conn, reply);
+}
+
 static DBusHandlerResult list_devices(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -4165,6 +4186,7 @@ static DBusMethodVTable adapter_methods[] = {
 	{ "GetProperties",	get_properties,		"",	"a{sv}" },
 	{ "SetProperty",	set_property,		"sv",	""	},
 	{ "RequestMode",	request_mode,		"s",	""	},
+	{ "ReleaseMode",	release_mode,		"s",	""	},
 	{ "DiscoverDevices",	adapter_discover_devices, "",	""	},
 	{ "CancelDiscovery",	adapter_cancel_discovery, "",	""	},
 	{ "ListDevices",	list_devices,		"",	"ao"	},
