@@ -4186,7 +4186,7 @@ static DBusMethodVTable adapter_methods[] = {
 	{ "GetProperties",	get_properties,		"",	"a{sv}" },
 	{ "SetProperty",	set_property,		"sv",	""	},
 	{ "RequestMode",	request_mode,		"s",	""	},
-	{ "ReleaseMode",	release_mode,		"s",	""	},
+	{ "ReleaseMode",	release_mode,		"",	""	},
 	{ "DiscoverDevices",	adapter_discover_devices, "",	""	},
 	{ "CancelDiscovery",	adapter_cancel_discovery, "",	""	},
 	{ "ListDevices",	list_devices,		"",	"ao"	},
