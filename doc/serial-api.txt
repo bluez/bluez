@@ -27,5 +27,11 @@ Methods		string Connect(string uuid)
 			Disconnect a RFCOMM TTY device that has been
 			created by Connect method.
 
+			To abort a connection attempt in case of errors or
+			timeouts in the client it is fine to call this method.
+
+			In that case the UUID of the Connect method should
+			be suplied instead of the TTY device.
+
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.DoesNotExist
