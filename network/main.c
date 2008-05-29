@@ -26,30 +26,43 @@
 #endif
 
 #include <errno.h>
-#include <sys/socket.h>
+
 #include <bluetooth/bluetooth.h>
 
-#include <glib.h>
-#include <dbus/dbus.h>
+#include <gdbus.h>
 
 #include "plugin.h"
-#include "dbus-service.h"
+#include "device.h"
 #include "logging.h"
 #include "manager.h"
 
 #define IFACE_PREFIX "bnep%d"
-#define GN_IFACE "pan0"
+#define GN_IFACE  "pan0"
 #define NAP_IFACE "pan1"
 
 #define PANU_UUID "00001115-0000-1000-8000-00805f9b34fb"
-#define NAP_UUID "00001116-0000-1000-8000-00805f9b34fb"
-#define GN_UUID "00001117-0000-1000-8000-00805f9b34fb"
+#define NAP_UUID  "00001116-0000-1000-8000-00805f9b34fb"
+#define GN_UUID   "00001117-0000-1000-8000-00805f9b34fb"
 
-static const char *uuids[] = {
-	PANU_UUID,
-	NAP_UUID,
-	GN_UUID,
-	NULL
+static DBusConnection *conn;
+
+static int network_probe(const char *path)
+{
+	debug("path %s", path);
+
+	return 0;
+}
+
+static void network_remove(const char *path)
+{
+	debug("path %s", path);
+}
+
+static struct btd_device_driver network_driver = {
+	.name	= "network",
+	.uuids	= BTD_UUIDS(PANU_UUID, NAP_UUID, GN_UUID),
+	.probe	= network_probe,
+	.remove	= network_remove,
 };
 
 static struct network_conf conf = {
@@ -169,8 +182,6 @@ done:
 		conf.security ? "true" : "false");
 }
 
-static DBusConnection *conn;
-
 static int network_init(void)
 {
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
@@ -184,14 +195,14 @@ static int network_init(void)
 		return -EIO;
 	}
 
-	register_service("network", uuids);
+	btd_register_device_driver(&network_driver);
 
 	return 0;
 }
 
 static void network_exit(void)
 {
-	unregister_service("network");
+	btd_unregister_device_driver(&network_driver);
 
 	network_manager_exit();
 
