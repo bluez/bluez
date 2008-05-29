@@ -18,11 +18,22 @@ Methods		void Connect()
 			Possible errors: org.bluez.Error.AlreadyConnected
 			                 org.bluez.Error.ConnectionAttemptFailed
 
+		void CancelConnect()
+
+			Abort connection attempt in case of errors or
+			timeouts in the client.
+
+			Possible errors: org.bluez.Error.Failed
+
 		void Disconnect()
 
 			Disconnect from the input device.
 
 			Possible errors: org.bluez.Error.Failed
+
+		bool IsConnected()
+
+			Returns the connection status.
 
 Signals		void Connected()
 
