@@ -293,10 +293,19 @@ Object path(s)	/org/bluez/audio/device*
 org.bluez.audio.Control interface
 =================================
 
-[not yet implemented]
-
 This interface is available for remote devices which implement support for a
 AVRCP controller.
 
 Object path(s)	/org/bluez/audio/device*
 
+Methods		boolean IsConnected()
+
+			Returns TRUE if AVRCP is connected.
+
+Signals		void Connected()
+
+			Sent when a successful AVRCP connection has been made.
+
+		void Disconnected()
+
+			Sent when the AVRCP connection has been disconnected.
