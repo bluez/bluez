@@ -79,6 +79,7 @@ struct pending_connect {
 	int		id;		/* RFCOMM device id */
 	int		ntries;		/* Open attempts */
 	int		canceled;	/* Operation canceled */
+	guint		listener_id;
 };
 
 /* FIXME: Common file required */
@@ -189,35 +190,23 @@ static struct pending_connect *find_pending_connect_by_pattern(const char *bda,
 	return NULL;
 }
 
-static void transaction_owner_exited(const char *name, void *data)
+static void transaction_owner_exited(void *data)
 {
-	GSList *l, *tmp = NULL;
-	debug("transaction owner %s exited", name);
+	struct pending_connect *pc = data;
 
-	/* Remove all pending calls that belongs to this owner */
-	for (l = pending_connects; l != NULL; l = l->next) {
-		struct pending_connect *pc = l->data;
-		if (strcmp(name, dbus_message_get_sender(pc->msg)) != 0) {
-			tmp = g_slist_append(tmp, pc);
-			continue;
-		}
+	debug("transaction owner exited");
 
-		if (pc->id >= 0)
-			rfcomm_release(pc->id);
+	if (pc->id >= 0)
+		rfcomm_release(pc->id);
 
-		pending_connect_free(pc);
-	}
+	pending_connects = g_slist_remove(pending_connects, pc);
 
-	g_slist_free(pending_connects);
-	pending_connects = tmp;
+	pending_connect_free(pc);
 }
 
 static void pending_connect_remove(struct pending_connect *pc)
 {
-	/* Remove the connection request owner */
-	name_listener_remove(pc->conn, dbus_message_get_sender(pc->msg),
-				(name_cb_t) transaction_owner_exited, NULL);
-
+	g_dbus_remove_watch(pc->conn, pc->listener_id);
 	pending_connects = g_slist_remove(pending_connects, pc);
 	pending_connect_free(pc);
 }
@@ -463,8 +452,10 @@ static DBusHandlerResult connect_pending(DBusConnection *conn, DBusMessage *msg,
 
 	if (!g_slist_find(pending_connects, pc)) {
 		pending_connects = g_slist_append(pending_connects, pc);
-		name_listener_add(conn, dbus_message_get_sender(msg),
-				(name_cb_t) transaction_owner_exited, NULL);
+		pc->listener_id = g_dbus_add_disconnect_watch(conn,
+						dbus_message_get_sender(msg),
+						transaction_owner_exited, pc,
+						NULL);
 	}
 
 	str2ba(pc->adapter, &src);
@@ -634,8 +625,9 @@ static DBusHandlerResult search_uuid(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	pending_connects = g_slist_append(pending_connects, pc);
-	name_listener_add(conn, dbus_message_get_sender(msg),
-				(name_cb_t) transaction_owner_exited, NULL);
+	pc->listener_id = g_dbus_add_disconnect_watch(conn,
+					dbus_message_get_sender(msg),
+					transaction_owner_exited, pc, NULL);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }

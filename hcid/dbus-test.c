@@ -129,11 +129,11 @@ static void send_audit_status(struct audit *audit, const char *name)
 					DBUS_TYPE_INVALID);
 }
 
-static void audit_requestor_exited(const char *name, void *user_data)
+static void audit_requestor_exited(void *user_data)
 {
 	struct audit *audit = user_data;
 
-	debug("AuditRemoteDevice requestor %s exited", name);
+	debug("AuditRemoteDevice requestor exited");
 
 	audits = g_slist_remove(audits, audit);
 	if (audit->io) {
@@ -183,7 +183,7 @@ static gboolean l2raw_input_timer(struct audit *audit)
 
 	g_io_channel_close(audit->io);
 	audits = g_slist_remove(audits, audit);
-	name_listener_id_remove(audit->listener_id);
+	g_dbus_remove_watch(audit->conn, audit->listener_id);
 	audit_free(audit);
 
 	return FALSE;
@@ -327,7 +327,7 @@ failed:
 	g_io_channel_close(io);
 	g_io_channel_unref(io);
 	audits = g_slist_remove(audits, audit);
-	name_listener_id_remove(audit->listener_id);
+	g_dbus_remove_watch(audit->conn, audit->listener_id);
 
 	process_audits_list(audit->adapter_path);
 
@@ -402,7 +402,7 @@ failed:
 	g_io_channel_close(io);
 	g_io_channel_unref(io);
 	audits = g_slist_remove(audits, audit);
-	name_listener_id_remove(audit->listener_id);
+	g_dbus_remove_watch(audit->conn, audit->listener_id);
 	audit_free(audit);
 
 	return FALSE;
@@ -483,9 +483,10 @@ static DBusHandlerResult audit_remote_device(DBusConnection *conn,
 						(GIOFunc) l2raw_connect_complete, audit);
 	}
 
-	audit->listener_id = name_listener_add(conn,
+	audit->listener_id = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),
-						audit_requestor_exited, audit);
+						audit_requestor_exited, audit,
+						NULL);
 
 	audits = g_slist_append(audits, audit);
 
@@ -541,7 +542,7 @@ static DBusHandlerResult cancel_audit_remote_device(DBusConnection *conn,
 		g_source_remove(audit->timeout);
 
 	audits = g_slist_remove(audits, audit);
-	name_listener_id_remove(audit->listener_id);
+	g_dbus_remove_watch(audit->conn, audit->listener_id);
 	audit_free(audit);
 
 	reply = dbus_message_new_method_return(msg);
@@ -684,7 +685,7 @@ void process_audits_list(const char *adapter_path)
 
 		if (!adapter) {
 			audits = g_slist_remove(audits, audit);
-			name_listener_id_remove(audit->listener_id);
+			g_dbus_remove_watch(audit->conn, audit->listener_id);
 			audit_free(audit);
 			continue;
 		}
@@ -697,7 +698,7 @@ void process_audits_list(const char *adapter_path)
 		if (sk < 0) {
 			send_audit_status(audit, "AuditRemoteDeviceFailed");
 			audits = g_slist_remove(audits, audit);
-			name_listener_id_remove(audit->listener_id);
+			g_dbus_remove_watch(audit->conn, audit->listener_id);
 			audit_free(audit);
 			continue;
 		}

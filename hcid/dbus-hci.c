@@ -334,7 +334,8 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 
 		remove_pending_device(adapter);
 
-		name_listener_id_remove(adapter->bonding->listener_id);
+		g_dbus_remove_watch(adapter->bonding->conn,
+					adapter->bonding->listener_id);
 
 		if (adapter->bonding->io_id)
 			g_source_remove(adapter->bonding->io_id);
@@ -416,14 +417,14 @@ int unregister_adapter_path(const char *path)
 	}
 
 	if (adapter->discov_requestor) {
-		name_listener_id_remove(adapter->discov_listener);
+		g_dbus_remove_watch(connection, adapter->discov_listener);
 		adapter->discov_listener = 0;
 		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 	}
 
 	if (adapter->pdiscov_requestor) {
-		name_listener_id_remove(adapter->pdiscov_listener);
+		g_dbus_remove_watch(connection, adapter->pdiscov_listener);
 		adapter->pdiscov_listener = 0;
 		g_free(adapter->pdiscov_requestor);
 		adapter->pdiscov_requestor = NULL;
@@ -830,14 +831,14 @@ int hcid_dbus_stop_device(uint16_t id)
 	release_passkey_agents(adapter, NULL);
 
 	if (adapter->discov_requestor) {
-		name_listener_id_remove(adapter->discov_listener);
+		g_dbus_remove_watch(connection, adapter->discov_listener);
 		adapter->discov_listener = 0;
 		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
 	}
 
 	if (adapter->pdiscov_requestor) {
-		name_listener_id_remove(adapter->pdiscov_listener);
+		g_dbus_remove_watch(connection, adapter->pdiscov_listener);
 		adapter->pdiscov_listener = 0;
 		g_free(adapter->pdiscov_requestor);
 		adapter->pdiscov_requestor = NULL;
@@ -1136,7 +1137,7 @@ proceed:
 	}
 
 cleanup:
-	name_listener_id_remove(adapter->bonding->listener_id);
+	g_dbus_remove_watch(connection, adapter->bonding->listener_id);
 
 	if (adapter->bonding->io_id)
 		g_source_remove(adapter->bonding->io_id);
@@ -1408,7 +1409,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	adapter->found_devices = NULL;
 
 	if (adapter->discov_requestor) {
-		name_listener_id_remove(adapter->discov_listener);
+		g_dbus_remove_watch(connection, adapter->discov_listener);
 		adapter->discov_listener = 0;
 		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
@@ -1516,7 +1517,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	adapter->oor_devices = NULL;
 
 	if (adapter->pdiscov_requestor) {
-		name_listener_id_remove(adapter->pdiscov_listener);
+		g_dbus_remove_watch(connection, adapter->pdiscov_listener);
 		adapter->pdiscov_listener = 0;
 		g_free(adapter->pdiscov_requestor);
 		adapter->pdiscov_requestor = NULL;
@@ -1848,7 +1849,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	/* The discovery completed signal must be sent only for discover
 	 * devices request WITH name resolving */
 	if (adapter->discov_requestor) {
-		name_listener_id_remove(adapter->discov_listener);
+		g_dbus_remove_watch(connection, adapter->discov_listener);
 		adapter->discov_listener = 0;
 		g_free(adapter->discov_requestor);
 		adapter->discov_requestor = NULL;
@@ -2022,7 +2023,8 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 			send_message_and_unref(connection, reply);
 		}
 
-		name_listener_id_remove(adapter->bonding->listener_id);
+		g_dbus_remove_watch(adapter->bonding->conn,
+					adapter->bonding->listener_id);
 
 		if (adapter->bonding->io_id)
 			g_source_remove(adapter->bonding->io_id);

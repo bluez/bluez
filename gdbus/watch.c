@@ -41,7 +41,7 @@ static guint listener_id = 0;
 static GSList *name_listeners = NULL;
 
 struct name_callback {
-	name_cb_t func;
+	GDBusWatchFunction func;
 	void *user_data;
 	guint id;
 };
@@ -74,7 +74,7 @@ static struct name_data *name_data_find(DBusConnection *connection,
 }
 
 static struct name_callback *name_callback_find(GSList *callbacks,
-					name_cb_t func, void *user_data)
+					GDBusWatchFunction func, void *user_data)
 {
 	GSList *current;
 
@@ -94,7 +94,7 @@ static void name_data_call_and_free(struct name_data *data)
 	for (l = data->callbacks; l != NULL; l = l->next) {
 		struct name_callback *cb = l->data;
 		if (cb->func)
-			cb->func(data->name, cb->user_data);
+			cb->func(cb->user_data);
 		g_free(cb);
 	}
 
@@ -116,7 +116,7 @@ static void name_data_free(struct name_data *data)
 }
 
 static int name_data_add(DBusConnection *connection, const char *name,
-				name_cb_t func, void *user_data, guint id)
+				GDBusWatchFunction func, void *user_data, guint id)
 {
 	int first = 1;
 	struct name_data *data = NULL;
@@ -147,7 +147,7 @@ done:
 }
 
 static void name_data_remove(DBusConnection *connection,
-			const char *name, name_cb_t func, void *user_data)
+			const char *name, GDBusWatchFunction func, void *user_data)
 {
 	struct name_data *data;
 	struct name_callback *cb = NULL;
@@ -246,7 +246,7 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 
 	for (l = data->callbacks; l != NULL; l = l->next) {
 		struct name_callback *cb = l->data;
-		cb->func(name, cb->user_data);
+		cb->func(cb->user_data);
 	}
 
 	name_listeners = g_slist_remove(name_listeners, data);
@@ -257,8 +257,10 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-guint name_listener_add(DBusConnection *connection, const char *name,
-					name_cb_t func, void *user_data)
+guint g_dbus_add_disconnect_watch(DBusConnection *connection,
+				const char *name,
+				GDBusWatchFunction func,
+				void *user_data, GDBusDestroyFunction destroy)
 {
 	int first;
 
@@ -289,44 +291,7 @@ guint name_listener_add(DBusConnection *connection, const char *name,
 	return listener_id;
 }
 
-int name_listener_remove(DBusConnection *connection, const char *name,
-					name_cb_t func, void *user_data)
-{
-	struct name_data *data;
-	struct name_callback *cb;
-
-	data = name_data_find(connection, name);
-	if (!data) {
-		error("remove_name_listener: no listener for %s", name);
-		return -1;
-	}
-
-	cb = name_callback_find(data->callbacks, func, user_data);
-	if (!cb) {
-		error("No matching callback found for %s", name);
-		return -1;
-	}
-
-	data->callbacks = g_slist_remove(data->callbacks, cb);
-	g_free(cb);
-
-	/* Don't remove the filter if other callbacks exist */
-	if (data->callbacks)
-		return 0;
-
-	if (name) {
-		debug("name_listener_remove(%s)", name);
-
-		if (!remove_match(connection, name))
-			return -1;
-	}
-
-	name_data_remove(connection, name, func, user_data);
-
-	return 0;
-}
-
-gboolean name_listener_id_remove(guint id)
+gboolean g_dbus_remove_watch(DBusConnection *connection, guint id)
 {
 	struct name_data *data;
 	struct name_callback *cb;
@@ -362,19 +327,17 @@ remove:
 	return TRUE;
 }
 
-int name_listener_indicate_disconnect(DBusConnection *connection)
+void g_dbus_remove_all_watches(DBusConnection *connection)
 {
 	struct name_data *data;
 
 	data = name_data_find(connection, NULL);
 	if (!data) {
 		error("name_listener_indicate_disconnect: no listener found");
-		return -1;
+		return;
 	}
 
 	debug("name_listener_indicate_disconnect");
 
 	name_data_call_and_free(data);
-
-	return 0;
 }

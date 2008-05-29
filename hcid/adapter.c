@@ -725,10 +725,10 @@ static void confirm_mode_cb(struct agent *agent, DBusError *err, void *data)
 	return;
 
 cleanup:
-	dbus_connection_unref(req->conn);
 	dbus_message_unref(req->msg);
 	if (req->id)
-		name_listener_id_remove(req->id);
+		g_dbus_remove_watch(req->conn, req->id);
+	dbus_connection_unref(req->conn);
 	g_free(req);
 }
 
@@ -2576,15 +2576,15 @@ failed:
 	remove_pending_device(adapter);
 
 cleanup:
-	name_listener_id_remove(adapter->bonding->listener_id);
-
+	g_dbus_remove_watch(adapter->bonding->conn,
+				adapter->bonding->listener_id);
 	bonding_request_free(adapter->bonding);
 	adapter->bonding = NULL;
 
 	return FALSE;
 }
 
-static void create_bond_req_exit(const char *name, void *user_data)
+static void create_bond_req_exit(void *user_data)
 {
 	struct adapter *adapter = user_data;
 	char path[MAX_PATH_LENGTH];
@@ -2592,8 +2592,7 @@ static void create_bond_req_exit(const char *name, void *user_data)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
 
-	debug("CreateConnection requestor (%s) exited before bonding was completed",
-			name);
+	debug("CreateConnection requestor exited before bonding was completed");
 
 	cancel_passkey_agent_requests(adapter->passkey_agents, path,
 					&adapter->bonding->bdaddr);
@@ -2680,9 +2679,10 @@ static DBusHandlerResult create_bonding(DBusConnection *conn, DBusMessage *msg,
 					(GIOFunc) create_bonding_conn_complete,
 					adapter);
 
-	bonding->listener_id = name_listener_add(conn,
-					dbus_message_get_sender(msg),
-					create_bond_req_exit, adapter);
+	bonding->listener_id = g_dbus_add_disconnect_watch(conn,
+						dbus_message_get_sender(msg),
+						create_bond_req_exit, adapter,
+						NULL);
 
 	adapter->bonding = bonding;
 
@@ -2940,11 +2940,11 @@ static DBusHandlerResult adapter_get_encryption_key_size(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static void periodic_discover_req_exit(const char *name, void *user_data)
+static void periodic_discover_req_exit(void *user_data)
 {
 	struct adapter *adapter = user_data;
 
-	debug("PeriodicDiscovery requestor (%s) exited", name);
+	debug("PeriodicDiscovery requestor exited");
 
 	/* Cleanup the discovered devices list and send the cmd to exit from
 	 * periodic inquiry or cancel remote name request. The return value can
@@ -3027,10 +3027,10 @@ static DBusHandlerResult adapter_start_periodic(DBusConnection *conn,
 
 	/* track the request owner to cancel it automatically if the owner
 	 * exits */
-	adapter->pdiscov_listener = name_listener_add(conn,
+	adapter->pdiscov_listener = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),
 						periodic_discover_req_exit,
-						adapter);
+						adapter, NULL);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -3141,11 +3141,11 @@ static DBusHandlerResult adapter_get_pdiscov_resolve(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static void discover_devices_req_exit(const char *name, void *user_data)
+static void discover_devices_req_exit(void *user_data)
 {
 	struct adapter *adapter = user_data;
 
-	debug("DiscoverDevices requestor (%s) exited", name);
+	debug("DiscoverDevices requestor exited");
 
 	/* Cleanup the discovered devices list and send the command to cancel
 	 * inquiry or cancel remote name request. The return can be ignored. */
@@ -3225,10 +3225,10 @@ static DBusHandlerResult adapter_discover_devices(DBusConnection *conn,
 
 	/* track the request owner to cancel it automatically if the owner
 	 * exits */
-	adapter->discov_listener = name_listener_add(conn,
+	adapter->discov_listener = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),
 						discover_devices_req_exit,
-						adapter);
+						adapter, NULL);
 
 	return send_message_and_unref(conn, reply);
 }
@@ -3718,7 +3718,7 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 	return error_invalid_arguments(conn, msg, NULL);
 }
 
-static void session_exit(const char *name, void *data)
+static void session_exit(void *data)
 {
 	struct mode_req *req = data;
 	struct adapter *adapter = req->adapter;
@@ -3766,8 +3766,9 @@ static DBusHandlerResult request_mode(DBusConnection *conn,
 	req->conn = dbus_connection_ref(conn);
 	req->msg = dbus_message_ref(msg);
 	req->mode = new_mode;
-	req->id = name_listener_add(conn, dbus_message_get_sender(msg),
-					session_exit, req);
+	req->id = g_dbus_add_disconnect_watch(conn,
+					dbus_message_get_sender(msg),
+					session_exit, req, NULL);
 
 	if (!adapter->sessions)
 		adapter->global_mode = adapter->mode;
@@ -3785,9 +3786,9 @@ static DBusHandlerResult request_mode(DBusConnection *conn,
 	ret = agent_confirm_mode_change(adapter->agent, mode, confirm_mode_cb,
 					req);
 	if (ret < 0) {
-		dbus_connection_unref(req->conn);
 		dbus_message_unref(req->msg);
-		name_listener_id_remove(req->id);
+		g_dbus_remove_watch(req->conn, req->id);
+		dbus_connection_unref(req->conn);
 		g_free(req);
 		return error_invalid_arguments(conn, msg, NULL);
 	}
@@ -3807,7 +3808,7 @@ static DBusHandlerResult release_mode(DBusConnection *conn,
 	if (!l)
 		return error_failed(conn, msg, "No Mode to release");
 
-	session_exit(dbus_message_get_sender(msg), l->data);
+	session_exit(l->data);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

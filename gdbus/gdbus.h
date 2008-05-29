@@ -185,14 +185,14 @@ gboolean g_dbus_send_reply(DBusConnection *connection,
 gboolean g_dbus_send_reply_valist(DBusConnection *connection,
 				DBusMessage *message, int type, va_list args);
 
-typedef void (*name_cb_t)(const char *name, void *user_data);
+typedef void (* GDBusWatchFunction) (void *user_data);
 
-guint name_listener_add(DBusConnection *connection, const char *name,
-				name_cb_t func, void *user_data);
-int name_listener_remove(DBusConnection *connection, const char *name,
-				name_cb_t func, void *user_data);
-gboolean name_listener_id_remove(guint id);
-int name_listener_indicate_disconnect(DBusConnection *connection);
+guint g_dbus_add_disconnect_watch(DBusConnection *connection,
+				const char *name,
+				GDBusWatchFunction function,
+				void *user_data, GDBusDestroyFunction destroy);
+gboolean g_dbus_remove_watch(DBusConnection *connection, guint tag);
+void g_dbus_remove_all_watches(DBusConnection *connection);
 
 #ifdef __cplusplus
 }

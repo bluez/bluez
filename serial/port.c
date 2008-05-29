@@ -244,12 +244,12 @@ static void rfcomm_node_free(struct rfcomm_node *node)
 	g_free(node);
 }
 
-static void connection_owner_exited(const char *name, void *user_data)
+static void connection_owner_exited(void *user_data)
 {
 	struct rfcomm_node *node = user_data;
 
-	debug("Connect requestor %s exited. Releasing %s node",
-						name, node->device);
+	debug("Connect requestor exited. Releasing %s node",
+						node->device);
 
 	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
@@ -265,7 +265,7 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 {
 	debug("RFCOMM node %s was disconnected", node->device);
 
-	name_listener_id_remove(node->listener_id);
+	g_dbus_remove_watch(node->conn, node->listener_id);
 
 	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
@@ -299,15 +299,16 @@ void port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
 	node->device	= g_strdup(dev);
 	node->conn	= dbus_connection_ref(conn);
 	node->owner	= g_strdup(owner);
-	node->io 	= g_io_channel_unix_new(fd);
+	node->io	= g_io_channel_unix_new(fd);
 	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_NVAL | G_IO_HUP,
 					(GIOFunc) rfcomm_disconnect_cb, node);
 
 	connected_nodes = g_slist_append(connected_nodes, node);
 
 	/* Service connection listener */
-	node->listener_id = name_listener_add(conn, owner,
-						connection_owner_exited, node);
+	node->listener_id = g_dbus_add_disconnect_watch(conn, owner,
+						connection_owner_exited, node,
+						NULL);
 }
 
 int port_remove_listener(const char *owner, const char *dev)
@@ -320,7 +321,7 @@ int port_remove_listener(const char *owner, const char *dev)
 	if (strcmp(node->owner, owner) != 0)
 		return -EPERM;
 
-	name_listener_id_remove(node->listener_id);
+	g_dbus_remove_watch(node->conn, node->listener_id);
 
 	connected_nodes = g_slist_remove(connected_nodes, node);
 	rfcomm_node_free(node);

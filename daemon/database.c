@@ -69,7 +69,7 @@ static struct record_data *find_record(uint32_t handle, const char *sender)
 	return NULL;
 }
 
-static void exit_callback(const char *name, void *user_data)
+static void exit_callback(void *user_data)
 {
 	struct record_data *user_record = user_data;
 
@@ -145,9 +145,9 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 
 	records = g_slist_append(records, user_record);
 
-	user_record->listener_id = name_listener_add(conn, sender,
+	user_record->listener_id = g_dbus_add_disconnect_watch(conn, sender,
 							exit_callback,
-							user_record);
+							user_record, NULL);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -176,7 +176,7 @@ static DBusHandlerResult remove_service_record(DBusConnection *conn,
 	if (!user_record)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	name_listener_id_remove(user_record->listener_id);
+	g_dbus_remove_watch(conn, user_record->listener_id);
 
 	remove_record_from_server(handle);
 
