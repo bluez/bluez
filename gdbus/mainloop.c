@@ -290,7 +290,7 @@ DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 }
 
 gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
-				GDBusDisconnectFunction function,
+				GDBusWatchFunction function,
 				void *user_data, DBusFreeFunction destroy)
 {
 	struct disconnect_data *dc_data;

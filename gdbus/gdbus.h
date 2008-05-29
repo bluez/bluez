@@ -31,13 +31,13 @@ extern "C" {
 #include <dbus/dbus.h>
 #include <glib.h>
 
-typedef void (* GDBusDisconnectFunction) (void *user_data);
+typedef void (* GDBusWatchFunction) (void *user_data);
 
 DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 							DBusError *error);
 
 gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
-				GDBusDisconnectFunction function,
+				GDBusWatchFunction function,
 				void *user_data, DBusFreeFunction destroy);
 
 #define DBUS_TYPE_STRING_ARRAY_AS_STRING (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING)
@@ -184,8 +184,6 @@ gboolean g_dbus_send_reply(DBusConnection *connection,
 				DBusMessage *message, int type, ...);
 gboolean g_dbus_send_reply_valist(DBusConnection *connection,
 				DBusMessage *message, int type, va_list args);
-
-typedef void (* GDBusWatchFunction) (void *user_data);
 
 guint g_dbus_add_disconnect_watch(DBusConnection *connection,
 				const char *name,
