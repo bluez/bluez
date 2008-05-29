@@ -45,15 +45,32 @@ static DBusMessage *input_connect(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *input_cancel_connect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static DBusMessage *input_disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *input_is_connected(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	dbus_bool_t connected = FALSE;
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_BOOLEAN, &connected,
+							DBUS_TYPE_INVALID);
+}
+
 static GDBusMethodTable input_methods[] = {
-	{ "Connect",    "", "", input_connect    },
-	{ "Disconnect", "", "", input_disconnect },
+	{ "Connect",       "", "",  input_connect        },
+	{ "CancelConnect", "", "",  input_cancel_connect },
+	{ "Disconnect",    "", "",  input_disconnect     },
+	{ "IsConnected",   "", "b", input_is_connected   },
 	{ }
 };
 
