@@ -1,0 +1,40 @@
+BlueZ D-Bus Network API description
+***********************************
+
+Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
+
+
+Network hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Network
+Object path	/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+
+Methods		void Connect()
+
+			Connect to the network device.
+
+			Possible errors: org.bluez.Error.AlreadyConnected
+			                 org.bluez.Error.ConnectionAttemptFailed
+
+		void CancelConnect()
+
+			Abort connection attempt in case of errors or
+			timeouts in the client.
+
+			Possible errors: org.bluez.Error.Failed
+
+		void Disconnect()
+
+			Disconnect from the network device.
+
+			Possible errors: org.bluez.Error.Failed
+
+		bool IsConnected()
+
+			Returns the connection status.
+
+Signals		void Connected()
+
+		void Disconnected()
