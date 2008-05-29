@@ -36,7 +36,6 @@
 #include "plugin.h"
 #include "device.h"
 #include "logging.h"
-#include "dbus-service.h"
 #include "manager.h"
 
 #define SERIAL_INTERFACE "org.bluez.Serial"
@@ -107,8 +106,6 @@ static int serial_init(void)
 		return -EIO;
 	}
 
-	register_service("serial", NULL);
-
 	btd_register_device_driver(&serial_driver);
 
 	return 0;
@@ -117,8 +114,6 @@ static int serial_init(void)
 static void serial_exit(void)
 {
 	btd_unregister_device_driver(&serial_driver);
-
-	unregister_service("serial");
 
 	serial_manager_exit();
 

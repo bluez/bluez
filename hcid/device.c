@@ -56,6 +56,7 @@
 #include "device.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
+#include "dbus-service.h"
 #include "error.h"
 #include "glib-helper.h"
 #include "agent.h"
@@ -1176,10 +1177,14 @@ int btd_register_device_driver(struct btd_device_driver *driver)
 		debug("name %s uuid %s", driver->name, *uuid);
 	}
 
+	register_service(driver->name, driver->uuids);
+
 	return 0;
 }
 
 void btd_unregister_device_driver(struct btd_device_driver *driver)
 {
+	unregister_service(driver->name);
+
 	drivers = g_slist_remove(drivers, driver);
 }
