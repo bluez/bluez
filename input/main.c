@@ -29,22 +29,63 @@
 
 #include <bluetooth/bluetooth.h>
 
-#include <glib.h>
-#include <dbus/dbus.h>
+#include <gdbus.h>
 
 #include "plugin.h"
-#include "dbus-service.h"
+#include "../hcid/device.h"
 #include "logging.h"
+#include "dbus-service.h"
 #include "manager.h"
 
-#define HID_UUID "00001124-0000-1000-8000-00805f9b34fb"
+#define INPUT_INTERFACE "org.bluez.Input"
 
-static const char *uuids[] = {
-	HID_UUID,
-	NULL
+static DBusMessage *input_connect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *input_disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static GDBusMethodTable input_methods[] = {
+	{ "Connect",    "", "", input_connect    },
+	{ "Disconnect", "", "", input_disconnect },
+	{ }
+};
+
+static GDBusSignalTable input_signals[] = {
+	{ "Connected",    "" },
+	{ "Disconnected", "" },
+	{ }
 };
 
 static DBusConnection *conn;
+
+static int input_probe(const char *path)
+{
+	debug("path %s", path);
+
+	return g_dbus_register_interface(conn, path, INPUT_INTERFACE,
+			input_methods, input_signals, NULL, NULL, NULL);
+}
+
+static void input_remove(const char *path)
+{
+	debug("path %s", path);
+
+	g_dbus_unregister_interface(conn, path, INPUT_INTERFACE);
+}
+
+static struct btd_device_driver input_driver = {
+	.name	= "input",
+	.uuids	= BTD_UUIDS("00001124-0000-1000-8000-00805f9b34fb"),
+	.probe	= input_probe,
+	.remove	= input_remove,
+};
 
 static GKeyFile *load_config_file(const char *file)
 {
@@ -81,14 +122,14 @@ static int input_init(void)
 	if (config)
 		g_key_file_free(config);
 
-	register_service("input", uuids);
+	btd_register_device_driver(&input_driver);
 
 	return 0;
 }
 
 static void input_exit(void)
 {
-	unregister_service("input");
+	btd_unregister_device_driver(&input_driver);
 
 	input_manager_exit();
 
