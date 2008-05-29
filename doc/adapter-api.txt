@@ -61,9 +61,9 @@ Methods		dict GetProperties()
 			resolving.
 
 			On start up this process will generate a DiscoveryStarted
-			signal and then return RemoteDeviceFound and also
-			RemoteNameUpdated signals. If the procedure has been
-			finished an DiscoveryCompleted signal will be sent.
+			signal and then return DeviceFound singals. If the
+			procedure has been finished an DiscoveryCompleted
+			signal will be sent.
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
@@ -73,7 +73,7 @@ Methods		dict GetProperties()
 		void CancelDiscovery()
 
 			This method will cancel any previous DiscoverDevices
-			or DiscoverDevicesWithoutNameResolving actions.
+			transaction.
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
