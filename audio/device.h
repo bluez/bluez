@@ -52,7 +52,7 @@ struct sink;
 struct headset;
 struct gateway;
 
-struct device {
+struct audio_device {
 	DBusConnection *conn;
 	char *adapter_path;
 	char *path;
@@ -69,15 +69,15 @@ struct device {
 	struct target *target;
 };
 
-struct device *device_register(DBusConnection *conn,
+struct audio_device *device_register(DBusConnection *conn,
 					const char *path, const bdaddr_t *bda);
 
-int device_store(struct device *device, gboolean is_default);
+int device_store(struct audio_device *device, gboolean is_default);
 
-int device_remove_stored(struct device *dev);
+int device_remove_stored(struct audio_device *dev);
 
-void device_finish_sdp_transaction(struct device *device);
+void device_finish_sdp_transaction(struct audio_device *device);
 
-uint8_t device_get_state(struct device *dev);
+uint8_t device_get_state(struct audio_device *dev);
 
-gboolean device_is_connected(struct device *dev, const char *interface);
+gboolean device_is_connected(struct audio_device *dev, const char *interface);

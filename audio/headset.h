@@ -40,38 +40,38 @@ typedef enum {
 	HEADSET_LOCK_WRITE = 1 << 1,
 } headset_lock_t;
 
-typedef void (*headset_stream_cb_t) (struct device *dev, void *user_data);
+typedef void (*headset_stream_cb_t) (struct audio_device *dev, void *user_data);
 
-struct headset *headset_init(struct device *dev, sdp_record_t *record,
+struct headset *headset_init(struct audio_device *dev, sdp_record_t *record,
 				uint16_t svc);
 
-void headset_free(struct device *dev);
+void headset_free(struct audio_device *dev);
 
 uint32_t headset_config_init(GKeyFile *config);
 
-void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc);
+void headset_update(struct audio_device *dev, sdp_record_t *record, uint16_t svc);
 
-unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
-					void *user_data);
-gboolean headset_cancel_stream(struct device *dev, unsigned int id);
+unsigned int headset_request_stream(struct audio_device *dev,
+					headset_stream_cb_t cb, void *user_data);
+gboolean headset_cancel_stream(struct audio_device *dev, unsigned int id);
 
-gboolean get_hfp_active(struct device *dev);
-void set_hfp_active(struct device *dev, gboolean active);
+gboolean get_hfp_active(struct audio_device *dev);
+void set_hfp_active(struct audio_device *dev, gboolean active);
 
-void headset_set_authorized(struct device *dev);
-int headset_connect_rfcomm(struct device *dev, GIOChannel *chan);
-int headset_close_rfcomm(struct device *dev);
+void headset_set_authorized(struct audio_device *dev);
+int headset_connect_rfcomm(struct audio_device *dev, GIOChannel *chan);
+int headset_close_rfcomm(struct audio_device *dev);
 
-headset_state_t headset_get_state(struct device *dev);
-void headset_set_state(struct device *dev, headset_state_t state);
+headset_state_t headset_get_state(struct audio_device *dev);
+void headset_set_state(struct audio_device *dev, headset_state_t state);
 
-int headset_get_channel(struct device *dev);
+int headset_get_channel(struct audio_device *dev);
 
-int headset_get_sco_fd(struct device *dev);
+int headset_get_sco_fd(struct audio_device *dev);
 
-gboolean headset_is_active(struct device *dev);
+gboolean headset_is_active(struct audio_device *dev);
 
-gboolean headset_lock(struct device *dev, headset_lock_t lock);
-gboolean headset_unlock(struct device *dev, headset_lock_t lock);
-gboolean headset_suspend(struct device *dev, void *data);
-gboolean headset_play(struct device *dev, void *data);
+gboolean headset_lock(struct audio_device *dev, headset_lock_t lock);
+gboolean headset_unlock(struct audio_device *dev, headset_lock_t lock);
+gboolean headset_suspend(struct audio_device *dev, void *data);
+gboolean headset_play(struct audio_device *dev, void *data);

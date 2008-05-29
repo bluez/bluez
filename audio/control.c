@@ -151,7 +151,7 @@ struct avrcp_header {
 #endif
 
 struct avctp {
-	struct device *dev;
+	struct audio_device *dev;
 
 	avctp_state_t state;
 
@@ -804,7 +804,7 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 				(GIOFunc) session_cb, session);
 }
 
-gboolean avrcp_connect(struct device *dev)
+gboolean avrcp_connect(struct audio_device *dev)
 {
 	struct control *control = dev->control;
 	struct avctp *session;
@@ -835,7 +835,7 @@ gboolean avrcp_connect(struct device *dev)
 	return TRUE;
 }
 
-void avrcp_disconnect(struct device *dev)
+void avrcp_disconnect(struct audio_device *dev)
 {
 	struct control *control = dev->control;
 	struct avctp *session = control->session;
@@ -924,7 +924,7 @@ static DBusHandlerResult control_is_connected(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct control *control = device->control;
 	DBusMessage *reply;
 	dbus_bool_t connected;
@@ -954,7 +954,7 @@ static DBusSignalVTable control_signals[] = {
 	{ NULL, NULL }
 };
 
-struct control *control_init(struct device *dev)
+struct control *control_init(struct audio_device *dev)
 {
 	if (!dbus_connection_register_interface(dev->conn, dev->path,
 						AUDIO_CONTROL_INTERFACE,
@@ -965,7 +965,7 @@ struct control *control_init(struct device *dev)
 	return g_new0(struct control, 1);
 }
 
-void control_free(struct device *dev)
+void control_free(struct audio_device *dev)
 {
 	struct control *control = dev->control;
 
@@ -976,7 +976,7 @@ void control_free(struct device *dev)
 	dev->control = NULL;
 }
 
-gboolean control_is_active(struct device *dev)
+gboolean control_is_active(struct audio_device *dev)
 {
 	struct control *control = dev->control;
 

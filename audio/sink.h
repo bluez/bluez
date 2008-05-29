@@ -24,9 +24,9 @@
 
 #define AUDIO_SINK_INTERFACE "org.bluez.audio.Sink"
 
-struct sink *sink_init(struct device *dev);
-void sink_free(struct device *dev);
-gboolean sink_is_active(struct device *dev);
-avdtp_state_t sink_get_state(struct device *dev);
-gboolean sink_new_stream(struct device *dev, struct avdtp *session,
+struct sink *sink_init(struct audio_device *dev);
+void sink_free(struct audio_device *dev);
+gboolean sink_is_active(struct audio_device *dev);
+avdtp_state_t sink_get_state(struct audio_device *dev);
+gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 				struct avdtp_stream *stream);

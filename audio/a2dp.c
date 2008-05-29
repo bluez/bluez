@@ -131,7 +131,7 @@ static void setup_unref(struct a2dp_setup *setup)
 		setup_free(setup);
 }
 
-static struct device *a2dp_get_dev(struct avdtp *session)
+static struct audio_device *a2dp_get_dev(struct avdtp *session)
 {
 	bdaddr_t addr;
 
@@ -242,13 +242,13 @@ static struct a2dp_setup *find_setup_by_session(struct avdtp *session)
 	return NULL;
 }
 
-static struct a2dp_setup *find_setup_by_dev(struct device *dev)
+static struct a2dp_setup *find_setup_by_dev(struct audio_device *dev)
 {
 	GSList *l;
 
 	for (l = setups; l != NULL; l = l->next) {
 		struct a2dp_setup *setup = l->data;
-		struct device *setup_dev = a2dp_get_dev(setup->session);
+		struct audio_device *setup_dev = a2dp_get_dev(setup->session);
 
 		if (setup_dev == dev)
 			return setup;
@@ -289,7 +289,7 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 				uint8_t *category, void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
-	struct device *dev;
+	struct audio_device *dev;
 	struct avdtp_service_capability *cap;
 	struct avdtp_media_codec_capability *codec_cap;
 	struct sbc_codec_cap *sbc_cap;
@@ -395,7 +395,7 @@ static gboolean mpeg_setconf_ind(struct avdtp *session,
 				uint8_t *category, void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
-	struct device *dev;
+	struct audio_device *dev;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("Sink %p: Set_Configuration_Ind", sep);
@@ -473,7 +473,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct a2dp_setup *setup;
-	struct device *dev;
+	struct audio_device *dev;
 	int ret;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
@@ -1163,7 +1163,7 @@ void a2dp_exit()
 	dbus_connection_unref(connection);
 }
 
-gboolean a2dp_source_cancel(struct device *dev, unsigned int id)
+gboolean a2dp_source_cancel(struct audio_device *dev, unsigned int id)
 {
 	struct a2dp_setup_cb *cb_data;
 	struct a2dp_setup *setup;

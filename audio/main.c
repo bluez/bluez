@@ -34,24 +34,41 @@
 #include <dbus/dbus.h>
 
 #include "plugin.h"
-#include "dbus-service.h"
+#include "../hcid/device.h"
 #include "logging.h"
 #include "unix.h"
 #include "device.h"
 #include "manager.h"
 
-static const char *uuids[] = {
-	GENERIC_AUDIO_UUID,
-	HSP_HS_UUID,
-	HSP_AG_UUID,
-	HFP_HS_UUID,
-	HFP_AG_UUID,
-	ADVANCED_AUDIO_UUID,
-	A2DP_SOURCE_UUID,
-	A2DP_SINK_UUID,
-	AVRCP_REMOTE_UUID,
-	AVRCP_TARGET_UUID,
-	NULL
+static DBusConnection *conn;
+
+static int audio_probe(const char *path)
+{
+	debug("path %s", path);
+
+	return 0;
+}
+
+static void audio_remove(const char *path)
+{
+	debug("path %s", path);
+}
+
+static struct btd_device_driver audio_driver = {
+	.name	= "audio",
+	.uuids	= BTD_UUIDS(
+			GENERIC_AUDIO_UUID,
+			HSP_HS_UUID,
+			HSP_AG_UUID,
+			HFP_HS_UUID,
+			HFP_AG_UUID,
+			ADVANCED_AUDIO_UUID,
+			A2DP_SOURCE_UUID,
+			A2DP_SINK_UUID,
+			AVRCP_REMOTE_UUID,
+			AVRCP_TARGET_UUID),
+	.probe	= audio_probe,
+	.remove	= audio_remove,
 };
 
 static GKeyFile *load_config_file(const char *file)
@@ -70,8 +87,6 @@ static GKeyFile *load_config_file(const char *file)
 
 	return keyfile;
 }
-
-static DBusConnection *conn;
 
 static int audio_init(void)
 {
@@ -96,14 +111,14 @@ static int audio_init(void)
 	if (config)
 		g_key_file_free(config);
 
-	register_service("audio", uuids);
+	btd_register_device_driver(&audio_driver);
 
 	return 0;
 }
 
 static void audio_exit(void)
 {
-	unregister_service("audio");
+	btd_unregister_device_driver(&audio_driver);
 
 	audio_manager_exit();
 

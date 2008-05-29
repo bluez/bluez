@@ -735,7 +735,7 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 
 static void connection_lost(struct avdtp *session, int err)
 {
-	struct device *dev;
+	struct audio_device *dev;
 
 	dev = manager_find_device(&session->dst, AUDIO_CONTROL_INTERFACE,
 					FALSE);
@@ -1550,7 +1550,7 @@ static void l2cap_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	}
 
 	if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
-		struct device *dev;
+		struct audio_device *dev;
 
 		session->mtu = l2o.imtu;
 		session->buf = g_malloc0(session->mtu);
@@ -2684,7 +2684,7 @@ int avdtp_unregister_sep(struct avdtp_local_sep *sep)
 static void auth_cb(DBusError *derr, void *user_data)
 {
 	struct avdtp *session = user_data;
-	struct device *dev;
+	struct audio_device *dev;
 	GIOChannel *io;
 
 	if (derr && dbus_error_is_set(derr)) {

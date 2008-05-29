@@ -27,9 +27,9 @@
 int avrcp_init(DBusConnection *conn, GKeyFile *config);
 void avrcp_exit(void);
 
-gboolean avrcp_connect(struct device *dev);
-void avrcp_disconnect(struct device *dev);
+gboolean avrcp_connect(struct audio_device *dev);
+void avrcp_disconnect(struct audio_device *dev);
 
-struct control *control_init(struct device *dev);
-void control_free(struct device *dev);
-gboolean control_is_active(struct device *dev);
+struct control *control_init(struct audio_device *dev);
+void control_free(struct audio_device *dev);
+gboolean control_is_active(struct audio_device *dev);

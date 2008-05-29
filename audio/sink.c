@@ -76,7 +76,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 					struct avdtp_error *err,
 					void *user_data)
 {
-	struct device *dev = user_data;
+	struct audio_device *dev = user_data;
 	struct sink *sink = dev->sink;
 
 	if (err)
@@ -382,7 +382,7 @@ failed:
 static DBusHandlerResult sink_connect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct device *dev = data;
+	struct audio_device *dev = data;
 	struct sink *sink = dev->sink;
 	struct pending_request *pending;
 
@@ -414,7 +414,7 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 static DBusHandlerResult sink_disconnect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct sink *sink = device->sink;
 	struct pending_request *pending;
 	int err;
@@ -450,7 +450,7 @@ static DBusHandlerResult sink_is_connected(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct sink *sink = device->sink;
 	DBusMessage *reply;
 	dbus_bool_t connected;
@@ -484,7 +484,7 @@ static DBusSignalVTable sink_signals[] = {
 	{ NULL, NULL }
 };
 
-struct sink *sink_init(struct device *dev)
+struct sink *sink_init(struct audio_device *dev)
 {
 	if (!dbus_connection_register_interface(dev->conn, dev->path,
 						AUDIO_SINK_INTERFACE,
@@ -495,7 +495,7 @@ struct sink *sink_init(struct device *dev)
 	return g_new0(struct sink, 1);
 }
 
-void sink_free(struct device *dev)
+void sink_free(struct audio_device *dev)
 {
 	struct sink *sink = dev->sink;
 
@@ -516,7 +516,7 @@ void sink_free(struct device *dev)
 	dev->sink = NULL;
 }
 
-gboolean sink_is_active(struct device *dev)
+gboolean sink_is_active(struct audio_device *dev)
 {
 	struct sink *sink = dev->sink;
 
@@ -526,14 +526,14 @@ gboolean sink_is_active(struct device *dev)
 	return FALSE;
 }
 
-avdtp_state_t sink_get_state(struct device *dev)
+avdtp_state_t sink_get_state(struct audio_device *dev)
 {
 	struct sink *sink = dev->sink;
 
 	return sink->state;
 }
 
-gboolean sink_new_stream(struct device *dev, struct avdtp *session,
+gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 				struct avdtp_stream *stream)
 {
 	struct sink *sink = dev->sink;

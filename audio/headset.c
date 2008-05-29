@@ -142,12 +142,12 @@ struct headset {
 
 struct event {
 	const char *cmd;
-	int (*callback) (struct device *device, const char *buf);
+	int (*callback) (struct audio_device *device, const char *buf);
 };
 
-static int rfcomm_connect(struct device *device, headset_stream_cb_t cb,
+static int rfcomm_connect(struct audio_device *device, headset_stream_cb_t cb,
 				void *user_data, unsigned int *cb_id);
-static int get_records(struct device *device, headset_stream_cb_t cb,
+static int get_records(struct audio_device *device, headset_stream_cb_t cb,
 			void *user_data, unsigned int *cb_id);
 
 static int headset_send(struct headset *hs, char *format, ...)
@@ -183,7 +183,7 @@ static int headset_send(struct headset *hs, char *format, ...)
 	return 0;
 }
 
-static int supported_features(struct device *device, const char *buf)
+static int supported_features(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
 	int err;
@@ -199,7 +199,7 @@ static int supported_features(struct device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
-static int report_indicators(struct device *device, const char *buf)
+static int report_indicators(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
 	int err;
@@ -216,7 +216,7 @@ static int report_indicators(struct device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
-static void pending_connect_complete(struct connect_cb *cb, struct device *dev)
+static void pending_connect_complete(struct connect_cb *cb, struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
@@ -226,7 +226,7 @@ static void pending_connect_complete(struct connect_cb *cb, struct device *dev)
 		cb->cb(dev, cb->cb_data);
 }
 
-static void pending_connect_finalize(struct device *dev)
+static void pending_connect_finalize(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
@@ -292,7 +292,7 @@ static void sco_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer user_data)
 {
 	int sk;
-	struct device *dev = user_data;
+	struct audio_device *dev = user_data;
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
 
@@ -331,7 +331,7 @@ static void sco_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	headset_set_state(dev, HEADSET_STATE_PLAYING);
 }
 
-static int sco_connect(struct device *dev, headset_stream_cb_t cb,
+static int sco_connect(struct audio_device *dev, headset_stream_cb_t cb,
 			void *user_data, unsigned int *cb_id)
 {
 	struct headset *hs = dev->headset;
@@ -360,7 +360,7 @@ static int sco_connect(struct device *dev, headset_stream_cb_t cb,
 	return 0;
 }
 
-static void hfp_slc_complete(struct device *dev)
+static void hfp_slc_complete(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
@@ -387,7 +387,7 @@ static void hfp_slc_complete(struct device *dev)
 		pending_connect_finalize(dev);
 }
 
-static int event_reporting(struct device *dev, const char *buf)
+static int event_reporting(struct audio_device *dev, const char *buf)
 {
 	struct headset *hs = dev->headset;
 	int ret;
@@ -407,7 +407,7 @@ static int event_reporting(struct device *dev, const char *buf)
 	return 0;
 }
 
-static int call_hold(struct device *dev, const char *buf)
+static int call_hold(struct audio_device *dev, const char *buf)
 {
 	struct headset *hs = dev->headset;
 	int err;
@@ -428,7 +428,7 @@ static int call_hold(struct device *dev, const char *buf)
 	return 0;
 }
 
-static int answer_call(struct device *device, const char *buf)
+static int answer_call(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
 	int err;
@@ -463,7 +463,7 @@ static int answer_call(struct device *device, const char *buf)
 	return headset_send(hs, "\r\n+CIEV:3,0\r\n");
 }
 
-static int terminate_call(struct device *device, const char *buf)
+static int terminate_call(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
 	int err;
@@ -492,7 +492,7 @@ static int terminate_call(struct device *device, const char *buf)
 	return headset_send(hs, "\r\n+CIEV:2,0\r\n");
 }
 
-static int cli_notification(struct device *device, const char *buf)
+static int cli_notification(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
 
@@ -504,7 +504,7 @@ static int cli_notification(struct device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
-static int signal_gain_setting(struct device *device, const char *buf)
+static int signal_gain_setting(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
 	const char *name;
@@ -562,7 +562,7 @@ static struct event event_callbacks[] = {
 	{ 0 }
 };
 
-static int handle_event(struct device *device, const char *buf)
+static int handle_event(struct audio_device *device, const char *buf)
 {
 	struct event *ev;
 
@@ -576,7 +576,7 @@ static int handle_event(struct device *device, const char *buf)
 	return -EINVAL;
 }
 
-static void close_sco(struct device *device)
+static void close_sco(struct audio_device *device)
 {
 	struct headset *hs = device->headset;
 
@@ -590,7 +590,7 @@ static void close_sco(struct device *device)
 }
 
 static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
-				struct device *device)
+				struct audio_device *device)
 {
 	struct headset *hs;
 	unsigned char buf[BUF_SIZE];
@@ -659,7 +659,7 @@ failed:
 }
 
 static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
-			struct device *device)
+			struct audio_device *device)
 {
 	struct headset *hs;
 
@@ -678,7 +678,7 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer user_data)
 {
-	struct device *dev = user_data;
+	struct audio_device *dev = user_data;
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
 	char hs_address[18];
@@ -736,7 +736,7 @@ failed:
 
 static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
-	struct device *dev = user_data;
+	struct audio_device *dev = user_data;
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
 	int ch = -1;
@@ -826,7 +826,7 @@ failed:
 	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 }
 
-static int get_records(struct device *device, headset_stream_cb_t cb,
+static int get_records(struct audio_device *device, headset_stream_cb_t cb,
 			void *user_data, unsigned int *cb_id)
 {
 	struct headset *hs = device->headset;
@@ -851,7 +851,7 @@ static int get_records(struct device *device, headset_stream_cb_t cb,
 			get_record_cb, device, NULL);
 }
 
-static int rfcomm_connect(struct device *dev, headset_stream_cb_t cb,
+static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 				void *user_data, unsigned int *cb_id)
 {
 	struct headset *hs = dev->headset;
@@ -890,7 +890,7 @@ static int rfcomm_connect(struct device *dev, headset_stream_cb_t cb,
 static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply = NULL;
 
@@ -910,7 +910,7 @@ static DBusHandlerResult hs_stop(DBusConnection *conn, DBusMessage *msg,
 static DBusHandlerResult hs_is_playing(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply;
 	dbus_bool_t playing;
@@ -932,7 +932,7 @@ static DBusHandlerResult hs_is_playing(DBusConnection *conn, DBusMessage *msg,
 static DBusHandlerResult hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply = NULL;
 	char hs_address[18];
@@ -957,7 +957,7 @@ static DBusHandlerResult hs_is_connected(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	DBusMessage *reply;
 	dbus_bool_t connected;
 
@@ -978,7 +978,7 @@ static DBusHandlerResult hs_is_connected(DBusConnection *conn,
 static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	int err;
 
@@ -1000,7 +1000,7 @@ static DBusHandlerResult hs_connect(DBusConnection *conn, DBusMessage *msg,
 
 static gboolean ring_timer_cb(gpointer data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	int err;
 
@@ -1025,7 +1025,7 @@ static gboolean ring_timer_cb(gpointer data)
 static DBusHandlerResult hs_ring(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply = NULL;
 	int err;
@@ -1069,7 +1069,7 @@ static DBusHandlerResult hs_cancel_ringing(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply = NULL;
 
@@ -1107,7 +1107,7 @@ done:
 static DBusHandlerResult hs_play(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	int err;
 
@@ -1143,7 +1143,7 @@ static DBusHandlerResult hs_get_speaker_gain(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply;
 	dbus_uint16_t gain;
@@ -1169,7 +1169,7 @@ static DBusHandlerResult hs_get_mic_gain(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply;
 	dbus_uint16_t gain;
@@ -1195,7 +1195,7 @@ static DBusHandlerResult hs_set_gain(DBusConnection *conn,
 					DBusMessage *msg,
 					void *data, char type)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply;
 	DBusError derr;
@@ -1272,7 +1272,7 @@ static DBusHandlerResult hf_setup_call(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply;
 	DBusError derr;
@@ -1322,7 +1322,7 @@ static DBusHandlerResult hf_identify_call(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply;
 	DBusError derr;
@@ -1414,7 +1414,7 @@ static void headset_set_channel(struct headset *headset, sdp_record_t *record,
 		error("Unable to get RFCOMM channel from Headset record");
 }
 
-void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc)
+void headset_update(struct audio_device *dev, sdp_record_t *record, uint16_t svc)
 {
 	struct headset *headset = dev->headset;
 
@@ -1452,7 +1452,7 @@ void headset_update(struct device *dev, sdp_record_t *record, uint16_t svc)
 	headset_set_channel(headset, record, svc);
 }
 
-struct headset *headset_init(struct device *dev, sdp_record_t *record,
+struct headset *headset_init(struct audio_device *dev, sdp_record_t *record,
 				uint16_t svc)
 {
 	struct headset *hs;
@@ -1607,7 +1607,7 @@ uint32_t headset_config_init(GKeyFile *config)
 	return ag_features;
 }
 
-void headset_free(struct device *dev)
+void headset_free(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
@@ -1630,13 +1630,13 @@ void headset_free(struct device *dev)
 	dev->headset = NULL;
 }
 
-static gboolean hs_dc_timeout(struct device *dev)
+static gboolean hs_dc_timeout(struct audio_device *dev)
 {
 	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 	return FALSE;
 }
 
-gboolean headset_cancel_stream(struct device *dev, unsigned int id)
+gboolean headset_cancel_stream(struct audio_device *dev, unsigned int id)
 {
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
@@ -1678,13 +1678,13 @@ gboolean headset_cancel_stream(struct device *dev, unsigned int id)
 	return TRUE;
 }
 
-static gboolean dummy_connect_complete(struct device *dev)
+static gboolean dummy_connect_complete(struct audio_device *dev)
 {
 	pending_connect_finalize(dev);
 	return FALSE;
 }
 
-unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
+unsigned int headset_request_stream(struct audio_device *dev, headset_stream_cb_t cb,
 					void *user_data)
 {
 	struct headset *hs = dev->headset;
@@ -1718,21 +1718,21 @@ unsigned int headset_request_stream(struct device *dev, headset_stream_cb_t cb,
 	return id;
 }
 
-gboolean get_hfp_active(struct device *dev)
+gboolean get_hfp_active(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
 	return hs->hfp_active;
 }
 
-void set_hfp_active(struct device *dev, gboolean active)
+void set_hfp_active(struct audio_device *dev, gboolean active)
 {
 	struct headset *hs = dev->headset;
 
 	hs->hfp_active = active;
 }
 
-int headset_connect_rfcomm(struct device *dev, GIOChannel *io)
+int headset_connect_rfcomm(struct audio_device *dev, GIOChannel *io)
 {
 	struct headset *hs = dev->headset;
 
@@ -1741,7 +1741,7 @@ int headset_connect_rfcomm(struct device *dev, GIOChannel *io)
 	return hs->tmp_rfcomm ? 0 : -EINVAL;
 }
 
-int headset_close_rfcomm(struct device *dev)
+int headset_close_rfcomm(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 	GIOChannel *rfcomm = hs->tmp_rfcomm ? hs->tmp_rfcomm : hs->rfcomm;
@@ -1764,7 +1764,7 @@ int headset_close_rfcomm(struct device *dev)
 	return 0;
 }
 
-void headset_set_authorized(struct device *dev)
+void headset_set_authorized(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
@@ -1781,7 +1781,7 @@ void headset_set_authorized(struct device *dev)
 		headset_set_state(dev, HEADSET_STATE_CONNECTED);
 }
 
-void headset_set_state(struct device *dev, headset_state_t state)
+void headset_set_state(struct audio_device *dev, headset_state_t state)
 {
 	struct headset *hs = dev->headset;
 
@@ -1836,21 +1836,21 @@ void headset_set_state(struct device *dev, headset_state_t state)
 	hs->state = state;
 }
 
-headset_state_t headset_get_state(struct device *dev)
+headset_state_t headset_get_state(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
 	return hs->state;
 }
 
-int headset_get_channel(struct device *dev)
+int headset_get_channel(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
 	return hs->rfcomm_ch;
 }
 
-gboolean headset_is_active(struct device *dev)
+gboolean headset_is_active(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
@@ -1860,7 +1860,7 @@ gboolean headset_is_active(struct device *dev)
 	return FALSE;
 }
 
-gboolean headset_lock(struct device *dev, headset_lock_t lock)
+gboolean headset_lock(struct audio_device *dev, headset_lock_t lock)
 {
 	struct headset *hs = dev->headset;
 
@@ -1872,7 +1872,7 @@ gboolean headset_lock(struct device *dev, headset_lock_t lock)
 	return TRUE;
 }
 
-gboolean headset_unlock(struct device *dev, headset_lock_t lock)
+gboolean headset_unlock(struct audio_device *dev, headset_lock_t lock)
 {
 	struct headset *hs = dev->headset;
 
@@ -1899,17 +1899,17 @@ gboolean headset_unlock(struct device *dev, headset_lock_t lock)
 	return TRUE;
 }
 
-gboolean headset_suspend(struct device *dev, void *data)
+gboolean headset_suspend(struct audio_device *dev, void *data)
 {
 	return TRUE;
 }
 
-gboolean headset_play(struct device *dev, void *data)
+gboolean headset_play(struct audio_device *dev, void *data)
 {
 	return TRUE;
 }
 
-int headset_get_sco_fd(struct device *dev)
+int headset_get_sco_fd(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 

@@ -83,7 +83,7 @@ typedef enum {
 } audio_sdp_state_t;
 
 struct audio_sdp_data {
-	struct device *device;
+	struct audio_device *device;
 
 	DBusMessage *msg;	/* Method call or NULL */
 
@@ -97,8 +97,8 @@ struct audio_sdp_data {
 
 static DBusConnection *connection = NULL;
 
-static struct device *default_hs = NULL;
-static struct device *default_dev = NULL;
+static struct audio_device *default_hs = NULL;
+static struct audio_device *default_dev = NULL;
 
 static GSList *devices = NULL;
 
@@ -122,7 +122,7 @@ static struct enabled_interfaces enabled = {
 
 static DBusHandlerResult get_records(uuid_t *uuid, struct audio_sdp_data *data);
 
-static struct device *create_device(const bdaddr_t *bda)
+static struct audio_device *create_device(const bdaddr_t *bda)
 {
 	static int device_id = 0;
 	char path[128];
@@ -133,12 +133,12 @@ static struct device *create_device(const bdaddr_t *bda)
 	return device_register(connection, path, bda);
 }
 
-static void destroy_device(struct device *device)
+static void destroy_device(struct audio_device *device)
 {
 	dbus_connection_destroy_object_path(connection, device->path);
 }
 
-static void remove_device(struct device *device)
+static void remove_device(struct audio_device *device)
 {
 	if (device == default_dev) {
 		debug("Removing default device");
@@ -155,7 +155,7 @@ static void remove_device(struct device *device)
 	destroy_device(device);
 }
 
-static gboolean add_device(struct device *device, gboolean send_signals)
+static gboolean add_device(struct audio_device *device, gboolean send_signals)
 {
 	if (!send_signals)
 		goto add;
@@ -252,7 +252,7 @@ gboolean server_is_enabled(uint16_t svc)
 	return ret;
 }
 
-static void handle_record(sdp_record_t *record, struct device *device)
+static void handle_record(sdp_record_t *record, struct audio_device *device)
 {
 	gboolean is_default;
 	uint16_t uuid16;
@@ -432,7 +432,7 @@ static void get_records_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 static DBusHandlerResult get_records(uuid_t *uuid, struct audio_sdp_data *data)
 {
-	struct device *device = data->device;
+	struct audio_device *device = data->device;
 	int err;
 
 	err = bt_search_service(&device->src, &device->dst, uuid,
@@ -449,7 +449,7 @@ static DBusHandlerResult get_records(uuid_t *uuid, struct audio_sdp_data *data)
 }
 
 static DBusHandlerResult resolve_services(DBusMessage *msg,
-						struct device *device,
+						struct audio_device *device,
 						create_dev_cb_t cb,
 						void *user_data)
 {
@@ -468,9 +468,9 @@ static DBusHandlerResult resolve_services(DBusMessage *msg,
 	return get_records(&uuid, sdp_data);
 }
 
-struct device *manager_device_connected(const bdaddr_t *bda, const char *uuid)
+struct audio_device *manager_device_connected(const bdaddr_t *bda, const char *uuid)
 {
-	struct device *device;
+	struct audio_device *device;
 	const char *path;
 	gboolean headset = FALSE, created = FALSE;
 
@@ -557,7 +557,7 @@ struct device *manager_device_connected(const bdaddr_t *bda, const char *uuid)
 gboolean manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
 				void *user_data)
 {
-	struct device *dev;
+	struct audio_device *dev;
 
 	dev = create_device(bda);
 	if (!dev)
@@ -574,7 +574,7 @@ static DBusHandlerResult am_create_device(DBusConnection *conn,
 {
 	const char *address, *path;
 	bdaddr_t bda;
-	struct device *device;
+	struct audio_device *device;
 	DBusMessage *reply;
 	DBusError derr;
 
@@ -638,7 +638,7 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 				DBUS_TYPE_STRING_AS_STRING, &array_iter);
 
 	for (l = devices; l != NULL; l = l->next) {
-		struct device *device = l->data;
+		struct audio_device *device = l->data;
 
 		if (hs_only && !device->headset)
 			continue;
@@ -654,7 +654,7 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 
 static gint device_path_cmp(gconstpointer a, gconstpointer b)
 {
-	const struct device *device = a;
+	const struct audio_device *device = a;
 	const char *path = b;
 
 	return strcmp(device->path, path);
@@ -668,7 +668,7 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 	DBusMessage *reply;
 	GSList *match;
 	const char *path;
-	struct device *device;
+	struct audio_device *device;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -747,7 +747,7 @@ static DBusHandlerResult am_find_by_addr(DBusConnection *conn,
 	const char *address;
 	DBusMessage *reply;
 	DBusError derr;
-	struct device *device;
+	struct audio_device *device;
 	bdaddr_t bda;
 
 	dbus_error_init(&derr);
@@ -808,7 +808,7 @@ static DBusHandlerResult am_change_default_device(DBusConnection *conn,
 	DBusMessage *reply;
 	GSList *match;
 	const char *path;
-	struct device *device;
+	struct audio_device *device;
 
 	dbus_error_init(&derr);
 	if (!dbus_message_get_args(msg, &derr,
@@ -893,7 +893,7 @@ static DBusSignalVTable manager_signals[] = {
 static void parse_stored_devices(char *key, char *value, void *data)
 {
 	bdaddr_t *src = data;
-	struct device *device;
+	struct audio_device *device;
 	bdaddr_t dst;
 
 	if (!key || !value || strcmp(key, "default") == 0)
@@ -927,7 +927,7 @@ static void register_devices_stored(const char *adapter)
 {
 	char filename[PATH_MAX + 1];
 	struct stat st;
-	struct device *device;
+	struct audio_device *device;
 	bdaddr_t default_src;
 	bdaddr_t dst;
 	bdaddr_t src;
@@ -1182,7 +1182,7 @@ static sdp_record_t *hfp_ag_record(uint8_t ch, uint32_t feat)
 
 static void auth_cb(DBusError *derr, void *user_data)
 {
-	struct device *device = user_data;
+	struct audio_device *device = user_data;
 	const char *uuid;
 
 	if (get_hfp_active(device))
@@ -1230,7 +1230,7 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer data)
 {
 	const char *uuid;
-	struct device *device;
+	struct audio_device *device;
 	gboolean hfp_active;
 
 	if (err < 0) {
@@ -1555,17 +1555,17 @@ void audio_manager_exit(void)
 	connection = NULL;
 }
 
-struct device *manager_default_device(void)
+struct audio_device *manager_default_device(void)
 {
 	return default_dev;
 }
 
-struct device *manager_get_connected_device(void)
+struct audio_device *manager_get_connected_device(void)
 {
 	GSList *l;
 
 	for (l = devices; l != NULL; l = g_slist_next(l)) {
-		struct device *device = l->data;
+		struct audio_device *device = l->data;
 
 		if ((device->sink || device->source) &&
 				avdtp_is_connected(&device->src, &device->dst))
@@ -1647,7 +1647,7 @@ gboolean manager_authorize(const bdaddr_t *dba, const char *uuid,
 	return TRUE;
 }
 
-struct device *manager_find_device(const bdaddr_t *bda, const char *interface,
+struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interface,
 					gboolean connected)
 {
 	GSList *l;
@@ -1656,7 +1656,7 @@ struct device *manager_find_device(const bdaddr_t *bda, const char *interface,
 		return default_dev;
 
 	for (l = devices; l != NULL; l = l->next) {
-		struct device *dev = l->data;
+		struct audio_device *dev = l->data;
 
 		if (bacmp(bda, BDADDR_ANY) && bacmp(&dev->dst, bda))
 			continue;

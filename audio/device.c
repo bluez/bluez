@@ -57,7 +57,7 @@
 static DBusHandlerResult device_get_address(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	DBusMessage *reply;
 	char address[18], *ptr = address;
 
@@ -90,7 +90,7 @@ static char *get_dev_name(DBusConnection *conn, const bdaddr_t *src,
 static DBusHandlerResult device_get_name(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct device *dev = data;
+	struct audio_device *dev = data;
 	DBusMessage *reply;
 	const char *name = dev->name ? dev->name : "";
 
@@ -107,7 +107,7 @@ static DBusHandlerResult device_get_name(DBusConnection *conn,
 static DBusHandlerResult device_get_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 	DBusMessage *reply;
 	char address[18], *ptr = address;
 
@@ -128,7 +128,7 @@ static DBusHandlerResult device_get_connected(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter, array_iter;
-	struct device *device = data;
+	struct audio_device *device = data;
 	DBusMessage *reply;
 	const char *iface;
 
@@ -162,7 +162,7 @@ static DBusMethodVTable device_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-static void device_free(struct device *dev)
+static void device_free(struct audio_device *dev)
 {
 	if (dev->headset)
 		headset_free(dev);
@@ -185,17 +185,17 @@ static void device_free(struct device *dev)
 
 static void device_unregister(DBusConnection *conn, void *data)
 {
-	struct device *device = data;
+	struct audio_device *device = data;
 
 	info("Unregistered device path:%s", device->path);
 
 	device_free(device);
 }
 
-struct device *device_register(DBusConnection *conn,
+struct audio_device *device_register(DBusConnection *conn,
 					const char *path, const bdaddr_t *bda)
 {
-	struct device *dev;
+	struct audio_device *dev;
 	bdaddr_t src;
 	int dev_id;
 
@@ -207,7 +207,7 @@ struct device *device_register(DBusConnection *conn,
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
 		return NULL;
 
-	dev = g_new0(struct device, 1);
+	dev = g_new0(struct audio_device, 1);
 
 	/* FIXME just to maintain compatibility */
 	dev->adapter_path = g_strdup_printf("/org/bluez/hci%d", dev_id);
@@ -241,7 +241,7 @@ struct device *device_register(DBusConnection *conn,
 	return dev;
 }
 
-int device_store(struct device *dev, gboolean is_default)
+int device_store(struct audio_device *dev, gboolean is_default)
 {
 	char value[64];
 	char filename[PATH_MAX + 1];
@@ -285,7 +285,7 @@ int device_store(struct device *dev, gboolean is_default)
 	return textfile_put(filename, dst_addr, value);
 }
 
-int device_remove_stored(struct device *dev)
+int device_remove_stored(struct audio_device *dev)
 {
 	char filename[PATH_MAX + 1];
 	char src_addr[18], dst_addr[18];
@@ -298,7 +298,7 @@ int device_remove_stored(struct device *dev)
 	return textfile_del(filename, dst_addr);
 }
 
-void device_finish_sdp_transaction(struct device *dev)
+void device_finish_sdp_transaction(struct audio_device *dev)
 {
 	char address[18], *addr_ptr = address;
 	DBusMessage *msg;
@@ -391,7 +391,7 @@ static uint8_t hs_to_ipc_state(headset_state_t state)
 	}
 }
 
-uint8_t device_get_state(struct device *dev)
+uint8_t device_get_state(struct audio_device *dev)
 {
 	avdtp_state_t sink_state;
 	headset_state_t hs_state;
@@ -411,7 +411,7 @@ uint8_t device_get_state(struct device *dev)
 }
 #endif
 
-gboolean device_is_connected(struct device *dev, const char *interface)
+gboolean device_is_connected(struct audio_device *dev, const char *interface)
 {
 	if (!interface) {
 		if ((dev->sink || dev->source) &&

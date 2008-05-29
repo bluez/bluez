@@ -57,7 +57,7 @@ typedef enum {
 	TYPE_SOURCE
 } service_type_t;
 
-typedef void (*notify_cb_t) (struct device *dev, void *data);
+typedef void (*notify_cb_t) (struct audio_device *dev, void *data);
 
 struct a2dp_data {
 	struct avdtp *session;
@@ -70,7 +70,7 @@ struct headset_data {
 };
 
 struct unix_client {
-	struct device *dev;
+	struct audio_device *dev;
 	GSList *caps;
 	service_type_t type;
 	char *interface;
@@ -83,7 +83,7 @@ struct unix_client {
 	int data_fd; /* To be deleted once two phase configuration is fully implemented */
 	unsigned int req_id;
 	unsigned int cb_id;
-	gboolean (*cancel) (struct device *dev, unsigned int id);
+	gboolean (*cancel) (struct audio_device *dev, unsigned int id);
 };
 
 static GSList *clients = NULL;
@@ -173,7 +173,7 @@ static void unix_ipc_error(struct unix_client *client, int type, int err)
 	unix_ipc_sendmsg(client, &rsp_hdr->msg_h);
 }
 
-static service_type_t select_service(struct device *dev, const char *interface)
+static service_type_t select_service(struct audio_device *dev, const char *interface)
 {
 	if (!interface) {
 		if (dev->sink && avdtp_is_connected(&dev->src, &dev->dst))
@@ -220,7 +220,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	}
 }
 
-static void headset_discovery_complete(struct device *dev, void *user_data)
+static void headset_discovery_complete(struct audio_device *dev, void *user_data)
 {
 	struct unix_client *client = user_data;
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
@@ -247,7 +247,7 @@ failed:
 	client->dev = NULL;
 }
 
-static void headset_setup_complete(struct device *dev, void *user_data)
+static void headset_setup_complete(struct audio_device *dev, void *user_data)
 {
 	struct unix_client *client = user_data;
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
@@ -298,7 +298,7 @@ failed:
 	client->dev = NULL;
 }
 
-static void headset_resume_complete(struct device *dev, void *user_data)
+static void headset_resume_complete(struct audio_device *dev, void *user_data)
 {
 	struct unix_client *client = user_data;
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
@@ -554,7 +554,7 @@ failed:
 	a2dp->stream = NULL;
 }
 
-static void start_discovery(struct device *dev, struct unix_client *client)
+static void start_discovery(struct audio_device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
 	int err = 0;
@@ -596,7 +596,7 @@ failed:
 	unix_ipc_error(client, BT_GETCAPABILITIES_RSP, err ? : EIO);
 }
 
-static void start_config(struct device *dev, struct unix_client *client)
+static void start_config(struct audio_device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
 	unsigned int id;
@@ -644,7 +644,7 @@ failed:
 	unix_ipc_error(client, BT_SETCONFIGURATION_RSP, EIO);
 }
 
-static void start_resume(struct device *dev, struct unix_client *client)
+static void start_resume(struct audio_device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
 	unsigned int id;
@@ -694,7 +694,7 @@ failed:
 	unix_ipc_error(client, BT_STREAMSTART_RSP, EIO);
 }
 
-static void start_suspend(struct device *dev, struct unix_client *client)
+static void start_suspend(struct audio_device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
 	unsigned int id;
@@ -744,7 +744,7 @@ failed:
 	unix_ipc_error(client, BT_STREAMSTOP_RSP, EIO);
 }
 
-static void create_cb(struct device *dev, void *user_data)
+static void create_cb(struct audio_device *dev, void *user_data)
 {
 	struct unix_client *client = user_data;
 
@@ -757,7 +757,7 @@ static void create_cb(struct device *dev, void *user_data)
 static void handle_getcapabilities_req(struct unix_client *client,
 					struct bt_getcapabilities_req *req)
 {
-	struct device *dev;
+	struct audio_device *dev;
 	bdaddr_t bdaddr;
 
 	str2ba(req->device, &bdaddr);
@@ -888,7 +888,7 @@ static int handle_a2dp_transport(struct unix_client *client,
 static void handle_setconfiguration_req(struct unix_client *client,
 					struct bt_setconfiguration_req *req)
 {
-	struct device *dev;
+	struct audio_device *dev;
 	bdaddr_t bdaddr;
 	int err = 0;
 
