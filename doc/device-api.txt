@@ -31,6 +31,29 @@ Methods		dict GetProperties()
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
 
+		dict DiscoverServices(string pattern)
+
+			This method starts the service discovery to retrieve
+			remote service records. The pattern parameter can
+			be used to specific specific UUIDs.
+
+			The return value is a dictionary with the record
+			handles as keys and the service record in XML format
+			as values.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+
+		void CancelDiscovery()
+
+			This method will cancel any previous DiscoverServices
+			transaction.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.NotAuthorized
+
 		void Disconnect()
 
 			This method disconnects a specific remote device by
