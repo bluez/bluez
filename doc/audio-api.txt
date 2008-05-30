@@ -115,8 +115,8 @@ Signals		void AnswerRequested()
 			Sent when an ongoing call is terminated.
 
 
-Headset hierarchy
-=================
+Sink hierarchy
+==============
 
 Service		org.bluez
 Interface	org.bluez.Sink
