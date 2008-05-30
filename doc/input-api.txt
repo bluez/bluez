@@ -16,7 +16,7 @@ Methods		void Connect()
 			Connect to the input device.
 
 			Possible errors: org.bluez.Error.AlreadyConnected
-			                 org.bluez.Error.ConnectionAttemptFailed
+					 org.bluez.Error.ConnectionAttemptFailed
 
 		void Disconnect()
 
