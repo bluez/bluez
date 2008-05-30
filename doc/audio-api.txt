@@ -68,20 +68,6 @@ Methods		void Connect()
 
 			Changes the current speaker gain if possible.
 
-		void SetupCall(string value) [experimental]
-
-			Sets up an call with the connected HFP. The value can
-			be "incoming", "outgoing" or "remote" to indicate
-			incoming call, outgoing call and remote party alerted
-			respectively.
-
-		void IdentifyCall(string phone_number, int32 type) [experimental]
-
-			Enables a called subscriber to get the calling
-			line identity (CLI) of the calling party when
-			receiving a call. The value of type shud be
-			the same as provided by the GSM stack.
-
 Signals		void AnswerRequested()
 
 			Sent when the answer button is pressed on the headset
@@ -109,10 +95,6 @@ Signals		void AnswerRequested()
 		void MicrophoneGainChanged(uint16 gain)
 
 			The microphone gain changed.
-
-		void CallTerminated()
-
-			Sent when an ongoing call is terminated.
 
 
 Sink hierarchy
