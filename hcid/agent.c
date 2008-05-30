@@ -56,6 +56,7 @@
 
 typedef enum {
 	AGENT_REQUEST_PASSKEY,
+	AGENT_REQUEST_PINCODE,
 	AGENT_REQUEST_AUTHORIZE,
 	AGENT_REQUEST_CONFIRM_MODE
 } agent_request_type_t;
@@ -145,6 +146,8 @@ static void agent_free(struct agent *agent)
 
 	if (agent->request) {
 		DBusError err;
+		agent_pincode_cb pincode_cb;
+		agent_cb cb;
 
 		if (agent->request->call)
 			dbus_pending_call_cancel(agent->request->call);
@@ -152,11 +155,13 @@ static void agent_free(struct agent *agent)
 		dbus_error_init(&err);
 		dbus_set_error_const(&err, "org.bluez.Error.Failed", "Canceled");
 
-		if (agent->request->type == AGENT_REQUEST_PASSKEY) {
-			agent_passkey_cb cb = agent->request->cb;
-			cb(agent, &err, NULL, agent->request->user_data);
-		} else  {
-			agent_cb cb = agent->request->cb;
+		switch (agent->request->type) {
+		case AGENT_REQUEST_PINCODE:
+			pincode_cb = agent->request->cb;
+			pincode_cb(agent, &err, NULL, agent->request->user_data);
+			break;
+		default:
+			cb = agent->request->cb;
 			cb(agent, &err, agent->request->user_data);
 		}
 
@@ -364,7 +369,7 @@ int agent_authorize(struct agent *agent,
 	return 0;
 }
 
-static DBusPendingCall *passkey_request_new(struct agent *agent,
+static DBusPendingCall *pincode_request_new(struct agent *agent,
 						const char *device_path,
 						dbus_bool_t numeric)
 {
@@ -372,7 +377,7 @@ static DBusPendingCall *passkey_request_new(struct agent *agent,
 	DBusPendingCall *call;
 
 	message = dbus_message_new_method_call(agent->name, agent->path,
-					"org.bluez.Agent", "RequestPasskey");
+					"org.bluez.Agent", "RequestPinCode");
 	if (message == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return NULL;
@@ -392,12 +397,12 @@ static DBusPendingCall *passkey_request_new(struct agent *agent,
 	return call;
 }
 
-static void passkey_reply(DBusPendingCall *call, void *user_data)
+static void pincode_reply(DBusPendingCall *call, void *user_data)
 {
 	struct agent_request *req = user_data;
 	struct agent *agent = req->agent;
 	struct adapter *adapter = agent->adapter;
-	agent_passkey_cb cb = req->cb;
+	agent_pincode_cb cb = req->cb;
 	DBusMessage *message;
 	DBusError err;
 	bdaddr_t sba;
@@ -457,21 +462,21 @@ done:
 		agent_free(agent);
 }
 
-int agent_request_passkey(struct agent *agent, struct device *device,
-				agent_passkey_cb cb, void *user_data)
+int agent_request_pincode(struct agent *agent, struct device *device,
+				agent_pincode_cb cb, void *user_data)
 {
 	struct agent_request *req;
 
 	if (agent->request)
 		return -EBUSY;
 
-	req = agent_request_new(agent, AGENT_REQUEST_PASSKEY, cb, user_data);
+	req = agent_request_new(agent, AGENT_REQUEST_PINCODE, cb, user_data);
 
-	req->call = passkey_request_new(agent, device->path, FALSE);
+	req->call = pincode_request_new(agent, device->path, FALSE);
 	if (!req->call)
 		goto failed;
 
-	dbus_pending_call_set_notify(req->call, passkey_reply, req, NULL);
+	dbus_pending_call_set_notify(req->call, pincode_reply, req, NULL);
 
 	agent->request = req;
 

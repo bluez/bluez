@@ -931,7 +931,7 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 		adapter->bonding->auth_active = 1;
 }
 
-static void passkey_cb(struct agent *agent, DBusError *err, const char *passkey,
+static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 			struct device *device)
 {
 	struct adapter *adapter = device->adapter;
@@ -957,13 +957,13 @@ static void passkey_cb(struct agent *agent, DBusError *err, const char *passkey,
 		goto done;
 	}
 
-	len = strlen(passkey);
+	len = strlen(pincode);
 
 	set_pin_length(&sba, len);
 
 	memset(&pr, 0, sizeof(pr));
 	bacpy(&pr.bdaddr, &dba);
-	memcpy(pr.pin_code, passkey, len);
+	memcpy(pr.pin_code, pincode, len);
 	pr.pin_len = len;
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
 
@@ -1011,8 +1011,8 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 			return -ENODEV;
 	}
 
-	return agent_request_passkey(agent, device,
-					(agent_passkey_cb) passkey_cb,
+	return agent_request_pincode(agent, device,
+					(agent_pincode_cb) pincode_cb,
 					device);
 
 old_fallback:

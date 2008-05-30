@@ -27,8 +27,8 @@ struct agent;
 typedef void (*agent_cb) (struct agent *agent, DBusError *err,
 				void *user_data);
 
-typedef void (*agent_passkey_cb) (struct agent *agent, DBusError *err,
-					const char *passkey, void *user_data);
+typedef void (*agent_pincode_cb) (struct agent *agent, DBusError *err,
+					const char *pincode, void *user_data);
 
 typedef void (*agent_remove_cb) (struct agent *agent, void *user_data);
 
@@ -41,8 +41,8 @@ int agent_destroy(struct agent *agent, gboolean exited);
 int agent_authorize(struct agent *agent, const char *path,
 			const char *uuid, agent_cb cb, void *user_data);
 
-int agent_request_passkey(struct agent *agent, struct device *device,
-				agent_passkey_cb cb, void *user_data);
+int agent_request_pincode(struct agent *agent, struct device *device,
+				agent_pincode_cb cb, void *user_data);
 
 int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 				agent_cb cb, void *user_data);
