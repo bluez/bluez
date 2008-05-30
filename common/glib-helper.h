@@ -54,3 +54,40 @@ int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			void *user_data);
 int bt_sco_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			bt_io_callback_t cb, void *user_data);
+
+/* Experiemental bt_io API */
+
+typedef struct bt_io BtIO;
+
+typedef enum {
+	BT_L2CAP,
+	BT_RFCOMM,
+	BT_SCO
+} BtIOTransport;
+
+typedef enum {
+	BT_IO_SUCCESS,
+	BT_IO_FAILED
+} BtIOError;
+
+typedef void (*BtIOFunc) (BtIO *io, BtIOError err, GIOChannel *chan,
+				gpointer user_data);
+
+BtIO *bt_io_create(BtIOTransport type, gpointer user_data, GDestroyNotify notify);
+BtIO *bt_io_ref(BtIO *io);
+void bt_io_unref(BtIO *io);
+gboolean bt_io_set_source(BtIO *io, const char *address);
+const char *bt_io_get_source(BtIO *io);
+gboolean bt_io_set_destination(BtIO *io, const char *address);
+const char *bt_io_get_destination(BtIO *io);
+gboolean bt_io_set_flags(BtIO *io, guint32 flags);
+guint32 bt_io_get_flags(BtIO *io);
+gboolean bt_io_set_channel(BtIO *io, guint8 channel);
+guint8 bt_io_get_channel(BtIO *io);
+gboolean bt_io_set_psm(BtIO *io, guint16 psm);
+guint16 bt_io_get_psm(BtIO *io);
+gboolean bt_io_set_mtu(BtIO *io, guint16 mtu);
+guint16 bt_io_get_mtu(BtIO *io);
+BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func);
+BtIOError bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func);
+BtIOError bt_io_shutdown(BtIO *io);

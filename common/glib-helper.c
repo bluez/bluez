@@ -43,7 +43,9 @@
 
 #include "glib-helper.h"
 
-typedef int (*resolver_t) (int fd, bdaddr_t *src, bdaddr_t *dst);
+typedef int (*resolver_t) (int fd, char *src, char *dst);
+typedef BtIOError (*connect_t) (BtIO *io, BtIOFunc func);
+typedef BtIOError (*listen_t) (BtIO *io, BtIOFunc func);
 
 int set_nonblocking(int fd)
 {
@@ -67,9 +69,24 @@ int set_nonblocking(int fd)
 struct io_context {
 	int			fd;
 	GIOChannel		*io;
+	BtIOFunc		func;
 	bt_io_callback_t	cb;
 	resolver_t		resolver;
 	gpointer		user_data;
+};
+
+struct bt_io {
+	char			src[18];
+	char			dst[18];
+	guint32			flags;
+	guint8			channel;
+	guint16			psm;
+	guint16			mtu;
+	BtIOTransport		type;
+	connect_t		connect;
+	listen_t		listen;
+	struct io_context	*io_ctxt;
+	int			refcount;
 };
 
 struct search_context {
@@ -426,7 +443,7 @@ static inline int resolve_names(int fd, struct sockaddr *host,
 	return 0;
 }
 
-static int rfcomm_resolver(int fd, bdaddr_t *src, bdaddr_t *dst)
+static int rfcomm_resolver(int fd, char *src, char *dst)
 {
 	struct sockaddr_rc host, peer;
 	socklen_t len;
@@ -438,13 +455,13 @@ static int rfcomm_resolver(int fd, bdaddr_t *src, bdaddr_t *dst)
 	if (err < 0)
 		return err;
 
-	bacpy(src, &host.rc_bdaddr);
-	bacpy(dst, &peer.rc_bdaddr);
+	ba2str(&host.rc_bdaddr, src);
+	ba2str(&peer.rc_bdaddr, dst);
 
 	return 0;
 }
 
-static int l2cap_resolver(int fd, bdaddr_t *src, bdaddr_t *dst)
+static int l2cap_resolver(int fd, char *src, char *dst)
 {
 	struct sockaddr_l2 host, peer;
 	socklen_t len;
@@ -456,13 +473,13 @@ static int l2cap_resolver(int fd, bdaddr_t *src, bdaddr_t *dst)
 	if (err < 0)
 		return err;
 
-	bacpy(src, &host.l2_bdaddr);
-	bacpy(dst, &peer.l2_bdaddr);
+	ba2str(&host.l2_bdaddr, src);
+	ba2str(&peer.l2_bdaddr, dst);
 
 	return 0;
 }
 
-static int sco_resolver(int fd, bdaddr_t *src, bdaddr_t *dst)
+static int sco_resolver(int fd, char *src, char *dst)
 {
 	struct sockaddr_sco host, peer;
 	socklen_t len;
@@ -474,17 +491,19 @@ static int sco_resolver(int fd, bdaddr_t *src, bdaddr_t *dst)
 	if (err < 0)
 		return err;
 
-	bacpy(src, &host.sco_bdaddr);
-	bacpy(dst, &peer.sco_bdaddr);
+	ba2str(&host.sco_bdaddr, src);
+	ba2str(&peer.sco_bdaddr, dst);
 
 	return 0;
 }
 
 static gboolean listen_cb(GIOChannel *chan, GIOCondition cond,
-				struct io_context *io_ctxt)
+		gpointer user_data)
 {
+	BtIO *io = user_data;
+	struct io_context *io_ctxt = io->io_ctxt;
 	int fd, err = 0;
-	GIOChannel *io;
+	GIOChannel *gio;
 	struct sockaddr addr;
 	socklen_t len;
 	bdaddr_t src, dst;
@@ -506,34 +525,42 @@ static gboolean listen_cb(GIOChannel *chan, GIOCondition cond,
 		goto drop;
 
 	if (io_ctxt->resolver) {
-		err = io_ctxt->resolver(fd, &src, &dst);
+		err = io_ctxt->resolver(fd, io->src, io->dst);
 		if (err < 0) {
 			close(fd);
 			goto drop;
 		}
 	}
 
-	io = g_io_channel_unix_new(fd);
-	if (!io)
+	gio = g_io_channel_unix_new(fd);
+	if (!gio)
 		err = -ENOMEM;
 
-	if (io_ctxt->cb)
-		io_ctxt->cb(io, err, &src, &dst, io_ctxt->user_data);
+	if (io_ctxt->func)
+		io_ctxt->func(io, err, gio, io_ctxt->user_data);
+	if (io_ctxt->cb) {
+		str2ba(io->src, &src);
+		str2ba(io->dst, &dst);
+		io_ctxt->cb(gio, err, &src, &dst, io_ctxt->user_data);
+	}
 
 	return TRUE;
 
 drop:
+	if (io_ctxt->func)
+		io_ctxt->func(io, -errno, NULL, io_ctxt->user_data);
 	if (io_ctxt->cb)
-		io_ctxt->cb(NULL, -errno, NULL, NULL, io_ctxt->user_data);
+		io_ctxt->cb(NULL, err, NULL, NULL, io_ctxt->user_data);
 
 	return TRUE;
 }
 
-static int transport_listen(struct io_context *io_ctxt)
+static int transport_listen(BtIO *io)
 {
+	struct io_context *io_ctxt = io->io_ctxt;
 	int err;
 
-	err = listen(io_ctxt->fd, 1);
+	err = listen(io_ctxt->fd, 5);
 	if (err < 0)
 		return -errno;
 
@@ -542,14 +569,16 @@ static int transport_listen(struct io_context *io_ctxt)
 		return -ENOMEM;
 
 	g_io_add_watch(io_ctxt->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-			(GIOFunc) listen_cb, io_ctxt);
+			(GIOFunc) listen_cb, io);
 
 	return 0;
 }
 
-static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
-				struct io_context *io_ctxt)
+static gboolean connect_cb(GIOChannel *gio, GIOCondition cond,
+				gpointer user_data)
 {
+	BtIO *io = user_data;
+	struct io_context *io_ctxt = io->io_ctxt;
 	int err = 0, ret;
 	socklen_t len;
 	bdaddr_t src, dst;
@@ -569,7 +598,7 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 	}
 
 	if (io_ctxt->resolver) {
-		err = io_ctxt->resolver(io_ctxt->fd, &src, &dst);
+		err = io_ctxt->resolver(io_ctxt->fd, io->src, io->dst);
 		if (err < 0)
 			goto done;
 	}
@@ -577,8 +606,13 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 	io_ctxt->io = NULL;
 
 done:
-	if (io_ctxt->cb)
-		io_ctxt->cb(io, err, &src, &dst, io_ctxt->user_data);
+	if (io_ctxt->func)
+		io_ctxt->func(io, err, gio, io_ctxt->user_data);
+	if (io_ctxt->cb) {
+		str2ba(io->src, &src);
+		str2ba(io->dst, &dst);
+		io_ctxt->cb(gio, err, &src, &dst, io_ctxt->user_data);
+	}
 	if (io_ctxt->io) {
 		g_io_channel_close(io_ctxt->io);
 		g_io_channel_unref(io_ctxt->io);
@@ -588,9 +622,10 @@ done:
 	return FALSE;
 }
 
-static int transport_connect(struct io_context *io_ctxt, struct sockaddr *addr,
-				socklen_t addrlen)
+static int transport_connect(BtIO *io, struct sockaddr *addr,
+		socklen_t addrlen)
 {
+	struct io_context *io_ctxt = io->io_ctxt;
 	int err;
 
 	io_ctxt->io = g_io_channel_unix_new(io_ctxt->fd);
@@ -606,16 +641,18 @@ static int transport_connect(struct io_context *io_ctxt, struct sockaddr *addr,
 		return -errno;
 
 	g_io_add_watch(io_ctxt->io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-			(GIOFunc) connect_cb, io_ctxt);
+			(GIOFunc) connect_cb, io);
 
 	return 0;
 }
 
-static int sco_connect(struct io_context *io_ctxt, const bdaddr_t *src,
-				const bdaddr_t *dst)
+static BtIOError sco_connect(BtIO *io, BtIOFunc func)
 {
+	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_sco addr;
 	int sk, err;
+
+	io_ctxt->func = func;
 
 	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
 	if (sk < 0)
@@ -623,34 +660,35 @@ static int sco_connect(struct io_context *io_ctxt, const bdaddr_t *src,
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
-	bacpy(&addr.sco_bdaddr, src);
+	str2ba(io->src, &addr.sco_bdaddr);
 
 	err = bind(sk, (struct sockaddr *) &addr, sizeof(addr));
 	if (err < 0) {
 		close(sk);
-		return -errno;
+		return BT_IO_FAILED;
 	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
-	bacpy(&addr.sco_bdaddr, dst);
+	str2ba(io->dst, &addr.sco_bdaddr);
 
-	err = transport_connect(io_ctxt, (struct sockaddr *) &addr,
+	err = transport_connect(io, (struct sockaddr *) &addr,
 				sizeof(addr));
 	if (err < 0) {
 		close(sk);
-		return err;
+		return BT_IO_FAILED;
 	}
 
-	return 0;
+	return BT_IO_SUCCESS;
 }
 
-static int l2cap_bind(struct io_context *io_ctxt, const bdaddr_t *src,
+static int l2cap_bind(struct io_context *io_ctxt, const char *address,
 			uint16_t psm, uint16_t mtu, uint32_t flags,
 			struct sockaddr_l2 *addr)
 {
 	int err;
 	struct l2cap_options l2o;
+	struct sockaddr_l2 l2a;
 
 	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (io_ctxt->fd < 0)
@@ -676,7 +714,7 @@ static int l2cap_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 
 	memset(addr, 0, sizeof(*addr));
 	addr->l2_family = AF_BLUETOOTH;
-	bacpy(&addr->l2_bdaddr, src);
+	str2ba(address, &l2a.l2_bdaddr);
 	addr->l2_psm = htobs(psm);
 
 	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
@@ -688,60 +726,63 @@ static int l2cap_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 	return 0;
 }
 
-static int l2cap_listen(struct io_context *io_ctxt, const bdaddr_t *src,
-			uint16_t psm, uint16_t mtu, uint32_t flags)
+static BtIOError l2cap_listen(BtIO *io, BtIOFunc func)
 {
+	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_l2 addr;
-	int err;
+	BtIOError err;
 
-	err = l2cap_bind(io_ctxt, src, psm, mtu, flags, &addr);
+	io_ctxt->func = func;
+
+	err = l2cap_bind(io_ctxt, io->src, io->psm, io->mtu, io->flags, &addr);
 	if (err < 0)
 		return err;
 
-	err = transport_listen(io_ctxt);
+	err = transport_listen(io);
 	if (err < 0) {
 		close(io_ctxt->fd);
 		return err;
 	}
 
-	return 0;
+	return BT_IO_SUCCESS;
 }
 
-static int l2cap_connect(struct io_context *io_ctxt, const bdaddr_t *src,
-				const bdaddr_t *dst, uint16_t psm,
-				uint16_t mtu)
+static BtIOError l2cap_connect(BtIO *io, BtIOFunc func)
 {
+	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_l2 l2a;
-	int err;
+	BtIOError err;
 
-	err = l2cap_bind(io_ctxt, src, 0, mtu, 0, &l2a);
+	io_ctxt->func = func;
+
+	err = l2cap_bind(io_ctxt, io->src, 0, io->mtu, 0, &l2a);
 	if (err < 0)
 		return err;
 
 	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
-	bacpy(&l2a.l2_bdaddr, dst);
-	l2a.l2_psm = htobs(psm);
+	str2ba(io->dst, &l2a.l2_bdaddr);
+	l2a.l2_psm = htobs(io->psm);
 
-	err = transport_connect(io_ctxt, (struct sockaddr *) &l2a,
+	err = transport_connect(io, (struct sockaddr *) &l2a,
 				sizeof(l2a));
 	if (err < 0) {
 		close(io_ctxt->fd);
 		return err;
 	}
 
-	return 0;
+	return BT_IO_SUCCESS;
 }
 
-static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
+static BtIOError rfcomm_bind(struct io_context *io_ctxt, const char *address,
 				uint8_t channel, uint32_t flags,
 				struct sockaddr_rc *addr)
 {
-	int err;
+	BtIOError err;
 
 	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (io_ctxt->fd < 0)
-		return -errno;
+		return BT_IO_FAILED;
 
 	if (flags) {
 		int opt = flags;
@@ -749,36 +790,38 @@ static int rfcomm_bind(struct io_context *io_ctxt, const bdaddr_t *src,
 				sizeof(opt));
 		if (err < 0) {
 			close(io_ctxt->fd);
-			return -errno;
+			return BT_IO_FAILED;
 		}
 	}
 
 	memset(addr, 0, sizeof(*addr));
 	addr->rc_family = AF_BLUETOOTH;
-	bacpy(&addr->rc_bdaddr, src);
+	str2ba(address, &addr->rc_bdaddr);
 	addr->rc_channel = channel;
 
 	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
 	if (err < 0) {
 		close(io_ctxt->fd);
-		return -errno;
+		return BT_IO_FAILED;
 	}
 
-	return 0;
+	return BT_IO_SUCCESS;
 }
 
-static int rfcomm_listen(struct io_context *io_ctxt, const bdaddr_t *src,
-				uint8_t *channel, uint32_t flags)
+static BtIOError rfcomm_listen(BtIO *io, BtIOFunc func)
 {
+	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_rc addr;
 	socklen_t sa_len;
-	int err;
+	BtIOError err;
 
-	err = rfcomm_bind(io_ctxt, src, *channel, flags, &addr);
+	io_ctxt->func = func;
+
+	err = rfcomm_bind(io_ctxt, io->src, io->channel, io->flags, &addr);
 	if (err < 0)
 		return err;
 
-	err = transport_listen(io_ctxt);
+	err = transport_listen(io);
 	if (err < 0) {
 		close(io_ctxt->fd);
 		return err;
@@ -792,44 +835,47 @@ static int rfcomm_listen(struct io_context *io_ctxt, const bdaddr_t *src,
 		return err;
 	}
 
-	*channel = addr.rc_channel;
+	io->channel = addr.rc_channel;
 
-	return 0;
+	return BT_IO_SUCCESS;
 }
 
-static int rfcomm_connect(struct io_context *io_ctxt, const bdaddr_t *src,
-				const bdaddr_t *dst, uint8_t channel)
+static BtIOError rfcomm_connect(BtIO *io, BtIOFunc func)
 {
+	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_rc addr;
-	int err;
+	BtIOError err;
 
-	err = rfcomm_bind(io_ctxt, src, 0, 0, &addr);
+	io_ctxt->func = func;
+
+	err = rfcomm_bind(io_ctxt, io->src, 0, 0, &addr);
 	if (err < 0)
 		return err;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, dst);
-	addr.rc_channel = channel;
+	str2ba(io->dst, &addr.rc_bdaddr);
+	addr.rc_channel = io->channel;
 
-	err = transport_connect(io_ctxt, (struct sockaddr *) &addr,
+	err = transport_connect(io, (struct sockaddr *) &addr,
 				sizeof(addr));
 	if (err < 0) {
 		close(io_ctxt->fd);
 		return err;
 	}
 
-	return 0;
+	return BT_IO_SUCCESS;
 }
 
-static int create_io_context(struct io_context **io_ctxt, gpointer cb,
-			gpointer resolver, gpointer user_data)
+static int create_io_context(struct io_context **io_ctxt, BtIOFunc func,
+			gpointer cb, gpointer resolver, gpointer user_data)
 {
 	*io_ctxt = g_try_malloc0(sizeof(struct search_context));
 	if (!*io_ctxt)
 		return -ENOMEM;
 
 	(*io_ctxt)->cb = cb;
+	(*io_ctxt)->func = func;
 	(*io_ctxt)->resolver = resolver;
 	(*io_ctxt)->user_data = user_data;
 
@@ -848,20 +894,26 @@ static void io_context_cleanup(struct io_context *io_ctxt)
 GIOChannel *rfcomm_listen_internal(const bdaddr_t *src, uint8_t *channel,
 			uint32_t flags, bt_io_callback_t cb, void *user_data)
 {
-	struct io_context *io_ctxt;
-	int err;
+	BtIO *io;
+	BtIOError err;
 
-	err = create_io_context(&io_ctxt, cb, rfcomm_resolver, user_data);
-	if (err < 0)
+	io = bt_io_create(BT_RFCOMM, user_data, NULL);
+	if (!io)
 		return NULL;
 
-	err = rfcomm_listen(io_ctxt, src, channel, flags);
-	if (err < 0) {
-		io_context_cleanup(io_ctxt);
+	ba2str(src, io->src);
+	io->channel = *channel;
+	io->flags = flags;
+	io->io_ctxt->cb = cb;
+	err = bt_io_listen(io, NULL, NULL);
+	if (err != BT_IO_SUCCESS) {
+		bt_io_unref(io);
 		return NULL;
 	}
 
-	return io_ctxt->io;
+	*channel = io->channel;
+
+	return io->io_ctxt->io;
 }
 
 GIOChannel *bt_rfcomm_listen_allocate(const bdaddr_t *src, uint8_t *channel,
@@ -882,22 +934,27 @@ GIOChannel *bt_rfcomm_listen(const bdaddr_t *src, uint8_t channel,
 		return NULL;
 
 	return rfcomm_listen_internal(src, &channel, flags, cb, user_data);
+
 }
 
 int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			uint8_t channel, bt_io_callback_t cb, void *user_data)
 {
-	struct io_context *io_ctxt;
-	int err;
+	BtIO *io;
+	BtIOError err;
 
-	err = create_io_context(&io_ctxt, cb, rfcomm_resolver, user_data);
-	if (err < 0)
-		return err;
+	io = bt_io_create(BT_RFCOMM, user_data, NULL);
+	if (!io)
+		return -1;
 
-	err = rfcomm_connect(io_ctxt, src, dst, channel);
-	if (err < 0) {
-		io_context_cleanup(io_ctxt);
-		return err;
+	ba2str(src, io->src);
+	ba2str(dst, io->dst);
+	io->channel = channel;
+	io->io_ctxt->cb = cb;
+	err = bt_io_connect(io, NULL, NULL);
+	if (err != BT_IO_SUCCESS) {
+		bt_io_unref(io);
+		return -1;
 	}
 
 	return 0;
@@ -906,37 +963,47 @@ int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
 GIOChannel *bt_l2cap_listen(const bdaddr_t *src, uint16_t psm, uint16_t mtu,
 			uint32_t flags, bt_io_callback_t cb, void *user_data)
 {
-	struct io_context *io_ctxt;
-	int err;
+	BtIO *io;
+	BtIOError err;
 
-	err = create_io_context(&io_ctxt, cb, l2cap_resolver, user_data);
-	if (err < 0)
+	io = bt_io_create(BT_L2CAP, user_data, NULL);
+	if (!io)
 		return NULL;
 
-	err = l2cap_listen(io_ctxt, src, psm, mtu, flags);
-	if (err < 0) {
-		io_context_cleanup(io_ctxt);
+	ba2str(src, io->src);
+	io->psm = psm;
+	io->mtu = mtu;
+	io->flags = flags;
+	io->io_ctxt->cb = cb;
+	err = bt_io_listen(io, NULL, NULL);
+	if (err != BT_IO_SUCCESS) {
+		bt_io_unref(io);
 		return NULL;
 	}
 
-	return io_ctxt->io;
+	return io->io_ctxt->io;
 }
 
 int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			uint16_t psm, uint16_t mtu, bt_io_callback_t cb,
 			void *user_data)
 {
-	struct io_context *io_ctxt;
-	int err;
+	BtIO *io;
+	BtIOError err;
 
-	err = create_io_context(&io_ctxt, cb, l2cap_resolver, user_data);
-	if (err < 0)
-		return err;
+	io = bt_io_create(BT_L2CAP, user_data, NULL);
+	if (!io)
+		return -1;
 
-	err = l2cap_connect(io_ctxt, src, dst, psm, mtu);
-	if (err < 0) {
-		io_context_cleanup(io_ctxt);
-		return err;
+	ba2str(src, io->src);
+	ba2str(dst, io->dst);
+	io->psm = psm;
+	io->mtu = mtu;
+	io->io_ctxt->cb = cb;
+	err = bt_io_connect(io, NULL, NULL);
+	if (err != BT_IO_SUCCESS) {
+		bt_io_unref(io);
+		return -1;
 	}
 
 	return 0;
@@ -945,18 +1012,188 @@ int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
 int bt_sco_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			bt_io_callback_t cb, void *user_data)
 {
-	struct io_context *io_ctxt;
-	int err;
+	BtIO *io;
+	BtIOError err;
 
-	err = create_io_context(&io_ctxt, cb, sco_resolver, user_data);
-	if (err < 0)
-		return err;
+	io = bt_io_create(BT_SCO, user_data, NULL);
+	if (!io)
+		return -1;
 
-	err = sco_connect(io_ctxt, src, dst);
-	if (err < 0) {
-		io_context_cleanup(io_ctxt);
-		return err;
+	ba2str(src, io->src);
+	ba2str(dst, io->dst);
+	io->io_ctxt->cb = cb;
+	err = bt_io_connect(io, NULL, NULL);
+	if (err != BT_IO_SUCCESS) {
+		bt_io_unref(io);
+		return -1;
 	}
 
 	return 0;
+}
+
+/* Experiemental bt_io API */
+
+BtIO *bt_io_create(BtIOTransport type, gpointer user_data, GDestroyNotify notify)
+{
+	BtIO *io;
+	int err;
+
+	io = g_new0(BtIO, 1);
+	if (!io)
+		return NULL;
+
+	io->refcount = 1;
+
+	switch (type) {
+	case BT_L2CAP:
+		err = create_io_context(&io->io_ctxt, NULL, NULL,
+				l2cap_resolver, user_data);
+		io->connect = l2cap_connect;
+		io->listen = l2cap_listen;
+		break;
+	case BT_RFCOMM:
+		err = create_io_context(&io->io_ctxt, NULL, NULL,
+				rfcomm_resolver, user_data);
+		io->connect = rfcomm_connect;
+		io->listen = rfcomm_listen;
+		break;
+	case BT_SCO:
+		err = create_io_context(&io->io_ctxt, NULL, NULL,
+				sco_resolver, user_data);
+		io->connect = sco_connect;
+		break;
+	default:
+		return NULL;
+	}
+
+	if (err < 0) {
+		bt_io_unref(io);
+		return NULL;
+	}
+
+	return io;
+}
+
+BtIO *bt_io_ref(BtIO *io)
+{
+	io->refcount++;
+
+	return io;
+}
+
+void bt_io_unref(BtIO *io)
+{
+	io->refcount--;
+
+	if (io->refcount)
+		return;
+
+	io_context_cleanup(io->io_ctxt);
+	g_free(io);
+}
+
+gboolean bt_io_set_source(BtIO *io, const char *address)
+{
+	if (strlen(address) != sizeof(io->src))
+		return FALSE;
+
+	memcpy(io->src, address, sizeof(io->src));
+
+	return TRUE;
+}
+
+const char *bt_io_get_source(BtIO *io)
+{
+	return io->src;
+}
+
+gboolean bt_io_set_destination(BtIO *io, const char *address)
+{
+	if (strlen(address) != sizeof(io->dst))
+		return FALSE;
+
+	memcpy(io->dst, address, sizeof(io->dst));
+
+	return TRUE;
+}
+
+const char *bt_io_get_destination(BtIO *io)
+{
+	return io->dst;
+}
+
+gboolean bt_io_set_flags(BtIO *io, guint32 flags)
+{
+	io->flags = flags;
+
+	return TRUE;
+}
+
+guint32 bt_io_get_flags(BtIO *io)
+{
+	return io->flags;
+}
+
+gboolean bt_io_set_channel(BtIO *io, guint8 channel)
+{
+	if (io->type != BT_RFCOMM)
+		return FALSE;
+
+	io->channel = channel;
+
+	return TRUE;
+}
+
+guint8 bt_io_get_channel(BtIO *io)
+{
+	return io->channel;
+}
+
+gboolean bt_io_set_psm(BtIO *io, guint16 psm)
+{
+	if (io->type != BT_L2CAP)
+		return FALSE;
+
+	io->psm = psm;
+
+	return TRUE;
+}
+guint16 bt_io_get_psm(BtIO *io)
+{
+	return io->psm;
+}
+
+gboolean bt_io_set_mtu(BtIO *io, guint16 mtu)
+{
+	io->mtu = mtu;
+
+	return TRUE;
+}
+
+guint16 bt_io_get_mtu(BtIO *io)
+{
+	return io->mtu;
+}
+
+BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func)
+{
+	if (!io->connect)
+		return BT_IO_FAILED;
+
+	return io->connect(io, func);
+}
+
+BtIOError bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func)
+{
+	if (!io->listen)
+		return BT_IO_FAILED;
+
+	return io->listen(io, func);
+}
+
+BtIOError bt_io_shutdown(BtIO *io)
+{
+	io_context_cleanup(io->io_ctxt);
+
+	return BT_IO_SUCCESS;
 }
