@@ -897,7 +897,7 @@ GIOChannel *rfcomm_listen_internal(const bdaddr_t *src, uint8_t *channel,
 	BtIO *io;
 	BtIOError err;
 
-	io = bt_io_create(BT_RFCOMM, user_data, NULL);
+	io = bt_io_create(BT_IO_RFCOMM, user_data, NULL);
 	if (!io)
 		return NULL;
 
@@ -943,7 +943,7 @@ int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	BtIO *io;
 	BtIOError err;
 
-	io = bt_io_create(BT_RFCOMM, user_data, NULL);
+	io = bt_io_create(BT_IO_RFCOMM, user_data, NULL);
 	if (!io)
 		return -1;
 
@@ -966,7 +966,7 @@ GIOChannel *bt_l2cap_listen(const bdaddr_t *src, uint16_t psm, uint16_t mtu,
 	BtIO *io;
 	BtIOError err;
 
-	io = bt_io_create(BT_L2CAP, user_data, NULL);
+	io = bt_io_create(BT_IO_L2CAP, user_data, NULL);
 	if (!io)
 		return NULL;
 
@@ -991,7 +991,7 @@ int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	BtIO *io;
 	BtIOError err;
 
-	io = bt_io_create(BT_L2CAP, user_data, NULL);
+	io = bt_io_create(BT_IO_L2CAP, user_data, NULL);
 	if (!io)
 		return -1;
 
@@ -1015,7 +1015,7 @@ int bt_sco_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	BtIO *io;
 	BtIOError err;
 
-	io = bt_io_create(BT_SCO, user_data, NULL);
+	io = bt_io_create(BT_IO_SCO, user_data, NULL);
 	if (!io)
 		return -1;
 
@@ -1045,19 +1045,19 @@ BtIO *bt_io_create(BtIOTransport type, gpointer user_data, GDestroyNotify notify
 	io->refcount = 1;
 
 	switch (type) {
-	case BT_L2CAP:
+	case BT_IO_L2CAP:
 		err = create_io_context(&io->io_ctxt, NULL, NULL,
 				l2cap_resolver, user_data);
 		io->connect = l2cap_connect;
 		io->listen = l2cap_listen;
 		break;
-	case BT_RFCOMM:
+	case BT_IO_RFCOMM:
 		err = create_io_context(&io->io_ctxt, NULL, NULL,
 				rfcomm_resolver, user_data);
 		io->connect = rfcomm_connect;
 		io->listen = rfcomm_listen;
 		break;
-	case BT_SCO:
+	case BT_IO_SCO:
 		err = create_io_context(&io->io_ctxt, NULL, NULL,
 				sco_resolver, user_data);
 		io->connect = sco_connect;
@@ -1136,7 +1136,7 @@ guint32 bt_io_get_flags(BtIO *io)
 
 gboolean bt_io_set_channel(BtIO *io, guint8 channel)
 {
-	if (io->type != BT_RFCOMM)
+	if (io->type != BT_IO_RFCOMM)
 		return FALSE;
 
 	io->channel = channel;
@@ -1151,7 +1151,7 @@ guint8 bt_io_get_channel(BtIO *io)
 
 gboolean bt_io_set_psm(BtIO *io, guint16 psm)
 {
-	if (io->type != BT_L2CAP)
+	if (io->type != BT_IO_L2CAP)
 		return FALSE;
 
 	io->psm = psm;
