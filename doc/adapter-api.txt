@@ -184,6 +184,24 @@ Methods		dict GetProperties()
 					 org.bluez.Error.DoesNotExist
 					 org.bluez.Error.Failed
 
+		void RequestAuthorization(string address, uint32 handle)
+
+			Request an authorization for an incoming connection
+			for a specific service record. The service record
+			needs to be registered via AddServiceRecord first.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
+
+		void CancelAuthorization()
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
