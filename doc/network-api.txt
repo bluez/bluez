@@ -14,7 +14,8 @@ Object path	/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 Methods		string Connect(string uuid)
 
 			Connect to the network device and return the network
-			device name.
+			device name. Examples of the device name are bnep0,
+			bnep1 etc.
 
 			Possible errors: org.bluez.Error.AlreadyConnected
 					 org.bluez.Error.ConnectionAttemptFailed
