@@ -21,7 +21,7 @@ class Agent(dbus.service.Object):
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="s")
-	def RequestPasskey(self, device):
+	def RequestPinCode(self, device):
 		print "RequestPinCode (" + device + ")"
 		return "1234"
 
