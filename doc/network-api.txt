@@ -11,12 +11,13 @@ Service		org.bluez
 Interface	org.bluez.Network
 Object path	/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		void Connect()
+Methods		string Connect(string uuid)
 
-			Connect to the network device.
+			Connect to the network device and return the network
+			device name.
 
 			Possible errors: org.bluez.Error.AlreadyConnected
-			                 org.bluez.Error.ConnectionAttemptFailed
+					 org.bluez.Error.ConnectionAttemptFailed
 
 		void Disconnect()
 
@@ -31,6 +32,6 @@ Methods		void Connect()
 
 			Returns the connection status.
 
-Signals		void Connected()
+Signals		void Connected(string device, string uuid)
 
-		void Disconnected()
+		void Disconnected(string device)
