@@ -379,8 +379,8 @@ failed:
 	error_failed(pending->conn, pending->msg, "Stream setup failed");
 }
 
-static DBusHandlerResult sink_connect(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *sink_connect(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct audio_device *dev = data;
 	struct sink *sink = dev->sink;
@@ -390,14 +390,17 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 		sink->session = avdtp_get(&dev->src, &dev->dst);
 
 	if (!sink->session)
-		return error_failed(conn, msg, "Unable to get a session");
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+						"Unable to get a session");
 
 	if (sink->connect || sink->disconnect)
-		return error_in_progress(conn, msg, "Device connection"
-					"already in progress");
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+						"%s", strerror(EBUSY));
 
 	if (sink->state >= AVDTP_STATE_OPEN)
-		return error_already_connected(conn, msg);
+		return g_dbus_create_error(msg, ERROR_INTERFACE
+						".AlreadyConnected",
+						"Device Already Connected");
 
 	pending = g_new0(struct pending_request, 1);
 	pending->conn = dbus_connection_ref(conn);
@@ -408,11 +411,11 @@ static DBusHandlerResult sink_connect(DBusConnection *conn,
 
 	debug("stream creation in progress");
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
-static DBusHandlerResult sink_disconnect(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *sink_disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
 	struct audio_device *device = data;
 	struct sink *sink = device->sink;
@@ -420,35 +423,39 @@ static DBusHandlerResult sink_disconnect(DBusConnection *conn,
 	int err;
 
 	if (!sink->session)
-		return error_not_connected(conn, msg);
+		return g_dbus_create_error(msg, ERROR_INTERFACE
+						".NotConnected",
+						"Device not Connected");
 
 	if (sink->connect || sink->disconnect)
-		return error_failed(conn, msg, strerror(EBUSY));
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+						"%s", strerror(EBUSY));
 
 	if (sink->state < AVDTP_STATE_OPEN) {
 		DBusMessage *reply = dbus_message_new_method_return(msg);
 		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+			return NULL;
 		avdtp_unref(sink->session);
 		sink->session = NULL;
-		return send_message_and_unref(conn, reply);
+		return reply;
 	}
 
 	err = avdtp_close(sink->session, sink->stream);
 	if (err < 0)
-		return error_failed(conn, msg, strerror(-err));
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+						"%s", strerror(-err));
 
 	pending = g_new0(struct pending_request, 1);
 	pending->conn = dbus_connection_ref(conn);
 	pending->msg = dbus_message_ref(msg);
 	sink->disconnect = pending;
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
-static DBusHandlerResult sink_is_connected(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
+static DBusMessage *sink_is_connected(DBusConnection *conn,
+					DBusMessage *msg,
+					void *data)
 {
 	struct audio_device *device = data;
 	struct sink *sink = device->sink;
@@ -457,26 +464,26 @@ static DBusHandlerResult sink_is_connected(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	connected = (sink->state >= AVDTP_STATE_CONFIGURED);
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
 
-	send_message_and_unref(conn, reply);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return reply;
 }
 
-static DBusMethodVTable sink_methods[] = {
-	{ "Connect",		sink_connect,		"",	""	},
-	{ "Disconnect",		sink_disconnect,	"",	""	},
-	{ "IsConnected",	sink_is_connected,	"",	"b"	},
+static GDBusMethodTable sink_methods[] = {
+	{ "Connect",		"",	"",	sink_connect,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "Disconnect",		"",	"",	sink_disconnect,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "IsConnected",	"",	"b",	sink_is_connected },
 	{ NULL, NULL, NULL, NULL }
 };
 
-static DBusSignalVTable sink_signals[] = {
+static GDBusSignalTable sink_signals[] = {
 	{ "Connected",			""	},
 	{ "Disconnected",		""	},
 	{ "Playing",			""	},
@@ -486,10 +493,10 @@ static DBusSignalVTable sink_signals[] = {
 
 struct sink *sink_init(struct audio_device *dev)
 {
-	if (!dbus_connection_register_interface(dev->conn, dev->path,
-						AUDIO_SINK_INTERFACE,
-						sink_methods,
-						sink_signals, NULL))
+	if (!g_dbus_register_interface(dev->conn, dev->path,
+					AUDIO_SINK_INTERFACE,
+					sink_methods, sink_signals, NULL,
+					dev, NULL))
 		return NULL;
 
 	return g_new0(struct sink, 1);

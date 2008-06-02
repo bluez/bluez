@@ -120,7 +120,7 @@ static struct enabled_interfaces enabled = {
 	.control	= TRUE,
 };
 
-static DBusHandlerResult get_records(uuid_t *uuid, struct audio_sdp_data *data);
+static DBusMessage *get_records(uuid_t *uuid, struct audio_sdp_data *data);
 
 static struct audio_device *create_device(const bdaddr_t *bda)
 {
@@ -430,7 +430,7 @@ static void get_records_cb(sdp_list_t *recs, int err, gpointer user_data)
 	get_records(&uuid, data);
 }
 
-static DBusHandlerResult get_records(uuid_t *uuid, struct audio_sdp_data *data)
+static DBusMessage *get_records(uuid_t *uuid, struct audio_sdp_data *data)
 {
 	struct audio_device *device = data->device;
 	int err;
@@ -448,10 +448,10 @@ static DBusHandlerResult get_records(uuid_t *uuid, struct audio_sdp_data *data)
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult resolve_services(DBusMessage *msg,
-						struct audio_device *device,
-						create_dev_cb_t cb,
-						void *user_data)
+static DBusMessage *resolve_services(DBusMessage *msg,
+					struct audio_device *device,
+					create_dev_cb_t cb,
+					void *user_data)
 {
 	struct audio_sdp_data *sdp_data;
 	uuid_t uuid;
@@ -568,9 +568,9 @@ gboolean manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
 	return TRUE;
 }
 
-static DBusHandlerResult am_create_device(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
+static DBusMessage *am_create_device(DBusConnection *conn,
+					DBusMessage *msg,
+					void *data)
 {
 	const char *address, *path;
 	bdaddr_t bda;
@@ -601,15 +601,15 @@ static DBusHandlerResult am_create_device(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult am_list_devices(DBusConnection *conn,
+static DBusMessage *am_list_devices(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
@@ -618,7 +618,6 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 	DBusError derr;
 	GSList *l;
 	gboolean hs_only = FALSE;
-
 
 	dbus_error_init(&derr);
 
@@ -630,7 +629,7 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -649,7 +648,7 @@ static DBusHandlerResult am_list_devices(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	return send_message_and_unref(connection, reply);
+	return reply;
 }
 
 static gint device_path_cmp(gconstpointer a, gconstpointer b)
@@ -660,36 +659,28 @@ static gint device_path_cmp(gconstpointer a, gconstpointer b)
 	return strcmp(device->path, path);
 }
 
-static DBusHandlerResult am_remove_device(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
+static DBusMessage *am_remove_device(DBusConnection *conn,
+					DBusMessage *msg,
+					void *data)
 {
-	DBusError derr;
 	DBusMessage *reply;
 	GSList *match;
 	const char *path;
 	struct audio_device *device;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(connection, msg, derr.message);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-	if (dbus_error_is_set(&derr)) {
-		error_invalid_arguments(connection, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+					DBUS_TYPE_INVALID))
+		return NULL;
 
 	match = g_slist_find_custom(devices, path, device_path_cmp);
 	if (!match)
-		return error_device_does_not_exist(connection, msg);
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
+						"Device does not exists");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	device = match->data;
 	device_remove_stored(device);
@@ -737,99 +728,88 @@ static DBusHandlerResult am_remove_device(DBusConnection *conn,
 					DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(connection, reply);
+	return reply;
 }
 
-static DBusHandlerResult am_find_by_addr(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
+static DBusMessage *am_find_by_addr(DBusConnection *conn,
+					DBusMessage *msg,
+					void *data)
 {
 	const char *address;
 	DBusMessage *reply;
-	DBusError derr;
 	struct audio_device *device;
 	bdaddr_t bda;
 
-	dbus_error_init(&derr);
-	dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_INVALID);
-	if (dbus_error_is_set(&derr)) {
-		error_invalid_arguments(connection, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	str2ba(address, &bda);
 	device = manager_find_device(&bda, NULL, FALSE);
 
 	if (!device)
-		return error_device_does_not_exist(conn, msg);
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
+						"Device does not exists");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &device->path,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult am_default_device(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
+static DBusMessage *am_default_device(DBusConnection *conn,
+					DBusMessage *msg,
+					void *data)
 {
 	DBusMessage *reply;
 
 	if (!default_dev)
-		return error_device_does_not_exist(connection, msg);
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
+						"Device does not exists");
 
 	if (default_dev->headset == NULL &&
 		dbus_message_is_method_call(msg, AUDIO_MANAGER_INTERFACE,
 							"DefaultHeadset"))
-		return error_device_does_not_exist(connection, msg);
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
+						"Device does not exists");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &default_dev->path,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(connection, reply);
+	return reply;
 }
 
-static DBusHandlerResult am_change_default_device(DBusConnection *conn,
-							DBusMessage *msg,
-							void *data)
+static DBusMessage *am_change_default_device(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
 {
-	DBusError derr;
 	DBusMessage *reply;
 	GSList *match;
 	const char *path;
 	struct audio_device *device;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(connection, msg, derr.message);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-	if (dbus_error_is_set(&derr)) {
-		error_invalid_arguments(connection, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+					DBUS_TYPE_INVALID))
+		return NULL;
 
 	match = g_slist_find_custom(devices, path, device_path_cmp);
 	if (!match)
-		return error_device_does_not_exist(connection, msg);
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
+						"Device does not exists");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	device = match->data;
 
@@ -847,47 +827,40 @@ static DBusHandlerResult am_change_default_device(DBusConnection *conn,
 						DBUS_TYPE_STRING, &device->path,
 						DBUS_TYPE_INVALID);
 	else
-		return error_device_does_not_exist(connection, msg);
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
+						"Device does not exists");
 
 	default_dev = device;
 	device_store(device, TRUE);
-	return send_message_and_unref(connection, reply);
+
+	return reply;
 }
 
-static DBusMethodVTable manager_methods[] = {
-	{ "CreateDevice",		am_create_device,
-		"s",	"s"		},
-	{ "RemoveDevice",		am_remove_device,
-		"s",	""		},
-	{ "ListDevices",		am_list_devices,
-		"",	"as"		},
-	{ "DefaultDevice",		am_default_device,
-		"",	"s"		},
-	{ "ChangeDefaultDevice",	am_change_default_device,
-		"s",	""		},
-	{ "CreateHeadset",		am_create_device,
-		"s",	"s"		},
-	{ "RemoveHeadset",		am_remove_device,
-		"s",	""		},
-	{ "ListHeadsets",		am_list_devices,
-		"",	"as"		},
-	{ "FindDeviceByAddress",	am_find_by_addr,
-		"s",	"s"		},
-	{ "DefaultHeadset",		am_default_device,
-		"",	"s"		},
-	{ "ChangeDefaultHeadset",	am_change_default_device,
-		"s",	""		},
-	{ NULL, NULL, NULL, NULL },
+static GDBusMethodTable manager_methods[] = {
+	{ "CreateDevice",		"s",	"s",	am_create_device,
+							G_DBUS_METHOD_FLAG_ASYNC },
+	{ "RemoveDevice",		"s",	"",	am_remove_device },
+	{ "ListDevices",		"",	"as",	am_list_devices },
+	{ "DefaultDevice",		"",	"s",	am_default_device },
+	{ "ChangeDefaultDevice",	"s",	"",	am_change_default_device },
+	{ "CreateHeadset",		"s",	"s",	am_create_device,
+							G_DBUS_METHOD_FLAG_ASYNC },
+	{ "RemoveHeadset",		"s",	"",	am_remove_device },
+	{ "ListHeadsets",		"",	"as",	am_list_devices },
+	{ "FindDeviceByAddress",	"s",	"s",	am_find_by_addr },
+	{ "DefaultHeadset",		"",	"s",	am_default_device },
+	{ "ChangeDefaultHeadset",	"s",	"",	am_change_default_device },
+	{ }
 };
 
-static DBusSignalVTable manager_signals[] = {
+static GDBusSignalTable manager_signals[] = {
 	{ "DeviceCreated",		"s"	},
 	{ "DeviceRemoved",		"s"	},
 	{ "HeadsetCreated",		"s"	},
 	{ "HeadsetRemoved",		"s"	},
 	{ "DefaultDeviceChanged",	"s"	},
 	{ "DefaultHeadsetChanged",	"s"	},
-	{ NULL, NULL }
+	{ }
 };
 
 static void parse_stored_devices(char *key, char *value, void *data)
@@ -992,7 +965,7 @@ static void register_stored(void)
 	closedir(dir);
 }
 
-static void manager_unregister(DBusConnection *conn, void *data)
+static void manager_unregister(void *data)
 {
 	info("Unregistered manager path");
 
@@ -1501,12 +1474,6 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *config)
 	g_strfreev(list);
 
 proceed:
-	if (!dbus_connection_create_object_path(conn, AUDIO_MANAGER_PATH,
-						NULL, manager_unregister)) {
-		error("D-Bus failed to register %s path", AUDIO_MANAGER_PATH);
-		goto failed;
-	}
-
 	if (enabled.headset) {
 		if (headset_server_init(conn, config) < 0)
 			goto failed;
@@ -1525,10 +1492,10 @@ proceed:
 	if (enabled.control && avrcp_init(conn, config) < 0)
 		goto failed;
 
-	if (!dbus_connection_register_interface(conn, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						manager_methods,
-						manager_signals, NULL)) {
+	if (!g_dbus_register_interface(conn, AUDIO_MANAGER_PATH,
+					AUDIO_MANAGER_INTERFACE,
+					manager_methods, manager_signals,
+					NULL, NULL, manager_unregister)) {
 		error("Failed to register %s interface to %s",
 				AUDIO_MANAGER_INTERFACE, AUDIO_MANAGER_PATH);
 		goto failed;

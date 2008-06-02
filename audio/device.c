@@ -54,7 +54,7 @@
 #include "headset.h"
 #include "sink.h"
 
-static DBusHandlerResult device_get_address(DBusConnection *conn,
+static DBusMessage *device_get_address(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct audio_device *device = data;
@@ -63,14 +63,14 @@ static DBusHandlerResult device_get_address(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	ba2str(&device->dst, address);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
 							DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
 static char *get_dev_name(DBusConnection *conn, const bdaddr_t *src,
@@ -87,7 +87,7 @@ static char *get_dev_name(DBusConnection *conn, const bdaddr_t *src,
 	return textfile_caseget(filename, address);
 }
 
-static DBusHandlerResult device_get_name(DBusConnection *conn,
+static DBusMessage *device_get_name(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct audio_device *dev = data;
@@ -96,15 +96,15 @@ static DBusHandlerResult device_get_name(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &name,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult device_get_adapter(DBusConnection *conn,
+static DBusMessage *device_get_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct audio_device *device = data;
@@ -113,18 +113,18 @@ static DBusHandlerResult device_get_adapter(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	ba2str(&device->src, address);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &ptr,
 							DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
 
-static DBusHandlerResult device_get_connected(DBusConnection *conn,
+static DBusMessage *device_get_connected(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter, array_iter;
@@ -134,7 +134,7 @@ static DBusHandlerResult device_get_connected(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -151,15 +151,15 @@ static DBusHandlerResult device_get_connected(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusMethodVTable device_methods[] = {
-	{ "GetAddress",			device_get_address,	"",	"s" },
-	{ "GetName",			device_get_name,	"",	"s" },
-	{ "GetAdapter",			device_get_adapter,	"",	"s" },
-	{ "GetConnectedInterfaces",	device_get_connected,	"",	"as" },
-	{ NULL, NULL, NULL, NULL }
+static GDBusMethodTable device_methods[] = {
+	{ "GetAddress",			"",	"s",	device_get_address },
+	{ "GetName",			"",	"s",	device_get_name },
+	{ "GetAdapter",			"",	"s",	device_get_adapter },
+	{ "GetConnectedInterfaces",	"",	"as",	device_get_connected },
+	{ }
 };
 
 static void device_free(struct audio_device *dev)
@@ -183,7 +183,7 @@ static void device_free(struct audio_device *dev)
 	g_free(dev);
 }
 
-static void device_unregister(DBusConnection *conn, void *data)
+static void device_unregister(void *data)
 {
 	struct audio_device *device = data;
 
@@ -216,18 +216,13 @@ struct audio_device *device_register(DBusConnection *conn,
 		return NULL;
 	}
 
-	if (!dbus_connection_create_object_path(conn, path, dev,
-							device_unregister)) {
-		error("D-Bus failed to register %s path", path);
-		device_free(dev);
-		return NULL;
-	}
-
-	if (!dbus_connection_register_interface(conn, path,
-			AUDIO_DEVICE_INTERFACE, device_methods, NULL, NULL)) {
+	if (!g_dbus_register_interface(conn, path,
+					AUDIO_DEVICE_INTERFACE,
+					device_methods, NULL, NULL,
+					dev, device_unregister)) {
 		error("Failed to register %s interface to %s",
 					AUDIO_DEVICE_INTERFACE, path);
-		dbus_connection_destroy_object_path(conn, path);
+		device_free(dev);
 		return NULL;
 	}
 

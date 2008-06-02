@@ -920,7 +920,7 @@ void avrcp_exit(void)
 	connection = NULL;
 }
 
-static DBusHandlerResult control_is_connected(DBusConnection *conn,
+static DBusMessage *control_is_connected(DBusConnection *conn,
 						DBusMessage *msg,
 						void *data)
 {
@@ -931,24 +931,22 @@ static DBusHandlerResult control_is_connected(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	connected = (control->session != NULL);
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
 
-	send_message_and_unref(conn, reply);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return reply;
 }
 
-static DBusMethodVTable control_methods[] = {
-	{ "IsConnected",	control_is_connected,	"",	"b"	},
+static GDBusMethodTable control_methods[] = {
+	{ "IsConnected",	"",	"b",	control_is_connected },
 	{ NULL, NULL, NULL, NULL }
 };
 
-static DBusSignalVTable control_signals[] = {
+static GDBusSignalTable control_signals[] = {
 	{ "Connected",			""	},
 	{ "Disconnected",		""	},
 	{ NULL, NULL }
@@ -956,10 +954,10 @@ static DBusSignalVTable control_signals[] = {
 
 struct control *control_init(struct audio_device *dev)
 {
-	if (!dbus_connection_register_interface(dev->conn, dev->path,
-						AUDIO_CONTROL_INTERFACE,
-						control_methods,
-						control_signals, NULL))
+	if (!g_dbus_register_interface(dev->conn, dev->path,
+					AUDIO_CONTROL_INTERFACE,
+					control_methods, control_signals, NULL,
+					dev, NULL))
 		return NULL;
 
 	return g_new0(struct control, 1);
