@@ -3936,11 +3936,11 @@ static DBusMessage *create_device(DBusConnection *conn,
 static DBusMessage *create_paired_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const gchar *address, *agent_path;
+	const gchar *address, *agent_path, *capability;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_OBJECT_PATH,
-						&agent_path,
+					DBUS_TYPE_OBJECT_PATH, &agent_path,
+					DBUS_TYPE_STRING, &capability,
 						DBUS_TYPE_INVALID) == FALSE)
 		return invalid_args(msg);
 
@@ -4234,7 +4234,7 @@ static GDBusMethodTable adapter_methods[] = {
 	{ "ListDevices",	"",	"ao",	list_devices		},
 	{ "CreateDevice",	"s",	"o",	create_device,
 						G_DBUS_METHOD_FLAG_ASYNC},
-	{ "CreatePairedDevice",	"so",	"o",	create_paired_device,
+	{ "CreatePairedDevice",	"sos",	"o",	create_paired_device,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "RemoveDevice",	"o",	"",	remove_device		},
 	{ "FindDevice",		"s",	"o",	find_device		},
