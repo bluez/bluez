@@ -26,6 +26,24 @@ class Agent(dbus.service.Object):
 		return "1234"
 
 	@dbus.service.method("org.bluez.Agent",
+					in_signature="o", out_signature="u")
+	def RequestPasskey(self, device)
+		print "RequestPasskey (" + device + ")"
+		return dbus.UInt32(123456)
+
+	@dbus.service.method("org.bluez.Agent",
+					in_signature="ou", out_signature="")
+	def DisplayPasskey(self, device, passkey)
+		print "DisplayPasskey (" + device + ", " + passkey + ")"
+		return
+
+	@dbus.service.method("org.bluez.Agent",
+					in_signature="ou", out_signature="")
+	def RequestConfirmation(self, device, passkey)
+		print "RequestConfirmation (" + device + ", " + passkey + ")"
+		return
+
+	@dbus.service.method("org.bluez.Agent",
 					in_signature="s", out_signature="")
 	def ConfirmModeChange(self, mode):
 		print "ConfirmModeChange (" + mode + ")"
@@ -51,7 +69,7 @@ if __name__ == '__main__':
 	path = "/test/agent"
 	object = Agent(bus, path)
 
-	adapter.RegisterAgent(path)
+	adapter.RegisterAgent(path, "DisplayOnly")
 	print "Agent registered"
 
 	mainloop = gobject.MainLoop()
