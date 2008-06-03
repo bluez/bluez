@@ -859,6 +859,12 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 	return TRUE;
 }
 
+gboolean g_dbus_unregister_all_interfaces(DBusConnection *connection,
+							const char *path)
+{
+	return FALSE;
+}
+
 DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
 					const char *format, va_list args)
 {
