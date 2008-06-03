@@ -1569,7 +1569,7 @@ static DBusMessage *remove_proxy(DBusConnection *conn,
 	g_free(l->data);
 	proxies_paths = g_slist_remove(proxies_paths, l->data);
 
-	dbus_connection_destroy_object_path(conn, path);
+	g_dbus_unregister_interface(conn, path, SERIAL_PROXY_INTERFACE);
 
 	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ProxyRemoved",
