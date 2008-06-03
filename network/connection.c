@@ -77,6 +77,15 @@ struct __service_16 {
 
 static DBusConnection *connection = NULL;
 static const char *prefix = NULL;
+static GSList *connections = NULL;
+
+gint find_connection(gconstpointer a, gconstpointer b)
+{
+	const struct network_conn *nc = a;
+	const char *path = b;
+
+	return strcmp(nc->path, path);
+}
 
 static inline DBusMessage *not_supported(DBusMessage *msg)
 {
@@ -492,6 +501,7 @@ static void connection_unregister(void *data)
 
 	info("Unregistered connection path:%s", nc->path);
 
+	connections = g_slist_remove(connections, nc);
 	connection_free(nc);
 }
 
@@ -555,6 +565,8 @@ int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 	strncpy(nc->dev, prefix, strlen(prefix));
 	nc->state = DISCONNECTED;
 
+	connections = g_slist_append(connections, nc);
+
 	info("Registered connection path:%s", path);
 
 	return 0;
@@ -568,11 +580,13 @@ int connection_store(const char *path, gboolean default_path)
 	char filename[PATH_MAX + 1];
 	char src_addr[18], dst_addr[18];
 	int len, err;
+	GSList *l;
 
-	if (!dbus_connection_get_object_user_data(connection,
-				path, (void *) &nc))
+	l = g_slist_find_custom(connections, path, find_connection);
+	if (!l)
 		return -ENOENT;
 
+	nc = l->data;
 	if (!nc->name || !nc->desc)
 		return -EINVAL;
 
@@ -604,11 +618,13 @@ int connection_find_data(const char *path, const char *pattern)
 	struct network_conn *nc;
 	char addr[18], key[32];
 	const char *role;
+	GSList *l;
 
-	if (!dbus_connection_get_object_user_data(connection,
-		path, (void *) &nc))
+	l = g_slist_find_custom(connections, path, find_connection);
+	if (!l)
 		return -1;
 
+	nc = l->data;
 	if (strcasecmp(pattern, nc->dev) == 0)
 		return 0;
 

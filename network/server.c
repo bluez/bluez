@@ -95,6 +95,14 @@ static GSList *servers = NULL;
 static const char *prefix = NULL;
 static gboolean security = TRUE;
 
+gint find_server(gconstpointer a, gconstpointer b)
+{
+	const struct network_server *ns = a;
+	const char *path = b;
+
+	return strcmp(ns->path, path);
+}
+
 static struct setup_session *setup_session_new(gchar *address,
 		uint16_t dst_role, uint16_t src_role, int nsk, guint watch)
 {
@@ -720,8 +728,8 @@ static uint32_t register_server_record(struct network_server *ns)
 	return record->handle;
 }
 
-static DBusHandlerResult get_uuid(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *get_uuid(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
@@ -729,31 +737,46 @@ static DBusHandlerResult get_uuid(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	uuid = bnep_uuid(ns->id);
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult enable(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static inline DBusMessage *failed(DBusMessage *msg, const char *description)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+				description);
+}
+
+static inline DBusMessage *invalid_arguments(DBusMessage *msg,
+					const char *description)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
+				description);
+}
+
+static DBusMessage *enable(DBusConnection *conn,
+			DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
 
 	if (ns->enable)
-		return error_already_exists(conn, msg, "Server already enabled");
+		return g_dbus_create_error(msg, ERROR_INTERFACE
+						".AlreadyExist",
+						"Server already enabled");
 
 	if (bacmp(&ns->src, BDADDR_ANY) == 0) {
 		int dev_id;
 
 		dev_id = hci_get_route(&ns->src);
 		if ((dev_id < 0) || (hci_devba(dev_id, &ns->src) < 0))
-			return error_failed(conn, msg, "Adapter not available");
+			return failed(msg, "Adapter not available");
 
 		/* Store the server info */
 		server_store(ns->path);
@@ -761,14 +784,13 @@ static DBusHandlerResult enable(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	/* Add the service record */
 	ns->record_id = register_server_record(ns);
 	if (!ns->record_id) {
 		dbus_message_unref(reply);
-		return error_failed(conn, msg,
-				"service record registration failed");
+		return failed(msg, "Service record registration failed");
 	}
 
 	ns->enable = TRUE;
@@ -778,7 +800,7 @@ static DBusHandlerResult enable(DBusConnection *conn,
 	dbus_connection_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
 					"Enabled", DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
 static void kill_connection(void *data, void *udata)
@@ -790,18 +812,18 @@ static void kill_connection(void *data, void *udata)
 	bnep_kill_connection(&dst);
 }
 
-static DBusHandlerResult disable(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *disable(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	if (!ns->enable)
-		return error_failed(conn, msg, "Not enabled");
+		return failed(msg, "Not enabled");
 
 	/* Remove the service record */
 	if (ns->record_id) {
@@ -818,48 +840,43 @@ static DBusHandlerResult disable(DBusConnection *conn,
 	dbus_connection_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
 					"Disabled", DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult is_enabled(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static DBusMessage *is_enabled(DBusConnection *conn, DBusMessage *msg,
+				void *data)
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &ns->enable,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult set_name(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *set_name(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
-	DBusError derr;
 	const char *name;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	if (!name || (strlen(name) == 0))
-		return error_invalid_arguments(conn, msg, "Invalid name");
+		return invalid_arguments(msg, "Invalid name");
 
 	if (ns->name)
 		g_free(ns->name);
@@ -869,7 +886,7 @@ static DBusHandlerResult set_name(DBusConnection *conn,
 		uint32_t handle = register_server_record(ns);
 		if (!handle) {
 			dbus_message_unref(reply);
-			return error_failed(conn, msg,
+			return failed(msg,
 				"Service record attribute update failed");
 		}
 
@@ -879,11 +896,11 @@ static DBusHandlerResult set_name(DBusConnection *conn,
 
 	store_property(&ns->src, ns->id, "name", ns->name);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult get_name(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *get_name(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
 	char name[] = "";
@@ -892,55 +909,45 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &pname,
 			DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult set_address_range(DBusConnection *conn,
+static DBusMessage *set_address_range(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return NULL;
 }
 
-static DBusHandlerResult set_routing(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *set_routing(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
 	struct network_server *ns = data;
-	DBusMessage *reply;
-	DBusError derr;
 	const char *iface;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &iface,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	/* FIXME: Check if the interface is valid/UP */
 	if (!iface || (strlen(iface) == 0))
-		return error_invalid_arguments(conn, msg, "Invalid interface");
+		return invalid_arguments(msg, "Invalid interface");
 
 	if (ns->iface)
 		g_free(ns->iface);
 	ns->iface = g_strdup(iface);
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult get_info(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *get_info(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
@@ -950,7 +957,7 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -968,7 +975,7 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
 static void server_free(struct network_server *ns)
@@ -1000,7 +1007,7 @@ static void server_free(struct network_server *ns)
 	g_free(ns);
 }
 
-static void server_unregister(DBusConnection *conn, void *data)
+static void server_unregister(void *data)
 {
 	struct network_server *ns = data;
 
@@ -1010,23 +1017,23 @@ static void server_unregister(DBusConnection *conn, void *data)
 	server_free(ns);
 }
 
-static DBusMethodVTable server_methods[] = {
-	{ "GetUUID",		get_uuid,		"",	"s"	},
-	{ "Enable",		enable,			"",	""	},
-	{ "Disable",		disable,		"",	""	},
-	{ "IsEnabled",		is_enabled,		"",	"b"	},
-	{ "SetName",		set_name,		"s",	""	},
-	{ "GetName",		get_name,		"",	"s"	},
-	{ "SetAddressRange",	set_address_range,	"ss",	""	},
-	{ "SetRouting",		set_routing,		"s",	""	},
-	{ "GetInfo",		get_info,		"",	"a{sv}"	},
-	{ NULL, NULL, NULL, NULL }
+static GDBusMethodTable server_methods[] = {
+	{ "GetUUID",		"",	"s",	get_uuid },
+	{ "Enable",		"",	"",	enable },
+	{ "Disable",		"",	"",	disable },
+	{ "IsEnabled",		"",	"b",	is_enabled },
+	{ "SetName",		"s",	"",	set_name },
+	{ "GetName",		"",	"s",	get_name },
+	{ "SetAddressRange",	"ss",	"",	set_address_range },
+	{ "SetRouting",		"s",	"",	set_routing },
+	{ "GetInfo",		"",	"a{sv}",get_info },
+	{ }
 };
 
-static DBusSignalVTable server_signals[] = {
+static GDBusSignalTable server_signals[] = {
 	{ "Enabled",	""	},
 	{ "Disabled",	""	},
-	{ NULL, NULL }
+	{ }
 };
 
 int server_register(const char *path, bdaddr_t *src, uint16_t id)
@@ -1038,20 +1045,13 @@ int server_register(const char *path, bdaddr_t *src, uint16_t id)
 
 	ns = g_new0(struct network_server, 1);
 
-	if (!dbus_connection_create_object_path(connection, path, ns,
-						server_unregister)) {
-		error("D-Bus failed to register %s path", path);
-		server_free(ns);
-		return -1;
-	}
-
-	if (!dbus_connection_register_interface(connection, path,
-						NETWORK_SERVER_INTERFACE,
-						server_methods,
-						server_signals, NULL)) {
+	if (!g_dbus_register_interface(connection, path,
+					NETWORK_SERVER_INTERFACE,
+					server_methods, server_signals, NULL,
+					ns, server_unregister)) {
 		error("D-Bus failed to register %s interface",
 				NETWORK_SERVER_INTERFACE);
-		dbus_connection_destroy_object_path(connection, path);
+		server_free(ns);
 		return -1;
 	}
 
@@ -1107,20 +1107,13 @@ int server_register_from_file(const char *path, const bdaddr_t *src,
 		g_free(str);
 	}
 
-	if (!dbus_connection_create_object_path(connection, path, ns,
-						server_unregister)) {
-		error("D-Bus failed to register %s path", path);
-		server_free(ns);
-		return -1;
-	}
-
-	if (!dbus_connection_register_interface(connection, path,
-						NETWORK_SERVER_INTERFACE,
-						server_methods,
-						server_signals, NULL)) {
+	if (!g_dbus_register_interface(connection, path,
+					NETWORK_SERVER_INTERFACE,
+					server_methods, server_signals, NULL,
+					ns, server_unregister)) {
 		error("D-Bus failed to register %s interface",
 				NETWORK_SERVER_INTERFACE);
-		dbus_connection_destroy_object_path(connection, path);
+		server_free(ns);
 		return -1;
 	}
 
@@ -1136,13 +1129,15 @@ int server_store(const char *path)
 	struct network_server *ns;
 	char filename[PATH_MAX + 1];
 	char addr[18];
+	GSList *l;
 
-	if (!dbus_connection_get_object_user_data(connection,
-				path, (void *) &ns)) {
+	l = g_slist_find_custom(servers, path, find_server);
+	if (!l) {
 		error("Unable to salve %s on storage", path);
 		return -ENOENT;
 	}
 
+	ns = l->data;
 	ba2str(&ns->src, addr);
 	if (ns->id == BNEP_SVC_NAP)
 		create_name(filename, PATH_MAX, STORAGEDIR, addr, "nap");
@@ -1170,10 +1165,13 @@ int server_find_data(const char *path, const char *pattern)
 {
 	struct network_server *ns;
 	const char *uuid;
+	GSList *l;
 
-	if (!dbus_connection_get_object_user_data(connection, path, (void *) &ns))
+	l = g_slist_find_custom(servers, path, find_server);
+	if (!l)
 		return -1;
 
+	ns = l->data;
 	if (ns->name && strcasecmp(pattern, ns->name) == 0)
 		return 0;
 
