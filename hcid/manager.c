@@ -61,47 +61,75 @@
 
 static int default_adapter_id = -1;
 
-static DBusHandlerResult interface_version(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static inline DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg,
+			ERROR_INTERFACE ".InvalidArguments",
+			"Invalid arguments in method call");
+}
+
+static inline DBusMessage *no_such_adapter(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg,
+			ERROR_INTERFACE ".NoSuchAdapter",
+			"No such adapter");
+}
+
+static inline DBusMessage *no_such_service(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg,
+			ERROR_INTERFACE ".NoSuchService",
+			"No such service");
+}
+
+static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
+{
+	return g_dbus_create_error(msg,
+			ERROR_INTERFACE ".Failed",
+			strerror(err));
+}
+
+static DBusMessage *interface_version(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	dbus_uint32_t version = 0;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &version,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult old_default_adapter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *old_default_adapter(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	if (default_adapter_id < 0)
-		return error_no_such_adapter(conn, msg);
+		return no_such_adapter(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, default_adapter_id);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
 static int find_by_address(const char *str)
@@ -148,8 +176,8 @@ out:
 	return devid;
 }
 
-static DBusHandlerResult old_find_adapter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *old_find_adapter(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	char path[MAX_PATH_LENGTH], *path_ptr = path;
@@ -160,7 +188,7 @@ static DBusHandlerResult old_find_adapter(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	/* hci_devid() would make sense to use here, except it
 	   is restricted to devices which are up */
@@ -170,28 +198,28 @@ static DBusHandlerResult old_find_adapter(DBusConnection *conn,
 		dev_id = find_by_address(pattern);
 
 	if (dev_id < 0)
-		return error_no_such_adapter(conn, msg);
+		return no_such_adapter(msg);
 
 	if (hci_devinfo(dev_id, &di) < 0)
-		return error_no_such_adapter(conn, msg);
+		return no_such_adapter(msg);
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
-		return error_no_such_adapter(conn, msg);
+		return no_such_adapter(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, dev_id);
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path_ptr,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult old_list_adapters(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *old_list_adapters(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
@@ -201,11 +229,11 @@ static DBusHandlerResult old_list_adapters(DBusConnection *conn,
 	int i, sk;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (sk < 0)
-		return error_failed_errno(conn, msg, errno);
+		return failed_strerror(msg, errno);
 
 	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 
@@ -216,7 +244,7 @@ static DBusHandlerResult old_list_adapters(DBusConnection *conn,
 		int err = errno;
 		close(sk);
 		g_free(dl);
-		return error_failed_errno(conn, msg, err);
+		return failed_strerror(msg, err);
 	}
 
 	dr = dl->dev_req;
@@ -225,7 +253,7 @@ static DBusHandlerResult old_list_adapters(DBusConnection *conn,
 	if (!reply) {
 		close(sk);
 		g_free(dl);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 	}
 
 	dbus_message_iter_init_append(reply, &iter);
@@ -255,11 +283,11 @@ static DBusHandlerResult old_list_adapters(DBusConnection *conn,
 
 	close(sk);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult find_service(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *find_service(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *pattern;
@@ -268,35 +296,35 @@ static DBusHandlerResult find_service(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	service = search_service(pattern);
 	if (!service)
-		return error_no_such_service(conn, msg);
+		return no_such_service(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &service->object_path,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult list_services(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *list_services(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -306,11 +334,11 @@ static DBusHandlerResult list_services(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult activate_service(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *activate_service(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *pattern;
@@ -320,34 +348,34 @@ static DBusHandlerResult activate_service(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	service = search_service(pattern);
 	if (!service)
-		return error_no_such_service(conn, msg);
+		return no_such_service(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &busname,
 							DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusMethodVTable old_manager_methods[] = {
-	{ "InterfaceVersion",	interface_version,	"",	"u"	},
-	{ "DefaultAdapter",	old_default_adapter,	"",	"s"	},
-	{ "FindAdapter",	old_find_adapter,	"s",	"s"	},
-	{ "ListAdapters",	old_list_adapters,	"",	"as"	},
-	{ "FindService",	find_service,		"s",	"s"	},
-	{ "ListServices",	list_services,		"",	"as"	},
-	{ "ActivateService",	activate_service,	"s",	"s"	},
+static GDBusMethodTable old_manager_methods[] = {
+	{ "InterfaceVersion",	"",	"u",	interface_version	},
+	{ "DefaultAdapter",	"",	"s",	old_default_adapter	},
+	{ "FindAdapter",	"s",	"s",	old_find_adapter	},
+	{ "ListAdapters",	"",	"as",	old_list_adapters	},
+	{ "FindService",	"s",	"s",	find_service		},
+	{ "ListServices",	"",	"as",	list_services		},
+	{ "ActivateService",	"s",	"s",	activate_service	},
 	{ NULL, NULL, NULL, NULL }
 };
 
-static DBusSignalVTable old_manager_signals[] = {
+static GDBusSignalTable old_manager_signals[] = {
 	{ "AdapterAdded",		"s"	},
 	{ "AdapterRemoved",		"s"	},
 	{ "DefaultAdapterChanged",	"s"	},
@@ -355,12 +383,6 @@ static DBusSignalVTable old_manager_signals[] = {
 	{ "ServiceRemoved",		"s"	},
 	{ NULL, NULL }
 };
-
-static inline DBusMessage *no_such_adapter(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
-							"No such adapter");
-}
 
 static DBusMessage *default_adapter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
@@ -508,14 +530,13 @@ dbus_bool_t manager_init(DBusConnection *conn, const char *path)
 	if (hcid_dbus_use_experimental()) {
 		debug("Registering experimental manager interface");
 		g_dbus_register_interface(conn, "/", MANAGER_INTERFACE,
-					manager_methods, manager_signals, NULL,
-								NULL, NULL);
+				manager_methods, manager_signals,
+				NULL, NULL, NULL);
 	}
 
-	return dbus_connection_register_interface(conn, path,
-						MANAGER_INTERFACE,
-						old_manager_methods,
-						old_manager_signals, NULL);
+	return g_dbus_register_interface(conn, path, MANAGER_INTERFACE,
+			old_manager_methods, old_manager_signals,
+			NULL, NULL, NULL);
 }
 
 int get_default_adapter(void)
