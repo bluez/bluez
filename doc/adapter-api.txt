@@ -109,7 +109,8 @@ Methods		dict GetProperties()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
 
-		object CreatePairedDevice(string address, object agent)
+		object CreatePairedDevice(string address, object agent,
+							string capability)
 
 			Creates a new object path for a remote device. This
 			method will connect to the remote device and retrieve
@@ -123,6 +124,9 @@ Methods		dict GetProperties()
 			path already has been created. This allows applications
 			to use CreateDevice first and the if needed use
 			CreatePairedDevice to initiate pairing.
+
+			The capability parameter is the same as for the
+			RegisterAgent method.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
