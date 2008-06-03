@@ -184,6 +184,7 @@ static void agent_free(struct agent *agent)
 
 	g_free(agent->name);
 	g_free(agent->path);
+	g_free(agent->capability);
 	g_free(agent->addr);
 
 	g_free(agent);
