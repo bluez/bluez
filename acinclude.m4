@@ -80,25 +80,13 @@ AC_DEFUN([AC_PATH_BLUEZ], [
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
-	PKG_CHECK_MODULES(DBUS, dbus-1 > 0.35, dummy=yes,
-				AC_MSG_ERROR(dbus > 0.35 is required))
-	m4_ifdef([PKG_CHECK_EXISTS], [
-		PKG_CHECK_EXISTS(dbus-1 < 0.95, DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE")
-		if (test "${glib_found}" = "yes"); then
-			dnl PKG_CHECK_MODULES(DBUS_GLIB, dbus-glib-1 > 0.60, dbus_glib_found=yes, dbus_glib_found=no)
-			dbus_glib_found=no
-		else
-			dbus_glib_found=no
-		fi
-	], [
-		DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE"
-		dbus_glib_found=no
-	])
-	AC_SUBST(DBUS_CFLAGS)
-	AC_SUBST(DBUS_LIBS)
+	PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
+				AC_MSG_ERROR(D-Bus library is required))
 	AC_CHECK_LIB(dbus-1, dbus_watch_get_unix_fd, dummy=yes,
 		AC_DEFINE(NEED_DBUS_WATCH_GET_UNIX_FD, 1,
-				[Define to 1 if you need the dbus_watch_get_unix_fd() function.]))
+			[Define to 1 if you need the dbus_watch_get_unix_fd() function.]))
+	AC_SUBST(DBUS_CFLAGS)
+	AC_SUBST(DBUS_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_GLIB], [
@@ -255,12 +243,12 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		dund_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
-		test_enable=${enableval}
-	])
-
 	AC_ARG_ENABLE(cups, AC_HELP_STRING([--enable-cups], [install CUPS backend support]), [
 		cups_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test], [install test programs]), [
+		test_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(manpages, AC_HELP_STRING([--enable-manpages], [install Bluetooth manual pages]), [
