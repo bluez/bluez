@@ -108,39 +108,6 @@ static DBusHandlerResult request_message(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult confirm_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	const char *path, *address, *value;
-
-	if (!passkey)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (!dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_STRING, &path, DBUS_TYPE_STRING, &address,
-			DBUS_TYPE_STRING, &value, DBUS_TYPE_INVALID)) {
-		fprintf(stderr, "Invalid arguments for passkey Confirm method");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
-
-	printf("Confirm request for device %s\n", address);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		fprintf(stderr, "Can't create reply message\n");
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	dbus_connection_send(conn, reply, NULL);
-
-	dbus_connection_flush(conn);
-
-	dbus_message_unref(reply);
-	
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
 static DBusHandlerResult cancel_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -206,9 +173,6 @@ static DBusHandlerResult agent_message(DBusConnection *conn,
 {
 	if (dbus_message_is_method_call(msg, "org.bluez.PasskeyAgent", "Request"))
 		return request_message(conn, msg, data);
-
-	if (dbus_message_is_method_call(msg, "org.bluez.PasskeyAgent", "Confirm"))
-		return confirm_message(conn, msg, data);
 
 	if (dbus_message_is_method_call(msg, "org.bluez.PasskeyAgent", "Cancel"))
 		return cancel_message(conn, msg, data);
