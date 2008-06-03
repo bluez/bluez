@@ -101,10 +101,10 @@ xml = ' \
 </record>					\
 '
 
-database = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
-							'org.bluez.Database')
+adapter = dbus.Interface(bus.get_object('org.bluez', '/'),
+						'org.bluez.Adapter')
 
-handle = database.AddServiceRecordFromXML(xml)
+handle = adapter.AddServiceRecord(xml)
 
 print "Service record with handle 0x%04x added" % (handle)
 
@@ -116,4 +116,4 @@ try:
 except:
 	pass
 
-database.RemoveServiceRecord(dbus.UInt32(handle))
+adapter.RemoveServiceRecord(dbus.UInt32(handle))
