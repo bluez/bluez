@@ -1730,8 +1730,6 @@ static void proxy_path_free(gpointer data, gpointer udata)
 
 static void manager_unregister(void *data)
 {
-	char **dev;
-
 	if (pending_connects) {
 		g_slist_foreach(pending_connects,
 				(GFunc) pending_connect_free, NULL);
@@ -1752,11 +1750,6 @@ static void manager_unregister(void *data)
 		g_slist_free(ports_paths);
 		ports_paths = NULL;
 	}
-
-	g_dbus_unregister_interface(connection, SERIAL_MANAGER_PATH,
-						SERIAL_MANAGER_INTERFACE);
-
-	dbus_free_string_array(dev);
 }
 
 static GDBusMethodTable manager_methods[] = {
@@ -1932,7 +1925,8 @@ int serial_manager_init(DBusConnection *conn)
 
 void serial_manager_exit(void)
 {
-	dbus_connection_destroy_object_path(connection, SERIAL_MANAGER_PATH);
+	g_dbus_unregister_interface(connection, SERIAL_MANAGER_PATH,
+						SERIAL_MANAGER_INTERFACE);
 
 	dbus_connection_unref(connection);
 	connection = NULL;
