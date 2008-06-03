@@ -1,6 +1,6 @@
 
 SUBDIRS = doc sbc eglib gdbus common sdpd hcid plugins \
-		network serial input audio print \
+		network serial input audio \
 		tools rfcomm dund pand hidd \
 		cups test scripts
 

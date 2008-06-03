@@ -48,7 +48,6 @@ AC_OUTPUT([
 	serial/Makefile
 	input/Makefile
 	audio/Makefile
-	print/Makefile
 	tools/Makefile
 	rfcomm/Makefile
 	hcid/Makefile
