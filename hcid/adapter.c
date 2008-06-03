@@ -275,7 +275,8 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 							DBusMessage *msg,
 							struct adapter *adapter,
 							const char *address,
-							const char *agent_path)
+							const char *agent_path,
+							const char *capability)
 {
 	struct bonding_request_info *bonding;
 	struct device *device;
@@ -285,11 +286,13 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 		if (!device)
 			return NULL;
 
-		if (agent_path && strcmp(agent_path, "/"))
+		if (agent_path)
 			device->agent = agent_create(adapter,
-				dbus_message_get_sender(msg), agent_path,
-				NULL, (agent_remove_cb) device_agent_removed,
-				device);
+					dbus_message_get_sender(msg),
+					agent_path,
+					capability, NULL,
+					(agent_remove_cb) device_agent_removed,
+					device);
 	}
 
 	bonding = g_new0(struct bonding_request_info, 1);
@@ -2660,7 +2663,7 @@ static void create_bond_req_exit(void *user_data)
 
 static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 				const char *address, const char *agent_path,
-				void *data)
+				const char *capability, void *data)
 {
 	char filename[PATH_MAX + 1];
 	char *str;
@@ -2701,7 +2704,8 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
 				"Connection attempt failed");
 
-	bonding = bonding_request_new(conn, msg, adapter, address, agent_path);
+	bonding = bonding_request_new(conn, msg, adapter, address, agent_path,
+					capability);
 	if (!bonding) {
 		close(sk);
 		return NULL;
@@ -2741,7 +2745,7 @@ static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg, NULL);
 
 	return send_message_and_unref(conn,
-			create_bonding(conn, msg, address, NULL, data));
+			create_bonding(conn, msg, address, NULL, NULL, data));
 }
 
 static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
@@ -3947,7 +3951,8 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return invalid_args(msg);
 
-	return create_bonding(conn, msg, address, agent_path, data);
+	return create_bonding(conn, msg, address, agent_path, capability,
+				data);
 }
 
 static gint device_path_cmp(struct device *device, const gchar *path)
@@ -4036,7 +4041,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 
 	name = dbus_message_get_sender(msg);
 
-	agent = agent_create(adapter, name, path, NULL,
+	agent = agent_create(adapter, name, path, NULL, capability,
 				(agent_remove_cb) agent_removed, adapter);
 	if (!agent)
 		return g_dbus_create_error(msg,

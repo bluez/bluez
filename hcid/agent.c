@@ -66,6 +66,7 @@ struct agent {
 	char *addr;
 	char *name;
 	char *path;
+	char *capability;
 	struct agent_request *request;
 	int exited;
 	guint timeout;
@@ -201,6 +202,7 @@ static gboolean agent_timeout(struct agent *agent)
 
 struct agent *agent_create(struct adapter *adapter, const char *name,
 				const char *path, const char *address,
+				const char *capability,
 				agent_remove_cb cb, void *remove_cb_data)
 {
 	struct agent *agent;
@@ -213,6 +215,7 @@ struct agent *agent_create(struct adapter *adapter, const char *name,
 	agent->adapter = adapter;
 	agent->name = g_strdup(name);
 	agent->path = g_strdup(path);
+	agent->capability = g_strdup(capability);
 	agent->remove_cb = cb;
 	agent->remove_cb_data = remove_cb_data;
 
