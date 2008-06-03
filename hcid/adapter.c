@@ -2751,7 +2751,8 @@ static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg, NULL);
 
 	return send_message_and_unref(conn,
-			create_bonding(conn, msg, address, NULL, 0, data));
+				create_bonding(conn, msg, address, NULL,
+						IO_CAPABILITY_INVALID, data));
 }
 
 static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
