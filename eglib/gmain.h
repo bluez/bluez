@@ -17,6 +17,8 @@ typedef unsigned short	gushort;
 typedef unsigned long	gulong;
 typedef unsigned int	guint;
 
+typedef uint8_t  guint8;
+typedef uint16_t guint16;
 typedef uint32_t guint32;
 
 typedef float	gfloat;
