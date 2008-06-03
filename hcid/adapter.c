@@ -4021,12 +4021,12 @@ static void agent_removed(struct agent *agent, struct adapter *adapter)
 static DBusMessage *register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const char *path, *name;
+	const char *path, *name, *capability;
 	struct agent *agent;
 	struct adapter *adapter = data;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-						DBUS_TYPE_INVALID))
+			DBUS_TYPE_STRING, &capability, DBUS_TYPE_INVALID))
 		return invalid_args(msg);
 
 	if (adapter->agent)
@@ -4238,7 +4238,7 @@ static GDBusMethodTable adapter_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "RemoveDevice",	"o",	"",	remove_device		},
 	{ "FindDevice",		"s",	"o",	find_device		},
-	{ "RegisterAgent",	"o",	"",	register_agent		},
+	{ "RegisterAgent",	"os",	"",	register_agent		},
 	{ "UnregisterAgent",	"o",	"",	unregister_agent	},
 	{ "AddServiceRecord",	"s",	"u",	add_service_record	},
 	{ "UpdateServiceRecord","us",	"",	update_service_record	},
