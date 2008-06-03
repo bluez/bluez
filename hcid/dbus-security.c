@@ -228,17 +228,22 @@ static int agent_cmp(const struct passkey_agent *a, const struct passkey_agent *
 	return 0;
 }
 
-static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
+static inline DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
+			"Invalid arguments in method call");
+}
+
+static DBusMessage *register_passkey_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct passkey_agent *agent, ref;
 	struct adapter *adapter;
-	DBusMessage *reply;
 	const char *path, *addr;
 
 	if (!data) {
 		error("register_passkey_agent called without any adapter info!");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return NULL;
 	}
 
 	adapter = data;
@@ -247,10 +252,10 @@ static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	if ((check_address(addr) < 0) || (path[0] != '/'))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	memset(&ref, 0, sizeof(ref));
 
@@ -259,18 +264,13 @@ static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
 	ref.path = (char *) path;
 
 	if (g_slist_find_custom(adapter->passkey_agents, &ref, (GCompareFunc) agent_cmp))
-		return error_passkey_agent_already_exists(conn, msg);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".AlreadyExists",
+				"Passkey agent already exists");
 
 	agent = passkey_agent_new(adapter, conn, ref.name, path, addr);
 	if (!agent)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply) {
-		agent->exited = 1;
-		passkey_agent_free(agent);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
+		return NULL;
 
 	/* Only add a name listener if there isn't one already for this name */
 	ref.addr = NULL;
@@ -285,21 +285,20 @@ static DBusHandlerResult register_passkey_agent(DBusConnection *conn,
 
 	adapter->passkey_agents = g_slist_append(adapter->passkey_agents, agent);
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
+static DBusMessage *unregister_passkey_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter;
 	GSList *match;
 	struct passkey_agent ref, *agent;
-	DBusMessage *reply;
 	const char *path, *addr;
 
 	if (!data) {
 		error("unregister_passkey_agent called without any adapter info!");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return NULL;
 	}
 
 	adapter = data;
@@ -308,7 +307,7 @@ static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_STRING, &addr,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	memset(&ref, 0, sizeof(ref));
 
@@ -318,7 +317,9 @@ static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
 
 	match = g_slist_find_custom(adapter->passkey_agents, &ref, (GCompareFunc) agent_cmp);
 	if (!match)
-		return error_passkey_agent_does_not_exist(conn, msg);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".DoesNotExist",
+				"Passkey agent does not exist");
 
 	agent = match->data;
 
@@ -328,35 +329,29 @@ static DBusHandlerResult unregister_passkey_agent(DBusConnection *conn,
 	agent->exited = 1;
 	passkey_agent_free(agent);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult register_default_passkey_agent(DBusConnection *conn,
-							DBusMessage *msg, void *data)
+static DBusMessage *register_default_passkey_agent(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	const char *path;
 
 	if (default_agent)
-		return error_passkey_agent_already_exists(conn, msg);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".AlreadyExists",
+				"Passkey agent already exists");
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	default_agent = passkey_agent_new(NULL, conn, dbus_message_get_sender(msg),
 						path, NULL);
 	if (!default_agent)
 		goto need_memory;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		goto need_memory;
 
 	g_dbus_add_disconnect_watch(conn, default_agent->name,
 					default_agent_exited, NULL, NULL);
@@ -364,7 +359,7 @@ static DBusHandlerResult register_default_passkey_agent(DBusConnection *conn,
 	info("Default passkey agent (%s, %s) registered",
 			default_agent->name, default_agent->path);
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 
 need_memory:
 	if (default_agent) {
@@ -373,31 +368,30 @@ need_memory:
 		default_agent = NULL;
 	}
 
-	return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	return NULL;
 }
 
-static DBusHandlerResult unregister_default_passkey_agent(DBusConnection *conn,
+static DBusMessage *unregister_default_passkey_agent(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	const char *path, *name;
 
 	if (!default_agent)
-		return error_passkey_agent_does_not_exist(conn, msg);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".DoesNotExist",
+				"Passkey agent does not exist");
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	name = dbus_message_get_sender(msg);
 
 	if (strcmp(name, default_agent->name) || strcmp(path, default_agent->path))
-		return error_passkey_agent_does_not_exist(conn, msg);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".DoesNotExist",
+				"Passkey agent does not exist");
 
 	g_dbus_remove_watch(default_agent->conn, default_agent->listener_id);
 
@@ -408,7 +402,7 @@ static DBusHandlerResult unregister_default_passkey_agent(DBusConnection *conn,
 	passkey_agent_free(default_agent);
 	default_agent = NULL;
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
 static struct auth_agent_req *auth_agent_req_new(DBusMessage *msg,
@@ -541,28 +535,25 @@ static void auth_agent_release(struct authorization_agent *agent)
 		g_dbus_remove_watch(agent->conn, agent->listener_id);
 }
 
-static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
-							DBusMessage *msg,
-							void *data)
+static DBusMessage *register_default_auth_agent(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
 {
-	DBusMessage *reply;
 	const char *path;
 
 	if (default_auth_agent)
-		return error_auth_agent_already_exists(conn, msg);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".AlreadyExists",
+				"Authorization agent already exists");
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	default_auth_agent = auth_agent_new(conn,
 					dbus_message_get_sender(msg), path);
 	if (!default_auth_agent)
-		goto need_memory;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
 		goto need_memory;
 
 	g_dbus_add_disconnect_watch(conn, default_auth_agent->name,
@@ -571,7 +562,7 @@ static DBusHandlerResult register_default_auth_agent(DBusConnection *conn,
 	info("Default authorization agent (%s, %s) registered",
 		default_auth_agent->name, default_auth_agent->path);
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 
 need_memory:
 	if (default_auth_agent) {
@@ -579,33 +570,32 @@ need_memory:
 		default_auth_agent = NULL;
 	}
 
-	return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	return NULL;
 }
 
-static DBusHandlerResult unregister_default_auth_agent(DBusConnection *conn,
+static DBusMessage *unregister_default_auth_agent(DBusConnection *conn,
 							DBusMessage *msg,
 							void *data)
 {
 	const char *path, *name;
-	DBusMessage *reply;
 
 	if (!default_auth_agent)
-		return error_auth_agent_does_not_exist(conn, msg);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".DoesNotExist",
+				"Authorization agent does not exist");
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
 				DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	name = dbus_message_get_sender(msg);
 
 	if (strcmp(name, default_auth_agent->name) ||
 		strcmp(path, default_auth_agent->path))
-		return error_auth_agent_does_not_exist(conn, msg);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".DoesNotExist",
+				"Authorization agent does not exist");
 
 	g_dbus_remove_watch(default_auth_agent->conn,
 				default_auth_agent->listener_id);
@@ -617,7 +607,7 @@ static DBusHandlerResult unregister_default_auth_agent(DBusConnection *conn,
 	auth_agent_free(default_auth_agent);
 	default_auth_agent = NULL;
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
 static void auth_agent_req_reply(DBusPendingCall *call, void *data)
@@ -803,27 +793,26 @@ DBusHandlerResult cancel_authorize_request_old(DBusConnection *conn,
 						service, address, uuid);
 }
 
-static DBusMethodVTable security_methods[] = {
-	{ "RegisterDefaultPasskeyAgent",		register_default_passkey_agent,
-		"s",	""	},
-	{ "UnregisterDefaultPasskeyAgent",		unregister_default_passkey_agent,
-		"s",	""	},
-	{ "RegisterPasskeyAgent",			register_passkey_agent,
-		"ss",	""	},
-	{ "UnregisterPasskeyAgent",			unregister_passkey_agent,
-		"ss",	""	},
-	{ "RegisterDefaultAuthorizationAgent",		register_default_auth_agent,
-		"s",	""	},
-	{ "UnregisterDefaultAuthorizationAgent",	unregister_default_auth_agent,
-		"s",	""	},
-	{ NULL, NULL, NULL, NULL }
+static GDBusMethodTable security_methods[] = {
+	{ "RegisterDefaultPasskeyAgent",	"s",	"",
+					register_default_passkey_agent	},
+	{ "UnregisterDefaultPasskeyAgent",	"s",	"",
+					unregister_default_passkey_agent},
+	{ "RegisterPasskeyAgent",		"ss",	"",
+					register_passkey_agent		},
+	{ "UnregisterPasskeyAgent",		"ss",	"",
+					unregister_passkey_agent	},
+	{ "RegisterDefaultAuthorizationAgent",	"s",	"",
+					register_default_auth_agent	},
+	{ "UnregisterDefaultAuthorizationAgent","s",	"",
+					unregister_default_auth_agent	},
+	{ }
 };
 
 dbus_bool_t security_init(DBusConnection *conn, const char *path)
 {
-	return dbus_connection_register_interface(conn, path, SECURITY_INTERFACE,
-							security_methods,
-							NULL, NULL);
+	return g_dbus_register_interface(conn, path, SECURITY_INTERFACE,
+			security_methods, NULL, NULL, NULL, NULL);
 }
 
 static DBusPendingCall *agent_request(const char *path, bdaddr_t *bda,
