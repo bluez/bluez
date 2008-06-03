@@ -114,7 +114,8 @@ struct adapter {
 	GSList *sessions;		/* Request Mode sessions */
 };
 
-dbus_bool_t adapter_init(DBusConnection *conn, const char *path);
+dbus_bool_t adapter_init(DBusConnection *conn,
+		const char *path, struct adapter *adapter);
 
 struct device *adapter_get_device(DBusConnection *conn,
 				struct adapter *adapter, const gchar *address);

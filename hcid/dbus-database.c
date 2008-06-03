@@ -211,14 +211,16 @@ static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
 	return send_message_and_unref(conn, reply);
 }
 
-static DBusHandlerResult update_record(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *update_record(DBusConnection *conn, DBusMessage *msg,
 		bdaddr_t *src, dbus_uint32_t handle, sdp_record_t *sdp_record)
 {
 	int err;
 
 	if (remove_record_from_server(handle) < 0) {
 		sdp_record_free(sdp_record);
-		return error_not_available(conn, msg);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".NotAvailable",
+				"Not Available");
 	}
 
 	sdp_record->handle = handle;
@@ -226,11 +228,12 @@ static DBusHandlerResult update_record(DBusConnection *conn, DBusMessage *msg,
 	if (err < 0) {
 		sdp_record_free(sdp_record);
 		error("Failed to update the service record");
-		return error_failed_errno(conn, msg, EIO);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".Failed",
+				strerror(EIO));
 	}
 
-	return send_message_and_unref(conn,
-			dbus_message_new_method_return(msg));
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusHandlerResult update_service_record(DBusConnection *conn,
@@ -268,10 +271,11 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg, NULL);
 	}
 
-	return update_record(conn, msg, BDADDR_ANY, handle, sdp_record);
+	return send_message_and_unref(conn,
+			update_record(conn, msg, BDADDR_ANY, handle, sdp_record));
 }
 
-DBusHandlerResult update_xml_record(DBusConnection *conn,
+DBusMessage *update_xml_record(DBusConnection *conn,
 				DBusMessage *msg, bdaddr_t *src)
 {
 	struct record_data *user_record;
@@ -284,21 +288,29 @@ DBusHandlerResult update_xml_record(DBusConnection *conn,
 				DBUS_TYPE_UINT32, &handle,
 				DBUS_TYPE_STRING, &record,
 				DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Invalid arguments in method call");
 
 	len = (record ? strlen(record) : 0);
 	if (len == 0)
-		return error_invalid_arguments(conn, msg, NULL);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Invalid arguments in method call");
 
 	user_record = find_record(handle, dbus_message_get_sender(msg));
 	if (!user_record)
-		return error_not_available(conn, msg);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".NotAvailable",
+				"Not Available");
 
 	sdp_record = sdp_xml_parse_record(record, len);
 	if (!sdp_record) {
 		error("Parsing of XML service record failed");
 		sdp_record_free(sdp_record);
-		return error_failed_errno(conn, msg, EIO);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".Failed",
+				strerror(EIO));
 	}
 
 	return update_record(conn, msg, src, handle, sdp_record);
@@ -307,7 +319,8 @@ DBusHandlerResult update_xml_record(DBusConnection *conn,
 static DBusHandlerResult update_service_record_from_xml(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return update_xml_record(conn, msg, BDADDR_ANY);
+	return send_message_and_unref(conn,
+			update_xml_record(conn, msg, BDADDR_ANY));
 }
 
 int remove_record(DBusConnection *conn, const char *sender,

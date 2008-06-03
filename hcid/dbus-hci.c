@@ -530,7 +530,7 @@ int hcid_dbus_register_device(uint16_t id)
 		}
 	}
 
-	if (!adapter_init(connection, path)) {
+	if (!adapter_init(connection, path, adapter)) {
 		error("Adapter interface init failed");
 		goto failed;
 	}
