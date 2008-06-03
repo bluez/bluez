@@ -539,6 +539,14 @@ dbus_bool_t manager_init(DBusConnection *conn, const char *path)
 			NULL, NULL, NULL);
 }
 
+void manager_cleanup(DBusConnection *conn, const char *path)
+{
+	g_dbus_unregister_interface(conn, path, MANAGER_INTERFACE);
+
+	if (hcid_dbus_use_experimental())
+		g_dbus_unregister_interface(conn, "/", MANAGER_INTERFACE);
+}
+
 int get_default_adapter(void)
 {
 	return default_adapter_id;

@@ -303,10 +303,7 @@ void hcid_dbus_exit(void)
 	dbus_free_string_array(children);
 
 done:
-	dbus_connection_destroy_object_path(conn, BASE_PATH);
-
-	if (hcid_dbus_use_experimental())
-		dbus_connection_destroy_object_path(conn, "/");
+	manager_cleanup(conn, BASE_PATH);
 
 	set_dbus_connection(NULL);
 
