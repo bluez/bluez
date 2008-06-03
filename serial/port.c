@@ -395,7 +395,7 @@ int port_unregister(const char *path)
 	if (!node)
 		return -ENOENT;
 
-	dbus_connection_destroy_object_path(node->conn, path);
+	g_dbus_unregister_interface(node->conn, path, SERIAL_PORT_INTERFACE);
 
 	return 0;
 }
