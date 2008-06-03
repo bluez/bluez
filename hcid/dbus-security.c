@@ -1014,9 +1014,6 @@ int handle_passkey_request_old(DBusConnection *conn, int dev, const char *path,
 
 	adapter = data;
 
-	if (!bacmp(&adapter->agents_disabled, dba))
-		goto done;
-
 	ba2str(dba, addr);
 
 	for (l = adapter->passkey_agents; l != NULL; l = l->next) {
@@ -1192,9 +1189,6 @@ int handle_confirm_request_old(DBusConnection *conn, int dev, const char *path,
 		goto done;
 
 	adapter = data;
-
-	if (!bacmp(&adapter->agents_disabled, dba))
-		goto done;
 
 	ba2str(dba, addr);
 

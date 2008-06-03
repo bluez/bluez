@@ -105,7 +105,6 @@ struct adapter {
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
 	GSList *passkey_agents;
 	struct agent *agent;		/* For the new API */
-	bdaddr_t agents_disabled;	/* temporarely disable agents for bda */
 	GSList *active_conn;
 	struct bonding_request_info *bonding;
 	GSList *pin_reqs;
