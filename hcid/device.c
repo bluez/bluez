@@ -1052,7 +1052,7 @@ void device_remove(struct device *device, DBusConnection *conn)
 {
 	debug("Removing device %s", device->path);
 
-	dbus_connection_destroy_object_path(conn, device->path);
+	g_dbus_unregister_interface(conn, device->path, DEVICE_INTERFACE);
 }
 
 gint device_address_cmp(struct device *device, const gchar *address)
