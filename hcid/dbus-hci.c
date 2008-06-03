@@ -63,6 +63,9 @@ static DBusConnection *connection = NULL;
 
 void bonding_request_free(struct bonding_request_info *bonding)
 {
+	struct device *device;
+	char address[18];
+
 	if (!bonding)
 		return;
 
@@ -74,6 +77,14 @@ void bonding_request_free(struct bonding_request_info *bonding)
 
 	if (bonding->io)
 		g_io_channel_unref(bonding->io);
+
+	ba2str(&bonding->bdaddr, address);
+
+	device = adapter_get_device(connection, bonding->adapter, address);
+	if (device && device->agent) {
+		agent_destroy(device->agent, FALSE);
+		device->agent = NULL;
+	}
 
 	g_free(bonding);
 }

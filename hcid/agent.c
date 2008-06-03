@@ -63,13 +63,11 @@ typedef enum {
 
 struct agent {
 	struct adapter *adapter;
-	char *addr;
 	char *name;
 	char *path;
-	char *capability;
+	uint8_t capability;
 	struct agent_request *request;
 	int exited;
-	guint timeout;
 	agent_remove_cb remove_cb;
 	void *remove_cb_data;
 	guint listener_id;
@@ -174,9 +172,6 @@ static void agent_free(struct agent *agent)
 		agent_request_free(agent->request);
 	}
 
-	if (agent->timeout)
-		g_source_remove(agent->timeout);
-
 	if (!agent->exited) {
 		g_dbus_remove_watch(connection, agent->listener_id);
 		agent_release(agent);
@@ -184,26 +179,12 @@ static void agent_free(struct agent *agent)
 
 	g_free(agent->name);
 	g_free(agent->path);
-	g_free(agent->capability);
-	g_free(agent->addr);
 
 	g_free(agent);
 }
 
-static gboolean agent_timeout(struct agent *agent)
-{
-	debug("Agent at %s, %s timed out", agent->name, agent->path);
-
-	agent->timeout = 0;
-
-	agent_free(agent);
-
-	return FALSE;
-}
-
 struct agent *agent_create(struct adapter *adapter, const char *name,
-				const char *path, const char *address,
-				const char *capability,
+				const char *path, uint8_t capability,
 				agent_remove_cb cb, void *remove_cb_data)
 {
 	struct agent *agent;
@@ -216,15 +197,9 @@ struct agent *agent_create(struct adapter *adapter, const char *name,
 	agent->adapter = adapter;
 	agent->name = g_strdup(name);
 	agent->path = g_strdup(path);
-	agent->capability = g_strdup(capability);
+	agent->capability = capability;
 	agent->remove_cb = cb;
 	agent->remove_cb_data = remove_cb_data;
-
-	if (address) {
-		agent->addr = g_strdup(address);
-		agent->timeout = g_timeout_add(AGENT_TIMEOUT,
-						(GSourceFunc) agent_timeout, agent);
-	}
 
 	agent->listener_id = g_dbus_add_disconnect_watch(connection, name,
 							agent_exited, agent,
@@ -341,9 +316,6 @@ done:
 
 	agent->request = NULL;
 	agent_request_free(req);
-
-	if (agent->addr)
-		agent_free(agent);
 }
 
 int agent_authorize(struct agent *agent,
@@ -461,9 +433,6 @@ done:
 
 	dbus_pending_call_cancel(req->call);
 	agent_request_free(req);
-
-	if (agent->addr)
-		agent_free(agent);
 }
 
 int agent_request_pincode(struct agent *agent, struct device *device,

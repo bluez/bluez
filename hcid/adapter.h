@@ -55,6 +55,7 @@ struct remote_dev_info {
 struct bonding_request_info {
 	DBusConnection *conn;
 	DBusMessage *msg;
+	struct adapter *adapter;
 	bdaddr_t bdaddr;
 	GIOChannel *io;
 	guint io_id;

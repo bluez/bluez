@@ -69,6 +69,12 @@
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 
+#define IO_CAPABILITY_DISPLAYONLY	0x00
+#define IO_CAPABILITY_DISPLAYYESNO	0x01
+#define IO_CAPABILITY_KEYBOARDONLY	0x02
+#define IO_CAPABILITY_NOINPUTOUTPUT	0x03
+#define IO_CAPABILITY_INVALID		0xFF
+
 struct mode_req {
 	struct adapter	*adapter;
 	DBusConnection	*conn;		/* Connection reference */
@@ -276,7 +282,7 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 							struct adapter *adapter,
 							const char *address,
 							const char *agent_path,
-							const char *capability)
+							uint8_t capability)
 {
 	struct bonding_request_info *bonding;
 	struct device *device;
@@ -289,8 +295,7 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 		if (agent_path)
 			device->agent = agent_create(adapter,
 					dbus_message_get_sender(msg),
-					agent_path,
-					capability, NULL,
+					agent_path, capability,
 					(agent_remove_cb) device_agent_removed,
 					device);
 	}
@@ -299,6 +304,7 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 
 	bonding->conn = dbus_connection_ref(conn);
 	bonding->msg = dbus_message_ref(msg);
+	bonding->adapter = adapter;
 
 	str2ba(address, &bonding->bdaddr);
 
@@ -2663,7 +2669,7 @@ static void create_bond_req_exit(void *user_data)
 
 static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 				const char *address, const char *agent_path,
-				const char *capability, void *data)
+				uint8_t capability, void *data)
 {
 	char filename[PATH_MAX + 1];
 	char *str;
@@ -2745,7 +2751,7 @@ static DBusHandlerResult adapter_create_bonding(DBusConnection *conn,
 		return error_invalid_arguments(conn, msg, NULL);
 
 	return send_message_and_unref(conn,
-			create_bonding(conn, msg, address, NULL, NULL, data));
+			create_bonding(conn, msg, address, NULL, 0, data));
 }
 
 static DBusHandlerResult adapter_cancel_bonding(DBusConnection *conn,
@@ -3937,10 +3943,26 @@ static DBusMessage *create_device(DBusConnection *conn,
 	return NULL;
 }
 
+static uint8_t parse_io_capability(const char *capability)
+{
+	if (g_str_equal(capability, ""))
+		return IO_CAPABILITY_DISPLAYYESNO;
+	if (g_str_equal(capability, "DisplayOnly"))
+		return IO_CAPABILITY_DISPLAYONLY;
+	if (g_str_equal(capability, "DisplayYesNo"))
+		return IO_CAPABILITY_DISPLAYYESNO;
+	if (g_str_equal(capability, "KeyboardOnly"))
+		return IO_CAPABILITY_KEYBOARDONLY;
+	if (g_str_equal(capability, "NoInputOutput"))
+		return IO_CAPABILITY_NOINPUTOUTPUT;
+	return IO_CAPABILITY_INVALID;
+}
+
 static DBusMessage *create_paired_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const gchar *address, *agent_path, *capability;
+	uint8_t cap;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_OBJECT_PATH, &agent_path,
@@ -3951,7 +3973,11 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return invalid_args(msg);
 
-	return create_bonding(conn, msg, address, agent_path, capability,
+	cap = parse_io_capability(capability);
+	if (cap == IO_CAPABILITY_INVALID)
+		return invalid_args(msg);
+
+	return create_bonding(conn, msg, address, agent_path, cap,
 				data);
 }
 
@@ -4029,6 +4055,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 	const char *path, *name, *capability;
 	struct agent *agent;
 	struct adapter *adapter = data;
+	uint8_t cap;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_STRING, &capability, DBUS_TYPE_INVALID))
@@ -4039,9 +4066,13 @@ static DBusMessage *register_agent(DBusConnection *conn,
 				ERROR_INTERFACE ".AlreadyExists",
 				"Agent already exists");
 
+	cap = parse_io_capability(capability);
+	if (cap == IO_CAPABILITY_INVALID)
+		return invalid_args(msg);
+
 	name = dbus_message_get_sender(msg);
 
-	agent = agent_create(adapter, name, path, NULL, capability,
+	agent = agent_create(adapter, name, path, cap,
 				(agent_remove_cb) agent_removed, adapter);
 	if (!agent)
 		return g_dbus_create_error(msg,

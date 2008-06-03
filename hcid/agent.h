@@ -33,8 +33,7 @@ typedef void (*agent_pincode_cb) (struct agent *agent, DBusError *err,
 typedef void (*agent_remove_cb) (struct agent *agent, void *user_data);
 
 struct agent *agent_create(struct adapter *adapter, const char *name,
-				const char *path, const char *address,
-				const char *capability,
+				const char *path, uint8_t capability,
 				agent_remove_cb cb, void *remove_cb_data);
 
 int agent_destroy(struct agent *agent, gboolean exited);
