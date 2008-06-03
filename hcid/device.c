@@ -742,8 +742,10 @@ int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr)
 	return size;
 }
 
-static void device_free(struct device *device)
+static void device_free(gpointer user_data)
 {
+	struct device *device = user_data;
+
 	if (device->agent)
 		agent_destroy(device->agent, FALSE);
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
@@ -753,15 +755,10 @@ static void device_free(struct device *device)
 	g_free(device);
 }
 
-static void device_unregister(DBusConnection *conn, void *user_data)
+static DBusMessage *disconnect(DBusConnection *conn,
+				DBusMessage *msg, void *user_data)
 {
-	device_free(user_data);
-}
-
-static DBusHandlerResult disconnect(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return dbus_message_new_method_return(msg);
 }
 
 static gboolean device_is_paired(struct device *device)
@@ -788,8 +785,8 @@ static char *device_get_name(struct device *device)
 	return textfile_caseget(filename, device->address);
 }
 
-static DBusHandlerResult get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static DBusMessage *get_properties(DBusConnection *conn,
+				DBusMessage *msg, void *user_data)
 {
 	struct device *device = user_data;
 	struct adapter *adapter = device->adapter;
@@ -808,7 +805,7 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -884,15 +881,14 @@ static DBusHandlerResult get_properties(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult set_alias(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 					const char *alias, void *data)
 {
 	struct device *device = data;
 	struct adapter *adapter = device->adapter;
-	DBusMessage *reply;
 	bdaddr_t bdaddr;
 	int ecode;
 	char *str, filename[PATH_MAX + 1], path[MAX_PATH_LENGTH];
@@ -911,11 +907,9 @@ static DBusHandlerResult set_alias(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	if (ecode < 0)
-		return error_failed_errno(conn, msg, -ecode);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".Failed",
+				strerror(-ecode));
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
 
@@ -931,21 +925,16 @@ static DBusHandlerResult set_alias(DBusConnection *conn, DBusMessage *msg,
 
 	g_free(str);
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult set_trust(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 					dbus_bool_t value, void *data)
 {
 	struct device *device = data;
 	struct adapter *adapter = device->adapter;
-	DBusMessage *reply;
 	bdaddr_t local;
 	char path[MAX_PATH_LENGTH];
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
 	str2ba(adapter->address, &local);
 
@@ -963,34 +952,41 @@ static DBusHandlerResult set_trust(DBusConnection *conn, DBusMessage *msg,
 					DEVICE_INTERFACE, "Trusted",
 					DBUS_TYPE_BOOLEAN, &value);
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult set_property(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static inline DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg,
+			ERROR_INTERFACE ".InvalidArguments",
+			"Invalid arguments in method call");
+}
+
+static DBusMessage *set_property(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter;
 	DBusMessageIter sub;
 	const char *property;
 
 	if (!dbus_message_iter_init(msg, &iter))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	dbus_message_iter_get_basic(&iter, &property);
 	dbus_message_iter_next(&iter);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 	dbus_message_iter_recurse(&iter, &sub);
 
 	if (g_str_equal("Trusted", property)) {
 		dbus_bool_t value;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
-			return error_invalid_arguments(conn, msg, NULL);
+			return invalid_args(msg);
 		dbus_message_iter_get_basic(&sub, &value);
 
 		return set_trust(conn, msg, value, data);
@@ -998,23 +994,23 @@ static DBusHandlerResult set_property(DBusConnection *conn,
 		char *alias;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
-			return error_invalid_arguments(conn, msg, NULL);
+			return invalid_args(msg);
 		dbus_message_iter_get_basic(&sub, &alias);
 
 		return set_alias(conn, msg, alias, data);
 	}
 
-	return error_invalid_arguments(conn, msg, NULL);
+	return invalid_args(msg);
 }
 
-static DBusMethodVTable device_methods[] = {
-	{ "GetProperties",	get_properties,		"",	"a{sv}" },
-	{ "SetProperty",	set_property,		"sv",	""	},
-	{ "Disconnect",		disconnect,		"",	""	},
+static GDBusMethodTable device_methods[] = {
+	{ "GetProperties",	"",	"a{sv}",	get_properties	},
+	{ "SetProperty",	"sv",	"",		set_property	},
+	{ "Disconnect",		"",	"",		disconnect	},
 	{ NULL, NULL, NULL, NULL }
 };
 
-static DBusSignalVTable device_signals[] = {
+static GDBusSignalTable device_signals[] = {
 	{ "PropertyChanged",			"sv"	},
 	{ "DisconnectRequested",		""	},
 	{ NULL, NULL }
@@ -1038,14 +1034,12 @@ struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 
 	debug("Creating device %s", device->path);
 
-	if (dbus_connection_create_object_path(conn, device->path,
-					device, device_unregister) == FALSE) {
+	if (g_dbus_register_interface(conn, device->path, DEVICE_INTERFACE,
+				device_methods, device_signals, NULL,
+				device, device_free) == FALSE) {
 		device_free(device);
 		return NULL;
 	}
-
-	dbus_connection_register_interface(conn, device->path,
-			DEVICE_INTERFACE, device_methods, device_signals, NULL);
 
 	device->address = g_strdup(address);
 	device->adapter = adapter;
