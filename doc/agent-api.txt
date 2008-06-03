@@ -20,7 +20,7 @@ Methods		void Release()
 			agent, because when this method gets called it has
 			already been unregistered.
 
-		uint32 RequestPasskey(object device)
+		string RequestPinCode(object device)
 
 			This method gets called when the service daemon
 			needs to get the passkey for an authentication.
@@ -31,7 +31,7 @@ Methods		void Release()
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
-		string RequestPinCode(object device)
+		uint32 RequestPasskey(object device)
 
 			This method gets called when the service daemon
 			needs to get the passkey for an authentication.
