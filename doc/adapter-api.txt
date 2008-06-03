@@ -135,7 +135,7 @@ Methods		dict GetProperties()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
 
-		void RegisterAgent(object agent)
+		void RegisterAgent(object agent, string capability)
 
 			This registers the adapter wide agent.
 
@@ -145,7 +145,14 @@ Methods		dict GetProperties()
 			If an application disconnects from the bus all
 			of its registered agents will be removed.
 
-			Possible errors: org.bluez.Error.AlreadyExists
+			The capability parameter can have the values
+			"DisplayOnly", "DisplayYesNo", "KeyboardOnly" and
+			"NoInputNoOutput" which reflects the input and output
+			capabilities of the agent. If an empty string is
+			used it will fallback to "DisplayYesNo".
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
 
 		void UnregisterAgent(object agent)
 
