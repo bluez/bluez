@@ -54,7 +54,6 @@
 #include "glib-helper.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
-#include "dbus-test.h"
 #include "dbus-service.h"
 #include "dbus-security.h"
 #include "agent.h"
@@ -537,11 +536,6 @@ int hcid_dbus_register_device(uint16_t id)
 
 	if (!security_init(connection, path)) {
 		error("Security interface init failed");
-		goto failed;
-	}
-
-	if (!test_init(connection, path)) {
-		error("Test interface init failed");
 		goto failed;
 	}
 
@@ -1341,7 +1335,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	if (!dbus_connection_get_object_user_data(connection, path,
 							(void *) &adapter)) {
 		error("Getting %s path data failed!", path);
-		goto done;
+		return;
 	}
 
 	/* Out of range verification */
@@ -1384,7 +1378,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	 */
 
 	if (!found_device_req_name(adapter))
-		goto done; /* skip - there is name to resolve */
+		return;		/* skip - there is name to resolve */
 
 	if (adapter->discov_active) {
 		if (hcid_dbus_use_experimental()) {
@@ -1426,10 +1420,6 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		/* reset the discover type for standard inquiry only */
 		adapter->discov_type &= ~STD_INQUIRY;
 	}
-
-done:
-	/* Proceed with any queued up audits */
-	process_audits_list(path);
 }
 
 void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
