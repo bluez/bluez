@@ -1,5 +1,5 @@
 
-if NETWORKSERVICE
+if NETWORKPLUGIN
 plugindir = $(libdir)/bluetooth/plugins
 
 plugin_LTLIBRARIES = libnetwork.la

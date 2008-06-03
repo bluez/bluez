@@ -1,5 +1,5 @@
 
-if SERIALSERVICE
+if SERIALPLUGIN
 plugindir = $(libdir)/bluetooth/plugins
 
 plugin_LTLIBRARIES = libserial.la

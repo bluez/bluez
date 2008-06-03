@@ -15,14 +15,6 @@ bccmd_programs =
 bccmd_manfiles =
 endif
 
-if AVCTRL
-avctrl_programs = avctrl
-avctrl_manfiles = avctrl.8
-else
-avctrl_programs =
-avctrl_manfiles =
-endif
-
 if HID2HCI
 hid2hci_programs = hid2hci
 hid2hci_manfiles = hid2hci.8
@@ -39,19 +31,17 @@ dfutool_programs =
 dfutool_manfiles =
 endif
 
-if DFUBABEL
-dfubabel_programs = dfubabel
-dfubabel_manfiles = dfubabel.1
+if USB
+usb_programs = dfubabel avctrl
 else
-dfubabel_programs =
-dfubabel_manfiles =
+usb_programs =
 endif
 
 sbin_PROGRAMS = hciattach hciconfig $(bccmd_programs) $(avctrl_programs) $(hid2hci_programs)
 
 bin_PROGRAMS = $(tools_programs) $(dfutool_programs) $(dfubabel_programs)
 
-noinst_PROGRAMS = hcisecfilter ppporc avinfo
+noinst_PROGRAMS = hcisecfilter ppporc avinfo $(usb_programs)
 
 hciattach_SOURCES = hciattach.c hciattach_st.c
 hciattach_LDADD = @BLUEZ_LIBS@
@@ -75,16 +65,13 @@ endif
 ppporc_LDADD = @BLUEZ_LIBS@
 
 if BCCMD
-bccmd_SOURCES = bccmd.c csr.h csr.c csr_hci.c csr_bcsp.c csr_h4.c csr_3wire.c ubcsp.h ubcsp.c
+bccmd_SOURCES = bccmd.c csr.h csr.c csr_hci.c \
+			csr_bcsp.c csr_h4.c csr_3wire.c ubcsp.h ubcsp.c
 bccmd_LDADD = @BLUEZ_LIBS@
 if USB
 bccmd_SOURCES += csr_usb.c
 bccmd_LDADD += @USB_LIBS@
 endif
-endif
-
-if AVCTRL
-avctrl_LDADD = @USB_LIBS@
 endif
 
 if HID2HCI
@@ -96,9 +83,9 @@ dfutool_SOURCES = dfutool.c dfu.h dfu.c
 dfutool_LDADD = @USB_LIBS@
 endif
 
-if DFUBABEL
-dfubabel_SOURCES = dfubabel.c
+if USB
 dfubabel_LDADD = @USB_LIBS@
+avctrl_LDADD = @USB_LIBS@
 endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @USB_CFLAGS@
@@ -107,8 +94,7 @@ INCLUDES = -I$(top_srcdir)/common
 
 if MANPAGES
 man_MANS = hciattach.8 hciconfig.8 $(tools_manfiles) \
-		$(bccmd_manfiles) $(avctrl_manfiles) $(hid2hci_manfiles) \
-		$(dfutool_manfiles) $(dfubabel_manfiles)
+		$(bccmd_manfiles) $(hid2hci_manfiles) $(dfutool_manfiles)
 endif
 
 EXTRA_DIST = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 \

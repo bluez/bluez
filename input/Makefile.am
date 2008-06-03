@@ -1,5 +1,5 @@
 
-if INPUTSERVICE
+if INPUTPLUGIN
 plugindir = $(libdir)/bluetooth/plugins
 
 plugin_LTLIBRARIES = libinput.la

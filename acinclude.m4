@@ -11,7 +11,8 @@ AC_DEFUN([AC_PROG_CC_PIE], [
 ])
 
 AC_DEFUN([AC_FUNC_PPOLL], [
-	AC_CHECK_FUNC(ppoll, dummy=yes, AC_DEFINE(NEED_PPOLL, 1, [Define to 1 if you need the ppoll() function.]))
+	AC_CHECK_FUNC(ppoll, dummy=yes, AC_DEFINE(NEED_PPOLL, 1,
+			[Define to 1 if you need the ppoll() function.]))
 ])
 
 AC_DEFUN([AC_INIT_BLUEZ], [
@@ -63,19 +64,24 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 
 	servicedir="${libdir}/bluetooth"
 
-	AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}", [Directory for the configuration files])
-	AC_DEFINE_UNQUOTED(STORAGEDIR, "${storagedir}", [Directory for the storage files])
-	AC_DEFINE_UNQUOTED(SERVICEDIR, "${servicedir}", [Directory for the service programs])
+	AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}",
+				[Directory for the configuration files])
+	AC_DEFINE_UNQUOTED(STORAGEDIR, "${storagedir}",
+				[Directory for the storage files])
+	AC_DEFINE_UNQUOTED(SERVICEDIR, "${servicedir}",
+				[Directory for the service programs])
 ])
 
 AC_DEFUN([AC_PATH_BLUEZ], [
-	PKG_CHECK_MODULES(BLUEZ, bluez, dummy=yes, AC_MSG_ERROR(Bluetooth library is required))
+	PKG_CHECK_MODULES(BLUEZ, bluez, dummy=yes,
+				AC_MSG_ERROR(Bluetooth library is required))
 	AC_SUBST(BLUEZ_CFLAGS)
 	AC_SUBST(BLUEZ_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
-	PKG_CHECK_MODULES(DBUS, dbus-1 > 0.35, dummy=yes, AC_MSG_ERROR(dbus > 0.35 is required))
+	PKG_CHECK_MODULES(DBUS, dbus-1 > 0.35, dummy=yes,
+				AC_MSG_ERROR(dbus > 0.35 is required))
 	m4_ifdef([PKG_CHECK_EXISTS], [
 		PKG_CHECK_EXISTS(dbus-1 < 0.95, DBUS_CFLAGS="$DBUS_CFLAGS -DDBUS_API_SUBJECT_TO_CHANGE")
 		if (test "${glib_found}" = "yes"); then
@@ -91,7 +97,8 @@ AC_DEFUN([AC_PATH_DBUS], [
 	AC_SUBST(DBUS_CFLAGS)
 	AC_SUBST(DBUS_LIBS)
 	AC_CHECK_LIB(dbus-1, dbus_watch_get_unix_fd, dummy=yes,
-		AC_DEFINE(NEED_DBUS_WATCH_GET_UNIX_FD, 1, [Define to 1 if you need the dbus_watch_get_unix_fd() function.]))
+		AC_DEFINE(NEED_DBUS_WATCH_GET_UNIX_FD, 1,
+				[Define to 1 if you need the dbus_watch_get_unix_fd() function.]))
 ])
 
 AC_DEFUN([AC_PATH_GLIB], [
@@ -133,9 +140,11 @@ AC_DEFUN([AC_PATH_USB], [
 	AC_SUBST(USB_CFLAGS)
 	AC_SUBST(USB_LIBS)
 	AC_CHECK_LIB(usb, usb_get_busses, dummy=yes,
-		AC_DEFINE(NEED_USB_GET_BUSSES, 1, [Define to 1 if you need the usb_get_busses() function.]))
+		AC_DEFINE(NEED_USB_GET_BUSSES, 1,
+			[Define to 1 if you need the usb_get_busses() function.]))
 	AC_CHECK_LIB(usb, usb_interrupt_read, dummy=yes,
-		AC_DEFINE(NEED_USB_INTERRUPT_READ, 1, [Define to 1 if you need the usb_interrupt_read() function.]))
+		AC_DEFINE(NEED_USB_INTERRUPT_READ, 1,
+			[Define to 1 if you need the usb_interrupt_read() function.]))
 ])
 
 AC_DEFUN([AC_PATH_NETLINK], [
@@ -151,14 +160,14 @@ AC_DEFUN([AC_PATH_SNDFILE], [
 ])
 
 AC_DEFUN([AC_ARG_BLUEZ], [
-	fortify_enable=yes
 	debug_enable=no
-	pie_enable=no
+	fortify_enable=yes
+	pie_enable=yes
 	sndfile_enable=${sndfile_found}
 	netlink_enable=${netlink_found}
 	usb_enable=${usb_found}
 	alsa_enable=${alsa_found}
-	glib_enable=no
+	glib_enable=yes
 	gstreamer_enable=${gstreamer_found}
 	audio_enable=yes
 	input_enable=yes
@@ -175,73 +184,63 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	pcmciarules_enable=no
 	tools_enable=yes
 	bccmd_enable=no
-	avctrl_enable=no
 	hid2hci_enable=no
 	dfutool_enable=no
-	dfubabel_enable=no
 
 	AC_ARG_ENABLE(fortify, AC_HELP_STRING([--disable-fortify], [disable compile time buffer checks]), [
 		fortify_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
-		debug_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie], [enable position independent executables flag]), [
+	AC_ARG_ENABLE(pie, AC_HELP_STRING([--disable-pie], [disable position independent executables flag]), [
 		pie_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
-		dbus_enable=${enableval}
-		alsa_enable=${enableval}
-		hidd_enable=${enableval}
-		pand_enable=${enableval}
-		dund_enable=${enableval}
-		cups_enable=${enableval}
-		test_enable=${enableval}
-		manpages_enable=${enableval}
-		configfiles_enable=${enableval}
-		initscripts_enable=${enableval}
-		pcmciarules_enable=${enableval}
-		tools_enable=${enableval}
-		bccmd_enable=${enableval}
-		avctrl_enable=${enableval}
-		hid2hci_enable=${enableval}
-		dfutool_enable=${enableval}
-		dfubabel_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
-		usb_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
-		alsa_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(glib, AC_HELP_STRING([--enable-glib], [enable GLib support]), [
+	AC_ARG_ENABLE(glib, AC_HELP_STRING([--disable-glib], [disable GLib support]), [
 		glib_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(network, AC_HELP_STRING([--disable-network], [disable network plugin]), [
+		network_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(serial, AC_HELP_STRING([--disable-serial], [disable serial plugin]), [
+		serial_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(input, AC_HELP_STRING([--disable-input], [disable input plugin]), [
+		input_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(audio, AC_HELP_STRING([--disable-audio], [disable audio plugin]), [
+		audio_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(gstreamer, AC_HELP_STRING([--enable-gstreamer], [enable GStreamer support]), [
 		gstreamer_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(audio, AC_HELP_STRING([--enable-audio], [enable audio service]), [
-		audio_enable=${enableval}
+	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
+		alsa_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(input, AC_HELP_STRING([--enable-input], [enable input service]), [
-		input_enable=${enableval}
+	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
+		usb_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(serial, AC_HELP_STRING([--enable-serial], [enable serial service]), [
-		serial_enable=${enableval}
+	AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools], [install Bluetooth utilities]), [
+		tools_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(network, AC_HELP_STRING([--enable-network], [enable network service]), [
-		network_enable=${enableval}
+	AC_ARG_ENABLE(bccmd, AC_HELP_STRING([--enable-bccmd], [install BCCMD interface utility]), [
+		bccmd_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci], [install HID mode switching utility]), [
+		hid2hci_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(dfutool, AC_HELP_STRING([--enable-dfutool], [install DFU firmware upgrade utility]), [
+		dfutool_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(hidd, AC_HELP_STRING([--enable-hidd], [install HID daemon]), [
@@ -280,41 +279,39 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		pcmciarules_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools], [install Bluetooth utilities]), [
+	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
+		debug_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
+		dbus_enable=${enableval}
+		alsa_enable=${enableval}
+		hidd_enable=${enableval}
+		pand_enable=${enableval}
+		dund_enable=${enableval}
+		cups_enable=${enableval}
+		test_enable=${enableval}
+		manpages_enable=${enableval}
+		configfiles_enable=${enableval}
+		initscripts_enable=${enableval}
+		pcmciarules_enable=${enableval}
 		tools_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(bccmd, AC_HELP_STRING([--enable-bccmd], [install BCCMD interface utility]), [
 		bccmd_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(avctrl, AC_HELP_STRING([--enable-avctrl], [install Audio/Video control utility]), [
-		avctrl_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci], [install HID mode switching utility]), [
 		hid2hci_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(dfutool, AC_HELP_STRING([--enable-dfutool], [install DFU firmware upgrade utility]), [
 		dfutool_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(dfubabel, AC_HELP_STRING([--enable-dfubabel], [install Babel DFU mode switching utility]), [
-		dfubabel_enable=${enableval}
 	])
 
 	if (test "${fortify_enable}" = "yes"); then
 		CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
 	fi
 
-	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
-		CFLAGS="$CFLAGS -g -O0"
-	fi
-
 	if (test "${pie_enable}" = "yes" && test "${ac_cv_prog_cc_pie}" = "yes"); then
 		CFLAGS="$CFLAGS -fPIE"
 		LDFLAGS="$LDFLAGS -pie"
+	fi
+
+	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
+		CFLAGS="$CFLAGS -g -O0"
 	fi
 
 	if (test "${usb_enable}" = "yes" && test "${usb_found}" = "yes"); then
@@ -348,23 +345,21 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(SBC, test "${alsa_enable}" = "yes" || test "${gstreamer_enable}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
 	AM_CONDITIONAL(GSTREAMER, test "${gstreamer_enable}" = "yes" && test "${gstreamer_found}" = "yes")
-	AM_CONDITIONAL(AUDIOSERVICE, test "${audio_enable}" = "yes")
-	AM_CONDITIONAL(INPUTSERVICE, test "${input_enable}" = "yes")
-	AM_CONDITIONAL(SERIALSERVICE, test "${serial_enable}" = "yes")
-	AM_CONDITIONAL(NETWORKSERVICE, test "${network_enable}" = "yes")
+	AM_CONDITIONAL(AUDIOPLUGIN, test "${audio_enable}" = "yes")
+	AM_CONDITIONAL(INPUTPLUGIN, test "${input_enable}" = "yes")
+	AM_CONDITIONAL(SERIALPLUGIN, test "${serial_enable}" = "yes")
+	AM_CONDITIONAL(NETWORKPLUGIN, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")
 	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")
 	AM_CONDITIONAL(DUND, test "${dund_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
+	AM_CONDITIONAL(TOOLS, test "${tools_enable}" = "yes")
+	AM_CONDITIONAL(BCCMD, test "${bccmd_enable}" = "yes")
+	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
+	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(MANPAGES, test "${manpages_enable}" = "yes")
 	AM_CONDITIONAL(CONFIGFILES, test "${configfiles_enable}" = "yes")
 	AM_CONDITIONAL(INITSCRIPTS, test "${initscripts_enable}" = "yes")
 	AM_CONDITIONAL(PCMCIARULES, test "${pcmciarules_enable}" = "yes")
-	AM_CONDITIONAL(TOOLS, test "${tools_enable}" = "yes")
-	AM_CONDITIONAL(BCCMD, test "${bccmd_enable}" = "yes")
-	AM_CONDITIONAL(AVCTRL, test "${avctrl_enable}" = "yes" && test "${usb_found}" = "yes")
-	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
-	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
-	AM_CONDITIONAL(DFUBABEL, test "${dfubabel_enable}" = "yes" && test "${usb_found}" = "yes")
 ])

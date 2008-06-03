@@ -1,5 +1,5 @@
 
-if AUDIOSERVICE
+if AUDIOPLUGIN
 plugindir = $(libdir)/bluetooth/plugins
 
 plugin_LTLIBRARIES = libaudio.la

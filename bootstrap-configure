@@ -13,7 +13,6 @@ fi
 		--localstatedir=/var \
 		--libexecdir=/lib \
 		--enable-all \
-		--enable-glib \
 		--disable-manpages \
 		--disable-configfiles \
 		--disable-initscripts \
