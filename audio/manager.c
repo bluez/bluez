@@ -135,7 +135,7 @@ static struct audio_device *create_device(const bdaddr_t *bda)
 
 static void destroy_device(struct audio_device *device)
 {
-	dbus_connection_destroy_object_path(connection, device->path);
+	g_dbus_unregister_all_interfaces(connection, device->path);
 }
 
 static void remove_device(struct audio_device *device)
@@ -1515,7 +1515,8 @@ void audio_manager_exit(void)
 {
 	server_exit();
 
-	dbus_connection_destroy_object_path(connection, AUDIO_MANAGER_PATH);
+	g_dbus_unregister_interface(connection, AUDIO_MANAGER_PATH,
+						AUDIO_MANAGER_INTERFACE);
 
 	dbus_connection_unref(connection);
 
