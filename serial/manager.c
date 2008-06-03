@@ -401,7 +401,27 @@ fail:
 	pending_connect_remove(pc);
 }
 
-static DBusHandlerResult create_channel_port(DBusConnection *conn,
+static inline DBusMessage *does_not_exist(DBusMessage *msg,
+					const char *description)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExist",
+				description);
+}
+
+static inline DBusMessage *invalid_arguments(DBusMessage *msg,
+					const char *description)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
+				description);
+}
+
+static inline DBusMessage *failed(DBusMessage *msg, const char *description)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+				description);
+}
+
+static DBusMessage *create_channel_port(DBusConnection *conn,
 				DBusMessage *msg, const char *adapter,
 				const char *address, const char *name,
 				long channel, void *data)
@@ -413,14 +433,13 @@ static DBusHandlerResult create_channel_port(DBusConnection *conn,
 	bdaddr_t src, dst;
 
 	if (channel < 1 || channel > 30)
-		return error_invalid_arguments(conn, msg,
-				"invalid RFCOMM channel");
+		return invalid_arguments(msg, "Invalid RFCOMM channel");
 
 	str2ba(adapter, &src);
 	str2ba(address, &dst);
 	err = rfcomm_bind(&src, &dst, -1, channel);
 	if (err < 0)
-		return error_failed_errno(conn, msg, -err);
+		return failed(msg, strerror(-err));
 
 	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
 	port_store(&src, &dst, err, channel, name);
@@ -429,7 +448,7 @@ static DBusHandlerResult create_channel_port(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &ppath,
@@ -441,10 +460,10 @@ static DBusHandlerResult create_channel_port(DBusConnection *conn,
 			DBUS_TYPE_STRING, &ppath,
 			DBUS_TYPE_INVALID);
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
-static DBusHandlerResult connect_pending(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *connect_pending(DBusConnection *conn, DBusMessage *msg,
 					struct pending_connect *pc)
 {
 	int err;
@@ -467,10 +486,12 @@ static DBusHandlerResult connect_pending(DBusConnection *conn, DBusMessage *msg,
 		error("RFCOMM connect failed: %s(%d)", strerr, -err);
 		pending_connects = g_slist_remove(pending_connects, pc);
 		pending_connect_free(pc);
-		return error_connection_attempt_failed(conn, msg, -err);
+		return g_dbus_create_error(msg, ERROR_INTERFACE
+						".ConnectionAttemptFailed",
+						"%s", strerror(-err));
 	}
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
 static void record_cb(sdp_list_t *recs, int err, gpointer data)
@@ -599,7 +620,7 @@ static int pattern2long(const char *pattern, long *pval)
 	return 0;
 }
 
-static DBusHandlerResult search_uuid(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *search_uuid(DBusConnection *conn, DBusMessage *msg,
 				const char *adapter, const char *address,
 				const char *pattern, uuid_t *uuid, void *data)
 {
@@ -621,7 +642,8 @@ static DBusHandlerResult search_uuid(DBusConnection *conn, DBusMessage *msg,
 	err = bt_search_service(&src, &dst, uuid, record_cb, pc, NULL);
 	if (err < 0) {
 		pending_connect_free(pc);
-		return error_not_supported(conn, msg);
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotSuppported",
+						"Not Supported");
 	}
 
 	pending_connects = g_slist_append(pending_connects, pc);
@@ -629,38 +651,35 @@ static DBusHandlerResult search_uuid(DBusConnection *conn, DBusMessage *msg,
 					dbus_message_get_sender(msg),
 					transaction_owner_exited, pc, NULL);
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
-static DBusHandlerResult create_port(DBusConnection *conn,
+static DBusMessage *create_port(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	const char *address, *pattern;
 	struct pending_connect *pending;
-	DBusError derr;
 	long val;
 	uuid_t uuid;
 	char adp[18];
 	int dev_id;
 	bdaddr_t src;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	dev_id = hci_get_route(NULL);
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
-		return error_failed(conn, msg, "Adapter not available");
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
+						"Adapter not Available");
 
 	pending = find_pending_connect_by_pattern(address, pattern);
 	if (pending)
-		return error_in_progress(conn, msg, "Connection in progress");
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
+						"Connection in Progress");
 
 	ba2str(&src, adp);
 
@@ -674,7 +693,8 @@ static DBusHandlerResult create_port(DBusConnection *conn,
 		return create_channel_port(conn, msg, adp, address, pattern,
 				val, data);
 
-	return error_invalid_arguments(conn, msg, "invalid pattern");
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArgument",
+					"Invalid pattern");
 }
 
 static void message_append_paths(DBusMessage *msg, const GSList *list)
@@ -696,51 +716,43 @@ static void message_append_paths(DBusMessage *msg, const GSList *list)
 	dbus_message_iter_close_container(&iter, &iter_array);
 }
 
-static DBusHandlerResult list_ports(DBusConnection *conn,
+static DBusMessage *list_ports(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	message_append_paths(reply, ports_paths);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult remove_port(DBusConnection *conn,
+static DBusMessage *remove_port(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct rfcomm_dev_info di;
-	DBusError derr;
 	const char *path;
 	GSList *l;
 	int16_t id;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	if (sscanf(path, SERIAL_MANAGER_PATH"/rfcomm%hd", &id) != 1)
-		return error_does_not_exist(conn, msg, "Invalid RFCOMM node");
+		return does_not_exist(msg, "Invalid RFCOMM node");
 
 	di.id = id;
 	if (ioctl(rfcomm_ctl, RFCOMMGETDEVINFO, &di) < 0)
-		return error_does_not_exist(conn, msg, "Invalid RFCOMM node");
+		return does_not_exist(msg, "Invalid RFCOMM node");
 	port_delete(&di.src, &di.dst, id);
 
 	if (port_unregister(path) < 0)
-		return error_does_not_exist(conn, msg, "Invalid RFCOMM node");
-
-	send_message_and_unref(conn,
-			dbus_message_new_method_return(msg));
+		return does_not_exist(msg, "Invalid RFCOMM node");
 
 	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "PortRemoved" ,
@@ -753,7 +765,7 @@ static DBusHandlerResult remove_port(DBusConnection *conn,
 		ports_paths = g_slist_remove(ports_paths, l->data);
 	}
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return dbus_message_new_method_return(msg);
 }
 
 static void add_lang_attr(sdp_record_t *r)
@@ -1036,14 +1048,14 @@ static void connect_event_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	return;
 }
 
-static DBusHandlerResult proxy_enable(DBusConnection *conn,
+static DBusMessage *proxy_enable(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct proxy *prx = data;
 	sdp_record_t *record;
 
 	if (prx->io)
-		return error_failed(conn, msg, "Already enabled");
+		return failed(msg, "Already enabled");
 
 	/* Listen */
 	prx->io = bt_rfcomm_listen_allocate(&prx->src, &prx->channel, 0,
@@ -1051,7 +1063,7 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 	if (!prx->io) {
 		const char *strerr = strerror(errno);
 		error("RFCOMM listen socket failed: %s(%d)", strerr, errno);
-		return error_failed(conn, msg, strerr);
+		return failed(msg, strerr);
 	}
 
 	g_io_channel_set_close_on_unref(prx->io, TRUE);
@@ -1059,38 +1071,35 @@ static DBusHandlerResult proxy_enable(DBusConnection *conn,
 	record = proxy_record_new(prx->uuid128, prx->channel);
 	if (!record) {
 		g_io_channel_unref(prx->io);
-		return error_failed(conn, msg,
-			"Unable to allocate new service record");
+		return failed(msg, "Unable to allocate new service record");
 	}
 
 	if (add_record_to_server(&prx->src, record) < 0) {
 		sdp_record_free(record);
 		g_io_channel_unref(prx->io);
-		return error_failed(conn, msg, "Service registration failed");
+		return failed(msg, "Service registration failed");
 	}
 
 	prx->record_id = record->handle;
 
-	return send_message_and_unref(conn,
-			dbus_message_new_method_return(msg));
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult proxy_disable(DBusConnection *conn,
+static DBusMessage *proxy_disable(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct proxy *prx = data;
 
 	if (!prx->io)
-		return error_failed(conn, msg, "Not enabled");
+		return failed(msg, "Not enabled");
 
 	/* Remove the watches and unregister the record */
 	disable_proxy(prx);
 
-	return send_message_and_unref(conn,
-			dbus_message_new_method_return(msg));
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult proxy_get_info(DBusConnection *conn,
+static DBusMessage *proxy_get_info(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct proxy *prx = data;
@@ -1100,7 +1109,7 @@ static DBusHandlerResult proxy_get_info(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -1139,7 +1148,7 @@ static DBusHandlerResult proxy_get_info(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
 static struct {
@@ -1236,10 +1245,9 @@ static int set_stopbits(uint8_t stopbits, tcflag_t *ctrl)
 	return -EINVAL;
 }
 
-static DBusHandlerResult proxy_set_serial_params(DBusConnection *conn,
+static DBusMessage *proxy_set_serial_params(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusError derr;
 	struct proxy *prx = data;
 	const char *ratestr, *paritystr;
 	uint8_t databits, stopbits;
@@ -1248,51 +1256,46 @@ static DBusHandlerResult proxy_set_serial_params(DBusConnection *conn,
 
 	/* Don't allow change TTY settings if it is open */
 	if (prx->local_watch)
-		return error_failed(conn, msg, "Not allowed");
+		return failed(msg, "Not allowed");
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &ratestr,
 				DBUS_TYPE_BYTE, &databits,
 				DBUS_TYPE_BYTE, &stopbits,
 				DBUS_TYPE_STRING, &paritystr,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	if (str2speed(ratestr, &speed)  == B0)
-		return error_invalid_arguments(conn, msg, "Invalid baud rate");
+		return invalid_arguments(msg, "Invalid baud rate");
 
 	ctrl = prx->proxy_ti.c_cflag;
 	if (set_databits(databits, &ctrl) < 0)
-		return error_invalid_arguments(conn, msg, "Invalid data bits");
+		return invalid_arguments(msg, "Invalid data bits");
 
 	if (set_stopbits(stopbits, &ctrl) < 0)
-		return error_invalid_arguments(conn, msg, "Invalid stop bits");
+		return invalid_arguments(msg, "Invalid stop bits");
 
 	if (set_parity(paritystr, &ctrl) < 0)
-		return error_invalid_arguments(conn, msg, "Invalid parity");
+		return invalid_arguments(msg, "Invalid parity");
 
 	prx->proxy_ti.c_cflag = ctrl;
 	prx->proxy_ti.c_cflag |= (CLOCAL | CREAD);
 	cfsetispeed(&prx->proxy_ti, speed);
 	cfsetospeed(&prx->proxy_ti, speed);
 
-	return send_message_and_unref(conn,
-			dbus_message_new_method_return(msg));
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusMethodVTable proxy_methods[] = {
-	{ "Enable",			proxy_enable,			"",	""	},
-	{ "Disable",			proxy_disable,			"",	""	},
-	{ "GetInfo",			proxy_get_info,			"",	"a{sv}"	},
-	{ "SetSerialParameters",	proxy_set_serial_params,	"syys",	""	},
-	{ NULL, NULL, NULL, NULL },
+static GDBusMethodTable proxy_methods[] = {
+	{ "Enable",			"",	"",	proxy_enable },
+	{ "Disable",			"",	"",	proxy_disable },
+	{ "GetInfo",			"",	"a{sv}",proxy_get_info },
+	{ "SetSerialParameters",	"syys",	"",	proxy_set_serial_params },
+	{ },
 };
 
-static void proxy_handler_unregister(DBusConnection *conn, void *data)
+static void proxy_handler_unregister(void *data)
 {
 	struct proxy *prx = data;
 	int sk;
@@ -1321,14 +1324,14 @@ static int register_proxy_object(struct proxy *prx, char *outpath, size_t size)
 	snprintf(path, MAX_PATH_LENGTH, "/org/bluez/serial/proxy%d",
 			sk_counter++);
 
-	if (!dbus_connection_create_object_path(connection, path, prx,
-				proxy_handler_unregister)) {
+	if (!g_dbus_register_interface(connection, path,
+					SERIAL_PROXY_INTERFACE,
+					proxy_methods, NULL, NULL,
+					prx, proxy_handler_unregister)) {
 		error("D-Bus failed to register %s path", path);
 		return -1;
 	}
 
-	dbus_connection_register_interface(connection, path,
-			SERIAL_PROXY_INTERFACE, proxy_methods, NULL, NULL);
 	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
 
 	if (outpath)
@@ -1455,49 +1458,45 @@ static int proxycmp(const char *path, const char *address)
 	return strcmp(prx->address, address);
 }
 
-static DBusHandlerResult create_proxy(DBusConnection *conn,
+static DBusMessage *create_proxy(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	char path[MAX_PATH_LENGTH + 1];
 	const char *uuid128, *address, *ppath = path;
 	DBusMessage *reply;
 	proxy_type_t type;
-	DBusError derr;
 	bdaddr_t src;
 	uuid_t uuid;
 	int dev_id, ret;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &uuid128,
 				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	if (bt_string2uuid(&uuid, uuid128) < 0)
-		return error_invalid_arguments(conn, msg, "Invalid UUID");
+		return invalid_arguments(msg, "Invalid UUID");
 
 	type = addr2type(address);
 	if (type == UNKNOWN_PROXY_TYPE)
-		return error_invalid_arguments(conn, msg, "Invalid address");
+		return invalid_arguments(msg, "Invalid address");
 
 	/* Only one proxy per address(TTY or unix socket) is allowed */
 	if (g_slist_find_custom(proxies_paths,
 				address, (GCompareFunc) proxycmp))
-		return error_already_exists(conn, msg, "Proxy already exists");
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyExist",
+						"Proxy already exists");
 
 	dev_id = hci_get_route(NULL);
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0)) {
 		error("Adapter not available");
-		return error_failed(conn, msg, "Adapter not available");
+		return failed(msg, "Adapter no available");
 	}
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	switch (type) {
 	case UNIX_SOCKET_PROXY:
@@ -1517,7 +1516,7 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 	}
 	if (ret < 0) {
 		dbus_message_unref(reply);
-		return error_failed(conn, msg, "Create object path failed");
+		return failed(msg, "Create object path failed");
 	}
 
 	dbus_connection_emit_signal(connection, SERIAL_MANAGER_PATH,
@@ -1529,43 +1528,38 @@ static DBusHandlerResult create_proxy(DBusConnection *conn,
 			DBUS_TYPE_STRING, &ppath,
 			DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult list_proxies(DBusConnection *conn,
+static DBusMessage *list_proxies(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	message_append_paths(reply, proxies_paths);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult remove_proxy(DBusConnection *conn,
+static DBusMessage *remove_proxy(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct proxy *prx = NULL;
 	const char *path;
 	GSList *l;
-	DBusError derr;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	l = g_slist_find_custom(proxies_paths, path, (GCompareFunc) strcmp);
 	if (!l)
-		return error_does_not_exist(conn, msg, "Invalid proxy path");
+		return does_not_exist(msg, "Invalid proxy path");
 
 	/* Remove from storage */
 	if (dbus_connection_get_object_user_data(conn,
@@ -1582,19 +1576,17 @@ static DBusHandlerResult remove_proxy(DBusConnection *conn,
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn,
-			dbus_message_new_method_return(msg));
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult connect_channel(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *connect_channel(DBusConnection *conn, DBusMessage *msg,
 				const char *adapter, const char *address,
 				const char *pattern, long channel, void *data)
 {
 	struct pending_connect *pc;
 
 	if (channel < 1 || channel > 30)
-		return error_invalid_arguments(conn, msg,
-				"invalid RFCOMM channel");
+		return invalid_arguments(msg, "Invalid RFCOMM channel");
 
 	pc = g_new0(struct pending_connect, 1);
 	pc->conn = dbus_connection_ref(conn);
@@ -1608,7 +1600,7 @@ static DBusHandlerResult connect_channel(DBusConnection *conn, DBusMessage *msg,
 	return connect_pending(conn, msg, pc);
 }
 
-static DBusHandlerResult service_connect(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *service_connect(DBusConnection *conn, DBusMessage *msg,
 					const char *adapter, const char *address,
 					const char *pattern, void *data)
 {
@@ -1624,7 +1616,7 @@ static DBusHandlerResult service_connect(DBusConnection *conn, DBusMessage *msg,
 		dev_id = hci_devid(adapter);
 
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
-		return error_failed(conn, msg, "Adapter not available");
+		return failed(msg, "Adapter not Available");
 
 	ba2str(&src, adp);
 
@@ -1638,112 +1630,83 @@ static DBusHandlerResult service_connect(DBusConnection *conn, DBusMessage *msg,
 		return connect_channel(conn, msg, adp, address, pattern,
 					val, data);
 
-	return error_invalid_arguments(conn, msg, "invalid pattern");
+	return invalid_arguments(msg, "Invalid Pattern");
 }
 
-static DBusHandlerResult connect_service(DBusConnection *conn,
+static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	DBusError derr;
 	const char *address, *pattern;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	return service_connect(conn, msg, NULL, address, pattern, data);
 }
 
-static DBusHandlerResult connect_service_from_adapter(DBusConnection *conn,
+static DBusMessage *connect_service_from_adapter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusError derr;
 	const char *adapter, *address, *pattern;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &adapter,
 				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	return service_connect(conn, msg, adapter, address, pattern, data);
 }
 
-static DBusHandlerResult disconnect_service(DBusConnection *conn,
+static DBusMessage *disconnect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	DBusError derr;
 	const char *name;
 	int err, id;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	if (sscanf(name, "/dev/rfcomm%d", &id) != 1)
-		return error_invalid_arguments(conn, msg, "invalid RFCOMM node");
+		return invalid_arguments(msg, "Invalid RFCOMM node");
 
 	err = port_remove_listener(dbus_message_get_sender(msg), name);
 	if (err < 0)
-		return error_does_not_exist(conn, msg, "Invalid RFCOMM node");
-
-	send_message_and_unref(conn,
-			dbus_message_new_method_return(msg));
+		return does_not_exist(msg, "Invalid RFCOMM node");
 
 	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
 			DBUS_TYPE_STRING, &name,
 			DBUS_TYPE_INVALID);
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult cancel_connect_service(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *cancel_connect_service(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
 	struct pending_connect *pending;
-	DBusMessage *reply;
-	DBusError derr;
 	const char *bda, *pattern;
 
-	dbus_error_init(&derr);
-	if (!dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &bda,
 				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID)) {
-		error_invalid_arguments(conn, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	pending = find_pending_connect_by_pattern(bda, pattern);
 	if (!pending)
-		return error_does_not_exist(conn, msg,
-				"No such connection request");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return does_not_exist(msg, "No such connection request");
 
 	pending->canceled = 1;
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
 static void proxy_path_free(gpointer data, gpointer udata)
@@ -1765,7 +1728,7 @@ static void proxy_path_free(gpointer data, gpointer udata)
 	g_free(data);
 }
 
-static void manager_unregister(DBusConnection *conn, void *data)
+static void manager_unregister(void *data)
 {
 	char **dev;
 	int i;
@@ -1779,7 +1742,7 @@ static void manager_unregister(DBusConnection *conn, void *data)
 
 	if (proxies_paths) {
 		g_slist_foreach(proxies_paths,
-				proxy_path_free, conn);
+				proxy_path_free, connection);
 		g_slist_free(proxies_paths);
 		proxies_paths = NULL;
 	}
@@ -1792,7 +1755,8 @@ static void manager_unregister(DBusConnection *conn, void *data)
 	}
 
 	/* Unregister all paths in serial hierarchy */
-	if (!dbus_connection_list_registered(conn, SERIAL_MANAGER_PATH, &dev))
+	if (!dbus_connection_list_registered(connection, SERIAL_MANAGER_PATH,
+				&dev))
 		return;
 
 	for (i = 0; dev[i]; i++) {
@@ -1801,34 +1765,37 @@ static void manager_unregister(DBusConnection *conn, void *data)
 		snprintf(dev_path, sizeof(dev_path), "%s/%s", SERIAL_MANAGER_PATH,
 				dev[i]);
 
-		dbus_connection_destroy_object_path(conn, dev_path);
+		dbus_connection_destroy_object_path(connection, dev_path);
 	}
 
 	dbus_free_string_array(dev);
 }
 
-static DBusMethodVTable manager_methods[] = {
-	{ "CreatePort",			create_port,			"ss",	"s"	},
-	{ "ListPorts",			list_ports,			"",	"as"	},
-	{ "RemovePort",			remove_port,			"s",	""	},
-	{ "CreateProxy",		create_proxy,			"ss",	"s"	},
-	{ "ListProxies",		list_proxies,			"",	"as"	},
-	{ "RemoveProxy",		remove_proxy,			"s",	""	},
-	{ "ConnectService",		connect_service,		"ss",	"s"	},
-	{ "ConnectServiceFromAdapter",	connect_service_from_adapter,	"sss",	"s"	},
-	{ "DisconnectService",		disconnect_service,		"s",	""	},
-	{ "CancelConnectService",	cancel_connect_service,		"ss",	""	},
-	{ NULL, NULL, NULL, NULL },
+static GDBusMethodTable manager_methods[] = {
+	{ "CreatePort",			"ss",	"s",	create_port,
+							G_DBUS_METHOD_FLAG_ASYNC },
+	{ "ListPorts",			"",	"as",	list_ports },
+	{ "RemovePort",			"s",	"",	remove_port },
+	{ "CreateProxy",		"ss",	"s",	create_proxy },
+	{ "ListProxies",		"",	"as",	list_proxies },
+	{ "RemoveProxy",		"s",	"",	remove_proxy },
+	{ "ConnectService",		"ss",	"s",	connect_service,
+							G_DBUS_METHOD_FLAG_ASYNC },
+	{ "ConnectServiceFromAdapter",	"sss",	"s",	connect_service_from_adapter,
+							G_DBUS_METHOD_FLAG_ASYNC },
+	{ "DisconnectService",		"s",	"",	disconnect_service },
+	{ "CancelConnectService",	"ss",	"",	cancel_connect_service },
+	{ },
 };
 
-static DBusSignalVTable manager_signals[] = {
+static GDBusSignalTable manager_signals[] = {
 	{ "PortCreated",		"s"	},
 	{ "PortRemoved",		"s"	},
 	{ "ProxyCreated",		"s"	},
 	{ "ProxyRemoved",		"s"	},
 	{ "ServiceConnected",		"s"	},
 	{ "ServiceDisconnected",	"s"	},
-	{ NULL, NULL }
+	{ }
 };
 
 static void parse_port(char *key, char *value, void *data)
@@ -1957,20 +1924,12 @@ int serial_manager_init(DBusConnection *conn)
 			return -errno;
 	}
 
-	if (!dbus_connection_create_object_path(conn, SERIAL_MANAGER_PATH,
-						NULL, manager_unregister)) {
-		error("D-Bus failed to register %s path", SERIAL_MANAGER_PATH);
-		return -1;
-	}
-
-	if (!dbus_connection_register_interface(conn, SERIAL_MANAGER_PATH,
-						SERIAL_MANAGER_INTERFACE,
-						manager_methods,
-						manager_signals, NULL)) {
+	if (!g_dbus_register_interface(conn, SERIAL_MANAGER_PATH,
+					SERIAL_MANAGER_INTERFACE,
+					manager_methods, manager_signals, NULL,
+					NULL, manager_unregister)) {
 		error("Failed to register %s interface to %s",
 				SERIAL_MANAGER_INTERFACE, SERIAL_MANAGER_PATH);
-		dbus_connection_destroy_object_path(connection,
-							SERIAL_MANAGER_PATH);
 		return -1;
 	}
 

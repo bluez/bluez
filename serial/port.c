@@ -79,8 +79,8 @@ static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *dev)
 	return NULL;
 }
 
-static DBusHandlerResult port_get_address(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *port_get_address(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
 	struct rfcomm_node *node = data;
 	DBusMessage *reply;
@@ -89,35 +89,36 @@ static DBusHandlerResult port_get_address(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	ba2str(&node->dst, bda);
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &pbda,
 			DBUS_TYPE_INVALID);
-	return send_message_and_unref(conn, reply);
 
+	return reply;
 }
 
-static DBusHandlerResult port_get_device(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *port_get_device(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
 	struct rfcomm_node *node = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &node->device,
 			DBUS_TYPE_INVALID);
-	return send_message_and_unref(conn, reply);
+
+	return reply;
 
 }
 
-static DBusHandlerResult port_get_adapter(DBusConnection *conn,
-					  DBusMessage *msg, void *data)
+static DBusMessage *port_get_adapter(DBusConnection *conn,
+				  DBusMessage *msg, void *data)
 {
 	struct rfcomm_node *node = data;
 	DBusMessage *reply;
@@ -128,18 +129,18 @@ static DBusHandlerResult port_get_adapter(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &paddr,
 			DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
 
-static DBusHandlerResult port_get_name(DBusConnection *conn,
-				       DBusMessage *msg, void *data)
+static DBusMessage *port_get_name(DBusConnection *conn,
+			       DBusMessage *msg, void *data)
 {
 	struct rfcomm_node *node = data;
 	DBusMessage *reply;
@@ -148,7 +149,7 @@ static DBusHandlerResult port_get_name(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	read_device_name(&node->src, &node->dst, &name);
 
@@ -160,27 +161,28 @@ static DBusHandlerResult port_get_name(DBusConnection *conn,
 	if (name)
 		g_free(name);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult port_get_service_name(DBusConnection *conn,
-					       DBusMessage *msg, void *data)
+static DBusMessage *port_get_service_name(DBusConnection *conn,
+				       DBusMessage *msg, void *data)
 {
 	struct rfcomm_node *node = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &node->svcname,
 			DBUS_TYPE_INVALID);
-	return send_message_and_unref(conn, reply);
+
+	return reply;
 }
 
-static DBusHandlerResult port_get_info(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *port_get_info(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct rfcomm_node *node = data;
 	DBusMessage *reply;
@@ -190,7 +192,7 @@ static DBusHandlerResult port_get_info(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -208,20 +210,20 @@ static DBusHandlerResult port_get_info(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusMethodVTable port_methods[] = {
-	{ "GetAddress",		port_get_address,	"",	"s"	},
-	{ "GetDevice",		port_get_device,	"",	"s"	},
-	{ "GetAdapter",		port_get_adapter,	"",	"s"	},
-	{ "GetName",		port_get_name,		"",	"s"	},
-	{ "GetServiceName",	port_get_service_name,	"",	"s"	},
-	{ "GetInfo",		port_get_info,		"",	"a{sv}"	},
+static GDBusMethodTable port_methods[] = {
+	{ "GetAddress",		"",	"s",	port_get_address },
+	{ "GetDevice",		"",	"s",	port_get_device },
+	{ "GetAdapter",		"",	"s",	port_get_adapter },
+	{ "GetName",		"",	"s",	port_get_name },
+	{ "GetServiceName",	"",	"s",	port_get_service_name },
+	{ "GetInfo",		"",	"a{sv}",port_get_info },
 	{ NULL, NULL, NULL, NULL },
 };
 
-static DBusSignalVTable port_signals[] = {
+static GDBusSignalTable port_signals[] = {
 	{ NULL, NULL }
 };
 
@@ -278,7 +280,7 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 	return FALSE;
 }
 
-static void port_handler_unregister(DBusConnection *conn, void *data)
+static void port_handler_unregister(void *data)
 {
 	struct rfcomm_node *node = data;
 
@@ -358,20 +360,14 @@ int port_register(DBusConnection *conn, int16_t id, bdaddr_t *src,
 
 	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%hd", SERIAL_MANAGER_PATH, id);
 
-	if (!dbus_connection_create_object_path(conn, path, node,
-						port_handler_unregister)) {
-		error("D-Bus failed to register %s path", path);
-		rfcomm_node_free(node);
-		return -1;
-	}
 
-	if (!dbus_connection_register_interface(conn, path,
+	if (!g_dbus_register_interface(conn, path,
 				SERIAL_PORT_INTERFACE,
-				port_methods,
-				port_signals, NULL)) {
+				port_methods, port_signals, NULL,
+				node, port_handler_unregister)) {
 		error("D-Bus failed to register %s interface",
 				SERIAL_PORT_INTERFACE);
-		dbus_connection_destroy_object_path(conn, path);
+		rfcomm_node_free(node);
 		return -1;
 	}
 
