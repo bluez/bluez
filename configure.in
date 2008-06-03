@@ -43,7 +43,6 @@ AC_OUTPUT([
 	eglib/Makefile
 	gdbus/Makefile
 	common/Makefile
-	daemon/Makefile
 	plugins/Makefile
 	network/Makefile
 	serial/Makefile
