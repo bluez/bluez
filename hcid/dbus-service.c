@@ -84,8 +84,8 @@ static void service_free(struct service *service)
 	g_free(service);
 }
 
-static DBusHandlerResult get_info(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *get_info(DBusConnection *conn,
+			DBusMessage *msg, void *data)
 {
 	struct service *service = data;
 	DBusMessage *reply;
@@ -94,7 +94,7 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
 
@@ -111,11 +111,11 @@ static DBusHandlerResult get_info(DBusConnection *conn,
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult get_identifier(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *get_identifier(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 
 	struct service *service = data;
@@ -124,7 +124,7 @@ static DBusHandlerResult get_identifier(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	if (service->ident)
 		identifier = service->ident;
@@ -132,11 +132,11 @@ static DBusHandlerResult get_identifier(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &identifier,
 							DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult get_name(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *get_name(DBusConnection *conn,
+			DBusMessage *msg, void *data)
 {
 
 	struct service *service = data;
@@ -145,7 +145,7 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	if (service->name)
 		name = service->name;
@@ -153,105 +153,111 @@ static DBusHandlerResult get_name(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &name,
 							DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult get_description(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *get_description(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *description = "";
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &description,
 							DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult get_bus_name(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *get_bus_name(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	const char *busname = "org.bluez";
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &busname,
 							DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult start(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static DBusMessage *start(DBusConnection *conn,
+			DBusMessage *msg, void *data)
 {
-	return error_failed_errno(conn, msg, EALREADY);
+	return g_dbus_create_error(msg,
+			ERROR_INTERFACE ".Failed",
+			strerror(EALREADY));
 }
 
-static DBusHandlerResult stop(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static DBusMessage *stop(DBusConnection *conn,
+			DBusMessage *msg, void *data)
 {
-	return error_failed_errno(conn, msg, EPERM);
+	return g_dbus_create_error(msg,
+			ERROR_INTERFACE ".Failed",
+			strerror(EPERM));
 }
 
-static DBusHandlerResult is_running(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *is_running(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	dbus_bool_t running = TRUE;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_BOOLEAN, &running,
 			DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult is_external(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *is_external(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	dbus_bool_t external = TRUE;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_BOOLEAN, &external,
 			DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult set_trusted(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static inline DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg,
+			ERROR_INTERFACE ".InvalidArguments",
+			"Invalid arguments in method call");
+}
+
+static DBusMessage *set_trusted(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct service *service = data;
-	DBusMessage *reply;
 	const char *address;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg, NULL);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return invalid_args(msg);
 
 	write_trust(BDADDR_ANY, address, service->ident, TRUE);
 
@@ -260,10 +266,10 @@ static DBusHandlerResult set_trusted(DBusConnection *conn,
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult list_trusted(DBusConnection *conn,
+static DBusMessage *list_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
@@ -274,7 +280,7 @@ static DBusHandlerResult list_trusted(DBusConnection *conn,
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	trusts = list_trusts(BDADDR_ANY, service->ident);
 
@@ -291,10 +297,10 @@ static DBusHandlerResult list_trusted(DBusConnection *conn,
 	g_slist_foreach(trusts, (GFunc) g_free, NULL);
 	g_slist_free(trusts);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult is_trusted(DBusConnection *conn,
+static DBusMessage *is_trusted(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
@@ -305,42 +311,37 @@ static DBusHandlerResult is_trusted(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	trusted = read_trust(BDADDR_ANY, address, service->ident);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply,
 				DBUS_TYPE_BOOLEAN, &trusted,
 				DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return reply;
 }
 
-static DBusHandlerResult remove_trust(DBusConnection *conn,
+static DBusMessage *remove_trust(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct service *service = data;
-	DBusMessage *reply;
 	const char *address;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	if (check_address(address) < 0)
-		return error_invalid_arguments(conn, msg, NULL);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return invalid_args(msg);
 
 	write_trust(BDADDR_ANY, address, service->ident, FALSE);
 
@@ -349,40 +350,33 @@ static DBusHandlerResult remove_trust(DBusConnection *conn,
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }
 
-static DBusMethodVTable service_methods[] = {
-	{ "GetInfo",		get_info,		"",	"a{sv}"	},
-	{ "GetIdentifier",	get_identifier,		"",	"s"	},
-	{ "GetName",		get_name,		"",	"s"	},
-	{ "GetDescription",	get_description,	"",	"s"	},
-	{ "GetBusName",		get_bus_name,		"",	"s"	},
-	{ "Start",		start,			"",	""	},
-	{ "Stop",		stop,			"",	""	},
-	{ "IsRunning",		is_running,		"",	"b"	},
-	{ "IsExternal",		is_external,		"",	"b"	},
-	{ "SetTrusted",		set_trusted,		"s",	""	},
-	{ "IsTrusted",		is_trusted,		"s",	"b"	},
-	{ "RemoveTrust",	remove_trust,		"s",	""	},
-	{ "ListTrusts",		list_trusted,		"",	"as"	},
+static GDBusMethodTable service_methods[] = {
+	{ "GetInfo",		"",	"a{sv}",	get_info	},
+	{ "GetIdentifier",	"",	"s",		get_identifier	},
+	{ "GetName",		"",	"s",		get_name	},
+	{ "GetDescription",	"",	"s",		get_description	},
+	{ "GetBusName",		"",	"s",		get_bus_name	},
+	{ "Start",		"",	"",		start		},
+	{ "Stop",		"",	"",		stop		},
+	{ "IsRunning",		"",	"b",		is_running	},
+	{ "IsExternal",		"",	"b",		is_external	},
+	{ "SetTrusted",		"s",	"",		set_trusted	},
+	{ "IsTrusted",		"s",	"b",		is_trusted	},
+	{ "RemoveTrust",	"s",	"",		remove_trust	},
+	{ "ListTrusts",		"",	"as",		list_trusted	},
 	{ NULL, NULL, NULL, NULL }
 };
 
-static DBusSignalVTable service_signals[] = {
+static GDBusSignalTable service_signals[] = {
 	{ "Started",		""	},
 	{ "Stopped",		""	},
 	{ "TrustAdded",		"s"	},
 	{ "TrustRemoved",	"s"	},
 	{ NULL, NULL }
 };
-
-static dbus_bool_t service_init(DBusConnection *conn, const char *path)
-{
-	return dbus_connection_register_interface(conn, path, SERVICE_INTERFACE,
-							service_methods,
-							service_signals, NULL);
-}
 
 static int service_cmp_path(struct service *service, const char *path)
 {
@@ -413,7 +407,8 @@ static int unregister_service_for_connection(DBusConnection *connection,
 					DBUS_TYPE_STRING, &service->object_path,
 					DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_destroy_object_path(conn, service->object_path)) {
+	if (!g_dbus_unregister_interface(conn,
+			service->object_path, SERVICE_INTERFACE)) {
 		error("D-Bus failed to unregister %s object",
 						service->object_path);
 		return -1;
@@ -628,14 +623,11 @@ int register_service(const char *ident, const char **uuids)
 	debug("Registering service object: %s (%s)",
 					service->ident, obj_path);
 
-	if (!dbus_connection_create_object_path(conn, obj_path,
-							service, NULL)) {
+	if (!g_dbus_register_interface(conn, obj_path, SERVICE_INTERFACE,
+				service_methods, service_signals,
+				NULL, service, NULL)) {
 		error("D-Bus failed to register %s object", obj_path);
-		return -1;
-	}
-
-	if (!service_init(conn, obj_path)) {
-		error("Service init failed");
+		service_free(service);
 		return -1;
 	}
 
