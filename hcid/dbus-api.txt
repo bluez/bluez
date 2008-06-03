@@ -243,19 +243,7 @@ Service		org.bluez
 Interface	org.bluez.Database
 Object path	/org/bluez
 
-Methods		void RegisterService(string identifier, string name, string description)
-
-			This method registers a new service specified by
-			its unique identifier. This is only needed for
-			services that are not started through the
-			Bluetooth daemon.
-
-		void UnregisterService(string identifier)
-
-			This method unregisters a service specified by
-			its unique identifier.
-
-		uint32 AddServiceRecord(array{byte})
+Methods		uint32 AddServiceRecord(array{byte})
 
 			Adds a new service record and returns the assigned
 			record handle.
@@ -299,24 +287,6 @@ Methods		void RegisterService(string identifier, string name, string description
 					 org.bluez.Error.NotAuthorized
 					 org.bluez.Error.DoesNotExist
 					 org.bluez.Error.Failed
-
-		void RequestAuthorization(string address, string uuid)
-
-			This method gets called when a service wants to check
-			if a remote device is authorized to perform some
-			action. The authorization request is forwarded to an
-			authorization agent.
-
-			The address parameter is the Bluetooth address of the
-			remote device and the uuid is the identifier of the
-			profile requesting the authorization. This parameter
-			can also be left blank.
-
-		void CancelAuthorizationRequest(string address, string uuid)
-
-			This method cancels an authorization process requested
-			by a previous call to RequestAuthorization(). The
-			address and uuid parameters must match.
 
 
 Adapter hierarchy

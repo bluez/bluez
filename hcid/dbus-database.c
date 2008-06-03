@@ -36,8 +36,6 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include <glib.h>
-#include <dbus/dbus.h>
 #include <gdbus.h>
 
 #include "hcid.h"
@@ -88,10 +86,26 @@ static void exit_callback(void *user_data)
 	g_free(user_record);
 }
 
-static DBusHandlerResult add_service_record(DBusConnection *conn,
+static inline DBusMessage *invalid_arguments(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+}
+
+static inline DBusMessage *not_available(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
+							"Not Available");
+}
+
+static inline DBusMessage *failed(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed", "Failed");
+}
+
+static DBusMessage *add_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	DBusMessageIter iter, array;
 	const char *sender;
 	struct record_data *user_record;
@@ -104,24 +118,24 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 
 	dbus_message_iter_get_fixed_array(&array, &record, &len);
 	if (len <= 0)
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_arguments(msg);
 
 	sdp_record = sdp_extract_pdu(record, &scanned);
 	if (!sdp_record) {
 		error("Parsing of service record failed");
-		return error_failed_errno(conn, msg, EIO);
+		return failed(msg);
 	}
 
 	if (scanned != len) {
 		error("Size mismatch of service record");
 		sdp_record_free(sdp_record);
-		return error_failed_errno(conn, msg, EIO);
+		return failed(msg);
 	}
 
 	if (add_record_to_server(BDADDR_ANY, sdp_record) < 0) {
 		error("Failed to register service record");
 		sdp_record_free(sdp_record);
-		return error_failed_errno(conn, msg, EIO);
+		return failed(msg);
 	}
 
 	user_record = g_new0(struct record_data, 1);
@@ -139,14 +153,8 @@ static DBusHandlerResult add_service_record(DBusConnection *conn,
 								user_record,
 								NULL);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &user_record->handle,
-					DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_UINT32, &user_record->handle,
+							DBUS_TYPE_INVALID);
 }
 
 int add_xml_record(DBusConnection *conn, const char *sender, bdaddr_t *src,
@@ -183,32 +191,25 @@ int add_xml_record(DBusConnection *conn, const char *sender, bdaddr_t *src,
 	return 0;
 }
 
-static DBusHandlerResult add_service_record_from_xml(DBusConnection *conn,
+static DBusMessage *add_service_record_from_xml(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	const char *sender, *record;
 	dbus_uint32_t handle;
 	int err;
 
 	if (dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
+		return NULL;
 
 	sender = dbus_message_get_sender(msg);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
 	err = add_xml_record(conn, sender, BDADDR_ANY, record, &handle);
 	if (err < 0)
-		return error_failed_errno(conn, msg, err);
+		return failed(msg);
 
-	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &handle,
+	return g_dbus_create_reply(msg, DBUS_TYPE_UINT32, &handle,
 							DBUS_TYPE_INVALID);
-
-	return send_message_and_unref(conn, reply);
 }
 
 static DBusMessage *update_record(DBusConnection *conn, DBusMessage *msg,
@@ -236,7 +237,7 @@ static DBusMessage *update_record(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
-static DBusHandlerResult update_service_record(DBusConnection *conn,
+static DBusMessage *update_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct record_data *user_record;
@@ -253,26 +254,25 @@ static DBusHandlerResult update_service_record(DBusConnection *conn,
 
 	dbus_message_iter_get_fixed_array(&array, &bin_record, &size);
 	if (size <= 0)
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_arguments(msg);
 
 	user_record = find_record(handle, dbus_message_get_sender(msg));
 	if (!user_record)
-		return error_not_available(conn, msg);
+		return not_available(msg);
 
 	sdp_record = sdp_extract_pdu(bin_record, &scanned);
 	if (!sdp_record) {
 		error("Parsing of service record failed");
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_arguments(msg);
 	}
 
 	if (scanned != size) {
 		error("Size mismatch of service record");
 		sdp_record_free(sdp_record);
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_arguments(msg);
 	}
 
-	return send_message_and_unref(conn,
-			update_record(conn, msg, BDADDR_ANY, handle, sdp_record));
+	return update_record(conn, msg, BDADDR_ANY, handle, sdp_record);
 }
 
 DBusMessage *update_xml_record(DBusConnection *conn,
@@ -288,15 +288,11 @@ DBusMessage *update_xml_record(DBusConnection *conn,
 				DBUS_TYPE_UINT32, &handle,
 				DBUS_TYPE_STRING, &record,
 				DBUS_TYPE_INVALID) == FALSE)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".InvalidArguments",
-				"Invalid arguments in method call");
+		return NULL;
 
 	len = (record ? strlen(record) : 0);
 	if (len == 0)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".InvalidArguments",
-				"Invalid arguments in method call");
+		return invalid_arguments(msg);
 
 	user_record = find_record(handle, dbus_message_get_sender(msg));
 	if (!user_record)
@@ -316,11 +312,10 @@ DBusMessage *update_xml_record(DBusConnection *conn,
 	return update_record(conn, msg, src, handle, sdp_record);
 }
 
-static DBusHandlerResult update_service_record_from_xml(DBusConnection *conn,
+static DBusMessage *update_service_record_from_xml(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return send_message_and_unref(conn,
-			update_xml_record(conn, msg, BDADDR_ANY));
+	return update_xml_record(conn, msg, BDADDR_ANY);
 }
 
 int remove_record(DBusConnection *conn, const char *sender,
@@ -346,171 +341,40 @@ int remove_record(DBusConnection *conn, const char *sender,
 	return 0;
 }
 
-static DBusHandlerResult remove_service_record(DBusConnection *conn,
+static DBusMessage *remove_service_record(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	dbus_uint32_t handle;
 	const char *sender;
 
 	if (dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_UINT32, &handle, DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
+		return NULL;
 
 	sender = dbus_message_get_sender(msg);
 
 	if (remove_record(conn, sender, handle) < 0)
-		return error_not_available(conn, msg);
+		return not_available(msg);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	return send_message_and_unref(conn, reply);
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusHandlerResult register_service_old(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *ident, *name, *desc;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &ident,
-			DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &desc,
-						DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
-
-	return error_failed_errno(conn, msg, EIO);
-}
-
-static DBusHandlerResult unregister_service_old(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct service *service;
-	const char *ident;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &ident,
-						DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
-
-	service = search_service(ident);
-	if (!service)
-		return error_service_does_not_exist(conn, msg);
-
-	return error_failed_errno(conn, msg, EIO);
-}
-
-static DBusHandlerResult request_authorization_old(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *sender, *address, *uuid;
-	struct service *service;
-	char path[MAX_PATH_LENGTH];
-	bdaddr_t bdaddr;
-	gboolean trusted;
-	int adapter_id;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-			DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
-
-	sender = dbus_message_get_sender(msg);
-
-	service = search_service_by_uuid(uuid);
-	if (!service)
-		service = search_service(sender);
-
-	if (!service) {
-		debug("Got RequestAuthorization from non-service owner %s",
-				sender);
-		return error_not_authorized(conn, msg);
-	}
-
-	str2ba(address, &bdaddr);
-	adapter_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
-	if (adapter_id < 0)
-		return error_not_connected(conn, msg);
-
-	hci_devba(adapter_id, &bdaddr);
-
-	trusted = read_trust(&bdaddr, address, GLOBAL_TRUST);
-	if (!trusted)
-		trusted = read_trust(BDADDR_ANY, address, service->ident);
-
-	if (trusted) {
-		DBusMessage *reply;
-
-		reply = dbus_message_new_method_return(msg);
-		if (!reply)
-			return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-		return send_message_and_unref(conn, reply);
-	}
-
-	snprintf(path, sizeof(path), "/org/bluez/hci%d", adapter_id);
-	return handle_authorize_request_old(conn, msg,
-				service, path, address, uuid);
-}
-
-static DBusHandlerResult cancel_authorization_request(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *sender, *address, *uuid;
-	struct service *service;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-			DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID) == FALSE)
-		return error_invalid_arguments(conn, msg, NULL);
-
-	sender = dbus_message_get_sender(msg);
-
-	service = search_service_by_uuid(uuid);
-	if (!service)
-		service = search_service(sender);
-
-	if (!service)
-		return error_not_authorized(conn, msg);
-
-	return cancel_authorize_request_old(conn, msg, service, address, uuid);
-}
-
-static DBusMethodVTable database_methods[] = {
-	{ "AddServiceRecord",			add_service_record,		"ay",	"u"	},
-	{ "AddServiceRecordFromXML",		add_service_record_from_xml,	"s",	"u"	},
-	{ "UpdateServiceRecord",		update_service_record,		"uay",	""	},
-	{ "UpdateServiceRecordFromXML",		update_service_record_from_xml,	"us",	""	},
-	{ "RemoveServiceRecord",		remove_service_record,		"u",	""	},
-	{ "RegisterService",			register_service_old,		"sss",	""	},
-	{ "UnregisterService",			unregister_service_old,		"s",	""	},
-	{ "RequestAuthorization",		request_authorization_old,	"ss",	""	},
-	{ "CancelAuthorizationRequest",		cancel_authorization_request,	"ss",	""	},
-	{ NULL, NULL, NULL, NULL }
+static GDBusMethodTable database_methods[] = {
+	{ "AddServiceRecord",		"ay",  "u",	add_service_record		},
+	{ "AddServiceRecordFromXML",	"s",   "u",	add_service_record_from_xml	},
+	{ "UpdateServiceRecord",	"uay", "",	update_service_record		},
+	{ "UpdateServiceRecordFromXML",	"us",  "",	update_service_record_from_xml	},
+	{ "RemoveServiceRecord",	"u",   "",	remove_service_record		},
+	{ }
 };
 
 dbus_bool_t database_init(DBusConnection *conn, const char *path)
 {
-	return dbus_connection_register_interface(conn, path,
-							DATABASE_INTERFACE,
-							database_methods,
-							NULL, NULL);
+	return g_dbus_register_interface(conn, path, DATABASE_INTERFACE,
+				database_methods, NULL, NULL, NULL, NULL);
 }
 
-DBusHandlerResult database_message(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+void database_cleanup(DBusConnection *conn, const char *path)
 {
-	DBusMethodVTable *current;
-
-	for (current = database_methods;
-			current->name && current->message_function; current++) {
-		if (!dbus_message_is_method_call(msg, DATABASE_INTERFACE,
-								current->name))
-			continue;
-
-		if (dbus_message_has_signature(msg, current->signature)) {
-			debug("%s: %s.%s()", dbus_message_get_path(msg),
-					DATABASE_INTERFACE, current->name);
-			return current->message_function(conn, msg, data);
-		}
-	}
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	g_dbus_unregister_interface(conn, path, DATABASE_INTERFACE);
 }

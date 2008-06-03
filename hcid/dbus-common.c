@@ -282,6 +282,8 @@ void hcid_dbus_exit(void)
 	release_default_auth_agent();
 	release_services(conn);
 
+	database_cleanup(conn, BASE_PATH);
+
 	/* Unregister all paths in Adapter path hierarchy */
 	if (!dbus_connection_list_registered(conn, BASE_PATH, &children))
 		goto done;
