@@ -93,19 +93,9 @@ DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, 
 		dbus_message_new_error(msg, ERROR_INTERFACE ".NotInProgress", str));
 }
 
-DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_already_exists(conn, msg, "Bonding already exists");
-}
-
 DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_does_not_exist(conn, msg, "Bonding does not exist");
-}
-
-DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_in_progress(conn, msg, "Bonding in progress");
 }
 
 DBusHandlerResult error_bonding_not_in_progress(DBusConnection *conn, DBusMessage *msg)
@@ -120,29 +110,9 @@ DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessag
 							   "Authentication Canceled"));
 }
 
-DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_in_progress(conn, msg, "Discover in progress");
-}
-
 DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_does_not_exist(conn, msg, "Record does not exist");
-}
-
-DBusHandlerResult error_passkey_agent_already_exists(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_already_exists(conn, msg, "Passkey agent already exists");
-}
-
-DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_does_not_exist(conn, msg, "Passkey agent does not exist");
-}
-
-DBusHandlerResult error_auth_agent_already_exists(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_already_exists(conn, msg, "Authorization agent already exists");
 }
 
 DBusHandlerResult error_auth_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg)
@@ -158,11 +128,6 @@ DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage
 DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_in_progress(conn, msg, "Service search in progress");
-}
-
-DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_already_exists(conn, msg, "Audit already performed");
 }
 
 DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage *msg)

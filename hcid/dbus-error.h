@@ -35,19 +35,12 @@ DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg)
 /* Used only for hcid device audit feature */
 DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str);
 DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_bonding_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_bonding_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_bonding_not_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_discover_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_passkey_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_passkey_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_auth_agent_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_auth_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_sdp_failed(DBusConnection *conn, DBusMessage *msg, int err);
-DBusHandlerResult error_audit_already_exists(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage *msg);
