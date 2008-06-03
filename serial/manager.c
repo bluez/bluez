@@ -1731,7 +1731,6 @@ static void proxy_path_free(gpointer data, gpointer udata)
 static void manager_unregister(void *data)
 {
 	char **dev;
-	int i;
 
 	if (pending_connects) {
 		g_slist_foreach(pending_connects,
@@ -1754,19 +1753,8 @@ static void manager_unregister(void *data)
 		ports_paths = NULL;
 	}
 
-	/* Unregister all paths in serial hierarchy */
-	if (!dbus_connection_list_registered(connection, SERIAL_MANAGER_PATH,
-				&dev))
-		return;
-
-	for (i = 0; dev[i]; i++) {
-		char dev_path[MAX_PATH_LENGTH];
-
-		snprintf(dev_path, sizeof(dev_path), "%s/%s", SERIAL_MANAGER_PATH,
-				dev[i]);
-
-		dbus_connection_destroy_object_path(connection, dev_path);
-	}
+	g_dbus_unregister_interface(connection, SERIAL_MANAGER_PATH,
+						SERIAL_MANAGER_INTERFACE);
 
 	dbus_free_string_array(dev);
 }
