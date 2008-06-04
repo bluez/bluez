@@ -5,6 +5,7 @@ import gobject
 import dbus
 import dbus.service
 import dbus.mainloop.glib
+import sys
 
 class Agent(dbus.service.Object):
 	@dbus.service.method("org.bluez.Agent",
@@ -55,6 +56,9 @@ class Agent(dbus.service.Object):
 		print "Cancel"
 		return
 
+def create_device_reply(reply):
+	print "Got reply"
+
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
@@ -71,6 +75,11 @@ if __name__ == '__main__':
 
 	adapter.RegisterAgent(path, "DisplayOnly")
 	print "Agent registered"
+
+	if len(sys.argv) > 1:
+		adapter.CreatePairedDevice(sys.argv[1], "/", "DisplayOnly",
+					reply_handler=create_device_reply,
+					error_handler=create_device_reply)
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
