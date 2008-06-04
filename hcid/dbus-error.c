@@ -39,19 +39,6 @@
 #include "dbus-error.h"
 #include "error.h"
 
-DBusHandlerResult error_not_ready(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".NotReady", "Adapter is not ready"));
-}
-
-DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".NotAuthorized",
-							"Not authorized"));
-}
-
 DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,
@@ -66,36 +53,6 @@ DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg)
 							"No such adapter"));
 }
 
-DBusHandlerResult error_no_such_service(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".NoSuchService",
-							"No such service"));
-}
-
-DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".UnsupportedMajorClass",
-							"Unsupported Major Class"));
-}
-
-DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".NotInProgress", str));
-}
-
-DBusHandlerResult error_bonding_does_not_exist(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_does_not_exist(conn, msg, "Bonding does not exist");
-}
-
-DBusHandlerResult error_bonding_not_in_progress(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_not_in_progress(conn, msg, "Bonding is not in progress");
-}
-
 DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,
@@ -103,29 +60,9 @@ DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessag
 							   "Authentication Canceled"));
 }
 
-DBusHandlerResult error_record_does_not_exist(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_does_not_exist(conn, msg, "Record does not exist");
-}
-
 DBusHandlerResult error_auth_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_does_not_exist(conn, msg, "Authorization agent does not exist");
-}
-
-DBusHandlerResult error_service_does_not_exist(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_does_not_exist(conn, msg, "Service does not exist");
-}
-
-DBusHandlerResult error_service_search_in_progress(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_in_progress(conn, msg, "Service search in progress");
-}
-
-DBusHandlerResult error_disconnect_in_progress(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_in_progress(conn, msg, "Disconnection in progress");
 }
 
 static const char *strsdperror(int err)
