@@ -27,19 +27,19 @@ class Agent(dbus.service.Object):
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="u")
-	def RequestPasskey(self, device)
+	def RequestPasskey(self, device):
 		print "RequestPasskey (" + device + ")"
 		return dbus.UInt32(123456)
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="ou", out_signature="")
-	def DisplayPasskey(self, device, passkey)
+	def DisplayPasskey(self, device, passkey):
 		print "DisplayPasskey (" + device + ", " + passkey + ")"
 		return
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="ou", out_signature="")
-	def RequestConfirmation(self, device, passkey)
+	def RequestConfirmation(self, device, passkey):
 		print "RequestConfirmation (" + device + ", " + passkey + ")"
 		return
 
