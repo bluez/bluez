@@ -27,16 +27,16 @@ typedef enum {
 	SDP_FORMAT_BINARY
 } sdp_format_t;
 
-DBusHandlerResult get_remote_svc_handles(DBusConnection *conn,
-						DBusMessage *msg, void *data);
+DBusMessage *get_remote_svc_handles(DBusConnection *conn,
+				DBusMessage *msg, void *data);
 
-DBusHandlerResult get_remote_svc_identifiers(DBusConnection *conn,
-						DBusMessage *msg, void *data);
+DBusMessage *get_remote_svc_identifiers(DBusConnection *conn,
+					DBusMessage *msg, void *data);
 
-DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
+DBusMessage *get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
 					void *data, sdp_format_t format);
 
-DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn,
-						DBusMessage *msg, void *data);
+DBusMessage *finish_remote_svc_transact(DBusConnection *conn,
+					DBusMessage *msg, void *data);
 
 uint16_t sdp_str2svclass(const char *str);

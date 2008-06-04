@@ -73,13 +73,6 @@ DBusHandlerResult error_no_such_service(DBusConnection *conn, DBusMessage *msg)
 							"No such service"));
 }
 
-DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".RequestDeferred",
-							"Request Deferred"));
-}
-
 DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,

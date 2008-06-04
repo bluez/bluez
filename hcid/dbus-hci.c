@@ -60,6 +60,15 @@
 #include "dbus-hci.h"
 
 static DBusConnection *connection = NULL;
+static GSList *adapters = NULL;
+
+gint find_adapter(gconstpointer a, gconstpointer b)
+{
+	const struct adapter *adapter = a;
+	const char *path = b;
+
+	return strcmp(adapter->path, path);
+}
 
 void bonding_request_free(struct bonding_request_info *bonding)
 {
@@ -403,16 +412,17 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 int unregister_adapter_path(const char *path)
 {
 	struct adapter *adapter = NULL;
+	GSList *l;
 
 	info("Unregister path: %s", path);
 
 	__remove_servers(path);
 
-	dbus_connection_get_object_user_data(connection, path,
-						(void *) &adapter);
-
-	if (!adapter)
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l)
 		goto unreg;
+
+	adapter = l->data;
 
 	/* check pending requests */
 	reply_pending_requests(path, adapter);
@@ -482,17 +492,20 @@ int unregister_adapter_path(const char *path)
 		g_slist_free(adapter->devices);
 	}
 
+	adapters = g_slist_remove(adapters, adapter);
+
+	g_free(adapter->path);
 	g_free(adapter);
 
 unreg:
-	if (!dbus_connection_destroy_object_path(connection, path)) {
+	if (!g_dbus_unregister_all_interfaces(connection, path)) {
 		error("D-Bus failed to unregister %s object", path);
 		return -1;
 	}
 
 	if (hcid_dbus_use_experimental()) {
 		const char *ptr = path + ADAPTER_PATH_INDEX;
-		dbus_connection_destroy_object_path(connection, ptr);
+		g_dbus_unregister_all_interfaces(connection, ptr);
 	}
 
 	return 0;
@@ -523,27 +536,13 @@ int hcid_dbus_register_device(uint16_t id)
 	adapter->dev_id = id;
 	adapter->pdiscov_resolve_names = 1;
 
-	if (!dbus_connection_create_object_path(connection,
-					path, adapter, NULL)) {
-		error("D-Bus failed to register %s object", path);
+	if (!adapter_init(connection, path, adapter)) {
+		error("Adapter interface init failed");
 		g_free(adapter);
 		return -1;
 	}
 
-	if (hcid_dbus_use_experimental()) {
-		if (!dbus_connection_create_object_path(connection,
-					ptr, adapter, NULL)) {
-			error("D-Bus failed to register %s object", ptr);
-			dbus_connection_destroy_object_path(connection, path);
-			g_free(adapter);
-			return -1;
-		}
-	}
-
-	if (!adapter_init(connection, path, adapter)) {
-		error("Adapter interface init failed");
-		goto failed;
-	}
+	adapter->path  = g_strdup(path);
 
 	if (!security_init(connection, path)) {
 		error("Security interface init failed");
@@ -568,11 +567,14 @@ int hcid_dbus_register_device(uint16_t id)
 
 	__probe_servers(path);
 
+	adapters = g_slist_append(adapters, adapter);
+
 	return 0;
 
 failed:
-	dbus_connection_destroy_object_path(connection, path);
-	dbus_connection_destroy_object_path(connection, ptr);
+	g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE);
+	g_dbus_unregister_interface(connection, ptr, ADAPTER_INTERFACE);
+	g_free(adapter->path);
 	g_free(adapter);
 
 	return -1;
@@ -687,6 +689,7 @@ int hcid_dbus_start_device(uint16_t id)
 	struct hci_conn_info *ci;
 	const char *mode;
 	int i, err, dd = -1, ret = -1;
+	GSList *l;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
@@ -698,11 +701,13 @@ int hcid_dbus_start_device(uint16_t id)
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		return -1;
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return -1;
 	}
+
+	adapter = l->data;
 
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
 		adapter->discov_active = 1;
@@ -814,14 +819,18 @@ int hcid_dbus_stop_device(uint16_t id)
 	char path[MAX_PATH_LENGTH];
 	struct adapter *adapter;
 	const char *mode = "off";
+	GSList *l;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return -1;
 	}
+
+	adapter = l->data;
+
 	/* cancel pending timeout */
 	if (adapter->timeout_id) {
 		g_source_remove(adapter->timeout_id);
@@ -910,6 +919,7 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 	struct adapter *adapter;
 	struct pending_pin_info *info;
 	int id;
+	GSList *l;
 
 	ba2str(sba, addr);
 
@@ -921,11 +931,13 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
+
+	adapter = l->data;
 
 	info = g_new0(struct pending_pin_info, 1);
 
@@ -983,6 +995,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	struct device *device;
 	struct agent *agent;
 	int id;
+	GSList *l;
 
 	ba2str(sba, addr);
 
@@ -997,11 +1010,13 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 	snprintf(path, sizeof(path), "/hci%d", id);
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		goto old_fallback;
 	}
+
+	adapter = l->data;
 
 	ba2str(&ci->bdaddr, addr);
 
@@ -1070,11 +1085,13 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
 	/* create the authentication reply */
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
+
+	adapter = l->data;
 
 	if (status)
 		cancel_passkey_agent_requests(adapter->passkey_agents, path,
@@ -1157,6 +1174,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	char path[MAX_PATH_LENGTH], local_addr[18];
 	const char *ptr = path + ADAPTER_PATH_INDEX;
 	int id;
+	GSList *l;
 
 	ba2str(local, local_addr);
 
@@ -1168,8 +1186,9 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (l) {
+		adapter = l->data;
 		adapter->discov_active = 1;
 		/*
 		 * Cancel pending remote name request and clean the device list
@@ -1342,12 +1361,13 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
+
+	adapter = l->data;
 
 	/* Out of range verification */
 	if (adapter->pdiscov_active && !adapter->discov_active) {
@@ -1438,6 +1458,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 	struct adapter *adapter;
 	char path[MAX_PATH_LENGTH], local_addr[18];
 	int id;
+	GSList *l;
 
 	/* Don't send the signal if the cmd failed */
 	if (status)
@@ -1452,8 +1473,9 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	if (dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (l) {
+		adapter = l->data;
 		adapter->pdiscov_active = 1;
 
 		/* Disable name resolution for non D-Bus clients */
@@ -1481,6 +1503,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	char path[MAX_PATH_LENGTH], local_addr[18];
 	const char *ptr = path + ADAPTER_PATH_INDEX;
 	int id;
+	GSList *l;
 
 	/* Don't send the signal if the cmd failed */
 	if (status)
@@ -1495,12 +1518,13 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
+
+	adapter = l->data;
 
 	/* reset the discover type to be able to handle D-Bus and non D-Bus
 	 * requests */
@@ -1623,12 +1647,13 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
+
+	adapter = l->data;
 
 	write_remote_class(local, peer, class);
 
@@ -1765,12 +1790,13 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 		struct adapter *adapter;
 		GSList *l;
 
-		snprintf(path, sizeof(path), "hci%d", id);
+		snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-		dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter);
-		if (!adapter)
+		l = g_slist_find_custom(adapters, path, find_adapter);
+		if (!l)
 			return;
+
+		adapter = l->data;
 
 		l = g_slist_find_custom(adapter->devices, paddr,
 				(GCompareFunc) device_address_cmp);
@@ -1791,6 +1817,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	char path[MAX_PATH_LENGTH], local_addr[18], peer_addr[18];
 	const char *paddr = peer_addr;
 	int id;
+	GSList *l;
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -1802,12 +1829,13 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
+
+	adapter = l->data;
 
 	if (status)
 		dbus_connection_emit_signal(connection, path,
@@ -1893,6 +1921,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	const char *paddr = peer_addr;
 	struct adapter *adapter;
 	int id;
+	GSList *l;
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -1904,16 +1933,15 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
 
-	if (status) {
-		GSList *l;
+	adapter = l->data;
 
+	if (status) {
 		cancel_passkey_agent_requests(adapter->passkey_agents, path,
 						peer);
 		release_passkey_agents(adapter, peer);
@@ -1980,12 +2008,13 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
+
+	adapter = l->data;
 
 	l = g_slist_find_custom(adapter->active_conn, &handle,
 				active_conn_find_by_handle);
@@ -2232,6 +2261,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	read_scan_enable_rp rp;
 	struct hci_request rq;
 	int id, dd = -1;
+	GSList *l;
 
 	ba2str(local, local_addr);
 	id = hci_devid(local_addr);
@@ -2267,11 +2297,13 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		goto failed;
 	}
+
+	adapter = l->data;
 
 	if (adapter->timeout_id) {
 		g_source_remove(adapter->timeout_id);
@@ -2292,6 +2324,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 	char path[MAX_PATH_LENGTH], local_addr[18];
 	int id, dd;
 	uint8_t cls[3];
+	GSList *l;
 
 	ba2str(local, local_addr);
 	id = hci_devid(local_addr);
@@ -2301,11 +2334,13 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
+
+	adapter = l->data;
 
 	dd = hci_open_dev(id);
 	if (dd < 0) {
@@ -2381,12 +2416,13 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	}
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-
-	if (!dbus_connection_get_object_user_data(connection, path,
-							(void *) &adapter)) {
+	l = g_slist_find_custom(adapters, path, find_adapter);
+	if (!l) {
 		error("Getting %s path data failed!", path);
 		return;
 	}
+
+	adapter = l->data;
 
 	l = g_slist_find_custom(adapter->pin_reqs, &ret->bdaddr, pin_req_cmp);
 	if (l) {

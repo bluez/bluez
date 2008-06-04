@@ -31,7 +31,6 @@ DBusHandlerResult error_not_authorized(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_service(DBusConnection *conn, DBusMessage *msg);
-DBusHandlerResult error_request_deferred(DBusConnection *conn, DBusMessage *msg);
 /* Used only for hcid device audit feature */
 DBusHandlerResult error_not_in_progress(DBusConnection *conn, DBusMessage *msg, const char *str);
 DBusHandlerResult error_unsupported_major_class(DBusConnection *conn, DBusMessage *msg);

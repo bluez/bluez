@@ -98,6 +98,29 @@ struct cached_session {
 
 static GSList *cached_sessions = NULL;
 
+static inline DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
+			"Invalid arguments in method call");
+}
+
+static inline DBusMessage *in_progress(DBusMessage *msg, const char *str)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress", str);
+}
+
+static inline DBusMessage *adapter_not_ready(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
+			"Adapter is not ready");
+}
+
+static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+			strerror(err));
+}
+
 static gboolean session_timeout(gpointer user_data)
 {
 	struct cached_session *s = user_data;
@@ -997,7 +1020,7 @@ static int remote_svc_rec_conn_xml_cb(struct transaction_context *ctxt)
 	return 0;
 }
 
-DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
+DBusMessage *get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
 				void *data, sdp_format_t format)
 {
 	struct adapter *adapter = data;
@@ -1007,16 +1030,16 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
 	connect_cb_t *cb;
 
 	if (!adapter->up)
-		return error_not_ready(conn, msg);
+		return adapter_not_ready(msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_UINT32, &handle,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	if (find_pending_connect(dst))
-		return error_service_search_in_progress(conn, msg);
+		return in_progress(msg, "Service search in progress");
 
 	cb = remote_svc_rec_conn_cb;
 	if (format == SDP_FORMAT_XML)
@@ -1025,10 +1048,10 @@ DBusHandlerResult get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
 	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
-		return error_failed_errno(conn, msg, err);
+		return failed_strerror(msg, err);
 	}
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
 static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
@@ -1072,7 +1095,8 @@ static int remote_svc_identifiers_conn_cb(struct transaction_context *ctxt)
 	return service_search_attr(ctxt, PUBLIC_BROWSE_GROUP);
 }
 
-DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg, void *data)
+DBusMessage *get_remote_svc_handles(DBusConnection *conn,
+				DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
 	const char *dst, *svc;
@@ -1080,77 +1104,72 @@ DBusHandlerResult get_remote_svc_handles(DBusConnection *conn, DBusMessage *msg,
 	uuid_t uuid;
 
 	if (!adapter->up)
-		return error_not_ready(conn, msg);
+		return adapter_not_ready(msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_STRING, &svc,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	if (strlen(svc) > 0) {
 		/* Check if it is a service name string */
 		if (str2uuid(&uuid, svc) < 0) {
 			error("Invalid service class name");
-			return error_invalid_arguments(conn, msg, NULL);
+			return invalid_args(msg);
 		}
 	}
 
 	if (find_pending_connect(dst))
-		return error_service_search_in_progress(conn, msg);
+		return in_progress(msg, "Service search in progress");
 
 	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, remote_svc_handles_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
-		return error_failed_errno(conn, msg, err);
+		return failed_strerror(msg, err);
 	}
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
-DBusHandlerResult get_remote_svc_identifiers(DBusConnection *conn, DBusMessage *msg, void *data)
+DBusMessage *get_remote_svc_identifiers(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
 	const char *dst;
 	int err;
 
 	if (!adapter->up)
-		return error_not_ready(conn, msg);
+		return adapter_not_ready(msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &dst,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
+		return invalid_args(msg);
 
 	if (find_pending_connect(dst))
-		return error_service_search_in_progress(conn, msg);
+		return in_progress(msg, "Service search in progress");
 
 	if (!connect_request(conn, msg, adapter->dev_id,
 				dst, remote_svc_identifiers_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
-		return error_failed_errno(conn, msg, err);
+		return failed_strerror(msg, err);
 	}
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return NULL;
 }
 
-DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+DBusMessage *finish_remote_svc_transact(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
 	struct cached_session *s;
 	const char *address;
 	struct adapter *adapter = data;
-	DBusMessage *reply;
 	bdaddr_t sba, dba;
 
 	if (!dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_INVALID))
-		return error_invalid_arguments(conn, msg, NULL);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return invalid_args(msg);
 
 	str2ba(adapter->address, &sba);
 	str2ba(address, &dba);
@@ -1162,5 +1181,5 @@ DBusHandlerResult finish_remote_svc_transact(DBusConnection *conn,
 		g_free(s);
 	}
 
-	return send_message_and_unref(conn, reply);
+	return dbus_message_new_method_return(msg);
 }

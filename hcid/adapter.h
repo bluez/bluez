@@ -85,6 +85,7 @@ struct pending_dc_info {
 struct adapter {
 	uint16_t dev_id;
 	int up;
+	char *path;			/* adapter object path */
 	char address[18];		/* adapter Bluetooth Address */
 	guint timeout_id;		/* discoverable timeout id */
 	uint32_t discov_timeout;	/* discoverable time(msec) */
