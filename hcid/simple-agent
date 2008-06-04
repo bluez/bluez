@@ -77,7 +77,7 @@ if __name__ == '__main__':
 	print "Agent registered"
 
 	if len(sys.argv) > 1:
-		adapter.CreatePairedDevice(sys.argv[1], "/", "DisplayOnly",
+		adapter.CreatePairedDevice(sys.argv[1], path, "DisplayOnly",
 					reply_handler=create_device_reply,
 					error_handler=create_device_reply)
 
