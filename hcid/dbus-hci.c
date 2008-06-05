@@ -1176,7 +1176,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 					uint8_t status)
 {
 	struct adapter *adapter;
-	char path[MAX_PATH_LENGTH], local_addr[18], peer_addr[18];
+	char peer_addr[18];
 	const char *paddr = peer_addr;
 	GSList *l;
 	DBusMessage *reply;
@@ -1185,7 +1185,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	void *d;
 	gboolean paired = TRUE;
 
-	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
 
 	adapter = find_adapter(local);
@@ -1195,8 +1194,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	}
 
 	if (status)
-		cancel_passkey_agent_requests(adapter->passkey_agents, path,
-						peer);
+		cancel_passkey_agent_requests(adapter->passkey_agents,
+						adapter->path, peer);
 
 	l = g_slist_find_custom(adapter->pin_reqs, peer, pin_req_cmp);
 	if (!l)
@@ -1214,7 +1213,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	device = adapter_get_device(connection, adapter, paddr);
 	if (device) {
-		char *ptr = path + ADAPTER_PATH_INDEX;
+		char *ptr = adapter->path + ADAPTER_PATH_INDEX;
 
 		device->temporary = FALSE;
 
