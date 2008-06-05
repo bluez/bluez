@@ -518,6 +518,11 @@ failed:
 	return -1;
 }
 
+uint8_t agent_get_io_capability(struct agent *agent)
+{
+	return agent->capability;
+}
+
 gboolean agent_matches(struct agent *agent, const char *name, const char *path)
 {
 	if (g_str_equal(agent->name, name) && g_str_equal(agent->path, path))

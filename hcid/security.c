@@ -375,18 +375,29 @@ static void remote_oob_data_request(int dev, bdaddr_t *sba, void *ptr)
 
 static void io_capa_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
-	io_capability_neg_reply_cp cp;
 	char sa[18], da[18];
+	uint8_t cap, auth;
 
 	ba2str(sba, sa); ba2str(dba, da);
 	info("io_capa_request (sba=%s, dba=%s)", sa, da);
 
-	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, dba);
-	cp.reason = HCI_PAIRING_NOT_ALLOWED;
-
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_IO_CAPABILITY_NEG_REPLY,
-					IO_CAPABILITY_NEG_REPLY_CP_SIZE, &cp);
+	if (hcid_dbus_get_io_cap(sba, dba, &cap, &auth) < 0) {
+		io_capability_neg_reply_cp cp;
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.bdaddr, dba);
+		cp.reason = HCI_PAIRING_NOT_ALLOWED;
+		hci_send_cmd(dev, OGF_LINK_CTL, OCF_IO_CAPABILITY_NEG_REPLY,
+				IO_CAPABILITY_NEG_REPLY_CP_SIZE, &cp);
+	} else {
+		io_capability_reply_cp cp;
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.bdaddr, dba);
+		cp.capability = cap;
+		cp.oob_data = 0x00;
+		cp.authentication = auth;
+		hci_send_cmd(dev, OGF_LINK_CTL, OCF_IO_CAPABILITY_REPLY,
+				IO_CAPABILITY_REPLY_CP_SIZE, &cp);
+	}
 }
 
 /* PIN code handling */

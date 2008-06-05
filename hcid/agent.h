@@ -49,6 +49,8 @@ int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 
 int agent_cancel(struct agent *agent);
 
+uint8_t agent_get_io_capability(struct agent *agent);
+
 gboolean agent_matches(struct agent *agent, const char *name, const char *path);
 
 void agent_init(void);

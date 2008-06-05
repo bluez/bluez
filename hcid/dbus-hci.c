@@ -2269,6 +2269,41 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	}
 }
 
+int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote, uint8_t *cap,
+				uint8_t *auth)
+{
+	struct adapter *adapter;
+	struct device *device;
+	struct agent *agent;
+	char addr[18];
+
+	adapter = find_adapter(local);
+	if (!adapter) {
+		error("No matching adapter found");
+		return -1;
+	}
+
+	ba2str(remote, addr);
+
+	device = adapter_find_device(adapter, addr);
+	if (device && device->agent) {
+		agent = device->agent;
+		*auth = 0x03;
+	} else {
+		agent = adapter->agent;
+		*auth = 0x01;
+	}
+
+	if (!agent) {
+		error("No agent available for IO capability");
+		return -1;
+	}
+
+	*cap = agent_get_io_capability(agent);
+
+	return 0;
+}
+
 static int inquiry_cancel(int dd, int to)
 {
 	struct hci_request rq;
