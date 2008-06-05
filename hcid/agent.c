@@ -56,6 +56,7 @@
 
 typedef enum {
 	AGENT_REQUEST_PASSKEY,
+	AGENT_REQUEST_CONFIRMATION,
 	AGENT_REQUEST_PINCODE,
 	AGENT_REQUEST_AUTHORIZE,
 	AGENT_REQUEST_CONFIRM_MODE
@@ -504,6 +505,164 @@ int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 				cb, user_data);
 
 	req->call = confirm_mode_change_request_new(agent, new_mode);
+	if (!req->call)
+		goto failed;
+
+	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
+
+	agent->request = req;
+
+	return 0;
+
+failed:
+	agent_request_free(req);
+	return -1;
+}
+
+static DBusPendingCall *passkey_request_new(struct agent *agent,
+						const char *device_path)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+					"org.bluez.Agent", "RequestPasskey");
+	if (message == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return NULL;
+	}
+
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &device_path,
+					DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, message,
+					&call, REQUEST_TIMEOUT) == FALSE) {
+		error("D-Bus send failed");
+		dbus_message_unref(message);
+		return NULL;
+	}
+
+	dbus_message_unref(message);
+	return call;
+}
+
+static void passkey_reply(DBusPendingCall *call, void *user_data)
+{
+	struct agent_request *req = user_data;
+	struct agent *agent = req->agent;
+	agent_passkey_cb cb = req->cb;
+	DBusMessage *message;
+	DBusError err;
+	uint32_t passkey;
+
+	/* steal_reply will always return non-NULL since the callback
+	 * is only called after a reply has been received */
+	message = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, message)) {
+		error("Agent replied with an error: %s, %s",
+				err.name, err.message);
+		cb(agent, &err, 0, req->user_data);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(message, &err,
+				DBUS_TYPE_UINT32, &passkey,
+				DBUS_TYPE_INVALID)) {
+		error("Wrong passkey reply signature: %s", err.message);
+		cb(agent, &err, 0, req->user_data);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	cb(agent, NULL, passkey, req->user_data);
+
+done:
+	if (message)
+		dbus_message_unref(message);
+
+	dbus_pending_call_cancel(req->call);
+	agent_request_free(req);
+}
+
+int agent_request_passkey(struct agent *agent, struct device *device,
+				agent_passkey_cb cb, void *user_data)
+{
+	struct agent_request *req;
+
+	if (agent->request)
+		return -EBUSY;
+
+	debug("Calling Agent.RequestPasskey: name=%s, path=%s",
+			agent->name, agent->path);
+
+	req = agent_request_new(agent, AGENT_REQUEST_PASSKEY, cb, user_data);
+
+	req->call = passkey_request_new(agent, device->path);
+	if (!req->call)
+		goto failed;
+
+	dbus_pending_call_set_notify(req->call, passkey_reply, req, NULL);
+
+	agent->request = req;
+
+	return 0;
+
+failed:
+	agent_request_free(req);
+	return -1;
+}
+
+static DBusPendingCall *confirmation_request_new(struct agent *agent,
+						const char *device_path,
+						uint32_t passkey)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+				"org.bluez.Agent", "RequestConfirmation");
+	if (message == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return NULL;
+	}
+
+	dbus_message_append_args(message,
+				DBUS_TYPE_OBJECT_PATH, &device_path,
+				DBUS_TYPE_UINT32, &passkey,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, message,
+					&call, REQUEST_TIMEOUT) == FALSE) {
+		error("D-Bus send failed");
+		dbus_message_unref(message);
+		return NULL;
+	}
+
+	dbus_message_unref(message);
+
+	return call;
+}
+
+int agent_request_confirmation(struct agent *agent, struct device *device,
+				uint32_t passkey, agent_cb cb,
+				void *user_data)
+{
+	struct agent_request *req;
+
+	if (agent->request)
+		return -EBUSY;
+
+	debug("Calling Agent.RequestConfirmation: name=%s, path=%s, passkey=%06u",
+			agent->name, agent->path, passkey);
+
+	req = agent_request_new(agent, AGENT_REQUEST_CONFIRMATION, cb,
+				user_data);
+
+	req->call = confirmation_request_new(agent, device->path, passkey);
 	if (!req->call)
 		goto failed;
 

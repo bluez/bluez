@@ -1032,6 +1032,132 @@ old_fallback:
 						&ci->bdaddr);
 }
 
+static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
+{
+	struct device *device = user_data;
+	struct adapter *adapter = device->adapter;
+	user_confirm_reply_cp cp;
+	int dd;
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0) {
+		error("Unable to open hci%d", adapter->dev_id);
+		return;
+	}
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(device->address, &cp.bdaddr);
+
+	if (err)
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
+				USER_CONFIRM_REPLY_CP_SIZE, &cp);
+	else
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
+				USER_CONFIRM_REPLY_CP_SIZE, &cp);
+
+	hci_close_dev(dd);
+}
+
+static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
+			void *user_data)
+{
+	struct device *device = user_data;
+	struct adapter *adapter = device->adapter;
+	user_passkey_reply_cp cp;
+	bdaddr_t dba;
+	int dd;
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0) {
+		error("Unable to open hci%d", adapter->dev_id);
+		return;
+	}
+
+	str2ba(device->address, &dba);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, &dba);
+	cp.passkey = passkey;
+
+	if (err)
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_NEG_REPLY,
+				6, &dba);
+	else
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_REPLY,
+				USER_PASSKEY_REPLY_CP_SIZE, &cp);
+
+	hci_close_dev(dd);
+}
+
+int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
+{
+	struct adapter *adapter;
+	struct device *device;
+	struct agent *agent;
+	char addr[18];
+
+	adapter = find_adapter(sba);
+	if (!adapter) {
+		error("No matching adapter found");
+		return -1;
+	}
+
+	ba2str(dba, addr);
+
+	device = adapter_get_device(connection, adapter, addr);
+	if (device && device->agent)
+		agent = device->agent;
+	else
+		agent = adapter->agent;
+
+	if (!agent) {
+		error("No agent available for user confirm request");
+		return -1;
+	}
+
+	if (agent_request_confirmation(agent, device, passkey,
+					confirm_cb, device) < 0) {
+		error("Requesting passkey failed");
+		return -1;
+	}
+
+	return 0;
+}
+
+int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
+{
+	struct adapter *adapter;
+	struct device *device;
+	struct agent *agent;
+	char addr[18];
+
+	adapter = find_adapter(sba);
+	if (!adapter) {
+		error("No matching adapter found");
+		return -1;
+	}
+
+	ba2str(dba, addr);
+
+	device = adapter_get_device(connection, adapter, addr);
+	if (device && device->agent)
+		agent = device->agent;
+	else
+		agent = adapter->agent;
+
+	if (!agent) {
+		error("No agent available for user confirm request");
+		return -1;
+	}
+
+	if (agent_request_passkey(agent, device, passkey_cb, device) < 0) {
+		error("Requesting passkey failed");
+		return -1;
+	}
+
+	return 0;
+}
+
 int hcid_dbus_confirm_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci, char *pin)
 {
 	struct adapter *adapter;

@@ -30,6 +30,9 @@ typedef void (*agent_cb) (struct agent *agent, DBusError *err,
 typedef void (*agent_pincode_cb) (struct agent *agent, DBusError *err,
 					const char *pincode, void *user_data);
 
+typedef void (*agent_passkey_cb) (struct agent *agent, DBusError *err,
+					uint32_t passkey, void *user_data);
+
 typedef void (*agent_remove_cb) (struct agent *agent, void *user_data);
 
 struct agent *agent_create(struct adapter *adapter, const char *name,
@@ -46,6 +49,13 @@ int agent_request_pincode(struct agent *agent, struct device *device,
 
 int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 				agent_cb cb, void *user_data);
+
+int agent_request_passkey(struct agent *agent, struct device *device,
+				agent_passkey_cb cb, void *user_data);
+
+int agent_request_confirmation(struct agent *agent, struct device *device,
+				uint32_t passkey, agent_cb cb,
+				void *user_data);
 
 int agent_cancel(struct agent *agent);
 

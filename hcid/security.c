@@ -360,12 +360,20 @@ static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
 
 static void user_confirm_request(int dev, bdaddr_t *sba, void *ptr)
 {
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY, 6, ptr);
+	evt_user_confirm_request *req = ptr;
+
+	if (hcid_dbus_user_confirm(sba, &req->bdaddr, req->passkey) < 0)
+		hci_send_cmd(dev, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
+				6, ptr);
 }
 
 static void user_passkey_request(int dev, bdaddr_t *sba, void *ptr)
 {
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_USER_PASSKEY_NEG_REPLY, 6, ptr);
+	evt_user_passkey_request *req = ptr;
+
+	if (hcid_dbus_user_passkey(sba, &req->bdaddr) < 0)
+		hci_send_cmd(dev, OGF_LINK_CTL, OCF_USER_PASSKEY_NEG_REPLY,
+				6, ptr);
 }
 
 static void remote_oob_data_request(int dev, bdaddr_t *sba, void *ptr)
