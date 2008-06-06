@@ -648,10 +648,13 @@ int connection_find_data(const char *path, const char *pattern)
 gboolean connection_has_pending(const char *path)
 {
 	struct network_conn *nc;
+	GSList *l;
 
-	if (!dbus_connection_get_object_user_data(connection,
-				path, (void *) &nc))
+	l = g_slist_find_custom(connections, path, find_connection);
+	if (!l)
 		return FALSE;
+
+	nc = l->data;
 
 	return (nc->state == CONNECTING);
 }
@@ -664,10 +667,13 @@ int connection_remove_stored(const char *path)
 	char filename[PATH_MAX + 1];
 	char src_addr[18], dst_addr[18];
 	int err;
+	GSList *l;
 
-	if (!dbus_connection_get_object_user_data(connection,
-				path, (void *) &nc))
+	l = g_slist_find_custom(connections, path, find_connection);
+	if (!l)
 		return -ENOENT;
+
+	nc = l->data;
 
 	ba2str(&nc->dst, dst_addr);
 	role = bnep_name(nc->id);
@@ -684,10 +690,13 @@ int connection_remove_stored(const char *path)
 gboolean connection_is_connected(const char *path)
 {
 	struct network_conn *nc;
+	GSList *l;
 
-	if (!dbus_connection_get_object_user_data(connection,
-				path, (void *) &nc))
+	l = g_slist_find_custom(connections, path, find_connection);
+	if (!l)
 		return FALSE;
+
+	nc = l->data;
 
 	return (nc->state == CONNECTED);
 }
