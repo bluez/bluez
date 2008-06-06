@@ -770,7 +770,8 @@ static void confirm_mode_cb(struct agent *agent, DBusError *err, void *data)
 
 	if (err && dbus_error_is_set(err)) {
 		reply = dbus_message_new_error(req->msg, err->name, err->message);
-		dbus_connection_send_and_unref(req->conn, reply);
+		dbus_connection_send(req->conn, reply, NULL);
+		dbus_connection_unref(reply);
 		goto cleanup;
 	}
 
