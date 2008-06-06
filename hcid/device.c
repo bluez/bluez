@@ -69,6 +69,7 @@ struct browse_req {
 	DBusConnection *conn;
 	DBusMessage *msg;
 	struct device *device;
+	int search_uuid;
 };
 
 struct hci_peer {
@@ -117,6 +118,14 @@ struct hci_dev {
 static struct hci_dev devices[MAX_DEVICES];
 
 #define ASSERT_DEV_ID { if (dev_id >= MAX_DEVICES) return -ERANGE; }
+
+static uint16_t uuid_list[] = {
+	PUBLIC_BROWSE_GROUP,
+	GENERIC_AUDIO_SVCLASS_ID,
+	ADVANCED_AUDIO_SVCLASS_ID,
+	AV_REMOTE_SVCLASS_ID,
+	0
+};
 
 void init_adapters(void)
 {
@@ -1077,6 +1086,7 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	int i;
 	GSList *l;
 	DBusMessage *reply;
+	uuid_t uuid;
 
 	if (err < 0)
 		goto proceed;
@@ -1126,6 +1136,16 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 					DBUS_TYPE_ARRAY, &uuids);
 	g_free(uuids);
 
+	/* Public browsing was succesful */
+	if (!req->search_uuid && recs)
+		goto proceed;
+
+	if (uuid_list[++req->search_uuid]) {
+		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
+		bt_search_service(&src, &dst, &uuid, browse_cb, user_data, NULL);
+		return;
+	}
+
 proceed:
 	dbus_connection_emit_signal(req->conn, dbus_message_get_path(req->msg),
 				ADAPTER_INTERFACE, "DeviceCreated",
@@ -1156,6 +1176,7 @@ int device_browse(struct device *device, DBusConnection *conn,
 	struct adapter *adapter = device->adapter;
 	struct browse_req *req;
 	bdaddr_t src, dst;
+	uuid_t uuid;
 
 	req = g_new0(struct browse_req, 1);
 	req->conn = dbus_connection_ref(conn);
@@ -1164,7 +1185,9 @@ int device_browse(struct device *device, DBusConnection *conn,
 
 	str2ba(adapter->address, &src);
 	str2ba(device->address, &dst);
-	return bt_discover_services(&src, &dst, browse_cb, req, NULL);
+	sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
+
+	return bt_search_service(&src, &dst, &uuid, browse_cb, req, NULL);
 }
 
 static GSList *drivers = NULL;
