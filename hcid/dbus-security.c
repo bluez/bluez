@@ -476,7 +476,10 @@ static void auth_agent_call_cancel(struct auth_agent_req *req)
 				DBUS_TYPE_INVALID);
 
 	dbus_message_set_no_reply(message, TRUE);
-	send_message_and_unref(agent->conn, message);
+
+	dbus_connection_send(agent->conn, message, NULL);
+
+	dbus_message_unref(message);
 }
 
 static void auth_agent_free(struct authorization_agent *agent)
@@ -529,7 +532,10 @@ static void auth_agent_release(struct authorization_agent *agent)
 	}
 
 	dbus_message_set_no_reply(message, TRUE);
-	send_message_and_unref(agent->conn, message);
+
+	dbus_connection_send(agent->conn, message, NULL);
+
+	dbus_message_unref(message);
 
 	if (agent == default_auth_agent)
 		g_dbus_remove_watch(agent->conn, agent->listener_id);
@@ -642,7 +648,9 @@ static void auth_agent_req_reply(DBusPendingCall *call, void *data)
 	if (!message)
 		goto reject;
 
-	send_message_and_unref(agent->conn, message);
+	dbus_connection_send(agent->conn, message, NULL);
+
+	dbus_message_unref(message);
 
 	debug("successfull reply was sent");
 
@@ -764,7 +772,11 @@ static DBusHandlerResult auth_agent_send_cancel(DBusMessage *msg,
 	agent->pending_requests = g_slist_remove(agent->pending_requests, req);
 	auth_agent_req_free(req);
 
-	return send_message_and_unref(agent->conn, message);
+	dbus_connection_send(agent->conn, message, NULL);
+
+	dbus_message_unref(message);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 DBusHandlerResult cancel_authorize_request_old(DBusConnection *conn,
@@ -1216,7 +1228,9 @@ static void send_cancel_request(struct pending_agent_request *req)
 
 	dbus_message_set_no_reply(message, TRUE);
 
-	send_message_and_unref(req->agent->conn, message);
+	dbus_connection_send(req->agent->conn, message, NULL);
+
+	dbus_message_unref(message);
 
 	debug("PasskeyAgent.Request(%s, %s) was canceled", req->path, address);
 
@@ -1242,7 +1256,9 @@ static void release_agent(struct passkey_agent *agent)
 
 	dbus_message_set_no_reply(message, TRUE);
 
-	send_message_and_unref(agent->conn, message);
+	dbus_connection_send(agent->conn, message, NULL);
+
+	dbus_message_unref(message);
 
 	if (agent == default_agent)
 		g_dbus_remove_watch(agent->conn, agent->listener_id);
