@@ -308,15 +308,19 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	struct device *device;
 
 	if (hcid_dbus_use_experimental() && agent_path) {
+		const char *name = dbus_message_get_sender(msg);
+
 		device = adapter_get_device(conn, adapter, address);
 		if (!device)
 			return NULL;
 
-		device->agent = agent_create(adapter,
-						dbus_message_get_sender(msg),
-						agent_path, capability,
+		device->agent = agent_create(adapter, name, agent_path,
+						capability,
 						device_agent_removed,
 						device);
+		debug("Temporary agent registered for hci%d/%s at %s:%s",
+				adapter->dev_id, device->address, name,
+				agent_path);
 	}
 
 	bonding = g_new0(struct bonding_request_info, 1);
@@ -4031,6 +4035,9 @@ static DBusMessage *register_agent(DBusConnection *conn,
 				"Failed to create a new agent");
 
 	adapter->agent = agent;
+
+	debug("Agent registered for hci%d at %s:%s", adapter->dev_id, name,
+			path);
 
 	return dbus_message_new_method_return(msg);
 }
