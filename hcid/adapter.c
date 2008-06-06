@@ -2316,14 +2316,12 @@ struct device *adapter_create_device(DBusConnection *conn,
 				struct adapter *adapter, const char *address)
 {
 	struct device *device;
-	char path[MAX_PATH_LENGTH];
 
 	device = device_create(conn, adapter, address, NULL);
 	if (!device)
 		return NULL;
 
 	device->temporary = TRUE;
-	snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
 
 	adapter->devices = g_slist_append(adapter->devices, device);
 
