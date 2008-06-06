@@ -2438,6 +2438,11 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 				DBUS_TYPE_INVALID);
 	}
 
+	if (device->agent) {
+		agent_destroy(device->agent, FALSE);
+		device->agent = NULL;
+	}
+
 	device_remove(device, conn);
 	adapter->devices = g_slist_remove(adapter->devices, device);
 }
