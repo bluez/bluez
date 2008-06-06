@@ -2611,6 +2611,24 @@ cleanup:
 	return FALSE;
 }
 
+static void cancel_auth_request(int dd, auth_type_t type, bdaddr_t *bda)
+{
+	switch (type) {
+	case AUTH_TYPE_PINCODE:
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY,
+				6, bda);
+		break;
+	case AUTH_TYPE_CONFIRM:
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
+				6, bda);
+		break;
+	case AUTH_TYPE_PASSKEY:
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_NEG_REPLY,
+				6, bda);
+		break;
+	}
+}
+
 static void create_bond_req_exit(void *user_data)
 {
 	struct adapter *adapter = user_data;
@@ -2635,9 +2653,7 @@ static void create_bond_req_exit(void *user_data)
 
 			dd = hci_open_dev(adapter->dev_id);
 			if (dd >= 0) {
-				hci_send_cmd(dd, OGF_LINK_CTL,
-						OCF_PIN_CODE_NEG_REPLY,
-						6, &adapter->bonding->bdaddr);
+				cancel_auth_request(dd, p->type, &p->bdaddr);
 				hci_close_dev(dd);
 			}
 		}
@@ -2792,8 +2808,7 @@ static DBusMessage *adapter_cancel_bonding(DBusConnection *conn,
 				return failed_strerror(msg, err);
 			}
 
-			hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY,
-					6, &bdaddr);
+			cancel_auth_request(dd, pin_req->type, &pin_req->bdaddr);
 
 			hci_close_dev(dd);
 		}
