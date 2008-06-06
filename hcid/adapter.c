@@ -290,8 +290,10 @@ int pending_remote_name_cancel(struct adapter *adapter)
 	return err;
 }
 
-static void device_agent_removed(struct agent *agent, struct device *device)
+static void device_agent_removed(struct agent *agent, void *user_data)
 {
+	struct device *device = user_data;
+
 	device->agent = NULL;
 }
 
@@ -305,17 +307,16 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	struct bonding_request_info *bonding;
 	struct device *device;
 
-	if (hcid_dbus_use_experimental()) {
+	if (hcid_dbus_use_experimental() && agent_path) {
 		device = adapter_get_device(conn, adapter, address);
 		if (!device)
 			return NULL;
 
-		if (agent_path)
-			device->agent = agent_create(adapter,
-					dbus_message_get_sender(msg),
-					agent_path, capability,
-					(agent_remove_cb) device_agent_removed,
-					device);
+		device->agent = agent_create(adapter,
+						dbus_message_get_sender(msg),
+						agent_path, capability,
+						device_agent_removed,
+						device);
 	}
 
 	bonding = g_new0(struct bonding_request_info, 1);
