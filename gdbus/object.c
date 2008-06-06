@@ -52,13 +52,10 @@ struct interface_data {
 	GDBusPropertyTable *properties;
 	void *user_data;
 	GDBusDestroyFunction destroy;
-
-	DBusMethodVTable *old_methods;
-	DBusSignalVTable *old_signals;
-	DBusPropertyVTable *old_properties;
 };
 
-static void print_arguments(GString *gstr, const char *sig, const char *direction)
+static void print_arguments(GString *gstr, const char *sig,
+						const char *direction)
 {
 	int i;
 
@@ -116,47 +113,6 @@ static void print_arguments(GString *gstr, const char *sig, const char *directio
 	}
 }
 
-static void generate_old_interface_xml(GString *gstr, struct interface_data *iface)
-{
-	DBusMethodVTable *method;
-	DBusSignalVTable *signal;
-	DBusPropertyVTable *property;
-
-	for (method = iface->old_methods; method && method->name; method++) {
-		/* debug("%s: adding method %s.%s",
-					path, iface->name, method->name); */
-		if (!strlen(method->signature) && !strlen(method->reply))
-			g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
-								method->name);
-		else {
-			g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n",
-								method->name);
-			print_arguments(gstr, method->signature, "in");
-			print_arguments(gstr, method->reply, "out");
-			g_string_append_printf(gstr, "\t\t</method>\n");
-		}
-	}
-
-	for (signal = iface->old_signals; signal && signal->name; signal++) {
-		/* debug("%s: adding signal %s.%s",
-					path, iface->name, signal->name); */
-		if (!strlen(signal->signature))
-			g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
-								signal->name);
-		else {
-			g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n",
-								signal->name);
-			print_arguments(gstr, signal->signature, NULL);
-			g_string_append_printf(gstr, "\t\t</signal>\n");
-		}
-	}
-
-	for (property = iface->old_properties; property && property->name; property++) {
-		debug("%s: adding property %s.%s",
-					path, iface->name, property->name);
-	}
-}
-
 static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 {
 	GDBusMethodTable *method;
@@ -209,7 +165,6 @@ static void generate_introspection_xml(DBusConnection *conn,
 								iface->name);
 
 		generate_interface_xml(gstr, iface);
-		generate_old_interface_xml(gstr, iface);
 
 		g_string_append_printf(gstr, "\t</interface>\n");
 	}
@@ -288,7 +243,6 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 	struct generic_data *data = user_data;
 	struct interface_data *iface;
 	GDBusMethodTable *method;
-	DBusMethodVTable *current;
 	const char *interface;
 
 	if (dbus_message_is_method_call(message,
@@ -334,20 +288,6 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 		dbus_message_unref(reply);
 
 		return DBUS_HANDLER_RESULT_HANDLED;
-	}
-
-	for (current = iface->old_methods; current &&
-			current->name && current->message_function; current++) {
-		if (!dbus_message_is_method_call(message, iface->name,
-							current->name))
-			continue;
-
-		if (dbus_message_has_signature(message, current->signature)) {
-			debug("%s: %s.%s()", dbus_message_get_path(message),
-					iface->name, current->name);
-			return current->message_function(connection,
-						message, data->user_data);
-		}
 	}
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -477,63 +417,8 @@ dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
 	return TRUE;
 }
 
-dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
-					const char *path, const char *name,
-					DBusMethodVTable *methods,
-					DBusSignalVTable *signals,
-					DBusPropertyVTable *properties)
-{
-	struct generic_data *data = NULL;
-	struct interface_data *iface;
-
-	if (!dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) || !data)
-		return FALSE;
-
-	if (find_interface(data->interfaces, name))
-		return FALSE;
-
-	iface = g_new0(struct interface_data, 1);
-
-	iface->name = g_strdup(name);
-	iface->old_methods = methods;
-	iface->old_signals = signals;
-	iface->old_properties = properties;
-
-	data->interfaces = g_slist_append(data->interfaces, iface);
-
-	g_free(data->introspect);
-	data->introspect = NULL;
-
-	return TRUE;
-}
-
-dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
-					const char *path, const char *name)
-{
-	struct generic_data *data = NULL;
-	struct interface_data *iface;
-
-	if (!dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) || !data)
-		return FALSE;
-
-	iface = find_interface(data->interfaces, name);
-	if (!iface)
-		return FALSE;
-
-	data->interfaces = g_slist_remove(data->interfaces, iface);
-
-	g_free(iface->name);
-	g_free(iface);
-
-	g_free(data->introspect);
-	data->introspect = NULL;
-
-	return TRUE;
-}
-
-void dbus_message_iter_append_variant(DBusMessageIter *iter, int type, void *val)
+void dbus_message_iter_append_variant(DBusMessageIter *iter,
+						int type, void *val)
 {
 	DBusMessageIter value;
 	DBusMessageIter array;
@@ -597,7 +482,8 @@ void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 {
 	DBusMessageIter entry;
 
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+							NULL, &entry);
 
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
 
@@ -648,7 +534,6 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 	struct generic_data *data = NULL;
 	struct interface_data *iface;
 	GDBusSignalTable *signal;
-	DBusSignalVTable *sig_data;
 
 	*args = NULL;
 	if (!dbus_connection_get_object_path_data(conn, path,
@@ -669,13 +554,6 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 	for (signal = iface->signals; signal && signal->name; signal++) {
 		if (!strcmp(signal->name, name)) {
 			*args = signal->signature;
-			break;
-		}
-	}
-
-	for (sig_data = iface->old_signals; sig_data && sig_data->name; sig_data++) {
-		if (!strcmp(sig_data->name, name)) {
-			*args = sig_data->signature;
 			break;
 		}
 	}

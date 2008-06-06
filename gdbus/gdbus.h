@@ -54,37 +54,8 @@ dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
 							const char *path,
 							void **data_p);
 
-typedef struct DBusMethodVTable DBusMethodVTable;
-
-struct DBusMethodVTable {
-	const char *name;
-	DBusObjectPathMessageFunction message_function;
-	const char *signature;
-	const char *reply;
-};
-
-typedef struct DBusSignalVTable DBusSignalVTable;
-
-struct DBusSignalVTable {
-	const char *name;
-	const char *signature;
-};
-
-typedef struct DBusPropertyVTable DBusPropertyVTable;
-
-struct DBusPropertyVTable {
-	const char *name;
-};
-
-dbus_bool_t dbus_connection_register_interface(DBusConnection *connection,
-					const char *path, const char *name,
-					DBusMethodVTable *methods,
-					DBusSignalVTable *signals,
-					DBusPropertyVTable *properties);
-
-dbus_bool_t dbus_connection_unregister_interface(DBusConnection *connection,
-					const char *path, const char *name);
-void dbus_message_iter_append_variant(DBusMessageIter *iter, int type, void *val);
+void dbus_message_iter_append_variant(DBusMessageIter *iter,
+							int type, void *val);
 void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 					const char *key, int type, void *val);
 void dbus_message_iter_append_dict_valist(DBusMessageIter *iter,
