@@ -1134,7 +1134,9 @@ proceed:
 	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
 					DBUS_TYPE_INVALID);
 
-	send_message_and_unref(req->conn, reply);
+	dbus_connection_send(req->conn, reply, NULL);
+
+	dbus_message_unref(reply);
 
 fail:
 	dbus_message_unref(req->msg);
