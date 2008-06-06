@@ -434,19 +434,22 @@ static void get_records_cb(sdp_list_t *recs, int err, gpointer user_data)
 static DBusMessage *get_records(uuid_t *uuid, struct audio_sdp_data *data)
 {
 	struct audio_device *device = data->device;
+	DBusMessage *reply = NULL;
 	int err;
 
 	err = bt_search_service(&device->src, &device->dst, uuid,
 				get_records_cb, data, NULL);
 	if (!err)
-		return DBUS_HANDLER_RESULT_HANDLED;
+		return NULL;
 
 	if (data->msg)
-		error_connection_attempt_failed(connection, data->msg, -err);
+		reply = g_dbus_create_error(data->msg,
+				ERROR_INTERFACE ".ConnectionAttemptFailed",
+				strerror(-err));
 
 	finish_sdp(data, FALSE);
 
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return reply;
 }
 
 static DBusMessage *resolve_services(DBusMessage *msg,
@@ -577,18 +580,11 @@ static DBusMessage *am_create_device(DBusConnection *conn,
 	bdaddr_t bda;
 	struct audio_device *device;
 	DBusMessage *reply;
-	DBusError derr;
 
-	dbus_error_init(&derr);
-	dbus_message_get_args(msg, &derr,
+	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&derr)) {
-		error_invalid_arguments(connection, msg, derr.message);
-		dbus_error_free(&derr);
-		return DBUS_HANDLER_RESULT_HANDLED;
-	}
+				DBUS_TYPE_INVALID))
+		return NULL;
 
 	str2ba(address, &bda);
 
