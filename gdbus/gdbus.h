@@ -43,9 +43,6 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 #define DBUS_TYPE_STRING_ARRAY_AS_STRING (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING)
 #define DBUS_TYPE_BYTE_ARRAY_AS_STRING   (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING)
 
-DBusHandlerResult dbus_connection_send_and_unref(DBusConnection *connection,
-							DBusMessage *message);
-
 dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
 					const char *path, void *user_data,
 					DBusObjectPathUnregisterFunction function);
@@ -110,17 +107,6 @@ dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 						const char *interface,
 						const char *name,
 						int type, void *value);
-
-static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn,
-							DBusMessage *msg)
-{
-	if (msg) {
-		dbus_connection_send(conn, msg, NULL);
-		dbus_message_unref(msg);
-	}
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
 
 typedef void (* GDBusDestroyFunction) (void *user_data);
 

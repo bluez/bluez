@@ -58,17 +58,6 @@ struct interface_data {
 	DBusPropertyVTable *old_properties;
 };
 
-DBusHandlerResult dbus_connection_send_and_unref(DBusConnection *connection,
-							DBusMessage *message)
-{
-	if (message) {
-		dbus_connection_send(connection, message, NULL);
-		dbus_message_unref(message);
-	}
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
 static void print_arguments(GString *gstr, const char *sig, const char *direction)
 {
 	int i;
@@ -261,7 +250,11 @@ static DBusHandlerResult introspect(DBusConnection *connection,
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &data->introspect,
 					DBUS_TYPE_INVALID);
 
-	return dbus_connection_send_and_unref(connection, reply);
+	dbus_connection_send(connection, reply, NULL);
+
+	dbus_message_unref(reply);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static void generic_unregister(DBusConnection *connection, void *user_data)
