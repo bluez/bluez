@@ -929,16 +929,16 @@ int hcid_dbus_stop_device(uint16_t id)
 
 int pin_req_cmp(const void *p1, const void *p2)
 {
-	const struct pending_pin_info *pb1 = p1;
-	const struct pending_pin_info *pb2 = p2;
+	const struct pending_auth_info *pb1 = p1;
+	const struct pending_auth_info *pb2 = p2;
 
 	return p2 ? bacmp(&pb1->bdaddr, &pb2->bdaddr) : -1;
 }
 
-void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
+void hcid_dbus_new_auth_request(bdaddr_t *sba, bdaddr_t *dba, auth_type_t type)
 {
 	struct adapter *adapter;
-	struct pending_pin_info *info;
+	struct pending_auth_info *info;
 
 	adapter = find_adapter(sba);
 	if (!adapter) {
@@ -946,9 +946,10 @@ void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba)
 		return;
 	}
 
-	info = g_new0(struct pending_pin_info, 1);
+	info = g_new0(struct pending_auth_info, 1);
 
 	bacpy(&info->bdaddr, dba);
+	info->type = type;
 	adapter->pin_reqs = g_slist_append(adapter->pin_reqs, info);
 
 	if (adapter->bonding && !bacmp(dba, &adapter->bonding->bdaddr))
@@ -1159,20 +1160,6 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	return 0;
 }
 
-int hcid_dbus_confirm_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci, char *pin)
-{
-	struct adapter *adapter;
-
-	adapter = find_adapter(sba);
-	if (!adapter) {
-		error("No matching adapter found");
-		return -1;
-	}
-
-	return handle_confirm_request_old(connection, dev, adapter,
-						sba, &ci->bdaddr, pin);
-}
-
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 					uint8_t status)
 {
@@ -1185,6 +1172,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct bonding_request_info *bonding;
 	void *d;
 	gboolean paired = TRUE;
+
+	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
 
 	ba2str(peer, peer_addr);
 
@@ -1215,6 +1204,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	device = adapter_get_device(connection, adapter, paddr);
 	if (device) {
 		char *ptr = adapter->path + ADAPTER_PATH_INDEX;
+
+		debug("hcid_dbus_bonding_process_complete: removing temporary flag");
 
 		device->temporary = FALSE;
 
@@ -2097,8 +2088,10 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					device->path, DEVICE_INTERFACE,
 					"Connected", DBUS_TYPE_BOOLEAN,
 					&connected);
-		if (device->temporary)
+		if (device->temporary) {
+			debug("Removing temporary device %s", device->address);
 			adapter_remove_device(connection, adapter, device);
+		}
 	}
 }
 
@@ -2396,7 +2389,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 
 	l = g_slist_find_custom(adapter->pin_reqs, &ret->bdaddr, pin_req_cmp);
 	if (l) {
-		struct pending_pin_info *p = l->data;
+		struct pending_auth_info *p = l->data;
 		p->replied = 1;
 	}
 }

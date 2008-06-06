@@ -28,9 +28,8 @@ int hcid_dbus_register_device(uint16_t id);
 int hcid_dbus_unregister_device(uint16_t id);
 int hcid_dbus_start_device(uint16_t id);
 int hcid_dbus_stop_device(uint16_t id);
-void hcid_dbus_pending_pin_req_add(bdaddr_t *sba, bdaddr_t *dba);
+void hcid_dbus_new_auth_request(bdaddr_t *sba, bdaddr_t *dba, auth_type_t type);
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci);
-int hcid_dbus_confirm_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci, char *pin);
 
 void hcid_dbus_inquiry_start(bdaddr_t *local);
 void hcid_dbus_inquiry_complete(bdaddr_t *local);

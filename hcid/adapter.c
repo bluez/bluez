@@ -2628,7 +2628,7 @@ static void create_bond_req_exit(void *user_data)
 	l = g_slist_find_custom(adapter->pin_reqs, &adapter->bonding->bdaddr,
 			pin_req_cmp);
 	if (l) {
-		struct pending_pin_info *p = l->data;
+		struct pending_auth_info *p = l->data;
 
 		if (!p->replied) {
 			int dd;
@@ -2773,7 +2773,7 @@ static DBusMessage *adapter_cancel_bonding(DBusConnection *conn,
 
 	l = g_slist_find_custom(adapter->pin_reqs, &bdaddr, pin_req_cmp);
 	if (l) {
-		struct pending_pin_info *pin_req = l->data;
+		struct pending_auth_info *pin_req = l->data;
 
 		if (pin_req->replied) {
 			/*

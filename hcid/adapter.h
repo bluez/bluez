@@ -46,6 +46,12 @@ typedef enum {
 	NAME_SENT          /* D-Bus signal RemoteNameUpdated sent */
 } name_status_t;
 
+typedef enum {
+	AUTH_TYPE_PINCODE,
+	AUTH_TYPE_PASSKEY,
+	AUTH_TYPE_CONFIRM,
+} auth_type_t;
+
 struct remote_dev_info {
 	bdaddr_t bdaddr;
 	int8_t rssi;
@@ -65,7 +71,8 @@ struct bonding_request_info {
 	int auth_active;
 };
 
-struct pending_pin_info {
+struct pending_auth_info {
+	auth_type_t type;
 	bdaddr_t bdaddr;
 	int replied;	/* If we've already replied to the request */
 };
