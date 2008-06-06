@@ -246,7 +246,11 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 	if (!derr)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	return dbus_connection_send_and_unref(conn, derr);
+	dbus_connection_send(conn, derr, NULL);
+
+	dbus_message_unref(derr);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 /**
@@ -256,6 +260,7 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 */
 DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg)
 {
+	DBusMessage *derr;
 	char error[128];
 	const char *signature = dbus_message_get_signature(msg);
 	const char *method = dbus_message_get_member(msg);
@@ -264,7 +269,14 @@ DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg)
 	snprintf(error, 128, "Method \"%s\" with signature \"%s\" on interface \"%s\" doesn't exist",
 			method, signature, interface);
 
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownMethod",
-							error));
+	derr = dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownMethod",
+									error);
+	if (!derr)
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+
+	dbus_connection_send(conn, derr, NULL);
+
+	dbus_message_unref(derr);
+
+	return DBUS_HANDLER_RESULT_HANDLED;
 }

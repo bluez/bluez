@@ -39,6 +39,17 @@
 #include "dbus-error.h"
 #include "error.h"
 
+static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	if (msg) {
+		dbus_connection_send(conn, msg, NULL);
+		dbus_message_unref(msg);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,
