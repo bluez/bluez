@@ -999,21 +999,13 @@ send:
 	return -1;
 }
 
-int handle_passkey_request_old(DBusConnection *conn, int dev, const char *path,
-					bdaddr_t *sba, bdaddr_t *dba)
+int handle_passkey_request_old(DBusConnection *conn, int dev,
+						struct adapter *adapter,
+						bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct passkey_agent *agent = default_agent;
-	struct adapter *adapter = NULL;
 	GSList *l;
 	char addr[18];
-	void *data;
-
-	dbus_connection_get_object_user_data(conn, path, &data);
-
-	if (!data)
-		goto done;
-
-	adapter = data;
 
 	ba2str(dba, addr);
 
@@ -1027,8 +1019,7 @@ int handle_passkey_request_old(DBusConnection *conn, int dev, const char *path,
 		}
 	}
 
-done:
-	return call_passkey_agent(conn, agent, dev, path, sba, dba);
+	return call_passkey_agent(conn, agent, dev, adapter->path, sba, dba);
 }
 
 static DBusPendingCall *agent_confirm(const char *path, bdaddr_t *bda,
@@ -1175,27 +1166,21 @@ send:
 	return -1;
 }
 
-int handle_confirm_request_old(DBusConnection *conn, int dev, const char *path,
-				bdaddr_t *sba, bdaddr_t *dba, const char *pin)
+int handle_confirm_request_old(DBusConnection *conn, int dev,
+						struct adapter *adapter,
+						bdaddr_t *sba, bdaddr_t *dba,
+							const char *pin)
 {
 	struct passkey_agent *agent = default_agent;
-	struct adapter *adapter = NULL;
 	GSList *l;
 	char addr[18];
-	void *data;
-
-	dbus_connection_get_object_user_data(conn, path, &data);
-
-	if (!data)
-		goto done;
-
-	adapter = data;
 
 	ba2str(dba, addr);
 
 	for (l = adapter->passkey_agents; l != NULL; l = l->next) {
 		struct passkey_agent *a = l->data;
-		if (a != default_agent && g_slist_length(a->pending_requests) >= 1)
+		if (a != default_agent &&
+				g_slist_length(a->pending_requests) >= 1)
 			continue;
 		if (!strcmp(a->addr, addr)) {
 			agent = a;
@@ -1203,8 +1188,8 @@ int handle_confirm_request_old(DBusConnection *conn, int dev, const char *path,
 		}
 	}
 
-done:
-	return call_confirm_agent(conn, agent, dev, path, sba, dba, pin);
+	return call_confirm_agent(conn, agent, dev, adapter->path,
+							sba, dba, pin);
 }
 
 static void send_cancel_request(struct pending_agent_request *req)

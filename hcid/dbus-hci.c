@@ -1029,8 +1029,8 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 					device);
 
 old_fallback:
-	return handle_passkey_request_old(connection, dev, adapter->path, sba,
-						&ci->bdaddr);
+	return handle_passkey_request_old(connection, dev, adapter,
+							sba, &ci->bdaddr);
 }
 
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
@@ -1169,8 +1169,8 @@ int hcid_dbus_confirm_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci, char
 		return -1;
 	}
 
-	return handle_confirm_request_old(connection, dev, adapter->path, sba,
-						&ci->bdaddr, pin);
+	return handle_confirm_request_old(connection, dev, adapter,
+						sba, &ci->bdaddr, pin);
 }
 
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,

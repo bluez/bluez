@@ -26,11 +26,14 @@
 
 dbus_bool_t security_init(DBusConnection *conn, const char *path);
 
-int handle_passkey_request_old(DBusConnection *conn, int dev, const char *path,
-				bdaddr_t *sba, bdaddr_t *dba);
+int handle_passkey_request_old(DBusConnection *conn, int dev,
+						struct adapter *adapter,
+						bdaddr_t *sba, bdaddr_t *dba);
 
-int handle_confirm_request_old(DBusConnection *conn, int dev, const char *path,
-				bdaddr_t *sba, bdaddr_t *dba, const char *pin);
+int handle_confirm_request_old(DBusConnection *conn, int dev,
+						struct adapter *adapter,
+						bdaddr_t *sba, bdaddr_t *dba,
+							const char *pin);
 
 void release_default_agent_old(void);
 
