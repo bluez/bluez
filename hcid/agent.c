@@ -90,6 +90,9 @@ static void agent_release(struct agent *agent)
 
 	debug("Releasing agent %s, %s", agent->name, agent->path);
 
+	if (agent->request)
+		agent_cancel(agent);
+
 	message = dbus_message_new_method_call(agent->name, agent->path,
 			"org.bluez.Agent", "Release");
 	if (message == NULL) {
@@ -102,7 +105,7 @@ static void agent_release(struct agent *agent)
 	send_message_and_unref(connection, message);
 }
 
-static void send_cancel_request(struct agent_request *req)
+static int send_cancel_request(struct agent_request *req)
 {
 	DBusMessage *message;
 
@@ -110,12 +113,14 @@ static void send_cancel_request(struct agent_request *req)
 						"org.bluez.Agent", "Cancel");
 	if (message == NULL) {
 		error("Couldn't allocate D-Bus message");
-		return;
+		return -ENOMEM;
 	}
 
 	dbus_message_set_no_reply(message, TRUE);
 
 	send_message_and_unref(connection, message);
+
+	return 0;
 }
 
 static void agent_request_free(struct agent_request *req)
@@ -235,17 +240,17 @@ static struct agent_request *agent_request_new(struct agent *agent,
 
 int agent_cancel(struct agent *agent)
 {
-	DBusMessage *message;
+	int ret;
 
-	message = dbus_message_new_method_call(agent->name, agent->path,
-						"org.bluez.Agent", "Cancel");
-	if (!message) {
-		error("Couldn't allocate D-Bus message");
-		return -1;
-	}
+	if (!agent->request)
+		return -EINVAL;
 
-	dbus_message_set_no_reply(message, TRUE);
-	send_message_and_unref(connection, message);
+	ret = send_cancel_request(agent->request);
+	if (ret < 0)
+		return ret;
+
+	agent_request_free(agent->request);
+	agent->request = NULL;
 
 	return 0;
 }
