@@ -154,8 +154,7 @@ static void agent_free(struct agent *agent)
 		agent_pincode_cb pincode_cb;
 		agent_cb cb;
 
-		if (agent->request->call)
-			dbus_pending_call_cancel(agent->request->call);
+		agent_cancel(agent);
 
 		dbus_error_init(&err);
 		dbus_set_error_const(&err, "org.bluez.Error.Failed", "Canceled");
@@ -171,11 +170,6 @@ static void agent_free(struct agent *agent)
 		}
 
 		dbus_error_free(&err);
-
-		if (!agent->exited)
-			send_cancel_request(agent->request);
-
-		agent_request_free(agent->request);
 	}
 
 	if (!agent->exited) {
@@ -240,14 +234,14 @@ static struct agent_request *agent_request_new(struct agent *agent,
 
 int agent_cancel(struct agent *agent)
 {
-	int ret;
-
 	if (!agent->request)
 		return -EINVAL;
 
-	ret = send_cancel_request(agent->request);
-	if (ret < 0)
-		return ret;
+	if (agent->request->call)
+		dbus_pending_call_cancel(agent->request->call);
+
+	if (!agent->exited)
+		send_cancel_request(agent->request);
 
 	agent_request_free(agent->request);
 	agent->request = NULL;
