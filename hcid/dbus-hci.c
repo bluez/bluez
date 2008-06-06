@@ -946,6 +946,8 @@ void hcid_dbus_new_auth_request(bdaddr_t *sba, bdaddr_t *dba, auth_type_t type)
 		return;
 	}
 
+	debug("hcid_dbus_new_auth_request");
+
 	info = g_new0(struct pending_auth_info, 1);
 
 	bacpy(&info->bdaddr, dba);
@@ -1188,8 +1190,10 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 						adapter->path, peer);
 
 	l = g_slist_find_custom(adapter->pin_reqs, peer, pin_req_cmp);
-	if (!l)
+	if (!l) {
+		debug("hcid_dbus_bonding_process_complete: no pending PIN request");
 		goto proceed;
+	}
 
 	d = l->data;
 	adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, l->data);
