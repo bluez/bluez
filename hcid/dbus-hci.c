@@ -930,9 +930,9 @@ int hcid_dbus_stop_device(uint16_t id)
 int pin_req_cmp(const void *p1, const void *p2)
 {
 	const struct pending_auth_info *pb1 = p1;
-	const struct pending_auth_info *pb2 = p2;
+	const bdaddr_t *bda = p2;
 
-	return p2 ? bacmp(&pb1->bdaddr, &pb2->bdaddr) : -1;
+	return bda ? bacmp(&pb1->bdaddr, bda) : -1;
 }
 
 void hcid_dbus_new_auth_request(bdaddr_t *sba, bdaddr_t *dba, auth_type_t type)
