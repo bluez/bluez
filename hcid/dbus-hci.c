@@ -388,7 +388,8 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 	if (adapter->discovery_cancel) {
 		DBusMessage *reply;
 		reply = dbus_message_new_method_return(adapter->discovery_cancel);
-		send_message_and_unref(connection, reply);
+		dbus_connection_send(connection, reply, NULL);
+		dbus_message_unref(reply);
 		dbus_message_unref(adapter->discovery_cancel);
 		adapter->discovery_cancel = NULL;
 	}
@@ -1247,11 +1248,13 @@ proceed:
 	if (dbus_message_is_method_call(bonding->msg, ADAPTER_INTERFACE,
 					"CreateBonding")) {
 		reply = new_authentication_return(bonding->msg, status);
-		send_message_and_unref(connection, reply);
+		dbus_connection_send(connection, reply, NULL);
+		dbus_message_unref(reply);
 	} else if ((device = adapter_find_device(adapter, paddr))) {
 		if (status) {
 			reply = new_authentication_return(bonding->msg, status);
-			send_message_and_unref(connection, reply);
+			dbus_connection_send(connection, reply, NULL);
+			dbus_message_unref(reply);
 		} else {
 			device->temporary = FALSE;
 			device_browse(device, bonding->conn, bonding->msg);
@@ -1517,7 +1520,8 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		if (adapter->discovery_cancel) {
 			DBusMessage *reply;
 			reply = dbus_message_new_method_return(adapter->discovery_cancel);
-			send_message_and_unref(connection, reply);
+			dbus_connection_send(connection, reply, NULL);
+			dbus_message_unref(reply);
 			dbus_message_unref(adapter->discovery_cancel);
 			adapter->discovery_cancel = NULL;
 		}
@@ -1910,7 +1914,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 		if (adapter->discovery_cancel) {
 			DBusMessage *reply;
 			reply = dbus_message_new_method_return(adapter->discovery_cancel);
-			send_message_and_unref(connection, reply);
+			dbus_connection_send(connection, reply, NULL);
+			dbus_message_unref(reply);
 			dbus_message_unref(adapter->discovery_cancel);
 			adapter->discovery_cancel = NULL;
 		}
@@ -2049,7 +2054,8 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		} else {
 			reply = new_authentication_return(adapter->bonding->msg,
 							HCI_AUTHENTICATION_FAILURE);
-			send_message_and_unref(connection, reply);
+			dbus_connection_send(connection, reply, NULL);
+			dbus_message_unref(reply);
 		}
 
 		g_dbus_remove_watch(adapter->bonding->conn,
@@ -2065,10 +2071,11 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	/* Check if there is a pending RemoteDeviceDisconnect request */
 	if (adapter->pending_dc) {
 		reply = dbus_message_new_method_return(adapter->pending_dc->msg);
-		if (!reply)
+		if (reply) {
+			dbus_connection_send(connection, reply, NULL);
+			dbus_message_unref(reply);
+		} else
 			error("Failed to allocate disconnect reply");
-		else
-			send_message_and_unref(adapter->pending_dc->conn, reply);
 
 		g_source_remove(adapter->pending_dc->timeout_id);
 		dc_pending_timeout_cleanup(adapter);
