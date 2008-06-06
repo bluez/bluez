@@ -431,6 +431,14 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 	}
 }
 
+static void do_unregister(gpointer data, gpointer user_data)
+{
+	DBusConnection *conn = user_data;
+	struct device *device = data;
+
+	device_remove(conn, device);
+}
+
 int unregister_adapter_path(const char *path)
 {
 	struct adapter *adapter = NULL;
@@ -509,8 +517,8 @@ int unregister_adapter_path(const char *path)
 	}
 
 	if (adapter->devices) {
-		g_slist_foreach(adapter->devices,
-				(GFunc) device_remove, connection);
+		g_slist_foreach(adapter->devices, do_unregister,
+							connection);
 		g_slist_free(adapter->devices);
 	}
 
@@ -520,14 +528,14 @@ int unregister_adapter_path(const char *path)
 	g_free(adapter);
 
 unreg:
-	if (!g_dbus_unregister_all_interfaces(connection, path)) {
+	if (!g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE)) {
 		error("D-Bus failed to unregister %s object", path);
 		return -1;
 	}
 
 	if (hcid_dbus_use_experimental()) {
 		const char *ptr = path + ADAPTER_PATH_INDEX;
-		g_dbus_unregister_all_interfaces(connection, ptr);
+		g_dbus_unregister_interface(connection, ptr, ADAPTER_INTERFACE);
 	}
 
 	return 0;
@@ -594,8 +602,11 @@ int hcid_dbus_register_device(uint16_t id)
 	return 0;
 
 failed:
+	if (hcid_dbus_use_experimental())
+		g_dbus_unregister_interface(connection, ptr, ADAPTER_INTERFACE);
+
 	g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE);
-	g_dbus_unregister_interface(connection, ptr, ADAPTER_INTERFACE);
+
 	g_free(adapter->path);
 	g_free(adapter);
 

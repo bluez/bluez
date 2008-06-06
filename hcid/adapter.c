@@ -2450,8 +2450,9 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 		device->agent = NULL;
 	}
 
-	device_remove(device, conn);
 	adapter->devices = g_slist_remove(adapter->devices, device);
+
+	device_remove(conn, device);
 }
 
 struct device *adapter_get_device(DBusConnection *conn,

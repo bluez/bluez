@@ -35,7 +35,7 @@ struct device {
 
 struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 				const gchar *address, GSList *uuids);
-void device_remove(struct device *device, DBusConnection *conn);
+void device_remove(DBusConnection *conn, struct device *device);
 gint device_address_cmp(struct device *device, const gchar *address);
 int device_browse(struct device *device, DBusConnection *conn,
 			DBusMessage *msg);
