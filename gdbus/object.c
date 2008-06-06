@@ -38,11 +38,9 @@
 #define debug(fmt...)
 
 struct generic_data {
-	void *user_data;
-	DBusObjectPathUnregisterFunction unregister_function;
+	unsigned int refcount;
 	GSList *interfaces;
 	char *introspect;
-	unsigned int refcount;
 };
 
 struct interface_data {
@@ -216,9 +214,6 @@ static void generic_unregister(DBusConnection *connection, void *user_data)
 {
 	struct generic_data *data = user_data;
 
-	if (data->unregister_function)
-		data->unregister_function(connection, data->user_data);
-
 	g_free(data->introspect);
 	g_free(data);
 }
@@ -378,43 +373,11 @@ static void object_path_unref(DBusConnection *connection, const char *path)
 	dbus_connection_unregister_object_path(connection, path);
 }
 
-dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
-					const char *path, void *user_data,
-					DBusObjectPathUnregisterFunction function)
-{
-	struct generic_data *data;
-
-	data = object_path_ref(connection, path);
-	if (data == NULL)
-		return FALSE;
-
-	data->user_data = user_data;
-	data->unregister_function = function;
-
-	return TRUE;
-}
-
-dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
-							const char *path)
-{
-	object_path_unref(connection, path);
-
-	return TRUE;
-}
-
 dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
 							const char *path,
 							void **data_p)
 {
-	struct generic_data *data = NULL;
-
-	if (!dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) || !data)
-		return FALSE;
-
-	*data_p = data->user_data;
-
-	return TRUE;
+	return FALSE;
 }
 
 void dbus_message_iter_append_variant(DBusMessageIter *iter,
@@ -599,6 +562,7 @@ dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
 	}
 
 	ret = dbus_connection_send(conn, signal, NULL);
+
 fail:
 	dbus_message_unref(signal);
 

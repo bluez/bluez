@@ -43,13 +43,6 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 #define DBUS_TYPE_STRING_ARRAY_AS_STRING (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING)
 #define DBUS_TYPE_BYTE_ARRAY_AS_STRING   (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING)
 
-dbus_bool_t dbus_connection_create_object_path(DBusConnection *connection,
-					const char *path, void *user_data,
-					DBusObjectPathUnregisterFunction function);
-
-dbus_bool_t dbus_connection_destroy_object_path(DBusConnection *connection,
-							const char *path);
-
 dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
 							const char *path,
 							void **data_p);
