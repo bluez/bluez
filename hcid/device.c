@@ -748,8 +748,10 @@ static void device_free(gpointer user_data)
 
 	if (device->agent)
 		agent_destroy(device->agent, FALSE);
+
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
 	g_slist_free(device->uuids);
+
 	g_free(device->address);
 	g_free(device->path);
 	g_free(device);
@@ -1050,9 +1052,13 @@ struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 
 void device_remove(DBusConnection *conn, struct device *device)
 {
-	debug("Removing device %s", device->path);
+	gchar *path = g_strdup(device->path);
 
-	g_dbus_unregister_interface(conn, device->path, DEVICE_INTERFACE);
+	debug("Removing device %s", path);
+
+	g_dbus_unregister_interface(conn, path, DEVICE_INTERFACE);
+
+	g_free(path);
 }
 
 gint device_address_cmp(struct device *device, const gchar *address)
