@@ -234,7 +234,8 @@ static void open_notify(int fd, int err, struct pending_connect *pc)
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &pc->dev,
 			DBUS_TYPE_INVALID);
-	send_message_and_unref(pc->conn, reply);
+	dbus_connection_send(pc->conn, reply, NULL);
+	dbus_message_unref(reply);
 
 	/* Send the D-Bus signal */
 	dbus_connection_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
@@ -453,7 +454,8 @@ static DBusMessage *create_channel_port(DBusConnection *conn,
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &ppath,
 			DBUS_TYPE_INVALID);
-	send_message_and_unref(conn, reply);
+	dbus_connection_send(conn, reply, NULL);
+	dbus_message_unref(reply);
 
 	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "PortCreated" ,

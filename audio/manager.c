@@ -370,7 +370,8 @@ update:
 		dbus_message_append_args(reply, DBUS_TYPE_STRING,
 					&data->device->path,
 					DBUS_TYPE_INVALID);
-		send_message_and_unref(connection, reply);
+		dbus_connection_send(connection, reply, NULL);
+		dbus_message_unref(reply);
 	}
 
 done:
@@ -1569,7 +1570,9 @@ void manager_cancel_authorize(bdaddr_t *dba, const char *uuid,
 					DBUS_TYPE_STRING, &uuid,
 					DBUS_TYPE_INVALID);
 
-	send_message_and_unref(connection, cancel);
+	dbus_connection_send(connection, cancel, NULL);
+
+	dbus_message_unref(cancel);
 }
 
 gboolean manager_authorize(const bdaddr_t *dba, const char *uuid,

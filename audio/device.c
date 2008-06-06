@@ -311,7 +311,9 @@ void device_finish_sdp_transaction(struct audio_device *dev)
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &addr_ptr,
 				 DBUS_TYPE_INVALID);
 
-	send_message_and_unref(dev->conn, msg);
+	dbus_connection_send(dev->conn, msg, NULL);
+
+	dbus_message_unref(msg);
 }
 
 #if 0

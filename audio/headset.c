@@ -321,7 +321,8 @@ static void sco_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	if (p->msg) {
 		DBusMessage *reply = dbus_message_new_method_return(p->msg);
-		send_message_and_unref(dev->conn, reply);
+		dbus_connection_send(dev->conn, reply, NULL);
+		dbus_message_unref(reply);
 	}
 
 	pending_connect_finalize(dev);
@@ -374,7 +375,8 @@ static void hfp_slc_complete(struct audio_device *dev)
 
 	if (p->msg) {
 		DBusMessage *reply = dbus_message_new_method_return(p->msg);
-		send_message_and_unref(dev->conn, reply);
+		dbus_connection_send(dev->conn, reply, NULL);
+		dbus_message_unref(reply);
 	}
 
 	if (p->target_state == HEADSET_STATE_CONNECTED) {
@@ -717,7 +719,8 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	if (p->msg) {
 		DBusMessage *reply = dbus_message_new_method_return(p->msg);
-		send_message_and_unref(dev->conn, reply);
+		dbus_connection_send(dev->conn, reply, NULL);
+		dbus_message_unref(reply);
 	}
 
 	pending_connect_finalize(dev);

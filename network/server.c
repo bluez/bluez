@@ -327,7 +327,9 @@ static void cancel_authorization_old()
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
 
-	send_message_and_unref(connection, msg);
+	dbus_connection_send(connection, msg, NULL);
+
+	dbus_message_unref(msg);
 }
 
 static int server_connadd(struct network_server *ns, int nsk,
