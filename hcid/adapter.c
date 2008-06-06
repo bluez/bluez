@@ -2198,10 +2198,11 @@ gboolean dc_pending_timeout_handler(void *data)
 		error_failed_errno(pending_dc->conn, pending_dc->msg, err);
 	} else {
 		reply = dbus_message_new_method_return(pending_dc->msg);
-		if (!reply)
+		if (reply) {
+			dbus_connection_send(pending_dc->conn, reply, NULL);
+			dbus_message_unref(reply);
+		} else
 			error("Failed to allocate disconnect reply");
-		else
-			send_message_and_unref(pending_dc->conn, reply);
 	}
 
 	hci_close_dev(dd);
@@ -2285,8 +2286,10 @@ static void reply_authentication_failure(struct bonding_request_info *bonding)
 			bonding->hci_status : HCI_AUTHENTICATION_FAILURE;
 
 	reply = new_authentication_return(bonding->msg, status);
-	if (reply)
-		send_message_and_unref(bonding->conn, reply);
+	if (reply) {
+		dbus_connection_send(bonding->conn, reply, NULL);
+		dbus_message_unref(reply);
+	}
 }
 
 struct device *adapter_find_device(struct adapter *adapter, const char *dest)

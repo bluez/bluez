@@ -530,7 +530,8 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
 
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
-	send_message_and_unref(ctxt->conn, reply);
+	dbus_connection_send(ctxt->conn, reply, NULL);
+	dbus_message_unref(reply);
 
 failed:
 	transaction_context_free(ctxt, TRUE);
@@ -606,7 +607,8 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 		free(result.data);
 	}
 done:
-	send_message_and_unref(ctxt->conn, reply);
+	dbus_connection_send(ctxt->conn, reply, NULL);
+	dbus_message_unref(reply);
 
 failed:
 	transaction_context_free(ctxt, TRUE);
@@ -680,7 +682,8 @@ static void remote_svc_handles_completed_cb(uint8_t type, uint16_t err,
 
 done:
 	dbus_message_iter_close_container(&iter, &array_iter);
-	send_message_and_unref(ctxt->conn, reply);
+	dbus_connection_send(ctxt->conn, reply, NULL);
+	dbus_message_unref(reply);
 
 failed:
 	transaction_context_free(ctxt, TRUE);
@@ -844,7 +847,9 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 			DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
 			&identifiers, len,
 			DBUS_TYPE_INVALID);
-	send_message_and_unref(ctxt->conn, reply);
+
+	dbus_connection_send(ctxt->conn, reply, NULL);
+	dbus_message_unref(reply);
 
 	if (len)
 		dbus_connection_emit_signal(ctxt->conn,

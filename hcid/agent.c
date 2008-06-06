@@ -102,7 +102,9 @@ static void agent_release(struct agent *agent)
 
 	dbus_message_set_no_reply(message, TRUE);
 
-	send_message_and_unref(connection, message);
+	dbus_connection_send(connection, message, NULL);
+
+	dbus_message_unref(message);
 }
 
 static int send_cancel_request(struct agent_request *req)
@@ -118,7 +120,9 @@ static int send_cancel_request(struct agent_request *req)
 
 	dbus_message_set_no_reply(message, TRUE);
 
-	send_message_and_unref(connection, message);
+	dbus_connection_send(connection, message, NULL);
+
+	dbus_message_unref(message);
 
 	return 0;
 }
