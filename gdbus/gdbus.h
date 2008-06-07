@@ -40,8 +40,6 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 				GDBusWatchFunction function,
 				void *user_data, DBusFreeFunction destroy);
 
-void dbus_message_iter_append_variant(DBusMessageIter *iter,
-							int type, void *val);
 void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 					const char *key, int type, void *val);
 void dbus_message_iter_append_dict_valist(DBusMessageIter *iter,

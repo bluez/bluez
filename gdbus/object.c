@@ -373,7 +373,7 @@ static void object_path_unref(DBusConnection *connection, const char *path)
 	dbus_connection_unregister_object_path(connection, path);
 }
 
-void dbus_message_iter_append_variant(DBusMessageIter *iter,
+static void dbus_message_iter_append_variant(DBusMessageIter *iter,
 						int type, void *val)
 {
 	DBusMessageIter value;
