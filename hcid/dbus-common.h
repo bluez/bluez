@@ -37,3 +37,12 @@ int find_conn(int s, int dev_id, long arg);
 
 void hcid_dbus_exit(void);
 int hcid_dbus_init(void);
+
+void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
+					const char *key, int type, void *val);
+
+dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
+						const char *path,
+						const char *interface,
+						const char *name,
+						int type, void *value);

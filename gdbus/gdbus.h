@@ -40,15 +40,6 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 				GDBusWatchFunction function,
 				void *user_data, DBusFreeFunction destroy);
 
-void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
-					const char *key, int type, void *val);
-
-dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
-						const char *path,
-						const char *interface,
-						const char *name,
-						int type, void *value);
-
 typedef void (* GDBusDestroyFunction) (void *user_data);
 
 typedef DBusMessage * (* GDBusMethodFunction) (DBusConnection *connection,
@@ -100,10 +91,10 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 gboolean g_dbus_unregister_all_interfaces(DBusConnection *connection,
 							const char *path);
 
-DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
-					const char *format, va_list args);
 DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
 						const char *format, ...);
+DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
+					const char *format, va_list args);
 DBusMessage *g_dbus_create_reply(DBusMessage *message, int type, ...);
 DBusMessage *g_dbus_create_reply_valist(DBusMessage *message,
 						int type, va_list args);

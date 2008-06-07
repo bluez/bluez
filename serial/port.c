@@ -38,9 +38,12 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
+#include <bluetooth/sdp.h>
 
 #include <glib.h>
 #include <gdbus.h>
+
+#include "../hcid/dbus-common.h"
 
 #include "logging.h"
 
