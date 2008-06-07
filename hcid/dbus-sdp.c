@@ -394,6 +394,9 @@ static void transaction_context_free(void *udata, gboolean cache)
 	if (!ctxt)
 		return;
 
+	g_free(ctxt->src);
+	g_free(ctxt->dst);
+
 	if (ctxt->conn)
 		dbus_connection_unref(ctxt->conn);
 
