@@ -63,6 +63,8 @@
 #define DEFAULT_XML_BUF_SIZE	1024
 
 struct transaction_context {
+	char		*src;
+	char		*dst;
 	DBusConnection	*conn;
 	DBusMessage	*rq;
 	sdp_session_t	*session;
@@ -75,12 +77,12 @@ struct transaction_context {
 typedef int connect_cb_t(struct transaction_context *t);
 
 struct pending_connect {
-	DBusConnection *conn;
-	DBusMessage *rq;
-
-	char *dst;
-	sdp_session_t *session;
-	connect_cb_t *conn_cb;
+	DBusConnection	*conn;
+	DBusMessage	*rq;
+	char		*src;
+	char		*dst;
+	sdp_session_t	*session;
+	connect_cb_t	*conn_cb;
 };
 
 /* FIXME:  move to a common file */
@@ -313,8 +315,9 @@ uint16_t sdp_str2svclass(const char *str)
 /* list of remote and local service records */
 static GSList *pending_connects  = NULL;
 
-static struct pending_connect *pending_connect_new(DBusConnection *conn, DBusMessage *msg,
-							const char *dst, connect_cb_t *cb)
+static struct pending_connect *pending_connect_new(DBusConnection *conn,
+					DBusMessage *msg, const char *src,
+					const char *dst, connect_cb_t *cb)
 {
 	struct pending_connect *c;
 
@@ -322,10 +325,8 @@ static struct pending_connect *pending_connect_new(DBusConnection *conn, DBusMes
 		return NULL;
 
 	c = g_new0(struct pending_connect, 1);
-
-	if (dst)
-		c->dst = g_strdup(dst);
-
+	c->src = g_strdup(src);
+	c->dst = g_strdup(dst);
 	c->conn = dbus_connection_ref(conn);
 	c->rq = dbus_message_ref(msg);
 	c->conn_cb = cb;
@@ -338,6 +339,7 @@ static void pending_connect_free(struct pending_connect *c)
 	if (!c)
 		return;
 
+	g_free(c->src);
 	g_free(c->dst);
 
 	if (c->rq)
@@ -360,21 +362,6 @@ static struct pending_connect *find_pending_connect(const char *dst)
 	}
 
 	return NULL;
-}
-
-static const char *get_address_from_message(DBusConnection *conn, DBusMessage *msg)
-{
-	struct adapter *adapter;
-	const char *path;
-
-	path = dbus_message_get_path(msg);
-	if (!path)
-		return NULL;
-
-	if (dbus_connection_get_object_user_data(conn, path, (void *) &adapter) == FALSE)
-		return NULL;
-
-	return adapter->address;
 }
 
 static int sdp_store_record(const char *src, const char *dst, uint32_t handle, uint8_t *buf, size_t size)
@@ -472,7 +459,6 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
 	sdp_record_t *rec;
 	DBusMessage *reply;
 	DBusMessageIter iter, array_iter;
-	const char *src, *dst;
 	int scanned;
 
 	if (!ctxt)
@@ -504,12 +490,6 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
 		goto failed;
 	}
 
-	dbus_message_get_args(ctxt->rq, NULL,
-			DBUS_TYPE_STRING, &dst,
-			DBUS_TYPE_INVALID);
-
-	src = get_address_from_message(ctxt->conn, ctxt->rq);
-
 	reply = dbus_message_new_method_return(ctxt->rq);
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -521,7 +501,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
 		goto done;
 	}
 
-	sdp_store_record(src, dst, rec->handle, rsp, size);
+	sdp_store_record(ctxt->src, ctxt->dst, rec->handle, rsp, size);
 
 	sdp_record_free(rec);
 
@@ -544,7 +524,6 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 	struct transaction_context *ctxt = udata;
 	sdp_record_t *rec;
 	DBusMessage *reply;
-	const char *src, *dst;
 	int scanned;
 	sdp_buf_t result;
 
@@ -577,12 +556,6 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 		goto failed;
 	}
 
-	dbus_message_get_args(ctxt->rq, NULL,
-			DBUS_TYPE_STRING, &dst,
-			DBUS_TYPE_INVALID);
-
-	src = get_address_from_message(ctxt->conn, ctxt->rq);
-
 	reply = dbus_message_new_method_return(ctxt->rq);
 
 	rec = sdp_extract_pdu(rsp, &scanned);
@@ -591,7 +564,7 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 		goto done;
 	}
 
-	sdp_store_record(src, dst, rec->handle, rsp, size);
+	sdp_store_record(ctxt->src, ctxt->dst, rec->handle, rsp, size);
 
 	memset(&result, 0, sizeof(sdp_buf_t));
 
@@ -748,7 +721,7 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 			uint8_t *rsp, size_t size, void *udata)
 {
 	struct transaction_context *ctxt = udata;
-	const char *src, *dst, *puuid;
+	const char *puuid;
 	const char *devid_uuid = "00001200-0000-1000-8000-00805f9b34fb";
 	char **identifiers;
 	DBusMessage *reply;
@@ -785,11 +758,6 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 		goto failed;
 	}
 
-	src = get_address_from_message(ctxt->conn, ctxt->rq);
-	dbus_message_get_args(ctxt->rq, NULL,
-			DBUS_TYPE_STRING, &dst,
-			DBUS_TYPE_INVALID);
-
 	scanned = sdp_extract_seqtype(rsp, &dtd, &len);
 	rsp += scanned;
 	for (; extracted < len; rsp += recsize, extracted += recsize) {
@@ -801,7 +769,7 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 		if (!rec)
 			break;
 
-		sdp_store_record(src, dst, rec->handle, rsp, recsize);
+		sdp_store_record(ctxt->src, ctxt->dst, rec->handle, rsp, recsize);
 
 		d = sdp_data_get(rec, SDP_ATTR_SVCLASS_ID_LIST);
 		if (!d) {
@@ -856,7 +824,7 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 				dbus_message_get_path(ctxt->rq),
 				ADAPTER_INTERFACE,
 				"RemoteIdentifiersUpdated",
-				DBUS_TYPE_STRING, &dst,
+				DBUS_TYPE_STRING, &ctxt->dst,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
 				&identifiers, len,
 				DBUS_TYPE_INVALID);
@@ -890,7 +858,8 @@ static gboolean sdp_client_connect_cb(GIOChannel *chan,
 	}
 
 	ctxt = g_new0(struct transaction_context, 1);
-
+	ctxt->src = g_strdup(c->src);
+	ctxt->dst = g_strdup(c->dst);
 	ctxt->conn = dbus_connection_ref(c->conn);
 	ctxt->rq = dbus_message_ref(c->rq);
 	ctxt->session = c->session;
@@ -928,7 +897,7 @@ done:
 
 static struct pending_connect *connect_request(DBusConnection *conn,
 					DBusMessage *msg,
-					uint16_t dev_id,
+					const char *src,
 					const char *dst,
 					connect_cb_t *cb, int *err)
 {
@@ -936,16 +905,15 @@ static struct pending_connect *connect_request(DBusConnection *conn,
 	bdaddr_t srcba, dstba;
 	GIOChannel *chan;
 
-	c = pending_connect_new(conn, msg, dst, cb);
+	c = pending_connect_new(conn, msg, src, dst, cb);
 	if (!c) {
 		if (err)
 			*err = ENOMEM;
 		return NULL;
 	}
 
-	hci_devba(dev_id, &srcba);
+	str2ba(src, &srcba);
 	str2ba(dst, &dstba);
-
 	c->session = get_sdp_session(&srcba, &dstba);
 	if (!c->session) {
 		if (err)
@@ -1050,7 +1018,7 @@ DBusMessage *get_remote_svc_rec(DBusConnection *conn, DBusMessage *msg,
 	if (format == SDP_FORMAT_XML)
 		cb = remote_svc_rec_conn_xml_cb;
 
-	if (!connect_request(conn, msg, adapter->dev_id,
+	if (!connect_request(conn, msg, adapter->address,
 				dst, cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return failed_strerror(msg, err);
@@ -1128,7 +1096,7 @@ DBusMessage *get_remote_svc_handles(DBusConnection *conn,
 	if (find_pending_connect(dst))
 		return in_progress(msg, "Service search in progress");
 
-	if (!connect_request(conn, msg, adapter->dev_id,
+	if (!connect_request(conn, msg, adapter->address,
 				dst, remote_svc_handles_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return failed_strerror(msg, err);
@@ -1137,7 +1105,8 @@ DBusMessage *get_remote_svc_handles(DBusConnection *conn,
 	return NULL;
 }
 
-DBusMessage *get_remote_svc_identifiers(DBusConnection *conn, DBusMessage *msg, void *data)
+DBusMessage *get_remote_svc_identifiers(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
 	const char *dst;
@@ -1154,7 +1123,7 @@ DBusMessage *get_remote_svc_identifiers(DBusConnection *conn, DBusMessage *msg, 
 	if (find_pending_connect(dst))
 		return in_progress(msg, "Service search in progress");
 
-	if (!connect_request(conn, msg, adapter->dev_id,
+	if (!connect_request(conn, msg, adapter->address,
 				dst, remote_svc_identifiers_conn_cb, &err)) {
 		error("Search request failed: %s (%d)", strerror(err), err);
 		return failed_strerror(msg, err);
