@@ -56,12 +56,6 @@ dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
 					const char *interface, const char *name,
 					int first, ...);
 
-dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
-						const char *path,
-						const char *interface,
-						const char *name,
-						int first,
-						va_list var_args);
 dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 						const char *path,
 						const char *interface,
@@ -132,6 +126,13 @@ gboolean g_dbus_send_reply(DBusConnection *connection,
 				DBusMessage *message, int type, ...);
 gboolean g_dbus_send_reply_valist(DBusConnection *connection,
 				DBusMessage *message, int type, va_list args);
+
+gboolean g_dbus_emit_signal(DBusConnection *connection,
+				const char *path, const char *interface,
+				const char *name, int type, ...);
+gboolean g_dbus_emit_signal_valist(DBusConnection *connection,
+				const char *path, const char *interface,
+				const char *name, int type, va_list args);
 
 guint g_dbus_add_disconnect_watch(DBusConnection *connection,
 				const char *name,

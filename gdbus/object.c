@@ -522,7 +522,7 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 	return TRUE;
 }
 
-dbus_bool_t dbus_connection_emit_signal_valist(DBusConnection *conn,
+static dbus_bool_t emit_signal_valist(DBusConnection *conn,
 						const char *path,
 						const char *interface,
 						const char *name,
@@ -570,8 +570,7 @@ dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
 	va_list var_args;
 
 	va_start(var_args, first);
-	ret = dbus_connection_emit_signal_valist(conn, path, interface, name,
-							first, var_args);
+	ret = emit_signal_valist(conn, path, interface, name, first, var_args);
 	va_end(var_args);
 
 	return ret;
@@ -799,4 +798,29 @@ gboolean g_dbus_send_reply(DBusConnection *connection,
 	va_end(args);
 
 	return result;
+}
+
+gboolean g_dbus_emit_signal(DBusConnection *connection,
+				const char *path, const char *interface,
+				const char *name, int type, ...)
+{
+        va_list args;
+	gboolean result;
+
+        va_start(args, type);
+
+	result = emit_signal_valist(connection, path, interface,
+							name, type, args);
+
+        va_end(args);
+
+        return result;
+}
+
+gboolean g_dbus_emit_signal_valist(DBusConnection *connection,
+				const char *path, const char *interface,
+				const char *name, int type, va_list args)
+{
+	return emit_signal_valist(connection, path, interface,
+							name, type, args);
 }
