@@ -40,9 +40,6 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 				GDBusWatchFunction function,
 				void *user_data, DBusFreeFunction destroy);
 
-#define DBUS_TYPE_STRING_ARRAY_AS_STRING (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING)
-#define DBUS_TYPE_BYTE_ARRAY_AS_STRING   (DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING)
-
 void dbus_message_iter_append_variant(DBusMessageIter *iter,
 							int type, void *val);
 void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
