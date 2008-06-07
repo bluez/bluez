@@ -301,7 +301,7 @@ static dbus_bool_t send_adapter_signal(DBusConnection *conn, int devid,
 	snprintf(path, sizeof(path)-1, "%s/hci%d", BASE_PATH, devid);
 
 	va_start(var_args, first);
-	ret = dbus_connection_emit_signal_valist(conn, path, ADAPTER_INTERFACE,
+	ret = g_dbus_emit_signal_valist(conn, path, ADAPTER_INTERFACE,
 							name, first, var_args);
 	va_end(var_args);
 
