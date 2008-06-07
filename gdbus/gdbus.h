@@ -42,9 +42,6 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 
 void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 					const char *key, int type, void *val);
-void dbus_message_iter_append_dict_valist(DBusMessageIter *iter,
-					const char *first_key,
-					va_list var_args);
 
 dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 						const char *path,
