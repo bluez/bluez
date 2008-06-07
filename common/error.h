@@ -29,39 +29,11 @@
 
 DBusMessage *create_errno_message(DBusMessage *msg, int err);
 
-DBusHandlerResult error_device_unreachable(DBusConnection *conn,
-						DBusMessage *msg);
-
 DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
 							DBusMessage *msg,
 							int err);
 
-DBusHandlerResult error_already_connected(DBusConnection *conn,
-						DBusMessage *msg);
-
-DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg);
-
-DBusHandlerResult error_in_progress(DBusConnection *conn, DBusMessage *msg,
-					const char *str);
-
-DBusHandlerResult error_invalid_arguments(DBusConnection *conn,
-						DBusMessage *msg,
-						const char *str);
-
-DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg);
-
-DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg);
-
 DBusHandlerResult error_not_supported(DBusConnection *conn,
-						DBusMessage *msg);
-
-DBusHandlerResult error_already_exists(DBusConnection *conn, DBusMessage *msg,
-						const char *str);
-
-DBusHandlerResult error_does_not_exist(DBusConnection *conn, DBusMessage *msg,
-						const char *str);
-
-DBusHandlerResult error_device_does_not_exist(DBusConnection *conn,
 						DBusMessage *msg);
 
 DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg,
@@ -75,5 +47,3 @@ DBusHandlerResult error_failed_errno(DBusConnection *conn, DBusMessage *msg,
 
 DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 					const char *name, const char *descr);
-
-DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg);

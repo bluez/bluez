@@ -26,7 +26,6 @@
   Please update dbus-api.txt in hcid folder when changes are made to this file.
  */
 
-DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg);
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg);
 /* Used only for hcid device audit feature */
 DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessage *msg);

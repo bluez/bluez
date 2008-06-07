@@ -42,17 +42,6 @@ DBusMessage *create_errno_message(DBusMessage *msg, int err)
 }
 
 /**
-  org.bluez.Error.DeviceUnreachable:
-
-  The remote device is either powered down or out of range.
-*/
-DBusHandlerResult error_device_unreachable(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".DeviceUnreachable",
-							"Device Unreachable");
-}
-
-/**
   org.bluez.Error.ConnectionAttemptFailed:
 
   An unexpected error (other than DeviceUnreachable) error has occured while
@@ -66,74 +55,6 @@ DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMess
 }
 
 /**
-  org.bluez.Error.AlreadyConnected:
-
-  A connection request has been received on an already connected device.
-*/
-DBusHandlerResult error_already_connected(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_common_reply(conn, msg,
-				ERROR_INTERFACE ".AlreadyConnected",
-				"Already connected to a device");
-}
-
-/**
-  org.bluez.Error.InProgress:
-
-  Error returned if an operation is in progress. Since
-  this is a generic error that can be used in various
-  situations, the error message should be more clear
-  about what is in progress. For example "Bonding in
-  progress".
-  */
-DBusHandlerResult error_in_progress(DBusConnection *conn, DBusMessage *msg,
-						const char *str)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".InProgress", str);
-}
-
-/**
-  org.bluez.Error.InvalidArguments:
-
-  The DBUS request does not contain the right number of
-  arguments with the right type, or the arguments are there but
-  their value is wrong, or does not makes sense in the current context.
-*/
-DBusHandlerResult error_invalid_arguments(DBusConnection *conn, DBusMessage *msg,
-						const char *descr)
-{
-	return error_common_reply(conn, msg,
-				ERROR_INTERFACE ".InvalidArguments",
-				descr ? descr : "Invalid arguments in method call");
-}
-
-/**
-  org.bluez.Error.OutOfMemory:
-
-  Not enough memory to execute the request.
-  Error returned when a memory allocation via malloc()
-  fails. This error is similar to ENOMEM.
-*/
-DBusHandlerResult error_out_of_memory(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".OutOfMemory",
-							"Out of memory");
-}
-
-/**
-  org.bluez.Error.NotAvailable:
-
-  The requested information is not there.
-  Examples of use: Adapter object when remote info is not available, or Database
-  object record is not found
-*/
-DBusHandlerResult error_not_available(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".NotAvailable",
-							"Not available");
-}
-
-/**
   org.bluez.Error.NotSupported:
 
   The remote device does not support the expected feature.
@@ -144,56 +65,6 @@ DBusHandlerResult error_not_supported(DBusConnection *conn, DBusMessage *msg)
 {
 	return error_common_reply(conn, msg, ERROR_INTERFACE ".NotSupported",
 							"Not supported");
-}
-
-/**
-  org.bluez.Error.NotConnected:
-
-  The remote device is not connected, while the method call
-  would expect it to be, or is not in the expected state to
-  perform the action
-*/
-DBusHandlerResult error_not_connected(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".NotConnected",
-							"Not connected");
-}
-
-/**
-  org.bluez.Error.AlreadyExists:
-
-  One of the requested elements already exists
-  Examples of use: Bonding, record, passkey agent, auth agent,
-  hid device ... already exists
-*/
-DBusHandlerResult error_already_exists(DBusConnection *conn, DBusMessage *msg,
-					const char *str)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".AlreadyExists", str);
-}
-
-/**
-  org.bluez.Error.DoesNotExist:
-
-  One of the requested elements does not exist
-  Examples of use: Bonding, record, passkey agent, auth agent, bluetooth device
-  ... does not exist.
-*/
-DBusHandlerResult error_does_not_exist(DBusConnection *conn, DBusMessage *msg,
-					const char *str)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".DoesNotExist", str);
-}
-
-/**
-  org.bluez.Error.DoesNotExist:
-
-  Same as error_does_not_exist, but with device error message
-*/
-DBusHandlerResult error_device_does_not_exist(DBusConnection *conn,
-						DBusMessage *msg)
-{
-	return error_does_not_exist(conn, msg, "Device does not exist");
 }
 
 /**
@@ -243,34 +114,6 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 		return DBUS_HANDLER_RESULT_HANDLED;
 
 	derr = dbus_message_new_error(msg, name, descr);
-	if (!derr)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	dbus_connection_send(conn, derr, NULL);
-
-	dbus_message_unref(derr);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-/**
-  org.bluez.Error.UnknownMethod:
-
-  Used in experimental code.
-*/
-DBusHandlerResult error_unknown_method(DBusConnection *conn, DBusMessage *msg)
-{
-	DBusMessage *derr;
-	char error[128];
-	const char *signature = dbus_message_get_signature(msg);
-	const char *method = dbus_message_get_member(msg);
-	const char *interface = dbus_message_get_interface(msg);
-
-	snprintf(error, 128, "Method \"%s\" with signature \"%s\" on interface \"%s\" doesn't exist",
-			method, signature, interface);
-
-	derr = dbus_message_new_error(msg, ERROR_INTERFACE ".UnknownMethod",
-									error);
 	if (!derr)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 

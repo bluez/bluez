@@ -47,7 +47,6 @@
 #include "hcid.h"
 #include "dbus-common.h"
 #include "dbus-service.h"
-#include "dbus-error.h"
 #include "error.h"
 #include "dbus-security.h"
 #include "dbus-hci.h"
@@ -405,27 +404,6 @@ static DBusMessage *unregister_default_passkey_agent(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static struct auth_agent_req *auth_agent_req_new(DBusMessage *msg,
-						struct authorization_agent *agent,
-						const char *adapter_path,
-						const char *address,
-						const char *service_path,
-						const char *uuid)
-{
-	struct auth_agent_req *req;
-
-	req = g_new0(struct auth_agent_req, 1);
-
-	req->agent = agent;
-	req->msg = dbus_message_ref(msg);
-	req->adapter_path = g_strdup(adapter_path);
-	req->address = g_strdup(address);
-	req->service_path = g_strdup(service_path);
-	req->uuid = g_strdup(uuid);
-
-	return req;
-}
-
 static void auth_agent_req_free(struct auth_agent_req *req)
 {
 	dbus_message_unref(req->msg);
@@ -454,32 +432,6 @@ static void auth_agent_cancel_requests(struct authorization_agent *agent)
 		auth_agent_req_cancel(req);
 		auth_agent_req_free(req);
 	}
-}
-
-static void auth_agent_call_cancel(struct auth_agent_req *req)
-{
-	struct authorization_agent *agent = req->agent;
-	DBusMessage *message;
-
-	message = dbus_message_new_method_call(agent->name, agent->path,
-				"org.bluez.AuthorizationAgent", "Cancel");
-	if (!message) {
-		error("Couldn't allocate D-Bus message");
-		return;
-	}
-
-	dbus_message_append_args(message,
-				DBUS_TYPE_STRING, &req->adapter_path,
-				DBUS_TYPE_STRING, &req->address,
-				DBUS_TYPE_STRING, &req->service_path,
-				DBUS_TYPE_STRING, &req->uuid,
-				DBUS_TYPE_INVALID);
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	dbus_connection_send(agent->conn, message, NULL);
-
-	dbus_message_unref(message);
 }
 
 static void auth_agent_free(struct authorization_agent *agent)
@@ -616,194 +568,6 @@ static DBusMessage *unregister_default_auth_agent(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static void auth_agent_req_reply(DBusPendingCall *call, void *data)
-{
-	struct auth_agent_req *req = data;
-	struct authorization_agent *agent = req->agent;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusMessage *message;
-	DBusError err;
-
-	debug("authorize reply");
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, reply)) {
-		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
-			auth_agent_call_cancel(req);
-		error("Authorization agent replied with an error: %s, %s",
-				err.name, err.message);
-		dbus_error_free(&err);
-		goto reject;
-	}
-
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(reply, &err,	DBUS_TYPE_INVALID)) {
-		error("Wrong authorization agent reply signature: %s",
-			err.message);
-		dbus_error_free(&err);
-		goto reject;
-	}
-
-	message = dbus_message_new_method_return(req->msg);
-	if (!message)
-		goto reject;
-
-	dbus_connection_send(agent->conn, message, NULL);
-
-	dbus_message_unref(message);
-
-	debug("successfull reply was sent");
-
-	goto done;
-
-reject:
-	error_rejected(agent->conn, req->msg);
-
-done:
-	dbus_message_unref(reply);
-
-	agent->pending_requests = g_slist_remove(agent->pending_requests, req);
-
-	auth_agent_req_free(req);
-
-	debug("auth_agent_reply: returning");
-}
-
-static DBusPendingCall *auth_agent_call_authorize(struct authorization_agent *agent,
-						const char *adapter_path,
-						const char *service_path,
-						const char *address,
-						const char *uuid)
-{
-	DBusMessage *message;
-	DBusPendingCall *call;
-
-	message = dbus_message_new_method_call(agent->name, agent->path,
-				"org.bluez.AuthorizationAgent", "Authorize");
-	if (!message) {
-		error("Couldn't allocate D-Bus message");
-		return NULL;
-	}
-
-	dbus_message_append_args(message,
-				DBUS_TYPE_STRING, &adapter_path,
-				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_STRING, &service_path,
-				DBUS_TYPE_STRING, &uuid,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(agent->conn, message,
-					&call, REQUEST_TIMEOUT) == FALSE) {
-		error("D-Bus send failed");
-		dbus_message_unref(message);
-		return NULL;
-	}
-
-	dbus_message_unref(message);
-	return call;
-}
-
-DBusHandlerResult handle_authorize_request_old(DBusConnection *conn,
-					DBusMessage *msg,
-					struct service *service,
-					const char *path,
-					const char *address,
-					const char *uuid)
-{
-	struct auth_agent_req *req;
-
-	debug("handle_authorize_request");
-
-	if (!default_auth_agent) {
-		debug("no default agent");
-		return error_auth_agent_does_not_exist(conn, msg);
-	}
-
-	req = auth_agent_req_new(msg, default_auth_agent, path,
-					address, service->object_path, uuid);
-
-	req->call = auth_agent_call_authorize(default_auth_agent, path,
-					service->object_path, address, uuid);
-	if (!req->call) {
-		auth_agent_req_free(req);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-	}
-
-	dbus_pending_call_set_notify(req->call, auth_agent_req_reply, req,
-					NULL);
-	default_auth_agent->pending_requests =
-		g_slist_append(default_auth_agent->pending_requests, req);
-
-	debug("authorize request was forwarded");
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-static DBusHandlerResult auth_agent_send_cancel(DBusMessage *msg,
-					struct authorization_agent *agent,
-					const char *adapter_path,
-					struct service *service,
-					const char *address,
-					const char *uuid)
-{
-	struct auth_agent_req *req = NULL;
-	DBusMessage *message;
-	GSList *l;
-
-	for (l = agent->pending_requests; l != NULL; l = l->next) {
-		req = l->data;
-		if (!strcmp(adapter_path, req->adapter_path) &&
-			!strcmp(address, req->address) &&
-			!strcmp(service->object_path, req->service_path) &&
-			!strcmp(uuid, req->uuid))
-			break;
-	}
-
-	if (!req)
-		return error_does_not_exist(agent->conn, msg,
-					"No such authorization process");
-
-	message = dbus_message_new_method_return(msg);
-	if (!message)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
-
-	auth_agent_call_cancel(req);
-	auth_agent_req_cancel(req);
-	agent->pending_requests = g_slist_remove(agent->pending_requests, req);
-	auth_agent_req_free(req);
-
-	dbus_connection_send(agent->conn, message, NULL);
-
-	dbus_message_unref(message);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-DBusHandlerResult cancel_authorize_request_old(DBusConnection *conn,
-						DBusMessage *msg,
-						struct service *service,
-						const char *address,
-						const char *uuid)
-{
-	char adapter_path[PATH_MAX];
-	int adapter_id;
-	bdaddr_t bdaddr;
-
-	if (!default_auth_agent)
-		return error_auth_agent_does_not_exist(conn, msg);
-
-	str2ba(address, &bdaddr);
-
-	adapter_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
-	if (adapter_id < 0)
-		return error_not_connected(conn, msg);
-
-	snprintf(adapter_path, sizeof(adapter_path), "/org/bluez/hci%d",
-			adapter_id);
-
-	return auth_agent_send_cancel(msg, default_auth_agent, adapter_path,
-						service, address, uuid);
-}
 
 static GDBusMethodTable security_methods[] = {
 	{ "RegisterDefaultPasskeyAgent",	"s",	"",

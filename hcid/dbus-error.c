@@ -50,13 +50,6 @@ static inline DBusHandlerResult send_message_and_unref(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-DBusHandlerResult error_rejected(DBusConnection *conn, DBusMessage *msg)
-{
-	return send_message_and_unref(conn,
-		dbus_message_new_error(msg, ERROR_INTERFACE ".Rejected",
-							"Rejected"));
-}
-
 DBusHandlerResult error_no_such_adapter(DBusConnection *conn, DBusMessage *msg)
 {
 	return send_message_and_unref(conn,
@@ -69,11 +62,6 @@ DBusHandlerResult error_authentication_canceled(DBusConnection *conn, DBusMessag
 	return send_message_and_unref(conn,
 				    dbus_message_new_error(msg, ERROR_INTERFACE ".AuthenticationCanceled",
 							   "Authentication Canceled"));
-}
-
-DBusHandlerResult error_auth_agent_does_not_exist(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_does_not_exist(conn, msg, "Authorization agent does not exist");
 }
 
 static const char *strsdperror(int err)
