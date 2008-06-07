@@ -473,16 +473,6 @@ void dbus_message_iter_append_dict_valist(DBusMessageIter *iter,
 	dbus_message_iter_close_container(iter, &dict);
 }
 
-void dbus_message_iter_append_dict(DBusMessageIter *iter,
-					const char *first_key, ...)
-{
-	va_list var_args;
-
-	va_start(var_args, first_key);
-	dbus_message_iter_append_dict_valist(iter, first_key, var_args);
-	va_end(var_args);
-}
-
 static gboolean check_signal(DBusConnection *conn, const char *path,
 				const char *interface, const char *name,
 				const char **args)
