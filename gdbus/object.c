@@ -373,13 +373,6 @@ static void object_path_unref(DBusConnection *connection, const char *path)
 	dbus_connection_unregister_object_path(connection, path);
 }
 
-dbus_bool_t dbus_connection_get_object_user_data(DBusConnection *connection,
-							const char *path,
-							void **data_p)
-{
-	return FALSE;
-}
-
 void dbus_message_iter_append_variant(DBusMessageIter *iter,
 						int type, void *val)
 {
