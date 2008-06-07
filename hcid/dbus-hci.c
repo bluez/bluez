@@ -78,7 +78,7 @@ static gint adapter_address_cmp(gconstpointer a, gconstpointer b)
 	return strcmp(adapter->address, address);
 }
 
-static struct adapter *find_adapter(bdaddr_t *sba)
+struct adapter *adapter_find(const bdaddr_t *sba)
 {
 	GSList *match;
 	char address[18];
@@ -951,7 +951,7 @@ void hcid_dbus_new_auth_request(bdaddr_t *sba, bdaddr_t *dba, auth_type_t type)
 	struct adapter *adapter;
 	struct pending_auth_info *info;
 
-	adapter = find_adapter(sba);
+	adapter = adapter_find(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1016,7 +1016,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	struct device *device;
 	struct agent *agent;
 
-	adapter = find_adapter(sba);
+	adapter = adapter_find(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;
@@ -1111,7 +1111,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	struct agent *agent;
 	char addr[18];
 
-	adapter = find_adapter(sba);
+	adapter = adapter_find(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;
@@ -1146,7 +1146,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	struct agent *agent;
 	char addr[18];
 
-	adapter = find_adapter(sba);
+	adapter = adapter_find(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;
@@ -1190,7 +1190,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	ba2str(peer, peer_addr);
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
@@ -1281,7 +1281,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	struct adapter *adapter;
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
@@ -1444,7 +1444,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	struct remote_dev_info *dev;
 	bdaddr_t tmp;
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
@@ -1545,7 +1545,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 	if (status)
 		return;
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1579,7 +1579,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	if (status)
 		return;
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1700,7 +1700,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1825,7 +1825,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	if (old_class == class)
 		return;
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1862,7 +1862,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1955,7 +1955,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	struct adapter *adapter;
 	GSList *l;
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2020,7 +2020,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		return;
 	}
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2276,7 +2276,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	struct hci_request rq;
 	int dd = -1;
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2326,7 +2326,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 	int dd;
 	uint8_t cls[3];
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2396,7 +2396,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	ret_pin_code_req_reply *ret = ptr + EVT_CMD_COMPLETE_SIZE;
 	GSList *l;
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2417,7 +2417,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote, uint8_t *cap,
 	struct agent *agent;
 	char addr[18];
 
-	adapter = find_adapter(local);
+	adapter = adapter_find(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;

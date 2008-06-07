@@ -654,27 +654,6 @@ void unregister_service(const char *ident)
 	unregister_uuids(ident);
 }
 
-static struct adapter *ba2adapter(const bdaddr_t *src)
-{
-	DBusConnection *conn = get_dbus_connection();
-	struct adapter *adapter = NULL;
-	char address[18], path[6];
-	int dev_id;
-
-	ba2str(src, address);
-	dev_id = hci_devid(address);
-	if (dev_id < 0)
-		return NULL;
-
-	/* FIXME: id2adapter? Create a list of adapters? */
-	snprintf(path, sizeof(path), "/hci%d", dev_id);
-	if (dbus_connection_get_object_user_data(conn,
-			path, (void *) &adapter) == FALSE)
-		return NULL;
-
-	return adapter;
-}
-
 static void agent_auth_cb(struct agent *agent, DBusError *derr, void *user_data)
 {
 	struct service_auth *auth = user_data;
@@ -695,7 +674,7 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 	char address[18];
 	gboolean trusted;
 
-	adapter = ba2adapter(src);
+	adapter = adapter_find(src);
 	if (!adapter)
 		return -EPERM;
 
@@ -736,9 +715,9 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 	return agent_authorize(agent, device->path, uuid, agent_auth_cb, auth);
 }
 
-int service_cancel_auth(bdaddr_t *src)
+int service_cancel_auth(const bdaddr_t *src)
 {
-	struct adapter *adapter = ba2adapter(src);
+	struct adapter *adapter = adapter_find(src);
 	struct device *device;
 	struct agent *agent;
 	char address[18];

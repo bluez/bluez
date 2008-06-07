@@ -77,3 +77,4 @@ int discov_timeout_handler(void *data);
 void set_dbus_connection(DBusConnection *conn);
 
 DBusConnection *get_dbus_connection(void);
+struct adapter *adapter_find(const bdaddr_t *sba);
