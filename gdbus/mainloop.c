@@ -34,10 +34,6 @@
 #define dbus_watch_get_unix_fd dbus_watch_get_fd
 #endif
 
-#ifdef HAVE_DBUS_GLIB
-#include <dbus/dbus-glib-lowlevel.h>
-#endif
-
 #include "gdbus.h"
 
 #define DISPATCH_TIMEOUT  0
@@ -46,7 +42,6 @@
 #define error(fmt...)
 #define debug(fmt...)
 
-#ifndef HAVE_DBUS_GLIB
 typedef struct {
 	uint32_t id;
 	DBusTimeout *timeout;
@@ -63,7 +58,6 @@ struct server_info {
 	GIOChannel *io;
 	DBusServer *server;
 };
-#endif
 
 struct disconnect_data {
 	void (*disconnect_cb)(void *);
@@ -85,7 +79,6 @@ static DBusHandlerResult disconnect_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-#ifndef HAVE_DBUS_GLIB
 static gboolean message_dispatch_cb(void *data)
 {
 	DBusConnection *connection = data;
@@ -233,15 +226,9 @@ static void dispatch_status_cb(DBusConnection *conn,
 	if (new_status == DBUS_DISPATCH_DATA_REMAINS)
 		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, data);
 }
-#endif
 
 static void setup_dbus_with_main_loop(DBusConnection *conn)
 {
-#ifdef HAVE_DBUS_GLIB
-	debug("Using D-Bus GLib connection setup");
-
-	dbus_connection_setup_with_g_main(conn, NULL);
-#else
 	dbus_connection_set_watch_functions(conn, add_watch, remove_watch,
 						watch_toggled, conn, NULL);
 
@@ -250,7 +237,6 @@ static void setup_dbus_with_main_loop(DBusConnection *conn)
 
 	dbus_connection_set_dispatch_status_function(conn, dispatch_status_cb,
 								conn, NULL);
-#endif
 }
 
 DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
