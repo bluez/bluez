@@ -113,6 +113,7 @@ struct proxy {
 	bdaddr_t	dst;
 	char		*uuid128;	/* UUID 128 */
 	char		*address;	/* TTY or Unix socket name */
+	char		*path;		/* D-Bus path */
 	short int	port;		/* TCP port */
 	proxy_type_t	type;		/* TTY or Unix socket */
 	struct termios  sys_ti;		/* Default TTY setting */
@@ -127,7 +128,7 @@ struct proxy {
 static DBusConnection *connection = NULL;
 static GSList *pending_connects = NULL;
 static GSList *ports_paths = NULL;
-static GSList *proxies_paths = NULL;
+static GSList *proxies = NULL;
 static int rfcomm_ctl = -1;
 static int sk_counter = 0;
 
@@ -1286,6 +1287,9 @@ static DBusMessage *proxy_set_serial_params(DBusConnection *conn,
 	cfsetispeed(&prx->proxy_ti, speed);
 	cfsetospeed(&prx->proxy_ti, speed);
 
+	proxy_store(&prx->src, prx->uuid128, prx->address, NULL,
+				prx->channel, 0, &prx->proxy_ti);
+
 	return dbus_message_new_method_return(msg);
 }
 
@@ -1297,7 +1301,7 @@ static GDBusMethodTable proxy_methods[] = {
 	{ },
 };
 
-static void proxy_handler_unregister(void *data)
+static void proxy_unregister(gpointer data)
 {
 	struct proxy *prx = data;
 	int sk;
@@ -1313,7 +1317,6 @@ static void proxy_handler_unregister(void *data)
 		tcsetattr(sk, TCSAFLUSH, &prx->sys_ti);
 		close(sk);
 	}
-
 done:
 
 	proxy_free(prx);
@@ -1329,12 +1332,13 @@ static int register_proxy_object(struct proxy *prx, char *outpath, size_t size)
 	if (!g_dbus_register_interface(connection, path,
 					SERIAL_PROXY_INTERFACE,
 					proxy_methods, NULL, NULL,
-					prx, proxy_handler_unregister)) {
+					prx, proxy_unregister)) {
 		error("D-Bus failed to register %s path", path);
 		return -1;
 	}
 
-	proxies_paths = g_slist_append(proxies_paths, g_strdup(path));
+	prx->path = g_strdup(path);
+	proxies = g_slist_append(proxies, prx);
 
 	if (outpath)
 		strncpy(outpath, path, size);
@@ -1345,7 +1349,8 @@ static int register_proxy_object(struct proxy *prx, char *outpath, size_t size)
 }
 
 static int proxy_tty_register(bdaddr_t *src, const char *uuid128,
-		const char *address, struct termios *ti, char *outpath, size_t size)
+				const char *address, struct termios *ti,
+				char *outpath, size_t size, gboolean save)
 {
 	struct termios sys_ti;
 	struct proxy *prx;
@@ -1381,11 +1386,16 @@ static int proxy_tty_register(bdaddr_t *src, const char *uuid128,
 	if (ret < 0)
 		proxy_free(prx);
 
+	if (save)
+		proxy_store(src, uuid128, address, NULL,
+			prx->channel, 0, &prx->proxy_ti);
+
 	return ret;
 }
 
 static int proxy_socket_register(bdaddr_t *src, const char *uuid128,
-		const char *address, char *outpath, size_t size)
+				const char *address, char *outpath,
+				size_t size, gboolean save)
 {
 	struct proxy *prx;
 	int ret;
@@ -1400,11 +1410,16 @@ static int proxy_socket_register(bdaddr_t *src, const char *uuid128,
 	if (ret < 0)
 		proxy_free(prx);
 
+	if (save)
+		proxy_store(src, uuid128, address, NULL,
+				prx->channel, 0, NULL);
+
 	return ret;
 }
 
 static int proxy_tcp_register(bdaddr_t *src, const char *uuid128,
-			const char *address, char *outpath, size_t size)
+				const char *address, char *outpath,
+				size_t size, gboolean save)
 {
 	struct proxy *prx;
 	int ret;
@@ -1418,6 +1433,10 @@ static int proxy_tcp_register(bdaddr_t *src, const char *uuid128,
 	ret = register_proxy_object(prx, outpath, size);
 	if (ret < 0)
 		proxy_free(prx);
+
+	if (save)
+		proxy_store(src, uuid128, address, NULL,
+				prx->channel, 0, NULL);
 
 	return ret;
 }
@@ -1449,15 +1468,20 @@ static proxy_type_t addr2type(const char *address)
 	}
 }
 
-static int proxycmp(const char *path, const char *address)
+static int proxy_addrcmp(gconstpointer proxy, gconstpointer addr)
 {
-	struct proxy *prx = NULL;
-
-	if (!dbus_connection_get_object_user_data(connection,
-				path, (void *) &prx) || !prx)
-		return -1;
+	const struct proxy *prx = proxy;
+	const char *address = addr;
 
 	return strcmp(prx->address, address);
+}
+
+static int proxy_pathcmp(gconstpointer proxy, gconstpointer p)
+{
+	const struct proxy *prx = proxy;
+	const char *path = p;
+
+	return strcmp(prx->path, path);
 }
 
 static DBusMessage *create_proxy(DBusConnection *conn,
@@ -1485,8 +1509,7 @@ static DBusMessage *create_proxy(DBusConnection *conn,
 		return invalid_arguments(msg, "Invalid address");
 
 	/* Only one proxy per address(TTY or unix socket) is allowed */
-	if (g_slist_find_custom(proxies_paths,
-				address, (GCompareFunc) proxycmp))
+	if (g_slist_find_custom(proxies, address, proxy_addrcmp))
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyExist",
 						"Proxy already exists");
 
@@ -1502,16 +1525,16 @@ static DBusMessage *create_proxy(DBusConnection *conn,
 
 	switch (type) {
 	case UNIX_SOCKET_PROXY:
-		ret = proxy_socket_register(&src, uuid128,
-						address, path, sizeof(path));
+		ret = proxy_socket_register(&src, uuid128, address,
+						path, sizeof(path), TRUE);
 		break;
 	case TTY_PROXY:
-		ret = proxy_tty_register(&src, uuid128,
-				address, NULL, path, sizeof(path));
+		ret = proxy_tty_register(&src, uuid128, address,
+				NULL, path, sizeof(path), TRUE);
 		break;
 	case TCP_SOCKET_PROXY:
 		ret = proxy_tcp_register(&src, uuid128, address,
-						path, sizeof(path));
+					path, sizeof(path), TRUE);
 		break;
 	default:
 		ret = -1;
@@ -1536,13 +1559,26 @@ static DBusMessage *create_proxy(DBusConnection *conn,
 static DBusMessage *list_proxies(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
+	struct proxy *prx;
+	const GSList *l;
 	DBusMessage *reply;
+	DBusMessageIter iter, iter_array;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return NULL;
 
-	message_append_paths(reply, proxies_paths);
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING_AS_STRING, &iter_array);
+
+	for (l = proxies; l; l = l->next) {
+		prx = l->data;
+		dbus_message_iter_append_basic(&iter_array,
+				DBUS_TYPE_STRING, &prx->path);
+	}
+
+	dbus_message_iter_close_container(&iter, &iter_array);
 
 	return reply;
 }
@@ -1550,7 +1586,7 @@ static DBusMessage *list_proxies(DBusConnection *conn,
 static DBusMessage *remove_proxy(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	struct proxy *prx = NULL;
+	struct proxy *prx;
 	const char *path;
 	GSList *l;
 
@@ -1559,24 +1595,20 @@ static DBusMessage *remove_proxy(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return NULL;
 
-	l = g_slist_find_custom(proxies_paths, path, (GCompareFunc) strcmp);
+	l = g_slist_find_custom(proxies, path, proxy_pathcmp);
 	if (!l)
 		return does_not_exist(msg, "Invalid proxy path");
-
-	/* Remove from storage */
-	if (dbus_connection_get_object_user_data(conn,
-				path, (void *) &prx) && prx)
-		proxy_delete(&prx->src, prx->address);
-
-	g_free(l->data);
-	proxies_paths = g_slist_remove(proxies_paths, l->data);
-
-	g_dbus_unregister_interface(conn, path, SERIAL_PROXY_INTERFACE);
 
 	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ProxyRemoved",
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
+
+	prx = l->data;
+	proxy_delete(&prx->src, prx->address);
+	proxies = g_slist_remove(proxies, prx);
+
+	g_dbus_unregister_interface(conn, path, SERIAL_PROXY_INTERFACE);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1711,25 +1743,6 @@ static DBusMessage *cancel_connect_service(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static void proxy_path_free(gpointer data, gpointer udata)
-{
-	DBusConnection *conn = udata;
-	const char *path = data;
-	struct proxy *prx = NULL;
-
-	/* Store/Update the proxy entries before exit */
-	if (dbus_connection_get_object_user_data(conn,
-				path, (void *) &prx) && prx) {
-		struct termios *ti;
-
-		ti = (prx->type == TTY_PROXY ? &prx->proxy_ti : NULL);
-		proxy_store(&prx->src, prx->uuid128, prx->address, NULL,
-				prx->channel, 0, ti);
-	}
-
-	g_free(data);
-}
-
 static void manager_unregister(void *data)
 {
 	if (pending_connects) {
@@ -1739,11 +1752,11 @@ static void manager_unregister(void *data)
 		pending_connects = NULL;
 	}
 
-	if (proxies_paths) {
-		g_slist_foreach(proxies_paths,
-				proxy_path_free, connection);
-		g_slist_free(proxies_paths);
-		proxies_paths = NULL;
+	if (proxies) {
+		g_slist_foreach(proxies,
+				(GFunc) proxy_unregister, NULL);
+		g_slist_free(proxies);
+		proxies = NULL;
 	}
 
 	if (ports_paths) {
@@ -1859,13 +1872,13 @@ static void parse_proxy(char *key, char *value, void *data)
 			*pti = (uint8_t) strtol(tmp, NULL, 16);
 		}
 
-		proxy_tty_register(&src, uuid128, key, &ti, NULL, 0);
+		proxy_tty_register(&src, uuid128, key, &ti, NULL, 0, FALSE);
 		break;
 	case UNIX_SOCKET_PROXY:
-		proxy_socket_register(&src, uuid128, key, NULL, 0);
+		proxy_socket_register(&src, uuid128, key, NULL, 0, FALSE);
 		break;
 	case TCP_SOCKET_PROXY:
-		proxy_tcp_register(&src, uuid128, key, NULL, 0);
+		proxy_tcp_register(&src, uuid128, key, NULL, 0, FALSE);
 		break;
 	default:
 		return;
