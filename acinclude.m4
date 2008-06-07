@@ -307,11 +307,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	if (test "${glib_enable}" = "yes" && test "${glib_found}" = "yes"); then
-		if (test "${dbus_glib_found}" = "dummy"); then
-			AC_DEFINE(HAVE_DBUS_GLIB, 1, [Define to 1 if you have D-Bus GLib bindings.])
-			DBUS_CFLAGS="$DBUS_CFLAGS $DBUS_GLIB_CFLAGS"
-			DBUS_LIBS="$DBUS_GLIB_LIBS"
-		fi
 		AM_CONDITIONAL(GLIB, true)
 	else
 		AC_SUBST([GLIB_CFLAGS], ['-I$(top_srcdir)/eglib'])
