@@ -52,9 +52,6 @@ void dbus_message_iter_append_dict_valist(DBusMessageIter *iter,
 					va_list var_args);
 void dbus_message_iter_append_dict(DBusMessageIter *iter,
 					const char *first_key, ...);
-dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
-					const char *interface, const char *name,
-					int first, ...);
 
 dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 						const char *path,

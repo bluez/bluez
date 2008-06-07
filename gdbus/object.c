@@ -562,20 +562,6 @@ fail:
 	return ret;
 }
 
-dbus_bool_t dbus_connection_emit_signal(DBusConnection *conn, const char *path,
-					const char *interface, const char *name,
-					int first, ...)
-{
-	dbus_bool_t ret;
-	va_list var_args;
-
-	va_start(var_args, first);
-	ret = emit_signal_valist(conn, path, interface, name, first, var_args);
-	va_end(var_args);
-
-	return ret;
-}
-
 dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 						const char *path,
 						const char *interface,
