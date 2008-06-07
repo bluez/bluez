@@ -260,7 +260,7 @@ static DBusMessage *set_trusted(DBusConnection *conn,
 
 	write_trust(BDADDR_ANY, address, service->ident, TRUE);
 
-	dbus_connection_emit_signal(conn, service->object_path,
+	g_dbus_emit_signal(conn, service->object_path,
 					SERVICE_INTERFACE, "TrustAdded",
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
@@ -344,7 +344,7 @@ static DBusMessage *remove_trust(DBusConnection *conn,
 
 	write_trust(BDADDR_ANY, address, service->ident, FALSE);
 
-	dbus_connection_emit_signal(conn, service->object_path,
+	g_dbus_emit_signal(conn, service->object_path,
 					SERVICE_INTERFACE, "TrustRemoved",
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
@@ -397,11 +397,11 @@ static int unregister_service_for_connection(DBusConnection *connection,
 	if (!conn)
 		goto cleanup;
 
-	dbus_connection_emit_signal(conn, service->object_path,
+	g_dbus_emit_signal(conn, service->object_path,
 					SERVICE_INTERFACE,
 					"Stopped", DBUS_TYPE_INVALID);
 
-	dbus_connection_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
+	g_dbus_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
 					"ServiceRemoved",
 					DBUS_TYPE_STRING, &service->object_path,
 					DBUS_TYPE_INVALID);
@@ -637,12 +637,12 @@ int register_service(const char *ident, const char **uuids)
 	if (uuids)
 		register_uuids(ident, uuids);
 
-	dbus_connection_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
+	g_dbus_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
 				"ServiceAdded",
 				DBUS_TYPE_STRING, &service->object_path,
 				DBUS_TYPE_INVALID);
 
-	dbus_connection_emit_signal(conn, service->object_path,
+	g_dbus_emit_signal(conn, service->object_path,
 					SERVICE_INTERFACE,
 					"Started", DBUS_TYPE_INVALID);
 

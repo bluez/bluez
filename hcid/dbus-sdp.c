@@ -823,7 +823,7 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 	dbus_message_unref(reply);
 
 	if (len)
-		dbus_connection_emit_signal(ctxt->conn,
+		g_dbus_emit_signal(ctxt->conn,
 				dbus_message_get_path(ctxt->rq),
 				ADAPTER_INTERFACE,
 				"RemoteIdentifiersUpdated",

@@ -424,7 +424,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	/* Sending the Connected signal */
 	path = dbus_message_get_path(idev->pending_connect);
-	dbus_connection_emit_signal(idev->conn, path,
+	g_dbus_emit_signal(idev->conn, path,
 			INPUT_DEVICE_INTERFACE, "Connected",
 			DBUS_TYPE_INVALID);
 
@@ -462,7 +462,7 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
 
-	dbus_connection_emit_signal(idev->conn,
+	g_dbus_emit_signal(idev->conn,
 			idev->path,
 			INPUT_DEVICE_INTERFACE,
 			"Disconnected",
@@ -489,7 +489,7 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
 
-	dbus_connection_emit_signal(idev->conn,
+	g_dbus_emit_signal(idev->conn,
 			idev->path,
 			INPUT_DEVICE_INTERFACE,
 			"Disconnected",
@@ -594,7 +594,7 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	idev->intr_watch = create_watch(idev->intr_sk, intr_watch_cb, idev);
 	idev->ctrl_watch = create_watch(idev->ctrl_sk, ctrl_watch_cb, idev);
-	dbus_connection_emit_signal(idev->conn,
+	g_dbus_emit_signal(idev->conn,
 			idev->path,
 			INPUT_DEVICE_INTERFACE,
 			"Connected",
@@ -1048,12 +1048,12 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 
 	if (idev->intr_watch) {
 		g_source_remove(idev->intr_watch);
-		dbus_connection_emit_signal(conn,
+		g_dbus_emit_signal(conn,
 				path, INPUT_DEVICE_INTERFACE,
 				"Disconnected", DBUS_TYPE_INVALID);
 	}
 
-	dbus_connection_emit_signal(conn, INPUT_PATH,
+	g_dbus_emit_signal(conn, INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceRemoved" ,
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
@@ -1154,7 +1154,7 @@ int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
 
 	idev->intr_watch = create_watch(idev->intr_sk, intr_watch_cb, idev);
 	idev->ctrl_watch = create_watch(idev->ctrl_sk, ctrl_watch_cb, idev);
-	dbus_connection_emit_signal(idev->conn,
+	g_dbus_emit_signal(idev->conn,
 			idev->path,
 			INPUT_DEVICE_INTERFACE,
 			"Connected",

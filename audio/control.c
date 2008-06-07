@@ -428,7 +428,7 @@ static void avctp_unref(struct avctp *session)
 	}
 
 	if (session->state == AVCTP_STATE_CONNECTED)
-		dbus_connection_emit_signal(session->dev->conn,
+		g_dbus_emit_signal(session->dev->conn,
 						session->dev->path,
 						AUDIO_CONTROL_INTERFACE,
 						"Disconnected",
@@ -635,7 +635,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 	session->dev->control->session = session;
 	init_uinput(session);
 
-	dbus_connection_emit_signal(session->dev->conn, session->dev->path,
+	g_dbus_emit_signal(session->dev->conn, session->dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
 					DBUS_TYPE_INVALID);
 
@@ -724,7 +724,7 @@ proceed:
 		session->dev->control->session = session;
 		init_uinput(session);
 		flags |= G_IO_IN;
-		dbus_connection_emit_signal(session->dev->conn,
+		g_dbus_emit_signal(session->dev->conn,
 						session->dev->path,
 						AUDIO_CONTROL_INTERFACE,
 						"Connected",
@@ -793,7 +793,7 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	init_uinput(session);
 
-	dbus_connection_emit_signal(session->dev->conn, session->dev->path,
+	g_dbus_emit_signal(session->dev->conn, session->dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
 					DBUS_TYPE_INVALID);
 

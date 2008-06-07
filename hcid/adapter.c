@@ -733,7 +733,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 	} else {
 		/* discoverable or limited */
 		if ((scan_enable & SCAN_INQUIRY) && (new_mode != adapter->mode)) {
-			dbus_connection_emit_signal(conn,
+			g_dbus_emit_signal(conn,
 					dbus_message_get_path(msg),
 					ADAPTER_INTERFACE,
 					"ModeChanged",
@@ -926,7 +926,7 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 
 	resolve_paths(msg, &old_path, &new_path);
 
-	dbus_connection_emit_signal(conn, old_path,
+	g_dbus_emit_signal(conn, old_path,
 					ADAPTER_INTERFACE,
 					"DiscoverableTimeoutChanged",
 					DBUS_TYPE_UINT32, &timeout,
@@ -1238,7 +1238,7 @@ static DBusMessage *adapter_set_minor_class(DBusConnection *conn,
 		return failed_strerror(msg, err);
 	}
 
-	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+	g_dbus_emit_signal(conn, dbus_message_get_path(msg),
 					ADAPTER_INTERFACE, "MinorClassChanged",
 					DBUS_TYPE_STRING, &minor,
 					DBUS_TYPE_INVALID);
@@ -2044,7 +2044,7 @@ static DBusMessage *adapter_set_remote_alias(DBusConnection *conn,
 
 	resolve_paths(msg, &old_path, &new_path);
 
-	dbus_connection_emit_signal(conn, old_path,
+	g_dbus_emit_signal(conn, old_path,
 					ADAPTER_INTERFACE, "RemoteAliasChanged",
 					DBUS_TYPE_STRING, &addr,
 					DBUS_TYPE_STRING, &alias,
@@ -2096,7 +2096,7 @@ static DBusMessage *adapter_clear_remote_alias(DBusConnection *conn,
 		return failed_strerror(msg, -ecode);
 
 	if (had_alias)
-		dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+		g_dbus_emit_signal(conn, dbus_message_get_path(msg),
 						ADAPTER_INTERFACE,
 						"RemoteAliasCleared",
 						DBUS_TYPE_STRING, &addr_ptr,
@@ -2274,7 +2274,7 @@ static DBusMessage *adapter_dc_remote_device(DBusConnection *conn,
 	adapter->pending_dc->conn_handle =
 		((struct active_conn_info *) l->data)->handle;
 
-	dbus_connection_emit_signal(conn, dbus_message_get_path(msg),
+	g_dbus_emit_signal(conn, dbus_message_get_path(msg),
 					ADAPTER_INTERFACE,
 					"RemoteDeviceDisconnectRequested",
 					DBUS_TYPE_STRING, &peer_addr,
@@ -2397,7 +2397,7 @@ static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 	if (paired) {
 		snprintf(path, MAX_PATH_LENGTH, BASE_PATH "/hci%d",
 			adapter->dev_id);
-		dbus_connection_emit_signal(conn, path,
+		g_dbus_emit_signal(conn, path,
 					ADAPTER_INTERFACE, "BondingRemoved",
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
@@ -2438,7 +2438,7 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 
 	if (!device->temporary) {
 		snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
-		dbus_connection_emit_signal(conn, path,
+		g_dbus_emit_signal(conn, path,
 				ADAPTER_INTERFACE,
 				"DeviceRemoved",
 				DBUS_TYPE_OBJECT_PATH, &device->path,
@@ -3482,7 +3482,7 @@ static DBusMessage *adapter_set_trusted(DBusConnection *conn,
 
 	resolve_paths(msg, &old_path, &new_path);
 
-	dbus_connection_emit_signal(conn, old_path,
+	g_dbus_emit_signal(conn, old_path,
 					ADAPTER_INTERFACE, "TrustAdded",
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);
@@ -3556,7 +3556,7 @@ static DBusMessage *adapter_remove_trust(DBusConnection *conn,
 
 	resolve_paths(msg, &old_path, &new_path);
 
-	dbus_connection_emit_signal(conn, old_path,
+	g_dbus_emit_signal(conn, old_path,
 					ADAPTER_INTERFACE, "TrustRemoved",
 					DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_INVALID);

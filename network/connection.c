@@ -123,7 +123,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	struct network_conn *nc = data;
 
 	if (connection != NULL) {
-		dbus_connection_emit_signal(connection, nc->path,
+		g_dbus_emit_signal(connection, nc->path,
 						NETWORK_CONNECTION_INTERFACE,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
@@ -202,7 +202,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	bnep_if_up(nc->dev, nc->id);
-	dbus_connection_emit_signal(connection, nc->path,
+	g_dbus_emit_signal(connection, nc->path,
 					NETWORK_CONNECTION_INTERFACE,
 					"Connected",
 					DBUS_TYPE_INVALID);

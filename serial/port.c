@@ -253,7 +253,7 @@ static void connection_owner_exited(void *user_data)
 	debug("Connect requestor exited. Releasing %s node",
 						node->device);
 
-	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
+	g_dbus_emit_signal(node->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
 			DBUS_TYPE_STRING, &node->device,
 			DBUS_TYPE_INVALID);
@@ -269,7 +269,7 @@ static gboolean rfcomm_disconnect_cb(GIOChannel *io,
 
 	g_dbus_remove_watch(node->conn, node->listener_id);
 
-	dbus_connection_emit_signal(node->conn, SERIAL_MANAGER_PATH,
+	g_dbus_emit_signal(node->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
 			DBUS_TYPE_STRING, &node->device,
 			DBUS_TYPE_INVALID);

@@ -924,7 +924,7 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
 
-	dbus_connection_emit_signal(conn, path,
+	g_dbus_emit_signal(conn, path,
 					ADAPTER_INTERFACE, "RemoteAliasChanged",
 					DBUS_TYPE_STRING, &device->address,
 					DBUS_TYPE_STRING, &str,
@@ -953,7 +953,7 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
 
-	dbus_connection_emit_signal(conn, path,
+	g_dbus_emit_signal(conn, path,
 					ADAPTER_INTERFACE,
 					value ? "TrustAdded" : "TrustRemoved",
 					DBUS_TYPE_STRING, &device->address,
@@ -1147,7 +1147,7 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	}
 
 proceed:
-	dbus_connection_emit_signal(req->conn, dbus_message_get_path(req->msg),
+	g_dbus_emit_signal(req->conn, dbus_message_get_path(req->msg),
 				ADAPTER_INTERFACE, "DeviceCreated",
 				DBUS_TYPE_OBJECT_PATH, &device->path,
 				DBUS_TYPE_INVALID);

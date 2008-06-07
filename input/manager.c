@@ -244,7 +244,7 @@ static void interrupt_connect_cb(GIOChannel *chan, int err,
 		goto cleanup;
 	}
 
-	dbus_connection_emit_signal(pr->conn, INPUT_PATH,
+	g_dbus_emit_signal(pr->conn, INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceCreated",
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
@@ -484,7 +484,7 @@ static void headset_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto fail;
 	}
 
-	dbus_connection_emit_signal(pr->conn, INPUT_PATH,
+	g_dbus_emit_signal(pr->conn, INPUT_PATH,
 			INPUT_MANAGER_INTERFACE, "DeviceCreated",
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);

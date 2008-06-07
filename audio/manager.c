@@ -160,14 +160,14 @@ static gboolean add_device(struct audio_device *device, gboolean send_signals)
 	if (!send_signals)
 		goto add;
 
-	dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+	g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
 					AUDIO_MANAGER_INTERFACE,
 					"DeviceCreated",
 					DBUS_TYPE_STRING, &device->path,
 					DBUS_TYPE_INVALID);
 
 	if (device->headset)
-		dbus_connection_emit_signal(connection,
+		g_dbus_emit_signal(connection,
 				AUDIO_MANAGER_PATH,
 				AUDIO_MANAGER_INTERFACE,
 				"HeadsetCreated",
@@ -522,7 +522,7 @@ struct audio_device *manager_device_connected(const bdaddr_t *bda, const char *u
 	path = device->path;
 
 	if (created) {
-		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+		g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
 						"DeviceCreated",
 						DBUS_TYPE_STRING, &path,
@@ -531,7 +531,7 @@ struct audio_device *manager_device_connected(const bdaddr_t *bda, const char *u
 	}
 
 	if (headset)
-		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+		g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
 						"HeadsetCreated",
 						DBUS_TYPE_STRING, &path,
@@ -539,7 +539,7 @@ struct audio_device *manager_device_connected(const bdaddr_t *bda, const char *u
 
 	if (headset && !default_hs) {
 		default_hs = device;
-		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+		g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
 						"DefaultHeadsetChanged",
 						DBUS_TYPE_STRING, &path,
@@ -548,7 +548,7 @@ struct audio_device *manager_device_connected(const bdaddr_t *bda, const char *u
 
 	if (!default_dev) {
 		default_dev = device;
-		dbus_connection_emit_signal(connection, AUDIO_MANAGER_PATH,
+		g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
 						"DefaultDeviceChanged",
 						DBUS_TYPE_STRING, &path,
@@ -697,13 +697,13 @@ static DBusMessage *am_remove_device(DBusConnection *conn,
 
 		param = default_dev ? default_dev->path : "";
 
-		dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+		g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
 						"DefaultHeadsetChanged",
 						DBUS_TYPE_STRING, &param,
 						DBUS_TYPE_INVALID);
 
-		dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+		g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
 						"DefaultDeviceChanged",
 						DBUS_TYPE_STRING, &param,
@@ -713,13 +713,13 @@ static DBusMessage *am_remove_device(DBusConnection *conn,
 			device_store(default_dev, TRUE);
 	}
 
-	dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+	g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
 					AUDIO_MANAGER_INTERFACE,
 					"HeadsetRemoved",
 					DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID);
 
-	dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+	g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
 					AUDIO_MANAGER_INTERFACE,
 					"DeviceRemoved",
 					DBUS_TYPE_STRING, &path,
@@ -812,13 +812,13 @@ static DBusMessage *am_change_default_device(DBusConnection *conn,
 
 	if (!dbus_message_is_method_call(msg, AUDIO_MANAGER_INTERFACE,
 		"ChangeDefaultHeadset"))
-		dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+		g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
 						"DefaultDeviceChanged",
 						DBUS_TYPE_STRING, &device->path,
 						DBUS_TYPE_INVALID);
 	else if (device->headset)
-		dbus_connection_emit_signal(conn, AUDIO_MANAGER_PATH,
+		g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
 						AUDIO_MANAGER_INTERFACE,
 						"DefaultHeadsetChanged",
 						DBUS_TYPE_STRING, &device->path,

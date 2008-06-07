@@ -122,7 +122,7 @@ static void create_path(DBusConnection *conn, DBusMessage *msg,
 {
 	/* emit signal when it is a new path */
 	if (sname) {
-		dbus_connection_emit_signal(conn, NETWORK_PATH,
+		g_dbus_emit_signal(conn, NETWORK_PATH,
 						NETWORK_MANAGER_INTERFACE,
 						sname, DBUS_TYPE_STRING, &path,
 						DBUS_TYPE_INVALID);
@@ -212,7 +212,7 @@ static DBusMessage *remove_path(DBusConnection *conn,
 	g_free(l->data);
 	*list = g_slist_remove(*list, l->data);
 
-	dbus_connection_emit_signal(conn, NETWORK_PATH,
+	g_dbus_emit_signal(conn, NETWORK_PATH,
 					NETWORK_MANAGER_INTERFACE,
 					sname, DBUS_TYPE_STRING, &path,
 					DBUS_TYPE_INVALID);
@@ -493,7 +493,7 @@ static DBusMessage *change_default_connection(DBusConnection *conn,
 	default_index = g_slist_position(connection_paths, list);
 	connection_store(path, TRUE);
 
-	dbus_connection_emit_signal(connection, NETWORK_PATH,
+	g_dbus_emit_signal(connection, NETWORK_PATH,
 					NETWORK_MANAGER_INTERFACE,
 					"DefaultConnectionChanged",
 					DBUS_TYPE_STRING, &path,

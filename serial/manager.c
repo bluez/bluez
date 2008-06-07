@@ -239,7 +239,7 @@ static void open_notify(int fd, int err, struct pending_connect *pc)
 	dbus_message_unref(reply);
 
 	/* Send the D-Bus signal */
-	dbus_connection_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
+	g_dbus_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceConnected" ,
 			DBUS_TYPE_STRING, &pc->dev,
 			DBUS_TYPE_INVALID);
@@ -458,7 +458,7 @@ static DBusMessage *create_channel_port(DBusConnection *conn,
 	dbus_connection_send(conn, reply, NULL);
 	dbus_message_unref(reply);
 
-	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+	g_dbus_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "PortCreated" ,
 			DBUS_TYPE_STRING, &ppath,
 			DBUS_TYPE_INVALID);
@@ -757,7 +757,7 @@ static DBusMessage *remove_port(DBusConnection *conn,
 	if (port_unregister(path) < 0)
 		return does_not_exist(msg, "Invalid RFCOMM node");
 
-	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+	g_dbus_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "PortRemoved" ,
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
@@ -1544,7 +1544,7 @@ static DBusMessage *create_proxy(DBusConnection *conn,
 		return failed(msg, "Create object path failed");
 	}
 
-	dbus_connection_emit_signal(connection, SERIAL_MANAGER_PATH,
+	g_dbus_emit_signal(connection, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
 			DBUS_TYPE_STRING, &ppath,
 			DBUS_TYPE_INVALID);
@@ -1599,7 +1599,7 @@ static DBusMessage *remove_proxy(DBusConnection *conn,
 	if (!l)
 		return does_not_exist(msg, "Invalid proxy path");
 
-	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+	g_dbus_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ProxyRemoved",
 			DBUS_TYPE_STRING, &path,
 			DBUS_TYPE_INVALID);
@@ -1714,7 +1714,7 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	if (err < 0)
 		return does_not_exist(msg, "Invalid RFCOMM node");
 
-	dbus_connection_emit_signal(conn, SERIAL_MANAGER_PATH,
+	g_dbus_emit_signal(conn, SERIAL_MANAGER_PATH,
 			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
 			DBUS_TYPE_STRING, &name,
 			DBUS_TYPE_INVALID);

@@ -799,7 +799,7 @@ static DBusMessage *enable(DBusConnection *conn,
 
 	store_property(&ns->src, ns->id, "enabled", "1");
 
-	dbus_connection_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
+	g_dbus_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
 					"Enabled", DBUS_TYPE_INVALID);
 
 	return reply;
@@ -839,7 +839,7 @@ static DBusMessage *disable(DBusConnection *conn,
 
 	store_property(&ns->src, ns->id, "enabled", "0");
 
-	dbus_connection_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
+	g_dbus_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
 					"Disabled", DBUS_TYPE_INVALID);
 
 	return reply;
