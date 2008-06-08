@@ -25,7 +25,6 @@
 #include <config.h>
 #endif
 
-
 #include <errno.h>
 #include <sys/types.h>
 
