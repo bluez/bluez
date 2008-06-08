@@ -4125,94 +4125,20 @@ static DBusMessage *remove_service_record(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-const char *major_class_str(uint32_t class)
+static DBusMessage *request_authorization(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
-	uint8_t index = (class >> 8) & 0x1F;
+	/* FIXME implement the request */
 
-	if (index > 8)
-		return major_cls[9]; /* uncategorized */
-
-	return major_cls[index];
+	return NULL;
 }
 
-const char *minor_class_str(uint32_t class)
+static DBusMessage *cancel_authorization(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
-	uint8_t major_index = (class >> 8) & 0x1F;
-	uint8_t minor_index;
+	/* FIXME implement cancel request */
 
-	switch (major_index) {
-	case 1: /* computer */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(computer_minor_cls))
-			return computer_minor_cls[minor_index];
-		else
-			return "";
-	case 2: /* phone */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(phone_minor_cls))
-			return phone_minor_cls[minor_index];
-		return "";
-	case 3: /* access point */
-		minor_index = (class >> 5) & 0x07;
-		if (minor_index < NUM_ELEMENTS(access_point_minor_cls))
-			return access_point_minor_cls[minor_index];
-		else
-			return "";
-	case 4: /* audio/video */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(audio_video_minor_cls))
-			return audio_video_minor_cls[minor_index];
-		else
-			return "";
-	case 5: /* peripheral */
-		minor_index = (class >> 6) & 0x03;
-		if (minor_index < NUM_ELEMENTS(peripheral_minor_cls))
-			return peripheral_minor_cls[minor_index];
-		else
-			return "";
-	case 6: /* imaging */
-		{
-			uint8_t shift_minor = 0;
-
-			minor_index = (class >> 4) & 0x0F;
-			while (shift_minor < (sizeof(imaging_minor_cls) / sizeof(*imaging_minor_cls))) {
-				if (((minor_index >> shift_minor) & 0x01) == 0x01)
-					return imaging_minor_cls[shift_minor];
-				shift_minor++;
-			}
-		}
-		break;
-	case 7: /* wearable */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(wearable_minor_cls))
-			return wearable_minor_cls[minor_index];
-		else
-			return "";
-	case 8: /* toy */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(toy_minor_cls))
-			return toy_minor_cls[minor_index];
-		else
-			return "";
-	}
-
-	return "";
-}
-
-GSList *service_classes_str(uint32_t class)
-{
-	uint8_t services = class >> 16;
-	GSList *l = NULL;
-	int i;
-
-	for (i = 0; i < (sizeof(service_cls) / sizeof(*service_cls)); i++) {
-		if (!(services & (1 << i)))
-			continue;
-
-		l = g_slist_append(l, (void *) service_cls[i]);
-	}
-
-	return l;
+	return dbus_message_new_method_return(msg);
 }
 
 /* BlueZ 4.0 API */
@@ -4238,6 +4164,9 @@ static GDBusMethodTable adapter_methods[] = {
 	{ "AddServiceRecord",	"s",	"u",	add_service_record	},
 	{ "UpdateServiceRecord","us",	"",	update_service_record	},
 	{ "RemoveServiceRecord","u",	"",	remove_service_record	},
+	{ "RequestAuthorization","su",	"",	request_authorization,
+						G_DBUS_METHOD_FLAG_ASYNC},
+	{ "CancelAuthorization","",	"",	cancel_authorization	},
 	{ }
 };
 
@@ -4436,4 +4365,94 @@ dbus_bool_t adapter_init(DBusConnection *conn,
 			path, ADAPTER_INTERFACE,
 			old_adapter_methods, old_adapter_signals,
 			NULL, adapter, NULL);
+}
+
+const char *major_class_str(uint32_t class)
+{
+	uint8_t index = (class >> 8) & 0x1F;
+
+	if (index > 8)
+		return major_cls[9]; /* uncategorized */
+
+	return major_cls[index];
+}
+
+const char *minor_class_str(uint32_t class)
+{
+	uint8_t major_index = (class >> 8) & 0x1F;
+	uint8_t minor_index;
+
+	switch (major_index) {
+	case 1: /* computer */
+		minor_index = (class >> 2) & 0x3F;
+		if (minor_index < NUM_ELEMENTS(computer_minor_cls))
+			return computer_minor_cls[minor_index];
+		else
+			return "";
+	case 2: /* phone */
+		minor_index = (class >> 2) & 0x3F;
+		if (minor_index < NUM_ELEMENTS(phone_minor_cls))
+			return phone_minor_cls[minor_index];
+		return "";
+	case 3: /* access point */
+		minor_index = (class >> 5) & 0x07;
+		if (minor_index < NUM_ELEMENTS(access_point_minor_cls))
+			return access_point_minor_cls[minor_index];
+		else
+			return "";
+	case 4: /* audio/video */
+		minor_index = (class >> 2) & 0x3F;
+		if (minor_index < NUM_ELEMENTS(audio_video_minor_cls))
+			return audio_video_minor_cls[minor_index];
+		else
+			return "";
+	case 5: /* peripheral */
+		minor_index = (class >> 6) & 0x03;
+		if (minor_index < NUM_ELEMENTS(peripheral_minor_cls))
+			return peripheral_minor_cls[minor_index];
+		else
+			return "";
+	case 6: /* imaging */
+		{
+			uint8_t shift_minor = 0;
+
+			minor_index = (class >> 4) & 0x0F;
+			while (shift_minor < (sizeof(imaging_minor_cls) / sizeof(*imaging_minor_cls))) {
+				if (((minor_index >> shift_minor) & 0x01) == 0x01)
+					return imaging_minor_cls[shift_minor];
+				shift_minor++;
+			}
+		}
+		break;
+	case 7: /* wearable */
+		minor_index = (class >> 2) & 0x3F;
+		if (minor_index < NUM_ELEMENTS(wearable_minor_cls))
+			return wearable_minor_cls[minor_index];
+		else
+			return "";
+	case 8: /* toy */
+		minor_index = (class >> 2) & 0x3F;
+		if (minor_index < NUM_ELEMENTS(toy_minor_cls))
+			return toy_minor_cls[minor_index];
+		else
+			return "";
+	}
+
+	return "";
+}
+
+GSList *service_classes_str(uint32_t class)
+{
+	uint8_t services = class >> 16;
+	GSList *l = NULL;
+	int i;
+
+	for (i = 0; i < (sizeof(service_cls) / sizeof(*service_cls)); i++) {
+		if (!(services & (1 << i)))
+			continue;
+
+		l = g_slist_append(l, (void *) service_cls[i]);
+	}
+
+	return l;
 }
