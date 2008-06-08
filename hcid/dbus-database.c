@@ -332,9 +332,7 @@ int remove_record(DBusConnection *conn, const char *sender,
 
 	remove_record_from_server(handle);
 
-	if (user_record->sender)
-		g_free(user_record->sender);
-
+	g_free(user_record->sender);
 	g_free(user_record);
 
 	return 0;
