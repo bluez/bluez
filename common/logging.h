@@ -33,4 +33,6 @@ void disable_debug(void);
 void start_logging(const char *ident, const char *message, ...);
 void stop_logging(void);
 
+#define DBG(fmt, arg...)  debug("%s: " fmt "\n" , __FUNCTION__ , ## arg)
+
 #endif /* __LOGGING_H */
