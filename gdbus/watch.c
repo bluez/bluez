@@ -37,7 +37,7 @@
 #define error(fmt...)
 #define debug(fmt...)
 
-static guint listener_id = 1;
+static guint listener_id = 0;
 static GSList *name_listeners = NULL;
 
 struct name_callback {
