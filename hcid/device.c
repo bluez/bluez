@@ -1090,9 +1090,17 @@ struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 
 void device_remove(DBusConnection *conn, struct device *device)
 {
+	GSList *list;
+	struct btd_device_driver *driver;
 	gchar *path = g_strdup(device->path);
 
 	debug("Removing device %s", path);
+
+	for (list = device->drivers; list; list = list->next) {
+		driver = (struct btd_device_driver *) list->data;
+
+		driver->remove(device->path);
+	}
 
 	g_dbus_unregister_interface(conn, path, DEVICE_INTERFACE);
 
@@ -1106,31 +1114,36 @@ gint device_address_cmp(struct device *device, const gchar *address)
 
 static void probe_matching_drivers(struct device *device)
 {
-	GSList *drv_list;
-	const char **drv_uuid;
+	GSList *list;
+	const char **uuid;
 	struct btd_device_driver *driver;
 	int err;
 
 	debug("Probe drivers for %s", device->path);
 
-	for (drv_list = drivers; drv_list; drv_list = drv_list->next) {
-		driver = (struct btd_device_driver *) drv_list->data;
+	for (list = drivers; list; list = list->next) {
+		driver = (struct btd_device_driver *) list->data;
 		gboolean do_probe = FALSE;
 
-		for (drv_uuid = driver->uuids; *drv_uuid; drv_uuid++) {
+		for (uuid = driver->uuids; *uuid; uuid++) {
 			GSList *match = g_slist_find_custom(device->uuids,
-					*drv_uuid, (GCompareFunc) strcasecmp);
+					*uuid, (GCompareFunc) strcasecmp);
 			if (match) {
 				do_probe = TRUE;
 				break;
 			}
 		}
 
-		if (do_probe == TRUE) {
+		if (do_probe == TRUE && !g_slist_find_custom(device->drivers,
+					driver->name, (GCompareFunc) strcmp)) {
+
 			err = driver->probe(device->path);
 			if (err < 0)
 				error("probe failed for driver %s",
 							driver->name);
+			else
+				device->drivers = g_slist_append(device->drivers,
+									driver);
 		}
 	}
 }

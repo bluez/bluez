@@ -29,6 +29,7 @@ struct device {
 	gchar		*path;
 	struct adapter	*adapter;
 	GSList		*uuids;
+	GSList		*drivers;
 	gboolean	temporary;
 	struct agent	*agent;
 };
