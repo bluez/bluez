@@ -44,14 +44,14 @@ static DBusConnection *conn;
 
 static int audio_probe(const char *path)
 {
-	debug("path %s", path);
+	DBG("path %s", path);
 
 	return 0;
 }
 
 static void audio_remove(const char *path)
 {
-	debug("path %s", path);
+	DBG("path %s", path);
 }
 
 static struct btd_device_driver audio_driver = {

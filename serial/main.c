@@ -78,7 +78,7 @@ static DBusConnection *conn;
 
 static int serial_probe(const char *path)
 {
-	debug("path %s", path);
+	DBG("path %s", path);
 
 	return g_dbus_register_interface(conn, path, SERIAL_INTERFACE,
 				serial_methods, NULL, NULL, NULL, NULL);
@@ -86,7 +86,7 @@ static int serial_probe(const char *path)
 
 static void serial_remove(const char *path)
 {
-	debug("path %s", path);
+	DBG("path %s", path);
 
 	g_dbus_unregister_interface(conn, path, SERIAL_INTERFACE);
 }

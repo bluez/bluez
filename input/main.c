@@ -77,7 +77,7 @@ static DBusConnection *conn;
 
 static int input_probe(const char *path)
 {
-	debug("path %s", path);
+	DBG("path %s", path);
 
 	return g_dbus_register_interface(conn, path, INPUT_INTERFACE,
 			input_methods, input_signals, NULL, NULL, NULL);
@@ -85,7 +85,7 @@ static int input_probe(const char *path)
 
 static void input_remove(const char *path)
 {
-	debug("path %s", path);
+	DBG("path %s", path);
 
 	g_dbus_unregister_interface(conn, path, INPUT_INTERFACE);
 }

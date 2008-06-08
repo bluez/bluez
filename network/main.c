@@ -48,14 +48,14 @@ static DBusConnection *conn;
 
 static int network_probe(const char *path)
 {
-	debug("path %s", path);
+	DBG("path %s", path);
 
 	return 0;
 }
 
 static void network_remove(const char *path)
 {
-	debug("path %s", path);
+	DBG("path %s", path);
 }
 
 static struct btd_device_driver network_driver = {
