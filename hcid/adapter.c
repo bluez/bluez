@@ -4015,7 +4015,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_STRING, &capability, DBUS_TYPE_INVALID))
-		return invalid_args(msg);
+		return NULL;
 
 	if (adapter->agent)
 		return g_dbus_create_error(msg,
@@ -4051,7 +4051,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID))
-		return invalid_args(msg);
+		return NULL;
 
 	name = dbus_message_get_sender(msg);
 
@@ -4078,7 +4078,7 @@ static DBusMessage *add_service_record(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
-		return invalid_args(msg);
+		return NULL;
 
 	sender = dbus_message_get_sender(msg);
 	str2ba(adapter->address, &src);
@@ -4115,7 +4115,7 @@ static DBusMessage *remove_service_record(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &handle,
 						DBUS_TYPE_INVALID) == FALSE)
-		return invalid_args(msg);
+		return NULL;
 
 	sender = dbus_message_get_sender(msg);
 

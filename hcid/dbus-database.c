@@ -75,6 +75,8 @@ static void exit_callback(void *user_data)
 {
 	struct record_data *user_record = user_data;
 
+	debug("remove record");
+
 	records = g_slist_remove(records, user_record);
 
 	remove_record_from_server(user_record->handle);
@@ -150,6 +152,8 @@ static DBusMessage *add_service_record(DBusConnection *conn,
 								user_record,
 								NULL);
 
+	debug("listener_id %d", user_record->listener_id);
+
 	return g_dbus_create_reply(msg, DBUS_TYPE_UINT32, &user_record->handle,
 							DBUS_TYPE_INVALID);
 }
@@ -180,8 +184,10 @@ int add_xml_record(DBusConnection *conn, const char *sender, bdaddr_t *src,
 
 	records = g_slist_append(records, user_record);
 
-	g_dbus_add_disconnect_watch(conn, sender, exit_callback, user_record,
-					NULL);
+	user_record->listener_id = g_dbus_add_disconnect_watch(conn, sender,
+					exit_callback, user_record, NULL);
+
+	debug("listener_id %d", user_record->listener_id);
 
 	*handle = user_record->handle;
 
@@ -320,18 +326,17 @@ int remove_record(DBusConnection *conn, const char *sender,
 {
 	struct record_data *user_record;
 
+	debug("remove record 0x%x", handle);
+
 	user_record = find_record(handle, sender);
 	if (!user_record)
 		return -1;
 
+	debug("listner_id %d", user_record->listener_id);
+
 	g_dbus_remove_watch(conn, user_record->listener_id);
 
-	records = g_slist_remove(records, user_record);
-
-	remove_record_from_server(handle);
-
-	g_free(user_record->sender);
-	g_free(user_record);
+	exit_callback(user_record);
 
 	return 0;
 }
