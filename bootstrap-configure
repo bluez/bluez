@@ -14,7 +14,7 @@ fi
 		--libexecdir=/lib \
 		--enable-bccmd \
 		--enable-dfutool \
-		--enalbe-hid2hci \
+		--enable-hid2hci \
 		--enable-hidd \
 		--enable-pand \
 		--enable-dund \
