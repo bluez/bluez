@@ -275,14 +275,14 @@ static DBusMessage *register_passkey_agent(DBusConnection *conn,
 	ref.addr = NULL;
 	ref.path = NULL;
 	if (!g_slist_find_custom(adapter->passkey_agents, &ref,
-				(GCompareFunc) agent_cmp))
+						(GCompareFunc) agent_cmp))
 		agent->listener_id = g_dbus_add_disconnect_watch(conn, ref.name,
-							agent_exited, agent,
-							NULL);
+						agent_exited, agent, NULL);
 
-	agent->timeout = g_timeout_add(AGENT_TIMEOUT, (GSourceFunc)agent_timeout, agent);
+	agent->timeout = g_timeout_add(AGENT_TIMEOUT,
+					(GSourceFunc) agent_timeout, agent);
 
-	adapter->passkey_agents = g_slist_append(adapter->passkey_agents, agent);
+	adapter->passkey_agents = g_slist_append(adapter->passkey_agents,										agent);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -351,9 +351,10 @@ static DBusMessage *register_default_passkey_agent(DBusConnection *conn,
 	if (!default_agent)
 		goto need_memory;
 
-
-	g_dbus_add_disconnect_watch(conn, default_agent->name,
-					default_agent_exited, NULL, NULL);
+	default_agent->listener_id = g_dbus_add_disconnect_watch(conn,
+							default_agent->name,
+							default_agent_exited,
+								NULL, NULL);
 
 	info("Default passkey agent (%s, %s) registered",
 			default_agent->name, default_agent->path);
@@ -514,8 +515,10 @@ static DBusMessage *register_default_auth_agent(DBusConnection *conn,
 	if (!default_auth_agent)
 		goto need_memory;
 
-	g_dbus_add_disconnect_watch(conn, default_auth_agent->name,
-				default_auth_agent_exited, NULL, NULL);
+	default_auth_agent->listener_id = g_dbus_add_disconnect_watch(conn,
+						default_auth_agent->name,
+						default_auth_agent_exited,
+								NULL, NULL);
 
 	info("Default authorization agent (%s, %s) registered",
 		default_auth_agent->name, default_auth_agent->path);
