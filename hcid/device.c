@@ -1112,7 +1112,7 @@ gint device_address_cmp(struct device *device, const gchar *address)
 	return strcasecmp(device->address, address);
 }
 
-static void probe_matching_drivers(struct device *device)
+void device_probe_drivers(struct device *device)
 {
 	GSList *list;
 	const char **uuid;
@@ -1136,7 +1136,6 @@ static void probe_matching_drivers(struct device *device)
 
 		if (do_probe == TRUE && !g_slist_find_custom(device->drivers,
 					driver->name, (GCompareFunc) strcmp)) {
-
 			err = driver->probe(device->path);
 			if (err < 0)
 				error("probe failed for driver %s",
@@ -1219,8 +1218,8 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		return;
 	}
 
-probe:	
-	probe_matching_drivers(device);
+probe:
+	device_probe_drivers(device);
 
 proceed:
 	g_dbus_emit_signal(req->conn, dbus_message_get_path(req->msg),

@@ -678,6 +678,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	if (device) {
 		device->temporary = FALSE;
 		adapter->devices = g_slist_append(adapter->devices, device);
+		device_probe_drivers(device);
 	}
 }
 
