@@ -12,9 +12,15 @@ fi
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--libexecdir=/lib \
-		--enable-all \
+		--enable-bccmd \
+		--enable-dfutool \
+		--enalbe-hid2hci \
+		--enable-hidd \
+		--enable-pand \
+		--enable-dund \
+		--enable-test \
+		--disable-cups \
 		--disable-manpages \
 		--disable-configfiles \
 		--disable-initscripts \
-		--disable-pcmciarules \
-		--disable-cups $*
+		--disable-pcmciarules $*

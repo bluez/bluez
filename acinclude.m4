@@ -271,24 +271,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		debug_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(all, AC_HELP_STRING([--enable-all], [enable all extra options below]), [
-		dbus_enable=${enableval}
-		alsa_enable=${enableval}
-		hidd_enable=${enableval}
-		pand_enable=${enableval}
-		dund_enable=${enableval}
-		cups_enable=${enableval}
-		test_enable=${enableval}
-		manpages_enable=${enableval}
-		configfiles_enable=${enableval}
-		initscripts_enable=${enableval}
-		pcmciarules_enable=${enableval}
-		tools_enable=${enableval}
-		bccmd_enable=${enableval}
-		hid2hci_enable=${enableval}
-		dfutool_enable=${enableval}
-	])
-
 	if (test "${fortify_enable}" = "yes"); then
 		CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
 	fi
