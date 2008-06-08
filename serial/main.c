@@ -40,6 +40,9 @@
 
 #define SERIAL_INTERFACE "org.bluez.Serial"
 
+#define SERIAL_PORT_UUID	"00001101-0000-1000-8000-00805F9B34FB"
+#define DIALUP_NET_UUID		"00001103-0000-1000-8000-00805F9B34FB"
+
 static DBusMessage *serial_connect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -90,7 +93,7 @@ static void serial_remove(const char *path)
 
 static struct btd_device_driver serial_driver = {
 	.name	= "serial",
-	.uuids	= BTD_UUIDS("spp", "dun"),
+	.uuids	= BTD_UUIDS(SERIAL_PORT_UUID, DIALUP_NET_UUID),
 	.probe	= serial_probe,
 	.remove	= serial_remove,
 };
