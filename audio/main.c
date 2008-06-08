@@ -42,33 +42,42 @@
 
 static DBusConnection *conn;
 
-static int audio_probe(const char *path)
+static int headset_probe(const char *path)
 {
 	DBG("path %s", path);
 
 	return 0;
 }
 
-static void audio_remove(const char *path)
+static void headset_remove(const char *path)
 {
 	DBG("path %s", path);
 }
 
-static struct btd_device_driver audio_driver = {
-	.name	= "audio",
-	.uuids	= BTD_UUIDS(
-			GENERIC_AUDIO_UUID,
-			HSP_HS_UUID,
-			HSP_AG_UUID,
-			HFP_HS_UUID,
-			HFP_AG_UUID,
-			ADVANCED_AUDIO_UUID,
-			A2DP_SOURCE_UUID,
-			A2DP_SINK_UUID,
-			AVRCP_REMOTE_UUID,
-			AVRCP_TARGET_UUID),
-	.probe	= audio_probe,
-	.remove	= audio_remove,
+static struct btd_device_driver headset_driver = {
+	.name	= "headset",
+	.uuids	= BTD_UUIDS(HSP_HS_UUID, HFP_HS_UUID),
+	.probe	= headset_probe,
+	.remove	= headset_remove,
+};
+
+static int a2dp_probe(const char *path)
+{
+	DBG("path %s", path);
+
+	return 0;
+}
+
+static void a2dp_remove(const char *path)
+{
+	DBG("path %s", path);
+}
+
+static struct btd_device_driver a2dp_driver = {
+	.name	= "sink",
+	.uuids	= BTD_UUIDS(A2DP_SINK_UUID),
+	.probe	= a2dp_probe,
+	.remove	= a2dp_remove,
 };
 
 static GKeyFile *load_config_file(const char *file)
@@ -111,14 +120,18 @@ static int audio_init(void)
 	if (config)
 		g_key_file_free(config);
 
-	btd_register_device_driver(&audio_driver);
+	btd_register_device_driver(&headset_driver);
+
+	btd_register_device_driver(&a2dp_driver);
 
 	return 0;
 }
 
 static void audio_exit(void)
 {
-	btd_unregister_device_driver(&audio_driver);
+	btd_unregister_device_driver(&a2dp_driver);
+
+	btd_unregister_device_driver(&headset_driver);
 
 	audio_manager_exit();
 
