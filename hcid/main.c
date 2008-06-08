@@ -918,9 +918,17 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	start_sdp_server(mtu, hcid.deviceid, SDP_SERVER_COMPAT);
+	set_service_classes_callback(update_service_classes);
+
+	/* Loading plugins has to be done after D-Bus has been setup since
+	 * the plugins might wanna expose some paths on the bus. However the
+	 * best order of how to init various subsystems of the Bluetooth
+	 * daemon needs to be re-worked. */
+	plugin_init(config);
+
 	init_security_data();
 
-	/* Create event loop */
 	event_loop = g_main_loop_new(NULL, FALSE);
 
 	ctl_io = g_io_channel_unix_new(hcid.sock);
@@ -933,16 +941,6 @@ int main(int argc, char *argv[])
 	/* Initialize already connected devices */
 	init_all_devices(hcid.sock);
 
-	start_sdp_server(mtu, hcid.deviceid, SDP_SERVER_COMPAT);
-	set_service_classes_callback(update_service_classes);
-
-	/* Loading plugins has to be done after D-Bus has been setup since
-	 * the plugins might wanna expose some paths on the bus. However the
-	 * best order of how to init various subsystems of the Bluetooth
-	 * daemon needs to be re-worked. */
-	plugin_init(config);
-
-	/* Start event processor */
 	g_main_loop_run(event_loop);
 
 	plugin_cleanup();
