@@ -79,8 +79,12 @@ static int input_probe(const char *path)
 {
 	DBG("path %s", path);
 
-	return g_dbus_register_interface(conn, path, INPUT_INTERFACE,
-			input_methods, input_signals, NULL, NULL, NULL);
+	if (g_dbus_register_interface(conn, path, INPUT_INTERFACE,
+					input_methods, input_signals, NULL,
+							NULL, NULL) == FALSE)
+		return -1;
+
+	return 0;
 }
 
 static void input_remove(const char *path)

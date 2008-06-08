@@ -44,11 +44,52 @@
 #define NAP_UUID  "00001116-0000-1000-8000-00805f9b34fb"
 #define GN_UUID   "00001117-0000-1000-8000-00805f9b34fb"
 
+#define NETWORK_INTERFACE "org.bluez.Network"
+
+static DBusMessage *network_connect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	const char *target, *device = "bnep0";
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &target,
+						DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &device,
+							DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *network_disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static GDBusMethodTable network_methods[] = {
+	{ "Connect",    "s", "s", network_connect    },
+	{ "Disconnect", "",  "",  network_disconnect },
+	{ }
+};
+
+static GDBusSignalTable network_signals[] = {
+	{ "Connected",    "ss" },
+	{ "Disconnected", "s"  },
+	{ }
+};
+
 static DBusConnection *conn;
 
 static int network_probe(const char *path)
 {
 	DBG("path %s", path);
+
+	if (g_dbus_register_interface(conn, path, NETWORK_INTERFACE,
+					network_methods, network_signals, NULL,
+							NULL, NULL) == FALSE)
+		return -1;
 
 	return 0;
 }
@@ -56,6 +97,8 @@ static int network_probe(const char *path)
 static void network_remove(const char *path)
 {
 	DBG("path %s", path);
+
+	g_dbus_unregister_interface(conn, path, NETWORK_INTERFACE);
 }
 
 static struct btd_device_driver network_driver = {

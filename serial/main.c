@@ -38,10 +38,10 @@
 #include "logging.h"
 #include "manager.h"
 
-#define SERIAL_INTERFACE "org.bluez.Serial"
-
 #define SERIAL_PORT_UUID	"00001101-0000-1000-8000-00805F9B34FB"
 #define DIALUP_NET_UUID		"00001103-0000-1000-8000-00805F9B34FB"
+
+#define SERIAL_INTERFACE "org.bluez.Serial"
 
 static DBusMessage *serial_connect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
@@ -80,8 +80,12 @@ static int serial_probe(const char *path)
 {
 	DBG("path %s", path);
 
-	return g_dbus_register_interface(conn, path, SERIAL_INTERFACE,
-				serial_methods, NULL, NULL, NULL, NULL);
+	if (g_dbus_register_interface(conn, path, SERIAL_INTERFACE,
+						serial_methods, NULL, NULL,
+							NULL, NULL) == FALSE)
+		return -1;
+
+	return 0;
 }
 
 static void serial_remove(const char *path)
