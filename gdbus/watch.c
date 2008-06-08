@@ -37,7 +37,7 @@
 #define error(fmt...)
 #define debug(fmt...)
 
-static guint listener_id = 0;
+static guint listener_id = 1;
 static GSList *name_listeners = NULL;
 
 struct name_callback {
@@ -296,6 +296,9 @@ gboolean g_dbus_remove_watch(DBusConnection *connection, guint id)
 	struct name_data *data;
 	struct name_callback *cb;
 	GSList *ldata, *lcb;
+
+	if (id == 0)
+		return FALSE;
 
 	for (ldata = name_listeners; ldata; ldata = ldata->next) {
 		data = ldata->data;
