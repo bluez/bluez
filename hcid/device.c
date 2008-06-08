@@ -119,6 +119,8 @@ static struct hci_dev devices[MAX_DEVICES];
 
 #define ASSERT_DEV_ID { if (dev_id >= MAX_DEVICES) return -ERANGE; }
 
+static GSList *drivers = NULL;
+
 static uint16_t uuid_list[] = {
 	PUBLIC_BROWSE_GROUP,
 	GENERIC_AUDIO_SVCLASS_ID,
@@ -1102,6 +1104,37 @@ gint device_address_cmp(struct device *device, const gchar *address)
 	return strcasecmp(device->address, address);
 }
 
+static void probe_matching_drivers(struct device *device)
+{
+	GSList *drv_list;
+	const char **drv_uuid;
+	struct btd_device_driver *driver;
+	int err;
+
+	debug("Probe drivers for %s", device->path);
+
+	for (drv_list = drivers; drv_list; drv_list = drv_list->next) {
+		driver = (struct btd_device_driver *) drv_list->data;
+		gboolean do_probe = FALSE;
+
+		for (drv_uuid = driver->uuids; *drv_uuid; drv_uuid++) {
+			GSList *match = g_slist_find_custom(device->uuids,
+					*drv_uuid, (GCompareFunc) strcasecmp);
+			if (match) {
+				do_probe = TRUE;
+				break;
+			}
+		}
+
+		if (do_probe == TRUE) {
+			err = driver->probe(device->path);
+			if (err < 0)
+				error("probe failed for driver %s",
+							driver->name);
+		}
+	}
+}
+
 static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	sdp_list_t *seq, *next, *svcclass;
@@ -1165,13 +1198,16 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	/* Public browsing was succesful */
 	if (!req->search_uuid && recs)
-		goto proceed;
+		goto probe;
 
 	if (uuid_list[++req->search_uuid]) {
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
 		bt_search_service(&src, &dst, &uuid, browse_cb, user_data, NULL);
 		return;
 	}
+
+probe:	
+	probe_matching_drivers(device);
 
 proceed:
 	g_dbus_emit_signal(req->conn, dbus_message_get_path(req->msg),
@@ -1216,8 +1252,6 @@ int device_browse(struct device *device, DBusConnection *conn,
 
 	return bt_search_service(&src, &dst, &uuid, browse_cb, req, NULL);
 }
-
-static GSList *drivers = NULL;
 
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
