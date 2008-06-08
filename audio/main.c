@@ -42,16 +42,16 @@
 
 static DBusConnection *conn;
 
-static int headset_probe(const char *path)
+static int headset_probe(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 
 	return 0;
 }
 
-static void headset_remove(const char *path)
+static void headset_remove(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 }
 
 static struct btd_device_driver headset_driver = {
@@ -61,16 +61,16 @@ static struct btd_device_driver headset_driver = {
 	.remove	= headset_remove,
 };
 
-static int a2dp_probe(const char *path)
+static int a2dp_probe(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 
 	return 0;
 }
 
-static void a2dp_remove(const char *path)
+static void a2dp_remove(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 }
 
 static struct btd_device_driver a2dp_driver = {

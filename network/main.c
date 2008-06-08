@@ -82,23 +82,23 @@ static GDBusSignalTable network_signals[] = {
 
 static DBusConnection *conn;
 
-static int network_probe(const char *path)
+static int network_probe(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 
-	if (g_dbus_register_interface(conn, path, NETWORK_INTERFACE,
+	if (g_dbus_register_interface(conn, device->path, NETWORK_INTERFACE,
 					network_methods, network_signals, NULL,
-							NULL, NULL) == FALSE)
+							device, NULL) == FALSE)
 		return -1;
 
 	return 0;
 }
 
-static void network_remove(const char *path)
+static void network_remove(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 
-	g_dbus_unregister_interface(conn, path, NETWORK_INTERFACE);
+	g_dbus_unregister_interface(conn, device->path, NETWORK_INTERFACE);
 }
 
 static struct btd_device_driver network_driver = {

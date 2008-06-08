@@ -1636,9 +1636,10 @@ static DBusMessage *connect_channel(DBusConnection *conn, DBusMessage *msg,
 	return connect_pending(conn, msg, pc);
 }
 
-static DBusMessage *service_connect(DBusConnection *conn, DBusMessage *msg,
-					const char *adapter, const char *address,
-					const char *pattern, void *data)
+DBusMessage *service_connect(DBusConnection *conn, DBusMessage *msg,
+						const char *adapter,
+						const char *address,
+						const char *pattern)
 {
 	int dev_id;
 	bdaddr_t src;
@@ -1658,13 +1659,13 @@ static DBusMessage *service_connect(DBusConnection *conn, DBusMessage *msg,
 
 	/* Friendly name or uuid128 */
 	if (pattern2uuid(pattern, &uuid) == 0)
-		return search_uuid(conn, msg, adp, address, pattern, &uuid,
-				data);
+		return search_uuid(conn, msg, adp, address,
+						pattern, &uuid, NULL);
 
 	/* RFCOMM Channel */
 	if (pattern2long(pattern, &val) == 0)
-		return connect_channel(conn, msg, adp, address, pattern,
-					val, data);
+		return connect_channel(conn, msg, adp, address,
+							pattern, val, NULL);
 
 	return invalid_arguments(msg, "Invalid Pattern");
 }
@@ -1680,7 +1681,7 @@ static DBusMessage *connect_service(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return NULL;
 
-	return service_connect(conn, msg, NULL, address, pattern, data);
+	return service_connect(conn, msg, NULL, address, pattern);
 }
 
 static DBusMessage *connect_service_from_adapter(DBusConnection *conn,
@@ -1695,7 +1696,7 @@ static DBusMessage *connect_service_from_adapter(DBusConnection *conn,
 				DBUS_TYPE_INVALID))
 		return NULL;
 
-	return service_connect(conn, msg, adapter, address, pattern, data);
+	return service_connect(conn, msg, adapter, address, pattern);
 }
 
 static DBusMessage *disconnect_service(DBusConnection *conn,

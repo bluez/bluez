@@ -27,3 +27,8 @@
 int serial_manager_init(DBusConnection *conn);
 void serial_manager_exit(void);
 int rfcomm_release(int16_t id);
+
+DBusMessage *service_connect(DBusConnection *conn, DBusMessage *msg,
+						const char *adapter,
+						const char *address,
+						const char *pattern);

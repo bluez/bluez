@@ -35,64 +35,84 @@
 
 #include "plugin.h"
 #include "device.h"
+#include "adapter.h"
 #include "logging.h"
 #include "manager.h"
+#include "port.h"
 
 #define SERIAL_PORT_UUID	"00001101-0000-1000-8000-00805F9B34FB"
 #define DIALUP_NET_UUID		"00001103-0000-1000-8000-00805F9B34FB"
 
-#define SERIAL_INTERFACE "org.bluez.Serial"
+#define SERIAL_INTERFACE     "org.bluez.Serial"
+#define ERROR_INVALID_ARGS   "org.bluez.Error.InvalidArguments"
+#define ERROR_DOES_NOT_EXIST "org.bluez.Error.DoesNotExist"
 
 static DBusMessage *serial_connect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	const char *target, *device = "/dev/rfcomm0";
+	struct btd_device *device = user_data;
+	const char *target;
+	char src[18], dst[18];
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &target,
 						DBUS_TYPE_INVALID) == FALSE)
 		return NULL;
 
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &device,
-							DBUS_TYPE_INVALID);
+	ba2str(&device->src, src);
+	ba2str(&device->dst, dst);
+
+	service_connect(conn, msg, src, dst, target);
+
+	return NULL;
 }
 
 static DBusMessage *serial_disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	const char *device;
+	const char *device, *sender;
+	int err, id;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &device,
 						DBUS_TYPE_INVALID) == FALSE)
 		return NULL;
 
+	sender = dbus_message_get_sender(msg);
+
+	if (sscanf(device, "/dev/rfcomm%d", &id) != 1)
+		return g_dbus_create_error(msg, ERROR_INVALID_ARGS, NULL);
+
+	err = port_remove_listener(sender, device);
+	if (err < 0)
+		return g_dbus_create_error(msg, ERROR_DOES_NOT_EXIST, NULL);
+
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static GDBusMethodTable serial_methods[] = {
-	{ "Connect",    "s", "s", serial_connect    },
+	{ "Connect",    "s", "s", serial_connect, G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect", "s", "",  serial_disconnect },
 	{ }
 };
 
 static DBusConnection *conn;
 
-static int serial_probe(const char *path)
+static int serial_probe(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 
-	if (g_dbus_register_interface(conn, path, SERIAL_INTERFACE,
+	if (g_dbus_register_interface(conn, device->path, SERIAL_INTERFACE,
 						serial_methods, NULL, NULL,
-							NULL, NULL) == FALSE)
+							device, NULL) == FALSE)
 		return -1;
 
 	return 0;
 }
 
-static void serial_remove(const char *path)
+static void serial_remove(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 
-	g_dbus_unregister_interface(conn, path, SERIAL_INTERFACE);
+	g_dbus_unregister_interface(conn, device->path, SERIAL_INTERFACE);
 }
 
 static struct btd_device_driver serial_driver = {

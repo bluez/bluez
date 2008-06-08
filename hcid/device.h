@@ -24,7 +24,14 @@
 
 #define DEVICE_INTERFACE	"org.bluez.Device"
 
+struct btd_device {
+	char *path;
+	bdaddr_t src;
+	bdaddr_t dst;
+};
+
 struct device {
+	struct btd_device dev;
 	gchar		*address;
 	gchar		*path;
 	struct adapter	*adapter;
@@ -47,8 +54,8 @@ void device_probe_drivers(struct device *device);
 struct btd_device_driver {
 	const char *name;
 	const char **uuids;
-	int (*probe) (const char *path);
-	void (*remove) (const char *path);
+	int (*probe) (struct btd_device *device);
+	void (*remove) (struct btd_device *device);
 };
 
 int btd_register_device_driver(struct btd_device_driver *driver);

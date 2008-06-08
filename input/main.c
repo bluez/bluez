@@ -75,23 +75,23 @@ static GDBusSignalTable input_signals[] = {
 
 static DBusConnection *conn;
 
-static int input_probe(const char *path)
+static int input_probe(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 
-	if (g_dbus_register_interface(conn, path, INPUT_INTERFACE,
+	if (g_dbus_register_interface(conn, device->path, INPUT_INTERFACE,
 					input_methods, input_signals, NULL,
-							NULL, NULL) == FALSE)
+							device, NULL) == FALSE)
 		return -1;
 
 	return 0;
 }
 
-static void input_remove(const char *path)
+static void input_remove(struct btd_device *device)
 {
-	DBG("path %s", path);
+	DBG("path %s", device->path);
 
-	g_dbus_unregister_interface(conn, path, INPUT_INTERFACE);
+	g_dbus_unregister_interface(conn, device->path, INPUT_INTERFACE);
 }
 
 static struct btd_device_driver input_driver = {

@@ -1086,6 +1086,10 @@ struct device *device_create(DBusConnection *conn, struct adapter *adapter,
 	device->adapter = adapter;
 	device->uuids = uuids;
 
+	device->dev.path = device->path;
+	str2ba(device->address, &device->dev.dst);
+	str2ba(adapter->address, &device->dev.src);
+
 	return device;
 }
 
@@ -1100,7 +1104,7 @@ void device_remove(DBusConnection *conn, struct device *device)
 	for (list = device->drivers; list; list = list->next) {
 		driver = (struct btd_device_driver *) list->data;
 
-		driver->remove(device->path);
+		driver->remove(&device->dev);
 	}
 
 	g_dbus_unregister_interface(conn, path, DEVICE_INTERFACE);
@@ -1137,7 +1141,7 @@ void device_probe_drivers(struct device *device)
 
 		if (do_probe == TRUE && !g_slist_find_custom(device->drivers,
 					driver->name, (GCompareFunc) strcmp)) {
-			err = driver->probe(device->path);
+			err = driver->probe(&device->dev);
 			if (err < 0)
 				error("probe failed for driver %s",
 							driver->name);
