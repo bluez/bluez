@@ -1,9 +1,8 @@
 #!/usr/bin/python
 
+import sys
 import time
 import dbus
-
-bus = dbus.SystemBus()
 
 xml = ' \
 <?xml version="1.0" encoding="UTF-8" ?> 	\
@@ -101,8 +100,17 @@ xml = ' \
 </record>					\
 '
 
-adapter = dbus.Interface(bus.get_object('org.bluez', '/'),
-						'org.bluez.Adapter')
+bus = dbus.SystemBus()
+manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+						"org.bluez.Manager")
+
+if len(sys.argv) > 1:
+	path = manager.FindAdapter(sys.argv[1])
+else:
+	path = manager.DefaultAdapter()
+
+adapter = dbus.Interface(bus.get_object("org.bluez", path),
+						"org.bluez.Adapter")
 
 handle = adapter.AddServiceRecord(xml)
 

@@ -2,10 +2,10 @@
 
 import gobject
 
+import sys
 import dbus
 import dbus.service
 import dbus.mainloop.glib
-import sys
 
 class Agent(dbus.service.Object):
 	@dbus.service.method("org.bluez.Agent",
