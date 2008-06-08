@@ -37,6 +37,7 @@ int find_conn(int s, int dev_id, long arg);
 
 void hcid_dbus_exit(void);
 int hcid_dbus_init(void);
+void hcid_dbus_unregister(void);
 
 void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 					const char *key, int type, void *val);

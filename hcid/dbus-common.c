@@ -269,24 +269,18 @@ static void disconnect_callback(void *user_data)
 				system_bus_reconnect, NULL);
 }
 
-void hcid_dbus_exit(void)
+void hcid_dbus_unregister(void)
 {
-	char **children;
 	DBusConnection *conn = get_dbus_connection();
+	char **children;
 	int i;
 
 	if (!conn || !dbus_connection_get_is_connected(conn))
 		return;
 
-	release_default_agent_old();
-	release_default_auth_agent();
-	release_services(conn);
-
-	database_cleanup(conn, BASE_PATH);
-
 	/* Unregister all paths in Adapter path hierarchy */
 	if (!dbus_connection_list_registered(conn, BASE_PATH, &children))
-		goto done;
+		return;
 
 	for (i = 0; children[i]; i++) {
 		char dev_path[MAX_PATH_LENGTH];
@@ -301,8 +295,21 @@ void hcid_dbus_exit(void)
 	}
 
 	dbus_free_string_array(children);
+}
 
-done:
+void hcid_dbus_exit(void)
+{
+	DBusConnection *conn = get_dbus_connection();
+
+	if (!conn || !dbus_connection_get_is_connected(conn))
+		return;
+
+	release_default_agent_old();
+	release_default_auth_agent();
+	release_services(conn);
+
+	database_cleanup(conn, BASE_PATH);
+
 	manager_cleanup(conn, BASE_PATH);
 
 	set_dbus_connection(NULL);

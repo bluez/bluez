@@ -943,6 +943,8 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(event_loop);
 
+	hcid_dbus_unregister();
+
 	plugin_cleanup();
 
 	stop_sdp_server();
