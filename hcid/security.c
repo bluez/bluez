@@ -326,7 +326,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 			cp.reason = HCI_OE_LOW_RESOURCES;
 
 			hci_send_cmd(dev, OGF_LINK_CTL, OCF_DISCONNECT,
-					DISCONNECT_CP_SIZE, &cp);
+						DISCONNECT_CP_SIZE, &cp);
 		}
 	} else
 		hcid_dbus_bonding_process_complete(sba, dba, 0);
@@ -362,11 +362,13 @@ static void user_confirm_request(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_user_confirm_request *req = ptr;
 
-	if (hcid_dbus_user_confirm(sba, &req->bdaddr, req->passkey) < 0)
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
-				6, ptr);
+	if (hcid_dbus_user_confirm(sba, &req->bdaddr,
+					btohl(req->passkey)) < 0)
+		hci_send_cmd(dev, OGF_LINK_CTL,
+				OCF_USER_CONFIRM_NEG_REPLY, 6, ptr);
 	else
-		hcid_dbus_new_auth_request(sba, &req->bdaddr, AUTH_TYPE_CONFIRM);
+		hcid_dbus_new_auth_request(sba, &req->bdaddr,
+						AUTH_TYPE_CONFIRM);
 }
 
 static void user_passkey_request(int dev, bdaddr_t *sba, void *ptr)
@@ -374,10 +376,11 @@ static void user_passkey_request(int dev, bdaddr_t *sba, void *ptr)
 	evt_user_passkey_request *req = ptr;
 
 	if (hcid_dbus_user_passkey(sba, &req->bdaddr) < 0)
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_USER_PASSKEY_NEG_REPLY,
-				6, ptr);
+		hci_send_cmd(dev, OGF_LINK_CTL,
+				OCF_USER_PASSKEY_NEG_REPLY, 6, ptr);
 	else
-		hcid_dbus_new_auth_request(sba, &req->bdaddr, AUTH_TYPE_PASSKEY);
+		hcid_dbus_new_auth_request(sba, &req->bdaddr,
+						AUTH_TYPE_PASSKEY);
 }
 
 static void remote_oob_data_request(int dev, bdaddr_t *sba, void *ptr)
@@ -399,7 +402,7 @@ static void io_capa_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		bacpy(&cp.bdaddr, dba);
 		cp.reason = HCI_PAIRING_NOT_ALLOWED;
 		hci_send_cmd(dev, OGF_LINK_CTL, OCF_IO_CAPABILITY_NEG_REPLY,
-				IO_CAPABILITY_NEG_REPLY_CP_SIZE, &cp);
+					IO_CAPABILITY_NEG_REPLY_CP_SIZE, &cp);
 	} else {
 		io_capability_reply_cp cp;
 		memset(&cp, 0, sizeof(cp));
@@ -408,7 +411,7 @@ static void io_capa_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		cp.oob_data = 0x00;
 		cp.authentication = auth;
 		hci_send_cmd(dev, OGF_LINK_CTL, OCF_IO_CAPABILITY_REPLY,
-				IO_CAPABILITY_REPLY_CP_SIZE, &cp);
+					IO_CAPABILITY_REPLY_CP_SIZE, &cp);
 	}
 }
 
@@ -468,14 +471,14 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		memcpy(pr.pin_code, hcid.pin_code, hcid.pin_len);
 		pr.pin_len = hcid.pin_len;
 		hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
-				PIN_CODE_REPLY_CP_SIZE, &pr);
+						PIN_CODE_REPLY_CP_SIZE, &pr);
 	} else {
 		if (pinlen > 0) {
 			set_pin_length(sba, pinlen);
 			memcpy(pr.pin_code, pin, pinlen);
 			pr.pin_len = pinlen;
 			hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
-					PIN_CODE_REPLY_CP_SIZE, &pr);
+						PIN_CODE_REPLY_CP_SIZE, &pr);
 		} else {
 			/* Request PIN from passkey agent */
 			if (hcid_dbus_request_pin(dev, sba, ci) < 0)
