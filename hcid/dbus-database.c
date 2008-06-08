@@ -79,9 +79,7 @@ static void exit_callback(void *user_data)
 
 	remove_record_from_server(user_record->handle);
 
-	if (user_record->sender)
-		g_free(user_record->sender);
-
+	g_free(user_record->sender);
 	g_free(user_record);
 }
 
