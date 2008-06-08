@@ -766,12 +766,6 @@ static void device_free(gpointer user_data)
 	g_free(device);
 }
 
-static DBusMessage *disconnect(DBusConnection *conn,
-				DBusMessage *msg, void *user_data)
-{
-	return dbus_message_new_method_return(msg);
-}
-
 static gboolean device_is_paired(struct device *device)
 {
 	struct adapter *adapter = device->adapter;
@@ -1014,17 +1008,50 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return invalid_args(msg);
 }
 
+static DBusMessage *discover_services(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	const char *pattern;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
+						DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	/* FIXME start service discovery */
+
+	return NULL;
+}
+
+static DBusMessage *cancel_discover(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	/* FIXME cancel discovery */
+
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	/* FIXME disconnect device */
+
+	return dbus_message_new_method_return(msg);
+}
+
 static GDBusMethodTable device_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",	get_properties	},
 	{ "SetProperty",	"sv",	"",		set_property	},
+	{ "DiscoverServices",	"s",	"a{sv}",	discover_services,
+						G_DBUS_METHOD_FLAG_ASYNC},
+	{ "CancelDiscovery",	"",	"",		cancel_discover	},
 	{ "Disconnect",		"",	"",		disconnect	},
-	{ NULL, NULL, NULL, NULL }
+	{ }
 };
 
 static GDBusSignalTable device_signals[] = {
-	{ "PropertyChanged",			"sv"	},
-	{ "DisconnectRequested",		""	},
-	{ NULL, NULL }
+	{ "PropertyChanged",		"sv"	},
+	{ "DisconnectRequested",	""	},
+	{ }
 };
 
 struct device *device_create(DBusConnection *conn, struct adapter *adapter,
