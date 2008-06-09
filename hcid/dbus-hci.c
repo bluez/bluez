@@ -2469,14 +2469,6 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	}
 }
 
-#ifndef HCIGETAUTHINFO
-#define HCIGETAUTHINFO _IOR('H', 215, int)
-struct hci_auth_info_req {
-	bdaddr_t bdaddr;
-	uint8_t  type;
-};
-#endif
-
 static uint8_t get_auth_type(bdaddr_t *local, bdaddr_t *remote)
 {
 	struct hci_auth_info_req req;

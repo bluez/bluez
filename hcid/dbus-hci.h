@@ -22,6 +22,14 @@
  *
  */
 
+#ifndef HCIGETAUTHINFO
+#define HCIGETAUTHINFO _IOR('H', 215, int)
+struct hci_auth_info_req {
+	bdaddr_t bdaddr;
+	uint8_t  type;
+};
+#endif
+
 void hcid_dbus_set_experimental();
 int hcid_dbus_use_experimental();
 int hcid_dbus_register_device(uint16_t id);
