@@ -16,6 +16,7 @@ if (len(sys.argv) < 2):
 	print "  list"
 	print "  create <address>"
 	print "  remove <path>"
+	print "  discover <address> [pattern]"
 	print "  class <address>"
 	print "  name <address>"
 	print "  alias <address> [alias]"
@@ -54,6 +55,8 @@ if (sys.argv[1] == "discover"):
 		else:
 			pattern = sys.argv[3]
 		services = device.DiscoverServices(pattern);
+		for key in services.keys():
+			print "0x%5x = %s" % (key, services[key])
 	sys.exit(0)
 
 if (sys.argv[1] == "class"):
