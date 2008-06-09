@@ -31,11 +31,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <sys/ioctl.h>
 
 #include <arpa/inet.h>
@@ -61,7 +58,6 @@
 
 #define BLUEZ_NAME "org.bluez"
 
-#define MAX_CONN_NUMBER		10
 #define RECONNECT_RETRY_TIMEOUT	5000
 
 static int experimental = 0;
@@ -166,35 +162,6 @@ int l2raw_connect(const char *local, const bdaddr_t *remote)
 failed:
 	close(sk);
 	return -1;
-}
-
-int find_conn(int s, int dev_id, long arg)
-{
-	struct hci_conn_list_req *cl;
-	struct hci_conn_info *ci;
-	int i;
-
-	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
-
-	cl->dev_id = dev_id;
-	cl->conn_num = 10;
-	ci = cl->conn_info;
-
-	if (ioctl(s, HCIGETCONNLIST, cl)) {
-		error("Can't get connection list");
-		goto failed;
-	}
-
-	for (i = 0; i < cl->conn_num; i++, ci++) {
-		if (bacmp((bdaddr_t *) arg, &ci->bdaddr))
-			continue;
-		g_free(cl);
-		return 1;
-	}
-
-failed:
-	g_free(cl);
-	return 0;
 }
 
 void hcid_dbus_set_experimental(void)

@@ -31,8 +31,6 @@ int str2uuid(uuid_t *uuid, const char *string);
 
 int l2raw_connect(const char *local, const bdaddr_t *remote);
 
-int find_conn(int s, int dev_id, long arg);
-
 #define check_address(address) bachk(address)
 
 void hcid_dbus_exit(void);
