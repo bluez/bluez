@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -64,7 +65,8 @@
 #include "dbus-sdp.h"
 #include "sdp-xml.h"
 
-#define MAX_DEVICES 16
+#define MAX_DEVICES		16
+#define DISCONNECT_TIMER	2
 
 #define DEVICE_INTERFACE "org.bluez.Device"
 
@@ -773,6 +775,9 @@ static void device_free(gpointer user_data)
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
 	g_slist_free(device->uuids);
 
+	if (device->disconn_timer)
+		g_source_remove(device->disconn_timer);
+
 	g_free(device->address);
 	g_free(device->path);
 	g_free(device);
@@ -1043,10 +1048,62 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static gboolean disconnect_timeout(gpointer user_data)
+{
+	struct device *device = user_data;
+	struct active_conn_info *ci;
+	GSList *l;
+	disconnect_cp cp;
+	bdaddr_t bda;
+	int dd;
+
+	device->disconn_timer = 0;
+
+	str2ba(device->address, &bda);
+	l = g_slist_find_custom(device->adapter->active_conn,
+				&bda, active_conn_find_by_bdaddr);
+	if (!l)
+		return FALSE;
+
+	ci = l->data;
+	dd = hci_open_dev(device->adapter->dev_id);
+	if (dd < 0)
+		goto fail;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = htobs(ci->handle);
+	cp.reason = HCI_OE_USER_ENDED_CONNECTION;
+
+	hci_send_cmd(dd, OGF_LINK_CTL, OCF_DISCONNECT,
+			DISCONNECT_CP_SIZE, &cp);
+
+	close(dd);
+
+fail:
+	return FALSE;
+}
+
 static DBusMessage *disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	/* FIXME disconnect device */
+	struct device *device = user_data;
+	GSList *l;
+	bdaddr_t bda;
+
+	str2ba(device->address, &bda);
+	l = g_slist_find_custom(device->adapter->active_conn,
+				&bda, active_conn_find_by_bdaddr);
+	if (!l)
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".NotConnected",
+				"Device is not connected");
+
+	g_dbus_emit_signal(conn, device->path,
+			DEVICE_INTERFACE, "DisconnectRequested",
+			DBUS_TYPE_INVALID);
+
+	device->disconn_timer = g_timeout_add_seconds(DISCONNECT_TIMER,
+						disconnect_timeout, device);
 
 	return dbus_message_new_method_return(msg);
 }

@@ -39,6 +39,7 @@ struct device {
 	GSList		*drivers;
 	gboolean	temporary;
 	struct agent	*agent;
+	guint		disconn_timer;
 };
 
 struct device *device_create(DBusConnection *conn, struct adapter *adapter,
