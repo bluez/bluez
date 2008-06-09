@@ -226,23 +226,6 @@ static void cmd_encrypt(int ctl, int hdev, char *opt)
 	}
 }
 
-static void cmd_secmgr(int ctl, int hdev, char *opt)
-{
-	int val, s = hci_open_dev(hdev);
-
-	if (!strcmp(opt, "secmgr"))
-		val = 1;
-	else
-		val = 0;
-
-	if (ioctl(s, HCISETSECMGR, val) < 0) {
-		fprintf(stderr, "Can't set security manager on hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
-		exit(1);
-	}
-	close(s);
-}
-
 static void cmd_up(int ctl, int hdev, char *opt)
 {
 	/* Start HCI device */
@@ -1642,8 +1625,6 @@ static struct {
 	{ "noauth",	cmd_auth,	0,		"Disable Authentication" },
 	{ "encrypt",	cmd_encrypt,	0,		"Enable Encryption" },
 	{ "noencrypt",	cmd_encrypt,	0,		"Disable Encryption" },
-	{ "secmgr",	cmd_secmgr,	0,		"Enable Security Manager" },
-	{ "nosecmgr",	cmd_secmgr,	0,		"Disable Security Manager" },
 	{ "piscan",	cmd_scan,	0,		"Enable Page and Inquiry scan" },
 	{ "noscan",	cmd_scan,	0,		"Disable scan" },
 	{ "iscan",	cmd_scan,	0,		"Enable Inquiry scan" },
