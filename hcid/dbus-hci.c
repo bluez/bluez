@@ -494,14 +494,22 @@ int unregister_adapter_path(const char *path)
 	g_free(adapter);
 
 unreg:
-	if (!g_dbus_unregister_all_interfaces(connection, path)) {
-		error("D-Bus failed to unregister %s object", path);
+	if (!adapter_cleanup(connection, path)) {
+		error("Failed to unregister adapter interface on %s object",
+			path);
+		return -1;
+	}
+
+	if (!security_cleanup(connection, path)) {
+		error("Failed to unregister security interface on %s object",
+			path);
 		return -1;
 	}
 
 	if (hcid_dbus_use_experimental()) {
 		const char *ptr = path + ADAPTER_PATH_INDEX;
-		g_dbus_unregister_all_interfaces(connection, ptr);
+
+		adapter_cleanup(connection, ptr);
 	}
 
 	return 0;

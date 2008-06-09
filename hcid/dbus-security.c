@@ -594,6 +594,11 @@ dbus_bool_t security_init(DBusConnection *conn, const char *path)
 			security_methods, NULL, NULL, NULL, NULL);
 }
 
+dbus_bool_t security_cleanup(DBusConnection *conn, const char *path)
+{
+	return g_dbus_unregister_interface(conn, path, SECURITY_INTERFACE);
+}
+
 static DBusPendingCall *agent_request(const char *path, bdaddr_t *bda,
 					struct passkey_agent *agent,
 					dbus_bool_t numeric, int old_if)

@@ -126,6 +126,8 @@ struct adapter {
 dbus_bool_t adapter_init(DBusConnection *conn,
 		const char *path, struct adapter *adapter);
 
+dbus_bool_t adapter_cleanup(DBusConnection *conn, const char *path);
+
 struct device *adapter_get_device(DBusConnection *conn,
 				struct adapter *adapter, const gchar *address);
 

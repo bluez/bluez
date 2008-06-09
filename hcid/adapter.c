@@ -4369,6 +4369,11 @@ dbus_bool_t adapter_init(DBusConnection *conn,
 			NULL, adapter, NULL);
 }
 
+dbus_bool_t adapter_cleanup(DBusConnection *conn, const char *path)
+{
+	return g_dbus_unregister_interface(conn, path, ADAPTER_INTERFACE);
+}
+
 const char *major_class_str(uint32_t class)
 {
 	uint8_t index = (class >> 8) & 0x1F;

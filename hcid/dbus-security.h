@@ -25,6 +25,7 @@
 #define SECURITY_INTERFACE "org.bluez.Security"
 
 dbus_bool_t security_init(DBusConnection *conn, const char *path);
+dbus_bool_t security_cleanup(DBusConnection *conn, const char *path);
 
 int handle_passkey_request_old(DBusConnection *conn, int dev,
 						struct adapter *adapter,
