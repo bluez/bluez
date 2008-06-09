@@ -7,7 +7,7 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 
-class Rejected(dbus.DBusException)
+class Rejected(dbus.DBusException):
 	_dbus_error_name = "org.bluez.Error.Rejected"
 
 class Agent(dbus.service.Object):
