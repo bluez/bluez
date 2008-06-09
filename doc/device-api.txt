@@ -39,7 +39,8 @@ Methods		dict GetProperties()
 
 			The return value is a dictionary with the record
 			handles as keys and the service record in XML format
-			as values.
+			as values. The key is uint32 and the value a string
+			for this dictionary.
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
