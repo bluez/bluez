@@ -2,6 +2,7 @@
 
 import sys
 import dbus
+import re
 
 bus = dbus.SystemBus()
 
@@ -56,7 +57,11 @@ if (sys.argv[1] == "discover"):
 			pattern = sys.argv[3]
 		services = device.DiscoverServices(pattern);
 		for key in services.keys():
-			print "0x%5x = %s" % (key, services[key])
+			p = re.compile(">.*?<")
+			xml = p.sub("><", services[key].replace("\n", ""))
+			print "[ 0x%5x ]" % (key)
+			print xml
+			print
 	sys.exit(0)
 
 if (sys.argv[1] == "class"):
