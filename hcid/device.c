@@ -1156,6 +1156,21 @@ void device_probe_drivers(struct device *device)
 	}
 }
 
+static void iter_append_record(DBusMessageIter *dict, uint32_t handle,
+							const char *record)
+{
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+							NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_UINT32, &handle);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &record);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	sdp_list_t *seq, *next, *svcclass;
@@ -1195,8 +1210,6 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		next = seq->next;
 	}
-
-	sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
 
 	/* Store the device's profiles in the filesystem */
 	str2ba(adapter->address, &src);
@@ -1245,7 +1258,18 @@ proceed:
 			DBUS_TYPE_UINT32_AS_STRING DBUS_TYPE_STRING_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-		/* FIXME add handle/record pairs */
+		for (seq = recs; seq; seq = next) {
+			sdp_record_t *rec = (sdp_record_t *) seq->data;
+			const char *val = "";
+
+			if (!rec)
+				break;
+
+			/* FIXME add the real record string */
+			iter_append_record(&dict, rec->handle, val);
+
+			next = seq->next;
+		}
 
 		dbus_message_iter_close_container(&iter, &dict);
 
@@ -1271,6 +1295,9 @@ proceed:
 	dbus_message_unref(reply);
 
 fail:
+	if (recs != NULL)
+		sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
+
 	dbus_message_unref(req->msg);
 	dbus_connection_unref(req->conn);
 	g_free(req);
