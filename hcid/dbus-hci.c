@@ -488,18 +488,20 @@ int unregister_adapter_path(const char *path)
 		g_slist_free(adapter->devices);
 	}
 
+	manager_remove_adapter(adapter);
+
 	g_free(adapter->path);
 	g_free(adapter);
 
 unreg:
-	if (!g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE)) {
+	if (!g_dbus_unregister_all_interfaces(connection, path)) {
 		error("D-Bus failed to unregister %s object", path);
 		return -1;
 	}
 
 	if (hcid_dbus_use_experimental()) {
 		const char *ptr = path + ADAPTER_PATH_INDEX;
-		g_dbus_unregister_interface(connection, ptr, ADAPTER_INTERFACE);
+		g_dbus_unregister_all_interfaces(connection, ptr);
 	}
 
 	return 0;
@@ -531,15 +533,15 @@ int hcid_dbus_register_device(uint16_t id)
 	adapter->pdiscov_resolve_names = 1;
 
 	if (!adapter_init(connection, path, adapter)) {
-		error("Adapter interface init failed");
+		error("Adapter interface init failed on path %s", path);
 		g_free(adapter);
 		return -1;
 	}
 
-	adapter->path  = g_strdup(path);
+	adapter->path = g_strdup(path);
 
 	if (!security_init(connection, path)) {
-		error("Security interface init failed");
+		error("Security interface init failed on path %s", path);
 		goto failed;
 	}
 
@@ -563,18 +565,11 @@ failed:
 
 int hcid_dbus_unregister_device(uint16_t id)
 {
-	struct adapter *adapter;
 	char path[MAX_PATH_LENGTH];
-	int ret;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
-	adapter = manager_find_adapter_by_path(path);
 
-	manager_remove_adapter(adapter);
-
-	ret = unregister_adapter_path(path);
-
-	return ret;
+	return unregister_adapter_path(path);
 }
 
 static void create_stored_device_from_profiles(char *key, char *value,
