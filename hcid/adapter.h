@@ -50,6 +50,7 @@ typedef enum {
 	AUTH_TYPE_PINCODE,
 	AUTH_TYPE_PASSKEY,
 	AUTH_TYPE_CONFIRM,
+	AUTH_TYPE_NOTIFY,
 } auth_type_t;
 
 struct remote_dev_info {

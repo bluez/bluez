@@ -57,6 +57,9 @@ int agent_request_confirmation(struct agent *agent, struct device *device,
 				uint32_t passkey, agent_cb cb,
 				void *user_data);
 
+int agent_display_passkey(struct agent *agent, struct device *device,
+				uint32_t passkey);
+
 int agent_cancel(struct agent *agent);
 
 uint8_t agent_get_io_capability(struct agent *agent);

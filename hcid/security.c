@@ -383,6 +383,14 @@ static void user_passkey_request(int dev, bdaddr_t *sba, void *ptr)
 						AUTH_TYPE_PASSKEY);
 }
 
+static void user_passkey_notify(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_user_passkey_notify *req = ptr;
+
+	if (hcid_dbus_user_notify(sba, &req->bdaddr, btohl(req->passkey)) == 0)
+		hcid_dbus_new_auth_request(sba, &req->bdaddr, AUTH_TYPE_NOTIFY);
+}
+
 static void remote_oob_data_request(int dev, bdaddr_t *sba, void *ptr)
 {
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_REMOTE_OOB_DATA_NEG_REPLY, 6, ptr);
@@ -885,6 +893,10 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 
 	case EVT_USER_PASSKEY_REQUEST:
 		user_passkey_request(dev, &di->bdaddr, ptr);
+		break;
+
+	case EVT_USER_PASSKEY_NOTIFY:
+		user_passkey_notify(dev, &di->bdaddr, ptr);
 		break;
 
 	case EVT_REMOTE_OOB_DATA_REQUEST:

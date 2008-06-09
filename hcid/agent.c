@@ -680,6 +680,32 @@ failed:
 	return -1;
 }
 
+int agent_display_passkey(struct agent *agent, struct device *device,
+				uint32_t passkey)
+{
+	DBusMessage *message;
+
+	message = dbus_message_new_method_call(agent->name, agent->path,
+				"org.bluez.Agent", "DisplayPasskey");
+	if (!message) {
+		error("Couldn't allocate D-Bus message");
+		return -1;
+	}
+
+	dbus_message_append_args(message,
+				DBUS_TYPE_OBJECT_PATH, &device->path,
+				DBUS_TYPE_UINT32, &passkey,
+				DBUS_TYPE_INVALID);
+
+	if (!g_dbus_send_message(connection, message)) {
+		error("D-Bus send failed");
+		dbus_message_unref(message);
+		return -1;
+	}
+
+	return 0;
+}
+
 uint8_t agent_get_io_capability(struct agent *agent)
 {
 	return agent->capability;

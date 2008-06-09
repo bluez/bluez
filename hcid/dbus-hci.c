@@ -1174,6 +1174,40 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	return 0;
 }
 
+int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
+{
+	struct adapter *adapter;
+	struct device *device;
+	struct agent *agent;
+	char addr[18];
+
+	adapter = adapter_find(sba);
+	if (!adapter) {
+		error("No matching adapter found");
+		return -1;
+	}
+
+	ba2str(dba, addr);
+
+	device = adapter_get_device(connection, adapter, addr);
+	if (device && device->agent)
+		agent = device->agent;
+	else
+		agent = adapter->agent;
+
+	if (!agent) {
+		error("No agent available for user confirm request");
+		return -1;
+	}
+
+	if (agent_display_passkey(agent, device, passkey) < 0) {
+		error("Displaying passkey failed");
+		return -1;
+	}
+
+	return 0;
+}
+
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 					uint8_t status)
 {

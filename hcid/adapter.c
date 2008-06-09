@@ -2629,6 +2629,9 @@ static void cancel_auth_request(int dd, auth_type_t type, bdaddr_t *bda)
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_NEG_REPLY,
 				6, bda);
 		break;
+	case AUTH_TYPE_NOTIFY:
+		/* User Notify doesn't require any reply */
+		break;
 	}
 }
 
