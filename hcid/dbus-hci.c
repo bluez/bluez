@@ -2469,7 +2469,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	}
 }
 
-static uint8_t get_auth_type(bdaddr_t *local, bdaddr_t *remote)
+static uint8_t get_auth_requirement(bdaddr_t *local, bdaddr_t *remote)
 {
 	struct hci_auth_info_req req;
 	char addr[18];
@@ -2513,7 +2513,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote, uint8_t *cap,
 		return -1;
 	}
 
-	type = get_auth_type(local, remote);
+	type = get_auth_requirement(local, remote);
 
 	debug("kernel authentication requirement = 0x%02x", type);
 
@@ -2525,8 +2525,11 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote, uint8_t *cap,
 		*auth = 0x03;
 	} else {
 		agent = adapter->agent;
-		*auth = 0x01;
+		*auth = 0x00;
 	}
+
+	if (type != 0xff && type & 0x01)
+		*auth |= 0x01;
 
 	if (!agent) {
 		error("No agent available for IO capability");
