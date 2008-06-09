@@ -7,6 +7,9 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 
+class Rejected(dbus.DBusException)
+	_dbus_error_name = "org.bluez.Error.Rejected"
+
 class Agent(dbus.service.Object):
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="", out_signature="")
@@ -41,6 +44,10 @@ class Agent(dbus.service.Object):
 					in_signature="ou", out_signature="")
 	def RequestConfirmation(self, device, passkey):
 		print "RequestConfirmation (%s, %d)" % (device, passkey)
+		confirm = raw_input("Confirm passkey (yes/no): ")
+		if (confirm == "yes"):
+			return
+		raise Rejected("Passkey doesn't match")
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="s", out_signature="")
