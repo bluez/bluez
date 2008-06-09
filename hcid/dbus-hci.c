@@ -1066,10 +1066,10 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 
 	if (err)
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
-				USER_CONFIRM_REPLY_CP_SIZE, &cp);
+					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 	else
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
-				USER_CONFIRM_REPLY_CP_SIZE, &cp);
+					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 
 	hci_close_dev(dd);
 }
@@ -1096,13 +1096,42 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	cp.passkey = passkey;
 
 	if (err)
-		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_NEG_REPLY,
-				6, &dba);
+		hci_send_cmd(dd, OGF_LINK_CTL,
+				OCF_USER_PASSKEY_NEG_REPLY, 6, &dba);
 	else
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_REPLY,
-				USER_PASSKEY_REPLY_CP_SIZE, &cp);
+					USER_PASSKEY_REPLY_CP_SIZE, &cp);
 
 	hci_close_dev(dd);
+}
+
+static uint8_t get_auth_requirements(bdaddr_t *local, bdaddr_t *remote)
+{
+	struct hci_auth_info_req req;
+	char addr[18];
+	int err, dd, dev_id;
+
+	ba2str(local, addr);
+
+	dev_id = hci_devid(addr);
+	if (dev_id < 0)
+		return 0xff;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0)
+		return 0xff;
+
+	memset(&req, 0, sizeof(req));
+	bacpy(&req.bdaddr, remote);
+	req.type = 0xff;
+
+	err = ioctl(dd, HCIGETAUTHINFO, (unsigned long) &req);
+	if (err < 0)
+		debug("HCIGETAUTHINFO failed (%d)", errno);
+
+	hci_close_dev(dd);
+
+	return req.type;
 }
 
 int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
@@ -1111,11 +1140,38 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	struct device *device;
 	struct agent *agent;
 	char addr[18];
+	uint8_t type;
 
 	adapter = adapter_find(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;
+	}
+
+	type = get_auth_requirements(sba, dba);
+
+	debug("kernel authentication requirement = 0x%02x", type);
+
+	/* If no MITM protection reqiured, auto-accept */
+	if (type != 0xff && !(type & 0x01)) {
+		user_confirm_reply_cp cp;
+		int dd;
+
+		dd = hci_open_dev(adapter->dev_id);
+		if (dd < 0) {
+			error("Unable to open hci%d", adapter->dev_id);
+			return -1;
+		}
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.bdaddr, dba);
+
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
+					USER_CONFIRM_REPLY_CP_SIZE, &cp);
+
+		hci_close_dev(dd);
+
+		return 0;
 	}
 
 	ba2str(dba, addr);
@@ -2469,35 +2525,6 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	}
 }
 
-static uint8_t get_auth_requirement(bdaddr_t *local, bdaddr_t *remote)
-{
-	struct hci_auth_info_req req;
-	char addr[18];
-	int err, dd, dev_id;
-
-	ba2str(local, addr);
-
-	dev_id = hci_devid(addr);
-	if (dev_id < 0)
-		return 0xff;
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0)
-		return 0xff;
-
-	memset(&req, 0, sizeof(req));
-	bacpy(&req.bdaddr, remote);
-	req.type = 0xff;
-
-	err = ioctl(dd, HCIGETAUTHINFO, (unsigned long) &req);
-	if (err < 0)
-		debug("HCIGETAUTHINFO failed (%d)", errno);
-
-	hci_close_dev(dd);
-
-	return req.type;
-}
-
 int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote, uint8_t *cap,
 				uint8_t *auth)
 {
@@ -2513,7 +2540,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote, uint8_t *cap,
 		return -1;
 	}
 
-	type = get_auth_requirement(local, remote);
+	type = get_auth_requirements(local, remote);
 
 	debug("kernel authentication requirement = 0x%02x", type);
 
