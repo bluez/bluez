@@ -1046,7 +1046,7 @@ static DBusMessage *disconnect(DBusConnection *conn,
 static GDBusMethodTable device_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",	get_properties	},
 	{ "SetProperty",	"sv",	"",		set_property	},
-	{ "DiscoverServices",	"s",	"a{sv}",	discover_services,
+	{ "DiscoverServices",	"s",	"a{us}",	discover_services,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "CancelDiscovery",	"",	"",		cancel_discover	},
 	{ "Disconnect",		"",	"",		disconnect	},
@@ -1232,8 +1232,25 @@ probe:
 
 proceed:
 	if (req->update == TRUE) {
-		/* FIXME return handle/record dictonary */
-		g_dbus_send_reply(req->conn, req->msg, DBUS_TYPE_INVALID);
+		DBusMessageIter iter, dict;
+
+		reply = dbus_message_new_method_return(req->msg);
+		if (!reply)
+			goto fail;
+
+		dbus_message_iter_init_append(reply, &iter);
+
+		dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_UINT32_AS_STRING DBUS_TYPE_STRING_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+		/* FIXME add handle/record pairs */
+
+		dbus_message_iter_close_container(&iter, &dict);
+
+		dbus_connection_send(req->conn, reply, NULL);
+		dbus_message_unref(reply);
 		goto fail;
 	}
 
@@ -1251,7 +1268,6 @@ proceed:
 							DBUS_TYPE_INVALID);
 
 	dbus_connection_send(req->conn, reply, NULL);
-
 	dbus_message_unref(reply);
 
 fail:
