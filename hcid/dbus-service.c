@@ -674,7 +674,7 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 	char address[18];
 	gboolean trusted;
 
-	adapter = adapter_find(src);
+	adapter = manager_find_adapter(src);
 	if (!adapter)
 		return -EPERM;
 
@@ -717,7 +717,7 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 
 int service_cancel_auth(const bdaddr_t *src)
 {
-	struct adapter *adapter = adapter_find(src);
+	struct adapter *adapter = manager_find_adapter(src);
 	struct device *device;
 	struct agent *agent;
 	char address[18];

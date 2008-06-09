@@ -27,6 +27,10 @@
 dbus_bool_t manager_init(DBusConnection *conn, const char *path);
 void manager_cleanup(DBusConnection *conn, const char *path);
 
-int get_default_adapter(void);
-
-void set_default_adapter(int new_default);
+struct adapter *manager_find_adapter(const bdaddr_t *sba);
+struct adapter *manager_find_adapter_by_path(const char *path);
+struct adapter *manager_find_adapter_by_id(int id);
+void manager_add_adapter(struct adapter *adapter);
+void manager_remove_adapter(struct adapter *adapter);
+int manager_get_default_adapter();
+void manager_set_default_adapter(int id);

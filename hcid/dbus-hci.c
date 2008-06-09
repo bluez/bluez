@@ -60,37 +60,6 @@
 #include "dbus-hci.h"
 
 static DBusConnection *connection = NULL;
-static GSList *adapters = NULL;
-
-static gint adapter_path_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct adapter *adapter = a;
-	const char *path = b;
-
-	return strcmp(adapter->path, path);
-}
-
-static gint adapter_address_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct adapter *adapter = a;
-	const char *address = b;
-
-	return strcmp(adapter->address, address);
-}
-
-struct adapter *adapter_find(const bdaddr_t *sba)
-{
-	GSList *match;
-	char address[18];
-
-	ba2str(sba, address);
-
-	match = g_slist_find_custom(adapters, address, adapter_address_cmp);
-	if (!match)
-		return NULL;
-
-	return match->data;
-}
 
 void bonding_request_free(struct bonding_request_info *bonding)
 {
@@ -441,18 +410,15 @@ static void do_unregister(gpointer data, gpointer user_data)
 
 int unregister_adapter_path(const char *path)
 {
-	struct adapter *adapter = NULL;
-	GSList *l;
+	struct adapter *adapter;
 
 	info("Unregister path: %s", path);
 
 	__remove_servers(path);
 
-	l = g_slist_find_custom(adapters, path, adapter_path_cmp);
-	if (!l)
+	adapter = manager_find_adapter_by_path(path);
+	if (!adapter)
 		goto unreg;
-
-	adapter = l->data;
 
 	/* check pending requests */
 	reply_pending_requests(path, adapter);
@@ -522,8 +488,6 @@ int unregister_adapter_path(const char *path)
 		g_slist_free(adapter->devices);
 	}
 
-	adapters = g_slist_remove(adapters, adapter);
-
 	g_free(adapter->path);
 	g_free(adapter);
 
@@ -551,7 +515,7 @@ unreg:
 int hcid_dbus_register_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
-	char *pptr = path, *ptr = path + ADAPTER_PATH_INDEX;
+	char *ptr = path + ADAPTER_PATH_INDEX;
 	struct adapter *adapter;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
@@ -579,25 +543,9 @@ int hcid_dbus_register_device(uint16_t id)
 		goto failed;
 	}
 
-	/*
-	 * Send the adapter added signal
-	 */
-	if (hcid_dbus_use_experimental()) {
-		g_dbus_emit_signal(connection, "/",
-						MANAGER_INTERFACE,
-						"AdapterAdded",
-						DBUS_TYPE_OBJECT_PATH, &ptr,
-						DBUS_TYPE_INVALID);
-	}
-
-	g_dbus_emit_signal(connection, BASE_PATH, MANAGER_INTERFACE,
-					"AdapterAdded",
-					DBUS_TYPE_STRING, &pptr,
-					DBUS_TYPE_INVALID);
-
 	__probe_servers(path);
 
-	adapters = g_slist_append(adapters, adapter);
+	manager_add_adapter(adapter);
 
 	return 0;
 
@@ -615,54 +563,16 @@ failed:
 
 int hcid_dbus_unregister_device(uint16_t id)
 {
+	struct adapter *adapter;
 	char path[MAX_PATH_LENGTH];
-	char *pptr = path, *ptr = path + ADAPTER_PATH_INDEX;
 	int ret;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
+	adapter = manager_find_adapter_by_path(path);
 
-	if (hcid_dbus_use_experimental()) {
-		g_dbus_emit_signal(connection, "/",
-						MANAGER_INTERFACE,
-						"AdapterRemoved",
-						DBUS_TYPE_OBJECT_PATH, &ptr,
-						DBUS_TYPE_INVALID);
-	}
-
-	g_dbus_emit_signal(connection, BASE_PATH, MANAGER_INTERFACE,
-					"AdapterRemoved",
-					DBUS_TYPE_STRING, &pptr,
-					DBUS_TYPE_INVALID);
+	manager_remove_adapter(adapter);
 
 	ret = unregister_adapter_path(path);
-
-	if (ret == 0 && (get_default_adapter() == id || get_default_adapter() < 0)) {
-		int new_default = hci_get_route(NULL);
-		set_default_adapter(new_default);
-		if (new_default >= 0) {
-			snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH,
-					new_default);
-			if (hcid_dbus_use_experimental()) {
-				g_dbus_emit_signal(connection, "/",
-						MANAGER_INTERFACE,
-						"DefaultAdapterChanged",
-						DBUS_TYPE_OBJECT_PATH, &ptr,
-						DBUS_TYPE_INVALID);
-			}
-			g_dbus_emit_signal(connection, BASE_PATH,
-							MANAGER_INTERFACE,
-							"DefaultAdapterChanged",
-							DBUS_TYPE_STRING, &pptr,
-							DBUS_TYPE_INVALID);
-		} else {
-			*path = '\0';
-			g_dbus_emit_signal(connection, BASE_PATH,
-							MANAGER_INTERFACE,
-							"DefaultAdapterChanged",
-							DBUS_TYPE_STRING, &pptr,
-							DBUS_TYPE_INVALID);
-		}
-	}
 
 	return ret;
 }
@@ -716,14 +626,13 @@ static void register_devices(bdaddr_t *src, struct adapter *adapter)
 int hcid_dbus_start_device(uint16_t id)
 {
 	char path[MAX_PATH_LENGTH];
-	char *pptr = path, *ptr = path + ADAPTER_PATH_INDEX;
+	char *ptr = path + ADAPTER_PATH_INDEX;
 	struct hci_dev_info di;
 	struct adapter* adapter;
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci;
 	const char *mode;
 	int i, err, dd = -1, ret = -1;
-	GSList *l;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
@@ -735,13 +644,11 @@ int hcid_dbus_start_device(uint16_t id)
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		return -1;
 
-	l = g_slist_find_custom(adapters, path, adapter_path_cmp);
-	if (!l) {
+	adapter = manager_find_adapter_by_path(path);
+	if (!adapter) {
 		error("Getting %s path data failed!", path);
 		return -1;
 	}
-
-	adapter = l->data;
 
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
 		adapter->discov_active = 1;
@@ -807,21 +714,8 @@ int hcid_dbus_start_device(uint16_t id)
 						DBUS_TYPE_STRING, &mode);
 	}
 
-	if (get_default_adapter() < 0) {
-		set_default_adapter(id);
-		if (hcid_dbus_use_experimental())
-			g_dbus_emit_signal(connection, "/",
-						MANAGER_INTERFACE,
-						"DefaultAdapterChanged",
-						DBUS_TYPE_OBJECT_PATH, &ptr,
-						DBUS_TYPE_INVALID);
-
-		g_dbus_emit_signal(connection, BASE_PATH,
-					    MANAGER_INTERFACE,
-					    "DefaultAdapterChanged",
-					    DBUS_TYPE_STRING, &pptr,
-					    DBUS_TYPE_INVALID);
-	}
+	if (manager_get_default_adapter() < 0)
+		manager_set_default_adapter(id);
 
 	if (hcid_dbus_use_experimental())
 		register_devices(&di.bdaddr, adapter);
@@ -853,17 +747,14 @@ int hcid_dbus_stop_device(uint16_t id)
 	char path[MAX_PATH_LENGTH];
 	struct adapter *adapter;
 	const char *mode = "off";
-	GSList *l;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, id);
 
-	l = g_slist_find_custom(adapters, path, adapter_path_cmp);
-	if (!l) {
+	adapter = manager_find_adapter_by_path(path);
+	if (!adapter) {
 		error("Getting %s path data failed!", path);
 		return -1;
 	}
-
-	adapter = l->data;
 
 	/* cancel pending timeout */
 	if (adapter->timeout_id) {
@@ -952,7 +843,7 @@ void hcid_dbus_new_auth_request(bdaddr_t *sba, bdaddr_t *dba, auth_type_t type)
 	struct adapter *adapter;
 	struct pending_auth_info *info;
 
-	adapter = adapter_find(sba);
+	adapter = manager_find_adapter(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1017,7 +908,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	struct device *device;
 	struct agent *agent;
 
-	adapter = adapter_find(sba);
+	adapter = manager_find_adapter(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;
@@ -1142,7 +1033,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	char addr[18];
 	uint8_t type;
 
-	adapter = adapter_find(sba);
+	adapter = manager_find_adapter(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;
@@ -1203,7 +1094,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	struct agent *agent;
 	char addr[18];
 
-	adapter = adapter_find(sba);
+	adapter = manager_find_adapter(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;
@@ -1237,7 +1128,7 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	struct agent *agent;
 	char addr[18];
 
-	adapter = adapter_find(sba);
+	adapter = manager_find_adapter(sba);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;
@@ -1281,7 +1172,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	ba2str(peer, peer_addr);
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
@@ -1372,7 +1263,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	struct adapter *adapter;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
@@ -1535,7 +1426,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	struct remote_dev_info *dev;
 	bdaddr_t tmp;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
@@ -1636,7 +1527,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 	if (status)
 		return;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1670,7 +1561,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	if (status)
 		return;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1816,7 +1707,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1941,7 +1832,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	if (old_class == class)
 		return;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1978,7 +1869,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2071,7 +1962,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	struct adapter *adapter;
 	GSList *l;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2136,7 +2027,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		return;
 	}
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2392,7 +2283,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	struct hci_request rq;
 	int dd = -1;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2442,7 +2333,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 	int dd;
 	uint8_t cls[3];
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2512,7 +2403,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 	ret_pin_code_req_reply *ret = ptr + EVT_CMD_COMPLETE_SIZE;
 	GSList *l;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -2534,7 +2425,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote, uint8_t *cap,
 	char addr[18];
 	uint8_t type;
 
-	adapter = adapter_find(local);
+	adapter = manager_find_adapter(local);
 	if (!adapter) {
 		error("No matching adapter found");
 		return -1;

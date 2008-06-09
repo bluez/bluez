@@ -243,7 +243,7 @@ static gboolean system_bus_reconnect(void *data)
 	}
 
 	/* reset the default device */
-	set_default_adapter(-1);
+	manager_set_default_adapter(-1);
 
 	for (i = 0; i < dl->dev_num; i++, dr++)
 		hcid_dbus_register_device(dr->dev_id);
