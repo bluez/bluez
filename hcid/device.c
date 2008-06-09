@@ -1142,14 +1142,16 @@ void device_probe_drivers(struct device *device)
 		}
 
 		if (do_probe == TRUE && !g_slist_find_custom(device->drivers,
-					driver->name, (GCompareFunc) strcmp)) {
+					driver, (GCompareFunc) strcmp)) {
 			err = driver->probe(&device->dev);
-			if (err < 0)
+			if (err < 0) {
 				error("probe failed for driver %s",
 							driver->name);
-			else
-				device->drivers = g_slist_append(device->drivers,
-									driver);
+				continue;
+			}
+
+			device->drivers = g_slist_append(device->drivers,
+								driver);
 		}
 	}
 }
