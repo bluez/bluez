@@ -1279,7 +1279,7 @@ proceed:
 						append_and_grow_string);
 
 			if (result.data) {
-				const char *val = result.data;
+				const char *val = (char *) result.data;
 				iter_append_record(&dict, rec->handle, val);
 				free(result.data);
 			}
