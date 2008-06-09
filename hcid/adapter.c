@@ -3892,7 +3892,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 
 	device->temporary = FALSE;
 
-	device_browse(device, conn, msg);
+	device_browse(device, conn, msg, FALSE);
 
 	adapter->devices = g_slist_append(adapter->devices, device);
 
@@ -3933,8 +3933,7 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 	if (cap == IO_CAPABILITY_INVALID)
 		return invalid_args(msg);
 
-	return create_bonding(conn, msg, address, agent_path, cap,
-				data);
+	return create_bonding(conn, msg, address, agent_path, cap, data);
 }
 
 static gint device_path_cmp(struct device *device, const gchar *path)

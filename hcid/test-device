@@ -42,6 +42,16 @@ if (sys.argv[1] == "remove"):
 		adapter.RemoveDevice(sys.argv[2])
 	sys.exit(0)
 
+if (sys.argv[1] == "update"):
+	if (len(sys.argv) < 3):
+		print "Need address parameter"
+	else:
+		path = adapter.FindDevice(sys.argv[2])
+		device = dbus.Interface(bus.get_object("org.bluez", path),
+							"org.bluez.Device")
+		device.DiscoverServices("");
+	sys.exit(0)
+
 if (sys.argv[1] == "class"):
 	if (len(sys.argv) < 3):
 		print "Need address parameter"

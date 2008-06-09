@@ -70,6 +70,7 @@ struct browse_req {
 	DBusMessage *msg;
 	struct device *device;
 	int search_uuid;
+	gboolean update;
 };
 
 struct hci_peer {
@@ -1014,13 +1015,14 @@ static DBusMessage *set_property(DBusConnection *conn,
 static DBusMessage *discover_services(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
+	struct device *device = user_data;
 	const char *pattern;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 						DBUS_TYPE_INVALID) == FALSE)
 		return NULL;
 
-	/* FIXME start service discovery */
+	device_browse(device, conn, msg, TRUE);
 
 	return NULL;
 }
@@ -1227,6 +1229,12 @@ probe:
 	device_probe_drivers(device);
 
 proceed:
+	if (req->update == TRUE) {
+		/* FIXME return handle/record dictonary */
+		g_dbus_send_reply(req->conn, req->msg, DBUS_TYPE_INVALID);
+		goto fail;
+	}
+
 	g_dbus_emit_signal(req->conn, dbus_message_get_path(req->msg),
 				ADAPTER_INTERFACE, "DeviceCreated",
 				DBUS_TYPE_OBJECT_PATH, &device->path,
@@ -1238,7 +1246,7 @@ proceed:
 		goto fail;
 
 	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
-					DBUS_TYPE_INVALID);
+							DBUS_TYPE_INVALID);
 
 	dbus_connection_send(req->conn, reply, NULL);
 
@@ -1251,7 +1259,7 @@ fail:
 }
 
 int device_browse(struct device *device, DBusConnection *conn,
-			DBusMessage *msg)
+					DBusMessage *msg, gboolean update)
 {
 	struct adapter *adapter = device->adapter;
 	struct browse_req *req;
@@ -1262,6 +1270,7 @@ int device_browse(struct device *device, DBusConnection *conn,
 	req->conn = dbus_connection_ref(conn);
 	req->msg = dbus_message_ref(msg);
 	req->device = device;
+	req->update = update;
 
 	str2ba(adapter->address, &src);
 	str2ba(device->address, &dst);
