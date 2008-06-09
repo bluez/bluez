@@ -40,3 +40,5 @@ DBusMessage *finish_remote_svc_transact(DBusConnection *conn,
 					DBusMessage *msg, void *data);
 
 uint16_t sdp_str2svclass(const char *str);
+
+void append_and_grow_string(void *data, const char *str);

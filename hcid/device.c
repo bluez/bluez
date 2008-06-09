@@ -61,6 +61,8 @@
 #include "error.h"
 #include "glib-helper.h"
 #include "agent.h"
+#include "dbus-sdp.h"
+#include "sdp-xml.h"
 
 #define MAX_DEVICES 16
 
@@ -1266,13 +1268,21 @@ proceed:
 
 		for (seq = recs; seq; seq = next) {
 			sdp_record_t *rec = (sdp_record_t *) seq->data;
-			const char *val = "";
+			sdp_buf_t result;
 
 			if (!rec)
 				break;
 
-			/* FIXME add the real record string */
-			iter_append_record(&dict, rec->handle, val);
+			memset(&result, 0, sizeof(sdp_buf_t));
+
+			convert_sdp_record_to_xml(rec, &result,
+						append_and_grow_string);
+
+			if (result.data) {
+				const char *val = result.data;
+				iter_append_record(&dict, rec->handle, val);
+				free(result.data);
+			}
 
 			next = seq->next;
 		}

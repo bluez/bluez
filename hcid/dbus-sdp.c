@@ -245,7 +245,7 @@ static sdp_session_t *get_sdp_session(bdaddr_t *src, bdaddr_t *dst)
 	return session;
 }
 
-static void append_and_grow_string(void *data, const char *str)
+void append_and_grow_string(void *data, const char *str)
 {
 	sdp_buf_t *buff = data;
 	int len;
