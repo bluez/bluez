@@ -18,7 +18,6 @@ class Agent(dbus.service.Object):
 					in_signature="os", out_signature="")
 	def Authorize(self, device, uuid):
 		print "Authorize (%s, %s)" % (device, uuid)
-		return
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="s")
@@ -37,25 +36,21 @@ class Agent(dbus.service.Object):
 					in_signature="ou", out_signature="")
 	def DisplayPasskey(self, device, passkey):
 		print "DisplayPasskey (%s, %d)" % (device, passkey)
-		return
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="ou", out_signature="")
 	def RequestConfirmation(self, device, passkey):
 		print "RequestConfirmation (%s, %d)" % (device, passkey)
-		return
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="s", out_signature="")
 	def ConfirmModeChange(self, mode):
 		print "ConfirmModeChange (%s)" % (mode)
-		return
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="", out_signature="")
 	def Cancel(self):
 		print "Cancel"
-		return
 
 def create_device_reply(reply):
 	print "New device (%s)" % (reply)
