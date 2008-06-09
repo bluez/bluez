@@ -2498,6 +2498,8 @@ static uint8_t get_auth_type(bdaddr_t *local, bdaddr_t *remote)
 	req.type = 0xff;
 
 	err = ioctl(dd, HCIGETAUTHINFO, (unsigned long) &req);
+	if (err < 0)
+		debug("HCIGETAUTHINFO failed (%d)", errno);
 
 	hci_close_dev(dd);
 
