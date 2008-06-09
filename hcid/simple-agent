@@ -74,9 +74,6 @@ if __name__ == '__main__':
 	path = "/test/agent"
 	object = Agent(bus, path)
 
-	adapter.RegisterAgent(path, "DisplayOnly")
-	print "Agent registered"
-
 	mainloop = gobject.MainLoop()
 
 	if len(sys.argv) > 2:
@@ -87,6 +84,9 @@ if __name__ == '__main__':
 		adapter.CreatePairedDevice(sys.argv[2], path, "DisplayOnly",
 					reply_handler=create_device_reply,
 					error_handler=create_device_reply)
+	else:
+		adapter.RegisterAgent(path, "DisplayOnly")
+		print "Agent registered"
 
 	mainloop.run()
 
