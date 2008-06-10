@@ -50,8 +50,8 @@ DBusMessage *create_errno_message(DBusMessage *msg, int err)
 DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMessage *msg, int err)
 {
 	return error_common_reply(conn, msg,
-				ERROR_INTERFACE ".ConnectionAttemptFailed",
-				err ? strerror(err) : "Connection attempt failed");
+			ERROR_INTERFACE ".ConnectionAttemptFailed",
+			err > 0 ? strerror(err) : "Connection attempt failed");
 }
 
 /**
@@ -109,6 +109,7 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 					const char *name, const char *descr)
 {
 	DBusMessage *derr;
+	dbus_bool_t ret;
 
 	if (!conn || !msg)
 		return DBUS_HANDLER_RESULT_HANDLED;
@@ -117,7 +118,7 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 	if (!derr)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_connection_send(conn, derr, NULL);
+	ret = dbus_connection_send(conn, derr, NULL);
 
 	dbus_message_unref(derr);
 
