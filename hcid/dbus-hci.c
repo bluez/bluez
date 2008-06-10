@@ -873,6 +873,10 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	size_t len;
 	int dev;
 
+	/* No need to reply anything if the authentication already failed */
+	if (adapter->bonding && adapter->bonding->hci_status)
+		return;
+
 	dev = hci_open_dev(adapter->dev_id);
 	if (dev < 0) {
 		error("hci_open_dev(%d): %s (%d)", adapter->dev_id,
@@ -949,6 +953,10 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	user_confirm_reply_cp cp;
 	int dd;
 
+	/* No need to reply anything if the authentication already failed */
+	if (adapter->bonding && adapter->bonding->hci_status)
+		return;
+
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
 		error("Unable to open hci%d", adapter->dev_id);
@@ -976,6 +984,10 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	user_passkey_reply_cp cp;
 	bdaddr_t dba;
 	int dd;
+
+	/* No need to reply anything if the authentication already failed */
+	if (adapter->bonding && adapter->bonding->hci_status)
+		return;
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
