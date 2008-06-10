@@ -58,6 +58,7 @@
 #include "error.h"
 #include "dbus-sdp.h"
 #include "sdp-xml.h"
+#include "glib-helper.h"
 
 #define SESSION_TIMEOUT 2000
 #define DEFAULT_XML_BUF_SIZE	1024
@@ -1044,7 +1045,7 @@ static int remote_svc_handles_conn_cb(struct transaction_context *ctxt)
 			DBUS_TYPE_INVALID);
 
 	if (strlen(svc) > 0)
-		str2uuid(&ctxt->uuid, svc);
+		bt_string2uuid(&ctxt->uuid, svc);
 	else
 		sdp_uuid16_create(&ctxt->uuid, PUBLIC_BROWSE_GROUP);
 
@@ -1090,7 +1091,7 @@ DBusMessage *get_remote_svc_handles(DBusConnection *conn,
 
 	if (strlen(svc) > 0) {
 		/* Check if it is a service name string */
-		if (str2uuid(&uuid, svc) < 0) {
+		if (bt_string2uuid(&uuid, svc) < 0) {
 			error("Invalid service class name");
 			return invalid_args(msg);
 		}

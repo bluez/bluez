@@ -35,8 +35,6 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-#include <arpa/inet.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
@@ -61,57 +59,6 @@
 #define RECONNECT_RETRY_TIMEOUT	5000
 
 static int experimental = 0;
-
-int str2uuid(uuid_t *uuid, const char *string)
-{
-	uint16_t svclass, data1, data2, data3, data5;
-	uint32_t data0, data4;
-	uint8_t val[16];
-
-	svclass = sdp_str2svclass(string);
-	if (svclass) {
-		sdp_uuid16_create(uuid, svclass);
-		return 0;
-	}
-
-	if (strlen(string) != 36)
-		return -1;
-
-	if (string[8] != '-' || string[13] != '-' ||
-				string[18] != '-' || string[23] != '-')
-		return -1;
-
-	if (sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
-			&data0, &data1, &data2, &data3, &data4, &data5) != 6)
-		return -1;
-
-	/* Base UUID is 00001203-0000-1000-8000-00805F9B34FB */
-	if (data1 == 0x0000 && data2 == 0x1000 && data3 == 0x8000 &&
-				data4 == 0x00805F9B && data5 == 0x34FB) {
-		if ((data0 & 0xffff0000) > 0)
-			sdp_uuid32_create(uuid, data0);
-		else
-			sdp_uuid16_create(uuid, data0);
-		return 0;
-	}
-
-	data0 = htonl(data0);
-	data1 = htons(data1);
-	data2 = htons(data2);
-	data3 = htons(data3);
-	data4 = htonl(data4);
-	data5 = htons(data5);
-
-	memcpy(&val[0], &data0, 4);
-	memcpy(&val[4], &data1, 2);
-	memcpy(&val[6], &data2, 2);
-	memcpy(&val[8], &data3, 2);
-	memcpy(&val[10], &data4, 4);
-	memcpy(&val[14], &data5, 2);
-
-	sdp_uuid128_create(uuid, val);
-	return 0;
-}
 
 int l2raw_connect(const char *local, const bdaddr_t *remote)
 {
