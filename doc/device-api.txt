@@ -68,12 +68,7 @@ Methods		dict GetProperties()
 			their connections gracefully before the ACL connection
 			is terminated.
 
-			Possible errors: org.bluez.Error.NotReady
-					 org.bluez.Error.Failed
-					 org.bluez.Error.NoSuchAdapter
-					 org.bluez.Error.InvalidArguments
-					 org.bluez.Error.NotConnected
-					 org.bluez.Error.InProgress
+			Possible errors: org.bluez.Error.NotConnected
 
 Signals		PropertyChanged(string name, variant value)
 
