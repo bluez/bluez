@@ -28,7 +28,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -335,9 +334,9 @@ char *bt_uuid2string(uuid_t *uuid)
 		return NULL;
 
 	sprintf(str, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x",
-			ntohl(data0), ntohs(data1),
-			ntohs(data2), ntohs(data3),
-			ntohl(data4), ntohs(data5));
+			g_ntohl(data0), g_ntohs(data1),
+			g_ntohs(data2), g_ntohs(data3),
+			g_ntohl(data4), g_ntohs(data5));
 
 	return str;
 }
@@ -356,12 +355,12 @@ int bt_string2uuid(uuid_t *uuid, const char *string)
 				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
 		uint8_t val[16];
 
-		data0 = htonl(data0);
-		data1 = htons(data1);
-		data2 = htons(data2);
-		data3 = htons(data3);
-		data4 = htonl(data4);
-		data5 = htons(data5);
+		data0 = g_htonl(data0);
+		data1 = g_htons(data1);
+		data2 = g_htons(data2);
+		data3 = g_htons(data3);
+		data4 = g_htonl(data4);
+		data5 = g_htons(data5);
 
 		memcpy(&val[0], &data0, 4);
 		memcpy(&val[4], &data1, 2);
