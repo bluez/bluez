@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/poll.h>
 #include <sys/types.h>
+#include <netinet/in.h>
 #include <inttypes.h>
 
 typedef char	gchar;
@@ -39,6 +40,11 @@ typedef ssize_t	gssize;
 #ifndef SSIZE_MAX
 #define SSIZE_MAX	INT_MAX
 #endif
+
+#define g_ntohs(val) ntohs(val)
+#define g_ntohl(val) ntohl(val)
+#define g_htons(val) htons(val)
+#define g_htonl(val) htonl(val)
 
 typedef pid_t GPid;
 
