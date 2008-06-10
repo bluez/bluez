@@ -162,6 +162,7 @@ void g_main_loop_run(GMainLoop *loop);
 void g_main_loop_quit(GMainLoop *loop);
 void g_main_loop_unref(GMainLoop *loop);
 guint g_timeout_add(guint interval, GSourceFunc function, gpointer data);
+guint g_timeout_add_seconds(guint interval, GSourceFunc function, gpointer data);
 guint g_idle_add(GSourceFunc function, gpointer data);
 gboolean g_source_remove(guint tag);
 

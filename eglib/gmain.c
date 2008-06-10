@@ -614,6 +614,11 @@ guint g_timeout_add(guint interval, GSourceFunc function, gpointer data)
 	return t->id;
 }
 
+guint g_timeout_add_seconds(guint interval, GSourceFunc function, gpointer data)
+{
+	return g_timeout_add(interval, function, data);
+}
+
 guint g_idle_add(GSourceFunc function, gpointer data)
 {
 	return g_timeout_add(1, function, data);
