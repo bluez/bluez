@@ -667,6 +667,8 @@ static BtIOError sco_connect(BtIO *io, BtIOFunc func)
 		return BT_IO_FAILED;
 	}
 
+	io_ctxt->fd = sk;
+
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
 	str2ba(io->dst, &addr.sco_bdaddr);
