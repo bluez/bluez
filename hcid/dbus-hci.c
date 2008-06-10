@@ -1193,9 +1193,12 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		return;
 	}
 
-	if (status)
+	if (status) {
+		if (adapter->bonding)
+			adapter->bonding->hci_status = status;
 		cancel_passkey_agent_requests(adapter->passkey_agents,
 						adapter->path, peer);
+	}
 
 	l = g_slist_find_custom(adapter->pin_reqs, peer, pin_req_cmp);
 	if (!l) {
