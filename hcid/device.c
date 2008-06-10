@@ -76,6 +76,7 @@ struct browse_req {
 	struct device *device;
 	int search_uuid;
 	gboolean update;
+	gboolean browse;
 };
 
 struct hci_peer {
@@ -1030,12 +1031,22 @@ static DBusMessage *discover_services(DBusConnection *conn,
 {
 	struct device *device = user_data;
 	const char *pattern;
+	uint16_t search;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 						DBUS_TYPE_INVALID) == FALSE)
 		return NULL;
 
-	device_browse(device, conn, msg, TRUE);
+	if (strlen(pattern) == 0) {
+		device_browse(device, conn, msg, TRUE, 0);
+		return NULL;
+	}
+
+	search = sdp_str2svclass(pattern);
+	if (!search)
+		return invalid_args(msg);
+
+	device_browse(device, conn, msg, TRUE, search);
 
 	return NULL;
 }
@@ -1295,8 +1306,8 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 					DBUS_TYPE_ARRAY, &uuids);
 	g_free(uuids);
 
-	/* Public browsing was succesful */
-	if (!req->search_uuid && recs)
+	/* Public browsing successful or Single record requested */
+	if (req->browse == FALSE || (!req->search_uuid && recs))
 		goto probe;
 
 	if (uuid_list[++req->search_uuid]) {
@@ -1377,7 +1388,7 @@ fail:
 }
 
 int device_browse(struct device *device, DBusConnection *conn,
-					DBusMessage *msg, gboolean update)
+			DBusMessage *msg, gboolean update, uint16_t search)
 {
 	struct adapter *adapter = device->adapter;
 	struct browse_req *req;
@@ -1392,7 +1403,14 @@ int device_browse(struct device *device, DBusConnection *conn,
 
 	str2ba(adapter->address, &src);
 	str2ba(device->address, &dst);
-	sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
+
+	if (search) {
+		sdp_uuid16_create(&uuid, search);
+		req->browse = FALSE;
+	} else {
+		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
+		req->browse = TRUE;
+	}
 
 	return bt_search_service(&src, &dst, &uuid, browse_cb, req, NULL);
 }
