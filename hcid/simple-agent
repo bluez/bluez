@@ -59,8 +59,12 @@ class Agent(dbus.service.Object):
 	def Cancel(self):
 		print "Cancel"
 
-def create_device_reply(reply):
-	print "New device (%s)" % (reply)
+def create_device_reply(device):
+	print "New device (%s)" % (device)
+	sys.exit(0)
+
+def create_device_error(error):
+	print "Creating device failed: %s" % (error)
 	sys.exit(0)
 
 if __name__ == '__main__':
@@ -90,7 +94,7 @@ if __name__ == '__main__':
 
 		adapter.CreatePairedDevice(sys.argv[2], path, "DisplayOnly",
 					reply_handler=create_device_reply,
-					error_handler=create_device_reply)
+					error_handler=create_device_error)
 	else:
 		adapter.RegisterAgent(path, "DisplayOnly")
 		print "Agent registered"
