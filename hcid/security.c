@@ -423,6 +423,18 @@ static void io_capa_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	}
 }
 
+static void io_capa_response(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_io_capability_response *evt = ptr;
+	char sa[18], da[18];
+
+	ba2str(sba, sa); ba2str(&evt->bdaddr, da);
+	info("io_capa_response (sba=%s, dba=%s)", sa, da);
+
+	hcid_dbus_set_io_cap(sba, &evt->bdaddr,
+				evt->capability, evt->authentication);
+}
+
 /* PIN code handling */
 
 void set_pin_length(bdaddr_t *sba, int length)
@@ -885,6 +897,10 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 
 	case EVT_IO_CAPABILITY_REQUEST:
 		io_capa_request(dev, &di->bdaddr, (bdaddr_t *) ptr);
+		break;
+
+	case EVT_IO_CAPABILITY_RESPONSE:
+		io_capa_response(dev, &di->bdaddr, ptr);
 		break;
 
 	case EVT_USER_CONFIRM_REQUEST:
