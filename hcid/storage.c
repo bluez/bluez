@@ -433,7 +433,7 @@ int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
 	return textfile_put(filename, addr, str);
 }
 
-int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type, int length)
+int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t type, int length)
 {
 	char filename[PATH_MAX + 1], addr[18], str[38];
 	int i;
@@ -461,7 +461,7 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type
 	return textfile_put(filename, addr, str);
 }
 
-int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key)
+int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *type)
 {
 	char filename[PATH_MAX + 1], addr[18], tmp[3], *str;
 	int i;
@@ -477,6 +477,11 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key)
 	for (i = 0; i < 16; i++) {
 		memcpy(tmp, str + (i * 2), 2);
 		key[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	if (type) {
+		memcpy(tmp, str + 33, 2);
+		*type = (uint8_t) strtol(tmp, NULL, 10);
 	}
 
 	free(str);

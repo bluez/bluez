@@ -202,8 +202,8 @@ int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, u
 int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features);
 int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
 int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
-int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, int type, int length);
-int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key);
+int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t type, int length);
+int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *type);
 int read_pin_length(bdaddr_t *local, bdaddr_t *peer);
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
 gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service);

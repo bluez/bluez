@@ -278,17 +278,19 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
 	unsigned char key[16];
 	char sa[18], da[18];
+	uint8_t type;
 	int err;
 
 	ba2str(sba, sa); ba2str(dba, da);
 	info("link_key_request (sba=%s, dba=%s)", sa, da);
 
-	err = read_link_key(sba, dba, key);
+	err = read_link_key(sba, dba, key, &type);
 	if (err < 0) {
 		/* Link key not found */
 		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY, 6, dba);
 	} else {
 		/* Link key found */
+		debug("Link key with type %d", type);
 		link_key_reply_cp lr;
 		memcpy(lr.link_key, key, 16);
 		bacpy(&lr.bdaddr, dba);
@@ -477,7 +479,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	pinlen = read_pin_code(sba, dba, pin);
 
 	if (pairing == HCID_PAIRING_ONCE) {
-		err = read_link_key(sba, dba, key);
+		err = read_link_key(sba, dba, key, NULL);
 		if (!err) {
 			ba2str(dba, da);
 			error("PIN code request for already paired device %s", da);
