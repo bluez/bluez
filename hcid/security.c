@@ -305,7 +305,7 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		memcpy(lr.link_key, key, 16);
 		bacpy(&lr.bdaddr, dba);
 
-		debug("stored link key type = 0x02%x", type);
+		debug("stored link key type = 0x%02x", type);
 
 		if ((type == 0x03 || type == 0x04) && (req.type & 0x01))
 			hci_send_cmd(dev, OGF_LINK_CTL,
