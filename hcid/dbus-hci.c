@@ -2467,7 +2467,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 
 	if (!agent) {
 		if (!(type & 0x01)) {
-			*cap = 0x01;
+			*cap = 0x03;
 			return 0;
 		}
 		error("No agent available for IO capability");
