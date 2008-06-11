@@ -34,7 +34,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <malloc.h>
+#include <string.h>
 #include <syslog.h>
 #include <sys/un.h>
 #include <sys/socket.h>
