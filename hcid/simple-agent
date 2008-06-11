@@ -26,7 +26,7 @@ class Agent(dbus.service.Object):
 					in_signature="o", out_signature="s")
 	def RequestPinCode(self, device):
 		print "RequestPinCode (%s)" % (device)
-		return "1234"
+		return raw_input("Enter PIN Code: ")
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="u")
@@ -92,11 +92,11 @@ if __name__ == '__main__':
 			device = adapter.FindDevice(sys.argv[2])
 			adapter.RemoveDevice(device)
 
-		adapter.CreatePairedDevice(sys.argv[2], path, "DisplayOnly",
+		adapter.CreatePairedDevice(sys.argv[2], path, "DisplayYesNo",
 					reply_handler=create_device_reply,
 					error_handler=create_device_error)
 	else:
-		adapter.RegisterAgent(path, "DisplayOnly")
+		adapter.RegisterAgent(path, "DisplayYesNo")
 		print "Agent registered"
 
 	mainloop.run()
