@@ -276,6 +276,7 @@ static inline void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 
 static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
+	struct hci_auth_info_req req;
 	unsigned char key[16];
 	char sa[18], da[18];
 	uint8_t type;
@@ -284,17 +285,33 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	ba2str(sba, sa); ba2str(dba, da);
 	info("link_key_request (sba=%s, dba=%s)", sa, da);
 
+	memset(&req, 0, sizeof(req));
+	bacpy(&req.bdaddr, dba);
+	req.type = 0xff;
+
+	err = ioctl(dev, HCIGETAUTHINFO, (unsigned long) &req);
+	if (err < 0)
+		debug("HCIGETAUTHINFO failed (%d)", errno);
+
+	debug("kernel authentication requirement = 0x%02x", req.type);
+
 	err = read_link_key(sba, dba, key, &type);
 	if (err < 0) {
 		/* Link key not found */
 		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY, 6, dba);
 	} else {
 		/* Link key found */
-		debug("Link key with type %d", type);
 		link_key_reply_cp lr;
 		memcpy(lr.link_key, key, 16);
 		bacpy(&lr.bdaddr, dba);
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
+
+		debug("stored link key type = 0x02%x", type);
+
+		if ((type == 0x03 || type == 0x04) && (req.type & 0x01))
+			hci_send_cmd(dev, OGF_LINK_CTL,
+					OCF_LINK_KEY_NEG_REPLY, 6, dba);
+		else
+			hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
 						LINK_KEY_REPLY_CP_SIZE, &lr);
 	}
 }
