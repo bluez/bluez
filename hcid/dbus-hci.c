@@ -2454,19 +2454,16 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 
 	debug("kernel authentication requirement = 0x%02x", type);
 
+	*auth = (type == 0xff) ? 0x00 : type;
+
 	ba2str(remote, addr);
 
 	device = adapter_find_device(adapter, addr);
 	if (device && device->agent) {
 		agent = device->agent;
 		*auth = 0x03;
-	} else {
+	} else
 		agent = adapter->agent;
-		*auth = 0x00;
-	}
-
-	if (type != 0xff && type & 0x01)
-		*auth |= 0x01;
 
 	if (!agent) {
 		if (!(type & 0x01)) {
