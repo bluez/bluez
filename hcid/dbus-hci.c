@@ -1033,7 +1033,8 @@ static uint8_t get_auth_requirements(bdaddr_t *local, bdaddr_t *remote)
 
 	err = ioctl(dd, HCIGETAUTHINFO, (unsigned long) &req);
 	if (err < 0)
-		debug("HCIGETAUTHINFO failed (%d)", errno);
+		debug("HCIGETAUTHINFO failed: %s (%d)", strerror(errno),
+				errno);
 
 	hci_close_dev(dd);
 
