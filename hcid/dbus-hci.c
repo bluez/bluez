@@ -2278,9 +2278,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 			error("Sending getting name command failed: %s (%d)",
 						strerror(errno), errno);
 			rp.name[0] = '\0';
-		}
-
-		if (rp.status) {
+		} else if (rp.status) {
 			error("Getting name failed with status 0x%02x",
 					rp.status);
 			rp.name[0] = '\0';
