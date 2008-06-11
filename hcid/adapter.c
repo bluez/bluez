@@ -3964,6 +3964,11 @@ static DBusMessage *remove_device(DBusConnection *conn,
 				"Device does not exist");
 	device = l->data;
 
+	if (device->temporary)
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".DoesNotExist",
+				"Device creation in progress");
+
 	adapter_remove_device(conn, adapter, device);
 
 	return dbus_message_new_method_return(msg);
@@ -3990,6 +3995,11 @@ static DBusMessage *find_device(DBusConnection *conn,
 				"Device does not exist");
 
 	device = l->data;
+
+	if (device->temporary)
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".DoesNotExist",
+				"Device creation in progress");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
