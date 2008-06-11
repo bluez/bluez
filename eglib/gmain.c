@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <malloc.h>
 #include <string.h>
 #include <limits.h>
 #include <sys/time.h>

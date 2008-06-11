@@ -31,7 +31,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <malloc.h>
+#include <string.h>
 #include <syslog.h>
 #include <signal.h>
 #include <getopt.h>

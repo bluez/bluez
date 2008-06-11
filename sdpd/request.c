@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <malloc.h>
+#include <string.h>
 #include <limits.h>
 #include <sys/socket.h>
 

@@ -33,7 +33,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <malloc.h>
 #include <string.h>
 #include <libgen.h>
 #include <endian.h>

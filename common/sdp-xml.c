@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
-#include <malloc.h>
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
