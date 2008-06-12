@@ -44,6 +44,7 @@
 #include <gdbus.h>
 
 #include "adapter.h"
+#include "manager.h"
 #include "hcid.h"
 #include "dbus-common.h"
 #include "dbus-service.h"
@@ -110,9 +111,13 @@ static void passkey_agent_free(struct passkey_agent *agent)
 
 	for (l = agent->pending_requests; l != NULL; l = l->next) {
 		struct pending_agent_request *req = l->data;
+		struct adapter *adapter = manager_find_adapter(&req->sba);
 
 		hci_send_cmd(req->dev, OGF_LINK_CTL,
 				OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
+
+		if (adapter)
+			adapter_auth_request_replied(adapter, &req->bda);
 
 		send_cancel_request(req);
 	}
@@ -643,6 +648,7 @@ static void passkey_agent_reply(DBusPendingCall *call, void *user_data)
 {
 	struct pending_agent_request *req = user_data;
 	struct passkey_agent *agent = req->agent;
+	struct adapter *adapter = manager_find_adapter(&req->sba);
 	pin_code_reply_cp pr;
 	DBusMessage *message;
 	DBusError err;
@@ -712,6 +718,9 @@ fail:
 			OCF_PIN_CODE_NEG_REPLY, 6, &req->bda);
 
 done:
+	if (adapter)
+		adapter_auth_request_replied(adapter, &req->bda);
+
 	if (message)
 		dbus_message_unref(message);
 
@@ -735,6 +744,7 @@ static int call_passkey_agent(DBusConnection *conn,
 				bdaddr_t *dba)
 {
 	struct pending_agent_request *req;
+	struct adapter *adapter = manager_find_adapter(sba);
 
 	if (!agent) {
 		debug("call_passkey_agent(): no agent available");
@@ -767,6 +777,9 @@ failed:
 
 send:
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
+
+	if (adapter)
+		adapter_auth_request_replied(adapter, &req->bda);
 
 	return -1;
 }

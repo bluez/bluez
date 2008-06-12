@@ -873,6 +873,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
 
 done:
+	adapter_auth_request_replied(adapter, &dba);
 	hci_close_dev(dev);
 }
 
@@ -952,6 +953,8 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 
+	adapter_auth_request_replied(adapter, &cp.bdaddr);
+
 	hci_close_dev(dd);
 }
 
@@ -986,6 +989,8 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	else
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_REPLY,
 					USER_PASSKEY_REPLY_CP_SIZE, &cp);
+
+	adapter_auth_request_replied(adapter, &dba);
 
 	hci_close_dev(dd);
 }
@@ -1054,6 +1059,8 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
+
+		adapter_auth_request_replied(adapter, dba);
 
 		hci_close_dev(dd);
 
@@ -2376,28 +2383,6 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 	set_simple_pairing_mode(dev_id, mode);
 
 	hci_close_dev(dd);
-}
-
-void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
-{
-	typedef struct {
-		uint8_t status;
-		bdaddr_t bdaddr;
-	} __attribute__ ((packed)) ret_pin_code_req_reply;
-
-	struct pending_auth_info *auth;
-	struct adapter *adapter;
-	ret_pin_code_req_reply *ret = ptr + EVT_CMD_COMPLETE_SIZE;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	auth = adapter_find_auth_request(adapter, &ret->bdaddr);
-	if (auth)
-		auth->replied = 1;
 }
 
 int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,

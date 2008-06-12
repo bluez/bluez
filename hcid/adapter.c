@@ -262,6 +262,20 @@ static int auth_req_cmp(const void *p1, const void *p2)
 	return bda ? bacmp(&pb1->bdaddr, bda) : -1;
 }
 
+void adapter_auth_request_replied(struct adapter *adapter, bdaddr_t *dba)
+{
+	GSList *l;
+	struct pending_auth_info *auth;
+
+	l = g_slist_find_custom(adapter->auth_reqs, dba, auth_req_cmp);
+	if (!l)
+		return;
+
+	auth = l->data;
+
+	auth->replied = 1;
+}
+
 struct pending_auth_info *adapter_find_auth_request(struct adapter *adapter,
 							bdaddr_t *dba)
 {
@@ -2676,25 +2690,40 @@ cleanup:
 	return FALSE;
 }
 
-static void cancel_auth_request(int dd, auth_type_t type, bdaddr_t *bda)
+static void cancel_auth_request(struct pending_auth_info *auth, int dev_id)
 {
-	switch (type) {
+	int dd;
+
+	if (auth->replied)
+		return;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("hci_open_dev: %s (%d)", strerror(errno), errno);
+		return;
+	}
+
+	switch (auth->type) {
 	case AUTH_TYPE_PINCODE:
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY,
-				6, bda);
+				6, &auth->bdaddr);
 		break;
 	case AUTH_TYPE_CONFIRM:
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
-				6, bda);
+				6, &auth->bdaddr);
 		break;
 	case AUTH_TYPE_PASSKEY:
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_NEG_REPLY,
-				6, bda);
+				6, &auth->bdaddr);
 		break;
 	case AUTH_TYPE_NOTIFY:
 		/* User Notify doesn't require any reply */
 		break;
 	}
+
+	auth->replied = TRUE;
+
+	hci_close_dev(dd);
 }
 
 static void create_bond_req_exit(void *user_data)
@@ -2713,16 +2742,7 @@ static void create_bond_req_exit(void *user_data)
 
 	auth = adapter_find_auth_request(adapter, &adapter->bonding->bdaddr);
 	if (auth) {
-		if (!auth->replied) {
-			int dd;
-
-			dd = hci_open_dev(adapter->dev_id);
-			if (dd >= 0) {
-				cancel_auth_request(dd, auth->type, &auth->bdaddr);
-				hci_close_dev(dd);
-			}
-		}
-
+		cancel_auth_request(auth, adapter->dev_id);
 		adapter_remove_auth_request(adapter, &adapter->bonding->bdaddr);
 	}
 
@@ -2861,19 +2881,8 @@ static DBusMessage *adapter_cancel_bonding(DBusConnection *conn,
 			 */
 			g_io_channel_close(adapter->bonding->io);
 			return not_authorized(msg);
-		} else {
-			int dd = hci_open_dev(adapter->dev_id);
-			if (dd < 0) {
-				int err = errno;
-				error("Can't open hci%d: %s (%d)",
-					adapter->dev_id, strerror(err), err);
-				return failed_strerror(msg, err);
-			}
-
-			cancel_auth_request(dd, auth_req->type, &auth_req->bdaddr);
-
-			hci_close_dev(dd);
-		}
+		} else
+			cancel_auth_request(auth_req, adapter->dev_id);
 
 		adapter_remove_auth_request(adapter, &bdaddr);
 	}
