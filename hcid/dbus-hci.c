@@ -888,7 +888,6 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	str2ba(device->address, &dba);
 
 	if (err) {
-
 		hci_send_cmd(dev, OGF_LINK_CTL,
 				OCF_PIN_CODE_NEG_REPLY, 6, &dba);
 		goto done;
