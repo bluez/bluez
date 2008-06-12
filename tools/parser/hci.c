@@ -1667,6 +1667,29 @@ static inline void status_mode_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void read_link_policy_dump(int level, struct frame *frm)
+{
+	read_link_policy_rp *rp = frm->ptr;
+	uint16_t policy = btohs(rp->policy);
+	char *str;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d policy 0x%2.2x\n",
+				rp->status, btohs(rp->handle), policy);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		str = hci_lptostr(policy);
+		if (str) {
+			p_indent(level, frm);
+			printf("Link policy: %s\n", str);
+			free(str);
+		}
+	}
+}
+
 static inline void read_pin_type_dump(int level, struct frame *frm)
 {
 	read_pin_type_rp *rp = frm->ptr;
@@ -2188,6 +2211,9 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 
 	case OGF_LINK_POLICY:
 		switch (ocf) {
+		case OCF_READ_LINK_POLICY:
+			read_link_policy_dump(level, frm);
+			return;
 		case OCF_WRITE_LINK_POLICY:
 		case OCF_SNIFF_SUBRATING:
 			generic_response_dump(level, frm);
