@@ -117,7 +117,8 @@ struct adapter {
 	struct agent *agent;		/* For the new API */
 	GSList *active_conn;
 	struct bonding_request_info *bonding;
-	GSList *auth_reqs;
+	GSList *auth_reqs;		/* Received and replied HCI
+					   authentication requests */
 	struct pending_dc_info *pending_dc;
 	GSList *devices;		/* Devices structure pointers */
 	GSList *sessions;		/* Request Mode sessions */
