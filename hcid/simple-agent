@@ -11,11 +11,17 @@ class Rejected(dbus.DBusException):
 	_dbus_error_name = "org.bluez.Error.Rejected"
 
 class Agent(dbus.service.Object):
+	exit_on_release = True
+
+	def set_exit_on_release(self, exit_on_release):
+		self.exit_on_release = exit_on_release
+
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="", out_signature="")
 	def Release(self):
 		print "Release"
-		mainloop.quit()
+		if self.exit_on_release:
+			mainloop.quit()
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="os", out_signature="")
@@ -61,11 +67,11 @@ class Agent(dbus.service.Object):
 
 def create_device_reply(device):
 	print "New device (%s)" % (device)
-	sys.exit(0)
+	mainloop.quit()
 
 def create_device_error(error):
 	print "Creating device failed: %s" % (error)
-	sys.exit(0)
+	mainloop.quit()
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -83,7 +89,7 @@ if __name__ == '__main__':
 							"org.bluez.Adapter")
 
 	path = "/test/agent"
-	object = Agent(bus, path)
+	agent = Agent(bus, path)
 
 	mainloop = gobject.MainLoop()
 
@@ -92,6 +98,7 @@ if __name__ == '__main__':
 			device = adapter.FindDevice(sys.argv[2])
 			adapter.RemoveDevice(device)
 
+		agent.set_exit_on_release(False)
 		adapter.CreatePairedDevice(sys.argv[2], path, "DisplayYesNo",
 					reply_handler=create_device_reply,
 					error_handler=create_device_error)
