@@ -841,6 +841,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	bdaddr_t sba, dba;
 	size_t len;
 	int dev;
+	struct pending_auth_info *auth;
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
@@ -853,8 +854,11 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 		return;
 	}
 
+
 	str2ba(adapter->address, &sba);
 	str2ba(device->address, &dba);
+
+	auth = adapter_find_auth_request(adapter, &dba);
 
 	if (err) {
 		hci_send_cmd(dev, OGF_LINK_CTL,
@@ -873,7 +877,10 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
 
 done:
-	adapter_auth_request_replied(adapter, &dba);
+	if (auth) {
+		auth->replied = TRUE;
+		auth->agent = NULL;
+	}
 	hci_close_dev(dev);
 }
 
@@ -910,9 +917,13 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	ret = agent_request_pincode(agent, device,
 					(agent_pincode_cb) pincode_cb,
 					device);
-	if (ret == 0)
-		adapter_new_auth_request(adapter, &ci->bdaddr,
+	if (ret == 0) {
+		struct pending_auth_info *auth;
+		auth = adapter_new_auth_request(adapter, &ci->bdaddr,
 						AUTH_TYPE_PINCODE);
+		auth->agent = agent;
+	}
+
 
 	return ret;
 
@@ -922,7 +933,6 @@ old_fallback:
 	if (ret == 0)
 		adapter_new_auth_request(adapter, &ci->bdaddr,
 						AUTH_TYPE_PINCODE);
-
 	return ret;
 }
 
@@ -932,6 +942,7 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	struct adapter *adapter = device->adapter;
 	user_confirm_reply_cp cp;
 	int dd;
+	struct pending_auth_info *auth;
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
@@ -946,6 +957,8 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	memset(&cp, 0, sizeof(cp));
 	str2ba(device->address, &cp.bdaddr);
 
+	auth = adapter_find_auth_request(adapter, &cp.bdaddr);
+
 	if (err)
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
@@ -953,7 +966,10 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 
-	adapter_auth_request_replied(adapter, &cp.bdaddr);
+	if (auth) {
+		auth->replied = TRUE;
+		auth->agent = FALSE;
+	}
 
 	hci_close_dev(dd);
 }
@@ -966,6 +982,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	user_passkey_reply_cp cp;
 	bdaddr_t dba;
 	int dd;
+	struct pending_auth_info *auth;
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
@@ -983,6 +1000,8 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	bacpy(&cp.bdaddr, &dba);
 	cp.passkey = passkey;
 
+	auth = adapter_find_auth_request(adapter, &dba);
+
 	if (err)
 		hci_send_cmd(dd, OGF_LINK_CTL,
 				OCF_USER_PASSKEY_NEG_REPLY, 6, &dba);
@@ -990,7 +1009,10 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_REPLY,
 					USER_PASSKEY_REPLY_CP_SIZE, &cp);
 
-	adapter_auth_request_replied(adapter, &dba);
+	if (auth) {
+		auth->replied = TRUE;
+		auth->agent = NULL;
+	}
 
 	hci_close_dev(dd);
 }
@@ -1032,6 +1054,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	struct agent *agent;
 	char addr[18];
 	uint8_t type;
+	struct pending_auth_info *auth;
 
 	adapter = manager_find_adapter(sba);
 	if (!adapter) {
@@ -1060,8 +1083,6 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 
-		adapter_auth_request_replied(adapter, dba);
-
 		hci_close_dev(dd);
 
 		return 0;
@@ -1086,7 +1107,8 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -1;
 	}
 
-	adapter_new_auth_request(adapter, dba, AUTH_TYPE_CONFIRM);
+	auth = adapter_new_auth_request(adapter, dba, AUTH_TYPE_CONFIRM);
+	auth->agent = agent;
 
 	return 0;
 }
@@ -1097,6 +1119,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	struct device *device;
 	struct agent *agent;
 	char addr[18];
+	struct pending_auth_info *auth;
 
 	adapter = manager_find_adapter(sba);
 	if (!adapter) {
@@ -1122,7 +1145,8 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 		return -1;
 	}
 
-	adapter_new_auth_request(adapter, dba, AUTH_TYPE_PASSKEY);
+	auth = adapter_new_auth_request(adapter, dba, AUTH_TYPE_PASSKEY);
+	auth->agent = agent;
 
 	return 0;
 }
@@ -1133,6 +1157,7 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	struct device *device;
 	struct agent *agent;
 	char addr[18];
+	struct pending_auth_info *auth;
 
 	adapter = manager_find_adapter(sba);
 	if (!adapter) {
@@ -1158,7 +1183,8 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -1;
 	}
 
-	adapter_new_auth_request(adapter, dba, AUTH_TYPE_NOTIFY);
+	auth = adapter_new_auth_request(adapter, dba, AUTH_TYPE_NOTIFY);
+	auth->agent = agent;
 
 	return 0;
 }
@@ -1173,6 +1199,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct device *device;
 	struct bonding_request_info *bonding;
 	gboolean paired = TRUE;
+	struct pending_auth_info *auth;
 
 	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
 
@@ -1191,10 +1218,14 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 						adapter->path, peer);
 	}
 
-	if (!adapter_find_auth_request(adapter, peer)) {
+	auth = adapter_find_auth_request(adapter, peer);
+	if (!auth) {
 		debug("hcid_dbus_bonding_process_complete: no pending auth request");
 		goto proceed;
 	}
+
+	if (auth->agent)
+		agent_cancel(auth->agent);
 
 	adapter_remove_auth_request(adapter, peer);
 
@@ -1977,9 +2008,15 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	ba2str(peer, peer_addr);
 
 	if (status) {
+		struct pending_auth_info *auth;
+
 		cancel_passkey_agent_requests(adapter->passkey_agents,
 						adapter->path, peer);
 		release_passkey_agents(adapter, peer);
+
+		auth = adapter_find_auth_request(adapter, peer);
+		if (auth && auth->agent)
+			agent_cancel(auth->agent);
 
 		adapter_remove_auth_request(adapter, peer);
 
@@ -2022,6 +2059,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	struct active_conn_info *dev;
 	GSList *l;
 	gboolean connected = FALSE;
+	struct pending_auth_info *auth;
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -2051,6 +2089,10 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	cancel_passkey_agent_requests(adapter->passkey_agents, adapter->path,
 					&dev->bdaddr);
 	release_passkey_agents(adapter, &dev->bdaddr);
+
+	auth = adapter_find_auth_request(adapter, &dev->bdaddr);
+	if (auth && auth->agent)
+		agent_cancel(auth->agent);
 
 	adapter_remove_auth_request(adapter, &dev->bdaddr);
 

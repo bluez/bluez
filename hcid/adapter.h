@@ -76,6 +76,7 @@ struct pending_auth_info {
 	auth_type_t type;
 	bdaddr_t bdaddr;
 	gboolean replied;	/* If we've already replied to the request */
+	struct agent *agent;    /* Agent associated with the request */
 };
 
 struct active_conn_info {

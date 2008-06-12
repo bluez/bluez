@@ -273,7 +273,7 @@ void adapter_auth_request_replied(struct adapter *adapter, bdaddr_t *dba)
 
 	auth = l->data;
 
-	auth->replied = 1;
+	auth->replied = TRUE;
 }
 
 struct pending_auth_info *adapter_find_auth_request(struct adapter *adapter,
@@ -360,11 +360,32 @@ int pending_remote_name_cancel(struct adapter *adapter)
 	return err;
 }
 
+static int auth_info_agent_cmp(const void *a, const void *b)
+{
+	const struct pending_auth_info *auth = a;
+	const struct agent *agent = b;
+
+	if (auth->agent == agent)
+		return 0;
+
+	return -1;
+}
+
 static void device_agent_removed(struct agent *agent, void *user_data)
 {
 	struct device *device = user_data;
+	struct pending_auth_info *auth;
+	GSList *l;
 
 	device->agent = NULL;
+
+	l = g_slist_find_custom(device->adapter->auth_reqs, agent,
+					auth_info_agent_cmp);
+	if (!l)
+		return;
+
+	auth = l->data;
+	auth->agent = NULL;
 }
 
 static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
@@ -2743,6 +2764,8 @@ static void create_bond_req_exit(void *user_data)
 	auth = adapter_find_auth_request(adapter, &adapter->bonding->bdaddr);
 	if (auth) {
 		cancel_auth_request(auth, adapter->dev_id);
+		if (auth->agent)
+			agent_cancel(auth->agent);
 		adapter_remove_auth_request(adapter, &adapter->bonding->bdaddr);
 	}
 
@@ -2881,9 +2904,11 @@ static DBusMessage *adapter_cancel_bonding(DBusConnection *conn,
 			 */
 			g_io_channel_close(adapter->bonding->io);
 			return not_authorized(msg);
-		} else
-			cancel_auth_request(auth_req, adapter->dev_id);
+		}
 
+		cancel_auth_request(auth_req, adapter->dev_id);
+		if (auth_req->agent)
+			agent_cancel(auth_req->agent);
 		adapter_remove_auth_request(adapter, &bdaddr);
 	}
 
@@ -4080,7 +4105,18 @@ static DBusMessage *find_device(DBusConnection *conn,
 
 static void agent_removed(struct agent *agent, struct adapter *adapter)
 {
+	struct pending_auth_info *auth;
+	GSList *l;
+
 	adapter->agent = NULL;
+
+	l = g_slist_find_custom(adapter->auth_reqs, agent,
+					auth_info_agent_cmp);
+	if (!l)
+		return;
+
+	auth = l->data;
+	auth->agent = NULL;
 }
 
 static DBusMessage *register_agent(DBusConnection *conn,
