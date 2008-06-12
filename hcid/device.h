@@ -40,6 +40,10 @@ struct device {
 	gboolean	temporary;
 	struct agent	*agent;
 	guint		disconn_timer;
+
+	/* For Secure Simple Pairing */
+	uint8_t		cap;
+	uint8_t		auth;
 };
 
 struct device *device_create(DBusConnection *conn, struct adapter *adapter,

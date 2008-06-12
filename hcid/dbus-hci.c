@@ -2473,6 +2473,24 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
                                                 uint8_t cap, uint8_t auth)
 {
+	struct adapter *adapter;
+	struct device *device;
+	char addr[18];
+
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("No matching adapter found");
+		return -1;
+	}
+
+	ba2str(remote, addr);
+
+	device = adapter_get_device(connection, adapter, addr);
+	if (device) {
+		device->cap = cap;
+		device->auth = auth;
+	}
+
 	return 0;
 }
 
