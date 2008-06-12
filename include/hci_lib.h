@@ -104,6 +104,8 @@ int hci_read_local_oob_data(int dd, uint8_t *hash, uint8_t *randomizer, int to);
 int hci_read_inquiry_transmit_power_level(int dd, int8_t *level, int to);
 int hci_write_inquiry_transmit_power_level(int dd, int8_t level, int to);
 int hci_read_transmit_power_level(int dd, uint16_t handle, uint8_t type, int8_t *level, int to);
+int hci_read_link_policy(int dd, uint16_t handle, uint16_t *policy, int to);
+int hci_write_link_policy(int dd, uint16_t handle, uint16_t policy, int to);
 int hci_read_link_supervision_timeout(int dd, uint16_t handle, uint16_t *timeout, int to);
 int hci_write_link_supervision_timeout(int dd, uint16_t handle, uint16_t timeout, int to);
 int hci_set_afh_classification(int dd, uint8_t *map, int to);

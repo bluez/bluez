@@ -2231,6 +2231,60 @@ int hci_read_transmit_power_level(int dd, uint16_t handle, uint8_t type, int8_t 
 	return 0;
 }
 
+int hci_read_link_policy(int dd, uint16_t handle, uint16_t *policy, int to)
+{
+	read_link_policy_rp rp;
+	struct hci_request rq;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_POLICY;
+	rq.ocf    = OCF_READ_LINK_POLICY;
+	rq.cparam = &handle;
+	rq.clen   = 2;
+	rq.rparam = &rp;
+	rq.rlen   = READ_LINK_POLICY_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	*policy = rp.policy;
+	return 0;
+}
+
+int hci_write_link_policy(int dd, uint16_t handle, uint16_t policy, int to)
+{
+	write_link_policy_cp cp;
+	write_link_policy_rp rp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = handle;
+	cp.policy = policy;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_POLICY;
+	rq.ocf    = OCF_WRITE_LINK_POLICY;
+	rq.cparam = &cp;
+	rq.clen   = WRITE_LINK_POLICY_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = WRITE_LINK_POLICY_RP_SIZE;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
 int hci_read_link_supervision_timeout(int dd, uint16_t handle, uint16_t *timeout, int to)
 {
 	read_link_supervision_timeout_rp rp;
