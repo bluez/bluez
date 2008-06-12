@@ -841,16 +841,10 @@ int auth_req_cmp(const void *p1, const void *p2)
 	return bda ? bacmp(&pb1->bdaddr, bda) : -1;
 }
 
-void hcid_dbus_new_auth_request(bdaddr_t *sba, bdaddr_t *dba, auth_type_t type)
+static void hcid_dbus_new_auth_request(struct adapter *adapter, bdaddr_t *dba,
+					auth_type_t type)
 {
-	struct adapter *adapter;
 	struct pending_auth_info *info;
-
-	adapter = manager_find_adapter(sba);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
 
 	debug("hcid_dbus_new_auth_request");
 
@@ -913,6 +907,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	struct adapter *adapter;
 	struct device *device;
 	struct agent *agent;
+	int ret;
 
 	adapter = manager_find_adapter(sba);
 	if (!adapter) {
@@ -936,13 +931,23 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 			return -ENODEV;
 	}
 
-	return agent_request_pincode(agent, device,
+	ret = agent_request_pincode(agent, device,
 					(agent_pincode_cb) pincode_cb,
 					device);
+	if (ret == 0)
+		hcid_dbus_new_auth_request(adapter, &ci->bdaddr,
+						AUTH_TYPE_PINCODE);
+
+	return ret;
 
 old_fallback:
-	return handle_passkey_request_old(connection, dev, adapter,
-							sba, &ci->bdaddr);
+	ret = handle_passkey_request_old(connection, dev, adapter, sba,
+						&ci->bdaddr);
+	if (ret == 0)
+		hcid_dbus_new_auth_request(adapter, &ci->bdaddr,
+						AUTH_TYPE_PINCODE);
+
+	return ret;
 }
 
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
@@ -1099,6 +1104,8 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -1;
 	}
 
+	hcid_dbus_new_auth_request(adapter, dba, AUTH_TYPE_CONFIRM);
+
 	return 0;
 }
 
@@ -1133,6 +1140,8 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 		return -1;
 	}
 
+	hcid_dbus_new_auth_request(adapter, dba, AUTH_TYPE_PASSKEY);
+
 	return 0;
 }
 
@@ -1166,6 +1175,8 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		error("Displaying passkey failed");
 		return -1;
 	}
+
+	hcid_dbus_new_auth_request(adapter, dba, AUTH_TYPE_NOTIFY);
 
 	return 0;
 }

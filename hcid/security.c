@@ -385,9 +385,6 @@ static void user_confirm_request(int dev, bdaddr_t *sba, void *ptr)
 					btohl(req->passkey)) < 0)
 		hci_send_cmd(dev, OGF_LINK_CTL,
 				OCF_USER_CONFIRM_NEG_REPLY, 6, ptr);
-	else
-		hcid_dbus_new_auth_request(sba, &req->bdaddr,
-						AUTH_TYPE_CONFIRM);
 }
 
 static void user_passkey_request(int dev, bdaddr_t *sba, void *ptr)
@@ -397,17 +394,13 @@ static void user_passkey_request(int dev, bdaddr_t *sba, void *ptr)
 	if (hcid_dbus_user_passkey(sba, &req->bdaddr) < 0)
 		hci_send_cmd(dev, OGF_LINK_CTL,
 				OCF_USER_PASSKEY_NEG_REPLY, 6, ptr);
-	else
-		hcid_dbus_new_auth_request(sba, &req->bdaddr,
-						AUTH_TYPE_PASSKEY);
 }
 
 static void user_passkey_notify(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_user_passkey_notify *req = ptr;
 
-	if (hcid_dbus_user_notify(sba, &req->bdaddr, btohl(req->passkey)) == 0)
-		hcid_dbus_new_auth_request(sba, &req->bdaddr, AUTH_TYPE_NOTIFY);
+	hcid_dbus_user_notify(sba, &req->bdaddr, btohl(req->passkey));
 }
 
 static void remote_oob_data_request(int dev, bdaddr_t *sba, void *ptr)
@@ -522,7 +515,6 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 			/* Request PIN from passkey agent */
 			if (hcid_dbus_request_pin(dev, sba, ci) < 0)
 				goto reject;
-			hcid_dbus_new_auth_request(sba, dba, AUTH_TYPE_PINCODE);
 		}
 	}
 
