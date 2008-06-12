@@ -833,31 +833,6 @@ int hcid_dbus_stop_device(uint16_t id)
 	return 0;
 }
 
-int auth_req_cmp(const void *p1, const void *p2)
-{
-	const struct pending_auth_info *pb1 = p1;
-	const bdaddr_t *bda = p2;
-
-	return bda ? bacmp(&pb1->bdaddr, bda) : -1;
-}
-
-static void hcid_dbus_new_auth_request(struct adapter *adapter, bdaddr_t *dba,
-					auth_type_t type)
-{
-	struct pending_auth_info *info;
-
-	debug("hcid_dbus_new_auth_request");
-
-	info = g_new0(struct pending_auth_info, 1);
-
-	bacpy(&info->bdaddr, dba);
-	info->type = type;
-	adapter->auth_reqs = g_slist_append(adapter->auth_reqs, info);
-
-	if (adapter->bonding && !bacmp(dba, &adapter->bonding->bdaddr))
-		adapter->bonding->auth_active = 1;
-}
-
 static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 			struct device *device)
 {
@@ -935,7 +910,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 					(agent_pincode_cb) pincode_cb,
 					device);
 	if (ret == 0)
-		hcid_dbus_new_auth_request(adapter, &ci->bdaddr,
+		adapter_new_auth_request(adapter, &ci->bdaddr,
 						AUTH_TYPE_PINCODE);
 
 	return ret;
@@ -944,7 +919,7 @@ old_fallback:
 	ret = handle_passkey_request_old(connection, dev, adapter, sba,
 						&ci->bdaddr);
 	if (ret == 0)
-		hcid_dbus_new_auth_request(adapter, &ci->bdaddr,
+		adapter_new_auth_request(adapter, &ci->bdaddr,
 						AUTH_TYPE_PINCODE);
 
 	return ret;
@@ -1104,7 +1079,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -1;
 	}
 
-	hcid_dbus_new_auth_request(adapter, dba, AUTH_TYPE_CONFIRM);
+	adapter_new_auth_request(adapter, dba, AUTH_TYPE_CONFIRM);
 
 	return 0;
 }
@@ -1140,7 +1115,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 		return -1;
 	}
 
-	hcid_dbus_new_auth_request(adapter, dba, AUTH_TYPE_PASSKEY);
+	adapter_new_auth_request(adapter, dba, AUTH_TYPE_PASSKEY);
 
 	return 0;
 }
@@ -1176,7 +1151,7 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -1;
 	}
 
-	hcid_dbus_new_auth_request(adapter, dba, AUTH_TYPE_NOTIFY);
+	adapter_new_auth_request(adapter, dba, AUTH_TYPE_NOTIFY);
 
 	return 0;
 }
@@ -1187,11 +1162,9 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct adapter *adapter;
 	char peer_addr[18];
 	const char *paddr = peer_addr;
-	GSList *l;
 	DBusMessage *reply;
 	struct device *device;
 	struct bonding_request_info *bonding;
-	void *d;
 	gboolean paired = TRUE;
 
 	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
@@ -1211,15 +1184,12 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 						adapter->path, peer);
 	}
 
-	l = g_slist_find_custom(adapter->auth_reqs, peer, auth_req_cmp);
-	if (!l) {
-		debug("hcid_dbus_bonding_process_complete: no pending PIN request");
+	if (!adapter_find_auth_request(adapter, peer)) {
+		debug("hcid_dbus_bonding_process_complete: no pending auth request");
 		goto proceed;
 	}
 
-	d = l->data;
-	adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, l->data);
-	g_free(d);
+	adapter_remove_auth_request(adapter, peer);
 
 	if (status)
 		goto proceed;
@@ -1990,7 +1960,6 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	struct adapter *adapter;
-	GSList *l;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -2005,12 +1974,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 						adapter->path, peer);
 		release_passkey_agents(adapter, peer);
 
-		l = g_slist_find_custom(adapter->auth_reqs, peer, auth_req_cmp);
-		if (l) {
-			struct pending_auth_req *p = l->data;
-			adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, p);
-			g_free(p);
-		}
+		adapter_remove_auth_request(adapter, peer);
 
 		if (adapter->bonding)
 			adapter->bonding->hci_status = status;
@@ -2081,12 +2045,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					&dev->bdaddr);
 	release_passkey_agents(adapter, &dev->bdaddr);
 
-	l = g_slist_find_custom(adapter->auth_reqs, &dev->bdaddr, auth_req_cmp);
-	if (l) {
-		struct pending_auth_req *p = l->data;
-		adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, p);
-		g_free(p);
-	}
+	adapter_remove_auth_request(adapter, &dev->bdaddr);
 
 	/* Check if there is a pending CreateBonding request */
 	if (adapter->bonding && (bacmp(&adapter->bonding->bdaddr, &dev->bdaddr) == 0)) {
@@ -2421,15 +2380,14 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 
 void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 {
-
 	typedef struct {
 		uint8_t status;
 		bdaddr_t bdaddr;
 	} __attribute__ ((packed)) ret_pin_code_req_reply;
 
+	struct pending_auth_info *auth;
 	struct adapter *adapter;
 	ret_pin_code_req_reply *ret = ptr + EVT_CMD_COMPLETE_SIZE;
-	GSList *l;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -2437,11 +2395,9 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 		return;
 	}
 
-	l = g_slist_find_custom(adapter->auth_reqs, &ret->bdaddr, auth_req_cmp);
-	if (l) {
-		struct pending_auth_info *p = l->data;
-		p->replied = 1;
-	}
+	auth = adapter_find_auth_request(adapter, &ret->bdaddr);
+	if (auth)
+		auth->replied = 1;
 }
 
 int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,

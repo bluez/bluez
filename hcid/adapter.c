@@ -254,6 +254,62 @@ static inline DBusMessage *unsupported_major_class(DBusMessage *msg)
 			"Unsupported Major Class");
 }
 
+static int auth_req_cmp(const void *p1, const void *p2)
+{
+	const struct pending_auth_info *pb1 = p1;
+	const bdaddr_t *bda = p2;
+
+	return bda ? bacmp(&pb1->bdaddr, bda) : -1;
+}
+
+struct pending_auth_info *adapter_find_auth_request(struct adapter *adapter,
+							bdaddr_t *dba)
+{
+	GSList *l;
+
+	l = g_slist_find_custom(adapter->auth_reqs, dba, auth_req_cmp);
+	if (l)
+		return l->data;
+
+	return NULL;
+}
+
+void adapter_remove_auth_request(struct adapter *adapter, bdaddr_t *dba)
+{
+	GSList *l;
+	struct pending_auth_info *auth;
+
+	l = g_slist_find_custom(adapter->auth_reqs, dba, auth_req_cmp);
+	if (!l)
+		return;
+
+	auth = l->data;
+
+	adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, auth);
+
+	g_free(auth);
+}
+
+struct pending_auth_info *adapter_new_auth_request(struct adapter *adapter,
+							bdaddr_t *dba,
+							auth_type_t type)
+{
+	struct pending_auth_info *info;
+
+	debug("hcid_dbus_new_auth_request");
+
+	info = g_new0(struct pending_auth_info, 1);
+
+	bacpy(&info->bdaddr, dba);
+	info->type = type;
+	adapter->auth_reqs = g_slist_append(adapter->auth_reqs, info);
+
+	if (adapter->bonding && !bacmp(dba, &adapter->bonding->bdaddr))
+		adapter->bonding->auth_active = 1;
+
+	return info;
+}
+
 int pending_remote_name_cancel(struct adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
@@ -2644,8 +2700,8 @@ static void cancel_auth_request(int dd, auth_type_t type, bdaddr_t *bda)
 static void create_bond_req_exit(void *user_data)
 {
 	struct adapter *adapter = user_data;
+	struct pending_auth_info *auth;
 	char path[MAX_PATH_LENGTH];
-	GSList *l;
 
 	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
 
@@ -2655,23 +2711,19 @@ static void create_bond_req_exit(void *user_data)
 					&adapter->bonding->bdaddr);
 	release_passkey_agents(adapter, &adapter->bonding->bdaddr);
 
-	l = g_slist_find_custom(adapter->auth_reqs, &adapter->bonding->bdaddr,
-			auth_req_cmp);
-	if (l) {
-		struct pending_auth_info *p = l->data;
-
-		if (!p->replied) {
+	auth = adapter_find_auth_request(adapter, &adapter->bonding->bdaddr);
+	if (auth) {
+		if (!auth->replied) {
 			int dd;
 
 			dd = hci_open_dev(adapter->dev_id);
 			if (dd >= 0) {
-				cancel_auth_request(dd, p->type, &p->bdaddr);
+				cancel_auth_request(dd, auth->type, &auth->bdaddr);
 				hci_close_dev(dd);
 			}
 		}
 
-		adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, p);
-		g_free(p);
+		adapter_remove_auth_request(adapter, &adapter->bonding->bdaddr);
 	}
 
 	remove_pending_device(adapter);
@@ -2705,7 +2757,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	if (adapter->bonding)
 		return in_progress(msg, "Bonding in progress");
 
-	if (g_slist_find_custom(adapter->auth_reqs, &bdaddr, auth_req_cmp))
+	if (adapter_find_auth_request(adapter, &bdaddr))
 		return in_progress(msg, "Bonding in progress");
 
 	/* check if a link key already exists */
@@ -2775,8 +2827,8 @@ static DBusMessage *adapter_cancel_bonding(DBusConnection *conn,
 	struct adapter *adapter = data;
 	const char *address;
 	bdaddr_t bdaddr;
-	GSList *l;
 	struct bonding_request_info *bonding = adapter->bonding;
+	struct pending_auth_info *auth_req;
 
 	if (!adapter->up)
 		return adapter_not_ready(msg);
@@ -2799,10 +2851,8 @@ static DBusMessage *adapter_cancel_bonding(DBusConnection *conn,
 
 	adapter->bonding->cancel = 1;
 
-	l = g_slist_find_custom(adapter->auth_reqs, &bdaddr, auth_req_cmp);
-	if (l) {
-		struct pending_auth_info *auth_req = l->data;
-
+	auth_req = adapter_find_auth_request(adapter, &bdaddr);
+	if (auth_req) {
 		if (auth_req->replied) {
 			/*
 			 * If disconnect can't be applied and the PIN code
@@ -2825,8 +2875,7 @@ static DBusMessage *adapter_cancel_bonding(DBusConnection *conn,
 			hci_close_dev(dd);
 		}
 
-		adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, auth_req);
-		g_free(auth_req);
+		adapter_remove_auth_request(adapter, &bdaddr);
 	}
 
 	g_io_channel_close(adapter->bonding->io);
