@@ -976,6 +976,22 @@ static inline void write_link_policy_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void write_default_link_policy_dump(int level, struct frame *frm)
+{
+	uint16_t policy = btohs(htons(get_u16(frm)));
+	char *str;
+
+	p_indent(level, frm);
+	printf("policy 0x%2.2x\n", policy);
+
+	str = hci_lptostr(policy);
+	if (str) {
+		p_indent(level, frm);
+		printf("Link policy: %s\n", str);
+		free(str);
+	}
+}
+
 static inline void sniff_subrating_dump(int level, struct frame *frm)
 {
 	sniff_subrating_cp *cp = frm->ptr;
@@ -1447,6 +1463,8 @@ static inline void command_dump(int level, struct frame *frm)
 		case OCF_READ_LINK_POLICY:
 			generic_command_dump(level + 1, frm);
 			return;
+		case OCF_READ_DEFAULT_LINK_POLICY:
+			return;
 		case OCF_SWITCH_ROLE:
 			accept_conn_req_dump(level + 1, frm);
 			return;
@@ -1455,6 +1473,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_WRITE_LINK_POLICY:
 			write_link_policy_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_DEFAULT_LINK_POLICY:
+			write_default_link_policy_dump(level + 1, frm);
 			return;
 		case OCF_SNIFF_SUBRATING:
 			sniff_subrating_dump(level + 1, frm);
@@ -1680,6 +1701,28 @@ static inline void read_link_policy_dump(int level, struct frame *frm)
 	if (rp->status > 0) {
 		p_indent(level, frm);
 		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		str = hci_lptostr(policy);
+		if (str) {
+			p_indent(level, frm);
+			printf("Link policy: %s\n", str);
+			free(str);
+		}
+	}
+}
+
+static inline void read_default_link_policy_dump(int level, struct frame *frm)
+{
+	uint8_t status = get_u8(frm);
+	uint16_t policy = btohs(htons(get_u16(frm)));
+	char *str;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x policy 0x%2.2x\n", status, policy);
+
+	if (status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(status));
 	} else {
 		str = hci_lptostr(policy);
 		if (str) {
@@ -2217,6 +2260,12 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 		case OCF_WRITE_LINK_POLICY:
 		case OCF_SNIFF_SUBRATING:
 			generic_response_dump(level, frm);
+			return;
+		case OCF_READ_DEFAULT_LINK_POLICY:
+			read_default_link_policy_dump(level, frm);
+			return;
+		case OCF_WRITE_DEFAULT_LINK_POLICY:
+			status_response_dump(level, frm);
 			return;
 		}
 		break;
