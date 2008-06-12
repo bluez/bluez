@@ -854,7 +854,6 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 		return;
 	}
 
-
 	str2ba(adapter->address, &sba);
 	str2ba(device->address, &dba);
 
