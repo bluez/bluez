@@ -307,6 +307,8 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	struct bonding_request_info *bonding;
 	struct device *device;
 
+	debug("bonding_request_new(%s)", address);
+
 	if (hcid_dbus_use_experimental() && agent_path) {
 		const char *name = dbus_message_get_sender(msg);
 
@@ -2321,6 +2323,8 @@ struct device *adapter_create_device(DBusConnection *conn,
 {
 	struct device *device;
 
+	debug("adapter_create_device(%s)", address);
+
 	device = device_create(conn, adapter, address, NULL);
 	if (!device)
 		return NULL;
@@ -2459,6 +2463,8 @@ struct device *adapter_get_device(DBusConnection *conn,
 				struct adapter *adapter, const gchar *address)
 {
 	struct device *device;
+
+	debug("adapter_get_device(%s)", address);
 
 	if (!adapter)
 		return NULL;
@@ -3888,6 +3894,8 @@ static DBusMessage *create_device(DBusConnection *conn,
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".AlreadyExists",
 				"Device already exists");
+
+	debug("create_device(%s)", address);
 
 	device = device_create(conn, adapter, address, NULL);
 	if (!device)
