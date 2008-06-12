@@ -1763,6 +1763,105 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	hci_close_dev(dd);
 }
 
+/* Get/Set link policy settings */
+
+static struct option lp_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static char *lp_help =
+	"Usage:\n"
+	"\tlp <bdaddr> [link policy]\n";
+
+static void cmd_lp(int dev_id, int argc, char **argv)
+{
+	struct hci_conn_info_req *cr;
+	bdaddr_t bdaddr;
+	uint16_t policy;
+	int opt, dd;
+
+	for_each_opt(opt, lp_options, NULL) {
+		switch (opt) {
+		default:
+			printf(lp_help);
+			return;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf(lp_help);
+		return;
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	if (dev_id < 0) {
+		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+		if (dev_id < 0) {
+			fprintf(stderr, "Not connected.\n");
+			exit(1);
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("HCI device open failed");
+		exit(1);
+	}
+
+	cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr) {
+		perror("Can't allocate memory");
+		exit(1);
+	}
+
+	bacpy(&cr->bdaddr, &bdaddr);
+	cr->type = ACL_LINK;
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		perror("Get connection info failed");
+		exit(1);
+	}
+
+	if (argc == 1) {
+		char *str;
+		if (hci_read_link_policy(dd, htobs(cr->conn_info->handle),
+							&policy, 1000) < 0) {
+			perror("HCI read_link_policy_settings request failed");
+			exit(1);
+		}
+
+		policy = btohs(policy);
+		str = hci_lptostr(policy);
+		if (str) {
+			printf("Link policy settings: %s\n", str);
+			bt_free(str);
+		} else {
+			fprintf(stderr, "Invalig settings\n");
+			exit(1);
+		}
+	} else {
+		unsigned int val;
+		if (hci_strtolp(argv[1], &val) < 0) {
+			fprintf(stderr, "Invalig arguments\n");
+			exit(1);
+		}
+		policy = val;
+
+		if (hci_write_link_policy(dd, htobs(cr->conn_info->handle),
+						htobs(policy), 1000) < 0) {
+			perror("HCI write_link_policy_settings request failed");
+			exit(1);
+		}
+	}
+
+	free(cr);
+
+	hci_close_dev(dd);
+}
+
 /* Get/Set link supervision timeout */
 
 static struct option lst_options[] = {
@@ -1826,7 +1925,8 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 	}
 
 	if (argc == 1) {
-		if (hci_read_link_supervision_timeout(dd, htobs(cr->conn_info->handle), &timeout, 1000) < 0) {
+		if (hci_read_link_supervision_timeout(dd, htobs(cr->conn_info->handle),
+							&timeout, 1000) < 0) {
 			perror("HCI read_link_supervision_timeout request failed");
 			exit(1);
 		}
@@ -1839,9 +1939,10 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 		else
 			printf("Link supervision timeout never expires\n");
 	} else {
-		timeout = btohs(strtol(argv[1], NULL, 10));
+		timeout = strtol(argv[1], NULL, 10);
 
-		if (hci_write_link_supervision_timeout(dd, htobs(cr->conn_info->handle), timeout, 1000) < 0) {
+		if (hci_write_link_supervision_timeout(dd, htobs(cr->conn_info->handle),
+							htobs(timeout), 1000) < 0) {
 			perror("HCI write_link_supervision_timeout request failed");
 			exit(1);
 		}
@@ -2253,6 +2354,7 @@ static struct {
 	{ "lq",     cmd_lq,     "Display link quality"                 },
 	{ "tpl",    cmd_tpl,    "Display transmit power level"         },
 	{ "afh",    cmd_afh,    "Display AFH channel map"              },
+	{ "lp",     cmd_lp,     "Set/display link policy settings"     },
 	{ "lst",    cmd_lst,    "Set/display link supervision timeout" },
 	{ "auth",   cmd_auth,   "Request authentication"               },
 	{ "enc",    cmd_enc,    "Set connection encryption"            },

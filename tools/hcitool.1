@@ -149,6 +149,17 @@ for the maximum transmit power level.
 Display AFH channel map for the connection to the device with Bluetooth address
 .IR bdaddr .
 .TP
+.BI lp " <bdaddr> [value]"
+With no
+.IR value ,
+displays link policy settings for the connection to the device with Bluetooth address
+.IR bdaddr .
+If
+.IR value
+is given, sets the link policy settings for that connection to
+.IR value .
+Possible values are RSWITCH, HOLD, SNIFF and PARK.
+.TP
 .BI lst " <bdaddr> [value]"
 With no
 .IR value ,
