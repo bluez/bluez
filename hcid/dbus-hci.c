@@ -80,7 +80,7 @@ void bonding_request_free(struct bonding_request_info *bonding)
 
 	ba2str(&bonding->bdaddr, address);
 
-	device = adapter_get_device(connection, bonding->adapter, address);
+	device = adapter_find_device(bonding->adapter, address);
 	if (device && device->agent) {
 		agent_destroy(device->agent, FALSE);
 		device->agent = NULL;
