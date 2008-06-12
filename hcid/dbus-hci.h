@@ -73,7 +73,7 @@ int cancel_periodic_discovery(struct adapter *adapter);
 
 int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
-int pin_req_cmp(const void *p1, const void *p2);
+int auth_req_cmp(const void *p1, const void *p2);
 int found_device_cmp(const struct remote_dev_info *d1,
 			const struct remote_dev_info *d2);
 int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,

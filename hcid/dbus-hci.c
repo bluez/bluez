@@ -460,11 +460,11 @@ int unregister_adapter_path(const char *path)
 		adapter->oor_devices = NULL;
 	}
 
-	if (adapter->pin_reqs) {
-		g_slist_foreach(adapter->pin_reqs,
+	if (adapter->auth_reqs) {
+		g_slist_foreach(adapter->auth_reqs,
 				(GFunc) g_free, NULL);
-		g_slist_free(adapter->pin_reqs);
-		adapter->pin_reqs = NULL;
+		g_slist_free(adapter->auth_reqs);
+		adapter->auth_reqs = NULL;
 	}
 
 	if (adapter->active_conn) {
@@ -798,10 +798,10 @@ int hcid_dbus_stop_device(uint16_t id)
 		adapter->oor_devices = NULL;
 	}
 
-	if (adapter->pin_reqs) {
-		g_slist_foreach(adapter->pin_reqs, (GFunc) g_free, NULL);
-		g_slist_free(adapter->pin_reqs);
-		adapter->pin_reqs = NULL;
+	if (adapter->auth_reqs) {
+		g_slist_foreach(adapter->auth_reqs, (GFunc) g_free, NULL);
+		g_slist_free(adapter->auth_reqs);
+		adapter->auth_reqs = NULL;
 	}
 
 	if (adapter->active_conn) {
@@ -833,7 +833,7 @@ int hcid_dbus_stop_device(uint16_t id)
 	return 0;
 }
 
-int pin_req_cmp(const void *p1, const void *p2)
+int auth_req_cmp(const void *p1, const void *p2)
 {
 	const struct pending_auth_info *pb1 = p1;
 	const bdaddr_t *bda = p2;
@@ -858,7 +858,7 @@ void hcid_dbus_new_auth_request(bdaddr_t *sba, bdaddr_t *dba, auth_type_t type)
 
 	bacpy(&info->bdaddr, dba);
 	info->type = type;
-	adapter->pin_reqs = g_slist_append(adapter->pin_reqs, info);
+	adapter->auth_reqs = g_slist_append(adapter->auth_reqs, info);
 
 	if (adapter->bonding && !bacmp(dba, &adapter->bonding->bdaddr))
 		adapter->bonding->auth_active = 1;
@@ -1201,14 +1201,14 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 						adapter->path, peer);
 	}
 
-	l = g_slist_find_custom(adapter->pin_reqs, peer, pin_req_cmp);
+	l = g_slist_find_custom(adapter->auth_reqs, peer, auth_req_cmp);
 	if (!l) {
 		debug("hcid_dbus_bonding_process_complete: no pending PIN request");
 		goto proceed;
 	}
 
 	d = l->data;
-	adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, l->data);
+	adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, l->data);
 	g_free(d);
 
 	if (status)
@@ -1995,10 +1995,10 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 						adapter->path, peer);
 		release_passkey_agents(adapter, peer);
 
-		l = g_slist_find_custom(adapter->pin_reqs, peer, pin_req_cmp);
+		l = g_slist_find_custom(adapter->auth_reqs, peer, auth_req_cmp);
 		if (l) {
-			struct pending_pin_req *p = l->data;
-			adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
+			struct pending_auth_req *p = l->data;
+			adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, p);
 			g_free(p);
 		}
 
@@ -2071,10 +2071,10 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					&dev->bdaddr);
 	release_passkey_agents(adapter, &dev->bdaddr);
 
-	l = g_slist_find_custom(adapter->pin_reqs, &dev->bdaddr, pin_req_cmp);
+	l = g_slist_find_custom(adapter->auth_reqs, &dev->bdaddr, auth_req_cmp);
 	if (l) {
-		struct pending_pin_req *p = l->data;
-		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
+		struct pending_auth_req *p = l->data;
+		adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, p);
 		g_free(p);
 	}
 
@@ -2427,7 +2427,7 @@ void hcid_dbus_pin_code_reply(bdaddr_t *local, void *ptr)
 		return;
 	}
 
-	l = g_slist_find_custom(adapter->pin_reqs, &ret->bdaddr, pin_req_cmp);
+	l = g_slist_find_custom(adapter->auth_reqs, &ret->bdaddr, auth_req_cmp);
 	if (l) {
 		struct pending_auth_info *p = l->data;
 		p->replied = 1;

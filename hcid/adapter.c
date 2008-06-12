@@ -2655,8 +2655,8 @@ static void create_bond_req_exit(void *user_data)
 					&adapter->bonding->bdaddr);
 	release_passkey_agents(adapter, &adapter->bonding->bdaddr);
 
-	l = g_slist_find_custom(adapter->pin_reqs, &adapter->bonding->bdaddr,
-			pin_req_cmp);
+	l = g_slist_find_custom(adapter->auth_reqs, &adapter->bonding->bdaddr,
+			auth_req_cmp);
 	if (l) {
 		struct pending_auth_info *p = l->data;
 
@@ -2670,7 +2670,7 @@ static void create_bond_req_exit(void *user_data)
 			}
 		}
 
-		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, p);
+		adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, p);
 		g_free(p);
 	}
 
@@ -2705,7 +2705,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	if (adapter->bonding)
 		return in_progress(msg, "Bonding in progress");
 
-	if (g_slist_find_custom(adapter->pin_reqs, &bdaddr, pin_req_cmp))
+	if (g_slist_find_custom(adapter->auth_reqs, &bdaddr, auth_req_cmp))
 		return in_progress(msg, "Bonding in progress");
 
 	/* check if a link key already exists */
@@ -2799,11 +2799,11 @@ static DBusMessage *adapter_cancel_bonding(DBusConnection *conn,
 
 	adapter->bonding->cancel = 1;
 
-	l = g_slist_find_custom(adapter->pin_reqs, &bdaddr, pin_req_cmp);
+	l = g_slist_find_custom(adapter->auth_reqs, &bdaddr, auth_req_cmp);
 	if (l) {
-		struct pending_auth_info *pin_req = l->data;
+		struct pending_auth_info *auth_req = l->data;
 
-		if (pin_req->replied) {
+		if (auth_req->replied) {
 			/*
 			 * If disconnect can't be applied and the PIN code
 			 * request was already replied it doesn't make sense
@@ -2820,13 +2820,13 @@ static DBusMessage *adapter_cancel_bonding(DBusConnection *conn,
 				return failed_strerror(msg, err);
 			}
 
-			cancel_auth_request(dd, pin_req->type, &pin_req->bdaddr);
+			cancel_auth_request(dd, auth_req->type, &auth_req->bdaddr);
 
 			hci_close_dev(dd);
 		}
 
-		adapter->pin_reqs = g_slist_remove(adapter->pin_reqs, pin_req);
-		g_free(pin_req);
+		adapter->auth_reqs = g_slist_remove(adapter->auth_reqs, auth_req);
+		g_free(auth_req);
 	}
 
 	g_io_channel_close(adapter->bonding->io);
