@@ -86,7 +86,7 @@ static unsigned long delay = 0;
 
 static char *filename = NULL;
 
-static int flowctl = 0;
+static int rfcmode = 0;
 static int master = 0;
 static int auth = 0;
 static int encrypt = 0;
@@ -212,8 +212,8 @@ static int do_connect(char *svr)
 	/* Set new options */
 	opts.omtu = omtu;
 	opts.imtu = imtu;
-	if (flowctl)
-		opts.mode = 2;
+	if (rfcmode > 0)
+		opts.mode = rfcmode;
 
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)",
@@ -350,8 +350,8 @@ static void do_listen(void (*handler)(int sk))
 	/* Set new options */
 	opts.omtu = omtu;
 	opts.imtu = imtu;
-	if (flowctl)
-		opts.mode = 2;
+	if (rfcmode > 0)
+		opts.mode = rfcmode;
 
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)",
@@ -815,9 +815,10 @@ static void usage(void)
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
 		"\t[-D milliseconds] delay after sending num frames (default = 0)\n"
+		"\t[-X mode] select retransmission/flow-control mode\n"
 		"\t[-R] reliable mode\n"
 		"\t[-G] use connectionless channel (datagram)\n"
-		"\t[-F] enable flow control\n"
+		"\t[-R] enable retransmission\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 		"\t[-S] secure connection\n"
@@ -831,7 +832,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyzb:i:P:I:O:B:N:L:C:D:RGFAESM")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyzb:i:P:I:O:B:N:L:C:D:X:RGAESM")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -926,16 +927,16 @@ int main(int argc, char *argv[])
 			delay = atoi(optarg) * 1000;
 			break;
 
+		case 'X':
+			rfcmode = atoi(optarg);
+			break;
+
 		case 'R':
 			reliable = 1;
 			break;
 
 		case 'M':
 			master = 1;
-			break;
-
-		case 'F':
-			flowctl = 1;
 			break;
 
 		case 'A':
