@@ -293,6 +293,9 @@ void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 		if (hci_test_bit(HCI_RAW, &di.flags))
 			continue;
 
+		if (!hci_test_bit(HCI_UP, &di.flags))
+			continue;
+
 		if (get_device_class(di.dev_id, cls) < 0)
 			continue;
 
