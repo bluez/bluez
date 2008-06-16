@@ -427,7 +427,6 @@ gchar *bt_list2string(GSList *list)
 
 	str = g_strdup((const gchar *) list->data);
 
-	/* FIXME: eglib doesn't support g_strconcat */
 	for (l = list->next; l; l = l->next) {
 		tmp = g_strconcat(str, " " , (const gchar *) l->data, NULL);
 		g_free(str);
