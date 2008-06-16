@@ -310,30 +310,6 @@ static ssize_t send_bnep_ctrl_rsp(int sk, uint16_t val)
 	return send(sk, &rsp, sizeof(rsp), 0);
 }
 
-static void cancel_authorization_old()
-{
-	DBusMessage *msg;
-	const char *uuid;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-						"org.bluez.Database",
-						"CancelAuthorizationRequest");
-	if (!msg) {
-		error("Unable to allocate new method call");
-		return;
-	}
-
-	uuid = bnep_uuid(setup->dst_role);
-	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &setup->address,
-			DBUS_TYPE_STRING, &uuid,
-			DBUS_TYPE_INVALID);
-
-	dbus_connection_send(connection, msg, NULL);
-
-	dbus_message_unref(msg);
-}
-
 static int server_connadd(struct network_server *ns, int nsk,
 			const gchar *address, uint16_t dst_role)
 {
@@ -372,42 +348,6 @@ static int server_connadd(struct network_server *ns, int nsk,
 	return 0;
 }
 
-static void req_auth_cb_old(DBusPendingCall *pcall, void *user_data)
-{
-	struct network_server *ns = user_data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(pcall);
-	DBusError derr;
-	uint16_t val;
-
-	if (!setup) {
-		info("Authorization cancelled: Client exited");
-		return;
-	}
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("Access denied: %s", derr.message);
-		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY)) {
-			cancel_authorization_old();
-		}
-		dbus_error_free(&derr);
-		val = BNEP_CONN_NOT_ALLOWED;
-		goto done;
-	}
-
-	if (server_connadd(ns, setup->nsk,
-			setup->address, setup->dst_role) < 0)
-		val = BNEP_CONN_NOT_ALLOWED;
-	else
-		val = BNEP_SUCCESS;
-
-done:
-	send_bnep_ctrl_rsp(setup->nsk, val);
-	dbus_message_unref(reply);
-	setup_session_free(setup);
-	setup = NULL;
-}
-
 static void req_auth_cb(DBusError *derr, void *user_data)
 {
 	struct network_server *ns = user_data;
@@ -441,40 +381,6 @@ done:
 	setup = NULL;
 }
 
-static int req_auth_old(const char *address, const char *uuid, void *user_data)
-{
-	DBusMessage *msg;
-	DBusPendingCall *pending;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez",
-				"org.bluez.Database", "RequestAuthorization");
-	if (!msg) {
-		error("Unable to allocate new RequestAuthorization method call");
-		return -ENOMEM;
-	}
-
-	debug("Requesting authorization for %s UUID:%s", address, uuid);
-
-	dbus_message_append_args(msg,
-			DBUS_TYPE_STRING, &address,
-			DBUS_TYPE_STRING, &uuid,
-			DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(connection,
-				msg, &pending, -1) == FALSE) {
-		error("Sending of authorization request failed");
-		dbus_message_unref(msg);
-		return -EACCES;
-	}
-
-	dbus_pending_call_set_notify(pending,
-			req_auth_cb_old, user_data, NULL);
-	dbus_pending_call_unref(pending);
-	dbus_message_unref(msg);
-
-	return 0;
-}
-
 static int authorize_connection(struct network_server *ns, const char *address)
 {
 	const char *uuid;
@@ -485,10 +391,8 @@ static int authorize_connection(struct network_server *ns, const char *address)
 	str2ba(address, &dst);
 
 	ret_val = service_req_auth(&ns->src, &dst, uuid, req_auth_cb, ns);
-	if (ret_val < 0)
-		return req_auth_old(address, uuid, ns);
-	else
-		return ret_val;
+
+	return ret_val;
 }
 
 static uint16_t inline bnep_setup_chk(uint16_t dst_role, uint16_t src_role)

@@ -1183,19 +1183,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 	}
 }
 
-static void auth_cb_old(DBusPendingCall *call, void *data)
-{
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError err;
-
-	dbus_error_init(&err);
-	dbus_set_error_from_message(&err, reply);
-	auth_cb(&err, data);
-	dbus_error_free(&err);
-
-	dbus_message_unref(reply);
-}
-
 static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer data)
 {
@@ -1232,12 +1219,11 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
-	if (service_req_auth(&device->src, &device->dst, uuid, auth_cb,
+	if (!service_req_auth(&device->src, &device->dst, uuid, auth_cb,
 				device) == 0)
-		headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
-	else if (!manager_authorize(&device->dst, uuid, auth_cb_old, device,
-				NULL))
 		headset_close_rfcomm(device);
+
+	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
 	return;
 
@@ -1541,77 +1527,6 @@ struct audio_device *manager_get_connected_device(void)
 	}
 
 	return NULL;
-}
-
-void manager_cancel_authorize(bdaddr_t *dba, const char *uuid,
-				DBusPendingCall *pending)
-{
-	DBusMessage *cancel;
-	char addr[18], *address = addr;
-
-	if (pending)
-		dbus_pending_call_cancel(pending);
-
-	cancel = dbus_message_new_method_call("org.bluez", "/org/bluez",
-						"org.bluez.Database",
-						"CancelAuthorizationRequest");
-	if (!cancel) {
-		error("Unable to allocate new method call");
-		return;
-	}
-
-	ba2str(dba, addr);
-
-	dbus_message_append_args(cancel, DBUS_TYPE_STRING, &address,
-					DBUS_TYPE_STRING, &uuid,
-					DBUS_TYPE_INVALID);
-
-	dbus_connection_send(connection, cancel, NULL);
-
-	dbus_message_unref(cancel);
-}
-
-gboolean manager_authorize(const bdaddr_t *dba, const char *uuid,
-				DBusPendingCallNotifyFunction cb,
-				void *user_data,
-				DBusPendingCall **pending)
-{
-	DBusMessage *auth;
-	char address[18], *addr_ptr = address;
-	DBusPendingCall *p;
-
-	ba2str(dba, address);
-
-	debug("Requesting authorization for device %s, UUID %s",
-			address, uuid);
-
-	auth = dbus_message_new_method_call("org.bluez", "/org/bluez",
-						"org.bluez.Database",
-						"RequestAuthorization");
-	if (!auth) {
-		error("Unable to allocate RequestAuthorization method call");
-		return FALSE;
-	}
-
-	dbus_message_append_args(auth, DBUS_TYPE_STRING, &addr_ptr,
-					DBUS_TYPE_STRING, &uuid,
-					DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(connection, auth, &p, -1)) {
-		error("Sending of authorization request failed");
-		dbus_message_unref(auth);
-		return FALSE;
-	}
-
-	dbus_pending_call_set_notify(p, cb, user_data, NULL);
-	if (pending)
-		*pending = p;
-	else
-		dbus_pending_call_unref(p);
-
-	dbus_message_unref(auth);
-
-	return TRUE;
 }
 
 struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interface,
