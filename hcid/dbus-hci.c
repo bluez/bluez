@@ -1016,7 +1016,8 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	hci_close_dev(dd);
 }
 
-static uint8_t get_auth_requirements(bdaddr_t *local, bdaddr_t *remote)
+static int get_auth_requirements(bdaddr_t *local, bdaddr_t *remote,
+							uint8_t *auth)
 {
 	struct hci_auth_info_req req;
 	char addr[18];
@@ -1026,24 +1027,29 @@ static uint8_t get_auth_requirements(bdaddr_t *local, bdaddr_t *remote)
 
 	dev_id = hci_devid(addr);
 	if (dev_id < 0)
-		return 0xff;
+		return dev_id;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0)
-		return 0xff;
+		return dd;
 
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, remote);
-	req.type = 0xff;
 
 	err = ioctl(dd, HCIGETAUTHINFO, (unsigned long) &req);
-	if (err < 0)
-		debug("HCIGETAUTHINFO failed: %s (%d)", strerror(errno),
-				errno);
+	if (err < 0) {
+		debug("HCIGETAUTHINFO failed: %s (%d)",
+					strerror(errno), errno);
+		hci_close_dev(dd);
+		return err;
+	}
 
 	hci_close_dev(dd);
 
-	return req.type;
+	if (auth)
+		*auth = req.type;
+
+	return 0;
 }
 
 int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
@@ -1061,13 +1067,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -1;
 	}
 
-	type = get_auth_requirements(sba, dba);
-
-	debug("kernel authentication requirement = 0x%02x", type);
-
-	/* If no MITM protection reqiured, auto-accept */
-	if (type != 0xff && !(type & 0x01)) {
-		user_confirm_reply_cp cp;
+	if (get_auth_requirements(sba, dba, &type) < 0) {
 		int dd;
 
 		dd = hci_open_dev(adapter->dev_id);
@@ -1076,11 +1076,8 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 			return -1;
 		}
 
-		memset(&cp, 0, sizeof(cp));
-		bacpy(&cp.bdaddr, dba);
-
-		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
-					USER_CONFIRM_REPLY_CP_SIZE, &cp);
+		hci_send_cmd(dd, OGF_LINK_CTL,
+					OCF_USER_CONFIRM_NEG_REPLY, 6, dba);
 
 		hci_close_dev(dd);
 
@@ -1090,7 +1087,30 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	ba2str(dba, addr);
 
 	device = adapter_get_device(connection, adapter, addr);
-	if (device && device->agent)
+	if (!device) {
+		error("Device creation failed");
+		return -1;
+	}
+
+	/* If no MITM protection required, auto-accept */
+	if (!(device->auth & 0x01) && !(type & 0x01)) {
+		int dd;
+
+		dd = hci_open_dev(adapter->dev_id);
+		if (dd < 0) {
+			error("Unable to open hci%d", adapter->dev_id);
+			return -1;
+		}
+
+		hci_send_cmd(dd, OGF_LINK_CTL,
+					OCF_USER_CONFIRM_REPLY, 6, dba);
+
+		hci_close_dev(dd);
+
+		return 0;
+	}
+
+	if (device->agent)
 		agent = device->agent;
 	else
 		agent = adapter->agent;
@@ -1101,7 +1121,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	}
 
 	if (agent_request_confirmation(agent, device, passkey,
-					confirm_cb, device) < 0) {
+						confirm_cb, device) < 0) {
 		error("Requesting passkey failed");
 		return -1;
 	}
@@ -2433,7 +2453,6 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	struct device *device;
 	struct agent *agent;
 	char addr[18];
-	uint8_t type;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -2441,11 +2460,8 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		return -1;
 	}
 
-	type = get_auth_requirements(local, remote);
-
-	debug("kernel authentication requirement = 0x%02x", type);
-
-	*auth = (type == 0xff) ? 0x00 : type;
+	if (get_auth_requirements(local, remote, auth) < 0)
+		return -1;
 
 	ba2str(remote, addr);
 
@@ -2457,7 +2473,8 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		agent = adapter->agent;
 
 	if (!agent) {
-		if (!(type & 0x01)) {
+		if (!(*auth & 0x01)) {
+			/* No input, no output */
 			*cap = 0x03;
 			return 0;
 		}

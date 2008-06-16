@@ -287,13 +287,15 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, dba);
-	req.type = 0xff;
 
 	err = ioctl(dev, HCIGETAUTHINFO, (unsigned long) &req);
 	if (err < 0)
-		debug("HCIGETAUTHINFO failed (%d)", errno);
+		debug("HCIGETAUTHINFO failed (%d)",
+					strerror(errno), errno);
+	else
+		req.type = 0x00;
 
-	debug("kernel authentication requirement = 0x%02x", req.type);
+	debug("kernel auth requirements = 0x%02x", req.type);
 
 	err = read_link_key(sba, dba, key, &type);
 	if (err < 0) {
