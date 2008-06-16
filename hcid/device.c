@@ -1054,7 +1054,14 @@ static DBusMessage *discover_services(DBusConnection *conn,
 static DBusMessage *cancel_discover(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	/* FIXME cancel discovery */
+	struct device *device = user_data;
+	struct adapter *adapter = device->adapter;
+	bdaddr_t src,dst;
+
+	str2ba(adapter->address, &src);
+	str2ba(device->address, &dst);
+
+	bt_cancel_discovery(&src, &dst);
 
 	return dbus_message_new_method_return(msg);
 }

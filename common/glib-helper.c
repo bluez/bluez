@@ -98,10 +98,15 @@ struct search_context {
 	uuid_t			uuid;
 };
 
+static GSList *context_list = NULL;
+
 static void search_context_cleanup(struct search_context *ctxt)
 {
+	context_list = g_slist_remove(context_list, ctxt);
+
 	if (ctxt->destroy)
 		ctxt->destroy(ctxt->user_data);
+
 	g_free(ctxt);
 }
 
@@ -146,8 +151,10 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 
 done:
 	sdp_close(ctxt->session);
+
 	if (ctxt->cb)
 		ctxt->cb(recs, err, ctxt->user_data);
+
 	search_context_cleanup(ctxt);
 }
 
@@ -170,8 +177,10 @@ static gboolean search_process_cb(GIOChannel *chan,
 failed:
 	if (err) {
 		sdp_close(ctxt->session);
+
 		if (ctxt->cb)
 			ctxt->cb(NULL, err, ctxt->user_data);
+
 		search_context_cleanup(ctxt);
 	}
 
@@ -222,8 +231,10 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond, gpointer user
 
 failed:
 	sdp_close(ctxt->session);
+
 	if (ctxt->cb)
 		ctxt->cb(NULL, -err, ctxt->user_data);
+
 	search_context_cleanup(ctxt);
 
 	return FALSE;
@@ -280,6 +291,8 @@ int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 	ctxt->destroy	= destroy;
 	ctxt->user_data	= user_data;
 
+	context_list = g_slist_append(context_list, ctxt);
+
 	return 0;
 }
 
@@ -291,6 +304,33 @@ int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
 	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
 
 	return bt_search_service(src, dst, &uuid, cb, user_data, destroy);
+}
+
+static int find_by_bdaddr(const void *data, const void *user_data)
+{
+	const struct search_context *ctxt = data, *search = user_data;
+
+	return (bacmp(&ctxt->dst, &search->dst) &&
+					bacmp(&ctxt->src, &search->src));
+}
+
+void bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	struct search_context search, *ctxt;
+	GSList *match;
+
+	memset(&search, 0, sizeof(search));
+	bacpy(&search.src, src);
+	bacpy(&search.dst, dst);
+
+	match = g_slist_find_custom(context_list, &search, find_by_bdaddr);
+
+	/* Ongoing SDP Discovery */
+	if (match) {
+		ctxt = match->data;
+		if (ctxt->session) 
+			close(ctxt->session->sock);
+	}
 }
 
 char *bt_uuid2string(uuid_t *uuid)
@@ -1159,6 +1199,7 @@ gboolean bt_io_set_psm(BtIO *io, guint16 psm)
 
 	return TRUE;
 }
+
 guint16 bt_io_get_psm(BtIO *io)
 {
 	return io->psm;
