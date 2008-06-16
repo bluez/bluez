@@ -83,6 +83,7 @@ enum {
 #define HCIGETDEVINFO	_IOR('H', 211, int)
 #define HCIGETCONNLIST	_IOR('H', 212, int)
 #define HCIGETCONNINFO	_IOR('H', 213, int)
+#define HCIGETAUTHINFO	_IOR('H', 215, int)
 
 #define HCISETRAW	_IOW('H', 220, int)
 #define HCISETSCAN	_IOW('H', 221, int)
@@ -1811,6 +1812,11 @@ struct hci_conn_info_req {
 	bdaddr_t bdaddr;
 	uint8_t  type;
 	struct hci_conn_info conn_info[0];
+};
+
+struct hci_auth_info_req {
+	bdaddr_t bdaddr;
+	uint8_t  type;
 };
 
 struct hci_inquiry_req {
