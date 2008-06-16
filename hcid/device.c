@@ -1056,7 +1056,7 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 {
 	struct device *device = user_data;
 	struct adapter *adapter = device->adapter;
-	bdaddr_t src,dst;
+	bdaddr_t src, dst;
 
 	str2ba(adapter->address, &src);
 	str2ba(device->address, &dst);

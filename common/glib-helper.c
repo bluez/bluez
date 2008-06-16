@@ -328,7 +328,7 @@ void bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
 	/* Ongoing SDP Discovery */
 	if (match) {
 		ctxt = match->data;
-		if (ctxt->session) 
+		if (ctxt->session)
 			close(ctxt->session->sock);
 	}
 }
