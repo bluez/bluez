@@ -749,6 +749,7 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 	if (!str) {
 		read_remote_version_cp cp;
 
+		memset(&cp, 0, sizeof(cp));
 		cp.handle = evt->handle;
 
 		data = hci_req_data_new(dev_id, &evt->bdaddr, OGF_LINK_CTL,
