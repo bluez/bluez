@@ -1206,13 +1206,12 @@ void device_probe_drivers(struct device *device)
 {
 	GSList *list;
 	const char **uuid;
-	struct btd_device_driver *driver;
 	int err;
 
 	debug("Probe drivers for %s", device->path);
 
 	for (list = drivers; list; list = list->next) {
-		driver = (struct btd_device_driver *) list->data;
+		struct btd_device_driver *driver = list->data;
 		gboolean do_probe = FALSE;
 
 		for (uuid = driver->uuids; *uuid; uuid++) {
