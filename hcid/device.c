@@ -1061,7 +1061,10 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 	str2ba(adapter->address, &src);
 	str2ba(device->address, &dst);
 
-	bt_cancel_discovery(&src, &dst);
+	if (bt_cancel_discovery(&src, &dst) < 0)
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".Failed",
+				"No pending discover");
 
 	return dbus_message_new_method_return(msg);
 }

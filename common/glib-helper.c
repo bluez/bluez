@@ -314,7 +314,7 @@ static int find_by_bdaddr(const void *data, const void *user_data)
 					bacmp(&ctxt->src, &search->src));
 }
 
-void bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
+int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct search_context search, *ctxt;
 	GSList *match;
@@ -323,14 +323,17 @@ void bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
 	bacpy(&search.src, src);
 	bacpy(&search.dst, dst);
 
-	match = g_slist_find_custom(context_list, &search, find_by_bdaddr);
-
 	/* Ongoing SDP Discovery */
-	if (match) {
-		ctxt = match->data;
-		if (ctxt->session)
-			close(ctxt->session->sock);
-	}
+	match = g_slist_find_custom(context_list, &search, find_by_bdaddr);
+	if (!match)
+		return -ENODATA;
+
+	ctxt = match->data;
+	if (!ctxt->session)
+		return -ENOTCONN;
+
+	close(ctxt->session->sock);
+	return 0;
 }
 
 char *bt_uuid2string(uuid_t *uuid)
