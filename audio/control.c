@@ -165,8 +165,6 @@ struct avctp {
 	guint io;
 
 	uint16_t mtu;
-
-	DBusPendingCall *pending_auth;
 };
 
 struct control {
@@ -323,12 +321,8 @@ static struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst)
 	assert(dst != NULL);
 
 	session = find_session(src, dst);
-	if (session) {
-		if (session->pending_auth)
-			return NULL;
-		else
-			return session;
-	}
+	if (session)
+		return session;
 
 	session = g_new0(struct avctp, 1);
 
@@ -419,13 +413,6 @@ static void handle_panel_passthrough(struct avctp *session,
 static void avctp_unref(struct avctp *session)
 {
 	sessions = g_slist_remove(sessions, session);
-
-	if (session->pending_auth) {
-		manager_cancel_authorize(&session->dst, AVRCP_TARGET_UUID,
-						NULL);
-		dbus_pending_call_cancel(session->pending_auth);
-		dbus_pending_call_unref(session->pending_auth);
-	}
 
 	if (session->state == AVCTP_STATE_CONNECTED)
 		g_dbus_emit_signal(session->dev->conn,
@@ -609,56 +596,47 @@ static void init_uinput(struct avctp *session)
 		debug("AVRCP: uinput initialized for %s", name);
 }
 
-static void auth_cb(DBusError *derr, void *user_data)
+static void avctp_connect_session(struct avctp *session)
 {
-	struct avctp *session = user_data;
 	GIOChannel *io;
 
-	if (derr && dbus_error_is_set(derr)) {
-		error("Access denied: %s", derr->message);
-		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
-			debug("Canceling authorization request");
-			if (service_cancel_auth(&session->dst) < 0)
-				manager_cancel_authorize(&session->dst,
-							AVRCP_TARGET_UUID,
-							NULL);
-		}
-
-		avctp_unref(session);
-		return;
-	}
-
 	session->state = AVCTP_STATE_CONNECTED;
-
 	session->dev = manager_device_connected(&session->dst,
 						AVRCP_TARGET_UUID);
 	session->dev->control->session = session;
+
 	init_uinput(session);
 
 	g_dbus_emit_signal(session->dev->conn, session->dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
 					DBUS_TYPE_INVALID);
 
-	g_source_remove(session->io);
+	if (session->io)
+		g_source_remove(session->io);
 
 	io = g_io_channel_unix_new(session->sock);
 	session->io = g_io_add_watch(io,
-				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				(GIOFunc) session_cb, session);
+			G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+			(GIOFunc) session_cb, session);
 	g_io_channel_unref(io);
 }
 
-static void auth_cb_old(DBusPendingCall *call, void *data)
+static void auth_cb(DBusError *derr, void *user_data)
 {
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError err;
+	struct avctp *session = user_data;
 
-	dbus_error_init(&err);
-	dbus_set_error_from_message(&err, reply);
-	auth_cb(&err, data);
-	dbus_error_free(&err);
+	if (derr && dbus_error_is_set(derr)) {
+		error("Access denied: %s", derr->message);
+		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
+			debug("Canceling authorization request");
+			service_cancel_auth(&session->src, &session->dst);
+		}
 
-	dbus_message_unref(reply);
+		avctp_unref(session);
+		return;
+	}
+
+	avctp_connect_session(session);
 }
 
 static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
@@ -701,6 +679,7 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	}
 
 	session->mtu = l2o.imtu;
+
 	session->io = g_io_add_watch(chan, flags, (GIOFunc) session_cb,
 				session);
 	g_io_channel_unref(chan);
@@ -708,34 +687,18 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	if (avdtp_is_connected(src, dst))
 		goto proceed;
 
-	if (service_req_auth(src, dst, AVRCP_TARGET_UUID, auth_cb, session) == 0)
-		goto proceed;
-	else if (!manager_authorize(dst, AVRCP_TARGET_UUID, auth_cb_old, session,
-				&session->pending_auth)) {
-		avctp_unref(session);
+	if (service_req_auth(src, dst, AVRCP_TARGET_UUID, auth_cb, session) < 0)
 		goto drop;
-	}
+
+	return;
 
 proceed:
-	if (!session->pending_auth) {
-		session->state = AVCTP_STATE_CONNECTED;
-		session->dev = manager_device_connected(dst,
-							AVRCP_TARGET_UUID);
-		session->dev->control->session = session;
-		init_uinput(session);
-		flags |= G_IO_IN;
-		g_dbus_emit_signal(session->dev->conn,
-						session->dev->path,
-						AUDIO_CONTROL_INTERFACE,
-						"Connected",
-						DBUS_TYPE_INVALID);
-	}
+	avctp_connect_session(session);
 
 	return;
 
 drop:
-	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
+	close(session->sock);
 }
 
 static GIOChannel *avctp_server_socket(gboolean master)

@@ -80,6 +80,28 @@ static struct btd_device_driver a2dp_driver = {
 	.remove	= a2dp_remove,
 };
 
+static int audio_probe(struct btd_device *device)
+{
+	DBG("path %s", device->path);
+
+	return 0;
+}
+
+static void audio_remove(struct btd_device *device)
+{
+	DBG("path %s", device->path);
+}
+
+static struct btd_device_driver audio_driver = {
+	.name	= "audio",
+	.uuids	= BTD_UUIDS(HSP_HS_UUID, HFP_HS_UUID, HSP_AG_UUID, HFP_AG_UUID,
+			ADVANCED_AUDIO_UUID, A2DP_SOURCE_UUID, A2DP_SINK_UUID,
+			AVRCP_TARGET_UUID, AVRCP_REMOTE_UUID),
+	.probe	= audio_probe,
+	.remove	= audio_remove,
+};
+
+
 static GKeyFile *load_config_file(const char *file)
 {
 	GError *err = NULL;
@@ -124,11 +146,15 @@ static int audio_init(void)
 
 	btd_register_device_driver(&a2dp_driver);
 
+	btd_register_device_driver(&audio_driver);
+
 	return 0;
 }
 
 static void audio_exit(void)
 {
+	btd_unregister_device_driver(&audio_driver);
+
 	btd_unregister_device_driver(&a2dp_driver);
 
 	btd_unregister_device_driver(&headset_driver);

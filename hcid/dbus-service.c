@@ -55,6 +55,7 @@
 #include "device.h"
 #include "dbus-service.h"
 #include "dbus-hci.h"
+#include "dbus-security.h"
 
 #define SERVICE_INTERFACE "org.bluez.Service"
 
@@ -703,7 +704,8 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 
 	agent = (device->agent ? : adapter->agent);
 	if (!agent)
-		return -EPERM;
+		return handle_authorize_request_old(service, adapter->path,
+					address, uuid, cb, user_data);
 
 	auth = g_try_new0(struct service_auth, 1);
 	if (!auth)
@@ -715,7 +717,7 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 	return agent_authorize(agent, device->path, uuid, agent_auth_cb, auth);
 }
 
-int service_cancel_auth(const bdaddr_t *src)
+int service_cancel_auth(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct adapter *adapter = manager_find_adapter(src);
 	struct device *device;
@@ -725,7 +727,7 @@ int service_cancel_auth(const bdaddr_t *src)
 	if (!adapter)
 		return -EPERM;
 
-	ba2str(src, address);
+	ba2str(dst, address);
 	device = adapter_find_device(adapter, address);
 	if (!device)
 		return -EPERM;
@@ -737,7 +739,7 @@ int service_cancel_auth(const bdaddr_t *src)
 
 	agent = (device->agent ? : adapter->agent);
 	if (!agent)
-		return -EPERM;
+		return cancel_authorize_request_old(adapter->path, address);
 
 	return agent_cancel(agent);
 }

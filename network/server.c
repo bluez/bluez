@@ -363,7 +363,7 @@ static void req_auth_cb(DBusError *derr, void *user_data)
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			bdaddr_t dst;
 			str2ba(setup->address, &dst);
-			service_cancel_auth(&dst);
+			service_cancel_auth(&ns->src, &dst);
 		}
 		val = BNEP_CONN_NOT_ALLOWED;
 		goto done;

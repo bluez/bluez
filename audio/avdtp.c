@@ -1496,13 +1496,6 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 
 failed:
-	if (session->pending_auth) {
-		manager_cancel_authorize(&session->dst, ADVANCED_AUDIO_UUID,
-						session->pending_auth);
-		dbus_pending_call_unref(session->pending_auth);
-		session->pending_auth = NULL;
-	}
-
 	connection_lost(session, -EIO);
 
 	return FALSE;
@@ -2691,10 +2684,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 		error("Access denied: %s", derr->message);
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			if (service_cancel_auth(&session->dst) < 0)
-				manager_cancel_authorize(&session->dst,
-							ADVANCED_AUDIO_UUID,
-							NULL);
+			service_cancel_auth(&session->src, &session->dst);
 		}
 
 		connection_lost(session, -EACCES);
@@ -2719,23 +2709,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_cb, session);
 	g_io_channel_unref(io);
-}
-
-static void auth_cb_old(DBusPendingCall *call, void *data)
-{
-	struct avdtp *session = data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError err;
-
-	dbus_pending_call_unref(session->pending_auth);
-	session->pending_auth = NULL;
-
-	dbus_error_init(&err);
-	dbus_set_error_from_message(&err, reply);
-	auth_cb(&err, data);
-	dbus_error_free(&err);
-
-	dbus_message_unref(reply);
 }
 
 static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
@@ -2785,10 +2758,7 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	g_io_channel_unref(chan);
 
 	if (service_req_auth(src, dst, ADVANCED_AUDIO_UUID, auth_cb,
-			session) == 0)
-		return;
-	else if (!manager_authorize(dst, ADVANCED_AUDIO_UUID, auth_cb_old,
-			session, &session->pending_auth)) {
+			session) < 0) {
 		avdtp_unref(session);
 		goto drop;
 	}

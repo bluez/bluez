@@ -44,4 +44,4 @@ void unregister_service(const char *ident);
 typedef void (*service_auth_cb) (DBusError *derr, void *user_data);
 int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data);
-int service_cancel_auth(const bdaddr_t *src);
+int service_cancel_auth(const bdaddr_t *src, const bdaddr_t *dst);
