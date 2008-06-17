@@ -1026,29 +1026,64 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return invalid_args(msg);
 }
 
+static void discover_services_req_exit(void *user_data)
+{
+	struct device *device = user_data;
+	struct adapter *adapter = device->adapter;
+	bdaddr_t src, dst;
+
+	debug("DiscoverDevices requestor exited");
+
+	str2ba(adapter->address, &src);
+	str2ba(device->address, &dst);
+
+	bt_cancel_discovery(&src, &dst);
+}
+
 static DBusMessage *discover_services(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct device *device = user_data;
 	const char *pattern;
 	uint16_t search;
+	int err;
+
+	if (device->discov_active)
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
+							"Discover in progress");
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 						DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
+		goto fail;
 
 	if (strlen(pattern) == 0) {
-		device_browse(device, conn, msg, TRUE, 0);
-		return NULL;
+		err = device_browse(device, conn, msg, TRUE, 0);
+		if (err < 0)
+			goto fail;
+	} else {
+
+		search = sdp_str2svclass(pattern);
+		if (!search)
+			return invalid_args(msg);
+
+		err = device_browse(device, conn, msg, TRUE, search);
+		if (err < 0)
+			goto fail;
 	}
 
-	search = sdp_str2svclass(pattern);
-	if (!search)
-		return invalid_args(msg);
-
-	device_browse(device, conn, msg, TRUE, search);
-
+	device->discov_active = 1;
+	device->discov_requestor = g_strdup(dbus_message_get_sender(msg));
+	/* track the request owner to cancel it automatically if the owner
+	 * exits */
+	device->discov_listener = g_dbus_add_disconnect_watch(conn,
+						dbus_message_get_sender(msg),
+						discover_services_req_exit,
+						device, NULL);
 	return NULL;
+
+fail:
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+					"Discovery Failed");
 }
 
 static DBusMessage *cancel_discover(DBusConnection *conn,
@@ -1058,7 +1093,19 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 	struct adapter *adapter = device->adapter;
 	bdaddr_t src, dst;
 
-	str2ba(adapter->address, &src);
+	if (!device->discov_active)
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".Failed",
+				"No pending discovery");
+
+	/* only the discover requestor can cancel the inquiry process */
+	if (!device->discov_requestor ||
+			strcmp(device->discov_requestor, dbus_message_get_sender(msg)))
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".NotAuthorized",
+				"Not Authorized");
+
+ 	str2ba(adapter->address, &src);
 	str2ba(device->address, &dst);
 
 	if (bt_cancel_discovery(&src, &dst) < 0)
@@ -1268,6 +1315,15 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	GSList *l;
 	DBusMessage *reply;
 	uuid_t uuid;
+
+	device->discov_active = 0;
+
+	if (device->discov_requestor) {
+		g_dbus_remove_watch(req->conn, device->discov_listener);
+		device->discov_listener = 0;
+		g_free(device->discov_requestor);
+		device->discov_requestor = NULL;
+	}
 
 	if (err < 0)
 		goto proceed;
