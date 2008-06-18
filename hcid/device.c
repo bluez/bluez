@@ -1316,15 +1316,6 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	DBusMessage *reply;
 	uuid_t uuid;
 
-	device->discov_active = 0;
-
-	if (device->discov_requestor) {
-		g_dbus_remove_watch(req->conn, device->discov_listener);
-		device->discov_listener = 0;
-		g_free(device->discov_requestor);
-		device->discov_requestor = NULL;
-	}
-
 	if (err < 0)
 		goto proceed;
 
@@ -1352,24 +1343,8 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		next = seq->next;
 	}
 
-	/* Store the device's profiles in the filesystem */
 	str2ba(adapter->address, &src);
 	str2ba(device->address, &dst);
-	if (device->uuids) {
-		gchar *str = bt_list2string(device->uuids);
-		write_device_profiles(&src, &dst, str);
-		g_free(str);
-	} else
-		write_device_profiles(&src, &dst, "");
-
-	uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
-	for (i = 0, l = device->uuids; l; l = l->next, i++)
-		uuids[i] = l->data;
-
-	dbus_connection_emit_property_changed(req->conn, device->path,
-					DEVICE_INTERFACE, "UUIDs",
-					DBUS_TYPE_ARRAY, &uuids);
-	g_free(uuids);
 
 	/* Public browsing successful or Single record requested */
 	if (req->browse == FALSE || (!req->search_uuid && recs))
@@ -1382,6 +1357,26 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	}
 
 probe:
+	/* Store the device's profiles in the filesystem */
+	if (device->uuids) {
+		gchar *str = bt_list2string(device->uuids);
+		write_device_profiles(&src, &dst, str);
+		g_free(str);
+
+		uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
+		for (i = 0, l = device->uuids; l; l = l->next, i++)
+			uuids[i] = l->data;
+
+		dbus_connection_emit_property_changed(req->conn, device->path,
+						DEVICE_INTERFACE, "UUIDs",
+						DBUS_TYPE_ARRAY, &uuids);
+
+		g_free(uuids);
+
+	} else
+		write_device_profiles(&src, &dst, "");
+
+	/* Probe matching drivers */
 	device_probe_drivers(device);
 
 proceed:
@@ -1444,6 +1439,15 @@ proceed:
 	dbus_message_unref(reply);
 
 fail:
+	device->discov_active = 0;
+
+	if (device->discov_requestor) {
+		g_dbus_remove_watch(req->conn, device->discov_listener);
+		device->discov_listener = 0;
+		g_free(device->discov_requestor);
+		device->discov_requestor = NULL;
+	}
+
 	if (recs != NULL)
 		sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
 
