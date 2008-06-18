@@ -7,13 +7,13 @@ else
 netlink_plugins =
 endif
 
-plugin_LTLIBRARIES = libstorage.la $(netlink_plugins)
+plugin_LTLIBRARIES = $(netlink_plugins)
 
-libstorage_la_SOURCES = storage.c
-
-noinst_LTLIBRARIES = libecho.la
+noinst_LTLIBRARIES = libecho.la libstorage.la
 
 libecho_la_SOURCES = echo.c
+
+libstorage_la_SOURCES = storage.c
 
 if NETLINK
 libnetlink_la_SOURCES = netlink.c

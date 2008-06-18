@@ -12,6 +12,8 @@ fi
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--libexecdir=/lib \
+		--enable-netlink \
+		--enable-tools \
 		--enable-bccmd \
 		--enable-dfutool \
 		--enable-hid2hci \

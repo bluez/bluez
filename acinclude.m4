@@ -152,7 +152,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fortify_enable=yes
 	pie_enable=yes
 	sndfile_enable=${sndfile_found}
-	netlink_enable=${netlink_found}
+	netlink_enable=no
 	usb_enable=${usb_found}
 	alsa_enable=${alsa_found}
 	glib_enable=yes
@@ -161,19 +161,19 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	input_enable=yes
 	serial_enable=yes
 	network_enable=yes
+	tools_enable=yes
 	hidd_enable=no
 	pand_enable=no
 	dund_enable=no
 	cups_enable=no
 	test_enable=no
+	bccmd_enable=no
+	hid2hci_enable=no
+	dfutool_enable=no
 	manpages_enable=yes
 	configfiles_enable=yes
 	initscripts_enable=no
 	pcmciarules_enable=no
-	tools_enable=yes
-	bccmd_enable=no
-	hid2hci_enable=no
-	dfutool_enable=no
 
 	AC_ARG_ENABLE(fortify, AC_HELP_STRING([--disable-fortify], [disable compile time buffer checks]), [
 		fortify_enable=${enableval}
@@ -213,6 +213,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
 		usb_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(netlink, AC_HELP_STRING([--enable-netlink], [enable NETLINK support]), [
+		netlink_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools], [install Bluetooth utilities]), [
