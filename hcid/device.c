@@ -1252,6 +1252,13 @@ gint device_address_cmp(struct device *device, const gchar *address)
 	return strcasecmp(device->address, address);
 }
 
+static int cmp_by_name(const void *data, const void *user_data)
+{
+	const struct btd_device_driver *dev_driver = data, *driver = user_data;
+
+	return (strcmp(dev_driver->name, driver->name));
+}
+
 void device_probe_drivers(struct device *device)
 {
 	GSList *list;
@@ -1274,7 +1281,8 @@ void device_probe_drivers(struct device *device)
 		}
 
 		if (do_probe == TRUE && !g_slist_find_custom(device->drivers,
-					driver, (GCompareFunc) strcmp)) {
+					driver, (GCompareFunc) cmp_by_name)) {
+
 			err = driver->probe(&device->dev);
 			if (err < 0) {
 				error("probe failed for driver %s",
