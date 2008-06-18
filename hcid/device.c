@@ -1071,14 +1071,6 @@ static DBusMessage *discover_services(DBusConnection *conn,
 			goto fail;
 	}
 
-	device->discov_active = 1;
-	device->discov_requestor = g_strdup(dbus_message_get_sender(msg));
-	/* track the request owner to cancel it automatically if the owner
-	 * exits */
-	device->discov_listener = g_dbus_add_disconnect_watch(conn,
-						dbus_message_get_sender(msg),
-						discover_services_req_exit,
-						device, NULL);
 	return NULL;
 
 fail:
@@ -1488,6 +1480,15 @@ int device_browse(struct device *device, DBusConnection *conn,
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
 		req->browse = TRUE;
 	}
+
+	device->discov_active = 1;
+	device->discov_requestor = g_strdup(dbus_message_get_sender(msg));
+	/* track the request owner to cancel it automatically if the owner
+	 * exits */
+	device->discov_listener = g_dbus_add_disconnect_watch(conn,
+						dbus_message_get_sender(msg),
+						discover_services_req_exit,
+						device, NULL);
 
 	return bt_search_service(&src, &dst, &uuid, browse_cb, req, NULL);
 }

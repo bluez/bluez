@@ -4055,7 +4055,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 				"Device does not exist");
 	device = l->data;
 
-	if (device->temporary)
+	if (device->temporary || device->discov_active)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".DoesNotExist",
 				"Device creation in progress");
