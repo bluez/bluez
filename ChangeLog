@@ -1,3 +1,14 @@
+ver 3.33:
+	Add support for handling Simple Pairing.
+	Add Simple Pairing support to Agent interface.
+	Add ReleaseMode method to Adapter interface.
+	Add DiscoverServices method to Device interface.
+	Remove obsolete code and cleanup the repository.
+	Move over to use the libgdbus API.
+
+	Note:
+	This version needs at least bluez-libs-3.33
+
 ver 3.32:
 	Add support for switching HID proxy devices from Dell.
 	Add more Bluetooth client/server helper functions.
