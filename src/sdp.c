@@ -904,15 +904,76 @@ void sdp_data_free(sdp_data_t *d)
 	free(d);
 }
 
-static sdp_data_t *extract_int(const void *p, int *len)
+int sdp_uuid_extract_safe(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
 {
-	sdp_data_t *d = malloc(sizeof(sdp_data_t));
+	uint8_t type;
+
+	if (bufsize < sizeof(uint8_t)) {
+		SDPERR("Unexpected end of packet");
+		return -1;
+	}
+
+	type = *(const uint8_t *) p;
+
+	if (!SDP_IS_UUID(type)) {
+		SDPERR("Unknown data type : %d expecting a svc UUID\n", type);
+		return -1;
+	}
+	p += sizeof(uint8_t);
+	*scanned += sizeof(uint8_t);
+	bufsize -= sizeof(uint8_t);
+	if (type == SDP_UUID16) {
+		if (bufsize < sizeof(uint16_t)) {
+			SDPERR("Not enough room for 16-bit UUID");
+			return -1;
+		}
+		sdp_uuid16_create(uuid, ntohs(bt_get_unaligned((uint16_t *) p)));
+		*scanned += sizeof(uint16_t);
+		p += sizeof(uint16_t);
+	} else if (type == SDP_UUID32) {
+		if (bufsize < sizeof(uint32_t)) {
+			SDPERR("Not enough room for 32-bit UUID");
+			return -1;
+		}
+		sdp_uuid32_create(uuid, ntohl(bt_get_unaligned((uint32_t *) p)));
+		*scanned += sizeof(uint32_t);
+		p += sizeof(uint32_t);
+	} else {
+		if (bufsize < sizeof(uint128_t)) {
+			SDPERR("Not enough room for 128-bit UUID");
+			return -1;
+		}
+		sdp_uuid128_create(uuid, p);
+		*scanned += sizeof(uint128_t);
+		p += sizeof(uint128_t);
+	}
+	return 0;
+}
+
+int sdp_uuid_extract(const uint8_t *p, uuid_t *uuid, int *scanned)
+{
+	/* Assume p points to a buffer of size at least SDP_MAX_ATTR_LEN,
+	   because we don't have any better information */
+	return sdp_uuid_extract_safe(p, SDP_MAX_ATTR_LEN, uuid, scanned);
+}
+
+static sdp_data_t *extract_int(const void *p, int bufsize, int *len)
+{
+	sdp_data_t *d;
+
+	if (bufsize < sizeof(uint8_t)) {
+		SDPERR("Unexpected end of packet");
+		return NULL;
+	}
+
+	d = malloc(sizeof(sdp_data_t));
 
 	SDPDBG("Extracting integer\n");
 	memset(d, 0, sizeof(sdp_data_t));
 	d->dtd = *(uint8_t *) p;
 	p += sizeof(uint8_t);
 	*len += sizeof(uint8_t);
+	bufsize -= sizeof(uint8_t);
 
 	switch (d->dtd) {
 	case SDP_DATA_NIL:
@@ -920,26 +981,51 @@ static sdp_data_t *extract_int(const void *p, int *len)
 	case SDP_BOOL:
 	case SDP_INT8:
 	case SDP_UINT8:
+		if (bufsize < sizeof(uint8_t)) {
+			SDPERR("Unexpected end of packet");
+			free(d);
+			return NULL;
+		}
 		*len += sizeof(uint8_t);
 		d->val.uint8 = *(uint8_t *) p;
 		break;
 	case SDP_INT16:
 	case SDP_UINT16:
+		if (bufsize < sizeof(uint16_t)) {
+			SDPERR("Unexpected end of packet");
+			free(d);
+			return NULL;
+		}
 		*len += sizeof(uint16_t);
 		d->val.uint16 = ntohs(bt_get_unaligned((uint16_t *) p));
 		break;
 	case SDP_INT32:
 	case SDP_UINT32:
+		if (bufsize < sizeof(uint32_t)) {
+			SDPERR("Unexpected end of packet");
+			free(d);
+			return NULL;
+		}
 		*len += sizeof(uint32_t);
 		d->val.uint32 = ntohl(bt_get_unaligned((uint32_t *) p));
 		break;
 	case SDP_INT64:
 	case SDP_UINT64:
+		if (bufsize < sizeof(uint64_t)) {
+			SDPERR("Unexpected end of packet");
+			free(d);
+			return NULL;
+		}
 		*len += sizeof(uint64_t);
 		d->val.uint64 = ntoh64(bt_get_unaligned((uint64_t *) p));
 		break;
 	case SDP_INT128:
 	case SDP_UINT128:
+		if (bufsize < sizeof(uint128_t)) {
+			SDPERR("Unexpected end of packet");
+			free(d);
+			return NULL;
+		}
 		*len += sizeof(uint128_t);
 		ntoh128((uint128_t *) p, &d->val.uint128);
 		break;
@@ -950,13 +1036,13 @@ static sdp_data_t *extract_int(const void *p, int *len)
 	return d;
 }
 
-static sdp_data_t *extract_uuid(const uint8_t *p, int *len, sdp_record_t *rec)
+static sdp_data_t *extract_uuid(const uint8_t *p, int bufsize, int *len, sdp_record_t *rec)
 {
 	sdp_data_t *d = malloc(sizeof(sdp_data_t));
 
 	SDPDBG("Extracting UUID");
 	memset(d, 0, sizeof(sdp_data_t));
-	if (sdp_uuid_extract(p, &d->val.uuid, len) < 0) {
+	if (sdp_uuid_extract_safe(p, bufsize, &d->val.uuid, len) < 0) {
 		free(d);
 		return NULL;
 	}
@@ -969,29 +1055,49 @@ static sdp_data_t *extract_uuid(const uint8_t *p, int *len, sdp_record_t *rec)
 /*
  * Extract strings from the PDU (could be service description and similar info) 
  */
-static sdp_data_t *extract_str(const void *p, int *len)
+static sdp_data_t *extract_str(const void *p, int bufsize, int *len)
 {
 	char *s;
 	int n;
-	sdp_data_t *d = malloc(sizeof(sdp_data_t));
+	sdp_data_t *d;
+
+	if (bufsize < sizeof(uint8_t)) {
+		SDPERR("Unexpected end of packet");
+		return NULL;
+	}
+
+	d = malloc(sizeof(sdp_data_t));
 
 	memset(d, 0, sizeof(sdp_data_t));
 	d->dtd = *(uint8_t *) p;
 	p += sizeof(uint8_t);
 	*len += sizeof(uint8_t);
+	bufsize -= sizeof(uint8_t);
 
 	switch (d->dtd) {
 	case SDP_TEXT_STR8:
 	case SDP_URL_STR8:
+		if (bufsize < sizeof(uint8_t)) {
+			SDPERR("Unexpected end of packet");
+			free(d);
+			return NULL;
+		}
 		n = *(uint8_t *) p;
 		p += sizeof(uint8_t);
-		*len += sizeof(uint8_t) + n;
+		*len += sizeof(uint8_t);
+		bufsize -= sizeof(uint8_t);
 		break;
 	case SDP_TEXT_STR16:
 	case SDP_URL_STR16:
+		if (bufsize < sizeof(uint16_t)) {
+			SDPERR("Unexpected end of packet");
+			free(d);
+			return NULL;
+		}
 		n = ntohs(bt_get_unaligned((uint16_t *) p));
 		p += sizeof(uint16_t);
 		*len += sizeof(uint16_t) + n;
+		bufsize -= sizeof(uint16_t);
 		break;
 	default:
 		SDPERR("Sizeof text string > UINT16_MAX\n");
@@ -999,9 +1105,22 @@ static sdp_data_t *extract_str(const void *p, int *len)
 		return 0;
 	}
 
+	if (bufsize < n) {
+		SDPERR("String too long to fit in packet");
+		free(d);
+		return NULL;
+	}
+
 	s = malloc(n + 1);
+	if (!s) {
+		SDPERR("Not enough memory for incoming string");
+		free(d);
+		return NULL;
+	}
 	memset(s, 0, n + 1);
 	memcpy(s, p, n);
+
+	*len += n;
 
 	SDPDBG("Len : %d\n", n);
 	SDPDBG("Str : %s\n", s);
@@ -1011,7 +1130,67 @@ static sdp_data_t *extract_str(const void *p, int *len)
 	return d;
 }
 
-static sdp_data_t *extract_seq(const void *p, int *len, sdp_record_t *rec)
+/*
+ * Extract the sequence type and its length, and return offset into buf
+ * or 0 on failure.
+ */
+int sdp_extract_seqtype_safe(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *size)
+{
+	uint8_t dtd;
+	int scanned = sizeof(uint8_t);
+
+	if (bufsize < sizeof(uint8_t)) {
+		SDPERR("Unexpected end of packet");
+		return 0;
+	}
+
+	dtd = *(uint8_t *) buf;
+	buf += sizeof(uint8_t);
+	bufsize -= sizeof(uint8_t);
+	*dtdp = dtd;
+	switch (dtd) {
+	case SDP_SEQ8:
+	case SDP_ALT8:
+		if (bufsize < sizeof(uint8_t)) {
+			SDPERR("Unexpected end of packet");
+			return 0;
+		}
+		*size = *(uint8_t *) buf;
+		scanned += sizeof(uint8_t);
+		break;
+	case SDP_SEQ16:
+	case SDP_ALT16:
+		if (bufsize < sizeof(uint16_t)) {
+			SDPERR("Unexpected end of packet");
+			return 0;
+		}
+		*size = ntohs(bt_get_unaligned((uint16_t *) buf));
+		scanned += sizeof(uint16_t);
+		break;
+	case SDP_SEQ32:
+	case SDP_ALT32:
+		if (bufsize < sizeof(uint32_t)) {
+			SDPERR("Unexpected end of packet");
+			return 0;
+		}
+		*size = ntohl(bt_get_unaligned((uint32_t *) buf));
+		scanned += sizeof(uint32_t);
+		break;
+	default:
+		SDPERR("Unknown sequence type, aborting\n");
+		return 0;
+	}
+	return scanned;
+}
+
+int sdp_extract_seqtype(const uint8_t *buf, uint8_t *dtdp, int *size)
+{
+	/* Assume buf points to a buffer of size at least SDP_MAX_ATTR_LEN,
+	   because we don't have any better information */
+	return sdp_extract_seqtype_safe(buf, SDP_MAX_ATTR_LEN, dtdp, size);
+}
+
+static sdp_data_t *extract_seq(const void *p, int bufsize, int *len, sdp_record_t *rec)
 {
 	int seqlen, n = 0;
 	sdp_data_t *curr, *prev;
@@ -1019,17 +1198,24 @@ static sdp_data_t *extract_seq(const void *p, int *len, sdp_record_t *rec)
 
 	SDPDBG("Extracting SEQ");
 	memset(d, 0, sizeof(sdp_data_t));
-	*len = sdp_extract_seqtype(p, &d->dtd, &seqlen);
+	*len = sdp_extract_seqtype_safe(p, bufsize, &d->dtd, &seqlen);
 	SDPDBG("Sequence Type : 0x%x length : 0x%x\n", d->dtd, seqlen);
 
 	if (*len == 0)
 		return d;
 
+	if (*len > bufsize) {
+		SDPERR("Packet not big enough to hold sequence.");
+		free(d);
+		return NULL;
+	}
+
 	p += *len;
+	bufsize -= *len;
 	curr = prev = NULL;
 	while (n < seqlen) {
 		int attrlen = 0;
-		curr = sdp_extract_attr(p, &attrlen, rec);
+		curr = sdp_extract_attr_safe(p, bufsize, &attrlen, rec);
 		if (curr == NULL)
 			break;
 
@@ -1040,6 +1226,7 @@ static sdp_data_t *extract_seq(const void *p, int *len, sdp_record_t *rec)
 		prev = curr;
 		p += attrlen;
 		n += attrlen;
+		bufsize -= attrlen;
 
 		SDPDBG("Extracted: %d SequenceLength: %d", n, seqlen);
 	}
@@ -1048,11 +1235,18 @@ static sdp_data_t *extract_seq(const void *p, int *len, sdp_record_t *rec)
 	return d;
 }
 
-sdp_data_t *sdp_extract_attr(const uint8_t *p, int *size, sdp_record_t *rec)
+sdp_data_t *sdp_extract_attr_safe(const uint8_t *p, int bufsize, int *size, sdp_record_t *rec)
 {
 	sdp_data_t *elem;
 	int n = 0;
-	uint8_t dtd = *(const uint8_t *)p;
+	uint8_t dtd;
+
+	if (bufsize < sizeof(uint8_t)) {
+		SDPERR("Unexpected end of packet");
+		return NULL;
+	}
+
+	dtd = *(const uint8_t *)p;
 
 	SDPDBG("extract_attr: dtd=0x%x", dtd);
 	switch (dtd) {
@@ -1068,12 +1262,12 @@ sdp_data_t *sdp_extract_attr(const uint8_t *p, int *size, sdp_record_t *rec)
 	case SDP_INT32:
 	case SDP_INT64:
 	case SDP_INT128:
-		elem = extract_int(p, &n);
+		elem = extract_int(p, bufsize, &n);
 		break;
 	case SDP_UUID16:
 	case SDP_UUID32:
 	case SDP_UUID128:
-		elem = extract_uuid(p, &n, rec);
+		elem = extract_uuid(p, bufsize, &n, rec);
 		break;
 	case SDP_TEXT_STR8:
 	case SDP_TEXT_STR16:
@@ -1081,7 +1275,7 @@ sdp_data_t *sdp_extract_attr(const uint8_t *p, int *size, sdp_record_t *rec)
 	case SDP_URL_STR8:
 	case SDP_URL_STR16:
 	case SDP_URL_STR32:
-		elem = extract_str(p, &n);
+		elem = extract_str(p, bufsize, &n);
 		break;
 	case SDP_SEQ8:
 	case SDP_SEQ16:
@@ -1089,7 +1283,7 @@ sdp_data_t *sdp_extract_attr(const uint8_t *p, int *size, sdp_record_t *rec)
 	case SDP_ALT8:
 	case SDP_ALT16:
 	case SDP_ALT32:
-		elem = extract_seq(p, &n, rec);
+		elem = extract_seq(p, bufsize, &n, rec);
 		break;
 	default:
 		SDPERR("Unknown data descriptor : 0x%x terminating\n", dtd);
@@ -1097,6 +1291,13 @@ sdp_data_t *sdp_extract_attr(const uint8_t *p, int *size, sdp_record_t *rec)
 	}
 	*size += n;
 	return elem;
+}
+
+sdp_data_t *sdp_extract_attr(const uint8_t *p, int *size, sdp_record_t *rec)
+{
+	/* Assume p points to a buffer of size at least SDP_MAX_ATTR_LEN,
+	   because we don't have any better information */
+	return sdp_extract_attr_safe(p, SDP_MAX_ATTR_LEN, size, rec);
 }
 
 #ifdef SDP_DEBUG
@@ -1260,40 +1461,6 @@ sdp_data_t *sdp_data_get(const sdp_record_t *rec, uint16_t attrId)
 			return (sdp_data_t *)p->data;
 	}
 	return NULL;
-}
-
-/*
- * Extract the sequence type and its length, and return offset into buf
- * or 0 on failure.
- */
-int sdp_extract_seqtype(const uint8_t *buf, uint8_t *dtdp, int *size)
-{
-	uint8_t dtd = *(uint8_t *) buf;
-	int scanned = sizeof(uint8_t);
-
-	buf += sizeof(uint8_t);
-	*dtdp = dtd;
-	switch (dtd) {
-	case SDP_SEQ8:
-	case SDP_ALT8:
-		*size = *(uint8_t *) buf;
-		scanned += sizeof(uint8_t);
-		break;
-	case SDP_SEQ16:
-	case SDP_ALT16:
-		*size = ntohs(bt_get_unaligned((uint16_t *) buf));
-		scanned += sizeof(uint16_t);
-		break;
-	case SDP_SEQ32:
-	case SDP_ALT32:
-		*size = ntohl(bt_get_unaligned((uint32_t *) buf));
-		scanned += sizeof(uint32_t);
-		break;
-	default:
-		SDPERR("Unknown sequence type, aborting\n");
-		return 0;
-	}
-	return scanned;
 }
 
 int sdp_send_req(sdp_session_t *session, uint8_t *buf, uint32_t size)
@@ -2329,32 +2496,6 @@ int sdp_uuid_to_proto(uuid_t *uuid)
 	return 0;
 }
 
-int sdp_uuid_extract(const uint8_t *p, uuid_t *uuid, int *scanned)
-{
-	uint8_t type = *(const uint8_t *) p;
-
-	if (!SDP_IS_UUID(type)) {
-		SDPERR("Unknown data type : %d expecting a svc UUID\n", type);
-		return -1;
-	}
-	p += sizeof(uint8_t);
-	*scanned += sizeof(uint8_t);
-	if (type == SDP_UUID16) {
-		sdp_uuid16_create(uuid, ntohs(bt_get_unaligned((uint16_t *) p)));
-		*scanned += sizeof(uint16_t);
-		p += sizeof(uint16_t);
-	} else if (type == SDP_UUID32) {
-		sdp_uuid32_create(uuid, ntohl(bt_get_unaligned((uint32_t *) p)));
-		*scanned += sizeof(uint32_t);
-		p += sizeof(uint32_t);
-	} else {
-		sdp_uuid128_create(uuid, p);
-		*scanned += sizeof(uint128_t);
-		p += sizeof(uint128_t);
-	}
-	return 0;
-}
-
 /*
  * This function appends data to the PDU buffer "dst" from source "src". 
  * The data length is also computed and set.
@@ -2792,7 +2933,7 @@ static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 
 	// Fill up the value and the dtd arrays
 	SDPDBG("");
-	
+
 	memset(&buf, 0, sizeof(sdp_buf_t));
 	buf.data = malloc(256);
 	buf.buf_size = 256;
@@ -2986,7 +3127,7 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 		}
 	} while (cstate);
 
-  end:
+end:
 	if (reqbuf)
 		free(reqbuf);
 	if (rspbuf)
@@ -3146,7 +3287,7 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 			status = -1;
 	}
 	
-  end:
+end:
 	if (reqbuf)
 		free(reqbuf);
 	if (rsp_concat_buf.data)

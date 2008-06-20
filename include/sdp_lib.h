@@ -479,6 +479,7 @@ void sdp_uuid32_to_uuid128(uuid_t *uuid128, uuid_t *uuid32);
 int sdp_uuid128_to_uuid(uuid_t *uuid);
 int sdp_uuid_to_proto(uuid_t *uuid);
 int sdp_uuid_extract(const uint8_t *buffer, uuid_t *uuid, int *scanned);
+int sdp_uuid_extract_safe(const uint8_t *buffer, int bufsize, uuid_t *uuid, int *scanned);
 void sdp_uuid_print(const uuid_t *uuid);
 
 #define MAX_LEN_UUID_STR 37
@@ -601,8 +602,10 @@ int sdp_gen_pdu(sdp_buf_t *pdu, sdp_data_t *data);
 int sdp_gen_record_pdu(const sdp_record_t *rec, sdp_buf_t *pdu);
 
 int sdp_extract_seqtype(const uint8_t *buf, uint8_t *dtdp, int *seqlen);
+int sdp_extract_seqtype_safe(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *size);
 
 sdp_data_t *sdp_extract_attr(const uint8_t *pdata, int *extractedLength, sdp_record_t *rec);
+sdp_data_t *sdp_extract_attr_safe(const uint8_t *pdata, int bufsize, int *extractedLength, sdp_record_t *rec);
 
 void sdp_pattern_add_uuid(sdp_record_t *rec, uuid_t *uuid);
 void sdp_pattern_add_uuidseq(sdp_record_t *rec, sdp_list_t *seq);
