@@ -31,8 +31,6 @@ INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/hcid
 MAINTAINERCLEANFILES = Makefile.in
 
 all-local:
-	@$(LN_S) -f $(top_srcdir)/plugins/.libs/libstorage.so
-	@$(LN_S) -f $(top_srcdir)/plugins/.libs/libnetlink.so
 	@$(LN_S) -f $(top_srcdir)/input/.libs/libinput.so
 	@$(LN_S) -f $(top_srcdir)/audio/.libs/libaudio.so
 	@$(LN_S) -f $(top_srcdir)/serial/.libs/libserial.so
@@ -43,5 +41,3 @@ clean-local:
 	@rm -f libserial.so
 	@rm -f libaudio.so
 	@rm -f libinput.so
-	@rm -f libnetlink.so
-	@rm -f libstorage.so
