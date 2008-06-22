@@ -585,8 +585,10 @@ static inline int sdp_get_icon_url(const sdp_record_t *rec, char *str, int len)
 	return sdp_get_string_attr(rec, SDP_ATTR_ICON_URL, str, len);
 }
 
-sdp_record_t *sdp_extract_pdu(const uint8_t *pdata, int *scanned);
 sdp_data_t *sdp_extract_string(uint8_t *, int *);
+
+sdp_record_t *sdp_extract_pdu(const uint8_t *pdata, int *scanned);
+sdp_record_t *sdp_extract_pdu_safe(const uint8_t *pdata, int bufsize, int *scanned);
 
 void sdp_data_print(sdp_data_t *data);
 void sdp_print_service_attr(sdp_list_t *alist);

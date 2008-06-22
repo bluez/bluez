@@ -1323,7 +1323,7 @@ void sdp_print_service_attr(sdp_list_t *svcAttrList)
 }
 #endif
 
-sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int *scanned)
+sdp_record_t *sdp_extract_pdu_safe(const uint8_t *buf, int bufsize, int *scanned)
 {
 	int extracted = 0, seqlen = 0;
 	uint8_t dtd;
@@ -1331,21 +1331,30 @@ sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int *scanned)
 	sdp_record_t *rec = sdp_record_alloc();
 	const uint8_t *p = buf;
 
-	*scanned = sdp_extract_seqtype(buf, &dtd, &seqlen);
+	*scanned = sdp_extract_seqtype_safe(buf, bufsize, &dtd, &seqlen);
 	p += *scanned;
+	bufsize -= *scanned;
 	rec->attrlist = NULL;
-	while (extracted < seqlen) {
+
+	while (extracted < seqlen && bufsize > 0) {
 		int n = sizeof(uint8_t), attrlen = 0;
 		sdp_data_t *data = NULL;
 
-		SDPDBG("Extract PDU, sequenceLength: %d localExtractedLength: %d", seqlen, extracted);
+		SDPDBG("Extract PDU, sequenceLength: %d localExtractedLength: %d",
+							seqlen, extracted);
+
+		if (bufsize < n + sizeof(uint16_t)) {
+			SDPERR("Unexpected end of packet");
+			break;
+		}
+
 		dtd = *(uint8_t *) p;
 		attr = ntohs(bt_get_unaligned((uint16_t *) (p + n)));
 		n += sizeof(uint16_t);
 
 		SDPDBG("DTD of attrId : %d Attr id : 0x%x \n", dtd, attr);
 
-		data = sdp_extract_attr(p + n, &attrlen, rec);
+		data = sdp_extract_attr_safe(p + n, bufsize - n, &attrlen, rec);
 
 		SDPDBG("Attr id : 0x%x attrValueLength : %d\n", attr, attrlen);
 
@@ -1363,9 +1372,11 @@ sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int *scanned)
 
 		extracted += n;
 		p += n;
+		bufsize -= n;
 		sdp_attr_replace(rec, attr, data);
+
 		SDPDBG("Extract PDU, seqLength: %d localExtractedLength: %d",
-					seqlen, extracted);
+							seqlen, extracted);
 	}
 #ifdef SDP_DEBUG
 	SDPDBG("Successful extracting of Svc Rec attributes\n");
@@ -1373,6 +1384,13 @@ sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int *scanned)
 #endif
 	*scanned += seqlen;
 	return rec;
+}
+
+sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int *scanned)
+{
+	/* Assume buf points to a buffer of size at least SDP_MAX_ATTR_LEN,
+	   because we don't have any better information */
+	return sdp_extract_pdu_safe(buf, SDP_MAX_ATTR_LEN, scanned);
 }
 
 #ifdef SDP_DEBUG
