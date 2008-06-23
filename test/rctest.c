@@ -270,7 +270,7 @@ static void do_listen(void (*handler)(int sk))
 		if (timestamp) {
 			int t = 1;
 
-			if (setsockopt(sk, SOL_SOCKET, SO_TIMESTAMP, &t, sizeof(t)) < 0) {
+			if (setsockopt(nsk, SOL_SOCKET, SO_TIMESTAMP, &t, sizeof(t)) < 0) {
 				syslog(LOG_ERR, "Can't enable SO_TIMESTAMP: %s (%d)",
 							strerror(errno), errno);
 				goto error;
