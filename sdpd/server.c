@@ -151,10 +151,15 @@ static gboolean io_session_event(GIOChannel *chan, GIOCondition cond, gpointer d
 	uint8_t *buf;
 	int sk, len, size;
 
-	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
+	if (cond & G_IO_NVAL)
 		return FALSE;
 
 	sk = g_io_channel_unix_get_fd(chan);
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		sdp_svcdb_collect_all(sk);
+		return FALSE;
+	}
 
 	len = recv(sk, &hdr, sizeof(sdp_pdu_hdr_t), MSG_PEEK);
 	if (len <= 0) {
