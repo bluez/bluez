@@ -818,7 +818,6 @@ static void usage(void)
 		"\t[-X mode] select retransmission/flow-control mode\n"
 		"\t[-R] reliable mode\n"
 		"\t[-G] use connectionless channel (datagram)\n"
-		"\t[-R] enable retransmission\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 		"\t[-S] secure connection\n"
