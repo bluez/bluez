@@ -94,6 +94,7 @@ static int secure = 0;
 static int socktype = SOCK_SEQPACKET;
 static int linger = 0;
 static int reliable = 0;
+static int timestamp = 0;
 
 static float tv2fl(struct timeval tv)
 {
@@ -221,6 +222,17 @@ static int do_connect(char *svr)
 		goto error;
 	}
 
+	/* Enable SO_TIMESTAMP */
+	if (timestamp) {
+		int t = 1;
+
+		if (setsockopt(sk, SOL_SOCKET, SO_TIMESTAMP, &t, sizeof(t)) < 0) {
+			syslog(LOG_ERR, "Can't enable SO_TIMESTAMP: %s (%d)",
+							strerror(errno), errno);
+			goto error;
+		}
+	}
+
 	/* Enable SO_LINGER */
 	if (linger) {
 		struct linger l = { .l_onoff = 1, .l_linger = linger };
@@ -228,7 +240,7 @@ static int do_connect(char *svr)
 		if (setsockopt(sk, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
 			syslog(LOG_ERR, "Can't enable SO_LINGER: %s (%d)",
 							strerror(errno), errno);
-			return -1;
+			goto error;
 		}
 	}
 
@@ -430,6 +442,17 @@ static void do_listen(void (*handler)(int sk))
 					"mode %d, handle %d, class 0x%02x%02x%02x]",
 			ba, opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
 			conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
+
+		/* Enable SO_TIMESTAMP */
+		if (timestamp) {
+			int t = 1;
+
+			if (setsockopt(sk, SOL_SOCKET, SO_TIMESTAMP, &t, sizeof(t)) < 0) {
+				syslog(LOG_ERR, "Can't enable SO_TIMESTAMP: %s (%d)",
+							strerror(errno), errno);
+				goto error;
+			}
+		}
 
 		/* Enable SO_LINGER */
 		if (linger) {
@@ -821,7 +844,8 @@ static void usage(void)
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 		"\t[-S] secure connection\n"
-		"\t[-M] become master\n");
+		"\t[-M] become master\n"
+		"\t[-T] enable timestamps\n");
 }
 
 int main(int argc, char *argv[])
@@ -831,7 +855,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyzb:i:P:I:O:B:N:L:C:D:X:RGAESM")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyzb:i:P:I:O:B:N:L:C:D:X:RGAESMT")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -952,6 +976,10 @@ int main(int argc, char *argv[])
 
 		case 'G':
 			socktype = SOCK_DGRAM;
+			break;
+
+		case 'T':
+			timestamp = 1;
 			break;
 
 		default:
