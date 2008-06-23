@@ -2643,6 +2643,13 @@ int sdp_device_record_register_binary(sdp_session_t *session, bdaddr_t *device, 
 	if (status < 0)
 		goto end;
 
+	if (rspsize < sizeof(sdp_pdu_hdr_t)) {
+		SDPERR("Unexpected end of packet");
+		errno = EPROTO;
+		status = -1;
+		goto end;
+	}
+
 	rsphdr = (sdp_pdu_hdr_t *) rsp;
 	p = rsp + sizeof(sdp_pdu_hdr_t);
 
@@ -2654,6 +2661,12 @@ int sdp_device_record_register_binary(sdp_session_t *session, bdaddr_t *device, 
 		errno = EPROTO;
 		status = -1;
 	} else {
+		if (rspsize < sizeof(sdp_pdu_hdr_t) + sizeof(uint32_t)) {
+			SDPERR("Unexpected end of packet");
+			errno = EPROTO;
+			status = -1;
+			goto end;
+		}
 		if (handle)
 			*handle  = ntohl(bt_get_unaligned((uint32_t *) p));
 	}
@@ -2748,6 +2761,13 @@ int sdp_device_record_unregister_binary(sdp_session_t *session, bdaddr_t *device
 	status = sdp_send_req_w4_rsp(session, reqbuf, rspbuf, reqsize, &rspsize);
 	if (status < 0)
 		goto end;
+
+	if (rspsize < sizeof(sdp_pdu_hdr_t) + sizeof(uint16_t)) {
+		SDPERR("Unexpected end of packet");
+		errno = EPROTO;
+		status = -1;
+		goto end;
+	}
 
 	rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 	p = rspbuf + sizeof(sdp_pdu_hdr_t);
@@ -2847,6 +2867,13 @@ int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp
 	status = sdp_send_req_w4_rsp(session, reqbuf, rspbuf, reqsize, &rspsize);
 	if (status < 0)
 		goto end;
+
+	if (rspsize < sizeof(sdp_pdu_hdr_t) + sizeof(uint16_t)) {
+		SDPERR("Unexpected end of packet");
+		errno = EPROTO;
+		status = -1;
+		goto end;
+	}
 
 	SDPDBG("Send req status : %d\n", status);
 
