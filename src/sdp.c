@@ -3002,12 +3002,17 @@ typedef struct {
 	unsigned char data[16];
 } __attribute__ ((packed)) sdp_cstate_t;
 
-static int copy_cstate(uint8_t *pdata, const sdp_cstate_t *cstate)
+static int copy_cstate(uint8_t *pdata, int pdata_len, const sdp_cstate_t *cstate)
 {
 	if (cstate) {
-		*pdata++ = cstate->length;
-		memcpy(pdata, cstate->data, cstate->length);
-		return cstate->length + 1;
+		uint8_t len = cstate->length;
+		if (len >= pdata_len) {
+			SDPERR("Continuation state size exceeds internal buffer");
+			len = pdata_len - 1;
+		}
+		*pdata++ = len;
+		memcpy(pdata, cstate->data, len);
+		return len + 1;
 	}
 	*pdata = 0;
 	return 1;
@@ -3087,7 +3092,8 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 
 	do {
 		// Add continuation state or NULL (first time)
-		reqsize = _reqsize + copy_cstate(_pdata, cstate);
+		reqsize = _reqsize + copy_cstate(_pdata,
+					SDP_REQ_BUFFER_SIZE - _reqsize, cstate);
 
 		// Set the request header's param length
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
@@ -3249,7 +3255,8 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 
 	do {
 		// add NULL continuation state
-		reqsize = _reqsize + copy_cstate(_pdata, cstate);
+		reqsize = _reqsize + copy_cstate(_pdata,
+					SDP_REQ_BUFFER_SIZE - _reqsize, cstate);
 
 		// set the request header's param length
 		reqhdr->tid  = htons(sdp_gen_tid(session));
@@ -3470,7 +3477,7 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	pdata += sizeof(uint16_t);
 
 	// set the request header's param length
-	cstate_len = copy_cstate(pdata, NULL);
+	cstate_len = copy_cstate(pdata, SDP_REQ_BUFFER_SIZE - t->reqsize, NULL);
 	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
 	if (sdp_send_req(session, t->reqbuf, t->reqsize + cstate_len) < 0) {
@@ -3584,7 +3591,7 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 	SDPDBG("Attr list length : %d\n", seqlen);
 
 	// set the request header's param length
-	cstate_len = copy_cstate(pdata, NULL);
+	cstate_len = copy_cstate(pdata, SDP_REQ_BUFFER_SIZE - t->reqsize, NULL);
 	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
 	if (sdp_send_req(session, t->reqbuf, t->reqsize + cstate_len) < 0) {
@@ -3703,7 +3710,7 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	t->reqsize += seqlen;
 
 	// set the request header's param length
-	cstate_len = copy_cstate(pdata, NULL);
+	cstate_len = copy_cstate(pdata, SDP_REQ_BUFFER_SIZE - t->reqsize, NULL);
 	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
 	if (sdp_send_req(session, t->reqbuf, t->reqsize + cstate_len) < 0) {
@@ -3916,7 +3923,8 @@ int sdp_process(sdp_session_t *session)
 		reqhdr->tid = htons(sdp_gen_tid(session));
 
 		// add continuation state
-		cstate_len = copy_cstate(t->reqbuf + t->reqsize, pcstate);
+		cstate_len = copy_cstate(t->reqbuf + t->reqsize,
+				SDP_REQ_BUFFER_SIZE - t->reqsize, pcstate);
 
 		reqsize = t->reqsize + cstate_len;
 
@@ -4059,7 +4067,8 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 		reqhdr->tid = htons(sdp_gen_tid(session));
 
 		// add continuation state (can be null)
-		reqsize = _reqsize + copy_cstate(_pdata, cstate);
+		reqsize = _reqsize + copy_cstate(_pdata,
+					SDP_REQ_BUFFER_SIZE - _reqsize, cstate);
 
 		// set the request header's param length
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
