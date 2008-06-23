@@ -2923,18 +2923,23 @@ void sdp_pattern_add_uuidseq(sdp_record_t *rec, sdp_list_t *seq)
  * handles are not in "data element sequence" form, but just like
  * an array of service handles
  */
-static void extract_record_handle_seq(uint8_t *pdu, sdp_list_t **seq, int count, int *scanned)
+static void extract_record_handle_seq(uint8_t *pdu, int bufsize, sdp_list_t **seq, int count, int *scanned)
 {
 	sdp_list_t *pSeq = *seq;
 	uint8_t *pdata = pdu;
 	int n;
 
 	for (n = 0; n < count; n++) {
+		if (bufsize < sizeof(uint32_t)) {
+			SDPERR("Unexpected end of packet");
+			break;
+		}
 		uint32_t *pSvcRec = malloc(sizeof(uint32_t));
 		*pSvcRec = ntohl(bt_get_unaligned((uint32_t *) pdata));
 		pSeq = sdp_list_append(pSeq, pSvcRec);
 		pdata += sizeof(uint32_t);
 		*scanned += sizeof(uint32_t);
+		bufsize -= sizeof(uint32_t);
 	}
 	*seq = pSeq;
 }
@@ -3054,7 +3059,7 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 	uint32_t reqsize = 0, _reqsize;
 	uint32_t rspsize = 0, rsplen;
 	int seqlen = 0;
-	int scanned, total_rec_count, rec_count;
+	int scanned, total_rec_count, rec_count, pdata_len;
 	uint8_t *pdata, *_pdata;
 	uint8_t *reqbuf, *rspbuf;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
@@ -3107,7 +3112,12 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 		if (status < 0)
 			goto end;
 
-		rsplen = 0;
+		if (rspsize < sizeof(sdp_pdu_hdr_t)) {
+			SDPERR("Unexpected end of packet");
+			status = -1;
+			goto end;
+		}
+
 		rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 		rsplen = ntohs(rsphdr->plen);
 
@@ -3118,14 +3128,23 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 		}
 		scanned = 0;
 		pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
+		pdata_len = rspsize - sizeof(sdp_pdu_hdr_t);
+
+		if (pdata_len < sizeof(uint16_t) + sizeof(uint16_t)) {
+			SDPERR("Unexpected end of packet");
+			status = -1;
+			goto end;
+		}
 
 		// net service record match count
 		total_rec_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		pdata += sizeof(uint16_t);
 		scanned += sizeof(uint16_t);
+		pdata_len -= sizeof(uint16_t);
 		rec_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		pdata += sizeof(uint16_t);
 		scanned += sizeof(uint16_t);
+		pdata_len -= sizeof(uint16_t);
 
 		SDPDBG("Total svc count: %d\n", total_rec_count);
 		SDPDBG("Current svc count: %d\n", rec_count);
@@ -3135,11 +3154,17 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 			status = -1;
 			goto end;
 		}
-		extract_record_handle_seq(pdata, rsp, rec_count, &scanned);
+		extract_record_handle_seq(pdata, pdata_len, rsp, rec_count, &scanned);
 		SDPDBG("BytesScanned : %d\n", scanned);
 
 		if (rsplen > scanned) {
 			uint8_t cstate_len;
+
+			if (rspsize < sizeof(sdp_pdu_hdr_t) + scanned + sizeof(uint8_t)) {
+				SDPERR("Unexpected end of packet: continuation state data missing");
+				status = -1;
+				goto end;
+			}
 
 			pdata = rspbuf + sizeof(sdp_pdu_hdr_t) + scanned;
 			cstate_len = *(uint8_t *) pdata;
@@ -3199,7 +3224,7 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 	uint32_t reqsize = 0, _reqsize;
 	uint32_t rspsize = 0, rsp_count;
 	int attr_list_len = 0;
-	int seqlen = 0;
+	int seqlen = 0, pdata_len;
 	uint8_t *pdata, *_pdata;
 	uint8_t *reqbuf, *rspbuf;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
@@ -3265,6 +3290,13 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 		status = sdp_send_req_w4_rsp(session, reqbuf, rspbuf, reqsize, &rspsize);
 		if (status < 0)
 			goto end;
+
+		if (rspsize < sizeof(sdp_pdu_hdr_t)) {
+			SDPERR("Unexpected end of packet");
+			status = -1;
+			goto end;
+		}
+
 		rsp_count = 0;
 		rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 		if (rsphdr->pdu_id == SDP_ERROR_RSP) {
@@ -3273,11 +3305,25 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 			goto end;
 		}
 		pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
+		pdata_len = rspsize - sizeof(sdp_pdu_hdr_t);
+
+		if (pdata_len < sizeof(uint16_t)) {
+			SDPERR("Unexpected end of packet");
+			status = -1;
+			goto end;
+		}
+
 		rsp_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		attr_list_len += rsp_count;
 		pdata += sizeof(uint16_t);
+		pdata_len -= sizeof(uint16_t);
 
 		// if continuation state set need to re-issue request before parsing
+		if (pdata_len < rsp_count + sizeof(uint8_t)) {
+			SDPERR("Unexpected end of packet: continuation state data missing");
+			status = -1;
+			goto end;
+		}
 		cstate_len = *(uint8_t *) (pdata + rsp_count);
 
 		SDPDBG("Response id : %d\n", rsphdr->pdu_id);
@@ -3304,9 +3350,11 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 
 	if (attr_list_len > 0) {
 		int scanned = 0;
-		if (rsp_concat_buf.data_size != 0)
+		if (rsp_concat_buf.data_size != 0) {
 			pdata = rsp_concat_buf.data;
-		rec = sdp_extract_pdu(pdata, &scanned);
+			pdata_len = rsp_concat_buf.data_size;
+		}
+		rec = sdp_extract_pdu_safe(pdata, pdata_len, &scanned);
 
 		if (!rec)
 			status = -1;
@@ -4003,7 +4051,7 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 	uint32_t reqsize = 0, _reqsize;
 	uint32_t rspsize = 0;
 	int seqlen = 0, attr_list_len = 0;
-	int rsp_count = 0, cstate_len = 0;
+	int rsp_count = 0, cstate_len = 0, pdata_len;
 	uint8_t *pdata, *_pdata;
 	uint8_t *reqbuf, *rspbuf;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
@@ -4074,6 +4122,12 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 		rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 		status = sdp_send_req_w4_rsp(session, reqbuf, rspbuf, reqsize, &rspsize);
+		if (rspsize < sizeof(sdp_pdu_hdr_t)) {
+			SDPERR("Unexpected end of packet");
+			status = -1;
+			goto end;
+		}
+
 		if (status < 0) {
 			SDPDBG("Status : 0x%x\n", rsphdr->pdu_id);
 			goto end;
@@ -4085,9 +4139,25 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 		}
 	  
 		pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
+		pdata_len = rspsize - sizeof(sdp_pdu_hdr_t);
+
+		if (pdata_len < sizeof(uint16_t)) {
+			SDPERR("Unexpected end of packet");
+			status = -1;
+			goto end;
+		}
+
 		rsp_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		attr_list_len += rsp_count;
 		pdata += sizeof(uint16_t);	// pdata points to attribute list
+		pdata_len -= sizeof(uint16_t);
+
+		if (pdata_len < rsp_count + sizeof(uint8_t)) {
+			SDPERR("Unexpected end of packet: continuation state data missing");
+			status = -1;
+			goto end;
+		}
+
 		cstate_len = *(uint8_t *) (pdata + rsp_count);
 
 		SDPDBG("Attrlist byte count : %d\n", attr_list_len);
@@ -4114,24 +4184,27 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 	if (attr_list_len > 0) {
 		int scanned = 0;
 
-		if (rsp_concat_buf.data_size != 0)
+		if (rsp_concat_buf.data_size != 0) {
 			pdata = rsp_concat_buf.data;
+			pdata_len = rsp_concat_buf.data_size;
+		}
 
 		/*
 		 * Response is a sequence of sequence(s) for one or
 		 * more data element sequence(s) representing services
 		 * for which attributes are returned
 		 */
-		scanned = sdp_extract_seqtype(pdata, &dataType, &seqlen);
+		scanned = sdp_extract_seqtype_safe(pdata, pdata_len, &dataType, &seqlen);
 
 		SDPDBG("Bytes scanned : %d\n", scanned);
 		SDPDBG("Seq length : %d\n", seqlen);
 
 		if (scanned && seqlen) {
 			pdata += scanned;
+			pdata_len -= scanned;
 			do {
 				int recsize = 0;
-				sdp_record_t *rec = sdp_extract_pdu(pdata, &recsize);
+				sdp_record_t *rec = sdp_extract_pdu_safe(pdata, pdata_len, &recsize);
 				if (rec == NULL) {
 					SDPERR("SVC REC is null\n");
 					status = -1;
@@ -4143,13 +4216,14 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 				}
 				scanned += recsize;
 				pdata += recsize;
+				pdata_len -= recsize;
 
 				SDPDBG("Loc seq length : %d\n", recsize);
 				SDPDBG("Svc Rec Handle : 0x%x\n", rec->handle);
 				SDPDBG("Bytes scanned : %d\n", scanned);
 				SDPDBG("Attrlist byte count : %d\n", attr_list_len);
 				rec_list = sdp_list_append(rec_list, rec);
-			} while (scanned < attr_list_len);
+			} while (scanned < attr_list_len && pdata_len > 0);
 
 			SDPDBG("Successful scan of service attr lists\n");
 			*rsp = rec_list;
