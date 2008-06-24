@@ -119,7 +119,7 @@ static DBusMessage *add_service_record(DBusConnection *conn,
 	if (len <= 0)
 		return invalid_arguments(msg);
 
-	sdp_record = sdp_extract_pdu(record, &scanned);
+	sdp_record = sdp_extract_pdu_safe(record, len, &scanned);
 	if (!sdp_record) {
 		error("Parsing of service record failed");
 		return failed(msg);
@@ -263,7 +263,7 @@ static DBusMessage *update_service_record(DBusConnection *conn,
 	if (!user_record)
 		return not_available(msg);
 
-	sdp_record = sdp_extract_pdu(bin_record, &scanned);
+	sdp_record = sdp_extract_pdu_safe(bin_record, size, &scanned);
 	if (!sdp_record) {
 		error("Parsing of service record failed");
 		return invalid_arguments(msg);

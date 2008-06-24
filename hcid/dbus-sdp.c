@@ -499,7 +499,7 @@ static void remote_svc_rec_completed_cb(uint8_t type, uint16_t err,
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_BYTE_AS_STRING, &array_iter);
 
-	rec = sdp_extract_pdu(rsp, &scanned);
+	rec = sdp_extract_pdu_safe(rsp, size, &scanned);
 	if (rec == NULL || size != scanned) {
 		error("Invalid service record!");
 		goto done;
@@ -562,7 +562,7 @@ static void remote_svc_rec_completed_xml_cb(uint8_t type, uint16_t err,
 
 	reply = dbus_message_new_method_return(ctxt->rq);
 
-	rec = sdp_extract_pdu(rsp, &scanned);
+	rec = sdp_extract_pdu_safe(rsp, size, &scanned);
 	if (rec == NULL || size != scanned) {
 		error("Invalid service record!");
 		goto done;
@@ -730,7 +730,7 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 	char **identifiers;
 	DBusMessage *reply;
 	GSList *l = NULL;
-	int scanned, extracted = 0, len = 0, recsize = 0;
+	int scanned, extracted = 0, len = 0, recsize = 0, bytesleft = size;
 	uint8_t dtd = 0;
 
 	if (!ctxt)
@@ -762,14 +762,15 @@ static void remote_svc_identifiers_completed_cb(uint8_t type, uint16_t err,
 		goto failed;
 	}
 
-	scanned = sdp_extract_seqtype(rsp, &dtd, &len);
+	scanned = sdp_extract_seqtype_safe(rsp, bytesleft, &dtd, &len);
 	rsp += scanned;
-	for (; extracted < len; rsp += recsize, extracted += recsize) {
+	bytesleft -= scanned;
+	for (; extracted < len; rsp += recsize, extracted += recsize, bytesleft -= recsize) {
 		sdp_record_t *rec;
 		sdp_data_t *d;
 
 		recsize = 0;
-		rec = sdp_extract_pdu(rsp, &recsize);
+		rec = sdp_extract_pdu_safe(rsp, bytesleft, &recsize);
 		if (!rec)
 			break;
 
