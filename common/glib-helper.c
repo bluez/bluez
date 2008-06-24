@@ -115,7 +115,7 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 {
 	struct search_context *ctxt = user_data;
 	sdp_list_t *recs = NULL;
-	int scanned, seqlen = 0;
+	int scanned, seqlen = 0, bytesleft = size;
 	uint8_t dataType;
 	int err = 0;
 
@@ -124,17 +124,18 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 		goto done;
 	}
 
-	scanned = sdp_extract_seqtype(rsp, &dataType, &seqlen);
+	scanned = sdp_extract_seqtype_safe(rsp, bytesleft, &dataType, &seqlen);
 	if (!scanned || !seqlen)
 		goto done;
 
 	rsp += scanned;
+	bytesleft -= scanned;
 	do {
 		sdp_record_t *rec;
 		int recsize;
 
 		recsize = 0;
-		rec = sdp_extract_pdu(rsp, &recsize);
+		rec = sdp_extract_pdu_safe(rsp, bytesleft, &recsize);
 		if (!rec)
 			break;
 
@@ -145,9 +146,10 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 
 		scanned += recsize;
 		rsp += recsize;
+		bytesleft -= recsize;
 
 		recs = sdp_list_append(recs, rec);
-	} while (scanned < size);
+	} while (scanned < size && bytesleft > 0);
 
 done:
 	sdp_close(ctxt->session);
