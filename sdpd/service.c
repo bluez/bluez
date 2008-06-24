@@ -412,7 +412,7 @@ int remove_record_from_server(uint32_t handle)
 }
 
 // FIXME: refactor for server-side
-static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t handleExpected, int *scanned)
+static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, int bufsize, uint32_t handleExpected, int *scanned)
 {
 	int extractStatus = -1, localExtractedLength = 0;
 	uint8_t dtd;
@@ -422,13 +422,24 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 	sdp_data_t *pAttr = NULL;
 	uint32_t handle = 0xffffffff;
 
-	*scanned = sdp_extract_seqtype(p, &dtd, &seqlen);
+	*scanned = sdp_extract_seqtype_safe(p, bufsize, &dtd, &seqlen);
 	p += *scanned;
+	bufsize -= *scanned;
+
+	if (bufsize < sizeof(uint8_t) + sizeof(uint8_t)) {
+		debug("Unexpected end of packet");
+		return NULL;
+	}
+
 	lookAheadAttrId = ntohs(bt_get_unaligned((uint16_t *) (p + sizeof(uint8_t))));
 
 	debug("Look ahead attr id : %d", lookAheadAttrId);
 
 	if (lookAheadAttrId == SDP_ATTR_RECORD_HANDLE) {
+		if (bufsize < (sizeof(uint8_t) * 2) + sizeof(uint16_t) + sizeof(uint32_t)) {
+			debug("Unexpected end of packet");
+			return NULL;
+		}
 		handle = ntohl(bt_get_unaligned((uint32_t *) (p +
 				sizeof(uint8_t) + sizeof(uint16_t) +
 				sizeof(uint8_t))));
@@ -456,6 +467,11 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 		int attrSize = sizeof(uint8_t);
 		int attrValueLength = 0;
 
+		if (bufsize < attrSize + sizeof(uint16_t)) {
+			debug("Unexpected end of packet: Terminating extraction of attributes");
+			break;
+		}
+
 		debug("Extract PDU, sequenceLength: %d localExtractedLength: %d", seqlen, localExtractedLength);
 		dtd = *(uint8_t *) p;
 
@@ -464,7 +480,8 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 		
 		debug("DTD of attrId : %d Attr id : 0x%x", dtd, attrId);
 
-		pAttr = sdp_extract_attr(p + attrSize, &attrValueLength, rec);
+		pAttr = sdp_extract_attr_safe(p + attrSize, bufsize - attrSize,
+							&attrValueLength, rec);
 
 		debug("Attr id : 0x%x attrValueLength : %d", attrId, attrValueLength);
 
@@ -475,6 +492,7 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, uint32_t h
 		}
 		localExtractedLength += attrSize;
 		p += attrSize;
+		bufsize -= attrSize;
 		sdp_attr_replace(rec, attrId, pAttr);
 		extractStatus = 0;
 		debug("Extract PDU, seqLength: %d localExtractedLength: %d",
@@ -499,16 +517,18 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 	int scanned = 0;
 	sdp_data_t *handle;
 	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
+	int bufsize = req->len - sizeof(sdp_pdu_hdr_t);
 	sdp_record_t *rec;
 
 	req->flags = *p++;
 	if (req->flags & SDP_DEVICE_RECORD) {
 		bacpy(&req->device, (bdaddr_t *) p);
 		p += sizeof(bdaddr_t);
+		bufsize -= sizeof(bdaddr_t);
 	}
 
 	// save image of PDU: we need it when clients request this attribute
-	rec = extract_pdu_server(&req->device, p, 0xffffffff, &scanned);
+	rec = extract_pdu_server(&req->device, p, bufsize, 0xffffffff, &scanned);
 	if (!rec)
 		goto invalid;
 
@@ -566,18 +586,20 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 	sdp_record_t *orec;
 	int status = 0, scanned = 0;
 	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
+	int bufsize = req->len - sizeof(sdp_pdu_hdr_t);
 	uint32_t handle = ntohl(bt_get_unaligned((uint32_t *) p));
 
 	debug("Svc Rec Handle: 0x%x", handle);
 
 	p += sizeof(uint32_t);
+	bufsize -= sizeof(uint32_t);
 
 	orec = sdp_record_find(handle);
 
 	debug("SvcRecOld: %p", orec);
 
 	if (orec) {
-		sdp_record_t *nrec = extract_pdu_server(BDADDR_ANY, p, handle, &scanned);
+		sdp_record_t *nrec = extract_pdu_server(BDADDR_ANY, p, bufsize, handle, &scanned);
 		if (nrec && handle == nrec->handle) {
 			update_db_timestamp();
 			update_svclass_list();

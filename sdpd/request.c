@@ -67,8 +67,9 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 	uint8_t dataType;
 	int status = 0;
 	const uint8_t *p;
+	int bufsize;
 
-	scanned = sdp_extract_seqtype(buf, &seqType, &data_size);
+	scanned = sdp_extract_seqtype_safe(buf, len, &seqType, &data_size);
 
 	debug("Seq type : %d", seqType);
 	if (!scanned || (seqType != SDP_SEQ8 && seqType != SDP_SEQ16)) {
@@ -76,12 +77,18 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		return -1;
 	}
 	p = buf + scanned;
+	bufsize = len - scanned;
 
 	debug("Data size : %d", data_size);
 
 	for (;;) {
 		char *pElem = NULL;
 		int localSeqLength = 0;
+
+		if (bufsize < sizeof(uint8_t)) {
+			debug("->Unexpected end of buffer");
+			return -1;
+		}
 
 		dataType = *(uint8_t *)p;
 		debug("Data type: 0x%02x", dataType);
@@ -100,27 +107,42 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		case SDP_UINT16:
 			p += sizeof(uint8_t);
 			seqlen += sizeof(uint8_t);
+			bufsize -= sizeof(uint8_t);
+			if (bufsize < sizeof(uint16_t)) {
+				debug("->Unexpected end of buffer");
+				return -1;
+			}
+
 			pElem = malloc(sizeof(uint16_t));
 			bt_put_unaligned(ntohs(bt_get_unaligned((uint16_t *)p)), (uint16_t *)pElem);
 			p += sizeof(uint16_t);
 			seqlen += sizeof(uint16_t);
+			bufsize -= sizeof(uint16_t);
 			break;
 		case SDP_UINT32:
 			p += sizeof(uint8_t);
 			seqlen += sizeof(uint8_t);
+			bufsize -= sizeof(uint8_t);
+			if (bufsize < (int)sizeof(uint32_t)) {
+				debug("->Unexpected end of buffer");
+				return -1;
+			}
+
 			pElem = malloc(sizeof(uint32_t));
 			bt_put_unaligned(ntohl(bt_get_unaligned((uint32_t *)p)), (uint32_t *)pElem);
 			p += sizeof(uint32_t);
 			seqlen += sizeof(uint32_t);
+			bufsize -= sizeof(uint32_t);
 			break;
 		case SDP_UUID16:
 		case SDP_UUID32:
 		case SDP_UUID128:
 			pElem = malloc(sizeof(uuid_t));
-			status = sdp_uuid_extract(p, (uuid_t *)pElem, &localSeqLength);
+			status = sdp_uuid_extract_safe(p, bufsize, (uuid_t *) pElem, &localSeqLength);
 			if (status == 0) {
 				seqlen += localSeqLength;
 				p += localSeqLength;
+				bufsize -= localSeqLength;
 			}
 			break;
 		default:
