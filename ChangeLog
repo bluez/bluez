@@ -1,3 +1,7 @@
+ver 3.34:
+	Replace various SDP functions with safe versions.
+	Add additional length validation for incoming SDP packets.
+
 ver 3.33:
 	Add functions for reading and writing the link policy settings.
 	Add definition for authentication requirements.
