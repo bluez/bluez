@@ -943,7 +943,7 @@ send:
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 
 	if (adapter)
-		adapter_auth_request_replied(adapter, &req->bda);
+		adapter_auth_request_replied(adapter, dba);
 
 	return -1;
 }
