@@ -38,6 +38,7 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/poll.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -222,6 +223,7 @@ static int do_connect(char *svr)
 		goto error;
 	}
 
+#if 0
 	/* Enable SO_TIMESTAMP */
 	if (timestamp) {
 		int t = 1;
@@ -232,6 +234,7 @@ static int do_connect(char *svr)
 			goto error;
 		}
 	}
+#endif
 
 	/* Enable SO_LINGER */
 	if (linger) {
@@ -443,6 +446,7 @@ static void do_listen(void (*handler)(int sk))
 			ba, opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
 			conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
+#if 0
 		/* Enable SO_TIMESTAMP */
 		if (timestamp) {
 			int t = 1;
@@ -453,6 +457,7 @@ static void do_listen(void (*handler)(int sk))
 				goto error;
 			}
 		}
+#endif
 
 		/* Enable SO_LINGER */
 		if (linger) {
@@ -526,12 +531,15 @@ static void recv_mode(int sk)
 {
 	struct timeval tv_beg, tv_end, tv_diff;
 	struct pollfd p;
+	char ts[30];
 	long total;
 	uint32_t seq;
 	socklen_t optlen;
 	int opt;
 
-	syslog(LOG_INFO,"Receiving ...");
+	syslog(LOG_INFO, "Receiving ...");
+
+	memset(ts, 0, sizeof(ts));
 
 	p.fd = sk;
 	p.events = POLLIN | POLLERR | POLLHUP;
@@ -572,6 +580,18 @@ static void recv_mode(int sk)
 			if (len < 6)
 				break;
 
+			if (timestamp) {
+				struct timeval tv;
+
+				if (ioctl(sk, SIOCGSTAMP, &tv) < 0) {
+					timestamp = 0;
+					memset(ts, 0, sizeof(ts));
+				} else {
+					sprintf(ts, "[%ld.%ld] ",
+							tv.tv_sec, tv.tv_usec);
+				}
+			}
+
 			/* Check sequence */
 			sq = btohl(*(uint32_t *) buf);
 			if (seq != sq) {
@@ -599,7 +619,7 @@ static void recv_mode(int sk)
 
 		timersub(&tv_end, &tv_beg, &tv_diff);
 
-		syslog(LOG_INFO,"%ld bytes in %.2f sec, %.2f kB/s", total,
+		syslog(LOG_INFO,"%s%ld bytes in %.2f sec, %.2f kB/s", ts, total,
 			tv2fl(tv_diff), (float)(total / tv2fl(tv_diff) ) / 1024.0);
 	}
 }

@@ -36,6 +36,7 @@
 #include <syslog.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -101,6 +102,7 @@ static int do_connect(char *svr)
 		return -1;
 	}
 
+#if 0
 	/* Enable SO_TIMESTAMP */
 	if (timestamp) {
 		int t = 1;
@@ -111,6 +113,7 @@ static int do_connect(char *svr)
 			goto error;
 		}
 	}
+#endif
 
 	/* Enable SO_LINGER */
 	if (linger) {
@@ -266,6 +269,7 @@ static void do_listen(void (*handler)(int sk))
 			ba, conn.hci_handle,
 			conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
+#if 0
 		/* Enable SO_TIMESTAMP */
 		if (timestamp) {
 			int t = 1;
@@ -276,6 +280,7 @@ static void do_listen(void (*handler)(int sk))
 				goto error;
 			}
 		}
+#endif
 
 		/* Enable SO_LINGER */
 		if (linger) {
@@ -313,11 +318,14 @@ static void dump_mode(int sk)
 
 static void recv_mode(int sk)
 {
-	struct timeval tv_beg,tv_end,tv_diff;
+	struct timeval tv_beg, tv_end, tv_diff;
+	char ts[30];
 	long total;
 	uint32_t seq;
 
-	syslog(LOG_INFO,"Receiving ...");
+	syslog(LOG_INFO, "Receiving ...");
+
+	memset(ts, 0, sizeof(ts));
 
 	seq = 0;
 	while (1) {
@@ -334,6 +342,19 @@ static void recv_mode(int sk)
 							strerror(errno), errno);
 				return;	
 			}
+
+			if (timestamp) {
+				struct timeval tv;
+
+				if (ioctl(sk, SIOCGSTAMP, &tv) < 0) {
+					timestamp = 0;
+					memset(ts, 0, sizeof(ts));
+				} else {
+					sprintf(ts, "[%ld.%ld] ",
+							tv.tv_sec, tv.tv_usec);
+				}
+			}
+
 #if 0
 			/* Check sequence */
 			sq = btohl(*(uint32_t *) buf);
@@ -362,7 +383,7 @@ static void recv_mode(int sk)
 
 		timersub(&tv_end,&tv_beg,&tv_diff);
 
-		syslog(LOG_INFO,"%ld bytes in %.2f sec, %.2f kB/s", total,
+		syslog(LOG_INFO,"%s%ld bytes in %.2f sec, %.2f kB/s", ts, total,
 			tv2fl(tv_diff), (float)(total / tv2fl(tv_diff) ) / 1024.0);
 	}
 }
