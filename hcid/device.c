@@ -75,7 +75,6 @@ struct browse_req {
 	DBusMessage *msg;
 	struct device *device;
 	int search_uuid;
-	gboolean update;
 	gboolean browse;
 };
 
@@ -1057,7 +1056,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 		goto fail;
 
 	if (strlen(pattern) == 0) {
-		err = device_browse(device, conn, msg, TRUE, 0);
+		err = device_browse(device, conn, msg, 0);
 		if (err < 0)
 			goto fail;
 	} else {
@@ -1066,7 +1065,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 		if (!search)
 			return invalid_args(msg);
 
-		err = device_browse(device, conn, msg, TRUE, search);
+		err = device_browse(device, conn, msg, search);
 		if (err < 0)
 			goto fail;
 	}
@@ -1303,6 +1302,48 @@ static void iter_append_record(DBusMessageIter *dict, uint32_t handle,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+static void discover_device_reply(struct browse_req *req, sdp_list_t *recs)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, dict;
+	sdp_list_t *seq;
+
+	reply = dbus_message_new_method_return(req->msg);
+	if (!reply)
+		return;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_UINT32_AS_STRING DBUS_TYPE_STRING_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	for (seq = recs; seq; seq = seq->next) {
+		sdp_record_t *rec = (sdp_record_t *) seq->data;
+		sdp_buf_t result;
+
+		if (!rec)
+			break;
+
+		memset(&result, 0, sizeof(sdp_buf_t));
+
+		convert_sdp_record_to_xml(rec, &result,
+				append_and_grow_string);
+
+		if (result.data) {
+			const char *val = (char *) result.data;
+			iter_append_record(&dict, rec->handle, val);
+			free(result.data);
+		}
+	}
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	dbus_connection_send(req->conn, reply, NULL);
+	dbus_message_unref(reply);
+}
+
 static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	sdp_list_t *seq, *next, *svcclass;
@@ -1313,8 +1354,8 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	char **uuids;
 	int i;
 	GSList *l;
-	DBusMessage *reply;
 	uuid_t uuid;
+	DBusMessage *reply;
 
 	if (err < 0)
 		goto proceed;
@@ -1380,46 +1421,10 @@ probe:
 	device_probe_drivers(device);
 
 proceed:
-	if (req->update == TRUE) {
-		DBusMessageIter iter, dict;
-
-		reply = dbus_message_new_method_return(req->msg);
-		if (!reply)
-			goto fail;
-
-		dbus_message_iter_init_append(reply, &iter);
-
-		dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_UINT32_AS_STRING DBUS_TYPE_STRING_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-		for (seq = recs; seq; seq = next) {
-			sdp_record_t *rec = (sdp_record_t *) seq->data;
-			sdp_buf_t result;
-
-			if (!rec)
-				break;
-
-			memset(&result, 0, sizeof(sdp_buf_t));
-
-			convert_sdp_record_to_xml(rec, &result,
-						append_and_grow_string);
-
-			if (result.data) {
-				const char *val = (char *) result.data;
-				iter_append_record(&dict, rec->handle, val);
-				free(result.data);
-			}
-
-			next = seq->next;
-		}
-
-		dbus_message_iter_close_container(&iter, &dict);
-
-		dbus_connection_send(req->conn, reply, NULL);
-		dbus_message_unref(reply);
-		goto fail;
+	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
+			"DiscoverServices")) {
+		discover_device_reply(req, recs);
+		goto cleanup;
 	}
 
 	g_dbus_emit_signal(req->conn, dbus_message_get_path(req->msg),
@@ -1430,7 +1435,7 @@ proceed:
 	/* Reply create device request */
 	reply = dbus_message_new_method_return(req->msg);
 	if (!reply)
-		goto fail;
+		goto cleanup;
 
 	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
 							DBUS_TYPE_INVALID);
@@ -1438,7 +1443,7 @@ proceed:
 	dbus_connection_send(req->conn, reply, NULL);
 	dbus_message_unref(reply);
 
-fail:
+cleanup:
 	device->discov_active = 0;
 
 	if (device->discov_requestor) {
@@ -1457,7 +1462,7 @@ fail:
 }
 
 int device_browse(struct device *device, DBusConnection *conn,
-			DBusMessage *msg, gboolean update, uint16_t search)
+			DBusMessage *msg, uint16_t search)
 {
 	struct adapter *adapter = device->adapter;
 	struct browse_req *req;
@@ -1468,7 +1473,6 @@ int device_browse(struct device *device, DBusConnection *conn,
 	req->conn = dbus_connection_ref(conn);
 	req->msg = dbus_message_ref(msg);
 	req->device = device;
-	req->update = update;
 
 	str2ba(adapter->address, &src);
 	str2ba(device->address, &dst);
