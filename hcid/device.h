@@ -50,12 +50,12 @@ struct device {
 };
 
 struct device *device_create(DBusConnection *conn, struct adapter *adapter,
-				const gchar *address, GSList *uuids);
+				const gchar *address);
 void device_remove(DBusConnection *conn, struct device *device);
 gint device_address_cmp(struct device *device, const gchar *address);
 int device_browse(struct device *device, DBusConnection *conn,
 			DBusMessage *msg, uint16_t search);
-void device_probe_drivers(struct device *device);
+void device_probe_drivers(struct device *device, GSList *uuids);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 

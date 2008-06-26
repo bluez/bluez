@@ -2416,7 +2416,7 @@ struct device *adapter_create_device(DBusConnection *conn,
 
 	debug("adapter_create_device(%s)", address);
 
-	device = device_create(conn, adapter, address, NULL);
+	device = device_create(conn, adapter, address);
 	if (!device)
 		return NULL;
 
@@ -3980,7 +3980,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 
 	debug("create_device(%s)", address);
 
-	device = device_create(conn, adapter, address, NULL);
+	device = device_create(conn, adapter, address);
 	if (!device)
 		return NULL;
 

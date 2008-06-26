@@ -587,11 +587,12 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	GSList *uuids = bt_string2list(value);
 	struct device *device;
 
-	device = device_create(connection, adapter, key, uuids);
+	device = device_create(connection, adapter, key);
 	if (device) {
 		device->temporary = FALSE;
 		adapter->devices = g_slist_append(adapter->devices, device);
-		device_probe_drivers(device);
+		device_probe_drivers(device, uuids);
+		g_slist_free(uuids);
 	}
 }
 
@@ -605,7 +606,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 				key, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, NULL);
+	device = device_create(connection, adapter, key);
 	if (device) {
 		device->temporary = FALSE;
 		adapter->devices = g_slist_append(adapter->devices, device);
