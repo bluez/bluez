@@ -289,8 +289,8 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	bacpy(&req.bdaddr, dba);
 
 	err = ioctl(dev, HCIGETAUTHINFO, (unsigned long) &req);
-	if (err < 0)
-		debug("HCIGETAUTHINFO failed (%d)",
+	if (err < 0 && errno != EINVAL)
+		debug("HCIGETAUTHINFO failed %s (%d)",
 					strerror(errno), errno);
 	else
 		req.type = 0x00;

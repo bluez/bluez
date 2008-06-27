@@ -684,15 +684,11 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 				dst, active_conn_find_by_bdaddr))
 		return -ENOTCONN;
 
-	ba2str(dst, address);
-	device = adapter_find_device(adapter, address);
-	if (!device)
-		return -EPERM;
-
 	service = search_service_by_uuid(uuid);
 	if (!service)
 		return -EPERM;
 
+	ba2str(dst, address);
 	trusted = read_trust(src, address, GLOBAL_TRUST);
 	if (!trusted)
 		trusted = read_trust(BDADDR_ANY, address, service->ident);
@@ -701,6 +697,11 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 		cb(NULL, user_data);
 		return 0;
 	}
+
+	device = adapter_find_device(adapter, address);
+	if (!device)
+		return handle_authorize_request_old(service, adapter->path,
+					address, uuid, cb, user_data);
 
 	agent = (device->agent ? : adapter->agent);
 	if (!agent)
