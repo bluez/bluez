@@ -2,16 +2,16 @@
 if AUDIOPLUGIN
 plugindir = $(libdir)/bluetooth/plugins
 
-plugin_LTLIBRARIES = libaudio.la
+plugin_LTLIBRARIES = audio.la
 
-libaudio_la_SOURCES = main.c \
+audio_la_SOURCES = main.c \
 	manager.h manager.c headset.h headset.c \
 	ipc.h ipc.c unix.h unix.c \
 	device.h device.c gateway.h gateway.c \
 	sink.c sink.h avdtp.c avdtp.h \
 	a2dp.c a2dp.h control.c control.h
 
-libaudio_la_LDFLAGS = -module -avoid-version -no-undefined \
+audio_la_LDFLAGS = -module -avoid-version -no-undefined \
 			-export-symbols-regex bluetooth_plugin_desc
 
 LDADD = $(top_builddir)/common/libhelper.a \

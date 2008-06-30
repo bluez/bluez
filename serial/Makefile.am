@@ -2,9 +2,9 @@
 if SERIALPLUGIN
 plugindir = $(libdir)/bluetooth/plugins
 
-plugin_LTLIBRARIES = libserial.la
+plugin_LTLIBRARIES = serial.la
 
-libserial_la_SOURCES = main.c \
+serial_la_SOURCES = main.c \
 		manager.h manager.c port.h port.c \
 		storage.h storage.c
 

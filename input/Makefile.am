@@ -2,12 +2,11 @@
 if INPUTPLUGIN
 plugindir = $(libdir)/bluetooth/plugins
 
-plugin_LTLIBRARIES = libinput.la
+plugin_LTLIBRARIES = input.la
 
-libinput_la_SOURCES = main.c \
-	manager.h manager.c \
-	server.h server.c device.h device.c storage.h storage.c \
-	fakehid.c fakehid.h
+input_la_SOURCES = main.c manager.h manager.c \
+		server.h server.c device.h device.c \
+		storage.h storage.c fakehid.c fakehid.h
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@

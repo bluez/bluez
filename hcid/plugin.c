@@ -110,7 +110,7 @@ gboolean plugin_init(GKeyFile *config)
 		gchar *filename;
 		struct stat st;
 
-		if (g_str_has_prefix(file, "lib") == FALSE ||
+		if (g_str_has_prefix(file, "lib") == TRUE ||
 				g_str_has_suffix(file, ".so") == FALSE)
 			continue;
 

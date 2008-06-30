@@ -2,10 +2,9 @@
 if NETWORKPLUGIN
 plugindir = $(libdir)/bluetooth/plugins
 
-plugin_LTLIBRARIES = libnetwork.la
+plugin_LTLIBRARIES = network.la
 
-libnetwork_la_SOURCES = main.c \
-	manager.h manager.c \
+network_la_SOURCES = main.c manager.h manager.c \
 	server.h server.c bridge.h bridge.c \
 	connection.h connection.c common.h common.c
 

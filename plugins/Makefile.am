@@ -2,23 +2,23 @@
 plugindir = $(libdir)/bluetooth/plugins
 
 if NETLINK
-netlink_plugins = libnetlink.la
+netlink_plugins = netlink.la
 else
 netlink_plugins =
 endif
 
 plugin_LTLIBRARIES = $(netlink_plugins)
 
-noinst_LTLIBRARIES = libecho.la libstorage.la
+noinst_LTLIBRARIES = echo.la storage.la
 
-libecho_la_SOURCES = echo.c
+echo_la_SOURCES = echo.c
 
-libstorage_la_SOURCES = storage.c
+storage_la_SOURCES = storage.c
 
 if NETLINK
-libnetlink_la_SOURCES = netlink.c
+netlink_la_SOURCES = netlink.c
 
-libnetlink_la_LIBADD = @NETLINK_LIBS@
+netlink_la_LIBADD = @NETLINK_LIBS@
 endif
 
 AM_LDFLAGS = -module -avoid-version -no-undefined \
@@ -31,13 +31,13 @@ INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/hcid
 MAINTAINERCLEANFILES = Makefile.in
 
 all-local:
-	@$(LN_S) -f $(top_srcdir)/input/.libs/libinput.so
-	@$(LN_S) -f $(top_srcdir)/audio/.libs/libaudio.so
-	@$(LN_S) -f $(top_srcdir)/serial/.libs/libserial.so
-	@$(LN_S) -f $(top_srcdir)/network/.libs/libnetwork.so
+	@$(LN_S) -f $(top_srcdir)/input/.libs/input.so
+	@$(LN_S) -f $(top_srcdir)/audio/.libs/audio.so
+	@$(LN_S) -f $(top_srcdir)/serial/.libs/serial.so
+	@$(LN_S) -f $(top_srcdir)/network/.libs/network.so
 
 clean-local:
-	@rm -f libnetwork.so
-	@rm -f libserial.so
-	@rm -f libaudio.so
-	@rm -f libinput.so
+	@rm -f network.so
+	@rm -f serial.so
+	@rm -f audio.so
+	@rm -f input.so
