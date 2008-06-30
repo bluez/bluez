@@ -1046,7 +1046,6 @@ static DBusMessage *discover_services(DBusConnection *conn,
 {
 	struct device *device = user_data;
 	const char *pattern;
-	uint16_t search;
 	int err;
 
 	if (device->discov_active)
