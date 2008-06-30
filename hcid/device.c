@@ -1058,15 +1058,16 @@ static DBusMessage *discover_services(DBusConnection *conn,
 		goto fail;
 
 	if (strlen(pattern) == 0) {
-		err = device_browse(device, conn, msg, 0);
+		err = device_browse(device, conn, msg, NULL);
 		if (err < 0)
 			goto fail;
 	} else {
-		search = bt_string2class(pattern);
-		if (!search)
+		uuid_t uuid;
+
+		if (bt_string2uuid(&uuid, pattern) < 0)
 			return invalid_args(msg);
 
-		err = device_browse(device, conn, msg, search);
+		err = device_browse(device, conn, msg, &uuid);
 		if (err < 0)
 			goto fail;
 	}
@@ -1538,7 +1539,7 @@ cleanup:
 }
 
 int device_browse(struct device *device, DBusConnection *conn,
-			DBusMessage *msg, uint16_t search)
+			DBusMessage *msg, uuid_t *search)
 {
 	struct adapter *adapter = device->adapter;
 	struct browse_req *req;
@@ -1559,7 +1560,7 @@ int device_browse(struct device *device, DBusConnection *conn,
 	str2ba(device->address, &dst);
 
 	if (search) {
-		sdp_uuid16_create(&uuid, search);
+		memcpy(&uuid, search, sizeof(uuid_t));
 		req->browse = FALSE;
 	} else {
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
@@ -1568,8 +1569,8 @@ int device_browse(struct device *device, DBusConnection *conn,
 
 	device->discov_active = 1;
 	device->discov_requestor = g_strdup(dbus_message_get_sender(msg));
-	/* track the request owner to cancel it automatically if the owner
-	 * exits */
+	/* Track the request owner to cancel it
+	 * automatically if the owner exits */
 	device->discov_listener = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),
 						discover_services_req_exit,

@@ -86,13 +86,6 @@ struct pending_connect {
 	connect_cb_t	*conn_cb;
 };
 
-/* FIXME:  move to a common file */
-typedef struct {
-	char            *name;
-	uint16_t        class;
-	char            *info_name;
-} sdp_service_t;
-
 struct cached_session {
 	sdp_session_t *session;
 	guint timeout_id;

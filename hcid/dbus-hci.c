@@ -1302,7 +1302,8 @@ proceed:
 			dbus_message_unref(reply);
 		} else {
 			device->temporary = FALSE;
-			device_browse(device, bonding->conn, bonding->msg, 0);
+			device_browse(device, bonding->conn,
+					bonding->msg, NULL);
 		}
 	}
 
