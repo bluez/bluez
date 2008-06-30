@@ -386,10 +386,42 @@ char *bt_uuid2string(uuid_t *uuid)
 	return str;
 }
 
+static struct {
+	const char	*name;
+	uint16_t	class;
+} bt_services[] = {
+	{ "vcp",	VIDEO_CONF_SVCLASS_ID		},
+	{ "pbap",	PBAP_SVCLASS_ID			},
+	{ "sap",	SAP_SVCLASS_ID			},
+	{ "ftp",	OBEX_FILETRANS_SVCLASS_ID	},
+	{ "bpp",	BASIC_PRINTING_SVCLASS_ID	},
+	{ "bip",	IMAGING_SVCLASS_ID		},
+	{ "synch",	IRMC_SYNC_SVCLASS_ID		},
+	{ "dun",	DIALUP_NET_SVCLASS_ID		},
+	{ "opp",	OBEX_OBJPUSH_SVCLASS_ID		},
+	{ "fax",	FAX_SVCLASS_ID			},
+	{ "spp",	SERIAL_PORT_SVCLASS_ID		},
+	{ "hsp",	HEADSET_SVCLASS_ID		},
+	{ "hfp",	HANDSFREE_SVCLASS_ID		},
+	{ }
+};
+
+uint16_t bt_string2class(const char *pattern)
+{
+	int i;
+
+	for (i = 0; bt_services[i].name; i++) {
+		if (strcasecmp(bt_services[i].name, pattern) == 0)
+			return bt_services[i].class;
+	}
+
+	return 0;
+}
+
 int bt_string2uuid(uuid_t *uuid, const char *string)
 {
-	uint16_t data1, data2, data3, data5;
 	uint32_t data0, data4;
+	uint16_t data1, data2, data3, data5;
 
 	if (strlen(string) == 36 &&
 			string[8] == '-' &&
@@ -417,6 +449,12 @@ int bt_string2uuid(uuid_t *uuid, const char *string)
 		sdp_uuid128_create(uuid, val);
 
 		return 0;
+	} else {
+		uint16_t class = bt_string2class(string);
+		if (class) {
+			sdp_uuid16_create(uuid, class);
+			return 0;
+		}
 	}
 
 	return -1;

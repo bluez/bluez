@@ -1062,8 +1062,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 		if (err < 0)
 			goto fail;
 	} else {
-
-		search = sdp_str2svclass(pattern);
+		search = bt_string2class(pattern);
 		if (!search)
 			return invalid_args(msg);
 

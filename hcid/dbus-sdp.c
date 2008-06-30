@@ -281,38 +281,6 @@ void append_and_grow_string(void *data, const char *str)
 	buff->data_size += len;
 }
 
-/* FIXME:  move to a common file */
-sdp_service_t sdp_service[] = {
-	{ "vcp",	VIDEO_CONF_SVCLASS_ID,		"Video Conference"	},
-	{ "map",	0,				NULL			},
-	{ "pbap",	PBAP_SVCLASS_ID,		"Phone Book Access"	},
-	{ "sap",	SAP_SVCLASS_ID,			"SIM Access"		},
-	{ "ftp",	OBEX_FILETRANS_SVCLASS_ID,	"OBEX File Transfer"	},
-	{ "bpp",	BASIC_PRINTING_SVCLASS_ID,	"Printing"		},
-	{ "bip",	IMAGING_SVCLASS_ID,		"Imaging"		},
-	{ "synch",	IRMC_SYNC_SVCLASS_ID,		"Synchronization"	},
-	{ "dun",	DIALUP_NET_SVCLASS_ID,		"Dial-Up Networking"	},
-	{ "opp",	OBEX_OBJPUSH_SVCLASS_ID,	"OBEX Object Push"	},
-	{ "fax",	FAX_SVCLASS_ID,			"Fax"			},
-	{ "spp",	SERIAL_PORT_SVCLASS_ID,		"Serial Port"		},
-	{ "hsp",	HEADSET_SVCLASS_ID,		"Headset"		},
-	{ "hfp",	HANDSFREE_SVCLASS_ID,		"Handsfree"		},
-	{ NULL }
-};
-
-/* FIXME:  move to a common file */
-uint16_t sdp_str2svclass(const char *str)
-{
-	sdp_service_t *s;
-
-	for (s = sdp_service; s->name; s++) {
-		if (strcasecmp(s->name, str) == 0)
-			return s->class;
-	}
-
-	return 0;
-}
-
 /* list of remote and local service records */
 static GSList *pending_connects  = NULL;
 
