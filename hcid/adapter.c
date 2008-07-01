@@ -828,7 +828,7 @@ static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 {
 	struct adapter *adapter = data;
 	struct device *device;
-	char path[MAX_PATH_LENGTH], filename[PATH_MAX + 1];
+	char filename[PATH_MAX + 1];
 	char *str;
 	bdaddr_t src, dst;
 	GSList *l;
@@ -884,15 +884,6 @@ static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	hci_close_dev(dev);
-
-	if (paired) {
-		snprintf(path, MAX_PATH_LENGTH, BASE_PATH "/hci%d",
-			adapter->dev_id);
-		g_dbus_emit_signal(conn, path,
-					ADAPTER_INTERFACE, "BondingRemoved",
-					DBUS_TYPE_STRING, &address,
-					DBUS_TYPE_INVALID);
-	}
 
 	device = adapter_find_device(adapter, address);
 	if (!device)
@@ -1149,7 +1140,7 @@ static void create_bond_req_exit(void *user_data)
 	struct pending_auth_info *auth;
 	char path[MAX_PATH_LENGTH];
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
+	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
 
 	debug("CreateConnection requestor exited before bonding was completed");
 

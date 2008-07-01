@@ -391,30 +391,8 @@ static int service_cmp_ident(struct service *service, const char *ident)
 static int unregister_service_for_connection(DBusConnection *connection,
 						struct service *service)
 {
-	DBusConnection *conn = get_dbus_connection();
-
 	debug("Unregistering service object: %s", service->object_path);
 
-	if (!conn)
-		goto cleanup;
-
-	g_dbus_emit_signal(conn, service->object_path,
-					SERVICE_INTERFACE,
-					"Stopped", DBUS_TYPE_INVALID);
-
-	g_dbus_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
-					"ServiceRemoved",
-					DBUS_TYPE_STRING, &service->object_path,
-					DBUS_TYPE_INVALID);
-
-	if (!g_dbus_unregister_interface(conn,
-			service->object_path, SERVICE_INTERFACE)) {
-		error("D-Bus failed to unregister %s object",
-						service->object_path);
-		return -1;
-	}
-
-cleanup:
 	services = g_slist_remove(services, service);
 	service_free(service);
 
@@ -637,15 +615,6 @@ int register_service(const char *ident, const char **uuids)
 
 	if (uuids)
 		register_uuids(ident, uuids);
-
-	g_dbus_emit_signal(conn, BASE_PATH, MANAGER_INTERFACE,
-				"ServiceAdded",
-				DBUS_TYPE_STRING, &service->object_path,
-				DBUS_TYPE_INVALID);
-
-	g_dbus_emit_signal(conn, service->object_path,
-					SERVICE_INTERFACE,
-					"Started", DBUS_TYPE_INVALID);
 
 	return 0;
 }

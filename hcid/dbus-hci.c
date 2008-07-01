@@ -1506,8 +1506,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 	if (!adapter->pdiscov_requestor)
 		adapter->discov_type &= ~RESOLVE_NAME;
 
-	dbus_connection_emit_property_changed(connection,
-				adapter->path + ADAPTER_PATH_INDEX,
+	dbus_connection_emit_property_changed(connection, adapter->path,
 				ADAPTER_INTERFACE, "PeriodicDiscovery",
 				DBUS_TYPE_BOOLEAN, &adapter->pdiscov_active);
 }
@@ -1515,7 +1514,6 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 {
 	struct adapter *adapter;
-	char *ptr;
 
 	/* Don't send the signal if the cmd failed */
 	if (status)
@@ -1526,8 +1524,6 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 		error("No matching adapter found");
 		return;
 	}
-
-	ptr = adapter->path + ADAPTER_PATH_INDEX;
 
 	/* reset the discover type to be able to handle D-Bus and non D-Bus
 	 * requests */
@@ -1554,7 +1550,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	 /* workaround: inquiry completed is not sent when exiting from
 	  * periodic inquiry */
 	if (adapter->discov_active) {
-		g_dbus_emit_signal(connection, ptr,
+		g_dbus_emit_signal(connection, adapter->path,
 				ADAPTER_INTERFACE, "DiscoveryCompleted",
 				DBUS_TYPE_INVALID);
 
@@ -1562,7 +1558,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	}
 
 	/* Send discovery completed signal if there isn't name to resolve */
-	dbus_connection_emit_property_changed(connection, ptr,
+	dbus_connection_emit_property_changed(connection, adapter->path,
 				ADAPTER_INTERFACE, "PeriodicDiscovery",
 				DBUS_TYPE_BOOLEAN, &adapter->discov_active);
 }

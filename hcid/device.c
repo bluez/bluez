@@ -935,7 +935,7 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 				ERROR_INTERFACE ".Failed",
 				strerror(-ecode));
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
+	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
 
 	g_dbus_emit_signal(conn, path,
 					ADAPTER_INTERFACE, "RemoteAliasChanged",
@@ -964,13 +964,7 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 
 	write_trust(&local, device->address, GLOBAL_TRUST, value);
 
-	snprintf(path, sizeof(path), "%s/hci%d", BASE_PATH, adapter->dev_id);
-
-	g_dbus_emit_signal(conn, path,
-					ADAPTER_INTERFACE,
-					value ? "TrustAdded" : "TrustRemoved",
-					DBUS_TYPE_STRING, &device->address,
-					DBUS_TYPE_INVALID);
+	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
 
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Trusted",

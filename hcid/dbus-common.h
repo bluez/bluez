@@ -22,9 +22,6 @@
  *
  */
 
-#define BASE_PATH		"/org/bluez"
-#define ADAPTER_PATH_INDEX	10
-
 #define MAX_PATH_LENGTH 64
 
 int str2uuid(uuid_t *uuid, const char *string);

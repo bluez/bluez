@@ -193,7 +193,7 @@ void hcid_dbus_unregister(void)
 		return;
 
 	/* Unregister all paths in Adapter path hierarchy */
-	if (!dbus_connection_list_registered(conn, BASE_PATH, &children))
+	if (!dbus_connection_list_registered(conn, "/", &children))
 		return;
 
 	for (i = 0; children[i]; i++) {
@@ -202,8 +202,7 @@ void hcid_dbus_unregister(void)
 		if (children[i][0] != 'h')
 			continue;
 
-		snprintf(dev_path, sizeof(dev_path), "%s/%s", BASE_PATH,
-				children[i]);
+		snprintf(dev_path, sizeof(dev_path), "/%s", children[i]);
 
 		unregister_adapter_path(dev_path);
 	}
@@ -222,9 +221,7 @@ void hcid_dbus_exit(void)
 	release_default_auth_agent();
 	release_services(conn);
 
-	database_cleanup(conn, BASE_PATH);
-
-	manager_cleanup(conn, BASE_PATH);
+	manager_cleanup(conn, "/");
 
 	set_dbus_connection(NULL);
 
@@ -245,13 +242,7 @@ int hcid_dbus_init(void)
 		return -1;
 	}
 
-	if (!manager_init(conn, BASE_PATH))
-		return -1;
-
-	if (!database_init(conn, BASE_PATH))
-		return -1;
-
-	if (!security_init(conn, BASE_PATH))
+	if (!manager_init(conn, "/"))
 		return -1;
 
 	set_dbus_connection(conn);
