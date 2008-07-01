@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -52,10 +53,132 @@
 
 #define CAP_FILE CONFIGDIR "/capability.xml"
 
+#define EOL_CHARS "\n"
+
+#define FL_VERSION "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" EOL_CHARS
+
+#define FL_TYPE "<!DOCTYPE folder-listing SYSTEM \"obex-folder-listing.dtd\">" EOL_CHARS
+
+#define FL_BODY_BEGIN "<folder-listing version=\"1.0\">" EOL_CHARS
+
+#define FL_BODY_END "</folder-listing>" EOL_CHARS
+
+#define FL_PARENT_FOLDER_ELEMENT "<parent-folder/>" EOL_CHARS
+
+#define FL_FILE_ELEMENT "<file name=\"%s\" size=\"%" G_GUINT64_FORMAT "\"" \
+			" %s accessed=\"%s\" " \
+			"modified=\"%s\" created=\"%s\"/>" EOL_CHARS
+
+#define FL_FOLDER_ELEMENT "<folder name=\"%s\" %s accessed=\"%s\" " \
+			"modified=\"%s\" created=\"%s\"/>" EOL_CHARS
+
+
+static gchar *file_stat_line(gchar *filename, struct stat fstat,
+			struct stat dstat)
+{
+	gchar *perm, atime[17], ctime[17], mtime[17], *result;
+
+	perm = g_strdup_printf("user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
+			"other-perm=\"%s%s%s\"",
+			(fstat.st_mode & S_IRUSR ? "R" : ""),
+			(fstat.st_mode & S_IWUSR ? "W" : ""),
+			(dstat.st_mode & S_IWUSR ? "D" : ""),
+			(fstat.st_mode & S_IRGRP ? "R" : ""),
+			(fstat.st_mode & S_IWGRP ? "W" : ""),
+			(dstat.st_mode & S_IWGRP ? "D" : ""),
+			(fstat.st_mode & S_IROTH ? "R" : ""),
+			(fstat.st_mode & S_IWOTH ? "W" : ""),
+			(dstat.st_mode & S_IWOTH ? "D" : ""));
+
+	strftime(atime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat.st_atime));
+	strftime(ctime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat.st_ctime));
+	strftime(mtime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat.st_mtime));
+
+	if (S_ISDIR(fstat.st_mode))
+		result = g_strdup_printf(FL_FOLDER_ELEMENT, filename,
+				perm, atime, mtime, ctime);
+	else
+		result = g_strdup_printf(FL_FILE_ELEMENT, filename, fstat.st_size,
+				perm, atime, mtime, ctime);
+
+	g_free(perm);
+
+	return result;
+}
+
+static gboolean folder_listing(struct obex_session *os, guint32 *size)
+{
+	struct stat fstat, dstat;
+	struct dirent *ep;
+	DIR *dp;
+	GString *listing;
+
+	listing = g_string_new(FL_VERSION);
+	listing = g_string_append(listing, FL_TYPE);
+	listing = g_string_append(listing, FL_BODY_BEGIN);
+
+	if (strcmp(os->current_folder,os->server->folder))
+		listing = g_string_append(listing, FL_PARENT_FOLDER_ELEMENT);
+
+	if (stat(os->current_folder, &dstat) < 0) {
+		error("get_folder_listing: %s(%d)", strerror(errno), errno);
+		return FALSE;
+	}
+
+	dp = opendir(os->current_folder);
+	while (dp && (ep = readdir(dp))) {
+		gchar *name;
+		gchar *fullname;
+		gchar *line;
+
+		if (ep->d_name[0] == '.')
+			continue;
+
+		name = g_filename_to_utf8(ep->d_name, -1, NULL, NULL, NULL);
+		if (name == NULL) {
+			error("g_filename_to_utf8: invalid filename");
+			continue;
+		}
+
+		fullname = g_build_filename(os->current_folder, ep->d_name, NULL);
+
+		if (lstat(fullname, &fstat) < 0) {
+			debug("lstat: %s(%d)", strerror(errno), errno);
+			g_free(name);
+			g_free(fullname);
+			continue;
+		}
+		g_free(fullname);
+
+		line = file_stat_line(name, fstat, dstat);
+		if (line == NULL) {
+			g_free(name);
+			continue;
+		}
+		g_free(name);
+
+		listing = g_string_append(listing, line);
+		g_free(line);
+	}
+	closedir(dp);
+
+	listing = g_string_append(listing, FL_BODY_END);
+	*size = listing->len + 1;
+	os->buf = (guint8*) g_string_free(listing, FALSE);
+
+	return TRUE;
+}
+
 static gboolean get_by_type(struct obex_session *os, gchar *type, guint32 *size)
 {
+	if (type == NULL)
+		return FALSE;
+
 	if (g_str_equal(type, CAP_TYPE))
 		return os_prepare_get(os, CAP_FILE, size);
+
+	if (g_str_equal(type, LST_TYPE))
+		return folder_listing(os, size);
 
 	return FALSE;
 }
@@ -65,6 +188,8 @@ void ftp_get(obex_t *obex, obex_object_t *obj)
 	obex_headerdata_t hv;
 	struct obex_session *os;
 	guint32 size;
+	gboolean ret;
+	gchar *path;
 
 	os = OBEX_GetUserData(obex);
 	if (os == NULL)
@@ -73,23 +198,23 @@ void ftp_get(obex_t *obex, obex_object_t *obj)
 	if (os->current_folder == NULL)
 		goto fail;
 
-	if (os->name) {
-		gboolean ret;
-		gchar *path = g_build_filename(os->current_folder,
-						os->name, NULL);
+	if (!get_by_type(os, os->type, &size)) {
+		if (!os->name)
+			goto fail;
+
+		path = g_build_filename(os->current_folder,
+					os->name, NULL);
+
 		ret = os_prepare_get(os, path, &size);
 
 		g_free(path);
 
 		if (!ret)
 			goto fail;
-	} else if (os->type) {
-		if (!get_by_type(os, os->type, &size))
-			goto fail;
-	} else
-		goto fail;
+	}
 
 	hv.bq4 = size;
+	os->size = size;
 	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_LENGTH, hv, 4, 0);
 
 	/* Add body header */

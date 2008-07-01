@@ -79,6 +79,28 @@ struct obex_commands ftp = {
 	.setpath	= ftp_setpath,
 };
 
+static void os_reset_session(struct obex_session *os)
+{
+	if (os->name) {
+		g_free(os->name);
+		os->name = NULL;
+	}
+	if (os->type) {
+		g_free(os->type);
+		os->type = NULL;
+	}
+	if (os->buf) {
+		g_free(os->buf);
+		os->buf = NULL;
+	}
+	if (os->fd > 0) {
+		close(os->fd);
+		os->fd = -1;
+	}
+	os->offset = 0;
+	os->size = 0;
+}
+
 static void obex_session_free(struct obex_session *os)
 {
 	if (os->name)
@@ -348,8 +370,13 @@ static gint obex_write(struct obex_session *os,
 	debug("obex_write name: %s type: %s tx_mtu: %d fd: %d",
 			os->name, os->type, os->tx_mtu, os->fd);
 
-	if (os->fd < 0)
-		return -EIO;
+	if (os->fd < 0) {
+		if (os->buf == NULL)
+			return -EIO;
+
+		len = os->size - os->offset;
+		goto add_header;
+	}
 
 	len = read(os->fd, os->buf, os->tx_mtu);
 	if (len < 0) {
@@ -359,8 +386,7 @@ static gint obex_write(struct obex_session *os,
 		return -err;
 	}
 
-	os->offset += len;
-
+add_header:
 	if (len == 0) {
 		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, 0,
 					OBEX_FL_STREAM_DATAEND);
@@ -370,6 +396,8 @@ static gint obex_write(struct obex_session *os,
 	}
 
 	hd.bs = os->buf;
+	os->offset += len;
+
 	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, len,
 				OBEX_FL_STREAM_DATA);
 
@@ -581,13 +609,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		case OBEX_CMD_GET:
 			emit_transfer_completed(os->cid,
 						os->offset == os->size);
-			if (os->fd >= 0) {
-				close(os->fd);
-				os->fd = -1;
-			}
-			g_free(os->buf);
-			os->buf = NULL;
-			os->offset = 0;
+			os_reset_session(os);
 			break;
 		default:
 			break;
