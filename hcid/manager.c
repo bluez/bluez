@@ -140,7 +140,6 @@ static DBusMessage *default_adapter(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	struct adapter *adapter;
-	char *path;
 
 	adapter = manager_find_adapter_by_id(default_adapter_id);
 	if (!adapter)
@@ -150,9 +149,7 @@ static DBusMessage *default_adapter(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
-	path = adapter->path + ADAPTER_PATH_INDEX;
-
-	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &adapter->path,
 				DBUS_TYPE_INVALID);
 
 	return reply;
@@ -163,7 +160,6 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	struct adapter *adapter;
-	char *path;
 	struct hci_dev_info di;
 	const char *pattern;
 	int dev_id;
@@ -196,9 +192,7 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
-	path = adapter->path + ADAPTER_PATH_INDEX;
-
-	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &adapter->path,
 				DBUS_TYPE_INVALID);
 
 	return reply;
@@ -223,7 +217,6 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 
 	for (l = adapters; l; l = l->next) {
 		struct adapter *adapter = l->data;
-		char *path;
 		struct hci_dev_info di;
 
 		if (hci_devinfo(adapter->dev_id, &di) < 0)
@@ -232,10 +225,8 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 		if (hci_test_bit(HCI_RAW, &di.flags))
 			continue;
 
-		path = adapter->path + ADAPTER_PATH_INDEX;
-
 		dbus_message_iter_append_basic(&array_iter,
-					DBUS_TYPE_OBJECT_PATH, &path);
+					DBUS_TYPE_OBJECT_PATH, &adapter->path);
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
@@ -333,11 +324,9 @@ struct adapter *manager_find_adapter_by_id(int id)
 
 void manager_add_adapter(struct adapter *adapter)
 {
-	const char *ptr = adapter->path + ADAPTER_PATH_INDEX;
-
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE, "AdapterAdded",
-			DBUS_TYPE_OBJECT_PATH, &ptr,
+			DBUS_TYPE_OBJECT_PATH, &adapter->path,
 			DBUS_TYPE_INVALID);
 
 	adapters = g_slist_append(adapters, adapter);
@@ -345,11 +334,9 @@ void manager_add_adapter(struct adapter *adapter)
 
 void manager_remove_adapter(struct adapter *adapter)
 {
-	const char *ptr = adapter->path + ADAPTER_PATH_INDEX;
-
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE, "AdapterRemoved",
-			DBUS_TYPE_OBJECT_PATH, &ptr,
+			DBUS_TYPE_OBJECT_PATH, &adapter->path,
 			DBUS_TYPE_INVALID);
 
 	if ((default_adapter_id == adapter->dev_id || default_adapter_id < 0)) {
@@ -370,13 +357,12 @@ int manager_get_default_adapter()
 void manager_set_default_adapter(int id)
 {
 	struct adapter *adapter = manager_find_adapter_by_id(id);
-	const char *ptr = adapter->path + ADAPTER_PATH_INDEX;
 
 	default_adapter_id = id;
 
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE,
 			"DefaultAdapterChanged",
-			DBUS_TYPE_OBJECT_PATH, &ptr,
+			DBUS_TYPE_OBJECT_PATH, &adapter->path,
 			DBUS_TYPE_INVALID);
 }

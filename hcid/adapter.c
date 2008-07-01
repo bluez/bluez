@@ -2099,7 +2099,7 @@ static GDBusSignalTable adapter_signals[] = {
 dbus_bool_t adapter_init(DBusConnection *conn,
 		const char *path, struct adapter *adapter)
 {
-	return g_dbus_register_interface(conn, path + ADAPTER_PATH_INDEX,
+	return g_dbus_register_interface(conn, path,
 			ADAPTER_INTERFACE, adapter_methods,
 			adapter_signals, NULL, adapter, NULL);
 }
