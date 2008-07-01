@@ -1,3 +1,13 @@
+ver 3.35:
+	Add UUID-128 support for service discovery.
+	Fix usage of friendly names for service discovery.
+	Fix authorization when experiemental is disabled.
+	Fix uninitialized variable in passkey request handling.
+	Enable output of timestamps for l2test and rctest.
+
+	Note:
+	This version needs at least bluez-libs-3.35
+
 ver 3.34:
 	Use safe function versions for SDP client handling.
 	Fix issue with RemoveDevice during discovery procedure.
