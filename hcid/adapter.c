@@ -81,124 +81,6 @@ struct mode_req {
 	guint		id;		/* Listener id */
 };
 
-static const char *service_cls[] = {
-	"positioning",
-	"networking",
-	"rendering",
-	"capturing",
-	"object transfer",
-	"audio",
-	"telephony",
-	"information"
-};
-
-static const char *major_cls[] = {
-	"miscellaneous",
-	"computer",
-	"phone",
-	"access point",
-	"audio/video",
-	"peripheral",
-	"imaging",
-	"wearable",
-	"toy",
-	"uncategorized"
-};
-
-static const char *computer_minor_cls[] = {
-	"uncategorized",
-	"desktop",
-	"server",
-	"laptop",
-	"handheld",
-	"palm",
-	"wearable"
-};
-
-static const char *phone_minor_cls[] = {
-	"uncategorized",
-	"cellular",
-	"cordless",
-	"smart phone",
-	"modem",
-	"isdn"
-};
-
-static const char *access_point_minor_cls[] = {
-	"fully",
-	"1-17 percent",
-	"17-33 percent",
-	"33-50 percent",
-	"50-67 percent",
-	"67-83 percent",
-	"83-99 percent",
-	"not available"
-};
-
-static const char *audio_video_minor_cls[] = {
-	"uncategorized",
-	"headset",
-	"handsfree",
-	"unknown",
-	"microphone",
-	"loudspeaker",
-	"headphones",
-	"portable audio",
-	"car audio",
-	"set-top box",
-	"hifi audio",
-	"vcr",
-	"video camera",
-	"camcorder",
-	"video monitor",
-	"video display and loudspeaker",
-	"video conferencing",
-	"unknown",
-	"gaming/toy"
-};
-
-static const char *peripheral_minor_cls[] = {
-	"uncategorized",
-	"keyboard",
-	"pointing",
-	"combo"
-};
-
-#if 0
-static const char *peripheral_2_minor_cls[] = {
-	"uncategorized",
-	"joystick",
-	"gamepad",
-	"remote control",
-	"sensing",
-	"digitizer tablet",
-	"card reader"
-};
-#endif
-
-static const char *imaging_minor_cls[] = {
-	"display",
-	"camera",
-	"scanner",
-	"printer"
-};
-
-static const char *wearable_minor_cls[] = {
-	"wrist watch",
-	"pager",
-	"jacket",
-	"helmet",
-	"glasses"
-};
-
-static const char *toy_minor_cls[] = {
-	"robot",
-	"vehicle",
-	"doll",
-	"controller",
-	"game"
-};
-
 static inline DBusMessage *invalid_args(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
@@ -563,13 +445,6 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 	} else {
 		/* discoverable or limited */
 		if ((scan_enable & SCAN_INQUIRY) && (new_mode != adapter->mode)) {
-			g_dbus_emit_signal(conn,
-					dbus_message_get_path(msg),
-					ADAPTER_INTERFACE,
-					"ModeChanged",
-					DBUS_TYPE_STRING, &mode,
-					DBUS_TYPE_INVALID);
-
 			if (adapter->timeout_id)
 				g_source_remove(adapter->timeout_id);
 
@@ -909,7 +784,6 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 				struct device *device)
 {
 	bdaddr_t src;
-	char path[MAX_PATH_LENGTH];
 
 	str2ba(adapter->address, &src);
 	delete_entry(&src, "profiles", device->address);
@@ -917,8 +791,7 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 	remove_bonding(conn, NULL, device->address, adapter);
 
 	if (!device->temporary) {
-		snprintf(path, MAX_PATH_LENGTH, "/hci%d", adapter->dev_id);
-		g_dbus_emit_signal(conn, path,
+		g_dbus_emit_signal(conn, adapter->path,
 				ADAPTER_INTERFACE,
 				"DeviceRemoved",
 				DBUS_TYPE_OBJECT_PATH, &device->path,
@@ -1136,9 +1009,6 @@ static void create_bond_req_exit(void *user_data)
 {
 	struct adapter *adapter = user_data;
 	struct pending_auth_info *auth;
-	char path[MAX_PATH_LENGTH];
-
-	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
 
 	debug("CreateConnection requestor exited before bonding was completed");
 
@@ -1326,13 +1196,6 @@ static DBusMessage *adapter_stop_periodic(DBusConnection *conn,
 	if (!adapter->up)
 		return adapter_not_ready(msg);
 
-	if (dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
-				"StopPeriodicDiscovery")) {
-		if (!dbus_message_has_signature(msg,
-					DBUS_TYPE_INVALID_AS_STRING))
-			return invalid_args(msg);
-	}
-
 	if (!adapter->pdiscov_active)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotAuthorized",
@@ -1367,7 +1230,6 @@ static void discover_devices_req_exit(void *user_data)
 static DBusMessage *adapter_discover_devices(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	const char *method;
 	inquiry_cp cp;
 	evt_cmd_status rp;
 	struct hci_request rq;
@@ -1422,14 +1284,9 @@ static DBusMessage *adapter_discover_devices(DBusConnection *conn,
 		return failed_strerror(msg, bt_error(rp.status));
 	}
 
-	method = dbus_message_get_member(msg);
-	if (strcmp("DiscoverDevicesWithoutNameResolving", method) == 0)
-		adapter->discov_type |= STD_INQUIRY;
-	else
-		adapter->discov_type |= (STD_INQUIRY | RESOLVE_NAME);
+	adapter->discov_type |= (STD_INQUIRY | RESOLVE_NAME);
 
 	adapter->discov_requestor = g_strdup(dbus_message_get_sender(msg));
-
 
 	hci_close_dev(dd);
 
@@ -2092,94 +1949,4 @@ dbus_bool_t adapter_init(DBusConnection *conn,
 dbus_bool_t adapter_cleanup(DBusConnection *conn, const char *path)
 {
 	return g_dbus_unregister_interface(conn, path, ADAPTER_INTERFACE);
-}
-
-const char *major_class_str(uint32_t class)
-{
-	uint8_t index = (class >> 8) & 0x1F;
-
-	if (index > 8)
-		return major_cls[9]; /* uncategorized */
-
-	return major_cls[index];
-}
-
-const char *minor_class_str(uint32_t class)
-{
-	uint8_t major_index = (class >> 8) & 0x1F;
-	uint8_t minor_index;
-
-	switch (major_index) {
-	case 1: /* computer */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(computer_minor_cls))
-			return computer_minor_cls[minor_index];
-		else
-			return "";
-	case 2: /* phone */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(phone_minor_cls))
-			return phone_minor_cls[minor_index];
-		return "";
-	case 3: /* access point */
-		minor_index = (class >> 5) & 0x07;
-		if (minor_index < NUM_ELEMENTS(access_point_minor_cls))
-			return access_point_minor_cls[minor_index];
-		else
-			return "";
-	case 4: /* audio/video */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(audio_video_minor_cls))
-			return audio_video_minor_cls[minor_index];
-		else
-			return "";
-	case 5: /* peripheral */
-		minor_index = (class >> 6) & 0x03;
-		if (minor_index < NUM_ELEMENTS(peripheral_minor_cls))
-			return peripheral_minor_cls[minor_index];
-		else
-			return "";
-	case 6: /* imaging */
-		{
-			uint8_t shift_minor = 0;
-
-			minor_index = (class >> 4) & 0x0F;
-			while (shift_minor < (sizeof(imaging_minor_cls) / sizeof(*imaging_minor_cls))) {
-				if (((minor_index >> shift_minor) & 0x01) == 0x01)
-					return imaging_minor_cls[shift_minor];
-				shift_minor++;
-			}
-		}
-		break;
-	case 7: /* wearable */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(wearable_minor_cls))
-			return wearable_minor_cls[minor_index];
-		else
-			return "";
-	case 8: /* toy */
-		minor_index = (class >> 2) & 0x3F;
-		if (minor_index < NUM_ELEMENTS(toy_minor_cls))
-			return toy_minor_cls[minor_index];
-		else
-			return "";
-	}
-
-	return "";
-}
-
-GSList *service_classes_str(uint32_t class)
-{
-	uint8_t services = class >> 16;
-	GSList *l = NULL;
-	int i;
-
-	for (i = 0; i < (sizeof(service_cls) / sizeof(*service_cls)); i++) {
-		if (!(services & (1 << i)))
-			continue;
-
-		l = g_slist_append(l, (void *) service_cls[i]);
-	}
-
-	return l;
 }
