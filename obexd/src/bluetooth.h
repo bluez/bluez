@@ -28,5 +28,5 @@
 #endif
 
 gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
-			guint8 channel, gboolean auto_accept);
+			guint8 channel, gboolean secure, gboolean auto_accept);
 void bluetooth_exit(void);

@@ -191,14 +191,14 @@ static void server_destroyed(gpointer user_data)
 	g_free(server);
 }
 
-static gint server_register(guint16 service, const gchar *name,
-		guint8 channel, const gchar *folder, gboolean auto_accept)
+static gint server_register(guint16 service, const gchar *name, guint8 channel,
+		const gchar *folder, gboolean secure, gboolean auto_accept)
 {
 	struct sockaddr_rc laddr;
 	GIOChannel *io;
-	gint err, sk, arg;
 	struct server *server;
 	uint32_t *handle;
+	gint err, sk, arg, lm = RFCOMM_LM_SECURE;
 
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sk < 0) {
@@ -215,6 +215,11 @@ static gint server_register(guint16 service, const gchar *name,
 
 	arg |= O_NONBLOCK;
 	if (fcntl(sk, F_SETFL, arg) < 0) {
+		err = errno;
+		goto failed;
+	}
+
+	if (setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
 		err = errno;
 		goto failed;
 	}
@@ -268,7 +273,7 @@ failed:
 }
 
 gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
-					guint8 channel, gboolean auto_accept)
+			guint8 channel, gboolean secure, gboolean auto_accept)
 {
 	if (!session) {
 		session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
@@ -279,7 +284,8 @@ gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
 		}
 	}
 
-	return server_register(service, name, channel, folder, auto_accept);
+	return server_register(service, name, channel,
+				folder, secure, auto_accept);
 }
 
 static void unregister_record(gpointer rec_handle, gpointer user_data)

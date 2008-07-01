@@ -60,11 +60,11 @@ static int server_start(int service, const char *root_path,
 	switch (service) {
 	case OBEX_OPUSH:
 		bluetooth_init(OBEX_OPUSH, "OBEX OPUSH server",
-				root_path, OPUSH_CHANNEL, auto_accept);
+				root_path, OPUSH_CHANNEL, FALSE, auto_accept);
 		break;
 	case OBEX_FTP:
 		bluetooth_init(OBEX_FTP, "OBEX FTP server",
-				root_path, FTP_CHANNEL, auto_accept);
+				root_path, FTP_CHANNEL, TRUE, auto_accept);
 		break;
 	default:
 		return -EINVAL;
