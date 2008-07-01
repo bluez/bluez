@@ -1,3 +1,6 @@
+ver 3.35:
+	Add two additional company identifiers.
+
 ver 3.34:
 	Replace various SDP functions with safe versions.
 	Add additional length validation for incoming SDP packets.
