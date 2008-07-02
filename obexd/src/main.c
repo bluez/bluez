@@ -132,7 +132,6 @@ int main(int argc, char *argv[])
 		case 'd':
 			debug = 1;
 			break;
-		case 'h':
 		case 'o':
 			opush = 1;
 			break;
@@ -145,6 +144,7 @@ int main(int argc, char *argv[])
 		case 'a':
 			auto_accept = 1;
 			break;
+		case 'h':
 		default:
 			usage();
 			exit(0);
