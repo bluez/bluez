@@ -31,6 +31,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <time.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -114,6 +115,53 @@ static void obex_session_free(struct obex_session *os)
 	if (os->fd > 0)
 		close(os->fd);
 	g_free(os);
+}
+
+/* From Imendio's GnomeVFS OBEX module (om-utils.c) */
+static time_t parse_iso8610(const gchar *val, int size)
+{
+	time_t time, tz_offset = 0;
+	struct tm tm;
+	gchar *date;
+	gchar tz;
+	int nr;
+
+	memset(&tm, 0, sizeof(tm));
+	/* According to spec the time doesn't have to be null terminated */
+	date = g_strndup(val, size);
+	nr = sscanf(date, "%04u%02u%02uT%02u%02u%02u%c",
+			&tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+			&tm.tm_hour, &tm.tm_min, &tm.tm_sec,
+			&tz);
+	g_free(date);
+	if (nr < 6) {
+		/* Invalid time format */
+		return -1;
+	}
+
+	tm.tm_year -= 1900;	/* Year since 1900 */
+	tm.tm_mon--;		/* Months since January, values 0-11 */
+	tm.tm_isdst = -1;	/* Daylight savings information not avail */
+
+#if defined(HAVE_TM_GMTOFF)
+	tz_offset = tm.tm_gmtoff;
+#elif defined(HAVE_TIMEZONE)
+	tz_offset = -timezone;
+	if (tm.tm_isdst > 0)
+		tz_offset += 3600;
+#endif
+
+	time = mktime(&tm);
+	if (nr == 7) {
+		/*
+		 * Date/Time was in localtime (to remote device)
+		 * already. Since we don't know anything about the
+		 * timezone on that one we won't try to apply UTC offset
+		 */
+		time += tz_offset;
+	}
+
+	return time;
 }
 
 static void cmd_connect(struct obex_session *os,
@@ -523,6 +571,9 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 		case OBEX_HDR_LENGTH:
 			os->size = hd.bq4;
 			debug("OBEX_HDR_LENGTH: %d", os->size);
+			break;
+		case OBEX_HDR_TIME:
+			os->time = parse_iso8610((const gchar *) hd.bs, hlen);
 			break;
 		}
 	}

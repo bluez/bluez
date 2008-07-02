@@ -51,6 +51,7 @@ struct obex_session {
 	guint16		rx_mtu;
 	gchar		*name;
 	gchar		*type;
+	time_t		time;
 	gchar		*current_folder;
 	guint8		*buf;
 	gint32		offset;
