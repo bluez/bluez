@@ -78,6 +78,7 @@ struct obex_commands ftp = {
 	.get		= ftp_get,
 	.put		= ftp_put,
 	.setpath	= ftp_setpath,
+	.chkput		= ftp_chkput,
 };
 
 static void os_reset_session(struct obex_session *os)
@@ -448,6 +449,48 @@ add_header:
 				OBEX_FL_STREAM_DATA);
 
 	return len;
+}
+
+gint os_prepare_put(struct obex_session *os)
+{
+	gchar *path;
+	gint len;
+
+	path = g_build_filename(os->current_folder, os->name, NULL);
+
+	os->fd = open(path, O_WRONLY | O_CREAT, 0600);
+	if (os->fd < 0) {
+		error("open(%s): %s (%d)", path, strerror(errno), errno);
+		g_free(path);
+		return -EPERM;
+	}
+
+	g_free(path);
+
+	emit_transfer_started(os->cid);
+
+	if (!os->buf) {
+		debug("PUT request checked, no buffered data");
+		return 0;
+	}
+
+	len = 0;
+	while (len < os->offset) {
+		gint w;
+
+		w = write(os->fd, os->buf + len, os->offset - len);
+		if (w < 0) {
+			gint err = errno;
+			if (err == EINTR)
+				continue;
+			else
+				return -err;
+		}
+
+		len += w;
+	}
+
+	return 0;
 }
 
 static gint obex_read(struct obex_session *os,

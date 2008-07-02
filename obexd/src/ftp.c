@@ -46,7 +46,7 @@
 
 #include "logging.h"
 #include "obex.h"
-#include "logging.h"
+#include "dbus.h"
 
 #define LST_TYPE "x-obex/folder-listing"
 #define CAP_TYPE "x-obex/capability"
@@ -233,12 +233,41 @@ fail:
 	return;
 }
 
-void ftp_put(obex_t *obex, obex_object_t *obj)
+gint ftp_chkput(obex_t *obex, obex_object_t *obj)
 {
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
-			OBEX_RSP_NOT_IMPLEMENTED);
+	struct obex_session *os;
+
+	os = OBEX_GetUserData(obex);
+	if (os == NULL)
+		return -EINVAL;
+
+	if (!os->size)
+		return -EINVAL;
+
+	return os_prepare_put(os);
 }
 
+
+void ftp_put(obex_t *obex, obex_object_t *obj)
+{
+	struct obex_session *os;
+
+	os = OBEX_GetUserData(obex);
+	if (os == NULL)
+		return;
+
+	if (os->current_folder == NULL) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		return;
+	}
+
+	if (os->name == NULL) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST, OBEX_RSP_BAD_REQUEST);
+		return;
+	}
+
+	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+}
 void ftp_setpath(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;

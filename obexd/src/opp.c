@@ -51,8 +51,8 @@
 gint opp_chkput(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
-	gchar *new_folder, *new_name, *path;
-	gint32 time, len = 0;
+	gchar *new_folder, *new_name;
+	gint32 time;
 	gint ret;
 
 	os = OBEX_GetUserData(obex);
@@ -86,40 +86,7 @@ gint opp_chkput(obex_t *obex, obex_object_t *obj)
 	}
 
 skip_auth:
-	path = g_build_filename(os->current_folder, os->name, NULL);
-
-	os->fd = open(path, O_WRONLY | O_CREAT, 0600);
-	if (os->fd < 0) {
-		error("open(%s): %s (%d)", path, strerror(errno), errno);
-		g_free(path);
-		return -EPERM;
-	}
-
-	g_free(path);
-
-	emit_transfer_started(os->cid);
-
-	if (!os->buf) {
-		debug("PUT request authorized, no buffered data");
-		return 0;
-	}
-
-	while (len < os->offset) {
-		gint w;
-
-		w = write(os->fd, os->buf + len, os->offset - len);
-		if (w < 0) {
-			gint err = errno;
-			if (err == EINTR)
-				continue;
-			else
-				return -err;
-		}
-
-		len += w;
-	}
-
-	return 0;
+	return os_prepare_put(os);
 }
 
 void opp_put(obex_t *obex, obex_object_t *obj)
