@@ -73,31 +73,32 @@
 			"modified=\"%s\" created=\"%s\"/>" EOL_CHARS
 
 
-static gchar *file_stat_line(gchar *filename, struct stat fstat, struct stat dstat)
+static gchar *file_stat_line(gchar *filename, struct stat *fstat,
+				struct stat *dstat)
 {
 	gchar perm[50], atime[17], ctime[17], mtime[17];
 
 	snprintf(perm, 49, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
 			"other-perm=\"%s%s%s\"",
-			(fstat.st_mode & S_IRUSR ? "R" : ""),
-			(fstat.st_mode & S_IWUSR ? "W" : ""),
-			(dstat.st_mode & S_IWUSR ? "D" : ""),
-			(fstat.st_mode & S_IRGRP ? "R" : ""),
-			(fstat.st_mode & S_IWGRP ? "W" : ""),
-			(dstat.st_mode & S_IWGRP ? "D" : ""),
-			(fstat.st_mode & S_IROTH ? "R" : ""),
-			(fstat.st_mode & S_IWOTH ? "W" : ""),
-			(dstat.st_mode & S_IWOTH ? "D" : ""));
+			(fstat->st_mode & S_IRUSR ? "R" : ""),
+			(fstat->st_mode & S_IWUSR ? "W" : ""),
+			(dstat->st_mode & S_IWUSR ? "D" : ""),
+			(fstat->st_mode & S_IRGRP ? "R" : ""),
+			(fstat->st_mode & S_IWGRP ? "W" : ""),
+			(dstat->st_mode & S_IWGRP ? "D" : ""),
+			(fstat->st_mode & S_IROTH ? "R" : ""),
+			(fstat->st_mode & S_IWOTH ? "W" : ""),
+			(dstat->st_mode & S_IWOTH ? "D" : ""));
 
-	strftime(atime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat.st_atime));
-	strftime(ctime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat.st_ctime));
-	strftime(mtime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat.st_mtime));
+	strftime(atime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat->st_atime));
+	strftime(ctime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat->st_ctime));
+	strftime(mtime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat->st_mtime));
 
-	if (S_ISDIR(fstat.st_mode))
+	if (S_ISDIR(fstat->st_mode))
 		return g_strdup_printf(FL_FOLDER_ELEMENT, filename,
 					perm, atime, mtime, ctime);
 
-	return g_strdup_printf(FL_FILE_ELEMENT, filename, fstat.st_size,
+	return g_strdup_printf(FL_FILE_ELEMENT, filename, fstat->st_size,
 				perm, atime, mtime, ctime);
 }
 
@@ -145,7 +146,7 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 		}
 		g_free(fullname);
 
-		line = file_stat_line(name, fstat, dstat);
+		line = file_stat_line(name, &fstat, &dstat);
 		if (line == NULL) {
 			g_free(name);
 			continue;
