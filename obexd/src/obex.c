@@ -371,12 +371,6 @@ static void cmd_setpath(struct obex_session *os,
 		}
 	}
 
-	if (!os->name) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST,
-				OBEX_RSP_BAD_REQUEST);
-		return;
-	}
-
 	os->cmds->setpath(obex, obj);
 }
 
@@ -649,6 +643,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		emit_transfer_progress(os->cid, os->size, os->offset);
 		break;
 	case OBEX_EV_ABORT:
+		os_reset_session(os);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 		break;
 	case OBEX_EV_REQDONE:

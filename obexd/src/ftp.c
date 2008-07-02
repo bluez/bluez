@@ -73,12 +73,11 @@
 			"modified=\"%s\" created=\"%s\"/>" EOL_CHARS
 
 
-static gchar *file_stat_line(gchar *filename, struct stat fstat,
-			struct stat dstat)
+static gchar *file_stat_line(gchar *filename, struct stat fstat, struct stat dstat)
 {
-	gchar *perm, atime[17], ctime[17], mtime[17], *result;
+	gchar perm[50], atime[17], ctime[17], mtime[17];
 
-	perm = g_strdup_printf("user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
+	snprintf(perm, 49, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
 			"other-perm=\"%s%s%s\"",
 			(fstat.st_mode & S_IRUSR ? "R" : ""),
 			(fstat.st_mode & S_IWUSR ? "W" : ""),
@@ -95,15 +94,11 @@ static gchar *file_stat_line(gchar *filename, struct stat fstat,
 	strftime(mtime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat.st_mtime));
 
 	if (S_ISDIR(fstat.st_mode))
-		result = g_strdup_printf(FL_FOLDER_ELEMENT, filename,
-				perm, atime, mtime, ctime);
-	else
-		result = g_strdup_printf(FL_FILE_ELEMENT, filename, fstat.st_size,
-				perm, atime, mtime, ctime);
+		return g_strdup_printf(FL_FOLDER_ELEMENT, filename,
+					perm, atime, mtime, ctime);
 
-	g_free(perm);
-
-	return result;
+	return g_strdup_printf(FL_FILE_ELEMENT, filename, fstat.st_size,
+				perm, atime, mtime, ctime);
 }
 
 static gboolean folder_listing(struct obex_session *os, guint32 *size)
@@ -120,8 +115,8 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 	if (strcmp(os->current_folder,os->server->folder))
 		listing = g_string_append(listing, FL_PARENT_FOLDER_ELEMENT);
 
-	if (stat(os->current_folder, &dstat) < 0) {
-		error("get_folder_listing: %s(%d)", strerror(errno), errno);
+	if (lstat(os->current_folder, &dstat) < 0) {
+		error("lstat: %s(%d)", strerror(errno), errno);
 		return FALSE;
 	}
 
