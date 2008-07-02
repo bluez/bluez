@@ -915,7 +915,7 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 	struct adapter *adapter = device->adapter;
 	bdaddr_t bdaddr;
 	int ecode;
-	char *str, filename[PATH_MAX + 1], path[MAX_PATH_LENGTH];
+	char *str, filename[PATH_MAX + 1];
 
 	str2ba(device->address, &bdaddr);
 
@@ -935,14 +935,6 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 				ERROR_INTERFACE ".Failed",
 				strerror(-ecode));
 
-	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
-
-	g_dbus_emit_signal(conn, path,
-					ADAPTER_INTERFACE, "RemoteAliasChanged",
-					DBUS_TYPE_STRING, &device->address,
-					DBUS_TYPE_STRING, &str,
-					DBUS_TYPE_INVALID);
-
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Alias",
 					DBUS_TYPE_STRING, &str);
@@ -958,13 +950,10 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 	struct device *device = data;
 	struct adapter *adapter = device->adapter;
 	bdaddr_t local;
-	char path[MAX_PATH_LENGTH];
 
 	str2ba(adapter->address, &local);
 
 	write_trust(&local, device->address, GLOBAL_TRUST, value);
-
-	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
 
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Trusted",
