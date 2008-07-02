@@ -65,7 +65,7 @@
 
 #define FL_PARENT_FOLDER_ELEMENT "<parent-folder/>" EOL_CHARS
 
-#define FL_FILE_ELEMENT "<file name=\"%s\" size=\"%" G_GUINT64_FORMAT "\"" \
+#define FL_FILE_ELEMENT "<file name=\"%s\" size=\"%lu\"" \
 			" %s accessed=\"%s\" " \
 			"modified=\"%s\" created=\"%s\"/>" EOL_CHARS
 
