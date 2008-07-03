@@ -84,13 +84,6 @@ struct active_conn_info {
 	uint16_t handle;
 };
 
-struct pending_dc_info {
-	DBusConnection *conn;
-	DBusMessage *msg;
-	uint16_t conn_handle;
-	guint timeout_id;
-};
-
 struct adapter {
 	uint16_t dev_id;
 	int up;
@@ -120,7 +113,6 @@ struct adapter {
 	struct bonding_request_info *bonding;
 	GSList *auth_reqs;		/* Received and replied HCI
 					   authentication requests */
-	struct pending_dc_info *pending_dc;
 	GSList *devices;		/* Devices structure pointers */
 	GSList *sessions;		/* Request Mode sessions */
 };
@@ -140,19 +132,11 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 struct device *adapter_create_device(DBusConnection *conn,
 				struct adapter *adapter, const char *address);
 
-const char *major_class_str(uint32_t class);
-
-const char *minor_class_str(uint32_t class);
-
 const char *mode2str(uint8_t mode);
 
 uint8_t str2mode(const char *addr, const char *mode);
 
-GSList *service_classes_str(uint32_t class);
-
 int pending_remote_name_cancel(struct adapter *adapter);
-
-void dc_pending_timeout_cleanup(struct adapter *adapter);
 
 void remove_pending_device(struct adapter *adapter);
 

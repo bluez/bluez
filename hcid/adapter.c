@@ -598,53 +598,6 @@ done:
 	return dbus_message_new_method_return(msg);
 }
 
-gboolean dc_pending_timeout_handler(void *data)
-{
-	int dd;
-	struct adapter *adapter = data;
-	struct pending_dc_info *pending_dc = adapter->pending_dc;
-	DBusMessage *reply;
-
-	dd = hci_open_dev(adapter->dev_id);
-
-	if (dd < 0) {
-		error_no_such_adapter(pending_dc->conn,
-				      pending_dc->msg);
-		dc_pending_timeout_cleanup(adapter);
-		return FALSE;
-	}
-
-	/* Send the HCI disconnect command */
-	if (hci_disconnect(dd, htobs(pending_dc->conn_handle),
-				HCI_OE_USER_ENDED_CONNECTION,
-				500) < 0) {
-		int err = errno;
-		error("Disconnect failed");
-		error_failed_errno(pending_dc->conn, pending_dc->msg, err);
-	} else {
-		reply = dbus_message_new_method_return(pending_dc->msg);
-		if (reply) {
-			dbus_connection_send(pending_dc->conn, reply, NULL);
-			dbus_message_unref(reply);
-		} else
-			error("Failed to allocate disconnect reply");
-	}
-
-	hci_close_dev(dd);
-	dc_pending_timeout_cleanup(adapter);
-
-	return FALSE;
-}
-
-void dc_pending_timeout_cleanup(struct adapter *adapter)
-{
-	dbus_connection_unref(adapter->pending_dc->conn);
-	dbus_message_unref(adapter->pending_dc->msg);
-	g_free(adapter->pending_dc);
-	adapter->pending_dc = NULL;
-}
-
-
 static void reply_authentication_failure(struct bonding_request_info *bonding)
 {
 	DBusMessage *reply;
