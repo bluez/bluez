@@ -408,14 +408,15 @@ fail:
 	return FALSE;
 }
 
-static gint obex_write(struct obex_session *os,
+static gint obex_write_stream(struct obex_session *os,
 			obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hd;
 	gint32 len;
 
-	debug("obex_write name: %s type: %s tx_mtu: %d fd: %d",
-			os->name, os->type, os->tx_mtu, os->fd);
+	debug("obex_write_stream: name=%s type=%s tx_mtu=%d fd=%d",
+		os->name ? os->name : "", os->type ? os->type : "",
+		os->tx_mtu, os->fd);
 
 	if (os->cancelled)
 		return -EPERM;
@@ -497,8 +498,8 @@ gint os_prepare_put(struct obex_session *os)
 	return 0;
 }
 
-static gint obex_read(struct obex_session *os,
-			obex_t *obex, obex_object_t *obj)
+static gint obex_read_stream(struct obex_session *os, obex_t *obex,
+				obex_object_t *obj)
 {
 	gint size;
 	gint32 len = 0;
@@ -770,14 +771,14 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		}
 		break;
 	case OBEX_EV_STREAMAVAIL:
-		if (obex_read(os, obex, obj) < 0) {
+		if (obex_read_stream(os, obex, obj) < 0) {
 			debug("error obex_read()");
 			OBEX_CancelRequest(obex, 1);
 		}
 
 		break;
 	case OBEX_EV_STREAMEMPTY:
-		obex_write(os, obex, obj);
+		obex_write_stream(os, obex, obj);
 		break;
 	case OBEX_EV_LINKERR:
 		break;
