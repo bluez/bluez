@@ -693,7 +693,9 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 
 	switch (evt) {
 	case OBEX_EV_PROGRESS:
-		emit_transfer_progress(os->cid, os->size, os->offset);
+		/* Just emit progress for OPUSH */
+		if (os->target == NULL)
+			emit_transfer_progress(os->cid, os->size, os->offset);
 		break;
 	case OBEX_EV_ABORT:
 		os_reset_session(os);
@@ -706,8 +708,9 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			break;
 		case OBEX_CMD_PUT:
 		case OBEX_CMD_GET:
-			emit_transfer_completed(os->cid,
-						os->offset == os->size);
+			if (os->target == NULL)
+				emit_transfer_completed(os->cid,
+							os->offset == os->size);
 			os_reset_session(os);
 			break;
 		default:
