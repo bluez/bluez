@@ -211,6 +211,11 @@ static void cmd_connect(struct obex_session *os,
 		return;
 	}
 
+	/* FIXME: Request authorization */
+
+	register_session(cid);
+	emit_session_created(cid);
+
 	/* Append received UUID in WHO header */
 	OBEX_ObjectAddHeader(obex, obj,
 			OBEX_HDR_WHO, hd, TARGET_SIZE,
@@ -746,6 +751,7 @@ static void obex_handle_destroy(gpointer user_data)
 	if (os->fd >= 0)
 		emit_transfer_completed(os->cid, os->offset == os->size);
 
+	/* FIXME: SessionRemoved/TransferCompleted signal? */
 	unregister_transfer(os->cid);
 
 	obex_session_free(os);

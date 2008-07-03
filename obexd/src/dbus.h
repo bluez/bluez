@@ -21,6 +21,10 @@
  *
  */
 
+void emit_session_created(guint32 id);
+
+void emit_session_removed(guint32 id);
+
 void emit_transfer_started(guint32 id);
 
 void emit_transfer_completed(guint32 id, gboolean success);

@@ -38,6 +38,7 @@
 #include "logging.h"
 
 #define TRANSFER_INTERFACE OPENOBEX_SERVICE ".Transfer"
+#define SESSION_INTERFACE OPENOBEX_SERVICE ".Session"
 
 #define TIMEOUT 60*1000 /* Timeout for user response (miliseconds) */
 
@@ -147,6 +148,13 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *get_properties(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	/* FIXME: */
+	return NULL;
+}
+
 static GDBusMethodTable manager_methods[] = {
 	{ "RegisterAgent",	"o",	"",	register_agent		},
 	{ "UnregisterAgent",	"o",	"",	unregister_agent	},
@@ -155,7 +163,9 @@ static GDBusMethodTable manager_methods[] = {
 
 static GDBusSignalTable manager_signals[] = {
 	{ "TransferStarted", 	"o" 	},
-	{ "TransferCompleted",	"ob"	},
+	{ "TransferCompleted", 	"ob" 	},
+	{ "SessionCreated", 	"o" 	},
+	{ "SessionRemoved",	"o"	},
 	{ }
 };
 
@@ -166,6 +176,11 @@ static GDBusMethodTable transfer_methods[] = {
 
 static GDBusSignalTable transfer_signals[] = {
 	{ "Progress",	"ii"	},
+	{ }
+};
+
+static GDBusMethodTable session_methods[] = {
+	{ "GetProperties",	"",	"{sv}",	get_properties	},
 	{ }
 };
 
@@ -198,6 +213,30 @@ void manager_cleanup(void)
 		agent_free(agent);
 
 	dbus_connection_unref(connection);
+}
+
+void emit_session_created(guint32 id)
+{
+	gchar *path = g_strdup_printf("/session%u", id);
+
+	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
+			OPENOBEX_MANAGER_INTERFACE, "SessionCreated",
+			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_INVALID);
+
+	g_free(path);
+}
+
+void emit_session_removed(guint32 id)
+{
+	gchar *path = g_strdup_printf("/session%u", id);
+
+	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
+			OPENOBEX_MANAGER_INTERFACE, "SessionRemoved",
+			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_INVALID);
+
+	g_free(path);
 }
 
 void emit_transfer_started(guint32 id)
@@ -365,4 +404,30 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	agent->new_name = NULL;
 
 	return 0;
+}
+
+void register_session(guint32 id)
+{
+	gchar *path = g_strdup_printf("/session%u", id);
+
+	if (!g_dbus_register_interface(connection, path,
+				SESSION_INTERFACE,
+				session_methods, NULL,
+				NULL, NULL, NULL)) {
+		error("Cannot register Session interface.");
+		g_free(path);
+		return;
+	}
+
+	g_free(path);
+}
+
+void unregister_session(guint32 id)
+{
+	gchar *path = g_strdup_printf("/session%u", id);
+
+	g_dbus_unregister_interface(connection, path,
+				SESSION_INTERFACE);
+
+	g_free(path);
 }
