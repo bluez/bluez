@@ -747,12 +747,17 @@ static void obex_handle_destroy(gpointer user_data)
 
 	os = OBEX_GetUserData(obex);
 
-	/* Got an error during a transfer. */
-	if (os->fd >= 0)
-		emit_transfer_completed(os->cid, os->offset == os->size);
+	if (os->target == NULL) {
+		/* Got an error during a transfer. */
+		if (os->fd >= 0)
+			emit_transfer_completed(os->cid,
+					os->offset == os->size);
 
-	/* FIXME: SessionRemoved/TransferCompleted signal? */
-	unregister_transfer(os->cid);
+		unregister_transfer(os->cid);
+	} else {
+		emit_session_removed(os->cid);
+		unregister_session(os->cid);
+	}
 
 	obex_session_free(os);
 
