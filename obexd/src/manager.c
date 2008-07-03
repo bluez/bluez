@@ -25,16 +25,19 @@
 #include <config.h>
 #endif
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
-#include <bluetooth/rfcomm.h>
-
 #include <string.h>
 #include <errno.h>
 #include <gdbus.h>
 #include <sys/socket.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
+#include <bluetooth/rfcomm.h>
+
+#include <openobex/obex.h>
+
 #include "obexd.h"
+#include "obex.h"
 #include "logging.h"
 
 #define TRANSFER_INTERFACE OPENOBEX_SERVICE ".Transfer"
@@ -87,6 +90,81 @@ static inline DBusMessage *not_authorized(DBusMessage *msg)
 	return g_dbus_create_error(msg,
 			ERROR_INTERFACE ".NotAuthorized",
 			"Not authorized");
+}
+
+static void dbus_message_iter_append_variant(DBusMessageIter *iter,
+						int type, void *val)
+{
+	DBusMessageIter value;
+	DBusMessageIter array;
+	const char *sig;
+
+	switch (type) {
+	case DBUS_TYPE_STRING:
+		sig = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_BYTE:
+		sig = DBUS_TYPE_BYTE_AS_STRING;
+		break;
+	case DBUS_TYPE_INT16:
+		sig = DBUS_TYPE_INT16_AS_STRING;
+		break;
+	case DBUS_TYPE_UINT16:
+		sig = DBUS_TYPE_UINT16_AS_STRING;
+		break;
+	case DBUS_TYPE_INT32:
+		sig = DBUS_TYPE_INT32_AS_STRING;
+		break;
+	case DBUS_TYPE_UINT32:
+		sig = DBUS_TYPE_UINT32_AS_STRING;
+		break;
+	case DBUS_TYPE_BOOLEAN:
+		sig = DBUS_TYPE_BOOLEAN_AS_STRING;
+		break;
+	case DBUS_TYPE_ARRAY:
+		sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_OBJECT_PATH:
+		sig = DBUS_TYPE_OBJECT_PATH_AS_STRING;
+		break;
+	default:
+		error("Could not append variant with type %d", type);
+		return;
+	}
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, sig, &value);
+
+	if (type == DBUS_TYPE_ARRAY) {
+		int i;
+		const char ***str_array = val;
+
+		dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING_AS_STRING, &array);
+
+		for (i = 0; (*str_array)[i]; i++)
+			dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
+							&((*str_array)[i]));
+
+		dbus_message_iter_close_container(&value, &array);
+	} else
+		dbus_message_iter_append_basic(&value, type, val);
+
+	dbus_message_iter_close_container(iter, &value);
+}
+
+static void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
+					const char *key, int type, void *val)
+{
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+					NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_append_variant(&entry, type, val);
+
+	dbus_message_iter_close_container(dict, &entry);
 }
 
 static void agent_disconnected(void *user_data)
@@ -151,8 +229,40 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 static DBusMessage *get_properties(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	/* FIXME: */
-	return NULL;
+	struct obex_session *os = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	gchar uuid[37];
+	const gchar *ptr = uuid;
+	const uint8_t *t = os->target;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* Target */
+	sprintf(uuid, "%02X%02X%02X%02X-%02X%02X-%02X%02X-"
+				"%02X%02X-%02X%02X%02X%02X%02X%02X",
+				t[0], t[1], t[2], t[3], t[4], t[5], t[6],t[7],
+				t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
+	dbus_message_iter_append_dict_entry(&dict, "Target",
+					DBUS_TYPE_STRING, &ptr);
+	/* Root folder */
+	dbus_message_iter_append_dict_entry(&dict, "Root",
+					DBUS_TYPE_STRING, &os->server->folder);
+
+	/* FIXME: Added Remote Address or USB */
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
 }
 
 static GDBusMethodTable manager_methods[] = {
@@ -406,14 +516,14 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	return 0;
 }
 
-void register_session(guint32 id)
+void register_session(guint32 id, struct obex_session *os)
 {
 	gchar *path = g_strdup_printf("/session%u", id);
 
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
 				session_methods, NULL,
-				NULL, NULL, NULL)) {
+				NULL, os, NULL)) {
 		error("Cannot register Session interface.");
 		g_free(path);
 		return;

@@ -213,7 +213,7 @@ static void cmd_connect(struct obex_session *os,
 
 	/* FIXME: Request authorization */
 
-	register_session(cid);
+	register_session(cid, os);
 	emit_session_created(cid);
 
 	/* Append received UUID in WHO header */
