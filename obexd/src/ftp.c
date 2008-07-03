@@ -77,6 +77,7 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 				struct stat *dstat)
 {
 	gchar perm[50], atime[17], ctime[17], mtime[17];
+	gchar *escaped, *ret;
 
 	snprintf(perm, 49, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
 			"other-perm=\"%s%s%s\"",
@@ -94,12 +95,18 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 	strftime(ctime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat->st_ctime));
 	strftime(mtime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat->st_mtime));
 
+	escaped = g_uri_escape_string(filename, "", TRUE);
+
 	if (S_ISDIR(fstat->st_mode))
-		return g_strdup_printf(FL_FOLDER_ELEMENT, filename,
+		ret = g_strdup_printf(FL_FOLDER_ELEMENT, escaped,
+					perm, atime, mtime, ctime);
+	else
+		ret = g_strdup_printf(FL_FILE_ELEMENT, escaped, fstat->st_size,
 					perm, atime, mtime, ctime);
 
-	return g_strdup_printf(FL_FILE_ELEMENT, filename, fstat->st_size,
-				perm, atime, mtime, ctime);
+	g_free(escaped);
+
+	return ret;
 }
 
 static gboolean folder_listing(struct obex_session *os, guint32 *size)
@@ -144,6 +151,7 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 			g_free(fullname);
 			continue;
 		}
+
 		g_free(fullname);
 
 		line = file_stat_line(name, &fstat, &dstat);
