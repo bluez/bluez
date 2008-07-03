@@ -62,9 +62,9 @@
 #include "error.h"
 #include "glib-helper.h"
 #include "agent.h"
-#include "dbus-sdp.h"
 #include "sdp-xml.h"
 
+#define DEFAULT_XML_BUF_SIZE	1024
 #define MAX_DEVICES		16
 #define DISCONNECT_TIMER	2
 
@@ -1314,6 +1314,41 @@ static void iter_append_record(DBusMessageIter *dict, uint32_t handle,
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &record);
 
 	dbus_message_iter_close_container(dict, &entry);
+}
+
+void append_and_grow_string(void *data, const char *str)
+{
+	sdp_buf_t *buff = data;
+	int len;
+
+	len = strlen(str);
+
+	if (!buff->data) {
+		buff->data = malloc(DEFAULT_XML_BUF_SIZE);
+		if (!buff->data)
+			return;
+		buff->buf_size = DEFAULT_XML_BUF_SIZE;
+	}
+
+	/* Grow string */
+	while (buff->buf_size < (buff->data_size + len + 1)) {
+		void *tmp;
+		uint32_t new_size;
+
+		/* Grow buffer by a factor of 2 */
+		new_size = (buff->buf_size << 1);
+
+		tmp = realloc(buff->data, new_size);
+		if (!tmp)
+			return;
+
+		buff->data = tmp;
+		buff->buf_size = new_size;
+	}
+
+	/* Include the NULL character */
+	memcpy(buff->data + buff->data_size, str, len + 1);
+	buff->data_size += len;
 }
 
 static void discover_device_reply(struct browse_req *req, sdp_list_t *recs)

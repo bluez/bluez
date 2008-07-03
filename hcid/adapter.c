@@ -57,7 +57,6 @@
 #include "oui.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
-#include "dbus-sdp.h"
 #include "dbus-database.h"
 #include "dbus-error.h"
 #include "error.h"

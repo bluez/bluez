@@ -49,7 +49,6 @@
 #include "adapter.h"
 #include "dbus-hci.h"
 #include "dbus-database.h"
-#include "dbus-sdp.h"
 #include "dbus-common.h"
 
 #define BLUEZ_NAME "org.bluez"
