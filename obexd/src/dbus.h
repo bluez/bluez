@@ -39,4 +39,6 @@ void register_transfer(guint32 id, struct obex_session *os);
 
 void unregister_transfer(guint32 id);
 
-void register_session(guint32 id);
+void register_session(guint32 id, struct obex_session *os);
+
+void unregister_session(guint32 id);

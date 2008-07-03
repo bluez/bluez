@@ -196,7 +196,7 @@ static void cmd_connect(struct obex_session *os,
 	os->cid = ++cid;
 
 	if (os->target == NULL) {
-		register_transfer(os->cid);
+		register_transfer(os->cid, os);
 		/* OPP doesn't contains target or connection id. */
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
 		return;
