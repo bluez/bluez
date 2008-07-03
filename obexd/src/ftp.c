@@ -76,10 +76,10 @@
 static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 				struct stat *dstat)
 {
-	gchar perm[50], atime[17], ctime[17], mtime[17];
+	gchar perm[51], atime[17], ctime[17], mtime[17];
 	gchar *escaped, *ret;
 
-	snprintf(perm, 49, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
+	snprintf(perm, 50, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
 			"other-perm=\"%s%s%s\"",
 			(fstat->st_mode & S_IRUSR ? "R" : ""),
 			(fstat->st_mode & S_IWUSR ? "W" : ""),
