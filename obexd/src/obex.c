@@ -417,6 +417,9 @@ static gint obex_write(struct obex_session *os,
 	debug("obex_write name: %s type: %s tx_mtu: %d fd: %d",
 			os->name, os->type, os->tx_mtu, os->fd);
 
+	if (os->cancelled)
+		return -EPERM;
+
 	if (os->fd < 0) {
 		if (os->buf == NULL)
 			return -EIO;
@@ -499,6 +502,9 @@ static gint obex_read(struct obex_session *os,
 	gint size;
 	gint32 len = 0;
 	const guint8 *buffer;
+
+	if (os->cancelled)
+		return -EPERM;
 
 	size = OBEX_ObjectReadStream(obex, obj, &buffer);
 	if (size < 0) {

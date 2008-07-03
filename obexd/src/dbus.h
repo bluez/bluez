@@ -35,6 +35,8 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 			const gchar *type, gint32 length, gint32 time,
 			gchar **new_folder, gchar **new_name);
 
-void register_transfer(guint32 id);
+void register_transfer(guint32 id, struct obex_session *os);
 
 void unregister_transfer(guint32 id);
+
+void register_session(guint32 id);

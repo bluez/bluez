@@ -265,6 +265,19 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *transfer_cancel(DBusConnection *connection,
+				DBusMessage *msg, void *user_data)
+{
+	struct obex_session *os = user_data;
+
+	if (!os)
+		return invalid_args(msg);
+
+	os->cancelled = TRUE;
+
+	return dbus_message_new_method_return(msg);
+}
+
 static GDBusMethodTable manager_methods[] = {
 	{ "RegisterAgent",	"o",	"",	register_agent		},
 	{ "UnregisterAgent",	"o",	"",	unregister_agent	},
@@ -272,15 +285,15 @@ static GDBusMethodTable manager_methods[] = {
 };
 
 static GDBusSignalTable manager_signals[] = {
-	{ "TransferStarted", 	"o" 	},
-	{ "TransferCompleted", 	"ob" 	},
-	{ "SessionCreated", 	"o" 	},
+	{ "TransferStarted",	"o"	},
+	{ "TransferCompleted",	"ob"	},
+	{ "SessionCreated",	"o"	},
 	{ "SessionRemoved",	"o"	},
 	{ }
 };
 
 static GDBusMethodTable transfer_methods[] = {
-	{ "Cancel",	""	},
+	{ "Cancel",	"",	"",	transfer_cancel	},
 	{ }
 };
 
@@ -387,14 +400,14 @@ void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered)
 	g_free(path);
 }
 
-void register_transfer(guint32 id)
+void register_transfer(guint32 id, struct obex_session *os)
 {
 	gchar *path = g_strdup_printf("/transfer%u", id);
 
 	if (!g_dbus_register_interface(connection, path,
 				TRANSFER_INTERFACE,
 				transfer_methods, transfer_signals,
-				NULL, NULL, NULL)) {
+				NULL, os, NULL)) {
 		error("Cannot register Transfer interface.");
 		g_free(path);
 		return;

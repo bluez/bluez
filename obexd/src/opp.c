@@ -42,8 +42,8 @@
 #include <glib.h>
 
 #include "logging.h"
-#include "dbus.h"
 #include "obex.h"
+#include "dbus.h"
 
 #define VCARD_TYPE "text/x-vcard"
 #define VCARD_FILE CONFIGDIR "/vcard.vcf"
