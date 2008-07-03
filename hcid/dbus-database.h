@@ -24,9 +24,6 @@
 
 #define DATABASE_INTERFACE "org.bluez.Database"
 
-dbus_bool_t database_init(DBusConnection *conn, const char *path);
-void database_cleanup(DBusConnection *conn, const char *path);
-
 int add_xml_record(DBusConnection *conn, const char *sender, bdaddr_t *src,
 				const char *record, dbus_uint32_t *handle);
 DBusMessage *update_xml_record(DBusConnection *conn,
