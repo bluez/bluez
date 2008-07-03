@@ -247,7 +247,6 @@ gint ftp_chkput(obex_t *obex, obex_object_t *obj)
 	return os_prepare_put(os);
 }
 
-
 void ftp_put(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
@@ -268,6 +267,7 @@ void ftp_put(obex_t *obex, obex_object_t *obj)
 
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
 }
+
 void ftp_setpath(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
