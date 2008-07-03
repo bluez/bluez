@@ -470,7 +470,8 @@ gint os_prepare_put(struct obex_session *os)
 
 	g_free(path);
 
-	emit_transfer_started(os->cid);
+	if (os->target == NULL)
+		emit_transfer_started(os->cid);
 
 	if (!os->buf) {
 		debug("PUT request checked, no buffered data");
