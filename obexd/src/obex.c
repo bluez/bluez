@@ -81,8 +81,18 @@ struct obex_commands ftp = {
 	.chkput		= ftp_chkput,
 };
 
-static void os_reset_session(struct obex_session *os)
+static void os_reset_session(struct obex_session *os, gboolean aborted)
 {
+	if (os->fd > 0) {
+		close(os->fd);
+		os->fd = -1;
+		if (aborted && os->cmd == OBEX_CMD_PUT && os->current_folder) {
+			gchar *path;
+			path = g_build_filename(os->current_folder, os->name, NULL);
+			unlink(path);
+			g_free(path);
+		}
+	}
 	if (os->name) {
 		g_free(os->name);
 		os->name = NULL;
@@ -94,10 +104,6 @@ static void os_reset_session(struct obex_session *os)
 	if (os->buf) {
 		g_free(os->buf);
 		os->buf = NULL;
-	}
-	if (os->fd > 0) {
-		close(os->fd);
-		os->fd = -1;
 	}
 	os->offset = 0;
 	os->size = 0;
@@ -700,7 +706,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			emit_transfer_progress(os->cid, os->size, os->offset);
 		break;
 	case OBEX_EV_ABORT:
-		os_reset_session(os);
+		os_reset_session(os, TRUE);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 		break;
 	case OBEX_EV_REQDONE:
@@ -713,13 +719,14 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			if (os->target == NULL)
 				emit_transfer_completed(os->cid,
 							os->offset == os->size);
-			os_reset_session(os);
+			os_reset_session(os, FALSE);
 			break;
 		default:
 			break;
 		}
 		break;
 	case OBEX_EV_REQHINT:
+		os->cmd = cmd;
 		switch (cmd) {
 		case OBEX_CMD_PUT:
 			os->checked = FALSE;

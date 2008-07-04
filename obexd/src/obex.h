@@ -49,6 +49,7 @@ struct obex_session {
 	guint32		cid;
 	guint16		tx_mtu;
 	guint16		rx_mtu;
+	uint8_t		cmd;
 	gchar		*name;
 	gchar		*type;
 	time_t		time;
