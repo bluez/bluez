@@ -106,7 +106,7 @@ static void os_reset_session(struct obex_session *os, gboolean aborted)
 		os->buf = NULL;
 	}
 	os->offset = 0;
-	os->size = 0;
+	os->size = -1;
 }
 
 static void obex_session_free(struct obex_session *os)
@@ -620,7 +620,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 			break;
 
 		case OBEX_HDR_BODY:
-			os->size = -1;
+			os->size = 0;
 			break;
 
 		case OBEX_HDR_LENGTH:
@@ -871,6 +871,7 @@ gint obex_session_start(gint fd, struct server *server)
 	os->rx_mtu = RX_MTU;
 	os->tx_mtu = TX_MTU;
 	os->fd = -1;
+	os->size = -1;
 
 	obex = OBEX_Init(OBEX_TRANS_FD, obex_event, 0);
 	if (!obex) {

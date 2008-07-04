@@ -249,7 +249,7 @@ gint ftp_chkput(obex_t *obex, obex_object_t *obj)
 	if (os == NULL)
 		return -EINVAL;
 
-	if (!os->size)
+	if (os->size < 0)
 		return -EINVAL;
 
 	return os_prepare_put(os);
