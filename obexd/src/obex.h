@@ -32,6 +32,9 @@
 #define OBEX_OPUSH	0x00
 #define OBEX_FTP	0x01
 
+#define OBJECT_SIZE_UNKNOWN -1
+#define OBJECT_SIZE_DELETE -2
+
 struct obex_commands {
 	void (*get) (obex_t *obex, obex_object_t *obj);
 	gint (*chkput) (obex_t *obex, obex_object_t *obj);

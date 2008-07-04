@@ -106,7 +106,7 @@ static void os_reset_session(struct obex_session *os, gboolean aborted)
 		os->buf = NULL;
 	}
 	os->offset = 0;
-	os->size = -1;
+	os->size = OBJECT_SIZE_DELETE;
 }
 
 static void obex_session_free(struct obex_session *os)
@@ -568,6 +568,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	guint hlen;
 	guint8 hi;
 	guint64 free;
+	int ret;
 
 	os = OBEX_GetUserData(obex);
 
@@ -620,7 +621,8 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 			break;
 
 		case OBEX_HDR_BODY:
-			os->size = 0;
+			if (os->size < 0)
+				os->size = OBJECT_SIZE_UNKNOWN;
 			break;
 
 		case OBEX_HDR_LENGTH:
@@ -646,10 +648,26 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	if (!os->cmds->chkput)
 		goto done;
 
-	if (os->cmds->chkput(obex, obj) < 0) {
+	ret = os->cmds->chkput(obex, obj);
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST,
+				OBEX_RSP_BAD_REQUEST);
+		return FALSE;
+	case -EPERM:
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return FALSE;
+	default:
+		debug("Unhandled chkput error: %d", ret);
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_INTERNAL_SERVER_ERROR,
+				OBEX_RSP_INTERNAL_SERVER_ERROR);
+		return FALSE;
 	}
+
+	if (os->size == OBJECT_SIZE_DELETE)
+		goto done;
 
 	if (fstatvfs(os->fd, &buf) < 0) {
 		int err = errno;
@@ -871,7 +889,7 @@ gint obex_session_start(gint fd, struct server *server)
 	os->rx_mtu = RX_MTU;
 	os->tx_mtu = TX_MTU;
 	os->fd = -1;
-	os->size = -1;
+	os->size = OBJECT_SIZE_DELETE;
 
 	obex = OBEX_Init(OBEX_TRANS_FD, obex_event, 0);
 	if (!obex) {

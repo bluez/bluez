@@ -241,6 +241,24 @@ fail:
 	return;
 }
 
+static gint ftp_delete(struct obex_session *os)
+{
+	gchar *path;
+	int ret = 0;
+
+	if (!(os->current_folder && os->name))
+		return -EINVAL;
+
+	path = g_build_filename(os->current_folder, os->name, NULL);
+
+	if (remove(path) < 0)
+		ret = -errno;
+
+	g_free(path);
+
+	return ret;
+}
+
 gint ftp_chkput(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
@@ -249,8 +267,8 @@ gint ftp_chkput(obex_t *obex, obex_object_t *obj)
 	if (os == NULL)
 		return -EINVAL;
 
-	if (os->size < 0)
-		return -EINVAL;
+	if (os->size == OBJECT_SIZE_DELETE)
+		return 0;
 
 	return os_prepare_put(os);
 }
@@ -258,6 +276,7 @@ gint ftp_chkput(obex_t *obex, obex_object_t *obj)
 void ftp_put(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
+	int ret = 0;
 
 	os = OBEX_GetUserData(obex);
 	if (os == NULL)
@@ -273,7 +292,23 @@ void ftp_put(obex_t *obex, obex_object_t *obj)
 		return;
 	}
 
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+	if (os->size == OBJECT_SIZE_DELETE)
+		ret = ftp_delete(os);
+
+	if (ret == 0) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+		return;
+	}
+
+	switch (ret) {
+	case -ENOTEMPTY:
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_PRECONDITION_FAILED,
+					OBEX_RSP_PRECONDITION_FAILED);
+		break;
+	default:
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		break;
+	}
 }
 
 void ftp_setpath(obex_t *obex, obex_object_t *obj)
