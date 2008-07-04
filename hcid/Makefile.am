@@ -19,7 +19,7 @@ libhciserver_a_SOURCES = hcid.h security.c storage.c \
 	parser.h parser.y lexer.l kword.c kword.h \
 	server.h server.c manager.h manager.c \
 	adapter.h adapter.c device.h device.c plugin.h plugin.c \
-	dbus-common.c dbus-common.h dbus-error.c dbus-error.h \
+	dbus-common.c dbus-common.h \
 	dbus-database.c dbus-database.h dbus-service.c dbus-service.h \
 	dbus-hci.h dbus-hci.c \
 	telephony.h telephony.c agent.h agent.c

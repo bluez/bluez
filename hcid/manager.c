@@ -50,7 +50,6 @@
 #include "adapter.h"
 #include "dbus-common.h"
 #include "error.h"
-#include "dbus-error.h"
 #include "dbus-hci.h"
 #include "dbus-database.h"
 #include "sdp-xml.h"

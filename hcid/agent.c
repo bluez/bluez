@@ -43,7 +43,6 @@
 
 #include "hcid.h"
 #include "dbus-common.h"
-#include "dbus-error.h"
 #include "error.h"
 #include "adapter.h"
 #include "dbus-hci.h"

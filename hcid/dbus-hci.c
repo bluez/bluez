@@ -53,7 +53,6 @@
 #include "error.h"
 #include "glib-helper.h"
 #include "dbus-common.h"
-#include "dbus-error.h"
 #include "agent.h"
 #include "dbus-hci.h"
 
@@ -240,6 +239,7 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 	case 0x09: /* connection limit */
 	case 0x0a: /* synchronous connection limit */
 	case 0x0d: /* limited resources */
+	case 0x13: /* user ended the connection */
 	case 0x14: /* terminated due to low resources */
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationCanceled",
@@ -307,14 +307,16 @@ static void adapter_mode_changed(struct adapter *adapter, uint8_t scan_enable)
  */
 static void reply_pending_requests(const char *path, struct adapter *adapter)
 {
+	DBusMessage *reply;
 
 	if (!path || !adapter)
 		return;
 
 	/* pending bonding */
 	if (adapter->bonding) {
-		error_authentication_canceled(connection, adapter->bonding->msg);
-
+		reply = new_authentication_return(adapter->bonding->msg,
+					HCI_OE_USER_ENDED_CONNECTION);
+		g_dbus_send_message(connection, reply);
 		remove_pending_device(adapter);
 
 		g_dbus_remove_watch(adapter->bonding->conn,
@@ -329,7 +331,6 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 
 	/* If there is a pending reply for discovery cancel */
 	if (adapter->discovery_cancel) {
-		DBusMessage *reply;
 		reply = dbus_message_new_method_return(adapter->discovery_cancel);
 		dbus_connection_send(connection, reply, NULL);
 		dbus_message_unref(reply);
@@ -1144,7 +1145,9 @@ proceed:
 
 	if (bonding->cancel) {
 		/* reply authentication canceled */
-		error_authentication_canceled(connection, bonding->msg);
+		reply = new_authentication_return(bonding->msg,
+				HCI_OE_USER_ENDED_CONNECTION);
+		g_dbus_send_message(connection, reply);
 		goto cleanup;
 	}
 
@@ -1839,8 +1842,9 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	if (adapter->bonding && (bacmp(&adapter->bonding->bdaddr, &dev->bdaddr) == 0)) {
 		if (adapter->bonding->cancel) {
 			/* reply authentication canceled */
-			error_authentication_canceled(connection,
-							adapter->bonding->msg);
+			reply = new_authentication_return(adapter->bonding->msg,
+							HCI_OE_USER_ENDED_CONNECTION);
+			g_dbus_send_message(connection, reply);
 		} else {
 			reply = new_authentication_return(adapter->bonding->msg,
 							HCI_AUTHENTICATION_FAILURE);

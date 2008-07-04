@@ -58,7 +58,6 @@
 #include "dbus-common.h"
 #include "dbus-hci.h"
 #include "dbus-database.h"
-#include "dbus-error.h"
 #include "error.h"
 #include "glib-helper.h"
 #include "logging.h"
@@ -810,8 +809,9 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	}
 
 	if (cond & G_IO_NVAL) {
-		error_authentication_canceled(adapter->bonding->conn,
-						adapter->bonding->msg);
+		DBusMessage *reply;
+		reply = new_authentication_return(adapter->bonding->msg, 0x09);
+		g_dbus_send_message(adapter->bonding->conn, reply);
 		goto cleanup;
 	}
 
@@ -860,8 +860,8 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
-		error_no_such_adapter(adapter->bonding->conn,
-					adapter->bonding->msg);
+		DBusMessage *reply = no_such_adapter(adapter->bonding->msg);
+		g_dbus_send_message(adapter->bonding->conn, reply);
 		goto failed;
 	}
 
