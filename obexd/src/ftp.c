@@ -76,7 +76,7 @@
 static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 				struct stat *dstat)
 {
-	gchar perm[51], atime[17], ctime[17], mtime[17];
+	gchar perm[51], atime[18], ctime[18], mtime[18];
 	gchar *escaped, *ret;
 
 	snprintf(perm, 50, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
@@ -91,9 +91,9 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 			(fstat->st_mode & S_IWOTH ? "W" : ""),
 			(dstat->st_mode & S_IWOTH ? "D" : ""));
 
-	strftime(atime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat->st_atime));
-	strftime(ctime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat->st_ctime));
-	strftime(mtime, 16, "%Y%m%dT%H%M%S", gmtime(&fstat->st_mtime));
+	strftime(atime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_atime));
+	strftime(ctime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_ctime));
+	strftime(mtime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_mtime));
 
 	escaped = g_uri_escape_string(filename, " ", TRUE);
 
