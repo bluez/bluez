@@ -111,16 +111,11 @@ static void os_reset_session(struct obex_session *os, gboolean aborted)
 
 static void obex_session_free(struct obex_session *os)
 {
-	if (os->name)
-		g_free(os->name);
-	if (os->type)
-		g_free(os->type);
+	os_reset_session(os, os->offset != os->size);
+
 	if (os->current_folder)
 		g_free(os->current_folder);
-	if (os->buf)
-		g_free(os->buf);
-	if (os->fd > 0)
-		close(os->fd);
+
 	g_free(os);
 }
 
@@ -737,7 +732,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			if (os->target == NULL)
 				emit_transfer_completed(os->cid,
 							os->offset == os->size);
-			os_reset_session(os, FALSE);
+			os_reset_session(os, os->offset != os->size);
 			break;
 		default:
 			break;
@@ -828,8 +823,7 @@ static void obex_handle_destroy(gpointer user_data)
 	if (os->target == NULL) {
 		/* Got an error during a transfer. */
 		if (os->fd >= 0)
-			emit_transfer_completed(os->cid,
-					os->offset == os->size);
+			emit_transfer_completed(os->cid, os->offset == os->size);
 
 		unregister_transfer(os->cid);
 	} else {
