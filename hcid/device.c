@@ -928,6 +928,14 @@ int device_browse(struct device *device, DBusConnection *conn,
 	return bt_search_service(&src, &dst, &uuid, browse_cb, req, NULL);
 }
 
+struct adapter *device_get_adapter(struct device *device)
+{
+	if (!device)
+		return NULL;
+
+	return device->adapter;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;

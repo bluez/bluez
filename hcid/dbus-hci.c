@@ -720,7 +720,7 @@ int hcid_dbus_stop_device(uint16_t id)
 static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 			struct device *device)
 {
-	struct adapter *adapter = device->adapter;
+	struct adapter *adapter = device_get_adapter(device);
 	pin_code_reply_cp pr;
 	bdaddr_t sba, dba;
 	size_t len;
@@ -810,7 +810,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 {
 	struct device *device = user_data;
-	struct adapter *adapter = device->adapter;
+	struct adapter *adapter = device_get_adapter(device);
 	user_confirm_reply_cp cp;
 	int dd;
 	struct pending_auth_info *auth;
@@ -849,7 +849,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 			void *user_data)
 {
 	struct device *device = user_data;
-	struct adapter *adapter = device->adapter;
+	struct adapter *adapter = device_get_adapter(device);
 	user_passkey_reply_cp cp;
 	bdaddr_t dba;
 	int dd;

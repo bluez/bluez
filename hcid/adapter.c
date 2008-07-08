@@ -254,10 +254,12 @@ static void device_agent_removed(struct agent *agent, void *user_data)
 	struct device *device = user_data;
 	struct pending_auth_info *auth;
 	GSList *l;
+	struct adapter *adapter;
 
+	adapter = device_get_adapter(device);
 	device->agent = NULL;
 
-	l = g_slist_find_custom(device->adapter->auth_reqs, agent,
+	l = g_slist_find_custom(adapter->auth_reqs, agent,
 					auth_info_agent_cmp);
 	if (!l)
 		return;
