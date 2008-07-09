@@ -952,6 +952,14 @@ const gchar *device_get_path(struct device *device)
 	return device->path;
 }
 
+struct agent *device_get_agent(struct device *device)
+{
+	if (!device)
+		return NULL;
+
+	return  device->agent;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;

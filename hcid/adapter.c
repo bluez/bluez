@@ -746,6 +746,7 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 	bdaddr_t src;
 	const gchar *destination = device_get_address(device);
 	const gchar *dev_path = device_get_path(device);
+	struct agent *agent;
 
 	str2ba(adapter->address, &src);
 	delete_entry(&src, "profiles", destination);
@@ -760,8 +761,10 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 				DBUS_TYPE_INVALID);
 	}
 
-	if (device->agent) {
-		agent_destroy(device->agent, FALSE);
+	agent = device_get_agent(device);
+
+	if (agent) {
+		agent_destroy(agent, FALSE);
 		device->agent = NULL;
 	}
 

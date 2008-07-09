@@ -102,7 +102,11 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 	if (!device)
 		return -EPERM;
 
-	agent = (device->agent ? : adapter->agent);
+	agent = device_get_agent(device);
+
+	if (!agent)
+		agent =  adapter->agent;
+
 	if (!agent)
 		return -EPERM;
 
@@ -138,7 +142,11 @@ int service_cancel_auth(const bdaddr_t *src, const bdaddr_t *dst)
 	 * agent and in the meanwhile CreatePairedDevice is called.
 	 */
 
-	agent = (device->agent ? : adapter->agent);
+	agent = device_get_agent(device);
+
+	if (!agent)
+		agent =  adapter->agent;
+
 	if (!agent)
 		return -EPERM;
 

@@ -62,6 +62,7 @@ void bonding_request_free(struct bonding_request_info *bonding)
 {
 	struct device *device;
 	char address[18];
+	struct agent *agent;
 
 	if (!bonding)
 		return;
@@ -78,8 +79,10 @@ void bonding_request_free(struct bonding_request_info *bonding)
 	ba2str(&bonding->bdaddr, address);
 
 	device = adapter_find_device(bonding->adapter, address);
-	if (device && device->agent) {
-		agent_destroy(device->agent, FALSE);
+	agent = device_get_agent(device);
+
+	if (device && agent) {
+		agent_destroy(agent, FALSE);
 		device->agent = NULL;
 	}
 
@@ -785,7 +788,13 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	ba2str(&ci->bdaddr, addr);
 
 	device = adapter_find_device(adapter, addr);
-	agent = device && device->agent ? device->agent : adapter->agent;
+
+	if (device)
+		agent = device_get_agent(device);
+
+	if (!agent)
+		agent = adapter->agent;
+
 	if (!agent)
 		return -EPERM;
 
@@ -985,9 +994,9 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return 0;
 	}
 
-	if (device->agent)
-		agent = device->agent;
-	else
+	agent = device_get_agent(device);
+
+	if (!agent)
 		agent = adapter->agent;
 
 	if (!agent) {
@@ -1024,9 +1033,11 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	ba2str(dba, addr);
 
 	device = adapter_get_device(connection, adapter, addr);
-	if (device && device->agent)
-		agent = device->agent;
-	else
+
+	if (device)
+		agent = device_get_agent(device);
+
+	if (!agent)
 		agent = adapter->agent;
 
 	if (!agent) {
@@ -1062,9 +1073,10 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	ba2str(dba, addr);
 
 	device = adapter_get_device(connection, adapter, addr);
-	if (device && device->agent)
-		agent = device->agent;
-	else
+	if (device)
+		agent = device_get_agent(device);
+
+	if (!agent)
 		agent = adapter->agent;
 
 	if (!agent) {
@@ -2188,10 +2200,12 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	ba2str(remote, addr);
 
 	device = adapter_find_device(adapter, addr);
-	if (device && device->agent) {
-		agent = device->agent;
-		*auth = 0x03;
-	} else
+	if (device) {
+		agent = device_get_agent(device);
+		if (agent)
+			*auth = 0x03;
+	}
+	if (!agent)
 		agent = adapter->agent;
 
 	if (!agent) {
