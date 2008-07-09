@@ -650,7 +650,7 @@ struct device *adapter_create_device(DBusConnection *conn,
 	if (!device)
 		return NULL;
 
-	device->temporary = TRUE;
+	device_set_temporary(device, TRUE);
 
 	adapter->devices = g_slist_append(adapter->devices, device);
 
@@ -1600,7 +1600,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 	if (!device)
 		return NULL;
 
-	device->temporary = FALSE;
+	device_set_temporary(device, FALSE);
 
 	device_browse(device, conn, msg, NULL);
 

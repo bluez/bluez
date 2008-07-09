@@ -508,7 +508,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 
 	device = device_create(connection, adapter, key);
 	if (device) {
-		device->temporary = FALSE;
+		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
 		device_probe_drivers(device, uuids);
 		g_slist_free(uuids);
@@ -527,7 +527,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 
 	device = device_create(connection, adapter, key);
 	if (device) {
-		device->temporary = FALSE;
+		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
 	}
 }
@@ -1141,7 +1141,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	if (device) {
 		debug("hcid_dbus_bonding_process_complete: removing temporary flag");
 
-		device->temporary = FALSE;
+		device_set_temporary(device, FALSE);
 		dev_path = device_get_path(device);
 
 		g_dbus_emit_signal(connection, adapter->path,
@@ -1179,7 +1179,7 @@ proceed:
 			dbus_connection_send(connection, reply, NULL);
 			dbus_message_unref(reply);
 		} else {
-			device->temporary = FALSE;
+			device_set_temporary(device, FALSE);
 			device_browse(device, bonding->conn,
 					bonding->msg, NULL);
 		}

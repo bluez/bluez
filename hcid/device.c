@@ -978,6 +978,14 @@ gboolean device_is_temporary(struct device *device)
 	return device->temporary;
 }
 
+void device_set_temporary(struct device *device, gboolean temporary)
+{
+	if (!device)
+		return;
+
+	device->temporary = temporary;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;
