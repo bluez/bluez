@@ -726,6 +726,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	size_t len;
 	int dev;
 	struct pending_auth_info *auth;
+	const gchar *destination = device_get_address(device);
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
@@ -739,7 +740,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	}
 
 	str2ba(adapter->address, &sba);
-	str2ba(device->address, &dba);
+	str2ba(destination, &dba);
 
 	auth = adapter_find_auth_request(adapter, &dba);
 
@@ -814,6 +815,7 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	user_confirm_reply_cp cp;
 	int dd;
 	struct pending_auth_info *auth;
+	const gchar *destination = device_get_address(device);
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
@@ -826,7 +828,7 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	}
 
 	memset(&cp, 0, sizeof(cp));
-	str2ba(device->address, &cp.bdaddr);
+	str2ba(destination, &cp.bdaddr);
 
 	auth = adapter_find_auth_request(adapter, &cp.bdaddr);
 
@@ -854,6 +856,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	bdaddr_t dba;
 	int dd;
 	struct pending_auth_info *auth;
+	const gchar *destination = device_get_address(device);
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
@@ -865,7 +868,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 		return;
 	}
 
-	str2ba(device->address, &dba);
+	str2ba(destination, &dba);
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, &dba);
@@ -1805,6 +1808,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	GSList *l;
 	gboolean connected = FALSE;
 	struct pending_auth_info *auth;
+	const gchar *destination;
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -1866,12 +1870,13 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 	device = adapter_find_device(adapter, paddr);
 	if (device) {
+		destination = device_get_address(device);
 		dbus_connection_emit_property_changed(connection,
 					device->path, DEVICE_INTERFACE,
 					"Connected", DBUS_TYPE_BOOLEAN,
 					&connected);
 		if (device->temporary) {
-			debug("Removing temporary device %s", device->address);
+			debug("Removing temporary device %s", destination);
 			adapter_remove_device(connection, adapter, device);
 		}
 	}

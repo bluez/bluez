@@ -278,6 +278,7 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	struct bonding_request_info *bonding;
 	struct device *device;
 	const char *name = dbus_message_get_sender(msg);
+	const gchar *destination;
 
 	debug("bonding_request_new(%s)", address);
 
@@ -285,10 +286,13 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	if (!device)
 		return NULL;
 
+	destination = device_get_address(device);
 	device->agent = agent_create(adapter, name, agent_path,
-				capability, device_agent_removed, device);
+					capability,
+					device_agent_removed,
+					device);
 	debug("Temporary agent registered for hci%d/%s at %s:%s",
-			adapter->dev_id, device->address, name,
+			adapter->dev_id, destination, name,
 			agent_path);
 
 	bonding = g_new0(struct bonding_request_info, 1);
@@ -737,11 +741,12 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 				struct device *device)
 {
 	bdaddr_t src;
+	const gchar *destination = device_get_address(device);
 
 	str2ba(adapter->address, &src);
-	delete_entry(&src, "profiles", device->address);
+	delete_entry(&src, "profiles", destination);
 
-	remove_bonding(conn, NULL, device->address, adapter);
+	remove_bonding(conn, NULL, destination, adapter);
 
 	if (!device->temporary) {
 		g_dbus_emit_signal(conn, adapter->path,
