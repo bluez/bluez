@@ -973,6 +973,11 @@ gboolean device_is_busy(struct device *device)
 	return device->discov_active ? TRUE : FALSE;
 }
 
+gboolean device_is_temporary(struct device *device)
+{
+	return device->temporary;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;

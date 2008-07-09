@@ -757,7 +757,7 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 
 	remove_bonding(conn, NULL, destination, adapter);
 
-	if (!device->temporary) {
+	if (!device_is_temporary(device)) {
 		g_dbus_emit_signal(conn, adapter->path,
 				ADAPTER_INTERFACE,
 				"DeviceRemoved",
@@ -804,7 +804,7 @@ void remove_pending_device(struct adapter *adapter)
 	if (!device)
 		return;
 
-	if (device->temporary)
+	if (device_is_temporary(device))
 		adapter_remove_device(adapter->bonding->conn, adapter, device);
 }
 
@@ -1561,7 +1561,7 @@ static DBusMessage *list_devices(DBusConnection *conn,
 	for (l = adapter->devices; l; l = l->next) {
 		struct device *device = l->data;
 
-		if (device->temporary)
+		if (device_is_temporary(device))
 			continue;
 
 		dev_path = device_get_path(device);
@@ -1673,7 +1673,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 				"Device does not exist");
 	device = l->data;
 
-	if (device->temporary || device_is_busy(device))
+	if (device_is_temporary(device) || device_is_busy(device))
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".DoesNotExist",
 				"Device creation in progress");
@@ -1706,7 +1706,7 @@ static DBusMessage *find_device(DBusConnection *conn,
 
 	device = l->data;
 
-	if (device->temporary)
+	if (device_is_temporary(device))
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".DoesNotExist",
 				"Device creation in progress");

@@ -1904,7 +1904,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					dev_path, DEVICE_INTERFACE,
 					"Connected", DBUS_TYPE_BOOLEAN,
 					&connected);
-		if (device->temporary) {
+		if (device_is_temporary(device)) {
 			debug("Removing temporary device %s", destination);
 			adapter_remove_device(connection, adapter, device);
 		}
