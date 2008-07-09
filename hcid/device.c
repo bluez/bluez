@@ -986,6 +986,14 @@ void device_set_temporary(struct device *device, gboolean temporary)
 	device->temporary = temporary;
 }
 
+void device_set_cap(struct device *device, uint8_t cap)
+{
+	if (!device)
+		return;
+
+	device->cap = cap;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;

@@ -64,6 +64,7 @@ void device_set_agent(struct device *device, struct agent *agent);
 gboolean device_is_busy(struct device *device);
 gboolean device_is_temporary(struct device *device);
 void device_set_temporary(struct device *device, gboolean temporary);
+void device_set_cap(struct device *device, uint8_t cap);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 
