@@ -2241,7 +2241,7 @@ int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	device = adapter_get_device(connection, adapter, addr);
 	if (device) {
 		device_set_cap(device, cap);
-		device->auth = auth;
+		device_set_auth(device, auth);
 	}
 
 	return 0;

@@ -994,6 +994,14 @@ void device_set_cap(struct device *device, uint8_t cap)
 	device->cap = cap;
 }
 
+void device_set_auth(struct device *device, uint8_t auth)
+{
+	if (!device)
+		return;
+
+	device->auth = auth;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;
