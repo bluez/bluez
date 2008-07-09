@@ -1094,6 +1094,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct bonding_request_info *bonding;
 	gboolean paired = TRUE;
 	struct pending_auth_info *auth;
+	const gchar *dev_path;
 
 	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
 
@@ -1129,13 +1130,14 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		debug("hcid_dbus_bonding_process_complete: removing temporary flag");
 
 		device->temporary = FALSE;
+		dev_path = device_get_path(device);
 
 		g_dbus_emit_signal(connection, adapter->path,
 				ADAPTER_INTERFACE, "DeviceCreated",
-				DBUS_TYPE_OBJECT_PATH, &device->path,
+				DBUS_TYPE_OBJECT_PATH, &dev_path,
 				DBUS_TYPE_INVALID);
 
-		dbus_connection_emit_property_changed(connection, device->path,
+		dbus_connection_emit_property_changed(connection, dev_path,
 					DEVICE_INTERFACE, "Paired",
 					DBUS_TYPE_BOOLEAN, &paired);
 	}
@@ -1658,6 +1660,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	struct adapter *adapter;
 	GSList *l;
 	struct device *device;
+	const gchar *dev_path;
 
 	read_remote_class(local, peer, &old_class);
 
@@ -1678,7 +1681,10 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 		return;
 
 	device = l->data;
-	dbus_connection_emit_property_changed(connection, device->path,
+
+	dev_path = device_get_path(device);
+
+	dbus_connection_emit_property_changed(connection, dev_path,
 				DEVICE_INTERFACE, "Class",
 				DBUS_TYPE_UINT32, &class);
 }
@@ -1689,6 +1695,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	struct adapter *adapter;
 	char peer_addr[18];
 	const char *paddr = peer_addr;
+	const gchar *dev_path;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1703,8 +1710,11 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 
 		device = adapter_find_device(adapter, paddr);
 		if (device) {
+
+			dev_path = device_get_path(device);
+
 			dbus_connection_emit_property_changed(connection,
-						device->path, DEVICE_INTERFACE,
+						dev_path, DEVICE_INTERFACE,
 						"Name", DBUS_TYPE_STRING, &name);
 		}
 	}
@@ -1759,6 +1769,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	struct adapter *adapter;
+	const gchar *dev_path;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1785,8 +1796,11 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 
 		device = adapter_find_device(adapter, paddr);
 		if (device) {
-			dbus_connection_emit_property_changed(connection,
-					device->path, DEVICE_INTERFACE,
+
+		  dev_path = device_get_path(device);
+
+		  dbus_connection_emit_property_changed(connection,
+					dev_path, DEVICE_INTERFACE,
 					"Connected", DBUS_TYPE_BOOLEAN,
 					&connected);
 		}
@@ -1809,6 +1823,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	gboolean connected = FALSE;
 	struct pending_auth_info *auth;
 	const gchar *destination;
+	const gchar *dev_path;
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -1871,8 +1886,10 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	device = adapter_find_device(adapter, paddr);
 	if (device) {
 		destination = device_get_address(device);
+		dev_path = device_get_path(device);
+
 		dbus_connection_emit_property_changed(connection,
-					device->path, DEVICE_INTERFACE,
+					dev_path, DEVICE_INTERFACE,
 					"Connected", DBUS_TYPE_BOOLEAN,
 					&connected);
 		if (device->temporary) {

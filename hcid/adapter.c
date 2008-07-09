@@ -721,7 +721,10 @@ static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 
 	if (paired) {
 		gboolean paired = FALSE;
-		dbus_connection_emit_property_changed(conn, device->path,
+
+		const gchar *dev_path = device_get_path(device);
+
+		dbus_connection_emit_property_changed(conn, dev_path,
 					DEVICE_INTERFACE, "Paired",
 					DBUS_TYPE_BOOLEAN, &paired);
 	}
@@ -742,6 +745,7 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 {
 	bdaddr_t src;
 	const gchar *destination = device_get_address(device);
+	const gchar *dev_path = device_get_path(device);
 
 	str2ba(adapter->address, &src);
 	delete_entry(&src, "profiles", destination);
@@ -752,7 +756,7 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 		g_dbus_emit_signal(conn, adapter->path,
 				ADAPTER_INTERFACE,
 				"DeviceRemoved",
-				DBUS_TYPE_OBJECT_PATH, &device->path,
+				DBUS_TYPE_OBJECT_PATH, &dev_path,
 				DBUS_TYPE_INVALID);
 	}
 
@@ -1534,6 +1538,7 @@ static DBusMessage *list_devices(DBusConnection *conn,
 	GSList *l;
 	DBusMessageIter iter;
 	DBusMessageIter array_iter;
+	const gchar *dev_path;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return invalid_args(msg);
@@ -1552,8 +1557,10 @@ static DBusMessage *list_devices(DBusConnection *conn,
 		if (device->temporary)
 			continue;
 
+		dev_path = device_get_path(device);
+
 		dbus_message_iter_append_basic(&array_iter,
-				DBUS_TYPE_OBJECT_PATH, &device->path);
+				DBUS_TYPE_OBJECT_PATH, &dev_path);
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
@@ -1634,7 +1641,9 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 
 static gint device_path_cmp(struct device *device, const gchar *path)
 {
-	return strcasecmp(device->path, path);
+	const gchar *dev_path = device_get_path(device);
+
+	return strcasecmp(dev_path, path);
 }
 
 static DBusMessage *remove_device(DBusConnection *conn,
@@ -1675,6 +1684,7 @@ static DBusMessage *find_device(DBusConnection *conn,
 	DBusMessage *reply;
 	const gchar *address;
 	GSList *l;
+	const gchar *dev_path;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID))
@@ -1698,8 +1708,10 @@ static DBusMessage *find_device(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
+	dev_path = device_get_path(device);
+
 	dbus_message_append_args(reply,
-				DBUS_TYPE_OBJECT_PATH, &device->path,
+				DBUS_TYPE_OBJECT_PATH, &dev_path,
 				DBUS_TYPE_INVALID);
 
 	return reply;

@@ -79,6 +79,7 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 	struct agent *agent;
 	char address[18];
 	gboolean trusted;
+	const gchar *dev_path;
 
 	adapter = manager_find_adapter(src);
 	if (!adapter)
@@ -112,7 +113,9 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 	auth->cb = cb;
 	auth->user_data = user_data;
 
-	return agent_authorize(agent, device->path, uuid, agent_auth_cb, auth);
+	dev_path = device_get_path(device);
+
+	return agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth);
 }
 
 int service_cancel_auth(const bdaddr_t *src, const bdaddr_t *dst)

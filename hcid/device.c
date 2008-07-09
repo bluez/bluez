@@ -944,6 +944,14 @@ const gchar *device_get_address(struct device *device)
 	return device->address;
 }
 
+const gchar *device_get_path(struct device *device)
+{
+	if (!device)
+		return NULL;
+
+	return device->path;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;

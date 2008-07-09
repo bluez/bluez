@@ -58,6 +58,7 @@ int device_browse(struct device *device, DBusConnection *conn,
 void device_probe_drivers(struct device *device, GSList *uuids);
 struct adapter *device_get_adapter(struct device *device);
 const gchar *device_get_address(struct device *device);
+const gchar *device_get_path(struct device *device);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 

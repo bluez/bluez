@@ -441,13 +441,14 @@ int agent_request_pincode(struct agent *agent, struct device *device,
 				agent_pincode_cb cb, void *user_data)
 {
 	struct agent_request *req;
+	const gchar *dev_path = device_get_path(device);
 
 	if (agent->request)
 		return -EBUSY;
 
 	req = agent_request_new(agent, AGENT_REQUEST_PINCODE, cb, user_data);
 
-	req->call = pincode_request_new(agent, device->path, FALSE);
+	req->call = pincode_request_new(agent, dev_path, FALSE);
 	if (!req->call)
 		goto failed;
 
@@ -593,6 +594,7 @@ int agent_request_passkey(struct agent *agent, struct device *device,
 				agent_passkey_cb cb, void *user_data)
 {
 	struct agent_request *req;
+	const gchar *dev_path = device_get_path(device);
 
 	if (agent->request)
 		return -EBUSY;
@@ -602,7 +604,7 @@ int agent_request_passkey(struct agent *agent, struct device *device,
 
 	req = agent_request_new(agent, AGENT_REQUEST_PASSKEY, cb, user_data);
 
-	req->call = passkey_request_new(agent, device->path);
+	req->call = passkey_request_new(agent, dev_path);
 	if (!req->call)
 		goto failed;
 
@@ -653,6 +655,7 @@ int agent_request_confirmation(struct agent *agent, struct device *device,
 				void *user_data)
 {
 	struct agent_request *req;
+	const gchar *dev_path = device_get_path(device);
 
 	if (agent->request)
 		return -EBUSY;
@@ -663,7 +666,7 @@ int agent_request_confirmation(struct agent *agent, struct device *device,
 	req = agent_request_new(agent, AGENT_REQUEST_CONFIRMATION, cb,
 				user_data);
 
-	req->call = confirmation_request_new(agent, device->path, passkey);
+	req->call = confirmation_request_new(agent, dev_path, passkey);
 	if (!req->call)
 		goto failed;
 
@@ -682,6 +685,7 @@ int agent_display_passkey(struct agent *agent, struct device *device,
 				uint32_t passkey)
 {
 	DBusMessage *message;
+	const gchar *dev_path = device_get_path(device);
 
 	message = dbus_message_new_method_call(agent->name, agent->path,
 				"org.bluez.Agent", "DisplayPasskey");
@@ -691,7 +695,7 @@ int agent_display_passkey(struct agent *agent, struct device *device,
 	}
 
 	dbus_message_append_args(message,
-				DBUS_TYPE_OBJECT_PATH, &device->path,
+				DBUS_TYPE_OBJECT_PATH, &dev_path,
 				DBUS_TYPE_UINT32, &passkey,
 				DBUS_TYPE_INVALID);
 
