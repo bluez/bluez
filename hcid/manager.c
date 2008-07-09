@@ -69,31 +69,6 @@ static DBusConnection *connection = NULL;
 static int default_adapter_id = -1;
 static GSList *adapters = NULL;
 
-struct hci_peer {
-	struct timeval lastseen;
-	struct timeval lastused;
-
-	bdaddr_t bdaddr;
-	uint32_t class;
-	int8_t   rssi;
-	uint8_t  data[240];
-	uint8_t  name[248];
-
-	uint8_t  pscan_rep_mode;
-	uint8_t  pscan_period_mode;
-	uint8_t  pscan_mode;
-	uint16_t clock_offset;
-
-	struct hci_peer *next;
-};
-
-struct hci_conn {
-	bdaddr_t bdaddr;
-	uint16_t handle;
-
-	struct hci_conn *next;
-};
-
 struct hci_dev {
 	int ignore;
 
@@ -107,9 +82,6 @@ struct hci_dev {
 	uint8_t  ssp_mode;
 	uint8_t  name[248];
 	uint8_t  class[3];
-
-	struct hci_peer *peers;
-	struct hci_conn *conns;
 };
 
 static struct hci_dev devices[MAX_DEVICES];
