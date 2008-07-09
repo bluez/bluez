@@ -977,7 +977,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	}
 
 	/* If no MITM protection required, auto-accept */
-	if (!(device->auth & 0x01) && !(type & 0x01)) {
+	if (!(device_get_auth(device) & 0x01) && !(type & 0x01)) {
 		int dd;
 
 		dd = hci_open_dev(adapter->dev_id);

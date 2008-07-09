@@ -1002,6 +1002,11 @@ void device_set_auth(struct device *device, uint8_t auth)
 	device->auth = auth;
 }
 
+uint8_t device_get_auth(struct device *device)
+{
+	return device->auth;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;

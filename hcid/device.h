@@ -66,6 +66,7 @@ gboolean device_is_temporary(struct device *device);
 void device_set_temporary(struct device *device, gboolean temporary);
 void device_set_cap(struct device *device, uint8_t cap);
 void device_set_auth(struct device *device, uint8_t auth);
+uint8_t device_get_auth(struct device *device);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 
