@@ -630,8 +630,7 @@ int hcid_dbus_start_device(uint16_t id)
 	if (manager_get_default_adapter() < 0)
 		manager_set_default_adapter(id);
 
-	if (hcid_dbus_use_experimental())
-		register_devices(&di.bdaddr, adapter);
+	register_devices(&di.bdaddr, adapter);
 
 failed:
 	if (dd >= 0)
