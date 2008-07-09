@@ -68,6 +68,25 @@
 
 #define DEVICE_INTERFACE "org.bluez.Device"
 
+struct device {
+	struct btd_device dev;
+	gchar		*address;
+	gchar		*path;
+	struct adapter	*adapter;
+	GSList		*uuids;
+	GSList		*drivers;
+	gboolean	temporary;
+	struct agent	*agent;
+	guint		disconn_timer;
+	int		discov_active;		/* Service discovery active */
+	char		*discov_requestor;	/* discovery requestor unique name */
+	guint		discov_listener;
+
+	/* For Secure Simple Pairing */
+	uint8_t		cap;
+	uint8_t		auth;
+};
+
 struct browse_req {
 	DBusConnection *conn;
 	DBusMessage *msg;
