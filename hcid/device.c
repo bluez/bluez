@@ -968,6 +968,11 @@ void device_set_agent(struct device *device, struct agent *agent)
 	device->agent = agent;
 }
 
+gboolean device_is_busy(struct device *device)
+{
+	return device->discov_active ? TRUE : FALSE;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;
