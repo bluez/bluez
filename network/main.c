@@ -85,9 +85,10 @@ static DBusConnection *conn;
 
 static int network_probe(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 
-	if (g_dbus_register_interface(conn, device->path, NETWORK_INTERFACE,
+	if (g_dbus_register_interface(conn, path, NETWORK_INTERFACE,
 					network_methods, network_signals, NULL,
 							device, NULL) == FALSE)
 		return -1;
@@ -97,9 +98,10 @@ static int network_probe(struct btd_device *device)
 
 static void network_remove(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 
-	g_dbus_unregister_interface(conn, device->path, NETWORK_INTERFACE);
+	g_dbus_unregister_interface(conn, path, NETWORK_INTERFACE);
 }
 
 static struct btd_device_driver network_driver = {

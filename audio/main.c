@@ -45,14 +45,16 @@ static DBusConnection *conn;
 
 static int headset_probe(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 
 	return 0;
 }
 
 static void headset_remove(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 }
 
 static struct btd_device_driver headset_driver = {
@@ -64,14 +66,16 @@ static struct btd_device_driver headset_driver = {
 
 static int a2dp_probe(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 
 	return 0;
 }
 
 static void a2dp_remove(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 }
 
 static struct btd_device_driver a2dp_driver = {
@@ -83,14 +87,16 @@ static struct btd_device_driver a2dp_driver = {
 
 static int audio_probe(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 
 	return 0;
 }
 
 static void audio_remove(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 }
 
 static struct btd_device_driver audio_driver = {

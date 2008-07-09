@@ -122,14 +122,14 @@ dbus_bool_t adapter_init(DBusConnection *conn,
 
 dbus_bool_t adapter_cleanup(DBusConnection *conn, const char *path);
 
-struct device *adapter_get_device(DBusConnection *conn,
+struct btd_device *adapter_get_device(DBusConnection *conn,
 				struct adapter *adapter, const gchar *address);
 
-struct device *adapter_find_device(struct adapter *adapter, const char *dest);
+struct btd_device *adapter_find_device(struct adapter *adapter, const char *dest);
 
 void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
-				struct device *device);
-struct device *adapter_create_device(DBusConnection *conn,
+				struct btd_device *device);
+struct btd_device *adapter_create_device(DBusConnection *conn,
 				struct adapter *adapter, const char *address);
 
 const char *mode2str(uint8_t mode);

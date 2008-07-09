@@ -78,9 +78,10 @@ static DBusConnection *conn;
 
 static int input_probe(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 
-	if (g_dbus_register_interface(conn, device->path, INPUT_INTERFACE,
+	if (g_dbus_register_interface(conn, path, INPUT_INTERFACE,
 					input_methods, input_signals, NULL,
 							device, NULL) == FALSE)
 		return -1;
@@ -90,9 +91,10 @@ static int input_probe(struct btd_device *device)
 
 static void input_remove(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 
-	g_dbus_unregister_interface(conn, device->path, INPUT_INTERFACE);
+	g_dbus_unregister_interface(conn, path, INPUT_INTERFACE);
 }
 
 static struct btd_device_driver input_driver = {

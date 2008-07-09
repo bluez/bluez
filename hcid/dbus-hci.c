@@ -60,7 +60,7 @@ static DBusConnection *connection = NULL;
 
 void bonding_request_free(struct bonding_request_info *bonding)
 {
-	struct device *device;
+	struct btd_device *device;
 	char address[18];
 	struct agent *agent;
 
@@ -363,7 +363,7 @@ static void reply_pending_requests(const char *path, struct adapter *adapter)
 static void do_unregister(gpointer data, gpointer user_data)
 {
 	DBusConnection *conn = user_data;
-	struct device *device = data;
+	struct btd_device *device = data;
 
 	device_remove(conn, device);
 }
@@ -504,7 +504,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 {
 	struct adapter *adapter = user_data;
 	GSList *uuids = bt_string2list(value);
-	struct device *device;
+	struct btd_device *device;
 
 	device = device_create(connection, adapter, key);
 	if (device) {
@@ -519,7 +519,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 						void *user_data)
 {
 	struct adapter *adapter = user_data;
-	struct device *device;
+	struct btd_device *device;
 
 	if (g_slist_find_custom(adapter->devices,
 				key, (GCompareFunc) device_address_cmp))
@@ -721,7 +721,7 @@ int hcid_dbus_stop_device(uint16_t id)
 }
 
 static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
-			struct device *device)
+			struct btd_device *device)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	pin_code_reply_cp pr;
@@ -775,7 +775,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	char addr[18];
 	struct adapter *adapter;
-	struct device *device;
+	struct btd_device *device;
 	struct agent *agent;
 	int ret;
 
@@ -819,7 +819,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 {
-	struct device *device = user_data;
+	struct btd_device *device = user_data;
 	struct adapter *adapter = device_get_adapter(device);
 	user_confirm_reply_cp cp;
 	int dd;
@@ -859,7 +859,7 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 			void *user_data)
 {
-	struct device *device = user_data;
+	struct btd_device *device = user_data;
 	struct adapter *adapter = device_get_adapter(device);
 	user_passkey_reply_cp cp;
 	bdaddr_t dba;
@@ -939,7 +939,7 @@ static int get_auth_requirements(bdaddr_t *local, bdaddr_t *remote,
 int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct adapter *adapter;
-	struct device *device;
+	struct btd_device *device;
 	struct agent *agent;
 	char addr[18];
 	uint8_t type;
@@ -1019,7 +1019,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct adapter *adapter;
-	struct device *device;
+	struct btd_device *device;
 	struct agent *agent;
 	char addr[18];
 	struct pending_auth_info *auth;
@@ -1059,7 +1059,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct adapter *adapter;
-	struct device *device;
+	struct btd_device *device;
 	struct agent *agent;
 	char addr[18];
 	struct pending_auth_info *auth;
@@ -1102,7 +1102,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	DBusMessage *reply;
-	struct device *device;
+	struct btd_device *device;
 	struct bonding_request_info *bonding;
 	gboolean paired = TRUE;
 	struct pending_auth_info *auth;
@@ -1671,7 +1671,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	uint32_t old_class = 0;
 	struct adapter *adapter;
 	GSList *l;
-	struct device *device;
+	struct btd_device *device;
 	const gchar *dev_path;
 
 	read_remote_class(local, peer, &old_class);
@@ -1718,7 +1718,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	ba2str(peer, peer_addr);
 
 	if (!status) {
-		struct device *device;
+		struct btd_device *device;
 
 		device = adapter_find_device(adapter, paddr);
 		if (device) {
@@ -1803,7 +1803,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		if (adapter->bonding)
 			adapter->bonding->hci_status = status;
 	} else {
-		struct device *device;
+		struct btd_device *device;
 		gboolean connected = TRUE;
 
 		device = adapter_find_device(adapter, paddr);
@@ -1829,7 +1829,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	struct adapter *adapter;
-	struct device *device;
+	struct btd_device *device;
 	struct active_conn_info *dev;
 	GSList *l;
 	gboolean connected = FALSE;
@@ -2184,7 +2184,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 						uint8_t *cap, uint8_t *auth)
 {
 	struct adapter *adapter;
-	struct device *device;
+	struct btd_device *device;
 	struct agent *agent;
 	char addr[18];
 
@@ -2227,7 +2227,7 @@ int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
                                                 uint8_t cap, uint8_t auth)
 {
 	struct adapter *adapter;
-	struct device *device;
+	struct btd_device *device;
 	char addr[18];
 
 	adapter = manager_find_adapter(local);

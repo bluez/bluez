@@ -24,30 +24,24 @@
 
 #define DEVICE_INTERFACE	"org.bluez.Device"
 
-struct btd_device {
-	char *path;
-	bdaddr_t src;
-	bdaddr_t dst;
-};
-
-struct device *device_create(DBusConnection *conn, struct adapter *adapter,
+struct btd_device *device_create(DBusConnection *conn, struct adapter *adapter,
 				const gchar *address);
-void device_remove(DBusConnection *conn, struct device *device);
-gint device_address_cmp(struct device *device, const gchar *address);
-int device_browse(struct device *device, DBusConnection *conn,
+void device_remove(DBusConnection *conn, struct btd_device *device);
+gint device_address_cmp(struct btd_device *device, const gchar *address);
+int device_browse(struct btd_device *device, DBusConnection *conn,
 			DBusMessage *msg, uuid_t *search);
-void device_probe_drivers(struct device *device, GSList *uuids);
-struct adapter *device_get_adapter(struct device *device);
-const gchar *device_get_address(struct device *device);
-const gchar *device_get_path(struct device *device);
-struct agent *device_get_agent(struct device *device);
-void device_set_agent(struct device *device, struct agent *agent);
-gboolean device_is_busy(struct device *device);
-gboolean device_is_temporary(struct device *device);
-void device_set_temporary(struct device *device, gboolean temporary);
-void device_set_cap(struct device *device, uint8_t cap);
-void device_set_auth(struct device *device, uint8_t auth);
-uint8_t device_get_auth(struct device *device);
+void device_probe_drivers(struct btd_device *device, GSList *uuids);
+struct adapter *device_get_adapter(struct btd_device *device);
+const gchar *device_get_address(struct btd_device *device);
+const gchar *device_get_path(struct btd_device *device);
+struct agent *device_get_agent(struct btd_device *device);
+void device_set_agent(struct btd_device *device, struct agent *agent);
+gboolean device_is_busy(struct btd_device *device);
+gboolean device_is_temporary(struct btd_device *device);
+void device_set_temporary(struct btd_device *device, gboolean temporary);
+void device_set_cap(struct btd_device *device, uint8_t cap);
+void device_set_auth(struct btd_device *device, uint8_t auth);
+uint8_t device_get_auth(struct btd_device *device);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 

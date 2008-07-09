@@ -437,7 +437,7 @@ done:
 	agent_request_free(req);
 }
 
-int agent_request_pincode(struct agent *agent, struct device *device,
+int agent_request_pincode(struct agent *agent, struct btd_device *device,
 				agent_pincode_cb cb, void *user_data)
 {
 	struct agent_request *req;
@@ -590,7 +590,7 @@ done:
 	agent_request_free(req);
 }
 
-int agent_request_passkey(struct agent *agent, struct device *device,
+int agent_request_passkey(struct agent *agent, struct btd_device *device,
 				agent_passkey_cb cb, void *user_data)
 {
 	struct agent_request *req;
@@ -650,7 +650,7 @@ static DBusPendingCall *confirmation_request_new(struct agent *agent,
 	return call;
 }
 
-int agent_request_confirmation(struct agent *agent, struct device *device,
+int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 				uint32_t passkey, agent_cb cb,
 				void *user_data)
 {
@@ -681,7 +681,7 @@ failed:
 	return -1;
 }
 
-int agent_display_passkey(struct agent *agent, struct device *device,
+int agent_display_passkey(struct agent *agent, struct btd_device *device,
 				uint32_t passkey)
 {
 	DBusMessage *message;

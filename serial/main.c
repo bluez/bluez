@@ -51,15 +51,16 @@ static DBusMessage *serial_connect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct btd_device *device = user_data;
+	struct adapter *adapter = device_get_adapter(device);
 	const char *target;
-	char src[18], dst[18];
+	const gchar *src, *dst;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &target,
 						DBUS_TYPE_INVALID) == FALSE)
 		return NULL;
 
-	ba2str(&device->src, src);
-	ba2str(&device->dst, dst);
+	src = device_get_address(device);
+	dst = adapter->address;
 
 	service_connect(conn, msg, src, dst, target);
 
@@ -98,9 +99,10 @@ static DBusConnection *conn;
 
 static int serial_probe(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 
-	if (g_dbus_register_interface(conn, device->path, SERIAL_INTERFACE,
+	if (g_dbus_register_interface(conn, path, SERIAL_INTERFACE,
 						serial_methods, NULL, NULL,
 							device, NULL) == FALSE)
 		return -1;
@@ -110,9 +112,10 @@ static int serial_probe(struct btd_device *device)
 
 static void serial_remove(struct btd_device *device)
 {
-	DBG("path %s", device->path);
+	const gchar *path = device_get_path(device);
+	DBG("path %s", path);
 
-	g_dbus_unregister_interface(conn, device->path, SERIAL_INTERFACE);
+	g_dbus_unregister_interface(conn, path, SERIAL_INTERFACE);
 }
 
 static struct btd_device_driver serial_driver = {

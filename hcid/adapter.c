@@ -251,7 +251,7 @@ static int auth_info_agent_cmp(const void *a, const void *b)
 
 static void device_agent_removed(struct agent *agent, void *user_data)
 {
-	struct device *device = user_data;
+	struct btd_device *device = user_data;
 	struct pending_auth_info *auth;
 	GSList *l;
 	struct adapter *adapter;
@@ -276,7 +276,7 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 							uint8_t capability)
 {
 	struct bonding_request_info *bonding;
-	struct device *device;
+	struct btd_device *device;
 	const char *name = dbus_message_get_sender(msg);
 	const gchar *destination;
 	struct agent *agent;
@@ -621,9 +621,9 @@ static void reply_authentication_failure(struct bonding_request_info *bonding)
 	}
 }
 
-struct device *adapter_find_device(struct adapter *adapter, const char *dest)
+struct btd_device *adapter_find_device(struct adapter *adapter, const char *dest)
 {
-	struct device *device;
+	struct btd_device *device;
 	GSList *l;
 
 	if (!adapter)
@@ -639,10 +639,10 @@ struct device *adapter_find_device(struct adapter *adapter, const char *dest)
 	return device;
 }
 
-struct device *adapter_create_device(DBusConnection *conn,
+struct btd_device *adapter_create_device(DBusConnection *conn,
 				struct adapter *adapter, const char *address)
 {
-	struct device *device;
+	struct btd_device *device;
 
 	debug("adapter_create_device(%s)", address);
 
@@ -661,7 +661,7 @@ static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 					const char *address, void *data)
 {
 	struct adapter *adapter = data;
-	struct device *device;
+	struct btd_device *device;
 	char filename[PATH_MAX + 1];
 	char *str;
 	bdaddr_t src, dst;
@@ -745,7 +745,7 @@ done:
 
 
 void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
-				struct device *device)
+				struct btd_device *device)
 {
 	bdaddr_t src;
 	const gchar *destination = device_get_address(device);
@@ -777,10 +777,10 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 	device_remove(conn, device);
 }
 
-struct device *adapter_get_device(DBusConnection *conn,
+struct btd_device *adapter_get_device(DBusConnection *conn,
 				struct adapter *adapter, const gchar *address)
 {
-	struct device *device;
+	struct btd_device *device;
 
 	debug("adapter_get_device(%s)", address);
 
@@ -796,7 +796,7 @@ struct device *adapter_get_device(DBusConnection *conn,
 
 void remove_pending_device(struct adapter *adapter)
 {
-	struct device *device;
+	struct btd_device *device;
 	char address[18];
 
 	ba2str(&adapter->bonding->bdaddr, address);
@@ -1559,7 +1559,7 @@ static DBusMessage *list_devices(DBusConnection *conn,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array_iter);
 
 	for (l = adapter->devices; l; l = l->next) {
-		struct device *device = l->data;
+		struct btd_device *device = l->data;
 
 		if (device_is_temporary(device))
 			continue;
@@ -1579,7 +1579,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	struct device *device;
+	struct btd_device *device;
 	const gchar *address;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
@@ -1646,7 +1646,7 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 	return create_bonding(conn, msg, address, agent_path, cap, data);
 }
 
-static gint device_path_cmp(struct device *device, const gchar *path)
+static gint device_path_cmp(struct btd_device *device, const gchar *path)
 {
 	const gchar *dev_path = device_get_path(device);
 
@@ -1657,7 +1657,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	struct device *device;
+	struct btd_device *device;
 	const char *path;
 	GSList *l;
 
@@ -1687,7 +1687,7 @@ static DBusMessage *find_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	struct device *device;
+	struct btd_device *device;
 	DBusMessage *reply;
 	const gchar *address;
 	GSList *l;

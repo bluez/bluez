@@ -75,7 +75,7 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 {
 	struct service_auth *auth;
 	struct adapter *adapter;
-	struct device *device;
+	struct btd_device *device;
 	struct agent *agent;
 	char address[18];
 	gboolean trusted;
@@ -125,7 +125,7 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 int service_cancel_auth(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct adapter *adapter = manager_find_adapter(src);
-	struct device *device;
+	struct btd_device *device;
 	struct agent *agent;
 	char address[18];
 
