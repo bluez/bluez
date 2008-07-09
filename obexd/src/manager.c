@@ -439,6 +439,7 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 		error("Agent replied with an error: %s, %s",
 				derr.name, derr.message);
 		dbus_error_free(&derr);
+		dbus_message_unref(reply);
 		return;
 	}
 
@@ -455,6 +456,16 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 			agent->new_folder = g_strndup(name, slash - name);
 		}
 	}
+
+	dbus_message_unref(reply);
+}
+
+static gboolean auth_error(GIOChannel *io, GIOCondition cond,
+			gpointer user_data)
+{
+	agent->auth_pending = FALSE;
+
+	return FALSE;
 }
 
 int request_authorization(gint32 cid, int fd, const gchar *filename,
@@ -463,11 +474,13 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 {
 	DBusMessage *msg;
 	DBusPendingCall *call;
+	GIOChannel *io;
 	struct sockaddr_rc addr;
 	socklen_t addrlen;
 	gchar address[18];
 	const gchar *bda = address;
 	gchar *path;
+	guint watch;
 
 	if (!agent)
 		return -1;
@@ -503,19 +516,32 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	g_free(path);
 
 	if (!dbus_connection_send_with_reply(connection,
-					msg, &call, TIMEOUT))
+					msg, &call, TIMEOUT)) {
+		dbus_message_unref(msg);
 		return -EPERM;
+	}
 
 	dbus_message_unref(msg);
 
 	agent->auth_pending = TRUE;
 
+	/* Catches errors before authorization response comes */
+	io = g_io_channel_unix_new(fd);
+	watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+			G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			auth_error, NULL, NULL);
+	g_io_channel_unref(io);
+
 	dbus_pending_call_set_notify(call, agent_reply, NULL, NULL);
-	dbus_pending_call_unref(call);
 
 	/* Workaround: process events while agent doesn't reply */
 	while (agent->auth_pending)
 		g_main_context_iteration(NULL, TRUE);
+
+	g_source_remove(watch);
+
+	dbus_pending_call_cancel(call);
+	dbus_pending_call_unref(call);
 
 	if (!agent->new_name) {
 		return -EPERM;
