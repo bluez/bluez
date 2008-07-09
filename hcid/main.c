@@ -56,6 +56,7 @@
 #include "dbus-hci.h"
 #include "device.h"
 #include "agent.h"
+#include "manager.h"
 
 struct hcid_opts hcid;
 struct device_opts default_device;
@@ -617,7 +618,7 @@ static void device_devreg_setup(int dev_id)
 		return;
 
 	if (!hci_test_bit(HCI_RAW, &di.flags))
-		hcid_dbus_register_device(dev_id);
+		manager_register_adapter(dev_id);
 }
 
 static void device_devup_setup(int dev_id)
@@ -628,7 +629,7 @@ static void device_devup_setup(int dev_id)
 	if (hcid.security)
 		start_security_manager(dev_id);
 	start_adapter(dev_id);
-	hcid_dbus_start_device(dev_id);
+	manager_start_adapter(dev_id);
 }
 
 static void init_all_devices(int ctl)
@@ -685,7 +686,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", sd->dev_id);
-		hcid_dbus_unregister_device(sd->dev_id);
+		manager_unregister_adapter(sd->dev_id);
 		remove_adapter(sd->dev_id);
 		break;
 
@@ -696,7 +697,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 
 	case HCI_DEV_DOWN:
 		info("HCI dev %d down", sd->dev_id);
-		hcid_dbus_stop_device(sd->dev_id);
+		manager_stop_adapter(sd->dev_id);
 		if (hcid.security)
 			stop_security_manager(sd->dev_id);
 		stop_adapter(sd->dev_id);

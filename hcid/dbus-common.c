@@ -157,7 +157,7 @@ static gboolean system_bus_reconnect(void *data)
 	manager_set_default_adapter(-1);
 
 	for (i = 0; i < dl->dev_num; i++, dr++)
-		hcid_dbus_register_device(dr->dev_id);
+		manager_register_adapter(dr->dev_id);
 
 	ret_val = FALSE;
 
@@ -192,14 +192,19 @@ void hcid_dbus_unregister(void)
 		return;
 
 	for (i = 0; children[i]; i++) {
-		char dev_path[MAX_PATH_LENGTH];
+		char path[MAX_PATH_LENGTH];
+		struct adapter *adapter;
 
 		if (children[i][0] != 'h')
 			continue;
 
-		snprintf(dev_path, sizeof(dev_path), "/%s", children[i]);
+		snprintf(path, sizeof(path), "/%s", children[i]);
 
-		unregister_adapter_path(dev_path);
+		adapter = manager_find_adapter_by_path(path);
+		if (!adapter)
+			continue;
+
+		manager_unregister_adapter(adapter->dev_id);
 	}
 
 	dbus_free_string_array(children);
