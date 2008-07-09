@@ -83,7 +83,7 @@ void bonding_request_free(struct bonding_request_info *bonding)
 
 	if (device && agent) {
 		agent_destroy(agent, FALSE);
-		device->agent = NULL;
+		device_set_agent(device, NULL);
 	}
 
 	g_free(bonding);

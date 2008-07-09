@@ -60,6 +60,7 @@ struct adapter *device_get_adapter(struct device *device);
 const gchar *device_get_address(struct device *device);
 const gchar *device_get_path(struct device *device);
 struct agent *device_get_agent(struct device *device);
+void device_set_agent(struct device *device, struct agent *agent);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 

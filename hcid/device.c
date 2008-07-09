@@ -960,6 +960,14 @@ struct agent *device_get_agent(struct device *device)
 	return  device->agent;
 }
 
+void device_set_agent(struct device *device, struct agent *agent)
+{
+	if (!device)
+		return;
+
+	device->agent = agent;
+}
+
 int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;

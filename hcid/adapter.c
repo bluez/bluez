@@ -257,7 +257,7 @@ static void device_agent_removed(struct agent *agent, void *user_data)
 	struct adapter *adapter;
 
 	adapter = device_get_adapter(device);
-	device->agent = NULL;
+	device_set_agent(device, NULL);
 
 	l = g_slist_find_custom(adapter->auth_reqs, agent,
 					auth_info_agent_cmp);
@@ -279,6 +279,7 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	struct device *device;
 	const char *name = dbus_message_get_sender(msg);
 	const gchar *destination;
+	struct agent *agent;
 
 	debug("bonding_request_new(%s)", address);
 
@@ -287,10 +288,13 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 		return NULL;
 
 	destination = device_get_address(device);
-	device->agent = agent_create(adapter, name, agent_path,
+	agent = agent_create(adapter, name, agent_path,
 					capability,
 					device_agent_removed,
 					device);
+
+	device_set_agent(device, agent);
+
 	debug("Temporary agent registered for hci%d/%s at %s:%s",
 			adapter->dev_id, destination, name,
 			agent_path);
@@ -765,7 +769,7 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 
 	if (agent) {
 		agent_destroy(agent, FALSE);
-		device->agent = NULL;
+		device_set_agent(device, NULL);
 	}
 
 	adapter->devices = g_slist_remove(adapter->devices, device);
