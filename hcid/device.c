@@ -915,10 +915,6 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	req->msg = dbus_message_ref(msg);
 	req->device = device;
 
-	for (l = device->uuids; l; l = l->next)
-		req->uuids_removed = g_slist_append(req->uuids_removed,
-				l->data);
-
 	str2ba(adapter->address, &src);
 	str2ba(device->address, &dst);
 
@@ -928,6 +924,9 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	} else {
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
 		req->browse = TRUE;
+		for (l = device->uuids; l; l = l->next)
+			req->uuids_removed = g_slist_append(req->uuids_removed,
+						l->data);
 	}
 
 	device->discov_active = 1;
