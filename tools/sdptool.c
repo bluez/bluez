@@ -1199,7 +1199,15 @@ static int add_sp(sdp_session_t *session, svc_info_t *si)
 
 	add_lang_attr(&record);
 
-	sdp_set_info_attr(&record, "Serial Port", 0, "COM Port");
+	sdp_set_info_attr(&record, "Serial Port", "BlueZ", "COM Port");
+
+	sdp_set_url_attr(&record, "http://www.bluez.org/",
+			"http://www.bluez.org/", "http://www.bluez.org/");
+
+	sdp_set_service_id(&record, sp_uuid);
+	sdp_set_service_ttl(&record, 0xffff);
+	sdp_set_service_avail(&record, 0xff);
+	sdp_set_record_state(&record, 0x00001234);
 
 	if (sdp_device_record_register(session, &interface, &record, SDP_RECORD_PERSIST) < 0) {
 		printf("Service Record registration failed\n");
