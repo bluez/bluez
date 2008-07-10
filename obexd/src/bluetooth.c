@@ -192,7 +192,8 @@ static void server_destroyed(gpointer user_data)
 }
 
 static gint server_register(guint16 service, const gchar *name, guint8 channel,
-		const gchar *folder, gboolean secure, gboolean auto_accept)
+			const gchar *folder, gboolean secure,
+			gboolean auto_accept, const gchar *capability)
 {
 	struct sockaddr_rc laddr;
 	GIOChannel *io;
@@ -253,6 +254,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	server->service = service;
 	server->folder = g_strdup(folder);
 	server->auto_accept = auto_accept;
+	server->capability = g_strdup(capability);
 
 	io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(io, TRUE);
@@ -273,7 +275,8 @@ failed:
 }
 
 gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
-			guint8 channel, gboolean secure, gboolean auto_accept)
+		guint8 channel, gboolean secure, gboolean auto_accept,
+		const gchar *capability)
 {
 	if (!session) {
 		session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
@@ -285,7 +288,7 @@ gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
 	}
 
 	return server_register(service, name, channel,
-				folder, secure, auto_accept);
+			folder, secure, auto_accept, capability);
 }
 
 static void unregister_record(gpointer rec_handle, gpointer user_data)

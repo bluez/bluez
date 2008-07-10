@@ -35,6 +35,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
@@ -50,8 +51,6 @@
 
 #define LST_TYPE "x-obex/folder-listing"
 #define CAP_TYPE "x-obex/capability"
-
-#define CAP_FILE CONFIGDIR "/capability.xml"
 
 #define EOL_CHARS "\n"
 
@@ -173,13 +172,45 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 	return TRUE;
 }
 
+static gboolean get_capability(struct obex_session *os, guint32 *size)
+{
+	GError *gerr = NULL;
+	gchar *buf;
+	gint exit;
+	gboolean ret;
+
+	debug("%s - cap: %s", __func__, os->server->capability);
+
+	if (os->server->capability[0] != '!') {
+		return os_prepare_get(os, os->server->capability, size);
+	}
+
+	ret = g_spawn_command_line_sync(os->server->capability + 1,
+					&buf, NULL, &exit, &gerr);
+	if (ret == FALSE) {
+		error("g_spawn_command_line_sync: %s", gerr->message);
+		g_error_free(gerr);
+		return FALSE;
+	}
+
+	if (WEXITSTATUS(exit) != EXIT_SUCCESS) {
+		g_free(buf);
+		return FALSE;
+	}
+
+	os->buf = (guint8 *) buf;
+	*size = strlen(buf);
+
+	return TRUE;
+}
+
 static gboolean get_by_type(struct obex_session *os, gchar *type, guint32 *size)
 {
 	if (type == NULL)
 		return FALSE;
 
 	if (g_str_equal(type, CAP_TYPE))
-		return os_prepare_get(os, CAP_FILE, size);
+		return get_capability(os, size);
 
 	if (g_str_equal(type, LST_TYPE))
 		return folder_listing(os, size);

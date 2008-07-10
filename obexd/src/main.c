@@ -50,21 +50,25 @@
 
 #define DEFAULT_ROOT_PATH "/tmp"
 
+#define DEFAULT_CAP_FILE CONFIGDIR "/capability.xml"
+
 static GMainLoop *main_loop = NULL;
 
 static int server_start(int service, const char *root_path,
-			gboolean auto_accept)
+		gboolean auto_accept, const gchar *capability)
 {
 	/* FIXME: Necessary check enabled transports(Bluetooth/USB) */
 
 	switch (service) {
 	case OBEX_OPUSH:
 		bluetooth_init(OBEX_OPUSH, "OBEX OPUSH server",
-				root_path, OPUSH_CHANNEL, FALSE, auto_accept);
+				root_path, OPUSH_CHANNEL, FALSE,
+				auto_accept, capability);
 		break;
 	case OBEX_FTP:
 		bluetooth_init(OBEX_FTP, "OBEX FTP server",
-				root_path, FTP_CHANNEL, TRUE, auto_accept);
+				root_path, FTP_CHANNEL, TRUE,
+				auto_accept, capability);
 		break;
 	default:
 		return -EINVAL;
@@ -93,24 +97,26 @@ static void usage(void)
 		"\n");
 
 	printf("Options:\n"
-		"\t-n, --nodaemon       Don't fork daemon to background\n"
-		"\t-d, --debug          Enable output of debug information\n"
-		"\t-r, --root <path>    Specify root folder location\n"
-		"\t-a, --auto-accept    Automatically accept push requests\n"
-		"\t-h, --help           Display help\n");
+		"\t-n, --nodaemon            Don't fork daemon to background\n"
+		"\t-d, --debug               Enable output of debug information\n"
+		"\t-r, --root <path>         Specify root folder location\n"
+		"\t-c, --capability <file>   Specify the capability file.\n"
+		"\t-a, --auto-accept         Automatically accept push requests\n"
+		"\t-h, --help                Display help\n");
 	printf("Servers:\n"
-		"\t-o, --opp            Enable OPP server\n"
-		"\t-f, --ftp            Enable FTP server\n"
+		"\t-o, --opp                 Enable OPP server\n"
+		"\t-f, --ftp                 Enable FTP server\n"
 		"\n");
 }
 
 static struct option options[] = {
-	{ "nodaemon", 0, 0, 'n' },
-	{ "debug",    0, 0, 'd' },
-	{ "ftp",      0, 0, 'f' },
-	{ "opp",      0, 0, 'o' },
-	{ "help",     0, 0, 'h' },
-	{ "root",     1, 0, 'r' },
+	{ "nodaemon",    0, 0, 'n' },
+	{ "debug",       0, 0, 'd' },
+	{ "ftp",         0, 0, 'f' },
+	{ "opp",         0, 0, 'o' },
+	{ "help",        0, 0, 'h' },
+	{ "root",        1, 0, 'r' },
+	{ "capability",  1, 0, 'c' },
 	{ "auto-accept", 0, 0, 'a' },
 	{ }
 };
@@ -123,8 +129,9 @@ int main(int argc, char *argv[])
 	int log_option = LOG_NDELAY | LOG_PID;
 	int opt, detach = 1, debug = 0, opush = 0, ftp = 0, auto_accept = 0;
 	const char *root_path = DEFAULT_ROOT_PATH;
+	const char *capability = DEFAULT_CAP_FILE;
 
-	while ((opt = getopt_long(argc, argv, "+ndhofr:a", options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+ndhofr:c:a", options, NULL)) != EOF) {
 		switch(opt) {
 		case 'n':
 			detach = 0;
@@ -141,6 +148,8 @@ int main(int argc, char *argv[])
 		case 'r':
 			root_path = optarg;
 			break;
+		case 'c':
+			capability = optarg;
 		case 'a':
 			auto_accept = 1;
 			break;
@@ -191,10 +200,10 @@ int main(int argc, char *argv[])
 	}
 
 	if (opush)
-		server_start(OBEX_OPUSH, root_path, auto_accept);
+		server_start(OBEX_OPUSH, root_path, auto_accept, capability);
 
 	if (ftp)
-		server_start(OBEX_FTP, root_path, auto_accept);
+		server_start(OBEX_FTP, root_path, auto_accept, capability);
 
 	if (!manager_init(conn))
 		goto fail;
