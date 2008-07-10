@@ -40,6 +40,8 @@
 static char *passkey = NULL;
 static char *address = NULL;
 
+static int do_reject = 0;
+
 static volatile sig_atomic_t __io_canceled = 0;
 static volatile sig_atomic_t __io_terminated = 0;
 
@@ -88,6 +90,12 @@ static DBusHandlerResult request_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
+	if (do_reject) {
+		reply = dbus_message_new_error(msg,
+					"org.bluez.Error.Rejected", "");
+		goto send;
+	}
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
 		fprintf(stderr, "Can't create reply message\n");
@@ -99,6 +107,7 @@ static DBusHandlerResult request_message(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &passkey,
 					DBUS_TYPE_INVALID);
 
+send:
 	dbus_connection_send(conn, reply, NULL);
 
 	dbus_connection_flush(conn);
@@ -307,6 +316,7 @@ static void usage(void)
 
 static struct option main_options[] = {
 	{ "default",	0, 0, 'd' },
+	{ "reject",	0, 0, 'r' },
 	{ "path",	1, 0, 'p' },
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
@@ -326,6 +336,9 @@ int main(int argc, char *argv[])
 		switch(opt) {
 		case 'd':
 			use_default = 1;
+			break;
+		case 'r':
+			do_reject = 1;
 			break;
 		case 'p':
 			if (optarg[0] != '/') {
