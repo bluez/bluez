@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <dlfcn.h>
 #include <dirent.h>
+#include <signal.h>
 
 #include <gmain.h>
 
