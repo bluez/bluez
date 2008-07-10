@@ -463,7 +463,14 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 static gboolean auth_error(GIOChannel *io, GIOCondition cond,
 			gpointer user_data)
 {
+	DBusMessage *msg;
+
 	agent->auth_pending = FALSE;
+
+	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
+					"org.openobex.Agent", "Cancel");
+
+	dbus_connection_send_with_reply(connection, msg, NULL, -1);
 
 	return FALSE;
 }
