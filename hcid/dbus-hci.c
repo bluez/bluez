@@ -1598,7 +1598,7 @@ gboolean discov_timeout_handler(void *data)
 		goto failed;
 	}
 
-	set_limited_discoverable(dd, adapter->class, FALSE);
+	set_limited_discoverable(dd, adapter->dev.class, FALSE);
 
 	adapter->timeout_id = 0;
 	retval = FALSE;
@@ -1735,7 +1735,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 
 	write_local_class(local, cls);
 	set_device_class(adapter->dev_id, cls);
-	memcpy(adapter->class, cls, 3);
+	memcpy(adapter->dev.class, cls, 3);
 
 	hci_close_dev(dd);
 }

@@ -63,38 +63,9 @@
 
 #include "manager.h"
 
-#define MAX_DEVICES		16
-
 static DBusConnection *connection = NULL;
 static int default_adapter_id = -1;
 static GSList *adapters = NULL;
-
-struct hci_dev {
-	int ignore;
-
-	bdaddr_t bdaddr;
-	uint8_t  features[8];
-	uint8_t  lmp_ver;
-	uint16_t lmp_subver;
-	uint16_t hci_rev;
-	uint16_t manufacturer;
-
-	uint8_t  ssp_mode;
-	uint8_t  name[248];
-	uint8_t  class[3];
-};
-
-static struct hci_dev devices[MAX_DEVICES];
-
-#define ASSERT_DEV_ID { if (dev_id >= MAX_DEVICES) return -ERANGE; }
-
-void init_adapters(void)
-{
-	int i;
-
-	for (i = 0; i < MAX_DEVICES; i++)
-		memset(devices + i, 0, sizeof(struct hci_dev));
-}
 
 static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 {
@@ -123,12 +94,9 @@ static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 
 int add_adapter(uint16_t dev_id)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	struct hci_dev_info di;
-
-	ASSERT_DEV_ID;
-
-	dev = &devices[dev_id];
 
 	if (hci_devinfo(dev_id, &di) < 0) {
 		dev->ignore = 1;
@@ -156,11 +124,8 @@ int add_adapter(uint16_t dev_id)
 
 int remove_adapter(uint16_t dev_id)
 {
-	struct hci_dev *dev;
-
-	ASSERT_DEV_ID;
-
-	dev = &devices[dev_id];
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 
 	memset(dev, 0, sizeof(struct hci_dev));
 
@@ -216,16 +181,13 @@ static void update_ext_inquiry_response(int dd, struct hci_dev *dev)
 
 int start_adapter(uint16_t dev_id)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	struct hci_version ver;
 	uint8_t features[8], inqmode;
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
 	char name[249];
 	int dd, err;
-
-	ASSERT_DEV_ID;
-
-	dev = &devices[dev_id];
 
 	if (dev->ignore)
 		return 0;
@@ -357,8 +319,6 @@ done:
 
 int stop_adapter(uint16_t dev_id)
 {
-	ASSERT_DEV_ID;
-
 	info("Device hci%d has been disabled", dev_id);
 
 	return 0;
@@ -366,12 +326,9 @@ int stop_adapter(uint16_t dev_id)
 
 int update_adapter(uint16_t dev_id)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	int dd;
-
-	ASSERT_DEV_ID;
-
-	dev = &devices[dev_id];
 
 	if (dev->ignore)
 		return 0;
@@ -393,25 +350,20 @@ int update_adapter(uint16_t dev_id)
 
 int get_device_address(uint16_t dev_id, char *address, size_t size)
 {
-	struct hci_dev *dev;
-
-	ASSERT_DEV_ID;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 
 	if (size < 18)
 		return -ENOBUFS;
-
-	dev = &devices[dev_id];
 
 	return ba2str(&dev->bdaddr, address);
 }
 
 int get_device_class(uint16_t dev_id, uint8_t *cls)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 
-	ASSERT_DEV_ID;
-
-	dev = &devices[dev_id];
 	memcpy(cls, dev->class, 3);
 
 	return 0;
@@ -419,10 +371,9 @@ int get_device_class(uint16_t dev_id, uint8_t *cls)
 
 int set_device_class(uint16_t dev_id, uint8_t *cls)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 
-	ASSERT_DEV_ID;
-	dev = &devices[dev_id];
 	memcpy(dev->class, cls, 3);
 
 	return 0;
@@ -430,16 +381,13 @@ int set_device_class(uint16_t dev_id, uint8_t *cls)
 
 int get_device_version(uint16_t dev_id, char *version, size_t size)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	char edr[7], *tmp;
 	int err;
 
-	ASSERT_DEV_ID;
-
 	if (size < 14)
 		return -ENOBUFS;
-
-	dev = &devices[dev_id];
 
 	if ((dev->lmp_ver == 0x03 || dev->lmp_ver == 0x04) &&
 			(dev->features[3] & (LMP_EDR_ACL_2M | LMP_EDR_ACL_3M)))
@@ -497,12 +445,9 @@ static int digi_revision(uint16_t dev_id, char *revision, size_t size)
 
 int get_device_revision(uint16_t dev_id, char *revision, size_t size)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	int err;
-
-	ASSERT_DEV_ID;
-
-	dev = &devices[dev_id];
 
 	switch (dev->manufacturer) {
 	case 10:
@@ -526,23 +471,23 @@ int get_device_revision(uint16_t dev_id, char *revision, size_t size)
 
 int get_device_manufacturer(uint16_t dev_id, char *manufacturer, size_t size)
 {
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	char *tmp;
 
-	ASSERT_DEV_ID;
-
-	tmp = bt_compidtostr(devices[dev_id].manufacturer);
+	tmp = bt_compidtostr(dev->manufacturer);
 
 	return snprintf(manufacturer, size, "%s", tmp);
 }
 
 int get_device_company(uint16_t dev_id, char *company, size_t size)
 {
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	char *tmp, oui[9];
 	int err;
 
-	ASSERT_DEV_ID;
-
-	ba2oui(&devices[dev_id].bdaddr, oui);
+	ba2oui(&dev->bdaddr, oui);
 	tmp = ouitocomp(oui);
 
 	err = snprintf(company, size, "%s", tmp);
@@ -554,12 +499,9 @@ int get_device_company(uint16_t dev_id, char *company, size_t size)
 
 int set_simple_pairing_mode(uint16_t dev_id, uint8_t mode)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	int dd;
-
-	ASSERT_DEV_ID;
-
-	dev = &devices[dev_id];
 
 	dev->ssp_mode = mode;
 
@@ -580,10 +522,10 @@ int set_simple_pairing_mode(uint16_t dev_id, uint8_t mode)
 
 int get_device_name(uint16_t dev_id, char *name, size_t size)
 {
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	char tmp[249];
 	int dd, err;
-
-	ASSERT_DEV_ID;
 
 	memset(tmp, 0, sizeof(tmp));
 
@@ -605,19 +547,16 @@ int get_device_name(uint16_t dev_id, char *name, size_t size)
 
 	hci_close_dev(dd);
 
-	memcpy(devices[dev_id].name, tmp, 248);
+	memcpy(dev->name, tmp, 248);
 
 	return snprintf(name, size, "%s", tmp);
 }
 
 int set_device_name(uint16_t dev_id, const char *name)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	int dd, err;
-
-	ASSERT_DEV_ID;
-
-	dev = &devices[dev_id];
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
@@ -646,12 +585,12 @@ int set_device_name(uint16_t dev_id, const char *name)
 
 int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_t size)
 {
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	char filename[PATH_MAX + 1], addr[18], *tmp;
 	int err;
 
-	ASSERT_DEV_ID;
-
-	ba2str(&devices[dev_id].bdaddr, addr);
+	ba2str(&dev->bdaddr, addr);
 	create_name(filename, PATH_MAX, STORAGEDIR, addr, "aliases");
 
 	ba2str(bdaddr, addr);
@@ -669,11 +608,11 @@ int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_
 
 int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
 {
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	char filename[PATH_MAX + 1], addr[18];
 
-	ASSERT_DEV_ID;
-
-	ba2str(&devices[dev_id].bdaddr, addr);
+	ba2str(&dev->bdaddr, addr);
 	create_name(filename, PATH_MAX, STORAGEDIR, addr, "aliases");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -685,12 +624,9 @@ int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
 
 int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr)
 {
-	struct hci_dev *dev;
+	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	struct hci_dev *dev = &adapter->dev;
 	int size;
-
-	ASSERT_DEV_ID;
-
-	dev = &devices[dev_id];
 
 	switch (dev->manufacturer) {
 	default:
@@ -1269,13 +1205,9 @@ int manager_start_adapter(int id)
 	if (err < 0)
 		goto failed;
 
-	err = get_device_class(adapter->dev_id, adapter->class);
-	if (err < 0)
-		goto failed;
-
 	adapter->mode = get_startup_mode(id);
 	if (adapter->mode == MODE_LIMITED)
-		set_limited_discoverable(dd, adapter->class, TRUE);
+		set_limited_discoverable(dd, adapter->dev.class, TRUE);
 
 	/*
 	 * retrieve the active connections: address the scenario where

@@ -909,8 +909,6 @@ int main(int argc, char *argv[])
 			child_exit, NULL);
 	g_io_channel_unref(child_io);
 
-	init_adapters();
-
 	agent_init();
 
 	if (experimental)

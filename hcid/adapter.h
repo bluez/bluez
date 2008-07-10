@@ -84,6 +84,21 @@ struct active_conn_info {
 	uint16_t handle;
 };
 
+struct hci_dev {
+	int ignore;
+
+	bdaddr_t bdaddr;
+	uint8_t  features[8];
+	uint8_t  lmp_ver;
+	uint16_t lmp_subver;
+	uint16_t hci_rev;
+	uint16_t manufacturer;
+
+	uint8_t  ssp_mode;
+	uint8_t  name[248];
+	uint8_t  class[3];
+};
+
 struct adapter {
 	uint16_t dev_id;
 	int up;
@@ -94,7 +109,6 @@ struct adapter {
 	uint8_t scan_enable;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
 	uint8_t mode;			/* off, connectable, discoverable, limited */
 	uint8_t global_mode;		/* last valid global mode */
-	uint8_t class[3];		/* device class */
 	int discov_active;		/* standard discovery active: includes name resolution step */
 	int pdiscov_active;		/* periodic discovery active */
 	int pinq_idle;			/* tracks the idle time for periodic inquiry */
@@ -115,6 +129,8 @@ struct adapter {
 					   authentication requests */
 	GSList *devices;		/* Devices structure pointers */
 	GSList *sessions;		/* Request Mode sessions */
+
+	struct hci_dev dev;		/* hci info */
 };
 
 dbus_bool_t adapter_init(DBusConnection *conn,
