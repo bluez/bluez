@@ -29,8 +29,11 @@
 extern "C" {
 #endif
 
-#include <net/ethernet.h>
 #include <bluetooth/bluetooth.h>
+
+#ifndef ETH_ALEN
+#define ETH_ALEN	6		/* from <net/ethernet.h> */
+#endif
 
 /* BNEP UUIDs */
 #define BNEP_BASE_UUID 0x0000000000001000800000805F9B34FB
