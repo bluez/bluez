@@ -59,8 +59,6 @@
 #include "dbus-hci.h"
 #include "dbus-sdp.h"
 #include "dbus-database.h"
-#include "dbus-service.h"
-#include "dbus-security.h"
 #include "dbus-error.h"
 #include "error.h"
 #include "glib-helper.h"
@@ -1143,10 +1141,6 @@ static void create_bond_req_exit(void *user_data)
 	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
 
 	debug("CreateConnection requestor exited before bonding was completed");
-
-	cancel_passkey_agent_requests(adapter->passkey_agents, path,
-					&adapter->bonding->bdaddr);
-	release_passkey_agents(adapter, &adapter->bonding->bdaddr);
 
 	auth = adapter_find_auth_request(adapter, &adapter->bonding->bdaddr);
 	if (auth) {

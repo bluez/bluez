@@ -1576,20 +1576,18 @@ int btd_register_device_driver(struct btd_device_driver *driver)
 {
 	const char **uuid;
 
+	/* FIXME: hack to make hci to resolve service_req_auth symbol*/
+	service_req_auth(NULL, NULL, NULL, NULL, NULL);
 	drivers = g_slist_append(drivers, driver);
 
 	for (uuid = driver->uuids; *uuid; uuid++) {
 		debug("name %s uuid %s", driver->name, *uuid);
 	}
 
-	register_service(driver->name, driver->uuids);
-
 	return 0;
 }
 
 void btd_unregister_device_driver(struct btd_device_driver *driver)
 {
-	unregister_service(driver->name);
-
 	drivers = g_slist_remove(drivers, driver);
 }

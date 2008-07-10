@@ -46,8 +46,6 @@
 #include "dbus-hci.h"
 #include "dbus-common.h"
 #include "error.h"
-#include "dbus-service.h"
-#include "dbus-security.h"
 #include "dbus-database.h"
 
 static GSList *records = NULL;

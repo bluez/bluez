@@ -48,9 +48,7 @@
 #include "manager.h"
 #include "adapter.h"
 #include "dbus-hci.h"
-#include "dbus-service.h"
 #include "dbus-database.h"
-#include "dbus-security.h"
 #include "dbus-sdp.h"
 #include "dbus-common.h"
 
@@ -177,8 +175,6 @@ static void disconnect_callback(void *user_data)
 {
 	set_dbus_connection(NULL);
 
-	release_services(NULL);
-
 	g_timeout_add(RECONNECT_RETRY_TIMEOUT,
 				system_bus_reconnect, NULL);
 }
@@ -216,10 +212,6 @@ void hcid_dbus_exit(void)
 
 	if (!conn || !dbus_connection_get_is_connected(conn))
 		return;
-
-	release_default_agent_old();
-	release_default_auth_agent();
-	release_services(conn);
 
 	manager_cleanup(conn, "/");
 

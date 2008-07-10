@@ -52,9 +52,7 @@
 #include "error.h"
 #include "dbus-error.h"
 #include "dbus-hci.h"
-#include "dbus-service.h"
 #include "dbus-database.h"
-#include "dbus-security.h"
 #include "sdp-xml.h"
 
 #include "manager.h"

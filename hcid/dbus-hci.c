@@ -54,8 +54,6 @@
 #include "glib-helper.h"
 #include "dbus-common.h"
 #include "dbus-error.h"
-#include "dbus-service.h"
-#include "dbus-security.h"
 #include "agent.h"
 #include "dbus-hci.h"
 
@@ -401,10 +399,6 @@ int unregister_adapter_path(const char *path)
 	/* check pending requests */
 	reply_pending_requests(path, adapter);
 
-	cancel_passkey_agent_requests(adapter->passkey_agents, path, NULL);
-
-	release_passkey_agents(adapter, NULL);
-
 	if (adapter->agent) {
 		agent_destroy(adapter->agent, FALSE);
 		adapter->agent = NULL;
@@ -474,12 +468,6 @@ int unregister_adapter_path(const char *path)
 unreg:
 	if (!adapter_cleanup(connection, path)) {
 		error("Failed to unregister adapter interface on %s object",
-			path);
-		return -1;
-	}
-
-	if (!security_cleanup(connection, path)) {
-		error("Failed to unregister security interface on %s object",
 			path);
 		return -1;
 	}
@@ -717,10 +705,6 @@ int hcid_dbus_stop_device(uint16_t id)
 	/* check pending requests */
 	reply_pending_requests(path, adapter);
 
-	cancel_passkey_agent_requests(adapter->passkey_agents, path, NULL);
-
-	release_passkey_agents(adapter, NULL);
-
 	if (adapter->discov_requestor) {
 		g_dbus_remove_watch(connection, adapter->discov_listener);
 		adapter->discov_listener = 0;
@@ -839,15 +823,12 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 		return -1;
 	}
 
-	if (!hcid_dbus_use_experimental())
-		goto old_fallback;
-
 	ba2str(&ci->bdaddr, addr);
 
 	device = adapter_find_device(adapter, addr);
 	agent = device && device->agent ? device->agent : adapter->agent;
 	if (!agent)
-		goto old_fallback;
+		return -EPERM;
 
 	if (!device) {
 		device = adapter_create_device(connection, adapter, addr);
@@ -865,15 +846,6 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 		auth->agent = agent;
 	}
 
-
-	return ret;
-
-old_fallback:
-	ret = handle_passkey_request_old(connection, dev, adapter, sba,
-						&ci->bdaddr);
-	if (ret == 0)
-		adapter_new_auth_request(adapter, &ci->bdaddr,
-						AUTH_TYPE_PINCODE);
 	return ret;
 }
 
@@ -1175,8 +1147,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	if (status) {
 		if (adapter->bonding)
 			adapter->bonding->hci_status = status;
-		cancel_passkey_agent_requests(adapter->passkey_agents,
-						adapter->path, peer);
 	}
 
 	auth = adapter_find_auth_request(adapter, peer);
@@ -1213,9 +1183,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	}
 
 proceed:
-
-	release_passkey_agents(adapter, peer);
-
 	bonding = adapter->bonding;
 	if (!bonding || bacmp(&bonding->bdaddr, peer))
 		return; /* skip: no bonding req pending */
@@ -1879,10 +1846,6 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	if (status) {
 		struct pending_auth_info *auth;
 
-		cancel_passkey_agent_requests(adapter->passkey_agents,
-						adapter->path, peer);
-		release_passkey_agents(adapter, peer);
-
 		auth = adapter_find_auth_request(adapter, peer);
 		if (auth && auth->agent)
 			agent_cancel(auth->agent);
@@ -1946,10 +1909,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	hci_req_queue_remove(adapter->dev_id, &dev->bdaddr);
 
 	/* Cancel D-Bus/non D-Bus requests */
-	cancel_passkey_agent_requests(adapter->passkey_agents, adapter->path,
-					&dev->bdaddr);
-	release_passkey_agents(adapter, &dev->bdaddr);
-
 	auth = adapter_find_auth_request(adapter, &dev->bdaddr);
 	if (auth && auth->agent)
 		agent_cancel(auth->agent);

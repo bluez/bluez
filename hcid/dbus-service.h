@@ -22,25 +22,6 @@
  *
  */
 
-struct service {
-	char *object_path;
-	char *ident;
-	char *name;
-};
-
-void release_services(DBusConnection *conn);
-
-void append_available_services(DBusMessageIter *iter);
-
-struct service *search_service(const char *pattern);
-
-struct service *search_service_by_uuid(const char *uuid);
-
-int service_unregister(DBusConnection *conn, struct service *service);
-
-int register_service(const char *ident, const char **uuids);
-void unregister_service(const char *ident);
-
 typedef void (*service_auth_cb) (DBusError *derr, void *user_data);
 int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data);

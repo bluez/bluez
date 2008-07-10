@@ -52,7 +52,6 @@
 #include "sdpd.h"
 #include "adapter.h"
 #include "dbus-common.h"
-#include "dbus-service.h"
 #include "dbus-database.h"
 #include "dbus-hci.h"
 #include "device.h"
