@@ -251,6 +251,14 @@ static int do_connect(char *svr)
 	opt = 0;
 	if (reliable)
 		opt |= L2CAP_LM_RELIABLE;
+	if (master)
+		opt |= L2CAP_LM_MASTER;
+	if (auth)
+		opt |= L2CAP_LM_AUTH;
+	if (encrypt)
+		opt |= L2CAP_LM_ENCRYPT;
+	if (secure)
+		opt |= L2CAP_LM_SECURE;
 
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP link mode: %s (%d)",

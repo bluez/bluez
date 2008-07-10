@@ -92,7 +92,7 @@ static int do_connect(char *svr)
 	struct sockaddr_rc addr;
 	struct rfcomm_conninfo conn;
 	socklen_t optlen;
-	int sk;
+	int sk, opt;
 
 	/* Create socket */
 	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM);
@@ -100,6 +100,17 @@ static int do_connect(char *svr)
 		syslog(LOG_ERR, "Can't create socket: %s (%d)",
 							strerror(errno), errno);
 		return -1;
+	}
+
+	/* Bind to local address */
+	memset(&addr, 0, sizeof(addr));
+	addr.rc_family = AF_BLUETOOTH;
+	bacpy(&addr.rc_bdaddr, &bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
 	}
 
 #if 0
@@ -126,16 +137,16 @@ static int do_connect(char *svr)
 		}
 	}
 
-	/* Bind to local address */
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, &bdaddr);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
-							strerror(errno), errno);
-		goto error;
-	}
+	/* Set link mode */
+	opt = 0;
+	if (master)
+		opt |= RFCOMM_LM_MASTER;
+	if (auth)
+		opt |= RFCOMM_LM_AUTH;
+	if (encrypt)
+		opt |= RFCOMM_LM_ENCRYPT;
+	if (secure)
+		opt |= RFCOMM_LM_SECURE;
 
 	/* Connect to remote device */
 	memset(&addr, 0, sizeof(addr));
