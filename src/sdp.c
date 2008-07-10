@@ -36,10 +36,10 @@
 #include <limits.h>
 #include <string.h>
 #include <syslog.h>
-#include <sys/un.h>
-#include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
