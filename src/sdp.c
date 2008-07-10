@@ -164,7 +164,7 @@ static struct tupla ServiceClass[] = {
 	{ IMAGING_ARCHIVE_SVCLASS_ID,		"Imaging Automatic Archive"	},
 	{ IMAGING_REFOBJS_SVCLASS_ID,		"Imaging Referenced Objects"	},
 	{ HANDSFREE_SVCLASS_ID,			"Handsfree"			},
-	{ HANDSFREE_AGW_SVCLASS_ID,		"Handfree Audio Gateway"	},
+	{ HANDSFREE_AGW_SVCLASS_ID,		"Handsfree Audio Gateway"	},
 	{ DIRECT_PRT_REFOBJS_SVCLASS_ID,	"Direct Printing Ref. Objects"	},
 	{ REFLECTED_UI_SVCLASS_ID,		"Reflected UI"			},
 	{ BASIC_PRINTING_SVCLASS_ID,		"Basic Printing"		},
