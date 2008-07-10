@@ -897,7 +897,11 @@ static int stlc2500(int fd, struct uart_t *u, struct termios *ti)
 	return stlc2500_init(fd, &bdaddr);
 }
 
-extern int bgb2xx_init(int fd, bdaddr_t *bdaddr);
+static int bgb2xx_init(int fd, bdaddr_t *bdaddr)
+{
+	/* This is broken and the routine got lost somewhere */
+	return -EIO;
+}
 
 static int bgb2xx(int fd, struct uart_t *u, struct termios *ti)
 {
