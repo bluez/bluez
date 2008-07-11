@@ -42,6 +42,7 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -59,6 +60,7 @@
 #define HCI_UART_BCSP	1
 #define HCI_UART_3WIRE	2
 #define HCI_UART_H4DS	3
+#define HCI_UART_LL	4
 
 struct uart_t {
 	char *type;
@@ -146,6 +148,7 @@ static int uart_speed(int s)
 static int set_speed(int fd, struct termios *ti, int speed)
 {
 	cfsetospeed(ti, uart_speed(speed));
+	cfsetispeed(ti, uart_speed(speed));
 	return tcsetattr(fd, TCSANOW, ti);
 }
 
