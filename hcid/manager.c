@@ -911,6 +911,10 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	GSList *uuids = bt_string2list(value);
 	struct btd_device *device;
 
+	if (g_slist_find_custom(adapter->devices,
+				key, (GCompareFunc) device_address_cmp))
+		return;
+
 	device = device_create(connection, adapter, key);
 	if (device) {
 		device_set_temporary(device, FALSE);
