@@ -87,7 +87,6 @@ struct active_conn_info {
 struct hci_dev {
 	int ignore;
 
-	bdaddr_t bdaddr;
 	uint8_t  features[8];
 	uint8_t  lmp_ver;
 	uint16_t lmp_subver;

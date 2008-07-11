@@ -67,9 +67,10 @@ static DBusConnection *connection = NULL;
 static int default_adapter_id = -1;
 static GSList *adapters = NULL;
 
-static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
+static int device_read_bdaddr(uint16_t dev_id, const char *address)
 {
 	int dd, err;
+	bdaddr_t bdaddr;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
@@ -79,7 +80,8 @@ static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 		return -err;
 	}
 
-	if (hci_read_bd_addr(dd, bdaddr, 2000) < 0) {
+	str2ba(address, &bdaddr);
+	if (hci_read_bd_addr(dd, &bdaddr, 2000) < 0) {
 		err = errno;
 		error("Can't read address for hci%d: %s (%d)",
 					dev_id, strerror(err), err);
@@ -109,9 +111,9 @@ int add_adapter(uint16_t dev_id)
 	}
 
 	if (bacmp(&di.bdaddr, BDADDR_ANY))
-		bacpy(&dev->bdaddr, &di.bdaddr);
+		ba2str(&di.bdaddr, adapter->address);
 	else {
-		int err = device_read_bdaddr(dev_id, &dev->bdaddr);
+		int err = device_read_bdaddr(dev_id, adapter->address);
 		if (err < 0)
 			return err;
 	}
@@ -188,6 +190,7 @@ int start_adapter(uint16_t dev_id)
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
 	char name[249];
 	int dd, err;
+	bdaddr_t bdaddr;
 
 	if (dev->ignore)
 		return 0;
@@ -290,7 +293,8 @@ setup:
 						sizeof(events), events);
 	}
 
-	if (read_local_name(&dev->bdaddr, name) == 0) {
+	str2ba(adapter->address, &bdaddr);
+	if (read_local_name(&bdaddr, name) == 0) {
 		memcpy(dev->name, name, 248);
 		hci_write_local_name(dd, name, 5000);
         }
@@ -348,17 +352,6 @@ int update_adapter(uint16_t dev_id)
 	return 0;
 }
 
-int get_device_address(uint16_t dev_id, char *address, size_t size)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
-
-	if (size < 18)
-		return -ENOBUFS;
-
-	return ba2str(&dev->bdaddr, address);
-}
-
 int get_device_class(uint16_t dev_id, uint8_t *cls)
 {
 	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
@@ -377,124 +370,6 @@ int set_device_class(uint16_t dev_id, uint8_t *cls)
 	memcpy(dev->class, cls, 3);
 
 	return 0;
-}
-
-int get_device_version(uint16_t dev_id, char *version, size_t size)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
-	char edr[7], *tmp;
-	int err;
-
-	if (size < 14)
-		return -ENOBUFS;
-
-	if ((dev->lmp_ver == 0x03 || dev->lmp_ver == 0x04) &&
-			(dev->features[3] & (LMP_EDR_ACL_2M | LMP_EDR_ACL_3M)))
-		sprintf(edr, " + EDR");
-	else
-		edr[0] = '\0';
-
-	tmp = lmp_vertostr(dev->lmp_ver);
-
-	if (strlen(tmp) == 0)
-		err = snprintf(version, size, "not assigned");
-	else
-		err = snprintf(version, size, "Bluetooth %s%s", tmp, edr);
-
-	bt_free(tmp);
-
-	return err;
-}
-
-static int digi_revision(uint16_t dev_id, char *revision, size_t size)
-{
-	struct hci_request rq;
-	unsigned char req[] = { 0x07 };
-	unsigned char buf[102];
-	int dd, err;
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		err = errno;
-		error("Can't open device hci%d: %s (%d)",
-					dev_id, strerror(err), err);
-		return -err;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_VENDOR_CMD;
-	rq.ocf    = 0x000e;
-	rq.cparam = req;
-	rq.clen   = sizeof(req);
-	rq.rparam = &buf;
-	rq.rlen   = sizeof(buf);
-
-	if (hci_send_req(dd, &rq, 2000) < 0) {
-		err = errno;
-		error("Can't read revision for hci%d: %s (%d)",
-					dev_id, strerror(err), err);
-		hci_close_dev(dd);
-		return -err;
-	}
-
-	hci_close_dev(dd);
-
-	return snprintf(revision, size, "%s", buf + 1);
-}
-
-int get_device_revision(uint16_t dev_id, char *revision, size_t size)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
-	int err;
-
-	switch (dev->manufacturer) {
-	case 10:
-		err = snprintf(revision, size, "Build %d", dev->lmp_subver);
-		break;
-	case 12:
-		err = digi_revision(dev_id, revision, size);
-		break;
-	case 15:
-		err = snprintf(revision, size, "%d.%d / %d",
-				dev->hci_rev & 0xff,
-				dev->lmp_subver >> 8, dev->lmp_subver & 0xff);
-		break;
-	default:
-		err = snprintf(revision, size, "0x%02x", dev->lmp_subver);
-		break;
-	}
-
-	return err;
-}
-
-int get_device_manufacturer(uint16_t dev_id, char *manufacturer, size_t size)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
-	char *tmp;
-
-	tmp = bt_compidtostr(dev->manufacturer);
-
-	return snprintf(manufacturer, size, "%s", tmp);
-}
-
-int get_device_company(uint16_t dev_id, char *company, size_t size)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
-	char *tmp, oui[9];
-	int err;
-
-	ba2oui(&dev->bdaddr, oui);
-	tmp = ouitocomp(oui);
-
-	err = snprintf(company, size, "%s", tmp);
-
-	free(tmp);
-
-	return err;
 }
 
 int set_simple_pairing_mode(uint16_t dev_id, uint8_t mode)
@@ -586,12 +461,10 @@ int set_device_name(uint16_t dev_id, const char *name)
 int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_t size)
 {
 	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
 	char filename[PATH_MAX + 1], addr[18], *tmp;
 	int err;
 
-	ba2str(&dev->bdaddr, addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, addr, "aliases");
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "aliases");
 
 	ba2str(bdaddr, addr);
 
@@ -609,32 +482,15 @@ int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_
 int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
 {
 	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
 	char filename[PATH_MAX + 1], addr[18];
 
-	ba2str(&dev->bdaddr, addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, addr, "aliases");
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "aliases");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(bdaddr, addr);
 
 	return textfile_put(filename, addr, alias);
-}
-
-int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
-	int size;
-
-	switch (dev->manufacturer) {
-	default:
-		size = -ENOENT;
-		break;
-	}
-
-	return size;
 }
 
 static inline DBusMessage *invalid_args(DBusMessage *msg)
@@ -1165,7 +1021,7 @@ int manager_start_adapter(int id)
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci;
 	const char *mode;
-	int i, err, dd = -1, ret = -1;
+	int i, dd = -1, ret = -1;
 
 	if (hci_devinfo(id, &di) < 0) {
 		error("Getting device info failed: hci%d", id);
@@ -1197,13 +1053,6 @@ int manager_start_adapter(int id)
 	adapter->scan_enable = get_startup_scan(id);
 	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 					1, &adapter->scan_enable);
-	/*
-	 * Get the adapter Bluetooth address
-	 */
-	err = get_device_address(adapter->dev_id, adapter->address,
-					sizeof(adapter->address));
-	if (err < 0)
-		goto failed;
 
 	adapter->mode = get_startup_mode(id);
 	if (adapter->mode == MODE_LIMITED)
