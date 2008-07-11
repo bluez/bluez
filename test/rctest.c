@@ -148,6 +148,12 @@ static int do_connect(char *svr)
 	if (secure)
 		opt |= RFCOMM_LM_SECURE;
 
+	if (opt && setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0) {
+		syslog(LOG_ERR, "Can't set RFCOMM link mode: %s (%d)",
+							strerror(errno), errno);
+		goto error;
+	}
+
 	/* Connect to remote device */
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
