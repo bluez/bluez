@@ -540,8 +540,10 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 		}
 	} else {
 		if (sdp_record_find(rec->handle)) {
-			sdp_record_free(rec);
-			goto invalid;
+			/* extract_pdu_server will add the record handle
+			 * if it is missing. So instead of failing, skip
+			 * the record adding to avoid duplication. */
+			goto success;
 		}
 	}
 
@@ -552,10 +554,9 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 	handle = sdp_data_alloc(SDP_UINT32, &rec->handle);
 	sdp_attr_replace(rec, SDP_ATTR_RECORD_HANDLE, handle);
 
-	/*
-	 * if the browse group descriptor is NULL,
-	 * ensure that the record belongs to the ROOT group
-	 */
+success:
+	/* if the browse group descriptor is NULL,
+	 * ensure that the record belongs to the ROOT group */
 	if (sdp_data_get(rec, SDP_ATTR_BROWSE_GRP_LIST) == NULL) {
 		 uuid_t uuid;
 		 sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
