@@ -2792,7 +2792,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	str2ba(address, &bdaddr);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
-	if (adapter->discov_active || (adapter->pdiscov_active && !adapter->pinq_idle))
+	if (adapter->discov_active)
 		return in_progress(msg, "Discover in progress");
 
 	pending_remote_name_cancel(adapter);
