@@ -101,8 +101,10 @@ gboolean plugin_init(GKeyFile *config)
 	debug("Loading plugins %s", PLUGINDIR);
 
 	dir = g_dir_open(PLUGINDIR, 0, NULL);
-	if (!dir)
+	if (!dir) {
+		g_strfreev(disabled);
 		return FALSE;
+	}
 
 	while ((file = g_dir_read_name(dir)) != NULL) {
 		GModule *module;
