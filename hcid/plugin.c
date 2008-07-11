@@ -91,6 +91,9 @@ gboolean plugin_init(GKeyFile *config)
 	const gchar *file;
 	gchar **disabled;
 
+	if (strlen(PLUGINDIR) == 0)
+		return FALSE;
+
 	if (config)
 		disabled = g_key_file_get_string_list(config, "General",
 							"DisablePlugins",
