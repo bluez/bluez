@@ -72,6 +72,7 @@ struct uart_t {
 	int  flags;
 	char *bdaddr;
 	int  (*init) (int fd, struct uart_t *u, struct termios *ti);
+	int  (*post) (int fd, struct uart_t *u, struct termios *ti);
 };
 
 #define FLOW_CTL	0x0001
@@ -145,7 +146,7 @@ static int uart_speed(int s)
 	}
 }
 
-static int set_speed(int fd, struct termios *ti, int speed)
+int set_speed(int fd, struct termios *ti, int speed)
 {
 	cfsetospeed(ti, uart_speed(speed));
 	cfsetispeed(ti, uart_speed(speed));
@@ -290,57 +291,17 @@ static int digi(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
+extern int texas_init(int fd, struct termios *ti);
+extern int texas_post(int fd, struct termios *ti);
+
 static int texas(int fd, struct uart_t *u, struct termios *ti)
 {
-	struct timespec tm = {0, 50000};
-	char cmd[4];
-	unsigned char resp[100];		/* Response */
-	int n;
+	return texas_init(fd, ti);
+}
 
-	memset(resp,'\0', 100);
-
-	/* It is possible to get software version with manufacturer specific 
-	   HCI command HCI_VS_TI_Version_Number. But the only thing you get more
-	   is if this is point-to-point or point-to-multipoint module */
-
-	/* Get Manufacturer and LMP version */
-	cmd[0] = HCI_COMMAND_PKT;
-	cmd[1] = 0x01;
-	cmd[2] = 0x10;
-	cmd[3] = 0x00;
-
-	do {
-		n = write(fd, cmd, 4);
-		if (n < 0) {
-			perror("Failed to write init command (READ_LOCAL_VERSION_INFORMATION)");
-			return -1;
-		}
-		if (n < 4) {
-			fprintf(stderr, "Wanted to write 4 bytes, could only write %d. Stop\n", n);
-			return -1;
-		}
-
-		/* Read reply. */
-		if (read_hci_event(fd, resp, 100) < 0) {
-			perror("Failed to read init response (READ_LOCAL_VERSION_INFORMATION)");
-			return -1;
-		}
-
-		/* Wait for command complete event for our Opcode */
-	} while (resp[4] != cmd[1] && resp[5] != cmd[2]);
-
-	/* Verify manufacturer */
-	if ((resp[11] & 0xFF) != 0x0d)
-		fprintf(stderr,"WARNING : module's manufacturer is not Texas Instrument\n");
-
-	/* Print LMP version */
-	fprintf(stderr, "Texas module LMP version : 0x%02x\n", resp[10] & 0xFF);
-
-	/* Print LMP subversion */
-	fprintf(stderr, "Texas module LMP sub-version : 0x%02x%02x\n", resp[14] & 0xFF, resp[13] & 0xFF);
-
-	nanosleep(&tm, NULL);
-	return 0;
+static int texas2(int fd, struct uart_t *u, struct termios *ti)
+{
+	return texas_post(fd, ti);
 }
 
 extern int texasalt_init(int fd, int speed);
@@ -1067,8 +1028,6 @@ struct uart_t uart[] = {
 	{ "any",        0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, NULL     },
 	{ "ericsson",   0x0000, 0x0000, HCI_UART_H4,   57600,  115200, FLOW_CTL, NULL, ericsson },
 	{ "digi",       0x0000, 0x0000, HCI_UART_H4,   9600,   115200, FLOW_CTL, NULL, digi     },
-	{ "texas",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, texas    },
-	{ "texasalt",   0x0000, 0x0000, HCI_UART_LL,   115200, 115200, FLOW_CTL, NULL, texasalt },
 
 	{ "bcsp",       0x0000, 0x0000, HCI_UART_BCSP, 115200, 115200, 0,        NULL, bcsp     },
 
@@ -1084,17 +1043,21 @@ struct uart_t uart[] = {
 	/* Silicon Wave kits */
 	{ "swave",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, swave    },
 
+	/* Texas Instruments Bluelink (BRF) modules */
+	{ "texas",      0x0000, 0x0000, HCI_UART_LL,   115200, 115200, FLOW_CTL, NULL, texas,    texas2 },
+	{ "texasalt",   0x0000, 0x0000, HCI_UART_LL,   115200, 115200, FLOW_CTL, NULL, texasalt, NULL   },
+
 	/* ST Microelectronics minikits based on STLC2410/STLC2415 */
 	{ "st",         0x0000, 0x0000, HCI_UART_H4,    57600, 115200, FLOW_CTL, NULL, st       },
 
 	/* ST Microelectronics minikits based on STLC2500 */
-	{ "stlc2500",   0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, "00:80:E1:00:AB:BA", stlc2500  },
+	{ "stlc2500",   0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, "00:80:E1:00:AB:BA", stlc2500 },
 
 	/* Philips generic Ericsson IP core based */
 	{ "philips",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, NULL     },
 
 	/* Philips BGB2xx Module */
-	{ "bgb2xx",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, "BD:B2:10:00:AB:BA", bgb2xx   },
+	{ "bgb2xx",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, "BD:B2:10:00:AB:BA", bgb2xx },
 
 	/* Sphinx Electronics PICO Card */
 	{ "picocard",   0x025e, 0x1000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, NULL     },
@@ -1220,6 +1183,9 @@ int init_uart(char *dev, struct uart_t *u, int send_break)
 		return -1;
 	}
 
+	if (u->post && u->post(fd, u, &ti) < 0)
+		return -1;
+
 	return fd;
 }
 
@@ -1235,7 +1201,7 @@ int main(int argc, char *argv[])
 {
 	struct uart_t *u = NULL;
 	int detach, printpid, opt, i, n, ld, err;
-	int to = 5; 
+	int to = 10;
 	int init_speed = 0;
 	int send_break = 0;
 	pid_t pid;
@@ -1348,7 +1314,7 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_alarm;
 	sigaction(SIGALRM, &sa, NULL);
 
-	/* 5 seconds should be enough for initialization */
+	/* 10 seconds should be enough for initialization */
 	alarm(to);
 
 	n = init_uart(dev, u, send_break);
