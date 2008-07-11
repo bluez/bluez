@@ -49,6 +49,7 @@
 #include <gdbus.h>
 
 #include "hcid.h"
+#include "sdpd.h"
 
 #include "adapter.h"
 #include "device.h"
@@ -572,11 +573,65 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static void update_ext_inquiry_response(int dd, struct hci_dev *dev)
+{
+	uint8_t fec = 0, data[240];
+
+	if (!(dev->features[6] & LMP_EXT_INQ))
+		return;
+
+	memset(data, 0, sizeof(data));
+
+	if (dev->ssp_mode > 0)
+		create_ext_inquiry_response((char *) dev->name, data);
+
+	if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0)
+		error("Can't write extended inquiry response: %s (%d)",
+						strerror(errno), errno);
+}
+
+static int adapter_set_name(struct adapter *adapter, const char *name)
+{
+	struct hci_dev *dev = &adapter->dev;
+	int dd, err;
+	bdaddr_t bdaddr;
+
+	str2ba(adapter->address, &bdaddr);
+
+	write_local_name(&bdaddr, (char *) name);
+
+	if (!adapter->up)
+		return 0;
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0) {
+		err = errno;
+		error("Can't open device hci%d: %s (%d)",
+					adapter->dev_id, strerror(err), err);
+		return -err;
+	}
+
+	if (hci_write_local_name(dd, name, 5000) < 0) {
+		err = errno;
+		error("Can't write name for hci%d: %s (%d)",
+					adapter->dev_id, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	strncpy((char *) dev->name, name, 248);
+
+	update_ext_inquiry_response(dd, dev);
+
+	hci_close_dev(dd);
+
+	return 0;
+}
+
 static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 					const char *name, void *data)
 {
 	struct adapter *adapter = data;
-	bdaddr_t bdaddr;
 	int ecode;
 	const char *path;
 
@@ -585,17 +640,10 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 		return invalid_args(msg);
 	}
 
-	str2ba(adapter->address, &bdaddr);
-
-	write_local_name(&bdaddr, (char *) name);
-
-	if (!adapter->up)
-		goto done;
-
-	ecode = set_device_name(adapter->dev_id, name);
+	ecode = adapter_set_name(adapter, name);
 	if (ecode < 0)
 		return failed_strerror(msg, -ecode);
-done:
+
 	path = dbus_message_get_path(msg);
 
 	dbus_connection_emit_property_changed(conn, path,

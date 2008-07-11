@@ -395,69 +395,6 @@ int set_simple_pairing_mode(uint16_t dev_id, uint8_t mode)
 	return 0;
 }
 
-int get_device_name(uint16_t dev_id, char *name, size_t size)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
-	char tmp[249];
-	int dd, err;
-
-	memset(tmp, 0, sizeof(tmp));
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		err = errno;
-		error("Can't open device hci%d: %s (%d)",
-					dev_id, strerror(err), err);
-		return -err;
-	}
-
-	if (hci_read_local_name(dd, sizeof(tmp), tmp, 2000) < 0) {
-		err = errno;
-		error("Can't read name for hci%d: %s (%d)",
-					dev_id, strerror(err), err);
-		hci_close_dev(dd);
-		return -err;
-	}
-
-	hci_close_dev(dd);
-
-	memcpy(dev->name, tmp, 248);
-
-	return snprintf(name, size, "%s", tmp);
-}
-
-int set_device_name(uint16_t dev_id, const char *name)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	struct hci_dev *dev = &adapter->dev;
-	int dd, err;
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		err = errno;
-		error("Can't open device hci%d: %s (%d)",
-					dev_id, strerror(err), err);
-		return -err;
-	}
-
-	if (hci_write_local_name(dd, name, 5000) < 0) {
-		err = errno;
-		error("Can't write name for hci%d: %s (%d)",
-					dev_id, strerror(err), err);
-		hci_close_dev(dd);
-		return -err;
-	}
-
-	strncpy((char *) dev->name, name, 248);
-
-	update_ext_inquiry_response(dd, dev);
-
-	hci_close_dev(dd);
-
-	return 0;
-}
-
 int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_t size)
 {
 	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
