@@ -155,7 +155,7 @@ static int set_speed(int fd, struct termios *ti, int speed)
 /* 
  * Read an HCI event from the given file descriptor.
  */
-static int read_hci_event(int fd, unsigned char* buf, int size) 
+int read_hci_event(int fd, unsigned char* buf, int size) 
 {
 	int remain, r;
 	int count = 0;
@@ -341,6 +341,13 @@ static int texas(int fd, struct uart_t *u, struct termios *ti)
 
 	nanosleep(&tm, NULL);
 	return 0;
+}
+
+extern int texasalt_init(int fd, int speed);
+
+static int texasalt(int fd, struct uart_t *u, struct termios *ti)
+{
+	return texasalt_init(fd, u->speed);
 }
 
 static int read_check(int fd, void *buf, int count)
@@ -1061,6 +1068,7 @@ struct uart_t uart[] = {
 	{ "ericsson",   0x0000, 0x0000, HCI_UART_H4,   57600,  115200, FLOW_CTL, NULL, ericsson },
 	{ "digi",       0x0000, 0x0000, HCI_UART_H4,   9600,   115200, FLOW_CTL, NULL, digi     },
 	{ "texas",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, texas    },
+	{ "texasalt",   0x0000, 0x0000, HCI_UART_LL,   115200, 115200, FLOW_CTL, NULL, texasalt },
 
 	{ "bcsp",       0x0000, 0x0000, HCI_UART_BCSP, 115200, 115200, 0,        NULL, bcsp     },
 
