@@ -1,3 +1,6 @@
+ver 3.36:
+	Fix various includes for cross-compilation.
+
 ver 3.35:
 	Add two additional company identifiers.
 
