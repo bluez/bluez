@@ -1,3 +1,17 @@
+ver 3.36:
+	Add init routines for TI BRF chips.
+	Add extra attributes to the serial port record.
+	Add example record for headset audio gateway record.
+	Use Handsfree version 0x0105 for the gateway role.
+	Fix SDP record registration with specific record handles.
+	Fix BCSP sent/receive handling.
+	Fix various includes for cross-compilation.
+	Allow link mode settings for outgoing connections.
+	Allow bonding during periodic inquiry.
+
+	Note:
+	This version needs at least bluez-libs-3.36
+
 ver 3.35:
 	Add UUID-128 support for service discovery.
 	Fix usage of friendly names for service discovery.
