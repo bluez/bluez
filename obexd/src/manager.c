@@ -432,6 +432,10 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 	const gchar *name;
 	DBusError derr;
 
+	/* Received a reply after the agent exited */
+	if (!agent)
+		return;
+
 	agent->auth_pending = FALSE;
 
 	dbus_error_init(&derr);
@@ -542,7 +546,7 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	dbus_pending_call_set_notify(call, agent_reply, NULL, NULL);
 
 	/* Workaround: process events while agent doesn't reply */
-	while (agent->auth_pending)
+	while (agent && agent->auth_pending)
 		g_main_context_iteration(NULL, TRUE);
 
 	g_source_remove(watch);
@@ -550,7 +554,7 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	dbus_pending_call_cancel(call);
 	dbus_pending_call_unref(call);
 
-	if (!agent->new_name) {
+	if (!agent || !agent->new_name) {
 		return -EPERM;
 	}
 
