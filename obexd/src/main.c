@@ -150,6 +150,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'c':
 			capability = optarg;
+			break;
 		case 'a':
 			auto_accept = 1;
 			break;
@@ -200,7 +201,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (opush)
-		server_start(OBEX_OPUSH, root_path, auto_accept, capability);
+		server_start(OBEX_OPUSH, root_path, auto_accept, NULL);
 
 	if (ftp)
 		server_start(OBEX_FTP, root_path, auto_accept, capability);

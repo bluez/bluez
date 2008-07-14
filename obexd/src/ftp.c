@@ -179,7 +179,8 @@ static gboolean get_capability(struct obex_session *os, guint32 *size)
 	gint exit;
 	gboolean ret;
 
-	debug("%s - cap: %s", __func__, os->server->capability);
+	if (os->server->capability == NULL)
+		return FALSE;
 
 	if (os->server->capability[0] != '!') {
 		return os_prepare_get(os, os->server->capability, size);
