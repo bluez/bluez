@@ -155,17 +155,6 @@ void toggle_pairing(int enable);
 
 void set_pin_length(bdaddr_t *sba, int length);
 
-void init_adapters(void);
-int add_adapter(uint16_t dev_id);
-int remove_adapter(uint16_t dev_id);
-int start_adapter(uint16_t dev_id);
-int stop_adapter(uint16_t dev_id);
-int update_adapter(uint16_t dev_id);
-
-int get_device_class(uint16_t dev_id, uint8_t *class);
-int set_device_class(uint16_t dev_id, uint8_t *class);
-
-int set_simple_pairing_mode(uint16_t dev_id, uint8_t mode);
 int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_t size);
 int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias);
 

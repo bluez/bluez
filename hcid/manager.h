@@ -36,3 +36,6 @@ int manager_start_adapter(int id);
 int manager_stop_adapter(int id);
 int manager_get_default_adapter();
 void manager_set_default_adapter(int id);
+int manager_update_adapter(uint16_t id);
+int manager_get_adapter_class(uint16_t dev_id, uint8_t *cls);
+int manager_set_adapter_class(uint16_t dev_id, uint8_t *cls);

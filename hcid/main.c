@@ -296,7 +296,7 @@ void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 		if (!hci_test_bit(HCI_UP, &di.flags))
 			continue;
 
-		if (get_device_class(di.dev_id, cls) < 0)
+		if (manager_get_adapter_class(di.dev_id, cls) < 0)
 			continue;
 
 		dd = hci_open_dev(di.dev_id);
@@ -307,7 +307,7 @@ void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 
 		hci_close_dev(dd);
 
-		update_adapter(di.dev_id);
+		manager_update_adapter(di.dev_id);
 	}
 
 	g_free(dl);
@@ -623,13 +623,11 @@ static void device_devreg_setup(int dev_id)
 
 static void device_devup_setup(int dev_id)
 {
-	add_adapter(dev_id);
 	if (hcid.auto_init)
 		configure_device(dev_id);
+	manager_start_adapter(dev_id);
 	if (hcid.security)
 		start_security_manager(dev_id);
-	start_adapter(dev_id);
-	manager_start_adapter(dev_id);
 }
 
 static void init_all_devices(int ctl)
@@ -687,7 +685,6 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", sd->dev_id);
 		manager_unregister_adapter(sd->dev_id);
-		remove_adapter(sd->dev_id);
 		break;
 
 	case HCI_DEV_UP:
@@ -700,7 +697,6 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 		manager_stop_adapter(sd->dev_id);
 		if (hcid.security)
 			stop_security_manager(sd->dev_id);
-		stop_adapter(sd->dev_id);
 		break;
 	}
 }

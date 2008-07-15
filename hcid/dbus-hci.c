@@ -1734,40 +1734,37 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 	}
 
 	write_local_class(local, cls);
-	set_device_class(adapter->dev_id, cls);
-	memcpy(adapter->dev.class, cls, 3);
+	adapter_set_class(adapter, cls);
 
 	hci_close_dev(dd);
 }
 
 void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 {
-	char addr[18];
-	int dev_id, dd;
+	struct adapter *adapter;
+	int dd;
 	uint8_t mode;
 
-	ba2str(local, addr);
-
-	dev_id = hci_devid(addr);
-	if (dev_id < 0) {
-		error("No matching device id for %s", addr);
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("No matching adapter found");
 		return;
 	}
 
-	dd = hci_open_dev(dev_id);
+	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
-		error("HCI device open failed: hci%d", dev_id);
+		error("HCI adapter open failed: %s", adapter->path);
 		return;
 	}
 
 	if (hci_read_simple_pairing_mode(dd, &mode, 1000) < 0) {
-		error("Can't read class of device on hci%d: %s(%d)",
-					dev_id, strerror(errno), errno);
+		error("Can't read class of adapter on %s: %s(%d)",
+					adapter->path, strerror(errno), errno);
 		hci_close_dev(dd);
 		return;
 	}
 
-	set_simple_pairing_mode(dev_id, mode);
+	adapter_update_ssp_mode(adapter, dd, mode);
 
 	hci_close_dev(dd);
 }

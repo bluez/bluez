@@ -72,6 +72,8 @@
 #define IO_CAPABILITY_NOINPUTOUTPUT	0x03
 #define IO_CAPABILITY_INVALID		0xFF
 
+static DBusConnection *connection = NULL;
+
 struct mode_req {
 	struct adapter	*adapter;
 	DBusConnection	*conn;		/* Connection reference */
@@ -1967,6 +1969,9 @@ static GDBusSignalTable adapter_signals[] = {
 dbus_bool_t adapter_init(DBusConnection *conn,
 		const char *path, struct adapter *adapter)
 {
+	if (!connection)
+		connection = conn;
+
 	return g_dbus_register_interface(conn, path,
 			ADAPTER_INTERFACE, adapter_methods,
 			adapter_signals, NULL, adapter, NULL);
@@ -1975,4 +1980,514 @@ dbus_bool_t adapter_init(DBusConnection *conn,
 dbus_bool_t adapter_cleanup(DBusConnection *conn, const char *path)
 {
 	return g_dbus_unregister_interface(conn, path, ADAPTER_INTERFACE);
+}
+
+static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
+{
+	if (dev->features[6] & LMP_EXT_INQ)
+		return 2;
+
+	if (dev->features[3] & LMP_RSSI_INQ)
+		return 1;
+
+	if (dev->manufacturer == 11 &&
+			dev->hci_rev == 0x00 && dev->lmp_subver == 0x0757)
+		return 1;
+
+	if (dev->manufacturer == 15) {
+		if (dev->hci_rev == 0x03 && dev->lmp_subver == 0x6963)
+			return 1;
+		if (dev->hci_rev == 0x09 && dev->lmp_subver == 0x6963)
+			return 1;
+		if (dev->hci_rev == 0x00 && dev->lmp_subver == 0x6965)
+			return 1;
+	}
+
+	if (dev->manufacturer == 31 &&
+			dev->hci_rev == 0x2005 && dev->lmp_subver == 0x1805)
+		return 1;
+
+	return 0;
+}
+
+static int device_read_bdaddr(uint16_t dev_id, const char *address)
+{
+	int dd, err;
+	bdaddr_t bdaddr;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		err = errno;
+		error("Can't open device hci%d: %s (%d)",
+					dev_id, strerror(err), err);
+		return -err;
+	}
+
+	str2ba(address, &bdaddr);
+	if (hci_read_bd_addr(dd, &bdaddr, 2000) < 0) {
+		err = errno;
+		error("Can't read address for hci%d: %s (%d)",
+					dev_id, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	hci_close_dev(dd);
+
+	return 0;
+}
+
+static int adapter_setup(struct adapter *adapter, int dd)
+{
+	struct hci_dev *dev = &adapter->dev;
+	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
+	uint8_t inqmode;
+	bdaddr_t bdaddr;
+	int err;
+	char name[249];
+
+	if (dev->hci_rev > 1) {
+		if (dev->features[5] & LMP_SNIFF_SUBR)
+			events[5] |= 0x20;
+
+		if (dev->features[5] & LMP_PAUSE_ENC)
+			events[5] |= 0x80;
+
+		if (dev->features[6] & LMP_EXT_INQ)
+			events[5] |= 0x40;
+
+		if (dev->features[6] & LMP_NFLUSH_PKTS)
+			events[7] |= 0x01;
+
+		if (dev->features[7] & LMP_LSTO)
+			events[6] |= 0x80;
+
+		if (dev->features[6] & LMP_SIMPLE_PAIR) {
+			events[6] |= 0x01;	/* IO Capability Request */
+			events[6] |= 0x02;	/* IO Capability Response */
+			events[6] |= 0x04;	/* User Confirmation Request */
+			events[6] |= 0x08;	/* User Passkey Request */
+			events[6] |= 0x10;	/* Remote OOB Data Request */
+			events[6] |= 0x20;	/* Simple Pairing Complete */
+			events[7] |= 0x04;	/* User Passkey Notification */
+			events[7] |= 0x08;	/* Keypress Notification */
+			events[7] |= 0x10;	/* Remote Host Supported Features Notification */
+		}
+
+		hci_send_cmd(dd, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
+						sizeof(events), events);
+	}
+
+	str2ba(adapter->address, &bdaddr);
+	if (read_local_name(&bdaddr, name) == 0) {
+		memcpy(dev->name, name, 248);
+		hci_write_local_name(dd, name, 5000);
+        }
+
+	update_ext_inquiry_response(dd, dev);
+
+	inqmode = get_inquiry_mode(dev);
+	if (inqmode < 1)
+		return 0;
+
+	if (hci_write_inquiry_mode(dd, inqmode, 2000) < 0) {
+		err = errno;
+		error("Can't write inquiry mode for %s: %s (%d)",
+					adapter->path, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	return 0;
+}
+
+static int active_conn_append(GSList **list, bdaddr_t *bdaddr,
+				uint16_t handle)
+{
+	struct active_conn_info *dev;
+
+	dev = g_new0(struct active_conn_info, 1);
+
+	bacpy(&dev->bdaddr, bdaddr);
+	dev->handle = handle;
+
+	*list = g_slist_append(*list, dev);
+	return 0;
+}
+
+static void create_stored_device_from_profiles(char *key, char *value,
+						void *user_data)
+{
+	struct adapter *adapter = user_data;
+	GSList *uuids = bt_string2list(value);
+	struct btd_device *device;
+
+	if (g_slist_find_custom(adapter->devices,
+				key, (GCompareFunc) device_address_cmp))
+		return;
+
+	device = device_create(connection, adapter, key);
+	if (device) {
+		device_set_temporary(device, FALSE);
+		adapter->devices = g_slist_append(adapter->devices, device);
+		device_probe_drivers(device, uuids);
+		g_slist_free(uuids);
+	}
+}
+
+static void create_stored_device_from_linkkeys(char *key, char *value,
+						void *user_data)
+{
+	struct adapter *adapter = user_data;
+	struct btd_device *device;
+
+	if (g_slist_find_custom(adapter->devices,
+				key, (GCompareFunc) device_address_cmp))
+		return;
+
+	device = device_create(connection, adapter, key);
+	if (device) {
+		device_set_temporary(device, FALSE);
+		adapter->devices = g_slist_append(adapter->devices, device);
+	}
+}
+
+static void load_devices(struct adapter *adapter)
+{
+	char filename[PATH_MAX + 1];
+
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "profiles");
+	textfile_foreach(filename, create_stored_device_from_profiles, adapter);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "linkkeys");
+	textfile_foreach(filename, create_stored_device_from_linkkeys, adapter);
+}
+
+
+static void adapter_up(struct adapter *adapter, int dd)
+{
+	struct hci_conn_list_req *cl = NULL;
+	struct hci_conn_info *ci;
+	const char *mode;
+	int i;
+
+	adapter->up = 1;
+	adapter->discov_timeout = get_discoverable_timeout(adapter->dev_id);
+	adapter->discov_type = DISCOVER_TYPE_NONE;
+
+	adapter->scan_enable = get_startup_scan(adapter->dev_id);
+	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+					1, &adapter->scan_enable);
+
+	adapter->mode = get_startup_mode(adapter->dev_id);
+	if (adapter->mode == MODE_LIMITED)
+		set_limited_discoverable(dd, adapter->dev.class, TRUE);
+
+	/*
+	 * retrieve the active connections: address the scenario where
+	 * the are active connections before the daemon've started
+	 */
+
+	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
+
+	cl->dev_id = adapter->dev_id;
+	cl->conn_num = 10;
+	ci = cl->conn_info;
+
+	if (ioctl(dd, HCIGETCONNLIST, cl) == 0) {
+		for (i = 0; i < cl->conn_num; i++, ci++)
+			active_conn_append(&adapter->active_conn,
+						&ci->bdaddr, ci->handle);
+	}
+	g_free(cl);
+
+	mode = mode2str(adapter->mode);
+
+	dbus_connection_emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Mode",
+					DBUS_TYPE_STRING, &mode);
+
+	load_devices(adapter);
+}
+
+int adapter_start(struct adapter *adapter)
+{
+	struct hci_dev *dev = &adapter->dev;
+	struct hci_dev_info di;
+	struct hci_version ver;
+	uint8_t features[8];
+	int dd, err;
+	char name[249];
+
+	if (hci_devinfo(adapter->dev_id, &di) < 0)
+		return -errno;
+
+	if (hci_test_bit(HCI_RAW, &di.flags)) {
+		dev->ignore = 1;
+		return -1;
+	}
+
+	if (bacmp(&di.bdaddr, BDADDR_ANY))
+		ba2str(&di.bdaddr, adapter->address);
+	else {
+		int err = device_read_bdaddr(adapter->dev_id, adapter->address);
+		if (err < 0)
+			return err;
+	}
+	memcpy(dev->features, di.features, 8);
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0) {
+		err = errno;
+		error("Can't open adapter %s: %s (%d)",
+					adapter->path, strerror(err), err);
+		return -err;
+	}
+
+	if (hci_read_local_version(dd, &ver, 1000) < 0) {
+		err = errno;
+		error("Can't read version info for %s: %s (%d)",
+					adapter->path, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	dev->hci_rev = ver.hci_rev;
+	dev->lmp_ver = ver.lmp_ver;
+	dev->lmp_subver = ver.lmp_subver;
+	dev->manufacturer = ver.manufacturer;
+
+	if (hci_read_local_features(dd, features, 1000) < 0) {
+		err = errno;
+		error("Can't read features for %s: %s (%d)",
+					adapter->path, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	memcpy(dev->features, features, 8);
+
+	if (hci_read_class_of_dev(dd, dev->class, 1000) < 0) {
+		err = errno;
+		error("Can't read class of adapter on %s: %s (%d)",
+					adapter->path, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	if (hci_read_local_name(dd, sizeof(name), name, 2000) < 0) {
+		err = errno;
+		error("Can't read local name on %s: %s (%d)",
+					adapter->path, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	memcpy(dev->name, name, 248);
+
+	if (!(features[6] & LMP_SIMPLE_PAIR))
+		goto setup;
+
+	if (hcid_dbus_use_experimental()) {
+		if (ioctl(dd, HCIGETAUTHINFO, NULL) < 0 && errno != EINVAL)
+			hci_write_simple_pairing_mode(dd, 0x01, 2000);
+	}
+
+	if (hci_read_simple_pairing_mode(dd, &dev->ssp_mode, 1000) < 0) {
+		err = errno;
+		error("Can't read simple pairing mode on %s: %s (%d)",
+					adapter->path, strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+setup:
+	if (hci_test_bit(HCI_INQUIRY, &di.flags))
+		adapter->discov_active = 1;
+	else
+		adapter->discov_active = 0;
+
+	adapter_setup(adapter, dd);
+	adapter_up(adapter, dd);
+
+	hci_close_dev(dd);
+
+	info("Adapter %s has been enabled", adapter->path);
+
+	return 0;
+}
+
+static void reply_pending_requests(struct adapter *adapter)
+{
+	DBusMessage *reply;
+
+	if (!adapter)
+		return;
+
+	/* pending bonding */
+	if (adapter->bonding) {
+		reply = new_authentication_return(adapter->bonding->msg,
+					HCI_OE_USER_ENDED_CONNECTION);
+		g_dbus_send_message(connection, reply);
+		remove_pending_device(adapter);
+
+		g_dbus_remove_watch(adapter->bonding->conn,
+					adapter->bonding->listener_id);
+
+		if (adapter->bonding->io_id)
+			g_source_remove(adapter->bonding->io_id);
+		g_io_channel_close(adapter->bonding->io);
+		bonding_request_free(adapter->bonding);
+		adapter->bonding = NULL;
+	}
+
+	/* If there is a pending reply for discovery cancel */
+	if (adapter->discovery_cancel) {
+		reply = dbus_message_new_method_return(adapter->discovery_cancel);
+		dbus_connection_send(connection, reply, NULL);
+		dbus_message_unref(reply);
+		dbus_message_unref(adapter->discovery_cancel);
+		adapter->discovery_cancel = NULL;
+	}
+
+	if (adapter->discov_active) {
+		/* Send discovery completed signal if there isn't name
+		 * to resolve */
+		g_dbus_emit_signal(connection, adapter->path,
+				ADAPTER_INTERFACE, "DiscoveryCompleted",
+				DBUS_TYPE_INVALID);
+
+		/* Cancel inquiry initiated by D-Bus client */
+		if (adapter->discov_requestor)
+			cancel_discovery(adapter);
+	}
+
+	if (adapter->pdiscov_active) {
+		/* Stop periodic inquiry initiated by D-Bus client */
+		if (adapter->pdiscov_requestor)
+			cancel_periodic_discovery(adapter);
+	}
+}
+
+
+int adapter_stop(struct adapter *adapter)
+{
+	const char *mode = "off";
+
+	/* cancel pending timeout */
+	if (adapter->timeout_id) {
+		g_source_remove(adapter->timeout_id);
+		adapter->timeout_id = 0;
+	}
+
+	/* check pending requests */
+	reply_pending_requests(adapter);
+
+	if (adapter->discov_requestor) {
+		g_dbus_remove_watch(connection, adapter->discov_listener);
+		adapter->discov_listener = 0;
+		g_free(adapter->discov_requestor);
+		adapter->discov_requestor = NULL;
+	}
+
+	if (adapter->pdiscov_requestor) {
+		g_dbus_remove_watch(connection, adapter->pdiscov_listener);
+		adapter->pdiscov_listener = 0;
+		g_free(adapter->pdiscov_requestor);
+		adapter->pdiscov_requestor = NULL;
+	}
+
+	if (adapter->found_devices) {
+		g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
+		g_slist_free(adapter->found_devices);
+		adapter->found_devices = NULL;
+	}
+
+	if (adapter->oor_devices) {
+		g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
+		g_slist_free(adapter->oor_devices);
+		adapter->oor_devices = NULL;
+	}
+
+	if (adapter->auth_reqs) {
+		g_slist_foreach(adapter->auth_reqs, (GFunc) g_free, NULL);
+		g_slist_free(adapter->auth_reqs);
+		adapter->auth_reqs = NULL;
+	}
+
+	if (adapter->active_conn) {
+		g_slist_foreach(adapter->active_conn, (GFunc) g_free, NULL);
+		g_slist_free(adapter->active_conn);
+		adapter->active_conn = NULL;
+	}
+
+	dbus_connection_emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Mode",
+					DBUS_TYPE_STRING, &mode);
+
+	adapter->up = 0;
+	adapter->scan_enable = SCAN_DISABLED;
+	adapter->mode = MODE_OFF;
+	adapter->discov_active = 0;
+	adapter->pdiscov_active = 0;
+	adapter->pinq_idle = 0;
+	adapter->discov_type = DISCOVER_TYPE_NONE;
+
+	info("Adapter %s has been disabled", adapter->path);
+
+	return 0;
+}
+
+int adapter_update(struct adapter *adapter)
+{
+	struct hci_dev *dev = &adapter->dev;
+	int dd;
+
+	if (dev->ignore)
+		return 0;
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0) {
+		int err = errno;
+		error("Can't open adapter %s: %s (%d)",
+					adapter->path, strerror(err), err);
+		return -err;
+	}
+
+	update_ext_inquiry_response(dd, dev);
+
+	hci_close_dev(dd);
+
+	return 0;
+}
+
+int adapter_get_class(struct adapter *adapter, uint8_t *cls)
+{
+	struct hci_dev *dev = &adapter->dev;
+
+	memcpy(cls, dev->class, 3);
+
+	return 0;
+}
+
+int adapter_set_class(struct adapter *adapter, uint8_t *cls)
+{
+	struct hci_dev *dev = &adapter->dev;
+
+	memcpy(dev->class, cls, 3);
+
+	return 0;
+}
+
+int adapter_update_ssp_mode(struct adapter *adapter, int dd, uint8_t mode)
+{
+	struct hci_dev *dev = &adapter->dev;
+
+	dev->ssp_mode = mode;
+
+	update_ext_inquiry_response(dd, dev);
+
+	hci_close_dev(dd);
+
+	return 0;
 }

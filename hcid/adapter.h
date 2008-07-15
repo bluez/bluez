@@ -135,6 +135,18 @@ struct adapter {
 dbus_bool_t adapter_init(DBusConnection *conn,
 		const char *path, struct adapter *adapter);
 
+int adapter_start(struct adapter *adapter);
+
+int adapter_stop(struct adapter *adapter);
+
+int adapter_update(struct adapter *adapter);
+
+int adapter_get_class(struct adapter *adapter, uint8_t *cls);
+
+int adapter_set_class(struct adapter *adapter, uint8_t *cls);
+
+int adapter_update_ssp_mode(struct adapter *adapter, int dd, uint8_t mode);
+
 dbus_bool_t adapter_cleanup(DBusConnection *conn, const char *path);
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
