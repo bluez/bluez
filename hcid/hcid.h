@@ -29,6 +29,7 @@
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
 #include <bluetooth/hci.h>
 
 #include "logging.h"
@@ -193,6 +194,9 @@ int write_trust(bdaddr_t *local, const char *addr, const char *service, gboolean
 GSList *list_trusts(bdaddr_t *local, const char *service);
 int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles);
 int delete_entry(bdaddr_t *src, const char *storage, const char *key);
+int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec);
+sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle);
+int delete_record(const gchar *src, const gchar *dst, const uint32_t handle);
 
 gboolean plugin_init(GKeyFile *config);
 void plugin_cleanup(void);

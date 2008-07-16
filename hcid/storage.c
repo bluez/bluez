@@ -41,6 +41,8 @@
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include "textfile.h"
 #include "hcid.h"
@@ -702,6 +704,81 @@ int delete_entry(bdaddr_t *src, const char *storage, const char *key)
 	char filename[PATH_MAX + 1];
 
 	create_filename(filename, PATH_MAX, src, storage);
+
+	return textfile_del(filename, key);
+}
+
+int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
+{
+	char filename[PATH_MAX + 1], key[28];
+	sdp_buf_t buf;
+	int err, size, i;
+	char *pdata, *str;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	snprintf(key, sizeof(key), "%17s#%08X", dst, rec->handle);
+
+	if (sdp_gen_record_pdu(rec, &buf) < 0)
+		return -1;
+
+	pdata = (char *)buf.data;
+	size = buf.data_size;
+
+	str = g_malloc0(size*2+1);
+
+	for (i = 0; i < size; i++)
+		sprintf(str + (i * 2), "%02X", buf.data[i]);
+
+	err = textfile_put(filename, key, str);
+
+	free(buf.data);
+	free(str);
+
+	return err;
+}
+
+sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle)
+{
+	char filename[PATH_MAX + 1], key[28], tmp[3],*str;
+	sdp_record_t *rec;
+	int size, i, len;
+	uint8_t *pdata;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
+
+	snprintf(key, sizeof(key), "%17s#%08X", dst, handle);
+
+	str = textfile_get(filename, key);
+
+	if (!str)
+		return NULL;
+
+	size = strlen(str)/2;
+	pdata = g_malloc0(size);
+
+	for (i = 0; i < size; i++) {
+		memcpy(tmp, str + (i*2), 2);
+		pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	rec = sdp_extract_pdu(pdata, &len);
+
+	free(str);
+	free(pdata);
+
+	return rec;
+}
+
+int delete_record(const gchar *src, const gchar *dst, const uint32_t handle)
+{
+	char filename[PATH_MAX + 1], key[28];
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
+
+	snprintf(key, sizeof(key), "%17s#%08X", dst, handle);
 
 	return textfile_del(filename, key);
 }
