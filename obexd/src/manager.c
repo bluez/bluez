@@ -269,9 +269,14 @@ static DBusMessage *transfer_cancel(DBusConnection *connection,
 				DBusMessage *msg, void *user_data)
 {
 	struct obex_session *os = user_data;
+	const gchar *sender;
 
 	if (!os)
 		return invalid_args(msg);
+
+	sender = dbus_message_get_sender(msg);
+	if (strcmp(agent->bus_name, sender) != 0)
+		return not_authorized(msg);
 
 	os->cancelled = TRUE;
 
