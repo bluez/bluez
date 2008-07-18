@@ -49,14 +49,14 @@
 
 #include "device.h"
 #include "error.h"
-#include "manager.h"
 #include "storage.h"
 #include "fakehid.h"
 #include "glib-helper.h"
 
-#define INPUT_DEVICE_INTERFACE	"org.bluez.input.Device"
+#define INPUT_DEVICE_INTERFACE "org.bluez.input.Device"
+#define INPUT_HEADSET_INTERFACE "org.bluez.input.Headset"
 
-#define BUF_SIZE	16
+#define BUF_SIZE		16
 
 #define UPDOWN_ENABLED		1
 
@@ -77,6 +77,7 @@ struct device {
 	DBusMessage		*pending_connect;
 	DBusConnection		*conn;
 	char			*path;
+	char			*iface;
 	int			ctrl_sk;
 	int			intr_sk;
 	guint			ctrl_watch;
@@ -191,85 +192,6 @@ static int uinput_create(char *name)
 	}
 
 	return fd;
-}
-
-static const char *create_input_path(uint8_t major, uint8_t minor)
-{
-	static char path[48];
-	char subpath[32];
-	static int next_id = 0;
-
-	switch (major) {
-	case 0x02: /* Phone */
-		strcpy(subpath, "phone");
-		break;
-	case 0x04: /* Audio */
-		switch (minor) {
-		/* FIXME: Testing required */
-		case 0x01: /* Wearable Headset Device */
-			strcpy(subpath, "wearable");
-			break;
-		case 0x02: /* Hands-free */
-			strcpy(subpath, "handsfree");
-			break;
-		case 0x06: /* Headphone */
-			strcpy(subpath, "headphone");
-			break;
-		default:
-			return NULL;
-		}
-		break;
-	case 0x05: /* Peripheral */
-		switch (minor & 0x30) {
-		case 0x10:
-			strcpy(subpath, "keyboard");
-			break;
-		case 0x20:
-			strcpy(subpath, "pointing");
-			break;
-		case 0x30:
-			strcpy(subpath, "combo");
-			break;
-		default:
-			subpath[0] = '\0';
-			break;
-		}
-
-		if ((minor & 0x0f) && (strlen(subpath) > 0))
-			strcat(subpath, "/");
-
-		switch (minor & 0x0f) {
-		case 0x00:
-			break;
-		case 0x01:
-			strcat(subpath, "joystick");
-			break;
-		case 0x02:
-			strcat(subpath, "gamepad");
-			break;
-		case 0x03:
-			strcat(subpath, "remotecontrol");
-			break;
-		case 0x04:
-			strcat(subpath, "sensing");
-			break;
-		case 0x05:
-			strcat(subpath, "digitizertablet");
-			break;
-		case 0x06:
-			strcat(subpath, "cardreader");
-			break;
-		default:
-			strcat(subpath, "reserved");
-			break;
-		}
-		break;
-	default:
-			return NULL;
-	}
-
-	snprintf(path, 48, "%s/%s%d", INPUT_PATH, subpath, next_id++);
-	return path;
 }
 
 static int decode_key(const char *str)
@@ -425,7 +347,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	/* Sending the Connected signal */
 	path = dbus_message_get_path(idev->pending_connect);
 	g_dbus_emit_signal(idev->conn, path,
-			INPUT_DEVICE_INTERFACE, "Connected",
+			idev->iface, "Connected",
 			DBUS_TYPE_INVALID);
 
 	dbus_message_unref(idev->pending_connect);
@@ -462,11 +384,8 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
 
-	g_dbus_emit_signal(idev->conn,
-			idev->path,
-			INPUT_DEVICE_INTERFACE,
-			"Disconnected",
-			DBUS_TYPE_INVALID);
+	g_dbus_emit_signal(idev->conn, idev->path, idev->iface,
+			"Disconnected", DBUS_TYPE_INVALID);
 
 	g_source_remove(idev->ctrl_watch);
 	idev->ctrl_watch = 0;
@@ -489,11 +408,8 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
 
-	g_dbus_emit_signal(idev->conn,
-			idev->path,
-			INPUT_DEVICE_INTERFACE,
-			"Disconnected",
-			DBUS_TYPE_INVALID);
+	g_dbus_emit_signal(idev->conn, idev->path, idev->iface,
+			"Disconnected", DBUS_TYPE_INVALID);
 
 	g_source_remove(idev->intr_watch);
 	idev->intr_watch = 0;
@@ -594,11 +510,8 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	idev->intr_watch = create_watch(idev->intr_sk, intr_watch_cb, idev);
 	idev->ctrl_watch = create_watch(idev->ctrl_sk, ctrl_watch_cb, idev);
-	g_dbus_emit_signal(idev->conn,
-			idev->path,
-			INPUT_DEVICE_INTERFACE,
-			"Connected",
-			DBUS_TYPE_INVALID);
+	g_dbus_emit_signal(idev->conn, idev->path, idev->iface,
+			"Connected", DBUS_TYPE_INVALID);
 
 	/* Replying to the requestor */
 	g_dbus_send_reply(idev->conn, idev->pending_connect, DBUS_TYPE_INVALID);
@@ -826,63 +739,11 @@ static DBusMessage *device_is_connected(DBusConnection *conn,
 							DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *device_get_adapter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct device *idev = data;
-	char addr[18];
-	const char *paddr = addr;
-
-	ba2str(&idev->src, addr);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &paddr,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *device_get_address(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct device *idev = data;
-	char addr[18];
-	const char *paddr = addr;
-
-	ba2str(&idev->dst, addr);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &paddr,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *device_get_name(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct device *idev = data;
-	const char *pname = (idev->name ? idev->name : "");
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &pname,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *device_get_product_id(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct device *idev = data;
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_UINT16, &idev->product,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *device_get_vendor_id(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct device *idev = data;
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_UINT16, &idev->vendor,
-							DBUS_TYPE_INVALID);
-}
-
 static void device_unregister(void *data)
 {
 	struct device *idev = data;
+
+	info("Unregistered interface %s on path %s", idev->iface, idev->path);
 
 	/* Disconnect if applied */
 	disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
@@ -894,11 +755,6 @@ static GDBusMethodTable device_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	device_disconnect	},
 	{ "IsConnected",	"",	"b",	device_is_connected	},
-	{ "GetAdapter",		"",	"s",	device_get_adapter	},
-	{ "GetAddress",		"",	"s",	device_get_address	},
-	{ "GetName",		"",	"s",	device_get_name		},
-	{ "GetProductId",	"",	"q",	device_get_product_id	},
-	{ "GetVendorId",	"",	"q",	device_get_vendor_id	},
 	{ }
 };
 
@@ -911,71 +767,53 @@ static GDBusSignalTable device_signals[] = {
 /*
  * Input registration functions
  */
-static int register_path(DBusConnection *conn, const char *path, struct device *idev)
+static int register_path(DBusConnection *conn, struct device *idev)
 {
-	if (g_dbus_register_interface(conn, path, INPUT_DEVICE_INTERFACE,
+	if (g_dbus_register_interface(conn, idev->path, idev->iface,
 					device_methods, device_signals, NULL,
 					idev, device_unregister) == FALSE) {
-		error("Failed to register %s interface to %s",
-					INPUT_DEVICE_INTERFACE, path);
+		error("Failed to register interface %s on path %s",
+			idev->iface, idev->path);
+		device_free(idev);
 		return -1;
 	}
 
 	devices = g_slist_append(devices, idev);
 
-	info("Created input device: %s", path);
+	info("Registered interface %s on path %s", idev->iface, idev->path);
 
 	return 0;
 }
 
 int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
-				struct hidp_connadd_req *hid, const char **ppath)
+				struct hidp_connadd_req *hid, const char *path)
 {
 	struct device *idev;
-	const char *path;
-	int err;
 
 	idev = device_new(src, dst, hid->subclass, hid->idle_to);
 	if (!idev)
 		return -EINVAL;
 
-	path = create_input_path(idev->major, idev->minor);
-	if (!path) {
-		device_free(idev);
-		return -EINVAL;
-	}
+	idev->path = g_strdup(path);
+	idev->iface = INPUT_DEVICE_INTERFACE;
+	idev->product = hid->product;
+	idev->vendor = hid->vendor;
+	idev->conn = dbus_connection_ref(conn);
 
-	idev->path	= g_strdup(path);
-	idev->product	= hid->product;
-	idev->vendor	= hid->vendor;
-	idev->conn	= dbus_connection_ref(conn);
-
-	err = register_path(conn, path, idev);
-
-	if (!err && ppath)
-		*ppath = path;
-
-	return err;
+	return register_path(conn, idev);
 }
 
 int fake_input_register(DBusConnection *conn, bdaddr_t *src,
-			bdaddr_t *dst, uint8_t ch, const char **ppath)
+			bdaddr_t *dst, uint8_t ch, const char *path)
 {
 	struct device *idev;
-	const char *path;
-	int err;
 
 	idev = device_new(src, dst, 0, 0);
 	if (!idev)
 		return -EINVAL;
 
-	path = create_input_path(idev->major, idev->minor);
-	if (!path) {
-		device_free(idev);
-		return -EINVAL;
-	}
-
 	idev->path = g_strdup(path);
+	idev->iface = INPUT_HEADSET_INTERFACE;
 	idev->conn = dbus_connection_ref(conn);
 
 	/* FIXME: Missing set product and vendor */
@@ -985,12 +823,7 @@ int fake_input_register(DBusConnection *conn, bdaddr_t *src,
 	idev->fake->connect = rfcomm_connect;
 	idev->fake->disconnect = fake_disconnect;
 
-	err = register_path(conn, path, idev);
-
-	if (!err && ppath)
-		*ppath = path;
-
-	return err;
+	return register_path(conn, idev);
 }
 
 static struct device *find_device(const bdaddr_t *src, const bdaddr_t *dst)
@@ -1048,17 +881,11 @@ int input_device_unregister(DBusConnection *conn, const char *path)
 
 	if (idev->intr_watch) {
 		g_source_remove(idev->intr_watch);
-		g_dbus_emit_signal(conn,
-				path, INPUT_DEVICE_INTERFACE,
+		g_dbus_emit_signal(conn, path, idev->iface,
 				"Disconnected", DBUS_TYPE_INVALID);
 	}
 
-	g_dbus_emit_signal(conn, INPUT_PATH,
-			INPUT_MANAGER_INTERFACE, "DeviceRemoved" ,
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_unregister_interface(conn, path, INPUT_DEVICE_INTERFACE);
+	g_dbus_unregister_interface(conn, path, idev->iface);
 
 	return 0;
 }
@@ -1154,11 +981,8 @@ int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
 
 	idev->intr_watch = create_watch(idev->intr_sk, intr_watch_cb, idev);
 	idev->ctrl_watch = create_watch(idev->ctrl_sk, ctrl_watch_cb, idev);
-	g_dbus_emit_signal(idev->conn,
-			idev->path,
-			INPUT_DEVICE_INTERFACE,
-			"Connected",
-			DBUS_TYPE_INVALID);
+	g_dbus_emit_signal(idev->conn, idev->path, idev->iface,
+			"Connected", DBUS_TYPE_INVALID);
 	return 0;
 
 error:
