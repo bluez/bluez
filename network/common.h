@@ -22,7 +22,10 @@
  */
 
 #define MAX_PATH_LENGTH 64 /* D-Bus path */
-#define NETWORK_PATH "/org/bluez/network"
+
+#define PANU_UUID	"00001115-0000-1000-8000-00805f9b34fb"
+#define NAP_UUID	"00001116-0000-1000-8000-00805f9b34fb"
+#define GN_UUID		"00001117-0000-1000-8000-00805f9b34fb"
 
 int bnep_init(const char *panu_script, const char *gn_script,
 		const char *nap_script);

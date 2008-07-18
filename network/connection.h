@@ -21,14 +21,8 @@
  *
  */
 
-#define NETWORK_CONNECTION_INTERFACE "org.bluez.network.Connection"
-
 int connection_init(DBusConnection *conn, const char *iface_prefix);
 void connection_exit();
 int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
-			uint16_t id, const char *name, const char *desc);
-int connection_store(const char *path, gboolean default_path);
-int connection_remove_stored(const char *path);
-int connection_find_data(const char *path, const char *pattern);
-gboolean connection_has_pending(const char *path);
-gboolean connection_is_connected(const char *path);
+			uint16_t id);
+void connection_unregister(const char *path, uint16_t id);

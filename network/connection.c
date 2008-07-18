@@ -52,6 +52,10 @@
 #include "common.h"
 #include "connection.h"
 
+#define NETWORK_PANU_INTERFACE "org.bluez.network.Peer"
+#define NETWORK_GN_INTERFACE "org.bluez.network.Hub"
+#define NETWORK_NAP_INTERFACE "org.bluez.network.Router"
+
 typedef enum {
 	CONNECTED,
 	CONNECTING,
@@ -60,13 +64,10 @@ typedef enum {
 
 struct network_conn {
 	DBusMessage	*msg;
-	bdaddr_t	store;
 	bdaddr_t	src;
 	bdaddr_t	dst;
 	char		*path;		/* D-Bus path */
 	char		dev[16];	/* Interface name */
-	char		*name;		/* Service Name */
-	char		*desc;		/* Service Description*/
 	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
 	int		sk;
@@ -119,14 +120,33 @@ static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
 				err ? strerror(err) : "Connection attempt failed");
 }
 
+static const char *id2iface(uint16_t id)
+{
+	switch (id) {
+	case BNEP_SVC_PANU:
+		return NETWORK_PANU_INTERFACE;
+		break;
+	case BNEP_SVC_GN:
+		return NETWORK_GN_INTERFACE;
+		break;
+	case BNEP_SVC_NAP:
+		return NETWORK_NAP_INTERFACE;
+		break;
+	default:
+		return NULL;
+	}
+}
+
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
 	struct network_conn *nc = data;
 
 	if (connection != NULL) {
+		const char *interface = id2iface(nc->id);
+
 		g_dbus_emit_signal(connection, nc->path,
-						NETWORK_CONNECTION_INTERFACE,
+						interface,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
 	}
@@ -205,7 +225,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	bnep_if_up(nc->dev, nc->id);
 	g_dbus_emit_signal(connection, nc->path,
-					NETWORK_CONNECTION_INTERFACE,
+					id2iface(nc->id),
 					"Connected",
 					DBUS_TYPE_INVALID);
 
@@ -297,68 +317,6 @@ failed:
 	g_dbus_send_message(connection, reply);
 }
 
-static DBusMessage *get_adapter(DBusConnection *conn, DBusMessage *msg,
-					void *data)
-{
-	struct network_conn *nc = data;
-	char addr[18];
-	const char *paddr = addr;
-
-	ba2str(&nc->src, addr);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &paddr,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *get_address(DBusConnection *conn, DBusMessage *msg,
-					void *data)
-{
-	struct network_conn *nc = data;
-	char addr[18];
-	const char *paddr = addr;
-
-	ba2str(&nc->dst, addr);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &paddr,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *get_uuid(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct network_conn *nc = data;
-	const char *uuid;
-
-	uuid = bnep_uuid(nc->id);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &uuid,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *get_name(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct network_conn *nc = data;
-
-	if (!nc->name)
-		return not_supported(msg);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &nc->name,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *get_description(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct network_conn *nc = data;
-
-	if (!nc->desc)
-		return not_supported(msg);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &nc->desc,
-							DBUS_TYPE_INVALID);
-}
-
 static DBusMessage *get_interface(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -436,44 +394,6 @@ static DBusMessage *is_connected(DBusConnection *conn,
 						DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *get_info(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct network_conn *nc = data;
-	DBusMessage *reply;
-	DBusMessageIter iter;
-	DBusMessageIter dict;
-	const char *uuid;
-	char raddr[18];
-	const char *paddr = raddr;
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	dbus_message_iter_append_dict_entry(&dict, "name",
-			DBUS_TYPE_STRING, &nc->name);
-
-	uuid = bnep_uuid(nc->id);
-	dbus_message_iter_append_dict_entry(&dict, "uuid",
-			DBUS_TYPE_STRING, &uuid);
-
-	ba2str(&nc->dst, raddr);
-	dbus_message_iter_append_dict_entry(&dict, "address",
-			DBUS_TYPE_STRING, &paddr);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
-}
-
 static void connection_free(struct network_conn *nc)
 {
 	if (!nc)
@@ -487,39 +407,28 @@ static void connection_free(struct network_conn *nc)
 		bnep_kill_connection(&nc->dst);
 	}
 
-	if (nc->name)
-		g_free(nc->name);
-
-	if (nc->desc)
-		g_free(nc->desc);
-
 	g_free(nc);
 	nc = NULL;
 }
 
-static void connection_unregister(void *data)
+static void path_unregister(void *data)
 {
 	struct network_conn *nc = data;
+	const char *interface = id2iface(nc->id);
 
-	info("Unregistered connection path:%s", nc->path);
+	info("Unregistered interface %s on path %s", interface, nc->path);
 
 	connections = g_slist_remove(connections, nc);
 	connection_free(nc);
 }
 
 static GDBusMethodTable connection_methods[] = {
-	{ "GetAdapter",		"",	"s",	get_adapter		},
-	{ "GetAddress",		"",	"s",	get_address		},
-	{ "GetUUID",		"",	"s",	get_uuid		},
-	{ "GetName",		"",	"s",	get_name		},
-	{ "GetDescription",	"",	"s",	get_description		},
 	{ "GetInterface",	"",	"s",	get_interface		},
 	{ "Connect",		"",	"s",	connection_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "CancelConnect",	"",	"",	connection_cancel	},
 	{ "Disconnect",		"",	"",	connection_disconnect	},
 	{ "IsConnected",	"",	"b",	is_connected		},
-	{ "GetInfo",		"",	"a{sv}",get_info		},
 	{ }
 };
 
@@ -529,12 +438,20 @@ static GDBusSignalTable connection_signals[] = {
 	{ }
 };
 
+void connection_unregister(const char *path, uint16_t id)
+{
+	const char *interface = id2iface(id);
+
+	g_dbus_unregister_interface(connection, path, interface);
+}
+
 int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
-			uint16_t id, const char *name, const char *desc)
+			uint16_t id)
 {
 	struct network_conn *nc;
 	bdaddr_t default_src;
 	int dev_id;
+	const char *interface;
 
 	if (!path)
 		return -EINVAL;
@@ -545,162 +462,30 @@ int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 		return -1;
 
 	nc = g_new0(struct network_conn, 1);
+	interface = id2iface(id);
 
 	if (g_dbus_register_interface(connection, path,
-					NETWORK_CONNECTION_INTERFACE,
+					interface,
 					connection_methods,
 					connection_signals, NULL,
-					nc, connection_unregister) == FALSE) {
-		error("D-Bus failed to register %s interface",
-				NETWORK_CONNECTION_INTERFACE);
+					nc, path_unregister) == FALSE) {
+		error("D-Bus failed to register %s interface", interface);
 		return -1;
 	}
 
 	nc->path = g_strdup(path);
-	bacpy(&nc->store, src);
-	bacpy(&nc->src, &default_src);
+	bacpy(&nc->src, src);
 	bacpy(&nc->dst, dst);
 	nc->id = id;
-	nc->name = g_strdup(name);
-	nc->desc = g_strdup(desc);
 	memset(nc->dev, 0, 16);
 	strncpy(nc->dev, prefix, strlen(prefix));
 	nc->state = DISCONNECTED;
 
 	connections = g_slist_append(connections, nc);
 
-	info("Registered connection path:%s", path);
+	info("Registered interface %s on path %s", interface, path);
 
 	return 0;
-}
-
-int connection_store(const char *path, gboolean default_path)
-{
-	struct network_conn *nc;
-	const char *role;
-	char key[32], *value;
-	char filename[PATH_MAX + 1];
-	char src_addr[18], dst_addr[18];
-	int len, err;
-	GSList *l;
-
-	l = g_slist_find_custom(connections, path, find_connection);
-	if (!l)
-		return -ENOENT;
-
-	nc = l->data;
-	if (!nc->name || !nc->desc)
-		return -EINVAL;
-
-	/* FIXME: name and desc validation - remove ':' */
-
-	ba2str(&nc->dst, dst_addr);
-	role = bnep_name(nc->id);
-	snprintf(key, 32, "%s#%s", dst_addr, role);
-
-	ba2str(&nc->store, src_addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "network");
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	if (default_path)
-		err = textfile_put(filename, "default", key);
-	else {
-		len = strlen(nc->name) + strlen(nc->desc)  + 2;
-		value = g_malloc0(len);
-		snprintf(value, len, "%s:%s", nc->name, nc->desc);
-		err = textfile_put(filename, key, value);
-		g_free(value);
-	}
-
-	return err;
-}
-
-int connection_find_data(const char *path, const char *pattern)
-{
-	struct network_conn *nc;
-	char addr[18], key[32];
-	const char *role;
-	GSList *l;
-
-	l = g_slist_find_custom(connections, path, find_connection);
-	if (!l)
-		return -1;
-
-	nc = l->data;
-	if (strcasecmp(pattern, nc->dev) == 0)
-		return 0;
-
-	if (strcasecmp(pattern, nc->name) == 0)
-		return 0;
-
-	ba2str(&nc->dst, addr);
-
-	if (strcasecmp(pattern, addr) == 0)
-		return 0;
-
-	role = bnep_name(nc->id);
-	snprintf(key, 32, "%s#%s", addr, role);
-
-	if (strcasecmp(pattern, key) == 0)
-		return 0;
-
-	return -1;
-}
-
-gboolean connection_has_pending(const char *path)
-{
-	struct network_conn *nc;
-	GSList *l;
-
-	l = g_slist_find_custom(connections, path, find_connection);
-	if (!l)
-		return FALSE;
-
-	nc = l->data;
-
-	return (nc->state == CONNECTING);
-}
-
-int connection_remove_stored(const char *path)
-{
-	struct network_conn *nc;
-	const char *role;
-	char key[32];
-	char filename[PATH_MAX + 1];
-	char src_addr[18], dst_addr[18];
-	int err;
-	GSList *l;
-
-	l = g_slist_find_custom(connections, path, find_connection);
-	if (!l)
-		return -ENOENT;
-
-	nc = l->data;
-
-	ba2str(&nc->dst, dst_addr);
-	role = bnep_name(nc->id);
-	snprintf(key, 32, "%s#%s", dst_addr, role);
-
-	ba2str(&nc->store, src_addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "network");
-
-	err = textfile_del(filename, key);
-
-	return err;
-}
-
-gboolean connection_is_connected(const char *path)
-{
-	struct network_conn *nc;
-	GSList *l;
-
-	l = g_slist_find_custom(connections, path, find_connection);
-	if (!l)
-		return FALSE;
-
-	nc = l->data;
-
-	return (nc->state == CONNECTED);
 }
 
 int connection_init(DBusConnection *conn, const char *iface_prefix)

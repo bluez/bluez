@@ -41,76 +41,6 @@
 #define GN_IFACE  "pan0"
 #define NAP_IFACE "pan1"
 
-#define PANU_UUID "00001115-0000-1000-8000-00805f9b34fb"
-#define NAP_UUID  "00001116-0000-1000-8000-00805f9b34fb"
-#define GN_UUID   "00001117-0000-1000-8000-00805f9b34fb"
-
-#define NETWORK_INTERFACE "org.bluez.Network"
-
-static DBusMessage *network_connect(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	const char *target, *device = "bnep0";
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &target,
-						DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &device,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *network_disconnect(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static GDBusMethodTable network_methods[] = {
-	{ "Connect",    "s", "s", network_connect    },
-	{ "Disconnect", "",  "",  network_disconnect },
-	{ }
-};
-
-static GDBusSignalTable network_signals[] = {
-	{ "Connected",    "ss" },
-	{ "Disconnected", "s"  },
-	{ }
-};
-
-static DBusConnection *conn;
-
-static int network_probe(struct btd_device *device, GSList *records)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-
-	if (g_dbus_register_interface(conn, path, NETWORK_INTERFACE,
-					network_methods, network_signals, NULL,
-							device, NULL) == FALSE)
-		return -1;
-
-	return 0;
-}
-
-static void network_remove(struct btd_device *device)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-
-	g_dbus_unregister_interface(conn, path, NETWORK_INTERFACE);
-}
-
-static struct btd_device_driver network_driver = {
-	.name	= "network",
-	.uuids	= BTD_UUIDS(PANU_UUID, NAP_UUID, GN_UUID),
-	.probe	= network_probe,
-	.remove	= network_remove,
-};
-
 static struct network_conf conf = {
 	.connection_enabled = TRUE,
 	.server_enabled = TRUE,
@@ -230,6 +160,8 @@ done:
 
 static int network_init(void)
 {
+	DBusConnection *conn;
+
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (conn == NULL)
 		return -EIO;
@@ -241,18 +173,12 @@ static int network_init(void)
 		return -EIO;
 	}
 
-	btd_register_device_driver(&network_driver);
-
 	return 0;
 }
 
 static void network_exit(void)
 {
-	btd_unregister_device_driver(&network_driver);
-
 	network_manager_exit();
-
-	dbus_connection_unref(conn);
 }
 
 BLUETOOTH_PLUGIN_DEFINE("network", network_init, network_exit)
