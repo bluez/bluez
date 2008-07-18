@@ -348,6 +348,7 @@ void ftp_setpath(obex_t *obex, obex_object_t *obj)
 	struct obex_session *os;
 	guint8 *nonhdr;
 	gchar *fullname;
+	struct stat dstat;
 
 	os = OBEX_GetUserData(obex);
 
@@ -405,24 +406,34 @@ void ftp_setpath(obex_t *obex, obex_object_t *obj)
 
 	debug("Fullname: %s", fullname);
 
-	if (g_file_test(fullname, G_FILE_TEST_IS_DIR)) {
-		g_free(os->current_folder);
-		os->current_folder = g_strdup(fullname);
+	if (lstat(fullname, &dstat) < 0) {
+		int err = errno;
+		debug("lstat: %s(%d)", strerror(err), err);
+		if (err == ENOENT)
+			goto not_found;
 
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		goto done;
 	}
 
-	if (!g_file_test(fullname, G_FILE_TEST_EXISTS) && nonhdr[0] == 0 &&
-				mkdir(fullname, 0755) >=  0) {
+	if (S_ISDIR(dstat.st_mode) && (dstat.st_mode & S_IRUSR)) {
 		g_free(os->current_folder);
 		os->current_folder = g_strdup(fullname);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 		goto done;
-
 	}
 
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+	goto done;
+
+not_found:
+	if (nonhdr[0] == 0 && mkdir(fullname, 0755) >=  0) {
+		g_free(os->current_folder);
+		os->current_folder = g_strdup(fullname);
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
+	} else
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_FOUND, OBEX_RSP_NOT_FOUND);
+
 done:
 	g_free(fullname);
 }
