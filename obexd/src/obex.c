@@ -717,6 +717,8 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			emit_transfer_progress(os->cid, os->size, os->offset);
 		break;
 	case OBEX_EV_ABORT:
+		if (os->target == NULL)
+			emit_transfer_completed(os->cid, FALSE);
 		os_reset_session(os, TRUE);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 		break;
