@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 		case 'h':
 		default:
 			usage();
-			exit(0);
+			exit(EXIT_SUCCESS);
 		}
 	}
 
@@ -168,13 +168,13 @@ int main(int argc, char *argv[])
 	if (!(opush || ftp)) {
 		fprintf(stderr, "No server selected (use either "
 					"--opp or --ftp or both)\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (detach) {
 		if (daemon(0, 0)) {
 			perror("Can't start daemon");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	} else
 		log_option |= LOG_PERROR;
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
 			dbus_error_free(&err);
 		} else
 			fprintf(stderr, "Can't register with session bus\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (opush)
@@ -206,8 +206,10 @@ int main(int argc, char *argv[])
 	if (ftp)
 		server_start(OBEX_FTP, root_path, auto_accept, capability);
 
-	if (!manager_init(conn))
-		goto fail;
+	if (!manager_init(conn)) {
+		error("manager_init failed");
+		exit(EXIT_FAILURE);
+	}
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
@@ -220,12 +222,11 @@ int main(int argc, char *argv[])
 
 	server_stop();
 
-fail:
 	dbus_connection_unref(conn);
 
 	g_main_loop_unref(main_loop);
 
 	closelog();
 
-	return 0;
+	exit(EXIT_SUCCESS);
 }
