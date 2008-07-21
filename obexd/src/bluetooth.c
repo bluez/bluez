@@ -165,7 +165,7 @@ static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_d
 		return TRUE;
 
 	alen = sizeof(raddr);
-	if (getpeername(nsk, (struct sockaddr *)&raddr, &alen) < 0) {
+	if (getpeername(nsk, (struct sockaddr *) &raddr, &alen) < 0) {
 		err = errno;
 		error("getpeername(): %s(%d)", strerror(err), err);
 		close(nsk);
@@ -173,7 +173,8 @@ static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_d
 	}
 
 	ba2str(&raddr.rc_bdaddr, address);
-	info("New connection from: %s channel: %d", address, raddr.rc_channel);
+	info("New connection from: %s, channel %u, fd %d", address,
+			raddr.rc_channel, nsk);
 
 	if (obex_session_start(nsk, server) < 0)
 		close(nsk);
