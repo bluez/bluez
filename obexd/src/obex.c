@@ -906,6 +906,7 @@ gint obex_session_start(gint fd, struct server *server)
 	g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			obex_handle_input, obex, obex_handle_destroy);
+	g_io_channel_set_close_on_unref(io, TRUE);
 	g_io_channel_unref(io);
 
 	return 0;
