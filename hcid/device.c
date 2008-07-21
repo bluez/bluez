@@ -68,12 +68,17 @@
 
 #define DEVICE_INTERFACE "org.bluez.Device"
 
+static struct btd_driver_data {
+	struct btd_device_driver *driver;
+	void *priv;
+};
+
 struct btd_device {
 	gchar		*address;
 	gchar		*path;
 	struct adapter	*adapter;
 	GSList		*uuids;
-	GSList		*drivers;
+	GSList		*drivers;		/* List of driver_data */
 	gboolean	temporary;
 	struct agent	*agent;
 	guint		disconn_timer;
@@ -557,9 +562,11 @@ void device_remove(DBusConnection *conn, struct btd_device *device)
 	debug("Removing device %s", path);
 
 	for (list = device->drivers; list; list = list->next) {
-		driver = (struct btd_device_driver *) list->data;
+		struct btd_driver_data *driver_data = list->data;
+		driver = driver_data->driver;
 
-		driver->remove(device);
+		driver->remove(driver, device);
+		g_free(driver_data);
 	}
 
 	g_dbus_unregister_interface(conn, path, DEVICE_INTERFACE);
@@ -623,15 +630,20 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *
 		}
 
 		if (records) {
-			err = driver->probe(device, records);
+			struct btd_driver_data *driver_data = g_new0(struct btd_driver_data, 1);
+
+			err = driver->probe(driver, device, records);
 			if (err < 0) {
 				error("probe failed for driver %s",
 							driver->name);
+
+				g_free(driver_data);
 				continue;
 			}
 
+			driver_data->driver = driver;
 			device->drivers = g_slist_append(device->drivers,
-								driver);
+								driver_data);
 		}
 	}
 
@@ -650,7 +662,8 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t 
 	debug("Remove drivers for %s", device->path);
 
 	for (list = device->drivers; list; list = list->next) {
-		struct btd_device_driver *driver = list->data;
+		struct btd_driver_data *driver_data = list->data;
+		struct btd_device_driver *driver = driver_data->driver;
 		const char **uuid;
 
 		for (uuid = driver->uuids; *uuid; uuid++) {
@@ -660,9 +673,12 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t 
 			if (!match)
 				continue;
 
-			driver->remove(device);
+			driver->remove(driver, device);
 			device->drivers = g_slist_remove(device->drivers,
-								driver);
+								driver_data);
+
+			g_free(driver_data);
+
 			sdp_record_t *rec = get_record(recs, *uuid);
 			delete_record(src, dst, rec->handle);
 		}

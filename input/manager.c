@@ -162,7 +162,8 @@ static int load_stored(const char *source, const char *destination,
 	return parse_stored_device_info(value, hidp);
 }
 
-int input_probe(struct btd_device *device, GSList *records)
+int input_probe(struct btd_device_driver *driver,
+		struct btd_device *device, GSList *records)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -196,7 +197,8 @@ done:
 	return input_device_register(connection, &src, &dst, &hidp, path);
 }
 
-void input_remove(struct btd_device *device)
+void input_remove(struct btd_device_driver *driver,
+			struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
 
@@ -205,7 +207,8 @@ void input_remove(struct btd_device *device)
 	input_device_unregister(connection, path);
 }
 
-int headset_input_probe(struct btd_device *device, GSList *records)
+int headset_input_probe(struct btd_device_driver *driver,
+			struct btd_device *device, GSList *records)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -240,7 +243,8 @@ int headset_input_probe(struct btd_device *device, GSList *records)
 	return fake_input_register(connection, &src, &dst, ch, path);
 }
 
-void headset_input_remove(struct btd_device *device)
+void headset_input_remove(struct btd_device_driver *driver,
+				struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
 

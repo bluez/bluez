@@ -98,17 +98,20 @@ static int network_probe(struct btd_device *device, uint16_t id)
 	return connection_register(path, &src, &dst, id);
 }
 
-static int panu_probe(struct btd_device *device, GSList *records)
+static int panu_probe(struct btd_device_driver *driver,
+			struct btd_device *device, GSList *records)
 {
 	return network_probe(device, BNEP_SVC_PANU);
 }
 
-static int gn_probe(struct btd_device *device, GSList *records)
+static int gn_probe(struct btd_device_driver *driver,
+			struct btd_device *device, GSList *records)
 {
 	return network_probe(device, BNEP_SVC_GN);
 }
 
-static int nap_probe(struct btd_device *device, GSList *records)
+static int nap_probe(struct btd_device_driver *driver,
+			struct btd_device *device, GSList *records)
 {
 	return network_probe(device, BNEP_SVC_NAP);
 }
@@ -122,17 +125,20 @@ static void network_remove(struct btd_device *device, uint16_t id)
 	connection_unregister(path, id);
 }
 
-static void panu_remove(struct btd_device *device)
+static void panu_remove(struct btd_device_driver *driver,
+			struct btd_device *device)
 {
 	network_remove(device, BNEP_SVC_PANU);
 }
 
-static void gn_remove(struct btd_device *device)
+static void gn_remove(struct btd_device_driver *driver,
+			struct btd_device *device)
 {
 	network_remove(device, BNEP_SVC_GN);
 }
 
-static void nap_remove(struct btd_device *device)
+static void nap_remove(struct btd_device_driver *driver,
+			struct btd_device *device)
 {
 	network_remove(device, BNEP_SVC_NAP);
 }

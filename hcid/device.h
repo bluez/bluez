@@ -48,8 +48,10 @@ uint8_t device_get_auth(struct btd_device *device);
 struct btd_device_driver {
 	const char *name;
 	const char **uuids;
-	int (*probe) (struct btd_device *device, GSList *records);
-	void (*remove) (struct btd_device *device);
+	int (*probe) (struct btd_device_driver *driver,
+			struct btd_device *device, GSList *records);
+	void (*remove) (struct btd_device_driver *driver,
+			struct btd_device *device);
 };
 
 int btd_register_device_driver(struct btd_device_driver *driver);
