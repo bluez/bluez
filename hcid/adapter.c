@@ -74,6 +74,11 @@
 
 static DBusConnection *connection = NULL;
 
+struct record_list {
+  sdp_list_t *recs;
+  const gchar *addr;
+};
+
 struct mode_req {
 	struct adapter	*adapter;
 	DBusConnection	*conn;		/* Connection reference */
@@ -2115,24 +2120,67 @@ static int active_conn_append(GSList **list, bdaddr_t *bdaddr,
 	return 0;
 }
 
+static void create_stored_records_from_keys(char *key, char *value,
+						void *user_data)
+{
+	struct record_list *rec_list = user_data;
+	const gchar *addr = rec_list->addr;
+	sdp_record_t *rec;
+	int size, i, len;
+	uint8_t *pdata;
+	char tmp[3] = "";
+
+	if (strstr(key, addr) == NULL)
+		return;
+
+	size = strlen(value)/2;
+	pdata = g_malloc0(size);
+
+	for (i = 0; i < size; i++) {
+		 memcpy(tmp, value + (i*2), 2);
+		 pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	rec = sdp_extract_pdu(pdata, &len);
+	free(pdata);
+
+	rec_list->recs = sdp_list_append(rec_list->recs, rec);
+}
+
 static void create_stored_device_from_profiles(char *key, char *value,
 						void *user_data)
 {
+	char filename[PATH_MAX + 1];
 	struct adapter *adapter = user_data;
 	GSList *uuids = bt_string2list(value);
 	struct btd_device *device;
+	const gchar *src;
+	struct record_list rec_list;
 
 	if (g_slist_find_custom(adapter->devices,
 				key, (GCompareFunc) device_address_cmp))
 		return;
 
 	device = device_create(connection, adapter, key);
-	if (device) {
-		device_set_temporary(device, FALSE);
-		adapter->devices = g_slist_append(adapter->devices, device);
-		device_probe_drivers(device, uuids);
-		g_slist_free(uuids);
-	}
+	if (!device)
+		return;
+
+	device_set_temporary(device, FALSE);
+	adapter->devices = g_slist_append(adapter->devices, device);
+
+	src = adapter->address;
+	rec_list.addr = device_get_address(device);
+	rec_list.recs = NULL;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
+	textfile_foreach(filename, create_stored_records_from_keys, &rec_list);
+
+	device_probe_drivers(device, uuids, rec_list.recs);
+
+	if (rec_list.recs != NULL)
+		sdp_list_free(rec_list.recs, (sdp_free_func_t) sdp_record_free);
+
+	g_slist_free(uuids);
 }
 
 static void create_stored_device_from_linkkeys(char *key, char *value,

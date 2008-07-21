@@ -572,14 +572,35 @@ gint device_address_cmp(struct btd_device *device, const gchar *address)
 	return strcasecmp(device->address, address);
 }
 
-static int cmp_by_name(const void *data, const void *user_data)
+sdp_record_t *get_record(sdp_list_t *recs, const char *uuid)
 {
-	const struct btd_device_driver *dev_driver = data, *driver = user_data;
+	sdp_list_t *seq;
 
-	return (strcmp(dev_driver->name, driver->name));
+	for (seq = recs; seq; seq = seq->next) {
+		sdp_record_t *rec = (sdp_record_t *) seq->data;
+		sdp_list_t *svcclass = NULL;
+		char *uuid_str;
+
+		if (sdp_get_service_classes(rec, &svcclass) < 0)
+			continue;
+
+		/* Extract the uuid */
+		uuid_str = bt_uuid2string(svcclass->data);
+		if (!uuid_str)
+			continue;
+
+		if (!strcasecmp(uuid_str, uuid)) {
+			sdp_list_free(svcclass, free);
+			free(uuid_str);
+			return rec;
+		}
+		sdp_list_free(svcclass, free);
+		free(uuid_str);
+	}
+	return NULL;
 }
 
-void device_probe_drivers(struct btd_device *device, GSList *uuids)
+void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *recs)
 {
 	GSList *list;
 	const char **uuid;
@@ -589,21 +610,20 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids)
 
 	for (list = drivers; list; list = list->next) {
 		struct btd_device_driver *driver = list->data;
-		gboolean do_probe = FALSE;
+		GSList *records = NULL;
 
 		for (uuid = driver->uuids; *uuid; uuid++) {
 			GSList *match = g_slist_find_custom(uuids, *uuid,
 					(GCompareFunc) strcasecmp);
 			if (match) {
-				do_probe = TRUE;
-				break;
+				sdp_record_t *rec = get_record(recs, *uuid);
+
+				records = g_slist_append(records, rec);
 			}
 		}
 
-		if (do_probe == TRUE && !g_slist_find_custom(device->drivers,
-					driver, (GCompareFunc) cmp_by_name)) {
-
-			err = driver->probe(device);
+		if (records) {
+			err = driver->probe(device, records);
 			if (err < 0) {
 				error("probe failed for driver %s",
 							driver->name);
@@ -620,8 +640,11 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids)
 				list->data, (GCompareFunc) strcmp);
 }
 
-void device_remove_drivers(struct btd_device *device, GSList *uuids)
+void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *recs)
 {
+	struct adapter *adapter = device_get_adapter(device);
+	const gchar *src = adapter->address;
+	const gchar *dst = device_get_address(device);
 	GSList *list;
 
 	debug("Remove drivers for %s", device->path);
@@ -640,6 +663,8 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids)
 			driver->remove(device);
 			device->drivers = g_slist_remove(device->drivers,
 								driver);
+			sdp_record_t *rec = get_record(recs, *uuid);
+			delete_record(src, dst, rec->handle);
 		}
 	}
 
@@ -760,6 +785,9 @@ static void services_changed(struct browse_req *req)
 static void update_services(struct browse_req *req, sdp_list_t *recs)
 {
 	struct btd_device *device = req->device;
+	struct adapter *adapter = device_get_adapter(device);
+	const gchar *src = adapter->address;
+	const gchar *dst = device_get_address(device);
 	sdp_list_t *seq;
 
 	for (seq = recs; seq; seq = seq->next) {
@@ -773,6 +801,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 
 		if (sdp_get_service_classes(rec, &svcclass) < 0)
 			continue;
+		store_record(src, dst, rec);
 
 		/* Extract the first element and skip the remainning */
 		uuid_str = bt_uuid2string(svcclass->data);
@@ -846,11 +875,11 @@ probe:
 
 	/* Probe matching drivers for services added */
 	if (req->uuids_added)
-		device_probe_drivers(device, req->uuids_added);
+		device_probe_drivers(device, req->uuids_added, recs);
 
 	/* Remove drivers for services removed */
 	if (req->uuids_removed)
-		device_remove_drivers(device, req->uuids_removed);
+		device_remove_drivers(device, req->uuids_removed, recs);
 
 	/* Store the device's profiles in the filesystem */
 	store(device);

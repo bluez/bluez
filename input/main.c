@@ -76,7 +76,7 @@ static GDBusSignalTable input_signals[] = {
 
 static DBusConnection *conn;
 
-static int input_probe(struct btd_device *device)
+static int input_probe(struct btd_device *device, GSList *records)
 {
 	const gchar *path = device_get_path(device);
 	DBG("path %s", path);

@@ -97,7 +97,7 @@ static GDBusMethodTable serial_methods[] = {
 
 static DBusConnection *conn;
 
-static int serial_probe(struct btd_device *device)
+static int serial_probe(struct btd_device *device, GSList *records)
 {
 	const gchar *path = device_get_path(device);
 	DBG("path %s", path);

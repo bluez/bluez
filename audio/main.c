@@ -43,7 +43,7 @@
 
 static DBusConnection *conn;
 
-static int headset_probe(struct btd_device *device)
+static int headset_probe(struct btd_device *device, GSList *records)
 {
 	const gchar *path = device_get_path(device);
 	DBG("path %s", path);
@@ -64,7 +64,7 @@ static struct btd_device_driver headset_driver = {
 	.remove	= headset_remove,
 };
 
-static int a2dp_probe(struct btd_device *device)
+static int a2dp_probe(struct btd_device *device, GSList *records)
 {
 	const gchar *path = device_get_path(device);
 	DBG("path %s", path);
@@ -85,7 +85,7 @@ static struct btd_device_driver a2dp_driver = {
 	.remove	= a2dp_remove,
 };
 
-static int audio_probe(struct btd_device *device)
+static int audio_probe(struct btd_device *device, GSList *records)
 {
 	const gchar *path = device_get_path(device);
 	DBG("path %s", path);

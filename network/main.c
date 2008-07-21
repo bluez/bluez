@@ -83,7 +83,7 @@ static GDBusSignalTable network_signals[] = {
 
 static DBusConnection *conn;
 
-static int network_probe(struct btd_device *device)
+static int network_probe(struct btd_device *device, GSList *records)
 {
 	const gchar *path = device_get_path(device);
 	DBG("path %s", path);
