@@ -559,9 +559,8 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	dbus_pending_call_cancel(call);
 	dbus_pending_call_unref(call);
 
-	if (!agent || !agent->new_name) {
+	if (!agent || !agent->new_name)
 		return -EPERM;
-	}
 
 	*new_folder = agent->new_folder;
 	*new_name = agent->new_name;

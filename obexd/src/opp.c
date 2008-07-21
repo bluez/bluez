@@ -70,7 +70,7 @@ gint opp_chkput(obex_t *obex, obex_object_t *obj)
 					os->name ? os->name : "",
 					os->type ? os->type : "",
 					os->size, time, &new_folder,
-				       	&new_name);
+					&new_name);
 
 	if (ret < 0)
 		return -EPERM;
@@ -151,6 +151,4 @@ void opp_get(obex_t *obex, obex_object_t *obj)
 
 fail:
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-
-	return;
 }

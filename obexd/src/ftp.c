@@ -128,6 +128,7 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 	}
 
 	dp = opendir(os->current_folder);
+
 	while (dp && (ep = readdir(dp))) {
 		gchar *name;
 		gchar *fullname;
@@ -158,11 +159,13 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 			g_free(name);
 			continue;
 		}
+
 		g_free(name);
 
 		listing = g_string_append(listing, line);
 		g_free(line);
 	}
+
 	closedir(dp);
 
 	listing = g_string_append(listing, FL_BODY_END);
@@ -182,9 +185,8 @@ static gboolean get_capability(struct obex_session *os, guint32 *size)
 	if (os->server->capability == NULL)
 		return FALSE;
 
-	if (os->server->capability[0] != '!') {
+	if (os->server->capability[0] != '!')
 		return os_prepare_get(os, os->server->capability, size);
-	}
 
 	ret = g_spawn_command_line_sync(os->server->capability + 1,
 					&buf, NULL, &exit, &gerr);
@@ -269,8 +271,6 @@ void ftp_get(obex_t *obex, obex_object_t *obj)
 
 fail:
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-
-	return;
 }
 
 static gint ftp_delete(struct obex_session *os)

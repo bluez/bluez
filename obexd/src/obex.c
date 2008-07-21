@@ -227,7 +227,6 @@ static void cmd_connect(struct obex_session *os,
 			OBEX_FL_FIT_ONE_PACKET);
 
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
-
 }
 
 static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)
@@ -354,27 +353,26 @@ static void cmd_setpath(struct obex_session *os,
 	}
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
-		if (hi == OBEX_HDR_NAME) {
-			if (os->name) {
-				debug("Ignoring multiple name headers");
-				break;
-			}
+		if (hi != OBEX_HDR_NAME)
+			continue;
 
-			/*
-			 * This is because OBEX_UnicodeToChar() accesses
-			 * the string even if its size is zero
-			 */
-			if (hlen == 0) {
-				os->name = g_strdup("");
-				break;
-			}
-
-			os->name = g_convert((const gchar *) hd.bs, hlen,
-					"UTF8", "UTF16BE", NULL, NULL, NULL);
-
-			debug("Set path name: %s", os->name);
+		if (os->name) {
+			debug("Ignoring multiple name headers");
 			break;
 		}
+
+		/* This is because OBEX_UnicodeToChar() accesses the string
+		   even if its size is zero */
+		if (hlen == 0) {
+			os->name = g_strdup("");
+			break;
+		}
+
+		os->name = g_convert((const gchar *) hd.bs, hlen,
+				"UTF8", "UTF16BE", NULL, NULL, NULL);
+
+		debug("Set path name: %s", os->name);
+		break;
 	}
 
 	os->cmds->setpath(obex, obj);
