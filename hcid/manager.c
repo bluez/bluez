@@ -212,6 +212,7 @@ static DBusMessage *default_adapter(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	struct adapter *adapter;
+	const gchar *path;
 
 	adapter = manager_find_adapter_by_id(default_adapter_id);
 	if (!adapter)
@@ -221,7 +222,9 @@ static DBusMessage *default_adapter(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
-	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &adapter->path,
+	path = adapter_get_path(adapter);
+
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
 
 	return reply;
@@ -235,6 +238,7 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 	struct hci_dev_info di;
 	const char *pattern;
 	int dev_id;
+	const gchar *path;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 							DBUS_TYPE_INVALID))
@@ -264,7 +268,9 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
-	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &adapter->path,
+	path = adapter_get_path(adapter);
+
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
 
 	return reply;
@@ -292,6 +298,7 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 		struct adapter *adapter = l->data;
 		struct hci_dev_info di;
 		dev_id = adapter_get_dev_id(adapter);
+		const gchar *path = adapter_get_path(adapter);
 
 		if (hci_devinfo(dev_id, &di) < 0)
 			continue;
@@ -300,7 +307,7 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 			continue;
 
 		dbus_message_iter_append_basic(&array_iter,
-					DBUS_TYPE_OBJECT_PATH, &adapter->path);
+					DBUS_TYPE_OBJECT_PATH, &path);
 	}
 
 	dbus_message_iter_close_container(&iter, &array_iter);
@@ -349,8 +356,9 @@ static gint adapter_path_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct adapter *adapter = a;
 	const char *path = b;
+	const gchar *adapter_path = adapter_get_path(adapter);
 
-	return strcmp(adapter->path, path);
+	return strcmp(adapter_path, path);
 }
 
 static gint adapter_address_cmp(gconstpointer a, gconstpointer b)
@@ -399,9 +407,11 @@ struct adapter *manager_find_adapter_by_id(int id)
 
 static void manager_add_adapter(struct adapter *adapter)
 {
+	const gchar *path = adapter_get_path(adapter);
+
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE, "AdapterAdded",
-			DBUS_TYPE_OBJECT_PATH, &adapter->path,
+			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 
 	adapters = g_slist_append(adapters, adapter);
@@ -410,10 +420,11 @@ static void manager_add_adapter(struct adapter *adapter)
 static void manager_remove_adapter(struct adapter *adapter)
 {
 	uint16_t dev_id = adapter_get_dev_id(adapter);
+	const gchar *path = adapter_get_path(adapter);
 
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE, "AdapterRemoved",
-			DBUS_TYPE_OBJECT_PATH, &adapter->path,
+			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 
 	if ((default_adapter_id == dev_id || default_adapter_id < 0)) {
@@ -429,17 +440,20 @@ static void manager_remove_adapter(struct adapter *adapter)
 int manager_register_adapter(int id)
 {
 	struct adapter *adapter = adapter_create(id);
+	const gchar *path;
 
 	if(!adapter)
 		return -1;
 
-	if (!adapter_init(connection, adapter->path, adapter)) {
-		error("Adapter interface init failed on path %s", adapter->path);
+	path = adapter_get_path(adapter);
+
+	if (!adapter_init(connection, path, adapter)) {
+		error("Adapter interface init failed on path %s", path);
 		g_free(adapter);
 		return -1;
 	}
 
-	__probe_servers(adapter->path);
+	__probe_servers(path);
 
 	manager_add_adapter(adapter);
 
@@ -449,26 +463,29 @@ int manager_register_adapter(int id)
 int manager_unregister_adapter(int id)
 {
 	struct adapter *adapter;
+	const gchar *path;
 
 	adapter = manager_find_adapter_by_id(id);
 	if (!adapter)
 		return -1;
 
-	info("Unregister path: %s", adapter->path);
+	path = adapter_get_path(adapter);
 
-	__remove_servers(adapter->path);
+	info("Unregister path: %s", path);
+
+	__remove_servers(path);
 
 	adapter_stop(adapter);
 
 	manager_remove_adapter(adapter);
 
-	if (!adapter_cleanup(connection, adapter->path)) {
+	if (!adapter_cleanup(connection, path)) {
 		error("Failed to unregister adapter interface on %s object",
-			adapter->path);
+			path);
 		return -1;
 	}
 
-	g_free(adapter->path);
+	g_free(path);
 	g_free(adapter);
 
 	return 0;
@@ -516,12 +533,13 @@ int manager_get_default_adapter()
 void manager_set_default_adapter(int id)
 {
 	struct adapter *adapter = manager_find_adapter_by_id(id);
+	const gchar *path = adapter_get_path(adapter);
 
 	default_adapter_id = id;
 
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE,
 			"DefaultAdapterChanged",
-			DBUS_TYPE_OBJECT_PATH, &adapter->path,
+			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 }

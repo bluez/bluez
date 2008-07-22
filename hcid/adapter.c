@@ -2565,3 +2565,11 @@ uint16_t adapter_get_dev_id(struct adapter *adapter)
 {
 	return adapter->dev_id;
 }
+
+const gchar *adapter_get_path(struct adapter *adapter)
+{
+	if (!adapter)
+		return NULL;
+
+	return adapter->path;
+}

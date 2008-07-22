@@ -264,6 +264,7 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 static void adapter_mode_changed(struct adapter *adapter, uint8_t scan_enable)
 {
 	const char *mode;
+	const gchar *path = adapter_get_path(adapter);
 
 	adapter->scan_enable = scan_enable;
 
@@ -300,7 +301,7 @@ static void adapter_mode_changed(struct adapter *adapter, uint8_t scan_enable)
 		return;
 	}
 
-	dbus_connection_emit_property_changed(connection, adapter->path,
+	dbus_connection_emit_property_changed(connection, path,
 					ADAPTER_INTERFACE, "Mode",
 					DBUS_TYPE_STRING, &mode);
 }
@@ -705,6 +706,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	gboolean paired = TRUE;
 	struct pending_auth_info *auth;
 	const gchar *dev_path;
+	const gchar *path;
 
 	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
 
@@ -741,8 +743,9 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 		device_set_temporary(device, FALSE);
 		dev_path = device_get_path(device);
+		path = adapter_get_path(adapter);
 
-		g_dbus_emit_signal(connection, adapter->path,
+		g_dbus_emit_signal(connection, path,
 				ADAPTER_INTERFACE, "DeviceCreated",
 				DBUS_TYPE_OBJECT_PATH, &dev_path,
 				DBUS_TYPE_INVALID);
@@ -796,6 +799,7 @@ cleanup:
 void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	struct adapter *adapter;
+	const gchar *path;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -815,11 +819,13 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	if (!adapter->discov_requestor)
 		adapter->discov_type &= ~RESOLVE_NAME;
 
-	dbus_connection_emit_property_changed(connection, adapter->path,
+	path = adapter_get_path(adapter);
+
+	dbus_connection_emit_property_changed(connection, path,
 			ADAPTER_INTERFACE, "PeriodicDiscovery",
 			DBUS_TYPE_BOOLEAN, &adapter->discov_active);
 
-	g_dbus_emit_signal(connection, adapter->path,
+	g_dbus_emit_signal(connection, path,
 			ADAPTER_INTERFACE, "DiscoveryStarted",
 			DBUS_TYPE_INVALID);
 }
@@ -922,6 +928,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	struct adapter *adapter;
 	struct remote_dev_info *dev;
 	bdaddr_t tmp;
+	const gchar *path;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -929,11 +936,13 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		return;
 	}
 
+	path = adapter_get_path(adapter);
+
 	/* Out of range verification */
 	if (adapter->pdiscov_active && !adapter->discov_active) {
 		GSList *l;
 
-		send_out_of_range(adapter->path, adapter->oor_devices);
+		send_out_of_range(path, adapter->oor_devices);
 
 		g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
 		g_slist_free(adapter->oor_devices);
@@ -974,7 +983,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		return;		/* skip - there is name to resolve */
 
 	if (adapter->discov_active) {
-		g_dbus_emit_signal(connection, adapter->path,
+		g_dbus_emit_signal(connection, path,
 				ADAPTER_INTERFACE, "DiscoveryCompleted",
 				DBUS_TYPE_INVALID);
 
@@ -1010,6 +1019,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 {
 	struct adapter *adapter;
+	const gchar *path;
 
 	/* Don't send the signal if the cmd failed */
 	if (status)
@@ -1027,7 +1037,9 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 	if (!adapter->pdiscov_requestor)
 		adapter->discov_type &= ~RESOLVE_NAME;
 
-	dbus_connection_emit_property_changed(connection, adapter->path,
+	path = adapter_get_path(adapter);
+
+	dbus_connection_emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "PeriodicDiscovery",
 				DBUS_TYPE_BOOLEAN, &adapter->pdiscov_active);
 }
@@ -1035,6 +1047,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 {
 	struct adapter *adapter;
+	const gchar *path;
 
 	/* Don't send the signal if the cmd failed */
 	if (status)
@@ -1068,10 +1081,12 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 		adapter->pdiscov_requestor = NULL;
 	}
 
-	 /* workaround: inquiry completed is not sent when exiting from
+	path = adapter_get_path(adapter);
+
+	/* workaround: inquiry completed is not sent when exiting from
 	  * periodic inquiry */
 	if (adapter->discov_active) {
-		g_dbus_emit_signal(connection, adapter->path,
+		g_dbus_emit_signal(connection, path,
 				ADAPTER_INTERFACE, "DiscoveryCompleted",
 				DBUS_TYPE_INVALID);
 
@@ -1079,7 +1094,7 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	}
 
 	/* Send discovery completed signal if there isn't name to resolve */
-	dbus_connection_emit_property_changed(connection, adapter->path,
+	dbus_connection_emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "PeriodicDiscovery",
 				DBUS_TYPE_BOOLEAN, &adapter->discov_active);
 }
@@ -1166,6 +1181,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	dbus_int16_t tmp_rssi = rssi;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
+	const gchar *path;
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -1239,11 +1255,13 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		}
 	}
 
+	path = adapter_get_path(adapter);
+
 	if (name) {
 		if (name_type != 0x08)
 			name_status = NAME_SENT;
 
-		emit_device_found(adapter->path, paddr,
+		emit_device_found(path, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
 				"Class", DBUS_TYPE_UINT32, &class,
 				"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
@@ -1252,7 +1270,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 		g_free(name);
 	} else {
-		emit_device_found(adapter->path, paddr,
+		emit_device_found(path, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
 				"Class", DBUS_TYPE_UINT32, &class,
 				"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
@@ -1307,6 +1325,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	const gchar *dev_path;
+	const gchar *path;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1365,8 +1384,10 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 			adapter->discov_type &= ~RESOLVE_NAME;
 	}
 
+	path = adapter_get_path(adapter);
+
 	if (adapter->discov_active) {
-		g_dbus_emit_signal(connection, adapter->path,
+		g_dbus_emit_signal(connection, path,
 				ADAPTER_INTERFACE, "DiscoveryCompleted",
 				DBUS_TYPE_INVALID);
 
@@ -1762,6 +1783,7 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 	int dd;
 	uint8_t mode;
 	uint16_t dev_id;
+	const gchar *path;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1770,16 +1792,17 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 	}
 
 	dev_id = adapter_get_dev_id(adapter);
+	path = adapter_get_path(adapter);
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("HCI adapter open failed: %s", adapter->path);
+		error("HCI adapter open failed: %s", path);
 		return;
 	}
 
 	if (hci_read_simple_pairing_mode(dd, &mode, 1000) < 0) {
 		error("Can't read class of adapter on %s: %s(%d)",
-					adapter->path, strerror(errno), errno);
+					path, strerror(errno), errno);
 		hci_close_dev(dd);
 		return;
 	}
