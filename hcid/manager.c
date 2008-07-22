@@ -277,6 +277,7 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 	DBusMessageIter array_iter;
 	DBusMessage *reply;
 	GSList *l;
+	uint16_t dev_id;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -290,8 +291,9 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 	for (l = adapters; l; l = l->next) {
 		struct adapter *adapter = l->data;
 		struct hci_dev_info di;
+		dev_id = adapter_get_dev_id(adapter);
 
-		if (hci_devinfo(adapter->dev_id, &di) < 0)
+		if (hci_devinfo(dev_id, &di) < 0)
 			continue;
 
 		if (hci_test_bit(HCI_RAW, &di.flags))
@@ -338,8 +340,9 @@ static gint adapter_id_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct adapter *adapter = a;
 	uint16_t id = GPOINTER_TO_UINT(b);
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
-	return adapter->dev_id == id ? 0 : -1;
+	return dev_id == id ? 0 : -1;
 }
 
 static gint adapter_path_cmp(gconstpointer a, gconstpointer b)
@@ -406,12 +409,14 @@ static void manager_add_adapter(struct adapter *adapter)
 
 static void manager_remove_adapter(struct adapter *adapter)
 {
+	uint16_t dev_id = adapter_get_dev_id(adapter);
+
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE, "AdapterRemoved",
 			DBUS_TYPE_OBJECT_PATH, &adapter->path,
 			DBUS_TYPE_INVALID);
 
-	if ((default_adapter_id == adapter->dev_id || default_adapter_id < 0)) {
+	if ((default_adapter_id == dev_id || default_adapter_id < 0)) {
 		int new_default = hci_get_route(NULL);
 
 		if (new_default >= 0)

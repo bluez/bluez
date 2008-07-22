@@ -171,6 +171,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	uint32_t class;
 	int i;
 	GSList *l;
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -204,7 +205,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	}
 
 	/* Alias */
-	if (get_device_alias(adapter->dev_id, &dst, buf, sizeof(buf)) > 0) {
+	if (get_device_alias(dev_id, &dst, buf, sizeof(buf)) > 0) {
 		ptr = buf;
 		dbus_message_iter_append_dict_entry(&dict, "Alias",
 				DBUS_TYPE_STRING, &ptr);
@@ -243,7 +244,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	g_free(uuids);
 
 	/* Adapter */
-	snprintf(path, sizeof(path), "/hci%d", adapter->dev_id);
+	snprintf(path, sizeof(path), "/hci%d", dev_id);
 	ppath = path;
 	dbus_message_iter_append_dict_entry(&dict, "Adapter",
 			DBUS_TYPE_OBJECT_PATH, &ppath);
@@ -271,6 +272,7 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 	bdaddr_t bdaddr;
 	int ecode;
 	char *str, filename[PATH_MAX + 1];
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	str2ba(device->address, &bdaddr);
 
@@ -282,7 +284,7 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 		ecode = remove_device_alias(adapter->address, device->address);
 	} else {
 		str = g_strdup(alias);
-		ecode = set_device_alias(adapter->dev_id, &bdaddr, alias);
+		ecode = set_device_alias(dev_id, &bdaddr, alias);
 	}
 
 	if (ecode < 0)
@@ -454,6 +456,7 @@ static gboolean disconnect_timeout(gpointer user_data)
 	disconnect_cp cp;
 	bdaddr_t bda;
 	int dd;
+	uint16_t dev_id = adapter_get_dev_id(device->adapter);
 
 	device->disconn_timer = 0;
 
@@ -464,7 +467,7 @@ static gboolean disconnect_timeout(gpointer user_data)
 		return FALSE;
 
 	ci = l->data;
-	dd = hci_open_dev(device->adapter->dev_id);
+	dd = hci_open_dev(dev_id);
 	if (dd < 0)
 		goto fail;
 
@@ -527,6 +530,7 @@ struct btd_device *device_create(DBusConnection *conn, struct adapter *adapter,
 {
 	gchar *address_up;
 	struct btd_device *device;
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
@@ -534,7 +538,7 @@ struct btd_device *device_create(DBusConnection *conn, struct adapter *adapter,
 
 	address_up = g_ascii_strup(address, -1);
 	device->path = g_strdup_printf("/hci%d/dev_%s",
-				adapter->dev_id, address_up);
+				dev_id, address_up);
 	g_strdelimit(device->path, ":", '_');
 	g_free(address_up);
 

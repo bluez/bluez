@@ -2560,3 +2560,8 @@ struct adapter *adapter_create(int id)
 
 	return adapter;
 }
+
+uint16_t adapter_get_dev_id(struct adapter *adapter)
+{
+	return adapter->dev_id;
+}

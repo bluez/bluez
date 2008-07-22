@@ -183,6 +183,7 @@ void hcid_dbus_unregister(void)
 	DBusConnection *conn = get_dbus_connection();
 	char **children;
 	int i;
+	uint16_t dev_id;
 
 	if (!conn || !dbus_connection_get_is_connected(conn))
 		return;
@@ -204,7 +205,8 @@ void hcid_dbus_unregister(void)
 		if (!adapter)
 			continue;
 
-		manager_unregister_adapter(adapter->dev_id);
+		dev_id = adapter_get_dev_id(adapter);
+		manager_unregister_adapter(dev_id);
 	}
 
 	dbus_free_string_array(children);

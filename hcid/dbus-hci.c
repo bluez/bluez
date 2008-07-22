@@ -322,14 +322,15 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	int dev;
 	struct pending_auth_info *auth;
 	const gchar *destination = device_get_address(device);
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
 		return;
 
-	dev = hci_open_dev(adapter->dev_id);
+	dev = hci_open_dev(dev_id);
 	if (dev < 0) {
-		error("hci_open_dev(%d): %s (%d)", adapter->dev_id,
+		error("hci_open_dev(%d): %s (%d)", dev_id,
 				strerror(errno), errno);
 		return;
 	}
@@ -417,14 +418,15 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	int dd;
 	struct pending_auth_info *auth;
 	const gchar *destination = device_get_address(device);
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
 		return;
 
-	dd = hci_open_dev(adapter->dev_id);
+	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("Unable to open hci%d", adapter->dev_id);
+		error("Unable to open hci%d", dev_id);
 		return;
 	}
 
@@ -458,14 +460,15 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	int dd;
 	struct pending_auth_info *auth;
 	const gchar *destination = device_get_address(device);
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
 		return;
 
-	dd = hci_open_dev(adapter->dev_id);
+	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("Unable to open hci%d", adapter->dev_id);
+		error("Unable to open hci%d", dev_id);
 		return;
 	}
 
@@ -536,6 +539,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	char addr[18];
 	uint8_t type;
 	struct pending_auth_info *auth;
+	uint16_t dev_id;
 
 	adapter = manager_find_adapter(sba);
 	if (!adapter) {
@@ -543,12 +547,14 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -1;
 	}
 
+	dev_id = adapter_get_dev_id(adapter);
+
 	if (get_auth_requirements(sba, dba, &type) < 0) {
 		int dd;
 
-		dd = hci_open_dev(adapter->dev_id);
+		dd = hci_open_dev(dev_id);
 		if (dd < 0) {
-			error("Unable to open hci%d", adapter->dev_id);
+			error("Unable to open hci%d", dev_id);
 			return -1;
 		}
 
@@ -572,9 +578,9 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	if (!(device_get_auth(device) & 0x01) && !(type & 0x01)) {
 		int dd;
 
-		dd = hci_open_dev(adapter->dev_id);
+		dd = hci_open_dev(dev_id);
 		if (dd < 0) {
-			error("Unable to open hci%d", adapter->dev_id);
+			error("Unable to open hci%d", dev_id);
 			return -1;
 		}
 
@@ -826,6 +832,7 @@ int found_device_req_name(struct adapter *adapter)
 	struct remote_dev_info match;
 	GSList *l;
 	int dd, req_sent = 0;
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	/* get the next remote address */
 	if (!adapter->found_devices)
@@ -840,7 +847,7 @@ int found_device_req_name(struct adapter *adapter)
 	if (!l)
 		return -ENODATA;
 
-	dd = hci_open_dev(adapter->dev_id);
+	dd = hci_open_dev(dev_id);
 	if (dd < 0)
 		return -errno;
 
@@ -1428,6 +1435,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	struct pending_auth_info *auth;
 	const gchar *destination;
 	const gchar *dev_path;
+	uint16_t dev_id;
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -1450,8 +1458,10 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 	ba2str(&dev->bdaddr, peer_addr);
 
+	dev_id = adapter_get_dev_id(adapter);
+
 	/* clean pending HCI cmds */
-	hci_req_queue_remove(adapter->dev_id, &dev->bdaddr);
+	hci_req_queue_remove(dev_id, &dev->bdaddr);
 
 	/* Cancel D-Bus/non D-Bus requests */
 	auth = adapter_find_auth_request(adapter, &dev->bdaddr);
@@ -1570,12 +1580,13 @@ gboolean discov_timeout_handler(void *data)
 	uint8_t scan_enable = adapter->scan_enable;
 	uint8_t status = 0;
 	gboolean retval = TRUE;
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	scan_enable &= ~SCAN_INQUIRY;
 
-	dd = hci_open_dev(adapter->dev_id);
+	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("HCI device open failed: hci%d", adapter->dev_id);
+		error("HCI device open failed: hci%d", dev_id);
 		return TRUE;
 	}
 
@@ -1590,7 +1601,7 @@ gboolean discov_timeout_handler(void *data)
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
 		error("Sending write scan enable command to hci%d failed: %s (%d)",
-				adapter->dev_id, strerror(errno), errno);
+				dev_id, strerror(errno), errno);
 		goto failed;
 	}
 	if (status) {
@@ -1663,6 +1674,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	read_scan_enable_rp rp;
 	struct hci_request rq;
 	int dd = -1;
+	uint16_t dev_id;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1670,9 +1682,11 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		return;
 	}
 
-	dd = hci_open_dev(adapter->dev_id);
+	dev_id = adapter_get_dev_id(adapter);
+
+	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("HCI device open failed: hci%d", adapter->dev_id);
+		error("HCI device open failed: hci%d", dev_id);
 		return;
 	}
 
@@ -1713,6 +1727,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 	struct adapter *adapter;
 	int dd;
 	uint8_t cls[3];
+	uint16_t dev_id;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1720,15 +1735,17 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 		return;
 	}
 
-	dd = hci_open_dev(adapter->dev_id);
+	dev_id = adapter_get_dev_id(adapter);
+
+	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
-		error("HCI device open failed: hci%d", adapter->dev_id);
+		error("HCI device open failed: hci%d", dev_id);
 		return;
 	}
 
 	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
 		error("Can't read class of device on hci%d: %s (%d)",
-			adapter->dev_id, strerror(errno), errno);
+			dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
 		return;
 	}
@@ -1744,6 +1761,7 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 	struct adapter *adapter;
 	int dd;
 	uint8_t mode;
+	uint16_t dev_id;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1751,7 +1769,9 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 		return;
 	}
 
-	dd = hci_open_dev(adapter->dev_id);
+	dev_id = adapter_get_dev_id(adapter);
+
+	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		error("HCI adapter open failed: %s", adapter->path);
 		return;
@@ -1894,11 +1914,12 @@ int cancel_discovery(struct adapter *adapter)
 	struct remote_dev_info *dev, match;
 	GSList *l;
 	int dd, err = 0;
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	if (!adapter->discov_active)
 		goto cleanup;
 
-	dd = hci_open_dev(adapter->dev_id);
+	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		err = -ENODEV;
 		goto cleanup;
@@ -1975,11 +1996,12 @@ int cancel_periodic_discovery(struct adapter *adapter)
 	struct remote_dev_info *dev, match;
 	GSList *l;
 	int dd, err = 0;
+	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	if (!adapter->pdiscov_active)
 		goto cleanup;
 
-	dd = hci_open_dev(adapter->dev_id);
+	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		err = -ENODEV;
 		goto cleanup;
