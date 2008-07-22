@@ -324,6 +324,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	struct pending_auth_info *auth;
 	const gchar *destination = device_get_address(device);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
+	const gchar *source = adapter_get_address(adapter);
 
 	/* No need to reply anything if the authentication already failed */
 	if (adapter->bonding && adapter->bonding->hci_status)
@@ -336,7 +337,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 		return;
 	}
 
-	str2ba(adapter->address, &sba);
+	str2ba(source, &sba);
 	str2ba(destination, &dba);
 
 	auth = adapter_find_auth_request(adapter, &dba);

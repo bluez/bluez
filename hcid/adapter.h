@@ -177,3 +177,4 @@ struct pending_auth_info *adapter_new_auth_request(struct adapter *adapter,
 struct adapter *adapter_create(int id);
 uint16_t adapter_get_dev_id(struct adapter *adapter);
 const gchar *adapter_get_path(struct adapter *adapter);
+const gchar *adapter_get_address(struct adapter *adapter);

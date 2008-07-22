@@ -2573,3 +2573,11 @@ const gchar *adapter_get_path(struct adapter *adapter)
 
 	return adapter->path;
 }
+
+const gchar *adapter_get_address(struct adapter *adapter)
+{
+	if (!adapter)
+		return NULL;
+
+	return adapter->address;
+}

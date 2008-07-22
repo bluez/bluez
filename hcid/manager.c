@@ -105,8 +105,9 @@ int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_
 	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
 	char filename[PATH_MAX + 1], addr[18], *tmp;
 	int err;
+	const gchar *source = adapter_get_address(adapter);
 
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "aliases");
+	create_name(filename, PATH_MAX, STORAGEDIR, source, "aliases");
 
 	ba2str(bdaddr, addr);
 
@@ -124,9 +125,10 @@ int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_
 int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
 {
 	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
+	const gchar *source = adapter_get_address(adapter);
 	char filename[PATH_MAX + 1], addr[18];
 
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "aliases");
+	create_name(filename, PATH_MAX, STORAGEDIR, source, "aliases");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -365,8 +367,9 @@ static gint adapter_address_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct adapter *adapter = a;
 	const char *address = b;
+	const gchar *source = adapter_get_address(adapter);
 
-	return strcmp(adapter->address, address);
+	return strcmp(source, address);
 }
 
 struct adapter *manager_find_adapter(const bdaddr_t *sba)

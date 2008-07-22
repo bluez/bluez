@@ -89,7 +89,7 @@ static int network_probe(struct btd_device *device, uint16_t id)
 
 	DBG("path %s", path);
 
-	source = adapter->address;
+	source = adapter_get_address(adapter);
 	destination = device_get_address(device);
 
 	str2ba(source, &src);

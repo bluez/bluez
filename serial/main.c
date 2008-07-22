@@ -60,7 +60,7 @@ static DBusMessage *serial_connect(DBusConnection *conn,
 		return NULL;
 
 	src = device_get_address(device);
-	dst = adapter->address;
+	dst = adapter_get_address(adapter);
 
 	service_connect(conn, msg, src, dst, target);
 

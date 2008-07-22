@@ -175,7 +175,7 @@ int input_probe(struct btd_device_driver *driver,
 
 	memset(&hidp, 0, sizeof(hidp));
 
-	source = adapter->address;
+	source = adapter_get_address(adapter);
 	destination = device_get_address(device);
 
 	if (load_stored(source, destination, &hidp) == 0)
@@ -234,7 +234,7 @@ int headset_input_probe(struct btd_device_driver *driver,
 		return -EINVAL;
 	}
 
-	source = adapter->address;
+	source = adapter_get_address(adapter);
 	destination = device_get_address(device);
 
 	str2ba(source, &src);
