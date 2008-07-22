@@ -2539,3 +2539,24 @@ int adapter_update_ssp_mode(struct adapter *adapter, int dd, uint8_t mode)
 
 	return 0;
 }
+
+struct adapter *adapter_create(int id)
+{
+	char path[MAX_PATH_LENGTH];
+	struct adapter *adapter;
+
+	snprintf(path, sizeof(path), "/hci%d", id);
+
+	adapter = g_try_new0(struct adapter, 1);
+	if (!adapter) {
+		error("Failed to alloc memory to D-Bus path register data (%s)",
+				path);
+		return NULL;
+	}
+
+	adapter->dev_id = id;
+	adapter->pdiscov_resolve_names = 1;
+	adapter->path = g_strdup(path);
+
+	return adapter;
+}

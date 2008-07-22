@@ -423,30 +423,18 @@ static void manager_remove_adapter(struct adapter *adapter)
 
 int manager_register_adapter(int id)
 {
-	char path[MAX_PATH_LENGTH];
-	struct adapter *adapter;
+	struct adapter *adapter = adapter_create(id);
 
-	snprintf(path, sizeof(path), "/hci%d", id);
-
-	adapter = g_try_new0(struct adapter, 1);
-	if (!adapter) {
-		error("Failed to alloc memory to D-Bus path register data (%s)",
-				path);
+	if(!adapter)
 		return -1;
-	}
 
-	adapter->dev_id = id;
-	adapter->pdiscov_resolve_names = 1;
-
-	if (!adapter_init(connection, path, adapter)) {
-		error("Adapter interface init failed on path %s", path);
+	if (!adapter_init(connection, adapter->path, adapter)) {
+		error("Adapter interface init failed on path %s", adapter->path);
 		g_free(adapter);
 		return -1;
 	}
 
-	adapter->path = g_strdup(path);
-
-	__probe_servers(path);
+	__probe_servers(adapter->path);
 
 	manager_add_adapter(adapter);
 

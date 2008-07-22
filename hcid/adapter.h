@@ -174,3 +174,4 @@ void adapter_remove_auth_request(struct adapter *adapter, bdaddr_t *dba);
 struct pending_auth_info *adapter_new_auth_request(struct adapter *adapter,
 							bdaddr_t *dba,
 							auth_type_t type);
+struct adapter *adapter_create(int id);
