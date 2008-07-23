@@ -2581,3 +2581,14 @@ const gchar *adapter_get_address(struct adapter *adapter)
 
 	return adapter->address;
 }
+
+void adapter_free(struct adapter *adapter)
+{
+	if (!adapter)
+		return;
+
+	g_free(adapter->path);
+	g_free(adapter);
+
+	return;
+}

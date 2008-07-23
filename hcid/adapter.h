@@ -178,3 +178,4 @@ struct adapter *adapter_create(int id);
 uint16_t adapter_get_dev_id(struct adapter *adapter);
 const gchar *adapter_get_path(struct adapter *adapter);
 const gchar *adapter_get_address(struct adapter *adapter);
+void adapter_free(struct adapter *adapter);

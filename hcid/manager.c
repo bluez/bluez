@@ -452,7 +452,7 @@ int manager_register_adapter(int id)
 
 	if (!adapter_init(connection, path, adapter)) {
 		error("Adapter interface init failed on path %s", path);
-		g_free(adapter);
+		adapter_free(adapter);
 		return -1;
 	}
 
@@ -488,8 +488,7 @@ int manager_unregister_adapter(int id)
 		return -1;
 	}
 
-	g_free(path);
-	g_free(adapter);
+	adapter_free(adapter);
 
 	return 0;
 }
