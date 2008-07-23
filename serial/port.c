@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -46,359 +47,433 @@
 #include "../hcid/dbus-common.h"
 
 #include "logging.h"
+#include "glib-helper.h"
 
 #include "error.h"
 #include "manager.h"
 #include "storage.h"
 
 #define SERIAL_PORT_INTERFACE	"org.bluez.serial.Port"
+#define ERROR_INVALID_ARGS	"org.bluez.Error.InvalidArguments"
+#define ERROR_DOES_NOT_EXIST	"org.bluez.Error.DoesNotExist"
 
-struct rfcomm_node {
-	int16_t		id;		/* RFCOMM device id */
+#define MAX_OPEN_TRIES		5
+#define OPEN_WAIT		300	/* ms */
+
+struct serial_device {
+	DBusConnection	*conn;		/* for name listener handling */
 	bdaddr_t	src;		/* Source (local) address */
 	bdaddr_t	dst;		/* Destination address */
-	char		*svcname;	/* RFCOMM service name */
-	char		*device;	/* RFCOMM device name */
-	DBusConnection	*conn;		/* for name listener handling */
-	char		*owner;		/* Bus name */
-	GIOChannel	*io;		/* Connected node IO Channel */
-	guint		io_id;		/* IO Channel ID */
-	guint		listener_id;
+	char		*path;		/* Device path */
+	GSList		*ports;		/* Available ports */
 };
 
-static GSList *connected_nodes = NULL;
-static GSList *bound_nodes = NULL;
+struct serial_port {
+	DBusMessage	*msg;		/* for name listener handling */
+	int16_t		id;		/* RFCOMM device id */
+	uint8_t		channel;	/* RFCOMM channel */
+	char		*name;		/* service friendly name */
+	char		*uuid;		/* service identification */
+	char		*dev;		/* RFCOMM device name */
+	guint		listener_id;
+	struct serial_device *device;
+};
 
-static struct rfcomm_node *find_node_by_name(GSList *nodes, const char *dev)
+static GSList *devices = NULL;
+
+static struct serial_device *find_device(GSList *devices, const char *path)
 {
 	GSList *l;
 
-	for (l = nodes; l != NULL; l = l->next) {
-		struct rfcomm_node *node = l->data;
-		if (!strcmp(node->device, dev))
-			return node;
+	for (l = devices; l != NULL; l = l->next) {
+		struct serial_device *device = l->data;
+
+		if (!strcmp(device->path, path))
+			return device;
 	}
 
 	return NULL;
 }
 
-static DBusMessage *port_get_address(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static struct serial_port *find_port(GSList *ports, const char *pattern)
 {
-	struct rfcomm_node *node = data;
-	DBusMessage *reply;
-	char bda[18];
-	const char *pbda = bda;
+	GSList *l;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
+	for (l = ports; l != NULL; l = l->next) {
+		struct serial_port *port = l->data;
 
-	ba2str(&node->dst, bda);
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &pbda,
-			DBUS_TYPE_INVALID);
+		if (!strcasecmp(port->name, pattern))
+			return port;
 
-	return reply;
-}
+		if (!strcasecmp(port->uuid, pattern))
+			return port;
 
-static DBusMessage *port_get_device(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct rfcomm_node *node = data;
-	DBusMessage *reply;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &node->device,
-			DBUS_TYPE_INVALID);
-
-	return reply;
-
-}
-
-static DBusMessage *port_get_adapter(DBusConnection *conn,
-				  DBusMessage *msg, void *data)
-{
-	struct rfcomm_node *node = data;
-	DBusMessage *reply;
-	char addr[18];
-	const char *paddr = addr;
-
-	ba2str(&node->src, addr);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &paddr,
-			DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-
-static DBusMessage *port_get_name(DBusConnection *conn,
-			       DBusMessage *msg, void *data)
-{
-	struct rfcomm_node *node = data;
-	DBusMessage *reply;
-	const char *pname;
-	char *name = NULL;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	read_device_name(&node->src, &node->dst, &name);
-
-	pname = (name ? name : "");
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &pname,
-			DBUS_TYPE_INVALID);
-
-	if (name)
-		g_free(name);
-
-	return reply;
-}
-
-static DBusMessage *port_get_service_name(DBusConnection *conn,
-				       DBusMessage *msg, void *data)
-{
-	struct rfcomm_node *node = data;
-	DBusMessage *reply;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &node->svcname,
-			DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *port_get_info(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct rfcomm_node *node = data;
-	DBusMessage *reply;
-	DBusMessageIter iter, dict;
-	char bda[18];
-	const char *pbda = bda;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	dbus_message_iter_append_dict_entry(&dict, "device",
-			DBUS_TYPE_STRING, &node->device);
-
-	ba2str(&node->dst, bda);
-	dbus_message_iter_append_dict_entry(&dict, "address",
-			DBUS_TYPE_STRING, &pbda);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
-}
-
-static GDBusMethodTable port_methods[] = {
-	{ "GetAddress",		"",	"s",	port_get_address },
-	{ "GetDevice",		"",	"s",	port_get_device },
-	{ "GetAdapter",		"",	"s",	port_get_adapter },
-	{ "GetName",		"",	"s",	port_get_name },
-	{ "GetServiceName",	"",	"s",	port_get_service_name },
-	{ "GetInfo",		"",	"a{sv}",port_get_info },
-	{ NULL, NULL, NULL, NULL },
-};
-
-static GDBusSignalTable port_signals[] = {
-	{ NULL, NULL }
-};
-
-static void rfcomm_node_free(struct rfcomm_node *node)
-{
-	if (node->device)
-		g_free(node->device);
-	if (node->conn)
-		dbus_connection_unref(node->conn);
-	if (node->owner)
-		g_free(node->owner);
-	if (node->svcname)
-		g_free(node->svcname);
-	if (node->io) {
-		g_source_remove(node->io_id);
-		g_io_channel_close(node->io);
-		g_io_channel_unref(node->io);
+		if (!strcmp(port->dev, pattern))
+			return port;
 	}
-	rfcomm_release(node->id);
-	g_free(node);
+
+	return NULL;
 }
 
-static void connection_owner_exited(void *user_data)
+static int port_release(struct serial_port *port)
 {
-	struct rfcomm_node *node = user_data;
+	struct rfcomm_dev_req req;
+	int rfcomm_ctl;
+	int err = 0;
 
-	debug("Connect requestor exited. Releasing %s node",
-						node->device);
+	debug("Serial port %s released", port->dev);
 
-	g_dbus_emit_signal(node->conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
-			DBUS_TYPE_STRING, &node->device,
-			DBUS_TYPE_INVALID);
+	rfcomm_ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
+	if (rfcomm_ctl < 0)
+		return -errno;
 
-	connected_nodes = g_slist_remove(connected_nodes, node);
-	rfcomm_node_free(node);
+	memset(&req, 0, sizeof(req));
+	req.dev_id = port->id;
+
+	/*
+	 * We are hitting a kernel bug inside RFCOMM code when
+	 * RFCOMM_HANGUP_NOW bit is set on request's flags passed to
+	 * ioctl(RFCOMMRELEASEDEV)!
+	 */
+	req.flags = (1 << RFCOMM_HANGUP_NOW);
+
+	if (ioctl(rfcomm_ctl, RFCOMMRELEASEDEV, &req) < 0) {
+		err = errno;
+		error("Can't release device %s: %s (%d)",
+				port->dev, strerror(err), err);
+	}
+
+	g_free(port->dev);
+	port->dev = NULL;
+	port->id = 0;
+	close(rfcomm_ctl);
+	return -err;
 }
 
-static gboolean rfcomm_disconnect_cb(GIOChannel *io,
-		GIOCondition cond, struct rfcomm_node *node)
+static void serial_port_free(struct serial_port *port)
 {
-	debug("RFCOMM node %s was disconnected", node->device);
-
-	g_dbus_remove_watch(node->conn, node->listener_id);
-
-	g_dbus_emit_signal(node->conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
-			DBUS_TYPE_STRING, &node->device,
-			DBUS_TYPE_INVALID);
-
-	connected_nodes = g_slist_remove(connected_nodes, node);
-	rfcomm_node_free(node);
-
-	return FALSE;
+	if (port->id)
+		port_release(port);
+	g_free(port->name);
+	g_free(port->uuid);
+	g_free(port);
 }
 
-static void port_handler_unregister(void *data)
+static void serial_device_free(struct serial_device *device)
 {
-	struct rfcomm_node *node = data;
-
-	debug("Unregistered serial port: %s", node->device);
-
-	bound_nodes = g_slist_remove(bound_nodes, node);
-	rfcomm_node_free(node);
+	g_free(device->path);
+	if (device->conn)
+		dbus_connection_unref(device->conn);
+	g_free(device);
 }
 
-void port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
-			int fd, const char *dev, const char *owner)
+static void port_owner_exited(void *user_data)
 {
-	struct rfcomm_node *node;
+	struct serial_port *port = user_data;
 
-	node = g_new0(struct rfcomm_node, 1);
-	bacpy(&node->dst, dst);
-	node->id	= id;
-	node->device	= g_strdup(dev);
-	node->conn	= dbus_connection_ref(conn);
-	node->owner	= g_strdup(owner);
-	node->io	= g_io_channel_unix_new(fd);
-	node->io_id = g_io_add_watch(node->io, G_IO_ERR | G_IO_NVAL | G_IO_HUP,
-					(GIOFunc) rfcomm_disconnect_cb, node);
+	if (port->id)
+		port_release(port);
 
-	connected_nodes = g_slist_append(connected_nodes, node);
-
-	/* Service connection listener */
-	node->listener_id = g_dbus_add_disconnect_watch(conn, owner,
-						connection_owner_exited, node,
-						NULL);
+	port->listener_id = 0;
 }
 
-int port_remove_listener(const char *owner, const char *dev)
+static void path_unregister(void *data)
 {
-	struct rfcomm_node *node;
+	struct serial_device *device = data;
 
-	node = find_node_by_name(connected_nodes, dev);
-	if (!node)
-		return -ENOENT;
-	if (strcmp(node->owner, owner) != 0)
-		return -EPERM;
+	info("Unregistered interface %s on path %s", SERIAL_PORT_INTERFACE,
+		device->path);
 
-	g_dbus_remove_watch(node->conn, node->listener_id);
-
-	connected_nodes = g_slist_remove(connected_nodes, node);
-	rfcomm_node_free(node);
-
-	return 0;
+	devices = g_slist_remove(devices, device);
+	serial_device_free(device);
 }
 
 void port_release_all(void)
 {
-	struct rfcomm_node *node;
-	GSList *l;
-
-	for (l = connected_nodes; l; l = l->next) {
-		node = l->data;
-
-		connected_nodes = g_slist_remove(connected_nodes, node);
-		rfcomm_node_free(node);
-	}
+	g_slist_foreach(devices, (GFunc) serial_device_free, NULL);
+	g_slist_free(devices);
 }
 
-int port_register(DBusConnection *conn, int16_t id, bdaddr_t *src,
-		  bdaddr_t *dst, const char *dev, char *ppath, const char *svc)
+static inline DBusMessage *does_not_exist(DBusMessage *msg,
+					const char *description)
 {
-	char path[MAX_PATH_LENGTH];
-	struct rfcomm_node *node;
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExist",
+				description);
+}
 
-	node = g_new0(struct rfcomm_node, 1);
-	bacpy(&node->dst, dst);
-	bacpy(&node->src, src);
-	node->id	= id;
-	node->device	= g_strdup(dev);
-	node->conn	= dbus_connection_ref(conn);
-	node->svcname	= g_strdup(svc?:"Bluetooth RFCOMM port");
+static inline DBusMessage *invalid_arguments(DBusMessage *msg,
+					const char *description)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
+				description);
+}
 
-	snprintf(path, MAX_PATH_LENGTH, "%s/rfcomm%hd", SERIAL_MANAGER_PATH, id);
+static inline DBusMessage *failed(DBusMessage *msg, const char *description)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+				description);
+}
 
+static void open_notify(int fd, int err, struct serial_port *port)
+{
+	struct serial_device *device = port->device;
+	DBusMessage *reply;
+
+	if (err) {
+		/* Max tries exceeded */
+		port_release(port);
+		reply = failed(port->msg, strerror(err));
+	} else {
+		reply = g_dbus_create_reply(port->msg,
+				DBUS_TYPE_STRING, &port->dev,
+				DBUS_TYPE_INVALID);
+	}
+
+	/* Reply to the requestor */
+	g_dbus_send_message(device->conn, reply);
+}
+
+static gboolean open_continue(struct serial_port *port)
+{
+	int fd;
+	static int ntries = MAX_OPEN_TRIES;
+
+	if (!port->listener_id)
+		return FALSE; /* Owner exited */
+
+	fd = open(port->dev, O_RDONLY | O_NOCTTY);
+	if (fd < 0) {
+		int err = errno;
+		error("Could not open %s: %s (%d)",
+				port->dev, strerror(err), err);
+		if (!--ntries) {
+			/* Reporting error */
+			open_notify(fd, err, port);
+			ntries = MAX_OPEN_TRIES;
+			return FALSE;
+		}
+		return TRUE;
+	}
+
+	/* Connection succeeded */
+	open_notify(fd, 0, port);
+	return FALSE;
+}
+
+static int port_open(struct serial_port *port)
+{
+	int fd;
+
+	fd = open(port->dev, O_RDONLY | O_NOCTTY);
+	if (fd < 0) {
+		g_timeout_add(OPEN_WAIT, (GSourceFunc) open_continue, port);
+		return -EINPROGRESS;
+	}
+
+	return fd;
+}
+
+static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer user_data)
+{
+	struct serial_port *port = user_data;
+	struct serial_device *device = port->device;
+	struct rfcomm_dev_req req;
+	int sk, err, fd;
+	DBusMessage *reply;
+
+	/* Owner exited? */
+	if (!port->listener_id)
+		return;
+
+	if (err_cb < 0) {
+		error("connect(): %s (%d)", strerror(-err_cb), -err_cb);
+		reply = failed(port->msg, strerror(-err_cb));
+		goto fail;
+	}
+
+	memset(&req, 0, sizeof(req));
+	req.dev_id = -1;
+	req.flags = (1 << RFCOMM_REUSE_DLC);
+	bacpy(&req.src, &device->src);
+	bacpy(&req.dst, &device->dst);
+	req.channel = port->channel;
+
+	sk = g_io_channel_unix_get_fd(chan);
+	port->id = ioctl(sk, RFCOMMCREATEDEV, &req);
+	g_io_channel_close(chan);
+	g_io_channel_unref(chan);
+	if (port->id < 0) {
+		err = errno;
+		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
+		reply = failed(port->msg, strerror(-err_cb));
+		goto fail;
+	}
+	port->dev = g_strdup_printf("/dev/rfcomm%d", port->id);
+
+	debug("Serial port %s created", port->dev);
+
+	/* Addressing connect port */
+	fd = port_open(port);
+	if (fd < 0)
+		/* Open in progress: Wait the callback */
+		return;
+
+	open_notify(fd, 0, port);
+	return;
+
+fail:
+	g_dbus_send_message(device->conn, reply);
+	g_dbus_remove_watch(device->conn, port->listener_id);
+	port->listener_id = 0;
+}
+
+static DBusMessage *port_connect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct serial_device *device = user_data;
+	struct serial_port *port;
+	const char *uuid;
+	int err;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &uuid,
+						DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	port = find_port(device->ports, uuid);
+	if (!port)
+		return does_not_exist(msg, "Does not match");
+
+	if (port->listener_id)
+		return failed(msg, "Port already in use");
+
+	port->listener_id = g_dbus_add_disconnect_watch(conn,
+						dbus_message_get_sender(msg),
+						port_owner_exited, port,
+						NULL);
+	port->msg = dbus_message_ref(msg);
+
+	err = bt_rfcomm_connect(&device->src, &device->dst, port->channel,
+				rfcomm_connect_cb, port);
+	if (err < 0) {
+		error("RFCOMM connect failed: %s(%d)", strerror(-err), -err);
+		g_dbus_remove_watch(conn, port->listener_id);
+		port->listener_id = 0;
+		return failed(msg, strerror(-err));
+	}
+
+	return NULL;
+}
+
+static DBusMessage *port_disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct serial_device *device = user_data;
+	struct serial_port *port;
+	const char *dev;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &dev,
+						DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	port = find_port(device->ports, dev);
+	if (!port)
+		return does_not_exist(msg, "Port does not exist");
+
+	if (!port->listener_id)
+		return failed(msg, "Not connected");
+
+	if (port->id)
+		port_release(port);
+
+	g_dbus_remove_watch(conn, port->listener_id);
+	port->listener_id = 0;
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static GDBusMethodTable port_methods[] = {
+	{ "Connect",    "s", "s", port_connect, G_DBUS_METHOD_FLAG_ASYNC },
+	{ "Disconnect", "s", "",  port_disconnect },
+	{ }
+};
+
+static struct serial_device *create_serial_device(DBusConnection *conn,
+					const char *path, bdaddr_t *src,
+					bdaddr_t *dst)
+{
+	struct serial_device *device;
+
+	device = g_new0(struct serial_device, 1);
+	device->conn = dbus_connection_ref(conn);
+	bacpy(&device->dst, dst);
+	bacpy(&device->src, src);
+	device->path = g_strdup(path);
 
 	if (!g_dbus_register_interface(conn, path,
 				SERIAL_PORT_INTERFACE,
-				port_methods, port_signals, NULL,
-				node, port_handler_unregister)) {
+				port_methods, NULL, NULL,
+				device, path_unregister)) {
 		error("D-Bus failed to register %s interface",
 				SERIAL_PORT_INTERFACE);
-		rfcomm_node_free(node);
-		return -1;
+		serial_device_free(device);
+		return NULL;
 	}
 
-	info("Registered RFCOMM:%s, path:%s", dev, path);
+	info("Registered interface %s on path %s",
+		SERIAL_PORT_INTERFACE, path);
 
-	if (ppath)
-		strcpy(ppath, path);
+	return device;
+}
 
-	bound_nodes = g_slist_append(bound_nodes, node);
+int port_register(DBusConnection *conn, const char *path, bdaddr_t *src,
+		  bdaddr_t *dst, const char *name, const char *uuid,
+		  uint8_t channel)
+{
+	struct serial_device *device;
+	struct serial_port *port;
+
+	device = find_device(devices, path);
+	if (!device) {
+		device = create_serial_device(conn, path, src, dst);
+		if (!device)
+			return -1;
+		devices = g_slist_append(devices, device);
+	}
+
+	if (find_port(device->ports, uuid))
+		return 0;
+
+	port = g_new0(struct serial_port, 1);
+	port->name = g_strdup(name);
+	port->uuid = g_strdup(uuid);
+	port->channel = channel;
+	port->device = device;
+
+	device->ports = g_slist_append(device->ports, port);
 
 	return 0;
 }
 
-int port_unregister(const char *path)
+int port_unregister(const char *path, const char *uuid)
 {
-	struct rfcomm_node *node;
-	char dev[16];
-	int16_t id;
+	struct serial_device *device;
+	struct serial_port *port;
 
-	if (sscanf(path, SERIAL_MANAGER_PATH"/rfcomm%hd", &id) != 1)
+	device = find_device(devices, path);
+	if (!device)
 		return -ENOENT;
 
-	snprintf(dev, sizeof(dev), "/dev/rfcomm%hd", id);
-	node = find_node_by_name(bound_nodes, dev);
-	if (!node)
+	port = find_port(device->ports, uuid);
+	if (!port)
 		return -ENOENT;
 
-	g_dbus_unregister_interface(node->conn, path, SERIAL_PORT_INTERFACE);
+	device->ports = g_slist_remove(device->ports, port);
+	serial_port_free(port);
+	if (device->ports)
+		return 0;
+
+	g_dbus_unregister_interface(device->conn, path, SERIAL_PORT_INTERFACE);
 
 	return 0;
 }

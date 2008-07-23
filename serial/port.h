@@ -21,14 +21,10 @@
  *
  */
 
-int port_add_listener(DBusConnection *conn, int16_t id, bdaddr_t *dst,
-			int fd, const char *dev, const char *owner);
-
-int port_remove_listener(const char *owner, const char *dev);
-
 void port_release_all(void);
 
-int port_register(DBusConnection *conn, int16_t id, bdaddr_t *src,
-		  bdaddr_t *dst, const char *dev, char *ppath, const char *svc);
+int port_register(DBusConnection *conn, const char *path, bdaddr_t *src,
+		  bdaddr_t *dst, const char *name, const char *uuid,
+		  uint8_t channel);
 
-int port_unregister(const char *path);
+int port_unregister(const char *path, const char *uuid);

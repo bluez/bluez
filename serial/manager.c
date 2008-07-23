@@ -52,6 +52,8 @@
 #include <gdbus.h>
 
 #include "../hcid/dbus-common.h"
+#include "adapter.h"
+#include "device.h"
 
 #include "logging.h"
 #include "textfile.h"
@@ -63,45 +65,14 @@
 #include "sdpd.h"
 #include "glib-helper.h"
 
-#define SERIAL_PROXY_INTERFACE		"org.bluez.serial.Proxy"
-#define BUF_SIZE			1024
+#define SERIAL_PORT_NAME	"spp"
+#define SERIAL_PORT_UUID	"00001101-0000-1000-8000-00805F9B34FB"
 
-/* Waiting for udev to create the device node */
-#define MAX_OPEN_TRIES		5
-#define OPEN_WAIT		300	/* ms */
+#define DIALUP_NET_NAME		"dun"
+#define DIALUP_NET_UUID		"00001103-0000-1000-8000-00805F9B34FB"
 
-struct pending_connect {
-	DBusConnection	*conn;
-	DBusMessage	*msg;
-	char		*adapter;	/* Adapter address */
-	char		*address;	/* Destination address  */
-	char		*pattern;	/* Connection request pattern */
-	uint8_t		channel;
-	char		*dev;		/* tty device name */
-	int		id;		/* RFCOMM device id */
-	int		ntries;		/* Open attempts */
-	int		canceled;	/* Operation canceled */
-	guint		listener_id;
-};
-
-/* FIXME: Common file required */
-static struct {
-	const char	*name;
-	uint16_t	class;
-} serial_services[] = {
-	{ "vcp",	VIDEO_CONF_SVCLASS_ID		},
-	{ "pbap",	PBAP_SVCLASS_ID			},
-	{ "sap",	SAP_SVCLASS_ID			},
-	{ "ftp",	OBEX_FILETRANS_SVCLASS_ID	},
-	{ "bpp",	BASIC_PRINTING_SVCLASS_ID	},
-	{ "bip",	IMAGING_SVCLASS_ID		},
-	{ "synch",	IRMC_SYNC_SVCLASS_ID		},
-	{ "dun",	DIALUP_NET_SVCLASS_ID		},
-	{ "opp",	OBEX_OBJPUSH_SVCLASS_ID		},
-	{ "fax",	FAX_SVCLASS_ID			},
-	{ "spp",	SERIAL_PORT_SVCLASS_ID		},
-	{ NULL }
-};
+#define SERIAL_PROXY_INTERFACE	"org.bluez.serial.Proxy"
+#define BUF_SIZE		1024
 
 typedef enum {
 	TTY_PROXY,
@@ -128,10 +99,7 @@ struct proxy {
 };
 
 static DBusConnection *connection = NULL;
-static GSList *pending_connects = NULL;
-static GSList *ports_paths = NULL;
 static GSList *proxies = NULL;
-static int rfcomm_ctl = -1;
 static int sk_counter = 0;
 
 static void disable_proxy(struct proxy *prx)
@@ -160,251 +128,6 @@ static void proxy_free(struct proxy *prx)
 	g_free(prx);
 }
 
-static void pending_connect_free(struct pending_connect *pc)
-{
-	if (pc->conn)
-		dbus_connection_unref(pc->conn);
-	if (pc->msg)
-		dbus_message_unref(pc->msg);
-	if (pc->adapter)
-		g_free(pc->adapter);
-	if (pc->address)
-		g_free(pc->address);
-	if (pc->pattern)
-		g_free(pc->pattern);
-	if (pc->dev)
-		g_free(pc->dev);
-	g_free(pc);
-}
-
-static struct pending_connect *find_pending_connect_by_pattern(const char *bda,
-							const char *pattern)
-{
-	GSList *l;
-
-	/* Pattern can be friendly name, uuid128, record handle or channel */
-	for (l = pending_connects; l != NULL; l = l->next) {
-		struct pending_connect *pending = l->data;
-		if (!strcasecmp(pending->address, bda) &&
-				!strcasecmp(pending->pattern, pattern))
-			return pending;
-	}
-
-	return NULL;
-}
-
-static void transaction_owner_exited(void *data)
-{
-	struct pending_connect *pc = data;
-
-	debug("transaction owner exited");
-
-	if (pc->id >= 0)
-		rfcomm_release(pc->id);
-
-	pending_connects = g_slist_remove(pending_connects, pc);
-
-	pending_connect_free(pc);
-}
-
-static void pending_connect_remove(struct pending_connect *pc)
-{
-	g_dbus_remove_watch(pc->conn, pc->listener_id);
-	pending_connects = g_slist_remove(pending_connects, pc);
-	pending_connect_free(pc);
-}
-
-static void open_notify(int fd, int err, struct pending_connect *pc)
-{
-	DBusMessage *reply;
-	bdaddr_t dst;
-
-	if (err) {
-		/* Max tries exceeded */
-		rfcomm_release(pc->id);
-		error_connection_attempt_failed(pc->conn, pc->msg, err);
-		return;
-	}
-
-	if (pc->canceled) {
-		rfcomm_release(pc->id);
-		error_canceled(pc->conn, pc->msg, "Connection canceled");
-		return;
-	}
-
-	/* Reply to the requestor */
-	reply = dbus_message_new_method_return(pc->msg);
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &pc->dev,
-			DBUS_TYPE_INVALID);
-	dbus_connection_send(pc->conn, reply, NULL);
-	dbus_message_unref(reply);
-
-	/* Send the D-Bus signal */
-	g_dbus_emit_signal(pc->conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "ServiceConnected" ,
-			DBUS_TYPE_STRING, &pc->dev,
-			DBUS_TYPE_INVALID);
-
-	str2ba(pc->address, &dst);
-
-	/* Add the RFCOMM connection listener */
-	port_add_listener(pc->conn, pc->id, &dst, fd,
-				pc->dev, dbus_message_get_sender(pc->msg));
-}
-
-static gboolean open_continue(struct pending_connect *pc)
-{
-	int fd;
-
-	if (!g_slist_find(pending_connects, pc))
-		return FALSE; /* Owner exited */
-
-	fd = open(pc->dev, O_RDONLY | O_NOCTTY);
-	if (fd < 0) {
-		int err = errno;
-		error("Could not open %s: %s (%d)",
-				pc->dev, strerror(err), err);
-		if (++pc->ntries >= MAX_OPEN_TRIES) {
-			/* Reporting error */
-			open_notify(fd, err, pc);
-			pending_connect_remove(pc);
-			return FALSE;
-		}
-		return TRUE;
-	}
-	/* Connection succeeded */
-	open_notify(fd, 0, pc);
-	pending_connect_remove(pc);
-	return FALSE;
-}
-
-int port_open(struct pending_connect *pc)
-{
-	int fd;
-
-	fd = open(pc->dev, O_RDONLY | O_NOCTTY);
-	if (fd < 0) {
-		g_timeout_add(OPEN_WAIT, (GSourceFunc) open_continue, pc);
-		return -EINPROGRESS;
-	}
-
-	return fd;
-}
-
-static uint16_t str2class(const char *pattern)
-{
-	int i;
-
-	for (i = 0; serial_services[i].name; i++) {
-		if (strcasecmp(serial_services[i].name, pattern) == 0)
-			return serial_services[i].class;
-	}
-
-	return 0;
-}
-
-int rfcomm_release(int16_t id)
-{
-	struct rfcomm_dev_req req;
-
-	memset(&req, 0, sizeof(req));
-	req.dev_id = id;
-
-	/*
-	 * We are hitting a kernel bug inside RFCOMM code when
-	 * RFCOMM_HANGUP_NOW bit is set on request's flags passed to
-	 * ioctl(RFCOMMRELEASEDEV)!
-	 */
-	req.flags = (1 << RFCOMM_HANGUP_NOW);
-
-	if (ioctl(rfcomm_ctl, RFCOMMRELEASEDEV, &req) < 0) {
-		int err = errno;
-		error("Can't release device %d: %s (%d)",
-				id, strerror(err), err);
-		return -err;
-	}
-
-	return 0;
-}
-
-static int rfcomm_bind(bdaddr_t *src, bdaddr_t *dst, int16_t dev_id, uint8_t ch)
-{
-	struct rfcomm_dev_req req;
-	int id;
-
-	memset(&req, 0, sizeof(req));
-	req.dev_id = dev_id;
-	req.flags = 0;
-	bacpy(&req.src, src);
-	bacpy(&req.dst, dst);
-	req.channel = ch;
-
-	id = ioctl(rfcomm_ctl, RFCOMMCREATEDEV, &req);
-	if (id < 0) {
-		int err = errno;
-		error("RFCOMMCREATEDEV failed: %s (%d)", strerror(err), err);
-		return -err;
-	}
-
-	return id;
-}
-
-static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer user_data)
-{
-	struct pending_connect *pc = user_data;
-	struct rfcomm_dev_req req;
-	int sk, err, fd;
-
-	/* Owner exited? */
-	if (!g_slist_find(pending_connects, pc))
-		return;
-
-	if (pc->canceled) {
-		error_canceled(pc->conn, pc->msg, "Connection canceled");
-		goto fail;
-	}
-
-	if (err_cb < 0) {
-		error("connect(): %s (%d)", strerror(-err_cb), -err_cb);
-		error_connection_attempt_failed(pc->conn, pc->msg, -err_cb);
-		goto fail;
-	}
-
-	debug("rfcomm_connect_cb: connected");
-
-	memset(&req, 0, sizeof(req));
-	req.dev_id = -1;
-	req.flags = (1 << RFCOMM_REUSE_DLC);
-	str2ba(pc->adapter, &req.src);
-	str2ba(pc->address, &req.dst);
-	req.channel = pc->channel;
-
-	sk = g_io_channel_unix_get_fd(chan);
-	pc->id = ioctl(sk, RFCOMMCREATEDEV, &req);
-	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
-	if (pc->id < 0) {
-		err = errno;
-		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
-		error_connection_attempt_failed(pc->conn, pc->msg, err);
-		goto fail;
-	}
-	pc->dev	= g_new0(char, 16);
-	snprintf(pc->dev, 16, "/dev/rfcomm%d", pc->id);
-
-	/* Addressing connect port */
-	fd = port_open(pc);
-	if (fd < 0)
-		/* Open in progress: Wait the callback */
-		return;
-
-	open_notify(fd, 0, pc);
-fail:
-	pending_connect_remove(pc);
-}
-
 static inline DBusMessage *does_not_exist(DBusMessage *msg,
 					const char *description)
 {
@@ -423,354 +146,6 @@ static inline DBusMessage *failed(DBusMessage *msg, const char *description)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 				description);
-}
-
-static DBusMessage *create_channel_port(DBusConnection *conn,
-				DBusMessage *msg, const char *adapter,
-				const char *address, const char *name,
-				long channel, void *data)
-{
-	char path[MAX_PATH_LENGTH], port_name[16];
-	const char *ppath = path;
-	DBusMessage *reply;
-	int err;
-	bdaddr_t src, dst;
-
-	if (channel < 1 || channel > 30)
-		return invalid_arguments(msg, "Invalid RFCOMM channel");
-
-	str2ba(adapter, &src);
-	str2ba(address, &dst);
-	err = rfcomm_bind(&src, &dst, -1, channel);
-	if (err < 0)
-		return failed(msg, strerror(-err));
-
-	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", err);
-	port_store(&src, &dst, err, channel, name);
-	port_register(conn, err, &src, &dst, port_name, path, name);
-	ports_paths = g_slist_append(ports_paths, g_strdup(path));
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &ppath,
-			DBUS_TYPE_INVALID);
-	dbus_connection_send(conn, reply, NULL);
-	dbus_message_unref(reply);
-
-	g_dbus_emit_signal(conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "PortCreated" ,
-			DBUS_TYPE_STRING, &ppath,
-			DBUS_TYPE_INVALID);
-
-	return NULL;
-}
-
-static DBusMessage *connect_pending(DBusConnection *conn, DBusMessage *msg,
-					struct pending_connect *pc)
-{
-	int err;
-	bdaddr_t src, dst;
-
-	if (!g_slist_find(pending_connects, pc)) {
-		pending_connects = g_slist_append(pending_connects, pc);
-		pc->listener_id = g_dbus_add_disconnect_watch(conn,
-						dbus_message_get_sender(msg),
-						transaction_owner_exited, pc,
-						NULL);
-	}
-
-	str2ba(pc->adapter, &src);
-	str2ba(pc->address, &dst);
-
-	err = bt_rfcomm_connect(&src, &dst, pc->channel, rfcomm_connect_cb, pc);
-	if (err < 0) {
-		const char *strerr = strerror(-err);
-		error("RFCOMM connect failed: %s(%d)", strerr, -err);
-		pending_connects = g_slist_remove(pending_connects, pc);
-		pending_connect_free(pc);
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".ConnectionAttemptFailed",
-						"%s", strerror(-err));
-	}
-
-	return NULL;
-}
-
-static void record_cb(sdp_list_t *recs, int err, gpointer data)
-{
-	struct pending_connect *pc;
-	sdp_record_t *rec = NULL;
-	sdp_list_t *protos;
-	int ch;
-	bdaddr_t dst;
-
-	/* Owner exited? */
-	if (!g_slist_find(pending_connects, data))
-		return;
-
-	pc = data;
-	if (pc->canceled) {
-		error_canceled(pc->conn, pc->msg, "Connection canceled");
-		goto fail;
-	}
-
-	if (err < 0) {
-		error_connection_attempt_failed(pc->conn, pc->msg, -err);
-		goto fail;
-	}
-
-	if (!recs || !recs->data) {
-		error_not_supported(pc->conn, pc->msg);
-		error("Invalid service record length");
-		goto fail;
-	}
-
-	rec = recs->data;
-	if (sdp_get_access_protos(rec, &protos) < 0) {
-		error_not_supported(pc->conn, pc->msg);
-		goto fail;
-	}
-
-	ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
-	sdp_list_free(protos, NULL);
-
-	if (ch < 1 || ch > 30) {
-		error("Channel out of range: %d", ch);
-		error_not_supported(pc->conn, pc->msg);
-		goto fail;
-	}
-
-	str2ba(pc->address, &dst);
-
-	if (dbus_message_has_member(pc->msg, "CreatePort")) {
-		sdp_data_t *d;
-		char *svcname = NULL;
-
-		d = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
-		if (d) {
-			svcname = g_new0(char, d->unitSize);
-			snprintf(svcname, d->unitSize, "%.*s",
-					d->unitSize, d->val.str);
-		}
-
-		create_channel_port(pc->conn, pc->msg, pc->adapter,
-				pc->address, svcname, ch, data);
-
-		if (svcname)
-			g_free(svcname);
-	} else {
-		/* ConnectService */
-		pc->channel = ch;
-
-		connect_pending(pc->conn, pc->msg, pc);
-
-		/* Wait the connect callback */
-		goto done;
-	}
-
-fail:
-	pending_connect_remove(pc);
-done:
-	if (recs)
-		sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
-}
-
-static int pattern2uuid(const char *pattern, uuid_t *uuid)
-{
-	uint16_t cls;
-	int i;
-
-	/* Friendly name */
-	cls = str2class(pattern);
-	if (cls) {
-		sdp_uuid16_create(uuid, cls);
-		return 0;
-	}
-
-	/* UUID 128*/
-	if (strlen(pattern) != 36)
-		return -EINVAL;
-
-	for (i = 0; i < 36; i++) {
-		if (i == 8 || i == 13 || i == 18 || i == 23) {
-			if (pattern[i] != '-')
-				return -EINVAL;
-
-		} else if (!isxdigit(pattern[i]))
-			return -EINVAL;
-	}
-
-	bt_string2uuid(uuid, pattern);
-	return 0;
-}
-
-static int pattern2long(const char *pattern, long *pval)
-{
-	char *endptr;
-	long val;
-
-	errno = 0;
-	val = strtol(pattern, &endptr, 0);
-	if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) ||
-			(errno != 0 && val == 0) || (pattern == endptr)) {
-		return -EINVAL;
-	}
-
-	*pval = val;
-
-	return 0;
-}
-
-static DBusMessage *search_uuid(DBusConnection *conn, DBusMessage *msg,
-				const char *adapter, const char *address,
-				const char *pattern, uuid_t *uuid, void *data)
-{
-	struct pending_connect *pc;
-	int err;
-	bdaddr_t src, dst;
-
-	pc = g_new0(struct pending_connect, 1);
-	pc->conn = dbus_connection_ref(conn);
-	pc->msg = dbus_message_ref(msg);
-	pc->adapter = g_strdup(adapter);
-	pc->address = g_strdup(address);
-	pc->id = -1;
-	pc->pattern = g_strdup(pattern);
-
-	str2ba(adapter, &src);
-	str2ba(address, &dst);
-
-	err = bt_search_service(&src, &dst, uuid, record_cb, pc, NULL);
-	if (err < 0) {
-		pending_connect_free(pc);
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotSuppported",
-						"Not Supported");
-	}
-
-	pending_connects = g_slist_append(pending_connects, pc);
-	pc->listener_id = g_dbus_add_disconnect_watch(conn,
-					dbus_message_get_sender(msg),
-					transaction_owner_exited, pc, NULL);
-
-	return NULL;
-}
-
-static DBusMessage *create_port(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	const char *address, *pattern;
-	struct pending_connect *pending;
-	long val;
-	uuid_t uuid;
-	char adp[18];
-	int dev_id;
-	bdaddr_t src;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	dev_id = hci_get_route(NULL);
-	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
-						"Adapter not Available");
-
-	pending = find_pending_connect_by_pattern(address, pattern);
-	if (pending)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
-						"Connection in Progress");
-
-	ba2str(&src, adp);
-
-	/* Friendly name or uuid128 */
-	if (pattern2uuid(pattern, &uuid) == 0)
-		return search_uuid(conn, msg, adp, address, pattern, &uuid,
-				data);
-
-	/* RFCOMM Channel */
-	if (pattern2long(pattern, &val) == 0)
-		return create_channel_port(conn, msg, adp, address, pattern,
-				val, data);
-
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArgument",
-					"Invalid pattern");
-}
-
-static void message_append_paths(DBusMessage *msg, const GSList *list)
-{
-	const GSList *l;
-	const char *path;
-	DBusMessageIter iter, iter_array;
-
-	dbus_message_iter_init_append(msg, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_TYPE_STRING_AS_STRING, &iter_array);
-
-	for (l = list; l; l = l->next) {
-		path = l->data;
-		dbus_message_iter_append_basic(&iter_array,
-				DBUS_TYPE_STRING, &path);
-	}
-
-	dbus_message_iter_close_container(&iter, &iter_array);
-}
-
-static DBusMessage *list_ports(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	message_append_paths(reply, ports_paths);
-
-	return reply;
-}
-
-static DBusMessage *remove_port(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct rfcomm_dev_info di;
-	const char *path;
-	GSList *l;
-	int16_t id;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &path,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	if (sscanf(path, SERIAL_MANAGER_PATH"/rfcomm%hd", &id) != 1)
-		return does_not_exist(msg, "Invalid RFCOMM node");
-
-	di.id = id;
-	if (ioctl(rfcomm_ctl, RFCOMMGETDEVINFO, &di) < 0)
-		return does_not_exist(msg, "Invalid RFCOMM node");
-	port_delete(&di.src, &di.dst, id);
-
-	if (port_unregister(path) < 0)
-		return does_not_exist(msg, "Invalid RFCOMM node");
-
-	g_dbus_emit_signal(conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "PortRemoved" ,
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
-	l = g_slist_find_custom(ports_paths, path, (GCompareFunc) strcmp);
-	if (l) {
-		g_free(l->data);
-		ports_paths = g_slist_remove(ports_paths, l->data);
-	}
-
-	return dbus_message_new_method_return(msg);
 }
 
 static void add_lang_attr(sdp_record_t *r)
@@ -1615,222 +990,28 @@ static DBusMessage *remove_proxy(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static DBusMessage *connect_channel(DBusConnection *conn, DBusMessage *msg,
-				const char *adapter, const char *address,
-				const char *pattern, long channel, void *data)
-{
-	struct pending_connect *pc;
-
-	if (channel < 1 || channel > 30)
-		return invalid_arguments(msg, "Invalid RFCOMM channel");
-
-	pc = g_new0(struct pending_connect, 1);
-	pc->conn = dbus_connection_ref(conn);
-	pc->msg = dbus_message_ref(msg);
-	pc->adapter = g_strdup(adapter);
-	pc->address = g_strdup(address);
-	pc->id = -1;
-	pc->pattern = g_strdup(pattern);
-	pc->channel = channel;
-
-	return connect_pending(conn, msg, pc);
-}
-
-DBusMessage *service_connect(DBusConnection *conn, DBusMessage *msg,
-						const char *adapter,
-						const char *address,
-						const char *pattern)
-{
-	int dev_id;
-	bdaddr_t src;
-	char adp[18];
-	uuid_t uuid;
-	long val;
-
-	if (!adapter)
-		dev_id = hci_get_route(NULL);
-	else
-		dev_id = hci_devid(adapter);
-
-	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0))
-		return failed(msg, "Adapter not Available");
-
-	ba2str(&src, adp);
-
-	/* Friendly name or uuid128 */
-	if (pattern2uuid(pattern, &uuid) == 0)
-		return search_uuid(conn, msg, adp, address,
-						pattern, &uuid, NULL);
-
-	/* RFCOMM Channel */
-	if (pattern2long(pattern, &val) == 0)
-		return connect_channel(conn, msg, adp, address,
-							pattern, val, NULL);
-
-	return invalid_arguments(msg, "Invalid Pattern");
-}
-
-static DBusMessage *connect_service(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *address, *pattern;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	return service_connect(conn, msg, NULL, address, pattern);
-}
-
-static DBusMessage *connect_service_from_adapter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *adapter, *address, *pattern;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &adapter,
-				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	return service_connect(conn, msg, adapter, address, pattern);
-}
-
-static DBusMessage *disconnect_service(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *name;
-	int err, id;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	if (sscanf(name, "/dev/rfcomm%d", &id) != 1)
-		return invalid_arguments(msg, "Invalid RFCOMM node");
-
-	err = port_remove_listener(dbus_message_get_sender(msg), name);
-	if (err < 0)
-		return does_not_exist(msg, "Invalid RFCOMM node");
-
-	g_dbus_emit_signal(conn, SERIAL_MANAGER_PATH,
-			SERIAL_MANAGER_INTERFACE, "ServiceDisconnected" ,
-			DBUS_TYPE_STRING, &name,
-			DBUS_TYPE_INVALID);
-
-	return dbus_message_new_method_return(msg);
-}
-
-static DBusMessage *cancel_connect_service(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct pending_connect *pending;
-	const char *bda, *pattern;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &bda,
-				DBUS_TYPE_STRING, &pattern,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	pending = find_pending_connect_by_pattern(bda, pattern);
-	if (!pending)
-		return does_not_exist(msg, "No such connection request");
-
-	pending->canceled = 1;
-
-	return dbus_message_new_method_return(msg);
-}
-
 static void manager_unregister(void *data)
 {
-	if (pending_connects) {
-		g_slist_foreach(pending_connects,
-				(GFunc) pending_connect_free, NULL);
-		g_slist_free(pending_connects);
-		pending_connects = NULL;
-	}
-
 	if (proxies) {
 		g_slist_foreach(proxies,
 				(GFunc) proxy_unregister, NULL);
 		g_slist_free(proxies);
 		proxies = NULL;
 	}
-
-	if (ports_paths) {
-		g_slist_foreach(ports_paths,
-				(GFunc) g_free, NULL);
-		g_slist_free(ports_paths);
-		ports_paths = NULL;
-	}
 }
 
 static GDBusMethodTable manager_methods[] = {
-	{ "CreatePort",			"ss",	"s",	create_port,
-							G_DBUS_METHOD_FLAG_ASYNC },
-	{ "ListPorts",			"",	"as",	list_ports },
-	{ "RemovePort",			"s",	"",	remove_port },
 	{ "CreateProxy",		"ss",	"s",	create_proxy },
 	{ "ListProxies",		"",	"as",	list_proxies },
 	{ "RemoveProxy",		"s",	"",	remove_proxy },
-	{ "ConnectService",		"ss",	"s",	connect_service,
-							G_DBUS_METHOD_FLAG_ASYNC },
-	{ "ConnectServiceFromAdapter",	"sss",	"s",	connect_service_from_adapter,
-							G_DBUS_METHOD_FLAG_ASYNC },
-	{ "DisconnectService",		"s",	"",	disconnect_service },
-	{ "CancelConnectService",	"ss",	"",	cancel_connect_service },
 	{ },
 };
 
 static GDBusSignalTable manager_signals[] = {
-	{ "PortCreated",		"s"	},
-	{ "PortRemoved",		"s"	},
 	{ "ProxyCreated",		"s"	},
 	{ "ProxyRemoved",		"s"	},
-	{ "ServiceConnected",		"s"	},
-	{ "ServiceDisconnected",	"s"	},
 	{ }
 };
-
-static void parse_port(char *key, char *value, void *data)
-{
-	char path[MAX_PATH_LENGTH], port_name[16], dst_addr[18], *svc;
-	char *src_addr = data;
-	bdaddr_t dst, src;
-	int ch, id;
-
-	memset(dst_addr, 0, sizeof(dst_addr));
-	if (sscanf(key,"%17s#%d", dst_addr, &id) != 2)
-		return;
-
-	if (sscanf(value,"%d:", &ch) != 1)
-		return;
-
-	svc = strchr(value, ':');
-	if (svc && *svc)
-		svc++;
-
-	str2ba(dst_addr, &dst);
-	str2ba(src_addr, &src);
-
-	if (rfcomm_bind(&src, &dst, id, ch) < 0)
-		return;
-
-	snprintf(port_name, sizeof(port_name), "/dev/rfcomm%d", id);
-
-	if (port_register(connection, id, &src, &dst,
-				port_name, path, svc) < 0) {
-		rfcomm_release(id);
-		return;
-	}
-
-	ports_paths = g_slist_append(ports_paths, g_strdup(path));
-}
 
 static void parse_proxy(char *key, char *value, void *data)
 {
@@ -1904,9 +1085,6 @@ static void register_stored(void)
 		if (!isdigit(de->d_name[0]))
 			continue;
 
-		snprintf(filename, PATH_MAX, "%s/%s/serial", STORAGEDIR, de->d_name);
-		textfile_foreach(filename, parse_port, de->d_name);
-
 		snprintf(filename, PATH_MAX, "%s/%s/proxy", STORAGEDIR, de->d_name);
 		textfile_foreach(filename, parse_proxy, de->d_name);
 	}
@@ -1914,15 +1092,77 @@ static void register_stored(void)
 	closedir(dir);
 }
 
-int serial_manager_init(DBusConnection *conn)
+static int serial_probe(struct btd_device_driver *driver,
+			struct btd_device *device, sdp_record_t *rec,
+			const char *name)
 {
+	struct adapter *adapter = device_get_adapter(device);
+	const gchar *path = device_get_path(device);
+	sdp_list_t *protos;
+	int ch;
+	bdaddr_t src, dst;
 
-	if (rfcomm_ctl < 0) {
-		rfcomm_ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
-		if (rfcomm_ctl < 0)
-			return -errno;
+	DBG("path %s", path);
+
+	if (sdp_get_access_protos(rec, &protos) < 0)
+		return -EINVAL;
+
+	ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
+	sdp_list_free(protos, NULL);
+
+	if (ch < 1 || ch > 30) {
+		error("Channel out of range: %d", ch);
+		return -EINVAL;
 	}
 
+	str2ba(adapter->address, &src);
+	str2ba(device_get_address(device), &dst);
+
+	return port_register(connection, path, &src, &dst, name,
+			driver->uuids[0], ch);
+}
+
+static void serial_remove(struct btd_device_driver *driver,
+				struct btd_device *device)
+{
+	const gchar *path = device_get_path(device);
+
+	DBG("path %s", path);
+
+	port_unregister(path, driver->uuids[0]);
+}
+
+static int port_probe(struct btd_device_driver *driver,
+			struct btd_device *device, GSList *records)
+{
+	return serial_probe(driver, device, records->data,
+			SERIAL_PORT_NAME);
+}
+
+static int dialup_probe(struct btd_device_driver *driver,
+			struct btd_device *device, GSList *records)
+{
+	return serial_probe(driver, device, records->data,
+			DIALUP_NET_NAME);
+}
+
+static struct btd_device_driver serial_port_driver = {
+	.name	= "serial-port",
+	.uuids	= BTD_UUIDS(SERIAL_PORT_UUID),
+	.probe	= port_probe,
+	.remove	= serial_remove,
+};
+
+static struct btd_device_driver serial_dialup_driver = {
+	.name	= "serial-dialup",
+	.uuids	= BTD_UUIDS(DIALUP_NET_UUID),
+	.probe	= dialup_probe,
+	.remove	= serial_remove,
+};
+
+int serial_manager_init(DBusConnection *conn)
+{
 	if (!g_dbus_register_interface(conn, SERIAL_MANAGER_PATH,
 					SERIAL_MANAGER_INTERFACE,
 					manager_methods, manager_signals, NULL,
@@ -1938,11 +1178,17 @@ int serial_manager_init(DBusConnection *conn)
 
 	register_stored();
 
+	btd_register_device_driver(&serial_port_driver);
+	btd_register_device_driver(&serial_dialup_driver);
+
 	return 0;
 }
 
 void serial_manager_exit(void)
 {
+	btd_unregister_device_driver(&serial_port_driver);
+	btd_unregister_device_driver(&serial_dialup_driver);
+
 	g_dbus_unregister_interface(connection, SERIAL_MANAGER_PATH,
 						SERIAL_MANAGER_INTERFACE);
 
@@ -1950,7 +1196,4 @@ void serial_manager_exit(void)
 	connection = NULL;
 
 	port_release_all();
-
-	if (rfcomm_ctl >= 0)
-		close(rfcomm_ctl);
 }

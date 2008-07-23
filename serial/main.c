@@ -28,128 +28,29 @@
 #include <errno.h>
 #include <sys/types.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
-
 #include <gdbus.h>
 
 #include "plugin.h"
-#include "device.h"
-#include "adapter.h"
 #include "logging.h"
 #include "manager.h"
-#include "port.h"
-
-#define SERIAL_PORT_UUID	"00001101-0000-1000-8000-00805F9B34FB"
-#define DIALUP_NET_UUID		"00001103-0000-1000-8000-00805F9B34FB"
-
-#define SERIAL_INTERFACE     "org.bluez.Serial"
-#define ERROR_INVALID_ARGS   "org.bluez.Error.InvalidArguments"
-#define ERROR_DOES_NOT_EXIST "org.bluez.Error.DoesNotExist"
-
-static DBusMessage *serial_connect(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	struct btd_device *device = user_data;
-	struct adapter *adapter = device_get_adapter(device);
-	const char *target;
-	const gchar *src, *dst;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &target,
-						DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
-
-	src = device_get_address(device);
-	dst = adapter_get_address(adapter);
-
-	service_connect(conn, msg, src, dst, target);
-
-	return NULL;
-}
-
-static DBusMessage *serial_disconnect(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	const char *device, *sender;
-	int err, id;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &device,
-						DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
-
-	sender = dbus_message_get_sender(msg);
-
-	if (sscanf(device, "/dev/rfcomm%d", &id) != 1)
-		return g_dbus_create_error(msg, ERROR_INVALID_ARGS, NULL);
-
-	err = port_remove_listener(sender, device);
-	if (err < 0)
-		return g_dbus_create_error(msg, ERROR_DOES_NOT_EXIST, NULL);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static GDBusMethodTable serial_methods[] = {
-	{ "Connect",    "s", "s", serial_connect, G_DBUS_METHOD_FLAG_ASYNC },
-	{ "Disconnect", "s", "",  serial_disconnect },
-	{ }
-};
-
-static DBusConnection *conn;
-
-static int serial_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-
-	if (g_dbus_register_interface(conn, path, SERIAL_INTERFACE,
-						serial_methods, NULL, NULL,
-							device, NULL) == FALSE)
-		return -1;
-
-	return 0;
-}
-
-static void serial_remove(struct btd_device_driver *driver,
-				struct btd_device *device)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-
-	g_dbus_unregister_interface(conn, path, SERIAL_INTERFACE);
-}
-
-static struct btd_device_driver serial_driver = {
-	.name	= "serial",
-	.uuids	= BTD_UUIDS(SERIAL_PORT_UUID, DIALUP_NET_UUID),
-	.probe	= serial_probe,
-	.remove	= serial_remove,
-};
 
 static int serial_init(void)
 {
+	DBusConnection *conn;
+
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (conn == NULL)
 		return -EIO;
 
-	if (serial_manager_init(conn) < 0) {
-		dbus_connection_unref(conn);
+	if (serial_manager_init(conn) < 0)
 		return -EIO;
-	}
-
-	btd_register_device_driver(&serial_driver);
 
 	return 0;
 }
 
 static void serial_exit(void)
 {
-	btd_unregister_device_driver(&serial_driver);
-
 	serial_manager_exit();
-
-	dbus_connection_unref(conn);
 }
 
 BLUETOOTH_PLUGIN_DEFINE("serial", serial_init, serial_exit)
