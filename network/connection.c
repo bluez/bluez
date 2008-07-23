@@ -52,9 +52,7 @@
 #include "common.h"
 #include "connection.h"
 
-#define NETWORK_PANU_INTERFACE "org.bluez.network.Peer"
-#define NETWORK_GN_INTERFACE "org.bluez.network.Hub"
-#define NETWORK_NAP_INTERFACE "org.bluez.network.Router"
+#define NETWORK_PEER_INTERFACE "org.bluez.network.Peer"
 
 typedef enum {
 	CONNECTED,
@@ -62,15 +60,20 @@ typedef enum {
 	DISCONNECTED
 } conn_state;
 
-struct network_conn {
-	DBusMessage	*msg;
+struct network_peer {
 	bdaddr_t	src;
 	bdaddr_t	dst;
 	char		*path;		/* D-Bus path */
+	GSList		*connections;
+};
+
+struct network_conn {
+	DBusMessage	*msg;
 	char		dev[16];	/* Interface name */
 	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
 	int		sk;
+	struct network_peer *peer;
 };
 
 struct __service_16 {
@@ -80,14 +83,34 @@ struct __service_16 {
 
 static DBusConnection *connection = NULL;
 static const char *prefix = NULL;
-static GSList *connections = NULL;
+static GSList *peers = NULL;
 
-gint find_connection(gconstpointer a, gconstpointer b)
+static struct network_peer *find_peer(GSList *list, const char *path)
 {
-	const struct network_conn *nc = a;
-	const char *path = b;
+	GSList *l;
 
-	return strcmp(nc->path, path);
+	for (l = list; l; l = l->next) {
+		struct network_peer *peer = l->data;
+
+		if (!strcmp(peer->path, path))
+			return peer;
+	}
+
+	return NULL;
+}
+
+static struct network_conn *find_connection(GSList *list, uint16_t id)
+{
+	GSList *l;
+
+	for (l = list; l; l = l->next) {
+		struct network_conn *nc = l->data;
+
+		if (nc->id == id)
+			return nc;
+	}
+
+	return NULL;
 }
 
 static inline DBusMessage *not_supported(DBusMessage *msg)
@@ -120,35 +143,17 @@ static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
 				err ? strerror(err) : "Connection attempt failed");
 }
 
-static const char *id2iface(uint16_t id)
-{
-	switch (id) {
-	case BNEP_SVC_PANU:
-		return NETWORK_PANU_INTERFACE;
-		break;
-	case BNEP_SVC_GN:
-		return NETWORK_GN_INTERFACE;
-		break;
-	case BNEP_SVC_NAP:
-		return NETWORK_NAP_INTERFACE;
-		break;
-	default:
-		return NULL;
-	}
-}
-
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
 	struct network_conn *nc = data;
 
 	if (connection != NULL) {
-		const char *interface = id2iface(nc->id);
-
-		g_dbus_emit_signal(connection, nc->path,
-						interface,
-						"Disconnected",
-						DBUS_TYPE_INVALID);
+		const char *device = nc->dev;
+		g_dbus_emit_signal(connection, nc->peer->path,
+				NETWORK_PEER_INTERFACE, "Disconnected",
+				DBUS_TYPE_STRING, &device,
+				DBUS_TYPE_INVALID);
 	}
 
 	info("%s disconnected", nc->dev);
@@ -171,7 +176,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	gsize r;
 	int sk;
 	DBusMessage *reply;
-	const char *pdev;
+	const char *pdev, *uuid;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -224,16 +229,18 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	bnep_if_up(nc->dev, nc->id);
-	g_dbus_emit_signal(connection, nc->path,
-					id2iface(nc->id),
-					"Connected",
-					DBUS_TYPE_INVALID);
-
 	pdev = nc->dev;
+	uuid = bnep_uuid(nc->id);
 
-	reply = g_dbus_create_reply(nc->msg, DBUS_TYPE_STRING, &pdev,
-							DBUS_TYPE_INVALID);
-	g_dbus_send_message(connection, reply);
+	g_dbus_send_reply(connection, nc->msg,
+			DBUS_TYPE_STRING, &pdev,
+			DBUS_TYPE_INVALID);
+
+	g_dbus_emit_signal(connection, nc->peer->path,
+			NETWORK_PEER_INTERFACE, "Connected",
+			DBUS_TYPE_STRING, &pdev,
+			DBUS_TYPE_STRING, &uuid,
+			DBUS_TYPE_INVALID);
 
 	nc->state = CONNECTED;
 
@@ -317,25 +324,24 @@ failed:
 	g_dbus_send_message(connection, reply);
 }
 
-static DBusMessage *get_interface(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct network_conn *nc = data;
-	const char *pdev = nc->dev;
-
-	if (nc->state != CONNECTED)
-		return not_connected(msg);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &pdev,
-						DBUS_TYPE_INVALID);
-}
-
 /* Connect and initiate BNEP session */
 static DBusMessage *connection_connect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct network_conn *nc = data;
+	struct network_peer *peer = data;
+	struct network_conn *nc;
+	const char *svc;
+	uint16_t id;
 	int err;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &svc,
+						DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	id = bnep_service_id(svc);
+	nc = find_connection(peer->connections, id);
+	if (!nc)
+		return not_supported(msg);
 
 	if (nc->state != DISCONNECTED)
 		return already_connected(msg);
@@ -343,7 +349,7 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 	nc->state = CONNECTING;
 	nc->msg = dbus_message_ref(msg);
 
-	err = bt_l2cap_connect(&nc->src, &nc->dst, BNEP_PSM, BNEP_MTU,
+	err = bt_l2cap_connect(&peer->src, &peer->dst, BNEP_PSM, BNEP_MTU,
 							connect_cb, nc);
 	if (err < 0) {
 		error("Connect failed. %s(%d)", strerror(errno), errno);
@@ -361,11 +367,11 @@ static DBusMessage *connection_cancel(DBusConnection *conn,
 {
 	struct network_conn *nc = data;
 
-	if (nc->state != CONNECTING)
-		return no_pending_connect(msg);
-
-	close(nc->sk);
-	nc->state = DISCONNECTED;
+	if (nc->state == CONNECTED) {
+		bnep_if_down(nc->dev);
+		bnep_kill_connection(&nc->peer->dst);
+	} else
+		close(nc->sk);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -373,22 +379,36 @@ static DBusMessage *connection_cancel(DBusConnection *conn,
 static DBusMessage *connection_disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct network_conn *nc = data;
+	struct network_peer *peer = data;
+	GSList *l;
 
-	if (nc->state != CONNECTED)
-		return not_connected(msg);
+	for (l = peer->connections; l; l = l->next) {
+		struct network_conn *nc = l->data;
 
-	bnep_if_down(nc->dev);
-	bnep_kill_connection(&nc->dst);
+		if (nc->state == DISCONNECTED)
+			continue;
 
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		return connection_cancel(conn, msg, nc);
+	}
+
+	return not_connected(msg);
 }
 
 static DBusMessage *is_connected(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	struct network_conn *nc = data;
-	gboolean up = (nc->state == CONNECTED);
+	struct network_peer *peer = data;
+	GSList *l;
+	dbus_bool_t up = FALSE;
+
+	for (l = peer->connections; l; l = l->next) {
+		struct network_conn *nc = l->data;
+
+		if (nc->state != CONNECTED)
+			continue;
+
+		up = TRUE;
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_BOOLEAN, &up,
 						DBUS_TYPE_INVALID);
@@ -396,94 +416,126 @@ static DBusMessage *is_connected(DBusConnection *conn,
 
 static void connection_free(struct network_conn *nc)
 {
-	if (!nc)
-		return;
-
-	if (nc->path)
-		g_free(nc->path);
-
 	if (nc->state == CONNECTED) {
 		bnep_if_down(nc->dev);
-		bnep_kill_connection(&nc->dst);
-	}
+		bnep_kill_connection(&nc->peer->dst);
+	} else if (nc->state == CONNECTING)
+		close(nc->sk);
 
 	g_free(nc);
 	nc = NULL;
 }
 
+static void peer_free(struct network_peer *peer)
+{
+	g_slist_foreach(peer->connections, (GFunc) connection_free, NULL);
+	g_slist_free(peer->connections);
+	g_free(peer->path);
+	g_free(peer);
+}
+
 static void path_unregister(void *data)
 {
-	struct network_conn *nc = data;
-	const char *interface = id2iface(nc->id);
+	struct network_peer *peer = data;
 
-	info("Unregistered interface %s on path %s", interface, nc->path);
+	info("Unregistered interface %s on path %s",
+		NETWORK_PEER_INTERFACE, peer->path);
 
-	connections = g_slist_remove(connections, nc);
-	connection_free(nc);
+	peers = g_slist_remove(peers, peer);
+	peer_free(peer);
 }
 
 static GDBusMethodTable connection_methods[] = {
-	{ "GetInterface",	"",	"s",	get_interface		},
-	{ "Connect",		"",	"s",	connection_connect,
+	{ "Connect",		"s",	"s",	connection_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "CancelConnect",	"",	"",	connection_cancel	},
 	{ "Disconnect",		"",	"",	connection_disconnect	},
 	{ "IsConnected",	"",	"b",	is_connected		},
 	{ }
 };
 
 static GDBusSignalTable connection_signals[] = {
-	{ "Connected",		""	},
-	{ "Disconnected",	""	},
+	{ "Connected",		"ss"	},
+	{ "Disconnected",	"s"	},
 	{ }
 };
 
 void connection_unregister(const char *path, uint16_t id)
 {
-	const char *interface = id2iface(id);
+	struct network_peer *peer;
+	struct network_conn *nc;
 
-	g_dbus_unregister_interface(connection, path, interface);
+	peer = find_peer(peers, path);
+	if (!peer)
+		return;
+
+	nc = find_connection(peer->connections, id);
+	if (!nc)
+		return;
+
+	peer->connections = g_slist_remove(peer->connections, nc);
+	connection_free(nc);
+	if (peer->connections)
+		return;
+
+	g_dbus_unregister_interface(connection, path, NETWORK_PEER_INTERFACE);
+}
+
+static struct network_peer *create_peer(const char *path, bdaddr_t *src,
+				bdaddr_t *dst)
+{
+	struct network_peer *peer;
+
+	peer = g_new0(struct network_peer, 1);
+	peer->path = g_strdup(path);
+	bacpy(&peer->src, src);
+	bacpy(&peer->dst, dst);
+
+	if (g_dbus_register_interface(connection, path,
+					NETWORK_PEER_INTERFACE,
+					connection_methods,
+					connection_signals, NULL,
+					peer, path_unregister) == FALSE) {
+		error("D-Bus failed to register %s interface",
+			NETWORK_PEER_INTERFACE);
+		g_free(peer);
+		return NULL;
+	}
+
+	info("Registered interface %s on path %s",
+		NETWORK_PEER_INTERFACE, path);
+
+	return peer;
 }
 
 int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 			uint16_t id)
 {
+	struct network_peer *peer;
 	struct network_conn *nc;
-	bdaddr_t default_src;
-	int dev_id;
-	const char *interface;
 
 	if (!path)
 		return -EINVAL;
 
-	bacpy(&default_src, BDADDR_ANY);
-	dev_id = hci_get_route(&default_src);
-	if (dev_id < 0 || hci_devba(dev_id, &default_src) < 0)
-		return -1;
-
-	nc = g_new0(struct network_conn, 1);
-	interface = id2iface(id);
-
-	if (g_dbus_register_interface(connection, path,
-					interface,
-					connection_methods,
-					connection_signals, NULL,
-					nc, path_unregister) == FALSE) {
-		error("D-Bus failed to register %s interface", interface);
-		return -1;
+	peer = find_peer(peers, path);
+	if (!peer) {
+		peer = create_peer(path, src, dst);
+		if (!peer)
+			return -1;
+		peers = g_slist_append(peers, peer);
 	}
 
-	nc->path = g_strdup(path);
-	bacpy(&nc->src, src);
-	bacpy(&nc->dst, dst);
+	nc = find_connection(peer->connections, id);
+	if (nc)
+		return 0;
+
+	nc = g_new0(struct network_conn, 1);
 	nc->id = id;
 	memset(nc->dev, 0, 16);
 	strncpy(nc->dev, prefix, strlen(prefix));
 	nc->state = DISCONNECTED;
+	nc->peer = peer;
 
-	connections = g_slist_append(connections, nc);
-
-	info("Registered interface %s on path %s", interface, path);
+	peer->connections = g_slist_append(peer->connections, nc);
 
 	return 0;
 }

@@ -33,7 +33,6 @@
 #include <gdbus.h>
 
 #include "plugin.h"
-#include "device.h"
 #include "logging.h"
 #include "manager.h"
 

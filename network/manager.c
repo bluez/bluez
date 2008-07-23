@@ -45,8 +45,8 @@
 #include "textfile.h"
 #include "glib-helper.h"
 
-#include "../hcid/adapter.h"
-#include "../hcid/device.h"
+#include "adapter.h"
+#include "device.h"
 #include "error.h"
 #include "bridge.h"
 #include "manager.h"
@@ -80,12 +80,14 @@ static void register_server(uint16_t id)
 	server_store(path);
 }
 
-static int network_probe(struct btd_device *device, uint16_t id)
+static int network_probe(struct btd_device_driver *driver,
+			struct btd_device *device, GSList *records)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	const char *source, *destination;
 	bdaddr_t src, dst;
+	uint16_t id;
 
 	DBG("path %s", path);
 
@@ -94,74 +96,41 @@ static int network_probe(struct btd_device *device, uint16_t id)
 
 	str2ba(source, &src);
 	str2ba(destination, &dst);
+	id = bnep_service_id(driver->uuids[0]);
 
 	return connection_register(path, &src, &dst, id);
 }
 
-static int panu_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
-{
-	return network_probe(device, BNEP_SVC_PANU);
-}
-
-static int gn_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
-{
-	return network_probe(device, BNEP_SVC_GN);
-}
-
-static int nap_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
-{
-	return network_probe(device, BNEP_SVC_NAP);
-}
-
-static void network_remove(struct btd_device *device, uint16_t id)
+static void network_remove(struct btd_device_driver *driver,
+			struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
+	uint16_t id = bnep_service_id(driver->uuids[0]);
 
 	DBG("path %s", path);
 
 	connection_unregister(path, id);
 }
 
-static void panu_remove(struct btd_device_driver *driver,
-			struct btd_device *device)
-{
-	network_remove(device, BNEP_SVC_PANU);
-}
-
-static void gn_remove(struct btd_device_driver *driver,
-			struct btd_device *device)
-{
-	network_remove(device, BNEP_SVC_GN);
-}
-
-static void nap_remove(struct btd_device_driver *driver,
-			struct btd_device *device)
-{
-	network_remove(device, BNEP_SVC_NAP);
-}
-
 static struct btd_device_driver network_panu_driver = {
 	.name	= "network-panu",
 	.uuids	= BTD_UUIDS(PANU_UUID),
-	.probe	= panu_probe,
-	.remove	= panu_remove,
+	.probe	= network_probe,
+	.remove	= network_remove,
 };
 
 static struct btd_device_driver network_gn_driver = {
 	.name	= "network-gn",
 	.uuids	= BTD_UUIDS(GN_UUID),
-	.probe	= gn_probe,
-	.remove	= gn_remove,
+	.probe	= network_probe,
+	.remove	= network_remove,
 };
 
 static struct btd_device_driver network_nap_driver = {
 	.name	= "network-nap",
 	.uuids	= BTD_UUIDS(NAP_UUID),
-	.probe	= nap_probe,
-	.remove	= nap_remove,
+	.probe	= network_probe,
+	.remove	= network_remove,
 };
 
 int network_manager_init(DBusConnection *conn, struct network_conf *service_conf)
