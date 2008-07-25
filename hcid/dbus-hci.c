@@ -280,8 +280,7 @@ static void adapter_mode_changed(struct adapter *adapter, uint8_t scan_enable)
 	case (SCAN_PAGE | SCAN_INQUIRY):
 
 		if (adapter->discov_timeout != 0)
-			adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
-					discov_timeout_handler, adapter);
+			adapter_set_discov_timeout(adapter, adapter->discov_timeout * 1000);
 
 		if (adapter->mode == MODE_LIMITED) {
 			mode = "limited";
@@ -293,8 +292,8 @@ static void adapter_mode_changed(struct adapter *adapter, uint8_t scan_enable)
 	case SCAN_INQUIRY:
 		/* Address the scenario where another app changed the scan mode */
 		if (adapter->discov_timeout != 0)
-			adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
-					discov_timeout_handler, adapter);
+			adapter_set_discov_timeout(adapter, adapter->discov_timeout * 1000);
+
 		/* ignore, this event should not be sent*/
 	default:
 		/* ignore, reserved */
@@ -1594,55 +1593,6 @@ int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
 	return 0;
 }
 
-gboolean discov_timeout_handler(void *data)
-{
-	struct adapter *adapter = data;
-	struct hci_request rq;
-	int dd;
-	uint8_t scan_enable = adapter->scan_enable;
-	uint8_t status = 0;
-	gboolean retval = TRUE;
-	uint16_t dev_id = adapter_get_dev_id(adapter);
-
-	scan_enable &= ~SCAN_INQUIRY;
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("HCI device open failed: hci%d", dev_id);
-		return TRUE;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
-	rq.cparam = &scan_enable;
-	rq.clen   = sizeof(scan_enable);
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-	rq.event  = EVT_CMD_COMPLETE;
-
-	if (hci_send_req(dd, &rq, 1000) < 0) {
-		error("Sending write scan enable command to hci%d failed: %s (%d)",
-				dev_id, strerror(errno), errno);
-		goto failed;
-	}
-	if (status) {
-		error("Setting scan enable failed with status 0x%02x", status);
-		goto failed;
-	}
-
-	set_limited_discoverable(dd, adapter->dev.class, FALSE);
-
-	adapter->timeout_id = 0;
-	retval = FALSE;
-
-failed:
-	if (dd >= 0)
-		hci_close_dev(dd);
-
-	return retval;
-}
-
 /* Section reserved to device HCI callbacks */
 
 void hcid_dbus_setname_complete(bdaddr_t *local)
@@ -1731,10 +1681,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	if (adapter->timeout_id) {
-		g_source_remove(adapter->timeout_id);
-		adapter->timeout_id = 0;
-	}
+	adapter_remove_discov_timeout(adapter);
 
 	if (adapter->scan_enable != rp.enable)
 		adapter_mode_changed(adapter, rp.enable);

@@ -461,11 +461,11 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 	} else {
 		/* discoverable or limited */
 		if ((scan_enable & SCAN_INQUIRY) && (new_mode != adapter->mode)) {
-			if (adapter->timeout_id)
-				g_source_remove(adapter->timeout_id);
+			if (adapter->discov_timeout_id)
+				g_source_remove(adapter->discov_timeout_id);
 
 			if (!adapter->sessions && !adapter->discov_timeout)
-				adapter->timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
+				adapter->discov_timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
 						discov_timeout_handler, adapter);
 		}
 	}
@@ -555,13 +555,13 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 	bdaddr_t bdaddr;
 	const char *path;
 
-	if (adapter->timeout_id) {
-		g_source_remove(adapter->timeout_id);
-		adapter->timeout_id = 0;
+	if (adapter->discov_timeout_id) {
+		g_source_remove(adapter->discov_timeout_id);
+		adapter->discov_timeout_id = 0;
 	}
 
 	if ((timeout != 0) && (adapter->scan_enable & SCAN_INQUIRY))
-		adapter->timeout_id = g_timeout_add(timeout * 1000,
+		adapter->discov_timeout_id = g_timeout_add(timeout * 1000,
 						discov_timeout_handler,
 						adapter);
 
@@ -2423,9 +2423,9 @@ int adapter_stop(struct adapter *adapter)
 	const char *mode = "off";
 
 	/* cancel pending timeout */
-	if (adapter->timeout_id) {
-		g_source_remove(adapter->timeout_id);
-		adapter->timeout_id = 0;
+	if (adapter->discov_timeout_id) {
+		g_source_remove(adapter->discov_timeout_id);
+		adapter->discov_timeout_id = 0;
 	}
 
 	/* check pending requests */
@@ -2591,4 +2591,77 @@ void adapter_free(struct adapter *adapter)
 	g_free(adapter);
 
 	return;
+}
+gboolean discov_timeout_handler(void *data)
+{
+	struct adapter *adapter = data;
+	struct hci_request rq;
+	int dd;
+	uint8_t scan_enable = adapter->scan_enable;
+	uint8_t status = 0;
+	gboolean retval = TRUE;
+	uint16_t dev_id = adapter->dev_id;
+
+	scan_enable &= ~SCAN_INQUIRY;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("HCI device open failed: hci%d", dev_id);
+		return TRUE;
+	}
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
+	rq.cparam = &scan_enable;
+	rq.clen   = sizeof(scan_enable);
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event  = EVT_CMD_COMPLETE;
+
+	if (hci_send_req(dd, &rq, 1000) < 0) {
+		error("Sending write scan enable command to hci%d failed: %s (%d)",
+				dev_id, strerror(errno), errno);
+		goto failed;
+	}
+	if (status) {
+		error("Setting scan enable failed with status 0x%02x", status);
+		goto failed;
+	}
+
+	set_limited_discoverable(dd, adapter->dev.class, FALSE);
+
+	adapter_remove_discov_timeout(adapter);
+	retval = FALSE;
+
+failed:
+	if (dd >= 0)
+		hci_close_dev(dd);
+
+	return retval;
+}
+
+void adapter_set_discov_timeout(struct adapter *adapter, guint interval)
+{
+	if (!adapter)
+		return;
+
+	if (adapter->discov_timeout_id) {
+		error("Timeout already added for adapter %s", adapter->path);
+		return;
+	}
+
+	adapter->discov_timeout_id = g_timeout_add(interval, discov_timeout_handler, adapter);
+}
+
+void adapter_remove_discov_timeout(struct adapter *adapter)
+{
+	if (!adapter)
+		return;
+
+	if(adapter->discov_timeout_id == 0)
+		return;
+
+	g_source_remove(adapter->discov_timeout_id);
+	adapter->discov_timeout_id = 0;
 }
