@@ -194,7 +194,8 @@ done:
 	if (hidp.rd_data)
 		g_free(hidp.rd_data);
 
-	return input_device_register(connection, &src, &dst, &hidp, path);
+	return input_device_register(connection, path, &src, &dst,
+				driver->uuids[0], hidp.idle_to);
 }
 
 void input_remove(struct btd_device_driver *driver,
@@ -204,7 +205,7 @@ void input_remove(struct btd_device_driver *driver,
 
 	DBG("path %s", path);
 
-	input_device_unregister(connection, path);
+	input_device_unregister(path, driver->uuids[0]);
 }
 
 int headset_input_probe(struct btd_device_driver *driver,
@@ -240,17 +241,8 @@ int headset_input_probe(struct btd_device_driver *driver,
 	str2ba(source, &src);
 	str2ba(destination, &dst);
 
-	return fake_input_register(connection, &src, &dst, ch, path);
-}
-
-void headset_input_remove(struct btd_device_driver *driver,
-				struct btd_device *device)
-{
-	const gchar *path = device_get_path(device);
-
-	DBG("path %s", path);
-
-	input_device_unregister(connection, path);
+	return fake_input_register(connection, path, &src, &dst,
+				driver->uuids[0], ch);
 }
 
 static struct btd_device_driver input_driver = {
@@ -264,7 +256,7 @@ static struct btd_device_driver input_headset_driver = {
 	.name	= "input-headset",
 	.uuids	= BTD_UUIDS(HSP_HS_UUID),
 	.probe	= headset_input_probe,
-	.remove	= headset_input_remove,
+	.remove	= input_remove,
 };
 
 int input_manager_init(DBusConnection *conn, GKeyFile *config)

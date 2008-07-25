@@ -54,7 +54,6 @@
 #include "glib-helper.h"
 
 #define INPUT_DEVICE_INTERFACE "org.bluez.input.Device"
-#define INPUT_HEADSET_INTERFACE "org.bluez.input.Headset"
 
 #define BUF_SIZE		16
 
@@ -62,77 +61,83 @@
 
 #define FI_FLAG_CONNECTED	1
 
-struct device;
-
-struct device {
-	bdaddr_t		src;
-	bdaddr_t		dst;
-	int			timeout;
-	char			*name;
-	uint8_t			major;
-	uint8_t			minor;
-	uint16_t		product;
-	uint16_t		vendor;
+struct input_conn {
 	struct fake_input	*fake;
 	DBusMessage		*pending_connect;
-	DBusConnection		*conn;
-	char			*path;
-	char			*iface;
+	char			*uuid;
+	char			*alias;
 	int			ctrl_sk;
 	int			intr_sk;
 	guint			ctrl_watch;
 	guint			intr_watch;
+	int			timeout;
+	struct input_device	*idev;
+};
+
+struct input_device {
+	DBusConnection		*conn;
+	char			*path;
+	bdaddr_t		src;
+	bdaddr_t		dst;
+	char			*name;
+	GSList			*connections;
 };
 
 GSList *devices = NULL;
 
-static struct device *device_new(bdaddr_t *src, bdaddr_t *dst,
-					uint8_t subclass, int timeout)
+static struct input_device *find_device_by_path(GSList *list, const char *path)
 {
-	struct device *idev;
-	uint32_t cls;
-	uint8_t major, minor;
+	GSList *l;
 
-	if (!subclass) {
-		if (read_device_class(src, dst, &cls) < 0)
-			return NULL;
+	for (l = list; l; l = l->next) {
+		struct input_device *idev = l->data;
 
-		major = (cls >> 8) & 0x1f;
-		minor = (cls >> 2) & 0x3f;
-	} else {
-		major = 0x05; /* Peripheral */
-		minor = (subclass >> 2) & 0x3f;
+		if (!strcmp(idev->path, path))
+			return idev;
 	}
 
-	idev = g_new0(struct device, 1);
-
-	bacpy(&idev->src, src);
-	bacpy(&idev->dst, dst);
-	idev->timeout = timeout;
-
-	read_device_name(src, dst, &idev->name);
-
-	idev->major	= major;
-	idev->minor	= minor;
-	idev->ctrl_sk	= -1;
-	idev->intr_sk	= -1;
-
-	return idev;
+	return NULL;
 }
 
-static void device_free(struct device *idev)
+static struct input_conn *find_connection(GSList *list, const char *pattern)
 {
-	if (!idev)
-		return;
-	if (idev->name)
-		g_free(idev->name);
-	if (idev->fake)
-		g_free(idev->fake);
-	if (idev->path)
-		g_free(idev->path);
-	if (idev->pending_connect)
-		dbus_message_unref(idev->pending_connect);
+	GSList *l;
+
+	for (l = list; l; l = l->next) {
+		struct input_conn *iconn = l->data;
+
+		if (!strcasecmp(iconn->uuid, pattern))
+			return iconn;
+
+		if (!strcasecmp(iconn->alias, pattern))
+			return iconn;
+	}
+
+	return NULL;
+}
+
+static void input_conn_free(struct input_conn *iconn)
+{
+	if (iconn->pending_connect)
+		dbus_message_unref(iconn->pending_connect);
+
+	if (iconn->ctrl_watch)
+		g_source_remove(iconn->ctrl_watch);
+
+	if (iconn->intr_watch)
+		g_source_remove(iconn->intr_watch);
+
+	g_free(iconn->uuid);
+	g_free(iconn->alias);
+	g_free(iconn->fake);
+	g_free(iconn);
+}
+
+static void input_device_free(struct input_device *idev)
+{
 	dbus_connection_unref(idev->conn);
+	g_free(idev->name);
+	g_free(idev->path);
 	g_free(idev);
 }
 
@@ -293,6 +298,12 @@ failed:
 	return FALSE;
 }
 
+static inline DBusMessage *not_supported(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							"Not suported");
+}
+
 static inline DBusMessage *in_progress(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
@@ -314,16 +325,16 @@ static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
 static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer user_data)
 {
-	struct device *idev = user_data;
-	struct fake_input *fake;
+	struct input_conn *iconn = user_data;
+	struct input_device *idev = iconn->idev;
+	struct fake_input *fake = iconn->fake;
 	DBusMessage *reply;
 	const char *path;
 
-	fake = idev->fake;
-	fake->rfcomm = g_io_channel_unix_get_fd(chan);
-
 	if (err < 0)
 		goto failed;
+
+	fake->rfcomm = g_io_channel_unix_get_fd(chan);
 
 	/*
 	 * FIXME: Some headsets required a sco connection
@@ -341,34 +352,36 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 						(GIOFunc) rfcomm_io_cb, fake);
 
 	/* Replying to the requestor */
-	reply = dbus_message_new_method_return(idev->pending_connect);
+	reply = dbus_message_new_method_return(iconn->pending_connect);
 	g_dbus_send_message(idev->conn, reply);
 
 	/* Sending the Connected signal */
-	path = dbus_message_get_path(idev->pending_connect);
+	path = dbus_message_get_path(iconn->pending_connect);
 	g_dbus_emit_signal(idev->conn, path,
-			idev->iface, "Connected",
+			INPUT_DEVICE_INTERFACE, "Connected",
+			DBUS_TYPE_STRING, &iconn->uuid,
 			DBUS_TYPE_INVALID);
 
-	dbus_message_unref(idev->pending_connect);
-	idev->pending_connect = NULL;
+	dbus_message_unref(iconn->pending_connect);
+	iconn->pending_connect = NULL;
 
 	return;
 
 failed:
-	reply = connection_attempt_failed(idev->pending_connect, err);
+	reply = connection_attempt_failed(iconn->pending_connect, err);
 	g_dbus_send_message(idev->conn, reply);
 
-	dbus_message_unref(idev->pending_connect);
-	idev->pending_connect = NULL;
+	dbus_message_unref(iconn->pending_connect);
+	iconn->pending_connect = NULL;
 }
 
-static int rfcomm_connect(struct device *idev)
+static int rfcomm_connect(struct input_conn *iconn)
 {
+	struct input_device *idev = iconn->idev;
 	int err;
 
-	err = bt_rfcomm_connect(&idev->src, &idev->dst, idev->fake->ch,
-			rfcomm_connect_cb, idev);
+	err = bt_rfcomm_connect(&idev->src, &idev->dst, iconn->fake->ch,
+			rfcomm_connect_cb, iconn);
 	if (err < 0) {
 		error("connect() failed: %s (%d)", strerror(-err), -err);
 		return err;
@@ -379,22 +392,25 @@ static int rfcomm_connect(struct device *idev)
 
 static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	struct device *idev = data;
+	struct input_conn *iconn = data;
+	struct input_device *idev = iconn->idev;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
 
-	g_dbus_emit_signal(idev->conn, idev->path, idev->iface,
-			"Disconnected", DBUS_TYPE_INVALID);
+	g_dbus_emit_signal(idev->conn, idev->path,
+			INPUT_DEVICE_INTERFACE, "Disconnected",
+			DBUS_TYPE_STRING, &iconn->uuid,
+			DBUS_TYPE_INVALID);
 
-	g_source_remove(idev->ctrl_watch);
-	idev->ctrl_watch = 0;
-	idev->intr_watch = 0;
+	g_source_remove(iconn->ctrl_watch);
+	iconn->ctrl_watch = 0;
+	iconn->intr_watch = 0;
 
 	/* Close control channel */
-	if (idev->ctrl_sk > 0) {
-		close(idev->ctrl_sk);
-		idev->ctrl_sk = -1;
+	if (iconn->ctrl_sk > 0) {
+		close(iconn->ctrl_sk);
+		iconn->ctrl_sk = -1;
 	}
 
 	return FALSE;
@@ -403,53 +419,62 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 
 static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	struct device *idev = data;
+	struct input_conn *iconn = data;
+	struct input_device *idev = iconn->idev;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
 
-	g_dbus_emit_signal(idev->conn, idev->path, idev->iface,
+	g_dbus_emit_signal(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
 			"Disconnected", DBUS_TYPE_INVALID);
 
-	g_source_remove(idev->intr_watch);
-	idev->intr_watch = 0;
-	idev->ctrl_watch = 0;
+	g_source_remove(iconn->intr_watch);
+	iconn->intr_watch = 0;
+	iconn->ctrl_watch = 0;
 
 	/* Close interrupt channel */
-	if (idev->intr_sk > 0) {
-		close(idev->intr_sk);
-		idev->intr_sk = -1;
+	if (iconn->intr_sk > 0) {
+		close(iconn->intr_sk);
+		iconn->intr_sk = -1;
 	}
 
 	return FALSE;
 }
 
-static guint create_watch(int sk, GIOFunc cb, struct device *idev)
+static guint create_watch(int sk, GIOFunc cb, struct input_conn *iconn)
 {
 	guint id;
 	GIOChannel *io;
 
 	io = g_io_channel_unix_new(sk);
-	id = g_io_add_watch(io, G_IO_HUP | G_IO_ERR | G_IO_NVAL, cb, idev);
+	id = g_io_add_watch(io, G_IO_HUP | G_IO_ERR | G_IO_NVAL, cb, iconn);
 	g_io_channel_unref(io);
 
 	return id;
+}
+
+static gboolean fake_hid_connect(struct input_conn *iconn)
+{
+	struct fake_hid *fhid = iconn->fake->priv;
+
+	return fhid->connect(iconn->fake);
+}
+
+static int fake_hid_disconnect(struct input_conn *iconn)
+{
+	struct fake_hid *fhid = iconn->fake->priv;
+
+	return fhid->disconnect(iconn->fake);
 }
 
 static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 		int ctrl_sk, int intr_sk, int timeout, const char *name)
 {
 	struct hidp_connadd_req req;
+	struct fake_hid *fake_hid;
+	struct fake_input *fake;
 	char addr[18];
 	int ctl, err;
-
-	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
-	if (ctl < 0) {
-		error("Can't open HIDP interface");
-		return -errno;
-	}
-
-	ba2str(dst, addr);
 
 	memset(&req, 0, sizeof(req));
 	req.ctrl_sock = ctrl_sk;
@@ -463,6 +488,23 @@ static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 		goto cleanup;
 	}
 
+	fake_hid = get_fake_hid(req.vendor, req.product);
+	if (fake_hid) {
+		fake = g_new0(struct fake_input, 1);
+		fake->connect = fake_hid_connect;
+		fake->disconnect = fake_hid_disconnect;
+		fake->priv = fake_hid;
+		return fake_hid_connadd(fake, intr_sk, fake_hid);
+	}
+
+	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
+	if (ctl < 0) {
+		error("Can't open HIDP interface");
+		return -errno;
+	}
+
+	ba2str(dst, addr);
+
 	if (req.subclass & 0x40) {
 		err = encrypt_link(src, dst);
 		if (err < 0 && err != -EACCES)
@@ -472,14 +514,16 @@ static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 	if (name)
 		strncpy(req.name, name, 128);
 
-	info("New input device %s (%s)", addr, req.name);
-
 	if (req.vendor == 0x054c && req.product == 0x0268) {
 		unsigned char buf[] = { 0x53, 0xf4,  0x42, 0x03, 0x00, 0x00 };
 		err = write(ctrl_sk, buf, sizeof(buf));
 	}
 
 	err = ioctl(ctl, HIDPCONNADD, &req);
+	if (err < 0)
+		goto cleanup;
+
+	info("New input device %s (%s)", addr, req.name);
 
 cleanup:
 	close(ctl);
@@ -493,7 +537,8 @@ cleanup:
 static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer user_data)
 {
-	struct device *idev = user_data;
+	struct input_conn *iconn = user_data;
+	struct input_device *idev = iconn->idev;
 	DBusMessage *reply;
 
 	if (err < 0) {
@@ -501,39 +546,42 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto failed;
 	}
 
-	idev->intr_sk = g_io_channel_unix_get_fd(chan);
+	iconn->intr_sk = g_io_channel_unix_get_fd(chan);
 	err = hidp_connadd(&idev->src, &idev->dst,
-				idev->ctrl_sk, idev->intr_sk,
-					idev->timeout, idev->name);
+				iconn->ctrl_sk, iconn->intr_sk,
+					iconn->timeout, idev->name);
 	if (err < 0)
 		goto failed;
 
-	idev->intr_watch = create_watch(idev->intr_sk, intr_watch_cb, idev);
-	idev->ctrl_watch = create_watch(idev->ctrl_sk, ctrl_watch_cb, idev);
-	g_dbus_emit_signal(idev->conn, idev->path, idev->iface,
-			"Connected", DBUS_TYPE_INVALID);
+	iconn->intr_watch = create_watch(iconn->intr_sk, intr_watch_cb, iconn);
+	iconn->ctrl_watch = create_watch(iconn->ctrl_sk, ctrl_watch_cb, iconn);
+	g_dbus_emit_signal(idev->conn, idev->path,
+			INPUT_DEVICE_INTERFACE, "Connected",
+			DBUS_TYPE_STRING, &iconn->uuid,
+			DBUS_TYPE_INVALID);
 
 	/* Replying to the requestor */
-	g_dbus_send_reply(idev->conn, idev->pending_connect, DBUS_TYPE_INVALID);
+	g_dbus_send_reply(idev->conn, iconn->pending_connect, DBUS_TYPE_INVALID);
 
 	goto cleanup;
 
 failed:
-	reply = connection_attempt_failed(idev->pending_connect, -err);
+	reply = connection_attempt_failed(iconn->pending_connect, -err);
 	g_dbus_send_message(idev->conn, reply);
 
-	idev->intr_sk = -1;
-	idev->ctrl_sk = -1;
+	iconn->intr_sk = -1;
+	iconn->ctrl_sk = -1;
 
 cleanup:
-	dbus_message_unref(idev->pending_connect);
-	idev->pending_connect = NULL;
+	dbus_message_unref(iconn->pending_connect);
+	iconn->pending_connect = NULL;
 }
 
 static void control_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer user_data)
 {
-	struct device *idev = user_data;
+	struct input_conn *iconn = user_data;
+	struct input_device *idev = iconn->idev;
 
 	if (err < 0) {
 		error("connect(): %s (%d)", strerror(-err), -err);
@@ -541,11 +589,11 @@ static void control_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	}
 
 	/* Set HID control channel */
-	idev->ctrl_sk = g_io_channel_unix_get_fd(chan);
+	iconn->ctrl_sk = g_io_channel_unix_get_fd(chan);
 
 	/* Connect to the HID interrupt channel */
 	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_INTR, 0,
-			interrupt_connect_cb, idev);
+			interrupt_connect_cb, iconn);
 	if (err < 0) {
 		error("L2CAP connect failed:%s (%d)", strerror(-err), -err);
 		goto failed;
@@ -554,16 +602,16 @@ static void control_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	return;
 
 failed:
-	idev->ctrl_sk = -1;
+	iconn->ctrl_sk = -1;
 	error_connection_attempt_failed(idev->conn,
-			idev->pending_connect, -err);
-	dbus_message_unref(idev->pending_connect);
-	idev->pending_connect = NULL;
+			iconn->pending_connect, -err);
+	dbus_message_unref(iconn->pending_connect);
+	iconn->pending_connect = NULL;
 }
 
-static int fake_disconnect(struct device *idev)
+static int fake_disconnect(struct input_conn *iconn)
 {
-	struct fake_input *fake = idev->fake;
+	struct fake_input *fake = iconn->fake;
 
 	if (!fake->io)
 		return -ENOTCONN;
@@ -581,29 +629,61 @@ static int fake_disconnect(struct device *idev)
 	return 0;
 }
 
-static int disconnect(struct device *idev, uint32_t flags)
+static int is_connected(struct input_conn *iconn)
 {
-	struct fake_input *fake = idev->fake;
+	struct input_device *idev = iconn->idev;
+	struct fake_input *fake = iconn->fake;
+	struct hidp_conninfo ci;
+	int ctl;
+
+	/* Fake input */
+	if (fake)
+		return fake->flags & FI_FLAG_CONNECTED;
+
+	/* Standard HID */
+	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
+	if (ctl < 0)
+		return 0;
+
+	memset(&ci, 0, sizeof(ci));
+	bacpy(&ci.bdaddr, &idev->dst);
+	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
+		close(ctl);
+		return 0;
+	}
+
+	close(ctl);
+
+	if (ci.state != BT_CONNECTED)
+		return 0;
+	else
+		return 1;
+}
+
+static int connection_disconnect(struct input_conn *iconn, uint32_t flags)
+{
+	struct input_device *idev = iconn->idev;
+	struct fake_input *fake = iconn->fake;
 	struct hidp_conndel_req req;
 	struct hidp_conninfo ci;
 	int ctl, err;
 
 	/* Fake input disconnect */
 	if (fake) {
-		err = fake->disconnect(idev);
+		err = fake->disconnect(iconn);
 		if (err == 0)
 			fake->flags &= ~FI_FLAG_CONNECTED;
 		return err;
 	}
 
 	/* Standard HID disconnect */
-	if (idev->ctrl_sk >= 0) {
-		close(idev->ctrl_sk);
-		idev->ctrl_sk = -1;
+	if (iconn->ctrl_sk >= 0) {
+		close(iconn->ctrl_sk);
+		iconn->ctrl_sk = -1;
 	}
-	if (idev->intr_sk >= 0) {
-		close(idev->intr_sk);
-		idev->intr_sk = -1;
+	if (iconn->intr_sk >= 0) {
+		close(iconn->intr_sk);
+		iconn->intr_sk = -1;
 	}
 
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
@@ -641,34 +721,22 @@ fail:
 	return -err;
 }
 
-static int is_connected(struct device *idev)
+static int disconnect(struct input_device *idev, uint32_t flags)
 {
-	struct fake_input *fake = idev->fake;
-	struct hidp_conninfo ci;
-	int ctl;
+	struct input_conn *iconn;
+	GSList *l;
 
-	/* Fake input */
-	if (fake)
-		return fake->flags & FI_FLAG_CONNECTED;
+	for (l = idev->connections; l; l = l->next) {
+		iconn = l->data;
 
-	/* Standard HID */
-	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
-	if (ctl < 0)
-		return 0;
-
-	memset(&ci, 0, sizeof(ci));
-	bacpy(&ci.bdaddr, &idev->dst);
-	if (ioctl(ctl, HIDPGETCONNINFO, &ci) < 0) {
-		close(ctl);
-		return 0;
+		if (is_connected(iconn))
+			break;
 	}
 
-	close(ctl);
+	if (!iconn)
+		return ENOTCONN;
 
-	if (ci.state != BT_CONNECTED)
-		return 0;
-	else
-		return 1;
+	return connection_disconnect(iconn, flags);
 }
 
 /*
@@ -677,26 +745,37 @@ static int is_connected(struct device *idev)
 static DBusMessage *device_connect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct device *idev = data;
-	struct fake_input *fake = idev->fake;
+	struct input_device *idev = data;
+	struct input_conn *iconn;
+	struct fake_input *fake;
+	const char *svc;
 	int err;
 
-	if (idev->pending_connect)
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &svc,
+						DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	iconn = find_connection(idev->connections, svc);
+	if (!iconn)
+		return not_supported(msg);
+
+	if (iconn->pending_connect)
 		return in_progress(msg);
 
-	if (is_connected(idev))
+	if (is_connected(iconn))
 		return already_connected(msg);
 
-	idev->pending_connect = dbus_message_ref(msg);
+	iconn->pending_connect = dbus_message_ref(msg);
+	fake = iconn->fake;
 
 	/* Fake input device */
 	if (fake) {
-		if (fake->connect(idev) < 0) {
+		if (fake->connect(iconn) < 0) {
 			int err = errno;
 			const char *str = strerror(err);
 			error("Connect failed: %s(%d)", str, err);
-			dbus_message_unref(idev->pending_connect);
-			idev->pending_connect = NULL;
+			dbus_message_unref(iconn->pending_connect);
+			iconn->pending_connect = NULL;
 			return connection_attempt_failed(msg, err);
 		}
 		fake->flags |= FI_FLAG_CONNECTED;
@@ -705,11 +784,11 @@ static DBusMessage *device_connect(DBusConnection *conn,
 
 	/* HID devices */
 	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL,
-						0, control_connect_cb, idev);
+						0, control_connect_cb, iconn);
 	if (err < 0) {
 		error("L2CAP connect failed: %s(%d)", strerror(-err), -err);
-		dbus_message_unref(idev->pending_connect);
-		idev->pending_connect = NULL;
+		dbus_message_unref(iconn->pending_connect);
+		iconn->pending_connect = NULL;
 		return connection_attempt_failed(msg, -err);
 	}
 
@@ -719,7 +798,7 @@ static DBusMessage *device_connect(DBusConnection *conn,
 static DBusMessage *device_disconnect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct device *idev = data;
+	struct input_device *idev = data;
 	int err;
 
 	err = disconnect(idev, 0);
@@ -732,8 +811,19 @@ static DBusMessage *device_disconnect(DBusConnection *conn,
 static DBusMessage *device_is_connected(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct device *idev = data;
-	dbus_bool_t connected = is_connected(idev);
+	struct input_device *idev = data;
+	dbus_bool_t connected = FALSE;
+	GSList *l;
+
+	for (l = idev->connections; l; l = l->next) {
+		struct input_conn *iconn = l->data;
+
+		if (!is_connected(iconn))
+			continue;
+
+		connected = TRUE;
+		break;
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_BOOLEAN, &connected,
 							DBUS_TYPE_INVALID);
@@ -741,17 +831,17 @@ static DBusMessage *device_is_connected(DBusConnection *conn,
 
 static void device_unregister(void *data)
 {
-	struct device *idev = data;
+	struct input_device *idev = data;
 
-	info("Unregistered interface %s on path %s", idev->iface, idev->path);
+	info("Unregistered interface %s on path %s", INPUT_DEVICE_INTERFACE, idev->path);
 
 	/* Disconnect if applied */
 	disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
-	device_free(idev);
+	input_device_free(idev);
 }
 
 static GDBusMethodTable device_methods[] = {
-	{ "Connect",		"",	"",	device_connect,
+	{ "Connect",		"s",	"",	device_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	device_disconnect	},
 	{ "IsConnected",	"",	"b",	device_is_connected	},
@@ -759,79 +849,115 @@ static GDBusMethodTable device_methods[] = {
 };
 
 static GDBusSignalTable device_signals[] = {
-	{ "Connected",		""	},
-	{ "Disconnected",	""	},
+	{ "Connected",		"ss"	},
+	{ "Disconnected",	"s"	},
 	{ }
 };
 
-/*
- * Input registration functions
- */
-static int register_path(DBusConnection *conn, struct device *idev)
+static struct input_device *input_device_new(DBusConnection *conn,
+					const char *path, bdaddr_t *src,
+					bdaddr_t *dst)
 {
-	if (g_dbus_register_interface(conn, idev->path, idev->iface,
+	struct input_device *idev;
+
+	idev = g_new0(struct input_device, 1);
+	bacpy(&idev->src, src);
+	bacpy(&idev->dst, dst);
+	idev->path = g_strdup(path);
+	read_device_name(src, dst, &idev->name);
+	idev->conn = dbus_connection_ref(conn);
+
+	if (g_dbus_register_interface(conn, idev->path, INPUT_DEVICE_INTERFACE,
 					device_methods, device_signals, NULL,
 					idev, device_unregister) == FALSE) {
 		error("Failed to register interface %s on path %s",
-			idev->iface, idev->path);
-		device_free(idev);
-		return -1;
+			INPUT_DEVICE_INTERFACE, path);
+		input_device_free(idev);
+		return NULL;
 	}
 
-	devices = g_slist_append(devices, idev);
+	info("Registered interface %s on path %s", INPUT_DEVICE_INTERFACE,
+		idev->path);
 
-	info("Registered interface %s on path %s", idev->iface, idev->path);
+	return idev;
+}
+
+static struct input_conn *input_conn_new(struct input_device *idev,
+					const char *uuid, const char *alias,
+					int timeout)
+{
+	struct input_conn *iconn;
+
+	iconn = g_new0(struct input_conn, 1);
+	iconn->ctrl_sk = -1;
+	iconn->intr_sk = -1;
+	iconn->timeout = timeout;
+	iconn->uuid = g_strdup(uuid);
+	iconn->alias = g_strdup(alias);
+	iconn->idev = idev;
+
+	return iconn;
+}
+
+int input_device_register(DBusConnection *conn, const char *path,
+			bdaddr_t *src, bdaddr_t *dst, const char *uuid,
+			int timeout)
+{
+	struct input_device *idev;
+	struct input_conn *iconn;
+
+	idev = find_device_by_path(devices, path);
+	if (!idev) {
+		idev = input_device_new(conn, path, src, dst);
+		if (!idev)
+			return -EINVAL;
+		devices = g_slist_append(devices, idev);
+	}
+
+	iconn = input_conn_new(idev, uuid, "hid", timeout);
+	if (!iconn)
+		return -EINVAL;
+
+	idev->connections = g_slist_append(idev->connections, iconn);
 
 	return 0;
 }
 
-int input_device_register(DBusConnection *conn, bdaddr_t *src, bdaddr_t *dst,
-				struct hidp_connadd_req *hid, const char *path)
+int fake_input_register(DBusConnection *conn, const char *path, bdaddr_t *src,
+			bdaddr_t *dst, const char *uuid, uint8_t channel)
 {
-	struct device *idev;
+	struct input_device *idev;
+	struct input_conn *iconn;
 
-	idev = device_new(src, dst, hid->subclass, hid->idle_to);
-	if (!idev)
+	idev = find_device_by_path(devices, path);
+	if (!idev) {
+		idev = input_device_new(conn, path, src, dst);
+		if (!idev)
+			return -EINVAL;
+		devices = g_slist_append(devices, idev);
+	}
+
+	iconn = input_conn_new(idev, uuid, "hsp", 0);
+	if (!iconn)
 		return -EINVAL;
 
-	idev->path = g_strdup(path);
-	idev->iface = INPUT_DEVICE_INTERFACE;
-	idev->product = hid->product;
-	idev->vendor = hid->vendor;
-	idev->conn = dbus_connection_ref(conn);
+	iconn->fake = g_new0(struct fake_input, 1);
+	iconn->fake->ch = channel;
+	iconn->fake->connect = rfcomm_connect;
+	iconn->fake->disconnect = fake_disconnect;
 
-	return register_path(conn, idev);
+	idev->connections = g_slist_append(idev->connections, iconn);
+
+	return 0;
 }
 
-int fake_input_register(DBusConnection *conn, bdaddr_t *src,
-			bdaddr_t *dst, uint8_t ch, const char *path)
-{
-	struct device *idev;
-
-	idev = device_new(src, dst, 0, 0);
-	if (!idev)
-		return -EINVAL;
-
-	idev->path = g_strdup(path);
-	idev->iface = INPUT_HEADSET_INTERFACE;
-	idev->conn = dbus_connection_ref(conn);
-
-	/* FIXME: Missing set product and vendor */
-
-	idev->fake = g_new0(struct fake_input, 1);
-	idev->fake->ch = ch;
-	idev->fake->connect = rfcomm_connect;
-	idev->fake->disconnect = fake_disconnect;
-
-	return register_path(conn, idev);
-}
-
-static struct device *find_device(const bdaddr_t *src, const bdaddr_t *dst)
+static struct input_device *find_device(const bdaddr_t *src,
+					const bdaddr_t *dst)
 {
 	GSList *list;
 
 	for (list = devices; list != NULL; list = list->next) {
-		struct device *idev = list->data;
+		struct input_device *idev = list->data;
 
 		if (!bacmp(&idev->src, src) && !bacmp(&idev->dst, dst))
 			return idev;
@@ -840,77 +966,61 @@ static struct device *find_device(const bdaddr_t *src, const bdaddr_t *dst)
 	return NULL;
 }
 
-static struct device *find_device_by_path(const char *path)
+int input_device_unregister(const char *path, const char *uuid)
 {
-	GSList *list;
+	struct input_device *idev;
+	struct input_conn *iconn;
 
-	for (list = devices; list != NULL; list = list->next) {
-		struct device *idev = list->data;
-
-		if (strcmp(idev->path, path) == 0)
-			return idev;
-	}
-
-	return NULL;
-}
-
-int input_device_unregister(DBusConnection *conn, const char *path)
-{
-	struct device *idev;
-
-	idev = find_device_by_path(path);
+	idev = find_device_by_path(devices, path);
 	if (idev == NULL)
 		return -EINVAL;
 
-	if (idev->pending_connect) {
+	iconn = find_connection(idev->connections, uuid);
+	if (iconn == NULL)
+		return -EINVAL;
+
+	if (iconn->pending_connect) {
 		/* Pending connection running */
 		return -EBUSY;
 	}
 
 	del_stored_device_info(&idev->src, &idev->dst);
 
-	devices = g_slist_remove(devices, idev);
+	idev->connections = g_slist_remove(idev->connections, iconn);
+	input_conn_free(iconn);
+	if (idev->connections)
+		return 0;
 
-	/*
-	 * Workaround: if connected, the watch will not be able
-	 * to access the D-Bus data assigned to this path
-	 * because the object path data was destroyed.
-	 */
-	if (idev->ctrl_watch)
-		g_source_remove(idev->ctrl_watch);
-
-	if (idev->intr_watch) {
-		g_source_remove(idev->intr_watch);
-		g_dbus_emit_signal(conn, path, idev->iface,
-				"Disconnected", DBUS_TYPE_INVALID);
-	}
-
-	g_dbus_unregister_interface(conn, path, idev->iface);
+	g_dbus_unregister_interface(idev->conn, path, INPUT_DEVICE_INTERFACE);
 
 	return 0;
 }
 
 gboolean input_device_is_registered(bdaddr_t *src, bdaddr_t *dst)
 {
-	struct device *idev = find_device(src, dst);
-	if (!idev)
-		return FALSE;
-	else
-		return TRUE;
+	struct input_device *idev = find_device(src, dst);
+
+	return idev ? TRUE : FALSE;
 }
 
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm, int nsk)
 {
-	struct device *idev = find_device(src, dst);
+	struct input_device *idev = find_device(src, dst);
+	struct input_conn *iconn;
+
 	if (!idev)
+		return -ENOENT;
+
+	iconn = find_connection(idev->connections, "hid");
+	if (!iconn)
 		return -ENOENT;
 
 	switch (psm) {
 	case L2CAP_PSM_HIDP_CTRL:
-		idev->ctrl_sk = nsk;
+		iconn->ctrl_sk = nsk;
 		break;
 	case L2CAP_PSM_HIDP_INTR:
-		idev->intr_sk = nsk;
+		iconn->intr_sk = nsk;
 		break;
 	}
 
@@ -919,77 +1029,60 @@ int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm, 
 
 int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst)
 {
-	struct device *idev = find_device(src, dst);
+	struct input_device *idev = find_device(src, dst);
+	struct input_conn *iconn;
+
 	if (!idev)
 		return -ENOENT;
 
-	if (idev->ctrl_sk >= 0) {
-		close(idev->ctrl_sk);
-		idev->ctrl_sk = -1;
+	iconn = find_connection(idev->connections, "hid");
+	if (!iconn)
+		return -ENOENT;
+
+	if (iconn->ctrl_sk >= 0) {
+		close(iconn->ctrl_sk);
+		iconn->ctrl_sk = -1;
 	}
 
-	if (idev->intr_sk >= 0) {
-		close(idev->intr_sk);
-		idev->intr_sk = -1;
+	if (iconn->intr_sk >= 0) {
+		close(iconn->intr_sk);
+		iconn->intr_sk = -1;
 	}
 
 	return 0;
 }
 
-static gboolean fake_hid_connect(struct device *dev)
-{
-	struct fake_hid *fhid = dev->fake->priv;
-
-	return fhid->connect(dev->fake);
-}
-
-static int fake_hid_disconnect(struct device *dev)
-{
-	struct fake_hid *fhid = dev->fake->priv;
-
-	return fhid->disconnect(dev->fake);
-}
-
 int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
 {
-	struct device *idev;
-	struct fake_hid *fake_hid;
-	struct fake_input *fake = NULL;
+	struct input_device *idev;
+	struct input_conn *iconn;
 	int err;
 
 	idev = find_device(src, dst);
 	if (!idev)
 		return -ENOENT;
 
-	fake_hid = get_fake_hid(idev->vendor, idev->product);
-	if (fake_hid) {
-		fake = g_try_new0(struct fake_input, 1);
-		if (!fake) {
-			err = -ENOMEM;
-			goto error;
-		}
+	iconn = find_connection(idev->connections, "hid");
+	if (!iconn)
+		return -ENOENT;
 
-		fake->connect = fake_hid_connect;
-		fake->disconnect = fake_hid_disconnect;
-		fake->priv = fake_hid;
-		err = fake_hid_connadd(fake, idev->intr_sk, fake_hid);
-	} else
-		err = hidp_connadd(src, dst, idev->ctrl_sk, idev->intr_sk,
-						idev->timeout, idev->name);
+	err = hidp_connadd(src, dst, iconn->ctrl_sk, iconn->intr_sk,
+				iconn->timeout, idev->name);
 	if (err < 0)
 		goto error;
 
-	idev->intr_watch = create_watch(idev->intr_sk, intr_watch_cb, idev);
-	idev->ctrl_watch = create_watch(idev->ctrl_sk, ctrl_watch_cb, idev);
-	g_dbus_emit_signal(idev->conn, idev->path, idev->iface,
-			"Connected", DBUS_TYPE_INVALID);
+	iconn->intr_watch = create_watch(iconn->intr_sk, intr_watch_cb, iconn);
+	iconn->ctrl_watch = create_watch(iconn->ctrl_sk, ctrl_watch_cb, iconn);
+	g_dbus_emit_signal(idev->conn, idev->path,
+			INPUT_DEVICE_INTERFACE, "Connected",
+			DBUS_TYPE_STRING, &iconn->uuid,
+			DBUS_TYPE_INVALID);
 	return 0;
 
 error:
-	close(idev->ctrl_sk);
-	close(idev->intr_sk);
-	idev->ctrl_sk = -1;
-	idev->intr_sk = -1;
-	g_free(fake);
+	close(iconn->ctrl_sk);
+	close(iconn->intr_sk);
+	iconn->ctrl_sk = -1;
+	iconn->intr_sk = -1;
 	return err;
 }
