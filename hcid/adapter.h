@@ -105,7 +105,7 @@ struct adapter {
 	char address[18];		/* adapter Bluetooth Address */
 	guint discov_timeout_id;	/* discoverable timeout id */
 	uint32_t discov_timeout;	/* discoverable time(msec) */
-	uint8_t scan_enable;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
+	uint8_t scan_mode;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
 	uint8_t mode;			/* off, connectable, discoverable, limited */
 	uint8_t global_mode;		/* last valid global mode */
 	int discov_active;		/* standard discovery active: includes name resolution step */
@@ -181,3 +181,5 @@ const gchar *adapter_get_address(struct adapter *adapter);
 void adapter_free(struct adapter *adapter);
 void adapter_set_discov_timeout(struct adapter *adapter, guint interval);
 void adapter_remove_discov_timeout(struct adapter *adapter);
+void adapter_set_scan_mode(struct adapter *adapter, uint8_t scan_mode);
+uint8_t adapter_get_scan_mode(struct adapter *adapter);

@@ -261,14 +261,14 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 	}
 }
 
-static void adapter_mode_changed(struct adapter *adapter, uint8_t scan_enable)
+static void adapter_mode_changed(struct adapter *adapter, uint8_t scan_mode)
 {
 	const char *mode;
 	const gchar *path = adapter_get_path(adapter);
 
-	adapter->scan_enable = scan_enable;
+	adapter_set_scan_mode(adapter, scan_mode);
 
-	switch (scan_enable) {
+	switch (scan_mode) {
 	case SCAN_DISABLED:
 		mode = "off";
 		adapter->mode = MODE_OFF;
@@ -1683,7 +1683,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 
 	adapter_remove_discov_timeout(adapter);
 
-	if (adapter->scan_enable != rp.enable)
+	if (adapter_get_scan_mode(adapter) != rp.enable)
 		adapter_mode_changed(adapter, rp.enable);
 
 failed:

@@ -368,7 +368,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 {
 	struct adapter *adapter = data;
 	uint8_t scan_enable;
-	uint8_t current_scan = adapter->scan_enable;
+	uint8_t current_scan = adapter->scan_mode;
 	bdaddr_t local;
 	gboolean limited;
 	int err, dd;
@@ -560,7 +560,7 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 		adapter->discov_timeout_id = 0;
 	}
 
-	if ((timeout != 0) && (adapter->scan_enable & SCAN_INQUIRY))
+	if ((timeout != 0) && (adapter->scan_mode & SCAN_INQUIRY))
 		adapter->discov_timeout_id = g_timeout_add(timeout * 1000,
 						discov_timeout_handler,
 						adapter);
@@ -2223,9 +2223,9 @@ static void adapter_up(struct adapter *adapter, int dd)
 	adapter->discov_timeout = get_discoverable_timeout(adapter->dev_id);
 	adapter->discov_type = DISCOVER_TYPE_NONE;
 
-	adapter->scan_enable = get_startup_scan(adapter->dev_id);
+	adapter->scan_mode = get_startup_scan(adapter->dev_id);
 	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-					1, &adapter->scan_enable);
+					1, &adapter->scan_mode);
 
 	adapter->mode = get_startup_mode(adapter->dev_id);
 	if (adapter->mode == MODE_LIMITED)
@@ -2474,7 +2474,7 @@ int adapter_stop(struct adapter *adapter)
 					DBUS_TYPE_STRING, &mode);
 
 	adapter->up = 0;
-	adapter->scan_enable = SCAN_DISABLED;
+	adapter->scan_mode = SCAN_DISABLED;
 	adapter->mode = MODE_OFF;
 	adapter->discov_active = 0;
 	adapter->pdiscov_active = 0;
@@ -2597,7 +2597,7 @@ gboolean discov_timeout_handler(void *data)
 	struct adapter *adapter = data;
 	struct hci_request rq;
 	int dd;
-	uint8_t scan_enable = adapter->scan_enable;
+	uint8_t scan_enable = adapter->scan_mode;
 	uint8_t status = 0;
 	gboolean retval = TRUE;
 	uint16_t dev_id = adapter->dev_id;
@@ -2664,4 +2664,17 @@ void adapter_remove_discov_timeout(struct adapter *adapter)
 
 	g_source_remove(adapter->discov_timeout_id);
 	adapter->discov_timeout_id = 0;
+}
+
+void adapter_set_scan_mode(struct adapter *adapter, uint8_t scan_mode)
+{
+	if (!adapter)
+		return;
+
+	adapter->scan_mode = scan_mode;
+}
+
+uint8_t adapter_get_scan_mode(struct adapter *adapter)
+{
+	return adapter->scan_mode;
 }
