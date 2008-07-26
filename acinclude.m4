@@ -72,13 +72,6 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 				[Directory for the service programs])
 ])
 
-AC_DEFUN([AC_PATH_BLUEZ], [
-	PKG_CHECK_MODULES(BLUEZ, bluez, dummy=yes,
-				AC_MSG_ERROR(Bluetooth library is required))
-	AC_SUBST(BLUEZ_CFLAGS)
-	AC_SUBST(BLUEZ_LIBS)
-])
-
 AC_DEFUN([AC_PATH_DBUS], [
 	PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 				AC_MSG_ERROR(D-Bus library is required))
@@ -304,6 +297,9 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_SUBST([GDBUS_CFLAGS], ['-I$(top_srcdir)/gdbus'])
 	AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la'])
+
+	AC_SUBST([BLUEZ_CFLAGS], ['-I$(top_srcdir)/include'])
+	AC_SUBST([BLUEZ_LIBS], ['$(top_builddir)/lib/libbluetooth.la'])
 
 	AC_SUBST([SBC_CFLAGS], ['-I$(top_srcdir)/sbc'])
 	AC_SUBST([SBC_LIBS], ['$(top_builddir)/sbc/libsbc.la'])
