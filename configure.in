@@ -21,4 +21,4 @@ AC_PROG_LIBTOOL
 
 AC_ARG_BLUEZ
 
-AC_OUTPUT(Makefile include/Makefile src/Makefile bluez.pc)
+AC_OUTPUT(Makefile include/Makefile lib/Makefile bluez.pc)

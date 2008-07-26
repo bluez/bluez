@@ -1,5 +1,5 @@
 
-SUBDIRS = include src
+SUBDIRS = include lib
 
 aclocaldir = $(datadir)/aclocal
 
