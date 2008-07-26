@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# Start/stop the Bluetooth daemons
+#
+
+set -e
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+NAME=bluetooth
+DESC="Bluetooth subsystem"
+
+DAEMON_NAME=hcid
+HID2HCI_NAME=hid2hci
+
+DAEMON_EXEC="`which $DAEMON_NAME || true`"
+HID2HCI_EXEC="`which $HID2HCI_NAME || true`"
+
+DAEMON_ENABLE=true
+HID2HCI_ENABLE=false
+
+DAEMON_CONFIG="/etc/bluetooth/hcid.conf"
+
+[ -e /etc/default/bluetooth ] && . /etc/default/bluetooth
+
+case "$1" in
+  start)
+	echo -n "Starting $DESC:"
+	if $DAEMON_ENABLE && [ -x "$DAEMON_EXEC" ] && [ -f "$DAEMON_CONFIG" ] ; then
+		$DAEMON_EXEC -s -f $DAEMON_CONFIG
+		echo -n " $DAEMON_NAME"
+	fi
+	if $HID2HCI_ENABLE && [ -x "$HID2HCI_EXEC" ] ; then
+		$HID2HCI_EXEC --tohci > /dev/null 2>&1 || true
+		echo -n " $HID2HCI_NAME"
+	fi
+	echo "."
+	;;
+  stop)
+	echo -n "Stopping $DESC:"
+	killall $DAEMON_NAME > /dev/null 2>&1 || true
+	echo -n " $DAEMON_NAME"
+	echo "."
+	;;
+  *)
+	N=/etc/init.d/$NAME
+	echo "Usage: $N {start|stop}" >&2
+	exit 1
+	;;
+esac
+
+exit 0

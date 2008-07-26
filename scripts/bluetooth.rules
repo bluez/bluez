@@ -1,0 +1,35 @@
+# Brain Boxes BL-620 Bluetooth Adapter
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="Brain Boxes", SYSFS{prod_id2}=="Bluetooth PC Card", ENV{HCIOPTS}="bboxes", RUN+="bluetooth_serial"
+
+# Xircom CreditCard Bluetooth Adapter
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="Xircom", SYSFS{prod_id3}=="CBT", ENV{HCIOPTS}="xircom", RUN+="bluetooth_serial"
+
+# Xircom RealPort2 Bluetooth Adapter
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="Xircom", SYSFS{prod_id3}=="CBT", ENV{HCIOPTS}="xircom", RUN+="bluetooth_serial"
+
+# IBM Bluetooth PC Card II
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="IBM", SYSFS{prod_id2}=="Bluetooth PC Card II", ENV{HCIOPTS}="tdk", RUN+="bluetooth_serial"
+
+# TDK Bluetooth PC Card
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="TDK", SYSFS{prod_id2}=="Bluetooth PC Card II", ENV{HCIOPTS}="tdk", RUN+="bluetooth_serial"
+
+# AmbiCom BT2000C Bluetooth PC/CF Card
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="AmbiCom BT2000C", SYSFS{prod_id2}=="Bluetooth PC/CF Card", ENV{HCIOPTS}="bt2000c", RUN+="bluetooth_serial"
+
+# COM One Platinium Bluetooth PC Card
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="COM1 SA", SYSFS{prod_id2}=="MC310 CARD", ENV{HCIOPTS}="comone", RUN+="bluetooth_serial"
+
+# Sphinx PICO Card
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="SPHINX", SYSFS{prod_id2}=="BT-CARD", ENV{HCIOPTS}="picocard", RUN+="bluetooth_serial"
+
+# H-Soft blue+Card
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="H-Soft", SYSFS{prod_id2}=="Blue+CARD", ENV{HCIOPTS}="$sysfs{manf_id},$sysfs{card_id}", RUN+="bluetooth_serial"
+
+# Compaq iPAQ Bluetooth Sleeve, Belkin F8T020, any other muppet who used an OXCF950 and didn't bother to program it appropriately.
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="CF CARD", SYSFS{prod_id2}=="GENERIC", ENV{HCIOPTS}="$sysfs{manf_id},$sysfs{card_id}", RUN+="bluetooth_serial"
+
+# Zoom Bluetooth Card and Sitecom CN-504 Card
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="PCMCIA", SYSFS{prod_id2}=="Bluetooth Card", ENV{HCIOPTS}="zoom", RUN+="bluetooth_serial"
+
+# CC&C BT0100M
+SUBSYSTEM=="tty", BUS=="pcmcia", SYSFS{prod_id1}=="Bluetooth BT0100M", ENV{HCIOPTS}="bcsp 115200", RUN+="bluetooth_serial"

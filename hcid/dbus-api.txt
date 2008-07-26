@@ -1,0 +1,1401 @@
+D-Bus API description for BlueZ
+*******************************
+
+Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
+Copyright (C) 2005-2006  Claudio Takahasi <claudio.takahasi@indt.org.br>
+Copyright (C) 2005-2006  Eduardo Rocha <eduardo.rocha@indt.org.br>
+
+
+Constant definitions
+====================
+
+The class of device definition from the Bluetooth specification divides into
+three different parts. It the major class, the minor class and the service
+classes. The D-Bus interface will always use string constants to identify
+any of these classes.
+
+Service classes		positioning, networking, rendering, capturing,
+			object transfer, audio, telephony, information
+
+Major classes		miscellaneous, computer, phone, access point,
+			audio/video, peripheral, imaging, wearable, toy,
+			uncategorized
+
+Minor classes computer	uncategorized, desktop, server, laptop, handheld,
+			palm, wearable
+
+Minor classes phone	uncategorized, cellular, cordless, smart phone,
+			modem, isdn
+
+Minor classes access point	fully, 1-17 percent, 17-33 percent,
+			33-50 percent, 50-67 percent, 67-83 percent,
+			83-99 percent, not available
+
+Minor classes audio video	uncategorized, headset, handsfree,microphone,
+			loudspeaker, headphones, portable audio, car audio,
+			set-top box, hifi audio, vcr, video camera, camcorder,
+			video monitor, video display and loudspeaker,
+			video conferencing, gaming/toy, unknown
+
+Minor classes peripheral	uncategorized, keyboard, pointing, combo
+
+Minor classes imaging	display, camera, scanner, printer
+
+Minor classes wearable	wrist watch, pager, jacket, helmet, glasses
+
+Minor classes toy	robot, vehicle, doll, controller, game
+
+Error hierarchy
+===============
+
+Interface	org.bluez.Error
+
+Shared Errors (Can be thrown by hcid or any bluetooth service)
+
+		DeviceUnreachable
+
+			The remote device is either powered down or out of range.
+
+		AlreadyConnected
+			A connection request has been received on an already
+			connected device.
+
+		ConnectionAttemptFailed
+
+			An unexpected error (other than DeviceUnreachable) error
+			has occured while attempting a connection to a device.
+
+		NotConnected
+			The remote device is not connected, while the method call
+			would expect it to be, or is not in the expected state to
+			perform the action.
+
+		InProgress
+
+			Error returned if an operation is in progress. Since
+			this is a generic error that can be used in various
+			situations, the error message should be more clear
+			about what is in progress. For example "Bonding in
+			progress".
+
+		InvalidArguments
+
+			The DBUS request does not contain the right number of
+			arguments with the right type, or the arguments are there
+			but their value is wrong, or does not makes sense in the
+			current context.
+
+		OutOfMemory
+
+			Error returned when a memory allocation via malloc()
+			fails. This error is similar to ENOMEM.
+
+		NotAvailable
+
+			Error returned when a specified record is not
+			available.
+
+		NotSupported
+
+			The remote device does not support the expected
+			feature.
+
+		AlreadyExists
+			One of the requested elements already exists
+
+		DoesNotExist
+			One of the requested elements does not exist
+
+		Canceled
+			The operation was canceled.
+
+		Failed
+
+			This is a the most generic error.
+			It is thrown when something unexpected happens.
+
+
+Hcid specific Errors (Can be thrown by hcid only)
+
+		NotReady
+
+			Error returned when the adapter is DOWN.
+
+		UnknwownMethod
+
+			This is an experimental method.
+
+		NotAuthorized
+
+			Error returned when the caller of a method is not
+			authorized. This might happen if a caller tries to
+			terminate a connection that it hasn't created.
+
+		Rejected
+
+		NoSuchAdapter
+
+			Error returned when the requested adapter doesn't
+			exists. This error is similar to ENODEV.
+
+		NoSuchService
+
+		RequestDeferred
+
+		NotInProgress
+
+		UnsupportedMajorClass
+
+		AuthenticationCanceled
+
+		AuthenticationFailed
+
+		AuthenticationTimeout
+
+		AuthenticationRejected
+
+		RepeatedAttempts
+
+Manager hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Manager
+Object path	/org/bluez
+
+Methods		uint32 InterfaceVersion()
+
+			Returns the current interface version. At the moment
+			only version 0 is supported.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		string DefaultAdapter()
+
+			Returns object path for the default adapter.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
+
+		string FindAdapter(string pattern)
+
+			Returns object path for the specified adapter. Valid
+			patterns are "hci0" or "00:11:22:33:44:55".
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
+
+		array{string} ListAdapters()
+
+			Returns list of adapter object paths under /org/bluez
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+					 org.bluez.Error.OutOfMemory
+
+		string FindService(string pattern)
+
+			Returns object path for the specified service. Valid
+			patterns are the unqiue identifier or a bus name.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchService
+
+		array{string} ListServices()
+
+			Returns list of object paths of current services.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		string ActivateService(string pattern)
+
+			Returns the unqiue bus id of the specified service.
+			Valid patterns are the same as for FindService(). If
+			the service is not running it will be started.
+
+Signals		void AdapterAdded(string path)
+
+			Parameter is object path of added adapter.
+
+		void AdapterRemoved(string path)
+
+			Parameter is object path of removed adapter.
+
+		void DefaultAdapterChanged(string path)
+
+			Parameter is object path of the new default adapter,
+			or an empty string if there is no available adapters.
+
+		void ServiceAdded(string path)
+
+			Parameter is object path of registered service agent.
+
+		void ServiceRemoved(string path)
+
+			Parameter is object path of unregistered service agent.
+
+
+Database hierarchy
+==================
+
+Service		org.bluez
+Interface	org.bluez.Database
+Object path	/org/bluez
+
+Methods		uint32 AddServiceRecord(array{byte})
+
+			Adds a new service record and returns the assigned
+			record handle.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		uint32 AddServiceRecordFromXML(string record)
+
+			Adds a new service record and returns the assigned
+			record handle.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		void UpdateServiceRecord(uint32 handle, array{byte})
+
+			Updates a given service record.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+					 org.bluez.Error.Failed
+
+		void UpdateServiceRecordFromXML(uint32 handle, string record)
+
+			Updates a given service record provided in the
+			XML format.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+					 org.bluez.Error.Failed
+
+		void RemoveServiceRecord(uint32 handle)
+
+			Remove a service record identified by its handle.
+
+			It is only possible to remove service records that
+			where added by the current connection.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
+
+
+Adapter hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Adapter
+Object path	/org/bluez/{hci0,hci1,...}
+
+Methods		dict GetInfo()
+
+			Returns the properties of the local adapter.
+
+			Possible errors: org.bluez.Error.NotReady
+
+		string GetAddress()
+
+			Returns the device address for a given path.
+
+			Example: "00:11:22:33:44:55"
+
+			Possible errors: org.bluez.Error.NotReady
+
+		string GetVersion()
+
+			Returns the version of the Bluetooth chip. This version
+			is compiled from the LMP version. In case of EDR the
+			features attribute must be checked.
+
+			Example: "Bluetooth 2.0 + EDR"
+
+			Possible errors: none
+
+		string GetRevision()
+
+			Returns the revision of the Bluetooth chip. This is a
+			vendor specific value and in most cases it represents
+			the firmware version. This might derive from the HCI
+			revision and LMP subversion values or via extra vendor
+			specific commands.
+
+			In case the revision of a chip is not available. This
+			method should return the LMP subversion value as a
+			string.
+
+			Example: "HCI 19.2"
+
+			Possible errors: org.bluez.Error.Failed
+
+		string GetManufacturer()
+
+			Returns the manufacturer of the Bluetooth chip. If
+			the company id is not know the sting "Company ID %d"
+			where %d should be replaced with the numeric value
+			from the manufacturer field.
+
+			Example: "Cambridge Silicon Radio"
+
+			Possible errors: org.bluez.Error.Failed
+
+		string GetCompany()
+
+			Returns the company name from the OUI database of the
+			Bluetooth device address. This function will need a
+			valid and up-to-date oui.txt from the IEEE. This value
+			will be different from the manufacturer string in the
+			most cases.
+
+			If the oui.txt file is not present or the OUI part of
+			the BD_ADDR is not listed, it should return the
+			string "OUI %s" where %s is the actual OUI.
+
+			Example: "Apple Computer"
+
+			Possible errors: org.bluez.Error.Failed
+
+		array{string} ListAvailableModes()
+
+			Returns a list of available modes the adapter can
+			be switched into.
+
+		string GetMode()
+
+			Returns the current mode of a adapter.
+
+			Valid modes: "off", "connectable", "discoverable",
+					"limited".
+
+			Possible errors: none
+
+		void SetMode(string mode)
+
+			Sets mode of the adapter. See GetMode for valid strings
+			for the mode parameter. In addition to the valid strings
+			for GetMode, this method also supports a special
+			parameter value "on" which will change the mode to the
+			previous non-off mode (or do nothing if the current
+			mode isn't "off").
+
+			Possible errors: org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.Failed
+
+		uint32 GetDiscoverableTimeout()
+
+			Returns the discoverable timeout in seconds. A value
+			of zero means that the timeout is disabled and it will
+			stay in discoverable/limited mode forever.
+
+			The default value for the discoverable timeout should
+			be 180 seconds (3 minutes).
+
+			Possible errors: none
+
+		void SetDiscoverableTimeout(uint32 timeout)
+
+			Sets the discoverable timeout in seconds. A value of
+			zero disables the timeout and the adapter would be
+			always discoverable/limited.
+
+			Changing this value doesn't set the adapter into
+			discoverable/limited mode. The SetMode method must be used.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.InvalidArguments
+
+		boolean IsConnectable()
+
+			Returns true if the local adapter is connectable and
+			false if it is switched off.
+
+			It is also possible to use GetMode to retrieve this
+			information.
+
+			Possible errors: none
+
+		boolean IsDiscoverable()
+
+			Returns true if the local adapter is discoverable/limited
+			and false if it is only connectable or switched off.
+
+			It is also possible to use GetMode to retrieve this
+			information.
+
+			Possible errors: none
+
+		boolean IsConnected(string address)
+
+			Return true if the local adapter is connected to
+			the remote device.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		array{string} ListConnections()
+
+			Returns a list with addresses of currently connected
+			remote devices.
+
+			Possible errors: none
+
+		string GetMajorClass()
+
+			Returns the current major class value for this
+			system. Currently, only "computer" is supported.
+			For the other values, unsupported major class
+			error is returned.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.UnsupportedMajorClass
+
+		array{string} ListAvailableMinorClasses()
+
+			Returns a list of available minor classes for the
+			currently used major class. At the moment this should
+			only return a list of minor classes if the major
+			class is set to "computer".
+
+			If the major class is not "computer" an error should
+			be returned.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.UnsupportedMajorClass
+
+		string GetMinorClass()
+
+			Returns the current minor class value for this
+			system where the default major class is "computer".
+
+			If the major class is not "computer" an error should
+			be returned.
+
+			Valid values: "uncategorized", "desktop", "server",
+			              "laptop", "handheld", "palm", "wearable"
+
+			The default value is "uncategorized".
+
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.UnsupportedMajorClass
+
+		void SetMinorClass(string minor)
+
+			Sets the local minor class and on success it sends
+			a MinorClassChanged signal.
+
+			If the major class is not "computer" an error should
+			be returned.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.Failed
+					 org.bluez.Error.UnsupportedMajorClass
+
+		array{string} GetServiceClasses()
+
+			Returns the current set of service classes.
+
+			In the case no service classes are set (when no
+			service has been registered) an empty list should
+			be returned.
+
+			Valid values: "positioning", "networking", "rendering",
+			              "capturing", "object transfer", "audio",
+			              "telephony", "information"
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.Failed
+
+		string GetName()
+
+			Returns the local adapter name (friendly name) in UTF-8.
+
+			Possible errors: org.bluez.Error.Failed
+
+		void SetName(string name)
+
+			Sets the local adapter name. If EIR is supported by
+			the local hardware this modifies also the extended
+			response data value.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+			Questions: What to do (in case of EIR) if one
+			           low-level API call fails.
+
+		dict GetRemoteInfo(string address)
+
+			Returns the properties for a remote device.
+
+		string GetRemoteVersion(string address)
+
+			Get the version info for a remote device. This request
+			returns always this information based on its cached
+			data. The base for this string is the LMP version
+			value and the features for EDR support.
+
+			Not available can be received if the remote device was
+			not contacted(connected) previously. Remote data is
+			automatically retrieved in the first connection.
+
+			Example: "Bluetooth 2.0 + EDR"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+		string GetRemoteRevision(string address)
+
+			Get the revision of the Bluetooth chip. This is a
+			vendor specific value and in most cases it represents
+			the firmware version. This derives only from the LMP
+			subversion value.
+
+			Example: "HCI 19.2"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+		string GetRemoteManufacturer(string address)
+
+			Get the manufacturer of the chip for a remote device.
+
+			Example: "Nokia Mobile Phones"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+		string GetRemoteCompany(string address)
+
+			Get the company name from the OUI database of the
+			Bluetooth device address. This function will need a
+			valid and up-to-date oui.txt from the IEEE. This value
+			will be different from the manufacturer string in the
+			most cases.
+
+			Example: "Microsoft Corporation"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+		string GetRemoteMajorClass(string address)
+
+			Get the major device class of the specified device.
+
+			Example: "computer"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+		string GetRemoteMinorClass(string address)
+
+			Get the minor device class of the specified device.
+
+			Example: "laptop"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+		array{string} GetRemoteServiceClasses(string address)
+
+			Get the service classes of the specified device.
+
+			Example: ["networking", "object transfer"]
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+		uint32 GetRemoteClass(string address)
+
+			Get the remote major, minor, and service classes
+			encoded as 32 bit integer.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+		array{byte} GetRemoteFeatures(string address)
+
+			Get the remote features encoded as bit mask.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+		string GetRemoteName(string address)
+
+			Get the remote device's name. This request returns always
+			a cached name. The service daemon is responsible for
+			updating the cache.
+
+			NotAvailable error is returned if the name is not in
+			the cache. But if there is a discovery running, then
+			this function will return RequestDeferred.  In this
+			case the service daemon will queue the request and
+			it will try to resolve the name at the next possible
+			opportunity. On success a RemoteNameUpdated signal will
+			be send and if a failure happens it will be indicated by
+			a RemoteNameFailed signal.
+
+			If this is an empty string, the UI might want to
+			display the BD_ADDR instead.
+
+			Example: "00:11:22:33:44:55", "Nokia 770"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+					 org.bluez.Error.NotReady
+					 org.bluez.Error.RequestDeferred
+
+		string GetRemoteAlias(string address)
+
+			Returns alias name for remote device. If this is
+			an empty string value, the UI should show the
+			remote name instead.
+
+			An alias should supersede the remote name.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+			                 org.bluez.Error.NotAvailable
+
+		void SetRemoteAlias(string address, string alias)
+
+			Sets alias name for remote device. If alias name is
+			empty, then no alias is set.
+
+			On success the SetRemoteAlias method will produce a
+			RemoteAliasChanged signal which applications can use
+			to update their current display of the remote device
+			name.
+
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
+
+		void ClearRemoteAlias(string address)
+
+			Resets alias name for remote device. If there is no
+			alias set for the device this method will silently
+			succeed, but no RemoteAliasCleared signal has to be
+			sent in this case.
+
+			On success the ClearRemoteAlias method will produce
+			a RemoteAliasCleared signal.
+
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
+
+		string LastSeen(string address)
+
+			Returns the date and time when the adapter has been
+			seen by a discover procedure.
+
+			Example: "2006-02-08 12:00:00 GMT"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+			Question: Can we find a better name?
+
+		string LastUsed(string address)
+
+			Returns the date and time of the last time when the
+			adapter has been connected.
+
+			Example: "2006-02-08 12:00:00 GMT"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+
+			Question: Can we find a better name?
+
+		void DisconnectRemoteDevice(string address)
+
+			This method disconnects a specific remote device by
+			terminating the low-level ACL connection. The use of
+			this method should be restricted to administrator
+			use.
+
+			A RemoteDeviceDisconnectRequested signal will be
+			sent and the actual disconnection will only happen 2
+			seconds later.  This enables upper-level applications
+			to terminate their connections gracefully before the
+			ACL connection is terminated.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotConnected
+					 org.bluez.Error.InProgress
+
+		void CreateBonding(string address)
+
+			This method creates a bonding with a remote device.
+
+			If a link key for this adapter already exists, this
+			procedure should fail instead of trying to create a
+			new pairing.
+
+			If no connection to the remote device exists, a
+			low-level ACL connection must be created.
+
+			This function will block and the calling application
+			should take care of setting are higher timeout. This
+			might be needed in case of a page timeout from the
+			low-level HCI commands.
+
+			In case of success it will send a BondingCreated
+			signal.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.ConnectionAttemptFailed
+					 org.bluez.Error.AuthenticationFailed
+					 org.bluez.Error.AuthenticationTimeout
+					 org.bluez.Error.AuthenticationRejected
+					 org.bluez.Error.AuthenticationCanceled
+
+		void CancelBondingProcess(string address)
+
+			This method will cancel the CreateBonding process.
+
+			The CreateBonding method will return
+			AuthenticationCanceled to signal that an attempt to
+			create a bonding has been canceled.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotInProgress
+					 org.bluez.Error.NotAuthorized
+
+		void RemoveBonding(string address)
+
+			This method removes the bonding with a remote device.
+
+			For security reasons this includes removing the actual
+			link key and also disconnecting any open connections
+			for the remote device.
+
+			If the link key was stored on the Bluetooth chip, it
+			must be removed from there, too.
+
+			After deleting the link key this method will send a
+			BondingRemoved signal.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
+					 org.bluez.Error.DoesNotExist
+
+		boolean HasBonding(string address)
+
+			Returns true if the remote device is bonded and false
+			if no link key is available.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		array{string} ListBondings()
+
+			List device addresses of currently bonded adapter.
+
+			Possible errors: none
+
+		uint8 GetPinCodeLength(string address)
+
+			Returns the PIN code length that was used in the
+			pairing process.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+			                 org.bluez.Error.DoesNotExist
+
+		uint8 GetEncryptionKeySize(string address)
+
+			Returns the currently used encryption key size.
+
+			This method will fail if no connection to the address
+			has been established.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+			                 org.bluez.Error.Failed
+
+		void SetTrusted(string address)
+
+			Marks the remote device as trusted. Authorization
+			request will automatically succeed.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+			                 org.bluez.Error.AlreadyExists
+
+		boolean IsTrusted(string address)
+
+			Returns true if the user is trusted or false otherwise.
+			The address parameter must match one of the remote
+			devices of the service.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		void RemoveTrust(string address)
+
+			Marks the remote device as not trusted.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.DoesNotExist
+
+		array{string} ListTrusts()
+
+			Returns a list of remote devices that are trusted.
+
+		void DiscoverDevices()
+
+			This method starts the device discovery procedure. This
+			includes an inquiry procedure and remote device name
+			resolving.
+
+			On start up this process will generate a DiscoveryStarted
+			signal and then return RemoteDeviceFound and also
+			RemoteNameUpdated signals. If the procedure has been
+			finished an DiscoveryCompleted signal will be sent.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NoSuchAdapter
+
+		void DiscoverDevicesWithoutNameResolving()
+
+			This method starts the device discovery procedure. This
+			includes an inquiry and an optional remote device name
+			resolving. The remote names can be retrieved with
+			GetRemoteName and in the case a name doesn't exist it
+			will be queued for later resolving and GetRemoteName
+			will return an error.
+
+			While this procedure is running every found device
+			will be returned with RemoteDeviceFound. While
+			DiscoverDevices() automatically resolves unknown
+			devices names and sends RemoteNameUpdated in this
+			case it will only happen if GetRemoteName has been
+			called and no previously stored name is available.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NoSuchAdapter
+
+		void CancelDiscovery()
+
+			This method will cancel any previous DiscoverDevices
+			or DiscoverDevicesWithoutNameResolving actions.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NoSuchAdapter
+
+		void StartPeriodicDiscovery()
+
+			This method starts a periodic discovery.
+
+			Possible errors: org.bluez.error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NoSuchAdapter
+
+		void StopPeriodicDiscovery()
+
+			This method stops a periodic discovery. If the
+			adapter is not in the periodic inquiry mode an
+			error(not authorized) is returned. Everyone can
+			request exit from this mode, it is not restricted
+			to start requestor.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NoSuchAdapter
+
+		boolean IsPeriodicDiscovery()
+
+			Returns true if the periodic inquiry is active and
+			false if it is switched off.
+
+			Possible errors: none
+
+		void SetPeriodicDiscoveryNameResolving(boolean resolve_names)
+
+			Enable or disable automatic remote name resolving for
+			periodic discovery.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		boolean GetPeriodicDiscoveryNameResolving()
+
+			Check if automatic remote name resolving is enabled or not
+			for periodic discovery.
+
+			Possible error: org.bluez.Error.InvalidArguments
+
+		array{uint32} GetRemoteServiceHandles(string address, string match)
+
+			This method will request the SDP database of a remote
+			device and retrieve the service record handles. To
+			request service browse send an empty match string.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.ConnectionAttemptFailed
+					 org.bluez.Error.Failed
+
+		array{byte} GetRemoteServiceRecord(string address, uint32 handle)
+
+			This method will request the SDP database of a remote
+			device for a service record and return the binary
+			stream of it.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.Failed
+
+		string GetRemoteServiceRecordAsXML(string address, uint32 handle)
+
+			This method will request the SDP database of a remote
+			device for a service record and return its data in XML
+			format.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.Failed
+
+		array{string} GetRemoteServiceIdentifiers(string address)
+
+			This method will request the SDP database of a remote
+			device for all supported services. The identifiers are
+			returned in UUID 128 string format.
+
+			Possible errors: org.bluez.Error.InProgress
+					 org.bluez.Error.Failed
+
+		void FinishRemoteServiceTransaction(string address)
+
+			This method will finish all SDP transaction for that
+			given address. In general this call is not needed,
+			but in cases of resources restricted devices it
+			is useful to call this to finish the SDP transaction
+			before proceeded with profile specific connections.
+
+		array{string} ListRemoteDevices()
+
+			List addresses of all known remote devices (bonded,
+			trusted and used).
+
+			Possible errors: none
+
+		array{string} ListRecentRemoteDevices(string date)
+
+			List addresses of all bonded, trusted, seen or used remote
+			devices since date. Bonded and trusted devices are always
+			included(the date informed is not applied).
+
+			date format is "YYYY-MM-DD HH:MM:SS GMT"
+
+			Possible errors: none
+
+Signals		void ModeChanged(string mode)
+
+			If the current mode is changed with SetMode this signal
+			will inform about the new mode.
+
+			This signal can also be triggered by low-level HCI
+			commands.
+
+		void DiscoverableTimeoutChanged(uint32 timeout)
+
+			After changing the discoverable timeout this signal
+			provide the new timeout value.
+
+		void MinorClassChanged(string minor)
+
+			After changing the minor class with SetMinorClass this
+			signal will provide the new class value.
+
+		void NameChanged(string name)
+
+			After changing the local adapter name with SetName this
+			signal will provide the new name.
+
+			This signal can also be triggered by low-level HCI
+			commands.
+
+		void DiscoveryStarted()
+
+			This signal indicates that a device discovery
+			procedure has been started.
+
+		void DiscoveryCompleted()
+
+			This signal indicates that a device discovery
+			procedure has been completed.
+
+		void PeriodicDiscoveryStarted()
+
+			This signal indicates that a periodic discovery
+			procedure has been started.
+
+		void PeriodicDiscoveryStopped()
+
+			This signal indicates that a periodic discovery
+			procedure has been completed.
+
+		void RemoteDeviceFound(string address, uint32 class, int16 rssi)
+
+			This signal will be send every time an inquiry result
+			has been found by the service daemon. In general they
+			only appear during a device discovery.
+
+		void RemoteDeviceDisappeared(string address)
+
+			This signal will be send when an inquiry session for
+			a periodic discovery finishes and previously found
+			devices are no longer in range or visible.
+
+		void RemoteClassUpdated(string address, uint32 class)
+
+			This signal will be send every time the remote class
+			of device has been changed. This happens for example
+			after a remote connection attempt. This signal will
+			not be send if the class of device hasn't changed
+			compared to cached one.
+
+		void RemoteNameUpdated(string address, string name)
+
+			This signal will be send every time the service daemon
+			detect a new name for a remote device.
+
+		void RemoteIdentifiersUpdated(string address, array{string identifiers})
+
+			This signal is sent to indicate the provided services of a given
+			remote device. It will be sent after GetRemoteServiceIdentifiers
+			calls. This signal has at least one identifier and it does not
+			contain repeated entries.
+
+		void RemoteNameFailed(string address)
+
+			This signal will be sent every time the service daemon
+			tries to resolve a remote and this fails.
+
+		void RemoteNameRequested(string address)
+
+			This signal will be sent every time the service daemon
+			tries to resolve a remote name during discovery.
+
+		void RemoteAliasChanged(string address, string alias)
+
+			After changing an alias with SetRemoteAlias this
+			signal will indicate the new alias.
+
+		void RemoteAliasCleared(string address)
+
+			After removing an alias with ClearRemoteAlias this
+			signal will indicate that the alias is no longer
+			valid.
+
+		void RemoteDeviceConnected(string address)
+
+			This signal will be send if a low level connection
+			between two devices has been created.
+
+		void RemoteDeviceDisconnectRequested(string address)
+
+			This signal will be sent when a low level
+			disconnection to a remote device has been requested.
+			The actual disconnection will happen 2 seconds later.
+
+		void RemoteDeviceDisconnected(string address)
+
+			This signal will be send if a low level connection
+			between two devices has been terminated.
+
+		void BondingCreated(string address)
+
+			Signals that a successful bonding has been created.
+
+		void BondingRemoved(string address)
+
+			Signals that a bonding was removed.
+
+		void TrustAdded(string address)
+
+			Sent when SetTrusted() is called.
+
+		void TrustRemoved(string address)
+
+			Sent when RemoveTrust() is called.
+
+Service hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Service
+Object path	path from org.bluez.Manager.ListServices()
+
+Methods		dict GetInfo()
+
+			Returns the service properties.
+
+		string GetIdentifier()
+
+			This method returns the service identifier.
+
+		string GetName()
+
+			This method returns the service name.
+
+		string GetDescription()
+
+			This method returns the service description.
+
+		string GetBusName() [experimental]
+
+			Returns the unique bus name of the service if it has
+			been started.
+
+			Possible errors: org.bluez.Error.NotAvailable
+
+		void Start()
+
+			This method tells the system to start the
+			service.
+
+		void Stop()
+
+			This method tells the system to stop the
+			service.
+
+		boolean IsRunning()
+
+			Returns true if the service has been started and
+			is currently active. Otherwise, it returns false.
+
+		boolean IsExternal()
+
+			Returns true if the service was registered using the
+			Database.RegisterService method instead of a .service
+			file. The Start and Stop methods are not applicable to
+			external services and will return an error.
+
+		array{string} ListTrusts() [experimental]
+
+			Returns a list of remote devices that are trusted
+			for the service.
+
+		void SetTrusted(string address) [experimental]
+
+			Marks the user as trusted.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+
+		boolean IsTrusted(string address) [experimental]
+
+			Returns true if the user is trusted or false otherwise.
+			The address parameter must match one of the
+			current users of the service.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+
+		void RemoveTrust(string address) [experimental]
+
+			Marks the user as not trusted.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.DoesNotExist
+
+Signals		void Started()
+
+			The object path of this signal contains which service
+			was started.
+
+		void Stopped()
+
+			The object path of this signal contains which service
+			was stopped.
+
+		void TrustAdded(string address)
+
+			Sent when SetTrusted() is called.
+
+		void TrustRemoved(string address)
+
+			Sent when RemoveTrust() is called.
+
+
+Security hierarchy
+==================
+
+Service		org.bluez
+Interface	org.bluez.Security
+Object path	/org/bluez or /org/bluez/{hci0,hci1,...}
+
+Methods		void RegisterDefaultPasskeyAgent(string path)
+
+			This registers the default passkey agent. It can
+			register a passkey for all adapters or for a
+			specific device depending on with object path has
+			been used.
+
+			The path parameter defines the object path of the
+			passkey agent that will be called when a passkey
+			needs to be entered.
+
+			If an application disconnects from the bus all
+			registered passkey agent will be removed.
+
+			Possible errors: org.bluez.Error.AlreadyExists
+
+		void UnregisterDefaultPasskeyAgent(string path)
+
+			This unregisters a default passkey agent that has
+			been previously registered. The object path and
+			the path parameter must match the same values that
+			has been used on registration.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+
+		void RegisterPasskeyAgent(string path, string address)
+
+			This registers the application passkey agent that
+			will be used for any application specific passkey
+			tasks.
+
+			The path parameter defines the object path of the
+			passkey agent that will be called when a passkey
+			needs to be entered. The address defines the remote
+			device that it will answer passkey requests for.
+
+			If an application disconnects from the bus all
+			registered passkey agent will be removed. It will
+			also be unregistered after a timeout and if the
+			pairing succeeds or fails. The application has to
+			take care of that it reregisters the passkey agent.
+
+			Possible errors: org.bluez.Error.AlreadyExists
+
+		void UnregisterPasskeyAgent(string path, string address)
+
+			This unregisters a passkey agent that has been
+			previously registered. The object path and the path
+			and address parameter must match the same values
+			that has been used on registration.
+
+			The method is actually only needed if an application
+			wants to removed the passkey agent and don't wanna
+			wait for the automatic timeout.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+
+		void RegisterDefaultAuthorizationAgent(string path)
+
+			This registers the default authorization agent. It can
+			register an authorization agent for all adapters or
+			for a specific one depending on which object path has
+			been used.
+
+			The path parameter defines the object path of the
+			authorization agent that will be called when an
+			authorization request needs to be answered.
+
+		void UnregisterDefaultAuthorizationAgent(string path)
+
+			This unregisters a default authorization agent that has
+			been previously registered. The path parameter must
+			match the same value that has been used on
+			registration.
+
+
+PasskeyAgent hierarchy
+======================
+
+Service		unique name
+Interface	org.bluez.PasskeyAgent
+Object path	freely definable
+
+Methods		string Request(string path, string address)
+
+			This method gets called when the service daemon
+			needs to get the passkey for an authentication. The
+			return value is actual passkey. It is a 1 to 16
+			byte PIN code in UTF-8 format.
+
+			The first argument contains the path of the local
+			adapter and the second one the remote address.
+
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
+		void Cancel(string path, string address)
+
+			This method gets called to indicate that the
+			authentication request failed before a reply was
+			returned by the Request method.
+
+		void Release()
+
+			This method gets called when the service daemon
+			unregisters a passkey agent. An agent can use
+			it to do cleanup tasks. There is no need to
+			unregister the agent, because when this method
+			gets called it has already been unregistered.
+
+
+AuthorizationAgent hierarchy (experimental)
+===========================================
+
+Service		unique name
+Interface	org.bluez.AuthorizationAgent
+Object path	freely definable
+
+Methods		void Authorize(string adapter_path, string address,
+					string service_path, string uuid)
+
+			This method gets called when the service daemon wants
+			to get an authorization for accessing a service. This
+			method should return if the remote user is granted
+			access or an error otherwise.
+
+			The adapter_path parameter is the object path of the
+			local adapter. The address, service_path and action
+			parameters correspond to the remote device address,
+			the object path of the service and the uuid of the
+			profile.
+
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
+		void Cancel(string adapter_path, string address,
+					string service_path, string uuid)
+
+			This method cancels a previous authorization request.
+			The adapter_path, address, service_path and uuid
+			parameters must match the same values that have been
+			used when the Authorize() method was called.
+
+		void Release()
+
+			This method gets called when the service daemon
+			unregisters an authorization agent. An agent can
+			use it to do cleanup tasks. There is no need to
+			unregister the agent, because when this method
+			gets called it has already been unregistered.

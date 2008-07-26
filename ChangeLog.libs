@@ -1,0 +1,339 @@
+ver 3.36:
+	Fix various includes for cross-compilation.
+
+ver 3.35:
+	Add two additional company identifiers.
+
+ver 3.34:
+	Replace various SDP functions with safe versions.
+	Add additional length validation for incoming SDP packets.
+
+ver 3.33:
+	Add functions for reading and writing the link policy settings.
+	Add definition for authentication requirements.
+	Enable PIE by default if supported.
+
+ver 3.32:
+	Add OCF constants for synchronous flow control enabling.
+
+ver 3.31:
+	Don't optimize when debug is enabled.
+
+ver 3.30:
+	Add another company identifier.
+
+ver 3.29:
+	Fix memory leak in sdp_get_uuidseq_attr function.
+
+ver 3.28:
+	Add support for MCAP UUIDs.
+
+ver 3.27:
+	Add another company identifier.
+
+ver 3.26:
+	Fix compilation problem with USHRT_MAX and UCHAR_MAX.
+
+ver 3.25:
+	Update copyright information.
+
+ver 3.24:
+	Add definitions for MDP.
+
+ver 3.23:
+	Fix remote name request handling bug.
+
+ver 3.22:
+	Fix remote name request event handling.
+
+ver 3.21:
+	Add constant for Bluetooth socket options level.
+
+ver 3.20:
+	Add support for inquiry transmit power level.
+
+ver 3.19:
+	Add L2CAP mode constants.
+
+ver 3.18:
+	Don't allocate memory for the Bluetooth base UUID.
+
+ver 3.17:
+	Fix supported commands bit calculation.
+
+ver 3.16:
+	Update company identifier list.
+
+ver 3.15:
+	Extract main service class for later use.
+
+ver 3.14:
+	Add definitions and functions for Simple Pairing.
+
+ver 3.13:
+	Update HCI command table.
+
+ver 3.12:
+	Add missing HCI command text descriptions
+	Add missing HCI commands structures.
+	Add missing HCI event structures.
+	Add common bachk() function.
+
+ver 3.11:
+	Fix URL data size handling.
+
+ver 3.10:
+	Add version code for Bluetooth 2.1 specification.
+	Add ESCO_LINK connection type constant.
+	Export sdp_uuid32_to_uuid128() function.
+
+ver 3.9:
+	Update copyright information.
+
+ver 3.8:
+	Add functions for registering binary records.
+
+ver 3.7:
+	Add additional PDU length checks.
+	Fix CSRC value for partial responses.
+
+ver 3.6:
+	Fix issues with the asynchronous API for SDP.
+
+ver 3.5:
+	Add asynchronous API for SDP.
+
+ver 3.4:
+	Fix UUID128 string lookup handling.
+	Fix malloc() versus bt_malloc() usage.
+
+ver 3.3:
+	Remove kernel specific timeouts.
+	Add additional private data field for SDP sessions.
+	Add host controller to host flow control defines.
+	Add host number of completed packets defines.
+	Initialize various memory to zero before usage.
+
+ver 3.2:
+	Fix handling of SDP strings.
+	Add adapter type for SDIO cards.
+	Add features bit for link supervision timeout.
+
+ver 3.1:
+	Add missing placeholders for feature bits.
+
+ver 3.0:
+	Fix broken behavior with EVT_CMD_STATUS.
+	Add features bit for pause encryption.
+	Add additional EIR error code.
+	Add more company identifiers.
+	Add another Phonebook Access identifier.
+	Update sniff subrating data structures.
+
+ver 2.25:
+	Add definitions for Apple Agent.
+	Add support for record handle on service registration.
+
+ver 2.24:
+	Add support for additional access protocols.
+
+ver 2.23:
+	Add constants and definitions for sniff subrating.
+	Add support for allocation of binary text elements.
+	Fix service discovery deadlocks with Samsung D600 phones.
+
+ver 2.22:
+	Decode reserved LMP feature bits.
+	Fix errno overwrite problems.
+	Fix profile descriptor problem with Samsung phones.
+	Add compile time buffer checks (FORTIFY SOURCE).
+
+ver 2.21:
+	Add support for identification of supported commands.
+	Add missing OCF declarations for the security filter.
+	Add two new company identifiers.
+
+ver 2.20:
+	Add UUIDs for video distribution profile.
+	Add UUIDs for phonebook access profile.
+	Add attribute identifier for supported repositories.
+	Add definitions for extended inquiry response.
+	Add functions for extended inquiry response.
+
+ver 2.19:
+	Fix the GCC 4.0 warnings.
+	Fix the routing for dealing with raw devices.
+	Add per device service record functions.
+
+ver 2.18:
+	Add support for reading and writing the inquiry scan type.
+	Add definitions for connection accept timeout and scan enable.
+	Remove hci_vhci.h header file.
+	Remove hci_uart.h header file.
+
+ver 2.17:
+	Include stdio.h in bluetooth.h header file.
+	Include sys/socket.h in the header files.
+	Add functions for stored link keys.
+	Add definitions for PIN type and unit key.
+	Add SDP_WAIT_ON_CLOSE flag for sdp_connect().
+
+ver 2.16:
+	Fix buffer allocation for features to string conversion.
+	Add function for reading local supported commands.
+	Add function for reading local extended features.
+	Add function for reading remote extended features.
+	Add function for getting the remote name with a clock offset.
+	Add function for extracting the OUI from a BD_ADDR.
+	Add inquiry info structure with RSSI and page scan mode.
+	Support inquiry with unlimited number of responses.
+
+ver 2.15:
+	Use better way for unaligned access.
+	Remove sdp_internal.h and its usage.
+	Add deprecated functions for reading the name.
+	Add function for reading the clock.
+	Add function for reading the local Bluetooth address.
+	Add function for reading the local supported features.
+
+ver 2.14:
+	Add function for reading the RSSI.
+	Add function for reading the link quality.
+	Add function for reading the transmit power level.
+	Add functions for the link supervision timeout.
+	Remove deprecated functions.
+	Update AM_PATH_BLUEZ macro.
+
+ver 2.13:
+	Add Device ID and HID attribute definitions.
+	Update the UUID constants and its translations.
+	Update L2CAP socket option definitions.
+	Update connection information definitions.
+
+ver 2.12:
+	Correct kernel interface for CMTP and HIDP support.
+	Add service classes and profile ids for WAP.
+	Add simple AM_PATH_BLUEZ macro.
+
+ver 2.11:
+	Initial support for the kernel security manager.
+	Use bit zero for vendor packets in the filter type bitmask.
+	Add SIM Access types for service discovery.
+	Add more audio/video profile translations.
+	Add another company identifier.
+	Add the missing HCI error codes.
+	Add RFCOMM socket options.
+	Add definition for the SECURE link mode.
+	Add functions for reading and writing the inquiry mode.
+	Add functions for AFH related settings and information.
+	Add version identifier for the Bluetooth 2.0 specification.
+
+ver 2.10:
+	Fix and extend the unaligned access macros.
+	Make compiling with debug information optional.
+	Don't override CFLAGS from configure.
+
+ver 2.9:
+	Add L2CAP info type and info result definitions.
+	Add value for L2CAP_CONF_RFC_MODE.
+	Change RSSI value to signed instead of unsigned.
+	Allow UUID32 values as protocol identifiers.
+
+ver 2.8:
+	Fix the event code of inquiry with RSSI.
+	Add defines and UUID's for audio/video profiles.
+	Add AVDTP protocol identifier.
+	Add HIDP subclass field.
+	Add PKGConfig support.
+	Remove dummy SDP library.
+
+ver 2.7:
+	Fix display of decoded LMP features.
+	Update company identifiers.
+	Add AFH related types.
+	Add first bits from EDR prototyping specification.
+	Add support for inquiry with RSSI.
+	Add HCRP related SDP functions.
+	Add HIDP header file.
+
+ver 2.6:
+	Use R2 for default value of pscan_rep_mode.
+	Add new company identifiers.
+	Add BNEP and CMTP header files.
+	Add the SDP library.
+
+ver 2.5:
+	Add decoding of Bluetooth 1.2 features.
+	Add link manager version parameter for Bluetooth 1.2.
+	Add new company identifiers.
+	Support for transmit power level.
+	Support for park, sniff and hold mode.
+	Support for role switch.
+	Support for reading the clock offset.
+	Use R1 for default value of pscan_rep_mode.
+
+ver 2.4:
+	Added const qualifiers to appropriate function arguments.
+	Minor fixes.
+
+ver 2.3:
+	Fix hci_for_each_dev() for big endian machines.
+	Support for voice settings.
+	RPM package.
+
+ver 2.2:
+	Updated RFCOMM header file.
+	Additional HCI command and event defines.
+
+ver 2.1.1:
+	Resurrect hci_remote_name.
+
+ver 2.1:
+	New HCI functions:
+		hci_{read, write}_class_of_dev(),
+		hci_{read, write}_current_iac_lap(),
+		hci_write_local_name()
+	Added RFCOMM header file.
+	Minor fixes.
+
+ver 2.0:
+	Additional company IDs.
+	Minor fixes.
+
+ver 2.0-pre10:
+	Fix hci_inquiry function to return errors and accept user buffers.
+	New functions hci_devba, hci_devid, hci_for_each_dev and hci_get_route.
+	Additional company IDs.
+	Makefile and other minor fixes.
+
+ver 2.0-pre9:
+	LMP features to string translation support.
+	Additional HCI command and event defines.
+	Extended hci_filter API.
+
+ver 2.0-pre8:
+	Additional HCI ioctls and defines.
+	All strings and buffers are allocated dynamically.
+	ba2str, str2ba automatically swap bdaddress.
+	Minor fixes and cleanup.
+
+ver 2.0-pre7:
+	Bluetooth libraries and header files is now a separate package.
+	New build environment uses automake and libtool.
+	Massive header files cleanup.
+
+ver 2.0-pre6:
+	API cleanup and additions.
+
+ver 2.0-pre4:
+	HCI filter enhancements.
+
+ver 2.0-pre3:
+	Cleanup.
+
+ver 2.0-pre2:
+	Additional HCI library functions.
+	Documentation update.
+	
+ver 2.0-pre1:
+	Minor fixes and improvements.

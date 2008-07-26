@@ -1,0 +1,53 @@
+.\"
+.\"	This program is free software; you can redistribute it and/or modify
+.\"	it under the terms of the GNU General Public License as published by
+.\"	the Free Software Foundation; either version 2 of the License, or
+.\"	(at your option) any later version.
+.\"
+.\"	This program is distributed in the hope that it will be useful,
+.\"	but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\"	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\"	GNU General Public License for more details.
+.\"
+.\"	You should have received a copy of the GNU General Public License
+.\"	along with this program; if not, write to the Free Software
+.\"	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"
+.\"
+.TH DFUTOOL 1 "APRIL 21, 2005" "" ""
+
+.SH NAME
+dfutool \- Device Firmware Upgrade utility
+.SH SYNOPSIS
+.BR "dfutool
+[
+.I options
+] <
+.I command
+>
+.SH DESCRIPTION
+.B dfutool
+is used to verify, archive and upgrade firmware files.
+.SH OPTIONS
+.TP
+.BI -h
+Gives a list of possible commands.
+.TP
+.BI -d " <device>"
+The command specifies the device to use.
+.SH COMMANDS
+.TP
+.BI verify " <dfu-file>"
+Display information about the firmware file.
+.TP
+.BI modify " <dfu-file>"
+Change DFU specific values in the firmware file.
+.TP
+.BI upgrade " <dfu-file>"
+Upgrade the device with a new firmware.
+.TP 
+.BI archive " <dfu-file>"
+Archive the current firmware of the device.
+.SH AUTHOR
+Written by Marcel Holtmann <marcel@holtmann.org>.
+.br

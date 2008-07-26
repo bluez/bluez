@@ -1,0 +1,40 @@
+#!/usr/bin/python
+
+import sys
+import time
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
+							'org.bluez.Manager')
+
+conn = manager.ActivateService('serial')
+
+serial = dbus.Interface(bus.get_object(conn, '/org/bluez/serial'),
+						'org.bluez.serial.Manager')
+
+if (len(sys.argv) < 2):
+	print "Usage: %s <address> [service]" % (sys.argv[0])
+	sys.exit(1)
+
+address = sys.argv[1]
+
+if (len(sys.argv) < 3):
+	service = "spp"
+else:
+	service = sys.argv[2]
+
+device = serial.ConnectService(address, service)
+
+print "Connected %s to %s" % (device, address)
+
+print "Press CTRL-C to disconnect"
+
+try:
+	time.sleep(1000)
+	print "Terminating connection"
+except:
+	pass
+
+serial.DisconnectService(device)

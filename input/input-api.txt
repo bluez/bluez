@@ -1,0 +1,103 @@
+Bluetooth input service API description
+***************************************
+
+Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
+
+
+Input Manager hierarchy
+=======================
+
+Interface	org.bluez.input.Manager
+Object path	/org/bluez/input
+
+Methods		array{string} ListDevices()
+
+			Returns an array of available input devices path.
+
+		string CreateDevice(string address)
+
+			Create an input device object.
+
+			On success it will return the path of the
+			newly created device object.
+
+			Possible errors: org.bluez.Error.AlreadyExists
+			                 org.bluez.Error.NotSupported
+			                 org.bluez.Error.ConnectionAttemptFailed
+			                 org.bluez.Error.Failed
+
+		string CreateSecureDevice(string address)
+
+			Create an input device object. Pairing will
+			be initiated if needed(keyboard/combo devices).
+
+			On success it will return the path of the
+			newly created device object.
+
+			Possible errors: org.bluez.Error.AlreadyExists
+			                 org.bluez.Error.NotSupported
+			                 org.bluez.Error.ConnectionAttemptFailed
+			                 org.bluez.Error.Failed
+
+		void RemoveDevice(string path)
+
+			Remove the input device object for a given path.
+
+			Possible errors:org.bluez.Error.DoesNotExist
+					org.bluez.Error.Failed
+
+Signals		void DeviceCreated(string path)
+
+		void DeviceRemoved(string path)
+
+
+Input Device hierarchy
+======================
+
+Interface	org.bluez.input.Device
+Object path	/org/bluez/input/{keyboard*|mouse*|...}
+
+Methods		string GetAdapter()
+
+			Returns the adapter address.
+
+			Example: "00:11:22:33:44:55"
+
+		string GetAddress()
+
+			Returns the device address.
+
+			Example: "00:11:22:33:44:55"
+
+		string GetName()
+
+			Returns the service name.
+
+		uint16 GetProductId()
+
+			Returns the product id.
+
+		uint16 GetVendorId()
+
+			Returns the vendor id.
+
+		boolean IsConnected()
+
+			Returns the connection status.
+
+		void Connect()
+
+			Connect to the input device.
+
+			Possible errors: org.bluez.Error.AlreadyConnected
+			                 org.bluez.Error.ConnectionAttemptFailed
+
+		void Disconnect()
+
+			Disconnect from the input device.
+
+			Possible errors: org.bluez.Error.Failed
+
+Signals		void Connected()
+
+		void Disconnected()

@@ -1,0 +1,45 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
+							'org.bluez.Manager')
+
+conn = manager.ActivateService('input')
+
+input = dbus.Interface(bus.get_object(conn, '/org/bluez/input'),
+						'org.bluez.input.Manager')
+
+if (len(sys.argv) < 2):
+	print "Usage: %s <command>" % (sys.argv[0])
+	print ""
+	print "  list"
+	print "  create <address>"
+	print "  remove <path>"
+	sys.exit(1)
+
+if (sys.argv[1] == "list"):
+	list = input.ListDevices()
+	print list
+	sys.exit(0)
+
+if (sys.argv[1] == "create"):
+	if (len(sys.argv) < 3):
+		print "Need address parameter"
+	else:
+		device = input.CreateSecureDevice(sys.argv[2])
+		print device
+	sys.exit(0)
+
+if (sys.argv[1] == "remove"):
+	if (len(sys.argv) < 3):
+		print "Need object path parameter"
+	else:
+		input.RemoveDevice(sys.argv[2])
+	sys.exit(0)
+
+print "Unknown command"
+sys.exit(1)

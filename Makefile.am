@@ -1,5 +1,9 @@
 
-SUBDIRS = include lib
+SUBDIRS = include lib doc \
+		sbc eglib gdbus common sdpd hcid plugins \
+		network serial input audio \
+		tools rfcomm dund pand hidd \
+		cups test scripts
 
 aclocaldir = $(datadir)/aclocal
 
@@ -15,4 +19,5 @@ DISTCLEANFILES = $(pkgconfig_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
-	ltmain.sh depcomp missing install-sh mkinstalldirs
+	ltmain.sh depcomp missing install-sh mkinstalldirs compile ylwrap
+

@@ -1,0 +1,56 @@
+BlueZ D-Bus Manager API description
+***********************************
+
+Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
+Copyright (C) 2005-2006  Claudio Takahasi <claudio.takahasi@indt.org.br>
+Copyright (C) 2006-2007  Luiz von Dentz <luiz.dentz@indt.org.br>
+
+
+Manager hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Manager
+Object path	/
+
+Methods		object DefaultAdapter()
+
+			Returns object path for the default adapter.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
+
+		object FindAdapter(string pattern)
+
+			Returns object path for the specified adapter. Valid
+			patterns are "hci0" or "00:11:22:33:44:55".
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NoSuchAdapter
+
+		array{object} ListAdapters()
+
+			Returns list of adapter object paths under /org/bluez
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+					 org.bluez.Error.OutOfMemory
+
+Signals		AdapterAdded(object adapter)
+
+			Parameter is object path of added adapter.
+
+		AdapterRemoved(object adapter)
+
+			Parameter is object path of removed adapter.
+
+		DefaultAdapterChanged(object adapter)
+
+			Parameter is object path of the new default adapter,
+			or an empty string if there is no available adapters.
+
+			In case all adapters are removed this signal will not
+			be emitted. The AdapterRemoved signal has to be used
+			to detect that no default adapter is selected or
+			available anymore.

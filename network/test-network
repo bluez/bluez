@@ -1,0 +1,37 @@
+#!/usr/bin/python
+
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
+							'org.bluez.Manager')
+
+conn = manager.ActivateService('network')
+
+network = dbus.Interface(bus.get_object(conn, '/org/bluez/network'),
+						'org.bluez.network.Manager')
+
+try:
+	nap = dbus.Interface(bus.get_object(conn, network.FindServer('nap')),
+						'org.bluez.network.Server')
+except:
+	pass
+
+try:
+	gn = dbus.Interface(bus.get_object(conn, network.FindServer('gn')),
+						'org.bluez.network.Server')
+except:
+	pass
+
+try:
+	panu = dbus.Interface(bus.get_object(conn, network.FindServer('panu')),
+						'org.bluez.network.Server')
+except:
+	pass
+
+try:
+	client = dbus.Interface(bus.get_object(conn, network.LastConnection()),
+						'org.bluez.network.Connection')
+except:
+	pass

@@ -1,0 +1,52 @@
+#!/usr/bin/python
+
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+						"org.bluez.Manager")
+
+def extract_uuids(uuid_list):
+	list = ""
+	for uuid in uuid_list:
+		if (uuid.endswith("-0000-1000-8000-00805f9b34fb")):
+			if (uuid.startswith("0000")):
+				val = "0x" + uuid[4:8]
+			else:
+				val = "0x" + uuid[0:8]
+		else:
+			val = str(uuid)
+		list = list + val + " "
+	return list
+
+adapter_list = manager.ListAdapters()
+
+for i in adapter_list:
+	adapter = dbus.Interface(bus.get_object("org.bluez", i),
+							"org.bluez.Adapter")
+	print "[ " + i + " ]"
+
+	properties  = adapter.GetProperties()
+	for key in properties.keys():
+		print "    %s = %s" % (key, properties[key])
+
+	device_list = adapter.ListDevices()
+
+	for n in device_list:
+		device = dbus.Interface(bus.get_object("org.bluez", n),
+							"org.bluez.Device")
+		print "    [ " + n + " ]"
+
+		properties = device.GetProperties()
+		for key in properties.keys():
+			value = properties[key]
+			if (key == "UUIDs"):
+				list = extract_uuids(value)
+				print "        %s = %s" % (key, list)
+			elif (key == "Class"):
+				print "        %s = 0x%06x" % (key, value)
+			else:
+				print "        %s = %s" % (key, value)
+
+	print

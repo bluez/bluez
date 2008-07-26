@@ -1,0 +1,22 @@
+#!/bin/sh
+
+MPG123=`which mpg123`
+SOX=`which sox`
+HSTEST=`which hstest`
+
+if [ -z "$HSTEST" ]
+then
+	HSTEST="./hstest"
+fi
+
+if [ -z "$1" ] || [ -z "$2" ]
+then
+	echo -e "Usage:\n\thsplay <file> <bdaddr> [channel]"
+	exit
+fi
+
+FILE=$1
+BDADDR=$2
+CHANNEL=$3
+
+$MPG123 -q -s "$FILE" | $SOX -t raw -r 44100 -c 2 -s -w - -t raw -r 8000 -c 1 -s -w - | $HSTEST play - $BDADDR $CHANNEL

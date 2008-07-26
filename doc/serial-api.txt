@@ -1,0 +1,37 @@
+BlueZ D-Bus Serial API description
+**********************************
+
+Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
+
+
+Serial hierarchy
+================
+
+Service		org.bluez
+Interface	org.bluez.Serial
+Object path	/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+
+Methods		string Connect(string uuid)
+
+			Connects to a specific RFCOMM based service on a
+			remote device and then creates a RFCOMM TTY
+			device for it. The RFCOMM TTY device is returned.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.ConnectionAttemptFailed
+					 org.bluez.Error.NotSupported
+
+		void Disconnect(string device)
+
+			Disconnect a RFCOMM TTY device that has been
+			created by Connect method.
+
+			To abort a connection attempt in case of errors or
+			timeouts in the client it is fine to call this method.
+
+			In that case the UUID of the Connect method should
+			be suplied instead of the TTY device.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.DoesNotExist

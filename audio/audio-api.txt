@@ -1,0 +1,311 @@
+Bluetooth audio service API description
+***************************************
+
+Copyright (C) 2004-2007  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2005-2007  Johan Hedberg <johan.hedberg@nokia.com>
+Copyright (C) 2005-2006  Brad Midgley <bmidgley@xmission.com>
+
+
+org.bluez.audio.Manager interface
+=================================
+
+This interface is for managing remote audio devices. It provides methods for
+creating and removing D-Bus objects representing remote audio devices. These
+objects implement one or more of the other interfaces listed in this document.
+
+Object path	/org/bluez/audio
+
+Methods
+		string CreateDevice(string address) [experimental]
+
+			Creates a new audio device object. If not yet done,
+			this method will perform a SDP query on the remote
+			device and return first when the query is complete,
+			so be sure to call this method asynchronously.
+
+			The return parameter is the object path of the newly
+			created object.
+
+		void RemoveDevice(string path) [experimental]
+
+			Removes a device from the device tree. If there are
+			any connections open to the device they will be closed.
+
+		array{string} ListDevices() [experimental]
+
+			Retuns an array of strings indicating the object paths
+			of available devices.
+
+		string DefaultDevice()
+
+			Returns the object path for the default device.
+
+		void ChangeDefaultDevice(string path)
+
+			Changes the default device.
+
+		array{string} ListHeadsets()
+
+			Returns list of headset objects that are configured.
+
+		string FindDeviceByAddress(string address) [experimental]
+
+			Searches the list of available devices and returns the
+			object path of the first device which matchess address.
+			If no device is found returns a DoesNotExist error.
+
+		string DefaultHeadset()
+
+			Returns the object path for the default headset device.
+
+		void ChangeDefaultHeadset(string path)
+
+			Changes the default headset.
+
+		string CreateHeadset(string address)
+
+			Create a new headset device and returns its object path
+			on return.
+
+		void RemoveHeadset(string path)
+
+			Removes a headset object and all information
+			related to it.
+
+Signals
+		void DeviceCreated(string path) [experimental]
+
+			Sent when a new device object has been created.
+
+		void DeviceRemoved(string path) [experimental]
+
+			Sent when a device object has been removed.
+
+		void HeadsetCreated(string path)
+
+			Sent when a new headset object has been created.
+
+		void HeadsetRemoved(string path)
+
+			Sent when a headset object has been removed.
+
+		void DefaultHeadsetChanged(string path)
+
+			Sent when the default headset has changed.
+
+
+org.bluez.audio.Device interface
+================================
+
+This interface is implemented by all remote device objects.
+
+Object path(s)	/org/bluez/audio/device*
+
+Methods		string GetAddress() [experimental]
+
+			Returns the Bluetooth address of the remote device.
+
+		string GetAdapter() [experimental]
+
+			Returns the address of the local adapter that the
+			device is associated with.
+
+		string GetName() [experimental]
+
+			Returns a friendly name for the device.
+
+		array{string} GetConnectedInterfaces() [experimental]
+
+			Returns a string list of interfaces that are in a
+			connected state.
+
+
+org.bluez.audio.Headset interface
+=================================
+
+This interface provides access to headsets that implement the HSP and/or HFP
+profiles.
+
+Object path(s)	/org/bluez/audio/device*
+
+Methods		void Connect()
+
+			Connect to the HSP/HFP service on the remote device.
+
+		void Disconnect()
+
+			Disconnect from the HSP/HFP service on the remote
+			device.
+
+		boolean IsConnected()
+
+			Returns TRUE if there is a active connection to the
+			HSP/HFP connection on the remote device.
+
+		void IndicateCall()
+
+			Indicate an incoming call on the headset
+			connected to the stream. Will continue to
+			ring the headset about every 3 seconds.
+
+		void CancelCall()
+
+			Cancel the incoming call indication.
+
+		void Play()
+
+			Open the audio connection to the headset.
+
+		void Stop()
+
+			Close the audio connection.
+
+		boolean IsPlaying()
+
+			Returns true if an audio connection to the headset
+			is active.
+
+		uint16 GetSpeakerGain()
+
+			Returns the current speaker gain if available,
+			otherwise returns the error NotAvailable.
+
+		uint16 GetMicrophoneGain()
+
+			Returns the current microphone gain if available,
+			otherwise returns the error NotAvailable.
+
+		void SetSpeakerGain(uint16 gain)
+
+			Changes the current speaker gain if possible.
+
+		void SetMicrophoneGain(uint16 gain)
+
+			Changes the current speaker gain if possible.
+
+                void SetupCall(string value) [experimental]
+
+			Sets up an call with the connected HFP. The value can
+			be "incoming", "outgoing" or "remote" to indicate
+			incoming call, outgoing call and remote party alerted
+			respectively.
+
+                void IdentifyCall(string phone_number, int32 type) [experimental]
+
+                        Enables a called subscriber to get the calling
+                        line identity (CLI) of the calling party when
+                        receiving a call. The value of type shud be
+                        the same as provided by the GSM stack.
+
+Signals		void AnswerRequested()
+
+			Sent when the answer button is pressed on the headset
+
+		void Connected()
+
+			Sent when the device has been connected to.
+
+		void Disconnected()
+
+			Sent when the device has been disconnected from.
+
+		void Stopped()
+
+			Sent when the audio connection is closed
+
+		void Playing()
+
+			Sent when the audio connection is opened
+
+		void SpeakerGainChanged(uint16 gain)
+
+			The speaker gain changed.
+
+		void MicrophoneGainChanged(uint16 gain)
+
+			The microphone gain changed.
+
+                void CallTerminated()
+
+                        Sent when an ongoing call is terminated.
+
+
+org.bluez.audio.Gateway interface
+=================================
+
+[not yet implemented]
+
+This interface is available for remote devices which can function in the Audio
+Gateway role of the HSP and/or HFP profiles.
+
+Object path(s)	/org/bluez/audio/device*
+
+
+org.bluez.audio.Sink interface
+==============================
+
+This interface is available for remote devices which contain a A2DP Sink.
+
+Object path(s)	/org/bluez/audio/device*
+
+Methods		void Connect()
+
+			Connect and setup a stream to a A2DP sink on the
+			remote device.
+
+		void Disconnect()
+
+			Disconnect from the remote device.
+
+		boolean IsConnected()
+
+			Returns TRUE if a stream is setup to a A2DP sink on
+			the remote device.
+
+Signals		void Connected()
+
+			Sent when a successful connection has been made to the
+			remote A2DP Sink
+
+		void Disconnected()
+
+			Sent when the device has been disconnected from.
+
+		void Playing()
+
+			Sent when a stream with remote device is started.
+
+		void Stopped()
+
+			Sent when a stream with remote device is suspended.
+
+
+org.bluez.audio.Source interface
+================================
+
+[not yet implemented]
+
+This interface is available for remote devices which implement a A2DP source.
+
+Object path(s)	/org/bluez/audio/device*
+
+
+org.bluez.audio.Control interface
+=================================
+
+This interface is available for remote devices which implement support for a
+AVRCP controller.
+
+Object path(s)	/org/bluez/audio/device*
+
+Methods		boolean IsConnected()
+
+			Returns TRUE if AVRCP is connected.
+
+Signals		void Connected()
+
+			Sent when a successful AVRCP connection has been made.
+
+		void Disconnected()
+
+			Sent when the AVRCP connection has been disconnected.

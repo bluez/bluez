@@ -1,0 +1,36 @@
+BlueZ D-Bus Input API description
+*********************************
+
+Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
+
+
+Input hierarchy
+===============
+
+Service		org.bluez
+Interface	org.bluez.Input
+Object path	/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+
+Methods		void Connect()
+
+			Connect to the input device.
+
+			Possible errors: org.bluez.Error.AlreadyConnected
+					 org.bluez.Error.ConnectionAttemptFailed
+
+		void Disconnect()
+
+			Disconnect from the input device.
+
+			To abort a connection attempt in case of errors or
+			timeouts in the client it is fine to call this method.
+
+			Possible errors: org.bluez.Error.Failed
+
+		bool IsConnected()
+
+			Returns the connection status.
+
+Signals		void Connected()
+
+		void Disconnected()

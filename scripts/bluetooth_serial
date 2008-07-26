@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# bluetooth_serial
+#
+# Bluetooth serial PCMCIA card initialization
+#
+
+start_serial()
+{
+	if [ ! -x /bin/setserial -o ! -x /usr/sbin/hciattach ]; then
+		logger "$0: setserial or hciattach not executable, cannot start $DEVNAME"
+		return 1
+	fi
+
+	if [ "$BAUDBASE" != "" ]; then
+		/bin/setserial $DEVNAME baud_base $BAUDBASE
+	fi
+
+	/usr/sbin/hciattach $DEVNAME $HCIOPTS 2>&1 | logger -t hciattach
+}
+
+stop_serial()
+{
+	[ -x /bin/fuser ] || return 1 
+
+	/bin/fuser -k -HUP $DEVNAME > /dev/null
+}
+
+case "$ACTION" in
+   add)
+	start_serial
+	;;
+   remove)
+	stop_serial
+	;;
+   *)
+	logger "Unknown action received $0: $ACTION"
+	;;
+esac

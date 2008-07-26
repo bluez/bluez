@@ -1,0 +1,134 @@
+EPox Presenter
+==============
+
+# hcitool inq
+Inquiring ...
+        00:04:61:aa:bb:cc       clock offset: 0x1ded    class: 0x004000
+
+# hcitool info 00:04:61:aa:bb:cc
+Requesting information ...
+        BD Address:  00:04:61:aa:bb:cc
+        OUI Company: EPOX Computer Co., Ltd. (00-04-61)
+        Device Name: EPox BT-PM01B aabbcc
+        LMP Version: 1.1 (0x1) LMP Subversion: 0xf78
+        Manufacturer: Cambridge Silicon Radio (10)
+        Features: 0xff 0xff 0x0f 0x00 0x00 0x00 0x00 0x00
+                <3-slot packets> <5-slot packets> <encryption> <slot offset> 
+                <timing accuracy> <role switch> <hold mode> <sniff mode> 
+                <park state> <RSSI> <channel quality> <SCO link> <HV2 packets> 
+                <HV3 packets> <u-law log> <A-law log> <CVSD> <paging scheme> 
+                <power control> <transparent SCO> 
+
+# sdptool records --raw 00:04:61:aa:bb:cc
+Sequence
+        Attribute 0x0000 - ServiceRecordHandle
+                UINT32 0x00010000
+        Attribute 0x0001 - ServiceClassIDList
+                Sequence
+                        UUID16 0x1101 - SerialPort
+        Attribute 0x0004 - ProtocolDescriptorList
+                Sequence
+                        Sequence
+                                UUID16 0x0100 - L2CAP
+                        Sequence
+                                UUID16 0x0003 - RFCOMM
+                                UINT8 0x01
+        Attribute 0x0100
+                String Cable Replacement
+
+
+J-Three Keyboard
+================
+
+# hcitool inq
+Inquiring ...
+        00:0A:3A:aa:bb:cc       clock offset: 0x3039    class: 0x001f00
+
+# hcitool info 00:0A:3A:aa:bb:cc
+Password:
+Requesting information ...
+        BD Address:  00:0A:3A:aa:bb:cc
+        OUI Company: J-THREE INTERNATIONAL Holding Co., Ltd. (00-0A-3A)
+        Device Name: KEYBOARD
+        LMP Version: 1.1 (0x1) LMP Subversion: 0x2c2
+        Manufacturer: Cambridge Silicon Radio (10)
+        Features: 0xbc 0x06 0x07 0x00 0x00 0x00 0x00 0x00
+                <encryption> <slot offset> <timing accuracy> <role switch> 
+                <sniff mode> <RSSI> <channel quality> <CVSD> <paging scheme> 
+                <power control> 
+
+# sdptool records --raw 00:0A:3A:aa:bb:cc
+Sequence
+        Attribute 0x0000 - ServiceRecordHandle
+                UINT32 0x00010000
+        Attribute 0x0001 - ServiceClassIDList
+                Sequence
+                        UUID16 0x1101 - SerialPort
+        Attribute 0x0004 - ProtocolDescriptorList
+                Sequence
+                        Sequence
+                                UUID16 0x0100 - L2CAP
+                        Sequence
+                                UUID16 0x0003 - RFCOMM
+                                UINT8 0x01
+        Attribute 0x0006 - LanguageBaseAttributeIDList
+                Sequence
+                        UINT16 0x656e
+                        UINT16 0x006a
+                        UINT16 0x0100
+        Attribute 0x0100
+                String SPP slave
+
+
+Celluon Laserkey Keyboard
+=========================
+
+# hcitool inq
+Inquiring ...
+       00:0B:24:aa:bb:cc       clock offset: 0x3ab6    class: 0x400210
+
+# hcitool info 00:0B:24:aa:bb:cc
+Requesting information ...
+       BD Address:  00:0B:24:aa:bb:cc
+       OUI Company: AirLogic (00-0B-24)
+       Device Name: CL800BT
+       LMP Version: 1.1 (0x1) LMP Subversion: 0x291
+       Manufacturer: Cambridge Silicon Radio (10)
+       Features: 0xff 0xff 0x0f 0x00 0x00 0x00 0x00 0x00
+               <3-slot packets> <5-slot packets> <encryption> <slot offset>
+               <timing accuracy> <role switch> <hold mode> <sniff mode>
+               <park state> <RSSI> <channel quality> <SCO link> <HV2 packets>
+               <HV3 packets> <u-law log> <A-law log> <CVSD> <paging scheme>
+               <power control> <transparent SCO>
+
+# sdptool records --raw 00:0B:24:aa:bb:cc
+Sequence
+         Attribute 0x0000 - ServiceRecordHandle
+                 UINT32 0x00010000
+         Attribute 0x0001 - ServiceClassIDList
+                 Sequence
+                         UUID16 0x1101 - SerialPort
+         Attribute 0x0004 - ProtocolDescriptorList
+                 Sequence
+                         Sequence
+                                 UUID16 0x0100 - L2CAP
+                         Sequence
+                                 UUID16 0x0003 - RFCOMM
+                                 UINT8 0x01
+         Attribute 0x0100
+                 String Serial Port
+
+Packet format is as follows (all fields little-endian):
+     0 uint16  magic            # 0x5a5a
+     2 uint32  unknown          # ???
+     6 uint8   action           # 0 = keyup, 1 = keydown, 2 = repeat
+                                # 3, 4, 5, 6 = ??? (Mouse mode)
+     7 uint8   unknown[9]       # ???
+    16 uint8   action2          # ??? same as action
+    17 uint16  x                # Horizontal coordinate
+    19 uint16  y                # Vertical coordinate
+    21 uint16  time             # Some sort of timestamp
+    23 uint8   unknown[5]       # ???
+    28 uint8   key[]            # single byte keycode or 0xff byte
+                                # follwed by special keycode byte.
+    Each packet followed by a checksum byte.

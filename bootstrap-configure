@@ -7,4 +7,22 @@ fi
 ./bootstrap && \
     ./configure --enable-maintainer-mode \
 		--enable-debug \
-		--prefix=/usr
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--libexecdir=/lib \
+		--enable-netlink \
+		--enable-tools \
+		--enable-bccmd \
+		--enable-dfutool \
+		--enable-hid2hci \
+		--enable-hidd \
+		--enable-pand \
+		--enable-dund \
+		--enable-test \
+		--disable-cups \
+		--disable-manpages \
+		--disable-configfiles \
+		--disable-initscripts \
+		--disable-pcmciarules $*

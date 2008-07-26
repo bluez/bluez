@@ -1,0 +1,817 @@
+ver 3.36:
+	Add init routines for TI BRF chips.
+	Add extra attributes to the serial port record.
+	Add example record for headset audio gateway record.
+	Use Handsfree version 0x0105 for the gateway role.
+	Fix SDP record registration with specific record handles.
+	Fix BCSP sent/receive handling.
+	Fix various includes for cross-compilation.
+	Allow link mode settings for outgoing connections.
+	Allow bonding during periodic inquiry.
+
+	Note:
+	This version needs at least bluez-libs-3.36
+
+ver 3.35:
+	Add UUID-128 support for service discovery.
+	Fix usage of friendly names for service discovery.
+	Fix authorization when experiemental is disabled.
+	Fix uninitialized variable in passkey request handling.
+	Enable output of timestamps for l2test and rctest.
+
+	Note:
+	This version needs at least bluez-libs-3.35
+
+ver 3.34:
+	Use safe function versions for SDP client handling.
+	Fix issue with RemoveDevice during discovery procedure.
+	Fix collect for non-persistent service records.
+
+	Note:
+	This version needs at least bluez-libs-3.34
+
+ver 3.33:
+	Add support for handling Simple Pairing.
+	Add Simple Pairing support to Agent interface.
+	Add ReleaseMode method to Adapter interface.
+	Add DiscoverServices method to Device interface.
+	Remove obsolete code and cleanup the repository.
+	Move over to use the libgdbus API.
+
+	Note:
+	This version needs at least bluez-libs-3.33
+
+ver 3.32:
+	Add support for switching HID proxy devices from Dell.
+	Add more Bluetooth client/server helper functions.
+	Add support for input service idle timeout option.
+	Fix BNEP reconnection handling.
+	Fix return value for snd_pcm_hw_params() calls.
+	Use upper-case addresses for object paths.
+	Remove HAL support helpers.
+	Remove inotify support.
+	Remove service daemon activation handling.
+	Remove uneeded D-Bus API extension.
+
+	Note:
+	This version needs at least bluez-libs-3.32
+
+ver 3.31:
+	Create device object for all pairing cases.
+	Convert authorization to internal function calls.
+	Add initial support for Headset Audio Gateway role.
+	Add generic Bluetooth helper functions for GLib.
+	Fix endiannes handling of connection handles.
+	Don't optimize when debug is enabled.
+
+	Note:
+	This version needs at least bluez-libs-3.31
+
+ver 3.30:
+	Convert audio service into a plugin.
+	Convert input service into a plugin.
+	Convert serial service into a plugin.
+	Convert network service into a plugin.
+	Emit old device signals when a property is changed.
+	Fix missing DiscoverDevices and CancelDiscovery methods.
+	Add basic support for Bluetooth sessions.
+	Add avinfo utility for AVDTP/A2DP classification.
+	Remove build option for deprecated sdpd binary.
+
+	Note:
+	This version needs at least bluez-libs-3.30
+
+ver 3.29:
+	Introduce new D-Bus based API.
+	Add more SBC optimizations.
+	Add support for PS3 remote devices.
+	Fix alignment trap in SDP server.
+
+	Note:
+	This version needs at least bluez-libs-3.29
+
+ver 3.28:
+	Add support for role switch for audio service.
+	Add disconnect timer for audio service.
+	Add disconnect detection to ALSA plugin.
+	Add more SBC optimizations.
+	Fix alignment issue of SDP server.
+	Remove support for SDP parsing via expat.
+
+	Note:
+	This version needs at least bluez-libs-3.28
+
+ver 3.27:
+	Update uinput.h with extra key definitions.
+	Add support for input connect/disconnect callbacks.
+	Add ifdefs around some baud rate definitions.
+	Add proper HFP service level connection handling.
+	Add basic headset automatic disconnect support.
+	Add support for new SBC API.
+	Fix SBC decoder noise at high bitpools.
+	Use 32-bit multipliers for further SBC optimization.
+	Check for RFCOMM connection state in SCO connect callback.
+	Make use of parameters selected in ALSA plugin.
+
+	Note:
+	This version needs at least bluez-libs-3.27
+
+ver 3.26:
+	Fix compilation issues with UCHAR_MAX, USHRT_MAX and UINT_MAX.
+	Improve handling of different audio transports.
+	Enable services by default and keep old daemons disabled.
+
+	Note:
+	This version needs at least bluez-libs-3.26
+
+ver 3.25:
+	Add limited support for Handsfree profile.
+	Add limited support for MPEG12/MP3 codec.
+	Add basic support for UNITINFO and SUBUNITINFO.
+	Add more SBC optimizations.
+	Fix external service (un)registration.
+	Allow GetInfo and GetAddress to fail.
+
+	Note:
+	This version needs at least bluez-libs-3.25
+
+ver 3.24:
+	Add TCP connection support for serial proxy.
+	Add fix for Logitech HID proxy switching.
+	Add missing macros, MIN, MAX, ABS and CLAMP.
+	Add more SBC encoder optimizations.
+	Add initial mechanism to handle headset commands.
+	Fix connecting to handsfree profile headsets.
+	Use proper function for checking signal name.
+
+	Note:
+	This version needs at least bluez-libs-3.24
+
+ver 3.23:
+	Fix key search function to honor the mmap area size.
+	Fix Avahi integration of network service.
+	Add new plugin communication for audio service.
+	Enable basic AVRCP support by default.
+	More optimizations to the SBC library.
+	Create common error definitions.
+
+	Note:
+	This version needs at least bluez-libs-3.23
+
+ver 3.22:
+	Add missing include file from audio service.
+	Add SBC conformance test utility.
+	Add basic uinput support for AVRCP.
+	Fix L2CAP socket leak in audio service.
+	Fix buffer usage in GStreamer plugin.
+
+	Note:
+	This version needs at least bluez-libs-3.22
+
+ver 3.21:
+	Add initial AVRCP support.
+	Add A2DP sink support to GStreamer plugin.
+	Fix interoperability with A2DP suspend.
+	Fix sign error in 8-subband encoder.
+	Fix handling of service classes length size.
+	Store Extended Inquiry Response data information.
+	Publish device id information through EIR.
+	Support higher baud rates for Ericcson based chips.
+
+	Note:
+	This version needs at least bluez-libs-3.21
+
+ver 3.20:
+	Fix GStreamer plugin file type detection.
+	Fix potential infinite loop in inotify support.
+	Fix D-Bus signatures for dict handling.
+	Fix issues with service activation.
+	Fix SDP failure handling of audio service.
+	Fix various memory leaks in input service.
+	Add secure device creation method to input service.
+	Add service information methods to serial service.
+	Add config file support to network service.
+	Add scripting capability to network service.
+	Add special on-mode handling.
+	Add optimization for SBC encoder.
+	Add tweaks for D-Bus 1.1.x libraries.
+	Add support for inquiry transmit power level.
+
+	Note:
+	This version needs at least bluez-libs-3.20
+
+ver 3.19:
+	Limit range of bitpool announced while in ACP side.
+	Use poll instead of usleep to wait for worker thread.
+	Use default event mask from the specification.
+	Add HID proxy support for Logitech diNovo Edge dongle.
+	Add refresh option to re-request device names.
+	Show correct connection link type.
+
+	Note:
+	This version needs at least bluez-libs-3.19
+
+ver 3.18:
+	Implement proper locking for headsets.
+	Fix various A2DP SEP locking issues.
+	Fix and cleanup audio stream handling.
+	Fix stream starting if suspend request is pending.
+	Fix A2DP and AVDTP endianess problems.
+	Add network timeout and retransmission support.
+	Add more detailed decoding of EIR elements.
+
+	Note:
+	This version needs at least bluez-libs-3.18
+
+ver 3.17:
+	Fix crashes in audio and network services.
+	Check PAN source and destination roles.
+	Only export the needed symbols for the plugins.
+
+	Note:
+	This version needs at least bluez-libs-3.17
+
+ver 3.16:
+	Add support for headsets with SCO audio over HCI.
+	Add support for auto-create through ALSA plugin.
+	Add support for ALSA plugin parameters.
+	Add GStreamer plugin with SBC decoder and encoder.
+	Fix network service NAP, GN and PANU servers.
+	Set EIR information from SDP database.
+
+	Note:
+	This version needs at least bluez-libs-3.16
+
+ver 3.15:
+	Add A2DP support to the audio service.
+	Add proxy support to the serial service.
+	Set service classes value from SDP database.
+
+	Note:
+	This version needs at least bluez-libs-3.15
+
+ver 3.14:
+	Add missing signals for the adapter interface.
+	Add basic commands for Simple Pairing.
+	Add correct Simple Pairing and EIR interaction.
+	Add missing properties for remote information.
+	Add EPoX endian quirk to the input service.
+	Fix HID descriptor import and storage functions.
+	Fix handling of adapters in raw mode.
+	Fix remote device listing methods.
+
+	Note:
+	This version needs at least bluez-libs-3.14
+
+ver 3.13:
+	Fix some issues with the headset support.
+	Fix concurrent pending connection attempts.
+	Fix usage of devname instead of netdev.
+	Add identifier for Nokia SyncML records.
+	Add command for reading the CSR chip revision.
+	Add generic CSR radio test support.
+
+	Note:
+	This version needs at least bluez-libs-3.13
+
+ver 3.12:
+	Add support for limited discovery mode.
+	Add support for setting of event mask.
+	Add GetRemoteServiceIdentifiers method.
+	Add skeleton for local D-Bus server.
+	Add headset gain control methods.
+	Fix various headset implementation issues.
+	Fix various serial port service issues.
+	Fix various input service issues.
+	Let CUPS plugin discover printers in range.
+	Improve the BCM2035 UART init routine.
+	Ignore connection events for non-ACL links.
+
+	Note:
+	This version needs at least bluez-libs-3.12
+
+ver 3.11:
+	Update API documentation.
+	Minimize SDP root records and browse groups.
+	Use same decoder for text and URL strings.
+	Fix SDP pattern extraction for XML.
+	Fix network connection persistent state.
+	Add network connection helper methods.
+	Add initial version of serial port support.
+	Add class of device tracking.
+
+	Note:
+	This version needs at least bluez-libs-3.11
+
+ver 3.10.1:
+	Add option to disable installation of manual pages.
+	Fix input service encryption setup.
+	Fix serial service methods.
+	Fix network service connection handling.
+	Provide a simple init script.
+
+ver 3.10:
+	Add initial version of network service.
+	Add initial version of serial service.
+	Add initial version of input service.
+	Add initial version of audio service.
+	Add authorization framework.
+	Add integer based SBC library.
+
+	Note:
+	This version needs at least bluez-libs-3.10
+
+ver 3.9:
+	Add RemoteDeviceDisconnectRequested signal.
+	Add updated service framework.
+	Add embedded GLib library.
+	Add support for using system GLib library.
+	Create internal SDP server library.
+
+	Note:
+	This version needs at least bluez-libs-3.9
+
+ver 3.8:
+	Sort discovered devices list based on their RSSI.
+	Send DiscoverableTimeoutChanged signal.
+	Fix local and remote name validity checking.
+	Add ListRemoteDevices and ListRecentRemoteDevices methods.
+	Add basic integration of confirmation concept.
+	Add support for service record description via XML.
+	Add support for external commands to the RFCOMM utility.
+	Add experimental service and authorization API.
+
+	Note:
+	This version needs at least bluez-libs-3.8
+
+ver 3.7:
+	Fix class of device handling.
+	Fix error replies with pairing and security mode 3.
+	Fix disconnect method for RFCOMM connections.
+	Add match pattern for service searches.
+	Add support for prioritized watches.
+
+	Note:
+	This version needs at least bluez-libs-3.7
+
+ver 3.6.1:
+	Fix IO channel race conditions.
+	Fix pairing issues on big endian systems.
+	Fix pairing issues with page timeout errors.
+	Fix pairing state for security mode 3 requests.
+	Switch to user as default security manager mode.
+
+ver 3.6:
+	Update D-Bus based RFCOMM interface support.
+	Use L2CAP raw sockets for HCI connection creation.
+	Add periodic discovery support to the D-Bus interface.
+	Add initial support for device names via EIR.
+	Add proper UTF-8 validation of device names.
+	Add support for the J-Three keyboard.
+
+	Note:
+	This version needs at least bluez-libs-3.6
+
+ver 3.5:
+	Fix and cleanup watch functionality.
+	Add support for periodic inquiry mode.
+	Add support for asynchronous SDP requests.
+	Add more request owner tracking.
+	Document pageto and discovto options.
+
+	Note:
+	This version needs at least bluez-libs-3.5
+
+ver 3.4:
+	Improve error reporting for failed HCI commands.
+	Improve handling of CancelBonding.
+	Fixed bonding reply message when disconnected.
+
+	Note:
+	This version needs at least bluez-libs-3.4
+
+ver 3.3:
+	Don't change inquiry mode for Bluetooth 1.1 adapters.
+	Add udev rules for Bluetooth serial PCMCIA cards.
+	Add Cancel and Release methods for passkey agents.
+	Add GetRemoteClass method.
+	Convert to using ppoll() and pselect().
+	Initialize allocated memory to zero.
+	Remove bcm203x firmware loader.
+
+	Note:
+	This version needs at least bluez-libs-3.3
+
+ver 3.2:
+	Only check for the low-level D-Bus library.
+	Update possible device minor classes.
+	Fix timeout for pending reply.
+	Add more Inquiry with RSSI quirks.
+	Sleep only 100 msecs for device detection.
+	Don't send BondingCreated on link key renewal.
+	Allow storing of all UTF-8 remote device names.
+	Create storage filenames with a generic function.
+
+	Note:
+	This version needs at least bluez-libs-3.2
+
+ver 3.1:
+	Fix handling of raw mode devices.
+	Fix busy loop in UUID extraction routine.
+	Remove inquiry mode setting.
+	Remove auth and encrypt settings.
+
+	Note:
+	This version needs at least bluez-libs-3.1
+
+ver 3.0:
+	Implement the new BlueZ D-Bus API.
+
+	Note:
+	This version needs at least bluez-libs-3.0
+
+ver 2.25:
+	Use %jx instead of %llx for uint64_t and int64_t.
+	Allow null-terminated text strings.
+	Add UUID for N-Gage games.
+	Add UUID for Apple Macintosh Attributes.
+	Add Apple attributes and iSync records.
+	Add definitions for Apple Agent.
+	Add support for the Handsfree Audio Gateway service.
+	Add support for choosing a specific record handle.
+	Add support for dialup/telephone connections.
+
+	Note:
+	This version needs at least bluez-libs-2.25
+
+ver 2.24:
+	Fix display of SDP text and data strings.
+	Add support for device scan property.
+	Update the D-Bus policy configuration file.
+
+	Note:
+	This version needs at least bluez-libs-2.24
+
+ver 2.23:
+	Update the new D-Bus interface.
+	Make dfutool ready for big endian architectures.
+	Add support for AVRCP specific service records.
+	Add support for writing complex BCCMD commands.
+	Add the new BCCMD interface utility.
+	Add MicroBCSP implementation from CSR.
+	Add HCI emulation tool.
+	Add fake HID support for old EPoX presenters.
+	Reject connections from unknown HID devices.
+
+	Note:
+	This version needs at least bluez-libs-2.23
+
+ver 2.22:
+	Remove D-Bus 0.23 support.
+	Add initial version of the new D-Bus interface.
+	Add support for extended inquiry response commands.
+	Add support for the Logitech diNovo Media Desktop Laser.
+	Add compile time buffer checks (FORTIFY SOURCE).
+
+	Note:
+	This version needs at least bluez-libs-2.22
+
+ver 2.21:
+	Move create_dirs() and create_file() into the textfile library.
+	Let textfile_put() also replace the last key value pair.
+	Fix memory leaks with textfile_get() usage.
+	Fix infinite loops and false positive matches.
+	Don't retrieve stored link keys for RAW devices.
+	Document the putkey and delkey commands.
+	Show supported commands also in clear text.
+	Support volatile changes of the BD_ADDR for CSR chips.
+
+	Note:
+	This version needs at least bluez-libs-2.21
+
+ver 2.20:
+	Add support for extended inquiry response.
+	Add support for HotSync service record.
+	Add support for ActiveSync service record.
+	Add ActiveSync networking support.
+	Fix D-Bus crashes with new API versions.
+
+	Note:
+	This version needs at least bluez-libs-2.20
+
+ver 2.19:
+	Fix the GCC 4.0 warnings.
+	Fix off by one memory allocation error.
+	Fix security problem with escape characters in device name.
+	Send D-Bus signals for inquiry results and remote name resolves.
+	Add support for device specific SDP records.
+
+	Note:
+	This version needs at least bluez-libs-2.19
+
+ver 2.18:
+	Support D-Bus 0.23 and 0.33 API versions.
+	Support reading of complex BCCMD values.
+	Support minimum and maximum encryption key length.
+	Add support for inquiry scan type.
+	Add tool for the CSR BCCMD interface.
+	Add first draft of the Audio/Video control utility.
+	Add disconnect timer support for the A2DP ALSA plugin.
+	Make SBC parameters configurable.
+	Replace non-printable characters in device names.
+
+	Note:
+	This version needs at least bluez-libs-2.18
+
+ver 2.17:
+	Set the storage directory through ${localstatedir}.
+	Add the textfile library for ASCII based file access.
+	Add support for return link keys event.
+	Add support for voice setting configuration.
+	Add support for page scan timeout configuration.
+	Add support for storing and deleting of stored link keys.
+	Add support for searching for services with UUID-128.
+	Add support for retrieving all possible service records.
+	Add support for a raw mode view of service records.
+	Add support for HID information caching in hidd.
+	Add support for authentication in pand and dund.
+	Add support for changing BD_ADDR of CSR chips.
+	Add pskey utility for changing CSR persistent storage values.
+	Add the firmware upgrade utility.
+	Add connection caching for the A2DP ALSA plugin.
+
+	Note:
+	This version needs at least bluez-libs-2.17
+
+ver 2.16:
+	Store link keys in ASCII based file format.
+	Support device name caching.
+	Support zero length data sizes in l2test.
+	Change default l2ping data size to 44 bytes.
+	Hide the server record and the public browse group root.
+	Read BD_ADDR if not set and if it is a raw device.
+	Add SDP language attributes.
+	Add support for browsing the L2CAP group.
+	Add support for stored pin codes for outgoing connections.
+	Add support for local commands and extended features.
+	Add support for reading CSR panic and fault codes.
+	Add config option for setting the inquiry mode.
+	Add OUI decoding support.
+	Use unlimited inquiry responses as default.
+	Use cached device names for PIN request.
+	Use the clock offset when getting the remote names.
+
+	Note:
+	This version needs at least bluez-libs-2.16
+
+ver 2.15:
+	Enable the RFCOMM service level security.
+	Add command for reading the clock offset.
+	Add command for reading the clock.
+	Don't configure raw devices.
+	Don't set inquiry scan or page scan on raw devices.
+	Don't show extended information for raw devices.
+	Support L2CAP signal sizes bigger than 2048 bytes.
+	Cleanup of the socket handling code of the test programs.
+
+	Note:
+	This version needs at least bluez-libs-2.15
+
+ver 2.14:
+	Make use of additional connection information.
+	Use library function for reading the RSSI.
+	Use library function for reading the link quality.
+	Use library function for reading the transmit power level.
+	Use library functions for the link supervision timeout.
+	Add tool for changing the device address.
+
+	Note:
+	This version needs at least bluez-libs-2.14
+
+ver 2.13:
+	Use file permission 0600 for the link key file.
+	Add support for HID attribute descriptions.
+	Add support for Device ID attributes.
+	Various whitespace cleanups.
+
+	Note:
+	This version needs at least bluez-libs-2.13
+
+ver 2.12:
+	Inherit the device specific options from the default.
+	Use --device for selecting the source device.
+	Add --nosdp option for devices with resource limitation.
+	Add support and parameter option for secure mode.
+	Add a lot of build ids and hardware revisions.
+	Update UUID translation tables.
+
+	Note:
+	This version needs at least bluez-libs-2.12
+
+ver 2.11:
+	Various cleanups to avoid inclusion of kernel headers.
+	Fix output when the CUPS backend is called without arguments.
+	Fix problems with a 64 bit userland.
+	Use Bluetooth library functions if available.
+	Use standard numbering scheme of SDP record handles.
+	Add a master option to the hidd.
+	Add support for changing the link key of a connection.
+	Add support for requesting encryption on keyboards.
+	Add support for revision information of Digianswer devices.
+	Add support for the Zoom, IBM and TDK PCMCIA cards.
+	Add checks for the OpenOBEX and the ALSA libraries.
+	Add experimental mRouter support.
+
+	Note:
+	This version needs at least bluez-libs-2.11
+
+ver 2.10:
+	Use a define for the configuration directory.
+	Fix string initialization for flags translation.
+	Check for usb_get_busses() and usb_interrupt_read().
+	Add optional support for compiling with PIE.
+	Make installation of the init scripts optional.
+	Make compiling with debug information optional.
+	Don't override CFLAGS from configure.
+
+	Note:
+	This version needs at least bluez-libs-2.10
+
+ver 2.9:
+	Retry SDP connect if busy in the CUPS backend.
+	Use packet type and allow role switch in hcitool.
+	Use the functions from the USB library for hid2hci.
+	Add Broadcom firmware loader.
+	Add EPoX endian quirk for buggy keyboards.
+	Update the autoconf/automake scripts.
+
+	Note:
+	This version needs at least bluez-libs-2.9
+
+ver 2.8:
+	Use LIBS and LDADD instead of LDFLAGS.
+	Use HIDP subclass field for HID boot protocol.
+	Set olen before calling getsockopt() in pand.
+	Restore signals for dev-up script.
+	Add PID file support for pand.
+	Add size parameter to expand_name() in hcid.
+	Add support for audio source and audio sink SDP records.
+	Add support for HID virtual cable unplug.
+	Add support for AmbiCom BT2000C card.
+
+	Note:
+	This version needs at least bluez-libs-2.8
+
+ver 2.7:
+	Add support for getting the AFH channel map.
+	Add support for AFH mode.
+	Add support for inquiry mode.
+	Add Bluetooth backend for CUPS.
+	Add the hid2hci utility.
+	Add the hidd utility.
+	Add the pand utility.
+	Add the dund utility.
+	More endian bug fixes.
+	Give udev some time to create the RFCOMM device nodes.
+	Release the TTY if no device node is found.
+	New startup script for the Bluetooth subsystem.
+	Update to the autoconf stuff.
+
+	Note:
+	This version needs at least bluez-libs-2.7
+
+ver 2.6:
+	Change default prefix to /usr.
+	Add manpages for hcid and hcid.conf.
+	Add the sdpd server daemon.
+	Add the sdptool utility.
+	Add the ciptool utility.
+
+	Note:
+	This version needs at least bluez-libs-2.6
+
+ver 2.5:
+	hcitool changes:
+		Support for requesting authentication.
+		Support for setting connection encryption.
+		Fix some endian problems.
+	hciconfig changes:
+		Show revision information for Broadcom devices.
+		Replace unprintable characters in device name.
+	hcid changes:
+		Add D-Bus support for PIN request.
+		Report an error on PIN helper failure.
+		Fix some 64-bit problems.
+	Update bluepin script for GTK2.
+
+ver 2.4:
+	hcitool changes:
+		Increase number of inquiry responses.
+		Support for transmit power level.
+		Minor updates.
+	hciconfig changes:
+		Display all 8 bytes of the features.
+		Add support for reading and writing of IAC.
+		Correct decoding class of device.
+		Use Ericsson revision command for ST Microelectronics devices.
+		Display AVM firmware version with 'revision' command.
+		New code for CSR specific revision information.
+	hciattach changes:
+		Support for ST Microelectronics specific initialization.
+		Support for 3Com card version 3.0.
+		Support for TDK, IBM and Socket cards.
+		Support for initial baud rate.
+	Update man pages.
+	Fixes for some memory leaks.
+
+ver 2.3:
+	hciconfig changes:
+		CSR firmware version is now displayed by 'revision' command.
+		Voice command is working properly on big endian machines.
+	hciattach changes:
+		Added support for Texas Bluetooth modules.
+		Added support for high UART baud rates on Ericsson modules.
+		BCSP initialization fixes.
+	Support for role switch command (hcitool).
+	RFCOMM config file parser fixes.
+	Update man pages.
+	Removed GLib dependency.
+
+ver 2.2:
+	Support for voice settings (hciconfig).
+	Minor hcitool fixes.
+	Improved configure script.
+	Added Headset testing tool.
+	Updated man pages.
+	RPM package.
+
+ver 2.1:
+	Improved BCSP initialization (hciattach).
+	Support for displaying link quality (hcitool).
+	Support for changing link supervision timeout (hcitool).
+	New RFCOMM TTY configuration tool (rfcomm).
+	Minor fixes and updates.
+
+ver 2.0:
+	BCSP initialization (hciattach).
+	Minor hciconfig fixes.	
+
+ver 2.0-pr13:
+	Support for multiple pairing modes.
+	Link key database handling fixes.
+
+ver 2.0-pre12:
+	Removed max link key limit. Keys never expire.
+	Link key database is always updated. Reread PIN on SIGHUP (hcid).
+	Bluetooth script starts SDPd, if installed.
+	Other minor fixes.
+
+ver 2.0-pre11:
+	Improved link key management and more verbose logging (hcid).
+	Fixed scan command (hcitool).
+
+ver 2.0-pre10:
+	Support for reading RSSI, remote name and changing
+	connection type (hcitool). 
+	Device initialization fixes (hcid).
+	Other minor fixes and improvements.
+	Build environment cleanup and fixes.
+
+ver 2.0-pre9:
+	Improved bluepin. Working X authentication.
+	Improved hcitool. New flexible cmd syntax, additional commands.
+	Human readable display of the device features.
+
+ver 2.0-pre8:
+	Additional hciconfig commands. Support for ACL and SCO MTU ioctls.
+	Support for Inventel and COM1 UART based devices.
+	Minor hcitool fixes.
+	Improved l2test. New L2CAP test modes.
+	Minor cleanup.
+
+ver 2.0-pre7:
+	Bluetooth utilities is now a separate package.
+	New build environment uses automake.
+	Moved all config files and security data to /etc/bluetooth.
+	Various cleanups.
+
+	Note:
+	Please move your /etc/hcid.conf to /etc/bluetooth
+
+ver 2.0-pre6:
+	Improved hcitool.
+	l2test minor output fixes.
+	hciattach opt to display list of supported devices.
+
+ver 2.0-pre2:
+	Additional HCI library functions.
+	Improved CSR baud rate initialization.
+	PCMCIA scripts fixes and enhancements.
+	Documentation update.
+	
+ver 2.0-pre1:
+	New UART initialization utility.
+	Hot plugging support for UART based PCMCIA devices.
+	SCO testing utility.
+	New authentication utility (bluepin).
+	Minor fixes and improvements.

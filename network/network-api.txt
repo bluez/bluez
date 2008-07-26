@@ -1,0 +1,199 @@
+Bluetooth network service API description
+*****************************************
+
+Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
+
+
+Network Manager hierarchy
+=========================
+
+Interface	org.bluez.network.Manager
+Object path	/org/bluez/network
+
+Methods		array{string} ListServers()
+
+			Returns an array of available network devices paths.
+			Currently only NAP and GN are supported.
+
+		string FindServer(string pattern)
+
+			Returns server path.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+			                 org.bluez.Error.Failed
+
+		string CreateConnection(string address, string uuid)
+
+			Creates a network connection object(NAP or GN).
+
+			Possible errors: org.bluez.Error.AlreadyExists
+			                 org.bluez.Error.NotSupported
+			                 org.bluez.Error.ConnectionAttemptFailed
+			                 org.bluez.Error.Failed
+
+		void RemoveConnection(string path)
+
+			Removes a network connection object for a given path.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+			                 org.bluez.Error.Failed
+
+		array{string} ListConnections()
+
+			Returns an array of available network connections paths.
+
+		string FindConnection(string pattern)
+
+			Returns connection path.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+			                 org.bluez.Error.Failed
+
+		string LastConnection()
+
+			Returns last connected connection path, if none is connected
+			fallback to last created connection.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+
+		string DefaultConnection()
+
+			Returns default connection path.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+
+		string ChangeDefaultConnection(string pattern)
+
+			Changes default connection path.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+
+Signals		void ConnectionCreated(string path)
+
+		void ConnectionRemoved(string path)
+
+		void DefaultConnectionChanged(string path)
+
+
+Network Server hierarchy (experimental)
+=======================================
+
+Interface	org.bluez.network.Server
+Object path	/org/bluez/network/{gn, nap, panu}
+
+Methods		string GetUUID()
+
+			Returns the UUID-128 string representation of
+			the server.
+
+		void Enable()
+
+			Enable server and updates service record.
+
+			Possible errors: org.bluez.Error.AlreadyExists
+			                 org.bluez.Error.Failed
+
+		void Disable()
+
+			Disable server and remove service record.
+
+			Possible errors: org.bluez.Error.Failed
+
+		bool IsEnabled()
+
+			Returns the server status.
+
+		void SetName(string name)
+
+			Sets the name attribute.
+
+		string GetName()
+
+			Returns the service name.
+
+		void SetAddressRange(string start, string end)
+
+			TBD
+
+		void SetRouting(string interface)
+
+			TBD
+
+		dict GetInfo()
+
+			Returns the server properties.
+
+Signals		void Enabled()
+
+		void Disabled()
+
+
+Network Connection hierarchy (experimental)
+===========================================
+
+Interface	org.bluez.network.Connection
+Object path	/org/bluez/network/connection*
+
+Methods		string GetAdapter()
+
+			Returns the Bluetooth address of the adapter.
+
+		string GetAddress()
+
+			Returns the Bluetooth address of the ending point.
+
+		string GetUUID()
+
+			Returns the uuid 128 string representation of
+			the connected service.
+
+		string GetName()
+
+			Returns the string representation of connected host.
+
+			Possible errors: org.bluez.Error.Failed
+
+		string GetDescription()
+
+			Returns the string description of connected host.
+
+			Possible errors: org.bluez.Error.Failed
+
+		string GetInterface()
+
+			Returns the string network interface.
+
+			Possible errors: org.bluez.Error.Failed
+
+		string Connect()
+
+			Connects to host and return the network interface
+			created.
+
+			Possible errors: org.bluez.Error.ConnectionAttemptFailed
+			                 org.bluez.Error.Failed
+
+		void CancelConnect()
+
+			Abort connection attempt in case of errors or
+			timeouts in the client.
+
+			Possible errors: org.bluez.Error.Failed
+
+		void Disconnect()
+
+			Disconnects to host.
+
+			Possible errors: org.bluez.Error.Failed
+
+		bool IsConnected()
+
+			Returns the connection status.
+
+		dict GetInfo()
+
+			Returns the connection properties.
+
+Signals		void Connected()
+
+		void Disconnected()

@@ -5,18 +5,21 @@ Copyright (C) 2000-2001  Qualcomm Incorporated
 Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
 Copyright (C) 2002-2008  Marcel Holtmann <marcel@holtmann.org>
 
-Bluetooth libraries
-
 
 Compilation and installation
 ============================
 
-In order to compile Bluetooth libraries you need following software packages:
+In order to compile Bluetooth utilities you need following software packages:
 	- Linux Bluetooth protocol stack (BlueZ)
 	- GCC compiler
+	- D-Bus library
+	- USB library
+	- Lexical Analyzer (flex, lex)
+	- YACC (yacc, bison, byacc)
 
 To configure run:
-	./configure --prefix=/usr
+	./configure --prefix=/usr --mandir=/usr/share/man \
+		--sysconfdir=/etc --localstatedir=/var --libexecdir=/lib
  
 Configure automatically searches for all required components and packages. 
 

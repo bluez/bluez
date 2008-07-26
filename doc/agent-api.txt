@@ -1,0 +1,91 @@
+BlueZ D-Bus Agent API description
+**********************************
+
+Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
+
+
+Agent hierarchy
+===============
+
+Service		unique name
+Interface	org.bluez.Agent
+Object path	freely definable
+
+Methods		void Release()
+
+			This method gets called when the service daemon
+			unregisters the agent. An agent can use it to do
+			cleanup tasks. There is no need to unregister the
+			agent, because when this method gets called it has
+			already been unregistered.
+
+		string RequestPinCode(object device)
+
+			This method gets called when the service daemon
+			needs to get the passkey for an authentication.
+
+			The return value should be a string of 1-16 characters
+			length. The string can be alphanumeric.
+
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
+		uint32 RequestPasskey(object device)
+
+			This method gets called when the service daemon
+			needs to get the passkey for an authentication.
+
+			The return value should be a numeric value
+			between 0-999999.
+
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
+		void DisplayPasskey(object device, uint32 passkey, uint8 entered)
+
+			This method gets called when the service daemon
+			needs to display a passkey for an authentication.
+
+			The entered parameter indicates the number of already
+			typed keys on the remote side.
+
+			An empty reply should be returned. When the passkey
+			needs no longer to be displayed, the Cancel method
+			of the agent will be called.
+
+			During the pairing process this method might be
+			called multiple times to update the entered value.
+
+		void RequestConfirmation(object device, uint32 passkey)
+
+			This method gets called when the service daemon
+			needs to confirm a passkey for an authentication.
+
+			To confirm the value it should return an empty reply
+			or an error in case the passkey is invalid.
+
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
+		void Authorize(object device, string uuid)
+
+			This method gets called when the service daemon
+			needs to authorize a connection/service request.
+
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
+		void ConfirmModeChange(string mode)
+
+			This method gets called if a mode change is requested
+			that needs to be confirmed by the user. An example
+			would be leaving flight mode.
+
+			Possible errors: org.bluez.Error.Rejected
+			                 org.bluez.Error.Canceled
+
+		void Cancel()
+
+			This method gets called to indicate that the agent
+			request failed before a reply was returned.

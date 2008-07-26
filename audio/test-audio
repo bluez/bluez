@@ -1,0 +1,27 @@
+#!/usr/bin/python
+
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
+							'org.bluez.Manager')
+
+conn = manager.ActivateService('audio')
+
+audio = dbus.Interface(bus.get_object(conn, '/org/bluez/audio'),
+						'org.bluez.audio.Manager')
+
+try:
+	headset = dbus.Interface(bus.get_object(conn, audio.DefaultHeadset()),
+						'org.bluez.audio.Headset')
+except:
+	pass
+
+try:
+	device = dbus.Interface(bus.get_object(conn, audio.DefaultDevice()),
+						'org.bluez.audio.Device')
+	sink = dbus.Interface(bus.get_object(conn, audio.DefaultDevice()),
+						'org.bluez.audio.Sink')
+except:
+	pass

@@ -1,0 +1,27 @@
+#!/usr/bin/python
+
+import gobject
+
+import dbus
+import dbus.mainloop.glib
+
+def adapter_added(path):
+	print "Adapter with path %s added" % (path)
+
+def adapter_removed(path):
+	print "Adapter with path %s removed" % (path)
+
+if __name__ == "__main__":
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+
+	manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
+							'org.bluez.Manager')
+
+	manager.connect_to_signal("AdapterAdded", adapter_added)
+
+	manager.connect_to_signal("AdapterRemoved", adapter_removed)
+
+	mainloop = gobject.MainLoop()
+	mainloop.run()

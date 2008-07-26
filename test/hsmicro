@@ -1,0 +1,20 @@
+#!/bin/sh
+
+SOX=`which sox`
+HSTEST=`which hstest`
+
+if [ -z "$HSTEST" ]
+then
+	HSTEST="./hstest"
+fi
+
+if [ -z "$1" ]
+then
+	echo -e "Usage:\n\thsmicro <bdaddr> [channel]"
+	exit
+fi
+
+BDADDR=$1
+CHANNEL=$2
+
+$HSTEST record - $BDADDR $CHANNEL | $SOX -t raw -r 8000 -c 1 -s -w - -t ossdsp -r 44100 -c 2 -s -w /dev/dsp polyphase vol 5.0 2> /dev/null

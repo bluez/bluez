@@ -1,0 +1,176 @@
+Bluetooth serial service API description
+****************************************
+
+Copyright (C) 2006-2007  Marcel Holtmann <marcel@holtmann.org>
+
+
+Manager hierarchy
+=================
+
+Interface	org.bluez.serial.Manager
+Object path	/org/bluez/serial
+
+Methods		string CreateProxy(string uuid, string address)
+
+			Creates a serial port proxy object.
+
+			Service identifier must be provided in the uuid 128
+			format. Addresses can be either TTY char devices,
+			unix socket address or a local TCP port. Abstract
+			namespace can be informed replacing the null byte
+			by 'x00'. eg: "/dev/ttyS0", "/tmp/gps-data",
+			"x00/org/bluez/echo", "localhost:2947".
+
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.NotAvailable
+					org.bluez.Error.Failed
+
+		void RemoveProxy(string path) [experimental]
+
+			Removes the serial port proxy object for given path.
+
+			Possible errors:org.bluez.Error.DoesNotExist
+
+		string CreatePort(string address, string pattern) [experimental]
+
+			Creates a serial port object.
+
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.Canceled
+					org.bluez.Error.InProgress
+					org.bluez.Error.ConnectionAttemptFailed
+					org.bluez.Error.NotSupported
+					org.bluez.Error.Failed
+
+		void RemovePort(string path) [experimental]
+
+			Removes the serial port object for given path.
+
+			Possible errors:org.bluez.Error.DoesNotExist
+
+		array{string} ListPorts() [experimental]
+
+			Returns an array of available serial port paths.
+
+		array{string} ListProxies() [experimental]
+
+			Returns an array of available serial port proxy paths.
+
+		string ConnectService(string address, string pattern)
+
+			Connects to a specific RFCOMM based service on a
+			remote device and then creates a RFCOMM TTY
+			device for it. The RFCOMM TTY device is returned.
+
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.Canceled
+					org.bluez.Error.InProgress
+					org.bluez.Error.ConnectionAttemptFailed
+					org.bluez.Error.NotSupported
+					org.bluez.Error.Failed
+
+		string ConnectServiceFromAdapter(string adapter,
+				string address, string pattern) [experimental]
+
+			Use the given adapter to connect to a specific RFCOMM
+			based service on a remote device and then creates a
+			RFCOMM TTY device for it. The RFCOMM TTY device is
+			returned.
+
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.Canceled
+					org.bluez.Error.InProgress
+					org.bluez.Error.ConnectionAttemptFailed
+					org.bluez.Error.NotSupported
+					org.bluez.Error.Failed
+
+		void CancelConnectService(string address, string pattern)
+
+			Cancel a previous ConnectService method call.
+
+			Possible errors:org.bluez.serial.InvalidArguments
+
+		void DisconnectService(string device)
+
+			Disconnect a RFCOMM TTY device that has been
+			created via the ConnectService method.
+
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.DoesNotExist
+
+Signals		void PortCreated(string path) [experimental]
+
+		void PortRemoved(string path) [experimental]
+
+		void ProxyCreated(string path) [experimental]
+
+		void ProxyRemoved(string path) [experimental]
+
+		void ServiceConnected(string device)
+
+		void ServiceDisconnected(string device)
+
+
+Port hierarchy (experimental)
+=============================
+
+Interface	org.bluez.serial.Port
+Object path	/org/bluez/serial/rfcomm*
+
+Methods		string GetAdapter() [experimental]
+
+			Returns the adapter address.
+
+		string GetAddress() [experimental]
+
+			Returns the Bluetooth address of the ending point.
+
+		string GetDevice() [experimental]
+
+			Returns the TTY device node name
+
+		dict GetInfo() [experimental]
+
+			Returns the port properties.
+
+		string GetName()
+
+			Returns the name of the remote device.
+
+		string GetServiceName()
+
+			Returns the name of the remote service.
+			e.g.: "Dial-up networking Gateway"
+
+Proxy hierarchy (experimental)
+=============================
+Interface	org.bluez.serial.Proxy
+Object path	/org/bluez/serial/rfcomm*
+
+Methods:	void Enable() [experimental]
+
+			Register the serial proxy service record and start
+			listenning on the specified adapter/channel.
+
+			Possible errors:org.bluez.Error.Failed
+
+		void Disable() [experimental]
+
+			Unregister the service record and stop listenning.
+
+			Possible errors:org.bluez.Error.Failed
+
+		dict GetInfo() [experimental]
+			Returns the proxy properties
+
+		void SetSerialParameters(string rate, byte databits,
+				byte stopbits, string parity) [experimental]
+
+			Change the TTY settings. Available rates: "50", "300",
+			"600", "1200", "1800", "2400", "4800", "9600", "19200",
+			"38400", "57600" and "115200". Available data bits: 5,
+			6, 7 and 8. Available stop bits: 1 and 2. Available
+			parity: "even", "odd", "mark", "space" and "none".
+
+			Possible errors:org.bluez.Error.InvalidArguments
+					org.bluez.Error.Failed

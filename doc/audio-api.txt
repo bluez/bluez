@@ -1,0 +1,136 @@
+BlueZ D-Bus Audio API description
+*********************************
+
+Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2005-2007  Johan Hedberg <johan.hedberg@nokia.com>
+Copyright (C) 2005-2006  Brad Midgley <bmidgley@xmission.com>
+
+
+Headset hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Headset
+Object path	/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+
+Methods		void Connect()
+
+			Connect to the HSP/HFP service on the remote device.
+
+		void Disconnect()
+
+			Disconnect from the HSP/HFP service on the remote
+			device.
+
+		boolean IsConnected()
+
+			Returns TRUE if there is a active connection to the
+			HSP/HFP connection on the remote device.
+
+		void IndicateCall()
+
+			Indicate an incoming call on the headset
+			connected to the stream. Will continue to
+			ring the headset about every 3 seconds.
+
+		void CancelCall()
+
+			Cancel the incoming call indication.
+
+		void Play()
+
+			Open the audio connection to the headset.
+
+		void Stop()
+
+			Close the audio connection.
+
+		boolean IsPlaying()
+
+			Returns true if an audio connection to the headset
+			is active.
+
+		uint16 GetSpeakerGain()
+
+			Returns the current speaker gain if available,
+			otherwise returns the error NotAvailable.
+
+		uint16 GetMicrophoneGain()
+
+			Returns the current microphone gain if available,
+			otherwise returns the error NotAvailable.
+
+		void SetSpeakerGain(uint16 gain)
+
+			Changes the current speaker gain if possible.
+
+		void SetMicrophoneGain(uint16 gain)
+
+			Changes the current speaker gain if possible.
+
+Signals		void AnswerRequested()
+
+			Sent when the answer button is pressed on the headset
+
+		void Connected()
+
+			Sent when the device has been connected to.
+
+		void Disconnected()
+
+			Sent when the device has been disconnected from.
+
+		void Stopped()
+
+			Sent when the audio connection is closed
+
+		void Playing()
+
+			Sent when the audio connection is opened
+
+		void SpeakerGainChanged(uint16 gain)
+
+			The speaker gain changed.
+
+		void MicrophoneGainChanged(uint16 gain)
+
+			The microphone gain changed.
+
+
+Sink hierarchy
+==============
+
+Service		org.bluez
+Interface	org.bluez.Sink
+Object path	/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+
+Methods		void Connect()
+
+			Connect and setup a stream to a A2DP sink on the
+			remote device.
+
+		void Disconnect()
+
+			Disconnect from the remote device.
+
+		boolean IsConnected()
+
+			Returns TRUE if a stream is setup to a A2DP sink on
+			the remote device.
+
+Signals		void Connected()
+
+			Sent when a successful connection has been made to the
+			remote A2DP Sink
+
+		void Disconnected()
+
+			Sent when the device has been disconnected from.
+
+		void Playing()
+
+			Sent when a stream with remote device is started.
+
+		void Stopped()
+
+			Sent when a stream with remote device is suspended.

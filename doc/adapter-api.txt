@@ -1,0 +1,284 @@
+BlueZ D-Bus Adapter API description
+***********************************
+
+Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2005-2006  Johan Hedberg <johan.hedberg@nokia.com>
+Copyright (C) 2005-2006  Claudio Takahasi <claudio.takahasi@indt.org.br>
+Copyright (C) 2006-2007  Luiz von Dentz <luiz.dentz@indt.org.br>
+
+
+Adapter hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Adapter
+Object path	/{hci0,hci1,...}
+
+Methods		dict GetProperties()
+
+			Returns all properties for the adapter. See the
+			properties section for available properties.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed a read-write are changeable.
+			On success this will emit a PropertyChanged signal.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+
+		void RequestMode(string mode)
+
+			This method will request a mode change. The mode
+			change must be confirmed by the user via the agent.
+
+			Possible modes for this call are "connectable" and
+			"discoverable". Any application that wants to use
+			Bluetooth functionality can use this method to
+			indicate which mode it needs to operate sucessfully.
+
+			In case the user doesn't confirm the mode change it
+			will return an error to indicate this rejection.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Rejected
+
+		void ReleaseMode()
+
+			Releases a mode requested via RequestMode.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+
+		void DiscoverDevices()
+
+			This method starts the device discovery procedure. This
+			includes an inquiry procedure and remote device name
+			resolving.
+
+			On start up this process will generate a DiscoveryStarted
+			signal and then return DeviceFound singals. If the
+			procedure has been finished an DiscoveryCompleted
+			signal will be sent.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+					 org.bluez.Error.NoSuchAdapter
+
+		void CancelDiscovery()
+
+			This method will cancel any previous DiscoverDevices
+			transaction.
+
+			Possible errors: org.bluez.Error.NotReady
+					 org.bluez.Error.Failed
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.NoSuchAdapter
+
+		object FindDevice(string address)
+
+			Returns the object path of device for given address.
+			The device object needs to be first created via
+			CreateDevice or CreatePairedDevice.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+
+		array{object} ListDevices()
+
+			Returns list of device object paths.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+					 org.bluez.Error.OutOfMemory
+
+		object CreateDevice(string address)
+
+			Creates a new object path for a remote device. This
+			method will connect to the remote device and retrieve
+			all SDP records.
+
+			If the object for the remote device already exists
+			this method will fail.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		object CreatePairedDevice(string address, object agent,
+							string capability)
+
+			Creates a new object path for a remote device. This
+			method will connect to the remote device and retrieve
+			all SDP records and then initiate the pairing.
+
+			If previously CreateDevice was used successfully,
+			this method will only initiate the pairing.
+
+			Compared to CreateDevice this method will fail if
+			the pairing already exists, but not if the object
+			path already has been created. This allows applications
+			to use CreateDevice first and the if needed use
+			CreatePairedDevice to initiate pairing.
+
+			The capability parameter is the same as for the
+			RegisterAgent method.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		void RemoveDevice(object device)
+
+			This removes the remote device object at the given
+			path. It will remove also the pairing information.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		void RegisterAgent(object agent, string capability)
+
+			This registers the adapter wide agent.
+
+			The object path defines the path the of the agent
+			that will be called when user input is needed.
+
+			If an application disconnects from the bus all
+			of its registered agents will be removed.
+
+			The capability parameter can have the values
+			"DisplayOnly", "DisplayYesNo", "KeyboardOnly" and
+			"NoInputNoOutput" which reflects the input and output
+			capabilities of the agent. If an empty string is
+			used it will fallback to "DisplayYesNo".
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+
+		void UnregisterAgent(object agent)
+
+			This unregisters the agent that has been previously
+			registered. The object path parameter must match the
+			same value that has been used on registration.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+
+		uint32 AddServiceRecord(string record)
+
+			Adds a new service record from the XML description
+			and returns the assigned record handle.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		void UpdateServiceRecord(uint32 handle, string record)
+
+			Updates a given service record provided in the
+			XML format.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAvailable
+					 org.bluez.Error.Failed
+
+		void RemoveServiceRecord(uint32 handle)
+
+			Remove a service record identified by its handle.
+
+			It is only possible to remove service records that
+			where added by the current connection.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
+
+		void RequestAuthorization(string address, uint32 handle)
+
+			Request an authorization for an incoming connection
+			for a specific service record. The service record
+			needs to be registered via AddServiceRecord first.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
+
+		void CancelAuthorization()
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+					 org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+		DiscoveryStarted()
+
+			This signal indicates that a device discovery
+			procedure has been started.
+
+		DiscoveryCompleted()
+
+			This signal indicates that a device discovery
+			procedure has been completed.
+
+		DeviceFound(string address, dict values)
+
+			This signal will be send every time an inquiry result
+			has been found by the service daemon. In general they
+			only appear during a device discovery.
+
+			The dictionary can contain bascially the same values
+			that we be returned by the GetProperties method
+			from the org.bluez.Device interface. In addition there
+			can be values for the RSSI and the TX power level.
+
+		DeviceDisappeared(string address)
+
+			This signal will be send when an inquiry session for
+			a periodic discovery finishes and previously found
+			devices are no longer in range or visible.
+
+		DeviceCreated(object device)
+
+			Parameter is object path of created device.
+
+		DeviceRemoved(object device)
+
+			Parameter is object path of removed device.
+
+Properties	string Address [readonly]
+
+			The Bluetooth device address.
+
+		string Name [readwrite]
+
+			The Bluetooth friendly name. This value can be
+			changed and a PropertyChanged signal will be emitted.
+
+		string Mode [readwrite]
+
+			The Bluetooth operation mode.
+
+			Valid modes: "off", "connectable",
+						"discoverable", "limited"
+
+		uint32 DiscoverableTimeout [readwrite]
+
+			The discoverable timeout in seconds. A value of zero
+			means that the timeout is disabled and it will stay in
+			discoverable/limited mode forever.
+
+			The default value for the discoverable timeout should
+			be 180 seconds (3 minutes).
+
+		boolean PeriodicDiscovery [readwrite]
+
+			Is peridoic inquiry active or not. Changing this
+			property will either enable or disable it.
