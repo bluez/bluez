@@ -440,6 +440,10 @@ char *bt_compidtostr(int compid)
 		return "Avago Technologies";
 	case 79:
 		return "APT Ltd.";
+	case 80:
+		return "SiRF Technology, Inc.";
+	case 81:
+		return "Tzero Technologies, Inc.";
 	case 65535:
 		return "internal use";
 	default:
