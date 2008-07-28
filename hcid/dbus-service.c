@@ -81,6 +81,9 @@ int service_req_auth(const bdaddr_t *src, const bdaddr_t *dst,
 	gboolean trusted;
 	const gchar *dev_path;
 
+	if (src == NULL || dst == NULL)
+		return -EINVAL;
+
 	adapter = manager_find_adapter(src);
 	if (!adapter)
 		return -EPERM;
