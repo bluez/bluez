@@ -41,7 +41,6 @@ AC_OUTPUT([
 	lib/Makefile
 	doc/Makefile
 	sbc/Makefile
-	eglib/Makefile
 	gdbus/Makefile
 	common/Makefile
 	plugins/Makefile

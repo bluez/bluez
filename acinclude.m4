@@ -148,7 +148,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	netlink_enable=no
 	usb_enable=${usb_found}
 	alsa_enable=${alsa_found}
-	glib_enable=yes
 	gstreamer_enable=${gstreamer_found}
 	audio_enable=yes
 	input_enable=yes
@@ -174,10 +173,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(pie, AC_HELP_STRING([--disable-pie], [disable position independent executables flag]), [
 		pie_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(glib, AC_HELP_STRING([--disable-glib], [disable GLib support]), [
-		glib_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(network, AC_HELP_STRING([--disable-network], [disable network plugin]), [
@@ -283,16 +278,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	if (test "${usb_enable}" = "yes" && test "${usb_found}" = "yes"); then
 		AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
-	fi
-
-	if (test "${glib_enable}" = "yes" && test "${glib_found}" = "yes"); then
-		AM_CONDITIONAL(GLIB, true)
-	else
-		AC_SUBST([GLIB_CFLAGS], ['-I$(top_srcdir)/eglib'])
-		AC_SUBST([GLIB_LIBS], ['$(top_builddir)/eglib/libeglib.la -ldl -rdynamic'])
-		AC_SUBST([GMODULE_CFLAGS], [''])
-		AC_SUBST([GMODULE_LIBS], [''])
-		AM_CONDITIONAL(GLIB, false)
 	fi
 
 	AC_SUBST([GDBUS_CFLAGS], ['-I$(top_srcdir)/gdbus'])
