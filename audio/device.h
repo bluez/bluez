@@ -54,10 +54,7 @@ struct gateway;
 
 struct audio_device {
 	DBusConnection *conn;
-	char *adapter_path;
 	char *path;
-	char *name;
-	bdaddr_t store;
 	bdaddr_t src;
 	bdaddr_t dst;
 
@@ -70,14 +67,9 @@ struct audio_device {
 };
 
 struct audio_device *device_register(DBusConnection *conn,
-					const char *path, const bdaddr_t *bda);
+					const char *path, const bdaddr_t *src,
+					const bdaddr_t *dst);
 
-int device_store(struct audio_device *device, gboolean is_default);
-
-int device_remove_stored(struct audio_device *dev);
-
-void device_finish_sdp_transaction(struct audio_device *device);
-
-uint8_t device_get_state(struct audio_device *dev);
+void device_unregister(struct audio_device *device);
 
 gboolean device_is_connected(struct audio_device *dev, const char *interface);

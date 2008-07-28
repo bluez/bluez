@@ -35,85 +35,10 @@
 #include <dbus/dbus.h>
 
 #include "plugin.h"
-#include "../hcid/device.h"
 #include "logging.h"
 #include "unix.h"
 #include "device.h"
 #include "manager.h"
-
-static DBusConnection *conn;
-
-static int headset_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-
-	return 0;
-}
-
-static void headset_remove(struct btd_device_driver *driver,
-				struct btd_device *device)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-}
-
-static struct btd_device_driver headset_driver = {
-	.name	= "headset",
-	.uuids	= BTD_UUIDS(HSP_HS_UUID, HFP_HS_UUID),
-	.probe	= headset_probe,
-	.remove	= headset_remove,
-};
-
-static int a2dp_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-
-	return 0;
-}
-
-static void a2dp_remove(struct btd_device_driver *driver,
-				struct btd_device *device)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-}
-
-static struct btd_device_driver a2dp_driver = {
-	.name	= "sink",
-	.uuids	= BTD_UUIDS(A2DP_SINK_UUID),
-	.probe	= a2dp_probe,
-	.remove	= a2dp_remove,
-};
-
-static int audio_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-
-	return 0;
-}
-
-static void audio_remove(struct btd_device_driver *driver,
-				struct btd_device *device)
-{
-	const gchar *path = device_get_path(device);
-	DBG("path %s", path);
-}
-
-static struct btd_device_driver audio_driver = {
-	.name	= "audio",
-	.uuids	= BTD_UUIDS(HSP_HS_UUID, HFP_HS_UUID, HSP_AG_UUID, HFP_AG_UUID,
-			ADVANCED_AUDIO_UUID, A2DP_SOURCE_UUID, A2DP_SINK_UUID,
-			AVRCP_TARGET_UUID, AVRCP_REMOTE_UUID),
-	.probe	= audio_probe,
-	.remove	= audio_remove,
-};
-
 
 static GKeyFile *load_config_file(const char *file)
 {
@@ -134,6 +59,7 @@ static GKeyFile *load_config_file(const char *file)
 
 static int audio_init(void)
 {
+	DBusConnection *conn;
 	GKeyFile *config;
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
@@ -155,28 +81,14 @@ static int audio_init(void)
 	if (config)
 		g_key_file_free(config);
 
-	btd_register_device_driver(&headset_driver);
-
-	btd_register_device_driver(&a2dp_driver);
-
-	btd_register_device_driver(&audio_driver);
-
 	return 0;
 }
 
 static void audio_exit(void)
 {
-	btd_unregister_device_driver(&audio_driver);
-
-	btd_unregister_device_driver(&a2dp_driver);
-
-	btd_unregister_device_driver(&headset_driver);
-
 	audio_manager_exit();
 
 	unix_exit();
-
-	dbus_connection_unref(conn);
 }
 
 BLUETOOTH_PLUGIN_DEFINE("audio", audio_init, audio_exit)

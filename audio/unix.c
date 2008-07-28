@@ -744,16 +744,6 @@ failed:
 	unix_ipc_error(client, BT_STREAMSTOP_RSP, EIO);
 }
 
-static void create_cb(struct audio_device *dev, void *user_data)
-{
-	struct unix_client *client = user_data;
-
-	if (!dev)
-		unix_ipc_error(client, BT_GETCAPABILITIES_RSP, EIO);
-	else
-		start_discovery(dev, client);
-}
-
 static void handle_getcapabilities_req(struct unix_client *client,
 					struct bt_getcapabilities_req *req)
 {
@@ -772,15 +762,8 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	else if (req->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
 		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
 
-	if (!manager_find_device(&bdaddr, NULL, FALSE)) {
-		if (!(req->flags & BT_FLAG_AUTOCONNECT))
-			goto failed;
-		if (!bacmp(&bdaddr, BDADDR_ANY))
-			goto failed;
-		if (!manager_create_device(&bdaddr, create_cb, client))
-			goto failed;
-		return;
-	}
+	if (!manager_find_device(&bdaddr, NULL, FALSE))
+		goto failed;
 
 	dev = manager_find_device(&bdaddr, client->interface, TRUE);
 	if (!dev) {
@@ -918,13 +901,8 @@ static void handle_setconfiguration_req(struct unix_client *client,
 		}
 	}
 
-	if (!manager_find_device(&bdaddr, NULL, FALSE)) {
-		if (!bacmp(&bdaddr, BDADDR_ANY))
-			goto failed;
-		if (!manager_create_device(&bdaddr, create_cb, client))
-			goto failed;
-		return;
-	}
+	if (!manager_find_device(&bdaddr, NULL, FALSE))
+		goto failed;
 
 	dev = manager_find_device(&bdaddr, client->interface, TRUE);
 	if (!dev)

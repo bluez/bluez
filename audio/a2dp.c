@@ -137,7 +137,7 @@ static struct audio_device *a2dp_get_dev(struct avdtp *session)
 
 	avdtp_get_peers(session, NULL, &addr);
 
-	return manager_device_connected(&addr, A2DP_SOURCE_UUID);
+	return manager_find_device(&addr, NULL, FALSE);
 }
 
 static gboolean finalize_config(struct a2dp_setup *s)

@@ -502,6 +502,9 @@ struct sink *sink_init(struct audio_device *dev)
 					dev, NULL))
 		return NULL;
 
+	info("Registered interface %s on path %s",
+		AUDIO_SINK_INTERFACE, dev->path);
+
 	return g_new0(struct sink, 1);
 }
 

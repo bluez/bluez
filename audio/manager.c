@@ -49,6 +49,8 @@
 #include <gdbus.h>
 
 #include "glib-helper.h"
+#include "../hcid/adapter.h"
+#include "../hcid/device.h"
 
 #include "dbus-service.h"
 #include "logging.h"
@@ -97,9 +99,6 @@ struct audio_sdp_data {
 
 static DBusConnection *connection = NULL;
 
-static struct audio_device *default_hs = NULL;
-static struct audio_device *default_dev = NULL;
-
 static GSList *devices = NULL;
 
 static uint32_t hsp_ag_record_id = 0;
@@ -119,74 +118,6 @@ static struct enabled_interfaces enabled = {
 	.source		= FALSE,
 	.control	= TRUE,
 };
-
-static DBusMessage *get_records(uuid_t *uuid, struct audio_sdp_data *data);
-
-static struct audio_device *create_device(const bdaddr_t *bda)
-{
-	static int device_id = 0;
-	char path[128];
-
-	snprintf(path, sizeof(path) - 1,
-			"%s/device%d", AUDIO_MANAGER_PATH, device_id++);
-
-	return device_register(connection, path, bda);
-}
-
-static void destroy_device(struct audio_device *device)
-{
-	g_dbus_unregister_all_interfaces(connection, device->path);
-}
-
-static void remove_device(struct audio_device *device)
-{
-	if (device == default_dev) {
-		debug("Removing default device");
-		default_dev = NULL;
-	}
-
-	if (device == default_hs) {
-		debug("Removing default headset");
-		default_hs = NULL;
-	}
-
-	devices = g_slist_remove(devices, device);
-
-	destroy_device(device);
-}
-
-static gboolean add_device(struct audio_device *device, gboolean send_signals)
-{
-	if (!send_signals)
-		goto add;
-
-	g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
-					AUDIO_MANAGER_INTERFACE,
-					"DeviceCreated",
-					DBUS_TYPE_STRING, &device->path,
-					DBUS_TYPE_INVALID);
-
-	if (device->headset)
-		g_dbus_emit_signal(connection,
-				AUDIO_MANAGER_PATH,
-				AUDIO_MANAGER_INTERFACE,
-				"HeadsetCreated",
-				DBUS_TYPE_STRING, &device->path,
-				DBUS_TYPE_INVALID);
-add:
-
-	if (default_dev == NULL && g_slist_length(devices) == 0) {
-		debug("Selecting default device");
-		default_dev = device;
-	}
-
-	if (!default_hs && device->headset && !devices)
-		default_hs = device;
-
-	devices = g_slist_append(devices, device);
-
-	return TRUE;
-}
 
 static uint16_t get_service_uuid(const sdp_record_t *record)
 {
@@ -254,7 +185,6 @@ gboolean server_is_enabled(uint16_t svc)
 
 static void handle_record(sdp_record_t *record, struct audio_device *device)
 {
-	gboolean is_default;
 	uint16_t uuid16;
 
 	uuid16 = get_service_uuid(record);
@@ -310,666 +240,6 @@ static void handle_record(sdp_record_t *record, struct audio_device *device)
 	default:
 		debug("Unrecognized UUID: 0x%04X", uuid16);
 		break;
-	}
-
-	is_default = (default_dev == device) ? TRUE : FALSE;
-
-	device_store(device, is_default);
-}
-
-static void finish_sdp(struct audio_sdp_data *data, gboolean success)
-{
-	const char *addr;
-	DBusMessage *reply = NULL;
-	DBusError derr;
-
-	debug("Audio service discovery completed with %s",
-			success ? "success" : "failure");
-
-	if (!success)
-		goto done;
-
-	if (!data->msg)
-		goto update;
-
-	dbus_error_init(&derr);
-	dbus_message_get_args(data->msg, &derr,
-				DBUS_TYPE_STRING, &addr,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&derr)) {
-		error("Unable to get message args");
-		success = FALSE;
-		error_failed(connection, data->msg, derr.message);
-		dbus_error_free(&derr);
-		goto done;
-	}
-
-	/* Return error if no audio related service records were found */
-	if (!data->records) {
-		debug("No audio audio related service records were found");
-		success = FALSE;
-		error_not_supported(connection, data->msg);
-		goto done;
-	}
-
-	reply = dbus_message_new_method_return(data->msg);
-	if (!reply) {
-		success = FALSE;
-		error_failed(connection, data->msg, "Out of memory");
-		goto done;
-	}
-
-update:
-	g_slist_foreach(data->records, (GFunc) handle_record, data->device);
-
-	if (!g_slist_find(devices, data->device))
-		add_device(data->device, TRUE);
-
-	if (reply) {
-		dbus_message_append_args(reply, DBUS_TYPE_STRING,
-					&data->device->path,
-					DBUS_TYPE_INVALID);
-		dbus_connection_send(connection, reply, NULL);
-		dbus_message_unref(reply);
-	}
-
-done:
-	if (success) {
-		if (data->cb)
-			data->cb(data->device, data->cb_data);
-	} else {
-		if (data->cb)
-			data->cb(NULL, data->cb_data);
-		if (!g_slist_find(devices, data->device))
-			destroy_device(data->device);
-	}
-	if (data->msg)
-		dbus_message_unref(data->msg);
-	g_slist_foreach(data->records, (GFunc) sdp_record_free, NULL);
-	g_slist_free(data->records);
-	g_free(data);
-}
-
-static void get_records_cb(sdp_list_t *recs, int err, gpointer user_data)
-{
-	struct audio_sdp_data *data = user_data;
-	sdp_list_t *seq;
-	uuid_t uuid;
-
-	if (err < 0) {
-		error_connection_attempt_failed(connection, data->msg, -err);
-		finish_sdp(data, FALSE);
-		return;
-	}
-
-	for (seq = recs; seq; seq = seq->next) {
-		sdp_record_t *rec = (sdp_record_t *) seq->data;
-
-		if (!rec)
-			break;
-
-		data->records = g_slist_append(data->records, rec);
-	}
-
-	sdp_list_free(recs, NULL);
-
-	data->state++;
-
-	switch (data->state) {
-	case ADVANCED_AUDIO:
-		sdp_uuid16_create(&uuid, ADVANCED_AUDIO_SVCLASS_ID);
-		break;
-	case AV_REMOTE:
-		sdp_uuid16_create(&uuid, AV_REMOTE_SVCLASS_ID);
-		break;
-	default:
-		finish_sdp(data, TRUE);
-		return;
-	}
-
-	get_records(&uuid, data);
-}
-
-static DBusMessage *get_records(uuid_t *uuid, struct audio_sdp_data *data)
-{
-	struct audio_device *device = data->device;
-	DBusMessage *reply = NULL;
-	int err;
-
-	err = bt_search_service(&device->src, &device->dst, uuid,
-				get_records_cb, data, NULL);
-	if (!err)
-		return NULL;
-
-	if (data->msg)
-		reply = g_dbus_create_error(data->msg,
-				ERROR_INTERFACE ".ConnectionAttemptFailed",
-				strerror(-err));
-
-	finish_sdp(data, FALSE);
-
-	return reply;
-}
-
-static DBusMessage *resolve_services(DBusMessage *msg,
-					struct audio_device *device,
-					create_dev_cb_t cb,
-					void *user_data)
-{
-	struct audio_sdp_data *sdp_data;
-	uuid_t uuid;
-
-	sdp_data = g_new0(struct audio_sdp_data, 1);
-	if (msg)
-		sdp_data->msg = dbus_message_ref(msg);
-	sdp_data->device = device;
-	sdp_data->cb = cb;
-	sdp_data->cb_data = user_data;
-
-	sdp_uuid16_create(&uuid, GENERIC_AUDIO_SVCLASS_ID);
-
-	return get_records(&uuid, sdp_data);
-}
-
-struct audio_device *manager_device_connected(const bdaddr_t *bda, const char *uuid)
-{
-	struct audio_device *device;
-	const char *path;
-	gboolean headset = FALSE, created = FALSE;
-
-	device = manager_find_device(bda, NULL, FALSE);
-	if (!device) {
-		device = create_device(bda);
-		if (!device)
-			return NULL;
-		if (!add_device(device, TRUE)) {
-			destroy_device(device);
-			return NULL;
-		}
-		created = TRUE;
-	}
-
-	if (!strcmp(uuid, HSP_AG_UUID) || !strcmp(uuid, HFP_AG_UUID)) {
-		if (device->headset)
-			return device;
-
-		device->headset = headset_init(device, NULL, 0);
-
-		if (!device->headset)
-			return NULL;
-
-		headset = TRUE;
-	} else if (!strcmp(uuid, A2DP_SOURCE_UUID)) {
-		if (device->sink)
-			return device;
-
-		device->sink = sink_init(device);
-
-		if (!device->sink)
-			return NULL;
-	} else if (!strcmp(uuid, AVRCP_TARGET_UUID)) {
-		if (device->control)
-			return device;
-
-		device->control = control_init(device);
-
-		if (!device->control)
-			return NULL;
-	} else
-		return NULL;
-
-	path = device->path;
-
-	if (created) {
-		g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						"DeviceCreated",
-						DBUS_TYPE_STRING, &path,
-						DBUS_TYPE_INVALID);
-		resolve_services(NULL, device, NULL, NULL);
-	}
-
-	if (headset)
-		g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						"HeadsetCreated",
-						DBUS_TYPE_STRING, &path,
-						DBUS_TYPE_INVALID);
-
-	if (headset && !default_hs) {
-		default_hs = device;
-		g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						"DefaultHeadsetChanged",
-						DBUS_TYPE_STRING, &path,
-						DBUS_TYPE_INVALID);
-	}
-
-	if (!default_dev) {
-		default_dev = device;
-		g_dbus_emit_signal(connection, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						"DefaultDeviceChanged",
-						DBUS_TYPE_STRING, &path,
-						DBUS_TYPE_INVALID);
-	}
-
-	return device;
-}
-
-gboolean manager_create_device(bdaddr_t *bda, create_dev_cb_t cb,
-				void *user_data)
-{
-	struct audio_device *dev;
-
-	dev = create_device(bda);
-	if (!dev)
-		return FALSE;
-
-	resolve_services(NULL, dev, cb, user_data);
-
-	return TRUE;
-}
-
-static DBusMessage *am_create_device(DBusConnection *conn,
-					DBusMessage *msg,
-					void *data)
-{
-	const char *address, *path;
-	bdaddr_t bda;
-	struct audio_device *device;
-	DBusMessage *reply;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	str2ba(address, &bda);
-
-	device = manager_find_device(&bda, NULL, FALSE);
-	if (!device) {
-		device = create_device(&bda);
-		return resolve_services(msg, device, NULL, NULL);
-	}
-
-	path = device->path;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *am_list_devices(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
-{
-	DBusMessageIter iter, array_iter;
-	DBusMessage *reply;
-	DBusError derr;
-	GSList *l;
-	gboolean hs_only = FALSE;
-
-	dbus_error_init(&derr);
-
-	if (dbus_message_is_method_call(msg, AUDIO_MANAGER_INTERFACE,
-					"ListHeadsets"))
-		hs_only = TRUE;
-	else
-		hs_only = FALSE;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_STRING_AS_STRING, &array_iter);
-
-	for (l = devices; l != NULL; l = l->next) {
-		struct audio_device *device = l->data;
-
-		if (hs_only && !device->headset)
-			continue;
-
-		dbus_message_iter_append_basic(&array_iter,
-						DBUS_TYPE_STRING, &device->path);
-	}
-
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-	return reply;
-}
-
-static gint device_path_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct audio_device *device = a;
-	const char *path = b;
-
-	return strcmp(device->path, path);
-}
-
-static DBusMessage *am_remove_device(DBusConnection *conn,
-					DBusMessage *msg,
-					void *data)
-{
-	DBusMessage *reply;
-	GSList *match;
-	const char *path;
-	struct audio_device *device;
-
-	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID))
-		return NULL;
-
-	match = g_slist_find_custom(devices, path, device_path_cmp);
-	if (!match)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
-						"Device does not exists");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	device = match->data;
-	device_remove_stored(device);
-	remove_device(device);
-
-	/* Fallback to a valid default */
-	if (default_dev == NULL) {
-		const char *param;
-		GSList *l;
-
-		default_dev = manager_find_device(BDADDR_ANY, NULL, TRUE);
-
-		if (!default_dev && devices) {
-			l = devices;
-			default_dev = (g_slist_last(l))->data;
-		}
-
-		param = default_dev ? default_dev->path : "";
-
-		g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						"DefaultHeadsetChanged",
-						DBUS_TYPE_STRING, &param,
-						DBUS_TYPE_INVALID);
-
-		g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						"DefaultDeviceChanged",
-						DBUS_TYPE_STRING, &param,
-						DBUS_TYPE_INVALID);
-
-		if (default_dev)
-			device_store(default_dev, TRUE);
-	}
-
-	g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
-					AUDIO_MANAGER_INTERFACE,
-					"HeadsetRemoved",
-					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID);
-
-	g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
-					AUDIO_MANAGER_INTERFACE,
-					"DeviceRemoved",
-					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *am_find_by_addr(DBusConnection *conn,
-					DBusMessage *msg,
-					void *data)
-{
-	const char *address;
-	DBusMessage *reply;
-	struct audio_device *device;
-	bdaddr_t bda;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &address,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	str2ba(address, &bda);
-	device = manager_find_device(&bda, NULL, FALSE);
-
-	if (!device)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
-						"Device does not exists");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &device->path,
-					DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *am_default_device(DBusConnection *conn,
-					DBusMessage *msg,
-					void *data)
-{
-	DBusMessage *reply;
-
-	if (!default_dev)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
-						"Device does not exists");
-
-	if (default_dev->headset == NULL &&
-		dbus_message_is_method_call(msg, AUDIO_MANAGER_INTERFACE,
-							"DefaultHeadset"))
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
-						"Device does not exists");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &default_dev->path,
-					DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *am_change_default_device(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
-{
-	DBusMessage *reply;
-	GSList *match;
-	const char *path;
-	struct audio_device *device;
-
-	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_STRING, &path,
-					DBUS_TYPE_INVALID))
-		return NULL;
-
-	match = g_slist_find_custom(devices, path, device_path_cmp);
-	if (!match)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
-						"Device does not exists");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	device = match->data;
-
-	if (!dbus_message_is_method_call(msg, AUDIO_MANAGER_INTERFACE,
-		"ChangeDefaultHeadset"))
-		g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						"DefaultDeviceChanged",
-						DBUS_TYPE_STRING, &device->path,
-						DBUS_TYPE_INVALID);
-	else if (device->headset)
-		g_dbus_emit_signal(conn, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE,
-						"DefaultHeadsetChanged",
-						DBUS_TYPE_STRING, &device->path,
-						DBUS_TYPE_INVALID);
-	else
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExists",
-						"Device does not exists");
-
-	default_dev = device;
-	device_store(device, TRUE);
-
-	return reply;
-}
-
-static GDBusMethodTable manager_methods[] = {
-	{ "CreateDevice",		"s",	"s",	am_create_device,
-							G_DBUS_METHOD_FLAG_ASYNC },
-	{ "RemoveDevice",		"s",	"",	am_remove_device },
-	{ "ListDevices",		"",	"as",	am_list_devices },
-	{ "DefaultDevice",		"",	"s",	am_default_device },
-	{ "ChangeDefaultDevice",	"s",	"",	am_change_default_device },
-	{ "CreateHeadset",		"s",	"s",	am_create_device,
-							G_DBUS_METHOD_FLAG_ASYNC },
-	{ "RemoveHeadset",		"s",	"",	am_remove_device },
-	{ "ListHeadsets",		"",	"as",	am_list_devices },
-	{ "FindDeviceByAddress",	"s",	"s",	am_find_by_addr },
-	{ "DefaultHeadset",		"",	"s",	am_default_device },
-	{ "ChangeDefaultHeadset",	"s",	"",	am_change_default_device },
-	{ }
-};
-
-static GDBusSignalTable manager_signals[] = {
-	{ "DeviceCreated",		"s"	},
-	{ "DeviceRemoved",		"s"	},
-	{ "HeadsetCreated",		"s"	},
-	{ "HeadsetRemoved",		"s"	},
-	{ "DefaultDeviceChanged",	"s"	},
-	{ "DefaultHeadsetChanged",	"s"	},
-	{ }
-};
-
-static void parse_stored_devices(char *key, char *value, void *data)
-{
-	bdaddr_t *src = data;
-	struct audio_device *device;
-	bdaddr_t dst;
-
-	if (!key || !value || strcmp(key, "default") == 0)
-		return;
-
-	str2ba(key, &dst);
-	device = manager_find_device(&dst, NULL, FALSE);
-
-	if (device)
-		return;
-
-	info("Loading device %s (%s)", key, value);
-
-	device = create_device(&dst);
-	if (!device)
-		return;
-
-	/* Change storage to source adapter */
-	bacpy(&device->store, src);
-
-	if (enabled.headset && strstr(value, "headset"))
-		device->headset = headset_init(device, NULL, 0);
-	if (enabled.sink && strstr(value, "sink"))
-		device->sink = sink_init(device);
-	if (enabled.control && strstr(value, "control"))
-		device->control = control_init(device);
-	add_device(device, FALSE);
-}
-
-static void register_devices_stored(const char *adapter)
-{
-	char filename[PATH_MAX + 1];
-	struct stat st;
-	struct audio_device *device;
-	bdaddr_t default_src;
-	bdaddr_t dst;
-	bdaddr_t src;
-	char *addr;
-	int dev_id;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter, "audio");
-
-	str2ba(adapter, &src);
-
-	if (stat(filename, &st) < 0)
-		return;
-
-	if (!(st.st_mode & __S_IFREG))
-		return;
-
-	textfile_foreach(filename, parse_stored_devices, &src);
-
-	bacpy(&default_src, BDADDR_ANY);
-	dev_id = hci_get_route(&default_src);
-	if (dev_id < 0 || hci_devba(dev_id, &default_src) < 0)
-		return;
-
-	if (bacmp(&default_src, &src) != 0)
-		return;
-
-	addr = textfile_get(filename, "default");
-	if (!addr)
-		return;
-
-	str2ba(addr, &dst);
-	device = manager_find_device(&dst, NULL, FALSE);
-
-	if (device) {
-		info("Setting %s as default device", addr);
-		default_dev = device;
-	}
-
-	free(addr);
-}
-
-static void register_stored(void)
-{
-	char dirname[PATH_MAX + 1];
-	struct dirent *de;
-	DIR *dir;
-
-	snprintf(dirname, PATH_MAX, "%s", STORAGEDIR);
-
-	dir = opendir(dirname);
-	if (!dir)
-		return;
-
-	while ((de = readdir(dir)) != NULL) {
-		if (!isdigit(de->d_name[0]))
-			continue;
-
-		/* Device objects */
-		register_devices_stored(de->d_name);
-	}
-
-	closedir(dir);
-}
-
-static void manager_unregister(void *data)
-{
-	info("Unregistered manager path");
-
-	if (devices) {
-		g_slist_foreach(devices, (GFunc) remove_device, NULL);
-		g_slist_free(devices);
-		devices = NULL;
 	}
 }
 
@@ -1201,7 +471,7 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		uuid = HFP_AG_UUID;
 	}
 
-	device = manager_device_connected(dst, uuid);
+	device = manager_find_device(dst, NULL, FALSE);
 	if (!device)
 		goto drop;
 
@@ -1416,6 +686,61 @@ static void server_exit(void)
 	}
 }
 
+static int audio_probe(struct btd_device_driver *driver,
+			struct btd_device *device, GSList *records)
+{
+	struct adapter *adapter = device_get_adapter(device);
+	const gchar *path = device_get_path(device);
+	const char *source, *destination;
+	bdaddr_t src, dst;
+	struct audio_device *dev;
+
+	source = adapter_get_address(adapter);
+	destination = device_get_address(device);
+
+	str2ba(source, &src);
+	str2ba(destination, &dst);
+
+	dev = manager_find_device(&dst, NULL, FALSE);
+	if (!dev) {
+		dev = device_register(connection, path, &src, &dst);
+		if (!dev)
+			return -EINVAL;
+		devices = g_slist_append(devices, dev);
+	}
+
+	g_slist_foreach(records, (GFunc) handle_record, dev);
+
+	return 0;
+}
+
+static void audio_remove(struct btd_device_driver *driver,
+			struct btd_device *device)
+{
+	struct audio_device *dev;
+	const char *destination = device_get_address(device);
+	bdaddr_t dst;
+
+	str2ba(destination, &dst);
+
+	dev = manager_find_device(&dst, NULL, FALSE);
+	if (!dev)
+		return;
+
+	devices = g_slist_remove(devices, dev);
+
+	device_unregister(dev);
+}
+
+static struct btd_device_driver audio_driver = {
+	.name	= "audio",
+	.uuids	= BTD_UUIDS(HSP_HS_UUID, HFP_HS_UUID, HSP_AG_UUID, HFP_AG_UUID,
+			ADVANCED_AUDIO_UUID, A2DP_SOURCE_UUID, A2DP_SINK_UUID,
+			AVRCP_TARGET_UUID, AVRCP_REMOTE_UUID),
+	.probe	= audio_probe,
+	.remove	= audio_remove,
+};
+
 int audio_manager_init(DBusConnection *conn, GKeyFile *config)
 {
 	char **list;
@@ -1477,18 +802,7 @@ proceed:
 	if (enabled.control && avrcp_init(conn, config) < 0)
 		goto failed;
 
-	if (!g_dbus_register_interface(conn, AUDIO_MANAGER_PATH,
-					AUDIO_MANAGER_INTERFACE,
-					manager_methods, manager_signals,
-					NULL, NULL, manager_unregister)) {
-		error("Failed to register %s interface to %s",
-				AUDIO_MANAGER_INTERFACE, AUDIO_MANAGER_PATH);
-		goto failed;
-	}
-
-	info("Registered manager path:%s", AUDIO_MANAGER_PATH);
-
-	register_stored();
+	btd_register_device_driver(&audio_driver);
 
 	return 0;
 failed:
@@ -1500,17 +814,11 @@ void audio_manager_exit(void)
 {
 	server_exit();
 
-	g_dbus_unregister_interface(connection, AUDIO_MANAGER_PATH,
-						AUDIO_MANAGER_INTERFACE);
-
 	dbus_connection_unref(connection);
 
-	connection = NULL;
-}
+	btd_unregister_device_driver(&audio_driver);
 
-struct audio_device *manager_default_device(void)
-{
-	return default_dev;
+	connection = NULL;
 }
 
 struct audio_device *manager_get_connected_device(void)
@@ -1537,7 +845,7 @@ struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interf
 	GSList *l;
 
 	if (!bacmp(bda, BDADDR_ANY) && !interface && !connected)
-		return default_dev;
+		return devices->data;
 
 	for (l = devices; l != NULL; l = l->next) {
 		struct audio_device *dev = l->data;

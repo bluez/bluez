@@ -1498,6 +1498,9 @@ register_iface:
 		return NULL;
 	}
 
+	info("Registered interface %s on path %s",
+		AUDIO_HEADSET_INTERFACE, dev->path);
+
 	return hs;
 }
 

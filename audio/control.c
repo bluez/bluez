@@ -583,17 +583,15 @@ static int uinput_create(char *name)
 
 static void init_uinput(struct avctp *session)
 {
-	char address[18], *name;
+	char address[18];
 
 	ba2str(&session->dst, address);
 
-	name = session->dev->name ? session->dev->name : address;
-
-	session->uinput = uinput_create(name);
+	session->uinput = uinput_create(address);
 	if (session->uinput < 0)
-		error("AVRCP: failed to init uinput for %s", name);
+		error("AVRCP: failed to init uinput for %s", address);
 	else
-		debug("AVRCP: uinput initialized for %s", name);
+		debug("AVRCP: uinput initialized for %s", address);
 }
 
 static void avctp_connect_session(struct avctp *session)
@@ -601,8 +599,10 @@ static void avctp_connect_session(struct avctp *session)
 	GIOChannel *io;
 
 	session->state = AVCTP_STATE_CONNECTED;
-	session->dev = manager_device_connected(&session->dst,
-						AVRCP_TARGET_UUID);
+	session->dev = manager_find_device(&session->dst, NULL, FALSE);
+	if (!session->dev)
+		return;
+
 	session->dev->control->session = session;
 
 	init_uinput(session);
@@ -922,6 +922,9 @@ struct control *control_init(struct audio_device *dev)
 					control_methods, control_signals, NULL,
 					dev, NULL))
 		return NULL;
+
+	info("Registered interface %s on path %s",
+		AUDIO_CONTROL_INTERFACE, dev->path);
 
 	return g_new0(struct control, 1);
 }
