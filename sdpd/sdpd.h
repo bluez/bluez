@@ -62,7 +62,6 @@ typedef struct {
 sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate);
 void sdp_cstate_cache_init(void);
 void sdp_cstate_clean_buf(void);
-uint32_t sdp_cstate_alloc_buf(sdp_buf_t *buf);
 
 void sdp_svcdb_reset(void);
 void sdp_svcdb_collect_all(int sock);

@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
@@ -59,6 +60,23 @@ static sdp_version_t sdpVnumArray[1] = {
 	{ 1, 0 }
 };
 static const int sdpServerVnumEntries = 1;
+
+/*
+ * A simple function which returns the time of day in
+ * seconds. Used for updating the service db state
+ * attribute of the service record of the SDP server
+ */
+uint32_t sdp_get_time()
+{
+	/*
+	 * To handle failure in gettimeofday, so an old
+	 * value is returned and service does not fail
+	 */
+	static struct timeval tm;
+
+	gettimeofday(&tm, NULL);
+	return (uint32_t) tm.tv_sec;
+}
 
 /*
  * The service database state is an attribute of the service record

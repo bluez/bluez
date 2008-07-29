@@ -45,7 +45,44 @@
 #include "sdpd.h"
 #include "logging.h"
 
-#define MIN(x, y) ((x) < (y))? (x): (y)
+#define MIN(x, y) ((x) < (y)) ? (x): (y)
+
+typedef struct _sdp_cstate_list sdp_cstate_list_t;
+
+struct _sdp_cstate_list {
+	sdp_cstate_list_t *next;
+	uint32_t timestamp;
+	sdp_buf_t buf;
+};
+
+static sdp_cstate_list_t *cstates;
+
+// FIXME: should probably remove it when it's found
+sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate)
+{
+	sdp_cstate_list_t *p;
+
+	for (p = cstates; p; p = p->next)
+		if (p->timestamp == cstate->timestamp)
+			return &p->buf;
+	return 0;
+}
+
+static uint32_t sdp_cstate_alloc_buf(sdp_buf_t *buf)
+{
+	sdp_cstate_list_t *cstate = malloc(sizeof(sdp_cstate_list_t));
+	uint8_t *data = malloc(buf->data_size);
+
+	memcpy(data, buf->data, buf->data_size);
+	memset((char *)cstate, 0, sizeof(sdp_cstate_list_t));
+	cstate->buf.data = data;
+	cstate->buf.data_size = buf->data_size;
+	cstate->buf.buf_size = buf->data_size;
+	cstate->timestamp = sdp_get_time();
+	cstate->next = cstates;
+	cstates = cstate;
+	return cstate->timestamp;
+}
 
 /* Additional values for checking datatype (not in spec) */
 #define SDP_TYPE_UUID	0xfe
