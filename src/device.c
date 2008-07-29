@@ -631,13 +631,17 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *
 		GSList *records = NULL;
 
 		for (uuid = driver->uuids; *uuid; uuid++) {
-			GSList *match = g_slist_find_custom(uuids, *uuid,
-					(GCompareFunc) strcasecmp);
-			if (match) {
-				sdp_record_t *rec = get_record(recs, *uuid);
+			sdp_record_t *rec;
 
-				records = g_slist_append(records, rec);
-			}
+			if (!g_slist_find_custom(uuids, *uuid,
+					(GCompareFunc) strcasecmp))
+				continue;
+
+			rec = get_record(recs, *uuid);
+			if (!rec)
+				continue;
+
+			records = g_slist_append(records, rec);
 		}
 
 		if (records) {
