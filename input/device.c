@@ -723,7 +723,7 @@ fail:
 
 static int disconnect(struct input_device *idev, uint32_t flags)
 {
-	struct input_conn *iconn;
+	struct input_conn *iconn = NULL;
 	GSList *l;
 
 	for (l = idev->connections; l; l = l->next) {
