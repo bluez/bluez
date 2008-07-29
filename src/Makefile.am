@@ -13,9 +13,9 @@ statedir = $(localstatedir)/lib/bluetooth
 state_DATA =
 endif
 
-sbin_PROGRAMS = hcid
+sbin_PROGRAMS = bluetoothd
 
-hcid_SOURCES = main.c hcid.h sdpd.h \
+bluetoothd_SOURCES = main.c hcid.h sdpd.h \
 	sdpd-server.c sdpd-request.c sdpd-service.c \
 	sdpd-database.c security.c storage.c \
 	parser.h parser.y lexer.l kword.c kword.h \
@@ -26,7 +26,7 @@ hcid_SOURCES = main.c hcid.h sdpd.h \
 	dbus-hci.h dbus-hci.c \
 	telephony.h telephony.c agent.h agent.c
 
-hcid_LDADD = $(top_builddir)/common/libhelper.a \
+bluetoothd_LDADD = $(top_builddir)/common/libhelper.a \
 	@GDBUS_LIBS@ @GMODULE_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 
 if MAINTAINER_MODE

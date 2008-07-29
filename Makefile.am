@@ -1,6 +1,6 @@
 
 SUBDIRS = include lib doc \
-		sbc gdbus common hcid plugins \
+		sbc gdbus common src plugins \
 		network serial input audio \
 		tools rfcomm dund pand hidd \
 		cups test scripts

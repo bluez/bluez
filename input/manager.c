@@ -44,8 +44,8 @@
 
 #include "logging.h"
 #include "textfile.h"
-#include "../hcid/adapter.h"
-#include "../hcid/device.h"
+#include "../src/adapter.h"
+#include "../src/device.h"
 
 #include "device.h"
 #include "server.h"

@@ -44,7 +44,7 @@
 #include <glib.h>
 #include <gdbus.h>
 
-#include "../hcid/dbus-common.h"
+#include "../src/dbus-common.h"
 
 #include "logging.h"
 #include "glib-helper.h"

@@ -51,7 +51,7 @@
 #include <glib.h>
 #include <gdbus.h>
 
-#include "../hcid/dbus-common.h"
+#include "../src/dbus-common.h"
 #include "adapter.h"
 #include "device.h"
 

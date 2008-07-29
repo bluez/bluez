@@ -39,10 +39,11 @@ AC_OUTPUT([
 	Makefile
 	include/Makefile
 	lib/Makefile
-	doc/Makefile
-	sbc/Makefile
 	gdbus/Makefile
 	common/Makefile
+	src/Makefile
+	doc/Makefile
+	sbc/Makefile
 	plugins/Makefile
 	network/Makefile
 	serial/Makefile
@@ -50,7 +51,6 @@ AC_OUTPUT([
 	audio/Makefile
 	tools/Makefile
 	rfcomm/Makefile
-	hcid/Makefile
 	dund/Makefile
 	pand/Makefile
 	hidd/Makefile

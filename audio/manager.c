@@ -49,8 +49,8 @@
 #include <gdbus.h>
 
 #include "glib-helper.h"
-#include "../hcid/adapter.h"
-#include "../hcid/device.h"
+#include "../src/adapter.h"
+#include "../src/device.h"
 
 #include "dbus-service.h"
 #include "logging.h"

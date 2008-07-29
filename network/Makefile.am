@@ -17,7 +17,7 @@ AM_LDFLAGS = -module -avoid-version -no-undefined \
 
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
-INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/hcid -I$(top_srcdir)/sdpd
+INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/src
 
 EXTRA_DIST = network.conf network-api.txt test-network
 
