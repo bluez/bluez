@@ -347,7 +347,7 @@ void manager_cleanup(DBusConnection *conn, const char *path)
 
 static gint adapter_id_cmp(gconstpointer a, gconstpointer b)
 {
-	const struct adapter *adapter = a;
+	struct adapter *adapter = (struct adapter *) a;
 	uint16_t id = GPOINTER_TO_UINT(b);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 
@@ -356,7 +356,7 @@ static gint adapter_id_cmp(gconstpointer a, gconstpointer b)
 
 static gint adapter_path_cmp(gconstpointer a, gconstpointer b)
 {
-	const struct adapter *adapter = a;
+	struct adapter *adapter = (struct adapter *) a;
 	const char *path = b;
 	const gchar *adapter_path = adapter_get_path(adapter);
 
@@ -365,7 +365,7 @@ static gint adapter_path_cmp(gconstpointer a, gconstpointer b)
 
 static gint adapter_address_cmp(gconstpointer a, gconstpointer b)
 {
-	const struct adapter *adapter = a;
+	struct adapter *adapter = (struct adapter *) a;
 	const char *address = b;
 	const gchar *source = adapter_get_address(adapter);
 
