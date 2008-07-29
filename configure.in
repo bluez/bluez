@@ -51,7 +51,6 @@ AC_OUTPUT([
 	tools/Makefile
 	rfcomm/Makefile
 	hcid/Makefile
-	sdpd/Makefile
 	dund/Makefile
 	pand/Makefile
 	hidd/Makefile

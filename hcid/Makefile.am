@@ -13,9 +13,11 @@ statedir = $(localstatedir)/lib/bluetooth
 state_DATA =
 endif
 
-noinst_LIBRARIES = libhciserver.a
+sbin_PROGRAMS = hcid
 
-libhciserver_a_SOURCES = hcid.h security.c storage.c \
+hcid_SOURCES = main.c hcid.h sdpd.h \
+	sdpd-server.c sdpd-request.c sdpd-service.c \
+	sdpd-database.c security.c storage.c \
 	parser.h parser.y lexer.l kword.c kword.h \
 	server.h server.c manager.h manager.c \
 	adapter.h adapter.c device.h device.c plugin.h plugin.c \
@@ -24,13 +26,7 @@ libhciserver_a_SOURCES = hcid.h security.c storage.c \
 	dbus-hci.h dbus-hci.c \
 	telephony.h telephony.c agent.h agent.c
 
-sbin_PROGRAMS = hcid
-
-hcid_SOURCES = main.c
-
-hcid_LDADD = libhciserver.a \
-	$(top_builddir)/sdpd/libsdpserver.a \
-	$(top_builddir)/common/libhelper.a \
+hcid_LDADD = $(top_builddir)/common/libhelper.a \
 	@GDBUS_LIBS@ @GMODULE_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 
 if MAINTAINER_MODE
@@ -43,7 +39,7 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ \
 		@GLIB_CFLAGS@ @GMODULE_CFLAGS@ @GDBUS_CFLAGS@ \
 					-DPLUGINDIR=\""$(plugindir)"\"
 
-INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/sdpd
+INCLUDES = -I$(top_srcdir)/common
 
 BUILT_SOURCES = parser.h
 
