@@ -108,7 +108,7 @@ static struct serial_port *find_port(GSList *ports, const char *pattern)
 		if (!strcasecmp(port->uuid, pattern))
 			return port;
 
-		if (!strcmp(port->dev, pattern))
+		if (port->dev && !strcmp(port->dev, pattern))
 			return port;
 	}
 
