@@ -68,7 +68,7 @@
 
 #define DEVICE_INTERFACE "org.bluez.Device"
 
-static struct btd_driver_data {
+struct btd_driver_data {
 	struct btd_device_driver *driver;
 	void *priv;
 };
