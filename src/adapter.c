@@ -1971,22 +1971,6 @@ static GDBusSignalTable adapter_signals[] = {
 	{ }
 };
 
-dbus_bool_t adapter_init(DBusConnection *conn,
-		const char *path, struct adapter *adapter)
-{
-	if (!connection)
-		connection = conn;
-
-	return g_dbus_register_interface(conn, path,
-			ADAPTER_INTERFACE, adapter_methods,
-			adapter_signals, NULL, adapter, NULL);
-}
-
-dbus_bool_t adapter_cleanup(DBusConnection *conn, const char *path)
-{
-	return g_dbus_unregister_interface(conn, path, ADAPTER_INTERFACE);
-}
-
 static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
 {
 	if (dev->features[6] & LMP_EXT_INQ)
@@ -2540,10 +2524,23 @@ int adapter_update_ssp_mode(struct adapter *adapter, int dd, uint8_t mode)
 	return 0;
 }
 
-struct adapter *adapter_create(int id)
+static void adapter_free(gpointer user_data)
+{
+	struct adapter *adapter = user_data;
+
+	g_free(adapter->path);
+	g_free(adapter);
+
+	return;
+}
+
+struct adapter *adapter_create(DBusConnection *conn, int id)
 {
 	char path[MAX_PATH_LENGTH];
 	struct adapter *adapter;
+
+	if (!connection)
+		connection = conn;
 
 	snprintf(path, sizeof(path), "/hci%d", id);
 
@@ -2558,7 +2555,31 @@ struct adapter *adapter_create(int id)
 	adapter->pdiscov_resolve_names = 1;
 	adapter->path = g_strdup(path);
 
+	if (!g_dbus_register_interface(conn, path, ADAPTER_INTERFACE,
+			adapter_methods, adapter_signals, NULL,
+			adapter, adapter_free)) {
+		error("Adapter interface init failed on path %s", path);
+		adapter_free(adapter);
+		return NULL;
+	}
+
 	return adapter;
+}
+
+void adapter_remove(struct adapter *adapter)
+{
+	GSList *l;
+	char *path = g_strdup(adapter->path);
+
+	debug("Removing adapter %s", path);
+
+	for (l = adapter->devices; l; l = l->next)
+		device_remove(connection, l->data);
+	g_slist_free(adapter->devices);
+
+	g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE);
+
+	g_free(path);
 }
 
 uint16_t adapter_get_dev_id(struct adapter *adapter)
@@ -2582,16 +2603,6 @@ const gchar *adapter_get_address(struct adapter *adapter)
 	return adapter->address;
 }
 
-void adapter_free(struct adapter *adapter)
-{
-	if (!adapter)
-		return;
-
-	g_free(adapter->path);
-	g_free(adapter);
-
-	return;
-}
 gboolean discov_timeout_handler(void *data)
 {
 	struct adapter *adapter = data;

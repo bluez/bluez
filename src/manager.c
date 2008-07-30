@@ -442,19 +442,13 @@ static void manager_remove_adapter(struct adapter *adapter)
 
 int manager_register_adapter(int id)
 {
-	struct adapter *adapter = adapter_create(id);
+	struct adapter *adapter = adapter_create(connection, id);
 	const gchar *path;
 
-	if(!adapter)
+	if (!adapter)
 		return -1;
 
 	path = adapter_get_path(adapter);
-
-	if (!adapter_init(connection, path, adapter)) {
-		error("Adapter interface init failed on path %s", path);
-		adapter_free(adapter);
-		return -1;
-	}
 
 	__probe_servers(path);
 
@@ -482,13 +476,7 @@ int manager_unregister_adapter(int id)
 
 	manager_remove_adapter(adapter);
 
-	if (!adapter_cleanup(connection, path)) {
-		error("Failed to unregister adapter interface on %s object",
-			path);
-		return -1;
-	}
-
-	adapter_free(adapter);
+	adapter_remove(adapter);
 
 	return 0;
 }

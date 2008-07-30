@@ -682,10 +682,10 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t 
 		const char **uuid;
 
 		for (uuid = driver->uuids; *uuid; uuid++) {
-			GSList *match = g_slist_find_custom(uuids, *uuid,
-					(GCompareFunc) strcasecmp);
+			sdp_record_t *rec;
 
-			if (!match)
+			if (!g_slist_find_custom(uuids, *uuid,
+					(GCompareFunc) strcasecmp))
 				continue;
 
 			driver->remove(driver, device);
@@ -694,7 +694,10 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t 
 
 			g_free(driver_data);
 
-			sdp_record_t *rec = get_record(recs, *uuid);
+			rec = get_record(recs, *uuid);
+			if (!rec)
+				continue;
+
 			delete_record(src, dst, rec->handle);
 		}
 	}

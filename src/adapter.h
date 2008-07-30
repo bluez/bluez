@@ -132,9 +132,6 @@ struct adapter {
 	struct hci_dev dev;		/* hci info */
 };
 
-dbus_bool_t adapter_init(DBusConnection *conn,
-		const char *path, struct adapter *adapter);
-
 int adapter_start(struct adapter *adapter);
 
 int adapter_stop(struct adapter *adapter);
@@ -146,8 +143,6 @@ int adapter_get_class(struct adapter *adapter, uint8_t *cls);
 int adapter_set_class(struct adapter *adapter, uint8_t *cls);
 
 int adapter_update_ssp_mode(struct adapter *adapter, int dd, uint8_t mode);
-
-dbus_bool_t adapter_cleanup(DBusConnection *conn, const char *path);
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
 				struct adapter *adapter, const gchar *address);
@@ -174,11 +169,12 @@ void adapter_remove_auth_request(struct adapter *adapter, bdaddr_t *dba);
 struct pending_auth_info *adapter_new_auth_request(struct adapter *adapter,
 							bdaddr_t *dba,
 							auth_type_t type);
-struct adapter *adapter_create(int id);
+struct adapter *adapter_create(DBusConnection *conn, int id);
+void adapter_remove(struct adapter *adapter);
 uint16_t adapter_get_dev_id(struct adapter *adapter);
 const gchar *adapter_get_path(struct adapter *adapter);
 const gchar *adapter_get_address(struct adapter *adapter);
-void adapter_free(struct adapter *adapter);
+void adapter_remove(struct adapter *adapter);
 void adapter_set_discov_timeout(struct adapter *adapter, guint interval);
 void adapter_remove_discov_timeout(struct adapter *adapter);
 void adapter_set_scan_mode(struct adapter *adapter, uint8_t scan_mode);
