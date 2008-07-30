@@ -837,6 +837,7 @@ static void device_unregister(void *data)
 
 	/* Disconnect if applied */
 	disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
+	devices = g_slist_remove(devices, idev);
 	input_device_free(idev);
 }
 
