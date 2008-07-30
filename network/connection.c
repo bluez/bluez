@@ -497,7 +497,7 @@ static struct network_peer *create_peer(const char *path, bdaddr_t *src,
 					peer, path_unregister) == FALSE) {
 		error("D-Bus failed to register %s interface",
 			NETWORK_PEER_INTERFACE);
-		g_free(peer);
+		peer_free(peer);
 		return NULL;
 	}
 
