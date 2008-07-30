@@ -494,21 +494,7 @@ static GDBusSignalTable sink_signals[] = {
 	{ NULL, NULL }
 };
 
-struct sink *sink_init(struct audio_device *dev)
-{
-	if (!g_dbus_register_interface(dev->conn, dev->path,
-					AUDIO_SINK_INTERFACE,
-					sink_methods, sink_signals, NULL,
-					dev, NULL))
-		return NULL;
-
-	info("Registered interface %s on path %s",
-		AUDIO_SINK_INTERFACE, dev->path);
-
-	return g_new0(struct sink, 1);
-}
-
-void sink_free(struct audio_device *dev)
+static void sink_free(struct audio_device *dev)
 {
 	struct sink *sink = dev->sink;
 
@@ -527,6 +513,36 @@ void sink_free(struct audio_device *dev)
 
 	g_free(sink);
 	dev->sink = NULL;
+}
+
+static void path_unregister(void *data)
+{
+	struct audio_device *dev = data;
+
+	info("Unregistered interface %s on path %s",
+		AUDIO_SINK_INTERFACE, dev->path);
+
+	sink_free(dev);
+}
+
+void sink_unregister(struct audio_device *dev)
+{
+	g_dbus_unregister_interface(dev->conn, dev->path,
+		AUDIO_SINK_INTERFACE);
+}
+
+struct sink *sink_init(struct audio_device *dev)
+{
+	if (!g_dbus_register_interface(dev->conn, dev->path,
+					AUDIO_SINK_INTERFACE,
+					sink_methods, sink_signals, NULL,
+					dev, path_unregister))
+		return NULL;
+
+	info("Registered interface %s on path %s",
+		AUDIO_SINK_INTERFACE, dev->path);
+
+	return g_new0(struct sink, 1);
 }
 
 gboolean sink_is_active(struct audio_device *dev)

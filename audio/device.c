@@ -56,15 +56,6 @@
 
 static void device_free(struct audio_device *dev)
 {
-	if (dev->headset)
-		headset_free(dev);
-
-	if (dev->sink)
-		sink_free(dev);
-
-	if (dev->control)
-		control_free(dev);
-
 	if (dev->conn)
 		dbus_connection_unref(dev->conn);
 
@@ -119,7 +110,14 @@ gboolean device_is_connected(struct audio_device *dev, const char *interface)
 
 void device_unregister(struct audio_device *device)
 {
-	g_dbus_unregister_all_interfaces(device->conn, device->path);
+	if (device->headset)
+		headset_unregister(device);
+
+	if (device->sink)
+		sink_unregister(device);
+
+	if (device->control)
+		control_unregister(device);
 
 	device_free(device);
 }

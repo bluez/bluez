@@ -45,7 +45,7 @@ typedef void (*headset_stream_cb_t) (struct audio_device *dev, void *user_data);
 struct headset *headset_init(struct audio_device *dev, sdp_record_t *record,
 				uint16_t svc);
 
-void headset_free(struct audio_device *dev);
+void headset_unregister(struct audio_device *dev);
 
 uint32_t headset_config_init(GKeyFile *config);
 

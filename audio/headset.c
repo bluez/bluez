@@ -1456,6 +1456,45 @@ void headset_update(struct audio_device *dev, sdp_record_t *record, uint16_t svc
 	headset_set_channel(headset, record, svc);
 }
 
+static void headset_free(struct audio_device *dev)
+{
+	struct headset *hs = dev->headset;
+
+	if (hs->dc_timer) {
+		g_source_remove(hs->dc_timer);
+		hs->dc_timer = 0;
+	}
+
+	if (hs->sco) {
+		g_io_channel_close(hs->sco);
+		g_io_channel_unref(hs->sco);
+	}
+
+	if (hs->rfcomm) {
+		g_io_channel_close(hs->rfcomm);
+		g_io_channel_unref(hs->rfcomm);
+	}
+
+	g_free(hs);
+	dev->headset = NULL;
+}
+
+static void path_unregister(void *data)
+{
+	struct audio_device *dev = data;
+
+	info("Unregistered interface %s on path %s",
+		AUDIO_HEADSET_INTERFACE, dev->path);
+
+	headset_free(dev);
+}
+
+void headset_unregister(struct audio_device *dev)
+{
+	g_dbus_unregister_interface(dev->conn, dev->path,
+		AUDIO_HEADSET_INTERFACE);
+}
+
 struct headset *headset_init(struct audio_device *dev, sdp_record_t *record,
 				uint16_t svc)
 {
@@ -1493,7 +1532,7 @@ register_iface:
 	if (!g_dbus_register_interface(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE,
 					headset_methods, headset_signals, NULL,
-					dev, NULL)) {
+					dev, path_unregister)) {
 		g_free(hs);
 		return NULL;
 	}
@@ -1612,29 +1651,6 @@ uint32_t headset_config_init(GKeyFile *config)
 		ag_features |= AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
 
 	return ag_features;
-}
-
-void headset_free(struct audio_device *dev)
-{
-	struct headset *hs = dev->headset;
-
-	if (hs->dc_timer) {
-		g_source_remove(hs->dc_timer);
-		hs->dc_timer = 0;
-	}
-
-	if (hs->sco) {
-		g_io_channel_close(hs->sco);
-		g_io_channel_unref(hs->sco);
-	}
-
-	if (hs->rfcomm) {
-		g_io_channel_close(hs->rfcomm);
-		g_io_channel_unref(hs->rfcomm);
-	}
-
-	g_free(hs);
-	dev->headset = NULL;
 }
 
 static gboolean hs_dc_timeout(struct audio_device *dev)

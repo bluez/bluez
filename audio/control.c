@@ -915,21 +915,7 @@ static GDBusSignalTable control_signals[] = {
 	{ NULL, NULL }
 };
 
-struct control *control_init(struct audio_device *dev)
-{
-	if (!g_dbus_register_interface(dev->conn, dev->path,
-					AUDIO_CONTROL_INTERFACE,
-					control_methods, control_signals, NULL,
-					dev, NULL))
-		return NULL;
-
-	info("Registered interface %s on path %s",
-		AUDIO_CONTROL_INTERFACE, dev->path);
-
-	return g_new0(struct control, 1);
-}
-
-void control_free(struct audio_device *dev)
+static void control_free(struct audio_device *dev)
 {
 	struct control *control = dev->control;
 
@@ -938,6 +924,36 @@ void control_free(struct audio_device *dev)
 
 	g_free(control);
 	dev->control = NULL;
+}
+
+static void path_unregister(void *data)
+{
+	struct audio_device *dev = data;
+
+	info("Unregistered interface %s on path %s",
+		AUDIO_CONTROL_INTERFACE, dev->path);
+
+	control_free(dev);
+}
+
+void control_unregister(struct audio_device *dev)
+{
+	g_dbus_unregister_interface(dev->conn, dev->path,
+		AUDIO_CONTROL_INTERFACE);
+}
+
+struct control *control_init(struct audio_device *dev)
+{
+	if (!g_dbus_register_interface(dev->conn, dev->path,
+					AUDIO_CONTROL_INTERFACE,
+					control_methods, control_signals, NULL,
+					dev, path_unregister))
+		return NULL;
+
+	info("Registered interface %s on path %s",
+		AUDIO_CONTROL_INTERFACE, dev->path);
+
+	return g_new0(struct control, 1);
 }
 
 gboolean control_is_active(struct audio_device *dev)
