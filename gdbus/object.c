@@ -520,25 +520,6 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 	return TRUE;
 }
 
-gboolean g_dbus_unregister_all_interfaces(DBusConnection *connection,
-							const char *path)
-{
-	struct generic_data *data = NULL;
-
-	if (dbus_connection_get_object_path_data(connection, path,
-						(void *) &data) == FALSE)
-		return FALSE;
-
-	if (data == NULL)
-		return FALSE;
-
-	invalidate_parent_data(connection, path);
-
-	dbus_connection_unregister_object_path(connection, path);
-
-	return TRUE;
-}
-
 DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
 					const char *format, va_list args)
 {

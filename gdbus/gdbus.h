@@ -88,8 +88,6 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 					GDBusDestroyFunction destroy);
 gboolean g_dbus_unregister_interface(DBusConnection *connection,
 					const char *path, const char *name);
-gboolean g_dbus_unregister_all_interfaces(DBusConnection *connection,
-							const char *path);
 
 DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
 						const char *format, ...);
