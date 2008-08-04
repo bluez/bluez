@@ -772,7 +772,7 @@ static void sig_debug(int sig)
 
 static void usage(void)
 {
-	printf("hcid - HCI daemon ver %s\n", VERSION);
+	printf("bluetoothd - Bluetooth daemon ver %s\n", VERSION);
 	printf("Usage: \n");
 	printf("\thcid [-n] [-d] [-m mtu] [-f config file]\n");
 }
@@ -834,7 +834,7 @@ int main(int argc, char *argv[])
 
 	umask(0077);
 
-	start_logging("hcid", "Bluetooth HCI daemon");
+	start_logging("bluetoothd", "Bluetooth daemon");
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
