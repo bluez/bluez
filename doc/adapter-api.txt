@@ -166,7 +166,7 @@ Methods		dict GetProperties()
 
 			Possible errors: org.bluez.Error.DoesNotExist
 
-		uint32 AddServiceRecord(string record)
+		uint32 AddServiceRecord(string record) [experimental]
 
 			Adds a new service record from the XML description
 			and returns the assigned record handle.
@@ -174,7 +174,7 @@ Methods		dict GetProperties()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
 
-		void UpdateServiceRecord(uint32 handle, string record)
+		void UpdateServiceRecord(uint32 handle, string record) [experimental]
 
 			Updates a given service record provided in the
 			XML format.
@@ -183,7 +183,7 @@ Methods		dict GetProperties()
 					 org.bluez.Error.NotAvailable
 					 org.bluez.Error.Failed
 
-		void RemoveServiceRecord(uint32 handle)
+		void RemoveServiceRecord(uint32 handle) [experimental]
 
 			Remove a service record identified by its handle.
 
@@ -195,7 +195,7 @@ Methods		dict GetProperties()
 					 org.bluez.Error.DoesNotExist
 					 org.bluez.Error.Failed
 
-		void RequestAuthorization(string address, uint32 handle)
+		void RequestAuthorization(string address, uint32 handle) [experimental]
 
 			Request an authorization for an incoming connection
 			for a specific service record. The service record
@@ -206,7 +206,7 @@ Methods		dict GetProperties()
 					 org.bluez.Error.DoesNotExist
 					 org.bluez.Error.Failed
 
-		void CancelAuthorization()
+		void CancelAuthorization() [experimental]
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NotAuthorized
