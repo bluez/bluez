@@ -46,6 +46,7 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/hidp.h>
 
+#include "sdp.h"
 #include "hidd.h"
 
 #ifdef NEED_PPOLL

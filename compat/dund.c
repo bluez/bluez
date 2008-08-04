@@ -42,14 +42,16 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/rfcomm.h>
+#include <bluetooth/hidp.h>
 
+#include "sdp.h"
 #include "dund.h"
 #include "lib.h"
 
 volatile sig_atomic_t __io_canceled;
 
 /* MS dialup networking support (i.e. CLIENT / CLIENTSERVER thing) */
-static int  msdun = 0;
+static int msdun = 0;
 
 static char *pppd = "/usr/sbin/pppd";
 static char *pppd_opts[DUN_MAX_PPP_OPTS] =

@@ -24,10 +24,6 @@
 #define L2CAP_PSM_HIDP_CTRL 0x11
 #define L2CAP_PSM_HIDP_INTR 0x13
 
-int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req);
-int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_connadd_req *req);
-int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t *uuid, uint8_t *channel, char *name, size_t len);
-
 int epox_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
 int headset_presenter(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);
 int jthree_keyboard(const bdaddr_t *src, const bdaddr_t *dst, uint8_t channel);

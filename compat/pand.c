@@ -46,7 +46,9 @@
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
+#include <bluetooth/hidp.h>
 
+#include "sdp.h"
 #include "pand.h"
 
 #ifdef NEED_PPOLL

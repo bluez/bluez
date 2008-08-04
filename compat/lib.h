@@ -84,5 +84,3 @@ static inline int write_n(int fd, char *buf, int len)
 
 	return t;
 }
-
-int ms_dun(int fd, int server, int timeo);

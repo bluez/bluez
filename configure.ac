@@ -51,9 +51,7 @@ AC_OUTPUT([
 	audio/Makefile
 	tools/Makefile
 	rfcomm/Makefile
-	dund/Makefile
-	pand/Makefile
-	hidd/Makefile
+	compat/Makefile
 	cups/Makefile
 	test/Makefile
 	scripts/Makefile
