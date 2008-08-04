@@ -50,6 +50,8 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 		libdir="${prefix}/lib"
 	fi
 
+	plugindir="${libdir}/bluetooth/plugins"
+
 	if (test "$sysconfdir" = '${prefix}/etc'); then
 		configdir="${prefix}/etc/bluetooth"
 	else
@@ -62,14 +64,10 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 		storagedir="${localstatedir}/lib/bluetooth"
 	fi
 
-	servicedir="${libdir}/bluetooth"
-
 	AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}",
 				[Directory for the configuration files])
 	AC_DEFINE_UNQUOTED(STORAGEDIR, "${storagedir}",
 				[Directory for the storage files])
-	AC_DEFINE_UNQUOTED(SERVICEDIR, "${servicedir}",
-				[Directory for the service programs])
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
