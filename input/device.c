@@ -603,8 +603,7 @@ static void control_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 failed:
 	iconn->ctrl_sk = -1;
-	error_connection_attempt_failed(idev->conn,
-			iconn->pending_connect, -err);
+	connection_attempt_failed(iconn->pending_connect, -err);
 	dbus_message_unref(iconn->pending_connect);
 	iconn->pending_connect = NULL;
 }

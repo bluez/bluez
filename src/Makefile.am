@@ -19,11 +19,10 @@ bluetoothd_SOURCES = main.c hcid.h sdpd.h \
 	sdpd-server.c sdpd-request.c sdpd-service.c \
 	sdpd-database.c security.c storage.c \
 	parser.h parser.y lexer.l kword.c kword.h \
-	server.h server.c manager.h manager.c \
+	server.h server.c manager.h manager.c error.h error.c \
 	adapter.h adapter.c device.h device.c plugin.h plugin.c \
-	dbus-common.c dbus-common.h \
+	dbus-common.c dbus-common.h dbus-hci.h dbus-hci.c \
 	dbus-database.c dbus-database.h dbus-service.c dbus-service.h \
-	dbus-hci.h dbus-hci.c \
 	telephony.h telephony.c agent.h agent.c
 
 bluetoothd_LDADD = $(top_builddir)/common/libhelper.a \
