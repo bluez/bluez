@@ -9,7 +9,7 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 NAME=bluetooth
 DESC="Bluetooth subsystem"
 
-DAEMON_NAME=hcid
+DAEMON_NAME=bluetoothd
 HID2HCI_NAME=hid2hci
 
 DAEMON_EXEC="`which $DAEMON_NAME || true`"
@@ -26,7 +26,7 @@ case "$1" in
   start)
 	echo -n "Starting $DESC:"
 	if $DAEMON_ENABLE && [ -x "$DAEMON_EXEC" ] && [ -f "$DAEMON_CONFIG" ] ; then
-		$DAEMON_EXEC -s -f $DAEMON_CONFIG
+		$DAEMON_EXEC -f $DAEMON_CONFIG
 		echo -n " $DAEMON_NAME"
 	fi
 	if $HID2HCI_ENABLE && [ -x "$HID2HCI_EXEC" ] ; then
