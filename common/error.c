@@ -55,19 +55,6 @@ DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMess
 }
 
 /**
-  org.bluez.Error.NotSupported:
-
-  The remote device does not support the expected feature.
-  Examples of use: trying to connect to audio device while audio is not
-  declared in device sdp record.
-*/
-DBusHandlerResult error_not_supported(DBusConnection *conn, DBusMessage *msg)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".NotSupported",
-							"Not supported");
-}
-
-/**
   org.bluez.Error.Canceled:
 
   The operation was canceled.

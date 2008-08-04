@@ -145,6 +145,13 @@ struct event {
 	int (*callback) (struct audio_device *device, const char *buf);
 };
 
+static DBusHandlerResult error_not_supported(DBusConnection *conn,
+							DBusMessage *msg)
+{
+	return error_common_reply(conn, msg, ERROR_INTERFACE ".NotSupported",
+							"Not supported");
+}
+
 static int rfcomm_connect(struct audio_device *device, headset_stream_cb_t cb,
 				void *user_data, unsigned int *cb_id);
 static int get_records(struct audio_device *device, headset_stream_cb_t cb,
