@@ -795,6 +795,12 @@ static DBusMessage *device_connect(DBusConnection *conn,
 	return NULL;
 }
 
+static DBusMessage *create_errno_message(DBusMessage *msg, int err)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							strerror(err));
+}
+
 static DBusMessage *device_disconnect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {

@@ -27,8 +27,6 @@
 
 #define ERROR_INTERFACE "org.bluez.Error"
 
-DBusMessage *create_errno_message(DBusMessage *msg, int err);
-
 DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
 							DBusMessage *msg,
 							int err);
