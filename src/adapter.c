@@ -2562,7 +2562,7 @@ struct adapter *adapter_create(DBusConnection *conn, int id)
 	if (!connection)
 		connection = conn;
 
-	snprintf(path, sizeof(path), "/hci%d", id);
+	snprintf(path, sizeof(path), "%s/hci%d", "/org/bluez", id);
 
 	adapter = g_try_new0(struct adapter, 1);
 	if (!adapter) {

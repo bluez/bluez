@@ -247,7 +247,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	g_free(uuids);
 
 	/* Adapter */
-	snprintf(path, sizeof(path), "/hci%d", dev_id);
+	snprintf(path, sizeof(path), "%s/hci%d", "/org/bluez", dev_id);
 	ppath = path;
 	dbus_message_iter_append_dict_entry(&dict, "Adapter",
 			DBUS_TYPE_OBJECT_PATH, &ppath);
@@ -544,8 +544,8 @@ struct btd_device *device_create(DBusConnection *conn, struct adapter *adapter,
 		return NULL;
 
 	address_up = g_ascii_strup(address, -1);
-	device->path = g_strdup_printf("/hci%d/dev_%s",
-				dev_id, address_up);
+	device->path = g_strdup_printf("%s/hci%d/dev_%s", "/org/bluez",
+							dev_id, address_up);
 	g_strdelimit(device->path, ":", '_');
 	g_free(address_up);
 
