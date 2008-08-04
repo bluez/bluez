@@ -55,18 +55,6 @@ DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMess
 }
 
 /**
-  org.bluez.Error.Canceled:
-
-  The operation was canceled.
-  Examples of use : autorization process canceled, connection canceled
-*/
-DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg,
-					const char *str)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".Canceled", str);
-}
-
-/**
   org.bluez.Error.Failed:
 
   This is a the most generic error.

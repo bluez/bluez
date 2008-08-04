@@ -33,9 +33,6 @@ DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
 							DBusMessage *msg,
 							int err);
 
-DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg,
-						const char *str);
-
 DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg,
 					const char *desc);
 
