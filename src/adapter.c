@@ -140,6 +140,12 @@ static inline DBusMessage *unsupported_major_class(DBusMessage *msg)
 			"Unsupported Major Class");
 }
 
+static DBusHandlerResult error_failed(DBusConnection *conn,
+					DBusMessage *msg, const char * desc)
+{
+	return error_common_reply(conn, msg, ERROR_INTERFACE ".Failed", desc);
+}
+
 static DBusHandlerResult error_failed_errno(DBusConnection *conn,
 						DBusMessage *msg, int err)
 {

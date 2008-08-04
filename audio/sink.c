@@ -136,6 +136,12 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	sink->state = new_state;
 }
 
+static DBusHandlerResult error_failed(DBusConnection *conn,
+					DBusMessage *msg, const char * desc)
+{
+	return error_common_reply(conn, msg, ERROR_INTERFACE ".Failed", desc);
+}
+
 static gboolean stream_setup_retry(gpointer user_data)
 {
 	struct sink *sink = user_data;

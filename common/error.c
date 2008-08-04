@@ -48,18 +48,6 @@ DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMess
 			err > 0 ? strerror(err) : "Connection attempt failed");
 }
 
-/**
-  org.bluez.Error.Failed:
-
-  This is a the most generic error.
-  desc filed is MANDATORY
-*/
-DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg,
-				const char * desc)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".Failed", desc);
-}
-
 /* Helper function - internal use only */
 DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 					const char *name, const char *descr)
