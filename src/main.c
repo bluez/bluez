@@ -772,9 +772,9 @@ static void sig_debug(int sig)
 
 static void usage(void)
 {
-	printf("bluetoothd - Bluetooth daemon ver %s\n", VERSION);
-	printf("Usage: \n");
-	printf("\thcid [-n] [-d] [-m mtu] [-f config file]\n");
+	printf("Bluetooth daemon ver %s\n\n", VERSION);
+	printf("Usage:\n");
+	printf("\tbluetoothd [-n] [-d] [-m mtu] [-f config file]\n");
 }
 
 int main(int argc, char *argv[])
