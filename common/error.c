@@ -35,19 +35,6 @@
 
 #include "error.h"
 
-/**
-  org.bluez.Error.ConnectionAttemptFailed:
-
-  An unexpected error (other than DeviceUnreachable) error has occured while
-  attempting a connection to a device
-*/
-DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn, DBusMessage *msg, int err)
-{
-	return error_common_reply(conn, msg,
-			ERROR_INTERFACE ".ConnectionAttemptFailed",
-			err > 0 ? strerror(err) : "Connection attempt failed");
-}
-
 /* Helper function - internal use only */
 DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 					const char *name, const char *descr)

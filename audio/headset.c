@@ -152,6 +152,14 @@ static DBusHandlerResult error_not_supported(DBusConnection *conn,
 							"Not supported");
 }
 
+static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
+						DBusMessage *msg, int err)
+{
+	return error_common_reply(conn, msg,
+			ERROR_INTERFACE ".ConnectionAttemptFailed",
+			err > 0 ? strerror(err) : "Connection attempt failed");
+}
+
 static int rfcomm_connect(struct audio_device *device, headset_stream_cb_t cb,
 				void *user_data, unsigned int *cb_id);
 static int get_records(struct audio_device *device, headset_stream_cb_t cb,

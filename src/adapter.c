@@ -154,6 +154,14 @@ static DBusHandlerResult error_failed_errno(DBusConnection *conn,
 	return error_failed(conn, msg, desc);
 }
 
+static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
+						DBusMessage *msg, int err)
+{
+	return error_common_reply(conn, msg,
+			ERROR_INTERFACE ".ConnectionAttemptFailed",
+			err > 0 ? strerror(err) : "Connection attempt failed");
+}
+
 static int auth_req_cmp(const void *p1, const void *p2)
 {
 	const struct pending_auth_info *pb1 = p1;
