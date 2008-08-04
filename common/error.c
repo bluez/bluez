@@ -91,19 +91,6 @@ DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg,
 	return error_common_reply(conn, msg, ERROR_INTERFACE ".Failed", desc);
 }
 
-/**
-  org.bluez.Error.Failed:
-
-  This is a the most generic error, instantiated form a UNIX errno number.
-*/
-DBusHandlerResult error_failed_errno(DBusConnection *conn, DBusMessage *msg,
-					int err)
-{
-	const char *desc = strerror(err);
-
-	return error_failed(conn, msg, desc);
-}
-
 /* Helper function - internal use only */
 DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 					const char *name, const char *descr)

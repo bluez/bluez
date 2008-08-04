@@ -140,6 +140,14 @@ static inline DBusMessage *unsupported_major_class(DBusMessage *msg)
 			"Unsupported Major Class");
 }
 
+static DBusHandlerResult error_failed_errno(DBusConnection *conn,
+						DBusMessage *msg, int err)
+{
+	const char *desc = strerror(err);
+
+	return error_failed(conn, msg, desc);
+}
+
 static int auth_req_cmp(const void *p1, const void *p2)
 {
 	const struct pending_auth_info *pb1 = p1;

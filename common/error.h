@@ -42,8 +42,5 @@ DBusHandlerResult error_canceled(DBusConnection *conn, DBusMessage *msg,
 DBusHandlerResult error_failed(DBusConnection *conn, DBusMessage *msg,
 					const char *desc);
 
-DBusHandlerResult error_failed_errno(DBusConnection *conn, DBusMessage *msg,
-					int err);
-
 DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 					const char *name, const char *descr);
