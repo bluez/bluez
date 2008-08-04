@@ -370,7 +370,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	char addr[18];
 	struct adapter *adapter;
 	struct btd_device *device;
-	struct agent *agent;
+	struct agent *agent = NULL;
 	int ret;
 
 	adapter = manager_find_adapter(sba);
@@ -619,7 +619,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct adapter *adapter;
 	struct btd_device *device;
-	struct agent *agent;
+	struct agent *agent = NULL;
 	char addr[18];
 	struct pending_auth_info *auth;
 
@@ -659,7 +659,7 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct adapter *adapter;
 	struct btd_device *device;
-	struct agent *agent;
+	struct agent *agent = NULL;
 	char addr[18];
 	struct pending_auth_info *auth;
 
@@ -1765,7 +1765,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 {
 	struct adapter *adapter;
 	struct btd_device *device;
-	struct agent *agent;
+	struct agent *agent = NULL;
 	char addr[18];
 
 	adapter = manager_find_adapter(local);

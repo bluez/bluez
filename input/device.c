@@ -520,14 +520,14 @@ static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 	}
 
 	err = ioctl(ctl, HIDPCONNADD, &req);
-	if (err < 0)
+	if (err < 0) {
+		close(ctl);
 		goto cleanup;
+	}
 
 	info("New input device %s (%s)", addr, req.name);
 
 cleanup:
-	close(ctl);
-
 	if (req.rd_data)
 		free(req.rd_data);
 
