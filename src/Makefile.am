@@ -44,14 +44,14 @@ INCLUDES = -I$(top_srcdir)/common
 BUILT_SOURCES = parser.h
 
 if MANPAGES
-man_MANS = hcid.8 hcid.conf.5
+man_MANS = bluetoothd.8 hcid.conf.5
 endif
 
 AM_YFLAGS = -d
 
 CLEANFILES = lexer.c parser.c parser.h
 
-EXTRA_DIST = bluetooth.conf hcid.8 hcid.conf.5 hcid.conf dbus-api.txt \
+EXTRA_DIST = bluetooth.conf bluetoothd.8 hcid.conf.5 hcid.conf \
 	list-devices test-discovery test-manager test-adapter test-device \
 	simple-service simple-agent service-record.dtd \
 	service-did.xml service-spp.xml service-opp.xml service-ftp.xml
