@@ -141,7 +141,7 @@ AC_DEFUN([AC_PATH_SNDFILE], [
 AC_DEFUN([AC_ARG_BLUEZ], [
 	debug_enable=no
 	fortify_enable=yes
-	pie_enable=no
+	pie_enable=yes
 	sndfile_enable=${sndfile_found}
 	netlink_enable=no
 	usb_enable=${usb_found}
@@ -266,7 +266,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	if (test "${pie_enable}" = "yes" && test "${ac_cv_prog_cc_pie}" = "yes"); then
-		CFLAGS="$CFLAGS -fPIE"
+		CFLAGS="$CFLAGS -fPIC"
 		LDFLAGS="$LDFLAGS -pie"
 	fi
 
