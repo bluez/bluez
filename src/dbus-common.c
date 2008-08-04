@@ -55,8 +55,6 @@
 
 #define RECONNECT_RETRY_TIMEOUT	5000
 
-static int experimental = 0;
-
 int l2raw_connect(const char *local, const bdaddr_t *remote)
 {
 	struct sockaddr_l2 addr;
@@ -106,16 +104,6 @@ int l2raw_connect(const char *local, const bdaddr_t *remote)
 failed:
 	close(sk);
 	return -1;
-}
-
-void hcid_dbus_set_experimental(void)
-{
-	experimental = 1;
-}
-
-int hcid_dbus_use_experimental(void)
-{
-	return experimental;
 }
 
 static gboolean system_bus_reconnect(void *data)

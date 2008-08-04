@@ -2320,10 +2320,8 @@ int adapter_start(struct adapter *adapter)
 	if (!(features[6] & LMP_SIMPLE_PAIR))
 		goto setup;
 
-	if (hcid_dbus_use_experimental()) {
-		if (ioctl(dd, HCIGETAUTHINFO, NULL) < 0 && errno != EINVAL)
-			hci_write_simple_pairing_mode(dd, 0x01, 2000);
-	}
+	if (ioctl(dd, HCIGETAUTHINFO, NULL) < 0 && errno != EINVAL)
+		hci_write_simple_pairing_mode(dd, 0x01, 2000);
 
 	if (hci_read_simple_pairing_mode(dd, &dev->ssp_mode, 1000) < 0) {
 		err = errno;

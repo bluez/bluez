@@ -784,7 +784,7 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	GIOChannel *ctl_io, *child_io;
 	uint16_t mtu = 0;
-	int opt, daemonize = 1, debug = 0, sdp = 1, experimental = 0;
+	int opt, daemonize = 1, debug = 0;
 	GKeyFile *config;
 
 	/* Default HCId settings */
@@ -803,7 +803,7 @@ int main(int argc, char *argv[])
 
 	init_defaults();
 
-	while ((opt = getopt(argc, argv, "ndsm:xf:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ndm:f:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
@@ -813,16 +813,8 @@ int main(int argc, char *argv[])
 			debug = 1;
 			break;
 
-		case 's':
-			sdp = 1;
-			break;
-
 		case 'm':
 			mtu = atoi(optarg);
-			break;
-
-		case 'x':
-			experimental = 1;
 			break;
 
 		case 'f':
@@ -906,9 +898,6 @@ int main(int argc, char *argv[])
 	g_io_channel_unref(child_io);
 
 	agent_init();
-
-	if (experimental)
-		hcid_dbus_set_experimental();
 
 	if (hcid_dbus_init() < 0) {
 		error("Unable to get on D-Bus");

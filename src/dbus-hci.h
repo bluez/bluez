@@ -22,8 +22,6 @@
  *
  */
 
-void hcid_dbus_set_experimental();
-int hcid_dbus_use_experimental();
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci);
 
 void hcid_dbus_inquiry_start(bdaddr_t *local);
