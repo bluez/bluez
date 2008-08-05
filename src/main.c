@@ -866,9 +866,6 @@ int main(int argc, char *argv[])
 	if (gethostname(hcid.host_name, sizeof(hcid.host_name) - 1) < 0)
 		strcpy(hcid.host_name, "noname");
 
-	strcpy((char *) hcid.pin_code, "BlueZ");
-	hcid.pin_len = 5;
-
 	init_defaults();
 
 	context = g_option_context_new(NULL);

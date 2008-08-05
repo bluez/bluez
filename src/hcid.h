@@ -99,10 +99,7 @@ struct hcid_opts {
 	int     security;
 	int     pairing;
 	int	offmode;
-        char    deviceid[15];
-
-	uint8_t pin_code[16];
-	int     pin_len;
+	char    deviceid[15];
 
 	int     sock;
 };
