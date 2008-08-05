@@ -59,7 +59,7 @@
 #include "oui.h"
 #include "agent.h"
 #include "device.h"
-#include "glib-helper.h"
+#include "driver.h"
 
 #include "manager.h"
 
@@ -443,14 +443,17 @@ static void manager_remove_adapter(struct adapter *adapter)
 int manager_register_adapter(int id)
 {
 	struct adapter *adapter = adapter_create(connection, id);
-	const gchar *path;
+	GSList *l = btd_get_adapter_drivers();
 
 	if (!adapter)
 		return -1;
 
-	path = adapter_get_path(adapter);
+	for (; l; l = l->next) {
+		struct btd_adapter_driver *driver = l->data;
 
-	__probe_servers(path);
+		if (driver->probe)
+			driver->probe(driver, (struct btd_adapter *) adapter);
+	}
 
 	manager_add_adapter(adapter);
 
@@ -461,6 +464,7 @@ int manager_unregister_adapter(int id)
 {
 	struct adapter *adapter;
 	const gchar *path;
+	GSList *l = btd_get_adapter_drivers();
 
 	adapter = manager_find_adapter_by_id(id);
 	if (!adapter)
@@ -470,7 +474,12 @@ int manager_unregister_adapter(int id)
 
 	info("Unregister path: %s", path);
 
-	__remove_servers(path);
+	for (; l; l = l->next) {
+		struct btd_adapter_driver *driver = l->data;
+
+		if (driver->remove)
+			driver->remove(driver, (struct btd_adapter *) adapter);
+	}
 
 	adapter_stop(adapter);
 
