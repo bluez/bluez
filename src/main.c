@@ -833,21 +833,27 @@ static void sig_debug(int sig)
 	toggle_debug();
 }
 
-static void usage(void)
-{
-	printf("Bluetooth daemon ver %s\n\n", VERSION);
-	printf("Usage:\n");
-	printf("\tbluetoothd [-n] [-d] [-m mtu]\n");
-}
+static gboolean option_detach = TRUE;
+static gboolean option_debug = FALSE;
+
+static GOptionEntry options[] = {
+	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
+				G_OPTION_ARG_NONE, &option_detach,
+				"Don't fork daemon to background" },
+	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
+				"Enable debug information output" },
+	{ NULL },
+};
 
 int main(int argc, char *argv[])
 {
+	GOptionContext *context;
+	GError *err = NULL;
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
 	struct sigaction sa;
 	GIOChannel *ctl_io, *child_io;
 	uint16_t mtu = 0;
-	int opt, daemonize = 1, debug = 0;
 	GKeyFile *config;
 
 	/* Default HCId settings */
@@ -865,29 +871,25 @@ int main(int argc, char *argv[])
 
 	init_defaults();
 
-	while ((opt = getopt(argc, argv, "ndm:")) != EOF) {
-		switch (opt) {
-		case 'n':
-			daemonize = 0;
-			break;
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
 
-		case 'd':
-			debug = 1;
-			break;
-
-		case 'm':
-			mtu = atoi(optarg);
-			break;
-
-		default:
-			usage();
-			exit(1);
-		}
+	if (g_option_context_parse(context, &argc, &argv, &err) == FALSE) {
+		if (err != NULL) {
+			g_printerr("%s\n", err->message);
+			g_error_free(err);
+		} else
+			g_printerr("An unknown error occurred\n");
+		exit(1);
 	}
 
-	if (daemonize && daemon(0, 0)) {
-		error("Can't daemonize: %s (%d)", strerror(errno), errno);
-		exit(1);
+	g_option_context_free(context);
+
+	if (option_detach == TRUE) {
+		if (daemon(0, 0)) {
+			perror("Can't start daemon");
+			exit(1);
+		}
 	}
 
 	umask(0077);
@@ -906,7 +908,7 @@ int main(int argc, char *argv[])
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGPIPE, &sa, NULL);
 
-	if (debug) {
+	if (option_debug == TRUE) {
 		info("Enabling debug information");
 		enable_debug();
 	}
