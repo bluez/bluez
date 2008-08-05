@@ -81,13 +81,15 @@ AC_DEFUN([AC_PATH_DBUS], [
 ])
 
 AC_DEFUN([AC_PATH_GLIB], [
-	PKG_CHECK_MODULES(GLIB, glib-2.0, glib_found=yes, glib_found=no)
+	PKG_CHECK_MODULES(GLIB, glib-2.0, dummy=yes,
+				AC_MSG_ERROR(GLib library is required))
 	AC_SUBST(GLIB_CFLAGS)
 	AC_SUBST(GLIB_LIBS)
 ])
 
 AC_DEFUN([AC_PATH_GMODULE], [
-	PKG_CHECK_MODULES(GMODULE, gmodule-2.0, gmodule_found=yes, gmodule_found=no)
+	PKG_CHECK_MODULES(GMODULE, gmodule-2.0, dummy=yes,
+				AC_MSG_ERROR(GModule library is required))
 	AC_CHECK_LIB(dl, dlopen, dummy=yes, dummy=no)
 	AC_SUBST(GMODULE_CFLAGS)
 	AC_SUBST(GMODULE_LIBS)
