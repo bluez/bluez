@@ -43,7 +43,7 @@ if MANPAGES
 man_MANS = bluetoothd.8
 endif
 
-EXTRA_DIST = bluetooth.conf bluetoothd.8 hcid.conf.5 hcid.conf \
+EXTRA_DIST = bluetooth.conf bluetoothd.8 \
 	list-devices test-discovery test-manager test-adapter test-device \
 	simple-service simple-agent service-record.dtd \
 	service-did.xml service-spp.xml service-opp.xml service-ftp.xml
