@@ -6,7 +6,7 @@ dbus_DATA = bluetooth.conf
 
 confdir = $(sysconfdir)/bluetooth
 
-conf_DATA =
+conf_DATA = main.conf
 
 statedir = $(localstatedir)/lib/bluetooth
 
@@ -43,7 +43,7 @@ if MANPAGES
 man_MANS = bluetoothd.8
 endif
 
-EXTRA_DIST = bluetooth.conf bluetoothd.8 \
+EXTRA_DIST = bluetooth.conf bluetoothd.8 main.conf \
 	list-devices test-discovery test-manager test-adapter test-device \
 	simple-service simple-agent service-record.dtd \
 	service-did.xml service-spp.xml service-opp.xml service-ftp.xml
