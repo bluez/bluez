@@ -78,6 +78,8 @@ static GKeyFile *load_config(const char *file)
 		return NULL;
 	}
 
+	g_key_file_set_list_separator(keyfile, ',');
+
 	return keyfile;
 }
 
