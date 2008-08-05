@@ -705,8 +705,7 @@ static void device_devup_setup(int dev_id)
 	if (hcid.auto_init)
 		configure_device(dev_id);
 	manager_start_adapter(dev_id);
-	if (hcid.security)
-		start_security_manager(dev_id);
+	start_security_manager(dev_id);
 }
 
 static void init_all_devices(int ctl)
@@ -746,7 +745,6 @@ static void init_all_devices(int ctl)
 static void init_defaults(void)
 {
 	hcid.auto_init = 1;
-	hcid.security  = HCID_SEC_AUTO;
 
 	init_device_defaults(&default_device);
 }
@@ -774,8 +772,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 	case HCI_DEV_DOWN:
 		info("HCI dev %d down", sd->dev_id);
 		manager_stop_adapter(sd->dev_id);
-		if (hcid.security)
-			stop_security_manager(sd->dev_id);
+		stop_security_manager(sd->dev_id);
 		break;
 	}
 }
@@ -858,10 +855,8 @@ int main(int argc, char *argv[])
 
 	/* Default HCId settings */
 	memset(&hcid, 0, sizeof(hcid));
-	hcid.auto_init   = 1;
-	hcid.security    = HCID_SEC_AUTO;
-	hcid.pairing     = HCID_PAIRING_MULTI;
-	hcid.offmode     = HCID_OFFMODE_NOSCAN;
+	hcid.auto_init = 1;
+	hcid.offmode   = HCID_OFFMODE_NOSCAN;
 
 	if (gethostname(hcid.host_name, sizeof(hcid.host_name) - 1) < 0)
 		strcpy(hcid.host_name, "noname");

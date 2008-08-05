@@ -95,8 +95,6 @@ struct device_list {
 struct hcid_opts {
 	char    host_name[40];
 	int     auto_init;
-	int     security;
-	int     pairing;
 	int	offmode;
 	char    deviceid[15];
 
@@ -123,14 +121,6 @@ struct hci_req_data {
 struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba, uint16_t ogf, uint16_t ocf, int event, const void *cparam, int clen);
 void hci_req_queue_append(struct hci_req_data *data);
 void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
-
-#define HCID_SEC_NONE	0
-#define HCID_SEC_AUTO	1
-#define HCID_SEC_USER	2
-
-#define HCID_PAIRING_NONE	0
-#define HCID_PAIRING_MULTI	1
-#define HCID_PAIRING_ONCE	2
 
 #define HCID_OFFMODE_DEVDOWN	0
 #define HCID_OFFMODE_NOSCAN	1
