@@ -2477,13 +2477,3 @@ int hci_read_clock(int dd, uint16_t handle, uint8_t which, uint32_t *clock, uint
 	*accuracy = rp.accuracy;
 	return 0;
 }
-
-int hci_local_name(int dd, int len, char *name, int to)
-{
-	return hci_read_local_name(dd, len, name, to);
-}
-
-int hci_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)
-{
-	return hci_read_remote_name(dd, bdaddr, len, name, to);
-}
