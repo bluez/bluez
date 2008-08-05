@@ -6,7 +6,7 @@ dbus_DATA = bluetooth.conf
 
 confdir = $(sysconfdir)/bluetooth
 
-conf_DATA = hcid.conf
+conf_DATA =
 
 statedir = $(localstatedir)/lib/bluetooth
 
@@ -18,7 +18,6 @@ sbin_PROGRAMS = bluetoothd
 bluetoothd_SOURCES = main.c hcid.h sdpd.h \
 	sdpd-server.c sdpd-request.c sdpd-service.c \
 	sdpd-database.c security.c storage.c \
-	parser.h parser.y lexer.l kword.c kword.h \
 	server.h server.c manager.h manager.c error.h error.c \
 	adapter.h adapter.c device.h device.c plugin.h plugin.c \
 	dbus-common.c dbus-common.h dbus-hci.h dbus-hci.c \
@@ -40,15 +39,9 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ \
 
 INCLUDES = -I$(top_srcdir)/common
 
-BUILT_SOURCES = parser.h
-
 if MANPAGES
-man_MANS = bluetoothd.8 hcid.conf.5
+man_MANS = bluetoothd.8
 endif
-
-AM_YFLAGS = -d
-
-CLEANFILES = lexer.c parser.c parser.h
 
 EXTRA_DIST = bluetooth.conf bluetoothd.8 hcid.conf.5 hcid.conf \
 	list-devices test-discovery test-manager test-adapter test-device \
