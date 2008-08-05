@@ -60,7 +60,6 @@
 
 struct hcid_opts hcid;
 struct device_opts default_device;
-struct device_opts *parser_device;
 static struct device_list *device_list = NULL;
 static int child_pipe[2];
 
@@ -81,6 +80,84 @@ static GKeyFile *load_config(const char *file)
 	g_key_file_set_list_separator(keyfile, ',');
 
 	return keyfile;
+}
+
+static void parse_config(GKeyFile *config)
+{
+	GError *err = NULL;
+	char *str;
+	int val;
+
+	if (!config)
+		return;
+
+	debug("parsing main.conf");
+
+	str = g_key_file_get_string(config, "General",
+					"OffMode", &err);
+	if (err) {
+		debug("%s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		debug("offmode=%s", str);
+		if (g_str_equal(str, "DevDown"))
+			hcid.offmode = HCID_OFFMODE_DEVDOWN;
+		g_free(str);
+	}
+
+	val = g_key_file_get_integer(config, "General",
+					"DiscoverableTimeout",
+					&err);
+	if (err) {
+		debug("%s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		debug("discovto=%d", val);
+		default_device.discovto = val;
+		default_device.flags |= 1 << HCID_SET_DISCOVTO;
+	}
+
+	val = g_key_file_get_integer(config, "General",
+					"PageTimeout",
+					&err);
+	if (err) {
+		debug("%s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		debug("pageto=%d", val);
+		default_device.pageto = val;
+		default_device.flags |= 1 << HCID_SET_PAGETO;
+	}
+
+	str = g_key_file_get_string(config, "General",
+					"Name", &err);
+	if (err) {
+		debug("%s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		debug("name=%s", str);
+		g_free(default_device.name);
+		default_device.name = g_strdup(str);
+		default_device.flags |= 1 << HCID_SET_NAME;
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(config, "General",
+					"Class", &err);
+	if (err) {
+		debug("%s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		debug("class=%s", str);
+		default_device.class = strtol(str, NULL, 16);
+		default_device.flags |= 1 << HCID_SET_CLASS;
+		g_free(str);
+	}
 }
 
 static inline void init_device_defaults(struct device_opts *device_opts)
@@ -751,22 +828,6 @@ static void sig_term(int sig)
 	g_main_loop_quit(event_loop);
 }
 
-static void sig_hup(int sig)
-{
-	info("Reloading config file");
-
-	free_device_opts();
-
-	init_defaults();
-
-	if (read_config(hcid.config_file) < 0)
-		error("Config reload failed");
-
-	init_security_data();
-
-	init_all_devices(hcid.sock);
-}
-
 static void sig_debug(int sig)
 {
 	toggle_debug();
@@ -776,7 +837,7 @@ static void usage(void)
 {
 	printf("Bluetooth daemon ver %s\n\n", VERSION);
 	printf("Usage:\n");
-	printf("\tbluetoothd [-n] [-d] [-m mtu] [-f config file]\n");
+	printf("\tbluetoothd [-n] [-d] [-m mtu]\n");
 }
 
 int main(int argc, char *argv[])
@@ -792,7 +853,6 @@ int main(int argc, char *argv[])
 	/* Default HCId settings */
 	memset(&hcid, 0, sizeof(hcid));
 	hcid.auto_init   = 1;
-	hcid.config_file = HCID_CONFIG_FILE;
 	hcid.security    = HCID_SEC_AUTO;
 	hcid.pairing     = HCID_PAIRING_MULTI;
 	hcid.offmode     = HCID_OFFMODE_NOSCAN;
@@ -805,7 +865,7 @@ int main(int argc, char *argv[])
 
 	init_defaults();
 
-	while ((opt = getopt(argc, argv, "ndm:f:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ndm:")) != EOF) {
 		switch (opt) {
 		case 'n':
 			daemonize = 0;
@@ -817,10 +877,6 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			mtu = atoi(optarg);
-			break;
-
-		case 'f':
-			hcid.config_file = g_strdup(optarg);
 			break;
 
 		default:
@@ -843,8 +899,6 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_term;
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT,  &sa, NULL);
-	sa.sa_handler = sig_hup;
-	sigaction(SIGHUP, &sa, NULL);
 
 	sa.sa_handler = sig_debug;
 	sigaction(SIGUSR2, &sa, NULL);
@@ -884,8 +938,7 @@ int main(int argc, char *argv[])
 
 	config = load_config(CONFIGDIR "/main.conf");
 
-	if (read_config(hcid.config_file) < 0)
-		error("Config load failed");
+	parse_config(config);
 
 	if (pipe(child_pipe) < 0) {
 		error("pipe(): %s (%d)", strerror(errno), errno);
@@ -914,8 +967,6 @@ int main(int argc, char *argv[])
 	 * best order of how to init various subsystems of the Bluetooth
 	 * daemon needs to be re-worked. */
 	plugin_init(config);
-
-	init_security_data();
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 

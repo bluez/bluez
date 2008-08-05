@@ -91,15 +91,12 @@ statement:
 
 device:
   K_DEVICE		{
-				parser_device = &default_device;
 			}
 
   | K_DEVICE hci	{
-				parser_device = alloc_device_opts($2);
 			}
 
   | K_DEVICE bdaddr	{
-				parser_device = alloc_device_opts($2);
 			}
   ;
 
@@ -185,59 +182,33 @@ device_options: '{' device_opts '}';
 device_opts: | device_opt ';' | error ';' | device_opts device_opt ';';
 device_opt:
   K_PTYPE pkt_type	{
-				parser_device->flags |= (1 << HCID_SET_PTYPE);
-				parser_device->pkt_type = $2;
 			}
 
   | K_LM link_mode	{
-				parser_device->flags |= (1 << HCID_SET_LM);
-				parser_device->link_mode = $2;
 			}
 
   | K_LP link_policy	{
-				parser_device->flags |= (1 << HCID_SET_LP);
-				parser_device->link_policy = $2;
 			}
 
   | K_NAME dev_name	{
-				if (parser_device->name)
-					g_free(parser_device->name);
-				parser_device->flags |= (1 << HCID_SET_NAME);
-				parser_device->name = g_strdup($2);
 			}
 
   | K_CLASS NUM		{
-				parser_device->flags |= (1 << HCID_SET_CLASS);
-				parser_device->class = $2;
 			}
 
   | K_VOICE NUM		{
-				parser_device->flags |= (1 << HCID_SET_VOICE);
-				parser_device->voice = $2;
 			}
 
   | K_PAGETO NUM	{
-				parser_device->flags |= (1 << HCID_SET_PAGETO);
-				parser_device->pageto = $2;
 			}
 
   | K_DISCOVTO NUM	{
-				parser_device->flags |= (1 << HCID_SET_DISCOVTO);
-				parser_device->discovto = $2;
 			}
 
   | K_ISCAN bool	{
-				if ($2)
-					parser_device->scan |=  SCAN_INQUIRY;
-				else
-					parser_device->scan &= ~SCAN_INQUIRY;
 			}
 
   | K_PSCAN bool	{
-				if ($2)
-					parser_device->scan |=  SCAN_PAGE;
-				else
-					parser_device->scan &= ~SCAN_PAGE;
 			}
 
   | WORD		{

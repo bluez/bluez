@@ -62,8 +62,6 @@ struct g_io_info {
 
 static struct g_io_info io_data[HCI_MAX_DEV];
 
-static int pairing = HCID_PAIRING_MULTI;
-
 static GSList *hci_req_queue = NULL;
 
 struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba, uint16_t ogf, uint16_t ocf, int event, const void *cparam, int clen)
@@ -467,9 +465,8 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	pin_code_reply_cp pr;
 	struct hci_conn_info_req *cr;
 	struct hci_conn_info *ci;
-	unsigned char key[16];
 	char sa[18], da[18], pin[17];
-	int err, pinlen;
+	int pinlen;
 
 	memset(&pr, 0, sizeof(pr));
 	bacpy(&pr.bdaddr, dba);
@@ -490,34 +487,16 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	memset(pin, 0, sizeof(pin));
 	pinlen = read_pin_code(sba, dba, pin);
 
-	if (pairing == HCID_PAIRING_ONCE) {
-		err = read_link_key(sba, dba, key, NULL);
-		if (!err) {
-			ba2str(dba, da);
-			error("PIN code request for already paired device %s", da);
-			goto reject;
-		}
-	} else if (pairing == HCID_PAIRING_NONE)
-		goto reject;
-
-	if (hcid.security == HCID_SEC_AUTO && !ci->out) {
-		set_pin_length(sba, hcid.pin_len);
-		memcpy(pr.pin_code, hcid.pin_code, hcid.pin_len);
-		pr.pin_len = hcid.pin_len;
+	if (pinlen > 0) {
+		set_pin_length(sba, pinlen);
+		memcpy(pr.pin_code, pin, pinlen);
+		pr.pin_len = pinlen;
 		hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
-						PIN_CODE_REPLY_CP_SIZE, &pr);
+				PIN_CODE_REPLY_CP_SIZE, &pr);
 	} else {
-		if (pinlen > 0) {
-			set_pin_length(sba, pinlen);
-			memcpy(pr.pin_code, pin, pinlen);
-			pr.pin_len = pinlen;
-			hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
-						PIN_CODE_REPLY_CP_SIZE, &pr);
-		} else {
-			/* Request PIN from passkey agent */
-			if (hcid_dbus_request_pin(dev, sba, ci) < 0)
-				goto reject;
-		}
+		/* Request PIN from passkey agent */
+		if (hcid_dbus_request_pin(dev, sba, ci) < 0)
+			goto reject;
 	}
 
 	g_free(cr);
@@ -1031,7 +1010,3 @@ void stop_security_manager(int hdev)
 	io_data[hdev].pin_length = -1;
 }
 
-void init_security_data(void)
-{
-	pairing = hcid.pairing;
-}

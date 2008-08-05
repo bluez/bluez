@@ -101,8 +101,6 @@ struct hcid_opts {
 	int	offmode;
         char    deviceid[15];
 
-	char   *config_file;
-
 	uint8_t pin_code[16];
 	int     pin_len;
 
@@ -141,18 +139,14 @@ void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
 #define HCID_OFFMODE_DEVDOWN	0
 #define HCID_OFFMODE_NOSCAN	1
 
-int read_config(char *file);
-
 struct device_opts *alloc_device_opts(char *ref);
 
 uint8_t get_startup_scan(int hdev);
 uint8_t get_startup_mode(int hdev);
 int get_discoverable_timeout(int dev_id);
 
-void init_security_data(void);
 void start_security_manager(int hdev);
 void stop_security_manager(int hdev);
-void toggle_pairing(int enable);
 
 void set_pin_length(bdaddr_t *sba, int length);
 
