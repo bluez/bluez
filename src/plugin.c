@@ -72,7 +72,7 @@ static gboolean is_disabled(const char *name, char **list)
 		char *str;
 		gboolean equal;
 
-		str = g_strdup_printf("lib%s.so", list[i]);
+		str = g_strdup_printf("%s.so", list[i]);
 
 		equal = g_str_equal(str, name);
 
