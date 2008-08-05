@@ -57,11 +57,11 @@
 #include "device.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
-#include "dbus-service.h"
 #include "error.h"
 #include "glib-helper.h"
 #include "agent.h"
 #include "sdp-xml.h"
+#include "driver.h"
 
 #define DEFAULT_XML_BUF_SIZE	1024
 #define DISCONNECT_TIMER	2
@@ -100,8 +100,6 @@ struct browse_req {
 	int search_uuid;
 	gboolean browse;
 };
-
-static GSList *drivers = NULL;
 
 static uint16_t uuid_list[] = {
 	PUBLIC_BROWSE_GROUP,
@@ -620,13 +618,13 @@ sdp_record_t *get_record(sdp_list_t *recs, const char *uuid)
 
 void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *recs)
 {
-	GSList *list;
+	GSList *list = btd_get_device_drivers();
 	const char **uuid;
 	int err;
 
 	debug("Probe drivers for %s", device->path);
 
-	for (list = drivers; list; list = list->next) {
+	for (; list; list = list->next) {
 		struct btd_device_driver *driver = list->data;
 		GSList *records = NULL;
 
@@ -1084,24 +1082,4 @@ void device_set_auth(struct btd_device *device, uint8_t auth)
 uint8_t device_get_auth(struct btd_device *device)
 {
 	return device->auth;
-}
-
-int btd_register_device_driver(struct btd_device_driver *driver)
-{
-	const char **uuid;
-
-	/* FIXME: hack to make hci to resolve service_req_auth symbol*/
-	service_req_auth(NULL, NULL, NULL, NULL, NULL);
-	drivers = g_slist_append(drivers, driver);
-
-	for (uuid = driver->uuids; *uuid; uuid++) {
-		debug("name %s uuid %s", driver->name, *uuid);
-	}
-
-	return 0;
-}
-
-void btd_unregister_device_driver(struct btd_device_driver *driver)
-{
-	drivers = g_slist_remove(drivers, driver);
 }

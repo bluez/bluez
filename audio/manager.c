@@ -51,6 +51,7 @@
 #include "glib-helper.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
+#include "../src/driver.h"
 
 #include "dbus-service.h"
 #include "logging.h"
