@@ -85,7 +85,6 @@ struct device_opts {
 };
 
 extern struct device_opts default_device;
-extern struct device_opts *parser_device;
 
 struct device_list {
 	char *ref;			/* HCI device or Bluetooth address */
