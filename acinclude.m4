@@ -280,11 +280,11 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
 	fi
 
+	AC_SUBST([BLUEZ_CFLAGS], ['-I$(top_builddir)/include'])
+	AC_SUBST([BLUEZ_LIBS], ['$(top_builddir)/lib/libbluetooth.la'])
+
 	AC_SUBST([GDBUS_CFLAGS], ['-I$(top_srcdir)/gdbus'])
 	AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la'])
-
-	AC_SUBST([BLUEZ_CFLAGS], ['-I$(top_srcdir)/include'])
-	AC_SUBST([BLUEZ_LIBS], ['$(top_builddir)/lib/libbluetooth.la'])
 
 	AC_SUBST([SBC_CFLAGS], ['-I$(top_srcdir)/sbc'])
 	AC_SUBST([SBC_LIBS], ['$(top_builddir)/sbc/libsbc.la'])
