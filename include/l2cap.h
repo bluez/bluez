@@ -36,8 +36,6 @@ extern "C" {
 #define L2CAP_DEFAULT_MTU	672
 #define L2CAP_DEFAULT_FLUSH_TO	0xFFFF
 
-#define L2CAP_CONN_TIMEOUT	(HZ * 40)
-
 /* L2CAP socket address */
 struct sockaddr_l2 {
 	sa_family_t	l2_family;
