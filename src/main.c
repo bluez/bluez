@@ -158,6 +158,13 @@ static void parse_config(GKeyFile *config)
 		default_device.flags |= 1 << HCID_SET_CLASS;
 		g_free(str);
 	}
+
+	default_device.link_mode = HCI_LM_ACCEPT;
+	default_device.flags |= (1 << HCID_SET_LM);
+
+	default_device.link_policy = HCI_LP_RSWITCH | HCI_LP_SNIFF |
+						HCI_LP_HOLD | HCI_LP_PARK;
+	default_device.flags |= (1 << HCID_SET_LP);
 }
 
 static inline void init_device_defaults(struct device_opts *device_opts)
