@@ -2143,11 +2143,11 @@ static void create_stored_records_from_keys(char *key, char *value,
 	pdata = g_malloc0(size);
 
 	for (i = 0; i < size; i++) {
-		 memcpy(tmp, value + (i*2), 2);
+		 memcpy(tmp, value + (i * 2), 2);
 		 pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
 	}
 
-	rec = sdp_extract_pdu(pdata, &len);
+	rec = sdp_extract_pdu(pdata, size, &len);
 	free(pdata);
 
 	rec_list->recs = sdp_list_append(rec_list->recs, rec);

@@ -124,7 +124,7 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 		goto done;
 	}
 
-	scanned = sdp_extract_seqtype_safe(rsp, bytesleft, &dataType, &seqlen);
+	scanned = sdp_extract_seqtype(rsp, bytesleft, &dataType, &seqlen);
 	if (!scanned || !seqlen)
 		goto done;
 
@@ -135,7 +135,7 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 		int recsize;
 
 		recsize = 0;
-		rec = sdp_extract_pdu_safe(rsp, bytesleft, &recsize);
+		rec = sdp_extract_pdu(rsp, bytesleft, &recsize);
 		if (!rec)
 			break;
 

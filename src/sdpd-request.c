@@ -106,7 +106,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 	const uint8_t *p;
 	int bufsize;
 
-	scanned = sdp_extract_seqtype_safe(buf, len, &seqType, &data_size);
+	scanned = sdp_extract_seqtype(buf, len, &seqType, &data_size);
 
 	debug("Seq type : %d", seqType);
 	if (!scanned || (seqType != SDP_SEQ8 && seqType != SDP_SEQ16)) {
@@ -175,7 +175,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		case SDP_UUID32:
 		case SDP_UUID128:
 			pElem = malloc(sizeof(uuid_t));
-			status = sdp_uuid_extract_safe(p, bufsize, (uuid_t *) pElem, &localSeqLength);
+			status = sdp_uuid_extract(p, bufsize, (uuid_t *) pElem, &localSeqLength);
 			if (status == 0) {
 				seqlen += localSeqLength;
 				p += localSeqLength;

@@ -440,7 +440,7 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, int bufsiz
 	sdp_data_t *pAttr = NULL;
 	uint32_t handle = 0xffffffff;
 
-	*scanned = sdp_extract_seqtype_safe(p, bufsize, &dtd, &seqlen);
+	*scanned = sdp_extract_seqtype(p, bufsize, &dtd, &seqlen);
 	p += *scanned;
 	bufsize -= *scanned;
 
@@ -498,7 +498,7 @@ static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, int bufsiz
 		
 		debug("DTD of attrId : %d Attr id : 0x%x", dtd, attrId);
 
-		pAttr = sdp_extract_attr_safe(p + attrSize, bufsize - attrSize,
+		pAttr = sdp_extract_attr(p + attrSize, bufsize - attrSize,
 							&attrValueLength, rec);
 
 		debug("Attr id : 0x%x attrValueLength : %d", attrId, attrValueLength);

@@ -904,7 +904,7 @@ void sdp_data_free(sdp_data_t *d)
 	free(d);
 }
 
-int sdp_uuid_extract_safe(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
+int sdp_uuid_extract(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
 {
 	uint8_t type;
 
@@ -948,13 +948,6 @@ int sdp_uuid_extract_safe(const uint8_t *p, int bufsize, uuid_t *uuid, int *scan
 		p += sizeof(uint128_t);
 	}
 	return 0;
-}
-
-int sdp_uuid_extract(const uint8_t *p, uuid_t *uuid, int *scanned)
-{
-	/* Assume p points to a buffer of size at least SDP_MAX_ATTR_LEN,
-	   because we don't have any better information */
-	return sdp_uuid_extract_safe(p, SDP_MAX_ATTR_LEN, uuid, scanned);
 }
 
 static sdp_data_t *extract_int(const void *p, int bufsize, int *len)
@@ -1042,7 +1035,7 @@ static sdp_data_t *extract_uuid(const uint8_t *p, int bufsize, int *len, sdp_rec
 
 	SDPDBG("Extracting UUID");
 	memset(d, 0, sizeof(sdp_data_t));
-	if (sdp_uuid_extract_safe(p, bufsize, &d->val.uuid, len) < 0) {
+	if (sdp_uuid_extract(p, bufsize, &d->val.uuid, len) < 0) {
 		free(d);
 		return NULL;
 	}
@@ -1134,7 +1127,7 @@ static sdp_data_t *extract_str(const void *p, int bufsize, int *len)
  * Extract the sequence type and its length, and return offset into buf
  * or 0 on failure.
  */
-int sdp_extract_seqtype_safe(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *size)
+int sdp_extract_seqtype(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *size)
 {
 	uint8_t dtd;
 	int scanned = sizeof(uint8_t);
@@ -1183,13 +1176,6 @@ int sdp_extract_seqtype_safe(const uint8_t *buf, int bufsize, uint8_t *dtdp, int
 	return scanned;
 }
 
-int sdp_extract_seqtype(const uint8_t *buf, uint8_t *dtdp, int *size)
-{
-	/* Assume buf points to a buffer of size at least SDP_MAX_ATTR_LEN,
-	   because we don't have any better information */
-	return sdp_extract_seqtype_safe(buf, SDP_MAX_ATTR_LEN, dtdp, size);
-}
-
 static sdp_data_t *extract_seq(const void *p, int bufsize, int *len, sdp_record_t *rec)
 {
 	int seqlen, n = 0;
@@ -1198,7 +1184,7 @@ static sdp_data_t *extract_seq(const void *p, int bufsize, int *len, sdp_record_
 
 	SDPDBG("Extracting SEQ");
 	memset(d, 0, sizeof(sdp_data_t));
-	*len = sdp_extract_seqtype_safe(p, bufsize, &d->dtd, &seqlen);
+	*len = sdp_extract_seqtype(p, bufsize, &d->dtd, &seqlen);
 	SDPDBG("Sequence Type : 0x%x length : 0x%x\n", d->dtd, seqlen);
 
 	if (*len == 0)
@@ -1215,7 +1201,7 @@ static sdp_data_t *extract_seq(const void *p, int bufsize, int *len, sdp_record_
 	curr = prev = NULL;
 	while (n < seqlen) {
 		int attrlen = 0;
-		curr = sdp_extract_attr_safe(p, bufsize, &attrlen, rec);
+		curr = sdp_extract_attr(p, bufsize, &attrlen, rec);
 		if (curr == NULL)
 			break;
 
@@ -1235,7 +1221,7 @@ static sdp_data_t *extract_seq(const void *p, int bufsize, int *len, sdp_record_
 	return d;
 }
 
-sdp_data_t *sdp_extract_attr_safe(const uint8_t *p, int bufsize, int *size, sdp_record_t *rec)
+sdp_data_t *sdp_extract_attr(const uint8_t *p, int bufsize, int *size, sdp_record_t *rec)
 {
 	sdp_data_t *elem;
 	int n = 0;
@@ -1293,13 +1279,6 @@ sdp_data_t *sdp_extract_attr_safe(const uint8_t *p, int bufsize, int *size, sdp_
 	return elem;
 }
 
-sdp_data_t *sdp_extract_attr(const uint8_t *p, int *size, sdp_record_t *rec)
-{
-	/* Assume p points to a buffer of size at least SDP_MAX_ATTR_LEN,
-	   because we don't have any better information */
-	return sdp_extract_attr_safe(p, SDP_MAX_ATTR_LEN, size, rec);
-}
-
 #ifdef SDP_DEBUG
 static void attr_print_func(void *value, void *userData)
 {
@@ -1323,7 +1302,7 @@ void sdp_print_service_attr(sdp_list_t *svcAttrList)
 }
 #endif
 
-sdp_record_t *sdp_extract_pdu_safe(const uint8_t *buf, int bufsize, int *scanned)
+sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int bufsize, int *scanned)
 {
 	int extracted = 0, seqlen = 0;
 	uint8_t dtd;
@@ -1331,7 +1310,7 @@ sdp_record_t *sdp_extract_pdu_safe(const uint8_t *buf, int bufsize, int *scanned
 	sdp_record_t *rec = sdp_record_alloc();
 	const uint8_t *p = buf;
 
-	*scanned = sdp_extract_seqtype_safe(buf, bufsize, &dtd, &seqlen);
+	*scanned = sdp_extract_seqtype(buf, bufsize, &dtd, &seqlen);
 	p += *scanned;
 	bufsize -= *scanned;
 	rec->attrlist = NULL;
@@ -1354,7 +1333,7 @@ sdp_record_t *sdp_extract_pdu_safe(const uint8_t *buf, int bufsize, int *scanned
 
 		SDPDBG("DTD of attrId : %d Attr id : 0x%x \n", dtd, attr);
 
-		data = sdp_extract_attr_safe(p + n, bufsize - n, &attrlen, rec);
+		data = sdp_extract_attr(p + n, bufsize - n, &attrlen, rec);
 
 		SDPDBG("Attr id : 0x%x attrValueLength : %d\n", attr, attrlen);
 
@@ -1384,13 +1363,6 @@ sdp_record_t *sdp_extract_pdu_safe(const uint8_t *buf, int bufsize, int *scanned
 #endif
 	*scanned += seqlen;
 	return rec;
-}
-
-sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int *scanned)
-{
-	/* Assume buf points to a buffer of size at least SDP_MAX_ATTR_LEN,
-	   because we don't have any better information */
-	return sdp_extract_pdu_safe(buf, SDP_MAX_ATTR_LEN, scanned);
 }
 
 #ifdef SDP_DEBUG
@@ -3381,7 +3353,7 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 			pdata = rsp_concat_buf.data;
 			pdata_len = rsp_concat_buf.data_size;
 		}
-		rec = sdp_extract_pdu_safe(pdata, pdata_len, &scanned);
+		rec = sdp_extract_pdu(pdata, pdata_len, &scanned);
 
 		if (!rec)
 			status = -1;
@@ -4221,7 +4193,7 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 		 * more data element sequence(s) representing services
 		 * for which attributes are returned
 		 */
-		scanned = sdp_extract_seqtype_safe(pdata, pdata_len, &dataType, &seqlen);
+		scanned = sdp_extract_seqtype(pdata, pdata_len, &dataType, &seqlen);
 
 		SDPDBG("Bytes scanned : %d\n", scanned);
 		SDPDBG("Seq length : %d\n", seqlen);
@@ -4231,7 +4203,7 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 			pdata_len -= scanned;
 			do {
 				int recsize = 0;
-				sdp_record_t *rec = sdp_extract_pdu_safe(pdata, pdata_len, &recsize);
+				sdp_record_t *rec = sdp_extract_pdu(pdata, pdata_len, &recsize);
 				if (rec == NULL) {
 					SDPERR("SVC REC is null\n");
 					status = -1;

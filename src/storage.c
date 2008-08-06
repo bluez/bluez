@@ -756,7 +756,7 @@ sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t ha
 	if (!str)
 		return NULL;
 
-	size = strlen(str)/2;
+	size = strlen(str) / 2;
 	pdata = g_malloc0(size);
 
 	for (i = 0; i < size; i++) {
@@ -764,7 +764,7 @@ sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t ha
 		pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
 	}
 
-	rec = sdp_extract_pdu(pdata, &len);
+	rec = sdp_extract_pdu(pdata, size, &len);
 
 	free(str);
 	free(pdata);
