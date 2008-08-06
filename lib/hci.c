@@ -171,7 +171,6 @@ static hci_map dev_flags_map[] = {
 	{ "INQUIRY", HCI_INQUIRY },
 	{ "AUTH",    HCI_AUTH    },
 	{ "ENCRYPT", HCI_ENCRYPT },
-	{ "SECMGR",  HCI_SECMGR  },
 	{ NULL }
 };
 

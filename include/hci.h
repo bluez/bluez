@@ -69,8 +69,6 @@ enum {
 	HCI_INQUIRY,
 
 	HCI_RAW,
-
-	HCI_SECMGR
 };
 
 /* HCI ioctl defines */
@@ -94,8 +92,6 @@ enum {
 #define HCISETLINKMODE	_IOW('H', 226, int)
 #define HCISETACLMTU	_IOW('H', 227, int)
 #define HCISETSCOMTU	_IOW('H', 228, int)
-
-#define HCISETSECMGR	_IOW('H', 230, int)
 
 #define HCIINQUIRY	_IOR('H', 240, int)
 
@@ -1666,14 +1662,6 @@ typedef struct {
 } __attribute__ ((packed)) evt_si_device;
 #define EVT_SI_DEVICE_SIZE 4
 
-#define EVT_SI_SECURITY	0x02
-typedef struct {
-	uint16_t	event;
-	uint16_t	proto;
-	uint16_t	subproto;
-	uint8_t		incoming;
-} __attribute__ ((packed)) evt_si_security;
-
 /* --------  HCI Packet structures  -------- */
 #define HCI_TYPE_LEN	1
 
@@ -1827,13 +1815,6 @@ struct hci_inquiry_req {
 	uint8_t  num_rsp;
 };
 #define IREQ_CACHE_FLUSH 0x0001
-
-struct hci_remotename_req {
-	uint16_t dev_id;
-	uint16_t flags;
-	bdaddr_t bdaddr;
-	uint8_t  name[248];
-};
 
 #ifdef __cplusplus
 }

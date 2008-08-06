@@ -864,9 +864,6 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	/* Check for pending command request */
 	check_pending_hci_req(di->dev_id, eh->evt);
 
-	if (hci_test_bit(HCI_SECMGR, &di->flags))
-		return TRUE;
-
 	switch (eh->evt) {
 	case EVT_PIN_CODE_REQ:
 		pin_code_request(dev, &di->bdaddr, (bdaddr_t *) ptr);
