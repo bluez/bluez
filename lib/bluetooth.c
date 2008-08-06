@@ -43,6 +43,7 @@ void baswap(bdaddr_t *dst, const bdaddr_t *src)
 	register unsigned char *d = (unsigned char *) dst;
 	register const unsigned char *s = (const unsigned char *) src;
 	register int i;
+
 	for (i = 0; i < 6; i++)
 		d[i] = s[5-i];
 }
@@ -56,6 +57,7 @@ char *batostr(const bdaddr_t *ba)
 	sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
 		ba->b[0], ba->b[1], ba->b[2], 
 		ba->b[3], ba->b[4], ba->b[5]);
+
 	return str;
 }
 
@@ -68,12 +70,13 @@ bdaddr_t *strtoba(const char *str)
 	if (!ba)
 		return NULL;
 
-	for(i = 0; i < 6; i++) {
+	for (i = 0; i < 6; i++) {
 		ba[i] = (uint8_t) strtol(ptr, NULL, 16);
 		if (i != 5 && !(ptr = strchr(ptr,':')))
 			ptr = ":00:00:00:00:00";
 		ptr++;
 	}
+
 	return (bdaddr_t *) ba;
 }
 
@@ -98,7 +101,9 @@ int str2ba(const char *str, bdaddr_t *ba)
 			ptr = ":00:00:00:00:00";
 		ptr++;
 	}
+
 	baswap(ba, (bdaddr_t *) b);
+
 	return 0;
 }
 
@@ -107,6 +112,7 @@ int ba2oui(const bdaddr_t *ba, char *str)
 	uint8_t b[6];
 
 	baswap((bdaddr_t *) b, ba);
+
 	return sprintf(str, "%2.2X-%2.2X-%2.2X", b[0], b[1], b[2]);
 }
 
