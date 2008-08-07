@@ -172,6 +172,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct network_conn *nc = data;
 	struct bnep_control_rsp *rsp;
+	struct timeval timeo;
 	char pkt[BNEP_MTU];
 	gsize r;
 	int sk;
@@ -223,6 +224,11 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 
 	sk = g_io_channel_unix_get_fd(chan);
 
+	memset(&timeo, 0, sizeof(timeo));
+	timeo.tv_sec = 0;
+
+	setsockopt(sk, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
+
 	if (bnep_connadd(sk, BNEP_SVC_PANU, nc->dev)) {
 		error("%s could not be added", nc->dev);
 		goto failed;
@@ -265,6 +271,7 @@ static int bnep_connect(struct network_conn *nc)
 {
 	struct bnep_setup_conn_req *req;
 	struct __service_16 *s;
+	struct timeval timeo;
 	unsigned char pkt[BNEP_MTU];
 	GIOChannel *io;
 	int err = 0;
@@ -277,6 +284,11 @@ static int bnep_connect(struct network_conn *nc)
 	s = (void *) req->service;
 	s->dst = htons(nc->id);
 	s->src = htons(BNEP_SVC_PANU);
+
+	memset(&timeo, 0, sizeof(timeo));
+	timeo.tv_sec = 30;
+
+	setsockopt(nc->sk, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
 
 	io = g_io_channel_unix_new(nc->sk);
 	g_io_channel_set_close_on_unref(io, FALSE);
