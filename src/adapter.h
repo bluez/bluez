@@ -179,3 +179,5 @@ void adapter_set_discov_timeout(struct adapter *adapter, guint interval);
 void adapter_remove_discov_timeout(struct adapter *adapter);
 void adapter_set_scan_mode(struct adapter *adapter, uint8_t scan_mode);
 uint8_t adapter_get_scan_mode(struct adapter *adapter);
+void adapter_set_mode(struct adapter *adapter, uint8_t mode);
+uint8_t adapter_get_mode(struct adapter *adapter);

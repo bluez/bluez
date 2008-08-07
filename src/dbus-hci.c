@@ -271,21 +271,21 @@ static void adapter_mode_changed(struct adapter *adapter, uint8_t scan_mode)
 	switch (scan_mode) {
 	case SCAN_DISABLED:
 		mode = "off";
-		adapter->mode = MODE_OFF;
+		adapter_set_mode(adapter, MODE_OFF);
 		break;
 	case SCAN_PAGE:
 		mode = "connectable";
-		adapter->mode = MODE_CONNECTABLE;
+		adapter_set_mode(adapter, MODE_CONNECTABLE);
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
 
 		if (adapter->discov_timeout != 0)
 			adapter_set_discov_timeout(adapter, adapter->discov_timeout * 1000);
 
-		if (adapter->mode == MODE_LIMITED) {
+		if (adapter_get_mode(adapter) == MODE_LIMITED) {
 			mode = "limited";
 		} else {
-			adapter->mode = MODE_DISCOVERABLE;
+			adapter_set_mode(adapter, MODE_DISCOVERABLE);
 			mode = "discoverable";
 		}
 		break;

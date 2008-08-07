@@ -2709,3 +2709,16 @@ uint8_t adapter_get_scan_mode(struct adapter *adapter)
 {
 	return adapter->scan_mode;
 }
+
+void adapter_set_mode(struct adapter *adapter, uint8_t mode)
+{
+	if (!adapter)
+		return;
+
+	adapter->mode = mode;
+}
+
+uint8_t adapter_get_mode(struct adapter *adapter)
+{
+	return adapter->mode;
+}
