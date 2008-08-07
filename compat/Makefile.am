@@ -5,7 +5,7 @@ man_MANS =
 if HIDD
 bin_PROGRAMS += hidd
 
-hidd_SOURCES = hidd.c hidd.h sdp.c fakehid.c
+hidd_SOURCES = hidd.c hidd.h sdp.h sdp.c fakehid.c
 
 hidd_LDADD = $(top_builddir)/common/libhelper.a @BLUEZ_LIBS@ -lm
 
@@ -17,7 +17,7 @@ endif
 if PAND
 bin_PROGRAMS += pand
 
-pand_SOURCES = pand.c pand.h bnep.c sdp.c
+pand_SOURCES = pand.c pand.h bnep.c sdp.h sdp.c
 
 pand_LDADD = $(top_builddir)/common/libhelper.a @BLUEZ_LIBS@
 endif
@@ -29,7 +29,7 @@ endif
 if DUND
 bin_PROGRAMS += dund
 
-dund_SOURCES = dund.c dund.h lib.h sdp.c dun.c msdun.c
+dund_SOURCES = dund.c dund.h lib.h sdp.h sdp.c dun.c msdun.c
 
 dund_LDADD = $(top_builddir)/common/libhelper.a @BLUEZ_LIBS@
 endif
