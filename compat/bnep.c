@@ -257,6 +257,7 @@ int bnep_create_connection(int sk, uint16_t role, uint16_t svc, char *dev)
 	struct bnep_setup_conn_req *req;
 	struct bnep_control_rsp *rsp;
 	struct __service_16 *s;
+	struct timeval timeo;
 	unsigned char pkt[BNEP_MTU];
 	int r;
 
@@ -265,9 +266,15 @@ int bnep_create_connection(int sk, uint16_t role, uint16_t svc, char *dev)
 	req->type = BNEP_CONTROL;
 	req->ctrl = BNEP_SETUP_CONN_REQ;
 	req->uuid_size = 2;	/* 16bit UUID */
+
 	s = (void *) req->service;
 	s->dst = htons(svc);
 	s->src = htons(role);
+
+	memset(&timeo, 0, sizeof(timeo));
+	timeo.tv_sec = 30;
+
+	setsockopt(sk, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
 
 	if (send(sk, pkt, sizeof(*req) + sizeof(*s), 0) < 0)
 		return -1;
@@ -277,6 +284,11 @@ receive:
 	r = recv(sk, pkt, BNEP_MTU, 0);
 	if (r <= 0)
 		return -1;
+
+	memset(&timeo, 0, sizeof(timeo));
+	timeo.tv_sec = 0;
+
+	setsockopt(sk, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
 
 	errno = EPROTO;
 
