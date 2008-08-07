@@ -952,7 +952,7 @@ static int avdtp_write(struct bluetooth_data *data)
 	header->timestamp = htonl(a2dp->nsamples);
 	header->ssrc = htonl(1);
 
-        ret = send(data->stream.fd, a2dp->buffer, a2dp->count, MSG_DONTWAIT);
+	ret = send(data->stream.fd, a2dp->buffer, a2dp->count, MSG_DONTWAIT);
 	if (ret < 0) {
 		DBG("send returned %d errno %s.", ret, strerror(errno));
 		ret = -errno;
@@ -974,8 +974,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	struct bluetooth_data *data = io->private_data;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	snd_pcm_sframes_t ret = 0;
-	snd_pcm_uframes_t frames_to_read, frames_left = size;
-	int frame_size, encoded, written;
+	int frame_size, encoded, written, bytes_left;
 	uint8_t *buff;
 
 	DBG("areas->step=%u areas->first=%u offset=%lu size=%lu",
@@ -983,12 +982,19 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	DBG("hw_ptr=%lu appl_ptr=%lu diff=%lu", io->hw_ptr, io->appl_ptr,
 			io->appl_ptr - io->hw_ptr);
 
+	/* Calutate starting pointers */
+	frame_size = areas->step / 8;
+	bytes_left = size * frame_size;
+	buff = (uint8_t *) areas->addr +
+				(areas->first + areas->step * (offset)) / 8;
+
+	/* Check for underrun */
 	if (io->hw_ptr > io->appl_ptr) {
 		ret = bluetooth_playback_stop(io);
 		if (ret == 0)
 			ret = -EPIPE;
 		data->reset = 1;
-		goto done;
+		return ret;
 	}
 
 	/* Check if we should autostart */
@@ -1003,77 +1009,97 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 			if (io->appl_ptr >= threshold) {
 				ret = snd_pcm_start(io->pcm);
 				if (ret != 0)
-					goto done;
+					return ret;
 			}
 		}
 
 		snd_pcm_sw_params_free(swparams);
 	}
 
-	while (frames_left > 0) {
-		frame_size = areas->step / 8;
+	/* Check if we have any left over data from the last write */
+	if (data->count > 0 && (bytes_left - data->count) >= a2dp->codesize) {
+		int additional_bytes_needed = a2dp->codesize - data->count;
 
-		if ((data->count + frames_left * frame_size) <= a2dp->codesize)
-			frames_to_read = frames_left;
-		else
-			frames_to_read = (a2dp->codesize - data->count) / frame_size;
-
-		DBG("count=%d frames_to_read=%lu", data->count, frames_to_read);
-		DBG("a2dp.count=%d data.link_mtu=%d", a2dp->count, data->link_mtu);
-
-		/* FIXME: If state is not streaming then return */
-
-		/* Ready for more data */
-		buff = (uint8_t *) areas->addr +
-			(areas->first + areas->step * (offset + ret)) / 8;
 		memcpy(data->buffer + data->count, buff,
-				frame_size * frames_to_read);
-
-		/* Remember we have some frames in the pipe now */
-		data->count += frames_to_read * frame_size;
-		if (data->count != a2dp->codesize) {
-			ret = frames_to_read;
-			goto done;
-		}
+						additional_bytes_needed);
 
 		/* Enough data to encode (sbc wants 1k blocks) */
-		encoded = sbc_encode(&(a2dp->sbc), data->buffer, a2dp->codesize,
+		encoded = sbc_encode(&a2dp->sbc, data->buffer, a2dp->codesize,
 					a2dp->buffer + a2dp->count,
 					sizeof(a2dp->buffer) - a2dp->count,
-					&written);
+								&written);
 		if (encoded <= 0) {
 			DBG("Encoding error %d", encoded);
 			goto done;
 		}
 
-		data->count -= encoded;
+		/* Increment a2dp buffers */
 		a2dp->count += written;
 		a2dp->frame_count++;
 		a2dp->samples += encoded / frame_size;
 		a2dp->nsamples += encoded / frame_size;
-
-		DBG("encoded=%d  written=%d count=%d", encoded,
-				written, a2dp->count);
 
 		/* No space left for another frame then send */
 		if (a2dp->count + written >= data->link_mtu) {
 			avdtp_write(data);
 			DBG("sending packet %d, count %d, link_mtu %u",
 					a2dp->seq_num, a2dp->count,
-					data->link_mtu);
+							data->link_mtu);
 		}
 
-		ret += frames_to_read;
-		frames_left -= frames_to_read;
+		/* Increment up buff pointer to take into account
+		 * the data processed */
+		buff += additional_bytes_needed;
+		bytes_left -= additional_bytes_needed;
+
+		/* Since data has been process mark it as zero */
+		data->count = 0;
 	}
 
-	/* note: some ALSA apps will get confused otherwise */
-	if (ret > size)
-		ret = size;
+
+	/* Process this buffer in full chunks */
+	while (bytes_left >= a2dp->codesize) {
+		/* Enough data to encode (sbc wants 1k blocks) */
+		encoded = sbc_encode(&a2dp->sbc, buff, a2dp->codesize,
+					a2dp->buffer + a2dp->count,
+					sizeof(a2dp->buffer) - a2dp->count,
+								&written);
+		if (encoded <= 0) {
+			DBG("Encoding error %d", encoded);
+			goto done;
+		}
+
+		/* Increment up buff pointer to take into account
+		 * the data processed */
+		buff += a2dp->codesize;
+		bytes_left -= a2dp->codesize;
+
+		/* Increment a2dp buffers */
+		a2dp->count += written;
+		a2dp->frame_count++;
+		a2dp->samples += encoded / frame_size;
+		a2dp->nsamples += encoded / frame_size;
+
+		/* No space left for another frame then send */
+		if (a2dp->count + written >= data->link_mtu) {
+			avdtp_write(data);
+			printf("sending packet %d, count %d, link_mtu %u",
+						a2dp->seq_num, a2dp->count,
+							data->link_mtu);
+		}
+	}
+
+	/* Copy the extra to our temp buffer for the next write */
+	if (bytes_left > 0) {
+		memcpy(data->buffer + data->count, buff, bytes_left);
+		data->count += bytes_left;
+		bytes_left = 0;
+	}
 
 done:
-	DBG("returning %ld", ret);
-	return ret;
+	DBG("returning %ld", size - bytes_left / frame_size);
+
+	return size - bytes_left / frame_size;
 }
 
 static int bluetooth_playback_delay(snd_pcm_ioplug_t *io,
