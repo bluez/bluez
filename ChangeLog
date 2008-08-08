@@ -1,2 +1,7 @@
+ver 4.1:
+	Add 30 seconds timeout to BNEP connection setup phase.
+	Avoid memory copies in A2DP write routine for ALSA.
+	Make sure to include compat/sdp.h in the distribution.
+
 ver 4.0:
 	Initial public release.
