@@ -452,7 +452,7 @@ int manager_register_adapter(int id)
 		struct btd_adapter_driver *driver = l->data;
 
 		if (driver->probe)
-			driver->probe(driver, (struct btd_adapter *) adapter);
+			driver->probe(adapter);
 	}
 
 	manager_add_adapter(adapter);
@@ -478,7 +478,7 @@ int manager_unregister_adapter(int id)
 		struct btd_adapter_driver *driver = l->data;
 
 		if (driver->remove)
-			driver->remove(driver, (struct btd_adapter *) adapter);
+			driver->remove(adapter);
 	}
 
 	adapter_stop(adapter);

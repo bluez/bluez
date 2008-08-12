@@ -37,7 +37,8 @@
 #include <gdbus.h>
 
 #include "plugin.h"
-#include "server.h"
+#include "adapter.h"
+#include "driver.h"
 #include "logging.h"
 
 static gboolean session_event(GIOChannel *chan,
@@ -123,24 +124,28 @@ static GIOChannel *setup_rfcomm(uint8_t channel)
 
 static GIOChannel *chan = NULL;
 
-static int echo_probe(const char *adapter)
+static int echo_probe(struct adapter *adapter)
 {
-	debug("echo probe adapter %s", adapter);
+	const char *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
 
 	chan = setup_rfcomm(23);
 
 	return 0;
 }
 
-static void echo_remove(const char *adapter)
+static void echo_remove(struct adapter *adapter)
 {
-	debug("echo remove adapter %s", adapter);
+	const char *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
 
 	g_io_channel_unref(chan);
 }
 
-static struct bt_server echo_server = {
-	.uuid	= "00001101-0000-1000-8000-00805F9B34FB",
+static struct btd_adapter_driver echo_server = {
+	.name	= "echo-server",
 	.probe	= echo_probe,
 	.remove	= echo_remove,
 };
@@ -149,14 +154,14 @@ static int echo_init(void)
 {
 	debug("Setup echo plugin");
 
-	return bt_register_server(&echo_server);
+	return btd_register_adapter_driver(&echo_server);
 }
 
 static void echo_exit(void)
 {
 	debug("Cleanup echo plugin");
 
-	bt_unregister_server(&echo_server);
+	btd_unregister_adapter_driver(&echo_server);
 }
 
 BLUETOOTH_PLUGIN_DEFINE("echo", echo_init, echo_exit)

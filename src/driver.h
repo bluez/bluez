@@ -39,14 +39,12 @@ int btd_register_device_driver(struct btd_device_driver *driver);
 void btd_unregister_device_driver(struct btd_device_driver *driver);
 GSList *btd_get_device_drivers(void);
 
-struct btd_adapter;
+struct adapter;
 
 struct btd_adapter_driver {
 	const char *name;
-	int (*probe) (struct btd_adapter_driver *driver,
-			struct btd_adapter *adapter);
-	void (*remove) (struct btd_adapter_driver *driver,
-			struct btd_adapter *adapter);
+	int (*probe) (struct adapter *adapter);
+	void (*remove) (struct adapter *adapter);
 };
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver);

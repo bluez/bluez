@@ -46,7 +46,6 @@
 #include <gdbus.h>
 
 #include "hcid.h"
-#include "server.h"
 #include "dbus-common.h"
 #include "error.h"
 #include "manager.h"
