@@ -55,7 +55,9 @@
 #include "sdpd.h"
 #include "glib-helper.h"
 
-#define NETWORK_SERVER_INTERFACE "org.bluez.network.Server"
+#define NETWORK_PEER_INTERFACE "org.bluez.network.Peer"
+#define NETWORK_HUB_INTERFACE "org.bluez.network.Hub"
+#define NETWORK_ROUTER_INTERFACE "org.bluez.network.Router"
 #define SETUP_TIMEOUT		1000
 #define MAX_SETUP_ATTEMPTS	3
 
@@ -77,32 +79,58 @@ struct timeout {
 	guint	watch;		/* BNEP socket watch */
 };
 
+struct network_adapter {
+	bdaddr_t	src;		/* Bluetooth Local Address */
+	char		*path;		/* D-Bus path */
+	GIOChannel	*io;		/* Bnep socket */
+	struct timeout	*to;		/* Socket timeout */
+	GSList		*servers;	/* Server register to adapter */
+};
+
 /* Main server structure */
 struct network_server {
-	bdaddr_t	src;		/* Bluetooth Local Address */
-	char		*iface;		/* Routing interface */
+	char		*iface;		/* DBus interface */
 	char		*name;		/* Server service name */
 	char		*range;		/* IP Address range */
-	char		*path;		/* D-Bus path */
 	gboolean	enable;		/* Enable flag */
 	uint32_t	record_id;	/* Service record id */
 	uint16_t	id;		/* Service class identifier */
 	GSList		*clients;	/* Active connections */
+	struct network_adapter *na;	/* Adapter reference */
 };
 
-static GIOChannel *bnep_io = NULL;
 static DBusConnection *connection = NULL;
 static struct setup_session *setup = NULL;
-static GSList *servers = NULL;
+static GSList *adapters = NULL;
 static const char *prefix = NULL;
 static gboolean security = TRUE;
 
-gint find_server(gconstpointer a, gconstpointer b)
+static struct network_adapter *find_adapter(GSList *list, const char *path)
 {
-	const struct network_server *ns = a;
-	const char *path = b;
+	GSList *l;
 
-	return strcmp(ns->path, path);
+	for (l = list; l; l = l->next) {
+		struct network_adapter *na = l->data;
+
+		if (g_str_equal(na->path, path))
+			return na;
+	}
+
+	return NULL;
+}
+
+static struct network_server *find_server(GSList *list, uint16_t id)
+{
+	GSList *l;
+
+	for (l = list; l; l = l->next) {
+		struct network_server *ns = l->data;
+
+		if (ns->id == id)
+			return ns;
+	}
+
+	return NULL;
 }
 
 static struct setup_session *setup_session_new(gchar *address,
@@ -125,39 +153,6 @@ static void setup_session_free(struct setup_session *setup)
 	g_source_remove(setup->watch);
 	g_free(setup->address);
 	g_free(setup);
-}
-
-static struct network_server *server_find(bdaddr_t *src, uint16_t role)
-{
-	struct network_server *ns;
-	GSList *l;
-
-	for (l = servers; l; l = l->next) {
-		ns = l->data;
-		if (bacmp(&ns->src, src) != 0)
-			continue;
-		if (ns->id == role)
-			return ns;
-	}
-
-	return NULL;
-}
-
-static int store_property(bdaddr_t *src, uint16_t id,
-			const char *key, const char *value)
-{
-	char filename[PATH_MAX + 1];
-	char addr[18];
-
-	ba2str(src, addr);
-	if (id == BNEP_SVC_NAP)
-		create_name(filename, PATH_MAX, STORAGEDIR, addr, "nap");
-	else if (id == BNEP_SVC_GN)
-		create_name(filename, PATH_MAX, STORAGEDIR, addr, "gn");
-	else if (id == BNEP_SVC_PANU)
-		create_name(filename, PATH_MAX, STORAGEDIR, addr, "panu");
-
-	return textfile_put(filename, key, value);
 }
 
 static void add_lang_attr(sdp_record_t *r)
@@ -351,6 +346,7 @@ static int server_connadd(struct network_server *ns, int nsk,
 static void req_auth_cb(DBusError *derr, void *user_data)
 {
 	struct network_server *ns = user_data;
+	struct network_adapter *na = ns->na;
 	uint16_t val;
 
 	if (!setup) {
@@ -363,7 +359,7 @@ static void req_auth_cb(DBusError *derr, void *user_data)
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			bdaddr_t dst;
 			str2ba(setup->address, &dst);
-			service_cancel_auth(&ns->src, &dst);
+			service_cancel_auth(&na->src, &dst);
 		}
 		val = BNEP_CONN_NOT_ALLOWED;
 		goto done;
@@ -383,14 +379,15 @@ done:
 
 static int authorize_connection(struct network_server *ns, const char *address)
 {
+	struct network_adapter *na;
 	const char *uuid;
 	bdaddr_t dst;
 	int ret_val;
 
-	uuid =  bnep_uuid(ns->id);
+	uuid = bnep_uuid(ns->id);
 	str2ba(address, &dst);
 
-	ret_val = service_req_auth(&ns->src, &dst, uuid, req_auth_cb, ns);
+	ret_val = service_req_auth(&na->src, &dst, uuid, req_auth_cb, ns);
 
 	return ret_val;
 }
@@ -444,7 +441,8 @@ static uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req,
 static gboolean bnep_setup(GIOChannel *chan,
 			GIOCondition cond, gpointer user_data)
 {
-	struct timeout *to = user_data;
+	struct network_adapter *na = user_data;
+	struct timeout *to = na->to;
 	struct network_server *ns;
 	uint8_t packet[BNEP_MTU];
 	struct bnep_setup_conn_req *req = (void *) packet;
@@ -489,7 +487,7 @@ static gboolean bnep_setup(GIOChannel *chan,
 	}
 
 	ba2str(&sa.l2_bdaddr, address);
-	ns = server_find(&sa.l2_bdaddr, dst_role);
+	ns = find_server(na->servers, dst_role);
 	if (!ns || ns->enable == FALSE) {
 		error("Server unavailable: %s (0x%x)", address, dst_role);
 		rsp = BNEP_CONN_NOT_ALLOWED;
@@ -553,7 +551,8 @@ static gboolean timeout_cb(void *user_data)
 static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
 				const bdaddr_t *dst, gpointer user_data)
 {
-	struct timeout *to;
+	struct network_adapter *na;
+	struct timeout *to = na->to;
 
 	if (err < 0) {
 		error("accept(): %s(%d)", strerror(errno), errno);
@@ -571,7 +570,7 @@ static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
 	to->id = g_timeout_add(SETUP_TIMEOUT, timeout_cb, to);
 	to->watch = g_io_add_watch_full(chan, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				bnep_setup, to, setup_destroy);
+				bnep_setup, na, setup_destroy);
 	g_io_channel_unref(chan);
 
 	return;
@@ -580,19 +579,9 @@ static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
 int server_init(DBusConnection *conn, const char *iface_prefix,
 		gboolean secure)
 {
-	int lm;
-
-	lm = secure ? L2CAP_LM_SECURE : 0;
-
 	security = secure;
 	connection = dbus_connection_ref(conn);
 	prefix = iface_prefix;
-
-	bnep_io = bt_l2cap_listen(BDADDR_ANY, BNEP_PSM, BNEP_MTU, lm,
-			connect_event, NULL);
-	if (!bnep_io)
-		return -1;
-	g_io_channel_set_close_on_unref(bnep_io, FALSE);
 
 	if (bridge_create(BNEP_SVC_GN) < 0)
 		error("Can't create GN bridge");
@@ -602,12 +591,6 @@ int server_init(DBusConnection *conn, const char *iface_prefix,
 
 void server_exit()
 {
-	if (bnep_io != NULL) {
-		g_io_channel_close(bnep_io);
-		g_io_channel_unref(bnep_io);
-		bnep_io = NULL;
-	}
-
 	if (bridge_remove(BNEP_SVC_GN) < 0)
 		error("Can't remove GN bridge");
 
@@ -617,6 +600,7 @@ void server_exit()
 
 static uint32_t register_server_record(struct network_server *ns)
 {
+	struct network_adapter *na = ns->na;
 	sdp_record_t *record;
 
 	record = server_record_new(ns->name, ns->id);
@@ -625,7 +609,7 @@ static uint32_t register_server_record(struct network_server *ns)
 		return 0;
 	}
 
-	if (add_record_to_server(&ns->src, record) < 0) {
+	if (add_record_to_server(&na->src, record) < 0) {
 		error("Failed to register service record");
 		sdp_record_free(record);
 		return 0;
@@ -636,24 +620,6 @@ static uint32_t register_server_record(struct network_server *ns)
 	return record->handle;
 }
 
-static DBusMessage *get_uuid(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct network_server *ns = data;
-	DBusMessage *reply;
-	const char *uuid;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	uuid = bnep_uuid(ns->id);
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &uuid,
-			DBUS_TYPE_INVALID);
-
-	return reply;
-}
 
 static inline DBusMessage *failed(DBusMessage *msg, const char *description)
 {
@@ -679,17 +645,6 @@ static DBusMessage *enable(DBusConnection *conn,
 						".AlreadyExist",
 						"Server already enabled");
 
-	if (bacmp(&ns->src, BDADDR_ANY) == 0) {
-		int dev_id;
-
-		dev_id = hci_get_route(&ns->src);
-		if ((dev_id < 0) || (hci_devba(dev_id, &ns->src) < 0))
-			return failed(msg, "Adapter not available");
-
-		/* Store the server info */
-		server_store(ns->path);
-	}
-
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return NULL;
@@ -702,11 +657,6 @@ static DBusMessage *enable(DBusConnection *conn,
 	}
 
 	ns->enable = TRUE;
-
-	store_property(&ns->src, ns->id, "enabled", "1");
-
-	g_dbus_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
-					"Enabled", DBUS_TYPE_INVALID);
 
 	return reply;
 }
@@ -743,44 +693,17 @@ static DBusMessage *disable(DBusConnection *conn,
 
 	g_slist_foreach(ns->clients, (GFunc) kill_connection, NULL);
 
-	store_property(&ns->src, ns->id, "enabled", "0");
-
-	g_dbus_emit_signal(conn, ns->path, NETWORK_SERVER_INTERFACE,
-					"Disabled", DBUS_TYPE_INVALID);
-
 	return reply;
 }
 
-static DBusMessage *is_enabled(DBusConnection *conn, DBusMessage *msg,
-				void *data)
+static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
+				const char *name, void *data)
 {
 	struct network_server *ns = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &ns->enable,
-					DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *set_name(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct network_server *ns = data;
-	DBusMessage *reply;
-	const char *name;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &name,
-				DBUS_TYPE_INVALID))
 		return NULL;
 
 	if (!name || (strlen(name) == 0))
@@ -802,59 +725,10 @@ static DBusMessage *set_name(DBusConnection *conn,
 		ns->record_id = handle;
 	}
 
-	store_property(&ns->src, ns->id, "name", ns->name);
-
 	return reply;
 }
 
-static DBusMessage *get_name(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct network_server *ns = data;
-	char name[] = "";
-	const char *pname = (ns->name ? ns->name : name);
-	DBusMessage *reply;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &pname,
-			DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *set_address_range(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	return NULL;
-}
-
-static DBusMessage *set_routing(DBusConnection *conn, DBusMessage *msg,
-					void *data)
-{
-	struct network_server *ns = data;
-	const char *iface;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &iface,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	/* FIXME: Check if the interface is valid/UP */
-	if (!iface || (strlen(iface) == 0))
-		return invalid_arguments(msg, "Invalid interface");
-
-	if (ns->iface)
-		g_free(ns->iface);
-	ns->iface = g_strdup(iface);
-
-	return dbus_message_new_method_return(msg);
-}
-
-static DBusMessage *get_info(DBusConnection *conn,
+static DBusMessage *get_properties(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct network_server *ns = data;
@@ -874,16 +748,72 @@ static DBusMessage *get_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	dbus_message_iter_append_dict_entry(&dict, "name",
+	dbus_message_iter_append_dict_entry(&dict, "Name",
 			DBUS_TYPE_STRING, &ns->name);
 
 	uuid = bnep_uuid(ns->id);
-	dbus_message_iter_append_dict_entry(&dict, "uuid",
+	dbus_message_iter_append_dict_entry(&dict, "Uuid",
 			DBUS_TYPE_STRING, &uuid);
+
+	dbus_message_iter_append_dict_entry(&dict, "Enabled",
+			DBUS_TYPE_BOOLEAN, &ns->enable);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
 	return reply;
+}
+
+static DBusMessage *set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter;
+	DBusMessageIter sub;
+	const char *property;
+
+	if (!dbus_message_iter_init(msg, &iter))
+		return invalid_arguments(msg, "Not a dict");
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return invalid_arguments(msg, "Key not a string");
+
+	dbus_message_iter_get_basic(&iter, &property);
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
+		return invalid_arguments(msg, "Value not a variant");
+	dbus_message_iter_recurse(&iter, &sub);
+
+	if (g_str_equal("Name", property)) {
+		const char *name;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
+			return invalid_arguments(msg, "Value not string");
+		dbus_message_iter_get_basic(&sub, &name);
+
+		return set_name(conn, msg, name, data);
+	} else if (g_str_equal("Enabled", property)) {
+		gboolean enabled;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
+			return invalid_arguments(msg, "Value not boolean");
+		dbus_message_iter_get_basic(&sub, &enabled);
+
+		return enabled ? enable(conn, msg, data) :
+				disable(conn, msg, data);
+	}
+
+	return invalid_arguments(msg, "Property does not exist");
+}
+
+static void adapter_free(struct network_adapter *na)
+{
+	if (na->io != NULL) {
+		g_io_channel_close(na->io);
+		g_io_channel_unref(na->io);
+	}
+
+	g_free(na->path);
+	g_free(na);
 }
 
 static void server_free(struct network_server *ns)
@@ -904,9 +834,6 @@ static void server_free(struct network_server *ns)
 	if (ns->range)
 		g_free(ns->range);
 
-	if (ns->path)
-		g_free(ns->path);
-
 	if (ns->clients) {
 		g_slist_foreach(ns->clients, (GFunc) g_free, NULL);
 		g_slist_free(ns->clients);
@@ -915,183 +842,125 @@ static void server_free(struct network_server *ns)
 	g_free(ns);
 }
 
-static void server_unregister(void *data)
+static void path_unregister(void *data)
 {
 	struct network_server *ns = data;
+	struct network_adapter *na = ns->na;
 
-	info("Unregistered server path:%s", ns->path);
-
-	servers = g_slist_remove(servers, ns);
+	na->servers = g_slist_remove(na->servers, ns);
 	server_free(ns);
+
+	info("Unregistered interface %s on path %s",
+		ns->iface, na->path);
+
+	if (na->servers)
+		return;
+
+	adapter_free(na);
 }
 
 static GDBusMethodTable server_methods[] = {
-	{ "GetUUID",		"",	"s",	get_uuid },
-	{ "Enable",		"",	"",	enable },
-	{ "Disable",		"",	"",	disable },
-	{ "IsEnabled",		"",	"b",	is_enabled },
-	{ "SetName",		"s",	"",	set_name },
-	{ "GetName",		"",	"s",	get_name },
-	{ "SetAddressRange",	"ss",	"",	set_address_range },
-	{ "SetRouting",		"s",	"",	set_routing },
-	{ "GetInfo",		"",	"a{sv}",get_info },
+	{ "SetProperty",	"sv",	"",	set_property },
+	{ "GetProperties",	"",	"a{sv}",get_properties },
 	{ }
 };
 
 static GDBusSignalTable server_signals[] = {
-	{ "Enabled",	""	},
-	{ "Disabled",	""	},
+	{ "PropertyChanged",		"sv"		},
 	{ }
 };
 
+static struct network_adapter *create_adapter(const char *path, bdaddr_t *src)
+{
+	struct network_adapter *na;
+	int lm;
+
+	lm = security ? L2CAP_LM_SECURE : 0;
+
+	na = g_new0(struct network_adapter, 1);
+	na->path = g_strdup(path);
+	bacpy(&na->src, src);
+
+	na->io = bt_l2cap_listen(src, BNEP_PSM, BNEP_MTU, lm,
+			connect_event, na);
+	if (!na->io) {
+		adapter_free(na);
+		return NULL;
+	}
+
+	g_io_channel_set_close_on_unref(na->io, FALSE);
+
+	return na;
+}
+
 int server_register(const char *path, bdaddr_t *src, uint16_t id)
 {
+	struct network_adapter *na;
 	struct network_server *ns;
 
-	if (!path)
-		return -EINVAL;
+	na = find_adapter(adapters, path);
+	if (!na) {
+		na = create_adapter(path, src);
+		if (!na)
+			return -EINVAL;
+		adapters = g_slist_append(adapters, na);
+	}
+
+	ns = find_server(na->servers, id);
+	if (ns)
+		return 0;
 
 	ns = g_new0(struct network_server, 1);
 
-	if (!g_dbus_register_interface(connection, path,
-					NETWORK_SERVER_INTERFACE,
-					server_methods, server_signals, NULL,
-					ns, server_unregister)) {
-		error("D-Bus failed to register %s interface",
-				NETWORK_SERVER_INTERFACE);
-		server_free(ns);
-		return -1;
-	}
-
-	/* Setting a default name */
-	if (id == BNEP_SVC_NAP)
-		ns->name = g_strdup("BlueZ NAP service");
-	else if (id == BNEP_SVC_GN)
-		ns->name = g_strdup("BlueZ GN service");
-	else
+	switch (id) {
+	case BNEP_SVC_PANU:
+		ns->iface = g_strdup(NETWORK_PEER_INTERFACE);
 		ns->name = g_strdup("BlueZ PANU service");
+		break;
+	case BNEP_SVC_GN:
+		ns->iface = g_strdup(NETWORK_HUB_INTERFACE);
+		ns->name = g_strdup("BlueZ GN service");
+		break;
+	case BNEP_SVC_NAP:
+		ns->iface = g_strdup(NETWORK_ROUTER_INTERFACE);
+		ns->name = g_strdup("BlueZ NAP service");
+		break;
+	}
 
-	ns->path = g_strdup(path);
+	if (!g_dbus_register_interface(connection, path, ns->iface,
+					server_methods, server_signals, NULL,
+					ns, path_unregister)) {
+		error("D-Bus failed to register %s interface",
+				ns->iface);
+		server_free(ns);
+		return -1;
+	}
+
 	ns->id = id;
-	bacpy(&ns->src, src);
+	ns->na = na;
+	ns->record_id = register_server_record(ns);
+	ns->enable = TRUE;
+	na->servers = g_slist_append(na->servers, ns);
 
-	servers = g_slist_append(servers, ns);
-
-	info("Registered server path:%s", path);
+	info("Registered interface %s on path %s", ns->iface, path);
 
 	return 0;
 }
 
-int server_register_from_file(const char *path, const bdaddr_t *src,
-		uint16_t id, const char *filename)
+int server_unregister(const char *path, uint16_t id)
 {
+	struct network_adapter *na;
 	struct network_server *ns;
-	char *str;
 
-	if (!path)
+	na = find_adapter(adapters, path);
+	if (!na)
 		return -EINVAL;
 
-	ns = g_new0(struct network_server, 1);
+	ns = find_server(na->servers, id);
+	if (!ns)
+		return -EINVAL;
 
-	bacpy(&ns->src, src);
-	ns->path = g_strdup(path);
-	ns->id = id;
-	ns->name = textfile_get(filename, "name");
-	if (!ns->name) {
-		/* Name is mandatory */
-		server_free(ns);
-		return -1;
-	}
-
-	ns->range = textfile_get(filename, "address_range");
-	ns->iface = textfile_get(filename, "routing");
-
-	str = textfile_get(filename, "enabled");
-	if (str) {
-		if (strcmp("1", str) == 0) {
-			ns->record_id = register_server_record(ns);
-			ns->enable = TRUE;
-		}
-		g_free(str);
-	}
-
-	if (!g_dbus_register_interface(connection, path,
-					NETWORK_SERVER_INTERFACE,
-					server_methods, server_signals, NULL,
-					ns, server_unregister)) {
-		error("D-Bus failed to register %s interface",
-				NETWORK_SERVER_INTERFACE);
-		server_free(ns);
-		return -1;
-	}
-
-	servers = g_slist_append(servers, ns);
-
-	info("Registered server path:%s", path);
+	g_dbus_unregister_interface(connection, path, ns->iface);
 
 	return 0;
-}
-
-int server_store(const char *path)
-{
-	struct network_server *ns;
-	char filename[PATH_MAX + 1];
-	char addr[18];
-	GSList *l;
-
-	l = g_slist_find_custom(servers, path, find_server);
-	if (!l) {
-		error("Unable to salve %s on storage", path);
-		return -ENOENT;
-	}
-
-	ns = l->data;
-	ba2str(&ns->src, addr);
-	if (ns->id == BNEP_SVC_NAP)
-		create_name(filename, PATH_MAX, STORAGEDIR, addr, "nap");
-	else if (ns->id == BNEP_SVC_GN)
-		create_name(filename, PATH_MAX, STORAGEDIR, addr, "gn");
-	else
-		create_name(filename, PATH_MAX, STORAGEDIR, addr, "panu");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	textfile_put(filename, "name", ns->name);
-
-	if (ns->iface)
-		textfile_put(filename, "routing", ns->iface);
-
-	if (ns->range)
-		textfile_put(filename, "range", ns->range);
-
-	textfile_put(filename, "enabled", ns->enable ? "1": "0");
-
-	return 0;
-}
-
-int server_find_data(const char *path, const char *pattern)
-{
-	struct network_server *ns;
-	const char *uuid;
-	GSList *l;
-
-	l = g_slist_find_custom(servers, path, find_server);
-	if (!l)
-		return -1;
-
-	ns = l->data;
-	if (ns->name && strcasecmp(pattern, ns->name) == 0)
-		return 0;
-
-	if (ns->iface && strcasecmp(pattern, ns->iface) == 0)
-		return 0;
-
-	uuid = bnep_name(ns->id);
-	if (uuid && strcasecmp(pattern, uuid) == 0)
-		return 0;
-
-	if (bnep_service_id(pattern) == ns->id)
-		return 0;
-
-	return -1;
 }

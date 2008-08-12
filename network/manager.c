@@ -57,29 +57,11 @@
 
 static struct network_conf *conf = NULL;/* Network service configuration */
 
+static struct btd_adapter_driver network_panu_server_driver;
+static struct btd_adapter_driver network_gn_server_driver;
+static struct btd_adapter_driver network_nap_server_driver;
+
 static DBusConnection *connection = NULL;
-
-static void register_server(uint16_t id)
-{
-	char path[MAX_PATH_LENGTH];
-	bdaddr_t src;
-	int dev_id;
-
-	if (!conf->server_enabled)
-		return;
-
-	snprintf(path, MAX_PATH_LENGTH, NETWORK_PATH "/%s", bnep_name(id));
-
-	bacpy(&src, BDADDR_ANY);
-	dev_id = hci_get_route(&src);
-	if (dev_id < 0 || hci_devba(dev_id, &src))
-		return;
-
-	if (server_register(path, &src, id) < 0)
-		return;
-
-	server_store(path);
-}
 
 static int network_probe(struct btd_device_driver *driver,
 			struct btd_device *device, GSList *records)
@@ -113,6 +95,62 @@ static void network_remove(struct btd_device_driver *driver,
 	connection_unregister(path, id);
 }
 
+static int network_server_probe(struct adapter *adapter, uint16_t id)
+{
+	const gchar *path = adapter_get_path(adapter);
+	const char *source;
+	bdaddr_t src;
+
+	DBG("path %s", path);
+
+	if (!conf->server_enabled)
+		return 0;
+
+	source = adapter_get_address(adapter);
+	str2ba(source, &src);
+
+	return server_register(path, &src, id);
+}
+
+static void network_server_remove(struct adapter *adapter, uint16_t id)
+{
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	server_unregister(path, id);
+}
+
+static int network_panu_server_probe(struct adapter *adapter)
+{
+	return network_server_probe(adapter, BNEP_SVC_PANU);
+}
+
+static int network_gn_server_probe(struct adapter *adapter)
+{
+	return network_server_probe(adapter, BNEP_SVC_GN);
+}
+
+static int network_nap_server_probe(struct adapter *adapter)
+{
+	return network_server_probe(adapter, BNEP_SVC_NAP);
+}
+
+static void network_panu_server_remove(struct adapter *adapter)
+{
+	network_server_remove(adapter, BNEP_SVC_PANU);
+}
+
+static void network_gn_server_remove(struct adapter *adapter)
+{
+	network_server_remove(adapter, BNEP_SVC_GN);
+}
+
+static void network_nap_server_remove(struct adapter *adapter)
+{
+	network_server_remove(adapter, BNEP_SVC_NAP);
+}
+
 static struct btd_device_driver network_panu_driver = {
 	.name	= "network-panu",
 	.uuids	= BTD_UUIDS(PANU_UUID),
@@ -132,6 +170,24 @@ static struct btd_device_driver network_nap_driver = {
 	.uuids	= BTD_UUIDS(NAP_UUID),
 	.probe	= network_probe,
 	.remove	= network_remove,
+};
+
+static struct btd_adapter_driver network_panu_server_driver = {
+	.name	= "network-panu-server",
+	.probe	= network_panu_server_probe,
+	.remove	= network_panu_server_remove,
+};
+
+static struct btd_adapter_driver network_gn_server_driver = {
+	.name	= "network-gn-server",
+	.probe	= network_gn_server_probe,
+	.remove	= network_gn_server_remove,
+};
+
+static struct btd_adapter_driver network_nap_server_driver = {
+	.name	= "network-nap-server",
+	.probe	= network_nap_server_probe,
+	.remove	= network_nap_server_remove,
 };
 
 int network_manager_init(DBusConnection *conn, struct network_conf *service_conf)
@@ -159,9 +215,9 @@ int network_manager_init(DBusConnection *conn, struct network_conf *service_conf
 
 	/* Register PANU, GN and NAP servers if they don't exist */
 	/* FIXME: server should be registered as adapter driver */
-	register_server(BNEP_SVC_PANU);
-	register_server(BNEP_SVC_GN);
-	register_server(BNEP_SVC_NAP);
+	btd_register_adapter_driver(&network_panu_server_driver);
+	btd_register_adapter_driver(&network_gn_server_driver);
+	btd_register_adapter_driver(&network_nap_server_driver);
 
 	if (connection_init(conn, conf->iface_prefix) < 0)
 		return -1;
