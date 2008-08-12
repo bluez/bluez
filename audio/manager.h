@@ -39,7 +39,7 @@ typedef void (*create_dev_cb_t) (struct audio_device *dev, void *user_data);
 int audio_manager_init(DBusConnection *conn, GKeyFile *config);
 void audio_manager_exit(void);
 
-gboolean server_is_enabled(uint16_t svc);
+gboolean server_is_enabled(bdaddr_t *src, uint16_t svc);
 
 struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interface,
 					gboolean connected);

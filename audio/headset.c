@@ -709,7 +709,8 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	hs->rfcomm = chan;
 	p->io = NULL;
 
-	if (server_is_enabled(HANDSFREE_SVCLASS_ID) && hs->hfp_handle != 0)
+	if (server_is_enabled(&dev->src, HANDSFREE_SVCLASS_ID) &&
+			hs->hfp_handle != 0)
 		hs->hfp_active = TRUE;
 	else
 		hs->hfp_active = FALSE;
@@ -1519,7 +1520,7 @@ struct headset *headset_init(struct audio_device *dev, sdp_record_t *record,
 	hs->rfcomm_ch = -1;
 	hs->sp_gain = -1;
 	hs->mic_gain = -1;
-	hs->search_hfp = server_is_enabled(HANDSFREE_SVCLASS_ID);
+	hs->search_hfp = server_is_enabled(&dev->src, HANDSFREE_SVCLASS_ID);
 	hs->hfp_active = FALSE;
 	hs->cli_active = FALSE;
 	hs->ph_number = NULL;

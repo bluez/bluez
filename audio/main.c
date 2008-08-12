@@ -78,9 +78,6 @@ static int audio_init(void)
 		return -EIO;
 	}
 
-	if (config)
-		g_key_file_free(config);
-
 	return 0;
 }
 

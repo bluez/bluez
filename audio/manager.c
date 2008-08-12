@@ -85,32 +85,21 @@ typedef enum {
 		GET_RECORDS
 } audio_sdp_state_t;
 
-struct audio_sdp_data {
-	struct audio_device *device;
-
-	DBusMessage *msg;	/* Method call or NULL */
-
-	GSList *records;	/* sdp_record_t * */
-
-	audio_sdp_state_t state;
-
-	create_dev_cb_t cb;
-	void *cb_data;
+struct audio_adapter {
+	bdaddr_t src;
+	char	*path;
+	uint32_t hsp_ag_record_id;
+	uint32_t hfp_ag_record_id;
+	uint32_t hsp_hs_record_id;
+	GIOChannel *hsp_ag_server;
+	GIOChannel *hfp_ag_server;
+	GIOChannel *hsp_hs_server;
 };
 
 static DBusConnection *connection = NULL;
-
+static GKeyFile *config = NULL;
+static GSList *adapters = NULL;
 static GSList *devices = NULL;
-
-static uint32_t hsp_ag_record_id = 0;
-static uint32_t hfp_ag_record_id = 0;
-
-static uint32_t hsp_hs_record_id = 0;
-
-static GIOChannel *hsp_ag_server = NULL;
-static GIOChannel *hfp_ag_server = NULL;
-
-static GIOChannel *hsp_hs_server = NULL;
 
 static struct enabled_interfaces enabled = {
 	.headset	= TRUE,
@@ -119,6 +108,35 @@ static struct enabled_interfaces enabled = {
 	.source		= FALSE,
 	.control	= TRUE,
 };
+
+static struct audio_adapter *find_adapter(GSList *list, const char *path)
+{
+	GSList *l;
+
+	for (l = list; l; l = l->next) {
+		struct audio_adapter *adapter = l->data;
+
+		if (g_str_equal(adapter->path, path))
+			return adapter;
+	}
+
+	return NULL;
+}
+
+static struct audio_adapter *find_adapter_by_address(GSList *list,
+						const bdaddr_t *src)
+{
+	GSList *l;
+
+	for (l = list; l; l = l->next) {
+		struct audio_adapter *adapter = l->data;
+
+		if (bacmp(&adapter->src, src) == 0)
+			return adapter;
+	}
+
+	return NULL;
+}
 
 static uint16_t get_service_uuid(const sdp_record_t *record)
 {
@@ -154,19 +172,24 @@ done:
 	return uuid16;
 }
 
-gboolean server_is_enabled(uint16_t svc)
+gboolean server_is_enabled(bdaddr_t *src, uint16_t svc)
 {
+	struct audio_adapter *adp;
 	gboolean ret;
+
+	adp = find_adapter_by_address(adapters, src);
+	if (!adp)
+		return FALSE;
 
 	switch (svc) {
 	case HEADSET_SVCLASS_ID:
-		ret = (hsp_ag_server != NULL);
+		ret = (adp->hsp_ag_server != NULL);
 		break;
 	case HEADSET_AGW_SVCLASS_ID:
-		ret = (hsp_hs_server != NULL);
+		ret = (adp->hsp_hs_server != NULL);
 		break;
 	case HANDSFREE_SVCLASS_ID:
-		ret = (hfp_ag_server != NULL);
+		ret = (adp->hfp_ag_server != NULL);
 		break;
 	case HANDSFREE_AGW_SVCLASS_ID:
 		ret = FALSE;
@@ -190,7 +213,7 @@ static void handle_record(sdp_record_t *record, struct audio_device *device)
 
 	uuid16 = get_service_uuid(record);
 
-	if (!server_is_enabled(uuid16))
+	if (!server_is_enabled(&device->src, uuid16))
 		return;
 
 	switch (uuid16) {
@@ -455,6 +478,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer data)
 {
+	struct audio_adapter *adapter = data;
 	const char *uuid;
 	struct audio_device *device;
 	gboolean hfp_active;
@@ -464,7 +488,7 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		return;
 	}
 
-	if (chan == hsp_ag_server) {
+	if (chan == adapter->hsp_ag_server) {
 		hfp_active = FALSE;
 		uuid = HSP_AG_UUID;
 	} else {
@@ -513,16 +537,13 @@ static void hs_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	return;
 }
 
-static int headset_server_init(DBusConnection *conn, GKeyFile *config)
+static int headset_server_init(struct audio_adapter *adapter)
 {
 	uint8_t chan = DEFAULT_HS_AG_CHANNEL;
 	sdp_record_t *record;
 	gboolean hfp = TRUE, master = TRUE;
 	GError *err = NULL;
 	uint32_t features, flags;
-
-	if (!enabled.headset)
-		return 0;
 
 	if (config) {
 		gboolean tmp;
@@ -551,9 +572,9 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 	if (master)
 		flags |= RFCOMM_LM_MASTER;
 
-	hsp_ag_server = bt_rfcomm_listen(BDADDR_ANY, chan, flags, ag_io_cb,
-				NULL);
-	if (!hsp_ag_server)
+	adapter->hsp_ag_server = bt_rfcomm_listen(&adapter->src, chan, flags,
+					ag_io_cb,adapter);
+	if (!adapter->hsp_ag_server)
 		return -1;
 
 	record = hsp_ag_record(chan);
@@ -562,14 +583,14 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 		return -1;
 	}
 
-	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+	if (add_record_to_server(&adapter->src, record) < 0) {
 		error("Unable to register HS AG service record");
 		sdp_record_free(record);
-		g_io_channel_unref(hsp_ag_server);
-		hsp_ag_server = NULL;
+		g_io_channel_unref(adapter->hsp_ag_server);
+		adapter->hsp_ag_server = NULL;
 		return -1;
 	}
-	hsp_ag_record_id = record->handle;
+	adapter->hsp_ag_record_id = record->handle;
 
 	features = headset_config_init(config);
 
@@ -578,9 +599,9 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 
 	chan = DEFAULT_HF_AG_CHANNEL;
 
-	hfp_ag_server = bt_rfcomm_listen(BDADDR_ANY, chan, flags, ag_io_cb,
-				NULL);
-	if (!hfp_ag_server)
+	adapter->hfp_ag_server = bt_rfcomm_listen(&adapter->src, chan, flags,
+					ag_io_cb, adapter);
+	if (!adapter->hfp_ag_server)
 		return -1;
 
 	record = hfp_ag_record(chan, features);
@@ -589,28 +610,25 @@ static int headset_server_init(DBusConnection *conn, GKeyFile *config)
 		return -1;
 	}
 
-	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+	if (add_record_to_server(&adapter->src, record) < 0) {
 		error("Unable to register HF AG service record");
 		sdp_record_free(record);
-		g_io_channel_unref(hfp_ag_server);
-		hfp_ag_server = NULL;
+		g_io_channel_unref(adapter->hfp_ag_server);
+		adapter->hfp_ag_server = NULL;
 		return -1;
 	}
-	hfp_ag_record_id = record->handle;
+	adapter->hfp_ag_record_id = record->handle;
 
 	return 0;
 }
 
-static int gateway_server_init(DBusConnection *conn, GKeyFile *config)
+static int gateway_server_init(struct audio_adapter *adapter)
 {
 	uint8_t chan = DEFAULT_HSP_HS_CHANNEL;
 	sdp_record_t *record;
 	gboolean master = TRUE;
 	GError *err = NULL;
 	uint32_t flags;
-
-	if (!enabled.gateway)
-		return 0;
 
 	if (config) {
 		gboolean tmp;
@@ -630,9 +648,9 @@ static int gateway_server_init(DBusConnection *conn, GKeyFile *config)
 	if (master)
 		flags |= RFCOMM_LM_MASTER;
 
-	hsp_hs_server = bt_rfcomm_listen(BDADDR_ANY, chan, flags, hs_io_cb,
-				NULL);
-	if (!hsp_hs_server)
+	adapter->hsp_hs_server = bt_rfcomm_listen(&adapter->src, chan, flags,
+				hs_io_cb, adapter);
+	if (!adapter->hsp_hs_server)
 		return -1;
 
 	record = hsp_hs_record(chan);
@@ -641,50 +659,17 @@ static int gateway_server_init(DBusConnection *conn, GKeyFile *config)
 		return -1;
 	}
 
-	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+	if (add_record_to_server(&adapter->src, record) < 0) {
 		error("Unable to register HSP HS service record");
 		sdp_record_free(record);
-		g_io_channel_unref(hsp_hs_server);
-		hsp_hs_server = NULL;
+		g_io_channel_unref(adapter->hsp_hs_server);
+		adapter->hsp_hs_server = NULL;
 		return -1;
 	}
 
-	hsp_hs_record_id = record->handle;
+	adapter->hsp_hs_record_id = record->handle;
 
 	return 0;
-}
-
-static void server_exit(void)
-{
-	if (hsp_ag_record_id) {
-		remove_record_from_server(hsp_ag_record_id);
-		hsp_ag_record_id = 0;
-	}
-
-	if (hsp_ag_server) {
-		g_io_channel_unref(hsp_ag_server);
-		hsp_ag_server = NULL;
-	}
-
-	if (hsp_hs_record_id) {
-		remove_record_from_server(hsp_hs_record_id);
-		hsp_hs_record_id = 0;
-	}
-
-	if (hsp_hs_server) {
-		g_io_channel_unref(hsp_hs_server);
-		hsp_hs_server = NULL;
-	}
-
-	if (hfp_ag_record_id) {
-		remove_record_from_server(hfp_ag_record_id);
-		hfp_ag_record_id = 0;
-	}
-
-	if (hfp_ag_server) {
-		g_io_channel_unref(hfp_ag_server);
-		hfp_ag_server = NULL;
-	}
 }
 
 static int audio_probe(struct btd_device_driver *driver,
@@ -733,6 +718,148 @@ static void audio_remove(struct btd_device_driver *driver,
 	device_unregister(dev);
 }
 
+static struct audio_adapter *create_audio_adapter(const char *path, bdaddr_t *src)
+{
+	struct audio_adapter *adp;
+
+	adp = g_new0(struct audio_adapter, 1);
+	adp->path = g_strdup(path);
+	bacpy(&adp->src, src);
+
+	return adp;
+}
+
+static struct audio_adapter *get_audio_adapter(struct adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+	const char *source;
+	bdaddr_t src;
+
+	source = adapter_get_address(adapter);
+	str2ba(source, &src);
+
+	adp = find_adapter(adapters, path);
+	if (!adp) {
+		adp = create_audio_adapter(path, &src);
+		if (!adp)
+			return NULL;
+		adapters = g_slist_append(adapters, adp);
+	}
+
+	return adp;
+}
+
+static int headset_server_probe(struct adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = get_audio_adapter(adapter);
+	if (!adp)
+		return -EINVAL;
+
+	return headset_server_init(adp);
+}
+
+static void headset_server_remove(struct adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = find_adapter(adapters, path);
+	if (!adp)
+		return;
+
+	if (adp->hsp_ag_record_id) {
+		remove_record_from_server(adp->hsp_ag_record_id);
+		adp->hsp_ag_record_id = 0;
+	}
+
+	if (adp->hsp_ag_server) {
+		g_io_channel_unref(adp->hsp_ag_server);
+		adp->hsp_ag_server = NULL;
+	}
+
+	if (adp->hfp_ag_record_id) {
+		remove_record_from_server(adp->hfp_ag_record_id);
+		adp->hfp_ag_record_id = 0;
+	}
+
+	if (adp->hfp_ag_server) {
+		g_io_channel_unref(adp->hfp_ag_server);
+		adp->hfp_ag_server = NULL;
+	}
+}
+
+static int gateway_server_probe(struct adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = get_audio_adapter(adapter);
+	if (!adp)
+		return -EINVAL;
+
+	return gateway_server_init(adp);
+}
+
+static void gateway_server_remove(struct adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = find_adapter(adapters, path);
+	if (!adp)
+		return;
+
+	if (adp->hsp_hs_record_id) {
+		remove_record_from_server(adp->hsp_hs_record_id);
+		adp->hsp_hs_record_id = 0;
+	}
+
+	if (adp->hsp_hs_server) {
+		g_io_channel_unref(adp->hsp_hs_server);
+		adp->hsp_hs_server = NULL;
+	}
+}
+
+static int a2dp_server_probe(struct adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = get_audio_adapter(adapter);
+	if (!adp)
+		return -EINVAL;
+
+	return a2dp_init(connection, config);
+}
+
+static int avrcp_server_probe(struct adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = get_audio_adapter(adapter);
+	if (!adp)
+		return -EINVAL;
+
+	return avrcp_init(connection, config);
+}
+
 static struct btd_device_driver audio_driver = {
 	.name	= "audio",
 	.uuids	= BTD_UUIDS(HSP_HS_UUID, HFP_HS_UUID, HSP_AG_UUID, HFP_AG_UUID,
@@ -742,15 +869,39 @@ static struct btd_device_driver audio_driver = {
 	.remove	= audio_remove,
 };
 
-int audio_manager_init(DBusConnection *conn, GKeyFile *config)
+static struct btd_adapter_driver headset_server_driver = {
+	.name	= "audio-headset",
+	.probe	= headset_server_probe,
+	.remove	= headset_server_remove,
+};
+
+static struct btd_adapter_driver gateway_server_driver = {
+	.name	= "audio-gateway",
+	.probe	= gateway_server_probe,
+	.remove	= gateway_server_remove,
+};
+
+static struct btd_adapter_driver a2dp_server_driver = {
+	.name	= "audio-a2dp",
+	.probe	= a2dp_server_probe,
+};
+
+static struct btd_adapter_driver avrcp_server_driver = {
+	.name	= "audio-control",
+	.probe	= avrcp_server_probe,
+};
+
+int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 {
 	char **list;
 	int i;
 
 	connection = dbus_connection_ref(conn);
 
-	if (!config)
+	if (!conf)
 		goto proceed;
+
+	config = conf;
 
 	list = g_key_file_get_string_list(config, "General", "Enable",
 						NULL, NULL);
@@ -785,37 +936,41 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *config)
 	g_strfreev(list);
 
 proceed:
-	if (enabled.headset) {
-		if (headset_server_init(conn, config) < 0)
-			goto failed;
-	}
+	if (enabled.headset)
+		btd_register_adapter_driver(&headset_server_driver);
 
-	if (enabled.gateway) {
-		if (gateway_server_init(conn, config) < 0)
-			goto failed;
-	}
+	if (enabled.gateway)
+		btd_register_adapter_driver(&gateway_server_driver);
 
-	if (enabled.source || enabled.sink) {
-		if (a2dp_init(conn, config) < 0)
-			goto failed;
-	}
+	if (enabled.source || enabled.sink)
+		btd_register_adapter_driver(&a2dp_server_driver);
 
-	if (enabled.control && avrcp_init(conn, config) < 0)
-		goto failed;
+	if (enabled.control)
+		btd_register_adapter_driver(&avrcp_server_driver);
 
 	btd_register_device_driver(&audio_driver);
 
 	return 0;
-failed:
-	audio_manager_exit();
-	return -1;
 }
 
 void audio_manager_exit(void)
 {
-	server_exit();
-
 	dbus_connection_unref(connection);
+
+	if (config)
+		g_key_file_free(config);
+
+	if (enabled.headset)
+		btd_unregister_adapter_driver(&headset_server_driver);
+
+	if (enabled.gateway)
+		btd_unregister_adapter_driver(&gateway_server_driver);
+
+	if (enabled.source || enabled.sink)
+		btd_unregister_adapter_driver(&a2dp_server_driver);
+
+	if (enabled.control)
+		btd_unregister_adapter_driver(&avrcp_server_driver);
 
 	btd_unregister_device_driver(&audio_driver);
 
