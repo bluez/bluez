@@ -574,7 +574,7 @@ void device_remove(DBusConnection *conn, struct btd_device *device)
 		struct btd_driver_data *driver_data = list->data;
 		driver = driver_data->driver;
 
-		driver->remove(driver, device);
+		driver->remove(device);
 		g_free(driver_data);
 	}
 
@@ -645,7 +645,7 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *
 		if (records) {
 			struct btd_driver_data *driver_data = g_new0(struct btd_driver_data, 1);
 
-			err = driver->probe(driver, device, records);
+			err = driver->probe(device, records);
 			if (err < 0) {
 				error("probe failed for driver %s",
 							driver->name);
@@ -686,7 +686,7 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t 
 					(GCompareFunc) strcasecmp))
 				continue;
 
-			driver->remove(driver, device);
+			driver->remove(device);
 			device->drivers = g_slist_remove(device->drivers,
 								driver_data);
 

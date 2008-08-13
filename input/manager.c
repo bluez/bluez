@@ -163,8 +163,16 @@ static int load_stored(const char *source, const char *destination,
 	return parse_stored_device_info(value, hidp);
 }
 
-int input_probe(struct btd_device_driver *driver,
-		struct btd_device *device, GSList *records)
+void input_remove(struct btd_device *device, const char *uuid)
+{
+	const gchar *path = device_get_path(device);
+
+	DBG("path %s", path);
+
+	input_device_unregister(path, uuid);
+}
+
+int hid_probe(struct btd_device *device, GSList *records)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -196,21 +204,15 @@ done:
 		g_free(hidp.rd_data);
 
 	return input_device_register(connection, path, &src, &dst,
-				driver->uuids[0], hidp.idle_to);
+				HID_UUID, hidp.idle_to);
 }
 
-void input_remove(struct btd_device_driver *driver,
-			struct btd_device *device)
+void hid_remove(struct btd_device *device)
 {
-	const gchar *path = device_get_path(device);
-
-	DBG("path %s", path);
-
-	input_device_unregister(path, driver->uuids[0]);
+	input_remove(device, HID_UUID);
 }
 
-int headset_input_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
+int headset_probe(struct btd_device *device, GSList *records)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -243,21 +245,26 @@ int headset_input_probe(struct btd_device_driver *driver,
 	str2ba(destination, &dst);
 
 	return fake_input_register(connection, path, &src, &dst,
-				driver->uuids[0], ch);
+				HSP_HS_UUID, ch);
 }
 
-static struct btd_device_driver input_driver = {
-	.name	= "input",
+void headset_remove(struct btd_device *device)
+{
+	input_remove(device, HSP_HS_UUID);
+}
+
+static struct btd_device_driver input_hid_driver = {
+	.name	= "input-hid",
 	.uuids	= BTD_UUIDS(HID_UUID),
-	.probe	= input_probe,
-	.remove	= input_remove,
+	.probe	= hid_probe,
+	.remove	= hid_remove,
 };
 
 static struct btd_device_driver input_headset_driver = {
 	.name	= "input-headset",
 	.uuids	= BTD_UUIDS(HSP_HS_UUID),
-	.probe	= headset_input_probe,
-	.remove	= input_remove,
+	.probe	= headset_probe,
+	.remove	= headset_remove,
 };
 
 int input_manager_init(DBusConnection *conn, GKeyFile *config)
@@ -277,7 +284,7 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 
 	server_start();
 
-	btd_register_device_driver(&input_driver);
+	btd_register_device_driver(&input_hid_driver);
 	btd_register_device_driver(&input_headset_driver);
 
 	return 0;
@@ -287,7 +294,7 @@ void input_manager_exit(void)
 {
 	server_stop();
 
-	btd_unregister_device_driver(&input_driver);
+	btd_unregister_device_driver(&input_hid_driver);
 	btd_unregister_device_driver(&input_headset_driver);
 
 	dbus_connection_unref(connection);

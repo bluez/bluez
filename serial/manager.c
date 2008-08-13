@@ -75,9 +75,8 @@
 
 static DBusConnection *connection = NULL;
 
-static int serial_probe(struct btd_device_driver *driver,
-			struct btd_device *device, sdp_record_t *rec,
-			const char *name)
+static int serial_probe(struct btd_device *device, sdp_record_t *rec,
+			const char *name, const char *uuid)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -103,45 +102,53 @@ static int serial_probe(struct btd_device_driver *driver,
 	str2ba(device_get_address(device), &dst);
 
 	return port_register(connection, path, &src, &dst, name,
-			driver->uuids[0], ch);
+			uuid, ch);
 }
 
-static void serial_remove(struct btd_device_driver *driver,
-				struct btd_device *device)
+static void serial_remove(struct btd_device *device, const char *uuid)
 {
 	const gchar *path = device_get_path(device);
 
 	DBG("path %s", path);
 
-	port_unregister(path, driver->uuids[0]);
+	port_unregister(path, uuid);
 }
 
-static int port_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
+
+static int port_probe(struct btd_device *device, GSList *records)
 {
-	return serial_probe(driver, device, records->data,
-			SERIAL_PORT_NAME);
+	return serial_probe(device, records->data, SERIAL_PORT_NAME,
+				SERIAL_PORT_UUID);
 }
 
-static int dialup_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
+static void port_remove(struct btd_device *device)
 {
-	return serial_probe(driver, device, records->data,
-			DIALUP_NET_NAME);
+	return serial_remove(device, SERIAL_PORT_UUID);
+}
+
+static int dialup_probe(struct btd_device *device, GSList *records)
+{
+	return serial_probe(device, records->data, DIALUP_NET_NAME,
+				DIALUP_NET_UUID);
+}
+
+static void dialup_remove(struct btd_device *device)
+{
+	return serial_remove(device, DIALUP_NET_UUID);
 }
 
 static struct btd_device_driver serial_port_driver = {
 	.name	= "serial-port",
 	.uuids	= BTD_UUIDS(SERIAL_PORT_UUID),
 	.probe	= port_probe,
-	.remove	= serial_remove,
+	.remove	= port_remove,
 };
 
 static struct btd_device_driver serial_dialup_driver = {
 	.name	= "serial-dialup",
 	.uuids	= BTD_UUIDS(DIALUP_NET_UUID),
 	.probe	= dialup_probe,
-	.remove	= serial_remove,
+	.remove	= dialup_remove,
 };
 
 static int proxy_probe(struct adapter *adapter)

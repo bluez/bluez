@@ -672,8 +672,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 	return 0;
 }
 
-static int audio_probe(struct btd_device_driver *driver,
-			struct btd_device *device, GSList *records)
+static int audio_probe(struct btd_device *device, GSList *records)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -700,8 +699,7 @@ static int audio_probe(struct btd_device_driver *driver,
 	return 0;
 }
 
-static void audio_remove(struct btd_device_driver *driver,
-			struct btd_device *device)
+static void audio_remove(struct btd_device *device)
 {
 	struct audio_device *dev;
 	const char *destination = device_get_address(device);
