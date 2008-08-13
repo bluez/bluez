@@ -108,11 +108,8 @@ struct adapter {
 	uint8_t scan_mode;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
 	uint8_t mode;			/* off, connectable, discoverable, limited */
 	uint8_t global_mode;		/* last valid global mode */
-	int discov_active;		/* standard discovery active: includes name resolution step */
-	int pdiscov_active;		/* periodic discovery active */
 	int pinq_idle;			/* tracks the idle time for periodic inquiry */
-	int discov_type;		/* type requested */
-	int pdiscov_resolve_names;	/* Resolve names when doing periodic discovery */
+	int state;			/* standard inq, periodic inq, name resloving */
 	GSList *found_devices;
 	GSList *oor_devices;	/* out of range device list */
 	char *pdiscov_requestor;	/* periodic discovery requestor unique name */
@@ -181,3 +178,5 @@ void adapter_set_scan_mode(struct adapter *adapter, uint8_t scan_mode);
 uint8_t adapter_get_scan_mode(struct adapter *adapter);
 void adapter_set_mode(struct adapter *adapter, uint8_t mode);
 uint8_t adapter_get_mode(struct adapter *adapter);
+void adapter_set_state(struct adapter *adapter, int state);
+int adapter_get_state(struct adapter *adapter);

@@ -1090,7 +1090,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	str2ba(address, &bdaddr);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
-	if (adapter->discov_active)
+	if (adapter->state & STD_INQUIRY)
 		return in_progress(msg, "Discover in progress");
 
 	pending_remote_name_cancel(adapter);
@@ -1175,7 +1175,7 @@ static DBusMessage *adapter_start_periodic(DBusConnection *conn,
 			return invalid_args(msg);
 	}
 
-	if (adapter->discov_active || adapter->pdiscov_active)
+	if ((adapter->state & STD_INQUIRY) || (adapter->state & PERIODIC_INQUIRY))
 		return in_progress(msg, "Discover in progress");
 
 	pending_remote_name_cancel(adapter);
@@ -1217,11 +1217,6 @@ static DBusMessage *adapter_start_periodic(DBusConnection *conn,
 
 	adapter->pdiscov_requestor = g_strdup(dbus_message_get_sender(msg));
 
-	if (adapter->pdiscov_resolve_names)
-		adapter->discov_type = PERIODIC_INQUIRY | RESOLVE_NAME;
-	else
-		adapter->discov_type = PERIODIC_INQUIRY;
-
 	hci_close_dev(dd);
 
 	/* track the request owner to cancel it automatically if the owner
@@ -1243,7 +1238,7 @@ static DBusMessage *adapter_stop_periodic(DBusConnection *conn,
 	if (!adapter->up)
 		return adapter_not_ready(msg);
 
-	if (!adapter->pdiscov_active)
+	if (!(adapter->state & PERIODIC_INQUIRY))
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotAuthorized",
 				"Not authorized");
@@ -1290,7 +1285,7 @@ static DBusMessage *adapter_discover_devices(DBusConnection *conn,
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
 		return invalid_args(msg);
 
-	if (adapter->discov_active)
+	if (adapter->state & STD_INQUIRY)
 		return in_progress(msg, "Discover in progress");
 
 	pending_remote_name_cancel(adapter);
@@ -1331,7 +1326,7 @@ static DBusMessage *adapter_discover_devices(DBusConnection *conn,
 		return failed_strerror(msg, bt_error(rp.status));
 	}
 
-	adapter->discov_type |= (STD_INQUIRY | RESOLVE_NAME);
+	adapter->state |= (STD_INQUIRY | RESOLVE_NAME);
 
 	adapter->discov_requestor = g_strdup(dbus_message_get_sender(msg));
 
@@ -1361,7 +1356,7 @@ static DBusMessage *adapter_cancel_discovery(DBusConnection *conn,
 
 	/* is there discover pending? or discovery cancel was requested
 	 * previously */
-	if (!adapter->discov_active || adapter->discovery_cancel)
+	if (!(adapter->state & STD_INQUIRY) || adapter->discovery_cancel)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
@@ -1404,6 +1399,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter dict;
 	bdaddr_t ba;
 	char str[249];
+	gboolean discov_active;
 
 	if (check_address(adapter->address) < 0)
 		return adapter_not_ready(msg);
@@ -1443,9 +1439,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dbus_message_iter_append_dict_entry(&dict, "DiscoverableTimeout",
 				DBUS_TYPE_UINT32, &adapter->discov_timeout);
 
+	discov_active = (adapter->state & PERIODIC_INQUIRY) ? TRUE:FALSE;
+
 	/* PeriodicDiscovery */
 	dbus_message_iter_append_dict_entry(&dict, "PeriodicDiscovery",
-				DBUS_TYPE_BOOLEAN, &adapter->pdiscov_active);
+				DBUS_TYPE_BOOLEAN, &discov_active);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
@@ -2227,7 +2225,7 @@ static void adapter_up(struct adapter *adapter, int dd)
 
 	adapter->up = 1;
 	adapter->discov_timeout = get_discoverable_timeout(adapter->dev_id);
-	adapter->discov_type = DISCOVER_TYPE_NONE;
+	adapter->state = DISCOVER_TYPE_NONE;
 
 	adapter->scan_mode = get_startup_scan(adapter->dev_id);
 	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
@@ -2355,9 +2353,9 @@ int adapter_start(struct adapter *adapter)
 
 setup:
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
-		adapter->discov_active = 1;
+		adapter->state |= STD_INQUIRY;
 	else
-		adapter->discov_active = 0;
+		adapter->state &= ~STD_INQUIRY;
 
 	adapter_setup(adapter, dd);
 	adapter_up(adapter, dd);
@@ -2402,7 +2400,7 @@ static void reply_pending_requests(struct adapter *adapter)
 		adapter->discovery_cancel = NULL;
 	}
 
-	if (adapter->discov_active) {
+	if (adapter->state & STD_INQUIRY) {
 		/* Send discovery completed signal if there isn't name
 		 * to resolve */
 		g_dbus_emit_signal(connection, adapter->path,
@@ -2414,7 +2412,7 @@ static void reply_pending_requests(struct adapter *adapter)
 			cancel_discovery(adapter);
 	}
 
-	if (adapter->pdiscov_active) {
+	if (adapter->state & PERIODIC_INQUIRY) {
 		/* Stop periodic inquiry initiated by D-Bus client */
 		if (adapter->pdiscov_requestor)
 			cancel_periodic_discovery(adapter);
@@ -2480,10 +2478,8 @@ int adapter_stop(struct adapter *adapter)
 	adapter->up = 0;
 	adapter->scan_mode = SCAN_DISABLED;
 	adapter->mode = MODE_OFF;
-	adapter->discov_active = 0;
-	adapter->pdiscov_active = 0;
 	adapter->pinq_idle = 0;
-	adapter->discov_type = DISCOVER_TYPE_NONE;
+	adapter->state = DISCOVER_TYPE_NONE;
 
 	info("Adapter %s has been disabled", adapter->path);
 
@@ -2572,7 +2568,7 @@ struct adapter *adapter_create(DBusConnection *conn, int id)
 	}
 
 	adapter->dev_id = id;
-	adapter->pdiscov_resolve_names = 1;
+	adapter->state |= RESOLVE_NAME;
 	adapter->path = g_strdup(path);
 
 	if (!g_dbus_register_interface(conn, path, ADAPTER_INTERFACE,
@@ -2721,4 +2717,17 @@ void adapter_set_mode(struct adapter *adapter, uint8_t mode)
 uint8_t adapter_get_mode(struct adapter *adapter)
 {
 	return adapter->mode;
+}
+
+void adapter_set_state(struct adapter *adapter, int state)
+{
+	if (!adapter)
+		return;
+
+	adapter->state = state;
+}
+
+int adapter_get_state(struct adapter *adapter)
+{
+	return adapter->state;
 }

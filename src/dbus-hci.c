@@ -800,6 +800,8 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	struct adapter *adapter;
 	const gchar *path;
+	gboolean discov_active;
+	int state;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -807,23 +809,29 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		return;
 	}
 
-	adapter->discov_active = 1;
+	state = adapter_get_state(adapter);
+	state |= STD_INQUIRY;
+	adapter_set_state(adapter, state);
 	/*
 	 * Cancel pending remote name request and clean the device list
 	 * when inquiry is supported in periodic inquiry idle state.
 	 */
-	if (adapter->pdiscov_active)
+	if (adapter_get_state(adapter) & PERIODIC_INQUIRY)
 		pending_remote_name_cancel(adapter);
 
 	/* Disable name resolution for non D-Bus clients */
-	if (!adapter->discov_requestor)
-		adapter->discov_type &= ~RESOLVE_NAME;
-
+	if (!adapter->discov_requestor) {
+		state = adapter_get_state(adapter);
+		state &= ~RESOLVE_NAME;
+		adapter_set_state(adapter, state);
+	}
 	path = adapter_get_path(adapter);
+
+	discov_active = (adapter_get_state(adapter) & STD_INQUIRY) ? TRUE : FALSE;
 
 	dbus_connection_emit_property_changed(connection, path,
 			ADAPTER_INTERFACE, "PeriodicDiscovery",
-			DBUS_TYPE_BOOLEAN, &adapter->discov_active);
+			DBUS_TYPE_BOOLEAN, &discov_active);
 
 	g_dbus_emit_signal(connection, path,
 			ADAPTER_INTERFACE, "DiscoveryStarted",
@@ -929,6 +937,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	struct remote_dev_info *dev;
 	bdaddr_t tmp;
 	const gchar *path;
+	int state;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -939,7 +948,8 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	path = adapter_get_path(adapter);
 
 	/* Out of range verification */
-	if (adapter->pdiscov_active && !adapter->discov_active) {
+	if ((adapter_get_state(adapter) & PERIODIC_INQUIRY) &&
+				!(adapter_get_state(adapter) & STD_INQUIRY)) {
 		GSList *l;
 
 		send_out_of_range(path, adapter->oor_devices);
@@ -964,9 +974,11 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	 * Enable resolution again: standard inquiry can be
 	 * received in the periodic inquiry idle state.
 	 */
-	if (adapter->pdiscov_requestor && adapter->pdiscov_resolve_names)
-		adapter->discov_type |= RESOLVE_NAME;
-
+	if (adapter->pdiscov_requestor) {
+		state = adapter_get_state(adapter);
+		state |= RESOLVE_NAME;
+		adapter_set_state(adapter, state);
+	}
 	/*
 	 * The following scenarios can happen:
 	 * 1. standard inquiry: always send discovery completed signal
@@ -982,12 +994,14 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	if (!found_device_req_name(adapter))
 		return;		/* skip - there is name to resolve */
 
-	if (adapter->discov_active) {
+	if (adapter_get_state(adapter) & STD_INQUIRY) {
 		g_dbus_emit_signal(connection, path,
 				ADAPTER_INTERFACE, "DiscoveryCompleted",
 				DBUS_TYPE_INVALID);
 
-		adapter->discov_active = 0;
+		state = adapter_get_state(adapter);
+		state &= ~STD_INQUIRY;
+		adapter_set_state(adapter, state);
 	}
 
 	/* free discovered devices list */
@@ -1012,7 +1026,9 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		}
 
 		/* reset the discover type for standard inquiry only */
-		adapter->discov_type &= ~STD_INQUIRY;
+		state = adapter_get_state(adapter);
+		state &= ~STD_INQUIRY;
+		adapter_set_state(adapter, state);
 	}
 }
 
@@ -1020,6 +1036,8 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 {
 	struct adapter *adapter;
 	const gchar *path;
+	gboolean discov_active;
+	int state;
 
 	/* Don't send the signal if the cmd failed */
 	if (status)
@@ -1031,23 +1049,32 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 		return;
 	}
 
-	adapter->pdiscov_active = 1;
+	state = adapter_get_state(adapter);
+	state |= PERIODIC_INQUIRY;
+	adapter_set_state(adapter, state);
 
 	/* Disable name resolution for non D-Bus clients */
-	if (!adapter->pdiscov_requestor)
-		adapter->discov_type &= ~RESOLVE_NAME;
+	if (!adapter->pdiscov_requestor) {
+		state = adapter_get_state(adapter);
+		state &= ~RESOLVE_NAME;
+		adapter_set_state(adapter, state);
+	}
 
 	path = adapter_get_path(adapter);
 
+	discov_active = (adapter_get_state(adapter) & PERIODIC_INQUIRY) ? TRUE:FALSE;
+
 	dbus_connection_emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "PeriodicDiscovery",
-				DBUS_TYPE_BOOLEAN, &adapter->pdiscov_active);
+				DBUS_TYPE_BOOLEAN, &discov_active);
 }
 
 void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 {
 	struct adapter *adapter;
 	const gchar *path;
+	gboolean discov_active;
+	int state;
 
 	/* Don't send the signal if the cmd failed */
 	if (status)
@@ -1061,8 +1088,9 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 
 	/* reset the discover type to be able to handle D-Bus and non D-Bus
 	 * requests */
-	adapter->pdiscov_active = 0;
-	adapter->discov_type &= ~(PERIODIC_INQUIRY | RESOLVE_NAME);
+	state = adapter_get_state(adapter);
+	state &= ~(PERIODIC_INQUIRY | RESOLVE_NAME);
+	adapter_set_state(adapter, state);
 
 	/* free discovered devices list */
 	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
@@ -1085,18 +1113,22 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 
 	/* workaround: inquiry completed is not sent when exiting from
 	  * periodic inquiry */
-	if (adapter->discov_active) {
+	if (adapter_get_state(adapter) & STD_INQUIRY) {
 		g_dbus_emit_signal(connection, path,
 				ADAPTER_INTERFACE, "DiscoveryCompleted",
 				DBUS_TYPE_INVALID);
 
-		adapter->discov_active = 0;
+		state = adapter_get_state(adapter);
+		state &= ~STD_INQUIRY;
+		adapter_set_state(adapter, state);
 	}
+
+	discov_active = (adapter_get_state(adapter) & STD_INQUIRY) ? TRUE : FALSE;
 
 	/* Send discovery completed signal if there isn't name to resolve */
 	dbus_connection_emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "PeriodicDiscovery",
-				DBUS_TYPE_BOOLEAN, &adapter->discov_active);
+				DBUS_TYPE_BOOLEAN, &discov_active);
 }
 
 static char *extract_eir_name(uint8_t *data, uint8_t *type)
@@ -1182,6 +1214,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
 	const gchar *path;
+	int state;
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -1201,11 +1234,15 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	 * workaround to identify situation when the daemon started and
 	 * a standard inquiry or periodic inquiry was already running
 	 */
-	if (!adapter->discov_active && !adapter->pdiscov_active)
-		adapter->pdiscov_active = 1;
+	if (!(adapter_get_state(adapter) & STD_INQUIRY) &&
+			!(adapter_get_state(adapter) & PERIODIC_INQUIRY)) {
+		state = adapter_get_state(adapter);
+		state |= PERIODIC_INQUIRY;
+		adapter_set_state(adapter, state);
+	}
 
 	/* reset the idle flag when the inquiry complete event arrives */
-	if (adapter->pdiscov_active) {
+	if (adapter_get_state(adapter) & PERIODIC_INQUIRY) {
 		adapter->pinq_idle = 0;
 
 		/* Out of range list update */
@@ -1229,7 +1266,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		return;
 
 	/* the inquiry result can be triggered by NON D-Bus client */
-	if (adapter->discov_type & RESOLVE_NAME)
+	if (adapter_get_state(adapter) & RESOLVE_NAME)
 		name_status = NAME_REQUIRED;
 	else
 		name_status = NAME_NOT_REQUIRED;
@@ -1326,6 +1363,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	const char *paddr = peer_addr;
 	const gchar *dev_path;
 	const gchar *path;
+	int state;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1380,18 +1418,21 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 		}
 
 		/* Disable name resolution for non D-Bus clients */
-		if (!adapter->pdiscov_requestor)
-			adapter->discov_type &= ~RESOLVE_NAME;
+		if (!adapter->pdiscov_requestor) {
+			state = adapter_get_state(adapter);
+			state &= ~RESOLVE_NAME;
+			adapter_set_state(adapter, state);
+		}
 	}
-
 	path = adapter_get_path(adapter);
 
-	if (adapter->discov_active) {
+	if (adapter_get_state(adapter) & STD_INQUIRY) {
 		g_dbus_emit_signal(connection, path,
 				ADAPTER_INTERFACE, "DiscoveryCompleted",
 				DBUS_TYPE_INVALID);
-
-		adapter->discov_active = 0;
+		state = adapter_get_state(adapter);
+		state &= ~STD_INQUIRY;
+		adapter_set_state(adapter, state);
 	}
 }
 
@@ -1886,8 +1927,9 @@ int cancel_discovery(struct adapter *adapter)
 	GSList *l;
 	int dd, err = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
+	int state;
 
-	if (!adapter->discov_active)
+	if (!(adapter_get_state(adapter) & STD_INQUIRY))
 		goto cleanup;
 
 	dd = hci_open_dev(dev_id);
@@ -1933,8 +1975,11 @@ cleanup:
 	adapter->found_devices = NULL;
 
 	/* Disable name resolution for non D-Bus clients */
-	if (!adapter->pdiscov_requestor)
-		adapter->discov_type &= ~RESOLVE_NAME;
+	if (!adapter->pdiscov_requestor) {
+		state = adapter_get_state(adapter);
+		state &= ~RESOLVE_NAME;
+		adapter_set_state(adapter, state);
+	}
 
 	return err;
 }
@@ -1969,7 +2014,7 @@ int cancel_periodic_discovery(struct adapter *adapter)
 	int dd, err = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 
-	if (!adapter->pdiscov_active)
+	if (!(adapter_get_state(adapter) & PERIODIC_INQUIRY))
 		goto cleanup;
 
 	dd = hci_open_dev(dev_id);
