@@ -552,7 +552,6 @@ static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
 				const bdaddr_t *dst, gpointer user_data)
 {
 	struct network_adapter *na = user_data;
-	struct timeout *to = na->to;
 
 	if (err < 0) {
 		error("accept(): %s(%d)", strerror(errno), errno);
@@ -566,9 +565,9 @@ static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
 	 * user shall authorize the incomming connection before
 	 * the time expires.
 	 */
-	to = g_malloc0(sizeof(struct timeout));
-	to->id = g_timeout_add(SETUP_TIMEOUT, timeout_cb, to);
-	to->watch = g_io_add_watch_full(chan, G_PRIORITY_DEFAULT,
+	na->to = g_malloc0(sizeof(struct timeout));
+	na->to->id = g_timeout_add(SETUP_TIMEOUT, timeout_cb, na->to);
+	na->to->watch = g_io_add_watch_full(chan, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				bnep_setup, na, setup_destroy);
 	g_io_channel_unref(chan);
