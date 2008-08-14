@@ -30,3 +30,12 @@ parser.c
 
 bluez.pc
 include/bluetooth
+
+doc/*.bak
+doc/*.stamp
+doc/bluez.*
+doc/bluez-*.txt
+doc/*.sgml
+doc/version.xml
+doc/xml
+doc/html
