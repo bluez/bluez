@@ -1,7 +1,7 @@
 
-SUBDIRS = include lib doc sbc gdbus common src \
-		plugins network serial input audio \
-		tools rfcomm compat cups test scripts
+SUBDIRS = include lib sbc gdbus common src \
+	plugins network serial input audio \
+	tools rfcomm compat cups test scripts doc
 
 aclocaldir = $(datadir)/aclocal
 
