@@ -22,6 +22,8 @@ m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 
+GTK_DOC_CHECK
+
 AC_FUNC_PPOLL
 
 AC_PATH_DBUS
@@ -42,7 +44,6 @@ AC_OUTPUT([
 	gdbus/Makefile
 	common/Makefile
 	src/Makefile
-	doc/Makefile
 	sbc/Makefile
 	plugins/Makefile
 	network/Makefile
@@ -52,8 +53,10 @@ AC_OUTPUT([
 	tools/Makefile
 	rfcomm/Makefile
 	compat/Makefile
+	scripts/Makefile
 	cups/Makefile
 	test/Makefile
-	scripts/Makefile
+	doc/Makefile
+	doc/version.xml
 	bluez.pc
 ])

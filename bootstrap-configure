@@ -4,8 +4,13 @@ if [ -f config.status ]; then
 	make maintainer-clean
 fi
 
+if [ ! -f doc/gtk-doc.make ]; then
+	gtkdocize --copy --docdir doc
+fi
+
 ./bootstrap && \
     ./configure --enable-maintainer-mode \
+		--enable-gtk-doc \
 		--enable-debug \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
