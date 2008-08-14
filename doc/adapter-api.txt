@@ -12,7 +12,7 @@ Adapter hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Adapter
-Object path	/{hci0,hci1,...}
+Object path	[variable prefix]/{hci0,hci1,...}
 
 Methods		dict GetProperties()
 

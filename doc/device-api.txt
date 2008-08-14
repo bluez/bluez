@@ -12,7 +12,7 @@ Device hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Device
-Object path	/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods		dict GetProperties()
 
