@@ -572,7 +572,7 @@ static struct option main_lopts[] = {
 static const char *main_sopts = "hsc:k:Kr:d:e:i:lnp::DQ::AESMC::P:u:o:z";
 
 static const char *main_help = 
-	"Bluetooth PAN daemon version " VERSION " \n"
+	"Bluetooth PAN daemon version %s\n"
 	"Usage:\n"
 	"\tpand <options>\n"
 	"Options:\n"
@@ -712,7 +712,7 @@ int main(int argc, char *argv[])
 
 		case 'h':
 		default:
-			printf(main_help);
+			printf(main_help, VERSION);
 			exit(0);
 		}
 	}
@@ -735,7 +735,7 @@ int main(int argc, char *argv[])
 		return 0;
 
 	case NONE:
-		printf(main_help);
+		printf(main_help, VERSION);
 		return 0;
 	}
 

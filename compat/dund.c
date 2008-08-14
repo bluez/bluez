@@ -406,7 +406,7 @@ static struct option main_lopts[] = {
 static const char *main_sopts = "hsc:k:Kr:i:lnp::DQ::AESMP:C::P:Xam:u";
 
 static const char *main_help = 
-	"Bluetooth LAP (LAN Access over PPP) daemon version " VERSION " \n"
+	"Bluetooth LAP (LAN Access over PPP) daemon version %s\n"
 	"Usage:\n"
 	"\tdund <options> [pppd options]\n"
 	"Options:\n"
@@ -550,7 +550,7 @@ int main(int argc, char *argv[])
 
 		case 'h':
 		default:
-			printf(main_help);
+			printf(main_help, VERSION);
 			exit(0);
 		}
 	}
@@ -581,7 +581,7 @@ int main(int argc, char *argv[])
 		return 0;
 
 	case NONE:
-		printf(main_help);
+		printf(main_help, VERSION);
 		return 0;
 	}
 
