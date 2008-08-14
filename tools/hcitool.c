@@ -370,7 +370,7 @@ static struct option dev_options[] = {
 	{0, 0, 0, 0 }
 };
 
-static char *dev_help =
+static const char *dev_help =
 	"Usage:\n"
 	"\tdev\n";
 
@@ -402,7 +402,7 @@ static struct option inq_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *inq_help =
+static const char *inq_help =
 	"Usage:\n"
 	"\tinq [--length=N] maximum inquiry duration in 1.28 s units\n"
 	"\t    [--numrsp=N] specify maximum number of inquiry responses\n"
@@ -493,7 +493,7 @@ static struct option scan_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *scan_help =
+static const char *scan_help =
 	"Usage:\n"
 	"\tscan [--length=N] [--numrsp=N] [--iac=lap] [--flush] [--class] [--info] [--oui] [--refresh]\n";
 
@@ -761,7 +761,7 @@ static struct option name_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *name_help =
+static const char *name_help =
 	"Usage:\n"
 	"\tname <bdaddr>\n";
 
@@ -815,7 +815,7 @@ static struct option info_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *info_help =
+static const char *info_help =
 	"Usage:\n"
 	"\tinfo <bdaddr>\n";
 
@@ -948,7 +948,7 @@ static struct option spinq_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *spinq_help =
+static const char *spinq_help =
 	"Usage:\n"
 	"\tspinq\n";
 
@@ -1004,7 +1004,7 @@ static struct option epinq_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *epinq_help =
+static const char *epinq_help =
 	"Usage:\n"
 	"\tspinq\n";
 
@@ -1045,7 +1045,7 @@ static struct option cmd_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *cmd_help =
+static const char *cmd_help =
 	"Usage:\n"
 	"\tcmd <ogf> <ocf> [parameters]\n"
 	"Example:\n"
@@ -1135,7 +1135,7 @@ static struct option con_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *con_help =
+static const char *con_help =
 	"Usage:\n"
 	"\tcon\n";
 
@@ -1165,7 +1165,7 @@ static struct option cc_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *cc_help =
+static const char *cc_help =
 	"Usage:\n"
 	"\tcc [--role=m|s] [--ptype=pkt_types] <bdaddr>\n"
 	"Example:\n"
@@ -1236,7 +1236,7 @@ static struct option dc_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *dc_help =
+static const char *dc_help =
 	"Usage:\n"
 	"\tdc <bdaddr>\n";
 
@@ -1306,7 +1306,7 @@ static struct option sr_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *sr_help =
+static const char *sr_help =
 	"Usage:\n"
 	"\tsr <bdaddr> <role>\n";
 
@@ -1373,7 +1373,7 @@ static struct option rssi_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *rssi_help =
+static const char *rssi_help =
 	"Usage:\n"
 	"\trssi <bdaddr>\n";
 
@@ -1447,7 +1447,7 @@ static struct option lq_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *lq_help =
+static const char *lq_help =
 	"Usage:\n"
 	"\tlq <bdaddr>\n";
 
@@ -1521,7 +1521,7 @@ static struct option tpl_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *tpl_help =
+static const char *tpl_help =
 	"Usage:\n"
 	"\ttpl <bdaddr> [type]\n";
 
@@ -1598,7 +1598,7 @@ static struct option afh_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *afh_help =
+static const char *afh_help =
 	"Usage:\n"
 	"\tafh <bdaddr>\n";
 
@@ -1682,7 +1682,7 @@ static struct option cpt_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *cpt_help =
+static const char *cpt_help =
 	"Usage:\n"
 	"\tcpt <bdaddr> <packet_types>\n";
 
@@ -1770,7 +1770,7 @@ static struct option lp_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *lp_help =
+static const char *lp_help =
 	"Usage:\n"
 	"\tlp <bdaddr> [link policy]\n";
 
@@ -1869,7 +1869,7 @@ static struct option lst_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *lst_help =
+static const char *lst_help =
 	"Usage:\n"
 	"\tlst <bdaddr> [new value in slots]\n";
 
@@ -1960,7 +1960,7 @@ static struct option auth_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *auth_help =
+static const char *auth_help =
 	"Usage:\n"
 	"\tauth <bdaddr>\n";
 
@@ -2031,7 +2031,7 @@ static struct option enc_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *enc_help =
+static const char *enc_help =
 	"Usage:\n"
 	"\tenc <bdaddr> [encrypt enable]\n";
 
@@ -2105,7 +2105,7 @@ static struct option key_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *key_help =
+static const char *key_help =
 	"Usage:\n"
 	"\tkey <bdaddr>\n";
 
@@ -2176,7 +2176,7 @@ static struct option clkoff_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *clkoff_help =
+static const char *clkoff_help =
 	"Usage:\n"
 	"\tclkoff <bdaddr>\n";
 
@@ -2250,7 +2250,7 @@ static struct option clock_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *clock_help =
+static const char *clock_help =
 	"Usage:\n"
 	"\tclock [bdaddr] [which clock]\n";
 

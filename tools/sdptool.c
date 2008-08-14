@@ -811,7 +811,7 @@ static struct option set_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *set_help = 
+static const char *set_help = 
 	"Usage:\n"
 	"\tget record_handle attrib_id attrib_value\n";
 
@@ -949,7 +949,7 @@ static struct option seq_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *seq_help = 
+static const char *seq_help = 
 	"Usage:\n"
 	"\tget record_handle attrib_id attrib_values\n";
 
@@ -3454,7 +3454,7 @@ static struct option add_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *add_help = 
+static const char *add_help = 
 	"Usage:\n"
 	"\tadd [--handle=RECORD_HANDLE --channel=CHANNEL] service\n";
 
@@ -3558,7 +3558,7 @@ static struct option del_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *del_help = 
+static const char *del_help = 
 	"Usage:\n"
 	"\tdel record_handle\n";
 
@@ -3699,7 +3699,7 @@ static struct option browse_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *browse_help = 
+static const char *browse_help = 
 	"Usage:\n"
 	"\tbrowse [--tree] [--raw] [--xml] [--uuid uuid] [--l2cap] [bdaddr]\n";
 
@@ -3765,7 +3765,7 @@ static struct option search_options[] = {
 	{ 0, 0, 0, 0}
 };
 
-static char *search_help = 
+static const char *search_help = 
 	"Usage:\n"
 	"\tsearch [--bdaddr bdaddr] [--tree] [--raw] [--xml] SERVICE\n"
 	"SERVICE is a name (string) or UUID (0x1002)\n";
@@ -3924,7 +3924,7 @@ static struct option records_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *records_help = 
+static const char *records_help = 
 	"Usage:\n"
 	"\trecords [--tree] [--raw] [--xml] bdaddr\n";
 
@@ -3992,7 +3992,7 @@ static struct option get_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char *get_help = 
+static const char *get_help = 
 	"Usage:\n"
 	"\tget [--tree] [--raw] [--xml] [--bdaddr bdaddr] record_handle\n";
 
