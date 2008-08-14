@@ -403,9 +403,9 @@ static struct option main_lopts[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:i:lnp::DQ::AESMP:C::P:Xam:u";
+static const char *main_sopts = "hsc:k:Kr:i:lnp::DQ::AESMP:C::P:Xam:u";
 
-static char main_help[] = 
+static const char *main_help = 
 	"Bluetooth LAP (LAN Access over PPP) daemon version " VERSION " \n"
 	"Usage:\n"
 	"\tdund <options> [pppd options]\n"

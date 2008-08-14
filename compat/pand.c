@@ -569,9 +569,9 @@ static struct option main_lopts[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static char main_sopts[] = "hsc:k:Kr:d:e:i:lnp::DQ::AESMC::P:u:o:z";
+static const char *main_sopts = "hsc:k:Kr:d:e:i:lnp::DQ::AESMC::P:u:o:z";
 
-static char main_help[] = 
+static const char *main_help = 
 	"Bluetooth PAN daemon version " VERSION " \n"
 	"Usage:\n"
 	"\tpand <options>\n"
