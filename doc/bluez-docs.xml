@@ -47,6 +47,34 @@
     </legalnotice>
   </bookinfo>
 
+  <reference id="manager">
+    <title>Manager interface</title>
+    <para>
+<programlisting><xi:include href="manager-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
+  <reference id="adapter">
+    <title>Adapter interface</title>
+    <para>
+<programlisting><xi:include href="adapter-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
+  <reference id="device">
+    <title>Device interface</title>
+    <para>
+<programlisting><xi:include href="device-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
+  <reference id="agent">
+    <title>Agent interface</title>
+    <para>
+<programlisting><xi:include href="agent-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
   <reference id="reference">
     <title>API Reference</title>
     <partintro>
