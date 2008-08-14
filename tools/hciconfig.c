@@ -645,7 +645,7 @@ static char *get_minor_device_name(int major, int minor)
 
 static void cmd_class(int ctl, int hdev, char *opt)
 {
-	static char *services[] = { "Positioning",
+	static const char *services[] = { "Positioning",
 					"Networking",
 					"Rendering",
 					"Capturing",
@@ -653,7 +653,7 @@ static void cmd_class(int ctl, int hdev, char *opt)
 					"Audio",
 					"Telephony",
 					"Information" };
-	static char *major_devices[] = { "Miscellaneous",
+	static const char *major_devices[] = { "Miscellaneous",
 					"Computer",
 					"Phone",
 					"LAN Access",
