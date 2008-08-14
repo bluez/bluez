@@ -379,7 +379,7 @@ done:
 
 static int authorize_connection(struct network_server *ns, const char *address)
 {
-	struct network_adapter *na;
+	struct network_adapter *na = ns->na;
 	const char *uuid;
 	bdaddr_t dst;
 	int ret_val;
@@ -551,7 +551,7 @@ static gboolean timeout_cb(void *user_data)
 static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
 				const bdaddr_t *dst, gpointer user_data)
 {
-	struct network_adapter *na;
+	struct network_adapter *na = user_data;
 	struct timeout *to = na->to;
 
 	if (err < 0) {
