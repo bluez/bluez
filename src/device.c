@@ -61,7 +61,6 @@
 #include "glib-helper.h"
 #include "agent.h"
 #include "sdp-xml.h"
-#include "driver.h"
 
 #define DEFAULT_XML_BUF_SIZE	1024
 #define DISCONNECT_TIMER	2
@@ -109,6 +108,8 @@ static uint16_t uuid_list[] = {
 	AV_REMOTE_SVCLASS_ID,
 	0
 };
+
+static GSList *device_drivers = NULL;
 
 static void device_free(gpointer user_data)
 {
@@ -618,13 +619,13 @@ sdp_record_t *get_record(sdp_list_t *recs, const char *uuid)
 
 void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *recs)
 {
-	GSList *list = btd_get_device_drivers();
+	GSList *list;
 	const char **uuid;
 	int err;
 
 	debug("Probe drivers for %s", device->path);
 
-	for (; list; list = list->next) {
+	for (list = device_drivers; list; list = list->next) {
 		struct btd_device_driver *driver = list->data;
 		GSList *records = NULL;
 
@@ -1082,4 +1083,16 @@ void device_set_auth(struct btd_device *device, uint8_t auth)
 uint8_t device_get_auth(struct btd_device *device)
 {
 	return device->auth;
+}
+
+int btd_register_device_driver(struct btd_device_driver *driver)
+{
+	device_drivers = g_slist_append(device_drivers, driver);
+
+	return 0;
+}
+
+void btd_unregister_device_driver(struct btd_device_driver *driver)
+{
+	device_drivers = g_slist_remove(device_drivers, driver);
 }

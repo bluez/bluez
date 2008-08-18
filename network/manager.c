@@ -47,7 +47,6 @@
 
 #include "adapter.h"
 #include "device.h"
-#include "driver.h"
 #include "error.h"
 #include "bridge.h"
 #include "manager.h"

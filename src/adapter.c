@@ -51,6 +51,7 @@
 #include "hcid.h"
 #include "sdpd.h"
 
+#include "manager.h"
 #include "adapter.h"
 #include "device.h"
 
@@ -63,7 +64,6 @@
 #include "glib-helper.h"
 #include "logging.h"
 #include "agent.h"
-#include "driver.h"
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 
@@ -74,6 +74,7 @@
 #define IO_CAPABILITY_INVALID		0xFF
 
 static DBusConnection *connection = NULL;
+static GSList *adapter_drivers = NULL;
 
 struct record_list {
   sdp_list_t *recs;
@@ -86,6 +87,11 @@ struct mode_req {
 	DBusMessage	*msg;		/* Message reference */
 	uint8_t		mode;		/* Requested mode */
 	guint		id;		/* Listener id */
+};
+
+struct service_auth {
+	service_auth_cb cb;
+	void *user_data;
 };
 
 static inline DBusMessage *invalid_args(DBusMessage *msg)
@@ -2220,7 +2226,7 @@ static void load_drivers(struct adapter *adapter)
 {
 	GSList *l;
 
-	for (l = btd_get_adapter_drivers(); l; l = l->next) {
+	for (l = adapter_drivers; l; l = l->next) {
 		struct btd_adapter_driver *driver = l->data;
 
 		if (driver->probe)
@@ -2436,7 +2442,7 @@ static void unload_drivers(struct adapter *adapter)
 {
 	GSList *l;
 
-	for (l = btd_get_adapter_drivers(); l; l = l->next) {
+	for (l = adapter_drivers; l; l = l->next) {
 		struct btd_adapter_driver *driver = l->data;
 
 		if (driver->remove)
@@ -2756,4 +2762,111 @@ void adapter_set_state(struct adapter *adapter, int state)
 int adapter_get_state(struct adapter *adapter)
 {
 	return adapter->state;
+}
+
+int btd_register_adapter_driver(struct btd_adapter_driver *driver)
+{
+	adapter_drivers = g_slist_append(adapter_drivers, driver);
+
+	return 0;
+}
+
+void btd_unregister_adapter_driver(struct btd_adapter_driver *driver)
+{
+	adapter_drivers = g_slist_remove(adapter_drivers, driver);
+}
+
+static void agent_auth_cb(struct agent *agent, DBusError *derr, void *user_data)
+{
+	struct service_auth *auth = user_data;
+
+	auth->cb(derr, auth->user_data);
+
+	g_free(auth);
+}
+
+int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
+		const char *uuid, service_auth_cb cb, void *user_data)
+{
+	struct service_auth *auth;
+	struct adapter *adapter;
+	struct btd_device *device;
+	struct agent *agent;
+	char address[18];
+	gboolean trusted;
+	const gchar *dev_path;
+
+	if (src == NULL || dst == NULL)
+		return -EINVAL;
+
+	adapter = manager_find_adapter(src);
+	if (!adapter)
+		return -EPERM;
+
+	/* Device connected? */
+	if (!g_slist_find_custom(adapter->active_conn,
+				dst, active_conn_find_by_bdaddr))
+		return -ENOTCONN;
+
+	ba2str(dst, address);
+	trusted = read_trust(src, address, GLOBAL_TRUST);
+
+	if (trusted) {
+		cb(NULL, user_data);
+		return 0;
+	}
+
+	device = adapter_find_device(adapter, address);
+	if (!device)
+		return -EPERM;
+
+	agent = device_get_agent(device);
+
+	if (!agent)
+		agent =  adapter->agent;
+
+	if (!agent)
+		return -EPERM;
+
+	auth = g_try_new0(struct service_auth, 1);
+	if (!auth)
+		return -ENOMEM;
+
+	auth->cb = cb;
+	auth->user_data = user_data;
+
+	dev_path = device_get_path(device);
+
+	return agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth);
+}
+
+int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	struct adapter *adapter = manager_find_adapter(src);
+	struct btd_device *device;
+	struct agent *agent;
+	char address[18];
+
+	if (!adapter)
+		return -EPERM;
+
+	ba2str(dst, address);
+	device = adapter_find_device(adapter, address);
+	if (!device)
+		return -EPERM;
+
+	/*
+	 * FIXME: Cancel fails if authorization is requested to adapter's
+	 * agent and in the meanwhile CreatePairedDevice is called.
+	 */
+
+	agent = device_get_agent(device);
+
+	if (!agent)
+		agent =  adapter->agent;
+
+	if (!agent)
+		return -EPERM;
+
+	return agent_cancel(agent);
 }

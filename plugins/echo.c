@@ -38,7 +38,6 @@
 
 #include "plugin.h"
 #include "adapter.h"
-#include "driver.h"
 #include "logging.h"
 
 static gboolean session_event(GIOChannel *chan,

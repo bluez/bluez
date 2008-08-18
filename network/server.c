@@ -47,11 +47,11 @@
 #include <gdbus.h>
 
 #include "../src/dbus-common.h"
+#include "../src/adapter.h"
 
 #include "logging.h"
 #include "error.h"
 #include "textfile.h"
-#include "dbus-service.h"
 #include "sdpd.h"
 #include "glib-helper.h"
 
@@ -359,7 +359,7 @@ static void req_auth_cb(DBusError *derr, void *user_data)
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			bdaddr_t dst;
 			str2ba(setup->address, &dst);
-			service_cancel_auth(&na->src, &dst);
+			btd_cancel_authorization(&na->src, &dst);
 		}
 		val = BNEP_CONN_NOT_ALLOWED;
 		goto done;
@@ -387,7 +387,8 @@ static int authorize_connection(struct network_server *ns, const char *address)
 	uuid = bnep_uuid(ns->id);
 	str2ba(address, &dst);
 
-	ret_val = service_req_auth(&na->src, &dst, uuid, req_auth_cb, ns);
+	ret_val = btd_request_authorization(&na->src, &dst, uuid,
+				req_auth_cb, ns);
 
 	return ret_val;
 }

@@ -46,9 +46,9 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
-#include "dbus-service.h"
 #include "logging.h"
 #include "uinput.h"
+#include "adapter.h"
 #include "device.h"
 #include "manager.h"
 #include "avdtp.h"
@@ -629,7 +629,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 		error("Access denied: %s", derr->message);
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			service_cancel_auth(&session->src, &session->dst);
+			btd_cancel_authorization(&session->src, &session->dst);
 		}
 
 		avctp_unref(session);
@@ -687,7 +687,9 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	if (avdtp_is_connected(src, dst))
 		goto proceed;
 
-	if (service_req_auth(src, dst, AVRCP_TARGET_UUID, auth_cb, session) < 0)
+	err = btd_request_authorization(src, dst, AVRCP_TARGET_UUID,
+				auth_cb, session);
+	if (err < 0)
 		goto drop;
 
 	return;

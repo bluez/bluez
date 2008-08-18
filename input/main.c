@@ -34,7 +34,6 @@
 
 #include "plugin.h"
 #include "logging.h"
-#include "dbus-service.h"
 #include "manager.h"
 
 static GKeyFile *load_config_file(const char *file)

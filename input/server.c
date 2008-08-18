@@ -44,10 +44,10 @@
 
 #include "logging.h"
 
+#include "adapter.h"
 #include "device.h"
 #include "server.h"
 #include "storage.h"
-#include "dbus-service.h"
 #include "glib-helper.h"
 
 static const char *HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";
@@ -64,7 +64,7 @@ static void auth_callback(DBusError *derr, void *user_data)
 	if (derr) {
 		error("Access denied: %s", derr->message);
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY))
-			service_cancel_auth(&auth->src, &auth->dst);
+			btd_cancel_authorization(&auth->src, &auth->dst);
 
 		input_device_close_channels(&auth->src, &auth->dst);
 	} else
@@ -81,7 +81,7 @@ static int authorize_device(const bdaddr_t *src, const bdaddr_t *dst)
 	bacpy(&auth->src, src);
 	bacpy(&auth->dst, dst);
 
-	return service_req_auth(src, dst, HID_UUID,
+	return btd_request_authorization(src, dst, HID_UUID,
 				auth_callback, auth);
 }
 

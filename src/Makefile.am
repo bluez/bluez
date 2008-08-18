@@ -21,8 +21,8 @@ bluetoothd_SOURCES = main.c hcid.h sdpd.h \
 	manager.h manager.c error.h error.c \
 	adapter.h adapter.c device.h device.c plugin.h plugin.c \
 	dbus-common.c dbus-common.h dbus-hci.h dbus-hci.c \
-	dbus-database.c dbus-database.h dbus-service.c dbus-service.h \
-	telephony.h telephony.c agent.h agent.c driver.h driver.c
+	dbus-database.c dbus-database.h \
+	telephony.h telephony.c agent.h agent.c
 
 bluetoothd_LDADD = $(top_builddir)/common/libhelper.a \
 	@GDBUS_LIBS@ @GMODULE_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@

@@ -54,7 +54,6 @@
 #include "../src/dbus-common.h"
 #include "adapter.h"
 #include "device.h"
-#include "driver.h"
 
 #include "logging.h"
 #include "textfile.h"

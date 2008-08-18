@@ -51,9 +51,7 @@
 #include "glib-helper.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
-#include "../src/driver.h"
 
-#include "dbus-service.h"
 #include "logging.h"
 #include "textfile.h"
 #include "ipc.h"
@@ -458,7 +456,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 		error("Access denied: %s", derr->message);
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			service_cancel_auth(&device->src, &device->dst);
+			btd_cancel_authorization(&device->src, &device->dst);
 		}
 
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
@@ -512,8 +510,8 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
-	err = service_req_auth(&device->src, &device->dst, uuid, auth_cb,
-				device);
+	err = btd_request_authorization(&device->src, &device->dst, uuid,
+				auth_cb, device);
 	if (err < 0) {
 		debug("Authorization denied: %s", strerror(-err));
 		headset_close_rfcomm(device);

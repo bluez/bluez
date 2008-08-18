@@ -40,9 +40,9 @@
 #include <glib.h>
 #include <dbus/dbus.h>
 
-#include "dbus-service.h"
 #include "logging.h"
 
+#include "adapter.h"
 #include "device.h"
 #include "manager.h"
 #include "control.h"
@@ -2684,7 +2684,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 		error("Access denied: %s", derr->message);
 		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
 			debug("Canceling authorization request");
-			service_cancel_auth(&session->src, &session->dst);
+			btd_cancel_authorization(&session->src, &session->dst);
 		}
 
 		connection_lost(session, -EACCES);
@@ -2757,8 +2757,9 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 					(GIOFunc) session_cb, session);
 	g_io_channel_unref(chan);
 
-	if (service_req_auth(src, dst, ADVANCED_AUDIO_UUID, auth_cb,
-			session) < 0) {
+	err = btd_request_authorization(src, dst, ADVANCED_AUDIO_UUID,
+				auth_cb, session);
+	if (err < 0) {
 		avdtp_unref(session);
 		goto drop;
 	}
