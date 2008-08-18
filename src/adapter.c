@@ -63,6 +63,7 @@
 #include "glib-helper.h"
 #include "logging.h"
 #include "agent.h"
+#include "driver.h"
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 
@@ -2215,6 +2216,17 @@ static void load_devices(struct adapter *adapter)
 	textfile_foreach(filename, create_stored_device_from_linkkeys, adapter);
 }
 
+static void load_drivers(struct adapter *adapter)
+{
+	GSList *l;
+
+	for (l = btd_get_adapter_drivers(); l; l = l->next) {
+		struct btd_adapter_driver *driver = l->data;
+
+		if (driver->probe)
+			driver->probe(adapter);
+	}
+}
 
 static void adapter_up(struct adapter *adapter, int dd)
 {
@@ -2259,6 +2271,7 @@ static void adapter_up(struct adapter *adapter, int dd)
 					ADAPTER_INTERFACE, "Mode",
 					DBUS_TYPE_STRING, &mode);
 
+	load_drivers(adapter);
 	load_devices(adapter);
 }
 
@@ -2419,6 +2432,17 @@ static void reply_pending_requests(struct adapter *adapter)
 	}
 }
 
+static void unload_drivers(struct adapter *adapter)
+{
+	GSList *l;
+
+	for (l = btd_get_adapter_drivers(); l; l = l->next) {
+		struct btd_adapter_driver *driver = l->data;
+
+		if (driver->remove)
+			driver->remove(adapter);
+	}
+}
 
 int adapter_stop(struct adapter *adapter)
 {
@@ -2480,6 +2504,8 @@ int adapter_stop(struct adapter *adapter)
 	adapter->mode = MODE_OFF;
 	adapter->pinq_idle = 0;
 	adapter->state = DISCOVER_TYPE_NONE;
+
+	unload_drivers(adapter);
 
 	info("Adapter %s has been disabled", adapter->path);
 
