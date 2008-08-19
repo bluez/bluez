@@ -565,7 +565,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 			hfp = tmp;
 	}
 
-	flags = RFCOMM_LM_SECURE;
+	flags = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
 
 	if (master)
 		flags |= RFCOMM_LM_MASTER;
@@ -641,7 +641,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 			master = tmp;
 	}
 
-	flags = RFCOMM_LM_SECURE;
+	flags = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
 
 	if (master)
 		flags |= RFCOMM_LM_MASTER;

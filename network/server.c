@@ -873,9 +873,10 @@ static GDBusSignalTable server_signals[] = {
 static struct network_adapter *create_adapter(const char *path, bdaddr_t *src)
 {
 	struct network_adapter *na;
-	int lm;
+	int lm = 0;
 
-	lm = security ? L2CAP_LM_SECURE : 0;
+	if (security)
+		lm |= L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT;
 
 	na = g_new0(struct network_adapter, 1);
 	na->path = g_strdup(path);

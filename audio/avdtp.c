@@ -2773,9 +2773,7 @@ drop:
 
 static GIOChannel *avdtp_server_socket(gboolean master)
 {
-	int lm;
-
-	lm = L2CAP_LM_SECURE;
+	int lm = L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT;
 
 	if (master)
 		lm |= L2CAP_LM_MASTER;
