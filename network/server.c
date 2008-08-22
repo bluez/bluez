@@ -847,15 +847,16 @@ static void path_unregister(void *data)
 	struct network_server *ns = data;
 	struct network_adapter *na = ns->na;
 
-	na->servers = g_slist_remove(na->servers, ns);
-	server_free(ns);
-
 	info("Unregistered interface %s on path %s",
 		ns->iface, na->path);
+
+	na->servers = g_slist_remove(na->servers, ns);
+	server_free(ns);
 
 	if (na->servers)
 		return;
 
+	adapters = g_slist_remove(adapters, na);
 	adapter_free(na);
 }
 

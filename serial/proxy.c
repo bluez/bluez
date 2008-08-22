@@ -1009,6 +1009,8 @@ static void manager_path_unregister(void *data)
 
 	if (adapter->conn)
 		dbus_connection_unref(adapter->conn);
+
+	adapters = g_slist_remove(adapters, adapter);
 	g_slist_free(adapter->proxies);
 	g_free(adapter->path);
 	g_free(adapter);
