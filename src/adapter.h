@@ -159,7 +159,6 @@ int pending_remote_name_cancel(struct adapter *adapter);
 
 void remove_pending_device(struct adapter *adapter);
 
-void adapter_auth_request_replied(struct adapter *adapter, bdaddr_t *dba);
 struct pending_auth_info *adapter_find_auth_request(struct adapter *adapter,
 							bdaddr_t *dba);
 void adapter_remove_auth_request(struct adapter *adapter, bdaddr_t *dba);

@@ -177,20 +177,6 @@ static int auth_req_cmp(const void *p1, const void *p2)
 	return bda ? bacmp(&pb1->bdaddr, bda) : -1;
 }
 
-void adapter_auth_request_replied(struct adapter *adapter, bdaddr_t *dba)
-{
-	GSList *l;
-	struct pending_auth_info *auth;
-
-	l = g_slist_find_custom(adapter->auth_reqs, dba, auth_req_cmp);
-	if (!l)
-		return;
-
-	auth = l->data;
-
-	auth->replied = TRUE;
-}
-
 struct pending_auth_info *adapter_find_auth_request(struct adapter *adapter,
 							bdaddr_t *dba)
 {
