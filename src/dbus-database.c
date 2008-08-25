@@ -38,15 +38,10 @@
 
 #include <gdbus.h>
 
-#include "hcid.h"
 #include "sdpd.h"
 #include "sdp-xml.h"
-#include "manager.h"
-#include "adapter.h"
-#include "dbus-hci.h"
-#include "dbus-common.h"
 #include "error.h"
-#include "dbus-database.h"
+#include "logging.h"
 
 static GSList *records = NULL;
 

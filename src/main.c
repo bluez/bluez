@@ -54,7 +54,6 @@
 #include "dbus-common.h"
 #include "dbus-database.h"
 #include "dbus-hci.h"
-#include "device.h"
 #include "agent.h"
 #include "manager.h"
 
