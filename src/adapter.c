@@ -32,10 +32,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <time.h>
-#include <sys/param.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -56,7 +53,6 @@
 #include "device.h"
 
 #include "textfile.h"
-#include "oui.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
 #include "dbus-database.h"

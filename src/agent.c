@@ -35,17 +35,13 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
-#include <bluetooth/sdp.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
 #include "hcid.h"
-#include "dbus-common.h"
-#include "error.h"
 #include "adapter.h"
-#include "dbus-hci.h"
 #include "device.h"
 #include "agent.h"
 

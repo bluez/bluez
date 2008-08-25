@@ -27,12 +27,6 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-
-#include <gdbus.h>
-
 #include "error.h"
 
 /* Helper function - internal use only */

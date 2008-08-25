@@ -37,8 +37,6 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -48,7 +46,6 @@
 #include "manager.h"
 #include "adapter.h"
 #include "dbus-hci.h"
-#include "dbus-database.h"
 #include "dbus-common.h"
 
 #define BLUEZ_NAME "org.bluez"
