@@ -40,6 +40,8 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
+#include "logging.h"
+
 #include "hcid.h"
 #include "adapter.h"
 #include "device.h"

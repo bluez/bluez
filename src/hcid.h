@@ -151,7 +151,6 @@ int delete_entry(bdaddr_t *src, const char *storage, const char *key);
 int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec);
 sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle);
 int delete_record(const gchar *src, const gchar *dst, const uint32_t handle);
-
 gboolean plugin_init(GKeyFile *config);
 void plugin_cleanup(void);
 void __probe_servers(const char *adapter);

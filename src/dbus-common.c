@@ -42,6 +42,8 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
+#include "logging.h"
+
 #include "hcid.h"
 #include "manager.h"
 #include "adapter.h"

@@ -45,8 +45,10 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
-#include "hcid.h"
+#include "logging.h"
 #include "textfile.h"
+
+#include "hcid.h"
 #include "manager.h"
 #include "adapter.h"
 #include "device.h"

@@ -48,6 +48,8 @@
 
 #include <dbus/dbus.h>
 
+#include "logging.h"
+
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"

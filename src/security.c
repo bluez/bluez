@@ -29,7 +29,9 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/param.h>
 #include <sys/ioctl.h>
@@ -43,7 +45,12 @@
 
 #include <dbus/dbus.h>
 
+#include "logging.h"
 #include "textfile.h"
+
+#include "hcid.h"
+#include "adapter.h"
+#include "dbus-hci.h"
 
 typedef enum {
 	REQ_PENDING,
