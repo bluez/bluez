@@ -29,13 +29,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <unistd.h>
-#include <sys/time.h>
 #include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <sys/param.h>
-#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -48,7 +43,6 @@
 #include <gdbus.h>
 
 #include "hcid.h"
-#include "sdpd.h"
 
 #include "logging.h"
 #include "textfile.h"

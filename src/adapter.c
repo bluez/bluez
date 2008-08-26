@@ -32,10 +32,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <time.h>
-#include <sys/param.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -56,7 +53,6 @@
 #include "device.h"
 
 #include "textfile.h"
-#include "oui.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
 #include "dbus-database.h"
@@ -175,20 +171,6 @@ static int auth_req_cmp(const void *p1, const void *p2)
 	const bdaddr_t *bda = p2;
 
 	return bda ? bacmp(&pb1->bdaddr, bda) : -1;
-}
-
-void adapter_auth_request_replied(struct adapter *adapter, bdaddr_t *dba)
-{
-	GSList *l;
-	struct pending_auth_info *auth;
-
-	l = g_slist_find_custom(adapter->auth_reqs, dba, auth_req_cmp);
-	if (!l)
-		return;
-
-	auth = l->data;
-
-	auth->replied = TRUE;
 }
 
 struct pending_auth_info *adapter_find_auth_request(struct adapter *adapter,
@@ -490,12 +472,14 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 	} else {
 		/* discoverable or limited */
 		if ((scan_enable & SCAN_INQUIRY) && (new_mode != adapter->mode)) {
-			if (adapter->discov_timeout_id)
+			if (adapter->discov_timeout_id) {
 				g_source_remove(adapter->discov_timeout_id);
+				adapter->discov_timeout_id = 0;
+			}
 
 			if (!adapter->sessions && !adapter->discov_timeout)
-				adapter->discov_timeout_id = g_timeout_add(adapter->discov_timeout * 1000,
-						discov_timeout_handler, adapter);
+				adapter_set_discov_timeout(adapter,
+						adapter->discov_timeout * 1000);
 		}
 	}
 done:
@@ -509,7 +493,7 @@ done:
 	return dbus_message_new_method_return(msg);
 }
 
-gint find_session(struct mode_req *req, DBusMessage *msg)
+static gint find_session(struct mode_req *req, DBusMessage *msg)
 {
 	const char *name = dbus_message_get_sender(req->msg);
 	const char *sender = dbus_message_get_sender(msg);
@@ -590,9 +574,7 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 	}
 
 	if ((timeout != 0) && (adapter->scan_mode & SCAN_INQUIRY))
-		adapter->discov_timeout_id = g_timeout_add(timeout * 1000,
-						discov_timeout_handler,
-						adapter);
+		adapter_set_discov_timeout(adapter, timeout * 1000);
 
 	adapter->discov_timeout = timeout;
 
@@ -2651,7 +2633,7 @@ const gchar *adapter_get_address(struct adapter *adapter)
 	return adapter->address;
 }
 
-gboolean discov_timeout_handler(void *data)
+static gboolean discov_timeout_handler(void *data)
 {
 	struct adapter *adapter = data;
 	struct hci_request rq;

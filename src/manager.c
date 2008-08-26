@@ -48,18 +48,8 @@
 
 #include "logging.h"
 #include "textfile.h"
-#include "hcid.h"
-#include "sdpd.h"
 #include "adapter.h"
-#include "dbus-common.h"
 #include "error.h"
-#include "dbus-hci.h"
-#include "dbus-database.h"
-#include "sdp-xml.h"
-#include "oui.h"
-#include "agent.h"
-#include "device.h"
-
 #include "manager.h"
 
 static DBusConnection *connection = NULL;
