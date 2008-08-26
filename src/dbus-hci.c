@@ -1468,10 +1468,9 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 
 		device = adapter_find_device(adapter, paddr);
 		if (device) {
+			dev_path = device_get_path(device);
 
-		  dev_path = device_get_path(device);
-
-		  dbus_connection_emit_property_changed(connection,
+			dbus_connection_emit_property_changed(connection,
 					dev_path, DEVICE_INTERFACE,
 					"Connected", DBUS_TYPE_BOOLEAN,
 					&connected);
