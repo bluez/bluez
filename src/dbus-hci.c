@@ -969,8 +969,6 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		}
 	}
 
-	adapter->pinq_idle = 1;
-
 	/*
 	 * Enable resolution again: standard inquiry can be
 	 * received in the periodic inquiry idle state.
@@ -1242,10 +1240,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		adapter_set_state(adapter, state);
 	}
 
-	/* reset the idle flag when the inquiry complete event arrives */
 	if (adapter_get_state(adapter) & PERIODIC_INQUIRY) {
-		adapter->pinq_idle = 0;
-
 		/* Out of range list update */
 		l = g_slist_find_custom(adapter->oor_devices, peer_addr,
 				(GCompareFunc) strcmp);

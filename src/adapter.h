@@ -102,7 +102,6 @@ struct adapter {
 	uint8_t scan_mode;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
 	uint8_t mode;			/* off, connectable, discoverable, limited */
 	uint8_t global_mode;		/* last valid global mode */
-	int pinq_idle;			/* tracks the idle time for periodic inquiry */
 	int state;			/* standard inq, periodic inq, name resloving */
 	GSList *found_devices;
 	GSList *oor_devices;	/* out of range device list */

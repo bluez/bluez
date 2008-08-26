@@ -2492,7 +2492,6 @@ int adapter_stop(struct adapter *adapter)
 	adapter->up = 0;
 	adapter->scan_mode = SCAN_DISABLED;
 	adapter->mode = MODE_OFF;
-	adapter->pinq_idle = 0;
 	adapter->state = DISCOVER_TYPE_NONE;
 
 	unload_drivers(adapter);
