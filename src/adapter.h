@@ -24,12 +24,6 @@
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter"
 
-#define INVALID_DEV_ID		0xFFFF
-
-#define BONDING_TIMEOUT         45000 /* 45 sec */
-
-#define DC_PENDING_TIMEOUT      2000  /* 2 secs */
-
 /* Discover types */
 #define DISCOVER_TYPE_NONE	0x00
 #define STD_INQUIRY		0x01

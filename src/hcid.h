@@ -23,18 +23,9 @@
  *
  */
 
-#include <time.h>
-#include <sys/types.h>
-
-#include <glib.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/hci.h>
-
-#include "logging.h"
-
-#define HCID_CONFIG_FILE CONFIGDIR "/hcid.conf"
 
 #define HCID_DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
 
@@ -100,26 +91,9 @@ struct hcid_opts {
 
 	int     sock;
 };
+
 extern struct hcid_opts hcid;
 
-typedef enum {
-	REQ_PENDING,
-	REQ_SENT
-} req_status_t;
-
-struct hci_req_data {
-	int dev_id;
-	int event;
-	req_status_t status;
-	bdaddr_t dba;
-	uint16_t ogf;
-	uint16_t ocf;
-	void *cparam;
-	int clen;
-};
-
-struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba, uint16_t ogf, uint16_t ocf, int event, const void *cparam, int clen);
-void hci_req_queue_append(struct hci_req_data *data);
 void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
 
 #define HCID_OFFMODE_DEVDOWN	0

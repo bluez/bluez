@@ -27,7 +27,6 @@
 #endif
 
 #include <stdio.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -58,8 +57,6 @@
 
 #define DEFAULT_XML_BUF_SIZE	1024
 #define DISCONNECT_TIMER	2
-
-#define DEVICE_INTERFACE "org.bluez.Device"
 
 struct btd_driver_data {
 	struct btd_device_driver *driver;
@@ -714,7 +711,7 @@ static void iter_append_record(DBusMessageIter *dict, uint32_t handle,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-void append_and_grow_string(void *data, const char *str)
+static void append_and_grow_string(void *data, const char *str)
 {
 	sdp_buf_t *buff = data;
 	int len;

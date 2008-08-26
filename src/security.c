@@ -29,12 +29,6 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <ctype.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/param.h>
@@ -49,10 +43,23 @@
 
 #include <dbus/dbus.h>
 
-#include "hcid.h"
 #include "textfile.h"
-#include "adapter.h"
-#include "dbus-hci.h"
+
+typedef enum {
+	REQ_PENDING,
+	REQ_SENT
+} req_status_t;
+
+struct hci_req_data {
+	int dev_id;
+	int event;
+	req_status_t status;
+	bdaddr_t dba;
+	uint16_t ogf;
+	uint16_t ocf;
+	void *cparam;
+	int clen;
+};
 
 struct g_io_info {
 	GIOChannel	*channel;
@@ -64,7 +71,9 @@ static struct g_io_info io_data[HCI_MAX_DEV];
 
 static GSList *hci_req_queue = NULL;
 
-struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba, uint16_t ogf, uint16_t ocf, int event, const void *cparam, int clen)
+static struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba,
+					uint16_t ogf, uint16_t ocf, int event,
+					const void *cparam, int clen)
 {
 	struct hci_req_data *data;
 
@@ -121,7 +130,7 @@ static void hci_req_queue_process(int dev_id)
 	hci_close_dev(dd);
 }
 
-void hci_req_queue_append(struct hci_req_data *data)
+static void hci_req_queue_append(struct hci_req_data *data)
 {
 	GSList *l;
 	struct hci_req_data *match;
