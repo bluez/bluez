@@ -120,7 +120,7 @@ int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
 	return rssi1 - rssi2;
 }
 
-int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,
+static int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,
 			name_status_t name_status)
 {
 	struct remote_dev_info *dev, match;
@@ -839,7 +839,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 			DBUS_TYPE_INVALID);
 }
 
-int found_device_req_name(struct adapter *adapter)
+static int found_device_req_name(struct adapter *adapter)
 {
 	struct hci_request rq;
 	evt_cmd_status rp;
