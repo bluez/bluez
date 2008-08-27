@@ -303,11 +303,12 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	bacpy(&req.bdaddr, dba);
 
 	err = ioctl(dev, HCIGETAUTHINFO, (unsigned long) &req);
-	if (err < 0 && errno != EINVAL)
-		debug("HCIGETAUTHINFO failed %s (%d)",
-					strerror(errno), errno);
-	else
+	if (err < 0) {
+		if (errno != EINVAL)
+			debug("HCIGETAUTHINFO failed %s (%d)",
+						strerror(errno), errno);
 		req.type = 0x00;
+	}
 
 	debug("kernel auth requirements = 0x%02x", req.type);
 
