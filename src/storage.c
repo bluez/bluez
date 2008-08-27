@@ -121,11 +121,11 @@ int read_device_mode(bdaddr_t *bdaddr, char *mode, int length)
 	return 0;
 }
 
-int read_on_mode(bdaddr_t *bdaddr, char *mode, int length)
+int read_on_mode(const char *src, char *mode, int length)
 {
 	char filename[PATH_MAX + 1], *str;
 
-	create_filename(filename, PATH_MAX, bdaddr, "config");
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "config");
 
 	str = textfile_get(filename, "onmode");
 	if (!str)

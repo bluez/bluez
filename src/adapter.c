@@ -331,7 +331,7 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	return bonding;
 }
 
-const char *mode2str(uint8_t mode)
+static const char *mode2str(uint8_t mode)
 {
 	switch(mode) {
 	case MODE_OFF:
@@ -347,20 +347,7 @@ const char *mode2str(uint8_t mode)
 	}
 }
 
-static uint8_t on_mode(const char *addr)
-{
-	char mode[14];
-	bdaddr_t sba;
-
-	str2ba(addr, &sba);
-
-	if (read_on_mode(&sba, mode, sizeof(mode)) < 0)
-		return MODE_CONNECTABLE;
-
-	return str2mode(addr, mode);
-}
-
-uint8_t str2mode(const char *addr, const char *mode)
+static uint8_t str2mode(const char *addr, const char *mode)
 {
 	if (strcasecmp("off", mode) == 0)
 		return MODE_OFF;
@@ -370,9 +357,13 @@ uint8_t str2mode(const char *addr, const char *mode)
 		return MODE_DISCOVERABLE;
 	else if (strcasecmp("limited", mode) == 0)
 		return MODE_LIMITED;
-	else if (strcasecmp("on", mode) == 0)
-		return on_mode(addr);
-	else
+	else if (strcasecmp("on", mode) == 0) {
+		char onmode[14];
+		if (read_on_mode(addr, onmode, sizeof(onmode)) < 0)
+			return MODE_CONNECTABLE;
+
+		return str2mode(addr, onmode);
+	} else
 		return MODE_UNKNOWN;
 }
 
