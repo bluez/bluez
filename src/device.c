@@ -145,15 +145,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	bdaddr_t src, dst;
-	char path[MAX_PATH_LENGTH], name[248];
-	char *ppath, **uuids;
-	const char *ptr;
+	char name[248];
+	char **uuids;
+	const char *ptr, *source;
 	dbus_bool_t boolean;
 	uint32_t class;
 	int i;
 	GSList *l;
-	uint16_t dev_id = adapter_get_dev_id(adapter);
-	const gchar *source = adapter_get_address(adapter);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -173,6 +171,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	/* Name */
 	ptr = NULL;
 	memset(name, 0, sizeof(name));
+	source = adapter_get_address(adapter);
+
 	if (read_device_name(source, device->address, name) == 0) {
 		ptr = name;
 		dbus_message_iter_append_dict_entry(&dict, "Name",
@@ -225,10 +225,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	g_free(uuids);
 
 	/* Adapter */
-	snprintf(path, sizeof(path), "%s/hci%d", "/org/bluez", dev_id);
-	ppath = path;
+	ptr = adapter_get_path(adapter);
 	dbus_message_iter_append_dict_entry(&dict, "Adapter",
-			DBUS_TYPE_OBJECT_PATH, &ppath);
+			DBUS_TYPE_OBJECT_PATH, &ptr);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
