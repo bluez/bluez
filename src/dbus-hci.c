@@ -1820,6 +1820,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 
 	ba2str(remote, addr);
 
+	/* For CreatePairedDevice use dedicated bonding */
 	device = adapter_find_device(adapter, addr);
 	if (device) {
 		agent = device_get_agent(device);
@@ -1830,6 +1831,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		agent = adapter->agent;
 
 	if (!agent) {
+		/* No agent available, and no bonding case */
 		if (device_get_auth(device) == 0x00 ||
 				device_get_auth(device) == 0x01) {
 			/* No input, no output */
@@ -1838,6 +1840,13 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		}
 		error("No agent available for IO capability");
 		return -1;
+	}
+
+	if (device && *auth < 0x02) {
+		/* If remote requests dedicated bonding follow that lead */
+		if (device_get_auth(device) == 0x02 ||
+				device_get_auth(device) == 0x03)
+			*auth = 0x02;
 	}
 
 	*cap = agent_get_io_capability(agent);
