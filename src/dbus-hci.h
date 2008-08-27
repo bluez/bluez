@@ -50,8 +50,6 @@ int unregister_adapter_path(const char *path);
 
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 
-int get_default_dev_id(void);
-
 int cancel_discovery(struct adapter *adapter);
 int cancel_periodic_discovery(struct adapter *adapter);
 
@@ -59,9 +57,6 @@ int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
 int found_device_cmp(const struct remote_dev_info *d1,
 			const struct remote_dev_info *d2);
-int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,
-			name_status_t name_status);
-int found_device_req_name(struct adapter *dbus_data);
 
 int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited);
 int set_service_classes(int dd, const uint8_t *cls, uint8_t value);
@@ -69,4 +64,3 @@ int set_service_classes(int dd, const uint8_t *cls, uint8_t value);
 void set_dbus_connection(DBusConnection *conn);
 
 DBusConnection *get_dbus_connection(void);
-struct adapter *adapter_find(const bdaddr_t *sba);

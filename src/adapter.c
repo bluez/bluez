@@ -69,6 +69,8 @@
 #define IO_CAPABILITY_NOINPUTOUTPUT	0x03
 #define IO_CAPABILITY_INVALID		0xFF
 
+#define check_address(address) bachk(address)
+
 static DBusConnection *connection = NULL;
 static GSList *adapter_drivers = NULL;
 

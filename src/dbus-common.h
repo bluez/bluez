@@ -24,11 +24,7 @@
 
 #define MAX_PATH_LENGTH 64
 
-int str2uuid(uuid_t *uuid, const char *string);
-
 int l2raw_connect(const char *local, const bdaddr_t *remote);
-
-#define check_address(address) bachk(address)
 
 void hcid_dbus_exit(void);
 int hcid_dbus_init(void);
