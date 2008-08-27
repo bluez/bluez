@@ -99,8 +99,6 @@ void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
 #define HCID_OFFMODE_DEVDOWN	0
 #define HCID_OFFMODE_NOSCAN	1
 
-struct device_opts *alloc_device_opts(char *ref);
-
 uint8_t get_startup_scan(int hdev);
 uint8_t get_startup_mode(int hdev);
 int get_discoverable_timeout(int dev_id);

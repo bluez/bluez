@@ -177,27 +177,6 @@ static inline void init_device_defaults(struct device_opts *device_opts)
 	device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
 }
 
-struct device_opts *alloc_device_opts(char *ref)
-{
-	struct device_list *device;
-
-	device = g_try_new(struct device_list, 1);
-	if (!device) {
-		info("Can't allocate devlist opts buffer: %s (%d)",
-							strerror(errno), errno);
-		exit(1);
-	}
-
-	device->ref = g_strdup(ref);
-	device->next = device_list;
-	device_list = device;
-
-	memcpy(&device->opts, &default_device, sizeof(struct device_opts));
-	device->opts.name = g_strdup(default_device.name);
-
-	return &device->opts;
-}
-
 static void free_device_opts(void)
 {
 	struct device_list *device, *next;
