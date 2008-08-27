@@ -101,9 +101,12 @@ s
 (allow role switch, become slave if the peer asks to become master). Default is
 .IR m .
 .TP
-.BI dc " <bdaddr>"
+.BI dc " <bdaddr> [reason]"
 Delete baseband connection from remote device with Bluetooth address
 .IR bdaddr .
+The reason can be one of the Bluetooth HCI error codes. Default is
+.IR 19
+for user ended connections. The value must be given in decimal.
 .TP
 .BI sr " <bdaddr> <role>"
 Switch role for the baseband connection from the remote device to

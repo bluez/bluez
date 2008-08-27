@@ -1238,12 +1238,13 @@ static struct option dc_options[] = {
 
 static const char *dc_help =
 	"Usage:\n"
-	"\tdc <bdaddr>\n";
+	"\tdc <bdaddr> [reason]\n";
 
 static void cmd_dc(int dev_id, int argc, char **argv)
 {
 	struct hci_conn_info_req *cr;
 	bdaddr_t bdaddr;
+	uint8_t reason;
 	int opt, dd;
 
 	for_each_opt(opt, dc_options, NULL) {
@@ -1262,6 +1263,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 	}
 
 	str2ba(argv[0], &bdaddr);
+	reason = (argc > 1) ? atoi(argv[1]) : HCI_OE_USER_ENDED_CONNECTION;
 
 	if (dev_id < 0) {
 		dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
@@ -1291,7 +1293,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 	}
 
 	if (hci_disconnect(dd, htobs(cr->conn_info->handle),
-				HCI_OE_USER_ENDED_CONNECTION, 10000) < 0)
+						reason, 10000) < 0)
 		perror("Disconnect failed");
 
 	free(cr);
