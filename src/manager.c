@@ -399,8 +399,6 @@ int manager_unregister_adapter(int id)
 
 	info("Unregister path: %s", path);
 
-	adapter_stop(adapter);
-
 	manager_remove_adapter(adapter);
 
 	adapter_remove(adapter);
