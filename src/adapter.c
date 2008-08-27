@@ -45,21 +45,21 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
+#include "logging.h"
+#include "textfile.h"
+
 #include "hcid.h"
 #include "sdpd.h"
-
 #include "manager.h"
 #include "adapter.h"
 #include "device.h"
-
-#include "textfile.h"
 #include "dbus-common.h"
 #include "dbus-hci.h"
 #include "dbus-database.h"
 #include "error.h"
 #include "glib-helper.h"
-#include "logging.h"
 #include "agent.h"
+#include "storage.h"
 
 #define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 

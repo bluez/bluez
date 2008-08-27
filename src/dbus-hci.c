@@ -56,6 +56,7 @@
 #include "glib-helper.h"
 #include "dbus-common.h"
 #include "agent.h"
+#include "storage.h"
 
 static DBusConnection *connection = NULL;
 

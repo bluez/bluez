@@ -53,11 +53,11 @@
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
-#include "dbus-common.h"
-#include "dbus-database.h"
 #include "dbus-hci.h"
+#include "dbus-common.h"
 #include "agent.h"
 #include "manager.h"
+#include "storage.h"
 
 struct hcid_opts hcid;
 struct device_opts default_device;
