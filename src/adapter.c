@@ -823,9 +823,9 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 	str2ba(adapter->address, &src);
 	delete_entry(&src, "profiles", destination);
 
-	remove_bonding(conn, NULL, destination, adapter);
-
 	if (!device_is_temporary(device)) {
+		remove_bonding(conn, NULL, destination, adapter);
+
 		g_dbus_emit_signal(conn, adapter->path,
 				ADAPTER_INTERFACE,
 				"DeviceRemoved",
