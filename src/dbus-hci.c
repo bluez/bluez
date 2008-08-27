@@ -1832,8 +1832,8 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 
 	if (!agent) {
 		/* No agent available, and no bonding case */
-		if (device_get_auth(device) == 0x00 ||
-				device_get_auth(device) == 0x01) {
+		if (device && (device_get_auth(device) == 0x00 ||
+					device_get_auth(device) == 0x01)) {
 			/* No input, no output */
 			*cap = 0x03;
 			return 0;
