@@ -32,7 +32,6 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -98,20 +97,6 @@ static inline DBusMessage *no_such_adapter(DBusMessage *msg)
 	return g_dbus_create_error(msg,
 			ERROR_INTERFACE ".NoSuchAdapter",
 			"No such adapter");
-}
-
-static inline DBusMessage *no_such_service(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg,
-			ERROR_INTERFACE ".NoSuchService",
-			"No such service");
-}
-
-static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
-{
-	return g_dbus_create_error(msg,
-			ERROR_INTERFACE ".Failed",
-			strerror(err));
 }
 
 static int find_by_address(const char *str)
