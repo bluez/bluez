@@ -608,7 +608,7 @@ static char *service_list_to_string(GSList *services)
 	return g_strdup(str);
 }
 
-int write_trust(bdaddr_t *local, const char *addr, const char *service,
+int write_trust(const char *src, const char *addr, const char *service,
 		gboolean trust)
 {
 	char filename[PATH_MAX + 1], *str;
@@ -616,7 +616,7 @@ int write_trust(bdaddr_t *local, const char *addr, const char *service,
 	gboolean trusted;
 	int ret;
 
-	create_filename(filename, PATH_MAX, local, "trusts");
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "trusts");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 

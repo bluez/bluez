@@ -262,12 +262,9 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *device = data;
 	struct adapter *adapter = device->adapter;
-	bdaddr_t local;
 	const gchar *source = adapter_get_address(adapter);
 
-	str2ba(source, &local);
-
-	write_trust(&local, device->address, GLOBAL_TRUST, value);
+	write_trust(source, device->address, GLOBAL_TRUST, value);
 
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Trusted",
