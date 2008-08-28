@@ -90,26 +90,6 @@ void bonding_request_free(struct bonding_request_info *bonding)
 	g_free(bonding);
 }
 
-int found_device_cmp(const struct remote_dev_info *d1,
-			const struct remote_dev_info *d2)
-{
-	int ret;
-
-	if (bacmp(&d2->bdaddr, BDADDR_ANY)) {
-		ret = bacmp(&d1->bdaddr, &d2->bdaddr);
-		if (ret)
-			return ret;
-	}
-
-	if (d2->name_status != NAME_ANY) {
-		ret = (d1->name_status - d2->name_status);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
-}
-
 int active_conn_find_by_bdaddr(const void *data, const void *user_data)
 {
 	const struct active_conn_info *con = data;

@@ -167,6 +167,26 @@ static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
 			err > 0 ? strerror(err) : "Connection attempt failed");
 }
 
+static int found_device_cmp(const struct remote_dev_info *d1,
+			const struct remote_dev_info *d2)
+{
+	int ret;
+
+	if (bacmp(&d2->bdaddr, BDADDR_ANY)) {
+		ret = bacmp(&d1->bdaddr, &d2->bdaddr);
+		if (ret)
+			return ret;
+	}
+
+	if (d2->name_status != NAME_ANY) {
+		ret = (d1->name_status - d2->name_status);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int auth_req_cmp(const void *p1, const void *p2)
 {
 	const struct pending_auth_info *pb1 = p1;
