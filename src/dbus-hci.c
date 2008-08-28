@@ -1003,11 +1003,6 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		adapter_set_state(adapter, state);
 	}
 
-	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
-
 	if (adapter->discov_requestor) {
 		g_dbus_remove_watch(connection, adapter->discov_listener);
 		adapter->discov_listener = 0;
@@ -1090,11 +1085,6 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	state = adapter_get_state(adapter);
 	state &= ~(PERIODIC_INQUIRY | RESOLVE_NAME);
 	adapter_set_state(adapter, state);
-
-	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
 
 	/* free out of range devices list */
 	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
@@ -1389,11 +1379,6 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	/* check if there is more devices to request names */
 	if (!found_device_req_name(adapter))
 		return; /* skip if a new request has been sent */
-
-	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
 
 	/* The discovery completed signal must be sent only for discover
 	 * devices request WITH name resolving */
@@ -1971,14 +1956,6 @@ int cancel_discovery(struct adapter *adapter)
 	hci_close_dev(dd);
 
 cleanup:
-	/*
-	 * Reset discov_requestor and discover_state in the remote name
-	 * request event handler or in the inquiry complete handler.
-	 */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
-
 	/* Disable name resolution for non D-Bus clients */
 	if (!adapter->pdiscov_requestor) {
 		state = adapter_get_state(adapter);
@@ -2020,13 +1997,12 @@ int cancel_periodic_discovery(struct adapter *adapter)
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	if (!(adapter_get_state(adapter) & PERIODIC_INQUIRY))
-		goto cleanup;
+		return err;
 
 	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		err = -ENODEV;
-		goto cleanup;
-	}
+	if (dd < 0)
+		return -ENODEV;
+
 	/* find the pending remote name request */
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
@@ -2052,15 +2028,6 @@ int cancel_periodic_discovery(struct adapter *adapter)
 	}
 
 	hci_close_dev(dd);
-
-cleanup:
-	/*
-	 * Reset pdiscov_requestor and pdiscov_active is done when the
-	 * cmd complete event for exit periodic inquiry mode cmd arrives.
-	 */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
 
 	return err;
 }

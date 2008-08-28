@@ -2739,6 +2739,21 @@ void adapter_set_state(struct adapter *adapter, int state)
 	if (!adapter)
 		return;
 
+	/* Both Standard and periodic Inquiry are in progress */
+	if ((state & STD_INQUIRY) && (state & PERIODIC_INQUIRY))
+		goto set;
+
+	if (!adapter->found_devices)
+		goto set;
+
+	/* Free list if standard/periodic inquiry is done */
+	if ((adapter->state & (STD_INQUIRY | PERIODIC_INQUIRY)) &&
+			(state & (~STD_INQUIRY | ~PERIODIC_INQUIRY))) {
+		g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
+		g_slist_free(adapter->found_devices);
+		adapter->found_devices = NULL;
+	}
+set:
 	adapter->state = state;
 }
 
