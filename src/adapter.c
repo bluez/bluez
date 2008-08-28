@@ -2826,6 +2826,23 @@ int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
 	return 0;
 }
 
+int adapter_remove_found_device(struct adapter *adapter, bdaddr_t *bdaddr)
+{
+	struct remote_dev_info *dev, match;
+
+	memset(&match, 0, sizeof(struct remote_dev_info));
+	bacpy(&match.bdaddr, bdaddr);
+
+	dev = adapter_search_found_devices(adapter, &match);
+	if (!dev)
+		return -1;
+
+	adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
+	g_free(dev);
+
+	return 0;
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);

@@ -110,25 +110,6 @@ int found_device_cmp(const struct remote_dev_info *d1,
 	return 0;
 }
 
-static int found_device_remove(GSList **list, bdaddr_t *bdaddr)
-{
-	struct remote_dev_info *dev, match;
-	GSList *l;
-
-	memset(&match, 0, sizeof(struct remote_dev_info));
-	bacpy(&match.bdaddr, bdaddr);
-
-	l = g_slist_find_custom(*list, &match, (GCompareFunc) found_device_cmp);
-	if (!l)
-		return -1;
-
-	dev = l->data;
-	*list = g_slist_remove(*list, dev);
-	g_free(dev);
-
-	return 0;
-}
-
 int active_conn_find_by_bdaddr(const void *data, const void *user_data)
 {
 	const struct active_conn_info *con = data;
@@ -1311,7 +1292,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	}
 
 	/* remove from remote name request list */
-	found_device_remove(&adapter->found_devices, peer);
+	adapter_remove_found_device(adapter, peer);
 
 	/* check if there is more devices to request names */
 	if (!found_device_req_name(adapter))
