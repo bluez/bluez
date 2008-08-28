@@ -2775,6 +2775,57 @@ struct remote_dev_info *adapter_search_found_devices(struct adapter *adapter,
 	return NULL;
 }
 
+int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
+{
+	int rssi1, rssi2;
+
+	rssi1 = d1->rssi < 0 ? -d1->rssi : d1->rssi;
+	rssi2 = d2->rssi < 0 ? -d2->rssi : d2->rssi;
+
+	return rssi1 - rssi2;
+}
+
+int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
+				int8_t rssi, name_status_t name_status)
+{
+	struct remote_dev_info *dev, match;
+
+	memset(&match, 0, sizeof(struct remote_dev_info));
+	bacpy(&match.bdaddr, bdaddr);
+	match.name_status = NAME_ANY;
+
+	/* ignore repeated entries */
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev) {
+		/* device found, update the attributes */
+		if (rssi != 0)
+			dev->rssi = rssi;
+
+		 /* Get remote name can be received while inquiring.
+		  * Keep in mind that multiple inquiry result events can
+		  * be received from the same remote device.
+		  */
+		if (name_status != NAME_NOT_REQUIRED)
+			dev->name_status = name_status;
+
+		adapter->found_devices = g_slist_sort(adapter->found_devices,
+						(GCompareFunc) dev_rssi_cmp);
+
+		return -EALREADY;
+	}
+
+	dev = g_new0(struct remote_dev_info, 1);
+
+	bacpy(&dev->bdaddr, bdaddr);
+	dev->rssi = rssi;
+	dev->name_status = name_status;
+
+	adapter->found_devices = g_slist_insert_sorted(adapter->found_devices,
+						dev, (GCompareFunc) dev_rssi_cmp);
+
+	return 0;
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);

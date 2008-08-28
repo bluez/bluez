@@ -174,6 +174,8 @@ void adapter_set_state(struct adapter *adapter, int state);
 int adapter_get_state(struct adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct adapter *adapter,
 						struct remote_dev_info *match);
+int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
+				int8_t rssi, name_status_t name_status);
 
 struct btd_adapter_driver {
 	const char *name;

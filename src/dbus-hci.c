@@ -110,58 +110,6 @@ int found_device_cmp(const struct remote_dev_info *d1,
 	return 0;
 }
 
-int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
-{
-	int rssi1, rssi2;
-
-	rssi1 = d1->rssi < 0 ? -d1->rssi : d1->rssi;
-	rssi2 = d2->rssi < 0 ? -d2->rssi : d2->rssi;
-
-	return rssi1 - rssi2;
-}
-
-static int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,
-			name_status_t name_status)
-{
-	struct remote_dev_info *dev, match;
-	GSList *l;
-
-	memset(&match, 0, sizeof(struct remote_dev_info));
-	bacpy(&match.bdaddr, bdaddr);
-	match.name_status = NAME_ANY;
-
-	/* ignore repeated entries */
-	l = g_slist_find_custom(*list, &match, (GCompareFunc) found_device_cmp);
-	if (l) {
-		/* device found, update the attributes */
-		dev = l->data;
-
-		if (rssi != 0)
-			dev->rssi = rssi;
-
-		 /* Get remote name can be received while inquiring.
-		  * Keep in mind that multiple inquiry result events can
-		  * be received from the same remote device.
-		  */
-		if (name_status != NAME_NOT_REQUIRED)
-			dev->name_status = name_status;
-
-		*list = g_slist_sort(*list, (GCompareFunc) dev_rssi_cmp);
-
-		return -EALREADY;
-	}
-
-	dev = g_new0(struct remote_dev_info, 1);
-
-	bacpy(&dev->bdaddr, bdaddr);
-	dev->rssi = rssi;
-	dev->name_status = name_status;
-
-	*list = g_slist_insert_sorted(*list, dev, (GCompareFunc) dev_rssi_cmp);
-
-	return 0;
-}
-
 static int found_device_remove(GSList **list, bdaddr_t *bdaddr)
 {
 	struct remote_dev_info *dev, match;
@@ -1290,7 +1238,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	}
 
 	/* add in the list to track name sent/pending */
-	found_device_add(&adapter->found_devices, peer, rssi, name_status);
+	adapter_add_found_device(adapter, peer, rssi, name_status);
 }
 
 void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
