@@ -2762,6 +2762,19 @@ int adapter_get_state(struct adapter *adapter)
 	return adapter->state;
 }
 
+struct remote_dev_info *adapter_search_found_devices(struct adapter *adapter,
+						struct remote_dev_info *match)
+{
+	GSList *l;
+
+	l = g_slist_find_custom(adapter->found_devices, match,
+					(GCompareFunc) found_device_cmp);
+	if (l)
+		return l->data;
+
+	return NULL;
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);

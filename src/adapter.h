@@ -172,6 +172,8 @@ void adapter_set_mode(struct adapter *adapter, uint8_t mode);
 uint8_t adapter_get_mode(struct adapter *adapter);
 void adapter_set_state(struct adapter *adapter, int state);
 int adapter_get_state(struct adapter *adapter);
+struct remote_dev_info *adapter_search_found_devices(struct adapter *adapter,
+						struct remote_dev_info *match);
 
 struct btd_adapter_driver {
 	const char *name;

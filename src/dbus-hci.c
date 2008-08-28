@@ -844,22 +844,16 @@ static int found_device_req_name(struct adapter *adapter)
 	struct hci_request rq;
 	evt_cmd_status rp;
 	remote_name_req_cp cp;
-	struct remote_dev_info match;
-	GSList *l;
+	struct remote_dev_info *dev, match;
 	int dd, req_sent = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
-
-	/* get the next remote address */
-	if (!adapter->found_devices)
-		return -ENODATA;
 
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUIRED;
 
-	l = g_slist_find_custom(adapter->found_devices, &match,
-					(GCompareFunc) found_device_cmp);
-	if (!l)
+	dev = adapter_search_found_devices(adapter, &match);
+	if (!dev)
 		return -ENODATA;
 
 	dd = hci_open_dev(dev_id);
@@ -877,9 +871,7 @@ static int found_device_req_name(struct adapter *adapter)
 
 	/* send at least one request or return failed if the list is empty */
 	do {
-		struct remote_dev_info *dev = l->data;
-
-		 /* flag to indicate the current remote name requested */
+		/* flag to indicate the current remote name requested */
 		dev->name_status = NAME_REQUESTED;
 
 		memset(&rp, 0, sizeof(rp));
@@ -905,10 +897,8 @@ static int found_device_req_name(struct adapter *adapter)
 		g_free(dev);
 
 		/* get the next element */
-		l = g_slist_find_custom(adapter->found_devices, &match,
-					(GCompareFunc) found_device_cmp);
-
-	} while (l);
+		dev = adapter_search_found_devices(adapter, &match);
+	} while (dev);
 
 	hci_close_dev(dd);
 
@@ -1198,7 +1188,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	GSList *l;
 	char local_addr[18], peer_addr[18], *name, *tmp_name;
 	const char *paddr = peer_addr;
-	struct remote_dev_info match;
+	struct remote_dev_info *dev, match;
 	dbus_int16_t tmp_rssi = rssi;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
@@ -1246,9 +1236,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
 	/* if found: don't send the name again */
-	l = g_slist_find_custom(adapter->found_devices, &match,
-			(GCompareFunc) found_device_cmp);
-	if (l)
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev)
 		return;
 
 	/* the inquiry result can be triggered by NON D-Bus client */
@@ -1914,7 +1903,6 @@ static int remote_name_cancel(int dd, bdaddr_t *dba, int to)
 int cancel_discovery(struct adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
-	GSList *l;
 	int dd, err = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 	int state;
@@ -1936,10 +1924,8 @@ int cancel_discovery(struct adapter *adapter)
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = g_slist_find_custom(adapter->found_devices, &match,
-				(GCompareFunc) found_device_cmp);
-	if (l) {
-		dev = l->data;
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev) {
 		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
 			error("Read remote name cancel failed: %s, (%d)",
 					strerror(errno), errno);
@@ -1992,7 +1978,6 @@ static int periodic_inquiry_exit(int dd, int to)
 int cancel_periodic_discovery(struct adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
-	GSList *l;
 	int dd, err = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 
@@ -2008,10 +1993,8 @@ int cancel_periodic_discovery(struct adapter *adapter)
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = g_slist_find_custom(adapter->found_devices, &match,
-			(GCompareFunc) found_device_cmp);
-	if (l) {
-		dev = l->data;
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev) {
 		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
 			error("Read remote name cancel failed: %s, (%d)",
 					strerror(errno), errno);
