@@ -16,7 +16,7 @@ if (len(sys.argv) < 2):
 	print ""
 	print "  list"
 	print "  create <address>"
-	print "  remove <path>"
+	print "  remove <address|path>"
 	print "  discover <address> [pattern]"
 	print "  class <address>"
 	print "  name <address>"
@@ -39,9 +39,13 @@ if (sys.argv[1] == "create"):
 
 if (sys.argv[1] == "remove"):
 	if (len(sys.argv) < 3):
-		print "Need object path parameter"
+		print "Need address or object path parameter"
 	else:
-		adapter.RemoveDevice(sys.argv[2])
+		try:
+			path = adapter.FindDevice(sys.argv[2])
+		except:
+			path = sys.argv[2]
+		adapter.RemoveDevice(path)
 	sys.exit(0)
 
 if (sys.argv[1] == "discover"):
