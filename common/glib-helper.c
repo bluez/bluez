@@ -771,7 +771,6 @@ static int l2cap_bind(struct io_context *io_ctxt, const char *address,
 {
 	int err;
 	struct l2cap_options l2o;
-	struct sockaddr_l2 l2a;
 
 	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (io_ctxt->fd < 0)
@@ -797,7 +796,7 @@ static int l2cap_bind(struct io_context *io_ctxt, const char *address,
 
 	memset(addr, 0, sizeof(*addr));
 	addr->l2_family = AF_BLUETOOTH;
-	str2ba(address, &l2a.l2_bdaddr);
+	str2ba(address, &addr->l2_bdaddr);
 	addr->l2_psm = htobs(psm);
 
 	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
