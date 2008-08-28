@@ -28,18 +28,6 @@
 /* When all services should trust a remote device */
 #define GLOBAL_TRUST "[all]"
 
-enum {
-	HCID_SET_NAME,
-	HCID_SET_CLASS,
-	HCID_SET_VOICE,
-	HCID_SET_INQMODE,
-	HCID_SET_PAGETO,
-	HCID_SET_DISCOVTO,
-	HCID_SET_PTYPE,
-	HCID_SET_LM,
-	HCID_SET_LP,
-};
-
 /*
  * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device

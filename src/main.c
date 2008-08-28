@@ -59,6 +59,15 @@
 #include "manager.h"
 #include "storage.h"
 
+enum {
+	HCID_SET_NAME,
+	HCID_SET_CLASS,
+	HCID_SET_PAGETO,
+	HCID_SET_DISCOVTO,
+	HCID_SET_LM,
+	HCID_SET_LP,
+};
+
 struct hcid_opts hcid;
 struct device_opts default_device;
 static struct device_list *device_list = NULL;
@@ -325,7 +334,7 @@ no_address:
 	return device_opts->discovto;
 }
 
-void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
+static void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 {
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
@@ -536,15 +545,6 @@ static void configure_device(int dev_id)
 	memset(&dr, 0, sizeof(dr));
 	dr.dev_id = dev_id;
 
-	/* Set packet type */
-	if ((device_opts->flags & (1 << HCID_SET_PTYPE))) {
-		dr.dev_opt = device_opts->pkt_type;
-		if (ioctl(dd, HCISETPTYPE, (unsigned long) &dr) < 0) {
-			error("Can't set packet type on hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		}
-	}
-
 	/* Set link mode */
 	if ((device_opts->flags & (1 << HCID_SET_LM))) {
 		dr.dev_opt = device_opts->link_mode;
@@ -603,15 +603,6 @@ static void configure_device(int dev_id)
 		cp.timeout = htobs(device_opts->pageto);
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
-	}
-
-	/* Set voice setting */
-	if ((device_opts->flags & (1 << HCID_SET_VOICE))) {
-		write_voice_setting_cp cp;
-
-		cp.voice_setting = htobl(device_opts->voice);
-		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_VOICE_SETTING,
-					WRITE_VOICE_SETTING_CP_SIZE, &cp);
 	}
 
 	exit(0);
