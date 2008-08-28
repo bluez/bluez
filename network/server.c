@@ -531,7 +531,8 @@ reply:
 
 static void setup_destroy(void *user_data)
 {
-	struct timeout *to = user_data;
+	struct network_adapter *na = user_data;
+	struct timeout *to = na->to;
 
 	if (to->id)
 		g_source_remove(to->id);
