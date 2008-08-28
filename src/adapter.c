@@ -2898,6 +2898,20 @@ void adapter_update_oor_devices(struct adapter *adapter)
 	}
 }
 
+void adapter_remove_oor_device(struct adapter *adapter, char *peer_addr)
+{
+	GSList *l;
+
+	l = g_slist_find_custom(adapter->oor_devices, peer_addr,
+				(GCompareFunc) strcmp);
+	if (l) {
+		char *dev = l->data;
+		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
+								dev);
+		g_free(dev);
+	}
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);

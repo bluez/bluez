@@ -1060,7 +1060,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 {
 	char filename[PATH_MAX + 1];
 	struct adapter *adapter;
-	GSList *l;
 	char local_addr[18], peer_addr[18], *name, *tmp_name;
 	const char *paddr = peer_addr;
 	struct remote_dev_info *dev, match;
@@ -1094,18 +1093,9 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		state |= PERIODIC_INQUIRY;
 		adapter_set_state(adapter, state);
 	}
-
-	if (adapter_get_state(adapter) & PERIODIC_INQUIRY) {
 		/* Out of range list update */
-		l = g_slist_find_custom(adapter->oor_devices, peer_addr,
-				(GCompareFunc) strcmp);
-		if (l) {
-			char *dev = l->data;
-			adapter->oor_devices = g_slist_remove(adapter->oor_devices,
-								dev);
-			g_free(dev);
-		}
-	}
+	if (adapter_get_state(adapter) & PERIODIC_INQUIRY)
+		adapter_remove_oor_device(adapter, peer_addr);
 
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
