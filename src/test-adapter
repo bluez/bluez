@@ -56,7 +56,8 @@ if (sys.argv[1] == "discoverabletimeout"):
 		properties = adapter.GetProperties()
 		print properties["DiscoverableTimeout"]
 	else:
-		adapter.SetProperty("DiscoverableTimeout", sys.argv[2])
+		timeout = dbus.UInt32(sys.argv[2])
+		adapter.SetProperty("DiscoverableTimeout", timeout)
 	sys.exit(0)
 
 if (sys.argv[1] == "periodicdiscovery"):
