@@ -802,8 +802,7 @@ static int found_device_req_name(struct adapter *adapter)
 
 		/* if failed, request the next element */
 		/* remove the element from the list */
-		adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
-		g_free(dev);
+		adapter_remove_found_device(adapter, &dev->bdaddr);
 
 		/* get the next element */
 		dev = adapter_search_found_devices(adapter, &match);
@@ -834,8 +833,6 @@ static void send_out_of_range(const char *path, GSList *l)
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
 	struct adapter *adapter;
-	struct remote_dev_info *dev;
-	bdaddr_t tmp;
 	const gchar *path;
 	int state;
 
@@ -850,22 +847,9 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	/* Out of range verification */
 	if ((adapter_get_state(adapter) & PERIODIC_INQUIRY) &&
 				!(adapter_get_state(adapter) & STD_INQUIRY)) {
-		GSList *l;
 
 		send_out_of_range(path, adapter->oor_devices);
-
-		g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
-		g_slist_free(adapter->oor_devices);
-		adapter->oor_devices = NULL;
-
-		l = adapter->found_devices;
-		while (l) {
-			dev = l->data;
-			baswap(&tmp, &dev->bdaddr);
-			adapter->oor_devices = g_slist_append(adapter->oor_devices,
-								batostr(&tmp));
-			l = l->next;
-		}
+		adapter_update_oor_devices(adapter);
 	}
 
 	/*

@@ -2863,6 +2863,25 @@ int adapter_remove_found_device(struct adapter *adapter, bdaddr_t *bdaddr)
 	return 0;
 }
 
+void adapter_update_oor_devices(struct adapter *adapter)
+{
+	GSList *l = adapter->found_devices;
+	struct remote_dev_info *dev;
+	bdaddr_t tmp;
+
+	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
+	g_slist_free(adapter->oor_devices);
+	adapter->oor_devices = NULL;
+
+	while (l) {
+		dev = l->data;
+		baswap(&tmp, &dev->bdaddr);
+		adapter->oor_devices = g_slist_append(adapter->oor_devices,
+							batostr(&tmp));
+		l = l->next;
+	}
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);

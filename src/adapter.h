@@ -177,6 +177,7 @@ struct remote_dev_info *adapter_search_found_devices(struct adapter *adapter,
 int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
 				int8_t rssi, name_status_t name_status);
 int adapter_remove_found_device(struct adapter *adapter, bdaddr_t *bdaddr);
+void adapter_update_oor_devices(struct adapter *adapter);
 
 struct btd_adapter_driver {
 	const char *name;
