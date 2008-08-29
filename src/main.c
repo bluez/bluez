@@ -169,6 +169,18 @@ static void parse_config(GKeyFile *config)
 		g_free(str);
 	}
 
+	val = g_key_file_get_integer(config, "General",
+					"DiscoverSchedulerInterval",
+					&err);
+	if (err) {
+		debug("%s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		debug("inqmode=%d", val);
+		default_device.inqmode = val;
+	}
+
 	default_device.link_mode = HCI_LM_ACCEPT;
 	default_device.flags |= (1 << HCID_SET_LM);
 

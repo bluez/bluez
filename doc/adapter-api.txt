@@ -218,16 +218,6 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-		DiscoveryStarted()
-
-			This signal indicates that a device discovery
-			procedure has been started.
-
-		DiscoveryCompleted()
-
-			This signal indicates that a device discovery
-			procedure has been completed.
-
 		DeviceFound(string address, dict values)
 
 			This signal will be send every time an inquiry result
@@ -278,7 +268,6 @@ Properties	string Address [readonly]
 			The default value for the discoverable timeout should
 			be 180 seconds (3 minutes).
 
-		boolean PeriodicDiscovery [readwrite]
+		boolean Discovering [readonly]
 
-			Is peridoic inquiry active or not. Changing this
-			property will either enable or disable it.
+			Indicates that a device discovery procedure is active.

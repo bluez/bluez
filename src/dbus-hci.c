@@ -710,8 +710,6 @@ cleanup:
 void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	struct adapter *adapter;
-	const gchar *path;
-	gboolean discov_active;
 	int state;
 
 	adapter = manager_find_adapter(local);
@@ -731,22 +729,11 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		pending_remote_name_cancel(adapter);
 
 	/* Disable name resolution for non D-Bus clients */
-	if (!adapter->discov_requestor) {
+	if (!adapter->disc_sessions) {
 		state = adapter_get_state(adapter);
 		state &= ~RESOLVE_NAME;
 		adapter_set_state(adapter, state);
 	}
-	path = adapter_get_path(adapter);
-
-	discov_active = (adapter_get_state(adapter) & STD_INQUIRY) ? TRUE : FALSE;
-
-	dbus_connection_emit_property_changed(connection, path,
-			ADAPTER_INTERFACE, "PeriodicDiscovery",
-			DBUS_TYPE_BOOLEAN, &discov_active);
-
-	g_dbus_emit_signal(connection, path,
-			ADAPTER_INTERFACE, "DiscoveryStarted",
-			DBUS_TYPE_INVALID);
 }
 
 static int found_device_req_name(struct adapter *adapter)
@@ -835,15 +822,13 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	if ((adapter_get_state(adapter) & PERIODIC_INQUIRY) &&
 				!(adapter_get_state(adapter) & STD_INQUIRY))
 		adapter_update_oor_devices(adapter);
-	/*
-	 * Enable resolution again: standard inquiry can be
-	 * received in the periodic inquiry idle state.
-	 */
-	if (adapter->pdiscov_requestor) {
-		state = adapter_get_state(adapter);
-		state |= RESOLVE_NAME;
-		adapter_set_state(adapter, state);
-	}
+
+	/* reset the discover type to be able to handle D-Bus and non D-Bus
+	 * requests */
+	state = adapter_get_state(adapter);
+	state &= ~STD_INQUIRY;
+	adapter_set_state(adapter, state);
+
 	/*
 	 * The following scenarios can happen:
 	 * 1. standard inquiry: always send discovery completed signal
@@ -855,48 +840,12 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	 *
 	 * Keep in mind that non D-Bus requests can arrive.
 	 */
-
-	if (!found_device_req_name(adapter))
-		return;		/* skip - there is name to resolve */
-
-	if (adapter_get_state(adapter) & STD_INQUIRY) {
-		g_dbus_emit_signal(connection, path,
-				ADAPTER_INTERFACE, "DiscoveryCompleted",
-				DBUS_TYPE_INVALID);
-
-		state = adapter_get_state(adapter);
-		state &= ~STD_INQUIRY;
-		adapter_set_state(adapter, state);
-	}
-
-	if (adapter->discov_requestor) {
-		g_dbus_remove_watch(connection, adapter->discov_listener);
-		adapter->discov_listener = 0;
-		g_free(adapter->discov_requestor);
-		adapter->discov_requestor = NULL;
-
-		/* If there is a pending reply for discovery cancel */
-		if (adapter->discovery_cancel) {
-			DBusMessage *reply;
-			reply = dbus_message_new_method_return(adapter->discovery_cancel);
-			dbus_connection_send(connection, reply, NULL);
-			dbus_message_unref(reply);
-			dbus_message_unref(adapter->discovery_cancel);
-			adapter->discovery_cancel = NULL;
-		}
-
-		/* reset the discover type for standard inquiry only */
-		state = adapter_get_state(adapter);
-		state &= ~STD_INQUIRY;
-		adapter_set_state(adapter, state);
-	}
+	found_device_req_name(adapter);
 }
 
 void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 {
 	struct adapter *adapter;
-	const gchar *path;
-	gboolean discov_active;
 	int state;
 
 	/* Don't send the signal if the cmd failed */
@@ -912,28 +861,11 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 	state = adapter_get_state(adapter);
 	state |= PERIODIC_INQUIRY;
 	adapter_set_state(adapter, state);
-
-	/* Disable name resolution for non D-Bus clients */
-	if (!adapter->pdiscov_requestor) {
-		state = adapter_get_state(adapter);
-		state &= ~RESOLVE_NAME;
-		adapter_set_state(adapter, state);
-	}
-
-	path = adapter_get_path(adapter);
-
-	discov_active = (adapter_get_state(adapter) & PERIODIC_INQUIRY) ? TRUE:FALSE;
-
-	dbus_connection_emit_property_changed(connection, path,
-				ADAPTER_INTERFACE, "PeriodicDiscovery",
-				DBUS_TYPE_BOOLEAN, &discov_active);
 }
 
 void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 {
 	struct adapter *adapter;
-	const gchar *path;
-	gboolean discov_active;
 	int state;
 
 	/* Don't send the signal if the cmd failed */
@@ -949,41 +881,13 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	/* reset the discover type to be able to handle D-Bus and non D-Bus
 	 * requests */
 	state = adapter_get_state(adapter);
-	state &= ~(PERIODIC_INQUIRY | RESOLVE_NAME);
+	state &= ~PERIODIC_INQUIRY;
 	adapter_set_state(adapter, state);
 
 	/* free out of range devices list */
 	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
 	g_slist_free(adapter->oor_devices);
 	adapter->oor_devices = NULL;
-
-	if (adapter->pdiscov_requestor) {
-		g_dbus_remove_watch(connection, adapter->pdiscov_listener);
-		adapter->pdiscov_listener = 0;
-		g_free(adapter->pdiscov_requestor);
-		adapter->pdiscov_requestor = NULL;
-	}
-
-	path = adapter_get_path(adapter);
-
-	/* workaround: inquiry completed is not sent when exiting from
-	  * periodic inquiry */
-	if (adapter_get_state(adapter) & STD_INQUIRY) {
-		g_dbus_emit_signal(connection, path,
-				ADAPTER_INTERFACE, "DiscoveryCompleted",
-				DBUS_TYPE_INVALID);
-
-		state = adapter_get_state(adapter);
-		state &= ~STD_INQUIRY;
-		adapter_set_state(adapter, state);
-	}
-
-	discov_active = (adapter_get_state(adapter) & STD_INQUIRY) ? TRUE : FALSE;
-
-	/* Send discovery completed signal if there isn't name to resolve */
-	dbus_connection_emit_property_changed(connection, path,
-				ADAPTER_INTERFACE, "PeriodicDiscovery",
-				DBUS_TYPE_BOOLEAN, &discov_active);
 }
 
 static char *extract_eir_name(uint8_t *data, uint8_t *type)
@@ -1203,8 +1107,6 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	const gchar *dev_path;
-	const gchar *path;
-	int state;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1232,44 +1134,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	adapter_remove_found_device(adapter, peer);
 
 	/* check if there is more devices to request names */
-	if (!found_device_req_name(adapter))
-		return; /* skip if a new request has been sent */
-
-	/* The discovery completed signal must be sent only for discover
-	 * devices request WITH name resolving */
-	if (adapter->discov_requestor) {
-		g_dbus_remove_watch(connection, adapter->discov_listener);
-		adapter->discov_listener = 0;
-		g_free(adapter->discov_requestor);
-		adapter->discov_requestor = NULL;
-
-		/* If there is a pending reply for discovery cancel */
-		if (adapter->discovery_cancel) {
-			DBusMessage *reply;
-			reply = dbus_message_new_method_return(adapter->discovery_cancel);
-			dbus_connection_send(connection, reply, NULL);
-			dbus_message_unref(reply);
-			dbus_message_unref(adapter->discovery_cancel);
-			adapter->discovery_cancel = NULL;
-		}
-
-		/* Disable name resolution for non D-Bus clients */
-		if (!adapter->pdiscov_requestor) {
-			state = adapter_get_state(adapter);
-			state &= ~RESOLVE_NAME;
-			adapter_set_state(adapter, state);
-		}
-	}
-	path = adapter_get_path(adapter);
-
-	if (adapter_get_state(adapter) & STD_INQUIRY) {
-		g_dbus_emit_signal(connection, path,
-				ADAPTER_INTERFACE, "DiscoveryCompleted",
-				DBUS_TYPE_INVALID);
-		state = adapter_get_state(adapter);
-		state &= ~STD_INQUIRY;
-		adapter_set_state(adapter, state);
-	}
+	found_device_req_name(adapter);
 }
 
 void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
@@ -1778,16 +1643,10 @@ int cancel_discovery(struct adapter *adapter)
 	struct remote_dev_info *dev, match;
 	int dd, err = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
-	int state;
-
-	if (!(adapter_get_state(adapter) & STD_INQUIRY))
-		goto cleanup;
 
 	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		err = -ENODEV;
-		goto cleanup;
-	}
+	if (dd < 0)
+		return -ENODEV;
 
 	/*
 	 * If there is a pending read remote name request means
@@ -1813,14 +1672,6 @@ int cancel_discovery(struct adapter *adapter)
 	}
 
 	hci_close_dev(dd);
-
-cleanup:
-	/* Disable name resolution for non D-Bus clients */
-	if (!adapter->pdiscov_requestor) {
-		state = adapter_get_state(adapter);
-		state &= ~RESOLVE_NAME;
-		adapter_set_state(adapter, state);
-	}
 
 	return err;
 }

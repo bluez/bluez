@@ -104,11 +104,7 @@ struct adapter {
 	uint8_t global_mode;		/* last valid global mode */
 	int state;			/* standard inq, periodic inq, name resloving */
 	GSList *found_devices;
-	GSList *oor_devices;	/* out of range device list */
-	char *pdiscov_requestor;	/* periodic discovery requestor unique name */
-	guint pdiscov_listener;
-	char *discov_requestor;		/* discovery requestor unique name */
-	guint discov_listener;
+	GSList *oor_devices;		/* out of range device list */
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
 	GSList *passkey_agents;
 	struct agent *agent;		/* For the new API */
@@ -117,7 +113,9 @@ struct adapter {
 	GSList *auth_reqs;		/* Received and replied HCI
 					   authentication requests */
 	GSList *devices;		/* Devices structure pointers */
-	GSList *sessions;		/* Request Mode sessions */
+	GSList *mode_sessions;		/* Request Mode sessions */
+	GSList *disc_sessions;		/* Discovery sessions */
+	guint scheduler_id;		/* Scheduler handle */
 
 	struct hci_dev dev;		/* hci info */
 };

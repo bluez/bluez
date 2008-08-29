@@ -79,12 +79,13 @@ struct record_list {
   const gchar *addr;
 };
 
-struct mode_req {
+struct session_req {
 	struct adapter	*adapter;
 	DBusConnection	*conn;		/* Connection reference */
 	DBusMessage	*msg;		/* Message reference */
-	uint8_t		mode;		/* Requested mode */
 	guint		id;		/* Listener id */
+	uint8_t		mode;		/* Requested mode */
+	int		refcount;	/* Session refcount */
 };
 
 struct service_auth {
@@ -504,7 +505,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 				adapter->discov_timeout_id = 0;
 			}
 
-			if (!adapter->sessions && !adapter->discov_timeout)
+			if (!adapter->mode_sessions && !adapter->discov_timeout)
 				adapter_set_discov_timeout(adapter,
 						adapter->discov_timeout * 1000);
 		}
@@ -520,17 +521,75 @@ done:
 	return dbus_message_new_method_return(msg);
 }
 
-static gint find_session(struct mode_req *req, DBusMessage *msg)
+static struct session_req *find_session(GSList *list, DBusMessage *msg)
 {
-	const char *name = dbus_message_get_sender(req->msg);
+	GSList *l;
 	const char *sender = dbus_message_get_sender(msg);
 
-	return strcmp(name, sender);
+	for (l = list; l; l = l->next) {
+		struct session_req *req = l->data;
+		const char *name = dbus_message_get_sender(req->msg);
+
+		if (g_str_equal(name, sender))
+			return req;
+	}
+
+	return NULL;
+}
+
+static void session_free(struct session_req *req)
+{
+	struct adapter *adapter = req->adapter;
+
+	if (req->mode)
+		adapter->mode_sessions = g_slist_remove(adapter->mode_sessions,
+						req);
+	else
+		adapter->disc_sessions = g_slist_remove(adapter->disc_sessions,
+						req);
+
+	dbus_message_unref(req->msg);
+	dbus_connection_unref(req->conn);
+	g_free(req);
+}
+
+static void session_unref(struct session_req *req)
+{
+	req->refcount--;
+
+	if (req->refcount)
+		return;
+
+	if (req->id)
+		g_dbus_remove_watch(req->conn, req->id);
+
+	session_free(req);
+}
+
+static struct session_req *create_session(struct adapter *adapter,
+					DBusConnection *conn, DBusMessage *msg,
+					uint8_t mode, GDBusWatchFunction cb)
+{
+	struct session_req *req;
+
+	req = g_new0(struct session_req, 1);
+	req->adapter = adapter;
+	req->conn = dbus_connection_ref(conn);
+	req->msg = dbus_message_ref(msg);
+	req->mode = mode;
+	req->refcount = 1;
+
+	if (cb)
+		req->id = g_dbus_add_disconnect_watch(conn,
+					dbus_message_get_sender(msg),
+					cb, req, NULL);
+
+	return req;
 }
 
 static void confirm_mode_cb(struct agent *agent, DBusError *err, void *data)
 {
-	struct mode_req *req = data;
+	struct session_req *req = data;
 	DBusMessage *reply;
 
 	if (err && dbus_error_is_set(err)) {
@@ -544,42 +603,34 @@ static void confirm_mode_cb(struct agent *agent, DBusError *err, void *data)
 	dbus_connection_send(req->conn, reply, NULL);
 	dbus_message_unref(reply);
 
-	if (!g_slist_find_custom(req->adapter->sessions, req->msg,
-			(GCompareFunc) find_session))
+	if (!find_session(req->adapter->mode_sessions, req->msg))
 		goto cleanup;
 
 	return;
 
 cleanup:
-	dbus_message_unref(req->msg);
-	if (req->id)
-		g_dbus_remove_watch(req->conn, req->id);
-	dbus_connection_unref(req->conn);
-	g_free(req);
+	session_free(req);
 }
 
 static DBusMessage *confirm_mode(DBusConnection *conn, DBusMessage *msg,
 					const char *mode, void *data)
 {
 	struct adapter *adapter = data;
-	struct mode_req *req;
+	struct session_req *req;
 	int ret;
+	uint8_t umode;
 
 	if (!adapter->agent)
 		return dbus_message_new_method_return(msg);
 
-	req = g_new0(struct mode_req, 1);
-	req->adapter = adapter;
-	req->conn = dbus_connection_ref(conn);
-	req->msg = dbus_message_ref(msg);
-	req->mode = str2mode(adapter->address, mode);
+	umode = str2mode(adapter->address, mode);
+
+	req = create_session(adapter, conn, msg, umode, NULL);
 
 	ret = agent_confirm_mode_change(adapter->agent, mode, confirm_mode_cb,
 					req);
 	if (ret < 0) {
-		dbus_connection_unref(req->conn);
-		dbus_message_unref(req->msg);
-		g_free(req);
+		session_free(req);
 		return invalid_args(msg);
 	}
 
@@ -1158,47 +1209,92 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static void periodic_discover_req_exit(void *user_data)
+static void discover_req_exit(void *user_data)
 {
-	struct adapter *adapter = user_data;
+	struct session_req *req = user_data;
+	struct adapter *adapter = req->adapter;
 
-	debug("PeriodicDiscovery requestor exited");
+	info("Discovery session %d deactivated", g_slist_length(adapter->disc_sessions));
+
+	adapter->disc_sessions = g_slist_remove(adapter->disc_sessions, req);
+	req->id = 0;
+	session_free(req);
+
+	if (adapter->disc_sessions)
+		return;
 
 	/* Cleanup the discovered devices list and send the cmd to exit from
 	 * periodic inquiry or cancel remote name request. The return value can
 	 * be ignored. */
 
-	cancel_periodic_discovery(adapter);
+	if (adapter->state & STD_INQUIRY)
+		cancel_discovery(adapter);
+	else
+		cancel_periodic_discovery(adapter);
 }
 
-static DBusMessage *adapter_start_periodic(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+int start_inquiry(struct adapter *adapter)
 {
-	periodic_inquiry_cp cp;
+	inquiry_cp cp;
+	evt_cmd_status rp;
 	struct hci_request rq;
-	struct adapter *adapter = data;
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
-	uint8_t status;
-	int dd;
-
-	if (!adapter->up)
-		return adapter_not_ready(msg);
-
-	if (dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
-				"StartPeriodicDiscovery")) {
-		if (!dbus_message_has_signature(msg,
-					DBUS_TYPE_INVALID_AS_STRING))
-			return invalid_args(msg);
-	}
-
-	if ((adapter->state & STD_INQUIRY) || (adapter->state & PERIODIC_INQUIRY))
-		return in_progress(msg, "Discover in progress");
+	int dd, err;
 
 	pending_remote_name_cancel(adapter);
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)
-		return no_such_adapter(msg);
+		return dd;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(&cp.lap, lap, 3);
+	cp.length = 0x08;
+	cp.num_rsp = 0x00;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LINK_CTL;
+	rq.ocf = OCF_INQUIRY;
+	rq.cparam = &cp;
+	rq.clen = INQUIRY_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen = EVT_CMD_STATUS_SIZE;
+	rq.event = EVT_CMD_STATUS;
+
+	if (hci_send_req(dd, &rq, 500) < 0) {
+		err = errno;
+		error("Unable to start inquiry: %s (%d)",
+			strerror(err), err);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	if (rp.status) {
+		err = bt_error(rp.status);
+		error("HCI_Inquiry command failed with status 0x%02x",
+			rp.status);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	hci_close_dev(dd);
+
+	adapter->state |= RESOLVE_NAME;
+
+	return 0;
+}
+
+static int start_periodic_inquiry(struct adapter *adapter)
+{
+	periodic_inquiry_cp cp;
+	struct hci_request rq;
+	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
+	uint8_t status;
+	int dd, err;
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0)
+		return dd;
 
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.lap, lap, 3);
@@ -1217,143 +1313,61 @@ static DBusMessage *adapter_start_periodic(DBusConnection *conn,
 	rq.event  = EVT_CMD_COMPLETE;
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
-		int err = errno;
+		err = errno;
 		error("Unable to start periodic inquiry: %s (%d)",
-				strerror(errno), errno);
+				strerror(err), err);
 		hci_close_dev(dd);
-		return failed_strerror(msg, err);
+		return -err;
 	}
 
 	if (status) {
+		err = bt_error(status);
 		error("HCI_Periodic_Inquiry_Mode failed with status 0x%02x",
 				status);
 		hci_close_dev(dd);
-		return failed_strerror(msg, bt_error(status));
+		return -err;
 	}
-
-	adapter->pdiscov_requestor = g_strdup(dbus_message_get_sender(msg));
 
 	hci_close_dev(dd);
 
-	/* track the request owner to cancel it automatically if the owner
-	 * exits */
-	adapter->pdiscov_listener = g_dbus_add_disconnect_watch(conn,
-						dbus_message_get_sender(msg),
-						periodic_discover_req_exit,
-						adapter, NULL);
+	adapter->state |= RESOLVE_NAME;
 
-	return dbus_message_new_method_return(msg);
+	return 0;
 }
 
-static DBusMessage *adapter_stop_periodic(DBusConnection *conn,
+static DBusMessage *adapter_discover_devices(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct session_req *req;
 	struct adapter *adapter = data;
 	int err;
 
 	if (!adapter->up)
 		return adapter_not_ready(msg);
 
-	if (!(adapter->state & PERIODIC_INQUIRY))
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".NotAuthorized",
-				"Not authorized");
-	/*
-	 * Cleanup the discovered devices list and send the cmd to exit
-	 * from periodic inquiry mode or cancel remote name request.
-	 */
-	err = cancel_periodic_discovery(adapter);
-	if (err < 0) {
-		if (err == -ENODEV)
-			return no_such_adapter(msg);
-
-		else
-			return failed_strerror(msg, -err);
+	req = find_session(adapter->disc_sessions, msg);
+	if (req) {
+		req->refcount++;
+		return dbus_message_new_method_return(msg);
 	}
 
-	return dbus_message_new_method_return(msg);
-}
+	if ((adapter->state & STD_INQUIRY) || (adapter->state & PERIODIC_INQUIRY))
+		goto done;
 
-static void discover_devices_req_exit(void *user_data)
-{
-	struct adapter *adapter = user_data;
+	if (default_device.inqmode)
+		err = start_inquiry(adapter);
+	else
+		err = start_periodic_inquiry(adapter);
 
-	debug("DiscoverDevices requestor exited");
+	if (err < 0)
+		return failed_strerror(msg, -err);
 
-	/* Cleanup the discovered devices list and send the command to cancel
-	 * inquiry or cancel remote name request. The return can be ignored. */
-	cancel_discovery(adapter);
-}
+done:
+	req = create_session(adapter, conn, msg, 0, discover_req_exit);
 
-static DBusMessage *adapter_discover_devices(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	inquiry_cp cp;
-	evt_cmd_status rp;
-	struct hci_request rq;
-	struct adapter *adapter = data;
-	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
-	int dd;
+	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
 
-	if (!adapter->up)
-		return adapter_not_ready(msg);
-
-	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return invalid_args(msg);
-
-	if (adapter->state & STD_INQUIRY)
-		return in_progress(msg, "Discover in progress");
-
-	pending_remote_name_cancel(adapter);
-
-	if (adapter->bonding)
-		return in_progress(msg, "Bonding in progress");
-
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return no_such_adapter(msg);
-
-	memset(&cp, 0, sizeof(cp));
-	memcpy(&cp.lap, lap, 3);
-	cp.length  = 0x08;
-	cp.num_rsp = 0x00;
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_INQUIRY;
-	rq.cparam = &cp;
-	rq.clen   = INQUIRY_CP_SIZE;
-	rq.rparam = &rp;
-	rq.rlen   = EVT_CMD_STATUS_SIZE;
-	rq.event  = EVT_CMD_STATUS;
-
-	if (hci_send_req(dd, &rq, 500) < 0) {
-		int err = errno;
-		error("Unable to start inquiry: %s (%d)",
-				strerror(errno), errno);
-		hci_close_dev(dd);
-		return failed_strerror(msg, err);
-	}
-
-	if (rp.status) {
-		error("HCI_Inquiry command failed with status 0x%02x",
-				rp.status);
-		hci_close_dev(dd);
-		return failed_strerror(msg, bt_error(rp.status));
-	}
-
-	adapter->state |= (STD_INQUIRY | RESOLVE_NAME);
-
-	adapter->discov_requestor = g_strdup(dbus_message_get_sender(msg));
-
-	hci_close_dev(dd);
-
-	/* track the request owner to cancel it automatically if the owner
-	 * exits */
-	adapter->discov_listener = g_dbus_add_disconnect_watch(conn,
-						dbus_message_get_sender(msg),
-						discover_devices_req_exit,
-						adapter, NULL);
+	info("Discovery session %d activated", g_slist_length(adapter->disc_sessions));
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1362,42 +1376,45 @@ static DBusMessage *adapter_cancel_discovery(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	int err;
+	struct session_req *req;
+	int err = 0;
 
 	if (!adapter->up)
 		return adapter_not_ready(msg);
 
-	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return invalid_args(msg);
+	req = find_session(adapter->disc_sessions, msg);
+	if (!req)
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+				"Invalid discovery session");
 
-	/* is there discover pending? or discovery cancel was requested
-	 * previously */
-	if (!(adapter->state & STD_INQUIRY) || adapter->discovery_cancel)
+	session_unref(req);
+	if (adapter->disc_sessions)
+		return dbus_message_new_method_return(msg);
+
+	/*
+	 * Cleanup the discovered devices list and send the cmd to exit
+	 * from periodic inquiry mode or cancel remote name request.
+	 */
+	if (adapter->state & STD_INQUIRY)
+		err = cancel_discovery(adapter);
+	else if (adapter->state & PERIODIC_INQUIRY)
+		err = cancel_periodic_discovery(adapter);
+	else if (adapter->scheduler_id)
+		g_source_remove(adapter->scheduler_id);
+	else
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotAuthorized",
-				"Not Authorized");
+				"Not authorized");
 
-	/* only the discover requestor can cancel the inquiry process */
-	if (!adapter->discov_requestor ||
-			strcmp(adapter->discov_requestor, dbus_message_get_sender(msg)))
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".NotAuthorized",
-				"Not Authorized");
-
-	/* Cleanup the discovered devices list and send the cmd to cancel
-	 * inquiry or cancel remote name request */
-	err = cancel_discovery(adapter);
 	if (err < 0) {
 		if (err == -ENODEV)
 			return no_such_adapter(msg);
+
 		else
 			return failed_strerror(msg, -err);
 	}
 
-	/* Reply before send DiscoveryCompleted */
-	adapter->discovery_cancel = dbus_message_ref(msg);
-
-	return NULL;
+	return dbus_message_new_method_return(msg);
 }
 
 struct remote_device_list_t {
@@ -1455,10 +1472,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dbus_message_iter_append_dict_entry(&dict, "DiscoverableTimeout",
 				DBUS_TYPE_UINT32, &adapter->discov_timeout);
 
-	discov_active = (adapter->state & PERIODIC_INQUIRY) ? TRUE:FALSE;
+	if (adapter->state & PERIODIC_INQUIRY || adapter->state & STD_INQUIRY)
+		discov_active = TRUE;
+	else
+		discov_active = FALSE;
 
 	/* PeriodicDiscovery */
-	dbus_message_iter_append_dict_entry(&dict, "PeriodicDiscovery",
+	dbus_message_iter_append_dict_entry(&dict, "Discovering",
 				DBUS_TYPE_BOOLEAN, &discov_active);
 
 	dbus_message_iter_close_container(&iter, &dict);
@@ -1503,17 +1523,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &timeout);
 
 		return set_discoverable_timeout(conn, msg, timeout, data);
-	} else if (g_str_equal("PeriodicDiscovery", property)) {
-		dbus_bool_t value;
-
-		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
-			return invalid_args(msg);
-		dbus_message_iter_get_basic(&sub, &value);
-
-		if (value)
-			return adapter_start_periodic(conn, msg, data);
-		else
-			return adapter_stop_periodic(conn, msg, data);
 	} else if (g_str_equal("Mode", property)) {
 		const char *mode;
 
@@ -1527,7 +1536,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (adapter->global_mode == adapter->mode)
 			return dbus_message_new_method_return(msg);
 
-		if (adapter->sessions && adapter->global_mode < adapter->mode)
+		if (adapter->mode_sessions && adapter->global_mode < adapter->mode)
 			return confirm_mode(conn, msg, mode, data);
 
 		return set_mode(conn, msg, str2mode(adapter->address, mode),
@@ -1539,20 +1548,17 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 static void session_exit(void *data)
 {
-	struct mode_req *req = data;
+	struct session_req *req = data;
 	struct adapter *adapter = req->adapter;
 
-	adapter->sessions = g_slist_remove(adapter->sessions, req);
-
-	if (!adapter->sessions) {
+	if (!adapter->mode_sessions) {
 		debug("Falling back to '%s' mode", mode2str(adapter->global_mode));
 		/* FIXME: fallback to previous mode
 		set_mode(req->conn, req->msg, adapter->global_mode, adapter);
 		*/
 	}
-	dbus_connection_unref(req->conn);
-	dbus_message_unref(req->msg);
-	g_free(req);
+
+	session_unref(req);
 }
 
 static DBusMessage *request_mode(DBusConnection *conn,
@@ -1560,7 +1566,7 @@ static DBusMessage *request_mode(DBusConnection *conn,
 {
 	const char *mode;
 	struct adapter *adapter = data;
-	struct mode_req *req;
+	struct session_req *req;
 	uint8_t new_mode;
 	int ret;
 
@@ -1576,23 +1582,16 @@ static DBusMessage *request_mode(DBusConnection *conn,
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 				"No agent registered");
 
-	if (g_slist_find_custom(adapter->sessions, msg,
-			(GCompareFunc) find_session))
+	req = find_session(adapter->mode_sessions, msg);
+	if (req)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 				"Mode already requested");
 
-	req = g_new0(struct mode_req, 1);
-	req->adapter = adapter;
-	req->conn = dbus_connection_ref(conn);
-	req->msg = dbus_message_ref(msg);
-	req->mode = new_mode;
-	req->id = g_dbus_add_disconnect_watch(conn,
-					dbus_message_get_sender(msg),
-					session_exit, req, NULL);
+	req = create_session(adapter, conn, msg, new_mode, session_exit);
 
-	if (!adapter->sessions)
+	if (!adapter->mode_sessions)
 		adapter->global_mode = adapter->mode;
-	adapter->sessions = g_slist_append(adapter->sessions, req);
+	adapter->mode_sessions = g_slist_append(adapter->mode_sessions, req);
 
 	/* No need to change mode */
 	if (adapter->mode >= new_mode)
@@ -1601,10 +1600,7 @@ static DBusMessage *request_mode(DBusConnection *conn,
 	ret = agent_confirm_mode_change(adapter->agent, mode, confirm_mode_cb,
 					req);
 	if (ret < 0) {
-		dbus_message_unref(req->msg);
-		g_dbus_remove_watch(req->conn, req->id);
-		dbus_connection_unref(req->conn);
-		g_free(req);
+		session_free(req);
 		return invalid_args(msg);
 	}
 
@@ -1615,15 +1611,14 @@ static DBusMessage *release_mode(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct adapter *adapter = data;
-	GSList *l;
+	struct session_req *req;
 
-	l = g_slist_find_custom(adapter->sessions, msg,
-			(GCompareFunc) find_session);
-	if (!l)
+	req = find_session(adapter->mode_sessions, msg);
+	if (!req)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 				"No Mode to release");
 
-	session_exit(l->data);
+	session_exit(req);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1997,8 +1992,6 @@ static GDBusMethodTable adapter_methods[] = {
 };
 
 static GDBusSignalTable adapter_signals[] = {
-	{ "DiscoveryStarted",		""		},
-	{ "DiscoveryCompleted",		""		},
 	{ "DeviceCreated",		"o"		},
 	{ "DeviceRemoved",		"o"		},
 	{ "DeviceFound",		"sa{sv}"	},
@@ -2419,30 +2412,15 @@ static void reply_pending_requests(struct adapter *adapter)
 		adapter->bonding = NULL;
 	}
 
-	/* If there is a pending reply for discovery cancel */
-	if (adapter->discovery_cancel) {
-		reply = dbus_message_new_method_return(adapter->discovery_cancel);
-		dbus_connection_send(connection, reply, NULL);
-		dbus_message_unref(reply);
-		dbus_message_unref(adapter->discovery_cancel);
-		adapter->discovery_cancel = NULL;
-	}
-
 	if (adapter->state & STD_INQUIRY) {
-		/* Send discovery completed signal if there isn't name
-		 * to resolve */
-		g_dbus_emit_signal(connection, adapter->path,
-				ADAPTER_INTERFACE, "DiscoveryCompleted",
-				DBUS_TYPE_INVALID);
-
 		/* Cancel inquiry initiated by D-Bus client */
-		if (adapter->discov_requestor)
+		if (adapter->disc_sessions)
 			cancel_discovery(adapter);
 	}
 
 	if (adapter->state & PERIODIC_INQUIRY) {
 		/* Stop periodic inquiry initiated by D-Bus client */
-		if (adapter->pdiscov_requestor)
+		if (adapter->disc_sessions)
 			cancel_periodic_discovery(adapter);
 	}
 }
@@ -2472,18 +2450,11 @@ int adapter_stop(struct adapter *adapter)
 	/* check pending requests */
 	reply_pending_requests(adapter);
 
-	if (adapter->discov_requestor) {
-		g_dbus_remove_watch(connection, adapter->discov_listener);
-		adapter->discov_listener = 0;
-		g_free(adapter->discov_requestor);
-		adapter->discov_requestor = NULL;
-	}
-
-	if (adapter->pdiscov_requestor) {
-		g_dbus_remove_watch(connection, adapter->pdiscov_listener);
-		adapter->pdiscov_listener = 0;
-		g_free(adapter->pdiscov_requestor);
-		adapter->pdiscov_requestor = NULL;
+	if (adapter->disc_sessions) {
+		g_slist_foreach(adapter->disc_sessions, (GFunc) session_free,
+				NULL);
+		g_slist_free(adapter->disc_sessions);
+		adapter->disc_sessions = NULL;
 	}
 
 	if (adapter->found_devices) {
@@ -2761,24 +2732,33 @@ uint8_t adapter_get_mode(struct adapter *adapter)
 
 void adapter_set_state(struct adapter *adapter, int state)
 {
-	if (!adapter)
+	gboolean discov_active = FALSE;
+	const char *path = adapter->path;
+
+	if (adapter->state == state)
 		return;
 
-	/* Both Standard and periodic Inquiry are in progress */
-	if ((state & STD_INQUIRY) && (state & PERIODIC_INQUIRY))
-		goto set;
+	if (state & PERIODIC_INQUIRY || state & STD_INQUIRY) {
+		discov_active = TRUE;
+		if (adapter->scheduler_id)
+			goto done;
+	} else if (adapter->disc_sessions && adapter->state & STD_INQUIRY) {
+		adapter->scheduler_id = g_timeout_add(default_device.inqmode * 1000,
+				(GSourceFunc) start_inquiry, adapter);
+		goto done;
+	}
 
-	if (!adapter->found_devices)
-		goto set;
-
-	/* Free list if standard/periodic inquiry is done */
-	if ((adapter->state & (STD_INQUIRY | PERIODIC_INQUIRY)) &&
-			(state & (~STD_INQUIRY | ~PERIODIC_INQUIRY))) {
+	if (!discov_active && adapter->found_devices) {
 		g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
 		g_slist_free(adapter->found_devices);
 		adapter->found_devices = NULL;
 	}
-set:
+
+	dbus_connection_emit_property_changed(connection, path,
+				ADAPTER_INTERFACE, "Discovering",
+				DBUS_TYPE_BOOLEAN, &discov_active);
+
+done:
 	adapter->state = state;
 }
 
