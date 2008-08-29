@@ -41,11 +41,10 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
-#include "hcid.h"
-
 #include "logging.h"
 #include "textfile.h"
 
+#include "hcid.h"
 #include "adapter.h"
 #include "device.h"
 #include "dbus-common.h"
@@ -54,6 +53,7 @@
 #include "glib-helper.h"
 #include "agent.h"
 #include "sdp-xml.h"
+#include "storage.h"
 
 #define DEFAULT_XML_BUF_SIZE	1024
 #define DISCONNECT_TIMER	2
@@ -136,16 +136,6 @@ static gboolean device_is_paired(struct btd_device *device)
 	return ret;
 }
 
-static char *device_get_name(struct btd_device *device)
-{
-	struct adapter *adapter = device->adapter;
-	char filename[PATH_MAX + 1];
-	const gchar *source = adapter_get_address(adapter);
-
-	create_name(filename, PATH_MAX, STORAGEDIR, source, "names");
-	return textfile_caseget(filename, device->address);
-}
-
 static DBusMessage *get_properties(DBusConnection *conn,
 				DBusMessage *msg, void *user_data)
 {
@@ -155,16 +145,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	bdaddr_t src, dst;
-	char path[MAX_PATH_LENGTH];
-	char buf[64];
-	const char *ptr;
-	char *name, *ppath, **uuids;
+	char name[248];
+	char **uuids;
+	const char *ptr, *source;
 	dbus_bool_t boolean;
 	uint32_t class;
 	int i;
 	GSList *l;
-	uint16_t dev_id = adapter_get_dev_id(adapter);
-	const gchar *source = adapter_get_address(adapter);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -182,11 +169,23 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			&device->address);
 
 	/* Name */
-	name = device_get_name(device);
-	if (name) {
+	ptr = NULL;
+	memset(name, 0, sizeof(name));
+	source = adapter_get_address(adapter);
+
+	if (read_device_name(source, device->address, name) == 0) {
+		ptr = name;
 		dbus_message_iter_append_dict_entry(&dict, "Name",
-				DBUS_TYPE_STRING, &name);
+				DBUS_TYPE_STRING, &ptr);
 	}
+
+	if (read_device_alias(source, device->address, name, sizeof(name)) > 0)
+		ptr = name;
+
+	/* Alias: use Name if Alias doesn't exist */
+	if (ptr)
+		dbus_message_iter_append_dict_entry(&dict, "Alias",
+				DBUS_TYPE_STRING, &ptr);
 
 	str2ba(source, &src);
 	str2ba(device->address, &dst);
@@ -195,17 +194,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (read_remote_class(&src, &dst, &class) == 0) {
 		dbus_message_iter_append_dict_entry(&dict, "Class",
 				DBUS_TYPE_UINT32, &class);
-	}
-
-	/* Alias */
-	if (get_device_alias(dev_id, &dst, buf, sizeof(buf)) > 0) {
-		ptr = buf;
-		dbus_message_iter_append_dict_entry(&dict, "Alias",
-				DBUS_TYPE_STRING, &ptr);
-	} else if (name) {
-		dbus_message_iter_append_dict_entry(&dict, "Alias",
-				DBUS_TYPE_STRING, &name);
-		free(name);
 	}
 
 	/* Paired */
@@ -237,24 +225,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	g_free(uuids);
 
 	/* Adapter */
-	snprintf(path, sizeof(path), "%s/hci%d", "/org/bluez", dev_id);
-	ppath = path;
+	ptr = adapter_get_path(adapter);
 	dbus_message_iter_append_dict_entry(&dict, "Adapter",
-			DBUS_TYPE_OBJECT_PATH, &ppath);
+			DBUS_TYPE_OBJECT_PATH, &ptr);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
 	return reply;
-}
-
-static int remove_device_alias(const char *source, const char *destination)
-{
-	char filename[PATH_MAX + 1];
-
-	create_name(filename, PATH_MAX, STORAGEDIR, source, "aliases");
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	return textfile_del(filename, destination);
 }
 
 static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
@@ -262,35 +239,20 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *device = data;
 	struct adapter *adapter = device->adapter;
-	bdaddr_t bdaddr;
-	int ecode;
-	char *str, filename[PATH_MAX + 1];
-	uint16_t dev_id = adapter_get_dev_id(adapter);
 	const gchar *source = adapter_get_address(adapter);
-
-	str2ba(device->address, &bdaddr);
+	int err;
 
 	/* Remove alias if empty string */
-	if (g_str_equal(alias, "")) {
-		create_name(filename, PATH_MAX, STORAGEDIR, source,
-				"names");
-		str = textfile_caseget(filename, device->address);
-		ecode = remove_device_alias(source, device->address);
-	} else {
-		str = g_strdup(alias);
-		ecode = set_device_alias(dev_id, &bdaddr, alias);
-	}
-
-	if (ecode < 0)
+	err = write_device_alias(source, device->address,
+			g_str_equal(alias, "") ? NULL : alias);
+	if (err < 0)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".Failed",
-				strerror(-ecode));
+				strerror(-err));
 
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Alias",
-					DBUS_TYPE_STRING, &str);
-
-	g_free(str);
+					DBUS_TYPE_STRING, &alias);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -300,12 +262,9 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *device = data;
 	struct adapter *adapter = device->adapter;
-	bdaddr_t local;
 	const gchar *source = adapter_get_address(adapter);
 
-	str2ba(source, &local);
-
-	write_trust(&local, device->address, GLOBAL_TRUST, value);
+	write_trust(source, device->address, GLOBAL_TRUST, value);
 
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Trusted",
@@ -350,7 +309,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		return set_trust(conn, msg, value, data);
 	} else if (g_str_equal("Alias", property)) {
-		char *alias;
+		const char *alias;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
 			return invalid_args(msg);

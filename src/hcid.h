@@ -23,26 +23,10 @@
  *
  */
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/hci.h>
-
 #define HCID_DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
 
 /* When all services should trust a remote device */
 #define GLOBAL_TRUST "[all]"
-
-enum {
-	HCID_SET_NAME,
-	HCID_SET_CLASS,
-	HCID_SET_VOICE,
-	HCID_SET_INQMODE,
-	HCID_SET_PAGETO,
-	HCID_SET_DISCOVTO,
-	HCID_SET_PTYPE,
-	HCID_SET_LM,
-	HCID_SET_LP,
-};
 
 /*
  * Scanning modes, used by DEV_SET_MODE
@@ -108,48 +92,8 @@ void stop_security_manager(int hdev);
 
 void set_pin_length(bdaddr_t *sba, int length);
 
-int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_t size);
-int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias);
-
-int get_encryption_key_size(uint16_t dev_id, const bdaddr_t *baddr);
-
-int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout);
-int read_discoverable_timeout(bdaddr_t *bdaddr, int *timeout);
-int write_device_mode(bdaddr_t *bdaddr, const char *mode);
-int read_device_mode(bdaddr_t *bdaddr, char *mode, int length);
-int read_on_mode(bdaddr_t *bdaddr, char *mode, int length);
-int write_local_name(bdaddr_t *bdaddr, char *name);
-int read_local_name(bdaddr_t *bdaddr, char *name);
-int write_local_class(bdaddr_t *bdaddr, uint8_t *class);
-int read_local_class(bdaddr_t *bdaddr, uint8_t *class);
-int write_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class);
-int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class);
-int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
-int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
-int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data);
-int write_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
-			uint16_t mtu_result, uint16_t mtu,
-			uint16_t mask_result, uint32_t mask);
-int read_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
-			uint16_t *mtu_result, uint16_t *mtu,
-			uint16_t *mask_result, uint32_t *mask);
-int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, uint8_t lmp_ver, uint16_t lmp_subver);
-int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *features);
-int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
-int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
-int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t type, int length);
-int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *type);
-int read_pin_length(bdaddr_t *local, bdaddr_t *peer);
-int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
-gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service);
-int write_trust(bdaddr_t *local, const char *addr, const char *service, gboolean trust);
-GSList *list_trusts(bdaddr_t *local, const char *service);
-int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles);
-int delete_entry(bdaddr_t *src, const char *storage, const char *key);
-int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec);
-sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle);
-int delete_record(const gchar *src, const gchar *dst, const uint32_t handle);
 gboolean plugin_init(GKeyFile *config);
 void plugin_cleanup(void);
+
 void __probe_servers(const char *adapter);
 void __remove_servers(const char *adapter);

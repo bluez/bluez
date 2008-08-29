@@ -36,6 +36,7 @@
 #include <sys/ioctl.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
 #include <bluetooth/l2cap.h>
 
 #include <glib.h>
@@ -44,7 +45,6 @@
 
 #include "logging.h"
 
-#include "hcid.h"
 #include "manager.h"
 #include "adapter.h"
 #include "dbus-hci.h"

@@ -145,10 +145,6 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 struct btd_device *adapter_create_device(DBusConnection *conn,
 				struct adapter *adapter, const char *address);
 
-const char *mode2str(uint8_t mode);
-
-uint8_t str2mode(const char *addr, const char *mode);
-
 int pending_remote_name_cancel(struct adapter *adapter);
 
 void remove_pending_device(struct adapter *adapter);

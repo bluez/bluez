@@ -32,13 +32,10 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -47,7 +44,6 @@
 #include <gdbus.h>
 
 #include "logging.h"
-#include "textfile.h"
 #include "adapter.h"
 #include "error.h"
 #include "manager.h"
@@ -89,43 +85,6 @@ int manager_set_adapter_class(uint16_t dev_id, uint8_t *cls)
 	return adapter_set_class(adapter, cls);
 }
 
-int get_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, char *alias, size_t size)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	char filename[PATH_MAX + 1], addr[18], *tmp;
-	int err;
-	const gchar *source = adapter_get_address(adapter);
-
-	create_name(filename, PATH_MAX, STORAGEDIR, source, "aliases");
-
-	ba2str(bdaddr, addr);
-
-	tmp = textfile_get(filename, addr);
-	if (!tmp)
-		return -ENXIO;
-
-	err = snprintf(alias, size, "%s", tmp);
-
-	free(tmp);
-
-	return err;
-}
-
-int set_device_alias(uint16_t dev_id, const bdaddr_t *bdaddr, const char *alias)
-{
-	struct adapter *adapter = manager_find_adapter_by_id(dev_id);
-	const gchar *source = adapter_get_address(adapter);
-	char filename[PATH_MAX + 1], addr[18];
-
-	create_name(filename, PATH_MAX, STORAGEDIR, source, "aliases");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ba2str(bdaddr, addr);
-
-	return textfile_put(filename, addr, alias);
-}
-
 static inline DBusMessage *invalid_args(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg,
@@ -138,20 +97,6 @@ static inline DBusMessage *no_such_adapter(DBusMessage *msg)
 	return g_dbus_create_error(msg,
 			ERROR_INTERFACE ".NoSuchAdapter",
 			"No such adapter");
-}
-
-static inline DBusMessage *no_such_service(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg,
-			ERROR_INTERFACE ".NoSuchService",
-			"No such service");
-}
-
-static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
-{
-	return g_dbus_create_error(msg,
-			ERROR_INTERFACE ".Failed",
-			strerror(err));
 }
 
 static int find_by_address(const char *str)

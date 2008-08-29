@@ -40,6 +40,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
 
 #include <glib.h>
 
@@ -48,9 +49,9 @@
 #include "logging.h"
 #include "textfile.h"
 
-#include "hcid.h"
 #include "adapter.h"
 #include "dbus-hci.h"
+#include "storage.h"
 
 typedef enum {
 	REQ_PENDING,

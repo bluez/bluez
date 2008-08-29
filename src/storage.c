@@ -45,7 +45,6 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "textfile.h"
-#include "hcid.h"
 
 static inline int create_filename(char *buf, size_t size, const bdaddr_t *bdaddr, const char *name)
 {
@@ -54,6 +53,35 @@ static inline int create_filename(char *buf, size_t size, const bdaddr_t *bdaddr
 	ba2str(bdaddr, addr);
 
 	return create_name(buf, size, STORAGEDIR, addr, name);
+}
+
+int read_device_alias(const char *src, const char *dst, char *alias, size_t size)
+{
+	char filename[PATH_MAX + 1], *tmp;
+	int err;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "aliases");
+
+	tmp = textfile_get(filename, dst);
+	if (!tmp)
+		return -ENXIO;
+
+	err = snprintf(alias, size, "%s", tmp);
+
+	free(tmp);
+
+	return err;
+}
+
+int write_device_alias(const char *src, const char *dst, const char *alias)
+{
+	char filename[PATH_MAX + 1];
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "aliases");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	return textfile_put(filename, dst, alias);
 }
 
 int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout)
@@ -121,11 +149,11 @@ int read_device_mode(bdaddr_t *bdaddr, char *mode, int length)
 	return 0;
 }
 
-int read_on_mode(bdaddr_t *bdaddr, char *mode, int length)
+int read_on_mode(const char *src, char *mode, int length)
 {
 	char filename[PATH_MAX + 1], *str;
 
-	create_filename(filename, PATH_MAX, bdaddr, "config");
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "config");
 
 	str = textfile_get(filename, "onmode");
 	if (!str)
@@ -270,15 +298,14 @@ int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	return textfile_put(filename, addr, str);
 }
 
-int read_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
+int read_device_name(const char *src, const char *dst, char *name)
 {
-	char filename[PATH_MAX + 1], addr[18], *str;
+	char filename[PATH_MAX + 1], *str;
 	int len;
 
-	create_filename(filename, PATH_MAX, local, "names");
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "names");
 
-	ba2str(peer, addr);
-	str = textfile_get(filename, addr);
+	str = textfile_get(filename, dst);
 	if (!str)
 		return -ENOENT;
 
@@ -581,7 +608,7 @@ static char *service_list_to_string(GSList *services)
 	return g_strdup(str);
 }
 
-int write_trust(bdaddr_t *local, const char *addr, const char *service,
+int write_trust(const char *src, const char *addr, const char *service,
 		gboolean trust)
 {
 	char filename[PATH_MAX + 1], *str;
@@ -589,7 +616,7 @@ int write_trust(bdaddr_t *local, const char *addr, const char *service,
 	gboolean trusted;
 	int ret;
 
-	create_filename(filename, PATH_MAX, local, "trusts");
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "trusts");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
