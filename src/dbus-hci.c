@@ -1831,13 +1831,22 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		agent = adapter->agent;
 
 	if (!agent) {
-		/* No agent available, and no bonding case */
+		/* No agent available, and no bonding case (acceptor) */
 		if (device && (device_get_auth(device) == 0x00 ||
 					device_get_auth(device) == 0x01)) {
 			/* No input, no output */
 			*cap = 0x03;
 			return 0;
 		}
+
+		/* No agent available, and no bonding case (initiator) */
+		if (*auth == 0x00 || *auth == 0x01) {
+			/* No input, no output */
+			*cap = 0x03;
+			return 0;
+		}
+
+		/* This is the non bondable case */
 		error("No agent available for IO capability");
 		return -1;
 	}
