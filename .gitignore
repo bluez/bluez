@@ -30,6 +30,7 @@ parser.c
 
 bluez.pc
 include/bluetooth
+src/bluetoothd
 
 doc/*.bak
 doc/*.stamp
