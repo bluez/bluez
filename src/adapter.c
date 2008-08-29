@@ -167,6 +167,20 @@ static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
 			err > 0 ? strerror(err) : "Connection attempt failed");
 }
 
+static void send_out_of_range(const char *path, GSList *l)
+{
+	while (l) {
+		const char *peer_addr = l->data;
+
+		g_dbus_emit_signal(connection, path,
+				ADAPTER_INTERFACE, "DeviceDisappeared",
+				DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_INVALID);
+
+		l = l->next;
+	}
+}
+
 static int found_device_cmp(const struct remote_dev_info *d1,
 			const struct remote_dev_info *d2)
 {
@@ -2868,6 +2882,8 @@ void adapter_update_oor_devices(struct adapter *adapter)
 	GSList *l = adapter->found_devices;
 	struct remote_dev_info *dev;
 	bdaddr_t tmp;
+
+	send_out_of_range(adapter->path, adapter->oor_devices);
 
 	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
 	g_slist_free(adapter->oor_devices);

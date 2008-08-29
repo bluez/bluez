@@ -816,20 +816,6 @@ static int found_device_req_name(struct adapter *adapter)
 	return 0;
 }
 
-static void send_out_of_range(const char *path, GSList *l)
-{
-	while (l) {
-		const char *peer_addr = l->data;
-
-		g_dbus_emit_signal(connection, path,
-				ADAPTER_INTERFACE, "DeviceDisappeared",
-				DBUS_TYPE_STRING, &peer_addr,
-				DBUS_TYPE_INVALID);
-
-		l = l->next;
-	}
-}
-
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
 	struct adapter *adapter;
@@ -846,12 +832,8 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 	/* Out of range verification */
 	if ((adapter_get_state(adapter) & PERIODIC_INQUIRY) &&
-				!(adapter_get_state(adapter) & STD_INQUIRY)) {
-
-		send_out_of_range(path, adapter->oor_devices);
+				!(adapter_get_state(adapter) & STD_INQUIRY))
 		adapter_update_oor_devices(adapter);
-	}
-
 	/*
 	 * Enable resolution again: standard inquiry can be
 	 * received in the periodic inquiry idle state.
