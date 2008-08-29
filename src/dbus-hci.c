@@ -91,97 +91,6 @@ void bonding_request_free(struct bonding_request_info *bonding)
 	g_free(bonding);
 }
 
-int found_device_cmp(const struct remote_dev_info *d1,
-			const struct remote_dev_info *d2)
-{
-	int ret;
-
-	if (bacmp(&d2->bdaddr, BDADDR_ANY)) {
-		ret = bacmp(&d1->bdaddr, &d2->bdaddr);
-		if (ret)
-			return ret;
-	}
-
-	if (d2->name_status != NAME_ANY) {
-		ret = (d1->name_status - d2->name_status);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
-}
-
-int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
-{
-	int rssi1, rssi2;
-
-	rssi1 = d1->rssi < 0 ? -d1->rssi : d1->rssi;
-	rssi2 = d2->rssi < 0 ? -d2->rssi : d2->rssi;
-
-	return rssi1 - rssi2;
-}
-
-static int found_device_add(GSList **list, bdaddr_t *bdaddr, int8_t rssi,
-			name_status_t name_status)
-{
-	struct remote_dev_info *dev, match;
-	GSList *l;
-
-	memset(&match, 0, sizeof(struct remote_dev_info));
-	bacpy(&match.bdaddr, bdaddr);
-	match.name_status = NAME_ANY;
-
-	/* ignore repeated entries */
-	l = g_slist_find_custom(*list, &match, (GCompareFunc) found_device_cmp);
-	if (l) {
-		/* device found, update the attributes */
-		dev = l->data;
-
-		if (rssi != 0)
-			dev->rssi = rssi;
-
-		 /* Get remote name can be received while inquiring.
-		  * Keep in mind that multiple inquiry result events can
-		  * be received from the same remote device.
-		  */
-		if (name_status != NAME_NOT_REQUIRED)
-			dev->name_status = name_status;
-
-		*list = g_slist_sort(*list, (GCompareFunc) dev_rssi_cmp);
-
-		return -EALREADY;
-	}
-
-	dev = g_new0(struct remote_dev_info, 1);
-
-	bacpy(&dev->bdaddr, bdaddr);
-	dev->rssi = rssi;
-	dev->name_status = name_status;
-
-	*list = g_slist_insert_sorted(*list, dev, (GCompareFunc) dev_rssi_cmp);
-
-	return 0;
-}
-
-static int found_device_remove(GSList **list, bdaddr_t *bdaddr)
-{
-	struct remote_dev_info *dev, match;
-	GSList *l;
-
-	memset(&match, 0, sizeof(struct remote_dev_info));
-	bacpy(&match.bdaddr, bdaddr);
-
-	l = g_slist_find_custom(*list, &match, (GCompareFunc) found_device_cmp);
-	if (!l)
-		return -1;
-
-	dev = l->data;
-	*list = g_slist_remove(*list, dev);
-	g_free(dev);
-
-	return 0;
-}
-
 int active_conn_find_by_bdaddr(const void *data, const void *user_data)
 {
 	const struct active_conn_info *con = data;
@@ -845,22 +754,16 @@ static int found_device_req_name(struct adapter *adapter)
 	struct hci_request rq;
 	evt_cmd_status rp;
 	remote_name_req_cp cp;
-	struct remote_dev_info match;
-	GSList *l;
+	struct remote_dev_info *dev, match;
 	int dd, req_sent = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
-
-	/* get the next remote address */
-	if (!adapter->found_devices)
-		return -ENODATA;
 
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUIRED;
 
-	l = g_slist_find_custom(adapter->found_devices, &match,
-					(GCompareFunc) found_device_cmp);
-	if (!l)
+	dev = adapter_search_found_devices(adapter, &match);
+	if (!dev)
 		return -ENODATA;
 
 	dd = hci_open_dev(dev_id);
@@ -878,9 +781,7 @@ static int found_device_req_name(struct adapter *adapter)
 
 	/* send at least one request or return failed if the list is empty */
 	do {
-		struct remote_dev_info *dev = l->data;
-
-		 /* flag to indicate the current remote name requested */
+		/* flag to indicate the current remote name requested */
 		dev->name_status = NAME_REQUESTED;
 
 		memset(&rp, 0, sizeof(rp));
@@ -902,14 +803,11 @@ static int found_device_req_name(struct adapter *adapter)
 
 		/* if failed, request the next element */
 		/* remove the element from the list */
-		adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
-		g_free(dev);
+		adapter_remove_found_device(adapter, &dev->bdaddr);
 
 		/* get the next element */
-		l = g_slist_find_custom(adapter->found_devices, &match,
-					(GCompareFunc) found_device_cmp);
-
-	} while (l);
+		dev = adapter_search_found_devices(adapter, &match);
+	} while (dev);
 
 	hci_close_dev(dd);
 
@@ -919,25 +817,9 @@ static int found_device_req_name(struct adapter *adapter)
 	return 0;
 }
 
-static void send_out_of_range(const char *path, GSList *l)
-{
-	while (l) {
-		const char *peer_addr = l->data;
-
-		g_dbus_emit_signal(connection, path,
-				ADAPTER_INTERFACE, "DeviceDisappeared",
-				DBUS_TYPE_STRING, &peer_addr,
-				DBUS_TYPE_INVALID);
-
-		l = l->next;
-	}
-}
-
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
 	struct adapter *adapter;
-	struct remote_dev_info *dev;
-	bdaddr_t tmp;
 	const gchar *path;
 	int state;
 
@@ -951,27 +833,8 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 	/* Out of range verification */
 	if ((adapter_get_state(adapter) & PERIODIC_INQUIRY) &&
-				!(adapter_get_state(adapter) & STD_INQUIRY)) {
-		GSList *l;
-
-		send_out_of_range(path, adapter->oor_devices);
-
-		g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
-		g_slist_free(adapter->oor_devices);
-		adapter->oor_devices = NULL;
-
-		l = adapter->found_devices;
-		while (l) {
-			dev = l->data;
-			baswap(&tmp, &dev->bdaddr);
-			adapter->oor_devices = g_slist_append(adapter->oor_devices,
-								batostr(&tmp));
-			l = l->next;
-		}
-	}
-
-	adapter->pinq_idle = 1;
-
+				!(adapter_get_state(adapter) & STD_INQUIRY))
+		adapter_update_oor_devices(adapter);
 	/*
 	 * Enable resolution again: standard inquiry can be
 	 * received in the periodic inquiry idle state.
@@ -1005,11 +868,6 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		state &= ~STD_INQUIRY;
 		adapter_set_state(adapter, state);
 	}
-
-	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
 
 	if (adapter->discov_requestor) {
 		g_dbus_remove_watch(connection, adapter->discov_listener);
@@ -1093,11 +951,6 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	state = adapter_get_state(adapter);
 	state &= ~(PERIODIC_INQUIRY | RESOLVE_NAME);
 	adapter_set_state(adapter, state);
-
-	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
 
 	/* free out of range devices list */
 	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
@@ -1208,10 +1061,9 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 {
 	char filename[PATH_MAX + 1];
 	struct adapter *adapter;
-	GSList *l;
 	char local_addr[18], peer_addr[18], *name, *tmp_name;
 	const char *paddr = peer_addr;
-	struct remote_dev_info match;
+	struct remote_dev_info *dev, match;
 	dbus_int16_t tmp_rssi = rssi;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
@@ -1242,29 +1094,16 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		state |= PERIODIC_INQUIRY;
 		adapter_set_state(adapter, state);
 	}
-
-	/* reset the idle flag when the inquiry complete event arrives */
-	if (adapter_get_state(adapter) & PERIODIC_INQUIRY) {
-		adapter->pinq_idle = 0;
-
 		/* Out of range list update */
-		l = g_slist_find_custom(adapter->oor_devices, peer_addr,
-				(GCompareFunc) strcmp);
-		if (l) {
-			char *dev = l->data;
-			adapter->oor_devices = g_slist_remove(adapter->oor_devices,
-								dev);
-			g_free(dev);
-		}
-	}
+	if (adapter_get_state(adapter) & PERIODIC_INQUIRY)
+		adapter_remove_oor_device(adapter, peer_addr);
 
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
 	/* if found: don't send the name again */
-	l = g_slist_find_custom(adapter->found_devices, &match,
-			(GCompareFunc) found_device_cmp);
-	if (l)
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev)
 		return;
 
 	/* the inquiry result can be triggered by NON D-Bus client */
@@ -1317,7 +1156,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	}
 
 	/* add in the list to track name sent/pending */
-	found_device_add(&adapter->found_devices, peer, rssi, name_status);
+	adapter_add_found_device(adapter, peer, rssi, name_status);
 }
 
 void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
@@ -1390,16 +1229,11 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	}
 
 	/* remove from remote name request list */
-	found_device_remove(&adapter->found_devices, peer);
+	adapter_remove_found_device(adapter, peer);
 
 	/* check if there is more devices to request names */
 	if (!found_device_req_name(adapter))
 		return; /* skip if a new request has been sent */
-
-	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
 
 	/* The discovery completed signal must be sent only for discover
 	 * devices request WITH name resolving */
@@ -1942,7 +1776,6 @@ static int remote_name_cancel(int dd, bdaddr_t *dba, int to)
 int cancel_discovery(struct adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
-	GSList *l;
 	int dd, err = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 	int state;
@@ -1964,10 +1797,8 @@ int cancel_discovery(struct adapter *adapter)
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = g_slist_find_custom(adapter->found_devices, &match,
-				(GCompareFunc) found_device_cmp);
-	if (l) {
-		dev = l->data;
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev) {
 		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
 			error("Read remote name cancel failed: %s, (%d)",
 					strerror(errno), errno);
@@ -1984,14 +1815,6 @@ int cancel_discovery(struct adapter *adapter)
 	hci_close_dev(dd);
 
 cleanup:
-	/*
-	 * Reset discov_requestor and discover_state in the remote name
-	 * request event handler or in the inquiry complete handler.
-	 */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
-
 	/* Disable name resolution for non D-Bus clients */
 	if (!adapter->pdiscov_requestor) {
 		state = adapter_get_state(adapter);
@@ -2028,27 +1851,23 @@ static int periodic_inquiry_exit(int dd, int to)
 int cancel_periodic_discovery(struct adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
-	GSList *l;
 	int dd, err = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	if (!(adapter_get_state(adapter) & PERIODIC_INQUIRY))
-		goto cleanup;
+		return err;
 
 	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		err = -ENODEV;
-		goto cleanup;
-	}
+	if (dd < 0)
+		return -ENODEV;
+
 	/* find the pending remote name request */
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = g_slist_find_custom(adapter->found_devices, &match,
-			(GCompareFunc) found_device_cmp);
-	if (l) {
-		dev = l->data;
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev) {
 		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
 			error("Read remote name cancel failed: %s, (%d)",
 					strerror(errno), errno);
@@ -2065,15 +1884,6 @@ int cancel_periodic_discovery(struct adapter *adapter)
 	}
 
 	hci_close_dev(dd);
-
-cleanup:
-	/*
-	 * Reset pdiscov_requestor and pdiscov_active is done when the
-	 * cmd complete event for exit periodic inquiry mode cmd arrives.
-	 */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
 
 	return err;
 }

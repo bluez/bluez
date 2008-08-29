@@ -102,7 +102,6 @@ struct adapter {
 	uint8_t scan_mode;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
 	uint8_t mode;			/* off, connectable, discoverable, limited */
 	uint8_t global_mode;		/* last valid global mode */
-	int pinq_idle;			/* tracks the idle time for periodic inquiry */
 	int state;			/* standard inq, periodic inq, name resloving */
 	GSList *found_devices;
 	GSList *oor_devices;	/* out of range device list */
@@ -169,6 +168,13 @@ void adapter_set_mode(struct adapter *adapter, uint8_t mode);
 uint8_t adapter_get_mode(struct adapter *adapter);
 void adapter_set_state(struct adapter *adapter, int state);
 int adapter_get_state(struct adapter *adapter);
+struct remote_dev_info *adapter_search_found_devices(struct adapter *adapter,
+						struct remote_dev_info *match);
+int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
+				int8_t rssi, name_status_t name_status);
+int adapter_remove_found_device(struct adapter *adapter, bdaddr_t *bdaddr);
+void adapter_update_oor_devices(struct adapter *adapter);
+void adapter_remove_oor_device(struct adapter *adapter, char *peer_addr);
 
 struct btd_adapter_driver {
 	const char *name;

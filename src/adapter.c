@@ -167,6 +167,40 @@ static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
 			err > 0 ? strerror(err) : "Connection attempt failed");
 }
 
+static void send_out_of_range(const char *path, GSList *l)
+{
+	while (l) {
+		const char *peer_addr = l->data;
+
+		g_dbus_emit_signal(connection, path,
+				ADAPTER_INTERFACE, "DeviceDisappeared",
+				DBUS_TYPE_STRING, &peer_addr,
+				DBUS_TYPE_INVALID);
+
+		l = l->next;
+	}
+}
+
+static int found_device_cmp(const struct remote_dev_info *d1,
+			const struct remote_dev_info *d2)
+{
+	int ret;
+
+	if (bacmp(&d2->bdaddr, BDADDR_ANY)) {
+		ret = bacmp(&d1->bdaddr, &d2->bdaddr);
+		if (ret)
+			return ret;
+	}
+
+	if (d2->name_status != NAME_ANY) {
+		ret = (d1->name_status - d2->name_status);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int auth_req_cmp(const void *p1, const void *p2)
 {
 	const struct pending_auth_info *pb1 = p1;
@@ -2483,7 +2517,6 @@ int adapter_stop(struct adapter *adapter)
 	adapter->up = 0;
 	adapter->scan_mode = SCAN_DISABLED;
 	adapter->mode = MODE_OFF;
-	adapter->pinq_idle = 0;
 	adapter->state = DISCOVER_TYPE_NONE;
 
 	unload_drivers(adapter);
@@ -2731,12 +2764,143 @@ void adapter_set_state(struct adapter *adapter, int state)
 	if (!adapter)
 		return;
 
+	/* Both Standard and periodic Inquiry are in progress */
+	if ((state & STD_INQUIRY) && (state & PERIODIC_INQUIRY))
+		goto set;
+
+	if (!adapter->found_devices)
+		goto set;
+
+	/* Free list if standard/periodic inquiry is done */
+	if ((adapter->state & (STD_INQUIRY | PERIODIC_INQUIRY)) &&
+			(state & (~STD_INQUIRY | ~PERIODIC_INQUIRY))) {
+		g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
+		g_slist_free(adapter->found_devices);
+		adapter->found_devices = NULL;
+	}
+set:
 	adapter->state = state;
 }
 
 int adapter_get_state(struct adapter *adapter)
 {
 	return adapter->state;
+}
+
+struct remote_dev_info *adapter_search_found_devices(struct adapter *adapter,
+						struct remote_dev_info *match)
+{
+	GSList *l;
+
+	l = g_slist_find_custom(adapter->found_devices, match,
+					(GCompareFunc) found_device_cmp);
+	if (l)
+		return l->data;
+
+	return NULL;
+}
+
+int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
+{
+	int rssi1, rssi2;
+
+	rssi1 = d1->rssi < 0 ? -d1->rssi : d1->rssi;
+	rssi2 = d2->rssi < 0 ? -d2->rssi : d2->rssi;
+
+	return rssi1 - rssi2;
+}
+
+int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
+				int8_t rssi, name_status_t name_status)
+{
+	struct remote_dev_info *dev, match;
+
+	memset(&match, 0, sizeof(struct remote_dev_info));
+	bacpy(&match.bdaddr, bdaddr);
+	match.name_status = NAME_ANY;
+
+	/* ignore repeated entries */
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev) {
+		/* device found, update the attributes */
+		if (rssi != 0)
+			dev->rssi = rssi;
+
+		 /* Get remote name can be received while inquiring.
+		  * Keep in mind that multiple inquiry result events can
+		  * be received from the same remote device.
+		  */
+		if (name_status != NAME_NOT_REQUIRED)
+			dev->name_status = name_status;
+
+		adapter->found_devices = g_slist_sort(adapter->found_devices,
+						(GCompareFunc) dev_rssi_cmp);
+
+		return -EALREADY;
+	}
+
+	dev = g_new0(struct remote_dev_info, 1);
+
+	bacpy(&dev->bdaddr, bdaddr);
+	dev->rssi = rssi;
+	dev->name_status = name_status;
+
+	adapter->found_devices = g_slist_insert_sorted(adapter->found_devices,
+						dev, (GCompareFunc) dev_rssi_cmp);
+
+	return 0;
+}
+
+int adapter_remove_found_device(struct adapter *adapter, bdaddr_t *bdaddr)
+{
+	struct remote_dev_info *dev, match;
+
+	memset(&match, 0, sizeof(struct remote_dev_info));
+	bacpy(&match.bdaddr, bdaddr);
+
+	dev = adapter_search_found_devices(adapter, &match);
+	if (!dev)
+		return -1;
+
+	adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
+	g_free(dev);
+
+	return 0;
+}
+
+void adapter_update_oor_devices(struct adapter *adapter)
+{
+	GSList *l = adapter->found_devices;
+	struct remote_dev_info *dev;
+	bdaddr_t tmp;
+
+	send_out_of_range(adapter->path, adapter->oor_devices);
+
+	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
+	g_slist_free(adapter->oor_devices);
+	adapter->oor_devices = NULL;
+
+	while (l) {
+		dev = l->data;
+		baswap(&tmp, &dev->bdaddr);
+		adapter->oor_devices = g_slist_append(adapter->oor_devices,
+							batostr(&tmp));
+		l = l->next;
+	}
+}
+
+void adapter_remove_oor_device(struct adapter *adapter, char *peer_addr)
+{
+	GSList *l;
+
+	l = g_slist_find_custom(adapter->oor_devices, peer_addr,
+				(GCompareFunc) strcmp);
+	if (l) {
+		char *dev = l->data;
+		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
+								dev);
+		g_free(dev);
+	}
 }
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
