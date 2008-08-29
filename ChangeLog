@@ -1,3 +1,12 @@
+ver 4.2:
+	Avoid memory copies in A2DP write routine.
+	Fix broken logic with Simple Pairing check and old kernels.
+	Allow non-bondable and outgoing SDP without agent.
+	Only remove the bonding for non-temporary devices.
+	Cleanup various unnecessary includes.
+	Make more unexported functions static.
+	Add basic infrastructure for gtk-doc support.
+
 ver 4.1:
 	Add 30 seconds timeout to BNEP connection setup phase.
 	Avoid memory copies in A2DP write routine for ALSA.
