@@ -59,6 +59,8 @@
 #include "manager.h"
 #include "storage.h"
 
+#define HCID_DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
+
 enum {
 	HCID_SET_NAME,
 	HCID_SET_CLASS,
@@ -68,9 +70,8 @@ enum {
 	HCID_SET_LP,
 };
 
-struct hcid_opts hcid;
-struct device_opts default_device;
-static struct device_list *device_list = NULL;
+struct main_opts main_opts;
+
 static int child_pipe[2];
 
 static GKeyFile *load_config(const char *file)
@@ -112,7 +113,7 @@ static void parse_config(GKeyFile *config)
 	} else {
 		debug("offmode=%s", str);
 		if (g_str_equal(str, "DevDown"))
-			hcid.offmode = HCID_OFFMODE_DEVDOWN;
+			main_opts.offmode = HCID_OFFMODE_DEVDOWN;
 		g_free(str);
 	}
 
@@ -125,8 +126,8 @@ static void parse_config(GKeyFile *config)
 		err = NULL;
 	} else {
 		debug("discovto=%d", val);
-		default_device.discovto = val;
-		default_device.flags |= 1 << HCID_SET_DISCOVTO;
+		main_opts.discovto = val;
+		main_opts.flags |= 1 << HCID_SET_DISCOVTO;
 	}
 
 	val = g_key_file_get_integer(config, "General",
@@ -138,8 +139,8 @@ static void parse_config(GKeyFile *config)
 		err = NULL;
 	} else {
 		debug("pageto=%d", val);
-		default_device.pageto = val;
-		default_device.flags |= 1 << HCID_SET_PAGETO;
+		main_opts.pageto = val;
+		main_opts.flags |= 1 << HCID_SET_PAGETO;
 	}
 
 	str = g_key_file_get_string(config, "General",
@@ -150,9 +151,9 @@ static void parse_config(GKeyFile *config)
 		err = NULL;
 	} else {
 		debug("name=%s", str);
-		g_free(default_device.name);
-		default_device.name = g_strdup(str);
-		default_device.flags |= 1 << HCID_SET_NAME;
+		g_free(main_opts.name);
+		main_opts.name = g_strdup(str);
+		main_opts.flags |= 1 << HCID_SET_NAME;
 		g_free(str);
 	}
 
@@ -164,8 +165,8 @@ static void parse_config(GKeyFile *config)
 		err = NULL;
 	} else {
 		debug("class=%s", str);
-		default_device.class = strtol(str, NULL, 16);
-		default_device.flags |= 1 << HCID_SET_CLASS;
+		main_opts.class = strtol(str, NULL, 16);
+		main_opts.flags |= 1 << HCID_SET_CLASS;
 		g_free(str);
 	}
 
@@ -178,172 +179,15 @@ static void parse_config(GKeyFile *config)
 		err = NULL;
 	} else {
 		debug("inqmode=%d", val);
-		default_device.inqmode = val;
+		main_opts.inqmode = val;
 	}
 
-	default_device.link_mode = HCI_LM_ACCEPT;
-	default_device.flags |= (1 << HCID_SET_LM);
+	main_opts.link_mode = HCI_LM_ACCEPT;
+	main_opts.flags |= (1 << HCID_SET_LM);
 
-	default_device.link_policy = HCI_LP_RSWITCH | HCI_LP_SNIFF |
+	main_opts.link_policy = HCI_LP_RSWITCH | HCI_LP_SNIFF |
 						HCI_LP_HOLD | HCI_LP_PARK;
-	default_device.flags |= (1 << HCID_SET_LP);
-}
-
-static inline void init_device_defaults(struct device_opts *device_opts)
-{
-	memset(device_opts, 0, sizeof(*device_opts));
-	device_opts->scan = SCAN_PAGE;
-	device_opts->mode = MODE_CONNECTABLE;
-	device_opts->name = g_strdup("BlueZ");
-	device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
-}
-
-static void free_device_opts(void)
-{
-	struct device_list *device, *next;
-
-	g_free(default_device.name);
-
-	for (device = device_list; device; device = next) {
-		g_free(device->ref);
-		g_free(device->opts.name);
-		next = device->next;
-		g_free(device);
-	}
-
-	device_list = NULL;
-}
-
-static inline struct device_opts *find_device_opts(char *ref)
-{
-	struct device_list *device;
-
-	for (device = device_list; device; device = device->next)
-		if (!strcmp(ref, device->ref))
-			return &device->opts;
-
-	return NULL;
-}
-
-static struct device_opts *get_device_opts(int hdev)
-{
-	struct device_opts *device_opts = NULL;
-	struct hci_dev_info di;
-
-	/* First try to get BD_ADDR based settings ... */
-	if (hci_devinfo(hdev, &di) == 0) {
-		char addr[18];
-		ba2str(&di.bdaddr, addr);
-		device_opts = find_device_opts(addr);
-	}
-
-	/* ... then try HCI based settings ... */
-	if (!device_opts) {
-		char ref[8];
-		snprintf(ref, sizeof(ref) - 1, "hci%d", hdev);
-		device_opts = find_device_opts(ref);
-	}
-
-	/* ... and last use the default settings. */
-	if (!device_opts)
-		device_opts = &default_device;
-
-	return device_opts;
-}
-
-static struct device_opts *get_opts(int hdev)
-{
-	struct device_opts *device_opts = NULL;
-	struct hci_dev_info di;
-	char addr[18];
-	int sock;
-
-	if (hdev < 0)
-		return NULL;
-
-	sock = hci_open_dev(hdev);
-	if (sock < 0)
-		goto no_address;
-
-	if (hci_devinfo(hdev, &di) < 0) {
-		close(sock);
-		goto no_address;
-	}
-
-	close(sock);
-
-	ba2str(&di.bdaddr, addr);
-	device_opts = find_device_opts(addr);
-
-no_address:
-	if (!device_opts) {
-		char ref[8];
-		snprintf(ref, sizeof(ref) - 1, "hci%d", hdev);
-		device_opts = find_device_opts(ref);
-	}
-
-	if (!device_opts)
-		device_opts = &default_device;
-
-	return device_opts;
-}
-
-uint8_t get_startup_scan(int hdev)
-{
-	struct device_opts *device_opts = get_opts(hdev);
-	if (!device_opts)
-		return SCAN_DISABLED;
-
-	return device_opts->scan;
-}
-
-uint8_t get_startup_mode(int hdev)
-{
-	struct device_opts *device_opts = get_opts(hdev);
-	if (!device_opts)
-		return MODE_OFF;
-
-	return device_opts->mode;
-}
-
-int get_discoverable_timeout(int hdev)
-{
-	struct device_opts *device_opts = NULL;
-	struct hci_dev_info di;
-	char addr[18];
-	int sock, timeout;
-
-	if (hdev < 0)
-		return HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
-
-	sock = hci_open_dev(hdev);
-	if (sock < 0)
-		goto no_address;
-
-	if (hci_devinfo(hdev, &di) < 0) {
-		close(sock);
-		goto no_address;
-	}
-
-	close(sock);
-
-	if (read_discoverable_timeout(&di.bdaddr, &timeout) == 0)
-		return timeout;
-
-	ba2str(&di.bdaddr, addr);
-	device_opts = find_device_opts(addr);
-
-no_address:
-	if (!device_opts) {
-		char ref[8];
-		snprintf(ref, sizeof(ref) - 1, "hci%d", hdev);
-		device_opts = find_device_opts(ref);
-	}
-
-	if (!device_opts)
-		device_opts = &default_device;
-
-	return device_opts->discovto;
+	main_opts.flags |= (1 << HCID_SET_LP);
 }
 
 static void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
@@ -427,7 +271,7 @@ static char *expand_name(char *dst, int size, char *str, int dev_id)
 				break;
 
 			case 'h':
-				opt = hcid.host_name;
+				opt = main_opts.host_name;
 				break;
 
 			case '%':
@@ -488,52 +332,15 @@ static void at_child_exit(void)
 
 static void configure_device(int dev_id)
 {
-	struct device_opts *device_opts;
 	struct hci_dev_req dr;
 	struct hci_dev_info di;
-	char mode[14];
 	int dd;
-
-	device_opts = get_device_opts(dev_id);
 
 	if (hci_devinfo(dev_id, &di) < 0)
 		return;
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		return;
-
-	/* Set default discoverable timeout if not set */
-	if (!(device_opts->flags & (1 << HCID_SET_DISCOVTO)))
-		device_opts->discovto = HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
-
-	/* Set scan mode */
-	if (read_device_mode(&di.bdaddr, mode, sizeof(mode)) == 0) {
-		if (!strcmp(mode, "off") && hcid.offmode == HCID_OFFMODE_NOSCAN) {
-			device_opts->mode = MODE_OFF;
-			device_opts->scan = SCAN_DISABLED;
-		} else if (!strcmp(mode, "connectable")) {
-			device_opts->mode = MODE_CONNECTABLE;
-			device_opts->scan = SCAN_PAGE;
-		} else if (!strcmp(mode, "discoverable")) {
-			/* Set discoverable only if timeout is 0 */
-			if (!get_discoverable_timeout(dev_id)) {
-				device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
-				device_opts->mode = MODE_DISCOVERABLE;
-			} else {
-				device_opts->scan = SCAN_PAGE;
-				device_opts->mode = MODE_CONNECTABLE;
-			}
-		} else if (!strcmp(mode, "limited")) {
-			/* Set discoverable only if timeout is 0 */
-			if (!get_discoverable_timeout(dev_id)) {
-				device_opts->scan = SCAN_PAGE | SCAN_INQUIRY;
-				device_opts->mode = MODE_LIMITED;
-			} else {
-				device_opts->scan = SCAN_PAGE;
-				device_opts->mode = MODE_CONNECTABLE;
-			}
-		}
-	}
 
 	/* Do configuration in the separate process */
 	switch (fork()) {
@@ -558,8 +365,8 @@ static void configure_device(int dev_id)
 	dr.dev_id = dev_id;
 
 	/* Set link mode */
-	if ((device_opts->flags & (1 << HCID_SET_LM))) {
-		dr.dev_opt = device_opts->link_mode;
+	if ((main_opts.flags & (1 << HCID_SET_LM))) {
+		dr.dev_opt = main_opts.link_mode;
 		if (ioctl(dd, HCISETLINKMODE, (unsigned long) &dr) < 0) {
 			error("Can't set link mode on hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
@@ -567,8 +374,8 @@ static void configure_device(int dev_id)
 	}
 
 	/* Set link policy */
-	if ((device_opts->flags & (1 << HCID_SET_LP))) {
-		dr.dev_opt = device_opts->link_policy;
+	if ((main_opts.flags & (1 << HCID_SET_LP))) {
+		dr.dev_opt = main_opts.link_policy;
 		if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0) {
 			error("Can't set link policy on hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
@@ -576,29 +383,29 @@ static void configure_device(int dev_id)
 	}
 
 	/* Set device name */
-	if ((device_opts->flags & (1 << HCID_SET_NAME)) && device_opts->name) {
+	if ((main_opts.flags & (1 << HCID_SET_NAME)) && main_opts.name) {
 		change_local_name_cp cp;
 
 		memset(cp.name, 0, sizeof(cp.name));
 		expand_name((char *) cp.name, sizeof(cp.name),
-						device_opts->name, dev_id);
+						main_opts.name, dev_id);
 
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
 					CHANGE_LOCAL_NAME_CP_SIZE, &cp);
 	}
 
 	/* Set device class */
-	if ((device_opts->flags & (1 << HCID_SET_CLASS))) {
+	if ((main_opts.flags & (1 << HCID_SET_CLASS))) {
 		write_class_of_dev_cp cp;
 		uint32_t class;
 		uint8_t cls[3];
 
 		if (read_local_class(&di.bdaddr, cls) < 0) {
-			class = htobl(device_opts->class);
+			class = htobl(main_opts.class);
 			cls[2] = get_service_classes(&di.bdaddr);
 			memcpy(cp.dev_class, &class, 3);
 		} else {
-			if (!(device_opts->scan & SCAN_INQUIRY))
+			if (!(main_opts.scan & SCAN_INQUIRY))
 				cls[1] &= 0xdf; /* Clear discoverable bit */
 			cls[2] = get_service_classes(&di.bdaddr);
 			memcpy(cp.dev_class, cls, 3);
@@ -609,10 +416,10 @@ static void configure_device(int dev_id)
 	}
 
 	/* Set page timeout */
-	if ((device_opts->flags & (1 << HCID_SET_PAGETO))) {
+	if ((main_opts.flags & (1 << HCID_SET_PAGETO))) {
 		write_page_timeout_cp cp;
 
-		cp.timeout = htobs(device_opts->pageto);
+		cp.timeout = htobs(main_opts.pageto);
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
@@ -657,10 +464,11 @@ static void init_device(int dev_id)
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		goto done;
 
-	if (hcid.offmode == HCID_OFFMODE_DEVDOWN) {
-		char mode[16];
+	if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
+		char mode[16], src[18];
 
-		if (read_device_mode(&di.bdaddr, mode, sizeof(mode)) == 0 &&
+		ba2str(&di.bdaddr, src);
+		if (read_device_mode(src, mode, sizeof(mode)) == 0 &&
 						strcmp(mode, "off") == 0) {
 			ioctl(dd, HCIDEVDOWN, dev_id);
 			goto done;
@@ -680,8 +488,7 @@ static void device_devreg_setup(int dev_id)
 {
 	struct hci_dev_info di;
 
-	if (hcid.auto_init)
-		init_device(dev_id);
+	init_device(dev_id);
 
 	if (hci_devinfo(dev_id, &di) < 0)
 		return;
@@ -692,8 +499,8 @@ static void device_devreg_setup(int dev_id)
 
 static void device_devup_setup(int dev_id)
 {
-	if (hcid.auto_init)
-		configure_device(dev_id);
+	configure_device(dev_id);
+
 	manager_start_adapter(dev_id);
 	start_security_manager(dev_id);
 }
@@ -734,9 +541,16 @@ static void init_all_devices(int ctl)
 
 static void init_defaults(void)
 {
-	hcid.auto_init = 1;
+	/* Default HCId settings */
+	memset(&main_opts, 0, sizeof(main_opts));
+	main_opts.offmode	= HCID_OFFMODE_NOSCAN;
+	main_opts.scan	= SCAN_PAGE;
+	main_opts.mode	= MODE_CONNECTABLE;
+	main_opts.name	= g_strdup("BlueZ");
+	main_opts.discovto	= HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
 
-	init_device_defaults(&default_device);
+	if (gethostname(main_opts.host_name, sizeof(main_opts.host_name) - 1) < 0)
+		strcpy(main_opts.host_name, "noname");
 }
 
 static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
@@ -843,14 +657,6 @@ int main(int argc, char *argv[])
 	uint16_t mtu = 0;
 	GKeyFile *config;
 
-	/* Default HCId settings */
-	memset(&hcid, 0, sizeof(hcid));
-	hcid.auto_init = 1;
-	hcid.offmode   = HCID_OFFMODE_NOSCAN;
-
-	if (gethostname(hcid.host_name, sizeof(hcid.host_name) - 1) < 0)
-		strcpy(hcid.host_name, "noname");
-
 	init_defaults();
 
 	context = g_option_context_new(NULL);
@@ -896,7 +702,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Create and bind HCI socket */
-	if ((hcid.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
+	if ((main_opts.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
 		error("Can't open HCI socket: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
@@ -906,7 +712,7 @@ int main(int argc, char *argv[])
 	hci_filter_clear(&flt);
 	hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
 	hci_filter_set_event(EVT_STACK_INTERNAL, &flt);
-	if (setsockopt(hcid.sock, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
+	if (setsockopt(main_opts.sock, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		error("Can't set filter: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
@@ -914,7 +720,7 @@ int main(int argc, char *argv[])
 
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = HCI_DEV_NONE;
-	if (bind(hcid.sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	if (bind(main_opts.sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		error("Can't bind HCI socket: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
@@ -943,7 +749,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	start_sdp_server(mtu, hcid.deviceid, SDP_SERVER_COMPAT);
+	start_sdp_server(mtu, main_opts.deviceid, SDP_SERVER_COMPAT);
 	set_service_classes_callback(update_service_classes);
 
 	/* Loading plugins has to be done after D-Bus has been setup since
@@ -954,7 +760,7 @@ int main(int argc, char *argv[])
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 
-	ctl_io = g_io_channel_unix_new(hcid.sock);
+	ctl_io = g_io_channel_unix_new(main_opts.sock);
 	g_io_channel_set_close_on_unref(ctl_io, TRUE);
 
 	g_io_add_watch(ctl_io, G_IO_IN, io_stack_event, NULL);
@@ -962,7 +768,7 @@ int main(int argc, char *argv[])
 	g_io_channel_unref(ctl_io);
 
 	/* Initialize already connected devices */
-	init_all_devices(hcid.sock);
+	init_all_devices(main_opts.sock);
 
 	g_main_loop_run(event_loop);
 
@@ -971,8 +777,6 @@ int main(int argc, char *argv[])
 	plugin_cleanup();
 
 	stop_sdp_server();
-
-	free_device_opts();
 
 	agent_exit();
 

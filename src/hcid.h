@@ -23,8 +23,6 @@
  *
  */
 
-#define HCID_DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
-
 /* When all services should trust a remote device */
 #define GLOBAL_TRUST "[all]"
 
@@ -44,48 +42,31 @@
 #define MODE_LIMITED		0x03
 #define MODE_UNKNOWN		0xff
 
-struct device_opts {
-	unsigned long flags;
-	char    *name;
-	uint32_t class;
-	uint16_t voice;
-	uint8_t  inqmode;
-	uint16_t pageto;
-	uint16_t pkt_type;
-	uint16_t link_mode;
-	uint16_t link_policy;
-	uint8_t  scan;
-	uint8_t  mode;
-	uint32_t discovto;
-};
-
-extern struct device_opts default_device;
-
-struct device_list {
-	char *ref;			/* HCI device or Bluetooth address */
-	struct device_list *next;
-	struct device_opts opts;
-};
-
-struct hcid_opts {
-	char    host_name[40];
-	int     auto_init;
-	int	offmode;
-	char    deviceid[15];
-
-	int     sock;
-};
-
-extern struct hcid_opts hcid;
-
-void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
-
 #define HCID_OFFMODE_DEVDOWN	0
 #define HCID_OFFMODE_NOSCAN	1
 
-uint8_t get_startup_scan(int hdev);
-uint8_t get_startup_mode(int hdev);
-int get_discoverable_timeout(int dev_id);
+struct main_opts {
+	char		host_name[40];
+	unsigned long	flags;
+	char		*name;
+	uint32_t	class;
+	uint16_t	pageto;
+	uint32_t	discovto;
+	uint16_t	link_mode;
+	uint16_t	link_policy;
+
+	int		offmode;
+	uint8_t		scan;
+	uint8_t		mode;
+	uint8_t		inqmode;
+	char		deviceid[15]; /* FIXME: */
+
+	int		sock;
+};
+
+extern struct main_opts main_opts;
+
+void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
 
 void start_security_manager(int hdev);
 void stop_security_manager(int hdev);
