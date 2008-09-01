@@ -883,11 +883,6 @@ void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 	state = adapter_get_state(adapter);
 	state &= ~PERIODIC_INQUIRY;
 	adapter_set_state(adapter, state);
-
-	/* free out of range devices list */
-	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
-	g_slist_free(adapter->oor_devices);
-	adapter->oor_devices = NULL;
 }
 
 static char *extract_eir_name(uint8_t *data, uint8_t *type)

@@ -2715,6 +2715,12 @@ void adapter_set_state(struct adapter *adapter, int state)
 		adapter->found_devices = NULL;
 	}
 
+	if (!discov_active && adapter->oor_devices) {
+		g_slist_foreach(adapter->oor_devices, (GFunc) g_free, NULL);
+		g_slist_free(adapter->oor_devices);
+		adapter->oor_devices = NULL;
+	}
+
 	dbus_connection_emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discovering",
 				DBUS_TYPE_BOOLEAN, &discov_active);
