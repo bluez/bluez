@@ -2747,6 +2747,9 @@ static void adapter_free(gpointer user_data)
 {
 	struct adapter *adapter = user_data;
 
+	agent_destroy(adapter->agent, FALSE);
+	adapter->agent = NULL;
+
 	g_free(adapter->path);
 	g_free(adapter);
 

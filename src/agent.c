@@ -217,6 +217,9 @@ struct agent *agent_create(struct adapter *adapter, const char *name,
 
 int agent_destroy(struct agent *agent, gboolean exited)
 {
+	if (!agent)
+		return 0;
+
 	agent->exited = exited;
 	agent_free(agent);
 	return 0;
