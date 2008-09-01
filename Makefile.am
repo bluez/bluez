@@ -3,11 +3,7 @@ SUBDIRS = include lib sbc gdbus common src \
 	plugins network serial input audio \
 	tools rfcomm compat cups test scripts doc
 
-aclocaldir = $(datadir)/aclocal
-
-aclocal_DATA = bluez.m4
-
-EXTRA_DIST = $(aclocal_DATA)
+EXTRA_DIST = bluez.m4
 
 pkgconfigdir = $(libdir)/pkgconfig
 
