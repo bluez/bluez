@@ -5,17 +5,19 @@ plugindir = $(libdir)/bluetooth/plugins
 plugin_LTLIBRARIES = audio.la
 
 audio_la_SOURCES = main.c \
-	manager.h manager.c headset.h headset.c \
-	ipc.h ipc.c unix.h unix.c \
-	device.h device.c gateway.h gateway.c \
-	sink.c sink.h avdtp.c avdtp.h \
-	a2dp.c a2dp.h control.c control.h
+	ipc.h ipc.c unix.h unix.c manager.h manager.c telephony.c \
+	device.h device.c headset.h headset.c gateway.h gateway.c \
+	avdtp.h avdtp.c a2dp.h a2dp.c sink.h sink.c control.h control.c
 
 audio_la_LDFLAGS = -module -avoid-version -no-undefined \
 			-export-symbols-regex bluetooth_plugin_desc
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+
+BUILT_SOURCES = telephony.c
+
+nodist_audio_la_SOURCES = $(BUILT_SOURCES)
 
 if ALSA
 alsadir = $(libdir)/alsa-lib
@@ -57,6 +59,13 @@ AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/src
 
-EXTRA_DIST = audio.conf audio-api.txt test-audio asound.conf
+EXTRA_DIST = audio.conf audio-api.txt test-audio asound.conf \
+						telephony-dummy.c
 
 MAINTAINERCLEANFILES = Makefile.in
+
+telephony.c: @TELEPHONY_DRIVER@
+	@if [ ! -e $@ ] ; then $(LN_S) $< $@ ; fi
+
+clean-local:
+	@rm -f telephony.c
