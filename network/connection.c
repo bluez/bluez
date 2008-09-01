@@ -28,29 +28,21 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/param.h>
 #include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
-#include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
 #include <bluetooth/sdp.h>
 
 #include <glib.h>
 #include <gdbus.h>
 
-#include "../src/dbus-common.h"
-
 #include "logging.h"
-#include "textfile.h"
 #include "glib-helper.h"
 
 #include "error.h"
 #include "common.h"
-#include "connection.h"
 
 #define NETWORK_PEER_INTERFACE "org.bluez.network.Peer"
 

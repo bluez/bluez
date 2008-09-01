@@ -25,34 +25,24 @@
 #include <config.h>
 #endif
 
-#include <errno.h>
-#include <ctype.h>
-#include <dirent.h>
-
-#include <sys/stat.h>
-
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/bnep.h>
 #include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 #include <gdbus.h>
 
 #include "logging.h"
-#include "textfile.h"
-#include "glib-helper.h"
 
 #include "adapter.h"
 #include "device.h"
-#include "error.h"
 #include "bridge.h"
 #include "manager.h"
 #include "common.h"
-
-#define MAX_NAME_SIZE	256
+#include "connection.h"
+#include "server.h"
 
 static struct network_conf *conf = NULL;/* Network service configuration */
 
