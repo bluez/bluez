@@ -19,6 +19,8 @@ BUILT_SOURCES = telephony.c
 
 nodist_audio_la_SOURCES = $(BUILT_SOURCES)
 
+CLEANFILES = $(BUILT_SOURCES)
+
 if ALSA
 alsadir = $(libdir)/alsa-lib
 
