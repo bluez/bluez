@@ -826,7 +826,7 @@ static gboolean option_debug = FALSE;
 static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
-				"Don't fork daemon to background" },
+				"Don't run as daemon in background" },
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 				"Enable debug information output" },
 	{ NULL },
