@@ -39,5 +39,3 @@ int bnep_kill_all_connections(void);
 int bnep_connadd(int sk, uint16_t role, char *dev);
 int bnep_if_up(const char *devname, uint16_t id);
 int bnep_if_down(const char *devname);
-
-int read_remote_name(bdaddr_t *src, bdaddr_t *dst, char *buf, size_t size);

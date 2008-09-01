@@ -43,7 +43,6 @@
 
 #include "logging.h"
 #include "common.h"
-#include "textfile.h"
 
 static int ctl;
 static GSList *pids;
@@ -368,24 +367,6 @@ done:
 		g_free(bnep->script);
 
 	g_free(bnep);
-
-	return 0;
-}
-
-int read_remote_name(bdaddr_t *src, bdaddr_t *dst, char *buf, size_t size)
-{
-	char filename[PATH_MAX + 1], addr[18], *str;
-
-	ba2str(src, addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, addr, "names");
-
-	ba2str(dst, addr);
-	str = textfile_get(filename, addr);
-	if (!str)
-		return -ENOENT;
-
-	snprintf(buf, size, "%s", str);
-	free(str);
 
 	return 0;
 }
