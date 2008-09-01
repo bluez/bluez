@@ -7,9 +7,6 @@ bluetoothd \- Bluetooth daemon
 .B bluetoothd
 [
 .B \-n
-] [
-.B \-f
-.I config\-file
 ]
 
 .SH "DESCRIPTION"
@@ -19,7 +16,7 @@ daemon, which manages all the Bluetooth devices.
 .B bluetoothd
 itself does not accept many command\-line options, as most of its
 configuration is done in the 
-.B hcid.conf
+.B /etc/bluetooth/main.conf
 file, which has its own man page.
 .B bluetoothd
 can also provide a number of services via the D-Bus message bus
@@ -27,19 +24,17 @@ system.
 .SH "OPTIONS"
 .TP 
 .BI \-n
-Don't fork to run daemon in background.
+Don't run as daemon in background.
 .TP
 .BI \-d
 Enable debug information output.
 .TP
 .BI \-m\ mtu\-size
 Use specific MTU size for SDP server.
-.TP 
-.BI \-f\ config\-file
-Use alternate configuration file instead of /etc/bluetooth/hcid.conf
+
 .SH "FILES"
 .TP 
-.I /etc/bluetooth/hcid.conf
+.I /etc/bluetooth/main.conf
 Default location of the global configuration file.
 
 .TP 
@@ -92,7 +87,5 @@ the following columns separated by whitespace:
 
 \fIn\fP Remote device LMP sub-version integer.
 
-.SH "SEE ALSO"
-\fBhcid.conf\fR(5)
 .SH "AUTHOR"
 This manual page was written by Marcel Holtmann, Philipp Matthias Hahn and Fredrik Noring.
