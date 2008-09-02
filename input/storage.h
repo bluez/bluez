@@ -29,13 +29,9 @@ int del_stored_device_info(bdaddr_t *src, bdaddr_t *dst);
 int store_device_info(bdaddr_t *src, bdaddr_t *dst,
 				struct hidp_connadd_req *req);
 
-int parse_stored_hidd(const char *str, struct hidp_connadd_req *req);
 int parse_stored_device_info(const char *str,
 				struct hidp_connadd_req *req);
 
 int read_device_name(bdaddr_t *src, bdaddr_t *dst, char **name);
-int read_device_class(bdaddr_t *src, bdaddr_t *dst, uint32_t *cls);
 
 int encrypt_link(bdaddr_t *src, bdaddr_t *dst);
-
-gboolean has_bonding(bdaddr_t *src, bdaddr_t *dst);
