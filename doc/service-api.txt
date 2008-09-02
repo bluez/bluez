@@ -14,7 +14,7 @@ Service		org.bluez
 Interface	org.bluez.Service
 Object path	[variable prefix]/{hci0,hci1,...}
 
-Methods		uint32 AddServiceRecord(string record)
+Methods		uint32 AddRecord(string record)
 
 			Adds a new service record from the XML description
 			and returns the assigned record handle.
@@ -22,7 +22,7 @@ Methods		uint32 AddServiceRecord(string record)
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
 
-		void UpdateServiceRecord(uint32 handle, string record)
+		void UpdateRecord(uint32 handle, string record)
 
 			Updates a given service record provided in the
 			XML format.
@@ -31,7 +31,7 @@ Methods		uint32 AddServiceRecord(string record)
 					 org.bluez.Error.NotAvailable
 					 org.bluez.Error.Failed
 
-		void RemoveServiceRecord(uint32 handle)
+		void RemoveRecord(uint32 handle)
 
 			Remove a service record identified by its handle.
 
@@ -47,7 +47,7 @@ Methods		uint32 AddServiceRecord(string record)
 
 			Request an authorization for an incoming connection
 			for a specific service record. The service record
-			needs to be registered via AddServiceRecord first.
+			needs to be registered via AddRecord first.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NotAuthorized
