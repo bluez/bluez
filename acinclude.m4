@@ -181,6 +181,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	input_enable=yes
 	serial_enable=yes
 	network_enable=yes
+	service_enable=yes
 	tools_enable=yes
 	hidd_enable=no
 	pand_enable=no
@@ -218,6 +219,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(audio, AC_HELP_STRING([--disable-audio], [disable audio plugin]), [
 		audio_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(service, AC_HELP_STRING([--disable-service], [disable service plugin]), [
+		service_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(gstreamer, AC_HELP_STRING([--enable-gstreamer], [enable GStreamer support]), [
@@ -334,6 +339,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(INPUTPLUGIN, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(SERIALPLUGIN, test "${serial_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKPLUGIN, test "${network_enable}" = "yes")
+	AM_CONDITIONAL(SERVICEPLUGIN, test "${service_enable}" = "yes")
 	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")
 	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")
 	AM_CONDITIONAL(DUND, test "${dund_enable}" = "yes")

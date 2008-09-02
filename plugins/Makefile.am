@@ -7,18 +7,27 @@ else
 netlink_plugins =
 endif
 
-plugin_LTLIBRARIES = $(netlink_plugins)
+if SERVICEPLUGIN
+service_plugins = service.la
+else
+service_plugins =
+endif
+
+plugin_LTLIBRARIES = $(netlink_plugins) $(service_plugins)
 
 noinst_LTLIBRARIES = echo.la storage.la
 
 echo_la_SOURCES = echo.c
-
 storage_la_SOURCES = storage.c
 
 if NETLINK
 netlink_la_SOURCES = netlink.c
 
 netlink_la_LIBADD = @NETLINK_LIBS@
+endif
+
+if SERVICEPLUGIN
+service_la_SOURCES = service.c
 endif
 
 AM_LDFLAGS = -module -avoid-version -no-undefined \
