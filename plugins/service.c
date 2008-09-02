@@ -564,6 +564,8 @@ static int service_init(void)
 static void service_exit(void)
 {
 	btd_unregister_adapter_driver(&service_driver);
+
+	dbus_connection_unref(connection);
 }
 
 BLUETOOTH_PLUGIN_DEFINE("service", service_init, service_exit)
