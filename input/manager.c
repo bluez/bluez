@@ -162,7 +162,7 @@ static int load_stored(const char *source, const char *destination,
 	return parse_stored_device_info(value, hidp);
 }
 
-void input_remove(struct btd_device *device, const char *uuid)
+static void input_remove(struct btd_device *device, const char *uuid)
 {
 	const gchar *path = device_get_path(device);
 
@@ -171,7 +171,7 @@ void input_remove(struct btd_device *device, const char *uuid)
 	input_device_unregister(path, uuid);
 }
 
-int hid_probe(struct btd_device *device, GSList *records)
+static int hid_probe(struct btd_device *device, GSList *records)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -206,12 +206,12 @@ done:
 				HID_UUID, hidp.idle_to);
 }
 
-void hid_remove(struct btd_device *device)
+static void hid_remove(struct btd_device *device)
 {
 	input_remove(device, HID_UUID);
 }
 
-int headset_probe(struct btd_device *device, GSList *records)
+static int headset_probe(struct btd_device *device, GSList *records)
 {
 	struct adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -247,7 +247,7 @@ int headset_probe(struct btd_device *device, GSList *records)
 				HSP_HS_UUID, ch);
 }
 
-void headset_remove(struct btd_device *device)
+static void headset_remove(struct btd_device *device)
 {
 	input_remove(device, HSP_HS_UUID);
 }
