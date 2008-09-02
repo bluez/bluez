@@ -97,11 +97,11 @@ int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout)
 	return textfile_put(filename, "discovto", str);
 }
 
-int read_discoverable_timeout(bdaddr_t *bdaddr, int *timeout)
+int read_discoverable_timeout(const char *src, int *timeout)
 {
 	char filename[PATH_MAX + 1], *str;
 
-	create_filename(filename, PATH_MAX, bdaddr, "config");
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "config");
 
 	str = textfile_get(filename, "discovto");
 	if (!str)
@@ -131,11 +131,11 @@ int write_device_mode(bdaddr_t *bdaddr, const char *mode)
 	return textfile_put(filename, "mode", mode);
 }
 
-int read_device_mode(bdaddr_t *bdaddr, char *mode, int length)
+int read_device_mode(const char *src, char *mode, int length)
 {
 	char filename[PATH_MAX + 1], *str;
 
-	create_filename(filename, PATH_MAX, bdaddr, "config");
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "config");
 
 	str = textfile_get(filename, "mode");
 	if (!str)

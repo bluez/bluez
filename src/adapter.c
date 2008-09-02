@@ -457,8 +457,8 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 		return no_such_adapter(msg);
 
 	if (!adapter->up &&
-			(hcid.offmode == HCID_OFFMODE_NOSCAN ||
-			 (hcid.offmode == HCID_OFFMODE_DEVDOWN &&
+			(main_opts.offmode == HCID_OFFMODE_NOSCAN ||
+			 (main_opts.offmode == HCID_OFFMODE_DEVDOWN &&
 			  scan_enable != SCAN_DISABLED))) {
 		/* Start HCI device */
 		if (ioctl(dd, HCIDEVUP, adapter->dev_id) == 0)
@@ -475,7 +475,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	if (adapter->up && scan_enable == SCAN_DISABLED &&
-			hcid.offmode == HCID_OFFMODE_DEVDOWN) {
+			main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
 		if (ioctl(dd, HCIDEVDOWN, adapter->dev_id) < 0) {
 			hci_close_dev(dd);
 			return failed_strerror(msg, errno);
@@ -1375,7 +1375,7 @@ static DBusMessage *adapter_discover_devices(DBusConnection *conn,
 	if ((adapter->state & STD_INQUIRY) || (adapter->state & PERIODIC_INQUIRY))
 		goto done;
 
-	if (default_device.inqmode)
+	if (main_opts.inqmode)
 		err = start_inquiry(adapter);
 	else
 		err = start_periodic_inquiry(adapter);
@@ -2389,22 +2389,61 @@ static void load_drivers(struct adapter *adapter)
 	}
 }
 
+static int get_discoverable_timeout(const char *src)
+{
+	int timeout;
+
+	if (read_discoverable_timeout(src, &timeout) == 0)
+		return timeout;
+
+	return main_opts.discovto;
+}
+
 static void adapter_up(struct adapter *adapter, int dd)
 {
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci;
-	const char *mode;
+	const char *pmode;
+	char mode[14];
 	int i;
 
 	adapter->up = 1;
-	adapter->discov_timeout = get_discoverable_timeout(adapter->dev_id);
+	adapter->discov_timeout = get_discoverable_timeout(adapter->address);
 	adapter->state = DISCOVER_TYPE_NONE;
 
-	adapter->scan_mode = get_startup_scan(adapter->dev_id);
+	/* Set scan mode */
+	if (read_device_mode(adapter->address, mode, sizeof(mode)) == 0) {
+		if (!strcmp(mode, "off") && main_opts.offmode == HCID_OFFMODE_NOSCAN) {
+			adapter->mode = MODE_OFF;
+			adapter->scan_mode= SCAN_DISABLED;
+		} else if (!strcmp(mode, "connectable")) {
+			adapter->mode = MODE_CONNECTABLE;
+			adapter->scan_mode = SCAN_PAGE;
+		} else if (!strcmp(mode, "discoverable")) {
+			/* Set discoverable only if timeout is 0 */
+			if (adapter->discov_timeout == 0) {
+				adapter->mode = MODE_DISCOVERABLE;
+				adapter->scan_mode = SCAN_PAGE | SCAN_INQUIRY;
+			} else {
+				adapter->mode = MODE_CONNECTABLE;
+				adapter->scan_mode = SCAN_PAGE;
+			}
+		} else if (!strcmp(mode, "limited")) {
+			/* Set discoverable only if timeout is 0 */
+			if (adapter->discov_timeout == 0) {
+				adapter->mode = MODE_LIMITED;
+				adapter->scan_mode = SCAN_PAGE | SCAN_INQUIRY;
+			} else {
+				adapter->mode = MODE_CONNECTABLE;
+				adapter->scan_mode = SCAN_PAGE;
+
+			}
+		}
+	}
+
 	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 					1, &adapter->scan_mode);
 
-	adapter->mode = get_startup_mode(adapter->dev_id);
 	if (adapter->mode == MODE_LIMITED)
 		set_limited_discoverable(dd, adapter->dev.class, TRUE);
 
@@ -2426,11 +2465,11 @@ static void adapter_up(struct adapter *adapter, int dd)
 	}
 	g_free(cl);
 
-	mode = mode2str(adapter->mode);
+	pmode = mode2str(adapter->mode);
 
 	dbus_connection_emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Mode",
-					DBUS_TYPE_STRING, &mode);
+					DBUS_TYPE_STRING, &pmode);
 
 	load_drivers(adapter);
 	load_devices(adapter);
@@ -2896,7 +2935,7 @@ void adapter_set_state(struct adapter *adapter, int state)
 		if (adapter->scheduler_id)
 			goto done;
 	} else if (adapter->disc_sessions && adapter->state & STD_INQUIRY) {
-		adapter->scheduler_id = g_timeout_add(default_device.inqmode * 1000,
+		adapter->scheduler_id = g_timeout_add(main_opts.inqmode * 1000,
 				(GSourceFunc) start_inquiry, adapter);
 		goto done;
 	}

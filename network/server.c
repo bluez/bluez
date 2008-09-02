@@ -29,18 +29,13 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <sys/stat.h>
-#include <sys/param.h>
-#include <net/if.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
 #include <bluetooth/bnep.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-
 #include <netinet/in.h>
 
 #include <glib.h>
@@ -51,19 +46,16 @@
 
 #include "logging.h"
 #include "error.h"
-#include "textfile.h"
 #include "sdpd.h"
 #include "glib-helper.h"
+
+#include "bridge.h"
+#include "common.h"
 
 #define NETWORK_PEER_INTERFACE "org.bluez.network.Peer"
 #define NETWORK_HUB_INTERFACE "org.bluez.network.Hub"
 #define NETWORK_ROUTER_INTERFACE "org.bluez.network.Router"
 #define SETUP_TIMEOUT		1000
-#define MAX_SETUP_ATTEMPTS	3
-
-#include "bridge.h"
-#include "common.h"
-#include "manager.h"
 
 /* Pending Authorization */
 struct setup_session {

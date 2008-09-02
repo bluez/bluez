@@ -21,12 +21,6 @@
  *
  */
 
-#include "connection.h"
-#include "server.h"
-
-#define MAX_PATH_LENGTH 64 /* D-Bus path */
-#define NETWORK_PATH "/org/bluez/network"
-
 struct network_conf {
 	gboolean connection_enabled;
 	gboolean server_enabled;
