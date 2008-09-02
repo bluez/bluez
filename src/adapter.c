@@ -95,25 +95,6 @@ struct service_auth {
 
 static GSList *records = NULL;
 
-struct record_data {
-	uint32_t handle;
-	char *sender;
-	guint listener_id;
-};
-
-static struct record_data *find_record(uint32_t handle, const char *sender)
-{
-	GSList *list;
-
-	for (list = records; list; list = list->next) {
-		struct record_data *data = list->data;
-		if (handle == data->handle && !strcmp(sender, data->sender))
-			return data;
-	}
-
-	return NULL;
-}
-
 static inline DBusMessage *invalid_args(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
