@@ -18,6 +18,7 @@ plugin_LTLIBRARIES = $(netlink_plugins) $(service_plugins)
 noinst_LTLIBRARIES = echo.la storage.la
 
 echo_la_SOURCES = echo.c
+
 storage_la_SOURCES = storage.c
 
 if NETLINK
@@ -44,8 +45,10 @@ all-local:
 	@$(LN_S) -f $(top_srcdir)/audio/.libs/audio.so
 	@$(LN_S) -f $(top_srcdir)/serial/.libs/serial.so
 	@$(LN_S) -f $(top_srcdir)/network/.libs/network.so
+	@$(LN_S) -f .libs/service.so
 
 clean-local:
+	@rm -f service.so
 	@rm -f network.so
 	@rm -f serial.so
 	@rm -f audio.so
