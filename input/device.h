@@ -45,8 +45,6 @@ int fake_input_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 			bdaddr_t *dst, const char *uuid, uint8_t channel);
 int input_device_unregister(const char *path, const char *uuid);
 
-gboolean input_device_is_registered(bdaddr_t *src, bdaddr_t *dst);
-
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm, int nsk);
 int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst);
 int input_device_connadd(bdaddr_t *src, bdaddr_t *dst);

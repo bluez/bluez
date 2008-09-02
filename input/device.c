@@ -44,7 +44,6 @@
 #include <gdbus.h>
 
 #include "logging.h"
-#include "textfile.h"
 #include "uinput.h"
 
 #include "device.h"
@@ -1000,13 +999,6 @@ int input_device_unregister(const char *path, const char *uuid)
 	g_dbus_unregister_interface(idev->conn, path, INPUT_DEVICE_INTERFACE);
 
 	return 0;
-}
-
-gboolean input_device_is_registered(bdaddr_t *src, bdaddr_t *dst)
-{
-	struct input_device *idev = find_device(src, dst);
-
-	return idev ? TRUE : FALSE;
 }
 
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm, int nsk)
