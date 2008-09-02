@@ -93,8 +93,6 @@ struct service_auth {
 	void *user_data;
 };
 
-static GSList *records = NULL;
-
 static inline DBusMessage *invalid_args(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
