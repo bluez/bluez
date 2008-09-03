@@ -65,6 +65,7 @@
 #include "control.h"
 #include "manager.h"
 #include "sdpd.h"
+#include "telephony.h"
 
 typedef enum {
 	HEADSET	= 1 << 0,
@@ -932,8 +933,11 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 	g_strfreev(list);
 
 proceed:
-	if (enabled.headset)
+	if (enabled.headset) {
+		telephony_init();
+		telephony_features_req();
 		btd_register_adapter_driver(&headset_server_driver);
+	}
 
 	if (enabled.gateway)
 		btd_register_adapter_driver(&gateway_server_driver);
@@ -956,8 +960,10 @@ void audio_manager_exit(void)
 	if (config)
 		g_key_file_free(config);
 
-	if (enabled.headset)
+	if (enabled.headset) {
 		btd_unregister_adapter_driver(&headset_server_driver);
+		telephony_exit();
+	}
 
 	if (enabled.gateway)
 		btd_unregister_adapter_driver(&gateway_server_driver);

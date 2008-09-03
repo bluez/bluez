@@ -39,6 +39,7 @@
 #include "unix.h"
 #include "device.h"
 #include "manager.h"
+#include "telephony.h"
 
 static GKeyFile *load_config_file(const char *file)
 {
