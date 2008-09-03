@@ -194,9 +194,10 @@ struct agent *agent_create(struct adapter *adapter, const char *name,
 				const char *path, uint8_t capability,
 				agent_remove_cb cb, void *remove_cb_data)
 {
-	struct agent *agent;
+	struct agent *agent, *adapter_agent;
 
-	if (adapter->agent && g_str_equal(adapter->agent->name, name))
+	adapter_agent = adapter_get_agent(adapter);
+	if (adapter_agent && g_str_equal(adapter_agent->name, name))
 		return NULL;
 
 	agent = g_new0(struct agent, 1);
@@ -700,17 +701,18 @@ static int request_fallback(struct agent_request *req,
 				DBusPendingCallNotifyFunction function)
 {
 	struct adapter *adapter = req->agent->adapter;
+	struct agent *adapter_agent = adapter_get_agent(adapter);
 	DBusMessage *msg;
 
-	if (req->agent == adapter->agent || adapter->agent == NULL)
+	if (req->agent == adapter_agent || adapter_agent == NULL)
 		return -EINVAL;
 
 	dbus_pending_call_cancel(req->call);
 
 	msg = dbus_message_copy(req->msg);
 
-	dbus_message_set_destination(msg, adapter->agent->name);
-	dbus_message_set_path(msg, adapter->agent->path);
+	dbus_message_set_destination(msg, adapter_agent->name);
+	dbus_message_set_path(msg, adapter_agent->path);
 
 	if (dbus_connection_send_with_reply(connection, msg,
 					&req->call, REQUEST_TIMEOUT) == FALSE) {
@@ -720,7 +722,7 @@ static int request_fallback(struct agent_request *req,
 	}
 
 	req->agent->request = NULL;
-	req->agent = adapter->agent;
+	req->agent = adapter_agent;
 	req->agent->request = req;
 
 	dbus_message_unref(req->msg);

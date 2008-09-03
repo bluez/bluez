@@ -2894,6 +2894,14 @@ void adapter_mode_changed(struct adapter *adapter, uint8_t scan_mode)
 					DBUS_TYPE_STRING, &mode);
 }
 
+struct agent *adapter_get_agent(struct adapter *adapter)
+{
+	if (!adapter || !adapter->agent)
+		return NULL;
+
+	return adapter->agent;
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);

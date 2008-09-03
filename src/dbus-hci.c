@@ -254,7 +254,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 		agent = device_get_agent(device);
 
 	if (!agent)
-		agent = adapter->agent;
+		agent = adapter_get_agent(adapter);
 
 	if (!agent)
 		return -EPERM;
@@ -463,7 +463,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	agent = device_get_agent(device);
 
 	if (!agent)
-		agent = adapter->agent;
+		agent = adapter_get_agent(adapter);
 
 	if (!agent) {
 		error("No agent available for user confirm request");
@@ -504,7 +504,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 		agent = device_get_agent(device);
 
 	if (!agent)
-		agent = adapter->agent;
+		agent = adapter_get_agent(adapter);
 
 	if (!agent) {
 		error("No agent available for user confirm request");
@@ -543,7 +543,7 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		agent = device_get_agent(device);
 
 	if (!agent)
-		agent = adapter->agent;
+		agent = adapter_get_agent(adapter);
 
 	if (!agent) {
 		error("No agent available for user confirm request");
@@ -1479,7 +1479,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 			*auth = 0x03;
 	}
 	if (!agent)
-		agent = adapter->agent;
+		agent = adapter_get_agent(adapter);
 
 	if (!agent) {
 		/* This is the non bondable mode case */
