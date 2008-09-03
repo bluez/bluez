@@ -24,6 +24,16 @@
 
 #include <stdint.h>
 
+#define AG_FEATURE_THREE_WAY_CALLING             0x0001
+#define AG_FEATURE_EC_ANDOR_NR                   0x0002
+#define AG_FEATURE_VOICE_RECOGNITION             0x0004
+#define AG_FEATURE_INBAND_RINGTONE               0x0008
+#define AG_FEATURE_ATTACH_NUMBER_TO_VOICETAG     0x0010
+#define AG_FEATURE_REJECT_A_CALL                 0x0020
+#define AG_FEATURE_ENHANCES_CALL_STATUS          0x0040
+#define AG_FEATURE_ENHANCES_CALL_CONTROL         0x0080
+#define AG_FEATURE_EXTENDED_ERROR_RESULT_CODES   0x0100
+
 struct indicator {
 	const char *desc;
 	const char *range;
