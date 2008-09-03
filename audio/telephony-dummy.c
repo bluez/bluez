@@ -27,3 +27,21 @@
 #endif
 
 #include "telephony.h"
+
+int telephony_init(void)
+{
+	return 0;
+}
+
+void telephony_exit(void)
+{
+}
+
+int telephony_features_req(void)
+{
+	uint32_t features = 0;
+
+	telephony_features_rsp(features);
+
+	return 0;
+}

@@ -54,6 +54,7 @@
 #include "device.h"
 #include "manager.h"
 #include "error.h"
+#include "telephony.h"
 #include "headset.h"
 #include "glib-helper.h"
 
@@ -1956,4 +1957,9 @@ int headset_get_sco_fd(struct audio_device *dev)
 		return -1;
 
 	return g_io_channel_unix_get_fd(hs->sco);
+}
+
+void telephony_features_rsp(uint32_t features)
+{
+	ag_features = features;
 }

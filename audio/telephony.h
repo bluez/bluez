@@ -22,3 +22,12 @@
  *
  */
 
+#include <stdint.h>
+
+int telephony_init(void);
+
+void telephony_exit(void);
+
+int telephony_features_req(void);
+
+void telephony_features_rsp(uint32_t features);
