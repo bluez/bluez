@@ -1413,7 +1413,7 @@ static int start_periodic_inquiry(struct btd_adapter *adapter)
 	return 0;
 }
 
-static DBusMessage *adapter_discover_devices(DBusConnection *conn,
+static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct session_req *req;
@@ -1450,7 +1450,7 @@ done:
 	return dbus_message_new_method_return(msg);
 }
 
-static DBusMessage *adapter_cancel_discovery(DBusConnection *conn,
+static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct btd_adapter *adapter = data;
@@ -1973,8 +1973,8 @@ static GDBusMethodTable adapter_methods[] = {
 	{ "RequestMode",	"s",	"",	request_mode,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "ReleaseMode",	"",	"",	release_mode		},
-	{ "DiscoverDevices",	"",	"",	adapter_discover_devices},
-	{ "CancelDiscovery",	"",	"",	adapter_cancel_discovery,
+	{ "StartDiscovery",	"",	"",	adapter_start_discovery },
+	{ "StopDiscovery",	"",	"",	adapter_stop_discovery,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "ListDevices",	"",	"ao",	list_devices		},
 	{ "CreateDevice",	"s",	"o",	create_device,
@@ -2777,15 +2777,11 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	if (adapter->state == state)
 		return;
 
-	if (state & PERIODIC_INQUIRY || state & STD_INQUIRY) {
+	if (state & PERIODIC_INQUIRY || state & STD_INQUIRY)
 		discov_active = TRUE;
-		if (adapter->scheduler_id)
-			goto done;
-	} else if (adapter->disc_sessions && adapter->state & STD_INQUIRY) {
+	else if (adapter->disc_sessions && main_opts.inqmode)
 		adapter->scheduler_id = g_timeout_add(main_opts.inqmode * 1000,
 				(GSourceFunc) start_inquiry, adapter);
-		goto done;
-	}
 
 	if (!discov_active && adapter->found_devices) {
 		g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
@@ -2803,7 +2799,6 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 				ADAPTER_INTERFACE, "Discovering",
 				DBUS_TYPE_BOOLEAN, &discov_active);
 
-done:
 	adapter->state = state;
 }
 

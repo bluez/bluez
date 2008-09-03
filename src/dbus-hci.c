@@ -714,12 +714,6 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 				!(adapter_get_state(adapter) & STD_INQUIRY))
 		adapter_update_oor_devices(adapter);
 
-	/* reset the discover type to be able to handle D-Bus and non D-Bus
-	 * requests */
-	state = adapter_get_state(adapter);
-	state &= ~STD_INQUIRY;
-	adapter_set_state(adapter, state);
-
 	/*
 	 * The following scenarios can happen:
 	 * 1. standard inquiry: always send discovery completed signal
@@ -731,7 +725,15 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	 *
 	 * Keep in mind that non D-Bus requests can arrive.
 	 */
-	found_device_req_name(adapter);
+	if (found_device_req_name(adapter) == 0)
+		return;
+
+	/* reset the discover type to be able to handle D-Bus and non D-Bus
+	 * requests */
+	state = adapter_get_state(adapter);
+	state &= ~STD_INQUIRY;
+	state &= ~PERIODIC_INQUIRY;
+	adapter_set_state(adapter, state);
 }
 
 void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
@@ -884,7 +886,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		state |= PERIODIC_INQUIRY;
 		adapter_set_state(adapter, state);
 	}
-		/* Out of range list update */
+	/* Out of range list update */
 	if (adapter_get_state(adapter) & PERIODIC_INQUIRY)
 		adapter_remove_oor_device(adapter, peer_addr);
 
@@ -989,6 +991,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	const gchar *dev_path;
+	int state;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1016,7 +1019,13 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	adapter_remove_found_device(adapter, peer);
 
 	/* check if there is more devices to request names */
-	found_device_req_name(adapter);
+	if (found_device_req_name(adapter) == 0)
+		return;
+
+	state = adapter_get_state(adapter);
+	state &= ~PERIODIC_INQUIRY;
+	state &= ~STD_INQUIRY;
+	adapter_set_state(adapter, state);
 }
 
 void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,

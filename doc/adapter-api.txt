@@ -54,31 +54,31 @@ Methods		dict GetProperties()
 
 			Possible Errors: org.bluez.Error.DoesNotExist
 
-		void DiscoverDevices()
+		void StartDiscovery()
 
-			This method starts the device discovery procedure. This
+			This method starts the device discovery session. This
 			includes an inquiry procedure and remote device name
-			resolving.
+			resolving. Use StopDiscovery to release the sessions
+			acquired.
 
-			On start up this process will generate a DiscoveryStarted
-			signal and then return DeviceFound singals. If the
-			procedure has been finished an DiscoveryCompleted
-			signal will be sent.
+			This process will start emitting DeviceFound and
+			PropertyChanged "Discovering" signals.
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
-					 org.bluez.Error.InProgress
-					 org.bluez.Error.NoSuchAdapter
 
-		void CancelDiscovery()
+		void StopDiscovery()
 
-			This method will cancel any previous DiscoverDevices
+			This method will cancel any previous StartDiscovery
 			transaction.
+
+			Note that a discovery procedure is shared between all
+			discovery sessions thus calling StopDiscovery will only
+			release a single session.
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
 					 org.bluez.Error.NotAuthorized
-					 org.bluez.Error.NoSuchAdapter
 
 		object FindDevice(string address)
 
