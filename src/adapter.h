@@ -173,6 +173,7 @@ int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
 int adapter_remove_found_device(struct adapter *adapter, bdaddr_t *bdaddr);
 void adapter_update_oor_devices(struct adapter *adapter);
 void adapter_remove_oor_device(struct adapter *adapter, char *peer_addr);
+void adapter_mode_changed(struct adapter *adapter, uint8_t scan_mode);
 
 struct btd_adapter_driver {
 	const char *name;

@@ -172,50 +172,6 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 	}
 }
 
-static void adapter_mode_changed(struct adapter *adapter, uint8_t scan_mode)
-{
-	const char *mode;
-	const gchar *path = adapter_get_path(adapter);
-
-	adapter_set_scan_mode(adapter, scan_mode);
-
-	switch (scan_mode) {
-	case SCAN_DISABLED:
-		mode = "off";
-		adapter_set_mode(adapter, MODE_OFF);
-		break;
-	case SCAN_PAGE:
-		mode = "connectable";
-		adapter_set_mode(adapter, MODE_CONNECTABLE);
-		break;
-	case (SCAN_PAGE | SCAN_INQUIRY):
-
-		if (adapter->discov_timeout != 0)
-			adapter_set_discov_timeout(adapter, adapter->discov_timeout * 1000);
-
-		if (adapter_get_mode(adapter) == MODE_LIMITED) {
-			mode = "limited";
-		} else {
-			adapter_set_mode(adapter, MODE_DISCOVERABLE);
-			mode = "discoverable";
-		}
-		break;
-	case SCAN_INQUIRY:
-		/* Address the scenario where another app changed the scan mode */
-		if (adapter->discov_timeout != 0)
-			adapter_set_discov_timeout(adapter, adapter->discov_timeout * 1000);
-
-		/* ignore, this event should not be sent*/
-	default:
-		/* ignore, reserved */
-		return;
-	}
-
-	dbus_connection_emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "Mode",
-					DBUS_TYPE_STRING, &mode);
-}
-
 /*****************************************************************
  *
  *  Section reserved to HCI commands confirmation handling and low
