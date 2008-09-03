@@ -127,9 +127,10 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	const gchar *destination = device_get_address(device);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 	const gchar *source = adapter_get_address(adapter);
+	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
 
 	/* No need to reply anything if the authentication already failed */
-	if (adapter->bonding && adapter->bonding->hci_status)
+	if (bonding && bonding->hci_status)
 		return;
 
 	dev = hci_open_dev(dev_id);
@@ -223,9 +224,10 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	struct pending_auth_info *auth;
 	const gchar *destination = device_get_address(device);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
+	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
 
 	/* No need to reply anything if the authentication already failed */
-	if (adapter->bonding && adapter->bonding->hci_status)
+	if (bonding && bonding->hci_status)
 		return;
 
 	dd = hci_open_dev(dev_id);
@@ -265,9 +267,10 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	struct pending_auth_info *auth;
 	const gchar *destination = device_get_address(device);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
+	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
 
 	/* No need to reply anything if the authentication already failed */
-	if (adapter->bonding && adapter->bonding->hci_status)
+	if (bonding && bonding->hci_status)
 		return;
 
 	dd = hci_open_dev(dev_id);
@@ -521,9 +524,11 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		return;
 	}
 
+	bonding = adapter_get_bonding_info(adapter);
+
 	if (status) {
-		if (adapter->bonding)
-			adapter->bonding->hci_status = status;
+		if (bonding)
+			bonding->hci_status = status;
 	}
 
 	auth = adapter_find_auth_request(adapter, peer);
@@ -559,7 +564,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	}
 
 proceed:
-	bonding = adapter->bonding;
+	bonding = adapter_get_bonding_info(adapter);
 	if (!bonding || bacmp(&bonding->bdaddr, peer))
 		return; /* skip: no bonding req pending */
 
@@ -1025,6 +1030,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	const char *paddr = peer_addr;
 	struct adapter *adapter;
 	const gchar *dev_path;
+	struct bonding_request_info *bonding;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1043,8 +1049,9 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 
 		adapter_remove_auth_request(adapter, peer);
 
-		if (adapter->bonding)
-			adapter->bonding->hci_status = status;
+		bonding = adapter_get_bonding_info(adapter);
+		if (bonding)
+			bonding->hci_status = status;
 	} else {
 		struct btd_device *device;
 		gboolean connected = TRUE;
@@ -1078,6 +1085,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	const gchar *destination;
 	const gchar *dev_path;
 	uint16_t dev_id;
+	struct bonding_request_info *bonding;
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -1106,15 +1114,16 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 	adapter_remove_auth_request(adapter, &dev->bdaddr);
 
+	bonding = adapter_get_bonding_info(adapter);
 	/* Check if there is a pending CreateBonding request */
-	if (adapter->bonding && (bacmp(&adapter->bonding->bdaddr, &dev->bdaddr) == 0)) {
-		if (adapter->bonding->cancel) {
+	if (bonding && (bacmp(&bonding->bdaddr, &dev->bdaddr) == 0)) {
+		if (bonding->cancel) {
 			/* reply authentication canceled */
-			reply = new_authentication_return(adapter->bonding->msg,
+			reply = new_authentication_return(bonding->msg,
 							HCI_OE_USER_ENDED_CONNECTION);
 			g_dbus_send_message(connection, reply);
 		} else {
-			reply = new_authentication_return(adapter->bonding->msg,
+			reply = new_authentication_return(bonding->msg,
 							HCI_AUTHENTICATION_FAILURE);
 			dbus_connection_send(connection, reply, NULL);
 			dbus_message_unref(reply);

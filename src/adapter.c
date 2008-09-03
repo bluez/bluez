@@ -3024,6 +3024,14 @@ void adapter_free_bonding_request(struct adapter *adapter)
 	adapter->bonding = NULL;
 }
 
+struct bonding_request_info *adapter_get_bonding_info(struct adapter *adapter)
+{
+	if (!adapter || !adapter->bonding)
+		return NULL;
+
+	return adapter->bonding;
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);
