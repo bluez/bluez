@@ -53,7 +53,6 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 int cancel_discovery(struct adapter *adapter);
 int cancel_periodic_discovery(struct adapter *adapter);
 
-int active_conn_find_by_bdaddr(const void *data, const void *user_data);
 void bonding_request_free(struct bonding_request_info *dev);
 
 int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited);

@@ -152,6 +152,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	uint32_t class;
 	int i;
 	GSList *l;
+	struct active_conn_info *dev;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -207,8 +208,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Connected */
-	if (g_slist_find_custom(adapter->active_conn, &dst,
-				active_conn_find_by_bdaddr))
+	dev = adapter_search_active_conn_by_bdaddr(adapter, &dst);
+	if (dev)
 		boolean = TRUE;
 	else
 		boolean = FALSE;
@@ -408,7 +409,6 @@ static gboolean disconnect_timeout(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 	struct active_conn_info *ci;
-	GSList *l;
 	disconnect_cp cp;
 	bdaddr_t bda;
 	int dd;
@@ -417,12 +417,12 @@ static gboolean disconnect_timeout(gpointer user_data)
 	device->disconn_timer = 0;
 
 	str2ba(device->address, &bda);
-	l = g_slist_find_custom(device->adapter->active_conn,
-				&bda, active_conn_find_by_bdaddr);
-	if (!l)
+
+	ci = adapter_search_active_conn_by_bdaddr(device->adapter, &bda);
+
+	if (!ci)
 		return FALSE;
 
-	ci = l->data;
 	dd = hci_open_dev(dev_id);
 	if (dd < 0)
 		goto fail;
@@ -444,13 +444,14 @@ static DBusMessage *disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct btd_device *device = user_data;
-	GSList *l;
 	bdaddr_t bda;
+	struct active_conn_info *dev;
 
 	str2ba(device->address, &bda);
-	l = g_slist_find_custom(device->adapter->active_conn,
-				&bda, active_conn_find_by_bdaddr);
-	if (!l)
+
+	dev = adapter_search_active_conn_by_bdaddr(device->adapter, &bda);
+
+	if (!dev)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotConnected",
 				"Device is not connected");

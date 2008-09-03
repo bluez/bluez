@@ -179,6 +179,10 @@ void adapter_add_active_conn(struct adapter *adapter, bdaddr_t *bdaddr,
 				uint16_t handle);
 void adapter_remove_active_conn(struct adapter *adapter,
 				struct active_conn_info *dev);
+struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct adapter *adapter,
+						    bdaddr_t *bda);
+struct active_conn_info *adapter_search_active_conn_by_handle(struct adapter *adapter,
+							uint16_t handle);
 
 struct btd_adapter_driver {
 	const char *name;

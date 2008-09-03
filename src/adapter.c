@@ -168,6 +168,25 @@ static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
 			err > 0 ? strerror(err) : "Connection attempt failed");
 }
 
+static int active_conn_find_by_bdaddr(const void *data, const void *user_data)
+{
+	const struct active_conn_info *con = data;
+	const bdaddr_t *bdaddr = user_data;
+
+	return bacmp(&con->bdaddr, bdaddr);
+}
+
+static int active_conn_find_by_handle(const void *data, const void *user_data)
+{
+	const struct active_conn_info *dev = data;
+	const uint16_t *handle = user_data;
+
+	if (dev->handle == *handle)
+		return 0;
+
+	return -1;
+}
+
 static void send_out_of_range(const char *path, GSList *l)
 {
 	while (l) {
@@ -2926,6 +2945,38 @@ void adapter_remove_active_conn(struct adapter *adapter,
 
 	adapter->active_conn = g_slist_remove(adapter->active_conn, dev);
 	g_free(dev);
+}
+
+struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct adapter *adapter,
+						    bdaddr_t *bda)
+{
+	GSList *l;
+
+	if (!adapter || !adapter->active_conn)
+		return NULL;
+
+	l = g_slist_find_custom(adapter->active_conn, &bda,
+					active_conn_find_by_bdaddr);
+	if (l)
+		return l->data;
+
+	return NULL;
+}
+
+struct active_conn_info *adapter_search_active_conn_by_handle(struct adapter *adapter,
+						    uint16_t handle)
+{
+	GSList *l;
+
+	if (!adapter || !adapter->active_conn)
+		return NULL;
+
+	l = g_slist_find_custom(adapter->active_conn, &handle,
+					active_conn_find_by_handle);
+	if (l)
+		return l->data;
+
+	return NULL;
 }
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)

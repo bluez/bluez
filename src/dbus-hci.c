@@ -91,25 +91,6 @@ void bonding_request_free(struct bonding_request_info *bonding)
 	g_free(bonding);
 }
 
-int active_conn_find_by_bdaddr(const void *data, const void *user_data)
-{
-	const struct active_conn_info *con = data;
-	const bdaddr_t *bdaddr = user_data;
-
-	return bacmp(&con->bdaddr, bdaddr);
-}
-
-static int active_conn_find_by_handle(const void *data, const void *user_data)
-{
-	const struct active_conn_info *dev = data;
-	const uint16_t *handle = user_data;
-
-	if (dev->handle == *handle)
-		return 0;
-
-	return -1;
-}
-
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 {
 	switch (status) {
@@ -1129,7 +1110,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	struct adapter *adapter;
 	struct btd_device *device;
 	struct active_conn_info *dev;
-	GSList *l;
 	gboolean connected = FALSE;
 	struct pending_auth_info *auth;
 	const gchar *destination;
@@ -1147,13 +1127,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		return;
 	}
 
-	l = g_slist_find_custom(adapter->active_conn, &handle,
-				active_conn_find_by_handle);
-
-	if (!l)
-		return;
-
-	dev = l->data;
+	dev =  adapter_search_active_conn_by_handle(adapter, handle);
 
 	ba2str(&dev->bdaddr, peer_addr);
 
