@@ -955,7 +955,6 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	const char *paddr = peer_addr;
 	uint32_t old_class = 0;
 	struct adapter *adapter;
-	GSList *l;
 	struct btd_device *device;
 	const gchar *dev_path;
 
@@ -971,13 +970,10 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	}
 
 	ba2str(peer, peer_addr);
+	device = adapter_find_device(adapter, paddr);
 
-	l = g_slist_find_custom(adapter->devices, paddr,
-				(GCompareFunc) device_address_cmp);
-	if (!l)
+	if (!device)
 		return;
-
-	device = l->data;
 
 	dev_path = device_get_path(device);
 
