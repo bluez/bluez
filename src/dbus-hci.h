@@ -53,8 +53,6 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 int cancel_discovery(struct adapter *adapter);
 int cancel_periodic_discovery(struct adapter *adapter);
 
-void bonding_request_free(struct bonding_request_info *dev);
-
 int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited);
 int set_service_classes(int dd, const uint8_t *cls, uint8_t value);
 

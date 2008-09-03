@@ -168,6 +168,37 @@ static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
 			err > 0 ? strerror(err) : "Connection attempt failed");
 }
 
+static void bonding_request_free(struct bonding_request_info *bonding)
+{
+	struct btd_device *device;
+	char address[18];
+	struct agent *agent;
+
+	if (!bonding)
+		return;
+
+	if (bonding->msg)
+		dbus_message_unref(bonding->msg);
+
+	if (bonding->conn)
+		dbus_connection_unref(bonding->conn);
+
+	if (bonding->io)
+		g_io_channel_unref(bonding->io);
+
+	ba2str(&bonding->bdaddr, address);
+
+	device = adapter_find_device(bonding->adapter, address);
+	agent = device_get_agent(device);
+
+	if (device && agent) {
+		agent_destroy(agent, FALSE);
+		device_set_agent(device, NULL);
+	}
+
+	g_free(bonding);
+}
+
 static int active_conn_find_by_bdaddr(const void *data, const void *user_data)
 {
 	const struct active_conn_info *con = data;
@@ -2977,6 +3008,20 @@ struct active_conn_info *adapter_search_active_conn_by_handle(struct adapter *ad
 		return l->data;
 
 	return NULL;
+}
+
+void adapter_free_bonding_request(struct adapter *adapter)
+{
+	g_dbus_remove_watch(connection, adapter->bonding->listener_id);
+
+	if (adapter->bonding->io_id)
+		g_source_remove(adapter->bonding->io_id);
+
+	g_io_channel_close(adapter->bonding->io);
+
+	bonding_request_free(adapter->bonding);
+
+	adapter->bonding = NULL;
 }
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)

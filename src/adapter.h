@@ -183,6 +183,7 @@ struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct adapter *ad
 						    bdaddr_t *bda);
 struct active_conn_info *adapter_search_active_conn_by_handle(struct adapter *adapter,
 							uint16_t handle);
+void adapter_free_bonding_request(struct adapter *adapter);
 
 struct btd_adapter_driver {
 	const char *name;

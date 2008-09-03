@@ -60,37 +60,6 @@
 
 static DBusConnection *connection = NULL;
 
-void bonding_request_free(struct bonding_request_info *bonding)
-{
-	struct btd_device *device;
-	char address[18];
-	struct agent *agent;
-
-	if (!bonding)
-		return;
-
-	if (bonding->msg)
-		dbus_message_unref(bonding->msg);
-
-	if (bonding->conn)
-		dbus_connection_unref(bonding->conn);
-
-	if (bonding->io)
-		g_io_channel_unref(bonding->io);
-
-	ba2str(&bonding->bdaddr, address);
-
-	device = adapter_find_device(bonding->adapter, address);
-	agent = device_get_agent(device);
-
-	if (device && agent) {
-		agent_destroy(agent, FALSE);
-		device_set_agent(device, NULL);
-	}
-
-	g_free(bonding);
-}
-
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 {
 	switch (status) {
@@ -621,13 +590,7 @@ proceed:
 	}
 
 cleanup:
-	g_dbus_remove_watch(connection, adapter->bonding->listener_id);
-
-	if (adapter->bonding->io_id)
-		g_source_remove(adapter->bonding->io_id);
-	g_io_channel_close(adapter->bonding->io);
-	bonding_request_free(adapter->bonding);
-	adapter->bonding = NULL;
+	adapter_free_bonding_request(adapter);
 }
 
 void hcid_dbus_inquiry_start(bdaddr_t *local)
@@ -1156,15 +1119,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 			dbus_connection_send(connection, reply, NULL);
 			dbus_message_unref(reply);
 		}
-
-		g_dbus_remove_watch(adapter->bonding->conn,
-					adapter->bonding->listener_id);
-
-		if (adapter->bonding->io_id)
-			g_source_remove(adapter->bonding->io_id);
-		g_io_channel_close(adapter->bonding->io);
-		bonding_request_free(adapter->bonding);
-		adapter->bonding = NULL;
+		adapter_free_bonding_request(adapter);
 	}
 
 	adapter_remove_active_conn(adapter, dev);
