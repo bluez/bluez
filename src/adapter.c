@@ -2902,6 +2902,22 @@ struct agent *adapter_get_agent(struct adapter *adapter)
 	return adapter->agent;
 }
 
+void adapter_add_active_conn(struct adapter *adapter, bdaddr_t *bdaddr,
+				uint16_t handle)
+{
+	struct active_conn_info *dev;
+
+	if (!adapter || !adapter->active_conn)
+		return;
+
+	dev = g_new0(struct active_conn_info, 1);
+
+	bacpy(&dev->bdaddr, bdaddr);
+	dev->handle = handle;
+
+	adapter->active_conn = g_slist_append(adapter->active_conn, dev);
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);

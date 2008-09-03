@@ -110,20 +110,6 @@ static int active_conn_find_by_handle(const void *data, const void *user_data)
 	return -1;
 }
 
-static int active_conn_append(GSList **list, bdaddr_t *bdaddr,
-				uint16_t handle)
-{
-	struct active_conn_info *dev;
-
-	dev = g_new0(struct active_conn_info, 1);
-
-	bacpy(&dev->bdaddr, bdaddr);
-	dev->handle = handle;
-
-	*list = g_slist_append(*list, dev);
-	return 0;
-}
-
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 {
 	switch (status) {
@@ -1130,7 +1116,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		}
 
 		/* add in the active connetions list */
-		active_conn_append(&adapter->active_conn, peer, handle);
+		adapter_add_active_conn(adapter, peer, handle);
 	}
 }
 
