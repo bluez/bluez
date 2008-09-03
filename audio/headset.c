@@ -215,16 +215,67 @@ static int supported_features(struct audio_device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
+static char *indicator_ranges(struct indicator *indicators)
+{
+	int i;
+	GString *gstr;
+
+	gstr = g_string_new("\r\n+CIND:");
+
+	for (i = 0; indicators[i].desc != NULL; i++) {
+		if (i == 0)
+			g_string_append_printf(gstr, "(\"%s\",(%s))",
+						indicators[i].desc,
+						indicators[i].range);
+		else
+			g_string_append_printf(gstr, ",(\"%s\",(%s))",
+						indicators[i].desc,
+						indicators[i].range);
+	}
+
+	g_string_append(gstr, "\r\n");
+
+	return g_string_free(gstr, FALSE);
+}
+
+static char *indicator_values(struct indicator *indicators)
+{
+	int i;
+	GString *gstr;
+
+	gstr = g_string_new("\r\n+CIND:");
+
+	for (i = 0; indicators[i].desc != NULL; i++) {
+		if (i == 0)
+			g_string_append_printf(gstr, "%d", indicators[i].val);
+		else
+			g_string_append_printf(gstr, ",%d", indicators[i].val);
+	}
+
+	g_string_append(gstr, "\r\n");
+
+	return g_string_free(gstr, FALSE);
+}
+
 static int report_indicators(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
 	int err;
+	char *str;
+	struct indicator *indicators;
+
+	indicators = telephony_indicators_req();
+	if (!indicators)
+		return headset_send(hs, "\r\nERROR\r\n");
 
 	if (buf[7] == '=')
-		err = headset_send(hs, "\r\n+CIND:(\"service\",(0,1)),"
-				"(\"call\",(0,1)),(\"callsetup\",(0-3))\r\n");
+		str = indicator_ranges(indicators);
 	else
-		err = headset_send(hs, "\r\n+CIND:1,0,0\r\n");
+		str = indicator_values(indicators);
+
+	err = headset_send(hs, str);
+
+	g_free(str);
 
 	if (err < 0)
 		return err;

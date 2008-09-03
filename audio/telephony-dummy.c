@@ -26,7 +26,25 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "telephony.h"
+
+static struct indicator indicators[] =
+{
+	{ "battchg",	"0-5",	5 },
+	{ "signal",	"0-5",	5 },
+	{ "service",	"0,1",	1 },
+	{ "sounder",	"0,1",	0 },
+	{ "message",	"0,1",	0 },
+	{ "call",	"0,1",	0 },
+	{ "callsetup",	"0-3",	0 },
+	{ "vox",	"0,1",	0 },
+	{ "roam",	"0,1",	0 },
+	{ "smsfull",	"0,1",	0 },
+	{ NULL }
+};
 
 int telephony_init(void)
 {
@@ -44,4 +62,9 @@ int telephony_features_req(void)
 	telephony_features_rsp(features);
 
 	return 0;
+}
+
+struct indicator *telephony_indicators_req(void)
+{
+	return indicators;
 }

@@ -24,6 +24,12 @@
 
 #include <stdint.h>
 
+struct indicator {
+	const char *desc;
+	const char *range;
+	int val;
+};
+
 int telephony_init(void);
 
 void telephony_exit(void);
@@ -31,3 +37,5 @@ void telephony_exit(void);
 int telephony_features_req(void);
 
 void telephony_features_rsp(uint32_t features);
+
+struct indicator *telephony_indicators_req(void);
