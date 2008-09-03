@@ -1193,8 +1193,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		adapter->bonding = NULL;
 	}
 
-	adapter->active_conn = g_slist_remove(adapter->active_conn, dev);
-	g_free(dev);
+	adapter_remove_active_conn(adapter, dev);
 
 	device = adapter_find_device(adapter, paddr);
 	if (device) {

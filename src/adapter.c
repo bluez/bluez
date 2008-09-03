@@ -2918,6 +2918,16 @@ void adapter_add_active_conn(struct adapter *adapter, bdaddr_t *bdaddr,
 	adapter->active_conn = g_slist_append(adapter->active_conn, dev);
 }
 
+void adapter_remove_active_conn(struct adapter *adapter,
+				struct active_conn_info *dev)
+{
+	if (!adapter || !adapter->active_conn)
+		return;
+
+	adapter->active_conn = g_slist_remove(adapter->active_conn, dev);
+	g_free(dev);
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);

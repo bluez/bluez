@@ -177,6 +177,8 @@ void adapter_mode_changed(struct adapter *adapter, uint8_t scan_mode);
 struct agent *adapter_get_agent(struct adapter *adapter);
 void adapter_add_active_conn(struct adapter *adapter, bdaddr_t *bdaddr,
 				uint16_t handle);
+void adapter_remove_active_conn(struct adapter *adapter,
+				struct active_conn_info *dev);
 
 struct btd_adapter_driver {
 	const char *name;
