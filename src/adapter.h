@@ -185,6 +185,7 @@ struct active_conn_info *adapter_search_active_conn_by_handle(struct adapter *ad
 							uint16_t handle);
 void adapter_free_bonding_request(struct adapter *adapter);
 struct bonding_request_info *adapter_get_bonding_info(struct adapter *adapter);
+gboolean adapter_has_discov_sessions(struct adapter *adapter);
 
 struct btd_adapter_driver {
 	const char *name;

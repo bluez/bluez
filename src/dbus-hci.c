@@ -620,7 +620,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 		pending_remote_name_cancel(adapter);
 
 	/* Disable name resolution for non D-Bus clients */
-	if (!adapter->disc_sessions) {
+	if (!adapter_has_discov_sessions(adapter)) {
 		state = adapter_get_state(adapter);
 		state &= ~RESOLVE_NAME;
 		adapter_set_state(adapter, state);

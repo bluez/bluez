@@ -3032,6 +3032,14 @@ struct bonding_request_info *adapter_get_bonding_info(struct adapter *adapter)
 	return adapter->bonding;
 }
 
+gboolean adapter_has_discov_sessions(struct adapter *adapter)
+{
+	if (!adapter || !adapter->disc_sessions)
+		return FALSE;
+
+	return TRUE;
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_append(adapter_drivers, driver);
