@@ -62,7 +62,7 @@ struct indicator *telephony_indicators_req(void)
 
 int telephony_init(void)
 {
-        return 0;
+	return 0;
 }
 
 void telephony_exit(void)
