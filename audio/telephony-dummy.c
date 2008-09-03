@@ -46,15 +46,6 @@ static struct indicator indicators[] =
 	{ NULL }
 };
 
-int telephony_init(void)
-{
-	return 0;
-}
-
-void telephony_exit(void)
-{
-}
-
 int telephony_features_req(void)
 {
 	uint32_t features = 0;
@@ -67,4 +58,13 @@ int telephony_features_req(void)
 struct indicator *telephony_indicators_req(void)
 {
 	return indicators;
+}
+
+int telephony_init(void)
+{
+        return 0;
+}
+
+void telephony_exit(void)
+{
 }
