@@ -442,7 +442,7 @@ static DBusMessage *add_service_record(DBusConnection *conn,
 		return NULL;
 
 	sender = dbus_message_get_sender(msg);
-	str2ba(adapter->address, &src);
+	str2ba(adapter_get_address(adapter), &src);
 	err = add_xml_record(conn, sender, &src, record, &handle);
 	if (err < 0)
 		return failed_strerror(msg, err);
@@ -463,7 +463,7 @@ static DBusMessage *update_service_record(DBusConnection *conn,
 	struct adapter *adapter = data;
 	bdaddr_t src;
 
-	str2ba(adapter->address, &src);
+	str2ba(adapter_get_address(adapter), &src);
 
 	return update_xml_record(conn, msg, &src);
 }
