@@ -21,5 +21,5 @@
  *
  */
 
-int server_start(void);
-void server_stop(void);
+int server_start(bdaddr_t *src);
+void server_stop(bdaddr_t *src);

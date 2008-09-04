@@ -171,7 +171,7 @@ static void input_remove(struct btd_device *device, const char *uuid)
 	input_device_unregister(path, uuid);
 }
 
-static int hid_probe(struct btd_device *device, GSList *records)
+static int hid_device_probe(struct btd_device *device, GSList *records)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -206,7 +206,7 @@ done:
 				HID_UUID, hidp.idle_to);
 }
 
-static void hid_remove(struct btd_device *device)
+static void hid_device_remove(struct btd_device *device)
 {
 	input_remove(device, HID_UUID);
 }
@@ -252,11 +252,33 @@ static void headset_remove(struct btd_device *device)
 	input_remove(device, HSP_HS_UUID);
 }
 
+static int hid_server_probe(struct btd_adapter *adapter)
+{
+	const char *addr;
+	bdaddr_t src;
+
+	addr = adapter_get_address(adapter);
+	str2ba(addr, &src);
+
+	return server_start(&src);
+}
+
+static void hid_server_remove(struct btd_adapter *adapter)
+{
+	const char *addr;
+	bdaddr_t src;
+
+	addr = adapter_get_address(adapter);
+	str2ba(addr, &src);
+
+	server_stop(&src);
+}
+
 static struct btd_device_driver input_hid_driver = {
 	.name	= "input-hid",
 	.uuids	= BTD_UUIDS(HID_UUID),
-	.probe	= hid_probe,
-	.remove	= hid_remove,
+	.probe	= hid_device_probe,
+	.remove	= hid_device_remove,
 };
 
 static struct btd_device_driver input_headset_driver = {
@@ -264,6 +286,12 @@ static struct btd_device_driver input_headset_driver = {
 	.uuids	= BTD_UUIDS(HSP_HS_UUID),
 	.probe	= headset_probe,
 	.remove	= headset_remove,
+};
+
+static struct btd_adapter_driver input_server_driver = {
+	.name   = "input-server",
+	.probe  = hid_server_probe,
+	.remove = hid_server_remove,
 };
 
 int input_manager_init(DBusConnection *conn, GKeyFile *config)
@@ -281,7 +309,7 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 
 	connection = dbus_connection_ref(conn);
 
-	server_start();
+	btd_register_adapter_driver(&input_server_driver);
 
 	btd_register_device_driver(&input_hid_driver);
 	btd_register_device_driver(&input_headset_driver);
@@ -291,7 +319,8 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 
 void input_manager_exit(void)
 {
-	server_stop();
+
+	btd_unregister_adapter_driver(&input_server_driver);
 
 	btd_unregister_device_driver(&input_hid_driver);
 	btd_unregister_device_driver(&input_headset_driver);

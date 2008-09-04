@@ -44,11 +44,25 @@
 #include "glib-helper.h"
 
 static const char *HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";
+static GSList *servers = NULL;
+struct server {
+	bdaddr_t src;
+	GIOChannel *ctrl;
+	GIOChannel *intr;
+};
 
 struct authorization_data {
 	bdaddr_t src;
 	bdaddr_t dst;
 };
+
+static gint server_cmp(gconstpointer s, gconstpointer user_data)
+{
+	const struct server *server = s;
+	const bdaddr_t *src = user_data;
+
+	return bacmp(&server->src, src);
+}
 
 static void auth_callback(DBusError *derr, void *user_data)
 {
@@ -109,12 +123,12 @@ static void connect_event_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	return;
 }
 
-static GIOChannel *ctrl_io = NULL;
-static GIOChannel *intr_io = NULL;
-
-int server_start(void)
+int server_start(bdaddr_t *src)
 {
-	ctrl_io = bt_l2cap_listen(BDADDR_ANY, L2CAP_PSM_HIDP_CTRL, 0, 0,
+	struct server *server;
+	GIOChannel *ctrl_io, *intr_io;
+
+	ctrl_io = bt_l2cap_listen(src, L2CAP_PSM_HIDP_CTRL, 0, 0,
 				connect_event_cb,
 				GUINT_TO_POINTER(L2CAP_PSM_HIDP_CTRL));
 	if (!ctrl_io) {
@@ -123,24 +137,41 @@ int server_start(void)
 	}
 	g_io_channel_set_close_on_unref(ctrl_io, TRUE);
 
-	intr_io = bt_l2cap_listen(BDADDR_ANY, L2CAP_PSM_HIDP_INTR, 0, 0,
+	intr_io = bt_l2cap_listen(src, L2CAP_PSM_HIDP_INTR, 0, 0,
 				connect_event_cb,
 				GUINT_TO_POINTER(L2CAP_PSM_HIDP_INTR));
 	if (!intr_io) {
 		error("Failed to listen on interrupt channel");
 		g_io_channel_unref(ctrl_io);
 		ctrl_io = NULL;
+		return -1;
 	}
 	g_io_channel_set_close_on_unref(intr_io, TRUE);
+
+	server = g_new0(struct server, 1);
+	bacpy(&server->src, src);
+	server->ctrl = ctrl_io;
+	server->intr = intr_io;
+
+	servers = g_slist_append(servers, server);
 
 	return 0;
 }
 
-void server_stop(void)
+void server_stop(bdaddr_t *src)
 {
-	if (intr_io)
-		g_io_channel_unref(intr_io);
+	struct server *server;
+	GSList *l;
 
-	if (ctrl_io)
-		g_io_channel_unref(ctrl_io);
+	l = g_slist_find_custom(servers, src, server_cmp);
+	if (!l)
+		return;
+
+	server = l->data;
+
+	g_io_channel_unref(server->intr);
+	g_io_channel_unref(server->ctrl);
+
+	servers = g_slist_remove(servers, server);
+	g_free(server);
 }
