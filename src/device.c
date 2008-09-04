@@ -66,7 +66,7 @@ struct btd_driver_data {
 struct btd_device {
 	gchar		*address;
 	gchar		*path;
-	struct adapter	*adapter;
+	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*drivers;		/* List of driver_data */
 	gboolean	temporary;
@@ -122,7 +122,7 @@ static void device_free(gpointer user_data)
 
 static gboolean device_is_paired(struct btd_device *device)
 {
-	struct adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = device->adapter;
 	char filename[PATH_MAX + 1], *str;
 	gboolean ret;
 	const gchar *source = adapter_get_address(adapter);
@@ -140,7 +140,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 				DBusMessage *msg, void *user_data)
 {
 	struct btd_device *device = user_data;
-	struct adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = device->adapter;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
@@ -239,7 +239,7 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 					const char *alias, void *data)
 {
 	struct btd_device *device = data;
-	struct adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = device->adapter;
 	const gchar *source = adapter_get_address(adapter);
 	int err;
 
@@ -262,7 +262,7 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 					dbus_bool_t value, void *data)
 {
 	struct btd_device *device = data;
-	struct adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = device->adapter;
 	const gchar *source = adapter_get_address(adapter);
 
 	write_trust(source, device->address, GLOBAL_TRUST, value);
@@ -325,7 +325,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 static void discover_services_req_exit(void *user_data)
 {
 	struct btd_device *device = user_data;
-	struct adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = device->adapter;
 	bdaddr_t src, dst;
 	const gchar *source = adapter_get_address(adapter);
 
@@ -378,7 +378,7 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct btd_device *device = user_data;
-	struct adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = device->adapter;
 	bdaddr_t src, dst;
 	const gchar *source = adapter_get_address(adapter);
 
@@ -482,7 +482,7 @@ static GDBusSignalTable device_signals[] = {
 	{ }
 };
 
-struct btd_device *device_create(DBusConnection *conn, struct adapter *adapter,
+struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapter,
 					const gchar *address)
 {
 	gchar *address_up;
@@ -619,7 +619,7 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *
 
 void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *recs)
 {
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *src = adapter_get_address(adapter);
 	const gchar *dst = device_get_address(device);
 	GSList *list;
@@ -769,7 +769,7 @@ static void services_changed(struct browse_req *req)
 static void update_services(struct browse_req *req, sdp_list_t *recs)
 {
 	struct btd_device *device = req->device;
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *src = adapter_get_address(adapter);
 	const gchar *dst = device_get_address(device);
 	sdp_list_t *seq;
@@ -809,7 +809,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 
 static void store(struct btd_device *device)
 {
-	struct adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = device->adapter;
 	bdaddr_t src, dst;
 	char *str;
 	const gchar *source = adapter_get_address(adapter);
@@ -831,7 +831,7 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
-	struct adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = device->adapter;
 	bdaddr_t src, dst;
 	uuid_t uuid;
 	DBusMessage *reply;
@@ -919,7 +919,7 @@ cleanup:
 int device_browse(struct btd_device *device, DBusConnection *conn,
 			DBusMessage *msg, uuid_t *search)
 {
-	struct adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
 	bdaddr_t src, dst;
 	uuid_t uuid;
@@ -957,7 +957,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	return bt_search_service(&src, &dst, &uuid, browse_cb, req, NULL);
 }
 
-struct adapter *device_get_adapter(struct btd_device *device)
+struct btd_adapter *device_get_adapter(struct btd_device *device)
 {
 	if (!device)
 		return NULL;

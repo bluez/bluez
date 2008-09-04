@@ -56,7 +56,7 @@ struct remote_dev_info {
 struct bonding_request_info {
 	DBusConnection *conn;
 	DBusMessage *msg;
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	bdaddr_t bdaddr;
 	GIOChannel *io;
 	guint io_id;
@@ -92,77 +92,77 @@ struct hci_dev {
 	uint8_t  class[3];
 };
 
-int adapter_start(struct adapter *adapter);
+int adapter_start(struct btd_adapter *adapter);
 
-int adapter_stop(struct adapter *adapter);
+int adapter_stop(struct btd_adapter *adapter);
 
-int adapter_update(struct adapter *adapter);
+int adapter_update(struct btd_adapter *adapter);
 
-int adapter_get_class(struct adapter *adapter, uint8_t *cls);
+int adapter_get_class(struct btd_adapter *adapter, uint8_t *cls);
 
-int adapter_set_class(struct adapter *adapter, uint8_t *cls);
+int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls);
 
-int adapter_update_ssp_mode(struct adapter *adapter, int dd, uint8_t mode);
+int adapter_update_ssp_mode(struct btd_adapter *adapter, int dd, uint8_t mode);
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
-				struct adapter *adapter, const gchar *address);
+				struct btd_adapter *adapter, const gchar *address);
 
-struct btd_device *adapter_find_device(struct adapter *adapter, const char *dest);
+struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest);
 
-void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
+void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 				struct btd_device *device);
 struct btd_device *adapter_create_device(DBusConnection *conn,
-				struct adapter *adapter, const char *address);
+				struct btd_adapter *adapter, const char *address);
 
-int pending_remote_name_cancel(struct adapter *adapter);
+int pending_remote_name_cancel(struct btd_adapter *adapter);
 
-void remove_pending_device(struct adapter *adapter);
+void remove_pending_device(struct btd_adapter *adapter);
 
-struct pending_auth_info *adapter_find_auth_request(struct adapter *adapter,
+struct pending_auth_info *adapter_find_auth_request(struct btd_adapter *adapter,
 							bdaddr_t *dba);
-void adapter_remove_auth_request(struct adapter *adapter, bdaddr_t *dba);
-struct pending_auth_info *adapter_new_auth_request(struct adapter *adapter,
+void adapter_remove_auth_request(struct btd_adapter *adapter, bdaddr_t *dba);
+struct pending_auth_info *adapter_new_auth_request(struct btd_adapter *adapter,
 							bdaddr_t *dba,
 							auth_type_t type);
-struct adapter *adapter_create(DBusConnection *conn, int id);
-void adapter_remove(struct adapter *adapter);
-uint16_t adapter_get_dev_id(struct adapter *adapter);
-const gchar *adapter_get_path(struct adapter *adapter);
-const gchar *adapter_get_address(struct adapter *adapter);
-void adapter_remove(struct adapter *adapter);
-void adapter_set_discov_timeout(struct adapter *adapter, guint interval);
-void adapter_remove_discov_timeout(struct adapter *adapter);
-void adapter_set_scan_mode(struct adapter *adapter, uint8_t scan_mode);
-uint8_t adapter_get_scan_mode(struct adapter *adapter);
-void adapter_set_mode(struct adapter *adapter, uint8_t mode);
-uint8_t adapter_get_mode(struct adapter *adapter);
-void adapter_set_state(struct adapter *adapter, int state);
-int adapter_get_state(struct adapter *adapter);
-struct remote_dev_info *adapter_search_found_devices(struct adapter *adapter,
+struct btd_adapter *adapter_create(DBusConnection *conn, int id);
+void adapter_remove(struct btd_adapter *adapter);
+uint16_t adapter_get_dev_id(struct btd_adapter *adapter);
+const gchar *adapter_get_path(struct btd_adapter *adapter);
+const gchar *adapter_get_address(struct btd_adapter *adapter);
+void adapter_remove(struct btd_adapter *adapter);
+void adapter_set_discov_timeout(struct btd_adapter *adapter, guint interval);
+void adapter_remove_discov_timeout(struct btd_adapter *adapter);
+void adapter_set_scan_mode(struct btd_adapter *adapter, uint8_t scan_mode);
+uint8_t adapter_get_scan_mode(struct btd_adapter *adapter);
+void adapter_set_mode(struct btd_adapter *adapter, uint8_t mode);
+uint8_t adapter_get_mode(struct btd_adapter *adapter);
+void adapter_set_state(struct btd_adapter *adapter, int state);
+int adapter_get_state(struct btd_adapter *adapter);
+struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
 						struct remote_dev_info *match);
-int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
+int adapter_add_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				int8_t rssi, name_status_t name_status);
-int adapter_remove_found_device(struct adapter *adapter, bdaddr_t *bdaddr);
-void adapter_update_oor_devices(struct adapter *adapter);
-void adapter_remove_oor_device(struct adapter *adapter, char *peer_addr);
-void adapter_mode_changed(struct adapter *adapter, uint8_t scan_mode);
-struct agent *adapter_get_agent(struct adapter *adapter);
-void adapter_add_active_conn(struct adapter *adapter, bdaddr_t *bdaddr,
+int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr);
+void adapter_update_oor_devices(struct btd_adapter *adapter);
+void adapter_remove_oor_device(struct btd_adapter *adapter, char *peer_addr);
+void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
+struct agent *adapter_get_agent(struct btd_adapter *adapter);
+void adapter_add_active_conn(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				uint16_t handle);
-void adapter_remove_active_conn(struct adapter *adapter,
+void adapter_remove_active_conn(struct btd_adapter *adapter,
 				struct active_conn_info *dev);
-struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct adapter *adapter,
+struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct btd_adapter *adapter,
 						    bdaddr_t *bda);
-struct active_conn_info *adapter_search_active_conn_by_handle(struct adapter *adapter,
+struct active_conn_info *adapter_search_active_conn_by_handle(struct btd_adapter *adapter,
 							uint16_t handle);
-void adapter_free_bonding_request(struct adapter *adapter);
-struct bonding_request_info *adapter_get_bonding_info(struct adapter *adapter);
-gboolean adapter_has_discov_sessions(struct adapter *adapter);
+void adapter_free_bonding_request(struct btd_adapter *adapter);
+struct bonding_request_info *adapter_get_bonding_info(struct btd_adapter *adapter);
+gboolean adapter_has_discov_sessions(struct btd_adapter *adapter);
 
 struct btd_adapter_driver {
 	const char *name;
-	int (*probe) (struct adapter *adapter);
-	void (*remove) (struct adapter *adapter);
+	int (*probe) (struct btd_adapter *adapter);
+	void (*remove) (struct btd_adapter *adapter);
 };
 
 typedef void (*service_auth_cb) (DBusError *derr, void *user_data);

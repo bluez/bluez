@@ -123,7 +123,7 @@ static GIOChannel *setup_rfcomm(uint8_t channel)
 
 static GIOChannel *chan = NULL;
 
-static int echo_probe(struct adapter *adapter)
+static int echo_probe(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 
@@ -134,7 +134,7 @@ static int echo_probe(struct adapter *adapter)
 	return 0;
 }
 
-static void echo_remove(struct adapter *adapter)
+static void echo_remove(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 

@@ -181,7 +181,7 @@ void hcid_dbus_unregister(void)
 
 	for (i = 0; children[i]; i++) {
 		char path[MAX_PATH_LENGTH];
-		struct adapter *adapter;
+		struct btd_adapter *adapter;
 
 		if (children[i][0] != 'h')
 			continue;

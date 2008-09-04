@@ -77,7 +77,7 @@ static DBusConnection *connection = NULL;
 static int serial_probe(struct btd_device *device, sdp_record_t *rec,
 			const char *name, const char *uuid)
 {
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	sdp_list_t *protos;
 	int ch;
@@ -150,7 +150,7 @@ static struct btd_device_driver serial_dialup_driver = {
 	.remove	= dialup_remove,
 };
 
-static int proxy_probe(struct adapter *adapter)
+static int proxy_probe(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 	const char *address = adapter_get_address(adapter);
@@ -162,7 +162,7 @@ static int proxy_probe(struct adapter *adapter)
 	return proxy_register(connection, path, &src);
 }
 
-static void proxy_remove(struct adapter *adapter)
+static void proxy_remove(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 

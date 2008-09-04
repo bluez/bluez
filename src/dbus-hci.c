@@ -118,7 +118,7 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 			struct btd_device *device)
 {
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	pin_code_reply_cp pr;
 	bdaddr_t sba, dba;
 	size_t len;
@@ -172,7 +172,7 @@ done:
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	char addr[18];
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct agent *agent = NULL;
 	int ret;
@@ -218,7 +218,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 {
 	struct btd_device *device = user_data;
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	user_confirm_reply_cp cp;
 	int dd;
 	struct pending_auth_info *auth;
@@ -260,7 +260,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 			void *user_data)
 {
 	struct btd_device *device = user_data;
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	user_passkey_reply_cp cp;
 	bdaddr_t dba;
 	int dd;
@@ -340,7 +340,7 @@ static int get_auth_requirements(bdaddr_t *local, bdaddr_t *remote,
 
 int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct agent *agent;
 	char addr[18];
@@ -423,7 +423,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct agent *agent = NULL;
 	char addr[18];
@@ -463,7 +463,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 
 int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct agent *agent = NULL;
 	char addr[18];
@@ -503,7 +503,7 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 					uint8_t status)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	DBusMessage *reply;
@@ -600,7 +600,7 @@ cleanup:
 
 void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	int state;
 
 	adapter = manager_find_adapter(local);
@@ -627,7 +627,7 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	}
 }
 
-static int found_device_req_name(struct adapter *adapter)
+static int found_device_req_name(struct btd_adapter *adapter)
 {
 	struct hci_request rq;
 	evt_cmd_status rp;
@@ -697,7 +697,7 @@ static int found_device_req_name(struct adapter *adapter)
 
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	const gchar *path;
 	int state;
 
@@ -736,7 +736,7 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	int state;
 
 	/* Don't send the signal if the cmd failed */
@@ -756,7 +756,7 @@ void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
 
 void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	int state;
 
 	/* Don't send the signal if the cmd failed */
@@ -850,7 +850,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				int8_t rssi, uint8_t *data)
 {
 	char filename[PATH_MAX + 1];
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	char local_addr[18], peer_addr[18], *name, *tmp_name;
 	const char *paddr = peer_addr;
 	struct remote_dev_info *dev, match;
@@ -954,7 +954,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	uint32_t old_class = 0;
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 	const gchar *dev_path;
 
@@ -985,7 +985,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 				char *name)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	char peer_addr[18];
 	const char *paddr = peer_addr;
 	const gchar *dev_path;
@@ -1024,7 +1024,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 {
 	char peer_addr[18];
 	const char *paddr = peer_addr;
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	const gchar *dev_path;
 	struct bonding_request_info *bonding;
 
@@ -1073,7 +1073,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	DBusMessage *reply;
 	char peer_addr[18];
 	const char *paddr = peer_addr;
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct active_conn_info *dev;
 	gboolean connected = FALSE;
@@ -1253,7 +1253,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	read_scan_enable_rp rp;
 	struct hci_request rq;
 	int dd = -1;
@@ -1304,7 +1304,7 @@ failed:
 
 void hcid_dbus_write_class_complete(bdaddr_t *local)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	int dd;
 	uint8_t cls[3];
 	uint16_t dev_id;
@@ -1338,7 +1338,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 
 void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	int dd;
 	uint8_t mode;
 	uint16_t dev_id;
@@ -1374,7 +1374,7 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 						uint8_t *cap, uint8_t *auth)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct agent *agent = NULL;
 	char addr[18];
@@ -1434,7 +1434,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
                                                 uint8_t cap, uint8_t auth)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char addr[18];
 
@@ -1508,7 +1508,7 @@ static int remote_name_cancel(int dd, bdaddr_t *dba, int to)
 	return 0;
 }
 
-int cancel_discovery(struct adapter *adapter)
+int cancel_discovery(struct btd_adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
 	int dd, err = 0;
@@ -1569,7 +1569,7 @@ static int periodic_inquiry_exit(int dd, int to)
 	return 0;
 }
 
-int cancel_periodic_discovery(struct adapter *adapter)
+int cancel_periodic_discovery(struct btd_adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
 	int dd, err = 0;

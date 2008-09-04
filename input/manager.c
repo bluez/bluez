@@ -173,7 +173,7 @@ static void input_remove(struct btd_device *device, const char *uuid)
 
 static int hid_probe(struct btd_device *device, GSList *records)
 {
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	const char *source, *destination;
 	struct hidp_connadd_req hidp;
@@ -213,7 +213,7 @@ static void hid_remove(struct btd_device *device)
 
 static int headset_probe(struct btd_device *device, GSList *records)
 {
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	sdp_record_t *record = records->data;
 	sdp_list_t *protos;
