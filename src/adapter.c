@@ -635,9 +635,20 @@ static void session_free(struct session_req *req)
 	g_free(req);
 }
 
+static struct session_req *session_ref(struct session_req *req)
+{
+	req->refcount++;
+
+	debug("session_ref(%p): ref=%d", req, req->refcount);
+
+	return req;
+}
+
 static void session_unref(struct session_req *req)
 {
 	req->refcount--;
+
+	debug("session_unref(%p): ref=%d", req, req->refcount);
 
 	if (req->refcount)
 		return;
@@ -660,7 +671,6 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	req->conn = dbus_connection_ref(conn);
 	req->msg = dbus_message_ref(msg);
 	req->mode = mode;
-	req->refcount = 1;
 
 	if (cb)
 		req->id = g_dbus_add_disconnect_watch(conn,
@@ -670,7 +680,7 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	info("%s session %p with %s activated",
 		req->mode ? "Mode" : "Discovery", req, sender);
 
-	return req;
+	return session_ref(req);
 }
 
 static void confirm_mode_cb(struct agent *agent, DBusError *err, void *data)
@@ -1431,7 +1441,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 
 	req = find_session(adapter->disc_sessions, msg);
 	if (req) {
-		req->refcount++;
+		session_ref(req);
 		return dbus_message_new_method_return(msg);
 	}
 
