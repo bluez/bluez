@@ -28,13 +28,14 @@
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
 
 #include <gdbus.h>
 
 #include "plugin.h"
 #include "logging.h"
 #include "manager.h"
+
+DBusConnection *connection = NULL;
 
 static GKeyFile *load_config_file(const char *file)
 {
@@ -56,16 +57,15 @@ static GKeyFile *load_config_file(const char *file)
 static int input_init(void)
 {
 	GKeyFile *config;
-	DBusConnection *conn;
 
-	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (conn == NULL)
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
 		return -EIO;
 
 	config = load_config_file(CONFIGDIR "/input.conf");
 
-	if (input_manager_init(conn, config) < 0) {
-		dbus_connection_unref(conn);
+	if (input_manager_init(connection, config) < 0) {
+		dbus_connection_unref(connection);
 		return -EIO;
 	}
 
@@ -78,6 +78,7 @@ static int input_init(void)
 static void input_exit(void)
 {
 	input_manager_exit();
+	dbus_connection_unref(connection);
 }
 
 BLUETOOTH_PLUGIN_DEFINE("input", input_init, input_exit)
