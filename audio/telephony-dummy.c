@@ -59,9 +59,6 @@ int telephony_event_reporting_req(int ind)
 {
 	events_enabled = ind == 1 ? TRUE : FALSE;
 
-	if (events_enabled)
-		telephony_response_and_hold_ind(response_and_hold);
-
 	return 0;
 }
 
@@ -76,7 +73,10 @@ int telephony_response_and_hold_req(int rh)
 
 int telephony_init(void)
 {
-	telephony_ready(0, indicators, -1);
+	uint32_t features = 0;
+
+	telephony_ready(features, indicators, response_and_hold);
+
 	return 0;
 }
 
