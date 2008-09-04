@@ -1103,7 +1103,11 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		return;
 	}
 
-	dev =  adapter_search_active_conn_by_handle(adapter, handle);
+	dev = adapter_search_active_conn_by_handle(adapter, handle);
+	if (!dev) {
+		error("No matching connection for handle %u", handle);
+		return;
+	}
 
 	ba2str(&dev->bdaddr, peer_addr);
 
