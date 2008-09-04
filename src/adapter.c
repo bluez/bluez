@@ -2980,7 +2980,7 @@ void adapter_add_active_conn(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 {
 	struct active_conn_info *dev;
 
-	if (!adapter || !adapter->active_conn)
+	if (!adapter)
 		return;
 
 	dev = g_new0(struct active_conn_info, 1);
