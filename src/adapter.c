@@ -618,6 +618,10 @@ static struct session_req *find_session(GSList *list, DBusMessage *msg)
 static void session_free(struct session_req *req)
 {
 	struct btd_adapter *adapter = req->adapter;
+	const char *sender = dbus_message_get_sender(req->msg);
+
+	info("%s session %p with %s deactivated",
+		req->mode ? "Mode" : "Discovery", req, sender);
 
 	if (req->mode)
 		adapter->mode_sessions = g_slist_remove(adapter->mode_sessions,
@@ -649,6 +653,7 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 					uint8_t mode, GDBusWatchFunction cb)
 {
 	struct session_req *req;
+	const char *sender = dbus_message_get_sender(msg);
 
 	req = g_new0(struct session_req, 1);
 	req->adapter = adapter;
@@ -661,6 +666,9 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 		req->id = g_dbus_add_disconnect_watch(conn,
 					dbus_message_get_sender(msg),
 					cb, req, NULL);
+
+	info("%s session %p with %s activated",
+		req->mode ? "Mode" : "Discovery", req, sender);
 
 	return req;
 }
@@ -687,7 +695,7 @@ static void confirm_mode_cb(struct agent *agent, DBusError *err, void *data)
 	return;
 
 cleanup:
-	session_free(req);
+	session_unref(req);
 }
 
 static DBusMessage *confirm_mode(DBusConnection *conn, DBusMessage *msg,
@@ -708,7 +716,7 @@ static DBusMessage *confirm_mode(DBusConnection *conn, DBusMessage *msg,
 	ret = agent_confirm_mode_change(adapter->agent, mode, confirm_mode_cb,
 					req);
 	if (ret < 0) {
-		session_free(req);
+		session_unref(req);
 		return invalid_args(msg);
 	}
 
@@ -1292,8 +1300,6 @@ static void discover_req_exit(void *user_data)
 	struct session_req *req = user_data;
 	struct btd_adapter *adapter = req->adapter;
 
-	info("Discovery session %d deactivated", g_slist_length(adapter->disc_sessions));
-
 	adapter->disc_sessions = g_slist_remove(adapter->disc_sessions, req);
 	req->id = 0;
 	session_free(req);
@@ -1429,7 +1435,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 		return dbus_message_new_method_return(msg);
 	}
 
-	if ((adapter->state & STD_INQUIRY) || (adapter->state & PERIODIC_INQUIRY))
+	if (adapter->disc_sessions)
 		goto done;
 
 	if (main_opts.inqmode)
@@ -1444,8 +1450,6 @@ done:
 	req = create_session(adapter, conn, msg, 0, discover_req_exit);
 
 	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
-
-	info("Discovery session %d activated", g_slist_length(adapter->disc_sessions));
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1475,14 +1479,10 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 	 */
 	if (adapter->state & STD_INQUIRY)
 		err = cancel_discovery(adapter);
-	else if (adapter->state & PERIODIC_INQUIRY)
-		err = cancel_periodic_discovery(adapter);
 	else if (adapter->scheduler_id)
 		g_source_remove(adapter->scheduler_id);
 	else
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".NotAuthorized",
-				"Not authorized");
+		err = cancel_periodic_discovery(adapter);
 
 	if (err < 0) {
 		if (err == -ENODEV)
@@ -1636,7 +1636,7 @@ static void session_exit(void *data)
 		*/
 	}
 
-	session_unref(req);
+	session_free(req);
 }
 
 static DBusMessage *request_mode(DBusConnection *conn,
@@ -1678,7 +1678,7 @@ static DBusMessage *request_mode(DBusConnection *conn,
 	ret = agent_confirm_mode_change(adapter->agent, mode, confirm_mode_cb,
 					req);
 	if (ret < 0) {
-		session_free(req);
+		session_unref(req);
 		return invalid_args(msg);
 	}
 

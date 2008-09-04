@@ -1588,9 +1588,6 @@ int cancel_periodic_discovery(struct btd_adapter *adapter)
 	int dd, err = 0;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 
-	if (!(adapter_get_state(adapter) & PERIODIC_INQUIRY))
-		return err;
-
 	dd = hci_open_dev(dev_id);
 	if (dd < 0)
 		return -ENODEV;
