@@ -35,6 +35,14 @@
 
 static gboolean events_enabled = FALSE;
 
+/* Response and hold state
+ * -1 = none
+ *  0 = incoming call is put on hold in the AG
+ *  1 = held incoming call is accepted in the AG
+ *  2 = held incoming call is rejected in the AG
+ */
+static int response_and_hold = -1;
+
 static struct indicator indicators[] =
 {
 	{ "battchg",	"0-5",	5 },
@@ -61,9 +69,23 @@ struct indicator *telephony_indicators_req(void)
 	return indicators;
 }
 
-int telephony_set_event_reporting(int ind)
+int telephony_event_reporting_req(int ind)
 {
 	events_enabled = ind == 1 ? TRUE : FALSE;
+
+	if (events_enabled)
+		telephony_response_and_hold_ind(response_and_hold);
+
+	return 0;
+}
+
+int telephony_response_and_hold_req(int rh)
+{
+	response_and_hold = rh;
+
+	telephony_response_and_hold_ind(response_and_hold);
+
+	return 0;
 }
 
 int telephony_init(void)

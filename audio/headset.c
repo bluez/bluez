@@ -124,6 +124,7 @@ struct headset {
 	int type;
 	int er_mode;
 	int er_ind;
+	int rh; /* Response and Hold */
 
 	headset_state_t state;
 	struct pending_connect *pending;
@@ -257,6 +258,9 @@ static int report_indicators(struct audio_device *device, const char *buf)
 	int err;
 	char *str;
 	struct indicator *indicators;
+
+	if (strlen(buf) < 8)
+		return -EINVAL;
 
 	indicators = telephony_indicators_req();
 	if (!indicators)
@@ -477,7 +481,7 @@ static int event_reporting(struct audio_device *dev, const char *buf)
 	switch (hs->er_ind) {
 	case 0:
 	case 1:
-		telephony_set_event_reporting(hs->er_ind);
+		telephony_event_reporting_req(hs->er_ind);
 		break;
 	default:
 		return -EINVAL;
@@ -595,6 +599,24 @@ static int cli_notification(struct audio_device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
+static int response_and_hold(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	if (strlen(buf) < 8)
+		return -EINVAL;
+
+	if (buf[7] == '=') {
+		if (telephony_response_and_hold_req(atoi(&buf[8]) < 0)) {
+			headset_send(hs, "\r\nERROR\r\n");
+			return 0;
+		}
+	} else
+		headset_send(hs, "\r\n+BTRH:%d\r\n", hs->rh);
+
+	return headset_send(hs, "\r\nOK\n\r", hs->rh);
+}
+
 static int signal_gain_setting(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
@@ -650,6 +672,7 @@ static struct event event_callbacks[] = {
 	{ "AT+CHUP", terminate_call },
 	{ "AT+CKPD", answer_call },
 	{ "AT+CLIP", cli_notification },
+	{ "AT+BTRH", response_and_hold },
 	{ 0 }
 };
 
@@ -1827,7 +1850,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 						AUDIO_HEADSET_INTERFACE,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
-		telephony_set_event_reporting(0);
+		telephony_event_reporting_req(0);
 		if (dev == active_telephony_device)
 			active_telephony_device = NULL;
 		break;
@@ -1960,7 +1983,7 @@ void telephony_features_rsp(uint32_t features)
 	ag_features = features;
 }
 
-int telephony_report_event(int index, int value)
+int telephony_event_ind(int index, int value)
 {
 	struct headset *hs;
 
@@ -1978,4 +2001,25 @@ int telephony_report_event(int index, int value)
 	}
 
 	return headset_send(hs, "\r\n+CIEV:%d,%d\r\n", index, value);
+}
+
+int telephony_response_and_hold_ind(int rh)
+{
+	struct headset *hs;
+
+	if (!active_telephony_device)
+		return -ENODEV;
+
+	hs = active_telephony_device->headset;
+
+	if (!hs->hfp_active)
+		return -EINVAL;
+	
+	hs->rh = rh;
+
+	/* If we aren't in any response and hold state don't send anything */
+	if (hs->rh < 0)
+		return 0;
+
+	return headset_send(hs, "\r\n+BTRH:%d\r\n", hs->rh);
 }
