@@ -430,7 +430,7 @@ static int remove_record(DBusConnection *conn, const char *sender,
 static DBusMessage *add_service_record(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	DBusMessage *reply;
 	const char *sender, *record;
 	dbus_uint32_t handle;
@@ -460,7 +460,7 @@ static DBusMessage *add_service_record(DBusConnection *conn,
 static DBusMessage *update_service_record(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	bdaddr_t src;
 
 	str2ba(adapter_get_address(adapter), &src);
@@ -517,7 +517,7 @@ static void path_unregister(void *data)
 	g_slist_foreach(records, (GFunc) exit_callback, NULL);
 }
 
-static int service_probe(struct adapter *adapter)
+static int service_probe(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 
@@ -537,7 +537,7 @@ static int service_probe(struct adapter *adapter)
 	return 0;
 }
 
-static void service_remove(struct adapter *adapter)
+static void service_remove(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 

@@ -673,7 +673,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 
 static int audio_probe(struct btd_device *device, GSList *records)
 {
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	const char *source, *destination;
 	bdaddr_t src, dst;
@@ -726,7 +726,7 @@ static struct audio_adapter *create_audio_adapter(const char *path, bdaddr_t *sr
 	return adp;
 }
 
-static struct audio_adapter *get_audio_adapter(struct adapter *adapter)
+static struct audio_adapter *get_audio_adapter(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
@@ -747,7 +747,7 @@ static struct audio_adapter *get_audio_adapter(struct adapter *adapter)
 	return adp;
 }
 
-static int headset_server_probe(struct adapter *adapter)
+static int headset_server_probe(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
@@ -761,7 +761,7 @@ static int headset_server_probe(struct adapter *adapter)
 	return headset_server_init(adp);
 }
 
-static void headset_server_remove(struct adapter *adapter)
+static void headset_server_remove(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
@@ -793,7 +793,7 @@ static void headset_server_remove(struct adapter *adapter)
 	}
 }
 
-static int gateway_server_probe(struct adapter *adapter)
+static int gateway_server_probe(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
@@ -807,7 +807,7 @@ static int gateway_server_probe(struct adapter *adapter)
 	return gateway_server_init(adp);
 }
 
-static void gateway_server_remove(struct adapter *adapter)
+static void gateway_server_remove(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
@@ -829,7 +829,7 @@ static void gateway_server_remove(struct adapter *adapter)
 	}
 }
 
-static int a2dp_server_probe(struct adapter *adapter)
+static int a2dp_server_probe(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
@@ -843,7 +843,7 @@ static int a2dp_server_probe(struct adapter *adapter)
 	return a2dp_init(connection, config);
 }
 
-static int avrcp_server_probe(struct adapter *adapter)
+static int avrcp_server_probe(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);

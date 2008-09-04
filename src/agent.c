@@ -60,7 +60,7 @@ typedef enum {
 } agent_request_type_t;
 
 struct agent {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	char *name;
 	char *path;
 	uint8_t capability;
@@ -190,7 +190,7 @@ static void agent_free(struct agent *agent)
 	g_free(agent);
 }
 
-struct agent *agent_create(struct adapter *adapter, const char *name,
+struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 				const char *path, uint8_t capability,
 				agent_remove_cb cb, void *remove_cb_data)
 {
@@ -364,7 +364,7 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 {
 	struct agent_request *req = user_data;
 	struct agent *agent = req->agent;
-	struct adapter *adapter = agent->adapter;
+	struct btd_adapter *adapter = agent->adapter;
 	agent_pincode_cb cb = req->cb;
 	DBusMessage *message;
 	DBusError err;
@@ -700,7 +700,7 @@ failed:
 static int request_fallback(struct agent_request *req,
 				DBusPendingCallNotifyFunction function)
 {
-	struct adapter *adapter = req->agent->adapter;
+	struct btd_adapter *adapter = req->agent->adapter;
 	struct agent *adapter_agent = adapter_get_agent(adapter);
 	DBusMessage *msg;
 

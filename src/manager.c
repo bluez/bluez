@@ -54,7 +54,7 @@ static GSList *adapters = NULL;
 
 int manager_update_adapter(uint16_t dev_id)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 
 	adapter = manager_find_adapter_by_id(dev_id);
 	if (!adapter)
@@ -65,7 +65,7 @@ int manager_update_adapter(uint16_t dev_id)
 
 int manager_get_adapter_class(uint16_t dev_id, uint8_t *cls)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 
 	adapter = manager_find_adapter_by_id(dev_id);
 	if (!adapter)
@@ -76,7 +76,7 @@ int manager_get_adapter_class(uint16_t dev_id, uint8_t *cls)
 
 int manager_set_adapter_class(uint16_t dev_id, uint8_t *cls)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 
 	adapter = manager_find_adapter_by_id(dev_id);
 	if (!adapter)
@@ -147,7 +147,7 @@ static DBusMessage *default_adapter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	const gchar *path;
 
 	adapter = manager_find_adapter_by_id(default_adapter_id);
@@ -170,7 +170,7 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct hci_dev_info di;
 	const char *pattern;
 	int dev_id;
@@ -231,7 +231,7 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array_iter);
 
 	for (l = adapters; l; l = l->next) {
-		struct adapter *adapter = l->data;
+		struct btd_adapter *adapter = l->data;
 		struct hci_dev_info di;
 		dev_id = adapter_get_dev_id(adapter);
 		const gchar *path = adapter_get_path(adapter);
@@ -281,7 +281,7 @@ void manager_cleanup(DBusConnection *conn, const char *path)
 
 static gint adapter_id_cmp(gconstpointer a, gconstpointer b)
 {
-	struct adapter *adapter = (struct adapter *) a;
+	struct btd_adapter *adapter = (struct btd_adapter *) a;
 	uint16_t id = GPOINTER_TO_UINT(b);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 
@@ -290,7 +290,7 @@ static gint adapter_id_cmp(gconstpointer a, gconstpointer b)
 
 static gint adapter_path_cmp(gconstpointer a, gconstpointer b)
 {
-	struct adapter *adapter = (struct adapter *) a;
+	struct btd_adapter *adapter = (struct btd_adapter *) a;
 	const char *path = b;
 	const gchar *adapter_path = adapter_get_path(adapter);
 
@@ -299,14 +299,14 @@ static gint adapter_path_cmp(gconstpointer a, gconstpointer b)
 
 static gint adapter_address_cmp(gconstpointer a, gconstpointer b)
 {
-	struct adapter *adapter = (struct adapter *) a;
+	struct btd_adapter *adapter = (struct btd_adapter *) a;
 	const char *address = b;
 	const gchar *source = adapter_get_address(adapter);
 
 	return strcmp(source, address);
 }
 
-struct adapter *manager_find_adapter(const bdaddr_t *sba)
+struct btd_adapter *manager_find_adapter(const bdaddr_t *sba)
 {
 	GSList *match;
 	char address[18];
@@ -320,7 +320,7 @@ struct adapter *manager_find_adapter(const bdaddr_t *sba)
 	return match->data;
 }
 
-struct adapter *manager_find_adapter_by_path(const char *path)
+struct btd_adapter *manager_find_adapter_by_path(const char *path)
 {
 	GSList *match;
 
@@ -331,7 +331,7 @@ struct adapter *manager_find_adapter_by_path(const char *path)
 	return match->data;
 }
 
-struct adapter *manager_find_adapter_by_id(int id)
+struct btd_adapter *manager_find_adapter_by_id(int id)
 {
 	GSList *match;
 
@@ -342,7 +342,7 @@ struct adapter *manager_find_adapter_by_id(int id)
 	return match->data;
 }
 
-static void manager_add_adapter(struct adapter *adapter)
+static void manager_add_adapter(struct btd_adapter *adapter)
 {
 	const gchar *path = adapter_get_path(adapter);
 
@@ -354,7 +354,7 @@ static void manager_add_adapter(struct adapter *adapter)
 	adapters = g_slist_append(adapters, adapter);
 }
 
-static void manager_remove_adapter(struct adapter *adapter)
+static void manager_remove_adapter(struct btd_adapter *adapter)
 {
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 	const gchar *path = adapter_get_path(adapter);
@@ -376,7 +376,7 @@ static void manager_remove_adapter(struct adapter *adapter)
 
 int manager_register_adapter(int id)
 {
-	struct adapter *adapter = adapter_create(connection, id);
+	struct btd_adapter *adapter = adapter_create(connection, id);
 
 	if (!adapter)
 		return -1;
@@ -388,7 +388,7 @@ int manager_register_adapter(int id)
 
 int manager_unregister_adapter(int id)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	const gchar *path;
 
 	adapter = manager_find_adapter_by_id(id);
@@ -408,7 +408,7 @@ int manager_unregister_adapter(int id)
 
 int manager_start_adapter(int id)
 {
-	struct adapter* adapter;
+	struct btd_adapter* adapter;
 	int ret;
 
 	adapter = manager_find_adapter_by_id(id);
@@ -429,7 +429,7 @@ int manager_start_adapter(int id)
 
 int manager_stop_adapter(int id)
 {
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 
 	adapter = manager_find_adapter_by_id(id);
 	if (!adapter) {
@@ -447,7 +447,7 @@ int manager_get_default_adapter()
 
 void manager_set_default_adapter(int id)
 {
-	struct adapter *adapter = manager_find_adapter_by_id(id);
+	struct btd_adapter *adapter = manager_find_adapter_by_id(id);
 	const gchar *path = adapter_get_path(adapter);
 
 	default_adapter_id = id;

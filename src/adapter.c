@@ -80,12 +80,12 @@ struct record_list {
 };
 
 struct session_req {
-	struct adapter	*adapter;
-	DBusConnection	*conn;		/* Connection reference */
-	DBusMessage	*msg;		/* Message reference */
-	guint		id;		/* Listener id */
-	uint8_t		mode;		/* Requested mode */
-	int		refcount;	/* Session refcount */
+	struct btd_adapter	*adapter;
+	DBusConnection		*conn;		/* Connection reference */
+	DBusMessage		*msg;		/* Message reference */
+	guint			id;		/* Listener id */
+	uint8_t			mode;		/* Requested mode */
+	int			refcount;	/* Session refcount */
 };
 
 struct service_auth {
@@ -93,7 +93,7 @@ struct service_auth {
 	void *user_data;
 };
 
-struct adapter {
+struct btd_adapter {
 	uint16_t dev_id;
 	int up;
 	char *path;			/* adapter object path */
@@ -288,7 +288,7 @@ static int auth_req_cmp(const void *p1, const void *p2)
 	return bda ? bacmp(&pb1->bdaddr, bda) : -1;
 }
 
-struct pending_auth_info *adapter_find_auth_request(struct adapter *adapter,
+struct pending_auth_info *adapter_find_auth_request(struct btd_adapter *adapter,
 							bdaddr_t *dba)
 {
 	GSList *l;
@@ -300,7 +300,7 @@ struct pending_auth_info *adapter_find_auth_request(struct adapter *adapter,
 	return NULL;
 }
 
-void adapter_remove_auth_request(struct adapter *adapter, bdaddr_t *dba)
+void adapter_remove_auth_request(struct btd_adapter *adapter, bdaddr_t *dba)
 {
 	GSList *l;
 	struct pending_auth_info *auth;
@@ -316,7 +316,7 @@ void adapter_remove_auth_request(struct adapter *adapter, bdaddr_t *dba)
 	g_free(auth);
 }
 
-struct pending_auth_info *adapter_new_auth_request(struct adapter *adapter,
+struct pending_auth_info *adapter_new_auth_request(struct btd_adapter *adapter,
 							bdaddr_t *dba,
 							auth_type_t type)
 {
@@ -336,7 +336,7 @@ struct pending_auth_info *adapter_new_auth_request(struct adapter *adapter,
 	return info;
 }
 
-int pending_remote_name_cancel(struct adapter *adapter)
+int pending_remote_name_cancel(struct btd_adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
 	GSList *l;
@@ -388,7 +388,7 @@ static void device_agent_removed(struct agent *agent, void *user_data)
 	struct btd_device *device = user_data;
 	struct pending_auth_info *auth;
 	GSList *l;
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 
 	adapter = device_get_adapter(device);
 	device_set_agent(device, NULL);
@@ -404,7 +404,7 @@ static void device_agent_removed(struct agent *agent, void *user_data)
 
 static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 							DBusMessage *msg,
-							struct adapter *adapter,
+							struct btd_adapter *adapter,
 							const char *address,
 							const char *agent_path,
 							uint8_t capability)
@@ -483,7 +483,7 @@ static uint8_t str2mode(const char *addr, const char *mode)
 static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 				uint8_t new_mode, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	uint8_t scan_enable;
 	uint8_t current_scan = adapter->scan_mode;
 	bdaddr_t local;
@@ -617,7 +617,7 @@ static struct session_req *find_session(GSList *list, DBusMessage *msg)
 
 static void session_free(struct session_req *req)
 {
-	struct adapter *adapter = req->adapter;
+	struct btd_adapter *adapter = req->adapter;
 
 	if (req->mode)
 		adapter->mode_sessions = g_slist_remove(adapter->mode_sessions,
@@ -644,7 +644,7 @@ static void session_unref(struct session_req *req)
 	session_free(req);
 }
 
-static struct session_req *create_session(struct adapter *adapter,
+static struct session_req *create_session(struct btd_adapter *adapter,
 					DBusConnection *conn, DBusMessage *msg,
 					uint8_t mode, GDBusWatchFunction cb)
 {
@@ -693,7 +693,7 @@ cleanup:
 static DBusMessage *confirm_mode(DBusConnection *conn, DBusMessage *msg,
 					const char *mode, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct session_req *req;
 	int ret;
 	uint8_t umode;
@@ -720,7 +720,7 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 							uint32_t timeout,
 							void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	bdaddr_t bdaddr;
 	const char *path;
 
@@ -764,7 +764,7 @@ static void update_ext_inquiry_response(int dd, struct hci_dev *dev)
 						strerror(errno), errno);
 }
 
-static int adapter_set_name(struct adapter *adapter, const char *name)
+static int adapter_set_name(struct btd_adapter *adapter, const char *name)
 {
 	struct hci_dev *dev = &adapter->dev;
 	int dd, err;
@@ -805,7 +805,7 @@ static int adapter_set_name(struct adapter *adapter, const char *name)
 static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 					const char *name, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	int ecode;
 	const char *path;
 
@@ -843,7 +843,7 @@ static void reply_authentication_failure(struct bonding_request_info *bonding)
 	}
 }
 
-struct btd_device *adapter_find_device(struct adapter *adapter, const char *dest)
+struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest)
 {
 	struct btd_device *device;
 	GSList *l;
@@ -862,7 +862,7 @@ struct btd_device *adapter_find_device(struct adapter *adapter, const char *dest
 }
 
 struct btd_device *adapter_create_device(DBusConnection *conn,
-				struct adapter *adapter, const char *address)
+				struct btd_adapter *adapter, const char *address)
 {
 	struct btd_device *device;
 
@@ -882,7 +882,7 @@ struct btd_device *adapter_create_device(DBusConnection *conn,
 static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 					const char *address, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct btd_device *device;
 	char filename[PATH_MAX + 1];
 	char *str;
@@ -966,7 +966,7 @@ done:
 }
 
 
-void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
+void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 				struct btd_device *device)
 {
 	bdaddr_t src;
@@ -1000,7 +1000,7 @@ void adapter_remove_device(DBusConnection *conn, struct adapter *adapter,
 }
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
-				struct adapter *adapter, const gchar *address)
+				struct btd_adapter *adapter, const gchar *address)
 {
 	struct btd_device *device;
 
@@ -1016,7 +1016,7 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 	return adapter_create_device(conn, adapter, address);
 }
 
-void remove_pending_device(struct adapter *adapter)
+void remove_pending_device(struct btd_adapter *adapter)
 {
 	struct btd_device *device;
 	char address[18];
@@ -1031,7 +1031,7 @@ void remove_pending_device(struct adapter *adapter)
 }
 
 static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
-						struct adapter *adapter)
+						struct btd_adapter *adapter)
 {
 	struct hci_request rq;
 	auth_requested_cp cp;
@@ -1199,7 +1199,7 @@ static void cancel_auth_request(struct pending_auth_info *auth, int dev_id)
 
 static void create_bond_req_exit(void *user_data)
 {
-	struct adapter *adapter = user_data;
+	struct btd_adapter *adapter = user_data;
 	struct pending_auth_info *auth;
 
 	debug("CreateConnection requestor exited before bonding was completed");
@@ -1227,7 +1227,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 {
 	char filename[PATH_MAX + 1];
 	char *str;
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct bonding_request_info *bonding;
 	bdaddr_t bdaddr;
 	int sk;
@@ -1290,7 +1290,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 static void discover_req_exit(void *user_data)
 {
 	struct session_req *req = user_data;
-	struct adapter *adapter = req->adapter;
+	struct btd_adapter *adapter = req->adapter;
 
 	info("Discovery session %d deactivated", g_slist_length(adapter->disc_sessions));
 
@@ -1311,7 +1311,7 @@ static void discover_req_exit(void *user_data)
 		cancel_periodic_discovery(adapter);
 }
 
-int start_inquiry(struct adapter *adapter)
+int start_inquiry(struct btd_adapter *adapter)
 {
 	inquiry_cp cp;
 	evt_cmd_status rp;
@@ -1362,7 +1362,7 @@ int start_inquiry(struct adapter *adapter)
 	return 0;
 }
 
-static int start_periodic_inquiry(struct adapter *adapter)
+static int start_periodic_inquiry(struct btd_adapter *adapter)
 {
 	periodic_inquiry_cp cp;
 	struct hci_request rq;
@@ -1417,7 +1417,7 @@ static DBusMessage *adapter_discover_devices(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct session_req *req;
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	int err;
 
 	if (!adapter->up)
@@ -1453,7 +1453,7 @@ done:
 static DBusMessage *adapter_cancel_discovery(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct session_req *req;
 	int err = 0;
 
@@ -1503,7 +1503,7 @@ struct remote_device_list_t {
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	const char *property;
 	DBusMessage *reply;
 	DBusMessageIter iter;
@@ -1567,7 +1567,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	DBusMessageIter iter;
 	DBusMessageIter sub;
 	const char *property;
@@ -1627,7 +1627,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 static void session_exit(void *data)
 {
 	struct session_req *req = data;
-	struct adapter *adapter = req->adapter;
+	struct btd_adapter *adapter = req->adapter;
 
 	if (!adapter->mode_sessions) {
 		debug("Falling back to '%s' mode", mode2str(adapter->global_mode));
@@ -1643,7 +1643,7 @@ static DBusMessage *request_mode(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *mode;
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct session_req *req;
 	uint8_t new_mode;
 	int ret;
@@ -1688,7 +1688,7 @@ static DBusMessage *request_mode(DBusConnection *conn,
 static DBusMessage *release_mode(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct session_req *req;
 
 	req = find_session(adapter->mode_sessions, msg);
@@ -1704,7 +1704,7 @@ static DBusMessage *release_mode(DBusConnection *conn,
 static DBusMessage *list_devices(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	DBusMessage *reply;
 	GSList *l;
 	DBusMessageIter iter;
@@ -1742,7 +1742,7 @@ static DBusMessage *list_devices(DBusConnection *conn,
 static DBusMessage *create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct btd_device *device;
 	const gchar *address;
 
@@ -1820,7 +1820,7 @@ static gint device_path_cmp(struct btd_device *device, const gchar *path)
 static DBusMessage *remove_device(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct btd_device *device;
 	const char *path;
 	GSList *l;
@@ -1850,7 +1850,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 static DBusMessage *find_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct btd_device *device;
 	DBusMessage *reply;
 	const gchar *address;
@@ -1888,7 +1888,7 @@ static DBusMessage *find_device(DBusConnection *conn,
 	return reply;
 }
 
-static void agent_removed(struct agent *agent, struct adapter *adapter)
+static void agent_removed(struct agent *agent, struct btd_adapter *adapter)
 {
 	struct pending_auth_info *auth;
 	GSList *l;
@@ -1909,7 +1909,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 {
 	const char *path, *name, *capability;
 	struct agent *agent;
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	uint8_t cap;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
@@ -1946,7 +1946,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *path, *name;
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID))
@@ -2052,7 +2052,7 @@ static int device_read_bdaddr(uint16_t dev_id, const char *address)
 	return 0;
 }
 
-static int adapter_setup(struct adapter *adapter, int dd)
+static int adapter_setup(struct btd_adapter *adapter, int dd)
 {
 	struct hci_dev *dev = &adapter->dev;
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
@@ -2161,7 +2161,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 						void *user_data)
 {
 	char filename[PATH_MAX + 1];
-	struct adapter *adapter = user_data;
+	struct btd_adapter *adapter = user_data;
 	GSList *uuids = bt_string2list(value);
 	struct btd_device *device;
 	const gchar *src;
@@ -2196,7 +2196,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 static void create_stored_device_from_linkkeys(char *key, char *value,
 						void *user_data)
 {
-	struct adapter *adapter = user_data;
+	struct btd_adapter *adapter = user_data;
 	struct btd_device *device;
 
 	if (g_slist_find_custom(adapter->devices,
@@ -2210,7 +2210,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 	}
 }
 
-static void load_devices(struct adapter *adapter)
+static void load_devices(struct btd_adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
 
@@ -2221,7 +2221,7 @@ static void load_devices(struct adapter *adapter)
 	textfile_foreach(filename, create_stored_device_from_linkkeys, adapter);
 }
 
-static void load_drivers(struct adapter *adapter)
+static void load_drivers(struct btd_adapter *adapter)
 {
 	GSList *l;
 
@@ -2243,7 +2243,7 @@ static int get_discoverable_timeout(const char *src)
 	return main_opts.discovto;
 }
 
-static void adapter_up(struct adapter *adapter, int dd)
+static void adapter_up(struct btd_adapter *adapter, int dd)
 {
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci;
@@ -2319,7 +2319,7 @@ static void adapter_up(struct adapter *adapter, int dd)
 	load_devices(adapter);
 }
 
-int adapter_start(struct adapter *adapter)
+int adapter_start(struct btd_adapter *adapter)
 {
 	struct hci_dev *dev = &adapter->dev;
 	struct hci_dev_info di;
@@ -2424,7 +2424,7 @@ setup:
 	return 0;
 }
 
-static void reply_pending_requests(struct adapter *adapter)
+static void reply_pending_requests(struct btd_adapter *adapter)
 {
 	DBusMessage *reply;
 
@@ -2461,7 +2461,7 @@ static void reply_pending_requests(struct adapter *adapter)
 	}
 }
 
-static void unload_drivers(struct adapter *adapter)
+static void unload_drivers(struct btd_adapter *adapter)
 {
 	GSList *l;
 
@@ -2473,7 +2473,7 @@ static void unload_drivers(struct adapter *adapter)
 	}
 }
 
-int adapter_stop(struct adapter *adapter)
+int adapter_stop(struct btd_adapter *adapter)
 {
 	const char *mode = "off";
 
@@ -2533,7 +2533,7 @@ int adapter_stop(struct adapter *adapter)
 	return 0;
 }
 
-int adapter_update(struct adapter *adapter)
+int adapter_update(struct btd_adapter *adapter)
 {
 	struct hci_dev *dev = &adapter->dev;
 	int dd;
@@ -2556,7 +2556,7 @@ int adapter_update(struct adapter *adapter)
 	return 0;
 }
 
-int adapter_get_class(struct adapter *adapter, uint8_t *cls)
+int adapter_get_class(struct btd_adapter *adapter, uint8_t *cls)
 {
 	struct hci_dev *dev = &adapter->dev;
 
@@ -2565,7 +2565,7 @@ int adapter_get_class(struct adapter *adapter, uint8_t *cls)
 	return 0;
 }
 
-int adapter_set_class(struct adapter *adapter, uint8_t *cls)
+int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls)
 {
 	struct hci_dev *dev = &adapter->dev;
 
@@ -2574,7 +2574,7 @@ int adapter_set_class(struct adapter *adapter, uint8_t *cls)
 	return 0;
 }
 
-int adapter_update_ssp_mode(struct adapter *adapter, int dd, uint8_t mode)
+int adapter_update_ssp_mode(struct btd_adapter *adapter, int dd, uint8_t mode)
 {
 	struct hci_dev *dev = &adapter->dev;
 
@@ -2589,7 +2589,7 @@ int adapter_update_ssp_mode(struct adapter *adapter, int dd, uint8_t mode)
 
 static void adapter_free(gpointer user_data)
 {
-	struct adapter *adapter = user_data;
+	struct btd_adapter *adapter = user_data;
 
 	agent_destroy(adapter->agent, FALSE);
 	adapter->agent = NULL;
@@ -2600,17 +2600,17 @@ static void adapter_free(gpointer user_data)
 	return;
 }
 
-struct adapter *adapter_create(DBusConnection *conn, int id)
+struct btd_adapter *adapter_create(DBusConnection *conn, int id)
 {
 	char path[MAX_PATH_LENGTH];
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 
 	if (!connection)
 		connection = conn;
 
 	snprintf(path, sizeof(path), "%s/hci%d", "/org/bluez", id);
 
-	adapter = g_try_new0(struct adapter, 1);
+	adapter = g_try_new0(struct btd_adapter, 1);
 	if (!adapter) {
 		error("Failed to alloc memory to D-Bus path register data (%s)",
 				path);
@@ -2632,7 +2632,7 @@ struct adapter *adapter_create(DBusConnection *conn, int id)
 	return adapter;
 }
 
-void adapter_remove(struct adapter *adapter)
+void adapter_remove(struct btd_adapter *adapter)
 {
 	GSList *l;
 	char *path = g_strdup(adapter->path);
@@ -2648,12 +2648,12 @@ void adapter_remove(struct adapter *adapter)
 	g_free(path);
 }
 
-uint16_t adapter_get_dev_id(struct adapter *adapter)
+uint16_t adapter_get_dev_id(struct btd_adapter *adapter)
 {
 	return adapter->dev_id;
 }
 
-const gchar *adapter_get_path(struct adapter *adapter)
+const gchar *adapter_get_path(struct btd_adapter *adapter)
 {
 	if (!adapter)
 		return NULL;
@@ -2661,7 +2661,7 @@ const gchar *adapter_get_path(struct adapter *adapter)
 	return adapter->path;
 }
 
-const gchar *adapter_get_address(struct adapter *adapter)
+const gchar *adapter_get_address(struct btd_adapter *adapter)
 {
 	if (!adapter)
 		return NULL;
@@ -2671,7 +2671,7 @@ const gchar *adapter_get_address(struct adapter *adapter)
 
 static gboolean discov_timeout_handler(void *data)
 {
-	struct adapter *adapter = data;
+	struct btd_adapter *adapter = data;
 	struct hci_request rq;
 	int dd;
 	uint8_t scan_enable = adapter->scan_mode;
@@ -2718,7 +2718,7 @@ failed:
 	return retval;
 }
 
-void adapter_set_discov_timeout(struct adapter *adapter, guint interval)
+void adapter_set_discov_timeout(struct btd_adapter *adapter, guint interval)
 {
 	if (!adapter)
 		return;
@@ -2731,7 +2731,7 @@ void adapter_set_discov_timeout(struct adapter *adapter, guint interval)
 	adapter->discov_timeout_id = g_timeout_add(interval, discov_timeout_handler, adapter);
 }
 
-void adapter_remove_discov_timeout(struct adapter *adapter)
+void adapter_remove_discov_timeout(struct btd_adapter *adapter)
 {
 	if (!adapter)
 		return;
@@ -2743,7 +2743,7 @@ void adapter_remove_discov_timeout(struct adapter *adapter)
 	adapter->discov_timeout_id = 0;
 }
 
-void adapter_set_scan_mode(struct adapter *adapter, uint8_t scan_mode)
+void adapter_set_scan_mode(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	if (!adapter)
 		return;
@@ -2751,12 +2751,12 @@ void adapter_set_scan_mode(struct adapter *adapter, uint8_t scan_mode)
 	adapter->scan_mode = scan_mode;
 }
 
-uint8_t adapter_get_scan_mode(struct adapter *adapter)
+uint8_t adapter_get_scan_mode(struct btd_adapter *adapter)
 {
 	return adapter->scan_mode;
 }
 
-void adapter_set_mode(struct adapter *adapter, uint8_t mode)
+void adapter_set_mode(struct btd_adapter *adapter, uint8_t mode)
 {
 	if (!adapter)
 		return;
@@ -2764,12 +2764,12 @@ void adapter_set_mode(struct adapter *adapter, uint8_t mode)
 	adapter->mode = mode;
 }
 
-uint8_t adapter_get_mode(struct adapter *adapter)
+uint8_t adapter_get_mode(struct btd_adapter *adapter)
 {
 	return adapter->mode;
 }
 
-void adapter_set_state(struct adapter *adapter, int state)
+void adapter_set_state(struct btd_adapter *adapter, int state)
 {
 	gboolean discov_active = FALSE;
 	const char *path = adapter->path;
@@ -2807,12 +2807,12 @@ done:
 	adapter->state = state;
 }
 
-int adapter_get_state(struct adapter *adapter)
+int adapter_get_state(struct btd_adapter *adapter)
 {
 	return adapter->state;
 }
 
-struct remote_dev_info *adapter_search_found_devices(struct adapter *adapter,
+struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
 						struct remote_dev_info *match)
 {
 	GSList *l;
@@ -2835,7 +2835,7 @@ int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
 	return rssi1 - rssi2;
 }
 
-int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
+int adapter_add_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				int8_t rssi, name_status_t name_status)
 {
 	struct remote_dev_info *dev, match;
@@ -2876,7 +2876,7 @@ int adapter_add_found_device(struct adapter *adapter, bdaddr_t *bdaddr,
 	return 0;
 }
 
-int adapter_remove_found_device(struct adapter *adapter, bdaddr_t *bdaddr)
+int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 {
 	struct remote_dev_info *dev, match;
 
@@ -2893,7 +2893,7 @@ int adapter_remove_found_device(struct adapter *adapter, bdaddr_t *bdaddr)
 	return 0;
 }
 
-void adapter_update_oor_devices(struct adapter *adapter)
+void adapter_update_oor_devices(struct btd_adapter *adapter)
 {
 	GSList *l = adapter->found_devices;
 	struct remote_dev_info *dev;
@@ -2914,7 +2914,7 @@ void adapter_update_oor_devices(struct adapter *adapter)
 	}
 }
 
-void adapter_remove_oor_device(struct adapter *adapter, char *peer_addr)
+void adapter_remove_oor_device(struct btd_adapter *adapter, char *peer_addr)
 {
 	GSList *l;
 
@@ -2928,7 +2928,7 @@ void adapter_remove_oor_device(struct adapter *adapter, char *peer_addr)
 	}
 }
 
-void adapter_mode_changed(struct adapter *adapter, uint8_t scan_mode)
+void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const char *mode;
 	const gchar *path = adapter_get_path(adapter);
@@ -2972,7 +2972,7 @@ void adapter_mode_changed(struct adapter *adapter, uint8_t scan_mode)
 					DBUS_TYPE_STRING, &mode);
 }
 
-struct agent *adapter_get_agent(struct adapter *adapter)
+struct agent *adapter_get_agent(struct btd_adapter *adapter)
 {
 	if (!adapter || !adapter->agent)
 		return NULL;
@@ -2980,7 +2980,7 @@ struct agent *adapter_get_agent(struct adapter *adapter)
 	return adapter->agent;
 }
 
-void adapter_add_active_conn(struct adapter *adapter, bdaddr_t *bdaddr,
+void adapter_add_active_conn(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				uint16_t handle)
 {
 	struct active_conn_info *dev;
@@ -2996,7 +2996,7 @@ void adapter_add_active_conn(struct adapter *adapter, bdaddr_t *bdaddr,
 	adapter->active_conn = g_slist_append(adapter->active_conn, dev);
 }
 
-void adapter_remove_active_conn(struct adapter *adapter,
+void adapter_remove_active_conn(struct btd_adapter *adapter,
 				struct active_conn_info *dev)
 {
 	if (!adapter || !adapter->active_conn)
@@ -3006,7 +3006,7 @@ void adapter_remove_active_conn(struct adapter *adapter,
 	g_free(dev);
 }
 
-struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct adapter *adapter,
+struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct btd_adapter *adapter,
 						    bdaddr_t *bda)
 {
 	GSList *l;
@@ -3022,7 +3022,7 @@ struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct adapter *ad
 	return NULL;
 }
 
-struct active_conn_info *adapter_search_active_conn_by_handle(struct adapter *adapter,
+struct active_conn_info *adapter_search_active_conn_by_handle(struct btd_adapter *adapter,
 						    uint16_t handle)
 {
 	GSList *l;
@@ -3038,7 +3038,7 @@ struct active_conn_info *adapter_search_active_conn_by_handle(struct adapter *ad
 	return NULL;
 }
 
-void adapter_free_bonding_request(struct adapter *adapter)
+void adapter_free_bonding_request(struct btd_adapter *adapter)
 {
 	g_dbus_remove_watch(connection, adapter->bonding->listener_id);
 
@@ -3052,7 +3052,7 @@ void adapter_free_bonding_request(struct adapter *adapter)
 	adapter->bonding = NULL;
 }
 
-struct bonding_request_info *adapter_get_bonding_info(struct adapter *adapter)
+struct bonding_request_info *adapter_get_bonding_info(struct btd_adapter *adapter)
 {
 	if (!adapter || !adapter->bonding)
 		return NULL;
@@ -3060,7 +3060,7 @@ struct bonding_request_info *adapter_get_bonding_info(struct adapter *adapter)
 	return adapter->bonding;
 }
 
-gboolean adapter_has_discov_sessions(struct adapter *adapter)
+gboolean adapter_has_discov_sessions(struct btd_adapter *adapter)
 {
 	if (!adapter || !adapter->disc_sessions)
 		return FALSE;
@@ -3093,7 +3093,7 @@ int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data)
 {
 	struct service_auth *auth;
-	struct adapter *adapter;
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct agent *agent;
 	char address[18];
@@ -3146,7 +3146,7 @@ int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 
 int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
 {
-	struct adapter *adapter = manager_find_adapter(src);
+	struct btd_adapter *adapter = manager_find_adapter(src);
 	struct btd_device *device;
 	struct agent *agent;
 	char address[18];

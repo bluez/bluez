@@ -55,7 +55,7 @@ static DBusConnection *connection = NULL;
 static int network_probe(struct btd_device *device, GSList *records,
 			uint16_t id)
 {
-	struct adapter *adapter = device_get_adapter(device);
+	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	const char *source, *destination;
 	bdaddr_t src, dst;
@@ -110,7 +110,7 @@ static void nap_remove(struct btd_device *device)
 	network_remove(device, BNEP_SVC_NAP);
 }
 
-static int network_server_probe(struct adapter *adapter, uint16_t id)
+static int network_server_probe(struct btd_adapter *adapter, uint16_t id)
 {
 	const gchar *path = adapter_get_path(adapter);
 	const char *source;
@@ -127,7 +127,7 @@ static int network_server_probe(struct adapter *adapter, uint16_t id)
 	return server_register(path, &src, id);
 }
 
-static void network_server_remove(struct adapter *adapter, uint16_t id)
+static void network_server_remove(struct btd_adapter *adapter, uint16_t id)
 {
 	const gchar *path = adapter_get_path(adapter);
 
@@ -136,32 +136,32 @@ static void network_server_remove(struct adapter *adapter, uint16_t id)
 	server_unregister(path, id);
 }
 
-static int panu_server_probe(struct adapter *adapter)
+static int panu_server_probe(struct btd_adapter *adapter)
 {
 	return network_server_probe(adapter, BNEP_SVC_PANU);
 }
 
-static int gn_server_probe(struct adapter *adapter)
+static int gn_server_probe(struct btd_adapter *adapter)
 {
 	return network_server_probe(adapter, BNEP_SVC_GN);
 }
 
-static int nap_server_probe(struct adapter *adapter)
+static int nap_server_probe(struct btd_adapter *adapter)
 {
 	return network_server_probe(adapter, BNEP_SVC_NAP);
 }
 
-static void panu_server_remove(struct adapter *adapter)
+static void panu_server_remove(struct btd_adapter *adapter)
 {
 	network_server_remove(adapter, BNEP_SVC_PANU);
 }
 
-static void gn_server_remove(struct adapter *adapter)
+static void gn_server_remove(struct btd_adapter *adapter)
 {
 	network_server_remove(adapter, BNEP_SVC_GN);
 }
 
-static void nap_server_remove(struct adapter *adapter)
+static void nap_server_remove(struct btd_adapter *adapter)
 {
 	network_server_remove(adapter, BNEP_SVC_NAP);
 }
