@@ -464,12 +464,11 @@ static void auth_cb(DBusError *derr, void *user_data)
 	} else {
 		char hs_address[18];
 
-		headset_set_authorized(device);
-
 		ba2str(&device->dst, hs_address);
-
 		debug("Accepted headset connection from %s for %s",
 						hs_address, device->path);
+
+		headset_set_authorized(device);
 	}
 }
 
@@ -510,15 +509,15 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
+	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
+
 	err = btd_request_authorization(&device->src, &device->dst, uuid,
 				auth_cb, device);
 	if (err < 0) {
 		debug("Authorization denied: %s", strerror(-err));
-		headset_close_rfcomm(device);
+		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 		return;
 	}
-
-	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
 	return;
 

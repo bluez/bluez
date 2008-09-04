@@ -1108,6 +1108,10 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 						".AlreadyConnected",
 						"Already Connected");
 
+	if (hs->hfp_handle && !ag.telephony_ready)
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
+					"Telephony subsystem not ready");
+
 	err = rfcomm_connect(device, NULL, NULL, NULL);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
@@ -1827,6 +1831,14 @@ void headset_set_authorized(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
+	/* For HFP telephony isn't ready just disconnect */
+	if (hs->hfp_active && !ag.telephony_ready) {
+		error("Unable to accept HFP connection since the telephony "
+				"subsystem isn't initialized");
+		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+		return;
+	}
+
 	hs->rfcomm = hs->tmp_rfcomm;
 	hs->tmp_rfcomm = NULL;
 
@@ -1836,6 +1848,7 @@ void headset_set_authorized(struct audio_device *dev)
 
 	hs->auto_dc = FALSE;
 
+	/* For HSP (no special SLC setup) move to CONNECTED state */
 	if (!hs->hfp_active)
 		headset_set_state(dev, HEADSET_STATE_CONNECTED);
 }
