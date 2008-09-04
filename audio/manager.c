@@ -935,7 +935,6 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 proceed:
 	if (enabled.headset) {
 		telephony_init();
-		telephony_features_req();
 		btd_register_adapter_driver(&headset_server_driver);
 	}
 

@@ -70,6 +70,7 @@
 static struct ag_state {
 	gboolean telephony_ready;
 	uint32_t features;
+	struct indicator *indicators;
 	int er_mode;
 	int er_ind;
 	int rh;
@@ -266,19 +267,14 @@ static int report_indicators(struct audio_device *device, const char *buf)
 	struct headset *hs = device->headset;
 	int err;
 	char *str;
-	struct indicator *indicators;
 
 	if (strlen(buf) < 8)
 		return -EINVAL;
 
-	indicators = telephony_indicators_req();
-	if (!indicators)
-		return headset_send(hs, "\r\nERROR\r\n");
-
 	if (buf[7] == '=')
-		str = indicator_ranges(indicators);
+		str = indicator_ranges(ag.indicators);
 	else
-		str = indicator_values(indicators);
+		str = indicator_values(ag.indicators);
 
 	err = headset_send(hs, str);
 
@@ -1992,7 +1988,7 @@ void telephony_features_rsp(uint32_t features)
 	ag.features = features;
 }
 
-int telephony_event_ind(int index, int value)
+int telephony_event_ind(int index)
 {
 	struct headset *hs;
 
@@ -2009,7 +2005,8 @@ int telephony_event_ind(int index, int value)
 		return -EINVAL;
 	}
 
-	return headset_send(hs, "\r\n+CIEV:%d,%d\r\n", index, value);
+	return headset_send(hs, "\r\n+CIEV:%d,%d\r\n", index + 1,
+				ag.indicators[index].val);
 }
 
 int telephony_response_and_hold_ind(int rh)
@@ -2031,4 +2028,16 @@ int telephony_response_and_hold_ind(int rh)
 		return 0;
 
 	return headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
+}
+
+int telephony_ready(uint32_t features, struct indicator *indicators, int rh)
+{
+	ag.telephony_ready = TRUE;
+	ag.features = features;
+	ag.indicators = indicators;
+	ag.rh = rh;
+
+	debug("Telephony plugin initialized");
+
+	return 0;
 }

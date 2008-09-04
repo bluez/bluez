@@ -55,15 +55,6 @@ static struct indicator indicators[] =
 	{ NULL }
 };
 
-int telephony_features_req(void)
-{
-	uint32_t features = 0;
-
-	telephony_features_rsp(features);
-
-	return 0;
-}
-
 struct indicator *telephony_indicators_req(void)
 {
 	return indicators;
@@ -90,6 +81,7 @@ int telephony_response_and_hold_req(int rh)
 
 int telephony_init(void)
 {
+	telephony_ready(0, indicators, -1);
 	return 0;
 }
 
