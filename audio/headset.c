@@ -67,13 +67,13 @@
 #define HEADSET_GAIN_SPEAKER 'S'
 #define HEADSET_GAIN_MICROPHONE 'M'
 
-static struct ag_state {
-	gboolean telephony_ready;
-	uint32_t features;
-	struct indicator *indicators;
-	int er_mode;
-	int er_ind;
-	int rh;
+static struct {
+	gboolean telephony_ready;	/* Telephony plugin initialized */
+	uint32_t features;		/* HFP AG features */
+	struct indicator *indicators;	/* Available HFP indicators */
+	int er_mode;			/* Event reporting mode */
+	int er_ind;			/* Event reporting for indicators */
+	int rh;				/* Response and Hold state */
 } ag = {
 	.telephony_ready = FALSE,
 	.features = 0,
