@@ -135,16 +135,20 @@ static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
  * Stored inputs registration functions
  */
 
-static int load_stored(const char *source, const char *destination,
-			struct hidp_connadd_req *hidp)
+static int load_stored(bdaddr_t *src, bdaddr_t *dst,
+		       struct hidp_connadd_req *hidp)
 {
 	char filename[PATH_MAX + 1];
 	char *value;
+	char src_addr[18], dst_addr[18];
+
+	ba2str(src, src_addr);
+	ba2str(dst, dst_addr);
 
 	/* load the input stored */
-	create_name(filename, PATH_MAX, STORAGEDIR, destination, "input");
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "input");
 
-	value = textfile_get(filename, destination);
+	value = textfile_get(filename, dst_addr);
 	if (!value)
 		return -EINVAL;
 
@@ -177,7 +181,10 @@ static int hid_device_probe(struct btd_device *device, GSList *records)
 	source = adapter_get_address(adapter);
 	destination = device_get_address(device);
 
-	if (load_stored(source, destination, &hidp) == 0)
+	str2ba(source, &src);
+	str2ba(destination, &dst);
+
+	if (load_stored(&src, &dst, &hidp) == 0)
 		goto done;
 
 	hidp.idle_to = idle_timeout * 60;
@@ -185,9 +192,6 @@ static int hid_device_probe(struct btd_device *device, GSList *records)
 	extract_hid_record(records->data, &hidp);
 
 done:
-	str2ba(source, &src);
-	str2ba(destination, &dst);
-
 	store_device_info(&src, &dst, &hidp);
 
 	if (hidp.rd_data)
