@@ -26,24 +26,24 @@
 #endif
 
 #include <errno.h>
-#include <sys/types.h>
 
 #include <gdbus.h>
 
 #include "plugin.h"
-#include "logging.h"
 #include "manager.h"
+
+static DBusConnection *connection = NULL;
 
 static int serial_init(void)
 {
-	DBusConnection *conn;
-
-	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (conn == NULL)
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
 		return -EIO;
 
-	if (serial_manager_init(conn) < 0)
+	if (serial_manager_init(connection) < 0) {
+		dbus_connection_unref(connection);
 		return -EIO;
+	}
 
 	return 0;
 }
@@ -51,6 +51,7 @@ static int serial_init(void)
 static void serial_exit(void)
 {
 	serial_manager_exit();
+	dbus_connection_unref(connection);
 }
 
 BLUETOOTH_PLUGIN_DEFINE("serial", serial_init, serial_exit)
