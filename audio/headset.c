@@ -616,7 +616,7 @@ static int response_and_hold(struct audio_device *device, const char *buf)
 			headset_send(hs, "\r\nERROR\r\n");
 			return 0;
 		}
-	} else
+	} else if (ag.rh >= 0)
 		headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
 
 	return headset_send(hs, "\r\nOK\n\r", ag.rh);
