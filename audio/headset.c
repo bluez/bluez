@@ -67,7 +67,19 @@
 #define HEADSET_GAIN_SPEAKER 'S'
 #define HEADSET_GAIN_MICROPHONE 'M'
 
-static uint32_t ag_features = 0;
+static struct ag_state {
+	gboolean telephony_ready;
+	uint32_t features;
+	int er_mode;
+	int er_ind;
+	int rh;
+} ag = {
+	.telephony_ready = FALSE,
+	.features = 0,
+	.er_mode = 3,
+	.er_ind = 0,
+	.rh = -1,
+};
 
 static gboolean sco_hci = TRUE;
 
@@ -122,9 +134,6 @@ struct headset {
 	gboolean cli_active;
 	char *ph_number;
 	int type;
-	int er_mode;
-	int er_ind;
-	int rh; /* Response and Hold */
 
 	headset_state_t state;
 	struct pending_connect *pending;
@@ -203,7 +212,7 @@ static int supported_features(struct audio_device *device, const char *buf)
 		return -EINVAL;
 
 	hs->hfp_features = strtoul(&buf[8], NULL, 10);
-	err = headset_send(hs, "\r\n+BRSF=%u\r\n", ag_features);
+	err = headset_send(hs, "\r\n+BRSF=%u\r\n", ag.features);
 	if (err < 0)
 		return err;
 
@@ -469,19 +478,19 @@ static int event_reporting(struct audio_device *dev, const char *buf)
 		return -EINVAL;
 	}
 
-	hs->er_mode = atoi(tokens[0]);
-	hs->er_ind = atoi(tokens[3]);
+	ag.er_mode = atoi(tokens[0]);
+	ag.er_ind = atoi(tokens[3]);
 
 	g_strfreev(tokens);
 	tokens = NULL;
 
 	debug("Event reporting (CMER): mode=%d, ind=%d",
-			hs->er_mode, hs->er_ind);
+			ag.er_mode, ag.er_ind);
 
-	switch (hs->er_ind) {
+	switch (ag.er_ind) {
 	case 0:
 	case 1:
-		telephony_event_reporting_req(hs->er_ind);
+		telephony_event_reporting_req(ag.er_ind);
 		break;
 	default:
 		return -EINVAL;
@@ -494,7 +503,7 @@ static int event_reporting(struct audio_device *dev, const char *buf)
 	if (hs->state != HEADSET_STATE_CONNECT_IN_PROGRESS)
 		return 0;
 
-	if (ag_features & AG_FEATURE_THREE_WAY_CALLING)
+	if (ag.features & AG_FEATURE_THREE_WAY_CALLING)
 		return 0;
 
 	hfp_slc_complete(dev);
@@ -612,9 +621,9 @@ static int response_and_hold(struct audio_device *device, const char *buf)
 			return 0;
 		}
 	} else
-		headset_send(hs, "\r\n+BTRH:%d\r\n", hs->rh);
+		headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
 
-	return headset_send(hs, "\r\nOK\n\r", hs->rh);
+	return headset_send(hs, "\r\nOK\n\r", ag.rh);
 }
 
 static int signal_gain_setting(struct audio_device *device, const char *buf)
@@ -1663,7 +1672,7 @@ uint32_t headset_config_init(GKeyFile *config)
 
 	/* Use the default values if there is no config file */
 	if (config == NULL)
-		return ag_features;
+		return ag.features;
 
 	str = g_key_file_get_string(config, "General", "SCORouting",
 					&err);
@@ -1681,7 +1690,7 @@ uint32_t headset_config_init(GKeyFile *config)
 		g_free(str);
 	}
 
-	return ag_features;
+	return ag.features;
 }
 
 static gboolean hs_dc_timeout(struct audio_device *dev)
@@ -1980,7 +1989,7 @@ int headset_get_sco_fd(struct audio_device *dev)
 
 void telephony_features_rsp(uint32_t features)
 {
-	ag_features = features;
+	ag.features = features;
 }
 
 int telephony_event_ind(int index, int value)
@@ -1995,7 +2004,7 @@ int telephony_event_ind(int index, int value)
 	if (!hs->hfp_active)
 		return -EINVAL;
 
-	if (!hs->er_ind) {
+	if (!ag.er_ind) {
 		debug("telephony_report_event called but events are disabled");
 		return -EINVAL;
 	}
@@ -2014,12 +2023,12 @@ int telephony_response_and_hold_ind(int rh)
 
 	if (!hs->hfp_active)
 		return -EINVAL;
-	
-	hs->rh = rh;
+
+	ag.rh = rh;
 
 	/* If we aren't in any response and hold state don't send anything */
-	if (hs->rh < 0)
+	if (ag.rh < 0)
 		return 0;
 
-	return headset_send(hs, "\r\n+BTRH:%d\r\n", hs->rh);
+	return headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
 }
