@@ -36,13 +36,10 @@ static struct indicator indicators[] =
 	{ "battchg",	"0-5",	5 },
 	{ "signal",	"0-5",	5 },
 	{ "service",	"0,1",	1 },
-	{ "sounder",	"0,1",	0 },
-	{ "message",	"0,1",	0 },
 	{ "call",	"0,1",	0 },
 	{ "callsetup",	"0-3",	0 },
-	{ "vox",	"0,1",	0 },
+	{ "callheld",	"0-2",	0 },
 	{ "roam",	"0,1",	0 },
-	{ "smsfull",	"0,1",	0 },
 	{ NULL }
 };
 
