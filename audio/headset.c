@@ -71,6 +71,8 @@ static uint32_t ag_features = 0;
 
 static gboolean sco_hci = TRUE;
 
+static struct audio_device *active_telephony_device = NULL;
+
 static char *str_state[] = {
 	"HEADSET_STATE_DISCONNECTED",
 	"HEADSET_STATE_CONNECT_IN_PROGRESS",
@@ -120,6 +122,8 @@ struct headset {
 	gboolean cli_active;
 	char *ph_number;
 	int type;
+	int er_mode;
+	int er_ind;
 
 	headset_state_t state;
 	struct pending_connect *pending;
@@ -450,6 +454,34 @@ static int event_reporting(struct audio_device *dev, const char *buf)
 {
 	struct headset *hs = dev->headset;
 	int ret;
+	char **tokens; /* <mode>, <keyp>, <disp>, <ind>, <bfr> */
+
+	if (strlen(buf) < 13)
+		return -EINVAL;
+
+	tokens = g_strsplit(&buf[8], ",", 5);
+	if (g_strv_length(tokens) < 4) {
+		g_strfreev(tokens);
+		return -EINVAL;
+	}
+
+	hs->er_mode = atoi(tokens[0]);
+	hs->er_ind = atoi(tokens[3]);
+
+	g_strfreev(tokens);
+	tokens = NULL;
+
+	debug("Event reporting (CMER): mode=%d, ind=%d",
+			hs->er_mode, hs->er_ind);
+
+	switch (hs->er_ind) {
+	case 0:
+	case 1:
+		telephony_set_event_reporting(hs->er_ind);
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	ret = headset_send(hs, "\r\nOK\r\n");
 	if (ret < 0)
@@ -1795,6 +1827,9 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 						AUDIO_HEADSET_INTERFACE,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
+		telephony_set_event_reporting(0);
+		if (dev == active_telephony_device)
+			active_telephony_device = NULL;
 		break;
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
 		break;
@@ -1805,6 +1840,8 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 						AUDIO_HEADSET_INTERFACE,
 						"Connected",
 						DBUS_TYPE_INVALID);
+			if (!active_telephony_device)
+				active_telephony_device = dev;
 		} else if (hs->state == HEADSET_STATE_PLAYING) {
 			g_dbus_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
@@ -1921,4 +1958,24 @@ int headset_get_sco_fd(struct audio_device *dev)
 void telephony_features_rsp(uint32_t features)
 {
 	ag_features = features;
+}
+
+int telephony_report_event(int index, int value)
+{
+	struct headset *hs;
+
+	if (!active_telephony_device)
+		return -ENODEV;
+
+	hs = active_telephony_device->headset;
+
+	if (!hs->hfp_active)
+		return -EINVAL;
+
+	if (!hs->er_ind) {
+		debug("telephony_report_event called but events are disabled");
+		return -EINVAL;
+	}
+
+	return headset_send(hs, "\r\n+CIEV:%d,%d\r\n", index, value);
 }

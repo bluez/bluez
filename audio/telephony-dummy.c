@@ -28,8 +28,12 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <glib.h>
 
 #include "telephony.h"
+
+static gboolean events_enabled = FALSE;
 
 static struct indicator indicators[] =
 {
@@ -55,6 +59,11 @@ int telephony_features_req(void)
 struct indicator *telephony_indicators_req(void)
 {
 	return indicators;
+}
+
+int telephony_set_event_reporting(int ind)
+{
+	events_enabled = ind == 1 ? TRUE : FALSE;
 }
 
 int telephony_init(void)

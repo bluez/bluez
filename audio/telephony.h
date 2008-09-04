@@ -45,5 +45,9 @@ void telephony_features_rsp(uint32_t features);
 
 struct indicator *telephony_indicators_req(void);
 
+int telephony_set_event_reporting(int ind);
+
+int telephony_report_event(int index, int value);
+
 int telephony_init(void);
 void telephony_exit(void);
