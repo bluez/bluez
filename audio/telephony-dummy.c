@@ -55,11 +55,6 @@ static struct indicator indicators[] =
 	{ NULL }
 };
 
-struct indicator *telephony_indicators_req(void)
-{
-	return indicators;
-}
-
 int telephony_event_reporting_req(int ind)
 {
 	events_enabled = ind == 1 ? TRUE : FALSE;
