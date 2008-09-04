@@ -95,23 +95,21 @@ static void tty_init(int service, const gchar *root_path, const gchar *capabilit
 
 static int server_start(int service, const char *root_path,
 		gboolean auto_accept, const gchar *capability,
-		const char *devnode, int bluetooth)
+		const char *devnode)
 {
 	switch (service) {
 	case OBEX_OPUSH:
-		if (bluetooth)
-			bluetooth_init(OBEX_OPUSH, "OBEX OPUSH server",
-					root_path, OPUSH_CHANNEL, FALSE,
-					auto_accept, capability);
+		bluetooth_init(OBEX_OPUSH, "OBEX OPUSH server",
+				root_path, OPUSH_CHANNEL, FALSE,
+				auto_accept, capability);
 		if (devnode)
 			tty_init(OBEX_OPUSH, root_path, capability,
 					devnode);
 		break;
 	case OBEX_FTP:
-		if (bluetooth)
-			bluetooth_init(OBEX_FTP, "OBEX FTP server",
-					root_path, FTP_CHANNEL, TRUE,
-					auto_accept, capability);
+		bluetooth_init(OBEX_FTP, "OBEX FTP server",
+				root_path, FTP_CHANNEL, TRUE,
+				auto_accept, capability);
 
 		if (devnode)
 			tty_init(OBEX_FTP, root_path, capability, devnode);
@@ -148,7 +146,6 @@ static void usage(void)
 		"\t-r, --root <path>         Specify root folder location\n"
 		"\t-c, --capability <file>   Specify the capability file.\n"
 		"\t-t, --tty <devnode>       Specify the TTY device\n"
-		"\t-b, --bluetooth           Enable bluetooth support\n"
 		"\t-a, --auto-accept         Automatically accept push requests\n"
 		"\t-h, --help                Display help\n");
 	printf("Servers:\n"
@@ -166,7 +163,6 @@ static struct option options[] = {
 	{ "root",        1, 0, 'r' },
 	{ "capability",  1, 0, 'c' },
 	{ "tty",         1, 0, 't' },
-	{ "bluetooth",   0, 0, 'b' },
 	{ "auto-accept", 0, 0, 'a' },
 	{ }
 };
@@ -178,12 +174,11 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	int log_option = LOG_NDELAY | LOG_PID;
 	int opt, detach = 1, debug = 0, opush = 0, ftp = 0, auto_accept = 0;
-	int bluetooth = 0;
 	const char *root_path = DEFAULT_ROOT_PATH;
 	const char *capability = DEFAULT_CAP_FILE;
 	const char *devnode = NULL;
 
-	while ((opt = getopt_long(argc, argv, "+ndhofr:c:t:ab", options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+ndhofr:c:t:a", options, NULL)) != EOF) {
 		switch(opt) {
 		case 'n':
 			detach = 0;
@@ -206,9 +201,6 @@ int main(int argc, char *argv[])
 		case 't':
 			devnode = optarg;
 			break;
-		case 'b':
-			bluetooth = 1;
-			break;
 		case 'a':
 			auto_accept = 1;
 			break;
@@ -226,12 +218,6 @@ int main(int argc, char *argv[])
 	if (!(opush || ftp)) {
 		fprintf(stderr, "No server selected (use either "
 					"--opp or --ftp or both)\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (!(bluetooth || devnode)) {
-		fprintf(stderr, "No transport selected (use either "
-					"--bluetooth or --tty or both)\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -266,11 +252,11 @@ int main(int argc, char *argv[])
 
 	if (opush)
 		server_start(OBEX_OPUSH, root_path, auto_accept,
-				NULL, devnode, bluetooth);
+				NULL, devnode);
 
 	if (ftp)
 		server_start(OBEX_FTP, root_path, auto_accept,
-				capability, devnode, bluetooth);
+				capability, devnode);
 
 	if (!manager_init(conn)) {
 		error("manager_init failed");
