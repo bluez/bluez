@@ -27,7 +27,6 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
 #include <bluetooth/bnep.h>
 #include <bluetooth/sdp.h>
 
@@ -44,13 +43,153 @@
 #include "connection.h"
 #include "server.h"
 
-static struct network_conf *conf = NULL;/* Network service configuration */
+#define IFACE_PREFIX "bnep%d"
+#define GN_IFACE  "pan0"
+#define NAP_IFACE "pan1"
 
 static struct btd_adapter_driver network_panu_server_driver;
 static struct btd_adapter_driver network_gn_server_driver;
 static struct btd_adapter_driver network_nap_server_driver;
 
 static DBusConnection *connection = NULL;
+
+static struct network_conf {
+	gboolean connection_enabled;
+	gboolean server_enabled;
+	gboolean security;
+	char *iface_prefix;
+	char *panu_script;
+	char *gn_script;
+	char *nap_script;
+	char *gn_iface;
+	char *nap_iface;
+} conf = {
+	.connection_enabled = TRUE,
+	.server_enabled = TRUE,
+	.security = TRUE,
+	.iface_prefix = NULL,
+	.panu_script = NULL,
+	.gn_script = NULL,
+	.nap_script = NULL,
+	.gn_iface = NULL,
+	.nap_iface = NULL
+};
+
+static void conf_cleanup(void)
+{
+	g_free(conf.iface_prefix);
+	g_free(conf.panu_script);
+	g_free(conf.gn_script);
+	g_free(conf.nap_script);
+	g_free(conf.gn_iface);
+	g_free(conf.nap_iface);
+}
+
+static void read_config(const char *file)
+{
+	GKeyFile *keyfile;
+	GError *err = NULL;
+	char **disabled;
+
+	keyfile = g_key_file_new();
+
+	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
+		error("Parsing %s failed: %s", file, err->message);
+		g_error_free(err);
+		goto done;
+	}
+
+	disabled = g_key_file_get_string_list(keyfile, "General",
+						"Disable", NULL, &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	} else {
+		int i;
+		for (i = 0; disabled[i] != NULL; i++) {
+			if (g_str_equal(disabled[i], "Connection"))
+				conf.connection_enabled = FALSE;
+			else if (g_str_equal(disabled[i], "Server"))
+				conf.server_enabled = FALSE;
+		}
+		g_strfreev(disabled);
+	}
+
+	conf.security = !g_key_file_get_boolean(keyfile, "General",
+						"DisableSecurity", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
+
+	conf.panu_script = g_key_file_get_string(keyfile, "PANU Role",
+						"Script", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
+
+	conf.gn_script = g_key_file_get_string(keyfile, "GN Role",
+						"Script", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
+
+	conf.nap_script = g_key_file_get_string(keyfile, "NAP Role",
+						"Script", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
+
+	conf.iface_prefix = g_key_file_get_string(keyfile, "PANU Role",
+						"Interface", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
+
+	conf.gn_iface = g_key_file_get_string(keyfile, "GN Role",
+						"Interface", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
+
+	conf.nap_iface = g_key_file_get_string(keyfile, "NAP Role",
+						"Interface", &err);
+	if (err) {
+		debug("%s: %s", file, err->message);
+		g_error_free(err);
+		err = NULL;
+	}
+
+done:
+	g_key_file_free(keyfile);
+
+	if (!conf.iface_prefix)
+		conf.iface_prefix = g_strdup(IFACE_PREFIX);
+
+	if (!conf.gn_iface)
+		conf.gn_iface = g_strdup(GN_IFACE);
+	if (!conf.nap_iface)
+		conf.nap_iface = g_strdup(NAP_IFACE);
+
+	debug("Config options: InterfacePrefix=%s, PANU_Script=%s, "
+		"GN_Script=%s, NAP_Script=%s, GN_Interface=%s, "
+		"NAP_Interface=%s, Security=%s",
+		conf.iface_prefix, conf.panu_script, conf.gn_script,
+		conf.nap_script, conf.gn_iface, conf.nap_iface,
+		conf.security ? "true" : "false");
+}
 
 static int network_probe(struct btd_device *device, GSList *records,
 			uint16_t id)
@@ -118,7 +257,7 @@ static int network_server_probe(struct btd_adapter *adapter, uint16_t id)
 
 	DBG("path %s", path);
 
-	if (!conf->server_enabled)
+	if (!conf.server_enabled)
 		return 0;
 
 	source = adapter_get_address(adapter);
@@ -205,11 +344,11 @@ static struct btd_adapter_driver network_nap_server_driver = {
 	.remove	= nap_server_remove,
 };
 
-int network_manager_init(DBusConnection *conn, struct network_conf *service_conf)
+int network_manager_init(DBusConnection *conn)
 {
-	conf = service_conf;
+	read_config(CONFIGDIR "/network.conf");
 
-	if (bnep_init(conf->panu_script, conf->gn_script, conf->nap_script)) {
+	if (bnep_init(conf.panu_script, conf.gn_script, conf.nap_script)) {
 		error("Can't init bnep module");
 		return -1;
 	}
@@ -220,12 +359,12 @@ int network_manager_init(DBusConnection *conn, struct network_conf *service_conf
 	 * (setup connection request) contains the destination service
 	 * field that defines which service the source is connecting to.
 	 */
-	if (bridge_init(conf->gn_iface, conf->nap_iface) < 0) {
+	if (bridge_init(conf.gn_iface, conf.nap_iface) < 0) {
 		error("Can't init bridge module");
 		return -1;
 	}
 
-	if (server_init(conn, conf->iface_prefix, conf->security) < 0)
+	if (server_init(conn, conf.iface_prefix, conf.security) < 0)
 		return -1;
 
 	/* Register PANU, GN and NAP servers if they don't exist */
@@ -234,7 +373,7 @@ int network_manager_init(DBusConnection *conn, struct network_conf *service_conf
 	btd_register_adapter_driver(&network_gn_server_driver);
 	btd_register_adapter_driver(&network_nap_server_driver);
 
-	if (connection_init(conn, conf->iface_prefix) < 0)
+	if (connection_init(conn, conf.iface_prefix) < 0)
 		return -1;
 
 	btd_register_device_driver(&network_panu_driver);
@@ -248,10 +387,10 @@ int network_manager_init(DBusConnection *conn, struct network_conf *service_conf
 
 void network_manager_exit(void)
 {
-	if (conf->server_enabled)
+	if (conf.server_enabled)
 		server_exit();
 
-	if (conf->connection_enabled) {
+	if (conf.connection_enabled) {
 		btd_unregister_device_driver(&network_panu_driver);
 		btd_unregister_device_driver(&network_gn_driver);
 		btd_unregister_device_driver(&network_nap_driver);
@@ -263,4 +402,5 @@ void network_manager_exit(void)
 
 	bnep_cleanup();
 	bridge_cleanup();
+	conf_cleanup();
 }

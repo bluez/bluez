@@ -21,17 +21,5 @@
  *
  */
 
-struct network_conf {
-	gboolean connection_enabled;
-	gboolean server_enabled;
-	gboolean security;
-	char *iface_prefix;
-	char *panu_script;
-	char *gn_script;
-	char *nap_script;
-	char *gn_iface;
-	char *nap_iface;
-};
-
-int network_manager_init(DBusConnection *conn, struct network_conf *service_conf);
+int network_manager_init(DBusConnection *conn);
 void network_manager_exit(void);
