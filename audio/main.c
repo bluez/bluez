@@ -29,7 +29,6 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -39,6 +38,8 @@
 #include "unix.h"
 #include "device.h"
 #include "manager.h"
+
+static DBusConnection *connection = NULL;
 
 static GKeyFile *load_config_file(const char *file)
 {
@@ -59,11 +60,10 @@ static GKeyFile *load_config_file(const char *file)
 
 static int audio_init(void)
 {
-	DBusConnection *conn;
 	GKeyFile *config;
 
-	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (conn == NULL)
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
 		return -EIO;
 
 	config = load_config_file(CONFIGDIR "/audio.conf");
@@ -73,8 +73,8 @@ static int audio_init(void)
 		return -EIO;
 	}
 
-	if (audio_manager_init(conn, config) < 0) {
-		dbus_connection_unref(conn);
+	if (audio_manager_init(connection, config) < 0) {
+		dbus_connection_unref(connection);
 		return -EIO;
 	}
 
@@ -86,6 +86,8 @@ static void audio_exit(void)
 	audio_manager_exit();
 
 	unix_exit();
+
+	dbus_connection_unref(connection);
 }
 
 BLUETOOTH_PLUGIN_DEFINE("audio", audio_init, audio_exit)
