@@ -1996,11 +1996,6 @@ int headset_get_sco_fd(struct audio_device *dev)
 	return g_io_channel_unix_get_fd(hs->sco);
 }
 
-void telephony_features_rsp(uint32_t features)
-{
-	ag.features = features;
-}
-
 int telephony_event_ind(int index)
 {
 	struct headset *hs;
