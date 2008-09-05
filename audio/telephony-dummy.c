@@ -76,7 +76,7 @@ int telephony_response_and_hold_req(int rh)
 	return 0;
 }
 
-int telephony_last_dialed_number(void)
+int telephony_last_dialed_number_req(void)
 {
 	/* Notify outgoing call set-up successfully initiated */
 	telephony_update_indicator(dummy_indicators, "callsetup",
@@ -84,7 +84,7 @@ int telephony_last_dialed_number(void)
 	return 0;
 }
 
-int telephony_terminate_call(void)
+int telephony_terminate_call_req(void)
 {
 	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0)
 		telephony_update_indicator(dummy_indicators, "callsetup",
@@ -95,7 +95,7 @@ int telephony_terminate_call(void)
 	return 0;
 }
 
-int telephony_answer_call(void)
+int telephony_answer_call_req(void)
 {
 	telephony_update_indicator(dummy_indicators, "call", EV_CALL_ACTIVE);
 	telephony_update_indicator(dummy_indicators, "callsetup",
@@ -103,7 +103,7 @@ int telephony_answer_call(void)
 	return 0;
 }
 
-int telephony_dial_number(const char *number)
+int telephony_dial_number_req(const char *number)
 {
 	/* Notify outgoing call set-up successfully initiated */
 	telephony_update_indicator(dummy_indicators, "callsetup",
@@ -143,7 +143,7 @@ static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_INCOMING);
 
-	telephony_notify_call(number);
+	telephony_calling_started_ind(number);
 
 	return dbus_message_new_method_return(msg);;
 }
@@ -156,7 +156,7 @@ static DBusMessage *cancel_call(DBusConnection *conn, DBusMessage *msg,
 	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0) {
 		telephony_update_indicator(dummy_indicators, "callsetup",
 						EV_CALLSETUP_INACTIVE);
-		telephony_stop_calling();
+		telephony_calling_stopped_ind();
 	}
 
 	if (telephony_get_indicator(dummy_indicators, "call") > 0)

@@ -70,17 +70,17 @@ int telephony_response_and_hold_req(int rh);
 
 int telephony_response_and_hold_ind(int rh);
 
-int telephony_last_dialed_number(void);
+int telephony_last_dialed_number_req(void);
 
-int telephony_terminate_call(void);
+int telephony_terminate_call_req(void);
 
-int telephony_answer_call(void);
+int telephony_answer_call_req(void);
 
-int telephony_dial_number(const char *number);
+int telephony_dial_number_req(const char *number);
 
-int telephony_notify_call(const char *number);
+int telephony_calling_started_ind(const char *number);
 
-int telephony_stop_calling(void);
+int telephony_calling_stopped_ind(void);
 
 int telephony_ready(uint32_t features, const struct indicator *indicators,
 			int rh);

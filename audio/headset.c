@@ -603,7 +603,7 @@ static int answer_call(struct audio_device *device, const char *buf)
 
 	ag.ev_buf_active = TRUE;
 
-	if (telephony_answer_call() < 0) {
+	if (telephony_answer_call_req() < 0) {
 		headset_send(hs, "\r\nERROR\r\n");
 		return 0;
 	}
@@ -630,7 +630,7 @@ static int terminate_call(struct audio_device *device, const char *buf)
 
 	ag.ev_buf_active = TRUE;
 
-	if (telephony_terminate_call() < 0) {
+	if (telephony_terminate_call_req() < 0) {
 		headset_send(hs, "\r\nERROR\r\n");
 		return 0;
 	}
@@ -691,7 +691,7 @@ static int last_dialed_number(struct audio_device *device, const char *buf)
 
 	ag.ev_buf_active = TRUE;
 
-	if (telephony_last_dialed_number() < 0) {
+	if (telephony_last_dialed_number_req() < 0) {
 		headset_send(hs, "\r\nERROR\r\n");
 		return 0;
 	}
@@ -708,7 +708,7 @@ static int dial_number(struct audio_device *device, const char *buf)
 
 	ag.ev_buf_active = TRUE;
 
-	if (telephony_dial_number(&buf[3]) < 0) {
+	if (telephony_dial_number_req(&buf[3]) < 0) {
 		headset_send(hs, "\r\nERROR\r\n");
 		return 0;
 	}
@@ -2126,7 +2126,7 @@ int telephony_response_and_hold_ind(int rh)
 	return headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
 }
 
-int telephony_notify_call(const char *number)
+int telephony_calling_started_ind(const char *number)
 {
 	struct headset *hs;
 
@@ -2160,7 +2160,7 @@ int telephony_notify_call(const char *number)
 	return 0;
 }
 
-int telephony_stop_calling(void)
+int telephony_calling_stopped_ind(void)
 {
 	struct headset *hs;
 
