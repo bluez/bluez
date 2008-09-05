@@ -2094,8 +2094,8 @@ int telephony_calling_stopped_ind(void)
 	return 0;
 }
 
-int telephony_ready(uint32_t features, const struct indicator *indicators,
-			int rh)
+int telephony_ready_ind(uint32_t features,
+			const struct indicator *indicators, int rh)
 {
 	ag.telephony_ready = TRUE;
 	ag.features = features;

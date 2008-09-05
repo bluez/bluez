@@ -271,7 +271,7 @@ int telephony_init(void)
 					dummy_methods, NULL,
 					NULL, NULL, NULL);
 
-	telephony_ready(features, dummy_indicators, response_and_hold);
+	telephony_ready_ind(features, dummy_indicators, response_and_hold);
 
 	return 0;
 }

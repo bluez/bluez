@@ -82,7 +82,7 @@ int telephony_calling_started_ind(const char *number);
 
 int telephony_calling_stopped_ind(void);
 
-int telephony_ready(uint32_t features, const struct indicator *indicators,
+int telephony_ready_ind(uint32_t features, const struct indicator *indicators,
 			int rh);
 
 /* Helper function for quick indicator updates */
