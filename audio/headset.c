@@ -181,6 +181,78 @@ static int rfcomm_connect(struct audio_device *device, headset_stream_cb_t cb,
 static int get_records(struct audio_device *device, headset_stream_cb_t cb,
 			void *user_data, unsigned int *cb_id);
 
+static void print_ag_features(uint32_t features)
+{
+	GString *gstr;
+	char *str;
+
+	if (features == 0) {
+		debug("HFP AG features: (none)");
+		return;
+	}
+
+	gstr = g_string_new("HFP AG features: ");
+
+	if (features & AG_FEATURE_THREE_WAY_CALLING)
+		g_string_append(gstr, "\"Three-way calling\" ");
+	if (features & AG_FEATURE_EC_ANDOR_NR)
+		g_string_append(gstr, "\"EC and/or NR function\" ");
+	if (features & AG_FEATURE_VOICE_RECOGNITION)
+		g_string_append(gstr, "\"Voice recognition function\" ");
+	if (features & AG_FEATURE_INBAND_RINGTONE)
+		g_string_append(gstr, "\"In-band ring tone capability\" ");
+	if (features & AG_FEATURE_ATTACH_NUMBER_TO_VOICETAG)
+		g_string_append(gstr, "\"Attach a number to a voice tag\" ");
+	if (features & AG_FEATURE_REJECT_A_CALL)
+		g_string_append(gstr, "\"Ability to reject a call\" ");
+	if (features & AG_FEATURE_ENHANCED_CALL_STATUS)
+		g_string_append(gstr, "\"Enhanced call status\" ");
+	if (features & AG_FEATURE_ENHANCED_CALL_CONTROL)
+		g_string_append(gstr, "\"Enhanced call control\" ");
+	if (features & AG_FEATURE_EXTENDED_ERROR_RESULT_CODES)
+		g_string_append(gstr, "\"Extended Error Result Codes\" ");
+
+	str = g_string_free(gstr, FALSE);
+
+	debug("%s", str);
+
+	g_free(str);
+}
+
+static void print_hf_features(uint32_t features)
+{
+	GString *gstr;
+	char *str;
+
+	if (features == 0) {
+		debug("HFP HF features: (none)");
+		return;
+	}
+
+	gstr = g_string_new("HFP HF features: ");
+
+	if (features & HF_FEATURE_EC_ANDOR_NR)
+		g_string_append(gstr, "\"EC and/or NR function\" ");
+	if (features & HF_FEATURE_CALL_WAITING_AND_3WAY)
+		g_string_append(gstr, "\"Call waiting and 3-way calling\" ");
+	if (features & HF_FEATURE_CLI_PRESENTATION)
+		g_string_append(gstr, "\"CLI presentation capability\" ");
+	if (features & HF_FEATURE_VOICE_RECOGNITION)
+		g_string_append(gstr, "\"Voice recognition activation\" ");
+	if (features & HF_FEATURE_REMOTE_VOLUME_CONTROL)
+		g_string_append(gstr, "\"Remote volume control\" ");
+	if (features & HF_FEATURE_ENHANCED_CALL_STATUS)
+		g_string_append(gstr, "\"Enhanced call status\" ");
+	if (features & HF_FEATURE_ENHANCED_CALL_CONTROL)
+		g_string_append(gstr, "\"Enhanced call control\" ");
+
+	str = g_string_free(gstr, FALSE);
+
+	debug("%s", str);
+
+	g_free(str);
+}
+
 static int headset_send(struct headset *hs, char *format, ...)
 {
 	char rsp[BUF_SIZE];
@@ -266,6 +338,9 @@ static int supported_features(struct audio_device *device, const char *buf)
 		return -EINVAL;
 
 	hs->hfp_features = strtoul(&buf[8], NULL, 10);
+
+	print_hf_features(hs->hfp_features);
+
 	err = headset_send(hs, "\r\n+BRSF=%u\r\n", ag.features);
 	if (err < 0)
 		return err;
@@ -2103,6 +2178,8 @@ int telephony_ready_ind(uint32_t features,
 	ag.rh = rh;
 
 	debug("Telephony plugin initialized");
+
+	print_ag_features(ag.features);
 
 	return 0;
 }
