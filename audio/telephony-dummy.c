@@ -30,8 +30,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <glib.h>
+#include <dbus/dbus.h>
+#include <gdbus.h>
 
+#include "logging.h"
 #include "telephony.h"
+
+DBusConnection *connection = NULL;
 
 static gboolean events_enabled = FALSE;
 
@@ -98,9 +103,108 @@ int telephony_answer_call(void)
 	return 0;
 }
 
+/* D-Bus method handlers */
+static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	const char *number;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &number,
+						DBUS_TYPE_INVALID))
+		return NULL;
+
+	debug("telephony-dummy: outgoing call to %s", number);
+
+	return dbus_message_new_method_return(msg);;
+}
+
+static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	const char *number;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &number,
+						DBUS_TYPE_INVALID))
+		return NULL;
+
+	debug("telephony-dummy: incoming call to %s", number);
+
+	return dbus_message_new_method_return(msg);;
+}
+
+static DBusMessage *cancel_call(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	debug("telephony-dummy: cancel call");
+
+	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0)
+		telephony_update_indicator(dummy_indicators, "callsetup",
+						EV_CALLSETUP_INACTIVE);
+	if (telephony_get_indicator(dummy_indicators, "call") > 0)
+		telephony_update_indicator(dummy_indicators, "call",
+						EV_CALL_INACTIVE);
+
+	return dbus_message_new_method_return(msg);;
+}
+
+
+static DBusMessage *signal_strength(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	dbus_uint32_t strength;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &strength,
+						DBUS_TYPE_INVALID))
+		return NULL;
+
+	if (strength > 5)
+		return NULL;
+
+	telephony_update_indicator(dummy_indicators, "signal", strength);
+
+	debug("telephony-dummy: signal strength set to %u", strength);
+
+	return dbus_message_new_method_return(msg);;
+}
+
+static DBusMessage *battery_level(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	dbus_uint32_t level;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &level,
+						DBUS_TYPE_INVALID))
+		return NULL;
+
+	if (level > 5)
+		return NULL;
+
+	telephony_update_indicator(dummy_indicators, "battchg", level);
+
+	debug("telephony-dummy: battery level set to %u", level);
+
+	return dbus_message_new_method_return(msg);;
+}
+
+static GDBusMethodTable dummy_methods[] = {
+	{ "OutgoingCall",	"s",	"",	outgoing_call	},
+	{ "IncomingCall",	"s",	"",	incoming_call	},
+	{ "CancelCall",		"",	"",	cancel_call	},
+	{ "SignalStrength",	"u",	"",	signal_strength	},
+	{ "BatteryLevel",	"u",	"",	battery_level	},
+	{ }
+};
+
 int telephony_init(void)
 {
 	uint32_t features = 0;
+
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+
+	g_dbus_register_interface(connection, "/org/bluez/test",
+					"org.bluez.TelephonyTest",
+					dummy_methods, NULL,
+					NULL, NULL, NULL);
 
 	telephony_ready(features, dummy_indicators, response_and_hold);
 
@@ -109,4 +213,6 @@ int telephony_init(void)
 
 void telephony_exit(void)
 {
+	dbus_connection_unref(connection);
+	connection = NULL;
 }
