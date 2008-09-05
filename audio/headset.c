@@ -1295,7 +1295,7 @@ done:
 	return reply;
 }
 
-static DBusMessage *hs_cancel_ringing(DBusConnection *conn,
+static DBusMessage *hs_cancel_call(DBusConnection *conn,
 					DBusMessage *msg,
 					void *data)
 {
@@ -1312,26 +1312,11 @@ static DBusMessage *hs_cancel_ringing(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
-	if (!hs->ring_timer) {
-		debug("Got CancelRinging method call but ringing is not in progress");
-		goto done;
-	}
-
-	g_source_remove(hs->ring_timer);
-	hs->ring_timer = 0;
-
-done:
-	if (hs->hfp_active) {
-		int err;
-		/*+CIEV: (callsetup = 0)*/
-		err = headset_send(hs, "\r\n+CIEV:3,0\r\n");
-		if (err < 0) {
-			dbus_message_unref(reply);
-			return g_dbus_create_error(msg, ERROR_INTERFACE
-						".Failed", "%s",
-						strerror(-err));
-		}
-	}
+	if (hs->ring_timer) {
+		g_source_remove(hs->ring_timer);
+		hs->ring_timer = 0;
+	} else
+		debug("Got CancelCall method call but no call is active");
 
 	return reply;
 }
@@ -1589,7 +1574,7 @@ static GDBusMethodTable headset_methods[] = {
 	{ "Disconnect",		"",	"",	hs_disconnect },
 	{ "IsConnected",	"",	"b",	hs_is_connected },
 	{ "IndicateCall",	"",	"",	hs_ring },
-	{ "CancelCall",		"",	"",	hs_cancel_ringing },
+	{ "CancelCall",		"",	"",	hs_cancel_call },
 	{ "Play",		"",	"",	hs_play,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Stop",		"",	"",	hs_stop },
