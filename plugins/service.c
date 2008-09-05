@@ -491,7 +491,7 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 {
 	/* FIXME implement the request */
 
-	return NULL;
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *cancel_authorization(DBusConnection *conn,
@@ -506,8 +506,7 @@ static GDBusMethodTable service_methods[] = {
 	{ "AddRecord",		"s",	"u",	add_service_record	},
 	{ "UpdateRecord",	"us",	"",	update_service_record	},
 	{ "RemoveRecord",	"u",	"",	remove_service_record	},
-	{ "RequestAuthorization","su",	"",	request_authorization,
-						G_DBUS_METHOD_FLAG_ASYNC},
+	{ "RequestAuthorization","su",	"",	request_authorization	},
 	{ "CancelAuthorization", "",	"",	cancel_authorization	},
 	{ }
 };
