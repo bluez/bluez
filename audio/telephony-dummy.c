@@ -123,6 +123,9 @@ static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 
 	debug("telephony-dummy: outgoing call to %s", number);
 
+	telephony_update_indicator(dummy_indicators, "callsetup",
+					EV_CALLSETUP_OUTGOING);
+
 	return dbus_message_new_method_return(msg);;
 }
 
@@ -137,6 +140,11 @@ static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
 
 	debug("telephony-dummy: incoming call to %s", number);
 
+	telephony_update_indicator(dummy_indicators, "callsetup",
+					EV_CALLSETUP_INCOMING);
+
+	telephony_notify_call(number);
+
 	return dbus_message_new_method_return(msg);;
 }
 
@@ -145,9 +153,12 @@ static DBusMessage *cancel_call(DBusConnection *conn, DBusMessage *msg,
 {
 	debug("telephony-dummy: cancel call");
 
-	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0)
+	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0) {
 		telephony_update_indicator(dummy_indicators, "callsetup",
 						EV_CALLSETUP_INACTIVE);
+		telephony_stop_calling();
+	}
+
 	if (telephony_get_indicator(dummy_indicators, "call") > 0)
 		telephony_update_indicator(dummy_indicators, "call",
 						EV_CALL_INACTIVE);

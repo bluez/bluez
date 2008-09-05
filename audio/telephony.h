@@ -78,6 +78,10 @@ int telephony_answer_call(void);
 
 int telephony_dial_number(const char *number);
 
+int telephony_notify_call(const char *number);
+
+int telephony_stop_calling(void);
+
 int telephony_ready(uint32_t features, const struct indicator *indicators,
 			int rh);
 

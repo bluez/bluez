@@ -2126,6 +2126,58 @@ int telephony_response_and_hold_ind(int rh)
 	return headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
 }
 
+int telephony_notify_call(const char *number)
+{
+	struct headset *hs;
+
+	if (!active_telephony_device)
+		return -ENODEV;
+
+	hs = active_telephony_device->headset;
+
+	if (hs->ring_timer) {
+		debug("telephony_notify_call: already calling");
+		return -EBUSY;
+	}
+
+	if (hs->ph_number) {
+		g_free(hs->ph_number);
+		hs->ph_number = NULL;
+	}
+
+	if (number)
+		hs->ph_number = g_strdup(number);
+
+	headset_send(hs, "\r\nRING\r\n");
+
+	if (hs->cli_active && hs->ph_number)
+		headset_send(hs, "\r\n+CLIP:\"%s\",%d\r\n",
+				hs->ph_number, hs->type);
+
+	hs->ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb,
+					active_telephony_device);
+
+	return 0;
+}
+
+int telephony_stop_calling(void)
+{
+	struct headset *hs;
+
+	if (!active_telephony_device)
+		return -ENODEV;
+
+	hs = active_telephony_device->headset;
+
+	if (!hs->ring_timer)
+		return -EINVAL;
+
+	g_source_remove(hs->ring_timer);
+	hs->ring_timer = 0;
+
+	return 0;
+}
+
 int telephony_ready(uint32_t features, const struct indicator *indicators,
 			int rh)
 {
