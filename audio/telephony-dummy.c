@@ -81,6 +81,8 @@ int telephony_last_dialed_number_req(void)
 	/* Notify outgoing call set-up successfully initiated */
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_OUTGOING);
+	telephony_update_indicator(dummy_indicators, "callsetup",
+					EV_CALLSETUP_ALERTING);
 	return 0;
 }
 
@@ -108,6 +110,8 @@ int telephony_dial_number_req(const char *number)
 	/* Notify outgoing call set-up successfully initiated */
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_OUTGOING);
+	telephony_update_indicator(dummy_indicators, "callsetup",
+					EV_CALLSETUP_ALERTING);
 	return 0;
 }
 
@@ -125,6 +129,8 @@ static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_OUTGOING);
+	telephony_update_indicator(dummy_indicators, "callsetup",
+					EV_CALLSETUP_ALERTING);
 
 	return dbus_message_new_method_return(msg);;
 }
