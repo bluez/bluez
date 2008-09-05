@@ -906,9 +906,6 @@ cleanup:
 		device->discov_requestor = NULL;
 	}
 
-	if (recs != NULL)
-		sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
-
 	dbus_message_unref(req->msg);
 	dbus_connection_unref(req->conn);
 	g_slist_free(req->uuids_added);

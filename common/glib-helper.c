@@ -157,6 +157,9 @@ done:
 	if (ctxt->cb)
 		ctxt->cb(recs, err, ctxt->user_data);
 
+	if (recs)
+		sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
+
 	search_context_cleanup(ctxt);
 }
 

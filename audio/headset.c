@@ -1103,7 +1103,6 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	}
 
 	sdp_list_free(classes, free);
-	sdp_record_free(record);
 
 	return;
 
@@ -1116,8 +1115,6 @@ failed_not_supported:
 failed:
 	if (classes)
 		sdp_list_free(classes, free);
-	if (record)
-		sdp_record_free(record);
 	pending_connect_finalize(dev);
 	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 }
