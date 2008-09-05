@@ -767,6 +767,14 @@ static void services_changed(struct browse_req *req)
 	g_free(uuids);
 }
 
+static int rec_cmp(const void *a, const void *b)
+{
+	const sdp_record_t *r1 = a;
+	const sdp_record_t *r2 = b;
+
+	return r1->handle - r2->handle;
+}
+
 static void update_services(struct browse_req *req, sdp_list_t *recs)
 {
 	struct btd_device *device = req->device;
@@ -794,8 +802,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 			continue;
 
 		/* Check for duplicates */
-		if (g_slist_find_custom(req->uuids_added, uuid_str,
-						(GCompareFunc) strcmp))
+		if (sdp_list_find(req->records, rec, rec_cmp))
 			continue;
 
 		store_record(src, dst, rec);
