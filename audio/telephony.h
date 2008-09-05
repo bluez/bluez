@@ -23,6 +23,8 @@
  */
 
 #include <stdint.h>
+#include <errno.h>
+#include <glib.h>
 
 #define AG_FEATURE_THREE_WAY_CALLING             0x0001
 #define AG_FEATURE_EC_ANDOR_NR                   0x0002
@@ -48,7 +50,32 @@ int telephony_response_and_hold_req(int rh);
 
 int telephony_response_and_hold_ind(int rh);
 
+int telephony_last_dialed_number(void);
+
 int telephony_ready(uint32_t features, struct indicator *indicators, int rh);
+
+/* Helper function for quick indicator updates */
+static inline int telephony_update_indicator(struct indicator *indicators,
+						const char *desc,
+						int new_val)
+{
+	int i;
+	struct indicator *ind = NULL;
+
+	for (i = 0; indicators[i].desc != NULL; i++) {
+		if (g_str_equal(indicators[i].desc, desc)) {
+			ind = &indicators[i];
+			break;
+		}
+	}
+
+	if (!ind)
+		return -ENOENT;
+
+	ind->val = new_val;
+
+	return telephony_event_ind(i);
+}
 
 int telephony_init(void);
 void telephony_exit(void);

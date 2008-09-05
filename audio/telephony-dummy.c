@@ -43,7 +43,7 @@ static gboolean events_enabled = FALSE;
  */
 static int response_and_hold = -1;
 
-static struct indicator indicators[] =
+static struct indicator dummy_indicators[] =
 {
 	{ "battchg",	"0-5",	5 },
 	{ "signal",	"0-5",	5 },
@@ -71,11 +71,19 @@ int telephony_response_and_hold_req(int rh)
 	return 0;
 }
 
+int telephony_last_dialed_number(void)
+{
+	/* Notify outgoing call set-up successfully initiated */
+	telephony_update_indicator(dummy_indicators, "callsetup", 2);
+
+	return 0;
+}
+
 int telephony_init(void)
 {
 	uint32_t features = 0;
 
-	telephony_ready(features, indicators, response_and_hold);
+	telephony_ready(features, dummy_indicators, response_and_hold);
 
 	return 0;
 }

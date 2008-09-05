@@ -62,6 +62,9 @@
 
 #define RING_INTERVAL 3000
 
+/* Number of indicator events that can be queued */
+#define EV_BUF_SIZE 4
+
 #define BUF_SIZE 1024
 
 #define HEADSET_GAIN_SPEAKER 'S'
@@ -74,12 +77,19 @@ static struct {
 	int er_mode;			/* Event reporting mode */
 	int er_ind;			/* Event reporting for indicators */
 	int rh;				/* Response and Hold state */
+	gboolean ev_buf_active;		/* Buffer indicator events */
+	struct {
+		int index;		/* HFP indicator index */
+		int val;		/* new indicator value */
+	} ev_buf[EV_BUF_SIZE];		/* Indicator event buffer */
 } ag = {
 	.telephony_ready = FALSE,
 	.features = 0,
 	.er_mode = 3,
 	.er_ind = 0,
 	.rh = -1,
+	.ev_buf_active = FALSE,
+	.ev_buf = { { 0, 0 } },
 };
 
 static gboolean sco_hci = TRUE;
@@ -199,6 +209,49 @@ static int headset_send(struct headset *hs, char *format, ...)
 			return -errno;
 
 		total_written += written;
+	}
+
+	return 0;
+}
+
+static int buffer_event(int index)
+{
+	int i;
+
+	for (i = 0; i < EV_BUF_SIZE; i++) {
+		if (ag.ev_buf[i].index == 0) {
+			ag.ev_buf[i].index = index + 1;
+			ag.ev_buf[i].val = ag.indicators[index].val;
+			return 0;
+		}
+	}
+
+	error("No space in event buffer");
+	return -ENOSPC;
+}
+
+static int flush_events(void)
+{
+	int i;
+	struct headset *hs;
+
+	if (!active_telephony_device)
+		return -ENODEV;
+
+	hs = active_telephony_device->headset;
+
+	for (i = 0; i < EV_BUF_SIZE; i++) {
+		int ret;
+
+		if (ag.ev_buf[i].index == 0)
+			break;
+
+		ret = headset_send(hs, "\r\n+CIEV:%d,%d\r\n",
+					ag.ev_buf[i].index, ag.ev_buf[i].val);
+		if (ret < 0)
+			return ret;
+
+		ag.ev_buf[i].index = 0;
 	}
 
 	return 0;
@@ -622,6 +675,23 @@ static int response_and_hold(struct audio_device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\n\r", ag.rh);
 }
 
+static int last_dialed_number(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	ag.ev_buf_active = TRUE;
+
+	if (telephony_last_dialed_number() < 0) {
+		headset_send(hs, "\r\nERROR\r\n");
+		return 0;
+	}
+
+	flush_events();
+	ag.ev_buf_active = FALSE;
+
+	return headset_send(hs, "\r\nOK\n\r", ag.rh);
+}
+
 static int signal_gain_setting(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
@@ -678,6 +748,7 @@ static struct event event_callbacks[] = {
 	{ "AT+CKPD", answer_call },
 	{ "AT+CLIP", cli_notification },
 	{ "AT+BTRH", response_and_hold },
+	{ "AT+BLDN", last_dialed_number },
 	{ 0 }
 };
 
@@ -2012,6 +2083,9 @@ int telephony_event_ind(int index)
 		debug("telephony_report_event called but events are disabled");
 		return -EINVAL;
 	}
+
+	if (ag.ev_buf_active)
+		return buffer_event(index);
 
 	return headset_send(hs, "\r\n+CIEV:%d,%d\r\n", index + 1,
 				ag.indicators[index].val);
