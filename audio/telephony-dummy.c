@@ -130,7 +130,7 @@ static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_ALERTING);
 
-	return dbus_message_new_method_return(msg);;
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
@@ -149,7 +149,7 @@ static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
 
 	telephony_calling_started_ind(number);
 
-	return dbus_message_new_method_return(msg);;
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *cancel_call(DBusConnection *conn, DBusMessage *msg,
@@ -167,7 +167,7 @@ static DBusMessage *cancel_call(DBusConnection *conn, DBusMessage *msg,
 		telephony_update_indicator(dummy_indicators, "call",
 						EV_CALL_INACTIVE);
 
-	return dbus_message_new_method_return(msg);;
+	return dbus_message_new_method_return(msg);
 }
 
 
@@ -187,7 +187,7 @@ static DBusMessage *signal_strength(DBusConnection *conn, DBusMessage *msg,
 
 	debug("telephony-dummy: signal strength set to %u", strength);
 
-	return dbus_message_new_method_return(msg);;
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *battery_level(DBusConnection *conn, DBusMessage *msg,
@@ -206,7 +206,7 @@ static DBusMessage *battery_level(DBusConnection *conn, DBusMessage *msg,
 
 	debug("telephony-dummy: battery level set to %u", level);
 
-	return dbus_message_new_method_return(msg);;
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *roaming_status(DBusConnection *conn, DBusMessage *msg,
@@ -225,7 +225,7 @@ static DBusMessage *roaming_status(DBusConnection *conn, DBusMessage *msg,
 
 	debug("telephony-dummy: roaming status set to %d", val);
 
-	return dbus_message_new_method_return(msg);;
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *registration_status(DBusConnection *conn, DBusMessage *msg,
@@ -244,7 +244,7 @@ static DBusMessage *registration_status(DBusConnection *conn, DBusMessage *msg,
 
 	debug("telephony-dummy: registration status set to %d", val);
 
-	return dbus_message_new_method_return(msg);;
+	return dbus_message_new_method_return(msg);
 }
 
 static GDBusMethodTable dummy_methods[] = {
