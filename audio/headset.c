@@ -702,6 +702,24 @@ static int last_dialed_number(struct audio_device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\n\r");
 }
 
+static int dial_number(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	ag.ev_buf_active = TRUE;
+
+	if (telephony_dial_number(&buf[3]) < 0) {
+		headset_send(hs, "\r\nERROR\r\n");
+		return 0;
+	}
+
+	flush_events();
+	ag.ev_buf_active = FALSE;
+
+	return headset_send(hs, "\r\nOK\n\r");
+}
+
+
 static int signal_gain_setting(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
@@ -749,6 +767,7 @@ ok:
 
 static struct event event_callbacks[] = {
 	{ "ATA", answer_call },
+	{ "ATD", dial_number },
 	{ "AT+VG", signal_gain_setting },
 	{ "AT+BRSF", supported_features },
 	{ "AT+CIND", report_indicators },

@@ -103,6 +103,14 @@ int telephony_answer_call(void)
 	return 0;
 }
 
+int telephony_dial_number(const char *number)
+{
+	/* Notify outgoing call set-up successfully initiated */
+	telephony_update_indicator(dummy_indicators, "callsetup",
+					EV_CALLSETUP_OUTGOING);
+	return 0;
+}
+
 /* D-Bus method handlers */
 static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 					void *data)

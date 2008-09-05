@@ -76,6 +76,8 @@ int telephony_terminate_call(void);
 
 int telephony_answer_call(void);
 
+int telephony_dial_number(const char *number);
+
 int telephony_ready(uint32_t features, const struct indicator *indicators,
 			int rh);
 
