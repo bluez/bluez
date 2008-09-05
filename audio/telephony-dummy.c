@@ -36,8 +36,6 @@
 #include "logging.h"
 #include "telephony.h"
 
-DBusConnection *connection = NULL;
-
 static gboolean events_enabled = FALSE;
 
 /* Response and hold state
@@ -259,6 +257,8 @@ static GDBusMethodTable dummy_methods[] = {
 	{ "RegistrationStatus",	"b",	"",	registration_status	},
 	{ }
 };
+
+static DBusConnection *connection = NULL;
 
 int telephony_init(void)
 {
