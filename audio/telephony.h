@@ -52,6 +52,8 @@ int telephony_response_and_hold_ind(int rh);
 
 int telephony_last_dialed_number(void);
 
+int telephony_terminate_call(void);
+
 int telephony_ready(uint32_t features, struct indicator *indicators, int rh);
 
 /* Helper function for quick indicator updates */
@@ -75,6 +77,19 @@ static inline int telephony_update_indicator(struct indicator *indicators,
 	ind->val = new_val;
 
 	return telephony_event_ind(i);
+}
+
+static inline int telephony_get_indicator(struct indicator *indicators,
+						const char *desc)
+{
+	int i;
+
+	for (i = 0; indicators[i].desc != NULL; i++) {
+		if (g_str_equal(indicators[i].desc, desc))
+			return indicators[i].val;
+	}
+
+	return -ENOENT;
 }
 
 int telephony_init(void);

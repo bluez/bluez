@@ -79,6 +79,16 @@ int telephony_last_dialed_number(void)
 	return 0;
 }
 
+int telephony_terminate_call(void)
+{
+	if (telephony_get_indicator(dummy_indicators, "callsetup" > 0))
+		telephony_update_indicator(dummy_indicators, "callsetup", 0);
+	else
+		telephony_update_indicator(dummy_indicators, "call", 0);
+
+	return 0;
+}
+
 int telephony_init(void)
 {
 	uint32_t features = 0;

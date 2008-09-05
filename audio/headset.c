@@ -619,15 +619,20 @@ static int answer_call(struct audio_device *device, const char *buf)
 static int terminate_call(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
-	int err;
+
+	ag.ev_buf_active = TRUE;
+
+	if (telephony_terminate_call() < 0) {
+		headset_send(hs, "\r\nERROR\r\n");
+		return 0;
+	}
+
+	flush_events();
+	ag.ev_buf_active = FALSE;
 
 	g_dbus_emit_signal(device->conn, device->path,
 			AUDIO_HEADSET_INTERFACE, "CallTerminated",
 			DBUS_TYPE_INVALID);
-
-	err = headset_send(hs, "\r\nOK\r\n");
-	if (err < 0)
-		return err;
 
 	if (hs->ph_number) {
 		g_free(hs->ph_number);
@@ -637,12 +642,9 @@ static int terminate_call(struct audio_device *device, const char *buf)
 	if (hs->ring_timer) {
 		g_source_remove(hs->ring_timer);
 		hs->ring_timer = 0;
-		/*+CIEV: (callsetup = 0)*/
-		return headset_send(hs, "\r\n+CIEV:3,0\r\n");
 	}
 
-	/*+CIEV: (call = 0)*/
-	return headset_send(hs, "\r\n+CIEV:2,0\r\n");
+	return headset_send(hs, "\r\nOK\n\r");
 }
 
 static int cli_notification(struct audio_device *device, const char *buf)
@@ -689,7 +691,7 @@ static int last_dialed_number(struct audio_device *device, const char *buf)
 	flush_events();
 	ag.ev_buf_active = FALSE;
 
-	return headset_send(hs, "\r\nOK\n\r", ag.rh);
+	return headset_send(hs, "\r\nOK\n\r");
 }
 
 static int signal_gain_setting(struct audio_device *device, const char *buf)
