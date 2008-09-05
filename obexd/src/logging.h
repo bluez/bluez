@@ -30,3 +30,6 @@ void enable_debug(void);
 void disable_debug(void);
 void start_logging(const char *ident, const char *message, ...);
 void stop_logging(void);
+
+#define DBG(fmt, arg...)  debug("%s: " fmt "\n" , __FUNCTION__ , ## arg)
+//#define DBG(fmt, arg...)

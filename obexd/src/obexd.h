@@ -21,11 +21,6 @@
  *
  */
 
-#include <stdio.h>
-
-#define DBG(fmt, arg...)  printf("%s: " fmt "\n" , __FUNCTION__ , ## arg)
-//#define DBG(fmt, arg...)
-
 gboolean plugin_init(void);
 void plugin_cleanup(void);
 
