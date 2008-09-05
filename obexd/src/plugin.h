@@ -21,21 +21,13 @@
  *
  */
 
-#include <stdio.h>
+struct obex_plugin_desc {
+	const char *name;
+	int (*init) (void);
+	void (*exit) (void);
+};
 
-#define DBG(fmt, arg...)  printf("%s: " fmt "\n" , __FUNCTION__ , ## arg)
-//#define DBG(fmt, arg...)
-
-gboolean plugin_init(void);
-void plugin_cleanup(void);
-
-#include <dbus/dbus.h>
-
-#define OPENOBEX_SERVICE  "org.openobex"
-
-#define OPENOBEX_MANAGER_PATH       "/"
-#define OPENOBEX_MANAGER_INTERFACE  OPENOBEX_SERVICE ".Manager"
-#define ERROR_INTERFACE		OPENOBEX_SERVICE ".Error"
-
-gboolean manager_init(DBusConnection *conn);
-void manager_cleanup(void);
+#define OBEX_PLUGIN_DEFINE(name,init,exit) \
+		struct obex_plugin_desc obex_plugin_desc = { \
+			name, init, exit \
+		};

@@ -250,16 +250,19 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	plugin_init();
+
 	if (opush)
 		server_start(OBEX_OPUSH, root_path, auto_accept,
-				NULL, devnode);
+							NULL, devnode);
 
 	if (ftp)
 		server_start(OBEX_FTP, root_path, auto_accept,
-				capability, devnode);
+							capability, devnode);
 
 	if (!manager_init(conn)) {
 		error("manager_init failed");
+		plugin_cleanup();
 		exit(EXIT_FAILURE);
 	}
 
@@ -271,6 +274,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	manager_cleanup();
+
+	plugin_cleanup();
 
 	server_stop();
 
