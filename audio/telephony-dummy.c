@@ -211,12 +211,52 @@ static DBusMessage *battery_level(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);;
 }
 
+static DBusMessage *roaming_status(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	dbus_bool_t roaming;
+	int val;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_BOOLEAN, &roaming,
+						DBUS_TYPE_INVALID))
+		return NULL;
+
+	val = roaming ? EV_ROAM_ACTIVE : EV_ROAM_INACTIVE;
+
+	telephony_update_indicator(dummy_indicators, "roam", val);
+
+	debug("telephony-dummy: roaming status set to %d", val);
+
+	return dbus_message_new_method_return(msg);;
+}
+
+static DBusMessage *registration_status(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	dbus_bool_t registration;
+	int val;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_BOOLEAN, &registration,
+						DBUS_TYPE_INVALID))
+		return NULL;
+
+	val = registration ? EV_SERVICE_PRESENT : EV_SERVICE_NONE;
+
+	telephony_update_indicator(dummy_indicators, "service", val);
+
+	debug("telephony-dummy: registration status set to %d", val);
+
+	return dbus_message_new_method_return(msg);;
+}
+
 static GDBusMethodTable dummy_methods[] = {
-	{ "OutgoingCall",	"s",	"",	outgoing_call	},
-	{ "IncomingCall",	"s",	"",	incoming_call	},
-	{ "CancelCall",		"",	"",	cancel_call	},
-	{ "SignalStrength",	"u",	"",	signal_strength	},
-	{ "BatteryLevel",	"u",	"",	battery_level	},
+	{ "OutgoingCall",	"s",	"",	outgoing_call		},
+	{ "IncomingCall",	"s",	"",	incoming_call		},
+	{ "CancelCall",		"",	"",	cancel_call		},
+	{ "SignalStrength",	"u",	"",	signal_strength		},
+	{ "BatteryLevel",	"u",	"",	battery_level		},
+	{ "RoamingStatus",	"b",	"",	roaming_status		},
+	{ "RegistrationStatus",	"b",	"",	registration_status	},
 	{ }
 };
 
