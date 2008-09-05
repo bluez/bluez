@@ -152,7 +152,7 @@ struct headset {
 	int sp_gain;
 	int mic_gain;
 
-	unsigned int hfp_features;
+	unsigned int hf_features;
 	headset_lock_t lock;
 };
 
@@ -337,9 +337,9 @@ static int supported_features(struct audio_device *device, const char *buf)
 	if (strlen(buf) < 9)
 		return -EINVAL;
 
-	hs->hfp_features = strtoul(&buf[8], NULL, 10);
+	hs->hf_features = strtoul(&buf[8], NULL, 10);
 
-	print_hf_features(hs->hfp_features);
+	print_hf_features(hs->hf_features);
 
 	err = headset_send(hs, "\r\n+BRSF=%u\r\n", ag.features);
 	if (err < 0)
