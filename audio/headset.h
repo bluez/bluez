@@ -22,7 +22,7 @@
  *
  */
 
-#define AUDIO_HEADSET_INTERFACE "org.bluez.audio.Headset"
+#define AUDIO_HEADSET_INTERFACE "org.bluez.Headset"
 
 #define DEFAULT_HS_AG_CHANNEL 12
 #define DEFAULT_HF_AG_CHANNEL 13

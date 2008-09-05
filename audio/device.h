@@ -22,8 +22,6 @@
  *
  */
 
-#define AUDIO_DEVICE_INTERFACE	"org.bluez.audio.Device"
-
 #define GENERIC_AUDIO_UUID	"00001203-0000-1000-8000-00805F9B34FB"
 
 #define HSP_HS_UUID		"00001108-0000-1000-8000-00805F9B34FB"
@@ -41,9 +39,9 @@
 #define AVRCP_TARGET_UUID	"0000110C-0000-1000-8000-00805F9B34FB"
 
 /* Move these to respective .h files once they exist */
-#define AUDIO_SOURCE_INTERFACE		"org.bluez.audio.Source"
-#define AUDIO_CONTROL_INTERFACE		"org.bluez.audio.Control"
-#define AUDIO_TARGET_INTERFACE		"org.bluez.audio.Target"
+#define AUDIO_SOURCE_INTERFACE		"org.bluez.Source"
+#define AUDIO_CONTROL_INTERFACE		"org.bluez.Control"
+#define AUDIO_TARGET_INTERFACE		"org.bluez.Target"
 
 struct source;
 struct control;
