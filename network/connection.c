@@ -123,12 +123,6 @@ static inline DBusMessage *not_connected(DBusMessage *msg)
 						"Device not connected");
 }
 
-static inline DBusMessage *no_pending_connect(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-					"Device has no pending connect");
-}
-
 static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
