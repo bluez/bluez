@@ -67,8 +67,8 @@
 #define DIALUP_NET_NAME		"dun"
 #define DIALUP_NET_UUID		"00001103-0000-1000-8000-00805F9B34FB"
 
-#define SERIAL_PROXY_INTERFACE	"org.bluez.serial.Proxy"
-#define SERIAL_MANAGER_INTERFACE "org.bluez.serial.ProxyManager"
+#define SERIAL_PROXY_INTERFACE	"org.bluez.SerialProxy"
+#define SERIAL_MANAGER_INTERFACE "org.bluez.SerialProxyManager"
 #define BUF_SIZE		1024
 
 typedef enum {

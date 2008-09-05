@@ -44,7 +44,7 @@
 #include "error.h"
 #include "common.h"
 
-#define NETWORK_PEER_INTERFACE "org.bluez.network.Peer"
+#define NETWORK_PEER_INTERFACE "org.bluez.Network"
 
 typedef enum {
 	CONNECTED,
