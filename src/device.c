@@ -787,12 +787,18 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 
 		if (sdp_get_service_classes(rec, &svcclass) < 0)
 			continue;
-		store_record(src, dst, rec);
 
 		/* Extract the first element and skip the remainning */
 		uuid_str = bt_uuid2string(svcclass->data);
 		if (!uuid_str)
 			continue;
+
+		/* Check for duplicates */
+		if (g_slist_find_custom(req->uuids_added, uuid_str,
+						(GCompareFunc) strcmp))
+			continue;
+
+		store_record(src, dst, rec);
 
 		/* Copy record */
 		if (sdp_gen_record_pdu(rec, &pdu) == 0) {
