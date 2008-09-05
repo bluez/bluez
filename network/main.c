@@ -32,11 +32,10 @@
 #include "plugin.h"
 #include "manager.h"
 
-static DBusConnection *connection = NULL;
+static DBusConnection *connection;
 
 static int network_init(void)
 {
-
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL)
 		return -EIO;
@@ -52,6 +51,7 @@ static int network_init(void)
 static void network_exit(void)
 {
 	network_manager_exit();
+
 	dbus_connection_unref(connection);
 }
 

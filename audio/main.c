@@ -39,8 +39,6 @@
 #include "device.h"
 #include "manager.h"
 
-static DBusConnection *connection = NULL;
-
 static GKeyFile *load_config_file(const char *file)
 {
 	GError *err = NULL;
@@ -57,6 +55,8 @@ static GKeyFile *load_config_file(const char *file)
 
 	return keyfile;
 }
+
+static DBusConnection *connection;
 
 static int audio_init(void)
 {

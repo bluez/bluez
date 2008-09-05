@@ -35,8 +35,6 @@
 #include "logging.h"
 #include "manager.h"
 
-DBusConnection *connection = NULL;
-
 static GKeyFile *load_config_file(const char *file)
 {
 	GKeyFile *keyfile;
@@ -53,6 +51,8 @@ static GKeyFile *load_config_file(const char *file)
 
 	return keyfile;
 }
+
+static DBusConnection *connection;
 
 static int input_init(void)
 {
@@ -78,6 +78,7 @@ static int input_init(void)
 static void input_exit(void)
 {
 	input_manager_exit();
+
 	dbus_connection_unref(connection);
 }
 

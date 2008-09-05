@@ -32,7 +32,7 @@
 #include "plugin.h"
 #include "manager.h"
 
-static DBusConnection *connection = NULL;
+static DBusConnection *connection;
 
 static int serial_init(void)
 {
@@ -51,6 +51,7 @@ static int serial_init(void)
 static void serial_exit(void)
 {
 	serial_manager_exit();
+
 	dbus_connection_unref(connection);
 }
 
