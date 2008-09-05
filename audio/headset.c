@@ -73,7 +73,7 @@
 static struct {
 	gboolean telephony_ready;	/* Telephony plugin initialized */
 	uint32_t features;		/* HFP AG features */
-	struct indicator *indicators;	/* Available HFP indicators */
+	const struct indicator *indicators;	/* Available HFP indicators */
 	int er_mode;			/* Event reporting mode */
 	int er_ind;			/* Event reporting for indicators */
 	int rh;				/* Response and Hold state */
@@ -273,7 +273,7 @@ static int supported_features(struct audio_device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
-static char *indicator_ranges(struct indicator *indicators)
+static char *indicator_ranges(const struct indicator *indicators)
 {
 	int i;
 	GString *gstr;
@@ -296,7 +296,7 @@ static char *indicator_ranges(struct indicator *indicators)
 	return g_string_free(gstr, FALSE);
 }
 
-static char *indicator_values(struct indicator *indicators)
+static char *indicator_values(const struct indicator *indicators)
 {
 	int i;
 	GString *gstr;
@@ -2122,7 +2122,8 @@ int telephony_response_and_hold_ind(int rh)
 	return headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
 }
 
-int telephony_ready(uint32_t features, struct indicator *indicators, int rh)
+int telephony_ready(uint32_t features, const struct indicator *indicators,
+			int rh)
 {
 	ag.telephony_ready = TRUE;
 	ag.features = features;

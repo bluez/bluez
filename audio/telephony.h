@@ -76,7 +76,8 @@ int telephony_terminate_call(void);
 
 int telephony_answer_call(void);
 
-int telephony_ready(uint32_t features, struct indicator *indicators, int rh);
+int telephony_ready(uint32_t features, const struct indicator *indicators,
+			int rh);
 
 /* Helper function for quick indicator updates */
 static inline int telephony_update_indicator(struct indicator *indicators,
