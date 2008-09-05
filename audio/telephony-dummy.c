@@ -89,6 +89,14 @@ int telephony_terminate_call(void)
 	return 0;
 }
 
+int telephony_answer_call(void)
+{
+	telephony_update_indicator(dummy_indicators, "call", 1);
+	telephony_update_indicator(dummy_indicators, "callsetup", 0);
+
+	return 0;
+}
+
 int telephony_init(void)
 {
 	uint32_t features = 0;

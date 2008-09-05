@@ -581,10 +581,9 @@ static int call_hold(struct audio_device *dev, const char *buf)
 	return 0;
 }
 
-static int answer_call(struct audio_device *device, const char *buf)
+static int button_press(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
-	int err;
 
 	g_dbus_emit_signal(device->conn, device->path,
 			AUDIO_HEADSET_INTERFACE, "AnswerRequested",
@@ -595,25 +594,34 @@ static int answer_call(struct audio_device *device, const char *buf)
 		hs->ring_timer = 0;
 	}
 
-	if (!hs->hfp_active)
-		return headset_send(hs, "\r\nOK\r\n");
+	return headset_send(hs, "\r\nOK\r\n");
+}
+
+static int answer_call(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	ag.ev_buf_active = TRUE;
+
+	if (telephony_answer_call() < 0) {
+		headset_send(hs, "\r\nERROR\r\n");
+		return 0;
+	}
+
+	flush_events();
+	ag.ev_buf_active = FALSE;
+
+	if (hs->ring_timer) {
+		g_source_remove(hs->ring_timer);
+		hs->ring_timer = 0;
+	}
 
 	if (hs->ph_number) {
 		g_free(hs->ph_number);
 		hs->ph_number = NULL;
 	}
 
-	err = headset_send(hs, "\r\nOK\r\n");
-	if (err < 0)
-		return err;
-
-	/*+CIEV: (call = 1)*/
-	err = headset_send(hs, "\r\n+CIEV:2,1\r\n");
-	if (err < 0)
-		return err;
-
-	/*+CIEV: (callsetup = 0)*/
-	return headset_send(hs, "\r\n+CIEV:3,0\r\n");
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 static int terminate_call(struct audio_device *device, const char *buf)
@@ -747,7 +755,7 @@ static struct event event_callbacks[] = {
 	{ "AT+CMER", event_reporting },
 	{ "AT+CHLD", call_hold },
 	{ "AT+CHUP", terminate_call },
-	{ "AT+CKPD", answer_call },
+	{ "AT+CKPD", button_press },
 	{ "AT+CLIP", cli_notification },
 	{ "AT+BTRH", response_and_hold },
 	{ "AT+BLDN", last_dialed_number },
