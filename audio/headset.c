@@ -1486,88 +1486,6 @@ static DBusMessage *hs_set_mic_gain(DBusConnection *conn,
 	return hs_set_gain(conn, msg, data, HEADSET_GAIN_MICROPHONE);
 }
 
-static DBusMessage *hf_setup_call(DBusConnection *conn,
-					DBusMessage *msg,
-					void *data)
-{
-	struct audio_device *device = data;
-	struct headset *hs = device->headset;
-	DBusMessage *reply;
-	const char *value;
-	int err;
-
-	if (!hs->hfp_active)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotSuppported",
-						"Not Supported");
-
-	if (hs->state < HEADSET_STATE_CONNECTED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &value,
-				DBUS_TYPE_INVALID))
-		return NULL;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	if (!strncmp(value, "incoming", 8))
-		err = headset_send(hs, "\r\n+CIEV:3,1\r\n");
-	else if (!strncmp(value, "outgoing", 8))
-		err = headset_send(hs, "\r\n+CIEV:3,2\r\n");
-	else if (!strncmp(value, "remote", 6))
-		err = headset_send(hs, "\r\n+CIEV:3,3\r\n");
-	else
-		err = -EINVAL;
-
-	if (err < 0) {
-		dbus_message_unref(reply);
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"%s", strerror(-err));
-	}
-
-	return reply;
-}
-
-static DBusMessage *hf_identify_call(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
-{
-	struct audio_device *device = data;
-	struct headset *hs = device->headset;
-	DBusMessage *reply;
-	const char *number;
-	dbus_int32_t type;
-
-	if (!hs->hfp_active && !hs->cli_active)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotSuppported",
-						"Not Supported");
-
-	if (hs->state < HEADSET_STATE_CONNECTED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &number,
-			      DBUS_TYPE_INT32, &type, DBUS_TYPE_INVALID))
-		return NULL;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	g_free(hs->ph_number);
-
-	hs->ph_number = g_strdup(number);
-	hs->type = type;
-
-	return reply;
-}
-
 static GDBusMethodTable headset_methods[] = {
 	{ "Connect",		"",	"",	hs_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
@@ -1583,8 +1501,6 @@ static GDBusMethodTable headset_methods[] = {
 	{ "GetMicrophoneGain",	"",	"q",	hs_get_mic_gain },
 	{ "SetSpeakerGain",	"q",	"",	hs_set_speaker_gain },
 	{ "SetMicrophoneGain",	"q",	"",	hs_set_mic_gain },
-	{ "SetupCall",		"s",	"",	hf_setup_call },
-	{ "IdentifyCall",	"si",	"",	hf_identify_call },
 	{ NULL, NULL, NULL, NULL }
 };
 
