@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <glib.h>
 
+/* HFP feature bits */
 #define AG_FEATURE_THREE_WAY_CALLING             0x0001
 #define AG_FEATURE_EC_ANDOR_NR                   0x0002
 #define AG_FEATURE_VOICE_RECOGNITION             0x0004
@@ -35,6 +36,25 @@
 #define AG_FEATURE_ENHANCES_CALL_STATUS          0x0040
 #define AG_FEATURE_ENHANCES_CALL_CONTROL         0x0080
 #define AG_FEATURE_EXTENDED_ERROR_RESULT_CODES   0x0100
+
+/* Indicator event values */
+#define EV_SERVICE_NONE			0
+#define EV_SERVICE_PRESENT		1
+
+#define EV_CALL_INACTIVE		0
+#define EV_CALL_ACTIVE			1
+
+#define EV_CALLSETUP_INACTIVE		0
+#define EV_CALLSETUP_INCOMING		1
+#define EV_CALLSETUP_OUTGOING		2
+#define EV_CALLSETUP_ALERTING		3
+
+#define EV_CALLHELD_NONE		0
+#define EV_CALLHELD_MULTIPLE		1
+#define EV_CALLHELD_ON_HOLD		2
+
+#define EV_ROAM_INACTIVE		0
+#define EV_ROAM_ACTIVE			1
 
 struct indicator {
 	const char *desc;

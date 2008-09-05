@@ -74,26 +74,27 @@ int telephony_response_and_hold_req(int rh)
 int telephony_last_dialed_number(void)
 {
 	/* Notify outgoing call set-up successfully initiated */
-	telephony_update_indicator(dummy_indicators, "callsetup", 2);
-
+	telephony_update_indicator(dummy_indicators, "callsetup",
+					EV_CALLSETUP_OUTGOING);
 	return 0;
 }
 
 int telephony_terminate_call(void)
 {
-	if (telephony_get_indicator(dummy_indicators, "callsetup" > 0))
-		telephony_update_indicator(dummy_indicators, "callsetup", 0);
+	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0)
+		telephony_update_indicator(dummy_indicators, "callsetup",
+						EV_CALLSETUP_INACTIVE);
 	else
-		telephony_update_indicator(dummy_indicators, "call", 0);
-
+		telephony_update_indicator(dummy_indicators, "call",
+						EV_CALL_INACTIVE);
 	return 0;
 }
 
 int telephony_answer_call(void)
 {
-	telephony_update_indicator(dummy_indicators, "call", 1);
-	telephony_update_indicator(dummy_indicators, "callsetup", 0);
-
+	telephony_update_indicator(dummy_indicators, "call", EV_CALL_ACTIVE);
+	telephony_update_indicator(dummy_indicators, "callsetup",
+					EV_CALLSETUP_INACTIVE);
 	return 0;
 }
 
