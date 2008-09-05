@@ -22,7 +22,7 @@
  *
  */
 
-#define AUDIO_CONTROL_INTERFACE "org.bluez.audio.Control"
+#define AUDIO_CONTROL_INTERFACE "org.bluez.Control"
 
 int avrcp_init(DBusConnection *conn, GKeyFile *config);
 void avrcp_exit(void);

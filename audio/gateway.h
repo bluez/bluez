@@ -22,7 +22,7 @@
  *
  */
 
-#define AUDIO_GATEWAY_INTERFACE "org.bluez.audio.Gateway"
+#define AUDIO_GATEWAY_INTERFACE "org.bluez.Gateway"
 
 #define DEFAULT_HSP_HS_CHANNEL 6
 #define DEFAULT_HFP_HS_CHANNEL 7

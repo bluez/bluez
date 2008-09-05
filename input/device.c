@@ -52,7 +52,7 @@
 #include "fakehid.h"
 #include "glib-helper.h"
 
-#define INPUT_DEVICE_INTERFACE "org.bluez.input.Device"
+#define INPUT_DEVICE_INTERFACE "org.bluez.Input"
 
 #define BUF_SIZE		16
 
