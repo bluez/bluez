@@ -102,7 +102,7 @@ static inline int telephony_update_indicator(struct indicator *indicators,
 	return telephony_event_ind(i);
 }
 
-static inline int telephony_get_indicator(struct indicator *indicators,
+static inline int telephony_get_indicator(const struct indicator *indicators,
 						const char *desc)
 {
 	int i;
