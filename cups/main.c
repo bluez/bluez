@@ -41,7 +41,6 @@
 #include <gdbus.h>
 
 #include "cups.h"
-#include "sdp-xml.h"
 
 extern int sdp_search_spp(sdp_session_t *sdp, uint8_t *channel);
 extern int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short *data_psm);
@@ -63,6 +62,11 @@ static DBusConnection *conn = NULL;
 
 #define ATTRID_1284ID 0x0300
 
+static sdp_record_t *sdp_xml_parse_record(const char *data, int size)
+{
+	return NULL;
+}
+
 static char *parse_xml_sdp(const char *xml)
 {
 	sdp_record_t *sdp_record;
@@ -72,6 +76,7 @@ static char *parse_xml_sdp(const char *xml)
 	sdp_record = sdp_xml_parse_record(xml, strlen(xml));
 	if (sdp_record == NULL)
 		return NULL;
+
 	for (l = sdp_record->attrlist; l != NULL; l = l->next) {
 		sdp_data_t *data;
 
