@@ -109,10 +109,10 @@ if len(sys.argv) > 1:
 else:
 	path = manager.DefaultAdapter()
 
-adapter = dbus.Interface(bus.get_object("org.bluez", path),
-						"org.bluez.Adapter")
+service = dbus.Interface(bus.get_object("org.bluez", path),
+						"org.bluez.Service")
 
-handle = adapter.AddServiceRecord(xml)
+handle = service.AddRecord(xml)
 
 print "Service record with handle 0x%04x added" % (handle)
 
@@ -124,4 +124,4 @@ try:
 except:
 	pass
 
-adapter.RemoveServiceRecord(dbus.UInt32(handle))
+service.RemoveRecord(dbus.UInt32(handle))
