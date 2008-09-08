@@ -607,11 +607,15 @@ static void usage()
 {
 	printf("avinfo - Audio/Video Info Tool ver %s\n", VERSION);
 	printf("Usage:\n"
-		"\tavinfo <remote address>\n");
+		"\tavinfo [options] <remote address>\n");
+	printf("Options:\n"
+		"\t-h\t\tDisplay help\n"
+		"\t-i\t\tSpecify source interface\n");
 }
 
 static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
+	{ "device",	1, 0, 'i' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -625,15 +629,6 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-	while ((opt = getopt_long(argc, argv, "h", main_options, NULL)) != -1) {
-		switch (opt) {
-		case 'h':
-		default:
-			usage();
-			exit(0);
-		}
-	}
-
 	bacpy(&src, BDADDR_ANY);
 	dev_id = hci_get_route(&src);
 	if ((dev_id < 0) || (hci_devba(dev_id, &src) < 0)) {
@@ -641,14 +636,30 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
+	while ((opt = getopt_long(argc, argv, "+i:h", main_options, NULL)) != -1) {
+		switch (opt) {
+		case 'i':
+			if (!strncmp(optarg, "hci", 3))
+				hci_devba(atoi(optarg + 3), &src);
+			else
+				str2ba(optarg, &src);
+			break;
+
+		case 'h':
+		default:
+			usage();
+			exit(0);
+		}
+	}
+
 	printf("Connecting ... \n");
 
-	if (bachk(argv[1]) < 0) {
+	if (bachk(argv[optind]) < 0) {
 		printf("Invalid argument\n");
 		exit(1);
 	}
 
-	str2ba(argv[1], &dst);
+	str2ba(argv[optind], &dst);
 	sk = l2cap_connect(&src, &dst);
 	if (sk < 0)
 		exit(1);
