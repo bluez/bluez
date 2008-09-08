@@ -992,9 +992,6 @@ struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interf
 {
 	GSList *l;
 
-	if (!bacmp(bda, BDADDR_ANY) && !interface && !connected)
-		return devices->data;
-
 	for (l = devices; l != NULL; l = l->next) {
 		struct audio_device *dev = l->data;
 
