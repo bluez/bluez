@@ -633,7 +633,6 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *
 void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *recs)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	const gchar *dst = device_get_address(device);
 	GSList *list;
 	char src_addr[18];
 	bdaddr_t src;
@@ -665,7 +664,7 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t 
 			if (!rec)
 				continue;
 
-			delete_record(src_addr, dst, rec->handle);
+			delete_record(src_addr, device->address, rec->handle);
 		}
 	}
 
@@ -795,7 +794,6 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 {
 	struct btd_device *device = req->device;
 	struct btd_adapter *adapter = device_get_adapter(device);
-	const gchar *dst = device_get_address(device);
 	sdp_list_t *seq;
 	char src_addr[18];
 	bdaddr_t src;
@@ -825,7 +823,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		if (sdp_list_find(req->records, rec, rec_cmp))
 			continue;
 
-		store_record(src_addr, dst, rec);
+		store_record(src_addr, device->address, rec);
 
 		/* Copy record */
 		if (sdp_gen_record_pdu(rec, &pdu) == 0) {
@@ -1015,12 +1013,9 @@ struct btd_adapter *device_get_adapter(struct btd_device *device)
 	return device->adapter;
 }
 
-const gchar *device_get_address(struct btd_device *device)
+void device_get_address(struct btd_device *device, bdaddr_t *bdaddr)
 {
-	if (!device)
-		return NULL;
-
-	return device->address;
+	str2ba(device->address, bdaddr);
 }
 
 const gchar *device_get_path(struct btd_device *device)

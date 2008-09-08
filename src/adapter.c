@@ -412,8 +412,9 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	struct bonding_request_info *bonding;
 	struct btd_device *device;
 	const char *name = dbus_message_get_sender(msg);
-	const gchar *destination;
 	struct agent *agent;
+	char addr[18];
+	bdaddr_t bdaddr;
 
 	debug("bonding_request_new(%s)", address);
 
@@ -421,7 +422,9 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	if (!device)
 		return NULL;
 
-	destination = device_get_address(device);
+	device_get_address(device, &bdaddr);
+	ba2str(&bdaddr, addr);
+
 	agent = agent_create(adapter, name, agent_path,
 					capability,
 					device_agent_removed,
@@ -430,7 +433,7 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	device_set_agent(device, agent);
 
 	debug("Temporary agent registered for hci%d/%s at %s:%s",
-			adapter->dev_id, destination, name,
+			adapter->dev_id, addr, name,
 			agent_path);
 
 	bonding = g_new0(struct bonding_request_info, 1);
@@ -987,16 +990,19 @@ done:
 void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 				struct btd_device *device)
 {
-	bdaddr_t src;
-	const gchar *destination = device_get_address(device);
+	bdaddr_t src, dst;
 	const gchar *dev_path = device_get_path(device);
 	struct agent *agent;
+	char dst_addr[18];
+
+	device_get_address(device, &dst);
+	ba2str(&dst, dst_addr);
 
 	str2ba(adapter->address, &src);
-	delete_entry(&src, "profiles", destination);
+	delete_entry(&src, "profiles", dst_addr);
 
 	if (!device_is_temporary(device)) {
-		remove_bonding(conn, NULL, destination, adapter);
+		remove_bonding(conn, NULL, dst_addr, adapter);
 
 		g_dbus_emit_signal(conn, adapter->path,
 				ADAPTER_INTERFACE,
@@ -2176,6 +2182,8 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	struct btd_device *device;
 	const gchar *src;
 	struct record_list rec_list;
+	bdaddr_t dst;
+	char dst_addr[18];
 
 	if (g_slist_find_custom(adapter->devices,
 				key, (GCompareFunc) device_address_cmp))
@@ -2188,8 +2196,11 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	device_set_temporary(device, FALSE);
 	adapter->devices = g_slist_append(adapter->devices, device);
 
+	device_get_address(device, &dst);
+	ba2str(&dst, dst_addr);
+
 	src = adapter->address;
-	rec_list.addr = device_get_address(device);
+	rec_list.addr = dst_addr;
 	rec_list.recs = NULL;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");

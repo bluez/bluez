@@ -124,7 +124,6 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	size_t len;
 	int dev;
 	struct pending_auth_info *auth;
-	const gchar *destination = device_get_address(device);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
 
@@ -140,7 +139,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	}
 
 	adapter_get_address(adapter, &sba);
-	str2ba(destination, &dba);
+	device_get_address(device, &dba);
 
 	auth = adapter_find_auth_request(adapter, &dba);
 
@@ -221,7 +220,6 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	user_confirm_reply_cp cp;
 	int dd;
 	struct pending_auth_info *auth;
-	const gchar *destination = device_get_address(device);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
 
@@ -236,7 +234,7 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	}
 
 	memset(&cp, 0, sizeof(cp));
-	str2ba(destination, &cp.bdaddr);
+	device_get_address(device, &cp.bdaddr);
 
 	auth = adapter_find_auth_request(adapter, &cp.bdaddr);
 
@@ -264,7 +262,6 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	bdaddr_t dba;
 	int dd;
 	struct pending_auth_info *auth;
-	const gchar *destination = device_get_address(device);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
 
@@ -278,7 +275,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 		return;
 	}
 
-	str2ba(destination, &dba);
+	device_get_address(device, &dba);
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, &dba);
@@ -1086,10 +1083,11 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	struct active_conn_info *dev;
 	gboolean connected = FALSE;
 	struct pending_auth_info *auth;
-	const gchar *destination;
 	const gchar *dev_path;
 	uint16_t dev_id;
 	struct bonding_request_info *bonding;
+	bdaddr_t bdaddr;
+	char addr[18];
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -1143,7 +1141,9 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 	device = adapter_find_device(adapter, paddr);
 	if (device) {
-		destination = device_get_address(device);
+		device_get_address(device, &bdaddr);
+		ba2str(&bdaddr, addr);
+
 		dev_path = device_get_path(device);
 
 		dbus_connection_emit_property_changed(connection,
@@ -1151,7 +1151,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 					"Connected", DBUS_TYPE_BOOLEAN,
 					&connected);
 		if (device_is_temporary(device)) {
-			debug("Removing temporary device %s", destination);
+			debug("Removing temporary device %s", addr);
 			adapter_remove_device(connection, adapter, device);
 		}
 	}
