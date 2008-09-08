@@ -1083,7 +1083,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 		/* No space left for another frame then send */
 		if (a2dp->count + written >= data->link_mtu) {
 			avdtp_write(data);
-			printf("sending packet %d, count %d, link_mtu %u",
+			DBG("sending packet %d, count %d, link_mtu %u",
 						a2dp->seq_num, a2dp->count,
 							data->link_mtu);
 		}
