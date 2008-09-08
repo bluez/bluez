@@ -673,14 +673,11 @@ static int audio_probe(struct btd_device *device, GSList *records)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
-	const char *destination;
 	bdaddr_t src, dst;
 	struct audio_device *dev;
 
 	adapter_get_address(adapter, &src);
-	destination = device_get_address(device);
-
-	str2ba(destination, &dst);
+	device_get_address(device, &dst);
 
 	dev = manager_find_device(&dst, NULL, FALSE);
 	if (!dev) {
@@ -698,12 +695,11 @@ static int audio_probe(struct btd_device *device, GSList *records)
 static void audio_remove(struct btd_device *device)
 {
 	struct audio_device *dev;
-	const char *destination = device_get_address(device);
-	bdaddr_t dst;
+	bdaddr_t bdaddr;
 
-	str2ba(destination, &dst);
+	device_get_address(device, &bdaddr);
 
-	dev = manager_find_device(&dst, NULL, FALSE);
+	dev = manager_find_device(&bdaddr, NULL, FALSE);
 	if (!dev)
 		return;
 

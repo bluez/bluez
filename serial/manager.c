@@ -98,7 +98,7 @@ static int serial_probe(struct btd_device *device, sdp_record_t *rec,
 	}
 
 	adapter_get_address(adapter, &src);
-	str2ba(device_get_address(device), &dst);
+	device_get_address(device, &dst);
 
 	return port_register(connection, path, &src, &dst, name,
 			uuid, ch);

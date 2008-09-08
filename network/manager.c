@@ -196,15 +196,12 @@ static int network_probe(struct btd_device *device, GSList *records,
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
-	const char *destination;
 	bdaddr_t src, dst;
 
 	DBG("path %s", path);
 
 	adapter_get_address(adapter, &src);
-	destination = device_get_address(device);
-
-	str2ba(destination, &dst);
+	device_get_address(device, &dst);
 
 	return connection_register(path, &src, &dst, id);
 }
