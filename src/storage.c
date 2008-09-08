@@ -769,7 +769,7 @@ int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
 
 sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle)
 {
-	char filename[PATH_MAX + 1], key[28], tmp[3],*str;
+	char filename[PATH_MAX + 1], key[28], tmp[3], *str;
 	sdp_record_t *rec;
 	int size, i, len;
 	uint8_t *pdata;
@@ -786,6 +786,7 @@ sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t ha
 	size = strlen(str) / 2;
 	pdata = g_malloc0(size);
 
+	memset(tmp, 0, sizeof(tmp));
 	for (i = 0; i < size; i++) {
 		memcpy(tmp, str + (i*2), 2);
 		pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
