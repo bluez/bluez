@@ -22,7 +22,7 @@
  *
  */
 
-#define AUDIO_SINK_INTERFACE "org.bluez.Sink"
+#define AUDIO_SINK_INTERFACE "org.bluez.AudioSink"
 
 struct sink *sink_init(struct audio_device *dev);
 void sink_unregister(struct audio_device *dev);

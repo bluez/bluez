@@ -39,9 +39,8 @@
 #define AVRCP_TARGET_UUID	"0000110C-0000-1000-8000-00805F9B34FB"
 
 /* Move these to respective .h files once they exist */
-#define AUDIO_SOURCE_INTERFACE		"org.bluez.Source"
+#define AUDIO_SOURCE_INTERFACE		"org.bluez.AudioSource"
 #define AUDIO_CONTROL_INTERFACE		"org.bluez.Control"
-#define AUDIO_TARGET_INTERFACE		"org.bluez.Target"
 
 struct source;
 struct control;

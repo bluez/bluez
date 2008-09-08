@@ -97,11 +97,11 @@ Signals		void AnswerRequested()
 			The microphone gain changed.
 
 
-Sink hierarchy
-==============
+AudioSink hierarchy
+===================
 
 Service		org.bluez
-Interface	org.bluez.Sink
+Interface	org.bluez.AudioSink
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods		void Connect()
