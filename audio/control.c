@@ -97,11 +97,7 @@
 
 static DBusConnection *connection = NULL;
 
-static uint32_t tg_record_id = 0;
-static uint32_t ct_record_id = 0;
-
-static GIOChannel *avctp_server = NULL;
-
+static GSList *servers = NULL;
 static GSList *sessions = NULL;
 
 typedef enum {
@@ -149,6 +145,13 @@ struct avrcp_header {
 #else
 #error "Unknown byte order"
 #endif
+
+struct avctp_server {
+	bdaddr_t src;
+	GIOChannel *io;
+	uint32_t tg_record_id;
+	uint32_t ct_record_id;
+};
 
 struct avctp {
 	struct audio_device *dev;
@@ -703,7 +706,7 @@ drop:
 	close(session->sock);
 }
 
-static GIOChannel *avctp_server_socket(gboolean master)
+static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)
 {
 	GIOChannel *io;
 	int lm = L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT;
@@ -711,7 +714,7 @@ static GIOChannel *avctp_server_socket(gboolean master)
 	if (master)
 		lm |= L2CAP_LM_MASTER;
 
-	io = bt_l2cap_listen(BDADDR_ANY, AVCTP_PSM, 0, lm, avctp_server_cb,
+	io = bt_l2cap_listen(src, AVCTP_PSM, 0, lm, avctp_server_cb,
 				NULL);
 	if (!io) {
 		error("Unable to allocate new io channel");
@@ -810,14 +813,12 @@ void avrcp_disconnect(struct audio_device *dev)
 	control->session = NULL;
 }
 
-int avrcp_init(DBusConnection *conn, GKeyFile *config)
+int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 {
 	sdp_record_t *record;
 	gboolean tmp, master = TRUE;
 	GError *err = NULL;
-
-	if (avctp_server)
-		return 0;
+	struct avctp_server *server;
 
 	if (config) {
 		tmp = g_key_file_get_boolean(config, "General",
@@ -829,7 +830,12 @@ int avrcp_init(DBusConnection *conn, GKeyFile *config)
 			master = tmp;
 	}
 
-	connection = dbus_connection_ref(conn);
+	server = g_new0(struct avctp_server, 1);
+	if (!server)
+		return -ENOMEM;
+
+	if (!connection)
+		connection = dbus_connection_ref(conn);
 
 	record = avrcp_tg_record();
 	if (!record) {
@@ -837,12 +843,12 @@ int avrcp_init(DBusConnection *conn, GKeyFile *config)
 		return -1;
 	}
 
-	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+	if (add_record_to_server(src, record) < 0) {
 		error("Unable to register AVRCP target service record");
 		sdp_record_free(record);
 		return -1;
 	}
-	tg_record_id = record->handle;
+	server->tg_record_id = record->handle;
 
 	record = avrcp_ct_record();
 	if (!record) {
@@ -850,34 +856,61 @@ int avrcp_init(DBusConnection *conn, GKeyFile *config)
 		return -1;
 	}
 
-	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+	if (add_record_to_server(src, record) < 0) {
 		error("Unable to register AVRCP controller service record");
 		sdp_record_free(record);
 		return -1;
 	}
-	ct_record_id = record->handle;
+	server->ct_record_id = record->handle;
 
-	avctp_server = avctp_server_socket(master);
-	if (!avctp_server)
+	server->io = avctp_server_socket(src, master);
+	if (!server->io) {
+		remove_record_from_server(server->ct_record_id);
+		remove_record_from_server(server->tg_record_id);
+		g_free(server);
 		return -1;
+	}
+
+	bacpy(&server->src, src);
+
+	servers = g_slist_append(servers, server);
 
 	return 0;
 }
 
-void avrcp_exit(void)
+static struct avctp_server *find_server(GSList *list, const bdaddr_t *src)
 {
-	if (!avctp_server)
+	GSList *l;
+
+	for (l = list; l; l = l->next) {
+		struct avctp_server *server = l->data;
+
+		if (bacmp(&server->src, src) == 0)
+			return server;
+	}
+
+	return NULL;
+}
+
+void avrcp_unregister(const bdaddr_t *src)
+{
+	struct avctp_server *server;
+
+	server = find_server(servers, src);
+	if (!server)
 		return;
 
-	g_io_channel_close(avctp_server);
-	g_io_channel_unref(avctp_server);
-	avctp_server = NULL;
+	servers = g_slist_remove(servers, server);
 
-	remove_record_from_server(ct_record_id);
-	ct_record_id = 0;
+	remove_record_from_server(server->ct_record_id);
+	remove_record_from_server(server->tg_record_id);
 
-	remove_record_from_server(tg_record_id);
-	tg_record_id = 0;
+	g_io_channel_close(server->io);
+	g_io_channel_unref(server->io);
+	g_free(server);
+
+	if (servers)
+		return;
 
 	dbus_connection_unref(connection);
 	connection = NULL;

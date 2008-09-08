@@ -377,7 +377,7 @@ void register_device_id(const uint16_t vendor, const uint16_t product,
 	update_svclass_list();
 }
 
-int add_record_to_server(bdaddr_t *src, sdp_record_t *rec)
+int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec)
 {
 	sdp_data_t *data;
 

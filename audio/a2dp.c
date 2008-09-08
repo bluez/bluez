@@ -92,12 +92,15 @@ struct a2dp_setup {
 
 static DBusConnection *connection = NULL;
 
-static GSList *sinks = NULL;
-static GSList *sources = NULL;
+struct a2dp_server {
+	bdaddr_t src;
+	GSList *sinks;
+	GSList *sources;
+	uint32_t source_record_id;
+	uint32_t sink_record_id;
+};
 
-static uint32_t source_record_id = 0;
-static uint32_t sink_record_id = 0;
-
+static GSList *servers = NULL;
 static GSList *setups = NULL;
 static unsigned int cb_id = 0;
 
@@ -981,7 +984,7 @@ static sdp_record_t *a2dp_sink_record()
 	return NULL;
 }
 
-static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
+static struct a2dp_sep *a2dp_add_sep(struct a2dp_server *server, uint8_t type,
 					uint8_t codec)
 {
 	struct a2dp_sep *sep;
@@ -994,8 +997,9 @@ static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
 	sep = g_new0(struct a2dp_sep, 1);
 
 	ind = (codec == A2DP_CODEC_MPEG12) ? &mpeg_ind : &sbc_ind;
-	sep->sep = avdtp_register_sep(type, AVDTP_MEDIA_TYPE_AUDIO, codec,
-					ind, &cfm, sep);
+	sep->sep = avdtp_register_sep(&server->src, type,
+					AVDTP_MEDIA_TYPE_AUDIO, codec, ind,
+					&cfm, sep);
 	if (sep->sep == NULL) {
 		g_free(sep);
 		return NULL;
@@ -1005,13 +1009,13 @@ static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
 	sep->type = type;
 
 	if (type == AVDTP_SEP_TYPE_SOURCE) {
-		l = &sources;
+		l = &server->sources;
 		create_record = a2dp_source_record;
-		record_id = &source_record_id;
+		record_id = &server->source_record_id;
 	} else {
-		l = &sinks;
+		l = &server->sinks;
 		create_record = a2dp_sink_record;
-		record_id = &sink_record_id;
+		record_id = &server->sink_record_id;
 	}
 
 	if (*record_id != 0)
@@ -1025,7 +1029,7 @@ static struct a2dp_sep *a2dp_add_sep(DBusConnection *conn, uint8_t type,
 		return NULL;
 	}
 
-	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+	if (add_record_to_server(&server->src, record) < 0) {
 		error("Unable to register A2DP service record");\
 		sdp_record_free(record);
 		avdtp_unregister_sep(sep->sep);
@@ -1040,7 +1044,21 @@ add:
 	return sep;
 }
 
-int a2dp_init(DBusConnection *conn, GKeyFile *config)
+static struct a2dp_server *find_server(GSList *list, const bdaddr_t *src)
+{
+	GSList *l;
+
+	for (l = list; l; l = l->next) {
+		struct a2dp_server *server = l->data;
+
+		if (bacmp(&server->src, src) == 0)
+			return server;
+	}
+
+	return NULL;
+}
+
+int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 {
 	int sbc_srcs = 1, sbc_sinks = 0;
 	int mpeg12_srcs = 0, mpeg12_sinks = 0;
@@ -1048,6 +1066,7 @@ int a2dp_init(DBusConnection *conn, GKeyFile *config)
 	char *str;
 	GError *err = NULL;
 	int i;
+	struct a2dp_server *server;
 
 	if (!config)
 		goto proceed;
@@ -1107,27 +1126,36 @@ int a2dp_init(DBusConnection *conn, GKeyFile *config)
 	}
 
 proceed:
-	connection = dbus_connection_ref(conn);
+	if (!connection)
+		connection = dbus_connection_ref(conn);
 
-	avdtp_init(config);
+	server = find_server(servers, src);
+	if (!server) {
+		server = g_new0(struct a2dp_server, 1);
+		if (!server)
+			return -ENOMEM;
+		avdtp_init(src, config);
+		bacpy(&server->src, src);
+		servers = g_slist_append(servers, server);
+	}
 
 	if (source) {
 		for (i = 0; i < sbc_srcs; i++)
-			a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE,
+			a2dp_add_sep(server, AVDTP_SEP_TYPE_SOURCE,
 					A2DP_CODEC_SBC);
 
 		for (i = 0; i < mpeg12_srcs; i++)
-			a2dp_add_sep(conn, AVDTP_SEP_TYPE_SOURCE,
+			a2dp_add_sep(server, AVDTP_SEP_TYPE_SOURCE,
 					A2DP_CODEC_MPEG12);
 	}
 
 	if (sink) {
 		for (i = 0; i < sbc_sinks; i++)
-			a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK,
+			a2dp_add_sep(server, AVDTP_SEP_TYPE_SINK,
 					A2DP_CODEC_SBC);
 
 		for (i = 0; i < mpeg12_sinks; i++)
-			a2dp_add_sep(conn, AVDTP_SEP_TYPE_SINK,
+			a2dp_add_sep(server, AVDTP_SEP_TYPE_SINK,
 					A2DP_CODEC_MPEG12);
 	}
 
@@ -1140,27 +1168,34 @@ static void a2dp_unregister_sep(struct a2dp_sep *sep)
 	g_free(sep);
 }
 
-void a2dp_exit()
+void a2dp_unregister(const bdaddr_t *src)
 {
-	g_slist_foreach(sinks, (GFunc) a2dp_unregister_sep, NULL);
-	g_slist_free(sinks);
-	sinks = NULL;
+	struct a2dp_server *server;
 
-	g_slist_foreach(sources, (GFunc) a2dp_unregister_sep, NULL);
-	g_slist_free(sources);
-	sources = NULL;
+	server = find_server(servers, src);
+	if (!server)
+		return;
 
-	if (source_record_id) {
-		remove_record_from_server(source_record_id);
-		source_record_id = 0;
-	}
+	g_slist_foreach(server->sinks, (GFunc) a2dp_unregister_sep, NULL);
+	g_slist_free(server->sinks);
 
-	if (sink_record_id) {
-		remove_record_from_server(sink_record_id);
-		sink_record_id = 0;
-	}
+	g_slist_foreach(server->sources, (GFunc) a2dp_unregister_sep, NULL);
+	g_slist_free(server->sources);
+
+	if (server->source_record_id)
+		remove_record_from_server(server->source_record_id);
+
+	if (server->sink_record_id)
+		remove_record_from_server(server->sink_record_id);
+
+	servers = g_slist_remove(servers, server);
+	g_free(server);
+
+	if (servers)
+		return;
 
 	dbus_connection_unref(connection);
+	connection = NULL;
 }
 
 gboolean a2dp_source_cancel(struct audio_device *dev, unsigned int id)
@@ -1201,6 +1236,7 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 {
 	struct a2dp_setup_cb *cb_data;
 	GSList *l;
+	struct a2dp_server *server;
 	struct a2dp_setup *setup;
 	struct a2dp_sep *sep = NULL, *tmp;
 	struct avdtp_local_sep *lsep;
@@ -1208,6 +1244,12 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 	struct avdtp_service_capability *cap;
 	struct avdtp_media_codec_capability *codec_cap = NULL;
 	int posix_err;
+	bdaddr_t src;
+
+	avdtp_get_peers(session, &src, NULL);
+	server = find_server(servers, &src);
+	if (!server)
+		return 0;
 
 	for (l = caps; l != NULL; l = l->next) {
 		cap = l->data;
@@ -1222,7 +1264,7 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 	if (!codec_cap)
 		return 0;
 
-	for (l = sources; l != NULL; l = l->next) {
+	for (l = server->sources; l != NULL; l = l->next) {
 		tmp = l->data;
 
 		if (tmp->locked)
@@ -1264,7 +1306,7 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 
 	switch (avdtp_sep_get_state(sep->sep)) {
 	case AVDTP_STATE_IDLE:
-		for (l = sources; l != NULL; l = l->next) {
+		for (l = server->sources; l != NULL; l = l->next) {
 			tmp = l->data;
 
 			if (avdtp_has_stream(session, tmp->stream))

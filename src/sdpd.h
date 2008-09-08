@@ -68,7 +68,7 @@ void sdp_svcdb_collect_all(int sock);
 void sdp_svcdb_set_collectable(sdp_record_t *rec, int sock);
 void sdp_svcdb_collect(sdp_record_t *rec);
 sdp_record_t *sdp_record_find(uint32_t handle);
-void sdp_record_add(bdaddr_t *device, sdp_record_t *rec);
+void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec);
 int sdp_record_remove(uint32_t handle);
 sdp_list_t *sdp_get_record_list(void);
 sdp_list_t *sdp_get_access_list(void);
@@ -83,7 +83,7 @@ uint32_t sdp_get_time();
 int start_sdp_server(uint16_t mtu, const char *did, uint32_t flags);
 void stop_sdp_server(void);
 
-int add_record_to_server(bdaddr_t *src, sdp_record_t *rec);
+int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec);
 int remove_record_from_server(uint32_t handle);
 
 typedef void (*service_classes_callback_t) (const bdaddr_t *bdaddr, uint8_t value);

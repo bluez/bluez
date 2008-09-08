@@ -241,7 +241,8 @@ int avdtp_suspend(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_close(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream);
 
-struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
+struct avdtp_local_sep *avdtp_register_sep(const bdaddr_t *src, uint8_t type,
+						uint8_t media_type,
 						uint8_t codec_type,
 						struct avdtp_sep_ind *ind,
 						struct avdtp_sep_cfm *cfm,
@@ -264,5 +265,5 @@ int avdtp_error_posix_errno(struct avdtp_error *err);
 
 void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 
-int avdtp_init(GKeyFile *config);
-void avdtp_exit(void);
+int avdtp_init(const bdaddr_t *src, GKeyFile *config);
+void avdtp_exit(const bdaddr_t *src);

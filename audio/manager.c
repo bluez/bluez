@@ -831,7 +831,21 @@ static int a2dp_server_probe(struct btd_adapter *adapter)
 	if (!adp)
 		return -EINVAL;
 
-	return a2dp_init(connection, config);
+	return a2dp_register(connection, &adp->src, config);
+}
+
+static void a2dp_server_remove(struct btd_adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = find_adapter(adapters, path);
+	if (!adp)
+		return;
+
+	return a2dp_unregister(&adp->src);
 }
 
 static int avrcp_server_probe(struct btd_adapter *adapter)
@@ -845,7 +859,21 @@ static int avrcp_server_probe(struct btd_adapter *adapter)
 	if (!adp)
 		return -EINVAL;
 
-	return avrcp_init(connection, config);
+	return avrcp_register(connection, &adp->src, config);
+}
+
+static void avrcp_server_remove(struct btd_adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = find_adapter(adapters, path);
+	if (!adp)
+		return;
+
+	return avrcp_unregister(&adp->src);
 }
 
 static struct btd_device_driver audio_driver = {
@@ -872,11 +900,13 @@ static struct btd_adapter_driver gateway_server_driver = {
 static struct btd_adapter_driver a2dp_server_driver = {
 	.name	= "audio-a2dp",
 	.probe	= a2dp_server_probe,
+	.remove	= a2dp_server_remove,
 };
 
 static struct btd_adapter_driver avrcp_server_driver = {
 	.name	= "audio-control",
 	.probe	= avrcp_server_probe,
+	.remove	= avrcp_server_remove,
 };
 
 int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
