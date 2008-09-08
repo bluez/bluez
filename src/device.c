@@ -87,6 +87,7 @@ struct browse_req {
 	struct btd_device *device;
 	GSList *uuids_added;
 	GSList *uuids_removed;
+	sdp_list_t *records;
 	int search_uuid;
 	gboolean browse;
 };
@@ -766,6 +767,14 @@ static void services_changed(struct browse_req *req)
 	g_free(uuids);
 }
 
+static int rec_cmp(const void *a, const void *b)
+{
+	const sdp_record_t *r1 = a;
+	const sdp_record_t *r2 = b;
+
+	return r1->handle - r2->handle;
+}
+
 static void update_services(struct browse_req *req, sdp_list_t *recs)
 {
 	struct btd_device *device = req->device;
@@ -776,6 +785,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 
 	for (seq = recs; seq; seq = seq->next) {
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
+		sdp_buf_t pdu;
 		sdp_list_t *svcclass = NULL;
 		gchar *uuid_str;
 		GSList *l;
@@ -785,12 +795,27 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 
 		if (sdp_get_service_classes(rec, &svcclass) < 0)
 			continue;
-		store_record(src, dst, rec);
 
 		/* Extract the first element and skip the remainning */
 		uuid_str = bt_uuid2string(svcclass->data);
 		if (!uuid_str)
 			continue;
+
+		/* Check for duplicates */
+		if (sdp_list_find(req->records, rec, rec_cmp))
+			continue;
+
+		store_record(src, dst, rec);
+
+		/* Copy record */
+		if (sdp_gen_record_pdu(rec, &pdu) == 0) {
+			sdp_record_t *record;
+			int scanned;
+
+			record = sdp_extract_pdu(pdu.data, pdu.data_size,
+						&scanned);
+			req->records = sdp_list_append(req->records, record);
+		}
 
 		l = g_slist_find_custom(device->uuids, uuid_str,
 				(GCompareFunc) strcmp);
@@ -837,8 +862,11 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	DBusMessage *reply;
 	const gchar *source = adapter_get_address(adapter);
 
-	if (err < 0)
+	if (err < 0) {
+		error("%s: error updating services: %s (%d)",
+				device->path, strerror(-err), -err);
 		goto proceed;
+	}
 
 	update_services(req, recs);
 
@@ -856,27 +884,30 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 probe:
 
-	if (!req->uuids_added && !req->uuids_removed)
+	if (!req->uuids_added && !req->uuids_removed) {
+		debug("%s: No service found", device->path);
 		goto proceed;
+	}
 
 	/* Probe matching drivers for services added */
 	if (req->uuids_added)
-		device_probe_drivers(device, req->uuids_added, recs);
+		device_probe_drivers(device, req->uuids_added, req->records);
 
 	/* Remove drivers for services removed */
 	if (req->uuids_removed)
-		device_remove_drivers(device, req->uuids_removed, recs);
-
-	/* Store the device's profiles in the filesystem */
-	store(device);
+		device_remove_drivers(device, req->uuids_removed, req->records);
 
 	/* Propagate services changes */
 	services_changed(req);
 
 proceed:
+
+	/* Store the device's profiles in the filesystem */
+	store(device);
+
 	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
 			"DiscoverServices")) {
-		discover_device_reply(req, recs);
+		discover_device_reply(req, req->records);
 		goto cleanup;
 	}
 
@@ -910,6 +941,8 @@ cleanup:
 	dbus_connection_unref(req->conn);
 	g_slist_free(req->uuids_added);
 	g_slist_free(req->uuids_removed);
+	if (req->records)
+		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
 	g_free(req);
 }
 

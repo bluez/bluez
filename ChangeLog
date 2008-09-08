@@ -1,3 +1,14 @@
+ver 4.4:
+	Add temporary fix for the CUPS compile issue.
+	Add service-api.txt to distribution.
+	Mention the variable prefix of an object path
+
+ver 4.3:
+	Add dummy driver for telephony support.
+	Add support for discovery sessions.
+	Add service plugin for external services.
+	Various cleanups.
+
 ver 4.2:
 	Avoid memory copies in A2DP write routine.
 	Fix broken logic with Simple Pairing check and old kernels.

@@ -53,7 +53,7 @@
 #include "manager.h"
 #include "storage.h"
 
-#define SERIAL_PORT_INTERFACE	"org.bluez.serial.Port"
+#define SERIAL_PORT_INTERFACE	"org.bluez.Serial"
 #define ERROR_INVALID_ARGS	"org.bluez.Error.InvalidArguments"
 #define ERROR_DOES_NOT_EXIST	"org.bluez.Error.DoesNotExist"
 

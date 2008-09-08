@@ -52,9 +52,9 @@
 #include "bridge.h"
 #include "common.h"
 
-#define NETWORK_PEER_INTERFACE "org.bluez.network.Peer"
-#define NETWORK_HUB_INTERFACE "org.bluez.network.Hub"
-#define NETWORK_ROUTER_INTERFACE "org.bluez.network.Router"
+#define NETWORK_PEER_INTERFACE "org.bluez.NetworkPeer"
+#define NETWORK_HUB_INTERFACE "org.bluez.NetworkHub"
+#define NETWORK_ROUTER_INTERFACE "org.bluez.NetworkRouter"
 #define SETUP_TIMEOUT		1000
 
 /* Pending Authorization */

@@ -6,13 +6,11 @@ import dbus
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
-							'org.bluez.Manager')
+manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+						"org.bluez.Manager")
 
-conn = manager.ActivateService('serial')
-
-serial = dbus.Interface(bus.get_object(conn, '/org/bluez/serial'),
-						'org.bluez.serial.Manager')
+adapter = dbus.Interface(bus.get_object("org.bluez", manager.DefaultAdapter()),
+							"org.bluez.Adapter")
 
 if (len(sys.argv) < 2):
 	print "Usage: %s <address> [service]" % (sys.argv[0])
@@ -25,7 +23,12 @@ if (len(sys.argv) < 3):
 else:
 	service = sys.argv[2]
 
-device = serial.ConnectService(address, service)
+path = adapter.FindDevice(address)
+
+serial = dbus.Interface(bus.get_object("org.bluez", path),
+						"org.bluez.Serial")
+
+node = serial.Connect(service)
 
 print "Connected %s to %s" % (device, address)
 
@@ -37,4 +40,4 @@ try:
 except:
 	pass
 
-serial.DisconnectService(device)
+serial.Disconnect(node)

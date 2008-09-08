@@ -41,7 +41,7 @@ INCLUDES = -I$(top_srcdir)/common
 
 EXTRA_DIST = apitest hsplay hsmicro bdaddr.8 dbusdef.py \
 	list-devices test-discovery test-manager test-adapter test-device \
-	simple-service simple-agent service-record.dtd \
+	test-serial simple-service simple-agent service-record.dtd \
 	service-did.xml service-spp.xml service-opp.xml service-ftp.xml
 
 MAINTAINERCLEANFILES = Makefile.in

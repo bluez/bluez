@@ -368,7 +368,6 @@ int network_manager_init(DBusConnection *conn)
 		return -1;
 
 	/* Register PANU, GN and NAP servers if they don't exist */
-	/* FIXME: server should be registered as adapter driver */
 	btd_register_adapter_driver(&network_panu_server_driver);
 	btd_register_adapter_driver(&network_gn_server_driver);
 	btd_register_adapter_driver(&network_nap_server_driver);
@@ -396,6 +395,10 @@ void network_manager_exit(void)
 		btd_unregister_device_driver(&network_nap_driver);
 		connection_exit();
 	}
+
+	btd_unregister_adapter_driver(&network_panu_server_driver);
+	btd_unregister_adapter_driver(&network_gn_server_driver);
+	btd_unregister_adapter_driver(&network_nap_server_driver);
 
 	dbus_connection_unref(connection);
 	connection = NULL;

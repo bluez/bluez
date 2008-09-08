@@ -25,21 +25,14 @@
 #include <config.h>
 #endif
 
-#include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
 #include <bluetooth/hidp.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include <glib.h>
-#include <dbus/dbus.h>
 #include <gdbus.h>
 
 #include "logging.h"
@@ -49,10 +42,8 @@
 
 #include "device.h"
 #include "server.h"
-#include "error.h"
 #include "manager.h"
 #include "storage.h"
-#include "glib-helper.h"
 
 static int idle_timeout = 0;
 
@@ -319,11 +310,10 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 
 void input_manager_exit(void)
 {
-
-	btd_unregister_adapter_driver(&input_server_driver);
-
 	btd_unregister_device_driver(&input_hid_driver);
 	btd_unregister_device_driver(&input_headset_driver);
+
+	btd_unregister_adapter_driver(&input_server_driver);
 
 	dbus_connection_unref(connection);
 

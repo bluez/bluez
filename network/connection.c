@@ -44,7 +44,7 @@
 #include "error.h"
 #include "common.h"
 
-#define NETWORK_PEER_INTERFACE "org.bluez.network.Peer"
+#define NETWORK_PEER_INTERFACE "org.bluez.Network"
 
 typedef enum {
 	CONNECTED,
@@ -121,12 +121,6 @@ static inline DBusMessage *not_connected(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 						"Device not connected");
-}
-
-static inline DBusMessage *no_pending_connect(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-					"Device has no pending connect");
 }
 
 static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)

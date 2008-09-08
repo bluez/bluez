@@ -26,5 +26,7 @@ else
 EXTRA_DIST = $(DOC_MAIN_SGML_FILE) $(content_files)
 endif
 
-EXTRA_DIST += manager-api.txt adapter-api.txt device-api.txt agent-api.txt \
-		serial-api.txt network-api.txt input-api.txt audio-api.txt
+EXTRA_DIST += manager-api.txt adapter-api.txt device-api.txt \
+					service-api.txt agent-api.txt \
+					serial-api.txt network-api.txt \
+					input-api.txt audio-api.txt
