@@ -126,7 +126,6 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	struct pending_auth_info *auth;
 	const gchar *destination = device_get_address(device);
 	uint16_t dev_id = adapter_get_dev_id(adapter);
-	const gchar *source = adapter_get_address(adapter);
 	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
 
 	/* No need to reply anything if the authentication already failed */
@@ -140,7 +139,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 		return;
 	}
 
-	str2ba(source, &sba);
+	adapter_get_address(adapter, &sba);
 	str2ba(destination, &dba);
 
 	auth = adapter_find_auth_request(adapter, &dba);

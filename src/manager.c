@@ -301,9 +301,13 @@ static gint adapter_address_cmp(gconstpointer a, gconstpointer b)
 {
 	struct btd_adapter *adapter = (struct btd_adapter *) a;
 	const char *address = b;
-	const gchar *source = adapter_get_address(adapter);
+	bdaddr_t bdaddr;
+	char addr[18];
 
-	return strcmp(source, address);
+	adapter_get_address(adapter, &bdaddr);
+	ba2str(&bdaddr, addr);
+	
+	return strcmp(addr, address);
 }
 
 struct btd_adapter *manager_find_adapter(const bdaddr_t *sba)

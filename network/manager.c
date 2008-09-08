@@ -196,15 +196,14 @@ static int network_probe(struct btd_device *device, GSList *records,
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
-	const char *source, *destination;
+	const char *destination;
 	bdaddr_t src, dst;
 
 	DBG("path %s", path);
 
-	source = adapter_get_address(adapter);
+	adapter_get_address(adapter, &src);
 	destination = device_get_address(device);
 
-	str2ba(source, &src);
 	str2ba(destination, &dst);
 
 	return connection_register(path, &src, &dst, id);
@@ -252,7 +251,6 @@ static void nap_remove(struct btd_device *device)
 static int network_server_probe(struct btd_adapter *adapter, uint16_t id)
 {
 	const gchar *path = adapter_get_path(adapter);
-	const char *source;
 	bdaddr_t src;
 
 	DBG("path %s", path);
@@ -260,8 +258,7 @@ static int network_server_probe(struct btd_adapter *adapter, uint16_t id)
 	if (!conf.server_enabled)
 		return 0;
 
-	source = adapter_get_address(adapter);
-	str2ba(source, &src);
+	adapter_get_address(adapter, &src);
 
 	return server_register(path, &src, id);
 }

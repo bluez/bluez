@@ -170,7 +170,7 @@ static int hid_device_probe(struct btd_device *device, GSList *records)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
-	const char *source, *destination;
+	const char *destination;
 	struct hidp_connadd_req hidp;
 	bdaddr_t src, dst;
 
@@ -178,10 +178,9 @@ static int hid_device_probe(struct btd_device *device, GSList *records)
 
 	memset(&hidp, 0, sizeof(hidp));
 
-	source = adapter_get_address(adapter);
+	adapter_get_address(adapter, &src);
 	destination = device_get_address(device);
 
-	str2ba(source, &src);
 	str2ba(destination, &dst);
 
 	if (load_stored(&src, &dst, &hidp) == 0)
@@ -213,7 +212,7 @@ static int headset_probe(struct btd_device *device, GSList *records)
 	sdp_record_t *record = records->data;
 	sdp_list_t *protos;
 	uint8_t ch;
-	const char *source, *destination;
+	const char *destination;
 	bdaddr_t src, dst;
 
 	DBG("path %s", path);
@@ -232,10 +231,9 @@ static int headset_probe(struct btd_device *device, GSList *records)
 		return -EINVAL;
 	}
 
-	source = adapter_get_address(adapter);
+	adapter_get_address(adapter, &src);
 	destination = device_get_address(device);
 
-	str2ba(source, &src);
 	str2ba(destination, &dst);
 
 	return fake_input_register(connection, path, &src, &dst,
@@ -249,22 +247,18 @@ static void headset_remove(struct btd_device *device)
 
 static int hid_server_probe(struct btd_adapter *adapter)
 {
-	const char *addr;
 	bdaddr_t src;
 
-	addr = adapter_get_address(adapter);
-	str2ba(addr, &src);
+	adapter_get_address(adapter, &src);
 
 	return server_start(&src);
 }
 
 static void hid_server_remove(struct btd_adapter *adapter)
 {
-	const char *addr;
 	bdaddr_t src;
 
-	addr = adapter_get_address(adapter);
-	str2ba(addr, &src);
+	adapter_get_address(adapter, &src);
 
 	server_stop(&src);
 }

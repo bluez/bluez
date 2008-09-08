@@ -371,7 +371,8 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 	bdaddr_t sba;
 	size_t len;
 	char *pin;
-	const gchar *source = adapter_get_address(adapter);
+
+	adapter_get_address(adapter, &sba);
 
 	/* steal_reply will always return non-NULL since the callback
 	 * is only called after a reply has been received */
@@ -415,8 +416,6 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 		dbus_error_free(&err);
 		goto done;
 	}
-
-	str2ba(source, &sba);
 
 	set_pin_length(&sba, len);
 

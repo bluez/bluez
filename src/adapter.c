@@ -2671,12 +2671,9 @@ const gchar *adapter_get_path(struct btd_adapter *adapter)
 	return adapter->path;
 }
 
-const gchar *adapter_get_address(struct btd_adapter *adapter)
+void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 {
-	if (!adapter)
-		return NULL;
-
-	return adapter->address;
+	str2ba(adapter->address, bdaddr);
 }
 
 static gboolean discov_timeout_handler(void *data)

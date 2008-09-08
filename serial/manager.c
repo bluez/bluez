@@ -97,7 +97,7 @@ static int serial_probe(struct btd_device *device, sdp_record_t *rec,
 		return -EINVAL;
 	}
 
-	str2ba(adapter_get_address(adapter), &src);
+	adapter_get_address(adapter, &src);
 	str2ba(device_get_address(device), &dst);
 
 	return port_register(connection, path, &src, &dst, name,
@@ -153,11 +153,10 @@ static struct btd_device_driver serial_dialup_driver = {
 static int proxy_probe(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
-	const char *address = adapter_get_address(adapter);
 	bdaddr_t src;
 
 	DBG("path %s", path);
-	str2ba(address, &src);
+	adapter_get_address(adapter, &src);
 
 	return proxy_register(connection, path, &src);
 }
