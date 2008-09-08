@@ -814,6 +814,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 
 			record = sdp_extract_pdu(pdu.data, pdu.data_size,
 						&scanned);
+			free(pdu.data);
 			req->records = sdp_list_append(req->records, record);
 		}
 
