@@ -1,0 +1,43 @@
+#!/usr/bin/python
+
+import sys
+import time
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+						"org.bluez.Manager")
+
+adapter = dbus.Interface(bus.get_object("org.bluez", manager.DefaultAdapter()),
+							"org.bluez.Adapter")
+
+if (len(sys.argv) < 2):
+	print "Usage: %s <address> [service]" % (sys.argv[0])
+	sys.exit(1)
+
+address = sys.argv[1]
+
+if (len(sys.argv) < 3):
+	service = "panu"
+else:
+	service = sys.argv[2]
+
+device = adapter.FindDevice(address)
+
+network = dbus.Interface(bus.get_object("org.bluez", device),
+						"org.bluez.Network")
+
+iface = network.Connect(service)
+
+print "Connected %s to %s" % (device, address)
+
+print "Press CTRL-C to disconnect"
+
+try:
+	time.sleep(1000)
+	print "Terminating connection"
+except:
+	pass
+
+network.Disconnect()
