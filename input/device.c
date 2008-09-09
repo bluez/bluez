@@ -477,6 +477,7 @@ static int encrypt_link(const char *src_addr, const char *dst_addr)
 	char filename[PATH_MAX + 1];
 	struct hci_conn_info_req *cr;
 	int dd, err, dev_id;
+	uint32_t handle;
 	char *str;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "linkkeys");
@@ -516,13 +517,15 @@ static int encrypt_link(const char *src_addr, const char *dst_addr)
 		goto done;
 	}
 
-	if (hci_authenticate_link(dd, htobs(cr->conn_info->handle), 1000) < 0) {
+	handle = htobs(cr->conn_info->handle);
+
+	if (hci_authenticate_link(dd, handle, 20000) < 0) {
 		error("Link authentication failed: %s (%d)",
 						strerror(errno), errno);
 		goto fail;
 	}
 
-	if (hci_encrypt_link(dd, htobs(cr->conn_info->handle), 1, 1000) < 0) {
+	if (hci_encrypt_link(dd, handle, 1, 5000) < 0) {
 		error("Link encryption failed: %s (%d)",
 						strerror(errno), errno);
 		goto fail;
