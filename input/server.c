@@ -65,8 +65,6 @@ static void auth_callback(DBusError *derr, void *user_data)
 
 	if (derr) {
 		error("Access denied: %s", derr->message);
-		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY))
-			btd_cancel_authorization(&auth->src, &auth->dst);
 
 		input_device_close_channels(&auth->src, &auth->dst);
 	} else

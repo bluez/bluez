@@ -455,10 +455,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 
 	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
-		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
-			debug("Canceling authorization request");
-			btd_cancel_authorization(&device->src, &device->dst);
-		}
 
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 	} else {
