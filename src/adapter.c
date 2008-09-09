@@ -511,6 +511,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 
 	/* Do reverse resolution in case of "on" mode */
 	mode = mode2str(new_mode);
+	debug("Attempting to change mode to %s", mode);
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)
@@ -626,13 +627,33 @@ static void session_free(struct session_req *req)
 	info("%s session %p with %s deactivated",
 		req->mode ? "Mode" : "Discovery", req, sender);
 
-	if (req->mode)
+	if (req->mode) {
 		adapter->mode_sessions = g_slist_remove(adapter->mode_sessions,
 						req);
-	else
+
+		if (adapter->mode_sessions)
+			goto done;
+
+		debug("Restoring '%s' mode", mode2str(adapter->global_mode));
+		set_mode(req->conn, req->msg, adapter->global_mode, adapter);
+	} else {
 		adapter->disc_sessions = g_slist_remove(adapter->disc_sessions,
 						req);
 
+		if (adapter->disc_sessions)
+			goto done;
+
+		debug("Stopping discovery", mode2str(adapter->global_mode));
+
+		if (adapter->state & STD_INQUIRY)
+			cancel_discovery(adapter);
+		else if (adapter->scheduler_id)
+			g_source_remove(adapter->scheduler_id);
+		else
+			cancel_periodic_discovery(adapter);
+	}
+
+done:
 	dbus_message_unref(req->msg);
 	dbus_connection_unref(req->conn);
 	g_free(req);
@@ -1311,28 +1332,6 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static void discover_req_exit(void *user_data)
-{
-	struct session_req *req = user_data;
-	struct btd_adapter *adapter = req->adapter;
-
-	adapter->disc_sessions = g_slist_remove(adapter->disc_sessions, req);
-	req->id = 0;
-	session_free(req);
-
-	if (adapter->disc_sessions)
-		return;
-
-	/* Cleanup the discovered devices list and send the cmd to exit from
-	 * periodic inquiry or cancel remote name request. The return value can
-	 * be ignored. */
-
-	if (adapter->state & STD_INQUIRY)
-		cancel_discovery(adapter);
-	else
-		cancel_periodic_discovery(adapter);
-}
-
 int start_inquiry(struct btd_adapter *adapter)
 {
 	inquiry_cp cp;
@@ -1463,7 +1462,8 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 		return failed_strerror(msg, -err);
 
 done:
-	req = create_session(adapter, conn, msg, 0, discover_req_exit);
+	req = create_session(adapter, conn, msg, 0,
+			(GDBusWatchFunction) session_free);
 
 	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
 
@@ -1475,7 +1475,6 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 {
 	struct btd_adapter *adapter = data;
 	struct session_req *req;
-	int err = 0;
 
 	if (!adapter->up)
 		return adapter_not_ready(msg);
@@ -1486,27 +1485,6 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 				"Invalid discovery session");
 
 	session_unref(req);
-	if (adapter->disc_sessions)
-		return dbus_message_new_method_return(msg);
-
-	/*
-	 * Cleanup the discovered devices list and send the cmd to exit
-	 * from periodic inquiry mode or cancel remote name request.
-	 */
-	if (adapter->state & STD_INQUIRY)
-		err = cancel_discovery(adapter);
-	else if (adapter->scheduler_id)
-		g_source_remove(adapter->scheduler_id);
-	else
-		err = cancel_periodic_discovery(adapter);
-
-	if (err < 0) {
-		if (err == -ENODEV)
-			return no_such_adapter(msg);
-
-		else
-			return failed_strerror(msg, -err);
-	}
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1640,21 +1618,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return invalid_args(msg);
 }
 
-static void session_exit(void *data)
-{
-	struct session_req *req = data;
-	struct btd_adapter *adapter = req->adapter;
-
-	if (!adapter->mode_sessions) {
-		debug("Falling back to '%s' mode", mode2str(adapter->global_mode));
-		/* FIXME: fallback to previous mode
-		set_mode(req->conn, req->msg, adapter->global_mode, adapter);
-		*/
-	}
-
-	session_free(req);
-}
-
 static DBusMessage *request_mode(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -1676,16 +1639,17 @@ static DBusMessage *request_mode(DBusConnection *conn,
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 				"No agent registered");
 
-	req = find_session(adapter->mode_sessions, msg);
-	if (req)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-				"Mode already requested");
-
-	req = create_session(adapter, conn, msg, new_mode, session_exit);
-
 	if (!adapter->mode_sessions)
 		adapter->global_mode = adapter->mode;
-	adapter->mode_sessions = g_slist_append(adapter->mode_sessions, req);
+
+	req = find_session(adapter->mode_sessions, msg);
+	if (!req) {
+		req = create_session(adapter, conn, msg, new_mode,
+					(GDBusWatchFunction) session_free);
+		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
+					req);
+	} else
+		req->mode = new_mode;
 
 	/* No need to change mode */
 	if (adapter->mode >= new_mode)
@@ -1712,7 +1676,7 @@ static DBusMessage *release_mode(DBusConnection *conn,
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 				"No Mode to release");
 
-	session_exit(req);
+	session_unref(req);
 
 	return dbus_message_new_method_return(msg);
 }
