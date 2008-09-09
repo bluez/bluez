@@ -28,9 +28,6 @@
 #include <unistd.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
-#include <bluetooth/hidp.h>
-#include <bluetooth/hci.h>
 #include <bluetooth/sdp.h>
 
 #include <glib.h>
@@ -40,10 +37,8 @@
 
 #include "adapter.h"
 #include "device.h"
-#include "server.h"
 #include "glib-helper.h"
 
-static const char *HID_UUID = "00001124-0000-1000-8000-00805f9b34fb";
 static GSList *servers = NULL;
 struct server {
 	bdaddr_t src;
@@ -123,7 +118,7 @@ static void connect_event_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	return;
 }
 
-int server_start(bdaddr_t *src)
+int server_start(const bdaddr_t *src)
 {
 	struct server *server;
 	GIOChannel *ctrl_io, *intr_io;
@@ -143,7 +138,6 @@ int server_start(bdaddr_t *src)
 	if (!intr_io) {
 		error("Failed to listen on interrupt channel");
 		g_io_channel_unref(ctrl_io);
-		ctrl_io = NULL;
 		return -1;
 	}
 	g_io_channel_set_close_on_unref(intr_io, TRUE);
@@ -158,7 +152,7 @@ int server_start(bdaddr_t *src)
 	return 0;
 }
 
-void server_stop(bdaddr_t *src)
+void server_stop(const bdaddr_t *src)
 {
 	struct server *server;
 	GSList *l;

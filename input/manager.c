@@ -29,20 +29,17 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
-#include <bluetooth/hidp.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
 #include <gdbus.h>
 
 #include "logging.h"
-#include "textfile.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
 
 #include "device.h"
 #include "server.h"
-#include "manager.h"
 
 static int idle_timeout = 0;
 

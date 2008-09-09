@@ -21,8 +21,5 @@
  *
  */
 
-#define HSP_HS_UUID		"00001108-0000-1000-8000-00805F9B34FB"
-#define HID_UUID		"00001124-0000-1000-8000-00805f9b34fb"
-
 int input_manager_init(DBusConnection *conn, GKeyFile *config);
 void input_manager_exit(void);
