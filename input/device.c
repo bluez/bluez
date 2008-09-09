@@ -912,14 +912,9 @@ static DBusMessage *device_connect(DBusConnection *conn,
 	struct input_device *idev = data;
 	struct input_conn *iconn;
 	struct fake_input *fake;
-	const char *svc;
 	int err;
 
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &svc,
-						DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
-
-	iconn = find_connection(idev->connections, svc);
+	iconn = find_connection(idev->connections, "HID");
 	if (!iconn)
 		return not_supported(msg);
 
@@ -1012,7 +1007,7 @@ static void device_unregister(void *data)
 }
 
 static GDBusMethodTable device_methods[] = {
-	{ "Connect",		"s",	"",	device_connect,
+	{ "Connect",		"",	"",	device_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	device_disconnect	},
 	{ "IsConnected",	"",	"b",	device_is_connected	},
