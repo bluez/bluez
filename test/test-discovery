@@ -15,8 +15,9 @@ def device_found(address, properties):
 		else:
 			print "    %s = %s" % (key, value)
 
-def discovery_completed():
-	mainloop.quit()
+def property_changed(name, value):
+	if (name == "Discovering" and not value):
+		mainloop.quit()
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -33,11 +34,11 @@ if __name__ == '__main__':
 			dbus_interface = "org.bluez.Adapter",
 					signal_name = "DeviceFound")
 
-	bus.add_signal_receiver(discovery_completed,
+	bus.add_signal_receiver(property_changed,
 			dbus_interface = "org.bluez.Adapter",
-					signal_name = "DiscoveryCompleted")
+					signal_name = "PropertyChanged")
 
-	adapter.DiscoverDevices()
+	adapter.StartDiscovery()
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
