@@ -2715,11 +2715,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 
 	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
-		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
-			debug("Canceling authorization request");
-			btd_cancel_authorization(&session->server->src,
-						&session->dst);
-		}
 
 		connection_lost(session, -EACCES);
 		return;

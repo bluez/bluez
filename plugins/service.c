@@ -48,12 +48,12 @@
 #define SERVICE_INTERFACE "org.bluez.Service"
 
 static DBusConnection *connection = NULL;
-static GSList *records = NULL;
 
 struct record_data {
 	uint32_t handle;
 	char *sender;
 	guint listener_id;
+	struct service_adapter *serv_adapter;
 };
 
 struct context_data {
@@ -61,6 +61,20 @@ struct context_data {
 	sdp_data_t attr_data;
 	struct sdp_xml_data *stack_head;
 	uint16_t attr_id;
+};
+
+struct pending_auth {
+	DBusConnection *conn;
+	DBusMessage *msg;
+	char *sender;
+	bdaddr_t dst;
+	char uuid[MAX_LEN_UUID_STR];
+};
+
+struct service_adapter {
+	struct btd_adapter *adapter;
+	GSList *pending_list;
+	GSList *records;
 };
 
 static int compute_seq_size(sdp_data_t *data)
@@ -258,11 +272,12 @@ static sdp_record_t *sdp_xml_parse_record(const char *data, int size)
 	return record;
 }
 
-static struct record_data *find_record(uint32_t handle, const char *sender)
+static struct record_data *find_record(struct service_adapter *serv_adapter,
+					uint32_t handle, const char *sender)
 {
 	GSList *list;
 
-	for (list = records; list; list = list->next) {
+	for (list = serv_adapter->records; list; list = list->next) {
 		struct record_data *data = list->data;
 		if (handle == data->handle && !strcmp(sender, data->sender))
 			return data;
@@ -271,13 +286,50 @@ static struct record_data *find_record(uint32_t handle, const char *sender)
 	return NULL;
 }
 
+static struct pending_auth *next_pending(struct service_adapter *serv_adapter)
+{
+	GSList *l = serv_adapter->pending_list;
+
+	if (l) {
+		struct pending_auth *auth = l->data;
+		return auth;
+	}
+
+	return NULL;
+}
+
+static struct pending_auth *find_pending_by_sender(
+			struct service_adapter *serv_adapter,
+			const char *sender)
+{
+	GSList *l = serv_adapter->pending_list;
+
+	for (; l; l = l->next) {
+		struct pending_auth *auth = l->data;
+		if (g_str_equal(auth->sender, sender))
+			return auth;
+	}
+
+	return NULL;
+}
+
 static void exit_callback(void *user_data)
 {
 	struct record_data *user_record = user_data;
+	struct service_adapter *serv_adapter = user_record->serv_adapter;
+	struct pending_auth *auth;
 
 	debug("remove record");
 
-	records = g_slist_remove(records, user_record);
+	serv_adapter->records = g_slist_remove(serv_adapter->records,
+						user_record);
+
+	auth = find_pending_by_sender(serv_adapter, user_record->sender);
+	if (auth) {
+		serv_adapter->pending_list = g_slist_remove(serv_adapter->pending_list,
+							auth);
+		g_free(auth);
+	}
 
 	remove_record_from_server(user_record->handle);
 
@@ -308,12 +360,25 @@ static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
 			strerror(err));
 }
 
+static inline DBusMessage *not_authorized(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAuthorized",
+					"Not Authorized");
+}
+
+static inline DBusMessage *does_not_exist(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExist",
+					"Does Not Exist");
+}
+
 static int add_xml_record(DBusConnection *conn, const char *sender,
-			bdaddr_t *src, const char *record,
-			dbus_uint32_t *handle)
+			struct service_adapter *serv_adapter,
+			const char *record, dbus_uint32_t *handle)
 {
 	struct record_data *user_record;
 	sdp_record_t *sdp_record;
+	bdaddr_t src;
 
 	sdp_record = sdp_xml_parse_record(record, strlen(record));
 	if (!sdp_record) {
@@ -321,22 +386,22 @@ static int add_xml_record(DBusConnection *conn, const char *sender,
 		return -EIO;
 	}
 
-	if (add_record_to_server(src, sdp_record) < 0) {
+	adapter_get_address(serv_adapter->adapter, &src);
+	if (add_record_to_server(&src, sdp_record) < 0) {
 		error("Failed to register service record");
 		sdp_record_free(sdp_record);
 		return -EIO;
 	}
 
 	user_record = g_new0(struct record_data, 1);
-
 	user_record->handle = sdp_record->handle;
-
 	user_record->sender = g_strdup(sender);
-
-	records = g_slist_append(records, user_record);
-
+	user_record->serv_adapter = serv_adapter;
 	user_record->listener_id = g_dbus_add_disconnect_watch(conn, sender,
 					exit_callback, user_record, NULL);
+
+	serv_adapter->records = g_slist_append(serv_adapter->records,
+					user_record);
 
 	debug("listener_id %d", user_record->listener_id);
 
@@ -346,8 +411,10 @@ static int add_xml_record(DBusConnection *conn, const char *sender,
 }
 
 static DBusMessage *update_record(DBusConnection *conn, DBusMessage *msg,
-		bdaddr_t *src, dbus_uint32_t handle, sdp_record_t *sdp_record)
+		struct service_adapter *serv_adapter,
+		dbus_uint32_t handle, sdp_record_t *sdp_record)
 {
+	bdaddr_t src;
 	int err;
 
 	if (remove_record_from_server(handle) < 0) {
@@ -357,8 +424,10 @@ static DBusMessage *update_record(DBusConnection *conn, DBusMessage *msg,
 				"Not Available");
 	}
 
+	adapter_get_address(serv_adapter->adapter, &src);
+
 	sdp_record->handle = handle;
-	err = add_record_to_server(src, sdp_record);
+	err = add_record_to_server(&src, sdp_record);
 	if (err < 0) {
 		sdp_record_free(sdp_record);
 		error("Failed to update the service record");
@@ -371,7 +440,8 @@ static DBusMessage *update_record(DBusConnection *conn, DBusMessage *msg,
 }
 
 static DBusMessage *update_xml_record(DBusConnection *conn,
-				DBusMessage *msg, bdaddr_t *src)
+				DBusMessage *msg,
+				struct service_adapter *serv_adapter)
 {
 	struct record_data *user_record;
 	sdp_record_t *sdp_record;
@@ -389,7 +459,8 @@ static DBusMessage *update_xml_record(DBusConnection *conn,
 	if (len == 0)
 		return invalid_arguments(msg);
 
-	user_record = find_record(handle, dbus_message_get_sender(msg));
+	user_record = find_record(serv_adapter, handle,
+				dbus_message_get_sender(msg));
 	if (!user_record)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotAvailable",
@@ -404,17 +475,18 @@ static DBusMessage *update_xml_record(DBusConnection *conn,
 				strerror(EIO));
 	}
 
-	return update_record(conn, msg, src, handle, sdp_record);
+	return update_record(conn, msg, serv_adapter, handle, sdp_record);
 }
 
 static int remove_record(DBusConnection *conn, const char *sender,
+			struct service_adapter *serv_adapter,
 			dbus_uint32_t handle)
 {
 	struct record_data *user_record;
 
 	debug("remove record 0x%x", handle);
 
-	user_record = find_record(handle, sender);
+	user_record = find_record(serv_adapter, handle, sender);
 	if (!user_record)
 		return -1;
 
@@ -430,11 +502,10 @@ static int remove_record(DBusConnection *conn, const char *sender,
 static DBusMessage *add_service_record(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct btd_adapter *adapter = data;
+	struct service_adapter *serv_adapter = data;
 	DBusMessage *reply;
 	const char *sender, *record;
 	dbus_uint32_t handle;
-	bdaddr_t src;
 	int err;
 
 	if (dbus_message_get_args(msg, NULL,
@@ -442,8 +513,7 @@ static DBusMessage *add_service_record(DBusConnection *conn,
 		return NULL;
 
 	sender = dbus_message_get_sender(msg);
-	adapter_get_address(adapter, &src);
-	err = add_xml_record(conn, sender, &src, record, &handle);
+	err = add_xml_record(conn, sender, serv_adapter, record, &handle);
 	if (err < 0)
 		return failed_strerror(msg, err);
 
@@ -460,17 +530,15 @@ static DBusMessage *add_service_record(DBusConnection *conn,
 static DBusMessage *update_service_record(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct btd_adapter *adapter = data;
-	bdaddr_t src;
+	struct service_adapter *serv_adapter = data;
 
-	adapter_get_address(adapter, &src);
-
-	return update_xml_record(conn, msg, &src);
+	return update_xml_record(conn, msg, serv_adapter);
 }
 
 static DBusMessage *remove_service_record(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct service_adapter *serv_adapter = data;
 	dbus_uint32_t handle;
 	const char *sender;
 
@@ -480,25 +548,167 @@ static DBusMessage *remove_service_record(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	if (remove_record(conn, sender, handle) < 0)
+	if (remove_record(conn, sender, serv_adapter, handle) < 0)
 		return not_available(msg);
 
 	return dbus_message_new_method_return(msg);
 }
 
+static void auth_cb(DBusError *derr, void *user_data)
+{
+	struct service_adapter *serv_adapter = user_data;
+	DBusMessage *reply;
+	struct pending_auth *auth;
+	bdaddr_t src;
+
+	auth = next_pending(serv_adapter);
+	if (auth == NULL) {
+		info("Authorization cancelled: Client exited");
+		return;
+	}
+
+	if (derr) {
+		adapter_get_address(serv_adapter->adapter, &src);
+		error("Access denied: %s", derr->message);
+
+		reply = not_authorized(auth->msg);
+		dbus_message_unref(auth->msg);
+		g_dbus_send_message(auth->conn, reply);
+		goto done;
+	}
+
+	g_dbus_send_reply(auth->conn, auth->msg,
+			DBUS_TYPE_INVALID);
+
+done:
+	dbus_connection_unref(auth->conn);
+
+	serv_adapter->pending_list = g_slist_remove(serv_adapter->pending_list,
+						auth);
+	g_free(auth);
+
+	auth = next_pending(serv_adapter);
+	if (auth == NULL)
+		return;
+
+	adapter_get_address(serv_adapter->adapter, &src);
+	btd_request_authorization(&src, &auth->dst,
+				auth->uuid, auth_cb, serv_adapter);
+}
+
 static DBusMessage *request_authorization(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	/* FIXME implement the request */
+	struct record_data *user_record;
+	struct service_adapter *serv_adapter = data;
+	struct btd_adapter *adapter = serv_adapter->adapter;
+	sdp_record_t *record;
+	sdp_list_t *services;
+	const char *sender;
+	dbus_uint32_t handle;
+	const char *address;
+	struct pending_auth *auth;
+	char uuid_str[MAX_LEN_UUID_STR];
+	uuid_t *uuid, *uuid128;
+	bdaddr_t src;
 
-	return dbus_message_new_method_return(msg);
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
+					DBUS_TYPE_UINT32, &handle,
+					DBUS_TYPE_INVALID) == FALSE)
+		return NULL;
+
+	sender = dbus_message_get_sender(msg);
+	if (find_pending_by_sender(serv_adapter, sender))
+		return failed(msg);
+
+	user_record = find_record(serv_adapter, handle, sender);
+	if (!user_record)
+		return not_authorized(msg);
+
+	record = sdp_record_find(user_record->handle);
+
+	if (sdp_get_service_classes(record, &services) < 0) {
+		sdp_record_free(record);
+		return not_authorized(msg);
+	}
+
+	if (services == NULL)
+		return not_authorized(msg);
+
+	uuid = services->data;
+	uuid128 = sdp_uuid_to_uuid128(uuid);
+
+	sdp_list_free(services, bt_free);
+
+	if (sdp_uuid2strn(uuid128, uuid_str, MAX_LEN_UUID_STR) < 0) {
+		bt_free(uuid128);
+		return not_authorized(msg);
+	}
+	bt_free(uuid128);
+
+	auth = g_new0(struct pending_auth, 1);
+	auth->msg = dbus_message_ref(msg);
+	auth->conn = dbus_connection_ref(connection);
+	auth->sender = user_record->sender;
+	memcpy(auth->uuid, uuid_str, MAX_LEN_UUID_STR);
+	str2ba(address, &auth->dst);
+
+	serv_adapter->pending_list = g_slist_append(serv_adapter->pending_list,
+			auth);
+
+	auth = next_pending(serv_adapter);
+	if (auth == NULL)
+		return does_not_exist(msg);
+
+	adapter_get_address(adapter, &src);
+	if (btd_request_authorization(&src, &auth->dst, auth->uuid, auth_cb,
+					serv_adapter) < 0) {
+		serv_adapter->pending_list = g_slist_remove(serv_adapter->pending_list, auth);
+		g_free(auth);
+		return not_authorized(msg);
+	}
+
+	return NULL;
 }
 
 static DBusMessage *cancel_authorization(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	/* FIXME implement cancel request */
+	DBusMessage *reply;
+	struct service_adapter *serv_adapter = data;
+	struct btd_adapter *adapter = serv_adapter->adapter;
+	struct pending_auth *auth;
+	const gchar *sender;
+	bdaddr_t src;
 
+	sender = dbus_message_get_sender(msg);
+
+	auth = find_pending_by_sender(serv_adapter, sender);
+	if (auth == NULL)
+		return does_not_exist(msg);
+
+	adapter_get_address(adapter, &src);
+	btd_cancel_authorization(&src, &auth->dst);
+
+	reply = not_authorized(auth->msg);
+	dbus_message_unref(auth->msg);
+	g_dbus_send_message(auth->conn, reply);
+
+	dbus_connection_unref(auth->conn);
+
+	serv_adapter->pending_list = g_slist_remove(serv_adapter->pending_list,
+						auth);
+	g_free(auth);
+
+	auth = next_pending(serv_adapter);
+	if (auth == NULL)
+		goto done;
+
+	adapter_get_address(adapter, &src);
+	btd_request_authorization(&src, &auth->dst,
+				auth->uuid, auth_cb, serv_adapter);
+
+done:
 	return dbus_message_new_method_return(msg);
 }
 
@@ -506,26 +716,34 @@ static GDBusMethodTable service_methods[] = {
 	{ "AddRecord",		"s",	"u",	add_service_record	},
 	{ "UpdateRecord",	"us",	"",	update_service_record	},
 	{ "RemoveRecord",	"u",	"",	remove_service_record	},
-	{ "RequestAuthorization","su",	"",	request_authorization	},
+	{ "RequestAuthorization","su",	"",	request_authorization,
+						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "CancelAuthorization", "",	"",	cancel_authorization	},
 	{ }
 };
 
 static void path_unregister(void *data)
 {
-	g_slist_foreach(records, (GFunc) exit_callback, NULL);
+	struct service_adapter *serv_adapter = data;
+
+	g_slist_foreach(serv_adapter->records, (GFunc) exit_callback, NULL);
 }
 
 static int service_probe(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
+	struct service_adapter *serv_adapter;
 
 	DBG("path %s", path);
+
+	serv_adapter = g_new0(struct service_adapter, 1);
+	serv_adapter->adapter = adapter;
+	serv_adapter->pending_list = NULL;
 
 	if (!g_dbus_register_interface(connection, path,
 					SERVICE_INTERFACE,
 					service_methods, NULL, NULL,
-					adapter, path_unregister)) {
+					serv_adapter, path_unregister)) {
 		error("D-Bus failed to register %s interface",
 				SERVICE_INTERFACE);
 		return -1;

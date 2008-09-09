@@ -338,7 +338,6 @@ static int server_connadd(struct network_server *ns, int nsk,
 static void req_auth_cb(DBusError *derr, void *user_data)
 {
 	struct network_server *ns = user_data;
-	struct network_adapter *na = ns->na;
 	uint16_t val;
 
 	if (!setup) {
@@ -348,11 +347,7 @@ static void req_auth_cb(DBusError *derr, void *user_data)
 
 	if (derr) {
 		error("Access denied: %s", derr->message);
-		if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY)) {
-			bdaddr_t dst;
-			str2ba(setup->address, &dst);
-			btd_cancel_authorization(&na->src, &dst);
-		}
+
 		val = BNEP_CONN_NOT_ALLOWED;
 		goto done;
 	}

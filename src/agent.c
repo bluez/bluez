@@ -285,6 +285,14 @@ static void simple_agent_reply(DBusPendingCall *call, void *user_data)
 				err.name, err.message);
 
 		cb(agent, &err, req->user_data);
+
+		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
+			agent_cancel(agent);
+			dbus_message_unref(message);
+			dbus_error_free(&err);
+			return;
+		}
+
 		dbus_error_free(&err);
 		goto done;
 	}
