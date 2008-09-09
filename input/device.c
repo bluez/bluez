@@ -34,21 +34,26 @@
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/hidp.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
 #include "logging.h"
+#include "textfile.h"
 #include "uinput.h"
+
+#include "../src/storage.h"
 
 #include "device.h"
 #include "error.h"
-#include "storage.h"
 #include "fakehid.h"
 #include "glib-helper.h"
 
@@ -78,6 +83,7 @@ struct input_device {
 	char			*path;
 	bdaddr_t		src;
 	bdaddr_t		dst;
+	uint32_t		handle;
 	char			*name;
 	GSList			*connections;
 };
@@ -466,13 +472,168 @@ static int fake_hid_disconnect(struct input_conn *iconn)
 	return fhid->disconnect(iconn->fake);
 }
 
-static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
-		int ctrl_sk, int intr_sk, int timeout, const char *name)
+static int encrypt_link(const char *src_addr, const char *dst_addr)
+{
+	char filename[PATH_MAX + 1];
+	struct hci_conn_info_req *cr;
+	int dd, err, dev_id;
+	char *str;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "linkkeys");
+
+	str = textfile_get(filename, dst_addr);
+	if (!str) {
+		error("Encryption link key not found");
+		return -ENOKEY;
+	}
+
+	free(str);
+
+	cr = g_try_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
+	if (!cr)
+		return -ENOMEM;
+
+	dev_id = hci_devid(src_addr);
+	if (dev_id < 0) {
+		g_free(cr);
+		return -errno;
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		g_free(cr);
+		return -errno;
+	}
+
+	str2ba(dst_addr, &cr->bdaddr);
+	cr->type = ACL_LINK;
+
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0)
+		goto fail;
+
+	if (cr->conn_info->link_mode & HCI_LM_ENCRYPT) {
+		/* Already encrypted */
+		goto done;
+	}
+
+	if (hci_authenticate_link(dd, htobs(cr->conn_info->handle), 1000) < 0) {
+		error("Link authentication failed: %s (%d)",
+						strerror(errno), errno);
+		goto fail;
+	}
+
+	if (hci_encrypt_link(dd, htobs(cr->conn_info->handle), 1, 1000) < 0) {
+		error("Link encryption failed: %s (%d)",
+						strerror(errno), errno);
+		goto fail;
+	}
+
+done:
+	g_free(cr);
+
+	hci_close_dev(dd);
+
+	return 0;
+
+fail:
+	g_free(cr);
+
+	err = errno;
+	hci_close_dev(dd);
+
+	return -err;
+}
+
+static void epox_endian_quirk(unsigned char *data, int size)
+{
+	/* USAGE_PAGE (Keyboard)	05 07
+	 * USAGE_MINIMUM (0)		19 00
+	 * USAGE_MAXIMUM (65280)	2A 00 FF   <= must be FF 00
+	 * LOGICAL_MINIMUM (0)		15 00
+	 * LOGICAL_MAXIMUM (65280)	26 00 FF   <= must be FF 00
+	 */
+	unsigned char pattern[] = { 0x05, 0x07, 0x19, 0x00, 0x2a, 0x00, 0xff,
+						0x15, 0x00, 0x26, 0x00, 0xff };
+	int i;
+
+	if (!data)
+		return;
+
+	for (i = 0; i < size - sizeof(pattern); i++) {
+		if (!memcmp(data + i, pattern, sizeof(pattern))) {
+			data[i + 5] = 0xff;
+			data[i + 6] = 0x00;
+			data[i + 10] = 0xff;
+			data[i + 11] = 0x00;
+		}
+	}
+}
+
+static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
+{
+	sdp_data_t *pdlist, *pdlist2;
+	uint8_t attr_val;
+
+	pdlist = sdp_data_get(rec, 0x0101);
+	pdlist2 = sdp_data_get(rec, 0x0102);
+	if (pdlist) {
+		if (pdlist2) {
+			if (strncmp(pdlist->val.str, pdlist2->val.str, 5)) {
+				strncpy(req->name, pdlist2->val.str, 127);
+				strcat(req->name, " ");
+			}
+			strncat(req->name, pdlist->val.str, 127 - strlen(req->name));
+		} else
+			strncpy(req->name, pdlist->val.str, 127);
+	} else {
+		pdlist2 = sdp_data_get(rec, 0x0100);
+		if (pdlist2)
+			strncpy(req->name, pdlist2->val.str, 127);
+	}
+
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_PARSER_VERSION);
+	req->parser = pdlist ? pdlist->val.uint16 : 0x0100;
+
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_DEVICE_SUBCLASS);
+	req->subclass = pdlist ? pdlist->val.uint8 : 0;
+
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_COUNTRY_CODE);
+	req->country = pdlist ? pdlist->val.uint8 : 0;
+
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_VIRTUAL_CABLE);
+	attr_val = pdlist ? pdlist->val.uint8 : 0;
+	if (attr_val)
+		req->flags |= (1 << HIDP_VIRTUAL_CABLE_UNPLUG);
+
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_BOOT_DEVICE);
+	attr_val = pdlist ? pdlist->val.uint8 : 0;
+	if (attr_val)
+		req->flags |= (1 << HIDP_BOOT_PROTOCOL_MODE);
+
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_DESCRIPTOR_LIST);
+	if (pdlist) {
+		pdlist = pdlist->val.dataseq;
+		pdlist = pdlist->val.dataseq;
+		pdlist = pdlist->next;
+
+		req->rd_data = g_try_malloc0(pdlist->unitSize);
+		if (req->rd_data) {
+			memcpy(req->rd_data, (unsigned char *) pdlist->val.str,
+								pdlist->unitSize);
+			req->rd_size = pdlist->unitSize;
+			epox_endian_quirk(req->rd_data, req->rd_size);
+		}
+	}
+}
+
+static int hidp_connadd(const bdaddr_t *src, const bdaddr_t *dst, int ctrl_sk,
+		int intr_sk, int timeout, const char *name, const uint32_t handle)
 {
 	struct hidp_connadd_req req;
 	struct fake_hid *fake_hid;
 	struct fake_input *fake;
-	char addr[18];
+	sdp_record_t *rec;
+	char src_addr[18], dst_addr[18];
 	int ctl, err;
 
 	memset(&req, 0, sizeof(req));
@@ -481,11 +642,18 @@ static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 	req.flags     = 0;
 	req.idle_to   = timeout;
 
-	err = get_stored_device_info(src, dst, &req);
-	if (err < 0) {
-		error("Rejected connection from unknown device %s", addr);
+	ba2str(src, src_addr);
+	ba2str(dst, dst_addr);
+
+	rec = fetch_record(src_addr, dst_addr, handle);
+	if (!rec) {
+		error("Rejected connection from unknown device %s", dst_addr);
+		err = -EPERM;
 		goto cleanup;
 	}
+
+	extract_hid_record(rec, &req);
+	sdp_record_free(rec);
 
 	fake_hid = get_fake_hid(req.vendor, req.product);
 	if (fake_hid) {
@@ -502,10 +670,8 @@ static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 		return -errno;
 	}
 
-	ba2str(dst, addr);
-
 	if (req.subclass & 0x40) {
-		err = encrypt_link(src, dst);
+		err = encrypt_link(src_addr, dst_addr);
 		if (err < 0 && err != -EACCES)
 			goto cleanup;
 	}
@@ -524,7 +690,7 @@ static int hidp_connadd(bdaddr_t *src, bdaddr_t *dst,
 		goto cleanup;
 	}
 
-	info("New input device %s (%s)", addr, req.name);
+	info("New input device %s (%s)", dst_addr, req.name);
 
 cleanup:
 	if (req.rd_data)
@@ -548,7 +714,7 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	iconn->intr_sk = g_io_channel_unix_get_fd(chan);
 	err = hidp_connadd(&idev->src, &idev->dst,
 				iconn->ctrl_sk, iconn->intr_sk,
-					iconn->timeout, idev->name);
+				iconn->timeout, idev->name, idev->handle);
 	if (err < 0)
 		goto failed;
 
@@ -860,17 +1026,23 @@ static GDBusSignalTable device_signals[] = {
 };
 
 static struct input_device *input_device_new(DBusConnection *conn,
-					const char *path, bdaddr_t *src,
-					bdaddr_t *dst)
+					const char *path, const bdaddr_t *src,
+					const bdaddr_t *dst, const uint32_t handle)
 {
 	struct input_device *idev;
+	char name[249], src_addr[18], dst_addr[18];
 
 	idev = g_new0(struct input_device, 1);
 	bacpy(&idev->src, src);
 	bacpy(&idev->dst, dst);
 	idev->path = g_strdup(path);
-	read_device_name(src, dst, &idev->name);
 	idev->conn = dbus_connection_ref(conn);
+	idev->handle = handle;
+
+	ba2str(src, src_addr);
+	ba2str(dst, dst_addr);
+	if (read_device_name(src_addr, dst_addr, name) == 0)
+		idev->name = g_strdup(name);
 
 	if (g_dbus_register_interface(conn, idev->path, INPUT_DEVICE_INTERFACE,
 					device_methods, device_signals, NULL,
@@ -881,8 +1053,8 @@ static struct input_device *input_device_new(DBusConnection *conn,
 		return NULL;
 	}
 
-	info("Registered interface %s on path %s", INPUT_DEVICE_INTERFACE,
-		idev->path);
+	info("Registered interface %s on path %s",
+			INPUT_DEVICE_INTERFACE, idev->path);
 
 	return idev;
 }
@@ -905,15 +1077,15 @@ static struct input_conn *input_conn_new(struct input_device *idev,
 }
 
 int input_device_register(DBusConnection *conn, const char *path,
-			bdaddr_t *src, bdaddr_t *dst, const char *uuid,
-			int timeout)
+			const bdaddr_t *src, const bdaddr_t *dst,
+			const char *uuid, uint32_t handle, int timeout)
 {
 	struct input_device *idev;
 	struct input_conn *iconn;
 
 	idev = find_device_by_path(devices, path);
 	if (!idev) {
-		idev = input_device_new(conn, path, src, dst);
+		idev = input_device_new(conn, path, src, dst, handle);
 		if (!idev)
 			return -EINVAL;
 		devices = g_slist_append(devices, idev);
@@ -936,7 +1108,7 @@ int fake_input_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 
 	idev = find_device_by_path(devices, path);
 	if (!idev) {
-		idev = input_device_new(conn, path, src, dst);
+		idev = input_device_new(conn, path, src, dst, 0);
 		if (!idev)
 			return -EINVAL;
 		devices = g_slist_append(devices, idev);
@@ -988,8 +1160,6 @@ int input_device_unregister(const char *path, const char *uuid)
 		/* Pending connection running */
 		return -EBUSY;
 	}
-
-	del_stored_device_info(&idev->src, &idev->dst);
 
 	idev->connections = g_slist_remove(idev->connections, iconn);
 	input_conn_free(iconn);
@@ -1050,7 +1220,7 @@ int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst)
 	return 0;
 }
 
-int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
+int input_device_connadd(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct input_device *idev;
 	struct input_conn *iconn;
@@ -1065,7 +1235,7 @@ int input_device_connadd(bdaddr_t *src, bdaddr_t *dst)
 		return -ENOENT;
 
 	err = hidp_connadd(src, dst, iconn->ctrl_sk, iconn->intr_sk,
-				iconn->timeout, idev->name);
+				iconn->timeout, idev->name, idev->handle);
 	if (err < 0)
 		goto error;
 

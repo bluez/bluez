@@ -43,119 +43,10 @@
 #include "device.h"
 #include "server.h"
 #include "manager.h"
-#include "storage.h"
 
 static int idle_timeout = 0;
 
 static DBusConnection *connection = NULL;
-
-static void epox_endian_quirk(unsigned char *data, int size)
-{
-	/* USAGE_PAGE (Keyboard)	05 07
-	 * USAGE_MINIMUM (0)		19 00
-	 * USAGE_MAXIMUM (65280)	2A 00 FF   <= must be FF 00
-	 * LOGICAL_MINIMUM (0)		15 00
-	 * LOGICAL_MAXIMUM (65280)	26 00 FF   <= must be FF 00
-	 */
-	unsigned char pattern[] = { 0x05, 0x07, 0x19, 0x00, 0x2a, 0x00, 0xff,
-						0x15, 0x00, 0x26, 0x00, 0xff };
-	int i;
-
-	if (!data)
-		return;
-
-	for (i = 0; i < size - sizeof(pattern); i++) {
-		if (!memcmp(data + i, pattern, sizeof(pattern))) {
-			data[i + 5] = 0xff;
-			data[i + 6] = 0x00;
-			data[i + 10] = 0xff;
-			data[i + 11] = 0x00;
-		}
-	}
-}
-
-static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
-{
-	sdp_data_t *pdlist, *pdlist2;
-	uint8_t attr_val;
-
-	pdlist = sdp_data_get(rec, 0x0101);
-	pdlist2 = sdp_data_get(rec, 0x0102);
-	if (pdlist) {
-		if (pdlist2) {
-			if (strncmp(pdlist->val.str, pdlist2->val.str, 5)) {
-				strncpy(req->name, pdlist2->val.str, 127);
-				strcat(req->name, " ");
-			}
-			strncat(req->name, pdlist->val.str, 127 - strlen(req->name));
-		} else
-			strncpy(req->name, pdlist->val.str, 127);
-	} else {
-		pdlist2 = sdp_data_get(rec, 0x0100);
-		if (pdlist2)
-			strncpy(req->name, pdlist2->val.str, 127);
- 	}
-
-	pdlist = sdp_data_get(rec, SDP_ATTR_HID_PARSER_VERSION);
-	req->parser = pdlist ? pdlist->val.uint16 : 0x0100;
-
-	pdlist = sdp_data_get(rec, SDP_ATTR_HID_DEVICE_SUBCLASS);
-	req->subclass = pdlist ? pdlist->val.uint8 : 0;
-
-	pdlist = sdp_data_get(rec, SDP_ATTR_HID_COUNTRY_CODE);
-	req->country = pdlist ? pdlist->val.uint8 : 0;
-
-	pdlist = sdp_data_get(rec, SDP_ATTR_HID_VIRTUAL_CABLE);
-	attr_val = pdlist ? pdlist->val.uint8 : 0;
-	if (attr_val)
-		req->flags |= (1 << HIDP_VIRTUAL_CABLE_UNPLUG);
-
-	pdlist = sdp_data_get(rec, SDP_ATTR_HID_BOOT_DEVICE);
-	attr_val = pdlist ? pdlist->val.uint8 : 0;
-	if (attr_val)
-		req->flags |= (1 << HIDP_BOOT_PROTOCOL_MODE);
-
-	pdlist = sdp_data_get(rec, SDP_ATTR_HID_DESCRIPTOR_LIST);
-	if (pdlist) {
-		pdlist = pdlist->val.dataseq;
-		pdlist = pdlist->val.dataseq;
-		pdlist = pdlist->next;
-
-		req->rd_data = g_try_malloc0(pdlist->unitSize);
-		if (req->rd_data) {
-			memcpy(req->rd_data, (unsigned char *) pdlist->val.str,
-								pdlist->unitSize);
-			req->rd_size = pdlist->unitSize;
-			epox_endian_quirk(req->rd_data, req->rd_size);
-		}
-	}
-}
-
-/*
- * Stored inputs registration functions
- */
-
-static int load_stored(bdaddr_t *src, bdaddr_t *dst,
-		       struct hidp_connadd_req *hidp)
-{
-	char filename[PATH_MAX + 1];
-	char *value;
-	char src_addr[18], dst_addr[18];
-
-	ba2str(src, src_addr);
-	ba2str(dst, dst_addr);
-
-	/* load the input stored */
-	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "input");
-
-	value = textfile_get(filename, dst_addr);
-	if (!value)
-		return -EINVAL;
-
-	memset(&hidp, 0, sizeof(hidp));
-
-	return parse_stored_device_info(value, hidp);
-}
 
 static void input_remove(struct btd_device *device, const char *uuid)
 {
@@ -170,31 +61,23 @@ static int hid_device_probe(struct btd_device *device, GSList *records)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
-	struct hidp_connadd_req hidp;
+	sdp_record_t *rec = records->data;
+	sdp_data_t *pdlist;
 	bdaddr_t src, dst;
+	uint32_t handle;
 
 	DBG("path %s", path);
 
-	memset(&hidp, 0, sizeof(hidp));
-
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst);
+	pdlist = sdp_data_get(rec, SDP_SERVER_RECORD_HANDLE);
+	if (!pdlist)
+		return -1;
 
-	if (load_stored(&src, &dst, &hidp) == 0)
-		goto done;
-
-	hidp.idle_to = idle_timeout * 60;
-
-	extract_hid_record(records->data, &hidp);
-
-done:
-	store_device_info(&src, &dst, &hidp);
-
-	if (hidp.rd_data)
-		g_free(hidp.rd_data);
+	handle = pdlist->val.uint32;
 
 	return input_device_register(connection, path, &src, &dst,
-				HID_UUID, hidp.idle_to);
+				HID_UUID, handle, idle_timeout * 60);
 }
 
 static void hid_device_remove(struct btd_device *device)
