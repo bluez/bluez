@@ -511,7 +511,6 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 
 	/* Do reverse resolution in case of "on" mode */
 	mode = mode2str(new_mode);
-	debug("Attempting to change mode to %s", mode);
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)
@@ -619,29 +618,35 @@ static struct session_req *find_session(GSList *list, DBusMessage *msg)
 	return NULL;
 }
 
-static void session_free(struct session_req *req)
+static void session_remove(struct session_req *req)
 {
 	struct btd_adapter *adapter = req->adapter;
-	const char *sender = dbus_message_get_sender(req->msg);
-
-	info("%s session %p with %s deactivated",
-		req->mode ? "Mode" : "Discovery", req, sender);
 
 	if (req->mode) {
+		GSList *l;
+		uint8_t mode = adapter->global_mode;
+
 		adapter->mode_sessions = g_slist_remove(adapter->mode_sessions,
 						req);
 
-		if (adapter->mode_sessions)
-			goto done;
+		for (l = adapter->mode_sessions; l; l = l->next) {
+			struct session_req *req = l->data;
 
-		debug("Restoring '%s' mode", mode2str(adapter->global_mode));
-		set_mode(req->conn, req->msg, adapter->global_mode, adapter);
+			if (req->mode > mode)
+				mode = req->mode;
+		}
+
+		if (mode == adapter->mode)
+			return;
+
+		debug("Switching to '%s' mode", mode2str(mode));
+		set_mode(req->conn, req->msg, mode, adapter);
 	} else {
 		adapter->disc_sessions = g_slist_remove(adapter->disc_sessions,
 						req);
 
 		if (adapter->disc_sessions)
-			goto done;
+			return;
 
 		debug("Stopping discovery", mode2str(adapter->global_mode));
 
@@ -653,7 +658,17 @@ static void session_free(struct session_req *req)
 			cancel_periodic_discovery(adapter);
 	}
 
-done:
+}
+
+static void session_free(struct session_req *req)
+{
+	const char *sender = dbus_message_get_sender(req->msg);
+
+	info("%s session %p with %s deactivated",
+		req->mode ? "Mode" : "Discovery", req, sender);
+
+	session_remove(req);
+
 	dbus_message_unref(req->msg);
 	dbus_connection_unref(req->conn);
 	g_free(req);
@@ -1648,8 +1663,13 @@ static DBusMessage *request_mode(DBusConnection *conn,
 					(GDBusWatchFunction) session_free);
 		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
 					req);
-	} else
+	} else {
 		req->mode = new_mode;
+		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
+					req);
+		session_remove(req);
+		return dbus_message_new_method_return(msg);
+	}
 
 	/* No need to change mode */
 	if (adapter->mode >= new_mode)
