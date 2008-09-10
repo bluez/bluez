@@ -952,6 +952,60 @@ static BtIOError rfcomm_connect(BtIO *io, BtIOFunc func)
 	return BT_IO_SUCCESS;
 }
 
+static int sco_bind(struct io_context *io_ctxt, const char *address,
+			uint16_t mtu, struct sockaddr_sco *addr)
+{
+	int err;
+	struct sco_options sco_opt;
+
+	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+	if (io_ctxt->fd < 0)
+		return -errno;
+
+	if (mtu) {
+		socklen_t olen = sizeof(sco_opt);
+		memset(&sco_opt, 0, olen);
+		getsockopt(io_ctxt->fd, SOL_SCO, SCO_OPTIONS, &sco_opt, &olen);
+		sco_opt.mtu = mtu;
+		setsockopt(io_ctxt->fd, SOL_SCO, SCO_OPTIONS, &sco_opt,
+				sizeof(sco_opt));
+	}
+
+	memset(addr, 0, sizeof(*addr));
+	addr->sco_family = AF_BLUETOOTH;
+	str2ba(address, &addr->sco_bdaddr);
+
+	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
+	if (err < 0) {
+		close(io_ctxt->fd);
+		return -errno;
+	}
+
+	return 0;
+}
+
+static BtIOError sco_listen(BtIO *io, BtIOFunc func)
+{
+	struct io_context *io_ctxt = io->io_ctxt;
+	struct sockaddr_sco addr;
+	BtIOError err;
+
+	io_ctxt->func = func;
+
+	err = sco_bind(io_ctxt, io->src, io->mtu, &addr);
+	if (err < 0)
+		return err;
+
+	err = transport_listen(io);
+	if (err < 0) {
+		close(io_ctxt->fd);
+		return err;
+	}
+
+	return BT_IO_SUCCESS;
+}
+
+
 static int create_io_context(struct io_context **io_ctxt, BtIOFunc func,
 			gpointer cb, gpointer resolver, gpointer user_data)
 {
@@ -1094,6 +1148,28 @@ int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	return 0;
 }
 
+GIOChannel *bt_sco_listen(const bdaddr_t *src, uint16_t mtu,
+				bt_io_callback_t cb, void *user_data)
+{
+	BtIO *io;
+	BtIOError err;
+
+	io = bt_io_create(BT_IO_SCO, user_data, NULL);
+	if (!io)
+		return NULL;
+
+	ba2str(src, io->src);
+	io->io_ctxt->cb = cb;
+	err = bt_io_listen(io, NULL, NULL);
+	if (err != BT_IO_SUCCESS) {
+		bt_io_unref(io);
+		return NULL;
+	}
+
+	return io->io_ctxt->io;
+}
+
+
 int bt_sco_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			bt_io_callback_t cb, void *user_data)
 {
@@ -1146,6 +1222,7 @@ BtIO *bt_io_create(BtIOTransport type, gpointer user_data, GDestroyNotify notify
 		err = create_io_context(&io->io_ctxt, NULL, NULL,
 				sco_resolver, user_data);
 		io->connect = sco_connect;
+		io->listen = sco_listen;
 		break;
 	default:
 		return NULL;
