@@ -1877,6 +1877,18 @@ int headset_connect_rfcomm(struct audio_device *dev, GIOChannel *io)
 	return hs->tmp_rfcomm ? 0 : -EINVAL;
 }
 
+int headset_connect_sco(struct audio_device *dev, GIOChannel *io)
+{
+	struct headset *hs = dev->headset;
+
+	if (hs->sco)
+		return -EISCONN;
+
+	hs->sco = io;
+
+	return 0;
+}
+
 int headset_close_rfcomm(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;

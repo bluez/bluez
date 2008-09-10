@@ -61,6 +61,7 @@ void set_hfp_active(struct audio_device *dev, gboolean active);
 void headset_set_authorized(struct audio_device *dev);
 int headset_connect_rfcomm(struct audio_device *dev, GIOChannel *chan);
 int headset_close_rfcomm(struct audio_device *dev);
+int headset_connect_sco(struct audio_device *dev, GIOChannel *io);
 
 headset_state_t headset_get_state(struct audio_device *dev);
 void headset_set_state(struct audio_device *dev, headset_state_t state);
