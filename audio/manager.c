@@ -566,7 +566,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 		flags |= RFCOMM_LM_MASTER;
 
 	adapter->hsp_ag_server = bt_rfcomm_listen(&adapter->src, chan, flags,
-					ag_io_cb,adapter);
+							ag_io_cb, adapter);
 	if (!adapter->hsp_ag_server)
 		return -1;
 
@@ -593,7 +593,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 	chan = DEFAULT_HF_AG_CHANNEL;
 
 	adapter->hfp_ag_server = bt_rfcomm_listen(&adapter->src, chan, flags,
-					ag_io_cb, adapter);
+							ag_io_cb, adapter);
 	if (!adapter->hfp_ag_server)
 		return -1;
 
