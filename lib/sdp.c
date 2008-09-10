@@ -816,11 +816,11 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	}
 
 	if (!is_seq && !is_alt) {
-		if (src && buf) {
+		if (src && buf && buf->buf_size >= buf->data_size + data_size) {
 			memcpy(buf->data + buf->data_size, src, data_size);
 			buf->data_size += data_size;
 		} else if (dtd != SDP_DATA_NIL)
-			SDPDBG("Gen PDU : Cant copy from NULL source or dest\n");
+			SDPDBG("Gen PDU : Can't copy from invalid source or dest\n");
 	}
 
 	pdu_size += data_size;
@@ -2551,7 +2551,7 @@ void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 
 void sdp_append_to_pdu(sdp_buf_t *pdu, sdp_data_t *d)
 {
-	uint8_t buf[256];
+	uint8_t buf[512];
 	sdp_buf_t append;
 
 	memset(&append, 0, sizeof(sdp_buf_t));
@@ -2957,8 +2957,8 @@ static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 	SDPDBG("");
 
 	memset(&buf, 0, sizeof(sdp_buf_t));
-	buf.data = malloc(256);
-	buf.buf_size = 256;
+	buf.data = malloc(512);
+	buf.buf_size = 512;
 
 	if (!buf.data)
 		return -ENOMEM;
