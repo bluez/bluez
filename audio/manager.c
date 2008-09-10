@@ -511,7 +511,6 @@ static void sco_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 drop:
 	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
-	return;
 }
 
 static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
@@ -566,7 +565,6 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 drop:
 	g_io_channel_close(chan);
 	g_io_channel_unref(chan);
-	return;
 }
 
 static void hs_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
