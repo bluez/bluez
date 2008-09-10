@@ -840,6 +840,23 @@ ok:
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
+static int dtmf_tone(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	if (strlen(buf) < 8) {
+		error("Too short string for DTMF tone");
+		return -EINVAL;
+	}
+
+	if (telephony_transmit_dtmf_req(buf[7]) < 0) {
+		headset_send(hs, "\r\nERROR\r\n");
+		return 0;
+	}
+
+	return headset_send(hs, "\r\nOK\n\r");
+}
+
 static struct event event_callbacks[] = {
 	{ "ATA", answer_call },
 	{ "ATD", dial_number },
@@ -853,6 +870,7 @@ static struct event event_callbacks[] = {
 	{ "AT+CLIP", cli_notification },
 	{ "AT+BTRH", response_and_hold },
 	{ "AT+BLDN", last_dialed_number },
+	{ "AT+VTS", dtmf_tone },
 	{ 0 }
 };
 

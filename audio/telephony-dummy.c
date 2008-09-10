@@ -113,6 +113,12 @@ int telephony_dial_number_req(const char *number)
 	return 0;
 }
 
+int telephony_transmit_dtmf_req(char tone)
+{
+	debug("telephony-dummy: transmit dtmf: %c", tone);
+	return 0;
+}
+
 /* D-Bus method handlers */
 static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 					void *data)

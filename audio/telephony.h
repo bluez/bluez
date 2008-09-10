@@ -93,6 +93,8 @@ int telephony_calling_stopped_ind(void);
 int telephony_ready_ind(uint32_t features, const struct indicator *indicators,
 			int rh);
 
+int telephony_transmit_dtmf_req(char tone);
+
 /* Helper function for quick indicator updates */
 static inline int telephony_update_indicator(struct indicator *indicators,
 						const char *desc,
