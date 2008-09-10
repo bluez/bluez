@@ -450,6 +450,8 @@ char *bt_compidtostr(int compid)
 		return "SiRF Technology, Inc.";
 	case 81:
 		return "Tzero Technologies, Inc.";
+	case 82:
+		return "J&M Corporation";
 	case 65535:
 		return "internal use";
 	default:
