@@ -89,7 +89,6 @@ struct browse_req {
 	GSList *uuids_removed;
 	sdp_list_t *records;
 	int search_uuid;
-	gboolean browse;
 };
 
 static uint16_t uuid_list[] = {
@@ -875,16 +874,11 @@ static void store(struct btd_device *device)
 	g_free(str);
 }
 
-static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
+static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
-	struct btd_adapter *adapter = device->adapter;
-	bdaddr_t src, dst;
-	uuid_t uuid;
 	DBusMessage *reply;
-
-	adapter_get_address(adapter, &src);
 
 	if (err < 0) {
 		error("%s: error updating services: %s (%d)",
@@ -893,19 +887,6 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	}
 
 	update_services(req, recs);
-
-	/* Public browsing successful or Single record requested */
-	if (req->browse == FALSE || (!req->search_uuid && recs))
-		goto probe;
-
-	if (uuid_list[++req->search_uuid]) {
-		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
-		str2ba(device->address, &dst);
-		bt_search_service(&src, &dst, &uuid, browse_cb, user_data, NULL);
-		return;
-	}
-
-probe:
 
 	if (!req->uuids_added && !req->uuids_removed) {
 		debug("%s: No service found", device->path);
@@ -967,6 +948,44 @@ cleanup:
 	if (req->records)
 		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
 	g_free(req);
+
+}
+
+static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
+{
+	struct browse_req *req = user_data;
+	struct btd_device *device = req->device;
+	struct btd_adapter *adapter = device->adapter;
+	bdaddr_t src, dst;
+	uuid_t uuid;
+
+	/* Public browsing successful or Single record requested */
+	if (err < 0 || (!req->search_uuid && recs))
+		goto done;
+
+	update_services(req, recs);
+
+	adapter_get_address(adapter, &src);
+	str2ba(device->address, &dst);
+
+	/* Search for mandatory uuids */
+	if (uuid_list[++req->search_uuid]) {
+		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
+		bt_search_service(&src, &dst, &uuid, browse_cb, user_data, NULL);
+		return;
+	}
+
+done:
+	search_cb(recs, err, user_data);
+}
+
+static void init_browse(struct browse_req *req)
+{
+	GSList *l;
+
+	for (l = req->device->uuids; l; l = l->next)
+		req->uuids_removed = g_slist_append(req->uuids_removed,
+						l->data);
 }
 
 int device_browse(struct btd_device *device, DBusConnection *conn,
@@ -976,7 +995,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	struct browse_req *req;
 	bdaddr_t src, dst;
 	uuid_t uuid;
-	GSList *l;
+	bt_callback_t cb;
 
 	adapter_get_address(adapter, &src);
 
@@ -989,13 +1008,11 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 
 	if (search) {
 		memcpy(&uuid, search, sizeof(uuid_t));
-		req->browse = FALSE;
+		cb = search_cb;
 	} else {
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
-		req->browse = TRUE;
-		for (l = device->uuids; l; l = l->next)
-			req->uuids_removed = g_slist_append(req->uuids_removed,
-						l->data);
+		init_browse(req);
+		cb = browse_cb;
 	}
 
 	device->discov_active = 1;
