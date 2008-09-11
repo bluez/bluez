@@ -755,6 +755,7 @@ static void control_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 {
 	struct input_conn *iconn = user_data;
 	struct input_device *idev = iconn->idev;
+	DBusMessage *reply;
 
 	if (err < 0) {
 		error("connect(): %s (%d)", strerror(-err), -err);
@@ -776,7 +777,8 @@ static void control_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 failed:
 	iconn->ctrl_sk = -1;
-	connection_attempt_failed(iconn->pending_connect, -err);
+	reply = connection_attempt_failed(iconn->pending_connect, -err);
+	g_dbus_send_message(idev->conn, reply);
 	dbus_message_unref(iconn->pending_connect);
 	iconn->pending_connect = NULL;
 }
