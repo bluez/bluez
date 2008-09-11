@@ -542,7 +542,7 @@ static int sco_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	err = bt_sco_connect(&dev->src, &dev->dst, sco_connect_cb, dev);
 	if (err < 0) {
 		error("connect: %s (%d)", strerror(-err), -err);
-		return -err;
+		return err;
 	}
 
 	headset_set_state(dev, HEADSET_STATE_PLAY_IN_PROGRESS);
