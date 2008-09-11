@@ -62,6 +62,8 @@ int agent_display_passkey(struct agent *agent, struct btd_device *device,
 
 int agent_cancel(struct agent *agent);
 
+gboolean agent_is_busy(struct agent *agent, void *user_data);
+
 uint8_t agent_get_io_capability(struct agent *agent);
 
 gboolean agent_matches(struct agent *agent, const char *name, const char *path);

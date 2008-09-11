@@ -111,9 +111,14 @@ static GSList *device_drivers = NULL;
 static void device_free(gpointer user_data)
 {
 	struct btd_device *device = user_data;
+	struct btd_adapter *adapter = device->adapter;
+	struct agent *agent = adapter_get_agent(adapter);
 
 	if (device->agent)
 		agent_destroy(device->agent, FALSE);
+
+	if (agent && agent_is_busy(agent, device))
+		agent_cancel(agent);
 
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
 	g_slist_free(device->uuids);
