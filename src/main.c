@@ -334,6 +334,7 @@ static void configure_device(int dev_id)
 {
 	struct hci_dev_req dr;
 	struct hci_dev_info di;
+	pid_t pid;
 	int dd;
 
 	if (hci_devinfo(dev_id, &di) < 0)
@@ -343,7 +344,8 @@ static void configure_device(int dev_id)
 		return;
 
 	/* Do configuration in the separate process */
-	switch (fork()) {
+	pid = fork();
+	switch (pid) {
 		case 0:
 			atexit(at_child_exit);
 			break;
@@ -351,6 +353,7 @@ static void configure_device(int dev_id)
 			error("Fork failed. Can't init device hci%d: %s (%d)",
 						dev_id, strerror(errno), errno);
 		default:
+			debug("configuration child %d forked", pid);
 			return;
 	}
 
@@ -430,10 +433,12 @@ static void configure_device(int dev_id)
 static void init_device(int dev_id)
 {
 	struct hci_dev_info di;
+	pid_t pid;
 	int dd;
 
 	/* Do initialization in the separate process */
-	switch (fork()) {
+	pid = fork();
+	switch (pid) {
 		case 0:
 			atexit(at_child_exit);
 			break;
@@ -441,6 +446,7 @@ static void init_device(int dev_id)
 			error("Fork failed. Can't init device hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		default:
+			debug("initialization child %d forked", pid);
 			return;
 	}
 
