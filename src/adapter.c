@@ -2025,10 +2025,9 @@ static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
 	return 0;
 }
 
-static int device_read_bdaddr(uint16_t dev_id, const char *address)
+static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 {
 	int dd, err;
-	bdaddr_t bdaddr;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
@@ -2038,8 +2037,7 @@ static int device_read_bdaddr(uint16_t dev_id, const char *address)
 		return -err;
 	}
 
-	str2ba(address, &bdaddr);
-	if (hci_read_bd_addr(dd, &bdaddr, 2000) < 0) {
+	if (hci_read_bd_addr(dd, bdaddr, 2000) < 0) {
 		err = errno;
 		error("Can't read address for hci%d: %s (%d)",
 					dev_id, strerror(err), err);
@@ -2341,18 +2339,17 @@ int adapter_start(struct btd_adapter *adapter)
 		return -1;
 	}
 
-	ba2str(&di.bdaddr, adapter->address);
-
 	if (!bacmp(&di.bdaddr, BDADDR_ANY)) {
 		int err;
 
 		debug("Adapter %s without an address", adapter->path);
 
-		err = device_read_bdaddr(adapter->dev_id, adapter->address);
+		err = device_read_bdaddr(adapter->dev_id, &di.bdaddr);
 		if (err < 0)
 			return err;
 	}
 
+	ba2str(&di.bdaddr, adapter->address);
 	memcpy(dev->features, di.features, 8);
 
 	dd = hci_open_dev(adapter->dev_id);
