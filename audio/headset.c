@@ -513,7 +513,7 @@ static void sco_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	info("SCO fd=%d", sk);
+	debug("SCO fd=%d", sk);
 	hs->sco = chan;
 	p->io = NULL;
 

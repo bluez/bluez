@@ -152,7 +152,7 @@ static int unix_sendmsg_fd(int sock, int fd)
 static void unix_ipc_sendmsg(struct unix_client *client,
 					const bt_audio_msg_header_t *msg)
 {
-	info("Audio API: sending %s", bt_audio_strmsg(msg->msg_type));
+	debug("Audio API: sending %s", bt_audio_strmsg(msg->msg_type));
 
 	if (send(client->sock, msg, BT_AUDIO_IPC_PACKET_SIZE, 0) < 0)
 		error("Error %s(%d)", strerror(errno), errno);
@@ -789,7 +789,7 @@ static int handle_sco_transport(struct unix_client *client,
 {
 	client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
 
-	info("config sco - device = %s access_mode = %u", req->device,
+	debug("config sco - device = %s access_mode = %u", req->device,
 			req->access_mode);
 
 	return 0;
@@ -814,7 +814,7 @@ static int handle_a2dp_transport(struct unix_client *client,
 
 	client->caps = g_slist_append(client->caps, media_transport);
 
-	info("config a2dp - device = %s access_mode = %u", req->device,
+	debug("config a2dp - device = %s access_mode = %u", req->device,
 			req->access_mode);
 
 	if (req->mpeg_capabilities.frequency) {
@@ -833,7 +833,7 @@ static int handle_a2dp_transport(struct unix_client *client,
 		media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &mpeg_cap,
 							sizeof(mpeg_cap));
 
-		info("codec mpeg12 - frequency = %u channel_mode = %u "
+		debug("codec mpeg12 - frequency = %u channel_mode = %u "
 			"layer = %u crc = %u mpf = %u bitrate = %u",
 			mpeg_cap.frequency, mpeg_cap.channel_mode,
 			mpeg_cap.layer, mpeg_cap.crc, mpeg_cap.mpf,
@@ -854,7 +854,7 @@ static int handle_a2dp_transport(struct unix_client *client,
 		media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
 							sizeof(sbc_cap));
 
-		info("codec sbc - frequency = %u channel_mode = %u "
+		debug("codec sbc - frequency = %u channel_mode = %u "
 			"allocation = %u subbands = %u blocks = %u "
 			"bitpool = %u", sbc_cap.frequency,
 			sbc_cap.channel_mode, sbc_cap.allocation_method,
@@ -1008,7 +1008,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	}
 
 	if ((type = bt_audio_strmsg(msghdr->msg_type)))
-		info("Audio API: received %s", type);
+		debug("Audio API: received %s", type);
 
 	switch (msghdr->msg_type) {
 	case BT_GETCAPABILITIES_REQ:
@@ -1119,7 +1119,7 @@ int unix_init(void)
 							server_cb, NULL);
 	g_io_channel_unref(io);
 
-	info("Unix socket created: %d", sk);
+	debug("Unix socket created: %d", sk);
 
 	return 0;
 }
