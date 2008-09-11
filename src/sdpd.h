@@ -27,6 +27,12 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 
+#ifdef SDP_DEBUG
+#define SDPDBG(fmt, arg...) syslog(LOG_DEBUG, "%s: " fmt "\n", __func__ , ## arg)
+#else
+#define SDPDBG(fmt...)
+#endif
+
 typedef struct request {
 	bdaddr_t device;
 	bdaddr_t bdaddr;

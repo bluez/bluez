@@ -170,8 +170,8 @@ void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec)
 {
 	sdp_access_t *dev;
 
-	debug("Adding rec : 0x%lx", (long) rec);
-	debug("with handle : 0x%x", rec->handle);
+	SDPDBG("Adding rec : 0x%lx", (long) rec);
+	SDPDBG("with handle : 0x%x", rec->handle);
 
 	service_db = sdp_list_insert_sorted(service_db, rec, record_sort);
 
@@ -196,7 +196,7 @@ static sdp_list_t *record_locate(uint32_t handle)
 		return p;
 	}
 
-	debug("Could not find svcRec for : 0x%x", handle);
+	SDPDBG("Could not find svcRec for : 0x%x", handle);
 	return NULL;
 }
 
@@ -211,7 +211,7 @@ static sdp_list_t *access_locate(uint32_t handle)
 		return p;
 	}
 
-	debug("Could not find access data for : 0x%x", handle);
+	SDPDBG("Could not find access data for : 0x%x", handle);
 	return NULL;
 }
 
@@ -222,8 +222,8 @@ sdp_record_t *sdp_record_find(uint32_t handle)
 {
 	sdp_list_t *p = record_locate(handle);
 
-        if (!p) {
-		debug("Couldn't find record for : 0x%x", handle);
+	if (!p) {
+		SDPDBG("Couldn't find record for : 0x%x", handle);
 		return 0;
 	}
 
