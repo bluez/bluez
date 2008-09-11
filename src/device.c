@@ -85,6 +85,7 @@ struct browse_req {
 	DBusConnection *conn;
 	DBusMessage *msg;
 	struct btd_device *device;
+	GSList *uuids;
 	GSList *uuids_added;
 	GSList *uuids_removed;
 	sdp_list_t *records;
@@ -823,9 +824,17 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		if (!uuid_str)
 			continue;
 
+		/* Driver uuid found */
+		l = g_slist_find_custom(req->uuids, uuid_str,
+				(GCompareFunc) strcasecmp);
+		if (l)
+			req->uuids = g_slist_remove(req->uuids, l->data);
+
 		/* Check for duplicates */
 		if (sdp_list_find(req->records, rec, rec_cmp))
 			continue;
+
+		debug("New record found: %s", uuid_str);
 
 		store_record(src_addr, device->address, rec);
 
@@ -975,6 +984,14 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		return;
 	}
 
+	/* Search for drivers uuids */
+	if (req->uuids) {
+		bt_string2uuid(&uuid, req->uuids->data);
+		req->uuids = g_slist_remove(req->uuids, req->uuids->data);
+		bt_search_service(&src, &dst, &uuid, browse_cb, user_data, NULL);
+		return;
+	}
+
 done:
 	search_cb(recs, err, user_data);
 }
@@ -982,6 +999,19 @@ done:
 static void init_browse(struct browse_req *req)
 {
 	GSList *l;
+
+	for (l = device_drivers; l; l = l->next) {
+		struct btd_device_driver *driver = l->data;
+		int i;
+
+		for (i = 0; driver->uuids[i]; i++) {
+			if (g_slist_find_custom(req->uuids, driver->uuids[i],
+					(GCompareFunc) strcasecmp))
+				return;
+			req->uuids = g_slist_append(req->uuids,
+					g_strdup(driver->uuids[i]));
+		}
+	}
 
 	for (l = req->device->uuids; l; l = l->next)
 		req->uuids_removed = g_slist_append(req->uuids_removed,
