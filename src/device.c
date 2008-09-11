@@ -992,6 +992,13 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		return;
 	}
 
+	/* Search for l2cap uuid */
+	if (!req->records) {
+		sdp_uuid16_create(&uuid, L2CAP_UUID);
+		bt_search_service(&src, &dst, &uuid, search_cb, user_data, NULL);
+		return;
+	}
+
 done:
 	search_cb(recs, err, user_data);
 }
