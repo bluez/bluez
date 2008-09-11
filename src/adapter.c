@@ -2341,13 +2341,18 @@ int adapter_start(struct btd_adapter *adapter)
 		return -1;
 	}
 
-	if (bacmp(&di.bdaddr, BDADDR_ANY))
-		ba2str(&di.bdaddr, adapter->address);
-	else {
-		int err = device_read_bdaddr(adapter->dev_id, adapter->address);
+	ba2str(&di.bdaddr, adapter->address);
+
+	if (!bacmp(&di.bdaddr, BDADDR_ANY)) {
+		int err;
+
+		debug("Adapter %s without an address", adapter->path);
+
+		err = device_read_bdaddr(adapter->dev_id, adapter->address);
 		if (err < 0)
 			return err;
 	}
+
 	memcpy(dev->features, di.features, 8);
 
 	dd = hci_open_dev(adapter->dev_id);
