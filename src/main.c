@@ -329,6 +329,7 @@ static void at_child_exit(void)
 static void configure_device(int dev_id)
 {
 	struct hci_dev_info di;
+	uint16_t policy;
 	int dd;
 
 	if (hci_devinfo(dev_id, &di) < 0)
@@ -343,6 +344,11 @@ static void configure_device(int dev_id)
 						dev_id, strerror(errno), errno);
 		return;
 	}
+
+	/* Set default link policy */
+	policy = htobs(main_opts.link_policy);
+	hci_send_cmd(dd, OGF_LINK_POLICY,
+				OCF_WRITE_DEFAULT_LINK_POLICY, 2, &policy);
 
 	/* Set device name */
 	if ((main_opts.flags & (1 << HCID_SET_NAME)) && main_opts.name) {
