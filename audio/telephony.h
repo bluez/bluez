@@ -95,6 +95,8 @@ int telephony_ready_ind(uint32_t features, const struct indicator *indicators,
 
 int telephony_transmit_dtmf_req(char tone);
 
+int telephony_subscriber_number_req(void);
+
 /* Helper function for quick indicator updates */
 static inline int telephony_update_indicator(struct indicator *indicators,
 						const char *desc,

@@ -857,6 +857,18 @@ static int dtmf_tone(struct audio_device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\n\r");
 }
 
+static int subscriber_number(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	if (telephony_subscriber_number_req() < 0) {
+		headset_send(hs, "\r\nERROR\r\n");
+		return 0;
+	}
+
+	return headset_send(hs, "\r\nOK\n\r");
+}
+
 static struct event event_callbacks[] = {
 	{ "ATA", answer_call },
 	{ "ATD", dial_number },
@@ -871,6 +883,7 @@ static struct event event_callbacks[] = {
 	{ "AT+BTRH", response_and_hold },
 	{ "AT+BLDN", last_dialed_number },
 	{ "AT+VTS", dtmf_tone },
+	{ "AT+CNUM", subscriber_number },
 	{ 0 }
 };
 

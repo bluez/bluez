@@ -119,6 +119,11 @@ int telephony_transmit_dtmf_req(char tone)
 	return 0;
 }
 
+int telephony_subscriber_number_req(void)
+{
+	return 0;
+}
+
 /* D-Bus method handlers */
 static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 					void *data)
