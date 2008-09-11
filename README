@@ -32,8 +32,7 @@ Information
 ===========
 
 Mailing lists:
-	bluez-users@lists.sf.net - BlueZ general questions and discussions
-	bluez-devel@lists.sf.net - BlueZ development 
+	linux-bluetooth@vger.kernel.org
 
 For additional information about the project visit BlueZ web site:
 	http://www.bluez.org
