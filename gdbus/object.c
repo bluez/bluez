@@ -523,7 +523,11 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
 					const char *format, va_list args)
 {
-	return dbus_message_new_error(message, name, format);
+	char str[1024];
+
+	vsnprintf(str, sizeof(str), format, args);
+
+	return dbus_message_new_error(message, name, str);
 }
 
 DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
