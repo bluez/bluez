@@ -329,7 +329,6 @@ static void at_child_exit(void)
 static void configure_device(int dev_id)
 {
 	struct hci_dev_info di;
-	pid_t pid;
 	int dd;
 
 	if (hci_devinfo(dev_id, &di) < 0)
@@ -338,25 +337,11 @@ static void configure_device(int dev_id)
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		return;
 
-	/* Do configuration in the separate process */
-	pid = fork();
-	switch (pid) {
-		case 0:
-			atexit(at_child_exit);
-			break;
-		case -1:
-			error("Fork failed. Can't init device hci%d: %s (%d)",
-						dev_id, strerror(errno), errno);
-		default:
-			debug("configuration child %d forked", pid);
-			return;
-	}
-
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		error("Can't open device hci%d: %s (%d)",
 						dev_id, strerror(errno), errno);
-		exit(1);
+		return;
 	}
 
 	/* Set device name */
@@ -400,8 +385,6 @@ static void configure_device(int dev_id)
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
-
-	exit(0);
 }
 
 static void init_device(int dev_id)
@@ -421,7 +404,7 @@ static void init_device(int dev_id)
 			error("Fork failed. Can't init device hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		default:
-			debug("initialization child %d forked", pid);
+			debug("child %d forked", pid);
 			return;
 	}
 
