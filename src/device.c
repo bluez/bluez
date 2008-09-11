@@ -1021,7 +1021,7 @@ static void init_browse(struct browse_req *req)
 					(GCompareFunc) strcasecmp))
 				return;
 			req->uuids = g_slist_append(req->uuids,
-					g_strdup(driver->uuids[i]));
+					driver->uuids[i]);
 		}
 	}
 
