@@ -66,8 +66,6 @@ enum {
 	HCID_SET_CLASS,
 	HCID_SET_PAGETO,
 	HCID_SET_DISCOVTO,
-	HCID_SET_LM,
-	HCID_SET_LP,
 };
 
 struct main_opts main_opts;
@@ -183,11 +181,9 @@ static void parse_config(GKeyFile *config)
 	}
 
 	main_opts.link_mode = HCI_LM_ACCEPT;
-	main_opts.flags |= (1 << HCID_SET_LM);
 
 	main_opts.link_policy = HCI_LP_RSWITCH | HCI_LP_SNIFF |
 						HCI_LP_HOLD | HCI_LP_PARK;
-	main_opts.flags |= (1 << HCID_SET_LP);
 }
 
 static void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
@@ -332,7 +328,6 @@ static void at_child_exit(void)
 
 static void configure_device(int dev_id)
 {
-	struct hci_dev_req dr;
 	struct hci_dev_info di;
 	pid_t pid;
 	int dd;
@@ -362,27 +357,6 @@ static void configure_device(int dev_id)
 		error("Can't open device hci%d: %s (%d)",
 						dev_id, strerror(errno), errno);
 		exit(1);
-	}
-
-	memset(&dr, 0, sizeof(dr));
-	dr.dev_id = dev_id;
-
-	/* Set link mode */
-	if ((main_opts.flags & (1 << HCID_SET_LM))) {
-		dr.dev_opt = main_opts.link_mode;
-		if (ioctl(dd, HCISETLINKMODE, (unsigned long) &dr) < 0) {
-			error("Can't set link mode on hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		}
-	}
-
-	/* Set link policy */
-	if ((main_opts.flags & (1 << HCID_SET_LP))) {
-		dr.dev_opt = main_opts.link_policy;
-		if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0) {
-			error("Can't set link policy on hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		}
 	}
 
 	/* Set device name */
@@ -432,6 +406,7 @@ static void configure_device(int dev_id)
 
 static void init_device(int dev_id)
 {
+	struct hci_dev_req dr;
 	struct hci_dev_info di;
 	pid_t pid;
 	int dd;
@@ -455,6 +430,23 @@ static void init_device(int dev_id)
 		error("Can't open device hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 		exit(1);
+	}
+
+	memset(&dr, 0, sizeof(dr));
+	dr.dev_id = dev_id;
+
+	/* Set link mode */
+	dr.dev_opt = main_opts.link_mode;
+	if (ioctl(dd, HCISETLINKMODE, (unsigned long) &dr) < 0) {
+		error("Can't set link mode on hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
+	}
+
+	/* Set link policy */
+	dr.dev_opt = main_opts.link_policy;
+	if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0) {
+		error("Can't set link policy on hci%d: %s (%d)",
+					dev_id, strerror(errno), errno);
 	}
 
 	/* Start HCI device */
