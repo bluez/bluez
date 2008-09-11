@@ -832,8 +832,12 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		/* Driver uuid found */
 		l = g_slist_find_custom(req->uuids, uuid_str,
 				(GCompareFunc) strcasecmp);
-		if (l)
-			req->uuids = g_slist_remove(req->uuids, l->data);
+		if (l) {
+			char *uuid = l->data;
+
+			req->uuids = g_slist_remove(req->uuids, uuid);
+			g_free(uuid);
+		}
 
 		/* Check for duplicates */
 		if (sdp_list_find(req->records, rec, rec_cmp))
@@ -903,7 +907,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	update_services(req, recs);
 
 	if (!req->uuids_added && !req->uuids_removed) {
-		debug("%s: No service found", device->path);
+		debug("%s: No service update", device->path);
 		goto proceed;
 	}
 
@@ -991,8 +995,11 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	/* Search for drivers uuids */
 	if (req->uuids) {
-		bt_string2uuid(&uuid, req->uuids->data);
-		req->uuids = g_slist_remove(req->uuids, req->uuids->data);
+		char *uuid_str = req->uuids->data;
+
+		bt_string2uuid(&uuid, uuid_str);
+		req->uuids = g_slist_remove(req->uuids, uuid_str);
+		g_free(uuid_str);
 		bt_search_service(&src, &dst, &uuid, browse_cb, user_data, NULL);
 		return;
 	}
@@ -1017,11 +1024,14 @@ static void init_browse(struct browse_req *req)
 		int i;
 
 		for (i = 0; driver->uuids[i]; i++) {
+			char *uuid;
+
 			if (g_slist_find_custom(req->uuids, driver->uuids[i],
 					(GCompareFunc) strcasecmp))
 				return;
-			req->uuids = g_slist_append(req->uuids,
-					driver->uuids[i]);
+
+			uuid = g_strdup(driver->uuids[i]);
+			req->uuids = g_slist_append(req->uuids, uuid);
 		}
 	}
 
