@@ -2416,6 +2416,9 @@ int adapter_start(struct btd_adapter *adapter)
 	}
 
 setup:
+	hci_send_cmd(dd, OGF_LINK_POLICY,
+				OCF_READ_DEFAULT_LINK_POLICY, 0, NULL);
+
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
 		adapter->state |= STD_INQUIRY;
 	else
