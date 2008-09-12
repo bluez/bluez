@@ -463,7 +463,7 @@ static const char *mode2str(uint8_t mode)
 	}
 }
 
-static uint8_t str2mode(const char *addr, const char *mode)
+static uint8_t get_mode(const bdaddr_t *bdaddr, const char *mode)
 {
 	if (strcasecmp("off", mode) == 0)
 		return MODE_OFF;
@@ -474,11 +474,13 @@ static uint8_t str2mode(const char *addr, const char *mode)
 	else if (strcasecmp("limited", mode) == 0)
 		return MODE_LIMITED;
 	else if (strcasecmp("on", mode) == 0) {
-		char onmode[14];
-		if (read_on_mode(addr, onmode, sizeof(onmode)) < 0)
+		char onmode[14], srcaddr[18];
+
+		ba2str(bdaddr, srcaddr);
+		if (read_on_mode(srcaddr, onmode, sizeof(onmode)) < 0)
 			return MODE_CONNECTABLE;
 
-		return str2mode(addr, onmode);
+		return get_mode(bdaddr, onmode);
 	} else
 		return MODE_UNKNOWN;
 }
@@ -752,13 +754,11 @@ static DBusMessage *confirm_mode(DBusConnection *conn, DBusMessage *msg,
 	struct session_req *req;
 	int ret;
 	uint8_t umode;
-	char addr[18];
 
 	if (!adapter->agent)
 		return dbus_message_new_method_return(msg);
 
-	ba2str(&adapter->bdaddr, addr);
-	umode = str2mode(addr, mode);
+	umode = get_mode(&adapter->bdaddr, mode);
 
 	req = create_session(adapter, conn, msg, umode, NULL);
 
@@ -1616,7 +1616,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&sub, &mode);
 
-		adapter->global_mode = str2mode(srcaddr, mode);
+		adapter->global_mode = get_mode(&adapter->bdaddr, mode);
 
 		if (adapter->global_mode == adapter->mode)
 			return dbus_message_new_method_return(msg);
@@ -1624,7 +1624,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (adapter->mode_sessions && adapter->global_mode < adapter->mode)
 			return confirm_mode(conn, msg, mode, data);
 
-		return set_mode(conn, msg, str2mode(srcaddr, mode),
+		return set_mode(conn, msg, get_mode(&adapter->bdaddr, mode),
 				data);
 	}
 
@@ -1647,7 +1647,7 @@ static DBusMessage *request_mode(DBusConnection *conn,
 						DBUS_TYPE_INVALID))
 		return invalid_args(msg);
 
-	new_mode = str2mode(srcaddr, mode);
+	new_mode = get_mode(&adapter->bdaddr, mode);
 	if (new_mode != MODE_CONNECTABLE && new_mode != MODE_DISCOVERABLE)
 		return invalid_args(msg);
 
