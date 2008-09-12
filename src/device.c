@@ -64,7 +64,7 @@ struct btd_driver_data {
 };
 
 struct btd_device {
-	gchar		*address;
+	bdaddr_t	bdaddr;
 	gchar		*path;
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
@@ -126,7 +126,6 @@ static void device_free(gpointer user_data)
 	if (device->disconn_timer)
 		g_source_remove(device->disconn_timer);
 
-	g_free(device->address);
 	g_free(device->path);
 	g_free(device);
 }
@@ -134,16 +133,18 @@ static void device_free(gpointer user_data)
 static gboolean device_is_paired(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device->adapter;
-	char filename[PATH_MAX + 1], *str, addr[18];
+	char filename[PATH_MAX + 1], *str;
+	char srcaddr[18], dstaddr[18];
 	gboolean ret;
-	bdaddr_t bdaddr;
+	bdaddr_t src;
 
-	adapter_get_address(adapter, &bdaddr);
-	ba2str(&bdaddr, addr);
+	adapter_get_address(adapter, &src);
+	ba2str(&src, srcaddr);
+	ba2str(&device->bdaddr, dstaddr);
 
 	create_name(filename, PATH_MAX, STORAGEDIR,
-			addr, "linkkeys");
-	str = textfile_caseget(filename, device->address);
+			srcaddr, "linkkeys");
+	str = textfile_caseget(filename, dstaddr);
 	ret = str ? TRUE : FALSE;
 	g_free(str);
 
@@ -158,8 +159,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	bdaddr_t src, dst;
-	char name[248], src_addr[18];
+	bdaddr_t src;
+	char name[248], srcaddr[18], dstaddr[18];
 	char **uuids;
 	const char *ptr;
 	dbus_bool_t boolean;
@@ -167,6 +168,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	int i;
 	GSList *l;
 	struct active_conn_info *dev;
+
+	ba2str(&device->bdaddr, dstaddr);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -180,22 +183,23 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	/* Address */
+	ptr = dstaddr;
 	dbus_message_iter_append_dict_entry(&dict, "Address", DBUS_TYPE_STRING,
-			&device->address);
+			&ptr);
 
 	/* Name */
 	ptr = NULL;
 	memset(name, 0, sizeof(name));
 	adapter_get_address(adapter, &src);
-	ba2str(&src, src_addr);
+	ba2str(&src, srcaddr);
 
-	if (read_device_name(src_addr, device->address, name) == 0) {
+	if (read_device_name(srcaddr, dstaddr, name) == 0) {
 		ptr = name;
 		dbus_message_iter_append_dict_entry(&dict, "Name",
 				DBUS_TYPE_STRING, &ptr);
 	}
 
-	if (read_device_alias(src_addr, device->address, name, sizeof(name)) > 0)
+	if (read_device_alias(srcaddr, dstaddr, name, sizeof(name)) > 0)
 		ptr = name;
 
 	/* Alias: use Name if Alias doesn't exist */
@@ -203,10 +207,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		dbus_message_iter_append_dict_entry(&dict, "Alias",
 				DBUS_TYPE_STRING, &ptr);
 
-	str2ba(device->address, &dst);
-
 	/* Class */
-	if (read_remote_class(&src, &dst, &class) == 0) {
+	if (read_remote_class(&src, &device->bdaddr, &class) == 0) {
 		dbus_message_iter_append_dict_entry(&dict, "Class",
 				DBUS_TYPE_UINT32, &class);
 	}
@@ -217,12 +219,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Trusted */
-	boolean = read_trust(&src, device->address, GLOBAL_TRUST);
+	boolean = read_trust(&src, dstaddr, GLOBAL_TRUST);
 	dbus_message_iter_append_dict_entry(&dict, "Trusted",
 			DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Connected */
-	dev = adapter_search_active_conn_by_bdaddr(adapter, &dst);
+	dev = adapter_search_active_conn_by_bdaddr(adapter, &device->bdaddr);
 	if (dev)
 		boolean = TRUE;
 	else
@@ -254,15 +256,16 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *device = data;
 	struct btd_adapter *adapter = device->adapter;
-	char addr[18];
-	bdaddr_t bdaddr;
+	char srcaddr[18], dstaddr[18];
+	bdaddr_t src;
 	int err;
 
-	adapter_get_address(adapter, &bdaddr);
-	ba2str(&bdaddr, addr);
+	adapter_get_address(adapter, &src);
+	ba2str(&src, srcaddr);
+	ba2str(&device->bdaddr, dstaddr);
 
-	 /* Remove alias if empty string */
-	err = write_device_alias(addr, device->address,
+	/* Remove alias if empty string */
+	err = write_device_alias(srcaddr, dstaddr,
 			g_str_equal(alias, "") ? NULL : alias);
 	if (err < 0)
 		return g_dbus_create_error(msg,
@@ -281,14 +284,15 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *device = data;
 	struct btd_adapter *adapter = device->adapter;
-	char addr[18];
-	bdaddr_t bdaddr;
+	char srcaddr[18], dstaddr[18];
+	bdaddr_t src;
 
 
-	adapter_get_address(adapter, &bdaddr);
-	ba2str(&bdaddr, addr);
+	adapter_get_address(adapter, &src);
+	ba2str(&src, srcaddr);
+	ba2str(&device->bdaddr, dstaddr);
 
-	write_trust(addr, device->address, GLOBAL_TRUST, value);
+	write_trust(srcaddr, dstaddr, GLOBAL_TRUST, value);
 
 	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
 					DEVICE_INTERFACE, "Trusted",
@@ -349,15 +353,13 @@ static void discover_services_req_exit(void *user_data)
 {
 	struct btd_device *device = user_data;
 	struct btd_adapter *adapter = device->adapter;
-	bdaddr_t src, dst;
+	bdaddr_t src;
 
 	adapter_get_address(adapter, &src);
 
 	debug("DiscoverDevices requestor exited");
 
-	str2ba(device->address, &dst);
-
-	bt_cancel_discovery(&src, &dst);
+	bt_cancel_discovery(&src, &device->bdaddr);
 }
 
 static DBusMessage *discover_services(DBusConnection *conn,
@@ -402,7 +404,7 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 {
 	struct btd_device *device = user_data;
 	struct btd_adapter *adapter = device->adapter;
-	bdaddr_t src, dst;
+	bdaddr_t src;
 
 	adapter_get_address(adapter, &src);
 
@@ -418,9 +420,7 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
 
-	str2ba(device->address, &dst);
-
-	if (bt_cancel_discovery(&src, &dst) < 0)
+	if (bt_cancel_discovery(&src, &device->bdaddr) < 0)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".Failed",
 				"No pending discover");
@@ -433,15 +433,13 @@ static gboolean disconnect_timeout(gpointer user_data)
 	struct btd_device *device = user_data;
 	struct active_conn_info *ci;
 	disconnect_cp cp;
-	bdaddr_t bda;
 	int dd;
 	uint16_t dev_id = adapter_get_dev_id(device->adapter);
 
 	device->disconn_timer = 0;
 
-	str2ba(device->address, &bda);
-
-	ci = adapter_search_active_conn_by_bdaddr(device->adapter, &bda);
+	ci = adapter_search_active_conn_by_bdaddr(device->adapter,
+							&device->bdaddr);
 
 	if (!ci)
 		return FALSE;
@@ -467,12 +465,10 @@ static DBusMessage *disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct btd_device *device = user_data;
-	bdaddr_t bda;
 	struct active_conn_info *dev;
 
-	str2ba(device->address, &bda);
-
-	dev = adapter_search_active_conn_by_bdaddr(device->adapter, &bda);
+	dev = adapter_search_active_conn_by_bdaddr(device->adapter,
+							&device->bdaddr);
 
 	if (!dev)
 		return g_dbus_create_error(msg,
@@ -531,7 +527,7 @@ struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapt
 		return NULL;
 	}
 
-	device->address = g_strdup(address);
+	str2ba(address, &device->bdaddr);
 	device->adapter = adapter;
 
 	return device;
@@ -560,7 +556,10 @@ void device_remove(DBusConnection *conn, struct btd_device *device)
 
 gint device_address_cmp(struct btd_device *device, const gchar *address)
 {
-	return strcasecmp(device->address, address);
+	char addr[18];
+
+	ba2str(&device->bdaddr, addr);
+	return strcasecmp(addr, address);
 }
 
 sdp_record_t *get_record(sdp_list_t *recs, const char *uuid)
@@ -644,11 +643,12 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t 
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	GSList *list;
-	char src_addr[18];
+	char srcaddr[18], dstaddr[18];
 	bdaddr_t src;
 
 	adapter_get_address(adapter, &src);
-	ba2str(&src, src_addr);
+	ba2str(&src, srcaddr);
+	ba2str(&device->bdaddr, dstaddr);
 
 	debug("Remove drivers for %s", device->path);
 
@@ -674,7 +674,7 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t 
 			if (!rec)
 				continue;
 
-			delete_record(src_addr, device->address, rec->handle);
+			delete_record(srcaddr, dstaddr, rec->handle);
 		}
 	}
 
@@ -805,11 +805,12 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 	struct btd_device *device = req->device;
 	struct btd_adapter *adapter = device_get_adapter(device);
 	sdp_list_t *seq;
-	char src_addr[18];
+	char srcaddr[18], dstaddr[18];
 	bdaddr_t src;
 
 	adapter_get_address(adapter, &src);
-	ba2str(&src, src_addr);
+	ba2str(&src, srcaddr);
+	ba2str(&device->bdaddr, dstaddr);
 
 	for (seq = recs; seq; seq = seq->next) {
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
@@ -843,9 +844,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		if (sdp_list_find(req->records, rec, rec_cmp))
 			continue;
 
-		debug("New record found: %s", uuid_str);
-
-		store_record(src_addr, device->address, rec);
+		store_record(srcaddr, dstaddr, rec);
 
 		/* Copy record */
 		if (sdp_gen_record_pdu(rec, &pdu) == 0) {
@@ -876,19 +875,18 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 static void store(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device->adapter;
-	bdaddr_t src, dst;
+	bdaddr_t src;
 	char *str;
 
 	adapter_get_address(adapter, &src);
-	str2ba(device->address, &dst);
 
 	if (!device->uuids) {
-		write_device_profiles(&src, &dst, "");
+		write_device_profiles(&src, &device->bdaddr, "");
 		return;
 	}
 
 	str = bt_list2string(device->uuids);
-	write_device_profiles(&src, &dst, str);
+	write_device_profiles(&src, &device->bdaddr, str);
 	g_free(str);
 }
 
@@ -974,7 +972,7 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
 	struct btd_adapter *adapter = device->adapter;
-	bdaddr_t src, dst;
+	bdaddr_t src;
 	uuid_t uuid;
 
 	/* Public browsing successful or Single record requested */
@@ -984,12 +982,11 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	update_services(req, recs);
 
 	adapter_get_address(adapter, &src);
-	str2ba(device->address, &dst);
 
 	/* Search for mandatory uuids */
 	if (uuid_list[++req->search_uuid]) {
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
-		bt_search_service(&src, &dst, &uuid, browse_cb, user_data, NULL);
+		bt_search_service(&src, &device->bdaddr, &uuid, browse_cb, user_data, NULL);
 		return;
 	}
 
@@ -1000,14 +997,14 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		bt_string2uuid(&uuid, uuid_str);
 		req->uuids = g_slist_remove(req->uuids, uuid_str);
 		g_free(uuid_str);
-		bt_search_service(&src, &dst, &uuid, browse_cb, user_data, NULL);
+		bt_search_service(&src, &device->bdaddr, &uuid, browse_cb, user_data, NULL);
 		return;
 	}
 
 	/* Search for l2cap uuid */
 	if (!req->records) {
 		sdp_uuid16_create(&uuid, L2CAP_UUID);
-		bt_search_service(&src, &dst, &uuid, search_cb, user_data, NULL);
+		bt_search_service(&src, &device->bdaddr, &uuid, search_cb, user_data, NULL);
 		return;
 	}
 
@@ -1045,7 +1042,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 {
 	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
-	bdaddr_t src, dst;
+	bdaddr_t src;
 	uuid_t uuid;
 	bt_callback_t cb;
 
@@ -1055,8 +1052,6 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	req->conn = dbus_connection_ref(conn);
 	req->msg = dbus_message_ref(msg);
 	req->device = device;
-
-	str2ba(device->address, &dst);
 
 	if (search) {
 		memcpy(&uuid, search, sizeof(uuid_t));
@@ -1076,7 +1071,8 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 						discover_services_req_exit,
 						device, NULL);
 
-	return bt_search_service(&src, &dst, &uuid, browse_cb, req, NULL);
+	return bt_search_service(&src, &device->bdaddr,
+					&uuid, browse_cb, req, NULL);
 }
 
 struct btd_adapter *device_get_adapter(struct btd_device *device)
@@ -1089,7 +1085,7 @@ struct btd_adapter *device_get_adapter(struct btd_device *device)
 
 void device_get_address(struct btd_device *device, bdaddr_t *bdaddr)
 {
-	str2ba(device->address, bdaddr);
+	bacpy(bdaddr, &device->bdaddr);
 }
 
 const gchar *device_get_path(struct btd_device *device)
