@@ -60,7 +60,7 @@ int bt_sco_connect(const bdaddr_t *src, const bdaddr_t *dst,
 GIOChannel *bt_sco_listen(const bdaddr_t *src, uint16_t mtu,
 				bt_io_callback_t cb, void *user_data);
 
-int bt_acl_encrypt(const bdaddr_t *src, uint16_t handle,
+int bt_acl_encrypt(const bdaddr_t *src, const bdaddr_t *dst,
 			bt_hci_result_t cb, gpointer user_data);
 
 /* Experiemental bt_io API */

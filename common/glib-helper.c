@@ -1110,15 +1110,18 @@ failed:
 	return FALSE;
 }
 
-int bt_acl_encrypt(const bdaddr_t *src, uint16_t handle,
+int bt_acl_encrypt(const bdaddr_t *src, const bdaddr_t *dst,
 			bt_hci_result_t cb, gpointer user_data)
 {
 	GIOChannel *io;
 	struct hci_cmd_data *cmd;
+	struct hci_conn_info_req *cr;
 	auth_requested_cp cp;
 	struct hci_filter nf;
-	int dd, dev_id, err = 0;
+	int dd, dev_id, err;
 	char src_addr[18];
+	uint32_t link_mode;
+	uint16_t handle;
 
 	ba2str(src, src_addr);
 	dev_id = hci_devid(src_addr);
@@ -1129,7 +1132,25 @@ int bt_acl_encrypt(const bdaddr_t *src, uint16_t handle,
 	if (dd < 0)
 		return -errno;
 
-	/* FIXME: Check if it is already encrypted */
+	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
+	cr->type = ACL_LINK;
+	bacpy(&cr->bdaddr, dst);
+
+	err = ioctl(dd, HCIGETCONNINFO, cr);
+	link_mode = cr->conn_info->link_mode;
+	handle = cr->conn_info->handle;
+	g_free(cr);
+
+	if (err < 0) {
+		err = errno;
+		goto failed;
+	}
+
+	if (link_mode & HCI_LM_ENCRYPT) {
+		/* Already encrypted */
+		err = EALREADY;
+		goto failed;
+	}
 
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = htobs(handle);
@@ -1168,6 +1189,7 @@ int bt_acl_encrypt(const bdaddr_t *src, uint16_t handle,
 
 failed:
 	close(dd);
+
 	return -err;
 }
 
