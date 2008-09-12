@@ -1534,21 +1534,21 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	/* Address */
 	property = srcaddr;
 	dbus_message_iter_append_dict_entry(&dict, "Address",
-			DBUS_TYPE_STRING, &property);
+						DBUS_TYPE_STRING, &property);
 
 	/* Name */
 	memset(str, 0, sizeof(str));
+	strncpy(str, (char *) adapter->dev.name, 248);
 	property = str;
 
-	if (!read_local_name(&adapter->bdaddr, str))
-		dbus_message_iter_append_dict_entry(&dict, "Name",
-			DBUS_TYPE_STRING, &property);
+	dbus_message_iter_append_dict_entry(&dict, "Name",
+						DBUS_TYPE_STRING, &property);
 
 	/* Mode */
 	property = mode2str(adapter->mode);
 
 	dbus_message_iter_append_dict_entry(&dict, "Mode",
-			DBUS_TYPE_STRING, &property);
+						DBUS_TYPE_STRING, &property);
 
 	/* DiscoverableTimeout */
 	dbus_message_iter_append_dict_entry(&dict, "DiscoverableTimeout",
@@ -1559,9 +1559,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	else
 		discov_active = FALSE;
 
-	/* PeriodicDiscovery */
+	/* Discovering */
 	dbus_message_iter_append_dict_entry(&dict, "Discovering",
-				DBUS_TYPE_BOOLEAN, &discov_active);
+					DBUS_TYPE_BOOLEAN, &discov_active);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
