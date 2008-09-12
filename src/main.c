@@ -345,11 +345,6 @@ static void configure_device(int dev_id)
 		return;
 	}
 
-	/* Set default link policy */
-	policy = htobs(main_opts.link_policy);
-	hci_send_cmd(dd, OGF_LINK_POLICY,
-				OCF_WRITE_DEFAULT_LINK_POLICY, 2, &policy);
-
 	/* Set device name */
 	if ((main_opts.flags & (1 << HCID_SET_NAME)) && main_opts.name) {
 		change_local_name_cp cp;
@@ -391,6 +386,11 @@ static void configure_device(int dev_id)
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
+
+	/* Set default link policy */
+	policy = htobs(main_opts.link_policy);
+	hci_send_cmd(dd, OGF_LINK_POLICY,
+				OCF_WRITE_DEFAULT_LINK_POLICY, 2, &policy);
 }
 
 static void init_device(int dev_id)
