@@ -1,3 +1,11 @@
+ver 4.5:
+	Fix initialization issue with new adapters.
+	Send HID authentication request without blocking.
+	Hide the verbose SDP debug behind SDP_DEBUG.
+	Add extra UUIDs for service discovery.
+	Add SCO server socket listener.
+	Add authorization support to service plugin.
+
 ver 4.4:
 	Add temporary fix for the CUPS compile issue.
 	Add service-api.txt to distribution.
