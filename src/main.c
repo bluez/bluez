@@ -433,7 +433,8 @@ static void init_device(int dev_id)
 
 	/* Set link policy */
 	dr.dev_opt = main_opts.link_policy;
-	if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0) {
+	if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0 &&
+							errno != ENETDOWN) {
 		error("Can't set link policy on hci%d: %s (%d)",
 					dev_id, strerror(errno), errno);
 	}
