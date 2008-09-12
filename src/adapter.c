@@ -2025,7 +2025,7 @@ static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
 	return 0;
 }
 
-static int device_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
+static int adapter_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 {
 	int dd, err;
 
@@ -2344,7 +2344,7 @@ int adapter_start(struct btd_adapter *adapter)
 
 		debug("Adapter %s without an address", adapter->path);
 
-		err = device_read_bdaddr(adapter->dev_id, &di.bdaddr);
+		err = adapter_read_bdaddr(adapter->dev_id, &di.bdaddr);
 		if (err < 0)
 			return err;
 	}
