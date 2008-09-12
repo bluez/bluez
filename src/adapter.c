@@ -97,7 +97,7 @@ struct btd_adapter {
 	uint16_t dev_id;
 	int up;
 	char *path;			/* adapter object path */
-	char address[18];		/* adapter Bluetooth Address */
+	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
 	guint discov_timeout_id;	/* discoverable timeout id */
 	uint32_t discov_timeout;	/* discoverable time(msec) */
 	uint8_t scan_mode;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
@@ -489,7 +489,6 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 	struct btd_adapter *adapter = data;
 	uint8_t scan_enable;
 	uint8_t current_scan = adapter->scan_mode;
-	bdaddr_t local;
 	gboolean limited;
 	int err, dd;
 	const char *mode;
@@ -592,8 +591,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 		}
 	}
 done:
-	str2ba(adapter->address, &local);
-	write_device_mode(&local, mode);
+	write_device_mode(&adapter->bdaddr, mode);
 
 	hci_close_dev(dd);
 
@@ -754,11 +752,13 @@ static DBusMessage *confirm_mode(DBusConnection *conn, DBusMessage *msg,
 	struct session_req *req;
 	int ret;
 	uint8_t umode;
+	char addr[18];
 
 	if (!adapter->agent)
 		return dbus_message_new_method_return(msg);
 
-	umode = str2mode(adapter->address, mode);
+	ba2str(&adapter->bdaddr, addr);
+	umode = str2mode(addr, mode);
 
 	req = create_session(adapter, conn, msg, umode, NULL);
 
@@ -778,7 +778,6 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 							void *data)
 {
 	struct btd_adapter *adapter = data;
-	bdaddr_t bdaddr;
 	const char *path;
 
 	if (adapter->discov_timeout_id) {
@@ -791,8 +790,7 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 
 	adapter->discov_timeout = timeout;
 
-	str2ba(adapter->address, &bdaddr);
-	write_discoverable_timeout(&bdaddr, timeout);
+	write_discoverable_timeout(&adapter->bdaddr, timeout);
 
 	path = dbus_message_get_path(msg);
 
@@ -825,11 +823,8 @@ static int adapter_set_name(struct btd_adapter *adapter, const char *name)
 {
 	struct hci_dev *dev = &adapter->dev;
 	int dd, err;
-	bdaddr_t bdaddr;
 
-	str2ba(adapter->address, &bdaddr);
-
-	write_local_name(&bdaddr, (char *) name);
+	write_local_name(&adapter->bdaddr, (char *) name);
 
 	if (!adapter->up)
 		return 0;
@@ -942,20 +937,20 @@ static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 	struct btd_adapter *adapter = data;
 	struct btd_device *device;
 	char filename[PATH_MAX + 1];
-	char *str;
-	bdaddr_t src, dst;
+	char *str, srcaddr[18];
+	bdaddr_t dst;
 	GSList *l;
 	int dev, err;
 	gboolean paired;
 
-	str2ba(adapter->address, &src);
 	str2ba(address, &dst);
+	ba2str(&adapter->bdaddr, srcaddr);
 
 	dev = hci_open_dev(adapter->dev_id);
 	if (dev < 0 && msg)
 		return no_such_adapter(msg);
 
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
 			"linkkeys");
 
 	/* textfile_del doesn't return an error when the key is not found */
@@ -1026,19 +1021,18 @@ done:
 void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 				struct btd_device *device)
 {
-	bdaddr_t src, dst;
+	bdaddr_t dst;
 	const gchar *dev_path = device_get_path(device);
 	struct agent *agent;
-	char dst_addr[18];
+	char dstaddr[18];
 
 	device_get_address(device, &dst);
-	ba2str(&dst, dst_addr);
+	ba2str(&dst, dstaddr);
 
-	str2ba(adapter->address, &src);
-	delete_entry(&src, "profiles", dst_addr);
+	delete_entry(&adapter->bdaddr, "profiles", dstaddr);
 
 	if (!device_is_temporary(device)) {
-		remove_bonding(conn, NULL, dst_addr, adapter);
+		remove_bonding(conn, NULL, dstaddr, adapter);
 
 		g_dbus_emit_signal(conn, adapter->path,
 				ADAPTER_INTERFACE,
@@ -1286,14 +1280,14 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 				uint8_t capability, void *data)
 {
 	char filename[PATH_MAX + 1];
-	char *str;
+	char *str, srcaddr[18];
 	struct btd_adapter *adapter = data;
 	struct bonding_request_info *bonding;
-	bdaddr_t src, dst;
+	bdaddr_t dst;
 	int sk;
 
 	str2ba(address, &dst);
-	str2ba(adapter->address, &src);
+	ba2str(&adapter->bdaddr, srcaddr);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
 	if (adapter->state & STD_INQUIRY)
@@ -1308,7 +1302,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 		return in_progress(msg, "Bonding in progress");
 
 	/* check if a link key already exists */
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address,
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
 			"linkkeys");
 
 	str = textfile_caseget(filename, address);
@@ -1319,7 +1313,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 				"Bonding already exists");
 	}
 
-	sk = l2raw_connect(&src, &dst);
+	sk = l2raw_connect(&adapter->bdaddr, &dst);
 	if (sk < 0)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
@@ -1518,11 +1512,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	bdaddr_t ba;
-	char str[249];
+	char str[249], srcaddr[18];
 	gboolean discov_active;
 
-	if (check_address(adapter->address) < 0)
+	ba2str(&adapter->bdaddr, srcaddr);
+
+	if (check_address(srcaddr) < 0)
 		return adapter_not_ready(msg);
 
 	reply = dbus_message_new_method_return(msg);
@@ -1537,16 +1532,15 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	/* Address */
-	property = adapter->address;
+	property = srcaddr;
 	dbus_message_iter_append_dict_entry(&dict, "Address",
 			DBUS_TYPE_STRING, &property);
 
 	/* Name */
 	memset(str, 0, sizeof(str));
 	property = str;
-	str2ba(adapter->address, &ba);
 
-	if (!read_local_name(&ba, str))
+	if (!read_local_name(&adapter->bdaddr, str))
 		dbus_message_iter_append_dict_entry(&dict, "Name",
 			DBUS_TYPE_STRING, &property);
 
@@ -1581,6 +1575,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter sub;
 	const char *property;
+	char srcaddr[18];
+
+	ba2str(&adapter->bdaddr, srcaddr);
 
 	if (!dbus_message_iter_init(msg, &iter))
 		return invalid_args(msg);
@@ -1619,7 +1616,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&sub, &mode);
 
-		adapter->global_mode = str2mode(adapter->address, mode);
+		adapter->global_mode = str2mode(srcaddr, mode);
 
 		if (adapter->global_mode == adapter->mode)
 			return dbus_message_new_method_return(msg);
@@ -1627,7 +1624,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (adapter->mode_sessions && adapter->global_mode < adapter->mode)
 			return confirm_mode(conn, msg, mode, data);
 
-		return set_mode(conn, msg, str2mode(adapter->address, mode),
+		return set_mode(conn, msg, str2mode(srcaddr, mode),
 				data);
 	}
 
@@ -1642,12 +1639,15 @@ static DBusMessage *request_mode(DBusConnection *conn,
 	struct session_req *req;
 	uint8_t new_mode;
 	int ret;
+	char srcaddr[18];
+
+	ba2str(&adapter->bdaddr, srcaddr);
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
 						DBUS_TYPE_INVALID))
 		return invalid_args(msg);
 
-	new_mode = str2mode(adapter->address, mode);
+	new_mode = str2mode(srcaddr, mode);
 	if (new_mode != MODE_CONNECTABLE && new_mode != MODE_DISCOVERABLE)
 		return invalid_args(msg);
 
@@ -2056,7 +2056,6 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 	struct hci_dev *dev = &adapter->dev;
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
 	uint8_t inqmode;
-	bdaddr_t bdaddr;
 	int err;
 	char name[249];
 
@@ -2092,8 +2091,7 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 						sizeof(events), events);
 	}
 
-	str2ba(adapter->address, &bdaddr);
-	if (read_local_name(&bdaddr, name) == 0) {
+	if (read_local_name(&adapter->bdaddr, name) == 0) {
 		memcpy(dev->name, name, 248);
 		hci_write_local_name(dd, name, 5000);
         }
@@ -2163,10 +2161,11 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	struct btd_adapter *adapter = user_data;
 	GSList *uuids = bt_string2list(value);
 	struct btd_device *device;
-	const gchar *src;
 	struct record_list rec_list;
 	bdaddr_t dst;
-	char dst_addr[18];
+	char srcaddr[18], dstaddr[18];
+
+	ba2str(&adapter->bdaddr, srcaddr);
 
 	if (g_slist_find_custom(adapter->devices,
 				key, (GCompareFunc) device_address_cmp))
@@ -2180,13 +2179,12 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	adapter->devices = g_slist_append(adapter->devices, device);
 
 	device_get_address(device, &dst);
-	ba2str(&dst, dst_addr);
+	ba2str(&dst, dstaddr);
 
-	src = adapter->address;
-	rec_list.addr = dst_addr;
+	rec_list.addr = dstaddr;
 	rec_list.recs = NULL;
 
-	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "sdp");
 	textfile_foreach(filename, create_stored_records_from_keys, &rec_list);
 
 	device_probe_drivers(device, uuids, rec_list.recs);
@@ -2217,11 +2215,14 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 static void load_devices(struct btd_adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
+	char srcaddr[18];
 
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "profiles");
+	ba2str(&adapter->bdaddr, srcaddr);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "profiles");
 	textfile_foreach(filename, create_stored_device_from_profiles, adapter);
 
-	create_name(filename, PATH_MAX, STORAGEDIR, adapter->address, "linkkeys");
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "linkkeys");
 	textfile_foreach(filename, create_stored_device_from_linkkeys, adapter);
 }
 
@@ -2252,15 +2253,17 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci;
 	const char *pmode;
-	char mode[14];
+	char mode[14], srcaddr[18];
 	int i;
 
+	ba2str(&adapter->bdaddr, srcaddr);
+
 	adapter->up = 1;
-	adapter->discov_timeout = get_discoverable_timeout(adapter->address);
+	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
 	adapter->state = DISCOVER_TYPE_NONE;
 
 	/* Set scan mode */
-	if (read_device_mode(adapter->address, mode, sizeof(mode)) == 0) {
+	if (read_device_mode(srcaddr, mode, sizeof(mode)) == 0) {
 		if (!strcmp(mode, "off") && main_opts.offmode == HCID_OFFMODE_NOSCAN) {
 			adapter->mode = MODE_OFF;
 			adapter->scan_mode= SCAN_DISABLED;
@@ -2350,7 +2353,7 @@ int adapter_start(struct btd_adapter *adapter)
 			return err;
 	}
 
-	ba2str(&di.bdaddr, adapter->address);
+	bacpy(&adapter->bdaddr, &di.bdaddr);
 	memcpy(dev->features, di.features, 8);
 
 	dd = hci_open_dev(adapter->dev_id);
@@ -2674,7 +2677,7 @@ const gchar *adapter_get_path(struct btd_adapter *adapter)
 
 void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 {
-	str2ba(adapter->address, bdaddr);
+	bacpy(bdaddr, &adapter->bdaddr);
 }
 
 static gboolean discov_timeout_handler(void *data)
