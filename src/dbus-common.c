@@ -54,7 +54,7 @@
 
 #define RECONNECT_RETRY_TIMEOUT	5000
 
-int l2raw_connect(const char *local, const bdaddr_t *remote)
+int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct sockaddr_l2 addr;
 	long arg;
@@ -68,7 +68,7 @@ int l2raw_connect(const char *local, const bdaddr_t *remote)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
-	str2ba(local, &addr.l2_bdaddr);
+	bacpy(&addr.l2_bdaddr, src);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		error("Can't bind socket: %s (%d)", strerror(errno), errno);
@@ -89,7 +89,7 @@ int l2raw_connect(const char *local, const bdaddr_t *remote)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, remote);
+	bacpy(&addr.l2_bdaddr, dst);
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		if (errno == EAGAIN || errno == EINPROGRESS)

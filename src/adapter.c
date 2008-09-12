@@ -1289,10 +1289,11 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	char *str;
 	struct btd_adapter *adapter = data;
 	struct bonding_request_info *bonding;
-	bdaddr_t bdaddr;
+	bdaddr_t src, dst;
 	int sk;
 
-	str2ba(address, &bdaddr);
+	str2ba(address, &dst);
+	str2ba(adapter->address, &src);
 
 	/* check if there is a pending discover: requested by D-Bus/non clients */
 	if (adapter->state & STD_INQUIRY)
@@ -1303,7 +1304,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	if (adapter->bonding)
 		return in_progress(msg, "Bonding in progress");
 
-	if (adapter_find_auth_request(adapter, &bdaddr))
+	if (adapter_find_auth_request(adapter, &dst))
 		return in_progress(msg, "Bonding in progress");
 
 	/* check if a link key already exists */
@@ -1318,7 +1319,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 				"Bonding already exists");
 	}
 
-	sk = l2raw_connect(adapter->address, &bdaddr);
+	sk = l2raw_connect(&src, &dst);
 	if (sk < 0)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
