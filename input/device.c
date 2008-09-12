@@ -51,6 +51,8 @@
 #include "uinput.h"
 
 #include "../src/storage.h"
+#include "../src/manager.h"
+#include "adapter.h"
 
 #include "device.h"
 #include "error.h"
@@ -472,86 +474,6 @@ static int fake_hid_disconnect(struct input_conn *iconn)
 	return fhid->disconnect(iconn->fake);
 }
 
-static int encrypt_link(const char *src_addr, const char *dst_addr)
-{
-	char filename[PATH_MAX + 1];
-	struct hci_conn_info_req *cr;
-	int dd, err, dev_id;
-	auth_requested_cp cp;
-	char *str;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "linkkeys");
-
-	str = textfile_get(filename, dst_addr);
-	if (!str) {
-		error("Encryption link key not found");
-		return -ENOKEY;
-	}
-
-	free(str);
-
-	cr = g_try_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
-	if (!cr)
-		return -ENOMEM;
-
-	dev_id = hci_devid(src_addr);
-	if (dev_id < 0) {
-		g_free(cr);
-		return -errno;
-	}
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		g_free(cr);
-		return -errno;
-	}
-
-	str2ba(dst_addr, &cr->bdaddr);
-	cr->type = ACL_LINK;
-
-	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0)
-		goto fail;
-
-	if (cr->conn_info->link_mode & HCI_LM_ENCRYPT) {
-		/* Already encrypted */
-		goto done;
-	}
-
-	memset(&cp, 0, sizeof(cp));
-	cp.handle = htobs(cr->conn_info->handle);
-
-	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_AUTH_REQUESTED,
-						sizeof(cp), &cp) < 0) {
-		error("Link authentication failed: %s (%d)",
-						strerror(errno), errno);
-		goto fail;
-	}
-
-#if 0
-	/* FIXME: This needs to be done after auth completed */
-	if (hci_encrypt_link(dd, handle, 1, 5000) < 0) {
-		error("Link encryption failed: %s (%d)",
-						strerror(errno), errno);
-		goto fail;
-	}
-#endif
-
-done:
-	g_free(cr);
-
-	hci_close_dev(dd);
-
-	return 0;
-
-fail:
-	g_free(cr);
-
-	err = errno;
-	hci_close_dev(dd);
-
-	return -err;
-}
-
 static void epox_endian_quirk(unsigned char *data, int size)
 {
 	/* USAGE_PAGE (Keyboard)	05 07
@@ -634,21 +556,64 @@ static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 	}
 }
 
-static int hidp_connadd(const bdaddr_t *src, const bdaddr_t *dst, int ctrl_sk,
+static int ioctl_connadd(struct hidp_connadd_req *req)
+{
+	int ctl, err = 0;
+
+	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
+	if (ctl < 0)
+		return -errno;
+
+	if (ioctl(ctl, HIDPCONNADD, req) < 0)
+		err = errno;
+
+	close(ctl);
+
+	return -err;
+}
+
+static void encrypt_completed(uint8_t status, gpointer user_data)
+{
+	struct hidp_connadd_req *req = user_data;
+	int err;
+
+	if (status) {
+		error("Encryption failed: %s(0x%x)",
+				strerror(bt_error(status)), status);
+		goto failed;
+	}
+
+	err = ioctl_connadd(req);
+	if (err == 0)
+		goto cleanup;
+
+	error("ioctl_connadd(): %s(%d)", strerror(-err), -err);
+failed:
+	close(req->intr_sock);
+	close(req->ctrl_sock);
+
+cleanup:
+	if (req->rd_data)
+		free(req->rd_data);
+
+	g_free(req);
+}
+
+static int hidp_add_connection(const bdaddr_t *src, const bdaddr_t *dst, int ctrl_sk,
 		int intr_sk, int timeout, const char *name, const uint32_t handle)
 {
-	struct hidp_connadd_req req;
+	struct hidp_connadd_req *req;
 	struct fake_hid *fake_hid;
 	struct fake_input *fake;
 	sdp_record_t *rec;
 	char src_addr[18], dst_addr[18];
-	int ctl, err;
+	int err;
 
-	memset(&req, 0, sizeof(req));
-	req.ctrl_sock = ctrl_sk;
-	req.intr_sock = intr_sk;
-	req.flags     = 0;
-	req.idle_to   = timeout;
+	req = g_new0(struct hidp_connadd_req, 1);
+	req->ctrl_sock = ctrl_sk;
+	req->intr_sock = intr_sk;
+	req->flags     = 0;
+	req->idle_to   = timeout;
 
 	ba2str(src, src_addr);
 	ba2str(dst, dst_addr);
@@ -660,49 +625,45 @@ static int hidp_connadd(const bdaddr_t *src, const bdaddr_t *dst, int ctrl_sk,
 		goto cleanup;
 	}
 
-	extract_hid_record(rec, &req);
+	extract_hid_record(rec, req);
 	sdp_record_free(rec);
 
-	fake_hid = get_fake_hid(req.vendor, req.product);
+	fake_hid = get_fake_hid(req->vendor, req->product);
 	if (fake_hid) {
 		fake = g_new0(struct fake_input, 1);
 		fake->connect = fake_hid_connect;
 		fake->disconnect = fake_hid_disconnect;
 		fake->priv = fake_hid;
-		return fake_hid_connadd(fake, intr_sk, fake_hid);
-	}
-
-	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
-	if (ctl < 0) {
-		error("Can't open HIDP interface");
-		return -errno;
-	}
-
-	if (req.subclass & 0x40) {
-		err = encrypt_link(src_addr, dst_addr);
-		if (err < 0 && err != -EACCES)
-			goto cleanup;
+		err = fake_hid_connadd(fake, intr_sk, fake_hid);
+		goto cleanup;
 	}
 
 	if (name)
-		strncpy(req.name, name, 128);
+		strncpy(req->name, name, 128);
 
-	if (req.vendor == 0x054c && req.product == 0x0268) {
+	if (req->subclass & 0x40) {
+		err = bt_acl_encrypt(src, dst, encrypt_completed, req);
+		if (err < 0) {
+			error("bt_acl_encrypt(): %s(%d)", strerror(-err), -err);
+			goto cleanup;
+		}
+
+		/* Waiting async encryption */
+		return 0;
+	}
+
+	/* Encryption not required */
+	if (req->vendor == 0x054c && req->product == 0x0268) {
 		unsigned char buf[] = { 0x53, 0xf4,  0x42, 0x03, 0x00, 0x00 };
 		err = write(ctrl_sk, buf, sizeof(buf));
 	}
 
-	err = ioctl(ctl, HIDPCONNADD, &req);
-	if (err < 0) {
-		close(ctl);
-		goto cleanup;
-	}
-
-	info("New input device %s (%s)", dst_addr, req.name);
+	err = ioctl_connadd(req);
 
 cleanup:
-	if (req.rd_data)
-		free(req.rd_data);
+	if (req->rd_data)
+		free(req->rd_data);
+	g_free(req);
 
 	return err;
 }
@@ -720,9 +681,10 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	}
 
 	iconn->intr_sk = g_io_channel_unix_get_fd(chan);
-	err = hidp_connadd(&idev->src, &idev->dst,
+	err = hidp_add_connection(&idev->src, &idev->dst,
 				iconn->ctrl_sk, iconn->intr_sk,
 				iconn->timeout, idev->name, idev->handle);
+
 	if (err < 0)
 		goto failed;
 
@@ -1239,7 +1201,7 @@ int input_device_connadd(const bdaddr_t *src, const bdaddr_t *dst)
 	if (!iconn)
 		return -ENOENT;
 
-	err = hidp_connadd(src, dst, iconn->ctrl_sk, iconn->intr_sk,
+	err = hidp_add_connection(src, dst, iconn->ctrl_sk, iconn->intr_sk,
 				iconn->timeout, idev->name, idev->handle);
 	if (err < 0)
 		goto error;
@@ -1257,5 +1219,6 @@ error:
 	close(iconn->intr_sk);
 	iconn->ctrl_sk = -1;
 	iconn->intr_sk = -1;
+
 	return err;
 }
