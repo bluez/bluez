@@ -641,15 +641,19 @@ static int hidp_add_connection(const bdaddr_t *src, const bdaddr_t *dst, int ctr
 	if (name)
 		strncpy(req->name, name, 128);
 
+	/* Encryption is mandatory for keyboards */
 	if (req->subclass & 0x40) {
 		err = bt_acl_encrypt(src, dst, encrypt_completed, req);
-		if (err < 0) {
+		if (err == 0) {
+			/* Waiting async encryption */
+			return 0;
+		} else if (err != -EALREADY) {
 			error("bt_acl_encrypt(): %s(%d)", strerror(-err), -err);
 			goto cleanup;
 		}
 
-		/* Waiting async encryption */
-		return 0;
+		/* Link already encrypted - reset error */
+		err = 0;
 	}
 
 	/* Encryption not required */
