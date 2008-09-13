@@ -406,7 +406,6 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 
 	g_dbus_emit_signal(idev->conn, idev->path,
 			INPUT_DEVICE_INTERFACE, "Disconnected",
-			DBUS_TYPE_STRING, &iconn->uuid,
 			DBUS_TYPE_INVALID);
 
 	g_source_remove(iconn->ctrl_watch);
@@ -431,8 +430,9 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
 
-	g_dbus_emit_signal(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
-			"Disconnected", DBUS_TYPE_INVALID);
+	g_dbus_emit_signal(idev->conn, idev->path,
+			INPUT_DEVICE_INTERFACE, "Disconnected",
+			DBUS_TYPE_INVALID);
 
 	g_source_remove(iconn->intr_watch);
 	iconn->intr_watch = 0;
@@ -990,7 +990,7 @@ static GDBusMethodTable device_methods[] = {
 
 static GDBusSignalTable device_signals[] = {
 	{ "Connected",		""	},
-	{ "Disconnected",	"s"	},
+	{ "Disconnected",	""	},
 	{ }
 };
 
