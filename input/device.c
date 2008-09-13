@@ -366,7 +366,6 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	path = dbus_message_get_path(iconn->pending_connect);
 	g_dbus_emit_signal(idev->conn, path,
 			INPUT_DEVICE_INTERFACE, "Connected",
-			DBUS_TYPE_STRING, &iconn->uuid,
 			DBUS_TYPE_INVALID);
 
 	dbus_message_unref(iconn->pending_connect);
@@ -696,7 +695,6 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	iconn->ctrl_watch = create_watch(iconn->ctrl_sk, ctrl_watch_cb, iconn);
 	g_dbus_emit_signal(idev->conn, idev->path,
 			INPUT_DEVICE_INTERFACE, "Connected",
-			DBUS_TYPE_STRING, &iconn->uuid,
 			DBUS_TYPE_INVALID);
 
 	/* Replying to the requestor */
@@ -991,7 +989,7 @@ static GDBusMethodTable device_methods[] = {
 };
 
 static GDBusSignalTable device_signals[] = {
-	{ "Connected",		"ss"	},
+	{ "Connected",		""	},
 	{ "Disconnected",	"s"	},
 	{ }
 };
@@ -1214,7 +1212,6 @@ int input_device_connadd(const bdaddr_t *src, const bdaddr_t *dst)
 	iconn->ctrl_watch = create_watch(iconn->ctrl_sk, ctrl_watch_cb, iconn);
 	g_dbus_emit_signal(idev->conn, idev->path,
 			INPUT_DEVICE_INTERFACE, "Connected",
-			DBUS_TYPE_STRING, &iconn->uuid,
 			DBUS_TYPE_INVALID);
 	return 0;
 
