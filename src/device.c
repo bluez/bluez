@@ -975,8 +975,9 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	bdaddr_t src;
 	uuid_t uuid;
 
-	/* Public browsing successful or Single record requested */
-	if (err < 0 || (!req->search_uuid && recs))
+	/* If we have a valid response and req->search_uuid == 1, then
+	   public browsing was successful -- we don't need any more */
+	if (err < 0 || (req->search_uuid == 1 && recs))
 		goto done;
 
 	update_services(req, recs);
@@ -984,8 +985,8 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	adapter_get_address(adapter, &src);
 
 	/* Search for mandatory uuids */
-	if (uuid_list[++req->search_uuid]) {
-		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
+	if (uuid_list[req->search_uuid]) {
+		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
 		bt_search_service(&src, &device->bdaddr, &uuid, browse_cb, user_data, NULL);
 		return;
 	}
@@ -1057,7 +1058,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 		memcpy(&uuid, search, sizeof(uuid_t));
 		cb = search_cb;
 	} else {
-		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid]);
+		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
 		init_browse(req);
 		cb = browse_cb;
 	}
@@ -1072,7 +1073,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 						device, NULL);
 
 	return bt_search_service(&src, &device->bdaddr,
-					&uuid, browse_cb, req, NULL);
+					&uuid, cb, req, NULL);
 }
 
 struct btd_adapter *device_get_adapter(struct btd_device *device)
