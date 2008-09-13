@@ -1023,10 +1023,25 @@ static void init_browse(struct browse_req *req)
 
 		for (i = 0; driver->uuids[i]; i++) {
 			char *uuid;
+			int j;
 
+			/* Eliminate duplicates of UUIDs in uuid_list[]... */
+			if (strlen(driver->uuids[i]) == 36 && 
+			    !strncmp(driver->uuids[i], "0000", 4) &&
+			    !strcasecmp(driver->uuids[i] + 8, 
+					"-0000-1000-8000-00805F9B34FB")) {
+				uint16_t uuid16 = strtol(driver->uuids[i],
+							 NULL, 16);
+				for (j = 0; uuid_list[j]; j++) {
+					if (uuid16 == uuid_list[j])
+						continue;
+				}
+					
+			}
+			/* ... and of UUIDs another driver already asked for */
 			if (g_slist_find_custom(req->uuids, driver->uuids[i],
 					(GCompareFunc) strcasecmp))
-				return;
+				continue;
 
 			uuid = g_strdup(driver->uuids[i]);
 			req->uuids = g_slist_append(req->uuids, uuid);
