@@ -59,3 +59,8 @@ int delete_entry(bdaddr_t *src, const char *storage, const char *key);
 int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec);
 sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle);
 int delete_record(const gchar *src, const gchar *dst, const uint32_t handle);
+
+int store_pnp(const gchar *src, const gchar *dst, const uint16_t vendor,
+	      const uint16_t product, const uint16_t version);
+int read_pnp(const gchar *src, const gchar *dst, uint32_t *vendor,
+	     uint16_t *product, uint16_t *version);
