@@ -2154,14 +2154,27 @@ static void create_stored_records_from_keys(char *key, char *value,
 	rec_list->recs = sdp_list_append(rec_list->recs, rec);
 }
 
+sdp_list_t *read_records(const gchar *src, const gchar *dst)
+{
+	char filename[PATH_MAX + 1];
+	struct record_list rec_list;
+
+	rec_list.addr = dst;
+	rec_list.recs = NULL;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
+	textfile_foreach(filename, create_stored_records_from_keys, &rec_list);
+
+	return rec_list.recs;
+}
+
 static void create_stored_device_from_profiles(char *key, char *value,
 						void *user_data)
 {
-	char filename[PATH_MAX + 1];
 	struct btd_adapter *adapter = user_data;
 	GSList *uuids = bt_string2list(value);
 	struct btd_device *device;
-	struct record_list rec_list;
+	sdp_list_t *records;
 	bdaddr_t dst;
 	char srcaddr[18], dstaddr[18];
 
@@ -2181,16 +2194,12 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	device_get_address(device, &dst);
 	ba2str(&dst, dstaddr);
 
-	rec_list.addr = dstaddr;
-	rec_list.recs = NULL;
+	records = read_records(srcaddr, dstaddr);
 
-	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "sdp");
-	textfile_foreach(filename, create_stored_records_from_keys, &rec_list);
+	device_probe_drivers(device, uuids, records);
 
-	device_probe_drivers(device, uuids, rec_list.recs);
-
-	if (rec_list.recs != NULL)
-		sdp_list_free(rec_list.recs, (sdp_free_func_t) sdp_record_free);
+	if (records)
+		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
 
 	g_slist_free(uuids);
 }
