@@ -777,6 +777,7 @@ static sdp_record_t *record_from_string(const gchar *str)
 	size = strlen(str)/2;
 	pdata = g_malloc0(size);
 
+	tmp[2] = 0;
 	for (i = 0; i < size; i++) {
 		 memcpy(tmp, str + (i * 2), 2);
 		 pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
