@@ -74,11 +74,6 @@
 static DBusConnection *connection = NULL;
 static GSList *adapter_drivers = NULL;
 
-struct record_list {
-	sdp_list_t *recs;
-	const gchar *addr;
-};
-
 struct session_req {
 	struct btd_adapter	*adapter;
 	DBusConnection		*conn;		/* Connection reference */
@@ -2125,47 +2120,6 @@ static int active_conn_append(GSList **list, bdaddr_t *bdaddr,
 
 	*list = g_slist_append(*list, dev);
 	return 0;
-}
-
-static void create_stored_records_from_keys(char *key, char *value,
-						void *user_data)
-{
-	struct record_list *rec_list = user_data;
-	const gchar *addr = rec_list->addr;
-	sdp_record_t *rec;
-	int size, i, len;
-	uint8_t *pdata;
-	char tmp[3] = "";
-
-	if (strncmp(key, addr, 17))
-		return;
-
-	size = strlen(value)/2;
-	pdata = g_malloc0(size);
-
-	for (i = 0; i < size; i++) {
-		 memcpy(tmp, value + (i * 2), 2);
-		 pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
-	}
-
-	rec = sdp_extract_pdu(pdata, size, &len);
-	free(pdata);
-
-	rec_list->recs = sdp_list_append(rec_list->recs, rec);
-}
-
-sdp_list_t *read_records(const gchar *src, const gchar *dst)
-{
-	char filename[PATH_MAX + 1];
-	struct record_list rec_list;
-
-	rec_list.addr = dst;
-	rec_list.recs = NULL;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
-	textfile_foreach(filename, create_stored_records_from_keys, &rec_list);
-
-	return rec_list.recs;
 }
 
 static void create_stored_device_from_profiles(char *key, char *value,

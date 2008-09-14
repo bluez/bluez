@@ -810,6 +810,53 @@ int delete_record(const gchar *src, const gchar *dst, const uint32_t handle)
 	return textfile_del(filename, key);
 }
 
+struct record_list {
+	sdp_list_t *recs;
+	const gchar *addr;
+};
+
+static void create_stored_records_from_keys(char *key, char *value,
+						void *user_data)
+{
+	struct record_list *rec_list = user_data;
+	const gchar *addr = rec_list->addr;
+	sdp_record_t *rec;
+	int size, i, len;
+	uint8_t *pdata;
+	char tmp[3] = "";
+
+	if (strncmp(key, addr, 17))
+		return;
+
+	size = strlen(value)/2;
+	pdata = g_malloc0(size);
+
+	for (i = 0; i < size; i++) {
+		 memcpy(tmp, value + (i * 2), 2);
+		 pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	rec = sdp_extract_pdu(pdata, size, &len);
+	free(pdata);
+
+	rec_list->recs = sdp_list_append(rec_list->recs, rec);
+}
+
+sdp_list_t *read_records(const gchar *src, const gchar *dst)
+{
+	char filename[PATH_MAX + 1];
+	struct record_list rec_list;
+
+	rec_list.addr = dst;
+	rec_list.recs = NULL;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
+	textfile_foreach(filename, create_stored_records_from_keys, &rec_list);
+
+	return rec_list.recs;
+}
+
+
 int store_device_id(const gchar *src, const gchar *dst,
 				const uint16_t source, const uint16_t vendor,
 				const uint16_t product, const uint16_t version)

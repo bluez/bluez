@@ -59,7 +59,7 @@ int delete_entry(bdaddr_t *src, const char *storage, const char *key);
 int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec);
 sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle);
 int delete_record(const gchar *src, const gchar *dst, const uint32_t handle);
-
+sdp_list_t *read_records(const gchar *src, const gchar *dst);
 int store_device_id(const gchar *src, const gchar *dst,
 				const uint16_t source, const uint16_t vendor,
 				const uint16_t product, const uint16_t version);
