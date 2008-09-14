@@ -48,7 +48,8 @@
 #include "glib-helper.h"
 #include "storage.h"
 
-static inline int create_filename(char *buf, size_t size, const bdaddr_t *bdaddr, const char *name)
+static inline int create_filename(char *buf, size_t size,
+				const bdaddr_t *bdaddr, const char *name)
 {
 	char addr[18];
 
@@ -402,7 +403,8 @@ int read_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
 	return 0;
 }
 
-int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, uint8_t lmp_ver, uint16_t lmp_subver)
+int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer,
+					uint8_t lmp_ver, uint16_t lmp_subver)
 {
 	char filename[PATH_MAX + 1], addr[18], str[16];
 
@@ -792,7 +794,8 @@ static sdp_record_t *record_from_string(const gchar *str)
 }
 
 
-sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle)
+sdp_record_t *fetch_record(const gchar *src, const gchar *dst,
+						const uint32_t handle)
 {
 	char filename[PATH_MAX + 1], key[28], *str;
 	sdp_record_t *rec;
@@ -828,7 +831,7 @@ struct record_list {
 };
 
 static void create_stored_records_from_keys(char *key, char *value,
-						void *user_data)
+							void *user_data)
 {
 	struct record_list *rec_list = user_data;
 	const gchar *addr = rec_list->addr;
@@ -878,6 +881,7 @@ sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
 			free(uuid_str);
 			return rec;
 		}
+
 		sdp_list_free(svcclass, free);
 		free(uuid_str);
 	}
@@ -885,8 +889,8 @@ sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
 }
 
 int store_device_id(const gchar *src, const gchar *dst,
-		    const uint16_t source, const uint16_t vendor,
-		    const uint16_t product, const uint16_t version)
+				const uint16_t source, const uint16_t vendor,
+				const uint16_t product, const uint16_t version)
 {
 	char filename[PATH_MAX + 1], str[20];
 
@@ -901,8 +905,8 @@ int store_device_id(const gchar *src, const gchar *dst,
 }
 
 static int read_device_id_from_did(const gchar *src, const gchar *dst,
-				   uint16_t *source, uint16_t *vendor,
-				   uint16_t *product, uint16_t *version)
+					uint16_t *source, uint16_t *vendor,
+					uint16_t *product, uint16_t *version)
 {
 	char filename[PATH_MAX + 1];
 	char *str, *vendor_str, *product_str, *version_str;
@@ -936,13 +940,10 @@ static int read_device_id_from_did(const gchar *src, const gchar *dst,
 
 	if (source)
 		*source = (uint16_t) strtol(str, NULL, 16);
-
 	if (vendor)
 		*vendor = (uint16_t) strtol(vendor_str, NULL, 16);
-
 	if (product)
 		*product = (uint16_t) strtol(product_str, NULL, 16);
-
 	if (version)
 		*version = (uint16_t) strtol(version_str, NULL, 16);
 
@@ -952,18 +953,18 @@ static int read_device_id_from_did(const gchar *src, const gchar *dst,
 }
 
 int read_device_id(const gchar *src, const gchar *dst,
-		   uint16_t *source, uint16_t *vendor,
-		   uint16_t *product, uint16_t *version)
+					uint16_t *source, uint16_t *vendor,
+					uint16_t *product, uint16_t *version)
 {
 	uint16_t lsource, lvendor, lproduct, lversion;
 	sdp_list_t *recs;
 	sdp_record_t *rec;
 	int err;
 
-	err = read_device_id_from_did(src, dst, &lsource, vendor,
-					  product, version);
+	err = read_device_id_from_did(src, dst, &lsource,
+						vendor, product, version);
 	if (!err) {
-		if (lsource == 0xFFFF)
+		if (lsource == 0xffff)
 			err = -ENOENT;
 
 		return err;
@@ -989,15 +990,18 @@ int read_device_id(const gchar *src, const gchar *dst,
 
 		err = 0;
 	}
+
 	sdp_list_free(recs, (sdp_free_func_t)sdp_record_free);
-	
+
 	if (err) {
 		/* FIXME: We should try EIR data if we have it, too */
 
 		/* If we don't have the data, we don't want to go
 		   through the above search every time. */
-		lsource = 0xFFFF; 
-		lvendor = lproduct = lversion = 0;
+		lsource = 0xffff;
+		lvendor = 0x0000;
+		lproduct = 0x0000;
+		lversion = 0x0000;
 	}
 
 	store_device_id(src, dst, lsource, lvendor, lproduct, lversion);
@@ -1013,5 +1017,6 @@ int read_device_id(const gchar *src, const gchar *dst,
 		*product = lproduct;
 	if (version)
 		*version = lversion;
+
 	return 0;
 }
