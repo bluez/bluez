@@ -655,7 +655,6 @@ static int hidp_add_connection(const bdaddr_t *src, const bdaddr_t *dst, int ctr
 		err = 0;
 	}
 
-	/* Encryption not required */
 	if (req->vendor == 0x054c && req->product == 0x0268) {
 		unsigned char buf[] = { 0x53, 0xf4,  0x42, 0x03, 0x00, 0x00 };
 		err = write(ctrl_sk, buf, sizeof(buf));
