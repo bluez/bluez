@@ -27,6 +27,7 @@ typedef void (*bt_io_callback_t) (GIOChannel *io, int err, const bdaddr_t *src,
 		const bdaddr_t *dst, gpointer user_data);
 typedef void (*bt_callback_t) (sdp_list_t *recs, int err, gpointer user_data);
 typedef void (*bt_destroy_t) (gpointer user_data);
+typedef void (*bt_hci_result_t) (uint8_t status, gpointer user_data);
 
 int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
 		bt_callback_t cb, void *user_data, bt_destroy_t destroy);
@@ -58,6 +59,9 @@ int bt_sco_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			bt_io_callback_t cb, void *user_data);
 GIOChannel *bt_sco_listen(const bdaddr_t *src, uint16_t mtu,
 				bt_io_callback_t cb, void *user_data);
+
+int bt_acl_encrypt(const bdaddr_t *src, const bdaddr_t *dst,
+			bt_hci_result_t cb, gpointer user_data);
 
 /* Experiemental bt_io API */
 

@@ -32,6 +32,8 @@
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/sco.h>
@@ -45,6 +47,13 @@
 typedef int (*resolver_t) (int fd, char *src, char *dst);
 typedef BtIOError (*connect_t) (BtIO *io, BtIOFunc func);
 typedef BtIOError (*listen_t) (BtIO *io, BtIOFunc func);
+
+struct hci_cmd_data {
+	bt_hci_result_t		cb;
+	uint16_t		handle;
+	uint16_t		ocf;
+	gpointer		caller_data;
+};
 
 int set_nonblocking(int fd)
 {
@@ -1005,6 +1014,184 @@ static BtIOError sco_listen(BtIO *io, BtIOFunc func)
 	return BT_IO_SUCCESS;
 }
 
+static gboolean hci_event_watch(GIOChannel *io,
+			GIOCondition cond, gpointer user_data)
+{
+	unsigned char buf[HCI_MAX_EVENT_SIZE], *body;
+	struct hci_cmd_data *cmd = user_data;
+	evt_cmd_status *evt_status;
+	evt_auth_complete *evt_auth;
+	evt_encrypt_change *evt_enc;
+	hci_event_hdr *hdr;
+	set_conn_encrypt_cp cp;
+	int dd;
+	uint16_t ocf;
+	uint8_t status = HCI_OE_POWER_OFF;
+
+	if (cond & G_IO_NVAL) {
+		cmd->cb(status, cmd->caller_data);
+		return FALSE;
+	}
+
+	if (cond & (G_IO_ERR | G_IO_HUP))
+		goto failed;
+
+	dd = g_io_channel_unix_get_fd(io);
+
+	if (read(dd, buf, sizeof(buf)) < 0)
+		goto failed;
+
+	hdr = (hci_event_hdr *) (buf + 1);
+	body = buf + (1 + HCI_EVENT_HDR_SIZE);
+
+	switch (hdr->evt) {
+	case EVT_CMD_STATUS:
+		evt_status = (evt_cmd_status *) body;
+		ocf = cmd_opcode_ocf(evt_status->opcode);
+		if (ocf != cmd->ocf)
+			return TRUE;
+		switch (ocf) {
+		case OCF_AUTH_REQUESTED:
+		case OCF_SET_CONN_ENCRYPT:
+			if (evt_status->status != 0) {
+				/* Baseband rejected command */
+				status = evt_status->status;
+				goto failed;
+			}
+			break;
+		default:
+			return TRUE;
+		}
+		/* Wait for the next event */
+		return TRUE;
+	case EVT_AUTH_COMPLETE:
+		evt_auth = (evt_auth_complete *) body;
+		if (evt_auth->handle != cmd->handle) {
+			/* Skipping */
+			return TRUE;
+		}
+
+		if (evt_auth->status != 0x00) {
+			status = evt_auth->status;
+			/* Abort encryption */
+			goto failed;
+		}
+
+		memset(&cp, 0, sizeof(cp));
+		cp.handle  = cmd->handle;
+		cp.encrypt = 1;
+
+		cmd->ocf = OCF_SET_CONN_ENCRYPT;
+
+		if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_SET_CONN_ENCRYPT,
+					SET_CONN_ENCRYPT_CP_SIZE, &cp) < 0) {
+			status = HCI_COMMAND_DISALLOWED;
+			goto failed;
+		}
+		/* Wait for encrypt change event */
+		return TRUE;
+	case EVT_ENCRYPT_CHANGE:
+		evt_enc = (evt_encrypt_change *) body;
+		if (evt_enc->handle != cmd->handle)
+			return TRUE;
+
+		/* Procedure finished: reporting status */
+		status = evt_enc->status;
+		break;
+	default:
+		/* Skipping */
+		return TRUE;
+	}
+
+failed:
+	cmd->cb(status, cmd->caller_data);
+	g_io_channel_close(io);
+
+	return FALSE;
+}
+
+int bt_acl_encrypt(const bdaddr_t *src, const bdaddr_t *dst,
+			bt_hci_result_t cb, gpointer user_data)
+{
+	GIOChannel *io;
+	struct hci_cmd_data *cmd;
+	struct hci_conn_info_req *cr;
+	auth_requested_cp cp;
+	struct hci_filter nf;
+	int dd, dev_id, err;
+	char src_addr[18];
+	uint32_t link_mode;
+	uint16_t handle;
+
+	ba2str(src, src_addr);
+	dev_id = hci_devid(src_addr);
+	if (dev_id < 0)
+		return -errno;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0)
+		return -errno;
+
+	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
+	cr->type = ACL_LINK;
+	bacpy(&cr->bdaddr, dst);
+
+	err = ioctl(dd, HCIGETCONNINFO, cr);
+	link_mode = cr->conn_info->link_mode;
+	handle = cr->conn_info->handle;
+	g_free(cr);
+
+	if (err < 0) {
+		err = errno;
+		goto failed;
+	}
+
+	if (link_mode & HCI_LM_ENCRYPT) {
+		/* Already encrypted */
+		err = EALREADY;
+		goto failed;
+	}
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = htobs(handle);
+
+	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_AUTH_REQUESTED,
+				AUTH_REQUESTED_CP_SIZE, &cp) < 0) {
+		err = errno;
+		goto failed;
+	}
+
+	cmd = g_new0(struct hci_cmd_data, 1);
+	cmd->handle = handle;
+	cmd->ocf = OCF_AUTH_REQUESTED;
+	cmd->cb	= cb;
+	cmd->caller_data = user_data;
+
+	hci_filter_clear(&nf);
+	hci_filter_set_ptype(HCI_EVENT_PKT, &nf);
+	hci_filter_set_event(EVT_CMD_STATUS, &nf);
+	hci_filter_set_event(EVT_AUTH_COMPLETE, &nf);
+	hci_filter_set_event(EVT_ENCRYPT_CHANGE, &nf);
+
+	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &nf, sizeof(nf)) < 0) {
+		err = errno;
+		goto failed;
+	}
+
+	io = g_io_channel_unix_new(dd);
+	g_io_channel_set_close_on_unref(io, FALSE);
+	g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+			G_IO_HUP | G_IO_ERR | G_IO_NVAL | G_IO_IN,
+			hci_event_watch, cmd, g_free);
+	g_io_channel_unref(io);
+
+	return 0;
+
+failed:
+	close(dd);
+
+	return -err;
+}
 
 static int create_io_context(struct io_context **io_ctxt, BtIOFunc func,
 			gpointer cb, gpointer resolver, gpointer user_data)
