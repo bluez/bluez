@@ -814,7 +814,7 @@ int store_device_id(const gchar *src, const gchar *dst,
 				const uint16_t source, const uint16_t vendor,
 				const uint16_t product, const uint16_t version)
 {
-	char filename[PATH_MAX + 1], str[15];
+	char filename[PATH_MAX + 1], str[20];
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "did");
 
