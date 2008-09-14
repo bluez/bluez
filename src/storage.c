@@ -46,6 +46,8 @@
 
 #include "textfile.h"
 #include "glib-helper.h"
+#include "storage.h"
+
 static inline int create_filename(char *buf, size_t size, const bdaddr_t *bdaddr, const char *name)
 {
 	char addr[18];
@@ -883,8 +885,8 @@ sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
 }
 
 int store_device_id(const gchar *src, const gchar *dst,
-				const uint16_t source, const uint16_t vendor,
-				const uint16_t product, const uint16_t version)
+		    const uint16_t source, const uint16_t vendor,
+		    const uint16_t product, const uint16_t version)
 {
 	char filename[PATH_MAX + 1], str[20];
 
@@ -898,9 +900,9 @@ int store_device_id(const gchar *src, const gchar *dst,
 	return textfile_put(filename, dst, str);
 }
 
-int read_device_id(const gchar *src, const gchar *dst,
-					uint16_t *source, uint16_t *vendor,
-					uint16_t *product, uint16_t *version)
+static int read_device_id_from_did(const gchar *src, const gchar *dst,
+				   uint16_t *source, uint16_t *vendor,
+				   uint16_t *product, uint16_t *version)
 {
 	char filename[PATH_MAX + 1];
 	char *str, *vendor_str, *product_str, *version_str;
@@ -946,5 +948,70 @@ int read_device_id(const gchar *src, const gchar *dst,
 
 	free(str);
 
+	return 0;
+}
+
+int read_device_id(const gchar *src, const gchar *dst,
+		   uint16_t *source, uint16_t *vendor,
+		   uint16_t *product, uint16_t *version)
+{
+	uint16_t lsource, lvendor, lproduct, lversion;
+	sdp_list_t *recs;
+	sdp_record_t *rec;
+	int err;
+
+	err = read_device_id_from_did(src, dst, &lsource, vendor,
+					  product, version);
+	if (!err) {
+		if (lsource == 0xFFFF)
+			err = -ENOENT;
+
+		return err;
+	}
+
+	recs = read_records(src, dst);
+	rec = find_record_in_list(recs, PNP_UUID);
+
+	if (rec) {
+		sdp_data_t *pdlist;
+
+		pdlist = sdp_data_get(rec, SDP_ATTR_VENDOR_ID_SOURCE);
+		lsource = pdlist ? pdlist->val.uint16 : 0x0000;
+
+		pdlist = sdp_data_get(rec, SDP_ATTR_VENDOR_ID);
+		lvendor = pdlist ? pdlist->val.uint16 : 0x0000;
+
+		pdlist = sdp_data_get(rec, SDP_ATTR_PRODUCT_ID);
+		lproduct = pdlist ? pdlist->val.uint16 : 0x0000;
+
+		pdlist = sdp_data_get(rec, SDP_ATTR_VERSION);
+		lversion = pdlist ? pdlist->val.uint16 : 0x0000;
+
+		err = 0;
+	}
+	sdp_list_free(recs, (sdp_free_func_t)sdp_record_free);
+	
+	if (err) {
+		/* FIXME: We should try EIR data if we have it, too */
+
+		/* If we don't have the data, we don't want to go
+		   through the above search every time. */
+		lsource = 0xFFFF; 
+		lvendor = lproduct = lversion = 0;
+	}
+
+	store_device_id(src, dst, lsource, lvendor, lproduct, lversion);
+
+	if (err)
+		return err;
+
+	if (source)
+		*source = lsource;
+	if (vendor)
+		*vendor = lvendor;
+	if (product)
+		*product = lproduct;
+	if (version)
+		*version = lversion;
 	return 0;
 }
