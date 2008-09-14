@@ -598,8 +598,9 @@ cleanup:
 	g_free(req);
 }
 
-static int hidp_add_connection(const bdaddr_t *src, const bdaddr_t *dst, int ctrl_sk,
-		int intr_sk, int timeout, const char *name, const uint32_t handle)
+static int hidp_add_connection(const struct input_device *idev,
+			       const struct input_conn *iconn)
+			       
 {
 	struct hidp_connadd_req *req;
 	struct fake_hid *fake_hid;
@@ -609,15 +610,15 @@ static int hidp_add_connection(const bdaddr_t *src, const bdaddr_t *dst, int ctr
 	int err;
 
 	req = g_new0(struct hidp_connadd_req, 1);
-	req->ctrl_sock = ctrl_sk;
-	req->intr_sock = intr_sk;
+	req->ctrl_sock = iconn->ctrl_sk;
+	req->intr_sock = iconn->intr_sk;
 	req->flags     = 0;
-	req->idle_to   = timeout;
+	req->idle_to   = iconn->timeout;
 
-	ba2str(src, src_addr);
-	ba2str(dst, dst_addr);
+	ba2str(&idev->src, src_addr);
+	ba2str(&idev->dst, dst_addr);
 
-	rec = fetch_record(src_addr, dst_addr, handle);
+	rec = fetch_record(src_addr, dst_addr, idev->handle);
 	if (!rec) {
 		error("Rejected connection from unknown device %s", dst_addr);
 		err = -EPERM;
@@ -633,16 +634,16 @@ static int hidp_add_connection(const bdaddr_t *src, const bdaddr_t *dst, int ctr
 		fake->connect = fake_hid_connect;
 		fake->disconnect = fake_hid_disconnect;
 		fake->priv = fake_hid;
-		err = fake_hid_connadd(fake, intr_sk, fake_hid);
+		err = fake_hid_connadd(fake, iconn->intr_sk, fake_hid);
 		goto cleanup;
 	}
 
-	if (name)
-		strncpy(req->name, name, 128);
+	if (idev->name)
+		strncpy(req->name, idev->name, 128);
 
 	/* Encryption is mandatory for keyboards */
 	if (req->subclass & 0x40) {
-		err = bt_acl_encrypt(src, dst, encrypt_completed, req);
+		err = bt_acl_encrypt(&idev->src, &idev->dst, encrypt_completed, req);
 		if (err == 0) {
 			/* Waiting async encryption */
 			return 0;
@@ -658,7 +659,7 @@ static int hidp_add_connection(const bdaddr_t *src, const bdaddr_t *dst, int ctr
 	/* Encryption not required */
 	if (req->vendor == 0x054c && req->product == 0x0268) {
 		unsigned char buf[] = { 0x53, 0xf4,  0x42, 0x03, 0x00, 0x00 };
-		err = write(ctrl_sk, buf, sizeof(buf));
+		err = write(iconn->ctrl_sk, buf, sizeof(buf));
 	}
 
 	err = ioctl_connadd(req);
@@ -684,9 +685,7 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	}
 
 	iconn->intr_sk = g_io_channel_unix_get_fd(chan);
-	err = hidp_add_connection(&idev->src, &idev->dst,
-				iconn->ctrl_sk, iconn->intr_sk,
-				iconn->timeout, idev->name, idev->handle);
+	err = hidp_add_connection(idev, iconn);
 
 	if (err < 0)
 		goto failed;
@@ -1203,8 +1202,7 @@ int input_device_connadd(const bdaddr_t *src, const bdaddr_t *dst)
 	if (!iconn)
 		return -ENOENT;
 
-	err = hidp_add_connection(src, dst, iconn->ctrl_sk, iconn->intr_sk,
-				iconn->timeout, idev->name, idev->handle);
+	err = hidp_add_connection(idev, iconn);
 	if (err < 0)
 		goto error;
 
