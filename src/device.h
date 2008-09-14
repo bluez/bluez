@@ -45,6 +45,8 @@ uint8_t device_get_auth(struct btd_device *device);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 
+#define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"
+
 struct btd_device_driver {
 	const char *name;
 	const char **uuids;
