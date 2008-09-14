@@ -45,7 +45,7 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "textfile.h"
-
+#include "glib-helper.h"
 static inline int create_filename(char *buf, size_t size, const bdaddr_t *bdaddr, const char *name)
 {
 	char addr[18];
@@ -854,6 +854,33 @@ sdp_list_t *read_records(const gchar *src, const gchar *dst)
 	return rec_list.recs;
 }
 
+sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
+{
+	sdp_list_t *seq;
+
+	for (seq = recs; seq; seq = seq->next) {
+		sdp_record_t *rec = (sdp_record_t *) seq->data;
+		sdp_list_t *svcclass = NULL;
+		char *uuid_str;
+
+		if (sdp_get_service_classes(rec, &svcclass) < 0)
+			continue;
+
+		/* Extract the uuid */
+		uuid_str = bt_uuid2string(svcclass->data);
+		if (!uuid_str)
+			continue;
+
+		if (!strcasecmp(uuid_str, uuid)) {
+			sdp_list_free(svcclass, free);
+			free(uuid_str);
+			return rec;
+		}
+		sdp_list_free(svcclass, free);
+		free(uuid_str);
+	}
+	return NULL;
+}
 
 int store_device_id(const gchar *src, const gchar *dst,
 				const uint16_t source, const uint16_t vendor,
