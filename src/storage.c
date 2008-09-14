@@ -810,3 +810,57 @@ int delete_record(const gchar *src, const gchar *dst, const uint32_t handle)
 
 	return textfile_del(filename, key);
 }
+
+int store_pnp(const gchar *src, const gchar *dst, const uint16_t vendor,
+	      const uint16_t product, const uint16_t version)
+{
+	char filename[PATH_MAX + 1], str[15];
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "pnp");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	snprintf(str, sizeof(str), "%04X %04X %04X", vendor, product, version);
+
+	return textfile_put(filename, dst, str);
+}
+
+int read_pnp(const gchar *src, const gchar *dst, uint32_t *vendor,
+	     uint16_t *product, uint16_t *version)
+{
+	char filename[PATH_MAX + 1];
+	char *str, *product_str, *version_str;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "pnp");
+
+	str = textfile_get(filename, dst);
+
+	if (!str)
+		return -ENOENT;
+
+	product_str = strchr(str, ' ');
+	if (!product_str) {
+		free(str);
+		return -ENOENT;
+	}
+	*(product_str++) = 0;
+
+	version_str = strchr(product_str, ' ');
+	if (!version_str) {
+		free(str);
+		return -ENOENT;
+	}
+	*(version_str++) = 0;
+
+	if (vendor)
+		*vendor = (uint16_t) strtol(str, NULL, 16);
+
+	if (product)
+		*product = (uint16_t) strtol(product_str, NULL, 16);
+
+	if (version)
+		*version = (uint16_t) strtol(version_str, NULL, 16);
+
+	free(str);
+	return 0;
+}
