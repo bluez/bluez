@@ -767,12 +767,32 @@ int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
 	return err;
 }
 
-sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle)
+static sdp_record_t *record_from_string(const gchar *str)
 {
-	char filename[PATH_MAX + 1], key[28], tmp[3], *str;
 	sdp_record_t *rec;
 	int size, i, len;
 	uint8_t *pdata;
+	char tmp[3];
+
+	size = strlen(str)/2;
+	pdata = g_malloc0(size);
+
+	for (i = 0; i < size; i++) {
+		 memcpy(tmp, str + (i * 2), 2);
+		 pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	rec = sdp_extract_pdu(pdata, size, &len);
+	free(pdata);
+
+	return rec;
+}
+
+
+sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle)
+{
+	char filename[PATH_MAX + 1], key[28], *str;
+	sdp_record_t *rec;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
 
@@ -782,19 +802,8 @@ sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t ha
 	if (!str)
 		return NULL;
 
-	size = strlen(str) / 2;
-	pdata = g_malloc0(size);
-
-	memset(tmp, 0, sizeof(tmp));
-	for (i = 0; i < size; i++) {
-		memcpy(tmp, str + (i*2), 2);
-		pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
-	}
-
-	rec = sdp_extract_pdu(pdata, size, &len);
-
+	rec = record_from_string(str);
 	free(str);
-	free(pdata);
 
 	return rec;
 }
@@ -821,23 +830,11 @@ static void create_stored_records_from_keys(char *key, char *value,
 	struct record_list *rec_list = user_data;
 	const gchar *addr = rec_list->addr;
 	sdp_record_t *rec;
-	int size, i, len;
-	uint8_t *pdata;
-	char tmp[3] = "";
 
 	if (strncmp(key, addr, 17))
 		return;
 
-	size = strlen(value)/2;
-	pdata = g_malloc0(size);
-
-	for (i = 0; i < size; i++) {
-		 memcpy(tmp, value + (i * 2), 2);
-		 pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
-	}
-
-	rec = sdp_extract_pdu(pdata, size, &len);
-	free(pdata);
+	rec = record_from_string(value);
 
 	rec_list->recs = sdp_list_append(rec_list->recs, rec);
 }
