@@ -831,8 +831,11 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 			continue;
 
 		if (!strcasecmp(uuid_str, PNP_UUID)) {
-			uint16_t vendor, product, version;
+			uint16_t source, vendor, product, version;
 			sdp_data_t *pdlist;
+
+			pdlist = sdp_data_get(rec, SDP_ATTR_VENDOR_ID_SOURCE);
+			source = pdlist ? pdlist->val.uint16 : 0x0000;
 
 			pdlist = sdp_data_get(rec, SDP_ATTR_VENDOR_ID);
 			vendor = pdlist ? pdlist->val.uint16 : 0x0000;
@@ -843,12 +846,12 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 			pdlist = sdp_data_get(rec, SDP_ATTR_VERSION);
 			version = pdlist ? pdlist->val.uint16 : 0x0000;
 
-			if (vendor || product || version)
-				store_pnp(srcaddr, dstaddr, vendor, product,
-					  version);
+			if (source || vendor || product || version)
+				store_device_id(srcaddr, dstaddr, source,
+						vendor, product, version);
 		}
 
-		/* Driver uuid found */
+		/* Driver UUID found */
 		l = g_slist_find_custom(req->uuids, uuid_str,
 				(GCompareFunc) strcasecmp);
 		if (l) {

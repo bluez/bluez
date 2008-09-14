@@ -779,7 +779,6 @@ sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t ha
 	snprintf(key, sizeof(key), "%17s#%08X", dst, handle);
 
 	str = textfile_get(filename, key);
-
 	if (!str)
 		return NULL;
 
@@ -811,34 +810,43 @@ int delete_record(const gchar *src, const gchar *dst, const uint32_t handle)
 	return textfile_del(filename, key);
 }
 
-int store_pnp(const gchar *src, const gchar *dst, const uint16_t vendor,
-	      const uint16_t product, const uint16_t version)
+int store_device_id(const gchar *src, const gchar *dst,
+				const uint16_t source, const uint16_t vendor,
+				const uint16_t product, const uint16_t version)
 {
 	char filename[PATH_MAX + 1], str[15];
 
-	create_name(filename, PATH_MAX, STORAGEDIR, src, "pnp");
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "did");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	snprintf(str, sizeof(str), "%04X %04X %04X", vendor, product, version);
+	snprintf(str, sizeof(str), "%04X %04X %04X %04X", source,
+						vendor, product, version);
 
 	return textfile_put(filename, dst, str);
 }
 
-int read_pnp(const gchar *src, const gchar *dst, uint32_t *vendor,
-	     uint16_t *product, uint16_t *version)
+int read_device_id(const gchar *src, const gchar *dst,
+					uint16_t *source, uint16_t *vendor,
+					uint16_t *product, uint16_t *version)
 {
 	char filename[PATH_MAX + 1];
-	char *str, *product_str, *version_str;
+	char *str, *vendor_str, *product_str, *version_str;
 
-	create_name(filename, PATH_MAX, STORAGEDIR, src, "pnp");
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "did");
 
 	str = textfile_get(filename, dst);
-
 	if (!str)
 		return -ENOENT;
 
-	product_str = strchr(str, ' ');
+	vendor_str = strchr(str, ' ');
+	if (!vendor_str) {
+		free(str);
+		return -ENOENT;
+	}
+	*(vendor_str++) = 0;
+
+	product_str = strchr(vendor_str, ' ');
 	if (!product_str) {
 		free(str);
 		return -ENOENT;
@@ -852,8 +860,11 @@ int read_pnp(const gchar *src, const gchar *dst, uint32_t *vendor,
 	}
 	*(version_str++) = 0;
 
+	if (source)
+		*source = (uint16_t) strtol(str, NULL, 16);
+
 	if (vendor)
-		*vendor = (uint16_t) strtol(str, NULL, 16);
+		*vendor = (uint16_t) strtol(vendor_str, NULL, 16);
 
 	if (product)
 		*product = (uint16_t) strtol(product_str, NULL, 16);
@@ -862,5 +873,6 @@ int read_pnp(const gchar *src, const gchar *dst, uint32_t *vendor,
 		*version = (uint16_t) strtol(version_str, NULL, 16);
 
 	free(str);
+
 	return 0;
 }
