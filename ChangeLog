@@ -1,3 +1,9 @@
+ver 4.6:
+	Fix Device ID record handling.
+	Fix service browsing and storage.
+	Fix authentication and encryption for input devices.
+	Fix adapter name initialization.
+
 ver 4.5:
 	Fix initialization issue with new adapters.
 	Send HID authentication request without blocking.
