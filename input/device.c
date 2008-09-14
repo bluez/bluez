@@ -628,6 +628,9 @@ static int hidp_add_connection(const struct input_device *idev,
 	extract_hid_record(rec, req);
 	sdp_record_free(rec);
 
+	read_pnp(src_addr, dst_addr, &req->vendor, &req->product,
+		 &req->version);
+
 	fake_hid = get_fake_hid(req->vendor, req->product);
 	if (fake_hid) {
 		fake = g_new0(struct fake_input, 1);
