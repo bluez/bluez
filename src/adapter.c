@@ -2137,7 +2137,7 @@ static void create_stored_records_from_keys(char *key, char *value,
 	uint8_t *pdata;
 	char tmp[3] = "";
 
-	if (strstr(key, addr) == NULL)
+	if (strncmp(key, addr, 17))
 		return;
 
 	size = strlen(value)/2;
