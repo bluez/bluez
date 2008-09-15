@@ -481,6 +481,8 @@ static gboolean auth_error(GIOChannel *io, GIOCondition cond,
 
 	dbus_connection_send_with_reply(connection, msg, NULL, -1);
 
+	dbus_message_unref(msg);
+
 	return FALSE;
 }
 
