@@ -222,7 +222,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	}
 
 	if (secure) {
-		int lm = RFCOMM_LM_SECURE;
+		int lm = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
 
 		if (setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
 			err = errno;
