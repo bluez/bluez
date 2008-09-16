@@ -200,7 +200,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	GIOChannel *io;
 	struct server *server;
 	uint32_t *handle;
-	gint err, sk, arg, lm = RFCOMM_LM_SECURE;
+	int err, sk, arg;
 
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (sk < 0) {
@@ -221,9 +221,13 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 		goto failed;
 	}
 
-	if (setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
-		err = errno;
-		goto failed;
+	if (secure) {
+		int lm = RFCOMM_LM_SECURE;
+
+		if (setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
+			err = errno;
+			goto failed;
+		}
 	}
 
 	memset(&laddr, 0, sizeof(laddr));
