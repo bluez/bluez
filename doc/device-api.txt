@@ -162,6 +162,10 @@ Properties	string Address [readonly]
 			emitted PropertyChanged signal will show the remote
 			name again.
 
+		array{object} Nodes [readonly]
+
+			List of device node object paths.
+
 		object Adapter [readonly]
 
 			The object path of the adpater the device belongs to.
