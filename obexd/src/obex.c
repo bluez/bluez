@@ -81,12 +81,12 @@ struct obex_commands ftp = {
 	.chkput		= ftp_chkput,
 };
 
-static void os_reset_session(struct obex_session *os, gboolean aborted)
+static void os_reset_session(struct obex_session *os)
 {
 	if (os->fd > 0) {
 		close(os->fd);
 		os->fd = -1;
-		if (aborted && os->cmd == OBEX_CMD_PUT && os->current_folder) {
+		if (os->aborted && os->cmd == OBEX_CMD_PUT && os->current_folder) {
 			gchar *path;
 			path = g_build_filename(os->current_folder, os->name, NULL);
 			unlink(path);
@@ -105,13 +105,24 @@ static void os_reset_session(struct obex_session *os, gboolean aborted)
 		g_free(os->buf);
 		os->buf = NULL;
 	}
+	os->aborted = FALSE;
 	os->offset = 0;
 	os->size = OBJECT_SIZE_DELETE;
 }
 
+static void os_session_mark_aborted(struct obex_session *os)
+{
+	/* the session was alredy cancelled/aborted */
+	if (os->aborted)
+		return;
+
+	os->aborted = os->size == OBJECT_SIZE_UNKNOWN ? FALSE :
+							os->size != os->offset;
+}
+
 static void obex_session_free(struct obex_session *os)
 {
-	os_reset_session(os, os->offset != os->size);
+	os_reset_session(os);
 
 	if (os->current_folder)
 		g_free(os->current_folder);
@@ -417,7 +428,7 @@ static gint obex_write_stream(struct obex_session *os,
 		os->name ? os->name : "", os->type ? os->type : "",
 		os->tx_mtu, os->fd);
 
-	if (os->cancelled)
+	if (os->aborted)
 		return -EPERM;
 
 	if (os->fd < 0) {
@@ -504,8 +515,12 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 	gint32 len = 0;
 	const guint8 *buffer;
 
-	if (os->cancelled)
+	if (os->aborted)
 		return -EPERM;
+
+	/* workaround: client didn't send the object lenght */
+	if (os->size == OBJECT_SIZE_DELETE)
+		os->size = OBJECT_SIZE_UNKNOWN;
 
 	size = OBEX_ObjectReadStream(obex, obj, &buffer);
 	if (size < 0) {
@@ -659,8 +674,10 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 		return FALSE;
 	}
 
-	if (os->size == OBJECT_SIZE_DELETE)
+	if (os->size == OBJECT_SIZE_DELETE || os->size == OBJECT_SIZE_UNKNOWN) {
+		debug("Got a PUT without a Length");
 		goto done;
+	}
 
 	if (fstatvfs(os->fd, &buf) < 0) {
 		int err = errno;
@@ -717,9 +734,11 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			emit_transfer_progress(os->cid, os->size, os->offset);
 		break;
 	case OBEX_EV_ABORT:
+		os->aborted = TRUE;
 		if (os->target == NULL)
 			emit_transfer_completed(os->cid, FALSE);
-		os_reset_session(os, TRUE);
+
+		os_reset_session(os);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 		break;
 	case OBEX_EV_REQDONE:
@@ -729,10 +748,10 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			break;
 		case OBEX_CMD_PUT:
 		case OBEX_CMD_GET:
+			os_session_mark_aborted(os);
 			if (os->target == NULL)
-				emit_transfer_completed(os->cid,
-							os->offset == os->size);
-			os_reset_session(os, os->offset != os->size);
+				emit_transfer_completed(os->cid, !os->aborted);
+			os_reset_session(os);
 			break;
 		default:
 			break;

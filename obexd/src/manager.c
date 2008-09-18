@@ -278,7 +278,7 @@ static DBusMessage *transfer_cancel(DBusConnection *connection,
 	if (strcmp(agent->bus_name, sender) != 0)
 		return not_authorized(msg);
 
-	os->cancelled = TRUE;
+	os->aborted = TRUE;
 
 	return dbus_message_new_method_return(msg);
 }

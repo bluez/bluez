@@ -62,7 +62,7 @@ struct obex_session {
 	gint32		offset;
 	gint32		size;
 	gint		fd;
-	gboolean	cancelled;
+	gboolean	aborted;
 	const guint8	*target;
 	struct obex_commands *cmds;
 	struct server *server;
