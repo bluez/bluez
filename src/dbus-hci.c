@@ -554,6 +554,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 				DBUS_TYPE_OBJECT_PATH, &dev_path,
 				DBUS_TYPE_INVALID);
 
+		adapter_update_devices(adapter);
+
 		dbus_connection_emit_property_changed(connection, dev_path,
 					DEVICE_INTERFACE, "Paired",
 					DBUS_TYPE_BOOLEAN, &paired);

@@ -151,6 +151,7 @@ void adapter_add_active_conn(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				uint16_t handle);
 void adapter_remove_active_conn(struct btd_adapter *adapter,
 				struct active_conn_info *dev);
+void adapter_update_devices(struct btd_adapter *adapter);
 struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct btd_adapter *adapter,
 						    bdaddr_t *bda);
 struct active_conn_info *adapter_search_active_conn_by_handle(struct btd_adapter *adapter,

@@ -929,6 +929,9 @@ proceed:
 				DBUS_TYPE_OBJECT_PATH, &device->path,
 				DBUS_TYPE_INVALID);
 
+	/* Update device list */
+	adapter_update_devices(device->adapter);
+
 	/* Reply create device request */
 	reply = dbus_message_new_method_return(req->msg);
 	if (!reply)

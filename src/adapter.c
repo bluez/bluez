@@ -1025,6 +1025,7 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 	ba2str(&dst, dstaddr);
 
 	delete_entry(&adapter->bdaddr, "profiles", dstaddr);
+	adapter->devices = g_slist_remove(adapter->devices, device);
 
 	if (!device_is_temporary(device)) {
 		remove_bonding(conn, NULL, dstaddr, adapter);
@@ -1034,6 +1035,8 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 				"DeviceRemoved",
 				DBUS_TYPE_OBJECT_PATH, &dev_path,
 				DBUS_TYPE_INVALID);
+
+		adapter_update_devices(adapter);
 	}
 
 	agent = device_get_agent(device);
@@ -1042,8 +1045,6 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 		agent_destroy(agent, FALSE);
 		device_set_agent(device, NULL);
 	}
-
-	adapter->devices = g_slist_remove(adapter->devices, device);
 
 	device_remove(conn, device);
 }
@@ -3155,4 +3156,23 @@ int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
 		return -EPERM;
 
 	return agent_cancel(agent);
+}
+
+void adapter_update_devices(struct btd_adapter *adapter)
+{
+	char **devices;
+	int i;
+	GSList *l;
+
+	/* Devices */
+	devices = g_new0(char *, g_slist_length(adapter->devices) + 1);
+	for (i = 0, l = adapter->devices; l; l = l->next, i++) {
+		struct btd_device *dev = l->data;
+		devices[i] = (char *) device_get_path(dev);
+	}
+
+	dbus_connection_emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Devices",
+					DBUS_TYPE_ARRAY, &devices);
+	g_free(devices);
 }
