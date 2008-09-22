@@ -1509,6 +1509,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter dict;
 	char str[249], srcaddr[18];
 	gboolean discov_active;
+	char **devices;
+	int i;
+	GSList *l;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
@@ -1557,6 +1560,16 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	/* Discovering */
 	dbus_message_iter_append_dict_entry(&dict, "Discovering",
 					DBUS_TYPE_BOOLEAN, &discov_active);
+
+	/* Devices */
+	devices = g_new0(char *, g_slist_length(adapter->devices) + 1);
+	for (i = 0, l = adapter->devices; l; l = l->next, i++) {
+		struct btd_device *dev = l->data;
+		devices[i] = (char *) device_get_path(dev);
+	}
+	dbus_message_iter_append_dict_entry(&dict, "Devices",
+			DBUS_TYPE_ARRAY, &devices);
+	g_free(devices);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
