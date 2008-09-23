@@ -597,6 +597,36 @@ done:
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *set_powered(DBusConnection *conn, DBusMessage *msg,
+				gboolean powered, void *data)
+{
+	struct btd_adapter *adapter = data;
+	uint8_t mode;
+
+	mode = powered ? get_mode(&adapter->bdaddr, "on") : MODE_OFF;
+
+	if (mode == adapter->mode)
+		return dbus_message_new_method_return(msg);
+
+	return set_mode(conn, msg, mode, data);
+}
+
+static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
+				gboolean discoverable, void *data)
+{
+	struct btd_adapter *adapter = data;
+	const char *strmode;
+	uint8_t mode;
+
+	strmode = discoverable ? "discoverable" : "connectable";
+	mode = get_mode(&adapter->bdaddr, strmode);
+
+	if (mode == adapter->mode)
+		return dbus_message_new_method_return(msg);
+
+	return set_mode(conn, msg, mode, data);
+}
+
 static struct session_req *find_session(GSList *list, DBusMessage *msg)
 {
 	GSList *l;
@@ -1645,6 +1675,24 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		return set_mode(conn, msg, get_mode(&adapter->bdaddr, mode),
 				data);
+	} else if (g_str_equal("Powered", property)) {
+		gboolean powered;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
+			return invalid_args(msg);
+
+		dbus_message_iter_get_basic(&sub, &powered);
+
+		return set_powered(conn, msg, powered, data);
+	} else if (g_str_equal("Discoverable", property)) {
+		gboolean discoverable;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
+			return invalid_args(msg);
+
+		dbus_message_iter_get_basic(&sub, &discoverable);
+
+		return set_discoverable(conn, msg, discoverable, data);
 	}
 
 	return invalid_args(msg);
