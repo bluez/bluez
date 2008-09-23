@@ -248,6 +248,10 @@ Properties	string Address [readonly]
 			In case the adapter is switched off, setting this
 			value will fail.
 
+			When changing the Powered property the new state of
+			this property will be updated via a PropertyChanged
+			signal.
+
 		uint32 DiscoverableTimeout [readwrite]
 
 			The discoverable timeout in seconds. A value of zero
