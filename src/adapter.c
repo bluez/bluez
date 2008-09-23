@@ -2242,9 +2242,14 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 
 	/* Set scan mode */
 	if (read_device_mode(srcaddr, mode, sizeof(mode)) == 0) {
-		if (!strcmp(mode, "off") && main_opts.offmode == HCID_OFFMODE_NOSCAN) {
-			adapter->mode = MODE_OFF;
-			adapter->scan_mode= SCAN_DISABLED;
+		if (!strcmp(mode, "off")) {
+			if (main_opts.offmode == HCID_OFFMODE_NOSCAN) {
+				adapter->mode = MODE_OFF;
+				adapter->scan_mode= SCAN_DISABLED;
+			} else if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
+				ioctl(dd, HCIDEVDOWN, adapter->dev_id);
+				return;
+			}
 		} else if (!strcmp(mode, "connectable")) {
 			adapter->mode = MODE_CONNECTABLE;
 			adapter->scan_mode = SCAN_PAGE;

@@ -452,17 +452,6 @@ static void init_device(int dev_id)
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		goto done;
 
-	if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
-		char mode[16], src[18];
-
-		ba2str(&di.bdaddr, src);
-		if (read_device_mode(src, mode, sizeof(mode)) == 0 &&
-						strcmp(mode, "off") == 0) {
-			ioctl(dd, HCIDEVDOWN, dev_id);
-			goto done;
-		}
-	}
-
 done:
 	hci_close_dev(dd);
 	exit(0);
