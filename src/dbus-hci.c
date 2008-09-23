@@ -508,7 +508,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	gboolean paired = TRUE;
 	struct pending_auth_info *auth;
 	const gchar *dev_path;
-	const gchar *path;
 
 	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
 
@@ -547,14 +546,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 		device_set_temporary(device, FALSE);
 		dev_path = device_get_path(device);
-		path = adapter_get_path(adapter);
-
-		g_dbus_emit_signal(connection, path,
-				ADAPTER_INTERFACE, "DeviceCreated",
-				DBUS_TYPE_OBJECT_PATH, &dev_path,
-				DBUS_TYPE_INVALID);
-
-		adapter_update_devices(adapter);
 
 		dbus_connection_emit_property_changed(connection, dev_path,
 					DEVICE_INTERFACE, "Paired",
