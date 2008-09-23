@@ -62,7 +62,7 @@ Methods		dict GetProperties()
 
 			Possible Errors: org.bluez.Error.Rejected
 
-		void ReleaseSession{}
+		void ReleaseSession()
 
 			Release a previous requested session.
 
