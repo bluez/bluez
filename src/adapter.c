@@ -1509,7 +1509,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	char str[249], srcaddr[18];
-	gboolean discov_active;
+	gboolean bproperty;
 	char **devices;
 	int i;
 	GSList *l;
@@ -1549,18 +1549,28 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dbus_message_iter_append_dict_entry(&dict, "Mode",
 						DBUS_TYPE_STRING, &property);
 
+	/* Powered */
+	bproperty = adapter->up ? TRUE : FALSE;
+	dbus_message_iter_append_dict_entry(&dict, "Powered",
+					DBUS_TYPE_BOOLEAN, &bproperty);
+
+	/* Discoverable */
+	bproperty = adapter->scan_mode == SCAN_INQUIRY ? TRUE : FALSE;
+	dbus_message_iter_append_dict_entry(&dict, "Discoverable",
+					DBUS_TYPE_BOOLEAN, &bproperty);
+
 	/* DiscoverableTimeout */
 	dbus_message_iter_append_dict_entry(&dict, "DiscoverableTimeout",
 				DBUS_TYPE_UINT32, &adapter->discov_timeout);
 
 	if (adapter->state & PERIODIC_INQUIRY || adapter->state & STD_INQUIRY)
-		discov_active = TRUE;
+		bproperty = TRUE;
 	else
-		discov_active = FALSE;
+		bproperty = FALSE;
 
 	/* Discovering */
 	dbus_message_iter_append_dict_entry(&dict, "Discovering",
-					DBUS_TYPE_BOOLEAN, &discov_active);
+					DBUS_TYPE_BOOLEAN, &bproperty);
 
 	/* Devices */
 	devices = g_new0(char *, g_slist_length(adapter->devices) + 1);
