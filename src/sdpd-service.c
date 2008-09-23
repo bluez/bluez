@@ -125,6 +125,13 @@ static void update_svclass_list(void)
 		case INTERCOM_SVCLASS_ID:
 		case FAX_SVCLASS_ID:
 		case SAP_SVCLASS_ID:
+		/*
+		 * Setting the telephony bit for the handsfree audio gateway
+		 * role is not required by the HFP specification, but the
+		 * Nokia 616 carkit is just plain broken! It will refuse
+		 * pairing without this bit set.
+		 */
+		case HANDSFREE_AGW_SVCLASS_ID:
 			val |= 0x40;	/* Telephony */
 			break;
 		case AUDIO_SOURCE_SVCLASS_ID:
