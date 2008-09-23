@@ -31,7 +31,7 @@ Methods		dict GetProperties()
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
 
-		void RequestMode(string mode)
+		void RequestMode(string mode) {deprecated}
 
 			This method will request a mode change. The mode
 			change must be confirmed by the user via the agent.
@@ -48,9 +48,23 @@ Methods		dict GetProperties()
 					 org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Rejected
 
-		void ReleaseMode()
+		void ReleaseMode() {deprecated}
 
 			Releases a mode requested via RequestMode.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+
+		void RequestSession()
+
+			This method will request a client session that
+			provides operational Bluetooth. A possible mode
+			change must be confirmed by the user via the agent.
+
+			Possible Errors: org.bluez.Error.Rejected
+
+		void ReleaseSession{}
+
+			Release a previous requested session.
 
 			Possible Errors: org.bluez.Error.DoesNotExist
 
@@ -205,12 +219,34 @@ Properties	string Address [readonly]
 			The Bluetooth friendly name. This value can be
 			changed and a PropertyChanged signal will be emitted.
 
-		string Mode [readwrite]
+		string Mode [readwrite] {deprecated}
 
 			The Bluetooth operation mode.
 
 			Valid modes: "off", "connectable",
 						"discoverable", "limited"
+
+			This is deprecated by the Powered and Discoverable
+			properties.
+
+		boolean Powered [readwrite]
+
+			Switch an adapter on or off. This will also set the
+			appropiate connectable state.
+
+		boolean Discoverable [readwrite]
+
+			Switch an adapter to discoverable or non-discoverable
+			to either make it visible or hide it. This is a global
+			setting and should only be used by the settings
+			application.
+
+			If the DiscoverableTimeout is set to a non-zero
+			value then the system will set this value back to
+			false after the timer expired.
+
+			In case the adapter is switched off, setting this
+			value will fail.
 
 		uint32 DiscoverableTimeout [readwrite]
 
