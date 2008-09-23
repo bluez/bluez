@@ -1981,8 +1981,10 @@ static GDBusMethodTable adapter_methods[] = {
 	{ "SetProperty",	"sv",	"",	set_property,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "RequestMode",	"s",	"",	request_mode,
-						G_DBUS_METHOD_FLAG_ASYNC},
-	{ "ReleaseMode",	"",	"",	release_mode		},
+						G_DBUS_METHOD_FLAG_ASYNC |
+						G_DBUS_METHOD_FLAG_DEPRECATED},
+	{ "ReleaseMode",	"",	"",	release_mode,
+						G_DBUS_METHOD_FLAG_DEPRECATED},
 	{ "StartDiscovery",	"",	"",	adapter_start_discovery },
 	{ "StopDiscovery",	"",	"",	adapter_stop_discovery,
 						G_DBUS_METHOD_FLAG_ASYNC},
