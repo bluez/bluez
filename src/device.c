@@ -151,6 +151,64 @@ static gboolean device_is_paired(struct btd_device *device)
 	return ret;
 }
 
+static const char *class_to_icon(uint32_t class)
+{
+	switch ((class & 0x1f00) >> 8) {
+	case 0x01:
+		return "computer";
+	case 0x02:
+		switch ((class & 0xfc) >> 2) {
+		case 0x01:
+		case 0x02:
+		case 0x03:
+		case 0x05:
+			return "phone";
+		case 0x04:
+			return "modem";
+		}
+		break;
+	case 0x03:
+		return "network-wireless";
+	case 0x04:
+		switch ((class & 0xfc) >> 2) {
+		case 0x01:
+		case 0x02:
+			return "audio-card";	/* Headset */
+		case 0x06:
+			return "audio-card";	/* Headphone */
+		}
+		break;
+	case 0x05:
+		switch ((class & 0xc0) >> 6) {
+		case 0x00:
+			switch ((class & 0x1e) >> 2) {
+			case 0x01:
+			case 0x02:
+				return "input-gaming";
+			}
+			break;
+		case 0x01:
+			return "input-keyboard";
+		case 0x02:
+			switch ((class & 0x1e) >> 2) {
+			case 0x05:
+				return "input-tablet";
+			default:
+				return "input-mouse";
+			}
+		}
+		break;
+	case 0x06:
+		if (class & 0x80)
+			return "printer";
+		if (class & 0x20)
+			return "camera-photo";
+		break;
+	}
+
+	return NULL;
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 				DBusMessage *msg, void *user_data)
 {
@@ -196,7 +254,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (read_device_name(srcaddr, dstaddr, name) == 0) {
 		ptr = name;
 		dbus_message_iter_append_dict_entry(&dict, "Name",
-				DBUS_TYPE_STRING, &ptr);
+						DBUS_TYPE_STRING, &ptr);
 	}
 
 	if (read_device_alias(srcaddr, dstaddr, name, sizeof(name)) > 0)
@@ -205,23 +263,29 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	/* Alias: use Name if Alias doesn't exist */
 	if (ptr)
 		dbus_message_iter_append_dict_entry(&dict, "Alias",
-				DBUS_TYPE_STRING, &ptr);
+						DBUS_TYPE_STRING, &ptr);
 
 	/* Class */
 	if (read_remote_class(&src, &device->bdaddr, &class) == 0) {
+		const char *icon = class_to_icon(class);
+
 		dbus_message_iter_append_dict_entry(&dict, "Class",
-				DBUS_TYPE_UINT32, &class);
+						DBUS_TYPE_UINT32, &class);
+
+		if (icon)
+			dbus_message_iter_append_dict_entry(&dict, "Icon",
+						DBUS_TYPE_STRING, &icon);
 	}
 
 	/* Paired */
 	boolean = device_is_paired(device);
 	dbus_message_iter_append_dict_entry(&dict, "Paired",
-			DBUS_TYPE_BOOLEAN, &boolean);
+						DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Trusted */
 	boolean = read_trust(&src, dstaddr, GLOBAL_TRUST);
 	dbus_message_iter_append_dict_entry(&dict, "Trusted",
-			DBUS_TYPE_BOOLEAN, &boolean);
+						DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Connected */
 	dev = adapter_search_active_conn_by_bdaddr(adapter, &device->bdaddr);
@@ -231,20 +295,20 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		boolean = FALSE;
 
 	dbus_message_iter_append_dict_entry(&dict, "Connected",
-			DBUS_TYPE_BOOLEAN, &boolean);
+						DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* UUIDs */
 	uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
 	for (i = 0, l = device->uuids; l; l = l->next, i++)
 		uuids[i] = l->data;
 	dbus_message_iter_append_dict_entry(&dict, "UUIDs",
-			DBUS_TYPE_ARRAY, &uuids);
+						DBUS_TYPE_ARRAY, &uuids);
 	g_free(uuids);
 
 	/* Adapter */
 	ptr = adapter_get_path(adapter);
 	dbus_message_iter_append_dict_entry(&dict, "Adapter",
-			DBUS_TYPE_OBJECT_PATH, &ptr);
+						DBUS_TYPE_OBJECT_PATH, &ptr);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
