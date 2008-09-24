@@ -353,7 +353,8 @@ int pending_remote_name_cancel(struct btd_adapter *adapter)
 
 	dev = l->data;
 
-	if (hci_read_remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
+	if (hci_read_remote_name_cancel(dd, &dev->bdaddr,
+					HCI_REQ_TIMEOUT) < 0) {
 		error("Remote name cancel failed: %s(%d)", strerror(errno), errno);
 		err = -errno;
 	}
@@ -560,7 +561,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 		rq.rlen   = sizeof(status);
 		rq.event = EVT_CMD_COMPLETE;
 
-		if (hci_send_req(dd, &rq, 1000) < 0) {
+		if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
 			err = errno;
 			error("Sending write scan enable command failed: %s (%d)",
 					strerror(errno), errno);
@@ -839,7 +840,8 @@ static void update_ext_inquiry_response(int dd, struct hci_dev *dev)
 	if (dev->ssp_mode > 0)
 		create_ext_inquiry_response((char *) dev->name, data);
 
-	if (hci_write_ext_inquiry_response(dd, fec, data, 2000) < 0)
+	if (hci_write_ext_inquiry_response(dd, fec, data,
+						HCI_REQ_TIMEOUT) < 0)
 		error("Can't write extended inquiry response: %s (%d)",
 						strerror(errno), errno);
 }
@@ -862,7 +864,7 @@ static int adapter_set_name(struct btd_adapter *adapter, const char *name)
 		return -err;
 	}
 
-	if (hci_write_local_name(dd, name, 5000) < 0) {
+	if (hci_write_local_name(dd, name, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't write name for hci%d: %s (%d)",
 					adapter->dev_id, strerror(err), err);
@@ -998,7 +1000,7 @@ static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	/* Delete the link key from the Bluetooth chip */
-	hci_delete_stored_link_key(dev, &dst, 0, 1000);
+	hci_delete_stored_link_key(dev, &dst, 0, HCI_REQ_TIMEOUT);
 
 	/* find the connection */
 	l = g_slist_find_custom(adapter->active_conn, &dst,
@@ -1007,7 +1009,8 @@ static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 		struct active_conn_info *con = l->data;
 		/* Send the HCI disconnect command */
 		if ((hci_disconnect(dev, htobs(con->handle),
-					HCI_OE_USER_ENDED_CONNECTION, 500) < 0)
+					HCI_OE_USER_ENDED_CONNECTION,
+					HCI_REQ_TIMEOUT) < 0)
 					&& msg){
 			int err = errno;
 			error("Disconnect failed");
@@ -1199,7 +1202,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 	rq.rlen   = EVT_CMD_STATUS_SIZE;
 	rq.event  = EVT_CMD_STATUS;
 
-	if (hci_send_req(dd, &rq, 500) < 0) {
+	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
 		error("Unable to send HCI request: %s (%d)",
 					strerror(errno), errno);
 		error_failed_errno(adapter->bonding->conn, adapter->bonding->msg,
@@ -1396,7 +1399,7 @@ int start_inquiry(struct btd_adapter *adapter)
 	rq.rlen = EVT_CMD_STATUS_SIZE;
 	rq.event = EVT_CMD_STATUS;
 
-	if (hci_send_req(dd, &rq, 500) < 0) {
+	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Unable to start inquiry: %s (%d)",
 			strerror(err), err);
@@ -1447,7 +1450,7 @@ static int start_periodic_inquiry(struct btd_adapter *adapter)
 	rq.rlen   = sizeof(status);
 	rq.event  = EVT_CMD_COMPLETE;
 
-	if (hci_send_req(dd, &rq, 1000) < 0) {
+	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Unable to start periodic inquiry: %s (%d)",
 				strerror(err), err);
@@ -2125,7 +2128,7 @@ static int adapter_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 		return -err;
 	}
 
-	if (hci_read_bd_addr(dd, bdaddr, 2000) < 0) {
+	if (hci_read_bd_addr(dd, bdaddr, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't read address for hci%d: %s (%d)",
 					dev_id, strerror(err), err);
@@ -2180,7 +2183,7 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 
 	if (read_local_name(&adapter->bdaddr, name) == 0) {
 		memcpy(dev->name, name, 248);
-		hci_write_local_name(dd, name, 5000);
+		hci_write_local_name(dd, name, HCI_REQ_TIMEOUT);
         }
 
 	update_ext_inquiry_response(dd, dev);
@@ -2189,7 +2192,7 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 	if (inqmode < 1)
 		return 0;
 
-	if (hci_write_inquiry_mode(dd, inqmode, 2000) < 0) {
+	if (hci_write_inquiry_mode(dd, inqmode, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't write inquiry mode for %s: %s (%d)",
 					adapter->path, strerror(err), err);
@@ -2439,7 +2442,7 @@ int adapter_start(struct btd_adapter *adapter)
 		return -err;
 	}
 
-	if (hci_read_local_version(dd, &ver, 1000) < 0) {
+	if (hci_read_local_version(dd, &ver, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't read version info for %s: %s (%d)",
 					adapter->path, strerror(err), err);
@@ -2452,7 +2455,7 @@ int adapter_start(struct btd_adapter *adapter)
 	dev->lmp_subver = ver.lmp_subver;
 	dev->manufacturer = ver.manufacturer;
 
-	if (hci_read_local_features(dd, features, 1000) < 0) {
+	if (hci_read_local_features(dd, features, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't read features for %s: %s (%d)",
 					adapter->path, strerror(err), err);
@@ -2462,7 +2465,7 @@ int adapter_start(struct btd_adapter *adapter)
 
 	memcpy(dev->features, features, 8);
 
-	if (hci_read_class_of_dev(dd, dev->class, 1000) < 0) {
+	if (hci_read_class_of_dev(dd, dev->class, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't read class of adapter on %s: %s (%d)",
 					adapter->path, strerror(err), err);
@@ -2470,7 +2473,7 @@ int adapter_start(struct btd_adapter *adapter)
 		return -err;
 	}
 
-	if (hci_read_local_name(dd, sizeof(name), name, 2000) < 0) {
+	if (hci_read_local_name(dd, sizeof(name), name, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't read local name on %s: %s (%d)",
 					adapter->path, strerror(err), err);
@@ -2484,9 +2487,10 @@ int adapter_start(struct btd_adapter *adapter)
 		goto setup;
 
 	if (ioctl(dd, HCIGETAUTHINFO, NULL) < 0 && errno != EINVAL)
-		hci_write_simple_pairing_mode(dd, 0x01, 2000);
+		hci_write_simple_pairing_mode(dd, 0x01, HCI_REQ_TIMEOUT);
 
-	if (hci_read_simple_pairing_mode(dd, &dev->ssp_mode, 1000) < 0) {
+	if (hci_read_simple_pairing_mode(dd, &dev->ssp_mode,
+						HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't read simple pairing mode on %s: %s (%d)",
 					adapter->path, strerror(err), err);
@@ -2797,7 +2801,7 @@ static gboolean discov_timeout_handler(void *data)
 	rq.rlen   = sizeof(status);
 	rq.event  = EVT_CMD_COMPLETE;
 
-	if (hci_send_req(dd, &rq, 1000) < 0) {
+	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
 		error("Sending write scan enable command to hci%d failed: %s (%d)",
 				dev_id, strerror(errno), errno);
 		goto failed;

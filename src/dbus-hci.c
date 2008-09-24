@@ -656,7 +656,7 @@ static int found_device_req_name(struct btd_adapter *adapter)
 		bacpy(&cp.bdaddr, &dev->bdaddr);
 		cp.pscan_rep_mode = 0x02;
 
-		if (hci_send_req(dd, &rq, 500) < 0)
+		if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0)
 			error("Unable to send the HCI remote name request: %s (%d)",
 						strerror(errno), errno);
 
@@ -1160,7 +1160,7 @@ int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
 	 * 1: giac
 	 * 2: giac + liac
 	 */
-	if (hci_write_current_iac_lap(dd, num, lap, 1000) < 0) {
+	if (hci_write_current_iac_lap(dd, num, lap, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't write current IAC LAP: %s(%d)",
 				strerror(err), err);
@@ -1179,7 +1179,7 @@ int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
 		dev_class = (cls[2] << 16) | ((cls[1] & 0xdf) << 8) | cls[0];
 	}
 
-	if (hci_write_class_of_dev(dd, dev_class, 1000) < 0) {
+	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't write class of device: %s (%d)",
 							strerror(err), err);
@@ -1199,7 +1199,7 @@ int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
 
 	dev_class = (value << 16) | (cls[1] << 8) | cls[0];
 
-	if (hci_write_class_of_dev(dd, dev_class, 1000) < 0) {
+	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
 		err = errno;
 		error("Can't write class of device: %s (%d)",
 							strerror(err), err);
@@ -1239,7 +1239,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 		rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
 		rq.event  = EVT_CMD_COMPLETE;
 
-		if (hci_send_req(dd, &rq, 1000) < 0) {
+		if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
 			error("Sending getting name command failed: %s (%d)",
 						strerror(errno), errno);
 			rp.name[0] = '\0';
@@ -1285,7 +1285,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
 	rq.event  = EVT_CMD_COMPLETE;
 
-	if (hci_send_req(dd, &rq, 1000) < 0) {
+	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
 		error("Sending read scan enable command failed: %s (%d)",
 				strerror(errno), errno);
 		goto failed;
@@ -1328,7 +1328,7 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 		return;
 	}
 
-	if (hci_read_class_of_dev(dd, cls, 1000) < 0) {
+	if (hci_read_class_of_dev(dd, cls, HCI_REQ_TIMEOUT) < 0) {
 		error("Can't read class of device on hci%d: %s (%d)",
 			dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
@@ -1364,7 +1364,8 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 		return;
 	}
 
-	if (hci_read_simple_pairing_mode(dd, &mode, 1000) < 0) {
+	if (hci_read_simple_pairing_mode(dd, &mode,
+						HCI_REQ_TIMEOUT) < 0) {
 		error("Can't read class of adapter on %s: %s(%d)",
 					path, strerror(errno), errno);
 		hci_close_dev(dd);
@@ -1533,13 +1534,13 @@ int cancel_discovery(struct btd_adapter *adapter)
 
 	dev = adapter_search_found_devices(adapter, &match);
 	if (dev) {
-		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
+		if (remote_name_cancel(dd, &dev->bdaddr, HCI_REQ_TIMEOUT) < 0) {
 			error("Read remote name cancel failed: %s, (%d)",
 					strerror(errno), errno);
 			err = -errno;
 		}
 	} else {
-		if (inquiry_cancel(dd, 1000) < 0) {
+		if (inquiry_cancel(dd, HCI_REQ_TIMEOUT) < 0) {
 			error("Inquiry cancel failed:%s (%d)",
 					strerror(errno), errno);
 			err = -errno;
@@ -1591,7 +1592,7 @@ int cancel_periodic_discovery(struct btd_adapter *adapter)
 
 	dev = adapter_search_found_devices(adapter, &match);
 	if (dev) {
-		if (remote_name_cancel(dd, &dev->bdaddr, 1000) < 0) {
+		if (remote_name_cancel(dd, &dev->bdaddr, HCI_REQ_TIMEOUT) < 0) {
 			error("Read remote name cancel failed: %s, (%d)",
 					strerror(errno), errno);
 			err = -errno;
@@ -1600,7 +1601,7 @@ int cancel_periodic_discovery(struct btd_adapter *adapter)
 
 	/* ovewrite err if necessary: stop periodic inquiry has higher
 	 * priority */
-	if (periodic_inquiry_exit(dd, 1000) < 0) {
+	if (periodic_inquiry_exit(dd, HCI_REQ_TIMEOUT) < 0) {
 		error("Periodic Inquiry exit failed:%s (%d)",
 				strerror(errno), errno);
 		err = -errno;
