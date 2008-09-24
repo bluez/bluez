@@ -22,6 +22,9 @@
  *
  */
 
+#include <bluetooth/bluetooth.h>
+#include <glib.h>
+
 #define ADAPTER_INTERFACE	"org.bluez.Adapter"
 
 /* Discover types */
@@ -105,7 +108,7 @@ int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls);
 int adapter_update_ssp_mode(struct btd_adapter *adapter, int dd, uint8_t mode);
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
-				struct btd_adapter *adapter, const gchar *address);
+				struct btd_adapter *adapter, const char *address);
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest);
 
