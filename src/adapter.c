@@ -2981,17 +2981,33 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const char *mode;
 	const gchar *path = adapter_get_path(adapter);
-
-	adapter_set_scan_mode(adapter, scan_mode);
+	gboolean powered;
+	gboolean discoverable;
 
 	switch (scan_mode) {
 	case SCAN_DISABLED:
 		mode = "off";
 		adapter_set_mode(adapter, MODE_OFF);
+		powered = FALSE;
+		dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Powered",
+						DBUS_TYPE_BOOLEAN, &powered);
 		break;
 	case SCAN_PAGE:
 		mode = "connectable";
 		adapter_set_mode(adapter, MODE_CONNECTABLE);
+
+		if (adapter->scan_mode == SCAN_DISABLED) {
+			powered = TRUE;
+			dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Powered",
+						DBUS_TYPE_BOOLEAN, &powered);
+		} else {
+			discoverable = FALSE;
+			dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Discoverable",
+						DBUS_TYPE_BOOLEAN, &discoverable);
+		}
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
 
@@ -3004,6 +3020,17 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 			adapter_set_mode(adapter, MODE_DISCOVERABLE);
 			mode = "discoverable";
 		}
+
+		if (adapter->scan_mode == SCAN_DISABLED) {
+			powered = TRUE;
+			dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "powered",
+						DBUS_TYPE_BOOLEAN, &powered);
+		}
+		discoverable = TRUE;
+		dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Discoverable",
+						DBUS_TYPE_BOOLEAN, &discoverable);
 		break;
 	case SCAN_INQUIRY:
 		/* Address the scenario where another app changed the scan mode */
@@ -3019,6 +3046,8 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 	dbus_connection_emit_property_changed(connection, path,
 					ADAPTER_INTERFACE, "Mode",
 					DBUS_TYPE_STRING, &mode);
+
+	adapter_set_scan_mode(adapter, scan_mode);
 }
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)
