@@ -1698,10 +1698,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return invalid_args(msg);
 }
 
-static DBusMessage *request_mode(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *mode_request(DBusConnection *conn,
+					DBusMessage *msg, const char *mode,
+					void *data)
 {
-	const char *mode;
 	struct btd_adapter *adapter = data;
 	struct session_req *req;
 	uint8_t new_mode;
@@ -1709,10 +1709,6 @@ static DBusMessage *request_mode(DBusConnection *conn,
 	char srcaddr[18];
 
 	ba2str(&adapter->bdaddr, srcaddr);
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
-						DBUS_TYPE_INVALID))
-		return invalid_args(msg);
 
 	new_mode = get_mode(&adapter->bdaddr, mode);
 	if (new_mode != MODE_CONNECTABLE && new_mode != MODE_DISCOVERABLE)
@@ -1753,7 +1749,25 @@ static DBusMessage *request_mode(DBusConnection *conn,
 	return NULL;
 }
 
-static DBusMessage *release_mode(DBusConnection *conn,
+static DBusMessage *request_mode(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *mode;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
+						DBUS_TYPE_INVALID))
+		return invalid_args(msg);
+
+	return mode_request(conn, msg, mode, data);
+}
+
+static DBusMessage *request_session(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return mode_request(conn, msg, "connectable", data);
+}
+
+static DBusMessage *release_session(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct btd_adapter *adapter = data;
@@ -2041,8 +2055,11 @@ static GDBusMethodTable adapter_methods[] = {
 	{ "RequestMode",	"s",	"",	request_mode,
 						G_DBUS_METHOD_FLAG_ASYNC |
 						G_DBUS_METHOD_FLAG_DEPRECATED},
-	{ "ReleaseMode",	"",	"",	release_mode,
+	{ "ReleaseMode",	"",	"",	release_session,
 						G_DBUS_METHOD_FLAG_DEPRECATED},
+	{ "RequestSession",	"",	"",	request_session,
+						G_DBUS_METHOD_FLAG_ASYNC},
+	{ "ReleaseSession",	"",	"",	release_session		},
 	{ "StartDiscovery",	"",	"",	adapter_start_discovery },
 	{ "StopDiscovery",	"",	"",	adapter_stop_discovery,
 						G_DBUS_METHOD_FLAG_ASYNC},
