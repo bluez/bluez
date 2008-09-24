@@ -597,6 +597,36 @@ done:
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *set_powered(DBusConnection *conn, DBusMessage *msg,
+				gboolean powered, void *data)
+{
+	struct btd_adapter *adapter = data;
+	uint8_t mode;
+
+	mode = powered ? get_mode(&adapter->bdaddr, "on") : MODE_OFF;
+
+	if (mode == adapter->mode)
+		return dbus_message_new_method_return(msg);
+
+	return set_mode(conn, msg, mode, data);
+}
+
+static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
+				gboolean discoverable, void *data)
+{
+	struct btd_adapter *adapter = data;
+	const char *strmode;
+	uint8_t mode;
+
+	strmode = discoverable ? "discoverable" : "connectable";
+	mode = get_mode(&adapter->bdaddr, strmode);
+
+	if (mode == adapter->mode)
+		return dbus_message_new_method_return(msg);
+
+	return set_mode(conn, msg, mode, data);
+}
+
 static struct session_req *find_session(GSList *list, DBusMessage *msg)
 {
 	GSList *l;
@@ -1509,7 +1539,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	char str[249], srcaddr[18];
-	gboolean discov_active;
+	gboolean bproperty;
 	char **devices;
 	int i;
 	GSList *l;
@@ -1549,18 +1579,28 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dbus_message_iter_append_dict_entry(&dict, "Mode",
 						DBUS_TYPE_STRING, &property);
 
+	/* Powered */
+	bproperty = adapter->up ? TRUE : FALSE;
+	dbus_message_iter_append_dict_entry(&dict, "Powered",
+					DBUS_TYPE_BOOLEAN, &bproperty);
+
+	/* Discoverable */
+	bproperty = adapter->scan_mode == SCAN_INQUIRY ? TRUE : FALSE;
+	dbus_message_iter_append_dict_entry(&dict, "Discoverable",
+					DBUS_TYPE_BOOLEAN, &bproperty);
+
 	/* DiscoverableTimeout */
 	dbus_message_iter_append_dict_entry(&dict, "DiscoverableTimeout",
 				DBUS_TYPE_UINT32, &adapter->discov_timeout);
 
 	if (adapter->state & PERIODIC_INQUIRY || adapter->state & STD_INQUIRY)
-		discov_active = TRUE;
+		bproperty = TRUE;
 	else
-		discov_active = FALSE;
+		bproperty = FALSE;
 
 	/* Discovering */
 	dbus_message_iter_append_dict_entry(&dict, "Discovering",
-					DBUS_TYPE_BOOLEAN, &discov_active);
+					DBUS_TYPE_BOOLEAN, &bproperty);
 
 	/* Devices */
 	devices = g_new0(char *, g_slist_length(adapter->devices) + 1);
@@ -1635,15 +1675,33 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		return set_mode(conn, msg, get_mode(&adapter->bdaddr, mode),
 				data);
+	} else if (g_str_equal("Powered", property)) {
+		gboolean powered;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
+			return invalid_args(msg);
+
+		dbus_message_iter_get_basic(&sub, &powered);
+
+		return set_powered(conn, msg, powered, data);
+	} else if (g_str_equal("Discoverable", property)) {
+		gboolean discoverable;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
+			return invalid_args(msg);
+
+		dbus_message_iter_get_basic(&sub, &discoverable);
+
+		return set_discoverable(conn, msg, discoverable, data);
 	}
 
 	return invalid_args(msg);
 }
 
-static DBusMessage *request_mode(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *mode_request(DBusConnection *conn,
+					DBusMessage *msg, const char *mode,
+					void *data)
 {
-	const char *mode;
 	struct btd_adapter *adapter = data;
 	struct session_req *req;
 	uint8_t new_mode;
@@ -1651,10 +1709,6 @@ static DBusMessage *request_mode(DBusConnection *conn,
 	char srcaddr[18];
 
 	ba2str(&adapter->bdaddr, srcaddr);
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
-						DBUS_TYPE_INVALID))
-		return invalid_args(msg);
 
 	new_mode = get_mode(&adapter->bdaddr, mode);
 	if (new_mode != MODE_CONNECTABLE && new_mode != MODE_DISCOVERABLE)
@@ -1695,7 +1749,25 @@ static DBusMessage *request_mode(DBusConnection *conn,
 	return NULL;
 }
 
-static DBusMessage *release_mode(DBusConnection *conn,
+static DBusMessage *request_mode(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *mode;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
+						DBUS_TYPE_INVALID))
+		return invalid_args(msg);
+
+	return mode_request(conn, msg, mode, data);
+}
+
+static DBusMessage *request_session(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return mode_request(conn, msg, "connectable", data);
+}
+
+static DBusMessage *release_session(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct btd_adapter *adapter = data;
@@ -1981,8 +2053,13 @@ static GDBusMethodTable adapter_methods[] = {
 	{ "SetProperty",	"sv",	"",	set_property,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "RequestMode",	"s",	"",	request_mode,
+						G_DBUS_METHOD_FLAG_ASYNC |
+						G_DBUS_METHOD_FLAG_DEPRECATED},
+	{ "ReleaseMode",	"",	"",	release_session,
+						G_DBUS_METHOD_FLAG_DEPRECATED},
+	{ "RequestSession",	"",	"",	request_session,
 						G_DBUS_METHOD_FLAG_ASYNC},
-	{ "ReleaseMode",	"",	"",	release_mode		},
+	{ "ReleaseSession",	"",	"",	release_session		},
 	{ "StartDiscovery",	"",	"",	adapter_start_discovery },
 	{ "StopDiscovery",	"",	"",	adapter_stop_discovery,
 						G_DBUS_METHOD_FLAG_ASYNC},
@@ -2233,6 +2310,8 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	const char *pmode;
 	char mode[14], srcaddr[18];
 	int i;
+	gboolean powered;
+	gboolean discoverable;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
@@ -2304,6 +2383,19 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	dbus_connection_emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Mode",
 					DBUS_TYPE_STRING, &pmode);
+
+	powered = adapter->scan_mode == SCAN_DISABLED ? FALSE : TRUE;
+
+	dbus_connection_emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Powered",
+					DBUS_TYPE_BOOLEAN, &powered);
+
+	discoverable = adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY) ? TRUE 
+				: FALSE;
+
+	dbus_connection_emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Discoverable",
+					DBUS_TYPE_BOOLEAN, &discoverable);
 
 	load_drivers(adapter);
 	load_devices(adapter);
@@ -2473,6 +2565,7 @@ static void unload_drivers(struct btd_adapter *adapter)
 int adapter_stop(struct btd_adapter *adapter)
 {
 	const char *mode = "off";
+	gboolean powered, discoverable;
 
 	/* cancel pending timeout */
 	if (adapter->discov_timeout_id) {
@@ -2517,6 +2610,20 @@ int adapter_stop(struct btd_adapter *adapter)
 	dbus_connection_emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Mode",
 					DBUS_TYPE_STRING, &mode);
+
+	powered = FALSE;
+
+	dbus_connection_emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Powered",
+					DBUS_TYPE_BOOLEAN, &powered);
+
+	if (adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY)) {
+		discoverable = FALSE;
+
+		dbus_connection_emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Discoverable",
+					DBUS_TYPE_BOOLEAN, &discoverable);
+	}
 
 	adapter->up = 0;
 	adapter->scan_mode = SCAN_DISABLED;
@@ -2921,17 +3028,33 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const char *mode;
 	const gchar *path = adapter_get_path(adapter);
-
-	adapter_set_scan_mode(adapter, scan_mode);
+	gboolean powered;
+	gboolean discoverable;
 
 	switch (scan_mode) {
 	case SCAN_DISABLED:
 		mode = "off";
 		adapter_set_mode(adapter, MODE_OFF);
+		powered = FALSE;
+		dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Powered",
+						DBUS_TYPE_BOOLEAN, &powered);
 		break;
 	case SCAN_PAGE:
 		mode = "connectable";
 		adapter_set_mode(adapter, MODE_CONNECTABLE);
+
+		if (adapter->scan_mode == SCAN_DISABLED) {
+			powered = TRUE;
+			dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Powered",
+						DBUS_TYPE_BOOLEAN, &powered);
+		} else {
+			discoverable = FALSE;
+			dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Discoverable",
+						DBUS_TYPE_BOOLEAN, &discoverable);
+		}
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
 
@@ -2944,6 +3067,17 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 			adapter_set_mode(adapter, MODE_DISCOVERABLE);
 			mode = "discoverable";
 		}
+
+		if (adapter->scan_mode == SCAN_DISABLED) {
+			powered = TRUE;
+			dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "powered",
+						DBUS_TYPE_BOOLEAN, &powered);
+		}
+		discoverable = TRUE;
+		dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Discoverable",
+						DBUS_TYPE_BOOLEAN, &discoverable);
 		break;
 	case SCAN_INQUIRY:
 		/* Address the scenario where another app changed the scan mode */
@@ -2959,6 +3093,8 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 	dbus_connection_emit_property_changed(connection, path,
 					ADAPTER_INTERFACE, "Mode",
 					DBUS_TYPE_STRING, &mode);
+
+	adapter_set_scan_mode(adapter, scan_mode);
 }
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)

@@ -1002,9 +1002,11 @@ static void manager_path_unregister(void *data)
 	/* Remove proxy objects */
 	for (l = adapter->proxies; l; l = l->next) {
 		struct serial_proxy *prx = l->data;
+		char *path = g_strdup(prx->path);
 
-		g_dbus_unregister_interface(adapter->conn, prx->path,
+		g_dbus_unregister_interface(adapter->conn, path,
 					SERIAL_PROXY_INTERFACE);
+		g_free(path);
 	}
 
 	if (adapter->conn)
