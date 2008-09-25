@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -1121,6 +1122,9 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	bdaddr_t src;
 	uuid_t uuid;
 	bt_callback_t cb;
+
+	if (device->discov_active)
+		return -EBUSY;
 
 	adapter_get_address(adapter, &src);
 
