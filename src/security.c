@@ -46,6 +46,7 @@
 
 #include <dbus/dbus.h>
 
+#include "hcid.h"
 #include "logging.h"
 #include "textfile.h"
 
@@ -789,6 +790,20 @@ static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)
 	write_remote_class(sba, &evt->bdaddr, class);
 }
 
+static void delete_channel(GIOChannel *chan)
+{
+	int i;
+
+	/* Look for the GIOChannel in the table */
+	for (i = 0; i < HCI_MAX_DEV; i++)
+		if (io_data[i].channel == chan) {
+			stop_security_manager(i);
+			return;
+		}
+
+	error("IO channel not found in the io_data table");
+}
+
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
@@ -799,14 +814,14 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	GIOError err;
 
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
-		g_io_channel_unref(chan);
+		delete_channel(chan);
 		return FALSE;
 	}
 
 	if ((err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len))) {
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
-		g_io_channel_unref(chan);
+		delete_channel(chan);
 		return FALSE;
 	}
 
