@@ -3195,7 +3195,7 @@ void adapter_free_bonding_request(struct btd_adapter *adapter)
 
 struct bonding_request_info *adapter_get_bonding_info(struct btd_adapter *adapter)
 {
-	if (!adapter || !adapter->bonding)
+	if (!adapter)
 		return NULL;
 
 	return adapter->bonding;

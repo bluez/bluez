@@ -507,7 +507,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct bonding_request_info *bonding;
 	gboolean paired = TRUE;
 	struct pending_auth_info *auth;
-	const gchar *dev_path;
 
 	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
 
@@ -521,10 +520,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	bonding = adapter_get_bonding_info(adapter);
 
-	if (status) {
-		if (bonding)
-			bonding->hci_status = status;
-	}
+	if (status && bonding)
+		bonding->hci_status = status;
 
 	auth = adapter_find_auth_request(adapter, peer);
 	if (!auth) {
@@ -542,6 +539,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	device = adapter_get_device(connection, adapter, paddr);
 	if (device) {
+		const gchar *dev_path;
+
 		debug("hcid_dbus_bonding_process_complete: removing temporary flag");
 
 		device_set_temporary(device, FALSE);
@@ -553,7 +552,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	}
 
 proceed:
-	bonding = adapter_get_bonding_info(adapter);
 	if (!bonding || bacmp(&bonding->bdaddr, peer))
 		return; /* skip: no bonding req pending */
 
