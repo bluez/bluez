@@ -565,13 +565,7 @@ proceed:
 		goto cleanup;
 	}
 
-	/* reply authentication success or an error */
-	if (dbus_message_is_method_call(bonding->msg, ADAPTER_INTERFACE,
-					"CreateBonding")) {
-		reply = new_authentication_return(bonding->msg, status);
-		dbus_connection_send(connection, reply, NULL);
-		dbus_message_unref(reply);
-	} else if ((device = adapter_find_device(adapter, paddr))) {
+	if ((device = adapter_find_device(adapter, paddr))) {
 		if (status) {
 			reply = new_authentication_return(bonding->msg, status);
 			dbus_connection_send(connection, reply, NULL);
@@ -1114,7 +1108,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	adapter_remove_auth_request(adapter, &dev->bdaddr);
 
 	bonding = adapter_get_bonding_info(adapter);
-	/* Check if there is a pending CreateBonding request */
+	/* Check if there is a pending Bonding request */
 	if (bonding && (bacmp(&bonding->bdaddr, &dev->bdaddr) == 0)) {
 		if (bonding->cancel) {
 			/* reply authentication canceled */
