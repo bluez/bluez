@@ -1,3 +1,12 @@
+ver 4.7:
+	Fix pairing and service discovery logic.
+	Fix crashes during suspend and resume.
+	Fix race condition within devdown mode.
+	Add RequestSession and ReleaseSession methods.
+	Add Powered and Discoverable properties.
+	Add Devices property and deprecate ListDevices.
+	Add workaround for a broken carkit from Nokia.
+
 ver 4.6:
 	Fix Device ID record handling.
 	Fix service browsing and storage.
