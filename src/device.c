@@ -1172,13 +1172,16 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	}
 
 	device->discov_active = 1;
-	device->discov_requestor = g_strdup(dbus_message_get_sender(msg));
-	/* Track the request owner to cancel it
-	 * automatically if the owner exits */
-	device->discov_listener = g_dbus_add_disconnect_watch(conn,
+
+	if (msg) {
+		device->discov_requestor = g_strdup(dbus_message_get_sender(msg));
+		/* Track the request owner to cancel it
+		 * automatically if the owner exits */
+		device->discov_listener = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),
 						discover_services_req_exit,
 						device, NULL);
+	}
 
 	return bt_search_service(&src, &device->bdaddr,
 					&uuid, cb, req, NULL);
