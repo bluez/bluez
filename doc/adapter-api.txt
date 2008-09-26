@@ -145,6 +145,14 @@ Methods		dict GetProperties()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
 
+		void CancelDeviceCreation(string address)
+
+			Aborts either a CreateDevice call or a
+			CreatePairedDevice call.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotInProgress
+
 		void RemoveDevice(object device)
 
 			This removes the remote device object at the given

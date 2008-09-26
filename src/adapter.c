@@ -1127,7 +1127,6 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 		/* If we come here it implies a bug somewhere */
 		debug("create_bonding_conn_complete: no pending bonding!");
 		g_io_channel_close(io);
-		g_io_channel_unref(io);
 		return FALSE;
 	}
 
@@ -1280,28 +1279,43 @@ static void cancel_auth_request(struct pending_auth_info *auth, int dev_id)
 	hci_close_dev(dd);
 }
 
-static void create_bond_req_exit(void *user_data)
+static void cancel_bonding(struct btd_adapter *adapter, gboolean exited)
 {
-	struct btd_adapter *adapter = user_data;
 	struct pending_auth_info *auth;
+	struct bonding_request_info *bonding = adapter->bonding;
 
-	debug("CreateConnection requestor exited before bonding was completed");
-
-	auth = adapter_find_auth_request(adapter, &adapter->bonding->bdaddr);
+	auth = adapter_find_auth_request(adapter, &adapter->bdaddr);
 	if (auth) {
 		cancel_auth_request(auth, adapter->dev_id);
 		if (auth->agent)
 			agent_cancel(auth->agent);
-		adapter_remove_auth_request(adapter, &adapter->bonding->bdaddr);
+		adapter_remove_auth_request(adapter, &bonding->bdaddr);
 	}
 
 	remove_pending_device(adapter);
 
-	g_io_channel_close(adapter->bonding->io);
-	if (adapter->bonding->io_id)
-		g_source_remove(adapter->bonding->io_id);
-	bonding_request_free(adapter->bonding);
-	adapter->bonding = NULL;
+	if (bonding->io)
+		g_io_channel_close(bonding->io);
+
+	if (exited) {
+		if (bonding->io_id) {
+			g_source_remove(bonding->io_id);
+			bonding->io_id = 0;
+		}
+		bonding_request_free(bonding);
+		adapter->bonding = NULL;
+
+	} else
+		bonding->cancel = TRUE;
+}
+
+static void create_bond_req_exit(void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	debug("CreateConnection requestor exited before bonding was completed");
+
+	cancel_bonding(adapter, TRUE);
 }
 
 static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
@@ -1824,6 +1838,35 @@ static DBusMessage *list_devices(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *cancel_device_creation(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct btd_adapter *adapter = data;
+	struct bonding_request_info *bonding = adapter->bonding;
+	const gchar *address;
+	bdaddr_t bda;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
+						DBUS_TYPE_INVALID) == FALSE)
+		return invalid_args(msg);
+
+	if (check_address(address) < 0)
+		return invalid_args(msg);
+
+	str2ba(address, &bda);
+
+	if (bonding && !bacmp(&bonding->bdaddr, &bda)) {
+		if (!g_str_equal(dbus_message_get_sender(msg),
+					dbus_message_get_sender(bonding->msg)))
+			return not_authorized(msg);
+
+		debug("Canceling device creation for %s", address);
+		cancel_bonding(adapter, FALSE);
+	}
+
+	return dbus_message_new_method_return(msg);
+}
+
 static DBusMessage *create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -2072,6 +2115,7 @@ static GDBusMethodTable adapter_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "CreatePairedDevice",	"sos",	"o",	create_paired_device,
 						G_DBUS_METHOD_FLAG_ASYNC},
+	{ "CancelDeviceCreation","s",	"",	cancel_device_creation	},
 	{ "RemoveDevice",	"o",	"",	remove_device		},
 	{ "FindDevice",		"s",	"o",	find_device		},
 	{ "RegisterAgent",	"os",	"",	register_agent		},
@@ -2548,7 +2592,8 @@ static void reply_pending_requests(struct btd_adapter *adapter)
 
 		if (adapter->bonding->io_id)
 			g_source_remove(adapter->bonding->io_id);
-		g_io_channel_close(adapter->bonding->io);
+		if (adapter->bonding->io)
+			g_io_channel_close(adapter->bonding->io);
 		bonding_request_free(adapter->bonding);
 		adapter->bonding = NULL;
 	}
@@ -3186,7 +3231,8 @@ void adapter_free_bonding_request(struct btd_adapter *adapter)
 	if (adapter->bonding->io_id)
 		g_source_remove(adapter->bonding->io_id);
 
-	g_io_channel_close(adapter->bonding->io);
+	if (adapter->bonding->io)
+		g_io_channel_close(adapter->bonding->io);
 
 	bonding_request_free(adapter->bonding);
 
