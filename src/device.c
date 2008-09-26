@@ -880,8 +880,10 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 
 		/* Extract the first element and skip the remainning */
 		uuid_str = bt_uuid2string(svcclass->data);
-		if (!uuid_str)
+		if (!uuid_str) {
+			sdp_list_free(svcclass, free);
 			continue;
+		}
 
 		if (!strcasecmp(uuid_str, PNP_UUID)) {
 			uint16_t source, vendor, product, version;
@@ -917,6 +919,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		/* Check for duplicates */
 		if (sdp_list_find(req->records, rec, rec_cmp)) {
 			g_free(uuid_str);
+			sdp_list_free(svcclass, free);
 			continue;
 		}
 
