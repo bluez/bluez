@@ -501,7 +501,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 {
 	struct btd_adapter *adapter;
 	char peer_addr[18];
-	const char *paddr = peer_addr;
 	DBusMessage *reply;
 	struct btd_device *device;
 	struct bonding_request_info *bonding;
@@ -520,7 +519,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	bonding = adapter_get_bonding_info(adapter);
 
 	if (status == 0) {
-		device = adapter_get_device(connection, adapter, paddr);
+		device = adapter_get_device(connection, adapter, peer_addr);
 		if (!device) {
 			/* This should really only happen if we run out of
 			 * memory */
