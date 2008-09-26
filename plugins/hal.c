@@ -35,6 +35,7 @@
 #include "adapter.h"
 #include "logging.h"
 
+#if 0
 static uint32_t get_form_factor(LibHalContext *ctx)
 {
 	char *formfactor;
@@ -61,9 +62,11 @@ static uint32_t get_form_factor(LibHalContext *ctx)
 	/* Computer major class */
 	return (1 << 8) | minor;
 }
+#endif
 
 static int hal_probe(struct btd_adapter *adapter)
 {
+#if 0
 	DBusConnection *conn;
 	LibHalContext *ctx;
 
@@ -89,6 +92,7 @@ static int hal_probe(struct btd_adapter *adapter)
 
 	libhal_ctx_free(ctx);
 	dbus_connection_unref(conn);
+#endif
 
 	return -ENODEV;
 }
