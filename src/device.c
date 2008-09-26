@@ -915,8 +915,10 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		}
 
 		/* Check for duplicates */
-		if (sdp_list_find(req->records, rec, rec_cmp))
+		if (sdp_list_find(req->records, rec, rec_cmp)) {
+			g_free(uuid_str);
 			continue;
+		}
 
 		store_record(srcaddr, dstaddr, rec);
 
