@@ -545,7 +545,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	adapter_remove_auth_request(adapter, peer);
 
-	/* If this is a new pairing send the appropriate signal for it */
+	/* If this is a new pairing send the appropriate signal for it
+	 * and proceed with service discovery */
 	if (status == 0) {
 		const char *dev_path;
 		dbus_bool_t paired = TRUE;
@@ -556,31 +557,32 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		dbus_connection_emit_property_changed(connection, dev_path,
 					DEVICE_INTERFACE, "Paired",
 					DBUS_TYPE_BOOLEAN, &paired);
+
+		/* If we were initiators start service discovery immediately.
+		 * However if the other end was the initator wait a few seconds
+		 * before SDP. This is due to potential IOP issues if the other
+		 * end starts doing SDP at the same time as us */
+		if (bonding)
+			device_browse(device, bonding->conn,
+					bonding->msg, NULL);
+		else
+			device_schedule_service_discovery(device);
+
+		return;
 	}
 
 proceed:
 	if (!bonding || bacmp(&bonding->bdaddr, peer))
 		return; /* skip: no bonding req pending */
 
-	if (bonding->cancel) {
-		/* reply authentication canceled */
+	if (bonding->cancel)
 		reply = new_authentication_return(bonding->msg,
-				HCI_OE_USER_ENDED_CONNECTION);
-		g_dbus_send_message(connection, reply);
-		goto cleanup;
-	}
-
-	if (status) {
+					HCI_OE_USER_ENDED_CONNECTION);
+	else
 		reply = new_authentication_return(bonding->msg, status);
-		dbus_connection_send(connection, reply, NULL);
-		dbus_message_unref(reply);
-	} else {
-		device_set_temporary(device, FALSE);
-		device_browse(device, bonding->conn,
-				bonding->msg, NULL);
-	}
 
-cleanup:
+	g_dbus_send_message(connection, reply);
+
 	adapter_free_bonding_request(adapter);
 }
 
@@ -1018,9 +1020,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 				bdaddr_t *peer)
 {
 	char peer_addr[18];
-	const char *paddr = peer_addr;
 	struct btd_adapter *adapter;
-	const gchar *dev_path;
 	struct bonding_request_info *bonding;
 
 	adapter = manager_find_adapter(local);
@@ -1045,17 +1045,10 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 			bonding->hci_status = status;
 	} else {
 		struct btd_device *device;
-		gboolean connected = TRUE;
 
-		device = adapter_find_device(adapter, paddr);
-		if (device) {
-			dev_path = device_get_path(device);
-
-			dbus_connection_emit_property_changed(connection,
-					dev_path, DEVICE_INTERFACE,
-					"Connected", DBUS_TYPE_BOOLEAN,
-					&connected);
-		}
+		device = adapter_find_device(adapter, peer_addr);
+		if (device)
+			device_set_connected(connection, device, TRUE);
 
 		/* add in the active connetions list */
 		adapter_add_active_conn(adapter, peer, handle);
@@ -1067,17 +1060,12 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 {
 	DBusMessage *reply;
 	char peer_addr[18];
-	const char *paddr = peer_addr;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct active_conn_info *dev;
-	gboolean connected = FALSE;
 	struct pending_auth_info *auth;
-	const gchar *dev_path;
 	uint16_t dev_id;
 	struct bonding_request_info *bonding;
-	bdaddr_t bdaddr;
-	char addr[18];
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -1129,19 +1117,12 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 	adapter_remove_active_conn(adapter, dev);
 
-	device = adapter_find_device(adapter, paddr);
+	device = adapter_find_device(adapter, peer_addr);
 	if (device) {
-		device_get_address(device, &bdaddr);
-		ba2str(&bdaddr, addr);
+		device_set_connected(connection, device, FALSE);
 
-		dev_path = device_get_path(device);
-
-		dbus_connection_emit_property_changed(connection,
-					dev_path, DEVICE_INTERFACE,
-					"Connected", DBUS_TYPE_BOOLEAN,
-					&connected);
 		if (device_is_temporary(device)) {
-			debug("Removing temporary device %s", addr);
+			debug("Removing temporary device %s", peer_addr);
 			adapter_remove_device(connection, adapter, device);
 		}
 	}

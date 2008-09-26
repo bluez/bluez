@@ -58,6 +58,7 @@
 
 #define DEFAULT_XML_BUF_SIZE	1024
 #define DISCONNECT_TIMER	2
+#define DISCOVERY_TIMER		2000
 
 struct btd_driver_data {
 	struct btd_device_driver *driver;
@@ -76,6 +77,7 @@ struct btd_device {
 	int		discov_active;		/* Service discovery active */
 	char		*discov_requestor;	/* discovery requestor unique name */
 	guint		discov_listener;
+	guint		discov_timer;
 
 	/* For Secure Simple Pairing */
 	uint8_t		cap;
@@ -565,6 +567,20 @@ static GDBusSignalTable device_signals[] = {
 	{ "DisconnectRequested",	""	},
 	{ }
 };
+
+void device_set_connected(DBusConnection *conn, struct btd_device *device,
+			gboolean connected)
+{
+	if (!connected && device->discov_timer) {
+		g_source_remove(device->discov_timer);
+		device->discov_timer = 0;
+	}
+
+	dbus_connection_emit_property_changed(conn, device->path,
+						DEVICE_INTERFACE,
+						"Connected", DBUS_TYPE_BOOLEAN,
+						&connected);
+}
 
 struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapter,
 					const gchar *address)
@@ -1237,6 +1253,27 @@ void device_set_auth(struct btd_device *device, uint8_t auth)
 uint8_t device_get_auth(struct btd_device *device)
 {
 	return device->auth;
+}
+
+static gboolean start_discovery(gpointer user_data)
+{
+	struct btd_device *device = user_data;
+
+	device_browse(device, NULL, NULL, NULL);
+
+	device->discov_timer = 0;
+
+	return FALSE;
+}
+
+void device_schedule_service_discovery(struct btd_device *device)
+{
+	if (device->discov_timer)
+		return;
+
+	device->discov_timer = g_timeout_add(DISCOVERY_TIMER,
+						start_discovery,
+						device);
 }
 
 int btd_register_device_driver(struct btd_device_driver *driver)
