@@ -367,7 +367,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 						DISCONNECT_CP_SIZE, &cp);
 		}
 	} else
-		hcid_dbus_bonding_process_complete(sba, dba, 0);
+		hcid_dbus_link_key_notify(sba, dba);
 
 	io_data[dev_id].pin_length = -1;
 }
@@ -775,8 +775,7 @@ static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
 	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0)
 		return;
 
-	if (evt->status)
-		hcid_dbus_bonding_process_complete(sba, &dba, evt->status);
+	hcid_dbus_bonding_process_complete(sba, &dba, evt->status);
 }
 
 static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)

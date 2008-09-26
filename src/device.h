@@ -42,10 +42,12 @@ void device_set_temporary(struct btd_device *device, gboolean temporary);
 void device_set_cap(struct btd_device *device, uint8_t cap);
 void device_set_auth(struct btd_device *device, uint8_t auth);
 uint8_t device_get_auth(struct btd_device *device);
-void device_set_paired(DBusConnection *conn, struct btd_device *device,
+gboolean device_set_paired(DBusConnection *conn, struct btd_device *device,
 			struct bonding_request_info *bonding);
+gboolean device_get_connected(struct btd_device *device);
 void device_set_connected(DBusConnection *conn, struct btd_device *device,
 				gboolean connected);
+void device_set_secmode3_conn(struct btd_device *device, gboolean enable);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 

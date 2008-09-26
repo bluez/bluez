@@ -82,6 +82,11 @@ struct btd_device {
 	/* For Secure Simple Pairing */
 	uint8_t		cap;
 	uint8_t		auth;
+
+	gboolean	connected;
+
+	/* Whether were creating a security mode 3 connection */
+	gboolean	secmode3;
 };
 
 struct browse_req {
@@ -568,9 +573,16 @@ static GDBusSignalTable device_signals[] = {
 	{ }
 };
 
+gboolean device_get_connected(struct btd_device *device)
+{
+	return device->connected;
+}
+
 void device_set_connected(DBusConnection *conn, struct btd_device *device,
 			gboolean connected)
 {
+	device->connected = connected;
+
 	if (!connected && device->discov_timer) {
 		g_source_remove(device->discov_timer);
 		device->discov_timer = 0;
@@ -580,6 +592,22 @@ void device_set_connected(DBusConnection *conn, struct btd_device *device,
 						DEVICE_INTERFACE,
 						"Connected", DBUS_TYPE_BOOLEAN,
 						&connected);
+
+	if (connected && device->secmode3) {
+		struct btd_adapter *adapter = device_get_adapter(device);
+		bdaddr_t sba;
+
+		adapter_get_address(adapter, &sba);
+
+		device->secmode3 = FALSE;
+
+		hcid_dbus_bonding_process_complete(&sba, &device->bdaddr, 0);
+	}
+}
+
+void device_set_secmode3_conn(struct btd_device *device, gboolean enable)
+{
+	device->secmode3 = enable;
 }
 
 struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapter,
@@ -1274,7 +1302,7 @@ static gboolean start_discovery(gpointer user_data)
 	return FALSE;
 }
 
-void device_set_paired(DBusConnection *conn, struct btd_device *device,
+gboolean device_set_paired(DBusConnection *conn, struct btd_device *device,
 			struct bonding_request_info *bonding)
 {
 	dbus_bool_t paired = TRUE;
@@ -1286,7 +1314,7 @@ void device_set_paired(DBusConnection *conn, struct btd_device *device,
 						DBUS_TYPE_BOOLEAN, &paired);
 
 	if (device->discov_timer)
-		return;
+		return FALSE;
 
 	/* If we were initiators start service discovery immediately.
 	 * However if the other end was the initator wait a few seconds
@@ -1299,6 +1327,8 @@ void device_set_paired(DBusConnection *conn, struct btd_device *device,
 		device->discov_timer = g_timeout_add(DISCOVERY_TIMER,
 							start_discovery,
 							device);
+
+	return TRUE;
 }
 
 int btd_register_device_driver(struct btd_device_driver *driver)

@@ -518,6 +518,9 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	bonding = adapter_get_bonding_info(adapter);
 
+	if (bacmp(&bonding->bdaddr, peer))
+		bonding = NULL;
+
 	if (status == 0) {
 		device = adapter_get_device(connection, adapter, peer_addr);
 		if (!device) {
@@ -547,12 +550,13 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	/* If this is a new pairing send the appropriate signal for it
 	 * and proceed with service discovery */
 	if (status == 0) {
-		device_set_paired(connection, device, bonding);
+		if (device_set_paired(connection, device, bonding) && bonding)
+			adapter_free_bonding_request(adapter);
 		return;
 	}
 
 proceed:
-	if (!bonding || bacmp(&bonding->bdaddr, peer))
+	if (!bonding)
 		return; /* skip: no bonding req pending */
 
 	if (bonding->cancel)
@@ -996,10 +1000,10 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	adapter_set_state(adapter, state);
 }
 
-void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
-				bdaddr_t *peer)
+void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer)
 {
 	char peer_addr[18];
+	struct btd_device *device;
 	struct btd_adapter *adapter;
 	struct bonding_request_info *bonding;
 
@@ -1011,6 +1015,34 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 
 	ba2str(peer, peer_addr);
 
+	device = adapter_find_device(adapter, peer_addr);
+
+	bonding = adapter_get_bonding_info(adapter);
+
+	if (!device_get_connected(device))
+		device_set_secmode3_conn(device, TRUE);
+	else if (!bonding)
+		hcid_dbus_bonding_process_complete(local, peer, 0);
+}
+
+void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
+				bdaddr_t *peer)
+{
+	char peer_addr[18];
+	struct btd_adapter *adapter;
+	struct bonding_request_info *bonding;
+	struct btd_device *device;
+
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("No matching adapter found");
+		return;
+	}
+
+	ba2str(peer, peer_addr);
+
+	device = adapter_get_device(connection, adapter, peer_addr);
+
 	if (status) {
 		struct pending_auth_info *auth;
 
@@ -1020,13 +1052,13 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 
 		adapter_remove_auth_request(adapter, peer);
 
+		if (device)
+			device_set_secmode3_conn(device, FALSE);
+
 		bonding = adapter_get_bonding_info(adapter);
 		if (bonding)
 			bonding->hci_status = status;
 	} else {
-		struct btd_device *device;
-
-		device = adapter_find_device(adapter, peer_addr);
 		if (device)
 			device_set_connected(connection, device, TRUE);
 
