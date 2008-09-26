@@ -979,23 +979,27 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	services_changed(req);
 
 proceed:
-
 	/* Store the device's profiles in the filesystem */
 	store(device);
 
-	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
-			"DiscoverServices")) {
-		discover_device_reply(req, req->records);
-		goto cleanup;
-	}
+	if (req->msg) {
+		if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
+						"DiscoverServices")) {
+			discover_device_reply(req, req->records);
+			goto cleanup;
+		}
 
-	g_dbus_emit_signal(req->conn, dbus_message_get_path(req->msg),
+		g_dbus_emit_signal(req->conn, dbus_message_get_path(req->msg),
 				ADAPTER_INTERFACE, "DeviceCreated",
 				DBUS_TYPE_OBJECT_PATH, &device->path,
 				DBUS_TYPE_INVALID);
+	}
 
 	/* Update device list */
 	adapter_update_devices(device->adapter);
+
+	if (!req->msg)
+		goto cleanup;
 
 	/* Reply create device request */
 	reply = dbus_message_new_method_return(req->msg);
@@ -1018,8 +1022,10 @@ cleanup:
 		device->discov_requestor = NULL;
 	}
 
-	dbus_message_unref(req->msg);
-	dbus_connection_unref(req->conn);
+	if (req->msg)
+		dbus_message_unref(req->msg);
+	if (req->conn)
+		dbus_connection_unref(req->conn);
 	g_slist_free(req->uuids_added);
 	g_slist_free(req->uuids_removed);
 	if (req->records)
@@ -1097,7 +1103,7 @@ static void init_browse(struct browse_req *req)
 					if (uuid16 == uuid_list[j])
 						continue;
 				}
-					
+
 			}
 			/* ... and of UUIDs another driver already asked for */
 			if (g_slist_find_custom(req->uuids, driver->uuids[i],
@@ -1129,8 +1135,10 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	adapter_get_address(adapter, &src);
 
 	req = g_new0(struct browse_req, 1);
-	req->conn = dbus_connection_ref(conn);
-	req->msg = dbus_message_ref(msg);
+	if (conn && msg) {
+		req->conn = dbus_connection_ref(conn);
+		req->msg = dbus_message_ref(msg);
+	}
 	req->device = device;
 
 	if (search) {

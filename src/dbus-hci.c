@@ -505,7 +505,6 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	DBusMessage *reply;
 	struct btd_device *device;
 	struct bonding_request_info *bonding;
-	gboolean paired = TRUE;
 	struct pending_auth_info *auth;
 
 	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
@@ -520,11 +519,23 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	bonding = adapter_get_bonding_info(adapter);
 
+	if (status == 0) {
+		device = adapter_get_device(connection, adapter, paddr);
+		if (!device) {
+			/* This should really only happen if we run out of
+			 * memory */
+			error("Unable to get device object!");
+			status = HCI_REJECTED_LIMITED_RESOURCES;
+		}
+	}
+
 	if (status && bonding)
 		bonding->hci_status = status;
 
 	auth = adapter_find_auth_request(adapter, peer);
 	if (!auth) {
+		/* This means that there was no pending PIN or SSP token request
+		 * from the controller, i.e. this is not a new pairing */
 		debug("hcid_dbus_bonding_process_complete: no pending auth request");
 		goto proceed;
 	}
@@ -534,14 +545,10 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	adapter_remove_auth_request(adapter, peer);
 
-	if (status)
-		goto proceed;
-
-	device = adapter_get_device(connection, adapter, paddr);
-	if (device) {
-		const gchar *dev_path;
-
-		debug("hcid_dbus_bonding_process_complete: removing temporary flag");
+	/* If this is a new pairing send the appropriate signal for it */
+	if (status == 0) {
+		const char *dev_path;
+		dbus_bool_t paired = TRUE;
 
 		device_set_temporary(device, FALSE);
 		dev_path = device_get_path(device);
@@ -563,16 +570,14 @@ proceed:
 		goto cleanup;
 	}
 
-	if ((device = adapter_find_device(adapter, paddr))) {
-		if (status) {
-			reply = new_authentication_return(bonding->msg, status);
-			dbus_connection_send(connection, reply, NULL);
-			dbus_message_unref(reply);
-		} else {
-			device_set_temporary(device, FALSE);
-			device_browse(device, bonding->conn,
-					bonding->msg, NULL);
-		}
+	if (status) {
+		reply = new_authentication_return(bonding->msg, status);
+		dbus_connection_send(connection, reply, NULL);
+		dbus_message_unref(reply);
+	} else {
+		device_set_temporary(device, FALSE);
+		device_browse(device, bonding->conn,
+				bonding->msg, NULL);
 	}
 
 cleanup:
