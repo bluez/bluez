@@ -547,26 +547,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	/* If this is a new pairing send the appropriate signal for it
 	 * and proceed with service discovery */
 	if (status == 0) {
-		const char *dev_path;
-		dbus_bool_t paired = TRUE;
-
-		device_set_temporary(device, FALSE);
-		dev_path = device_get_path(device);
-
-		dbus_connection_emit_property_changed(connection, dev_path,
-					DEVICE_INTERFACE, "Paired",
-					DBUS_TYPE_BOOLEAN, &paired);
-
-		/* If we were initiators start service discovery immediately.
-		 * However if the other end was the initator wait a few seconds
-		 * before SDP. This is due to potential IOP issues if the other
-		 * end starts doing SDP at the same time as us */
-		if (bonding)
-			device_browse(device, bonding->conn,
-					bonding->msg, NULL);
-		else
-			device_schedule_service_discovery(device);
-
+		device_set_paired(connection, device, bonding);
 		return;
 	}
 

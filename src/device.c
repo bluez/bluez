@@ -1271,14 +1271,31 @@ static gboolean start_discovery(gpointer user_data)
 	return FALSE;
 }
 
-void device_schedule_service_discovery(struct btd_device *device)
+void device_set_paired(DBusConnection *conn, struct btd_device *device,
+			struct bonding_request_info *bonding)
 {
+	dbus_bool_t paired = TRUE;
+
+	device_set_temporary(device, FALSE);
+
+	dbus_connection_emit_property_changed(conn, device->path,
+						DEVICE_INTERFACE, "Paired",
+						DBUS_TYPE_BOOLEAN, &paired);
+
 	if (device->discov_timer)
 		return;
 
-	device->discov_timer = g_timeout_add(DISCOVERY_TIMER,
-						start_discovery,
-						device);
+	/* If we were initiators start service discovery immediately.
+	 * However if the other end was the initator wait a few seconds
+	 * before SDP. This is due to potential IOP issues if the other
+	 * end starts doing SDP at the same time as us */
+	if (bonding)
+		device_browse(device, bonding->conn,
+				bonding->msg, NULL);
+	else
+		device->discov_timer = g_timeout_add(DISCOVERY_TIMER,
+							start_discovery,
+							device);
 }
 
 int btd_register_device_driver(struct btd_device_driver *driver)
