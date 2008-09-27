@@ -518,7 +518,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	bonding = adapter_get_bonding_info(adapter);
 
-	if (bacmp(&bonding->bdaddr, peer))
+	if (bonding && bacmp(&bonding->bdaddr, peer))
 		bonding = NULL;
 
 	if (status == 0) {
