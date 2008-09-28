@@ -3935,8 +3935,9 @@ static int cmd_records(int argc, char **argv)
 {
 	struct search_context context;
 	uint32_t base[] = { 0x10000, 0x10300, 0x10500,
-			0x1002e, 0x110b, 0x90000, 0x2008000,
-			0x4000000, 0x100000, 0x1000000, 0x4f491100 };
+				0x1002e, 0x110b, 0x90000, 0x2008000,
+					0x4000000, 0x100000, 0x1000000,
+						0x4f491100, 0x4f491200 };
 	bdaddr_t bdaddr;
 	int i, n, opt, err = 0, num = 32;
 
