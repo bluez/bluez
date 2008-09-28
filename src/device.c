@@ -857,6 +857,7 @@ static void discover_device_reply(struct browse_req *req, sdp_list_t *recs)
 
 static void services_changed(struct browse_req *req)
 {
+	DBusConnection *conn = get_dbus_connection();
 	struct btd_device *device = req->device;
 	char **uuids;
 	GSList *l;
@@ -866,7 +867,7 @@ static void services_changed(struct browse_req *req)
 	for (i = 0, l = device->uuids; l; l = l->next, i++)
 		uuids[i] = l->data;
 
-	dbus_connection_emit_property_changed(req->conn, device->path,
+	dbus_connection_emit_property_changed(conn, device->path,
 					DEVICE_INTERFACE, "UUIDs",
 					DBUS_TYPE_ARRAY, &uuids);
 
