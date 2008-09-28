@@ -7,6 +7,13 @@ bus = dbus.SystemBus()
 manager = dbus.Interface(bus.get_object("org.bluez", "/"),
 						"org.bluez.Manager")
 
+def extract_objects(object_list):
+	list = ""
+	for object in object_list:
+		val = str(object)
+		list = list + val[val.rfind("/") + 1:] + " "
+	return list
+
 def extract_uuids(uuid_list):
 	list = ""
 	for uuid in uuid_list:
@@ -29,9 +36,17 @@ for i in adapter_list:
 
 	properties  = adapter.GetProperties()
 	for key in properties.keys():
-		print "    %s = %s" % (key, properties[key])
+		value = properties[key]
+		if (key == "Devices"):
+			list = extract_objects(value)
+			print "    %s = %s" % (key, list)
+		else:
+			print "    %s = %s" % (key, value)
 
-	device_list = adapter.ListDevices()
+	try:
+		device_list = properties["Devices"]
+	except:
+		device_list = []
 
 	for n in device_list:
 		device = dbus.Interface(bus.get_object("org.bluez", n),
@@ -41,12 +56,29 @@ for i in adapter_list:
 		properties = device.GetProperties()
 		for key in properties.keys():
 			value = properties[key]
-			if (key == "UUIDs"):
+			if (key == "Nodes"):
+				list = extract_objects(value)
+				print "        %s = %s" % (key, list)
+			elif (key == "UUIDs"):
 				list = extract_uuids(value)
 				print "        %s = %s" % (key, list)
 			elif (key == "Class"):
 				print "        %s = 0x%06x" % (key, value)
 			else:
 				print "        %s = %s" % (key, value)
+
+		try:
+			node_list = properties["Nodes"]
+		except:
+			node_list = []
+
+		for x in node_list:
+			node = dbus.Interface(bus.get_object("org.bluez", x),
+							"org.bluez.Node")
+			print "        [ " + x + " ]"
+
+			properties = node.GetProperties()
+			for key in properties.keys():
+				print "            %s = %s" % (key, properties[key])
 
 	print
