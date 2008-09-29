@@ -66,15 +66,17 @@ static void formfactor_reply(DBusPendingCall *call, void *user_data)
 			minor += 1 << 4;
 	}
 
-	if (adapter_get_class(adapter, cls) < 0)
-		return;
-
-	debug("Current device class is 0x%02x%02x%02x\n",
-						cls[2], cls[1], cls[0]);
-
 	dd = hci_open_dev(adapter_get_dev_id(adapter));
 	if (dd < 0)
 		return;
+
+	if (hci_read_class_of_dev(dd, cls, 500) < 0) {
+		hci_close_dev(dd);
+		return;
+	}
+
+	debug("Current device class is 0x%02x%02x%02x\n",
+						cls[2], cls[1], cls[0]);
 
 	/* Computer major class */
 	debug("Setting 0x%06x for major/minor device class", (1 << 8) | minor);
