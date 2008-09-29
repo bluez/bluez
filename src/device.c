@@ -159,64 +159,6 @@ static gboolean device_is_paired(struct btd_device *device)
 	return ret;
 }
 
-static const char *class_to_icon(uint32_t class)
-{
-	switch ((class & 0x1f00) >> 8) {
-	case 0x01:
-		return "computer";
-	case 0x02:
-		switch ((class & 0xfc) >> 2) {
-		case 0x01:
-		case 0x02:
-		case 0x03:
-		case 0x05:
-			return "phone";
-		case 0x04:
-			return "modem";
-		}
-		break;
-	case 0x03:
-		return "network-wireless";
-	case 0x04:
-		switch ((class & 0xfc) >> 2) {
-		case 0x01:
-		case 0x02:
-			return "audio-card";	/* Headset */
-		case 0x06:
-			return "audio-card";	/* Headphone */
-		}
-		break;
-	case 0x05:
-		switch ((class & 0xc0) >> 6) {
-		case 0x00:
-			switch ((class & 0x1e) >> 2) {
-			case 0x01:
-			case 0x02:
-				return "input-gaming";
-			}
-			break;
-		case 0x01:
-			return "input-keyboard";
-		case 0x02:
-			switch ((class & 0x1e) >> 2) {
-			case 0x05:
-				return "input-tablet";
-			default:
-				return "input-mouse";
-			}
-		}
-		break;
-	case 0x06:
-		if (class & 0x80)
-			return "printer";
-		if (class & 0x20)
-			return "camera-photo";
-		break;
-	}
-
-	return NULL;
-}
-
 static DBusMessage *get_properties(DBusConnection *conn,
 				DBusMessage *msg, void *user_data)
 {
@@ -250,8 +192,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	/* Address */
 	ptr = dstaddr;
-	dbus_message_iter_append_dict_entry(&dict, "Address", DBUS_TYPE_STRING,
-			&ptr);
+	dbus_message_iter_append_dict_entry(&dict, "Address",
+						DBUS_TYPE_STRING, &ptr);
 
 	/* Name */
 	ptr = NULL;
@@ -265,10 +207,15 @@ static DBusMessage *get_properties(DBusConnection *conn,
 						DBUS_TYPE_STRING, &ptr);
 	}
 
-	if (read_device_alias(srcaddr, dstaddr, name, sizeof(name)) > 0)
+	/* Alias (fallback to name or address) */
+	if (read_device_alias(srcaddr, dstaddr, name, sizeof(name)) < 1) {
+		if (!ptr) {
+			g_strdelimit(dstaddr, ":", '-');
+			ptr = dstaddr;
+		}
+	} else
 		ptr = name;
 
-	/* Alias: use Name if Alias doesn't exist */
 	if (ptr)
 		dbus_message_iter_append_dict_entry(&dict, "Alias",
 						DBUS_TYPE_STRING, &ptr);

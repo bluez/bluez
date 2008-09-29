@@ -59,6 +59,8 @@ int set_service_classes(int dd, const uint8_t *cls, uint8_t value);
 int set_major_class(int dd, const uint8_t *cls, uint8_t major);
 int set_minor_class(int dd, const uint8_t *cls, uint8_t minor);
 
+const char *class_to_icon(uint32_t class);
+
 void set_dbus_connection(DBusConnection *conn);
 
 DBusConnection *get_dbus_connection(void);

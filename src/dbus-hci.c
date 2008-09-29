@@ -60,6 +60,64 @@
 
 static DBusConnection *connection = NULL;
 
+const char *class_to_icon(uint32_t class)
+{
+	switch ((class & 0x1f00) >> 8) {
+	case 0x01:
+		return "computer";
+	case 0x02:
+		switch ((class & 0xfc) >> 2) {
+		case 0x01:
+		case 0x02:
+		case 0x03:
+		case 0x05:
+			return "phone";
+		case 0x04:
+			return "modem";
+		}
+		break;
+	case 0x03:
+		return "network-wireless";
+	case 0x04:
+		switch ((class & 0xfc) >> 2) {
+		case 0x01:
+		case 0x02:
+			return "audio-card";	/* Headset */
+		case 0x06:
+			return "audio-card";	/* Headphone */
+		}
+		break;
+	case 0x05:
+		switch ((class & 0xc0) >> 6) {
+		case 0x00:
+			switch ((class & 0x1e) >> 2) {
+			case 0x01:
+			case 0x02:
+				return "input-gaming";
+			}
+			break;
+		case 0x01:
+			return "input-keyboard";
+		case 0x02:
+			switch ((class & 0x1e) >> 2) {
+			case 0x05:
+				return "input-tablet";
+			default:
+				return "input-mouse";
+			}
+		}
+		break;
+	case 0x06:
+		if (class & 0x80)
+			return "printer";
+		if (class & 0x20)
+			return "camera-photo";
+		break;
+	}
+
+	return NULL;
+}
+
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 {
 	switch (status) {
@@ -825,13 +883,12 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 {
 	char filename[PATH_MAX + 1];
 	struct btd_adapter *adapter;
-	char local_addr[18], peer_addr[18], *name, *tmp_name;
-	const char *paddr = peer_addr;
+	char local_addr[18], peer_addr[18], *alias, *name, *tmp_name;
+	const char *path, *icon, *paddr = peer_addr;
 	struct remote_dev_info *dev, match;
 	dbus_int16_t tmp_rssi = rssi;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
-	const gchar *path;
 	int state;
 
 	ba2str(local, local_addr);
@@ -876,8 +933,19 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	else
 		name_status = NAME_NOT_REQUIRED;
 
+	create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "aliases");
+	alias = textfile_get(filename, peer_addr);
+
 	create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "names");
 	name = textfile_get(filename, peer_addr);
+
+	if (!alias) {
+		if (!name) {
+			alias = g_strdup(peer_addr);
+			g_strdelimit(alias, ":", '-');
+		} else
+			alias = g_strdup(name);
+	}
 
 	tmp_name = extract_eir_name(data, &name_type);
 	if (tmp_name) {
@@ -898,6 +966,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	}
 
 	path = adapter_get_path(adapter);
+	icon = class_to_icon(class);
 
 	if (name) {
 		if (name_type != 0x08)
@@ -906,18 +975,22 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		emit_device_found(path, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
 				"Class", DBUS_TYPE_UINT32, &class,
+				"Icon", DBUS_TYPE_STRING, &icon,
 				"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
 				"Name", DBUS_TYPE_STRING, &name,
-				NULL);
+				"Alias", DBUS_TYPE_STRING, &alias, NULL);
 
 		g_free(name);
 	} else {
 		emit_device_found(path, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
 				"Class", DBUS_TYPE_UINT32, &class,
+				"Icon", DBUS_TYPE_STRING, &icon,
 				"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
-				NULL);
+				"Alias", DBUS_TYPE_STRING, &alias, NULL);
 	}
+
+	g_free(alias);
 
 	/* add in the list to track name sent/pending */
 	adapter_add_found_device(adapter, peer, rssi, name_status);
