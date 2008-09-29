@@ -1,3 +1,9 @@
+ver 4.8:
+	Fix retrieving of formfactor value.
+	Fix retrieving of local and remote extended features.
+	Fix potential NULL pointer dereference during pairing.
+	Fix crash with browsing due to a remotely initated pairing.
+
 ver 4.7:
 	Fix pairing and service discovery logic.
 	Fix crashes during suspend and resume.
