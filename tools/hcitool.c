@@ -823,12 +823,12 @@ static void cmd_info(int dev_id, int argc, char **argv)
 {
 	bdaddr_t bdaddr;
 	uint16_t handle;
-	uint8_t max_page, features[8];
-	char name[249], oui[9], *comp;
+	uint8_t features[8], max_page = 0;
+	char name[249], oui[9], *comp, *tmp;
 	struct hci_version version;
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
-	int opt, dd, cc = 0;
+	int i, opt, dd, cc = 0;
 
 	for_each_opt(opt, info_options, NULL) {
 		switch (opt) {
@@ -917,20 +917,32 @@ static void cmd_info(int dev_id, int argc, char **argv)
 			bt_free(ver);
 	}
 
-	if (hci_read_remote_features(dd, handle, features, 20000) == 0) {
-		char *tmp = lmp_featurestostr(features, "\t\t", 63);
-		printf("\tFeatures: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n%s\n",
-			features[0], features[1], features[2], features[3],
-			features[4], features[5], features[6], features[7], tmp);
-		bt_free(tmp);
-	}
+	memset(features, 0, sizeof(features));
+	hci_read_remote_features(dd, handle, features, 20000);
 
-	if ((di.features[7] & LMP_EXT_FEAT) && (features[7] & LMP_EXT_FEAT)) {
-		if (hci_read_remote_ext_features(dd, handle, 0,
-					&max_page, features, 20000) == 0)
-			if (max_page > 0)
-				printf("\tExtended features: %d page%s\n",
-					max_page, max_page > 1 ? "s" : "");
+	if ((di.features[7] & LMP_EXT_FEAT) && (features[7] & LMP_EXT_FEAT))
+		hci_read_remote_ext_features(dd, handle, 0, &max_page,
+							features, 20000);
+
+	printf("\tFeatures%s: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
+				"0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",
+		(max_page > 0) ? " page 0" : "",
+		features[0], features[1], features[2], features[3],
+		features[4], features[5], features[6], features[7]);
+
+	tmp = lmp_featurestostr(features, "\t\t", 63);
+	printf("%s\n", tmp);
+	bt_free(tmp);
+
+	for (i = 1; i <= max_page; i++) {
+		if (hci_read_remote_ext_features(dd, handle, i, NULL,
+							features, 20000) < 0)
+			continue;
+
+		printf("\tFeatures page %d: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
+					"0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n", i,
+			features[0], features[1], features[2], features[3],
+			features[4], features[5], features[6], features[7]);
 	}
 
 	if (cc) {

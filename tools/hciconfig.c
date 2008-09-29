@@ -358,7 +358,7 @@ static void cmd_scomtu(int ctl, int hdev, char *opt)
 
 static void cmd_features(int ctl, int hdev, char *opt)
 {
-	uint8_t max_page, features[8];
+	uint8_t features[8], max_page = 0;
 	char *tmp;
 	int i, dd;
 
@@ -382,17 +382,19 @@ static void cmd_features(int ctl, int hdev, char *opt)
 	}
 
 	print_dev_hdr(&di);
-	tmp = lmp_featurestostr(di.features, "\t\t", 63);
 	printf("\tFeatures%s: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
 				"0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x\n",
 		(max_page > 0) ? " page 0" : "",
 		features[0], features[1], features[2], features[3],
 		features[4], features[5], features[6], features[7]);
+
+	tmp = lmp_featurestostr(di.features, "\t\t", 63);
 	printf("%s\n", tmp);
 	bt_free(tmp);
 
 	for (i = 1; i <= max_page; i++) {
-		if (hci_read_local_ext_features(dd, 1, &max_page, features, 1000) < 0)
+		if (hci_read_local_ext_features(dd, i, NULL,
+							features, 1000) < 0)
 			continue;
 
 		printf("\tFeatures page %d: 0x%2.2x 0x%2.2x 0x%2.2x 0x%2.2x "
