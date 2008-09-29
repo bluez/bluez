@@ -156,12 +156,6 @@ AC_DEFUN([AC_PATH_USB], [
 			[Define to 1 if you need the usb_interrupt_read() function.]))
 ])
 
-AC_DEFUN([AC_PATH_HAL], [
-	 PKG_CHECK_MODULES(HAL, hal, hal_found=yes, hal_found=no)
-	 AC_SUBST(HAL_CFLAGS)
-	 AC_SUBST(HAL_LIBS)
-])
-
 AC_DEFUN([AC_PATH_NETLINK], [
 	PKG_CHECK_MODULES(NETLINK, libnl-1, netlink_found=yes, netlink_found=no)
 	AC_SUBST(NETLINK_CFLAGS)
@@ -242,10 +236,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
 		usb_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(hal, AC_HELP_STRING([--enable-hal], [enable HAL support]), [
-		hal_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(netlink, AC_HELP_STRING([--enable-netlink], [enable NETLINK support]), [
@@ -342,7 +332,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
 	AM_CONDITIONAL(NETLINK, test "${netlink_enable}" = "yes" && test "${netlink_found}" = "yes")
-	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes" && test "${hal_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(SBC, test "${alsa_enable}" = "yes" || test "${gstreamer_enable}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")

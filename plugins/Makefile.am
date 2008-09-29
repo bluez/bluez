@@ -1,12 +1,6 @@
 
 plugindir = $(libdir)/bluetooth/plugins
 
-if HAL
-hal_plugins = hal.la
-else
-hal_plugins =
-endif
-
 if NETLINK
 netlink_plugins = netlink.la
 else
@@ -19,19 +13,13 @@ else
 service_plugins =
 endif
 
-plugin_LTLIBRARIES = $(hal_plugins) $(netlink_plugins) $(service_plugins)
+plugin_LTLIBRARIES = hal.la $(netlink_plugins) $(service_plugins)
 
 noinst_LTLIBRARIES = echo.la storage.la
 
 echo_la_SOURCES = echo.c
 
 storage_la_SOURCES = storage.c
-
-if HAL
-hal_la_SOURCES = hal.c
-
-hal_la_LIBADD = @HAL_LIBS@
-endif
 
 if NETLINK
 netlink_la_SOURCES = netlink.c
@@ -46,8 +34,8 @@ endif
 AM_LDFLAGS = -module -avoid-version -no-undefined \
 			-export-symbols-regex bluetooth_plugin_desc
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
-						@NETLINK_CFLAGS@ @HAL_CFLAGS@
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@
+					@GDBUS_CFLAGS@ @NETLINK_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/src
 
