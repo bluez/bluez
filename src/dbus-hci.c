@@ -1303,6 +1303,24 @@ int set_minor_class(int dd, const uint8_t *cls, uint8_t minor)
 	return 0;
 }
 
+int set_major_and_minor_class(int dd, const uint8_t *cls,
+						uint8_t major, uint8_t minor)
+{
+	uint32_t dev_class;
+
+	dev_class = (cls[2] << 16) | ((cls[1] & 0x20) << 8) |
+						((major & 0xdf) << 8) | minor;
+
+	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
+		int err = errno;
+		error("Can't write class of device: %s (%d)",
+							strerror(err), err);
+		return -err;
+	}
+
+	return 0;
+}
+
 /* Section reserved to device HCI callbacks */
 
 void hcid_dbus_setname_complete(bdaddr_t *local)
@@ -1532,7 +1550,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 }
 
 int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
-                                                uint8_t cap, uint8_t auth)
+						uint8_t cap, uint8_t auth)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
