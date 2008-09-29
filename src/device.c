@@ -715,9 +715,15 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *
 		}
 	}
 
-	for (list = uuids; list; list = list->next)
+	for (list = uuids; list; list = list->next) {
+		GSList *l = g_slist_find_custom(device->uuids, list->data,
+							(GCompareFunc) strcmp);
+		if (l)
+			continue;
+
 		device->uuids = g_slist_insert_sorted(device->uuids,
-				list->data, (GCompareFunc) strcmp);
+					list->data, (GCompareFunc) strcmp);
+	}
 }
 
 void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *recs)
@@ -966,13 +972,13 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		}
 
 		l = g_slist_find_custom(device->uuids, uuid_str,
-				(GCompareFunc) strcmp);
+							(GCompareFunc) strcmp);
 		if (!l)
 			req->uuids_added = g_slist_append(req->uuids_added,
-					uuid_str);
+								uuid_str);
 		else {
 			req->uuids_removed = g_slist_remove(req->uuids_removed,
-					l->data);
+								l->data);
 			g_free(uuid_str);
 		}
 
@@ -1104,7 +1110,8 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	/* Search for mandatory uuids */
 	if (uuid_list[req->search_uuid]) {
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
-		bt_search_service(&src, &device->bdaddr, &uuid, browse_cb, user_data, NULL);
+		bt_search_service(&src, &device->bdaddr, &uuid,
+						browse_cb, user_data, NULL);
 		return;
 	}
 
@@ -1115,14 +1122,16 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		bt_string2uuid(&uuid, uuid_str);
 		req->uuids = g_slist_remove(req->uuids, uuid_str);
 		g_free(uuid_str);
-		bt_search_service(&src, &device->bdaddr, &uuid, browse_cb, user_data, NULL);
+		bt_search_service(&src, &device->bdaddr, &uuid,
+						browse_cb, user_data, NULL);
 		return;
 	}
 
 	/* Search for l2cap uuid */
 	if (!req->records) {
 		sdp_uuid16_create(&uuid, L2CAP_UUID);
-		bt_search_service(&src, &device->bdaddr, &uuid, search_cb, user_data, NULL);
+		bt_search_service(&src, &device->bdaddr, &uuid,
+						search_cb, user_data, NULL);
 		return;
 	}
 
