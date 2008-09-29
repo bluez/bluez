@@ -56,6 +56,8 @@ int cancel_periodic_discovery(struct btd_adapter *adapter);
 
 int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited);
 int set_service_classes(int dd, const uint8_t *cls, uint8_t value);
+int set_major_class(int dd, const uint8_t *cls, uint8_t major);
+int set_minor_class(int dd, const uint8_t *cls, uint8_t minor);
 
 void set_dbus_connection(DBusConnection *conn);
 

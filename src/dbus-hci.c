@@ -1143,7 +1143,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
 {
 	uint32_t dev_class;
-	int err;
 	int num = (limited ? 2 : 1);
 	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
 	/*
@@ -1151,7 +1150,7 @@ int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
 	 * 2: giac + liac
 	 */
 	if (hci_write_current_iac_lap(dd, num, lap, HCI_REQ_TIMEOUT) < 0) {
-		err = errno;
+		int err = errno;
 		error("Can't write current IAC LAP: %s(%d)",
 				strerror(err), err);
 		return -err;
@@ -1170,7 +1169,7 @@ int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
 	}
 
 	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		err = errno;
+		int err = errno;
 		error("Can't write class of device: %s (%d)",
 							strerror(err), err);
 		return -err;
@@ -1182,7 +1181,6 @@ int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
 int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
 {
 	uint32_t dev_class;
-	int err;
 
 	if (cls[2] == value)
 		return 0; /* Already set */
@@ -1190,7 +1188,40 @@ int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
 	dev_class = (value << 16) | (cls[1] << 8) | cls[0];
 
 	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		err = errno;
+		int err = errno;
+		error("Can't write class of device: %s (%d)",
+							strerror(err), err);
+		return -err;
+	}
+
+	return 0;
+}
+
+int set_major_class(int dd, const uint8_t *cls, uint8_t major)
+{
+	uint32_t dev_class;
+
+	dev_class = (cls[2] << 16) | ((cls[1] & 0x20) << 8) |
+						((major & 0xdf) << 8) | 0x00;
+
+	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
+		int err = errno;
+		error("Can't write class of device: %s (%d)",
+							strerror(err), err);
+		return -err;
+	}
+
+	return 0;
+}
+
+int set_minor_class(int dd, const uint8_t *cls, uint8_t minor)
+{
+	uint32_t dev_class;
+
+	dev_class = (cls[2] << 16) | (cls[1] << 8) | minor;
+
+	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
+		int err = errno;
 		error("Can't write class of device: %s (%d)",
 							strerror(err), err);
 		return -err;
