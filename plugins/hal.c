@@ -35,70 +35,77 @@
 #include "adapter.h"
 #include "logging.h"
 
-#if 0
-static uint32_t get_form_factor(LibHalContext *ctx)
+static void formfactor_reply(DBusPendingCall *call, void *user_data)
 {
-	char *formfactor;
+	const char *formfactor = NULL;
+	DBusMessage *reply;
 	uint8_t minor = 0;
 
-	formfactor = libhal_device_get_property_string(ctx,
-				"/org/freedesktop/Hal/devices/computer",
-						"system.formfactor", NULL);
+	reply = dbus_pending_call_steal_reply(call);
 
-	if (formfactor == NULL)
-		return (1 << 8);
+	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_STRING, &formfactor,
+						DBUS_TYPE_INVALID) == FALSE) {
+		error("Wrong formfactor arguments");
+		return;
+	}
 
-	if (g_str_equal(formfactor, "laptop") == TRUE)
-		minor |= (1 << 2) | (1 << 3);
-	else if (g_str_equal(formfactor, "desktop") == TRUE)
-		minor |= 1 << 2;
-	else if (g_str_equal(formfactor, "server") == TRUE)
-		minor |= 1 << 3;
-	else if (g_str_equal(formfactor, "handheld") == TRUE)
-		minor += 1 << 4;
+	debug("Computer is classified as %s", formfactor);
 
-	free(formfactor);
+	if (formfactor != NULL) {
+		if (g_str_equal(formfactor, "laptop") == TRUE)
+			minor |= (1 << 2) | (1 << 3);
+		else if (g_str_equal(formfactor, "desktop") == TRUE)
+			minor |= 1 << 2;
+		else if (g_str_equal(formfactor, "server") == TRUE)
+			minor |= 1 << 3;
+		else if (g_str_equal(formfactor, "handheld") == TRUE)
+			minor += 1 << 4;
+	}
 
 	/* Computer major class */
-	return (1 << 8) | minor;
+	debug("Setting 0x%06x device class", (1 << 8) | minor);
 }
-#endif
+
+static DBusConnection *connection;
 
 static int hal_probe(struct btd_adapter *adapter)
 {
-#if 0
-	DBusConnection *conn;
-	LibHalContext *ctx;
+	const char *property = "system.formfactor";
+	DBusMessage *message;
+	DBusPendingCall *call;
 
-	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (conn == NULL)
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
 		return -ENOMEM;
 
-	ctx = libhal_ctx_new();
-	if (libhal_ctx_set_dbus_connection(ctx, conn) == FALSE) {
-		libhal_ctx_free(ctx);
-		dbus_connection_unref(conn);
+	message = dbus_message_new_method_call("org.freedesktop.Hal",
+				"/org/freedesktop/Hal/devices/computer",
+						"org.freedesktop.Hal.Device",
+							"GetPropertyString");
+	if (message == NULL) {
+		error("Failed to create formfactor request");
+		dbus_connection_unref(connection);
+		return -ENOMEM;
+	}
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &property,
+							DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, -1) == FALSE) {
+		error("Failed to send formfactor request");
+		dbus_connection_unref(connection);
 		return -EIO;
 	}
 
-	if (libhal_ctx_init(ctx, NULL) == FALSE) {
-		error("Unable to init HAL context");
-		libhal_ctx_free(ctx);
-		dbus_connection_unref(conn);
-		return -EIO;
-	}
-
-	debug("Setting 0x%06x device class", get_form_factor(ctx));
-
-	libhal_ctx_free(ctx);
-	dbus_connection_unref(conn);
-#endif
+	dbus_pending_call_set_notify(call, formfactor_reply, NULL, NULL);
 
 	return 0;
 }
 
 static void hal_remove(struct btd_adapter *adapter)
 {
+	dbus_connection_unref(connection);
 }
 
 static struct btd_adapter_driver hal_driver = {
