@@ -1337,7 +1337,9 @@ int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 		return -1;
 	}
 
-	memcpy(features, rp.features, 8);
+	if (features)
+		memcpy(features, rp.features, 8);
+
 	return 0;
 }
 
@@ -1368,8 +1370,12 @@ int hci_read_remote_ext_features(int dd, uint16_t handle, uint8_t page, uint8_t 
 		return -1;
 	}
 
-	*max_page = rp.max_page_num;
-	memcpy(features, rp.features, 8);
+	if (max_page)
+		*max_page = rp.max_page_num;
+
+	if (features)
+		memcpy(features, rp.features, 8);
+
 	return 0;
 }
 
@@ -1449,7 +1455,9 @@ int hci_read_local_commands(int dd, uint8_t *commands, int to)
 		return -1;
 	}
 
-	memcpy(commands, rp.commands, 64);
+	if (commands)
+		memcpy(commands, rp.commands, 64);
+
 	return 0;
 }
 
@@ -1472,7 +1480,9 @@ int hci_read_local_features(int dd, uint8_t *features, int to)
 		return -1;
 	}
 
-	memcpy(features, rp.features, 8);
+	if (features)
+		memcpy(features, rp.features, 8);
+
 	return 0;
 }
 
@@ -1500,8 +1510,12 @@ int hci_read_local_ext_features(int dd, uint8_t page, uint8_t *max_page, uint8_t
 		return -1;
 	}
 
-	*max_page = rp.max_page_num;
-	memcpy(features, rp.features, 8);
+	if (max_page)
+		*max_page = rp.max_page_num;
+
+	if (features)
+		memcpy(features, rp.features, 8);
+
 	return 0;
 }
 
@@ -1524,7 +1538,9 @@ int hci_read_bd_addr(int dd, bdaddr_t *bdaddr, int to)
 		return -1;
 	}
 
-	bacpy(bdaddr, &rp.bdaddr);
+	if (bdaddr)
+		bacpy(bdaddr, &rp.bdaddr);
+
 	return 0;
 }
 
