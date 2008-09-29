@@ -707,7 +707,7 @@ static int found_device_req_name(struct btd_adapter *adapter)
 		}
 
 		error("Remote name request failed with status 0x%02x",
-			rp.status);
+								rp.status);
 
 		/* if failed, request the next element */
 		/* remove the element from the list */
@@ -1033,8 +1033,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 				char *name)
 {
 	struct btd_adapter *adapter;
-	char peer_addr[18];
-	const char *paddr = peer_addr;
+	char srcaddr[18], dstaddr[18];
 	const gchar *dev_path;
 	int state;
 
@@ -1044,19 +1043,29 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 		return;
 	}
 
-	ba2str(peer, peer_addr);
+	ba2str(local, srcaddr);
+	ba2str(peer, dstaddr);
 
 	if (!status) {
 		struct btd_device *device;
 
-		device = adapter_find_device(adapter, paddr);
+		device = adapter_find_device(adapter, dstaddr);
 		if (device) {
+			char alias[248];
 
 			dev_path = device_get_path(device);
 
 			dbus_connection_emit_property_changed(connection,
 						dev_path, DEVICE_INTERFACE,
 						"Name", DBUS_TYPE_STRING, &name);
+
+			if (read_device_alias(srcaddr, dstaddr,
+						alias, sizeof(alias)) < 1) {
+
+				dbus_connection_emit_property_changed(connection,
+						dev_path, DEVICE_INTERFACE,
+						"Alias", DBUS_TYPE_STRING, &name);
+			}
 		}
 	}
 
