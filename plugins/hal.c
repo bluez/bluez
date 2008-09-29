@@ -79,8 +79,7 @@ static void formfactor_reply(DBusPendingCall *call, void *user_data)
 	/* Computer major class */
 	debug("Setting 0x%06x for major/minor device class", (1 << 8) | minor);
 
-	set_major_class(dd, cls, 0x01);
-	set_minor_class(dd, cls, minor);
+	set_major_and_minor_class(dd, cls, 0x01, minor);
 
 	hci_close_dev(dd);
 }
