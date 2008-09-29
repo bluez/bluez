@@ -1,3 +1,8 @@
+ver 4.9:
+	Fix signals for Powered and Discoverable properties.
+	Fix handling of Alias and Icon properties.
+	Fix duplicate entries for service UUIDs.
+
 ver 4.8:
 	Fix retrieving of formfactor value.
 	Fix retrieving of local and remote extended features.
