@@ -491,7 +491,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 	int err, dd;
 	const char *mode;
 
-	switch(new_mode) {
+	switch (new_mode) {
 	case MODE_OFF:
 		scan_enable = SCAN_DISABLED;
 		break;
@@ -1556,7 +1556,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	char str[249], srcaddr[18];
-	gboolean bproperty;
+	gboolean value;
 	char **devices;
 	int i;
 	GSList *l;
@@ -1597,27 +1597,30 @@ static DBusMessage *get_properties(DBusConnection *conn,
 						DBUS_TYPE_STRING, &property);
 
 	/* Powered */
-	bproperty = adapter->up ? TRUE : FALSE;
+	if (main_opts.offmode == HCID_OFFMODE_DEVDOWN)
+		value = adapter->up ? TRUE : FALSE;
+	else
+		value = adapter->scan_mode == SCAN_DISABLED ? FALSE : TRUE;
 	dbus_message_iter_append_dict_entry(&dict, "Powered",
-					DBUS_TYPE_BOOLEAN, &bproperty);
+					DBUS_TYPE_BOOLEAN, &value);
 
 	/* Discoverable */
-	bproperty = adapter->scan_mode == SCAN_INQUIRY ? TRUE : FALSE;
+	value = adapter->scan_mode & SCAN_INQUIRY ? TRUE : FALSE;
 	dbus_message_iter_append_dict_entry(&dict, "Discoverable",
-					DBUS_TYPE_BOOLEAN, &bproperty);
+					DBUS_TYPE_BOOLEAN, &value);
 
 	/* DiscoverableTimeout */
 	dbus_message_iter_append_dict_entry(&dict, "DiscoverableTimeout",
 				DBUS_TYPE_UINT32, &adapter->discov_timeout);
 
 	if (adapter->state & PERIODIC_INQUIRY || adapter->state & STD_INQUIRY)
-		bproperty = TRUE;
+		value = TRUE;
 	else
-		bproperty = FALSE;
+		value = FALSE;
 
 	/* Discovering */
 	dbus_message_iter_append_dict_entry(&dict, "Discovering",
-					DBUS_TYPE_BOOLEAN, &bproperty);
+					DBUS_TYPE_BOOLEAN, &value);
 
 	/* Devices */
 	devices = g_new0(char *, g_slist_length(adapter->devices) + 1);
@@ -1666,14 +1669,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &name);
 
 		return set_name(conn, msg, name, data);
-	} else if (g_str_equal("DiscoverableTimeout", property)) {
-		uint32_t timeout;
-
-		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT32)
-			return invalid_args(msg);
-		dbus_message_iter_get_basic(&sub, &timeout);
-
-		return set_discoverable_timeout(conn, msg, timeout, data);
 	} else if (g_str_equal("Mode", property)) {
 		const char *mode;
 
@@ -1690,8 +1685,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (adapter->mode_sessions && adapter->global_mode < adapter->mode)
 			return confirm_mode(conn, msg, mode, data);
 
-		return set_mode(conn, msg, get_mode(&adapter->bdaddr, mode),
-				data);
+		return set_mode(conn, msg,
+				get_mode(&adapter->bdaddr, mode), data);
 	} else if (g_str_equal("Powered", property)) {
 		gboolean powered;
 
@@ -1710,6 +1705,15 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &discoverable);
 
 		return set_discoverable(conn, msg, discoverable, data);
+	} else if (g_str_equal("DiscoverableTimeout", property)) {
+		uint32_t timeout;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT32)
+			return invalid_args(msg);
+
+		dbus_message_iter_get_basic(&sub, &timeout);
+
+		return set_discoverable_timeout(conn, msg, timeout, data);
 	}
 
 	return invalid_args(msg);
@@ -3087,73 +3091,62 @@ void adapter_remove_oor_device(struct btd_adapter *adapter, char *peer_addr)
 
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
-	const char *mode;
 	const gchar *path = adapter_get_path(adapter);
-	gboolean powered;
-	gboolean discoverable;
+	const char *mode;
+	gboolean powered, discoverable;
 
 	switch (scan_mode) {
 	case SCAN_DISABLED:
 		mode = "off";
 		adapter_set_mode(adapter, MODE_OFF);
 		powered = FALSE;
-		dbus_connection_emit_property_changed(connection, path,
-						ADAPTER_INTERFACE, "Powered",
-						DBUS_TYPE_BOOLEAN, &powered);
+		discoverable = FALSE;
 		break;
 	case SCAN_PAGE:
 		mode = "connectable";
 		adapter_set_mode(adapter, MODE_CONNECTABLE);
-
-		if (adapter->scan_mode == SCAN_DISABLED) {
-			powered = TRUE;
-			dbus_connection_emit_property_changed(connection, path,
-						ADAPTER_INTERFACE, "Powered",
-						DBUS_TYPE_BOOLEAN, &powered);
-		} else {
-			discoverable = FALSE;
-			dbus_connection_emit_property_changed(connection, path,
-						ADAPTER_INTERFACE, "Discoverable",
-						DBUS_TYPE_BOOLEAN, &discoverable);
-		}
+		powered = TRUE;
+		discoverable = FALSE;
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
-
-		if (adapter->discov_timeout != 0)
-			adapter_set_discov_timeout(adapter, adapter->discov_timeout * 1000);
-
+		powered = TRUE;
+		discoverable = TRUE;
 		if (adapter_get_mode(adapter) == MODE_LIMITED) {
 			mode = "limited";
 		} else {
 			adapter_set_mode(adapter, MODE_DISCOVERABLE);
 			mode = "discoverable";
 		}
-
-		if (adapter->scan_mode == SCAN_DISABLED) {
-			powered = TRUE;
-			dbus_connection_emit_property_changed(connection, path,
-						ADAPTER_INTERFACE, "powered",
-						DBUS_TYPE_BOOLEAN, &powered);
-		}
-		discoverable = TRUE;
-		dbus_connection_emit_property_changed(connection, path,
-						ADAPTER_INTERFACE, "Discoverable",
-						DBUS_TYPE_BOOLEAN, &discoverable);
+		if (adapter->discov_timeout != 0)
+			adapter_set_discov_timeout(adapter,
+						adapter->discov_timeout * 1000);
 		break;
 	case SCAN_INQUIRY:
-		/* Address the scenario where another app changed the scan mode */
+		/* Address the scenario where a low-level application like
+		 * hciconfig changed the scan mode */
 		if (adapter->discov_timeout != 0)
-			adapter_set_discov_timeout(adapter, adapter->discov_timeout * 1000);
+			adapter_set_discov_timeout(adapter,
+						adapter->discov_timeout * 1000);
 
-		/* ignore, this event should not be sent*/
+		/* ignore, this event should not be sent */
 	default:
 		/* ignore, reserved */
 		return;
 	}
 
 	dbus_connection_emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "Mode",
-					DBUS_TYPE_STRING, &mode);
+						ADAPTER_INTERFACE, "Mode",
+						DBUS_TYPE_STRING, &mode);
+
+	if (powered == FALSE || adapter->scan_mode == SCAN_DISABLED) {
+		dbus_connection_emit_property_changed(connection, path,
+						ADAPTER_INTERFACE, "Powered",
+						DBUS_TYPE_BOOLEAN, &powered);
+	}
+
+	dbus_connection_emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "Discoverable",
+					DBUS_TYPE_BOOLEAN, &discoverable);
 
 	adapter_set_scan_mode(adapter, scan_mode);
 }
