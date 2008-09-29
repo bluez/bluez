@@ -26,10 +26,7 @@
 #endif
 
 #include <errno.h>
-#include <unistd.h>
-#include <stdlib.h>
-
-#include <hal/libhal.h>
+#include <dbus/dbus.h>
 
 #include "plugin.h"
 #include "adapter.h"
