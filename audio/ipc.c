@@ -40,7 +40,7 @@ static const char *strmsg[] = {
 	"BT_STREAMFD_IND",
 };
 
-int bt_audio_service_open()
+int bt_audio_service_open(void)
 {
 	int sk;
 	int err;

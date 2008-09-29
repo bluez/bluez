@@ -289,7 +289,7 @@ struct bt_control_ind {
 /* Function declaration */
 
 /* Opens a connection to the audio service: return a socket descriptor */
-int bt_audio_service_open();
+int bt_audio_service_open(void);
 
 /* Closes a connection to the audio service */
 int bt_audio_service_close(int sk);
