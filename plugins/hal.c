@@ -94,12 +94,17 @@ static int hal_probe(struct btd_adapter *adapter)
 	dbus_connection_unref(conn);
 #endif
 
-	return -ENODEV;
+	return 0;
+}
+
+static void hal_remove(struct btd_adapter *adapter)
+{
 }
 
 static struct btd_adapter_driver hal_driver = {
 	.name	= "hal",
 	.probe	= hal_probe,
+	.remove	= hal_remove,
 };
 
 static int hal_init(void)
