@@ -28,15 +28,22 @@
 #include <errno.h>
 #include <dbus/dbus.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+
 #include "plugin.h"
 #include "adapter.h"
 #include "logging.h"
+#include "dbus-hci.h"
 
 static void formfactor_reply(DBusPendingCall *call, void *user_data)
 {
+	struct btd_adapter *adapter = user_data;
 	const char *formfactor = NULL;
 	DBusMessage *reply;
-	uint8_t minor = 0;
+	uint8_t cls[3], minor = 0;
+	int dd;
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -59,8 +66,23 @@ static void formfactor_reply(DBusPendingCall *call, void *user_data)
 			minor += 1 << 4;
 	}
 
+	if (adapter_get_class(adapter, cls) < 0)
+		return;
+
+	debug("Current device class is 0x%02x%02x%02x\n",
+						cls[2], cls[1], cls[0]);
+
+	dd = hci_open_dev(adapter_get_dev_id(adapter));
+	if (dd < 0)
+		return;
+
 	/* Computer major class */
-	debug("Setting 0x%06x device class", (1 << 8) | minor);
+	debug("Setting 0x%06x for major/minor device class", (1 << 8) | minor);
+
+	set_major_class(dd, cls, (1 << 8));
+	set_minor_class(dd, cls, minor);
+
+	hci_close_dev(dd);
 }
 
 static DBusConnection *connection;
@@ -95,7 +117,7 @@ static int hal_probe(struct btd_adapter *adapter)
 		return -EIO;
 	}
 
-	dbus_pending_call_set_notify(call, formfactor_reply, NULL, NULL);
+	dbus_pending_call_set_notify(call, formfactor_reply, adapter, NULL);
 
 	return 0;
 }
