@@ -1456,8 +1456,8 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 		return;
 	}
 
-	write_local_class(local, cls);
 	adapter_set_class(adapter, cls);
+	write_local_class(local, cls);
 
 	hci_close_dev(dd);
 }
