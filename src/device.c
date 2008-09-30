@@ -134,6 +134,9 @@ static void device_free(gpointer user_data)
 	if (device->disconn_timer)
 		g_source_remove(device->disconn_timer);
 
+	if (device->discov_timer)
+		g_source_remove(device->discov_timer);
+
 	g_free(device->path);
 	g_free(device);
 }
