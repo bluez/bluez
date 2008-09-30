@@ -806,6 +806,9 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 	struct btd_adapter *adapter = data;
 	const char *path;
 
+	if (adapter->discov_timeout == timeout && timeout == 0)
+		return dbus_message_new_method_return(msg);
+
 	if (adapter->discov_timeout_id) {
 		g_source_remove(adapter->discov_timeout_id);
 		adapter->discov_timeout_id = 0;
