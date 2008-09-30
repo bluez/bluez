@@ -50,6 +50,7 @@ static void formfactor_reply(DBusPendingCall *call, void *user_data)
 	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_STRING, &formfactor,
 						DBUS_TYPE_INVALID) == FALSE) {
 		error("Wrong formfactor arguments");
+		dbus_message_unref(reply);
 		return;
 	}
 
@@ -65,6 +66,8 @@ static void formfactor_reply(DBusPendingCall *call, void *user_data)
 		else if (g_str_equal(formfactor, "handheld") == TRUE)
 			minor += 1 << 4;
 	}
+
+	dbus_message_unref(reply);
 
 	dd = hci_open_dev(adapter_get_dev_id(adapter));
 	if (dd < 0)
@@ -114,11 +117,14 @@ static int hal_probe(struct btd_adapter *adapter)
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, -1) == FALSE) {
 		error("Failed to send formfactor request");
+		dbus_message_unref(message);
 		dbus_connection_unref(connection);
 		return -EIO;
 	}
 
 	dbus_pending_call_set_notify(call, formfactor_reply, adapter, NULL);
+
+	dbus_message_unref(message);
 
 	return 0;
 }
