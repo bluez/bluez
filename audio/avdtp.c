@@ -656,6 +656,8 @@ static void handle_transport_connect(struct avdtp *session, int sock,
 	if (!stream->open_acp && sep->cfm && sep->cfm->open)
 		sep->cfm->open(session, sep, stream, NULL, sep->user_data);
 
+	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
+
 	channel = g_io_channel_unix_new(stream->sock);
 
 	stream->io = g_io_add_watch(channel, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
@@ -1885,8 +1887,6 @@ static gboolean avdtp_open_resp(struct avdtp *session, struct avdtp_stream *stre
 	}
 
 	session->pending_open = stream;
-
-	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
 
 	return TRUE;
 }
