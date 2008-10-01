@@ -61,7 +61,7 @@ CLEANFILES = $(BUILT_SOURCES)
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/src
 
-EXTRA_DIST = audio.conf asound.conf telephony-dummy.c
+EXTRA_DIST = audio.conf asound.conf telephony-dummy.c telephony-maemo.c
 
 MAINTAINERCLEANFILES = Makefile.in
 
