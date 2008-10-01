@@ -2476,7 +2476,7 @@ int avdtp_set_configuration(struct avdtp *session,
 			session, lsep->info.seid, rsep->seid);
 
 	new_stream = g_new0(struct avdtp_stream, 1);
-
+	new_stream->sock = -1;
 	new_stream->session = session;
 	new_stream->lsep = lsep;
 	new_stream->rseid = rsep->seid;
