@@ -2395,7 +2395,7 @@ gboolean avdtp_stream_remove_cb(struct avdtp *session,
 
 	for (cb = NULL, l = stream->callbacks; l != NULL; l = l->next) {
 		struct stream_callback *tmp = l->data;
-		if (tmp->id == id) {
+		if (tmp && tmp->id == id) {
 			cb = tmp;
 			break;
 		}
