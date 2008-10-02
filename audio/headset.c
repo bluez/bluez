@@ -2208,3 +2208,14 @@ int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 
 	return 0;
 }
+
+int telephony_subscriber_number_ind(const char *number, int type, int service)
+{
+	if (!active_devices)
+		return -ENODEV;
+
+	send_foreach_headset(active_devices, "\r\n+CNUM:,%s,%d,,%d\r\n",
+				number, type, service);
+
+	return 0;
+}

@@ -82,6 +82,10 @@
 #define CALL_MULTIPARTY_NO		0
 #define CALL_MULTIPARTY_YES		1
 
+/* Subscriber number parameters */
+#define SUBSCRIBER_SERVICE_VOICE	4
+#define SUBSCRIBER_SERVICE_FAX		5
+
 /* Extended Audio Gateway Error Result Codes */
 typedef enum {
 	CME_ERROR_NONE			= -1,
@@ -155,6 +159,8 @@ int telephony_ready_ind(uint32_t features, const struct indicator *indicators,
 int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 					int mprty, const char *number,
 					int type);
+int telephony_subscriber_number_ind(const char *number, int type,
+					int service);
 
 /* Helper function for quick indicator updates */
 static inline int telephony_update_indicator(struct indicator *indicators,

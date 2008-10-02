@@ -36,6 +36,7 @@
 #include "logging.h"
 #include "telephony.h"
 
+static char *subscriber_number = NULL;
 static char *active_call_number = NULL;
 static int active_call_status = 0;
 static int active_call_dir = 0;
@@ -151,6 +152,9 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 void telephony_subscriber_number_req(void *telephony_device)
 {
 	debug("telephony-dummy: subscriber number request");
+	if (subscriber_number)
+		telephony_subscriber_number_ind(subscriber_number, 0,
+						SUBSCRIBER_SERVICE_VOICE);
 	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
@@ -316,6 +320,25 @@ static DBusMessage *registration_status(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *set_subscriber_number(DBusConnection *conn,
+						DBusMessage *msg,
+						void *data)
+{
+	const char *number;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &number,
+						DBUS_TYPE_INVALID))
+		return NULL;
+
+	g_free(subscriber_number);
+	subscriber_number = g_strdup(number);
+
+	debug("telephony-dummy: subscriber number set to %s", number);
+
+	return dbus_message_new_method_return(msg);
+}
+
+
 static GDBusMethodTable dummy_methods[] = {
 	{ "OutgoingCall",	"s",	"",	outgoing_call		},
 	{ "IncomingCall",	"s",	"",	incoming_call		},
@@ -324,6 +347,7 @@ static GDBusMethodTable dummy_methods[] = {
 	{ "BatteryLevel",	"u",	"",	battery_level		},
 	{ "RoamingStatus",	"b",	"",	roaming_status		},
 	{ "RegistrationStatus",	"b",	"",	registration_status	},
+	{ "SetSubscriberNumber","s",	"",	set_subscriber_number	},
 	{ }
 };
 
