@@ -52,6 +52,7 @@
 
 #include "../src/storage.h"
 #include "../src/manager.h"
+#include "../src/dbus-common.h"
 #include "adapter.h"
 
 #include "device.h"
@@ -981,17 +982,46 @@ static void device_unregister(void *data)
 	input_device_free(idev);
 }
 
+static DBusMessage *device_get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct input_device *idev = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	dbus_bool_t connected;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* Connected */
+	connected = !!g_slist_find_custom(idev->connections, NULL,
+					(GCompareFunc) is_connected);
+	dbus_message_iter_append_dict_entry(&dict, "Connected",
+						DBUS_TYPE_BOOLEAN, &connected);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
+}
+
 static GDBusMethodTable device_methods[] = {
 	{ "Connect",		"",	"",	device_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	device_disconnect	},
 	{ "IsConnected",	"",	"b",	device_is_connected	},
+	{ "GetProperties",	"",	"a{sv}",device_get_properties },
 	{ }
 };
 
 static GDBusSignalTable device_signals[] = {
 	{ "Connected",		""	},
 	{ "Disconnected",	""	},
+	{ "PropertyChanged",	"sv"	},
 	{ }
 };
 
