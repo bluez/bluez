@@ -57,6 +57,7 @@
 #include "telephony.h"
 #include "headset.h"
 #include "glib-helper.h"
+#include "dbus-common.h"
 
 #define DC_TIMEOUT 3000
 
@@ -154,6 +155,12 @@ struct event {
 	const char *cmd;
 	int (*callback) (struct audio_device *device, const char *buf);
 };
+
+static inline DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
+			"Invalid arguments in method call");
+}
 
 static DBusHandlerResult error_not_supported(DBusConnection *conn,
 							DBusMessage *msg)
@@ -1576,22 +1583,18 @@ static DBusMessage *hs_get_mic_gain(DBusConnection *conn,
 
 static DBusMessage *hs_set_gain(DBusConnection *conn,
 				DBusMessage *msg,
-				void *data, char type)
+				void *data, uint16_t gain,
+				char type)
 {
 	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	DBusMessage *reply;
-	dbus_uint16_t gain;
 	int err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".NotConnected",
 						"Device not Connected");
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT16, &gain,
-				DBUS_TYPE_INVALID))
-		return NULL;
 
 	if (gain > 15)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
@@ -1636,16 +1639,117 @@ static DBusMessage *hs_set_speaker_gain(DBusConnection *conn,
 					DBusMessage *msg,
 					void *data)
 {
-	return hs_set_gain(conn, msg, data, HEADSET_GAIN_SPEAKER);
+	uint16_t gain;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT16, &gain,
+				DBUS_TYPE_INVALID))
+		return NULL;
+
+	return hs_set_gain(conn, msg, data, gain, HEADSET_GAIN_SPEAKER);
 }
 
 static DBusMessage *hs_set_mic_gain(DBusConnection *conn,
 					DBusMessage *msg,
 					void *data)
 {
-	return hs_set_gain(conn, msg, data, HEADSET_GAIN_MICROPHONE);
+	uint16_t gain;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT16, &gain,
+				DBUS_TYPE_INVALID))
+		return NULL;
+
+	return hs_set_gain(conn, msg, data, gain, HEADSET_GAIN_MICROPHONE);
 }
 
+static DBusMessage *hs_get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct audio_device *device = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	gboolean value;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+
+	/* Playing */
+	value = (device->headset->state == HEADSET_STATE_PLAYING);
+	dbus_message_iter_append_dict_entry(&dict, "Playing",
+						DBUS_TYPE_BOOLEAN, &value);
+
+	/* Connected */
+	value = (device->headset->state >= HEADSET_STATE_CONNECTED);
+	dbus_message_iter_append_dict_entry(&dict, "Connected",
+						DBUS_TYPE_BOOLEAN, &value);
+
+	if (!value)
+		goto done;
+
+	/* SpeakerGain */
+	dbus_message_iter_append_dict_entry(&dict, "SpeakerGain",
+						DBUS_TYPE_UINT16,
+						&device->headset->sp_gain);
+
+	/* MicrophoneGain */
+	dbus_message_iter_append_dict_entry(&dict, "MicrophoneGain",
+						DBUS_TYPE_UINT16,
+						&device->headset->mic_gain);
+
+done:
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
+}
+
+static DBusMessage *hs_set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *property;
+	DBusMessageIter iter;
+	DBusMessageIter sub;
+	uint16_t gain;
+
+	if (!dbus_message_iter_init(msg, &iter))
+		return invalid_args(msg);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return invalid_args(msg);
+
+	dbus_message_iter_get_basic(&iter, &property);
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
+		return invalid_args(msg);
+	dbus_message_iter_recurse(&iter, &sub);
+
+	if (g_str_equal("SpeakerGain", property)) {
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT16)
+			return invalid_args(msg);
+
+		dbus_message_iter_get_basic(&sub, &gain);
+		return hs_set_gain(conn, msg, data, gain,
+					HEADSET_GAIN_SPEAKER);
+	} else if (g_str_equal("MicrophoneGain", property)) {
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT16)
+			return invalid_args(msg);
+
+		dbus_message_iter_get_basic(&sub, &gain);
+		return hs_set_gain(conn, msg, data, gain,
+					HEADSET_GAIN_MICROPHONE);
+	}
+
+	return invalid_args(msg);
+}
 static GDBusMethodTable headset_methods[] = {
 	{ "Connect",		"",	"",	hs_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
@@ -1661,6 +1765,8 @@ static GDBusMethodTable headset_methods[] = {
 	{ "GetMicrophoneGain",	"",	"q",	hs_get_mic_gain },
 	{ "SetSpeakerGain",	"q",	"",	hs_set_speaker_gain },
 	{ "SetMicrophoneGain",	"q",	"",	hs_set_mic_gain },
+	{ "GetProperties",	"",	"a{sv}",hs_get_properties },
+	{ "SetProperty",	"sv",	"",	hs_set_property },
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -1673,6 +1779,7 @@ static GDBusSignalTable headset_signals[] = {
 	{ "SpeakerGainChanged",		"q"	},
 	{ "MicrophoneGainChanged",	"q"	},
 	{ "CallTerminated",		""	},
+	{ "PropertyChanged",		"sv"	},
 	{ NULL, NULL }
 };
 
