@@ -1398,6 +1398,9 @@ static void send_foreach_headset(GSList *devices,
 
 static int cli_cmp(struct headset *hs)
 {
+	if (!hs->hfp_active)
+		return -1;
+
 	if (hs->cli_active)
 		return 0;
 	else
