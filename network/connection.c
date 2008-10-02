@@ -40,6 +40,7 @@
 
 #include "logging.h"
 #include "glib-helper.h"
+#include "dbus-common.h"
 
 #include "error.h"
 #include "common.h"
@@ -412,6 +413,51 @@ static DBusMessage *is_connected(DBusConnection *conn,
 						DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *connection_get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct network_peer *peer = data;
+	struct network_conn *nc;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	dbus_bool_t connected;
+	const char *property;
+	GSList *l;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* Connected */
+	for (l = peer->connections; l; l = l->next) {
+		nc = l->data;
+
+		if (nc->state == CONNECTED)
+			break;
+	}
+	connected = (l != NULL);
+	dbus_message_iter_append_dict_entry(&dict, "Connected",
+						DBUS_TYPE_BOOLEAN, &connected);
+
+	/* Device */
+	property = connected ? nc->dev : "";
+	dbus_message_iter_append_dict_entry(&dict, "Device",
+						DBUS_TYPE_STRING, &property);
+
+	/* UUID */
+	property = connected ? bnep_uuid(nc->id) : "";
+	dbus_message_iter_append_dict_entry(&dict, "UUID",
+						DBUS_TYPE_STRING, &property);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
+}
+
 static void connection_free(struct network_conn *nc)
 {
 	if (nc->state == CONNECTED) {
@@ -448,12 +494,14 @@ static GDBusMethodTable connection_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	connection_disconnect	},
 	{ "IsConnected",	"",	"b",	is_connected		},
+	{ "GetProperties",	"",	"a{sv}",connection_get_properties },
 	{ }
 };
 
 static GDBusSignalTable connection_signals[] = {
 	{ "Connected",		"ss"	},
 	{ "Disconnected",	"s"	},
+	{ "PropertyChanged",	"sv"	},
 	{ }
 };
 
