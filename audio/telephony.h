@@ -65,29 +65,31 @@
 #define EV_ROAM_ACTIVE			1
 
 /* Extended Audio Gateway Error Result Codes */
-#define CME_ERROR_NONE			-1
-#define CME_ERROR_AG_FAILURE		0
-#define CME_ERROR_NO_PHONE_CONNECTION	1
-#define CME_ERROR_NOT_ALLOWED		3
-#define CME_ERROR_NOT_SUPPORTED		4
-#define CME_ERROR_PH_SIM_PIN_REQUIRED	5
-#define CME_ERROR_SIM_NOT_INSERTED	10
-#define CME_ERROR_SIM_PIN_REQUIRED	11
-#define CME_ERROR_SIM_PUK_REQUIRED	12
-#define CME_ERROR_SIM_FAILURE		13
-#define CME_ERROR_SIM_BUSY		14
-#define CME_ERROR_INCORRECT_PASSWORD	16
-#define CME_ERROR_SIM_PIN2_REQUIRED	17
-#define CME_ERROR_SIM_PUK2_REQUIRED	18
-#define CME_ERROR_MEMORY_FULL		20
-#define CME_ERROR_INVALID_INDEX		21
-#define CME_ERROR_MEMORY_FAILURE	23
-#define CME_ERROR_TEXT_STRING_TOO_LONG	24
-#define CME_ERROR_INVALID_TEXT_STRING	25
-#define CME_ERROR_DIAL_STRING_TOO_LONG	26
-#define CME_ERROR_INVALID_DIAL_STRING	27
-#define CME_ERROR_NO_NETWORK_SERVICE	30
-#define CME_ERROR_NETWORK_NOT_ALLOWED	32
+typedef enum {
+	CME_ERROR_NONE			= -1,
+	CME_ERROR_AG_FAILURE		= 0,
+	CME_ERROR_NO_PHONE_CONNECTION	= 1,
+	CME_ERROR_NOT_ALLOWED		= 3,
+	CME_ERROR_NOT_SUPPORTED		= 4,
+	CME_ERROR_PH_SIM_PIN_REQUIRED	= 5,
+	CME_ERROR_SIM_NOT_INSERTED	= 10,
+	CME_ERROR_SIM_PIN_REQUIRED	= 11,
+	CME_ERROR_SIM_PUK_REQUIRED	= 12,
+	CME_ERROR_SIM_FAILURE		= 13,
+	CME_ERROR_SIM_BUSY		= 14,
+	CME_ERROR_INCORRECT_PASSWORD	= 16,
+	CME_ERROR_SIM_PIN2_REQUIRED	= 17,
+	CME_ERROR_SIM_PUK2_REQUIRED	= 18,
+	CME_ERROR_MEMORY_FULL		= 20,
+	CME_ERROR_INVALID_INDEX		= 21,
+	CME_ERROR_MEMORY_FAILURE	= 23,
+	CME_ERROR_TEXT_STRING_TOO_LONG	= 24,
+	CME_ERROR_INVALID_TEXT_STRING	= 25,
+	CME_ERROR_DIAL_STRING_TOO_LONG	= 26,
+	CME_ERROR_INVALID_DIAL_STRING	= 27,
+	CME_ERROR_NO_NETWORK_SERVICE	= 30,
+	CME_ERROR_NETWORK_NOT_ALLOWED	= 32,
+} cme_error_t;
 
 struct indicator {
 	const char *desc;
@@ -95,32 +97,41 @@ struct indicator {
 	int val;
 };
 
-int telephony_event_reporting_req(int ind);
+/* Notify telephony-*.c of connected/disconnected devices. Implemented by
+ * telephony-*.c
+ */
+void telephony_device_connected(void *telephony_device);
+void telephony_device_disconnected(void *telephony_device);
 
+/* HF requests (sent by the handsfree device). These are implemented by
+ * telephony-*.c
+ */
+void telephony_event_reporting_req(void *telephony_device, int ind);
+void telephony_response_and_hold_req(void *telephony_device, int rh);
+void telephony_last_dialed_number_req(void *telephony_device);
+void telephony_terminate_call_req(void *telephony_device);
+void telephony_answer_call_req(void *telephony_device);
+void telephony_dial_number_req(void *telephony_device, const char *number);
+void telephony_transmit_dtmf_req(void *telephony_device, char tone);
+void telephony_subscriber_number_req(void *telephony_device);
+
+/* AG responses to HF requests. These are implemented by headset.c */
+int telephony_event_reporting_rsp(void *telephony_device, cme_error_t err);
+int telephony_response_and_hold_rsp(void *telephony_device, cme_error_t err);
+int telephony_last_dialed_number_rsp(void *telephony_device, cme_error_t err);
+int telephony_terminate_call_rsp(void *telephony_device, cme_error_t err);
+int telephony_answer_call_rsp(void *telephony_device, cme_error_t err);
+int telephony_dial_number_rsp(void *telephony_device, cme_error_t err);
+int telephony_transmit_dtmf_rsp(void *telephony_device, cme_error_t err);
+int telephony_subscriber_number_rsp(void *telephony_device, cme_error_t err);
+
+/* Event indications by AG. These are implemented by headset.c */
 int telephony_event_ind(int index);
-
-int telephony_response_and_hold_req(int rh);
-
 int telephony_response_and_hold_ind(int rh);
-
-int telephony_last_dialed_number_req(void);
-
-int telephony_terminate_call_req(void);
-
-int telephony_answer_call_req(void);
-
-int telephony_dial_number_req(const char *number);
-
-int telephony_calling_started_ind(const char *number);
-
+int telephony_incoming_call_ind(const char *number, int type);
 int telephony_calling_stopped_ind(void);
-
 int telephony_ready_ind(uint32_t features, const struct indicator *indicators,
 			int rh);
-
-int telephony_transmit_dtmf_req(char tone);
-
-int telephony_subscriber_number_req(void);
 
 /* Helper function for quick indicator updates */
 static inline int telephony_update_indicator(struct indicator *indicators,

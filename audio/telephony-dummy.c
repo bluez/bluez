@@ -58,70 +58,84 @@ static struct indicator dummy_indicators[] =
 	{ NULL }
 };
 
-int telephony_event_reporting_req(int ind)
+void telephony_device_connected(void *telephony_device)
+{
+}
+
+void telephony_device_disconnected(void *telephony_device)
+{
+	events_enabled = FALSE;
+}
+
+void telephony_event_reporting_req(void *telephony_device, int ind)
 {
 	events_enabled = ind == 1 ? TRUE : FALSE;
 
-	return 0;
+	telephony_event_reporting_rsp(telephony_device, CME_ERROR_NONE);
 }
 
-int telephony_response_and_hold_req(int rh)
+void telephony_response_and_hold_req(void *telephony_device, int rh)
 {
 	response_and_hold = rh;
 
 	telephony_response_and_hold_ind(response_and_hold);
 
-	return 0;
+	telephony_response_and_hold_rsp(telephony_device, CME_ERROR_NONE);
 }
 
-int telephony_last_dialed_number_req(void)
+void telephony_last_dialed_number_req(void *telephony_device)
 {
+	telephony_last_dialed_number_rsp(telephony_device, CME_ERROR_NONE);
+
 	/* Notify outgoing call set-up successfully initiated */
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_OUTGOING);
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_ALERTING);
-	return 0;
 }
 
-int telephony_terminate_call_req(void)
+void telephony_terminate_call_req(void *telephony_device)
 {
+	telephony_terminate_call_rsp(telephony_device, CME_ERROR_NONE);
+
 	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0)
 		telephony_update_indicator(dummy_indicators, "callsetup",
 						EV_CALLSETUP_INACTIVE);
 	else
 		telephony_update_indicator(dummy_indicators, "call",
 						EV_CALL_INACTIVE);
-	return 0;
 }
 
-int telephony_answer_call_req(void)
+void telephony_answer_call_req(void *telephony_device)
 {
+	telephony_answer_call_rsp(telephony_device, CME_ERROR_NONE);
+
 	telephony_update_indicator(dummy_indicators, "call", EV_CALL_ACTIVE);
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_INACTIVE);
-	return 0;
 }
 
-int telephony_dial_number_req(const char *number)
+void telephony_dial_number_req(void *telephony_device, const char *number)
 {
+	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
+
 	/* Notify outgoing call set-up successfully initiated */
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_OUTGOING);
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_ALERTING);
-	return 0;
 }
 
-int telephony_transmit_dtmf_req(char tone)
+void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 {
 	debug("telephony-dummy: transmit dtmf: %c", tone);
-	return 0;
+	telephony_transmit_dtmf_rsp(telephony_device, CME_ERROR_NONE);
 }
 
-int telephony_subscriber_number_req(void)
+void telephony_subscriber_number_req(void *telephony_device)
 {
-	return 0;
+	debug("telephony-dummy: subscriber number request");
+	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 /* D-Bus method handlers */
@@ -158,7 +172,7 @@ static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_INCOMING);
 
-	telephony_calling_started_ind(number);
+	telephony_incoming_call_ind(number, 0);
 
 	return dbus_message_new_method_return(msg);
 }
