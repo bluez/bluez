@@ -976,14 +976,15 @@ static DBusMessage *control_get_properties(DBusConnection *conn,
 }
 
 static GDBusMethodTable control_methods[] = {
-	{ "IsConnected",	"",	"b",	control_is_connected },
+	{ "IsConnected",	"",	"b",	control_is_connected,
+						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "GetProperties",	"",	"a{sv}",control_get_properties },
 	{ NULL, NULL, NULL, NULL }
 };
 
 static GDBusSignalTable control_signals[] = {
-	{ "Connected",			""	},
-	{ "Disconnected",		""	},
+	{ "Connected",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
+	{ "Disconnected",		"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
 	{ "PropertyChanged",		"sv"	},
 	{ NULL, NULL }
 };

@@ -546,16 +546,17 @@ static GDBusMethodTable sink_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	sink_disconnect,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "IsConnected",	"",	"b",	sink_is_connected },
+	{ "IsConnected",	"",	"b",	sink_is_connected,
+						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "GetProperties",	"",	"a{sv}",sink_get_properties },
 	{ NULL, NULL, NULL, NULL }
 };
 
 static GDBusSignalTable sink_signals[] = {
-	{ "Connected",			""	},
-	{ "Disconnected",		""	},
-	{ "Playing",			""	},
-	{ "Stopped",			""	},
+	{ "Connected",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
+	{ "Disconnected",		"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
+	{ "Playing",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
+	{ "Stopped",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
 	{ "PropertyChanged",		"sv"	},
 	{ NULL, NULL }
 };

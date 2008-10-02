@@ -1017,14 +1017,15 @@ static GDBusMethodTable device_methods[] = {
 	{ "Connect",		"",	"",	device_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	device_disconnect	},
-	{ "IsConnected",	"",	"b",	device_is_connected	},
+	{ "IsConnected",	"",	"b",	device_is_connected,
+						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "GetProperties",	"",	"a{sv}",device_get_properties },
 	{ }
 };
 
 static GDBusSignalTable device_signals[] = {
-	{ "Connected",		""	},
-	{ "Disconnected",	""	},
+	{ "Connected",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
+	{ "Disconnected",		"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };

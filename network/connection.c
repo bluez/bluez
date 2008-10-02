@@ -521,14 +521,15 @@ static GDBusMethodTable connection_methods[] = {
 	{ "Connect",		"s",	"s",	connection_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	connection_disconnect	},
-	{ "IsConnected",	"",	"b",	is_connected		},
+	{ "IsConnected",	"",	"b",	is_connected,
+						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "GetProperties",	"",	"a{sv}",connection_get_properties },
 	{ }
 };
 
 static GDBusSignalTable connection_signals[] = {
-	{ "Connected",		"ss"	},
-	{ "Disconnected",	"s"	},
+	{ "Connected",		"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
+	{ "Disconnected",	"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };
