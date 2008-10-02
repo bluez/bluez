@@ -55,6 +55,7 @@
 #include "control.h"
 #include "sdpd.h"
 #include "glib-helper.h"
+#include "dbus-common.h"
 
 #define AVCTP_PSM 23
 
@@ -933,14 +934,42 @@ static DBusMessage *control_is_connected(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *control_get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct audio_device *device = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	gboolean value;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* Connected */
+	value = (device->control->session != NULL);
+	dbus_message_iter_append_dict_entry(&dict, "Connected",
+						DBUS_TYPE_BOOLEAN, &value);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
+}
+
 static GDBusMethodTable control_methods[] = {
 	{ "IsConnected",	"",	"b",	control_is_connected },
+	{ "GetProperties",	"",	"a{sv}",control_get_properties },
 	{ NULL, NULL, NULL, NULL }
 };
 
 static GDBusSignalTable control_signals[] = {
 	{ "Connected",			""	},
 	{ "Disconnected",		""	},
+	{ "PropertyChanged",		"sv"	},
 	{ NULL, NULL }
 };
 
