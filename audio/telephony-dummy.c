@@ -65,10 +65,12 @@ static struct indicator dummy_indicators[] =
 
 void telephony_device_connected(void *telephony_device)
 {
+	debug("telephony-dummy: device %p connected", telephony_device);
 }
 
 void telephony_device_disconnected(void *telephony_device)
 {
+	debug("telephony-dummy: device %p disconnected", telephony_device);
 	events_enabled = FALSE;
 }
 
