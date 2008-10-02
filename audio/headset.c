@@ -137,6 +137,7 @@ struct headset {
 	gboolean hfp_active;
 	gboolean search_hfp;
 	gboolean cli_active;
+	gboolean cme_enabled;
 
 	headset_state_t state;
 	struct pending_connect *pending;
@@ -549,8 +550,12 @@ static int telephony_generic_rsp(struct audio_device *device, cme_error_t err)
 {
 	struct headset *hs = device->headset;
 
-	if (err != CME_ERROR_NONE)
-		return headset_send(hs, "\r\n+CME ERROR:%d\r\n", err);
+	if (err != CME_ERROR_NONE) {
+		if (hs->cme_enabled)
+			return headset_send(hs, "\r\n+CME ERROR:%d\r\n", err);
+		else
+			return headset_send(hs, "\r\nERROR\r\n");
+	}
 
 	return headset_send(hs, "\r\nOK\r\n");
 }
@@ -562,7 +567,7 @@ int telephony_event_reporting_rsp(void *telephony_device, cme_error_t err)
 	int ret;
 
 	if (err != CME_ERROR_NONE)
-		return headset_send(hs, "\r\n+CME ERROR:%d\r\n", err);
+		return telephony_generic_rsp(telephony_device, err);
 
 	ret = headset_send(hs, "\r\nOK\r\n");
 	if (ret < 0)
@@ -656,7 +661,7 @@ int telephony_answer_call_rsp(void *telephony_device, cme_error_t err)
 	struct headset *hs = device->headset;
 
 	if (err != CME_ERROR_NONE)
-		return headset_send(hs, "\r\n+CME ERROR:%d\r\n", err);
+		return telephony_generic_rsp(telephony_device, err);
 
 	if (ag.ring_timer) {
 		g_source_remove(ag.ring_timer);
@@ -690,7 +695,7 @@ int telephony_terminate_call_rsp(void *telephony_device,
 	struct headset *hs = device->headset;
 
 	if (err != CME_ERROR_NONE)
-		return headset_send(hs, "\r\n+CME ERROR:%d\r\n", err);
+		return telephony_generic_rsp(telephony_device, err);
 
 	g_dbus_emit_signal(device->conn, device->path,
 			AUDIO_HEADSET_INTERFACE, "CallTerminated",
@@ -860,6 +865,25 @@ static int list_current_calls(struct audio_device *device, const char *buf)
 	return 0;
 }
 
+static int extended_errors(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	if (strlen(buf) < 9)
+		return -EINVAL;
+
+	if (buf[8] == '1') {
+		hs->cme_enabled = TRUE;
+		debug("CME errors enabled for headset %p", hs);
+	} else {
+		hs->cme_enabled = FALSE;
+		debug("CME errors disabled for headset %p", hs);
+	}
+
+	return 0;
+}
+
+
 static struct event event_callbacks[] = {
 	{ "ATA", answer_call },
 	{ "ATD", dial_number },
@@ -876,6 +900,7 @@ static struct event event_callbacks[] = {
 	{ "AT+VTS", dtmf_tone },
 	{ "AT+CNUM", subscriber_number },
 	{ "AT+CLCC", list_current_calls },
+	{ "AT+CMEE", extended_errors },
 	{ 0 }
 };
 
