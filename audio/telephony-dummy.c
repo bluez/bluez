@@ -354,7 +354,9 @@ static DBusConnection *connection = NULL;
 
 int telephony_init(void)
 {
-	uint32_t features = 0;
+	uint32_t features = AG_FEATURE_REJECT_A_CALL |
+				AG_FEATURE_ENHANCED_CALL_STATUS |
+				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
