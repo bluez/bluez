@@ -114,6 +114,7 @@ void telephony_answer_call_req(void *telephony_device);
 void telephony_dial_number_req(void *telephony_device, const char *number);
 void telephony_transmit_dtmf_req(void *telephony_device, char tone);
 void telephony_subscriber_number_req(void *telephony_device);
+int telephony_list_current_calls_req(void *telephony_device);
 
 /* AG responses to HF requests. These are implemented by headset.c */
 int telephony_event_reporting_rsp(void *telephony_device, cme_error_t err);
@@ -124,6 +125,7 @@ int telephony_answer_call_rsp(void *telephony_device, cme_error_t err);
 int telephony_dial_number_rsp(void *telephony_device, cme_error_t err);
 int telephony_transmit_dtmf_rsp(void *telephony_device, cme_error_t err);
 int telephony_subscriber_number_rsp(void *telephony_device, cme_error_t err);
+int telephony_list_current_calls_rsp(void *telephony_device, cme_error_t err);
 
 /* Event indications by AG. These are implemented by headset.c */
 int telephony_event_ind(int index);
@@ -132,6 +134,9 @@ int telephony_incoming_call_ind(const char *number, int type);
 int telephony_calling_stopped_ind(void);
 int telephony_ready_ind(uint32_t features, const struct indicator *indicators,
 			int rh);
+int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
+					int mprty, const char *number,
+					int type);
 
 /* Helper function for quick indicator updates */
 static inline int telephony_update_indicator(struct indicator *indicators,

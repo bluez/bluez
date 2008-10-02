@@ -848,6 +848,18 @@ static int subscriber_number(struct audio_device *device, const char *buf)
 	return 0;
 }
 
+int telephony_list_current_calls_rsp(void *telephony_device, cme_error_t err)
+{
+	return telephony_generic_rsp(telephony_device, err);
+}
+
+static int list_current_calls(struct audio_device *device, const char *buf)
+{
+	telephony_list_current_calls_req(device);
+
+	return 0;
+}
+
 static struct event event_callbacks[] = {
 	{ "ATA", answer_call },
 	{ "ATD", dial_number },
@@ -863,6 +875,7 @@ static struct event event_callbacks[] = {
 	{ "AT+BLDN", last_dialed_number },
 	{ "AT+VTS", dtmf_tone },
 	{ "AT+CNUM", subscriber_number },
+	{ "AT+CLCC", list_current_calls },
 	{ 0 }
 };
 
@@ -2172,6 +2185,26 @@ int telephony_ready_ind(uint32_t features,
 	debug("Telephony plugin initialized");
 
 	print_ag_features(ag.features);
+
+	return 0;
+}
+
+int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
+					int mprty, const char *number,
+					int type)
+{
+	if (!active_devices)
+		return -ENODEV;
+
+	if (number)
+		send_foreach_headset(active_devices,
+					"\r\n+CLCC:%d,%d,%d,%d,%d,%s,%d\r\n",
+					idx, dir, status, mode, mprty,
+					number, type);
+	else
+		send_foreach_headset(active_devices,
+					"\r\n+CLCC:%d,%d,%d,%d,%d\r\n",
+					idx, dir, status, mode, mprty);
 
 	return 0;
 }

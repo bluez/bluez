@@ -138,6 +138,12 @@ void telephony_subscriber_number_req(void *telephony_device)
 	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+int telephony_list_current_calls_req(void *telephony_device)
+{
+	debug("telephony-dummy: list current calls request");
+	telephony_list_current_calls_rsp(telephony_device, CME_ERROR_NONE);
+}
+
 /* D-Bus method handlers */
 static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 					void *data)
