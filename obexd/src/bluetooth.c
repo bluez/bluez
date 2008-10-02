@@ -36,8 +36,6 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/rfcomm.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -46,108 +44,116 @@
 
 #include "logging.h"
 #include "obex.h"
+#include "dbus.h"
 
-static GSList *handles = NULL;
-static sdp_session_t *session = NULL;
+const static gchar *opp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+<record>									\
+  <attribute id=\"0x0001\">							\
+    <sequence>									\
+      <uuid value=\"0x1105\"/>							\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0004\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x0100\"/>						\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0003\"/>						\
+        <uint8 value=\"%u\" name=\"channel\"/>					\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0008\"/>						\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0009\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x1105\"/>						\
+        <uint16 value=\"0x0100\" name=\"version\"/>				\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0100\">							\
+    <text value=\"%s\" name=\"name\"/>						\
+  </attribute>									\
+										\
+  <attribute id=\"0x0303\">							\
+    <sequence>									\
+      <uint8 value=\"0x01\"/>							\
+      <uint8 value=\"0x01\"/>							\
+      <uint8 value=\"0x02\"/>							\
+      <uint8 value=\"0x03\"/>							\
+      <uint8 value=\"0x04\"/>							\
+      <uint8 value=\"0x05\"/>							\
+      <uint8 value=\"0x06\"/>							\
+      <uint8 value=\"0xff\"/>							\
+    </sequence>									\
+  </attribute>									\
+</record>";
 
-static void add_lang_attr(sdp_record_t *r)
-{
-	sdp_lang_attr_t base_lang;
-	sdp_list_t *langs = 0;
-
-	/* UTF-8 MIBenum (http://www.iana.org/assignments/character-sets) */
-	base_lang.code_ISO639 = (0x65 << 8) | 0x6e;
-	base_lang.encoding = 106;
-	base_lang.base_offset = SDP_PRIMARY_LANG_BASE;
-	langs = sdp_list_append(0, &base_lang);
-	sdp_set_lang_attr(r, langs);
-	sdp_list_free(langs, 0);
-}
+const static gchar *ftp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+<record>									\
+  <attribute id=\"0x0001\">							\
+    <sequence>									\
+      <uuid value=\"0x1106\"/>							\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0004\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x0100\"/>						\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0003\"/>						\
+        <uint8 value=\"%u\" name=\"channel\"/>					\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0008\"/>						\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0009\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x1106\"/>						\
+        <uint16 value=\"0x0100\" name=\"version\"/>				\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0100\">							\
+    <text value=\"%s\" name=\"name\"/>						\
+  </attribute>									\
+</record>";
 
 static uint32_t register_record(const gchar *name,
 				guint16 service, guint8 channel)
 {
-	uuid_t root_uuid, uuid, l2cap_uuid, rfcomm_uuid, obex_uuid;
-	sdp_list_t *root, *svclass_id, *apseq, *profiles, *aproto, *proto[3];
-	sdp_data_t *sdp_data;
-	sdp_profile_desc_t profile;
-	sdp_record_t record;
-	uint8_t formats = 0xFF;
-	int ret;
+	gchar *record;
+	gint handle;
 
 	switch (service) {
 	case OBEX_OPUSH:
-		sdp_uuid16_create(&uuid, OBEX_OBJPUSH_SVCLASS_ID);
-		sdp_uuid16_create(&profile.uuid, OBEX_OBJPUSH_PROFILE_ID);
+		record = g_markup_printf_escaped(opp_record, channel, name);
 		break;
 	case OBEX_FTP:
-		sdp_uuid16_create(&uuid, OBEX_FILETRANS_SVCLASS_ID);
-		sdp_uuid16_create(&profile.uuid, OBEX_FILETRANS_PROFILE_ID);
+		record = g_markup_printf_escaped(ftp_record, channel, name);
 		break;
 	default:
 		return 0;
 	}
 
-	/* Browse Groups */
-	memset(&record, 0, sizeof(sdp_record_t));
-	record.handle = 0xffffffff;
-	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
-	root = sdp_list_append(NULL, &root_uuid);
-	sdp_set_browse_groups(&record, root);
-	sdp_list_free(root, NULL);
+	handle = add_record(record);
+	g_free(record);
 
-	/* Service Class */
-	svclass_id = sdp_list_append(NULL, &uuid);
-	sdp_set_service_classes(&record, svclass_id);
-	sdp_list_free(svclass_id, NULL);
-
-	/* Profile Descriptor */
-	profile.version = 0x0100;
-	profiles = sdp_list_append(NULL, &profile);
-	sdp_set_profile_descs(&record, profiles);
-	sdp_list_free(profiles, NULL);
-
-	/* Protocol Descriptor */
-	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
-	proto[0] = sdp_list_append(NULL, &l2cap_uuid);
-	apseq = sdp_list_append(NULL, proto[0]);
-
-	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
-	proto[1] = sdp_list_append(NULL, &rfcomm_uuid);
-	sdp_data = sdp_data_alloc(SDP_UINT8, &channel);
-	proto[1] = sdp_list_append(proto[1], sdp_data);
-	apseq = sdp_list_append(apseq, proto[1]);
-
-	sdp_uuid16_create(&obex_uuid, OBEX_UUID);
-	proto[2] = sdp_list_append(NULL, &obex_uuid);
-	apseq = sdp_list_append(apseq, proto[2]);
-
-	aproto = sdp_list_append(NULL, apseq);
-	sdp_set_access_protos(&record, aproto);
-
-	sdp_data_free(sdp_data);
-	sdp_list_free(proto[0], NULL);
-	sdp_list_free(proto[1], NULL);
-	sdp_list_free(proto[2], NULL);
-	sdp_list_free(apseq, NULL);
-	sdp_list_free(aproto, NULL);
-
-	/* Suported Repositories */
-	if (service == OBEX_OPUSH)
-		sdp_attr_add_new(&record, SDP_ATTR_SUPPORTED_FORMATS_LIST,
-				SDP_UINT8, &formats);
-
-	/* Service Name */
-	sdp_set_info_attr(&record, name, NULL, NULL);
-
-	add_lang_attr(&record);
-
-	ret = sdp_record_register(session, &record, SDP_RECORD_PERSIST);
-
-	sdp_list_free(record.attrlist, (sdp_free_func_t) sdp_data_free);
-	sdp_list_free(record.pattern, free);
-
-	return (ret < 0 ? 0 : record.handle);
+	return handle;
 }
 
 static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
@@ -199,7 +205,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	struct sockaddr_rc laddr;
 	GIOChannel *io;
 	struct server *server;
-	uint32_t *handle;
+	uint32_t handle;
 	int err, sk, arg;
 
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
@@ -245,21 +251,18 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 		goto failed;
 	}
 
-	handle = malloc(sizeof(uint32_t));
-	*handle = register_record(name, service, channel);
-	if (*handle == 0) {
-		g_free(handle);
+	handle = register_record(name, service, channel);
+	if (handle == 0) {
 		err = EIO;
 		goto failed;
 	}
-
-	handles = g_slist_prepend(handles, handle);
 
 	server = g_malloc0(sizeof(struct server));
 	server->service = service;
 	server->folder = g_strdup(folder);
 	server->auto_accept = auto_accept;
 	server->capability = g_strdup(capability);
+	server->handle = handle;
 
 	io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(io, TRUE);
@@ -268,7 +271,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 			connect_event, server, server_destroyed);
 	g_io_channel_unref(io);
 
-	debug("Registered: %s, record handle: 0x%x, folder: %s", name, *handle, folder);
+	debug("Registered: %s, record handle: 0x%x, folder: %s", name, handle, folder);
 
 	return 0;
 
@@ -283,31 +286,11 @@ gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
 		guint8 channel, gboolean secure, gboolean auto_accept,
 		const gchar *capability)
 {
-	if (!session) {
-		session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
-		if (!session) {
-			gint err = errno;
-			error("sdp_connect(): %s(%d)", strerror(err), err);
-			return -err;
-		}
-	}
-
 	return server_register(service, name, channel,
 			folder, secure, auto_accept, capability);
 }
 
-static void unregister_record(gpointer rec_handle, gpointer user_data)
-{
-	uint32_t *handle = rec_handle;
-
-	sdp_device_record_unregister_binary(session, BDADDR_ANY, *handle);
-	g_free(handle);
-}
-
 void bluetooth_exit(void)
 {
-	g_slist_foreach(handles, unregister_record, NULL);
-	g_slist_free(handles);
-
-	sdp_close(session);
+	return;
 }

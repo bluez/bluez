@@ -47,6 +47,7 @@ struct server {
 	gboolean	auto_accept;
 	gchar		*folder;
 	gchar		*capability;
+	guint32		handle;
 };
 
 struct obex_session {

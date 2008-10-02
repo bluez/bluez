@@ -314,12 +314,18 @@ static GDBusMethodTable session_methods[] = {
 
 static DBusConnection *connection = NULL;
 
+static DBusConnection *system_conn = NULL;
+
 gboolean manager_init(DBusConnection *conn)
 {
 	DBG("conn %p", conn);
 
 	connection = dbus_connection_ref(conn);
 	if (connection == NULL)
+		return FALSE;
+
+	system_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
+	if (system_conn == NULL)
 		return FALSE;
 
 	return g_dbus_register_interface(connection, OPENOBEX_MANAGER_PATH,
@@ -339,6 +345,9 @@ void manager_cleanup(void)
 
 	if (agent)
 		agent_free(agent);
+
+	if (system_conn)
+		dbus_connection_unref(system_conn);
 
 	dbus_connection_unref(connection);
 }
@@ -570,6 +579,55 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	agent->new_name = NULL;
 
 	return 0;
+}
+
+gint add_record(gchar *record)
+{
+	DBusMessage *msg, *reply;
+	const gchar *adapter_path;
+	guint32 handle;
+
+	if (system_conn == NULL)
+		return 0;
+
+	msg = dbus_message_new_method_call("org.bluez", "/",
+			"org.bluez.Manager", "DefaultAdapter");
+
+	reply = dbus_connection_send_with_reply_and_block(system_conn, msg,
+			-1, NULL);
+	if (reply == NULL) {
+		dbus_message_unref(msg);
+		return 0;
+	}
+
+	dbus_message_unref(msg);
+
+	dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH, &adapter_path,
+			DBUS_TYPE_INVALID);
+
+	dbus_message_unref(reply);
+
+	msg = dbus_message_new_method_call("org.bluez", adapter_path,
+			"org.bluez.Service", "AddRecord");
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &record,
+			DBUS_TYPE_INVALID);
+
+	reply = dbus_connection_send_with_reply_and_block(system_conn, msg,
+			-1, NULL);
+	if (reply == NULL) {
+		dbus_message_unref(msg);
+		return 0;
+	}
+
+	dbus_message_unref(msg);
+
+	dbus_message_get_args(reply, NULL, DBUS_TYPE_UINT32, &handle,
+			DBUS_TYPE_INVALID);
+
+	dbus_message_unref(reply);
+
+	return handle;
 }
 
 void register_session(guint32 id, struct obex_session *os)

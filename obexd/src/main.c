@@ -252,19 +252,19 @@ int main(int argc, char *argv[])
 
 	plugin_init();
 
-	if (opush)
-		server_start(OBEX_OPUSH, root_path, auto_accept,
-							NULL, devnode);
-
-	if (ftp)
-		server_start(OBEX_FTP, root_path, auto_accept,
-							capability, devnode);
-
 	if (!manager_init(conn)) {
 		error("manager_init failed");
 		plugin_cleanup();
 		exit(EXIT_FAILURE);
 	}
+
+	if (opush)
+		server_start(OBEX_OPUSH, root_path, auto_accept,
+				NULL, devnode);
+
+	if (ftp)
+		server_start(OBEX_FTP, root_path, auto_accept,
+				capability, devnode);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
