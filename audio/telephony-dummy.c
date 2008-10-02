@@ -36,6 +36,10 @@
 #include "logging.h"
 #include "telephony.h"
 
+static char *active_call_number = NULL;
+static int active_call_status = 0;
+static int active_call_dir = 0;
+
 static gboolean events_enabled = FALSE;
 
 /* Response and hold state
@@ -92,10 +96,16 @@ void telephony_last_dialed_number_req(void *telephony_device)
 					EV_CALLSETUP_OUTGOING);
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_ALERTING);
+
+	active_call_status = CALL_STATUS_ALERTING;
+	active_call_dir = CALL_DIR_OUTGOING;
 }
 
 void telephony_terminate_call_req(void *telephony_device)
 {
+	g_free(active_call_number);
+	active_call_number = NULL;
+
 	telephony_terminate_call_rsp(telephony_device, CME_ERROR_NONE);
 
 	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0)
@@ -117,6 +127,9 @@ void telephony_answer_call_req(void *telephony_device)
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
 {
+	g_free(active_call_number);
+	active_call_number = g_strdup(number);
+
 	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
 
 	/* Notify outgoing call set-up successfully initiated */
@@ -124,6 +137,9 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 					EV_CALLSETUP_OUTGOING);
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_ALERTING);
+
+	active_call_status = CALL_STATUS_ALERTING;
+	active_call_dir = CALL_DIR_OUTGOING;
 }
 
 void telephony_transmit_dtmf_req(void *telephony_device, char tone)
@@ -138,9 +154,16 @@ void telephony_subscriber_number_req(void *telephony_device)
 	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
-int telephony_list_current_calls_req(void *telephony_device)
+void telephony_list_current_calls_req(void *telephony_device)
 {
 	debug("telephony-dummy: list current calls request");
+	if (active_call_number)
+		telephony_list_current_call_ind(1, active_call_dir,
+						active_call_status,
+						CALL_MODE_VOICE,
+						CALL_MULTIPARTY_NO,
+						active_call_number,
+						0);
 	telephony_list_current_calls_rsp(telephony_device, CME_ERROR_NONE);
 }
 
@@ -156,10 +179,16 @@ static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 
 	debug("telephony-dummy: outgoing call to %s", number);
 
+	g_free(active_call_number);
+	active_call_number = g_strdup(number);
+
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_OUTGOING);
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_ALERTING);
+
+	active_call_status = CALL_STATUS_ALERTING;
+	active_call_dir = CALL_DIR_OUTGOING;
 
 	return dbus_message_new_method_return(msg);
 }
@@ -175,8 +204,14 @@ static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
 
 	debug("telephony-dummy: incoming call to %s", number);
 
+	g_free(active_call_number);
+	active_call_number = g_strdup(number);
+
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_INCOMING);
+
+	active_call_status = CALL_STATUS_INCOMING;
+	active_call_dir = CALL_DIR_INCOMING;
 
 	telephony_incoming_call_ind(number, 0);
 
@@ -187,6 +222,9 @@ static DBusMessage *cancel_call(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
 	debug("telephony-dummy: cancel call");
+
+	g_free(active_call_number);
+	active_call_number = NULL;
 
 	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0) {
 		telephony_update_indicator(dummy_indicators, "callsetup",

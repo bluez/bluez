@@ -64,6 +64,24 @@
 #define EV_ROAM_INACTIVE		0
 #define EV_ROAM_ACTIVE			1
 
+/* Call parameters */
+#define CALL_DIR_OUTGOING		0
+#define CALL_DIR_INCOMING		1
+
+#define CALL_STATUS_ACTIVE		0
+#define CALL_STATUS_HELD		1
+#define CALL_STATUS_DIALING		2
+#define CALL_STATUS_ALERTING		3
+#define CALL_STATUS_INCOMING		4
+#define CALL_STATUS_WAITING		5
+
+#define CALL_MODE_VOICE			0
+#define CALL_MODE_DATA			1
+#define CALL_MODE_FAX			2
+
+#define CALL_MULTIPARTY_NO		0
+#define CALL_MULTIPARTY_YES		1
+
 /* Extended Audio Gateway Error Result Codes */
 typedef enum {
 	CME_ERROR_NONE			= -1,
@@ -114,7 +132,7 @@ void telephony_answer_call_req(void *telephony_device);
 void telephony_dial_number_req(void *telephony_device, const char *number);
 void telephony_transmit_dtmf_req(void *telephony_device, char tone);
 void telephony_subscriber_number_req(void *telephony_device);
-int telephony_list_current_calls_req(void *telephony_device);
+void telephony_list_current_calls_req(void *telephony_device);
 
 /* AG responses to HF requests. These are implemented by headset.c */
 int telephony_event_reporting_rsp(void *telephony_device, cme_error_t err);
