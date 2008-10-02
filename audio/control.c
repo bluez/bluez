@@ -418,12 +418,20 @@ static void avctp_unref(struct avctp *session)
 {
 	sessions = g_slist_remove(sessions, session);
 
-	if (session->state == AVCTP_STATE_CONNECTED)
+	if (session->state == AVCTP_STATE_CONNECTED) {
+		gboolean value = FALSE;
 		g_dbus_emit_signal(session->dev->conn,
 						session->dev->path,
 						AUDIO_CONTROL_INTERFACE,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
+		dbus_connection_emit_property_changed(session->dev->conn,
+						session->dev->path,
+						AUDIO_CONTROL_INTERFACE,
+						"Connected",
+						DBUS_TYPE_BOOLEAN, &value);
+	}
+
 	if (session->sock >= 0)
 		close(session->sock);
 	if (session->io)
@@ -601,6 +609,7 @@ static void init_uinput(struct avctp *session)
 static void avctp_connect_session(struct avctp *session)
 {
 	GIOChannel *io;
+	gboolean value;
 
 	session->state = AVCTP_STATE_CONNECTED;
 	session->dev = manager_find_device(&session->dst, NULL, FALSE);
@@ -611,9 +620,15 @@ static void avctp_connect_session(struct avctp *session)
 
 	init_uinput(session);
 
+	value = TRUE;
 	g_dbus_emit_signal(session->dev->conn, session->dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
 					DBUS_TYPE_INVALID);
+	dbus_connection_emit_property_changed(session->dev->conn,
+					session->dev->path,
+					AUDIO_CONTROL_INTERFACE,
+					"Connected",
+					DBUS_TYPE_BOOLEAN, &value);
 
 	if (session->io)
 		g_source_remove(session->io);
