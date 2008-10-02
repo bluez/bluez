@@ -29,13 +29,35 @@ Methods		string Connect(string uuid)
 
 			Possible errors: org.bluez.Error.Failed
 
-		bool IsConnected()
+		bool IsConnected() {deprecated}
 
 			Returns the connection status.
 
-Signals		void Connected(string device, string uuid)
+		dict GetProperties()
 
-		void Disconnected(string device)
+			Returns all properties for the interface. See the
+			properties section for available properties.
+
+Signals		void Connected(string device, string uuid) {deprecated}
+
+		void Disconnected(string device) {deprecated}
+
+		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+Properties	boolean Connected [readonly]
+
+			Indicates if the device is connected.
+
+		string Device [readonly]
+
+			Indicates the network interface name when available.
+
+		string UUID [readonly]
+
+			Indicates the connection role when available.
 
 
 Network Hub/Peer/Router hierarchy

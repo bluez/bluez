@@ -27,10 +27,26 @@ Methods		void Connect()
 
 			Possible errors: org.bluez.Error.Failed
 
-		bool IsConnected()
+		bool IsConnected() {deprecated}
 
 			Returns the connection status.
 
-Signals		void Connected()
+		dict GetProperties()
 
-		void Disconnected()
+			Returns all properties for the interface. See the
+			properties section for available properties.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+
+Signals		void Connected() {deprecated}
+
+		void Disconnected() {deprecated}
+
+		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+Properties	boolean Connected [readonly]
+
+			Indicates if the device is connected.

@@ -22,7 +22,7 @@ Methods		void Connect()
 			Disconnect from the HSP/HFP service on the remote
 			device.
 
-		boolean IsConnected()
+		boolean IsConnected() {deprecated}
 
 			Returns TRUE if there is a active connection to the
 			HSP/HFP connection on the remote device.
@@ -45,56 +45,95 @@ Methods		void Connect()
 
 			Close the audio connection.
 
-		boolean IsPlaying()
+		boolean IsPlaying() {deprecated}
 
 			Returns true if an audio connection to the headset
 			is active.
 
-		uint16 GetSpeakerGain()
+		uint16 GetSpeakerGain() {deprecated}
 
 			Returns the current speaker gain if available,
 			otherwise returns the error NotAvailable.
 
-		uint16 GetMicrophoneGain()
+		uint16 GetMicrophoneGain() {deprecated}
 
 			Returns the current microphone gain if available,
 			otherwise returns the error NotAvailable.
 
-		void SetSpeakerGain(uint16 gain)
+		void SetSpeakerGain(uint16 gain) {deprecated}
 
 			Changes the current speaker gain if possible.
 
-		void SetMicrophoneGain(uint16 gain)
+		void SetMicrophoneGain(uint16 gain) {deprecated}
 
 			Changes the current speaker gain if possible.
+
+		dict GetProperties()
+
+			Returns all properties for the interface. See the
+			properties section for available properties.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed a read-write are changeable.
+			On success this will emit a PropertyChanged signal.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
 
 Signals		void AnswerRequested()
 
 			Sent when the answer button is pressed on the headset
 
-		void Connected()
+		void Connected() {deprecated}
 
 			Sent when the device has been connected to.
 
-		void Disconnected()
+		void Disconnected() {deprecated}
 
 			Sent when the device has been disconnected from.
 
-		void Stopped()
+		void Stopped() {deprecated}
 
 			Sent when the audio connection is closed
 
-		void Playing()
+		void Playing() {deprecated}
 
 			Sent when the audio connection is opened
 
-		void SpeakerGainChanged(uint16 gain)
+		void SpeakerGainChanged(uint16 gain) {deprecated}
 
 			The speaker gain changed.
 
-		void MicrophoneGainChanged(uint16 gain)
+		void MicrophoneGainChanged(uint16 gain) {deprecated}
 
 			The microphone gain changed.
+
+		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+properties	boolean Connected [readonly]
+
+			Indicates if there is a active connection to the
+			HSP/HFP connection on the remote device.
+
+		boolean Playing  [readonly]
+
+			Indicates if an audio connection to the headset
+			is active.
+
+		uint16 SpeakerGain  [readwrite]
+
+			The speaker gain when available.
+
+		uint16 MicrophoneGain  [readwrite]
+
+			The speaker gain when available.
 
 
 AudioSink hierarchy
@@ -113,24 +152,46 @@ Methods		void Connect()
 
 			Disconnect from the remote device.
 
-		boolean IsConnected()
+		boolean IsConnected() {deprecated}
 
 			Returns TRUE if a stream is setup to a A2DP sink on
 			the remote device.
 
-Signals		void Connected()
+		dict GetProperties()
+
+			Returns all properties for the interface. See the
+			properties section for available properties.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+
+Signals		void Connected() {deprecated}
 
 			Sent when a successful connection has been made to the
 			remote A2DP Sink
 
-		void Disconnected()
+		void Disconnected() {deprecated}
 
 			Sent when the device has been disconnected from.
 
-		void Playing()
+		void Playing() {deprecated}
 
 			Sent when a stream with remote device is started.
 
-		void Stopped()
+		void Stopped() {deprecated}
 
 			Sent when a stream with remote device is suspended.
+
+		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+properties	boolean Connected [readonly]
+
+			Indicates if a stream is setup to a A2DP sink on
+			the remote device.
+
+		boolean Playing  [readonly]
+
+			Indicates if a stream is active to a A2DP sink on
+			the remote device.
