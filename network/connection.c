@@ -137,10 +137,27 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 
 	if (connection != NULL) {
 		const char *device = nc->dev;
+		gboolean connected = FALSE;
+		const char *property = "";
 		g_dbus_emit_signal(connection, nc->peer->path,
 				NETWORK_PEER_INTERFACE, "Disconnected",
 				DBUS_TYPE_STRING, &device,
 				DBUS_TYPE_INVALID);
+		dbus_connection_emit_property_changed(connection,
+						nc->peer->path,
+						NETWORK_PEER_INTERFACE,
+						"Connected",
+						DBUS_TYPE_BOOLEAN, &connected);
+		dbus_connection_emit_property_changed(connection,
+						nc->peer->path,
+						NETWORK_PEER_INTERFACE,
+						"Device",
+						DBUS_TYPE_STRING, &property);
+		dbus_connection_emit_property_changed(connection,
+						nc->peer->path,
+						NETWORK_PEER_INTERFACE,
+						"UUID",
+						DBUS_TYPE_STRING, &property);
 	}
 
 	info("%s disconnected", nc->dev);
@@ -165,6 +182,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	int sk;
 	DBusMessage *reply;
 	const char *pdev, *uuid;
+	gboolean connected;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -229,11 +247,21 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 			DBUS_TYPE_STRING, &pdev,
 			DBUS_TYPE_INVALID);
 
+	connected = TRUE;
 	g_dbus_emit_signal(connection, nc->peer->path,
 			NETWORK_PEER_INTERFACE, "Connected",
 			DBUS_TYPE_STRING, &pdev,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
+	dbus_connection_emit_property_changed(connection, nc->peer->path,
+					NETWORK_PEER_INTERFACE, "Connected",
+					DBUS_TYPE_BOOLEAN, &connected);
+	dbus_connection_emit_property_changed(connection, nc->peer->path,
+					NETWORK_PEER_INTERFACE, "Device",
+					DBUS_TYPE_BOOLEAN, &pdev);
+	dbus_connection_emit_property_changed(connection, nc->peer->path,
+					NETWORK_PEER_INTERFACE, "UUID",
+					DBUS_TYPE_BOOLEAN, &uuid);
 
 	nc->state = CONNECTED;
 
