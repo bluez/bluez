@@ -1364,25 +1364,54 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static gboolean ring_timer_cb(gpointer data)
+static int hfp_cmp(struct headset *hs)
+{
+	if (hs->hfp_active)
+		return 0;
+	else
+		return -1;
+}
+
+static void send_foreach_headset(GSList *devices,
+					int (*cmp)(struct headset *hs),
+					char *format, ...)
 {
 	GSList *l;
+	va_list ap;
 
-	for (l = active_devices; l != NULL; l = l->next) {
+	for (l = devices; l != NULL; l = l->next) {
 		struct audio_device *device = l->data;
 		struct headset *hs = device->headset;
 		int ret;
 
-		ret = headset_send(hs, "\r\nRING\r\n");
-		if (ret < 0) {
-			error("Unable to send to headset");
+		if (cmp && cmp(hs) != 0)
 			continue;
-		}
 
-		if (hs->cli_active && ag.number)
-			headset_send(hs, "\r\n+CLIP:\"%s\",%d\r\n",
-					ag.number, ag.number_type);
+		va_start(ap, format);
+		ret = headset_send_valist(hs, format, ap);
+		if (ret < 0)
+			error("Failed to send to headset: %s (%d)",
+					strerror(-ret), -ret);
+		va_end(ap);
 	}
+}
+
+static int cli_cmp(struct headset *hs)
+{
+	if (hs->cli_active)
+		return 0;
+	else
+		return -1;
+}
+
+static gboolean ring_timer_cb(gpointer data)
+{
+	send_foreach_headset(active_devices, NULL, "\r\nRING\r\n");
+
+	if (ag.number)
+		send_foreach_headset(active_devices, cli_cmp,
+					"\r\n+CLIP:\"%s\",%d\r\n",
+					ag.number, ag.number_type);
 
 	return TRUE;
 }
@@ -2128,38 +2157,6 @@ int headset_get_sco_fd(struct audio_device *dev)
 		return -1;
 
 	return g_io_channel_unix_get_fd(hs->sco);
-}
-
-static int hfp_cmp(struct headset *hs)
-{
-	if (hs->hfp_active)
-		return 0;
-	else
-		return -1;
-}
-
-static void send_foreach_headset(GSList *devices,
-					int (*cmp)(struct headset *hs),
-					char *format, ...)
-{
-	GSList *l;
-	va_list ap;
-
-	for (l = devices; l != NULL; l = l->next) {
-		struct audio_device *device = l->data;
-		struct headset *hs = device->headset;
-		int ret;
-
-		if (cmp && cmp(hs) != 0)
-			continue;
-
-		va_start(ap, format);
-		ret = headset_send_valist(hs, format, ap);
-		if (ret < 0)
-			error("Failed to send to headset: %s (%d)",
-					strerror(-ret), -ret);
-		va_end(ap);
-	}
 }
 
 int telephony_event_ind(int index)
