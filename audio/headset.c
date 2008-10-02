@@ -138,6 +138,7 @@ struct headset {
 	gboolean search_hfp;
 	gboolean cli_active;
 	gboolean cme_enabled;
+	gboolean cwa_enabled;
 
 	headset_state_t state;
 	struct pending_connect *pending;
@@ -883,6 +884,23 @@ static int extended_errors(struct audio_device *device, const char *buf)
 	return 0;
 }
 
+static int call_waiting_notify(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	if (strlen(buf) < 9)
+		return -EINVAL;
+
+	if (buf[8] == '1') {
+		hs->cwa_enabled = TRUE;
+		debug("Call waiting notifiaction enabled for headset %p", hs);
+	} else {
+		hs->cwa_enabled = FALSE;
+		debug("Call waiting notification disabled for headset %p", hs);
+	}
+
+	return 0;
+}
 
 static struct event event_callbacks[] = {
 	{ "ATA", answer_call },
@@ -901,6 +919,7 @@ static struct event event_callbacks[] = {
 	{ "AT+CNUM", subscriber_number },
 	{ "AT+CLCC", list_current_calls },
 	{ "AT+CMEE", extended_errors },
+	{ "AT+CCWA", call_waiting_notify },
 	{ 0 }
 };
 
@@ -2111,7 +2130,17 @@ int headset_get_sco_fd(struct audio_device *dev)
 	return g_io_channel_unix_get_fd(hs->sco);
 }
 
-static void send_foreach_headset(GSList *devices, char *format, ...)
+static int hfp_cmp(struct headset *hs)
+{
+	if (hs->hfp_active)
+		return 0;
+	else
+		return -1;
+}
+
+static void send_foreach_headset(GSList *devices,
+					int (*cmp)(struct headset *hs),
+					char *format, ...)
 {
 	GSList *l;
 	va_list ap;
@@ -2121,7 +2150,7 @@ static void send_foreach_headset(GSList *devices, char *format, ...)
 		struct headset *hs = device->headset;
 		int ret;
 
-		if (!hs->hfp_active)
+		if (cmp && cmp(hs) != 0)
 			continue;
 
 		va_start(ap, format);
@@ -2143,7 +2172,8 @@ int telephony_event_ind(int index)
 		return -EINVAL;
 	}
 
-	send_foreach_headset(active_devices, "\r\n+CIEV:%d,%d\r\n", index + 1,
+	send_foreach_headset(active_devices, hfp_cmp,
+				"\r\n+CIEV:%d,%d\r\n", index + 1,
 				ag.indicators[index].val);
 
 	return 0;
@@ -2160,7 +2190,8 @@ int telephony_response_and_hold_ind(int rh)
 	if (ag.rh < 0)
 		return 0;
 
-	send_foreach_headset(active_devices, "\r\n+BTRH:%d\r\n", ag.rh);
+	send_foreach_headset(active_devices, hfp_cmp, "\r\n+BTRH:%d\r\n",
+				ag.rh);
 
 	return 0;
 }
@@ -2222,12 +2253,12 @@ int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 		return -ENODEV;
 
 	if (number)
-		send_foreach_headset(active_devices,
+		send_foreach_headset(active_devices, hfp_cmp,
 					"\r\n+CLCC:%d,%d,%d,%d,%d,%s,%d\r\n",
 					idx, dir, status, mode, mprty,
 					number, type);
 	else
-		send_foreach_headset(active_devices,
+		send_foreach_headset(active_devices, hfp_cmp,
 					"\r\n+CLCC:%d,%d,%d,%d,%d\r\n",
 					idx, dir, status, mode, mprty);
 
@@ -2239,8 +2270,31 @@ int telephony_subscriber_number_ind(const char *number, int type, int service)
 	if (!active_devices)
 		return -ENODEV;
 
-	send_foreach_headset(active_devices, "\r\n+CNUM:,%s,%d,,%d\r\n",
+	send_foreach_headset(active_devices, hfp_cmp,
+				"\r\n+CNUM:,%s,%d,,%d\r\n",
 				number, type, service);
+
+	return 0;
+}
+
+static int cwa_cmp(struct headset *hs)
+{
+	if (!hs->hfp_active)
+		return -1;
+
+	if (hs->cwa_enabled)
+		return 0;
+	else
+		return -1;
+}
+
+int telephony_call_waiting_ind(const char *number, int type)
+{
+	if (!active_devices)
+		return -ENODEV;
+
+	send_foreach_headset(active_devices, cwa_cmp, "\r\n+CCWA:%s,%d\r\n",
+				number, type);
 
 	return 0;
 }

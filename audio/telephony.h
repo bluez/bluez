@@ -161,6 +161,7 @@ int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 					int type);
 int telephony_subscriber_number_ind(const char *number, int type,
 					int service);
+int telephony_call_waiting_ind(const char *number, int type);
 
 /* Helper function for quick indicator updates */
 static inline int telephony_update_indicator(struct indicator *indicators,
