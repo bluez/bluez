@@ -338,7 +338,6 @@ static DBusMessage *set_subscriber_number(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-
 static GDBusMethodTable dummy_methods[] = {
 	{ "OutgoingCall",	"s",	"",	outgoing_call		},
 	{ "IncomingCall",	"s",	"",	incoming_call		},
