@@ -42,6 +42,7 @@
 #include "a2dp.h"
 #include "error.h"
 #include "sink.h"
+#include "dbus-common.h"
 
 #define STREAM_SETUP_RETRY_TIMER 2000
 
@@ -78,12 +79,14 @@ static void stream_state_changed(struct avdtp_stream *stream,
 {
 	struct audio_device *dev = user_data;
 	struct sink *sink = dev->sink;
+	gboolean value;
 
 	if (err)
 		return;
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
+		value = FALSE;
 		g_dbus_emit_signal(dev->conn, dev->path,
 						AUDIO_SINK_INTERFACE,
 						"Disconnected",
@@ -483,12 +486,44 @@ static DBusMessage *sink_is_connected(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *sink_get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct audio_device *device = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	gboolean value;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* Playing */
+	value = (device->sink->state == AVDTP_STATE_STREAMING);
+	dbus_message_iter_append_dict_entry(&dict, "Playing",
+						DBUS_TYPE_BOOLEAN, &value);
+
+	/* Connected */
+	value = (device->sink->state >= AVDTP_STATE_CONFIGURED);
+	dbus_message_iter_append_dict_entry(&dict, "Connected",
+						DBUS_TYPE_BOOLEAN, &value);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
+}
+
 static GDBusMethodTable sink_methods[] = {
 	{ "Connect",		"",	"",	sink_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	sink_disconnect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "IsConnected",	"",	"b",	sink_is_connected },
+	{ "GetProperties",	"",	"a{sv}",sink_get_properties },
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -497,6 +532,7 @@ static GDBusSignalTable sink_signals[] = {
 	{ "Disconnected",		""	},
 	{ "Playing",			""	},
 	{ "Stopped",			""	},
+	{ "PropertyChanged",		"sv"	},
 	{ NULL, NULL }
 };
 
