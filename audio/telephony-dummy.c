@@ -126,6 +126,8 @@ void telephony_answer_call_req(void *telephony_device)
 	telephony_update_indicator(dummy_indicators, "call", EV_CALL_ACTIVE);
 	telephony_update_indicator(dummy_indicators, "callsetup",
 					EV_CALLSETUP_INACTIVE);
+
+	active_call_status = CALL_STATUS_ACTIVE;
 }
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
@@ -244,7 +246,6 @@ static DBusMessage *cancel_call(DBusConnection *conn, DBusMessage *msg,
 
 	return dbus_message_new_method_return(msg);
 }
-
 
 static DBusMessage *signal_strength(DBusConnection *conn, DBusMessage *msg,
 					void *data)
