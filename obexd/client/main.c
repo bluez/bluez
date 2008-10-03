@@ -41,13 +41,53 @@
 static DBusMessage *send_files(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	DBusMessage *reply;
+	DBusMessageIter iter, array;
+	const char *agent;
 
-	reply = dbus_message_new_method_return(message);
-	if (!reply)
-		return NULL;
+	dbus_message_iter_init(message, &iter);
 
-	return reply;
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&array, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		switch (dbus_message_iter_get_arg_type(&value)) {
+		case DBUS_TYPE_STRING:
+			dbus_message_iter_get_basic(&value, &val);
+			printf("%s %s\n", key, val);
+			break;
+		}
+
+		dbus_message_iter_next(&array);
+	}
+
+	dbus_message_iter_next(&iter);
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
+		const char *file;
+
+		dbus_message_iter_get_basic(&array, &file);
+		printf("  Filename %s\n", file);
+
+		dbus_message_iter_next(&array);
+	}
+
+	dbus_message_iter_next(&iter);
+
+	dbus_message_iter_get_basic(&iter, &agent);
+	printf("  Agent %s\n", agent);
+
+	return dbus_message_new_method_return(message);
 }
 
 static GDBusMethodTable client_methods[] = {
