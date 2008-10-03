@@ -1,3 +1,9 @@
+ver 4.10:
+	Fix memory leaks with HAL messages.
+	Add more advanced handsfree features.
+	Add properties to audio, input and network interfaces.
+	Stop device discovery timer on device removal.
+
 ver 4.9:
 	Fix signals for Powered and Discoverable properties.
 	Fix handling of Alias and Icon properties.
