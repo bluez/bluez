@@ -33,36 +33,62 @@
 #include <glib.h>
 #include <gdbus.h>
 
+#include "session.h"
+
 #define CLIENT_SERVICE  "org.openobex.client"
 
 #define CLIENT_INTERFACE  "org.openobex.Client"
 #define CLIENT_PATH       "/"
 
+struct send_data {
+	DBusConnection *connection;
+	DBusMessage *message;
+	gchar *agent;
+	gchar *file;
+};
+
+static void create_callback(struct session_data *session, void *user_data)
+{
+	struct send_data *data = user_data;
+
+	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
+
+	dbus_message_unref(data->message);
+	dbus_connection_unref(data->connection);
+
+	session_set_agent(session, data->agent);
+	g_free(data->agent);
+
+	session_send(session, data->file);
+	g_free(data->file);
+
+	g_free(data);
+}
+
 static DBusMessage *send_files(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter, array;
-	const char *agent;
+	struct send_data *data;
+	const char *agent, *dest = NULL, *file = NULL;
 
 	dbus_message_iter_init(message, &iter);
-
 	dbus_message_iter_recurse(&iter, &array);
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
-		const char *key, *val;
+		const char *key;
 
 		dbus_message_iter_recurse(&array, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
 
 		dbus_message_iter_next(&entry);
-
 		dbus_message_iter_recurse(&entry, &value);
 
 		switch (dbus_message_iter_get_arg_type(&value)) {
 		case DBUS_TYPE_STRING:
-			dbus_message_iter_get_basic(&value, &val);
-			printf("%s %s\n", key, val);
+			if (g_str_equal(key, "Destination") == TRUE)
+				dbus_message_iter_get_basic(&value, &dest);
 			break;
 		}
 
@@ -70,28 +96,46 @@ static DBusMessage *send_files(DBusConnection *connection,
 	}
 
 	dbus_message_iter_next(&iter);
-
 	dbus_message_iter_recurse(&iter, &array);
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
-		const char *file;
-
-		dbus_message_iter_get_basic(&array, &file);
-		printf("  Filename %s\n", file);
+		if (file == NULL)
+			dbus_message_iter_get_basic(&array, &file);
 
 		dbus_message_iter_next(&array);
 	}
 
 	dbus_message_iter_next(&iter);
-
 	dbus_message_iter_get_basic(&iter, &agent);
-	printf("  Agent %s\n", agent);
 
-	return dbus_message_new_method_return(message);
+	if (dest == NULL)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
+	data = g_try_malloc0(sizeof(*data));
+	if (data == NULL)
+		return g_dbus_create_error(message,
+					"org.openobex.Error.NoMemory", NULL);
+
+	data->connection = dbus_connection_ref(connection);
+	data->message = dbus_message_ref(message);
+	data->agent = g_strdup(agent);
+	data->file = g_strdup(file);
+
+	if (session_create(NULL, dest, NULL, create_callback, data) == 0)
+		return NULL;
+
+	dbus_message_unref(message);
+	dbus_connection_unref(connection);
+	g_free(data->agent);
+	g_free(data->file);
+	g_free(data);
+
+	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
 }
 
 static GDBusMethodTable client_methods[] = {
-	{ "SendFiles", "a{sv}aso", "",send_files },
+	{ "SendFiles", "a{sv}aso", "", send_files, G_DBUS_METHOD_FLAG_ASYNC },
 	{ }
 };
 
