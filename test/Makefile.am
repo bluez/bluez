@@ -4,8 +4,7 @@ sbin_PROGRAMS = hciemu
 
 bin_PROGRAMS = l2test rctest
 
-noinst_PROGRAMS = sdptest scotest attest hstest bdaddr lmptest \
-					passkey-agent auth-agent
+noinst_PROGRAMS = sdptest scotest attest hstest bdaddr lmptest
 
 hciemu_LDADD = $(top_builddir)/common/libhelper.a \
 			@GLIB_LIBS@ @BLUEZ_LIBS@
@@ -27,10 +26,6 @@ bdaddr_SOURCES = bdaddr.c
 bdaddr_LDADD = @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
 
 lmptest_LDADD = @BLUEZ_LIBS@
-
-passkey_agent_LDADD = @DBUS_LIBS@
-
-auth_agent_LDADD = @DBUS_LIBS@
 
 noinst_MANS = bdaddr.8
 
