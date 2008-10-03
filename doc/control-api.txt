@@ -1,0 +1,134 @@
+BlueZ D-Bus Control API description
+***********************************
+
+Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
+Copyright (C) 2007-2008  David Stockwell <dstockwell@frequency-one.com>
+
+
+Control hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.Control
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+
+Methods		void Connect()
+
+			Connect to remote device (CT or TG).
+
+		void Disconnect()
+
+			Disconnect remote device.
+
+		dict GetProperties()
+
+			Returns all properties for the interface. See the
+			properties section for available properties.
+
+		boolean SendPassthrough(avc_operation_id key, boolean state,
+								string op_data)
+
+			Called to send Passthrough commands. ONLY valid if
+			BlueZ device is in CT role.
+
+		boolean SendVendorDependent(string op_data)
+
+			Called to send VendorDependent commands, other than
+			Metadata or Events defined in the AVRCP+Metadata
+			specification.
+
+		void ChangePlayback(string status, uint32 elapsed)
+
+			The status can be "playing", "stopped", "paused",
+			"forward-seek", "reverse-seek" or "error". Elapsed is
+			the position within the track in milliseconds.
+
+		void ChangeTrack(dict metadata)
+
+			Called to send the mandated TrackChange event and
+			potential metadata information.
+
+			Current defined metadata information are represented
+			with the following keys:
+
+				Title		string	(mandatory)
+				Artist		string
+				Album		string
+				Genre		string
+				NumberOfTracks	uint32
+				TrackNumber	uint32
+				TrackDuration	uint32	(in milliseconds)
+
+		void ChangeSetting(string setting, variant value)
+
+			Called to transmit Application Settings, CT Status
+			and the like.
+
+			Currenet defined settings are represented with the
+			following keys:
+
+				Equalizer	off, on
+				Repeat		off, singletrack, alltracks, group
+				Shuffle		off, alltracks, group
+				Scan		off, alltracks, group
+				Battery		normal, warning, critical, external, fullcharge
+				System		powered, unpowered, unplugged
+				Volume		uint8
+
+Signals		Connected()
+
+			Sent when a successful AVRCP connection has been made
+			to the remote device.
+
+		Disconnected()
+
+			Sent when the AVRCP connection to the remote device
+			has been disconnected.
+
+		Passthrough(uint8 key, boolean state, int32 company_id,
+								string op_data)
+
+			Called when Passthrough command is received from
+			connected device.
+
+			NOTE: according to the AV/C Subpanel Spec, company_id
+			and op_data are passed ONLY when the key is
+			"Vendor_Unique", or 0x7E.
+
+			When the key is NOT 0x7E, the signal returns
+			company_id=-1, and zero-length op_data.
+
+		VendorDependentReceived(string op_data)
+
+			Called when VendorDependent message is received from
+			connected device (except for Metadata defined in
+			Bluetooth SIG AVRCP+Metadata spec).
+
+		TrackChanged(dict metadata)
+
+			Called when Metadata is received from connected device.
+			May be multiple meta attribute/element pairs.
+
+		PlaybackChanged(string status, uint32 elapsed)
+
+		SettingChanged(string setting, variant value)
+
+Properties	uint8 SubUnitID [readonly]
+
+			The three-bit Subunit ID from the connected device.
+
+		uint8 SubUnitType [readonly]
+
+			The five-bit Subunit Type from the connected device.
+
+		boolean Connected [readonly]
+
+		array{uint32} CompanyIDs [readonly]
+
+			List of three-byte Company IDs (OUI) supported by the
+			connected device. Note that Bluetooth SIG Company
+			ID (0x001958) is always included.
+
+		array{string} Capabilities [readonly]
+
+			List of Capabilities provided by the connected device.
