@@ -38,7 +38,7 @@
 #define CLIENT_INTERFACE  "org.openobex.Client"
 #define CLIENT_PATH       "/"
 
-static DBusMessage *push_file(DBusConnection *connection,
+static DBusMessage *send_files(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	DBusMessage *reply;
@@ -51,7 +51,7 @@ static DBusMessage *push_file(DBusConnection *connection,
 }
 
 static GDBusMethodTable client_methods[] = {
-	{ "PushFile", "s", "", push_file },
+	{ "SendFiles", "a{sv}aso", "",send_files },
 	{ }
 };
 
