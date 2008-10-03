@@ -958,6 +958,10 @@ static DBusMessage *control_get_properties(DBusConnection *conn,
 	DBusMessageIter dict;
 	gboolean value;
 
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
 	dbus_message_iter_init_append(reply, &iter);
 
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,

@@ -453,6 +453,10 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 	const char *property;
 	GSList *l;
 
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
 	dbus_message_iter_init_append(reply, &iter);
 
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
