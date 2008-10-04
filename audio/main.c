@@ -28,15 +28,21 @@
 
 #include <errno.h>
 #include <sys/socket.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
 
+#include "glib-helper.h"
 #include "plugin.h"
 #include "logging.h"
 #include "unix.h"
 #include "device.h"
+#include "headset.h"
 #include "manager.h"
 
 static GKeyFile *load_config_file(const char *file)
@@ -56,11 +62,55 @@ static GKeyFile *load_config_file(const char *file)
 	return keyfile;
 }
 
+static void sco_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
+			const bdaddr_t *dst, gpointer data)
+{
+	int sk;
+	struct audio_device *device;
+	char addr[18];
+
+	if (err < 0) {
+		error("accept: %s (%d)", strerror(-err), -err);
+		return;
+	}
+
+	device = manager_find_device(dst, NULL, FALSE);
+	if (!device)
+		goto drop;
+
+	if (headset_get_state(device) < HEADSET_STATE_CONNECTED) {
+		debug("Refusing SCO from non-connected headset");
+		goto drop;
+	}
+
+	ba2str(dst, addr);
+
+	if (!get_hfp_active(device)) {
+		error("Refusing non-HFP SCO connect attempt from %s", addr);
+		goto drop;
+	}
+
+	sk = g_io_channel_unix_get_fd(chan);
+	fcntl(sk, F_SETFL, 0);
+
+	if (headset_connect_sco(device, chan) == 0) {
+		debug("Accepted SCO connection from %s", addr);
+		headset_set_state(device, HEADSET_STATE_PLAYING);
+	}
+
+	return;
+
+drop:
+	g_io_channel_close(chan);
+	g_io_channel_unref(chan);
+}
+
 static DBusConnection *connection;
 
 static int audio_init(void)
 {
 	GKeyFile *config;
+	GIOChannel *sco_server;
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL)
@@ -75,6 +125,12 @@ static int audio_init(void)
 
 	if (audio_manager_init(connection, config) < 0) {
 		dbus_connection_unref(connection);
+		return -EIO;
+	}
+
+	sco_server = bt_sco_listen(BDADDR_ANY, 0, sco_server_cb, NULL);
+	if (!sco_server) {
+		error("Unable to start SCO server socket");
 		return -EIO;
 	}
 

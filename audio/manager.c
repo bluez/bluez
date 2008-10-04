@@ -94,7 +94,6 @@ struct audio_adapter {
 	GIOChannel *hsp_ag_server;
 	GIOChannel *hfp_ag_server;
 	GIOChannel *hsp_hs_server;
-	GIOChannel *sco_server;
 };
 
 static DBusConnection *connection = NULL;
@@ -470,49 +469,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 	}
 }
 
-static void sco_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer data)
-{
-	int sk;
-	struct audio_device *device;
-	char addr[18];
-
-	if (err < 0) {
-		error("accept: %s (%d)", strerror(-err), -err);
-		return;
-	}
-
-	device = manager_find_device(dst, NULL, FALSE);
-	if (!device)
-		goto drop;
-
-	if (headset_get_state(device) < HEADSET_STATE_CONNECTED) {
-		debug("Refusing SCO from non-connected headset");
-		goto drop;
-	}
-
-	ba2str(dst, addr);
-
-	if (!get_hfp_active(device)) {
-		error("Refusing non-HFP SCO connect attempt from %s", addr);
-		goto drop;
-	}
-
-	sk = g_io_channel_unix_get_fd(chan);
-	fcntl(sk, F_SETFL, 0);
-
-	if (headset_connect_sco(device, chan) == 0) {
-		debug("Accepted SCO connection from %s", addr);
-		headset_set_state(device, HEADSET_STATE_PLAYING);
-	}
-
-	return;
-
-drop:
-	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
-}
-
 static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer data)
 {
@@ -604,13 +560,6 @@ static int headset_server_init(struct audio_adapter *adapter)
 			hfp = tmp;
 	}
 
-	adapter->sco_server = bt_sco_listen(&adapter->src, 0, sco_server_cb,
-						adapter);
-	if (!adapter->sco_server) {
-		error("Unable to start SCO server socket");
-		return -1;
-	}
-
 	flags = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
 
 	if (master)
@@ -662,11 +611,6 @@ static int headset_server_init(struct audio_adapter *adapter)
 	return 0;
 
 failed:
-	if (adapter->sco_server) {
-		g_io_channel_unref(adapter->sco_server);
-		adapter->sco_server = NULL;
-	}
-
 	if (adapter->hsp_ag_server) {
 		g_io_channel_unref(adapter->hsp_ag_server);
 		adapter->hsp_ag_server = NULL;
