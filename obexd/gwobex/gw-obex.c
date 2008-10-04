@@ -277,7 +277,7 @@ void gw_obex_close(GwObex *ctx) {
         ctx->gio_source = NULL;
     }
     GW_OBEX_UNLOCK(ctx);
-#ifdef G_THREADS_ENABLED
+#ifdef GW_OBEX_THREADS_ENABLED
     g_mutex_free(ctx->mutex);
     ctx->mutex = NULL;
 #endif
@@ -300,7 +300,7 @@ GwObex *gw_obex_setup_fd(int fd, const gchar *uuid, gint uuid_len,
 
     ctx = make_context(handle);
 
-#ifdef G_THREADS_ENABLED
+#ifdef GW_OBEX_THREADS_ENABLED
     if (!g_thread_supported())
         g_thread_init(NULL);
     ctx->mutex = g_mutex_new();
@@ -311,7 +311,7 @@ GwObex *gw_obex_setup_fd(int fd, const gchar *uuid, gint uuid_len,
     debug("Connecting to OBEX service\n");
     if (!gw_obex_connect(ctx, uuid, uuid_len)) {
         debug("Unable to connect to OBEX service\n");
-#ifdef G_THREADS_ENABLED
+#ifdef GW_OBEX_THREADS_ENABLED
         g_mutex_free(ctx->mutex);
         ctx->mutex = NULL;
 #endif

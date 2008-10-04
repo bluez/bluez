@@ -72,7 +72,7 @@
 #define OBP_TYPE "x-obex/object-profile"
 #define LST_TYPE "x-obex/folder-listing"
 
-#ifdef G_THREADS_ENABLED
+#ifdef GW_OBEX_THREADS_ENABLED
 # ifdef DEBUG
 #  define GW_OBEX_LOCK(ctx) do { \
       debug("Attempting GW_OBEX_LOCK at %s:%d (%s)...", __FILE__, __LINE__, __PRETTY_FUNCTION__); \
@@ -105,7 +105,7 @@ typedef struct obex_connect_hdr {
 } __attribute__ ((packed)) obex_connect_hdr_t;
 
 struct gw_obex {
-#ifdef G_THREADS_ENABLED
+#ifdef GW_OBEX_THREADS_ENABLED
     /* To get rid of race conditions in multithreaded apps */
     GMutex                  *mutex;
 #endif
