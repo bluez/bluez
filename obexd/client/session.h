@@ -21,20 +21,41 @@
  *
  */
 
+#include <glib.h>
+#include <gdbus.h>
+
 #include <bluetooth/bluetooth.h>
+#include <gw-obex.h>
 
 struct session_data {
+	gint refcount;
 	bdaddr_t src;
 	bdaddr_t dst;
-	char *target;
-	char *agent;
+	uint8_t channel;
+	gchar *target;
+	gchar *name;
+	gchar *path;
+	int sock;
+	int fd;
+	DBusConnection *conn;
+	GwObex *obex;
+	GwObexXfer *xfer;
+	char buffer[4096];
+	int filled;
+	uint64_t size;
+	uint64_t transferred;
+	gchar *filename;
+	gchar *agent_name;
+	gchar *agent_path;
+	GPtrArray *pending;
 };
 
-typedef void (*session_callback) (struct session_data *session,
+typedef void (*session_callback_t) (struct session_data *session,
 							void *user_data);
 
 int session_create(const char *source,
 			const char *destination, const char *target,
-				session_callback callback, void *user_data);
-int session_set_agent(struct session_data *session, const char *agent);
+				session_callback_t function, void *user_data);
+int session_set_agent(struct session_data *session, const char *name,
+							const char *path);
 int session_send(struct session_data *session, const char *filename);

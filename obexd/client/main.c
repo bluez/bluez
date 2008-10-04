@@ -43,24 +43,41 @@
 struct send_data {
 	DBusConnection *connection;
 	DBusMessage *message;
+	gchar *sender;
 	gchar *agent;
-	gchar *file;
+	GPtrArray *files;
 };
 
 static void create_callback(struct session_data *session, void *user_data)
 {
 	struct send_data *data = user_data;
+	int i;
+
+	if (session->obex == NULL) {
+		DBusMessage *error = g_dbus_create_error(data->message,
+					"org.openobex.Error.Failed", NULL);
+		g_dbus_send_message(data->connection, error);
+
+		dbus_message_unref(data->message);
+		dbus_connection_unref(data->connection);
+		return;
+	}
 
 	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
 
-	dbus_message_unref(data->message);
-	dbus_connection_unref(data->connection);
-
-	session_set_agent(session, data->agent);
+	session_set_agent(session, data->sender, data->agent);
+	g_free(data->sender);
 	g_free(data->agent);
 
-	session_send(session, data->file);
-	g_free(data->file);
+	for (i = 0; i < data->files->len; i++) {
+		if (session_send(session,
+				g_ptr_array_index(data->files, i)) < 0)
+			break;
+	}
+
+	g_ptr_array_free(data->files, TRUE);
+	dbus_message_unref(data->message);
+	dbus_connection_unref(data->connection);
 
 	g_free(data);
 }
@@ -69,8 +86,14 @@ static DBusMessage *send_files(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter, array;
+	GPtrArray *files;
 	struct send_data *data;
-	const char *agent, *dest = NULL, *file = NULL;
+	const char *agent, *dest = NULL;
+
+	files = g_ptr_array_new();
+	if (files == NULL)
+		return g_dbus_create_error(message,
+					"org.openobex.Error.NoMemory", NULL);
 
 	dbus_message_iter_init(message, &iter);
 	dbus_message_iter_recurse(&iter, &array);
@@ -99,8 +122,10 @@ static DBusMessage *send_files(DBusConnection *connection,
 	dbus_message_iter_recurse(&iter, &array);
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
-		if (file == NULL)
-			dbus_message_iter_get_basic(&array, &file);
+		char *value;
+
+		dbus_message_iter_get_basic(&array, &value);
+		g_ptr_array_add(files, value);
 
 		dbus_message_iter_next(&array);
 	}
@@ -108,27 +133,33 @@ static DBusMessage *send_files(DBusConnection *connection,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_get_basic(&iter, &agent);
 
-	if (dest == NULL)
+	if (dest == NULL || files->len == 0) {
+		g_ptr_array_free(files, TRUE);
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
+	}
 
 	data = g_try_malloc0(sizeof(*data));
-	if (data == NULL)
+	if (data == NULL) {
+		g_ptr_array_free(files, TRUE);
 		return g_dbus_create_error(message,
 					"org.openobex.Error.NoMemory", NULL);
+	}
 
 	data->connection = dbus_connection_ref(connection);
 	data->message = dbus_message_ref(message);
+	data->sender = g_strdup(dbus_message_get_sender(message));
 	data->agent = g_strdup(agent);
-	data->file = g_strdup(file);
+	data->files = files;
 
 	if (session_create(NULL, dest, NULL, create_callback, data) == 0)
 		return NULL;
 
+	g_ptr_array_free(data->files, TRUE);
 	dbus_message_unref(message);
 	dbus_connection_unref(connection);
+	g_free(data->sender);
 	g_free(data->agent);
-	g_free(data->file);
 	g_free(data);
 
 	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
