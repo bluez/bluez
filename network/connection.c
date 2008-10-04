@@ -445,7 +445,7 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct network_peer *peer = data;
-	struct network_conn *nc;
+	struct network_conn *nc = NULL;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
@@ -466,22 +466,26 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 
 	/* Connected */
 	for (l = peer->connections; l; l = l->next) {
-		nc = l->data;
+		struct network_conn *tmp = l->data;
 
-		if (nc->state == CONNECTED)
-			break;
+		if (tmp->state != CONNECTED)
+			continue;
+
+		nc = tmp;
+		break;
 	}
-	connected = (l != NULL);
+
+	connected = nc ? TRUE : FALSE;
 	dbus_message_iter_append_dict_entry(&dict, "Connected",
 						DBUS_TYPE_BOOLEAN, &connected);
 
 	/* Device */
-	property = connected ? nc->dev : "";
+	property = nc ? nc->dev : "";
 	dbus_message_iter_append_dict_entry(&dict, "Device",
 						DBUS_TYPE_STRING, &property);
 
 	/* UUID */
-	property = connected ? bnep_uuid(nc->id) : "";
+	property = nc ? bnep_uuid(nc->id) : "";
 	dbus_message_iter_append_dict_entry(&dict, "UUID",
 						DBUS_TYPE_STRING, &property);
 
