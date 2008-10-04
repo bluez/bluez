@@ -1,0 +1,78 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+
+bus = dbus.SystemBus()
+
+test = dbus.Interface(bus.get_object("org.bluez", "/org/bluez/test"),
+							"org.bluez.TelephonyTest")
+if len(sys.argv) < 2:
+	print """Usage: %s <command>
+
+	outgoing <number>
+	incoming <number>
+	cancel
+	signal <level>
+	battery <level>
+	roaming <yes|no>
+	registration <status>
+	subscriber <number>
+	""" % sys.argv[0]
+	sys.exit(1)
+
+if sys.argv[1] == "outgoing":
+	if len(sys.argv) > 2:
+		test.OutgoingCall(sys.argv[2])
+	else:
+		print "Need number parameter"
+	sys.exit(0)
+
+if sys.argv[1] == "incoming":
+	if len(sys.argv) > 2:
+		test.IncomingCall(sys.argv[2])
+	else:
+		print "Need number parameter"
+	sys.exit(0)
+
+if sys.argv[1] == "cancel":
+	test.CancelCall()
+	sys.exit(0)
+
+if sys.argv[1] == "signal":
+	if len(sys.argv) > 2:
+		test.SignalStrength(sys.argv[2])
+	else:
+		print "Need signal strength parameter"
+	sys.exit(0)
+
+if sys.argv[1] == "battery":
+	if len(sys.argv) > 2:
+		test.BatteryLevel(sys.argv[2])
+	else:
+		print "Need battery level parameter"
+	sys.exit(0)
+
+if sys.argv[1] == "roaming":
+	if len(sys.argv) > 2:
+		test.RoamingStatus(sys.argv[2] == "yes" or False)
+	else:
+		print "Need yes/no parameter"
+	sys.exit(0)
+
+if sys.argv[1] == "registration":
+	if len(sys.argv) > 2:
+		test.RegistrationStatus(sys.argv[2] == "yes" or False)
+	else:
+		print "Need yes/no parameter"
+	sys.exit(0)
+
+if sys.argv[1] == "subscriber":
+	if len(sys.argv) > 2:
+		test.SetSubscriberNumber(sys.argv[2])
+	else:
+		print "Need number parameter"
+	sys.exit(0)
+
+print "Unknown command"
+sys.exit(1)
