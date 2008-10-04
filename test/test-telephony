@@ -5,11 +5,17 @@ import dbus
 
 bus = dbus.SystemBus()
 
+manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
+adapter = dbus.Interface(bus.get_object("org.bluez", manager.DefaultAdapter()),
+				"org.bluez.Adapter")
 test = dbus.Interface(bus.get_object("org.bluez", "/org/bluez/test"),
-							"org.bluez.TelephonyTest")
+			"org.bluez.TelephonyTest")
+
 if len(sys.argv) < 2:
 	print """Usage: %s <command>
 
+	connect <bdaddr>
+	disconnect <bdaddr>
 	outgoing <number>
 	incoming <number>
 	cancel
@@ -20,6 +26,26 @@ if len(sys.argv) < 2:
 	subscriber <number>
 	""" % sys.argv[0]
 	sys.exit(1)
+
+if sys.argv[1] == "connect":
+	if len(sys.argv) < 3:
+		print "Need device address parameter"
+		sys.exit(1)
+	device = adapter.FindDevice(sys.argv[2])
+	headset = dbus.Interface(bus.get_object("org.bluez", device),
+					"org.bluez.Headset")
+	headset.Connect()
+	sys.exit(0)
+
+if sys.argv[1] == "disconnect":
+	if len(sys.argv) < 3:
+		print "Need device address parameter"
+		sys.exit(1)
+	device = adapter.FindDevice(sys.argv[2])
+	headset = dbus.Interface(bus.get_object("org.bluez", device),
+					"org.bluez.Headset")
+	headset.Disconnect()
+	sys.exit(0)
 
 if sys.argv[1] == "outgoing":
 	if len(sys.argv) > 2:
