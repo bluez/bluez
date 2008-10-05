@@ -538,20 +538,22 @@ static void hfp_slc_complete(struct audio_device *dev)
 	if (p == NULL)
 		return;
 
-	if (p->msg) {
-		DBusMessage *reply = dbus_message_new_method_return(p->msg);
-		dbus_connection_send(dev->conn, reply, NULL);
-		dbus_message_unref(reply);
-	}
-
 	if (p->target_state == HEADSET_STATE_CONNECTED) {
+		if (p->msg) {
+			DBusMessage *reply = dbus_message_new_method_return(p->msg);
+			dbus_connection_send(dev->conn, reply, NULL);
+			dbus_message_unref(reply);
+		}
 		pending_connect_finalize(dev);
 		return;
 	}
 
 	p->err = sco_connect(dev, NULL, NULL, NULL);
-	if (p->err < 0)
+	if (p->err < 0) {
+		if (p->msg)
+			error_connection_attempt_failed(dev->conn, p->msg, p->err);
 		pending_connect_finalize(dev);
+	}
 }
 
 static int telephony_generic_rsp(struct audio_device *device, cme_error_t err)
