@@ -45,6 +45,8 @@
 #include "headset.h"
 #include "manager.h"
 
+static GIOChannel *sco_server = NULL;
+
 static GKeyFile *load_config_file(const char *file)
 {
 	GError *err = NULL;
@@ -110,7 +112,6 @@ static DBusConnection *connection;
 static int audio_init(void)
 {
 	GKeyFile *config;
-	GIOChannel *sco_server;
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL)
@@ -139,6 +140,12 @@ static int audio_init(void)
 
 static void audio_exit(void)
 {
+	if (sco_server) {
+		g_io_channel_close(sco_server);
+		g_io_channel_unref(sco_server);
+		sco_server = NULL;
+	}
+
 	audio_manager_exit();
 
 	unix_exit();
