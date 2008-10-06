@@ -1,3 +1,11 @@
+ver 4.12:
+	Fix crash with missing icon value.
+	Fix error checks of HAL plugin.
+	Fix SCO server socket cleanup on exit.
+	Fix memory leaks from DBusPendingCall.
+	Fix handling of pending authorization requests.
+	Fix missing protocol UUIDs in record pattern.
+
 ver 4.11:
 	Change SCO server socket into a generic one.
 	Add test script for dummy telephony plugin.
