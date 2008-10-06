@@ -775,7 +775,7 @@ static BtIOError sco_connect(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_sco addr;
-	int sk, err;
+	int err;
 
 	io_ctxt->func = func;
 
@@ -790,7 +790,7 @@ static BtIOError sco_connect(BtIO *io, BtIOFunc func)
 	err = transport_connect(io, (struct sockaddr *) &addr,
 				sizeof(addr));
 	if (err < 0) {
-		close(sk);
+		close(io_ctxt->fd);
 		return BT_IO_FAILED;
 	}
 
