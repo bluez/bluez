@@ -124,6 +124,8 @@ static int hal_probe(struct btd_adapter *adapter)
 
 	dbus_pending_call_set_notify(call, formfactor_reply, adapter, NULL);
 
+	dbus_pending_call_unref(call);
+
 	dbus_message_unref(message);
 
 	return 0;
