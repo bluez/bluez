@@ -300,6 +300,12 @@ void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 {
 	DBusMessageIter entry;
 
+	if (type == DBUS_TYPE_STRING) {
+		const char *str = *((const char **) val);
+		if (str == NULL)
+			return;
+	}
+
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 							NULL, &entry);
 
