@@ -47,6 +47,12 @@ static void formfactor_reply(DBusPendingCall *call, void *user_data)
 
 	reply = dbus_pending_call_steal_reply(call);
 
+	if (dbus_set_error_from_message(NULL, reply) == TRUE) {
+		error("Failed to access HAL");
+		dbus_message_unref(reply);
+		return;
+	}
+
 	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_STRING, &formfactor,
 						DBUS_TYPE_INVALID) == FALSE) {
 		error("Wrong formfactor arguments");
