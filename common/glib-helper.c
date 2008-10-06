@@ -739,6 +739,38 @@ static int transport_connect(BtIO *io, struct sockaddr *addr,
 	return 0;
 }
 
+static int sco_bind(struct io_context *io_ctxt, const char *address,
+			uint16_t mtu, struct sockaddr_sco *addr)
+{
+	int err;
+	struct sco_options sco_opt;
+
+	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
+	if (io_ctxt->fd < 0)
+		return -errno;
+
+	memset(addr, 0, sizeof(*addr));
+	addr->sco_family = AF_BLUETOOTH;
+	str2ba(address, &addr->sco_bdaddr);
+
+	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
+	if (err < 0) {
+		close(io_ctxt->fd);
+		return -errno;
+	}
+
+	if (mtu) {
+		socklen_t olen = sizeof(sco_opt);
+		memset(&sco_opt, 0, olen);
+		getsockopt(io_ctxt->fd, SOL_SCO, SCO_OPTIONS, &sco_opt, &olen);
+		sco_opt.mtu = mtu;
+		setsockopt(io_ctxt->fd, SOL_SCO, SCO_OPTIONS, &sco_opt,
+				sizeof(sco_opt));
+	}
+
+	return 0;
+}
+
 static BtIOError sco_connect(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
@@ -747,21 +779,9 @@ static BtIOError sco_connect(BtIO *io, BtIOFunc func)
 
 	io_ctxt->func = func;
 
-	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
-	if (sk < 0)
-		return -errno;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sco_family = AF_BLUETOOTH;
-	str2ba(io->src, &addr.sco_bdaddr);
-
-	err = bind(sk, (struct sockaddr *) &addr, sizeof(addr));
-	if (err < 0) {
-		close(sk);
+	err = sco_bind(io_ctxt, io->src, 0, &addr);
+	if (err < 0)
 		return BT_IO_FAILED;
-	}
-
-	io_ctxt->fd = sk;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sco_family = AF_BLUETOOTH;
@@ -959,38 +979,6 @@ static BtIOError rfcomm_connect(BtIO *io, BtIOFunc func)
 	}
 
 	return BT_IO_SUCCESS;
-}
-
-static int sco_bind(struct io_context *io_ctxt, const char *address,
-			uint16_t mtu, struct sockaddr_sco *addr)
-{
-	int err;
-	struct sco_options sco_opt;
-
-	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
-	if (io_ctxt->fd < 0)
-		return -errno;
-
-	if (mtu) {
-		socklen_t olen = sizeof(sco_opt);
-		memset(&sco_opt, 0, olen);
-		getsockopt(io_ctxt->fd, SOL_SCO, SCO_OPTIONS, &sco_opt, &olen);
-		sco_opt.mtu = mtu;
-		setsockopt(io_ctxt->fd, SOL_SCO, SCO_OPTIONS, &sco_opt,
-				sizeof(sco_opt));
-	}
-
-	memset(addr, 0, sizeof(*addr));
-	addr->sco_family = AF_BLUETOOTH;
-	str2ba(address, &addr->sco_bdaddr);
-
-	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
-	if (err < 0) {
-		close(io_ctxt->fd);
-		return -errno;
-	}
-
-	return 0;
 }
 
 static BtIOError sco_listen(BtIO *io, BtIOFunc func)
