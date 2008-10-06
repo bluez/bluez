@@ -1956,19 +1956,23 @@ static sdp_data_t *access_proto_to_dataseq(sdp_record_t *rec, sdp_list_t *proto)
 	for (i = 0, p = proto; p; p = p->next, i++) {
 		sdp_list_t *elt = (sdp_list_t *)p->data;
 		sdp_data_t *s;
+		uuid_t *uuid = NULL;
 		int pslen = 0;
 		for (; elt && pslen < sizeof(dtds); elt = elt->next, pslen++) {
 			sdp_data_t *d = (sdp_data_t *)elt->data;
 			dtds[pslen] = &d->dtd;
 			switch (d->dtd) {
 			case SDP_UUID16:
-				values[pslen] = &((uuid_t *)d)->value.uuid16;
+				uuid = (uuid_t *) d;
+				values[pslen] = &uuid->value.uuid16;
 				break;
 			case SDP_UUID32:
-				values[pslen] = &((uuid_t *)d)->value.uuid32;
+				uuid = (uuid_t *) d;
+				values[pslen] = &uuid->value.uuid32;
 				break;
 			case SDP_UUID128:
-				values[pslen] = &((uuid_t *)d)->value.uuid128;
+				uuid = (uuid_t *) d;
+				values[pslen] = &uuid->value.uuid128;
 				break;
 			case SDP_UINT8:
 				values[pslen] = &d->val.uint8;
@@ -1988,6 +1992,8 @@ static sdp_data_t *access_proto_to_dataseq(sdp_record_t *rec, sdp_list_t *proto)
 		if (s) {
 			seqDTDs[i] = &s->dtd;
 			seqs[i] = s;
+			if (uuid)
+				sdp_pattern_add_uuid(rec, uuid);
 		}
 	}
 	seq = sdp_seq_alloc(seqDTDs, seqs, seqlen);
