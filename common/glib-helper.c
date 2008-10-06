@@ -808,6 +808,17 @@ static int l2cap_bind(struct io_context *io_ctxt, const char *address,
 	if (io_ctxt->fd < 0)
 		return -errno;
 
+	memset(addr, 0, sizeof(*addr));
+	addr->l2_family = AF_BLUETOOTH;
+	str2ba(address, &addr->l2_bdaddr);
+	addr->l2_psm = htobs(psm);
+
+	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
+	if (err < 0) {
+		close(io_ctxt->fd);
+		return -errno;
+	}
+
 	if (mtu) {
 		socklen_t olen = sizeof(l2o);
 		memset(&l2o, 0, olen);
@@ -824,17 +835,6 @@ static int l2cap_bind(struct io_context *io_ctxt, const char *address,
 			close(io_ctxt->fd);
 			return -errno;
 		}
-	}
-
-	memset(addr, 0, sizeof(*addr));
-	addr->l2_family = AF_BLUETOOTH;
-	str2ba(address, &addr->l2_bdaddr);
-	addr->l2_psm = htobs(psm);
-
-	err = bind(io_ctxt->fd, (struct sockaddr *) addr, sizeof(*addr));
-	if (err < 0) {
-		close(io_ctxt->fd);
-		return -errno;
 	}
 
 	return 0;
@@ -898,15 +898,6 @@ static BtIOError rfcomm_bind(struct io_context *io_ctxt, const char *address,
 	if (io_ctxt->fd < 0)
 		return BT_IO_FAILED;
 
-	if (flags) {
-		int opt = flags;
-		err = setsockopt(io_ctxt->fd, SOL_RFCOMM, RFCOMM_LM, &opt,
-				sizeof(opt));
-		if (err < 0) {
-			close(io_ctxt->fd);
-			return BT_IO_FAILED;
-		}
-	}
 
 	memset(addr, 0, sizeof(*addr));
 	addr->rc_family = AF_BLUETOOTH;
@@ -917,6 +908,16 @@ static BtIOError rfcomm_bind(struct io_context *io_ctxt, const char *address,
 	if (err < 0) {
 		close(io_ctxt->fd);
 		return BT_IO_FAILED;
+	}
+
+	if (flags) {
+		int opt = flags;
+		err = setsockopt(io_ctxt->fd, SOL_RFCOMM, RFCOMM_LM, &opt,
+				sizeof(opt));
+		if (err < 0) {
+			close(io_ctxt->fd);
+			return BT_IO_FAILED;
+		}
 	}
 
 	return BT_IO_SUCCESS;
