@@ -767,8 +767,7 @@ static void connection_lost(struct avdtp *session, int err)
 
 		ba2str(&session->dst, address);
 		debug("Disconnected from %s", address);
-	}
-	else if (session->state == AVDTP_SESSION_STATE_CONNECTING)
+	} else if (session->state == AVDTP_SESSION_STATE_CONNECTING)
 		btd_cancel_authorization(&dev->src, &dev->dst);
 
 	session->free_lock = 1;
