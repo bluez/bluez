@@ -387,6 +387,7 @@ void register_device_id(const uint16_t vendor, const uint16_t product,
 int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec)
 {
 	sdp_data_t *data;
+	sdp_list_t *pattern;
 
 	if (rec->handle == 0xffffffff) {
 		rec->handle = sdp_next_handle();
@@ -408,6 +409,16 @@ int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec)
 		uuid_t uuid;
 		sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
 		sdp_pattern_add_uuid(rec, &uuid);
+	}
+
+	for (pattern = rec->pattern; pattern; pattern = pattern->next) {
+		char uuid[32];
+
+		if (pattern->data == NULL)
+			continue;
+
+		sdp_uuid2strn((uuid_t *) pattern->data, uuid, sizeof(uuid));
+		debug("Record pattern UUID %s", uuid);
 	}
 
 	update_db_timestamp();
