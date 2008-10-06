@@ -1190,11 +1190,8 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	return;
 
 failed_not_supported:
-	if (p->msg) {
+	if (p->msg)
 		error_not_supported(dev->conn, p->msg);
-		dbus_message_unref(p->msg);
-		p->msg = NULL;
-	}
 failed:
 	if (classes)
 		sdp_list_free(classes, free);
