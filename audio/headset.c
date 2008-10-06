@@ -2005,8 +2005,6 @@ gboolean headset_cancel_stream(struct audio_device *dev, unsigned int id)
 	if (p->callbacks || p->msg)
 		return TRUE;
 
-	pending_connect_finalize(dev);
-
 	if (hs->auto_dc) {
 		if (hs->rfcomm)
 			hs->dc_timer = g_timeout_add(DC_TIMEOUT,
