@@ -898,7 +898,7 @@ static int extended_errors(struct audio_device *device, const char *buf)
 		debug("CME errors disabled for headset %p", hs);
 	}
 
-	return 0;
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 static int call_waiting_notify(struct audio_device *device, const char *buf)
