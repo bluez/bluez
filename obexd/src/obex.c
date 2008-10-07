@@ -444,6 +444,7 @@ static gint obex_write_stream(struct obex_session *os,
 		gint err = errno;
 		error("read(): %s (%d)", strerror(err), err);
 		g_free(os->buf);
+		os->buf = NULL;
 		return -err;
 	}
 
