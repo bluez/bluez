@@ -915,7 +915,7 @@ static int call_waiting_notify(struct audio_device *device, const char *buf)
 		debug("Call waiting notification disabled for headset %p", hs);
 	}
 
-	return 0;
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 static struct event event_callbacks[] = {
