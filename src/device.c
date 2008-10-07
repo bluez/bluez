@@ -679,7 +679,7 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *
 void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t *recs)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	GSList *list;
+	GSList *list, *next;
 	char srcaddr[18], dstaddr[18];
 	bdaddr_t src;
 
@@ -689,10 +689,12 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids, sdp_list_t 
 
 	debug("Remove drivers for %s", device->path);
 
-	for (list = device->drivers; list; list = list->next) {
+	for (list = device->drivers; list; list = next) {
 		struct btd_driver_data *driver_data = list->data;
 		struct btd_device_driver *driver = driver_data->driver;
 		const char **uuid;
+
+		next = list->next;
 
 		for (uuid = driver->uuids; *uuid; uuid++) {
 			sdp_record_t *rec;
