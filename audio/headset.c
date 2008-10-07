@@ -37,6 +37,7 @@
 #include <getopt.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <assert.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -1396,6 +1397,8 @@ static void send_foreach_headset(GSList *devices,
 		struct audio_device *device = l->data;
 		struct headset *hs = device->headset;
 		int ret;
+
+		assert(hs != NULL);
 
 		if (cmp && cmp(hs) != 0)
 			continue;
