@@ -1101,6 +1101,10 @@ void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer)
 	ba2str(peer, peer_addr);
 
 	device = adapter_find_device(adapter, peer_addr);
+	if (!device) {
+		error("link_key_notify: device %s was removed!", peer_addr);
+		return;
+	}
 
 	bonding = adapter_get_bonding_info(adapter);
 
