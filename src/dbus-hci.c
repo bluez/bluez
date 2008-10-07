@@ -450,6 +450,9 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 		hci_close_dev(dd);
 
+		auth = adapter_new_auth_request(adapter, dba, AUTH_TYPE_CONFIRM);
+		auth->replied = TRUE;
+
 		return 0;
 	}
 
