@@ -956,6 +956,30 @@ static void store(struct btd_device *device)
 	g_free(str);
 }
 
+static void browse_req_free(struct browse_req *req)
+{
+	struct btd_device *device = req->device;
+
+	device->discov_active = 0;
+
+	if (device->discov_requestor) {
+		g_dbus_remove_watch(req->conn, device->discov_listener);
+		device->discov_listener = 0;
+		g_free(device->discov_requestor);
+		device->discov_requestor = NULL;
+	}
+
+	if (req->msg)
+		dbus_message_unref(req->msg);
+	if (req->conn)
+		dbus_connection_unref(req->conn);
+	g_slist_free(req->uuids_added);
+	g_slist_free(req->uuids_removed);
+	if (req->records)
+		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
+	g_free(req);
+}
+
 static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
@@ -1021,25 +1045,7 @@ proceed:
 	dbus_message_unref(reply);
 
 cleanup:
-	device->discov_active = 0;
-
-	if (device->discov_requestor) {
-		g_dbus_remove_watch(req->conn, device->discov_listener);
-		device->discov_listener = 0;
-		g_free(device->discov_requestor);
-		device->discov_requestor = NULL;
-	}
-
-	if (req->msg)
-		dbus_message_unref(req->msg);
-	if (req->conn)
-		dbus_connection_unref(req->conn);
-	g_slist_free(req->uuids_added);
-	g_slist_free(req->uuids_removed);
-	if (req->records)
-		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
-	g_free(req);
-
+	browse_req_free(req);
 }
 
 static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
@@ -1139,6 +1145,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	bdaddr_t src;
 	uuid_t uuid;
 	bt_callback_t cb;
+	int err;
 
 	if (device->discov_active)
 		return -EBUSY;
@@ -1173,8 +1180,12 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 						device, NULL);
 	}
 
-	return bt_search_service(&src, &device->bdaddr,
-					&uuid, cb, req, NULL);
+	err = bt_search_service(&src, &device->bdaddr,
+				&uuid, cb, req, NULL);
+	if (err < 0)
+		browse_req_free(req);
+
+	return err;
 }
 
 struct btd_adapter *device_get_adapter(struct btd_device *device)
