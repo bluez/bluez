@@ -810,9 +810,18 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		}
 		break;
 	case OBEX_EV_STREAMAVAIL:
-		if (obex_read_stream(os, obex, obj) < 0) {
-			debug("error obex_read()");
-			OBEX_CancelRequest(obex, 1);
+		switch (obex_read_stream(os, obex, obj)) {
+		case 0:
+			break;
+		case -EPERM:
+			OBEX_ObjectSetRsp(obj,
+				OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+			break;
+		default:
+			OBEX_ObjectSetRsp(obj,
+				OBEX_RSP_INTERNAL_SERVER_ERROR,
+				OBEX_RSP_INTERNAL_SERVER_ERROR);
+			break;
 		}
 
 		break;
