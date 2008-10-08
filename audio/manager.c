@@ -50,6 +50,7 @@
 #include <gdbus.h>
 
 #include "glib-helper.h"
+#include "../src/manager.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
 
@@ -684,12 +685,10 @@ static int audio_probe(struct btd_device *device, GSList *records)
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst);
 
-	dev = manager_find_device(&dst, NULL, FALSE);
+	dev = manager_get_device(&src, &dst, path, NULL);
 	if (!dev) {
-		dev = device_register(connection, path, &src, &dst);
-		if (!dev)
-			return -EINVAL;
-		devices = g_slist_append(devices, dev);
+		debug("audio_probe: unable to get a device object");
+		return -1;
 	}
 
 	g_slist_foreach(records, (GFunc) handle_record, dev);
@@ -1056,4 +1055,53 @@ struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interf
 	}
 
 	return NULL;
+}
+
+struct audio_device *manager_get_device(bdaddr_t *src, bdaddr_t *dst,
+					const char *path, gboolean *created)
+{
+	struct audio_device *dev;
+
+	if (created)
+		*created = FALSE;
+
+	dev = manager_find_device(dst, NULL, FALSE);
+	if (dev)
+		return dev;
+
+	if (!path) {
+		struct btd_adapter *adapter;
+		struct btd_device *device;
+		char addr[18];
+
+		ba2str(src, addr);
+
+		adapter = manager_find_adapter(src);
+		if (!adapter) {
+			error("Unable to get a btd_adapter object for %s",
+					addr);
+			return NULL;
+		}
+
+		ba2str(dst, addr);
+
+		device = adapter_get_device(connection, adapter, addr);
+		if (!device) {
+			error("Unable to get btd_device object for %s", addr);
+			return NULL;
+		}
+
+		path = device_get_path(device);
+	}
+
+	dev = device_register(connection, path, src, dst);
+	if (!dev)
+		return NULL;
+
+	devices = g_slist_append(devices, dev);
+
+	if (created)
+		*created = TRUE;
+
+	return dev;
 }
