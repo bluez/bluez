@@ -611,7 +611,8 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	/* If this is a new pairing send the appropriate signal for it
 	 * and proceed with service discovery */
 	if (status == 0) {
-		if (device_set_paired(connection, device, bonding) && bonding)
+		device_set_paired(connection, device, bonding);
+		if (bonding)
 			adapter_free_bonding_request(adapter);
 		return;
 	}
