@@ -745,6 +745,8 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	int sk;
 	char address[18];
 
+	ba2str(&session->dst, address);
+
 	if (err < 0) {
 		avctp_unref(session);
 		error("AVCTP connect(%s): %s (%d)", address, strerror(-err),
@@ -752,7 +754,6 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		return;
 	}
 
-	ba2str(&session->dst, address);
 	debug("AVCTP: connected to %s", address);
 
 	g_io_channel_set_close_on_unref(chan, FALSE);
