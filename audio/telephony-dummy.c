@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <string.h>
 #include <glib.h>
 #include <dbus/dbus.h>
 #include <gdbus.h>
@@ -133,21 +132,10 @@ void telephony_answer_call_req(void *telephony_device)
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
 {
-	char last;
-
-	last = number[strlen(number) - 1];
-
 	g_free(active_call_number);
+	active_call_number = g_strdup(number);
 
-	if (last == ';') {
-		active_call_number = g_strndup(number, strlen(number) - 1);
-		debug("telephony-dummy: voice call dial request to %s",
-				active_call_number);
-	} else {
-		active_call_number = g_strdup(number);
-		debug("telephony-dummy: data call dial request to %s",
-				active_call_number);
-	}
+	debug("telephony-dummy: dial request to %s", active_call_number);
 
 	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
 

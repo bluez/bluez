@@ -785,7 +785,20 @@ int telephony_dial_number_rsp(void *telephony_device, cme_error_t err)
 
 static int dial_number(struct audio_device *device, const char *buf)
 {
-	telephony_dial_number_req(device, &buf[3]);
+	char number[BUF_SIZE];
+	size_t buf_len;
+
+	buf_len = strlen(buf);
+
+	if (buf[buf_len - 1] != ';') {
+		debug("Rejecting non-voice call dial request");
+		return -EINVAL;
+	}
+
+	memset(number, 0, sizeof(number));
+	strncpy(number, &buf[3], buf_len - 4);
+
+	telephony_dial_number_req(device, number);
 
 	return 0;
 }
