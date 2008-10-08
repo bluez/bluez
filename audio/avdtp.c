@@ -2785,14 +2785,14 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	session->io = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) session_cb, session);
-	g_io_channel_unref(chan);
-
 	err = btd_request_authorization(src, dst, ADVANCED_AUDIO_UUID,
 				auth_cb, session);
 	if (err < 0) {
 		avdtp_unref(session);
 		goto drop;
 	}
+
+	g_io_channel_unref(chan);
 
 	return;
 
