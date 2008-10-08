@@ -606,15 +606,18 @@ static void init_uinput(struct avctp *session)
 		debug("AVRCP: uinput initialized for %s", address);
 }
 
-static void avctp_connect_session(struct avctp *session)
+static gboolean avctp_connect_session(struct avctp *session)
 {
 	GIOChannel *io;
 	gboolean value;
 
-	session->state = AVCTP_STATE_CONNECTED;
 	session->dev = manager_find_device(&session->dst, NULL, FALSE);
-	if (!session->dev)
-		return;
+	if (!session->dev) {
+		error("Connecting audio device not known (SDP not completed)");
+		return FALSE;
+	}
+
+	session->state = AVCTP_STATE_CONNECTED;
 
 	session->dev->control->session = session;
 
@@ -638,6 +641,8 @@ static void avctp_connect_session(struct avctp *session)
 			G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 			(GIOFunc) session_cb, session);
 	g_io_channel_unref(io);
+
+	return TRUE;
 }
 
 static void auth_cb(DBusError *derr, void *user_data)
@@ -710,7 +715,8 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	return;
 
 proceed:
-	avctp_connect_session(session);
+	if (!avctp_connect_session(session))
+		goto drop;
 
 	return;
 
