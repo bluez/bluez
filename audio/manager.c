@@ -230,7 +230,7 @@ static void handle_record(sdp_record_t *record, struct audio_device *device)
 		debug("Found Headset AG record");
 		break;
 	case HANDSFREE_SVCLASS_ID:
-		debug("Found Hansfree record");
+		debug("Found Handsfree record");
 		if (device->headset)
 			headset_update(device, record, uuid16);
 		else
