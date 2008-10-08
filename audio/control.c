@@ -666,6 +666,7 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	struct l2cap_options l2o;
 	struct avctp *session;
 	GIOCondition flags = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
+	struct audio_device *dev;
 	char address[18];
 
 	if (err < 0) {
@@ -685,6 +686,15 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
+	dev = manager_get_device(src, dst, NULL);
+	if (!dev) {
+		error("Unable to get audio device object for %s", address);
+		goto drop;
+	}
+
+	if (!dev->control)
+		dev->control = control_init(dev);
+
 	session->state = AVCTP_STATE_CONNECTING;
 	session->sock = g_io_channel_unix_get_fd(chan);
 
@@ -694,7 +704,6 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		err = errno;
 		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(err),
 				err);
-		avctp_unref(session);
 		goto drop;
 	}
 
@@ -721,7 +730,8 @@ proceed:
 	return;
 
 drop:
-	close(session->sock);
+	g_io_channel_close(chan);
+	avctp_unref(session);
 }
 
 static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)

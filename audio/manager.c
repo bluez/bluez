@@ -491,9 +491,12 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		uuid = HFP_AG_UUID;
 	}
 
-	device = manager_find_device(dst, NULL, FALSE);
+	device = manager_get_device(src, dst, NULL);
 	if (!device)
 		goto drop;
+
+	if (!device->headset)
+		device->headset = headset_init(device, NULL, 0);
 
 	if (headset_get_state(device) > HEADSET_STATE_DISCONNECTED) {
 		debug("Refusing new connection since one already exists");
@@ -685,7 +688,7 @@ static int audio_probe(struct btd_device *device, GSList *records)
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst);
 
-	dev = manager_get_device(&src, &dst, path, NULL);
+	dev = manager_get_device(&src, &dst, path);
 	if (!dev) {
 		debug("audio_probe: unable to get a device object");
 		return -1;
@@ -1057,13 +1060,11 @@ struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interf
 	return NULL;
 }
 
-struct audio_device *manager_get_device(bdaddr_t *src, bdaddr_t *dst,
-					const char *path, gboolean *created)
+struct audio_device *manager_get_device(const bdaddr_t *src,
+					const bdaddr_t *dst,
+					const char *path)
 {
 	struct audio_device *dev;
-
-	if (created)
-		*created = FALSE;
 
 	dev = manager_find_device(dst, NULL, FALSE);
 	if (dev)
@@ -1099,9 +1100,6 @@ struct audio_device *manager_get_device(bdaddr_t *src, bdaddr_t *dst,
 		return NULL;
 
 	devices = g_slist_append(devices, dev);
-
-	if (created)
-		*created = TRUE;
 
 	return dev;
 }

@@ -48,6 +48,7 @@
 #include "control.h"
 #include "avdtp.h"
 #include "glib-helper.h"
+#include "sink.h"
 
 #include <bluetooth/l2cap.h>
 
@@ -2748,6 +2749,7 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	socklen_t size;
 	struct l2cap_options l2o;
 	struct avdtp *session;
+	struct audio_device *dev;
 	char address[18];
 
 	if (err < 0) {
@@ -2779,6 +2781,15 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		error("Refusing unexpected connect from %s", address);
 		goto drop;
 	}
+
+	dev = manager_get_device(src, dst, NULL);
+	if (!dev) {
+		error("Unable to get audio device object for %s", address);
+		goto drop;
+	}
+
+	if (!dev->sink)
+		dev->sink = sink_init(dev);
 
 	session->mtu = l2o.imtu;
 	session->sock = sk;

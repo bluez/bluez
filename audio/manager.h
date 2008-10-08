@@ -38,5 +38,6 @@ gboolean server_is_enabled(bdaddr_t *src, uint16_t svc);
 struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interface,
 					gboolean connected);
 
-struct audio_device *manager_get_device(bdaddr_t *sba, bdaddr_t *dba,
-					const char *path, gboolean *created);
+struct audio_device *manager_get_device(const bdaddr_t *src,
+					const bdaddr_t *dst,
+					const char *path);
