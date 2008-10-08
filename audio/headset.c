@@ -1899,6 +1899,12 @@ static void headset_free(struct audio_device *dev)
 static void path_unregister(void *data)
 {
 	struct audio_device *dev = data;
+	struct headset *hs = dev->headset;
+
+	if (hs->state > HEADSET_STATE_DISCONNECTED) {
+		debug("Headset unregistered while device was connected!");
+		headset_set_state(hs, HEADSET_STATE_DISCONNECTED);
+	}
 
 	info("Unregistered interface %s on path %s",
 		AUDIO_HEADSET_INTERFACE, dev->path);
