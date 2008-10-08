@@ -1041,6 +1041,8 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 	struct avdtp_local_sep *sep;
 	struct avdtp_stream *stream;
 	uint8_t err, category = 0x00;
+	struct audio_device *dev;
+	bdaddr_t src, dst;
 
 	if (size < sizeof(struct setconf_req)) {
 		error("Too short getcap request");
@@ -1056,6 +1058,23 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 	if (sep->stream) {
 		err = AVDTP_SEP_IN_USE;
 		goto failed;
+	}
+
+	avdtp_get_peers(session, &src, &dst);
+	dev = manager_get_device(&src, &dst, NULL);
+	if (!dev) {
+		error("Unable to get a audio device object");
+		goto failed;
+	}
+
+	switch (sep->info.type) {
+	case AVDTP_SEP_TYPE_SOURCE:
+		if (!dev->sink)
+			dev->sink = sink_init(dev);
+		break;
+	case AVDTP_SEP_TYPE_SINK:
+		/* Do source_init() here when it's implemented */
+		break;
 	}
 
 	stream = g_new0(struct avdtp_stream, 1);
@@ -2787,9 +2806,6 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		error("Unable to get audio device object for %s", address);
 		goto drop;
 	}
-
-	if (!dev->sink)
-		dev->sink = sink_init(dev);
 
 	session->mtu = l2o.imtu;
 	session->sock = sk;
