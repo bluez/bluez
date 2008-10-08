@@ -140,7 +140,7 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 	g_free(active_call_number);
 
 	if (last == ';') {
-		active_call_number = g_strndup(number, strlen(number) -1);
+		active_call_number = g_strndup(number, strlen(number) - 1);
 		debug("telephony-dummy: voice call dial request to %s",
 				active_call_number);
 	} else {
