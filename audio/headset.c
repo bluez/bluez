@@ -1903,7 +1903,7 @@ static void path_unregister(void *data)
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED) {
 		debug("Headset unregistered while device was connected!");
-		headset_set_state(hs, HEADSET_STATE_DISCONNECTED);
+		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 	}
 
 	info("Unregistered interface %s on path %s",
