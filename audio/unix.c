@@ -515,6 +515,12 @@ failed:
 	}
 	unix_ipc_error(client, BT_STREAMSTART_RSP, EIO);
 
+	if (client->cb_id > 0) {
+		avdtp_stream_remove_cb(a2dp->session, a2dp->stream,
+					client->cb_id);
+		client->cb_id = 0;
+	}
+
 	avdtp_unref(a2dp->session);
 
 	a2dp->session = NULL;
