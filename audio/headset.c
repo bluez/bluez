@@ -793,14 +793,15 @@ static int response_and_hold(struct audio_device *device, const char *buf)
 	if (strlen(buf) < 8)
 		return -EINVAL;
 
-	if (buf[7] == '=')
+	if (buf[7] == '=') {
 		telephony_response_and_hold_req(device, atoi(&buf[8]) < 0);
-	else if (ag.rh >= 0)
-		return headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
-	else
-		return headset_send(hs, "\r\nOK\r\n", ag.rh);
+		return 0;
+	}
 
-	return 0;
+	if (ag.rh >= 0)
+		headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
+
+	return headset_send(hs, "\r\nOK\r\n", ag.rh);
 }
 
 int telephony_last_dialed_number_rsp(void *telephony_device, cme_error_t err)
