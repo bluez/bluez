@@ -533,11 +533,6 @@ void device_set_connected(DBusConnection *conn, struct btd_device *device,
 {
 	device->connected = connected;
 
-	if (!connected && device->discov_timer) {
-		g_source_remove(device->discov_timer);
-		device->discov_timer = 0;
-	}
-
 	dbus_connection_emit_property_changed(conn, device->path,
 						DEVICE_INTERFACE,
 						"Connected", DBUS_TYPE_BOOLEAN,
