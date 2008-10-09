@@ -42,7 +42,9 @@
 
 #include "logging.h"
 
-#include "adapter.h"
+#include "../src/adapter.h"
+#include "../src/device.h"
+
 #include "device.h"
 #include "manager.h"
 #include "control.h"
@@ -1061,7 +1063,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 	}
 
 	avdtp_get_peers(session, &src, &dst);
-	dev = manager_get_device(&src, &dst, NULL);
+	dev = manager_get_device(&src, &dst);
 	if (!dev) {
 		error("Unable to get a audio device object");
 		goto failed;
@@ -1070,7 +1072,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 	switch (sep->info.type) {
 	case AVDTP_SEP_TYPE_SOURCE:
 		if (!dev->sink)
-			dev->sink = sink_init(dev);
+			btd_device_add_uuid(dev->btd_dev, A2DP_SINK_UUID);
 		break;
 	case AVDTP_SEP_TYPE_SINK:
 		/* Do source_init() here when it's implemented */
@@ -2804,7 +2806,7 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
-	dev = manager_get_device(src, dst, NULL);
+	dev = manager_get_device(src, dst);
 	if (!dev) {
 		error("Unable to get audio device object for %s", address);
 		goto drop;

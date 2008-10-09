@@ -39,5 +39,4 @@ struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interf
 					gboolean connected);
 
 struct audio_device *manager_get_device(const bdaddr_t *src,
-					const bdaddr_t *dst,
-					const char *path);
+					const bdaddr_t *dst);

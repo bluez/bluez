@@ -827,10 +827,9 @@ static void discover_device_reply(struct browse_req *req, sdp_list_t *recs)
 	dbus_message_unref(reply);
 }
 
-static void services_changed(struct browse_req *req)
+static void services_changed(struct btd_device *device)
 {
 	DBusConnection *conn = get_dbus_connection();
-	struct btd_device *device = req->device;
 	char **uuids;
 	GSList *l;
 	int i;
@@ -952,7 +951,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 	}
 }
 
-static void store(struct btd_device *device)
+static void store_profiles(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device->adapter;
 	bdaddr_t src;
@@ -1028,11 +1027,11 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 		device_remove_drivers(device, req->uuids_removed);
 
 	/* Propagate services changes */
-	services_changed(req);
+	services_changed(req->device);
 
 proceed:
 	/* Store the device's profiles in the filesystem */
-	store(device);
+	store_profiles(device);
 
 	if (req->msg) {
 		if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
@@ -1337,6 +1336,30 @@ int device_set_paired(DBusConnection *conn, struct btd_device *device,
 							device);
 
 	return 0;
+}
+
+void btd_device_add_uuid(struct btd_device *device, const char *uuid)
+{
+	GSList *uuid_list;
+	char *new_uuid;
+
+	if (g_slist_find_custom(device->uuids, uuid,
+				(GCompareFunc) strcasecmp))
+		return;
+
+	new_uuid = g_strdup(uuid);
+
+	device->uuids = g_slist_append(device->uuids, new_uuid);
+
+	store_profiles(device);
+
+	uuid_list = g_slist_append(NULL, new_uuid);
+
+	device_probe_drivers(device, uuid_list);
+
+	g_slist_free(uuid_list);
+
+	services_changed(device);
 }
 
 const sdp_record_t *btd_device_get_record(struct btd_device *device,

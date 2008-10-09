@@ -33,6 +33,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 void device_probe_drivers(struct btd_device *device, GSList *uuids);
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
 						const char *uuid);
+void btd_device_add_uuid(struct btd_device *device, const char *uuid);
 struct btd_adapter *device_get_adapter(struct btd_device *device);
 void device_get_address(struct btd_device *adapter, bdaddr_t *bdaddr);
 const gchar *device_get_path(struct btd_device *device);

@@ -476,12 +476,12 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		svclass = HANDSFREE_SVCLASS_ID;
 	}
 
-	device = manager_get_device(src, dst, NULL);
+	device = manager_get_device(src, dst);
 	if (!device)
 		goto drop;
 
 	if (!device->headset)
-		device->headset = headset_init(device, svclass, remote_uuid);
+		btd_device_add_uuid(device->btd_dev, remote_uuid);
 
 	if (headset_get_state(device) > HEADSET_STATE_DISCONNECTED) {
 		debug("Refusing new connection since one already exists");
@@ -666,20 +666,17 @@ static int gateway_server_init(struct audio_adapter *adapter)
 static int audio_probe(struct btd_device *device, GSList *uuids)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	const gchar *path = device_get_path(device);
 	bdaddr_t src, dst;
 	struct audio_device *audio_dev;
 
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst);
 
-	audio_dev = manager_get_device(&src, &dst, path);
+	audio_dev = manager_get_device(&src, &dst);
 	if (!audio_dev) {
 		debug("audio_probe: unable to get a device object");
 		return -1;
 	}
-
-	audio_dev->btd_dev = device;
 
 	g_slist_foreach(uuids, (GFunc) handle_uuid, audio_dev);
 
@@ -1048,43 +1045,43 @@ struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interf
 }
 
 struct audio_device *manager_get_device(const bdaddr_t *src,
-					const bdaddr_t *dst,
-					const char *path)
+					const bdaddr_t *dst)
 {
 	struct audio_device *dev;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+	char addr[18];
+	const char *path;
 
 	dev = manager_find_device(dst, NULL, FALSE);
 	if (dev)
 		return dev;
 
-	if (!path) {
-		struct btd_adapter *adapter;
-		struct btd_device *device;
-		char addr[18];
 
-		ba2str(src, addr);
+	ba2str(src, addr);
 
-		adapter = manager_find_adapter(src);
-		if (!adapter) {
-			error("Unable to get a btd_adapter object for %s",
-					addr);
-			return NULL;
-		}
-
-		ba2str(dst, addr);
-
-		device = adapter_get_device(connection, adapter, addr);
-		if (!device) {
-			error("Unable to get btd_device object for %s", addr);
-			return NULL;
-		}
-
-		path = device_get_path(device);
+	adapter = manager_find_adapter(src);
+	if (!adapter) {
+		error("Unable to get a btd_adapter object for %s",
+				addr);
+		return NULL;
 	}
+
+	ba2str(dst, addr);
+
+	device = adapter_get_device(connection, adapter, addr);
+	if (!device) {
+		error("Unable to get btd_device object for %s", addr);
+		return NULL;
+	}
+
+	path = device_get_path(device);
 
 	dev = device_register(connection, path, src, dst);
 	if (!dev)
 		return NULL;
+
+	dev->btd_dev = device;
 
 	devices = g_slist_append(devices, dev);
 

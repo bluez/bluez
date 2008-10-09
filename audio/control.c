@@ -686,7 +686,7 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
-	dev = manager_get_device(src, dst, NULL);
+	dev = manager_get_device(src, dst);
 	if (!dev) {
 		error("Unable to get audio device object for %s", address);
 		goto drop;
