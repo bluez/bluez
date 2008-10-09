@@ -400,7 +400,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 		goto fail;
 
 	if (strlen(pattern) == 0) {
-		err = device_browse(device, conn, msg, NULL);
+		err = device_browse(device, conn, msg, NULL, FALSE);
 		if (err < 0)
 			goto fail;
 	} else {
@@ -409,7 +409,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 		if (bt_string2uuid(&uuid, pattern) < 0)
 			return invalid_args(msg);
 
-		err = device_browse(device, conn, msg, &uuid);
+		err = device_browse(device, conn, msg, &uuid, FALSE);
 		if (err < 0)
 			goto fail;
 	}
@@ -1097,7 +1097,7 @@ done:
 	search_cb(recs, err, user_data);
 }
 
-static void init_browse(struct browse_req *req)
+static void init_browse(struct browse_req *req, gboolean reverse)
 {
 	GSList *l;
 
@@ -1132,13 +1132,20 @@ static void init_browse(struct browse_req *req)
 		}
 	}
 
+	/* If we are doing reverse-SDP don't try to detect removed profiles
+	 * since some devices hide their service records while they are
+	 * connected
+	 */
+	if (reverse)
+		return;
+
 	for (l = req->device->uuids; l; l = l->next)
 		req->uuids_removed = g_slist_append(req->uuids_removed,
 						l->data);
 }
 
 int device_browse(struct btd_device *device, DBusConnection *conn,
-			DBusMessage *msg, uuid_t *search)
+			DBusMessage *msg, uuid_t *search, gboolean reverse)
 {
 	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
@@ -1164,7 +1171,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 		cb = search_cb;
 	} else {
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
-		init_browse(req);
+		init_browse(req, reverse);
 		cb = browse_cb;
 	}
 
@@ -1268,7 +1275,7 @@ static gboolean start_discovery(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 
-	device_browse(device, NULL, NULL, NULL);
+	device_browse(device, NULL, NULL, NULL, TRUE);
 
 	device->discov_timer = 0;
 
@@ -1299,7 +1306,7 @@ int device_set_paired(DBusConnection *conn, struct btd_device *device,
 		}
 
 		return device_browse(device, bonding->conn, bonding->msg,
-					NULL);
+					NULL, FALSE);
 	}
 
 	/* If we are not initiators and there is no currently active discovery

@@ -1901,7 +1901,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 
 	device_set_temporary(device, FALSE);
 
-	device_browse(device, conn, msg, NULL);
+	device_browse(device, conn, msg, NULL, FALSE);
 
 	adapter->devices = g_slist_append(adapter->devices, device);
 
