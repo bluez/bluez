@@ -177,6 +177,12 @@ void telephony_list_current_calls_req(void *telephony_device)
 	telephony_list_current_calls_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+void telephony_operator_selection_req(void *telephony_device)
+{
+	telephony_operator_selection_ind(OPERATOR_MODE_AUTO, "DummyOperator");
+	telephony_operator_selection_rsp(telephony_device, CME_ERROR_NONE);
+}
+
 /* D-Bus method handlers */
 static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 					void *data)

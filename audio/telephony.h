@@ -86,6 +86,12 @@
 #define SUBSCRIBER_SERVICE_VOICE	4
 #define SUBSCRIBER_SERVICE_FAX		5
 
+/* Operator selection mode values */
+#define OPERATOR_MODE_AUTO		0
+#define OPERATOR_MODE_MANUAL		1
+#define OPERATOR_MODE_DEREGISTER	2
+#define OPERATOR_MODE_MANUAL_AUTO	4
+
 /* Extended Audio Gateway Error Result Codes */
 typedef enum {
 	CME_ERROR_NONE			= -1,
@@ -137,6 +143,7 @@ void telephony_dial_number_req(void *telephony_device, const char *number);
 void telephony_transmit_dtmf_req(void *telephony_device, char tone);
 void telephony_subscriber_number_req(void *telephony_device);
 void telephony_list_current_calls_req(void *telephony_device);
+void telephony_operator_selection_req(void *telephony_device);
 
 /* AG responses to HF requests. These are implemented by headset.c */
 int telephony_event_reporting_rsp(void *telephony_device, cme_error_t err);
@@ -148,6 +155,7 @@ int telephony_dial_number_rsp(void *telephony_device, cme_error_t err);
 int telephony_transmit_dtmf_rsp(void *telephony_device, cme_error_t err);
 int telephony_subscriber_number_rsp(void *telephony_device, cme_error_t err);
 int telephony_list_current_calls_rsp(void *telephony_device, cme_error_t err);
+int telephony_operator_selection_rsp(void *telephony_device, cme_error_t err);
 
 /* Event indications by AG. These are implemented by headset.c */
 int telephony_event_ind(int index);
@@ -162,6 +170,7 @@ int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 int telephony_subscriber_number_ind(const char *number, int type,
 					int service);
 int telephony_call_waiting_ind(const char *number, int type);
+int telephony_operator_selection_ind(int mode, const char *oper);
 
 /* Helper function for quick indicator updates */
 static inline int telephony_update_indicator(struct indicator *indicators,

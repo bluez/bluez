@@ -529,6 +529,41 @@ static int sco_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	return 0;
 }
 
+static int hfp_cmp(struct headset *hs)
+{
+	if (hs->hfp_active)
+		return 0;
+	else
+		return -1;
+}
+
+static void send_foreach_headset(GSList *devices,
+					int (*cmp)(struct headset *hs),
+					char *format, ...)
+{
+	GSList *l;
+	va_list ap;
+
+	for (l = devices; l != NULL; l = l->next) {
+		struct audio_device *device = l->data;
+		struct headset *hs = device->headset;
+		int ret;
+
+		assert(hs != NULL);
+
+		if (cmp && cmp(hs) != 0)
+			continue;
+
+		va_start(ap, format);
+		ret = headset_send_valist(hs, format, ap);
+		if (ret < 0)
+			error("Failed to send to headset: %s (%d)",
+					strerror(-ret), -ret);
+		va_end(ap);
+	}
+}
+
+
 static void hfp_slc_complete(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
@@ -934,6 +969,41 @@ static int call_waiting_notify(struct audio_device *device, const char *buf)
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
+int telephony_operator_selection_rsp(void *telephony_device, cme_error_t err)
+{
+	return telephony_generic_rsp(telephony_device, err);
+}
+
+int telephony_operator_selection_ind(int mode, const char *oper)
+{
+	if (!active_devices)
+		return -ENODEV;
+
+	send_foreach_headset(active_devices, hfp_cmp, "\r\n+COPS:%d,0,%s\r\n",
+				mode, oper);
+	return 0;
+}
+
+static int operator_selection(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+
+	if (strlen(buf) < 8)
+		return -EINVAL;
+
+	switch (buf[7]) {
+	case '?':
+		telephony_operator_selection_req(device);
+		break;
+	case '=':
+		return headset_send(hs, "\r\nOK\r\n");
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static struct event event_callbacks[] = {
 	{ "ATA", answer_call },
 	{ "ATD", dial_number },
@@ -952,6 +1022,7 @@ static struct event event_callbacks[] = {
 	{ "AT+CLCC", list_current_calls },
 	{ "AT+CMEE", extended_errors },
 	{ "AT+CCWA", call_waiting_notify },
+	{ "AT+COPS", operator_selection },
 	{ 0 }
 };
 
@@ -1391,40 +1462,6 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 	hs->pending->msg = dbus_message_ref(msg);
 
 	return NULL;
-}
-
-static int hfp_cmp(struct headset *hs)
-{
-	if (hs->hfp_active)
-		return 0;
-	else
-		return -1;
-}
-
-static void send_foreach_headset(GSList *devices,
-					int (*cmp)(struct headset *hs),
-					char *format, ...)
-{
-	GSList *l;
-	va_list ap;
-
-	for (l = devices; l != NULL; l = l->next) {
-		struct audio_device *device = l->data;
-		struct headset *hs = device->headset;
-		int ret;
-
-		assert(hs != NULL);
-
-		if (cmp && cmp(hs) != 0)
-			continue;
-
-		va_start(ap, format);
-		ret = headset_send_valist(hs, format, ap);
-		if (ret < 0)
-			error("Failed to send to headset: %s (%d)",
-					strerror(-ret), -ret);
-		va_end(ap);
-	}
 }
 
 static int cli_cmp(struct headset *hs)
