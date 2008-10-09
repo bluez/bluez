@@ -191,8 +191,7 @@ done:
 		conf.security ? "true" : "false");
 }
 
-static int network_probe(struct btd_device *device, GSList *records,
-			uint16_t id)
+static int network_probe(struct btd_device *device, GSList *uuids, uint16_t id)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -215,9 +214,9 @@ static void network_remove(struct btd_device *device, uint16_t id)
 	connection_unregister(path, id);
 }
 
-static int panu_probe(struct btd_device *device, GSList *records)
+static int panu_probe(struct btd_device *device, GSList *uuids)
 {
-	return network_probe(device, records, BNEP_SVC_PANU);
+	return network_probe(device, uuids, BNEP_SVC_PANU);
 }
 
 static void panu_remove(struct btd_device *device)
@@ -225,9 +224,9 @@ static void panu_remove(struct btd_device *device)
 	network_remove(device, BNEP_SVC_PANU);
 }
 
-static int gn_probe(struct btd_device *device, GSList *records)
+static int gn_probe(struct btd_device *device, GSList *uuids)
 {
-	return network_probe(device, records, BNEP_SVC_GN);
+	return network_probe(device, uuids, BNEP_SVC_GN);
 }
 
 static void gn_remove(struct btd_device *device)
@@ -235,9 +234,9 @@ static void gn_remove(struct btd_device *device)
 	network_remove(device, BNEP_SVC_GN);
 }
 
-static int nap_probe(struct btd_device *device, GSList *records)
+static int nap_probe(struct btd_device *device, GSList *uuids)
 {
-	return network_probe(device, records, BNEP_SVC_NAP);
+	return network_probe(device, uuids, BNEP_SVC_NAP);
 }
 
 static void nap_remove(struct btd_device *device)

@@ -845,15 +845,19 @@ static void create_stored_records_from_keys(char *key, char *value,
 	rec_list->recs = sdp_list_append(rec_list->recs, rec);
 }
 
-sdp_list_t *read_records(const gchar *src, const gchar *dst)
+sdp_list_t *read_records(bdaddr_t *src, bdaddr_t *dst)
 {
 	char filename[PATH_MAX + 1];
 	struct record_list rec_list;
+	char srcaddr[18], dstaddr[18];
 
-	rec_list.addr = dst;
+	ba2str(src, srcaddr);
+	ba2str(dst, dstaddr);
+
+	rec_list.addr = dstaddr;
 	rec_list.recs = NULL;
 
-	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "sdp");
 	textfile_foreach(filename, create_stored_records_from_keys, &rec_list);
 
 	return rec_list.recs;
@@ -952,16 +956,17 @@ static int read_device_id_from_did(const gchar *src, const gchar *dst,
 	return 0;
 }
 
-int read_device_id(const gchar *src, const gchar *dst,
+int read_device_id(const gchar *srcaddr, const gchar *dstaddr,
 					uint16_t *source, uint16_t *vendor,
 					uint16_t *product, uint16_t *version)
 {
 	uint16_t lsource, lvendor, lproduct, lversion;
 	sdp_list_t *recs;
 	sdp_record_t *rec;
+	bdaddr_t src, dst;
 	int err;
 
-	err = read_device_id_from_did(src, dst, &lsource,
+	err = read_device_id_from_did(srcaddr, dstaddr, &lsource,
 						vendor, product, version);
 	if (!err) {
 		if (lsource == 0xffff)
@@ -970,7 +975,10 @@ int read_device_id(const gchar *src, const gchar *dst,
 		return err;
 	}
 
-	recs = read_records(src, dst);
+	str2ba(srcaddr, &src);
+	str2ba(dstaddr, &dst);
+
+	recs = read_records(&src, &dst);
 	rec = find_record_in_list(recs, PNP_UUID);
 
 	if (rec) {
@@ -1004,7 +1012,7 @@ int read_device_id(const gchar *src, const gchar *dst,
 		lversion = 0x0000;
 	}
 
-	store_device_id(src, dst, lsource, lvendor, lproduct, lversion);
+	store_device_id(srcaddr, dstaddr, lsource, lvendor, lproduct, lversion);
 
 	if (err)
 		return err;

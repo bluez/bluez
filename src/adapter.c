@@ -2274,7 +2274,6 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	struct btd_adapter *adapter = user_data;
 	GSList *uuids = bt_string2list(value);
 	struct btd_device *device;
-	sdp_list_t *records;
 	bdaddr_t dst;
 	char srcaddr[18], dstaddr[18];
 
@@ -2294,12 +2293,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	device_get_address(device, &dst);
 	ba2str(&dst, dstaddr);
 
-	records = read_records(srcaddr, dstaddr);
-
-	device_probe_drivers(device, uuids, records);
-
-	if (records)
-		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
+	device_probe_drivers(device, uuids);
 
 	g_slist_free(uuids);
 }

@@ -74,7 +74,7 @@
 
 static DBusConnection *connection = NULL;
 
-static int serial_probe(struct btd_device *device, sdp_record_t *rec,
+static int serial_probe(struct btd_device *device, const sdp_record_t *rec,
 			const char *name, const char *uuid)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
@@ -114,9 +114,15 @@ static void serial_remove(struct btd_device *device, const char *uuid)
 }
 
 
-static int port_probe(struct btd_device *device, GSList *records)
+static int port_probe(struct btd_device *device, GSList *uuids)
 {
-	return serial_probe(device, records->data, SERIAL_PORT_NAME,
+	const sdp_record_t *record;
+
+	record = btd_device_get_record(device, uuids->data);
+	if (!record)
+		return -1;
+
+	return serial_probe(device, record, SERIAL_PORT_NAME,
 				SERIAL_PORT_UUID);
 }
 
@@ -125,10 +131,15 @@ static void port_remove(struct btd_device *device)
 	return serial_remove(device, SERIAL_PORT_UUID);
 }
 
-static int dialup_probe(struct btd_device *device, GSList *records)
+static int dialup_probe(struct btd_device *device, GSList *uuids)
 {
-	return serial_probe(device, records->data, DIALUP_NET_NAME,
-				DIALUP_NET_UUID);
+	const sdp_record_t *record;
+
+	record = btd_device_get_record(device, uuids->data);
+	if (!record)
+		return -1;
+
+	return serial_probe(device, record, DIALUP_NET_NAME, DIALUP_NET_UUID);
 }
 
 static void dialup_remove(struct btd_device *device)

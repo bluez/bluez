@@ -50,6 +50,8 @@ struct headset;
 struct gateway;
 
 struct audio_device {
+	struct btd_device *btd_dev;
+
 	DBusConnection *conn;
 	char *path;
 	bdaddr_t src;

@@ -139,40 +139,6 @@ static struct audio_adapter *find_adapter_by_address(GSList *list,
 	return NULL;
 }
 
-static uint16_t get_service_uuid(const sdp_record_t *record)
-{
-	sdp_list_t *classes;
-	uuid_t uuid;
-	uint16_t uuid16 = 0;
-
-	if (sdp_get_service_classes(record, &classes) < 0) {
-		error("Unable to get service classes from record");
-		return 0;
-	}
-
-	memcpy(&uuid, classes->data, sizeof(uuid));
-
-	if (!sdp_uuid128_to_uuid(&uuid)) {
-		error("Not a 16 bit UUID");
-		sdp_list_free(classes, free);
-		return 0;
-	}
-
-	if (uuid.type == SDP_UUID32) {
-		if (uuid.value.uuid32 > 0xFFFF) {
-			error("Not a 16 bit UUID");
-			goto done;
-		}
-		uuid16 = (uint16_t) uuid.value.uuid32;
-	} else
-		uuid16 = uuid.value.uuid16;
-
-done:
-	sdp_list_free(classes, free);
-
-	return uuid16;
-}
-
 gboolean server_is_enabled(bdaddr_t *src, uint16_t svc)
 {
 	struct audio_adapter *adp;
@@ -208,23 +174,37 @@ gboolean server_is_enabled(bdaddr_t *src, uint16_t svc)
 	return ret;
 }
 
-static void handle_record(sdp_record_t *record, struct audio_device *device)
+static void handle_uuid(const char *uuidstr, struct audio_device *device)
 {
+	uuid_t uuid;
 	uint16_t uuid16;
 
-	uuid16 = get_service_uuid(record);
-
-	if (!server_is_enabled(&device->src, uuid16))
+	if (bt_string2uuid(&uuid, uuidstr) < 0) {
+		error("%s not detected as an UUID-128", uuidstr);
 		return;
+	}
+
+	if (!sdp_uuid128_to_uuid(&uuid) && uuid.type != SDP_UUID16) {
+		error("Could not convert %s to a UUID-16", uuidstr);
+		return;
+	}
+
+	uuid16 = uuid.value.uuid16;
+
+	if (!server_is_enabled(&device->src, uuid16)) {
+		debug("audio handle_uuid: server not enabled for %s (0x%04x)",
+				uuidstr, uuid16);
+		return;
+	}
 
 	switch (uuid16) {
 	case HEADSET_SVCLASS_ID:
 		debug("Found Headset record");
 		if (device->headset)
-			headset_update(device, record, uuid16);
+			headset_update(device, uuid16, uuidstr);
 		else
-			device->headset = headset_init(device,
-							record, uuid16);
+			device->headset = headset_init(device, uuid16,
+							uuidstr);
 		break;
 	case HEADSET_AGW_SVCLASS_ID:
 		debug("Found Headset AG record");
@@ -232,10 +212,10 @@ static void handle_record(sdp_record_t *record, struct audio_device *device)
 	case HANDSFREE_SVCLASS_ID:
 		debug("Found Handsfree record");
 		if (device->headset)
-			headset_update(device, record, uuid16);
+			headset_update(device, uuid16, uuidstr);
 		else
-			device->headset = headset_init(device,
-							record, uuid16);
+			device->headset = headset_init(device, uuid16,
+							uuidstr);
 		break;
 	case HANDSFREE_AGW_SVCLASS_ID:
 		debug("Found Handsfree AG record");
@@ -474,7 +454,8 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer data)
 {
 	struct audio_adapter *adapter = data;
-	const char *uuid;
+	const char *server_uuid, *remote_uuid;
+	uint16_t svclass;
 	struct audio_device *device;
 	gboolean hfp_active;
 
@@ -485,10 +466,14 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	if (chan == adapter->hsp_ag_server) {
 		hfp_active = FALSE;
-		uuid = HSP_AG_UUID;
+		server_uuid = HSP_AG_UUID;
+		remote_uuid = HSP_HS_UUID;
+		svclass = HEADSET_SVCLASS_ID;
 	} else {
 		hfp_active = TRUE;
-		uuid = HFP_AG_UUID;
+		server_uuid = HFP_AG_UUID;
+		remote_uuid = HFP_HS_UUID;
+		svclass = HANDSFREE_SVCLASS_ID;
 	}
 
 	device = manager_get_device(src, dst, NULL);
@@ -496,7 +481,7 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 
 	if (!device->headset)
-		device->headset = headset_init(device, NULL, 0);
+		device->headset = headset_init(device, svclass, remote_uuid);
 
 	if (headset_get_state(device) > HEADSET_STATE_DISCONNECTED) {
 		debug("Refusing new connection since one already exists");
@@ -512,8 +497,8 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
-	err = btd_request_authorization(&device->src, &device->dst, uuid,
-				auth_cb, device);
+	err = btd_request_authorization(&device->src, &device->dst,
+					server_uuid, auth_cb, device);
 	if (err < 0) {
 		debug("Authorization denied: %s", strerror(-err));
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
@@ -678,23 +663,25 @@ static int gateway_server_init(struct audio_adapter *adapter)
 	return 0;
 }
 
-static int audio_probe(struct btd_device *device, GSList *records)
+static int audio_probe(struct btd_device *device, GSList *uuids)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	bdaddr_t src, dst;
-	struct audio_device *dev;
+	struct audio_device *audio_dev;
 
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst);
 
-	dev = manager_get_device(&src, &dst, path);
-	if (!dev) {
+	audio_dev = manager_get_device(&src, &dst, path);
+	if (!audio_dev) {
 		debug("audio_probe: unable to get a device object");
 		return -1;
 	}
 
-	g_slist_foreach(records, (GFunc) handle_record, dev);
+	audio_dev->btd_dev = device;
+
+	g_slist_foreach(uuids, (GFunc) handle_uuid, audio_dev);
 
 	return 0;
 }

@@ -54,11 +54,11 @@ static void input_remove(struct btd_device *device, const char *uuid)
 	input_device_unregister(path, uuid);
 }
 
-static int hid_device_probe(struct btd_device *device, GSList *records)
+static int hid_device_probe(struct btd_device *device, GSList *uuids)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
-	sdp_record_t *rec = records->data;
+	const sdp_record_t *rec = btd_device_get_record(device, uuids->data);
 	sdp_data_t *pdlist;
 	bdaddr_t src, dst;
 	uint32_t handle;
@@ -82,18 +82,18 @@ static void hid_device_remove(struct btd_device *device)
 	input_remove(device, HID_UUID);
 }
 
-static int headset_probe(struct btd_device *device, GSList *records)
+static int headset_probe(struct btd_device *device, GSList *uuids)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
-	sdp_record_t *record = records->data;
+	const sdp_record_t *record = btd_device_get_record(device, uuids->data);
 	sdp_list_t *protos;
 	uint8_t ch;
 	bdaddr_t src, dst;
 
 	DBG("path %s", path);
 
-	if (sdp_get_access_protos(record, &protos) < 0) {
+	if (!record || sdp_get_access_protos(record, &protos) < 0) {
 		error("Invalid record");
 		return -EINVAL;
 	}

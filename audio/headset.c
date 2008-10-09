@@ -59,6 +59,8 @@
 #include "headset.h"
 #include "glib-helper.h"
 #include "dbus-common.h"
+#include "../src/adapter.h"
+#include "../src/device.h"
 
 #define DC_TIMEOUT 3000
 
@@ -1810,8 +1812,8 @@ static GDBusSignalTable headset_signals[] = {
 	{ NULL, NULL }
 };
 
-static void headset_set_channel(struct headset *headset, sdp_record_t *record,
-				uint16_t svc)
+static void headset_set_channel(struct headset *headset,
+				const sdp_record_t *record, uint16_t svc)
 {
 	int ch;
 	sdp_list_t *protos;
@@ -1835,9 +1837,15 @@ static void headset_set_channel(struct headset *headset, sdp_record_t *record,
 		error("Unable to get RFCOMM channel from Headset record");
 }
 
-void headset_update(struct audio_device *dev, sdp_record_t *record, uint16_t svc)
+void headset_update(struct audio_device *dev, uint16_t svc,
+			const char *uuidstr)
 {
 	struct headset *headset = dev->headset;
+	const sdp_record_t *record;
+
+	record = btd_device_get_record(dev->btd_dev, uuidstr);
+	if (!record)
+		return;
 
 	switch (svc) {
 	case HANDSFREE_SVCLASS_ID:
@@ -1918,10 +1926,11 @@ void headset_unregister(struct audio_device *dev)
 		AUDIO_HEADSET_INTERFACE);
 }
 
-struct headset *headset_init(struct audio_device *dev, sdp_record_t *record,
-				uint16_t svc)
+struct headset *headset_init(struct audio_device *dev, uint16_t svc,
+				const char *uuidstr)
 {
 	struct headset *hs;
+	const sdp_record_t *record;
 
 	hs = g_new0(struct headset, 1);
 	hs->rfcomm_ch = -1;
@@ -1931,6 +1940,7 @@ struct headset *headset_init(struct audio_device *dev, sdp_record_t *record,
 	hs->hfp_active = FALSE;
 	hs->cli_active = FALSE;
 
+	record = btd_device_get_record(dev->btd_dev, uuidstr);
 	if (!record)
 		goto register_iface;
 
