@@ -1,3 +1,12 @@
+ver 4.13:
+	Fix service discovery and UUID handling.
+	Fix bonding issues with Simple Pairing.
+	Fix file descriptor misuse of SCO connections.
+	Fix various memory leaks in the device handling.
+	Fix AVCTP disconnect handling.
+	Fix GStreamer modes for MP3 encoding.
+	Add operator selection to Handsfree support.
+
 ver 4.12:
 	Fix crash with missing icon value.
 	Fix error checks of HAL plugin.
