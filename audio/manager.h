@@ -23,6 +23,7 @@
  */
 
 struct enabled_interfaces {
+	gboolean hfp;
 	gboolean headset;
 	gboolean gateway;
 	gboolean sink;

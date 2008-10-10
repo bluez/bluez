@@ -103,6 +103,7 @@ static GSList *adapters = NULL;
 static GSList *devices = NULL;
 
 static struct enabled_interfaces enabled = {
+	.hfp		= TRUE,
 	.headset	= TRUE,
 	.gateway	= FALSE,
 	.sink		= TRUE,
@@ -124,54 +125,25 @@ static struct audio_adapter *find_adapter(GSList *list, const char *path)
 	return NULL;
 }
 
-static struct audio_adapter *find_adapter_by_address(GSList *list,
-						const bdaddr_t *src)
-{
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct audio_adapter *adapter = l->data;
-
-		if (bacmp(&adapter->src, src) == 0)
-			return adapter;
-	}
-
-	return NULL;
-}
-
 gboolean server_is_enabled(bdaddr_t *src, uint16_t svc)
 {
-	struct audio_adapter *adp;
-	gboolean ret;
-
-	adp = find_adapter_by_address(adapters, src);
-	if (!adp)
-		return FALSE;
-
 	switch (svc) {
 	case HEADSET_SVCLASS_ID:
-		ret = (adp->hsp_ag_server != NULL);
-		break;
+		return enabled.headset;
 	case HEADSET_AGW_SVCLASS_ID:
-		ret = (adp->hsp_hs_server != NULL);
-		break;
+		return enabled.gateway;
 	case HANDSFREE_SVCLASS_ID:
-		ret = (adp->hfp_ag_server != NULL);
-		break;
+		return enabled.headset && enabled.hfp;
 	case HANDSFREE_AGW_SVCLASS_ID:
-		ret = FALSE;
-		break;
+		return  FALSE;
 	case AUDIO_SINK_SVCLASS_ID:
 		return enabled.sink;
 	case AV_REMOTE_TARGET_SVCLASS_ID:
 	case AV_REMOTE_SVCLASS_ID:
 		return enabled.control;
 	default:
-		ret = FALSE;
-		break;
+		return FALSE;
 	}
-
-	return ret;
 }
 
 static void handle_uuid(const char *uuidstr, struct audio_device *device)
@@ -523,7 +495,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 {
 	uint8_t chan = DEFAULT_HS_AG_CHANNEL;
 	sdp_record_t *record;
-	gboolean hfp = TRUE, master = TRUE;
+	gboolean master = TRUE;
 	GError *err = NULL;
 	uint32_t features, flags;
 
@@ -538,15 +510,6 @@ static int headset_server_init(struct audio_adapter *adapter)
 			err = NULL;
 		} else
 			master = tmp;
-
-		tmp = g_key_file_get_boolean(config, "Headset", "HFP",
-						&err);
-		if (err) {
-			debug("audio.conf: %s", err->message);
-			g_error_free(err);
-			err = NULL;
-		} else
-			hfp = tmp;
 	}
 
 	flags = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
@@ -574,7 +537,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 
 	features = headset_config_init(config);
 
-	if (!hfp)
+	if (!enabled.hfp)
 		return 0;
 
 	chan = DEFAULT_HF_AG_CHANNEL;
@@ -904,6 +867,8 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 {
 	char **list;
 	int i;
+	gboolean b;
+	GError *err;
 
 	connection = dbus_connection_ref(conn);
 
@@ -943,6 +908,16 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 			enabled.control = FALSE;
 	}
 	g_strfreev(list);
+
+	err = NULL;
+	b = g_key_file_get_boolean(config, "Headset", "HFP",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else
+		enabled.hfp = b;
 
 proceed:
 	if (enabled.headset) {
