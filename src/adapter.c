@@ -2295,6 +2295,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 
 	device_probe_drivers(device, uuids);
 
+	g_slist_foreach(uuids, (GFunc) g_free, NULL);
 	g_slist_free(uuids);
 }
 

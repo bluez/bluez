@@ -668,7 +668,8 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids)
 			continue;
 
 		device->uuids = g_slist_insert_sorted(device->uuids,
-					list->data, (GCompareFunc) strcasecmp);
+							g_strdup(list->data),
+							(GCompareFunc) strcasecmp);
 	}
 
 	if (device->tmp_records) {
@@ -1349,17 +1350,14 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 		return;
 
 	new_uuid = g_strdup(uuid);
-
-	device->uuids = g_slist_append(device->uuids, new_uuid);
-
-	store_profiles(device);
-
 	uuid_list = g_slist_append(NULL, new_uuid);
 
 	device_probe_drivers(device, uuid_list);
 
+	g_free(new_uuid);
 	g_slist_free(uuid_list);
 
+	store_profiles(device);
 	services_changed(device);
 }
 
