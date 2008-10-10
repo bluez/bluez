@@ -986,6 +986,7 @@ static void browse_req_free(struct browse_req *req)
 		dbus_message_unref(req->msg);
 	if (req->conn)
 		dbus_connection_unref(req->conn);
+	g_slist_foreach(req->uuids_added, (GFunc) g_free, NULL);
 	g_slist_free(req->uuids_added);
 	g_slist_free(req->uuids_removed);
 	if (req->records)
