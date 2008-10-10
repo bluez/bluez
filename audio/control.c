@@ -755,11 +755,19 @@ static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)
 static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer data)
 {
-	struct avctp *session = data;
+	struct control *control = data;
+	struct avctp *session = control->session;
 	struct l2cap_options l2o;
 	socklen_t len;
 	int sk;
 	char address[18];
+
+	if (!session) {
+		debug("avctp_connect_cb: session removed while connecting");
+		g_io_channel_close(chan);
+		g_io_channel_unref(chan);
+		return;
+	}
 
 	ba2str(&session->dst, address);
 
@@ -780,6 +788,7 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	len = sizeof(l2o);
 	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0) {
 		err = errno;
+		g_io_channel_unref(chan);
 		avctp_unref(session);
 		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(err),
 				err);
@@ -797,6 +806,7 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	session->io = g_io_add_watch(chan,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_cb, session);
+	g_io_channel_unref(chan);
 }
 
 gboolean avrcp_connect(struct audio_device *dev)
@@ -818,7 +828,7 @@ gboolean avrcp_connect(struct audio_device *dev)
 	session->state = AVCTP_STATE_CONNECTING;
 
 	err = bt_l2cap_connect(&dev->src, &dev->dst, AVCTP_PSM, 0,
-				avctp_connect_cb, session);
+				avctp_connect_cb, control);
 	if (err < 0) {
 		avctp_unref(session);
 		error("Connect failed. %s(%d)", strerror(-err), -err);
