@@ -1,5 +1,5 @@
 /* To compile
- * gcc -g -Wall -I../src -I../lib/ -I../include -DSTORAGEDIR=\"/var/lib/bluetooth\" -o sixpair sixpair.c ../src/storage.c ../common/libhelper.a -I../common `pkg-config --libs --cflags glib-2.0 libusb` -lbluetooth
+ * gcc -g -Wall -I../src -I../lib/ -I../include -DSTORAGEDIR=\"/var/lib/bluetooth\" -o sixpair sixpair.c ../src/storage.c ../common/libhelper.a -I../common `pkg-config --libs --cflags glib-2.0 libusb-1.0` -lbluetooth
  */
 
 #include <unistd.h>
@@ -10,16 +10,13 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hidp.h>
 #include <glib.h>
-#include <usb.h>
+#include <libusb.h>
 
 #include "storage.h"
 
 /* Vendor and product ID for the Sixaxis PS3 controller */
 #define VENDOR 0x054c
 #define PRODUCT 0x0268
-
-#define USB_DIR_IN 0x80
-#define USB_DIR_OUT 0
 
 gboolean option_get_master = TRUE;
 char *option_master= NULL;
@@ -37,16 +34,16 @@ const GOptionEntry options[] = {
 };
 
 static gboolean
-show_master (usb_dev_handle *devh, int itfnum)
+show_master (libusb_device_handle *devh, int itfnum)
 {
 	unsigned char msg[8];
 	int res;
 
-	res = usb_control_msg (devh,
-			       USB_DIR_IN | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
-			       0x01, 0x03f5, itfnum,
-			       (void*) msg, sizeof(msg),
-			       5000);
+	res = libusb_control_transfer (devh,
+				       LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
+				       0x01, 0x03f5, itfnum,
+				       (void*) msg, sizeof(msg),
+				       5000);
 
 	if (res < 0) {
 		g_warning ("Getting the master Bluetooth address failed");
@@ -59,17 +56,17 @@ show_master (usb_dev_handle *devh, int itfnum)
 }
 
 static char *
-get_bdaddr (usb_dev_handle *devh, int itfnum)
+get_bdaddr (libusb_device_handle *devh, int itfnum)
 {
 	unsigned char msg[17];
 	char *address;
 	int res;
 
-	res = usb_control_msg (devh,
-			       USB_DIR_IN | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
-			       0x01, 0x03f2, itfnum,
-			       (void*) msg, sizeof(msg),
-			       5000);
+	res = libusb_control_transfer (devh,
+				       LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
+				       0x01, 0x03f2, itfnum,
+				       (void*) msg, sizeof(msg),
+				       5000);
 
 	if (res < 0) {
 		g_warning ("Getting the device Bluetooth address failed");
@@ -87,7 +84,7 @@ get_bdaddr (usb_dev_handle *devh, int itfnum)
 }
 
 static gboolean
-set_master_bdaddr (usb_dev_handle *devh, int itfnum, char *host)
+set_master_bdaddr (libusb_device_handle *devh, int itfnum, char *host)
 {
 	unsigned char msg[8];
 	int mac[6];
@@ -107,11 +104,11 @@ set_master_bdaddr (usb_dev_handle *devh, int itfnum, char *host)
 	msg[6] = mac[4];
 	msg[7] = mac[5];
 
-	res = usb_control_msg (devh,
-			       USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
-			       0x09, 0x03f5, itfnum,
-			       (void*) msg, sizeof(msg),
-			       5000);
+	res = libusb_control_transfer (devh,
+				       LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
+				       0x09, 0x03f5, itfnum,
+				       (void*) msg, sizeof(msg),
+				       5000);
 
 	if (res < 0) {
 		g_warning ("Setting the master Bluetooth address failed");
@@ -119,7 +116,6 @@ set_master_bdaddr (usb_dev_handle *devh, int itfnum, char *host)
 	}
 
 	return TRUE;
-
 }
 
 static char *
@@ -146,8 +142,9 @@ get_host_bdaddr (void)
 }
 
 static int
-get_record_info (struct usb_interface_descriptor *alt, unsigned int *_len, unsigned int *_country, uint16_t *_version)
+get_record_info (const struct libusb_interface_descriptor *alt, unsigned int *_len, unsigned int *_country, uint16_t *_version)
 {
+#if 0
 	unsigned char *buf;
 	unsigned int size, len, country;
 	uint16_t version;
@@ -188,13 +185,14 @@ get_record_info (struct usb_interface_descriptor *alt, unsigned int *_len, unsig
 	*_len = len;
 	*_country = country;
 	*_version = version;
-
+#endif
 	return 0;
 }
 
 static void
-fill_req_from_usb (struct usb_device *dev, struct hidp_connadd_req *req, void *data, unsigned int len, unsigned int country, uint16_t version)
+fill_req_from_usb (libusb_device *dev, struct hidp_connadd_req *req, void *data, unsigned int len, unsigned int country, uint16_t version)
 {
+#if 0
 	req->vendor = dev->descriptor.idVendor;
 	req->product = dev->descriptor.idProduct;
 	req->version = version;
@@ -207,6 +205,7 @@ fill_req_from_usb (struct usb_device *dev, struct hidp_connadd_req *req, void *d
 
 	req->rd_size = len;
 	req->rd_data = data;
+#endif
 }
 
 static void
@@ -230,21 +229,20 @@ store_info (const char *host, const char *device, struct hidp_connadd_req *req)
 }
 
 static int
-handle_device (struct usb_device *dev, struct usb_config_descriptor *cfg, int itfnum, struct usb_interface_descriptor *alt)
+handle_device (libusb_device *dev, struct libusb_config_descriptor *cfg, int itfnum, const struct libusb_interface_descriptor *alt)
 {
-	usb_dev_handle *devh;
+	libusb_device_handle *devh;
 	int res, retval;
 
 	retval = -1;
 
-	devh = usb_open (dev);
-	if (devh == NULL) {
+	if (libusb_open (dev, &devh) < 0) {
 		g_warning ("Can't open device");
 		goto bail;
 	}
-	usb_detach_kernel_driver_np (devh, itfnum);
+	libusb_detach_kernel_driver (devh, itfnum);
 
-	res = usb_claim_interface (devh, itfnum);
+	res = libusb_claim_interface (devh, itfnum);
 	if (res < 0) {
 		g_warning ("Can't claim interface %d", itfnum);
 		goto bail;
@@ -279,7 +277,6 @@ handle_device (struct usb_device *dev, struct usb_config_descriptor *cfg, int it
 		unsigned char data[8192];
 		struct hidp_connadd_req req;
 		unsigned int len, country;
-		int n;
 		uint16_t version;
 		char *device;
 
@@ -295,11 +292,11 @@ handle_device (struct usb_device *dev, struct usb_config_descriptor *cfg, int it
 			goto bail;
 		}
 
-		if ((n = usb_control_msg(devh,
-				    USB_ENDPOINT_IN | USB_TYPE_STANDARD | USB_RECIP_INTERFACE,
-				    USB_REQ_GET_DESCRIPTOR,
-				    (USB_DT_REPORT << 8),
-				    itfnum, (void *) &data, len, 5000)) < 0) {
+		if (libusb_control_transfer(devh,
+						 LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
+						 LIBUSB_REQUEST_GET_DESCRIPTOR,
+						 (LIBUSB_DT_REPORT << 8),
+						 itfnum, (void *) &data, len, 5000) < 0) {
 			g_warning ("Can't get report descriptor (length: %d, interface: %d)", len, itfnum);
 			retval = -1;
 			goto bail;
@@ -319,8 +316,10 @@ handle_device (struct usb_device *dev, struct usb_config_descriptor *cfg, int it
 	}
 
 bail:
+	libusb_release_interface (devh, itfnum);
+	libusb_attach_kernel_driver(devh, itfnum);
 	if (devh != NULL)
-		usb_close (devh);
+		libusb_close (devh);
 
 	return retval;
 }
@@ -329,7 +328,8 @@ int main (int argc, char **argv)
 {
 	GOptionContext *context;
 	GError *error = NULL;
-	struct usb_bus *busses, *bus;
+	libusb_device **list;
+	ssize_t num_devices, i;
 
 	context = g_option_context_new ("- Manage Sixaxis PS3 controllers");
 	g_option_context_add_main_entries (context, options, NULL);
@@ -343,45 +343,47 @@ int main (int argc, char **argv)
 		//FIXME check bdaddr
 	}
 
+	libusb_init (NULL);
+
 	/* Find device(s) */
-	usb_init ();
-	if (usb_find_busses () < 0) {
-		g_warning ("usb_find_busses failed");
-		return 1;
-	}
-	if (usb_find_devices () < 0) {
-		g_warning ("usb_find_devices failed");
+	num_devices = libusb_get_device_list (NULL, &list);
+	if (num_devices < 0) {
+		g_warning ("libusb_get_device_list failed");
 		return 1;
 	}
 
-	busses = usb_get_busses();
-	if (busses == NULL) {
-		g_warning ("usb_get_busses failed");
-		return 1;
-	}
+	for (i = 0; i < num_devices; i++) {
+		struct libusb_config_descriptor *cfg;
+		libusb_device *dev = list[i];
+		struct libusb_device_descriptor desc;
+		guint8 j;
 
-	for (bus = busses; bus; bus = bus->next) {
-		struct usb_device *dev;
+		if (libusb_get_device_descriptor (dev, &desc) < 0) {
+			g_warning ("libusb_get_device_descriptor failed");
+			continue;
+		}
 
-		for (dev = bus->devices; dev; dev = dev->next) {
-			struct usb_config_descriptor *cfg;
+		/* Here we check for the supported devices */
+		if (desc.idVendor != VENDOR || desc.idProduct != PRODUCT)
+			continue;
 
-			/* Here we check for the supported devices */
-			if (dev->descriptor.idVendor != VENDOR || dev->descriptor.idProduct != PRODUCT)
-				continue;
+		/* Look for the interface number that interests us */
+		for (j = 0; j < desc.bNumConfigurations; j++) {
+			struct libusb_config_descriptor *config;
+			guint8 k;
 
-			/* Look for the interface number that interests us */
-			for (cfg = dev->config; cfg < dev->config + dev->descriptor.bNumConfigurations; ++cfg) {
-				int itfnum;
+			libusb_get_config_descriptor (dev, j, &config);
 
-				for (itfnum = 0; itfnum < cfg->bNumInterfaces; ++itfnum) {
-					struct usb_interface *itf = &cfg->interface[itfnum];
-					struct usb_interface_descriptor *alt;
+			for (k = 0; k < config->bNumInterfaces; k++) {
+				const struct libusb_interface *itf = &config->interface[k];
+				int l;
 
-					for (alt = itf->altsetting; alt < itf->altsetting + itf->num_altsetting; ++alt) {
-						if (alt->bInterfaceClass == 3) {
-							handle_device (dev, cfg, itfnum, alt);
-						}
+				for (l = 0; l < itf->num_altsetting ; l++) {
+					struct libusb_interface_descriptor alt;
+
+					alt = itf->altsetting[l];
+					if (alt.bInterfaceClass == 3) {
+						handle_device (dev, cfg, l, &alt);
 					}
 				}
 			}
