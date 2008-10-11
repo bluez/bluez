@@ -65,6 +65,9 @@ static int hid_device_probe(struct btd_device *device, GSList *uuids)
 
 	DBG("path %s", path);
 
+	if (!rec)
+		return -1;
+
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst);
 	pdlist = sdp_data_get(rec, SDP_SERVER_RECORD_HANDLE);
