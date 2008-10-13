@@ -44,37 +44,6 @@
 #include "fakehid.h"
 #include "uinput.h"
 
-#ifndef KEY_REMOTE_1
-#define KEY_REMOTE_1	0x1b6
-#endif
-#ifndef KEY_REMOTE_2
-#define KEY_REMOTE_2	0x1b7
-#endif
-#ifndef KEY_REMOTE_3
-#define KEY_REMOTE_3	0x1b8
-#endif
-#ifndef KEY_REMOTE_4
-#define KEY_REMOTE_4	0x1b9
-#endif
-#ifndef KEY_REMOTE_5
-#define KEY_REMOTE_5	0x1ba
-#endif
-#ifndef KEY_REMOTE_6
-#define KEY_REMOTE_6	0x1bb
-#endif
-#ifndef KEY_REMOTE_7
-#define KEY_REMOTE_7	0x1bc
-#endif
-#ifndef KEY_REMOTE_8
-#define KEY_REMOTE_8	0x1bd
-#endif
-#ifndef KEY_REMOTE_9
-#define KEY_REMOTE_9	0x1be
-#endif
-#ifndef KEY_REMOTE_0
-#define KEY_REMOTE_0	0x1bf
-#endif
-
 #define PS3_FLAGS_MASK 0xFFFFFF00
 
 enum ps3remote_special_keys {
@@ -126,16 +95,16 @@ static unsigned int ps3remote_keymap[] = {
 	[0x63] = KEY_SUBTITLE,
 	[0x0f] = KEY_CLEAR,
 	[0x28] = KEY_TIME,
-	[0x00] = KEY_REMOTE_1,
-	[0x01] = KEY_REMOTE_2,
-	[0x02] = KEY_REMOTE_3,
-	[0x03] = KEY_REMOTE_4,
-	[0x04] = KEY_REMOTE_5,
-	[0x05] = KEY_REMOTE_6,
-	[0x06] = KEY_REMOTE_7,
-	[0x07] = KEY_REMOTE_8,
-	[0x08] = KEY_REMOTE_9,
-	[0x09] = KEY_REMOTE_0,
+	[0x00] = KEY_1,
+	[0x01] = KEY_2,
+	[0x02] = KEY_3,
+	[0x03] = KEY_4,
+	[0x04] = KEY_5,
+	[0x05] = KEY_6,
+	[0x06] = KEY_7,
+	[0x07] = KEY_8,
+	[0x08] = KEY_9,
+	[0x09] = KEY_0,
 	[0x81] = KEY_RED,
 	[0x82] = KEY_GREEN,
 	[0x80] = KEY_BLUE,
@@ -178,7 +147,8 @@ static int ps3remote_decode(char *buff, int size, unsigned int *value)
 {
 	static unsigned int lastkey = 0;
 	static unsigned int lastmask = 0;
-	int retval, mask, key, i;
+	int retval, mask, i;
+	guint8 key;
 
 	if (size < 12) {
 		error("Got a shorter packet! (size %i)\n", size);

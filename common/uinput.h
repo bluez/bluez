@@ -52,7 +52,16 @@ extern "C" {
 #define SYN_REPORT		0
 #define SYN_CONFIG		1
 
-/* Keys and buttons */
+/*
+ * Keys and buttons
+ *
+ * Most of the keys/buttons are modeled after USB HUT 1.12
+ * (see http://www.usb.org/developers/hidpage).
+ * Abbreviations in the comments:
+ * AC - Application Control
+ * AL - Application Launch Button
+ * SC - System Control
+ */
 
 #define KEY_RESERVED		0
 #define KEY_ESC			1
@@ -138,18 +147,18 @@ extern "C" {
 #define KEY_KP3			81
 #define KEY_KP0			82
 #define KEY_KPDOT		83
-#define KEY_103RD		84
-#define KEY_F13			85
+
+#define KEY_ZENKAKUHANKAKU	85
 #define KEY_102ND		86
 #define KEY_F11			87
 #define KEY_F12			88
-#define KEY_F14			89
-#define KEY_F15			90
-#define KEY_F16			91
-#define KEY_F17			92
-#define KEY_F18			93
-#define KEY_F19			94
-#define KEY_F20			95
+#define KEY_RO			89
+#define KEY_KATAKANA		90
+#define KEY_HIRAGANA		91
+#define KEY_HENKAN		92
+#define KEY_KATAKANAHIRAGANA	93
+#define KEY_MUHENKAN		94
+#define KEY_KPJPCOMMA		95
 #define KEY_KPENTER		96
 #define KEY_RIGHTCTRL		97
 #define KEY_KPSLASH		98
@@ -170,51 +179,53 @@ extern "C" {
 #define KEY_MUTE		113
 #define KEY_VOLUMEDOWN		114
 #define KEY_VOLUMEUP		115
-#define KEY_POWER		116
+#define KEY_POWER		116	/* SC System Power Down */
 #define KEY_KPEQUAL		117
 #define KEY_KPPLUSMINUS		118
 #define KEY_PAUSE		119
-#define KEY_F21			120
-#define KEY_F22			121
-#define KEY_F23			122
-#define KEY_F24			123
-#define KEY_KPCOMMA		124
+
+#define KEY_KPCOMMA		121
+#define KEY_HANGEUL		122
+#define KEY_HANGUEL		KEY_HANGEUL
+#define KEY_HANJA		123
+#define KEY_YEN			124
 #define KEY_LEFTMETA		125
 #define KEY_RIGHTMETA		126
 #define KEY_COMPOSE		127
 
-#define KEY_STOP		128
+#define KEY_STOP		128	/* AC Stop */
 #define KEY_AGAIN		129
-#define KEY_PROPS		130
-#define KEY_UNDO		131
+#define KEY_PROPS		130	/* AC Properties */
+#define KEY_UNDO		131	/* AC Undo */
 #define KEY_FRONT		132
-#define KEY_COPY		133
-#define KEY_OPEN		134
-#define KEY_PASTE		135
-#define KEY_FIND		136
-#define KEY_CUT			137
-#define KEY_HELP		138
-#define KEY_MENU		139
-#define KEY_CALC		140
+#define KEY_COPY		133	/* AC Copy */
+#define KEY_OPEN		134	/* AC Open */
+#define KEY_PASTE		135	/* AC Paste */
+#define KEY_FIND		136	/* AC Search */
+#define KEY_CUT			137	/* AC Cut */
+#define KEY_HELP		138	/* AL Integrated Help Center */
+#define KEY_MENU		139	/* Menu (show menu) */
+#define KEY_CALC		140	/* AL Calculator */
 #define KEY_SETUP		141
-#define KEY_SLEEP		142
-#define KEY_WAKEUP		143
-#define KEY_FILE		144
+#define KEY_SLEEP		142	/* SC System Sleep */
+#define KEY_WAKEUP		143	/* System Wake Up */
+#define KEY_FILE		144	/* AL Local Machine Browser */
 #define KEY_SENDFILE		145
 #define KEY_DELETEFILE		146
 #define KEY_XFER		147
 #define KEY_PROG1		148
 #define KEY_PROG2		149
-#define KEY_WWW			150
+#define KEY_WWW			150	/* AL Internet Browser */
 #define KEY_MSDOS		151
-#define KEY_COFFEE		152
+#define KEY_COFFEE		152	/* AL Terminal Lock/Screensaver */
+#define KEY_SCREENLOCK		KEY_COFFEE
 #define KEY_DIRECTION		153
 #define KEY_CYCLEWINDOWS	154
 #define KEY_MAIL		155
-#define KEY_BOOKMARKS		156
+#define KEY_BOOKMARKS		156	/* AC Bookmarks */
 #define KEY_COMPUTER		157
-#define KEY_BACK		158
-#define KEY_FORWARD		159
+#define KEY_BACK		158	/* AC Back */
+#define KEY_FORWARD		159	/* AC Forward */
 #define KEY_CLOSECD		160
 #define KEY_EJECTCD		161
 #define KEY_EJECTCLOSECD	162
@@ -224,50 +235,90 @@ extern "C" {
 #define KEY_STOPCD		166
 #define KEY_RECORD		167
 #define KEY_REWIND		168
-#define KEY_PHONE		169
+#define KEY_PHONE		169	/* Media Select Telephone */
 #define KEY_ISO			170
-#define KEY_CONFIG		171
-#define KEY_HOMEPAGE		172
-#define KEY_REFRESH		173
-#define KEY_EXIT		174
+#define KEY_CONFIG		171	/* AL Consumer Control Configuration */
+#define KEY_HOMEPAGE		172	/* AC Home */
+#define KEY_REFRESH		173	/* AC Refresh */
+#define KEY_EXIT		174	/* AC Exit */
 #define KEY_MOVE		175
 #define KEY_EDIT		176
 #define KEY_SCROLLUP		177
 #define KEY_SCROLLDOWN		178
 #define KEY_KPLEFTPAREN		179
 #define KEY_KPRIGHTPAREN	180
+#define KEY_NEW			181	/* AC New */
+#define KEY_REDO		182	/* AC Redo/Repeat */
 
-#define KEY_INTL1		181
-#define KEY_INTL2		182
-#define KEY_INTL3		183
-#define KEY_INTL4		184
-#define KEY_INTL5		185
-#define KEY_INTL6		186
-#define KEY_INTL7		187
-#define KEY_INTL8		188
-#define KEY_INTL9		189
-#define KEY_LANG1		190
-#define KEY_LANG2		191
-#define KEY_LANG3		192
-#define KEY_LANG4		193
-#define KEY_LANG5		194
-#define KEY_LANG6		195
-#define KEY_LANG7		196
-#define KEY_LANG8		197
-#define KEY_LANG9		198
+#define KEY_F13			183
+#define KEY_F14			184
+#define KEY_F15			185
+#define KEY_F16			186
+#define KEY_F17			187
+#define KEY_F18			188
+#define KEY_F19			189
+#define KEY_F20			190
+#define KEY_F21			191
+#define KEY_F22			192
+#define KEY_F23			193
+#define KEY_F24			194
 
 #define KEY_PLAYCD		200
 #define KEY_PAUSECD		201
 #define KEY_PROG3		202
 #define KEY_PROG4		203
 #define KEY_SUSPEND		205
-#define KEY_CLOSE		206
+#define KEY_CLOSE		206	/* AC Close */
 #define KEY_PLAY		207
-
-#define KEY_UNKNOWN		220
-
+#define KEY_FASTFORWARD		208
+#define KEY_BASSBOOST		209
+#define KEY_PRINT		210	/* AC Print */
+#define KEY_HP			211
+#define KEY_CAMERA		212
+#define KEY_SOUND		213
+#define KEY_QUESTION		214
+#define KEY_EMAIL		215
+#define KEY_CHAT		216
+#define KEY_SEARCH		217
+#define KEY_CONNECT		218
+#define KEY_FINANCE		219	/* AL Checkbook/Finance */
+#define KEY_SPORT		220
+#define KEY_SHOP		221
+#define KEY_ALTERASE		222
+#define KEY_CANCEL		223	/* AC Cancel */
 #define KEY_BRIGHTNESSDOWN	224
 #define KEY_BRIGHTNESSUP	225
+#define KEY_MEDIA		226
+
+#define KEY_SWITCHVIDEOMODE	227	/* Cycle between available video
+					   outputs (Monitor/LCD/TV-out/etc) */
+#define KEY_KBDILLUMTOGGLE	228
+#define KEY_KBDILLUMDOWN	229
+#define KEY_KBDILLUMUP		230
+
+#define KEY_SEND		231	/* AC Send */
+#define KEY_REPLY		232	/* AC Reply */
+#define KEY_FORWARDMAIL		233	/* AC Forward Msg */
+#define KEY_SAVE		234	/* AC Save */
+#define KEY_DOCUMENTS		235
+
+#define KEY_BATTERY		236
+
+#define KEY_BLUETOOTH		237
+#define KEY_WLAN		238
+#define KEY_UWB			239
+
+#define KEY_UNKNOWN		240
+
+#define KEY_VIDEO_NEXT		241	/* drive next video source */
+#define KEY_VIDEO_PREV		242	/* drive previous video source */
+#define KEY_BRIGHTNESS_CYCLE	243	/* brightness up, after max is min */
+#define KEY_BRIGHTNESS_ZERO	244	/* brightness off, use ambient */
+#define KEY_DISPLAY_OFF		245	/* display device to off state */
+
+#define KEY_WIMAX		246
+
+/* Range 248 - 255 is reserved for special needs of AT keyboard driver */
 
 #define BTN_MISC		0x100
 #define BTN_0			0x100
@@ -348,15 +399,15 @@ extern "C" {
 #define KEY_CLEAR		0x163
 #define KEY_POWER2		0x164
 #define KEY_OPTION		0x165
-#define KEY_INFO		0x166
+#define KEY_INFO		0x166	/* AL OEM Features/Tips/Tutorial */
 #define KEY_TIME		0x167
 #define KEY_VENDOR		0x168
 #define KEY_ARCHIVE		0x169
-#define KEY_PROGRAM		0x16a
+#define KEY_PROGRAM		0x16a	/* Media Select Program Guide */
 #define KEY_CHANNEL		0x16b
 #define KEY_FAVORITES		0x16c
 #define KEY_EPG			0x16d
-#define KEY_PVR			0x16e
+#define KEY_PVR			0x16e	/* Media Select Home */
 #define KEY_MHP			0x16f
 #define KEY_LANGUAGE		0x170
 #define KEY_TITLE		0x171
@@ -366,36 +417,36 @@ extern "C" {
 #define KEY_MODE		0x175
 #define KEY_KEYBOARD		0x176
 #define KEY_SCREEN		0x177
-#define KEY_PC			0x178
-#define KEY_TV			0x179
-#define KEY_TV2			0x17a
-#define KEY_VCR			0x17b
-#define KEY_VCR2		0x17c
-#define KEY_SAT			0x17d
+#define KEY_PC			0x178	/* Media Select Computer */
+#define KEY_TV			0x179	/* Media Select TV */
+#define KEY_TV2			0x17a	/* Media Select Cable */
+#define KEY_VCR			0x17b	/* Media Select VCR */
+#define KEY_VCR2		0x17c	/* VCR Plus */
+#define KEY_SAT			0x17d	/* Media Select Satellite */
 #define KEY_SAT2		0x17e
-#define KEY_CD			0x17f
-#define KEY_TAPE		0x180
+#define KEY_CD			0x17f	/* Media Select CD */
+#define KEY_TAPE		0x180	/* Media Select Tape */
 #define KEY_RADIO		0x181
-#define KEY_TUNER		0x182
+#define KEY_TUNER		0x182	/* Media Select Tuner */
 #define KEY_PLAYER		0x183
 #define KEY_TEXT		0x184
-#define KEY_DVD			0x185
+#define KEY_DVD			0x185	/* Media Select DVD */
 #define KEY_AUX			0x186
 #define KEY_MP3			0x187
 #define KEY_AUDIO		0x188
 #define KEY_VIDEO		0x189
 #define KEY_DIRECTORY		0x18a
 #define KEY_LIST		0x18b
-#define KEY_MEMO		0x18c
+#define KEY_MEMO		0x18c	/* Media Select Messages */
 #define KEY_CALENDAR		0x18d
 #define KEY_RED			0x18e
 #define KEY_GREEN		0x18f
 #define KEY_YELLOW		0x190
 #define KEY_BLUE		0x191
-#define KEY_CHANNELUP		0x192
-#define KEY_CHANNELDOWN		0x193
+#define KEY_CHANNELUP		0x192	/* Channel Increment */
+#define KEY_CHANNELDOWN		0x193	/* Channel Decrement */
 #define KEY_FIRST		0x194
-#define KEY_LAST		0x195
+#define KEY_LAST		0x195	/* Recall Last */
 #define KEY_AB			0x196
 #define KEY_NEXT		0x197
 #define KEY_RESTART		0x198
@@ -406,14 +457,79 @@ extern "C" {
 #define KEY_DIGITS		0x19d
 #define KEY_TEEN		0x19e
 #define KEY_TWEN		0x19f
+#define KEY_VIDEOPHONE		0x1a0	/* Media Select Video Phone */
+#define KEY_GAMES		0x1a1	/* Media Select Games */
+#define KEY_ZOOMIN		0x1a2	/* AC Zoom In */
+#define KEY_ZOOMOUT		0x1a3	/* AC Zoom Out */
+#define KEY_ZOOMRESET		0x1a4	/* AC Zoom */
+#define KEY_WORDPROCESSOR	0x1a5	/* AL Word Processor */
+#define KEY_EDITOR		0x1a6	/* AL Text Editor */
+#define KEY_SPREADSHEET		0x1a7	/* AL Spreadsheet */
+#define KEY_GRAPHICSEDITOR	0x1a8	/* AL Graphics Editor */
+#define KEY_PRESENTATION	0x1a9	/* AL Presentation App */
+#define KEY_DATABASE		0x1aa	/* AL Database App */
+#define KEY_NEWS		0x1ab	/* AL Newsreader */
+#define KEY_VOICEMAIL		0x1ac	/* AL Voicemail */
+#define KEY_ADDRESSBOOK		0x1ad	/* AL Contacts/Address Book */
+#define KEY_MESSENGER		0x1ae	/* AL Instant Messaging */
+#define KEY_DISPLAYTOGGLE	0x1af	/* Turn display (LCD) on and off */
+#define KEY_SPELLCHECK		0x1b0   /* AL Spell Check */
+#define KEY_LOGOFF		0x1b1   /* AL Logoff */
 
-#define KEY_FRAMEBACK		0x1b2
-#define KEY_FRAMEFORWARD	0x1b3
-#define KEY_CONTEXT_MENU	0x1fb
+#define KEY_DOLLAR		0x1b2
+#define KEY_EURO		0x1b3
 
+#define KEY_FRAMEBACK		0x1b4	/* Consumer - transport controls */
+#define KEY_FRAMEFORWARD	0x1b5
+#define KEY_CONTEXT_MENU	0x1b6	/* GenDesc - system context menu */
+#define KEY_MEDIA_REPEAT	0x1b7	/* Consumer - transport control */
+
+#define KEY_DEL_EOL		0x1c0
+#define KEY_DEL_EOS		0x1c1
+#define KEY_INS_LINE		0x1c2
+#define KEY_DEL_LINE		0x1c3
+
+#define KEY_FN			0x1d0
+#define KEY_FN_ESC		0x1d1
+#define KEY_FN_F1		0x1d2
+#define KEY_FN_F2		0x1d3
+#define KEY_FN_F3		0x1d4
+#define KEY_FN_F4		0x1d5
+#define KEY_FN_F5		0x1d6
+#define KEY_FN_F6		0x1d7
+#define KEY_FN_F7		0x1d8
+#define KEY_FN_F8		0x1d9
+#define KEY_FN_F9		0x1da
+#define KEY_FN_F10		0x1db
+#define KEY_FN_F11		0x1dc
+#define KEY_FN_F12		0x1dd
+#define KEY_FN_1		0x1de
+#define KEY_FN_2		0x1df
+#define KEY_FN_D		0x1e0
+#define KEY_FN_E		0x1e1
+#define KEY_FN_F		0x1e2
+#define KEY_FN_S		0x1e3
+#define KEY_FN_B		0x1e4
+
+#define KEY_BRL_DOT1		0x1f1
+#define KEY_BRL_DOT2		0x1f2
+#define KEY_BRL_DOT3		0x1f3
+#define KEY_BRL_DOT4		0x1f4
+#define KEY_BRL_DOT5		0x1f5
+#define KEY_BRL_DOT6		0x1f6
+#define KEY_BRL_DOT7		0x1f7
+#define KEY_BRL_DOT8		0x1f8
+#define KEY_BRL_DOT9		0x1f9
+#define KEY_BRL_DOT10		0x1fa
+
+/* We avoid low common keys in module aliases so they don't get huge. */
+#define KEY_MIN_INTERESTING	KEY_MUTE
 #define KEY_MAX			0x1ff
+#define KEY_CNT			(KEY_MAX+1)
 
-/* Relative axes */
+/*
+ * Relative axes
+ */
 
 #define REL_X			0x00
 #define REL_Y			0x01
@@ -426,8 +542,11 @@ extern "C" {
 #define REL_WHEEL		0x08
 #define REL_MISC		0x09
 #define REL_MAX			0x0f
+#define REL_CNT			(REL_MAX+1)
 
-/* Absolute axes */
+/*
+ * Absolute axes
+ */
 
 #define ABS_X			0x00
 #define ABS_Y			0x01
@@ -456,20 +575,26 @@ extern "C" {
 #define ABS_VOLUME		0x20
 #define ABS_MISC		0x28
 #define ABS_MAX			0x3f
+#define ABS_CNT			(ABS_MAX+1)
 
-/* Switch events */
+/*
+ * Switch events
+ */
 
-#define SW_0			0x00
-#define SW_1			0x01
-#define SW_2			0x02
-#define SW_3			0x03
-#define SW_4			0x04
-#define SW_5			0x05
-#define SW_6			0x06
-#define SW_7			0x07
+#define SW_LID			0x00  /* set = lid shut */
+#define SW_TABLET_MODE		0x01  /* set = tablet mode */
+#define SW_HEADPHONE_INSERT	0x02  /* set = inserted */
+#define SW_RFKILL_ALL		0x03  /* rfkill master switch, type "any"
+					 set = radio enabled */
+#define SW_RADIO		SW_RFKILL_ALL	/* deprecated */
+#define SW_MICROPHONE_INSERT	0x04  /* set = inserted */
+#define SW_DOCK			0x05  /* set = plugged into dock */
 #define SW_MAX			0x0f
+#define SW_CNT			(SW_MAX+1)
 
-/* Misc events */
+/*
+ * Misc events
+ */
 
 #define MSC_SERIAL		0x00
 #define MSC_PULSELED		0x01
@@ -477,8 +602,11 @@ extern "C" {
 #define MSC_RAW			0x03
 #define MSC_SCAN		0x04
 #define MSC_MAX			0x07
+#define MSC_CNT			(MSC_MAX+1)
 
-/* LEDs */
+/*
+ * LEDs
+ */
 
 #define LED_NUML		0x00
 #define LED_CAPSL		0x01
@@ -492,21 +620,29 @@ extern "C" {
 #define LED_MAIL		0x09
 #define LED_CHARGING		0x0a
 #define LED_MAX			0x0f
+#define LED_CNT			(LED_MAX+1)
 
-/* Autorepeat values */
+/*
+ * Autorepeat values
+ */
 
 #define REP_DELAY		0x00
 #define REP_PERIOD		0x01
 #define REP_MAX			0x01
 
-/* Sounds */
+/*
+ * Sounds
+ */
 
 #define SND_CLICK		0x00
 #define SND_BELL		0x01
 #define SND_TONE		0x02
 #define SND_MAX			0x07
+#define SND_CNT			(SND_MAX+1)
 
-/* Identifiers */
+/*
+ * IDs.
+ */
 
 #define ID_BUS			0
 #define ID_VENDOR		1
@@ -518,6 +654,7 @@ extern "C" {
 #define BUS_USB			0x03
 #define BUS_HIL			0x04
 #define BUS_BLUETOOTH		0x05
+#define BUS_VIRTUAL		0x06
 
 #define BUS_ISA			0x10
 #define BUS_I8042		0x11
@@ -530,6 +667,7 @@ extern "C" {
 #define BUS_I2C			0x18
 #define BUS_HOST		0x19
 #define BUS_GSC			0x1A
+#define BUS_ATARI		0x1B
 
 /* User input interface */
 
