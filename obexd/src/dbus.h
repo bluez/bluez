@@ -41,6 +41,8 @@ void unregister_transfer(guint32 id);
 
 gint add_record(gchar *record);
 
+gint request_service_authorization(struct server *server, gint nsk);
+
 void register_session(guint32 id, struct obex_session *os);
 
 void unregister_session(guint32 id);

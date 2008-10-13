@@ -182,8 +182,17 @@ static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_d
 	info("New connection from: %s, channel %u, fd %d", address,
 			raddr.rc_channel, nsk);
 
-	if (obex_session_start(nsk, server) < 0)
+	if (server->service == OBEX_OPUSH) {
+		if (obex_session_start(nsk, server) < 0)
+			close(nsk);
+
+		return TRUE;
+	}
+
+	if (request_service_authorization(server, nsk) < 0) {
 		close(nsk);
+		return TRUE;
+	}
 
 	return TRUE;
 }

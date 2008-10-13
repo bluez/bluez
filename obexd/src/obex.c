@@ -223,8 +223,6 @@ static void cmd_connect(struct obex_session *os,
 		return;
 	}
 
-	/* FIXME: Request authorization */
-
 	register_session(cid, os);
 	emit_session_created(cid);
 
