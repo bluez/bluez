@@ -28,6 +28,7 @@
 #include <bluetooth/sdp.h>
 
 #ifdef SDP_DEBUG
+#include <syslog.h>
 #define SDPDBG(fmt, arg...) syslog(LOG_DEBUG, "%s: " fmt "\n", __func__ , ## arg)
 #else
 #define SDPDBG(fmt...)

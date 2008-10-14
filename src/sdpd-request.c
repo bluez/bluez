@@ -209,7 +209,7 @@ static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
 	int length = 0;
 
 	if (cstate) {
-		SDPDBG("Non null sdp_cstate_t id : 0x%lx", cstate->timestamp);
+		SDPDBG("Non null sdp_cstate_t id : 0x%x", cstate->timestamp);
 		*(uint8_t *)pdata = sizeof(sdp_cont_state_t);
 		pdata += sizeof(uint8_t);
 		length += sizeof(uint8_t);
@@ -242,7 +242,7 @@ static sdp_cont_state_t *sdp_cstate_get(uint8_t *buffer)
 		if (!cstate)
 			return NULL;
 		memcpy(cstate, (sdp_cont_state_t *)pdata, sizeof(sdp_cont_state_t));
-		SDPDBG("Cstate TS : 0x%lx", cstate->timestamp);
+		SDPDBG("Cstate TS : 0x%x", cstate->timestamp);
 		SDPDBG("Bytes sent : %d", cstate->cStateValue.maxBytesSent);
 		return cstate;
 	}
