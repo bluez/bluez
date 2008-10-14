@@ -646,8 +646,8 @@ void device_probe_drivers(struct btd_device *device, GSList *uuids)
 
 			err = driver->probe(device, probe_uuids);
 			if (err < 0) {
-				error("probe failed for driver %s",
-							driver->name);
+				error("probe failed with driver %s for device %s",
+							driver->name, device->path);
 
 				g_free(driver_data);
 				g_slist_free(probe_uuids);
