@@ -59,9 +59,7 @@ static int hid_device_probe(struct btd_device *device, GSList *uuids)
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	const sdp_record_t *rec = btd_device_get_record(device, uuids->data);
-	sdp_data_t *pdlist;
 	bdaddr_t src, dst;
-	uint32_t handle;
 
 	DBG("path %s", path);
 
@@ -70,14 +68,9 @@ static int hid_device_probe(struct btd_device *device, GSList *uuids)
 
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst);
-	pdlist = sdp_data_get(rec, SDP_SERVER_RECORD_HANDLE);
-	if (!pdlist)
-		return -1;
-
-	handle = pdlist->val.uint32;
 
 	return input_device_register(connection, path, &src, &dst,
-				HID_UUID, handle, idle_timeout * 60);
+				HID_UUID, rec->handle, idle_timeout * 60);
 }
 
 static void hid_device_remove(struct btd_device *device)
