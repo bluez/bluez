@@ -105,7 +105,7 @@ set_master_bdaddr (libusb_device_handle *devh, int itfnum, char *host)
 	msg[7] = mac[5];
 
 	res = libusb_control_transfer (devh,
-				       LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
+				       LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
 				       0x09, 0x03f5, itfnum,
 				       (void*) msg, sizeof(msg),
 				       5000);
@@ -285,7 +285,7 @@ handle_device (libusb_device *dev, struct libusb_config_descriptor *cfg, int itf
 			retval = -1;
 			goto bail;
 		}
-
+#if 0
 		if (get_record_info (alt, &len, &country, &version) < 0) {
 			g_warning ("Can't get record info");
 			retval = -1;
@@ -306,7 +306,7 @@ handle_device (libusb_device *dev, struct libusb_config_descriptor *cfg, int itf
 		fill_req_from_usb (dev, &req, data, len, country, version);
 
 		store_info (option_master, device, &req);
-
+#endif
 		if (set_master_bdaddr (devh, itfnum, option_master) == FALSE) {
 			retval = -1;
 			goto bail;
@@ -317,7 +317,11 @@ handle_device (libusb_device *dev, struct libusb_config_descriptor *cfg, int itf
 
 bail:
 	libusb_release_interface (devh, itfnum);
-	libusb_attach_kernel_driver(devh, itfnum);
+	res = libusb_attach_kernel_driver(devh, itfnum);
+	if (res < 0) {
+		//FIXME sometimes the kernel tells us ENOENT, but succeeds anyway...
+		g_warning ("Reattaching the driver failed: %d", res);
+	}
 	if (devh != NULL)
 		libusb_close (devh);
 
