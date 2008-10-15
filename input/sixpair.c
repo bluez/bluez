@@ -8,7 +8,7 @@
 
 #include <sdp.h>
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/hidp.h>
+#include <bluetooth/sdp_lib.h>
 #include <glib.h>
 #include <libusb.h>
 
@@ -17,6 +17,8 @@
 /* Vendor and product ID for the Sixaxis PS3 controller */
 #define VENDOR 0x054c
 #define PRODUCT 0x0268
+
+#define PS3_PNP_RECORD "3601920900000A000100000900013503191124090004350D35061901000900113503190011090006350909656E09006A0901000900093508350619112409010009000D350F350D350619010009001335031900110901002513576972656C65737320436F6E74726F6C6C65720901012513576972656C65737320436F6E74726F6C6C6572090102251B536F6E7920436F6D707574657220456E7465727461696E6D656E740902000901000902010901000902020800090203082109020428010902052801090206359A35980822259405010904A101A102850175089501150026FF00810375019513150025013500450105091901291381027501950D0600FF8103150026FF0005010901A10075089504350046FF0009300931093209358102C0050175089527090181027508953009019102750895300901B102C0A1028502750895300901B102C0A10285EE750895300901B102C0A10285EF750895300901B102C0C0090207350835060904090901000902082800090209280109020A280109020B09010009020C093E8009020D280009020E2800"
 
 gboolean option_get_master = TRUE;
 char *option_master= NULL;
@@ -49,7 +51,7 @@ show_master (libusb_device_handle *devh, int itfnum)
 		g_warning ("Getting the master Bluetooth address failed");
 		return FALSE;
 	}
-	g_print ("Current Bluetooth master: %02x:%02x:%02x:%02x:%02x:%02x\n",
+	g_print ("Current Bluetooth master: %02X:%02X:%02X:%02X:%02X:%02X\n",
 		 msg[2], msg[3], msg[4], msg[5], msg[6], msg[7]);
 
 	return TRUE;
@@ -73,7 +75,7 @@ get_bdaddr (libusb_device_handle *devh, int itfnum)
 		return NULL;
 	}
 
-	address = g_strdup_printf ("%02x:%02x:%02x:%02x:%02x:%02x",
+	address = g_strdup_printf ("%02X:%02X:%02X:%02X:%02X:%02X",
 				   msg[4], msg[5], msg[6], msg[7], msg[8], msg[9]);
 
 	if (option_quiet == FALSE) {
@@ -90,7 +92,7 @@ set_master_bdaddr (libusb_device_handle *devh, int itfnum, char *host)
 	int mac[6];
 	int res;
 
-	if (sscanf(host, "%x:%x:%x:%x:%x:%x",
+	if (sscanf(host, "%X:%X:%X:%X:%X:%X",
 		   &mac[0],&mac[1],&mac[2],&mac[3],&mac[4],&mac[5]) != 6) {
 		return FALSE;
 	}
@@ -132,100 +134,13 @@ get_host_bdaddr (void)
 		//FIXME
 		return NULL;
 	}
-	if (fscanf(f, "%*s\n%*s %x:%x:%x:%x:%x:%x",
+	if (fscanf(f, "%*s\n%*s %X:%X:%X:%X:%X:%X",
 		   &mac[0],&mac[1],&mac[2],&mac[3],&mac[4],&mac[5]) != 6) {
 		//FIXME
 		return NULL;
 	}
 
-	return g_strdup_printf ("%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-}
-
-static int
-get_record_info (const struct libusb_interface_descriptor *alt, unsigned int *_len, unsigned int *_country, uint16_t *_version)
-{
-#if 0
-	unsigned char *buf;
-	unsigned int size, len, country;
-	uint16_t version;
-	int l;
-
-	len = 0;
-	country = 0;
-	version = 0;
-
-	if (!alt->extralen)
-		return 0;
-
-	size = alt->extralen;
-	buf = alt->extra;
-	while (size >= 2 * sizeof(u_int8_t)) {
-		if (buf[0] < 2 || buf[1] != USB_DT_HID)
-			continue;
-
-		//FIXME that should be "21"
-		//g_message ("country: %u", buf[4]);
-		//country = buf[4];
-		//country = 0x21;
-		country = 0;
-		version = (buf[3] << 8) + buf[2];
-
-		for (l = 0; l < buf[5]; l++) {
-			/* we are just interested in report descriptors*/
-			if (buf[6+3*l] != USB_DT_REPORT)
-				continue;
-			len = buf[7+3*l] | (buf[8+3*l] << 8);
-		}
-		size -= buf[0];
-		buf += buf[0];
-	}
-
-	if (len == 0)
-		return -1;
-	*_len = len;
-	*_country = country;
-	*_version = version;
-#endif
-	return 0;
-}
-
-static void
-fill_req_from_usb (libusb_device *dev, struct hidp_connadd_req *req, void *data, unsigned int len, unsigned int country, uint16_t version)
-{
-#if 0
-	req->vendor = dev->descriptor.idVendor;
-	req->product = dev->descriptor.idProduct;
-	req->version = version;
-	/* req->subclass already set */
-	req->country = country;
-	/* Default value */
-	req->parser = 0x0100;
-	/* What are we expecting here? No idea, but we don't seem to need it */
-	req->flags = 0;
-
-	req->rd_size = len;
-	req->rd_data = data;
-#endif
-}
-
-static void
-store_info (const char *host, const char *device, struct hidp_connadd_req *req)
-{
-	bdaddr_t dest, src;
-
-	if (str2ba (host, &src) < 0) {
-		//FIXME
-		return;
-	}
-	if (str2ba (device, &dest) < 0) {
-		//FIXME
-		return;
-	}
-
-#if 0
-	if (store_device_info (&src, &dest, req) < 0)
-#endif
-		g_message ("store_device_info failed");
+	return g_strdup_printf ("%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
 static int
@@ -274,45 +189,29 @@ handle_device (libusb_device *dev, struct libusb_config_descriptor *cfg, int itf
 	}
 
 	if (option_store_info != FALSE) {
-		unsigned char data[8192];
-		struct hidp_connadd_req req;
-		unsigned int len, country;
-		uint16_t version;
+		sdp_record_t *rec;
 		char *device;
+		bdaddr_t dst, src;
 
 		device = get_bdaddr (devh, itfnum);
 		if (device == NULL) {
 			retval = -1;
 			goto bail;
 		}
-#if 0
-		if (get_record_info (alt, &len, &country, &version) < 0) {
-			g_warning ("Can't get record info");
-			retval = -1;
-			goto bail;
-		}
 
-		if (libusb_control_transfer(devh,
-						 LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
-						 LIBUSB_REQUEST_GET_DESCRIPTOR,
-						 (LIBUSB_DT_REPORT << 8),
-						 itfnum, (void *) &data, len, 5000) < 0) {
-			g_warning ("Can't get report descriptor (length: %d, interface: %d)", len, itfnum);
-			retval = -1;
-			goto bail;
-		}
+		rec = record_from_string (PS3_PNP_RECORD);
+		store_record(option_master, device, rec);
+		write_trust(option_master, device, "[all]", TRUE);
+		store_device_id(option_master, device, 0xffff, 0x054c, 0x0268, 0);
+		str2ba(option_master, &src);
+		str2ba(device, &dst);
+		write_device_profiles(&src, &dst, "");
+		sdp_record_free(rec);
 
-		req.subclass = alt->bInterfaceSubClass;
-		fill_req_from_usb (dev, &req, data, len, country, version);
-
-		store_info (option_master, device, &req);
-#endif
 		if (set_master_bdaddr (devh, itfnum, option_master) == FALSE) {
 			retval = -1;
 			goto bail;
 		}
-
-		//FIXME finally, set device as trusted
 	}
 
 bail:
