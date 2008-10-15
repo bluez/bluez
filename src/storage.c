@@ -771,7 +771,7 @@ int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
 	return err;
 }
 
-static sdp_record_t *record_from_string(const gchar *str)
+sdp_record_t *record_from_string(const gchar *str)
 {
 	sdp_record_t *rec;
 	int size, i, len;
