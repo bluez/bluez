@@ -206,6 +206,7 @@ handle_device (libusb_device *dev, struct libusb_config_descriptor *cfg, int itf
 		str2ba(option_master, &src);
 		str2ba(device, &dst);
 		write_device_profiles(&src, &dst, "");
+		write_device_name(&src, &dst, "PLAYSTATION(R)3 Controller");
 		sdp_record_free(rec);
 
 		if (set_master_bdaddr (devh, itfnum, option_master) == FALSE) {
