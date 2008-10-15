@@ -346,6 +346,11 @@ struct btd_adapter *manager_find_adapter_by_id(int id)
 	return match->data;
 }
 
+GSList *manager_get_adapters(void)
+{
+	return adapters;
+}
+
 static void manager_add_adapter(struct btd_adapter *adapter)
 {
 	const gchar *path = adapter_get_path(adapter);

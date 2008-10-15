@@ -3246,9 +3246,28 @@ gboolean adapter_has_discov_sessions(struct btd_adapter *adapter)
 	return TRUE;
 }
 
+static void probe_driver(gpointer data, gpointer user_data)
+{
+	struct btd_adapter *adapter = data;
+	struct btd_adapter_driver *driver = user_data;
+
+	if (!adapter->up)
+		return;
+
+	driver->probe(adapter);
+}
+
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
+	GSList *adapters;
+
 	adapter_drivers = g_slist_append(adapter_drivers, driver);
+
+	if (driver->probe == NULL)
+		return 0;
+
+	adapters = manager_get_adapters();
+	g_slist_foreach(adapters, probe_driver, driver);
 
 	return 0;
 }
