@@ -227,11 +227,13 @@ static DBusHandlerResult csd_filter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *interface = dbus_message_get_interface(msg);
+	const char *member = dbus_message_get_member(msg);
 
-	if (!g_str_has_prefix(interface, CSD_CALL_INTERFACE)) {
-		debug("csd_filter: ignoring non-csd signal");
+	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL ||
+			!g_str_has_prefix(interface, CSD_CALL_INTERFACE))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
+
+	debug("telephony-maemo: received %s.%s", interface, member);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -307,6 +309,8 @@ static void parse_call_list(DBusMessageIter *iter)
 		call->status = (int) status;
 
 		calls = g_slist_append(calls, call);
+
+		debug("telephony-maemo: new csd call instance at %s", object_path);
 
 		if (call->status == CSD_CALL_STATUS_IDLE) {
 			dbus_message_iter_next(iter);
