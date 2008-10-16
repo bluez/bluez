@@ -124,6 +124,34 @@ static char *call_status_str[] = {
 	"???"
 };
 
+static struct csd_call *find_call(const char *path)
+{
+	GSList *l;
+
+	for (l = calls ; l != NULL; l = l->next) {
+		struct csd_call *call = l->data;
+
+		if (g_str_equal(call->object_path, path))
+			return call;
+	}
+
+	return NULL;
+}
+
+static struct csd_call *find_active_call(void)
+{
+	GSList *l;
+
+	for (l = calls ; l != NULL; l = l->next) {
+		struct csd_call *call = l->data;
+
+		if (call->status != CSD_CALL_STATUS_IDLE)
+			return call;
+	}
+
+	return NULL;
+}
+
 void telephony_device_connected(void *telephony_device)
 {
 	debug("telephony-maemo: device %p connected", telephony_device);
@@ -167,17 +195,31 @@ void telephony_last_dialed_number_req(void *telephony_device)
 
 void telephony_terminate_call_req(void *telephony_device)
 {
-	g_free(active_call_number);
-	active_call_number = NULL;
+	struct csd_call *call;
+	DBusMessage *msg;
+
+	call = find_active_call();
+	if (!call) {
+		error("No active call");
+		telephony_terminate_call_rsp(telephony_device,
+						CME_ERROR_NOT_ALLOWED);
+		return;
+	}
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
+						call->object_path,
+						CSD_CALL_INSTANCE,
+						"Release");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		telephony_terminate_call_rsp(telephony_device,
+						CME_ERROR_AG_FAILURE);
+		return;
+	}
+
+	g_dbus_send_message(connection, msg);
 
 	telephony_terminate_call_rsp(telephony_device, CME_ERROR_NONE);
-
-	if (telephony_get_indicator(maemo_indicators, "callsetup") > 0)
-		telephony_update_indicator(maemo_indicators, "callsetup",
-						EV_CALLSETUP_INACTIVE);
-	else
-		telephony_update_indicator(maemo_indicators, "call",
-						EV_CALL_INACTIVE);
 }
 
 void telephony_answer_call_req(void *telephony_device)
@@ -242,20 +284,6 @@ void telephony_operator_selection_req(void *telephony_device)
 {
 	telephony_operator_selection_ind(OPERATOR_MODE_AUTO, "DummyOperator");
 	telephony_operator_selection_rsp(telephony_device, CME_ERROR_NONE);
-}
-
-static struct csd_call *find_call(const char *path)
-{
-	GSList *l;
-
-	for (l = calls ; l != NULL; l = l->next) {
-		struct csd_call *call = l->data;
-
-		if (g_str_equal(call->object_path, path))
-			return call;
-	}
-
-	return NULL;
 }
 
 static void handle_incoming_call(DBusMessage *msg)
