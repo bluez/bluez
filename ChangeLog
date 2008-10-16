@@ -1,3 +1,10 @@
+ver 4.14:
+	Fix types of property arrays.
+	Fix potential crash with input devices.
+	Fix PS3 BD remote input event generation.
+	Allow dynamic adapter driver registration.
+	Update udev rules.
+
 ver 4.13:
 	Fix service discovery and UUID handling.
 	Fix bonding issues with Simple Pairing.
