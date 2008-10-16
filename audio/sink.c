@@ -87,10 +87,8 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
 		value = FALSE;
-		g_dbus_emit_signal(dev->conn, dev->path,
-						AUDIO_SINK_INTERFACE,
-						"Disconnected",
-						DBUS_TYPE_INVALID);
+		g_dbus_emit_signal(dev->conn, dev->path, AUDIO_SINK_INTERFACE,
+					"Disconnected", DBUS_TYPE_INVALID);
 		emit_property_changed(dev->conn, dev->path,
 					AUDIO_SINK_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
@@ -118,9 +116,9 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		if (old_state == AVDTP_STATE_CONFIGURED) {
 			value = TRUE;
 			g_dbus_emit_signal(dev->conn, dev->path,
-							AUDIO_SINK_INTERFACE,
-							"Connected",
-							DBUS_TYPE_INVALID);
+						AUDIO_SINK_INTERFACE,
+						"Connected",
+						DBUS_TYPE_INVALID);
 			emit_property_changed(dev->conn, dev->path,
 						AUDIO_SINK_INTERFACE,
 						"Connected",
@@ -128,9 +126,9 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		} else if (old_state == AVDTP_STATE_STREAMING) {
 			value = FALSE;
 			g_dbus_emit_signal(dev->conn, dev->path,
-							AUDIO_SINK_INTERFACE,
-							"Stopped",
-							DBUS_TYPE_INVALID);
+						AUDIO_SINK_INTERFACE,
+						"Stopped",
+						DBUS_TYPE_INVALID);
 			emit_property_changed(dev->conn, dev->path,
 						AUDIO_SINK_INTERFACE,
 						"Playing",
@@ -139,10 +137,8 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		break;
 	case AVDTP_STATE_STREAMING:
 		value = TRUE;
-		g_dbus_emit_signal(dev->conn, dev->path,
-						AUDIO_SINK_INTERFACE,
-						"Playing",
-						DBUS_TYPE_INVALID);
+		g_dbus_emit_signal(dev->conn, dev->path, AUDIO_SINK_INTERFACE,
+					"Playing", DBUS_TYPE_INVALID);
 		emit_property_changed(dev->conn, dev->path,
 					AUDIO_SINK_INTERFACE, "Playing",
 					DBUS_TYPE_BOOLEAN, &value);

@@ -1681,17 +1681,17 @@ done:
 	if (type == HEADSET_GAIN_SPEAKER) {
 		hs->sp_gain = gain;
 		g_dbus_emit_signal(conn, device->path,
-						AUDIO_HEADSET_INTERFACE,
-						"SpeakerGainChanged",
-						DBUS_TYPE_UINT16, &gain,
-						DBUS_TYPE_INVALID);
+					AUDIO_HEADSET_INTERFACE,
+					"SpeakerGainChanged",
+					DBUS_TYPE_UINT16, &gain,
+					DBUS_TYPE_INVALID);
 	} else {
 		hs->mic_gain = gain;
 		g_dbus_emit_signal(conn, device->path,
-						AUDIO_HEADSET_INTERFACE,
-						"MicrophoneGainChanged",
-						DBUS_TYPE_UINT16, &gain,
-						DBUS_TYPE_INVALID);
+					AUDIO_HEADSET_INTERFACE,
+					"MicrophoneGainChanged",
+					DBUS_TYPE_UINT16, &gain,
+					DBUS_TYPE_INVALID);
 	}
 
 	return reply;
@@ -2216,9 +2216,9 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		close_sco(dev);
 		headset_close_rfcomm(dev);
 		g_dbus_emit_signal(dev->conn, dev->path,
-						AUDIO_HEADSET_INTERFACE,
-						"Disconnected",
-						DBUS_TYPE_INVALID);
+					AUDIO_HEADSET_INTERFACE,
+					"Disconnected",
+					DBUS_TYPE_INVALID);
 		emit_property_changed(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
@@ -2262,8 +2262,8 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 					(GIOFunc) sco_cb, dev);
 
 		g_dbus_emit_signal(dev->conn, dev->path,
-						AUDIO_HEADSET_INTERFACE,
-						"Playing", DBUS_TYPE_INVALID);
+					AUDIO_HEADSET_INTERFACE, "Playing",
+					DBUS_TYPE_INVALID);
 		emit_property_changed(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE, "Playing",
 					DBUS_TYPE_BOOLEAN, &value);

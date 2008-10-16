@@ -420,11 +420,9 @@ static void avctp_unref(struct avctp *session)
 
 	if (session->state == AVCTP_STATE_CONNECTED) {
 		gboolean value = FALSE;
-		g_dbus_emit_signal(session->dev->conn,
-						session->dev->path,
-						AUDIO_CONTROL_INTERFACE,
-						"Disconnected",
-						DBUS_TYPE_INVALID);
+		g_dbus_emit_signal(session->dev->conn, session->dev->path,
+					AUDIO_CONTROL_INTERFACE,
+					"Disconnected", DBUS_TYPE_INVALID);
 		emit_property_changed(session->dev->conn, session->dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
@@ -623,8 +621,8 @@ static gboolean avctp_connect_session(struct avctp *session)
 
 	value = TRUE;
 	g_dbus_emit_signal(session->dev->conn, session->dev->path,
-					AUDIO_CONTROL_INTERFACE, "Connected",
-					DBUS_TYPE_INVALID);
+				AUDIO_CONTROL_INTERFACE, "Connected",
+				DBUS_TYPE_INVALID);
 	emit_property_changed(session->dev->conn, session->dev->path,
 				AUDIO_CONTROL_INTERFACE, "Connected",
 				DBUS_TYPE_BOOLEAN, &value);
@@ -794,8 +792,8 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	init_uinput(session);
 
 	g_dbus_emit_signal(session->dev->conn, session->dev->path,
-					AUDIO_CONTROL_INTERFACE, "Connected",
-					DBUS_TYPE_INVALID);
+				AUDIO_CONTROL_INTERFACE, "Connected",
+				DBUS_TYPE_INVALID);
 
 	session->state = AVCTP_STATE_CONNECTED;
 	session->mtu = l2o.imtu;
