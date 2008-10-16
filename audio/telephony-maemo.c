@@ -72,7 +72,7 @@ static gboolean events_enabled = FALSE;
  */
 static int response_and_hold = -1;
 
-static struct indicator dummy_indicators[] =
+static struct indicator maemo_indicators[] =
 {
 	{ "battchg",	"0-5",	5 },
 	{ "signal",	"0-5",	5 },
@@ -116,9 +116,9 @@ void telephony_last_dialed_number_req(void *telephony_device)
 	telephony_last_dialed_number_rsp(telephony_device, CME_ERROR_NONE);
 
 	/* Notify outgoing call set-up successfully initiated */
-	telephony_update_indicator(dummy_indicators, "callsetup",
+	telephony_update_indicator(maemo_indicators, "callsetup",
 					EV_CALLSETUP_OUTGOING);
-	telephony_update_indicator(dummy_indicators, "callsetup",
+	telephony_update_indicator(maemo_indicators, "callsetup",
 					EV_CALLSETUP_ALERTING);
 
 	active_call_status = CALL_STATUS_ALERTING;
@@ -132,11 +132,11 @@ void telephony_terminate_call_req(void *telephony_device)
 
 	telephony_terminate_call_rsp(telephony_device, CME_ERROR_NONE);
 
-	if (telephony_get_indicator(dummy_indicators, "callsetup") > 0)
-		telephony_update_indicator(dummy_indicators, "callsetup",
+	if (telephony_get_indicator(maemo_indicators, "callsetup") > 0)
+		telephony_update_indicator(maemo_indicators, "callsetup",
 						EV_CALLSETUP_INACTIVE);
 	else
-		telephony_update_indicator(dummy_indicators, "call",
+		telephony_update_indicator(maemo_indicators, "call",
 						EV_CALL_INACTIVE);
 }
 
@@ -144,8 +144,8 @@ void telephony_answer_call_req(void *telephony_device)
 {
 	telephony_answer_call_rsp(telephony_device, CME_ERROR_NONE);
 
-	telephony_update_indicator(dummy_indicators, "call", EV_CALL_ACTIVE);
-	telephony_update_indicator(dummy_indicators, "callsetup",
+	telephony_update_indicator(maemo_indicators, "call", EV_CALL_ACTIVE);
+	telephony_update_indicator(maemo_indicators, "callsetup",
 					EV_CALLSETUP_INACTIVE);
 
 	active_call_status = CALL_STATUS_ACTIVE;
@@ -161,9 +161,9 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
 
 	/* Notify outgoing call set-up successfully initiated */
-	telephony_update_indicator(dummy_indicators, "callsetup",
+	telephony_update_indicator(maemo_indicators, "callsetup",
 					EV_CALLSETUP_OUTGOING);
-	telephony_update_indicator(dummy_indicators, "callsetup",
+	telephony_update_indicator(maemo_indicators, "callsetup",
 					EV_CALLSETUP_ALERTING);
 
 	active_call_status = CALL_STATUS_ALERTING;
@@ -212,7 +212,7 @@ int telephony_init(void)
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
-	telephony_ready_ind(features, dummy_indicators, response_and_hold);
+	telephony_ready_ind(features, maemo_indicators, response_and_hold);
 
 	return 0;
 }
