@@ -235,21 +235,24 @@ void telephony_answer_call_req(void *telephony_device)
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
 {
-	g_free(active_call_number);
-	active_call_number = g_strdup(number);
+	DBusMessage *msg;
 
-	debug("telephony-maemo: dial request to %s", active_call_number);
+	debug("telephony-maemo: dial request to %s", number);
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE, "Create");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		telephony_terminate_call_rsp(telephony_device,
+						CME_ERROR_AG_FAILURE);
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &number);
+
+	g_dbus_send_message(connection, msg);
 
 	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
-
-	/* Notify outgoing call set-up successfully initiated */
-	telephony_update_indicator(maemo_indicators, "callsetup",
-					EV_CALLSETUP_OUTGOING);
-	telephony_update_indicator(maemo_indicators, "callsetup",
-					EV_CALLSETUP_ALERTING);
-
-	active_call_status = CALL_STATUS_ALERTING;
-	active_call_dir = CALL_DIR_OUTGOING;
 }
 
 void telephony_transmit_dtmf_req(void *telephony_device, char tone)
