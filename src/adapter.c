@@ -1625,7 +1625,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		struct btd_device *dev = l->data;
 		devices[i] = (char *) device_get_path(dev);
 	}
-	dict_append_entry(&dict, "Devices", DBUS_TYPE_ARRAY, &devices);
+	dict_append_array(&dict, "Devices", DBUS_TYPE_OBJECT_PATH, &devices, i);
 	g_free(devices);
 
 	dbus_message_iter_close_container(&iter, &dict);

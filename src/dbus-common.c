@@ -316,6 +316,37 @@ void dict_append_entry(DBusMessageIter *dict,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+void dict_append_array(DBusMessageIter *dict, const char *key, int type,
+			void *val, int n_elements)
+{
+	DBusMessageIter entry, variant, array;
+	char type_sig[2] = { type, '\0' };
+	char array_sig[3] = { DBUS_TYPE_ARRAY, type, '\0' };
+	const char ***str_array = val;
+	int i;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+						NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+						array_sig, &variant);
+
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+						type_sig, &array);
+
+	for (i = 0; (*str_array)[i]; i++)
+		dbus_message_iter_append_basic(&array, type,
+						&((*str_array)[i]));
+
+	dbus_message_iter_close_container(&variant, &array);
+
+	dbus_message_iter_close_container(&entry, &variant);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 						const char *path,
 						const char *interface,

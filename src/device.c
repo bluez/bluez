@@ -254,7 +254,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
 	for (i = 0, l = device->uuids; l; l = l->next, i++)
 		uuids[i] = l->data;
-	dict_append_entry(&dict, "UUIDs", DBUS_TYPE_ARRAY, &uuids);
+	dict_append_array(&dict, "UUIDs", DBUS_TYPE_STRING, &uuids, i);
 	g_free(uuids);
 
 	/* Adapter */

@@ -1,5 +1,4 @@
-/*
- *
+/* *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2006-2007  Nokia Corporation
@@ -32,6 +31,9 @@ void hcid_dbus_unregister(void);
 
 void dict_append_entry(DBusMessageIter *dict,
 			const char *key, int type, void *val);
+
+void dict_append_array(DBusMessageIter *dict, const char *key, int type,
+			void *val, int n_elements);
 
 dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
 						const char *path,
