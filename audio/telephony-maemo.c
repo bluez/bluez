@@ -243,7 +243,7 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 						CSD_CALL_INTERFACE, "Create");
 	if (!msg) {
 		error("Unable to allocate new D-Bus message");
-		telephony_terminate_call_rsp(telephony_device,
+		telephony_dial_number_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
 		return;
 	}
