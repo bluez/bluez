@@ -1746,26 +1746,22 @@ static DBusMessage *hs_get_properties(DBusConnection *conn,
 
 	/* Playing */
 	value = (device->headset->state == HEADSET_STATE_PLAYING);
-	dbus_message_iter_append_dict_entry(&dict, "Playing",
-						DBUS_TYPE_BOOLEAN, &value);
+	dict_append_entry(&dict, "Playing", DBUS_TYPE_BOOLEAN, &value);
 
 	/* Connected */
 	value = (device->headset->state >= HEADSET_STATE_CONNECTED);
-	dbus_message_iter_append_dict_entry(&dict, "Connected",
-						DBUS_TYPE_BOOLEAN, &value);
+	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &value);
 
 	if (!value)
 		goto done;
 
 	/* SpeakerGain */
-	dbus_message_iter_append_dict_entry(&dict, "SpeakerGain",
-						DBUS_TYPE_UINT16,
-						&device->headset->sp_gain);
+	dict_append_entry(&dict, "SpeakerGain",
+				DBUS_TYPE_UINT16, &device->headset->sp_gain);
 
 	/* MicrophoneGain */
-	dbus_message_iter_append_dict_entry(&dict, "MicrophoneGain",
-						DBUS_TYPE_UINT16,
-						&device->headset->mic_gain);
+	dict_append_entry(&dict, "MicrophoneGain",
+				DBUS_TYPE_UINT16, &device->headset->mic_gain);
 
 done:
 	dbus_message_iter_close_container(&iter, &dict);

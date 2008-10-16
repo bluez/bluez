@@ -998,8 +998,7 @@ static DBusMessage *control_get_properties(DBusConnection *conn,
 
 	/* Connected */
 	value = (device->control->session != NULL);
-	dbus_message_iter_append_dict_entry(&dict, "Connected",
-						DBUS_TYPE_BOOLEAN, &value);
+	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &value);
 
 	dbus_message_iter_close_container(&iter, &dict);
 

@@ -476,18 +476,15 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 	}
 
 	connected = nc ? TRUE : FALSE;
-	dbus_message_iter_append_dict_entry(&dict, "Connected",
-						DBUS_TYPE_BOOLEAN, &connected);
+	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &connected);
 
 	/* Device */
 	property = nc ? nc->dev : "";
-	dbus_message_iter_append_dict_entry(&dict, "Device",
-						DBUS_TYPE_STRING, &property);
+	dict_append_entry(&dict, "Device", DBUS_TYPE_STRING, &property);
 
 	/* UUID */
 	property = nc ? bnep_uuid(nc->id) : "";
-	dbus_message_iter_append_dict_entry(&dict, "UUID",
-						DBUS_TYPE_STRING, &property);
+	dict_append_entry(&dict, "UUID", DBUS_TYPE_STRING, &property);
 
 	dbus_message_iter_close_container(&iter, &dict);
 

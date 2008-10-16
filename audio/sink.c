@@ -532,13 +532,11 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 
 	/* Playing */
 	value = (device->sink->state == AVDTP_STATE_STREAMING);
-	dbus_message_iter_append_dict_entry(&dict, "Playing",
-						DBUS_TYPE_BOOLEAN, &value);
+	dict_append_entry(&dict, "Playing", DBUS_TYPE_BOOLEAN, &value);
 
 	/* Connected */
 	value = (device->sink->state >= AVDTP_STATE_CONFIGURED);
-	dbus_message_iter_append_dict_entry(&dict, "Connected",
-						DBUS_TYPE_BOOLEAN, &value);
+	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &value);
 
 	dbus_message_iter_close_container(&iter, &dict);
 

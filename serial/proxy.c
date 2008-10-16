@@ -503,23 +503,19 @@ static DBusMessage *proxy_get_info(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	dbus_message_iter_append_dict_entry(&dict, "uuid",
-			DBUS_TYPE_STRING, &prx->uuid128);
+	dict_append_entry(&dict, "uuid", DBUS_TYPE_STRING, &prx->uuid128);
 
-	dbus_message_iter_append_dict_entry(&dict, "address",
-			DBUS_TYPE_STRING, &prx->address);
+	dict_append_entry(&dict, "address", DBUS_TYPE_STRING, &prx->address);
 
 	if (prx->channel)
-		dbus_message_iter_append_dict_entry(&dict, "channel",
-				DBUS_TYPE_BYTE, &prx->channel);
+		dict_append_entry(&dict, "channel",
+					DBUS_TYPE_BYTE, &prx->channel);
 
 	boolean = (prx->io ? TRUE : FALSE);
-	dbus_message_iter_append_dict_entry(&dict, "enabled",
-			DBUS_TYPE_BOOLEAN, &boolean);
+	dict_append_entry(&dict, "enabled", DBUS_TYPE_BOOLEAN, &boolean);
 
 	boolean = (prx->rfcomm_watch ? TRUE : FALSE);
-	dbus_message_iter_append_dict_entry(&dict, "connected",
-			DBUS_TYPE_BOOLEAN, &boolean);
+	dict_append_entry(&dict, "connected", DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* If connected: append the remote address */
 	if (boolean) {
@@ -527,8 +523,7 @@ static DBusMessage *proxy_get_info(DBusConnection *conn,
 		const char *pstr = bda;
 
 		ba2str(&prx->dst, bda);
-		dbus_message_iter_append_dict_entry(&dict, "address",
-				DBUS_TYPE_STRING, &pstr);
+		dict_append_entry(&dict, "address", DBUS_TYPE_STRING, &pstr);
 	}
 
 	dbus_message_iter_close_container(&iter, &dict);

@@ -736,15 +736,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	dbus_message_iter_append_dict_entry(&dict, "Name",
-			DBUS_TYPE_STRING, &ns->name);
+	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &ns->name);
 
 	uuid = bnep_uuid(ns->id);
-	dbus_message_iter_append_dict_entry(&dict, "Uuid",
-			DBUS_TYPE_STRING, &uuid);
+	dict_append_entry(&dict, "Uuid", DBUS_TYPE_STRING, &uuid);
 
-	dbus_message_iter_append_dict_entry(&dict, "Enabled",
-			DBUS_TYPE_BOOLEAN, &ns->enable);
+	dict_append_entry(&dict, "Enabled", DBUS_TYPE_BOOLEAN, &ns->enable);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
