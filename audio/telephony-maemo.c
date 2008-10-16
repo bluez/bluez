@@ -103,6 +103,27 @@ static struct indicator maemo_indicators[] =
 	{ NULL }
 };
 
+static char *call_status_str[] = {
+	"IDLE",
+	"CREATE",
+	"COMING",
+	"PROCEEDING",
+	"MO_ALERTING",
+	"MT_ALERTING",
+	"WAITING",
+	"ANSWERED",
+	"ACTIVE",
+	"MO_RELEASE",
+	"MT_RELEASE",
+	"HOLD_INITIATED",
+	"HOLD",
+	"RETRIEVE_INITIATED",
+	"RECONNECT_PENDING",
+	"TERMINATED",
+	"SWAP_INITIATED",
+	"???"
+};
+
 void telephony_device_connected(void *telephony_device)
 {
 	debug("telephony-maemo: device %p connected", telephony_device);
@@ -223,17 +244,142 @@ void telephony_operator_selection_req(void *telephony_device)
 	telephony_operator_selection_rsp(telephony_device, CME_ERROR_NONE);
 }
 
-static DBusHandlerResult csd_filter(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static struct csd_call *find_call(const char *path)
+{
+	GSList *l;
+
+	for (l = calls ; l != NULL; l = l->next) {
+		struct csd_call *call = l->data;
+
+		if (g_str_equal(call->object_path, path))
+			return call;
+	}
+
+	return NULL;
+}
+
+static void handle_incoming_call(DBusMessage *msg)
+{
+	const char *number, *call_path;
+	struct csd_call *call;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_OBJECT_PATH, &call_path,
+					DBUS_TYPE_STRING, &number,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected parameters in Call.Coming() signal");
+		return;
+	}
+
+	call = find_call(call_path);
+	if (!call) {
+		error("Didn't find any matching call object for %s",
+				call_path);
+		return;
+	}
+
+	g_free(call->number);
+	call->number = g_strdup(number);
+
+	debug("Incoming call to %s from number %s", call_path, number);
+}
+
+static void handle_call_status(DBusMessage *msg, const char *call_path)
+{
+	struct csd_call *call;
+	uint8_t status;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_BYTE, &status,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected paramters in Instance.CallStatus() signal");
+		return;
+	}
+
+	call = find_call(call_path);
+	if (!call) {
+		error("Didn't find any matching call object for %s",
+				call_path);
+		return;
+	}
+
+	if (status > 16) {
+		error("Invalid call status %u", status);
+		return;
+	}
+
+	debug("Call %s changed to %s", call_path, call_status_str[status]);
+
+	call->status = (int) status;
+
+	switch (status) {
+	case CSD_CALL_STATUS_IDLE:
+		break;
+	case CSD_CALL_STATUS_CREATE:
+		break;
+	case CSD_CALL_STATUS_COMING:
+		break;
+	case CSD_CALL_STATUS_PROCEEDING:
+		break;
+	case CSD_CALL_STATUS_MO_ALERTING:
+		break;
+	case CSD_CALL_STATUS_MT_ALERTING:
+		break;
+	case CSD_CALL_STATUS_WAITING:
+		break;
+	case CSD_CALL_STATUS_ANSWERED:
+		break;
+	case CSD_CALL_STATUS_ACTIVE:
+		break;
+	case CSD_CALL_STATUS_MO_RELEASE:
+		break;
+	case CSD_CALL_STATUS_MT_RELEASE:
+		break;
+	case CSD_CALL_STATUS_HOLD_INITIATED:
+		break;
+	case CSD_CALL_STATUS_HOLD:
+		break;
+	case CSD_CALL_STATUS_RETRIEVE_INITIATED:
+		break;
+	case CSD_CALL_STATUS_RECONNECT_PENDING:
+		break;
+	case CSD_CALL_STATUS_TERMINATED:
+		break;
+	case CSD_CALL_STATUS_SWAP_INITIATED:
+		break;
+	default:
+		error("Unknown call status %u", status);
+		break;
+	}
+}
+
+static void handle_call_error(DBusMessage *msg, const char *call_path)
+{
+}
+
+static DBusHandlerResult csd_signal_filter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	const char *interface = dbus_message_get_interface(msg);
 	const char *member = dbus_message_get_member(msg);
+	const char *path = dbus_message_get_path(msg);
 
 	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL ||
 			!g_str_has_prefix(interface, CSD_CALL_INTERFACE))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	debug("telephony-maemo: received %s.%s", interface, member);
+	debug("telephony-maemo: received %s %s.%s", path, interface, member);
+
+	if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Coming"))
+		handle_incoming_call(msg);
+	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE, "CallStatus"))
+		handle_call_status(msg, path);
+	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE,
+					"CallServiceError"))
+		handle_call_error(msg, path);
+	else
+		debug("csd_signal_filter: didn't handle %s %s.%s",
+				path, interface, member);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -370,7 +516,8 @@ int telephony_init(void)
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
-	if (!dbus_connection_add_filter(connection, csd_filter, NULL, NULL)) {
+	if (!dbus_connection_add_filter(connection, csd_signal_filter,
+						NULL, NULL)) {
 		error("Can't add signal filter");
 		return -EIO;
 	}
