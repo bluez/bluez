@@ -36,6 +36,25 @@
 #include "logging.h"
 #include "telephony.h"
 
+/* Call status values as exported by the CSD CALL plugin */
+#define CSD_CALL_STATUS_IDLE			0
+#define CSD_CALL_STATUS_CREATE			1
+#define CSD_CALL_STATUS_COMING			2
+#define CSD_CALL_STATUS_PROCEEDING		3
+#define CSD_CALL_STATUS_MO_ALERTING		4
+#define CSD_CALL_STATUS_MT_ALERTING		5
+#define CSD_CALL_STATUS_WAITING			6
+#define CSD_CALL_STATUS_ANSWERED		7
+#define CSD_CALL_STATUS_ACTIVE			8
+#define CSD_CALL_STATUS_MO_RELEASE		9
+#define CSD_CALL_STATUS_MT_RELEASE		10
+#define CSD_CALL_STATUS_HOLD_INITIATED		11
+#define CSD_CALL_STATUS_HOLD			12
+#define CSD_CALL_STATUS_RETRIEVE_INITIATED	13
+#define CSD_CALL_STATUS_RECONNECT_PENDING	14
+#define CSD_CALL_STATUS_TERMINATED		15
+#define CSD_CALL_STATUS_SWAP_INITIATED		16
+
 static DBusConnection *connection = NULL;
 
 static char *subscriber_number = NULL;
