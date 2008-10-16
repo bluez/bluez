@@ -1009,8 +1009,7 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 	/* Connected */
 	connected = !!g_slist_find_custom(idev->connections, NULL,
 					(GCompareFunc) is_connected);
-	dbus_message_iter_append_dict_entry(&dict, "Connected",
-						DBUS_TYPE_BOOLEAN, &connected);
+	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &connected);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
