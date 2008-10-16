@@ -310,7 +310,6 @@ static void parse_call_list(DBusMessageIter *iter)
 
 		if (call->status == CSD_CALL_STATUS_IDLE) {
 			dbus_message_iter_next(iter);
-			csd_call_free(call);
 			continue;
 		}
 
