@@ -849,7 +849,7 @@ static void append_dict_valist(DBusMessageIter *iter,
 	while (key) {
 		type = va_arg(var_args, int);
 		val = va_arg(var_args, void *);
-		dbus_message_iter_append_dict_entry(&dict, key, type, val);
+		dict_append_entry(&dict, key, type, val);
 		key = va_arg(var_args, char *);
 	}
 

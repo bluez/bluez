@@ -295,8 +295,8 @@ static void dbus_message_iter_append_variant(DBusMessageIter *iter,
 	dbus_message_iter_close_container(iter, &value);
 }
 
-void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
-					const char *key, int type, void *val)
+void dict_append_entry(DBusMessageIter *dict,
+			const char *key, int type, void *val)
 {
 	DBusMessageIter entry;
 

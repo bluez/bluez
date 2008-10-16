@@ -197,8 +197,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	/* Address */
 	ptr = dstaddr;
-	dbus_message_iter_append_dict_entry(&dict, "Address",
-						DBUS_TYPE_STRING, &ptr);
+	dict_append_entry(&dict, "Address", DBUS_TYPE_STRING, &ptr);
 
 	/* Name */
 	ptr = NULL;
@@ -208,8 +207,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	if (read_device_name(srcaddr, dstaddr, name) == 0) {
 		ptr = name;
-		dbus_message_iter_append_dict_entry(&dict, "Name",
-						DBUS_TYPE_STRING, &ptr);
+		dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &ptr);
 	}
 
 	/* Alias (fallback to name or address) */
@@ -222,30 +220,26 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		ptr = name;
 
 	if (ptr)
-		dbus_message_iter_append_dict_entry(&dict, "Alias",
-						DBUS_TYPE_STRING, &ptr);
+		dict_append_entry(&dict, "Alias", DBUS_TYPE_STRING, &ptr);
 
 	/* Class */
 	if (read_remote_class(&src, &device->bdaddr, &class) == 0) {
 		const char *icon = class_to_icon(class);
 
-		dbus_message_iter_append_dict_entry(&dict, "Class",
-						DBUS_TYPE_UINT32, &class);
+		dict_append_entry(&dict, "Class", DBUS_TYPE_UINT32, &class);
 
 		if (icon)
-			dbus_message_iter_append_dict_entry(&dict, "Icon",
+			dict_append_entry(&dict, "Icon",
 						DBUS_TYPE_STRING, &icon);
 	}
 
 	/* Paired */
 	boolean = device_is_paired(device);
-	dbus_message_iter_append_dict_entry(&dict, "Paired",
-						DBUS_TYPE_BOOLEAN, &boolean);
+	dict_append_entry(&dict, "Paired", DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Trusted */
 	boolean = read_trust(&src, dstaddr, GLOBAL_TRUST);
-	dbus_message_iter_append_dict_entry(&dict, "Trusted",
-						DBUS_TYPE_BOOLEAN, &boolean);
+	dict_append_entry(&dict, "Trusted", DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Connected */
 	dev = adapter_search_active_conn_by_bdaddr(adapter, &device->bdaddr);
@@ -254,21 +248,18 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	else
 		boolean = FALSE;
 
-	dbus_message_iter_append_dict_entry(&dict, "Connected",
-						DBUS_TYPE_BOOLEAN, &boolean);
+	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* UUIDs */
 	uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
 	for (i = 0, l = device->uuids; l; l = l->next, i++)
 		uuids[i] = l->data;
-	dbus_message_iter_append_dict_entry(&dict, "UUIDs",
-						DBUS_TYPE_ARRAY, &uuids);
+	dict_append_entry(&dict, "UUIDs", DBUS_TYPE_ARRAY, &uuids);
 	g_free(uuids);
 
 	/* Adapter */
 	ptr = adapter_get_path(adapter);
-	dbus_message_iter_append_dict_entry(&dict, "Adapter",
-						DBUS_TYPE_OBJECT_PATH, &ptr);
+	dict_append_entry(&dict, "Adapter", DBUS_TYPE_OBJECT_PATH, &ptr);
 
 	dbus_message_iter_close_container(&iter, &dict);
 

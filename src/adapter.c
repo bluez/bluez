@@ -1582,38 +1582,33 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	/* Address */
 	property = srcaddr;
-	dbus_message_iter_append_dict_entry(&dict, "Address",
-						DBUS_TYPE_STRING, &property);
+	dict_append_entry(&dict, "Address", DBUS_TYPE_STRING, &property);
 
 	/* Name */
 	memset(str, 0, sizeof(str));
 	strncpy(str, (char *) adapter->dev.name, 248);
 	property = str;
 
-	dbus_message_iter_append_dict_entry(&dict, "Name",
-						DBUS_TYPE_STRING, &property);
+	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &property);
 
 	/* Mode */
 	property = mode2str(adapter->mode);
 
-	dbus_message_iter_append_dict_entry(&dict, "Mode",
-						DBUS_TYPE_STRING, &property);
+	dict_append_entry(&dict, "Mode", DBUS_TYPE_STRING, &property);
 
 	/* Powered */
 	if (main_opts.offmode == HCID_OFFMODE_DEVDOWN)
 		value = adapter->up ? TRUE : FALSE;
 	else
 		value = adapter->scan_mode == SCAN_DISABLED ? FALSE : TRUE;
-	dbus_message_iter_append_dict_entry(&dict, "Powered",
-					DBUS_TYPE_BOOLEAN, &value);
+	dict_append_entry(&dict, "Powered", DBUS_TYPE_BOOLEAN, &value);
 
 	/* Discoverable */
 	value = adapter->scan_mode & SCAN_INQUIRY ? TRUE : FALSE;
-	dbus_message_iter_append_dict_entry(&dict, "Discoverable",
-					DBUS_TYPE_BOOLEAN, &value);
+	dict_append_entry(&dict, "Discoverable", DBUS_TYPE_BOOLEAN, &value);
 
 	/* DiscoverableTimeout */
-	dbus_message_iter_append_dict_entry(&dict, "DiscoverableTimeout",
+	dict_append_entry(&dict, "DiscoverableTimeout",
 				DBUS_TYPE_UINT32, &adapter->discov_timeout);
 
 	if (adapter->state & PERIODIC_INQUIRY || adapter->state & STD_INQUIRY)
@@ -1622,8 +1617,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		value = FALSE;
 
 	/* Discovering */
-	dbus_message_iter_append_dict_entry(&dict, "Discovering",
-					DBUS_TYPE_BOOLEAN, &value);
+	dict_append_entry(&dict, "Discovering", DBUS_TYPE_BOOLEAN, &value);
 
 	/* Devices */
 	devices = g_new0(char *, g_slist_length(adapter->devices) + 1);
@@ -1631,8 +1625,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		struct btd_device *dev = l->data;
 		devices[i] = (char *) device_get_path(dev);
 	}
-	dbus_message_iter_append_dict_entry(&dict, "Devices",
-			DBUS_TYPE_ARRAY, &devices);
+	dict_append_entry(&dict, "Devices", DBUS_TYPE_ARRAY, &devices);
 	g_free(devices);
 
 	dbus_message_iter_close_container(&iter, &dict);
