@@ -74,6 +74,8 @@ struct csd_call {
 
 static DBusConnection *connection = NULL;
 
+GSList *calls = NULL;
+
 static char *subscriber_number = NULL;
 static char *active_call_number = NULL;
 static int active_call_status = 0;
@@ -234,10 +236,98 @@ static DBusHandlerResult csd_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static gboolean iter_get_basic_args(DBusMessageIter *iter,
+					int first_arg_type, ...)
+{
+	int type;
+	va_list ap;
+
+	va_start(ap, first_arg_type);
+
+	for (type = first_arg_type; type != DBUS_TYPE_INVALID;
+			type = va_arg(ap, int)) {
+		void *value = va_arg(ap, void *);
+		int real_type = dbus_message_iter_get_arg_type(iter);
+
+		if (real_type != type) {
+			error("iter_get_basic_args: expected %c but got %c",
+					(char) type, (char) real_type);
+			break;
+		}
+
+		dbus_message_iter_get_basic(iter, value);
+		dbus_message_iter_next(iter);
+	}
+
+	va_end(ap);
+
+	return type == DBUS_TYPE_INVALID ? TRUE : FALSE;
+}
+
+static void csd_call_free(struct csd_call *call)
+{
+	if (!call)
+		return;
+
+	g_free(call->object_path);
+	g_free(call->number);
+
+	g_free(call);
+}
+
+static void parse_call_list(DBusMessageIter *iter)
+{
+	while (dbus_message_iter_get_arg_type(iter)
+						!= DBUS_TYPE_INVALID) {
+		DBusMessageIter call_iter;
+		struct csd_call *call;
+		const char *object_path, *number;
+		dbus_uint32_t status;
+		dbus_bool_t originating, terminating, emerg, on_hold, conf;
+
+		dbus_message_iter_recurse(iter, &call_iter);
+
+		if (!iter_get_basic_args(&call_iter,
+					DBUS_TYPE_OBJECT_PATH, &object_path,
+					DBUS_TYPE_UINT32, &status,
+					DBUS_TYPE_BOOLEAN, &originating,
+					DBUS_TYPE_BOOLEAN, &terminating,
+					DBUS_TYPE_BOOLEAN, &on_hold,
+					DBUS_TYPE_BOOLEAN, &emerg,
+					DBUS_TYPE_BOOLEAN, &conf,
+					DBUS_TYPE_STRING, &number,
+					DBUS_TYPE_INVALID)) {
+			error("Parsing call D-Bus parameters failed");
+			continue;
+		}
+
+		call = g_new0(struct csd_call, 1);
+
+		call->object_path = g_strdup(object_path);
+		call->status = (int) status;
+
+		calls = g_slist_append(calls, call);
+
+		if (call->status == CSD_CALL_STATUS_IDLE) {
+			dbus_message_iter_next(iter);
+			csd_call_free(call);
+			continue;
+		}
+
+		call->originating = originating;
+		call->on_hold = on_hold;
+		call->conference = conf;
+		call->number = g_strdup(number);
+
+		dbus_message_iter_next(iter);
+	}
+}
+
 static void call_info_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusError err;
 	DBusMessage *reply;
+	DBusMessageIter iter, sub;;
 	uint32_t features = AG_FEATURE_REJECT_A_CALL |
 				AG_FEATURE_ENHANCED_CALL_STATUS |
 				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
@@ -252,7 +342,16 @@ static void call_info_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	/* Handle positive reply here */
+	dbus_message_iter_init(reply, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+		error("Unexpected signature in GetCallInfoAll return");
+		goto done;
+	}
+
+	dbus_message_iter_recurse(&iter, &sub);
+
+	parse_call_list(&sub);
 
 	telephony_ready_ind(features, maemo_indicators, response_and_hold);
 
@@ -303,6 +402,10 @@ int telephony_init(void)
 
 void telephony_exit(void)
 {
+	g_slist_foreach(calls, (GFunc) csd_call_free, NULL);
+	g_slist_free(calls);
+	calls = NULL;
+
 	dbus_connection_unref(connection);
 	connection = NULL;
 }
