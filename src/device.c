@@ -828,8 +828,8 @@ static void services_changed(struct btd_device *device)
 	for (i = 0, l = device->uuids; l; l = l->next, i++)
 		uuids[i] = l->data;
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "UUIDs",
-				DBUS_TYPE_ARRAY, &uuids);
+	emit_array_property_changed(conn, device->path, DEVICE_INTERFACE,
+					"UUIDs", DBUS_TYPE_STRING, &uuids);
 
 	g_free(uuids);
 }

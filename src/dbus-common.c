@@ -235,64 +235,39 @@ int hcid_dbus_init(void)
 	return 0;
 }
 
-static void dbus_message_iter_append_variant(DBusMessageIter *iter,
-						int type, void *val)
+static void append_variant(DBusMessageIter *iter, int type, void *val)
 {
 	DBusMessageIter value;
-	DBusMessageIter array;
-	char *sig;
-
-	switch (type) {
-	case DBUS_TYPE_STRING:
-		sig = DBUS_TYPE_STRING_AS_STRING;
-		break;
-	case DBUS_TYPE_BYTE:
-		sig = DBUS_TYPE_BYTE_AS_STRING;
-		break;
-	case DBUS_TYPE_INT16:
-		sig = DBUS_TYPE_INT16_AS_STRING;
-		break;
-	case DBUS_TYPE_UINT16:
-		sig = DBUS_TYPE_UINT16_AS_STRING;
-		break;
-	case DBUS_TYPE_INT32:
-		sig = DBUS_TYPE_INT32_AS_STRING;
-		break;
-	case DBUS_TYPE_UINT32:
-		sig = DBUS_TYPE_UINT32_AS_STRING;
-		break;
-	case DBUS_TYPE_BOOLEAN:
-		sig = DBUS_TYPE_BOOLEAN_AS_STRING;
-		break;
-	case DBUS_TYPE_ARRAY:
-		sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING;
-		break;
-	case DBUS_TYPE_OBJECT_PATH:
-		sig = DBUS_TYPE_OBJECT_PATH_AS_STRING;
-		break;
-	default:
-		error("Could not append variant with type %d", type);
-		return;
-	}
+	char sig[2] = { type, '\0' };
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, sig, &value);
 
-	if (type == DBUS_TYPE_ARRAY) {
-		int i;
-		const char ***str_array = val;
-
-		dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-			DBUS_TYPE_STRING_AS_STRING, &array);
-
-		for (i = 0; (*str_array)[i]; i++)
-			dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
-							&((*str_array)[i]));
-
-		dbus_message_iter_close_container(&value, &array);
-	} else
-		dbus_message_iter_append_basic(&value, type, val);
+	dbus_message_iter_append_basic(&value, type, val);
 
 	dbus_message_iter_close_container(iter, &value);
+}
+
+static void append_array_variant(DBusMessageIter *iter, int type, void *val)
+{
+	DBusMessageIter variant, array;
+	char type_sig[2] = { type, '\0' };
+	char array_sig[3] = { DBUS_TYPE_ARRAY, type, '\0' };
+	const char ***str_array = val;
+	int i;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+						array_sig, &variant);
+
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+						type_sig, &array);
+
+	for (i = 0; (*str_array)[i]; i++)
+		dbus_message_iter_append_basic(&array, type,
+						&((*str_array)[i]));
+
+	dbus_message_iter_close_container(&variant, &array);
+
+	dbus_message_iter_close_container(iter, &variant);
 }
 
 void dict_append_entry(DBusMessageIter *dict,
@@ -311,7 +286,7 @@ void dict_append_entry(DBusMessageIter *dict,
 
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
 
-	dbus_message_iter_append_variant(&entry, type, val);
+	append_variant(&entry, type, val);
 
 	dbus_message_iter_close_container(dict, &entry);
 }
@@ -319,30 +294,14 @@ void dict_append_entry(DBusMessageIter *dict,
 void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 			void *val, int n_elements)
 {
-	DBusMessageIter entry, variant, array;
-	char type_sig[2] = { type, '\0' };
-	char array_sig[3] = { DBUS_TYPE_ARRAY, type, '\0' };
-	const char ***str_array = val;
-	int i;
+	DBusMessageIter entry;
 
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 						NULL, &entry);
 
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
 
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-						array_sig, &variant);
-
-	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
-						type_sig, &array);
-
-	for (i = 0; (*str_array)[i]; i++)
-		dbus_message_iter_append_basic(&array, type,
-						&((*str_array)[i]));
-
-	dbus_message_iter_close_container(&variant, &array);
-
-	dbus_message_iter_close_container(&entry, &variant);
+	append_array_variant(&entry, type, val);
 
 	dbus_message_iter_close_container(dict, &entry);
 }
@@ -368,10 +327,43 @@ dbus_bool_t emit_property_changed(DBusConnection *conn,
 	dbus_message_iter_init_append(signal, &iter);
 
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
-	dbus_message_iter_append_variant(&iter, type, value);
+
+	append_variant(&iter, type, value);
 
 	ret = dbus_connection_send(conn, signal, NULL);
 
 	dbus_message_unref(signal);
+
+	return ret;
+}
+
+dbus_bool_t emit_array_property_changed(DBusConnection *conn,
+					const char *path,
+					const char *interface,
+					const char *name,
+					int type, void *value)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+	gboolean ret;
+
+	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
+
+	if (!signal) {
+		error("Unable to allocate new %s.PropertyChanged signal",
+				interface);
+		return FALSE;
+	}
+
+	dbus_message_iter_init_append(signal, &iter);
+
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
+
+	append_array_variant(&iter, type, value);
+
+	ret = dbus_connection_send(conn, signal, NULL);
+
+	dbus_message_unref(signal);
+
 	return ret;
 }

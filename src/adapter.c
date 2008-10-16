@@ -3369,8 +3369,8 @@ void adapter_update_devices(struct btd_adapter *adapter)
 		devices[i] = (char *) device_get_path(dev);
 	}
 
-	emit_property_changed(connection, adapter->path,
-				ADAPTER_INTERFACE, "Devices",
-				DBUS_TYPE_ARRAY, &devices);
+	emit_array_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Devices",
+					DBUS_TYPE_OBJECT_PATH, &devices);
 	g_free(devices);
 }
