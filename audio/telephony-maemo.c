@@ -36,6 +36,13 @@
 #include "logging.h"
 #include "telephony.h"
 
+/* CSD CALL plugin D-Bus definitions */
+#define CSD_CALL_BUS_NAME	"com.nokia.csd.Call"
+#define CSD_CALL_INTERFACE	"com.nokia.csd.Call"
+#define CSD_CALL_INSTANCE	"com.nokia.csd.Call.Instance"
+#define CSD_CALL_CONFERENCE	"com.nokia.csd.Call.Conference"
+#define CSD_CALL_PATH		"/com/nokia/csd/call"
+
 /* Call status values as exported by the CSD CALL plugin */
 #define CSD_CALL_STATUS_IDLE			0
 #define CSD_CALL_STATUS_CREATE			1
@@ -54,6 +61,16 @@
 #define CSD_CALL_STATUS_RECONNECT_PENDING	14
 #define CSD_CALL_STATUS_TERMINATED		15
 #define CSD_CALL_STATUS_SWAP_INITIATED		16
+
+struct csd_call {
+	char *object_path;
+	int status;
+	gboolean originating;
+	gboolean emergency;
+	gboolean on_hold;
+	gboolean conference;
+	char *number;
+};
 
 static DBusConnection *connection = NULL;
 
@@ -204,15 +221,82 @@ void telephony_operator_selection_req(void *telephony_device)
 	telephony_operator_selection_rsp(telephony_device, CME_ERROR_NONE);
 }
 
-int telephony_init(void)
+static DBusHandlerResult csd_filter(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
+	const char *interface = dbus_message_get_interface(msg);
+
+	if (!g_str_has_prefix(interface, CSD_CALL_INTERFACE)) {
+		debug("csd_filter: ignoring non-csd signal");
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static void call_info_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusError err;
+	DBusMessage *reply;
 	uint32_t features = AG_FEATURE_REJECT_A_CALL |
 				AG_FEATURE_ENHANCED_CALL_STATUS |
 				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("csd replied with an error: %s, %s",
+				err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	/* Handle positive reply here */
 
 	telephony_ready_ind(features, maemo_indicators, response_and_hold);
+
+done:
+	dbus_message_unref(reply);
+}
+
+int telephony_init(void)
+{
+	DBusMessage *msg;
+	DBusPendingCall *call;
+	char match_string[128];
+
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+
+	if (!dbus_connection_add_filter(connection, csd_filter, NULL, NULL)) {
+		error("Can't add signal filter");
+		return -EIO;
+	}
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE,
+						"GetCallInfoAll");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+		error("Sending GetCallInfoAll failed");
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(call, call_info_reply, NULL, NULL);
+	dbus_pending_call_unref(call);
+
+	snprintf(match_string, sizeof(match_string),
+			"type=signal,interface=%s", CSD_CALL_INTERFACE);
+	dbus_bus_add_match(connection, match_string, NULL);
+
+	snprintf(match_string, sizeof(match_string),
+			"type=signal,interface=%s", CSD_CALL_INSTANCE);
+	dbus_bus_add_match(connection, match_string, NULL);
 
 	return 0;
 }
