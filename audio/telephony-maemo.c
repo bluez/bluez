@@ -257,7 +257,36 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 
 void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 {
+	DBusMessage *msg;
+
 	debug("telephony-maemo: transmit dtmf: %c", tone);
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE, "StartDTMF");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		telephony_transmit_dtmf_rsp(telephony_device,
+						CME_ERROR_AG_FAILURE);
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_BYTE, &tone);
+
+	g_dbus_send_message(connection, msg);
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE, "StopDTMF");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		telephony_transmit_dtmf_rsp(telephony_device,
+						CME_ERROR_AG_FAILURE);
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_BYTE, &tone);
+
+	g_dbus_send_message(connection, msg);
+
 	telephony_transmit_dtmf_rsp(telephony_device, CME_ERROR_NONE);
 }
 
