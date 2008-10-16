@@ -409,9 +409,8 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	g_dbus_emit_signal(idev->conn, idev->path,
 			INPUT_DEVICE_INTERFACE, "Disconnected",
 			DBUS_TYPE_INVALID);
-	dbus_connection_emit_property_changed(idev->conn, idev->path,
-					INPUT_DEVICE_INTERFACE, "Connected",
-					DBUS_TYPE_BOOLEAN, &connected);
+	emit_property_changed(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
+				"Connected", DBUS_TYPE_BOOLEAN, &connected);
 
 	g_source_remove(iconn->ctrl_watch);
 	iconn->ctrl_watch = 0;
@@ -1253,9 +1252,8 @@ int input_device_connadd(const bdaddr_t *src, const bdaddr_t *dst)
 	g_dbus_emit_signal(idev->conn, idev->path,
 			INPUT_DEVICE_INTERFACE, "Connected",
 			DBUS_TYPE_INVALID);
-	dbus_connection_emit_property_changed(idev->conn, idev->path,
-					INPUT_DEVICE_INTERFACE, "Connected",
-					DBUS_TYPE_BOOLEAN, &connected);
+	emit_property_changed(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
+				"Connected", DBUS_TYPE_BOOLEAN, &connected);
 
 	return 0;
 

@@ -885,7 +885,7 @@ static int signal_gain_setting(struct audio_device *device, const char *buf)
 				DBUS_TYPE_UINT16, &gain,
 				DBUS_TYPE_INVALID);
 
-	dbus_connection_emit_property_changed(device->conn, device->path,
+	emit_property_changed(device->conn, device->path,
 				AUDIO_HEADSET_INTERFACE, property,
 				DBUS_TYPE_UINT16, &gain);
 
@@ -2219,10 +2219,9 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 						AUDIO_HEADSET_INTERFACE,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
-		dbus_connection_emit_property_changed(dev->conn, dev->path,
-						AUDIO_HEADSET_INTERFACE,
-						"Connected",
-						DBUS_TYPE_BOOLEAN, &value);
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_HEADSET_INTERFACE, "Connected",
+					DBUS_TYPE_BOOLEAN, &value);
 		telephony_device_disconnected(dev);
 		active_devices = g_slist_remove(active_devices, dev);
 		break;
@@ -2236,7 +2235,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 						AUDIO_HEADSET_INTERFACE,
 						"Connected",
 						DBUS_TYPE_INVALID);
-			dbus_connection_emit_property_changed(dev->conn, dev->path,
+			emit_property_changed(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Connected",
 						DBUS_TYPE_BOOLEAN, &value);
@@ -2248,7 +2247,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 						AUDIO_HEADSET_INTERFACE,
 						"Stopped",
 						DBUS_TYPE_INVALID);
-			dbus_connection_emit_property_changed(dev->conn, dev->path,
+			emit_property_changed(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Playing",
 						DBUS_TYPE_BOOLEAN, &value);
@@ -2265,10 +2264,9 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		g_dbus_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Playing", DBUS_TYPE_INVALID);
-		dbus_connection_emit_property_changed(dev->conn, dev->path,
-						AUDIO_HEADSET_INTERFACE,
-						"Playing",
-						DBUS_TYPE_BOOLEAN, &value);
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_HEADSET_INTERFACE, "Playing",
+					DBUS_TYPE_BOOLEAN, &value);
 
 		if (hs->sp_gain >= 0)
 			headset_send(hs, "\r\n+VGS=%u\r\n", hs->sp_gain);

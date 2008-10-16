@@ -823,10 +823,9 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 
 	path = dbus_message_get_path(msg);
 
-	dbus_connection_emit_property_changed(conn, path,
-					ADAPTER_INTERFACE,
-					"DiscoverableTimeout",
-					DBUS_TYPE_UINT32, &timeout);
+	emit_property_changed(conn, path,
+				ADAPTER_INTERFACE, "DiscoverableTimeout",
+				DBUS_TYPE_UINT32, &timeout);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -902,10 +901,8 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 
 	path = dbus_message_get_path(msg);
 
-	dbus_connection_emit_property_changed(conn, path,
-					ADAPTER_INTERFACE,
-					"Name", DBUS_TYPE_STRING,
-					&name);
+	emit_property_changed(conn, path, ADAPTER_INTERFACE, "Name",
+				DBUS_TYPE_STRING, &name);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1033,9 +1030,8 @@ static DBusMessage *remove_bonding(DBusConnection *conn, DBusMessage *msg,
 
 		const gchar *dev_path = device_get_path(device);
 
-		dbus_connection_emit_property_changed(conn, dev_path,
-					DEVICE_INTERFACE, "Paired",
-					DBUS_TYPE_BOOLEAN, &paired);
+		emit_property_changed(conn, dev_path, DEVICE_INTERFACE,
+					"Paired", DBUS_TYPE_BOOLEAN, &paired);
 	}
 
 proceed:
@@ -2434,22 +2430,20 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 
 	pmode = mode2str(adapter->mode);
 
-	dbus_connection_emit_property_changed(connection, adapter->path,
-					ADAPTER_INTERFACE, "Mode",
-					DBUS_TYPE_STRING, &pmode);
+	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
+				"Mode", DBUS_TYPE_STRING, &pmode);
 
 	powered = adapter->scan_mode == SCAN_DISABLED ? FALSE : TRUE;
 
-	dbus_connection_emit_property_changed(connection, adapter->path,
-					ADAPTER_INTERFACE, "Powered",
-					DBUS_TYPE_BOOLEAN, &powered);
+	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
+				"Powered", DBUS_TYPE_BOOLEAN, &powered);
 
 	discoverable = adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY) ? TRUE
 				: FALSE;
 
-	dbus_connection_emit_property_changed(connection, adapter->path,
-					ADAPTER_INTERFACE, "Discoverable",
-					DBUS_TYPE_BOOLEAN, &discoverable);
+	emit_property_changed(connection, adapter->path,
+				ADAPTER_INTERFACE, "Discoverable",
+				DBUS_TYPE_BOOLEAN, &discoverable);
 
 	load_drivers(adapter);
 	load_devices(adapter);
@@ -2663,20 +2657,18 @@ int adapter_stop(struct btd_adapter *adapter)
 		adapter->active_conn = NULL;
 	}
 
-	dbus_connection_emit_property_changed(connection, adapter->path,
-					ADAPTER_INTERFACE, "Mode",
-					DBUS_TYPE_STRING, &mode);
+	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
+				"Mode", DBUS_TYPE_STRING, &mode);
 
 	powered = FALSE;
 
-	dbus_connection_emit_property_changed(connection, adapter->path,
-					ADAPTER_INTERFACE, "Powered",
-					DBUS_TYPE_BOOLEAN, &powered);
+	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
+				"Powered", DBUS_TYPE_BOOLEAN, &powered);
 
 	if (adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY)) {
 		discoverable = FALSE;
 
-		dbus_connection_emit_property_changed(connection, adapter->path,
+		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Discoverable",
 					DBUS_TYPE_BOOLEAN, &discoverable);
 	}
@@ -2952,7 +2944,7 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		adapter->oor_devices = NULL;
 	}
 
-	dbus_connection_emit_property_changed(connection, path,
+	emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discovering",
 				DBUS_TYPE_BOOLEAN, &discov_active);
 
@@ -3125,19 +3117,18 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		return;
 	}
 
-	dbus_connection_emit_property_changed(connection, path,
-						ADAPTER_INTERFACE, "Mode",
-						DBUS_TYPE_STRING, &mode);
+	emit_property_changed(connection, path, ADAPTER_INTERFACE, "Mode",
+				DBUS_TYPE_STRING, &mode);
 
 	if (powered == FALSE || adapter->scan_mode == SCAN_DISABLED) {
-		dbus_connection_emit_property_changed(connection, path,
-						ADAPTER_INTERFACE, "Powered",
-						DBUS_TYPE_BOOLEAN, &powered);
+		emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "Powered",
+					DBUS_TYPE_BOOLEAN, &powered);
 	}
 
-	dbus_connection_emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "Discoverable",
-					DBUS_TYPE_BOOLEAN, &discoverable);
+	emit_property_changed(connection, path,
+				ADAPTER_INTERFACE, "Discoverable",
+				DBUS_TYPE_BOOLEAN, &discoverable);
 
 	adapter_set_scan_mode(adapter, scan_mode);
 }
@@ -3378,8 +3369,8 @@ void adapter_update_devices(struct btd_adapter *adapter)
 		devices[i] = (char *) device_get_path(dev);
 	}
 
-	dbus_connection_emit_property_changed(connection, adapter->path,
-					ADAPTER_INTERFACE, "Devices",
-					DBUS_TYPE_ARRAY, &devices);
+	emit_property_changed(connection, adapter->path,
+				ADAPTER_INTERFACE, "Devices",
+				DBUS_TYPE_ARRAY, &devices);
 	g_free(devices);
 }

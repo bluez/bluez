@@ -347,11 +347,11 @@ void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-dbus_bool_t dbus_connection_emit_property_changed(DBusConnection *conn,
-						const char *path,
-						const char *interface,
-						const char *name,
-						int type, void *value)
+dbus_bool_t emit_property_changed(DBusConnection *conn,
+					const char *path,
+					const char *interface,
+					const char *name,
+					int type, void *value)
 {
 	DBusMessage *signal;
 	DBusMessageIter iter;

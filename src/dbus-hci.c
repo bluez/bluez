@@ -1028,8 +1028,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 
 	dev_path = device_get_path(device);
 
-	dbus_connection_emit_property_changed(connection, dev_path,
-				DEVICE_INTERFACE, "Class",
+	emit_property_changed(connection, dev_path, DEVICE_INTERFACE, "Class",
 				DBUS_TYPE_UINT32, &class);
 }
 
@@ -1059,17 +1058,15 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 
 			dev_path = device_get_path(device);
 
-			dbus_connection_emit_property_changed(connection,
-						dev_path, DEVICE_INTERFACE,
-						"Name", DBUS_TYPE_STRING, &name);
+			emit_property_changed(connection, dev_path,
+						DEVICE_INTERFACE, "Name",
+						DBUS_TYPE_STRING, &name);
 
 			if (read_device_alias(srcaddr, dstaddr,
-						alias, sizeof(alias)) < 1) {
-
-				dbus_connection_emit_property_changed(connection,
-						dev_path, DEVICE_INTERFACE,
-						"Alias", DBUS_TYPE_STRING, &name);
-			}
+						alias, sizeof(alias)) < 1)
+				emit_property_changed(connection, dev_path,
+						DEVICE_INTERFACE, "Alias",
+						DBUS_TYPE_STRING, &name);
 		}
 	}
 

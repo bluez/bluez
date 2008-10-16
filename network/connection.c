@@ -143,21 +143,15 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 				NETWORK_PEER_INTERFACE, "Disconnected",
 				DBUS_TYPE_STRING, &device,
 				DBUS_TYPE_INVALID);
-		dbus_connection_emit_property_changed(connection,
-						nc->peer->path,
-						NETWORK_PEER_INTERFACE,
-						"Connected",
-						DBUS_TYPE_BOOLEAN, &connected);
-		dbus_connection_emit_property_changed(connection,
-						nc->peer->path,
-						NETWORK_PEER_INTERFACE,
-						"Device",
-						DBUS_TYPE_STRING, &property);
-		dbus_connection_emit_property_changed(connection,
-						nc->peer->path,
-						NETWORK_PEER_INTERFACE,
-						"UUID",
-						DBUS_TYPE_STRING, &property);
+		emit_property_changed(connection, nc->peer->path,
+					NETWORK_PEER_INTERFACE, "Connected",
+					DBUS_TYPE_BOOLEAN, &connected);
+		emit_property_changed(connection, nc->peer->path,
+					NETWORK_PEER_INTERFACE, "Device",
+					DBUS_TYPE_STRING, &property);
+		emit_property_changed(connection, nc->peer->path,
+					NETWORK_PEER_INTERFACE, "UUID",
+					DBUS_TYPE_STRING, &property);
 	}
 
 	info("%s disconnected", nc->dev);
@@ -253,15 +247,15 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 			DBUS_TYPE_STRING, &pdev,
 			DBUS_TYPE_STRING, &uuid,
 			DBUS_TYPE_INVALID);
-	dbus_connection_emit_property_changed(connection, nc->peer->path,
-					NETWORK_PEER_INTERFACE, "Connected",
-					DBUS_TYPE_BOOLEAN, &connected);
-	dbus_connection_emit_property_changed(connection, nc->peer->path,
-					NETWORK_PEER_INTERFACE, "Device",
-					DBUS_TYPE_BOOLEAN, &pdev);
-	dbus_connection_emit_property_changed(connection, nc->peer->path,
-					NETWORK_PEER_INTERFACE, "UUID",
-					DBUS_TYPE_BOOLEAN, &uuid);
+	emit_property_changed(connection, nc->peer->path,
+				NETWORK_PEER_INTERFACE, "Connected",
+				DBUS_TYPE_BOOLEAN, &connected);
+	emit_property_changed(connection, nc->peer->path,
+				NETWORK_PEER_INTERFACE, "Device",
+				DBUS_TYPE_BOOLEAN, &pdev);
+	emit_property_changed(connection, nc->peer->path,
+				NETWORK_PEER_INTERFACE, "UUID",
+				DBUS_TYPE_BOOLEAN, &uuid);
 
 	nc->state = CONNECTED;
 

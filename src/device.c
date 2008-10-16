@@ -287,9 +287,9 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 				ERROR_INTERFACE ".Failed",
 				strerror(-err));
 
-	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
-					DEVICE_INTERFACE, "Alias",
-					DBUS_TYPE_STRING, &alias);
+	emit_property_changed(conn, dbus_message_get_path(msg),
+				DEVICE_INTERFACE, "Alias",
+				DBUS_TYPE_STRING, &alias);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -309,9 +309,9 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 
 	write_trust(srcaddr, dstaddr, GLOBAL_TRUST, value);
 
-	dbus_connection_emit_property_changed(conn, dbus_message_get_path(msg),
-					DEVICE_INTERFACE, "Trusted",
-					DBUS_TYPE_BOOLEAN, &value);
+	emit_property_changed(conn, dbus_message_get_path(msg),
+				DEVICE_INTERFACE, "Trusted",
+				DBUS_TYPE_BOOLEAN, &value);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -526,10 +526,8 @@ void device_set_connected(DBusConnection *conn, struct btd_device *device,
 {
 	device->connected = connected;
 
-	dbus_connection_emit_property_changed(conn, device->path,
-						DEVICE_INTERFACE,
-						"Connected", DBUS_TYPE_BOOLEAN,
-						&connected);
+	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
+				"Connected", DBUS_TYPE_BOOLEAN, &connected);
 
 	if (connected && device->secmode3) {
 		struct btd_adapter *adapter = device_get_adapter(device);
@@ -830,9 +828,8 @@ static void services_changed(struct btd_device *device)
 	for (i = 0, l = device->uuids; l; l = l->next, i++)
 		uuids[i] = l->data;
 
-	dbus_connection_emit_property_changed(conn, device->path,
-					DEVICE_INTERFACE, "UUIDs",
-					DBUS_TYPE_ARRAY, &uuids);
+	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "UUIDs",
+				DBUS_TYPE_ARRAY, &uuids);
 
 	g_free(uuids);
 }
@@ -1301,9 +1298,8 @@ int device_set_paired(DBusConnection *conn, struct btd_device *device,
 
 	device_set_temporary(device, FALSE);
 
-	dbus_connection_emit_property_changed(conn, device->path,
-						DEVICE_INTERFACE, "Paired",
-						DBUS_TYPE_BOOLEAN, &paired);
+	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Paired",
+				DBUS_TYPE_BOOLEAN, &paired);
 
 	/* If we were initiators start service discovery immediately.
 	 * However if the other end was the initator wait a few seconds

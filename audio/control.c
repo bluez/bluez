@@ -425,11 +425,9 @@ static void avctp_unref(struct avctp *session)
 						AUDIO_CONTROL_INTERFACE,
 						"Disconnected",
 						DBUS_TYPE_INVALID);
-		dbus_connection_emit_property_changed(session->dev->conn,
-						session->dev->path,
-						AUDIO_CONTROL_INTERFACE,
-						"Connected",
-						DBUS_TYPE_BOOLEAN, &value);
+		emit_property_changed(session->dev->conn, session->dev->path,
+					AUDIO_CONTROL_INTERFACE, "Connected",
+					DBUS_TYPE_BOOLEAN, &value);
 	}
 
 	if (session->sock >= 0)
@@ -627,11 +625,9 @@ static gboolean avctp_connect_session(struct avctp *session)
 	g_dbus_emit_signal(session->dev->conn, session->dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
 					DBUS_TYPE_INVALID);
-	dbus_connection_emit_property_changed(session->dev->conn,
-					session->dev->path,
-					AUDIO_CONTROL_INTERFACE,
-					"Connected",
-					DBUS_TYPE_BOOLEAN, &value);
+	emit_property_changed(session->dev->conn, session->dev->path,
+				AUDIO_CONTROL_INTERFACE, "Connected",
+				DBUS_TYPE_BOOLEAN, &value);
 
 	if (session->io)
 		g_source_remove(session->io);
