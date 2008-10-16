@@ -74,7 +74,7 @@ struct csd_call {
 
 static DBusConnection *connection = NULL;
 
-GSList *calls = NULL;
+static GSList *calls = NULL;
 
 static char *subscriber_number = NULL;
 static char *active_call_number = NULL;
