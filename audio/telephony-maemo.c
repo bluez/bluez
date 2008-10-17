@@ -512,6 +512,16 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 
 static void handle_call_error(DBusMessage *msg, const char *call_path)
 {
+	uint8_t type, code;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_BYTE, &type,
+					DBUS_TYPE_BYTE, &code)) {
+		error("Unexpected parameters to CallServiceError");
+		return;
+	}
+
+	debug("telephony-maemo: CallServiceError(%u, %u)", type, code);
 }
 
 static DBusHandlerResult csd_signal_filter(DBusConnection *conn,
