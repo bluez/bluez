@@ -427,6 +427,9 @@ static void handle_incoming_call(DBusMessage *msg)
 	g_free(call->number);
 	call->number = g_strdup(number);
 
+	telephony_update_indicator(maemo_indicators, "callsetup",
+					EV_CALLSETUP_INCOMING);
+
 	debug("Incoming call to %s from number %s", call_path, number);
 }
 
