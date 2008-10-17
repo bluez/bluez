@@ -31,7 +31,8 @@ extern "C" {
 #include <dbus/dbus.h>
 #include <glib.h>
 
-typedef void (* GDBusWatchFunction) (void *user_data);
+typedef void (* GDBusWatchFunction) (DBusConnection *connection,
+							void *user_data);
 
 DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 							DBusError *error);

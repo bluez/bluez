@@ -94,7 +94,7 @@ static void name_data_call_and_free(struct name_data *data)
 	for (l = data->callbacks; l != NULL; l = l->next) {
 		struct name_callback *cb = l->data;
 		if (cb->func)
-			cb->func(cb->user_data);
+			cb->func(data->connection, cb->user_data);
 		g_free(cb);
 	}
 
@@ -246,7 +246,7 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 
 	for (l = data->callbacks; l != NULL; l = l->next) {
 		struct name_callback *cb = l->data;
-		cb->func(cb->user_data);
+		cb->func(connection, cb->user_data);
 	}
 
 	name_listeners = g_slist_remove(name_listeners, data);
