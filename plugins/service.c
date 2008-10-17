@@ -313,7 +313,7 @@ static struct pending_auth *find_pending_by_sender(
 	return NULL;
 }
 
-static void exit_callback(void *user_data)
+static void exit_callback(DBusConnection *conn, void *user_data)
 {
 	struct record_data *user_record = user_data;
 	struct service_adapter *serv_adapter = user_record->serv_adapter;
@@ -494,7 +494,7 @@ static int remove_record(DBusConnection *conn, const char *sender,
 
 	g_dbus_remove_watch(conn, user_record->listener_id);
 
-	exit_callback(user_record);
+	exit_callback(conn, user_record);
 
 	return 0;
 }

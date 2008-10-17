@@ -139,7 +139,7 @@ static void agent_request_free(struct agent_request *req)
 	g_free(req);
 }
 
-static void agent_exited(void *user_data)
+static void agent_exited(DBusConnection *conn, void *user_data)
 {
 	struct agent *agent = user_data;
 

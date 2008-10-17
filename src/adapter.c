@@ -1308,7 +1308,7 @@ static void cancel_bonding(struct btd_adapter *adapter, gboolean exited)
 		bonding->cancel = TRUE;
 }
 
-static void create_bond_req_exit(void *user_data)
+static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
 

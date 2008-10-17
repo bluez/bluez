@@ -167,7 +167,7 @@ static void serial_device_free(struct serial_device *device)
 	g_free(device);
 }
 
-static void port_owner_exited(void *user_data)
+static void port_owner_exited(DBusConnection *conn, void *user_data)
 {
 	struct serial_port *port = user_data;
 

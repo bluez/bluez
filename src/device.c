@@ -364,7 +364,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return invalid_args(msg);
 }
 
-static void discover_services_req_exit(void *user_data)
+static void discover_services_req_exit(DBusConnection *conn, void *user_data)
 {
 	struct btd_device *device = user_data;
 	struct btd_adapter *adapter = device->adapter;

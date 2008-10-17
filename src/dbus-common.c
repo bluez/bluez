@@ -157,7 +157,7 @@ failed:
 	return ret_val;
 }
 
-static void disconnect_callback(void *user_data)
+static void disconnect_callback(DBusConnection *conn, void *user_data)
 {
 	set_dbus_connection(NULL);
 
