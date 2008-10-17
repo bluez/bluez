@@ -77,7 +77,6 @@ static DBusConnection *connection = NULL;
 static GSList *calls = NULL;
 
 static char *subscriber_number = NULL;
-static char *active_call_number = NULL;
 static int active_call_status = 0;
 static int active_call_dir = 0;
 
@@ -299,16 +298,64 @@ void telephony_subscriber_number_req(void *telephony_device)
 	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+static int csd_status_to_hfp(int csd_status)
+{
+	switch (csd_status) {
+	case CSD_CALL_STATUS_IDLE:
+	case CSD_CALL_STATUS_MO_RELEASE:
+	case CSD_CALL_STATUS_MT_RELEASE:
+	case CSD_CALL_STATUS_TERMINATED:
+		return -1;
+	case CSD_CALL_STATUS_CREATE:
+		/* Is PROCEEDING == DIALING correct? */
+	case CSD_CALL_STATUS_PROCEEDING:
+		return CALL_STATUS_DIALING;
+	case CSD_CALL_STATUS_COMING:
+		return CALL_STATUS_INCOMING;
+	case CSD_CALL_STATUS_MO_ALERTING:
+		return CALL_STATUS_INCOMING;
+	case CSD_CALL_STATUS_MT_ALERTING:
+		return CALL_STATUS_ALERTING;
+	case CSD_CALL_STATUS_ANSWERED:
+	case CSD_CALL_STATUS_ACTIVE:
+	case CSD_CALL_STATUS_RETRIEVE_INITIATED:
+	case CSD_CALL_STATUS_RECONNECT_PENDING:
+	case CSD_CALL_STATUS_SWAP_INITIATED:
+		return CALL_STATUS_ACTIVE;
+	case CSD_CALL_STATUS_HOLD_INITIATED:
+	case CSD_CALL_STATUS_HOLD:
+		return CALL_STATUS_HELD;
+	default:
+		return -1;
+	}
+}
+
 void telephony_list_current_calls_req(void *telephony_device)
 {
+	GSList *l;
+	int i;
+
 	debug("telephony-maemo: list current calls request");
-	if (active_call_number)
-		telephony_list_current_call_ind(1, active_call_dir,
-						active_call_status,
-						CALL_MODE_VOICE,
-						CALL_MULTIPARTY_NO,
-						active_call_number,
-						0);
+
+	for (l = calls, i = 1; l != NULL; l = l->next, i++) {
+		struct csd_call *call = l->data;
+		int status, direction, multiparty;
+
+		status = csd_status_to_hfp(call->status);
+		if (status < 0)
+			continue;
+
+		direction = call->originating ?
+				CALL_DIR_OUTGOING : CALL_DIR_INCOMING;
+
+		multiparty = call->conference ?
+				CALL_MULTIPARTY_YES : CALL_MULTIPARTY_NO;
+
+		telephony_list_current_call_ind(i, direction, status,
+						CALL_MODE_VOICE, multiparty,
+						call->number, 0);
+	}
+
 	telephony_list_current_calls_rsp(telephony_device, CME_ERROR_NONE);
 }
 
