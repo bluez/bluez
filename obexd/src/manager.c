@@ -173,7 +173,7 @@ static void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static void agent_disconnected(void *user_data)
+static void agent_disconnected(DBusConnection *conn, void *user_data)
 {
 	debug("Agent exited");
 	agent_free(agent);
