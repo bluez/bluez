@@ -180,16 +180,25 @@ void telephony_response_and_hold_req(void *telephony_device, int rh)
 
 void telephony_last_dialed_number_req(void *telephony_device)
 {
+	DBusMessage *msg;
+	const char *number = "urn:service:ldn";
+
+	debug("telephony-maemo: last dialed number request");
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE, "Create");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		telephony_dial_number_rsp(telephony_device,
+						CME_ERROR_AG_FAILURE);
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &number);
+
+	g_dbus_send_message(connection, msg);
+
 	telephony_last_dialed_number_rsp(telephony_device, CME_ERROR_NONE);
-
-	/* Notify outgoing call set-up successfully initiated */
-	telephony_update_indicator(maemo_indicators, "callsetup",
-					EV_CALLSETUP_OUTGOING);
-	telephony_update_indicator(maemo_indicators, "callsetup",
-					EV_CALLSETUP_ALERTING);
-
-	active_call_status = CALL_STATUS_ALERTING;
-	active_call_dir = CALL_DIR_OUTGOING;
 }
 
 void telephony_terminate_call_req(void *telephony_device)
@@ -423,6 +432,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_IDLE:
 		break;
 	case CSD_CALL_STATUS_CREATE:
+		telephony_update_indicator(maemo_indicators, "callsetup",
+						EV_CALLSETUP_OUTGOING);
 		break;
 	case CSD_CALL_STATUS_COMING:
 		break;
@@ -431,6 +442,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_MO_ALERTING:
 		break;
 	case CSD_CALL_STATUS_MT_ALERTING:
+		telephony_update_indicator(maemo_indicators, "callsetup",
+						EV_CALLSETUP_ALERTING);
 		break;
 	case CSD_CALL_STATUS_WAITING:
 		break;
