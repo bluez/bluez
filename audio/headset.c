@@ -81,6 +81,7 @@ static struct {
 	char *number;			/* Incoming phone number */
 	int number_type;		/* Incoming number type */
 	guint ring_timer;		/* For incoming call indication */
+	const char *chld;		/* Response to AT+CHLD=? */
 } ag = {
 	.telephony_ready = FALSE,
 	.features = 0,
@@ -671,7 +672,15 @@ static int call_hold(struct audio_device *dev, const char *buf)
 	struct headset *hs = dev->headset;
 	int err;
 
-	err = headset_send(hs, "\r\n+CHLD:(0,1,1x,2,2x,3,4)\r\n");
+	if (strlen(buf) < 9)
+		return -EINVAL;
+
+	if (buf[8] != '?') {
+		telephony_call_hold_req(dev, &buf[8]);
+		return 0;
+	}
+
+	err = headset_send(hs, "\r\n+CHLD:(%s)\r\n", ag.chld);
 	if (err < 0)
 		return err;
 
@@ -971,6 +980,11 @@ static int call_waiting_notify(struct audio_device *device, const char *buf)
 }
 
 int telephony_operator_selection_rsp(void *telephony_device, cme_error_t err)
+{
+	return telephony_generic_rsp(telephony_device, err);
+}
+
+int telephony_call_hold_rsp(void *telephony_device, cme_error_t err)
 {
 	return telephony_generic_rsp(telephony_device, err);
 }
@@ -2432,12 +2446,14 @@ int telephony_calling_stopped_ind(void)
 }
 
 int telephony_ready_ind(uint32_t features,
-			const struct indicator *indicators, int rh)
+			const struct indicator *indicators, int rh,
+			const char *chld)
 {
 	ag.telephony_ready = TRUE;
 	ag.features = features;
 	ag.indicators = indicators;
 	ag.rh = rh;
+	ag.chld = g_strdup(chld);
 
 	debug("Telephony plugin initialized");
 

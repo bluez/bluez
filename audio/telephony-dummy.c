@@ -36,6 +36,7 @@
 #include "logging.h"
 #include "telephony.h"
 
+static const char *chld_str = "0,1,1x,2,2x,3,4";
 static char *subscriber_number = NULL;
 static char *active_call_number = NULL;
 static int active_call_status = 0;
@@ -181,6 +182,12 @@ void telephony_operator_selection_req(void *telephony_device)
 {
 	telephony_operator_selection_ind(OPERATOR_MODE_AUTO, "DummyOperator");
 	telephony_operator_selection_rsp(telephony_device, CME_ERROR_NONE);
+}
+
+void telephony_call_hold_req(void *telephony_device, const char *cmd)
+{
+	debug("telephony-dymmy: got call hold request %s", cmd);
+	telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 /* D-Bus method handlers */
@@ -376,7 +383,8 @@ int telephony_init(void)
 					dummy_methods, NULL,
 					NULL, NULL, NULL);
 
-	telephony_ready_ind(features, dummy_indicators, response_and_hold);
+	telephony_ready_ind(features, dummy_indicators, response_and_hold,
+				chld_str);
 
 	return 0;
 }
