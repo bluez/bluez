@@ -60,7 +60,7 @@ struct server_info {
 };
 
 struct disconnect_data {
-	void (*disconnect_cb)(void *);
+	GDBusWatchFunction disconnect_cb;
 	void *user_data;
 };
 
@@ -72,8 +72,8 @@ static DBusHandlerResult disconnect_filter(DBusConnection *conn,
 	if (dbus_message_is_signal(msg,
 			DBUS_INTERFACE_LOCAL, "Disconnected") == TRUE) {
 		error("Got disconnected from the system message bus");
+		dc_data->disconnect_cb(conn, dc_data->user_data);
 		dbus_connection_unref(conn);
-		dc_data->disconnect_cb(dc_data->user_data);
 	}
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
