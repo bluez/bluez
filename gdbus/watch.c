@@ -41,7 +41,8 @@ static guint listener_id = 0;
 static GSList *name_listeners = NULL;
 
 struct name_callback {
-	GDBusWatchFunction func;
+	GDBusWatchFunction conn_func;
+	GDBusWatchFunction disc_func;
 	void *user_data;
 	guint id;
 };
@@ -73,14 +74,13 @@ static struct name_data *name_data_find(DBusConnection *connection,
 	return NULL;
 }
 
-static struct name_callback *name_callback_find(GSList *callbacks,
-					GDBusWatchFunction func, void *user_data)
+static struct name_callback *name_callback_find(GSList *callbacks, guint id)
 {
 	GSList *current;
 
 	for (current = callbacks; current != NULL; current = current->next) {
 		struct name_callback *cb = current->data;
-		if (cb->func == func && cb->user_data == user_data)
+		if (cb->id == id)
 			return cb;
 	}
 
@@ -93,8 +93,8 @@ static void name_data_call_and_free(struct name_data *data)
 
 	for (l = data->callbacks; l != NULL; l = l->next) {
 		struct name_callback *cb = l->data;
-		if (cb->func)
-			cb->func(data->connection, cb->user_data);
+		if (cb->disc_func)
+			cb->disc_func(data->connection, cb->user_data);
 		g_free(cb);
 	}
 
@@ -116,7 +116,9 @@ static void name_data_free(struct name_data *data)
 }
 
 static int name_data_add(DBusConnection *connection, const char *name,
-				GDBusWatchFunction func, void *user_data, guint id)
+						GDBusWatchFunction connect,
+						GDBusWatchFunction disconnect,
+						void *user_data, guint id)
 {
 	int first = 1;
 	struct name_data *data = NULL;
@@ -124,7 +126,8 @@ static int name_data_add(DBusConnection *connection, const char *name,
 
 	cb = g_new(struct name_callback, 1);
 
-	cb->func = func;
+	cb->conn_func = connect;
+	cb->disc_func = disconnect;
 	cb->user_data = user_data;
 	cb->id = id;
 
@@ -147,7 +150,7 @@ done:
 }
 
 static void name_data_remove(DBusConnection *connection,
-			const char *name, GDBusWatchFunction func, void *user_data)
+					const char *name, guint id)
 {
 	struct name_data *data;
 	struct name_callback *cb = NULL;
@@ -156,7 +159,7 @@ static void name_data_remove(DBusConnection *connection,
 	if (!data)
 		return;
 
-	cb = name_callback_find(data->callbacks, func, user_data);
+	cb = name_callback_find(data->callbacks, id);
 	if (cb) {
 		data->callbacks = g_slist_remove(data->callbacks, cb);
 		g_free(cb);
@@ -220,6 +223,7 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 	GSList *l;
 	struct name_data *data;
 	char *name, *old, *new;
+	int keep = 0;
 
 	if (!dbus_message_is_signal(message, DBUS_INTERFACE_DBUS,
 							"NameOwnerChanged"))
@@ -234,10 +238,6 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
-	/* We are not interested of service creations */
-	if (*new != '\0')
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
 	data = name_data_find(connection, name);
 	if (!data) {
 		error("Got NameOwnerChanged signal for %s which has no listeners", name);
@@ -246,8 +246,19 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 
 	for (l = data->callbacks; l != NULL; l = l->next) {
 		struct name_callback *cb = l->data;
-		cb->func(connection, cb->user_data);
+		if (*new == '\0') {
+			if (cb->disc_func)
+				cb->disc_func(connection, cb->user_data);
+		} else {
+			if (cb->conn_func)
+				cb->conn_func(connection, cb->user_data);
+		}
+		if (cb->conn_func && cb->disc_func)
+			keep = 1;
 	}
+
+	if (keep)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	name_listeners = g_slist_remove(name_listeners, data);
 	name_data_free(data);
@@ -257,9 +268,9 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-guint g_dbus_add_disconnect_watch(DBusConnection *connection,
-				const char *name,
-				GDBusWatchFunction func,
+guint g_dbus_add_service_watch(DBusConnection *connection, const char *name,
+				GDBusWatchFunction connect,
+				GDBusWatchFunction disconnect,
 				void *user_data, GDBusDestroyFunction destroy)
 {
 	int first;
@@ -273,7 +284,8 @@ guint g_dbus_add_disconnect_watch(DBusConnection *connection,
 	}
 
 	listener_id++;
-	first = name_data_add(connection, name, func, user_data, listener_id);
+	first = name_data_add(connection, name, connect, disconnect,
+						user_data, listener_id);
 	/* The filter is already added if this is not the first callback
 	 * registration for the name */
 	if (!first)
@@ -283,12 +295,20 @@ guint g_dbus_add_disconnect_watch(DBusConnection *connection,
 		debug("name_listener_add(%s)", name);
 
 		if (!add_match(connection, name)) {
-			name_data_remove(connection, name, func, user_data);
+			name_data_remove(connection, name, listener_id);
 			return 0;
 		}
 	}
 
 	return listener_id;
+}
+
+guint g_dbus_add_disconnect_watch(DBusConnection *connection, const char *name,
+				GDBusWatchFunction func,
+				void *user_data, GDBusDestroyFunction destroy)
+{
+	return g_dbus_add_service_watch(connection, name, NULL, func,
+							user_data, destroy);
 }
 
 gboolean g_dbus_remove_watch(DBusConnection *connection, guint id)

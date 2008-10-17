@@ -111,8 +111,11 @@ gboolean g_dbus_emit_signal_valist(DBusConnection *connection,
 				const char *path, const char *interface,
 				const char *name, int type, va_list args);
 
-guint g_dbus_add_disconnect_watch(DBusConnection *connection,
-				const char *name,
+guint g_dbus_add_service_watch(DBusConnection *connection, const char *name,
+				GDBusWatchFunction connect,
+				GDBusWatchFunction disconnect,
+				void *user_data, GDBusDestroyFunction destroy);
+guint g_dbus_add_disconnect_watch(DBusConnection *connection, const char *name,
 				GDBusWatchFunction function,
 				void *user_data, GDBusDestroyFunction destroy);
 gboolean g_dbus_remove_watch(DBusConnection *connection, guint tag);
