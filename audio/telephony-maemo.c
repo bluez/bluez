@@ -77,7 +77,6 @@ static DBusConnection *connection = NULL;
 static GSList *calls = NULL;
 
 static char *subscriber_number = NULL;
-static int active_call_status = 0;
 static int active_call_dir = 0;
 
 static gboolean events_enabled = FALSE;
@@ -150,6 +149,21 @@ static struct csd_call *find_active_call(void)
 
 	return NULL;
 }
+
+static struct csd_call *find_call_with_status(int status)
+{
+	GSList *l;
+
+	for (l = calls ; l != NULL; l = l->next) {
+		struct csd_call *call = l->data;
+
+		if (call->status == status)
+			return call;
+	}
+
+	return NULL;
+}
+
 
 void telephony_device_connected(void *telephony_device)
 {
@@ -232,13 +246,30 @@ void telephony_terminate_call_req(void *telephony_device)
 
 void telephony_answer_call_req(void *telephony_device)
 {
-	telephony_answer_call_rsp(telephony_device, CME_ERROR_NONE);
+	struct csd_call *call;
+	DBusMessage *msg;
 
-	telephony_update_indicator(maemo_indicators, "call", EV_CALL_ACTIVE);
-	telephony_update_indicator(maemo_indicators, "callsetup",
-					EV_CALLSETUP_INACTIVE);
+	call = find_call_with_status(CSD_CALL_STATUS_COMING);
+	if (!call)
+		call = find_call_with_status(CSD_CALL_STATUS_MT_ALERTING);
 
-	active_call_status = CALL_STATUS_ACTIVE;
+	if (!call)
+		telephony_answer_call_rsp(telephony_device,
+						CME_ERROR_NOT_ALLOWED);
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
+						call->object_path,
+						CSD_CALL_INSTANCE, "Answer");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		telephony_answer_call_rsp(telephony_device,
+						CME_ERROR_AG_FAILURE);
+		return;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
@@ -426,8 +457,6 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 
 	debug("Call %s changed to %s", call_path, call_status_str[status]);
 
-	call->status = (int) status;
-
 	switch (status) {
 	case CSD_CALL_STATUS_IDLE:
 		break;
@@ -440,16 +469,23 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_PROCEEDING:
 		break;
 	case CSD_CALL_STATUS_MO_ALERTING:
-		break;
-	case CSD_CALL_STATUS_MT_ALERTING:
 		telephony_update_indicator(maemo_indicators, "callsetup",
 						EV_CALLSETUP_ALERTING);
+		break;
+	case CSD_CALL_STATUS_MT_ALERTING:
 		break;
 	case CSD_CALL_STATUS_WAITING:
 		break;
 	case CSD_CALL_STATUS_ANSWERED:
 		break;
 	case CSD_CALL_STATUS_ACTIVE:
+		telephony_update_indicator(maemo_indicators, "call",
+						EV_CALL_ACTIVE);
+		if (status == CSD_CALL_STATUS_MT_ALERTING ||
+				status == CSD_CALL_STATUS_ANSWERED)
+			telephony_update_indicator(maemo_indicators,
+							"callsetup",
+							EV_CALLSETUP_INACTIVE);
 		break;
 	case CSD_CALL_STATUS_MO_RELEASE:
 		break;
@@ -471,6 +507,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		error("Unknown call status %u", status);
 		break;
 	}
+
+	call->status = (int) status;
 }
 
 static void handle_call_error(DBusMessage *msg, const char *call_path)
