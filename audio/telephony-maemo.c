@@ -77,7 +77,6 @@ static DBusConnection *connection = NULL;
 static GSList *calls = NULL;
 
 static char *subscriber_number = NULL;
-static int active_call_dir = 0;
 
 static gboolean events_enabled = FALSE;
 
