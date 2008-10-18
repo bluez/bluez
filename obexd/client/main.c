@@ -183,6 +183,16 @@ int main(int argc, char *argv[])
 	DBusConnection *conn;
 	DBusError err;
 
+#ifdef NEED_THREADS
+	if (g_thread_supported() == FALSE)
+		g_thread_init(NULL);
+
+	if (dbus_threads_init_default() == FALSE) {
+		fprintf(stderr, "Can't init usage of threads\n");
+		exit(EXIT_FAILURE);
+	}
+#endif
+
 	dbus_error_init(&err);
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SESSION, CLIENT_SERVICE, &err);
