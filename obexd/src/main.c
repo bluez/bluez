@@ -161,6 +161,7 @@ static gchar *option_devnode = NULL;
 static gboolean option_autoaccept = FALSE;
 static gboolean option_opp = FALSE;
 static gboolean option_ftp = FALSE;
+static gboolean option_pbap = FALSE;
 
 static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
@@ -180,6 +181,8 @@ static GOptionEntry options[] = {
 				"Enable Object Push server" },
 	{ "ftp", 'f', 0, G_OPTION_ARG_NONE, &option_ftp,
 				"Enable File Transfer server" },
+	{ "pbap", 'f', 0, G_OPTION_ARG_NONE, &option_pbap,
+				"Enable Phonebook Access server" },
 	{ NULL },
 };
 
@@ -217,7 +220,8 @@ int main(int argc, char *argv[])
 	} else
 		log_option |= LOG_PERROR;
 
-	if (option_opp == FALSE && option_ftp == FALSE) {
+	if (option_opp == FALSE && option_ftp == FALSE &&
+						option_pbap == FALSE) {
 		fprintf(stderr, "No server selected (use either "
 					"--opp or --ftp or both)\n");
 		exit(EXIT_FAILURE);
@@ -246,8 +250,6 @@ int main(int argc, char *argv[])
 
 	plugin_init();
 
-	test_phonebook();
-
 	if (option_root == NULL)
 		option_root = g_strdup(DEFAULT_ROOT_PATH);
 
@@ -261,6 +263,9 @@ int main(int argc, char *argv[])
 	if (option_ftp == TRUE)
 		server_start(OBEX_FTP, option_root, option_autoaccept,
 					option_capability, option_devnode);
+
+	if (option_pbap == TRUE)
+		test_phonebook();
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
