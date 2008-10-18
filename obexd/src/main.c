@@ -68,15 +68,13 @@ static void test_phonebook(void)
 	if (driver == NULL)
 		return;
 
-	context = g_try_new0(struct phonebook_context, 1);
+	context = phonebook_create(driver);
 	if (context == NULL)
 		return;
 
-	driver->create(context);
+	phonebook_pullphonebook(context);
 
-	driver->destroy(context);
-
-	g_free(context);
+	phonebook_unref(context);
 }
 
 static void tty_init(int service, const gchar *root_path, const gchar *capability,

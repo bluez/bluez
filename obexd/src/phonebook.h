@@ -21,18 +21,20 @@
  *
  */
 
+#include <glib.h>
+
+struct phonebook_driver;
+
 struct phonebook_context {
+	gint refcount;
+
+	struct phonebook_driver *driver;
 	void *driver_data;
 };
 
-struct phonebook_driver {
-	const char *name;
-	int (*create) (struct phonebook_context *context);
-	void (*destroy) (struct phonebook_context *context);
-	int (*pullphonebook) (struct phonebook_context *context, ...);
-	int (*pullvcardlisting) (struct phonebook_context *context, ...);
-	int (*pullvcardentry) (struct phonebook_context *context, ...);
-};
+extern struct phonebook_context *phonebook_create(struct phonebook_driver *driver);
+extern struct phonebook_context *phonebook_ref(struct phonebook_context *context);
+extern void phonebook_unref(struct phonebook_context *context);
 
 static inline void *phonebook_get_data(struct phonebook_context *context)
 {
@@ -45,10 +47,20 @@ static inline void phonebook_set_data(struct phonebook_context *context,
 	context->driver_data = data;
 }
 
-extern int phonebook_driver_register(struct phonebook_driver *driver);
-extern void phonebook_driver_unregister(struct phonebook_driver *driver);
-
+extern void phonebook_pullphonebook(struct phonebook_context *context);
 extern void phonebook_return(struct phonebook_context *context,
 					unsigned char *buf, int size);
+
+struct phonebook_driver {
+	const char *name;
+	int (*create) (struct phonebook_context *context);
+	void (*destroy) (struct phonebook_context *context);
+	int (*pullphonebook) (struct phonebook_context *context);
+	int (*pullvcardlisting) (struct phonebook_context *context);
+	int (*pullvcardentry) (struct phonebook_context *context);
+};
+
+extern int phonebook_driver_register(struct phonebook_driver *driver);
+extern void phonebook_driver_unregister(struct phonebook_driver *driver);
 
 struct phonebook_driver *phonebook_get_driver(const char *name);
