@@ -46,6 +46,9 @@ static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
 {
 	struct obex_plugin *plugin;
 
+	if (desc->init == NULL)
+		return FALSE;
+
 	plugin = g_try_new0(struct obex_plugin, 1);
 	if (plugin == NULL)
 		return FALSE;
@@ -109,11 +112,6 @@ gboolean plugin_init(void)
 		desc = dlsym(handle, "obex_plugin_desc");
 		if (desc == NULL) {
 			error("Can't load plugin description: %s", dlerror());
-			dlclose(handle);
-			continue;
-		}
-
-		if (desc->init == NULL) {
 			dlclose(handle);
 			continue;
 		}
