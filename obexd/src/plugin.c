@@ -35,6 +35,17 @@
 #include "plugin.h"
 #include "logging.h"
 
+/*
+ * Plugins that are using libraries with threads and their own mainloop
+ * will crash on exit. This is a bug inside these libraries, but there is
+ * nothing much that can be done about it. One bad example is libebook.
+ */
+#ifdef NEED_THREADS
+#define PLUGINFLAG (RTLD_NOW | RTLD_NODELETE)
+#else
+#define PLUGINFLAG (RTLD_NOW)
+#endif
+
 static GSList *plugins = NULL;
 
 struct obex_plugin {
@@ -99,7 +110,7 @@ gboolean plugin_init(void)
 			continue;
 		}
 
-		handle = dlopen(filename, RTLD_NOW);
+		handle = dlopen(filename, PLUGINFLAG);
 		if (handle == NULL) {
 			error("Can't load plugin %s: %s", filename,
 								dlerror());
