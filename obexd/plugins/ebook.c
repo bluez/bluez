@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include <plugin.h>
 #include <logging.h>
 #include <phonebook.h>
@@ -43,10 +45,52 @@ static void ebook_destroy(struct phonebook_context *context)
 	DBG("context %p", context);
 }
 
+static int ebook_pullphonebook(struct phonebook_context *context)
+{
+	EBook *book;
+	EBookQuery *query;
+	GList *contacts = NULL;
+	GString *pb;
+	gchar *result;
+
+	DBG("context %p", context);
+
+	book = e_book_new_default_addressbook(NULL);
+
+	e_book_open(book, FALSE, NULL);
+
+	query = e_book_query_any_field_contains("");
+
+	e_book_get_contacts(book, query, &contacts, NULL);
+
+	pb = g_string_new(NULL);
+
+	for (; contacts != NULL; contacts = g_list_next(contacts)) {
+		EContact *contact = E_CONTACT(contacts->data);
+		char *vcard;
+
+		vcard = e_vcard_to_string(E_VCARD(contact),
+						EVC_FORMAT_VCARD_30);
+		g_string_append_printf(pb, "%s\n", vcard);
+		g_free(vcard);
+	}
+
+	result = g_string_free(pb, FALSE);
+	phonebook_return(context, result, strlen(result));
+	g_free(result);
+
+	e_book_query_unref(query);
+
+	g_object_unref(book);
+
+	return 0;
+}
+
 static struct phonebook_driver ebook_driver = {
 	.name		= "ebook",
 	.create		= ebook_create,
 	.destroy	= ebook_destroy,
+	.pullphonebook	= ebook_pullphonebook,
 };
 
 static int ebook_init(void)
