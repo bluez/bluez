@@ -27,12 +27,15 @@
 
 #include <glib.h>
 
+#include "logging.h"
 #include "phonebook.h"
 
 static GSList *driver_list = NULL;
 
 int phonebook_driver_register(struct phonebook_driver *driver)
 {
+	DBG("driver %p name %s", driver, driver->name);
+
 	driver_list = g_slist_append(driver_list, driver);
 
 	return 0;
@@ -40,10 +43,12 @@ int phonebook_driver_register(struct phonebook_driver *driver)
 
 void phonebook_driver_unregister(struct phonebook_driver *driver)
 {
+	DBG("driver %p name %s", driver, driver->name);
+
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
 void phonebook_return(struct phonebook_context *context,
-					unsigned char *buf, size_t size)
+					unsigned char *buf, int size)
 {
 }

@@ -37,4 +37,4 @@ extern int phonebook_driver_register(struct phonebook_driver *driver);
 extern void phonebook_driver_unregister(struct phonebook_driver *driver);
 
 extern void phonebook_return(struct phonebook_context *context,
-					unsigned char *buf, size_t size);
+					unsigned char *buf, int size);
