@@ -178,6 +178,11 @@ int main(int argc, char *argv[])
 	const char *capability = DEFAULT_CAP_FILE;
 	const char *devnode = NULL;
 
+#ifdef NEED_THREADS
+	if (g_thread_supported() == FALSE)
+		g_thread_init(NULL);
+#endif
+
 	while ((opt = getopt_long(argc, argv, "+ndhofr:c:t:a", options, NULL)) != EOF) {
 		switch(opt) {
 		case 'n':
@@ -237,6 +242,13 @@ int main(int argc, char *argv[])
 	}
 
 	main_loop = g_main_loop_new(NULL, FALSE);
+
+#ifdef NEED_THREADS
+	if (dbus_threads_init_default() == FALSE) {
+		fprintf(stderr, "Can't init usage of threads\n");
+		exit(1);
+	}
+#endif
 
 	dbus_error_init(&err);
 
