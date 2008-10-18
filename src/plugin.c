@@ -25,39 +25,41 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
-#include <gmodule.h>
-#include <string.h>
-
-#include <sys/stat.h>
 #include <errno.h>
+#include <dlfcn.h>
+#include <string.h>
+#include <sys/stat.h>
 
-#include <bluetooth/bluetooth.h>
-
-#include "logging.h"
+#include <glib.h>
 
 #include "plugin.h"
+#include "logging.h"
 
 static GSList *plugins = NULL;
 
 struct bluetooth_plugin {
-	GModule *module;
+	void *handle;
 	struct bluetooth_plugin_desc *desc;
 };
 
-static gboolean add_plugin(GModule *module, struct bluetooth_plugin_desc *desc)
+static gboolean add_plugin(void *handle, struct bluetooth_plugin_desc *desc)
 {
 	struct bluetooth_plugin *plugin;
 
-	if (desc->init() < 0)
+	if (desc->init == NULL)
 		return FALSE;
 
 	plugin = g_try_new0(struct bluetooth_plugin, 1);
 	if (plugin == NULL)
 		return FALSE;
 
-	plugin->module = module;
+	plugin->handle = handle;
 	plugin->desc = desc;
+
+	if (desc->init() < 0) {
+		g_free(plugin);
+		return FALSE;
+	}
 
 	plugins = g_slist_append(plugins, plugin);
 
@@ -110,8 +112,8 @@ gboolean plugin_init(GKeyFile *config)
 	}
 
 	while ((file = g_dir_read_name(dir)) != NULL) {
-		GModule *module;
 		struct bluetooth_plugin_desc *desc;
+		void *handle;
 		gchar *filename;
 		struct stat st;
 
@@ -125,39 +127,31 @@ gboolean plugin_init(GKeyFile *config)
 		filename = g_build_filename(PLUGINDIR, file, NULL);
 
 		if (stat(filename, &st) < 0) {
-			error("Can't load plugin %s: %s (%d)", filename,
-				strerror(errno), errno);
+			error("Can't find plugin %s: %s", filename,
+							strerror(errno));
 			g_free(filename);
 			continue;
 		}
 
-		module = g_module_open(filename, G_MODULE_BIND_LOCAL);
-		if (module == NULL) {
-			error("Can't load plugin: %s", g_module_error());
+		handle = dlopen(filename, RTLD_NOW);
+		if (handle == NULL) {
+			error("Can't load plugin %s: %s", filename,
+								dlerror());
 			g_free(filename);
 			continue;
 		}
 
 		g_free(filename);
 
-		debug("%s", g_module_name(module));
-
-		if (g_module_symbol(module, "bluetooth_plugin_desc",
-					(gpointer) &desc) == FALSE) {
-			error("Can't load plugin description");
-			g_module_close(module);
+		desc = dlsym(handle, "bluetooth_plugin_desc");
+		if (desc == NULL) {
+			error("Can't load plugin description: %s", dlerror());
+			dlclose(handle);
 			continue;
 		}
 
-		if (desc == NULL || desc->init == NULL) {
-			g_module_close(module);
-			continue;
-		}
-
-		if (add_plugin(module, desc) == FALSE) {
-			error("Can't init plugin %s", g_module_name(module));
-			g_module_close(module);
-		}
+		if (add_plugin(handle, desc) == FALSE)
+			dlclose(handle);
 	}
 
 	g_dir_close(dir);
@@ -176,12 +170,10 @@ void plugin_cleanup(void)
 	for (list = plugins; list; list = list->next) {
 		struct bluetooth_plugin *plugin = list->data;
 
-		debug("%s", g_module_name(plugin->module));
-
 		if (plugin->desc->exit)
 			plugin->desc->exit();
 
-		g_module_close(plugin->module);
+		dlclose(plugin->handle);
 
 		g_free(plugin);
 	}

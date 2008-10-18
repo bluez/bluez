@@ -115,14 +115,6 @@ AC_DEFUN([AC_PATH_GLIB], [
 	AC_SUBST(GLIB_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_GMODULE], [
-	PKG_CHECK_MODULES(GMODULE, gmodule-2.0, dummy=yes,
-				AC_MSG_ERROR(GModule library is required))
-	AC_CHECK_LIB(dl, dlopen, dummy=yes, dummy=no)
-	AC_SUBST(GMODULE_CFLAGS)
-	AC_SUBST(GMODULE_LIBS)
-])
-
 AC_DEFUN([AC_PATH_GSTREAMER], [
 	PKG_CHECK_MODULES(GSTREAMER, gstreamer-0.10 gstreamer-plugins-base-0.10, gstreamer_found=yes, gstreamer_found=no)
 	AC_SUBST(GSTREAMER_CFLAGS)

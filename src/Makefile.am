@@ -22,7 +22,9 @@ bluetoothd_SOURCES = main.c security.c hcid.h sdpd.h \
 	device.h device.c dbus-common.c dbus-common.h dbus-hci.h dbus-hci.c
 
 bluetoothd_LDADD = $(top_builddir)/common/libhelper.a \
-	@GDBUS_LIBS@ @GMODULE_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+			@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@ -ldl
+
+bluetoothd_LDFLAGS = -Wl,--export-dynamic
 
 if MAINTAINER_MODE
 plugindir = $(abs_top_srcdir)/plugins
@@ -30,9 +32,8 @@ else
 plugindir = $(libdir)/bluetooth/plugins
 endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ \
-		@GLIB_CFLAGS@ @GMODULE_CFLAGS@ @GDBUS_CFLAGS@ \
-					-DPLUGINDIR=\""$(plugindir)"\"
+AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
+						-DPLUGINDIR=\""$(plugindir)"\"
 
 INCLUDES = -I$(top_srcdir)/common
 

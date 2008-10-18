@@ -26,9 +26,11 @@ GTK_DOC_CHECK
 
 AC_FUNC_PPOLL
 
+AC_CHECK_LIB(dl, dlopen, dummy=yes,
+			AC_MSG_ERROR(dynamic linking loader is required))
+
 AC_PATH_DBUS
 AC_PATH_GLIB
-AC_PATH_GMODULE
 AC_PATH_ALSA
 AC_PATH_GSTREAMER
 AC_PATH_USB
