@@ -108,7 +108,7 @@ void phonebook_pullphonebook(struct phonebook_context *context)
 }
 
 void phonebook_return(struct phonebook_context *context,
-					unsigned char *buf, int size)
+						char *buf, int size)
 {
 	DBG("context %p", context);
 

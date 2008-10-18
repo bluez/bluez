@@ -49,7 +49,7 @@ static inline void phonebook_set_data(struct phonebook_context *context,
 
 extern void phonebook_pullphonebook(struct phonebook_context *context);
 extern void phonebook_return(struct phonebook_context *context,
-					unsigned char *buf, int size);
+						char *buf, int size);
 
 struct phonebook_driver {
 	const char *name;
