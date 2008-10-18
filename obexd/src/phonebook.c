@@ -51,4 +51,12 @@ void phonebook_driver_unregister(struct phonebook_driver *driver)
 void phonebook_return(struct phonebook_context *context,
 					unsigned char *buf, int size)
 {
+	DBG("context %p", context);
+}
+
+struct phonebook_driver *phonebook_get_driver(const char *name)
+{
+	DBG("name %s", name);
+
+	return g_slist_nth_data(driver_list, 0);
 }

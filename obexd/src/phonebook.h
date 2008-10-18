@@ -22,6 +22,7 @@
  */
 
 struct phonebook_context {
+	void *driver_data;
 };
 
 struct phonebook_driver {
@@ -33,8 +34,21 @@ struct phonebook_driver {
 	int (*pullvcardentry) (struct phonebook_context *context, ...);
 };
 
+static inline void *phonebook_get_data(struct phonebook_context *context)
+{
+	return context->driver_data;
+}
+
+static inline void phonebook_set_data(struct phonebook_context *context,
+								void *data)
+{
+	context->driver_data = data;
+}
+
 extern int phonebook_driver_register(struct phonebook_driver *driver);
 extern void phonebook_driver_unregister(struct phonebook_driver *driver);
 
 extern void phonebook_return(struct phonebook_context *context,
 					unsigned char *buf, int size);
+
+struct phonebook_driver *phonebook_get_driver(const char *name);
