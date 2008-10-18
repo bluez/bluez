@@ -323,10 +323,9 @@ static DBusConnection *system_conn = NULL;
 
 gboolean manager_init(void)
 {
-	DBusConnection *conn;
 	DBusError err;
 
-	DBG("conn %p", conn);
+	DBG("");
 
 	dbus_error_init(&err);
 
@@ -352,7 +351,7 @@ gboolean manager_init(void)
 
 void manager_cleanup(void)
 {
-	DBG("conn %p", connection);
+	DBG("");
 
 	g_dbus_unregister_interface(connection, OPENOBEX_MANAGER_PATH,
 						OPENOBEX_MANAGER_INTERFACE);
