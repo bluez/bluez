@@ -132,111 +132,81 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static void usage(void)
-{
-	printf("OBEX Server version %s\n\n", VERSION);
+static gboolean option_detach = TRUE;
+static gboolean option_debug = FALSE;
 
-	printf("Usage:\n"
-		"\tobexd [options] <server>\n"
-		"\n");
+static gchar *option_root = NULL;
+static gchar *option_capability = NULL;
+static gchar *option_devnode = NULL;
 
-	printf("Options:\n"
-		"\t-n, --nodaemon            Don't fork daemon to background\n"
-		"\t-d, --debug               Enable output of debug information\n"
-		"\t-r, --root <path>         Specify root folder location\n"
-		"\t-c, --capability <file>   Specify the capability file.\n"
-		"\t-t, --tty <devnode>       Specify the TTY device\n"
-		"\t-a, --auto-accept         Automatically accept push requests\n"
-		"\t-h, --help                Display help\n");
-	printf("Servers:\n"
-		"\t-o, --opp                 Enable OPP server\n"
-		"\t-f, --ftp                 Enable FTP server\n"
-		"\n");
-}
+static gboolean option_autoaccept = FALSE;
+static gboolean option_opp = FALSE;
+static gboolean option_ftp = FALSE;
 
-static struct option options[] = {
-	{ "nodaemon",    0, 0, 'n' },
-	{ "debug",       0, 0, 'd' },
-	{ "ftp",         0, 0, 'f' },
-	{ "opp",         0, 0, 'o' },
-	{ "help",        0, 0, 'h' },
-	{ "root",        1, 0, 'r' },
-	{ "capability",  1, 0, 'c' },
-	{ "tty",         1, 0, 't' },
-	{ "auto-accept", 0, 0, 'a' },
-	{ }
+static GOptionEntry options[] = {
+	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
+				G_OPTION_ARG_NONE, &option_detach,
+				"Don't run as daemon in background" },
+	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
+				"Enable debug information output" },
+	{ "root", 'r', 0, G_OPTION_ARG_STRING, &option_root,
+				"Specify root folder location", "PATH" },
+	{ "capability", 'c', 0, G_OPTION_ARG_STRING, &option_capability,
+				"Sepcify capability file", "FILE" },
+	{ "tty", 't', 0, G_OPTION_ARG_STRING, &option_devnode,
+				"Specify the TTY device", "DEVICE" },
+	{ "auto-accept", 'a', 0, G_OPTION_ARG_NONE, &option_autoaccept,
+				"Automatically accept push requests" },
+	{ "opp", 'o', 0, G_OPTION_ARG_NONE, &option_opp,
+				"Enable Object Push server" },
+	{ "ftp", 'f', 0, G_OPTION_ARG_NONE, &option_ftp,
+				"Enable File Transfer server" },
+	{ NULL },
 };
 
 int main(int argc, char *argv[])
 {
-	DBusConnection *conn;
-	DBusError err;
+	GOptionContext *context;
+	GError *err = NULL;
 	struct sigaction sa;
 	int log_option = LOG_NDELAY | LOG_PID;
-	int opt, detach = 1, debug = 0, opush = 0, ftp = 0, auto_accept = 0;
-	const char *root_path = DEFAULT_ROOT_PATH;
-	const char *capability = DEFAULT_CAP_FILE;
-	const char *devnode = NULL;
 
 #ifdef NEED_THREADS
 	if (g_thread_supported() == FALSE)
 		g_thread_init(NULL);
 #endif
 
-	while ((opt = getopt_long(argc, argv, "+ndhofr:c:t:a", options, NULL)) != EOF) {
-		switch(opt) {
-		case 'n':
-			detach = 0;
-			break;
-		case 'd':
-			debug = 1;
-			break;
-		case 'o':
-			opush = 1;
-			break;
-		case 'f':
-			ftp = 1;
-			break;
-		case 'r':
-			root_path = optarg;
-			break;
-		case 'c':
-			capability = optarg;
-			break;
-		case 't':
-			devnode = optarg;
-			break;
-		case 'a':
-			auto_accept = 1;
-			break;
-		case 'h':
-		default:
-			usage();
-			exit(EXIT_SUCCESS);
-		}
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
+
+	if (g_option_context_parse(context, &argc, &argv, &err) == FALSE) {
+		if (err != NULL) {
+			g_printerr("%s\n", err->message);
+			g_error_free(err);
+		} else
+			g_printerr("An unknown error occurred\n");
+		exit(EXIT_FAILURE);
 	}
 
-	argc -= optind;
-	argv += optind;
-	optind = 0;
+	g_option_context_free(context);
 
-	if (!(opush || ftp)) {
+	if (option_detach == TRUE) {
+		if (daemon(0, 0)) {
+			perror("Can't start daemon");
+			exit(1);
+		}
+	} else
+		log_option |= LOG_PERROR;
+
+	if (option_opp == FALSE && option_ftp == FALSE) {
 		fprintf(stderr, "No server selected (use either "
 					"--opp or --ftp or both)\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if (detach) {
-		if (daemon(0, 0)) {
-			perror("Can't start daemon");
-			exit(EXIT_FAILURE);
-		}
-	} else
-		log_option |= LOG_PERROR;
-
 	openlog("obexd", log_option, LOG_DAEMON);
 
-	if (debug) {
+	if (option_debug == TRUE) {
 		info("Enabling debug information");
 		enable_debug();
 	}
@@ -246,37 +216,30 @@ int main(int argc, char *argv[])
 #ifdef NEED_THREADS
 	if (dbus_threads_init_default() == FALSE) {
 		fprintf(stderr, "Can't init usage of threads\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 #endif
 
-	dbus_error_init(&err);
-
-	conn = g_dbus_setup_bus(DBUS_BUS_SESSION, OPENOBEX_SERVICE, &err);
-	if (conn == NULL) {
-		if (dbus_error_is_set(&err) == TRUE) {
-			fprintf(stderr, "%s\n", err.message);
-			dbus_error_free(&err);
-		} else
-			fprintf(stderr, "Can't register with session bus\n");
+	if (manager_init() == FALSE) {
+		error("manager_init failed");
 		exit(EXIT_FAILURE);
 	}
 
 	plugin_init();
 
-	if (!manager_init(conn)) {
-		error("manager_init failed");
-		plugin_cleanup();
-		exit(EXIT_FAILURE);
-	}
+	if (option_root == NULL)
+		option_root = g_strdup(DEFAULT_ROOT_PATH);
 
-	if (opush)
-		server_start(OBEX_OPUSH, root_path, auto_accept,
-				NULL, devnode);
+	if (option_capability == NULL)
+		option_capability = g_strdup(DEFAULT_CAP_FILE);
 
-	if (ftp)
-		server_start(OBEX_FTP, root_path, auto_accept,
-				capability, devnode);
+	if (option_opp == TRUE)
+		server_start(OBEX_OPUSH, option_root, option_autoaccept,
+							NULL, option_devnode);
+
+	if (option_ftp == TRUE)
+		server_start(OBEX_FTP, option_root, option_autoaccept,
+					option_capability, option_devnode);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
@@ -285,17 +248,19 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(main_loop);
 
-	manager_cleanup();
+	server_stop();
 
 	plugin_cleanup();
 
-	server_stop();
-
-	dbus_connection_unref(conn);
+	manager_cleanup();
 
 	g_main_loop_unref(main_loop);
 
+	g_free(option_devnode);
+	g_free(option_capability);
+	g_free(option_root);
+
 	closelog();
 
-	exit(EXIT_SUCCESS);
+	return 0;
 }

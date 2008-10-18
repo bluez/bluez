@@ -21,16 +21,14 @@
  *
  */
 
-gboolean plugin_init(void);
-void plugin_cleanup(void);
-
-#include <dbus/dbus.h>
-
 #define OPENOBEX_SERVICE  "org.openobex"
 
-#define OPENOBEX_MANAGER_PATH       "/"
-#define OPENOBEX_MANAGER_INTERFACE  OPENOBEX_SERVICE ".Manager"
-#define ERROR_INTERFACE		OPENOBEX_SERVICE ".Error"
+#define OPENOBEX_MANAGER_PATH		"/"
+#define OPENOBEX_MANAGER_INTERFACE	OPENOBEX_SERVICE ".Manager"
+#define ERROR_INTERFACE			OPENOBEX_SERVICE ".Error"
 
-gboolean manager_init(DBusConnection *conn);
+gboolean manager_init(void);
 void manager_cleanup(void);
+
+gboolean plugin_init(void);
+void plugin_cleanup(void);

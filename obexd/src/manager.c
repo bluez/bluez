@@ -319,16 +319,26 @@ static GDBusMethodTable session_methods[] = {
 };
 
 static DBusConnection *connection = NULL;
-
 static DBusConnection *system_conn = NULL;
 
-gboolean manager_init(DBusConnection *conn)
+gboolean manager_init(void)
 {
+	DBusConnection *conn;
+	DBusError err;
+
 	DBG("conn %p", conn);
 
-	connection = dbus_connection_ref(conn);
-	if (connection == NULL)
+	dbus_error_init(&err);
+
+	connection = g_dbus_setup_bus(DBUS_BUS_SESSION, OPENOBEX_SERVICE, &err);
+	if (connection == NULL) {
+		if (dbus_error_is_set(&err) == TRUE) {
+			fprintf(stderr, "%s\n", err.message);
+			dbus_error_free(&err);
+		} else
+			fprintf(stderr, "Can't register with session bus\n");
 		return FALSE;
+	}
 
 	system_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 	if (system_conn == NULL)
