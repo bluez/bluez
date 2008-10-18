@@ -21,3 +21,20 @@
  *
  */
 
+struct phonebook_context {
+};
+
+struct phonebook_driver {
+	const char *name;
+	int (*create) (struct phonebook_context *context);
+	void (*destroy) (struct phonebook_context *context);
+	int (*pullphonebook) (struct phonebook_context *context, ...);
+	int (*pullvcardlisting) (struct phonebook_context *context, ...);
+	int (*pullvcardentry) (struct phonebook_context *context, ...);
+};
+
+extern int phonebook_driver_register(struct phonebook_driver *driver);
+extern void phonebook_driver_unregister(struct phonebook_driver *driver);
+
+extern void phonebook_return(struct phonebook_context *context,
+					unsigned char *buf, size_t size);
