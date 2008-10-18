@@ -46,6 +46,7 @@
 
 #include "logging.h"
 #include "bluetooth.h"
+#include "phonebook.h"
 #include "obexd.h"
 #include "obex.h"
 
@@ -57,6 +58,26 @@
 #define DEFAULT_CAP_FILE CONFIGDIR "/capability.xml"
 
 static GMainLoop *main_loop = NULL;
+
+static void test_phonebook(void)
+{
+	struct phonebook_context *context;
+	struct phonebook_driver *driver;
+
+	driver = phonebook_get_driver(NULL);
+	if (driver == NULL)
+		return;
+
+	context = g_try_new0(struct phonebook_context, 1);
+	if (context == NULL)
+		return;
+
+	driver->create(context);
+
+	driver->destroy(context);
+
+	g_free(context);
+}
 
 static void tty_init(int service, const gchar *root_path, const gchar *capability,
 		const gchar *devnode)
@@ -226,6 +247,8 @@ int main(int argc, char *argv[])
 	}
 
 	plugin_init();
+
+	test_phonebook();
 
 	if (option_root == NULL)
 		option_root = g_strdup(DEFAULT_ROOT_PATH);
