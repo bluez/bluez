@@ -27,19 +27,36 @@
 
 #include <plugin.h>
 #include <logging.h>
+#include <phonebook.h>
 
 #include <libebook/e-book.h>
 
-static int ebook_init(void)
+static int ebook_create(struct phonebook_context *context)
 {
-	DBG("");
+	DBG("context %p", context);
 
 	return 0;
 }
 
+static void ebook_destroy(struct phonebook_context *context)
+{
+	DBG("context %p", context);
+}
+
+static struct phonebook_driver ebook_driver = {
+	.name		= "ebook",
+	.create		= ebook_create,
+	.destroy	= ebook_destroy,
+};
+
+static int ebook_init(void)
+{
+	return phonebook_driver_register(&ebook_driver);
+}
+
 static void ebook_exit(void)
 {
-	DBG("");
+	phonebook_driver_unregister(&ebook_driver);
 }
 
 OBEX_PLUGIN_DEFINE("ebook", ebook_init, ebook_exit)
