@@ -28,13 +28,6 @@
 #endif
 
 #include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
@@ -139,11 +132,11 @@ void opp_get(obex_t *obex, obex_object_t *obj)
 	/* Add body header */
 	hv.bs = NULL;
 	if (size == 0)
-		OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
-				hv, 0, OBEX_FL_FIT_ONE_PACKET);
+		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
+						hv, 0, OBEX_FL_FIT_ONE_PACKET);
 	else
-		OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
-				hv, 0, OBEX_FL_STREAM_START);
+		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
+						hv, 0, OBEX_FL_STREAM_START);
 
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
 
