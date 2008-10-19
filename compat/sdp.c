@@ -161,7 +161,7 @@ int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp
 	req->country  = country;
 	req->parser   = parser;
 
-	snprintf(req->name, 128, str + pos);
+	snprintf(req->name, 128, "%s", str + pos);
 
 	req->rd_size = strlen(desc) / 2;
 	req->rd_data = malloc(req->rd_size);
