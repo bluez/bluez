@@ -1,3 +1,9 @@
+ver 4.15:
+	Fix various A2DP state machine issues.
+	Fix some issues with the Handsfree error reporting.
+	Fix format string warnings with recent GCC versions.
+	Remove dependency on GModule.
+
 ver 4.14:
 	Fix types of property arrays.
 	Fix potential crash with input devices.
