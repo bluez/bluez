@@ -1922,7 +1922,10 @@ static gboolean avdtp_start_resp(struct avdtp *session,
 	if (sep->cfm && sep->cfm->start)
 		sep->cfm->start(session, sep, stream, NULL, sep->user_data);
 
-	avdtp_sep_set_state(session, sep, AVDTP_STATE_STREAMING);
+	/* We might be in STREAMING already if both sides send START_CMD at the
+	 * same time and the one in SNK role doesn't reject it as it should */
+	if (sep->state != AVDTP_STATE_STREAMING)
+		avdtp_sep_set_state(session, sep, AVDTP_STATE_STREAMING);
 
 	return TRUE;
 }
