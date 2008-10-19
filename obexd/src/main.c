@@ -166,7 +166,7 @@ static GOptionEntry options[] = {
 				"Enable Object Push server" },
 	{ "ftp", 'f', 0, G_OPTION_ARG_NONE, &option_ftp,
 				"Enable File Transfer server" },
-	{ "pbap", 'f', 0, G_OPTION_ARG_NONE, &option_pbap,
+	{ "pbap", 'p', 0, G_OPTION_ARG_NONE, &option_pbap,
 				"Enable Phonebook Access server" },
 	{ NULL },
 };
