@@ -452,6 +452,8 @@ char *bt_compidtostr(int compid)
 		return "Tzero Technologies, Inc.";
 	case 82:
 		return "J&M Corporation";
+	case 83:
+		return "Free2move AB";
 	case 65535:
 		return "internal use";
 	default:
