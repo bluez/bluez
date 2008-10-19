@@ -1618,9 +1618,13 @@ static void l2cap_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 failed:
 	if (session->pending_open) {
-		avdtp_sep_set_state(session, session->pending_open->lsep,
-					AVDTP_STATE_IDLE);
-		session->pending_open = NULL;
+		struct avdtp_stream *stream = session->pending_open;
+
+		handle_transport_connect(session, -1, 0, 0);
+
+		if (avdtp_abort(session, stream) < 0)
+			avdtp_sep_set_state(session, stream->lsep,
+						AVDTP_STATE_IDLE);
 	} else
 		connection_lost(session, -err);
 
@@ -2678,7 +2682,7 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 		avdtp_sep_set_state(session, stream->lsep,
 					AVDTP_STATE_ABORTING);
 
-	return 0;
+	return ret;
 }
 
 struct avdtp_local_sep *avdtp_register_sep(const bdaddr_t *src, uint8_t type,
