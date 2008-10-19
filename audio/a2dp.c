@@ -604,11 +604,20 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("Sink %p: Start_Ind", sep);
 	else
 		debug("Source %p: Start_Ind", sep);
+
+	setup = find_setup_by_session(session);
+	if (setup) {
+		if (setup->canceled)
+			setup_unref(setup);
+		else
+			finalize_resume(setup);
+	}
 
 	if (!a2dp_sep->locked) {
 		a2dp_sep->session = avdtp_ref(session);
