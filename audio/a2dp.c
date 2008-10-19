@@ -192,16 +192,6 @@ static gboolean finalize_resume(struct a2dp_setup *s)
 	return FALSE;
 }
 
-static gboolean finalize_resume_errno(struct a2dp_setup *s, int err)
-{
-	struct avdtp_error avdtp_err;
-
-	avdtp_error_init(&avdtp_err, AVDTP_ERROR_ERRNO, -err);
-	s->err = err ? &avdtp_err : NULL;
-
-	return finalize_resume(s);
-}
-
 static gboolean finalize_suspend(struct a2dp_setup *s)
 {
 	GSList *l;
@@ -580,10 +570,9 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (err) {
 		setup->stream = NULL;
 		setup->err = err;
-		finalize_config(setup);
 	}
-	else
-		finalize_config_errno(setup, 0);
+
+	finalize_config(setup);
 }
 
 static gboolean suspend_timeout(struct a2dp_sep *sep)
@@ -655,10 +644,9 @@ static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (err) {
 		setup->stream = NULL;
 		setup->err = err;
-		finalize_resume(setup);
 	}
-	else
-		finalize_resume_errno(setup, 0);
+
+	finalize_resume(setup);
 }
 
 static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -887,10 +875,9 @@ static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (err) {
 		setup->stream = NULL;
 		setup->err = err;
-		finalize_config(setup);
 	}
-	else
-		finalize_config_errno(setup, 0);
+
+	finalize_config(setup);
 }
 
 static struct avdtp_sep_cfm cfm = {
