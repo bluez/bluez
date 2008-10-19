@@ -828,7 +828,7 @@ static int cmd_setattr(int argc, char **argv)
 	for_each_opt(opt, set_options, NULL) {
 		switch(opt) {
 		default:
-			printf(set_help);
+			printf("%s", set_help);
 			return -1;
 		}
 	}
@@ -837,7 +837,7 @@ static int cmd_setattr(int argc, char **argv)
 	argv += optind;
 
 	if (argc < 3) {
-		printf(set_help);
+		printf("%s", set_help);
 		return -1;
 	}
 
@@ -967,7 +967,7 @@ static int cmd_setseq(int argc, char **argv)
 	for_each_opt(opt, seq_options, NULL) {
 		switch(opt) {
 		default:
-			printf(seq_help);
+			printf("%s", seq_help);
 			return -1;
 		}
 	}
@@ -976,7 +976,7 @@ static int cmd_setseq(int argc, char **argv)
 	argv += optind;
 
 	if (argc < 3) {
-		printf(seq_help);
+		printf("%s", seq_help);
 		return -1;
 	}
 
@@ -3493,7 +3493,7 @@ static int cmd_add(int argc, char **argv)
 				si.network = strtol(optarg + 2, NULL, 16);
 			break;
 		default:
-			printf(add_help);
+			printf("%s", add_help);
 			return -1;
 		}
 	}
@@ -3502,7 +3502,7 @@ static int cmd_add(int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(add_help);
+		printf("%s", add_help);
 		return -1;
 	}
 
@@ -3569,7 +3569,7 @@ static int cmd_del(int argc, char **argv)
 	for_each_opt(opt, del_options, 0) {
 		switch (opt) {
 		default:
-			printf(del_help);
+			printf("%s", del_help);
 			return -1;
 		}
 	}
@@ -3578,7 +3578,7 @@ static int cmd_del(int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(del_help);
+		printf("%s", del_help);
 		return -1;
 	}
 
@@ -3606,7 +3606,7 @@ static void inquiry(handler_t handler, void *arg)
 
 static void doprintf(void *data, const char *str)
 {
-	printf(str);
+	printf("%s", str);
 }
 
 /*
@@ -3739,7 +3739,7 @@ static int cmd_browse(int argc, char **argv)
 			sdp_uuid16_create(&context.group, L2CAP_UUID);
 			break;
 		default:
-			printf(browse_help);
+			printf("%s", browse_help);
 			return -1;
 		}
 	}
@@ -3807,7 +3807,7 @@ static int cmd_search(int argc, char **argv)
 			context.view = XML_VIEW;
 			break;
 		default:
-			printf(search_help);
+			printf("%s", search_help);
 			return -1;
 		}
 	}
@@ -3816,7 +3816,7 @@ static int cmd_search(int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(search_help);
+		printf("%s", search_help);
 		return -1;
 	}
 
@@ -3956,7 +3956,7 @@ static int cmd_records(int argc, char **argv)
 			context.view = XML_VIEW;
 			break;
 		default:
-			printf(records_help);
+			printf("%s", records_help);
 			return -1;
 		}
 	}
@@ -3965,7 +3965,7 @@ static int cmd_records(int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(records_help);
+		printf("%s", records_help);
 		return -1;
 	}
 
@@ -4026,7 +4026,7 @@ static int cmd_get(int argc, char **argv)
 			context.view = XML_VIEW;
 			break;
 		default:
-			printf(get_help);
+			printf("%s", get_help);
 			return -1;
 		}
 	}
@@ -4035,7 +4035,7 @@ static int cmd_get(int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(get_help);
+		printf("%s", get_help);
 		return -1;
 	}
 

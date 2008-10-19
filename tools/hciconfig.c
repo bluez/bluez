@@ -693,7 +693,7 @@ static void cmd_class(int ctl, int hdev, char *opt)
 				if (cls[2] & (1 << s)) {
 					if (!first)
 						printf(", ");
-					printf(services[s]);
+					printf("%s", services[s]);
 					first = 0;
 				}
 		} else

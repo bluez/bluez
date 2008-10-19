@@ -381,7 +381,7 @@ static void cmd_dev(int dev_id, int argc, char **argv)
 	for_each_opt(opt, dev_options, NULL) {
 		switch (opt) {
 		default:
-			printf(dev_help);
+			printf("%s", dev_help);
 			return;
 		}
 	}
@@ -451,7 +451,7 @@ static void cmd_inq(int dev_id, int argc, char **argv)
 			break;
 
 		default:
-			printf(inq_help);
+			printf("%s", inq_help);
 			return;
 		}
 	}
@@ -567,7 +567,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 			break;
 
 		default:
-			printf(scan_help);
+			printf("%s", scan_help);
 			return;
 		}
 	}
@@ -774,7 +774,7 @@ static void cmd_name(int dev_id, int argc, char **argv)
 	for_each_opt(opt, name_options, NULL) {
 		switch (opt) {
 		default:
-			printf(name_help);
+			printf("%s", name_help);
 			return;
 		}
 	}
@@ -782,7 +782,7 @@ static void cmd_name(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(name_help);
+		printf("%s", name_help);
 		return;
 	}
 
@@ -833,7 +833,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	for_each_opt(opt, info_options, NULL) {
 		switch (opt) {
 		default:
-			printf(info_help);
+			printf("%s", info_help);
 			return;
 		}
 	}
@@ -841,7 +841,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(info_help);
+		printf("%s", info_help);
 		return;
 	}
 
@@ -974,7 +974,7 @@ static void cmd_spinq(int dev_id, int argc, char **argv)
 	for_each_opt(opt, spinq_options, NULL) {
 		switch (opt) {
 		default:
-			printf(spinq_help);
+			printf("%s", spinq_help);
 			return;
 		}
 	}
@@ -1027,7 +1027,7 @@ static void cmd_epinq(int dev_id, int argc, char **argv)
 	for_each_opt(opt, epinq_options, NULL) {
 		switch (opt) {
 		default:
-			printf(epinq_help);
+			printf("%s", epinq_help);
 			return;
 		}
 	}
@@ -1075,7 +1075,7 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 	for_each_opt(opt, cmd_options, NULL) {
 		switch (opt) {
 		default:
-			printf(cmd_help);
+			printf("%s", cmd_help);
 			return;
 		}
 	}
@@ -1083,7 +1083,7 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 2) {
-		printf(cmd_help);
+		printf("%s", cmd_help);
 		return;
 	}
 
@@ -1094,7 +1094,7 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 	ogf = strtol(argv[0], NULL, 16);
 	ocf = strtol(argv[1], NULL, 16);
 	if (errno == ERANGE || (ogf > 0x3f) || (ocf > 0x3ff)) {
-		printf(cmd_help);
+		printf("%s", cmd_help);
 		return;
 	}
 
@@ -1158,7 +1158,7 @@ static void cmd_con(int dev_id, int argc, char **argv)
 	for_each_opt(opt, con_options, NULL) {
 		switch (opt) {
 		default:
-			printf(con_help);
+			printf("%s", con_help);
 			return;
 		}
 	}
@@ -1206,7 +1206,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 			break;
 
 		default:
-			printf(cc_help);
+			printf("%s", cc_help);
 			return;
 		}
 	}
@@ -1214,7 +1214,7 @@ static void cmd_cc(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(cc_help);
+		printf("%s", cc_help);
 		return;
 	}
 
@@ -1262,7 +1262,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 	for_each_opt(opt, dc_options, NULL) {
 		switch (opt) {
 		default:
-			printf(dc_help);
+			printf("%s", dc_help);
 			return;
 		}
 	}
@@ -1270,7 +1270,7 @@ static void cmd_dc(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(dc_help);
+		printf("%s", dc_help);
 		return;
 	}
 
@@ -1333,7 +1333,7 @@ static void cmd_sr(int dev_id, int argc, char **argv)
 	for_each_opt(opt, sr_options, NULL) {
 		switch (opt) {
 		default:
-			printf(sr_help);
+			printf("%s", sr_help);
 			return;
 		}
 	}
@@ -1341,7 +1341,7 @@ static void cmd_sr(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 2) {
-		printf(sr_help);
+		printf("%s", sr_help);
 		return;
 	}
 
@@ -1401,7 +1401,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	for_each_opt(opt, rssi_options, NULL) {
 		switch (opt) {
 		default:
-			printf(rssi_help);
+			printf("%s", rssi_help);
 			return;
 		}
 	}
@@ -1409,7 +1409,7 @@ static void cmd_rssi(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(rssi_help);
+		printf("%s", rssi_help);
 		return;
 	}
 
@@ -1475,7 +1475,7 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 	for_each_opt(opt, lq_options, NULL) {
 		switch (opt) {
 		default:
-			printf(lq_help);
+			printf("%s", lq_help);
 			return;
 		}
 	}
@@ -1483,7 +1483,7 @@ static void cmd_lq(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(lq_help);
+		printf("%s", lq_help);
 		return;
 	}
 
@@ -1550,7 +1550,7 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 	for_each_opt(opt, tpl_options, NULL) {
 		switch (opt) {
 		default:
-			printf(tpl_help);
+			printf("%s", tpl_help);
 			return;
 		}
 	}
@@ -1558,7 +1558,7 @@ static void cmd_tpl(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(tpl_help);
+		printf("%s", tpl_help);
 		return;
 	}
 
@@ -1627,7 +1627,7 @@ static void cmd_afh(int dev_id, int argc, char **argv)
 	for_each_opt(opt, afh_options, NULL) {
 		switch (opt) {
 		default:
-			printf(afh_help);
+			printf("%s", afh_help);
 			return;
 		}
 	}
@@ -1635,7 +1635,7 @@ static void cmd_afh(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(afh_help);
+		printf("%s", afh_help);
 		return;
 	}
 
@@ -1713,7 +1713,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	for_each_opt(opt, cpt_options, NULL) {
 		switch (opt) {
 		default:
-			printf(cpt_help);
+			printf("%s", cpt_help);
 			return;
 		}
 	}
@@ -1721,7 +1721,7 @@ static void cmd_cpt(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 2) {
-		printf(cpt_help);
+		printf("%s", cpt_help);
 		return;
 	}
 
@@ -1798,7 +1798,7 @@ static void cmd_lp(int dev_id, int argc, char **argv)
 	for_each_opt(opt, lp_options, NULL) {
 		switch (opt) {
 		default:
-			printf(lp_help);
+			printf("%s", lp_help);
 			return;
 		}
 	}
@@ -1806,7 +1806,7 @@ static void cmd_lp(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(lp_help);
+		printf("%s", lp_help);
 		return;
 	}
 
@@ -1897,7 +1897,7 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 	for_each_opt(opt, lst_options, NULL) {
 		switch (opt) {
 		default:
-			printf(lst_help);
+			printf("%s", lst_help);
 			return;
 		}
 	}
@@ -1905,7 +1905,7 @@ static void cmd_lst(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(lst_help);
+		printf("%s", lst_help);
 		return;
 	}
 
@@ -1987,7 +1987,7 @@ static void cmd_auth(int dev_id, int argc, char **argv)
 	for_each_opt(opt, auth_options, NULL) {
 		switch (opt) {
 		default:
-			printf(auth_help);
+			printf("%s", auth_help);
 			return;
 		}
 	}
@@ -1995,7 +1995,7 @@ static void cmd_auth(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(auth_help);
+		printf("%s", auth_help);
 		return;
 	}
 
@@ -2059,7 +2059,7 @@ static void cmd_enc(int dev_id, int argc, char **argv)
 	for_each_opt(opt, enc_options, NULL) {
 		switch (opt) {
 		default:
-			printf(enc_help);
+			printf("%s", enc_help);
 			return;
 		}
 	}
@@ -2067,7 +2067,7 @@ static void cmd_enc(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(enc_help);
+		printf("%s", enc_help);
 		return;
 	}
 
@@ -2132,7 +2132,7 @@ static void cmd_key(int dev_id, int argc, char **argv)
 	for_each_opt(opt, key_options, NULL) {
 		switch (opt) {
 		default:
-			printf(key_help);
+			printf("%s", key_help);
 			return;
 		}
 	}
@@ -2140,7 +2140,7 @@ static void cmd_key(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(key_help);
+		printf("%s", key_help);
 		return;
 	}
 
@@ -2204,7 +2204,7 @@ static void cmd_clkoff(int dev_id, int argc, char **argv)
 	for_each_opt(opt, clkoff_options, NULL) {
 		switch (opt) {
 		default:
-			printf(clkoff_help);
+			printf("%s", clkoff_help);
 			return;
 		}
 	}
@@ -2212,7 +2212,7 @@ static void cmd_clkoff(int dev_id, int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		printf(clkoff_help);
+		printf("%s", clkoff_help);
 		return;
 	}
 
@@ -2280,7 +2280,7 @@ static void cmd_clock(int dev_id, int argc, char **argv)
 	for_each_opt(opt, clock_options, NULL) {
 		switch (opt) {
 		default:
-			printf(clock_help);
+			printf("%s", clock_help);
 			return;
 		}
 	}
