@@ -1171,7 +1171,6 @@ static gboolean avdtp_open_cmd(struct avdtp *session, struct seid_req *req,
 
 	stream->open_acp = TRUE;
 	session->pending_open = stream;
-	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
 	stream->timer = g_timeout_add(REQ_TIMEOUT, stream_open_timeout,
 						stream);
 
