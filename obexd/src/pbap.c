@@ -34,6 +34,8 @@
 #include "logging.h"
 #include "obex.h"
 
+#define PHONEBOOK_TYPE "x-bt/phonebook"
+
 static void test_phonebook(void)
 {
 	struct phonebook_context *context;
@@ -62,10 +64,10 @@ void pbap_get(obex_t *obex, obex_object_t *obj)
 	if (os == NULL)
 		return;
 
-	if (os->name)
+	if (os->type == NULL)
 		goto fail;
 
-	if (os->type == NULL)
+	if (g_str_equal(os->type, PHONEBOOK_TYPE) == FALSE)
 		goto fail;
 
 	test_phonebook();
