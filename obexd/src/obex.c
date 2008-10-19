@@ -52,33 +52,40 @@
 #define RX_MTU 32767
 #define TX_MTU 32767
 
-#define TARGET_SIZE	16
-static const guint8 FTP_TARGET[TARGET_SIZE] = { 0xF9, 0xEC, 0x7B, 0xC4,
-					0x95, 0x3C, 0x11, 0xD2,
-					0x98, 0x4E, 0x52, 0x54,
-					0x00, 0xDC, 0x9E, 0x09 };
+#define TARGET_SIZE 16
+
+static const guint8 FTP_TARGET[TARGET_SIZE] = {
+			0xF9, 0xEC, 0x7B, 0xC4,  0x95, 0x3C, 0x11, 0xD2,
+			0x98, 0x4E, 0x52, 0x54,  0x00, 0xDC, 0x9E, 0x09  };
+
+static const guint8 PBAP_TARGET[TARGET_SIZE] = {
+			0x79, 0x61, 0x35, 0xF0,  0xF0, 0xC5, 0x11, 0xD8,
+			0x09, 0x66, 0x08, 0x00,  0x20, 0x0C, 0x9A, 0x66  };
 
 /* Connection ID */
 static guint32 cid = 0x0000;
 
 typedef struct {
-    guint8	version;
-    guint8	flags;
-    guint16	mtu;
+	guint8  version;
+	guint8  flags;
+	guint16 mtu;
 } __attribute__ ((packed)) obex_connect_hdr_t;
 
 struct obex_commands opp = {
 	.get		= opp_get,
-	.chkput		= opp_chkput,
 	.put		= opp_put,
-	.setpath	= NULL,
+	.chkput		= opp_chkput,
 };
 
 struct obex_commands ftp = {
 	.get		= ftp_get,
 	.put		= ftp_put,
-	.setpath	= ftp_setpath,
 	.chkput		= ftp_chkput,
+	.setpath	= ftp_setpath,
+};
+
+struct obex_commands pbap = {
+	.get		= pbap_get,
 };
 
 static void os_reset_session(struct obex_session *os)
@@ -248,7 +255,7 @@ static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)
 
 	os = OBEX_GetUserData(obex);
 
-	/* OPUSH doesn't provide a connection id. */
+	/* Object Push doesn't provide a connection id. */
 	if (os->target == NULL)
 		return TRUE;
 
@@ -728,7 +735,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 
 	switch (evt) {
 	case OBEX_EV_PROGRESS:
-		/* Just emit progress for OPUSH */
+		/* Just emit progress for Object Push */
 		if (os->target == NULL)
 			emit_transfer_progress(os->cid, os->size, os->offset);
 		break;
@@ -890,13 +897,17 @@ gint obex_session_start(gint fd, struct server *server)
 
 	os = g_new0(struct obex_session, 1);
 	switch (server->service) {
-	case OBEX_OPUSH:
+	case OBEX_OPP:
 		os->target = NULL;
 		os->cmds = &opp;
 		break;
 	case OBEX_FTP:
 		os->target = FTP_TARGET;
 		os->cmds = &ftp;
+		break;
+	case OBEX_PBAP:
+		os->target = PBAP_TARGET;
+		os->cmds = &pbap;
 		break;
 	default:
 		g_free(os);

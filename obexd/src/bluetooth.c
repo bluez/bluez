@@ -133,6 +133,47 @@ const static gchar *ftp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
   </attribute>									\
 </record>";
 
+const static gchar *pbap_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+<record>									\
+  <attribute id=\"0x0001\">							\
+    <sequence>									\
+      <uuid value=\"0x112f\"/>							\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0004\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x0100\"/>						\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0003\"/>						\
+        <uint8 value=\"%u\" name=\"channel\"/>					\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0008\"/>						\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0009\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x1130\"/>						\
+        <uint16 value=\"0x0100\" name=\"version\"/>				\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0100\">							\
+    <text value=\"%s\" name=\"name\"/>						\
+  </attribute>									\
+										\
+  <attribute id=\"0x0314\">							\
+    <uint8 value=\"0x01\"/>							\
+  </attribute>									\
+</record>";
+
 static uint32_t register_record(const gchar *name,
 				guint16 service, guint8 channel)
 {
@@ -140,11 +181,14 @@ static uint32_t register_record(const gchar *name,
 	gint handle;
 
 	switch (service) {
-	case OBEX_OPUSH:
+	case OBEX_OPP:
 		record = g_markup_printf_escaped(opp_record, channel, name);
 		break;
 	case OBEX_FTP:
 		record = g_markup_printf_escaped(ftp_record, channel, name);
+		break;
+	case OBEX_PBAP:
+		record = g_markup_printf_escaped(pbap_record, channel, name);
 		break;
 	default:
 		return 0;
@@ -182,7 +226,7 @@ static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_d
 	info("New connection from: %s, channel %u, fd %d", address,
 			raddr.rc_channel, nsk);
 
-	if (server->service == OBEX_OPUSH) {
+	if (server->service == OBEX_OPP) {
 		if (obex_session_start(nsk, server) < 0)
 			close(nsk);
 
@@ -292,11 +336,11 @@ failed:
 }
 
 gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
-		guint8 channel, gboolean secure, gboolean auto_accept,
-		const gchar *capability)
+				guint8 channel, gboolean secure,
+				gboolean auto_accept, const gchar *capability)
 {
-	return server_register(service, name, channel,
-			folder, secure, auto_accept, capability);
+	return server_register(service, name, channel, folder,
+					secure, auto_accept, capability);
 }
 
 void bluetooth_exit(void)

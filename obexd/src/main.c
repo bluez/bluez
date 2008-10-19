@@ -46,12 +46,12 @@
 
 #include "logging.h"
 #include "bluetooth.h"
-#include "phonebook.h"
 #include "obexd.h"
 #include "obex.h"
 
-#define OPUSH_CHANNEL	9
+#define OPP_CHANNEL	9
 #define FTP_CHANNEL	10
+#define PBAP_CHANNEL	15
 
 #define DEFAULT_ROOT_PATH "/tmp"
 
@@ -59,26 +59,8 @@
 
 static GMainLoop *main_loop = NULL;
 
-static void test_phonebook(void)
-{
-	struct phonebook_context *context;
-	struct phonebook_driver *driver;
-
-	driver = phonebook_get_driver(NULL);
-	if (driver == NULL)
-		return;
-
-	context = phonebook_create(driver);
-	if (context == NULL)
-		return;
-
-	phonebook_pullphonebook(context);
-
-	phonebook_unref(context);
-}
-
-static void tty_init(int service, const gchar *root_path, const gchar *capability,
-		const gchar *devnode)
+static void tty_init(int service, const gchar *root_path,
+				const gchar *capability, const gchar *devnode)
 {
 	struct server *server;
 	struct termios options;
@@ -113,25 +95,28 @@ static void tty_init(int service, const gchar *root_path, const gchar *capabilit
 }
 
 static int server_start(int service, const char *root_path,
-		gboolean auto_accept, const gchar *capability,
-		const char *devnode)
+			gboolean auto_accept, const gchar *capability,
+							const char *devnode)
 {
 	switch (service) {
-	case OBEX_OPUSH:
-		bluetooth_init(OBEX_OPUSH, "OBEX OPUSH server",
-				root_path, OPUSH_CHANNEL, FALSE,
-				auto_accept, capability);
+	case OBEX_OPP:
+		bluetooth_init(OBEX_OPP, "Object Push server",
+					root_path, OPP_CHANNEL, FALSE,
+						auto_accept, capability);
 		if (devnode)
-			tty_init(OBEX_OPUSH, root_path, capability,
-					devnode);
+			tty_init(OBEX_OPP, root_path, capability, devnode);
 		break;
 	case OBEX_FTP:
-		bluetooth_init(OBEX_FTP, "OBEX FTP server",
-				root_path, FTP_CHANNEL, TRUE,
-				auto_accept, capability);
-
+		bluetooth_init(OBEX_FTP, "File Transfer server",
+					root_path, FTP_CHANNEL, TRUE,
+						auto_accept, capability);
 		if (devnode)
 			tty_init(OBEX_FTP, root_path, capability, devnode);
+		break;
+	case OBEX_PBAP:
+		bluetooth_init(OBEX_PBAP, "Phonebook Access server",
+					root_path, PBAP_CHANNEL, TRUE,
+						auto_accept, capability);
 		break;
 	default:
 		return -EINVAL;
@@ -257,7 +242,7 @@ int main(int argc, char *argv[])
 		option_capability = g_strdup(DEFAULT_CAP_FILE);
 
 	if (option_opp == TRUE)
-		server_start(OBEX_OPUSH, option_root, option_autoaccept,
+		server_start(OBEX_OPP, option_root, option_autoaccept,
 							NULL, option_devnode);
 
 	if (option_ftp == TRUE)
@@ -265,7 +250,7 @@ int main(int argc, char *argv[])
 					option_capability, option_devnode);
 
 	if (option_pbap == TRUE)
-		test_phonebook();
+		server_start(OBEX_PBAP, NULL, FALSE, NULL, NULL);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;

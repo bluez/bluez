@@ -29,16 +29,18 @@
 
 #include <glib.h>
 
-#define OBEX_OPUSH	0x00
-#define OBEX_FTP	0x01
+#define OBEX_OPP	0x01
+#define OBEX_FTP	0x02
+#define OBEX_BIP	0x03
+#define OBEX_PBAP	0x04
 
 #define OBJECT_SIZE_UNKNOWN -1
 #define OBJECT_SIZE_DELETE -2
 
 struct obex_commands {
 	void (*get) (obex_t *obex, obex_object_t *obj);
-	gint (*chkput) (obex_t *obex, obex_object_t *obj);
 	void (*put) (obex_t *obex, obex_object_t *obj);
+	gint (*chkput) (obex_t *obex, obex_object_t *obj);
 	void (*setpath) (obex_t *obex, obex_object_t *obj);
 };
 
@@ -73,14 +75,16 @@ struct obex_session {
 gint obex_session_start(gint fd, struct server *server);
 gint obex_session_stop();
 
-gint opp_chkput(obex_t *obex, obex_object_t *obj);
-void opp_put(obex_t *obex, obex_object_t *obj);
 void opp_get(obex_t *obex, obex_object_t *obj);
+void opp_put(obex_t *obex, obex_object_t *obj);
+gint opp_chkput(obex_t *obex, obex_object_t *obj);
 
 void ftp_get(obex_t *obex, obex_object_t *obj);
 void ftp_put(obex_t *obex, obex_object_t *obj);
-void ftp_setpath(obex_t *obex, obex_object_t *obj);
 gint ftp_chkput(obex_t *obex, obex_object_t *obj);
+void ftp_setpath(obex_t *obex, obex_object_t *obj);
+
+void pbap_get(obex_t *obex, obex_object_t *obj);
 
 gboolean os_prepare_get(struct obex_session *os, gchar *file, guint32 *size);
 gint os_prepare_put(struct obex_session *os);
