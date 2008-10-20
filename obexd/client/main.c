@@ -156,8 +156,8 @@ static DBusMessage *send_files(DBusConnection *connection,
 		return NULL;
 
 	g_ptr_array_free(data->files, TRUE);
-	dbus_message_unref(message);
-	dbus_connection_unref(connection);
+	dbus_message_unref(data->message);
+	dbus_connection_unref(data->connection);
 	g_free(data->sender);
 	g_free(data->agent);
 	g_free(data);
