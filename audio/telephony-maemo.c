@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <glib.h>
 #include <dbus/dbus.h>
 #include <gdbus.h>
@@ -61,6 +62,10 @@
 #define CSD_CALL_STATUS_RECONNECT_PENDING	14
 #define CSD_CALL_STATUS_TERMINATED		15
 #define CSD_CALL_STATUS_SWAP_INITIATED		16
+
+/* Call direction (as returned by GetRemote */
+#define CSD_CALL_DIRECTION_OUTGOING		1
+#define CSD_CALL_DIRECTION_INCOMING		2
 
 struct csd_call {
 	char *object_path;
@@ -198,7 +203,8 @@ void telephony_last_dialed_number_req(void *telephony_device)
 	debug("telephony-maemo: last dialed number request");
 
 	if (last_dialed_number)
-		telephony_dial_number_req(telephony_device, NULL);
+		telephony_dial_number_req(telephony_device,
+						last_dialed_number);
 	else
 		telephony_last_dialed_number_rsp(telephony_device,
 						CME_ERROR_NOT_ALLOWED);
@@ -265,13 +271,7 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 {
 	DBusMessage *msg;
 
-	if (number) {
-		g_free(last_dialed_number);
-		last_dialed_number = g_strdup(number);
-		debug("telephony-maemo: dial request to %s", number);
-	} else
-		number = last_dialed_number;
-
+	debug("telephony-maemo: dial request to %s", number);
 
 	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 						CSD_CALL_INTERFACE, "Create");
@@ -429,6 +429,75 @@ static void handle_incoming_call(DBusMessage *msg)
 	debug("Incoming call to %s from number %s", call_path, number);
 }
 
+static void get_remote_reply(DBusPendingCall *pending_call,
+						void *user_data)
+{
+	struct csd_call *call = user_data;
+	DBusMessage *reply;
+	DBusError err;
+	const char *number;
+	uint8_t direction;
+
+	reply = dbus_pending_call_steal_reply(pending_call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("%s GetRemote failed: %s, %s",
+				call->object_path, err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(reply, NULL,
+					DBUS_TYPE_STRING, &number,
+					DBUS_TYPE_BYTE, &direction,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected paramters in %s GetRemote reply:",
+				call->object_path, err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	if (strlen(number) == 0)
+		goto done;
+
+	g_free(call->number);
+	call->number = g_strdup(number);
+
+	if (direction == CSD_CALL_DIRECTION_OUTGOING) {
+		g_free(last_dialed_number);
+		last_dialed_number = g_strdup(number);
+	}
+
+done:
+	dbus_message_unref(reply);
+}
+
+static void resolve_number(struct csd_call *call)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pcall;
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
+					call->object_path,
+					CSD_CALL_INSTANCE, "GetRemote");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return;
+	}
+
+	if (!dbus_connection_send_with_reply(connection, msg, &pcall, -1)) {
+		error("Sending GetRemote failed");
+		dbus_message_unref(msg);
+		return;
+	}
+
+	dbus_pending_call_set_notify(pcall, get_remote_reply, NULL, NULL);
+	dbus_pending_call_unref(pcall);
+	dbus_message_unref(msg);
+}
+
 static void handle_call_status(DBusMessage *msg, const char *call_path)
 {
 	struct csd_call *call, *active_call;
@@ -483,6 +552,7 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_MO_ALERTING:
 		telephony_update_indicator(maemo_indicators, "callsetup",
 						EV_CALLSETUP_ALERTING);
+		resolve_number(call);
 		break;
 	case CSD_CALL_STATUS_MT_ALERTING:
 		break;
