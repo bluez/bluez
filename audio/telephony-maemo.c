@@ -88,6 +88,8 @@ static gboolean events_enabled = FALSE;
  */
 static int response_and_hold = -1;
 
+static char *last_dialed_number = NULL;
+
 static struct indicator maemo_indicators[] =
 {
 	{ "battchg",	"0-5",	5 },
@@ -193,25 +195,13 @@ void telephony_response_and_hold_req(void *telephony_device, int rh)
 
 void telephony_last_dialed_number_req(void *telephony_device)
 {
-	DBusMessage *msg;
-	const char *number = "urn:service:ldn";
-
 	debug("telephony-maemo: last dialed number request");
 
-	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
-						CSD_CALL_INTERFACE, "Create");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
-		telephony_dial_number_rsp(telephony_device,
-						CME_ERROR_AG_FAILURE);
-		return;
-	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &number);
-
-	g_dbus_send_message(connection, msg);
-
-	telephony_last_dialed_number_rsp(telephony_device, CME_ERROR_NONE);
+	if (last_dialed_number)
+		telephony_dial_number_req(telephony_device, NULL);
+	else
+		telephony_last_dialed_number_rsp(telephony_device,
+						CME_ERROR_NOT_ALLOWED);
 }
 
 void telephony_terminate_call_req(void *telephony_device)
@@ -275,7 +265,13 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 {
 	DBusMessage *msg;
 
-	debug("telephony-maemo: dial request to %s", number);
+	if (number) {
+		g_free(last_dialed_number);
+		last_dialed_number = g_strdup(number);
+		debug("telephony-maemo: dial request to %s", number);
+	} else
+		number = last_dialed_number;
+
 
 	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 						CSD_CALL_INTERFACE, "Create");
