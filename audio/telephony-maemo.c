@@ -800,6 +800,7 @@ int telephony_init(void)
 
 	dbus_pending_call_set_notify(call, call_info_reply, NULL, NULL);
 	dbus_pending_call_unref(call);
+	dbus_message_unref(msg);
 
 	snprintf(match_string, sizeof(match_string),
 			"type=signal,interface=%s", CSD_CALL_INTERFACE);
