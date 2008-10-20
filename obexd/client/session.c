@@ -496,48 +496,12 @@ static void xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 	len = read(session->fd, session->buffer + session->filled,
 				sizeof(session->buffer) - session->filled);
-	if (len <= 0) {
-		message = dbus_message_new_method_call(session->agent_name,
-			session->agent_path, AGENT_INTERFACE, "Complete");
+	if (len <= 0)
+		goto complete;
 
-		dbus_message_append_args(message,
-					DBUS_TYPE_OBJECT_PATH, &session->path,
-							DBUS_TYPE_INVALID);
-
-		g_dbus_send_message(session->conn, message);
-
-		if (session->pending->len > 0) {
-			gchar *filename;
-			filename = g_ptr_array_index(session->pending, 0);
-			g_ptr_array_remove(session->pending, filename);
-
-			gw_obex_xfer_close(session->xfer, NULL);
-			gw_obex_xfer_free(session->xfer);
-			session->xfer = NULL;
-
-			g_free(session->filename);
-			session->filename = NULL;
-
-			g_free(session->name);
-			session->name = NULL;
-
-			if (session->path) {
-				g_dbus_unregister_interface(session->conn,
-					session->path, TRANSFER_INTERFACE);
-				g_free(session->path);
-				session->path = NULL;
-			}
-
-			session_send(session, filename);
-			g_free(filename);
-		}
-
-		session_unref(session);
-		return;
-	}
-
-	gw_obex_xfer_write(xfer, session->buffer, session->filled + len,
-							&written, NULL);
+	if (gw_obex_xfer_write(xfer, session->buffer, session->filled + len,
+						&written, NULL) == FALSE)
+		goto complete;
 
 	session->filled = (session->filled + len) - written;
 
@@ -555,6 +519,46 @@ static void xfer_progress(GwObexXfer *xfer, gpointer user_data)
 							DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(session->conn, message);
+
+	return;
+
+complete:
+	message = dbus_message_new_method_call(session->agent_name,
+			session->agent_path, AGENT_INTERFACE, "Complete");
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &session->path,
+						DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(session->conn, message);
+
+	if (session->pending->len > 0) {
+		gchar *filename;
+		filename = g_ptr_array_index(session->pending, 0);
+		g_ptr_array_remove(session->pending, filename);
+
+		gw_obex_xfer_close(session->xfer, NULL);
+		gw_obex_xfer_free(session->xfer);
+		session->xfer = NULL;
+
+		g_free(session->filename);
+		session->filename = NULL;
+
+		g_free(session->name);
+		session->name = NULL;
+
+		if (session->path) {
+			g_dbus_unregister_interface(session->conn,
+					session->path, TRANSFER_INTERFACE);
+			g_free(session->path);
+			session->path = NULL;
+		}
+
+		session_send(session, filename);
+		g_free(filename);
+	}
+
+	session_unref(session);
 }
 
 int session_send(struct session_data *session, const char *filename)
