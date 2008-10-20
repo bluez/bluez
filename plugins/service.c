@@ -725,8 +725,13 @@ static GDBusMethodTable service_methods[] = {
 static void path_unregister(void *data)
 {
 	struct service_adapter *serv_adapter = data;
+	GSList *l, *next = NULL;
 
-	g_slist_foreach(serv_adapter->records, (GFunc) exit_callback, NULL);
+	for (l = serv_adapter->records; l != NULL; l = next) {
+		struct record_data *user_record = l->data;
+		next = l->next;
+		exit_callback(connection, user_record);
+	}
 }
 
 static int service_probe(struct btd_adapter *adapter)
