@@ -729,7 +729,10 @@ static void path_unregister(void *data)
 
 	for (l = serv_adapter->records; l != NULL; l = next) {
 		struct record_data *user_record = l->data;
+
 		next = l->next;
+
+		g_dbus_remove_watch(connection, user_record->listener_id);
 		exit_callback(connection, user_record);
 	}
 }
