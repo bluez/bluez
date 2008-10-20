@@ -65,7 +65,10 @@ static struct session_data *session_ref(struct session_data *session)
 
 static void session_unref(struct session_data *session)
 {
-	if (g_atomic_int_dec_and_test(&session->refcount) == TRUE) {
+	if (g_atomic_int_dec_and_test(&session->refcount) == FALSE)
+		return;
+
+	if (session->agent_name != NULL) {
 		DBusMessage *message;
 
 		message = dbus_message_new_method_call(session->agent_name,
@@ -74,38 +77,38 @@ static void session_unref(struct session_data *session)
 		dbus_message_set_no_reply(message, TRUE);
 
 		g_dbus_send_message(session->conn, message);
+	}
 
-		if (session->pending != NULL)
-			g_ptr_array_free(session->pending, TRUE);
+	if (session->pending != NULL)
+		g_ptr_array_free(session->pending, TRUE);
 
-		if (session->obex != NULL) {
-			if (session->xfer != NULL) {
-				gw_obex_xfer_close(session->xfer, NULL);
-				gw_obex_xfer_free(session->xfer);
-			}
-
-			gw_obex_close(session->obex);
+	if (session->obex != NULL) {
+		if (session->xfer != NULL) {
+			gw_obex_xfer_close(session->xfer, NULL);
+			gw_obex_xfer_free(session->xfer);
 		}
 
-		if (session->sock > 2)
-			close(session->sock);
+		gw_obex_close(session->obex);
+	}
 
-		if (session->conn) {
-			if (session->path)
-				g_dbus_unregister_interface(session->conn,
+	if (session->sock > 2)
+		close(session->sock);
+
+	if (session->conn) {
+		if (session->path)
+			g_dbus_unregister_interface(session->conn,
 					session->path, TRANSFER_INTERFACE);
 
-			dbus_connection_unref(session->conn);
-		}
-
-		g_free(session->path);
-		g_free(session->name);
-		g_free(session->target);
-		g_free(session->filename);
-		g_free(session->agent_name);
-		g_free(session->agent_path);
-		g_free(session);
+		dbus_connection_unref(session->conn);
 	}
+
+	g_free(session->path);
+	g_free(session->name);
+	g_free(session->target);
+	g_free(session->filename);
+	g_free(session->agent_name);
+	g_free(session->agent_path);
+	g_free(session);
 }
 
 static gboolean rfcomm_callback(GIOChannel *io, GIOCondition cond,
