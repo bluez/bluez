@@ -2678,8 +2678,6 @@ int adapter_stop(struct btd_adapter *adapter)
 	adapter->mode = MODE_OFF;
 	adapter->state = DISCOVER_TYPE_NONE;
 
-	unload_drivers(adapter);
-
 	info("Adapter %s has been disabled", adapter->path);
 
 	return 0;
@@ -2790,6 +2788,8 @@ void adapter_remove(struct btd_adapter *adapter)
 	char *path = g_strdup(adapter->path);
 
 	debug("Removing adapter %s", path);
+
+	unload_drivers(adapter);
 
 	for (l = adapter->devices; l; l = l->next)
 		device_remove(connection, l->data);
