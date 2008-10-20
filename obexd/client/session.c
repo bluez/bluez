@@ -196,7 +196,6 @@ static void search_callback(uint8_t type, uint16_t status,
 			uint8_t *rsp, size_t size, void *user_data)
 {
 	struct callback_data *callback = user_data;
-	sdp_list_t *recs = NULL;
 	int scanned, seqlen = 0, bytesleft = size;
 	uint8_t dataType, channel = 0;
 
@@ -232,6 +231,8 @@ static void search_callback(uint8_t type, uint16_t status,
 			protos = NULL;
 		}
 
+		sdp_record_free(rec);
+
 		if (ch > 0) {
 			channel = ch;
 			break;
@@ -240,8 +241,6 @@ static void search_callback(uint8_t type, uint16_t status,
 		scanned += recsize;
 		rsp += recsize;
 		bytesleft -= recsize;
-
-		recs = sdp_list_append(recs, rec);
 	} while (scanned < size && bytesleft > 0);
 
 	if (channel == 0)
@@ -256,9 +255,6 @@ static void search_callback(uint8_t type, uint16_t status,
 
 failed:
 	sdp_close(callback->sdp);
-
-	if (recs)
-		sdp_list_free(recs, (sdp_free_func_t) sdp_record_free);
 
 	callback->func(callback->session, callback->data);
 	session_unref(callback->session);
