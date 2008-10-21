@@ -700,6 +700,13 @@ static void session_free(struct session_req *req)
 	g_free(req);
 }
 
+static void session_owner_exit(DBusConnection *conn, void *user_data)
+{
+	struct session_req *req = user_data;
+
+	session_free(req);
+}
+
 static struct session_req *session_ref(struct session_req *req)
 {
 	req->refcount++;
@@ -1515,7 +1522,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 
 done:
 	req = create_session(adapter, conn, msg, 0,
-			(GDBusWatchFunction) session_free);
+				session_owner_exit);
 
 	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
 
@@ -1737,7 +1744,7 @@ static DBusMessage *mode_request(DBusConnection *conn,
 	req = find_session(adapter->mode_sessions, msg);
 	if (!req) {
 		req = create_session(adapter, conn, msg, new_mode,
-					(GDBusWatchFunction) session_free);
+					session_owner_exit);
 		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
 					req);
 	} else {
