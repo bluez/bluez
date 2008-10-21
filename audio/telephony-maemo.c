@@ -577,14 +577,13 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_ACTIVE:
 		if (call->on_hold)
 			call->on_hold = FALSE;
-		else
+		else {
 			telephony_update_indicator(maemo_indicators, "call",
 							EV_CALL_ACTIVE);
-		if (status == CSD_CALL_STATUS_MT_ALERTING ||
-				status == CSD_CALL_STATUS_ANSWERED)
 			telephony_update_indicator(maemo_indicators,
 							"callsetup",
 							EV_CALLSETUP_INACTIVE);
+		}
 		break;
 	case CSD_CALL_STATUS_MO_RELEASE:
 		break;
