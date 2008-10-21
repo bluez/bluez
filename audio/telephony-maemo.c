@@ -403,6 +403,12 @@ void telephony_operator_selection_req(void *telephony_device)
 	telephony_operator_selection_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+void telephony_call_hold_req(void *telephony_device, const char *cmd)
+{
+	        debug("telephony-maemo: got call hold request %s", cmd);
+		        telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
+}
+
 static void handle_incoming_call(DBusMessage *msg)
 {
 	const char *number, *call_path;
