@@ -544,11 +544,13 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 
 	switch (status) {
 	case CSD_CALL_STATUS_IDLE:
-		if (call->setup)
+		if (call->setup) {
 			telephony_update_indicator(maemo_indicators,
 							"callsetup",
 							EV_CALLSETUP_INACTIVE);
-		else
+			if (!call->originating)
+				telephony_calling_stopped_ind();
+		} else
 			telephony_update_indicator(maemo_indicators, "call",
 							EV_CALL_INACTIVE);
 
