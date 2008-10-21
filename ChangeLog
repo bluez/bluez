@@ -1,3 +1,8 @@
+ver 4.16:
+	Fix wrong parameter usage of watch callbacks.
+	Fix parameters for callback upon path removal.
+	Fix unloading of adapter drivers.
+
 ver 4.15:
 	Fix various A2DP state machine issues.
 	Fix some issues with the Handsfree error reporting.
