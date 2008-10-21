@@ -429,12 +429,15 @@ static void handle_incoming_call(DBusMessage *msg)
 		return;
 	}
 
+	debug("Incoming call to %s from number %s", call_path, number);
+
 	g_free(call->number);
 	call->number = g_strdup(number);
 
-	telephony_incoming_call_ind(number, 0);
+	telephony_update_indicator(maemo_indicators, "callsetup",
+					EV_CALLSETUP_INCOMING);
 
-	debug("Incoming call to %s from number %s", call_path, number);
+	telephony_incoming_call_ind(number, 0);
 }
 
 static void get_remote_reply(DBusPendingCall *pending_call,
@@ -553,8 +556,6 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 						EV_CALLSETUP_OUTGOING);
 		break;
 	case CSD_CALL_STATUS_COMING:
-		telephony_update_indicator(maemo_indicators, "callsetup",
-						EV_CALLSETUP_INCOMING);
 		call->originating = FALSE;
 		break;
 	case CSD_CALL_STATUS_PROCEEDING:
