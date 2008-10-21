@@ -264,7 +264,7 @@ void telephony_answer_call_req(void *telephony_device)
 
 	g_dbus_send_message(connection, msg);
 
-	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
+	telephony_answer_call_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
