@@ -75,6 +75,7 @@ struct csd_call {
 	gboolean on_hold;
 	gboolean conference;
 	char *number;
+	gboolean setup;
 };
 
 static DBusConnection *connection = NULL;
@@ -543,23 +544,31 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 
 	switch (status) {
 	case CSD_CALL_STATUS_IDLE:
-		if (!active_call)
+		if (call->setup)
+			telephony_update_indicator(maemo_indicators,
+							"callsetup",
+							EV_CALLSETUP_INACTIVE);
+		else
 			telephony_update_indicator(maemo_indicators, "call",
 							EV_CALL_INACTIVE);
+
 		g_free(call->number);
 		call->number = NULL;
 		call->originating = FALSE;
 		call->emergency = FALSE;
 		call->on_hold = FALSE;
 		call->conference = FALSE;
+		call->setup = FALSE;
 		break;
 	case CSD_CALL_STATUS_CREATE:
 		call->originating = TRUE;
+		call->setup = TRUE;
 		telephony_update_indicator(maemo_indicators, "callsetup",
 						EV_CALLSETUP_OUTGOING);
 		break;
 	case CSD_CALL_STATUS_COMING:
 		call->originating = FALSE;
+		call->setup = TRUE;
 		break;
 	case CSD_CALL_STATUS_PROCEEDING:
 		break;
@@ -583,6 +592,7 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 			telephony_update_indicator(maemo_indicators,
 							"callsetup",
 							EV_CALLSETUP_INACTIVE);
+			call->setup = FALSE;
 		}
 		break;
 	case CSD_CALL_STATUS_MO_RELEASE:
