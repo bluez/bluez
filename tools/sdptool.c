@@ -3376,6 +3376,7 @@ struct {
 	{ "HF",		HANDSFREE_SVCLASS_ID,		add_handsfree	},
 	{ "HFAG",	HANDSFREE_AGW_SVCLASS_ID,	add_handsfree_ag},
 	{ "SAP",	SAP_SVCLASS_ID,			add_simaccess	},
+	{ "PBAP",	PBAP_SVCLASS_ID,		NULL,		},
 
 	{ "NAP",	NAP_SVCLASS_ID,			add_nap		},
 	{ "GN",		GN_SVCLASS_ID,			add_gn		},
