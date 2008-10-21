@@ -432,8 +432,7 @@ static void handle_incoming_call(DBusMessage *msg)
 	g_free(call->number);
 	call->number = g_strdup(number);
 
-	telephony_update_indicator(maemo_indicators, "callsetup",
-					EV_CALLSETUP_INCOMING);
+	telephony_incoming_call_ind(number, 0);
 
 	debug("Incoming call to %s from number %s", call_path, number);
 }
@@ -554,6 +553,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 						EV_CALLSETUP_OUTGOING);
 		break;
 	case CSD_CALL_STATUS_COMING:
+		telephony_update_indicator(maemo_indicators, "callsetup",
+						EV_CALLSETUP_INCOMING);
 		call->originating = FALSE;
 		break;
 	case CSD_CALL_STATUS_PROCEEDING:
