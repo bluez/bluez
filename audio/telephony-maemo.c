@@ -85,6 +85,9 @@ static char *subscriber_number = NULL;
 
 static gboolean events_enabled = FALSE;
 
+/* Supported set of call hold operations */
+static const char *chld_str = "0,1,1x,2,2x,3,4";
+
 /* Response and hold state
  * -1 = none
  *  0 = incoming call is put on hold in the AG
@@ -764,7 +767,8 @@ static void call_info_reply(DBusPendingCall *call, void *user_data)
 
 	parse_call_list(&sub);
 
-	telephony_ready_ind(features, maemo_indicators, response_and_hold);
+	telephony_ready_ind(features, maemo_indicators, response_and_hold,
+				chld_str);
 
 done:
 	dbus_message_unref(reply);
