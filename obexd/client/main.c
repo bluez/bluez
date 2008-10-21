@@ -57,17 +57,12 @@ static void create_callback(struct session_data *session, void *user_data)
 		DBusMessage *error = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed", NULL);
 		g_dbus_send_message(data->connection, error);
-
-		dbus_message_unref(data->message);
-		dbus_connection_unref(data->connection);
-		return;
+		goto failed;
 	}
 
 	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
 
 	session_set_agent(session, data->sender, data->agent);
-	g_free(data->sender);
-	g_free(data->agent);
 
 	for (i = 0; i < data->files->len; i++) {
 		if (session_send(session,
@@ -75,10 +70,12 @@ static void create_callback(struct session_data *session, void *user_data)
 			break;
 	}
 
+failed:
 	g_ptr_array_free(data->files, TRUE);
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
-
+	g_free(data->sender);
+	g_free(data->agent);
 	g_free(data);
 }
 
