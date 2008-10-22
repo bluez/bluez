@@ -64,6 +64,12 @@ static struct indicator dummy_indicators[] =
 	{ NULL }
 };
 
+static inline DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, "org.bluez.Error.InvalidArguments",
+					"Invalid arguments in method call");
+}
+
 void telephony_device_connected(void *telephony_device)
 {
 	debug("telephony-dummy: device %p connected", telephony_device);
@@ -198,7 +204,7 @@ static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &number,
 						DBUS_TYPE_INVALID))
-		return NULL;
+		return invalid_args(msg);
 
 	debug("telephony-dummy: outgoing call to %s", number);
 
@@ -223,7 +229,7 @@ static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &number,
 						DBUS_TYPE_INVALID))
-		return NULL;
+		return invalid_args(msg);
 
 	debug("telephony-dummy: incoming call to %s", number);
 
@@ -269,10 +275,10 @@ static DBusMessage *signal_strength(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &strength,
 						DBUS_TYPE_INVALID))
-		return NULL;
+		return invalid_args(msg);
 
 	if (strength > 5)
-		return NULL;
+		return invalid_args(msg);
 
 	telephony_update_indicator(dummy_indicators, "signal", strength);
 
@@ -288,10 +294,10 @@ static DBusMessage *battery_level(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &level,
 						DBUS_TYPE_INVALID))
-		return NULL;
+		return invalid_args(msg);
 
 	if (level > 5)
-		return NULL;
+		return invalid_args(msg);
 
 	telephony_update_indicator(dummy_indicators, "battchg", level);
 
@@ -308,7 +314,7 @@ static DBusMessage *roaming_status(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_BOOLEAN, &roaming,
 						DBUS_TYPE_INVALID))
-		return NULL;
+		return invalid_args(msg);
 
 	val = roaming ? EV_ROAM_ACTIVE : EV_ROAM_INACTIVE;
 
@@ -327,7 +333,7 @@ static DBusMessage *registration_status(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_BOOLEAN, &registration,
 						DBUS_TYPE_INVALID))
-		return NULL;
+		return invalid_args(msg);
 
 	val = registration ? EV_SERVICE_PRESENT : EV_SERVICE_NONE;
 
@@ -346,7 +352,7 @@ static DBusMessage *set_subscriber_number(DBusConnection *conn,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &number,
 						DBUS_TYPE_INVALID))
-		return NULL;
+		return invalid_args(msg);
 
 	g_free(subscriber_number);
 	subscriber_number = g_strdup(number);
