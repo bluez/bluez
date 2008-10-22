@@ -508,7 +508,7 @@ static void resolve_number(struct csd_call *call)
 		return;
 	}
 
-	dbus_pending_call_set_notify(pcall, get_remote_reply, NULL, NULL);
+	dbus_pending_call_set_notify(pcall, get_remote_reply, call, NULL);
 	dbus_pending_call_unref(pcall);
 	dbus_message_unref(msg);
 }
