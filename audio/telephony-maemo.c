@@ -569,6 +569,9 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 						EV_CALLSETUP_OUTGOING);
 		break;
 	case CSD_CALL_STATUS_COMING:
+		/* Actuall incoming call handling is done in
+		 * handle_incoming_call() which is called when we get the
+		 * Call.Coming() signal */
 		call->originating = FALSE;
 		call->setup = TRUE;
 		break;
@@ -586,9 +589,17 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_ANSWERED:
 		break;
 	case CSD_CALL_STATUS_ACTIVE:
-		if (call->on_hold)
+		if (call->on_hold) {
 			call->on_hold = FALSE;
-		else {
+			if (find_call_with_status(CSD_CALL_STATUS_HOLD))
+				telephony_update_indicator(maemo_indicators,
+							"callheld",
+							EV_CALLHELD_MULTIPLE);
+			else
+				telephony_update_indicator(maemo_indicators,
+							"callheld",
+							EV_CALLHELD_NONE);
+		} else {
 			telephony_update_indicator(maemo_indicators, "call",
 							EV_CALL_ACTIVE);
 			telephony_update_indicator(maemo_indicators,
