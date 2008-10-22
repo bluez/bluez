@@ -502,6 +502,8 @@ static void xfer_progress(GwObexXfer *xfer, gpointer user_data)
 						&written, NULL) == FALSE)
 		goto complete;
 
+	gw_obex_xfer_flush(xfer, NULL);
+
 	session->filled = (session->filled + len) - written;
 
 	memmove(session->buffer + written, session->buffer, session->filled);
