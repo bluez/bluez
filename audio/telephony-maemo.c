@@ -269,6 +269,111 @@ static gboolean update_network_indicators(gpointer user_data)
 	return FALSE;
 }
 
+static int release_call(struct csd_call *call)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
+						call->object_path,
+						CSD_CALL_INSTANCE,
+						"Release");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
+static int answer_call(struct csd_call *call)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
+						call->object_path,
+						CSD_CALL_INSTANCE,
+						"Answer");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
+static int split_call(struct csd_call *call)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
+						call->object_path,
+						CSD_CALL_INSTANCE,
+						"Split");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
+static int unhold_call(struct csd_call *call)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE,
+						"Unhold");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
+static int hold_call(struct csd_call *call)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE,
+						"Hold");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
+static int call_transfer(void)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE,
+						"Transfer");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
 void telephony_device_connected(void *telephony_device)
 {
 	debug("telephony-maemo: device %p connected", telephony_device);
@@ -313,7 +418,6 @@ void telephony_last_dialed_number_req(void *telephony_device)
 void telephony_terminate_call_req(void *telephony_device)
 {
 	struct csd_call *call;
-	DBusMessage *msg;
 
 	call = find_active_call();
 	if (!call) {
@@ -323,26 +427,16 @@ void telephony_terminate_call_req(void *telephony_device)
 		return;
 	}
 
-	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
-						call->object_path,
-						CSD_CALL_INSTANCE,
-						"Release");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
+	if (release_call(call) < 0)
 		telephony_terminate_call_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
-		return;
-	}
-
-	g_dbus_send_message(connection, msg);
-
-	telephony_terminate_call_rsp(telephony_device, CME_ERROR_NONE);
+	else
+		telephony_terminate_call_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_answer_call_req(void *telephony_device)
 {
 	struct csd_call *call;
-	DBusMessage *msg;
 
 	call = find_call_with_status(CSD_CALL_STATUS_COMING);
 	if (!call)
@@ -355,19 +449,11 @@ void telephony_answer_call_req(void *telephony_device)
 		telephony_answer_call_rsp(telephony_device,
 						CME_ERROR_NOT_ALLOWED);
 
-	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
-						call->object_path,
-						CSD_CALL_INSTANCE, "Answer");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
+	if (answer_call(call) < 0)
 		telephony_answer_call_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
-		return;
-	}
-
-	g_dbus_send_message(connection, msg);
-
-	telephony_answer_call_rsp(telephony_device, CME_ERROR_NONE);
+	else
+		telephony_answer_call_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
@@ -504,10 +590,78 @@ void telephony_operator_selection_req(void *telephony_device)
 	telephony_operator_selection_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+static void foreach_call_with_status(int status,
+					int (*func)(struct csd_call *call))
+{
+	GSList *l;
+
+	for (l = calls; l != NULL; l = l->next) {
+		struct csd_call *call = l->data;
+
+		if (call->status == status)
+			func(call);
+	}
+}
+
 void telephony_call_hold_req(void *telephony_device, const char *cmd)
 {
-	        debug("telephony-maemo: got call hold request %s", cmd);
-		        telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
+	const char *idx;
+	struct csd_call *call;
+	int err = 0;
+
+	debug("telephony-maemo: got call hold request %s", cmd);
+
+	if (strlen(cmd) > 1)
+		idx = &cmd[1];
+	else
+		idx = NULL;
+
+	if (idx)
+		call = g_slist_nth_data(calls, strtol(idx, NULL, 0));
+
+	switch (cmd[0]) {
+	case '0':
+		foreach_call_with_status(CSD_CALL_STATUS_HOLD, release_call);
+		break;
+	case '1':
+		if (idx) {
+		       if (call)
+			       err = release_call(call);
+		       break;
+		}
+		foreach_call_with_status(CSD_CALL_STATUS_ACTIVE, release_call);
+		call = find_call_with_status(CSD_CALL_STATUS_WAITING);
+		if (call)
+			answer_call(call);
+		break;
+	case '2':
+		if (idx) {
+			if (call)
+				err = split_call(call);
+			break;
+		}
+		call = find_call_with_status(CSD_CALL_STATUS_ACTIVE);
+		if (call)
+			err = hold_call(call);
+		break;
+	case '3':
+		call = find_call_with_status(CSD_CALL_STATUS_HOLD);
+		if (call)
+			err = unhold_call(call);
+		break;
+	case '4':
+		err = call_transfer();
+		break;
+	default:
+		debug("Unknown call hold request");
+		break;
+	}
+
+	if (err)
+		telephony_call_hold_rsp(telephony_device,
+					CME_ERROR_NONE);
+	else
+		telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 static void handle_incoming_call(DBusMessage *msg)
