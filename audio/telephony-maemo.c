@@ -76,6 +76,13 @@ enum network_types {
 	NETWORK_GSM_NO_PLMN_AVAIL
 };
 
+enum network_alpha_tag_name_type {
+	NETWORK_HARDCODED_LATIN_OPER_NAME = 0,
+	NETWORK_HARDCODED_USC2_OPER_NAME,
+	NETWORK_NITZ_SHORT_OPER_NAME,
+	NETWORK_NITZ_FULL_OPER_NAME,
+};
+
 /* CSD CALL plugin D-Bus definitions */
 #define CSD_CALL_BUS_NAME	"com.nokia.csd.Call"
 #define CSD_CALL_INTERFACE	"com.nokia.csd.Call"
@@ -115,6 +122,28 @@ struct csd_call {
 	gboolean conference;
 	char *number;
 	gboolean setup;
+};
+
+static struct {
+	uint8_t status;
+	uint16_t lac;
+	uint32_t cell_id;
+	uint32_t operator_code;
+	uint32_t country_code;
+	uint16_t network_type;
+	uint16_t supported_services;
+	uint16_t signals_bar;
+	char *operator_name;
+} net = {
+	.status = NETWORK_REG_STATUS_NOSERV,
+	.lac = 0,
+	.cell_id = 0,
+	.operator_code = 0,
+	.country_code = 0,
+	.network_type = NETWORK_GSM_NO_PLMN_AVAIL,
+	.supported_services = 0,
+	.signals_bar = 0,
+	.operator_name = NULL,
 };
 
 static DBusConnection *connection = NULL;
@@ -212,7 +241,6 @@ static struct csd_call *find_call_with_status(int status)
 
 	return NULL;
 }
-
 
 void telephony_device_connected(void *telephony_device)
 {
@@ -442,7 +470,8 @@ void telephony_list_current_calls_req(void *telephony_device)
 
 void telephony_operator_selection_req(void *telephony_device)
 {
-	telephony_operator_selection_ind(OPERATOR_MODE_AUTO, "DummyOperator");
+	telephony_operator_selection_ind(OPERATOR_MODE_AUTO,
+				net.operator_name ? net.operator_name : "");
 	telephony_operator_selection_rsp(telephony_device, CME_ERROR_NONE);
 }
 
@@ -483,8 +512,7 @@ static void handle_incoming_call(DBusMessage *msg)
 	telephony_incoming_call_ind(number, 0);
 }
 
-static void get_remote_reply(DBusPendingCall *pending_call,
-						void *user_data)
+static void get_remote_reply(DBusPendingCall *pending_call, void *user_data)
 {
 	struct csd_call *call = user_data;
 	DBusMessage *reply;
@@ -695,17 +723,93 @@ static void handle_call_error(DBusMessage *msg, const char *call_path)
 	debug("telephony-maemo: CallServiceError(%u, %u)", type, code);
 }
 
-static void handle_registration_status_change(DBusMessage *msg,
-						const char *call_path)
+static void get_operator_name_reply(DBusPendingCall *pending_call,
+					void *user_data)
 {
-	uint8_t reg_status;
-	dbus_uint16_t current_lac, network_type, supported_services;
-	dbus_uint32_t current_cell_id, operator_code, country_code;
+	DBusMessage *reply;
+	DBusError err;
+	const char *name;
+	dbus_int32_t net_err;
+
+	reply = dbus_pending_call_steal_reply(pending_call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("%s get_operator_name failed: %s, %s",
+			err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(reply, NULL,
+					DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_INT32, &net_err,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected paramters in get_operator_name reply:",
+			err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	if (net_err != 0) {
+		error("get_remote_name failed with code %d", net_err);
+		goto done;
+	}
+
+	if (strlen(name) == 0)
+		goto done;
+
+	g_free(net.operator_name);
+	net.operator_name = g_strdup(name);
+
+	debug("telephony-maemo: operator name updated: %s", name);
+
+done:
+	dbus_message_unref(reply);
+}
+
+static void resolve_operator_name(uint32_t operator, uint32_t country)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pcall;
+	uint8_t name_type = NETWORK_HARDCODED_LATIN_OPER_NAME;
+
+	msg = dbus_message_new_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
+						NETWORK_INTERFACE,
+						"get_operator_name");
+	if (!msg) {
+		error("Unable to allocate a new D-Bus method call");
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_BYTE, &name_type,
+					DBUS_TYPE_UINT32, &operator,
+					DBUS_TYPE_UINT32, &country,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(connection, msg, &pcall, -1)) {
+		error("Sending get_operator_name failed");
+		dbus_message_unref(msg);
+		return;
+	}
+
+	dbus_pending_call_set_notify(pcall, get_operator_name_reply, NULL,
+					NULL);
+	dbus_pending_call_unref(pcall);
+	dbus_message_unref(msg);
+}
+
+static void handle_registration_status_change(DBusMessage *msg)
+{
+	uint8_t status;
+	dbus_uint16_t lac, network_type, supported_services;
+	dbus_uint32_t cell_id, operator_code, country_code;
 
 	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &reg_status,
-					DBUS_TYPE_UINT16, &current_lac,
-					DBUS_TYPE_UINT32, &current_cell_id,
+					DBUS_TYPE_BYTE, &status,
+					DBUS_TYPE_UINT16, &lac,
+					DBUS_TYPE_UINT32, &cell_id,
 					DBUS_TYPE_UINT32, &operator_code,
 					DBUS_TYPE_UINT32, &country_code,
 					DBUS_TYPE_UINT16, &network_type,
@@ -714,12 +818,64 @@ static void handle_registration_status_change(DBusMessage *msg,
 		error("Unexpected parameters in registration_status_change");
 		return;
 	}
+
+	if (net.status != status) {
+		switch (status) {
+		case NETWORK_REG_STATUS_HOME:
+			telephony_update_indicator(maemo_indicators, "roam",
+							EV_ROAM_INACTIVE);
+			if (net.status >= NETWORK_REG_STATUS_NOSERV)
+				telephony_update_indicator(maemo_indicators,
+							"service",
+							EV_SERVICE_PRESENT);
+			break;
+		case NETWORK_REG_STATUS_ROAM:
+		case NETWORK_REG_STATUS_ROAM_BLINK:
+			telephony_update_indicator(maemo_indicators, "roam",
+							EV_ROAM_ACTIVE);
+			if (net.status >= NETWORK_REG_STATUS_NOSERV)
+				telephony_update_indicator(maemo_indicators,
+							"service",
+							EV_SERVICE_PRESENT);
+			break;
+		case NETWORK_REG_STATUS_NOSERV:
+		case NETWORK_REG_STATUS_NOSERV_SEARCHING:
+		case NETWORK_REG_STATUS_NOSERV_NOTSEARCHING:
+		case NETWORK_REG_STATUS_NOSERV_NOSIM:
+		case NETWORK_REG_STATUS_POWER_OFF:
+		case NETWORK_REG_STATUS_NSPS:
+		case NETWORK_REG_STATUS_NSPS_NO_COVERAGE:
+		case NETWORK_REG_STATUS_NOSERV_SIM_REJECTED_BY_NW:
+			if (net.status < NETWORK_REG_STATUS_NOSERV)
+				telephony_update_indicator(maemo_indicators,
+							"service",
+							EV_SERVICE_NONE);
+			break;
+		}
+
+		net.status = status;
+	}
+
+	net.lac = lac;
+	net.cell_id = cell_id;
+
+	if (net.operator_code != operator_code ||
+			net.country_code != country_code) {
+		g_free(net.operator_name);
+		net.operator_name = NULL;
+		resolve_operator_name(operator_code, country_code);
+		net.operator_code = operator_code;
+		net.country_code = country_code;
+	}
+
+	net.network_type = network_type;
+	net.supported_services = supported_services;
 }
 
-static void handle_signal_strength_change(DBusMessage *msg,
-						const char *call_path)
+static void handle_signal_strength_change(DBusMessage *msg)
 {
 	dbus_uint16_t signals_bar, rssi_in_dbm;
+	int signal;
 
 	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_UINT16, &signals_bar,
@@ -728,27 +884,19 @@ static void handle_signal_strength_change(DBusMessage *msg,
 		error("Unexpected parameters in signal_strength_change");
 		return;
 	}
-}
 
-static void handle_net_cell_info_change(DBusMessage *msg,
-					const char *call_path)
-{
-	uint8_t cell_type, service_status, network_type;
-	dbus_uint16_t current_lac;
-	dbus_uint32_t current_cell_id, operator_code, country_code;
-
-	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &cell_type,
-					DBUS_TYPE_UINT16, &current_lac,
-					DBUS_TYPE_UINT32, &current_cell_id,
-					DBUS_TYPE_UINT32, &operator_code,
-					DBUS_TYPE_UINT32, &country_code,
-					DBUS_TYPE_BYTE, &service_status,
-					DBUS_TYPE_BYTE, &network_type,
-					DBUS_TYPE_INVALID)) {
-		error("Unexpected parameters in cell_info_change");
+	if (net.signals_bar == signals_bar)
 		return;
+
+	if (signals_bar > 100) {
+		debug("signals_bar greater than expected: %u", signals_bar);
+		signals_bar = 100;
 	}
+
+	/* A simple conversion from 0-100 to 0-5 (used by HFP) */
+	signal = (signals_bar + 20) / 21;
+
+	telephony_update_indicator(maemo_indicators, "signal", signal);
 }
 
 static DBusHandlerResult cs_signal_filter(DBusConnection *conn,
@@ -773,16 +921,10 @@ static DBusHandlerResult cs_signal_filter(DBusConnection *conn,
 		handle_call_error(msg, path);
 	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
 					"registration_status_change"))
-		handle_registration_status_change(msg, path);
+		handle_registration_status_change(msg);
 	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
 					"signal_strength_change"))
-		handle_signal_strength_change(msg, path);
-	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
-					"net_cell_info_change"))
-		handle_net_cell_info_change(msg, path);
-	else
-		debug("cs_signal_filter: didn't handle %s %s.%s",
-				path, interface, member);
+		handle_signal_strength_change(msg);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
