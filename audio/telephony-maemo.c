@@ -640,9 +640,8 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 				err = split_call(call);
 			break;
 		}
-		call = find_call_with_status(CSD_CALL_STATUS_ACTIVE);
-		if (call)
-			err = hold_call(call);
+		foreach_call_with_status(CSD_CALL_STATUS_ACTIVE, hold_call);
+		foreach_call_with_status(CSD_CALL_STATUS_HOLD, unhold_call);
 		break;
 	case '3':
 		call = find_call_with_status(CSD_CALL_STATUS_HOLD);
