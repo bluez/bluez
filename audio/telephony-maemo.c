@@ -800,25 +800,13 @@ static void resolve_operator_name(uint32_t operator, uint32_t country)
 	dbus_message_unref(msg);
 }
 
-static void handle_registration_status_change(DBusMessage *msg)
+static void update_registration_status(uint8_t status, uint16_t lac,
+					uint32_t cell_id,
+					uint32_t operator_code,
+					uint32_t country_code,
+					uint8_t network_type,
+					uint8_t supported_services)
 {
-	uint8_t status;
-	dbus_uint16_t lac, network_type, supported_services;
-	dbus_uint32_t cell_id, operator_code, country_code;
-
-	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &status,
-					DBUS_TYPE_UINT16, &lac,
-					DBUS_TYPE_UINT32, &cell_id,
-					DBUS_TYPE_UINT32, &operator_code,
-					DBUS_TYPE_UINT32, &country_code,
-					DBUS_TYPE_BYTE, &network_type,
-					DBUS_TYPE_BYTE, &supported_services,
-					DBUS_TYPE_INVALID)) {
-		error("Unexpected parameters in registration_status_change");
-		return;
-	}
-
 	if (net.status != status) {
 		switch (status) {
 		case NETWORK_REG_STATUS_HOME:
@@ -872,10 +860,55 @@ static void handle_registration_status_change(DBusMessage *msg)
 	net.supported_services = supported_services;
 }
 
+static void handle_registration_status_change(DBusMessage *msg)
+{
+	uint8_t status;
+	dbus_uint16_t lac, network_type, supported_services;
+	dbus_uint32_t cell_id, operator_code, country_code;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_BYTE, &status,
+					DBUS_TYPE_UINT16, &lac,
+					DBUS_TYPE_UINT32, &cell_id,
+					DBUS_TYPE_UINT32, &operator_code,
+					DBUS_TYPE_UINT32, &country_code,
+					DBUS_TYPE_BYTE, &network_type,
+					DBUS_TYPE_BYTE, &supported_services,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected parameters in registration_status_change");
+		return;
+	}
+
+	update_registration_status(status, lac, cell_id, operator_code,
+					country_code, network_type,
+					supported_services);
+}
+
+static void update_signal_strength(uint8_t signals_bar)
+{
+	int signal;
+
+	if (signals_bar > 100) {
+		debug("signals_bar greater than expected: %u", signals_bar);
+		signals_bar = 100;
+	}
+
+	if (net.signals_bar == signals_bar)
+		return;
+
+	/* A simple conversion from 0-100 to 0-5 (used by HFP) */
+	signal = (signals_bar + 20) / 21;
+
+	telephony_update_indicator(maemo_indicators, "signal", signal);
+
+	net.signals_bar = signals_bar;
+
+	debug("Signal strength updated: %u/100, %d/5", signals_bar, signal);
+}
+
 static void handle_signal_strength_change(DBusMessage *msg)
 {
 	uint8_t signals_bar, rssi_in_dbm;
-	int signal;
 
 	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_BYTE, &signals_bar,
@@ -885,18 +918,7 @@ static void handle_signal_strength_change(DBusMessage *msg)
 		return;
 	}
 
-	if (net.signals_bar == signals_bar)
-		return;
-
-	if (signals_bar > 100) {
-		debug("signals_bar greater than expected: %u", signals_bar);
-		signals_bar = 100;
-	}
-
-	/* A simple conversion from 0-100 to 0-5 (used by HFP) */
-	signal = (signals_bar + 20) / 21;
-
-	telephony_update_indicator(maemo_indicators, "signal", signal);
+	update_signal_strength(signals_bar);
 }
 
 static DBusHandlerResult cs_signal_filter(DBusConnection *conn,
@@ -1018,14 +1040,162 @@ static void parse_call_list(DBusMessageIter *iter)
 	}
 }
 
+static void signal_strength_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusError err;
+	DBusMessage *reply;
+	uint8_t signals_bar, rssi_in_dbm;
+	dbus_int32_t net_err;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("Unable to get signal strength: %s, %s",
+			err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(reply, NULL,
+					DBUS_TYPE_BYTE, &signals_bar,
+					DBUS_TYPE_BYTE, &rssi_in_dbm,
+					DBUS_TYPE_INT32, &net_err,
+					DBUS_TYPE_INVALID)) {
+		error("Unable to parse signal_strength reply:",
+				err.name, err.message);
+		dbus_error_free(&err);
+		return;
+	}
+
+	if (net_err != 0) {
+		error("get_signal_strength failed with code %d", net_err);
+		return;
+	}
+
+	update_signal_strength(signals_bar);
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int get_signal_strength(void)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pcall;
+
+	msg = dbus_message_new_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
+						NETWORK_INTERFACE,
+						"get_signal_strength");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	if (!dbus_connection_send_with_reply(connection, msg, &pcall, -1)) {
+		error("Sending get_signal_strength failed");
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(pcall, signal_strength_reply, NULL,
+					NULL);
+	dbus_pending_call_unref(pcall);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
+static void registration_status_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusError err;
+	DBusMessage *reply;
+	uint8_t status;
+	dbus_uint16_t lac, network_type, supported_services;
+	dbus_uint32_t cell_id, operator_code, country_code;
+	dbus_int32_t net_err;
+	uint32_t features = AG_FEATURE_REJECT_A_CALL |
+				AG_FEATURE_ENHANCED_CALL_STATUS |
+				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("Unable to get registration status: %s, %s",
+				err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(reply, NULL,
+					DBUS_TYPE_BYTE, &status,
+					DBUS_TYPE_UINT16, &lac,
+					DBUS_TYPE_UINT32, &cell_id,
+					DBUS_TYPE_UINT32, &operator_code,
+					DBUS_TYPE_UINT32, &country_code,
+					DBUS_TYPE_BYTE, &network_type,
+					DBUS_TYPE_BYTE, &supported_services,
+					DBUS_TYPE_INT32, &net_err,
+					DBUS_TYPE_INVALID)) {
+		error("Unable to parse registration_status_change reply:",
+				err.name, err.message);
+		dbus_error_free(&err);
+		return;
+	}
+
+	if (net_err != 0) {
+		error("get_registration_status failed with code %d", net_err);
+		return;
+	}
+
+	update_registration_status(status, lac, cell_id, operator_code,
+					country_code, network_type,
+					supported_services);
+
+	telephony_ready_ind(features, maemo_indicators, response_and_hold,
+				chld_str);
+
+	get_signal_strength();
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int get_registration_status(void)
+{
+	DBusMessage *msg;
+	DBusPendingCall *pcall;
+
+	msg = dbus_message_new_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
+						NETWORK_INTERFACE,
+						"get_registration_status");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	if (!dbus_connection_send_with_reply(connection, msg, &pcall, -1)) {
+		error("Sending get_registration_status failed");
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(pcall, registration_status_reply, NULL,
+					NULL);
+	dbus_pending_call_unref(pcall);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
 static void call_info_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusError err;
 	DBusMessage *reply;
 	DBusMessageIter iter, sub;;
-	uint32_t features = AG_FEATURE_REJECT_A_CALL |
-				AG_FEATURE_ENHANCED_CALL_STATUS |
-				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -1048,8 +1218,7 @@ static void call_info_reply(DBusPendingCall *call, void *user_data)
 
 	parse_call_list(&sub);
 
-	telephony_ready_ind(features, maemo_indicators, response_and_hold,
-				chld_str);
+	get_registration_status();
 
 done:
 	dbus_message_unref(reply);
