@@ -242,9 +242,38 @@ static struct csd_call *find_call_with_status(int status)
 	return NULL;
 }
 
+static gboolean update_network_indicators(gpointer user_data)
+{
+	if (net.status < NETWORK_REG_STATUS_NOSERV) {
+		int signal;
+		telephony_update_indicator(maemo_indicators, "service",
+						EV_SERVICE_PRESENT);
+	        signal = telephony_get_indicator(maemo_indicators, "signal");
+		telephony_update_indicator(maemo_indicators, "signal", signal);
+	} else
+		telephony_update_indicator(maemo_indicators, "service",
+						EV_SERVICE_NONE);
+
+	switch (net.status) {
+	case NETWORK_REG_STATUS_HOME:
+		telephony_update_indicator(maemo_indicators, "roam",
+						EV_ROAM_INACTIVE);
+		break;
+	case NETWORK_REG_STATUS_ROAM:
+	case NETWORK_REG_STATUS_ROAM_BLINK:
+		telephony_update_indicator(maemo_indicators, "roam",
+						EV_ROAM_ACTIVE);
+		break;
+	}
+
+	return FALSE;
+}
+
 void telephony_device_connected(void *telephony_device)
 {
 	debug("telephony-maemo: device %p connected", telephony_device);
+
+	g_timeout_add_seconds(1, update_network_indicators, NULL);
 }
 
 void telephony_device_disconnected(void *telephony_device)
