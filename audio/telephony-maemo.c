@@ -37,6 +37,45 @@
 #include "logging.h"
 #include "telephony.h"
 
+/* libcsnet D-Bus definitions */
+#define CSNET_BUS_NAME		"com.nokia.phone.net"
+#define CSNET_INTERFACE		"Phone.Net"
+#define CSNET_PATH		"/com/nokia/phone/net"
+
+/* Mask bits for supported services */
+#define NETWORK_MASK_GPRS_SUPPORT	0x01
+#define NETWORK_MASK_CS_SERVICES	0x02
+#define NETWORK_MASK_EGPRS_SUPPORT	0x04
+#define NETWORK_MASK_HSDPA_AVAIL	0x08
+#define NETWORK_MASK_HSUPA_AVAIL	0x10
+
+/* network get cell info: cell type */
+#define NETWORK_UNKNOWN_CELL		0
+#define NETWORK_GSM_CELL		1
+#define NETWORK_WCDMA_CELL		2
+
+enum net_registration_status {
+	NETWORK_REG_STATUS_HOME = 0x00,
+	NETWORK_REG_STATUS_ROAM,
+	NETWORK_REG_STATUS_ROAM_BLINK,
+	NETWORK_REG_STATUS_NOSERV,
+	NETWORK_REG_STATUS_NOSERV_SEARCHING,
+	NETWORK_REG_STATUS_NOSERV_NOTSEARCHING,
+	NETWORK_REG_STATUS_NOSERV_NOSIM,
+	NETWORK_REG_STATUS_POWER_OFF = 0x08,
+	NETWORK_REG_STATUS_NSPS,
+	NETWORK_REG_STATUS_NSPS_NO_COVERAGE,
+	NETWORK_REG_STATUS_NOSERV_SIM_REJECTED_BY_NW
+};
+
+enum network_types {
+	NETWORK_GSM_HOME_PLMN = 0,
+	NETWORK_GSM_PREFERRED_PLMN,
+	NETWORK_GSM_FORBIDDEN_PLMN,
+	NETWORK_GSM_OTHER_PLMN,
+	NETWORK_GSM_NO_PLMN_AVAIL
+};
+
 /* CSD CALL plugin D-Bus definitions */
 #define CSD_CALL_BUS_NAME	"com.nokia.csd.Call"
 #define CSD_CALL_INTERFACE	"com.nokia.csd.Call"
@@ -647,7 +686,8 @@ static void handle_call_error(DBusMessage *msg, const char *call_path)
 
 	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_BYTE, &type,
-					DBUS_TYPE_BYTE, &code)) {
+					DBUS_TYPE_BYTE, &code,
+					DBUS_TYPE_INVALID)) {
 		error("Unexpected parameters to CallServiceError");
 		return;
 	}
@@ -655,7 +695,63 @@ static void handle_call_error(DBusMessage *msg, const char *call_path)
 	debug("telephony-maemo: CallServiceError(%u, %u)", type, code);
 }
 
-static DBusHandlerResult csd_signal_filter(DBusConnection *conn,
+static void handle_registration_status_change(DBusMessage *msg,
+						const char *call_path)
+{
+	uint8_t reg_status;
+	dbus_uint16_t current_lac, network_type, supported_services;
+	dbus_uint32_t current_cell_id, operator_code, country_code;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_BYTE, &reg_status,
+					DBUS_TYPE_UINT16, &current_lac,
+					DBUS_TYPE_UINT32, &current_cell_id,
+					DBUS_TYPE_UINT32, &operator_code,
+					DBUS_TYPE_UINT32, &country_code,
+					DBUS_TYPE_UINT16, &network_type,
+					DBUS_TYPE_UINT16, &supported_services,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected parameters in registration_status_change");
+		return;
+	}
+}
+
+static void handle_signal_strength_change(DBusMessage *msg,
+						const char *call_path)
+{
+	dbus_uint16_t signals_bar, rssi_in_dbm;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_UINT16, &signals_bar,
+					DBUS_TYPE_UINT16, &rssi_in_dbm,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected parameters in signal_strength_change");
+		return;
+	}
+}
+
+static void handle_net_cell_info_change(DBusMessage *msg,
+					const char *call_path)
+{
+	uint8_t cell_type, service_status, network_type;
+	dbus_uint16_t current_lac;
+	dbus_uint32_t current_cell_id, operator_code, country_code;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_BYTE, &cell_type,
+					DBUS_TYPE_UINT16, &current_lac,
+					DBUS_TYPE_UINT32, &current_cell_id,
+					DBUS_TYPE_UINT32, &operator_code,
+					DBUS_TYPE_UINT32, &country_code,
+					DBUS_TYPE_BYTE, &service_status,
+					DBUS_TYPE_BYTE, &network_type,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected parameters in cell_info_change");
+		return;
+	}
+}
+
+static DBusHandlerResult cs_signal_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	const char *interface = dbus_message_get_interface(msg);
@@ -675,8 +771,17 @@ static DBusHandlerResult csd_signal_filter(DBusConnection *conn,
 	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE,
 					"CallServiceError"))
 		handle_call_error(msg, path);
+	else if (dbus_message_is_signal(msg, CSNET_INTERFACE,
+					"registration_status_change"))
+		handle_registration_status_change(msg, path);
+	else if (dbus_message_is_signal(msg, CSNET_INTERFACE,
+					"signal_strength_change"))
+		handle_signal_strength_change(msg, path);
+	else if (dbus_message_is_signal(msg, CSNET_INTERFACE,
+					"net_cell_info_change"))
+		handle_net_cell_info_change(msg, path);
 	else
-		debug("csd_signal_filter: didn't handle %s %s.%s",
+		debug("cs_signal_filter: didn't handle %s %s.%s",
 				path, interface, member);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -815,7 +920,7 @@ int telephony_init(void)
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
-	if (!dbus_connection_add_filter(connection, csd_signal_filter,
+	if (!dbus_connection_add_filter(connection, cs_signal_filter,
 						NULL, NULL)) {
 		error("Can't add signal filter");
 		return -EIO;
@@ -845,6 +950,14 @@ int telephony_init(void)
 
 	snprintf(match_string, sizeof(match_string),
 			"type=signal,interface=%s", CSD_CALL_INSTANCE);
+	dbus_bus_add_match(connection, match_string, NULL);
+
+	snprintf(match_string, sizeof(match_string),
+			"type=signal,interface=%s", CSD_CALL_INSTANCE);
+	dbus_bus_add_match(connection, match_string, NULL);
+
+	snprintf(match_string, sizeof(match_string),
+			"type=signal,interface=%s", CSNET_INTERFACE);
 	dbus_bus_add_match(connection, match_string, NULL);
 
 	return 0;
