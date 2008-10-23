@@ -130,8 +130,8 @@ static struct {
 	uint32_t cell_id;
 	uint32_t operator_code;
 	uint32_t country_code;
-	uint16_t network_type;
-	uint16_t supported_services;
+	uint8_t network_type;
+	uint8_t supported_services;
 	uint16_t signals_bar;
 	char *operator_name;
 } net = {
@@ -812,8 +812,8 @@ static void handle_registration_status_change(DBusMessage *msg)
 					DBUS_TYPE_UINT32, &cell_id,
 					DBUS_TYPE_UINT32, &operator_code,
 					DBUS_TYPE_UINT32, &country_code,
-					DBUS_TYPE_UINT16, &network_type,
-					DBUS_TYPE_UINT16, &supported_services,
+					DBUS_TYPE_BYTE, &network_type,
+					DBUS_TYPE_BYTE, &supported_services,
 					DBUS_TYPE_INVALID)) {
 		error("Unexpected parameters in registration_status_change");
 		return;
