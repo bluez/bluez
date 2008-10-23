@@ -124,6 +124,11 @@ Properties	string Address [readonly]
 			The Bluetooth remote name. This value can not be
 			changed. Use the Alias property instead.
 
+		string Icon [readonly]
+
+			Proposed icon name according to the freedesktop.org
+			icon naming specification.
+
 		uint32 Class [readonly]
 
 			The Bluetooth class of device of the remote device.
