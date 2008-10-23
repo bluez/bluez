@@ -617,7 +617,7 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 		idx = NULL;
 
 	if (idx)
-		call = g_slist_nth_data(calls, strtol(idx, NULL, 0));
+		call = g_slist_nth_data(calls, strtol(idx, NULL, 0) - 1);
 
 	switch (cmd[0]) {
 	case '0':
