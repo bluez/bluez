@@ -874,12 +874,12 @@ static void handle_registration_status_change(DBusMessage *msg)
 
 static void handle_signal_strength_change(DBusMessage *msg)
 {
-	dbus_uint16_t signals_bar, rssi_in_dbm;
+	uint8_t signals_bar, rssi_in_dbm;
 	int signal;
 
 	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_UINT16, &signals_bar,
-					DBUS_TYPE_UINT16, &rssi_in_dbm,
+					DBUS_TYPE_BYTE, &signals_bar,
+					DBUS_TYPE_BYTE, &rssi_in_dbm,
 					DBUS_TYPE_INVALID)) {
 		error("Unexpected parameters in signal_strength_change");
 		return;
@@ -907,7 +907,8 @@ static DBusHandlerResult cs_signal_filter(DBusConnection *conn,
 	const char *path = dbus_message_get_path(msg);
 
 	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL ||
-			!g_str_has_prefix(interface, CSD_CALL_INTERFACE))
+			!(g_str_has_prefix(interface, CSD_CALL_INTERFACE) ||
+				g_str_equal(interface, NETWORK_INTERFACE)))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	debug("telephony-maemo: received %s %s.%s", path, interface, member);
