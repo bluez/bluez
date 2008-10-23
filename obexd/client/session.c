@@ -614,6 +614,8 @@ int session_send(struct session_data *session, const char *filename)
 
 	xfer = gw_obex_put_async(session->obex, session->name, NULL,
 						session->size, -1, NULL);
+	if (xfer == NULL)
+		return -ENOTCONN;
 
 	message = dbus_message_new_method_call(session->agent_name,
 			session->agent_path, AGENT_INTERFACE, "Progress");
