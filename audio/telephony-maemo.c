@@ -38,9 +38,9 @@
 #include "telephony.h"
 
 /* libcsnet D-Bus definitions */
-#define CSNET_BUS_NAME		"com.nokia.phone.net"
-#define CSNET_INTERFACE		"Phone.Net"
-#define CSNET_PATH		"/com/nokia/phone/net"
+#define NETWORK_BUS_NAME		"com.nokia.phone.net"
+#define NETWORK_INTERFACE		"Phone.Net"
+#define NETWORK_PATH			"/com/nokia/phone/net"
 
 /* Mask bits for supported services */
 #define NETWORK_MASK_GPRS_SUPPORT	0x01
@@ -771,13 +771,13 @@ static DBusHandlerResult cs_signal_filter(DBusConnection *conn,
 	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE,
 					"CallServiceError"))
 		handle_call_error(msg, path);
-	else if (dbus_message_is_signal(msg, CSNET_INTERFACE,
+	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
 					"registration_status_change"))
 		handle_registration_status_change(msg, path);
-	else if (dbus_message_is_signal(msg, CSNET_INTERFACE,
+	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
 					"signal_strength_change"))
 		handle_signal_strength_change(msg, path);
-	else if (dbus_message_is_signal(msg, CSNET_INTERFACE,
+	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
 					"net_cell_info_change"))
 		handle_net_cell_info_change(msg, path);
 	else
@@ -957,7 +957,7 @@ int telephony_init(void)
 	dbus_bus_add_match(connection, match_string, NULL);
 
 	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=%s", CSNET_INTERFACE);
+			"type=signal,interface=%s", NETWORK_INTERFACE);
 	dbus_bus_add_match(connection, match_string, NULL);
 
 	return 0;
