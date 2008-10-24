@@ -62,8 +62,10 @@ static void create_callback(struct session_data *session, void *user_data)
 
 	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
 
-	if (session->target != NULL)
+	if (session->target != NULL) {
+		session_register(session);
 		goto done;
+	}
 
 	session_set_agent(session, data->sender, data->agent);
 

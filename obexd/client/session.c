@@ -44,7 +44,8 @@
 #define AGENT_INTERFACE  "org.openobex.Agent"
 
 #define TRANSFER_INTERFACE  "org.openobex.Transfer"
-#define TRANSFER_BASEPATH   "/org/openobex"
+#define SESSION_INTERFACE  "org.openobex.Session"
+#define BASEPATH   "/org/openobex"
 
 #define FOLDER_BROWSING_UUID	"\xF9\xEC\x7B\xC4\x95\x3C\x11\xD2\x98\x4E\x52\x54\x00\xDC\x9E\x09"
 
@@ -504,6 +505,25 @@ static GDBusMethodTable transfer_methods[] = {
 	{ }
 };
 
+static DBusMessage *assign_agent(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *release_agent(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static GDBusMethodTable session_methods[] = {
+	{ "GetProperties",	"", "a{sv}",	get_properties	},
+	{ "AssignAgent",	"o", "",	assign_agent	},
+	{ "ReleaseAgent",	"o", "",	release_agent	},
+	{ }
+};
+
 static void xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
 	struct session_data *session = user_data;
@@ -611,8 +631,8 @@ int session_send(struct session_data *session, const char *filename)
 	session->filename = g_strdup(filename);
 
 	session->name = g_path_get_basename(filename);
-	session->path = g_strdup_printf("%s/transfer%ld",
-						TRANSFER_BASEPATH, counter++);
+	session->path = g_strdup_printf("%s/transfer%llu",
+					BASEPATH, counter++);
 
 	if (g_dbus_register_interface(session->conn, session->path,
 					TRANSFER_INTERFACE,
@@ -649,6 +669,22 @@ int session_send(struct session_data *session, const char *filename)
 	gw_obex_xfer_set_callback(xfer, xfer_progress, session);
 
 	session->xfer = xfer;
+
+	return 0;
+}
+
+int session_register(struct session_data *session)
+{
+	session->path = g_strdup_printf("%s/session%llu",
+					BASEPATH, counter++);
+
+	if (g_dbus_register_interface(session->conn, session->path,
+				SESSION_INTERFACE,
+				session_methods, NULL, NULL,
+				session, NULL) == FALSE)
+		return -EIO;
+
+	session_ref(session);
 
 	return 0;
 }
