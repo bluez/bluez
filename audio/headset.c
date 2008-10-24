@@ -733,11 +733,6 @@ int telephony_answer_call_rsp(void *telephony_device, cme_error_t err)
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
-int telephony_anser_call_rsp(void *telephony_device, cme_error_t err)
-{
-	return telephony_generic_rsp(telephony_device, err);
-}
-
 static int answer_call(struct audio_device *device, const char *buf)
 {
 	telephony_answer_call_req(device);
