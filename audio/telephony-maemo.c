@@ -445,9 +445,11 @@ void telephony_answer_call_req(void *telephony_device)
 	if (!call)
 		call = find_call_with_status(CSD_CALL_STATUS_PROCEEDING);
 
-	if (!call)
+	if (!call) {
 		telephony_answer_call_rsp(telephony_device,
 						CME_ERROR_NOT_ALLOWED);
+		return;
+	}
 
 	if (answer_call(call) < 0)
 		telephony_answer_call_rsp(telephony_device,
@@ -1299,7 +1301,8 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 	dbus_int32_t net_err;
 	uint32_t features = AG_FEATURE_REJECT_A_CALL |
 				AG_FEATURE_ENHANCED_CALL_STATUS |
-				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
+				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
+				AG_FEATURE_INBAND_RINGTONE;
 
 	reply = dbus_pending_call_steal_reply(call);
 
