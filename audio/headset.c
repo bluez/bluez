@@ -1466,6 +1466,10 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
 					"Telephony subsystem not ready");
 
+	if (!manager_allow_headset_connection(&device->src))
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAllowed",
+						"Too many connected devices");
+
 	err = rfcomm_connect(device, NULL, NULL, NULL);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE

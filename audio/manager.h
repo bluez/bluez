@@ -41,3 +41,5 @@ struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interf
 
 struct audio_device *manager_get_device(const bdaddr_t *src,
 					const bdaddr_t *dst);
+
+gboolean manager_allow_headset_connection(bdaddr_t *src);

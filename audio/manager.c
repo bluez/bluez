@@ -97,6 +97,7 @@ struct audio_adapter {
 	GIOChannel *hsp_hs_server;
 };
 
+static int max_connected_headsets = 1;
 static DBusConnection *connection = NULL;
 static GKeyFile *config = NULL;
 static GSList *adapters = NULL;
@@ -450,6 +451,9 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	device = manager_get_device(src, dst);
 	if (!device)
+		goto drop;
+
+	if (!manager_allow_headset_connection(&device->src))
 		goto drop;
 
 	if (!device->headset)
@@ -919,6 +923,16 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 	} else
 		enabled.hfp = b;
 
+	err = NULL;
+	i = g_key_file_get_integer(config, "Headset", "MaxConnected",
+					&err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_error_free(err);
+		err = NULL;
+	} else
+		max_connected_headsets = i;
+
 proceed:
 	if (enabled.headset) {
 		telephony_init();
@@ -1061,4 +1075,29 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 	devices = g_slist_append(devices, dev);
 
 	return dev;
+}
+
+gboolean manager_allow_headset_connection(bdaddr_t *src)
+{
+	GSList *l;
+	int connected = 0;
+
+	for (l = devices; l != NULL; l = l->next) {
+		struct audio_device *dev = l->data;
+		struct headset *hs = dev->headset;
+
+		if (bacmp(&dev->src, src))
+			continue;
+
+		if (!hs)
+			continue;
+
+		if (headset_get_state(dev) > HEADSET_STATE_DISCONNECTED)
+			connected++;
+
+		if (connected > max_connected_headsets)
+			return FALSE;
+	}
+
+	return TRUE;
 }
