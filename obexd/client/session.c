@@ -46,6 +46,8 @@
 #define TRANSFER_INTERFACE  "org.openobex.Transfer"
 #define TRANSFER_BASEPATH   "/org/openobex"
 
+#define FOLDER_BROWSING_UUID	"\xF9\xEC\x7B\xC4\x95\x3C\x11\xD2\x98\x4E\x52\x54\x00\xDC\x9E\x09"
+
 static guint64 counter = 0;
 
 struct callback_data {
@@ -116,14 +118,26 @@ static gboolean rfcomm_callback(GIOChannel *io, GIOCondition cond,
 {
 	struct callback_data *callback = user_data;
 	GwObex *obex;
-	int fd;
+	const char *uuid;
+	int fd, len;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR))
 		goto done;
 
 	fd = g_io_channel_unix_get_fd(io);
 
-	obex = gw_obex_setup_fd(fd, NULL, 0, NULL, NULL);
+	switch (callback->uuid) {
+	case OBEX_FILETRANS_SVCLASS_ID:
+		uuid = FOLDER_BROWSING_UUID;
+		len = 16;
+		break;
+	case OBEX_OBJPUSH_SVCLASS_ID:
+		uuid = NULL;
+		len = 0;
+		break;
+	}
+
+	obex = gw_obex_setup_fd(fd, uuid, len, NULL, NULL);
 
 	callback->session->sock = fd;
 	callback->session->obex = obex;
@@ -352,6 +366,7 @@ int session_create(const char *source,
 	struct session_data *session;
 	struct callback_data *callback;
 	int err;
+	uint16_t uuid;
 
 	if (destination == NULL)
 		return -EINVAL;
@@ -376,8 +391,11 @@ int session_create(const char *source,
 
 	str2ba(destination, &session->dst);
 
-	if (target != NULL)
+	if (target != NULL) {
+		uuid = OBEX_FILETRANS_SVCLASS_ID;
 		session->target = g_strdup(target);
+	} else
+		uuid = OBEX_OBJPUSH_SVCLASS_ID;
 
 	callback = g_try_malloc0(sizeof(*callback));
 	if (callback == NULL) {
@@ -393,7 +411,7 @@ int session_create(const char *source,
 		err = rfcomm_connect(&session->src, &session->dst,
 				session->channel, rfcomm_callback, callback);
 	} else {
-		callback->uuid = OBEX_OBJPUSH_SVCLASS_ID;
+		callback->uuid = uuid;
 		callback->sdp = service_connect(&session->src, &session->dst,
 						service_callback, callback);
 		err = (callback->sdp == NULL) ? -ENOMEM : 0;

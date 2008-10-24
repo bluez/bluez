@@ -57,10 +57,13 @@ static void create_callback(struct session_data *session, void *user_data)
 		DBusMessage *error = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed", NULL);
 		g_dbus_send_message(data->connection, error);
-		goto failed;
+		goto done;
 	}
 
 	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
+
+	if (session->target != NULL)
+		goto done;
 
 	session_set_agent(session, data->sender, data->agent);
 
@@ -70,8 +73,9 @@ static void create_callback(struct session_data *session, void *user_data)
 			break;
 	}
 
-failed:
-	g_ptr_array_free(data->files, TRUE);
+done:
+	if (data->files)
+		g_ptr_array_free(data->files, TRUE);
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
 	g_free(data->sender);
@@ -180,6 +184,7 @@ static DBusMessage *create_session(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter, dict;
+	struct send_data *data;
 	const char *source = NULL, *dest = NULL, *target = NULL;
 
 	dbus_message_iter_init(message, &iter);
@@ -190,12 +195,30 @@ static DBusMessage *create_session(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
-	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
+	data = g_try_malloc0(sizeof(*data));
+	if (data == NULL)
+		return g_dbus_create_error(message,
+					"org.openobex.Error.NoMemory", NULL);
+
+	data->connection = dbus_connection_ref(connection);
+	data->message = dbus_message_ref(message);
+	data->sender = g_strdup(dbus_message_get_sender(message));
+
+	if (session_create(source, dest, target, create_callback, data) == 0)
+		return NULL;
+
+	dbus_message_unref(data->message);
+	dbus_connection_unref(data->connection);
+	g_free(data->sender);
+	g_free(data);
+
+	return g_dbus_create_error(message,
+			"org.openobex.Error.Failed", NULL);
 }
 
 static GDBusMethodTable client_methods[] = {
 	{ "SendFiles", "a{sv}aso", "", send_files, G_DBUS_METHOD_FLAG_ASYNC },
-	{ "CreateSession", "a{sv}", "", create_session },
+	{ "CreateSession", "a{sv}", "", create_session, G_DBUS_METHOD_FLAG_ASYNC },
 	{ }
 };
 
