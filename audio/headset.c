@@ -2462,14 +2462,23 @@ int telephony_incoming_call_ind(const char *number, int type)
 
 int telephony_calling_stopped_ind(void)
 {
+	struct audio_device *dev;
+
 	if (!active_devices)
 		return -ENODEV;
 
-	if (!ag.ring_timer)
+	/* In case SCO isn't fully up yet */
+	dev = active_devices->data;
+
+	if (!dev->headset->pending_ring && !ag.ring_timer)
 		return -EINVAL;
 
-	g_source_remove(ag.ring_timer);
-	ag.ring_timer = 0;
+	dev->headset->pending_ring = FALSE;
+
+	if (ag.ring_timer) {
+		g_source_remove(ag.ring_timer);
+		ag.ring_timer = 0;
+	}
 
 	return 0;
 }
