@@ -44,8 +44,10 @@
 #define AGENT_INTERFACE  "org.openobex.Agent"
 
 #define TRANSFER_INTERFACE  "org.openobex.Transfer"
+#define TRANSFER_BASEPATH   "/org/openobex"
+
 #define SESSION_INTERFACE  "org.openobex.Session"
-#define BASEPATH   "/org/openobex"
+#define SESSION_BASEPATH   "/org/openobex"
 
 #define FOLDER_BROWSING_UUID	"\xF9\xEC\x7B\xC4\x95\x3C\x11\xD2\x98\x4E\x52\x54\x00\xDC\x9E\x09"
 
@@ -632,7 +634,7 @@ int session_send(struct session_data *session, const char *filename)
 
 	session->name = g_path_get_basename(filename);
 	session->path = g_strdup_printf("%s/transfer%llu",
-					BASEPATH, counter++);
+					TRANSFER_BASEPATH, counter++);
 
 	if (g_dbus_register_interface(session->conn, session->path,
 					TRANSFER_INTERFACE,
@@ -676,7 +678,7 @@ int session_send(struct session_data *session, const char *filename)
 int session_register(struct session_data *session)
 {
 	session->path = g_strdup_printf("%s/session%llu",
-					BASEPATH, counter++);
+					SESSION_BASEPATH, counter++);
 
 	if (g_dbus_register_interface(session->conn, session->path,
 				SESSION_INTERFACE,
