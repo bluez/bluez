@@ -49,6 +49,8 @@
 #define SESSION_INTERFACE  "org.openobex.Session"
 #define SESSION_BASEPATH   "/org/openobex"
 
+#define FTP_INTERFACE  "org.openobex.FileTransfer"
+
 #define FOLDER_BROWSING_UUID	"\xF9\xEC\x7B\xC4\x95\x3C\x11\xD2\x98\x4E\x52\x54\x00\xDC\x9E\x09"
 
 static guint64 counter = 0;
@@ -578,6 +580,66 @@ static GDBusMethodTable session_methods[] = {
 	{ }
 };
 
+static DBusMessage *change_folder(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *create_folder(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *list_folder(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *get_file(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *put_file(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *copy_file(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *move_file(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *delete(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static GDBusMethodTable ftp_methods[] = {
+	{ "ChangeFolder",	"s", "",	change_folder	},
+	{ "CreateFolder",	"s", "",	create_folder	},
+	{ "ListFolder",		"s", "aa{sv}",	list_folder	},
+	{ "GetFile",		"ss", "",	get_file	},
+	{ "PutFile",		"ss", "",	put_file	},
+	{ "CopyFile",		"ss", "",	copy_file	},
+	{ "MoveFile",		"ss", "",	move_file	},
+	{ "Delete",		"s", "",	delete		},
+	{ }
+};
+
 static void xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
 	struct session_data *session = user_data;
@@ -729,6 +791,18 @@ int session_send(struct session_data *session, const char *filename)
 
 int session_register(struct session_data *session)
 {
+	GDBusMethodTable *methods;
+	const char *iface;
+
+	switch (session->uuid) {
+	case OBEX_FILETRANS_SVCLASS_ID:
+		iface = FTP_INTERFACE;
+		methods = ftp_methods;
+		break;
+	default:
+		return -EINVAL;
+	}
+
 	session->path = g_strdup_printf("%s/session%ju",
 					SESSION_BASEPATH, counter++);
 
@@ -737,6 +811,15 @@ int session_register(struct session_data *session)
 				session_methods, NULL, NULL,
 				session, NULL) == FALSE)
 		return -EIO;
+
+	if (g_dbus_register_interface(session->conn, session->path,
+				iface,
+				methods, NULL, NULL,
+				session, NULL) == FALSE) {
+		g_dbus_unregister_interface(session->conn,
+				session->path, SESSION_INTERFACE);
+		return -EIO;
+	}
 
 	session_ref(session);
 
