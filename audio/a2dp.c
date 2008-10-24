@@ -1071,8 +1071,7 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 
 	if (err) {
 		debug("audio.conf: %s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		if (strstr(str, "Sink"))
 			source = FALSE;
@@ -1084,8 +1083,7 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	str = g_key_file_get_string(config, "A2DP", "SBCSources", &err);
 	if (err) {
 		debug("audio.conf: %s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		sbc_srcs = atoi(str);
 		g_free(str);
@@ -1094,8 +1092,7 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	str = g_key_file_get_string(config, "A2DP", "MPEG12Sources", &err);
 	if (err) {
 		debug("audio.conf: %s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		mpeg12_srcs = atoi(str);
 		g_free(str);
@@ -1104,8 +1101,7 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	str = g_key_file_get_string(config, "A2DP", "SBCSinks", &err);
 	if (err) {
 		debug("audio.conf: %s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		sbc_sinks = atoi(str);
 		g_free(str);
@@ -1114,8 +1110,7 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	str = g_key_file_get_string(config, "A2DP", "MPEG12Sinks", &err);
 	if (err) {
 		debug("audio.conf: %s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		mpeg12_sinks = atoi(str);
 		g_free(str);

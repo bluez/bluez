@@ -95,7 +95,7 @@ static void read_config(const char *file)
 
 	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
 		error("Parsing %s failed: %s", file, err->message);
-		g_error_free(err);
+		g_clear_error(&err);
 		goto done;
 	}
 
@@ -103,8 +103,7 @@ static void read_config(const char *file)
 						"Disable", NULL, &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		int i;
 		for (i = 0; disabled[i] != NULL; i++) {
@@ -120,56 +119,49 @@ static void read_config(const char *file)
 						"DisableSecurity", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	}
 
 	conf.panu_script = g_key_file_get_string(keyfile, "PANU Role",
 						"Script", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	}
 
 	conf.gn_script = g_key_file_get_string(keyfile, "GN Role",
 						"Script", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	}
 
 	conf.nap_script = g_key_file_get_string(keyfile, "NAP Role",
 						"Script", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	}
 
 	conf.iface_prefix = g_key_file_get_string(keyfile, "PANU Role",
 						"Interface", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	}
 
 	conf.gn_iface = g_key_file_get_string(keyfile, "GN Role",
 						"Interface", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	}
 
 	conf.nap_iface = g_key_file_get_string(keyfile, "NAP Role",
 						"Interface", &err);
 	if (err) {
 		debug("%s: %s", file, err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	}
 
 done:

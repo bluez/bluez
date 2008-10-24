@@ -106,8 +106,7 @@ static void parse_config(GKeyFile *config)
 					"OffMode", &err);
 	if (err) {
 		debug("%s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		debug("offmode=%s", str);
 		if (g_str_equal(str, "DevDown"))
@@ -120,8 +119,7 @@ static void parse_config(GKeyFile *config)
 					&err);
 	if (err) {
 		debug("%s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		debug("discovto=%d", val);
 		main_opts.discovto = val;
@@ -133,8 +131,7 @@ static void parse_config(GKeyFile *config)
 					&err);
 	if (err) {
 		debug("%s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		debug("pageto=%d", val);
 		main_opts.pageto = val;
@@ -145,8 +142,7 @@ static void parse_config(GKeyFile *config)
 					"Name", &err);
 	if (err) {
 		debug("%s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		debug("name=%s", str);
 		g_free(main_opts.name);
@@ -159,8 +155,7 @@ static void parse_config(GKeyFile *config)
 					"Class", &err);
 	if (err) {
 		debug("%s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		debug("class=%s", str);
 		main_opts.class = strtol(str, NULL, 16);
@@ -173,8 +168,7 @@ static void parse_config(GKeyFile *config)
 					&err);
 	if (err) {
 		debug("%s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		debug("inqmode=%d", val);
 		main_opts.inqmode = val;

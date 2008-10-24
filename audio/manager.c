@@ -510,8 +510,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 						&err);
 		if (err) {
 			debug("audio.conf: %s", err->message);
-			g_error_free(err);
-			err = NULL;
+			g_clear_error(&err);
 		} else
 			master = tmp;
 	}
@@ -595,8 +594,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 						&err);
 		if (err) {
 			debug("audio.conf: %s", err->message);
-			g_error_free(err);
-			err = NULL;
+			g_clear_error(&err);
 		} else
 			master = tmp;
 	}
@@ -918,8 +916,7 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 					&err);
 	if (err) {
 		debug("audio.conf: %s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else
 		enabled.hfp = b;
 
@@ -928,8 +925,7 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 					&err);
 	if (err) {
 		debug("audio.conf: %s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else
 		max_connected_headsets = i;
 

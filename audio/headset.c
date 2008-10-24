@@ -2040,8 +2040,7 @@ uint32_t headset_config_init(GKeyFile *config)
 					&err);
 	if (err) {
 		debug("audio.conf: %s", err->message);
-		g_error_free(err);
-		err = NULL;
+		g_clear_error(&err);
 	} else {
 		if (strcmp(str, "PCM") == 0)
 			sco_hci = FALSE;
