@@ -633,7 +633,7 @@ int session_send(struct session_data *session, const char *filename)
 	session->filename = g_strdup(filename);
 
 	session->name = g_path_get_basename(filename);
-	session->path = g_strdup_printf("%s/transfer%llu",
+	session->path = g_strdup_printf("%s/transfer%ju",
 					TRANSFER_BASEPATH, counter++);
 
 	if (g_dbus_register_interface(session->conn, session->path,
@@ -677,7 +677,7 @@ int session_send(struct session_data *session, const char *filename)
 
 int session_register(struct session_data *session)
 {
-	session->path = g_strdup_printf("%s/session%llu",
+	session->path = g_strdup_printf("%s/session%ju",
 					SESSION_BASEPATH, counter++);
 
 	if (g_dbus_register_interface(session->conn, session->path,
