@@ -429,6 +429,49 @@ int session_create(const char *source,
 	return 0;
 }
 
+static void abort_transfer(struct session_data *session)
+{
+	DBusMessage *message;
+
+	message = dbus_message_new_method_call(session->agent_name,
+			session->agent_path, AGENT_INTERFACE, "Complete");
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &session->path,
+						DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(session->conn, message);
+
+	gw_obex_xfer_abort(session->xfer, NULL);
+
+	gw_obex_xfer_free(session->xfer);
+	session->xfer = NULL;
+
+	g_free(session->filename);
+	session->filename = NULL;
+
+	g_free(session->name);
+	session->name = NULL;
+
+	if (session->path) {
+		g_dbus_unregister_interface(session->conn,
+				session->path, TRANSFER_INTERFACE);
+		g_free(session->path);
+		session->path = NULL;
+	}
+
+	if (session->pending->len > 0) {
+		gchar *filename;
+		filename = g_ptr_array_index(session->pending, 0);
+		g_ptr_array_remove(session->pending, filename);
+
+		session_send(session, filename);
+		g_free(filename);
+	}
+
+	session_unref(session);
+}
+
 int session_set_agent(struct session_data *session, const char *name,
 							const char *path)
 {
@@ -502,8 +545,31 @@ static DBusMessage *get_properties(DBusConnection *connection,
 	return reply;
 }
 
+static DBusMessage *transfer_cancel(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	const gchar *sender;
+	DBusMessage *reply;
+
+	sender = dbus_message_get_sender(message);
+	if (g_str_equal(sender, session->agent_name) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.NotAuthorized",
+				"Not Authorized");
+
+	reply = dbus_message_new_method_return(message);
+	if (!reply)
+		return NULL;
+
+	abort_transfer(session);
+
+	return reply;
+}
+
 static GDBusMethodTable transfer_methods[] = {
 	{ "GetProperties", "", "a{sv}", get_properties },
+	{ "Cancel", "", "", transfer_cancel },
 	{ }
 };
 
