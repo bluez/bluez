@@ -777,16 +777,6 @@ int telephony_terminate_call_rsp(void *telephony_device,
 			AUDIO_HEADSET_INTERFACE, "CallTerminated",
 			DBUS_TYPE_INVALID);
 
-	if (ag.number) {
-		g_free(ag.number);
-		ag.number = NULL;
-	}
-
-	if (ag.ring_timer) {
-		g_source_remove(ag.ring_timer);
-		ag.ring_timer = 0;
-	}
-
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
