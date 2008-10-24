@@ -1585,6 +1585,10 @@ static DBusMessage *hs_play(DBusConnection *conn, DBusMessage *msg,
 						".NotConnected",
 						"Device not Connected");
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
+		if (hs->pending && hs->pending->msg == NULL) {
+			hs->pending->msg = dbus_message_ref(msg);
+			return NULL;
+		}
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".InProgress",
 						"Play in Progress");
