@@ -144,6 +144,7 @@ struct headset {
 	gboolean cli_active;
 	gboolean cme_enabled;
 	gboolean cwa_enabled;
+	gboolean pending_ring;
 
 	headset_state_t state;
 	struct pending_connect *pending;
@@ -457,6 +458,55 @@ static unsigned int connect_cb_new(struct headset *hs,
 	return cb->id;
 }
 
+static void send_foreach_headset(GSList *devices,
+					int (*cmp)(struct headset *hs),
+					char *format, ...)
+{
+	GSList *l;
+	va_list ap;
+
+	for (l = devices; l != NULL; l = l->next) {
+		struct audio_device *device = l->data;
+		struct headset *hs = device->headset;
+		int ret;
+
+		assert(hs != NULL);
+
+		if (cmp && cmp(hs) != 0)
+			continue;
+
+		va_start(ap, format);
+		ret = headset_send_valist(hs, format, ap);
+		if (ret < 0)
+			error("Failed to send to headset: %s (%d)",
+					strerror(-ret), -ret);
+		va_end(ap);
+	}
+}
+
+static int cli_cmp(struct headset *hs)
+{
+	if (!hs->hfp_active)
+		return -1;
+
+	if (hs->cli_active)
+		return 0;
+	else
+		return -1;
+}
+
+static gboolean ring_timer_cb(gpointer data)
+{
+	send_foreach_headset(active_devices, NULL, "\r\nRING\r\n");
+
+	if (ag.number)
+		send_foreach_headset(active_devices, cli_cmp,
+					"\r\n+CLIP:\"%s\",%d\r\n",
+					ag.number, ag.number_type);
+
+	return TRUE;
+}
+
 static void sco_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 			const bdaddr_t *dst, gpointer user_data)
 {
@@ -499,6 +549,13 @@ static void sco_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	fcntl(sk, F_SETFL, 0);
 
 	headset_set_state(dev, HEADSET_STATE_PLAYING);
+
+	if (hs->pending_ring) {
+		ring_timer_cb(NULL);
+		ag.ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb,
+						NULL);
+		hs->pending_ring = FALSE;
+	}
 }
 
 static int sco_connect(struct audio_device *dev, headset_stream_cb_t cb,
@@ -537,33 +594,6 @@ static int hfp_cmp(struct headset *hs)
 	else
 		return -1;
 }
-
-static void send_foreach_headset(GSList *devices,
-					int (*cmp)(struct headset *hs),
-					char *format, ...)
-{
-	GSList *l;
-	va_list ap;
-
-	for (l = devices; l != NULL; l = l->next) {
-		struct audio_device *device = l->data;
-		struct headset *hs = device->headset;
-		int ret;
-
-		assert(hs != NULL);
-
-		if (cmp && cmp(hs) != 0)
-			continue;
-
-		va_start(ap, format);
-		ret = headset_send_valist(hs, format, ap);
-		if (ret < 0)
-			error("Failed to send to headset: %s (%d)",
-					strerror(-ret), -ret);
-		va_end(ap);
-	}
-}
-
 
 static void hfp_slc_complete(struct audio_device *dev)
 {
@@ -1478,29 +1508,6 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static int cli_cmp(struct headset *hs)
-{
-	if (!hs->hfp_active)
-		return -1;
-
-	if (hs->cli_active)
-		return 0;
-	else
-		return -1;
-}
-
-static gboolean ring_timer_cb(gpointer data)
-{
-	send_foreach_headset(active_devices, NULL, "\r\nRING\r\n");
-
-	if (ag.number)
-		send_foreach_headset(active_devices, cli_cmp,
-					"\r\n+CLIP:\"%s\",%d\r\n",
-					ag.number, ag.number_type);
-
-	return TRUE;
-}
-
 static DBusMessage *hs_ring(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
@@ -2167,6 +2174,13 @@ int headset_connect_sco(struct audio_device *dev, GIOChannel *io)
 
 	hs->sco = io;
 
+	if (hs->pending_ring) {
+		ring_timer_cb(NULL);
+		ag.ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb,
+						NULL);
+		hs->pending_ring = FALSE;
+	}
+
 	return 0;
 }
 
@@ -2411,8 +2425,15 @@ int telephony_response_and_hold_ind(int rh)
 
 int telephony_incoming_call_ind(const char *number, int type)
 {
+	struct audio_device *dev;
+	struct headset *hs;
+
 	if (!active_devices)
 		return -ENODEV;
+
+	/* Get the latest connected device */
+	dev = active_devices->data;
+	hs = dev->headset;
 
 	if (ag.ring_timer) {
 		debug("telephony_incoming_call_ind: already calling");
@@ -2422,6 +2443,19 @@ int telephony_incoming_call_ind(const char *number, int type)
 	g_free(ag.number);
 	ag.number = g_strdup(number);
 	ag.number_type = type;
+
+	if (ag.features & AG_FEATURE_INBAND_RINGTONE && hs->hfp_active &&
+			hs->state != HEADSET_STATE_PLAYING) {
+		if (hs->state == HEADSET_STATE_CONNECTED) {
+			int ret;
+
+			ret = sco_connect(dev, NULL, NULL, NULL);
+			if (ret < 0)
+				return ret;
+		}
+
+		hs->pending_ring = TRUE;
+	}
 
 	ring_timer_cb(NULL);
 	ag.ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb, NULL);
