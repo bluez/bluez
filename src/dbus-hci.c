@@ -877,9 +877,7 @@ static void emit_device_found(const char *path, const char *address,
 	append_dict_valist(&iter, first_key, var_args);
 	va_end(var_args);
 
-	dbus_connection_send(connection, signal, NULL);
-
-	dbus_message_unref(signal);
+	g_dbus_send_message(connection, signal);
 }
 
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
@@ -1208,8 +1206,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		} else {
 			reply = new_authentication_return(bonding->msg,
 							HCI_AUTHENTICATION_FAILURE);
-			dbus_connection_send(connection, reply, NULL);
-			dbus_message_unref(reply);
+			g_dbus_send_message(connection, reply);
 		}
 		adapter_free_bonding_request(adapter);
 	}

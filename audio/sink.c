@@ -100,8 +100,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 			sink->disconnect = NULL;
 
 			reply = dbus_message_new_method_return(p->msg);
-			dbus_connection_send(p->conn, reply, NULL);
-			dbus_message_unref(reply);
+			g_dbus_send_message(p->conn, reply);
 			pending_request_free(p);
 		}
 
@@ -168,8 +167,7 @@ static gboolean stream_setup_retry(gpointer user_data)
 		DBusMessage *reply;
 		debug("Stream successfully created, after XCASE connect:connect");
 		reply = dbus_message_new_method_return(pending->msg);
-		dbus_connection_send(pending->conn, reply, NULL);
-		dbus_message_unref(reply);
+		g_dbus_send_message(pending->conn, reply);
 	} else {
 		debug("Stream setup failed, after XCASE connect:connect");
 		error_failed(pending->conn, pending->msg, "Stream setup failed");
@@ -194,8 +192,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		DBusMessage *reply;
 		sink->connect = NULL;
 		reply = dbus_message_new_method_return(pending->msg);
-		dbus_connection_send(pending->conn, reply, NULL);
-		dbus_message_unref(reply);
+		g_dbus_send_message(pending->conn, reply);
 		pending_request_free(pending);
 		debug("Stream successfully created");
 	} else {

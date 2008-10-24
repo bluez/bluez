@@ -27,6 +27,8 @@
 #include <config.h>
 #endif
 
+#include <gdbus.h>
+
 #include "error.h"
 
 /* Helper function - internal use only */
@@ -34,7 +36,6 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 					const char *name, const char *descr)
 {
 	DBusMessage *derr;
-	dbus_bool_t ret;
 
 	if (!conn || !msg)
 		return DBUS_HANDLER_RESULT_HANDLED;
@@ -43,9 +44,7 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 	if (!derr)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	ret = dbus_connection_send(conn, derr, NULL);
-
-	dbus_message_unref(derr);
+	g_dbus_send_message(conn, derr);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }

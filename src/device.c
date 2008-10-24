@@ -813,8 +813,7 @@ static void discover_device_reply(struct browse_req *req, sdp_list_t *recs)
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	dbus_connection_send(req->conn, reply, NULL);
-	dbus_message_unref(reply);
+	g_dbus_send_message(req->conn, reply);
 }
 
 static void services_changed(struct btd_device *device)
@@ -1050,8 +1049,7 @@ proceed:
 	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
 							DBUS_TYPE_INVALID);
 
-	dbus_connection_send(req->conn, reply, NULL);
-	dbus_message_unref(reply);
+	g_dbus_send_message(req->conn, reply);
 
 cleanup:
 	browse_req_free(req);

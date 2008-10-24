@@ -314,7 +314,6 @@ dbus_bool_t emit_property_changed(DBusConnection *conn,
 {
 	DBusMessage *signal;
 	DBusMessageIter iter;
-	gboolean ret;
 
 	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
 
@@ -330,11 +329,7 @@ dbus_bool_t emit_property_changed(DBusConnection *conn,
 
 	append_variant(&iter, type, value);
 
-	ret = dbus_connection_send(conn, signal, NULL);
-
-	dbus_message_unref(signal);
-
-	return ret;
+	return g_dbus_send_message(conn, signal);
 }
 
 dbus_bool_t emit_array_property_changed(DBusConnection *conn,
@@ -345,7 +340,6 @@ dbus_bool_t emit_array_property_changed(DBusConnection *conn,
 {
 	DBusMessage *signal;
 	DBusMessageIter iter;
-	gboolean ret;
 
 	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
 
@@ -361,9 +355,5 @@ dbus_bool_t emit_array_property_changed(DBusConnection *conn,
 
 	append_array_variant(&iter, type, value);
 
-	ret = dbus_connection_send(conn, signal, NULL);
-
-	dbus_message_unref(signal);
-
-	return ret;
+	return g_dbus_send_message(conn, signal);
 }

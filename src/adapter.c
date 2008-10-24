@@ -762,14 +762,12 @@ static void confirm_mode_cb(struct agent *agent, DBusError *err, void *data)
 
 	if (err && dbus_error_is_set(err)) {
 		reply = dbus_message_new_error(req->msg, err->name, err->message);
-		dbus_connection_send(req->conn, reply, NULL);
-		dbus_message_unref(reply);
+		g_dbus_send_message(req->conn, reply);
 		goto cleanup;
 	}
 
 	reply = set_mode(req->conn, req->msg, req->mode, req->adapter);
-	dbus_connection_send(req->conn, reply, NULL);
-	dbus_message_unref(reply);
+	g_dbus_send_message(req->conn, reply);
 
 	if (!find_session(req->adapter->mode_sessions, req->msg))
 		goto cleanup;
@@ -923,10 +921,8 @@ static void reply_authentication_failure(struct bonding_request_info *bonding)
 			bonding->hci_status : HCI_AUTHENTICATION_FAILURE;
 
 	reply = new_authentication_return(bonding->msg, status);
-	if (reply) {
-		dbus_connection_send(bonding->conn, reply, NULL);
-		dbus_message_unref(reply);
-	}
+	if (reply)
+		g_dbus_send_message(bonding->conn, reply);
 }
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest)
