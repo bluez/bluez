@@ -79,27 +79,14 @@ failed:
 	g_free(data);
 }
 
-static DBusMessage *send_files(DBusConnection *connection,
-					DBusMessage *message, void *user_data)
+static int parse_device_dict(DBusMessageIter *iter,
+		const char **source, const char **dest, const char **target)
 {
-	DBusMessageIter iter, array;
-	GPtrArray *files;
-	struct send_data *data;
-	const char *agent, *dest = NULL;
-
-	files = g_ptr_array_new();
-	if (files == NULL)
-		return g_dbus_create_error(message,
-					"org.openobex.Error.NoMemory", NULL);
-
-	dbus_message_iter_init(message, &iter);
-	dbus_message_iter_recurse(&iter, &array);
-
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
+	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
 		const char *key;
 
-		dbus_message_iter_recurse(&array, &entry);
+		dbus_message_iter_recurse(iter, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
 
 		dbus_message_iter_next(&entry);
@@ -107,16 +94,43 @@ static DBusMessage *send_files(DBusConnection *connection,
 
 		switch (dbus_message_iter_get_arg_type(&value)) {
 		case DBUS_TYPE_STRING:
-			if (g_str_equal(key, "Destination") == TRUE)
-				dbus_message_iter_get_basic(&value, &dest);
-			break;
+			if (g_str_equal(key, "Source") == TRUE)
+				dbus_message_iter_get_basic(&value, source);
+			else if (g_str_equal(key, "Destination") == TRUE)
+				dbus_message_iter_get_basic(&value, dest);
+			else if (g_str_equal(key, "Target") == TRUE)
+				dbus_message_iter_get_basic(&value, target);
 		}
 
-		dbus_message_iter_next(&array);
+		dbus_message_iter_next(iter);
 	}
+
+	return 0;
+}
+
+static DBusMessage *send_files(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter, array;
+	GPtrArray *files;
+	struct send_data *data;
+	const char *agent, *source = NULL, *dest = NULL, *target = NULL;
+
+	dbus_message_iter_init(message, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	parse_device_dict(&array, &source, &dest, &target);
+	if (dest == NULL)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
 
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &array);
+
+	files = g_ptr_array_new();
+	if (files == NULL)
+		return g_dbus_create_error(message,
+					"org.openobex.Error.NoMemory", NULL);
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
 		char *value;
@@ -130,7 +144,7 @@ static DBusMessage *send_files(DBusConnection *connection,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_get_basic(&iter, &agent);
 
-	if (dest == NULL || files->len == 0) {
+	if (files->len == 0) {
 		g_ptr_array_free(files, TRUE);
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
@@ -162,8 +176,26 @@ static DBusMessage *send_files(DBusConnection *connection,
 	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
 }
 
+static DBusMessage *create_session(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter, dict;
+	const char *source = NULL, *dest = NULL, *target = NULL;
+
+	dbus_message_iter_init(message, &iter);
+	dbus_message_iter_recurse(&iter, &dict);
+
+	parse_device_dict(&dict, &source, &dest, &target);
+	if (dest == NULL || target == NULL)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
+	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
+}
+
 static GDBusMethodTable client_methods[] = {
 	{ "SendFiles", "a{sv}aso", "", send_files, G_DBUS_METHOD_FLAG_ASYNC },
+	{ "CreateSession", "a{sv}", "", create_session },
 	{ }
 };
 
