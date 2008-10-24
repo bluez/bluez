@@ -453,8 +453,10 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	if (!device)
 		goto drop;
 
-	if (!manager_allow_headset_connection(&device->src))
+	if (!manager_allow_headset_connection(&device->src)) {
+		debug("Refusing headset: too many existing connections");
 		goto drop;
+	}
 
 	if (!device->headset)
 		btd_device_add_uuid(device->btd_dev, remote_uuid);
@@ -1091,7 +1093,7 @@ gboolean manager_allow_headset_connection(bdaddr_t *src)
 		if (headset_get_state(dev) > HEADSET_STATE_DISCONNECTED)
 			connected++;
 
-		if (connected > max_connected_headsets)
+		if (connected >= max_connected_headsets)
 			return FALSE;
 	}
 
