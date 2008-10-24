@@ -459,7 +459,7 @@ static unsigned int connect_cb_new(struct headset *hs,
 }
 
 static void send_foreach_headset(GSList *devices,
-					int (*cmp)(struct headset *hs),
+					int (*cmp) (struct headset *hs),
 					char *format, ...)
 {
 	GSList *l;
