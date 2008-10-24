@@ -56,7 +56,6 @@ static guint64 counter = 0;
 struct callback_data {
 	struct session_data *session;
 	sdp_session_t *sdp;
-	uint16_t uuid;
 	session_callback_t func;
 	void *data;
 };
@@ -109,7 +108,6 @@ static void session_unref(struct session_data *session)
 
 	g_free(session->path);
 	g_free(session->name);
-	g_free(session->target);
 	g_free(session->filename);
 	g_free(session->agent_name);
 	g_free(session->agent_path);
@@ -120,8 +118,8 @@ static gboolean rfcomm_callback(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct callback_data *callback = user_data;
+	struct session_data *session = callback->session;
 	GwObex *obex;
-	const char *uuid;
 	int fd, len;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR))
@@ -129,18 +127,8 @@ static gboolean rfcomm_callback(GIOChannel *io, GIOCondition cond,
 
 	fd = g_io_channel_unix_get_fd(io);
 
-	switch (callback->uuid) {
-	case OBEX_FILETRANS_SVCLASS_ID:
-		uuid = FOLDER_BROWSING_UUID;
-		len = 16;
-		break;
-	case OBEX_OBJPUSH_SVCLASS_ID:
-		uuid = NULL;
-		len = 0;
-		break;
-	}
-
-	obex = gw_obex_setup_fd(fd, uuid, len, NULL, NULL);
+	len = (session->target ? 16 : 0);
+	obex = gw_obex_setup_fd(fd, session->target, len, NULL, NULL);
 
 	callback->session->sock = fd;
 	callback->session->obex = obex;
@@ -309,7 +297,7 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 	if (sdp_set_notify(callback->sdp, search_callback, callback) < 0)
 		goto failed;
 
-	sdp_uuid16_create(&uuid, callback->uuid);
+	sdp_uuid16_create(&uuid, callback->session->uuid);
 
 	search = sdp_list_append(NULL, &uuid);
 	attrid = sdp_list_append(NULL, &range);
@@ -369,7 +357,6 @@ int session_create(const char *source,
 	struct session_data *session;
 	struct callback_data *callback;
 	int err;
-	uint16_t uuid;
 
 	if (destination == NULL)
 		return -EINVAL;
@@ -395,10 +382,10 @@ int session_create(const char *source,
 	str2ba(destination, &session->dst);
 
 	if (target != NULL) {
-		uuid = OBEX_FILETRANS_SVCLASS_ID;
-		session->target = g_strdup(target);
+		session->uuid = OBEX_FILETRANS_SVCLASS_ID;
+		session->target = FOLDER_BROWSING_UUID;
 	} else
-		uuid = OBEX_OBJPUSH_SVCLASS_ID;
+		session->uuid = OBEX_OBJPUSH_SVCLASS_ID;
 
 	callback = g_try_malloc0(sizeof(*callback));
 	if (callback == NULL) {
@@ -414,7 +401,6 @@ int session_create(const char *source,
 		err = rfcomm_connect(&session->src, &session->dst,
 				session->channel, rfcomm_callback, callback);
 	} else {
-		callback->uuid = uuid;
 		callback->sdp = service_connect(&session->src, &session->dst,
 						service_callback, callback);
 		err = (callback->sdp == NULL) ? -ENOMEM : 0;
