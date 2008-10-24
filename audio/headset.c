@@ -2449,6 +2449,8 @@ int telephony_incoming_call_ind(const char *number, int type)
 		}
 
 		hs->pending_ring = TRUE;
+
+		return 0;
 	}
 
 	ring_timer_cb(NULL);
