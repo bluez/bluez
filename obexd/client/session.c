@@ -122,15 +122,15 @@ static gboolean rfcomm_callback(GIOChannel *io, GIOCondition cond,
 	struct callback_data *callback = user_data;
 	struct session_data *session = callback->session;
 	GwObex *obex;
-	int fd, len;
+	int fd;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR))
 		goto done;
 
 	fd = g_io_channel_unix_get_fd(io);
 
-	len = (session->target ? 16 : 0);
-	obex = gw_obex_setup_fd(fd, session->target, len, NULL, NULL);
+	obex = gw_obex_setup_fd(fd, session->target,
+			session->target_len, NULL, NULL);
 
 	callback->session->sock = fd;
 	callback->session->obex = obex;
@@ -385,6 +385,7 @@ int session_create(const char *source,
 	if (target != NULL) {
 		session->uuid = OBEX_FILETRANS_SVCLASS_ID;
 		session->target = FOLDER_BROWSING_UUID;
+		session->target_len = 16;
 	} else
 		session->uuid = OBEX_OBJPUSH_SVCLASS_ID;
 

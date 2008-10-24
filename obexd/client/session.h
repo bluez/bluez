@@ -33,6 +33,7 @@ struct session_data {
 	bdaddr_t dst;
 	uint8_t channel;
 	const char *target;	/* OBEX Target UUID */
+	int target_len;
 	uint16_t uuid;		/* Bluetooth Service Class */
 	gchar *name;
 	gchar *path;
