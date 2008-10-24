@@ -744,12 +744,11 @@ static int button_press(struct audio_device *device, const char *buf)
 
 int telephony_answer_call_rsp(void *telephony_device, cme_error_t err)
 {
-	struct audio_device *device = telephony_device;
-	struct headset *hs = device->headset;
+	return telephony_generic_rsp(telephony_device, err);
+}
 
-	if (err != CME_ERROR_NONE)
-		return telephony_generic_rsp(telephony_device, err);
-
+static int answer_call(struct audio_device *device, const char *buf)
+{
 	if (ag.ring_timer) {
 		g_source_remove(ag.ring_timer);
 		ag.ring_timer = 0;
@@ -760,11 +759,6 @@ int telephony_answer_call_rsp(void *telephony_device, cme_error_t err)
 		ag.number = NULL;
 	}
 
-	return headset_send(hs, "\r\nOK\r\n");
-}
-
-static int answer_call(struct audio_device *device, const char *buf)
-{
 	telephony_answer_call_req(device);
 
 	return 0;
