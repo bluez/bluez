@@ -170,8 +170,7 @@ static void decode(char *filename, char *output, int tofile)
 		 * length of the file (!) */
 		pos += framelen;
 		framelen = sbc_decode(&sbc, stream + pos, streamlen - pos,
-					buf + count, sizeof(buf) - count,
-					&len);
+					buf + count, sizeof(buf) - count, &len);
 	}
 
 	if (count > 0) {

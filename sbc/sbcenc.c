@@ -172,7 +172,7 @@ static void encode(char *filename, int subbands, int joint)
 	while (1) {
 		if (size < sizeof(input)) {
 			len = __read(fd, input + size, sizeof(input) - size);
-			if (len == 0)
+			if (len == 0 && size == 0)
 				break;
 
 			if (len < 0) {
@@ -183,8 +183,8 @@ static void encode(char *filename, int subbands, int joint)
 			size += len;
 		}
 
-		len = sbc_encode(&sbc, input, size, output, sizeof(output),
-					&encoded);
+		len = sbc_encode(&sbc, input, size,
+					output, sizeof(output), &encoded);
 		if (len < size)
 			memmove(input, input + len, size - len);
 
