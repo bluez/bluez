@@ -640,7 +640,7 @@ static GDBusMethodTable ftp_methods[] = {
 	{ }
 };
 
-static void xfer_progress(GwObexXfer *xfer, gpointer user_data)
+static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
 	struct session_data *session = user_data;
 	DBusMessage *message;
@@ -782,7 +782,68 @@ int session_send(struct session_data *session, const char *filename)
 
 	g_dbus_send_message(session->conn, message);
 
-	gw_obex_xfer_set_callback(xfer, xfer_progress, session);
+	gw_obex_xfer_set_callback(xfer, put_xfer_progress, session);
+
+	session->xfer = xfer;
+
+	return 0;
+}
+
+static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+{
+	struct callback_data *callback = user_data;
+	char buf[1024];
+	gint len;
+
+	if (gw_obex_xfer_read(xfer, buf, sizeof(buf), &len, NULL) == FALSE)
+		goto complete;
+
+	if (len == gw_obex_xfer_object_size(xfer))
+		goto complete;
+
+	gw_obex_xfer_flush(xfer, NULL);
+
+	return;
+
+complete:
+	gw_obex_xfer_close(xfer, NULL);
+	gw_obex_xfer_free(xfer);
+	callback->session->xfer = NULL;
+
+	callback->func(callback->session, callback->data);
+
+	session_unref(callback->session);
+
+	g_free(callback);
+}
+
+int session_pull(struct session_data *session,
+				const char *type, const char *filename,
+				session_callback_t function, void *user_data)
+{
+	struct callback_data *callback;
+	GwObexXfer *xfer;
+
+	if (session->obex == NULL)
+		return -ENOTCONN;
+
+	session_ref(session);
+
+	callback = g_try_malloc0(sizeof(*callback));
+	if (callback == NULL) {
+		session_unref(session);
+		return -ENOMEM;
+	}
+
+	callback->session = session;
+	callback->func = function;
+	callback->data = user_data;
+
+	xfer = gw_obex_get_async(session->obex, NULL, type, NULL);
+	if (xfer == NULL)
+		return -ENOTCONN;
+
+	gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
 
 	session->xfer = xfer;
 

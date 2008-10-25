@@ -70,7 +70,6 @@ static void create_callback(struct session_data *session, void *user_data)
 
 	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
 
-
 	session_set_agent(session, data->sender, data->agent);
 
 	for (i = 0; i < data->files->len; i++) {
@@ -186,8 +185,83 @@ static DBusMessage *send_files(DBusConnection *connection,
 	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
 }
 
+static void pull_complete_callback(struct session_data *session,
+							void *user_data)
+{
+	struct send_data *data = user_data;
+
+	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
+
+	dbus_message_unref(data->message);
+	dbus_connection_unref(data->connection);
+	g_free(data->sender);
+	g_free(data);
+}
+
+static void pull_session_callback(struct session_data *session,
+							void *user_data)
+{
+	struct send_data *data = user_data;
+
+	if (session->obex == NULL) {
+		DBusMessage *error = g_dbus_create_error(data->message,
+					"org.openobex.Error.Failed", NULL);
+		g_dbus_send_message(data->connection, error);
+		goto done;
+	}
+
+	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
+
+	session_pull(session, "text/x-vcard", "/tmp/x.vcf",
+						pull_complete_callback, data);
+
+	return;
+
+done:
+	dbus_message_unref(data->message);
+	dbus_connection_unref(data->connection);
+	g_free(data->sender);
+	g_free(data);
+}
+
+static DBusMessage *pull_business_card(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter, dict;
+	struct send_data *data;
+	const char *source = NULL, *dest = NULL, *target = NULL;
+
+	dbus_message_iter_init(message, &iter);
+	dbus_message_iter_recurse(&iter, &dict);
+
+	parse_device_dict(&dict, &source, &dest, &target);
+	if (dest == NULL)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
+	data = g_try_malloc0(sizeof(*data));
+	if (data == NULL)
+		return g_dbus_create_error(message,
+					"org.openobex.Error.NoMemory", NULL);
+
+	data->connection = dbus_connection_ref(connection);
+	data->message = dbus_message_ref(message);
+	data->sender = g_strdup(dbus_message_get_sender(message));
+
+	if (session_create(source, dest, NULL,
+					pull_session_callback, data) == 0)
+		return NULL;
+
+	dbus_message_unref(data->message);
+	dbus_connection_unref(data->connection);
+	g_free(data->sender);
+	g_free(data);
+
+	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
+}
+
 static DBusMessage *create_session(DBusConnection *connection,
-				DBusMessage *message, void *user_data)
+					DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter, dict;
 	struct send_data *data;
@@ -218,13 +292,16 @@ static DBusMessage *create_session(DBusConnection *connection,
 	g_free(data->sender);
 	g_free(data);
 
-	return g_dbus_create_error(message,
-			"org.openobex.Error.Failed", NULL);
+	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
 }
 
 static GDBusMethodTable client_methods[] = {
-	{ "SendFiles", "a{sv}aso", "", send_files, G_DBUS_METHOD_FLAG_ASYNC },
-	{ "CreateSession", "a{sv}", "", create_session, G_DBUS_METHOD_FLAG_ASYNC },
+	{ "SendFiles",        "a{sv}aso", "", send_files,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "PullBusinessCard", "a{sv}s",   "", pull_business_card,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "CreateSession",    "a{sv}",    "", create_session,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ }
 };
 
