@@ -101,7 +101,7 @@ static ssize_t __write(int fd, const void *buf, size_t count)
 	return pos;
 }
 
-static void encode(char *filename, int subbands, int joint)
+static void encode(char *filename, int subbands, int bitpool, int joint)
 {
 	struct au_header *au_hdr;
 	unsigned char input[2048], output[2048];
@@ -169,6 +169,8 @@ static void encode(char *filename, int subbands, int joint)
 	size = len - BE_INT(au_hdr->hdr_size);
 	memmove(input, input + BE_INT(au_hdr->hdr_size), size);
 
+	sbc.bitpool = bitpool;
+
 	while (1) {
 		if (size < sizeof(input)) {
 			len = __read(fd, input + size, sizeof(input) - size);
@@ -220,6 +222,7 @@ static void usage(void)
 		"\t-h, --help           Display help\n"
 		"\t-v, --verbose        Verbose mode\n"
 		"\t-s, --subbands       Number of subbands to use (4 or 8)\n"
+		"\t-b, --bitpool        Bitpool value (default is 32)\n"
 		"\t-j, --joint          Joint stereo\n"
 		"\n");
 }
@@ -228,15 +231,16 @@ static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "verbose",	0, 0, 'v' },
 	{ "subbands",	1, 0, 's' },
+	{ "bitpool",	1, 0, 'b' },
 	{ "joint",	0, 0, 'j' },
 	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char *argv[])
 {
-	int i, opt, verbose = 0, subbands = 8, joint = 0;
+	int i, opt, verbose = 0, subbands = 8, bitpool = 32, joint = 0;
 
-	while ((opt = getopt_long(argc, argv, "+hvs:j", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+hvs:b:j", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'h':
 			usage();
@@ -247,12 +251,16 @@ int main(int argc, char *argv[])
 			break;
 
 		case 's':
-			subbands = atoi(strdup(optarg));
+			subbands = atoi(optarg);
 			if (subbands != 8 && subbands != 4) {
 				fprintf(stderr, "Invalid subbands %d!\n",
 						subbands);
 				exit(1);
 			}
+			break;
+
+		case 'b':
+			bitpool = atoi(optarg);
 			break;
 
 		case 'j':
@@ -274,7 +282,7 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 0; i < argc; i++)
-		encode(argv[i], subbands, joint);
+		encode(argv[i], subbands, bitpool, joint);
 
 	return 0;
 }
