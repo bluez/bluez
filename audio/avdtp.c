@@ -600,8 +600,9 @@ static void stream_free(struct avdtp_stream *stream)
 	g_free(stream);
 }
 
-static gboolean stream_timeout(struct avdtp_stream *stream)
+static gboolean stream_timeout(gpointer user_data)
 {
+	struct avdtp_stream *stream = user_data;
 	struct avdtp *session = stream->session;
 
 	avdtp_close(session, stream);
@@ -701,6 +702,10 @@ static void avdtp_sep_set_state(struct avdtp *session,
 
 	switch (state) {
 	case AVDTP_STATE_OPEN:
+		if (old_state > AVDTP_STATE_OPEN)
+			stream->idle_timer = g_timeout_add(STREAM_TIMEOUT,
+								stream_timeout,
+								stream);
 		break;
 	case AVDTP_STATE_STREAMING:
 	case AVDTP_STATE_CLOSING:
@@ -1956,9 +1961,6 @@ static gboolean avdtp_suspend_resp(struct avdtp *session,
 	struct avdtp_local_sep *sep = stream->lsep;
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
-
-	stream->idle_timer = g_timeout_add(STREAM_TIMEOUT,
-					(GSourceFunc) stream_timeout, stream);
 
 	if (sep->cfm && sep->cfm->suspend)
 		sep->cfm->suspend(session, sep, stream, NULL, sep->user_data);
