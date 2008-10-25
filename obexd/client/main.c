@@ -260,6 +260,12 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
 }
 
+static DBusMessage *exchange_business_cards(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
+}
+
 static DBusMessage *create_session(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -296,11 +302,13 @@ static DBusMessage *create_session(DBusConnection *connection,
 }
 
 static GDBusMethodTable client_methods[] = {
-	{ "SendFiles",        "a{sv}aso", "", send_files,
+	{ "SendFiles", "a{sv}aso", "", send_files,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "PullBusinessCard", "a{sv}s",   "", pull_business_card,
+	{ "PullBusinessCard", "a{sv}s", "", pull_business_card,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "CreateSession",    "a{sv}",    "", create_session,
+	{ "ExchangeBusinessCards", "a{sv}ss", "", exchange_business_cards,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "CreateSession", "a{sv}", "o", create_session,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ }
 };
