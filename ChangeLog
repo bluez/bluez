@@ -1,3 +1,9 @@
+ver 4.17:
+	Fix SBC encoder not writing last frame.
+	Fix missing timer for A2DP suspend.
+	Add more supported devices to hid2hci utility.
+	Add additional functionality to Handsfree support.
+
 ver 4.16:
 	Fix wrong parameter usage of watch callbacks.
 	Fix parameters for callback upon path removal.
