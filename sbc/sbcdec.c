@@ -37,6 +37,7 @@
 #include <sys/soundcard.h>
 
 #include "sbc.h"
+#include "formats.h"
 
 #define BUF_SIZE 8192
 
@@ -120,12 +121,28 @@ static void decode(char *filename, char *output, int tofile)
 	}
 
 	printf("%d Hz, %d channels\n", frequency, channels);
-	if (!tofile) {
+	if (tofile) {
+		struct au_header au_hdr;
+
+		au_hdr.magic       = AU_MAGIC;
+		au_hdr.hdr_size    = BE_INT(24);
+		au_hdr.data_size   = BE_INT(0);
+		au_hdr.encoding    = BE_INT(AU_FMT_LIN16);
+		au_hdr.sample_rate = BE_INT(frequency);
+		au_hdr.channels    = BE_INT(channels);
+
+		written = write(ad, &au_hdr, sizeof(au_hdr));
+		if (written < sizeof(au_hdr)) {
+			fprintf(stderr, "Failed to write header\n");
+			goto close;
+		}
+	} else {
 		if (ioctl(ad, SNDCTL_DSP_SETFMT, &format) < 0) {
 			fprintf(stderr, "Can't set audio format on %s: %s\n",
 					output, strerror(errno));
 			goto close;
 		}
+
 		if (ioctl(ad, SNDCTL_DSP_CHANNELS, &channels) < 0) {
 			fprintf(stderr,
 				"Can't set number of channels on %s: %s\n",

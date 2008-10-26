@@ -14,8 +14,10 @@ libsbc_la_CFLAGS = -finline-functions -funswitch-loops -fgcse-after-reload
 
 noinst_PROGRAMS = sbcinfo sbcdec sbcenc $(sndfile_programs)
 
+sbcdec_SOURCES = sbcdec.c formats.h
 sbcdec_LDADD = libsbc.la
 
+sbcenc_SOURCES = sbcenc.c formats.h
 sbcenc_LDADD = libsbc.la
 
 if SNDFILE
