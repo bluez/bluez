@@ -416,7 +416,8 @@ void ftp_setpath(obex_t *obex, obex_object_t *obj)
 		goto done;
 	}
 
-	if (S_ISDIR(dstat.st_mode) && (dstat.st_mode & S_IRUSR)) {
+	if (S_ISDIR(dstat.st_mode) && (dstat.st_mode & S_IRUSR) &&
+						(dstat.st_mode & S_IXUSR)) {
 		g_free(os->current_folder);
 		os->current_folder = g_strdup(fullname);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
