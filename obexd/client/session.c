@@ -561,15 +561,79 @@ static GDBusMethodTable transfer_methods[] = {
 	{ }
 };
 
+static void agent_disconnected(DBusConnection *connection, void *user_data)
+{
+	struct session_data *session = user_data;
+
+	if (session->agent_name) {
+		g_free(session->agent_name);
+		session->agent_name = NULL;
+	}
+
+	if (session->agent_path) {
+		g_free(session->agent_path);
+		session->agent_path = NULL;
+	}
+}
+
 static DBusMessage *assign_agent(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
+	struct session_data *session = user_data;
+	const gchar *sender;
+	gchar *path;
+
+	if (dbus_message_get_args(message, NULL,
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments",
+				"Invalid arguments in method call");
+
+	if (session->agent_path != NULL || session->agent_name != NULL)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.AlreadyExists",
+				"Already exists");
+
+	sender = dbus_message_get_sender(message);
+
+	session->agent_name = g_strdup(sender);
+	session->agent_path = g_strdup(path);
+
+	g_dbus_add_disconnect_watch(connection, sender,
+				agent_disconnected, session, NULL);
+
 	return dbus_message_new_method_return(message);
 }
 
 static DBusMessage *release_agent(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
+	struct session_data *session = user_data;
+	const gchar *sender;
+	gchar *path;
+
+	if (dbus_message_get_args(message, NULL,
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments",
+				"Invalid arguments in method call");
+
+	sender = dbus_message_get_sender(message);
+
+	if (g_str_equal(sender, session->agent_name) == FALSE ||
+				g_str_equal(path, session->agent_path) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.NotAuthorized",
+				"Not Authorized");
+
+	g_free(session->agent_name);
+	session->agent_name = NULL;
+
+	g_free(session->agent_path);
+	session->agent_path = NULL;
+
 	return dbus_message_new_method_return(message);
 }
 
