@@ -51,8 +51,6 @@
 
 #define FTP_INTERFACE  "org.openobex.FileTransfer"
 
-#define FOLDER_BROWSING_UUID	"\xF9\xEC\x7B\xC4\x95\x3C\x11\xD2\x98\x4E\x52\x54\x00\xDC\x9E\x09"
-
 static guint64 counter = 0;
 
 struct callback_data {
@@ -384,7 +382,7 @@ int session_create(const char *source,
 
 	if (target != NULL) {
 		session->uuid = OBEX_FILETRANS_SVCLASS_ID;
-		session->target = FOLDER_BROWSING_UUID;
+		session->target = OBEX_FTP_UUID;
 		session->target_len = 16;
 	} else
 		session->uuid = OBEX_OBJPUSH_SVCLASS_ID;
