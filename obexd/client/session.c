@@ -383,7 +383,7 @@ int session_create(const char *source,
 	if (target != NULL) {
 		session->uuid = OBEX_FILETRANS_SVCLASS_ID;
 		session->target = OBEX_FTP_UUID;
-		session->target_len = 16;
+		session->target_len = OBEX_FTP_UUID_LEN;
 	} else
 		session->uuid = OBEX_OBJPUSH_SVCLASS_ID;
 
