@@ -733,7 +733,7 @@ static DBusMessage *delete(DBusConnection *connection,
 static GDBusMethodTable ftp_methods[] = {
 	{ "ChangeFolder",	"s", "",	change_folder	},
 	{ "CreateFolder",	"s", "",	create_folder	},
-	{ "ListFolder",		"s", "aa{sv}",	list_folder	},
+	{ "ListFolder",		"", "aa{sv}",	list_folder	},
 	{ "GetFile",		"ss", "",	get_file	},
 	{ "PutFile",		"ss", "",	put_file	},
 	{ "CopyFile",		"ss", "",	copy_file	},
