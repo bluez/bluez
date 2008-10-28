@@ -331,6 +331,12 @@ struct pending_auth_info *adapter_new_auth_request(struct btd_adapter *adapter,
 	return info;
 }
 
+static void dev_info_free(struct remote_dev_info *dev)
+{
+	g_free(dev->alias);
+	g_free(dev);
+}
+
 int pending_remote_name_cancel(struct btd_adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
@@ -360,7 +366,7 @@ int pending_remote_name_cancel(struct btd_adapter *adapter)
 	}
 
 	/* free discovered devices list */
-	g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
+	g_slist_foreach(adapter->found_devices, (GFunc) dev_info_free, NULL);
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
@@ -2637,7 +2643,8 @@ int adapter_stop(struct btd_adapter *adapter)
 	}
 
 	if (adapter->found_devices) {
-		g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
+		g_slist_foreach(adapter->found_devices,
+				(GFunc) dev_info_free, NULL);
 		g_slist_free(adapter->found_devices);
 		adapter->found_devices = NULL;
 	}
@@ -2936,7 +2943,8 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 				(GSourceFunc) start_inquiry, adapter);
 
 	if (!discov_active && adapter->found_devices) {
-		g_slist_foreach(adapter->found_devices, (GFunc) g_free, NULL);
+		g_slist_foreach(adapter->found_devices,
+					(GFunc) dev_info_free, NULL);
 		g_slist_free(adapter->found_devices);
 		adapter->found_devices = NULL;
 	}
@@ -2983,7 +2991,8 @@ int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
 }
 
 int adapter_add_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-				int8_t rssi, name_status_t name_status)
+				int8_t rssi, uint32_t class, const char *alias,
+				name_status_t name_status)
 {
 	struct remote_dev_info *dev, match;
 
@@ -2997,6 +3006,13 @@ int adapter_add_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 		/* device found, update the attributes */
 		if (rssi != 0)
 			dev->rssi = rssi;
+
+		dev->class = class;
+
+		if (alias) {
+			g_free(dev->alias);
+			dev->alias = g_strdup(alias);
+		}
 
 		 /* Get remote name can be received while inquiring.
 		  * Keep in mind that multiple inquiry result events can
@@ -3015,6 +3031,9 @@ int adapter_add_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 
 	bacpy(&dev->bdaddr, bdaddr);
 	dev->rssi = rssi;
+	dev->class = class;
+	if (alias)
+		dev->alias = g_strdup(alias);
 	dev->name_status = name_status;
 
 	adapter->found_devices = g_slist_insert_sorted(adapter->found_devices,
@@ -3035,7 +3054,7 @@ int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 		return -1;
 
 	adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
-	g_free(dev);
+	dev_info_free(dev);
 
 	return 0;
 }

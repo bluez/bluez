@@ -53,6 +53,8 @@ typedef enum {
 struct remote_dev_info {
 	bdaddr_t bdaddr;
 	int8_t rssi;
+	uint32_t class;
+	char *alias;
 	name_status_t name_status;
 };
 
@@ -144,7 +146,8 @@ int adapter_get_state(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
 						struct remote_dev_info *match);
 int adapter_add_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-				int8_t rssi, name_status_t name_status);
+				int8_t rssi, uint32_t class, const char *alias,
+				name_status_t name_status);
 int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 void adapter_update_oor_devices(struct btd_adapter *adapter);
 void adapter_remove_oor_device(struct btd_adapter *adapter, char *peer_addr);

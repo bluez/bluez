@@ -886,6 +886,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	char filename[PATH_MAX + 1];
 	struct btd_adapter *adapter;
 	char local_addr[18], peer_addr[18], *alias, *name, *tmp_name;
+	const char *real_alias;
 	const char *path, *icon, *paddr = peer_addr;
 	struct remote_dev_info *dev, match;
 	dbus_int16_t tmp_rssi = rssi;
@@ -942,12 +943,15 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	name = textfile_get(filename, peer_addr);
 
 	if (!alias) {
+		real_alias = NULL;
+
 		if (!name) {
 			alias = g_strdup(peer_addr);
 			g_strdelimit(alias, ":", '-');
 		} else
 			alias = g_strdup(name);
-	}
+	} else
+		real_alias = alias;
 
 	tmp_name = extract_eir_name(data, &name_type);
 	if (tmp_name) {
@@ -992,10 +996,11 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				"Alias", DBUS_TYPE_STRING, &alias, NULL);
 	}
 
-	g_free(alias);
-
 	/* add in the list to track name sent/pending */
-	adapter_add_found_device(adapter, peer, rssi, name_status);
+	adapter_add_found_device(adapter, peer, rssi, class, real_alias,
+					name_status);
+
+	g_free(alias);
 }
 
 void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
@@ -1035,8 +1040,9 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 {
 	struct btd_adapter *adapter;
 	char srcaddr[18], dstaddr[18];
-	const gchar *dev_path;
 	int state;
+	struct btd_device *device;
+	struct remote_dev_info match, *dev_info;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1047,27 +1053,51 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	ba2str(local, srcaddr);
 	ba2str(peer, dstaddr);
 
-	if (!status) {
-		struct btd_device *device;
+	if (status != 0)
+		goto proceed;
 
-		device = adapter_find_device(adapter, dstaddr);
-		if (device) {
-			char alias[248];
+	bacpy(&match.bdaddr, peer);
+	match.name_status = NAME_ANY;
 
-			dev_path = device_get_path(device);
+	dev_info = adapter_search_found_devices(adapter, &match);
+	if (dev_info) {
+		const char *adapter_path = adapter_get_path(adapter);
+		const char *icon = class_to_icon(dev_info->class);
+		const char *alias, *paddr = dstaddr;
+		dbus_int16_t rssi = dev_info->rssi;
 
-			emit_property_changed(connection, dev_path,
-						DEVICE_INTERFACE, "Name",
-						DBUS_TYPE_STRING, &name);
+		if (dev_info->alias)
+			alias = dev_info->alias;
+		else
+			alias = name;
 
-			if (read_device_alias(srcaddr, dstaddr,
-						alias, sizeof(alias)) < 1)
-				emit_property_changed(connection, dev_path,
-						DEVICE_INTERFACE, "Alias",
-						DBUS_TYPE_STRING, &name);
-		}
+		emit_device_found(adapter_path, dstaddr,
+				"Address", DBUS_TYPE_STRING, &paddr,
+				"Class", DBUS_TYPE_UINT32, &dev_info->class,
+				"Icon", DBUS_TYPE_STRING, &icon,
+				"RSSI", DBUS_TYPE_INT16, &rssi,
+				"Name", DBUS_TYPE_STRING, &name,
+				"Alias", DBUS_TYPE_STRING, &alias,
+				NULL);
 	}
 
+	device = adapter_find_device(adapter, dstaddr);
+	if (device) {
+		char alias[248];
+		const char *dev_path = device_get_path(device);
+
+		emit_property_changed(connection, dev_path,
+				DEVICE_INTERFACE, "Name",
+				DBUS_TYPE_STRING, &name);
+
+		if (read_device_alias(srcaddr, dstaddr,
+					alias, sizeof(alias)) < 1)
+			emit_property_changed(connection, dev_path,
+					DEVICE_INTERFACE, "Alias",
+					DBUS_TYPE_STRING, &name);
+	}
+
+proceed:
 	/* remove from remote name request list */
 	adapter_remove_found_device(adapter, peer);
 
