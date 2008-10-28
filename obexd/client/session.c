@@ -256,12 +256,11 @@ static void search_callback(uint8_t type, uint16_t status,
 	if (channel == 0)
 		goto failed;
 
-	sdp_close(callback->sdp);
-
-	rfcomm_connect(&callback->session->src, &callback->session->dst,
-					channel, rfcomm_callback, callback);
-
-	return;
+	if (rfcomm_connect(&callback->session->src, &callback->session->dst,
+					channel, rfcomm_callback, callback) == 0) {
+		sdp_close(callback->sdp);
+		return;
+	}
 
 failed:
 	sdp_close(callback->sdp);
