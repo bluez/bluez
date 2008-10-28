@@ -60,7 +60,8 @@ int session_create(const char *source,
 				session_callback_t function, void *user_data);
 int session_set_agent(struct session_data *session, const char *name,
 							const char *path);
-int session_send(struct session_data *session, const char *filename);
+int session_send(struct session_data *session, const char *filename,
+				const char *remotename);
 int session_pull(struct session_data *session,
 				const char *type, const char *filename,
 				session_callback_t function, void *user_data);

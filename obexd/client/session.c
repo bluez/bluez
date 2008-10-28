@@ -451,7 +451,7 @@ static void abort_transfer(struct session_data *session)
 		filename = g_ptr_array_index(session->pending, 0);
 		g_ptr_array_remove(session->pending, filename);
 
-		session_send(session, filename);
+		session_send(session, filename, g_path_get_basename(filename));
 		g_free(filename);
 	}
 
@@ -787,14 +787,15 @@ complete:
 			session->path = NULL;
 		}
 
-		session_send(session, filename);
+		session_send(session, filename, g_path_get_basename(filename));
 		g_free(filename);
 	}
 
 	session_unref(session);
 }
 
-int session_send(struct session_data *session, const char *filename)
+int session_send(struct session_data *session, const char *filename,
+				const char *targetname)
 {
 	GwObexXfer *xfer;
 	DBusMessage *message;
@@ -823,9 +824,10 @@ int session_send(struct session_data *session, const char *filename)
 	session->size = st.st_size;
 	session->transferred = 0;
 	session->filename = g_strdup(filename);
+	session->name = g_strdup(targetname);
 
-	session->name = g_path_get_basename(filename);
-	session->path = g_strdup_printf("%s/transfer%ju",
+	if (session->path == NULL) {
+		session->path = g_strdup_printf("%s/transfer%ju",
 					TRANSFER_BASEPATH, counter++);
 
 	if (g_dbus_register_interface(session->conn, session->path,

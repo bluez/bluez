@@ -73,8 +73,10 @@ static void create_callback(struct session_data *session, void *user_data)
 	session_set_agent(session, data->sender, data->agent);
 
 	for (i = 0; i < data->files->len; i++) {
-		if (session_send(session,
-				g_ptr_array_index(data->files, i)) < 0)
+		const gchar *filename = g_ptr_array_index(data->files, i);
+
+		if (session_send(session, filename,
+				g_path_get_basename(filename)) < 0)
 			break;
 	}
 
