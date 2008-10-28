@@ -44,6 +44,18 @@
 
 #include "glib-helper.h"
 
+/* Number of seconds to keep a sdp_session_t in the cache */
+#define CACHE_TIMEOUT 2
+
+struct cached_sdp_session {
+	bdaddr_t src;
+	bdaddr_t dst;
+	sdp_session_t *session;
+	guint timer;
+};
+
+static GSList *cached_sdp_sessions = NULL;
+
 typedef int (*resolver_t) (int fd, char *src, char *dst);
 typedef BtIOError (*connect_t) (BtIO *io, BtIOFunc func);
 typedef BtIOError (*listen_t) (BtIO *io, BtIOFunc func);
@@ -54,6 +66,62 @@ struct hci_cmd_data {
 	uint16_t		ocf;
 	gpointer		caller_data;
 };
+
+static gboolean cached_session_expired(gpointer user_data)
+{
+	struct cached_sdp_session *cached = user_data;
+
+	cached_sdp_sessions = g_slist_remove(cached_sdp_sessions, cached);
+
+	sdp_close(cached->session);
+
+	g_free(cached);
+
+	return FALSE;
+}
+
+static sdp_session_t *get_sdp_session(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	GSList *l;
+
+	for (l = cached_sdp_sessions; l != NULL; l = l->next) {
+		struct cached_sdp_session *c = l->data;
+		sdp_session_t *session;
+
+		if (bacmp(&c->src, src) || bacmp(&c->dst, dst))
+			continue;
+
+		g_source_remove(c->timer);
+
+		session = c->session;
+
+		cached_sdp_sessions = g_slist_remove(cached_sdp_sessions, c);
+		g_free(c);
+
+		return session;
+	}
+
+	return sdp_connect(src, dst, SDP_NON_BLOCKING);
+}
+
+static void cache_sdp_session(bdaddr_t *src, bdaddr_t *dst,
+				sdp_session_t *session)
+{
+	struct cached_sdp_session *cached;
+
+	cached = g_new0(struct cached_sdp_session, 1);
+
+	bacpy(&cached->src, src);
+	bacpy(&cached->dst, dst);
+
+	cached->session = session;
+
+	cached_sdp_sessions = g_slist_append(cached_sdp_sessions, cached);
+
+	cached->timer = g_timeout_add_seconds(CACHE_TIMEOUT,
+						cached_session_expired,
+						cached);
+}
 
 int set_nonblocking(int fd)
 {
@@ -161,7 +229,7 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 	} while (scanned < size && bytesleft > 0);
 
 done:
-	sdp_close(ctxt->session);
+	cache_sdp_session(&ctxt->src, &ctxt->dst, ctxt->session);
 
 	if (ctxt->cb)
 		ctxt->cb(recs, err, ctxt->user_data);
@@ -264,7 +332,7 @@ static int create_search_context(struct search_context **ctxt,
 	if (!ctxt)
 		return -EINVAL;
 
-	s = sdp_connect(src, dst, SDP_NON_BLOCKING);
+	s = get_sdp_session(src, dst);
 	if (!s)
 		return -errno;
 
