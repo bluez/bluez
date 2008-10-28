@@ -974,11 +974,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	path = adapter_get_path(adapter);
 	icon = class_to_icon(class);
 
-	if (name) {
-		if (name_type != 0x08)
-			name_status = NAME_SENT;
-
-		emit_device_found(path, paddr,
+	emit_device_found(path, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
 				"Class", DBUS_TYPE_UINT32, &class,
 				"Icon", DBUS_TYPE_STRING, &icon,
@@ -986,20 +982,14 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				"Name", DBUS_TYPE_STRING, &name,
 				"Alias", DBUS_TYPE_STRING, &alias, NULL);
 
-		g_free(name);
-	} else {
-		emit_device_found(path, paddr,
-				"Address", DBUS_TYPE_STRING, &paddr,
-				"Class", DBUS_TYPE_UINT32, &class,
-				"Icon", DBUS_TYPE_STRING, &icon,
-				"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
-				"Alias", DBUS_TYPE_STRING, &alias, NULL);
-	}
+	if (name && name_type != 0x08)
+		name_status = NAME_SENT;
 
 	/* add in the list to track name sent/pending */
 	adapter_add_found_device(adapter, peer, rssi, class, real_alias,
 					name_status);
 
+	g_free(name);
 	g_free(alias);
 }
 
