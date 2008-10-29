@@ -1107,6 +1107,26 @@ done:
 	search_cb(recs, err, user_data);
 }
 
+static gboolean is_in_uuid_list(const char *uuid)
+{
+	uint16_t uuid16;
+	int j;
+
+	/* Check for Bluetooth UUID-16 */
+	if (strlen(uuid) != 36 || strncmp(uuid, "0000", 4) ||
+			strcasecmp(uuid + 8, "-0000-1000-8000-00805F9B34FB"))
+		return FALSE;
+
+	uuid16 = strtol(uuid, NULL, 16);
+
+	for (j = 0; uuid_list[j]; j++) {
+		if (uuid16 == uuid_list[j])
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void init_browse(struct browse_req *req, gboolean reverse)
 {
 	GSList *l;
@@ -1117,21 +1137,11 @@ static void init_browse(struct browse_req *req, gboolean reverse)
 
 		for (i = 0; driver->uuids[i]; i++) {
 			char *uuid;
-			int j;
 
-			/* Eliminate duplicates of UUIDs in uuid_list[]... */
-			if (strlen(driver->uuids[i]) == 36 && 
-			    !strncmp(driver->uuids[i], "0000", 4) &&
-			    !strcasecmp(driver->uuids[i] + 8, 
-					"-0000-1000-8000-00805F9B34FB")) {
-				uint16_t uuid16 = strtol(driver->uuids[i],
-							 NULL, 16);
-				for (j = 0; uuid_list[j]; j++) {
-					if (uuid16 == uuid_list[j])
-						continue;
-				}
+			/* Check for duplicates in our default UUID list */
+			if (is_in_uuid_list(driver->uuids[i]))
+				continue;
 
-			}
 			/* ... and of UUIDs another driver already asked for */
 			if (g_slist_find_custom(req->uuids, driver->uuids[i],
 					(GCompareFunc) strcasecmp))
