@@ -854,11 +854,12 @@ int session_send(struct session_data *session, const char *filename,
 		session->path = g_strdup_printf("%s/transfer%ju",
 					TRANSFER_BASEPATH, counter++);
 
-	if (g_dbus_register_interface(session->conn, session->path,
+		if (g_dbus_register_interface(session->conn, session->path,
 					TRANSFER_INTERFACE,
 					transfer_methods, NULL, NULL,
 						session, NULL) == FALSE)
-		return -EIO;
+			return -EIO;
+	}
 
 	session_ref(session);
 
