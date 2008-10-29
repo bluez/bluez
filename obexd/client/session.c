@@ -635,6 +635,11 @@ static DBusMessage *release_agent(DBusConnection *connection,
 	g_free(session->agent_path);
 	session->agent_path = NULL;
 
+	if (session->agent_watch) {
+		g_dbus_remove_watch(session->conn, session->agent_watch);
+		session->agent_watch = 0;
+	}
+
 	return dbus_message_new_method_return(message);
 }
 
