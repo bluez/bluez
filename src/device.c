@@ -1110,7 +1110,7 @@ done:
 static gboolean is_in_uuid_list(const char *uuid)
 {
 	uint16_t uuid16;
-	int j;
+	int i;
 
 	/* Check for Bluetooth UUID-16 */
 	if (strlen(uuid) != 36 || strncmp(uuid, "0000", 4) ||
@@ -1119,8 +1119,8 @@ static gboolean is_in_uuid_list(const char *uuid)
 
 	uuid16 = strtol(uuid, NULL, 16);
 
-	for (j = 0; uuid_list[j]; j++) {
-		if (uuid16 == uuid_list[j])
+	for (i = 0; uuid_list[i]; i++) {
+		if (uuid16 == uuid_list[i])
 			return TRUE;
 	}
 
