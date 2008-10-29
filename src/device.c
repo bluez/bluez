@@ -402,6 +402,8 @@ static DBusMessage *discover_services(DBusConnection *conn,
 		if (bt_string2uuid(&uuid, pattern) < 0)
 			return invalid_args(msg);
 
+		sdp_uuid128_to_uuid(&uuid);
+
 		err = device_browse(device, conn, msg, &uuid, FALSE);
 		if (err < 0)
 			goto fail;
@@ -1087,6 +1089,7 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		bt_string2uuid(&uuid, uuid_str);
 		req->uuids = g_slist_remove(req->uuids, uuid_str);
 		g_free(uuid_str);
+		sdp_uuid128_to_uuid(&uuid);
 		bt_search_service(&src, &device->bdaddr, &uuid,
 						browse_cb, user_data, NULL);
 		return;
