@@ -650,6 +650,43 @@ static GDBusMethodTable session_methods[] = {
 	{ }
 };
 
+static void list_folder_callback(struct session_data *session,
+					void *user_data)
+{
+	DBusMessage *message = user_data;
+
+	g_dbus_send_reply(session->conn, message, DBUS_TYPE_INVALID);
+	dbus_message_unref(message);
+}
+
+static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+{
+	struct callback_data *callback = user_data;
+	char buf[1024];
+	gint len;
+
+	if (gw_obex_xfer_read(xfer, buf, sizeof(buf), &len, NULL) == FALSE)
+		goto complete;
+
+	if (len == gw_obex_xfer_object_size(xfer))
+		goto complete;
+
+	gw_obex_xfer_flush(xfer, NULL);
+
+	return;
+
+complete:
+	gw_obex_xfer_close(xfer, NULL);
+	gw_obex_xfer_free(xfer);
+	callback->session->xfer = NULL;
+
+	callback->func(callback->session, callback->data);
+
+	session_unref(callback->session);
+
+	g_free(callback);
+}
+
 static DBusMessage *change_folder(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
@@ -681,7 +718,42 @@ static DBusMessage *create_folder(DBusConnection *connection,
 static DBusMessage *list_folder(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
-	return dbus_message_new_method_return(message);
+	struct session_data *session = user_data;
+	struct callback_data *callback;
+	GwObexXfer *xfer;
+	int err;
+
+	if (session->obex == NULL)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.Failed",
+				"Not connected");
+
+	session_ref(session);
+	xfer = gw_obex_get_async(session->obex,
+			NULL, "x-obex/folder-listing", &err);
+	if (xfer == NULL) {
+		session_unref(session);
+		return g_dbus_create_error(message,
+				"org.openobex.Error.Failed",
+				OBEX_ResponseToString(err));
+	}
+
+	callback = g_try_malloc0(sizeof(*callback));
+	if (callback == NULL) {
+		session_unref(session);
+		gw_obex_xfer_free(xfer);
+		return NULL;
+	}
+
+	callback->session = session;
+	callback->func = list_folder_callback;
+	callback->data = dbus_message_ref(message);
+
+	gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
+
+	session->xfer = xfer;
+
+	return NULL;
 }
 
 static DBusMessage *get_file(DBusConnection *connection,
@@ -733,7 +805,8 @@ static DBusMessage *delete(DBusConnection *connection,
 static GDBusMethodTable ftp_methods[] = {
 	{ "ChangeFolder",	"s", "",	change_folder	},
 	{ "CreateFolder",	"s", "",	create_folder	},
-	{ "ListFolder",		"", "aa{sv}",	list_folder	},
+	{ "ListFolder",		"", "aa{sv}",	list_folder,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetFile",		"ss", "",	get_file	},
 	{ "PutFile",		"ss", "",	put_file	},
 	{ "CopyFile",		"ss", "",	copy_file	},
@@ -900,34 +973,6 @@ int session_send(struct session_data *session, const char *filename,
 	g_dbus_send_message(session->conn, message);
 
 	return 0;
-}
-
-static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
-{
-	struct callback_data *callback = user_data;
-	char buf[1024];
-	gint len;
-
-	if (gw_obex_xfer_read(xfer, buf, sizeof(buf), &len, NULL) == FALSE)
-		goto complete;
-
-	if (len == gw_obex_xfer_object_size(xfer))
-		goto complete;
-
-	gw_obex_xfer_flush(xfer, NULL);
-
-	return;
-
-complete:
-	gw_obex_xfer_close(xfer, NULL);
-	gw_obex_xfer_free(xfer);
-	callback->session->xfer = NULL;
-
-	callback->func(callback->session, callback->data);
-
-	session_unref(callback->session);
-
-	g_free(callback);
 }
 
 int session_pull(struct session_data *session,
