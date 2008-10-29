@@ -685,6 +685,22 @@ static DBusMessage *get_file(DBusConnection *connection,
 static DBusMessage *put_file(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
+	struct session_data *session = user_data;
+	gchar *sourcefile, *targetfile;
+
+	if (dbus_message_get_args(message, NULL,
+					DBUS_TYPE_STRING, &sourcefile,
+					DBUS_TYPE_STRING, &targetfile,
+					DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments",
+				"Invalid arguments in method call");
+
+	if (session_send(session, sourcefile, targetfile) < 0)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.Failed",
+				"Failed");
+
 	return dbus_message_new_method_return(message);
 }
 
