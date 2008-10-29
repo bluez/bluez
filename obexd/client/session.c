@@ -72,6 +72,9 @@ static void session_unref(struct session_data *session)
 	if (g_atomic_int_dec_and_test(&session->refcount) == FALSE)
 		return;
 
+	if (session->agent_watch)
+		g_dbus_remove_watch(session->conn, session->agent_watch);
+
 	if (session->agent_name != NULL) {
 		DBusMessage *message;
 
@@ -598,7 +601,7 @@ static DBusMessage *assign_agent(DBusConnection *connection,
 	session->agent_name = g_strdup(sender);
 	session->agent_path = g_strdup(path);
 
-	g_dbus_add_disconnect_watch(connection, sender,
+	session->agent_watch = g_dbus_add_disconnect_watch(connection, sender,
 				agent_disconnected, session, NULL);
 
 	return dbus_message_new_method_return(message);

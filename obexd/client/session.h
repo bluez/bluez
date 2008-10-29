@@ -49,6 +49,7 @@ struct session_data {
 	gchar *filename;
 	gchar *agent_name;
 	gchar *agent_path;
+	guint agent_watch;
 	GPtrArray *pending;
 };
 
