@@ -761,6 +761,9 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 	session->transferred += written;
 
+	if (session->agent_name == NULL || session->agent_path == NULL)
+		return;
+
 	message = dbus_message_new_method_call(session->agent_name,
 			session->agent_path, AGENT_INTERFACE, "Progress");
 
@@ -775,14 +778,16 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	return;
 
 complete:
-	message = dbus_message_new_method_call(session->agent_name,
+	if (session->agent_path && session->agent_name) {
+		message = dbus_message_new_method_call(session->agent_name,
 			session->agent_path, AGENT_INTERFACE, "Complete");
 
-	dbus_message_append_args(message,
+		dbus_message_append_args(message,
 			DBUS_TYPE_OBJECT_PATH, &session->path,
 						DBUS_TYPE_INVALID);
 
-	g_dbus_send_message(session->conn, message);
+		g_dbus_send_message(session->conn, message);
+	}
 
 	if (session->pending->len > 0) {
 		gchar *filename;
@@ -857,6 +862,18 @@ int session_send(struct session_data *session, const char *filename,
 
 	session_ref(session);
 
+	xfer = gw_obex_put_async(session->obex, session->name, NULL,
+						session->size, -1, NULL);
+	if (xfer == NULL)
+		return -ENOTCONN;
+
+	gw_obex_xfer_set_callback(xfer, put_xfer_progress, session);
+
+	session->xfer = xfer;
+
+	if (session->agent_name == NULL || session->agent_path == NULL)
+		return 0;
+
 	message = dbus_message_new_method_call(session->agent_name,
 			session->agent_path, AGENT_INTERFACE, "Request");
 
@@ -864,11 +881,6 @@ int session_send(struct session_data *session, const char *filename,
 							DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(session->conn, message);
-
-	xfer = gw_obex_put_async(session->obex, session->name, NULL,
-						session->size, -1, NULL);
-	if (xfer == NULL)
-		return -ENOTCONN;
 
 	message = dbus_message_new_method_call(session->agent_name,
 			session->agent_path, AGENT_INTERFACE, "Progress");
@@ -880,10 +892,6 @@ int session_send(struct session_data *session, const char *filename,
 							DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(session->conn, message);
-
-	gw_obex_xfer_set_callback(xfer, put_xfer_progress, session);
-
-	session->xfer = xfer;
 
 	return 0;
 }
