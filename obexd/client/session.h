@@ -40,6 +40,7 @@ struct session_data {
 	int sock;
 	int fd;
 	DBusConnection *conn;
+	DBusMessage *msg;
 	GwObex *obex;
 	GwObexXfer *xfer;
 	char buffer[4096];
