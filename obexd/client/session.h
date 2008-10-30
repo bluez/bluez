@@ -36,7 +36,8 @@ struct session_data {
 	int target_len;
 	uint16_t uuid;		/* Bluetooth Service Class */
 	gchar *name;
-	gchar *path;
+	gchar *path;		/* Session path */
+	gchar *transfer_path;	/* Transfer path */
 	int sock;
 	int fd;
 	DBusConnection *conn;

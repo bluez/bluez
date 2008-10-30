@@ -102,14 +102,15 @@ static void session_unref(struct session_data *session)
 		close(session->sock);
 
 	if (session->conn) {
-		if (session->path)
+		if (session->transfer_path)
 			g_dbus_unregister_interface(session->conn,
-					session->path, TRANSFER_INTERFACE);
+					session->transfer_path, TRANSFER_INTERFACE);
 
 		dbus_connection_unref(session->conn);
 	}
 
 	g_free(session->path);
+	g_free(session->transfer_path);
 	g_free(session->name);
 	g_free(session->filename);
 	g_free(session->agent_name);
@@ -426,7 +427,7 @@ static void abort_transfer(struct session_data *session)
 			session->agent_path, AGENT_INTERFACE, "Complete");
 
 	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &session->path,
+			DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
 						DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(session->conn, message);
@@ -442,11 +443,11 @@ static void abort_transfer(struct session_data *session)
 	g_free(session->name);
 	session->name = NULL;
 
-	if (session->path) {
+	if (session->transfer_path) {
 		g_dbus_unregister_interface(session->conn,
-				session->path, TRANSFER_INTERFACE);
-		g_free(session->path);
-		session->path = NULL;
+				session->transfer_path, TRANSFER_INTERFACE);
+		g_free(session->transfer_path);
+		session->transfer_path = NULL;
 	}
 
 	if (session->pending->len > 0) {
@@ -940,7 +941,8 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 						&written, NULL) == FALSE)
 		goto complete;
 
-	gw_obex_xfer_flush(xfer, NULL);
+	if (gw_obex_xfer_flush(xfer, NULL) == FALSE)
+		goto complete;
 
 	session->filled = (session->filled + len) - written;
 
@@ -956,7 +958,7 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 	dbus_message_set_no_reply(message, TRUE);
 
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &session->path,
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
 				DBUS_TYPE_UINT64, &session->transferred,
 							DBUS_TYPE_INVALID);
 
@@ -970,7 +972,7 @@ complete:
 			session->agent_path, AGENT_INTERFACE, "Complete");
 
 		dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &session->path,
+			DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
 						DBUS_TYPE_INVALID);
 
 		g_dbus_send_message(session->conn, message);
@@ -991,11 +993,11 @@ complete:
 		g_free(session->name);
 		session->name = NULL;
 
-		if (session->path) {
+		if (session->transfer_path) {
 			g_dbus_unregister_interface(session->conn,
-					session->path, TRANSFER_INTERFACE);
-			g_free(session->path);
-			session->path = NULL;
+					session->transfer_path, TRANSFER_INTERFACE);
+			g_free(session->transfer_path);
+			session->transfer_path = NULL;
 		}
 
 		session_send(session, filename, g_path_get_basename(filename));
@@ -1037,11 +1039,11 @@ int session_send(struct session_data *session, const char *filename,
 	session->filename = g_strdup(filename);
 	session->name = g_strdup(targetname);
 
-	if (session->path == NULL) {
-		session->path = g_strdup_printf("%s/transfer%ju",
+	if (session->transfer_path == NULL) {
+		session->transfer_path = g_strdup_printf("%s/transfer%ju",
 					TRANSFER_BASEPATH, counter++);
 
-		if (g_dbus_register_interface(session->conn, session->path,
+		if (g_dbus_register_interface(session->conn, session->transfer_path,
 					TRANSFER_INTERFACE,
 					transfer_methods, NULL, NULL,
 						session, NULL) == FALSE)
@@ -1065,7 +1067,7 @@ int session_send(struct session_data *session, const char *filename,
 	message = dbus_message_new_method_call(session->agent_name,
 			session->agent_path, AGENT_INTERFACE, "Request");
 
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &session->path,
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
 							DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(session->conn, message);
@@ -1075,7 +1077,7 @@ int session_send(struct session_data *session, const char *filename,
 
 	dbus_message_set_no_reply(message, TRUE);
 
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &session->path,
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
 						DBUS_TYPE_UINT64, &transferred,
 							DBUS_TYPE_INVALID);
 
