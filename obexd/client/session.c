@@ -452,11 +452,14 @@ static void abort_transfer(struct session_data *session)
 
 	if (session->pending->len > 0) {
 		gchar *filename;
+		gchar *basename;
 		filename = g_ptr_array_index(session->pending, 0);
 		g_ptr_array_remove(session->pending, filename);
 
-		session_send(session, filename, g_path_get_basename(filename));
+		basename = g_path_get_basename(filename);
+		session_send(session, filename, basename);
 		g_free(filename);
+		g_free(basename);
 	}
 
 	session_unref(session);
