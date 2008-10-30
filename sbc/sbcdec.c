@@ -157,7 +157,7 @@ static void decode(char *filename, char *output, int tofile)
 		}
 	}
 
-	count = 0;
+	count = len;
 	while (framelen > 0) {
 		/* we have completed an sbc_decode at this point sbc.len is the
 		 * length of the frame we just decoded count is the number of
@@ -179,15 +179,15 @@ static void decode(char *filename, char *output, int tofile)
 			exit(1);
 		}
 
-		/* increase the count */
-		count += len;
-
 		/* push the pointer in the file forward to the next bit to be
 		 * decoded tell the decoder to decode up to the remaining
 		 * length of the file (!) */
 		pos += framelen;
 		framelen = sbc_decode(&sbc, stream + pos, streamlen - pos,
 					buf + count, sizeof(buf) - count, &len);
+
+		/* increase the count */
+		count += len;
 	}
 
 	if (count > 0) {
