@@ -71,8 +71,6 @@
 
 #define check_address(address) bachk(address)
 
-static char base_path[] = "/org/bluez";
-
 static DBusConnection *connection = NULL;
 static GSList *adapter_drivers = NULL;
 
@@ -2766,6 +2764,7 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id)
 {
 	char path[MAX_PATH_LENGTH];
 	struct btd_adapter *adapter;
+	const char *base_path = manager_get_base_path();
 
 	if (!connection)
 		connection = conn;

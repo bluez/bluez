@@ -48,9 +48,16 @@
 #include "error.h"
 #include "manager.h"
 
+static char base_path[50] = "/org/bluez";
+
 static DBusConnection *connection = NULL;
 static int default_adapter_id = -1;
 static GSList *adapters = NULL;
+
+const char *manager_get_base_path(void)
+{
+	return base_path;
+}
 
 int manager_update_adapter(uint16_t dev_id)
 {
