@@ -47,7 +47,7 @@
 
 #define SERVICE_INTERFACE "org.bluez.Service"
 
-static DBusConnection *connection = NULL;
+static DBusConnection *connection;
 
 struct record_data {
 	uint32_t handle;
@@ -737,24 +737,26 @@ static void path_unregister(void *data)
 	}
 }
 
-static int service_probe(struct btd_adapter *adapter)
+static int register_interface(const char *path, struct btd_adapter *adapter)
 {
-	const char *path = adapter_get_path(adapter);
 	struct service_adapter *serv_adapter;
 
 	DBG("path %s", path);
 
-	serv_adapter = g_new0(struct service_adapter, 1);
+	serv_adapter = g_try_new0(struct service_adapter, 1);
+	if (serv_adapter == NULL)
+		return -ENOMEM;
+
 	serv_adapter->adapter = adapter;
 	serv_adapter->pending_list = NULL;
 
-	if (!g_dbus_register_interface(connection, path,
-					SERVICE_INTERFACE,
-					service_methods, NULL, NULL,
-					serv_adapter, path_unregister)) {
+	if (g_dbus_register_interface(connection, path, SERVICE_INTERFACE,
+				service_methods, NULL, NULL, serv_adapter,
+						path_unregister) == FALSE) {
 		error("D-Bus failed to register %s interface",
-				SERVICE_INTERFACE);
-		return -1;
+							SERVICE_INTERFACE);
+		g_free(serv_adapter);
+		return -EIO;
 	}
 
 	info("Registered interface %s on path %s", SERVICE_INTERFACE, path);
@@ -762,13 +764,23 @@ static int service_probe(struct btd_adapter *adapter)
 	return 0;
 }
 
-static void service_remove(struct btd_adapter *adapter)
+static void unregister_interface(const char *path)
 {
-	const char *path = adapter_get_path(adapter);
-
 	DBG("path %s", path);
 
 	g_dbus_unregister_interface(connection, path, SERVICE_INTERFACE);
+}
+
+static int service_probe(struct btd_adapter *adapter)
+{
+	register_interface(adapter_get_path(adapter), adapter);
+
+	return 0;
+}
+
+static void service_remove(struct btd_adapter *adapter)
+{
+	unregister_interface(adapter_get_path(adapter));
 }
 
 static struct btd_adapter_driver service_driver = {
@@ -777,18 +789,43 @@ static struct btd_adapter_driver service_driver = {
 	.remove	= service_remove,
 };
 
+static const char *any_path;
+
 static int service_init(void)
 {
+	int err;
+
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL)
 		return -EIO;
 
-	return btd_register_adapter_driver(&service_driver);
+	any_path = btd_adapter_any_request_path();
+	if (any_path != NULL) {
+		if (register_interface(any_path, NULL) < 0) {
+			btd_adapter_any_release_path();
+			any_path = NULL;
+		}
+	}
+
+	err = btd_register_adapter_driver(&service_driver);
+	if (err < 0) {
+		dbus_connection_unref(connection);
+		return err;
+	}
+
+	return 0;
 }
 
 static void service_exit(void)
 {
 	btd_unregister_adapter_driver(&service_driver);
+
+	if (any_path != NULL) {
+		unregister_interface(any_path);
+
+		btd_adapter_any_release_path();
+		any_path = NULL;
+	}
 
 	dbus_connection_unref(connection);
 }
