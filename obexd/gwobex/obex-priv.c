@@ -637,10 +637,10 @@ gboolean gw_obex_cb(GIOChannel *chan, GIOCondition cond, gpointer data) {
         debug("gw_obex_cb: error or connection closed\n");
         obex_link_error(ctx);
         GW_OBEX_UNLOCK(ctx);
-        if (ctx->dc_cb)
-            ctx->dc_cb(ctx, ctx->dc_data);
         if (ctx->xfer && ctx->xfer->cb)
             ctx->xfer->cb(ctx->xfer, ctx->xfer->cb_data);
+	else if (ctx->dc_cb)
+            ctx->dc_cb(ctx, ctx->dc_data);
         return FALSE;
     }
 
