@@ -159,7 +159,7 @@ void adapter_remove_active_conn(struct btd_adapter *adapter,
 				struct active_conn_info *dev);
 void adapter_update_devices(struct btd_adapter *adapter);
 struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct btd_adapter *adapter,
-						    bdaddr_t *bda);
+								bdaddr_t *bda);
 struct active_conn_info *adapter_search_active_conn_by_handle(struct btd_adapter *adapter,
 							uint16_t handle);
 void adapter_free_bonding_request(struct btd_adapter *adapter);
@@ -179,3 +179,6 @@ void btd_unregister_adapter_driver(struct btd_adapter_driver *driver);
 int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data);
 int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst);
+
+const char *btd_adapter_any_request_path(void);
+void btd_adapter_any_release_path(void);
