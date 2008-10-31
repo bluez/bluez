@@ -473,7 +473,7 @@ static gboolean list_printers(void)
 		return FALSE;
 
 	/* Get the default adapter */
-	message = dbus_message_new_method_call("org.bluez", "/org/bluez",
+	message = dbus_message_new_method_call("org.bluez", "/",
 						"org.bluez.Manager",
 						"DefaultAdapter");
 	if (message == NULL) {
