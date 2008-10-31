@@ -563,7 +563,7 @@ static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 		k = (i + 4) & 0xf;
 
 		/* Store in output, Q0 */
-		frame->pcm_sample[ch][blk * 4 + i] = SCALE4_STAGED2(
+		frame->pcm_sample[ch][blk * 4 + i] = SCALE4_STAGED1(
 			MULA(v[offset[i] + 0], sbc_proto_4_40m0[idx + 0],
 			MULA(v[offset[k] + 1], sbc_proto_4_40m1[idx + 0],
 			MULA(v[offset[i] + 2], sbc_proto_4_40m0[idx + 1],
@@ -609,7 +609,7 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 		k = (i + 8) & 0xf;
 
 		/* Store in output */
-		frame->pcm_sample[ch][blk * 8 + i] = SCALE8_STAGED2( // Q0
+		frame->pcm_sample[ch][blk * 8 + i] = SCALE8_STAGED1( // Q0
 			MULA(state->V[ch][offset[i] + 0], sbc_proto_8_80m0[idx + 0],
 			MULA(state->V[ch][offset[k] + 1], sbc_proto_8_80m1[idx + 0],
 			MULA(state->V[ch][offset[i] + 2], sbc_proto_8_80m0[idx + 1],

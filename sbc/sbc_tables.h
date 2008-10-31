@@ -39,9 +39,10 @@ static const int sbc_offset8[4][8] = {
 	{ -4, 0, 0, 0, 0, 0, 1, 2 }
 };
 
-#define SP4(val) ASR(val, SCALE_PROTO4_TBL)
+
+#define SP4(val) (((int32_t)(val))/17658) /* Used to be #define SP4(val) ASR(val, SCALE_PROTO4_TBL) but causes wrong gain */
 #define SA4(val) ASR(val, SCALE_ANA4_TBL)
-#define SP8(val) ASR(val, SCALE_PROTO8_TBL)
+#define SP8(val) (((int32_t)(val))/57740) /* Used to be #define SP8(val) ASR(val, SCALE_PROTO8_TBL) but causes wrong gain */
 #define SA8(val) ASR(val, SCALE_ANA8_TBL)
 #define SS4(val) ASR(val, SCALE_SPROTO4_TBL)
 #define SS8(val) ASR(val, SCALE_SPROTO8_TBL)
