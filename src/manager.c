@@ -276,6 +276,8 @@ dbus_bool_t manager_init(DBusConnection *conn, const char *path)
 {
 	connection = conn;
 
+	snprintf(base_path, sizeof(base_path), "/org/bluez/%d", getpid());
+
 	return g_dbus_register_interface(conn, "/", MANAGER_INTERFACE,
 			manager_methods, manager_signals,
 			NULL, NULL, NULL);
