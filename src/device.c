@@ -553,15 +553,14 @@ struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapt
 {
 	gchar *address_up;
 	struct btd_device *device;
-	uint16_t dev_id = adapter_get_dev_id(adapter);
+	const gchar *adapter_path = adapter_get_path(adapter);
 
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
 		return NULL;
 
 	address_up = g_ascii_strup(address, -1);
-	device->path = g_strdup_printf("%s/hci%d/dev_%s", "/org/bluez",
-							dev_id, address_up);
+	device->path = g_strdup_printf("%s/dev_%s", adapter_path, address_up);
 	g_strdelimit(device->path, ":", '_');
 	g_free(address_up);
 

@@ -71,6 +71,8 @@
 
 #define check_address(address) bachk(address)
 
+static char base_path[] = "/org/bluez";
+
 static DBusConnection *connection = NULL;
 static GSList *adapter_drivers = NULL;
 
@@ -2768,7 +2770,7 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id)
 	if (!connection)
 		connection = conn;
 
-	snprintf(path, sizeof(path), "%s/hci%d", "/org/bluez", id);
+	snprintf(path, sizeof(path), "%s/hci%d", base_path, id);
 
 	adapter = g_try_new0(struct btd_adapter, 1);
 	if (!adapter) {
