@@ -38,6 +38,8 @@
 #include "sbc.h"
 #include "formats.h"
 
+static int verbose = 0;
+
 static ssize_t __read(int fd, void *buf, size_t count)
 {
 	ssize_t len, pos = 0;
@@ -70,12 +72,13 @@ static ssize_t __write(int fd, const void *buf, size_t count)
 	return pos;
 }
 
-static void encode(char *filename, int subbands, int bitpool, int joint)
+static void encode(char *filename, int subbands,
+					int bitpool, int joint, int snr)
 {
 	struct au_header *au_hdr;
 	unsigned char input[2048], output[2048];
 	sbc_t sbc;
-	int fd, len, size, count, encoded;
+	int fd, len, size, count, encoded, srate;
 
 	if (strcmp(filename, "-")) {
 		fd = open(filename, O_RDONLY);
@@ -124,6 +127,8 @@ static void encode(char *filename, int subbands, int bitpool, int joint)
 		break;
 	}
 
+	srate = BE_INT(au_hdr->sample_rate);
+
 	sbc.subbands = subbands == 4 ? SBC_SB_4 : SBC_SB_8;
 
 	if (BE_INT(au_hdr->channels) == 1)
@@ -139,6 +144,17 @@ static void encode(char *filename, int subbands, int bitpool, int joint)
 	memmove(input, input + BE_INT(au_hdr->hdr_size), size);
 
 	sbc.bitpool = bitpool;
+	sbc.allocation = snr ? SBC_AM_SNR : SBC_AM_LOUDNESS;
+
+	if(verbose) {
+		fprintf(stderr,"encoding %s with rate %d, %d subbands, "
+			"%d bits, allocation method %s and mode %s\n",
+			filename, srate, subbands, bitpool,
+			sbc.allocation == SBC_AM_SNR ? "SNR" : "LOUDNESS",
+			sbc.mode == SBC_MODE_MONO ? "MONO" :
+					sbc.mode == SBC_MODE_STEREO ?
+						"STEREO" : "JOINTSTEREO");
+	}
 
 	while (1) {
 		if (size < sizeof(input)) {
@@ -193,6 +209,7 @@ static void usage(void)
 		"\t-s, --subbands       Number of subbands to use (4 or 8)\n"
 		"\t-b, --bitpool        Bitpool value (default is 32)\n"
 		"\t-j, --joint          Joint stereo\n"
+		"\t-S, --snr            Use SNR mode (default is loudness)\n"
 		"\n");
 }
 
@@ -202,14 +219,16 @@ static struct option main_options[] = {
 	{ "subbands",	1, 0, 's' },
 	{ "bitpool",	1, 0, 'b' },
 	{ "joint",	0, 0, 'j' },
+	{ "snr",	0, 0, 'S' },
 	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char *argv[])
 {
-	int i, opt, verbose = 0, subbands = 8, bitpool = 32, joint = 0;
+	int i, opt, subbands = 8, bitpool = 32, joint = 0, snr= 0;
 
-	while ((opt = getopt_long(argc, argv, "+hvs:b:j", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+hvs:b:jS",
+						main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'h':
 			usage();
@@ -236,6 +255,10 @@ int main(int argc, char *argv[])
 			joint = 1;
 			break;
 
+		case 'S':
+			snr = 1;
+			break;
+
 		default:
 			exit(1);
 		}
@@ -251,7 +274,7 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 0; i < argc; i++)
-		encode(argv[i], subbands, bitpool, joint);
+		encode(argv[i], subbands, bitpool, joint, snr);
 
 	return 0;
 }

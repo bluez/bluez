@@ -41,6 +41,8 @@
 
 #define BUF_SIZE 8192
 
+static int verbose = 0;
+
 static void decode(char *filename, char *output, int tofile)
 {
 	unsigned char buf[BUF_SIZE], *stream;
@@ -120,7 +122,16 @@ static void decode(char *filename, char *output, int tofile)
 		frequency = 0;
 	}
 
-	printf("%d Hz, %d channels\n", frequency, channels);
+	if (verbose) {
+		fprintf(stderr,"decoding %s with rate %d, %d subbands, "
+			"%d bits, allocation method %s and mode %s\n",
+			filename, frequency, sbc.subbands * 4 + 4, sbc.bitpool,
+			sbc.allocation == SBC_AM_SNR ? "SNR" : "LOUDNESS",
+			sbc.mode == SBC_MODE_MONO ? "MONO" :
+					sbc.mode == SBC_MODE_STEREO ?
+						"STEREO" : "JOINTSTEREO");
+	}
+
 	if (tofile) {
 		struct au_header au_hdr;
 
@@ -139,25 +150,25 @@ static void decode(char *filename, char *output, int tofile)
 	} else {
 		if (ioctl(ad, SNDCTL_DSP_SETFMT, &format) < 0) {
 			fprintf(stderr, "Can't set audio format on %s: %s\n",
-					output, strerror(errno));
+						output, strerror(errno));
 			goto close;
 		}
 
 		if (ioctl(ad, SNDCTL_DSP_CHANNELS, &channels) < 0) {
-			fprintf(stderr,
-				"Can't set number of channels on %s: %s\n",
-				output, strerror(errno));
+			fprintf(stderr, "Can't set number of channels on %s: %s\n",
+						output, strerror(errno));
 			goto close;
 		}
 
 		if (ioctl(ad, SNDCTL_DSP_SPEED, &frequency) < 0) {
 			fprintf(stderr, "Can't set audio rate on %s: %s\n",
-					output, strerror(errno));
+						output, strerror(errno));
 			goto close;
 		}
 	}
 
 	count = len;
+
 	while (framelen > 0) {
 		/* we have completed an sbc_decode at this point sbc.len is the
 		 * length of the frame we just decoded count is the number of
@@ -233,9 +244,10 @@ static struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	char *output = NULL;
-	int i, opt, verbose = 0, tofile = 0;
+	int i, opt, tofile = 0;
 
-	while ((opt = getopt_long(argc, argv, "+hvd:f:", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+hvd:f:",
+						main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'h':
 			usage();
