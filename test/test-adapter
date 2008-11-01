@@ -20,7 +20,6 @@ if (len(sys.argv) < 2):
 	print "  requestmode <mode>"
 	print "  discoverabletimeout [timeout]"
 	print "  periodicdiscovery [on/off]"
-	print "  addservicerecord <file>"
 	sys.exit(1)
 
 if (sys.argv[1] == "address"):
@@ -72,18 +71,6 @@ if (sys.argv[1] == "periodicdiscovery"):
 		else:
 			value = dbus.Boolean(sys.argv[2])
 		adapter.SetProperty("PeriodicDiscovery", value)
-		time.sleep(120)
-	sys.exit(0)
-
-if (sys.argv[1] == "addservicerecord"):
-	if (len(sys.argv) < 3):
-		print "Need file parameter"
-	else:
-		f = open(sys.argv[2])
-		record = f.read()
-		f.close()
-		handle = adapter.AddServiceRecord(record)
-		print "0x%x" % (handle)
 		time.sleep(120)
 	sys.exit(0)
 

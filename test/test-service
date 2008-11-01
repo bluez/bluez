@@ -1,0 +1,33 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+import time
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
+
+adapter = dbus.Interface(bus.get_object("org.bluez", manager.FindAdapter("any")),
+							"org.bluez.Service")
+
+if (len(sys.argv) < 2):
+	print "Usage: %s <command>" % (sys.argv[0])
+	print ""
+	print "  addrecord <file>"
+	sys.exit(1)
+
+if (sys.argv[1] == "addrecord"):
+	if (len(sys.argv) < 3):
+		print "Need file parameter"
+	else:
+		f = open(sys.argv[2])
+		record = f.read()
+		f.close()
+		handle = adapter.AddRecord(record)
+		print "0x%x" % (handle)
+		time.sleep(120)
+	sys.exit(0)
+
+print "Unknown command"
+sys.exit(1)
