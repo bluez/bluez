@@ -189,7 +189,12 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 
 	/* hci_devid() would make sense to use here, except it
 	   is restricted to devices which are up */
-	if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4)
+	if (!strcmp(pattern, "any") || !strcmp(pattern, "00:00:00:00:00:00")) {
+		path = adapter_any_get_path();
+		if (path != NULL)
+			goto done;
+		dev_id = -1;
+	} if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4)
 		dev_id = atoi(pattern + 3);
 	else
 		dev_id = find_by_address(pattern);
@@ -207,14 +212,15 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 	if (!adapter)
 		return no_such_adapter(msg);
 
+	path = adapter_get_path(adapter);
+
+done:
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return NULL;
 
-	path = adapter_get_path(adapter);
-
 	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
-				DBUS_TYPE_INVALID);
+							DBUS_TYPE_INVALID);
 
 	return reply;
 }

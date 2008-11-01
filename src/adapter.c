@@ -3401,6 +3401,11 @@ void adapter_update_devices(struct btd_adapter *adapter)
 static gchar *adapter_any_path = NULL;
 static int adapter_any_refcount = 0;
 
+const char *adapter_any_get_path(void)
+{
+	return adapter_any_path;
+}
+
 const char *btd_adapter_any_request_path(void)
 {
 	if (adapter_any_refcount > 0)
