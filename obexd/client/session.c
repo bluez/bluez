@@ -419,18 +419,74 @@ int session_create(const char *source,
 	return 0;
 }
 
-static void abort_transfer(struct session_data *session)
+static void agent_request(DBusConnection *conn, const char *agent_name,
+			const char *agent_path, const char *transfer_path)
 {
 	DBusMessage *message;
 
-	message = dbus_message_new_method_call(session->agent_name,
-			session->agent_path, AGENT_INTERFACE, "Complete");
+	if (agent_name == NULL || agent_path == NULL)
+		return;
+
+	message = dbus_message_new_method_call(agent_name,
+			agent_path, AGENT_INTERFACE, "Request");
 
 	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
-						DBUS_TYPE_INVALID);
+			DBUS_TYPE_OBJECT_PATH, &transfer_path,
+			DBUS_TYPE_INVALID);
 
-	g_dbus_send_message(session->conn, message);
+	g_dbus_send_message(conn, message);
+
+	/* FIXME: Reply needs be handled */
+}
+
+static void agent_notify_progress(DBusConnection *conn, const char *agent_name,
+			const char *agent_path, const char *transfer_path,
+			uint64_t transferred)
+{
+	DBusMessage *message;
+
+	if (agent_name == NULL || agent_path == NULL)
+		return;
+
+	message = dbus_message_new_method_call(agent_name,
+			agent_path, AGENT_INTERFACE, "Progress");
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer_path,
+			DBUS_TYPE_UINT64, &transferred,
+			DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(conn, message);
+}
+
+static void agent_notify_complete(DBusConnection *conn, const char *agent_name,
+			const char *agent_path, const char *transfer_path)
+{
+	DBusMessage *message;
+
+	if (agent_name == NULL || agent_path == NULL)
+		return;
+
+	message = dbus_message_new_method_call(agent_name,
+			agent_path, AGENT_INTERFACE, "Complete");
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer_path,
+			DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(conn, message);
+}
+
+
+static void abort_transfer(struct session_data *session)
+{
+
+	agent_notify_complete(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path);
 
 	gw_obex_xfer_abort(session->xfer, NULL);
 
@@ -653,68 +709,6 @@ static GDBusMethodTable session_methods[] = {
 	{ "ReleaseAgent",	"o", "",	release_agent	},
 	{ }
 };
-
-static void agent_request(DBusConnection *conn, const char *agent_name,
-			const char *agent_path, const char *transfer_path)
-{
-	DBusMessage *message;
-
-	if (agent_name == NULL || agent_path == NULL)
-		return;
-
-	message = dbus_message_new_method_call(agent_name,
-			agent_path, AGENT_INTERFACE, "Request");
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer_path,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(conn, message);
-
-	/* FIXME: Reply needs be handled */
-}
-
-static void agent_notify_progress(DBusConnection *conn, const char *agent_name,
-			const char *agent_path, const char *transfer_path,
-			uint64_t transferred)
-{
-	DBusMessage *message;
-
-	if (agent_name == NULL || agent_path == NULL)
-		return;
-
-	message = dbus_message_new_method_call(agent_name,
-			agent_path, AGENT_INTERFACE, "Progress");
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer_path,
-			DBUS_TYPE_UINT64, &transferred,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(conn, message);
-}
-
-static void agent_notify_complete(DBusConnection *conn, const char *agent_name,
-			const char *agent_path, const char *transfer_path)
-{
-	DBusMessage *message;
-
-	if (agent_name == NULL || agent_path == NULL)
-		return;
-
-	message = dbus_message_new_method_call(agent_name,
-			agent_path, AGENT_INTERFACE, "Complete");
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer_path,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(conn, message);
-}
 
 static void append_variant(DBusMessageIter *iter, int type, void *val)
 {
