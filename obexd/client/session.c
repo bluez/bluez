@@ -1128,7 +1128,6 @@ static GDBusMethodTable ftp_methods[] = {
 static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
 	struct session_data *session = user_data;
-	DBusMessage *message;
 	ssize_t len;
 	gint written;
 
@@ -1150,20 +1149,9 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 	session->transferred += written;
 
-	if (session->agent_name == NULL || session->agent_path == NULL)
-		return;
-
-	message = dbus_message_new_method_call(session->agent_name,
-			session->agent_path, AGENT_INTERFACE, "Progress");
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
-				DBUS_TYPE_UINT64, &session->transferred,
-							DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(session->conn, message);
-
+	agent_notify_progress(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path,
+			session->transferred);
 	return;
 
 complete:
