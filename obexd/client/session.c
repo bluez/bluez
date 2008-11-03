@@ -992,8 +992,9 @@ complete:
 	}
 
 	if (session->pending->len > 0) {
-		gchar *filename;
-		filename = g_ptr_array_index(session->pending, 0);
+		gchar *filename = g_ptr_array_index(session->pending, 0);
+		gchar *basename = g_path_get_basename(filename);
+
 		g_ptr_array_remove(session->pending, filename);
 
 		if (session->transfer_path) {
@@ -1003,8 +1004,9 @@ complete:
 			session->transfer_path = NULL;
 		}
 
-		session_send(session, filename, g_path_get_basename(filename));
+		session_send(session, filename, basename);
 		g_free(filename);
+		g_free(basename);
 	}
 
 	session_unref(session);

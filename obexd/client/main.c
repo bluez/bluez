@@ -74,10 +74,14 @@ static void create_callback(struct session_data *session, void *user_data)
 
 	for (i = 0; i < data->files->len; i++) {
 		const gchar *filename = g_ptr_array_index(data->files, i);
+		gchar *basename = g_path_get_basename(filename);
 
-		if (session_send(session, filename,
-				g_path_get_basename(filename)) < 0)
+		if (session_send(session, filename, basename) < 0) {
+			g_free(basename);
 			break;
+		}
+
+		g_free(basename);
 	}
 
 done:
