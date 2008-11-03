@@ -970,6 +970,16 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	return;
 
 complete:
+	gw_obex_xfer_close(session->xfer, NULL);
+	gw_obex_xfer_free(session->xfer);
+	session->xfer = NULL;
+
+	g_free(session->filename);
+	session->filename = NULL;
+
+	g_free(session->name);
+	session->name = NULL;
+
 	if (session->agent_path && session->agent_name) {
 		message = dbus_message_new_method_call(session->agent_name,
 			session->agent_path, AGENT_INTERFACE, "Complete");
@@ -985,16 +995,6 @@ complete:
 		gchar *filename;
 		filename = g_ptr_array_index(session->pending, 0);
 		g_ptr_array_remove(session->pending, filename);
-
-		gw_obex_xfer_close(session->xfer, NULL);
-		gw_obex_xfer_free(session->xfer);
-		session->xfer = NULL;
-
-		g_free(session->filename);
-		session->filename = NULL;
-
-		g_free(session->name);
-		session->name = NULL;
 
 		if (session->transfer_path) {
 			g_dbus_unregister_interface(session->conn,
