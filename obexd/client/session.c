@@ -834,7 +834,6 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	gint bsize, bread, err = 0;
 	gboolean ret;
 
-	/* FIXME: Check buffer overflow */
 	bsize = sizeof(session->buffer) - session->filled;
 	ret = gw_obex_xfer_read(xfer, session->buffer + session->filled,
 					bsize, &bread, &err);
@@ -866,13 +865,19 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	if (session->size == 0)
 		session->size = gw_obex_xfer_object_size(xfer);
 
-	if (bread == session->size)
+	if (session->fd > 0) {
+		write(session->fd, session->buffer, bread);
+		session->filled = 0;
+	}
+
+	if (session->transferred == session->size)
 		goto complete;
 
 	gw_obex_xfer_flush(xfer, NULL);
 
 	agent_notify_progress(session->conn, session->agent_name,
-			session->agent_path, session->transfer_path, 0);
+			session->agent_path, session->transfer_path,
+			session->transferred);
 
 	return;
 
