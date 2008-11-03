@@ -845,6 +845,7 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 		g_dbus_send_message(session->conn, reply);
 
+		dbus_message_unref(session->msg);
 		session->msg = NULL;
 	}
 
@@ -888,8 +889,6 @@ complete:
 
 	if (session->fd > 0)
 		close(session->fd);
-
-	/* FIXME: Report complete */
 
 	session_unref(callback->session);
 
