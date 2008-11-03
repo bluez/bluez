@@ -654,6 +654,68 @@ static GDBusMethodTable session_methods[] = {
 	{ }
 };
 
+static void agent_request(DBusConnection *conn, const char *agent_name,
+			const char *agent_path, const char *transfer_path)
+{
+	DBusMessage *message;
+
+	if (agent_name == NULL || agent_path == NULL)
+		return;
+
+	message = dbus_message_new_method_call(agent_name,
+			agent_path, AGENT_INTERFACE, "Request");
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer_path,
+			DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(conn, message);
+
+	/* FIXME: Reply needs be handled */
+}
+
+static void agent_notify_progress(DBusConnection *conn, const char *agent_name,
+			const char *agent_path, const char *transfer_path,
+			uint64_t transferred)
+{
+	DBusMessage *message;
+
+	if (agent_name == NULL || agent_path == NULL)
+		return;
+
+	message = dbus_message_new_method_call(agent_name,
+			agent_path, AGENT_INTERFACE, "Progress");
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer_path,
+			DBUS_TYPE_UINT64, &transferred,
+			DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(conn, message);
+}
+
+static void agent_notify_complete(DBusConnection *conn, const char *agent_name,
+			const char *agent_path, const char *transfer_path)
+{
+	DBusMessage *message;
+
+	if (agent_name == NULL || agent_path == NULL)
+		return;
+
+	message = dbus_message_new_method_call(agent_name,
+			agent_path, AGENT_INTERFACE, "Complete");
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer_path,
+			DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(conn, message);
+}
+
 static void append_variant(DBusMessageIter *iter, int type, void *val)
 {
 	DBusMessageIter value;
@@ -760,38 +822,168 @@ done:
 	session->msg = NULL;
 }
 
+static void get_file_callback(struct session_data *session, void *user_data)
+{
+
+}
+
 static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
 	struct callback_data *callback = user_data;
 	struct session_data *session = callback->session;
-	gint bsize, bread;
+	gint bsize, bread, err = 0;
 	gboolean ret;
 
 	/* FIXME: Check buffer overflow */
 	bsize = sizeof(session->buffer) - session->filled;
 	ret = gw_obex_xfer_read(xfer, session->buffer + session->filled,
-					bsize, &bread, NULL);
-	session->filled += bread;
-	if (ret == FALSE)
-		goto complete;
+					bsize, &bread, &err);
 
-	if (bread == gw_obex_xfer_object_size(xfer))
+	/* For GetFile reply on the first received stream */
+	if (session->fd > 0 && session->msg) {
+		DBusMessage *reply;
+
+		if (ret == FALSE)
+			reply = g_dbus_create_error(session->msg,
+					"org.openobex.Error.Failed",
+					OBEX_ResponseToString(err));
+		else
+			reply = dbus_message_new_method_return(session->msg);
+
+		g_dbus_send_message(session->conn, reply);
+
+		session->msg = NULL;
+	}
+
+	if (ret == FALSE) {
+		fprintf(stderr, "gw_obex_xfer_read(): %s\n",
+				OBEX_ResponseToString(err));
+		goto complete;
+	}
+
+	session->filled += bread;
+	session->transferred += bread;
+	if (session->size == 0)
+		session->size = gw_obex_xfer_object_size(xfer);
+
+	if (bread == session->size)
 		goto complete;
 
 	gw_obex_xfer_flush(xfer, NULL);
 
+	agent_notify_progress(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path, 0);
+
 	return;
 
 complete:
+
+	agent_notify_complete(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path);
+
 	gw_obex_xfer_close(xfer, NULL);
 	gw_obex_xfer_free(xfer);
 	callback->session->xfer = NULL;
 
 	callback->func(callback->session, callback->data);
 
+	if (session->fd > 0)
+		close(session->fd);
+
+	/* FIXME: Report complete */
+
 	session_unref(callback->session);
 
 	g_free(callback);
+}
+
+static char *register_transfer(DBusConnection *conn, void *user_data)
+{
+	char *path;
+
+	path = g_strdup_printf("%s/transfer%ju",
+			TRANSFER_BASEPATH, counter++);
+
+	if (g_dbus_register_interface(conn, path,
+				TRANSFER_INTERFACE,
+				transfer_methods, NULL, NULL,
+				user_data, NULL) == FALSE) {
+		g_free(path);
+		return NULL;
+	}
+
+	return path;
+}
+
+int session_get(struct session_data *session, const char *type,
+		const char *filename, const char *targetname,
+		session_callback_t func)
+{
+	struct callback_data *callback;
+	GwObexXfer *xfer;
+	int err, fd = 0;
+
+	if (session->obex == NULL)
+		return -ENOTCONN;
+
+	if (type == NULL) {
+		if (targetname == NULL)
+			targetname = filename;
+
+		fd = open(targetname, O_WRONLY | O_CREAT, 0600);
+		if (fd < 0) {
+			err = errno;
+			fprintf(stderr, "open(): %s(%d)\n", strerror(err), err);
+			return -err;
+		}
+
+		session->transfer_path = register_transfer(session->conn, session);
+		if (session->transfer_path == NULL) {
+			if (fd)
+				close(fd);
+
+			return -EIO;
+		}
+	}
+
+	session->fd = fd;
+	session->transferred = 0;
+	session->size = 0;
+	session->filename = g_strdup(filename);
+	session->name = g_strdup(targetname);
+
+	session_ref(session);
+
+	xfer = gw_obex_get_async(session->obex,
+				filename, type, NULL);
+	if (xfer == NULL) {
+		close(session->fd);
+		session_unref(session);
+		return -EIO;
+	}
+
+	callback = g_try_malloc0(sizeof(*callback));
+	if (callback == NULL) {
+		close(session->fd);
+		session_unref(session);
+		gw_obex_xfer_free(xfer);
+		return -ENOMEM;
+	}
+
+	callback->session = session;
+	callback->func = func;
+
+	gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
+
+	session->xfer = xfer;
+
+	agent_request(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path);
+
+	agent_notify_progress(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path, 0);
+
+	return 0;
 }
 
 static DBusMessage *change_folder(DBusConnection *connection,
@@ -826,45 +1018,20 @@ static DBusMessage *list_folder(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
-	struct callback_data *callback;
-	GwObexXfer *xfer;
-	int err;
 
 	if (session->msg)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InProgress",
 				"Transfer in progress");
 
-	if (session->obex == NULL)
+	if (session_get(session, "x-obex/folder-listing",
+				NULL, NULL, list_folder_callback) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
-				"Not connected");
-
-	session_ref(session);
-	xfer = gw_obex_get_async(session->obex,
-			NULL, "x-obex/folder-listing", &err);
-	if (xfer == NULL) {
-		session_unref(session);
-		return g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
-				OBEX_ResponseToString(err));
-	}
-
-	callback = g_try_malloc0(sizeof(*callback));
-	if (callback == NULL) {
-		session_unref(session);
-		gw_obex_xfer_free(xfer);
-		return NULL;
-	}
+				"Failed");
 
 	session->msg = dbus_message_ref(message);
 	session->filled = 0;
-	callback->session = session;
-	callback->func = list_folder_callback;
-
-	gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
-
-	session->xfer = xfer;
 
 	return NULL;
 }
@@ -872,7 +1039,31 @@ static DBusMessage *list_folder(DBusConnection *connection,
 static DBusMessage *get_file(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
-	return dbus_message_new_method_return(message);
+	struct session_data *session = user_data;
+	const char *target_file, *source_file;
+
+	if (session->msg)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InProgress",
+				"Transfer in progress");
+
+	if (dbus_message_get_args(message, NULL,
+				DBUS_TYPE_STRING, &target_file,
+				DBUS_TYPE_STRING, &source_file,
+				DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
+	if (session_get(session, NULL, source_file,
+				target_file, get_file_callback) < 0)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.Failed",
+				"Failed");
+
+	session->msg = dbus_message_ref(message);
+	session->filled = 0;
+
+	return NULL;
 }
 
 static DBusMessage *put_file(DBusConnection *connection,
@@ -920,7 +1111,8 @@ static GDBusMethodTable ftp_methods[] = {
 	{ "CreateFolder",	"s", "",	create_folder	},
 	{ "ListFolder",		"", "aa{sv}",	list_folder,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "GetFile",		"ss", "",	get_file	},
+	{ "GetFile",		"ss", "",	get_file,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "PutFile",		"ss", "",	put_file	},
 	{ "CopyFile",		"ss", "",	copy_file	},
 	{ "MoveFile",		"ss", "",	move_file	},
@@ -970,6 +1162,10 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	return;
 
 complete:
+
+	agent_notify_complete(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path);
+
 	gw_obex_xfer_close(session->xfer, NULL);
 	gw_obex_xfer_free(session->xfer);
 	session->xfer = NULL;
@@ -979,17 +1175,6 @@ complete:
 
 	g_free(session->name);
 	session->name = NULL;
-
-	if (session->agent_path && session->agent_name) {
-		message = dbus_message_new_method_call(session->agent_name,
-			session->agent_path, AGENT_INTERFACE, "Complete");
-
-		dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
-						DBUS_TYPE_INVALID);
-
-		g_dbus_send_message(session->conn, message);
-	}
 
 	if (session->pending->len > 0) {
 		gchar *filename = g_ptr_array_index(session->pending, 0);
@@ -1016,8 +1201,6 @@ int session_send(struct session_data *session, const char *filename,
 				const char *targetname)
 {
 	GwObexXfer *xfer;
-	DBusMessage *message;
-	guint64 transferred = 0;
 	struct stat st;
 	int fd;
 
@@ -1038,22 +1221,17 @@ int session_send(struct session_data *session, const char *filename,
 		return -EIO;
 	}
 
+	session->transfer_path = register_transfer(session->conn, session);
+	if (session->transfer_path == NULL) {
+		close(fd);
+		return -EIO;
+	}
+
 	session->fd = fd;
 	session->size = st.st_size;
 	session->transferred = 0;
 	session->filename = g_strdup(filename);
 	session->name = g_strdup(targetname);
-
-	if (session->transfer_path == NULL) {
-		session->transfer_path = g_strdup_printf("%s/transfer%ju",
-					TRANSFER_BASEPATH, counter++);
-
-		if (g_dbus_register_interface(session->conn, session->transfer_path,
-					TRANSFER_INTERFACE,
-					transfer_methods, NULL, NULL,
-						session, NULL) == FALSE)
-			return -EIO;
-	}
 
 	session_ref(session);
 
@@ -1066,27 +1244,11 @@ int session_send(struct session_data *session, const char *filename,
 
 	session->xfer = xfer;
 
-	if (session->agent_name == NULL || session->agent_path == NULL)
-		return 0;
+	agent_request(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path);
 
-	message = dbus_message_new_method_call(session->agent_name,
-			session->agent_path, AGENT_INTERFACE, "Request");
-
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
-							DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(session->conn, message);
-
-	message = dbus_message_new_method_call(session->agent_name,
-			session->agent_path, AGENT_INTERFACE, "Progress");
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
-						DBUS_TYPE_UINT64, &transferred,
-							DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(session->conn, message);
+	agent_notify_progress(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path, 0);
 
 	return 0;
 }
