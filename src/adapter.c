@@ -3198,7 +3198,7 @@ struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct btd_adapter
 	if (!adapter || !adapter->active_conn)
 		return NULL;
 
-	l = g_slist_find_custom(adapter->active_conn, &bda,
+	l = g_slist_find_custom(adapter->active_conn, bda,
 					active_conn_find_by_bdaddr);
 	if (l)
 		return l->data;
