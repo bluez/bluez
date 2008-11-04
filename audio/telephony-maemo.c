@@ -702,7 +702,7 @@ static void get_remote_reply(DBusPendingCall *pending_call, void *user_data)
 	DBusMessage *reply;
 	DBusError err;
 	const char *number;
-	uint8_t direction;
+	dbus_bool_t originating, terminating;
 
 	reply = dbus_pending_call_steal_reply(pending_call);
 
@@ -717,7 +717,8 @@ static void get_remote_reply(DBusPendingCall *pending_call, void *user_data)
 	dbus_error_init(&err);
 	if (!dbus_message_get_args(reply, NULL,
 					DBUS_TYPE_STRING, &number,
-					DBUS_TYPE_BYTE, &direction,
+					DBUS_TYPE_BOOLEAN, &originating,
+					DBUS_TYPE_BOOLEAN, &terminating,
 					DBUS_TYPE_INVALID)) {
 		error("Unexpected paramters in %s GetRemote reply:",
 				call->object_path, err.name, err.message);
@@ -731,7 +732,7 @@ static void get_remote_reply(DBusPendingCall *pending_call, void *user_data)
 	g_free(call->number);
 	call->number = g_strdup(number);
 
-	if (direction == CSD_CALL_DIRECTION_OUTGOING) {
+	if (originating) {
 		g_free(last_dialed_number);
 		last_dialed_number = g_strdup(number);
 	}
@@ -767,10 +768,12 @@ static void resolve_number(struct csd_call *call)
 static void handle_call_status(DBusMessage *msg, const char *call_path)
 {
 	struct csd_call *call, *active_call;
-	uint8_t status;
+	dbus_uint32_t status, cause_type, cause;
 
 	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &status,
+					DBUS_TYPE_UINT32, &status,
+					DBUS_TYPE_UINT32, &cause_type,
+					DBUS_TYPE_UINT32, &cause,
 					DBUS_TYPE_INVALID)) {
 		error("Unexpected paramters in Instance.CallStatus() signal");
 		return;
@@ -890,21 +893,6 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	}
 
 	call->status = (int) status;
-}
-
-static void handle_call_error(DBusMessage *msg, const char *call_path)
-{
-	uint8_t type, code;
-
-	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &type,
-					DBUS_TYPE_BYTE, &code,
-					DBUS_TYPE_INVALID)) {
-		error("Unexpected parameters to CallServiceError");
-		return;
-	}
-
-	debug("telephony-maemo: CallServiceError(%u, %u)", type, code);
 }
 
 static void get_operator_name_reply(DBusPendingCall *pending_call,
@@ -1123,9 +1111,6 @@ static DBusHandlerResult cs_signal_filter(DBusConnection *conn,
 		handle_incoming_call(msg);
 	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE, "CallStatus"))
 		handle_call_status(msg, path);
-	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE,
-					"CallServiceError"))
-		handle_call_error(msg, path);
 	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
 					"registration_status_change"))
 		handle_registration_status_change(msg);
@@ -1192,8 +1177,8 @@ static void parse_call_list(DBusMessageIter *iter)
 					DBUS_TYPE_UINT32, &status,
 					DBUS_TYPE_BOOLEAN, &originating,
 					DBUS_TYPE_BOOLEAN, &terminating,
-					DBUS_TYPE_BOOLEAN, &on_hold,
 					DBUS_TYPE_BOOLEAN, &emerg,
+					DBUS_TYPE_BOOLEAN, &on_hold,
 					DBUS_TYPE_BOOLEAN, &conf,
 					DBUS_TYPE_STRING, &number,
 					DBUS_TYPE_INVALID)) {
