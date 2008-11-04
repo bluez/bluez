@@ -584,10 +584,10 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 		g_free(xml);
 	}
 
+done:
 	g_slist_free(any->servers);
 	any->servers = NULL;
 
-done:
 	dbus_message_unref(reply);
 }
 
