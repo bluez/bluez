@@ -77,6 +77,8 @@ struct service_adapter {
 	GSList *records;
 };
 
+static struct service_adapter *serv_adapter_any = NULL;
+
 static int compute_seq_size(sdp_data_t *data)
 {
 	int unit_size = data->unitSize;
@@ -632,8 +634,11 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 		return failed(msg);
 
 	user_record = find_record(serv_adapter, handle, sender);
-	if (!user_record)
-		return not_authorized(msg);
+	if (!user_record) {
+		user_record = find_record(serv_adapter_any, handle, sender);
+		if (!user_record)
+			return not_authorized(msg);
+	}
 
 	record = sdp_record_find(user_record->handle);
 
@@ -782,6 +787,9 @@ static int register_interface(const char *path, struct btd_adapter *adapter)
 	}
 
 	info("Registered interface %s on path %s", SERVICE_INTERFACE, path);
+
+	if (serv_adapter->adapter == NULL)
+		serv_adapter_any = serv_adapter;
 
 	return 0;
 }
