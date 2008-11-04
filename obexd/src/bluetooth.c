@@ -46,158 +46,17 @@
 #include "obex.h"
 #include "dbus.h"
 
-const static gchar *opp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
-<record>									\
-  <attribute id=\"0x0001\">							\
-    <sequence>									\
-      <uuid value=\"0x1105\"/>							\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0004\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x0100\"/>						\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0003\"/>						\
-        <uint8 value=\"%u\" name=\"channel\"/>					\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0008\"/>						\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0009\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x1105\"/>						\
-        <uint16 value=\"0x0100\" name=\"version\"/>				\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0100\">							\
-    <text value=\"%s\" name=\"name\"/>						\
-  </attribute>									\
-										\
-  <attribute id=\"0x0303\">							\
-    <sequence>									\
-      <uint8 value=\"0x01\"/>							\
-      <uint8 value=\"0x01\"/>							\
-      <uint8 value=\"0x02\"/>							\
-      <uint8 value=\"0x03\"/>							\
-      <uint8 value=\"0x04\"/>							\
-      <uint8 value=\"0x05\"/>							\
-      <uint8 value=\"0x06\"/>							\
-      <uint8 value=\"0xff\"/>							\
-    </sequence>									\
-  </attribute>									\
-</record>";
+static GSList *servers = NULL;
 
-const static gchar *ftp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
-<record>									\
-  <attribute id=\"0x0001\">							\
-    <sequence>									\
-      <uuid value=\"0x1106\"/>							\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0004\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x0100\"/>						\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0003\"/>						\
-        <uint8 value=\"%u\" name=\"channel\"/>					\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0008\"/>						\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0009\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x1106\"/>						\
-        <uint16 value=\"0x0100\" name=\"version\"/>				\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0100\">							\
-    <text value=\"%s\" name=\"name\"/>						\
-  </attribute>									\
-</record>";
-
-const static gchar *pbap_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
-<record>									\
-  <attribute id=\"0x0001\">							\
-    <sequence>									\
-      <uuid value=\"0x112f\"/>							\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0004\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x0100\"/>						\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0003\"/>						\
-        <uint8 value=\"%u\" name=\"channel\"/>					\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0008\"/>						\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0009\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x1130\"/>						\
-        <uint16 value=\"0x0100\" name=\"version\"/>				\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0100\">							\
-    <text value=\"%s\" name=\"name\"/>						\
-  </attribute>									\
-										\
-  <attribute id=\"0x0314\">							\
-    <uint8 value=\"0x01\"/>							\
-  </attribute>									\
-</record>";
-
-static uint32_t register_record(const gchar *name,
-				guint16 service, guint8 channel)
+void bluetooth_servers_foreach(GFunc func, gpointer user_data)
 {
-	gchar *record;
-	gint handle;
+	struct server *server;
+	GSList *l;
 
-	switch (service) {
-	case OBEX_OPP:
-		record = g_markup_printf_escaped(opp_record, channel, name);
-		break;
-	case OBEX_FTP:
-		record = g_markup_printf_escaped(ftp_record, channel, name);
-		break;
-	case OBEX_PBAP:
-		record = g_markup_printf_escaped(pbap_record, channel, name);
-		break;
-	default:
-		return 0;
+	for (l = servers; l; l = l->next) {
+		server = l->data;
+		func(server, user_data);
 	}
-
-	handle = add_record(record);
-	g_free(record);
-
-	return handle;
 }
 
 static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
@@ -247,6 +106,9 @@ static void server_destroyed(gpointer user_data)
 
 	error("Server destroyed");
 
+	servers = g_slist_remove(servers, server);
+
+	g_free(server->name);
 	g_free(server->folder);
 	g_free(server);
 }
@@ -304,17 +166,13 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 		goto failed;
 	}
 
-	handle = register_record(name, service, channel);
-	if (handle == 0) {
-		err = EIO;
-		goto failed;
-	}
-
 	server = g_malloc0(sizeof(struct server));
 	server->service = service;
+	server->name = g_strdup(name);
 	server->folder = g_strdup(folder);
 	server->auto_accept = auto_accept;
 	server->capability = g_strdup(capability);
+	server->channel = channel;
 	server->handle = handle;
 
 	io = g_io_channel_unix_new(sk);
@@ -324,7 +182,9 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 			connect_event, server, server_destroyed);
 	g_io_channel_unref(io);
 
-	debug("Registered: %s, record handle: 0x%x, folder: %s", name, handle, folder);
+	servers = g_slist_append(servers, server);
+
+	register_record(server, NULL);
 
 	return 0;
 

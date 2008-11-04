@@ -37,9 +37,139 @@
 
 #include <openobex/obex.h>
 
+#include "bluetooth.h"
 #include "obexd.h"
 #include "obex.h"
 #include "logging.h"
+
+const static gchar *opp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+<record>									\
+  <attribute id=\"0x0001\">							\
+    <sequence>									\
+      <uuid value=\"0x1105\"/>							\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0004\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x0100\"/>						\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0003\"/>						\
+        <uint8 value=\"%u\" name=\"channel\"/>					\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0008\"/>						\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0009\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x1105\"/>						\
+        <uint16 value=\"0x0100\" name=\"version\"/>				\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0100\">							\
+    <text value=\"%s\" name=\"name\"/>						\
+  </attribute>									\
+										\
+  <attribute id=\"0x0303\">							\
+    <sequence>									\
+      <uint8 value=\"0x01\"/>							\
+      <uint8 value=\"0x01\"/>							\
+      <uint8 value=\"0x02\"/>							\
+      <uint8 value=\"0x03\"/>							\
+      <uint8 value=\"0x04\"/>							\
+      <uint8 value=\"0x05\"/>							\
+      <uint8 value=\"0x06\"/>							\
+      <uint8 value=\"0xff\"/>							\
+    </sequence>									\
+  </attribute>									\
+</record>";
+
+const static gchar *ftp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+<record>									\
+  <attribute id=\"0x0001\">							\
+    <sequence>									\
+      <uuid value=\"0x1106\"/>							\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0004\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x0100\"/>						\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0003\"/>						\
+        <uint8 value=\"%u\" name=\"channel\"/>					\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0008\"/>						\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0009\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x1106\"/>						\
+        <uint16 value=\"0x0100\" name=\"version\"/>				\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0100\">							\
+    <text value=\"%s\" name=\"name\"/>						\
+  </attribute>									\
+</record>";
+
+const static gchar *pbap_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+<record>									\
+  <attribute id=\"0x0001\">							\
+    <sequence>									\
+      <uuid value=\"0x112f\"/>							\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0004\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x0100\"/>						\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0003\"/>						\
+        <uint8 value=\"%u\" name=\"channel\"/>					\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0008\"/>						\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0009\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x1130\"/>						\
+        <uint16 value=\"0x0100\" name=\"version\"/>				\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0100\">							\
+    <text value=\"%s\" name=\"name\"/>						\
+  </attribute>									\
+										\
+  <attribute id=\"0x0314\">							\
+    <uint8 value=\"0x01\"/>							\
+  </attribute>									\
+</record>";
+
 
 #define TRANSFER_INTERFACE OPENOBEX_SERVICE ".Transfer"
 #define SESSION_INTERFACE OPENOBEX_SERVICE ".Session"
@@ -60,6 +190,16 @@ struct pending_request {
 	struct server *server;
 	gint nsk;
 };
+
+struct adapter_any {
+	char *path;		/* Adapter ANY path */
+	GSList *servers;	/* List of servers to register records */
+};
+
+static DBusConnection *connection = NULL;
+static DBusConnection *system_conn = NULL;
+static struct adapter_any *any = NULL;
+static guint listener_id = 0;
 
 static void agent_free(struct agent *agent)
 {
@@ -318,14 +458,179 @@ static GDBusMethodTable session_methods[] = {
 	{ }
 };
 
-static DBusConnection *connection = NULL;
-static DBusConnection *system_conn = NULL;
+static gchar *create_xml_record(const char *name,
+			uint16_t service, uint8_t channel)
+{
+	gchar *xml;
+
+	switch (service) {
+	case OBEX_OPP:
+		xml = g_markup_printf_escaped(opp_record, channel, name);
+		break;
+	case OBEX_FTP:
+		xml = g_markup_printf_escaped(ftp_record, channel, name);
+		break;
+	case OBEX_PBAP:
+		xml = g_markup_printf_escaped(pbap_record, channel, name);
+		break;
+	default:
+		xml = NULL;
+		break;
+	}
+
+	return xml;
+}
+
+static void add_record_reply(DBusPendingCall *call, gpointer user_data)
+{
+	struct server *server = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError derr;
+	uint32_t handle;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("Replied with an error: %s, %s",
+				derr.name, derr.message);
+		dbus_error_free(&derr);
+		handle = 0;
+	} else {
+		dbus_message_get_args(reply, NULL,
+				DBUS_TYPE_UINT32, &handle,
+				DBUS_TYPE_INVALID);
+		server->handle = handle;
+
+		debug("Registered: %s, handle: 0x%x, folder: %s",
+				server->name, handle, server->folder);
+	}
+
+	dbus_message_unref(reply);
+}
+
+static gint add_record(const gchar *path,
+		const gchar *xml, struct server *server)
+{
+	DBusMessage *msg;
+	DBusPendingCall *call;
+	gint ret = 0;
+
+	msg = dbus_message_new_method_call("org.bluez", path,
+					"org.bluez.Service", "AddRecord");
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &xml,
+			DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(system_conn,
+				msg, &call, -1) == FALSE) {
+		ret = -1;
+		goto failed;
+	}
+
+	dbus_pending_call_set_notify(call, add_record_reply, server, NULL);
+	dbus_pending_call_unref(call);
+
+failed:
+	dbus_message_unref(msg);
+	return ret;
+}
+
+void register_record(gpointer data, gpointer user_data)
+{
+	struct server *server = data;
+	gchar *xml;
+	gint ret;
+
+	if (system_conn == NULL)
+		return;
+
+	if (any->path == NULL) {
+		/* Adapter ANY is not available yet: Add record later */
+		any->servers = g_slist_append(any->servers, server);
+		return;
+	}
+
+	xml = create_xml_record(server->name, server->service, server->channel);
+	ret = add_record(any->path, xml, server);
+	g_free(xml);
+}
+
+static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	struct server *server;
+	const char *path;
+	gchar *xml;
+	GSList *l;
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("Replied with an error: %s, %s",
+				derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto done;
+	}
+
+	dbus_message_get_args(reply, NULL,
+			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_INVALID);
+	any->path = g_strdup(path);
+
+	for (l = any->servers; l; l = l->next) {
+		server = l->data;
+		xml = create_xml_record(server->name,
+				server->service, server->channel);
+		add_record(path, xml, server);
+		g_free(xml);
+	}
+
+	g_slist_free(any->servers);
+	any->servers = NULL;
+
+done:
+	dbus_message_unref(reply);
+}
+
+static gboolean find_adapter_any(gpointer user_data)
+{
+	DBusMessage *msg;
+	DBusPendingCall *call;
+	const char *pattern = "any";
+
+	msg = dbus_message_new_method_call("org.bluez", "/",
+					"org.bluez.Manager", "FindAdapter");
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &pattern,
+			DBUS_TYPE_INVALID);
+
+	dbus_connection_send_with_reply(system_conn, msg, &call, -1);
+	dbus_pending_call_set_notify(call, find_adapter_reply, NULL, NULL);
+	dbus_pending_call_unref(call);
+
+	dbus_message_unref(msg);
+
+	return FALSE;
+}
+
+static void name_acquired(DBusConnection *conn, void *user_data)
+{
+	find_adapter_any(NULL);
+	bluetooth_servers_foreach(register_record, NULL);
+}
+
+static void name_released(DBusConnection *conn, void *user_data)
+{
+	g_free(any->path);
+	any->path = NULL;
+}
 
 gboolean manager_init(void)
 {
 	DBusError err;
 
 	DBG("");
+
+	any = g_new0(struct adapter_any, 1);
 
 	dbus_error_init(&err);
 
@@ -342,6 +647,11 @@ gboolean manager_init(void)
 	system_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 	if (system_conn == NULL)
 		return FALSE;
+
+	listener_id = g_dbus_add_service_watch(system_conn, "org.bluez",
+				name_acquired, name_released, NULL, NULL);
+
+	g_idle_add(find_adapter_any, NULL);
 
 	return g_dbus_register_interface(connection, OPENOBEX_MANAGER_PATH,
 					OPENOBEX_MANAGER_INTERFACE,
@@ -360,6 +670,13 @@ void manager_cleanup(void)
 
 	if (agent)
 		agent_free(agent);
+
+	g_dbus_remove_watch(system_conn, listener_id);
+
+	if (any) {
+		g_free(any->path);
+		g_free(any);
+	}
 
 	if (system_conn)
 		dbus_connection_unref(system_conn);
@@ -596,55 +913,6 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	return 0;
 }
 
-gint add_record(gchar *record)
-{
-	DBusMessage *msg, *reply;
-	const gchar *adapter_path;
-	guint32 handle;
-
-	if (system_conn == NULL)
-		return 0;
-
-	msg = dbus_message_new_method_call("org.bluez", "/",
-			"org.bluez.Manager", "DefaultAdapter");
-
-	reply = dbus_connection_send_with_reply_and_block(system_conn, msg,
-			-1, NULL);
-	if (reply == NULL) {
-		dbus_message_unref(msg);
-		return 0;
-	}
-
-	dbus_message_unref(msg);
-
-	dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH, &adapter_path,
-			DBUS_TYPE_INVALID);
-
-	dbus_message_unref(reply);
-
-	msg = dbus_message_new_method_call("org.bluez", adapter_path,
-			"org.bluez.Service", "AddRecord");
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &record,
-			DBUS_TYPE_INVALID);
-
-	reply = dbus_connection_send_with_reply_and_block(system_conn, msg,
-			-1, NULL);
-	if (reply == NULL) {
-		dbus_message_unref(msg);
-		return 0;
-	}
-
-	dbus_message_unref(msg);
-
-	dbus_message_get_args(reply, NULL, DBUS_TYPE_UINT32, &handle,
-			DBUS_TYPE_INVALID);
-
-	dbus_message_unref(reply);
-
-	return handle;
-}
-
 static void service_reply(DBusPendingCall *call, gpointer user_data)
 {
 	struct pending_request *pending = user_data;
@@ -783,7 +1051,6 @@ gint request_service_authorization(struct server *server, gint nsk)
 
 	return 0;
 }
-
 
 void register_session(guint32 id, struct obex_session *os)
 {

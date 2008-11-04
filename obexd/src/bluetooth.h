@@ -31,3 +31,4 @@ gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
 			guint8 channel, gboolean secure, gboolean auto_accept,
 			const gchar *capability);
 void bluetooth_exit(void);
+void bluetooth_servers_foreach(GFunc func, gpointer user_data);

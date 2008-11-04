@@ -47,9 +47,11 @@ struct obex_commands {
 struct server {
 	guint16		service;
 	gboolean	auto_accept;
+	gchar		*name;
 	gchar		*folder;
 	gchar		*capability;
 	guint32		handle;
+	uint8_t		channel;
 };
 
 struct obex_session {
