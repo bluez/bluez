@@ -529,31 +529,35 @@ void telephony_subscriber_number_req(void *telephony_device)
 	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
-static int csd_status_to_hfp(int csd_status)
+static int csd_status_to_hfp(struct csd_call *call)
 {
-	switch (csd_status) {
+	switch (call->status) {
 	case CSD_CALL_STATUS_IDLE:
 	case CSD_CALL_STATUS_MO_RELEASE:
 	case CSD_CALL_STATUS_MT_RELEASE:
 	case CSD_CALL_STATUS_TERMINATED:
 		return -1;
 	case CSD_CALL_STATUS_CREATE:
-		/* Is PROCEEDING == DIALING correct? */
-	case CSD_CALL_STATUS_PROCEEDING:
 		return CALL_STATUS_DIALING;
+	case CSD_CALL_STATUS_PROCEEDING:
+		/* PROCEEDING can happen in outgoing/incoming */
+		if (call->originating)
+			return CALL_STATUS_DIALING;
+		else
+			return CALL_STATUS_INCOMING;
 	case CSD_CALL_STATUS_COMING:
 		return CALL_STATUS_INCOMING;
 	case CSD_CALL_STATUS_MO_ALERTING:
-		return CALL_STATUS_INCOMING;
-	case CSD_CALL_STATUS_MT_ALERTING:
 		return CALL_STATUS_ALERTING;
+	case CSD_CALL_STATUS_MT_ALERTING:
+		return CALL_STATUS_INCOMING;
 	case CSD_CALL_STATUS_ANSWERED:
 	case CSD_CALL_STATUS_ACTIVE:
-	case CSD_CALL_STATUS_RETRIEVE_INITIATED:
 	case CSD_CALL_STATUS_RECONNECT_PENDING:
 	case CSD_CALL_STATUS_SWAP_INITIATED:
-		return CALL_STATUS_ACTIVE;
 	case CSD_CALL_STATUS_HOLD_INITIATED:
+		return CALL_STATUS_ACTIVE;
+	case CSD_CALL_STATUS_RETRIEVE_INITIATED:
 	case CSD_CALL_STATUS_HOLD:
 		return CALL_STATUS_HELD;
 	default:
@@ -572,7 +576,7 @@ void telephony_list_current_calls_req(void *telephony_device)
 		struct csd_call *call = l->data;
 		int status, direction, multiparty;
 
-		status = csd_status_to_hfp(call->status);
+		status = csd_status_to_hfp(call);
 		if (status < 0)
 			continue;
 
