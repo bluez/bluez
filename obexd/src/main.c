@@ -59,17 +59,17 @@
 
 static GMainLoop *main_loop = NULL;
 
-static void tty_init(int service, const gchar *root_path,
-				const gchar *capability, const gchar *devnode)
+static int tty_init(int services, const gchar *root_path,
+			const gchar *capability, const gchar *devnode)
 {
 	struct server *server;
 	struct termios options;
-	gint fd;
+	int fd, ret;
 	glong flags;
 
 	fd = open(devnode, O_RDWR);
 	if (fd < 0)
-		return;
+		return fd;
 
 	flags = fcntl(fd, F_GETFL);
 	fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
@@ -79,52 +79,18 @@ static void tty_init(int service, const gchar *root_path,
 	tcsetattr(fd, TCSANOW, &options);
 
 	server = g_malloc0(sizeof(struct server));
-	server->service = service;
+	server->services = services;
 	server->folder = g_strdup(root_path);
 	server->auto_accept = TRUE;
 	server->capability = g_strdup(capability);
 
-	if (obex_session_start(fd, server) < 0)
+	ret = obex_session_start(fd, server);
+	if (ret < 0) {
+		server_free(server);
 		close(fd);
-
-	return;
-}
-
-static int server_start(int service, const char *root_path,
-			gboolean auto_accept, const gchar *capability,
-							const char *devnode)
-{
-	switch (service) {
-	case OBEX_OPP:
-		bluetooth_init(OBEX_OPP, "Object Push server",
-					root_path, OPP_CHANNEL, FALSE,
-						auto_accept, capability);
-		if (devnode)
-			tty_init(OBEX_OPP, root_path, capability, devnode);
-		break;
-	case OBEX_FTP:
-		bluetooth_init(OBEX_FTP, "File Transfer server",
-					root_path, FTP_CHANNEL, TRUE,
-						auto_accept, capability);
-		if (devnode)
-			tty_init(OBEX_FTP, root_path, capability, devnode);
-		break;
-	case OBEX_PBAP:
-		bluetooth_init(OBEX_PBAP, "Phonebook Access server",
-					root_path, PBAP_CHANNEL, TRUE,
-						auto_accept, capability);
-		break;
-	default:
-		return -EINVAL;
 	}
 
-	return 0;
-}
-
-static void server_stop()
-{
-	/* FIXME: If Bluetooth enabled */
-	bluetooth_exit();
+	return ret;
 }
 
 static void sig_term(int sig)
@@ -172,7 +138,7 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 	GError *err = NULL;
 	struct sigaction sa;
-	int log_option = LOG_NDELAY | LOG_PID;
+	int log_option = LOG_NDELAY | LOG_PID, services;
 
 #ifdef NEED_THREADS
 	if (g_thread_supported() == FALSE)
@@ -237,16 +203,28 @@ int main(int argc, char *argv[])
 	if (option_capability == NULL)
 		option_capability = g_strdup(DEFAULT_CAP_FILE);
 
-	if (option_opp == TRUE)
-		server_start(OBEX_OPP, option_root, option_autoaccept,
-							NULL, option_devnode);
+	if (option_opp == TRUE) {
+		services |= OBEX_OPP;
+		bluetooth_init(OBEX_OPP, "Object Push server", option_root,
+				OPP_CHANNEL, FALSE, option_autoaccept, NULL);
+	}
 
-	if (option_ftp == TRUE)
-		server_start(OBEX_FTP, option_root, option_autoaccept,
-					option_capability, option_devnode);
+	if (option_ftp == TRUE) {
+		services |= OBEX_FTP;
+		bluetooth_init(OBEX_FTP, "File Transfer server", option_root,
+				FTP_CHANNEL, TRUE, option_autoaccept,
+				option_capability);
+	}
 
-	if (option_pbap == TRUE)
-		server_start(OBEX_PBAP, NULL, FALSE, NULL, NULL);
+	if (option_pbap == TRUE) {
+		services |= OBEX_PBAP;
+		bluetooth_init(OBEX_PBAP, "Phonebook Access server", NULL,
+				PBAP_CHANNEL, TRUE, FALSE, NULL);
+	}
+
+	if (option_devnode)
+		tty_init(services, option_root, option_capability,
+				option_devnode);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
@@ -255,7 +233,7 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(main_loop);
 
-	server_stop();
+	bluetooth_exit();
 
 	plugin_cleanup();
 

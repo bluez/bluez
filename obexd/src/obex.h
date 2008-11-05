@@ -29,10 +29,10 @@
 
 #include <glib.h>
 
-#define OBEX_OPP	0x01
-#define OBEX_FTP	0x02
-#define OBEX_BIP	0x03
-#define OBEX_PBAP	0x04
+#define OBEX_OPP	(1 << 0)
+#define OBEX_FTP	(1 << 2)
+#define OBEX_BIP	(1 << 3)
+#define OBEX_PBAP	(1 << 4)
 
 #define OBJECT_SIZE_UNKNOWN -1
 #define OBJECT_SIZE_DELETE -2
@@ -45,7 +45,7 @@ struct obex_commands {
 };
 
 struct server {
-	guint16		service;
+	guint16		services;
 	gboolean	auto_accept;
 	gchar		*name;
 	gchar		*folder;

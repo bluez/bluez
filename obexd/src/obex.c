@@ -214,19 +214,39 @@ static void cmd_connect(struct obex_session *os,
 	/* connection id will be used to track the sessions, even for OPP */
 	os->cid = ++cid;
 
-	if (os->target == NULL) {
-		register_transfer(os->cid, os);
-		/* OPP doesn't contains target or connection id. */
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
+		if (hi != OBEX_HDR_TARGET || hlen != TARGET_SIZE)
+			continue;
+
+		if (memcmp(hd.bs, FTP_TARGET, TARGET_SIZE) == 0 &&
+				os->server->services & OBEX_FTP) {
+			os->target = FTP_TARGET;
+			os->cmds = &ftp;
+			break;
+		}
+
+		if (memcmp(hd.bs, PBAP_TARGET, TARGET_SIZE) == 0 &&
+				os->server->services & OBEX_PBAP) {
+			os->target = PBAP_TARGET;
+			os->cmds = &pbap;
+			break;
+		}
+
+		error("Connect attempt to a non-supported target");
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return;
 	}
 
-	hi = hlen = 0;
-	OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen);
+	if (os->target == NULL) {
+		if (os->server->services & OBEX_OPP) {
+			register_transfer(os->cid, os);
+			/* OPP doesn't contains target or connection id. */
+			OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+		} else {
+			error("Object Push connect attempt to a non-OPP server");
+			OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		}
 
-	if (hi != OBEX_HDR_TARGET || hlen != TARGET_SIZE
-			|| memcmp(os->target, hd.bs, TARGET_SIZE) != 0) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return;
 	}
 
@@ -234,6 +254,7 @@ static void cmd_connect(struct obex_session *os,
 	emit_session_created(cid);
 
 	/* Append received UUID in WHO header */
+	hd.bs = os->target;
 	OBEX_ObjectAddHeader(obex, obj,
 			OBEX_HDR_WHO, hd, TARGET_SIZE,
 			OBEX_FL_FIT_ONE_PACKET);
@@ -281,7 +302,10 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	guint hlen;
 	guint8 hi;
 
-	if (!os->cmds->get) {
+	if (!os->cmds) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		return;
+	} else if (!os->cmds->get) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
 				OBEX_RSP_NOT_IMPLEMENTED);
 		return;
@@ -355,7 +379,10 @@ static void cmd_setpath(struct obex_session *os,
 	guint32 hlen;
 	guint8 hi;
 
-	if (!os->cmds->setpath) {
+	if (!os->cmds) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		return;
+	} else if (!os->cmds->setpath) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
 				OBEX_RSP_NOT_IMPLEMENTED);
 		return;
@@ -659,7 +686,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 		return FALSE;
 	}
 
-	if (!os->cmds->chkput)
+	if (!os->cmds || !os->cmds->chkput)
 		goto done;
 
 	ret = os->cmds->chkput(obex, obj);
@@ -708,7 +735,10 @@ done:
 
 static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 {
-	if (!os->cmds->put) {
+	if (!os->cmds) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		return;
+	} else if (!os->cmds->put) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
 				OBEX_RSP_NOT_IMPLEMENTED);
 		return;
@@ -784,7 +814,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	case OBEX_EV_REQCHECK:
 		switch (cmd) {
 		case OBEX_CMD_PUT:
-			if (os->cmds->put)
+			if (os->cmds && os->cmds->put)
 				check_put(obex, obj);
 			break;
 		default:
@@ -904,24 +934,11 @@ gint obex_session_start(gint fd, struct server *server)
 	gint ret;
 
 	os = g_new0(struct obex_session, 1);
-	switch (server->service) {
-	case OBEX_OPP:
-		os->target = NULL;
+
+	os->target = NULL;
+
+	if (server->services & OBEX_OPP)
 		os->cmds = &opp;
-		break;
-	case OBEX_FTP:
-		os->target = FTP_TARGET;
-		os->cmds = &ftp;
-		break;
-	case OBEX_PBAP:
-		os->target = PBAP_TARGET;
-		os->cmds = &pbap;
-		break;
-	default:
-		g_free(os);
-		debug("Invalid OBEX server");
-		return -EINVAL;
-	}
 
 	os->current_folder = g_strdup(server->folder);
 	os->server = server;

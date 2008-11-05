@@ -549,7 +549,7 @@ void register_record(gpointer data, gpointer user_data)
 		return;
 	}
 
-	xml = create_xml_record(server->name, server->service, server->channel);
+	xml = create_xml_record(server->name, server->services, server->channel);
 	ret = add_record(any->path, xml, server);
 	g_free(xml);
 }
@@ -579,7 +579,7 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 	for (l = any->servers; l; l = l->next) {
 		server = l->data;
 		xml = create_xml_record(server->name,
-				server->service, server->channel);
+				server->services, server->channel);
 		add_record(path, xml, server);
 		g_free(xml);
 	}

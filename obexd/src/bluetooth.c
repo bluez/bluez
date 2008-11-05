@@ -85,17 +85,15 @@ static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_d
 	info("New connection from: %s, channel %u, fd %d", address,
 			raddr.rc_channel, nsk);
 
-	if (server->service == OBEX_OPP) {
-		if (obex_session_start(nsk, server) < 0)
+	if (server->services != OBEX_OPP) {
+		if (request_service_authorization(server, nsk) < 0)
 			close(nsk);
 
 		return TRUE;
 	}
 
-	if (request_service_authorization(server, nsk) < 0) {
+	if (obex_session_start(nsk, server) < 0)
 		close(nsk);
-		return TRUE;
-	}
 
 	return TRUE;
 }
@@ -165,7 +163,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	}
 
 	server = g_malloc0(sizeof(struct server));
-	server->service = service;
+	server->services = service;
 	server->name = g_strdup(name);
 	server->folder = g_strdup(folder);
 	server->auto_accept = auto_accept;
