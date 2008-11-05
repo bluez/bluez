@@ -1417,6 +1417,18 @@ int telephony_init(void)
 		return -EIO;
 	}
 
+	snprintf(match_string, sizeof(match_string),
+			"type=signal,interface=%s", CSD_CALL_INTERFACE);
+	dbus_bus_add_match(connection, match_string, NULL);
+
+	snprintf(match_string, sizeof(match_string),
+			"type=signal,interface=%s", CSD_CALL_INSTANCE);
+	dbus_bus_add_match(connection, match_string, NULL);
+
+	snprintf(match_string, sizeof(match_string),
+			"type=signal,interface=%s", NETWORK_INTERFACE);
+	dbus_bus_add_match(connection, match_string, NULL);
+
 	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 						CSD_CALL_INTERFACE,
 						"GetCallInfoAll");
@@ -1434,22 +1446,6 @@ int telephony_init(void)
 	dbus_pending_call_set_notify(call, call_info_reply, NULL, NULL);
 	dbus_pending_call_unref(call);
 	dbus_message_unref(msg);
-
-	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=%s", CSD_CALL_INTERFACE);
-	dbus_bus_add_match(connection, match_string, NULL);
-
-	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=%s", CSD_CALL_INSTANCE);
-	dbus_bus_add_match(connection, match_string, NULL);
-
-	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=%s", CSD_CALL_INSTANCE);
-	dbus_bus_add_match(connection, match_string, NULL);
-
-	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=%s", NETWORK_INTERFACE);
-	dbus_bus_add_match(connection, match_string, NULL);
 
 	return 0;
 }
