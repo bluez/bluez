@@ -138,8 +138,8 @@ static gint server_start(struct server *server)
 	server->io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(server->io, TRUE);
 	server->watch = g_io_add_watch(server->io,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			connect_event, server);
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				connect_event, server);
 
 	return 0;
 
