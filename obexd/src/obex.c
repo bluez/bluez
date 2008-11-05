@@ -846,6 +846,14 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	}
 }
 
+void server_free(struct server *server)
+{
+	g_free(server->name);
+	g_free(server->folder);
+	g_free(server->capability);
+	g_free(server);
+}
+
 static void obex_handle_destroy(gpointer user_data)
 {
 	struct obex_session *os;

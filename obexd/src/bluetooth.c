@@ -108,9 +108,7 @@ static void server_destroyed(gpointer user_data)
 
 	servers = g_slist_remove(servers, server);
 
-	g_free(server->name);
-	g_free(server->folder);
-	g_free(server);
+	server_free(server);
 }
 
 static gint server_register(guint16 service, const gchar *name, guint8 channel,

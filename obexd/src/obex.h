@@ -90,3 +90,5 @@ void pbap_get(obex_t *obex, obex_object_t *obj);
 
 gboolean os_prepare_get(struct obex_session *os, gchar *file, guint32 *size);
 gint os_prepare_put(struct obex_session *os);
+
+void server_free(struct server *server);
