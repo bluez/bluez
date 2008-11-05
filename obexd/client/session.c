@@ -794,11 +794,20 @@ static void list_folder_callback(struct session_data *session,
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
 	DBusMessageIter iter;
+	const char *buf;
+	int i;
 
 	reply = dbus_message_new_method_return(session->msg);
 
 	if (session->filled == 0)
 		goto done;
+
+	for (i = session->filled - 1, buf = session->buffer; i > 0; i--) {
+		if (buf[i] != '\0')
+			break;
+
+		session->filled--;
+	}
 
 	dbus_message_iter_init_append(reply, &iter);
 
