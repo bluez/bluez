@@ -53,6 +53,9 @@ struct server {
 	guint32		handle;
 	uint8_t		channel;
 	gchar		*devnode;
+	gboolean	secure;
+	GIOChannel	*io;
+	guint		watch;
 };
 
 struct obex_session {

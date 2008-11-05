@@ -568,6 +568,7 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 		error("Replied with an error: %s, %s",
 				derr.name, derr.message);
 		dbus_error_free(&derr);
+		bluetooth_stop();
 		goto done;
 	}
 
@@ -615,13 +616,14 @@ static gboolean find_adapter_any(gpointer user_data)
 static void name_acquired(DBusConnection *conn, void *user_data)
 {
 	find_adapter_any(NULL);
-	bluetooth_servers_foreach(register_record, NULL);
+	bluetooth_start();
 }
 
 static void name_released(DBusConnection *conn, void *user_data)
 {
 	g_free(any->path);
 	any->path = NULL;
+	bluetooth_stop();
 }
 
 gboolean manager_init(void)

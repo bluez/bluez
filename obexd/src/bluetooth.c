@@ -48,17 +48,6 @@
 
 static GSList *servers = NULL;
 
-void bluetooth_servers_foreach(GFunc func, gpointer user_data)
-{
-	struct server *server;
-	GSList *l;
-
-	for (l = servers; l; l = l->next) {
-		server = l->data;
-		func(server, user_data);
-	}
-}
-
 static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	struct sockaddr_rc raddr;
@@ -98,25 +87,9 @@ static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_d
 	return TRUE;
 }
 
-static void server_destroyed(gpointer user_data)
-{
-	struct server *server = user_data;
-
-	error("Server destroyed");
-
-	servers = g_slist_remove(servers, server);
-
-	server_free(server);
-}
-
-static gint server_register(guint16 service, const gchar *name, guint8 channel,
-			const gchar *folder, gboolean secure,
-			gboolean auto_accept, const gchar *capability)
+static gint server_start(struct server *server)
 {
 	struct sockaddr_rc laddr;
-	GIOChannel *io;
-	struct server *server;
-	uint32_t handle;
 	int err, sk, arg;
 
 	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
@@ -138,7 +111,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 		goto failed;
 	}
 
-	if (secure) {
+	if (server->secure) {
 		int lm = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
 
 		if (setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
@@ -150,7 +123,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	memset(&laddr, 0, sizeof(laddr));
 	laddr.rc_family = AF_BLUETOOTH;
 	bacpy(&laddr.rc_bdaddr, BDADDR_ANY);
-	laddr.rc_channel = channel;
+	laddr.rc_channel = server->channel;
 
 	if (bind(sk, (struct sockaddr *) &laddr, sizeof(laddr)) < 0) {
 		err = errno;
@@ -162,25 +135,11 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 		goto failed;
 	}
 
-	server = g_malloc0(sizeof(struct server));
-	server->services = service;
-	server->name = g_strdup(name);
-	server->folder = g_strdup(folder);
-	server->auto_accept = auto_accept;
-	server->capability = g_strdup(capability);
-	server->channel = channel;
-	server->handle = handle;
-
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
-	g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+	server->io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(server->io, TRUE);
+	server->watch = g_io_add_watch(server->io,
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			connect_event, server, server_destroyed);
-	g_io_channel_unref(io);
-
-	servers = g_slist_append(servers, server);
-
-	register_record(server, NULL);
+			connect_event, server);
 
 	return 0;
 
@@ -189,6 +148,53 @@ failed:
 	close(sk);
 
 	return -err;
+}
+
+static gint server_stop(struct server *server)
+{
+	if (!server->io)
+		return -EINVAL;
+
+	if (server->watch) {
+		g_source_remove(server->watch);
+		server->watch = 0;
+	}
+
+	g_io_channel_unref(server->io);
+	server->io = NULL;
+
+	return 0;
+}
+
+static gint server_register(guint16 service, const gchar *name, guint8 channel,
+			const gchar *folder, gboolean secure,
+			gboolean auto_accept, const gchar *capability)
+{
+	struct server *server;
+	uint32_t handle;
+	int err;
+
+	server = g_malloc0(sizeof(struct server));
+	server->services = service;
+	server->name = g_strdup(name);
+	server->folder = g_strdup(folder);
+	server->auto_accept = auto_accept;
+	server->capability = g_strdup(capability);
+	server->channel = channel;
+	server->handle = handle;
+	server->secure = secure;
+
+	err = server_start(server);
+	if (err < 0) {
+		server_free(server);
+		return err;
+	}
+
+	servers = g_slist_append(servers, server);
+
+	register_record(server, NULL);
+
+	return 0;
 }
 
 gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
@@ -202,4 +208,29 @@ gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
 void bluetooth_exit(void)
 {
 	return;
+}
+
+void bluetooth_start(void)
+{
+	GSList *l;
+
+	for (l = servers; l; l = l->next) {
+		struct server *server = l->data;
+
+		if (server_start(server) < 0)
+			continue;
+
+		register_record(server, NULL);
+	}
+}
+
+void bluetooth_stop(void)
+{
+	GSList *l;
+
+	for (l = servers; l; l = l->next) {
+		struct server *server = l->data;
+
+		server_stop(server);
+	}
 }
