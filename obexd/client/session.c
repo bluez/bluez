@@ -481,11 +481,34 @@ static void agent_notify_complete(DBusConnection *conn, const char *agent_name,
 	g_dbus_send_message(conn, message);
 }
 
+static void agent_notify_error(DBusConnection *conn, const char *agent_name,
+			const char *agent_path, const char *transfer_path,
+			const char *error_msg)
+{
+	DBusMessage *message;
+
+	if (agent_name == NULL || agent_path == NULL)
+		return;
+
+	message = dbus_message_new_method_call(agent_name,
+			agent_path, AGENT_INTERFACE, "Error");
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer_path,
+			DBUS_TYPE_STRING, &error_msg,
+			DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(conn, message);
+}
+
 static void abort_transfer(struct session_data *session)
 {
 
-	agent_notify_complete(session->conn, session->agent_name,
-			session->agent_path, session->transfer_path);
+	agent_notify_error(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path,
+			"The transfer was cancelled");
 
 	gw_obex_xfer_abort(session->xfer, NULL);
 
@@ -885,8 +908,13 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 complete:
 
-	agent_notify_complete(session->conn, session->agent_name,
-			session->agent_path, session->transfer_path);
+	if (ret == TRUE)
+		agent_notify_complete(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path);
+	else
+		agent_notify_error(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path,
+				"Error getting object");
 
 	gw_obex_xfer_close(xfer, NULL);
 	gw_obex_xfer_free(xfer);
@@ -1172,8 +1200,13 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 complete:
 
-	agent_notify_complete(session->conn, session->agent_name,
-			session->agent_path, session->transfer_path);
+	if (len == 0)
+		agent_notify_complete(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path);
+	else
+		agent_notify_error(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path,
+				"Error sending object");
 
 	gw_obex_xfer_close(session->xfer, NULL);
 	gw_obex_xfer_free(session->xfer);
