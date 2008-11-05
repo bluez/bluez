@@ -113,6 +113,10 @@ enum network_alpha_tag_name_type {
 #define CSD_CALL_DIRECTION_OUTGOING		1
 #define CSD_CALL_DIRECTION_INCOMING		2
 
+#define CALL_FLAG_NONE				0
+#define CALL_FLAG_PRESENTATION_ALLOWED		0x01
+#define CALL_FLAG_PRESENTATION_RESTRICTED	0x02
+
 struct csd_call {
 	char *object_path;
 	int status;
@@ -460,12 +464,22 @@ void telephony_answer_call_req(void *telephony_device)
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
 {
+	uint32_t flags;
 	DBusMessage *msg;
 
 	debug("telephony-maemo: dial request to %s", number);
 
+	if (strncmp(number, "*31#", 4) == 0) {
+		number += 4;
+		flags = CALL_FLAG_PRESENTATION_ALLOWED;
+	} else if (strncmp(number, "#31#", 4) == 0) {
+		number += 4;
+		flags = CALL_FLAG_PRESENTATION_RESTRICTED;
+	} else
+		flags = CALL_FLAG_NONE;
+
 	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
-						CSD_CALL_INTERFACE, "Create");
+					CSD_CALL_INTERFACE, "CreateWith");
 	if (!msg) {
 		error("Unable to allocate new D-Bus message");
 		telephony_dial_number_rsp(telephony_device,
@@ -473,7 +487,9 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 		return;
 	}
 
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &number);
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &number,
+					DBUS_TYPE_UINT32, &flags,
+					DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(connection, msg);
 
