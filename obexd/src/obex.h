@@ -52,6 +52,7 @@ struct server {
 	gchar		*capability;
 	guint32		handle;
 	uint8_t		channel;
+	gchar		*devnode;
 };
 
 struct obex_session {
@@ -92,3 +93,6 @@ gboolean os_prepare_get(struct obex_session *os, gchar *file, guint32 *size);
 gint os_prepare_put(struct obex_session *os);
 
 void server_free(struct server *server);
+
+int tty_init(gint service, const gchar *folder, const gchar *capability,
+		const gchar *devnode);

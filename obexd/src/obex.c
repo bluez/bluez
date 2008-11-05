@@ -881,6 +881,7 @@ void server_free(struct server *server)
 	g_free(server->name);
 	g_free(server->folder);
 	g_free(server->capability);
+	g_free(server->devnode);
 	g_free(server);
 }
 
@@ -907,6 +908,17 @@ static void obex_handle_destroy(gpointer user_data)
 	OBEX_Cleanup(obex);
 }
 
+static gboolean tty_reinit(gpointer data)
+{
+	struct server *server = data;
+
+	tty_init(server->services, server->folder, server->capability, server->devnode);
+
+	server_free(server);
+
+	return FALSE;
+}
+
 static gboolean obex_handle_input(GIOChannel *io,
 				GIOCondition cond, gpointer user_data)
 {
@@ -915,8 +927,17 @@ static gboolean obex_handle_input(GIOChannel *io,
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	if (cond & (G_IO_HUP | G_IO_ERR))
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		struct obex_session *os;
+
+		error("HUP");
+
+		os = OBEX_GetUserData(obex);
+		if (os->server->devnode)
+			g_idle_add(tty_reinit, os->server);
+
 		return FALSE;
+	}
 
 	if (OBEX_HandleInput(obex, 1) < 0) {
 		error("Handle input error");

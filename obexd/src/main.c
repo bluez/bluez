@@ -59,8 +59,8 @@
 
 static GMainLoop *main_loop = NULL;
 
-static int tty_init(int services, const gchar *root_path,
-			const gchar *capability, const gchar *devnode)
+int tty_init(int services, const gchar *root_path,
+		const gchar *capability, const gchar *devnode)
 {
 	struct server *server;
 	struct termios options;
@@ -83,6 +83,7 @@ static int tty_init(int services, const gchar *root_path,
 	server->folder = g_strdup(root_path);
 	server->auto_accept = TRUE;
 	server->capability = g_strdup(capability);
+	server->devnode = g_strdup(devnode);
 
 	ret = obex_session_start(fd, server);
 	if (ret < 0) {
