@@ -65,21 +65,17 @@ static void tty_init(int service, const gchar *root_path,
 	struct server *server;
 	struct termios options;
 	gint fd;
+	glong flags;
 
 	fd = open(devnode, O_RDWR);
 	if (fd < 0)
 		return;
 
-	fcntl(fd, F_SETFL, 0);
+	flags = fcntl(fd, F_GETFL);
+	fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
 
 	tcgetattr(fd, &options);
-
-	options.c_cflag |= (CLOCAL | CREAD);
-	options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-	options.c_oflag &= ~OPOST;
-	options.c_cc[VMIN] = 0;
-	options.c_cc[VTIME] = 10;
-
+	cfmakeraw(&options);
 	tcsetattr(fd, TCSANOW, &options);
 
 	server = g_malloc0(sizeof(struct server));
