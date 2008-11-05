@@ -1044,6 +1044,21 @@ static DBusMessage *change_folder(DBusConnection *connection,
 static DBusMessage *create_folder(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
+	struct session_data *session = user_data;
+	const char *folder;
+	int err;
+
+	if (dbus_message_get_args(message, NULL,
+				DBUS_TYPE_STRING, &folder,
+				DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
+	if (gw_obex_mkdir(session->obex, folder, &err) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.Failed",
+				OBEX_ResponseToString(err));
+
 	return dbus_message_new_method_return(message);
 }
 
