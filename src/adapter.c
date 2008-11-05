@@ -3293,23 +3293,15 @@ static void agent_auth_cb(struct agent *agent, DBusError *derr, void *user_data)
 	g_free(auth);
 }
 
-int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
+static int btd_adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data)
 {
 	struct service_auth *auth;
-	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct agent *agent;
 	char address[18];
 	gboolean trusted;
 	const gchar *dev_path;
-
-	if (src == NULL || dst == NULL)
-		return -EINVAL;
-
-	adapter = manager_find_adapter(src);
-	if (!adapter)
-		return -EPERM;
 
 	/* Device connected? */
 	if (!g_slist_find_custom(adapter->active_conn,
@@ -3317,7 +3309,7 @@ int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 		return -ENOTCONN;
 
 	ba2str(dst, address);
-	trusted = read_trust(src, address, GLOBAL_TRUST);
+	trusted = read_trust(&adapter->bdaddr, address, GLOBAL_TRUST);
 
 	if (trusted) {
 		cb(NULL, user_data);
@@ -3346,6 +3338,40 @@ int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 	dev_path = device_get_path(device);
 
 	return agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth);
+}
+
+int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
+		const char *uuid, service_auth_cb cb, void *user_data)
+{
+	struct btd_adapter *adapter;
+	GSList *adapters;
+
+	if (src == NULL || dst == NULL)
+		return -EINVAL;
+
+	if (bacmp(src, BDADDR_ANY) != 0)
+		goto proceed;
+
+	/* Handle request authorization for ANY adapter */
+	adapters = manager_get_adapters();
+
+	for (; adapters; adapters = adapters->next) {
+		int err;
+		adapter = adapters->data;
+
+		err = btd_adapter_authorize(adapter, dst, uuid, cb, user_data);
+		if (err == 0)
+			return 0;
+	}
+
+	return -EPERM;
+
+proceed:
+	adapter = manager_find_adapter(src);
+	if (!adapter)
+		return -EPERM;
+
+	return btd_adapter_authorize(adapter, dst, uuid, cb, user_data);
 }
 
 int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
