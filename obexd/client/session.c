@@ -424,7 +424,7 @@ static void agent_request(DBusConnection *conn, const char *agent_name,
 {
 	DBusMessage *message;
 
-	if (agent_name == NULL || agent_path == NULL)
+	if (agent_name == NULL || agent_path == NULL || transfer_path == NULL)
 		return;
 
 	message = dbus_message_new_method_call(agent_name,
@@ -445,7 +445,7 @@ static void agent_notify_progress(DBusConnection *conn, const char *agent_name,
 {
 	DBusMessage *message;
 
-	if (agent_name == NULL || agent_path == NULL)
+	if (agent_name == NULL || agent_path == NULL || transfer_path == NULL)
 		return;
 
 	message = dbus_message_new_method_call(agent_name,
@@ -466,7 +466,7 @@ static void agent_notify_complete(DBusConnection *conn, const char *agent_name,
 {
 	DBusMessage *message;
 
-	if (agent_name == NULL || agent_path == NULL)
+	if (agent_name == NULL || agent_path == NULL || transfer_path == NULL)
 		return;
 
 	message = dbus_message_new_method_call(agent_name,
@@ -480,7 +480,6 @@ static void agent_notify_complete(DBusConnection *conn, const char *agent_name,
 
 	g_dbus_send_message(conn, message);
 }
-
 
 static void abort_transfer(struct session_data *session)
 {
