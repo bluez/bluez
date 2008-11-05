@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 	GError *err = NULL;
 	struct sigaction sa;
-	int log_option = LOG_NDELAY | LOG_PID, services;
+	int log_option = LOG_NDELAY | LOG_PID, services = 0;
 
 #ifdef NEED_THREADS
 	if (g_thread_supported() == FALSE)
