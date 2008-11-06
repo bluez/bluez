@@ -832,6 +832,16 @@ static char *register_transfer(DBusConnection *conn, void *user_data)
 
 static void unregister_transfer(struct session_data *session)
 {
+	gw_obex_xfer_close(session->xfer, NULL);
+	gw_obex_xfer_free(session->xfer);
+	session->xfer = NULL;
+
+	g_free(session->filename);
+	session->filename = NULL;
+
+	g_free(session->name);
+	session->name = NULL;
+
 	if (session->transfer_path == NULL)
 		return;
 
@@ -947,16 +957,6 @@ complete:
 				"Error getting object");
 
 	unregister_transfer(session);
-
-	gw_obex_xfer_close(xfer, NULL);
-	gw_obex_xfer_free(xfer);
-	callback->session->xfer = NULL;
-
-	g_free(session->filename);
-	session->filename = NULL;
-
-	g_free(session->name);
-	session->name = NULL;
 
 	callback->func(callback->session, callback->data);
 
@@ -1244,16 +1244,6 @@ complete:
 				"Error sending object");
 
 	unregister_transfer(session);
-
-	gw_obex_xfer_close(session->xfer, NULL);
-	gw_obex_xfer_free(session->xfer);
-	session->xfer = NULL;
-
-	g_free(session->filename);
-	session->filename = NULL;
-
-	g_free(session->name);
-	session->name = NULL;
 
 	if (session->pending->len > 0) {
 		gchar *filename = g_ptr_array_index(session->pending, 0);
