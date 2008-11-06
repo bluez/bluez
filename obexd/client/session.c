@@ -479,6 +479,7 @@ static void agent_notify_complete(DBusConnection *conn, const char *agent_name,
 			DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(conn, message);
+
 }
 
 static void agent_notify_error(DBusConnection *conn, const char *agent_name,
@@ -811,6 +812,35 @@ static const GMarkupParser parser = {
 	NULL
 };
 
+static char *register_transfer(DBusConnection *conn, void *user_data)
+{
+	char *path;
+
+	path = g_strdup_printf("%s/transfer%ju",
+			TRANSFER_BASEPATH, counter++);
+
+	if (g_dbus_register_interface(conn, path,
+				TRANSFER_INTERFACE,
+				transfer_methods, NULL, NULL,
+				user_data, NULL) == FALSE) {
+		g_free(path);
+		return NULL;
+	}
+
+	return path;
+}
+
+static void unregister_transfer(struct session_data *session)
+{
+	if (session->transfer_path == NULL)
+		return;
+
+	g_dbus_unregister_interface(session->conn,
+			session->transfer_path, TRANSFER_INTERFACE);
+	g_free(session->transfer_path);
+	session->transfer_path = NULL;
+}
+
 static void list_folder_callback(struct session_data *session,
 					void *user_data)
 {
@@ -916,9 +946,17 @@ complete:
 				session->agent_path, session->transfer_path,
 				"Error getting object");
 
+	unregister_transfer(session);
+
 	gw_obex_xfer_close(xfer, NULL);
 	gw_obex_xfer_free(xfer);
 	callback->session->xfer = NULL;
+
+	g_free(session->filename);
+	session->filename = NULL;
+
+	g_free(session->name);
+	session->name = NULL;
 
 	callback->func(callback->session, callback->data);
 
@@ -928,24 +966,6 @@ complete:
 	session_unref(callback->session);
 
 	g_free(callback);
-}
-
-static char *register_transfer(DBusConnection *conn, void *user_data)
-{
-	char *path;
-
-	path = g_strdup_printf("%s/transfer%ju",
-			TRANSFER_BASEPATH, counter++);
-
-	if (g_dbus_register_interface(conn, path,
-				TRANSFER_INTERFACE,
-				transfer_methods, NULL, NULL,
-				user_data, NULL) == FALSE) {
-		g_free(path);
-		return NULL;
-	}
-
-	return path;
 }
 
 int session_get(struct session_data *session, const char *type,
@@ -1223,6 +1243,8 @@ complete:
 				session->agent_path, session->transfer_path,
 				"Error sending object");
 
+	unregister_transfer(session);
+
 	gw_obex_xfer_close(session->xfer, NULL);
 	gw_obex_xfer_free(session->xfer);
 	session->xfer = NULL;
@@ -1238,13 +1260,6 @@ complete:
 		gchar *basename = g_path_get_basename(filename);
 
 		g_ptr_array_remove(session->pending, filename);
-
-		if (session->transfer_path) {
-			g_dbus_unregister_interface(session->conn,
-					session->transfer_path, TRANSFER_INTERFACE);
-			g_free(session->transfer_path);
-			session->transfer_path = NULL;
-		}
 
 		session_send(session, filename, basename);
 		g_free(filename);
