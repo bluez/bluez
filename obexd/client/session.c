@@ -794,7 +794,6 @@ static void list_folder_callback(struct session_data *session,
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
 	DBusMessageIter iter;
-	const char *buf;
 	int i;
 
 	reply = dbus_message_new_method_return(session->msg);
@@ -802,8 +801,8 @@ static void list_folder_callback(struct session_data *session,
 	if (session->filled == 0)
 		goto done;
 
-	for (i = session->filled - 1, buf = session->buffer; i > 0; i--) {
-		if (buf[i] != '\0')
+	for (i = session->filled - 1; i > 0; i--) {
+		if (session->buffer[i] != '\0')
 			break;
 
 		session->filled--;
