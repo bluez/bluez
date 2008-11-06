@@ -40,6 +40,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -101,6 +102,7 @@ static struct serial_port *find_port(GSList *ports, const char *pattern)
 	for (l = ports; l != NULL; l = l->next) {
 		struct serial_port *port = l->data;
 		uuid_t uuid;
+		uint16_t uuid16;
 		char *uuid_str;
 		int ret;
 
@@ -114,8 +116,11 @@ static struct serial_port *find_port(GSList *ports, const char *pattern)
 		 * UUID-128 string and compares it with the port UUID (which is
 		 * also stored as a UUID-128 string */
 
-		if (bt_string2uuid(&uuid, pattern) < 0)
+		uuid16 = bt_string2class(pattern);
+		if (!uuid16)
 			continue;
+
+		sdp_uuid16_create(&uuid, uuid16);
 
 		uuid_str = bt_uuid2string(&uuid);
 		if (!uuid_str)
