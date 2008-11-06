@@ -66,10 +66,7 @@
 #include "sdpd.h"
 #include "glib-helper.h"
 
-#define SERIAL_PORT_NAME	"spp"
 #define SERIAL_PORT_UUID	"00001101-0000-1000-8000-00805F9B34FB"
-
-#define DIALUP_NET_NAME		"dun"
 #define DIALUP_NET_UUID		"00001103-0000-1000-8000-00805F9B34FB"
 
 static DBusConnection *connection = NULL;
@@ -132,28 +129,11 @@ static void port_remove(struct btd_device *device)
 	return serial_remove(device, SERIAL_PORT_UUID);
 }
 
-static int dialup_probe(struct btd_device *device, GSList *uuids)
-{
-	return serial_probe(device, DIALUP_NET_UUID);
-}
-
-static void dialup_remove(struct btd_device *device)
-{
-	return serial_remove(device, DIALUP_NET_UUID);
-}
-
 static struct btd_device_driver serial_port_driver = {
 	.name	= "serial-port",
-	.uuids	= BTD_UUIDS(SERIAL_PORT_UUID),
+	.uuids	= BTD_UUIDS(SERIAL_PORT_UUID, DIALUP_NET_UUID),
 	.probe	= port_probe,
 	.remove	= port_remove,
-};
-
-static struct btd_device_driver serial_dialup_driver = {
-	.name	= "serial-dialup",
-	.uuids	= BTD_UUIDS(DIALUP_NET_UUID),
-	.probe	= dialup_probe,
-	.remove	= dialup_remove,
 };
 
 static int proxy_probe(struct btd_adapter *adapter)
@@ -188,7 +168,6 @@ int serial_manager_init(DBusConnection *conn)
 
 	btd_register_adapter_driver(&serial_proxy_driver);
 	btd_register_device_driver(&serial_port_driver);
-	btd_register_device_driver(&serial_dialup_driver);
 
 	return 0;
 }
@@ -196,7 +175,6 @@ int serial_manager_init(DBusConnection *conn)
 void serial_manager_exit(void)
 {
 	btd_unregister_device_driver(&serial_port_driver);
-	btd_unregister_device_driver(&serial_dialup_driver);
 
 	dbus_connection_unref(connection);
 	connection = NULL;
