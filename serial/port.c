@@ -72,7 +72,6 @@ struct serial_port {
 	DBusMessage	*msg;		/* for name listener handling */
 	int16_t		id;		/* RFCOMM device id */
 	uint8_t		channel;	/* RFCOMM channel */
-	char		*name;		/* service friendly name */
 	char		*uuid;		/* service identification */
 	char		*dev;		/* RFCOMM device name */
 	guint		listener_id;
@@ -101,14 +100,32 @@ static struct serial_port *find_port(GSList *ports, const char *pattern)
 
 	for (l = ports; l != NULL; l = l->next) {
 		struct serial_port *port = l->data;
-
-		if (!strcasecmp(port->name, pattern))
-			return port;
+		uuid_t uuid;
+		char *uuid_str;
+		int ret;
 
 		if (!strcasecmp(port->uuid, pattern))
 			return port;
 
 		if (port->dev && !strcmp(port->dev, pattern))
+			return port;
+
+		/* The following steps converts a potential friendly-name to a
+		 * UUID-128 string and compares it with the port UUID (which is
+		 * also stored as a UUID-128 string */
+
+		if (bt_string2uuid(&uuid, pattern) < 0)
+			continue;
+
+		uuid_str = bt_uuid2string(&uuid);
+		if (!uuid_str)
+			continue;
+
+		ret = strcasecmp(port->uuid, uuid_str);
+
+		g_free(uuid_str);
+
+		if (ret == 0)
 			return port;
 	}
 
@@ -154,7 +171,6 @@ static void serial_port_free(struct serial_port *port)
 {
 	if (port->id)
 		port_release(port);
-	g_free(port->name);
 	g_free(port->uuid);
 	g_free(port);
 }
@@ -427,8 +443,7 @@ static struct serial_device *create_serial_device(DBusConnection *conn,
 }
 
 int port_register(DBusConnection *conn, const char *path, bdaddr_t *src,
-		  bdaddr_t *dst, const char *name, const char *uuid,
-		  uint8_t channel)
+		  bdaddr_t *dst, const char *uuid, uint8_t channel)
 {
 	struct serial_device *device;
 	struct serial_port *port;
@@ -445,7 +460,6 @@ int port_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 		return 0;
 
 	port = g_new0(struct serial_port, 1);
-	port->name = g_strdup(name);
 	port->uuid = g_strdup(uuid);
 	port->channel = channel;
 	port->device = device;
