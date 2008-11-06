@@ -450,6 +450,8 @@ static void agent_notify_progress(DBusConnection *conn, const char *agent_name,
 
 	message = dbus_message_new_method_call(agent_name,
 			agent_path, AGENT_INTERFACE, "Progress");
+	if (message == NULL)
+		return;
 
 	dbus_message_set_no_reply(message, TRUE);
 
@@ -471,6 +473,8 @@ static void agent_notify_complete(DBusConnection *conn, const char *agent_name,
 
 	message = dbus_message_new_method_call(agent_name,
 			agent_path, AGENT_INTERFACE, "Complete");
+	if (message == NULL)
+		return;
 
 	dbus_message_set_no_reply(message, TRUE);
 
@@ -493,6 +497,8 @@ static void agent_notify_error(DBusConnection *conn, const char *agent_name,
 
 	message = dbus_message_new_method_call(agent_name,
 			agent_path, AGENT_INTERFACE, "Error");
+	if (message == NULL)
+		return;
 
 	dbus_message_set_no_reply(message, TRUE);
 
