@@ -705,73 +705,36 @@ static void handle_incoming_call(DBusMessage *msg)
 	telephony_incoming_call_ind(number, 0);
 }
 
-static void get_remote_reply(DBusPendingCall *pending_call, void *user_data)
+static void handle_outgoing_call(DBusMessage *msg)
 {
-	struct csd_call *call = user_data;
-	DBusMessage *reply;
-	DBusError err;
-	const char *number;
-	dbus_bool_t originating, terminating;
+	const char *number, *call_path;
+	struct csd_call *call;
 
-	reply = dbus_pending_call_steal_reply(pending_call);
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, reply)) {
-		error("%s GetRemote failed: %s, %s",
-				call->object_path, err.name, err.message);
-		dbus_error_free(&err);
-		goto done;
-	}
-
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(reply, NULL,
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_OBJECT_PATH, &call_path,
 					DBUS_TYPE_STRING, &number,
-					DBUS_TYPE_BOOLEAN, &originating,
-					DBUS_TYPE_BOOLEAN, &terminating,
 					DBUS_TYPE_INVALID)) {
-		error("Unexpected paramters in %s GetRemote reply:",
-				call->object_path, err.name, err.message);
-		dbus_error_free(&err);
-		goto done;
+		error("Unexpected parameters in Call.Created() signal");
+		return;
 	}
 
-	if (strlen(number) == 0)
-		goto done;
+	call = find_call(call_path);
+	if (!call) {
+		error("Didn't find any matching call object for %s",
+				call_path);
+		return;
+	}
+
+	debug("Outgoing call from %s to number %s", call_path, number);
 
 	g_free(call->number);
 	call->number = g_strdup(number);
 
-	if (originating) {
-		g_free(last_dialed_number);
-		last_dialed_number = g_strdup(number);
-	}
+	g_free(last_dialed_number);
+	last_dialed_number = g_strdup(number);
 
-done:
-	dbus_message_unref(reply);
-}
-
-static void resolve_number(struct csd_call *call)
-{
-	DBusMessage *msg;
-	DBusPendingCall *pcall;
-
-	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
-					call->object_path,
-					CSD_CALL_INSTANCE, "GetRemote");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
-		return;
-	}
-
-	if (!dbus_connection_send_with_reply(connection, msg, &pcall, -1)) {
-		error("Sending GetRemote failed");
-		dbus_message_unref(msg);
-		return;
-	}
-
-	dbus_pending_call_set_notify(pcall, get_remote_reply, call, NULL);
-	dbus_pending_call_unref(pcall);
-	dbus_message_unref(msg);
+	telephony_update_indicator(maemo_indicators, "callsetup",
+					EV_CALLSETUP_OUTGOING);
 }
 
 static void handle_call_status(DBusMessage *msg, const char *call_path)
@@ -828,13 +791,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_CREATE:
 		call->originating = TRUE;
 		call->setup = TRUE;
-		telephony_update_indicator(maemo_indicators, "callsetup",
-						EV_CALLSETUP_OUTGOING);
 		break;
 	case CSD_CALL_STATUS_COMING:
-		/* Actuall incoming call handling is done in
-		 * handle_incoming_call() which is called when we get the
-		 * Call.Coming() signal */
 		call->originating = FALSE;
 		call->setup = TRUE;
 		break;
@@ -843,7 +801,6 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_MO_ALERTING:
 		telephony_update_indicator(maemo_indicators, "callsetup",
 						EV_CALLSETUP_ALERTING);
-		resolve_number(call);
 		break;
 	case CSD_CALL_STATUS_MT_ALERTING:
 		break;
@@ -1118,6 +1075,8 @@ static DBusHandlerResult cs_signal_filter(DBusConnection *conn,
 
 	if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Coming"))
 		handle_incoming_call(msg);
+	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Created"))
+		handle_outgoing_call(msg);
 	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE, "CallStatus"))
 		handle_call_status(msg, path);
 	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
