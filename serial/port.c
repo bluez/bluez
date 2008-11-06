@@ -162,14 +162,14 @@ static int port_release(struct serial_port *port)
 
 	g_free(port->dev);
 	port->dev = NULL;
-	port->id = 0;
+	port->id = -1;
 	close(rfcomm_ctl);
 	return -err;
 }
 
 static void serial_port_free(struct serial_port *port)
 {
-	if (port->id)
+	if (port->id >= 0)
 		port_release(port);
 	g_free(port->uuid);
 	g_free(port);
@@ -187,7 +187,7 @@ static void port_owner_exited(DBusConnection *conn, void *user_data)
 {
 	struct serial_port *port = user_data;
 
-	if (port->id)
+	if (port->id >= 0)
 		port_release(port);
 
 	port->listener_id = 0;
@@ -399,7 +399,7 @@ static DBusMessage *port_disconnect(DBusConnection *conn,
 	if (!port->listener_id)
 		return failed(msg, "Not connected");
 
-	if (port->id)
+	if (port->id >= 0)
 		port_release(port);
 
 	g_dbus_remove_watch(conn, port->listener_id);
@@ -463,6 +463,7 @@ int port_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 	port->uuid = g_strdup(uuid);
 	port->channel = channel;
 	port->device = device;
+	port->id = -1;
 
 	device->ports = g_slist_append(device->ports, port);
 
