@@ -985,6 +985,13 @@ static void device_unregister(void *data)
 	input_device_free(idev);
 }
 
+static gint connected_cmp(gpointer a, gpointer b)
+{
+	struct input_conn *iconn = a;
+
+	return !is_connected(iconn);
+}
+
 static DBusMessage *device_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -1007,7 +1014,7 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 
 	/* Connected */
 	connected = !!g_slist_find_custom(idev->connections, NULL,
-					(GCompareFunc) is_connected);
+					(GCompareFunc) connected_cmp);
 	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &connected);
 
 	dbus_message_iter_close_container(&iter, &dict);
