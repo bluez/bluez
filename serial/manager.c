@@ -70,6 +70,7 @@
 #define DIALUP_NET_UUID		"00001103-0000-1000-8000-00805F9B34FB"
 #define OBJECT_PUSH_UUID	"00001105-0000-1000-8000-00805F9B34FB"
 #define FILE_TRANSFER_UUID	"00001106-0000-1000-8000-00805F9B34FB"
+#define RFCOMM_UUID_STR		"00000003-0000-1000-8000-00805F9B34FB"
 
 static DBusConnection *connection = NULL;
 
@@ -82,7 +83,7 @@ static int serial_probe(struct btd_device *device, const char *uuid)
 	bdaddr_t src, dst;
 	const sdp_record_t *rec;
 
-	DBG("path %s", path);
+	DBG("path %s: %s", path, uuid);
 
 	rec = btd_device_get_record(device, uuid);
 	if (!rec)
@@ -133,8 +134,7 @@ static void port_remove(struct btd_device *device)
 
 static struct btd_device_driver serial_port_driver = {
 	.name	= "serial-port",
-	.uuids	= BTD_UUIDS(SERIAL_PORT_UUID, DIALUP_NET_UUID,
-			OBJECT_PUSH_UUID, FILE_TRANSFER_UUID),
+	.uuids	= BTD_UUIDS(RFCOMM_UUID_STR),
 	.probe	= port_probe,
 	.remove	= port_remove,
 };
