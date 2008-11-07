@@ -30,7 +30,7 @@ void device_remove(DBusConnection *conn, struct btd_device *device);
 gint device_address_cmp(struct btd_device *device, const gchar *address);
 int device_browse(struct btd_device *device, DBusConnection *conn,
 			DBusMessage *msg, uuid_t *search, gboolean reverse);
-void device_probe_drivers(struct btd_device *device, GSList *uuids);
+void device_probe_drivers(struct btd_device *device, GSList *profiles);
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
 						const char *uuid);
 void btd_device_add_uuid(struct btd_device *device, const char *uuid);

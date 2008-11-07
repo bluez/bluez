@@ -601,50 +601,118 @@ gint device_address_cmp(struct btd_device *device, const gchar *address)
 	return strcasecmp(addr, address);
 }
 
-void device_probe_drivers(struct btd_device *device, GSList *uuids)
+static GSList *pattern_to_list(sdp_list_t *pattern)
+{
+	GSList *l = NULL;
+
+	while (pattern) {
+		char *uuid;
+
+		uuid = bt_uuid2string(pattern->data);
+		if (!uuid)
+			continue;
+
+		l = g_slist_append(l, uuid);
+
+		pattern = pattern->next;
+	}
+
+	return l;
+}
+
+static GSList *device_match_pattern(struct btd_device *device,
+					const char *pattern,
+					GSList *profiles)
+{
+	GSList *l, *uuids = NULL;
+	GSList *patterns = NULL;
+
+	for (l = profiles; l; l = l->next) {
+		const char *uuid = l->data;
+		const sdp_record_t *rec;
+
+		rec = btd_device_get_record(device, uuid);
+	
+		if (!rec)
+			continue;
+
+		patterns = pattern_to_list(rec->pattern);
+
+		if (!g_slist_find_custom(patterns, pattern,
+					(GCompareFunc) strcasecmp))
+			continue;
+
+		uuids = g_slist_append(uuids, l->data);
+	}
+
+	g_slist_foreach(patterns, (GFunc) g_free, NULL);
+	g_slist_free(patterns);
+
+	return uuids;
+}
+
+static GSList *device_match_driver(struct btd_device *device,
+					struct btd_device_driver *driver,
+					GSList *profiles)
+{
+	const char **uuid;
+	GSList *uuids = NULL;
+
+	for (uuid = driver->uuids; *uuid; uuid++) {
+		GSList *match;
+
+		/* match profile driver */
+		match = g_slist_find_custom(profiles, *uuid,
+					(GCompareFunc) strcasecmp);
+		if (match) {
+			uuids = g_slist_append(uuids, match->data);
+			continue;
+		}
+
+		/* match pattern driver */
+		match = device_match_pattern(device, *uuid, profiles);
+		for (; match; match = match->next)
+			uuids = g_slist_append(uuids, match->data);
+	}
+
+	return uuids;
+}
+
+void device_probe_drivers(struct btd_device *device, GSList *profiles)
 {
 	GSList *list;
-	const char **uuid;
 	int err;
 
 	debug("Probe drivers for %s", device->path);
 
 	for (list = device_drivers; list; list = list->next) {
 		struct btd_device_driver *driver = list->data;
-		GSList *probe_uuids = NULL;
+		GSList *probe_uuids;
+		struct btd_driver_data *driver_data;
 
-		for (uuid = driver->uuids; *uuid; uuid++) {
-			GSList *match;
+		probe_uuids = device_match_driver(device, driver, profiles);
 
-			match = g_slist_find_custom(uuids, *uuid,
-							(GCompareFunc) strcasecmp);
-			if (!match)
-				continue;
+		if (!probe_uuids)
+			continue;
 
-			probe_uuids = g_slist_append(probe_uuids, match->data);
-		}
+		driver_data = g_new0(struct btd_driver_data, 1);
 
-		if (probe_uuids) {
-			struct btd_driver_data *driver_data = g_new0(struct btd_driver_data, 1);
+		err = driver->probe(device, probe_uuids);
+		if (err < 0) {
+			error("probe failed with driver %s for device %s",
+					driver->name, device->path);
 
-			err = driver->probe(device, probe_uuids);
-			if (err < 0) {
-				error("probe failed with driver %s for device %s",
-							driver->name, device->path);
-
-				g_free(driver_data);
-				g_slist_free(probe_uuids);
-				continue;
-			}
-
-			driver_data->driver = driver;
-			device->drivers = g_slist_append(device->drivers,
-								driver_data);
+			g_free(driver_data);
 			g_slist_free(probe_uuids);
+			continue;
 		}
+
+		driver_data->driver = driver;
+		device->drivers = g_slist_append(device->drivers, driver_data);
+		g_slist_free(probe_uuids);
 	}
 
-	for (list = uuids; list; list = list->next) {
+	for (list = profiles; list; list = list->next) {
 		GSList *l = g_slist_find_custom(device->uuids, list->data,
 							(GCompareFunc) strcasecmp);
 		if (l)
