@@ -95,24 +95,17 @@ struct browse_req {
 	DBusConnection *conn;
 	DBusMessage *msg;
 	struct btd_device *device;
-	GSList *uuids;
-	GSList *uuids_added;
-	GSList *uuids_removed;
+	GSList *match_uuids;
+	GSList *profiles_added;
+	GSList *profiles_removed;
 	sdp_list_t *records;
 	int search_uuid;
 };
 
 static uint16_t uuid_list[] = {
-	PUBLIC_BROWSE_GROUP,
+	L2CAP_UUID,
 	PNP_INFO_SVCLASS_ID,
-	HID_SVCLASS_ID,
-	GENERIC_AUDIO_SVCLASS_ID,
-	ADVANCED_AUDIO_SVCLASS_ID,
-	AV_REMOTE_SVCLASS_ID,
-	PANU_SVCLASS_ID,
-	GN_SVCLASS_ID,
-	NAP_SVCLASS_ID,
-	SERIAL_PORT_SVCLASS_ID,
+	PUBLIC_BROWSE_GROUP,
 	0
 };
 
@@ -858,7 +851,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
 		sdp_buf_t pdu;
 		sdp_list_t *svcclass = NULL;
-		gchar *uuid_str;
+		gchar *profile_uuid;
 		GSList *l;
 
 		if (!rec)
@@ -868,13 +861,13 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 			continue;
 
 		/* Extract the first element and skip the remainning */
-		uuid_str = bt_uuid2string(svcclass->data);
-		if (!uuid_str) {
+		profile_uuid = bt_uuid2string(svcclass->data);
+		if (!profile_uuid) {
 			sdp_list_free(svcclass, free);
 			continue;
 		}
 
-		if (!strcasecmp(uuid_str, PNP_UUID)) {
+		if (!strcasecmp(profile_uuid, PNP_UUID)) {
 			uint16_t source, vendor, product, version;
 			sdp_data_t *pdlist;
 
@@ -895,19 +888,9 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 						vendor, product, version);
 		}
 
-		/* Driver UUID found */
-		l = g_slist_find_custom(req->uuids, uuid_str,
-				(GCompareFunc) strcasecmp);
-		if (l) {
-			char *uuid = l->data;
-
-			req->uuids = g_slist_remove(req->uuids, uuid);
-			g_free(uuid);
-		}
-
 		/* Check for duplicates */
 		if (sdp_list_find(req->records, rec, rec_cmp)) {
-			g_free(uuid_str);
+			g_free(profile_uuid);
 			sdp_list_free(svcclass, free);
 			continue;
 		}
@@ -925,15 +908,17 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 			req->records = sdp_list_append(req->records, record);
 		}
 
-		l = g_slist_find_custom(device->uuids, uuid_str,
+		l = g_slist_find_custom(device->uuids, profile_uuid,
 							(GCompareFunc) strcmp);
 		if (!l)
-			req->uuids_added = g_slist_append(req->uuids_added,
-								uuid_str);
+			req->profiles_added =
+					g_slist_append(req->profiles_added,
+							profile_uuid);
 		else {
-			req->uuids_removed = g_slist_remove(req->uuids_removed,
-								l->data);
-			g_free(uuid_str);
+			req->profiles_removed =
+					g_slist_remove(req->profiles_removed,
+							l->data);
+			g_free(profile_uuid);
 		}
 
 		sdp_list_free(svcclass, free);
@@ -975,9 +960,9 @@ static void browse_req_free(struct browse_req *req)
 		dbus_message_unref(req->msg);
 	if (req->conn)
 		dbus_connection_unref(req->conn);
-	g_slist_foreach(req->uuids_added, (GFunc) g_free, NULL);
-	g_slist_free(req->uuids_added);
-	g_slist_free(req->uuids_removed);
+	g_slist_foreach(req->profiles_added, (GFunc) g_free, NULL);
+	g_slist_free(req->profiles_added);
+	g_slist_free(req->profiles_removed);
 	if (req->records)
 		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
 	g_free(req);
@@ -997,7 +982,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	update_services(req, recs);
 
-	if (!req->uuids_added && !req->uuids_removed) {
+	if (!req->profiles_added && !req->profiles_removed) {
 		debug("%s: No service update", device->path);
 		goto proceed;
 	}
@@ -1009,12 +994,12 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	}
 
 	/* Probe matching drivers for services added */
-	if (req->uuids_added)
-		device_probe_drivers(device, req->uuids_added);
+	if (req->profiles_added)
+		device_probe_drivers(device, req->profiles_added);
 
 	/* Remove drivers for services removed */
-	if (req->uuids_removed)
-		device_remove_drivers(device, req->uuids_removed);
+	if (req->profiles_removed)
+		device_remove_drivers(device, req->profiles_removed);
 
 	/* Propagate services changes */
 	services_changed(req->device);
@@ -1064,9 +1049,9 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	bdaddr_t src;
 	uuid_t uuid;
 
-	/* If we have a valid response and req->search_uuid == 1, then
-	   public browsing was successful -- we don't need any more */
-	if (err < 0 || (req->search_uuid == 1 && recs))
+	/* If we have a valid response and req->search_uuid == 2, then
+	   L2CAP UUID & PNP searching was successful -- we are done */
+	if (err < 0 || (req->search_uuid == 2 && req->records))
 		goto done;
 
 	update_services(req, recs);
@@ -1081,75 +1066,13 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 		return;
 	}
 
-	/* Search for drivers uuids */
-	if (req->uuids) {
-		char *uuid_str = req->uuids->data;
-
-		bt_string2uuid(&uuid, uuid_str);
-		req->uuids = g_slist_remove(req->uuids, uuid_str);
-		g_free(uuid_str);
-		sdp_uuid128_to_uuid(&uuid);
-		bt_search_service(&src, &device->bdaddr, &uuid,
-						browse_cb, user_data, NULL);
-		return;
-	}
-
-	/* Search for l2cap uuid */
-	if (!req->records) {
-		sdp_uuid16_create(&uuid, L2CAP_UUID);
-		bt_search_service(&src, &device->bdaddr, &uuid,
-						search_cb, user_data, NULL);
-		return;
-	}
-
 done:
 	search_cb(recs, err, user_data);
-}
-
-static gboolean is_in_uuid_list(const char *uuid)
-{
-	uint16_t uuid16;
-	int i;
-
-	/* Check for Bluetooth UUID-16 */
-	if (strlen(uuid) != 36 || strncmp(uuid, "0000", 4) ||
-			strcasecmp(uuid + 8, "-0000-1000-8000-00805F9B34FB"))
-		return FALSE;
-
-	uuid16 = strtol(uuid, NULL, 16);
-
-	for (i = 0; uuid_list[i]; i++) {
-		if (uuid16 == uuid_list[i])
-			return TRUE;
-	}
-
-	return FALSE;
 }
 
 static void init_browse(struct browse_req *req, gboolean reverse)
 {
 	GSList *l;
-
-	for (l = device_drivers; l; l = l->next) {
-		struct btd_device_driver *driver = l->data;
-		int i;
-
-		for (i = 0; driver->uuids[i]; i++) {
-			char *uuid;
-
-			/* Check for duplicates in our default UUID list */
-			if (is_in_uuid_list(driver->uuids[i]))
-				continue;
-
-			/* ... and of UUIDs another driver already asked for */
-			if (g_slist_find_custom(req->uuids, driver->uuids[i],
-					(GCompareFunc) strcasecmp))
-				continue;
-
-			uuid = g_strdup(driver->uuids[i]);
-			req->uuids = g_slist_append(req->uuids, uuid);
-		}
-	}
 
 	/* If we are doing reverse-SDP don't try to detect removed profiles
 	 * since some devices hide their service records while they are
@@ -1159,7 +1082,7 @@ static void init_browse(struct browse_req *req, gboolean reverse)
 		return;
 
 	for (l = req->device->uuids; l; l = l->next)
-		req->uuids_removed = g_slist_append(req->uuids_removed,
+		req->profiles_removed = g_slist_append(req->profiles_removed,
 						l->data);
 }
 
