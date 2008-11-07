@@ -107,13 +107,13 @@ static int serial_probe(struct btd_device *device, const char *uuid)
 	return port_register(connection, path, &src, &dst, uuid, ch);
 }
 
-static void serial_remove(struct btd_device *device, const char *uuid)
+static void serial_remove(struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
 
 	DBG("path %s", path);
 
-	port_unregister(path, uuid);
+	port_unregister(path);
 }
 
 
@@ -129,7 +129,7 @@ static int port_probe(struct btd_device *device, GSList *uuids)
 
 static void port_remove(struct btd_device *device)
 {
-	return serial_remove(device, SERIAL_PORT_UUID);
+	return serial_remove(device);
 }
 
 static struct btd_device_driver serial_port_driver = {

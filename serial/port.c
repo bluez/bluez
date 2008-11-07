@@ -463,23 +463,16 @@ int port_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 	return 0;
 }
 
-int port_unregister(const char *path, const char *uuid)
+int port_unregister(const char *path)
 {
 	struct serial_device *device;
-	struct serial_port *port;
 
 	device = find_device(devices, path);
 	if (!device)
 		return -ENOENT;
 
-	port = find_port(device->ports, uuid);
-	if (!port)
-		return -ENOENT;
-
-	device->ports = g_slist_remove(device->ports, port);
-	serial_port_free(port);
-	if (device->ports)
-		return 0;
+	g_slist_foreach(device->ports, (GFunc) serial_port_free, NULL);
+	g_slist_free(device->ports);
 
 	g_dbus_unregister_interface(device->conn, path, SERIAL_PORT_INTERFACE);
 
