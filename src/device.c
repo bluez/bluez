@@ -639,8 +639,13 @@ static GSList *device_match_pattern(struct btd_device *device,
 		if (!rec)
 			continue;
 
-		if (record_has_uuid(rec, match_uuid))
+		if (record_has_uuid(rec, match_uuid)) {
+			char bdaddr[18];
+			ba2str(&device->bdaddr, bdaddr);
+			debug("Device %s record for profile %s matched uuid %s",
+					bdaddr, profile_uuid, match_uuid);
 			uuids = g_slist_append(uuids, profile_uuid);
+		}
 	}
 
 	return uuids;
@@ -661,13 +666,18 @@ static GSList *device_match_driver(struct btd_device *device,
 					(GCompareFunc) strcasecmp);
 		if (match) {
 			uuids = g_slist_append(uuids, match->data);
+			debug("Profile UUID %s matched driver %s", *uuid,
+				driver->name);
 			continue;
 		}
 
 		/* match pattern driver */
 		match = device_match_pattern(device, *uuid, profiles);
-		for (; match; match = match->next)
+		for (; match; match = match->next) {
+			debug("Non-profile UUID %s matched driver %s", *uuid,
+				driver->name);
 			uuids = g_slist_append(uuids, match->data);
+		}
 	}
 
 	return uuids;
