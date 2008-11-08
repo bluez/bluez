@@ -601,23 +601,28 @@ gint device_address_cmp(struct btd_device *device, const gchar *address)
 	return strcasecmp(addr, address);
 }
 
-static GSList *pattern_to_list(sdp_list_t *pattern)
+static gboolean record_has_uuid(const sdp_record_t *rec,
+				const char *profile_uuid)
 {
-	GSList *l = NULL;
+	sdp_list_t *pat;
 
-	while (pattern) {
+	for (pat = rec->pattern; pat != NULL; pat = pat->next) {
 		char *uuid;
+		int ret;
 
-		uuid = bt_uuid2string(pattern->data);
+		uuid = bt_uuid2string(pat->data);
 		if (!uuid)
 			continue;
 
-		l = g_slist_append(l, uuid);
+		ret = strcasecmp(uuid, profile_uuid);
 
-		pattern = pattern->next;
+		g_free(uuid);
+
+		if (ret == 0)
+			return TRUE;
 	}
 
-	return l;
+	return FALSE;
 }
 
 static GSList *device_match_pattern(struct btd_device *device,
@@ -629,20 +634,13 @@ static GSList *device_match_pattern(struct btd_device *device,
 	for (l = profiles; l; l = l->next) {
 		char *profile_uuid = l->data;
 		const sdp_record_t *rec;
-		GSList *record_uuids;
 
 		rec = btd_device_get_record(device, profile_uuid);
 		if (!rec)
 			continue;
 
-		record_uuids = pattern_to_list(rec->pattern);
-
-		if (g_slist_find_custom(record_uuids, match_uuid,
-					(GCompareFunc) strcasecmp))
+		if (record_has_uuid(rec, match_uuid))
 			uuids = g_slist_append(uuids, profile_uuid);
-
-		g_slist_foreach(record_uuids, (GFunc) g_free, NULL);
-		g_slist_free(record_uuids);
 	}
 
 	return uuids;
