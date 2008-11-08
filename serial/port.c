@@ -75,6 +75,7 @@ struct serial_port {
 	uint8_t		channel;	/* RFCOMM channel */
 	char		*uuid;		/* service identification */
 	char		*dev;		/* RFCOMM device name */
+	int		fd;		/* Opened file descriptor */
 	guint		listener_id;
 	struct serial_device *device;
 };
@@ -136,6 +137,11 @@ static int port_release(struct serial_port *port)
 	rfcomm_ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
 	if (rfcomm_ctl < 0)
 		return -errno;
+
+	if (port->fd >= 0) {
+		close(port->fd);
+		port->fd = -1;
+	}
 
 	memset(&req, 0, sizeof(req));
 	req.dev_id = port->id;
@@ -233,6 +239,7 @@ static void open_notify(int fd, int err, struct serial_port *port)
 		port_release(port);
 		reply = failed(port->msg, strerror(err));
 	} else {
+		port->fd = fd;
 		reply = g_dbus_create_reply(port->msg,
 				DBUS_TYPE_STRING, &port->dev,
 				DBUS_TYPE_INVALID);
@@ -457,6 +464,7 @@ int port_register(DBusConnection *conn, const char *path, bdaddr_t *src,
 	port->channel = channel;
 	port->device = device;
 	port->id = -1;
+	port->fd = -1;
 
 	device->ports = g_slist_append(device->ports, port);
 
