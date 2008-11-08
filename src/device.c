@@ -632,17 +632,15 @@ static GSList *device_match_pattern(struct btd_device *device,
 		const sdp_record_t *rec;
 
 		rec = btd_device_get_record(device, uuid);
-	
+
 		if (!rec)
 			continue;
 
 		patterns = pattern_to_list(rec->pattern);
 
-		if (!g_slist_find_custom(patterns, pattern,
+		if (g_slist_find_custom(patterns, pattern,
 					(GCompareFunc) strcasecmp))
-			continue;
-
-		uuids = g_slist_append(uuids, l->data);
+			uuids = g_slist_append(uuids, uuid);
 	}
 
 	g_slist_foreach(patterns, (GFunc) g_free, NULL);
