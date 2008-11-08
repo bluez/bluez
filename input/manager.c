@@ -89,6 +89,12 @@ static int headset_probe(struct btd_device *device, GSList *uuids)
 
 	DBG("path %s", path);
 
+	if (!g_slist_find_custom(uuids, HSP_HS_UUID,
+					(GCompareFunc) strcasecmp))
+		return -EINVAL;
+
+	record = btd_device_get_record(device, uuids->data);
+
 	if (!record || sdp_get_access_protos(record, &protos) < 0) {
 		error("Invalid record");
 		return -EINVAL;
