@@ -621,29 +621,28 @@ static GSList *pattern_to_list(sdp_list_t *pattern)
 }
 
 static GSList *device_match_pattern(struct btd_device *device,
-					const char *pattern,
+					const char *match_uuid,
 					GSList *profiles)
 {
 	GSList *l, *uuids = NULL;
 
 	for (l = profiles; l; l = l->next) {
-		const char *uuid = l->data;
+		char *profile_uuid = l->data;
 		const sdp_record_t *rec;
-		GSList *patterns;
+		GSList *record_uuids;
 
-		rec = btd_device_get_record(device, uuid);
-
+		rec = btd_device_get_record(device, profile_uuid);
 		if (!rec)
 			continue;
 
-		patterns = pattern_to_list(rec->pattern);
+		record_uuids = pattern_to_list(rec->pattern);
 
-		if (g_slist_find_custom(patterns, pattern,
+		if (g_slist_find_custom(record_uuids, match_uuid,
 					(GCompareFunc) strcasecmp))
-			uuids = g_slist_append(uuids, uuid);
+			uuids = g_slist_append(uuids, profile_uuid);
 
-		g_slist_foreach(patterns, (GFunc) g_free, NULL);
-		g_slist_free(patterns);
+		g_slist_foreach(record_uuids, (GFunc) g_free, NULL);
+		g_slist_free(record_uuids);
 	}
 
 	return uuids;
