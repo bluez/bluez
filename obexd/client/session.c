@@ -783,6 +783,12 @@ static DBusMessage *close_session(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
+static void owner_disconnected(DBusConnection *connection, void *user_data)
+{
+	struct session_data *session = user_data;
+
+	session_shutdown(session);
+}
 
 static GDBusMethodTable session_methods[] = {
 	{ "GetProperties",	"", "a{sv}",	get_properties	},
@@ -1438,6 +1444,9 @@ int session_register(struct session_data *session)
 				session->path, SESSION_INTERFACE);
 		return -EIO;
 	}
+
+	g_dbus_add_disconnect_watch(session->conn, session->owner,
+				owner_disconnected, session, NULL);
 
 	session_ref(session);
 
