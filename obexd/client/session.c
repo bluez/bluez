@@ -493,7 +493,7 @@ static void agent_notify_error(DBusConnection *conn, const char *agent_name,
 {
 	DBusMessage *message;
 
-	if (agent_name == NULL || agent_path == NULL)
+	if (agent_name == NULL || agent_path == NULL || transfer_path == NULL)
 		return;
 
 	message = dbus_message_new_method_call(agent_name,
