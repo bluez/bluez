@@ -953,6 +953,7 @@ struct btd_device *adapter_create_device(DBusConnection *conn,
 				struct btd_adapter *adapter, const char *address)
 {
 	struct btd_device *device;
+	const char *path;
 
 	debug("adapter_create_device(%s)", address);
 
@@ -963,6 +964,14 @@ struct btd_device *adapter_create_device(DBusConnection *conn,
 	device_set_temporary(device, TRUE);
 
 	adapter->devices = g_slist_append(adapter->devices, device);
+
+	path = device_get_path(device);
+	g_dbus_emit_signal(conn, adapter->path,
+			ADAPTER_INTERFACE, "DeviceCreated",
+			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_INVALID);
+
+	adapter_update_devices(adapter);
 
 	return device;
 }
@@ -1068,17 +1077,15 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 	delete_entry(&adapter->bdaddr, "profiles", dstaddr);
 	adapter->devices = g_slist_remove(adapter->devices, device);
 
-	if (!device_is_temporary(device)) {
+	if (!device_is_temporary(device))
 		remove_bonding(conn, NULL, dstaddr, adapter);
 
-		g_dbus_emit_signal(conn, adapter->path,
-				ADAPTER_INTERFACE,
-				"DeviceRemoved",
-				DBUS_TYPE_OBJECT_PATH, &dev_path,
-				DBUS_TYPE_INVALID);
+	g_dbus_emit_signal(conn, adapter->path,
+			ADAPTER_INTERFACE, "DeviceRemoved",
+			DBUS_TYPE_OBJECT_PATH, &dev_path,
+			DBUS_TYPE_INVALID);
 
-		adapter_update_devices(adapter);
-	}
+	adapter_update_devices(adapter);
 
 	agent = device_get_agent(device);
 
