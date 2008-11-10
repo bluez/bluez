@@ -46,8 +46,8 @@ struct session_data {
 	GwObexXfer *xfer;
 	char buffer[4096];
 	int filled;
-	uint64_t size;
-	uint64_t transferred;
+	ssize_t size;
+	size_t transferred;
 	gchar *filename;
 	gchar *agent_name;
 	gchar *agent_path;

@@ -1000,6 +1000,9 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 		session->filled = 0;
 	}
 
+	if (session->size == -1)
+		goto complete;
+
 	if (session->transferred == session->size)
 		goto complete;
 
