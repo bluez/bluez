@@ -1166,9 +1166,6 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 
 	req->conn = conn ? dbus_connection_ref(conn) : get_dbus_connection();
 
-	if (msg)
-		req->msg = dbus_message_ref(msg);
-
 	req->device = device;
 
 	if (search) {
@@ -1183,6 +1180,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	device->discov_active = 1;
 
 	if (msg) {
+		req->msg = dbus_message_ref(msg);
 		device->discov_requestor = g_strdup(dbus_message_get_sender(msg));
 		/* Track the request owner to cancel it
 		 * automatically if the owner exits */
