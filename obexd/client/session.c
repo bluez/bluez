@@ -115,6 +115,7 @@ static void session_unref(struct session_data *session)
 	g_free(session->filename);
 	g_free(session->agent_name);
 	g_free(session->agent_path);
+	g_free(session->owner);
 	g_free(session);
 }
 
@@ -732,10 +733,62 @@ static DBusMessage *release_agent(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
+static void session_shutdown(struct session_data *session)
+{
+	if (session->transfer_path) {
+		agent_notify_error(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path,
+				"The transfer was cancelled");
+
+		g_dbus_unregister_interface(session->conn,
+				session->transfer_path, TRANSFER_INTERFACE);
+		g_free(session->transfer_path);
+
+		session->transfer_path = NULL;
+	}
+
+	if (session->xfer) {
+		gw_obex_xfer_abort(session->xfer, NULL);
+
+		gw_obex_xfer_free(session->xfer);
+		session->xfer = NULL;
+
+		g_free(session->filename);
+		session->filename = NULL;
+
+		g_free(session->name);
+		session->name = NULL;
+
+		/* the transfer was holding a session ref */
+		session_unref(session);
+	}
+
+	session_unref(session);
+}
+
+static DBusMessage *close_session(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	const gchar *sender;
+
+	sender = dbus_message_get_sender(message);
+	if (g_str_equal(sender, session->owner) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.NotAuthorized",
+				"Not Authorized");
+
+	session_shutdown(session);
+
+	return dbus_message_new_method_return(message);
+}
+
+
 static GDBusMethodTable session_methods[] = {
 	{ "GetProperties",	"", "a{sv}",	get_properties	},
 	{ "AssignAgent",	"o", "",	assign_agent	},
 	{ "ReleaseAgent",	"o", "",	release_agent	},
+	{ "Close",		"", "",		close_session	},
 	{ }
 };
 

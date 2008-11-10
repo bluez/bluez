@@ -60,6 +60,8 @@ static void create_callback(struct session_data *session, void *user_data)
 		goto done;
 	}
 
+	session->owner = g_strdup(data->sender);
+
 	if (session->target != NULL) {
 		session_register(session);
 		g_dbus_send_reply(data->connection, data->message,

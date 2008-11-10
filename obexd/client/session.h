@@ -52,6 +52,7 @@ struct session_data {
 	gchar *agent_name;
 	gchar *agent_path;
 	guint agent_watch;
+	gchar *owner;		/* Session owner */
 	GPtrArray *pending;
 };
 
