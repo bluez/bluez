@@ -1071,24 +1071,22 @@ proceed:
 	/* Store the device's profiles in the filesystem */
 	store_profiles(device);
 
-	if (req->msg) {
-		if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
-						"DiscoverServices")) {
-			discover_device_reply(req, req->records);
-			goto cleanup;
-		}
-
-		g_dbus_emit_signal(req->conn, dbus_message_get_path(req->msg),
+	g_dbus_emit_signal(req->conn, adapter_get_path(device->adapter),
 				ADAPTER_INTERFACE, "DeviceCreated",
 				DBUS_TYPE_OBJECT_PATH, &device->path,
 				DBUS_TYPE_INVALID);
-	}
 
 	/* Update device list */
 	adapter_update_devices(device->adapter);
 
 	if (!req->msg)
 		goto cleanup;
+
+	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
+					"DiscoverServices")) {
+		discover_device_reply(req, req->records);
+		goto cleanup;
+	}
 
 	/* Reply create device request */
 	reply = dbus_message_new_method_return(req->msg);
@@ -1165,10 +1163,12 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	adapter_get_address(adapter, &src);
 
 	req = g_new0(struct browse_req, 1);
-	if (conn && msg) {
-		req->conn = dbus_connection_ref(conn);
+
+	req->conn = conn ? dbus_connection_ref(conn) : get_dbus_connection();
+
+	if (msg)
 		req->msg = dbus_message_ref(msg);
-	}
+
 	req->device = device;
 
 	if (search) {
