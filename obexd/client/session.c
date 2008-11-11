@@ -735,8 +735,6 @@ static DBusMessage *release_agent(DBusConnection *connection,
 
 static void session_shutdown(struct session_data *session)
 {
-	g_dbus_remove_watch(session->conn, session->owner_watch);
-
 	if (session->transfer_path) {
 		agent_notify_error(session->conn, session->agent_name,
 				session->agent_path, session->transfer_path,
@@ -779,6 +777,8 @@ static DBusMessage *close_session(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
 				"Not Authorized");
+
+	g_dbus_remove_watch(session->conn, session->owner_watch);
 
 	session_shutdown(session);
 
