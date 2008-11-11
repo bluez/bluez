@@ -735,6 +735,8 @@ static DBusMessage *release_agent(DBusConnection *connection,
 
 static void session_shutdown(struct session_data *session)
 {
+	g_dbus_remove_watch(session->conn, session->owner_watch);
+
 	if (session->transfer_path) {
 		agent_notify_error(session->conn, session->agent_name,
 				session->agent_path, session->transfer_path,
@@ -1448,8 +1450,9 @@ int session_register(struct session_data *session)
 		return -EIO;
 	}
 
-	g_dbus_add_disconnect_watch(session->conn, session->owner,
-				owner_disconnected, session, NULL);
+	session->owner_watch = g_dbus_add_disconnect_watch(session->conn,
+				session->owner, owner_disconnected, session,
+				NULL);
 
 	session_ref(session);
 
