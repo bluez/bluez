@@ -957,7 +957,7 @@ static void list_folder_callback(struct session_data *session,
 {
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
-	DBusMessageIter iter;
+	DBusMessageIter iter, array;
 	int i;
 
 	reply = dbus_message_new_method_return(session->msg);
@@ -973,11 +973,16 @@ static void list_folder_callback(struct session_data *session,
 	}
 
 	dbus_message_iter_init_append(reply, &iter);
-
-	ctxt = g_markup_parse_context_new(&parser, 0, &iter, NULL);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_ARRAY_AS_STRING
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &array);
+	ctxt = g_markup_parse_context_new(&parser, 0, &array, NULL);
 	g_markup_parse_context_parse(ctxt, session->buffer,
 					session->filled, NULL);
 	g_markup_parse_context_free(ctxt);
+	dbus_message_iter_close_container(&iter, &array);
 
 	session->filled = 0;
 
