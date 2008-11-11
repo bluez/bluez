@@ -577,7 +577,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 	}
 
 	if (derr) {
-		adapter_get_address(serv_adapter->adapter, &src);
 		error("Access denied: %s", derr->message);
 
 		reply = not_authorized(auth->msg);
