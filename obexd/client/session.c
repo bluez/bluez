@@ -597,7 +597,7 @@ static void append_entry(DBusMessageIter *dict,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static DBusMessage *get_properties(DBusConnection *connection,
+static DBusMessage *transfer_get_properties(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
@@ -647,7 +647,7 @@ static DBusMessage *transfer_cancel(DBusConnection *connection,
 }
 
 static GDBusMethodTable transfer_methods[] = {
-	{ "GetProperties", "", "a{sv}", get_properties },
+	{ "GetProperties", "", "a{sv}", transfer_get_properties },
 	{ "Cancel", "", "", transfer_cancel },
 	{ }
 };
@@ -792,8 +792,42 @@ static void owner_disconnected(DBusConnection *connection, void *user_data)
 	session_shutdown(session);
 }
 
+static DBusMessage *session_get_properties(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	DBusMessage *reply;
+	DBusMessageIter iter, dict;
+	char addr[18];
+	char *paddr = addr;
+
+	reply = dbus_message_new_method_return(message);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	ba2str(&session->src, addr);
+	append_entry(&dict, "Source", DBUS_TYPE_STRING, &paddr);
+
+	ba2str(&session->dst, addr);
+	append_entry(&dict, "Destination", DBUS_TYPE_STRING, &paddr);
+
+	if (session->agent_path)
+		append_entry(&dict, "AgentPath", DBUS_TYPE_STRING, &session->agent_path);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
+}
+
 static GDBusMethodTable session_methods[] = {
-	{ "GetProperties",	"", "a{sv}",	get_properties	},
+	{ "GetProperties",	"", "a{sv}",	session_get_properties	},
 	{ "AssignAgent",	"o", "",	assign_agent	},
 	{ "ReleaseAgent",	"o", "",	release_agent	},
 	{ "Close",		"", "",		close_session	},
