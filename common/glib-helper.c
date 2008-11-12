@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -498,15 +499,40 @@ uint16_t bt_name2class(const char *pattern)
 	return 0;
 }
 
+static inline gboolean is_uuid128(const char *string)
+{
+	return (strlen(string) == 36 &&
+			string[8] == '-' &&
+			string[13] == '-' &&
+			string[18] == '-' &&
+			string[23] == '-');
+}
+
 char *bt_name2string(const char *pattern)
 {
 	uuid_t uuid;
 	uint16_t uuid16;
+	int i;
 
+	/* UUID 128 string format */
+	if (is_uuid128(pattern))
+		return g_strdup(pattern);
+
+	/* Friendly service name format */
 	uuid16 = bt_name2class(pattern);
-	if (!uuid16)
-		return NULL;
+	if (uuid16)
+		goto proceed;
 
+	/* HEX format */
+	uuid16 = strtol(pattern, NULL, 16);
+	for (i = 0; bt_services[i].class; i++) {
+		if (bt_services[i].class == uuid16)
+			goto proceed;
+	}
+
+	return NULL;
+
+proceed:
 	sdp_uuid16_create(&uuid, uuid16);
 
 	return bt_uuid2string(&uuid);
@@ -517,11 +543,7 @@ int bt_string2uuid(uuid_t *uuid, const char *string)
 	uint32_t data0, data4;
 	uint16_t data1, data2, data3, data5;
 
-	if (strlen(string) == 36 &&
-			string[8] == '-' &&
-			string[13] == '-' &&
-			string[18] == '-' &&
-			string[23] == '-' &&
+	if (is_uuid128(string) &&
 			sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
 				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
 		uint8_t val[16];

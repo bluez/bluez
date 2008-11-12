@@ -1071,14 +1071,6 @@ proceed:
 	/* Store the device's profiles in the filesystem */
 	store_profiles(device);
 
-	g_dbus_emit_signal(req->conn, adapter_get_path(device->adapter),
-				ADAPTER_INTERFACE, "DeviceCreated",
-				DBUS_TYPE_OBJECT_PATH, &device->path,
-				DBUS_TYPE_INVALID);
-
-	/* Update device list */
-	adapter_update_devices(device->adapter);
-
 	if (!req->msg)
 		goto cleanup;
 
