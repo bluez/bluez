@@ -912,7 +912,6 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 
 	for (seq = recs; seq; seq = seq->next) {
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
-		sdp_buf_t pdu;
 		sdp_list_t *svcclass = NULL;
 		gchar *profile_uuid;
 		GSList *l;
@@ -961,15 +960,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		store_record(srcaddr, dstaddr, rec);
 
 		/* Copy record */
-		if (sdp_gen_record_pdu(rec, &pdu) == 0) {
-			sdp_record_t *record;
-			int scanned;
-
-			record = sdp_extract_pdu(pdu.data, pdu.data_size,
-						&scanned);
-			free(pdu.data);
-			req->records = sdp_list_append(req->records, record);
-		}
+		req->records = sdp_list_append(req->records, sdp_copy_record(rec));
 
 		l = g_slist_find_custom(device->uuids, profile_uuid,
 							(GCompareFunc) strcmp);
