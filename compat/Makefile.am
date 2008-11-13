@@ -20,10 +20,10 @@ bin_PROGRAMS += pand
 pand_SOURCES = pand.c pand.h bnep.c sdp.h sdp.c
 
 pand_LDADD = $(top_builddir)/common/libhelper.a @BLUEZ_LIBS@
-endif
 
 if MANPAGES
 man_MANS += pand.1
+endif
 endif
 
 if DUND
@@ -32,10 +32,10 @@ bin_PROGRAMS += dund
 dund_SOURCES = dund.c dund.h lib.h sdp.h sdp.c dun.c msdun.c
 
 dund_LDADD = $(top_builddir)/common/libhelper.a @BLUEZ_LIBS@
-endif
 
 if MANPAGES
 man_MANS += dund.1
+endif
 endif
 
 AM_CFLAGS = @BLUEZ_CFLAGS@
