@@ -235,10 +235,10 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 		hex = 0;
 
 		int num_chars_to_escape = 0;
+		int length = value->unitSize - 1;
 
-		for (i = 0; i < value->unitSize; i++) {
-			if (i == (value->unitSize - 1)
-			    && value->val.str[i] == '\0')
+		for (i = 0; i < length; i++) {
+			if (value->val.str[i] == '\0')
 				break;
 			if (!isprint(value->val.str[i])) {
 				hex = 1;
@@ -281,7 +281,7 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 			strBuf = (char *)
 				malloc(sizeof(char) *
 				(value->unitSize + 1 + num_chars_to_escape * 4));
-			for (i = 0, j = 0; i < value->unitSize; i++) {
+			for (i = 0, j = 0; i < length; i++) {
 				if (value->val.str[i] == '&') {
 					strBuf[j++] = '&';
 					strBuf[j++] = 'a';
