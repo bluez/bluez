@@ -62,9 +62,9 @@
 #include "../src/adapter.h"
 #include "../src/device.h"
 
-#define DC_TIMEOUT 3000
+#define DC_TIMEOUT 3
 
-#define RING_INTERVAL 3000
+#define RING_INTERVAL 3
 
 #define BUF_SIZE 1024
 
@@ -551,7 +551,8 @@ static void sco_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	if (hs->pending_ring) {
 		ring_timer_cb(NULL);
-		ag.ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb,
+		ag.ring_timer = g_timeout_add_seconds(RING_INTERVAL,
+						ring_timer_cb,
 						NULL);
 		hs->pending_ring = FALSE;
 	}
@@ -1529,7 +1530,8 @@ static DBusMessage *hs_ring(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	ring_timer_cb(NULL);
-	ag.ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb, NULL);
+	ag.ring_timer = g_timeout_add_seconds(RING_INTERVAL, ring_timer_cb,
+						NULL);
 
 done:
 	return reply;
@@ -2087,7 +2089,7 @@ gboolean headset_cancel_stream(struct audio_device *dev, unsigned int id)
 
 	if (hs->auto_dc) {
 		if (hs->rfcomm)
-			hs->dc_timer = g_timeout_add(DC_TIMEOUT,
+			hs->dc_timer = g_timeout_add_seconds(DC_TIMEOUT,
 						(GSourceFunc) hs_dc_timeout,
 						dev);
 		else
@@ -2171,7 +2173,8 @@ int headset_connect_sco(struct audio_device *dev, GIOChannel *io)
 
 	if (hs->pending_ring) {
 		ring_timer_cb(NULL);
-		ag.ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb,
+		ag.ring_timer = g_timeout_add_seconds(RING_INTERVAL,
+						ring_timer_cb,
 						NULL);
 		hs->pending_ring = FALSE;
 	}
@@ -2354,7 +2357,7 @@ gboolean headset_unlock(struct audio_device *dev, headset_lock_t lock)
 
 	if (hs->auto_dc) {
 		if (hs->state == HEADSET_STATE_CONNECTED)
-			hs->dc_timer = g_timeout_add(DC_TIMEOUT,
+			hs->dc_timer = g_timeout_add_seconds(DC_TIMEOUT,
 						(GSourceFunc) hs_dc_timeout,
 						dev);
 		else
@@ -2455,7 +2458,8 @@ int telephony_incoming_call_ind(const char *number, int type)
 	}
 
 	ring_timer_cb(NULL);
-	ag.ring_timer = g_timeout_add(RING_INTERVAL, ring_timer_cb, NULL);
+	ag.ring_timer = g_timeout_add_seconds(RING_INTERVAL, ring_timer_cb,
+						NULL);
 
 	return 0;
 }

@@ -44,7 +44,7 @@
 #include "sink.h"
 #include "dbus-common.h"
 
-#define STREAM_SETUP_RETRY_TIMER 2000
+#define STREAM_SETUP_RETRY_TIMER 2
 
 struct pending_request {
 	DBusConnection *conn;
@@ -201,7 +201,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
 				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
 			debug("connect:connect XCASE detected");
-			g_timeout_add(STREAM_SETUP_RETRY_TIMER,
+			g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
 					stream_setup_retry, sink);
 		} else {
 			sink->connect = NULL;
@@ -366,7 +366,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 		if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
 				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
 			debug("connect:connect XCASE detected");
-			g_timeout_add(STREAM_SETUP_RETRY_TIMER,
+			g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
 					stream_setup_retry, sink);
 		} else
 			goto failed;

@@ -2947,7 +2947,7 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	if (state & PERIODIC_INQUIRY || state & STD_INQUIRY)
 		discov_active = TRUE;
 	else if (adapter->disc_sessions && main_opts.inqmode)
-		adapter->scheduler_id = g_timeout_add(main_opts.inqmode * 1000,
+		adapter->scheduler_id = g_timeout_add_seconds(main_opts.inqmode,
 				(GSourceFunc) start_inquiry, adapter);
 
 	if (!discov_active && adapter->found_devices) {

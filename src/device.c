@@ -58,7 +58,7 @@
 
 #define DEFAULT_XML_BUF_SIZE	1024
 #define DISCONNECT_TIMER	2
-#define DISCOVERY_TIMER		2000
+#define DISCOVERY_TIMER		2
 
 struct btd_driver_data {
 	struct btd_device_driver *driver;
@@ -1297,7 +1297,7 @@ int device_set_paired(DBusConnection *conn, struct btd_device *device,
 	/* If we are not initiators and there is no currently active discovery
 	 * or discovery timer, set the discovery timer */
 	if (!device->discov_active && !device->discov_timer)
-		device->discov_timer = g_timeout_add(DISCOVERY_TIMER,
+		device->discov_timer = g_timeout_add_seconds(DISCOVERY_TIMER,
 							start_discovery,
 							device);
 

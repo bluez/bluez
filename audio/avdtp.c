@@ -79,9 +79,9 @@
 #define AVDTP_MSG_TYPE_ACCEPT			0x02
 #define AVDTP_MSG_TYPE_REJECT			0x03
 
-#define REQ_TIMEOUT 4000
-#define DISCONNECT_TIMEOUT 5000
-#define STREAM_TIMEOUT 20000
+#define REQ_TIMEOUT 4
+#define DISCONNECT_TIMEOUT 5
+#define STREAM_TIMEOUT 20
 
 typedef enum {
 	AVDTP_SESSION_STATE_DISCONNECTED,
@@ -508,8 +508,9 @@ static void set_disconnect_timer(struct avdtp *session)
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
 
-	session->dc_timer = g_timeout_add(DISCONNECT_TIMEOUT,
-						disconnect_timeout, session);
+	session->dc_timer = g_timeout_add_seconds(DISCONNECT_TIMEOUT,
+						disconnect_timeout,
+						session);
 }
 
 void avdtp_error_init(struct avdtp_error *err, uint8_t type, int id)
@@ -703,7 +704,7 @@ static void avdtp_sep_set_state(struct avdtp *session,
 	switch (state) {
 	case AVDTP_STATE_OPEN:
 		if (old_state > AVDTP_STATE_OPEN)
-			stream->idle_timer = g_timeout_add(STREAM_TIMEOUT,
+			stream->idle_timer = g_timeout_add_seconds(STREAM_TIMEOUT,
 								stream_timeout,
 								stream);
 		break;
@@ -1176,7 +1177,8 @@ static gboolean avdtp_open_cmd(struct avdtp *session, struct seid_req *req,
 
 	stream->open_acp = TRUE;
 	session->pending_open = stream;
-	stream->timer = g_timeout_add(REQ_TIMEOUT, stream_open_timeout,
+	stream->timer = g_timeout_add_seconds(REQ_TIMEOUT,
+						stream_open_timeout,
 						stream);
 
 	return TRUE;
@@ -1286,7 +1288,8 @@ static gboolean avdtp_close_cmd(struct avdtp *session, struct seid_req *req,
 	if (!avdtp_send(session, rsp, sizeof(struct gen_resp)))
 		return FALSE;
 
-	stream->timer = g_timeout_add(REQ_TIMEOUT, stream_close_timeout,
+	stream->timer = g_timeout_add_seconds(REQ_TIMEOUT,
+					stream_close_timeout,
 					stream);
 
 	return TRUE;
@@ -1775,7 +1778,8 @@ static int send_req(struct avdtp *session, gboolean priority,
 
 	session->req = req;
 
-	req->timeout = g_timeout_add(REQ_TIMEOUT, request_timeout,
+	req->timeout = g_timeout_add_seconds(REQ_TIMEOUT,
+					request_timeout,
 					session);
 	return 0;
 

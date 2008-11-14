@@ -46,7 +46,7 @@
 
 /* The duration that streams without users are allowed to stay in
  * STREAMING state. */
-#define SUSPEND_TIMEOUT 5000
+#define SUSPEND_TIMEOUT 5
 #define RECONFIGURE_TIMEOUT 500
 
 #ifndef MIN
@@ -610,7 +610,7 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	if (!a2dp_sep->locked) {
 		a2dp_sep->session = avdtp_ref(session);
-		a2dp_sep->suspend_timer = g_timeout_add(SUSPEND_TIMEOUT,
+		a2dp_sep->suspend_timer = g_timeout_add_seconds(SUSPEND_TIMEOUT,
 						(GSourceFunc) suspend_timeout,
 						a2dp_sep);
 	}

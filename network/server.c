@@ -55,7 +55,7 @@
 #define NETWORK_PEER_INTERFACE "org.bluez.NetworkPeer"
 #define NETWORK_HUB_INTERFACE "org.bluez.NetworkHub"
 #define NETWORK_ROUTER_INTERFACE "org.bluez.NetworkRouter"
-#define SETUP_TIMEOUT		1000
+#define SETUP_TIMEOUT		1
 
 /* Pending Authorization */
 struct setup_session {
@@ -555,7 +555,7 @@ static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
 	 * the time expires.
 	 */
 	na->to = g_malloc0(sizeof(struct timeout));
-	na->to->id = g_timeout_add(SETUP_TIMEOUT, timeout_cb, na->to);
+	na->to->id = g_timeout_add_seconds(SETUP_TIMEOUT, timeout_cb, na->to);
 	na->to->watch = g_io_add_watch_full(chan, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				bnep_setup, na, setup_destroy);
