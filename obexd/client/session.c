@@ -1037,7 +1037,14 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 		session->size = gw_obex_xfer_object_size(xfer);
 
 	if (session->fd > 0) {
-		write(session->fd, session->buffer, bread);
+		gint w;
+
+		w = write(session->fd, session->buffer, bread);
+		if (w < 0) {
+			ret = FALSE;
+			goto complete;
+		}
+
 		session->filled = 0;
 	}
 
