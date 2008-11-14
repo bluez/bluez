@@ -59,6 +59,10 @@
 
 static GMainLoop *main_loop = NULL;
 
+static int services = 0;
+static gboolean tty_needs_reinit = FALSE;
+static int signal_pipe[2];
+
 int tty_init(int services, const gchar *root_path,
 		const gchar *capability, const gchar *devnode)
 {
@@ -66,6 +70,8 @@ int tty_init(int services, const gchar *root_path,
 	struct termios options;
 	int fd, ret;
 	glong flags;
+
+	tty_needs_reinit = TRUE;
 
 	fd = open(devnode, O_RDWR);
 	if (fd < 0)
@@ -89,7 +95,8 @@ int tty_init(int services, const gchar *root_path,
 	if (ret < 0) {
 		server_free(server);
 		close(fd);
-	}
+	} else
+		tty_needs_reinit = FALSE;
 
 	return ret;
 }
@@ -134,12 +141,55 @@ static GOptionEntry options[] = {
 	{ NULL },
 };
 
+static void sig_usr1(int sig)
+{
+	if (write(signal_pipe[1], &sig, sizeof(sig)) != sizeof(sig))
+		error("unable to write to signal pipe");
+}
+
+static gboolean handle_signal(GIOChannel *io, GIOCondition cond,
+				void *user_data)
+{
+	int sig, fd = g_io_channel_unix_get_fd(io);
+
+	if (read(fd, &sig, sizeof(sig)) != sizeof(sig)) {
+		error("handle_sigusr1: unable to read signal from pipe");
+		return TRUE;
+	}
+
+	if (sig == SIGUSR1 && tty_needs_reinit)
+		tty_init(services, option_root, option_capability,
+				option_devnode);
+
+	return TRUE;
+}
+
+static int devnode_setup(void)
+{
+	struct sigaction sa;
+	GIOChannel *pipe_io;
+
+	if (pipe(signal_pipe) < 0)
+		return -errno;
+
+	pipe_io = g_io_channel_unix_new(signal_pipe[0]);
+	g_io_add_watch(pipe_io, G_IO_IN, handle_signal, NULL);
+	g_io_channel_unref(pipe_io);
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = sig_usr1;
+	sigaction(SIGUSR1, &sa, NULL);
+
+	return tty_init(services, option_root, option_capability,
+			option_devnode);
+}
+
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
 	GError *err = NULL;
 	struct sigaction sa;
-	int log_option = LOG_NDELAY | LOG_PID, services = 0;
+	int log_option = LOG_NDELAY | LOG_PID;
 
 #ifdef NEED_THREADS
 	if (g_thread_supported() == FALSE)
@@ -224,8 +274,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (option_devnode)
-		tty_init(services, option_root, option_capability,
-				option_devnode);
+		devnode_setup();
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
