@@ -219,7 +219,8 @@ static void cmd_connect(struct obex_session *os,
 			continue;
 
 		if (memcmp(hd.bs, FTP_TARGET, TARGET_SIZE) == 0 &&
-				os->server->services & OBEX_FTP) {
+				os->server->services &
+						(OBEX_FTP | OBEX_PCSUITE)) {
 			os->target = FTP_TARGET;
 			os->cmds = &ftp;
 			break;

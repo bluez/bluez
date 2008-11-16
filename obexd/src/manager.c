@@ -170,6 +170,49 @@ const static gchar *pbap_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
   </attribute>									\
 </record>";
 
+const static gchar *pcsuite_record =
+"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>					\
+<record>									\
+  <attribute id=\"0x0001\">							\
+    <sequence>									\
+      <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/>			\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0004\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x0100\"/>						\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0003\"/>						\
+        <uint8 value=\"%u\" name=\"channel\"/>					\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0008\"/>						\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0005\">							\
+    <sequence>									\
+      <uuid value=\"0x1002\"/>							\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0009\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/> 			\
+        <uint16 value=\"0x0100\" name=\"version\"/>				\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0100\">							\
+    <text value=\"%s\" name=\"name\"/>						\
+  </attribute>									\
+</record>";
 
 #define TRANSFER_INTERFACE OPENOBEX_SERVICE ".Transfer"
 #define SESSION_INTERFACE OPENOBEX_SERVICE ".Session"
@@ -472,6 +515,9 @@ static gchar *create_xml_record(const char *name,
 		break;
 	case OBEX_PBAP:
 		xml = g_markup_printf_escaped(pbap_record, channel, name);
+		break;
+	case OBEX_PCSUITE:
+		xml = g_markup_printf_escaped(pcsuite_record, channel, name);
 		break;
 	default:
 		xml = NULL;

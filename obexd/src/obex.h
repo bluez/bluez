@@ -33,6 +33,7 @@
 #define OBEX_FTP	(1 << 2)
 #define OBEX_BIP	(1 << 3)
 #define OBEX_PBAP	(1 << 4)
+#define OBEX_PCSUITE	(1 << 5)
 
 #define OBJECT_SIZE_UNKNOWN -1
 #define OBJECT_SIZE_DELETE -2

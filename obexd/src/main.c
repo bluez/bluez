@@ -52,6 +52,7 @@
 #define OPP_CHANNEL	9
 #define FTP_CHANNEL	10
 #define PBAP_CHANNEL	15
+#define PCSUITE_CHANNEL	24
 
 #define DEFAULT_ROOT_PATH "/tmp"
 
@@ -117,6 +118,7 @@ static gboolean option_autoaccept = FALSE;
 static gboolean option_opp = FALSE;
 static gboolean option_ftp = FALSE;
 static gboolean option_pbap = FALSE;
+static gboolean option_pcsuite = FALSE;
 
 static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
@@ -138,6 +140,8 @@ static GOptionEntry options[] = {
 				"Enable File Transfer server" },
 	{ "pbap", 'p', 0, G_OPTION_ARG_NONE, &option_pbap,
 				"Enable Phonebook Access server" },
+	{ "pcsuite", 's', 0, G_OPTION_ARG_NONE, &option_pcsuite,
+				"Enable PC Suite Services server" },
 	{ NULL },
 };
 
@@ -271,6 +275,13 @@ int main(int argc, char *argv[])
 		services |= OBEX_PBAP;
 		bluetooth_init(OBEX_PBAP, "Phonebook Access server", NULL,
 				PBAP_CHANNEL, TRUE, FALSE, NULL);
+	}
+
+	if (option_pcsuite == TRUE) {
+		services |= OBEX_PCSUITE;
+		bluetooth_init(OBEX_PCSUITE, "Nokia OBEX PC Suite Services",
+				option_root, PCSUITE_CHANNEL, TRUE,
+				option_autoaccept, option_capability);
 	}
 
 	if (option_devnode)
