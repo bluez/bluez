@@ -44,7 +44,8 @@ struct session_data {
 	DBusMessage *msg;
 	GwObex *obex;
 	GwObexXfer *xfer;
-	char buffer[4096];
+	char *buffer;
+	size_t buffer_len;
 	int filled;
 	ssize_t size;
 	size_t transferred;

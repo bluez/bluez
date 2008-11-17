@@ -51,6 +51,8 @@
 
 #define FTP_INTERFACE  "org.openobex.FileTransfer"
 
+#define DEFAULT_BUFFER_SIZE 4096
+
 static guint64 counter = 0;
 
 struct callback_data {
@@ -116,6 +118,7 @@ static void session_unref(struct session_data *session)
 	g_free(session->agent_name);
 	g_free(session->agent_path);
 	g_free(session->owner);
+	g_free(session->buffer);
 	g_free(session);
 }
 
@@ -943,6 +946,12 @@ static void unregister_transfer(struct session_data *session)
 	g_free(session->name);
 	session->name = NULL;
 
+	g_free(session->buffer);
+	session->buffer = NULL;
+
+	session->buffer_len = 0;
+	session->filled = 0;
+
 	if (session->transfer_path == NULL)
 		return;
 
@@ -1004,7 +1013,13 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	gint bsize, bread, err = 0;
 	gboolean ret;
 
-	bsize = sizeof(session->buffer) - session->filled;
+	if (session->buffer_len == 0) {
+		session->buffer_len = DEFAULT_BUFFER_SIZE;
+		session->buffer = g_new0(char, DEFAULT_BUFFER_SIZE);
+	}
+
+	bsize = session->buffer_len - session->filled;
+
 	ret = gw_obex_xfer_read(xfer, session->buffer + session->filled,
 					bsize, &bread, &err);
 
@@ -1072,9 +1087,9 @@ complete:
 				session->agent_path, session->transfer_path,
 				"Error getting object");
 
-	unregister_transfer(session);
-
 	callback->func(callback->session, callback->data);
+
+	unregister_transfer(session);
 
 	if (session->fd > 0)
 		close(session->fd);
@@ -1326,8 +1341,13 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	ssize_t len;
 	gint written;
 
+	if (session->buffer_len == 0) {
+		session->buffer_len = DEFAULT_BUFFER_SIZE;
+		session->buffer = g_new0(char, DEFAULT_BUFFER_SIZE);
+	}
+
 	len = read(session->fd, session->buffer + session->filled,
-				sizeof(session->buffer) - session->filled);
+				session->buffer_len - session->filled);
 	if (len <= 0)
 		goto complete;
 
