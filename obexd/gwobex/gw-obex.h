@@ -511,6 +511,15 @@ time_t gw_obex_xfer_object_time(GwObexXfer *xfer);
 gint gw_obex_xfer_object_size(GwObexXfer *xfer);
 
 
+/** Returns if a transfer is already done
+ *
+ * @param xfer Pointer returned by gw_obex_put_async or gw_obex_get_async
+ *
+ * @returns whether the current transfer is done
+ */
+gboolean gw_obex_xfer_object_done(GwObexXfer *xfer);
+
+
 /** Supply more data to a transfer
  *
  * @param xfer          Pointer returned by gw_obex_put_async or gw_obex_get_async

@@ -184,6 +184,10 @@ gint gw_obex_xfer_object_size(GwObexXfer *xfer) {
     return xfer->target_size;
 }
 
+gboolean gw_obex_xfer_object_done(GwObexXfer *xfer) {
+    return xfer->ctx->done;
+}
+
 gboolean gw_obex_xfer_write(GwObexXfer *xfer, const char *buf, gint buf_size,
 		            gint *bytes_written, gint *err) {
     GwObex *ctx = xfer->ctx;
