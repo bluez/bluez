@@ -96,6 +96,8 @@ static uint128_t bluetooth_base_uuid = {
 
 #define SDP_MAX_ATTR_LEN 65535
 
+static sdp_data_t *sdp_copy_seq(sdp_data_t *data);
+
 /* Message structure. */
 struct tupla {
 	int index;
@@ -1363,6 +1365,128 @@ sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int bufsize, int *scanned)
 #endif
 	*scanned += seqlen;
 	return rec;
+}
+
+static void sdp_copy_pattern(void *value, void *udata)
+{
+	uuid_t *uuid = value;
+	sdp_record_t *rec = udata;
+
+	sdp_pattern_add_uuid(rec, uuid);
+}
+
+static void *sdp_data_value(sdp_data_t *data)
+{
+	void *val = NULL;
+
+	switch (data->dtd) {
+	case SDP_DATA_NIL:
+		break;
+	case SDP_UINT8:
+		val = &data->val.uint8;
+		break;
+	case SDP_INT8:
+	case SDP_BOOL:
+		val = &data->val.int8;
+		break;
+	case SDP_UINT16:
+		val = &data->val.uint16;
+		break;
+	case SDP_INT16:
+		val = &data->val.int16;
+		break;
+	case SDP_UINT32:
+		val = &data->val.uint32;
+		break;
+	case SDP_INT32:
+		val = &data->val.int32;
+		break;
+	case SDP_INT64:
+		val = &data->val.int64;
+		break;
+	case SDP_UINT64:
+		val = &data->val.uint64;
+		break;
+	case SDP_UINT128:
+		val = &data->val.uint128;
+		break;
+	case SDP_INT128:
+		val = &data->val.int128;
+		break;
+	case SDP_UUID16:
+	case SDP_UUID32:
+	case SDP_UUID128:
+		val = &data->val.uuid;
+		break;
+	case SDP_URL_STR8:
+	case SDP_URL_STR16:
+	case SDP_TEXT_STR8:
+	case SDP_TEXT_STR16:
+	case SDP_URL_STR32:
+	case SDP_TEXT_STR32:
+		val = data->val.str;
+		break;
+	case SDP_ALT8:
+	case SDP_ALT16:
+	case SDP_ALT32:
+	case SDP_SEQ8:
+	case SDP_SEQ16:
+	case SDP_SEQ32:
+		val = sdp_copy_seq(data->val.dataseq);
+		break;
+	}
+
+	return val;
+}
+
+static sdp_data_t *sdp_copy_seq(sdp_data_t *data)
+{
+	sdp_data_t *tmp, *seq = NULL, *cur = NULL;
+
+	for (tmp = data; tmp; tmp = tmp->next) {
+		sdp_data_t *datatmp;
+		void *value;
+
+		value = sdp_data_value(tmp);
+		datatmp = sdp_data_alloc_with_length(tmp->dtd, value,
+					tmp->unitSize);
+
+		if (cur)
+			cur->next = datatmp;
+		else
+			seq = datatmp;
+
+		cur = datatmp;
+	}
+
+	return seq;
+}
+
+static void sdp_copy_attrlist(void *value, void *udata)
+{
+	sdp_data_t *data = value;
+	sdp_record_t *rec = udata;
+	void *val;
+
+	val = sdp_data_value(data);
+
+	sdp_attr_add_new(rec, data->attrId, data->dtd, val);
+}
+
+sdp_record_t *sdp_copy_record(sdp_record_t *rec)
+{
+	sdp_record_t *cpy;
+
+	cpy = sdp_record_alloc();
+
+	cpy->handle = rec->handle;
+
+	sdp_list_foreach(rec->pattern, sdp_copy_pattern, cpy);
+	sdp_list_foreach(rec->attrlist, sdp_copy_attrlist, cpy);
+
+	cpy->svclass = rec->svclass;
+
+	return cpy;
 }
 
 #ifdef SDP_DEBUG

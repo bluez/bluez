@@ -585,6 +585,7 @@ static inline int sdp_get_icon_url(const sdp_record_t *rec, char *str, int len)
 }
 
 sdp_record_t *sdp_extract_pdu(const uint8_t *pdata, int bufsize, int *scanned);
+sdp_record_t *sdp_copy_record(sdp_record_t *rec);
 
 void sdp_data_print(sdp_data_t *data);
 void sdp_print_service_attr(sdp_list_t *alist);
