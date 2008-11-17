@@ -456,6 +456,7 @@ static gint obex_write_stream(struct obex_session *os,
 {
 	obex_headerdata_t hd;
 	gint32 len;
+	guint8 *ptr;
 
 	debug("obex_write_stream: name=%s type=%s tx_mtu=%d fd=%d",
 		os->name ? os->name : "", os->type ? os->type : "",
@@ -468,7 +469,8 @@ static gint obex_write_stream(struct obex_session *os,
 		if (os->buf == NULL)
 			return -EIO;
 
-		len = os->size - os->offset;
+		len = MIN(os->size - os->offset, os->tx_mtu);
+		ptr = os->buf + os->offset;
 		goto add_header;
 	}
 
@@ -481,7 +483,12 @@ static gint obex_write_stream(struct obex_session *os,
 		return -err;
 	}
 
+	ptr = os->buf;
+
 add_header:
+
+	hd.bs = ptr;
+
 	if (len == 0) {
 		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, 0,
 					OBEX_FL_STREAM_DATAEND);
@@ -490,7 +497,6 @@ add_header:
 		return len;
 	}
 
-	hd.bs = os->buf;
 	os->offset += len;
 
 	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, len,
