@@ -1079,10 +1079,13 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 complete:
 
-	if (ret == TRUE)
+	if (ret == TRUE) {
+		agent_notify_progress(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path,
+				session->transferred);
 		agent_notify_complete(session->conn, session->agent_name,
 				session->agent_path, session->transfer_path);
-	else
+	} else
 		agent_notify_error(session->conn, session->agent_name,
 				session->agent_path, session->transfer_path,
 				"Error getting object");
