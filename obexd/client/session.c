@@ -1006,6 +1006,48 @@ static void get_file_callback(struct session_data *session, void *user_data)
 
 }
 
+static void get_xfer_listing_progress(GwObexXfer *xfer,
+					gpointer user_data)
+{
+	struct callback_data *callback = user_data;
+	struct session_data *session = callback->session;
+	gint bsize, bread, err = 0;
+
+	bsize = session->buffer_len - session->filled;
+
+	if (bsize < DEFAULT_BUFFER_SIZE) {
+		session->buffer_len += DEFAULT_BUFFER_SIZE;
+		session->buffer = g_realloc(session->buffer, session->buffer_len);
+		bsize += DEFAULT_BUFFER_SIZE;
+	}
+
+	gw_obex_xfer_read(xfer, session->buffer + session->filled,
+			bsize, &bread, &err);
+
+	session->filled += bread;
+
+	if (err) {
+		fprintf(stderr, "gw_obex_xfer_read(): %s\n",
+				OBEX_ResponseToString(err));
+		goto complete;
+	}
+
+	if (gw_obex_xfer_object_done(xfer))
+		goto complete;
+
+	return;
+
+complete:
+
+	callback->func(callback->session, callback->data);
+
+	unregister_transfer(session);
+
+	session_unref(callback->session);
+
+	g_free(callback);
+}
+
 static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
 	struct callback_data *callback = user_data;
@@ -1062,9 +1104,6 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 		session->filled = 0;
 	}
-
-	if (session->size == -1)
-		goto complete;
 
 	if (session->transferred == session->size)
 		goto complete;
@@ -1160,7 +1199,11 @@ int session_get(struct session_data *session, const char *type,
 	callback->session = session;
 	callback->func = func;
 
-	gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
+	if (type && g_str_equal(type, "x-obex/folder-listing"))
+		gw_obex_xfer_set_callback(xfer, get_xfer_listing_progress,
+						callback);
+	else
+		gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
 
 	session->xfer = xfer;
 
