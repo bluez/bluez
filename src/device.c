@@ -656,6 +656,11 @@ static GSList *device_match_driver(struct btd_device *device,
 	for (uuid = driver->uuids; *uuid; uuid++) {
 		GSList *match;
 
+		/* skip duplicated uuids */
+		if (g_slist_find_custom(uuids, *uuid,
+				(GCompareFunc) strcasecmp))
+			continue;
+
 		/* match profile driver */
 		match = g_slist_find_custom(profiles, *uuid,
 					(GCompareFunc) strcasecmp);
