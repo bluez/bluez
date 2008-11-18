@@ -139,6 +139,12 @@ Methods		dict GetProperties()
 			to use CreateDevice first and the if needed use
 			CreatePairedDevice to initiate pairing.
 
+			The agent object path is assumed to reside within the
+			process (D-Bus connection instance) that calls this
+			method. No separate registration procedure is needed
+			for it and it gets automatically released once the
+			pairing operation is complete.
+
 			The capability parameter is the same as for the
 			RegisterAgent method.
 
