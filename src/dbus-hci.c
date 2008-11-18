@@ -1244,44 +1244,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	}
 }
 
-int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
-{
-	uint32_t dev_class;
-	int num = (limited ? 2 : 1);
-	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
-	/*
-	 * 1: giac
-	 * 2: giac + liac
-	 */
-	if (hci_write_current_iac_lap(dd, num, lap, HCI_REQ_TIMEOUT) < 0) {
-		int err = errno;
-		error("Can't write current IAC LAP: %s(%d)",
-				strerror(err), err);
-		return -err;
-	}
-
-	if (limited) {
-		if (cls[1] & 0x20)
-			return 0; /* Already limited */
-
-		dev_class = (cls[2] << 16) | ((cls[1] | 0x20) << 8) | cls[0];
-	} else {
-		if (!(cls[1] & 0x20))
-			return 0; /* Already clear */
-
-		dev_class = (cls[2] << 16) | ((cls[1] & 0xdf) << 8) | cls[0];
-	}
-
-	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		int err = errno;
-		error("Can't write class of device: %s (%d)",
-							strerror(err), err);
-		return -err;
-	}
-
-	return 0;
-}
-
 int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
 {
 	uint32_t dev_class;
