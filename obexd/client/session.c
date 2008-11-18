@@ -1024,7 +1024,19 @@ static void get_xfer_listing_progress(GwObexXfer *xfer,
 	gw_obex_xfer_read(xfer, session->buffer + session->filled,
 			bsize, &bread, &err);
 
-	session->filled += bread;
+
+	if (session->msg && err) {
+		DBusMessage *reply;
+
+		reply = g_dbus_create_error(session->msg,
+				"org.openobex.Error.Failed",
+				OBEX_ResponseToString(err));
+
+		g_dbus_send_message(session->conn, reply);
+
+		dbus_message_unref(session->msg);
+		session->msg = NULL;
+	}
 
 	if (err) {
 		fprintf(stderr, "gw_obex_xfer_read(): %s\n",
@@ -1032,14 +1044,16 @@ static void get_xfer_listing_progress(GwObexXfer *xfer,
 		goto complete;
 	}
 
+	session->filled += bread;
+
 	if (gw_obex_xfer_object_done(xfer))
 		goto complete;
 
 	return;
 
 complete:
-
-	callback->func(callback->session, callback->data);
+	if (err == 0)
+		callback->func(callback->session, callback->data);
 
 	unregister_transfer(session);
 
