@@ -765,18 +765,18 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids)
 			driver->remove(device);
 			device->drivers = g_slist_remove(device->drivers,
 								driver_data);
-
 			g_free(driver_data);
-
 
 			rec = find_record_in_list(records, *uuid);
 			if (!rec)
-				continue;
+				break;
 
 			delete_record(srcaddr, dstaddr, rec->handle);
 
 			records = sdp_list_remove(records, rec);
 			sdp_record_free(rec);
+
+			break;
 		}
 	}
 
