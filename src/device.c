@@ -760,7 +760,7 @@ void device_remove_drivers(struct btd_device *device, GSList *uuids)
 					(GCompareFunc) strcasecmp))
 				continue;
 
-			debug("UUID %s was removed from device %s", dstaddr);
+			debug("UUID %s was removed from device %s", *uuid, dstaddr);
 
 			driver->remove(device);
 			device->drivers = g_slist_remove(device->drivers,
