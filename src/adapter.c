@@ -1900,15 +1900,13 @@ static DBusMessage *create_device(DBusConnection *conn,
 
 	debug("create_device(%s)", address);
 
-	device = device_create(conn, adapter, address);
+	device = adapter_create_device(conn, adapter, address);
 	if (!device)
 		return NULL;
 
 	device_set_temporary(device, FALSE);
 
 	device_browse(device, conn, msg, NULL, FALSE);
-
-	adapter->devices = g_slist_append(adapter->devices, device);
 
 	return NULL;
 }
