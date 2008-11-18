@@ -594,10 +594,11 @@ void obex_link_error(GwObex *ctx) {
     }
     if (ctx->xfer) {
         /* Check that buffer is owned by us */
-        if (!(ctx->obex_op == OBEX_CMD_PUT && ctx->xfer->stream_fd < 0))
+        if (!(ctx->obex_op == OBEX_CMD_PUT && ctx->xfer->stream_fd < 0)) {
             g_free(ctx->xfer->buf);
-        ctx->xfer->buf = NULL;
-        ctx->xfer->buf_size = 0;
+            ctx->xfer->buf = NULL;
+            ctx->xfer->buf_size = 0;
+	}
 	ctx->xfer->do_cb = TRUE;
     }
 }
