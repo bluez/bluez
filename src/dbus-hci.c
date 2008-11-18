@@ -1263,39 +1263,6 @@ int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
 	return 0;
 }
 
-int set_major_class(int dd, const uint8_t *cls, uint8_t major)
-{
-	uint32_t dev_class;
-
-	dev_class = (cls[2] << 16) | ((cls[1] & 0x20) << 8) |
-						((major & 0xdf) << 8) | 0x00;
-
-	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		int err = errno;
-		error("Can't write class of device: %s (%d)",
-							strerror(err), err);
-		return -err;
-	}
-
-	return 0;
-}
-
-int set_minor_class(int dd, const uint8_t *cls, uint8_t minor)
-{
-	uint32_t dev_class;
-
-	dev_class = (cls[2] << 16) | (cls[1] << 8) | minor;
-
-	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		int err = errno;
-		error("Can't write class of device: %s (%d)",
-							strerror(err), err);
-		return -err;
-	}
-
-	return 0;
-}
-
 int set_major_and_minor_class(int dd, const uint8_t *cls,
 						uint8_t major, uint8_t minor)
 {
