@@ -177,7 +177,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	uint32_t handle;
 	int err;
 
-	server = g_malloc0(sizeof(struct server));
+	server = g_new0(struct server, 1);
 	server->services = service;
 	server->name = g_strdup(name);
 	server->folder = g_strdup(folder);

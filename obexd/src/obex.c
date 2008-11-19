@@ -438,7 +438,7 @@ gboolean os_prepare_get(struct obex_session *os, gchar *file, guint32 *size)
 	os->offset = 0;
 
 	if (stats.st_size > 0)
-		os->buf = g_new0(guint8, os->tx_mtu);
+		os->buf = g_malloc0(os->tx_mtu);
 
 	*size = stats.st_size;
 

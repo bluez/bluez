@@ -88,7 +88,7 @@ int tty_init(int services, const gchar *root_path,
 	cfmakeraw(&options);
 	tcsetattr(fd, TCSANOW, &options);
 
-	server = g_malloc0(sizeof(struct server));
+	server = g_new0(struct server, 1);
 	server->services = services;
 	server->folder = g_strdup(root_path);
 	server->auto_accept = TRUE;
