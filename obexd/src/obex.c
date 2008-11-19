@@ -49,8 +49,8 @@
 #include "dbus.h"
 
 /* Default MTU's */
-#define RX_MTU 32767
-#define TX_MTU 32767
+#define DEFAULT_RX_MTU 32767
+#define DEFAULT_TX_MTU 32767
 
 #define TARGET_SIZE 16
 
@@ -970,8 +970,8 @@ gint obex_session_start(gint fd, struct server *server)
 
 	os->current_folder = g_strdup(server->folder);
 	os->server = server;
-	os->rx_mtu = RX_MTU;
-	os->tx_mtu = TX_MTU;
+	os->rx_mtu = server->rx_mtu ? server->rx_mtu : DEFAULT_RX_MTU;
+	os->tx_mtu = server->tx_mtu ? server->tx_mtu : DEFAULT_TX_MTU;
 	os->fd = -1;
 	os->size = OBJECT_SIZE_DELETE;
 

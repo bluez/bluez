@@ -46,6 +46,9 @@
 #include "obex.h"
 #include "dbus.h"
 
+#define BT_RX_MTU 32767
+#define BT_TX_MTU 32767
+
 static GSList *servers = NULL;
 
 static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
@@ -183,6 +186,8 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	server->channel = channel;
 	server->handle = handle;
 	server->secure = secure;
+	server->rx_mtu = BT_RX_MTU;
+	server->tx_mtu = BT_TX_MTU;
 
 	err = server_start(server);
 	if (err < 0) {

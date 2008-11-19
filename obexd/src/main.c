@@ -64,6 +64,9 @@ static int services = 0;
 static gboolean tty_needs_reinit = FALSE;
 static int signal_pipe[2];
 
+#define TTY_RX_MTU 65535
+#define TTY_TX_MTU 65535
+
 int tty_init(int services, const gchar *root_path,
 		const gchar *capability, const gchar *devnode)
 {
@@ -91,6 +94,8 @@ int tty_init(int services, const gchar *root_path,
 	server->auto_accept = TRUE;
 	server->capability = g_strdup(capability);
 	server->devnode = g_strdup(devnode);
+	server->rx_mtu = TTY_RX_MTU;
+	server->tx_mtu = TTY_TX_MTU;
 
 	ret = obex_session_start(fd, server);
 	if (ret < 0) {

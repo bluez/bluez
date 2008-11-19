@@ -57,6 +57,8 @@ struct server {
 	gboolean	secure;
 	GIOChannel	*io;
 	guint		watch;
+	guint16		tx_mtu;
+	guint16		rx_mtu;
 };
 
 struct obex_session {
