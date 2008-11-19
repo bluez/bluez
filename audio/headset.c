@@ -313,7 +313,7 @@ static int supported_features(struct audio_device *device, const char *buf)
 
 	print_hf_features(hs->hf_features);
 
-	err = headset_send(hs, "\r\n+BRSF=%u\r\n", ag.features);
+	err = headset_send(hs, "\r\n+BRSF:%u\r\n", ag.features);
 	if (err < 0)
 		return err;
 
