@@ -174,7 +174,6 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 			gboolean auto_accept, const gchar *capability)
 {
 	struct server *server;
-	uint32_t handle;
 	int err;
 
 	server = g_new0(struct server, 1);
@@ -184,7 +183,6 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	server->auto_accept = auto_accept;
 	server->capability = g_strdup(capability);
 	server->channel = channel;
-	server->handle = handle;
 	server->secure = secure;
 	server->rx_mtu = BT_RX_MTU;
 	server->tx_mtu = BT_TX_MTU;
