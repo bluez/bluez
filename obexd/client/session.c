@@ -879,7 +879,7 @@ static void xml_element(GMarkupParseContext *ctxt,
 {
 	DBusMessageIter dict, *iter = user_data;
 	gchar *key;
-	gint i, dtype = DBUS_TYPE_STRING;
+	gint i;
 
 	if (strcasecmp("folder", element) != 0 && strcasecmp("file", element) != 0)
 		return;
@@ -896,13 +896,12 @@ static void xml_element(GMarkupParseContext *ctxt,
 	i = 0;
 	for (key = (gchar *) names[i]; key; key = (gchar *) names[++i]) {
 		key[0] = g_ascii_toupper(key[0]);
-		if (strcmp("Accessed", key) == 0 ||
-			strcmp("Created", key) == 0 ||
-			strcmp("Modified", key)== 0 ||
-			strcmp("Size", key)== 0)
-			dtype = DBUS_TYPE_UINT64;
-
-		dict_append_entry(&dict, key, dtype, &values[i]);
+		if (g_str_equal("Size", key) == TRUE) {
+			guint64 size;
+			size = g_ascii_strtoll(values[i], NULL, 10);
+			dict_append_entry(&dict, key, DBUS_TYPE_UINT64, &size);
+		} else
+			dict_append_entry(&dict, key, DBUS_TYPE_STRING, &values[i]);
 	}
 
 	dbus_message_iter_close_container(iter, &dict);
