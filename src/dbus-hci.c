@@ -239,6 +239,10 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 		return -1;
 	}
 
+	if (!adapter_pairing_initiator(adapter, sba) &&
+			!adapter_is_pairable(adapter))
+		return -EPERM;
+
 	ba2str(&ci->bdaddr, addr);
 
 	device = adapter_find_device(adapter, addr);
@@ -1465,6 +1469,10 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 
 	if (get_auth_requirements(local, remote, auth) < 0)
 		return -1;
+
+	if (!adapter_pairing_initiator(adapter, remote) &&
+			!adapter_is_pairable(adapter))
+		return -EPERM;
 
 	ba2str(remote, addr);
 

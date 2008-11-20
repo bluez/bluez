@@ -114,6 +114,7 @@ struct btd_adapter {
 	guint scheduler_id;		/* Scheduler handle */
 
 	struct hci_dev dev;		/* hci info */
+	gboolean pairable;		/* pairable state */
 };
 
 static inline DBusMessage *invalid_args(DBusMessage *msg)
@@ -627,7 +628,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 				adapter->discov_timeout_id = 0;
 			}
 
-			if (!adapter->mode_sessions && !adapter->discov_timeout)
+			if (!adapter->mode_sessions && adapter->discov_timeout)
 				adapter_set_discov_timeout(adapter,
 						adapter->discov_timeout * 1000);
 		}
@@ -666,10 +667,38 @@ static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
 	strmode = discoverable ? "discoverable" : "connectable";
 	mode = get_mode(&adapter->bdaddr, strmode);
 
+	if (mode == MODE_DISCOVERABLE && adapter->pairable)
+		mode = MODE_LIMITED;
+
 	if (mode == adapter->mode)
 		return dbus_message_new_method_return(msg);
 
 	return set_mode(conn, msg, mode, data);
+}
+
+static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
+				gboolean pairable, void *data)
+{
+	struct btd_adapter *adapter = data;
+
+	if (pairable == adapter->pairable)
+		goto done;
+
+	adapter->pairable = pairable;
+
+	write_device_pairable(&adapter->bdaddr, pairable);
+
+	emit_property_changed(connection, adapter->path,
+				ADAPTER_INTERFACE, "Pairable",
+				DBUS_TYPE_BOOLEAN, &pairable);
+
+	if (adapter->scan_mode & SCAN_INQUIRY) {
+		uint8_t mode = pairable ? MODE_LIMITED : MODE_DISCOVERABLE;
+		return set_mode(conn, msg, mode, data);
+	}
+
+done:
+	return dbus_message_new_method_return(msg);
 }
 
 static struct session_req *find_session(GSList *list, DBusMessage *msg)
@@ -1657,6 +1686,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	value = adapter->scan_mode & SCAN_INQUIRY ? TRUE : FALSE;
 	dict_append_entry(&dict, "Discoverable", DBUS_TYPE_BOOLEAN, &value);
 
+	/* Pairable */
+	dict_append_entry(&dict, "Pairable", DBUS_TYPE_BOOLEAN,
+				&adapter->pairable);
+
 	/* DiscoverableTimeout */
 	dict_append_entry(&dict, "DiscoverableTimeout",
 				DBUS_TYPE_UINT32, &adapter->discov_timeout);
@@ -1760,6 +1793,15 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &timeout);
 
 		return set_discoverable_timeout(conn, msg, timeout, data);
+	} else if (g_str_equal("Pairable", property)) {
+		gboolean pairable;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
+			return invalid_args(msg);
+
+		dbus_message_iter_get_basic(&sub, &pairable);
+
+		return set_pairable(conn, msg, pairable, data);
 	}
 
 	return invalid_args(msg);
@@ -2409,6 +2451,10 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
 	adapter->state = DISCOVER_TYPE_NONE;
 
+	/* Set pairable mode */
+	if (read_device_pairable(&adapter->bdaddr, &adapter->pairable) < 0)
+		adapter->pairable = TRUE;
+
 	/* Set scan mode */
 	if (read_device_mode(srcaddr, mode, sizeof(mode)) == 0) {
 		if (!strcmp(mode, "off")) {
@@ -2437,7 +2483,8 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 		} else if (!strcmp(mode, "discoverable")) {
 			/* Set discoverable only if timeout is 0 */
 			if (adapter->discov_timeout == 0) {
-				adapter->mode = MODE_DISCOVERABLE;
+				adapter->mode = adapter->pairable ?
+					MODE_LIMITED : MODE_DISCOVERABLE;
 				adapter->scan_mode = SCAN_PAGE | SCAN_INQUIRY;
 			} else {
 				adapter->mode = MODE_CONNECTABLE;
@@ -2496,6 +2543,10 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	emit_property_changed(connection, adapter->path,
 				ADAPTER_INTERFACE, "Discoverable",
 				DBUS_TYPE_BOOLEAN, &discoverable);
+
+	emit_property_changed(connection, adapter->path,
+				ADAPTER_INTERFACE, "Pairable",
+				DBUS_TYPE_BOOLEAN, &adapter->pairable);
 
 	load_drivers(adapter);
 	load_devices(adapter);
@@ -3495,4 +3546,17 @@ void btd_adapter_any_release_path(void)
 
 	g_free(adapter_any_path);
 	adapter_any_path = NULL;
+}
+
+gboolean adapter_is_pairable(struct btd_adapter *adapter)
+{
+	return adapter->pairable;
+}
+
+gboolean adapter_pairing_initiator(struct btd_adapter *adapter, bdaddr_t *bda)
+{
+	if (!adapter->bonding)
+		return FALSE;
+
+	return (bacmp(&adapter->bonding->bdaddr, bda) == 0);
 }

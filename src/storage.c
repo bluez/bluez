@@ -1028,3 +1028,33 @@ int read_device_id(const gchar *srcaddr, const gchar *dstaddr,
 
 	return 0;
 }
+
+int write_device_pairable(bdaddr_t *bdaddr, gboolean mode)
+{
+	char filename[PATH_MAX + 1];
+
+	create_filename(filename, PATH_MAX, bdaddr, "config");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	return textfile_put(filename, "pairable", mode ? "yes" : "no");
+}
+
+int read_device_pairable(bdaddr_t *bdaddr, gboolean *mode)
+{
+	char filename[PATH_MAX + 1], *str;
+
+	create_filename(filename, PATH_MAX, bdaddr, "config");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	str = textfile_get(filename, "pairable");
+	if (!str)
+		return -ENOENT;
+
+	*mode = strcmp(str, "yes") == 0 ? TRUE : FALSE;
+
+	free(str);
+
+	return 0;
+}

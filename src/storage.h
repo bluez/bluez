@@ -68,6 +68,8 @@ int store_device_id(const gchar *src, const gchar *dst,
 int read_device_id(const gchar *src, const gchar *dst,
 					uint16_t *source, uint16_t *vendor,
 					uint16_t *product, uint16_t *version);
+int write_device_pairable(bdaddr_t *local, gboolean mode);
+int read_device_pairable(bdaddr_t *local, gboolean *mode);
 
 #define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"
 

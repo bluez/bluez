@@ -266,6 +266,15 @@ Properties	string Address [readonly]
 			this property will be updated via a PropertyChanged
 			signal.
 
+		boolean Pairable [readwrite]
+
+			Switch an adapter to pairable or non-pairable. This is
+			a global setting and should only be used by the
+			settings application.
+
+			Note that this property only affects incoming pairing
+			requests.
+
 		uint32 DiscoverableTimeout [readwrite]
 
 			The discoverable timeout in seconds. A value of zero

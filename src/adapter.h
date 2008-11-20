@@ -184,3 +184,5 @@ const char *adapter_any_get_path(void);
 
 const char *btd_adapter_any_request_path(void);
 void btd_adapter_any_release_path(void);
+gboolean adapter_is_pairable(struct btd_adapter *adapter);
+gboolean adapter_pairing_initiator(struct btd_adapter *adapter, bdaddr_t *bda);
