@@ -81,7 +81,7 @@ struct obex_session {
 	struct obex_commands *cmds;
 	struct server *server;
 	gboolean	checked;
-	obex_t		*handle;
+	obex_t		*obex;
 	struct phonebook_context *pbctx;
 	gboolean	finished;
 };

@@ -123,7 +123,7 @@ void phonebook_return(struct phonebook_context *context,
 
 	if (buf == NULL || size == 0) {
 		session->finished = 1;
-		OBEX_ResumeRequest(session->handle);
+		OBEX_ResumeRequest(session->obex);
 		return;
 	}
 
@@ -131,7 +131,7 @@ void phonebook_return(struct phonebook_context *context,
 	memcpy(session->buf + session->size, buf, size);
 	session->size += size;
 
-	OBEX_ResumeRequest(session->handle);
+	OBEX_ResumeRequest(session->obex);
 }
 
 struct phonebook_driver *phonebook_get_driver(const char *name)

@@ -990,7 +990,7 @@ gint obex_session_start(gint fd, struct server *server)
 	}
 
 	OBEX_SetUserData(obex, os);
-	os->handle = obex;
+	os->obex = obex;
 
 	OBEX_SetTransportMTU(obex, os->rx_mtu, os->tx_mtu);
 
