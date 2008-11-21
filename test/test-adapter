@@ -18,6 +18,7 @@ if (len(sys.argv) < 2):
 	print "  name [name]"
 	print "  mode [mode]"
 	print "  requestmode <mode>"
+	print "  pairable [on/off]"
 	print "  discoverabletimeout [timeout]"
 	print "  periodicdiscovery [on/off]"
 	sys.exit(1)
@@ -48,6 +49,20 @@ if (sys.argv[1] == "requestmode"):
 		print "Need mode parameter"
 	else:
 		adapter.RequestMode(sys.argv[2])
+	sys.exit(0)
+
+if (sys.argv[1] == "pairable"):
+	if (len(sys.argv) < 3):
+		properties = adapter.GetProperties()
+		print properties["Pairable"]
+	else:
+		if (sys.argv[2] == "on"):
+			value = dbus.Boolean(1)
+		elif (sys.argv[2] == "off"):
+			value = dbus.Boolean(0)
+		else:
+			value = dbus.Boolean(sys.argv[2])
+		adapter.SetProperty("Pairable", value)
 	sys.exit(0)
 
 if (sys.argv[1] == "discoverabletimeout"):
