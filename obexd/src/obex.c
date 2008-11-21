@@ -135,7 +135,7 @@ static void obex_session_free(struct obex_session *os)
 	if (os->current_folder)
 		g_free(os->current_folder);
 
-	if (!memcmp(os->target, PBAP_TARGET, TARGET_SIZE))
+	if (os->target && !memcmp(os->target, PBAP_TARGET, TARGET_SIZE))
 		pbap_phonebook_context_destroy(os);
 
 	g_free(os);
