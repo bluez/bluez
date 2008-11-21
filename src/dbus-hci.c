@@ -239,7 +239,7 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 		return -1;
 	}
 
-	if (!adapter_pairing_initiator(adapter, sba) &&
+	if (!adapter_pairing_initiator(adapter, &ci->bdaddr) &&
 			!adapter_is_pairable(adapter))
 		return -EPERM;
 
