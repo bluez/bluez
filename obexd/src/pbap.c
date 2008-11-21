@@ -30,60 +30,40 @@
 
 #include <glib.h>
 
-#include "phonebook.h"
 #include "logging.h"
 #include "obex.h"
 
 #define PHONEBOOK_TYPE "x-bt/phonebook"
 
-static void test_phonebook(void)
-{
-	struct phonebook_context *context;
-	struct phonebook_driver *driver;
-
-	driver = phonebook_get_driver(NULL);
-	if (driver == NULL)
-		return;
-
-	context = phonebook_create(driver);
-	if (context == NULL)
-		return;
-
-	phonebook_pullphonebook(context);
-
-	phonebook_unref(context);
-}
+static GSList *session_list = NULL;
 
 void pbap_get(obex_t *obex, obex_object_t *obj)
 {
-	struct obex_session *os;
+	struct obex_session *session;
 	obex_headerdata_t hv;
-	guint32 size;
+	int ret;
 
-	os = OBEX_GetUserData(obex);
-	if (os == NULL)
+	session = OBEX_GetUserData(obex);
+	if (session == NULL)
 		return;
 
-	if (os->type == NULL)
+	if (session->type == NULL)
 		goto fail;
 
-	if (g_str_equal(os->type, PHONEBOOK_TYPE) == FALSE)
+	if (g_str_equal(session->type, PHONEBOOK_TYPE) == FALSE)
 		goto fail;
 
-	test_phonebook();
-	size = 0;
+	ret = phonebook_pullphonebook(session->pbctx);
 
-	hv.bq4 = size;
-	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_LENGTH, hv, 4, 0);
+	if (!ret)
+		OBEX_SuspendRequest(obex, obj);
+	else
+		goto fail;
 
 	/* Add body header */
 	hv.bs = NULL;
-	if (size == 0)
-		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
-						hv, 0, OBEX_FL_FIT_ONE_PACKET);
-	else
-		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
-						hv, 0, OBEX_FL_STREAM_START);
+	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
+					hv, 0, OBEX_FL_STREAM_START);
 
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
 
@@ -91,4 +71,47 @@ void pbap_get(obex_t *obex, obex_object_t *obj)
 
 fail:
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+}
+
+gboolean pbap_phonebook_context_create(struct obex_session *session)
+{
+	struct phonebook_context *context;
+	struct phonebook_driver *driver;
+
+	driver = phonebook_get_driver(NULL);
+	if (driver == NULL)
+		return FALSE;
+
+	context = phonebook_create(driver);
+	if (context == NULL)
+		return FALSE;
+
+	session->pbctx = context;
+
+	session_list = g_slist_append(session_list, session);
+
+	return TRUE;
+}
+
+void pbap_phonebook_context_destroy(struct obex_session *session)
+{
+	struct phonebook_context *context;
+
+	context = session->pbctx;
+	phonebook_unref(context);
+
+	session_list = g_slist_remove(session_list, session);
+}
+
+struct obex_session *pbap_get_session(struct phonebook_context *context)
+{
+	GSList *current;
+
+	for (current = session_list; current != NULL; current = current->next) {
+		struct obex_session *session = current->data;
+		if (session->pbctx == context)
+			return session;
+	}
+
+	return NULL;
 }

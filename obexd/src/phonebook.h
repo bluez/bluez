@@ -32,8 +32,10 @@ struct phonebook_context {
 	void *driver_data;
 };
 
-extern struct phonebook_context *phonebook_create(struct phonebook_driver *driver);
-extern struct phonebook_context *phonebook_ref(struct phonebook_context *context);
+extern struct phonebook_context *phonebook_create(
+			struct phonebook_driver *driver);
+extern struct phonebook_context *phonebook_ref(
+			struct phonebook_context *context);
 extern void phonebook_unref(struct phonebook_context *context);
 
 static inline void *phonebook_get_data(struct phonebook_context *context)
@@ -47,7 +49,7 @@ static inline void phonebook_set_data(struct phonebook_context *context,
 	context->driver_data = data;
 }
 
-extern void phonebook_pullphonebook(struct phonebook_context *context);
+extern int phonebook_pullphonebook(struct phonebook_context *context);
 extern void phonebook_return(struct phonebook_context *context,
 						char *buf, int size);
 

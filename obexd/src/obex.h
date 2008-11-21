@@ -29,6 +29,8 @@
 
 #include <glib.h>
 
+#include "phonebook.h"
+
 #define OBEX_OPP	(1 << 0)
 #define OBEX_FTP	(1 << 2)
 #define OBEX_BIP	(1 << 3)
@@ -79,6 +81,9 @@ struct obex_session {
 	struct obex_commands *cmds;
 	struct server *server;
 	gboolean	checked;
+	obex_t		*handle;
+	struct phonebook_context *pbctx;
+	gboolean	finished;
 };
 
 gint obex_session_start(gint fd, struct server *server);
@@ -94,6 +99,9 @@ gint ftp_chkput(obex_t *obex, obex_object_t *obj);
 void ftp_setpath(obex_t *obex, obex_object_t *obj);
 
 void pbap_get(obex_t *obex, obex_object_t *obj);
+gboolean pbap_phonebook_context_create(struct obex_session *session);
+void pbap_phonebook_context_destroy(struct obex_session *session);
+struct obex_session *pbap_get_session(struct phonebook_context *context);
 
 gboolean os_prepare_get(struct obex_session *os, gchar *file, guint32 *size);
 gint os_prepare_put(struct obex_session *os);

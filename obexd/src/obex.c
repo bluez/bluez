@@ -134,6 +134,9 @@ static void obex_session_free(struct obex_session *os)
 	if (os->current_folder)
 		g_free(os->current_folder);
 
+	if (!memcmp(os->target, PBAP_TARGET, TARGET_SIZE))
+		pbap_phonebook_context_destroy(os);
+
 	g_free(os);
 }
 
@@ -230,6 +233,7 @@ static void cmd_connect(struct obex_session *os,
 				os->server->services & OBEX_PBAP) {
 			os->target = PBAP_TARGET;
 			os->cmds = &pbap;
+			pbap_phonebook_context_create(os);
 			break;
 		}
 
@@ -466,7 +470,7 @@ static gint obex_write_stream(struct obex_session *os,
 		return -EPERM;
 
 	if (os->fd < 0) {
-		if (os->buf == NULL)
+		if (os->buf == NULL && os->finished == FALSE)
 			return -EIO;
 
 		len = MIN(os->size - os->offset, os->tx_mtu);
@@ -501,6 +505,10 @@ add_header:
 
 	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, len,
 				OBEX_FL_STREAM_DATA);
+
+	if (!memcmp(os->target, PBAP_TARGET, TARGET_SIZE))
+		if (os->offset == os->size && os->finished == FALSE)
+			OBEX_SuspendRequest(obex, obj);
 
 	return len;
 }
@@ -982,6 +990,7 @@ gint obex_session_start(gint fd, struct server *server)
 	}
 
 	OBEX_SetUserData(obex, os);
+	os->handle = obex;
 
 	OBEX_SetTransportMTU(obex, os->rx_mtu, os->tx_mtu);
 

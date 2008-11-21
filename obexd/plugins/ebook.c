@@ -45,23 +45,14 @@ static void ebook_destroy(struct phonebook_context *context)
 	DBG("context %p", context);
 }
 
-static int ebook_pullphonebook(struct phonebook_context *context)
+static void ebooklist_cb(EBook *book, EBookStatus status, GList *list,
+				gpointer user_data)
 {
-	EBook *book;
-	EBookQuery *query;
-	GList *contacts = NULL;
+	struct phonebook_context *context = user_data;
+	GList *contacts = list;
 	GString *pb;
 	gchar *result;
-
-	DBG("context %p", context);
-
-	book = e_book_new_default_addressbook(NULL);
-
-	e_book_open(book, FALSE, NULL);
-
-	query = e_book_query_any_field_contains("");
-
-	e_book_get_contacts(book, query, &contacts, NULL);
+	gint32 str_len;
 
 	pb = g_string_new(NULL);
 
@@ -76,12 +67,33 @@ static int ebook_pullphonebook(struct phonebook_context *context)
 	}
 
 	result = g_string_free(pb, FALSE);
-	phonebook_return(context, result, strlen(result));
+	str_len = strlen(result);
+	phonebook_return(context, result, str_len);
+
+	if (str_len != 0)
+		phonebook_return(context, NULL, 0);
+
 	g_free(result);
-
-	e_book_query_unref(query);
-
+	phonebook_unref(context);
 	g_object_unref(book);
+}
+
+static int ebook_pullphonebook(struct phonebook_context *context)
+{
+	EBook *book;
+	EBookQuery *query;
+
+	DBG("context %p", context);
+
+	phonebook_ref(context);
+
+	book = e_book_new_default_addressbook(NULL);
+
+	e_book_open(book, FALSE, NULL);
+
+	query = e_book_query_any_field_contains("");
+
+	e_book_async_get_contacts(book, query, ebooklist_cb, context);
 
 	return 0;
 }

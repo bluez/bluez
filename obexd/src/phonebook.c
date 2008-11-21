@@ -25,10 +25,15 @@
 #include <config.h>
 #endif
 
+#include <string.h>
 #include <glib.h>
+#include <stdlib.h>
+
+#include <openobex/obex.h>
+#include <openobex/obex_const.h>
 
 #include "logging.h"
-#include "phonebook.h"
+#include "obex.h"
 
 static GSList *driver_list = NULL;
 
@@ -96,23 +101,37 @@ void phonebook_unref(struct phonebook_context *context)
 	}
 }
 
-void phonebook_pullphonebook(struct phonebook_context *context)
+int phonebook_pullphonebook(struct phonebook_context *context)
 {
-	DBG("context %p", context);
+	if (!context->driver->pullphonebook)
+		return -1;
 
-	if (context->driver->pullphonebook) {
-		phonebook_ref(context);
-
-		context->driver->pullphonebook(context);
-	}
+	return context->driver->pullphonebook(context);
 }
 
+/* if buf is NULL or size is 0, this indicate that no more result will
+ * be returned by PBAP plugin
+ * */
 void phonebook_return(struct phonebook_context *context,
 						char *buf, int size)
 {
 	DBG("context %p", context);
 
-	phonebook_unref(context);
+	struct obex_session *session;
+
+	session = pbap_get_session(context);
+
+	if (buf == NULL || size == 0) {
+		session->finished = 1;
+		OBEX_ResumeRequest(session->handle);
+		return;
+	}
+
+	session->buf = g_realloc(session->buf, session->size + size);
+	memcpy(session->buf + session->size, buf, size);
+	session->size += size;
+
+	OBEX_ResumeRequest(session->handle);
 }
 
 struct phonebook_driver *phonebook_get_driver(const char *name)
