@@ -252,10 +252,10 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 				DBUS_TYPE_BOOLEAN, &connected);
 	emit_property_changed(connection, nc->peer->path,
 				NETWORK_PEER_INTERFACE, "Device",
-				DBUS_TYPE_BOOLEAN, &pdev);
+				DBUS_TYPE_STRING, &pdev);
 	emit_property_changed(connection, nc->peer->path,
 				NETWORK_PEER_INTERFACE, "UUID",
-				DBUS_TYPE_BOOLEAN, &uuid);
+				DBUS_TYPE_STRING, &uuid);
 
 	nc->state = CONNECTED;
 
