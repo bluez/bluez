@@ -55,8 +55,10 @@ void pbap_get(obex_t *obex, obex_object_t *obj)
 
 	ret = phonebook_pullphonebook(session->pbctx);
 
-	if (!ret)
+	if (!ret) {
 		OBEX_SuspendRequest(obex, obj);
+		session->size = 0;
+	}
 	else
 		goto fail;
 
