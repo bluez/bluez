@@ -30,7 +30,7 @@ serial = dbus.Interface(bus.get_object("org.bluez", path),
 
 node = serial.Connect(service)
 
-print "Connected %s to %s" % (device, address)
+print "Connected %s to %s" % (node, address)
 
 print "Press CTRL-C to disconnect"
 
