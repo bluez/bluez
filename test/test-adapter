@@ -21,7 +21,6 @@ if (len(sys.argv) < 2):
 	print "  pairable [on/off]"
 	print "  discoverable [on/off]"
 	print "  discoverabletimeout [timeout]"
-	print "  periodicdiscovery [on/off]"
 	sys.exit(1)
 
 if (sys.argv[1] == "address"):
@@ -87,21 +86,6 @@ if (sys.argv[1] == "discoverabletimeout"):
 	else:
 		timeout = dbus.UInt32(sys.argv[2])
 		adapter.SetProperty("DiscoverableTimeout", timeout)
-	sys.exit(0)
-
-if (sys.argv[1] == "periodicdiscovery"):
-	if (len(sys.argv) < 3):
-		properties = adapter.GetProperties()
-		print properties["PeriodicDiscovery"]
-	else:
-		if (sys.argv[2] == "on"):
-			value = dbus.Boolean(1)
-		elif (sys.argv[2] == "off"):
-			value = dbus.Boolean(0)
-		else:
-			value = dbus.Boolean(sys.argv[2])
-		adapter.SetProperty("PeriodicDiscovery", value)
-		time.sleep(120)
 	sys.exit(0)
 
 print "Unknown command"
