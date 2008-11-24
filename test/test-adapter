@@ -21,6 +21,7 @@ if (len(sys.argv) < 2):
 	print "  pairable [on/off]"
 	print "  discoverable [on/off]"
 	print "  discoverabletimeout [timeout]"
+	print "  discovering"
 	sys.exit(1)
 
 if (sys.argv[1] == "address"):
@@ -86,6 +87,11 @@ if (sys.argv[1] == "discoverabletimeout"):
 	else:
 		timeout = dbus.UInt32(sys.argv[2])
 		adapter.SetProperty("DiscoverableTimeout", timeout)
+	sys.exit(0)
+
+if (sys.argv[1] == "discovering"):
+	properties = adapter.GetProperties()
+	print properties["Discovering"]
 	sys.exit(0)
 
 print "Unknown command"
