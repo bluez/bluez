@@ -259,21 +259,6 @@ static void headset_setup_complete(struct audio_device *dev, void *user_data)
 	if (!dev)
 		goto failed;
 
-	switch (client->access_mode) {
-	case BT_CAPABILITIES_ACCESS_MODE_READ:
-		hs->lock = HEADSET_LOCK_READ;
-		break;
-	case BT_CAPABILITIES_ACCESS_MODE_WRITE:
-		hs->lock = HEADSET_LOCK_WRITE;
-		break;
-	case BT_CAPABILITIES_ACCESS_MODE_READWRITE:
-		hs->lock = HEADSET_LOCK_READ | HEADSET_LOCK_WRITE;
-		break;
-	default:
-		hs->lock = 0;
-		break;
-	}
-
 	if (!headset_lock(dev, hs->lock)) {
 		error("Unable to lock headset");
 		goto failed;
@@ -606,6 +591,7 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
 	unsigned int id;
+	struct headset_data *hs;
 
 	client->type = select_service(dev, client->interface);
 
@@ -627,7 +613,23 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 		break;
 
 	case TYPE_HEADSET:
-		id = headset_request_stream(dev, headset_setup_complete, client);
+		hs = &client->d.hs;
+		switch (client->access_mode) {
+		case BT_CAPABILITIES_ACCESS_MODE_READ:
+			hs->lock = HEADSET_LOCK_READ;
+			break;
+		case BT_CAPABILITIES_ACCESS_MODE_WRITE:
+			hs->lock = HEADSET_LOCK_WRITE;
+			break;
+		case BT_CAPABILITIES_ACCESS_MODE_READWRITE:
+			hs->lock = HEADSET_LOCK_READ | HEADSET_LOCK_WRITE;
+			break;
+		default:
+			hs->lock = 0;
+			break;
+		}
+		id = headset_request_stream(dev, headset_setup_complete,
+					hs->lock, client);
 		client->cancel = headset_cancel_stream;
 		break;
 
@@ -703,6 +705,7 @@ failed:
 static void start_suspend(struct audio_device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
+	struct headset_data *hs;
 	unsigned int id;
 
 	client->type = select_service(dev, client->interface);
@@ -730,7 +733,10 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 		break;
 
 	case TYPE_HEADSET:
-		id = headset_request_stream(dev, headset_setup_complete, client);
+		hs = &client->d.hs;
+
+		id = headset_request_stream(dev, headset_setup_complete,
+					hs->lock, client);
 		client->cancel = headset_cancel_stream;
 		break;
 

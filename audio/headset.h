@@ -53,7 +53,9 @@ void headset_update(struct audio_device *dev, uint16_t svc,
 			const char *uuidstr);
 
 unsigned int headset_request_stream(struct audio_device *dev,
-					headset_stream_cb_t cb, void *user_data);
+					headset_stream_cb_t cb,
+					headset_lock_t lock,
+					void *user_data);
 gboolean headset_cancel_stream(struct audio_device *dev, unsigned int id);
 
 gboolean get_hfp_active(struct audio_device *dev);

@@ -2105,11 +2105,16 @@ static gboolean dummy_connect_complete(struct audio_device *dev)
 	return FALSE;
 }
 
-unsigned int headset_request_stream(struct audio_device *dev, headset_stream_cb_t cb,
+unsigned int headset_request_stream(struct audio_device *dev,
+					headset_stream_cb_t cb,
+					headset_lock_t lock,
 					void *user_data)
 {
 	struct headset *hs = dev->headset;
 	unsigned int id;
+
+	if (hs->lock & lock)
+		return 0;
 
 	if (hs->rfcomm && hs->sco) {
 		id = connect_cb_new(hs, HEADSET_STATE_PLAYING, cb, user_data);
