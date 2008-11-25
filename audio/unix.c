@@ -251,7 +251,6 @@ static void headset_setup_complete(struct audio_device *dev, void *user_data)
 	struct unix_client *client = user_data;
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
 	struct bt_setconfiguration_rsp *rsp = (void *) buf;
-	struct headset_data *hs = &client->d.hs;
 
 	client->req_id = 0;
 
