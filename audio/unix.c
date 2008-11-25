@@ -258,11 +258,6 @@ static void headset_setup_complete(struct audio_device *dev, void *user_data)
 	if (!dev)
 		goto failed;
 
-	if (!headset_lock(dev, hs->lock)) {
-		error("Unable to lock headset");
-		goto failed;
-	}
-
 	memset(buf, 0, sizeof(buf));
 
 	rsp->rsp_h.msg_h.msg_type = BT_SETCONFIGURATION_RSP;
@@ -293,6 +288,11 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 
 	if (!dev)
 		goto failed;
+
+	if (!headset_lock(dev, hs->lock)) {
+		error("Unable to lock headset");
+		goto failed;
+	}
 
 	memset(buf, 0, sizeof(buf));
 
