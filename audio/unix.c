@@ -320,6 +320,28 @@ failed:
 	client->dev = NULL;
 }
 
+static void headset_suspend_complete(struct audio_device *dev, void *user_data)
+{
+	struct unix_client *client = user_data;
+	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	struct bt_streamstart_rsp *rsp = (void *) buf;
+
+	if (!dev)
+		goto failed;
+
+	memset(buf, 0, sizeof(buf));
+	rsp->rsp_h.msg_h.msg_type = BT_STREAMSTOP_RSP;
+	rsp->rsp_h.posix_errno = 0;
+	unix_ipc_sendmsg(client, &rsp->rsp_h.msg_h);
+
+	return;
+
+failed:
+	error("suspend failed");
+	unix_ipc_error(client, BT_STREAMSTOP_RSP, EIO);
+	client->dev = NULL;
+}
+
 static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 					struct avdtp_error *err,
 					void *user_data)
@@ -735,7 +757,7 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 	case TYPE_HEADSET:
 		hs = &client->d.hs;
 
-		id = headset_request_stream(dev, headset_setup_complete,
+		id = headset_suspend_stream(dev, headset_suspend_complete,
 					hs->lock, client);
 		client->cancel = headset_cancel_stream;
 		break;

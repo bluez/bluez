@@ -2144,6 +2144,37 @@ unsigned int headset_request_stream(struct audio_device *dev,
 	return id;
 }
 
+unsigned int headset_suspend_stream(struct audio_device *dev,
+					headset_stream_cb_t cb,
+					headset_lock_t lock,
+					void *user_data)
+{
+	struct headset *hs = dev->headset;
+	unsigned int id;
+
+	if (hs->lock & ~lock)
+		return 0;
+
+	if (!hs->rfcomm)
+		return 0;
+
+	if (hs->dc_timer) {
+		g_source_remove(hs->dc_timer);
+		hs->dc_timer = 0;
+	}
+
+	if (hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS ||
+			hs->state == HEADSET_STATE_PLAY_IN_PROGRESS)
+		return connect_cb_new(hs, HEADSET_STATE_CONNECTED, cb,
+					user_data);
+
+	close_sco(dev);
+	id = connect_cb_new(hs, HEADSET_STATE_CONNECTED, cb, user_data);
+	g_idle_add((GSourceFunc) dummy_connect_complete, dev);
+
+	return id;
+}
+
 gboolean get_hfp_active(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
