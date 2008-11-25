@@ -315,7 +315,7 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	return;
 
 failed:
-	error("resume failed");
+	error("headset_resume_complete: resume failed");
 	unix_ipc_error(client, BT_STREAMSTART_RSP, EIO);
 }
 
@@ -611,8 +611,8 @@ failed:
 static void start_config(struct audio_device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
-	unsigned int id;
 	struct headset_data *hs;
+	unsigned int id;
 
 	client->type = select_service(dev, client->interface);
 
@@ -635,6 +635,7 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 
 	case TYPE_HEADSET:
 		hs = &client->d.hs;
+
 		switch (client->access_mode) {
 		case BT_CAPABILITIES_ACCESS_MODE_READ:
 			hs->lock = HEADSET_LOCK_READ;
@@ -649,7 +650,8 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 			hs->lock = 0;
 			break;
 		}
-		id = headset_request_stream(dev, headset_setup_complete,
+
+		id = headset_suspend_stream(dev, headset_setup_complete,
 					hs->lock, client);
 		client->cancel = headset_cancel_stream;
 		break;
@@ -676,6 +678,7 @@ failed:
 static void start_resume(struct audio_device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
+	struct headset_data *hs;
 	unsigned int id;
 
 	client->type = select_service(dev, client->interface);
@@ -701,19 +704,23 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 					a2dp_resume_complete, client);
 		client->cancel = a2dp_source_cancel;
 
-		if (id == 0) {
-			error("resume failed");
-			goto failed;
-		}
-
 		break;
 
 	case TYPE_HEADSET:
-		headset_resume_complete(dev, client);
+		hs = &client->d.hs;
+
+		id = headset_request_stream(dev, headset_resume_complete,
+					hs->lock, client);
+		client->cancel = headset_cancel_stream;
 		break;
 
 	default:
 		error("No known services for device");
+		goto failed;
+	}
+
+	if (id == 0) {
+		error("start_resume: resume failed");
 		goto failed;
 	}
 
@@ -757,7 +764,7 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 		hs = &client->d.hs;
 
 		id = headset_suspend_stream(dev, headset_suspend_complete,
-					hs->lock, client);
+					~hs->lock, client);
 		client->cancel = headset_cancel_stream;
 		break;
 

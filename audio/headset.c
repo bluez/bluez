@@ -2113,9 +2113,6 @@ unsigned int headset_request_stream(struct audio_device *dev,
 	struct headset *hs = dev->headset;
 	unsigned int id;
 
-	if (hs->lock & lock)
-		return 0;
-
 	if (hs->rfcomm && hs->sco) {
 		id = connect_cb_new(hs, HEADSET_STATE_PLAYING, cb, user_data);
 		g_idle_add((GSourceFunc) dummy_connect_complete, dev);
@@ -2152,10 +2149,7 @@ unsigned int headset_suspend_stream(struct audio_device *dev,
 	struct headset *hs = dev->headset;
 	unsigned int id;
 
-	if (hs->lock & ~lock)
-		return 0;
-
-	if (!hs->rfcomm)
+	if (hs->lock & lock)
 		return 0;
 
 	if (hs->dc_timer) {
@@ -2163,15 +2157,27 @@ unsigned int headset_suspend_stream(struct audio_device *dev,
 		hs->dc_timer = 0;
 	}
 
-	if (hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS ||
-			hs->state == HEADSET_STATE_PLAY_IN_PROGRESS)
+	if (hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS)
 		return connect_cb_new(hs, HEADSET_STATE_CONNECTED, cb,
 					user_data);
 
-	close_sco(dev);
+	if (hs->sco) {
+		close_sco(dev);
+		goto done;
+	} else if (hs->rfcomm)
+		goto done;
+
+	if (rfcomm_connect(dev, cb, user_data, &id) < 0)
+		return 0;
+
+	hs->auto_dc = TRUE;
+	hs->pending->target_state = HEADSET_STATE_CONNECTED;
+
+	return id;
+
+done:
 	id = connect_cb_new(hs, HEADSET_STATE_CONNECTED, cb, user_data);
 	g_idle_add((GSourceFunc) dummy_connect_complete, dev);
-
 	return id;
 }
 
