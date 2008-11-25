@@ -244,7 +244,6 @@ static void headset_discovery_complete(struct audio_device *dev, void *user_data
 failed:
 	error("discovery failed");
 	unix_ipc_error(client, BT_SETCONFIGURATION_RSP, EIO);
-	client->dev = NULL;
 }
 
 static void headset_setup_complete(struct audio_device *dev, void *user_data)
@@ -280,7 +279,6 @@ static void headset_setup_complete(struct audio_device *dev, void *user_data)
 failed:
 	error("config failed");
 	unix_ipc_error(client, BT_SETCONFIGURATION_RSP, EIO);
-	client->dev = NULL;
 }
 
 static void headset_resume_complete(struct audio_device *dev, void *user_data)
@@ -289,6 +287,7 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	char buf[BT_AUDIO_IPC_PACKET_SIZE];
 	struct bt_streamstart_rsp *rsp = (void *) buf;
 	struct bt_streamfd_ind *ind = (void *) buf;
+	struct headset_data *hs = &client->d.hs;
 
 	client->req_id = 0;
 
@@ -309,6 +308,7 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 
 	if (unix_sendmsg_fd(client->sock, client->data_fd) < 0) {
 		error("unix_sendmsg_fd: %s(%d)", strerror(errno), errno);
+		headset_unlock(client->dev, hs->lock);
 		goto failed;
 	}
 
@@ -317,7 +317,6 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 failed:
 	error("resume failed");
 	unix_ipc_error(client, BT_STREAMSTART_RSP, EIO);
-	client->dev = NULL;
 }
 
 static void headset_suspend_complete(struct audio_device *dev, void *user_data)
