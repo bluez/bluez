@@ -580,6 +580,9 @@ gboolean g_dbus_send_message(DBusConnection *connection, DBusMessage *message)
 {
 	dbus_bool_t result;
 
+	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_METHOD_CALL)
+		dbus_message_set_no_reply(message, TRUE);
+
 	result = dbus_connection_send(connection, message, NULL);
 
 	dbus_message_unref(message);
