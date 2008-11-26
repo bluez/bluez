@@ -829,6 +829,7 @@ out:
 
 gboolean gw_obex_get(GwObex *ctx,
                      const gchar *local, const gchar *remote, const gchar *type,
+                     const guint8 *apparam, gint apparam_size,
                      gchar **buf, gint *buf_size, int stream_fd,
                      gboolean async) {
     gboolean ret = FALSE;
@@ -852,6 +853,11 @@ gboolean gw_obex_get(GwObex *ctx,
     if (ctx->conid != CONID_INVALID) {
         hv.bq4 = ctx->conid;
         OBEX_ObjectAddHeader(ctx->handle, object, OBEX_HDR_CONNECTION, hv, 4, 0);
+    }
+
+    if (apparam && apparam_size > 0) {
+        hv.bs = (unsigned char *)apparam;
+        OBEX_ObjectAddHeader(ctx->handle, object, OBEX_HDR_APPARAM, hv, apparam_size, 0);
     }
 
     if (type) {
@@ -940,6 +946,7 @@ out:
 
 gboolean gw_obex_put(GwObex *ctx,
                      const gchar *local, const gchar *remote, const gchar *type,
+                     const guint8 *apparam, gint apparam_size,
                      const gchar *buf, gint object_size, time_t object_time,
                      int stream_fd, gboolean async) {
     gboolean ret = FALSE;
@@ -1014,6 +1021,11 @@ gboolean gw_obex_put(GwObex *ctx,
     if (type) {
         hv.bs = (unsigned char *)type;
         OBEX_ObjectAddHeader(ctx->handle, object, OBEX_HDR_TYPE, hv, strlen(type) + 1, 0);
+    }
+
+    if (apparam && apparam_size > 0) {
+        hv.bs = (unsigned char *)apparam;
+        OBEX_ObjectAddHeader(ctx->handle, object, OBEX_HDR_APPARAM, hv, apparam_size, 0);
     }
 
     /* Try to figure out modification time if none was given */

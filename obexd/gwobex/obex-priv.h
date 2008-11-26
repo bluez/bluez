@@ -197,6 +197,7 @@ gboolean gw_obex_setpath(GwObex *ctx, const gchar *path, int flags);
  */
 gboolean gw_obex_get(GwObex *ctx,
                      const gchar *local, const gchar *remote, const gchar *type,
+                     const guint8 *apparam, gint apparam_size,
                      gchar **buf, gint *buf_size, int stream_fd,
                      gboolean async);
 
@@ -209,6 +210,7 @@ gboolean gw_obex_get(GwObex *ctx,
  */
 gboolean gw_obex_put(GwObex *ctx,
                      const gchar *local, const gchar *remote, const gchar *type,
+                     const guint8 *apparam, gint apparam_size,
                      const gchar *buf, gint buf_size, time_t object_time,
                      int stream_fd, gboolean async);
 

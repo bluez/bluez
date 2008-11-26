@@ -117,7 +117,7 @@ GwObexXfer *gw_obex_put_async(GwObex *ctx, const char *name, const char *type,
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(NULL, error, ctx);
-    ret = gw_obex_put(ctx, NULL, name, type, NULL, size, time, -1, TRUE);
+    ret = gw_obex_put(ctx, NULL, name, type, NULL, 0, NULL, size, time, -1, TRUE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     GW_OBEX_UNLOCK(ctx);
@@ -128,7 +128,7 @@ GwObexXfer *gw_obex_get_async(GwObex *ctx, const char *name, const char *type, g
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(NULL, error, ctx);
-    ret = gw_obex_get(ctx, NULL, name, type, NULL, NULL, -1, TRUE);
+    ret = gw_obex_get(ctx, NULL, name, type, NULL, 0, NULL, NULL, -1, TRUE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     GW_OBEX_UNLOCK(ctx);

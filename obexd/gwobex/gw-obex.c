@@ -44,7 +44,7 @@ gboolean gw_obex_get_file(GwObex *ctx,
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(FALSE, error, ctx);
-    ret = gw_obex_get(ctx, local, remote, type, NULL, NULL, -1, FALSE);
+    ret = gw_obex_get(ctx, local, remote, type, NULL, 0, NULL, NULL, -1, FALSE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     GW_OBEX_UNLOCK(ctx);
@@ -59,7 +59,7 @@ gboolean gw_obex_get_fd(GwObex      *ctx,
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(FALSE, error, ctx);
-    ret = gw_obex_get(ctx, NULL, remote, type, NULL, NULL, fd, FALSE);
+    ret = gw_obex_get(ctx, NULL, remote, type, NULL, 0, NULL, NULL, fd, FALSE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     GW_OBEX_UNLOCK(ctx);
@@ -74,7 +74,7 @@ gboolean gw_obex_put_fd(GwObex      *ctx,
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(FALSE, error, ctx);
-    ret = gw_obex_put(ctx, NULL, remote, type, NULL, 0, -1, fd, FALSE);
+    ret = gw_obex_put(ctx, NULL, remote, type, NULL, 0, NULL, 0, -1, fd, FALSE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     GW_OBEX_UNLOCK(ctx);
@@ -89,7 +89,7 @@ gboolean gw_obex_put_file(GwObex      *ctx,
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(FALSE, error, ctx);
-    ret = gw_obex_put(ctx, local, remote, type, NULL, 0, -1, -1, FALSE);
+    ret = gw_obex_put(ctx, local, remote, type, NULL, 0, NULL, 0, -1, -1, FALSE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     GW_OBEX_UNLOCK(ctx);
@@ -105,7 +105,7 @@ gboolean gw_obex_get_buf(GwObex       *ctx,
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(FALSE, error, ctx);
-    ret = gw_obex_get(ctx, NULL, remote, type, buf, buf_size, -1, FALSE);
+    ret = gw_obex_get(ctx, NULL, remote, type, NULL, 0, buf, buf_size, -1, FALSE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     GW_OBEX_UNLOCK(ctx);
@@ -122,7 +122,7 @@ gboolean gw_obex_put_buf(GwObex      *ctx,
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(FALSE, error, ctx);
-    ret = gw_obex_put(ctx, NULL, remote, type, buf, buf_size, time, -1, FALSE);
+    ret = gw_obex_put(ctx, NULL, remote, type, NULL, 0, buf, buf_size, time, -1, FALSE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     GW_OBEX_UNLOCK(ctx);
@@ -158,7 +158,7 @@ gboolean gw_obex_read_dir(GwObex *ctx, const gchar *dir,
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(FALSE, error, ctx);
-    ret = gw_obex_get(ctx, NULL, dir ? dir : "", LST_TYPE, buf, buf_size, -1, FALSE);
+    ret = gw_obex_get(ctx, NULL, dir ? dir : "", LST_TYPE, NULL, 0, buf, buf_size, -1, FALSE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     else if (*buf_size > 0) {
@@ -181,7 +181,7 @@ gboolean gw_obex_delete(GwObex *ctx, const gchar *name, gint *error) {
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(FALSE, error, ctx);
-    ret = gw_obex_put(ctx, NULL, name, NULL, NULL, 0, -1, -1, FALSE);
+    ret = gw_obex_put(ctx, NULL, name, NULL, NULL, 0, NULL, 0, -1, -1, FALSE);
     if (ret == FALSE)
         gw_obex_get_error(ctx, error);
     GW_OBEX_UNLOCK(ctx);
@@ -214,7 +214,7 @@ gboolean gw_obex_get_capability(GwObex *ctx, gchar **cap, gint *cap_len, gint *e
     gboolean ret;
     GW_OBEX_LOCK(ctx);
     CHECK_DISCONNECT(FALSE, error, ctx);
-    ret = gw_obex_get(ctx, NULL, NULL, CAP_TYPE, cap, cap_len, -1, FALSE);
+    ret = gw_obex_get(ctx, NULL, NULL, CAP_TYPE, NULL, 0, cap, cap_len, -1, FALSE);
     if (ret == FALSE) {
         *cap = NULL;
         *cap_len = 0;
