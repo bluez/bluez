@@ -52,6 +52,10 @@ uint32_t headset_config_init(GKeyFile *config);
 void headset_update(struct audio_device *dev, uint16_t svc,
 			const char *uuidstr);
 
+unsigned int headset_config_stream(struct audio_device *dev,
+					headset_stream_cb_t cb,
+					headset_lock_t lock,
+					void *user_data);
 unsigned int headset_request_stream(struct audio_device *dev,
 					headset_stream_cb_t cb,
 					headset_lock_t lock,
