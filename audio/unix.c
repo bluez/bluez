@@ -650,7 +650,7 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 			break;
 		}
 
-		id = headset_suspend_stream(dev, headset_setup_complete,
+		id = headset_config_stream(dev, headset_setup_complete,
 					hs->lock, client);
 		client->cancel = headset_cancel_stream;
 		break;
@@ -763,7 +763,7 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 		hs = &client->d.hs;
 
 		id = headset_suspend_stream(dev, headset_suspend_complete,
-					~hs->lock, client);
+					hs->lock, client);
 		client->cancel = headset_cancel_stream;
 		break;
 
