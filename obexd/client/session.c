@@ -39,6 +39,7 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include "pbap.h"
 #include "session.h"
 
 #define AGENT_INTERFACE  "org.openobex.Agent"
@@ -50,11 +51,8 @@
 #define SESSION_BASEPATH   "/org/openobex"
 
 #define FTP_INTERFACE  "org.openobex.FileTransfer"
-#define PBAP_INTERFACE  "org.openobex.PhonebookAccess"
 
 #define DEFAULT_BUFFER_SIZE 4096
-
-extern GDBusMethodTable pbap_methods[];
 
 static guint64 counter = 0;
 
@@ -107,9 +105,19 @@ static void session_unref(struct session_data *session)
 		close(session->sock);
 
 	if (session->conn) {
-		if (session->transfer_path)
-			g_dbus_unregister_interface(session->conn,
-					session->transfer_path, TRANSFER_INTERFACE);
+		if (session->transfer_path) {
+			switch (session->uuid) {
+			case OBEX_FILETRANS_SVCLASS_ID:
+				g_dbus_unregister_interface(session->conn,
+						session->transfer_path,
+							TRANSFER_INTERFACE);
+				break;
+			case PBAP_PSE_SVCLASS_ID:
+				pbap_unregister_interface(session->conn,
+						session->transfer_path);
+				break;
+			}
+		}
 
 		dbus_connection_unref(session->conn);
 	}
@@ -1450,7 +1458,6 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	return;
 
 complete:
-
 	if (len == 0)
 		agent_notify_complete(session->conn, session->agent_name,
 				session->agent_path, session->transfer_path);
@@ -1566,43 +1573,37 @@ int session_pull(struct session_data *session,
 
 int session_register(struct session_data *session)
 {
-	GDBusMethodTable *methods;
-	const char *iface;
+	gboolean result = FALSE;
+
+	session->path = g_strdup_printf("%s/session%ju",
+						SESSION_BASEPATH, counter++);
+
+	if (g_dbus_register_interface(session->conn, session->path,
+					SESSION_INTERFACE, session_methods,
+					NULL, NULL, session, NULL) == FALSE)
+		return -EIO;
 
 	switch (session->uuid) {
 	case OBEX_FILETRANS_SVCLASS_ID:
-		iface = FTP_INTERFACE;
-		methods = ftp_methods;
+		result = g_dbus_register_interface(session->conn,
+					session->path, FTP_INTERFACE,
+					ftp_methods, NULL, NULL, session, NULL);
 		break;
 	case PBAP_PSE_SVCLASS_ID:
-		iface = PBAP_INTERFACE;
-		methods = pbap_methods;
+		result = pbap_register_interface(session->conn,
+						session->path, session, NULL);
 		break;
-	default:
-		return -EINVAL;
 	}
 
-	session->path = g_strdup_printf("%s/session%ju",
-					SESSION_BASEPATH, counter++);
-
-	if (g_dbus_register_interface(session->conn, session->path,
-				SESSION_INTERFACE,
-				session_methods, NULL, NULL,
-				session, NULL) == FALSE)
-		return -EIO;
-
-	if (g_dbus_register_interface(session->conn, session->path,
-				iface,
-				methods, NULL, NULL,
-				session, NULL) == FALSE) {
+	if (result == FALSE) {
 		g_dbus_unregister_interface(session->conn,
-				session->path, SESSION_INTERFACE);
+					session->path, SESSION_INTERFACE);
 		return -EIO;
 	}
 
 	session->owner_watch = g_dbus_add_disconnect_watch(session->conn,
-				session->owner, owner_disconnected, session,
-				NULL);
+					session->owner, owner_disconnected,
+								session, NULL);
 
 	session_ref(session);
 
