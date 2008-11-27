@@ -129,6 +129,43 @@ gboolean gw_obex_put_buf(GwObex      *ctx,
     return ret;
 }
 
+gboolean gw_obex_get_buf_with_apparam(GwObex        *ctx,
+                                      const gchar   *remote,
+                                      const gchar   *type,
+                                      const guint8  *apparam,
+                                      gint           apparam_size,
+                                      gchar        **buf,
+                                      gint          *buf_size,
+                                      gint          *error) {
+    gboolean ret;
+    GW_OBEX_LOCK(ctx);
+    CHECK_DISCONNECT(FALSE, error, ctx);
+    ret = gw_obex_get(ctx, NULL, remote, type, apparam, apparam_size, buf, buf_size, -1, FALSE);
+    if (ret == FALSE)
+        gw_obex_get_error(ctx, error);
+    GW_OBEX_UNLOCK(ctx);
+    return ret;
+}
+
+gboolean gw_obex_put_buf_with_apparam(GwObex       *ctx,
+                                      const gchar  *remote,
+                                      const gchar  *type,
+                                      const guint8 *apparam,
+                                      gint          apparam_size,
+                                      const gchar  *buf,
+                                      gint          buf_size,
+                                      gint          time,
+                                      gint         *error) {
+    gboolean ret;
+    GW_OBEX_LOCK(ctx);
+    CHECK_DISCONNECT(FALSE, error, ctx);
+    ret = gw_obex_put(ctx, NULL, remote, type, apparam, apparam_size, buf, buf_size, time, -1, FALSE);
+    if (ret == FALSE)
+        gw_obex_get_error(ctx, error);
+    GW_OBEX_UNLOCK(ctx);
+    return ret;
+}
+
 gboolean gw_obex_chdir(GwObex *ctx, const gchar *dir, gint *error) {
     gboolean ret;
     GW_OBEX_LOCK(ctx);

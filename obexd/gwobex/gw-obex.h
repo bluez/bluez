@@ -365,6 +365,48 @@ gboolean gw_obex_put_buf(GwObex *ctx, const gchar *remote, const gchar *type,
                          const gchar *buf, gint buf_size, gint time, gint *error);
 
 
+/** Get an object from the remote device and store it in a memory buffer.
+ * Either remote filename or type must be supplied (or both).
+ *
+ * @param ctx          Pointer returned by gw_obex_setup()
+ * @param remote       Remote filename (null terminated UTF-8)
+ * @param type         MIME-type of the object
+ * @param apparam      Application parameters of the object
+ * @param apparam_size Application parameters size
+ * @param buf          Buffer to store the object in.
+ *                      g_free() when not needed anymore.
+ * @param buf_size     Place to store length of fetched object
+ * @param error        Place to store error code on failure
+ *                     (NULL if not interested)
+ *
+ * @returns TRUE on success, FALSE on failure
+ */
+gboolean gw_obex_get_buf_with_apparam(GwObex *ctx, const gchar *remote, const gchar *type,
+                                      const guint8 *apparam, gint apparam_size,
+                                      gchar **buf, gint *buf_size, gint *error);
+
+
+/** Send a object located in a memory buffer to the remote device.
+ * Either remote filename or type must be supplied (or both)
+ *
+ * @param ctx          Pointer returned by gw_obex_setup()
+ * @param remote       Remote filename (null terminated UTF-8)
+ * @param type         MIME-type of the object
+ * @param apparam      Application parameters of the object
+ * @param apparam_size Application parameters size
+ * @param buf          Buffer containing the object
+ * @param buf_size     Buffer (object) size
+ * @param time         Last modification time of object (or -1 if not known)
+ * @param error        Place to store error code on failure
+ *                     (NULL if not interested)
+ *
+ * @returns TRUE on success, FALSE on failure
+ */
+gboolean gw_obex_put_buf_with_apparam(GwObex *ctx, const gchar *remote, const gchar *type,
+                                     const guint8 *apparam, gint apparam_size,
+                                     const gchar *buf, gint buf_size, gint time, gint *error);
+
+
 /** Change directory (relative to the current one).
  *
  * @param ctx   Pointer returned by gw_obex_setup()
