@@ -196,6 +196,12 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 	telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+void telephony_disable_nr_and_ec_req(void *telephony_device)
+{
+	debug("telephony-dummy: got disable NR and EC request");
+	telephony_disable_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
+}
+
 /* D-Bus method handlers */
 static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 					void *data)

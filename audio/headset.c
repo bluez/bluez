@@ -1007,6 +1007,11 @@ int telephony_call_hold_rsp(void *telephony_device, cme_error_t err)
 	return telephony_generic_rsp(telephony_device, err);
 }
 
+int telephony_disable_nr_and_ec_rsp(void *telephony_device, cme_error_t err)
+{
+	return telephony_generic_rsp(telephony_device, err);
+}
+
 int telephony_operator_selection_ind(int mode, const char *oper)
 {
 	if (!active_devices)
@@ -1037,6 +1042,16 @@ static int operator_selection(struct audio_device *device, const char *buf)
 	return 0;
 }
 
+static int disable_nr_and_ec(struct audio_device *device, const char *buf)
+{
+	if (strlen(buf) < 9)
+		return -EINVAL;
+
+	telephony_disable_nr_and_ec_req(device);
+
+	return 0;
+}
+
 static struct event event_callbacks[] = {
 	{ "ATA", answer_call },
 	{ "ATD", dial_number },
@@ -1056,6 +1071,7 @@ static struct event event_callbacks[] = {
 	{ "AT+CMEE", extended_errors },
 	{ "AT+CCWA", call_waiting_notify },
 	{ "AT+COPS", operator_selection },
+	{ "AT+NREC", disable_nr_and_ec },
 	{ 0 }
 };
 
