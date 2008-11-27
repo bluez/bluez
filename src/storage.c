@@ -120,6 +120,39 @@ int read_discoverable_timeout(const char *src, int *timeout)
 	return 0;
 }
 
+int write_pairable_timeout(bdaddr_t *bdaddr, int timeout)
+{
+	char filename[PATH_MAX + 1], str[32];
+
+	snprintf(str, sizeof(str), "%d", timeout);
+
+	create_filename(filename, PATH_MAX, bdaddr, "config");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	return textfile_put(filename, "pairto", str);
+}
+
+int read_pairable_timeout(const char *src, int *timeout)
+{
+	char filename[PATH_MAX + 1], *str;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, src, "config");
+
+	str = textfile_get(filename, "pairto");
+	if (!str)
+		return -ENOENT;
+
+	if (sscanf(str, "%d", timeout) != 1) {
+		free(str);
+		return -ENOENT;
+	}
+
+	free(str);
+
+	return 0;
+}
+
 int write_device_mode(bdaddr_t *bdaddr, const char *mode)
 {
 	char filename[PATH_MAX + 1];

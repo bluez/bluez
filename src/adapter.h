@@ -135,7 +135,6 @@ uint16_t adapter_get_dev_id(struct btd_adapter *adapter);
 const gchar *adapter_get_path(struct btd_adapter *adapter);
 void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 void adapter_remove(struct btd_adapter *adapter);
-void adapter_set_discov_timeout(struct btd_adapter *adapter, guint interval);
 void adapter_remove_discov_timeout(struct btd_adapter *adapter);
 void adapter_set_scan_mode(struct btd_adapter *adapter, uint8_t scan_mode);
 uint8_t adapter_get_scan_mode(struct btd_adapter *adapter);

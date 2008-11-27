@@ -127,6 +127,17 @@ static void parse_config(GKeyFile *config)
 	}
 
 	val = g_key_file_get_integer(config, "General",
+					"PairableTimeout",
+					&err);
+	if (err) {
+		debug("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		debug("pairto=%d", val);
+		main_opts.pairto = val;
+	}
+
+	val = g_key_file_get_integer(config, "General",
 					"PageTimeout",
 					&err);
 	if (err) {

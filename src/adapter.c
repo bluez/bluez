@@ -94,7 +94,9 @@ struct btd_adapter {
 	char *path;			/* adapter object path */
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
 	guint discov_timeout_id;	/* discoverable timeout id */
-	uint32_t discov_timeout;	/* discoverable time(msec) */
+	uint32_t discov_timeout;	/* discoverable time(sec) */
+	guint pairable_timeout_id;	/* pairable timeout id */
+	uint32_t pairable_timeout;	/* pairable time(sec) */
 	uint8_t scan_mode;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
 	uint8_t mode;			/* off, connectable, discoverable, limited */
 	uint8_t global_mode;		/* last valid global mode */
@@ -116,6 +118,9 @@ struct btd_adapter {
 	struct hci_dev dev;		/* hci info */
 	gboolean pairable;		/* pairable state */
 };
+
+static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
+					guint interval);
 
 static inline DBusMessage *invalid_args(DBusMessage *msg)
 {
@@ -526,6 +531,71 @@ static uint8_t get_mode(const bdaddr_t *bdaddr, const char *mode)
 		return MODE_UNKNOWN;
 }
 
+static gboolean discov_timeout_handler(void *data)
+{
+	struct btd_adapter *adapter = data;
+	struct hci_request rq;
+	int dd;
+	uint8_t scan_enable = adapter->scan_mode;
+	uint8_t status = 0;
+	gboolean retval = TRUE;
+	uint16_t dev_id = adapter->dev_id;
+
+	scan_enable &= ~SCAN_INQUIRY;
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("HCI device open failed: hci%d", dev_id);
+		return TRUE;
+	}
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
+	rq.cparam = &scan_enable;
+	rq.clen   = sizeof(scan_enable);
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event  = EVT_CMD_COMPLETE;
+
+	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
+		error("Sending write scan enable command to hci%d failed: %s (%d)",
+				dev_id, strerror(errno), errno);
+		goto failed;
+	}
+	if (status) {
+		error("Setting scan enable failed with status 0x%02x", status);
+		goto failed;
+	}
+
+	set_limited_discoverable(dd, adapter->dev.class, FALSE);
+
+	adapter_remove_discov_timeout(adapter);
+	retval = FALSE;
+
+failed:
+	if (dd >= 0)
+		hci_close_dev(dd);
+
+	return retval;
+}
+
+static void adapter_set_discov_timeout(struct btd_adapter *adapter,
+					guint interval)
+{
+	if (adapter->discov_timeout_id) {
+		g_source_remove(adapter->discov_timeout_id);
+		adapter->discov_timeout_id = 0;
+	}
+
+	if (interval == 0)
+		return;
+
+	adapter->discov_timeout_id = g_timeout_add_seconds(interval,
+							discov_timeout_handler,
+							adapter);
+}
+
 static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 				uint8_t new_mode, void *data)
 {
@@ -630,7 +700,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 
 			if (!adapter->mode_sessions && adapter->discov_timeout)
 				adapter_set_discov_timeout(adapter,
-						adapter->discov_timeout * 1000);
+						adapter->discov_timeout);
 		}
 	}
 done:
@@ -692,13 +762,40 @@ static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 				ADAPTER_INTERFACE, "Pairable",
 				DBUS_TYPE_BOOLEAN, &pairable);
 
+	if (pairable && adapter->pairable_timeout)
+		adapter_set_pairable_timeout(adapter,
+						adapter->pairable_timeout);
+
 	if (adapter->scan_mode & SCAN_INQUIRY) {
 		uint8_t mode = pairable ? MODE_LIMITED : MODE_DISCOVERABLE;
 		return set_mode(conn, msg, mode, data);
 	}
 
 done:
-	return dbus_message_new_method_return(msg);
+	return msg ? dbus_message_new_method_return(msg) : NULL;
+}
+
+static gboolean pairable_timeout_handler(void *data)
+{
+	set_pairable(NULL, NULL, FALSE, data);
+
+	return FALSE;
+}
+
+static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
+					guint interval)
+{
+	if (adapter->pairable_timeout_id) {
+		g_source_remove(adapter->pairable_timeout_id);
+		adapter->pairable_timeout_id = 0;
+	}
+
+	if (interval == 0)
+		return;
+
+	adapter->pairable_timeout_id = g_timeout_add_seconds(interval,
+							pairable_timeout_handler,
+							adapter);
 }
 
 static struct session_req *find_session(GSList *list, DBusMessage *msg)
@@ -887,13 +984,8 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 	if (adapter->discov_timeout == timeout && timeout == 0)
 		return dbus_message_new_method_return(msg);
 
-	if (adapter->discov_timeout_id) {
-		g_source_remove(adapter->discov_timeout_id);
-		adapter->discov_timeout_id = 0;
-	}
-
-	if ((timeout != 0) && (adapter->scan_mode & SCAN_INQUIRY))
-		adapter_set_discov_timeout(adapter, timeout * 1000);
+	if (adapter->scan_mode & SCAN_INQUIRY)
+		adapter_set_discov_timeout(adapter, timeout);
 
 	adapter->discov_timeout = timeout;
 
@@ -903,6 +995,33 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 
 	emit_property_changed(conn, path,
 				ADAPTER_INTERFACE, "DiscoverableTimeout",
+				DBUS_TYPE_UINT32, &timeout);
+
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *set_pairable_timeout(DBusConnection *conn,
+						DBusMessage *msg,
+						uint32_t timeout,
+						void *data)
+{
+	struct btd_adapter *adapter = data;
+	const char *path;
+
+	if (adapter->pairable_timeout == timeout && timeout == 0)
+		return dbus_message_new_method_return(msg);
+
+	if (adapter->pairable)
+		adapter_set_pairable_timeout(adapter, timeout);
+
+	adapter->pairable_timeout = timeout;
+
+	write_pairable_timeout(&adapter->bdaddr, timeout);
+
+	path = dbus_message_get_path(msg);
+
+	emit_property_changed(conn, path,
+				ADAPTER_INTERFACE, "PairableTimeout",
 				DBUS_TYPE_UINT32, &timeout);
 
 	return dbus_message_new_method_return(msg);
@@ -1694,6 +1813,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "DiscoverableTimeout",
 				DBUS_TYPE_UINT32, &adapter->discov_timeout);
 
+	/* PairableTimeout */
+	dict_append_entry(&dict, "PairableTimeout",
+				DBUS_TYPE_UINT32, &adapter->pairable_timeout);
+
+
 	if (adapter->state & PERIODIC_INQUIRY || adapter->state & STD_INQUIRY)
 		value = TRUE;
 	else
@@ -1802,6 +1926,15 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &pairable);
 
 		return set_pairable(conn, msg, pairable, data);
+	} else if (g_str_equal("PairableTimeout", property)) {
+		uint32_t timeout;
+
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT32)
+			return invalid_args(msg);
+
+		dbus_message_iter_get_basic(&sub, &timeout);
+
+		return set_pairable_timeout(conn, msg, timeout, data);
 	}
 
 	return invalid_args(msg);
@@ -2435,6 +2568,16 @@ static int get_discoverable_timeout(const char *src)
 	return main_opts.discovto;
 }
 
+static int get_pairable_timeout(const char *src)
+{
+	int timeout;
+
+	if (read_pairable_timeout(src, &timeout) == 0)
+		return timeout;
+
+	return main_opts.pairto;
+}
+
 static void adapter_up(struct btd_adapter *adapter, int dd)
 {
 	struct hci_conn_list_req *cl = NULL;
@@ -2449,6 +2592,7 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 
 	adapter->up = 1;
 	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
+	adapter->pairable_timeout = get_pairable_timeout(srcaddr);
 	adapter->state = DISCOVER_TYPE_NONE;
 
 	/* Set pairable mode */
@@ -2923,67 +3067,6 @@ void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 	bacpy(bdaddr, &adapter->bdaddr);
 }
 
-static gboolean discov_timeout_handler(void *data)
-{
-	struct btd_adapter *adapter = data;
-	struct hci_request rq;
-	int dd;
-	uint8_t scan_enable = adapter->scan_mode;
-	uint8_t status = 0;
-	gboolean retval = TRUE;
-	uint16_t dev_id = adapter->dev_id;
-
-	scan_enable &= ~SCAN_INQUIRY;
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("HCI device open failed: hci%d", dev_id);
-		return TRUE;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
-	rq.cparam = &scan_enable;
-	rq.clen   = sizeof(scan_enable);
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-	rq.event  = EVT_CMD_COMPLETE;
-
-	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
-		error("Sending write scan enable command to hci%d failed: %s (%d)",
-				dev_id, strerror(errno), errno);
-		goto failed;
-	}
-	if (status) {
-		error("Setting scan enable failed with status 0x%02x", status);
-		goto failed;
-	}
-
-	set_limited_discoverable(dd, adapter->dev.class, FALSE);
-
-	adapter_remove_discov_timeout(adapter);
-	retval = FALSE;
-
-failed:
-	if (dd >= 0)
-		hci_close_dev(dd);
-
-	return retval;
-}
-
-void adapter_set_discov_timeout(struct btd_adapter *adapter, guint interval)
-{
-	if (!adapter)
-		return;
-
-	if (adapter->discov_timeout_id) {
-		error("Timeout already added for adapter %s", adapter->path);
-		return;
-	}
-
-	adapter->discov_timeout_id = g_timeout_add(interval, discov_timeout_handler, adapter);
-}
 
 void adapter_remove_discov_timeout(struct btd_adapter *adapter)
 {
@@ -3219,14 +3302,14 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		}
 		if (adapter->discov_timeout != 0)
 			adapter_set_discov_timeout(adapter,
-						adapter->discov_timeout * 1000);
+						adapter->discov_timeout);
 		break;
 	case SCAN_INQUIRY:
 		/* Address the scenario where a low-level application like
 		 * hciconfig changed the scan mode */
 		if (adapter->discov_timeout != 0)
 			adapter_set_discov_timeout(adapter,
-						adapter->discov_timeout * 1000);
+						adapter->discov_timeout);
 
 		/* ignore, this event should not be sent */
 	default:
