@@ -25,11 +25,11 @@
 #include <config.h>
 #endif
 
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
-
 #include <glib.h>
 #include <bluetooth/bluetooth.h>
+
+#include <openobex/obex.h>
+#include <openobex/obex_const.h>
 
 #include "logging.h"
 #include "obex.h"
@@ -56,11 +56,11 @@
 #define PHONEBOOKSIZE_LEN	2
 #define NEWMISSEDCALLS_LEN	1
 
-typedef struct {
+struct apparam_hdr {
 	uint8_t		tag;
 	uint8_t		len;
 	uint8_t		val[0];
-} __attribute__ ((packed)) apparam_hdr;
+} __attribute__ ((packed));
 
 #define get_be64(val)	GUINT64_FROM_BE(bt_get_unaligned((guint64 *) val))
 #define get_be16(val)	GUINT16_FROM_BE(bt_get_unaligned((guint16 *) val))
@@ -75,7 +75,7 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj)
 	guint16 maxlistcount, liststartoffset, phonebooksize;
 	guint32 hlen, offset;
 	guint64 filter;
-	apparam_hdr *hdr;
+	struct apparam_hdr *hdr;
 
 	session = OBEX_GetUserData(obex);
 
@@ -83,51 +83,43 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj)
 		if (hi != OBEX_HDR_APPARAM)
 			continue;
 
-		if (hlen <= sizeof(apparam_hdr)) {
+		if (hlen <= sizeof(struct apparam_hdr)) {
 			error("PBAP pullphonebook app parameters header"
-					" is too short: %d", hlen);
+						" is too short: %d", hlen);
 			return -1;
 		}
 
 		p = (guint8 *) hd.bs;
-		hdr = (apparam_hdr *) hd.bs;
+		hdr = (struct apparam_hdr *) hd.bs;
 		offset = 0;
 		while (offset < hlen) {
 			switch (hdr->tag) {
 			case FILTER_TAG:
 				if (hdr->len == FILTER_LEN)
 					filter = get_be64(hdr->val);
-				else
-					goto fail;
 				break;
 			case FORMAT_TAG:
 				if (hdr->len == FORMAT_LEN)
 					format = hdr->val[0];
-				else
-					goto fail;
 				break;
 			case MAXLISTCOUNT_TAG:
 				if (hdr->len == MAXLISTCOUNT_LEN)
 					maxlistcount = get_be16(hdr->val);
-				else
-					goto fail;
 				break;
 			case LISTSTARTOFFSET_TAG:
 				if (hdr->len == LISTSTARTOFFSET_LEN)
 					liststartoffset = get_be16(hdr->val);
-				else
-					goto fail;
 				break;
 			default:
-fail:				error("Unexpected PBAP pullphonebook app"
-					" parameter, tag %d, len %d",
-					hdr->tag, hdr->len);
+				error("Unexpected PBAP pullphonebook app"
+						" parameter, tag %d, len %d",
+							hdr->tag, hdr->len);
 				return -1;
 			}
 
-			p += sizeof(apparam_hdr) + hdr->len;
-			offset += sizeof(apparam_hdr) + hdr->len;
-			hdr = (apparam_hdr *) p;
+			p += sizeof(struct apparam_hdr) + hdr->len;
+			offset += sizeof(struct apparam_hdr) + hdr->len;
+			hdr = (struct apparam_hdr *) p;
 		}
 
 		/* Ignore multiple app param headers */
