@@ -50,8 +50,11 @@
 #define SESSION_BASEPATH   "/org/openobex"
 
 #define FTP_INTERFACE  "org.openobex.FileTransfer"
+#define PBAP_INTERFACE  "org.openobex.PhonebookAccess"
 
 #define DEFAULT_BUFFER_SIZE 4096
+
+extern GDBusMethodTable pbap_methods[];
 
 static guint64 counter = 0;
 
@@ -388,12 +391,19 @@ int session_create(const char *source,
 
 	str2ba(destination, &session->dst);
 
-	if (target != NULL) {
+	if (!g_ascii_strncasecmp(target, "OPP", 3)) {
+		session->uuid = OBEX_OBJPUSH_SVCLASS_ID;
+	} else if (!g_ascii_strncasecmp(target, "FTP", 3)) {
 		session->uuid = OBEX_FILETRANS_SVCLASS_ID;
 		session->target = OBEX_FTP_UUID;
 		session->target_len = OBEX_FTP_UUID_LEN;
-	} else
-		session->uuid = OBEX_OBJPUSH_SVCLASS_ID;
+	} else if (!g_ascii_strncasecmp(target, "PBAP", 4)) {
+		session->uuid = PBAP_PSE_SVCLASS_ID;
+		session->target = OBEX_PBAP_UUID;
+		session->target_len = OBEX_PBAP_UUID_LEN;
+	} else {
+		return -EINVAL;
+	}
 
 	callback = g_try_malloc0(sizeof(*callback));
 	if (callback == NULL) {
@@ -1156,6 +1166,7 @@ complete:
 
 int session_get(struct session_data *session, const char *type,
 		const char *filename, const char *targetname,
+		const guint8  *apparam, gint apparam_size,
 		session_callback_t func)
 {
 	struct callback_data *callback;
@@ -1175,7 +1186,17 @@ int session_get(struct session_data *session, const char *type,
 			fprintf(stderr, "open(): %s(%d)\n", strerror(err), err);
 			return -err;
 		}
+	}
 
+	session->transfer_path = register_transfer(session->conn, session);
+	if (session->transfer_path == NULL) {
+		if (fd)
+			close(fd);
+
+		return -EIO;
+	}
+
+	if (!g_str_equal(type, "x-obex/folder-listing")) {
 		session->transfer_path = register_transfer(session->conn, session);
 		if (session->transfer_path == NULL) {
 			if (fd)
@@ -1193,8 +1214,8 @@ int session_get(struct session_data *session, const char *type,
 
 	session_ref(session);
 
-	xfer = gw_obex_get_async(session->obex,
-				filename, type, NULL);
+	xfer = gw_obex_get_async_with_apparam(session->obex,
+				filename, type, apparam, apparam_size, NULL);
 	if (xfer == NULL) {
 		close(session->fd);
 		session_unref(session);
@@ -1212,11 +1233,11 @@ int session_get(struct session_data *session, const char *type,
 	callback->session = session;
 	callback->func = func;
 
-	if (type && g_str_equal(type, "x-obex/folder-listing"))
-		gw_obex_xfer_set_callback(xfer, get_xfer_listing_progress,
-						callback);
-	else
+	if (type == NULL)
 		gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
+	else
+		gw_obex_xfer_set_callback(xfer, get_xfer_listing_progress,
+					callback);
 
 	session->xfer = xfer;
 
@@ -1283,7 +1304,7 @@ static DBusMessage *list_folder(DBusConnection *connection,
 				"Transfer in progress");
 
 	if (session_get(session, "x-obex/folder-listing",
-				NULL, NULL, list_folder_callback) < 0)
+				NULL, NULL, NULL, 0, list_folder_callback) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
 				"Failed");
@@ -1313,7 +1334,7 @@ static DBusMessage *get_file(DBusConnection *connection,
 				"org.openobex.Error.InvalidArguments", NULL);
 
 	if (session_get(session, NULL, source_file,
-				target_file, get_file_callback) < 0)
+				target_file, NULL, 0, get_file_callback) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
 				"Failed");
@@ -1552,6 +1573,10 @@ int session_register(struct session_data *session)
 	case OBEX_FILETRANS_SVCLASS_ID:
 		iface = FTP_INTERFACE;
 		methods = ftp_methods;
+		break;
+	case PBAP_PSE_SVCLASS_ID:
+		iface = PBAP_INTERFACE;
+		methods = pbap_methods;
 		break;
 	default:
 		return -EINVAL;

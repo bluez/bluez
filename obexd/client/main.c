@@ -180,7 +180,7 @@ static DBusMessage *send_files(DBusConnection *connection,
 	data->agent = g_strdup(agent);
 	data->files = files;
 
-	if (session_create(NULL, dest, NULL, create_callback, data) == 0)
+	if (session_create(NULL, dest, "OPP", create_callback, data) == 0)
 		return NULL;
 
 	g_ptr_array_free(data->files, TRUE);
@@ -256,7 +256,7 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 	data->message = dbus_message_ref(message);
 	data->sender = g_strdup(dbus_message_get_sender(message));
 
-	if (session_create(source, dest, NULL,
+	if (session_create(source, dest, "OPP",
 					pull_session_callback, data) == 0)
 		return NULL;
 
