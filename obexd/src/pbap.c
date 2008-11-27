@@ -29,38 +29,141 @@
 #include <openobex/obex_const.h>
 
 #include <glib.h>
+#include <bluetooth/bluetooth.h>
 
 #include "logging.h"
 #include "obex.h"
 
 #define PHONEBOOK_TYPE "x-bt/phonebook"
 
+#define ORDER_TAG		0x01
+#define SEARCHVALUE_TAG		0x02
+#define SEARCHATTRIB_TAG	0x03
+#define MAXLISTCOUNT_TAG	0x04
+#define LISTSTARTOFFSET_TAG	0x05
+#define FILTER_TAG		0x06
+#define FORMAT_TAG		0X07
+#define PHONEBOOKSIZE_TAG	0X08
+#define NEWMISSEDCALLS_TAG	0X09
+
+/* The following length is in the unit of byte */
+#define ORDER_LEN		1
+#define SEARCHATTRIB_LEN	1
+#define MAXLISTCOUNT_LEN	2
+#define LISTSTARTOFFSET_LEN	2
+#define FILTER_LEN		8
+#define FORMAT_LEN		1
+#define PHONEBOOKSIZE_LEN	2
+#define NEWMISSEDCALLS_LEN	1
+
+typedef struct {
+	uint8_t		tag;
+	uint8_t		len;
+	uint8_t		val[0];
+} __attribute__ ((packed)) apparam_hdr;
+
+#define get_be64(val)	GUINT64_FROM_BE(bt_get_unaligned((guint64 *) val))
+#define get_be16(val)	GUINT16_FROM_BE(bt_get_unaligned((guint16 *) val))
+
 static GSList *session_list = NULL;
+
+static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj)
+{
+	struct obex_session *session;
+	obex_headerdata_t hd;
+	guint8 hi, *p, newmissedcalls, format;
+	guint16 maxlistcount, liststartoffset, phonebooksize;
+	guint32 hlen, offset;
+	guint64 filter;
+	apparam_hdr *hdr;
+
+	session = OBEX_GetUserData(obex);
+
+	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
+		if (hi != OBEX_HDR_APPARAM)
+			continue;
+
+		if (hlen <= sizeof(apparam_hdr)) {
+			error("PBAP pullphonebook app parameters header"
+					" is too short: %d", hlen);
+			return -1;
+		}
+
+		p = (guint8 *) hd.bs;
+		hdr = (apparam_hdr *) hd.bs;
+		offset = 0;
+		while (offset < hlen) {
+			switch (hdr->tag) {
+			case FILTER_TAG:
+				if (hdr->len == FILTER_LEN)
+					filter = get_be64(hdr->val);
+				else
+					goto fail;
+				break;
+			case FORMAT_TAG:
+				if (hdr->len == FORMAT_LEN)
+					format = hdr->val[0];
+				else
+					goto fail;
+				break;
+			case MAXLISTCOUNT_TAG:
+				if (hdr->len == MAXLISTCOUNT_LEN)
+					maxlistcount = get_be16(hdr->val);
+				else
+					goto fail;
+				break;
+			case LISTSTARTOFFSET_TAG:
+				if (hdr->len == LISTSTARTOFFSET_LEN)
+					liststartoffset = get_be16(hdr->val);
+				else
+					goto fail;
+				break;
+			default:
+fail:				error("Unexpected PBAP pullphonebook app"
+					" parameter, tag %d, len %d",
+					hdr->tag, hdr->len);
+				return -1;
+			}
+
+			p += sizeof(apparam_hdr) + hdr->len;
+			offset += sizeof(apparam_hdr) + hdr->len;
+			hdr = (apparam_hdr *) p;
+		}
+
+		/* Ignore multiple app param headers */
+		break;
+	}
+
+	return phonebook_pullphonebook(session->pbctx, session->name, filter,
+				format, maxlistcount, liststartoffset,
+				&phonebooksize, &newmissedcalls);
+}
 
 void pbap_get(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *session;
 	obex_headerdata_t hv;
-	int ret;
+	int err;
 
 	session = OBEX_GetUserData(obex);
 	if (session == NULL)
 		return;
 
-	if (session->type == NULL)
+	if (session->type == NULL || session->name == NULL)
 		goto fail;
 
-	if (g_str_equal(session->type, PHONEBOOK_TYPE) == FALSE)
-		goto fail;
+	OBEX_ObjectReParseHeaders(obex, obj);
 
-	ret = phonebook_pullphonebook(session->pbctx);
-
-	if (!ret) {
-		OBEX_SuspendRequest(obex, obj);
-		session->size = 0;
-	}
+	if (g_str_equal(session->type, PHONEBOOK_TYPE) == TRUE)
+		err = pbap_pullphonebook(obex, obj);
 	else
 		goto fail;
+
+	if (err < 0)
+		goto fail;
+
+	OBEX_SuspendRequest(obex, obj);
+	session->size = 0;
 
 	/* Add body header */
 	hv.bs = NULL;

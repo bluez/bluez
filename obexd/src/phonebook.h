@@ -49,7 +49,10 @@ static inline void phonebook_set_data(struct phonebook_context *context,
 	context->driver_data = data;
 }
 
-extern int phonebook_pullphonebook(struct phonebook_context *context);
+extern int phonebook_pullphonebook(struct phonebook_context *context,
+			gchar *objname, guint64 filter, guint8 format,
+			guint16 maxlistcount, guint16 liststartoffset,
+			guint16 *phonebooksize, guint8 *newmissedcalls);
 extern void phonebook_return(struct phonebook_context *context,
 						char *buf, int size);
 
@@ -57,7 +60,10 @@ struct phonebook_driver {
 	const char *name;
 	int (*create) (struct phonebook_context *context);
 	void (*destroy) (struct phonebook_context *context);
-	int (*pullphonebook) (struct phonebook_context *context);
+	int (*pullphonebook) (struct phonebook_context *context,
+			gchar *objname, guint64 filter, guint8 format,
+			guint16 maxlistcount, guint16 liststartoffset,
+			guint16 *phonebooksize, guint8 *newmissedcalls);
 	int (*pullvcardlisting) (struct phonebook_context *context);
 	int (*pullvcardentry) (struct phonebook_context *context);
 };

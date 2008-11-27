@@ -101,12 +101,17 @@ void phonebook_unref(struct phonebook_context *context)
 	}
 }
 
-int phonebook_pullphonebook(struct phonebook_context *context)
+int phonebook_pullphonebook(struct phonebook_context *context, gchar *objname,
+			guint64 filter, guint8 format, guint16 maxlistcount,
+			guint16 liststartoffset, guint16 *phonebooksize,
+			guint8 *newmissedcalls)
 {
 	if (!context->driver->pullphonebook)
 		return -1;
 
-	return context->driver->pullphonebook(context);
+	return context->driver->pullphonebook(context, objname, filter, format,
+				maxlistcount, liststartoffset, phonebooksize,
+				newmissedcalls);
 }
 
 /* if buf is NULL or size is 0, this indicate that no more result will

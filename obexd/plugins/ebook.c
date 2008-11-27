@@ -78,7 +78,10 @@ static void ebooklist_cb(EBook *book, EBookStatus status, GList *list,
 	g_object_unref(book);
 }
 
-static int ebook_pullphonebook(struct phonebook_context *context)
+static int ebook_pullphonebook(struct phonebook_context *context,
+		gchar *objname, guint64 filter, guint8 format,
+		guint16 maxlistcount, guint16 liststartoffset,
+		guint16 *phonebooksize, guint8 *newmissedcalls)
 {
 	EBook *book;
 	EBookQuery *query;
