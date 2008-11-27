@@ -674,6 +674,12 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 		telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+void telephony_disable_nr_and_ec_req(void *telephony_device)
+{
+	debug("telephony-maemo: got disable NR and EC request");
+	telephony_disable_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
+}
+
 static void handle_incoming_call(DBusMessage *msg)
 {
 	const char *number, *call_path;
@@ -1252,10 +1258,12 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 	dbus_uint16_t lac, network_type, supported_services;
 	dbus_uint32_t cell_id, operator_code, country_code;
 	dbus_int32_t net_err;
-	uint32_t features = AG_FEATURE_REJECT_A_CALL |
+	uint32_t features = AG_FEATURE_EC_ANDOR_NR |
+				AG_FEATURE_INBAND_RINGTONE |
+				AG_FEATURE_REJECT_A_CALL |
 				AG_FEATURE_ENHANCED_CALL_STATUS |
-				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
-				AG_FEATURE_INBAND_RINGTONE;
+				AG_FEATURE_ENHANCED_CALL_CONTROL |
+				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
 
 	reply = dbus_pending_call_steal_reply(call);
 
