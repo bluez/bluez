@@ -105,19 +105,23 @@ static void session_unref(struct session_data *session)
 		close(session->sock);
 
 	if (session->conn) {
-		if (session->transfer_path) {
-			switch (session->uuid) {
-			case OBEX_FILETRANS_SVCLASS_ID:
-				g_dbus_unregister_interface(session->conn,
-						session->transfer_path,
-							TRANSFER_INTERFACE);
-				break;
-			case PBAP_PSE_SVCLASS_ID:
-				pbap_unregister_interface(session->conn,
-						session->transfer_path);
-				break;
-			}
+		if (session->transfer_path)
+			g_dbus_unregister_interface(session->conn,
+					session->transfer_path, TRANSFER_INTERFACE);
+
+		switch (session->uuid) {
+		case OBEX_FILETRANS_SVCLASS_ID:
+			g_dbus_unregister_interface(session->conn,
+					session->path,	FTP_INTERFACE);
+			break;
+		case PBAP_PSE_SVCLASS_ID:
+			pbap_unregister_interface(session->conn,
+					session->path);
+			break;
 		}
+
+		g_dbus_unregister_interface(session->conn,
+				session->path, SESSION_INTERFACE);
 
 		dbus_connection_unref(session->conn);
 	}
