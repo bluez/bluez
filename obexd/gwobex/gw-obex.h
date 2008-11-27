@@ -474,6 +474,21 @@ GwObexXfer *gw_obex_put_async(GwObex *ctx, const char *name, const char *type,
  */
 GwObexXfer *gw_obex_get_async(GwObex *ctx, const char *name, const char *type, gint *error);
 
+/** Start a GET operation asynchronously with application parameters
+ *
+ * @param ctx   Pointer returned by gw_obex_setup()
+ * @param name  Name of the object (null terminated UTF-8)
+ * @param type  Type of the object (null terminated UTF-8), or NULL
+ * @param apparam      Application parameters of the object
+ * @param apparam_size Application paramters' size
+ * @param error Place to store error code on failure (NULL if not interested)
+ *
+ * @returns a new GwObexXfer object on success, NULL on failure
+ */
+
+GwObexXfer *gw_obex_get_async_with_apparam(GwObex *ctx, const char *name, const char *type,
+		const guint8  *apparam, gint apparam_size, gint *error);
+
 
 /** Set a callback function for a GwObexXfer object
  * The callback function will be called in the following situations:
