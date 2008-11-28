@@ -948,31 +948,6 @@ cleanup:
 	session_unref(req);
 }
 
-static DBusMessage *confirm_mode(DBusConnection *conn, DBusMessage *msg,
-					const char *mode, void *data)
-{
-	struct btd_adapter *adapter = data;
-	struct session_req *req;
-	int ret;
-	uint8_t umode;
-
-	if (!adapter->agent)
-		return dbus_message_new_method_return(msg);
-
-	umode = get_mode(&adapter->bdaddr, mode);
-
-	req = create_session(adapter, conn, msg, umode, NULL);
-
-	ret = agent_confirm_mode_change(adapter->agent, mode, confirm_mode_cb,
-					req);
-	if (ret < 0) {
-		session_unref(req);
-		return invalid_args(msg);
-	}
-
-	return NULL;
-}
-
 static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 							DBusMessage *msg,
 							uint32_t timeout,
@@ -1789,11 +1764,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &property);
 
-	/* Mode */
-	property = mode2str(adapter->mode);
-
-	dict_append_entry(&dict, "Mode", DBUS_TYPE_STRING, &property);
-
 	/* Powered */
 	if (main_opts.offmode == HCID_OFFMODE_DEVDOWN)
 		value = adapter->up ? TRUE : FALSE;
@@ -1872,24 +1842,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &name);
 
 		return set_name(conn, msg, name, data);
-	} else if (g_str_equal("Mode", property)) {
-		const char *mode;
-
-		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
-			return invalid_args(msg);
-
-		dbus_message_iter_get_basic(&sub, &mode);
-
-		adapter->global_mode = get_mode(&adapter->bdaddr, mode);
-
-		if (adapter->global_mode == adapter->mode)
-			return dbus_message_new_method_return(msg);
-
-		if (adapter->mode_sessions && adapter->global_mode < adapter->mode)
-			return confirm_mode(conn, msg, mode, data);
-
-		return set_mode(conn, msg,
-				get_mode(&adapter->bdaddr, mode), data);
 	} else if (g_str_equal("Powered", property)) {
 		gboolean powered;
 
@@ -1989,18 +1941,6 @@ static DBusMessage *mode_request(DBusConnection *conn,
 	}
 
 	return NULL;
-}
-
-static DBusMessage *request_mode(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *mode;
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &mode,
-						DBUS_TYPE_INVALID))
-		return invalid_args(msg);
-
-	return mode_request(conn, msg, mode, data);
 }
 
 static DBusMessage *request_session(DBusConnection *conn,
@@ -2321,11 +2261,6 @@ static GDBusMethodTable adapter_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",get_properties		},
 	{ "SetProperty",	"sv",	"",	set_property,
 						G_DBUS_METHOD_FLAG_ASYNC},
-	{ "RequestMode",	"s",	"",	request_mode,
-						G_DBUS_METHOD_FLAG_ASYNC |
-						G_DBUS_METHOD_FLAG_DEPRECATED},
-	{ "ReleaseMode",	"",	"",	release_session,
-						G_DBUS_METHOD_FLAG_DEPRECATED},
 	{ "RequestSession",	"",	"",	request_session,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "ReleaseSession",	"",	"",	release_session		},
@@ -2673,9 +2608,6 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 
 	pmode = mode2str(adapter->mode);
 
-	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
-				"Mode", DBUS_TYPE_STRING, &pmode);
-
 	powered = adapter->scan_mode == SCAN_DISABLED ? FALSE : TRUE;
 
 	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
@@ -2861,7 +2793,6 @@ static void unload_drivers(struct btd_adapter *adapter)
 
 int adapter_stop(struct btd_adapter *adapter)
 {
-	const char *mode = "off";
 	gboolean powered, discoverable;
 
 	/* cancel pending timeout */
@@ -2904,9 +2835,6 @@ int adapter_stop(struct btd_adapter *adapter)
 		g_slist_free(adapter->active_conn);
 		adapter->active_conn = NULL;
 	}
-
-	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
-				"Mode", DBUS_TYPE_STRING, &mode);
 
 	powered = FALSE;
 
@@ -3316,9 +3244,6 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		/* ignore, reserved */
 		return;
 	}
-
-	emit_property_changed(connection, path, ADAPTER_INTERFACE, "Mode",
-				DBUS_TYPE_STRING, &mode);
 
 	if (powered == FALSE || adapter->scan_mode == SCAN_DISABLED) {
 		emit_property_changed(connection, path,
