@@ -68,21 +68,21 @@ struct apparam_hdr {
 
 #define get_be64(val)	GUINT64_FROM_BE(bt_get_unaligned((guint64 *) val))
 #define get_be16(val)	GUINT16_FROM_BE(bt_get_unaligned((guint16 *) val))
+
 #define put_be16(val, ptr) bt_put_unaligned(GUINT16_TO_BE(val), (guint16 *) ptr)
 
 static GSList *session_list = NULL;
 
 static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
-					gboolean *send_body_hdr)
+							gboolean *addbody)
 {
 	struct obex_session *session;
-	obex_headerdata_t hd, hv;
-	guint8 hi, newmissedcalls, format, rsphdr_size = 0;
-	guint16 maxlistcount, liststartoffset, phonebooksize;
+	obex_headerdata_t hd;
+	guint8 hi, format, newmissedcalls = 0, rspsize = 0;
+	guint16 maxlistcount, liststartoffset, phonebooksize = 0;
 	guint32 hlen;
 	guint64 filter;
-	void *rsp = NULL;
-	struct apparam_hdr *rsphdr = NULL;
+	gboolean addmissedcalls = FALSE;
 	int err;
 
 	session = OBEX_GetUserData(obex);
@@ -150,40 +150,50 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 
 	/* Add app parameter header, that is sent back to PBAP client */
 	if (maxlistcount == 0) {
-		rsphdr_size = APPARAM_HDR_SIZE + PHONEBOOKSIZE_LEN;
-		*send_body_hdr = FALSE;
+		rspsize += APPARAM_HDR_SIZE + PHONEBOOKSIZE_LEN;
+		*addbody = FALSE;
 	}
 
-	if (strcmp(session->name, SIM1_MCH) == 0
-			|| strcmp(session->name, MCH) == 0)
-		rsphdr_size += APPARAM_HDR_SIZE + NEWMISSEDCALLS_LEN;
+	if (g_str_equal(session->name, SIM1_MCH) == TRUE ||
+				g_str_equal(session->name, MCH) == TRUE) {
+		rspsize += APPARAM_HDR_SIZE + NEWMISSEDCALLS_LEN;
+		addmissedcalls = TRUE;
+	}
 
-	if (rsphdr_size > 0)
-		rsp = g_malloc(rsphdr_size);
+	if (rspsize > 0) {
+		void *buf, *ptr;
 
-	if (rsp != NULL) {
-		void *ptr = rsp;
-		rsphdr = rsp;
+		buf = g_try_malloc0(rspsize);
+		if (buf == NULL)
+			return -1;
+
+		ptr = buf;
 
 		if (maxlistcount == 0) {
-			rsphdr->tag = PHONEBOOKSIZE_TAG;
-			rsphdr->len = PHONEBOOKSIZE_LEN;
-			put_be16(phonebooksize, rsphdr->val);
+			struct apparam_hdr *hdr = ptr;
+
+			hdr->tag = PHONEBOOKSIZE_TAG;
+			hdr->len = PHONEBOOKSIZE_LEN;
+			put_be16(phonebooksize, hdr->val);
+
 			ptr += APPARAM_HDR_SIZE + PHONEBOOKSIZE_LEN;
-			rsphdr = ptr;
 		}
 
-		if (strcmp(session->name, SIM1_MCH) == 0 ||
-				strcmp(session->name, MCH) == 0) {
-			rsphdr->tag = NEWMISSEDCALLS_TAG;
-			rsphdr->len = NEWMISSEDCALLS_LEN;
-			rsphdr->val[0] = newmissedcalls;
+		if (addmissedcalls == TRUE) {
+			struct apparam_hdr *hdr = ptr;
+
+			hdr->tag = NEWMISSEDCALLS_TAG;
+			hdr->len = NEWMISSEDCALLS_LEN;
+			hdr->val[0] = newmissedcalls;
+
+			ptr += APPARAM_HDR_SIZE + NEWMISSEDCALLS_LEN;
 		}
 
-		hv.bs = rsp;
+		hd.bs = buf;
 		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_APPARAM,
-					hv, rsphdr_size, 0);
-		g_free(rsp);
+							hd, rspsize, 0);
+
+		g_free(buf);
 	}
 
 	return 0;
@@ -192,8 +202,8 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 void pbap_get(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *session;
-	obex_headerdata_t hv;
-	gboolean send_body_hdr = TRUE;
+	obex_headerdata_t hd;
+	gboolean addbody = TRUE;
 	int err;
 
 	session = OBEX_GetUserData(obex);
@@ -206,21 +216,21 @@ void pbap_get(obex_t *obex, obex_object_t *obj)
 	OBEX_ObjectReParseHeaders(obex, obj);
 
 	if (g_str_equal(session->type, PHONEBOOK_TYPE) == TRUE)
-		err = pbap_pullphonebook(obex, obj, &send_body_hdr);
+		err = pbap_pullphonebook(obex, obj, &addbody);
 	else
 		goto fail;
 
 	if (err < 0)
 		goto fail;
 
-	if (send_body_hdr == TRUE) {
+	if (addbody == TRUE) {
 		OBEX_SuspendRequest(obex, obj);
 		session->size = 0;
 
 		/* Add body header */
-		hv.bs = NULL;
+		hd.bs = NULL;
 		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
-					hv, 0, OBEX_FL_STREAM_START);
+						hd, 0, OBEX_FL_STREAM_START);
 	}
 
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
