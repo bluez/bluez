@@ -166,7 +166,8 @@ void telephony_subscriber_number_req(void *telephony_device)
 {
 	debug("telephony-dummy: subscriber number request");
 	if (subscriber_number)
-		telephony_subscriber_number_ind(subscriber_number, 0,
+		telephony_subscriber_number_ind(subscriber_number,
+						NUMBER_TYPE_TELEPHONY,
 						SUBSCRIBER_SERVICE_VOICE);
 	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
 }
@@ -180,7 +181,7 @@ void telephony_list_current_calls_req(void *telephony_device)
 						CALL_MODE_VOICE,
 						CALL_MULTIPARTY_NO,
 						active_call_number,
-						0);
+						NUMBER_TYPE_TELEPHONY);
 	telephony_list_current_calls_rsp(telephony_device, CME_ERROR_NONE);
 }
 
@@ -248,7 +249,7 @@ static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
 	active_call_status = CALL_STATUS_INCOMING;
 	active_call_dir = CALL_DIR_INCOMING;
 
-	telephony_incoming_call_ind(number, 0);
+	telephony_incoming_call_ind(number, NUMBER_TYPE_TELEPHONY);
 
 	return dbus_message_new_method_return(msg);
 }
