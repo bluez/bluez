@@ -313,7 +313,7 @@ static int supported_features(struct audio_device *device, const char *buf)
 
 	print_hf_features(hs->hf_features);
 
-	err = headset_send(hs, "\r\n+BRSF:%u\r\n", ag.features);
+	err = headset_send(hs, "\r\n+BRSF: %u\r\n", ag.features);
 	if (err < 0)
 		return err;
 
@@ -325,7 +325,7 @@ static char *indicator_ranges(const struct indicator *indicators)
 	int i;
 	GString *gstr;
 
-	gstr = g_string_new("\r\n+CIND:");
+	gstr = g_string_new("\r\n+CIND: ");
 
 	for (i = 0; indicators[i].desc != NULL; i++) {
 		if (i == 0)
@@ -348,7 +348,7 @@ static char *indicator_values(const struct indicator *indicators)
 	int i;
 	GString *gstr;
 
-	gstr = g_string_new("\r\n+CIND:");
+	gstr = g_string_new("\r\n+CIND: ");
 
 	for (i = 0; indicators[i].desc != NULL; i++) {
 		if (i == 0)
@@ -501,7 +501,7 @@ static gboolean ring_timer_cb(gpointer data)
 
 	if (ag.number)
 		send_foreach_headset(active_devices, cli_cmp,
-					"\r\n+CLIP:\"%s\",%d\r\n",
+					"\r\n+CLIP: \"%s\",%d\r\n",
 					ag.number, ag.number_type);
 
 	return TRUE;
@@ -630,7 +630,7 @@ static int telephony_generic_rsp(struct audio_device *device, cme_error_t err)
 
 	if (err != CME_ERROR_NONE) {
 		if (hs->cme_enabled)
-			return headset_send(hs, "\r\n+CME ERROR:%d\r\n", err);
+			return headset_send(hs, "\r\n+CME ERROR: %d\r\n", err);
 		else
 			return headset_send(hs, "\r\nERROR\r\n");
 	}
@@ -709,7 +709,7 @@ static int call_hold(struct audio_device *dev, const char *buf)
 		return 0;
 	}
 
-	err = headset_send(hs, "\r\n+CHLD:(%s)\r\n", ag.chld);
+	err = headset_send(hs, "\r\n+CHLD: (%s)\r\n", ag.chld);
 	if (err < 0)
 		return err;
 
@@ -826,7 +826,7 @@ static int response_and_hold(struct audio_device *device, const char *buf)
 	}
 
 	if (ag.rh >= 0)
-		headset_send(hs, "\r\n+BTRH:%d\r\n", ag.rh);
+		headset_send(hs, "\r\n+BTRH: %d\r\n", ag.rh);
 
 	return headset_send(hs, "\r\nOK\r\n", ag.rh);
 }
@@ -1017,7 +1017,7 @@ int telephony_operator_selection_ind(int mode, const char *oper)
 	if (!active_devices)
 		return -ENODEV;
 
-	send_foreach_headset(active_devices, hfp_cmp, "\r\n+COPS:%d,0,%s\r\n",
+	send_foreach_headset(active_devices, hfp_cmp, "\r\n+COPS: %d,0,%s\r\n",
 				mode, oper);
 	return 0;
 }
@@ -2477,7 +2477,7 @@ int telephony_event_ind(int index)
 	}
 
 	send_foreach_headset(active_devices, hfp_cmp,
-				"\r\n+CIEV:%d,%d\r\n", index + 1,
+				"\r\n+CIEV: %d,%d\r\n", index + 1,
 				ag.indicators[index].val);
 
 	return 0;
@@ -2494,7 +2494,7 @@ int telephony_response_and_hold_ind(int rh)
 	if (ag.rh < 0)
 		return 0;
 
-	send_foreach_headset(active_devices, hfp_cmp, "\r\n+BTRH:%d\r\n",
+	send_foreach_headset(active_devices, hfp_cmp, "\r\n+BTRH: %d\r\n",
 				ag.rh);
 
 	return 0;
@@ -2592,12 +2592,12 @@ int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 
 	if (number)
 		send_foreach_headset(active_devices, hfp_cmp,
-					"\r\n+CLCC:%d,%d,%d,%d,%d,%s,%d\r\n",
+					"\r\n+CLCC: %d,%d,%d,%d,%d,%s,%d\r\n",
 					idx, dir, status, mode, mprty,
 					number, type);
 	else
 		send_foreach_headset(active_devices, hfp_cmp,
-					"\r\n+CLCC:%d,%d,%d,%d,%d\r\n",
+					"\r\n+CLCC: %d,%d,%d,%d,%d\r\n",
 					idx, dir, status, mode, mprty);
 
 	return 0;
@@ -2609,7 +2609,7 @@ int telephony_subscriber_number_ind(const char *number, int type, int service)
 		return -ENODEV;
 
 	send_foreach_headset(active_devices, hfp_cmp,
-				"\r\n+CNUM:,%s,%d,,%d\r\n",
+				"\r\n+CNUM: ,%s,%d,,%d\r\n",
 				number, type, service);
 
 	return 0;
@@ -2631,7 +2631,7 @@ int telephony_call_waiting_ind(const char *number, int type)
 	if (!active_devices)
 		return -ENODEV;
 
-	send_foreach_headset(active_devices, cwa_cmp, "\r\n+CCWA:%s,%d\r\n",
+	send_foreach_headset(active_devices, cwa_cmp, "\r\n+CCWA: %s,%d\r\n",
 				number, type);
 
 	return 0;
