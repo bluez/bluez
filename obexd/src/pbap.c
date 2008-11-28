@@ -61,6 +61,7 @@ struct apparam_hdr {
 	uint8_t		len;
 	uint8_t		val[0];
 } __attribute__ ((packed));
+#define APPARAM_HDR_SIZE 2
 
 #define get_be64(val)	GUINT64_FROM_BE(bt_get_unaligned((guint64 *) val))
 #define get_be16(val)	GUINT16_FROM_BE(bt_get_unaligned((guint16 *) val))
@@ -71,28 +72,36 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *session;
 	obex_headerdata_t hd;
-	guint8 hi, *p, newmissedcalls, format;
+	guint8 hi, newmissedcalls, format;
 	guint16 maxlistcount, liststartoffset, phonebooksize;
-	guint32 hlen, offset;
+	guint32 hlen;
 	guint64 filter;
-	struct apparam_hdr *hdr;
 
 	session = OBEX_GetUserData(obex);
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
+		void *ptr = (void *) hd.bs;
+		uint32_t len = hlen;
+
 		if (hi != OBEX_HDR_APPARAM)
 			continue;
 
-		if (hlen <= sizeof(struct apparam_hdr)) {
+		if (hlen < APPARAM_HDR_SIZE) {
 			error("PBAP pullphonebook app parameters header"
 						" is too short: %d", hlen);
 			return -1;
 		}
 
-		p = (guint8 *) hd.bs;
-		hdr = (struct apparam_hdr *) hd.bs;
-		offset = 0;
-		while (offset < hlen) {
+		while (len > APPARAM_HDR_SIZE) {
+			struct apparam_hdr *hdr = ptr;
+
+			if (hdr->len > len - APPARAM_HDR_SIZE) {
+				error("Unexpected PBAP pullphonebook app"
+						" length, tag %d, len %d",
+							hdr->tag, hdr->len);
+				return -1;
+			}
+
 			switch (hdr->tag) {
 			case FILTER_TAG:
 				if (hdr->len == FILTER_LEN)
@@ -117,9 +126,8 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj)
 				return -1;
 			}
 
-			p += sizeof(struct apparam_hdr) + hdr->len;
-			offset += sizeof(struct apparam_hdr) + hdr->len;
-			hdr = (struct apparam_hdr *) p;
+			ptr += APPARAM_HDR_SIZE + hdr->len;
+			len -= APPARAM_HDR_SIZE + hdr->len;
 		}
 
 		/* Ignore multiple app param headers */
