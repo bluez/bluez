@@ -31,29 +31,6 @@ Methods		dict GetProperties()
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
 
-		void RequestMode(string mode) {deprecated}
-
-			This method will request a mode change. The mode
-			change must be confirmed by the user via the agent.
-
-			Possible modes for this call are "connectable" and
-			"discoverable". Any application that wants to use
-			Bluetooth functionality can use this method to
-			indicate which mode it needs to operate sucessfully.
-
-			In case the user doesn't confirm the mode change it
-			will return an error to indicate this rejection.
-
-			Possible Errors: org.bluez.Error.DoesNotExist
-					 org.bluez.Error.InvalidArguments
-					 org.bluez.Error.Rejected
-
-		void ReleaseMode() {deprecated}
-
-			Releases a mode requested via RequestMode.
-
-			Possible Errors: org.bluez.Error.DoesNotExist
-
 		void RequestSession()
 
 			This method will request a client session that
@@ -232,16 +209,6 @@ Properties	string Address [readonly]
 
 			The Bluetooth friendly name. This value can be
 			changed and a PropertyChanged signal will be emitted.
-
-		string Mode [readwrite] {deprecated}
-
-			The Bluetooth operation mode.
-
-			Valid modes: "off", "connectable",
-						"discoverable", "limited"
-
-			This is deprecated by the Powered and Discoverable
-			properties.
 
 		boolean Powered [readwrite]
 
