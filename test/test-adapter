@@ -16,8 +16,6 @@ if (len(sys.argv) < 2):
 	print ""
 	print "  address"
 	print "  name [name]"
-	print "  mode [mode]"
-	print "  requestmode <mode>"
 	print "  pairable [on/off]"
 	print "  pairabletimeout [timeout]"
 	print "  discoverable [on/off]"
@@ -36,21 +34,6 @@ if (sys.argv[1] == "name"):
 		print properties["Name"]
 	else:
 		adapter.SetProperty("Name", sys.argv[2])
-	sys.exit(0)
-
-if (sys.argv[1] == "mode"):
-	if (len(sys.argv) < 3):
-		properties = adapter.GetProperties()
-		print properties["Mode"]
-	else:
-		adapter.SetProperty("Mode", sys.argv[2])
-	sys.exit(0)
-
-if (sys.argv[1] == "requestmode"):
-	if (len(sys.argv) < 3):
-		print "Need mode parameter"
-	else:
-		adapter.RequestMode(sys.argv[2])
 	sys.exit(0)
 
 if (sys.argv[1] == "pairable"):
