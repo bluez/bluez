@@ -92,6 +92,13 @@
 #define OPERATOR_MODE_DEREGISTER	2
 #define OPERATOR_MODE_MANUAL_AUTO	4
 
+/* Some common number types */
+#define NUMBER_TYPE_UNKNOWN		128
+#define NUMBER_TYPE_TELEPHONY		129
+#define NUMBER_TYPE_INTERNATIONAL	145
+#define NUMBER_TYPE_NATIONAL		161
+#define NUMBER_TYPE_VOIP		255
+
 /* Extended Audio Gateway Error Result Codes */
 typedef enum {
 	CME_ERROR_NONE			= -1,
