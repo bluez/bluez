@@ -544,39 +544,6 @@ static void adapter_remove_discov_timeout(struct btd_adapter *adapter)
 	adapter->discov_timeout_id = 0;
 }
 
-static int write_scan_enable(int dd, uint8_t scan)
-{
-	struct hci_request rq;
-	int err;
-	uint8_t status = 0;
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
-	rq.cparam = &scan;
-	rq.clen   = sizeof(scan);
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-	rq.event = EVT_CMD_COMPLETE;
-
-	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
-		err = errno;
-		error("Sending write scan enable command failed: %s (%d)",
-				strerror(errno), errno);
-		hci_close_dev(dd);
-		return -err;
-	}
-
-	if (status) {
-		error("Setting scan enable failed with status 0x%02x",
-				status);
-		hci_close_dev(dd);
-		return -EIO;
-	}
-
-	return 0;
-}
-
 static gboolean discov_timeout_handler(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
@@ -637,7 +604,6 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 {
 	uint8_t scan_enable;
 	uint8_t current_scan = adapter->scan_mode;
-	gboolean limited;
 	int err, dd;
 	const char *modestr;
 
@@ -675,15 +641,9 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 		goto done;
 	}
 
-	limited = new_mode == MODE_LIMITED ? TRUE : FALSE;
-	err = set_limited_discoverable(dd, adapter->dev.class, limited);
-	if (err < 0) {
-		hci_close_dev(dd);
-		return err;
-	}
-
 	if (current_scan != scan_enable) {
-		err = write_scan_enable(dd, scan_enable);
+		err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+					1, &scan_enable);
 		if (err < 0) {
 			hci_close_dev(dd);
 			return err;
