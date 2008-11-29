@@ -2586,8 +2586,10 @@ proceed:
 	}
 	g_free(cl);
 
-	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
-				"Powered", DBUS_TYPE_BOOLEAN, &powered);
+	if (main_opts.offmode == HCID_OFFMODE_DEVDOWN)
+		emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Powered",
+					DBUS_TYPE_BOOLEAN, &powered);
 
 	emit_property_changed(connection, adapter->path,
 				ADAPTER_INTERFACE, "Pairable",
@@ -3135,7 +3137,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const gchar *path = adapter_get_path(adapter);
 	gboolean powered, discoverable;
-	int dd, stored_mode = adapter->mode;
+	int dd;
 
 	if (adapter->scan_mode == scan_mode)
 		return;
@@ -3175,7 +3177,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 	}
 
 	if (powered == FALSE ||
-			(stored_mode == MODE_OFF &&
+			(main_opts.offmode == HCID_OFFMODE_NOSCAN &&
 			 adapter->scan_mode == SCAN_DISABLED))
 		emit_property_changed(connection, path,
 					ADAPTER_INTERFACE, "Powered",
