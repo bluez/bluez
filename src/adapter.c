@@ -823,7 +823,7 @@ static void session_remove(struct session_req *req)
 		uint8_t mode = adapter->global_mode;
 
 		adapter->mode_sessions = g_slist_remove(adapter->mode_sessions,
-						req);
+							req);
 
 		for (l = adapter->mode_sessions; l; l = l->next) {
 			struct session_req *req = l->data;
@@ -839,7 +839,7 @@ static void session_remove(struct session_req *req)
 		set_mode(req->conn, req->msg, mode, adapter);
 	} else {
 		adapter->disc_sessions = g_slist_remove(adapter->disc_sessions,
-						req);
+							req);
 
 		if (adapter->disc_sessions)
 			return;
@@ -853,7 +853,6 @@ static void session_remove(struct session_req *req)
 		else
 			cancel_periodic_discovery(adapter);
 	}
-
 }
 
 static void session_free(struct session_req *req)
@@ -862,6 +861,9 @@ static void session_free(struct session_req *req)
 
 	info("%s session %p with %s deactivated",
 		req->mode ? "Mode" : "Discovery", req, sender);
+
+	if (req->id)
+		g_dbus_remove_watch(req->conn, req->id);
 
 	session_remove(req);
 
@@ -873,6 +875,8 @@ static void session_free(struct session_req *req)
 static void session_owner_exit(DBusConnection *conn, void *user_data)
 {
 	struct session_req *req = user_data;
+
+	req->id = 0;
 
 	session_free(req);
 }
@@ -895,9 +899,6 @@ static void session_unref(struct session_req *req)
 	if (req->refcount)
 		return;
 
-	if (req->id)
-		g_dbus_remove_watch(req->conn, req->id);
-
 	session_free(req);
 }
 
@@ -915,9 +916,8 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	req->mode = mode;
 
 	if (cb)
-		req->id = g_dbus_add_disconnect_watch(conn,
-					dbus_message_get_sender(msg),
-					cb, req, NULL);
+		req->id = g_dbus_add_disconnect_watch(conn, sender, cb, req,
+							NULL);
 
 	info("%s session %p with %s activated",
 		req->mode ? "Mode" : "Discovery", req, sender);
@@ -1897,7 +1897,6 @@ static DBusMessage *request_session(DBusConnection *conn,
 {
 	struct btd_adapter *adapter = data;
 	struct session_req *req;
-	uint8_t new_mode = MODE_CONNECTABLE;
 	int ret;
 
 	if (!adapter->agent)
@@ -1909,20 +1908,20 @@ static DBusMessage *request_session(DBusConnection *conn,
 
 	req = find_session(adapter->mode_sessions, msg);
 	if (!req) {
-		req = create_session(adapter, conn, msg, new_mode,
+		req = create_session(adapter, conn, msg, MODE_CONNECTABLE,
 					session_owner_exit);
 		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
-					req);
+							req);
 	} else {
-		req->mode = new_mode;
+		req->mode = MODE_CONNECTABLE;
 		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
-					req);
+							req);
 		session_remove(req);
 		return dbus_message_new_method_return(msg);
 	}
 
 	/* No need to change mode */
-	if (adapter->mode >= new_mode)
+	if (adapter->mode >= MODE_CONNECTABLE)
 		return dbus_message_new_method_return(msg);
 
 	ret = agent_confirm_mode_change(adapter->agent, "connectable",
