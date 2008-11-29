@@ -3030,24 +3030,6 @@ void adapter_remove_discov_timeout(struct btd_adapter *adapter)
 	adapter->discov_timeout_id = 0;
 }
 
-void adapter_set_scan_mode(struct btd_adapter *adapter, uint8_t scan_mode)
-{
-	if (!adapter)
-		return;
-
-	adapter->scan_mode = scan_mode;
-}
-
-uint8_t adapter_get_scan_mode(struct btd_adapter *adapter)
-{
-	return adapter->scan_mode;
-}
-
-uint8_t adapter_get_mode(struct btd_adapter *adapter)
-{
-	return adapter->mode;
-}
-
 void adapter_set_state(struct btd_adapter *adapter, int state)
 {
 	gboolean discov_active = FALSE;
@@ -3217,31 +3199,26 @@ void adapter_remove_oor_device(struct btd_adapter *adapter, char *peer_addr)
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const gchar *path = adapter_get_path(adapter);
-	const char *mode;
 	gboolean powered, discoverable;
+
+	if (adapter->scan_mode == scan_mode)
+		return;
 
 	switch (scan_mode) {
 	case SCAN_DISABLED:
-		mode = "off";
 		adapter->mode = MODE_OFF;
 		powered = FALSE;
 		discoverable = FALSE;
 		break;
 	case SCAN_PAGE:
-		mode = "connectable";
 		adapter->mode = MODE_CONNECTABLE;
 		powered = TRUE;
 		discoverable = FALSE;
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
+		adapter->mode = MODE_DISCOVERABLE;
 		powered = TRUE;
 		discoverable = TRUE;
-		if (adapter_get_mode(adapter) == MODE_LIMITED) {
-			mode = "limited";
-		} else {
-			adapter->mode = MODE_DISCOVERABLE;
-			mode = "discoverable";
-		}
 		if (adapter->discov_timeout != 0)
 			adapter_set_discov_timeout(adapter,
 						adapter->discov_timeout);
@@ -3259,17 +3236,16 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		return;
 	}
 
-	if (powered == FALSE || adapter->scan_mode == SCAN_DISABLED) {
+	if (powered == FALSE || adapter->scan_mode == SCAN_DISABLED)
 		emit_property_changed(connection, path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
-	}
 
 	emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discoverable",
 				DBUS_TYPE_BOOLEAN, &discoverable);
 
-	adapter_set_scan_mode(adapter, scan_mode);
+	adapter->scan_mode = scan_mode;
 }
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)

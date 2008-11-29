@@ -1375,8 +1375,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 
 	adapter_remove_discov_timeout(adapter);
 
-	if (adapter_get_scan_mode(adapter) != rp.enable)
-		adapter_mode_changed(adapter, rp.enable);
+	adapter_mode_changed(adapter, rp.enable);
 
 failed:
 	if (dd >= 0)
