@@ -846,7 +846,7 @@ static void session_remove(struct session_req *req)
 		if (adapter->disc_sessions)
 			return;
 
-		debug("Stopping discovery", mode2str(adapter->global_mode));
+		debug("Stopping discovery");
 
 		if (adapter->state & STD_INQUIRY)
 			cancel_discovery(adapter);
