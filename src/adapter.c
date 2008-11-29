@@ -2605,7 +2605,7 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	if (!strcmp(mode, "off")) {
 		if (main_opts.offmode == HCID_OFFMODE_NOSCAN) {
 			adapter->mode = MODE_OFF;
-			adapter->scan_mode= SCAN_DISABLED;
+			adapter->scan_mode = SCAN_DISABLED;
 		} else if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
 			if (first_init) {
 				ioctl(dd, HCIDEVDOWN, adapter->dev_id);
