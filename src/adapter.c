@@ -1899,6 +1899,7 @@ static DBusMessage *request_session(DBusConnection *conn,
 {
 	struct btd_adapter *adapter = data;
 	struct session_req *req;
+	uint8_t new_mode;
 	int ret;
 
 	if (!adapter->agent)
@@ -1908,14 +1909,16 @@ static DBusMessage *request_session(DBusConnection *conn,
 	if (!adapter->mode_sessions)
 		adapter->global_mode = adapter->mode;
 
+	new_mode = get_mode(&adapter->bdaddr, "on");
+
 	req = find_session(adapter->mode_sessions, msg);
 	if (!req) {
-		req = create_session(adapter, conn, msg, MODE_CONNECTABLE,
+		req = create_session(adapter, conn, msg, new_mode,
 					session_owner_exit);
 		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
 							req);
 	} else {
-		req->mode = MODE_CONNECTABLE;
+		req->mode = new_mode;
 		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
 							req);
 		session_remove(req);
@@ -1923,10 +1926,10 @@ static DBusMessage *request_session(DBusConnection *conn,
 	}
 
 	/* No need to change mode */
-	if (adapter->mode >= MODE_CONNECTABLE)
+	if (adapter->mode >= new_mode)
 		return dbus_message_new_method_return(msg);
 
-	ret = agent_confirm_mode_change(adapter->agent, "connectable",
+	ret = agent_confirm_mode_change(adapter->agent, mode2str(new_mode),
 					confirm_mode_cb, req);
 	if (ret < 0) {
 		session_unref(req);
