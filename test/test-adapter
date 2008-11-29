@@ -16,6 +16,7 @@ if (len(sys.argv) < 2):
 	print ""
 	print "  address"
 	print "  name [name]"
+	print "  powered [on/off]"
 	print "  pairable [on/off]"
 	print "  pairabletimeout [timeout]"
 	print "  discoverable [on/off]"
@@ -34,6 +35,20 @@ if (sys.argv[1] == "name"):
 		print properties["Name"]
 	else:
 		adapter.SetProperty("Name", sys.argv[2])
+	sys.exit(0)
+
+if (sys.argv[1] == "powered"):
+	if (len(sys.argv) < 3):
+		properties = adapter.GetProperties()
+		print properties["Powered"]
+	else:
+		if (sys.argv[2] == "on"):
+			value = dbus.Boolean(1)
+		elif (sys.argv[2] == "off"):
+			value = dbus.Boolean(0)
+		else:
+			value = dbus.Boolean(sys.argv[2])
+		adapter.SetProperty("Powered", value)
 	sys.exit(0)
 
 if (sys.argv[1] == "pairable"):
