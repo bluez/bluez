@@ -117,6 +117,8 @@ struct btd_adapter {
 
 	struct hci_dev dev;		/* hci info */
 	gboolean pairable;		/* pairable state */
+
+	gboolean first_init;		/* Needed for offmode=devdown */
 };
 
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
@@ -2505,10 +2507,14 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	const char *pmode;
 	char mode[14], srcaddr[18];
 	int i;
-	gboolean powered;
-	gboolean discoverable;
+	gboolean powered, discoverable, first_init;
 
 	ba2str(&adapter->bdaddr, srcaddr);
+
+	first_init = adapter->first_init;
+
+	if (adapter->first_init)
+		adapter->first_init = FALSE;
 
 	adapter->up = 1;
 	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
@@ -2531,11 +2537,8 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 			adapter->mode = MODE_OFF;
 			adapter->scan_mode= SCAN_DISABLED;
 		} else if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
-			static gboolean restore_on_mode = FALSE;
-
-			if (!restore_on_mode) {
+			if (first_init) {
 				ioctl(dd, HCIDEVDOWN, adapter->dev_id);
-				restore_on_mode = TRUE;
 				return;
 			}
 
@@ -2926,6 +2929,7 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id)
 	}
 
 	adapter->dev_id = id;
+	adapter->first_init = TRUE;
 	adapter->state |= RESOLVE_NAME;
 	adapter->path = g_strdup(path);
 
