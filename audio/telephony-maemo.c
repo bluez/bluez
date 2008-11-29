@@ -524,7 +524,8 @@ void telephony_subscriber_number_req(void *telephony_device)
 {
 	debug("telephony-maemo: subscriber number request");
 	if (subscriber_number)
-		telephony_subscriber_number_ind(subscriber_number, 0,
+		telephony_subscriber_number_ind(subscriber_number,
+						NUMBER_TYPE_TELEPHONY,
 						SUBSCRIBER_SERVICE_VOICE);
 	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
 }
@@ -588,7 +589,8 @@ void telephony_list_current_calls_req(void *telephony_device)
 
 		telephony_list_current_call_ind(i, direction, status,
 						CALL_MODE_VOICE, multiparty,
-						call->number, 0);
+						call->number,
+						NUMBER_TYPE_TELEPHONY);
 	}
 
 	telephony_list_current_calls_rsp(telephony_device, CME_ERROR_NONE);
@@ -708,7 +710,7 @@ static void handle_incoming_call(DBusMessage *msg)
 	telephony_update_indicator(maemo_indicators, "callsetup",
 					EV_CALLSETUP_INCOMING);
 
-	telephony_incoming_call_ind(number, 0);
+	telephony_incoming_call_ind(number, NUMBER_TYPE_TELEPHONY);
 }
 
 static void handle_outgoing_call(DBusMessage *msg)
