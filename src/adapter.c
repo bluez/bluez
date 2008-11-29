@@ -598,8 +598,6 @@ static gboolean discov_timeout_handler(gpointer user_data)
 					1, &scan_enable);
 	hci_close_dev(dd);
 
-	set_limited_discoverable(dd, adapter->dev.class, FALSE);
-
 	return FALSE;
 }
 
@@ -2550,7 +2548,8 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	struct hci_conn_info *ci;
 	char mode[14], srcaddr[18];
 	int i;
-	gboolean powered, discoverable, first_init;
+	uint8_t scan_mode;
+	gboolean powered, first_init;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
@@ -2564,7 +2563,7 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	adapter->pairable_timeout = get_pairable_timeout(srcaddr);
 	adapter->state = DISCOVER_TYPE_NONE;
 	adapter->mode = MODE_CONNECTABLE;
-	adapter->scan_mode = SCAN_PAGE;
+	scan_mode = SCAN_PAGE;
 	powered = TRUE;
 
 	/* Set pairable mode */
@@ -2580,7 +2579,7 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 
 		if (main_opts.offmode == HCID_OFFMODE_NOSCAN) {
 			adapter->mode = MODE_OFF;
-			adapter->scan_mode = SCAN_DISABLED;
+			scan_mode = SCAN_DISABLED;
 		} else if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
 			if (first_init) {
 				ioctl(dd, HCIDEVDOWN, adapter->dev_id);
@@ -2602,15 +2601,12 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 		/* Set discoverable only if timeout is 0 */
 		adapter->mode = adapter->pairable ?
 					MODE_LIMITED : MODE_DISCOVERABLE;
-		adapter->scan_mode = SCAN_PAGE | SCAN_INQUIRY;
+		scan_mode = SCAN_PAGE | SCAN_INQUIRY;
 	}
 
 proceed:
 	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-					1, &adapter->scan_mode);
-
-	if (adapter->mode == MODE_LIMITED)
-		set_limited_discoverable(dd, adapter->dev.class, TRUE);
+					1, &scan_mode);
 
 	/*
 	 * retrieve the active connections: address the scenario where
@@ -2632,13 +2628,6 @@ proceed:
 
 	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
 				"Powered", DBUS_TYPE_BOOLEAN, &powered);
-
-	discoverable = adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY) ? TRUE
-				: FALSE;
-
-	emit_property_changed(connection, adapter->path,
-				ADAPTER_INTERFACE, "Discoverable",
-				DBUS_TYPE_BOOLEAN, &discoverable);
 
 	emit_property_changed(connection, adapter->path,
 				ADAPTER_INTERFACE, "Pairable",
@@ -3186,6 +3175,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const gchar *path = adapter_get_path(adapter);
 	gboolean powered, discoverable;
+	int dd, stored_mode = adapter->mode;
 
 	if (adapter->scan_mode == scan_mode)
 		return;
@@ -3224,11 +3214,26 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		return;
 	}
 
-	if (powered == FALSE || adapter->scan_mode == SCAN_DISABLED)
+	if (powered == FALSE ||
+			(stored_mode == MODE_OFF &&
+			 adapter->scan_mode == SCAN_DISABLED))
 		emit_property_changed(connection, path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
 
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0) {
+		error("HCI device open failed: hci%d", adapter->dev_id);
+		goto done;
+	}
+
+	if (discoverable && adapter->pairable)
+		set_limited_discoverable(dd, adapter->dev.class, TRUE);
+	else if (!discoverable)
+		set_limited_discoverable(dd, adapter->dev.class, FALSE);
+
+	hci_close_dev(dd);
+done:
 	emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discoverable",
 				DBUS_TYPE_BOOLEAN, &discoverable);
