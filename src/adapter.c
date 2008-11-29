@@ -2591,10 +2591,6 @@ proceed:
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
 
-	emit_property_changed(connection, adapter->path,
-				ADAPTER_INTERFACE, "Pairable",
-				DBUS_TYPE_BOOLEAN, &adapter->pairable);
-
 	load_drivers(adapter);
 	load_devices(adapter);
 }
@@ -2764,7 +2760,7 @@ static void unload_drivers(struct btd_adapter *adapter)
 
 int adapter_stop(struct btd_adapter *adapter)
 {
-	gboolean powered, discoverable;
+	gboolean powered, discoverable, pairable;
 
 	/* cancel pending timeout */
 	if (adapter->discov_timeout_id) {
@@ -2818,6 +2814,13 @@ int adapter_stop(struct btd_adapter *adapter)
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Discoverable",
 					DBUS_TYPE_BOOLEAN, &discoverable);
+	}
+
+	if ((adapter->scan_mode & SCAN_PAGE) && adapter->pairable == TRUE) {
+		pairable = FALSE;
+		emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Pairable",
+					DBUS_TYPE_BOOLEAN, &pairable);
 	}
 
 	adapter->up = 0;
@@ -3136,7 +3139,7 @@ void adapter_remove_oor_device(struct btd_adapter *adapter, char *peer_addr)
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const gchar *path = adapter_get_path(adapter);
-	gboolean powered, discoverable;
+	gboolean powered, discoverable, pairable;
 	int dd;
 
 	if (adapter->scan_mode == scan_mode)
@@ -3149,16 +3152,19 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		adapter->mode = MODE_OFF;
 		powered = FALSE;
 		discoverable = FALSE;
+		pairable = FALSE;
 		break;
 	case SCAN_PAGE:
 		adapter->mode = MODE_CONNECTABLE;
 		powered = TRUE;
 		discoverable = FALSE;
+		pairable = adapter->pairable;
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
 		adapter->mode = MODE_DISCOVERABLE;
 		powered = TRUE;
 		discoverable = TRUE;
+		pairable = adapter->pairable;
 		if (adapter->discov_timeout != 0)
 			adapter_set_discov_timeout(adapter,
 						adapter->discov_timeout);
@@ -3182,6 +3188,12 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		emit_property_changed(connection, path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
+
+	/* If page scanning gets toggled emit the Pairable property */
+	if ((adapter->scan_mode & SCAN_PAGE) != (scan_mode & SCAN_PAGE))
+		emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Pairable",
+					DBUS_TYPE_BOOLEAN, &pairable);
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
