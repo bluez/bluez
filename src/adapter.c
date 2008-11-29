@@ -657,7 +657,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 		goto done;
 	}
 
-	limited = (new_mode == MODE_LIMITED ? TRUE : FALSE);
+	limited = new_mode == MODE_LIMITED ? TRUE : FALSE;
 	err = set_limited_discoverable(dd, adapter->dev.class, limited);
 	if (err < 0) {
 		hci_close_dev(dd);
