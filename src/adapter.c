@@ -1892,21 +1892,13 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return invalid_args(msg);
 }
 
-static DBusMessage *mode_request(DBusConnection *conn,
-					DBusMessage *msg, const char *mode,
-					void *data)
+static DBusMessage *request_session(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
 	struct btd_adapter *adapter = data;
 	struct session_req *req;
-	uint8_t new_mode;
+	uint8_t new_mode = MODE_CONNECTABLE;
 	int ret;
-	char srcaddr[18];
-
-	ba2str(&adapter->bdaddr, srcaddr);
-
-	new_mode = get_mode(&adapter->bdaddr, mode);
-	if (new_mode != MODE_CONNECTABLE && new_mode != MODE_DISCOVERABLE)
-		return invalid_args(msg);
 
 	if (!adapter->agent)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
@@ -1933,20 +1925,14 @@ static DBusMessage *mode_request(DBusConnection *conn,
 	if (adapter->mode >= new_mode)
 		return dbus_message_new_method_return(msg);
 
-	ret = agent_confirm_mode_change(adapter->agent, mode, confirm_mode_cb,
-					req);
+	ret = agent_confirm_mode_change(adapter->agent, "connectable",
+					confirm_mode_cb, req);
 	if (ret < 0) {
 		session_unref(req);
 		return invalid_args(msg);
 	}
 
 	return NULL;
-}
-
-static DBusMessage *request_session(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	return mode_request(conn, msg, "connectable", data);
 }
 
 static DBusMessage *release_session(DBusConnection *conn,
