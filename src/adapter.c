@@ -2590,19 +2590,21 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
 	adapter->pairable_timeout = get_pairable_timeout(srcaddr);
 	adapter->state = DISCOVER_TYPE_NONE;
+	adapter->mode = MODE_CONNECTABLE;
+	adapter->scan_mode = SCAN_PAGE;
+	powered = TRUE;
 
 	/* Set pairable mode */
 	if (read_device_pairable(&adapter->bdaddr, &adapter->pairable) < 0)
 		adapter->pairable = TRUE;
 
 	/* Set scan mode */
-	if (read_device_mode(srcaddr, mode, sizeof(mode)) < 0) {
-		adapter->mode = MODE_CONNECTABLE;
-		adapter->scan_mode = SCAN_PAGE;
+	if (read_device_mode(srcaddr, mode, sizeof(mode)) < 0)
 		goto proceed;
-	}
 
-	if (!strcmp(mode, "off")) {
+	if (g_str_equal(mode, "off")) {
+		powered = FALSE;
+
 		if (main_opts.offmode == HCID_OFFMODE_NOSCAN) {
 			adapter->mode = MODE_OFF;
 			adapter->scan_mode = SCAN_DISABLED;
@@ -2613,26 +2615,21 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 			}
 
 			if (read_on_mode(srcaddr, mode, sizeof(mode)) < 0)
-				write_device_mode(&adapter->bdaddr, mode);
-			else
 				write_device_mode(&adapter->bdaddr,
 							"connectable");
+			else
+				write_device_mode(&adapter->bdaddr, mode);
 
 			adapter_up(adapter, dd);
+
+			return;
 		}
-	} else if (!strcmp(mode, "connectable")) {
-		adapter->mode = MODE_CONNECTABLE;
-		adapter->scan_mode = SCAN_PAGE;
-	} else {
+	} else if (!g_str_equal(mode, "connectable") &&
+			adapter->discov_timeout == 0) {
 		/* Set discoverable only if timeout is 0 */
-		if (adapter->discov_timeout == 0) {
-			adapter->mode = adapter->pairable ?
+		adapter->mode = adapter->pairable ?
 					MODE_LIMITED : MODE_DISCOVERABLE;
-			adapter->scan_mode = SCAN_PAGE | SCAN_INQUIRY;
-		} else {
-			adapter->mode = MODE_CONNECTABLE;
-			adapter->scan_mode = SCAN_PAGE;
-		}
+		adapter->scan_mode = SCAN_PAGE | SCAN_INQUIRY;
 	}
 
 proceed:
@@ -2659,8 +2656,6 @@ proceed:
 						&ci->bdaddr, ci->handle);
 	}
 	g_free(cl);
-
-	powered = adapter->scan_mode == SCAN_DISABLED ? FALSE : TRUE;
 
 	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
 				"Powered", DBUS_TYPE_BOOLEAN, &powered);
