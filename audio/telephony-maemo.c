@@ -833,6 +833,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 			telephony_update_indicator(maemo_indicators,
 							"callsetup",
 							EV_CALLSETUP_INACTIVE);
+			if (!call->originating)
+				telephony_calling_stopped_ind();
 			call->setup = FALSE;
 		}
 		break;
