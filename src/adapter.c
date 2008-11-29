@@ -577,35 +577,30 @@ static int write_scan_enable(int dd, uint8_t scan)
 	return 0;
 }
 
-static gboolean discov_timeout_handler(void *data)
+static gboolean discov_timeout_handler(gpointer user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
 	int dd;
-	uint8_t scan_enable = adapter->scan_mode;
-	gboolean retval = TRUE;
+	uint8_t scan_enable;
 	uint16_t dev_id = adapter->dev_id;
 
-	scan_enable &= ~SCAN_INQUIRY;
+	adapter->discov_timeout = 0;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		error("HCI device open failed: hci%d", dev_id);
-		return TRUE;
+		return FALSE;
 	}
 
-	if (write_scan_enable(dd, scan_enable) < 0)
-		goto failed;
+	scan_enable = adapter->scan_mode & ~SCAN_INQUIRY;
+
+	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+					1, &scan_enable);
+	hci_close_dev(dd);
 
 	set_limited_discoverable(dd, adapter->dev.class, FALSE);
 
-	adapter_remove_discov_timeout(adapter);
-	retval = FALSE;
-
-failed:
-	if (dd >= 0)
-		hci_close_dev(dd);
-
-	return retval;
+	return FALSE;
 }
 
 static void adapter_set_discov_timeout(struct btd_adapter *adapter,
