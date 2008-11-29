@@ -2520,53 +2520,49 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 		adapter->pairable = TRUE;
 
 	/* Set scan mode */
-	if (read_device_mode(srcaddr, mode, sizeof(mode)) == 0) {
-		if (!strcmp(mode, "off")) {
-			if (main_opts.offmode == HCID_OFFMODE_NOSCAN) {
-				adapter->mode = MODE_OFF;
-				adapter->scan_mode= SCAN_DISABLED;
-			} else if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
-				static gboolean restore_on_mode = FALSE;
+	if (read_device_mode(srcaddr, mode, sizeof(mode)) < 0) {
+		adapter->mode = MODE_CONNECTABLE;
+		adapter->scan_mode = SCAN_PAGE;
+		goto proceed;
+	}
 
-				if (!restore_on_mode) {
-					ioctl(dd, HCIDEVDOWN, adapter->dev_id);
-					restore_on_mode = TRUE;
-					return;
-				}
+	if (!strcmp(mode, "off")) {
+		if (main_opts.offmode == HCID_OFFMODE_NOSCAN) {
+			adapter->mode = MODE_OFF;
+			adapter->scan_mode= SCAN_DISABLED;
+		} else if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
+			static gboolean restore_on_mode = FALSE;
 
-				if (read_on_mode(srcaddr, mode, sizeof(mode)) < 0)
-					write_device_mode(&adapter->bdaddr, mode);
-				else
-					write_device_mode(&adapter->bdaddr, "connectable");
-
-				adapter_up(adapter, dd);
+			if (!restore_on_mode) {
+				ioctl(dd, HCIDEVDOWN, adapter->dev_id);
+				restore_on_mode = TRUE;
+				return;
 			}
-		} else if (!strcmp(mode, "connectable")) {
+
+			if (read_on_mode(srcaddr, mode, sizeof(mode)) < 0)
+				write_device_mode(&adapter->bdaddr, mode);
+			else
+				write_device_mode(&adapter->bdaddr,
+							"connectable");
+
+			adapter_up(adapter, dd);
+		}
+	} else if (!strcmp(mode, "connectable")) {
+		adapter->mode = MODE_CONNECTABLE;
+		adapter->scan_mode = SCAN_PAGE;
+	} else {
+		/* Set discoverable only if timeout is 0 */
+		if (adapter->discov_timeout == 0) {
+			adapter->mode = adapter->pairable ?
+					MODE_LIMITED : MODE_DISCOVERABLE;
+			adapter->scan_mode = SCAN_PAGE | SCAN_INQUIRY;
+		} else {
 			adapter->mode = MODE_CONNECTABLE;
 			adapter->scan_mode = SCAN_PAGE;
-		} else if (!strcmp(mode, "discoverable")) {
-			/* Set discoverable only if timeout is 0 */
-			if (adapter->discov_timeout == 0) {
-				adapter->mode = adapter->pairable ?
-					MODE_LIMITED : MODE_DISCOVERABLE;
-				adapter->scan_mode = SCAN_PAGE | SCAN_INQUIRY;
-			} else {
-				adapter->mode = MODE_CONNECTABLE;
-				adapter->scan_mode = SCAN_PAGE;
-			}
-		} else if (!strcmp(mode, "limited")) {
-			/* Set discoverable only if timeout is 0 */
-			if (adapter->discov_timeout == 0) {
-				adapter->mode = MODE_LIMITED;
-				adapter->scan_mode = SCAN_PAGE | SCAN_INQUIRY;
-			} else {
-				adapter->mode = MODE_CONNECTABLE;
-				adapter->scan_mode = SCAN_PAGE;
-
-			}
 		}
 	}
 
+proceed:
 	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 					1, &adapter->scan_mode);
 
