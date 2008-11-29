@@ -101,8 +101,6 @@ static void agent_release(struct agent *agent)
 		return;
 	}
 
-	dbus_message_set_no_reply(message, TRUE);
-
 	g_dbus_send_message(connection, message);
 }
 
@@ -116,8 +114,6 @@ static int send_cancel_request(struct agent_request *req)
 		error("Couldn't allocate D-Bus message");
 		return -ENOMEM;
 	}
-
-	dbus_message_set_no_reply(message, TRUE);
 
 	g_dbus_send_message(connection, message);
 
