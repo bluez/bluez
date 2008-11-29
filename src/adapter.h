@@ -138,7 +138,6 @@ void adapter_remove(struct btd_adapter *adapter);
 void adapter_remove_discov_timeout(struct btd_adapter *adapter);
 void adapter_set_scan_mode(struct btd_adapter *adapter, uint8_t scan_mode);
 uint8_t adapter_get_scan_mode(struct btd_adapter *adapter);
-void adapter_set_mode(struct btd_adapter *adapter, uint8_t mode);
 uint8_t adapter_get_mode(struct btd_adapter *adapter);
 void adapter_set_state(struct btd_adapter *adapter, int state);
 int adapter_get_state(struct btd_adapter *adapter);

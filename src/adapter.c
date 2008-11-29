@@ -3031,14 +3031,6 @@ uint8_t adapter_get_scan_mode(struct btd_adapter *adapter)
 	return adapter->scan_mode;
 }
 
-void adapter_set_mode(struct btd_adapter *adapter, uint8_t mode)
-{
-	if (!adapter)
-		return;
-
-	adapter->mode = mode;
-}
-
 uint8_t adapter_get_mode(struct btd_adapter *adapter)
 {
 	return adapter->mode;
@@ -3219,13 +3211,13 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 	switch (scan_mode) {
 	case SCAN_DISABLED:
 		mode = "off";
-		adapter_set_mode(adapter, MODE_OFF);
+		adapter->mode = MODE_OFF;
 		powered = FALSE;
 		discoverable = FALSE;
 		break;
 	case SCAN_PAGE:
 		mode = "connectable";
-		adapter_set_mode(adapter, MODE_CONNECTABLE);
+		adapter->mode = MODE_CONNECTABLE;
 		powered = TRUE;
 		discoverable = FALSE;
 		break;
@@ -3235,7 +3227,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		if (adapter_get_mode(adapter) == MODE_LIMITED) {
 			mode = "limited";
 		} else {
-			adapter_set_mode(adapter, MODE_DISCOVERABLE);
+			adapter->mode = MODE_DISCOVERABLE;
 			mode = "discoverable";
 		}
 		if (adapter->discov_timeout != 0)
