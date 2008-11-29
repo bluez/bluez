@@ -1373,8 +1373,6 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		goto failed;
 	}
 
-	adapter_remove_discov_timeout(adapter);
-
 	adapter_mode_changed(adapter, rp.enable);
 
 failed:

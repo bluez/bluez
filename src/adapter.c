@@ -532,6 +532,18 @@ static uint8_t get_mode(const bdaddr_t *bdaddr, const char *mode)
 		return MODE_UNKNOWN;
 }
 
+static void adapter_remove_discov_timeout(struct btd_adapter *adapter)
+{
+	if (!adapter)
+		return;
+
+	if(adapter->discov_timeout_id == 0)
+		return;
+
+	g_source_remove(adapter->discov_timeout_id);
+	adapter->discov_timeout_id = 0;
+}
+
 static gboolean discov_timeout_handler(void *data)
 {
 	struct btd_adapter *adapter = data;
@@ -3017,19 +3029,6 @@ void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 	bacpy(bdaddr, &adapter->bdaddr);
 }
 
-
-void adapter_remove_discov_timeout(struct btd_adapter *adapter)
-{
-	if (!adapter)
-		return;
-
-	if(adapter->discov_timeout_id == 0)
-		return;
-
-	g_source_remove(adapter->discov_timeout_id);
-	adapter->discov_timeout_id = 0;
-}
-
 void adapter_set_state(struct btd_adapter *adapter, int state)
 {
 	gboolean discov_active = FALSE;
@@ -3203,6 +3202,8 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 
 	if (adapter->scan_mode == scan_mode)
 		return;
+
+	adapter_remove_discov_timeout(adapter);
 
 	switch (scan_mode) {
 	case SCAN_DISABLED:
