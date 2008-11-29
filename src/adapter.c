@@ -2507,7 +2507,6 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 {
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci;
-	const char *pmode;
 	char mode[14], srcaddr[18];
 	int i;
 	gboolean powered, discoverable, first_init;
@@ -2592,8 +2591,6 @@ proceed:
 						&ci->bdaddr, ci->handle);
 	}
 	g_free(cl);
-
-	pmode = mode2str(adapter->mode);
 
 	powered = adapter->scan_mode == SCAN_DISABLED ? FALSE : TRUE;
 
