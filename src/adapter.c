@@ -584,7 +584,7 @@ static gboolean discov_timeout_handler(gpointer user_data)
 	uint8_t scan_enable;
 	uint16_t dev_id = adapter->dev_id;
 
-	adapter->discov_timeout = 0;
+	adapter->discov_timeout_id = 0;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
