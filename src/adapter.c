@@ -597,37 +597,35 @@ static void adapter_set_discov_timeout(struct btd_adapter *adapter,
 							adapter);
 }
 
-static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
-				uint8_t new_mode, void *data)
+static uint8_t mode2scan(uint8_t mode)
 {
-	struct btd_adapter *adapter = data;
+	switch (mode) {
+	case MODE_OFF:
+		return SCAN_DISABLED;
+	case MODE_CONNECTABLE:
+		return SCAN_PAGE;
+	case MODE_DISCOVERABLE:
+	case MODE_LIMITED:
+		return (SCAN_PAGE | SCAN_INQUIRY);
+	default:
+		error("Invalid mode given to mode2scan: %u", mode);
+		return SCAN_PAGE;
+	}
+}
+
+static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
+{
 	uint8_t scan_enable;
 	uint8_t current_scan = adapter->scan_mode;
 	gboolean limited;
 	int err, dd;
-	const char *mode;
+	const char *modestr;
 
-	switch (new_mode) {
-	case MODE_OFF:
-		scan_enable = SCAN_DISABLED;
-		break;
-	case MODE_CONNECTABLE:
-		scan_enable = SCAN_PAGE;
-		break;
-	case MODE_DISCOVERABLE:
-	case MODE_LIMITED:
-		scan_enable = (SCAN_PAGE | SCAN_INQUIRY);
-		break;
-	default:
-		return invalid_args(msg);
-	}
-
-	/* Do reverse resolution in case of "on" mode */
-	mode = mode2str(new_mode);
+	scan_enable = mode2scan(new_mode);
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)
-		return no_such_adapter(msg);
+		return -EIO;
 
 	if (!adapter->up &&
 			(main_opts.offmode == HCID_OFFMODE_NOSCAN ||
@@ -643,7 +641,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 				adapter->dev_id, strerror(errno), errno);
 
 			hci_close_dev(dd);
-			return failed_strerror(msg, err);
+			return -err;
 		}
 	}
 
@@ -651,7 +649,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 			main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
 		if (ioctl(dd, HCIDEVDOWN, adapter->dev_id) < 0) {
 			hci_close_dev(dd);
-			return failed_strerror(msg, errno);
+			return -err;
 		}
 
 		goto done;
@@ -661,7 +659,7 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 	err = set_limited_discoverable(dd, adapter->dev.class, limited);
 	if (err < 0) {
 		hci_close_dev(dd);
-		return failed_strerror(msg, -err);
+		return err;
 	}
 
 	if (current_scan != scan_enable) {
@@ -682,14 +680,14 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 			error("Sending write scan enable command failed: %s (%d)",
 					strerror(errno), errno);
 			hci_close_dev(dd);
-			return failed_strerror(msg, err);
+			return -err;
 		}
 
 		if (status) {
 			error("Setting scan enable failed with status 0x%02x",
 					status);
 			hci_close_dev(dd);
-			return failed_strerror(msg, bt_error(status));
+			return -EIO;
 		}
 	} else {
 		/* discoverable or limited */
@@ -705,13 +703,15 @@ static DBusMessage *set_mode(DBusConnection *conn, DBusMessage *msg,
 		}
 	}
 done:
-	write_device_mode(&adapter->bdaddr, mode);
+	modestr = mode2str(new_mode);
+
+	write_device_mode(&adapter->bdaddr, modestr);
 
 	hci_close_dev(dd);
 
 	adapter->mode = new_mode;
 
-	return dbus_message_new_method_return(msg);
+	return 0;
 }
 
 static DBusMessage *set_powered(DBusConnection *conn, DBusMessage *msg,
@@ -719,24 +719,28 @@ static DBusMessage *set_powered(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_adapter *adapter = data;
 	uint8_t mode;
+	int err;
 
 	mode = powered ? get_mode(&adapter->bdaddr, "on") : MODE_OFF;
 
 	if (mode == adapter->mode)
 		return dbus_message_new_method_return(msg);
 
-	return set_mode(conn, msg, mode, data);
+	err = set_mode(adapter, mode);
+	if (err < 0)
+		return failed_strerror(msg, -err);
+
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
 				gboolean discoverable, void *data)
 {
 	struct btd_adapter *adapter = data;
-	const char *strmode;
 	uint8_t mode;
+	int err;
 
-	strmode = discoverable ? "discoverable" : "connectable";
-	mode = get_mode(&adapter->bdaddr, strmode);
+	mode = discoverable ? MODE_DISCOVERABLE : MODE_CONNECTABLE;
 
 	if (mode == MODE_DISCOVERABLE && adapter->pairable)
 		mode = MODE_LIMITED;
@@ -744,13 +748,19 @@ static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
 	if (mode == adapter->mode)
 		return dbus_message_new_method_return(msg);
 
-	return set_mode(conn, msg, mode, data);
+	err = set_mode(adapter, mode);
+	if (err < 0)
+		return failed_strerror(msg, -err);
+
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 				gboolean pairable, void *data)
 {
 	struct btd_adapter *adapter = data;
+	uint8_t mode;
+	int err;
 
 	if (pairable == adapter->pairable)
 		goto done;
@@ -767,10 +777,14 @@ static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 		adapter_set_pairable_timeout(adapter,
 						adapter->pairable_timeout);
 
-	if (adapter->scan_mode & SCAN_INQUIRY) {
-		uint8_t mode = pairable ? MODE_LIMITED : MODE_DISCOVERABLE;
-		return set_mode(conn, msg, mode, data);
-	}
+	if (!(adapter->scan_mode & SCAN_INQUIRY))
+		goto done;
+
+	mode = pairable ? MODE_LIMITED : MODE_DISCOVERABLE;
+
+	err = set_mode(adapter, mode);
+	if (err < 0 && msg)
+		return failed_strerror(msg, -err);
 
 done:
 	return msg ? dbus_message_new_method_return(msg) : NULL;
@@ -815,29 +829,41 @@ static struct session_req *find_session(GSList *list, DBusMessage *msg)
 	return NULL;
 }
 
+static uint8_t get_needed_mode(struct btd_adapter *adapter, uint8_t mode)
+{
+	GSList *l;
+
+	if (adapter->global_mode > mode)
+		mode = adapter->global_mode;
+
+	for (l = adapter->mode_sessions; l; l = l->next) {
+		struct session_req *req = l->data;
+
+		if (req->mode > mode)
+			mode = req->mode;
+	}
+
+	return mode;
+}
+
 static void session_remove(struct session_req *req)
 {
 	struct btd_adapter *adapter = req->adapter;
 
 	if (req->mode) {
-		GSList *l;
-		uint8_t mode = adapter->global_mode;
+		uint8_t mode;
 
 		adapter->mode_sessions = g_slist_remove(adapter->mode_sessions,
 							req);
 
-		for (l = adapter->mode_sessions; l; l = l->next) {
-			struct session_req *req = l->data;
-
-			if (req->mode > mode)
-				mode = req->mode;
-		}
+		mode = get_needed_mode(adapter, adapter->global_mode);
 
 		if (mode == adapter->mode)
 			return;
 
 		debug("Switching to '%s' mode", mode2str(mode));
-		set_mode(req->conn, req->msg, mode, adapter);
+
+		set_mode(adapter, mode);
 	} else {
 		adapter->disc_sessions = g_slist_remove(adapter->disc_sessions,
 							req);
@@ -926,27 +952,30 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	return session_ref(req);
 }
 
-static void confirm_mode_cb(struct agent *agent, DBusError *err, void *data)
+static void confirm_mode_cb(struct agent *agent, DBusError *derr, void *data)
 {
 	struct session_req *req = data;
+	int err;
 	DBusMessage *reply;
 
-	if (err && dbus_error_is_set(err)) {
-		reply = dbus_message_new_error(req->msg, err->name, err->message);
+	if (derr && dbus_error_is_set(derr)) {
+		reply = dbus_message_new_error(req->msg, derr->name,
+						derr->message);
 		g_dbus_send_message(req->conn, reply);
-		goto cleanup;
+		session_unref(req);
+		return;
 	}
 
-	reply = set_mode(req->conn, req->msg, req->mode, req->adapter);
+	err = set_mode(req->adapter, req->mode);
+	if (err < 0)
+		reply = failed_strerror(req->msg, -err);
+	else
+		reply = dbus_message_new_method_return(req->msg);
+
 	g_dbus_send_message(req->conn, reply);
 
 	if (!find_session(req->adapter->mode_sessions, req->msg))
-		goto cleanup;
-
-	return;
-
-cleanup:
-	session_unref(req);
+		session_unref(req);
 }
 
 static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
@@ -1903,7 +1932,7 @@ static DBusMessage *request_session(DBusConnection *conn,
 
 	if (!adapter->agent)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-				"No agent registered");
+						"No agent registered");
 
 	if (!adapter->mode_sessions)
 		adapter->global_mode = adapter->mode;
@@ -1911,17 +1940,14 @@ static DBusMessage *request_session(DBusConnection *conn,
 	new_mode = get_mode(&adapter->bdaddr, "on");
 
 	req = find_session(adapter->mode_sessions, msg);
-	if (!req) {
+	if (req) {
+		session_ref(req);
+		return dbus_message_new_method_return(msg);
+	} else {
 		req = create_session(adapter, conn, msg, new_mode,
 					session_owner_exit);
 		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
 							req);
-	} else {
-		req->mode = new_mode;
-		adapter->mode_sessions = g_slist_append(adapter->mode_sessions,
-							req);
-		session_remove(req);
-		return dbus_message_new_method_return(msg);
 	}
 
 	/* No need to change mode */
@@ -1932,7 +1958,7 @@ static DBusMessage *request_session(DBusConnection *conn,
 					confirm_mode_cb, req);
 	if (ret < 0) {
 		session_unref(req);
-		return invalid_args(msg);
+		return failed_strerror(msg, -ret);
 	}
 
 	return NULL;
