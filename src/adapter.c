@@ -693,12 +693,8 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 	} else {
 		/* discoverable or limited */
 		if ((scan_enable & SCAN_INQUIRY) && (new_mode != adapter->mode)) {
-			if (adapter->discov_timeout_id) {
-				g_source_remove(adapter->discov_timeout_id);
-				adapter->discov_timeout_id = 0;
-			}
-
-			if (!adapter->mode_sessions && adapter->discov_timeout)
+			adapter_remove_discov_timeout(adapter);
+			if (adapter->discov_timeout)
 				adapter_set_discov_timeout(adapter,
 						adapter->discov_timeout);
 		}
