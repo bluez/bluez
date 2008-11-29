@@ -503,9 +503,8 @@ static const char *mode2str(uint8_t mode)
 	case MODE_CONNECTABLE:
 		return "connectable";
 	case MODE_DISCOVERABLE:
-		return "discoverable";
 	case MODE_LIMITED:
-		return "limited";
+		return "discoverable";
 	default:
 		return "unknown";
 	}
