@@ -544,13 +544,44 @@ static void adapter_remove_discov_timeout(struct btd_adapter *adapter)
 	adapter->discov_timeout_id = 0;
 }
 
+static int write_scan_enable(int dd, uint8_t scan)
+{
+	struct hci_request rq;
+	int err;
+	uint8_t status = 0;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_HOST_CTL;
+	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
+	rq.cparam = &scan;
+	rq.clen   = sizeof(scan);
+	rq.rparam = &status;
+	rq.rlen   = sizeof(status);
+	rq.event = EVT_CMD_COMPLETE;
+
+	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
+		err = errno;
+		error("Sending write scan enable command failed: %s (%d)",
+				strerror(errno), errno);
+		hci_close_dev(dd);
+		return -err;
+	}
+
+	if (status) {
+		error("Setting scan enable failed with status 0x%02x",
+				status);
+		hci_close_dev(dd);
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static gboolean discov_timeout_handler(void *data)
 {
 	struct btd_adapter *adapter = data;
-	struct hci_request rq;
 	int dd;
 	uint8_t scan_enable = adapter->scan_mode;
-	uint8_t status = 0;
 	gboolean retval = TRUE;
 	uint16_t dev_id = adapter->dev_id;
 
@@ -562,24 +593,8 @@ static gboolean discov_timeout_handler(void *data)
 		return TRUE;
 	}
 
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
-	rq.cparam = &scan_enable;
-	rq.clen   = sizeof(scan_enable);
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-	rq.event  = EVT_CMD_COMPLETE;
-
-	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
-		error("Sending write scan enable command to hci%d failed: %s (%d)",
-				dev_id, strerror(errno), errno);
+	if (write_scan_enable(dd, scan_enable) < 0)
 		goto failed;
-	}
-	if (status) {
-		error("Setting scan enable failed with status 0x%02x", status);
-		goto failed;
-	}
 
 	set_limited_discoverable(dd, adapter->dev.class, FALSE);
 
@@ -623,39 +638,6 @@ static uint8_t mode2scan(uint8_t mode)
 		error("Invalid mode given to mode2scan: %u", mode);
 		return SCAN_PAGE;
 	}
-}
-
-static int write_scan_enable(int dd, uint8_t scan)
-{
-	struct hci_request rq;
-	int err;
-	uint8_t status = 0;
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_WRITE_SCAN_ENABLE;
-	rq.cparam = &scan;
-	rq.clen   = sizeof(scan);
-	rq.rparam = &status;
-	rq.rlen   = sizeof(status);
-	rq.event = EVT_CMD_COMPLETE;
-
-	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
-		err = errno;
-		error("Sending write scan enable command failed: %s (%d)",
-				strerror(errno), errno);
-		hci_close_dev(dd);
-		return -err;
-	}
-
-	if (status) {
-		error("Setting scan enable failed with status 0x%02x",
-				status);
-		hci_close_dev(dd);
-		return -EIO;
-	}
-
-	return 0;
 }
 
 static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
