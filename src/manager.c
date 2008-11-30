@@ -388,7 +388,7 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 
-	if ((default_adapter_id == dev_id || default_adapter_id < 0)) {
+	if (default_adapter_id == dev_id || default_adapter_id < 0) {
 		int new_default = hci_get_route(NULL);
 
 		if (new_default >= 0)
