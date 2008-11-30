@@ -2578,7 +2578,7 @@ proceed:
 
 	/* retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started */
-	if (adapter->first_init) {
+	if (first_init) {
 		struct hci_conn_list_req *cl = NULL;
 		struct hci_conn_info *ci;
 
@@ -2602,7 +2602,7 @@ proceed:
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
 
-	if (adapter->first_init) {
+	if (first_init) {
 		load_drivers(adapter);
 		load_devices(adapter);
 	}
