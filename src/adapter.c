@@ -119,7 +119,8 @@ struct btd_adapter {
 	struct hci_dev dev;		/* hci info */
 	gboolean pairable;		/* pairable state */
 
-	gboolean first_init;		/* Needed for offmode=devdown */
+	gboolean first_up;		/* Needed for offmode=devdown */
+	gboolean initialized;
 };
 
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
@@ -2517,13 +2518,13 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	char mode[14], srcaddr[18];
 	int i;
 	uint8_t scan_mode;
-	gboolean powered, first_init = FALSE;
+	gboolean powered, first_up = FALSE;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
-	if (adapter->first_init == TRUE) {
-		first_init = TRUE;
-		adapter->first_init = FALSE;
+	if (adapter->first_up == TRUE) {
+		first_up = TRUE;
+		adapter->first_up = FALSE;
 	}
 
 	adapter->up = 1;
@@ -2549,7 +2550,7 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 			adapter->mode = MODE_OFF;
 			scan_mode = SCAN_DISABLED;
 		} else if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
-			if (first_init) {
+			if (first_up) {
 				ioctl(dd, HCIDEVDOWN, adapter->dev_id);
 				return;
 			}
@@ -2578,7 +2579,7 @@ proceed:
 
 	/* retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started */
-	if (first_init) {
+	if (adapter->initialized == FALSE) {
 		struct hci_conn_list_req *cl = NULL;
 		struct hci_conn_info *ci;
 
@@ -2602,9 +2603,10 @@ proceed:
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
 
-	if (first_init) {
+	if (adapter->initialized == FALSE) {
 		load_drivers(adapter);
 		load_devices(adapter);
+		adapter->initialized = TRUE;
 	}
 }
 
@@ -2932,7 +2934,7 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id)
 	}
 
 	adapter->dev_id = id;
-	adapter->first_init = TRUE;
+	adapter->first_up = TRUE;
 	adapter->state |= RESOLVE_NAME;
 	adapter->path = g_strdup(path);
 
