@@ -2512,7 +2512,7 @@ static int get_pairable_timeout(const char *src)
 	return main_opts.pairto;
 }
 
-static void adapter_up(struct btd_adapter *adapter, int dd)
+static int adapter_up(struct btd_adapter *adapter, int dd)
 {
 	char mode[14], srcaddr[18];
 	int i;
@@ -2555,9 +2555,7 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 			else
 				write_device_mode(&adapter->bdaddr, mode);
 
-			adapter_up(adapter, dd);
-
-			return;
+			return adapter_up(adapter, dd);
 		}
 	} else if (!g_str_equal(mode, "connectable") &&
 			adapter->discov_timeout == 0) {
@@ -2604,8 +2602,12 @@ proceed:
 		adapter->initialized = TRUE;
 	}
 
-	if (dev_down)
+	if (dev_down) {
 		ioctl(dd, HCIDEVDOWN, adapter->dev_id);
+		return 1;
+	}
+
+	return 0;
 }
 
 int adapter_start(struct btd_adapter *adapter)
@@ -2712,13 +2714,13 @@ setup:
 		adapter->state &= ~STD_INQUIRY;
 
 	adapter_setup(adapter, dd);
-	adapter_up(adapter, dd);
+	err = adapter_up(adapter, dd);
 
 	hci_close_dev(dd);
 
 	info("Adapter %s has been enabled", adapter->path);
 
-	return 0;
+	return err;
 }
 
 static void reply_pending_requests(struct btd_adapter *adapter)

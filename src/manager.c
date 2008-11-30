@@ -455,7 +455,7 @@ int manager_start_adapter(int id)
 	if (default_adapter_id < 0)
 		manager_set_default_adapter(id);
 
-	return 0;
+	return ret;
 }
 
 int manager_stop_adapter(int id)
