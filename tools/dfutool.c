@@ -117,7 +117,7 @@ static struct usb_dev_handle *open_device(char *device, struct dfu_suffix *suffi
 	struct usb_dev_handle *udev;
 	struct dfu_status status;
 	char str[8];
-	int i, intf, sel, num = 0, try = 5, bus_id = -1, dev_id = -1;
+	int i, intf, sel = 0, num = 0, try = 5, bus_id = -1, dev_id = -1;
 
 	printf("Scanning USB busses ... ");
 	fflush(stdout);
