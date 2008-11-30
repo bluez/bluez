@@ -1258,10 +1258,10 @@ int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
 	dev_class = (value << 16) | (cls[1] << 8) | cls[0];
 
 	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		int err = errno;
+		int err = -errno;
 		error("Can't write class of device: %s (%d)",
 							strerror(err), err);
-		return -err;
+		return err;
 	}
 
 	return 0;
@@ -1276,10 +1276,10 @@ int set_major_and_minor_class(int dd, const uint8_t *cls,
 						((major & 0xdf) << 8) | minor;
 
 	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		int err = errno;
+		int err = -errno;
 		error("Can't write class of device: %s (%d)",
 							strerror(err), err);
-		return -err;
+		return err;
 	}
 
 	return 0;
