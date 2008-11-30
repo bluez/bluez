@@ -2601,8 +2601,10 @@ proceed:
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
 
-	load_drivers(adapter);
-	load_devices(adapter);
+	if (adapter->first_init) {
+		load_drivers(adapter);
+		load_devices(adapter);
+	}
 }
 
 int adapter_start(struct btd_adapter *adapter)
