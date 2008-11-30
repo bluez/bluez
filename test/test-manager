@@ -11,17 +11,28 @@ def adapter_added(path):
 def adapter_removed(path):
 	print "Adapter with path %s removed" % (path)
 
+def default_changed(path):
+	print "Default adapter is now at path %s" % (path)
+
 if __name__ == "__main__":
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SystemBus()
 
-	manager = dbus.Interface(bus.get_object('org.bluez', '/org/bluez'),
+	manager = dbus.Interface(bus.get_object('org.bluez', '/'),
 							'org.bluez.Manager')
 
 	manager.connect_to_signal("AdapterAdded", adapter_added)
 
 	manager.connect_to_signal("AdapterRemoved", adapter_removed)
+
+	manager.connect_to_signal("DefaultAdapterChanged", default_changed)
+
+	try:
+		path = manager.DefaultAdapter()
+		default_changed(path)
+	except:
+		pass
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
