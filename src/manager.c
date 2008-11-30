@@ -376,6 +376,13 @@ static void manager_add_adapter(struct btd_adapter *adapter)
 			DBUS_TYPE_INVALID);
 
 	adapters = g_slist_append(adapters, adapter);
+
+	if (default_adapter_id < 0) {
+		int new_default = hci_get_route(NULL);
+
+		if (new_default >= 0)
+			manager_set_default_adapter(new_default);
+	}
 }
 
 static void manager_remove_adapter(struct btd_adapter *adapter)
@@ -445,7 +452,7 @@ int manager_start_adapter(int id)
 	if (ret < 0)
 		return ret;
 
-	if (manager_get_default_adapter() < 0)
+	if (default_adapter_id < 0)
 		manager_set_default_adapter(id);
 
 	return 0;
