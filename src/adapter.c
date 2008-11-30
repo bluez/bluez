@@ -2517,14 +2517,14 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	char mode[14], srcaddr[18];
 	int i;
 	uint8_t scan_mode;
-	gboolean powered, first_init;
+	gboolean powered, first_init = FALSE;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
-	first_init = adapter->first_init;
-
-	if (adapter->first_init)
+	if (adapter->first_init == TRUE) {
+		first_init = TRUE;
 		adapter->first_init = FALSE;
+	}
 
 	adapter->up = 1;
 	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
