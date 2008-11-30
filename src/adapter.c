@@ -77,7 +77,8 @@ static GSList *adapter_drivers = NULL;
 struct session_req {
 	struct btd_adapter	*adapter;
 	DBusConnection		*conn;		/* Connection reference */
-	DBusMessage		*msg;		/* Message reference */
+	DBusMessage		*msg;		/* Unreplied message ref */
+	char			*owner;		/* Bus name of the owner */
 	guint			id;		/* Listener id */
 	uint8_t			mode;		/* Requested mode */
 	int			refcount;	/* Session refcount */
@@ -771,16 +772,14 @@ static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
 							adapter);
 }
 
-static struct session_req *find_session(GSList *list, DBusMessage *msg)
+static struct session_req *find_session(GSList *list, const char *sender)
 {
 	GSList *l;
-	const char *sender = dbus_message_get_sender(msg);
 
 	for (l = list; l; l = l->next) {
 		struct session_req *req = l->data;
-		const char *name = dbus_message_get_sender(req->msg);
 
-		if (g_str_equal(name, sender))
+		if (g_str_equal(req->owner, sender))
 			return req;
 	}
 
@@ -842,18 +841,19 @@ static void session_remove(struct session_req *req)
 
 static void session_free(struct session_req *req)
 {
-	const char *sender = dbus_message_get_sender(req->msg);
-
-	info("%s session %p with %s deactivated",
-		req->mode ? "Mode" : "Discovery", req, sender);
+	debug("%s session %p with %s deactivated",
+		req->mode ? "Mode" : "Discovery", req, req->owner);
 
 	if (req->id)
 		g_dbus_remove_watch(req->conn, req->id);
 
 	session_remove(req);
 
-	dbus_message_unref(req->msg);
-	dbus_connection_unref(req->conn);
+	if (req->msg)
+		dbus_message_unref(req->msg);
+	if (req->conn)
+		dbus_connection_unref(req->conn);
+	g_free(req->owner);
 	g_free(req);
 }
 
@@ -898,6 +898,7 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	req->adapter = adapter;
 	req->conn = dbus_connection_ref(conn);
 	req->msg = dbus_message_ref(msg);
+	req->owner = g_strdup(dbus_message_get_sender(msg));
 	req->mode = mode;
 
 	if (cb)
@@ -932,7 +933,10 @@ static void confirm_mode_cb(struct agent *agent, DBusError *derr, void *data)
 
 	g_dbus_send_message(req->conn, reply);
 
-	if (!find_session(req->adapter->mode_sessions, req->msg))
+	dbus_message_unref(req->msg);
+	req->msg = NULL;
+
+	if (!find_session(req->adapter->mode_sessions, req->owner))
 		session_unref(req);
 }
 
@@ -1675,12 +1679,13 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 {
 	struct session_req *req;
 	struct btd_adapter *adapter = data;
+	const char *sender = dbus_message_get_sender(msg);
 	int err;
 
 	if (!adapter->up)
 		return adapter_not_ready(msg);
 
-	req = find_session(adapter->disc_sessions, msg);
+	req = find_session(adapter->disc_sessions, sender);
 	if (req) {
 		session_ref(req);
 		return dbus_message_new_method_return(msg);
@@ -1711,11 +1716,12 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 {
 	struct btd_adapter *adapter = data;
 	struct session_req *req;
+	const char *sender = dbus_message_get_sender(msg);
 
 	if (!adapter->up)
 		return adapter_not_ready(msg);
 
-	req = find_session(adapter->disc_sessions, msg);
+	req = find_session(adapter->disc_sessions, sender);
 	if (!req)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 				"Invalid discovery session");
@@ -1904,6 +1910,7 @@ static DBusMessage *request_session(DBusConnection *conn,
 {
 	struct btd_adapter *adapter = data;
 	struct session_req *req;
+	const char *sender = dbus_message_get_sender(msg);
 	uint8_t new_mode;
 	int ret;
 
@@ -1916,7 +1923,7 @@ static DBusMessage *request_session(DBusConnection *conn,
 
 	new_mode = get_mode(&adapter->bdaddr, "on");
 
-	req = find_session(adapter->mode_sessions, msg);
+	req = find_session(adapter->mode_sessions, sender);
 	if (req) {
 		session_ref(req);
 		return dbus_message_new_method_return(msg);
@@ -1946,8 +1953,9 @@ static DBusMessage *release_session(DBusConnection *conn,
 {
 	struct btd_adapter *adapter = data;
 	struct session_req *req;
+	const char *sender = dbus_message_get_sender(msg);
 
-	req = find_session(adapter->mode_sessions, msg);
+	req = find_session(adapter->mode_sessions, sender);
 	if (!req)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 				"No Mode to release");
