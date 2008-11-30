@@ -1,3 +1,12 @@
+ver 4.20:
+	Cleanup session handling.
+	Cleanup mode setting handling.
+	Fix issue with concurrent audio clients.
+	Fix issue with HFP/HSP suspending.
+	Fix AT result code syntax handling.
+	Add Handsfree support for AT+NREC.
+	Add PairableTimeout adapter property.
+
 ver 4.19:
 	Fix installation of manual pages for old daemons.
 	Fix D-Bus signal emmissions for CreateDevice.
