@@ -2514,8 +2514,6 @@ static int get_pairable_timeout(const char *src)
 
 static void adapter_up(struct btd_adapter *adapter, int dd)
 {
-	struct hci_conn_list_req *cl = NULL;
-	struct hci_conn_info *ci;
 	char mode[14], srcaddr[18];
 	int i;
 	uint8_t scan_mode;
@@ -2578,23 +2576,26 @@ proceed:
 	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 					1, &scan_mode);
 
-	/*
-	 * retrieve the active connections: address the scenario where
-	 * the are active connections before the daemon've started
-	 */
+	/* retrieve the active connections: address the scenario where
+	 * the are active connections before the daemon've started */
+	if (adapter->first_init) {
+		struct hci_conn_list_req *cl = NULL;
+		struct hci_conn_info *ci;
 
-	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
+		cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
 
-	cl->dev_id = adapter->dev_id;
-	cl->conn_num = 10;
-	ci = cl->conn_info;
+		cl->dev_id = adapter->dev_id;
+		cl->conn_num = 10;
+		ci = cl->conn_info;
 
-	if (ioctl(dd, HCIGETCONNLIST, cl) == 0) {
-		for (i = 0; i < cl->conn_num; i++, ci++)
-			active_conn_append(&adapter->active_conn,
+		if (ioctl(dd, HCIGETCONNLIST, cl) == 0) {
+			for (i = 0; i < cl->conn_num; i++, ci++)
+				active_conn_append(&adapter->active_conn,
 						&ci->bdaddr, ci->handle);
+		}
+
+		g_free(cl);
 	}
-	g_free(cl);
 
 	if (main_opts.offmode == HCID_OFFMODE_DEVDOWN)
 		emit_property_changed(connection, adapter->path,
