@@ -483,8 +483,8 @@ static void device_devup_setup(int dev_id)
 {
 	configure_device(dev_id);
 
-	manager_start_adapter(dev_id);
 	start_security_manager(dev_id);
+	manager_start_adapter(dev_id);
 }
 
 static void init_all_devices(int ctl)
