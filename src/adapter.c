@@ -635,6 +635,7 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 	if (adapter->up && scan_enable == SCAN_DISABLED &&
 			main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
 		if (ioctl(dd, HCIDEVDOWN, adapter->dev_id) < 0) {
+			err = errno;
 			hci_close_dev(dd);
 			return -err;
 		}
