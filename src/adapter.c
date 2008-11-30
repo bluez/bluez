@@ -119,7 +119,6 @@ struct btd_adapter {
 	struct hci_dev dev;		/* hci info */
 	gboolean pairable;		/* pairable state */
 
-	gboolean first_up;		/* Needed for offmode=devdown */
 	gboolean initialized;
 };
 
@@ -2518,14 +2517,9 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	char mode[14], srcaddr[18];
 	int i;
 	uint8_t scan_mode;
-	gboolean powered, first_up = FALSE;
+	gboolean powered, dev_down = FALSE;
 
 	ba2str(&adapter->bdaddr, srcaddr);
-
-	if (adapter->first_up == TRUE) {
-		first_up = TRUE;
-		adapter->first_up = FALSE;
-	}
 
 	adapter->up = 1;
 	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
@@ -2550,9 +2544,9 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 			adapter->mode = MODE_OFF;
 			scan_mode = SCAN_DISABLED;
 		} else if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
-			if (first_up) {
-				ioctl(dd, HCIDEVDOWN, adapter->dev_id);
-				return;
+			if (!adapter->initialized) {
+				dev_down = TRUE;
+				goto proceed;
 			}
 
 			if (read_on_mode(srcaddr, mode, sizeof(mode)) < 0)
@@ -2574,8 +2568,9 @@ static void adapter_up(struct btd_adapter *adapter, int dd)
 	}
 
 proceed:
-	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-					1, &scan_mode);
+	if (dev_down == FALSE)
+		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+				1, &scan_mode);
 
 	/* retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started */
@@ -2598,7 +2593,7 @@ proceed:
 		g_free(cl);
 	}
 
-	if (main_opts.offmode == HCID_OFFMODE_DEVDOWN)
+	if (dev_down == FALSE && main_opts.offmode == HCID_OFFMODE_DEVDOWN)
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
@@ -2608,6 +2603,9 @@ proceed:
 		load_devices(adapter);
 		adapter->initialized = TRUE;
 	}
+
+	if (dev_down)
+		ioctl(dd, HCIDEVDOWN, adapter->dev_id);
 }
 
 int adapter_start(struct btd_adapter *adapter)
@@ -2934,7 +2932,6 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id)
 	}
 
 	adapter->dev_id = id;
-	adapter->first_up = TRUE;
 	adapter->state |= RESOLVE_NAME;
 	adapter->path = g_strdup(path);
 
