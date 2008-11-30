@@ -717,6 +717,9 @@ static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 	uint8_t mode;
 	int err;
 
+	if (adapter->scan_mode == SCAN_DISABLED)
+		return adapter_not_ready(msg);
+
 	if (pairable == adapter->pairable)
 		goto done;
 
