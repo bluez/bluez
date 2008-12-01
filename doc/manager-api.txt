@@ -14,7 +14,15 @@ Service		org.bluez
 Interface	org.bluez.Manager
 Object path	/
 
-Methods		object DefaultAdapter()
+Methods		dict GetProperties()
+
+			Returns all global properties. See the
+			properties section for available properties.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+
+		object DefaultAdapter()
 
 			Returns object path for the default adapter.
 
@@ -37,7 +45,12 @@ Methods		object DefaultAdapter()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.OutOfMemory
 
-Signals		AdapterAdded(object adapter)
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+		AdapterAdded(object adapter)
 
 			Parameter is object path of added adapter.
 
@@ -53,3 +66,7 @@ Signals		AdapterAdded(object adapter)
 			be emitted. The AdapterRemoved signal has to be used
 			to detect that no default adapter is selected or
 			available anymore.
+
+Properties	array{object} Adapters [readonly]
+
+			List of adapter object paths.
