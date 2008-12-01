@@ -125,6 +125,12 @@ static inline DBusMessage *not_connected(DBusMessage *msg)
 						"Device not connected");
 }
 
+static inline DBusMessage *not_permited(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+						"Operation not permited");
+}
+
 static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
@@ -335,6 +341,10 @@ static void connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 failed:
 	nc->state = DISCONNECTED;
+	if (nc->watch) {
+		g_dbus_remove_watch(connection, nc->watch);
+		nc->watch = 0;
+	}
 
 	reply = connection_attempt_failed(nc->msg, -err);
 	g_dbus_send_message(connection, reply);
@@ -389,6 +399,8 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 		dbus_message_unref(nc->msg);
 		nc->msg = NULL;
 		nc->state = DISCONNECTED;
+		g_dbus_remove_watch(conn, nc->watch);
+		nc->watch = 0;
 		return connection_attempt_failed(msg, -err);
 	}
 
@@ -399,6 +411,11 @@ static DBusMessage *connection_cancel(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct network_conn *nc = data;
+	const char *owner = dbus_message_get_sender(nc->msg);
+	const char *caller = dbus_message_get_sender(msg);
+
+	if (!g_str_equal(owner, caller))
+		return not_permited(msg);
 
 	if (nc->watch) {
 		g_dbus_remove_watch(conn, nc->watch);
