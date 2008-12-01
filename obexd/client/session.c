@@ -1208,7 +1208,7 @@ int session_get(struct session_data *session, const char *type,
 		return -EIO;
 	}
 
-	if (!g_str_equal(type, "x-obex/folder-listing")) {
+	if (type && !g_str_equal(type, "x-obex/folder-listing")) {
 		session->transfer_path = register_transfer(session->conn, session);
 		if (session->transfer_path == NULL) {
 			if (fd)
