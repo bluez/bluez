@@ -337,7 +337,6 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	struct input_device *idev = iconn->idev;
 	struct fake_input *fake = iconn->fake;
 	DBusMessage *reply;
-	const char *path;
 
 	if (err < 0)
 		goto failed;
@@ -362,12 +361,6 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	/* Replying to the requestor */
 	reply = dbus_message_new_method_return(iconn->pending_connect);
 	g_dbus_send_message(idev->conn, reply);
-
-	/* Sending the Connected signal */
-	path = dbus_message_get_path(iconn->pending_connect);
-	g_dbus_emit_signal(idev->conn, path,
-			INPUT_DEVICE_INTERFACE, "Connected",
-			DBUS_TYPE_INVALID);
 
 	dbus_message_unref(iconn->pending_connect);
 	iconn->pending_connect = NULL;
@@ -406,9 +399,6 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
 
-	g_dbus_emit_signal(idev->conn, idev->path,
-			INPUT_DEVICE_INTERFACE, "Disconnected",
-			DBUS_TYPE_INVALID);
 	emit_property_changed(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
 				"Connected", DBUS_TYPE_BOOLEAN, &connected);
 
@@ -429,14 +419,9 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct input_conn *iconn = data;
-	struct input_device *idev = iconn->idev;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		g_io_channel_close(chan);
-
-	g_dbus_emit_signal(idev->conn, idev->path,
-			INPUT_DEVICE_INTERFACE, "Disconnected",
-			DBUS_TYPE_INVALID);
 
 	g_source_remove(iconn->intr_watch);
 	iconn->intr_watch = 0;
@@ -698,9 +683,6 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	iconn->intr_watch = create_watch(iconn->intr_sk, intr_watch_cb, iconn);
 	iconn->ctrl_watch = create_watch(iconn->ctrl_sk, ctrl_watch_cb, iconn);
-	g_dbus_emit_signal(idev->conn, idev->path,
-			INPUT_DEVICE_INTERFACE, "Connected",
-			DBUS_TYPE_INVALID);
 
 	/* Replying to the requestor */
 	g_dbus_send_reply(idev->conn, iconn->pending_connect, DBUS_TYPE_INVALID);
@@ -952,27 +934,6 @@ static DBusMessage *device_disconnect(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *device_is_connected(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct input_device *idev = data;
-	dbus_bool_t connected = FALSE;
-	GSList *l;
-
-	for (l = idev->connections; l; l = l->next) {
-		struct input_conn *iconn = l->data;
-
-		if (!is_connected(iconn))
-			continue;
-
-		connected = TRUE;
-		break;
-	}
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_BOOLEAN, &connected,
-							DBUS_TYPE_INVALID);
-}
-
 static void device_unregister(void *data)
 {
 	struct input_device *idev = data;
@@ -1026,15 +987,11 @@ static GDBusMethodTable device_methods[] = {
 	{ "Connect",		"",	"",	device_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	device_disconnect	},
-	{ "IsConnected",	"",	"b",	device_is_connected,
-						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "GetProperties",	"",	"a{sv}",device_get_properties },
 	{ }
 };
 
 static GDBusSignalTable device_signals[] = {
-	{ "Connected",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
-	{ "Disconnected",		"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };
@@ -1256,9 +1213,6 @@ int input_device_connadd(const bdaddr_t *src, const bdaddr_t *dst)
 	iconn->intr_watch = create_watch(iconn->intr_sk, intr_watch_cb, iconn);
 	iconn->ctrl_watch = create_watch(iconn->ctrl_sk, ctrl_watch_cb, iconn);
 	connected = TRUE;
-	g_dbus_emit_signal(idev->conn, idev->path,
-			INPUT_DEVICE_INTERFACE, "Connected",
-			DBUS_TYPE_INVALID);
 	emit_property_changed(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
 				"Connected", DBUS_TYPE_BOOLEAN, &connected);
 
