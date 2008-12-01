@@ -43,6 +43,7 @@
 
 #include <gdbus.h>
 
+#include "dbus-common.h"
 #include "logging.h"
 #include "adapter.h"
 #include "error.h"
@@ -264,7 +265,42 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	GSList *list;
+	char **array;
+	int i;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	array = g_new0(char *, g_slist_length(adapters) + 1);
+	for (i = 0, list = adapters; list; list = list->next, i++) {
+		struct btd_adapter *adapter = list->data;
+		array[i] = (char *) adapter_get_path(adapter);
+	}
+	dict_append_array(&dict, "Adapters", DBUS_TYPE_OBJECT_PATH, &array, i);
+	g_free(array);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
+}
+
 static GDBusMethodTable manager_methods[] = {
+	{ "GetProperties",	"",	"a{sv}",get_properties	},
 	{ "DefaultAdapter",	"",	"o",	default_adapter	},
 	{ "FindAdapter",	"s",	"o",	find_adapter	},
 	{ "ListAdapters",	"",	"ao",	list_adapters	},
@@ -272,6 +308,7 @@ static GDBusMethodTable manager_methods[] = {
 };
 
 static GDBusSignalTable manager_signals[] = {
+	{ "PropertyChanged",		"sv"	},
 	{ "AdapterAdded",		"o"	},
 	{ "AdapterRemoved",		"o"	},
 	{ "DefaultAdapterChanged",	"o"	},
