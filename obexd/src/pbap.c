@@ -76,7 +76,7 @@ static GSList *session_list = NULL;
 static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 							gboolean *addbody)
 {
-	struct obex_session *session;
+	struct obex_session *session = OBEX_GetUserData(obex);
 	obex_headerdata_t hd;
 	guint8 hi, format, newmissedcalls = 0, rspsize = 0;
 	guint16 maxlistcount, liststartoffset, phonebooksize = 0;
@@ -84,8 +84,6 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 	guint64 filter;
 	gboolean addmissedcalls = FALSE;
 	int err;
-
-	session = OBEX_GetUserData(obex);
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
 		void *ptr = (void *) hd.bs;
