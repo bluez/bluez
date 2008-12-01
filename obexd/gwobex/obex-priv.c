@@ -349,11 +349,13 @@ static void get_non_body_headers(obex_t *handle, obex_object_t *object,
                 break;
             case OBEX_HDR_APPARAM:
                 g_free(xfer->apparam_buf);
-                xfer->apparam_buf = NULL;
                 xfer->apparam_buf = g_try_malloc(hlen);
-		if (xfer->apparam_buf)
+		if (xfer->apparam_buf) {
                     memcpy(xfer->apparam_buf, hv.bs, hlen);
-                xfer->apparam_size = xfer->apparam_buf ? hlen : 0;
+                    xfer->apparam_size = hlen;
+                }
+                else
+                    xfer->apparam_size = 0;
                 break;
             default:
                 break;
