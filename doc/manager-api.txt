@@ -47,8 +47,7 @@ Signals		AdapterAdded(object adapter)
 
 		DefaultAdapterChanged(object adapter)
 
-			Parameter is object path of the new default adapter,
-			or an empty string if there is no available adapters.
+			Parameter is object path of the new default adapter.
 
 			In case all adapters are removed this signal will not
 			be emitted. The AdapterRemoved signal has to be used
