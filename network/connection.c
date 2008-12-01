@@ -137,13 +137,8 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	struct network_conn *nc = data;
 
 	if (connection != NULL) {
-		const char *device = nc->dev;
 		gboolean connected = FALSE;
 		const char *property = "";
-		g_dbus_emit_signal(connection, nc->peer->path,
-				NETWORK_PEER_INTERFACE, "Disconnected",
-				DBUS_TYPE_STRING, &device,
-				DBUS_TYPE_INVALID);
 		emit_property_changed(connection, nc->peer->path,
 					NETWORK_PEER_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &connected);
@@ -247,11 +242,6 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 			DBUS_TYPE_INVALID);
 
 	connected = TRUE;
-	g_dbus_emit_signal(connection, nc->peer->path,
-			NETWORK_PEER_INTERFACE, "Connected",
-			DBUS_TYPE_STRING, &pdev,
-			DBUS_TYPE_STRING, &uuid,
-			DBUS_TYPE_INVALID);
 	emit_property_changed(connection, nc->peer->path,
 				NETWORK_PEER_INTERFACE, "Connected",
 				DBUS_TYPE_BOOLEAN, &connected);
@@ -438,26 +428,6 @@ static DBusMessage *connection_disconnect(DBusConnection *conn,
 	return not_connected(msg);
 }
 
-static DBusMessage *is_connected(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct network_peer *peer = data;
-	GSList *l;
-	dbus_bool_t up = FALSE;
-
-	for (l = peer->connections; l; l = l->next) {
-		struct network_conn *nc = l->data;
-
-		if (nc->state != CONNECTED)
-			continue;
-
-		up = TRUE;
-	}
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_BOOLEAN, &up,
-						DBUS_TYPE_INVALID);
-}
-
 static DBusMessage *connection_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -543,15 +513,11 @@ static GDBusMethodTable connection_methods[] = {
 	{ "Connect",		"s",	"s",	connection_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	connection_disconnect	},
-	{ "IsConnected",	"",	"b",	is_connected,
-						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "GetProperties",	"",	"a{sv}",connection_get_properties },
 	{ }
 };
 
 static GDBusSignalTable connection_signals[] = {
-	{ "Connected",		"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
-	{ "Disconnected",	"",	G_DBUS_SIGNAL_FLAG_DEPRECATED},
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };
