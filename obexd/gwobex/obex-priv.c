@@ -330,22 +330,30 @@ static void obex_request_done(GwObex *ctx, obex_object_t *object,
     }
 }
 
-static void get_target_size_and_time(obex_t *handle, obex_object_t *object,
-                                     gint *size, time_t *time) {
+static void get_non_body_headers(obex_t *handle, obex_object_t *object,
+                                     struct gw_obex_xfer *xfer) {
     obex_headerdata_t hv;
     uint8_t hi;
     unsigned int hlen;
 
-    *size = GW_OBEX_UNKNOWN_LENGTH;
-    *time = -1;
+    xfer->target_size = GW_OBEX_UNKNOWN_LENGTH;
+    xfer->modtime = -1;
 
     while (OBEX_ObjectGetNextHeader(handle, object, &hi, &hv, &hlen)) {
         switch (hi) {
             case OBEX_HDR_LENGTH:
-                *size = hv.bq4; //(gint) g_ntohl(hv.bq4);
+                xfer->target_size = hv.bq4; //(gint) g_ntohl(hv.bq4);
                 break;
             case OBEX_HDR_TIME:
-                *time = parse_iso8601((char *)hv.bs, hlen);
+                xfer->modtime = parse_iso8601((char *)hv.bs, hlen);
+                break;
+            case OBEX_HDR_APPARAM:
+                g_free(xfer->apparam_buf);
+                xfer->apparam_buf = NULL;
+                xfer->apparam_buf = g_try_malloc(hlen);
+		if (xfer->apparam_buf)
+                    memcpy(xfer->apparam_buf, hv.bs, hlen);
+                xfer->apparam_size = xfer->apparam_buf ? hlen : 0;
                 break;
             default:
                 break;
@@ -370,8 +378,7 @@ static void obex_readstream(GwObex *ctx, obex_object_t *object) {
     }
 
     if (ctx->xfer->counter == 0) {
-        get_target_size_and_time(ctx->handle, object,
-                                 &xfer->target_size, &xfer->modtime);
+        get_non_body_headers(ctx->handle, object, xfer);
         show_headers(ctx->handle, object);
     }
 

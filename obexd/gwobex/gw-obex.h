@@ -568,6 +568,16 @@ time_t gw_obex_xfer_object_time(GwObexXfer *xfer);
 gint gw_obex_xfer_object_size(GwObexXfer *xfer);
 
 
+/** Get the contents of the application parameters header
+ *
+ * @param xfer Pointer returned by gw_obex_put_async or gw_obex_get_async
+ * @param apparam_size Return value for the size of the application parameters header.
+ *
+ * @returns The pointer to the buffer that hold the contents.
+ */
+unsigned char *gw_obex_xfer_object_apparam(GwObexXfer *xfer, size_t *apparam_size);
+
+
 /** Returns if a transfer is already done
  *
  * @param xfer Pointer returned by gw_obex_put_async or gw_obex_get_async

@@ -196,6 +196,12 @@ gint gw_obex_xfer_object_size(GwObexXfer *xfer) {
     return xfer->target_size;
 }
 
+unsigned char *gw_obex_xfer_object_apparam(GwObexXfer *xfer, size_t *apparam_size) {
+    if (apparam_size)
+        *apparam_size = xfer->apparam_size;
+    return xfer->apparam_buf;
+}
+
 gboolean gw_obex_xfer_object_done(GwObexXfer *xfer) {
     return xfer->ctx->done;
 }
@@ -412,6 +418,7 @@ out:
 
 void _gw_obex_xfer_free(struct gw_obex_xfer *xfer) {
     g_free(xfer->buf);
+    g_free(xfer->apparam_buf);
     g_free(xfer);
 }
 

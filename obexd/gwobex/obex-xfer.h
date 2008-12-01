@@ -58,6 +58,10 @@ struct gw_obex_xfer {
     unsigned char           *buf;
     size_t                   buf_size;
 
+    /* Buffer and size for Application parameters */
+    unsigned char           *apparam_buf;
+    size_t                   apparam_size;
+
     /* These two elements are only used for async transfers */
     size_t                   data_start;
     size_t                   data_length;
