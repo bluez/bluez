@@ -614,10 +614,7 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 	if (dd < 0)
 		return -EIO;
 
-	if (!adapter->up &&
-			(main_opts.offmode == HCID_OFFMODE_NOSCAN ||
-			 (main_opts.offmode == HCID_OFFMODE_DEVDOWN &&
-			  scan_enable != SCAN_DISABLED))) {
+	if (!adapter->up && scan_enable != SCAN_DISABLED) {
 		/* Start HCI device */
 		if (ioctl(dd, HCIDEVUP, adapter->dev_id) == 0)
 			goto done; /* on success */
@@ -632,8 +629,7 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 		}
 	}
 
-	if (adapter->up && scan_enable == SCAN_DISABLED &&
-			main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
+	if (adapter->up && scan_enable == SCAN_DISABLED) {
 		if (ioctl(dd, HCIDEVDOWN, adapter->dev_id) < 0) {
 			err = -errno;
 			hci_close_dev(dd);
@@ -1777,10 +1773,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &property);
 
 	/* Powered */
-	if (main_opts.offmode == HCID_OFFMODE_DEVDOWN)
-		value = adapter->up ? TRUE : FALSE;
-	else
-		value = adapter->scan_mode == SCAN_DISABLED ? FALSE : TRUE;
+	value = adapter->up ? TRUE : FALSE;
 	dict_append_entry(&dict, "Powered", DBUS_TYPE_BOOLEAN, &value);
 
 	/* Discoverable */
@@ -2540,23 +2533,17 @@ static int adapter_up(struct btd_adapter *adapter, int dd)
 	if (g_str_equal(mode, "off")) {
 		powered = FALSE;
 
-		if (main_opts.offmode == HCID_OFFMODE_NOSCAN) {
-			adapter->mode = MODE_OFF;
-			scan_mode = SCAN_DISABLED;
-		} else if (main_opts.offmode == HCID_OFFMODE_DEVDOWN) {
-			if (!adapter->initialized) {
-				dev_down = TRUE;
-				goto proceed;
-			}
-
-			if (read_on_mode(srcaddr, mode, sizeof(mode)) < 0)
-				write_device_mode(&adapter->bdaddr,
-							"connectable");
-			else
-				write_device_mode(&adapter->bdaddr, mode);
-
-			return adapter_up(adapter, dd);
+		if (!adapter->initialized) {
+			dev_down = TRUE;
+			goto proceed;
 		}
+
+		if (read_on_mode(srcaddr, mode, sizeof(mode)) < 0)
+			write_device_mode(&adapter->bdaddr, "connectable");
+		else
+			write_device_mode(&adapter->bdaddr, mode);
+
+		return adapter_up(adapter, dd);
 	} else if (!g_str_equal(mode, "connectable") &&
 			adapter->discov_timeout == 0) {
 		/* Set discoverable only if timeout is 0 */
@@ -2591,7 +2578,7 @@ proceed:
 		g_free(cl);
 	}
 
-	if (dev_down == FALSE && main_opts.offmode == HCID_OFFMODE_DEVDOWN)
+	if (dev_down == FALSE)
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
@@ -3196,9 +3183,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		return;
 	}
 
-	if (powered == FALSE ||
-			(main_opts.offmode == HCID_OFFMODE_NOSCAN &&
-			 adapter->scan_mode == SCAN_DISABLED))
+	if (powered == FALSE)
 		emit_property_changed(connection, path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);

@@ -102,18 +102,6 @@ static void parse_config(GKeyFile *config)
 
 	debug("parsing main.conf");
 
-	str = g_key_file_get_string(config, "General",
-					"OffMode", &err);
-	if (err) {
-		debug("%s", err->message);
-		g_clear_error(&err);
-	} else {
-		debug("offmode=%s", str);
-		if (g_str_equal(str, "DevDown"))
-			main_opts.offmode = HCID_OFFMODE_DEVDOWN;
-		g_free(str);
-	}
-
 	val = g_key_file_get_integer(config, "General",
 					"DiscoverableTimeout",
 					&err);
@@ -528,7 +516,6 @@ static void init_defaults(void)
 {
 	/* Default HCId settings */
 	memset(&main_opts, 0, sizeof(main_opts));
-	main_opts.offmode	= HCID_OFFMODE_NOSCAN;
 	main_opts.scan	= SCAN_PAGE;
 	main_opts.mode	= MODE_CONNECTABLE;
 	main_opts.name	= g_strdup("BlueZ");

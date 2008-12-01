@@ -42,9 +42,6 @@
 #define MODE_LIMITED		0x03
 #define MODE_UNKNOWN		0xff
 
-#define HCID_OFFMODE_DEVDOWN	0
-#define HCID_OFFMODE_NOSCAN	1
-
 /* Timeout for hci_send_req (milliseconds) */
 #define HCI_REQ_TIMEOUT		5000
 
@@ -59,7 +56,6 @@ struct main_opts {
 	uint16_t	link_mode;
 	uint16_t	link_policy;
 
-	int		offmode;
 	uint8_t		scan;
 	uint8_t		mode;
 	uint8_t		inqmode;
