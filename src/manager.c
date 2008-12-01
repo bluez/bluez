@@ -380,8 +380,7 @@ static void manager_add_adapter(struct btd_adapter *adapter)
 	if (default_adapter_id < 0) {
 		int new_default = hci_get_route(NULL);
 
-		if (new_default >= 0)
-			manager_set_default_adapter(new_default);
+		manager_set_default_adapter(new_default);
 	}
 }
 
@@ -398,8 +397,7 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 	if (default_adapter_id == dev_id || default_adapter_id < 0) {
 		int new_default = hci_get_route(NULL);
 
-		if (new_default >= 0)
-			manager_set_default_adapter(new_default);
+		manager_set_default_adapter(new_default);
 	}
 
 	adapters = g_slist_remove(adapters, adapter);
@@ -478,10 +476,16 @@ int manager_get_default_adapter()
 
 void manager_set_default_adapter(int id)
 {
-	struct btd_adapter *adapter = manager_find_adapter_by_id(id);
-	const gchar *path = adapter_get_path(adapter);
+	struct btd_adapter *adapter;
+	const gchar *path;
 
 	default_adapter_id = id;
+
+	adapter = manager_find_adapter_by_id(id);
+	if (!adapter)
+		return;
+
+	path = adapter_get_path(adapter);
 
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE,
