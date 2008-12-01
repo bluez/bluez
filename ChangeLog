@@ -1,3 +1,8 @@
+ver 4.21:
+	Fix adapter initialization logic.
+	Fix adapter setup and start security manager early.
+	Fix usage issue with first_init variable.
+
 ver 4.20:
 	Cleanup session handling.
 	Cleanup mode setting handling.
