@@ -99,6 +99,7 @@ gint ftp_chkput(obex_t *obex, obex_object_t *obj);
 void ftp_setpath(obex_t *obex, obex_object_t *obj);
 
 void pbap_get(obex_t *obex, obex_object_t *obj);
+void pbap_setpath(obex_t *obex, obex_object_t *obj);
 gboolean pbap_phonebook_context_create(struct obex_session *session);
 void pbap_phonebook_context_destroy(struct obex_session *session);
 struct obex_session *pbap_get_session(struct phonebook_context *context);

@@ -86,6 +86,7 @@ struct obex_commands ftp = {
 
 struct obex_commands pbap = {
 	.get		= pbap_get,
+	.setpath	= pbap_setpath,
 };
 
 static void os_reset_session(struct obex_session *os)

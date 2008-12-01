@@ -201,12 +201,11 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 
 void pbap_get(obex_t *obex, obex_object_t *obj)
 {
-	struct obex_session *session;
+	struct obex_session *session = OBEX_GetUserData(obex);
 	obex_headerdata_t hd;
 	gboolean addbody = TRUE;
 	int err;
 
-	session = OBEX_GetUserData(obex);
 	if (session == NULL)
 		return;
 
@@ -239,6 +238,105 @@ void pbap_get(obex_t *obex, obex_object_t *obj)
 
 fail:
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+}
+
+static gboolean pbap_is_valid_folder(struct obex_session *session)
+{
+	if (session->current_folder == NULL) {
+		if (g_str_equal(session->name, "telecom") == TRUE ||
+			g_str_equal(session->name, "SIM1") == TRUE)
+			return TRUE;
+	} else if (g_str_equal(session->current_folder, "SIM1") == TRUE) {
+		if (g_str_equal(session->name, "telecom") == TRUE)
+			return TRUE;
+	} else if (g_str_equal(session->current_folder, "telecom") == TRUE ||
+		g_str_equal(session->current_folder, "SIM1/telecom") == TRUE) {
+		if (g_str_equal(session->name, "pb") == TRUE ||
+				g_str_equal(session->name, "ich") == TRUE ||
+				g_str_equal(session->name, "och") == TRUE ||
+				g_str_equal(session->name, "mch") == TRUE ||
+				g_str_equal(session->name, "cch") == TRUE)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+void pbap_setpath(obex_t *obex, obex_object_t *obj)
+{
+	struct obex_session *session = OBEX_GetUserData(obex);
+	guint8 *nonhdr;
+	gchar *fullname;
+
+	if (OBEX_ObjectGetNonHdrData(obj, &nonhdr) != 2) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE,
+				OBEX_RSP_PRECONDITION_FAILED);
+		error("Set path failed: flag and constants not found!");
+		return;
+	}
+
+	/* Check "Backup" flag */
+	if ((nonhdr[0] & 0x01) == 0x01) {
+		debug("Set to parent path");
+
+		if (session->current_folder == NULL) {
+			/* we are already in top level folder */
+			OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN,
+					OBEX_RSP_FORBIDDEN);
+			return;
+		}
+
+		fullname = g_path_get_dirname(session->current_folder);
+		g_free(session->current_folder);
+
+		if (strlen(fullname) == 1 && *fullname == '.')
+			session->current_folder = NULL;
+		else
+			session->current_folder = g_strdup(fullname);
+
+		g_free(fullname);
+
+		debug("Set to parent path: %s", session->current_folder);
+
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
+		return;
+	}
+
+	if (!session->name) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_BAD_REQUEST);
+		error("Set path failed: name missing!");
+		return;
+	}
+
+	if (strlen(session->name) == 0) {
+		debug("Set to root");
+
+		g_free(session->current_folder);
+		session->current_folder = NULL;
+
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
+		return;
+	}
+
+	/* Check and set to name path */
+	if (strstr(session->name, "/")) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		error("Set path failed: name incorrect!");
+		return;
+	}
+
+	if (pbap_is_valid_folder(session) == FALSE) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_FOUND, OBEX_RSP_NOT_FOUND);
+		return;
+	}
+
+	fullname = g_build_filename(session->current_folder, session->name, NULL);
+
+	debug("Fullname: %s", fullname);
+
+	g_free(session->current_folder);
+	session->current_folder = fullname;
+	OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 }
 
 gboolean pbap_phonebook_context_create(struct obex_session *session)
