@@ -122,6 +122,7 @@ static void read_config(const char *file)
 		g_clear_error(&err);
 	}
 
+#if 0
 	conf.panu_script = g_key_file_get_string(keyfile, "PANU Role",
 						"Script", &err);
 	if (err) {
@@ -142,6 +143,7 @@ static void read_config(const char *file)
 		debug("%s: %s", file, err->message);
 		g_clear_error(&err);
 	}
+#endif
 
 	conf.iface_prefix = g_key_file_get_string(keyfile, "PANU Role",
 						"Interface", &err);
