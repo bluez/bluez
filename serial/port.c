@@ -386,7 +386,7 @@ static DBusMessage *port_disconnect(DBusConnection *conn,
 {
 	struct serial_device *device = user_data;
 	struct serial_port *port;
-	const char *dev;
+	const char *dev, *owner, *caller;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &dev,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -398,6 +398,11 @@ static DBusMessage *port_disconnect(DBusConnection *conn,
 
 	if (!port->listener_id)
 		return failed(msg, "Not connected");
+
+	owner = dbus_message_get_sender(port->msg);
+	caller = dbus_message_get_sender(msg);
+	if (!g_str_equal(owner, caller))
+		return failed(msg, "Operation not permited");
 
 	if (port->id >= 0)
 		port_release(port);
