@@ -2248,7 +2248,6 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-/* BlueZ 4.0 API */
 static GDBusMethodTable adapter_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",get_properties		},
 	{ "SetProperty",	"sv",	"",	set_property,
@@ -2274,10 +2273,10 @@ static GDBusMethodTable adapter_methods[] = {
 };
 
 static GDBusSignalTable adapter_signals[] = {
+	{ "PropertyChanged",		"sv"		},
 	{ "DeviceCreated",		"o"		},
 	{ "DeviceRemoved",		"o"		},
 	{ "DeviceFound",		"sa{sv}"	},
-	{ "PropertyChanged",		"sv"		},
 	{ "DeviceDisappeared",		"s"		},
 	{ }
 };
