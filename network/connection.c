@@ -66,6 +66,7 @@ struct network_conn {
 	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
 	int		sk;
+	guint		watch;		/* Disconnect watch */
 	struct network_peer *peer;
 };
 
@@ -152,6 +153,10 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 		emit_property_changed(connection, nc->peer->path,
 					NETWORK_PEER_INTERFACE, "UUID",
 					DBUS_TYPE_STRING, &property);
+		if (nc->watch) {
+			g_dbus_remove_watch(connection, nc->watch);
+			nc->watch = 0;
+		}
 	}
 
 	info("%s disconnected", nc->dev);
@@ -345,6 +350,19 @@ failed:
 	g_dbus_send_message(connection, reply);
 }
 
+static void connection_destroy(DBusConnection *conn, void *user_data)
+{
+	struct network_conn *nc = user_data;
+
+	nc->watch = 0;
+
+	if (nc->state == CONNECTED) {
+		bnep_if_down(nc->dev);
+		bnep_kill_connection(&nc->peer->dst);
+	} else
+		close(nc->sk);
+}
+
 /* Connect and initiate BNEP session */
 static DBusMessage *connection_connect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -369,6 +387,10 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 
 	nc->state = CONNECTING;
 	nc->msg = dbus_message_ref(msg);
+	nc->watch = g_dbus_add_disconnect_watch(conn,
+						dbus_message_get_sender(msg),
+						connection_destroy,
+						nc, NULL);
 
 	err = bt_l2cap_connect(&peer->src, &peer->dst, BNEP_PSM, BNEP_MTU,
 							connect_cb, nc);
@@ -388,11 +410,12 @@ static DBusMessage *connection_cancel(DBusConnection *conn,
 {
 	struct network_conn *nc = data;
 
-	if (nc->state == CONNECTED) {
-		bnep_if_down(nc->dev);
-		bnep_kill_connection(&nc->peer->dst);
-	} else
-		close(nc->sk);
+	if (nc->watch) {
+		g_dbus_remove_watch(conn, nc->watch);
+		nc->watch = 0;
+	}
+
+	connection_destroy(conn, data);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
