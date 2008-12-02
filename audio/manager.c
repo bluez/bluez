@@ -458,8 +458,11 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
-	if (!device->headset)
+	if (!device->headset) {
 		btd_device_add_uuid(device->btd_dev, remote_uuid);
+		if (!device->headset)
+			goto drop;
+	}
 
 	if (headset_get_state(device) > HEADSET_STATE_DISCONNECTED) {
 		debug("Refusing new connection since one already exists");
