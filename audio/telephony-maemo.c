@@ -1376,11 +1376,54 @@ done:
 	dbus_message_unref(reply);
 }
 
+static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusError err;
+	DBusMessage *reply;
+	DBusMessageIter iter, sub;;
+	const char *path;
+	int type;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("hald replied with an error: %s, %s",
+				err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_message_iter_init(reply, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+		error("Unexpected signature in GetCallInfoAll return");
+		goto done;
+	}
+
+	dbus_message_iter_recurse(&iter, &sub);
+
+	type = dbus_message_iter_get_arg_type(&sub);
+
+	if (type != DBUS_TYPE_OBJECT_PATH) {
+		error("No hal device with battery capability found");
+		goto done;
+	}
+
+	dbus_message_iter_get_basic(&sub, &path);
+
+	debug("telephony-maemo: found battery device at %s", path);
+
+done:
+	dbus_message_unref(reply);
+}
+
 int telephony_init(void)
 {
 	DBusMessage *msg;
 	DBusPendingCall *call;
 	char match_string[128];
+	const char *battery_cap = "battery";
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
@@ -1417,6 +1460,28 @@ int telephony_init(void)
 	}
 
 	dbus_pending_call_set_notify(call, call_info_reply, NULL, NULL);
+	dbus_pending_call_unref(call);
+	dbus_message_unref(msg);
+
+	msg = dbus_message_new_method_call("org.freedesktop.Hal",
+						"/org/freedesktop/Hal/Manager",
+						"org.freedesktop.Hal.Manager",
+						"FindDeviceByCapability");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &battery_cap,
+							DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+		error("Sending FindDeviceByCapability failed");
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(call, hal_find_device_reply, NULL, NULL);
 	dbus_pending_call_unref(call);
 	dbus_message_unref(msg);
 
