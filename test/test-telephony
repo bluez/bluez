@@ -24,6 +24,10 @@ if len(sys.argv) < 2:
 	roaming <yes|no>
 	registration <status>
 	subscriber <number>
+	speakergain <bdaddr> [level]
+	microphonegain <bdaddr> [level]
+	play <bdaddr>
+	stop <bdaddr>
 	""" % sys.argv[0]
 	sys.exit(1)
 
@@ -45,6 +49,58 @@ if sys.argv[1] == "disconnect":
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
 					"org.bluez.Headset")
 	headset.Disconnect()
+	sys.exit(0)
+
+if sys.argv[1] == "speakergain":
+	if len(sys.argv) < 3:
+		print "Need device address parameter"
+		sys.exit(1)
+	device = adapter.FindDevice(sys.argv[2])
+	headset = dbus.Interface(bus.get_object("org.bluez", device),
+					"org.bluez.Headset")
+	if len(sys.argv) > 3:
+		headset.SetProperty('SpeakerGain', dbus.UInt16(sys.argv[3]))
+	else:
+		props = headset.GetProperties()
+		print props['SpeakerGain']
+
+	sys.exit(0)
+
+if sys.argv[1] == "microphonegain":
+	if len(sys.argv) < 3:
+		print "Need device address parameter"
+		sys.exit(1)
+	device = adapter.FindDevice(sys.argv[2])
+	headset = dbus.Interface(bus.get_object("org.bluez", device),
+					"org.bluez.Headset")
+	if len(sys.argv) > 3:
+		headset.SetProperty('MicrophoneGain', dbus.UInt16(sys.argv[3]))
+	else:
+		props = headset.GetProperties()
+		print props['MicrophoneGain']
+
+	sys.exit(0)
+
+if sys.argv[1] == "play":
+	if len(sys.argv) < 3:
+		print "Need device address parameter"
+		sys.exit(1)
+	device = adapter.FindDevice(sys.argv[2])
+	headset = dbus.Interface(bus.get_object("org.bluez", device),
+					"org.bluez.Headset")
+	headset.Play()
+
+	sys.exit(0)
+
+if sys.argv[1] == "stop":
+	if len(sys.argv) < 3:
+		print "Need device address parameter"
+		sys.exit(1)
+	device = adapter.FindDevice(sys.argv[2])
+	headset = dbus.Interface(bus.get_object("org.bluez", device),
+					"org.bluez.Headset")
+	headset.Stop()
+
 	sys.exit(0)
 
 if sys.argv[1] == "outgoing":
