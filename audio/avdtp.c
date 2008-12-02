@@ -1077,8 +1077,13 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session,
 
 	switch (sep->info.type) {
 	case AVDTP_SEP_TYPE_SOURCE:
-		if (!dev->sink)
+		if (!dev->sink) {
 			btd_device_add_uuid(dev->btd_dev, A2DP_SINK_UUID);
+			if (!dev->sink) {
+				error("Unable to get a audio sink object");
+				goto failed;
+			}
+		}
 		break;
 	case AVDTP_SEP_TYPE_SINK:
 		/* Do source_init() here when it's implemented */
