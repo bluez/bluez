@@ -156,6 +156,9 @@ static GSList *calls = NULL;
 
 static char *subscriber_number = NULL;
 
+static int battchg = -1;
+static int battchg_max = -1;
+
 static gboolean events_enabled = FALSE;
 
 /* Supported set of call hold operations */
@@ -246,7 +249,7 @@ static struct csd_call *find_call_with_status(int status)
 	return NULL;
 }
 
-static gboolean update_network_indicators(gpointer user_data)
+static gboolean update_indicators(gpointer user_data)
 {
 	if (net.status < NETWORK_REG_STATUS_NOSERV) {
 		int signal;
@@ -268,6 +271,11 @@ static gboolean update_network_indicators(gpointer user_data)
 		telephony_update_indicator(maemo_indicators, "roam",
 						EV_ROAM_ACTIVE);
 		break;
+	}
+
+	if (battchg_max > 0 && battchg > 0) {
+	        int bat = telephony_get_indicator(maemo_indicators, "battchg");
+		telephony_update_indicator(maemo_indicators, "battchg", bat);
 	}
 
 	return FALSE;
@@ -382,7 +390,7 @@ void telephony_device_connected(void *telephony_device)
 {
 	debug("telephony-maemo: device %p connected", telephony_device);
 
-	g_timeout_add_seconds(1, update_network_indicators, NULL);
+	g_timeout_add_seconds(1, update_indicators, NULL);
 }
 
 void telephony_device_disconnected(void *telephony_device)
@@ -1071,36 +1079,6 @@ static void handle_signal_strength_change(DBusMessage *msg)
 	update_signal_strength(signals_bar);
 }
 
-static DBusHandlerResult cs_signal_filter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *interface = dbus_message_get_interface(msg);
-	const char *member = dbus_message_get_member(msg);
-	const char *path = dbus_message_get_path(msg);
-
-	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL ||
-			!(g_str_has_prefix(interface, CSD_CALL_INTERFACE) ||
-				g_str_equal(interface, NETWORK_INTERFACE)))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	debug("telephony-maemo: received %s %s.%s", path, interface, member);
-
-	if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Coming"))
-		handle_incoming_call(msg);
-	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Created"))
-		handle_outgoing_call(msg);
-	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE, "CallStatus"))
-		handle_call_status(msg, path);
-	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
-					"registration_status_change"))
-		handle_registration_status_change(msg);
-	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
-					"signal_strength_change"))
-		handle_signal_strength_change(msg);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static gboolean iter_get_basic_args(DBusMessageIter *iter,
 					int first_arg_type, ...)
 {
@@ -1127,6 +1105,154 @@ static gboolean iter_get_basic_args(DBusMessageIter *iter,
 	va_end(ap);
 
 	return type == DBUS_TYPE_INVALID ? TRUE : FALSE;
+}
+
+static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusError err;
+	DBusMessage *reply;
+	dbus_int32_t level;
+	int *value = user_data;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("hald replied with an error: %s, %s",
+				err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_message_get_args(reply, NULL,
+				DBUS_TYPE_INT32, &level,
+				DBUS_TYPE_INVALID);
+
+	*value = (int) level;
+
+	if (value == &battchg_max)
+		debug("battery.charge_level.last_full is %d", *value);
+	else
+		debug("battery.charge_level.current is %d", *value);
+
+	if (battchg_max > 0 && battchg > 0) {
+		int battchg_norm;
+
+		battchg_norm = battchg * 5 / battchg_max;
+
+		telephony_update_indicator(maemo_indicators, "battchg", battchg_norm);
+	}
+done:
+	dbus_message_unref(reply);
+}
+
+static void hal_get_integer(const char *path, const char *key, void *user_data)
+{
+	DBusMessage *msg;
+	DBusPendingCall *call;
+
+	msg = dbus_message_new_method_call("org.freedesktop.Hal", path,
+						"org.freedesktop.Hal.Device",
+						"GetPropertyInteger");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &key,
+							DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+		error("Sending GetPropertyInteger failed");
+		dbus_message_unref(msg);
+		return;
+	}
+
+	dbus_pending_call_set_notify(call, hal_battery_level_reply,
+						user_data, NULL);
+	dbus_pending_call_unref(call);
+	dbus_message_unref(msg);
+}
+
+static void handle_hal_property_modified(DBusMessage *msg)
+{
+	DBusMessageIter iter, array;
+	dbus_int32_t num_changes;
+	const char *path;
+
+	path = dbus_message_get_path(msg);
+
+	dbus_message_iter_init(msg, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_INT32) {
+		error("Unexpected signature in hal PropertyModified signal");
+		return;
+	}
+
+	dbus_message_iter_get_basic(&iter, &num_changes);
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+		error("Unexpected signature in hal PropertyModified signal");
+		return;
+	}
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_INVALID) {
+		DBusMessageIter prop;
+		const char *name;
+		dbus_bool_t added, removed;
+
+		dbus_message_iter_recurse(&array, &prop);
+
+		if (!iter_get_basic_args(&prop,
+					DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_BOOLEAN, &added,
+					DBUS_TYPE_BOOLEAN, &removed,
+					DBUS_TYPE_INVALID)) {
+			error("Invalid hal PropertyModified parameters");
+			break;
+		}
+
+		if (g_str_equal(name, "battery.charge_level.last_full"))
+			hal_get_integer(path, name, &battchg_max);
+		else if (g_str_equal(name, "battery.charge_level.current"))
+			hal_get_integer(path, name, &battchg);
+	}
+}
+
+static DBusHandlerResult signal_filter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *interface = dbus_message_get_interface(msg);
+	const char *member = dbus_message_get_member(msg);
+	const char *path = dbus_message_get_path(msg);
+
+	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL ||
+			!(g_str_has_prefix(interface, CSD_CALL_INTERFACE) ||
+				g_str_equal(interface, NETWORK_INTERFACE)))
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	debug("telephony-maemo: received %s %s.%s", path, interface, member);
+
+	if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Coming"))
+		handle_incoming_call(msg);
+	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Created"))
+		handle_outgoing_call(msg);
+	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE, "CallStatus"))
+		handle_call_status(msg, path);
+	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
+					"registration_status_change"))
+		handle_registration_status_change(msg);
+	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
+					"signal_strength_change"))
+		handle_signal_strength_change(msg);
+	else if (dbus_message_is_signal(msg, "org.freedesktop.Hal.Device",
+					"PropertyModified"))
+		handle_hal_property_modified(msg);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static void csd_call_free(struct csd_call *call)
@@ -1382,6 +1508,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusMessageIter iter, sub;;
 	const char *path;
+	char match_string[128];
 	int type;
 
 	reply = dbus_pending_call_steal_reply(call);
@@ -1414,6 +1541,14 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 
 	debug("telephony-maemo: found battery device at %s", path);
 
+	snprintf(match_string, sizeof(match_string),
+			"type=signal,interface=org.freedesktop.Hal.Device,"
+				"path=%s,member=PropertyModified", path);
+	dbus_bus_add_match(connection, match_string, NULL);
+
+	hal_get_integer(path, "battery.charge_level.last_full", &battchg_max);
+	hal_get_integer(path, "battery.charge_level.current", &battchg);
+
 done:
 	dbus_message_unref(reply);
 }
@@ -1427,7 +1562,7 @@ int telephony_init(void)
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
-	if (!dbus_connection_add_filter(connection, cs_signal_filter,
+	if (!dbus_connection_add_filter(connection, signal_filter,
 						NULL, NULL)) {
 		error("Can't add signal filter");
 		return -EIO;
