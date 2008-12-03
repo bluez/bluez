@@ -1219,6 +1219,8 @@ static void handle_hal_property_modified(DBusMessage *msg)
 			hal_get_integer(path, name, &battchg_max);
 		else if (g_str_equal(name, "battery.charge_level.current"))
 			hal_get_integer(path, name, &battchg);
+
+		dbus_message_iter_next(&array);
 	}
 }
 
@@ -1228,11 +1230,6 @@ static DBusHandlerResult signal_filter(DBusConnection *conn,
 	const char *interface = dbus_message_get_interface(msg);
 	const char *member = dbus_message_get_member(msg);
 	const char *path = dbus_message_get_path(msg);
-
-	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL ||
-			!(g_str_has_prefix(interface, CSD_CALL_INTERFACE) ||
-				g_str_equal(interface, NETWORK_INTERFACE)))
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	debug("telephony-maemo: received %s %s.%s", path, interface, member);
 
@@ -1508,7 +1505,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusMessageIter iter, sub;;
 	const char *path;
-	char match_string[128];
+	char match_string[256];
 	int type;
 
 	reply = dbus_pending_call_steal_reply(call);
@@ -1542,8 +1539,10 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 	debug("telephony-maemo: found battery device at %s", path);
 
 	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=org.freedesktop.Hal.Device,"
-				"path=%s,member=PropertyModified", path);
+			"type='signal',"
+			"path='%s',"
+			"interface='org.freedesktop.Hal.Device',"
+			"member='PropertyModified'", path);
 	dbus_bus_add_match(connection, match_string, NULL);
 
 	hal_get_integer(path, "battery.charge_level.last_full", &battchg_max);
