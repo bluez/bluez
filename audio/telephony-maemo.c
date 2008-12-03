@@ -1131,16 +1131,21 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 	*value = (int) level;
 
 	if (value == &battchg_max)
-		debug("battery.charge_level.last_full is %d", *value);
+		debug("telephony-maemo: battery.charge_level.last_full is %d",
+				*value);
 	else
-		debug("battery.charge_level.current is %d", *value);
+		debug("telephony-maemo: battery.charge_level.current is %d",
+				*value);
 
-	if (battchg_max > 0 && battchg > 0) {
-		int battchg_norm;
+	if (battchg_max > 0 && battchg >= 0) {
+		int new, cur;
 
-		battchg_norm = battchg * 5 / battchg_max;
+	        cur = telephony_get_indicator(maemo_indicators, "battchg");
+		new = battchg * 5 / battchg_max;
 
-		telephony_update_indicator(maemo_indicators, "battchg", battchg_norm);
+		if (new != cur)
+			telephony_update_indicator(maemo_indicators, "battchg",
+							new);
 	}
 done:
 	dbus_message_unref(reply);
