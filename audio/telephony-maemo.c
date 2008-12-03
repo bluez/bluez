@@ -273,7 +273,7 @@ static gboolean update_indicators(gpointer user_data)
 		break;
 	}
 
-	if (battchg_max > 0 && battchg > 0) {
+	if (battchg_max > 0 && battchg >= 0) {
 	        int bat = telephony_get_indicator(maemo_indicators, "battchg");
 		telephony_update_indicator(maemo_indicators, "battchg", bat);
 	}
