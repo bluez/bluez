@@ -446,9 +446,10 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 					capability,
 					device_agent_removed,
 					device);
-
-	if (!agent)
-		debug("agent_create failed");
+	if (!agent) {
+		error("Unable to create a new agent");
+		return NULL;
+	}
 
 	device_set_agent(device, agent);
 
