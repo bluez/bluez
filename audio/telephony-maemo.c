@@ -1532,7 +1532,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 
 	type = dbus_message_iter_get_arg_type(&sub);
 
-	if (type != DBUS_TYPE_OBJECT_PATH) {
+	if (type != DBUS_TYPE_OBJECT_PATH && type != DBUS_TYPE_STRING) {
 		error("No hal device with battery capability found");
 		goto done;
 	}
