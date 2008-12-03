@@ -436,10 +436,19 @@ static struct bonding_request_info *bonding_request_new(DBusConnection *conn,
 	device_get_address(device, &bdaddr);
 	ba2str(&bdaddr, addr);
 
+	if (adapter->agent &&
+			agent_matches(adapter->agent, name, agent_path)) {
+		error("Refusing adapter agent usage as device specific one");
+		return NULL;
+	}
+
 	agent = agent_create(adapter, name, agent_path,
 					capability,
 					device_agent_removed,
 					device);
+
+	if (!agent)
+		debug("agent_create failed");
 
 	device_set_agent(device, agent);
 

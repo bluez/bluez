@@ -188,10 +188,6 @@ struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 {
 	struct agent *agent, *adapter_agent;
 
-	adapter_agent = adapter_get_agent(adapter);
-	if (adapter_agent && g_str_equal(adapter_agent->name, name))
-		return NULL;
-
 	agent = g_new0(struct agent, 1);
 
 	agent->adapter = adapter;
