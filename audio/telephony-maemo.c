@@ -494,6 +494,49 @@ void telephony_answer_call_req(void *telephony_device)
 		telephony_answer_call_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+static int send_method_call(const char *dest, const char *path,
+				const char *interface, const char *method,
+				DBusPendingCallNotifyFunction cb,
+				void *user_data, int type, ...)
+{
+	DBusMessage *msg;
+	DBusPendingCall *call;
+	va_list args;
+
+	msg = dbus_message_new_method_call(dest, path, interface, method);
+	if (!msg) {
+		error("Unable to allocate new D-Bus %s message", method);
+		return -ENOMEM;
+	}
+
+	va_start(args, type);
+
+	if (!dbus_message_append_args_valist(msg, type, args)) {
+		dbus_message_unref(msg);
+		va_end(args);
+		return -EIO;
+	}
+
+	va_end(args);
+
+	if (!cb) {
+		g_dbus_send_message(connection, msg);
+		return 0;
+	}
+
+	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+		error("Sending %s failed", method);
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(call, cb, user_data, NULL);
+	dbus_pending_call_unref(call);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
 const char *memory_dial_lookup(int location)
 {
 	if (location == 1)
@@ -505,7 +548,7 @@ const char *memory_dial_lookup(int location)
 void telephony_dial_number_req(void *telephony_device, const char *number)
 {
 	uint32_t flags = CALL_FLAG_NONE;
-	DBusMessage *msg;
+	int ret;
 
 	debug("telephony-maemo: dial request to %s", number);
 
@@ -525,44 +568,38 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 		}
 	}
 
-	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
-					CSD_CALL_INTERFACE, "CreateWith");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
+	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+				CSD_CALL_INTERFACE, "CreateWith",
+				NULL, NULL,
+				DBUS_TYPE_STRING, &number,
+				DBUS_TYPE_UINT32, &flags,
+				DBUS_TYPE_INVALID);
+	if (ret < 0) {
 		telephony_dial_number_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
 		return;
 	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &number,
-					DBUS_TYPE_UINT32, &flags,
-					DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(connection, msg);
 
 	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 {
-	DBusMessage *msg;
+	int ret;
 	char buf[2] = { tone, '\0' }, *buf_ptr = buf;
 
 	debug("telephony-maemo: transmit dtmf: %s", buf);
 
-	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
-					   CSD_CALL_INTERFACE, "SendDTMF");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
+	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+				   CSD_CALL_INTERFACE, "SendDTMF",
+				   NULL, NULL,
+				   DBUS_TYPE_STRING, &buf_ptr,
+				   DBUS_TYPE_INVALID);
+	if (ret < 0) {
 		telephony_transmit_dtmf_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
 		return;
 	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &buf_ptr,
-					DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(connection, msg);
 
 	telephony_transmit_dtmf_rsp(telephony_device, CME_ERROR_NONE);
 }
@@ -968,33 +1005,15 @@ done:
 
 static void resolve_operator_name(uint32_t operator, uint32_t country)
 {
-	DBusMessage *msg;
-	DBusPendingCall *pcall;
 	uint8_t name_type = NETWORK_HARDCODED_LATIN_OPER_NAME;
 
-	msg = dbus_message_new_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
-						NETWORK_INTERFACE,
-						"get_operator_name");
-	if (!msg) {
-		error("Unable to allocate a new D-Bus method call");
-		return;
-	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_BYTE, &name_type,
-					DBUS_TYPE_UINT32, &operator,
-					DBUS_TYPE_UINT32, &country,
-					DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(connection, msg, &pcall, -1)) {
-		error("Sending get_operator_name failed");
-		dbus_message_unref(msg);
-		return;
-	}
-
-	dbus_pending_call_set_notify(pcall, get_operator_name_reply, NULL,
-					NULL);
-	dbus_pending_call_unref(pcall);
-	dbus_message_unref(msg);
+	send_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
+				NETWORK_INTERFACE, "get_operator_name",
+				get_operator_name_reply, NULL,
+				DBUS_TYPE_BYTE, &name_type,
+				DBUS_TYPE_UINT32, &operator,
+				DBUS_TYPE_UINT32, &country,
+				DBUS_TYPE_INVALID);
 }
 
 static void update_registration_status(uint8_t status, uint16_t lac,
@@ -1192,30 +1211,12 @@ done:
 
 static void hal_get_integer(const char *path, const char *key, void *user_data)
 {
-	DBusMessage *msg;
-	DBusPendingCall *call;
-
-	msg = dbus_message_new_method_call("org.freedesktop.Hal", path,
-						"org.freedesktop.Hal.Device",
-						"GetPropertyInteger");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
-		return;
-	}
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &key,
-							DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
-		error("Sending GetPropertyInteger failed");
-		dbus_message_unref(msg);
-		return;
-	}
-
-	dbus_pending_call_set_notify(call, hal_battery_level_reply,
-						user_data, NULL);
-	dbus_pending_call_unref(call);
-	dbus_message_unref(msg);
+	send_method_call("org.freedesktop.Hal", path,
+				"org.freedesktop.Hal.Device",
+				"GetPropertyInteger",
+				hal_battery_level_reply, user_data,
+				DBUS_TYPE_STRING, &key,
+				DBUS_TYPE_INVALID);
 }
 
 static void handle_hal_property_modified(DBusMessage *msg)
@@ -1398,29 +1399,10 @@ done:
 
 static int get_signal_strength(void)
 {
-	DBusMessage *msg;
-	DBusPendingCall *pcall;
-
-	msg = dbus_message_new_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
-						NETWORK_INTERFACE,
-						"get_signal_strength");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
-		return -ENOMEM;
-	}
-
-	if (!dbus_connection_send_with_reply(connection, msg, &pcall, -1)) {
-		error("Sending get_signal_strength failed");
-		dbus_message_unref(msg);
-		return -EIO;
-	}
-
-	dbus_pending_call_set_notify(pcall, signal_strength_reply, NULL,
-					NULL);
-	dbus_pending_call_unref(pcall);
-	dbus_message_unref(msg);
-
-	return 0;
+	return send_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
+				NETWORK_INTERFACE, "get_signal_strength",
+				signal_strength_reply, NULL,
+				DBUS_TYPE_INVALID);
 }
 
 static void registration_status_reply(DBusPendingCall *call, void *user_data)
@@ -1485,29 +1467,10 @@ done:
 
 static int get_registration_status(void)
 {
-	DBusMessage *msg;
-	DBusPendingCall *pcall;
-
-	msg = dbus_message_new_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
-						NETWORK_INTERFACE,
-						"get_registration_status");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
-		return -ENOMEM;
-	}
-
-	if (!dbus_connection_send_with_reply(connection, msg, &pcall, -1)) {
-		error("Sending get_registration_status failed");
-		dbus_message_unref(msg);
-		return -EIO;
-	}
-
-	dbus_pending_call_set_notify(pcall, registration_status_reply, NULL,
-					NULL);
-	dbus_pending_call_unref(pcall);
-	dbus_message_unref(msg);
-
-	return 0;
+	return send_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
+				NETWORK_INTERFACE, "get_registration_status",
+				registration_status_reply, NULL,
+				DBUS_TYPE_INVALID);
 }
 
 static void call_info_reply(DBusPendingCall *call, void *user_data)
@@ -1594,44 +1557,6 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
-}
-
-static int send_method_call(const char *dest, const char *path,
-				const char *interface, const char *method,
-				DBusPendingCallNotifyFunction cb,
-				void *user_data, int type, ...)
-{
-	DBusMessage *msg;
-	DBusPendingCall *call;
-	va_list args;
-
-	msg = dbus_message_new_method_call(dest, path, interface, method);
-	if (!msg) {
-		error("Unable to allocate new D-Bus %s message", method);
-		return -ENOMEM;
-	}
-
-	va_start(args, type);
-
-	if (!dbus_message_append_args_valist(msg, type, args)) {
-		dbus_message_unref(msg);
-		va_end(args);
-		return -EIO;
-	}
-
-	va_end(args);
-
-	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
-		error("Sending %s failed", method);
-		dbus_message_unref(msg);
-		return -EIO;
-	}
-
-	dbus_pending_call_set_notify(call, cb, user_data, NULL);
-	dbus_pending_call_unref(call);
-	dbus_message_unref(msg);
-
-	return 0;
 }
 
 static void phonebook_read_reply(DBusPendingCall *call, void *user_data)
