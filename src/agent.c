@@ -186,7 +186,7 @@ struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 				const char *path, uint8_t capability,
 				agent_remove_cb cb, void *remove_cb_data)
 {
-	struct agent *agent, *adapter_agent;
+	struct agent *agent;
 
 	agent = g_new0(struct agent, 1);
 
