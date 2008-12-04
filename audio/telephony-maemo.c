@@ -494,9 +494,17 @@ void telephony_answer_call_req(void *telephony_device)
 		telephony_answer_call_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+const char *memory_dial_lookup(int location)
+{
+	if (location == 1)
+		return vmbx;
+	else
+		return NULL;
+}
+
 void telephony_dial_number_req(void *telephony_device, const char *number)
 {
-	uint32_t flags;
+	uint32_t flags = CALL_FLAG_NONE;
 	DBusMessage *msg;
 
 	debug("telephony-maemo: dial request to %s", number);
@@ -507,8 +515,15 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 	} else if (strncmp(number, "#31#", 4) == 0) {
 		number += 4;
 		flags = CALL_FLAG_PRESENTATION_RESTRICTED;
-	} else
-		flags = CALL_FLAG_NONE;
+	} else if (number[0] == '>') {
+		number = memory_dial_lookup(strtol(&number[1], NULL, 0));
+		if (!number) {
+			error("No number at memory location %s", &number[1]);
+			telephony_dial_number_rsp(telephony_device,
+						CME_ERROR_INVALID_INDEX);
+			return;
+		}
+	}
 
 	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 					CSD_CALL_INTERFACE, "CreateWith");
