@@ -153,7 +153,7 @@ void telephony_subscriber_number_req(void *telephony_device);
 void telephony_list_current_calls_req(void *telephony_device);
 void telephony_operator_selection_req(void *telephony_device);
 void telephony_call_hold_req(void *telephony_device, const char *cmd);
-void telephony_disable_nr_and_ec_req(void *telephony_device);
+void telephony_disable_nr_and_ec_req(void *telephony_device, gboolean enable);
 
 /* AG responses to HF requests. These are implemented by headset.c */
 int telephony_event_reporting_rsp(void *telephony_device, cme_error_t err);

@@ -145,6 +145,8 @@ struct headset {
 	gboolean cme_enabled;
 	gboolean cwa_enabled;
 	gboolean pending_ring;
+	gboolean nrec;
+	gboolean nrec_req;
 
 	headset_state_t state;
 	struct pending_connect *pending;
@@ -1009,6 +1011,12 @@ int telephony_call_hold_rsp(void *telephony_device, cme_error_t err)
 
 int telephony_disable_nr_and_ec_rsp(void *telephony_device, cme_error_t err)
 {
+	struct audio_device *device = telephony_device;
+	struct headset *hs = device->headset;
+
+	if (err == CME_ERROR_NONE)
+		hs->nrec = hs->nrec_req;
+
 	return telephony_generic_rsp(telephony_device, err);
 }
 
@@ -1044,10 +1052,17 @@ static int operator_selection(struct audio_device *device, const char *buf)
 
 static int disable_nr_and_ec(struct audio_device *device, const char *buf)
 {
+	struct headset *hs = device->headset;
+
 	if (strlen(buf) < 9)
 		return -EINVAL;
 
-	telephony_disable_nr_and_ec_req(device);
+	if (buf[8] == '0')
+		hs->nrec_req = FALSE;
+	else
+		hs->nrec_req = TRUE;
+
+	telephony_disable_nr_and_ec_req(device, hs->nrec_req);
 
 	return 0;
 }
@@ -2006,6 +2021,7 @@ struct headset *headset_init(struct audio_device *dev, uint16_t svc,
 	hs->search_hfp = server_is_enabled(&dev->src, HANDSFREE_SVCLASS_ID);
 	hs->hfp_active = FALSE;
 	hs->cli_active = FALSE;
+	hs->nrec = TRUE;
 
 	record = btd_device_get_record(dev->btd_dev, uuidstr);
 	if (!record)
@@ -2275,6 +2291,8 @@ static int headset_close_rfcomm(struct audio_device *dev)
 
 	hs->data_start = 0;
 	hs->data_length = 0;
+
+	hs->nrec = TRUE;
 
 	return 0;
 }
