@@ -175,9 +175,9 @@ Properties	string Address [readonly]
 
 			The object path of the adpater the device belongs to.
 
-		object LegacyPairing [readonly]
+		boolean LegacyPairing [readonly]
 
 			Set to true if the device only supports the pre-2.1
 			pairing mechanism. This property is useful in the
-			Adapter.DeviceFound to anticipate whether legacy or
-			secure simple pairing will occur.
+			Adapter.DeviceFound signal to anticipate whether
+			legacy or secure simple pairing will occur.
