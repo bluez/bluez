@@ -181,3 +181,7 @@ Properties	string Address [readonly]
 			pairing mechanism. This property is useful in the
 			Adapter.DeviceFound signal to anticipate whether
 			legacy or secure simple pairing will occur.
+
+			Note that this property can exhibit false-positives
+			in the case of Bluetooth 2.1 (or newer) devices that
+			have disabled Extend Inquiry Response support.
