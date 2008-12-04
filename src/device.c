@@ -254,6 +254,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	ptr = adapter_get_path(adapter);
 	dict_append_entry(&dict, "Adapter", DBUS_TYPE_OBJECT_PATH, &ptr);
 
+	if (read_remote_eir(&src, &device->bdaddr, NULL) < 0)
+		boolean = TRUE;
+	else
+		boolean = FALSE;
+
+	dict_append_entry(&dict, "LegacyPairing", DBUS_TYPE_BOOLEAN, &boolean);
+
 	dbus_message_iter_close_container(&iter, &dict);
 
 	return reply;

@@ -894,6 +894,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	const char *path, *icon, *paddr = peer_addr;
 	struct remote_dev_info *dev, match;
 	dbus_int16_t tmp_rssi = rssi;
+	dbus_bool_t legacy = TRUE;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
 	int state;
@@ -909,8 +910,10 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 	write_remote_class(local, peer, class);
 
-	if (data)
+	if (data) {
 		write_remote_eir(local, peer, data);
+		legacy = FALSE;
+	}
 
 	/*
 	 * workaround to identify situation when the daemon started and
@@ -984,7 +987,9 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				"Icon", DBUS_TYPE_STRING, &icon,
 				"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
 				"Name", DBUS_TYPE_STRING, &name,
-				"Alias", DBUS_TYPE_STRING, &alias, NULL);
+				"Alias", DBUS_TYPE_STRING, &alias,
+				"LegacyPairing", DBUS_TYPE_BOOLEAN, &legacy,
+				NULL);
 
 	if (name && name_type != 0x08)
 		name_status = NAME_SENT;
@@ -1059,11 +1064,17 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 		const char *icon = class_to_icon(dev_info->class);
 		const char *alias, *paddr = dstaddr;
 		dbus_int16_t rssi = dev_info->rssi;
+		dbus_bool_t legacy;
 
 		if (dev_info->alias)
 			alias = dev_info->alias;
 		else
 			alias = name;
+
+		if (read_remote_eir(local, peer, NULL) < 0)
+			legacy = TRUE;
+		else
+			legacy = FALSE;
 
 		emit_device_found(adapter_path, dstaddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
@@ -1072,6 +1083,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 				"RSSI", DBUS_TYPE_INT16, &rssi,
 				"Name", DBUS_TYPE_STRING, &name,
 				"Alias", DBUS_TYPE_STRING, &alias,
+				"LegacyPairing", DBUS_TYPE_BOOLEAN, &legacy,
 				NULL);
 	}
 
