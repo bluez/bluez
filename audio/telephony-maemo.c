@@ -117,6 +117,29 @@ enum network_alpha_tag_name_type {
 #define CALL_FLAG_PRESENTATION_ALLOWED		0x01
 #define CALL_FLAG_PRESENTATION_RESTRICTED	0x02
 
+/* SIM Phonebook D-Bus definitions */
+#define SIM_PHONEBOOK_BUS_NAME			"com.nokia.phone.SIM"
+#define SIM_PHONEBOOK_INTERFACE			"Phone.Sim.Phonebook"
+#define SIM_PHONEBOOK_PATH			"/com/nokia/phone/SIM/phonebook"
+
+#define PHONEBOOK_INDEX_FIRST_ENTRY		0xFFFF
+#define PHONEBOOK_INDEX_NEXT_FREE_LOCATION	0xFFFE
+
+enum sim_phonebook_type {
+	SIM_PHONEBOOK_TYPE_ADN = 0x0,
+	SIM_PHONEBOOK_TYPE_SDN,
+	SIM_PHONEBOOK_TYPE_FDN,
+	SIM_PHONEBOOK_TYPE_VMBX,
+	SIM_PHONEBOOK_TYPE_MBDN,
+	SIM_PHONEBOOK_TYPE_EN,
+	SIM_PHONEBOOK_TYPE_MSISDN
+};
+
+enum sim_phonebook_location_type {
+	SIM_PHONEBOOK_LOCATION_EXACT = 0x0,
+	SIM_PHONEBOOK_LOCATION_NEXT
+};
+
 struct csd_call {
 	char *object_path;
 	int status;
@@ -154,7 +177,8 @@ static DBusConnection *connection = NULL;
 
 static GSList *calls = NULL;
 
-static char *subscriber_number = NULL;
+static char *msisdn = NULL;
+static char *vmbx = NULL;
 
 static int battchg = -1;
 static int battchg_max = -1;
@@ -531,8 +555,8 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 void telephony_subscriber_number_req(void *telephony_device)
 {
 	debug("telephony-maemo: subscriber number request");
-	if (subscriber_number)
-		telephony_subscriber_number_ind(subscriber_number,
+	if (msisdn)
+		telephony_subscriber_number_ind(msisdn,
 						NUMBER_TYPE_TELEPHONY,
 						SUBSCRIBER_SERVICE_VOICE);
 	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
@@ -1557,12 +1581,103 @@ done:
 	dbus_message_unref(reply);
 }
 
-int telephony_init(void)
+static int send_method_call(const char *dest, const char *path,
+				const char *interface, const char *method,
+				DBusPendingCallNotifyFunction cb,
+				void *user_data, int type, ...)
 {
 	DBusMessage *msg;
 	DBusPendingCall *call;
+	va_list args;
+
+	msg = dbus_message_new_method_call(dest, path, interface, method);
+	if (!msg) {
+		error("Unable to allocate new D-Bus %s message", method);
+		return -ENOMEM;
+	}
+
+	va_start(args, type);
+
+	if (!dbus_message_append_args_valist(msg, type, args)) {
+		dbus_message_unref(msg);
+		va_end(args);
+		return -EIO;
+	}
+
+	va_end(args);
+
+	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+		error("Sending %s failed", method);
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(call, cb, user_data, NULL);
+	dbus_pending_call_unref(call);
+	dbus_message_unref(msg);
+
+	return 0;
+}
+
+static void phonebook_read_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusError derr;
+	DBusMessage *reply;
+	const char *name, *number;
+	char **number_type = user_data;
+	dbus_int32_t current_location, err;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("SIM.Phonebook replied with an error: %s, %s",
+				derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto done;
+	}
+
+	dbus_error_init(&derr);
+	dbus_message_get_args(reply, NULL,
+				DBUS_TYPE_STRING, &name,
+				DBUS_TYPE_STRING, &number,
+				DBUS_TYPE_INT32, &current_location,
+				DBUS_TYPE_INT32, &err,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_error_is_set(&derr)) {
+		error("Unable to parse SIM.Phonebook.read arguments: %s, %s",
+				derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto done;
+	}
+
+	if (err != 0) {
+		error("SIM.Phonebook.read faild with error %d", err);
+		goto done;
+	}
+
+	if (number_type == &msisdn) {
+		g_free(msisdn);
+		msisdn = g_strdup(number);
+		debug("Got MSISDN %s (%s)", number, name);
+	} else {
+		g_free(vmbx);
+		vmbx = g_strdup(number);
+		debug("Got voice mailbox number %s (%s)", number, name);
+	}
+
+done:
+	dbus_message_unref(reply);
+}
+
+int telephony_init(void)
+{
 	char match_string[128];
 	const char *battery_cap = "battery";
+	dbus_uint32_t location;
+	uint8_t pb_type, location_type;
+	int ret;
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
@@ -1584,47 +1699,47 @@ int telephony_init(void)
 			"type=signal,interface=%s", NETWORK_INTERFACE);
 	dbus_bus_add_match(connection, match_string, NULL);
 
-	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
-						CSD_CALL_INTERFACE,
-						"GetCallInfoAll");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
-		return -ENOMEM;
-	}
+	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+				CSD_CALL_INTERFACE, "GetCallInfoAll",
+				call_info_reply, NULL, DBUS_TYPE_INVALID);
+	if (ret < 0)
+		return ret;
 
-	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
-		error("Sending GetCallInfoAll failed");
-		dbus_message_unref(msg);
-		return -EIO;
-	}
+	ret = send_method_call("org.freedesktop.Hal",
+				"/org/freedesktop/Hal/Manager",
+				"org.freedesktop.Hal.Manager",
+				"FindDeviceByCapability",
+				hal_find_device_reply, NULL,
+				DBUS_TYPE_STRING, &battery_cap,
+				DBUS_TYPE_INVALID);
+	if (ret < 0)
+		return ret;
 
-	dbus_pending_call_set_notify(call, call_info_reply, NULL, NULL);
-	dbus_pending_call_unref(call);
-	dbus_message_unref(msg);
+	pb_type = SIM_PHONEBOOK_TYPE_MSISDN;
+	location = PHONEBOOK_INDEX_FIRST_ENTRY;
+	location_type = SIM_PHONEBOOK_LOCATION_NEXT;
 
-	msg = dbus_message_new_method_call("org.freedesktop.Hal",
-						"/org/freedesktop/Hal/Manager",
-						"org.freedesktop.Hal.Manager",
-						"FindDeviceByCapability");
-	if (!msg) {
-		error("Unable to allocate new D-Bus message");
-		return -ENOMEM;
-	}
+	ret = send_method_call(SIM_PHONEBOOK_BUS_NAME, SIM_PHONEBOOK_PATH,
+				SIM_PHONEBOOK_INTERFACE, "read",
+				phonebook_read_reply, &msisdn,
+				DBUS_TYPE_BYTE, &pb_type,
+				DBUS_TYPE_INT32, &location,
+				DBUS_TYPE_BYTE, &location_type,
+				DBUS_TYPE_INVALID);
+	if (ret < 0)
+		return ret;
 
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &battery_cap,
-							DBUS_TYPE_INVALID);
+	pb_type = SIM_PHONEBOOK_TYPE_VMBX;
+	location = PHONEBOOK_INDEX_FIRST_ENTRY;
+	location_type = SIM_PHONEBOOK_LOCATION_NEXT;
 
-	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
-		error("Sending FindDeviceByCapability failed");
-		dbus_message_unref(msg);
-		return -EIO;
-	}
-
-	dbus_pending_call_set_notify(call, hal_find_device_reply, NULL, NULL);
-	dbus_pending_call_unref(call);
-	dbus_message_unref(msg);
-
-	return 0;
+	return send_method_call(SIM_PHONEBOOK_BUS_NAME, SIM_PHONEBOOK_PATH,
+				SIM_PHONEBOOK_INTERFACE, "read",
+				phonebook_read_reply, &vmbx,
+				DBUS_TYPE_BYTE, &pb_type,
+				DBUS_TYPE_INT32, &location,
+				DBUS_TYPE_BYTE, &location_type,
+				DBUS_TYPE_INVALID);
 }
 
 void telephony_exit(void)
