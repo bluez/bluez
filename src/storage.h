@@ -39,6 +39,7 @@ int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class);
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
 int read_device_name(const char *src, const char *dst, char *name);
 int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data);
+int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data);
 int write_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
 			uint16_t mtu_result, uint16_t mtu,
 			uint16_t mask_result, uint32_t mask);

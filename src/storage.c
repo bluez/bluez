@@ -372,6 +372,38 @@ int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
 	return textfile_put(filename, addr, str);
 }
 
+int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+	int i;
+
+	create_filename(filename, PATH_MAX, local, "eir");
+
+	ba2str(peer, addr);
+
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
+
+	if (!data) {
+		free(str);
+		return 0;
+	}
+
+	if (strlen(str) < 480) {
+		free(str);
+		return -EIO;
+	}
+
+	memset(str, 0, sizeof(str));
+	for (i = 0; i < 240; i++)
+		sscanf(str + (i * 2), "%02hhX", &data[i]);
+
+	free(str);
+
+	return 0;
+}
+
 int write_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
 			uint16_t mtu_result, uint16_t mtu,
 			uint16_t mask_result, uint32_t mask)
