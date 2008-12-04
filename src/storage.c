@@ -395,7 +395,6 @@ int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
 		return -EIO;
 	}
 
-	memset(str, 0, sizeof(str));
 	for (i = 0; i < 240; i++)
 		sscanf(str + (i * 2), "%02hhX", &data[i]);
 
