@@ -1272,11 +1272,10 @@ static void handle_hal_property_modified(DBusMessage *msg)
 static DBusHandlerResult signal_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	const char *interface = dbus_message_get_interface(msg);
-	const char *member = dbus_message_get_member(msg);
 	const char *path = dbus_message_get_path(msg);
 
-	debug("telephony-maemo: received %s %s.%s", path, interface, member);
+	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Coming"))
 		handle_incoming_call(msg);
