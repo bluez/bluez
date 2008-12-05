@@ -1593,7 +1593,7 @@ static void phonebook_read_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	if (err != 0) {
-		error("SIM.Phonebook.read faild with error %d", err);
+		error("SIM.Phonebook.read failed with error %d", err);
 		goto done;
 	}
 
