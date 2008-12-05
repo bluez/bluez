@@ -1,3 +1,13 @@
+ver 4.22:
+	Add deny statements to D-Bus access policy.
+	Add support for LegacyPairing property.
+	Add support for global properties.
+	Add more commands to telephony testing script.
+	Add sender checks for serial and network interfaces.
+	Remove deprecated methods and signals from input interface.
+	Remove deprecated methods and signals from network interface.
+	Remove OffMode option and always use device down.
+
 ver 4.21:
 	Fix adapter initialization logic.
 	Fix adapter setup and start security manager early.
