@@ -177,8 +177,8 @@ static DBusConnection *connection = NULL;
 
 static GSList *calls = NULL;
 
-static char *msisdn = NULL;
-static char *vmbx = NULL;
+static char *msisdn = NULL;	/* Subscriber number */
+static char *vmbx = NULL;	/* Voice mailbox number */
 
 /* HAL battery namespace key values */
 static int battchg_cur = -1;	/* "battery.charge_level.current" */
