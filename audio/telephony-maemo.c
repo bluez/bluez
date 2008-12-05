@@ -180,8 +180,10 @@ static GSList *calls = NULL;
 static char *msisdn = NULL;
 static char *vmbx = NULL;
 
-static int battchg = -1;
-static int battchg_max = -1;
+/* HAL battery namespace key values */
+static int battchg_cur = -1;	/* "battery.charge_level.current" */
+static int battchg_last = -1;	/* "battery.charge_level.last_full" */
+static int battchg_design = -1;	/* "battery.charge_level.design" */
 
 static gboolean events_enabled = FALSE;
 
@@ -297,7 +299,7 @@ static gboolean update_indicators(gpointer user_data)
 		break;
 	}
 
-	if (battchg_max > 0 && battchg >= 0) {
+	if ((battchg_last > 0 || battchg_design > 0) && battchg_cur >= 0) {
 	        int bat = telephony_get_indicator(maemo_indicators, "battchg");
 		telephony_update_indicator(maemo_indicators, "battchg", bat);
 	}
@@ -1189,18 +1191,24 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 
 	*value = (int) level;
 
-	if (value == &battchg_max)
+	if (value == &battchg_last)
 		debug("telephony-maemo: battery.charge_level.last_full is %d",
+				*value);
+	else if (value == &battchg_design)
+		debug("telephony-maemo: battery.charge_level.design is %d",
 				*value);
 	else
 		debug("telephony-maemo: battery.charge_level.current is %d",
 				*value);
 
-	if (battchg_max > 0 && battchg >= 0) {
-		int new, cur;
+	if ((battchg_design > 0 || battchg_last > 0) && battchg_cur >= 0) {
+		int new, cur, max;
+
+		if (battchg_last <= 0)
+			max = battchg_design;
 
 	        cur = telephony_get_indicator(maemo_indicators, "battchg");
-		new = battchg * 5 / battchg_max;
+		new = battchg_cur * 5 / max;
 
 		if (new != cur)
 			telephony_update_indicator(maemo_indicators, "battchg",
@@ -1262,9 +1270,11 @@ static void handle_hal_property_modified(DBusMessage *msg)
 		}
 
 		if (g_str_equal(name, "battery.charge_level.last_full"))
-			hal_get_integer(path, name, &battchg_max);
+			hal_get_integer(path, name, &battchg_last);
 		else if (g_str_equal(name, "battery.charge_level.current"))
-			hal_get_integer(path, name, &battchg);
+			hal_get_integer(path, name, &battchg_cur);
+		else if (g_str_equal(name, "battery.charge_level.design"))
+			hal_get_integer(path, name, &battchg_design);
 
 		dbus_message_iter_next(&array);
 	}
@@ -1552,8 +1562,9 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 			"member='PropertyModified'", path);
 	dbus_bus_add_match(connection, match_string, NULL);
 
-	hal_get_integer(path, "battery.charge_level.last_full", &battchg_max);
-	hal_get_integer(path, "battery.charge_level.current", &battchg);
+	hal_get_integer(path, "battery.charge_level.last_full", &battchg_last);
+	hal_get_integer(path, "battery.charge_level.current", &battchg_cur);
+	hal_get_integer(path, "battery.charge_level.design", &battchg_design);
 
 done:
 	dbus_message_unref(reply);
