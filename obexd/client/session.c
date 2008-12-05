@@ -1073,9 +1073,15 @@ static void get_xfer_listing_progress(GwObexXfer *xfer,
 	return;
 
 complete:
-	if (err == 0)
-		callback->func(callback->session, callback->data);
+	if (err == 0) {
+		agent_notify_progress(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path,
+				session->filled);
+		agent_notify_complete(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path);
 
+		callback->func(callback->session, callback->data);
+	}
 	unregister_transfer(session);
 
 	session_unref(callback->session);
