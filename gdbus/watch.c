@@ -1,6 +1,6 @@
 /*
  *
- *  BlueZ - Bluetooth protocol stack for Linux
+ *  D-Bus helper library
  *
  *  Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
  *
