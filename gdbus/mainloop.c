@@ -275,6 +275,12 @@ DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 	return conn;
 }
 
+gboolean g_dbus_request_name(DBusConnection *connection, const char *name,
+							DBusError *error)
+{
+	return TRUE;
+}
+
 gboolean g_dbus_check_service(DBusConnection *connection, const char *name)
 {
 	DBusMessage *message, *reply;

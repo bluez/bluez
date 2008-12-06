@@ -311,6 +311,13 @@ guint g_dbus_add_disconnect_watch(DBusConnection *connection, const char *name,
 							user_data, destroy);
 }
 
+guint g_dbus_add_signal_watch(DBusConnection *connection,
+				const char *rule, GDBusSignalFunction function,
+				void *user_data, GDBusDestroyFunction destroy)
+{
+	return 0;
+}
+
 gboolean g_dbus_remove_watch(DBusConnection *connection, guint id)
 {
 	struct name_data *data;
