@@ -1204,7 +1204,9 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 	if ((battchg_design > 0 || battchg_last > 0) && battchg_cur >= 0) {
 		int new, cur, max;
 
-		if (battchg_last <= 0)
+		if (battchg_last > 0)
+			max = battchg_last;
+		else
 			max = battchg_design;
 
 	        cur = telephony_get_indicator(maemo_indicators, "battchg");
