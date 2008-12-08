@@ -109,10 +109,6 @@ enum network_alpha_tag_name_type {
 #define CSD_CALL_STATUS_TERMINATED		15
 #define CSD_CALL_STATUS_SWAP_INITIATED		16
 
-/* Call direction (as returned by GetRemote */
-#define CSD_CALL_DIRECTION_OUTGOING		1
-#define CSD_CALL_DIRECTION_INCOMING		2
-
 #define CALL_FLAG_NONE				0
 #define CALL_FLAG_PRESENTATION_ALLOWED		0x01
 #define CALL_FLAG_PRESENTATION_RESTRICTED	0x02
