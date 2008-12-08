@@ -109,8 +109,8 @@ AC_DEFUN([AC_PATH_DBUS], [
 ])
 
 AC_DEFUN([AC_PATH_GLIB], [
-	PKG_CHECK_MODULES(GLIB, glib-2.0, dummy=yes,
-				AC_MSG_ERROR(GLib library is required))
+	PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.14, dummy=yes,
+				AC_MSG_ERROR(GLib library version 2.14 or later is required))
 	AC_SUBST(GLIB_CFLAGS)
 	AC_SUBST(GLIB_LIBS)
 ])
