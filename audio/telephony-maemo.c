@@ -755,7 +755,7 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 
 	if (err)
 		telephony_call_hold_rsp(telephony_device,
-					CME_ERROR_NONE);
+					CME_ERROR_AG_FAILURE);
 	else
 		telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
 }
