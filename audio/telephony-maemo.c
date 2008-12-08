@@ -539,7 +539,7 @@ static int send_method_call(const char *dest, const char *path,
 	return 0;
 }
 
-const char *memory_dial_lookup(int location)
+static const char *memory_dial_lookup(int location)
 {
 	if (location == 1)
 		return vmbx;
