@@ -2163,11 +2163,6 @@ static DBusMessage *find_device(DBusConnection *conn,
 
 	device = l->data;
 
-	if (device_is_temporary(device))
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".DoesNotExist",
-				"Device creation in progress");
-
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return NULL;
