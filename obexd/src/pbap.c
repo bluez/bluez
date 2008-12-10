@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <glib.h>
 #include <bluetooth/bluetooth.h>
 
@@ -71,19 +72,24 @@ struct apparam_hdr {
 
 #define put_be16(val, ptr) bt_put_unaligned(GUINT16_TO_BE(val), (guint16 *) ptr)
 
+struct apparam_field {
+	guint64		filter;
+	guint16		maxlistcount;
+	guint16		liststartoffset;
+	guint8		format;
+	guint8		order;
+	guint8		searchattrib;
+	guint8		*searchval;
+};
+
 static GSList *session_list = NULL;
 
-static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
-							gboolean *addbody)
+static int pbap_parse_apparam_header(obex_t *obex, obex_object_t *obj,
+						struct apparam_field *apparam)
 {
-	struct obex_session *session = OBEX_GetUserData(obex);
 	obex_headerdata_t hd;
-	guint8 hi, format, newmissedcalls = 0, rspsize = 0;
-	guint16 maxlistcount, liststartoffset, phonebooksize = 0;
+	guint8 hi;
 	guint32 hlen;
-	guint64 filter;
-	gboolean addmissedcalls = FALSE;
-	int err;
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
 		void *ptr = (void *) hd.bs;
@@ -93,6 +99,7 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 			continue;
 
 		if (hlen < APPARAM_HDR_SIZE) {
+			g_free(apparam->searchval);
 			error("PBAP pullphonebook app parameters header"
 						" is too short: %d", hlen);
 			return -1;
@@ -102,6 +109,7 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 			struct apparam_hdr *hdr = ptr;
 
 			if (hdr->len > len - APPARAM_HDR_SIZE) {
+				g_free(apparam->searchval);
 				error("Unexpected PBAP pullphonebook app"
 						" length, tag %d, len %d",
 							hdr->tag, hdr->len);
@@ -109,23 +117,42 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 			}
 
 			switch (hdr->tag) {
+			case ORDER_TAG:
+				if (hdr->len == ORDER_LEN)
+					apparam->order = hdr->val[0];
+				break;
+			case SEARCHATTRIB_TAG:
+				if (hdr->len == SEARCHATTRIB_LEN)
+					apparam->searchattrib = hdr->val[0];
+				break;
+			case SEARCHVALUE_TAG:
+				apparam->searchval = g_try_malloc(hdr->len + 1);
+				if (apparam->searchval != NULL) {
+					memcpy(apparam->searchval, hdr->val,
+								hdr->len);
+					apparam->searchval[hdr->len] = '\0';
+				}
+				break;
 			case FILTER_TAG:
 				if (hdr->len == FILTER_LEN)
-					filter = get_be64(hdr->val);
+					apparam->filter = get_be64(hdr->val);
 				break;
 			case FORMAT_TAG:
 				if (hdr->len == FORMAT_LEN)
-					format = hdr->val[0];
+					apparam->format = hdr->val[0];
 				break;
 			case MAXLISTCOUNT_TAG:
 				if (hdr->len == MAXLISTCOUNT_LEN)
-					maxlistcount = get_be16(hdr->val);
+					apparam->maxlistcount =
+							get_be16(hdr->val);
 				break;
 			case LISTSTARTOFFSET_TAG:
 				if (hdr->len == LISTSTARTOFFSET_LEN)
-					liststartoffset = get_be16(hdr->val);
+					apparam->liststartoffset =
+							get_be16(hdr->val);
 				break;
 			default:
+				g_free(apparam->searchval);
 				error("Unexpected PBAP pullphonebook app"
 						" parameter, tag %d, len %d",
 							hdr->tag, hdr->len);
@@ -140,20 +167,26 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 		break;
 	}
 
-	err = phonebook_pullphonebook(session->pbctx, session->name, filter,
-				format, maxlistcount, liststartoffset,
-				&phonebooksize, &newmissedcalls);
-	if (err < 0)
-		return err;
+	return 0;
+}
 
-	/* Add app parameter header, that is sent back to PBAP client */
+/* Add app parameter header, that is sent back to PBAP client */
+static int pbap_add_result_apparam_header(obex_t *obex, obex_object_t *obj,
+				guint16 maxlistcount, gchar *path_name,
+				guint16 phonebooksize,
+				guint8 newmissedcalls, gboolean *addbody)
+{
+	guint8 rspsize = 0;
+	gboolean addmissedcalls = FALSE;
+	obex_headerdata_t hd;
+
 	if (maxlistcount == 0) {
 		rspsize += APPARAM_HDR_SIZE + PHONEBOOKSIZE_LEN;
 		*addbody = FALSE;
 	}
 
-	if (g_str_equal(session->name, SIM1_MCH) == TRUE ||
-				g_str_equal(session->name, MCH) == TRUE) {
+	if (g_str_equal(path_name, SIM1_MCH) == TRUE ||
+				g_str_equal(path_name, MCH) == TRUE) {
 		rspsize += APPARAM_HDR_SIZE + NEWMISSEDCALLS_LEN;
 		addmissedcalls = TRUE;
 	}
@@ -163,7 +196,7 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 
 		buf = g_try_malloc0(rspsize);
 		if (buf == NULL)
-			return -1;
+			return -ENOMEM;
 
 		ptr = buf;
 
@@ -190,11 +223,38 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 		hd.bs = buf;
 		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_APPARAM,
 							hd, rspsize, 0);
-
 		g_free(buf);
 	}
 
 	return 0;
+}
+
+static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
+							gboolean *addbody)
+{
+	struct obex_session *session = OBEX_GetUserData(obex);
+	struct apparam_field apparam;
+	guint8 newmissedcalls = 0;
+	guint16 phonebooksize = 0;
+	int err;
+
+	memset(&apparam, 0, sizeof(struct apparam_field));
+
+	err = pbap_parse_apparam_header(obex, obj, &apparam);
+	if (err < 0)
+		return err;
+
+	err = phonebook_pullphonebook(session->pbctx, session->name,
+					apparam.filter, apparam.format,
+					apparam.maxlistcount,
+					apparam.liststartoffset,
+					&phonebooksize, &newmissedcalls);
+	if (err < 0)
+		return err;
+
+	return pbap_add_result_apparam_header(obex, obj, apparam.maxlistcount,
+						session->name, phonebooksize,
+						newmissedcalls, addbody);
 }
 
 void pbap_get(obex_t *obex, obex_object_t *obj)
