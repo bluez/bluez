@@ -249,8 +249,9 @@ static void open_notify(int fd, int err, struct serial_port *port)
 	g_dbus_send_message(device->conn, reply);
 }
 
-static gboolean open_continue(struct serial_port *port)
+static gboolean open_continue(gpointer user_data)
 {
+	struct serial_port *port = user_data;
 	int fd;
 	static int ntries = MAX_OPEN_TRIES;
 
@@ -282,7 +283,7 @@ static int port_open(struct serial_port *port)
 
 	fd = open(port->dev, O_RDONLY | O_NOCTTY);
 	if (fd < 0) {
-		g_timeout_add(OPEN_WAIT, (GSourceFunc) open_continue, port);
+		g_timeout_add_seconds(OPEN_WAIT, open_continue, port);
 		return -EINPROGRESS;
 	}
 
