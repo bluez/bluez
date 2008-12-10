@@ -197,12 +197,12 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 	telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
 }
 
-void telephony_disable_nr_and_ec_req(void *telephony_device, gboolean enable)
+void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 {
 	debug("telephony-dummy: got %s NR and EC request",
 			enable ? "enable" : "disable");
 
-	telephony_disable_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
+	telephony_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 /* D-Bus method handlers */

@@ -1009,7 +1009,7 @@ int telephony_call_hold_rsp(void *telephony_device, cme_error_t err)
 	return telephony_generic_rsp(telephony_device, err);
 }
 
-int telephony_disable_nr_and_ec_rsp(void *telephony_device, cme_error_t err)
+int telephony_nr_and_ec_rsp(void *telephony_device, cme_error_t err)
 {
 	struct audio_device *device = telephony_device;
 	struct headset *hs = device->headset;
@@ -1050,7 +1050,7 @@ static int operator_selection(struct audio_device *device, const char *buf)
 	return 0;
 }
 
-static int disable_nr_and_ec(struct audio_device *device, const char *buf)
+static int nr_and_ec(struct audio_device *device, const char *buf)
 {
 	struct headset *hs = device->headset;
 
@@ -1062,7 +1062,7 @@ static int disable_nr_and_ec(struct audio_device *device, const char *buf)
 	else
 		hs->nrec_req = TRUE;
 
-	telephony_disable_nr_and_ec_req(device, hs->nrec_req);
+	telephony_nr_and_ec_req(device, hs->nrec_req);
 
 	return 0;
 }
@@ -1086,7 +1086,7 @@ static struct event event_callbacks[] = {
 	{ "AT+CMEE", extended_errors },
 	{ "AT+CCWA", call_waiting_notify },
 	{ "AT+COPS", operator_selection },
-	{ "AT+NREC", disable_nr_and_ec },
+	{ "AT+NREC", nr_and_ec },
 	{ 0 }
 };
 
