@@ -101,11 +101,36 @@ static int ebook_pullphonebook(struct phonebook_context *context,
 	return 0;
 }
 
+static int ebook_pullvcardlisting(struct phonebook_context *context,
+		gchar *objname, guint8 order, guint8 *searchval,
+		guint8 searchattrib, guint16 maxlistcount,
+		guint16 liststartoffset, guint16 *phonebooksize,
+		guint8 *newmissedcalls)
+{
+	EBook *book;
+	EBookQuery *query;
+
+	DBG("context %p", context);
+
+	phonebook_ref(context);
+
+	book = e_book_new_default_addressbook(NULL);
+
+	e_book_open(book, FALSE, NULL);
+
+	query = e_book_query_any_field_contains("");
+
+	e_book_async_get_contacts(book, query, ebooklist_cb, context);
+
+	return 0;
+}
+
 static struct phonebook_driver ebook_driver = {
 	.name		= "ebook",
 	.create		= ebook_create,
 	.destroy	= ebook_destroy,
 	.pullphonebook	= ebook_pullphonebook,
+	.pullvcardlisting = ebook_pullvcardlisting,
 };
 
 static int ebook_init(void)

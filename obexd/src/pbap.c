@@ -35,7 +35,8 @@
 #include "logging.h"
 #include "obex.h"
 
-#define PHONEBOOK_TYPE "x-bt/phonebook"
+#define PHONEBOOK_TYPE		"x-bt/phonebook"
+#define VCARDLISTING_TYPE	"x-bt/vcard-listing"
 
 #define ORDER_TAG		0x01
 #define SEARCHVALUE_TAG		0x02
@@ -257,6 +258,50 @@ static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
 						newmissedcalls, addbody);
 }
 
+static int pbap_pullvcardlisting(obex_t *obex, obex_object_t *obj,
+							gboolean *addbody)
+{
+	struct obex_session *session = OBEX_GetUserData(obex);
+	gchar *fullname;
+	struct apparam_field apparam;
+	guint8 newmissedcalls = 0;
+	guint16 phonebooksize = 0;
+	int err;
+
+	memset(&apparam, 0, sizeof(struct apparam_field));
+
+	err = pbap_parse_apparam_header(obex, obj, &apparam);
+	if (err < 0)
+		return err;
+
+	fullname = g_build_filename(session->current_folder,
+						session->name, NULL);
+	err = phonebook_pullvcardlisting(session->pbctx, fullname,
+					apparam.order, apparam.searchval,
+					apparam.searchattrib,
+					apparam.maxlistcount,
+					apparam.liststartoffset,
+					&phonebooksize, &newmissedcalls);
+	if (err < 0)
+		goto done;
+
+	g_free(fullname);
+
+	fullname = g_build_filename(session->current_folder, session->name,
+								NULL);
+	if (fullname != NULL)
+		fullname = g_strconcat(fullname, ".vcf", NULL);
+
+	err = pbap_add_result_apparam_header(obex, obj, apparam.maxlistcount,
+						fullname, phonebooksize,
+						newmissedcalls, addbody);
+
+done:
+	g_free(apparam.searchval);
+	g_free(fullname);
+	return err;
+}
+
 void pbap_get(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *session = OBEX_GetUserData(obex);
@@ -274,6 +319,8 @@ void pbap_get(obex_t *obex, obex_object_t *obj)
 
 	if (g_str_equal(session->type, PHONEBOOK_TYPE) == TRUE)
 		err = pbap_pullphonebook(obex, obj, &addbody);
+	else if (g_str_equal(session->type, VCARDLISTING_TYPE) == TRUE)
+		err = pbap_pullvcardlisting(obex, obj, &addbody);
 	else
 		goto fail;
 
