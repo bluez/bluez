@@ -125,12 +125,34 @@ static int ebook_pullvcardlisting(struct phonebook_context *context,
 	return 0;
 }
 
+static int ebook_pullvcardentry(struct phonebook_context *context,
+		gchar *objname, guint64 filter, guint8 format)
+{
+	EBook *book;
+	EBookQuery *query;
+
+	DBG("context %p", context);
+
+	phonebook_ref(context);
+
+	book = e_book_new_default_addressbook(NULL);
+
+	e_book_open(book, FALSE, NULL);
+
+	query = e_book_query_any_field_contains("");
+
+	e_book_async_get_contacts(book, query, ebooklist_cb, context);
+
+	return 0;
+}
+
 static struct phonebook_driver ebook_driver = {
 	.name		= "ebook",
 	.create		= ebook_create,
 	.destroy	= ebook_destroy,
 	.pullphonebook	= ebook_pullphonebook,
 	.pullvcardlisting = ebook_pullvcardlisting,
+	.pullvcardentry = ebook_pullvcardentry,
 };
 
 static int ebook_init(void)

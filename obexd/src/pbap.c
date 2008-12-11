@@ -37,6 +37,7 @@
 
 #define PHONEBOOK_TYPE		"x-bt/phonebook"
 #define VCARDLISTING_TYPE	"x-bt/vcard-listing"
+#define VCARDENTRY_TYPE		"x-bt/vcard"
 
 #define ORDER_TAG		0x01
 #define SEARCHVALUE_TAG		0x02
@@ -302,6 +303,29 @@ done:
 	return err;
 }
 
+static int pbap_pullvcardentry(obex_t *obex, obex_object_t *obj)
+{
+	struct obex_session *session = OBEX_GetUserData(obex);
+	gchar *fullname;
+	struct apparam_field apparam;
+	int err;
+
+	memset(&apparam, 0, sizeof(struct apparam_field));
+	err = pbap_parse_apparam_header(obex, obj, &apparam);
+	if (err < 0)
+		return err;
+
+	fullname = g_build_filename(session->current_folder,
+						session->name, NULL);
+	err = phonebook_pullvcardentry(session->pbctx, fullname,
+					apparam.filter, apparam.format);
+
+	g_free(apparam.searchval);
+	g_free(fullname);
+	return err;
+}
+
+
 void pbap_get(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *session = OBEX_GetUserData(obex);
@@ -321,6 +345,8 @@ void pbap_get(obex_t *obex, obex_object_t *obj)
 		err = pbap_pullphonebook(obex, obj, &addbody);
 	else if (g_str_equal(session->type, VCARDLISTING_TYPE) == TRUE)
 		err = pbap_pullvcardlisting(obex, obj, &addbody);
+	else if (g_str_equal(session->type, VCARDENTRY_TYPE) == TRUE)
+		err = pbap_pullvcardentry(obex, obj);
 	else
 		goto fail;
 

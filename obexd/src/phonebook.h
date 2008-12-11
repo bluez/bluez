@@ -58,6 +58,8 @@ extern int phonebook_pullvcardlisting(struct phonebook_context *context,
 			guint8 searchattrib, guint16 maxlistcount,
 			guint16 liststartoffset, guint16 *phonebooksize,
 			guint8 *newmissedcalls);
+extern int phonebook_pullvcardentry(struct phonebook_context *context,
+			gchar *objname, guint64 filter, guint8 format);
 extern void phonebook_return(struct phonebook_context *context,
 						char *buf, int size);
 
@@ -74,7 +76,8 @@ struct phonebook_driver {
 			guint8 searchattrib, guint16 maxlistcount,
 			guint16 liststartoffset, guint16 *phonebooksize,
 			guint8 *newmissedcalls);
-	int (*pullvcardentry) (struct phonebook_context *context);
+	int (*pullvcardentry) (struct phonebook_context *context,
+			gchar *objname, guint64 filter, guint8 format);
 };
 
 extern int phonebook_driver_register(struct phonebook_driver *driver);

@@ -128,6 +128,16 @@ int phonebook_pullvcardlisting(struct phonebook_context *context,
 				liststartoffset, phonebooksize, newmissedcalls);
 }
 
+int phonebook_pullvcardentry(struct phonebook_context *context, gchar *objname,
+						guint64 filter, guint8 format)
+{
+	if (!context->driver->pullvcardentry)
+		return -1;
+
+	return context->driver->pullvcardentry(context, objname, filter,
+								format);
+}
+
 /* if buf is NULL or size is 0, this indicate that no more result will
  * be returned by PBAP plugin
  * */
