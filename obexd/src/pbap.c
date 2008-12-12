@@ -325,7 +325,6 @@ static int pbap_pullvcardentry(obex_t *obex, obex_object_t *obj)
 	return err;
 }
 
-
 void pbap_get(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *session = OBEX_GetUserData(obex);
