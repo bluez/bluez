@@ -460,7 +460,10 @@ void pbap_setpath(obex_t *obex, obex_object_t *obj)
 		return;
 	}
 
-	fullname = g_build_filename(session->current_folder, session->name, NULL);
+	if (session->current_folder == NULL)
+		fullname = g_build_filename("", session->name, NULL);
+	else
+		fullname = g_build_filename(session->current_folder, session->name, NULL);
 
 	debug("Fullname: %s", fullname);
 
