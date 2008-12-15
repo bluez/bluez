@@ -59,7 +59,7 @@
 #define ERROR_DOES_NOT_EXIST	"org.bluez.Error.DoesNotExist"
 
 #define MAX_OPEN_TRIES		5
-#define OPEN_WAIT		300	/* ms */
+#define OPEN_WAIT		300	/* ms. udev node creation retry wait */
 
 struct serial_device {
 	DBusConnection	*conn;		/* for name listener handling */
@@ -283,7 +283,7 @@ static int port_open(struct serial_port *port)
 
 	fd = open(port->dev, O_RDONLY | O_NOCTTY);
 	if (fd < 0) {
-		g_timeout_add_seconds(OPEN_WAIT, open_continue, port);
+		g_timeout_add(OPEN_WAIT, open_continue, port);
 		return -EINPROGRESS;
 	}
 

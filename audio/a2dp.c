@@ -799,8 +799,7 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	}
 
 	if (setup->reconfigure)
-		g_timeout_add_seconds(RECONFIGURE_TIMEOUT,
-						a2dp_reconfigure, setup);
+		g_timeout_add(RECONFIGURE_TIMEOUT, a2dp_reconfigure, setup);
 }
 
 static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
