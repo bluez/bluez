@@ -2484,6 +2484,13 @@ int headset_get_sco_fd(struct audio_device *dev)
 	return g_io_channel_unix_get_fd(hs->sco);
 }
 
+gboolean headset_get_nrec(struct audio_device *dev)
+{
+	struct headset *hs = dev->headset;
+
+	return hs->nrec;
+}
+
 int telephony_event_ind(int index)
 {
 	if (!active_devices)

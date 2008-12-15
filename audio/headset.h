@@ -79,6 +79,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state);
 int headset_get_channel(struct audio_device *dev);
 
 int headset_get_sco_fd(struct audio_device *dev);
+gboolean headset_get_nrec(struct audio_device *dev);
 
 gboolean headset_is_active(struct audio_device *dev);
 
