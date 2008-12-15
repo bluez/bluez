@@ -26,6 +26,11 @@
 
 #define PBAP_INTERFACE  "org.openobex.PhonebookAccess"
 
+struct pbap_data {
+	char *path;
+};
+
 gboolean pbap_register_interface(DBusConnection *connection, const char *path,
 				void *user_data, GDBusDestroyFunction destroy);
-void pbap_unregister_interface(DBusConnection *connection, const char *path);
+void pbap_unregister_interface(DBusConnection *connection, const char *path,
+				void *user_data);

@@ -116,7 +116,7 @@ static void session_unref(struct session_data *session)
 			break;
 		case PBAP_PSE_SVCLASS_ID:
 			pbap_unregister_interface(session->conn,
-					session->path);
+					session->path, session);
 			break;
 		}
 
