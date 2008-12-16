@@ -22,22 +22,26 @@
 
 #include "ipc.h"
 
-/* This table contains the string representation for messages */
-static const char *strmsg[] = {
-	"BT_GETCAPABILITIES_REQ",
-	"BT_GETCAPABILITIES_RSP",
-	"BT_SETCONFIGURATION_REQ",
-	"BT_SETCONFIGURATION_RSP",
-	"BT_STREAMSTART_REQ",
-	"BT_STREAMSTART_RSP",
-	"BT_STREAMSTOP_REQ",
-	"BT_STREAMSTOP_RSP",
-	"BT_STREAMSUSPEND_IND",
-	"BT_STREAMRESUME_IND",
-	"BT_CONTROL_REQ",
-	"BT_CONTROL_RSP",
-	"BT_CONTROL_IND",
-	"BT_STREAMFD_IND",
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+/* This table contains the string representation for messages types */
+static const char *strtypes[] = {
+	"BT_REQUEST",
+	"BT_RESPONSE",
+	"BT_INDICATION",
+	"BT_ERROR",
+};
+
+/* This table contains the string representation for messages names */
+static const char *strnames[] = {
+	"BT_GET_CAPABILITIES",
+	"BT_SET_CONFIGURATION",
+	"BT_NEW_STREAM",
+	"BT_START_STREAM",
+	"BT_STOP_STREAM",
+	"BT_SUSPEND_STREAM",
+	"BT_RESUME_STREAM",
+	"BT_CONTROL",
 };
 
 int bt_audio_service_open(void)
@@ -109,11 +113,18 @@ int bt_audio_service_get_data_fd(int sk)
 	return -1;
 }
 
-const char *bt_audio_strmsg(int type)
+const char *bt_audio_strtype(uint8_t type)
 {
-	if (type < 0 || type > (sizeof(strmsg) / sizeof(strmsg[0])))
+	if (type >= ARRAY_SIZE(strtypes))
 		return NULL;
 
-	return strmsg[type];
+	return strtypes[type];
 }
 
+const char *bt_audio_strname(uint8_t name)
+{
+	if (name >= ARRAY_SIZE(strnames))
+		return NULL;
+
+	return strnames[name];
+}

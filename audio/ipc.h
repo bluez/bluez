@@ -23,36 +23,36 @@
 /*
   Message sequence chart of streaming sequence for A2DP transport
 
-  Audio daemon                       User
-                             on snd_pcm_open
-                 <--BT_GETCAPABILITIES_REQ
+  Audio daemon			User
+				on snd_pcm_open
+				<--BT_GET_CAPABILITIES_REQ
 
-  BT_GETCAPABILITIES_RSP-->
+  BT_GET_CAPABILITIES_RSP-->
 
-                        on snd_pcm_hw_params
-                <--BT_SETCONFIGURATION_REQ
+				on snd_pcm_hw_params
+				<--BT_SETCONFIGURATION_REQ
 
-  BT_SETCONFIGURATION_RSP-->
+  BT_SET_CONFIGURATION_RSP-->
 
-			on snd_pcm_prepare
-                <--BT_STREAMSTART_REQ
+				on snd_pcm_prepare
+				<--BT_START_STREAM_REQ
 
   <Moves to streaming state>
-  BT_STREAMSTART_RSP-->
+  BT_START_STREAM_RSP-->
 
-  BT_STREAMFD_IND -->
+  BT_NEW_STREAM_IND -->
 
-                          <  streams data >
-                             ..........
+				<  streams data >
+				..........
 
-               on snd_pcm_drop/snd_pcm_drain
+				on snd_pcm_drop/snd_pcm_drain
 
-                <--BT_STREAMSTOP_REQ
+				<--BT_STOP_STREAM_REQ
 
   <Moves to open state>
-  BT_STREAMSTOP_RSP-->
+  BT_STOP_STREAM_RSP-->
 
-			on IPC close or appl crash
+				on IPC close or appl crash
   <Moves to idle>
 
  */
@@ -71,43 +71,36 @@ extern "C" {
 #include <sys/un.h>
 #include <errno.h>
 
-#define BT_AUDIO_IPC_PACKET_SIZE   128
+#define BT_SUGGESTED_BUFFER_SIZE   128
 #define BT_IPC_SOCKET_NAME "\0/org/bluez/audio"
 
-/* Generic message header definition, except for RSP messages */
+/* Generic message header definition, except for RESPONSE messages */
 typedef struct {
-	uint8_t msg_type;
+	uint8_t type;
+	uint8_t name;
+	uint16_t length;
 } __attribute__ ((packed)) bt_audio_msg_header_t;
 
-/* Generic message header definition, for all RSP messages */
 typedef struct {
-	bt_audio_msg_header_t	msg_h;
-	uint8_t			posix_errno;
-} __attribute__ ((packed)) bt_audio_rsp_msg_header_t;
+	bt_audio_msg_header_t h;
+	uint8_t posix_errno;
+} __attribute__ ((packed)) bt_audio_error_t;
 
-/* Messages list */
-#define BT_GETCAPABILITIES_REQ		0
-#define BT_GETCAPABILITIES_RSP		1
+/* Message types */
+#define BT_REQUEST			0
+#define BT_RESPONSE			1
+#define BT_INDICATION			2
+#define BT_ERROR			3
 
-#define BT_SETCONFIGURATION_REQ		2
-#define BT_SETCONFIGURATION_RSP		3
-
-#define BT_STREAMSTART_REQ		4
-#define BT_STREAMSTART_RSP		5
-
-#define BT_STREAMSTOP_REQ		6
-#define BT_STREAMSTOP_RSP		7
-
-#define BT_STREAMSUSPEND_IND		8
-#define BT_STREAMRESUME_IND		9
-
-#define BT_CONTROL_REQ		       10
-#define BT_CONTROL_RSP		       11
-#define BT_CONTROL_IND		       12
-
-#define BT_STREAMFD_IND		       13
-
-/* BT_GETCAPABILITIES_REQ */
+/* Messages names */
+#define BT_GET_CAPABILITIES		0
+#define BT_SET_CONFIGURATION		1
+#define BT_NEW_STREAM			2
+#define BT_START_STREAM			3
+#define BT_STOP_STREAM			4
+#define BT_SUSPEND_STREAM		5
+#define BT_RESUME_STREAM		6
+#define BT_CONTROL			7
 
 #define BT_CAPABILITIES_TRANSPORT_A2DP	0
 #define BT_CAPABILITIES_TRANSPORT_SCO	1
@@ -119,18 +112,21 @@ typedef struct {
 
 #define BT_FLAG_AUTOCONNECT	1
 
-struct bt_getcapabilities_req {
+struct bt_get_capabilities_req {
 	bt_audio_msg_header_t	h;
 	char			device[18];	/* Address of the remote Device */
 	uint8_t			transport;	/* Requested transport */
 	uint8_t			flags;		/* Requested flags */
 } __attribute__ ((packed));
 
-/* BT_GETCAPABILITIES_RSP */
-
 /**
  * SBC Codec parameters as per A2DP profile 1.0 § 4.3
  */
+
+#define BT_A2DP_CODEC_SBC			0x00
+#define BT_A2DP_CODEC_MPEG12			0x01
+#define BT_A2DP_CODEC_MPEG24			0x02
+#define BT_A2DP_CODEC_ATRAC			0x03
 
 #define BT_SBC_SAMPLING_FREQ_16000		(1 << 3)
 #define BT_SBC_SAMPLING_FREQ_32000		(1 << 2)
@@ -164,7 +160,19 @@ struct bt_getcapabilities_req {
 #define BT_MPEG_LAYER_2				(1 << 1)
 #define BT_MPEG_LAYER_3				1
 
+#define BT_HFP_CODEC_PCM			0x00
+
+#define BT_PCM_FLAG_NREC			1
+
 typedef struct {
+	uint8_t transport;
+	uint8_t type;
+	uint8_t length;
+	uint8_t data[0];
+} __attribute__ ((packed)) codec_capabilities_t;
+
+typedef struct {
+	codec_capabilities_t capability;
 	uint8_t channel_mode;
 	uint8_t frequency;
 	uint8_t allocation_method;
@@ -175,6 +183,7 @@ typedef struct {
 } __attribute__ ((packed)) sbc_capabilities_t;
 
 typedef struct {
+	codec_capabilities_t capability;
 	uint8_t channel_mode;
 	uint8_t crc;
 	uint8_t layer;
@@ -183,74 +192,64 @@ typedef struct {
 	uint16_t bitrate;
 } __attribute__ ((packed)) mpeg_capabilities_t;
 
-struct bt_getcapabilities_rsp {
-	bt_audio_rsp_msg_header_t	rsp_h;
-	uint8_t				transport;	   /* Granted transport */
-	sbc_capabilities_t		sbc_capabilities;  /* A2DP only */
-	mpeg_capabilities_t		mpeg_capabilities; /* A2DP only */
-	uint16_t			sampling_rate;	   /* SCO only */
-} __attribute__ ((packed));
+typedef struct {
+	codec_capabilities_t capability;
+	uint8_t flags;
+	uint16_t sampling_rate;
+} __attribute__ ((packed)) pcm_capabilities_t;
 
-/* BT_SETCONFIGURATION_REQ */
-struct bt_setconfiguration_req {
+
+struct bt_get_capabilities_rsp {
 	bt_audio_msg_header_t	h;
-	char			device[18];		/* Address of the remote Device */
-	uint8_t			transport;		/* Requested transport */
-	uint8_t			access_mode;		/* Requested access mode */
-	sbc_capabilities_t	sbc_capabilities;	/* A2DP only - only one of this field
-							and next one must be filled */
-	mpeg_capabilities_t	mpeg_capabilities;	/* A2DP only */
+	uint8_t			data[0];	/* First codec_capabilities_t */
 } __attribute__ ((packed));
 
-/* BT_SETCONFIGURATION_RSP */
-struct bt_setconfiguration_rsp {
-	bt_audio_rsp_msg_header_t	rsp_h;
-	uint8_t				transport;	/* Granted transport */
-	uint8_t				access_mode;	/* Granted access mode */
-	uint16_t			link_mtu;	/* Max length that transport supports */
+struct bt_set_configuration_req {
+	bt_audio_msg_header_t	h;
+	char			device[18];	/* Address of the remote Device */
+	uint8_t			access_mode;	/* Requested access mode */
+	codec_capabilities_t	codec;		/* Requested codec */
 } __attribute__ ((packed));
 
-/* BT_STREAMSTART_REQ */
+struct bt_set_configuration_rsp {
+	bt_audio_msg_header_t	h;
+	uint8_t			transport;	/* Granted transport */
+	uint8_t			access_mode;	/* Granted access mode */
+	uint16_t		link_mtu;	/* Max length that transport supports */
+} __attribute__ ((packed));
+
 #define BT_STREAM_ACCESS_READ		0
 #define BT_STREAM_ACCESS_WRITE		1
 #define BT_STREAM_ACCESS_READWRITE	2
-struct bt_streamstart_req {
+struct bt_start_stream_req {
 	bt_audio_msg_header_t	h;
 } __attribute__ ((packed));
 
-/* BT_STREAMSTART_RSP */
-struct bt_streamstart_rsp {
-	bt_audio_rsp_msg_header_t	rsp_h;
+struct bt_start_stream_rsp {
+	bt_audio_msg_header_t	h;
 } __attribute__ ((packed));
 
-/* BT_STREAMFD_IND */
 /* This message is followed by one byte of data containing the stream data fd
    as ancilliary data */
-struct bt_streamfd_ind {
+struct bt_new_stream_ind {
 	bt_audio_msg_header_t	h;
 } __attribute__ ((packed));
 
-/* BT_STREAMSTOP_REQ */
-struct bt_streamstop_req {
+struct bt_stop_stream_req {
 	bt_audio_msg_header_t	h;
 } __attribute__ ((packed));
 
-/* BT_STREAMSTOP_RSP */
-struct bt_streamstop_rsp {
-	bt_audio_rsp_msg_header_t	rsp_h;
-} __attribute__ ((packed));
-
-/* BT_STREAMSUSPEND_IND */
-struct bt_streamsuspend_ind {
+struct bt_stop_stream_rsp {
 	bt_audio_msg_header_t	h;
 } __attribute__ ((packed));
 
-/* BT_STREAMRESUME_IND */
-struct bt_streamresume_ind {
+struct bt_suspend_stream_ind {
 	bt_audio_msg_header_t	h;
 } __attribute__ ((packed));
 
-/* BT_CONTROL_REQ */
+struct bt_resume_stream_ind {
+	bt_audio_msg_header_t	h;
+} __attribute__ ((packed));
 
 #define BT_CONTROL_KEY_POWER			0x40
 #define BT_CONTROL_KEY_VOL_UP			0x41
@@ -272,14 +271,12 @@ struct bt_control_req {
 	uint8_t			key;		/* Control Key */
 } __attribute__ ((packed));
 
-/* BT_CONTROL_RSP */
 struct bt_control_rsp {
-	bt_audio_rsp_msg_header_t	rsp_h;
-	uint8_t				mode;	/* Control Mode */
-	uint8_t				key;	/* Control Key */
+	bt_audio_msg_header_t	h;
+	uint8_t			mode;		/* Control Mode */
+	uint8_t			key;		/* Control Key */
 } __attribute__ ((packed));
 
-/* BT_CONTROL_IND */
 struct bt_control_ind {
 	bt_audio_msg_header_t	h;
 	uint8_t			mode;		/* Control Mode */
@@ -299,7 +296,10 @@ BT_STREAMFD_IND message is returned */
 int bt_audio_service_get_data_fd(int sk);
 
 /* Human readable message type string */
-const char *bt_audio_strmsg(int type);
+const char *bt_audio_strtype(uint8_t type);
+
+/* Human readable message name string */
+const char *bt_audio_strname(uint8_t name);
 
 #ifdef __cplusplus
 }
