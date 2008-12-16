@@ -1,0 +1,25 @@
+#!/usr/bin/python
+
+import gobject
+
+import dbus
+import dbus.mainloop.glib
+
+def property_changed(name, value, path, interface):
+	iface = interface[interface.rfind(".") + 1:]
+	val = str(value)
+	print "{%s} [%s] %s = %s" % (iface, path, name, val)
+
+if __name__ == '__main__':
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+
+	bus.add_signal_receiver(property_changed,
+					bus_name="org.bluez",
+					signal_name = "PropertyChanged",
+						path_keyword="path",
+						interface_keyword="interface")
+
+	mainloop = gobject.MainLoop()
+	mainloop.run()
