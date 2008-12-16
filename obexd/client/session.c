@@ -1067,8 +1067,19 @@ static void get_xfer_listing_progress(GwObexXfer *xfer,
 
 	session->filled += bread;
 
-	if (gw_obex_xfer_object_done(xfer))
+	if (gw_obex_xfer_object_done(xfer)) {
+		if (session->buffer[session->filled - 1] == '\0')
+			goto complete;
+
+		bsize = session->buffer_len - session->filled;
+		if (bsize < 1) {
+			session->buffer_len += DEFAULT_BUFFER_SIZE;
+			session->buffer = g_realloc(session->buffer, session->buffer_len);
+		}
+
+		session->buffer[session->filled] = '\0';
 		goto complete;
+	}
 
 	return;
 

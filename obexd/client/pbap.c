@@ -42,6 +42,46 @@
 #define ORDER_ALPHANUMERIC	0x1
 #define ORDER_PHONETIC		0x2
 
+#define DEFAULT_COUNT	65535
+#define DEFAULT_OFFSET	0
+
+#define PULLPHONEBOOK		0x1
+
+#define ORDER_TAG		0x01
+#define SEARCHVALUE_TAG		0x02
+#define SEARCHATTRIB_TAG	0x03
+#define MAXLISTCOUNT_TAG	0x04
+#define LISTSTARTOFFSET_TAG	0x05
+#define FILTER_TAG		0x06
+#define FORMAT_TAG		0X07
+#define PHONEBOOKSIZE_TAG	0X08
+#define NEWMISSEDCALLS_TAG	0X09
+
+/* The following length is in the unit of byte */
+#define ORDER_LEN		1
+#define SEARCHATTRIB_LEN	1
+#define MAXLISTCOUNT_LEN	2
+#define LISTSTARTOFFSET_LEN	2
+#define FILTER_LEN		8
+#define FORMAT_LEN		1
+#define PHONEBOOKSIZE_LEN	2
+#define NEWMISSEDCALLS_LEN	1
+
+struct pullphonebook_apparam {
+	uint8_t     filter_tag;
+	uint8_t     filter_len;
+	uint64_t    filter;
+	uint8_t     format_tag;
+	uint8_t     format_len;
+	uint8_t     format;
+	uint8_t     maxlistcount_tag;
+	uint8_t     maxlistcount_len;
+	uint16_t    maxlistcount;
+	uint8_t     liststartoffset_tag;
+	uint8_t     liststartoffset_len;
+	uint16_t    liststartoffset;
+} __attribute__ ((packed));
+
 static gchar *build_phonebook_path(const char *location, const char *item)
 {
 	gchar *path = NULL, *tmp, *tmp1;
@@ -139,6 +179,75 @@ fail:
 	return err;
 }
 
+static void pull_phonebook_callback(struct session_data *session,
+					void *user_data)
+{
+	DBusMessage *reply;
+	char *buf = "";
+
+	reply = dbus_message_new_method_return(session->msg);
+
+	if (session->filled > 0)
+		buf = session->buffer;
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_STRING, &buf,
+			DBUS_TYPE_INVALID);
+
+	session->filled = 0;
+	g_dbus_send_message(session->conn, reply);
+	dbus_message_unref(session->msg);
+	session->msg = NULL;
+}
+
+static DBusMessage *pull_phonebook(struct session_data *session,
+					DBusMessage *message, guint8 type,
+					const char *name, uint64_t filter,
+					uint8_t format,	uint16_t maxlistcount,
+					uint16_t liststartoffset)
+{
+	struct pullphonebook_apparam apparam;
+	session_callback_t func;
+
+	if (session->msg)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InProgress",
+				"Transfer in progress");
+
+	apparam.filter_tag = FILTER_TAG;
+	apparam.filter_len = FILTER_LEN;
+	apparam.filter = GUINT64_TO_BE(filter);
+	apparam.format_tag = FORMAT_TAG;
+	apparam.format_len = FORMAT_LEN;
+	apparam.format = format;
+	apparam.maxlistcount_tag = MAXLISTCOUNT_TAG;
+	apparam.maxlistcount_len = MAXLISTCOUNT_LEN;
+	apparam.maxlistcount = GUINT16_TO_BE(maxlistcount);
+	apparam.liststartoffset_tag = LISTSTARTOFFSET_TAG;
+	apparam.liststartoffset_len = LISTSTARTOFFSET_LEN;
+	apparam.liststartoffset = GUINT16_TO_BE(liststartoffset);
+
+	switch (type) {
+	case PULLPHONEBOOK:
+		func = pull_phonebook_callback;
+		break;
+	default:
+		fprintf(stderr, "Unexpected type : 0x%2x\n", type);
+	}
+
+	if (session_get(session, "x-bt/phonebook", name, NULL,
+				(guint8 *) &apparam, sizeof(apparam),
+				func) < 0)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.Failed",
+				"Failed");
+
+	session->msg = dbus_message_ref(message);
+	session->filled = 0;
+
+	return NULL;
+}
+
 static int set_format(struct session_data *session, const char *formatstr)
 {
 	struct pbap_data *pbapdata = session->pbapdata;
@@ -209,6 +318,27 @@ static DBusMessage *pbap_select(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
+static DBusMessage *pbap_pull_all(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	struct pbap_data *pbapdata = session->pbapdata;
+	DBusMessage * err;
+	char *name;
+
+	if (!pbapdata->path)
+		return g_dbus_create_error(message,
+				ERROR_INF ".Forbidden", "Call Select first of all");
+
+	name = g_strconcat(pbapdata->path, ".vcf", NULL);
+
+	err = pull_phonebook(session, message, PULLPHONEBOOK, name,
+				pbapdata->filter, pbapdata->format,
+				DEFAULT_COUNT, DEFAULT_OFFSET);
+	g_free(name);
+	return err;
+}
+
 static DBusMessage *pbap_set_format(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -249,6 +379,8 @@ static DBusMessage *pbap_set_order(DBusConnection *connection,
 
 static GDBusMethodTable pbap_methods[] = {
 	{ "Select",	"ss",	"",	pbap_select },
+	{ "PullAll",	"",	"s",	pbap_pull_all,
+					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "SetFormat",	"s",	"",	pbap_set_format },
 	{ "SetOrder",	"s",	"",	pbap_set_order },
 	{ }

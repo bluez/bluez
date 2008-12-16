@@ -30,6 +30,7 @@ struct pbap_data {
 	char *path;
 	guint8 format;
 	guint8 order;
+	uint64_t filter;
 };
 
 gboolean pbap_register_interface(DBusConnection *connection, const char *path,
