@@ -26,6 +26,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <glib.h>
 #include <gdbus.h>
 
@@ -33,6 +34,13 @@
 #include "pbap.h"
 
 #define ERROR_INF PBAP_INTERFACE ".Error"
+
+#define FORMAT_VCARD21	0x0
+#define FORMAT_VCARD30	0x1
+
+#define ORDER_INDEXED		0x0
+#define ORDER_ALPHANUMERIC	0x1
+#define ORDER_PHONETIC		0x2
 
 static gchar *build_phonebook_path(const char *location, const char *item)
 {
@@ -131,6 +139,46 @@ fail:
 	return err;
 }
 
+static int set_format(struct session_data *session, const char *formatstr)
+{
+	struct pbap_data *pbapdata = session->pbapdata;
+
+	if (!formatstr || g_str_equal(formatstr, "")) {
+		pbapdata->format = FORMAT_VCARD21;
+		return 0;
+	}
+
+	if (!g_ascii_strcasecmp(formatstr, "vcard21"))
+		pbapdata->format = FORMAT_VCARD21;
+	else if (!g_ascii_strcasecmp(formatstr, "vcard30"))
+		pbapdata->format = FORMAT_VCARD30;
+	else
+		return -EINVAL;
+
+	return 0;
+}
+
+static int set_order(struct session_data *session, const char *orderstr)
+{
+	struct pbap_data *pbapdata = session->pbapdata;
+
+	if (!orderstr || g_str_equal(orderstr, "")) {
+		pbapdata->order = ORDER_INDEXED;
+		return 0;
+	}
+
+	if (!g_ascii_strcasecmp(orderstr, "indexed"))
+		pbapdata->order = ORDER_INDEXED;
+	else if (!g_ascii_strcasecmp(orderstr, "alphanumeric"))
+		pbapdata->order = ORDER_ALPHANUMERIC;
+	else if (!g_ascii_strcasecmp(orderstr, "phonetic"))
+		pbapdata->order = ORDER_PHONETIC;
+	else
+		return -EINVAL;
+
+	return 0;
+}
+
 static DBusMessage *pbap_select(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -161,8 +209,48 @@ static DBusMessage *pbap_select(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
+static DBusMessage *pbap_set_format(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	const char *format;
+
+	if (dbus_message_get_args(message, NULL,
+			DBUS_TYPE_STRING, &format,
+			DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", NULL);
+
+	if (set_format(session, format) < 0)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", "InvalidFormat");
+
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *pbap_set_order(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	const char *order;
+
+	if (dbus_message_get_args(message, NULL,
+			DBUS_TYPE_STRING, &order,
+			DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", NULL);
+
+	if (set_order(session, order) < 0)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", "InvalidOrder");
+
+	return dbus_message_new_method_return(message);
+}
+
 static GDBusMethodTable pbap_methods[] = {
 	{ "Select",	"ss",	"",	pbap_select },
+	{ "SetFormat",	"s",	"",	pbap_set_format },
+	{ "SetOrder",	"s",	"",	pbap_set_order },
 	{ }
 };
 
