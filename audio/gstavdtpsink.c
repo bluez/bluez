@@ -62,7 +62,7 @@ GST_DEBUG_CATEGORY_STATIC(avdtp_sink_debug);
 
 
 struct bluetooth_data {
-	struct bt_getcapabilities_rsp caps; /* Bluetooth device caps */
+	struct bt_get_capabilities_rsp *caps; /* Bluetooth device caps */
 	guint link_mtu;
 
 	gchar buffer[BUFFER_SIZE];	/* Codec transfer buffer */
@@ -113,7 +113,7 @@ static GIOError gst_avdtp_sink_audioservice_send(GstAvdtpSink *self,
 static GIOError gst_avdtp_sink_audioservice_expect(
 				GstAvdtpSink *self,
 				bt_audio_msg_header_t *outmsg,
-				int expected_type);
+				guint8 expected_name);
 
 
 static void gst_avdtp_sink_base_init(gpointer g_class)
@@ -243,16 +243,38 @@ static gint gst_avdtp_sink_bluetooth_recvmsg_fd(GstAvdtpSink *sink)
 	return 0;
 }
 
+static codec_capabilities_t *gst_avdtp_find_caps(GstAvdtpSink *sink,
+						uint8_t codec_type)
+{
+	struct bt_get_capabilities_rsp *rsp = sink->data->caps;
+	codec_capabilities_t *codec = (void *) rsp->data;
+	int bytes_left = rsp->h.length - sizeof(*rsp);
+
+	while (bytes_left > 0) {
+		if (codec->type == codec_type)
+			break;
+
+		bytes_left -= codec->length;
+		codec = (void *) codec + codec->length;
+	}
+
+	if (bytes_left <= 0)
+		return NULL;
+
+	return codec;
+}
+
 static gboolean gst_avdtp_sink_init_sbc_pkt_conf(GstAvdtpSink *sink,
 					GstCaps *caps,
 					sbc_capabilities_t *pkt)
 {
-	sbc_capabilities_t *cfg = &sink->data->caps.sbc_capabilities;
+	sbc_capabilities_t *cfg;
 	const GValue *value = NULL;
 	const char *pref, *name;
 	gint rate, subbands, blocks;
 	GstStructure *structure = gst_caps_get_structure(caps, 0);
 
+	cfg = (void *) gst_avdtp_find_caps(sink, BT_A2DP_CODEC_SBC);
 	name = gst_structure_get_name(structure);
 
 	if (!(IS_SBC(name))) {
@@ -595,6 +617,9 @@ static GstStructure *gst_avdtp_sink_parse_mpeg_caps(
 	gboolean valid_layer = FALSE;
 	gboolean mono, stereo;
 
+	if (!mpeg)
+		return NULL;
+
 	GST_LOG_OBJECT(self, "parsing mpeg caps");
 
 	structure = gst_structure_empty_new("audio/mpeg");
@@ -709,13 +734,16 @@ static GstStructure *gst_avdtp_sink_parse_mpeg_caps(
 
 static gboolean gst_avdtp_sink_update_caps(GstAvdtpSink *self)
 {
-	sbc_capabilities_t *sbc = &self->data->caps.sbc_capabilities;
-	mpeg_capabilities_t *mpeg = &self->data->caps.mpeg_capabilities;
+	sbc_capabilities_t *sbc;
+	mpeg_capabilities_t *mpeg;
 	GstStructure *sbc_structure;
 	GstStructure *mpeg_structure;
 	gchar *tmp;
 
 	GST_LOG_OBJECT(self, "updating device caps");
+
+	sbc = (void *) gst_avdtp_find_caps(self, BT_A2DP_CODEC_SBC);
+	mpeg = (void *) gst_avdtp_find_caps(self, BT_A2DP_CODEC_MPEG12);
 
 	sbc_structure = gst_avdtp_sink_parse_sbc_caps(self, sbc);
 	mpeg_structure = gst_avdtp_sink_parse_mpeg_caps(self, mpeg);
@@ -735,14 +763,17 @@ static gboolean gst_avdtp_sink_update_caps(GstAvdtpSink *self)
 
 static gboolean gst_avdtp_sink_get_capabilities(GstAvdtpSink *self)
 {
-	gchar *buf[BT_AUDIO_IPC_PACKET_SIZE];
-	struct bt_getcapabilities_req *req = (void *) buf;
-	struct bt_getcapabilities_rsp *rsp = (void *) buf;
+	gchar *buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_get_capabilities_req *req = (void *) buf;
+	struct bt_get_capabilities_rsp *rsp = (void *) buf;
 	GIOError io_error;
 
-	memset(req, 0, BT_AUDIO_IPC_PACKET_SIZE);
+	memset(req, 0, BT_SUGGESTED_BUFFER_SIZE);
 
-	req->h.msg_type = BT_GETCAPABILITIES_REQ;
+	req->h.type = BT_REQUEST;
+	req->h.name = BT_GET_CAPABILITIES;
+	req->h.length = sizeof(*req);
+
 	if (self->device == NULL)
 		return FALSE;
 	strncpy(req->device, self->device, 18);
@@ -756,20 +787,14 @@ static gboolean gst_avdtp_sink_get_capabilities(GstAvdtpSink *self)
 	}
 
 	io_error = gst_avdtp_sink_audioservice_expect(self,
-			&rsp->rsp_h.msg_h, BT_GETCAPABILITIES_RSP);
+			&rsp->h, BT_GET_CAPABILITIES);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while getting device caps");
 		return FALSE;
 	}
 
-	if (rsp->rsp_h.posix_errno != 0) {
-		GST_ERROR_OBJECT(self, "BT_GETCAPABILITIES failed : %s(%d)",
-					strerror(rsp->rsp_h.posix_errno),
-					rsp->rsp_h.posix_errno);
-		return FALSE;
-	}
-
-	memcpy(&self->data->caps, rsp, sizeof(*rsp));
+	self->data->caps = g_malloc0(rsp->h.length);
+	memcpy(self->data->caps, rsp, rsp->h.length);
 	if (!gst_avdtp_sink_update_caps(self)) {
 		GST_WARNING_OBJECT(self, "failed to update capabilities");
 		return FALSE;
@@ -888,16 +913,16 @@ failed:
 
 static gboolean gst_avdtp_sink_stream_start(GstAvdtpSink *self)
 {
-	gchar buf[BT_AUDIO_IPC_PACKET_SIZE];
-	struct bt_streamstart_req *req = (void *) buf;
-	struct bt_streamstart_rsp *rsp = (void *) buf;
-	struct bt_streamfd_ind *ind = (void*) buf;
+	gchar buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_start_stream_req *req = (void *) buf;
+	struct bt_start_stream_rsp *rsp = (void *) buf;
+	struct bt_new_stream_ind *ind = (void*) buf;
 	GIOError io_error;
 
-	GST_DEBUG_OBJECT(self, "stream start");
-
 	memset (req, 0, sizeof(buf));
-	req->h.msg_type = BT_STREAMSTART_REQ;
+	req->h.type = BT_REQUEST;
+	req->h.name = BT_START_STREAM;
+	req->h.length = sizeof(*req);
 
 	io_error = gst_avdtp_sink_audioservice_send(self, &req->h);
 	if (io_error != G_IO_ERROR_NONE) {
@@ -906,27 +931,16 @@ static gboolean gst_avdtp_sink_stream_start(GstAvdtpSink *self)
 		return FALSE;
 	}
 
-	GST_DEBUG_OBJECT(self, "stream start packet sent");
-
 	io_error = gst_avdtp_sink_audioservice_expect(self,
-			&rsp->rsp_h.msg_h, BT_STREAMSTART_RSP);
+			&rsp->h, BT_START_STREAM);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while stream "
 			"start confirmation");
 		return FALSE;
 	}
 
-	if (rsp->rsp_h.posix_errno != 0) {
-		GST_ERROR_OBJECT(self, "BT_STREAMSTART_RSP failed : %s(%d)",
-					strerror(rsp->rsp_h.posix_errno),
-					rsp->rsp_h.posix_errno);
-		return FALSE;
-	}
-
-	GST_DEBUG_OBJECT(self, "stream started");
-
 	io_error = gst_avdtp_sink_audioservice_expect(self, &ind->h,
-			BT_STREAMFD_IND);
+			BT_NEW_STREAM);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while receiving "
 			"stream filedescriptor");
@@ -1019,9 +1033,9 @@ static gboolean gst_avdtp_sink_init_mp3_pkt_conf(
 static gboolean gst_avdtp_sink_configure(GstAvdtpSink *self,
 			GstCaps *caps)
 {
-	gchar buf[BT_AUDIO_IPC_PACKET_SIZE];
-	struct bt_setconfiguration_req *req = (void *) buf;
-	struct bt_setconfiguration_rsp *rsp = (void *) buf;
+	gchar buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_set_configuration_req *req = (void *) buf;
+	struct bt_set_configuration_rsp *rsp = (void *) buf;
 	gboolean ret;
 	GIOError io_error;
 	gchar *temp;
@@ -1032,17 +1046,20 @@ static gboolean gst_avdtp_sink_configure(GstAvdtpSink *self,
 	g_free(temp);
 
 	memset (req, 0, sizeof(buf));
-	req->h.msg_type = BT_SETCONFIGURATION_REQ;
+	req->h.type = BT_REQUEST;
+	req->h.name = BT_SET_CONFIGURATION;
+	req->h.length = sizeof(*req);
+
 	req->access_mode = BT_CAPABILITIES_ACCESS_MODE_WRITE;
 	strncpy(req->device, self->device, 18);
 	structure = gst_caps_get_structure(caps, 0);
 
 	if (gst_structure_has_name(structure, "audio/x-sbc"))
 		ret = gst_avdtp_sink_init_sbc_pkt_conf(self, caps,
-				&req->sbc_capabilities);
+				(void *) &req->codec);
 	else if (gst_structure_has_name(structure, "audio/mpeg"))
 		ret = gst_avdtp_sink_init_mp3_pkt_conf(self, caps,
-				&req->mpeg_capabilities);
+				(void *) &req->codec);
 	else
 		ret = FALSE;
 
@@ -1059,26 +1076,15 @@ static gboolean gst_avdtp_sink_configure(GstAvdtpSink *self,
 		return FALSE;
 	}
 
-	GST_DEBUG_OBJECT(self, "configuration packet sent");
-
 	io_error = gst_avdtp_sink_audioservice_expect(self,
-			&rsp->rsp_h.msg_h, BT_SETCONFIGURATION_RSP);
+			&rsp->h, BT_SET_CONFIGURATION);
 	if (io_error != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while receiving device "
 					"confirmation");
 		return FALSE;
 	}
 
-	if (rsp->rsp_h.posix_errno != 0) {
-		GST_ERROR_OBJECT(self, "BT_SETCONFIGURATION_RSP failed : "
-					"%s(%d)",
-					strerror(rsp->rsp_h.posix_errno),
-					rsp->rsp_h.posix_errno);
-		return FALSE;
-	}
-
 	self->data->link_mtu = rsp->link_mtu;
-	GST_DEBUG_OBJECT(self, "configuration set");
 
 	return TRUE;
 }
@@ -1219,12 +1225,18 @@ static GIOError gst_avdtp_sink_audioservice_send(
 {
 	GIOError error;
 	gsize written;
+	const char *type, *name;
 
 	error = g_io_channel_write(self->server, (const gchar*) msg,
-			BT_AUDIO_IPC_PACKET_SIZE, &written);
+			BT_SUGGESTED_BUFFER_SIZE, &written);
 	if (error != G_IO_ERROR_NONE)
 		GST_ERROR_OBJECT(self, "Error sending data to audio service:"
 			" %s(%d)", strerror(errno), errno);
+
+	type = bt_audio_strtype(msg->type);
+	name = bt_audio_strname(msg->name);
+
+	GST_DEBUG_OBJECT(self, "sent: %s -> %s", type, name);
 
 	return error;
 }
@@ -1235,30 +1247,50 @@ static GIOError gst_avdtp_sink_audioservice_recv(
 {
 	GIOError status;
 	gsize bytes_read;
-	const char *type;
+	const char *type, *name;
 
 	status = g_io_channel_read(self->server, (gchar*) inmsg,
-			BT_AUDIO_IPC_PACKET_SIZE, &bytes_read);
+			BT_SUGGESTED_BUFFER_SIZE, &bytes_read);
 	if (status != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error receiving data from "
 				"audio service");
 		return status;
 	}
 
-	type = bt_audio_strmsg(inmsg->msg_type);
+	type = bt_audio_strtype(inmsg->type);
 	if (!type) {
 		status = G_IO_ERROR_INVAL;
 		GST_ERROR_OBJECT(self, "Bogus message type %d "
 				"received from audio service",
-				inmsg->msg_type);
+				inmsg->type);
 	}
+
+	name = bt_audio_strname(inmsg->name);
+	if (!name) {
+		status = G_IO_ERROR_INVAL;
+		GST_ERROR_OBJECT(self, "Bogus message name %d "
+				"received from audio service",
+				inmsg->name);
+	}
+
+	if (inmsg->type == BT_ERROR) {
+		bt_audio_error_t *err = (void *) inmsg;
+		status = G_IO_ERROR_INVAL;
+		GST_ERROR_OBJECT(self, "%s failed : "
+					"%s(%d)",
+					name,
+					strerror(err->posix_errno),
+					err->posix_errno);
+	}
+
+	GST_DEBUG_OBJECT(self, "received: %s <- %s", type, name);
 
 	return status;
 }
 
 static GIOError gst_avdtp_sink_audioservice_expect(
 			GstAvdtpSink *self, bt_audio_msg_header_t *outmsg,
-			int expected_type)
+			guint8 expected_name)
 {
 	GIOError status;
 
@@ -1266,7 +1298,7 @@ static GIOError gst_avdtp_sink_audioservice_expect(
 	if (status != G_IO_ERROR_NONE)
 		return status;
 
-	if (outmsg->msg_type != expected_type)
+	if (outmsg->name != expected_name)
 		status = G_IO_ERROR_INVAL;
 
 	return status;
@@ -1357,5 +1389,3 @@ void gst_avdtp_sink_set_channel_mode(GstAvdtpSink *self,
 		GST_WARNING_OBJECT(self, "Received invalid channel "
 				"mode: %s", mode);
 }
-
-
