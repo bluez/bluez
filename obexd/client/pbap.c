@@ -46,6 +46,7 @@
 #define DEFAULT_OFFSET	0
 
 #define PULLPHONEBOOK		0x1
+#define GETPHONEBOOKSIZE	0x2
 
 #define ORDER_TAG		0x01
 #define SEARCHVALUE_TAG		0x02
@@ -67,6 +68,8 @@
 #define PHONEBOOKSIZE_LEN	2
 #define NEWMISSEDCALLS_LEN	1
 
+#define get_be16(val)	GUINT16_FROM_BE(bt_get_unaligned((guint16 *) val))
+
 struct pullphonebook_apparam {
 	uint8_t     filter_tag;
 	uint8_t     filter_len;
@@ -81,6 +84,14 @@ struct pullphonebook_apparam {
 	uint8_t     liststartoffset_len;
 	uint16_t    liststartoffset;
 } __attribute__ ((packed));
+
+struct apparam_hdr {
+	uint8_t		tag;
+	uint8_t		len;
+	uint8_t		val[0];
+} __attribute__ ((packed));
+
+#define APPARAM_HDR_SIZE 2
 
 static gchar *build_phonebook_path(const char *location, const char *item)
 {
@@ -179,6 +190,54 @@ fail:
 	return err;
 }
 
+static void read_return_apparam(struct session_data *session,
+				guint16 *phone_book_size, guint8 *new_missed_calls)
+{
+	GwObexXfer *xfer = session->xfer;
+	unsigned char *buf;
+	size_t size = 0;
+
+	*phone_book_size = 0;
+	*new_missed_calls = 0;
+
+	if (xfer == NULL)
+		return;
+
+	buf = gw_obex_xfer_object_apparam(xfer, &size);
+
+	if (size < APPARAM_HDR_SIZE)
+		return;
+
+	while (size > APPARAM_HDR_SIZE) {
+		struct apparam_hdr *hdr = (struct apparam_hdr *) buf;
+
+		if (hdr->len > size - APPARAM_HDR_SIZE) {
+			fprintf(stderr, "Unexpected PBAP pullphonebook app"
+					" length, tag %d, len %d\n",
+					hdr->tag, hdr->len);
+			return;
+		}
+
+		switch (hdr->tag) {
+		case PHONEBOOKSIZE_TAG:
+			if (hdr->len == PHONEBOOKSIZE_LEN)
+				*phone_book_size = get_be16(hdr->val);
+			break;
+		case NEWMISSEDCALLS_TAG:
+			if (hdr->len == NEWMISSEDCALLS_LEN)
+				*new_missed_calls = hdr->val[0];
+			break;
+		default:
+			fprintf(stderr, "Unexpected PBAP pullphonebook app"
+					" parameter, tag %d, len %d\n",
+					hdr->tag, hdr->len);
+		}
+
+		buf += APPARAM_HDR_SIZE + hdr->len;
+		size -= APPARAM_HDR_SIZE + hdr->len;
+	}
+}
+
 static void pull_phonebook_callback(struct session_data *session,
 					void *user_data)
 {
@@ -192,6 +251,27 @@ static void pull_phonebook_callback(struct session_data *session,
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &buf,
+			DBUS_TYPE_INVALID);
+
+	session->filled = 0;
+	g_dbus_send_message(session->conn, reply);
+	dbus_message_unref(session->msg);
+	session->msg = NULL;
+}
+
+static void phonebook_size_callback(struct session_data *session,
+					void *user_data)
+{
+	DBusMessage *reply;
+	guint16 phone_book_size;
+	guint8 new_missed_calls;
+
+	reply = dbus_message_new_method_return(session->msg);
+
+	read_return_apparam(session, &phone_book_size, &new_missed_calls);
+
+	dbus_message_append_args(reply,
+			DBUS_TYPE_UINT16, &phone_book_size,
 			DBUS_TYPE_INVALID);
 
 	session->filled = 0;
@@ -230,6 +310,9 @@ static DBusMessage *pull_phonebook(struct session_data *session,
 	switch (type) {
 	case PULLPHONEBOOK:
 		func = pull_phonebook_callback;
+		break;
+	case GETPHONEBOOKSIZE:
+		func = phonebook_size_callback;
 		break;
 	default:
 		fprintf(stderr, "Unexpected type : 0x%2x\n", type);
@@ -339,6 +422,27 @@ static DBusMessage *pbap_pull_all(DBusConnection *connection,
 	return err;
 }
 
+static DBusMessage *pbap_get_size(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	struct pbap_data *pbapdata = session->pbapdata;
+	DBusMessage * err;
+	char *name;
+
+	if (!pbapdata->path)
+		return g_dbus_create_error(message,
+				ERROR_INF ".Forbidden", "Call Select first of all");
+
+	name = g_strconcat(pbapdata->path, ".vcf", NULL);
+
+	err = pull_phonebook(session, message, GETPHONEBOOKSIZE, name,
+				pbapdata->filter, pbapdata->format,
+				0, DEFAULT_OFFSET);
+	g_free(name);
+	return err;
+}
+
 static DBusMessage *pbap_set_format(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -380,6 +484,8 @@ static DBusMessage *pbap_set_order(DBusConnection *connection,
 static GDBusMethodTable pbap_methods[] = {
 	{ "Select",	"ss",	"",	pbap_select },
 	{ "PullAll",	"",	"s",	pbap_pull_all,
+					G_DBUS_METHOD_FLAG_ASYNC },
+	{ "GetSize",	"",	"q",	pbap_get_size,
 					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "SetFormat",	"s",	"",	pbap_set_format },
 	{ "SetOrder",	"s",	"",	pbap_set_order },
