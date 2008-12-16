@@ -96,6 +96,7 @@ static void parse_config(GKeyFile *config)
 	GError *err = NULL;
 	char *str;
 	int val;
+	gboolean boolean;
 
 	if (!config)
 		return;
@@ -172,6 +173,16 @@ static void parse_config(GKeyFile *config)
 		debug("inqmode=%d", val);
 		main_opts.inqmode = val;
 	}
+
+	boolean = g_key_file_get_boolean(config, "General",
+						"InitiallyPowered",
+						&err);
+	if (err) {
+		debug("%s", err->message);
+		g_clear_error(&err);
+	} else if (boolean == FALSE)
+		main_opts.mode = MODE_OFF;
+
 
 	main_opts.link_mode = HCI_LM_ACCEPT;
 
