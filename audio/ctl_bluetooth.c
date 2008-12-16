@@ -141,47 +141,59 @@ static int bluetooth_get_integer_info(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 }
 
 static int bluetooth_send_ctl(struct bluetooth_data *data,
-			uint8_t mode, uint8_t key, struct bt_control_rsp *ctl_rsp)
+			uint8_t mode, uint8_t key, struct bt_control_rsp *rsp)
 {
 	int ret;
-	struct bt_control_req *ctl_req = (void *) ctl_rsp;
-	const char *type;
+	struct bt_control_req *req = (void *) rsp;
+	bt_audio_error_t *err = (void *) rsp;
+	const char *type, *name;
 
-	memset(ctl_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
-	ctl_req->h.msg_type = BT_CONTROL_REQ;
-	ctl_req->mode = mode;
-	ctl_req->key = key;
+	memset(req, 0, BT_SUGGESTED_BUFFER_SIZE);
+	req->h.type = BT_REQUEST;
+	req->h.name = BT_CONTROL;
+	req->h.length = sizeof(*req);
 
-	ret = send(data->sock, ctl_req, BT_AUDIO_IPC_PACKET_SIZE, MSG_NOSIGNAL);
+	req->mode = mode;
+	req->key = key;
+
+	ret = send(data->sock, req, BT_SUGGESTED_BUFFER_SIZE, MSG_NOSIGNAL);
 	if (ret <= 0) {
 		SYSERR("Unable to request new volume value to server");
 		return  -errno;
 	}
 
-	ret = recv(data->sock, ctl_rsp, BT_AUDIO_IPC_PACKET_SIZE, 0);
+	ret = recv(data->sock, rsp, BT_SUGGESTED_BUFFER_SIZE, 0);
 	if (ret <= 0) {
 		SNDERR("Unable to receive new volume value from server");
 		return  -errno;
 	}
 
-	type = bt_audio_strmsg(ctl_rsp->rsp_h.msg_h.msg_type);
+	if (rsp->h.type == BT_ERROR) {
+		SNDERR("BT_CONTROL failed : %s (%d)",
+					strerror(err->posix_errno),
+					err->posix_errno);
+		return -err->posix_errno;
+	}
+
+	type = bt_audio_strtype(rsp->h.type);
 	if (!type) {
 		SNDERR("Bogus message type %d "
 				"received from audio service",
-				ctl_rsp->rsp_h.msg_h.msg_type);
+				rsp->h.type);
 		return -EINVAL;
 	}
 
-	if (ctl_rsp->rsp_h.msg_h.msg_type != BT_CONTROL_RSP) {
+	name = bt_audio_strname(rsp->h.name);
+	if (!name) {
+		SNDERR("Bogus message name %d "
+				"received from audio service",
+				rsp->h.name);
+		return -EINVAL;
+	}
+
+	if (rsp->h.name != BT_CONTROL) {
 		SNDERR("Unexpected message %s received", type);
 		return -EINVAL;
-	}
-
-	if (ctl_rsp->rsp_h.posix_errno != 0) {
-		SNDERR("BT_CONTROL failed : %s (%d)",
-					strerror(ctl_rsp->rsp_h.posix_errno),
-					ctl_rsp->rsp_h.posix_errno);
-		return -ctl_rsp->rsp_h.posix_errno;
 	}
 
 	return 0;
@@ -192,7 +204,7 @@ static int bluetooth_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 {
 	struct bluetooth_data *data = ext->private_data;
 	int ret;
-	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_control_rsp *rsp = (void *) buf;
 
 	DBG("ext %p key %ld", ext, key);
@@ -213,7 +225,7 @@ static int bluetooth_write_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 								long *value)
 {
 	struct bluetooth_data *data = ext->private_data;
-	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_control_rsp *rsp = (void *) buf;
 	long current;
 	int ret, keyvalue;
@@ -245,26 +257,34 @@ static int bluetooth_read_event(snd_ctl_ext_t *ext, snd_ctl_elem_id_t *id,
 						unsigned int *event_mask)
 {
 	struct bluetooth_data *data = ext->private_data;
-	char buf[BT_AUDIO_IPC_PACKET_SIZE];
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_control_ind *ind = (void *) buf;
 	int ret;
-	const char *type;
+	const char *type, *name;
 
 	DBG("ext %p id %p", ext, id);
 
 	memset(buf, 0, sizeof(buf));
 
-	ret = recv(data->sock, ind, BT_AUDIO_IPC_PACKET_SIZE, MSG_DONTWAIT);
-	type = bt_audio_strmsg(ind->h.msg_type);
+	ret = recv(data->sock, ind, BT_SUGGESTED_BUFFER_SIZE, MSG_DONTWAIT);
+	type = bt_audio_strtype(ind->h.type);
 	if (!type) {
 		SNDERR("Bogus message type %d "
 				"received from audio service",
-				ind->h.msg_type);
+				ind->h.type);
 		return -EAGAIN;
 	}
 
-	if (ind->h.msg_type != BT_CONTROL_IND) {
-		SNDERR("Unexpected message %s received", type);
+	name = bt_audio_strname(ind->h.name);
+	if (!name) {
+		SNDERR("Bogus message name %d "
+				"received from audio service",
+				ind->h.name);
+		return -EAGAIN;
+	}
+
+	if (ind->h.name != BT_CONTROL) {
+		SNDERR("Unexpected message %s received", name);
 		return -EAGAIN;
 	}
 

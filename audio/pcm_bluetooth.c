@@ -332,10 +332,10 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 {
 	struct bluetooth_data *data = io->private_data;
 	char c = 'w';
-	char buf[BT_AUDIO_IPC_PACKET_SIZE];
-	struct bt_streamstart_req *start_req = (void*) buf;
-	bt_audio_rsp_msg_header_t *rsp_hdr = (void*) buf;
-	struct bt_streamfd_ind *streamfd_ind = (void*) buf;
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_start_stream_req *req = (void*) buf;
+	bt_audio_msg_header_t *rsp = (void*) buf;
+	struct bt_new_stream_ind *ind = (void*) buf;
 	uint32_t period_count = io->buffer_size / io->period_size;
 	int opt_name, err;
 	struct timeval t = { 0, period_count };
@@ -363,27 +363,22 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 		data->hw_ptr = io->period_size;
 
 	/* send start */
-	memset(start_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
-	start_req->h.msg_type = BT_STREAMSTART_REQ;
+	memset(req, 0, BT_SUGGESTED_BUFFER_SIZE);
+	req->h.type = BT_REQUEST;
+	req->h.name = BT_START_STREAM;
+	req->h.length = sizeof(*req);
 
-	err = audioservice_send(data->server.fd, &start_req->h);
+	err = audioservice_send(data->server.fd, &req->h);
 	if (err < 0)
 		return err;
 
-	err = audioservice_expect(data->server.fd, &rsp_hdr->msg_h,
-					BT_STREAMSTART_RSP);
+	err = audioservice_expect(data->server.fd, rsp,
+					BT_START_STREAM);
 	if (err < 0)
 		return err;
 
-	if (rsp_hdr->posix_errno != 0) {
-		SNDERR("BT_START failed : %s(%d)",
-					strerror(rsp_hdr->posix_errno),
-					rsp_hdr->posix_errno);
-		return -rsp_hdr->posix_errno;
-	}
-
-	err = audioservice_expect(data->server.fd, &streamfd_ind->h,
-					BT_STREAMFD_IND);
+	err = audioservice_expect(data->server.fd, &ind->h,
+					BT_NEW_STREAM);
 	if (err < 0)
 		return err;
 
@@ -432,19 +427,21 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 					snd_pcm_hw_params_t *params)
 {
 	struct bluetooth_data *data = io->private_data;
-	char buf[BT_AUDIO_IPC_PACKET_SIZE];
-	bt_audio_rsp_msg_header_t *rsp_hdr = (void*) buf;
-	struct bt_setconfiguration_req *setconf_req = (void*) buf;
-	struct bt_setconfiguration_rsp *setconf_rsp = (void*) buf;
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	bt_audio_msg_header_t *rsp = (void*) buf;
+	struct bt_set_configuration_req *setconf_req = (void*) buf;
+	struct bt_set_configuration_rsp *setconf_rsp = (void*) buf;
 	int err;
 
 	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
 					io->period_size, io->buffer_size);
 
-	memset(setconf_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
-	setconf_req->h.msg_type = BT_SETCONFIGURATION_REQ;
+	memset(setconf_req, 0, BT_SUGGESTED_BUFFER_SIZE);
+	setconf_req->h.type = BT_REQUEST;
+	setconf_req->h.name = BT_SET_CONFIGURATION;
+
 	strncpy(setconf_req->device, data->alsa_config.device, 18);
-	setconf_req->transport = BT_CAPABILITIES_TRANSPORT_SCO;
+	setconf_req->codec.transport = BT_CAPABILITIES_TRANSPORT_SCO;
 	setconf_req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
 			BT_CAPABILITIES_ACCESS_MODE_WRITE :
 			BT_CAPABILITIES_ACCESS_MODE_READ);
@@ -453,17 +450,10 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 	if (err < 0)
 		return err;
 
-	err = audioservice_expect(data->server.fd, &rsp_hdr->msg_h,
-					BT_SETCONFIGURATION_RSP);
+	err = audioservice_expect(data->server.fd, rsp,
+					BT_SET_CONFIGURATION);
 	if (err < 0)
 		return err;
-
-	if (rsp_hdr->posix_errno != 0) {
-		SNDERR("BT_SETCONFIGURATION failed : %s(%d)",
-					strerror(rsp_hdr->posix_errno),
-					rsp_hdr->posix_errno);
-		return -rsp_hdr->posix_errno;
-	}
 
 	data->transport = setconf_rsp->transport;
 	data->link_mtu = setconf_rsp->link_mtu;
@@ -675,11 +665,12 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 {
 	struct bluetooth_data *data = io->private_data;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
-	char buf[BT_AUDIO_IPC_PACKET_SIZE];
-	bt_audio_rsp_msg_header_t *rsp_hdr = (void*) buf;
-	struct bt_setconfiguration_req *setconf_req = (void*) buf;
-	struct bt_setconfiguration_rsp *setconf_rsp = (void*) buf;
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	bt_audio_msg_header_t *rsp = (void*) buf;
+	struct bt_set_configuration_req *setconf_req = (void*) buf;
+	struct bt_set_configuration_rsp *setconf_rsp = (void*) buf;
 	int err;
+	sbc_capabilities_t *sbc;
 
 	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
 					io->period_size, io->buffer_size);
@@ -688,11 +679,17 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	if (err < 0)
 		return err;
 
-	memset(setconf_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
-	setconf_req->h.msg_type = BT_SETCONFIGURATION_REQ;
+	memset(setconf_req, 0, BT_SUGGESTED_BUFFER_SIZE);
+	setconf_req->h.type = BT_REQUEST;
+	setconf_req->h.name = BT_SET_CONFIGURATION;
+
 	strncpy(setconf_req->device, data->alsa_config.device, 18);
-	setconf_req->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
-	setconf_req->sbc_capabilities = a2dp->sbc_capabilities;
+
+	sbc = (void *) &setconf_req->codec;
+	*sbc = a2dp->sbc_capabilities;
+
+	setconf_req->codec.transport = BT_CAPABILITIES_TRANSPORT_A2DP;
+	setconf_req->codec.length = sizeof(sbc_capabilities_t);
 	setconf_req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
 			BT_CAPABILITIES_ACCESS_MODE_WRITE :
 			BT_CAPABILITIES_ACCESS_MODE_READ);
@@ -701,17 +698,10 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	if (err < 0)
 		return err;
 
-	err = audioservice_expect(data->server.fd, &rsp_hdr->msg_h,
-					BT_SETCONFIGURATION_RSP);
+	err = audioservice_expect(data->server.fd, rsp,
+					BT_SET_CONFIGURATION);
 	if (err < 0)
 		return err;
-
-	if (rsp_hdr->posix_errno != 0) {
-		SNDERR("BT_SETCONFIGURATION failed : %s(%d)",
-					strerror(rsp_hdr->posix_errno),
-					rsp_hdr->posix_errno);
-		return -rsp_hdr->posix_errno;
-	}
 
 	data->transport = setconf_rsp->transport;
 	data->link_mtu = setconf_rsp->link_mtu;
@@ -1497,7 +1487,7 @@ static int audioservice_send(int sk, const bt_audio_msg_header_t *msg)
 	int err;
 
 	DBG("sending %s", bt_audio_strmsg(msg->msg_type));
-	if (send(sk, msg, BT_AUDIO_IPC_PACKET_SIZE, 0) > 0)
+	if (send(sk, msg, BT_SUGGESTED_BUFFER_SIZE, 0) > 0)
 		err = 0;
 	else {
 		err = -errno;
@@ -1511,19 +1501,20 @@ static int audioservice_send(int sk, const bt_audio_msg_header_t *msg)
 static int audioservice_recv(int sk, bt_audio_msg_header_t *inmsg)
 {
 	int err;
-	const char *type;
+	const char *type, *name;
 
 	DBG("trying to receive msg from audio service...");
-	if (recv(sk, inmsg, BT_AUDIO_IPC_PACKET_SIZE, 0) > 0) {
-		type = bt_audio_strmsg(inmsg->msg_type);
-		if (type) {
-			DBG("Received %s", type);
+	if (recv(sk, inmsg, BT_SUGGESTED_BUFFER_SIZE, 0) > 0) {
+		type = bt_audio_strtype(inmsg->type);
+		name = bt_audio_strname(inmsg->name);
+		if (type && name) {
+			DBG("Received %s - %s", type, name);
 			err = 0;
 		} else {
 			err = -EINVAL;
-			SNDERR("Bogus message type %d "
+			SNDERR("Bogus message type %d - name %d"
 					"received from audio service",
-					inmsg->msg_type);
+					inmsg->type, inmsg->name);
 		}
 	} else {
 		err = -errno;
@@ -1534,20 +1525,60 @@ static int audioservice_recv(int sk, bt_audio_msg_header_t *inmsg)
 	return err;
 }
 
-static int audioservice_expect(int sk, bt_audio_msg_header_t *rsp_hdr,
-				int expected_type)
+static int audioservice_expect(int sk, bt_audio_msg_header_t *rsp,
+				int expected_name)
 {
-	int err = audioservice_recv(sk, rsp_hdr);
-	if (err == 0) {
-		if (rsp_hdr->msg_type != expected_type) {
-			err = -EINVAL;
-			SNDERR("Bogus message %s received while "
-					"%s was expected",
-					bt_audio_strmsg(rsp_hdr->msg_type),
-					bt_audio_strmsg(expected_type));
-		}
+	bt_audio_error_t *error;
+	int err = audioservice_recv(sk, rsp);
+
+	if (err != 0)
+		return err;
+
+	if (rsp->name != expected_name) {
+		err = -EINVAL;
+		SNDERR("Bogus message %s received while %s was expected",
+				bt_audio_strname(rsp->name),
+				bt_audio_strname(expected_name));
 	}
+
+	if (rsp->type == BT_ERROR) {
+		error = (void *) rsp;
+		SNDERR("%s failed : %s(%d)",
+					bt_audio_strname(rsp->name),
+					strerror(error->posix_errno),
+					error->posix_errno);
+		return -error->posix_errno;
+	}
+
 	return err;
+}
+
+static int bluetooth_parse_capabilities(struct bluetooth_data *data,
+					struct bt_get_capabilities_rsp *rsp)
+{
+	int bytes_left = rsp->h.length - sizeof(*rsp);
+	codec_capabilities_t *codec = (void *) rsp->data;
+
+	data->transport = codec->transport;
+
+	if (codec->transport != BT_CAPABILITIES_TRANSPORT_A2DP)
+		return 0;
+
+	while (bytes_left > 0) {
+		if (codec->type == BT_A2DP_CODEC_SBC)
+			break;
+
+		bytes_left -= codec->length;
+		codec = (void *) codec + codec->length;
+	}
+
+	if (bytes_left <= 0 ||
+			codec->length != sizeof(data->a2dp.sbc_capabilities))
+		return -EINVAL;
+
+	memcpy(&data->a2dp.sbc_capabilities, codec, codec->length);
+
+	return 0;
 }
 
 static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
@@ -1555,10 +1586,10 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 {
 	int sk, err;
 	struct bluetooth_alsa_config *alsa_conf = &data->alsa_config;
-	char buf[BT_AUDIO_IPC_PACKET_SIZE];
-	bt_audio_rsp_msg_header_t *rsp_hdr = (void*) buf;
-	struct bt_getcapabilities_req *getcaps_req = (void*) buf;
-	struct bt_getcapabilities_rsp *getcaps_rsp = (void*) buf;
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	bt_audio_msg_header_t *rsp = (void*) buf;
+	struct bt_get_capabilities_req *getcaps_req = (void*) buf;
+	struct bt_get_capabilities_rsp *getcaps_rsp = (void*) buf;
 
 	memset(data, 0, sizeof(struct bluetooth_data));
 
@@ -1594,8 +1625,11 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 		goto failed;
 	}
 
-	memset(getcaps_req, 0, BT_AUDIO_IPC_PACKET_SIZE);
-	getcaps_req->h.msg_type = BT_GETCAPABILITIES_REQ;
+	memset(getcaps_req, 0, BT_SUGGESTED_BUFFER_SIZE);
+	getcaps_req->h.type = BT_REQUEST;
+	getcaps_req->h.name = BT_GET_CAPABILITIES;
+	getcaps_req->h.length = sizeof(*getcaps_req);
+
 	getcaps_req->flags = 0;
 	if (alsa_conf->autoconnect)
 		getcaps_req->flags |= BT_FLAG_AUTOCONNECT;
@@ -1609,21 +1643,11 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	if (err < 0)
 		goto failed;
 
-	err = audioservice_expect(data->server.fd, &rsp_hdr->msg_h, BT_GETCAPABILITIES_RSP);
+	err = audioservice_expect(data->server.fd, rsp, BT_GET_CAPABILITIES);
 	if (err < 0)
 		goto failed;
 
-	if (rsp_hdr->posix_errno != 0) {
-		SNDERR("BT_GETCAPABILITIES failed : %s(%d)",
-					strerror(rsp_hdr->posix_errno),
-					rsp_hdr->posix_errno);
-		return -rsp_hdr->posix_errno;
-	}
-
-	data->transport = getcaps_rsp->transport;
-
-	if (getcaps_rsp->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
-		data->a2dp.sbc_capabilities = getcaps_rsp->sbc_capabilities;
+	bluetooth_parse_capabilities(data, getcaps_rsp);
 
 	return 0;
 
