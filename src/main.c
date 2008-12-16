@@ -183,7 +183,6 @@ static void parse_config(GKeyFile *config)
 	} else if (boolean == FALSE)
 		main_opts.mode = MODE_OFF;
 
-
 	main_opts.link_mode = HCI_LM_ACCEPT;
 
 	main_opts.link_policy = HCI_LP_RSWITCH | HCI_LP_SNIFF |
