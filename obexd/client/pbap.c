@@ -85,6 +85,15 @@ struct pullphonebook_apparam {
 	uint16_t    liststartoffset;
 } __attribute__ ((packed));
 
+struct pullvcardentry_apparam {
+        uint8_t     filter_tag;
+        uint8_t     filter_len;
+        uint64_t    filter;
+        uint8_t     format_tag;
+        uint8_t     format_len;
+        uint8_t     format;
+} __attribute__ ((packed));
+
 struct apparam_hdr {
 	uint8_t		tag;
 	uint8_t		len;
@@ -422,6 +431,49 @@ static DBusMessage *pbap_pull_all(DBusConnection *connection,
 	return err;
 }
 
+static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	struct pbap_data *pbapdata = session->pbapdata;
+	struct pullvcardentry_apparam apparam;
+	const char *name;
+
+	if (!pbapdata->path)
+		return g_dbus_create_error(message,
+				ERROR_INF ".Forbidden", "Call Select first of all");
+
+	if (dbus_message_get_args(message, NULL,
+			DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", NULL);
+
+	if (session->msg)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InProgress",
+				"Transfer in progress");
+
+	apparam.filter_tag = FILTER_TAG;
+	apparam.filter_len = FILTER_LEN;
+	apparam.filter = GUINT64_TO_BE(pbapdata->filter);
+	apparam.format_tag = FORMAT_TAG;
+	apparam.format_len = FORMAT_LEN;
+	apparam.format = pbapdata->format;
+
+	if (session_get(session, "x-bt/vcard", name, NULL,
+			(guint8 *)&apparam, sizeof(apparam),
+			pull_phonebook_callback) < 0)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.Failed",
+				"Failed");
+
+	session->msg = dbus_message_ref(message);
+	session->filled = 0;
+
+	return NULL;
+}
+
 static DBusMessage *pbap_get_size(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -484,6 +536,8 @@ static DBusMessage *pbap_set_order(DBusConnection *connection,
 static GDBusMethodTable pbap_methods[] = {
 	{ "Select",	"ss",	"",	pbap_select },
 	{ "PullAll",	"",	"s",	pbap_pull_all,
+					G_DBUS_METHOD_FLAG_ASYNC },
+	{ "Pull",	"s",	"s",	pbap_pull_vcard,
 					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetSize",	"",	"q",	pbap_get_size,
 					G_DBUS_METHOD_FLAG_ASYNC },
