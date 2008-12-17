@@ -104,8 +104,7 @@ static void parse_config(GKeyFile *config)
 	debug("parsing main.conf");
 
 	val = g_key_file_get_integer(config, "General",
-					"DiscoverableTimeout",
-					&err);
+						"DiscoverableTimeout", &err);
 	if (err) {
 		debug("%s", err->message);
 		g_clear_error(&err);
@@ -116,8 +115,7 @@ static void parse_config(GKeyFile *config)
 	}
 
 	val = g_key_file_get_integer(config, "General",
-					"PairableTimeout",
-					&err);
+						"PairableTimeout", &err);
 	if (err) {
 		debug("%s", err->message);
 		g_clear_error(&err);
@@ -126,9 +124,7 @@ static void parse_config(GKeyFile *config)
 		main_opts.pairto = val;
 	}
 
-	val = g_key_file_get_integer(config, "General",
-					"PageTimeout",
-					&err);
+	val = g_key_file_get_integer(config, "General", "PageTimeout", &err);
 	if (err) {
 		debug("%s", err->message);
 		g_clear_error(&err);
@@ -138,8 +134,7 @@ static void parse_config(GKeyFile *config)
 		main_opts.flags |= 1 << HCID_SET_PAGETO;
 	}
 
-	str = g_key_file_get_string(config, "General",
-					"Name", &err);
+	str = g_key_file_get_string(config, "General", "Name", &err);
 	if (err) {
 		debug("%s", err->message);
 		g_clear_error(&err);
@@ -151,8 +146,7 @@ static void parse_config(GKeyFile *config)
 		g_free(str);
 	}
 
-	str = g_key_file_get_string(config, "General",
-					"Class", &err);
+	str = g_key_file_get_string(config, "General", "Class", &err);
 	if (err) {
 		debug("%s", err->message);
 		g_clear_error(&err);
@@ -164,8 +158,7 @@ static void parse_config(GKeyFile *config)
 	}
 
 	val = g_key_file_get_integer(config, "General",
-					"DiscoverSchedulerInterval",
-					&err);
+					"DiscoverSchedulerInterval", &err);
 	if (err) {
 		debug("%s", err->message);
 		g_clear_error(&err);
@@ -175,13 +168,22 @@ static void parse_config(GKeyFile *config)
 	}
 
 	boolean = g_key_file_get_boolean(config, "General",
-						"InitiallyPowered",
-						&err);
+						"InitiallyPowered", &err);
 	if (err) {
 		debug("%s", err->message);
 		g_clear_error(&err);
 	} else if (boolean == FALSE)
 		main_opts.mode = MODE_OFF;
+
+	str = g_key_file_get_string(config, "General", "DeviceID", &err);
+	if (err) {
+		debug("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		debug("deviceid=%s", str);
+		strncpy(main_opts.deviceid, str, sizeof(main_opts.deviceid));
+		g_free(str);
+	}
 
 	main_opts.link_mode = HCI_LM_ACCEPT;
 
