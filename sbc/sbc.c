@@ -1104,7 +1104,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 			for (sb = 0; sb < frame->subbands; sb++) {
 				if (levels[ch][sb] > 0) {
 					audio_sample =
-						(uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >>
+						(uint16_t) (((((int64_t)frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >>
 									(frame->scale_factor[ch][sb] + 1)) +
 								levels[ch][sb]) >> 1);
 					PUT_BITS(audio_sample & levels[ch][sb], bits[ch][sb]);
