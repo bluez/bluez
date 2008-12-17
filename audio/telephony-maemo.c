@@ -1697,6 +1697,8 @@ void telephony_exit(void)
 	g_slist_free(calls);
 	calls = NULL;
 
+	dbus_connection_remove_filter(connection, signal_filter, NULL);
+
 	dbus_connection_unref(connection);
 	connection = NULL;
 }
