@@ -42,6 +42,10 @@
 #define ORDER_ALPHANUMERIC	0x1
 #define ORDER_PHONETIC		0x2
 
+#define ATTRIB_NAME		0x0
+#define ATTRIB_NUMBER		0x1
+#define ATTRIB_SOUND		0x2
+
 #define DEFAULT_COUNT	65535
 #define DEFAULT_OFFSET	0
 
@@ -102,6 +106,43 @@ struct apparam_hdr {
 
 #define APPARAM_HDR_SIZE 2
 
+static void listing_element(GMarkupParseContext *ctxt,
+				const gchar *element,
+				const gchar **names,
+				const gchar **values,
+				gpointer user_data,
+				GError **gerr)
+{
+	DBusMessageIter *item = user_data, entry;
+	gchar **key;
+	const gchar *handle = NULL, *vcardname = NULL;
+
+	if (!g_ascii_strcasecmp(element, "card"))
+		return;
+
+	for (key = (gchar **) names; *key; key++, values++) {
+		if (g_str_equal(*key, "handle") == TRUE)
+			handle = *values;
+		else if (g_str_equal(*key, "name") == TRUE)
+			vcardname = *values;
+	}
+
+	if (!handle || !vcardname)
+		return;
+
+	dbus_message_iter_open_container(item, DBUS_TYPE_STRUCT, NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &handle);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &vcardname);
+	dbus_message_iter_close_container(item, &entry);
+}
+
+static const GMarkupParser listing_parser = {
+	listing_element,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
 static gchar *build_phonebook_path(const char *location, const char *item)
 {
 	gchar *path = NULL, *tmp, *tmp1;
@@ -289,11 +330,50 @@ static void phonebook_size_callback(struct session_data *session,
 	session->msg = NULL;
 }
 
+static void pull_vcard_listing_callback(struct session_data *session,
+					void *user_data)
+{
+	GMarkupParseContext *ctxt;
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+	int i;
+
+	reply = dbus_message_new_method_return(session->msg);
+
+	if (session->filled == 0)
+		goto done;
+
+	for (i = session->filled - 1; i > 0; i--) {
+		if (session->buffer[i] != '\0')
+			break;
+
+		session->filled--;
+	}
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_STRING_AS_STRING
+			DBUS_STRUCT_END_CHAR_AS_STRING, &array);
+	ctxt = g_markup_parse_context_new(&listing_parser, 0, &array, NULL);
+	g_markup_parse_context_parse(ctxt, session->buffer,
+					session->filled, NULL);
+	g_markup_parse_context_free(ctxt);
+	dbus_message_iter_close_container(&iter, &array);
+
+	session->filled = 0;
+
+done:
+	g_dbus_send_message(session->conn, reply);
+	dbus_message_unref(session->msg);
+	session->msg = NULL;
+}
+
 static DBusMessage *pull_phonebook(struct session_data *session,
 					DBusMessage *message, guint8 type,
 					const char *name, uint64_t filter,
-					uint8_t format,	uint16_t maxlistcount,
-					uint16_t liststartoffset)
+					guint8 format, guint16 maxlistcount,
+					guint16 liststartoffset)
 {
 	struct pullphonebook_apparam apparam;
 	session_callback_t func;
@@ -330,6 +410,72 @@ static DBusMessage *pull_phonebook(struct session_data *session,
 	if (session_get(session, "x-bt/phonebook", name, NULL,
 				(guint8 *) &apparam, sizeof(apparam),
 				func) < 0)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.Failed",
+				"Failed");
+
+	session->msg = dbus_message_ref(message);
+	session->filled = 0;
+
+	return NULL;
+}
+
+static guint8 *fill_apparam(guint8 *dest, void *buf, guint8 tag, guint8 len)
+{
+	if (dest && buf) {
+		*dest++ = tag;
+		*dest++ = len;
+		memcpy(dest, buf, len);
+		dest += len;
+	}
+
+	return dest;
+}
+
+static DBusMessage *pull_vcard_listing(struct session_data *session,
+					DBusMessage *message, const char *name,
+					guint8 order, char *searchval, guint8 attrib,
+					guint16 count, guint16 offset)
+{
+	guint8 *p, *apparam = NULL;
+	gint apparam_size;
+	int err;
+
+	if (session->msg)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InProgress",
+				"Transfer in progress");
+
+	/* trunc the searchval string if it's length exceed the max value of guint8 */
+	if (strlen(searchval) > 254)
+		searchval[255] = '\0';
+
+	apparam_size = APPARAM_HDR_SIZE + ORDER_LEN +
+			(APPARAM_HDR_SIZE + strlen(searchval) + 1) +
+			(APPARAM_HDR_SIZE + SEARCHATTRIB_LEN) +
+			(APPARAM_HDR_SIZE + MAXLISTCOUNT_LEN) +
+			(APPARAM_HDR_SIZE + LISTSTARTOFFSET_LEN);
+	apparam = g_try_malloc0(apparam_size);
+	if (!apparam)
+		return g_dbus_create_error(message,
+				ERROR_INF ".Failed", "No Memory");
+
+	p = apparam;
+
+	p = fill_apparam(p, &order, ORDER_TAG, ORDER_LEN);
+	p = fill_apparam(p, searchval, SEARCHVALUE_TAG, strlen(searchval) + 1);
+	p = fill_apparam(p, &attrib, SEARCHATTRIB_TAG, SEARCHATTRIB_LEN);
+
+	count = GUINT16_TO_BE(count);
+	p = fill_apparam(p, &count, MAXLISTCOUNT_TAG, MAXLISTCOUNT_LEN);
+
+	offset = GUINT16_TO_BE(offset);
+	p = fill_apparam(p, &offset, LISTSTARTOFFSET_TAG, LISTSTARTOFFSET_LEN);
+
+	err = session_get(session, "x-bt/vcard-listing", name, NULL,
+				apparam, apparam_size, pull_vcard_listing_callback);
+	g_free(apparam);
+	if (err < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
 				"Failed");
@@ -474,6 +620,56 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 	return NULL;
 }
 
+static DBusMessage *pbap_list(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	struct pbap_data *pbapdata = session->pbapdata;
+
+	if (!pbapdata->path)
+		return g_dbus_create_error(message,
+				ERROR_INF ".Forbidden", "Call Select first of all");
+
+	return pull_vcard_listing(session, message, "", pbapdata->order, "",
+				ATTRIB_NAME, DEFAULT_COUNT, DEFAULT_OFFSET);
+}
+
+static DBusMessage *pbap_search(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	struct pbap_data *pbapdata = session->pbapdata;
+	char *field, *value;
+	guint8 attrib;
+
+	if (dbus_message_get_args(message, NULL,
+			DBUS_TYPE_STRING, &field,
+			DBUS_TYPE_STRING, &value,
+			DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", NULL);
+
+	if (!pbapdata->path)
+		return g_dbus_create_error(message,
+				ERROR_INF ".Forbidden", "Call Select first of all");
+
+	if (!field || g_str_equal(field, ""))
+		attrib = ATTRIB_NAME;
+
+	if (!g_ascii_strcasecmp(field, "name"))
+		attrib = ATTRIB_NAME;
+	else if (!g_ascii_strcasecmp(field, "number"))
+		attrib = ATTRIB_NUMBER;
+	else if (!g_ascii_strcasecmp(field, "sound"))
+		attrib = ATTRIB_SOUND;
+	else
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", NULL);
+
+	return pull_vcard_listing(session, message, "", pbapdata->order, value,
+				attrib, DEFAULT_COUNT, DEFAULT_OFFSET);
+}
+
 static DBusMessage *pbap_get_size(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -538,6 +734,10 @@ static GDBusMethodTable pbap_methods[] = {
 	{ "PullAll",	"",	"s",	pbap_pull_all,
 					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Pull",	"s",	"s",	pbap_pull_vcard,
+					G_DBUS_METHOD_FLAG_ASYNC },
+	{ "List",	"",	"a(ss)",	pbap_list,
+					G_DBUS_METHOD_FLAG_ASYNC },
+	{ "Search",	"ss",	"a(ss)",	pbap_search,
 					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetSize",	"",	"q",	pbap_get_size,
 					G_DBUS_METHOD_FLAG_ASYNC },
