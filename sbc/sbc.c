@@ -912,25 +912,22 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 /* Supplementary bitstream writing macros for 'sbc_pack_frame' */
 
 #define PUT_BITS(v, n)\
-	{\
-		bits_cache = (v) | (bits_cache << (n));\
-		bits_count += (n);\
-		if (bits_count >= 16) {\
-			bits_count -= 8;\
-			*data_ptr++ = (uint8_t)(bits_cache >> bits_count);\
-			bits_count -= 8;\
-			*data_ptr++ = (uint8_t)(bits_cache >> bits_count);\
-		}\
-	} while (0);\
+	bits_cache = (v) | (bits_cache << (n));\
+	bits_count += (n);\
+	if (bits_count >= 16) {\
+		bits_count -= 8;\
+		*data_ptr++ = (uint8_t) (bits_cache >> bits_count);\
+		bits_count -= 8;\
+		*data_ptr++ = (uint8_t) (bits_cache >> bits_count);\
+	}\
 
 #define FLUSH_BITS()\
 	while (bits_count >= 8) {\
 		bits_count -= 8;\
-		*data_ptr++ = (uint8_t)(bits_cache >> bits_count);\
+		*data_ptr++ = (uint8_t) (bits_cache >> bits_count);\
 	}\
-	if (bits_count > 0) {\
-	    *data_ptr++ = (uint8_t)(bits_cache << (8 - bits_count));\
-	}\
+	if (bits_count > 0)\
+	    *data_ptr++ = (uint8_t) (bits_cache << (8 - bits_count));\
 
 /*
  * Packs the SBC frame from frame into the memory at data. At most len
