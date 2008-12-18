@@ -335,7 +335,11 @@ void pbap_get(obex_t *obex, obex_object_t *obj)
 	if (session == NULL)
 		return;
 
-	if (session->type == NULL || session->name == NULL)
+	if (session->type == NULL)
+		goto fail;
+
+	if (g_str_equal(session->type, VCARDLISTING_TYPE) == FALSE
+						&& session->name == NULL)
 		goto fail;
 
 	OBEX_ObjectReParseHeaders(obex, obj);
