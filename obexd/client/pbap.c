@@ -843,41 +843,36 @@ static DBusMessage *pbap_set_order(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
-static DBusMessage *pbap_add_filter(DBusConnection *connection,
+static DBusMessage *pbap_set_filters(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
-	const char *filter;
+	struct pbap_data *pbapdata = session->pbapdata;
+	char **filters, **item;
+	gint size;
+	uint64_t oldfilter = pbapdata->filter;
 
-	if (dbus_message_get_args(message, NULL,
-			DBUS_TYPE_STRING, &filter,
+	if (dbus_message_get_args(message, NULL, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_STRING, &filters, &size,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
 				ERROR_INF ".InvalidArguments", NULL);
 
-	if (add_filter(session, filter) < 0)
-		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", "InvalidFilter");
+	remove_filter(session, "ALL");
+	if (size == 0)
+		goto done;
 
-	return dbus_message_new_method_return(message);
-}
+	for (item = filters; *item; item++) {
+		if (add_filter(session, *item) < 0) {
+			pbapdata->filter = oldfilter;
+			g_strfreev(filters);
+			return g_dbus_create_error(message,
+					ERROR_INF ".InvalidArguments", "InvalidFilters");
+		}
+	}
 
-static DBusMessage *pbap_remove_filter(DBusConnection *connection,
-					DBusMessage *message, void *user_data)
-{
-	struct session_data *session = user_data;
-	const char *filter;
-
-	if (dbus_message_get_args(message, NULL,
-			DBUS_TYPE_STRING, &filter,
-			DBUS_TYPE_INVALID) == FALSE)
-		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
-
-	if (remove_filter(session, filter) < 0)
-		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", "InvalidFilter");
-
+done:
+	g_strfreev(filters);
 	return dbus_message_new_method_return(message);
 }
 
@@ -931,8 +926,7 @@ static GDBusMethodTable pbap_methods[] = {
 					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "SetFormat",	"s",	"",	pbap_set_format },
 	{ "SetOrder",	"s",	"",	pbap_set_order },
-	{ "AddFilter",	"s",	"",	pbap_add_filter },
-	{ "RemoveFilter",	"s",	"",	pbap_remove_filter },
+	{ "SetFilters",	"as",	"",	pbap_set_filters },
 	{ "GetFilters",	"",	"as",	pbap_get_filters },
 	{ "ListAllFilters", "",	"as",	pbap_list_all_filters },
 	{ }
