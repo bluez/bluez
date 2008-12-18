@@ -74,6 +74,42 @@
 
 #define get_be16(val)	GUINT16_FROM_BE(bt_get_unaligned((guint16 *) val))
 
+static const char *filter_list[] = {
+	"VERSION",
+	"FN",
+	"N",
+	"PHOTO",
+	"BDAY",
+	"ADR",
+	"LABEL",
+	"TEL",
+	"EMAIL",
+	"MAILER",
+	"TZ",
+	"GEO",
+	"TITLE",
+	"ROLE",
+	"LOGO",
+	"AGENT",
+	"ORG",
+	"NOTE",
+	"REV",
+	"SOUND",
+	"URL",
+	"UID",
+	"KEY",
+	"NICKNAME",
+	"CATEGORIES",
+	"PROID",
+	"CLASS",
+	"SORT-STRING",
+	"X-IRMC-CALL-DATETIME",
+	NULL
+};
+
+#define FILTER_BIT_MAX	63
+#define FILTER_ALL	0xFFFFFFFFFFFFFFFFULL
+
 struct pullphonebook_apparam {
 	uint8_t     filter_tag;
 	uint8_t     filter_len;
@@ -526,6 +562,85 @@ static int set_order(struct session_data *session, const char *orderstr)
 	return 0;
 }
 
+static uint64_t get_filter_mask(const char *filterstr)
+{
+	int i, bit = -1;
+
+	if (!filterstr)
+		return 0;
+
+	if (!g_ascii_strcasecmp(filterstr, "ALL"))
+		return FILTER_ALL;
+
+	for (i = 0; filter_list[i] != NULL; i++)
+		if (!g_ascii_strcasecmp(filterstr, filter_list[i]))
+			return 1ULL << i;
+
+	if (strlen(filterstr) < 4 || strlen(filterstr) > 5
+			|| g_ascii_strncasecmp(filterstr, "bit", 3) != 0)
+		return 0;
+
+	sscanf(&filterstr[3], "%d", &bit);
+	if (bit >= 0 && bit <= FILTER_BIT_MAX)
+		return 1ULL << bit;
+	else
+		return 0;
+}
+
+static int add_filter(struct session_data *session, const char *filterstr)
+{
+	struct pbap_data *pbapdata = session->pbapdata;
+	uint64_t mask;
+
+	mask = get_filter_mask(filterstr);
+
+	if (mask == 0)
+		return -EINVAL;
+
+	pbapdata->filter |= mask;
+	return 0;
+}
+
+static int remove_filter(struct session_data *session, const char *filterstr)
+{
+	struct pbap_data *pbapdata = session->pbapdata;
+	uint64_t mask;
+
+	mask = get_filter_mask(filterstr);
+
+	if (mask == 0)
+		return -EINVAL;
+
+	pbapdata->filter &= ~mask;
+	return 0;
+}
+
+static gchar **get_filters(uint64_t filter, gint *size)
+{
+	gchar **list, **item;
+	gint i;
+	gint filter_list_size = sizeof(filter_list) / sizeof(filter_list[0]) - 1;
+
+	list = g_try_malloc0(sizeof(gchar **) * (FILTER_BIT_MAX + 2));
+
+	if (!list)
+		return NULL;
+
+	item = list;
+
+	for (i = 0; i < filter_list_size; i++)
+		if (filter & (1ULL << i))
+			*(item++) = g_strdup(filter_list[i]);
+
+	for (i = filter_list_size; i <= FILTER_BIT_MAX; i++)
+		if (filter & (1ULL << i))
+			*(item++) = g_strdup_printf("%s%d", "BIT", i);
+
+	*item = NULL;
+	*size = item - list;
+	return list;
+}
+
 static DBusMessage *pbap_select(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -724,9 +839,83 @@ static DBusMessage *pbap_set_order(DBusConnection *connection,
 
 	if (set_order(session, order) < 0)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", "InvalidOrder");
+				ERROR_INF ".InvalidArguments", "InvalidFilter");
 
 	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *pbap_add_filter(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	const char *filter;
+
+	if (dbus_message_get_args(message, NULL,
+			DBUS_TYPE_STRING, &filter,
+			DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", NULL);
+
+	if (add_filter(session, filter) < 0)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", "InvalidFilter");
+
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *pbap_remove_filter(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	const char *filter;
+
+	if (dbus_message_get_args(message, NULL,
+			DBUS_TYPE_STRING, &filter,
+			DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", NULL);
+
+	if (remove_filter(session, filter) < 0)
+		return g_dbus_create_error(message,
+				ERROR_INF ".InvalidArguments", "InvalidFilter");
+
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *pbap_get_filters(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	struct pbap_data *pbapdata = session->pbapdata;
+	gchar **filters = NULL;
+	gint size;
+	DBusMessage *reply;
+
+	filters = get_filters(pbapdata->filter, &size);
+	reply = dbus_message_new_method_return(message);
+	dbus_message_append_args(reply, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING, &filters, size,
+				DBUS_TYPE_INVALID);
+
+	g_strfreev(filters);
+	return reply;
+}
+
+static DBusMessage *pbap_list_all_filters(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	gchar **filters = NULL;
+	gint size;
+	DBusMessage *reply;
+
+	filters = get_filters(FILTER_ALL, &size);
+	reply = dbus_message_new_method_return(message);
+	dbus_message_append_args(reply, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_STRING, &filters, size,
+				DBUS_TYPE_INVALID);
+
+	g_strfreev(filters);
+	return reply;
 }
 
 static GDBusMethodTable pbap_methods[] = {
@@ -743,6 +932,10 @@ static GDBusMethodTable pbap_methods[] = {
 					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "SetFormat",	"s",	"",	pbap_set_format },
 	{ "SetOrder",	"s",	"",	pbap_set_order },
+	{ "AddFilter",	"s",	"",	pbap_add_filter },
+	{ "RemoveFilter",	"s",	"",	pbap_remove_filter },
+	{ "GetFilters",	"",	"as",	pbap_get_filters },
+	{ "ListAllFilters", "",	"as",	pbap_list_all_filters },
 	{ }
 };
 
