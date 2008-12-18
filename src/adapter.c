@@ -1307,8 +1307,8 @@ void remove_pending_device(struct btd_adapter *adapter)
 		adapter_remove_device(adapter->bonding->conn, adapter, device);
 }
 
-static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
-						struct btd_adapter *adapter)
+static gboolean create_bonding_io_cb(GIOChannel *io, GIOCondition cond,
+					struct btd_adapter *adapter)
 {
 	struct hci_request rq;
 	auth_requested_cp cp;
@@ -1319,7 +1319,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 
 	if (!adapter->bonding) {
 		/* If we come here it implies a bug somewhere */
-		debug("create_bonding_conn_complete: no pending bonding!");
+		debug("create_bonding_io_cb: no pending bonding!");
 		g_io_channel_close(io);
 		return FALSE;
 	}
@@ -1419,7 +1419,7 @@ static gboolean create_bonding_conn_complete(GIOChannel *io, GIOCondition cond,
 
 	adapter->bonding->io_id = g_io_add_watch(io,
 						G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-						(GIOFunc) create_bonding_conn_complete,
+						(GIOFunc) create_bonding_io_cb,
 						adapter);
 
 	return FALSE;
@@ -1566,7 +1566,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	bonding->io = g_io_channel_unix_new(sk);
 	bonding->io_id = g_io_add_watch(bonding->io,
 					G_IO_OUT | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-					(GIOFunc) create_bonding_conn_complete,
+					(GIOFunc) create_bonding_io_cb,
 					adapter);
 
 	bonding->listener_id = g_dbus_add_disconnect_watch(conn,
