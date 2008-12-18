@@ -153,7 +153,7 @@ static void listing_element(GMarkupParseContext *ctxt,
 	gchar **key;
 	const gchar *handle = NULL, *vcardname = NULL;
 
-	if (!g_ascii_strcasecmp(element, "card"))
+	if (g_str_equal(element, "card") != TRUE)
 		return;
 
 	for (key = (gchar **) names; *key; key++, values++) {
@@ -770,8 +770,7 @@ static DBusMessage *pbap_search(DBusConnection *connection,
 
 	if (!field || g_str_equal(field, ""))
 		attrib = ATTRIB_NAME;
-
-	if (!g_ascii_strcasecmp(field, "name"))
+	else if (!g_ascii_strcasecmp(field, "name"))
 		attrib = ATTRIB_NAME;
 	else if (!g_ascii_strcasecmp(field, "number"))
 		attrib = ATTRIB_NUMBER;
