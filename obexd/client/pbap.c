@@ -615,7 +615,7 @@ static int remove_filter(struct session_data *session, const char *filterstr)
 	return 0;
 }
 
-static gchar **get_filters(uint64_t filter, gint *size)
+static gchar **get_filter_strs(uint64_t filter, gint *size)
 {
 	gchar **list, **item;
 	gint i;
@@ -843,7 +843,7 @@ static DBusMessage *pbap_set_order(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
-static DBusMessage *pbap_set_filters(DBusConnection *connection,
+static DBusMessage *pbap_set_filter(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
@@ -876,7 +876,7 @@ done:
 	return dbus_message_new_method_return(message);
 }
 
-static DBusMessage *pbap_get_filters(DBusConnection *connection,
+static DBusMessage *pbap_get_filter(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
@@ -885,7 +885,7 @@ static DBusMessage *pbap_get_filters(DBusConnection *connection,
 	gint size;
 	DBusMessage *reply;
 
-	filters = get_filters(pbapdata->filter, &size);
+	filters = get_filter_strs(pbapdata->filter, &size);
 	reply = dbus_message_new_method_return(message);
 	dbus_message_append_args(reply, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING, &filters, size,
@@ -895,14 +895,14 @@ static DBusMessage *pbap_get_filters(DBusConnection *connection,
 	return reply;
 }
 
-static DBusMessage *pbap_list_all_filters(DBusConnection *connection,
+static DBusMessage *pbap_list_filter_fields(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	gchar **filters = NULL;
 	gint size;
 	DBusMessage *reply;
 
-	filters = get_filters(FILTER_ALL, &size);
+	filters = get_filter_strs(FILTER_ALL, &size);
 	reply = dbus_message_new_method_return(message);
 	dbus_message_append_args(reply, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING, &filters, size,
@@ -926,9 +926,9 @@ static GDBusMethodTable pbap_methods[] = {
 					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "SetFormat",	"s",	"",	pbap_set_format },
 	{ "SetOrder",	"s",	"",	pbap_set_order },
-	{ "SetFilters",	"as",	"",	pbap_set_filters },
-	{ "GetFilters",	"",	"as",	pbap_get_filters },
-	{ "ListAllFilters", "",	"as",	pbap_list_all_filters },
+	{ "SetFilter",	"as",	"",	pbap_set_filter },
+	{ "GetFilter",	"",	"as",	pbap_get_filter },
+	{ "ListFilterFields", "",	"as",	pbap_list_filter_fields },
 	{ }
 };
 
