@@ -1128,6 +1128,11 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	debug("Audio API: %s <- %s", type, name);
 
+	if (msghdr->length != len) {
+		error("Invalid message: length mismatch");
+		goto failed;
+	}
+
 	switch (msghdr->name) {
 	case BT_GET_CAPABILITIES:
 		handle_getcapabilities_req(client,
