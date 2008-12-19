@@ -441,6 +441,7 @@ static DBusMessage *pull_phonebook(struct session_data *session,
 		break;
 	default:
 		fprintf(stderr, "Unexpected type : 0x%2x\n", type);
+		return NULL;
 	}
 
 	if (session_get(session, "x-bt/phonebook", name, NULL,
