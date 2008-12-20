@@ -2813,14 +2813,8 @@ int adapter_stop(struct btd_adapter *adapter)
 		adapter->active_conn = NULL;
 	}
 
-	powered = FALSE;
-
-	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
-				"Powered", DBUS_TYPE_BOOLEAN, &powered);
-
 	if (adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY)) {
 		discoverable = FALSE;
-
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Discoverable",
 					DBUS_TYPE_BOOLEAN, &discoverable);
@@ -2832,6 +2826,10 @@ int adapter_stop(struct btd_adapter *adapter)
 					ADAPTER_INTERFACE, "Pairable",
 					DBUS_TYPE_BOOLEAN, &pairable);
 	}
+
+	powered = FALSE;
+	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
+				"Powered", DBUS_TYPE_BOOLEAN, &powered);
 
 	adapter->up = 0;
 	adapter->scan_mode = SCAN_DISABLED;
