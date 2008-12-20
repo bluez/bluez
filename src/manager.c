@@ -403,16 +403,37 @@ GSList *manager_get_adapters(void)
 	return adapters;
 }
 
+static void manager_update_adapters(void)
+{
+	GSList *list;
+	char **array;
+	int i;
+
+	array = g_new0(char *, g_slist_length(adapters) + 1);
+	for (i = 0, list = adapters; list; list = list->next, i++) {
+		struct btd_adapter *adapter = list->data;
+		array[i] = (char *) adapter_get_path(adapter);
+	}
+
+	emit_array_property_changed(connection, "/",
+					MANAGER_INTERFACE, "Adpaters",
+					DBUS_TYPE_OBJECT_PATH, &array);
+
+	g_free(array);
+}
+
 static void manager_add_adapter(struct btd_adapter *adapter)
 {
 	const gchar *path = adapter_get_path(adapter);
+
+	adapters = g_slist_append(adapters, adapter);
 
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE, "AdapterAdded",
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 
-	adapters = g_slist_append(adapters, adapter);
+	manager_update_adapters();
 
 	if (default_adapter_id < 0) {
 		int new_default = hci_get_route(NULL);
@@ -430,6 +451,8 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 			MANAGER_INTERFACE, "AdapterRemoved",
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
+
+	manager_update_adapters();
 
 	if (default_adapter_id == dev_id || default_adapter_id < 0) {
 		int new_default = hci_get_route(NULL);
