@@ -2382,7 +2382,7 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 	if (read_local_name(&adapter->bdaddr, name) == 0) {
 		memcpy(dev->name, name, 248);
 		hci_write_local_name(dd, name, HCI_REQ_TIMEOUT);
-        }
+	}
 
 	update_ext_inquiry_response(dd, dev);
 

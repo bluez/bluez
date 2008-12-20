@@ -826,7 +826,7 @@ done:
 	if (pattern)
 		sdp_list_free(pattern, free);
 	if (seq)
-                sdp_list_free(seq, free);
+		sdp_list_free(seq, free);
 	return status;
 }
 
