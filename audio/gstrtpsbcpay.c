@@ -36,21 +36,21 @@
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
 struct rtp_payload {
-        guint8 frame_count:4;
-        guint8 rfa0:1;
-        guint8 is_last_fragment:1;
-        guint8 is_first_fragment:1;
-        guint8 is_fragmented:1;
+	guint8 frame_count:4;
+	guint8 rfa0:1;
+	guint8 is_last_fragment:1;
+	guint8 is_first_fragment:1;
+	guint8 is_fragmented:1;
 } __attribute__ ((packed));
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
 struct rtp_payload {
-        guint8 is_fragmented:1;
-        guint8 is_first_fragment:1;
-        guint8 is_last_fragment:1;
-        guint8 rfa0:1;
-        guint8 frame_count:4;
+	guint8 is_fragmented:1;
+	guint8 is_first_fragment:1;
+	guint8 is_last_fragment:1;
+	guint8 rfa0:1;
+	guint8 frame_count:4;
 } __attribute__ ((packed));
 
 #else
@@ -97,13 +97,13 @@ static GstStaticPadTemplate gst_rtp_sbc_pay_src_factory =
 			"encoding-name = (string) \"SBC\"")
 	);
 
-static void gst_rtp_sbc_pay_set_property (GObject * object, guint prop_id,
-                        const GValue * value, GParamSpec * pspec);
-static void gst_rtp_sbc_pay_get_property (GObject * object, guint prop_id,
-                        GValue * value, GParamSpec * pspec);
+static void gst_rtp_sbc_pay_set_property(GObject *object, guint prop_id,
+				const GValue *value, GParamSpec *pspec);
+static void gst_rtp_sbc_pay_get_property(GObject *object, guint prop_id,
+				GValue *value, GParamSpec *pspec);
 
 static gint gst_rtp_sbc_pay_get_frame_len(gint subbands, gint channels,
-		gint blocks, gint bitpool, const gchar* channel_mode)
+		gint blocks, gint bitpool, const gchar *channel_mode)
 {
 	gint len;
 	gint join;
@@ -112,10 +112,10 @@ static gint gst_rtp_sbc_pay_get_frame_len(gint subbands, gint channels,
 
 	if (strcmp(channel_mode, "mono") == 0 ||
 		strcmp(channel_mode, "dual") == 0)
-		len += ((blocks * channels * bitpool)+7) / 8;
+		len += ((blocks * channels * bitpool) + 7) / 8;
 	else {
 		join = strcmp(channel_mode, "joint") == 0 ? 1 : 0;
-		len += ((join * subbands + blocks * bitpool)+7)/8;
+		len += ((join * subbands + blocks * bitpool) + 7) / 8;
 	}
 
 	return len;
@@ -127,7 +127,7 @@ static gboolean gst_rtp_sbc_pay_set_caps(GstBaseRTPPayload *payload,
 	GstRtpSBCPay *sbcpay;
 	gint rate, subbands, channels, blocks, bitpool;
 	gint frame_len;
-	const gchar* channel_mode;
+	const gchar *channel_mode;
 	GstStructure *structure;
 
 	sbcpay = GST_RTP_SBC_PAY(payload);
@@ -153,18 +153,18 @@ static gboolean gst_rtp_sbc_pay_set_caps(GstBaseRTPPayload *payload,
 
 	sbcpay->frame_length = frame_len;
 
-	gst_basertppayload_set_options (payload, "audio", TRUE, "SBC", rate);
+	gst_basertppayload_set_options(payload, "audio", TRUE, "SBC", rate);
 
 	GST_DEBUG_OBJECT(payload, "calculated frame length: %d ", frame_len);
 
-	return gst_basertppayload_set_outcaps (payload, NULL);
+	return gst_basertppayload_set_outcaps(payload, NULL);
 }
 
 static GstFlowReturn gst_rtp_sbc_pay_flush_buffers(GstRtpSBCPay *sbcpay)
 {
 	guint available;
 	guint max_payload;
-	GstBuffer* outbuf;
+	GstBuffer *outbuf;
 	guint8 *payload_data;
 	guint frame_count;
 	guint payload_length;
@@ -194,7 +194,7 @@ static GstFlowReturn gst_rtp_sbc_pay_flush_buffers(GstRtpSBCPay *sbcpay)
 			GST_BASE_RTP_PAYLOAD_PT(sbcpay));
 
 	payload_data = gst_rtp_buffer_get_payload(outbuf);
-	payload = (struct rtp_payload*) payload_data;
+	payload = (struct rtp_payload *) payload_data;
 	memset(payload, 0, sizeof(struct rtp_payload));
 	payload->frame_count = frame_count;
 
@@ -203,7 +203,7 @@ static GstFlowReturn gst_rtp_sbc_pay_flush_buffers(GstRtpSBCPay *sbcpay)
 	gst_adapter_flush(sbcpay->adapter, payload_length);
 
 	GST_BUFFER_TIMESTAMP(outbuf) = sbcpay->timestamp;
-	GST_DEBUG_OBJECT (sbcpay, "Pushing %d bytes", payload_length);
+	GST_DEBUG_OBJECT(sbcpay, "Pushing %d bytes", payload_length);
 
 	return gst_basertppayload_push(GST_BASE_RTP_PAYLOAD(sbcpay), outbuf);
 }
@@ -262,9 +262,9 @@ static void gst_rtp_sbc_pay_base_init(gpointer g_class)
 static void gst_rtp_sbc_pay_finalize(GObject *object)
 {
 	GstRtpSBCPay *sbcpay = GST_RTP_SBC_PAY(object);
-	g_object_unref (sbcpay->adapter);
+	g_object_unref(sbcpay->adapter);
 
-	GST_CALL_PARENT (G_OBJECT_CLASS, finalize, (object));
+	GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
 static void gst_rtp_sbc_pay_class_init(GstRtpSBCPayClass *klass)
@@ -289,9 +289,9 @@ static void gst_rtp_sbc_pay_class_init(GstRtpSBCPayClass *klass)
 			gst_rtp_sbc_pay_handle_event);
 
 	/* properties */
-	g_object_class_install_property (G_OBJECT_CLASS (klass),
+	g_object_class_install_property(G_OBJECT_CLASS(klass),
 		PROP_MIN_FRAMES,
-		g_param_spec_int ("min-frames", "minimum frame number",
+		g_param_spec_int("min-frames", "minimum frame number",
 		"Minimum quantity of frames to send in one packet "
 		"(-1 for maximum allowed by the mtu)",
 		-1, G_MAXINT, DEFAULT_MIN_FRAMES, G_PARAM_READWRITE));
@@ -300,36 +300,36 @@ static void gst_rtp_sbc_pay_class_init(GstRtpSBCPayClass *klass)
 				"RTP SBC payloader");
 }
 
-static void gst_rtp_sbc_pay_set_property (GObject * object, guint prop_id,
-			const GValue * value, GParamSpec * pspec)
+static void gst_rtp_sbc_pay_set_property(GObject *object, guint prop_id,
+					const GValue *value, GParamSpec *pspec)
 {
 	GstRtpSBCPay *sbcpay;
 
-	sbcpay = GST_RTP_SBC_PAY (object);
+	sbcpay = GST_RTP_SBC_PAY(object);
 
 	switch (prop_id) {
 	case PROP_MIN_FRAMES:
 		sbcpay->min_frames = g_value_get_int(value);
 		break;
 	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 	break;
 	}
 }
 
-static void gst_rtp_sbc_pay_get_property (GObject * object, guint prop_id,
-                        GValue * value, GParamSpec * pspec)
+static void gst_rtp_sbc_pay_get_property(GObject *object, guint prop_id,
+					GValue *value, GParamSpec *pspec)
 {
 	GstRtpSBCPay *sbcpay;
 
-	sbcpay = GST_RTP_SBC_PAY (object);
+	sbcpay = GST_RTP_SBC_PAY(object);
 
 	switch (prop_id) {
 	case PROP_MIN_FRAMES:
 		g_value_set_int(value, sbcpay->min_frames);
 		break;
 	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 	break;
 	}
 }
@@ -343,9 +343,9 @@ static void gst_rtp_sbc_pay_init(GstRtpSBCPay *self, GstRtpSBCPayClass *klass)
 	self->min_frames = DEFAULT_MIN_FRAMES;
 }
 
-gboolean gst_rtp_sbc_pay_plugin_init (GstPlugin * plugin)
+gboolean gst_rtp_sbc_pay_plugin_init(GstPlugin *plugin)
 {
-	return gst_element_register (plugin, "rtpsbcpay",
-			GST_RANK_NONE, GST_TYPE_RTP_SBC_PAY);
+	return gst_element_register(plugin, "rtpsbcpay", GST_RANK_NONE,
+							GST_TYPE_RTP_SBC_PAY);
 }
 

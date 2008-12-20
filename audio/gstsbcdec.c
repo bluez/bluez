@@ -214,10 +214,10 @@ static void gst_sbc_dec_init(GstSbcDec *self, GstSbcDecClass *klass)
 	self->outcaps = NULL;
 }
 
-gboolean gst_sbc_dec_plugin_init (GstPlugin * plugin)
+gboolean gst_sbc_dec_plugin_init(GstPlugin *plugin)
 {
-	return gst_element_register (plugin, "sbcdec",
-			GST_RANK_PRIMARY, GST_TYPE_SBC_DEC);
+	return gst_element_register(plugin, "sbcdec", GST_RANK_PRIMARY,
+							GST_TYPE_SBC_DEC);
 }
 
 

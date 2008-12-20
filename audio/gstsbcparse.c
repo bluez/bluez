@@ -214,9 +214,9 @@ static void gst_sbc_parse_init(GstSbcParse *self, GstSbcParseClass *klass)
 	self->first_parsing = TRUE;
 }
 
-gboolean gst_sbc_parse_plugin_init (GstPlugin * plugin)
+gboolean gst_sbc_parse_plugin_init(GstPlugin *plugin)
 {
-	return gst_element_register (plugin, "sbcparse",
-			GST_RANK_NONE, GST_TYPE_SBC_PARSE);
+	return gst_element_register(plugin, "sbcparse", GST_RANK_NONE,
+							GST_TYPE_SBC_PARSE);
 }
 

@@ -141,7 +141,7 @@ struct bluetooth_data {
 	pthread_t hw_thread;				/* Makes virtual hw pointer move */
 	int pipefd[2];					/* Inter thread communication */
 	int stopped;
-	sig_atomic_t reset;             /* Request XRUN handling */
+	sig_atomic_t reset;				/* Request XRUN handling */
 };
 
 static int audioservice_send(int sk, const bt_audio_msg_header_t *msg);
@@ -333,9 +333,9 @@ static int bluetooth_prepare(snd_pcm_ioplug_t *io)
 	struct bluetooth_data *data = io->private_data;
 	char c = 'w';
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
-	struct bt_start_stream_req *req = (void*) buf;
-	struct bt_start_stream_rsp *rsp = (void*) buf;
-	struct bt_new_stream_ind *ind = (void*) buf;
+	struct bt_start_stream_req *req = (void *) buf;
+	struct bt_start_stream_rsp *rsp = (void *) buf;
+	struct bt_new_stream_ind *ind = (void *) buf;
 	uint32_t period_count = io->buffer_size / io->period_size;
 	int opt_name, err;
 	struct timeval t = { 0, period_count };
@@ -430,8 +430,8 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 {
 	struct bluetooth_data *data = io->private_data;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
-	struct bt_set_configuration_req *req = (void*) buf;
-	struct bt_set_configuration_rsp *rsp = (void*) buf;
+	struct bt_set_configuration_req *req = (void *) buf;
+	struct bt_set_configuration_rsp *rsp = (void *) buf;
 	int err;
 
 	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
@@ -671,8 +671,8 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	struct bluetooth_data *data = io->private_data;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
-	struct bt_set_configuration_req *req = (void*) buf;
-	struct bt_set_configuration_rsp *rsp = (void*) buf;
+	struct bt_set_configuration_req *req = (void *) buf;
+	struct bt_set_configuration_rsp *rsp = (void *) buf;
 	int err;
 
 	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
@@ -1283,8 +1283,9 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 
 	/* supported buffer sizes
 	 * (can be used as 3*8192, 6*4096, 12*2048, ...) */
-	err = snd_pcm_ioplug_set_param_minmax(io, SND_PCM_IOPLUG_HW_BUFFER_BYTES,
-					      8192*3, 8192*3);
+	err = snd_pcm_ioplug_set_param_minmax(io,
+						SND_PCM_IOPLUG_HW_BUFFER_BYTES,
+						8192*3, 8192*3);
 	if (err < 0)
 		return err;
 
@@ -1598,8 +1599,8 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	int sk, err;
 	struct bluetooth_alsa_config *alsa_conf = &data->alsa_config;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
-	struct bt_get_capabilities_req *req = (void*) buf;
-	struct bt_get_capabilities_rsp *rsp = (void*) buf;
+	struct bt_get_capabilities_req *req = (void *) buf;
+	struct bt_get_capabilities_rsp *rsp = (void *) buf;
 
 	memset(data, 0, sizeof(struct bluetooth_data));
 

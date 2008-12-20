@@ -166,9 +166,9 @@ static GstStaticPadTemplate sbc_enc_src_factory =
 
 gboolean gst_sbc_enc_fill_sbc_params(GstSbcEnc *enc, GstCaps *caps);
 
-static GstCaps* sbc_enc_generate_srcpad_caps(GstSbcEnc *enc)
+static GstCaps *sbc_enc_generate_srcpad_caps(GstSbcEnc *enc)
 {
-	GstCaps* src_caps;
+	GstCaps *src_caps;
 	GstStructure *structure;
 	GEnumValue *enum_value;
 	GEnumClass *enum_class;
@@ -220,7 +220,7 @@ static GstCaps* sbc_enc_generate_srcpad_caps(GstSbcEnc *enc)
 	return src_caps;
 }
 
-static GstCaps* sbc_enc_src_getcaps (GstPad * pad)
+static GstCaps *sbc_enc_src_getcaps(GstPad *pad)
 {
 	GstSbcEnc *enc;
 
@@ -229,7 +229,7 @@ static GstCaps* sbc_enc_src_getcaps (GstPad * pad)
 	return sbc_enc_generate_srcpad_caps(enc);
 }
 
-static gboolean sbc_enc_src_setcaps (GstPad *pad, GstCaps *caps)
+static gboolean sbc_enc_src_setcaps(GstPad *pad, GstCaps *caps)
 {
 	GstSbcEnc *enc = GST_SBC_ENC(GST_PAD_PARENT(pad));
 
@@ -238,15 +238,15 @@ static gboolean sbc_enc_src_setcaps (GstPad *pad, GstCaps *caps)
 	return gst_sbc_enc_fill_sbc_params(enc, caps);
 }
 
-static GstCaps* sbc_enc_src_caps_fixate(GstSbcEnc *enc, GstCaps *caps)
+static GstCaps *sbc_enc_src_caps_fixate(GstSbcEnc *enc, GstCaps *caps)
 {
 	gchar *error_message = NULL;
-	GstCaps* result;
+	GstCaps *result;
 
 	result = gst_sbc_util_caps_fixate(caps, &error_message);
 
 	if (!result) {
-		GST_WARNING_OBJECT (enc, "Invalid input caps caused parsing "
+		GST_WARNING_OBJECT(enc, "Invalid input caps caused parsing "
 				"error: %s", error_message);
 		g_free(error_message);
 		return NULL;
@@ -255,7 +255,7 @@ static GstCaps* sbc_enc_src_caps_fixate(GstSbcEnc *enc, GstCaps *caps)
 	return result;
 }
 
-static GstCaps* sbc_enc_get_fixed_srcpad_caps(GstSbcEnc *enc)
+static GstCaps *sbc_enc_get_fixed_srcpad_caps(GstSbcEnc *enc)
 {
 	GstCaps *caps;
 	gboolean res = TRUE;
@@ -281,7 +281,7 @@ done:
 	return result_caps;
 }
 
-static gboolean sbc_enc_sink_setcaps (GstPad * pad, GstCaps * caps)
+static gboolean sbc_enc_sink_setcaps(GstPad *pad, GstCaps *caps)
 {
 	GstSbcEnc *enc;
 	GstStructure *structure;
@@ -289,7 +289,7 @@ static gboolean sbc_enc_sink_setcaps (GstPad * pad, GstCaps * caps)
 	gint rate, channels;
 	gboolean res;
 
-	enc = GST_SBC_ENC(GST_PAD_PARENT (pad));
+	enc = GST_SBC_ENC(GST_PAD_PARENT(pad));
 	structure = gst_caps_get_structure(caps, 0);
 
 	if (!gst_structure_get_int(structure, "rate", &rate))
@@ -392,7 +392,7 @@ static GstFlowReturn sbc_enc_chain(GstPad *pad, GstBuffer *buffer)
 					GST_BUFFER_DATA(output),
 					GST_BUFFER_SIZE(output), NULL);
 		if (consumed <= 0) {
-			GST_DEBUG_OBJECT (enc, "comsumed < 0, codesize: %d",
+			GST_DEBUG_OBJECT(enc, "comsumed < 0, codesize: %d",
 					enc->codesize);
 			break;
 		}
@@ -442,7 +442,7 @@ static void gst_sbc_enc_dispose(GObject *object)
 	GstSbcEnc *enc = GST_SBC_ENC(object);
 
 	if (enc->adapter != NULL)
-		g_object_unref (G_OBJECT (enc->adapter));
+		g_object_unref(G_OBJECT(enc->adapter));
 
 	enc->adapter = NULL;
 }
@@ -564,8 +564,8 @@ static void gst_sbc_enc_init(GstSbcEnc *self, GstSbcEncClass *klass)
 {
 	self->sinkpad = gst_pad_new_from_static_template(
 		&sbc_enc_sink_factory, "sink");
-	gst_pad_set_setcaps_function (self->sinkpad,
-			GST_DEBUG_FUNCPTR (sbc_enc_sink_setcaps));
+	gst_pad_set_setcaps_function(self->sinkpad,
+			GST_DEBUG_FUNCPTR(sbc_enc_sink_setcaps));
 	gst_element_add_pad(GST_ELEMENT(self), self->sinkpad);
 
 	self->srcpad = gst_pad_new_from_static_template(
@@ -593,9 +593,9 @@ static void gst_sbc_enc_init(GstSbcEnc *self, GstSbcEncClass *klass)
 	self->adapter = gst_adapter_new();
 }
 
-gboolean gst_sbc_enc_plugin_init (GstPlugin * plugin)
+gboolean gst_sbc_enc_plugin_init(GstPlugin *plugin)
 {
-	return gst_element_register (plugin, "sbcenc",
+	return gst_element_register(plugin, "sbcenc",
 			GST_RANK_NONE, GST_TYPE_SBC_ENC);
 }
 

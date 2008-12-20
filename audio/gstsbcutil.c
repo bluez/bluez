@@ -285,7 +285,7 @@ gint gst_sbc_parse_allocation_to_sbc(const gchar *allocation)
 		return SBC_AM_LOUDNESS;
 }
 
-GstCaps* gst_sbc_parse_caps_from_sbc(sbc_t *sbc)
+GstCaps *gst_sbc_parse_caps_from_sbc(sbc_t *sbc)
 {
 	GstCaps *caps;
 	const gchar *mode_str;
@@ -318,15 +318,15 @@ GstCaps* gst_sbc_parse_caps_from_sbc(sbc_t *sbc)
  * error_message must be passed NULL, if an error occurs, the caller has the
  * ownership of the error_message, it must be freed after use.
  */
-GstCaps* gst_sbc_util_caps_fixate(GstCaps *caps, gchar** error_message)
+GstCaps *gst_sbc_util_caps_fixate(GstCaps *caps, gchar **error_message)
 {
 	GstCaps *result;
 	GstStructure *structure;
 	const GValue *value;
 	gboolean error = FALSE;
 	gint temp, rate, channels, blocks, subbands, bitpool;
-	const gchar* allocation = NULL;
-	const gchar* mode = NULL;
+	const gchar *allocation = NULL;
+	const gchar *mode = NULL;
 
 	g_assert(*error_message == NULL);
 
@@ -455,7 +455,7 @@ error:
  * GValue, it will be left unitialized at the end of the function.
  */
 void gst_sbc_util_set_structure_int_param(GstStructure *structure,
-			const gchar* field, gint field_value,
+			const gchar *field, gint field_value,
 			GValue *value)
 {
 	value = g_value_init(value, G_TYPE_INT);
@@ -470,7 +470,7 @@ void gst_sbc_util_set_structure_int_param(GstStructure *structure,
  * GValue, it will be left unitialized at the end of the function.
  */
 void gst_sbc_util_set_structure_string_param(GstStructure *structure,
-			const gchar* field, const gchar* field_value,
+			const gchar *field, const gchar *field_value,
 			GValue *value)
 {
 	value = g_value_init(value, G_TYPE_STRING);
@@ -483,8 +483,8 @@ gboolean gst_sbc_util_fill_sbc_params(sbc_t *sbc, GstCaps *caps)
 {
 	GstStructure *structure;
 	gint rate, channels, subbands, blocks, bitpool;
-	const gchar* mode;
-	const gchar* allocation;
+	const gchar *mode;
+	const gchar *allocation;
 
 	g_assert(gst_caps_is_fixed(caps));
 

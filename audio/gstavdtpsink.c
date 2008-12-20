@@ -53,11 +53,11 @@ GST_DEBUG_CATEGORY_STATIC(avdtp_sink_debug);
 #define DEFAULT_AUTOCONNECT TRUE
 
 #define GST_AVDTP_SINK_MUTEX_LOCK(s) G_STMT_START {	\
-		g_mutex_lock (s->sink_lock);		\
+		g_mutex_lock(s->sink_lock);		\
 	} G_STMT_END
 
 #define GST_AVDTP_SINK_MUTEX_UNLOCK(s) G_STMT_START {	\
-		g_mutex_unlock (s->sink_lock);		\
+		g_mutex_unlock(s->sink_lock);		\
 	} G_STMT_END
 
 
@@ -917,10 +917,10 @@ static gboolean gst_avdtp_sink_stream_start(GstAvdtpSink *self)
 	gchar buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_start_stream_req *req = (void *) buf;
 	struct bt_start_stream_rsp *rsp = (void *) buf;
-	struct bt_new_stream_ind *ind = (void*) buf;
+	struct bt_new_stream_ind *ind = (void *) buf;
 	GIOError io_error;
 
-	memset (req, 0, sizeof(buf));
+	memset(req, 0, sizeof(buf));
 	req->h.type = BT_REQUEST;
 	req->h.name = BT_START_STREAM;
 	req->h.length = sizeof(*req);
@@ -1048,7 +1048,7 @@ static gboolean gst_avdtp_sink_configure(GstAvdtpSink *self,
 	GST_DEBUG_OBJECT(self, "configuring device with caps: %s", temp);
 	g_free(temp);
 
-	memset (req, 0, sizeof(buf));
+	memset(req, 0, sizeof(buf));
 	req->h.type = BT_REQUEST;
 	req->h.name = BT_SET_CONFIGURATION;
 	req->h.length = sizeof(*req);
@@ -1137,7 +1137,7 @@ static gboolean gst_avdtp_sink_unlock(GstBaseSink *basesink)
 	GstAvdtpSink *self = GST_AVDTP_SINK(basesink);
 
 	if (self->stream != NULL)
-		g_io_channel_flush (self->stream, NULL);
+		g_io_channel_flush(self->stream, NULL);
 
 	return TRUE;
 }
@@ -1316,10 +1316,10 @@ static GIOError gst_avdtp_sink_audioservice_expect(
 	return status;
 }
 
-gboolean gst_avdtp_sink_plugin_init (GstPlugin *plugin)
+gboolean gst_avdtp_sink_plugin_init(GstPlugin *plugin)
 {
-	return gst_element_register (plugin, "avdtpsink",
-			GST_RANK_NONE, GST_TYPE_AVDTP_SINK);
+	return gst_element_register(plugin, "avdtpsink", GST_RANK_NONE,
+							GST_TYPE_AVDTP_SINK);
 }
 
 

@@ -121,8 +121,8 @@ static int bluetooth_get_attribute(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 {
 	DBG("ext %p key %ld", ext, key);
 
-	*type  = SND_CTL_ELEM_TYPE_INTEGER;
-	*acc   = SND_CTL_EXT_ACCESS_READWRITE;
+	*type = SND_CTL_ELEM_TYPE_INTEGER;
+	*acc = SND_CTL_EXT_ACCESS_READWRITE;
 	*count = 1;
 
 	return 0;

@@ -233,7 +233,7 @@ static struct csd_call *find_call(const char *path)
 {
 	GSList *l;
 
-	for (l = calls ; l != NULL; l = l->next) {
+	for (l = calls; l != NULL; l = l->next) {
 		struct csd_call *call = l->data;
 
 		if (g_str_equal(call->object_path, path))
@@ -247,7 +247,7 @@ static struct csd_call *find_active_call(void)
 {
 	GSList *l;
 
-	for (l = calls ; l != NULL; l = l->next) {
+	for (l = calls; l != NULL; l = l->next) {
 		struct csd_call *call = l->data;
 
 		if (call->status != CSD_CALL_STATUS_IDLE)
@@ -261,7 +261,7 @@ static struct csd_call *find_call_with_status(int status)
 {
 	GSList *l;
 
-	for (l = calls ; l != NULL; l = l->next) {
+	for (l = calls; l != NULL; l = l->next) {
 		struct csd_call *call = l->data;
 
 		if (call->status == status)
@@ -277,7 +277,7 @@ static gboolean update_indicators(gpointer user_data)
 		int signal;
 		telephony_update_indicator(maemo_indicators, "service",
 						EV_SERVICE_PRESENT);
-	        signal = telephony_get_indicator(maemo_indicators, "signal");
+		signal = telephony_get_indicator(maemo_indicators, "signal");
 		telephony_update_indicator(maemo_indicators, "signal", signal);
 	} else
 		telephony_update_indicator(maemo_indicators, "service",
@@ -296,7 +296,7 @@ static gboolean update_indicators(gpointer user_data)
 	}
 
 	if ((battchg_last > 0 || battchg_design > 0) && battchg_cur >= 0) {
-	        int bat = telephony_get_indicator(maemo_indicators, "battchg");
+		int bat = telephony_get_indicator(maemo_indicators, "battchg");
 		telephony_update_indicator(maemo_indicators, "battchg", bat);
 	}
 
@@ -589,10 +589,10 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 	debug("telephony-maemo: transmit dtmf: %s", buf);
 
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
-				   CSD_CALL_INTERFACE, "SendDTMF",
-				   NULL, NULL,
-				   DBUS_TYPE_STRING, &buf_ptr,
-				   DBUS_TYPE_INVALID);
+				CSD_CALL_INTERFACE, "SendDTMF",
+				NULL, NULL,
+				DBUS_TYPE_STRING, &buf_ptr,
+				DBUS_TYPE_INVALID);
 	if (ret < 0) {
 		telephony_transmit_dtmf_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
@@ -722,9 +722,9 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 		break;
 	case '1':
 		if (idx) {
-		       if (call)
-			       err = release_call(call);
-		       break;
+			if (call)
+				err = release_call(call);
+			break;
 		}
 		foreach_call_with_status(CSD_CALL_STATUS_ACTIVE, release_call);
 		call = find_call_with_status(CSD_CALL_STATUS_WAITING);
@@ -1205,7 +1205,7 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 		else
 			max = battchg_design;
 
-	        cur = telephony_get_indicator(maemo_indicators, "battchg");
+		cur = telephony_get_indicator(maemo_indicators, "battchg");
 		new = battchg_cur * 5 / max;
 
 		if (new != cur)

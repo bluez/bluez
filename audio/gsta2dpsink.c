@@ -79,7 +79,7 @@ static void gst_a2dp_sink_finalize(GObject *obj)
 
 	g_mutex_free(self->cb_mutex);
 
-	G_OBJECT_CLASS (parent_class)->finalize (obj);
+	G_OBJECT_CLASS(parent_class)->finalize(obj);
 }
 
 static GstState gst_a2dp_sink_get_state(GstA2dpSink *self)
@@ -297,7 +297,7 @@ static GstStateChangeReturn gst_a2dp_sink_change_state(GstElement *element,
 		return ret;
 
 	ret = GST_ELEMENT_CLASS(parent_class)->change_state(element,
-                        transition);
+								transition);
 
 	switch (transition) {
 	case GST_STATE_CHANGE_PAUSED_TO_READY:
@@ -388,7 +388,7 @@ static GstCaps *gst_a2dp_sink_get_caps(GstPad *pad)
 		caps = gst_a2dp_sink_get_device_caps(self);
 		if (caps == NULL)
 			caps = gst_static_pad_template_get_caps(
-                                &gst_a2dp_sink_factory);
+					&gst_a2dp_sink_factory);
 	}
 	caps_aux = gst_caps_copy(caps);
 	g_object_set(self->capsfilter, "caps", caps_aux, NULL);
@@ -441,7 +441,7 @@ static gboolean gst_a2dp_sink_init_avdtp_sink(GstA2dpSink *self)
 	return TRUE;
 
 remove_element_and_fail:
-	gst_element_set_state (sink, GST_STATE_NULL);
+	gst_element_set_state(sink, GST_STATE_NULL);
 	gst_bin_remove(GST_BIN(self), sink);
 	return FALSE;
 
@@ -637,10 +637,10 @@ static gboolean gst_a2dp_sink_init_fakesink(GstA2dpSink *self)
 	if (self->fakesink != NULL)
 		return TRUE;
 
-	g_mutex_lock (self->cb_mutex);
+	g_mutex_lock(self->cb_mutex);
 	self->fakesink = gst_a2dp_sink_init_element(self, "fakesink",
 			"fakesink", self->capsfilter);
-	g_mutex_unlock (self->cb_mutex);
+	g_mutex_unlock(self->cb_mutex);
 
 	if (!self->fakesink)
 		return FALSE;
@@ -693,9 +693,9 @@ static void gst_a2dp_sink_init(GstA2dpSink *self,
 
 }
 
-gboolean gst_a2dp_sink_plugin_init (GstPlugin *plugin)
+gboolean gst_a2dp_sink_plugin_init(GstPlugin *plugin)
 {
-	return gst_element_register (plugin, "a2dpsink",
+	return gst_element_register(plugin, "a2dpsink",
 			GST_RANK_PRIMARY, GST_TYPE_A2DP_SINK);
 }
 
