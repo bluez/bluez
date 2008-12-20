@@ -433,13 +433,13 @@ static void manager_add_adapter(struct btd_adapter *adapter)
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 
-	manager_update_adapters();
-
 	if (default_adapter_id < 0) {
 		int new_default = hci_get_route(NULL);
 
 		manager_set_default_adapter(new_default);
 	}
+
+	manager_update_adapters();
 }
 
 static void manager_remove_adapter(struct btd_adapter *adapter)
