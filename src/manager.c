@@ -447,12 +447,12 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 	const gchar *path = adapter_get_path(adapter);
 
+	manager_update_adapters();
+
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE, "AdapterRemoved",
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
-
-	manager_update_adapters();
 
 	if (default_adapter_id == dev_id || default_adapter_id < 0) {
 		int new_default = hci_get_route(NULL);

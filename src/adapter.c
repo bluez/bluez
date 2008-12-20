@@ -1259,12 +1259,12 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 	if (!device_is_temporary(device))
 		remove_bonding(conn, NULL, dstaddr, adapter);
 
+	adapter_update_devices(adapter);
+
 	g_dbus_emit_signal(conn, adapter->path,
 			ADAPTER_INTERFACE, "DeviceRemoved",
 			DBUS_TYPE_OBJECT_PATH, &dev_path,
 			DBUS_TYPE_INVALID);
-
-	adapter_update_devices(adapter);
 
 	agent = device_get_agent(device);
 
