@@ -8,17 +8,48 @@ import dbus.mainloop.glib
 def property_changed(name, value, path, interface):
 	iface = interface[interface.rfind(".") + 1:]
 	val = str(value)
-	print "{%s} [%s] %s = %s" % (iface, path, name, val)
+	print "{%s.PropertyChanged} [%s] %s = %s" % (iface, path, name, val)
+
+def object_signal(value, path, interface, member):
+	iface = interface[interface.rfind(".") + 1:]
+	val = str(value)
+	print "{%s.%s} [%s] Path = %s" % (iface, member, path, val)
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SystemBus()
 
-	bus.add_signal_receiver(property_changed,
-					bus_name="org.bluez",
+	bus.add_signal_receiver(property_changed, bus_name="org.bluez",
 					signal_name = "PropertyChanged",
 						path_keyword="path",
+						interface_keyword="interface")
+
+	bus.add_signal_receiver(object_signal, bus_name="org.bluez",
+					signal_name = "AdapterAdded",
+						path_keyword="path",
+						member_keyword="member",
+						interface_keyword="interface")
+	bus.add_signal_receiver(object_signal, bus_name="org.bluez",
+					signal_name = "AdapterRemoved",
+						path_keyword="path",
+						member_keyword="member",
+						interface_keyword="interface")
+	bus.add_signal_receiver(object_signal, bus_name="org.bluez",
+					signal_name = "DefaultAdapterChanged",
+						path_keyword="path",
+						member_keyword="member",
+						interface_keyword="interface")
+
+	bus.add_signal_receiver(object_signal, bus_name="org.bluez",
+					signal_name = "DeviceCreated",
+						path_keyword="path",
+						member_keyword="member",
+						interface_keyword="interface")
+	bus.add_signal_receiver(object_signal, bus_name="org.bluez",
+					signal_name = "DeviceRemoved",
+						path_keyword="path",
+						member_keyword="member",
 						interface_keyword="interface")
 
 	mainloop = gobject.MainLoop()
