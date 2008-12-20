@@ -430,35 +430,38 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 {
 	struct bluetooth_data *data = io->private_data;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
-	bt_audio_msg_header_t *rsp = (void*) buf;
-	struct bt_set_configuration_req *setconf_req = (void*) buf;
-	struct bt_set_configuration_rsp *setconf_rsp = (void*) buf;
+	struct bt_set_configuration_req *req = (void*) buf;
+	struct bt_set_configuration_rsp *rsp = (void*) buf;
 	int err;
 
 	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
 					io->period_size, io->buffer_size);
 
-	memset(setconf_req, 0, BT_SUGGESTED_BUFFER_SIZE);
-	setconf_req->h.type = BT_REQUEST;
-	setconf_req->h.name = BT_SET_CONFIGURATION;
+	memset(req, 0, BT_SUGGESTED_BUFFER_SIZE);
+	req->h.type = BT_REQUEST;
+	req->h.name = BT_SET_CONFIGURATION;
+	req->h.length = sizeof(*req);
 
-	strncpy(setconf_req->device, data->alsa_config.device, 18);
-	setconf_req->codec.transport = BT_CAPABILITIES_TRANSPORT_SCO;
-	setconf_req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
+	strncpy(req->device, data->alsa_config.device, 18);
+	req->codec.transport = BT_CAPABILITIES_TRANSPORT_SCO;
+	req->codec.length = sizeof(pcm_capabilities_t);
+	req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
 			BT_CAPABILITIES_ACCESS_MODE_WRITE :
 			BT_CAPABILITIES_ACCESS_MODE_READ);
 
-	err = audioservice_send(data->server.fd, &setconf_req->h);
+	req->h.length += req->codec.length - sizeof(req->codec);
+	err = audioservice_send(data->server.fd, &req->h);
 	if (err < 0)
 		return err;
 
-	err = audioservice_expect(data->server.fd, rsp,
+	rsp->h.length = sizeof(*rsp);
+	err = audioservice_expect(data->server.fd, &rsp->h,
 					BT_SET_CONFIGURATION);
 	if (err < 0)
 		return err;
 
-	data->transport = setconf_rsp->transport;
-	data->link_mtu = setconf_rsp->link_mtu;
+	data->transport = rsp->transport;
+	data->link_mtu = rsp->link_mtu;
 
 	return 0;
 }
