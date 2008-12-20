@@ -626,17 +626,17 @@ gboolean g_dbus_emit_signal(DBusConnection *connection,
 				const char *path, const char *interface,
 				const char *name, int type, ...)
 {
-        va_list args;
+	va_list args;
 	gboolean result;
 
-        va_start(args, type);
+	va_start(args, type);
 
 	result = emit_signal_valist(connection, path, interface,
 							name, type, args);
 
-        va_end(args);
+	va_end(args);
 
-        return result;
+	return result;
 }
 
 gboolean g_dbus_emit_signal_valist(DBusConnection *connection,
