@@ -97,8 +97,8 @@ static GstState gst_a2dp_sink_get_state(GstA2dpSink *self)
  * Helper function to create elements, add to the bin and link it
  * to another element.
  */
-static GstElement* gst_a2dp_sink_init_element(GstA2dpSink *self,
-			const gchar* elementname, const gchar* name,
+static GstElement *gst_a2dp_sink_init_element(GstA2dpSink *self,
+			const gchar *elementname, const gchar *name,
 			GstElement *link_to)
 {
 	GstElement *element;
@@ -693,7 +693,7 @@ static void gst_a2dp_sink_init(GstA2dpSink *self,
 
 }
 
-gboolean gst_a2dp_sink_plugin_init (GstPlugin * plugin)
+gboolean gst_a2dp_sink_plugin_init (GstPlugin *plugin)
 {
 	return gst_element_register (plugin, "a2dpsink",
 			GST_RANK_PRIMARY, GST_TYPE_A2DP_SINK);

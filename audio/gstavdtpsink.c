@@ -819,7 +819,7 @@ static gint gst_avdtp_sink_get_channel_mode(const gchar *mode)
 }
 
 static void gst_avdtp_sink_tag(const GstTagList *taglist,
-			const gchar* tag, gpointer user_data)
+			const gchar *tag, gpointer user_data)
 {
 	gboolean crc;
 	gchar *channel_mode = NULL;
@@ -962,7 +962,7 @@ static gboolean gst_avdtp_sink_init_mp3_pkt_conf(
 {
 	const GValue *value = NULL;
 	gint rate, layer;
-	const gchar* name;
+	const gchar *name;
 	GstStructure *structure = gst_caps_get_structure(caps, 0);
 
 	name = gst_structure_get_name(structure);
@@ -1119,8 +1119,9 @@ static GstFlowReturn gst_avdtp_sink_render(GstBaseSink *basesink,
 	gsize ret;
 	GIOError err;
 
-	err = g_io_channel_write(self->stream, (gchar*)GST_BUFFER_DATA(buffer),
-			 (gsize)(GST_BUFFER_SIZE(buffer)), &ret);
+	err = g_io_channel_write(self->stream,
+				(gchar *) GST_BUFFER_DATA(buffer),
+				(gsize) (GST_BUFFER_SIZE(buffer)), &ret);
 
 	if (err != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error while writting to socket: %d %s",
@@ -1142,7 +1143,7 @@ static gboolean gst_avdtp_sink_unlock(GstBaseSink *basesink)
 }
 
 static GstFlowReturn gst_avdtp_sink_buffer_alloc(GstBaseSink *basesink,
-				guint64 offset, guint size, GstCaps* caps,
+				guint64 offset, guint size, GstCaps *caps,
 				GstBuffer **buf)
 {
 	GstAvdtpSink *self = GST_AVDTP_SINK(basesink);
@@ -1235,7 +1236,7 @@ static GIOError gst_avdtp_sink_audioservice_send(
 
 	length = msg->length ? msg->length : BT_SUGGESTED_BUFFER_SIZE;
 
-	error = g_io_channel_write(self->server, (const gchar*) msg, length,
+	error = g_io_channel_write(self->server, (const gchar *) msg, length,
 								&written);
 	if (error != G_IO_ERROR_NONE)
 		GST_ERROR_OBJECT(self, "Error sending data to audio service:"
@@ -1260,7 +1261,7 @@ static GIOError gst_avdtp_sink_audioservice_recv(
 
 	length = inmsg->length ? inmsg->length : BT_SUGGESTED_BUFFER_SIZE;
 
-	status = g_io_channel_read(self->server, (gchar*) inmsg, length,
+	status = g_io_channel_read(self->server, (gchar *) inmsg, length,
 								&bytes_read);
 	if (status != G_IO_ERROR_NONE) {
 		GST_ERROR_OBJECT(self, "Error receiving data from "
@@ -1315,7 +1316,7 @@ static GIOError gst_avdtp_sink_audioservice_expect(
 	return status;
 }
 
-gboolean gst_avdtp_sink_plugin_init (GstPlugin * plugin)
+gboolean gst_avdtp_sink_plugin_init (GstPlugin *plugin)
 {
 	return gst_element_register (plugin, "avdtpsink",
 			GST_RANK_NONE, GST_TYPE_AVDTP_SINK);
@@ -1354,7 +1355,7 @@ guint gst_avdtp_sink_get_link_mtu(GstAvdtpSink *sink)
 	return sink->data->link_mtu;
 }
 
-void gst_avdtp_sink_set_device(GstAvdtpSink *self, const gchar* dev)
+void gst_avdtp_sink_set_device(GstAvdtpSink *self, const gchar *dev)
 {
 	if (self->device != NULL)
 		g_free(self->device);

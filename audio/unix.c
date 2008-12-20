@@ -281,7 +281,7 @@ static void headset_setup_complete(struct audio_device *dev, void *user_data)
 	rsp->h.name = BT_SET_CONFIGURATION;
 	rsp->h.length = sizeof(*rsp);
 
-	rsp->transport  = BT_CAPABILITIES_TRANSPORT_SCO;
+	rsp->transport = BT_CAPABILITIES_TRANSPORT_SCO;
 	rsp->access_mode = client->access_mode;
 	rsp->link_mtu = 48;
 

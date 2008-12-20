@@ -198,7 +198,6 @@ typedef struct {
 	uint16_t sampling_rate;
 } __attribute__ ((packed)) pcm_capabilities_t;
 
-
 struct bt_get_capabilities_rsp {
 	bt_audio_msg_header_t	h;
 	uint8_t			data[0];	/* First codec_capabilities_t */
