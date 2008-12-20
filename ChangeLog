@@ -1,3 +1,14 @@
+ver 4.23:
+	Update audio IPC for better codec handling.
+	Fix bitstream optimization for SBC encoder.
+	Fix length header values of IPC messages.
+	Fix multiple coding style violations.
+	Fix FindDevice to handle temporary devices.
+	Add configuration option for DeviceID.
+	Add support for InitiallyPowered option.
+	Add missing signals for manager properties.
+	Add telephony support for Maemo.
+
 ver 4.22:
 	Add deny statements to D-Bus access policy.
 	Add support for LegacyPairing property.
