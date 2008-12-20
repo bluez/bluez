@@ -416,7 +416,7 @@ static void manager_update_adapters(void)
 	}
 
 	emit_array_property_changed(connection, "/",
-					MANAGER_INTERFACE, "Adpaters",
+					MANAGER_INTERFACE, "Adapters",
 					DBUS_TYPE_OBJECT_PATH, &array);
 
 	g_free(array);
