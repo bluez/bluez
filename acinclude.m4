@@ -306,7 +306,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
-		CFLAGS="$CFLAGS -g -O0"
+		CFLAGS="$CFLAGS -g -O0 -Werror"
 	fi
 
 	if (test "${usb_enable}" = "yes" && test "${usb_found}" = "yes"); then
