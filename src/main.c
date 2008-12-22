@@ -180,7 +180,7 @@ static void parse_config(GKeyFile *config)
 	if (err) {
 		debug("%s", err->message);
 		g_clear_error(&err);
-	} else if (boolean == FALSE)
+	} else
 		main_opts.remember_powered = boolean;
 
 	str = g_key_file_get_string(config, "General", "DeviceID", &err);
