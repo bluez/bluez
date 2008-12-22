@@ -143,8 +143,9 @@ static gboolean system_bus_reconnect(void *data)
 	/* reset the default device */
 	manager_set_default_adapter(-1);
 
+	/* FIXME: it shouldn't be needed to register adapters again */
 	for (i = 0; i < dl->dev_num; i++, dr++)
-		manager_register_adapter(dr->dev_id);
+		manager_register_adapter(dr->dev_id, TRUE);
 
 	ret_val = FALSE;
 

@@ -120,6 +120,7 @@ struct btd_adapter {
 	gboolean pairable;		/* pairable state */
 
 	gboolean initialized;
+	gboolean already_up;		/* adapter was already up on init */
 };
 
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
@@ -2912,7 +2913,8 @@ static void adapter_free(gpointer user_data)
 	return;
 }
 
-struct btd_adapter *adapter_create(DBusConnection *conn, int id)
+struct btd_adapter *adapter_create(DBusConnection *conn, int id,
+				gboolean devup)
 {
 	char path[MAX_PATH_LENGTH];
 	struct btd_adapter *adapter;
@@ -2933,6 +2935,7 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id)
 	adapter->dev_id = id;
 	adapter->state |= RESOLVE_NAME;
 	adapter->path = g_strdup(path);
+	adapter->already_up = devup;
 
 	if (!g_dbus_register_interface(conn, path, ADAPTER_INTERFACE,
 			adapter_methods, adapter_signals, NULL,
@@ -2958,6 +2961,17 @@ void adapter_remove(struct btd_adapter *adapter)
 		device_remove(connection, l->data);
 	g_slist_free(adapter->devices);
 
+	/* Return adapter to down state if it was not up on init */
+	if (adapter->up && !adapter->already_up) {
+		int dd = hci_open_dev(adapter->dev_id);
+		if (dd < 0)
+			goto done;
+
+		ioctl(dd, HCIDEVDOWN, adapter->dev_id);
+		hci_close_dev(dd);
+	}
+
+done:
 	g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE);
 
 	g_free(path);

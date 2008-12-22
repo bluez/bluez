@@ -129,7 +129,8 @@ void adapter_remove_auth_request(struct btd_adapter *adapter, bdaddr_t *dba);
 struct pending_auth_info *adapter_new_auth_request(struct btd_adapter *adapter,
 							bdaddr_t *dba,
 							auth_type_t type);
-struct btd_adapter *adapter_create(DBusConnection *conn, int id);
+struct btd_adapter *adapter_create(DBusConnection *conn, int id,
+				gboolean devup);
 void adapter_remove(struct btd_adapter *adapter);
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter);
 const gchar *adapter_get_path(struct btd_adapter *adapter);

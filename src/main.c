@@ -474,7 +474,7 @@ fail:
 	exit(1);
 }
 
-static void device_devreg_setup(int dev_id)
+static void device_devreg_setup(int dev_id, gboolean devup)
 {
 	struct hci_dev_info di;
 
@@ -484,7 +484,7 @@ static void device_devreg_setup(int dev_id)
 		return;
 
 	if (!hci_test_bit(HCI_RAW, &di.flags))
-		manager_register_adapter(dev_id);
+		manager_register_adapter(dev_id, devup);
 }
 
 static void device_devup_setup(int dev_id)
@@ -521,9 +521,13 @@ static void init_all_devices(int ctl)
 	}
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
+		gboolean devup;
+
+		devup = hci_test_bit(HCI_UP, &dr->dev_opt);
+
 		info("HCI dev %d registered", dr->dev_id);
-		device_devreg_setup(dr->dev_id);
-		if (hci_test_bit(HCI_UP, &dr->dev_opt)) {
+		device_devreg_setup(dr->dev_id, devup);
+		if (devup) {
 			info("HCI dev %d already up", dr->dev_id);
 			device_devup_setup(dr->dev_id);
 		}
@@ -553,7 +557,7 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 	switch (sd->event) {
 	case HCI_DEV_REG:
 		info("HCI dev %d registered", sd->dev_id);
-		device_devreg_setup(sd->dev_id);
+		device_devreg_setup(sd->dev_id, FALSE);
 		break;
 
 	case HCI_DEV_UNREG:
@@ -767,13 +771,13 @@ int main(int argc, char *argv[])
 
 	hcid_dbus_unregister();
 
+	hcid_dbus_exit();
+
 	plugin_cleanup();
 
 	stop_sdp_server();
 
 	agent_exit();
-
-	hcid_dbus_exit();
 
 	g_main_loop_unref(event_loop);
 

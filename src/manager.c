@@ -326,8 +326,52 @@ dbus_bool_t manager_init(DBusConnection *conn, const char *path)
 			NULL, NULL, NULL);
 }
 
+static void manager_update_adapters(void)
+{
+	GSList *list;
+	char **array;
+	int i;
+
+	array = g_new0(char *, g_slist_length(adapters) + 1);
+	for (i = 0, list = adapters; list; list = list->next, i++) {
+		struct btd_adapter *adapter = list->data;
+		array[i] = (char *) adapter_get_path(adapter);
+	}
+
+	emit_array_property_changed(connection, "/",
+					MANAGER_INTERFACE, "Adapters",
+					DBUS_TYPE_OBJECT_PATH, &array);
+
+	g_free(array);
+}
+
+static void manager_remove_adapter(struct btd_adapter *adapter)
+{
+	uint16_t dev_id = adapter_get_dev_id(adapter);
+	const gchar *path = adapter_get_path(adapter);
+
+	manager_update_adapters();
+
+	g_dbus_emit_signal(connection, "/",
+			MANAGER_INTERFACE, "AdapterRemoved",
+			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_INVALID);
+
+	if (default_adapter_id == dev_id || default_adapter_id < 0) {
+		int new_default = hci_get_route(NULL);
+
+		manager_set_default_adapter(new_default);
+	}
+
+	adapters = g_slist_remove(adapters, adapter);
+	adapter_remove(adapter);
+}
+
 void manager_cleanup(DBusConnection *conn, const char *path)
 {
+	g_slist_foreach(adapters, (GFunc) manager_remove_adapter, NULL);
+	g_slist_free(adapters);
+
 	g_dbus_unregister_interface(conn, "/", MANAGER_INTERFACE);
 }
 
@@ -403,25 +447,6 @@ GSList *manager_get_adapters(void)
 	return adapters;
 }
 
-static void manager_update_adapters(void)
-{
-	GSList *list;
-	char **array;
-	int i;
-
-	array = g_new0(char *, g_slist_length(adapters) + 1);
-	for (i = 0, list = adapters; list; list = list->next, i++) {
-		struct btd_adapter *adapter = list->data;
-		array[i] = (char *) adapter_get_path(adapter);
-	}
-
-	emit_array_property_changed(connection, "/",
-					MANAGER_INTERFACE, "Adapters",
-					DBUS_TYPE_OBJECT_PATH, &array);
-
-	g_free(array);
-}
-
 static void manager_add_adapter(struct btd_adapter *adapter)
 {
 	const gchar *path = adapter_get_path(adapter);
@@ -442,30 +467,9 @@ static void manager_add_adapter(struct btd_adapter *adapter)
 	manager_update_adapters();
 }
 
-static void manager_remove_adapter(struct btd_adapter *adapter)
+int manager_register_adapter(int id, gboolean devup)
 {
-	uint16_t dev_id = adapter_get_dev_id(adapter);
-	const gchar *path = adapter_get_path(adapter);
-
-	manager_update_adapters();
-
-	g_dbus_emit_signal(connection, "/",
-			MANAGER_INTERFACE, "AdapterRemoved",
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
-
-	if (default_adapter_id == dev_id || default_adapter_id < 0) {
-		int new_default = hci_get_route(NULL);
-
-		manager_set_default_adapter(new_default);
-	}
-
-	adapters = g_slist_remove(adapters, adapter);
-}
-
-int manager_register_adapter(int id)
-{
-	struct btd_adapter *adapter = adapter_create(connection, id);
+	struct btd_adapter *adapter = adapter_create(connection, id, devup);
 
 	if (!adapter)
 		return -1;
@@ -489,8 +493,6 @@ int manager_unregister_adapter(int id)
 	info("Unregister path: %s", path);
 
 	manager_remove_adapter(adapter);
-
-	adapter_remove(adapter);
 
 	return 0;
 }
