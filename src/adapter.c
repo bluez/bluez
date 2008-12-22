@@ -2530,8 +2530,12 @@ static int adapter_up(struct btd_adapter *adapter, int dd)
 	if (read_device_pairable(&adapter->bdaddr, &adapter->pairable) < 0)
 		adapter->pairable = TRUE;
 
-	/* Set scan mode */
-	if (read_device_mode(srcaddr, mode, sizeof(mode)) < 0) {
+	if (!adapter->initialized && !main_opts.remember_powered) {
+		if (main_opts.mode == MODE_OFF)
+			strcpy(mode, "off");
+		else
+			strcpy(mode, "connectable");
+	} else if (read_device_mode(srcaddr, mode, sizeof(mode)) < 0) {
 		if (!adapter->initialized && main_opts.mode == MODE_OFF)
 			strcpy(mode, "off");
 		else

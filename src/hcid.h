@@ -55,6 +55,7 @@ struct main_opts {
 	uint32_t	pairto;
 	uint16_t	link_mode;
 	uint16_t	link_policy;
+	gboolean	remember_powered;
 
 	uint8_t		scan;
 	uint8_t		mode;

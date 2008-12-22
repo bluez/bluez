@@ -175,6 +175,14 @@ static void parse_config(GKeyFile *config)
 	} else if (boolean == FALSE)
 		main_opts.mode = MODE_OFF;
 
+	boolean = g_key_file_get_boolean(config, "General",
+						"RememberPowered", &err);
+	if (err) {
+		debug("%s", err->message);
+		g_clear_error(&err);
+	} else if (boolean == FALSE)
+		main_opts.remember_powered = boolean;
+
 	str = g_key_file_get_string(config, "General", "DeviceID", &err);
 	if (err) {
 		debug("%s", err->message);
@@ -532,6 +540,7 @@ static void init_defaults(void)
 	main_opts.mode	= MODE_CONNECTABLE;
 	main_opts.name	= g_strdup("BlueZ");
 	main_opts.discovto	= HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
+	main_opts.remember_powered = TRUE;
 
 	if (gethostname(main_opts.host_name, sizeof(main_opts.host_name) - 1) < 0)
 		strcpy(main_opts.host_name, "noname");
