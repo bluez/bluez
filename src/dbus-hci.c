@@ -253,8 +253,10 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	if (!agent)
 		agent = adapter_get_agent(adapter);
 
-	if (!agent)
+	if (!agent) {
+		error("No agent available for PIN request");
 		return -EPERM;
+	}
 
 	if (!device) {
 		device = adapter_create_device(connection, adapter, addr);
@@ -507,7 +509,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 		agent = adapter_get_agent(adapter);
 
 	if (!agent) {
-		error("No agent available for user confirm request");
+		error("No agent available for user passkey request");
 		return -1;
 	}
 
