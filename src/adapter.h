@@ -134,7 +134,6 @@ void adapter_remove(struct btd_adapter *adapter);
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter);
 const gchar *adapter_get_path(struct btd_adapter *adapter);
 void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
-void adapter_remove(struct btd_adapter *adapter);
 void adapter_set_state(struct btd_adapter *adapter, int state);
 int adapter_get_state(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
