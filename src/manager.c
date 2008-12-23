@@ -247,8 +247,9 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 	for (l = adapters; l; l = l->next) {
 		struct btd_adapter *adapter = l->data;
 		struct hci_dev_info di;
-		dev_id = adapter_get_dev_id(adapter);
 		const gchar *path = adapter_get_path(adapter);
+
+		dev_id = adapter_get_dev_id(adapter);
 
 		if (hci_devinfo(dev_id, &di) < 0)
 			continue;
