@@ -948,18 +948,18 @@ static BtIOError l2cap_listen(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_l2 addr;
-	BtIOError err;
+	int err;
 
 	io_ctxt->func = func;
 
 	err = l2cap_bind(io_ctxt, io->src, io->psm, io->mtu, io->flags, &addr);
 	if (err < 0)
-		return err;
+		return BT_IO_FAILED;
 
 	err = transport_listen(io);
 	if (err < 0) {
 		close(io_ctxt->fd);
-		return err;
+		return BT_IO_FAILED;
 	}
 
 	return BT_IO_SUCCESS;
@@ -969,13 +969,13 @@ static BtIOError l2cap_connect(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_l2 l2a;
-	BtIOError err;
+	int err;
 
 	io_ctxt->func = func;
 
 	err = l2cap_bind(io_ctxt, io->src, 0, io->mtu, 0, &l2a);
 	if (err < 0)
-		return err;
+		return BT_IO_FAILED;
 
 	memset(&l2a, 0, sizeof(l2a));
 	l2a.l2_family = AF_BLUETOOTH;
@@ -986,7 +986,7 @@ static BtIOError l2cap_connect(BtIO *io, BtIOFunc func)
 				sizeof(l2a));
 	if (err < 0) {
 		close(io_ctxt->fd);
-		return err;
+		return BT_IO_FAILED;
 	}
 
 	return BT_IO_SUCCESS;
@@ -996,7 +996,7 @@ static BtIOError rfcomm_bind(struct io_context *io_ctxt, const char *address,
 				uint8_t channel, uint32_t flags,
 				struct sockaddr_rc *addr)
 {
-	BtIOError err;
+	int err;
 
 	io_ctxt->fd = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if (io_ctxt->fd < 0)
@@ -1032,18 +1032,18 @@ static BtIOError rfcomm_listen(BtIO *io, BtIOFunc func)
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_rc addr;
 	socklen_t sa_len;
-	BtIOError err;
+	int err;
 
 	io_ctxt->func = func;
 
 	err = rfcomm_bind(io_ctxt, io->src, io->channel, io->flags, &addr);
 	if (err < 0)
-		return err;
+		return BT_IO_FAILED;
 
 	err = transport_listen(io);
 	if (err < 0) {
 		close(io_ctxt->fd);
-		return err;
+		return BT_IO_FAILED;
 	}
 
 	sa_len = sizeof(struct sockaddr_rc);
@@ -1051,7 +1051,7 @@ static BtIOError rfcomm_listen(BtIO *io, BtIOFunc func)
 	if (getsockname(io_ctxt->fd, (struct sockaddr *) &addr, &sa_len) < 0) {
 		err = -errno;
 		close(io_ctxt->fd);
-		return err;
+		return BT_IO_FAILED;
 	}
 
 	io->channel = addr.rc_channel;
@@ -1063,13 +1063,13 @@ static BtIOError rfcomm_connect(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_rc addr;
-	BtIOError err;
+	int err;
 
 	io_ctxt->func = func;
 
 	err = rfcomm_bind(io_ctxt, io->src, 0, 0, &addr);
 	if (err < 0)
-		return err;
+		return BT_IO_FAILED;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
@@ -1080,7 +1080,7 @@ static BtIOError rfcomm_connect(BtIO *io, BtIOFunc func)
 				sizeof(addr));
 	if (err < 0) {
 		close(io_ctxt->fd);
-		return err;
+		return BT_IO_FAILED;
 	}
 
 	return BT_IO_SUCCESS;
@@ -1090,18 +1090,18 @@ static BtIOError sco_listen(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_sco addr;
-	BtIOError err;
+	int err;
 
 	io_ctxt->func = func;
 
 	err = sco_bind(io_ctxt, io->src, io->mtu, &addr);
 	if (err < 0)
-		return err;
+		return BT_IO_FAILED;
 
 	err = transport_listen(io);
 	if (err < 0) {
 		close(io_ctxt->fd);
-		return err;
+		return BT_IO_FAILED;
 	}
 
 	return BT_IO_SUCCESS;
