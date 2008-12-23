@@ -980,24 +980,6 @@ void audio_manager_exit(void)
 	connection = NULL;
 }
 
-struct audio_device *manager_get_connected_device(void)
-{
-	GSList *l;
-
-	for (l = devices; l != NULL; l = g_slist_next(l)) {
-		struct audio_device *device = l->data;
-
-		if ((device->sink || device->source) &&
-				avdtp_is_connected(&device->src, &device->dst))
-			return device;
-
-		if (device->headset && headset_is_active(device))
-			return device;
-	}
-
-	return NULL;
-}
-
 struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interface,
 					gboolean connected)
 {
