@@ -655,7 +655,7 @@ void sdp_set_seq_len(uint8_t *ptr, uint32_t length)
 	}
 }
 
-int sdp_set_data_type(sdp_buf_t *buf, uint8_t dtd)
+static int sdp_set_data_type(sdp_buf_t *buf, uint8_t dtd)
 {
 	int orig = buf->data_size;
 	uint8_t *p = buf->data + buf->data_size;
@@ -1578,7 +1578,7 @@ sdp_data_t *sdp_data_get(const sdp_record_t *rec, uint16_t attrId)
 	return NULL;
 }
 
-int sdp_send_req(sdp_session_t *session, uint8_t *buf, uint32_t size)
+static int sdp_send_req(sdp_session_t *session, uint8_t *buf, uint32_t size)
 {
 	uint32_t sent = 0;
 
@@ -1591,7 +1591,7 @@ int sdp_send_req(sdp_session_t *session, uint8_t *buf, uint32_t size)
 	return 0;
 }
 
-int sdp_read_rsp(sdp_session_t *session, uint8_t *buf, uint32_t size)
+static int sdp_read_rsp(sdp_session_t *session, uint8_t *buf, uint32_t size)
 {
 	fd_set readFds;
 	struct timeval timeout = { SDP_RESPONSE_TIMEOUT, 0 };
