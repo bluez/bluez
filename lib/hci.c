@@ -988,12 +988,12 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr;
 	uint16_t opcode = htobs(cmd_opcode_pack(r->ogf, r->ocf));
 	struct hci_filter nf, of;
-	socklen_t len;
+	socklen_t olen;
 	hci_event_hdr *hdr;
 	int err, try;
 
-	len = sizeof(of);
-	if (getsockopt(dd, SOL_HCI, HCI_FILTER, &of, &len) < 0)
+	olen = sizeof(of);
+	if (getsockopt(dd, SOL_HCI, HCI_FILTER, &of, &olen) < 0)
 		return -1;
 
 	hci_filter_clear(&nf);
@@ -1014,6 +1014,7 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 		evt_cmd_status *cs;
 		evt_remote_name_req_complete *rn;
 		remote_name_req_cp *cp;
+		int len;
 
 		if (to) {
 			struct pollfd p;
