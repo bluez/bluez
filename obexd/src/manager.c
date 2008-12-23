@@ -42,7 +42,7 @@
 #include "obex.h"
 #include "logging.h"
 
-const static gchar *opp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+static const gchar *opp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
 <record>									\
   <attribute id=\"0x0001\">							\
     <sequence>									\
@@ -92,7 +92,7 @@ const static gchar *opp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
   </attribute>									\
 </record>";
 
-const static gchar *ftp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+static const gchar *ftp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
 <record>									\
   <attribute id=\"0x0001\">							\
     <sequence>									\
@@ -129,7 +129,7 @@ const static gchar *ftp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
   </attribute>									\
 </record>";
 
-const static gchar *pbap_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+static const gchar *pbap_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
 <record>									\
   <attribute id=\"0x0001\">							\
     <sequence>									\
@@ -170,7 +170,7 @@ const static gchar *pbap_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
   </attribute>									\
 </record>";
 
-const static gchar *pcsuite_record =
+static const gchar *pcsuite_record =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>					\
 <record>									\
   <attribute id=\"0x0001\">							\
