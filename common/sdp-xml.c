@@ -232,10 +232,11 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 	case SDP_TEXT_STR16:
 	case SDP_TEXT_STR32:
 	{
-		hex = 0;
-
 		int num_chars_to_escape = 0;
 		int length = value->unitSize - 1;
+		char *strBuf = 0;
+
+		hex = 0;
 
 		for (i = 0; i < length; i++) {
 			if (value->val.str[i] == '\0')
@@ -256,8 +257,6 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 		appender(data, indent);
 
 		appender(data, "<text ");
-
-		char *strBuf = 0;
 
 		if (hex) {
 			appender(data, "encoding=\"hex\" ");
