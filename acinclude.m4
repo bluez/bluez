@@ -10,6 +10,22 @@ AC_DEFUN([AC_PROG_CC_PIE], [
 	])
 ])
 
+AC_DEFUN([COMPILER_FLAGS], [
+	if (test "${CFLAGS}" = ""); then
+		CFLAGS="-Wall -O2 -D_FORTIFY_SOURCE=2"
+	fi
+	if (test "$USE_MAINTAINER_MODE" = "yes"); then
+		CFLAGS+=" -Werror -Wextra"
+		CFLAGS+=" -Wno-sign-compare"
+		CFLAGS+=" -Wno-unused-parameter"
+		CFLAGS+=" -Wno-missing-field-initializers"
+		CFLAGS+=" -Wdeclaration-after-statement"
+		CFLAGS+=" -Wmissing-declarations"
+		CFLAGS+=" -Wredundant-decls"
+		CFLAGS+=" -Wcast-align"
+	fi
+])
+
 AC_DEFUN([GTK_DOC_CHECK], [
 	AC_ARG_WITH([html-dir],
 		AS_HELP_STRING([--with-html-dir=PATH], [path to installed docs]),,
@@ -45,10 +61,6 @@ AC_DEFUN([AC_FUNC_PPOLL], [
 
 AC_DEFUN([AC_INIT_BLUEZ], [
 	AC_PREFIX_DEFAULT(/usr/local)
-
-	if (test "${CFLAGS}" = ""); then
-		CFLAGS="-Wall -O2"
-	fi
 
 	if (test "${prefix}" = "NONE"); then
 		dnl no prefix and no sysconfdir, so default to /etc
@@ -306,7 +318,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
-		CFLAGS="$CFLAGS -g -O0 -Werror"
+		CFLAGS="$CFLAGS -g -O0"
 	fi
 
 	if (test "${usb_enable}" = "yes" && test "${usb_found}" = "yes"); then
