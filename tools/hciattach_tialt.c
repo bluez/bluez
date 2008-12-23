@@ -96,72 +96,41 @@ typedef struct {
 	uint32_t speed;
 } __attribute__((packed)) texas_speed_change_cmd_t;
 
-static int texas_change_speed(int fd, uint32_t speed) {
-	
+static int texas_change_speed(int fd, uint32_t speed)
+{
 	return 0;
-
-	/* Send a speed-change request */
-
-	texas_speed_change_cmd_t cmd;
-	int n;
-
-	cmd.uart_prefix = HCI_COMMAND_PKT;
-	cmd.hci_hdr.opcode = 0xff36;
-	cmd.hci_hdr.plen = sizeof(uint32_t);
-	cmd.speed = speed;
-
-	fprintf(stdout, "Setting speed to %d\n", speed);
-	n = write(fd, &cmd, sizeof(cmd));
-	if (n < 0) {
-		perror("Failed to write speed-set command");
-		return -1;
-	}
-
-	n = write(fd, &cmd, sizeof(cmd));
-	if (n < 0) {
-		perror("Failed to write command.");
-		return -1;
-	}
-	if (n < (int)sizeof(cmd)) {
-		fprintf(stderr, "Wanted to write %d bytes, could only write %d. "
-				"Stop\n", (int)sizeof(cmd), n);
-		return -1;
-	}
-
-	/* Parse speed-change reply */
-	if (read_command_complete(fd, 0xff36, 4) < 0) {
-		return -1;
-	}
-	fprintf(stdout, "Speed changed to %d.\n", speed);
 }
 
 static int texas_load_firmware(int fd, const char *firmware) {
 
-	fprintf(stdout, "Opening firmware file: %s\n", firmware);
 	int fw = open(firmware, O_RDONLY);
+
+	fprintf(stdout, "Opening firmware file: %s\n", firmware);
+
 	FAILIF(fw < 0, 
 		   "Could not open firmware file %s: %s (%d).\n",
 		   firmware, strerror(errno), errno);
 
 	fprintf(stdout, "Uploading firmware...\n");
 	do {
-		int nr;
 		/* Read each command and wait for a response. */
+		unsigned char data[1024];
 		unsigned char cmdp[1 + sizeof(hci_command_hdr)];
+		hci_command_hdr *cmd = (hci_command_hdr *)(cmdp + 1);
+		int nr;
 		nr = read(fw, cmdp, sizeof(cmdp));
 		if (!nr)
 			break;
-		hci_command_hdr *cmd = (hci_command_hdr *)(cmdp + 1);
 		FAILIF(nr != sizeof(cmdp), "Could not read H4 + HCI header!\n");
 		FAILIF(*cmdp != HCI_COMMAND_PKT, "Command is not an H4 command packet!\n");
 		
-		unsigned char data[1024];
 		FAILIF(read(fw, data, cmd->plen) != cmd->plen,
 			   "Could not read %d bytes of data for command with opcode %04x!\n",
 			   cmd->plen,
 			   cmd->opcode);
 				
 		{
+			int nw;
 #if 0
 			fprintf(stdout, "\topcode 0x%04x (%d bytes of data).\n", 
 					cmd->opcode, 
@@ -172,7 +141,7 @@ static int texas_load_firmware(int fd, const char *firmware) {
 			iov_cmd[0].iov_len	= sizeof(cmdp);
 			iov_cmd[1].iov_base = data;
 			iov_cmd[1].iov_len	= cmd->plen;
-			int nw = writev(fd, iov_cmd, 2);
+			nw = writev(fd, iov_cmd, 2);
 			FAILIF(nw != sizeof(cmd) +	cmd->plen, 
 				   "Could not send entire command (sent only %d bytes)!\n",
 				   nw);
@@ -249,6 +218,7 @@ int texasalt_init(int fd, int speed, struct termios *ti)
 			"brf6150",
 			"brf6300"
 		};
+		char fw[100];
 
 		fprintf(stderr, "Texas module LMP sub-version : 0x%04x\n", lmp_subv);
 
@@ -261,7 +231,6 @@ int texasalt_init(int fd, int speed, struct termios *ti)
 				((brf_chip > 4) ? "unknown" : c_brf_chip[brf_chip]),
 				brf_chip);
 
-		char fw[100];
 		sprintf(fw, "/etc/firmware/%s.bin", c_brf_chip[brf_chip]);
 		texas_load_firmware(fd, fw);
 
