@@ -30,3 +30,9 @@ enum {					/**** Backend exit codes ****/
 	CUPS_BACKEND_CANCEL = 5,	/* Job failed, cancel job */
 	CUPS_BACKEND_RETRY = 6,		/* Failure requires us to retry (BlueZ specific) */
 };
+
+int sdp_search_spp(sdp_session_t *sdp, uint8_t *channel);
+int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short *data_psm);
+
+int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies, const char *cups_class);
+int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned short data_psm, int fd, int copies, const char *cups_class);

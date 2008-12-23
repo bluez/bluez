@@ -42,12 +42,6 @@
 
 #include "cups.h"
 
-extern int sdp_search_spp(sdp_session_t *sdp, uint8_t *channel);
-extern int sdp_search_hcrp(sdp_session_t *sdp, unsigned short *ctrl_psm, unsigned short *data_psm);
-
-extern int spp_print(bdaddr_t *src, bdaddr_t *dst, uint8_t channel, int fd, int copies, const char *cups_class);
-extern int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned short data_psm, int fd, int copies, const char *cups_class);
-
 #define PRINTER_SERVICE_CLASS_NAME "printer"
 
 struct cups_device {
