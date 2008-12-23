@@ -160,8 +160,8 @@ static int write_key(const char *pathname, const char *key, const char *value, i
 {
 	struct stat st;
 	char *map, *off, *end, *str;
-	off_t size, pos; size_t base, len;
-	int fd, err = 0;
+	off_t size, pos; size_t base;
+	int fd, len, err = 0;
 
 	fd = open(pathname, O_RDWR);
 	if (fd < 0)
