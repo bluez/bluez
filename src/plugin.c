@@ -30,10 +30,13 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include <bluetooth/bluetooth.h>
+
 #include <glib.h>
 
 #include "plugin.h"
 #include "logging.h"
+#include "hcid.h"
 
 static GSList *plugins = NULL;
 
