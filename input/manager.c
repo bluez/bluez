@@ -40,6 +40,7 @@
 
 #include "device.h"
 #include "server.h"
+#include "manager.h"
 
 static int idle_timeout = 0;
 

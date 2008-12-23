@@ -35,9 +35,10 @@
 
 #include "logging.h"
 
+#include "glib-helper.h"
 #include "adapter.h"
 #include "device.h"
-#include "glib-helper.h"
+#include "server.h"
 
 static GSList *servers = NULL;
 struct server {

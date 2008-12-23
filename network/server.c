@@ -51,6 +51,7 @@
 
 #include "bridge.h"
 #include "common.h"
+#include "server.h"
 
 #define NETWORK_PEER_INTERFACE "org.bluez.NetworkPeer"
 #define NETWORK_HUB_INTERFACE "org.bluez.NetworkHub"
@@ -380,7 +381,7 @@ static int authorize_connection(struct network_server *ns, const char *address)
 	return ret_val;
 }
 
-static uint16_t inline bnep_setup_chk(uint16_t dst_role, uint16_t src_role)
+static uint16_t bnep_setup_chk(uint16_t dst_role, uint16_t src_role)
 {
 	/* Allowed PAN Profile scenarios */
 	switch (dst_role) {

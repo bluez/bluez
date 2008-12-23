@@ -44,6 +44,7 @@
 
 #include "error.h"
 #include "common.h"
+#include "connection.h"
 
 #define NETWORK_PEER_INTERFACE "org.bluez.Network"
 

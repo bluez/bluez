@@ -53,6 +53,7 @@
 #include "error.h"
 #include "manager.h"
 #include "storage.h"
+#include "port.h"
 
 #define SERIAL_PORT_INTERFACE	"org.bluez.Serial"
 #define ERROR_INVALID_ARGS	"org.bluez.Error.InvalidArguments"
