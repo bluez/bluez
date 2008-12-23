@@ -37,6 +37,8 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include "hciattach.h"
+
 static int debug = 0;
 
 static int do_command(int fd, uint8_t ogf, uint16_t ocf,

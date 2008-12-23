@@ -43,7 +43,8 @@ bin_PROGRAMS = $(tools_programs) $(dfutool_programs) $(dfubabel_programs)
 
 noinst_PROGRAMS = hcisecfilter ppporc avinfo $(usb_programs)
 
-hciattach_SOURCES = hciattach.c hciattach_st.c hciattach_ti.c hciattach_tialt.c
+hciattach_SOURCES = hciattach.c hciattach.h \
+			hciattach_st.c hciattach_ti.c hciattach_tialt.c
 hciattach_LDADD = @BLUEZ_LIBS@
 
 hciconfig_SOURCES = hciconfig.c csr.h csr.c

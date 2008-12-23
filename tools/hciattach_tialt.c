@@ -46,6 +46,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include "hciattach.h"
+
 #define FAILIF(x, args...) do {   \
 	if (x) {					  \
 		fprintf(stderr, ##args);  \
@@ -60,8 +62,6 @@ typedef struct {
 	uint8_t status;
 	uint8_t data[16];
 } __attribute__((packed)) command_complete_t;
-
-extern int read_hci_event(int fd, unsigned char* buf, int size);
 
 static int read_command_complete(int fd, unsigned short opcode, unsigned char len) {
 	command_complete_t resp;

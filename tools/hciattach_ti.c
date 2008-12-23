@@ -43,6 +43,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include "hciattach.h"
+
 #ifdef HCIATTACH_DEBUG
 #define DPRINTF(x...)	printf(x)
 #else
@@ -108,9 +110,6 @@ struct bts_action_serial {
 	uint32_t baud;
 	uint32_t flow_control;
 }__attribute__ ((packed));
-
-extern int set_speed(int fd, struct termios *ti, int speed);
-extern int read_hci_event(int fd, unsigned char* buf, int size);
 
 static FILE *bts_load_script(const char* file_name, uint32_t* version)
 {

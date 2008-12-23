@@ -48,19 +48,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#ifndef N_HCI
-#define N_HCI	15
-#endif
-
-#define HCIUARTSETPROTO		_IOW('U', 200, int)
-#define HCIUARTGETPROTO		_IOR('U', 201, int)
-#define HCIUARTGETDEVICE	_IOR('U', 202, int)
-
-#define HCI_UART_H4	0
-#define HCI_UART_BCSP	1
-#define HCI_UART_3WIRE	2
-#define HCI_UART_H4DS	3
-#define HCI_UART_LL	4
+#include "hciattach.h"
 
 struct uart_t {
 	char *type;
@@ -291,9 +279,6 @@ static int digi(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
-extern int texas_init(int fd, struct termios *ti);
-extern int texas_post(int fd, struct termios *ti);
-
 static int texas(int fd, struct uart_t *u, struct termios *ti)
 {
 	return texas_init(fd, ti);
@@ -304,11 +289,9 @@ static int texas2(int fd, struct uart_t *u, struct termios *ti)
 	return texas_post(fd, ti);
 }
 
-extern int texasalt_init(int fd, int speed);
-
 static int texasalt(int fd, struct uart_t *u, struct termios *ti)
 {
-	return texasalt_init(fd, u->speed);
+	return texasalt_init(fd, u->speed, ti);
 }
 
 static int read_check(int fd, void *buf, int count)
@@ -826,8 +809,6 @@ static int st(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
-extern int stlc2500_init(int fd, bdaddr_t *bdaddr);
-
 static int stlc2500(int fd, struct uart_t *u, struct termios *ti)
 {
 	bdaddr_t bdaddr;
@@ -866,12 +847,6 @@ static int stlc2500(int fd, struct uart_t *u, struct termios *ti)
 
 	str2ba(u->bdaddr, &bdaddr);
 	return stlc2500_init(fd, &bdaddr);
-}
-
-static int bgb2xx_init(int fd, bdaddr_t *bdaddr)
-{
-	/* This is broken and the routine got lost somewhere */
-	return -EIO;
 }
 
 static int bgb2xx(int fd, struct uart_t *u, struct termios *ti)
@@ -1095,7 +1070,7 @@ struct uart_t uart[] = {
 	{ NULL, 0 }
 };
 
-struct uart_t * get_by_id(int m_id, int p_id)
+static struct uart_t * get_by_id(int m_id, int p_id)
 {
 	int i;
 	for (i = 0; uart[i].type; i++) {
@@ -1105,7 +1080,7 @@ struct uart_t * get_by_id(int m_id, int p_id)
 	return NULL;
 }
 
-struct uart_t * get_by_type(char *type)
+static struct uart_t * get_by_type(char *type)
 {
 	int i;
 	for (i = 0; uart[i].type; i++) {
@@ -1116,7 +1091,7 @@ struct uart_t * get_by_type(char *type)
 }
 
 /* Initialize UART driver */
-int init_uart(char *dev, struct uart_t *u, int send_break)
+static int init_uart(char *dev, struct uart_t *u, int send_break)
 {
 	struct termios ti;
 	int fd, i;
