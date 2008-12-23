@@ -29,6 +29,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include "csr.h"
+
 static uint16_t seqnum = 0x0000;
 
 int csr_open_3wire(char *device)
