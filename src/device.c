@@ -737,7 +737,7 @@ void device_probe_drivers(struct btd_device *device, GSList *profiles)
 	}
 }
 
-void device_remove_drivers(struct btd_device *device, GSList *uuids)
+static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	GSList *list, *next;

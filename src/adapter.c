@@ -1580,7 +1580,7 @@ static DBusMessage *create_bonding(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-int start_inquiry(struct btd_adapter *adapter)
+static int start_inquiry(struct btd_adapter *adapter)
 {
 	inquiry_cp cp;
 	evt_cmd_status rp;
@@ -3047,7 +3047,7 @@ struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter
 	return NULL;
 }
 
-int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
+static int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
 {
 	int rssi1, rssi2;
 
