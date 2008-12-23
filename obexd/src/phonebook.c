@@ -144,9 +144,9 @@ int phonebook_pullvcardentry(struct phonebook_context *context, gchar *objname,
 void phonebook_return(struct phonebook_context *context,
 						char *buf, int size)
 {
-	DBG("context %p", context);
-
 	struct obex_session *session;
+
+	DBG("context %p", context);
 
 	session = pbap_get_session(context);
 
