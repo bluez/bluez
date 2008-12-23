@@ -59,7 +59,8 @@ static void print_arguments(GString *gstr, const char *sig,
 
 	for (i = 0; sig[i]; i++) {
 		char type[32];
-		int len, struct_level, dict_level;
+		int struct_level, dict_level;
+		unsigned int len;
 		gboolean complete;
 
 		complete = FALSE;
