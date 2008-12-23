@@ -480,7 +480,7 @@ static int avdtp_receive(int sk, void *data, int len)
 	return ret;
 }
 
-int avdtp_get_caps(int sk, int seid)
+static int avdtp_get_caps(int sk, int seid)
 {
 	struct seid_req req;
 	char buffer[1024];
@@ -511,7 +511,7 @@ int avdtp_get_caps(int sk, int seid)
 	return 0;
 }
 
-int avdtp_discover(int sk)
+static int avdtp_discover(int sk)
 {
 	struct avdtp_header req;
 	char buffer[256];
