@@ -1310,7 +1310,7 @@ static void io_context_cleanup(struct io_context *io_ctxt)
 	g_free(io_ctxt);
 }
 
-GIOChannel *rfcomm_listen_internal(const bdaddr_t *src, uint8_t *channel,
+static GIOChannel *rfcomm_listen_internal(const bdaddr_t *src, uint8_t *channel,
 			uint32_t flags, bt_io_callback_t cb, void *user_data)
 {
 	BtIO *io;
