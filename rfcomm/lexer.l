@@ -26,6 +26,9 @@
 #include <config.h>
 #endif
 
+/* Nasty workaround, but flex defines isatty() twice */
+#define _UNISTD_H
+
 #include <stdio.h>
 #include <errno.h>
 #include <sys/socket.h>
