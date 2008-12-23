@@ -3060,11 +3060,14 @@ static void extract_record_handle_seq(uint8_t *pdu, int bufsize, sdp_list_t **se
 	int n;
 
 	for (n = 0; n < count; n++) {
+		uint32_t *pSvcRec;
 		if (bufsize < sizeof(uint32_t)) {
 			SDPERR("Unexpected end of packet");
 			break;
 		}
-		uint32_t *pSvcRec = malloc(sizeof(uint32_t));
+		pSvcRec = malloc(sizeof(uint32_t));
+		if (!pSvcRec)
+			break;
 		*pSvcRec = ntohl(bt_get_unaligned((uint32_t *) pdata));
 		pSeq = sdp_list_append(pSeq, pSvcRec);
 		pdata += sizeof(uint32_t);
