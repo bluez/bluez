@@ -382,7 +382,7 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		struct sbc_codec_cap *sbc_cap = (void *) codec_cap;
 		sbc_capabilities_t *sbc = (void *) codec;
 
-		if (space_left - sizeof(sbc_capabilities_t) < 0)
+		if ((space_left - (int) sizeof(sbc_capabilities_t)) < 0)
 			return -ENOMEM;
 
 		codec->length = sizeof(sbc_capabilities_t);
@@ -398,7 +398,7 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		struct mpeg_codec_cap *mpeg_cap = (void *) codec_cap;
 		mpeg_capabilities_t *mpeg = (void *) codec;
 
-		if (space_left - sizeof(mpeg_capabilities_t) < 0)
+		if ((space_left - (int) sizeof(mpeg_capabilities_t)) < 0)
 			return -ENOMEM;
 
 		codec->length = sizeof(mpeg_capabilities_t);
@@ -415,7 +415,7 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		codec_length = cap->length - (sizeof(struct avdtp_service_capability)
 				+ sizeof(struct avdtp_media_codec_capability));
 
-		if (space_left - (codec_length + sizeof(codec_capabilities_t)) < 0)
+		if ((space_left - codec_length - (int) sizeof(codec_capabilities_t)) < 0)
 			return -ENOMEM;
 
 		codec->length = codec_length + sizeof(codec_capabilities_t);
