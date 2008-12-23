@@ -1178,16 +1178,3 @@ finished_receive:
 
 	return ubcsp_config.delay;
 }
-
-/*****************************************************************************/
-/**                                                                         **/
-/** ubcsp_end_of_functions                                                  **/
-/**                                                                         **/
-/*****************************************************************************/
-
-/* This function is only included to allow for the size 
-   of the code to be determined */
-
-void ubcsp_end_of_functions (void)
-{
-}
