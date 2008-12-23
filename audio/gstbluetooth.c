@@ -25,9 +25,9 @@
 #include <config.h>
 #endif
 
-#include <gst/gst.h>
-
 #include <string.h>
+
+#include <gst/gst.h>
 
 #include "gstsbcutil.h"
 #include <sbc.h>
