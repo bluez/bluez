@@ -43,6 +43,7 @@
 #include <openobex/obex_const.h>
 
 #include "logging.h"
+#include "bluetooth.h"
 #include "obex.h"
 #include "dbus.h"
 

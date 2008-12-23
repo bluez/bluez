@@ -40,6 +40,7 @@
 #include "bluetooth.h"
 #include "obexd.h"
 #include "obex.h"
+#include "dbus.h"
 #include "logging.h"
 
 static const gchar *opp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
@@ -580,9 +581,8 @@ failed:
 	return ret;
 }
 
-void register_record(gpointer data, gpointer user_data)
+void register_record(struct server *server, gpointer user_data)
 {
-	struct server *server = data;
 	gchar *xml;
 	gint ret;
 

@@ -31,6 +31,8 @@
 
 #include <openobex/obex.h>
 
+#include "logging.h"
+
 static volatile int debug_enabled = 0;
 
 static inline void vinfo(const char *format, va_list ap)

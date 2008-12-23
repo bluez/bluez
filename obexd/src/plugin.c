@@ -32,6 +32,7 @@
 
 #include <glib.h>
 
+#include "obexd.h"
 #include "plugin.h"
 #include "logging.h"
 
