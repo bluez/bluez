@@ -32,15 +32,13 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <syslog.h>
+#include <getopt.h>
 #include <sys/poll.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
-
-extern int optind, opterr, optopt;
-extern char *optarg;
 
 /* IO cancelation */
 static volatile sig_atomic_t __io_canceled;
