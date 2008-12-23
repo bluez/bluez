@@ -37,6 +37,7 @@
 #include <string.h>
 
 #include "lib.h"
+#include "dund.h"
 
 #define MS_PPP      2
 #define MS_SUCCESS  1

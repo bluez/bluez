@@ -365,12 +365,12 @@ static void do_kill(char *dst)
 		dun_kill_all_connections();
 }
 
-void sig_hup(int sig)
+static void sig_hup(int sig)
 {
 	return;
 }
 
-void sig_term(int sig)
+static void sig_term(int sig)
 {
 	io_cancel();
 	terminate = 1;
