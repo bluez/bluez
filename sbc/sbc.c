@@ -1196,6 +1196,9 @@ int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
 	if (written)
 		*written = 0;
 
+	if (framelen <= 0)
+		return framelen;
+
 	samples = sbc_synthesize_audio(&priv->dec_state, &priv->frame);
 
 	ptr = output;
