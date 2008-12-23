@@ -603,7 +603,7 @@ do_connect:
 	return;
 }
 
-static void inline hci_link_control(uint16_t ocf, int plen, uint8_t *data)
+static void hci_link_control(uint16_t ocf, int plen, uint8_t *data)
 {
 	uint8_t status;
 
@@ -632,7 +632,7 @@ static void inline hci_link_control(uint16_t ocf, int plen, uint8_t *data)
 	}
 }
 
-static void inline hci_link_policy(uint16_t ocf, int plen, uint8_t *data)
+static void hci_link_policy(uint16_t ocf, int plen, uint8_t *data)
 {
 	uint8_t status;
 
@@ -646,7 +646,7 @@ static void inline hci_link_policy(uint16_t ocf, int plen, uint8_t *data)
 	}
 }
 
-static void inline hci_host_control(uint16_t ocf, int plen, uint8_t *data)
+static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 {
 	read_local_name_rp ln;
 	read_class_of_dev_rp cd;
@@ -745,7 +745,7 @@ static void inline hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 	}
 }
 
-static void inline hci_info_param(uint16_t ocf, int plen, uint8_t *data)
+static void hci_info_param(uint16_t ocf, int plen, uint8_t *data)
 {
 	read_local_version_rp lv;
 	read_local_features_rp lf;
