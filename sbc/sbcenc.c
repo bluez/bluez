@@ -72,8 +72,8 @@ static ssize_t __write(int fd, const void *buf, size_t count)
 	return pos;
 }
 
-static void encode(char *filename, int subbands,
-					int bitpool, int joint, int snr)
+static void encode(char *filename, int subbands, int bitpool, int joint,
+					int dualchannel, int snr, int blocks)
 {
 	struct au_header *au_hdr;
 	unsigned char input[2048], output[2048];
@@ -106,7 +106,7 @@ static void encode(char *filename, int subbands,
 			BE_INT(au_hdr->hdr_size) > 128 ||
 			BE_INT(au_hdr->hdr_size) < 24 ||
 			BE_INT(au_hdr->encoding) != AU_FMT_LIN16) {
-		fprintf(stderr, "Data is not in Sun/NeXT audio S16_BE format\n");
+		fprintf(stderr, "Not in Sun/NeXT audio S16_BE format\n");
 		goto done;
 	}
 
@@ -131,12 +131,24 @@ static void encode(char *filename, int subbands,
 
 	sbc.subbands = subbands == 4 ? SBC_SB_4 : SBC_SB_8;
 
-	if (BE_INT(au_hdr->channels) == 1)
+	if (BE_INT(au_hdr->channels) == 1) {
 		sbc.mode = SBC_MODE_MONO;
-	else if (joint)
+		if (joint || dualchannel) {
+			fprintf(stderr, "Audio is mono but joint or "
+				"dualchannel mode has been specified\n");
+			goto done;
+		}
+	} else if (joint && !dualchannel)
 		sbc.mode = SBC_MODE_JOINT_STEREO;
-	else
+	else if (!joint && dualchannel)
+		sbc.mode = SBC_MODE_DUAL_CHANNEL;
+	else if (!joint && !dualchannel)
 		sbc.mode = SBC_MODE_STEREO;
+	else {
+		fprintf(stderr, "Both joint and dualchannel mode have been "
+								"specified\n");
+		goto done;
+	}
 
 	sbc.endian = SBC_BE;
 	count = BE_INT(au_hdr->data_size);
@@ -145,11 +157,15 @@ static void encode(char *filename, int subbands,
 
 	sbc.bitpool = bitpool;
 	sbc.allocation = snr ? SBC_AM_SNR : SBC_AM_LOUDNESS;
+	sbc.blocks = blocks == 4 ? SBC_BLK_4 :
+			blocks == 8 ? SBC_BLK_8 :
+				blocks == 12 ? SBC_BLK_12 : SBC_BLK_16;
 
-	if(verbose) {
-		fprintf(stderr,"encoding %s with rate %d, %d subbands, "
-			"%d bits, allocation method %s and mode %s\n",
-			filename, srate, subbands, bitpool,
+	if (verbose) {
+		fprintf(stderr, "encoding %s with rate %d, %d blocks, "
+			"%d subbands, %d bits, allocation method %s, "
+							"and mode %s\n",
+			filename, srate, blocks, subbands, bitpool,
 			sbc.allocation == SBC_AM_SNR ? "SNR" : "LOUDNESS",
 			sbc.mode == SBC_MODE_MONO ? "MONO" :
 					sbc.mode == SBC_MODE_STEREO ?
@@ -209,7 +225,9 @@ static void usage(void)
 		"\t-s, --subbands       Number of subbands to use (4 or 8)\n"
 		"\t-b, --bitpool        Bitpool value (default is 32)\n"
 		"\t-j, --joint          Joint stereo\n"
+		"\t-d, --dualchannel    Dual channel\n"
 		"\t-S, --snr            Use SNR mode (default is loudness)\n"
+		"\t-B, --blocks         Number of blocks (4, 8, 12 or 16)\n"
 		"\n");
 }
 
@@ -219,15 +237,18 @@ static struct option main_options[] = {
 	{ "subbands",	1, 0, 's' },
 	{ "bitpool",	1, 0, 'b' },
 	{ "joint",	0, 0, 'j' },
+	{ "dualchannel",0, 0, 'd' },
 	{ "snr",	0, 0, 'S' },
+	{ "blocks",	1, 0, 'B' },
 	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char *argv[])
 {
-	int i, opt, subbands = 8, bitpool = 32, joint = 0, snr= 0;
+	int i, opt, subbands = 8, bitpool = 32, joint = 0, dualchannel = 0;
+	int snr = 0, blocks = 16;
 
-	while ((opt = getopt_long(argc, argv, "+hvs:b:jS",
+	while ((opt = getopt_long(argc, argv, "+hvs:b:jdSB:",
 						main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'h':
@@ -241,8 +262,7 @@ int main(int argc, char *argv[])
 		case 's':
 			subbands = atoi(optarg);
 			if (subbands != 8 && subbands != 4) {
-				fprintf(stderr, "Invalid subbands %d!\n",
-						subbands);
+				fprintf(stderr, "Invalid subbands\n");
 				exit(1);
 			}
 			break;
@@ -255,11 +275,25 @@ int main(int argc, char *argv[])
 			joint = 1;
 			break;
 
+		case 'd':
+			dualchannel = 1;
+			break;
+
 		case 'S':
 			snr = 1;
 			break;
 
+		case 'B':
+			blocks = atoi(optarg);
+			if (blocks != 16 && blocks != 12 &&
+						blocks != 8 && blocks != 4) {
+				fprintf(stderr, "Invalid blocks\n");
+				exit(1);
+			}
+			break;
+
 		default:
+			usage();
 			exit(1);
 		}
 	}
@@ -274,7 +308,8 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 0; i < argc; i++)
-		encode(argv[i], subbands, bitpool, joint, snr);
+		encode(argv[i], subbands, bitpool, joint, dualchannel,
+								snr, blocks);
 
 	return 0;
 }
