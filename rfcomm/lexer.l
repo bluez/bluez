@@ -36,6 +36,8 @@
 #include "kword.h"
 #include "parser.h"
 
+int yylex(void);
+
 #define YY_NO_INPUT
 
 #define ECHO {;}

@@ -39,7 +39,6 @@
 
 #include "kword.h"
 
-int yyparse(void);
 int yylex(void);
 int yyerror(char *s); 
 
