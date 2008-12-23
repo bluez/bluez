@@ -329,6 +329,8 @@ static int bluetooth_init(struct bluetooth_data *data)
 	return 0;
 }
 
+SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth);
+
 SND_CTL_PLUGIN_DEFINE_FUNC(bluetooth)
 {
 	struct bluetooth_data *data;

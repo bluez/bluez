@@ -1668,6 +1668,8 @@ failed:
 	return err;
 }
 
+SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth);
+
 SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 {
 	struct bluetooth_data *data;
