@@ -821,8 +821,9 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 		if (src && buf && buf->buf_size >= buf->data_size + data_size) {
 			memcpy(buf->data + buf->data_size, src, data_size);
 			buf->data_size += data_size;
-		} else if (dtd != SDP_DATA_NIL)
+		} else if (dtd != SDP_DATA_NIL) {
 			SDPDBG("Gen PDU : Can't copy from invalid source or dest\n");
+		}
 	}
 
 	pdu_size += data_size;
