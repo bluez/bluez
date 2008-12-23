@@ -489,10 +489,11 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 	if (!rec)
 		return SDP_INVALID_RECORD_HANDLE;
 
-	if (seq)
+	if (seq) {
 		SDPDBG("Entries in attr seq : %d", sdp_list_len(seq));
-	else
+	} else {
 		SDPDBG("NULL attribute descriptor");
+	}
 
 	SDPDBG("AttrDataType : %d", dtd);
 
