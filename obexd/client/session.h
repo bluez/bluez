@@ -25,6 +25,7 @@
 #include <gdbus.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
 #include <gw-obex.h>
 
 struct session_data {
@@ -34,7 +35,7 @@ struct session_data {
 	uint8_t channel;
 	const char *target;	/* OBEX Target UUID */
 	int target_len;
-	uint16_t uuid;		/* Bluetooth Service Class */
+	uuid_t uuid;		/* Bluetooth Service Class */
 	gchar *name;
 	gchar *path;		/* Session path */
 	gchar *transfer_path;	/* Transfer path */

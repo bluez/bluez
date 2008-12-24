@@ -56,6 +56,10 @@
 
 static guint64 counter = 0;
 
+static unsigned char pcsuite_uuid[] = { 0x00, 0x00, 0x50, 0x05, 0x00, 0x00,
+					0x10, 0x00, 0x80, 0x00, 0x00, 0x02,
+					0xEE, 0x00, 0x00, 0x01 };
+
 struct callback_data {
 	struct session_data *session;
 	sdp_session_t *sdp;
@@ -109,7 +113,7 @@ static void session_unref(struct session_data *session)
 			g_dbus_unregister_interface(session->conn,
 					session->transfer_path, TRANSFER_INTERFACE);
 
-		switch (session->uuid) {
+		switch (session->uuid.value.uuid16) {
 		case OBEX_FILETRANS_SVCLASS_ID:
 			g_dbus_unregister_interface(session->conn,
 					session->path,	FTP_INTERFACE);
@@ -311,7 +315,6 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 	struct callback_data *callback = user_data;
 	sdp_list_t *search, *attrid;
 	uint32_t range = 0x0000ffff;
-	uuid_t uuid;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR))
 		goto failed;
@@ -319,9 +322,7 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 	if (sdp_set_notify(callback->sdp, search_callback, callback) < 0)
 		goto failed;
 
-	sdp_uuid16_create(&uuid, callback->session->uuid);
-
-	search = sdp_list_append(NULL, &uuid);
+	search = sdp_list_append(NULL, &callback->session->uuid);
 	attrid = sdp_list_append(NULL, &range);
 
 	if (sdp_service_search_attr_async(callback->sdp,
@@ -404,15 +405,17 @@ int session_create(const char *source,
 	str2ba(destination, &session->dst);
 
 	if (!g_ascii_strncasecmp(target, "OPP", 3)) {
-		session->uuid = OBEX_OBJPUSH_SVCLASS_ID;
+		sdp_uuid16_create(&session->uuid, OBEX_OBJPUSH_SVCLASS_ID);
 	} else if (!g_ascii_strncasecmp(target, "FTP", 3)) {
-		session->uuid = OBEX_FILETRANS_SVCLASS_ID;
+		sdp_uuid16_create(&session->uuid, OBEX_FILETRANS_SVCLASS_ID);
 		session->target = OBEX_FTP_UUID;
 		session->target_len = OBEX_FTP_UUID_LEN;
 	} else if (!g_ascii_strncasecmp(target, "PBAP", 4)) {
-		session->uuid = PBAP_PSE_SVCLASS_ID;
+		sdp_uuid16_create(&session->uuid, PBAP_PSE_SVCLASS_ID);
 		session->target = OBEX_PBAP_UUID;
 		session->target_len = OBEX_PBAP_UUID_LEN;
+	} else if (!g_ascii_strncasecmp(target, "PCSUITE", 7)) {
+		sdp_uuid128_create(&session->uuid, pcsuite_uuid);
 	} else {
 		return -EINVAL;
 	}
@@ -1090,9 +1093,10 @@ complete:
 				session->filled);
 		agent_notify_complete(session->conn, session->agent_name,
 				session->agent_path, session->transfer_path);
-
-		callback->func(callback->session, callback->data);
 	}
+
+	callback->func(callback->session, callback->data);
+
 	unregister_transfer(session);
 
 	session_unref(callback->session);
@@ -1577,7 +1581,7 @@ int session_pull(struct session_data *session,
 	if (xfer == NULL)
 		return -ENOTCONN;
 
-	gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
+	gw_obex_xfer_set_callback(xfer, get_xfer_listing_progress, callback);
 
 	session->xfer = xfer;
 
@@ -1596,7 +1600,7 @@ int session_register(struct session_data *session)
 					NULL, NULL, session, NULL) == FALSE)
 		return -EIO;
 
-	switch (session->uuid) {
+	switch (session->uuid.value.uuid16) {
 	case OBEX_FILETRANS_SVCLASS_ID:
 		result = g_dbus_register_interface(session->conn,
 					session->path, FTP_INTERFACE,
