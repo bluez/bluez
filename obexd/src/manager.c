@@ -232,6 +232,7 @@ static struct agent *agent = NULL;
 
 struct pending_request {
 	struct server *server;
+	gchar address[18];
 	gint nsk;
 };
 
@@ -600,7 +601,7 @@ void register_record(struct server *server, gpointer user_data)
 	g_free(xml);
 }
 
-static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
+static void find_adapter_any_reply(DBusPendingCall *call, gpointer user_data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	struct server *server;
@@ -637,12 +638,14 @@ done:
 
 	dbus_message_unref(reply);
 }
-
-static gboolean find_adapter_any(gpointer user_data)
+static void find_adapter(const char *pattern,
+				DBusPendingCallNotifyFunction function,
+				gpointer user_data)
 {
 	DBusMessage *msg;
 	DBusPendingCall *call;
-	const char *pattern = "any";
+
+	debug("FindAdapter(%s)", pattern);
 
 	msg = dbus_message_new_method_call("org.bluez", "/",
 					"org.bluez.Manager", "FindAdapter");
@@ -651,10 +654,15 @@ static gboolean find_adapter_any(gpointer user_data)
 			DBUS_TYPE_INVALID);
 
 	dbus_connection_send_with_reply(system_conn, msg, &call, -1);
-	dbus_pending_call_set_notify(call, find_adapter_reply, NULL, NULL);
+	dbus_pending_call_set_notify(call, function, user_data, NULL);
 	dbus_pending_call_unref(call);
 
 	dbus_message_unref(msg);
+}
+
+static gboolean find_adapter_any(gpointer user_data)
+{
+	find_adapter("any", find_adapter_any_reply, user_data);
 
 	return FALSE;
 }
@@ -969,21 +977,20 @@ static void service_reply(DBusPendingCall *call, gpointer user_data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		error("Replied with an error: %s, %s",
+		error("RequestAuthorization error: %s, %s",
 				derr.name, derr.message);
 		dbus_error_free(&derr);
-		dbus_message_unref(reply);
-
 		close(pending->nsk);
-		g_free(pending);
-		return;
+		goto done;
 	}
+
+	debug("RequestAuthorization succeeded");
 
 	if (obex_session_start(pending->nsk, pending->server) < 0)
 		close(pending->nsk);
 
+done:
 	g_free(pending);
-
 	dbus_message_unref(reply);
 }
 
@@ -1007,16 +1014,74 @@ static gboolean service_error(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
+static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
+{
+	struct pending_request *pending = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusMessage *msg;
+	DBusPendingCall *pcall;
+	GIOChannel *io;
+	guint watch;
+	const char *paddr = pending->address;
+	const char *path;
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("Replied with an error: %s, %s",
+				derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto done;
+	}
+
+	dbus_message_get_args(reply, NULL,
+			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_INVALID);
+
+	debug("FindAdapter -> %s", path);
+
+	msg = dbus_message_new_method_call("org.bluez", path,
+			"org.bluez.Service", "RequestAuthorization");
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &paddr,
+			DBUS_TYPE_UINT32, &pending->server->handle,
+			DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(system_conn,
+					msg, &pcall, TIMEOUT)) {
+		dbus_message_unref(msg);
+		goto done;
+	}
+
+	dbus_message_unref(msg);
+
+	debug("RequestAuthorization(%s, %x)", paddr, pending->server->handle);
+
+	if (!dbus_pending_call_set_notify(pcall, service_reply, pending, NULL)) {
+		close(pending->nsk);
+		g_free(pending);
+		goto done;
+	}
+
+	dbus_pending_call_unref(pcall);
+
+	/* Catches errors before authorization response comes */
+	io = g_io_channel_unix_new(pending->nsk);
+	watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+			G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			service_error, NULL, NULL);
+	g_io_channel_unref(io);
+
+done:
+	dbus_message_unref(reply);
+}
+
 gint request_service_authorization(struct server *server, gint nsk)
 {
-	DBusMessage *msg;
-	DBusPendingCall *call;
-	GIOChannel *io;
 	struct sockaddr_rc src, dst;
 	socklen_t addrlen;
 	gchar address[18];
 	const gchar *paddr = address;
-	guint watch;
 	struct pending_request *pending;
 
 	if (system_conn == NULL || any->path == NULL)
@@ -1034,41 +1099,13 @@ gint request_service_authorization(struct server *server, gint nsk)
 	if (getpeername(nsk, (struct sockaddr *) &dst, &addrlen) < 0)
 		return -1;
 
-	ba2str(&dst.rc_bdaddr, address);
-
-	msg = dbus_message_new_method_call("org.bluez", any->path,
-			"org.bluez.Service", "RequestAuthorization");
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &paddr,
-			DBUS_TYPE_UINT32, &server->handle,
-			DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(system_conn,
-					msg, &call, TIMEOUT)) {
-		dbus_message_unref(msg);
-		return -EPERM;
-	}
-
-	dbus_message_unref(msg);
-
 	pending = g_new0(struct pending_request, 1);
 	pending->server = server;
 	pending->nsk = nsk;
 
-	if (!dbus_pending_call_set_notify(call, service_reply, pending, NULL)) {
-		close(nsk);
-		g_free(pending);
-		return -EPERM;
-	}
+	ba2str(&dst.rc_bdaddr, pending->address);
 
-	dbus_pending_call_unref(call);
-
-	/* Catches errors before authorization response comes */
-	io = g_io_channel_unix_new(nsk);
-	watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
-			G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			service_error, NULL, NULL);
-	g_io_channel_unref(io);
+	find_adapter(paddr, find_adapter_reply, pending);
 
 	return 0;
 }
