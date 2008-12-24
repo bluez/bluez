@@ -494,6 +494,9 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 	struct generic_data *data = NULL;
 	struct interface_data *iface;
 
+	if (!path)
+		return FALSE;
+
 	if (dbus_connection_get_object_path_data(connection, path,
 						(void *) &data) == FALSE)
 		return FALSE;
