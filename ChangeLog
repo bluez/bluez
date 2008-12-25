@@ -1,3 +1,11 @@
+ver 4.24:
+	Fix signal emissions when removing adapters.
+	Fix missing adapter signals on exit.
+	Add support for bringing adapters down on exit.
+	Add support for RememberPowered option.
+	Add support for verbose compiler warnings.
+	Add more options to SBC encoder.
+
 ver 4.23:
 	Update audio IPC for better codec handling.
 	Fix bitstream optimization for SBC encoder.
