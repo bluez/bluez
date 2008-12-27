@@ -1051,15 +1051,15 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 			}
 
 			/* decide whether to join this subband */
-			if ((scalefactor[0][sb] + scalefactor[1][sb]) >
-					(scalefactor_j[0] + scalefactor_j[1]) ) {
+			if ((frame->scale_factor[0][sb] +
+					frame->scale_factor[1][sb]) >
+					(scale_factor_j[0] +
+					scale_factor_j[1])) {
 				/* use joint stereo for this subband */
 				joint |= 1 << (frame->subbands - 1 - sb);
 				frame->joint |= 1 << sb;
 				frame->scale_factor[0][sb] = scale_factor_j[0];
 				frame->scale_factor[1][sb] = scale_factor_j[1];
-				scalefactor[0][sb] = scalefactor_j[0];
-				scalefactor[1][sb] = scalefactor_j[1];
 				for (blk = 0; blk < frame->blocks; blk++) {
 					frame->sb_sample_f[blk][0][sb] =
 							sb_sample_j[blk][0];
