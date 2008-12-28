@@ -40,39 +40,10 @@ static const int sbc_offset8[4][8] = {
 };
 
 
-#define SP4(val) (((int32_t)(val))/17658) /* Used to be #define SP4(val) ASR(val, SCALE_PROTO4_TBL) but causes wrong gain */
-#define SA4(val) ASR(val, SCALE_ANA4_TBL)
-#define SP8(val) (((int32_t)(val))/57740) /* Used to be #define SP8(val) ASR(val, SCALE_PROTO8_TBL) but causes wrong gain */
-#define SA8(val) ASR(val, SCALE_ANA8_TBL)
 #define SS4(val) ASR(val, SCALE_SPROTO4_TBL)
 #define SS8(val) ASR(val, SCALE_SPROTO8_TBL)
 #define SN4(val) ASR(val, SCALE_NPROTO4_TBL)
 #define SN8(val) ASR(val, SCALE_NPROTO8_TBL)
-
-static const int32_t _sbc_proto_4[20] = {
-	SP4(0x02cb3e8c), SP4(0x22b63dc0), SP4(0x002329cc), SP4(0x053b7548),
-	SP4(0x31eab940), SP4(0xec1f5e60), SP4(0xff3773a8), SP4(0x0061c5a7),
-	SP4(0x07646680), SP4(0x3f239480), SP4(0xf89f23a8), SP4(0x007a4737),
-	SP4(0x00b32807), SP4(0x083ddc80), SP4(0x4825e480), SP4(0x0191e578),
-	SP4(0x00ff11ca), SP4(0x00fb7991), SP4(0x069fdc58), SP4(0x4b584000)
-};
-
-static const int32_t _anamatrix4[4] = {
-	SA4(0x2d413cc0), SA4(0x3b20d780), SA4(0x40000000), SA4(0x187de2a0)
-};
-
-static const int32_t _sbc_proto_8[40] = {
-	SP8(0x02e5cd20), SP8(0x22d0c200), SP8(0x006bfe27), SP8(0x07808930),
-	SP8(0x3f1c8800), SP8(0xf8810d70), SP8(0x002cfdc6), SP8(0x055acf28),
-	SP8(0x31f566c0), SP8(0xebfe57e0), SP8(0xff27c437), SP8(0x001485cc),
-	SP8(0x041c6e58), SP8(0x2a7cfa80), SP8(0xe4c4a240), SP8(0xfe359e4c),
-	SP8(0x0048b1f8), SP8(0x0686ce30), SP8(0x38eec5c0), SP8(0xf2a1b9f0),
-	SP8(0xffe8904a), SP8(0x0095698a), SP8(0x0824a480), SP8(0x443b3c00),
-	SP8(0xfd7badc8), SP8(0x00d3e2d9), SP8(0x00c183d2), SP8(0x084e1950),
-	SP8(0x4810d800), SP8(0x017f43fe), SP8(0x01056dd8), SP8(0x00e9cb9f),
-	SP8(0x07d7d090), SP8(0x4a708980), SP8(0x0488fae8), SP8(0x0113bd20),
-	SP8(0x0107b1a8), SP8(0x069fb3c0), SP8(0x4b3db200), SP8(0x00763f48)
-};
 
 static const int32_t sbc_proto_4_40m0[] = {
 	SS4(0x00000000), SS4(0xffa6982f), SS4(0xfba93848), SS4(0x0456c7b8),
@@ -114,11 +85,6 @@ static const int32_t sbc_proto_8_80m1[] = {
 	SS8(0xfcbc98e8), SS8(0xffdba705), SS8(0x006c1de4), SS8(0x0a00d410),
 	SS8(0xe7054ca0), SS8(0xfd52986c), SS8(0xffe9811d), SS8(0x00e530da),
 	SS8(0x0d9daee0), SS8(0xeac182c0), SS8(0xfdf1c8d4), SS8(0xfff5bd1a)
-};
-
-static const int32_t _anamatrix8[8] = {
-	SA8(0x3b20d780), SA8(0x187de2a0), SA8(0x3ec52f80), SA8(0x3536cc40),
-	SA8(0x238e7680), SA8(0x0c7c5c20), SA8(0x2d413cc0), SA8(0x40000000)
 };
 
 static const int32_t synmatrix4[8][4] = {
@@ -166,3 +132,216 @@ static const int32_t synmatrix8[16][8] = {
 	{ SN8(0xf9592678), SN8(0x018f8b84), SN8(0x07d8a5f0), SN8(0x0471ced0),
 	  SN8(0xfb8e3130), SN8(0xf8275a10), SN8(0xfe70747c), SN8(0x06a6d988) }
 };
+
+/* Uncomment the following line to enable high precision build of SBC encoder */
+
+/* #define SBC_HIGH_PRECISION */
+
+#ifdef SBC_HIGH_PRECISION
+#define FIXED_A int64_t /* data type for fixed point accumulator */
+#define FIXED_T int32_t /* data type for fixed point constants */
+#define SBC_FIXED_EXTRA_BITS 16
+#else
+#define FIXED_A int32_t /* data type for fixed point accumulator */
+#define FIXED_T int16_t /* data type for fixed point constants */
+#define SBC_FIXED_EXTRA_BITS 0
+#endif
+
+/* A2DP specification: Section 12.8 Tables
+ *
+ * Original values are premultiplied by 2 for better precision (that is the
+ * maximum which is possible without overflows)
+ *
+ * Note: in each block of 8 numbers sign was changed for elements 2 and 7
+ * in order to compensate the same change applied to cos_table_fixed_4
+ */
+#define SBC_PROTO_FIXED4_SCALE \
+	((sizeof(FIXED_T) * CHAR_BIT - 1) - SBC_FIXED_EXTRA_BITS + 1)
+#define F(x) (FIXED_A) ((x * 2) * \
+	((FIXED_A) 1 << (sizeof(FIXED_T) * CHAR_BIT - 1)) + 0.5)
+static const FIXED_T _sbc_proto_fixed4[40] = {
+	 F(0.00000000E+00),  F(5.36548976E-04),
+	-F(1.49188357E-03),  F(2.73370904E-03),
+	 F(3.83720193E-03),  F(3.89205149E-03),
+	 F(1.86581691E-03),  F(3.06012286E-03),
+
+	 F(1.09137620E-02),  F(2.04385087E-02),
+	-F(2.88757392E-02),  F(3.21939290E-02),
+	 F(2.58767811E-02),  F(6.13245186E-03),
+	-F(2.88217274E-02),  F(7.76463494E-02),
+
+	 F(1.35593274E-01),  F(1.94987841E-01),
+	-F(2.46636662E-01),  F(2.81828203E-01),
+	 F(2.94315332E-01),  F(2.81828203E-01),
+	 F(2.46636662E-01), -F(1.94987841E-01),
+
+	-F(1.35593274E-01), -F(7.76463494E-02),
+	 F(2.88217274E-02),  F(6.13245186E-03),
+	 F(2.58767811E-02),  F(3.21939290E-02),
+	 F(2.88757392E-02), -F(2.04385087E-02),
+
+	-F(1.09137620E-02), -F(3.06012286E-03),
+	-F(1.86581691E-03),  F(3.89205149E-03),
+	 F(3.83720193E-03),  F(2.73370904E-03),
+	 F(1.49188357E-03), -F(5.36548976E-04),
+};
+#undef F
+
+/*
+ * To produce this cosine matrix in Octave:
+ *
+ * b = zeros(4, 8);
+ * for i = 0:3
+ * for j = 0:7 b(i+1, j+1) = cos((i + 0.5) * (j - 2) * (pi/4))
+ * endfor
+ * endfor;
+ * printf("%.10f, ", b');
+ *
+ * Note: in each block of 8 numbers sign was changed for elements 2 and 7
+ *
+ * Change of sign for element 2 allows to replace constant 1.0 (not
+ * representable in Q15 format) with -1.0 (fine with Q15).
+ * Changed sign for element 7 allows to have more similar constants
+ * and simplify subband filter function code.
+ */
+#define SBC_COS_TABLE_FIXED4_SCALE \
+	((sizeof(FIXED_T) * CHAR_BIT - 1) + SBC_FIXED_EXTRA_BITS)
+#define F(x) (FIXED_A) ((x) * \
+	((FIXED_A) 1 << (sizeof(FIXED_T) * CHAR_BIT - 1)) + 0.5)
+static const FIXED_T cos_table_fixed_4[32] = {
+	 F(0.7071067812),  F(0.9238795325), -F(1.0000000000),  F(0.9238795325),
+	 F(0.7071067812),  F(0.3826834324),  F(0.0000000000),  F(0.3826834324),
+
+	-F(0.7071067812),  F(0.3826834324), -F(1.0000000000),  F(0.3826834324),
+	-F(0.7071067812), -F(0.9238795325), -F(0.0000000000), -F(0.9238795325),
+
+	-F(0.7071067812), -F(0.3826834324), -F(1.0000000000), -F(0.3826834324),
+	-F(0.7071067812),  F(0.9238795325),  F(0.0000000000),  F(0.9238795325),
+
+	 F(0.7071067812), -F(0.9238795325), -F(1.0000000000), -F(0.9238795325),
+	 F(0.7071067812), -F(0.3826834324), -F(0.0000000000), -F(0.3826834324),
+};
+#undef F
+
+/* A2DP specification: Section 12.8 Tables
+ *
+ * Original values are premultiplied by 4 for better precision (that is the
+ * maximum which is possible without overflows)
+ *
+ * Note: in each block of 16 numbers sign was changed for elements 4, 13, 14, 15
+ * in order to compensate the same change applied to cos_table_fixed_8
+ */
+#define SBC_PROTO_FIXED8_SCALE \
+	((sizeof(FIXED_T) * CHAR_BIT - 1) - SBC_FIXED_EXTRA_BITS + 2)
+#define F(x) (FIXED_A) ((x * 4) * \
+	((FIXED_A) 1 << (sizeof(FIXED_T) * CHAR_BIT - 1)) + 0.5)
+static const FIXED_T _sbc_proto_fixed8[80] = {
+	 F(0.00000000E+00),  F(1.56575398E-04),
+	 F(3.43256425E-04),  F(5.54620202E-04),
+	-F(8.23919506E-04),  F(1.13992507E-03),
+	 F(1.47640169E-03),  F(1.78371725E-03),
+	 F(2.01182542E-03),  F(2.10371989E-03),
+	 F(1.99454554E-03),  F(1.61656283E-03),
+	 F(9.02154502E-04),  F(1.78805361E-04),
+	 F(1.64973098E-03),  F(3.49717454E-03),
+
+	 F(5.65949473E-03),  F(8.02941163E-03),
+	 F(1.04584443E-02),  F(1.27472335E-02),
+	-F(1.46525263E-02),  F(1.59045603E-02),
+	 F(1.62208471E-02),  F(1.53184106E-02),
+	 F(1.29371806E-02),  F(8.85757540E-03),
+	 F(2.92408442E-03), -F(4.91578024E-03),
+	-F(1.46404076E-02),  F(2.61098752E-02),
+	 F(3.90751381E-02),  F(5.31873032E-02),
+
+	 F(6.79989431E-02),  F(8.29847578E-02),
+	 F(9.75753918E-02),  F(1.11196689E-01),
+	-F(1.23264548E-01),  F(1.33264415E-01),
+	 F(1.40753505E-01),  F(1.45389847E-01),
+	 F(1.46955068E-01),  F(1.45389847E-01),
+	 F(1.40753505E-01),  F(1.33264415E-01),
+	 F(1.23264548E-01), -F(1.11196689E-01),
+	-F(9.75753918E-02), -F(8.29847578E-02),
+
+	-F(6.79989431E-02), -F(5.31873032E-02),
+	-F(3.90751381E-02), -F(2.61098752E-02),
+	 F(1.46404076E-02), -F(4.91578024E-03),
+	 F(2.92408442E-03),  F(8.85757540E-03),
+	 F(1.29371806E-02),  F(1.53184106E-02),
+	 F(1.62208471E-02),  F(1.59045603E-02),
+	 F(1.46525263E-02), -F(1.27472335E-02),
+	-F(1.04584443E-02), -F(8.02941163E-03),
+
+	-F(5.65949473E-03), -F(3.49717454E-03),
+	-F(1.64973098E-03), -F(1.78805361E-04),
+	-F(9.02154502E-04),  F(1.61656283E-03),
+	 F(1.99454554E-03),  F(2.10371989E-03),
+	 F(2.01182542E-03),  F(1.78371725E-03),
+	 F(1.47640169E-03),  F(1.13992507E-03),
+	 F(8.23919506E-04), -F(5.54620202E-04),
+	-F(3.43256425E-04), -F(1.56575398E-04),
+};
+#undef F
+
+/*
+ * To produce this cosine matrix in Octave:
+ *
+ * b = zeros(8, 16);
+ * for i = 0:7
+ * for j = 0:15 b(i+1, j+1) = cos((i + 0.5) * (j - 4) * (pi/8))
+ * endfor endfor;
+ * printf("%.10f, ", b');
+ *
+ * Note: in each block of 16 numbers sign was changed for elements 4, 13, 14, 15
+ *
+ * Change of sign for element 4 allows to replace constant 1.0 (not
+ * representable in Q15 format) with -1.0 (fine with Q15).
+ * Changed signs for elements 13, 14, 15 allow to have more similar constants
+ * and simplify subband filter function code.
+ */
+#define SBC_COS_TABLE_FIXED8_SCALE \
+	((sizeof(FIXED_T) * CHAR_BIT - 1) + SBC_FIXED_EXTRA_BITS)
+#define F(x) (FIXED_A) ((x) * \
+	((FIXED_A) 1 << (sizeof(FIXED_T) * CHAR_BIT - 1)) + 0.5)
+static const FIXED_T cos_table_fixed_8[128] = {
+	 F(0.7071067812),  F(0.8314696123),  F(0.9238795325),  F(0.9807852804),
+	-F(1.0000000000),  F(0.9807852804),  F(0.9238795325),  F(0.8314696123),
+	 F(0.7071067812),  F(0.5555702330),  F(0.3826834324),  F(0.1950903220),
+	 F(0.0000000000),  F(0.1950903220),  F(0.3826834324),  F(0.5555702330),
+
+	-F(0.7071067812), -F(0.1950903220),  F(0.3826834324),  F(0.8314696123),
+	-F(1.0000000000),  F(0.8314696123),  F(0.3826834324), -F(0.1950903220),
+	-F(0.7071067812), -F(0.9807852804), -F(0.9238795325), -F(0.5555702330),
+	-F(0.0000000000), -F(0.5555702330), -F(0.9238795325), -F(0.9807852804),
+
+	-F(0.7071067812), -F(0.9807852804), -F(0.3826834324),  F(0.5555702330),
+	-F(1.0000000000),  F(0.5555702330), -F(0.3826834324), -F(0.9807852804),
+	-F(0.7071067812),  F(0.1950903220),  F(0.9238795325),  F(0.8314696123),
+	 F(0.0000000000),  F(0.8314696123),  F(0.9238795325),  F(0.1950903220),
+
+	 F(0.7071067812), -F(0.5555702330), -F(0.9238795325),  F(0.1950903220),
+	-F(1.0000000000),  F(0.1950903220), -F(0.9238795325), -F(0.5555702330),
+	 F(0.7071067812),  F(0.8314696123), -F(0.3826834324), -F(0.9807852804),
+	-F(0.0000000000), -F(0.9807852804), -F(0.3826834324),  F(0.8314696123),
+
+	 F(0.7071067812),  F(0.5555702330), -F(0.9238795325), -F(0.1950903220),
+	-F(1.0000000000), -F(0.1950903220), -F(0.9238795325),  F(0.5555702330),
+	 F(0.7071067812), -F(0.8314696123), -F(0.3826834324),  F(0.9807852804),
+	 F(0.0000000000),  F(0.9807852804), -F(0.3826834324), -F(0.8314696123),
+
+	-F(0.7071067812),  F(0.9807852804), -F(0.3826834324), -F(0.5555702330),
+	-F(1.0000000000), -F(0.5555702330), -F(0.3826834324),  F(0.9807852804),
+	-F(0.7071067812), -F(0.1950903220),  F(0.9238795325), -F(0.8314696123),
+	-F(0.0000000000), -F(0.8314696123),  F(0.9238795325), -F(0.1950903220),
+
+	-F(0.7071067812),  F(0.1950903220),  F(0.3826834324), -F(0.8314696123),
+	-F(1.0000000000), -F(0.8314696123),  F(0.3826834324),  F(0.1950903220),
+	-F(0.7071067812),  F(0.9807852804), -F(0.9238795325),  F(0.5555702330),
+	-F(0.0000000000),  F(0.5555702330), -F(0.9238795325),  F(0.9807852804),
+
+	 F(0.7071067812), -F(0.8314696123),  F(0.9238795325), -F(0.9807852804),
+	-F(1.0000000000), -F(0.9807852804),  F(0.9238795325), -F(0.8314696123),
+	 F(0.7071067812), -F(0.5555702330),  F(0.3826834324), -F(0.1950903220),
+	-F(0.0000000000), -F(0.1950903220),  F(0.3826834324), -F(0.5555702330),
+};
+#undef F
