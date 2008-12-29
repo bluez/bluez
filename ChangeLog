@@ -1,3 +1,8 @@
+ver 4.25:
+	Fix receiving data over the audio control socket.
+	Fix subbands selection for joint-stereo in SBC encoder.
+	Add new SBC analysis filter function.
+
 ver 4.24:
 	Fix signal emissions when removing adapters.
 	Fix missing adapter signals on exit.
