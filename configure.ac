@@ -47,8 +47,9 @@ AC_OUTPUT([
 	lib/Makefile
 	gdbus/Makefile
 	common/Makefile
-	src/Makefile
 	sbc/Makefile
+	src/Makefile
+	client/Makefile
 	plugins/Makefile
 	network/Makefile
 	serial/Makefile

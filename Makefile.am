@@ -1,5 +1,5 @@
 
-SUBDIRS = include lib sbc gdbus common src \
+SUBDIRS = include lib sbc gdbus common src client\
 	plugins network serial input audio \
 	tools rfcomm compat cups test scripts doc
 
