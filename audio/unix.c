@@ -1117,7 +1117,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	memset(buf, 0, sizeof(buf));
 
-	len = recv(client->sock, buf, sizeof(buf), MSG_WAITALL);
+	len = recv(client->sock, buf, sizeof(buf), 0);
 	if (len < 0) {
 		error("recv: %s (%d)", strerror(errno), errno);
 		goto failed;
