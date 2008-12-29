@@ -823,7 +823,7 @@ static snd_pcm_sframes_t bluetooth_hsp_read(snd_pcm_ioplug_t *io,
 		goto proceed;
 
 	nrecv = recv(data->stream.fd, data->buffer, data->link_mtu,
-			MSG_WAITALL | (io->nonblock ? MSG_DONTWAIT : 0));
+					io->nonblock ? MSG_DONTWAIT : 0);
 
 	if (nrecv < 0) {
 		ret = (errno == EPIPE) ? -EIO : -errno;
