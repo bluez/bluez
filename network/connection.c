@@ -111,7 +111,7 @@ static struct network_conn *find_connection(GSList *list, uint16_t id)
 static inline DBusMessage *not_supported(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"Not suported");
+							"Not supported");
 }
 
 static inline DBusMessage *already_connected(DBusMessage *msg)

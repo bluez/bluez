@@ -309,7 +309,7 @@ failed:
 static inline DBusMessage *not_supported(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"Not suported");
+							"Not supported");
 }
 
 static inline DBusMessage *in_progress(DBusMessage *msg)
