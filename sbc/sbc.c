@@ -94,7 +94,11 @@ struct sbc_decoder_state {
 struct sbc_encoder_state {
 	int subbands;
 	int position[2];
-	int16_t X[2][160];
+	int16_t X[2][256];
+	void (*sbc_analyze_4b_4s)(int16_t *pcm, int16_t *x,
+				  int32_t *out, int out_stride);
+	void (*sbc_analyze_4b_8s)(int16_t *pcm, int16_t *x,
+				  int32_t *out, int out_stride);
 };
 
 /*
@@ -649,14 +653,6 @@ static int sbc_synthesize_audio(struct sbc_decoder_state *state,
 	}
 }
 
-static void sbc_encoder_init(struct sbc_encoder_state *state,
-				const struct sbc_frame *frame)
-{
-	memset(&state->X, 0, sizeof(state->X));
-	state->subbands = frame->subbands;
-	state->position[0] = state->position[1] = 9 * frame->subbands;
-}
-
 static inline void _sbc_analyze_four(const int16_t *in, int32_t *out)
 {
 	FIXED_A t1[4];
@@ -694,23 +690,27 @@ static inline void _sbc_analyze_four(const int16_t *in, int32_t *out)
 	}
 }
 
-static inline void sbc_analyze_four(struct sbc_encoder_state *state,
-				struct sbc_frame *frame, int ch, int blk)
+static void sbc_analyze_4b_4s(int16_t *pcm, int16_t *x,
+			      int32_t *out, int out_stride)
 {
-	int16_t *x = &state->X[ch][state->position[ch]];
-	int16_t *pcm = &frame->pcm_sample[ch][blk * 4];
+	int i;
 
-	/* Input 4 Audio Samples */
-	x[40] = x[0] = pcm[3];
-	x[41] = x[1] = pcm[2];
-	x[42] = x[2] = pcm[1];
-	x[43] = x[3] = pcm[0];
+	/* Input 4 x 4 Audio Samples */
+	for (i = 0; i < 16; i += 4) {
+		x[64 + i] = x[0 + i] = pcm[15 - i];
+		x[65 + i] = x[1 + i] = pcm[14 - i];
+		x[66 + i] = x[2 + i] = pcm[13 - i];
+		x[67 + i] = x[3 + i] = pcm[12 - i];
+	}
 
-	_sbc_analyze_four(x, frame->sb_sample_f[blk][ch]);
-
-	state->position[ch] -= 4;
-	if (state->position[ch] < 0)
-		state->position[ch] = 36;
+	/* Analyze four blocks */
+	_sbc_analyze_four(x + 12, out);
+	out += out_stride;
+	_sbc_analyze_four(x + 8, out);
+	out += out_stride;
+	_sbc_analyze_four(x + 4, out);
+	out += out_stride;
+	_sbc_analyze_four(x, out);
 }
 
 static inline void _sbc_analyze_eight(const int16_t *in, int32_t *out)
@@ -766,28 +766,31 @@ static inline void _sbc_analyze_eight(const int16_t *in, int32_t *out)
 	}
 }
 
-static inline void sbc_analyze_eight(struct sbc_encoder_state *state,
-					struct sbc_frame *frame, int ch,
-					int blk)
+static void sbc_analyze_4b_8s(int16_t *pcm, int16_t *x,
+			      int32_t *out, int out_stride)
 {
-	int16_t *x = &state->X[ch][state->position[ch]];
-	int16_t *pcm = &frame->pcm_sample[ch][blk * 8];
+	int i;
 
-	/* Input 8 Audio Samples */
-	x[80] = x[0] = pcm[7];
-	x[81] = x[1] = pcm[6];
-	x[82] = x[2] = pcm[5];
-	x[83] = x[3] = pcm[4];
-	x[84] = x[4] = pcm[3];
-	x[85] = x[5] = pcm[2];
-	x[86] = x[6] = pcm[1];
-	x[87] = x[7] = pcm[0];
+	/* Input 4 x 8 Audio Samples */
+	for (i = 0; i < 32; i += 8) {
+		x[128 + i] = x[0 + i] = pcm[31 - i];
+		x[129 + i] = x[1 + i] = pcm[30 - i];
+		x[130 + i] = x[2 + i] = pcm[29 - i];
+		x[131 + i] = x[3 + i] = pcm[28 - i];
+		x[132 + i] = x[4 + i] = pcm[27 - i];
+		x[133 + i] = x[5 + i] = pcm[26 - i];
+		x[134 + i] = x[6 + i] = pcm[25 - i];
+		x[135 + i] = x[7 + i] = pcm[24 - i];
+	}
 
-	_sbc_analyze_eight(x, frame->sb_sample_f[blk][ch]);
-
-	state->position[ch] -= 8;
-	if (state->position[ch] < 0)
-		state->position[ch] = 72;
+	/* Analyze four blocks */
+	_sbc_analyze_eight(x + 24, out);
+	out += out_stride;
+	_sbc_analyze_eight(x + 16, out);
+	out += out_stride;
+	_sbc_analyze_eight(x + 8, out);
+	out += out_stride;
+	_sbc_analyze_eight(x, out);
 }
 
 static int sbc_analyze_audio(struct sbc_encoder_state *state,
@@ -798,14 +801,32 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 	switch (frame->subbands) {
 	case 4:
 		for (ch = 0; ch < frame->channels; ch++)
-			for (blk = 0; blk < frame->blocks; blk++)
-				sbc_analyze_four(state, frame, ch, blk);
+			for (blk = 0; blk < frame->blocks; blk += 4) {
+				state->sbc_analyze_4b_4s(
+					&frame->pcm_sample[ch][blk * 4],
+					&state->X[ch][state->position[ch]],
+					frame->sb_sample_f[blk][ch],
+					frame->sb_sample_f[blk + 1][ch] -
+					frame->sb_sample_f[blk][ch]);
+				state->position[ch] -= 16;
+				if (state->position[ch] < 0)
+					state->position[ch] = 64 - 16;
+			}
 		return frame->blocks * 4;
 
 	case 8:
 		for (ch = 0; ch < frame->channels; ch++)
-			for (blk = 0; blk < frame->blocks; blk++)
-				sbc_analyze_eight(state, frame, ch, blk);
+			for (blk = 0; blk < frame->blocks; blk += 4) {
+				state->sbc_analyze_4b_8s(
+					&frame->pcm_sample[ch][blk * 8],
+					&state->X[ch][state->position[ch]],
+					frame->sb_sample_f[blk][ch],
+					frame->sb_sample_f[blk + 1][ch] -
+					frame->sb_sample_f[blk][ch]);
+				state->position[ch] -= 32;
+				if (state->position[ch] < 0)
+					state->position[ch] = 128 - 32;
+			}
 		return frame->blocks * 8;
 
 	default:
@@ -1023,6 +1044,18 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	FLUSH_BITS();
 
 	return data_ptr - data;
+}
+
+static void sbc_encoder_init(struct sbc_encoder_state *state,
+				const struct sbc_frame *frame)
+{
+	memset(&state->X, 0, sizeof(state->X));
+	state->subbands = frame->subbands;
+	state->position[0] = state->position[1] = 12 * frame->subbands;
+
+	/* Default implementation for analyze function */
+	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s;
+	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s;
 }
 
 struct sbc_priv {
