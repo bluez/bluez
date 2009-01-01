@@ -2,7 +2,7 @@
  *
  *  Bluetooth low-complexity, subband codec (SBC) encoder
  *
- *  Copyright (C) 2004-2008  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2004-2009  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -213,7 +213,7 @@ done:
 static void usage(void)
 {
 	printf("SBC encoder utility ver %s\n", VERSION);
-	printf("Copyright (c) 2004-2008  Marcel Holtmann\n\n");
+	printf("Copyright (c) 2004-2009  Marcel Holtmann\n\n");
 
 	printf("Usage:\n"
 		"\tsbcenc [options] file(s)\n"
