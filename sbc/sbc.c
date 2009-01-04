@@ -880,11 +880,12 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	uint8_t crc_header[11] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	int crc_pos = 0;
 
-	uint16_t audio_sample;
+	uint32_t audio_sample;
 
 	int ch, sb, blk;	/* channel, subband, block and bit counters */
 	int bits[2][8];		/* bits distribution */
-	int levels[2][8];	/* levels are derived from that */
+	uint32_t levels[2][8];	/* levels are derived from that */
+	uint32_t sb_sample_delta[2][8];
 
 	u_int32_t scalefactor[2][8];	/* derived from frame->scale_factor */
 
@@ -1017,8 +1018,14 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	sbc_calculate_bits(frame, bits);
 
 	for (ch = 0; ch < frame->channels; ch++) {
-		for (sb = 0; sb < frame->subbands; sb++)
-			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
+		for (sb = 0; sb < frame->subbands; sb++) {
+			levels[ch][sb] = ((1 << bits[ch][sb]) - 1) <<
+				(32 - (frame->scale_factor[ch][sb] +
+					SCALE_OUT_BITS + 2));
+			sb_sample_delta[ch][sb] = (uint32_t) 1 <<
+				(frame->scale_factor[ch][sb] +
+					SCALE_OUT_BITS + 1);
+		}
 	}
 
 	for (blk = 0; blk < frame->blocks; blk++) {
@@ -1029,12 +1036,8 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 					continue;
 
 				audio_sample = ((uint64_t) levels[ch][sb] *
-					(((uint32_t) 1 <<
-					(frame->scale_factor[ch][sb] +
-					SCALE_OUT_BITS + 1)) +
-					frame->sb_sample_f[blk][ch][sb])) >>
-						(frame->scale_factor[ch][sb] +
-						SCALE_OUT_BITS + 2);
+					(sb_sample_delta[ch][sb] +
+					frame->sb_sample_f[blk][ch][sb])) >> 32;
 
 				PUT_BITS(audio_sample, bits[ch][sb]);
 			}
