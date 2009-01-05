@@ -47,7 +47,7 @@ static ssize_t __read(int fd, void *buf, size_t count)
 	while (count > 0) {
 		len = read(fd, buf + pos, count);
 		if (len <= 0)
-			return len;
+			return pos > len ? pos : len;
 
 		count -= len;
 		pos   += len;
@@ -188,6 +188,8 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 
 		len = sbc_encode(&sbc, input, size,
 					output, sizeof(output), &encoded);
+		if (len <= 0)
+			break;
 		if (len < size)
 			memmove(input, input + len, size - len);
 

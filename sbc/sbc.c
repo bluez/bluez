@@ -69,7 +69,7 @@ struct sbc_frame {
 	uint8_t subband_mode;
 	uint8_t subbands;
 	uint8_t bitpool;
-	uint8_t codesize;
+	uint16_t codesize;
 	uint8_t length;
 
 	/* bit number x set means joint stereo has been used in subband x */
@@ -1329,9 +1329,9 @@ int sbc_get_frame_duration(sbc_t *sbc)
 	return (1000000 * blocks * subbands) / frequency;
 }
 
-int sbc_get_codesize(sbc_t *sbc)
+uint16_t sbc_get_codesize(sbc_t *sbc)
 {
-	uint8_t subbands, channels, blocks;
+	uint16_t subbands, channels, blocks;
 	struct sbc_priv *priv;
 
 	priv = sbc->priv;
