@@ -1195,6 +1195,7 @@ static gboolean server_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	}
 
 	debug("Accepted new client connection on unix socket (fd=%d)", cli_sk);
+	set_nonblocking(cli_sk);
 
 	client = g_new0(struct unix_client, 1);
 	client->sock = cli_sk;
