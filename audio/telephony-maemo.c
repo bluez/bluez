@@ -1518,7 +1518,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusError err;
 	DBusMessage *reply;
-	DBusMessageIter iter, sub;;
+	DBusMessageIter iter, sub;
 	const char *path;
 	char match_string[256];
 	int type;
