@@ -557,9 +557,11 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 		number += 4;
 		flags = CALL_FLAG_PRESENTATION_RESTRICTED;
 	} else if (number[0] == '>') {
+		const char *location = &number[1];
+
 		number = memory_dial_lookup(strtol(&number[1], NULL, 0));
 		if (!number) {
-			error("No number at memory location %s", &number[1]);
+			error("No number at memory location %s", location);
 			telephony_dial_number_rsp(telephony_device,
 						CME_ERROR_INVALID_INDEX);
 			return;
