@@ -1157,13 +1157,7 @@ int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
 			int16_t s;
 			s = priv->frame.pcm_sample[ch][i];
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
 			if (sbc->endian == SBC_BE) {
-#elif __BYTE_ORDER == __BIG_ENDIAN
-			if (sbc->endian == SBC_LE) {
-#else
-#error "Unknown byte order"
-#endif
 				*ptr++ = (s & 0xff00) >> 8;
 				*ptr++ = (s & 0x00ff);
 			} else {
@@ -1224,13 +1218,7 @@ int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 	for (i = 0; i < priv->frame.subbands * priv->frame.blocks; i++) {
 		for (ch = 0; ch < priv->frame.channels; ch++) {
 			int16_t s;
-#if __BYTE_ORDER == __LITTLE_ENDIAN
 			if (sbc->endian == SBC_BE)
-#elif __BYTE_ORDER == __BIG_ENDIAN
-			if (sbc->endian == SBC_LE)
-#else
-#error "Unknown byte order"
-#endif
 				s = (ptr[0] & 0xff) << 8 | (ptr[1] & 0xff);
 			else
 				s = (ptr[0] & 0xff) | (ptr[1] & 0xff) << 8;
