@@ -765,13 +765,12 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 		foreach_call_with_status(CSD_CALL_STATUS_ACTIVE, release_call);
 		call = find_call_with_status(CSD_CALL_STATUS_WAITING);
 		if (call)
-			answer_call(call);
+			err = answer_call(call);
 		break;
 	case '2':
 		if (idx) {
 			if (call)
 				err = split_call(call);
-			break;
 		} else {
 			struct csd_call *held, *wait;
 
@@ -780,21 +779,21 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 			wait = find_call_with_status(CSD_CALL_STATUS_WAITING);
 
 			if (call && (held || wait))
-				swap_calls();
+				err = swap_calls();
 			else {
 				if (call)
-					hold_call(call);
+					err = hold_call(call);
 				if (held)
-					unhold_call(held);
+					err = unhold_call(held);
 				if (wait)
-					answer_call(wait);
+					err = answer_call(wait);
 			}
 		}
 		break;
 	case '3':
 		call = find_call_with_status(CSD_CALL_STATUS_HOLD);
 		if (call)
-			create_conference();
+			err = create_conference();
 		break;
 	case '4':
 		err = call_transfer();
