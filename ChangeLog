@@ -1,3 +1,11 @@
+ver 4.26:
+	Use of constant shift in SBC quantization code.
+	Add possibility to analyze 4 blocks at once in encoder.
+	Fix correct handling of frame sizes in the encoder.
+	Fix for big endian problems in SBC codec.
+	Fix audio client socket to always be non-blocking.
+	Update telephony support for Maemo.
+
 ver 4.25:
 	Fix receiving data over the audio control socket.
 	Fix subbands selection for joint-stereo in SBC encoder.
