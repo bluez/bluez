@@ -780,15 +780,15 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 			held = find_call_with_status(CSD_CALL_STATUS_HOLD);
 			wait = find_call_with_status(CSD_CALL_STATUS_WAITING);
 
-			if (call && (held || wait))
+			if (wait)
+				err = answer_call(wait);
+			else if (call && held)
 				err = swap_calls();
 			else {
 				if (call)
 					err = hold_call(call);
 				if (held)
 					err = unhold_call(held);
-				if (wait)
-					err = answer_call(wait);
 			}
 		}
 		break;
