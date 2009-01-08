@@ -919,6 +919,7 @@ static int handle_a2dp_transport(struct unix_client *client,
 	if (client->caps) {
 		g_slist_foreach(client->caps, (GFunc) g_free, NULL);
 		g_slist_free(client->caps);
+		client->caps = NULL;
 	}
 
 	media_transport = avdtp_service_cap_new(AVDTP_MEDIA_TRANSPORT,
