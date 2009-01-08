@@ -63,7 +63,7 @@ static void device_free(struct audio_device *dev)
 	g_free(dev);
 }
 
-struct audio_device *device_register(DBusConnection *conn,
+struct audio_device *audio_device_register(DBusConnection *conn,
 					const char *path, const bdaddr_t *src,
 					const bdaddr_t *dst)
 {
@@ -82,7 +82,8 @@ struct audio_device *device_register(DBusConnection *conn,
 	return dev;
 }
 
-gboolean device_is_connected(struct audio_device *dev, const char *interface)
+gboolean audio_device_is_connected(struct audio_device *dev,
+						const char *interface)
 {
 	if (!interface) {
 		if ((dev->sink || dev->source) &&
@@ -108,7 +109,7 @@ gboolean device_is_connected(struct audio_device *dev, const char *interface)
 	return FALSE;
 }
 
-void device_unregister(struct audio_device *device)
+void audio_device_unregister(struct audio_device *device)
 {
 	if (device->headset)
 		headset_unregister(device);

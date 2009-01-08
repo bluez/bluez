@@ -666,7 +666,7 @@ static void audio_remove(struct btd_device *device)
 
 	devices = g_slist_remove(devices, dev);
 
-	device_unregister(dev);
+	audio_device_unregister(dev);
 }
 
 static struct audio_adapter *create_audio_adapter(const char *path, bdaddr_t *src)
@@ -1007,7 +1007,7 @@ struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interf
 				&& !dev->control)
 			continue;
 
-		if (connected && !device_is_connected(dev, interface))
+		if (connected && !audio_device_is_connected(dev, interface))
 			continue;
 
 		return dev;
@@ -1049,7 +1049,7 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 
 	path = device_get_path(device);
 
-	dev = device_register(connection, path, src, dst);
+	dev = audio_device_register(connection, path, src, dst);
 	if (!dev)
 		return NULL;
 
