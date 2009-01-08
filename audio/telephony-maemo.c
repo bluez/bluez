@@ -408,6 +408,23 @@ static int swap_calls(void)
 	return 0;
 }
 
+static int create_conference(void)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE,
+						"Conference");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
 static int call_transfer(void)
 {
 	DBusMessage *msg;
@@ -777,7 +794,7 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 	case '3':
 		call = find_call_with_status(CSD_CALL_STATUS_HOLD);
 		if (call)
-			err = unhold_call(call);
+			create_conference();
 		break;
 	case '4':
 		err = call_transfer();
