@@ -513,6 +513,9 @@ void telephony_answer_call_req(void *telephony_device)
 	if (!call)
 		call = find_call_with_status(CSD_CALL_STATUS_PROCEEDING);
 
+	if (!call)
+		call = find_call_with_status(CSD_CALL_STATUS_WAITING);
+
 	if (!call) {
 		telephony_answer_call_rsp(telephony_device,
 						CME_ERROR_NOT_ALLOWED);
