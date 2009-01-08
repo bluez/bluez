@@ -391,6 +391,23 @@ static int hold_call(struct csd_call *call)
 	return 0;
 }
 
+static int swap_calls(void)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+						CSD_CALL_INTERFACE,
+						"Swap");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
 static int call_transfer(void)
 {
 	DBusMessage *msg;
@@ -738,9 +755,24 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 			if (call)
 				err = split_call(call);
 			break;
+		} else {
+			struct csd_call *held, *wait;
+
+			call = find_call_with_status(CSD_CALL_STATUS_ACTIVE);
+			held = find_call_with_status(CSD_CALL_STATUS_HOLD);
+			wait = find_call_with_status(CSD_CALL_STATUS_WAITING);
+
+			if (call && (held || wait))
+				swap_calls();
+			else {
+				if (call)
+					hold_call(call);
+				if (held)
+					unhold_call(held);
+				if (wait)
+					answer_call(wait);
+			}
 		}
-		foreach_call_with_status(CSD_CALL_STATUS_ACTIVE, hold_call);
-		foreach_call_with_status(CSD_CALL_STATUS_HOLD, unhold_call);
 		break;
 	case '3':
 		call = find_call_with_status(CSD_CALL_STATUS_HOLD);
