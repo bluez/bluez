@@ -102,7 +102,7 @@ struct btd_device {
 	uint8_t		cap;
 	uint8_t		auth;
 
-	gboolean	connected;
+	uint16_t	handle;			/* Connection handle */
 
 	/* Whether were creating a security mode 3 connection */
 	gboolean	secmode3;
@@ -225,7 +225,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	uint32_t class;
 	int i;
 	GSList *l;
-	struct active_conn_info *dev;
 
 	ba2str(&device->bdaddr, dstaddr);
 
@@ -287,13 +286,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Trusted", DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Connected */
-	dev = adapter_search_active_conn_by_bdaddr(adapter, &device->bdaddr);
-	if (dev)
-		boolean = TRUE;
-	else
-		boolean = FALSE;
-
-	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &boolean);
+	boolean = (device->handle != 0);
+	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN,
+				&boolean);
 
 	/* UUIDs */
 	uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
@@ -493,25 +488,18 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 static gboolean disconnect_timeout(gpointer user_data)
 {
 	struct btd_device *device = user_data;
-	struct active_conn_info *ci;
 	disconnect_cp cp;
 	int dd;
 	uint16_t dev_id = adapter_get_dev_id(device->adapter);
 
 	device->disconn_timer = 0;
 
-	ci = adapter_search_active_conn_by_bdaddr(device->adapter,
-							&device->bdaddr);
-
-	if (!ci)
-		return FALSE;
-
 	dd = hci_open_dev(dev_id);
 	if (dd < 0)
 		goto fail;
 
 	memset(&cp, 0, sizeof(cp));
-	cp.handle = htobs(ci->handle);
+	cp.handle = htobs(device->handle);
 	cp.reason = HCI_OE_USER_ENDED_CONNECTION;
 
 	hci_send_cmd(dd, OGF_LINK_CTL, OCF_DISCONNECT,
@@ -527,12 +515,8 @@ static DBusMessage *disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct btd_device *device = user_data;
-	struct active_conn_info *dev;
 
-	dev = adapter_search_active_conn_by_bdaddr(device->adapter,
-							&device->bdaddr);
-
-	if (!dev)
+	if (!device->handle)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotConnected",
 				"Device is not connected");
@@ -563,16 +547,14 @@ static GDBusSignalTable device_signals[] = {
 	{ }
 };
 
-gboolean device_get_connected(struct btd_device *device)
+gboolean device_is_connected(struct btd_device *device)
 {
-	return device->connected;
+	return (device->handle != 0);
 }
 
-void device_set_connected(struct btd_device *device, DBusConnection *conn,
+static void device_set_connected(struct btd_device *device, DBusConnection *conn,
 			gboolean connected)
 {
-	device->connected = connected;
-
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
 				"Connected", DBUS_TYPE_BOOLEAN, &connected);
 
@@ -586,6 +568,39 @@ void device_set_connected(struct btd_device *device, DBusConnection *conn,
 
 		hcid_dbus_bonding_process_complete(&sba, &device->bdaddr, 0);
 	}
+}
+
+void device_add_connection(struct btd_device *device, DBusConnection *conn,
+				uint16_t handle)
+{
+	if (device->handle) {
+		error("%s: Unable to add connection %u, %u already exist)",
+			device->path, handle, device->handle);
+		return;
+	}
+
+	device->handle = handle;
+
+	device_set_connected(device, conn, TRUE);
+}
+
+void device_remove_connection(struct btd_device *device, DBusConnection *conn,
+				uint16_t handle)
+{
+	if (device->handle != handle) {
+		error("%s: Unable to remove connection %u, handle mismatch (%u)",
+			device->path, handle, device->handle);
+		return;
+	}
+
+	device->handle = 0;
+
+	device_set_connected(device, conn, FALSE);
+}
+
+gboolean device_has_connection(struct btd_device *device, uint16_t handle)
+{
+	return (handle == device->handle);
 }
 
 void device_set_secmode3_conn(struct btd_device *device, gboolean enable)
@@ -626,7 +641,6 @@ struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapt
 
 static void device_remove_bonding(struct btd_device *device, DBusConnection *conn)
 {
-	struct active_conn_info *ci;
 	char filename[PATH_MAX + 1];
 	char *str, srcaddr[18], dstaddr[18];
 	int dd, dev_id;
@@ -661,10 +675,8 @@ static void device_remove_bonding(struct btd_device *device, DBusConnection *con
 	hci_delete_stored_link_key(dd, &device->bdaddr, 0, HCI_REQ_TIMEOUT);
 
 	/* Send the HCI disconnect command */
-	ci = adapter_search_active_conn_by_bdaddr(device->adapter,
-						&device->bdaddr);
-	if (ci) {
-		int err = hci_disconnect(dd, htobs(ci->handle),
+	if (device->handle) {
+		int err = hci_disconnect(dd, htobs(device->handle),
 					HCI_OE_USER_ENDED_CONNECTION,
 					HCI_REQ_TIMEOUT);
 		if (err < 0)

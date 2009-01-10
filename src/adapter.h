@@ -53,11 +53,6 @@ struct remote_dev_info {
 	name_status_t name_status;
 };
 
-struct active_conn_info {
-	bdaddr_t bdaddr;
-	uint16_t handle;
-};
-
 struct hci_dev {
 	int ignore;
 
@@ -89,6 +84,8 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest);
 
+struct btd_device *adapter_find_connection(struct btd_adapter *adapter, uint16_t handle);
+
 void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 				struct btd_device *device);
 struct btd_device *adapter_create_device(DBusConnection *conn,
@@ -116,14 +113,10 @@ void adapter_update_oor_devices(struct btd_adapter *adapter);
 void adapter_remove_oor_device(struct btd_adapter *adapter, char *peer_addr);
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
-void adapter_add_active_conn(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-				uint16_t handle);
-void adapter_remove_active_conn(struct btd_adapter *adapter,
-				struct active_conn_info *dev);
-struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct btd_adapter *adapter,
-								bdaddr_t *bda);
-struct active_conn_info *adapter_search_active_conn_by_handle(struct btd_adapter *adapter,
-							uint16_t handle);
+void adapter_add_connection(struct btd_adapter *adapter,
+				struct btd_device *device, uint16_t handle);
+void adapter_remove_connection(struct btd_adapter *adapter,
+				struct btd_device *device, uint16_t handle);
 gboolean adapter_has_discov_sessions(struct btd_adapter *adapter);
 
 struct btd_adapter_driver {

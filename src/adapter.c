@@ -107,7 +107,7 @@ struct btd_adapter {
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
 	GSList *passkey_agents;
 	struct agent *agent;		/* For the new API */
-	GSList *active_conn;
+	GSList *connections;		/* Connected devices */
 	GSList *devices;		/* Devices structure pointers */
 	GSList *mode_sessions;		/* Request Mode sessions */
 	GSList *disc_sessions;		/* Discovery sessions */
@@ -174,25 +174,6 @@ static inline DBusMessage *unsupported_major_class(DBusMessage *msg)
 	return g_dbus_create_error(msg,
 			ERROR_INTERFACE ".UnsupportedMajorClass",
 			"Unsupported Major Class");
-}
-
-static int active_conn_find_by_bdaddr(const void *data, const void *user_data)
-{
-	const struct active_conn_info *con = data;
-	const bdaddr_t *bdaddr = user_data;
-
-	return bacmp(&con->bdaddr, bdaddr);
-}
-
-static int active_conn_find_by_handle(const void *data, const void *user_data)
-{
-	const struct active_conn_info *dev = data;
-	const uint16_t *handle = user_data;
-
-	if (dev->handle == *handle)
-		return 0;
-
-	return -1;
 }
 
 static void send_out_of_range(const char *path, GSList *l)
@@ -898,6 +879,21 @@ struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *
 	device = l->data;
 
 	return device;
+}
+
+struct btd_device *adapter_find_connection(struct btd_adapter *adapter,
+					uint16_t handle)
+{
+	GSList *l;
+
+	for (l = adapter->connections; l; l = l->next) {
+		struct btd_device *device = l->data;
+
+		if (device_has_connection(device, handle))
+			return device;
+	}
+
+	return NULL;
 }
 
 static void adapter_update_devices(struct btd_adapter *adapter)
@@ -1816,20 +1812,6 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 	return 0;
 }
 
-static int active_conn_append(GSList **list, bdaddr_t *bdaddr,
-				uint16_t handle)
-{
-	struct active_conn_info *dev;
-
-	dev = g_new0(struct active_conn_info, 1);
-
-	bacpy(&dev->bdaddr, bdaddr);
-	dev->handle = handle;
-
-	*list = g_slist_append(*list, dev);
-	return 0;
-}
-
 static void create_stored_device_from_profiles(char *key, char *value,
 						void *user_data)
 {
@@ -1904,6 +1886,36 @@ static void load_drivers(struct btd_adapter *adapter)
 	}
 }
 
+static void load_connections(struct btd_adapter *adapter, int dd)
+{
+	struct hci_conn_list_req *cl = NULL;
+	struct hci_conn_info *ci;
+	int i;
+
+	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
+
+	cl->dev_id = adapter->dev_id;
+	cl->conn_num = 10;
+	ci = cl->conn_info;
+
+	if (ioctl(dd, HCIGETCONNLIST, cl) != 0) {
+		g_free(cl);
+		return;
+	}
+
+	for (i = 0; i < cl->conn_num; i++, ci++) {
+		struct btd_device *device;
+		char address[18];
+
+		ba2str(&ci->bdaddr, address);
+		device = adapter_get_device(connection, adapter, address);
+		if (device)
+			adapter_add_connection(adapter, device, ci->handle);
+	}
+
+	g_free(cl);
+}
+
 static int get_discoverable_timeout(const char *src)
 {
 	int timeout;
@@ -1927,7 +1939,6 @@ static int get_pairable_timeout(const char *src)
 static int adapter_up(struct btd_adapter *adapter, int dd)
 {
 	char mode[14], srcaddr[18];
-	int i;
 	uint8_t scan_mode;
 	gboolean powered, dev_down = FALSE;
 
@@ -1980,39 +1991,23 @@ static int adapter_up(struct btd_adapter *adapter, int dd)
 	}
 
 proceed:
-	if (dev_down == FALSE)
+	if (dev_down == FALSE) {
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 				1, &scan_mode);
 
-	/* retrieve the active connections: address the scenario where
-	 * the are active connections before the daemon've started */
-	if (adapter->initialized == FALSE) {
-		struct hci_conn_list_req *cl = NULL;
-		struct hci_conn_info *ci;
-
-		cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
-
-		cl->dev_id = adapter->dev_id;
-		cl->conn_num = 10;
-		ci = cl->conn_info;
-
-		if (ioctl(dd, HCIGETCONNLIST, cl) == 0) {
-			for (i = 0; i < cl->conn_num; i++, ci++)
-				active_conn_append(&adapter->active_conn,
-						&ci->bdaddr, ci->handle);
-		}
-
-		g_free(cl);
-	}
-
-	if (dev_down == FALSE)
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
+	}
 
 	if (adapter->initialized == FALSE) {
 		load_drivers(adapter);
 		load_devices(adapter);
+
+		/* retrieve the active connections: address the scenario where
+		 * the are active connections before the daemon've started */
+		load_connections(adapter, dd);
+
 		adapter->initialized = TRUE;
 	}
 
@@ -2211,10 +2206,9 @@ int adapter_stop(struct btd_adapter *adapter)
 		adapter->oor_devices = NULL;
 	}
 
-	if (adapter->active_conn) {
-		g_slist_foreach(adapter->active_conn, (GFunc) g_free, NULL);
-		g_slist_free(adapter->active_conn);
-		adapter->active_conn = NULL;
+	if (adapter->connections) {
+		g_slist_free(adapter->connections);
+		adapter->connections = NULL;
 	}
 
 	if (adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY)) {
@@ -2645,62 +2639,43 @@ struct agent *adapter_get_agent(struct btd_adapter *adapter)
 	return adapter->agent;
 }
 
-void adapter_add_active_conn(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-				uint16_t handle)
+void adapter_add_connection(struct btd_adapter *adapter,
+				struct btd_device *device, uint16_t handle)
 {
-	struct active_conn_info *dev;
-
-	if (!adapter)
+	if (g_slist_find(adapter->connections, device)) {
+		error("Unable to add connection %d", handle);
 		return;
+	}
 
-	dev = g_new0(struct active_conn_info, 1);
+	device_add_connection(device, connection, handle);
 
-	bacpy(&dev->bdaddr, bdaddr);
-	dev->handle = handle;
-
-	adapter->active_conn = g_slist_append(adapter->active_conn, dev);
+	adapter->connections = g_slist_append(adapter->connections, device);
 }
 
-void adapter_remove_active_conn(struct btd_adapter *adapter,
-				struct active_conn_info *dev)
+void adapter_remove_connection(struct btd_adapter *adapter,
+				struct btd_device *device, uint16_t handle)
 {
-	if (!adapter || !adapter->active_conn)
+	bdaddr_t bdaddr;
+
+	if (!g_slist_find(adapter->connections, device)) {
+		error("No matching connection for handle %u", handle);
 		return;
+	}
 
-	adapter->active_conn = g_slist_remove(adapter->active_conn, dev);
-	g_free(dev);
-}
+	device_remove_connection(device, connection, handle);
 
-struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct btd_adapter *adapter,
-						    bdaddr_t *bda)
-{
-	GSList *l;
+	adapter->connections = g_slist_remove(adapter->connections, device);
 
-	if (!adapter || !adapter->active_conn)
-		return NULL;
+	/* clean pending HCI cmds */
+	device_get_address(device, &bdaddr);
+	hci_req_queue_remove(adapter->dev_id, &bdaddr);
 
-	l = g_slist_find_custom(adapter->active_conn, bda,
-					active_conn_find_by_bdaddr);
-	if (l)
-		return l->data;
+	if (device_is_temporary(device)) {
+		const char *path = device_get_path(device);
 
-	return NULL;
-}
-
-struct active_conn_info *adapter_search_active_conn_by_handle(struct btd_adapter *adapter,
-						    uint16_t handle)
-{
-	GSList *l;
-
-	if (!adapter || !adapter->active_conn)
-		return NULL;
-
-	l = g_slist_find_custom(adapter->active_conn, &handle,
-					active_conn_find_by_handle);
-	if (l)
-		return l->data;
-
-	return NULL;
+		debug("Removing temporary device %s", path);
+		adapter_remove_device(connection, adapter, device);
+	}
 }
 
 gboolean adapter_has_discov_sessions(struct btd_adapter *adapter)
@@ -2761,12 +2736,15 @@ static int btd_adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *ds
 	gboolean trusted;
 	const gchar *dev_path;
 
+	ba2str(dst, address);
+	device = adapter_find_device(adapter, address);
+	if (!device)
+		return -EPERM;
+
 	/* Device connected? */
-	if (!g_slist_find_custom(adapter->active_conn,
-				dst, active_conn_find_by_bdaddr))
+	if (!g_slist_find(adapter->connections, device))
 		return -ENOTCONN;
 
-	ba2str(dst, address);
 	trusted = read_trust(&adapter->bdaddr, address, GLOBAL_TRUST);
 
 	if (trusted) {

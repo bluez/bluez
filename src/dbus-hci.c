@@ -936,7 +936,7 @@ void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer)
 		return;
 	}
 
-	if (!device_get_connected(device))
+	if (!device_is_connected(device))
 		device_set_secmode3_conn(device, TRUE);
 	else if (!device_is_bonding(device, NULL))
 		hcid_dbus_bonding_process_complete(local, peer, 0);
@@ -970,20 +970,15 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		return;
 	}
 
-	device_set_connected(device, connection, TRUE);
-
-	/* add in the active connetions list */
-	adapter_add_active_conn(adapter, peer, handle);
+	/* add in the device connetions list */
+	adapter_add_connection(adapter, device, handle);
 }
 
 void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 				uint16_t handle, uint8_t reason)
 {
-	char peer_addr[18];
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	struct active_conn_info *dev;
-	uint16_t dev_id;
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -996,31 +991,13 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 		return;
 	}
 
-	dev = adapter_search_active_conn_by_handle(adapter, handle);
-	if (!dev) {
-		error("No matching connection for handle %u", handle);
+	device = adapter_find_connection(adapter, handle);
+	if (!device) {
+		error("No matching connection found for handle %u", handle);
 		return;
 	}
 
-	ba2str(&dev->bdaddr, peer_addr);
-
-	dev_id = adapter_get_dev_id(adapter);
-
-	/* clean pending HCI cmds */
-	hci_req_queue_remove(dev_id, &dev->bdaddr);
-
-	adapter_remove_active_conn(adapter, dev);
-
-	device = adapter_find_device(adapter, peer_addr);
-	if (!device)
-		return;
-
-	device_set_connected(device, connection, FALSE);
-
-	if (device_is_temporary(device)) {
-		debug("Removing temporary device %s", peer_addr);
-		adapter_remove_device(connection, adapter, device);
-	}
+	adapter_remove_connection(adapter, device, handle);
 }
 
 int set_service_classes(int dd, const uint8_t *cls, uint8_t value)

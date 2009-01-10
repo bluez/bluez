@@ -55,9 +55,7 @@ void device_set_temporary(struct btd_device *device, gboolean temporary);
 void device_set_cap(struct btd_device *device, uint8_t cap);
 void device_set_auth(struct btd_device *device, uint8_t auth);
 uint8_t device_get_auth(struct btd_device *device);
-gboolean device_get_connected(struct btd_device *device);
-void device_set_connected(struct btd_device *device, DBusConnection *conn,
-				gboolean connected);
+gboolean device_is_connected(struct btd_device *device);
 void device_set_secmode3_conn(struct btd_device *device, gboolean enable);
 DBusMessage *device_create_bonding(struct btd_device *device,
 				DBusConnection *conn, DBusMessage *msg,
@@ -70,6 +68,11 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 				uint32_t passkey, void *cb);
 void device_cancel_authentication(struct btd_device *device);
 gboolean device_is_authenticating(struct btd_device *device);
+void device_add_connection(struct btd_device *device, DBusConnection *conn,
+				uint16_t handle);
+void device_remove_connection(struct btd_device *device, DBusConnection *conn,
+				uint16_t handle);
+gboolean device_has_connection(struct btd_device *device, uint16_t handle);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 
