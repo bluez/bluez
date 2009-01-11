@@ -119,54 +119,6 @@ const char *class_to_icon(uint32_t class)
 	return NULL;
 }
 
-DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
-{
-	switch (status) {
-	case 0x00: /* success */
-		return dbus_message_new_method_return(msg);
-
-	case 0x04: /* page timeout */
-	case 0x08: /* connection timeout */
-	case 0x10: /* connection accept timeout */
-	case 0x22: /* LMP response timeout */
-	case 0x28: /* instant passed - is this a timeout? */
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".AuthenticationTimeout",
-					"Authentication Timeout");
-	case 0x17: /* too frequent pairing attempts */
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".RepeatedAttempts",
-					"Repeated Attempts");
-
-	case 0x06:
-	case 0x18: /* pairing not allowed (e.g. gw rejected attempt) */
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".AuthenticationRejected",
-					"Authentication Rejected");
-
-	case 0x07: /* memory capacity */
-	case 0x09: /* connection limit */
-	case 0x0a: /* synchronous connection limit */
-	case 0x0d: /* limited resources */
-	case 0x13: /* user ended the connection */
-	case 0x14: /* terminated due to low resources */
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".AuthenticationCanceled",
-					"Authentication Canceled");
-
-	case 0x05: /* authentication failure */
-	case 0x0E: /* rejected due to security reasons - is this auth failure? */
-	case 0x25: /* encryption mode not acceptable - is this auth failure? */
-	case 0x26: /* link key cannot be changed - is this auth failure? */
-	case 0x29: /* pairing with unit key unsupported - is this auth failure? */
-	case 0x2f: /* insufficient security - is this auth failure? */
-	default:
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".AuthenticationFailed",
-					"Authentication Failed");
-	}
-}
-
 /*****************************************************************
  *
  *  Section reserved to HCI commands confirmation handling and low
@@ -182,13 +134,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	bdaddr_t sba, dba;
 	size_t len;
 	int dev;
-	struct pending_auth_info *auth;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
-	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
-
-	/* No need to reply anything if the authentication already failed */
-	if (bonding && bonding->hci_status)
-		return;
 
 	dev = hci_open_dev(dev_id);
 	if (dev < 0) {
@@ -199,8 +145,6 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 
 	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba);
-
-	auth = adapter_find_auth_request(adapter, &dba);
 
 	if (err) {
 		hci_send_cmd(dev, OGF_LINK_CTL,
@@ -219,10 +163,6 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
 
 done:
-	if (auth) {
-		auth->replied = TRUE;
-		auth->agent = NULL;
-	}
 	hci_close_dev(dev);
 }
 
@@ -231,8 +171,6 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 	char addr[18];
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	struct agent *agent = NULL;
-	int ret;
 
 	adapter = manager_find_adapter(sba);
 	if (!adapter) {
@@ -240,42 +178,21 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 		return -1;
 	}
 
-	if (!adapter_pairing_initiator(adapter, &ci->bdaddr) &&
-			!adapter_is_pairable(adapter))
-		return -EPERM;
-
 	ba2str(&ci->bdaddr, addr);
 
 	device = adapter_find_device(adapter, addr);
-
-	if (device)
-		agent = device_get_agent(device);
-
-	if (!agent)
-		agent = adapter_get_agent(adapter);
-
-	if (!agent) {
-		error("No agent available for PIN request");
+	/* Check if the adapter is not pairable and if there isn't a bonding in
+	 * progress */
+	if (!adapter_is_pairable(adapter) &&
+			!(device && device_is_bonding(device, NULL)))
 		return -EPERM;
-	}
 
-	if (!device) {
-		device = adapter_create_device(connection, adapter, addr);
-		if (!device)
-			return -ENODEV;
-	}
+	device = adapter_get_device(connection, adapter, addr);
+	if (!device)
+		return -ENODEV;
 
-	ret = agent_request_pincode(agent, device,
-					(agent_pincode_cb) pincode_cb,
-					device);
-	if (ret == 0) {
-		struct pending_auth_info *auth;
-		auth = adapter_new_auth_request(adapter, &ci->bdaddr,
-						AUTH_TYPE_PINCODE);
-		auth->agent = agent;
-	}
-
-	return ret;
+	return device_request_authentication(device, AUTH_TYPE_PINCODE,
+					0, pincode_cb);
 }
 
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
@@ -284,13 +201,7 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	struct btd_adapter *adapter = device_get_adapter(device);
 	user_confirm_reply_cp cp;
 	int dd;
-	struct pending_auth_info *auth;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
-	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
-
-	/* No need to reply anything if the authentication already failed */
-	if (bonding && bonding->hci_status)
-		return;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
@@ -301,19 +212,12 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
 	memset(&cp, 0, sizeof(cp));
 	device_get_address(device, &cp.bdaddr);
 
-	auth = adapter_find_auth_request(adapter, &cp.bdaddr);
-
 	if (err)
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 	else
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
-
-	if (auth) {
-		auth->replied = TRUE;
-		auth->agent = FALSE;
-	}
 
 	hci_close_dev(dd);
 }
@@ -326,13 +230,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	user_passkey_reply_cp cp;
 	bdaddr_t dba;
 	int dd;
-	struct pending_auth_info *auth;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
-	struct bonding_request_info *bonding = adapter_get_bonding_info(adapter);
-
-	/* No need to reply anything if the authentication already failed */
-	if (bonding && bonding->hci_status)
-		return;
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
@@ -346,19 +244,12 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	bacpy(&cp.bdaddr, &dba);
 	cp.passkey = passkey;
 
-	auth = adapter_find_auth_request(adapter, &dba);
-
 	if (err)
 		hci_send_cmd(dd, OGF_LINK_CTL,
 				OCF_USER_PASSKEY_NEG_REPLY, 6, &dba);
 	else
 		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_REPLY,
 					USER_PASSKEY_REPLY_CP_SIZE, &cp);
-
-	if (auth) {
-		auth->replied = TRUE;
-		auth->agent = NULL;
-	}
 
 	hci_close_dev(dd);
 }
@@ -403,10 +294,8 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	struct agent *agent;
 	char addr[18];
 	uint8_t type;
-	struct pending_auth_info *auth;
 	uint16_t dev_id;
 
 	adapter = manager_find_adapter(sba);
@@ -457,41 +346,19 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 		hci_close_dev(dd);
 
-		auth = adapter_new_auth_request(adapter, dba, AUTH_TYPE_CONFIRM);
-		auth->replied = TRUE;
-
-		return 0;
+		return device_request_authentication(device, AUTH_TYPE_AUTO,
+					0, NULL);
 	}
 
-	agent = device_get_agent(device);
-
-	if (!agent)
-		agent = adapter_get_agent(adapter);
-
-	if (!agent) {
-		error("No agent available for user confirm request");
-		return -1;
-	}
-
-	if (agent_request_confirmation(agent, device, passkey,
-						confirm_cb, device) < 0) {
-		error("Requesting passkey failed");
-		return -1;
-	}
-
-	auth = adapter_new_auth_request(adapter, dba, AUTH_TYPE_CONFIRM);
-	auth->agent = agent;
-
-	return 0;
+	return device_request_authentication(device, AUTH_TYPE_CONFIRM,
+					passkey, confirm_cb);
 }
 
 int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	struct agent *agent = NULL;
 	char addr[18];
-	struct pending_auth_info *auth;
 
 	adapter = manager_find_adapter(sba);
 	if (!adapter) {
@@ -503,35 +370,18 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 
 	device = adapter_get_device(connection, adapter, addr);
 
-	if (device)
-		agent = device_get_agent(device);
+	if (!device)
+		return -ENODEV;
 
-	if (!agent)
-		agent = adapter_get_agent(adapter);
-
-	if (!agent) {
-		error("No agent available for user passkey request");
-		return -1;
-	}
-
-	if (agent_request_passkey(agent, device, passkey_cb, device) < 0) {
-		error("Requesting passkey failed");
-		return -1;
-	}
-
-	auth = adapter_new_auth_request(adapter, dba, AUTH_TYPE_PASSKEY);
-	auth->agent = agent;
-
-	return 0;
+	return device_request_authentication(device, AUTH_TYPE_PASSKEY,
+					0, passkey_cb);
 }
 
 int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	struct agent *agent = NULL;
 	char addr[18];
-	struct pending_auth_info *auth;
 
 	adapter = manager_find_adapter(sba);
 	if (!adapter) {
@@ -542,26 +392,11 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	ba2str(dba, addr);
 
 	device = adapter_get_device(connection, adapter, addr);
-	if (device)
-		agent = device_get_agent(device);
+	if (!device)
+		return -ENODEV;
 
-	if (!agent)
-		agent = adapter_get_agent(adapter);
-
-	if (!agent) {
-		error("No agent available for user confirm request");
-		return -1;
-	}
-
-	if (agent_display_passkey(agent, device, passkey) < 0) {
-		error("Displaying passkey failed");
-		return -1;
-	}
-
-	auth = adapter_new_auth_request(adapter, dba, AUTH_TYPE_NOTIFY);
-	auth->agent = agent;
-
-	return 0;
+	return device_request_authentication(device, AUTH_TYPE_NOTIFY,
+					passkey, NULL);
 }
 
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
@@ -569,14 +404,9 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 {
 	struct btd_adapter *adapter;
 	char peer_addr[18];
-	DBusMessage *reply;
 	struct btd_device *device;
-	struct bonding_request_info *bonding;
-	struct pending_auth_info *auth;
 
 	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
-
-	ba2str(peer, peer_addr);
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -584,59 +414,25 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		return;
 	}
 
-	bonding = adapter_get_bonding_info(adapter);
+	ba2str(peer, peer_addr);
 
-	if (bonding && bacmp(&bonding->bdaddr, peer))
-		bonding = NULL;
-
-	if (status == 0) {
-		device = adapter_get_device(connection, adapter, peer_addr);
-		if (!device) {
-			/* This should really only happen if we run out of
-			 * memory */
-			error("Unable to get device object!");
-			status = HCI_REJECTED_LIMITED_RESOURCES;
-		}
-	}
-
-	if (status && bonding)
-		bonding->hci_status = status;
-
-	auth = adapter_find_auth_request(adapter, peer);
-	if (!auth) {
-		/* This means that there was no pending PIN or SSP token request
-		 * from the controller, i.e. this is not a new pairing */
-		debug("hcid_dbus_bonding_process_complete: no pending auth request");
-		goto proceed;
-	}
-
-	if (auth->agent)
-		agent_cancel(auth->agent);
-
-	adapter_remove_auth_request(adapter, peer);
-
-	/* If this is a new pairing send the appropriate signal for it
-	 * and proceed with service discovery */
-	if (status == 0) {
-		device_set_paired(connection, device, bonding);
-		if (bonding)
-			adapter_free_bonding_request(adapter);
+	device = adapter_find_device(adapter, peer_addr);
+	if (!device) {
+		error("Unable to get device object!");
 		return;
 	}
 
-proceed:
-	if (!bonding)
-		return; /* skip: no bonding req pending */
+	if (!device_is_authenticating(device)) {
+		/* This means that there was no pending PIN or SSP token
+		 * request from the controller, i.e. this is not a new
+		 * pairing */
+		debug("hcid_dbus_bonding_process_complete: no pending auth request");
+		return;
+	}
 
-	if (bonding->cancel)
-		reply = new_authentication_return(bonding->msg,
-					HCI_OE_USER_ENDED_CONNECTION);
-	else
-		reply = new_authentication_return(bonding->msg, status);
-
-	g_dbus_send_message(connection, reply);
-
-	adapter_free_bonding_request(adapter);
+	/* If this is a new pairing send the appropriate reply and signal for
+	 * it and proceed with service discovery */
+	device_bonding_complete(device, status);
 }
 
 void hcid_dbus_inquiry_start(bdaddr_t *local)
@@ -1125,7 +921,6 @@ void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer)
 	char peer_addr[18];
 	struct btd_device *device;
 	struct btd_adapter *adapter;
-	struct bonding_request_info *bonding;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -1141,11 +936,9 @@ void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer)
 		return;
 	}
 
-	bonding = adapter_get_bonding_info(adapter);
-
 	if (!device_get_connected(device))
 		device_set_secmode3_conn(device, TRUE);
-	else if (!bonding)
+	else if (!device_is_bonding(device, NULL))
 		hcid_dbus_bonding_process_complete(local, peer, 0);
 }
 
@@ -1154,7 +947,6 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 {
 	char peer_addr[18];
 	struct btd_adapter *adapter;
-	struct bonding_request_info *bonding;
 	struct btd_device *device;
 
 	adapter = manager_find_adapter(local);
@@ -1166,42 +958,32 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	ba2str(peer, peer_addr);
 
 	device = adapter_get_device(connection, adapter, peer_addr);
+	if (!device) {
+		error("No matching device found");
+		return;
+	}
 
 	if (status) {
-		struct pending_auth_info *auth;
-
-		auth = adapter_find_auth_request(adapter, peer);
-		if (auth && auth->agent)
-			agent_cancel(auth->agent);
-
-		adapter_remove_auth_request(adapter, peer);
-
-		if (device)
-			device_set_secmode3_conn(device, FALSE);
-
-		bonding = adapter_get_bonding_info(adapter);
-		if (bonding)
-			bonding->hci_status = status;
-	} else {
-		if (device)
-			device_set_connected(connection, device, TRUE);
-
-		/* add in the active connetions list */
-		adapter_add_active_conn(adapter, peer, handle);
+		device_set_secmode3_conn(device, FALSE);
+		if (device_is_bonding(device, NULL))
+			device_bonding_complete(device, status);
+		return;
 	}
+
+	device_set_connected(device, connection, TRUE);
+
+	/* add in the active connetions list */
+	adapter_add_active_conn(adapter, peer, handle);
 }
 
 void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 				uint16_t handle, uint8_t reason)
 {
-	DBusMessage *reply;
 	char peer_addr[18];
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct active_conn_info *dev;
-	struct pending_auth_info *auth;
 	uint16_t dev_id;
-	struct bonding_request_info *bonding;
 
 	if (status) {
 		error("Disconnection failed: 0x%02x", status);
@@ -1227,39 +1009,17 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	/* clean pending HCI cmds */
 	hci_req_queue_remove(dev_id, &dev->bdaddr);
 
-	/* Cancel D-Bus/non D-Bus requests */
-	auth = adapter_find_auth_request(adapter, &dev->bdaddr);
-	if (auth && auth->agent)
-		agent_cancel(auth->agent);
-
-	adapter_remove_auth_request(adapter, &dev->bdaddr);
-
-	bonding = adapter_get_bonding_info(adapter);
-	/* Check if there is a pending Bonding request */
-	if (bonding && (bacmp(&bonding->bdaddr, &dev->bdaddr) == 0)) {
-		if (bonding->cancel) {
-			/* reply authentication canceled */
-			reply = new_authentication_return(bonding->msg,
-							HCI_OE_USER_ENDED_CONNECTION);
-			g_dbus_send_message(connection, reply);
-		} else {
-			reply = new_authentication_return(bonding->msg,
-							HCI_AUTHENTICATION_FAILURE);
-			g_dbus_send_message(connection, reply);
-		}
-		adapter_free_bonding_request(adapter);
-	}
-
 	adapter_remove_active_conn(adapter, dev);
 
 	device = adapter_find_device(adapter, peer_addr);
-	if (device) {
-		device_set_connected(connection, device, FALSE);
+	if (!device)
+		return;
 
-		if (device_is_temporary(device)) {
-			debug("Removing temporary device %s", peer_addr);
-			adapter_remove_device(connection, adapter, device);
-		}
+	device_set_connected(device, connection, FALSE);
+
+	if (device_is_temporary(device)) {
+		debug("Removing temporary device %s", peer_addr);
+		adapter_remove_device(connection, adapter, device);
 	}
 }
 
@@ -1482,14 +1242,16 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	if (get_auth_requirements(local, remote, auth) < 0)
 		return -1;
 
-	if (!adapter_pairing_initiator(adapter, remote) &&
-			!adapter_is_pairable(adapter))
-		return -EPERM;
-
 	ba2str(remote, addr);
 
-	/* For CreatePairedDevice use dedicated bonding */
 	device = adapter_find_device(adapter, addr);
+	/* Check if the adapter is not pairable and if there isn't a bonding in
+	 * progress */
+	if (!adapter_is_pairable(adapter) &&
+			!(device && device_is_bonding(device, NULL)))
+		return -EPERM;
+
+	/* For CreatePairedDevice use dedicated bonding */
 	if (device) {
 		agent = device_get_agent(device);
 		if (agent)

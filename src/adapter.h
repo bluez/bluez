@@ -43,12 +43,7 @@ typedef enum {
 	NAME_SENT          /* D-Bus signal RemoteNameUpdated sent */
 } name_status_t;
 
-typedef enum {
-	AUTH_TYPE_PINCODE,
-	AUTH_TYPE_PASSKEY,
-	AUTH_TYPE_CONFIRM,
-	AUTH_TYPE_NOTIFY,
-} auth_type_t;
+struct btd_adapter;
 
 struct remote_dev_info {
 	bdaddr_t bdaddr;
@@ -56,26 +51,6 @@ struct remote_dev_info {
 	uint32_t class;
 	char *alias;
 	name_status_t name_status;
-};
-
-struct bonding_request_info {
-	DBusConnection *conn;
-	DBusMessage *msg;
-	struct btd_adapter *adapter;
-	bdaddr_t bdaddr;
-	GIOChannel *io;
-	guint io_id;
-	guint listener_id;
-	int hci_status;
-	int cancel;
-	int auth_active;
-};
-
-struct pending_auth_info {
-	auth_type_t type;
-	bdaddr_t bdaddr;
-	gboolean replied;	/* If we've already replied to the request */
-	struct agent *agent;    /* Agent associated with the request */
 };
 
 struct active_conn_info {
@@ -123,12 +98,6 @@ int pending_remote_name_cancel(struct btd_adapter *adapter);
 
 void remove_pending_device(struct btd_adapter *adapter);
 
-struct pending_auth_info *adapter_find_auth_request(struct btd_adapter *adapter,
-							bdaddr_t *dba);
-void adapter_remove_auth_request(struct btd_adapter *adapter, bdaddr_t *dba);
-struct pending_auth_info *adapter_new_auth_request(struct btd_adapter *adapter,
-							bdaddr_t *dba,
-							auth_type_t type);
 struct btd_adapter *adapter_create(DBusConnection *conn, int id,
 				gboolean devup);
 void adapter_remove(struct btd_adapter *adapter);
@@ -155,8 +124,6 @@ struct active_conn_info *adapter_search_active_conn_by_bdaddr(struct btd_adapter
 								bdaddr_t *bda);
 struct active_conn_info *adapter_search_active_conn_by_handle(struct btd_adapter *adapter,
 							uint16_t handle);
-void adapter_free_bonding_request(struct btd_adapter *adapter);
-struct bonding_request_info *adapter_get_bonding_info(struct btd_adapter *adapter);
 gboolean adapter_has_discov_sessions(struct btd_adapter *adapter);
 
 struct btd_adapter_driver {
@@ -178,4 +145,3 @@ const char *adapter_any_get_path(void);
 const char *btd_adapter_any_request_path(void);
 void btd_adapter_any_release_path(void);
 gboolean adapter_is_pairable(struct btd_adapter *adapter);
-gboolean adapter_pairing_initiator(struct btd_adapter *adapter, bdaddr_t *bda);

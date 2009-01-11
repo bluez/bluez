@@ -24,9 +24,19 @@
 
 #define DEVICE_INTERFACE	"org.bluez.Device"
 
+struct btd_device;
+
+typedef enum {
+	AUTH_TYPE_PINCODE,
+	AUTH_TYPE_PASSKEY,
+	AUTH_TYPE_CONFIRM,
+	AUTH_TYPE_NOTIFY,
+	AUTH_TYPE_AUTO,
+} auth_type_t;
+
 struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapter,
 				const gchar *address);
-void device_remove(DBusConnection *conn, struct btd_device *device);
+void device_remove(struct btd_device *device, DBusConnection *conn);
 gint device_address_cmp(struct btd_device *device, const gchar *address);
 int device_browse(struct btd_device *device, DBusConnection *conn,
 			DBusMessage *msg, uuid_t *search, gboolean reverse);
@@ -45,12 +55,21 @@ void device_set_temporary(struct btd_device *device, gboolean temporary);
 void device_set_cap(struct btd_device *device, uint8_t cap);
 void device_set_auth(struct btd_device *device, uint8_t auth);
 uint8_t device_get_auth(struct btd_device *device);
-int device_set_paired(DBusConnection *conn, struct btd_device *device,
-			struct bonding_request_info *bonding);
 gboolean device_get_connected(struct btd_device *device);
-void device_set_connected(DBusConnection *conn, struct btd_device *device,
+void device_set_connected(struct btd_device *device, DBusConnection *conn,
 				gboolean connected);
 void device_set_secmode3_conn(struct btd_device *device, gboolean enable);
+DBusMessage *device_create_bonding(struct btd_device *device,
+				DBusConnection *conn, DBusMessage *msg,
+				const char *agent_path, uint8_t capability);
+void device_remove_bondind(struct btd_device *device, DBusConnection *connection);
+void device_bonding_complete(struct btd_device *device, uint8_t status);
+gboolean device_is_bonding(struct btd_device *device, const char *sender);
+void device_cancel_bonding(struct btd_device *device, uint8_t status);
+int device_request_authentication(struct btd_device *device, auth_type_t type,
+				uint32_t passkey, void *cb);
+void device_cancel_authentication(struct btd_device *device);
+gboolean device_is_authenticating(struct btd_device *device);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 

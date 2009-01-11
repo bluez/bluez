@@ -35,6 +35,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -65,6 +66,22 @@ struct btd_driver_data {
 	void *priv;
 };
 
+struct bonding_req {
+	DBusConnection *conn;
+	DBusMessage *msg;
+	GIOChannel *io;
+	guint io_id;
+	guint listener_id;
+	struct btd_device *device;
+};
+
+struct authentication_req {
+	auth_type_t type;
+	void *cb;
+	struct agent *agent;
+	struct btd_device *device;
+};
+
 struct btd_device {
 	bdaddr_t	bdaddr;
 	gchar		*path;
@@ -78,6 +95,8 @@ struct btd_device {
 	char		*discov_requestor;	/* discovery requestor unique name */
 	guint		discov_listener;
 	guint		discov_timer;
+	struct bonding_req *bonding;
+	struct authentication_req *authr;	/* authentication request */
 
 	/* For Secure Simple Pairing */
 	uint8_t		cap;
@@ -110,6 +129,39 @@ static uint16_t uuid_list[] = {
 };
 
 static GSList *device_drivers = NULL;
+
+static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
+						DBusMessage *msg, int err)
+{
+	return error_common_reply(conn, msg,
+			ERROR_INTERFACE ".ConnectionAttemptFailed",
+			err > 0 ? strerror(err) : "Connection attempt failed");
+}
+
+static DBusHandlerResult error_failed(DBusConnection *conn,
+					DBusMessage *msg, const char * desc)
+{
+	return error_common_reply(conn, msg, ERROR_INTERFACE ".Failed", desc);
+}
+
+static DBusHandlerResult error_failed_errno(DBusConnection *conn,
+						DBusMessage *msg, int err)
+{
+	const char *desc = strerror(err);
+
+	return error_failed(conn, msg, desc);
+}
+
+static inline DBusMessage *no_such_adapter(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
+							"No such adapter");
+}
+
+static inline DBusMessage *in_progress(DBusMessage *msg, const char *str)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress", str);
+}
 
 static void device_free(gpointer user_data)
 {
@@ -253,13 +305,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	/* Adapter */
 	ptr = adapter_get_path(adapter);
 	dict_append_entry(&dict, "Adapter", DBUS_TYPE_OBJECT_PATH, &ptr);
-
-	if (read_remote_eir(&src, &device->bdaddr, NULL) < 0)
-		boolean = TRUE;
-	else
-		boolean = FALSE;
-
-	dict_append_entry(&dict, "LegacyPairing", DBUS_TYPE_BOOLEAN, &boolean);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
@@ -523,7 +568,7 @@ gboolean device_get_connected(struct btd_device *device)
 	return device->connected;
 }
 
-void device_set_connected(DBusConnection *conn, struct btd_device *device,
+void device_set_connected(struct btd_device *device, DBusConnection *conn,
 			gboolean connected)
 {
 	device->connected = connected;
@@ -579,13 +624,73 @@ struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapt
 	return device;
 }
 
-void device_remove(DBusConnection *conn, struct btd_device *device)
+static void device_remove_bonding(struct btd_device *device, DBusConnection *conn)
+{
+	struct active_conn_info *ci;
+	char filename[PATH_MAX + 1];
+	char *str, srcaddr[18], dstaddr[18];
+	int dd, dev_id;
+	bdaddr_t bdaddr;
+	gboolean paired;
+
+	adapter_get_address(device->adapter, &bdaddr);
+	ba2str(&bdaddr, srcaddr);
+	ba2str(&device->bdaddr, dstaddr);
+
+	dev_id = adapter_get_dev_id(device->adapter);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0)
+		return;
+
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
+			"linkkeys");
+
+	/* textfile_del doesn't return an error when the key is not found */
+	str = textfile_caseget(filename, dstaddr);
+	paired = str ? TRUE : FALSE;
+	g_free(str);
+
+	if (!paired)
+		return;
+
+	/* Delete the link key from storage */
+	textfile_casedel(filename, dstaddr);
+
+	/* Delete the link key from the Bluetooth chip */
+	hci_delete_stored_link_key(dd, &device->bdaddr, 0, HCI_REQ_TIMEOUT);
+
+	/* Send the HCI disconnect command */
+	ci = adapter_search_active_conn_by_bdaddr(device->adapter,
+						&device->bdaddr);
+	if (ci) {
+		int err = hci_disconnect(dd, htobs(ci->handle),
+					HCI_OE_USER_ENDED_CONNECTION,
+					HCI_REQ_TIMEOUT);
+		if (err < 0)
+			error("Disconnect: %s (%d)", strerror(-err), -err);
+	}
+
+	hci_close_dev(dd);
+
+	paired = FALSE;
+	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
+				"Paired", DBUS_TYPE_BOOLEAN, &paired);
+}
+
+void device_remove(struct btd_device *device, DBusConnection *conn)
 {
 	GSList *list;
 	struct btd_device_driver *driver;
 	gchar *path = g_strdup(device->path);
 
 	debug("Removing device %s", path);
+
+	if (device->bonding)
+		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
+
+	if (!device->temporary)
+		device_remove_bonding(device, conn);
 
 	for (list = device->drivers; list; list = list->next) {
 		struct btd_driver_data *driver_data = list->data;
@@ -1280,15 +1385,356 @@ static gboolean start_discovery(gpointer user_data)
 	return FALSE;
 }
 
-int device_set_paired(DBusConnection *conn, struct btd_device *device,
-			struct bonding_request_info *bonding)
+DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 {
-	dbus_bool_t paired = TRUE;
+	switch (status) {
+	case 0x00: /* success */
+		return dbus_message_new_method_return(msg);
 
-	device_set_temporary(device, FALSE);
+	case 0x04: /* page timeout */
+	case 0x08: /* connection timeout */
+	case 0x10: /* connection accept timeout */
+	case 0x22: /* LMP response timeout */
+	case 0x28: /* instant passed - is this a timeout? */
+		return dbus_message_new_error(msg,
+					ERROR_INTERFACE ".AuthenticationTimeout",
+					"Authentication Timeout");
+	case 0x17: /* too frequent pairing attempts */
+		return dbus_message_new_error(msg,
+					ERROR_INTERFACE ".RepeatedAttempts",
+					"Repeated Attempts");
+
+	case 0x06:
+	case 0x18: /* pairing not allowed (e.g. gw rejected attempt) */
+		return dbus_message_new_error(msg,
+					ERROR_INTERFACE ".AuthenticationRejected",
+					"Authentication Rejected");
+
+	case 0x07: /* memory capacity */
+	case 0x09: /* connection limit */
+	case 0x0a: /* synchronous connection limit */
+	case 0x0d: /* limited resources */
+	case 0x13: /* user ended the connection */
+	case 0x14: /* terminated due to low resources */
+		return dbus_message_new_error(msg,
+					ERROR_INTERFACE ".AuthenticationCanceled",
+					"Authentication Canceled");
+
+	case 0x05: /* authentication failure */
+	case 0x0E: /* rejected due to security reasons - is this auth failure? */
+	case 0x25: /* encryption mode not acceptable - is this auth failure? */
+	case 0x26: /* link key cannot be changed - is this auth failure? */
+	case 0x29: /* pairing with unit key unsupported - is this auth failure? */
+	case 0x2f: /* insufficient security - is this auth failure? */
+	default:
+		return dbus_message_new_error(msg,
+					ERROR_INTERFACE ".AuthenticationFailed",
+					"Authentication Failed");
+	}
+}
+
+static void bonding_request_free(struct bonding_req *bonding)
+{
+	struct btd_device *device;
+
+	if (!bonding)
+		return;
+
+	if (bonding->listener_id)
+		g_dbus_remove_watch(bonding->conn, bonding->listener_id);
+
+	if (bonding->msg)
+		dbus_message_unref(bonding->msg);
+
+	if (bonding->conn)
+		dbus_connection_unref(bonding->conn);
+
+	if (bonding->io_id)
+		g_source_remove(bonding->io_id);
+
+	if (bonding->io)
+		g_io_channel_unref(bonding->io);
+
+	device = bonding->device;
+
+	if (device && device->agent) {
+		agent_destroy(device->agent, FALSE);
+		device->agent = NULL;
+	}
+
+	device->bonding = NULL;
+	g_free(bonding);
+}
+
+static void device_set_paired(struct btd_device *device, gboolean value)
+{
+	DBusConnection *conn = get_dbus_connection();
 
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Paired",
-				DBUS_TYPE_BOOLEAN, &paired);
+				DBUS_TYPE_BOOLEAN, &value);
+}
+
+static void device_agent_removed(struct agent *agent, void *user_data)
+{
+	struct btd_device *device = user_data;
+
+	device_set_agent(device, NULL);
+
+	if (device->authr)
+		device->authr->agent = NULL;
+}
+
+static struct bonding_req *bonding_request_new(DBusConnection *conn,
+						DBusMessage *msg,
+						struct btd_device *device,
+						const char *agent_path,
+						uint8_t capability)
+{
+	struct bonding_req *bonding;
+	const char *name = dbus_message_get_sender(msg);
+	struct agent *agent;
+
+	debug("%s: requesting bonding", device->path);
+
+	if (!agent_path)
+		goto proceed;
+
+	agent = agent_create(device->adapter, name, agent_path,
+					capability,
+					device_agent_removed,
+					device);
+	if (!agent) {
+		error("Unable to create a new agent");
+		return NULL;
+	}
+
+	device->agent = agent;
+
+	debug("Temporary agent registered for %s at %s:%s",
+			device->path, name, agent_path);
+
+proceed:
+
+	bonding = g_new0(struct bonding_req, 1);
+
+	bonding->conn = dbus_connection_ref(conn);
+	bonding->msg = dbus_message_ref(msg);
+
+	return bonding;
+}
+
+static gboolean create_bonding_io_cb(GIOChannel *io, GIOCondition cond,
+					struct btd_device *device)
+{
+	struct hci_request rq;
+	auth_requested_cp cp;
+	evt_cmd_status rp;
+	struct l2cap_conninfo cinfo;
+	socklen_t len;
+	int sk, dd, ret;
+
+	if (!device->bonding) {
+		/* If we come here it implies a bug somewhere */
+		debug("create_bonding_io_cb: no pending bonding!");
+		g_io_channel_close(io);
+		return FALSE;
+	}
+
+	if (cond & G_IO_NVAL) {
+		if (device->bonding) {
+			DBusMessage *reply;
+
+			reply = new_authentication_return(device->bonding->msg,
+							0x09);
+			g_dbus_send_message(device->bonding->conn, reply);
+		}
+
+		goto cleanup;
+	}
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		debug("Hangup or error on bonding IO channel");
+
+		if (device->bonding)
+			error_connection_attempt_failed(device->bonding->conn,
+							device->bonding->msg,
+							ENETDOWN);
+
+		goto failed;
+	}
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	len = sizeof(ret);
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
+		error("Can't get socket error: %s (%d)",
+				strerror(errno), errno);
+		error_failed_errno(device->bonding->conn, device->bonding->msg,
+				errno);
+		goto failed;
+	}
+
+	if (ret != 0) {
+		if (device->bonding)
+			error_connection_attempt_failed(device->bonding->conn,
+							device->bonding->msg,
+							ret);
+		goto failed;
+	}
+
+	len = sizeof(cinfo);
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &cinfo, &len) < 0) {
+		error("Can't get connection info: %s (%d)",
+				strerror(errno), errno);
+		error_failed_errno(device->bonding->conn, device->bonding->msg,
+				errno);
+		goto failed;
+	}
+
+	dd = hci_open_dev(adapter_get_dev_id(device->adapter));
+	if (dd < 0) {
+		DBusMessage *reply = no_such_adapter(device->bonding->msg);
+		g_dbus_send_message(device->bonding->conn, reply);
+		goto failed;
+	}
+
+	memset(&rp, 0, sizeof(rp));
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = htobs(cinfo.hci_handle);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_AUTH_REQUESTED;
+	rq.cparam = &cp;
+	rq.clen   = AUTH_REQUESTED_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_CMD_STATUS_SIZE;
+	rq.event  = EVT_CMD_STATUS;
+
+	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
+		error("Unable to send HCI request: %s (%d)",
+					strerror(errno), errno);
+		error_failed_errno(device->bonding->conn, device->bonding->msg,
+				errno);
+		hci_close_dev(dd);
+		goto failed;
+	}
+
+	if (rp.status) {
+		error("HCI_Authentication_Requested failed with status 0x%02x",
+				rp.status);
+		error_failed_errno(device->bonding->conn, device->bonding->msg,
+				bt_error(rp.status));
+		hci_close_dev(dd);
+		goto failed;
+	}
+
+	hci_close_dev(dd);
+
+	device->bonding->io_id = g_io_add_watch(io,
+						G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+						(GIOFunc) create_bonding_io_cb,
+						device);
+
+	return FALSE;
+
+failed:
+	g_io_channel_close(io);
+
+cleanup:
+	device->bonding->io_id = 0;
+	bonding_request_free(device->bonding);
+
+	return FALSE;
+}
+
+static void create_bond_req_exit(DBusConnection *conn, void *user_data)
+{
+	struct btd_device *device = user_data;
+
+	debug("%s: requestor exited before bonding was completed", device->path);
+
+	if (device->authr)
+		device_cancel_authentication(device);
+
+	if (device->bonding) {
+		device->bonding->listener_id = 0;
+		g_io_channel_close(device->bonding->io);
+		bonding_request_free(device->bonding);
+	}
+}
+
+DBusMessage *device_create_bonding(struct btd_device *device,
+					DBusConnection *conn,
+					DBusMessage *msg,
+					const char *agent_path,
+					uint8_t capability)
+{
+	char filename[PATH_MAX + 1];
+	char *str, srcaddr[18], dstaddr[18];
+	struct btd_adapter *adapter = device->adapter;
+	struct bonding_req *bonding;
+	bdaddr_t src;
+	int sk;
+
+	adapter_get_address(adapter, &src);
+	ba2str(&src, srcaddr);
+	ba2str(&device->bdaddr, dstaddr);
+
+	if (device->bonding)
+		return in_progress(msg, "Bonding in progress");
+
+	/* check if a link key already exists */
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
+			"linkkeys");
+
+	str = textfile_caseget(filename, dstaddr);
+	if (str) {
+		free(str);
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".AlreadyExists",
+				"Bonding already exists");
+	}
+
+	sk = l2raw_connect(&src, &device->bdaddr);
+	if (sk < 0)
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".ConnectionAttemptFailed",
+				"Connection attempt failed");
+
+	bonding = bonding_request_new(conn, msg, device, agent_path,
+					capability);
+	if (!bonding) {
+		close(sk);
+		return NULL;
+	}
+
+	bonding->io = g_io_channel_unix_new(sk);
+	bonding->io_id = g_io_add_watch(bonding->io,
+					G_IO_OUT | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+					(GIOFunc) create_bonding_io_cb,
+					device);
+
+	bonding->listener_id = g_dbus_add_disconnect_watch(conn,
+						dbus_message_get_sender(msg),
+						create_bond_req_exit, device,
+						NULL);
+
+	device->bonding = bonding;
+	bonding->device = device;
+
+	return NULL;
+}
+
+void device_bonding_complete(struct btd_device *device, uint8_t status)
+{
+	struct bonding_req *bonding = device->bonding;
+
+	if (status)
+		goto failed;
+
+	device->temporary = FALSE;
 
 	/* If we were initiators start service discovery immediately.
 	 * However if the other end was the initator wait a few seconds
@@ -1302,18 +1748,218 @@ int device_set_paired(DBusConnection *conn, struct btd_device *device,
 			device->discov_timer = 0;
 		}
 
-		return device_browse(device, bonding->conn, bonding->msg,
-					NULL, FALSE);
+		device_browse(device, bonding->conn, bonding->msg,
+				NULL, FALSE);
+	} else if (!device->discov_active && !device->discov_timer) {
+		/* If we are not initiators and there is no currently active
+		 * discovery or discovery timer, set the discovery timer */
+		device->discov_timer = g_timeout_add_seconds(DISCOVERY_TIMER,
+						start_discovery,
+						device);
 	}
 
-	/* If we are not initiators and there is no currently active discovery
-	 * or discovery timer, set the discovery timer */
-	if (!device->discov_active && !device->discov_timer)
-		device->discov_timer = g_timeout_add_seconds(DISCOVERY_TIMER,
-							start_discovery,
-							device);
+	device_set_paired(device, TRUE);
 
-	return 0;
+	g_free(device->authr);
+	device->authr = NULL;
+	bonding_request_free(bonding);
+
+	return;
+
+failed:
+
+	device_cancel_bonding(device, status);
+}
+
+gboolean device_is_bonding(struct btd_device *device, const char *sender)
+{
+	struct bonding_req *bonding = device->bonding;
+
+	if (!device->bonding)
+		return FALSE;
+
+	if (!sender)
+		return TRUE;
+
+	return g_str_equal(sender, dbus_message_get_sender(bonding->msg));
+}
+
+void device_cancel_bonding(struct btd_device *device, uint8_t status)
+{
+	struct bonding_req *bonding = device->bonding;
+	DBusMessage *reply;
+
+	if (!bonding)
+		return;
+
+	debug("%s: canceling bonding request", device->path);
+
+	if (device->authr)
+		device_cancel_authentication(device);
+
+	reply = new_authentication_return(bonding->msg, status);
+	g_dbus_send_message(bonding->conn, reply);
+
+	if (device->bonding->io_id)
+		g_source_remove(device->bonding->io_id);
+
+	bonding_request_free(bonding);
+}
+
+static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
+			void *data)
+{
+	struct authentication_req *auth = data;
+	struct btd_device *device = auth->device;
+
+	/* No need to reply anything if the authentication already failed */
+	if (!auth->cb)
+		return;
+
+	((agent_pincode_cb) auth->cb)(agent, err, pincode, device);
+
+	auth->cb = NULL;
+}
+
+static void confirm_cb(struct agent *agent, DBusError *err, void *data)
+{
+	struct authentication_req *auth = data;
+	struct btd_device *device = auth->device;
+
+	/* No need to reply anything if the authentication already failed */
+	if (!auth->cb)
+		return;
+
+	((agent_cb) auth->cb)(agent, err, device);
+
+	auth->cb = NULL;
+}
+
+static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
+			void *data)
+{
+	struct authentication_req *auth = data;
+	struct btd_device *device = auth->device;
+
+	/* No need to reply anything if the authentication already failed */
+	if (!auth->cb)
+		return;
+
+	((agent_passkey_cb) auth->cb)(agent, err, passkey, device);
+
+	auth->cb = NULL;
+}
+
+int device_request_authentication(struct btd_device *device, auth_type_t type,
+				uint32_t passkey, void *cb)
+{
+	struct authentication_req *auth;
+	struct agent *agent;
+	int ret;
+
+	debug("%s: requesting agent authentication", device->path);
+
+	agent = device->agent;
+
+	if (!agent)
+		agent = adapter_get_agent(device->adapter);
+
+	if (!agent) {
+		error("No agent available for %u request", type);
+		return -EPERM;
+	}
+
+	auth = g_new0(struct authentication_req, 1);
+	auth->agent = agent;
+	auth->device = device;
+	auth->cb = cb;
+	auth->type = type;
+	device->authr = auth;
+
+	switch (type) {
+	case AUTH_TYPE_PINCODE:
+		ret = agent_request_pincode(agent, device, pincode_cb,
+					auth);
+		break;
+	case AUTH_TYPE_PASSKEY:
+		ret = agent_request_passkey(agent, device, passkey_cb,
+					auth);
+		break;
+	case AUTH_TYPE_CONFIRM:
+		ret = agent_request_confirmation(agent, device, passkey,
+					confirm_cb, auth);
+		break;
+	case AUTH_TYPE_NOTIFY:
+		ret = agent_display_passkey(agent, device, passkey);
+		break;
+	case AUTH_TYPE_AUTO:
+		ret = 0;
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
+	if (ret < 0) {
+		error("Failed requesting authentication");
+		g_free(auth);
+		device->authr = NULL;
+	}
+
+	return ret;
+}
+
+static void cancel_authentication(struct authentication_req *auth)
+{
+	struct btd_device *device = auth->device;
+	struct agent *agent = auth->agent;
+	DBusError err;
+
+	if (!auth->cb)
+		return;
+
+	dbus_error_init(&err);
+	dbus_set_error_const(&err, "org.bluez.Error.Canceled", NULL);
+
+	switch (auth->type) {
+	case AUTH_TYPE_PINCODE:
+		((agent_pincode_cb) auth->cb)(agent, &err, NULL, device);
+		break;
+	case AUTH_TYPE_CONFIRM:
+		((agent_cb) auth->cb)(agent, &err, device);
+		break;
+	case AUTH_TYPE_PASSKEY:
+		((agent_passkey_cb) auth->cb)(agent, &err, 0, device);
+		break;
+	case AUTH_TYPE_NOTIFY:
+	case AUTH_TYPE_AUTO:
+		/* User Notify/Auto doesn't require any reply */
+		break;
+	}
+
+	dbus_error_free(&err);
+	auth->cb = NULL;
+}
+
+void device_cancel_authentication(struct btd_device *device)
+{
+	struct authentication_req *auth = device->authr;
+
+	if (!auth)
+		return;
+
+	debug("%s: canceling authentication request", device->path);
+
+	if (auth->agent)
+		agent_cancel(auth->agent);
+
+	cancel_authentication(auth);
+	device->authr = NULL;
+	g_free(auth);
+}
+
+gboolean device_is_authenticating(struct btd_device *device)
+{
+	return (device->authr != NULL);
 }
 
 void btd_device_add_uuid(struct btd_device *device, const char *uuid)
