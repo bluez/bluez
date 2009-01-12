@@ -32,7 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <sys/ioctl.h>
 
 #include <bluetooth/bluetooth.h>
@@ -53,61 +52,6 @@
 #define BLUEZ_NAME "org.bluez"
 
 #define RECONNECT_RETRY_TIMEOUT	5000
-
-int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
-						struct bt_security *sec)
-{
-	struct sockaddr_l2 addr;
-	long arg;
-	int sk;
-
-	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
-	if (sk < 0) {
-		error("Can't create socket: %s (%d)", strerror(errno), errno);
-		return sk;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, src);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("Can't bind socket: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	if (sec)
-		setsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, sec, sizeof(*sec));
-
-	arg = fcntl(sk, F_GETFL);
-	if (arg < 0) {
-		error("Can't get file flags: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	arg |= O_NONBLOCK;
-	if (fcntl(sk, F_SETFL, arg) < 0) {
-		error("Can't set file flags: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, dst);
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		if (errno == EAGAIN || errno == EINPROGRESS)
-			return sk;
-		error("Can't connect socket: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	return sk;
-
-failed:
-	close(sk);
-	return -1;
-}
 
 static gboolean system_bus_reconnect(void *data)
 {

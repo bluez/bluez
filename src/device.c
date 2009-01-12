@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
 
@@ -1676,6 +1677,66 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 	}
 }
 
+static int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
+						gboolean *auth_required)
+{
+	struct bt_security sec;
+	struct sockaddr_l2 addr;
+	long arg;
+	int sk, err;
+
+	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
+	if (sk < 0) {
+		error("Can't create socket: %s (%d)", strerror(errno), errno);
+		return sk;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, src);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		error("Can't bind socket: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	memset(&sec, 0, sizeof(sec));
+	sec.level = BT_SECURITY_HIGH;
+
+	err = setsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec, sizeof(sec));
+	if (auth_required)
+		*auth_required = err < 0 ? TRUE : FALSE;
+
+	arg = fcntl(sk, F_GETFL);
+	if (arg < 0) {
+		error("Can't get file flags: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	arg |= O_NONBLOCK;
+	if (fcntl(sk, F_SETFL, arg) < 0) {
+		error("Can't set file flags: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, dst);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		if (errno == EAGAIN || errno == EINPROGRESS)
+			return sk;
+		error("Can't connect socket: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
+
+	return sk;
+
+failed:
+	close(sk);
+	return -1;
+}
+
 DBusMessage *device_create_bonding(struct btd_device *device,
 					DBusConnection *conn,
 					DBusMessage *msg,
@@ -1686,10 +1747,9 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	char *str, srcaddr[18], dstaddr[18];
 	struct btd_adapter *adapter = device->adapter;
 	struct bonding_req *bonding;
-	struct bt_security sec;
 	bdaddr_t src;
-	int sk, err;
-	socklen_t len;
+	int sk;
+	gboolean auth_required;
 
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
@@ -1710,10 +1770,8 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 				"Bonding already exists");
 	}
 
-	memset(&sec, 0, sizeof(sec));
-	sec.level = BT_SECURITY_HIGH;
 
-	sk = l2raw_connect(&src, &device->bdaddr, &sec);
+	sk = l2raw_connect(&src, &device->bdaddr, &auth_required);
 	if (sk < 0)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
@@ -1726,18 +1784,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 		return NULL;
 	}
 
-	memset(&sec, 0, sizeof(sec));
-	len = sizeof(sec);
-
-	err = getsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec, &len);
-	if (err < 0) {
-		debug("BT_SECURITY failed: %s (%s), probably an old kernel",
-						strerror(errno), errno);
-		bonding->auth_required = TRUE;
-	} else if (sec.level == BT_SECURITY_HIGH)
-		bonding->auth_required = FALSE;
-	else
-		bonding->auth_required = TRUE;
+	bonding->auth_required = auth_required;
 
 	bonding->io = g_io_channel_unix_new(sk);
 	bonding->io_id = g_io_add_watch(bonding->io,
