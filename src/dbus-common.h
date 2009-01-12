@@ -23,7 +23,8 @@
 
 #define MAX_PATH_LENGTH 64
 
-int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst);
+int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
+						struct bt_security *sec);
 
 void hcid_dbus_exit(void);
 int hcid_dbus_init(void);

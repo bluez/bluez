@@ -72,6 +72,7 @@ struct bonding_req {
 	GIOChannel *io;
 	guint io_id;
 	guint listener_id;
+	gboolean auth_required;
 	struct btd_device *device;
 };
 
@@ -1545,9 +1546,7 @@ static gboolean create_bonding_io_cb(GIOChannel *io, GIOCondition cond,
 	socklen_t len;
 	int sk, dd, ret;
 
-	if (!device->bonding) {
-		/* If we come here it implies a bug somewhere */
-		debug("create_bonding_io_cb: no pending bonding!");
+	if (!device->bonding || !device->bonding->auth_required) {
 		g_io_channel_close(io);
 		return FALSE;
 	}
@@ -1687,8 +1686,10 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	char *str, srcaddr[18], dstaddr[18];
 	struct btd_adapter *adapter = device->adapter;
 	struct bonding_req *bonding;
+	struct bt_security sec;
 	bdaddr_t src;
-	int sk;
+	int sk, err;
+	socklen_t len;
 
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
@@ -1709,7 +1710,10 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 				"Bonding already exists");
 	}
 
-	sk = l2raw_connect(&src, &device->bdaddr);
+	memset(&sec, 0, sizeof(sec));
+	sec.level = BT_SECURITY_HIGH;
+
+	sk = l2raw_connect(&src, &device->bdaddr, &sec);
 	if (sk < 0)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
@@ -1721,6 +1725,19 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 		close(sk);
 		return NULL;
 	}
+
+	memset(&sec, 0, sizeof(sec));
+	len = sizeof(sec);
+
+	err = getsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec, &len);
+	if (err < 0) {
+		debug("BT_SECURITY failed: %s (%s), probably an old kernel",
+						strerror(errno), errno);
+		bonding->auth_required = TRUE;
+	} else if (sec.level == BT_SECURITY_HIGH)
+		bonding->auth_required = FALSE;
+	else
+		bonding->auth_required = TRUE;
 
 	bonding->io = g_io_channel_unix_new(sk);
 	bonding->io_id = g_io_add_watch(bonding->io,

@@ -54,7 +54,8 @@
 
 #define RECONNECT_RETRY_TIMEOUT	5000
 
-int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst)
+int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
+						struct bt_security *sec)
 {
 	struct sockaddr_l2 addr;
 	long arg;
@@ -74,6 +75,9 @@ int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst)
 		error("Can't bind socket: %s (%d)", strerror(errno), errno);
 		goto failed;
 	}
+
+	if (sec)
+		setsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, sec, sizeof(*sec));
 
 	arg = fcntl(sk, F_GETFL);
 	if (arg < 0) {
