@@ -1415,9 +1415,13 @@ static void *sdp_data_value(sdp_data_t *data)
 		val = &data->val.int128;
 		break;
 	case SDP_UUID16:
+		val = &data->val.uuid.value.uuid16;
+		break;
 	case SDP_UUID32:
+		val = &data->val.uuid.value.uuid32;
+		break;
 	case SDP_UUID128:
-		val = &data->val.uuid;
+		val = &data->val.uuid.value.uuid128;
 		break;
 	case SDP_URL_STR8:
 	case SDP_URL_STR16:
