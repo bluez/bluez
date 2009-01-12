@@ -41,10 +41,6 @@ extern "C" {
 #define PF_BLUETOOTH	AF_BLUETOOTH
 #endif
 
-#ifndef SOL_BLUETOOTH
-#define SOL_BLUETOOTH	274
-#endif
-
 #define BTPROTO_L2CAP	0
 #define BTPROTO_HCI	1
 #define BTPROTO_SCO	2
@@ -58,6 +54,21 @@ extern "C" {
 #define SOL_L2CAP	6
 #define SOL_SCO		17
 #define SOL_RFCOMM	18
+
+#ifndef SOL_BLUETOOTH
+#define SOL_BLUETOOTH	274
+#endif
+
+#define BT_SECURITY	3
+struct bt_security {
+	uint8_t level;
+};
+#define BT_SECURITY_SDP		0
+#define BT_SECURITY_LOW		1
+#define BT_SECURITY_MEDIUM	2
+#define BT_SECURITY_HIGH	3
+
+#define BT_DEFER_SETUP	5
 
 /* Connection and socket states */
 enum {
