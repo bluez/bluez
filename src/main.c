@@ -195,11 +195,10 @@ static void parse_config(GKeyFile *config)
 
 	boolean = g_key_file_get_boolean(config, "General",
 						"ReverseServiceDiscovery", &err);
-	if (err) {
+	if (err)
 		g_clear_error(&err);
-	} else
+	else
 		main_opts.reverse_sdp = boolean;
-
 
 	main_opts.link_mode = HCI_LM_ACCEPT;
 
@@ -587,7 +586,8 @@ static inline void device_event(GIOChannel *chan, evt_stack_internal *si)
 	}
 }
 
-static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond,
+								gpointer data)
 {
 	unsigned char buf[HCI_MAX_FRAME_SIZE], *ptr;
 	evt_stack_internal *si;
@@ -598,7 +598,8 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond, gpointer dat
 
 	ptr = buf;
 
-	if ((err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len))) {
+	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
+	if (err) {
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
 
@@ -708,9 +709,10 @@ int main(int argc, char *argv[])
 	}
 
 	/* Create and bind HCI socket */
-	if ((main_opts.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI)) < 0) {
-		error("Can't open HCI socket: %s (%d)",
-							strerror(errno), errno);
+	main_opts.sock = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (main_opts.sock < 0) {
+		error("Can't open HCI socket: %s (%d)", strerror(errno),
+								errno);
 		exit(1);
 	}
 
@@ -718,15 +720,16 @@ int main(int argc, char *argv[])
 	hci_filter_clear(&flt);
 	hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
 	hci_filter_set_event(EVT_STACK_INTERNAL, &flt);
-	if (setsockopt(main_opts.sock, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
-		error("Can't set filter: %s (%d)",
-							strerror(errno), errno);
+	if (setsockopt(main_opts.sock, SOL_HCI, HCI_FILTER, &flt,
+							sizeof(flt)) < 0) {
+		error("Can't set filter: %s (%d)", strerror(errno), errno);
 		exit(1);
 	}
 
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = HCI_DEV_NONE;
-	if (bind(main_opts.sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	if (bind(main_opts.sock, (struct sockaddr *) &addr,
+							sizeof(addr)) < 0) {
 		error("Can't bind HCI socket: %s (%d)",
 							strerror(errno), errno);
 		exit(1);
