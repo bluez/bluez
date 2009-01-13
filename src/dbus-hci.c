@@ -1219,6 +1219,8 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	if (get_auth_requirements(local, remote, auth) < 0)
 		return -1;
 
+	debug("initial authentication requirement is 0x%02x", *auth);
+
 	ba2str(remote, addr);
 
 	device = adapter_find_device(adapter, addr);
@@ -1249,7 +1251,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 			debug("Allowing no bonding without agent");
 			/* No input, no output */
 			*cap = 0x03;
-			return 0;
+			goto done;
 		}
 
 		error("No agent available for IO capability");
@@ -1264,6 +1266,9 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	}
 
 	*cap = agent_get_io_capability(agent);
+
+done:
+	debug("final authentication requirement is 0x%02x", *auth);
 
 	return 0;
 }
