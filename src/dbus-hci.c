@@ -1255,7 +1255,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		}
 
 		/* No agent available, and no bonding case */
-		if (*auth < 0x02) {
+		if (*auth == 0x00) {
 			debug("Allowing no bonding without agent");
 			/* No input, no output */
 			*cap = 0x03;
@@ -1266,7 +1266,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		return -1;
 	}
 
-	if (device && *auth < 0x02) {
+	if (device && *auth == 0x00) {
 		/* If remote requests dedicated bonding follow that lead */
 		if (device_get_auth(device) == 0x02 ||
 				device_get_auth(device) == 0x03)
