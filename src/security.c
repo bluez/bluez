@@ -341,9 +341,15 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	bdaddr_t *dba = &evt->bdaddr;
 	char sa[18], da[18];
 	int dev_id, err;
+	unsigned char old_key[16];
+	uint8_t old_key_type;
 
 	ba2str(sba, sa); ba2str(dba, da);
 	info("link_key_notify (sba=%s, dba=%s)", sa, da);
+
+	err = read_link_key(sba, dba, old_key, &old_key_type);
+	if (err < 0)
+		old_key_type = 0xFF;
 
 	dev_id = hci_devid(sa);
 
@@ -367,7 +373,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 						DISCONNECT_CP_SIZE, &cp);
 		}
 	} else
-		hcid_dbus_link_key_notify(sba, dba);
+		hcid_dbus_link_key_notify(sba, dba, evt->key_type, old_key_type);
 
 	io_data[dev_id].pin_length = -1;
 }

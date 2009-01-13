@@ -916,7 +916,8 @@ proceed:
 	adapter_set_state(adapter, state);
 }
 
-void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer)
+void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
+				uint8_t key_type, uint8_t old_key_type)
 {
 	char peer_addr[18];
 	struct btd_device *device;
@@ -938,7 +939,7 @@ void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer)
 
 	if (!device_is_connected(device))
 		device_set_secmode3_conn(device, TRUE);
-	else if (!device_is_bonding(device, NULL))
+	else if (!device_is_bonding(device, NULL) && old_key_type == 0xFF)
 		hcid_dbus_bonding_process_complete(local, peer, 0);
 }
 

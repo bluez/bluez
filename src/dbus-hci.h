@@ -45,7 +45,8 @@ int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
 int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey);
 int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba);
 int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey);
-void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer);
+void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
+				uint8_t key_type, uint8_t old_key_type);
 
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 
