@@ -110,6 +110,8 @@ struct btd_device {
 	gboolean	secmode3;
 
 	sdp_list_t	*tmp_records;
+
+	gboolean	renewed_key;
 };
 
 struct browse_req {
@@ -1814,6 +1816,12 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 	device->temporary = FALSE;
 
+	g_free(device->authr);
+	device->authr = NULL;
+
+	if (device->renewed_key)
+		return;
+
 	/* If we were initiators start service discovery immediately.
 	 * However if the other end was the initator wait a few seconds
 	 * before SDP. This is due to potential IOP issues if the other
@@ -1838,8 +1846,6 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 	device_set_paired(device, TRUE);
 
-	g_free(device->authr);
-	device->authr = NULL;
 	bonding_request_free(bonding);
 
 	return;
@@ -2038,6 +2044,11 @@ void device_cancel_authentication(struct btd_device *device)
 gboolean device_is_authenticating(struct btd_device *device)
 {
 	return (device->authr != NULL);
+}
+
+void device_set_renewed_key(struct btd_device *device, gboolean renewed)
+{
+	device->renewed_key = renewed;
 }
 
 void btd_device_add_uuid(struct btd_device *device, const char *uuid)
