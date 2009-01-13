@@ -2671,6 +2671,9 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 	device_get_address(device, &bdaddr);
 	hci_req_queue_remove(adapter->dev_id, &bdaddr);
 
+	if (device_is_authenticating(device))
+		device_cancel_authentication(device);
+
 	if (device_is_temporary(device)) {
 		const char *path = device_get_path(device);
 
