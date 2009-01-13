@@ -60,7 +60,8 @@ enum {
 	LSEND,
 	SENDDUMP,
 	LSENDDUMP,
-	INFOREQ
+	INFOREQ,
+	PAIRING,
 };
 
 static unsigned char *buf;
@@ -840,6 +841,48 @@ failed:
 	close(sk);
 }
 
+static void do_pairing(char *svr)
+{
+	struct sockaddr_l2 addr;
+	int sk, opt;
+
+	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
+	if (sk < 0) {
+		perror("Can't create socket");
+		return;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, &bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Can't bind socket");
+		goto failed;
+	}
+
+	opt = L2CAP_LM_SECURE;
+
+	if (setsockopt(sk, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
+		perror("Can't set link mode");
+		goto failed;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	str2ba(svr, &addr.l2_bdaddr);
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0 ) {
+		perror("Can't connect socket");
+		goto failed;
+	}
+
+	printf("Pairing successful\n");
+
+failed:
+	close(sk);
+}
+
 static void usage(void)
 {
 	printf("l2test - L2CAP testing\n"
@@ -856,6 +899,7 @@ static void usage(void)
 		"\t-y connect, then send, then dump incoming data\n"
 		"\t-c connect, disconnect, connect, ...\n"
 		"\t-m multiple connects\n"
+		"\t-p trigger dedicated bonding\n"
 		"\t-z information request\n");
 
 	printf("Options:\n"
@@ -883,7 +927,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyzb:i:P:I:O:B:N:L:C:D:X:RGAESMT")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyzpb:i:P:I:O:B:N:L:C:D:X:RGAESMT")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -932,6 +976,11 @@ int main(int argc, char *argv[])
 
 		case 'z':
 			mode = INFOREQ;
+			need_addr = 1;
+			break;
+
+		case 'p':
+			mode = PAIRING;
 			need_addr = 1;
 			break;
 
@@ -1093,6 +1142,10 @@ int main(int argc, char *argv[])
 
 		case INFOREQ:
 			info_request(argv[optind]);
+			exit(0);
+
+		case PAIRING:
+			do_pairing(argv[optind]);
 			exit(0);
 	}
 
