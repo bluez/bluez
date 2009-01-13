@@ -195,9 +195,10 @@ static void parse_config(GKeyFile *config)
 
 	boolean = g_key_file_get_boolean(config, "General",
 						"ReverseServiceDiscovery", &err);
-	if (err)
+	if (err) {
+		debug("%s", err->message);
 		g_clear_error(&err);
-	else
+	} else
 		main_opts.reverse_sdp = boolean;
 
 	main_opts.link_mode = HCI_LM_ACCEPT;
