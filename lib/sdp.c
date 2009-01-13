@@ -239,7 +239,7 @@ static char *string_lookup_uuid(struct tupla *pt0, const uuid_t* uuid)
  * Prints into a string the Protocol UUID
  * coping a maximum of n characters.
  */
-static int uuid2str(struct tupla *message, const uuid_t *uuid, char *str, size_t n) 
+static int uuid2str(struct tupla *message, const uuid_t *uuid, char *str, size_t n)
 {
 	char *str2;
 
@@ -315,15 +315,15 @@ int sdp_uuid2strn(const uuid_t *uuid, char *str, size_t n)
 		memcpy(&data4, &uuid->value.uuid128.data[10], 4);
 		memcpy(&data5, &uuid->value.uuid128.data[14], 2);
 
-		snprintf(str, n, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x", 
-				ntohl(data0), ntohs(data1), 
-				ntohs(data2), ntohs(data3), 
+		snprintf(str, n, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x",
+				ntohl(data0), ntohs(data1),
+				ntohs(data2), ntohs(data3),
 				ntohl(data4), ntohs(data5));
 		}
 		break;
 	default:
 		snprintf(str, n, "Type of UUID (%x) unknown.", uuid->type);
-		return -1;	// Enum type of UUID not set
+		return -1;	/* Enum type of UUID not set */
 	}
 	return 0;
 }
@@ -374,7 +374,8 @@ void sdp_uuid_print(const uuid_t *uuid)
 }
 #endif
 
-sdp_data_t *sdp_data_alloc_with_length(uint8_t dtd, const void *value, uint32_t length)
+sdp_data_t *sdp_data_alloc_with_length(uint8_t dtd, const void *value,
+							uint32_t length)
 {
 	sdp_data_t *seq;
 	sdp_data_t *d = malloc(sizeof(sdp_data_t));
@@ -529,7 +530,8 @@ sdp_data_t *sdp_seq_append(sdp_data_t *seq, sdp_data_t *d)
 	return seq;
 }
 
-sdp_data_t *sdp_seq_alloc_with_length(void **dtds, void **values, int *length, int len)
+sdp_data_t *sdp_seq_alloc_with_length(void **dtds, void **values, int *length,
+								int len)
 {
 	sdp_data_t *curr = NULL, *seq = NULL;
 	int i;
@@ -691,7 +693,7 @@ void sdp_set_attrid(sdp_buf_t *buf, uint16_t attr)
 {
 	uint8_t *p = buf->data;
 
-	// data type for attr
+	/* data type for attr */
 	*p++ = SDP_UINT16;
 	buf->data_size = sizeof(uint8_t);
 	bt_put_unaligned(htons(attr), (uint16_t *) p);
@@ -1032,7 +1034,8 @@ static sdp_data_t *extract_int(const void *p, int bufsize, int *len)
 	return d;
 }
 
-static sdp_data_t *extract_uuid(const uint8_t *p, int bufsize, int *len, sdp_record_t *rec)
+static sdp_data_t *extract_uuid(const uint8_t *p, int bufsize, int *len,
+							sdp_record_t *rec)
 {
 	sdp_data_t *d = malloc(sizeof(sdp_data_t));
 
@@ -1049,7 +1052,7 @@ static sdp_data_t *extract_uuid(const uint8_t *p, int bufsize, int *len, sdp_rec
 }
 
 /*
- * Extract strings from the PDU (could be service description and similar info) 
+ * Extract strings from the PDU (could be service description and similar info)
  */
 static sdp_data_t *extract_str(const void *p, int bufsize, int *len)
 {
@@ -1179,7 +1182,8 @@ int sdp_extract_seqtype(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *siz
 	return scanned;
 }
 
-static sdp_data_t *extract_seq(const void *p, int bufsize, int *len, sdp_record_t *rec)
+static sdp_data_t *extract_seq(const void *p, int bufsize, int *len,
+							sdp_record_t *rec)
 {
 	int seqlen, n = 0;
 	sdp_data_t *curr, *prev;
@@ -1224,7 +1228,8 @@ static sdp_data_t *extract_seq(const void *p, int bufsize, int *len, sdp_record_
 	return d;
 }
 
-sdp_data_t *sdp_extract_attr(const uint8_t *p, int bufsize, int *size, sdp_record_t *rec)
+sdp_data_t *sdp_extract_attr(const uint8_t *p, int bufsize, int *size,
+							sdp_record_t *rec)
 {
 	sdp_data_t *elem;
 	int n = 0;
@@ -1614,7 +1619,8 @@ static int sdp_read_rsp(sdp_session_t *session, uint8_t *buf, uint32_t size)
 /*
  * generic send request, wait for response method.
  */
-int sdp_send_req_w4_rsp(sdp_session_t *session, uint8_t *reqbuf, uint8_t *rspbuf, uint32_t reqsize, uint32_t *rspsize)
+int sdp_send_req_w4_rsp(sdp_session_t *session, uint8_t *reqbuf,
+			uint8_t *rspbuf, uint32_t reqsize, uint32_t *rspsize)
 {
 	int n;
 	sdp_pdu_hdr_t *reqhdr = (sdp_pdu_hdr_t *)reqbuf;
@@ -1676,7 +1682,8 @@ sdp_list_t *sdp_list_remove(sdp_list_t *list, void *d)
 	return list;
 }
 
-sdp_list_t *sdp_list_insert_sorted(sdp_list_t *list, void *d, sdp_comp_func_t f)
+sdp_list_t *sdp_list_insert_sorted(sdp_list_t *list, void *d,
+							sdp_comp_func_t f)
 {
 	sdp_list_t *q, *p, *n;
 
@@ -1686,7 +1693,7 @@ sdp_list_t *sdp_list_insert_sorted(sdp_list_t *list, void *d, sdp_comp_func_t f)
 	n->data = d;
 	for (q = 0, p = list; p; q = p, p = p->next)
 		if (f(p->data, d) >= 0)
-			break; 
+			break;
 	// insert between q and p; if !q insert at head
 	if (q)
 		q->next = n;
@@ -1697,7 +1704,7 @@ sdp_list_t *sdp_list_insert_sorted(sdp_list_t *list, void *d, sdp_comp_func_t f)
 }
 
 /*
- * Every element of the list points to things which need 
+ * Every element of the list points to things which need
  * to be free()'d. This method frees the list's contents
  */
 void sdp_list_free(sdp_list_t *list, sdp_free_func_t f)
@@ -1754,7 +1761,7 @@ sdp_data_t *sdp_get_proto_desc(sdp_list_t *list, int proto)
 		sdp_list_t *p;
 		for (p = list->data; p; p = p->next) {
 			sdp_data_t *seq = (sdp_data_t *) p->data;
-			if (SDP_IS_UUID(seq->dtd) && 
+			if (SDP_IS_UUID(seq->dtd) &&
 					sdp_uuid_to_proto(&seq->val.uuid) == proto)
 				return seq->next;
 		}
@@ -1808,7 +1815,8 @@ int sdp_get_add_access_protos(const sdp_record_t *rec, sdp_list_t **pap)
 	return 0;
 }
 
-int sdp_get_uuidseq_attr(const sdp_record_t *rec, uint16_t attr, sdp_list_t **seqp)
+int sdp_get_uuidseq_attr(const sdp_record_t *rec, uint16_t attr,
+							sdp_list_t **seqp)
 {
 	sdp_data_t *sdpdata = sdp_data_get(rec, attr);
 
@@ -1987,12 +1995,15 @@ int sdp_get_int_attr(const sdp_record_t *rec, uint16_t attrid, int *value)
 	return -1;
 }
 
-int sdp_get_string_attr(const sdp_record_t *rec, uint16_t attrid, char *value, int valuelen)
+int sdp_get_string_attr(const sdp_record_t *rec, uint16_t attrid, char *value,
+								int valuelen)
 {
 	sdp_data_t *sdpdata = sdp_data_get(rec, attrid);
 	if (sdpdata)
 		/* Verify that it is what the caller expects */
-		if (sdpdata->dtd == SDP_TEXT_STR8 || sdpdata->dtd == SDP_TEXT_STR16 || sdpdata->dtd == SDP_TEXT_STR32)
+		if (sdpdata->dtd == SDP_TEXT_STR8 ||
+				sdpdata->dtd == SDP_TEXT_STR16 ||
+				sdpdata->dtd == SDP_TEXT_STR32)
 			if (strlen(sdpdata->val.str) < valuelen) {
 				strcpy(value, sdpdata->val.str);
 				return 0;
@@ -2046,7 +2057,8 @@ int sdp_get_database_state(const sdp_record_t *rec, uint32_t *svcDBState)
  * {register, update}sdp_record_t() function is invoked.
  */
 
-int sdp_attr_add_new(sdp_record_t *rec, uint16_t attr, uint8_t dtd, const void *value)
+int sdp_attr_add_new(sdp_record_t *rec, uint16_t attr, uint8_t dtd,
+							const void *value)
 {
 	sdp_data_t *d = sdp_data_alloc(dtd, value);
 	if (d) {
@@ -2061,14 +2073,18 @@ int sdp_attr_add_new(sdp_record_t *rec, uint16_t attr, uint8_t dtd, const void *
  * pointed to by rec. The attributes are
  * service name, description and provider name
  */
-void sdp_set_info_attr(sdp_record_t *rec, const char *name, const char *prov, const char *desc)
+void sdp_set_info_attr(sdp_record_t *rec, const char *name, const char *prov,
+							const char *desc)
 {
 	if (name)
-		sdp_attr_add_new(rec, SDP_ATTR_SVCNAME_PRIMARY, SDP_TEXT_STR8, (void *)name);
+		sdp_attr_add_new(rec, SDP_ATTR_SVCNAME_PRIMARY, SDP_TEXT_STR8,
+								(void *)name);
 	if (prov)
-		sdp_attr_add_new(rec, SDP_ATTR_PROVNAME_PRIMARY, SDP_TEXT_STR8, (void *)prov);
+		sdp_attr_add_new(rec, SDP_ATTR_PROVNAME_PRIMARY, SDP_TEXT_STR8,
+								(void *)prov);
 	if (desc)
-		sdp_attr_add_new(rec, SDP_ATTR_SVCDESC_PRIMARY, SDP_TEXT_STR8, (void *)desc);
+		sdp_attr_add_new(rec, SDP_ATTR_SVCDESC_PRIMARY, SDP_TEXT_STR8,
+								(void *)desc);
 }
 
 static sdp_data_t *access_proto_to_dataseq(sdp_record_t *rec, sdp_list_t *proto)
@@ -2114,7 +2130,7 @@ static sdp_data_t *access_proto_to_dataseq(sdp_record_t *rec, sdp_list_t *proto)
 			case SDP_SEQ32:
 				values[pslen] = d;
 				break;
-			// FIXME: more
+			/* FIXME: more */
 			}
 		}
 		s = sdp_seq_alloc(dtds, values, pslen);
@@ -2135,13 +2151,13 @@ static sdp_data_t *access_proto_to_dataseq(sdp_record_t *rec, sdp_list_t *proto)
  * sets the access protocols of the service specified
  * to the value specified in "access_proto"
  *
- * Note that if there are alternate mechanisms by 
- * which the service is accessed, then they should 
- * be specified as sequences 
+ * Note that if there are alternate mechanisms by
+ * which the service is accessed, then they should
+ * be specified as sequences
  *
  * Using a value of NULL for accessProtocols has
  * effect of removing this attribute (if previously set)
- * 
+ *
  * This function replaces the existing sdp_access_proto_t
  * structure (if any) with the new one specified.
  *
@@ -2153,7 +2169,8 @@ int sdp_set_access_protos(sdp_record_t *rec, const sdp_list_t *ap)
 	sdp_data_t *protos = NULL;
 
 	for (p = ap; p; p = p->next) {
-		sdp_data_t *seq = access_proto_to_dataseq(rec, (sdp_list_t *) p->data);
+		sdp_data_t *seq = access_proto_to_dataseq(rec,
+						(sdp_list_t *) p->data);
 		protos = sdp_seq_append(protos, seq);
 	}
 
@@ -2168,7 +2185,8 @@ int sdp_set_add_access_protos(sdp_record_t *rec, const sdp_list_t *ap)
 	sdp_data_t *protos = NULL;
 
 	for (p = ap; p; p = p->next) {
-		sdp_data_t *seq = access_proto_to_dataseq(rec, (sdp_list_t *) p->data);
+		sdp_data_t *seq = access_proto_to_dataseq(rec,
+						(sdp_list_t *) p->data);
 		protos = sdp_seq_append(protos, seq);
 	}
 
@@ -2188,7 +2206,7 @@ int sdp_set_add_access_protos(sdp_record_t *rec, const sdp_list_t *ap)
  *
  * Using a value of NULL for langAttrList has
  * effect of removing this attribute (if previously set)
- * 
+ *
  * This function replaces the exisiting sdp_lang_attr_t
  * structure (if any) with the new one specified.
  *
@@ -2228,46 +2246,52 @@ int sdp_set_lang_attr(sdp_record_t *rec, const sdp_list_t *seq)
 }
 
 /*
- * set the "ServiceID" attribute of the service. 
- * 
- * This is the UUID of the service. 
- * 
+ * set the "ServiceID" attribute of the service.
+ *
+ * This is the UUID of the service.
+ *
  * returns 0 if successful or -1 if there is a failure.
  */
 void sdp_set_service_id(sdp_record_t *rec, uuid_t uuid)
 {
 	switch (uuid.type) {
 	case SDP_UUID16:
-		sdp_attr_add_new(rec, SDP_ATTR_SERVICE_ID, SDP_UUID16, &uuid.value.uuid16);
+		sdp_attr_add_new(rec, SDP_ATTR_SERVICE_ID, SDP_UUID16,
+							&uuid.value.uuid16);
 		break;
 	case SDP_UUID32:
-		sdp_attr_add_new(rec, SDP_ATTR_SERVICE_ID, SDP_UUID32, &uuid.value.uuid32);
+		sdp_attr_add_new(rec, SDP_ATTR_SERVICE_ID, SDP_UUID32,
+							&uuid.value.uuid32);
 		break;
 	case SDP_UUID128:
-		sdp_attr_add_new(rec, SDP_ATTR_SERVICE_ID, SDP_UUID128, &uuid.value.uuid128);
+		sdp_attr_add_new(rec, SDP_ATTR_SERVICE_ID, SDP_UUID128,
+							&uuid.value.uuid128);
 		break;
 	}
 	sdp_pattern_add_uuid(rec, &uuid);
 }
 
 /*
- * set the GroupID attribute of the service record defining a group. 
- * 
- * This is the UUID of the group. 
- * 
+ * set the GroupID attribute of the service record defining a group.
+ *
+ * This is the UUID of the group.
+ *
  * returns 0 if successful or -1 if there is a failure.
  */
 void sdp_set_group_id(sdp_record_t *rec, uuid_t uuid)
 {
 	switch (uuid.type) {
 	case SDP_UUID16:
-		sdp_attr_add_new(rec, SDP_ATTR_GROUP_ID, SDP_UUID16, &uuid.value.uuid16);
+		sdp_attr_add_new(rec, SDP_ATTR_GROUP_ID, SDP_UUID16,
+							&uuid.value.uuid16);
 		break;
 	case SDP_UUID32:
-		sdp_attr_add_new(rec, SDP_ATTR_GROUP_ID, SDP_UUID32, &uuid.value.uuid32);
+		sdp_attr_add_new(rec, SDP_ATTR_GROUP_ID, SDP_UUID32,
+							&uuid.value.uuid32);
 		break;
 	case SDP_UUID128:
-		sdp_attr_add_new(rec, SDP_ATTR_GROUP_ID, SDP_UUID128, &uuid.value.uuid128);
+		sdp_attr_add_new(rec, SDP_ATTR_GROUP_ID, SDP_UUID128,
+							&uuid.value.uuid128);
 		break;
 	}
 	sdp_pattern_add_uuid(rec, &uuid);
@@ -2283,7 +2307,7 @@ void sdp_set_group_id(sdp_record_t *rec, uuid_t uuid)
  *
  * Using a value of NULL for profileDesc has
  * effect of removing this attribute (if previously set)
- * 
+ *
  * This function replaces the exisiting ProfileDescriptorList
  * structure (if any) with the new one specified.
  *
@@ -2361,7 +2385,8 @@ int sdp_set_profile_descs(sdp_record_t *rec, const sdp_list_t *profiles)
  * Note that you need to pass NULL for any URLs
  * that you don't want to set or remove
  */
-void sdp_set_url_attr(sdp_record_t *rec, const char *client, const char *doc, const char *icon)
+void sdp_set_url_attr(sdp_record_t *rec, const char *client, const char *doc,
+							const char *icon)
 {
 	sdp_attr_add_new(rec, SDP_ATTR_CLNT_EXEC_URL, SDP_URL_STR8, client);
 	sdp_attr_add_new(rec, SDP_ATTR_DOC_URL, SDP_URL_STR8, doc);
@@ -2385,7 +2410,7 @@ uuid_t *sdp_uuid32_create(uuid_t *u, uint32_t val)
 }
 
 uuid_t *sdp_uuid128_create(uuid_t *u, const void *val)
-{ 
+{
 	memset(u, 0, sizeof(uuid_t));
 	u->type = SDP_UUID128;
 	memcpy(&u->value.uuid128, val, sizeof(uint128_t));
@@ -2427,17 +2452,17 @@ void sdp_uuid16_to_uuid128(uuid_t *uuid128, uuid_t *uuid16)
 	 */
 	unsigned short data1;
 
-	// allocate a 128bit UUID and init to the Bluetooth base UUID
+	/* allocate a 128bit UUID and init to the Bluetooth base UUID */
 	uuid128->value.uuid128 = bluetooth_base_uuid;
 	uuid128->type = SDP_UUID128;
 
-	// extract bytes 2 and 3 of 128bit BT base UUID
+	/* extract bytes 2 and 3 of 128bit BT base UUID */
 	memcpy(&data1, &bluetooth_base_uuid.data[2], 2);
 
-	// add the given UUID (16 bits)
+	/* add the given UUID (16 bits) */
 	data1 += htons(uuid16->value.uuid16);
 
-	// set bytes 2 and 3 of the 128 bit value
+	/* set bytes 2 and 3 of the 128 bit value */
 	memcpy(&uuid128->value.uuid128.data[2], &data1, 2);
 }
 
@@ -2449,17 +2474,17 @@ void sdp_uuid32_to_uuid128(uuid_t *uuid128, uuid_t *uuid32)
 	 */
 	unsigned int data0;
 
-	// allocate a 128bit UUID and init to the Bluetooth base UUID
+	/* allocate a 128bit UUID and init to the Bluetooth base UUID */
 	uuid128->value.uuid128 = bluetooth_base_uuid;
 	uuid128->type = SDP_UUID128;
 
-	// extract first 4 bytes
+	/* extract first 4 bytes */
 	memcpy(&data0, &bluetooth_base_uuid.data[0], 4);
 
-	// add the given UUID (32bits)
+	/* add the given UUID (32bits) */
 	data0 += htonl(uuid32->value.uuid32);
 
-	// set the 4 bytes of the 128 bit value
+	/* set the 4 bytes of the 128 bit value */
 	memcpy(&uuid128->value.uuid128.data[0], &data0, 4);
 }
 
@@ -2481,7 +2506,7 @@ uuid_t *sdp_uuid_to_uuid128(uuid_t *uuid)
 	return uuid128;
 }
 
-/* 
+/*
  * converts a 128-bit uuid to a 16/32-bit one if possible
  * returns true if uuid contains a 16/32-bit UUID at exit
  */
@@ -2529,7 +2554,7 @@ int sdp_uuid_to_proto(uuid_t *uuid)
 }
 
 /*
- * This function appends data to the PDU buffer "dst" from source "src". 
+ * This function appends data to the PDU buffer "dst" from source "src".
  * The data length is also computed and set.
  * Should the PDU length exceed 2^8, then sequence type is
  * set accordingly and the data is memmove()'d.
@@ -2554,11 +2579,11 @@ void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 		dst->buf_size += need;
 	}
 	if (dst->data_size == 0 && dtd == 0) {
-		// create initial sequence
+		/* create initial sequence */
 		*(uint8_t *)p = SDP_SEQ8;
 		p += sizeof(uint8_t);
 		dst->data_size += sizeof(uint8_t);
-		// reserve space for sequence size
+		/* reserve space for sequence size */
 		p += sizeof(uint8_t);
 		dst->data_size += sizeof(uint8_t);
 	}
@@ -2569,7 +2594,8 @@ void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 	dtd = *(uint8_t *)dst->data;
 	if (dst->data_size > UCHAR_MAX && dtd == SDP_SEQ8) {
 		short offset = sizeof(uint8_t) + sizeof(uint8_t);
-		memmove(dst->data + offset + 1, dst->data + offset, dst->data_size - offset);
+		memmove(dst->data + offset + 1, dst->data + offset,
+						dst->data_size - offset);
 		p = dst->data;
 		*(uint8_t *) p = SDP_SEQ16;
 		p += sizeof(uint8_t);
@@ -4129,7 +4155,7 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 
 	SDPDBG("Data seq added : %d\n", seqlen);
 
-	// now set the length and increment the pointer
+	/* now set the length and increment the pointer */
 	reqsize += seqlen;
 	pdata += seqlen;
 
@@ -4139,7 +4165,7 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 
 	SDPDBG("Max attr byte count : %d\n", SDP_MAX_ATTR_LEN);
 
-	// get attr seq PDU form 
+	/* get attr seq PDU form */
 	seqlen = gen_attridseq_pdu(pdata, attrids,
 		reqtype == SDP_ATTR_REQ_INDIVIDUAL ? SDP_UINT16 : SDP_UINT32);
 	if (seqlen == -1) {
@@ -4151,18 +4177,18 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 	reqsize += seqlen;
 	*rsp = 0;
 
-	// save before Continuation State
+	/* save before Continuation State */
 	_pdata = pdata;
 	_reqsize = reqsize;
 
 	do {
 		reqhdr->tid = htons(sdp_gen_tid(session));
 
-		// add continuation state (can be null)
+		/* add continuation state (can be null) */
 		reqsize = _reqsize + copy_cstate(_pdata,
 					SDP_REQ_BUFFER_SIZE - _reqsize, cstate);
 
-		// set the request header's param length
+		/* set the request header's param length */
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 		rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 		status = sdp_send_req_w4_rsp(session, reqbuf, rspbuf, reqsize, &rspsize);
@@ -4176,12 +4202,12 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 			SDPDBG("Status : 0x%x\n", rsphdr->pdu_id);
 			goto end;
 		}
-	  
+
 		if (rsphdr->pdu_id == SDP_ERROR_RSP) {
 			status = -1;
 			goto end;
 		}
-	  
+
 		pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
 		pdata_len = rspsize - sizeof(sdp_pdu_hdr_t);
 
@@ -4216,7 +4242,7 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 
 			cstate = cstate_len > 0 ? (sdp_cstate_t *) (pdata + rsp_count) : 0;
 
-			// build concatenated response buffer
+			/* build concatenated response buffer */
 			rsp_concat_buf.data = realloc(rsp_concat_buf.data, rsp_concat_buf.data_size + rsp_count);
 			targetPtr = rsp_concat_buf.data + rsp_concat_buf.data_size;
 			rsp_concat_buf.buf_size = rsp_concat_buf.data_size + rsp_count;
@@ -4273,7 +4299,7 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 			*rsp = rec_list;
 		}
 	}
-  end:
+end:
 	if (rsp_concat_buf.data)
 		free(rsp_concat_buf.data);
 	if (reqbuf)
@@ -4301,7 +4327,7 @@ int sdp_close(sdp_session_t *session)
 {
 	struct sdp_transaction *t;
 	int ret;
-	
+
 	if (!session)
 		return -1;
 
@@ -4343,7 +4369,7 @@ static int sdp_connect_local(sdp_session_t *session)
 }
 
 static int sdp_connect_l2cap(const bdaddr_t *src,
-			     const bdaddr_t *dst, sdp_session_t *session)
+		const bdaddr_t *dst, sdp_session_t *session)
 {
 	uint32_t flags = session->flags;
 	struct sockaddr_l2 sa;
@@ -4383,7 +4409,7 @@ static int sdp_connect_l2cap(const bdaddr_t *src,
 		if (!ret)
 			return 0;
 		if (ret < 0 && (flags & SDP_NON_BLOCKING) &&
-		    (errno == EAGAIN || errno == EINPROGRESS))
+				(errno == EAGAIN || errno == EINPROGRESS))
 			return 0;
 	} while (errno == EBUSY && (flags & SDP_RETRY_IF_BUSY));
 
@@ -4391,7 +4417,7 @@ static int sdp_connect_l2cap(const bdaddr_t *src,
 }
 
 sdp_session_t *sdp_connect(const bdaddr_t *src,
-			   const bdaddr_t *dst, uint32_t flags)
+		const bdaddr_t *dst, uint32_t flags)
 {
 	sdp_session_t *session;
 	int err;
