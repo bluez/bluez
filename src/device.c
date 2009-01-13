@@ -694,7 +694,8 @@ static void device_remove_bonding(struct btd_device *device, DBusConnection *con
 				"Paired", DBUS_TYPE_BOOLEAN, &paired);
 }
 
-void device_remove(struct btd_device *device, DBusConnection *conn)
+void device_remove(struct btd_device *device, DBusConnection *conn,
+						gboolean remove_bonding)
 {
 	GSList *list;
 	struct btd_device_driver *driver;
@@ -705,7 +706,7 @@ void device_remove(struct btd_device *device, DBusConnection *conn)
 	if (device->bonding)
 		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
 
-	if (!device->temporary)
+	if (!device->temporary && remove_bonding)
 		device_remove_bonding(device, conn);
 
 	for (list = device->drivers; list; list = list->next) {
