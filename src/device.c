@@ -1839,6 +1839,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 	} else if (!device->discov_active && !device->discov_timer) {
 		/* If we are not initiators and there is no currently active
 		 * discovery or discovery timer, set the discovery timer */
+		debug("setting timer for reverse service discovery");
 		device->discov_timer = g_timeout_add_seconds(DISCOVERY_TIMER,
 						start_discovery,
 						device);
