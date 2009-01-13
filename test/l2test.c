@@ -861,7 +861,10 @@ static void do_pairing(char *svr)
 		goto failed;
 	}
 
-	opt = L2CAP_LM_SECURE;
+	if (secure)
+		opt = L2CAP_LM_SECURE;
+	else
+		opt = L2CAP_LM_ENCRYPT;
 
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0) {
 		perror("Can't set link mode");
