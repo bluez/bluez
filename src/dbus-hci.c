@@ -1228,8 +1228,15 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	/* Check if the adapter is not pairable and if there isn't a bonding in
 	 * progress */
 	if (!adapter_is_pairable(adapter) &&
-			!(device && device_is_bonding(device, NULL)))
+			!(device && device_is_bonding(device, NULL))) {
+		if (*auth < 0x02) {
+			debug("Allowing no bonding in non-bondable mode");
+			/* No input, no output */
+			*cap = 0x03;
+			goto done;
+		}
 		return -EPERM;
+	}
 
 	/* For CreatePairedDevice use dedicated bonding */
 	if (device) {
