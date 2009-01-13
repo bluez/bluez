@@ -1278,8 +1278,10 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 
 	req = g_new0(struct browse_req, 1);
 
-	req->conn = conn ? dbus_connection_ref(conn) : get_dbus_connection();
+	if (conn == NULL)
+		conn = get_dbus_connection();
 
+	req->conn = dbus_connection_ref(conn);
 	req->device = device;
 
 	if (search) {

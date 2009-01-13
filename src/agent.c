@@ -782,6 +782,7 @@ gboolean agent_is_busy(struct agent *agent, void *user_data)
 void agent_exit(void)
 {
 	dbus_connection_unref(connection);
+	connection = NULL;
 }
 
 void agent_init(void)
