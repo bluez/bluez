@@ -955,6 +955,7 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 
 	delete_entry(&adapter->bdaddr, "profiles", dstaddr);
 	adapter->devices = g_slist_remove(adapter->devices, device);
+	adapter->connections = g_slist_remove(adapter->connections, device);
 
 	adapter_update_devices(adapter);
 
