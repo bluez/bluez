@@ -56,6 +56,7 @@ struct main_opts {
 	uint16_t	link_mode;
 	uint16_t	link_policy;
 	gboolean	remember_powered;
+	gboolean	reverse_sdp;
 
 	uint8_t		scan;
 	uint8_t		mode;

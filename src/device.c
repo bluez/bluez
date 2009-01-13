@@ -1836,7 +1836,8 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 		device_browse(device, bonding->conn, bonding->msg,
 				NULL, FALSE);
-	} else if (!device->discov_active && !device->discov_timer) {
+	} else if (!device->discov_active && !device->discov_timer &&
+			main_opts.reverse_sdp) {
 		/* If we are not initiators and there is no currently active
 		 * discovery or discovery timer, set the discovery timer */
 		debug("setting timer for reverse service discovery");
