@@ -59,7 +59,7 @@ extern "C" {
 #define SOL_BLUETOOTH	274
 #endif
 
-#define BT_SECURITY	3
+#define BT_SECURITY	4
 struct bt_security {
 	uint8_t level;
 };
@@ -68,7 +68,7 @@ struct bt_security {
 #define BT_SECURITY_MEDIUM	2
 #define BT_SECURITY_HIGH	3
 
-#define BT_DEFER_SETUP	5
+#define BT_DEFER_SETUP	7
 
 /* Connection and socket states */
 enum {
