@@ -97,6 +97,7 @@ static int socktype = SOCK_SEQPACKET;
 static int linger = 0;
 static int reliable = 0;
 static int timestamp = 0;
+static int defer_setup = 0;
 
 static float tv2fl(struct timeval tv)
 {
@@ -388,6 +389,16 @@ static void do_listen(void (*handler)(int sk))
 		return;
 	}
 
+	/* Enable deferred setup */
+	opt = defer_setup;
+
+	if (opt && setsockopt(sk, SOL_BLUETOOTH, BT_DEFER_SETUP,
+						&opt, sizeof(opt)) < 0) {
+		syslog(LOG_ERR, "Can't enable deferred setup : %s (%d)",
+							strerror(errno), errno);
+		goto error;
+	}
+
 	/* Listen for connections */
 	if (listen(sk, 10)) {
 		syslog(LOG_ERR, "Can not listen on the socket: %s (%d)",
@@ -409,7 +420,7 @@ static void do_listen(void (*handler)(int sk))
 
 	syslog(LOG_INFO, "Waiting for connection on psm %d ...", psm);
 
-	while(1) {
+	while (1) {
 		memset(&addr, 0, sizeof(addr));
 		optlen = sizeof(addr);
 
@@ -434,8 +445,10 @@ static void do_listen(void (*handler)(int sk))
 		if (getsockopt(nsk, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen) < 0) {
 			syslog(LOG_ERR, "Can't get L2CAP options: %s (%d)",
 							strerror(errno), errno);
-			close(nsk);
-			goto error;
+			if (!defer_setup) {
+				close(nsk);
+				goto error;
+			}
 		}
 
 		/* Get connection information */
@@ -445,8 +458,10 @@ static void do_listen(void (*handler)(int sk))
 		if (getsockopt(nsk, SOL_L2CAP, L2CAP_CONNINFO, &conn, &optlen) < 0) {
 			syslog(LOG_ERR, "Can't get L2CAP connection information: %s (%d)",
 							strerror(errno), errno);
-			close(nsk);
-			goto error;
+			if (!defer_setup) {
+				close(nsk);
+				goto error;
+			}
 		}
 
 		ba2str(&addr.l2_bdaddr, ba);
@@ -480,6 +495,18 @@ static void do_listen(void (*handler)(int sk))
 			}
 		}
 
+		/* Handle deferred setup */
+		if (defer_setup) {
+			syslog(LOG_INFO, "Waiting for %d seconds",
+							abs(defer_setup) - 1);
+			sleep(abs(defer_setup) - 1);
+
+			if (defer_setup < 0) {
+				close(nsk);
+				goto error;
+			}
+		}
+
 		handler(nsk);
 
 		syslog(LOG_INFO, "Disconnect: %m");
@@ -497,6 +524,15 @@ static void dump_mode(int sk)
 {
 	socklen_t optlen;
 	int opt, len;
+
+	if (defer_setup) {
+		len = read(sk, buf, sizeof(buf));
+		if (len < 0)
+			syslog(LOG_ERR, "Initial read error: %s (%d)",
+						strerror(errno), errno);
+		else
+			syslog(LOG_INFO, "Initial bytes %d", len);
+	}
 
 	syslog(LOG_INFO, "Receiving ...");
 	while (1) {
@@ -544,7 +580,16 @@ static void recv_mode(int sk)
 	long total;
 	uint32_t seq;
 	socklen_t optlen;
-	int opt;
+	int opt, len;
+
+	if (defer_setup) {
+		len = read(sk, buf, sizeof(buf));
+		if (len < 0)
+			syslog(LOG_ERR, "Initial read error: %s (%d)",
+						strerror(errno), errno);
+		else
+			syslog(LOG_INFO, "Initial bytes %d", len);
+	}
 
 	syslog(LOG_INFO, "Receiving ...");
 
@@ -560,7 +605,7 @@ static void recv_mode(int sk)
 		while (total < data_size) {
 			uint32_t sq;
 			uint16_t l;
-			int i, len;
+			int i;
 
 			p.revents = 0;
 			if (poll(&p, 1, -1) <= 0)
@@ -909,6 +954,7 @@ static void usage(void)
 		"\t[-b bytes] [-i device] [-P psm]\n"
 		"\t[-I imtu] [-O omtu]\n"
 		"\t[-L seconds] enable SO_LINGER\n"
+		"\t[-F seconds] enable deferred setup\n"
 		"\t[-B filename] use data packets from file\n"
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
@@ -930,7 +976,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyzpb:i:P:I:O:B:N:L:C:D:X:RGAESMT")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyzpb:i:P:I:O:B:N:L:F:C:D:X:RGAESMT")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -1012,6 +1058,10 @@ int main(int argc, char *argv[])
 
 		case 'L':
 			linger = atoi(optarg);
+			break;
+
+		case 'F':
+			defer_setup = atoi(optarg);
 			break;
 
 		case 'B':

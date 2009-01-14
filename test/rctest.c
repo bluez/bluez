@@ -81,6 +81,7 @@ static int secure = 0;
 static int socktype = SOCK_STREAM;
 static int linger = 0;
 static int timestamp = 0;
+static int defer_setup = 0;
 
 static float tv2fl(struct timeval tv)
 {
@@ -231,6 +232,16 @@ static void do_listen(void (*handler)(int sk))
 		goto error;
 	}
 
+	/* Enable deferred setup */
+	opt = defer_setup;
+
+	if (opt && setsockopt(sk, SOL_BLUETOOTH, BT_DEFER_SETUP,
+						&opt, sizeof(opt)) < 0) {
+		syslog(LOG_ERR, "Can't enable deferred setup : %s (%d)",
+							strerror(errno), errno);
+		goto error;
+	}
+
 	/* Listen for connections */
 	if (listen(sk, 10)) {
 		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)",
@@ -252,7 +263,7 @@ static void do_listen(void (*handler)(int sk))
 
 	syslog(LOG_INFO, "Waiting for connection on channel %d ...", channel);
 
-	while(1) {
+	while (1) {
 		memset(&addr, 0, sizeof(addr));
 		optlen = sizeof(addr);
 
@@ -311,6 +322,18 @@ static void do_listen(void (*handler)(int sk))
 			}
 		}
 
+		/* Handle deferred setup */
+		if (defer_setup) {
+			syslog(LOG_INFO, "Waiting for %d seconds",
+							abs(defer_setup) - 1);
+			sleep(abs(defer_setup) - 1);
+
+			if (defer_setup < 0) {
+				close(nsk);
+				goto error;
+			}
+		}
+
 		handler(nsk);
 
 		syslog(LOG_INFO, "Disconnect: %m");
@@ -353,7 +376,7 @@ static void recv_mode(int sk)
 			//uint16_t l;
 			int r;
 
-			if ((r = recv(sk, buf, data_size, 0)) <= 0) {
+			if ((r = recv(sk, buf, data_size, 0)) < 0) {
 				if (r < 0)
 					syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
@@ -502,6 +525,7 @@ static void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P channel]\n"
 		"\t[-L seconds] enabled SO_LINGER option\n"
+		"\t[-F seconds] enable deferred setup\n"
 		"\t[-B filename] use data packets from file\n"
 		"\t[-N num] number of frames to send\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
@@ -520,7 +544,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:B:N:MAESL:C:D:T")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:B:N:MAESL:F:C:D:T")) != EOF) {
 		switch (opt) {
 		case 'r':
 			mode = RECV;
@@ -592,6 +616,10 @@ int main(int argc, char *argv[])
 
 		case 'L':
 			linger = atoi(optarg);
+			break;
+
+		case 'F':
+			defer_setup = atoi(optarg);
 			break;
 
 		case 'B':
