@@ -220,7 +220,7 @@ static void pbap_reset_path(struct session_data *session)
 {
 	int err = 0;
 	char **paths = NULL, **item;
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 
 	if (!pbapdata->path)
 		return;
@@ -239,7 +239,7 @@ static gint pbap_set_path(struct session_data *session, const char *path)
 {
 	int err = 0;
 	char **paths = NULL, **item;
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 
 	if (!path)
 		return OBEX_RSP_BAD_REQUEST;
@@ -525,7 +525,7 @@ static DBusMessage *pull_vcard_listing(struct session_data *session,
 
 static int set_format(struct session_data *session, const char *formatstr)
 {
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 
 	if (!formatstr || g_str_equal(formatstr, "")) {
 		pbapdata->format = FORMAT_VCARD21;
@@ -544,7 +544,7 @@ static int set_format(struct session_data *session, const char *formatstr)
 
 static int set_order(struct session_data *session, const char *orderstr)
 {
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 
 	if (!orderstr || g_str_equal(orderstr, "")) {
 		pbapdata->order = ORDER_INDEXED;
@@ -590,7 +590,7 @@ static uint64_t get_filter_mask(const char *filterstr)
 
 static int add_filter(struct session_data *session, const char *filterstr)
 {
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 	uint64_t mask;
 
 	mask = get_filter_mask(filterstr);
@@ -604,7 +604,7 @@ static int add_filter(struct session_data *session, const char *filterstr)
 
 static int remove_filter(struct session_data *session, const char *filterstr)
 {
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 	uint64_t mask;
 
 	mask = get_filter_mask(filterstr);
@@ -676,7 +676,7 @@ static DBusMessage *pbap_pull_all(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 	DBusMessage * err;
 	char *name;
 
@@ -697,7 +697,7 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 	struct pullvcardentry_apparam apparam;
 	const char *name;
 
@@ -740,7 +740,7 @@ static DBusMessage *pbap_list(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 
 	if (!pbapdata->path)
 		return g_dbus_create_error(message,
@@ -754,7 +754,7 @@ static DBusMessage *pbap_search(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 	char *field, *value;
 	guint8 attrib;
 
@@ -789,7 +789,7 @@ static DBusMessage *pbap_get_size(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 	DBusMessage * err;
 	char *name;
 
@@ -848,7 +848,7 @@ static DBusMessage *pbap_set_filter(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 	char **filters, **item;
 	gint size;
 	uint64_t oldfilter = pbapdata->filter;
@@ -881,7 +881,7 @@ static DBusMessage *pbap_get_filter(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct session_data *session = user_data;
-	struct pbap_data *pbapdata = session->pbapdata;
+	struct pbap_data *pbapdata = session->priv;
 	gchar **filters = NULL;
 	gint size;
 	DBusMessage *reply;
@@ -938,8 +938,8 @@ gboolean pbap_register_interface(DBusConnection *connection, const char *path,
 {
 	struct session_data *session = user_data;
 
-	session->pbapdata = g_try_malloc0(sizeof(struct pbap_data));
-	if (!session->pbapdata)
+	session->priv = g_try_malloc0(sizeof(struct pbap_data));
+	if (!session->priv)
 		return FALSE;
 
 	return g_dbus_register_interface(connection, path, PBAP_INTERFACE,
@@ -952,6 +952,6 @@ void pbap_unregister_interface(DBusConnection *connection, const char *path,
 	struct session_data *session = user_data;
 
 	g_dbus_unregister_interface(connection, path, PBAP_INTERFACE);
-	if (session->pbapdata)
-		g_free(session->pbapdata);
+	if (session->priv)
+		g_free(session->priv);
 }

@@ -57,7 +57,7 @@ struct session_data {
 	gchar *owner;		/* Session owner */
 	guint owner_watch;
 	GPtrArray *pending;
-	void *pbapdata;
+	void *priv;
 };
 
 typedef void (*session_callback_t) (struct session_data *session,
