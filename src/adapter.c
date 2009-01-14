@@ -448,6 +448,10 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 			if (adapter->discov_timeout)
 				adapter_set_discov_timeout(adapter,
 						adapter->discov_timeout);
+			if (new_mode == MODE_LIMITED)
+				set_limited_discoverable(dd, adapter->dev.class, TRUE);
+			else if (adapter->mode == MODE_LIMITED)
+				set_limited_discoverable(dd, adapter->dev.class, FALSE);
 		}
 	}
 done:
