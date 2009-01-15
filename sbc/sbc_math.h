@@ -29,8 +29,6 @@
 #define ASR(val, bits) ((-2 >> 1 == -1) ? \
 		 ((int32_t)(val)) >> (bits) : ((int32_t) (val)) / (1 << (bits)))
 
-#define SCALE_OUT_BITS 15
-
 #define SCALE_SPROTO4_TBL	12
 #define SCALE_SPROTO8_TBL	14
 #define SCALE_NPROTO4_TBL	11
