@@ -323,6 +323,8 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return 0;
 	}
 
+	debug("confirm authentication requirement is 0x%02x", type);
+
 	ba2str(dba, addr);
 
 	device = adapter_get_device(connection, adapter, addr);
@@ -346,12 +348,12 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 		hci_close_dev(dd);
 
-		return device_request_authentication(device, AUTH_TYPE_AUTO,
-					0, NULL);
+		return device_request_authentication(device,
+						AUTH_TYPE_AUTO, 0, NULL);
 	}
 
 	return device_request_authentication(device, AUTH_TYPE_CONFIRM,
-					passkey, confirm_cb);
+							passkey, confirm_cb);
 }
 
 int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
