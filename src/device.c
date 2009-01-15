@@ -1552,12 +1552,7 @@ static gboolean create_bonding_io_cb(GIOChannel *io, GIOCondition cond,
 	socklen_t len;
 	int sk, dd, ret;
 
-	if (!device->bonding->auth_required) {
-		device->bonding->io_id = 0;
-		return FALSE;
-	}
-
-	if (!device->bonding || !device->bonding->auth_required) {
+	if (!device->bonding) {
 		g_io_channel_close(io);
 		return FALSE;
 	}
