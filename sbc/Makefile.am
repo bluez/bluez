@@ -9,7 +9,7 @@ if SBC
 noinst_LTLIBRARIES = libsbc.la
 
 libsbc_la_SOURCES = sbc.h sbc.c sbc_math.h sbc_tables.h \
-	sbc_primitives.c
+	sbc_primitives.c sbc_primitives_mmx.c sbc_primitives_neon.c
 
 libsbc_la_CFLAGS = -finline-functions -funswitch-loops -fgcse-after-reload
 

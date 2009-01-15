@@ -30,6 +30,8 @@
 #include "sbc_tables.h"
 
 #include "sbc_primitives.h"
+#include "sbc_primitives_mmx.h"
+#include "sbc_primitives_neon.h"
 
 /*
  * A standard C code of analysis filter.
@@ -398,4 +400,14 @@ void sbc_init_primitives(struct sbc_encoder_state *state)
 	/* Default implementation for analyze functions */
 	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s;
 	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s;
+
+	/* X86/AMD64 optimizations */
+#ifdef SBC_BUILD_WITH_MMX_SUPPORT
+	sbc_init_primitives_mmx(state);
+#endif
+
+	/* ARM optimizations */
+#ifdef SBC_BUILD_WITH_NEON_SUPPORT
+	sbc_init_primitives_neon(state);
+#endif
 }
