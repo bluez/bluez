@@ -1892,9 +1892,6 @@ void device_cancel_bonding(struct btd_device *device, uint8_t status)
 	reply = new_authentication_return(bonding->msg, status);
 	g_dbus_send_message(bonding->conn, reply);
 
-	if (device->bonding->io_id)
-		g_source_remove(device->bonding->io_id);
-
 	bonding_request_free(bonding);
 }
 
