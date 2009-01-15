@@ -1230,11 +1230,14 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	ba2str(remote, addr);
 
 	device = adapter_find_device(adapter, addr);
-	/* Check if the adapter is not pairable and if there isn't a bonding in
-	 * progress */
+	if (!device)
+		return -ENODEV;
+
+	/* Check if the adapter is not pairable and if there isn't a bonding
+	 * in progress */
 	if (!adapter_is_pairable(adapter) &&
-			!(device && device_is_bonding(device, NULL))) {
-		if (*auth < 0x02) {
+				!device_is_bonding(device, NULL)) {
+		if (*auth < 0x02 && device_get_auth(device) < 0x02) {
 			debug("Allowing no bonding in non-bondable mode");
 			/* No input, no output */
 			*cap = 0x03;
@@ -1244,17 +1247,16 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	}
 
 	/* For CreatePairedDevice use dedicated bonding */
-	if (device) {
-		agent = device_get_agent(device);
-		if (agent)
-			*auth = 0x03;
-	}
-	if (!agent)
+	agent = device_get_agent(device);
+	if (agent) {
+		debug("Pairing attempt, use dedicated bonding without MITM");
+		*auth = 0x02;
+	} else
 		agent = adapter_get_agent(adapter);
 
 	if (!agent) {
 		/* This is the non bondable mode case */
-		if (device && device_get_auth(device) > 0x01) {
+		if (device_get_auth(device) > 0x01) {
 			debug("Bonding request, but no agent present");
 			return -1;
 		}
@@ -1271,7 +1273,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		return -1;
 	}
 
-	if (device && *auth == 0x00) {
+	if (*auth == 0x00) {
 		/* If remote requests dedicated bonding follow that lead */
 		if (device_get_auth(device) == 0x02 ||
 				device_get_auth(device) == 0x03)
