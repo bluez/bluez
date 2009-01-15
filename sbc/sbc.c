@@ -80,10 +80,13 @@ struct sbc_frame {
 	uint8_t scale_factor[2][8];
 
 	/* raw integer subband samples in the frame */
+	int32_t SBC_ALIGNED sb_sample_f[16][2][8];
 
-	int32_t sb_sample_f[16][2][8];
-	int32_t sb_sample[16][2][8];	/* modified subband samples */
-	int16_t pcm_sample[2][16*8];	/* original pcm audio samples */
+	/* modified subband samples */
+	int32_t SBC_ALIGNED sb_sample[16][2][8];
+
+	/* original pcm audio samples */
+	int16_t SBC_ALIGNED pcm_sample[2][16*8];
 };
 
 struct sbc_decoder_state {
@@ -912,9 +915,9 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 
 struct sbc_priv {
 	int init;
-	struct sbc_frame frame;
-	struct sbc_decoder_state dec_state;
-	struct sbc_encoder_state enc_state;
+	struct SBC_ALIGNED sbc_frame frame;
+	struct SBC_ALIGNED sbc_decoder_state dec_state;
+	struct SBC_ALIGNED sbc_encoder_state enc_state;
 };
 
 static void sbc_set_defaults(sbc_t *sbc, unsigned long flags)
@@ -940,9 +943,12 @@ int sbc_init(sbc_t *sbc, unsigned long flags)
 
 	memset(sbc, 0, sizeof(sbc_t));
 
-	sbc->priv = malloc(sizeof(struct sbc_priv));
-	if (!sbc->priv)
+	sbc->priv_alloc_base = malloc(sizeof(struct sbc_priv) + SBC_ALIGN_MASK);
+	if (!sbc->priv_alloc_base)
 		return -ENOMEM;
+
+	sbc->priv = (void *) (((uintptr_t) sbc->priv_alloc_base +
+			SBC_ALIGN_MASK) & ~((uintptr_t) SBC_ALIGN_MASK));
 
 	memset(sbc->priv, 0, sizeof(struct sbc_priv));
 
@@ -1091,8 +1097,8 @@ void sbc_finish(sbc_t *sbc)
 	if (!sbc)
 		return;
 
-	if (sbc->priv)
-		free(sbc->priv);
+	if (sbc->priv_alloc_base)
+		free(sbc->priv_alloc_base);
 
 	memset(sbc, 0, sizeof(sbc_t));
 }

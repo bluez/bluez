@@ -74,6 +74,7 @@ struct sbc_struct {
 	uint8_t endian;
 
 	void *priv;
+	void *priv_alloc_base;
 };
 
 typedef struct sbc_struct sbc_t;

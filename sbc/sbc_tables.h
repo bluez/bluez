@@ -351,6 +351,20 @@ static const FIXED_T cos_table_fixed_8[128] = {
 #undef F
 
 /*
+ * Enforce 16 byte alignment for the data, which is supposed to be used
+ * with SIMD optimized code.
+ */
+
+#define SBC_ALIGN_BITS 4
+#define SBC_ALIGN_MASK ((1 << (SBC_ALIGN_BITS)) - 1)
+
+#ifdef __GNUC__
+#define SBC_ALIGNED __attribute__((aligned(1 << (SBC_ALIGN_BITS))))
+#else
+#define SBC_ALIGNED
+#endif
+
+/*
  * Constant tables for the use in SIMD optimized analysis filters
  * Each table consists of two parts:
  * 1. reordered "proto" table
@@ -360,7 +374,7 @@ static const FIXED_T cos_table_fixed_8[128] = {
  * and "odd" cases are needed
  */
 
-static const FIXED_T analysis_consts_fixed4_simd_even[40 + 16] = {
+static const FIXED_T SBC_ALIGNED analysis_consts_fixed4_simd_even[40 + 16] = {
 #define F(x) F_PROTO4(x)
 	 F(0.00000000E+00),  F(3.83720193E-03),
 	 F(5.36548976E-04),  F(2.73370904E-03),
@@ -395,7 +409,7 @@ static const FIXED_T analysis_consts_fixed4_simd_even[40 + 16] = {
 #undef F
 };
 
-static const FIXED_T analysis_consts_fixed4_simd_odd[40 + 16] = {
+static const FIXED_T SBC_ALIGNED analysis_consts_fixed4_simd_odd[40 + 16] = {
 #define F(x) F_PROTO4(x)
 	 F(2.73370904E-03),  F(5.36548976E-04),
 	-F(1.49188357E-03),  F(0.00000000E+00),
@@ -430,7 +444,7 @@ static const FIXED_T analysis_consts_fixed4_simd_odd[40 + 16] = {
 #undef F
 };
 
-static const FIXED_T analysis_consts_fixed8_simd_even[80 + 64] = {
+static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_even[80 + 64] = {
 #define F(x) F_PROTO8(x)
 	 F(0.00000000E+00),  F(2.01182542E-03),
 	 F(1.56575398E-04),  F(1.78371725E-03),
@@ -509,7 +523,7 @@ static const FIXED_T analysis_consts_fixed8_simd_even[80 + 64] = {
 #undef F
 };
 
-static const FIXED_T analysis_consts_fixed8_simd_odd[80 + 64] = {
+static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_odd[80 + 64] = {
 #define F(x) F_PROTO8(x)
 	 F(0.00000000E+00), -F(8.23919506E-04),
 	 F(1.56575398E-04),  F(1.78371725E-03),
