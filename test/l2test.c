@@ -305,8 +305,8 @@ static int do_connect(char *svr)
 		opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
 		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
-	if (data_size > opts.omtu)
-		data_size = opts.omtu;
+	omtu = opts.omtu;
+	imtu = opts.imtu;
 
 	return sk;
 
@@ -681,7 +681,7 @@ static void recv_mode(int sk)
 static void do_send(int sk)
 {
 	uint32_t seq;
-	int i, fd, len;
+	int i, fd, len, buflen, size, sent;
 
 	syslog(LOG_INFO, "Sending ...");
 
@@ -692,8 +692,17 @@ static void do_send(int sk)
 							strerror(errno), errno);
 			exit(1);
 		}
-		len = read(fd, buf, data_size);
-		send(sk, buf, len, 0);
+
+		sent = 0;
+		size = read(fd, buf, data_size);
+		while (size > 0) {
+			buflen = (size > omtu) ? omtu : size;
+
+			len = send(sk, buf + sent, buflen, 0);
+
+			sent += len;
+			size -= len;
+		}
 		return;
 	} else {
 		for (i = 6; i < data_size; i++)
@@ -706,11 +715,20 @@ static void do_send(int sk)
 		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
 
-		len = send(sk, buf, data_size, 0);
-		if (len < 0 || len != data_size) {
-			syslog(LOG_ERR, "Send failed: %s (%d)",
+		sent = 0;
+		size = data_size;
+		while (size > 0) {
+			buflen = (size > omtu) ? omtu : size;
+
+			len = send(sk, buf, buflen, 0);
+			if (len < 0 || len != buflen) {
+				syslog(LOG_ERR, "Send failed: %s (%d)",
 							strerror(errno), errno);
-			exit(1);
+				exit(1);
+			}
+
+			sent += len;
+			size -= len;
 		}
 
 		if (num_frames && delay && count && !(seq % count))
@@ -1123,13 +1141,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (data_size < 0) {
-		data_size = 48;
-		if (imtu > data_size)
-			data_size = imtu;
-		if (omtu > data_size)
-			data_size = omtu;
-	}
+	if (data_size < 0)
+		data_size = (omtu > imtu) ? omtu : imtu;
 
 	if (!(buf = malloc(data_size))) {
 		perror("Can't allocate data buffer");
