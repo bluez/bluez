@@ -72,6 +72,7 @@ static int omtu = 0;
 
 /* Default data size */
 static long data_size = -1;
+static long buffer_size = 2048;
 
 /* Default addr and psm */
 static bdaddr_t bdaddr;
@@ -305,8 +306,8 @@ static int do_connect(char *svr)
 		opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
 		conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
-	omtu = opts.omtu;
-	imtu = opts.imtu;
+	omtu = (opts.omtu > buffer_size) ? buffer_size : opts.omtu;
+	imtu = (opts.imtu > buffer_size) ? buffer_size : opts.imtu;
 
 	return sk;
 
@@ -470,6 +471,9 @@ static void do_listen(void (*handler)(int sk))
 			ba, opts.imtu, opts.omtu, opts.flush_to, opts.mode, conn.hci_handle,
 			conn.dev_class[2], conn.dev_class[1], conn.dev_class[0]);
 
+		omtu = (opts.omtu > buffer_size) ? buffer_size : opts.omtu;
+		imtu = (opts.imtu > buffer_size) ? buffer_size : opts.imtu;
+
 #if 0
 		/* Enable SO_TIMESTAMP */
 		if (timestamp) {
@@ -524,6 +528,9 @@ static void dump_mode(int sk)
 {
 	socklen_t optlen;
 	int opt, len;
+
+	if (data_size < 0)
+		data_size = imtu;
 
 	if (defer_setup) {
 		len = read(sk, buf, sizeof(buf));
@@ -581,6 +588,9 @@ static void recv_mode(int sk)
 	uint32_t seq;
 	socklen_t optlen;
 	int opt, len;
+
+	if (data_size < 0)
+		data_size = imtu;
 
 	if (defer_setup) {
 		len = read(sk, buf, sizeof(buf));
@@ -684,6 +694,9 @@ static void do_send(int sk)
 	int i, fd, len, buflen, size, sent;
 
 	syslog(LOG_INFO, "Sending ...");
+
+	if (data_size < 0)
+		data_size = omtu;
 
 	if (filename) {
 		fd = open(filename, O_RDONLY);
@@ -1142,9 +1155,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (data_size < 0)
-		data_size = (omtu > imtu) ? omtu : imtu;
+		buffer_size = (omtu > imtu) ? omtu : imtu;
+	else
+		buffer_size = data_size;
 
-	if (!(buf = malloc(data_size))) {
+	if (!(buf = malloc(buffer_size))) {
 		perror("Can't allocate data buffer");
 		exit(1);
 	}
