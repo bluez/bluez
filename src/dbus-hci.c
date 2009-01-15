@@ -931,9 +931,9 @@ void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 	ba2str(peer, peer_addr);
 
-	device = adapter_find_device(adapter, peer_addr);
+	device = adapter_get_device(connection, adapter, peer_addr);
 	if (!device) {
-		error("link_key_notify: device %s was removed!", peer_addr);
+		error("Couldn't get a device object for %s", peer_addr);
 		return;
 	}
 
@@ -941,6 +941,8 @@ void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	 * complete event doesn't trigger SDP */
 	if (old_key_type != 0xFF)
 		device_set_renewed_key(device, TRUE);
+
+	device_set_temporary(device, FALSE);
 
 	if (!device_is_connected(device))
 		device_set_secmode3_conn(device, TRUE);
