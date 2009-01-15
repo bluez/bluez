@@ -1706,7 +1706,7 @@ static int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	}
 
 	memset(&sec, 0, sizeof(sec));
-	sec.level = BT_SECURITY_HIGH;
+	sec.level = BT_SECURITY_MEDIUM;
 
 	err = setsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec, sizeof(sec));
 	if (auth_required)

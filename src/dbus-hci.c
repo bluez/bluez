@@ -1252,10 +1252,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 
 	/* For CreatePairedDevice use dedicated bonding */
 	agent = device_get_agent(device);
-	if (agent) {
-		debug("Pairing attempt, use dedicated bonding without MITM");
-		*auth = 0x02;
-	} else
+	if (!agent)
 		agent = adapter_get_agent(adapter);
 
 	if (!agent) {
