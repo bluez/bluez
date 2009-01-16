@@ -1685,10 +1685,9 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 static int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
 						gboolean *auth_required)
 {
-	struct bt_security sec;
 	struct sockaddr_l2 addr;
 	long arg;
-	int sk, err;
+	int sk, err, opt;
 
 	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
 	if (sk < 0) {
@@ -1705,12 +1704,13 @@ static int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
 		goto failed;
 	}
 
-	memset(&sec, 0, sizeof(sec));
-	sec.level = BT_SECURITY_MEDIUM;
+	opt = L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT;
 
-	err = setsockopt(sk, SOL_BLUETOOTH, BT_SECURITY, &sec, sizeof(sec));
-	if (auth_required)
-		*auth_required = err < 0 ? TRUE : FALSE;
+	err = setsockopt(sk, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt));
+	if (err < 0) {
+		error("setsockopt: %s (%d)", strerror(errno), errno);
+		goto failed;
+	}
 
 	arg = fcntl(sk, F_GETFL);
 	if (arg < 0) {
@@ -1734,6 +1734,9 @@ static int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
 		error("Can't connect socket: %s (%d)", strerror(errno), errno);
 		goto failed;
 	}
+
+	if (auth_required)
+		*auth_required = TRUE;
 
 	return sk;
 
