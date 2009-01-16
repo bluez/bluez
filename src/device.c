@@ -1380,6 +1380,11 @@ void device_set_cap(struct btd_device *device, uint8_t cap)
 	device->cap = cap;
 }
 
+uint8_t device_get_cap(struct btd_device *device)
+{
+	return device->cap;
+}
+
 void device_set_auth(struct btd_device *device, uint8_t auth)
 {
 	if (!device)

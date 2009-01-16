@@ -1277,8 +1277,14 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	if (*auth == 0x00) {
 		/* If remote requests dedicated bonding follow that lead */
 		if (device_get_auth(device) == 0x02 ||
-				device_get_auth(device) == 0x03)
-			*auth = 0x02;
+				device_get_auth(device) == 0x03) {
+			/* If the remote has NoInputNoOutput then don't require
+			 * MITM, otherwise require it */
+			if (device_get_cap(device) == 0x03)
+				*auth = 0x02;
+			else
+				*auth = 0x03;
+		}
 
 		/* If remote requires MITM then also require it */
 		if (device_get_auth(device) & 0x01)
