@@ -66,15 +66,15 @@ static inline void sbc_analyze_four(const int16_t *in, int32_t *out)
 	/* do the cos transform */
 	for (i = 0, hop = 0; i < 4; hop += 8, i++) {
 		out[i] = ((FIXED_A) t2[0] * cos_table_fixed_4[0 + hop] +
-			  (FIXED_A) t2[1] * cos_table_fixed_4[1 + hop] +
-			  (FIXED_A) t2[2] * cos_table_fixed_4[2 + hop] +
-			  (FIXED_A) t2[3] * cos_table_fixed_4[5 + hop]) >>
+			(FIXED_A) t2[1] * cos_table_fixed_4[1 + hop] +
+			(FIXED_A) t2[2] * cos_table_fixed_4[2 + hop] +
+			(FIXED_A) t2[3] * cos_table_fixed_4[5 + hop]) >>
 			(SBC_COS_TABLE_FIXED4_SCALE - SCALE_OUT_BITS);
 	}
 }
 
 static void sbc_analyze_4b_4s(int16_t *pcm, int16_t *x,
-			      int32_t *out, int out_stride)
+						int32_t *out, int out_stride)
 {
 	int i;
 
@@ -138,19 +138,19 @@ static inline void sbc_analyze_eight(const int16_t *in, int32_t *out)
 	/* do the cos transform */
 	for (i = 0, hop = 0; i < 8; hop += 16, i++) {
 		out[i] = ((FIXED_A) t2[0] * cos_table_fixed_8[0 + hop] +
-			  (FIXED_A) t2[1] * cos_table_fixed_8[1 + hop] +
-			  (FIXED_A) t2[2] * cos_table_fixed_8[2 + hop] +
-			  (FIXED_A) t2[3] * cos_table_fixed_8[3 + hop] +
-			  (FIXED_A) t2[4] * cos_table_fixed_8[4 + hop] +
-			  (FIXED_A) t2[5] * cos_table_fixed_8[9 + hop] +
-			  (FIXED_A) t2[6] * cos_table_fixed_8[10 + hop] +
-			  (FIXED_A) t2[7] * cos_table_fixed_8[11 + hop]) >>
+			(FIXED_A) t2[1] * cos_table_fixed_8[1 + hop] +
+			(FIXED_A) t2[2] * cos_table_fixed_8[2 + hop] +
+			(FIXED_A) t2[3] * cos_table_fixed_8[3 + hop] +
+			(FIXED_A) t2[4] * cos_table_fixed_8[4 + hop] +
+			(FIXED_A) t2[5] * cos_table_fixed_8[9 + hop] +
+			(FIXED_A) t2[6] * cos_table_fixed_8[10 + hop] +
+			(FIXED_A) t2[7] * cos_table_fixed_8[11 + hop]) >>
 			(SBC_COS_TABLE_FIXED8_SCALE - SCALE_OUT_BITS);
 	}
 }
 
 static void sbc_analyze_4b_8s(int16_t *pcm, int16_t *x,
-			      int32_t *out, int out_stride)
+						int32_t *out, int out_stride)
 {
 	int i;
 
@@ -186,7 +186,7 @@ static void sbc_analyze_4b_8s(int16_t *pcm, int16_t *x,
  */
 
 static inline void sbc_analyze_four_simd(const int16_t *in, int32_t *out,
-					 const FIXED_T *consts)
+							const FIXED_T *consts)
 {
 	FIXED_A t1[4];
 	FIXED_T t2[4];
@@ -244,7 +244,7 @@ static inline void sbc_analyze_four_simd(const int16_t *in, int32_t *out,
 }
 
 static inline void sbc_analyze_eight_simd(const int16_t *in, int32_t *out,
-					  const FIXED_T *consts)
+							const FIXED_T *consts)
 {
 	FIXED_A t1[8];
 	FIXED_T t2[8];
@@ -313,7 +313,7 @@ static inline void sbc_analyze_eight_simd(const int16_t *in, int32_t *out,
 }
 
 static inline void sbc_analyze_4b_4s_simd(int16_t *pcm, int16_t *x,
-					  int32_t *out, int out_stride)
+						int32_t *out, int out_stride)
 {
 	/* Fetch audio samples and do input data reordering for SIMD */
 	x[64] = x[0]  = pcm[8 + 7];

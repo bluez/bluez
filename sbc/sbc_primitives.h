@@ -33,13 +33,13 @@ struct sbc_encoder_state {
 	int position[2];
 	int16_t SBC_ALIGNED X[2][256];
 	/* Polyphase analysis filter for 4 subbands configuration,
-	   it handles 4 blocks at once */
+	 * it handles 4 blocks at once */
 	void (*sbc_analyze_4b_4s)(int16_t *pcm, int16_t *x,
-				  int32_t *out, int out_stride);
+					int32_t *out, int out_stride);
 	/* Polyphase analysis filter for 8 subbands configuration,
-	   it handles 4 blocks at once */
+	 * it handles 4 blocks at once */
 	void (*sbc_analyze_4b_8s)(int16_t *pcm, int16_t *x,
-				  int32_t *out, int out_stride);
+					int32_t *out, int out_stride);
 };
 
 /*

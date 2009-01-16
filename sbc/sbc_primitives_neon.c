@@ -38,11 +38,11 @@
 #ifdef SBC_BUILD_WITH_NEON_SUPPORT
 
 static inline void _sbc_analyze_four_neon(const int16_t *in, int32_t *out,
-					 const FIXED_T *consts)
+							const FIXED_T *consts)
 {
 	/* TODO: merge even and odd cases (or even merge all four calls to this
-		 function) in order to have only aligned reads from 'in' array
-		 and reduce number of load instructions */
+	 * function) in order to have only aligned reads from 'in' array
+	 * and reduce number of load instructions */
 	asm volatile (
 		"vld1.16    {d4, d5}, [%0, :64]!\n"
 		"vld1.16    {d8, d9}, [%1, :128]!\n"
@@ -91,18 +91,18 @@ static inline void _sbc_analyze_four_neon(const int16_t *in, int32_t *out,
 		"vst1.32    {d0, d1}, [%2, :128]\n"
 		: "+r" (in), "+r" (consts)
 		: "r" (out),
-		  "i" (SBC_PROTO_FIXED4_SCALE)
+			"i" (SBC_PROTO_FIXED4_SCALE)
 		: "memory",
-		  "d0", "d1", "d2", "d3", "d4", "d5",
-		  "d6", "d7", "d8", "d9", "d10", "d11");
+			"d0", "d1", "d2", "d3", "d4", "d5",
+			"d6", "d7", "d8", "d9", "d10", "d11");
 }
 
 static inline void _sbc_analyze_eight_neon(const int16_t *in, int32_t *out,
-					 const FIXED_T *consts)
+							const FIXED_T *consts)
 {
 	/* TODO: merge even and odd cases (or even merge all four calls to this
-		 function) in order to have only aligned reads from 'in' array
-		 and reduce number of load instructions */
+	 * function) in order to have only aligned reads from 'in' array
+	 * and reduce number of load instructions */
 	asm volatile (
 		"vld1.16    {d4, d5}, [%0, :64]!\n"
 		"vld1.16    {d8, d9}, [%1, :128]!\n"
@@ -202,16 +202,16 @@ static inline void _sbc_analyze_eight_neon(const int16_t *in, int32_t *out,
 		"vst1.32    {d0, d1, d2, d3}, [%2, :128]\n"
 		: "+r" (in), "+r" (consts)
 		: "r" (out),
-		  "i" (SBC_PROTO_FIXED8_SCALE)
+			"i" (SBC_PROTO_FIXED8_SCALE)
 		: "memory",
-		  "d0", "d1", "d2", "d3", "d4", "d5",
-		  "d6", "d7", "d8", "d9", "d10", "d11",
-		  "d12", "d13", "d14", "d15", "d16", "d17",
-		  "d18", "d19");
+			"d0", "d1", "d2", "d3", "d4", "d5",
+			"d6", "d7", "d8", "d9", "d10", "d11",
+			"d12", "d13", "d14", "d15", "d16", "d17",
+			"d18", "d19");
 }
 
 static inline void sbc_analyze_4b_4s_neon(int16_t *pcm, int16_t *x,
-					 int32_t *out, int out_stride)
+						int32_t *out, int out_stride)
 {
 	/* Fetch audio samples and do input data reordering for SIMD */
 	x[64] = x[0]  = pcm[8 + 7];
@@ -243,7 +243,7 @@ static inline void sbc_analyze_4b_4s_neon(int16_t *pcm, int16_t *x,
 }
 
 static inline void sbc_analyze_4b_8s_neon(int16_t *pcm, int16_t *x,
-					  int32_t *out, int out_stride)
+						int32_t *out, int out_stride)
 {
 	/* Fetch audio samples and do input data reordering for SIMD */
 	x[128] = x[0]  = pcm[16 + 15];

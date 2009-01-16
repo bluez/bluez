@@ -99,12 +99,12 @@ static inline void sbc_analyze_four_mmx(const int16_t *in, int32_t *out,
 		"movq       %%mm2, 8(%3)\n"
 		:
 		: "r" (in), "r" (consts), "r" (&round_c), "r" (out),
-		  "i" (SBC_PROTO_FIXED4_SCALE)
+			"i" (SBC_PROTO_FIXED4_SCALE)
 		: "memory");
 }
 
 static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
-					 const FIXED_T *consts)
+							const FIXED_T *consts)
 {
 	static const SBC_ALIGNED int32_t round_c[2] = {
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
@@ -241,12 +241,12 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		"movq       %%mm5, 24(%3)\n"
 		:
 		: "r" (in), "r" (consts), "r" (&round_c), "r" (out),
-		  "i" (SBC_PROTO_FIXED8_SCALE)
+			"i" (SBC_PROTO_FIXED8_SCALE)
 		: "memory");
 }
 
 static inline void sbc_analyze_4b_4s_mmx(int16_t *pcm, int16_t *x,
-					 int32_t *out, int out_stride)
+						int32_t *out, int out_stride)
 {
 	/* Fetch audio samples and do input data reordering for SIMD */
 	x[64] = x[0]  = pcm[8 + 7];
@@ -280,7 +280,7 @@ static inline void sbc_analyze_4b_4s_mmx(int16_t *pcm, int16_t *x,
 }
 
 static inline void sbc_analyze_4b_8s_mmx(int16_t *pcm, int16_t *x,
-					 int32_t *out, int out_stride)
+						int32_t *out, int out_stride)
 {
 	/* Fetch audio samples and do input data reordering for SIMD */
 	x[128] = x[0]  = pcm[16 + 15];
@@ -337,7 +337,7 @@ static int check_mmx_support()
 	int cpuid_feature_information;
 	asm volatile (
 		/* According to Intel manual, CPUID instruction is supported
-		   if the value of ID bit (bit 21) in EFLAGS can be modified */
+		 * if the value of ID bit (bit 21) in EFLAGS can be modified */
 		"pushf\n"
 		"movl     (%%esp),   %0\n"
 		"xorl     $0x200000, (%%esp)\n" /* try to modify ID bit */
