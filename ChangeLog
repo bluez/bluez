@@ -1,3 +1,21 @@
+ver 4.27:
+	Add more SBC optimization (MMX and ARM NEON).
+	Add BT_SECURITY and BT_DEFER_SETUP definitions.
+	Add support for deferred connection setup.
+	Add support for fragmentation of data packets.
+	Add option to trigger dedicated bonding.
+	Follow MITM requirements from remote device.
+	Require MITM for dedicated bonding if capabilities allow it.
+	Fix IO capabilities for non-pairing and pairing cases.
+	Fix no-bonding connections in non-bondable mode.
+	Fix new pairing detection with SSP.
+	Fix bonding with pre-2.1 devices and newer kernels.
+	Fix LIAC setting while toggling Pairable property.
+	Fix device creation for incoming security mode 3 connects.
+	Fix crash within A2DP with bogus pointer.
+	Fix issue with sdp_copy_record() function.
+	Fix crash with extract_des() if sdp_uuid_extract() fails.
+
 ver 4.26:
 	Use of constant shift in SBC quantization code.
 	Add possibility to analyze 4 blocks at once in encoder.
