@@ -295,7 +295,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char addr[18];
-	uint8_t type;
+	uint8_t remcap, remauth, type;
 	uint16_t dev_id;
 
 	adapter = manager_find_adapter(sba);
@@ -333,8 +333,14 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -1;
 	}
 
-	/* If no MITM protection required, auto-accept */
-	if (!(device_get_auth(device) & 0x01) && !(type & 0x01)) {
+	remcap = device_get_cap(device);
+	remauth = device_get_auth(device);
+
+	debug("remote IO capabilities are 0x%02x", remcap);
+	debug("remote authentication requirement is 0x%02x", remauth);
+
+	/* If no side requires MITM protection; auto-accept */
+	if (!(remauth & 0x01) && (!(type & 0x01) || remcap == 0x03)) {
 		int dd;
 
 		dd = hci_open_dev(dev_id);
@@ -347,6 +353,8 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 					OCF_USER_CONFIRM_REPLY, 6, dba);
 
 		hci_close_dev(dd);
+
+		debug("auto accept of confirmation");
 
 		return device_request_authentication(device,
 						AUTH_TYPE_AUTO, 0, NULL);

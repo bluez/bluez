@@ -1709,7 +1709,7 @@ static int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
 		goto failed;
 	}
 
-	opt = L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT;
+	opt = L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT | L2CAP_LM_SECURE;
 
 	err = setsockopt(sk, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt));
 	if (err < 0) {
