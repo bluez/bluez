@@ -176,8 +176,10 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		case SDP_UUID128:
 			pElem = malloc(sizeof(uuid_t));
 			status = sdp_uuid_extract(p, bufsize, (uuid_t *) pElem, &localSeqLength);
-			if (status < 0)
+			if (status < 0) {
+				free(pElem);
 				return -1;
+			}
 			seqlen += localSeqLength;
 			p += localSeqLength;
 			bufsize -= localSeqLength;
