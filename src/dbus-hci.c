@@ -1278,9 +1278,12 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		/* If remote requests dedicated bonding follow that lead */
 		if (device_get_auth(device) == 0x02 ||
 				device_get_auth(device) == 0x03) {
-			/* If the remote has NoInputNoOutput then don't require
-			 * MITM, otherwise require it */
-			if (device_get_cap(device) == 0x03)
+			uint8_t agent_cap = agent_get_io_capability(agent);
+
+			/* If both remote and local IO capabilities allow MITM
+			 * then require it, otherwise don't */
+			if (device_get_cap(device) == 0x03 ||
+							agent_cap == 0x03)
 				*auth = 0x02;
 			else
 				*auth = 0x03;
