@@ -690,23 +690,31 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 
 /* Supplementary bitstream writing macros for 'sbc_pack_frame' */
 
-#define PUT_BITS(v, n)\
-	bits_cache = (v) | (bits_cache << (n));\
-	bits_count += (n);\
-	if (bits_count >= 16) {\
-		bits_count -= 8;\
-		*data_ptr++ = (uint8_t) (bits_cache >> bits_count);\
-		bits_count -= 8;\
-		*data_ptr++ = (uint8_t) (bits_cache >> bits_count);\
-	}\
+#define PUT_BITS(data_ptr, bits_cache, bits_count, v, n)		\
+	do {								\
+		bits_cache = (v) | (bits_cache << (n));			\
+		bits_count += (n);					\
+		if (bits_count >= 16) {					\
+			bits_count -= 8;				\
+			*data_ptr++ = (uint8_t)				\
+				(bits_cache >> bits_count);		\
+			bits_count -= 8;				\
+			*data_ptr++ = (uint8_t)				\
+				(bits_cache >> bits_count);		\
+		}							\
+	} while (0)
 
-#define FLUSH_BITS()\
-	while (bits_count >= 8) {\
-		bits_count -= 8;\
-		*data_ptr++ = (uint8_t) (bits_cache >> bits_count);\
-	}\
-	if (bits_count > 0)\
-	    *data_ptr++ = (uint8_t) (bits_cache << (8 - bits_count));\
+#define FLUSH_BITS(data_ptr, bits_cache, bits_count)			\
+	do {								\
+		while (bits_count >= 8) {				\
+			bits_count -= 8;				\
+			*data_ptr++ = (uint8_t)				\
+				(bits_cache >> bits_count);		\
+		}							\
+		if (bits_count > 0)					\
+			*data_ptr++ = (uint8_t)				\
+				(bits_cache << (8 - bits_count));	\
+	} while (0)
 
 /*
  * Packs the SBC frame from frame into the memory at data. At most len
@@ -849,14 +857,16 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 			}
 		}
 
-		PUT_BITS(joint, frame->subbands);
+		PUT_BITS(data_ptr, bits_cache, bits_count,
+			joint, frame->subbands);
 		crc_header[crc_pos >> 3] = joint;
 		crc_pos += frame->subbands;
 	}
 
 	for (ch = 0; ch < frame->channels; ch++) {
 		for (sb = 0; sb < frame->subbands; sb++) {
-			PUT_BITS(frame->scale_factor[ch][sb] & 0x0F, 4);
+			PUT_BITS(data_ptr, bits_cache, bits_count,
+				frame->scale_factor[ch][sb] & 0x0F, 4);
 			crc_header[crc_pos >> 3] <<= 4;
 			crc_header[crc_pos >> 3] |= frame->scale_factor[ch][sb] & 0x0F;
 			crc_pos += 4;
@@ -893,12 +903,13 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 					(sb_sample_delta[ch][sb] +
 					frame->sb_sample_f[blk][ch][sb])) >> 32;
 
-				PUT_BITS(audio_sample, bits[ch][sb]);
+				PUT_BITS(data_ptr, bits_cache, bits_count,
+					audio_sample, bits[ch][sb]);
 			}
 		}
 	}
 
-	FLUSH_BITS();
+	FLUSH_BITS(data_ptr, bits_cache, bits_count);
 
 	return data_ptr - data;
 }
