@@ -256,9 +256,7 @@ static void usage(void)
 	printf("\tl2ping [-i device] [-s size] [-c count] [-t timeout] [-d delay] [-f] [-r] [-v] <bdaddr>\n");
 	printf("\t-f  Flood ping (delay = 0)\n");
 	printf("\t-r  Reverse ping\n");
-	printf("\t-v  Verify the request and response payload are identical.\n");
-	printf("\t    This is not required by the Bluetooth spec, but will work\n");
-	printf("\t    with most remote stacks, including bluez.\n");
+	printf("\t-v  Verify request and response payload\n");
 }
 
 int main(int argc, char *argv[])
