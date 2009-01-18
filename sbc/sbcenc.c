@@ -48,7 +48,13 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 {
 	struct au_header au_hdr;
 	sbc_t sbc;
-	int fd, len, size, count, encoded, srate, codesize, nframes;
+	int fd, len, size, encoded, srate, codesize, nframes;
+
+	if (sizeof(au_hdr) != 24) {
+		/* Sanity check just in case */
+		fprintf(stderr, "FIXME: sizeof(au_hdr) != 24\n");
+		return;
+	}
 
 	if (strcmp(filename, "-")) {
 		fd = open(filename, O_RDONLY);
@@ -72,7 +78,7 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 
 	if (au_hdr.magic != AU_MAGIC ||
 			BE_INT(au_hdr.hdr_size) > 128 ||
-			BE_INT(au_hdr.hdr_size) < 24 ||
+			BE_INT(au_hdr.hdr_size) < sizeof(au_hdr) ||
 			BE_INT(au_hdr.encoding) != AU_FMT_LIN16) {
 		fprintf(stderr, "Not in Sun/NeXT audio S16_BE format\n");
 		goto done;
@@ -119,9 +125,9 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 	}
 
 	sbc.endian = SBC_BE;
-	count = BE_INT(au_hdr.data_size);
-	size = len - BE_INT(au_hdr.hdr_size);
-	memmove(input, input + BE_INT(au_hdr.hdr_size), size);
+	/* Skip extra bytes of the header if any */
+	if (read(fd, input, BE_INT(au_hdr.hdr_size) - len) < 0)
+		goto done;
 
 	sbc.bitpool = bitpool;
 	sbc.allocation = snr ? SBC_AM_SNR : SBC_AM_LOUDNESS;
@@ -177,8 +183,12 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 			perror("Can't write SBC output");
 			break;
 		}
-		if (size >= codesize) {
-			/* sbc_encode failure has been detected earlier */
+		if (size != 0) {
+			/*
+			 * sbc_encode failure has been detected earlier or end
+			 * of file reached (have trailing partial data which is
+			 * insufficient to encode SBC frame)
+			 */
 			break;
 		}
 	}
