@@ -78,3 +78,5 @@ int session_pull(struct session_data *session,
 				const char *type, const char *filename,
 				session_callback_t function, void *user_data);
 int session_register(struct session_data *session);
+void *session_get_data(struct session_data *session);
+void session_set_data(struct session_data *session, void *priv);

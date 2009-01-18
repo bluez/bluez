@@ -1626,3 +1626,13 @@ int session_register(struct session_data *session)
 
 	return 0;
 }
+
+void *session_get_data(struct session_data *session)
+{
+	return session->priv;
+}
+
+void session_set_data(struct session_data *session, void *priv)
+{
+	session->priv = priv;
+}
