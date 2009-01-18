@@ -40,6 +40,7 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "pbap.h"
+#include "sync.h"
 #include "session.h"
 
 #define AGENT_INTERFACE  "org.openobex.Agent"
@@ -122,6 +123,9 @@ static void session_unref(struct session_data *session)
 			pbap_unregister_interface(session->conn,
 					session->path, session);
 			break;
+		case IRMC_SYNC_SVCLASS_ID:
+			sync_unregister_interface(session->conn,
+					session->path, session);
 		}
 
 		g_dbus_unregister_interface(session->conn,
@@ -414,6 +418,10 @@ int session_create(const char *source,
 		sdp_uuid16_create(&session->uuid, PBAP_PSE_SVCLASS_ID);
 		session->target = OBEX_PBAP_UUID;
 		session->target_len = OBEX_PBAP_UUID_LEN;
+	} else if (!g_ascii_strncasecmp(target, "SYNC", 4)) {
+		sdp_uuid16_create(&session->uuid, IRMC_SYNC_SVCLASS_ID);
+		session->target = OBEX_SYNC_UUID;
+		session->target_len = OBEX_SYNC_UUID_LEN;
 	} else if (!g_ascii_strncasecmp(target, "PCSUITE", 7)) {
 		sdp_uuid128_create(&session->uuid, pcsuite_uuid);
 	} else {
@@ -1610,6 +1618,9 @@ int session_register(struct session_data *session)
 		result = pbap_register_interface(session->conn,
 						session->path, session, NULL);
 		break;
+	case IRMC_SYNC_SVCLASS_ID:
+		result = sync_register_interface(session->conn,
+						session->path, session, NULL);
 	}
 
 	if (result == FALSE) {
