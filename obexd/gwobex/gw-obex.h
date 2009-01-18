@@ -88,6 +88,12 @@
 /** Length of OBEX_PBAP_UUID */
 #define OBEX_PBAP_UUID_LEN 16
 
+/** IrMC Sync Profile UUID */
+#define OBEX_SYNC_UUID \
+	"IRMC-SYNC"
+/** Length of OBEX_SYNC_UUID */
+#define OBEX_SYNC_UUID_LEN 9
+
 /** Struct containing the context of a gwobex connection */
 typedef struct gw_obex GwObex;
 
