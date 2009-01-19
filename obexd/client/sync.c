@@ -30,6 +30,7 @@
 #include <gdbus.h>
 
 #include "session.h"
+#include "sync.h"
 
 #define SYNC_INTERFACE	"org.openobex.Synchronization"
 #define ERROR_INF SYNC_INTERFACE ".Error"
