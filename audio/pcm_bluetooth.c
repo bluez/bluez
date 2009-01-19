@@ -1495,7 +1495,8 @@ static int audioservice_send(int sk, const bt_audio_msg_header_t *msg)
 
 	length = msg->length ? msg->length : BT_SUGGESTED_BUFFER_SIZE;
 
-	DBG("sending %s", bt_audio_strmsg(msg->msg_type));
+	DBG("sending %s:%s", bt_audio_strtype(msg->type),
+		bt_audio_strname(msg->name));
 	if (send(sk, msg, length, 0) > 0)
 		err = 0;
 	else {
