@@ -1182,7 +1182,7 @@ static int bluetooth_hsp_hw_constraint(snd_pcm_ioplug_t *io)
 		SND_PCM_ACCESS_MMAP_INTERLEAVED
 	};
 	unsigned int format_list[] = {
-		SND_PCM_FORMAT_S16_LE
+		SND_PCM_FORMAT_S16
 	};
 	int err;
 
@@ -1237,7 +1237,7 @@ static int bluetooth_a2dp_hw_constraint(snd_pcm_ioplug_t *io)
 		SND_PCM_ACCESS_MMAP_INTERLEAVED
 	};
 	unsigned int format_list[] = {
-		SND_PCM_FORMAT_S16_LE
+		SND_PCM_FORMAT_S16
 	};
 	unsigned int rate_list[4];
 	unsigned int rate_count;
