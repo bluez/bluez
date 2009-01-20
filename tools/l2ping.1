@@ -11,12 +11,11 @@ l2ping \- Send L2CAP echo request and receive answer
 .IR count \|]
 .RB [\| \-t
 .IR timeout \|]
+.RB [\| \-d
+.IR delay \|]
 .RB [\| \-f \|]
 .RB [\| \-r \|]
-.I bd_addr
-
-.SH DESCRIPTION
-.LP
+.RB [\| \-v \|]
 .I bd_addr
 
 .SH DESCRIPTION
@@ -49,12 +48,22 @@ Wait
 .I timeout
 seconds for the response.
 .TP
+.BI \-d " delay"
+Wait
+.I delay
+seconds between pings.
+.TP
 .B \-f
 Kind of flood ping. Use with care! It reduces the delay time between packets
 to 0.
 .TP
 .B \-r
 Reverse ping (gnip?). Send echo response instead of echo request.
+.TP
+.B \-v
+Verify response payload is identical to request payload. It is not required for
+remote stacks to return the request payload, but most stacks do (including
+Bluez).
 .TP
 .I bd_addr
 The Bluetooth MAC address to be pinged in dotted hex notation like
