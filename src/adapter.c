@@ -176,20 +176,6 @@ static inline DBusMessage *unsupported_major_class(DBusMessage *msg)
 			"Unsupported Major Class");
 }
 
-static void send_out_of_range(const char *path, GSList *l)
-{
-	while (l) {
-		const char *peer_addr = l->data;
-
-		g_dbus_emit_signal(connection, path,
-				ADAPTER_INTERFACE, "DeviceDisappeared",
-				DBUS_TYPE_STRING, &peer_addr,
-				DBUS_TYPE_INVALID);
-
-		l = l->next;
-	}
-}
-
 static int found_device_cmp(const struct remote_dev_info *d1,
 			const struct remote_dev_info *d2)
 {
@@ -634,6 +620,11 @@ static void session_remove(struct session_req *req)
 			return;
 
 		debug("Stopping discovery");
+
+		g_slist_foreach(adapter->found_devices, (GFunc) dev_info_free,
+				NULL);
+		g_slist_free(adapter->found_devices);
+		adapter->found_devices = NULL;
 
 		if (adapter->state & STD_INQUIRY)
 			cancel_discovery(adapter);
@@ -2416,18 +2407,9 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		adapter->scheduler_id = g_timeout_add_seconds(main_opts.inqmode,
 				(GSourceFunc) start_inquiry, adapter);
 
-	if (!discov_active && adapter->found_devices) {
-		g_slist_foreach(adapter->found_devices,
-					(GFunc) dev_info_free, NULL);
-		g_slist_free(adapter->found_devices);
-		adapter->found_devices = NULL;
-	}
-
-	if (!discov_active && adapter->oor_devices) {
-		g_slist_foreach(adapter->oor_devices, (GFunc) g_free, NULL);
-		g_slist_free(adapter->oor_devices);
-		adapter->oor_devices = NULL;
-	}
+	/* Send out of range */
+	if (!discov_active)
+		adapter_update_oor_devices(adapter);
 
 	emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discovering",
@@ -2527,30 +2509,46 @@ int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 	if (!dev)
 		return -1;
 
-	adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
-	dev_info_free(dev);
+	dev->name_status = NAME_NOT_REQUIRED;
 
 	return 0;
 }
 
 void adapter_update_oor_devices(struct btd_adapter *adapter)
 {
-	GSList *l = adapter->found_devices;
+	GSList *l;
 	struct remote_dev_info *dev;
 	bdaddr_t tmp;
 
-	send_out_of_range(adapter->path, adapter->oor_devices);
+	for (l = adapter->oor_devices; l; l = l->next) {
+		char *address = l->data;
+		struct remote_dev_info match;
+
+		memset(&match, 0, sizeof(struct remote_dev_info));
+		str2ba(address, &match.bdaddr);
+
+		g_dbus_emit_signal(connection, adapter->path,
+				ADAPTER_INTERFACE, "DeviceDisappeared",
+				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_INVALID);
+
+		dev = adapter_search_found_devices(adapter, &match);
+		if (!dev)
+			continue;
+
+		adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
+		dev_info_free(dev);
+	}
 
 	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
 	g_slist_free(adapter->oor_devices);
 	adapter->oor_devices = NULL;
 
-	while (l) {
+	for (l = adapter->found_devices; l; l = l->next) {
 		dev = l->data;
 		baswap(&tmp, &dev->bdaddr);
 		adapter->oor_devices = g_slist_append(adapter->oor_devices,
 							batostr(&tmp));
-		l = l->next;
 	}
 }
 

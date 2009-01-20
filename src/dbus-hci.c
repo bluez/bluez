@@ -556,11 +556,6 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 
 	path = adapter_get_path(adapter);
 
-	/* Out of range verification */
-	if ((adapter_get_state(adapter) & PERIODIC_INQUIRY) &&
-				!(adapter_get_state(adapter) & STD_INQUIRY))
-		adapter_update_oor_devices(adapter);
-
 	/*
 	 * The following scenarios can happen:
 	 * 1. standard inquiry: always send discovery completed signal
