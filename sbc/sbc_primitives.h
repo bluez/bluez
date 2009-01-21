@@ -28,6 +28,12 @@
 
 #define SCALE_OUT_BITS 15
 
+#ifdef __GNUC__
+#define SBC_ALWAYS_INLINE __attribute__((always_inline))
+#else
+#define SBC_ALWAYS_INLINE inline
+#endif
+
 struct sbc_encoder_state {
 	int subbands;
 	int position[2];

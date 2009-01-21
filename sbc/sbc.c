@@ -731,7 +731,9 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
  * -99 not implemented
  */
 
-static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
+static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(
+	uint8_t *data, struct sbc_frame *frame, size_t len,
+	int frame_subbands, int frame_channels)
 {
 	/* Bitstream writer starts from the fourth byte */
 	uint8_t *data_ptr = data + 4;
@@ -761,7 +763,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 	data[1] |= (frame->allocation & 0x01) << 1;
 
-	switch (frame->subbands) {
+	switch (frame_subbands) {
 	case 4:
 		/* Nothing to do */
 		break;
@@ -776,11 +778,11 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	data[2] = frame->bitpool;
 
 	if ((frame->mode == MONO || frame->mode == DUAL_CHANNEL) &&
-			frame->bitpool > frame->subbands << 4)
+			frame->bitpool > frame_subbands << 4)
 		return -5;
 
 	if ((frame->mode == STEREO || frame->mode == JOINT_STEREO) &&
-			frame->bitpool > frame->subbands << 5)
+			frame->bitpool > frame_subbands << 5)
 		return -5;
 
 	/* Can't fill in crc yet */
@@ -789,8 +791,8 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	crc_header[1] = data[2];
 	crc_pos = 16;
 
-	for (ch = 0; ch < frame->channels; ch++) {
-		for (sb = 0; sb < frame->subbands; sb++) {
+	for (ch = 0; ch < frame_channels; ch++) {
+		for (sb = 0; sb < frame_subbands; sb++) {
 			frame->scale_factor[ch][sb] = 0;
 			scalefactor[ch][sb] = 2 << SCALE_OUT_BITS;
 			for (blk = 0; blk < frame->blocks; blk++) {
@@ -812,7 +814,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 		uint8_t joint = 0;
 		frame->joint = 0;
 
-		for (sb = 0; sb < frame->subbands - 1; sb++) {
+		for (sb = 0; sb < frame_subbands - 1; sb++) {
 			scale_factor_j[0] = 0;
 			scalefactor_j[0] = 2 << SCALE_OUT_BITS;
 			scale_factor_j[1] = 0;
@@ -844,7 +846,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 					(scale_factor_j[0] +
 					scale_factor_j[1])) {
 				/* use joint stereo for this subband */
-				joint |= 1 << (frame->subbands - 1 - sb);
+				joint |= 1 << (frame_subbands - 1 - sb);
 				frame->joint |= 1 << sb;
 				frame->scale_factor[0][sb] = scale_factor_j[0];
 				frame->scale_factor[1][sb] = scale_factor_j[1];
@@ -858,13 +860,13 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 		}
 
 		PUT_BITS(data_ptr, bits_cache, bits_count,
-			joint, frame->subbands);
+			joint, frame_subbands);
 		crc_header[crc_pos >> 3] = joint;
-		crc_pos += frame->subbands;
+		crc_pos += frame_subbands;
 	}
 
-	for (ch = 0; ch < frame->channels; ch++) {
-		for (sb = 0; sb < frame->subbands; sb++) {
+	for (ch = 0; ch < frame_channels; ch++) {
+		for (sb = 0; sb < frame_subbands; sb++) {
 			PUT_BITS(data_ptr, bits_cache, bits_count,
 				frame->scale_factor[ch][sb] & 0x0F, 4);
 			crc_header[crc_pos >> 3] <<= 4;
@@ -881,8 +883,8 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 
 	sbc_calculate_bits(frame, bits);
 
-	for (ch = 0; ch < frame->channels; ch++) {
-		for (sb = 0; sb < frame->subbands; sb++) {
+	for (ch = 0; ch < frame_channels; ch++) {
+		for (sb = 0; sb < frame_subbands; sb++) {
 			levels[ch][sb] = ((1 << bits[ch][sb]) - 1) <<
 				(32 - (frame->scale_factor[ch][sb] +
 					SCALE_OUT_BITS + 2));
@@ -893,8 +895,8 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	}
 
 	for (blk = 0; blk < frame->blocks; blk++) {
-		for (ch = 0; ch < frame->channels; ch++) {
-			for (sb = 0; sb < frame->subbands; sb++) {
+		for (ch = 0; ch < frame_channels; ch++) {
+			for (sb = 0; sb < frame_subbands; sb++) {
 
 				if (bits[ch][sb] == 0)
 					continue;
@@ -912,6 +914,21 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 	FLUSH_BITS(data_ptr, bits_cache, bits_count);
 
 	return data_ptr - data;
+}
+
+static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
+{
+	if (frame->subbands == 4) {
+		if (frame->channels == 1)
+			return sbc_pack_frame_internal(data, frame, len, 4, 1);
+		else
+			return sbc_pack_frame_internal(data, frame, len, 4, 2);
+	} else {
+		if (frame->channels == 1)
+			return sbc_pack_frame_internal(data, frame, len, 8, 1);
+		else
+			return sbc_pack_frame_internal(data, frame, len, 8, 2);
+	}
 }
 
 static void sbc_encoder_init(struct sbc_encoder_state *state,
