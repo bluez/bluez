@@ -70,11 +70,50 @@ static DBusMessage *sync_setlocation(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
+static void sync_getphonebook_callback(struct session_data *session,
+						void *user_data)
+{
+	DBusMessage *reply;
+	char *buf = NULL;
+
+	reply = dbus_message_new_method_return(session->msg);
+
+	if (session->filled > 0)
+		buf = session->buffer;
+
+	dbus_message_append_args(reply,
+		DBUS_TYPE_STRING, &buf,
+		DBUS_TYPE_INVALID);
+
+	session->filled = 0;
+	g_dbus_send_message(session->conn, reply);
+	dbus_message_unref(session->msg);
+	session->msg = NULL;
+}
+
 static DBusMessage *sync_getphonebook(DBusConnection *connection,
 			DBusMessage *message, void *user_data)
 {
-	return g_dbus_create_error(message,
-			ERROR_INF ".Failed", "Not implemented");
+	struct session_data *session = user_data;
+	struct sync_data *syncdata = session_get_data(session);
+
+	if (session->msg)
+		return g_dbus_create_error(message,
+			ERROR_INF ".InProgress", "Transfer in progress");
+
+	/* set default phonebook_path to memory internal phonebook */
+	if (!syncdata->phonebook_path)
+		syncdata->phonebook_path = g_strdup("telecom/pb.vcf");
+
+	if (session_get(session, "phonebook", syncdata->phonebook_path, NULL,
+				NULL, 0, sync_getphonebook_callback) < 0)
+		return g_dbus_create_error(message,
+			ERROR_INF ".Failed", "Failed");
+
+	session->msg = dbus_message_ref(message);
+	session->filled = 0;
+
+	return NULL;
 }
 
 static DBusMessage *sync_putphonebook(DBusConnection *connection,
