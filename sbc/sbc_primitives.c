@@ -34,155 +34,22 @@
 #include "sbc_primitives_neon.h"
 
 /*
- * A standard C code of analysis filter.
- */
-static inline void sbc_analyze_four(const int16_t *in, int32_t *out)
-{
-	FIXED_A t1[4];
-	FIXED_T t2[4];
-	int i = 0, hop = 0;
-
-	/* rounding coefficient */
-	t1[0] = t1[1] = t1[2] = t1[3] =
-		(FIXED_A) 1 << (SBC_PROTO_FIXED4_SCALE - 1);
-
-	/* low pass polyphase filter */
-	for (hop = 0; hop < 40; hop += 8) {
-		t1[0] += (FIXED_A) in[hop] * _sbc_proto_fixed4[hop];
-		t1[1] += (FIXED_A) in[hop + 1] * _sbc_proto_fixed4[hop + 1];
-		t1[2] += (FIXED_A) in[hop + 2] * _sbc_proto_fixed4[hop + 2];
-		t1[1] += (FIXED_A) in[hop + 3] * _sbc_proto_fixed4[hop + 3];
-		t1[0] += (FIXED_A) in[hop + 4] * _sbc_proto_fixed4[hop + 4];
-		t1[3] += (FIXED_A) in[hop + 5] * _sbc_proto_fixed4[hop + 5];
-		t1[3] += (FIXED_A) in[hop + 7] * _sbc_proto_fixed4[hop + 7];
-	}
-
-	/* scaling */
-	t2[0] = t1[0] >> SBC_PROTO_FIXED4_SCALE;
-	t2[1] = t1[1] >> SBC_PROTO_FIXED4_SCALE;
-	t2[2] = t1[2] >> SBC_PROTO_FIXED4_SCALE;
-	t2[3] = t1[3] >> SBC_PROTO_FIXED4_SCALE;
-
-	/* do the cos transform */
-	for (i = 0, hop = 0; i < 4; hop += 8, i++) {
-		out[i] = ((FIXED_A) t2[0] * cos_table_fixed_4[0 + hop] +
-			(FIXED_A) t2[1] * cos_table_fixed_4[1 + hop] +
-			(FIXED_A) t2[2] * cos_table_fixed_4[2 + hop] +
-			(FIXED_A) t2[3] * cos_table_fixed_4[5 + hop]) >>
-			(SBC_COS_TABLE_FIXED4_SCALE - SCALE_OUT_BITS);
-	}
-}
-
-static void sbc_analyze_4b_4s(int16_t *pcm, int16_t *x,
-						int32_t *out, int out_stride)
-{
-	int i;
-
-	/* Input 4 x 4 Audio Samples */
-	for (i = 0; i < 16; i += 4) {
-		x[64 + i] = x[0 + i] = pcm[15 - i];
-		x[65 + i] = x[1 + i] = pcm[14 - i];
-		x[66 + i] = x[2 + i] = pcm[13 - i];
-		x[67 + i] = x[3 + i] = pcm[12 - i];
-	}
-
-	/* Analyze four blocks */
-	sbc_analyze_four(x + 12, out);
-	out += out_stride;
-	sbc_analyze_four(x + 8, out);
-	out += out_stride;
-	sbc_analyze_four(x + 4, out);
-	out += out_stride;
-	sbc_analyze_four(x, out);
-}
-
-static inline void sbc_analyze_eight(const int16_t *in, int32_t *out)
-{
-	FIXED_A t1[8];
-	FIXED_T t2[8];
-	int i, hop;
-
-	/* rounding coefficient */
-	t1[0] = t1[1] = t1[2] = t1[3] = t1[4] = t1[5] = t1[6] = t1[7] =
-		(FIXED_A) 1 << (SBC_PROTO_FIXED8_SCALE-1);
-
-	/* low pass polyphase filter */
-	for (hop = 0; hop < 80; hop += 16) {
-		t1[0] += (FIXED_A) in[hop] * _sbc_proto_fixed8[hop];
-		t1[1] += (FIXED_A) in[hop + 1] * _sbc_proto_fixed8[hop + 1];
-		t1[2] += (FIXED_A) in[hop + 2] * _sbc_proto_fixed8[hop + 2];
-		t1[3] += (FIXED_A) in[hop + 3] * _sbc_proto_fixed8[hop + 3];
-		t1[4] += (FIXED_A) in[hop + 4] * _sbc_proto_fixed8[hop + 4];
-		t1[3] += (FIXED_A) in[hop + 5] * _sbc_proto_fixed8[hop + 5];
-		t1[2] += (FIXED_A) in[hop + 6] * _sbc_proto_fixed8[hop + 6];
-		t1[1] += (FIXED_A) in[hop + 7] * _sbc_proto_fixed8[hop + 7];
-		t1[0] += (FIXED_A) in[hop + 8] * _sbc_proto_fixed8[hop + 8];
-		t1[5] += (FIXED_A) in[hop + 9] * _sbc_proto_fixed8[hop + 9];
-		t1[6] += (FIXED_A) in[hop + 10] * _sbc_proto_fixed8[hop + 10];
-		t1[7] += (FIXED_A) in[hop + 11] * _sbc_proto_fixed8[hop + 11];
-		t1[7] += (FIXED_A) in[hop + 13] * _sbc_proto_fixed8[hop + 13];
-		t1[6] += (FIXED_A) in[hop + 14] * _sbc_proto_fixed8[hop + 14];
-		t1[5] += (FIXED_A) in[hop + 15] * _sbc_proto_fixed8[hop + 15];
-	}
-
-	/* scaling */
-	t2[0] = t1[0] >> SBC_PROTO_FIXED8_SCALE;
-	t2[1] = t1[1] >> SBC_PROTO_FIXED8_SCALE;
-	t2[2] = t1[2] >> SBC_PROTO_FIXED8_SCALE;
-	t2[3] = t1[3] >> SBC_PROTO_FIXED8_SCALE;
-	t2[4] = t1[4] >> SBC_PROTO_FIXED8_SCALE;
-	t2[5] = t1[5] >> SBC_PROTO_FIXED8_SCALE;
-	t2[6] = t1[6] >> SBC_PROTO_FIXED8_SCALE;
-	t2[7] = t1[7] >> SBC_PROTO_FIXED8_SCALE;
-
-	/* do the cos transform */
-	for (i = 0, hop = 0; i < 8; hop += 16, i++) {
-		out[i] = ((FIXED_A) t2[0] * cos_table_fixed_8[0 + hop] +
-			(FIXED_A) t2[1] * cos_table_fixed_8[1 + hop] +
-			(FIXED_A) t2[2] * cos_table_fixed_8[2 + hop] +
-			(FIXED_A) t2[3] * cos_table_fixed_8[3 + hop] +
-			(FIXED_A) t2[4] * cos_table_fixed_8[4 + hop] +
-			(FIXED_A) t2[5] * cos_table_fixed_8[9 + hop] +
-			(FIXED_A) t2[6] * cos_table_fixed_8[10 + hop] +
-			(FIXED_A) t2[7] * cos_table_fixed_8[11 + hop]) >>
-			(SBC_COS_TABLE_FIXED8_SCALE - SCALE_OUT_BITS);
-	}
-}
-
-static void sbc_analyze_4b_8s(int16_t *pcm, int16_t *x,
-						int32_t *out, int out_stride)
-{
-	int i;
-
-	/* Input 4 x 8 Audio Samples */
-	for (i = 0; i < 32; i += 8) {
-		x[128 + i] = x[0 + i] = pcm[31 - i];
-		x[129 + i] = x[1 + i] = pcm[30 - i];
-		x[130 + i] = x[2 + i] = pcm[29 - i];
-		x[131 + i] = x[3 + i] = pcm[28 - i];
-		x[132 + i] = x[4 + i] = pcm[27 - i];
-		x[133 + i] = x[5 + i] = pcm[26 - i];
-		x[134 + i] = x[6 + i] = pcm[25 - i];
-		x[135 + i] = x[7 + i] = pcm[24 - i];
-	}
-
-	/* Analyze four blocks */
-	sbc_analyze_eight(x + 24, out);
-	out += out_stride;
-	sbc_analyze_eight(x + 16, out);
-	out += out_stride;
-	sbc_analyze_eight(x + 8, out);
-	out += out_stride;
-	sbc_analyze_eight(x, out);
-}
-
-/*
  * A reference C code of analysis filter with SIMD-friendly tables
  * reordering and code layout. This code can be used to develop platform
  * specific SIMD optimizations. Also it may be used as some kind of test
  * for compiler autovectorization capabilities (who knows, if the compiler
  * is very good at this stuff, hand optimized assembly may be not strictly
  * needed for some platform).
+ *
+ * Note: It is also possible to make a simple variant of analysis filter,
+ * which needs only a single constants table without taking care about
+ * even/odd cases. This simple variant of filter can be implemented without
+ * input data permutation. The only thing that would be lost is the
+ * possibility to use pairwise SIMD multiplications. But for some simple
+ * CPU cores without SIMD extensions it can be useful. If anybody is
+ * interested in implementing such variant of a filter, sourcecode from
+ * bluez versions 4.26/4.27 can be used as a reference and the history of
+ * the changes in git repository done around that time may be worth checking.
  */
 
 static inline void sbc_analyze_four_simd(const int16_t *in, int32_t *out,
@@ -398,8 +265,8 @@ static inline void sbc_analyze_4b_8s_simd(int16_t *pcm, int16_t *x,
 void sbc_init_primitives(struct sbc_encoder_state *state)
 {
 	/* Default implementation for analyze functions */
-	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s;
-	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s;
+	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_simd;
+	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_simd;
 
 	/* X86/AMD64 optimizations */
 #ifdef SBC_BUILD_WITH_MMX_SUPPORT
