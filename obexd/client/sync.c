@@ -119,8 +119,28 @@ static DBusMessage *sync_getphonebook(DBusConnection *connection,
 static DBusMessage *sync_putphonebook(DBusConnection *connection,
 			DBusMessage *message, void *user_data)
 {
-	return g_dbus_create_error(message,
-			ERROR_INF ".Failed", "Not implemented");
+	struct session_data *session = user_data;
+	struct sync_data *syncdata = session_get_data(session);
+	const char *buf;
+	char *buffer;
+
+	if (dbus_message_get_args(message, NULL,
+			DBUS_TYPE_STRING, &buf,
+			DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+			ERROR_INF ".InvalidArguments", NULL);
+
+	/* set default phonebook_path to memory internal phonebook */
+	if (!syncdata->phonebook_path)
+		syncdata->phonebook_path = g_strdup("telecom/pb.vcf");
+
+	buffer = g_strdup(buf);
+
+	if (session_put(session, buffer, syncdata->phonebook_path) < 0)
+		return g_dbus_create_error(message,
+				ERROR_INF ".Failed", "Failed");
+
+	return dbus_message_new_method_return(message);
 }
 
 static GDBusMethodTable sync_methods[] = {

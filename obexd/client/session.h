@@ -80,3 +80,5 @@ int session_pull(struct session_data *session,
 int session_register(struct session_data *session);
 void *session_get_data(struct session_data *session);
 void session_set_data(struct session_data *session, void *priv);
+int session_put(struct session_data *session, char *buf,
+				const char *targetname);

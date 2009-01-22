@@ -1647,3 +1647,76 @@ void session_set_data(struct session_data *session, void *priv)
 {
 	session->priv = priv;
 }
+
+static void put_buf_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+{
+	struct session_data *session = user_data;
+	gint written;
+
+	if (session->transferred == session->size)
+		goto complete;
+
+	if (gw_obex_xfer_write(xfer, session->buffer + session->transferred,
+				session->size - session->transferred,
+				&written, NULL) == FALSE)
+		goto complete;
+
+	if (gw_obex_xfer_flush(xfer, NULL) == FALSE)
+		goto complete;
+
+	session->transferred += written;
+
+	agent_notify_progress(session->conn, session->agent_name,
+		session->agent_path, session->transfer_path,
+		session->transferred);
+
+	return;
+
+complete:
+	if (session->transferred == session->size)
+		agent_notify_complete(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path);
+	else
+		agent_notify_error(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path,
+			"Error sending object");
+
+	unregister_transfer(session);
+	session_unref(session);
+}
+
+int session_put(struct session_data *session, char *buf, const char *targetname)
+{
+	GwObexXfer *xfer;
+
+	if (session->obex == NULL)
+		return -ENOTCONN;
+
+	session->transfer_path = register_transfer(session->conn, session);
+	if (session->transfer_path == NULL)
+		return -EIO;
+
+	session->size = strlen(buf);
+	session->transferred = 0;
+	session->name = g_strdup(targetname);
+	session->buffer = buf;
+
+	xfer = gw_obex_put_async(session->obex, session->name, NULL,
+						session->size, -1, NULL);
+	if (xfer == NULL)
+		return -ENOTCONN;
+
+	session_ref(session);
+
+	gw_obex_xfer_set_callback(xfer, put_buf_xfer_progress, session);
+
+	session->xfer = xfer;
+
+	agent_request(session->conn, session->agent_name,
+		session->agent_path, session->transfer_path);
+
+	agent_notify_progress(session->conn, session->agent_name,
+		session->agent_path, session->transfer_path, 0);
+
+	return 0;
+}
