@@ -229,7 +229,7 @@ static int bnep_exec(const char **argv)
 
 	if (!g_spawn_async(NULL, (char **) argv, NULL, flags, bnep_setup, NULL,
 				&pid, NULL)) {
-		error("Unable to execute %s %s", *argv[0], *argv[1]);
+		error("Unable to execute %s %s", argv[0], argv[1]);
 		return -EINVAL;
 	}
 
