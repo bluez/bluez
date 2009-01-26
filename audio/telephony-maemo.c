@@ -1030,11 +1030,11 @@ static void get_operator_name_reply(DBusPendingCall *pending_call,
 	}
 
 	dbus_error_init(&err);
-	if (!dbus_message_get_args(reply, NULL,
+	if (!dbus_message_get_args(reply, &err,
 					DBUS_TYPE_STRING, &name,
 					DBUS_TYPE_INT32, &net_err,
 					DBUS_TYPE_INVALID)) {
-		error("Unexpected paramters in get_operator_name reply:",
+		error("Unexpected get_operator_name reply parameters: %s, %s",
 			err.name, err.message);
 		dbus_error_free(&err);
 		goto done;
