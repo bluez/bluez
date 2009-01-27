@@ -348,6 +348,9 @@ struct avdtp {
 	avdtp_session_state_t last_state;
 	avdtp_session_state_t state;
 
+	/* True if the session should be automatically disconnected */
+	gboolean auto_dc;
+
 	guint io;
 	int sock;
 
@@ -703,7 +706,7 @@ static void avdtp_sep_set_state(struct avdtp *session,
 
 	switch (state) {
 	case AVDTP_STATE_OPEN:
-		if (old_state > AVDTP_STATE_OPEN)
+		if (old_state > AVDTP_STATE_OPEN && session->auto_dc)
 			stream->idle_timer = g_timeout_add_seconds(STREAM_TIMEOUT,
 								stream_timeout,
 								stream);
@@ -2224,6 +2227,7 @@ static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst
 	bacpy(&session->dst, dst);
 	session->ref = 1;
 	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
+	session->auto_dc = TRUE;
 
 	sessions = g_slist_append(sessions, session);
 
@@ -2765,7 +2769,11 @@ static void auth_cb(DBusError *derr, void *user_data)
 
 	session->buf = g_malloc0(session->mtu);
 
+	/* Here we set the disconnect timer so we don't stay in IDLE state
+	 * indefinitely but set auto_dc to FALSE so that when a stream is
+	 * finally opened it doesn't get closed due to a timeout */
 	set_disconnect_timer(session);
+	avdtp_set_auto_disconnect(session, FALSE);
 
 	session->state = AVDTP_SESSION_STATE_CONNECTED;
 
@@ -2970,4 +2978,9 @@ void avdtp_exit(const bdaddr_t *src)
 gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream)
 {
 	return g_slist_find(session->streams, stream) ? TRUE : FALSE;
+}
+
+void avdtp_set_auto_disconnect(struct avdtp *session, gboolean auto_dc)
+{
+	session->auto_dc = auto_dc;
 }

@@ -265,5 +265,7 @@ int avdtp_error_posix_errno(struct avdtp_error *err);
 
 void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 
+void avdtp_set_auto_disconnect(struct avdtp *session, gboolean auto_dc);
+
 int avdtp_init(const bdaddr_t *src, GKeyFile *config);
 void avdtp_exit(const bdaddr_t *src);

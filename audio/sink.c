@@ -425,6 +425,8 @@ static DBusMessage *sink_connect(DBusConnection *conn,
 						".AlreadyConnected",
 						"Device Already Connected");
 
+	avdtp_set_auto_disconnect(sink->session, FALSE);
+
 	pending = g_new0(struct pending_request, 1);
 	pending->conn = dbus_connection_ref(conn);
 	pending->msg = dbus_message_ref(msg);
