@@ -753,17 +753,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "names");
 	name = textfile_get(filename, peer_addr);
 
-	if (!alias) {
-		real_alias = NULL;
-
-		if (!name) {
-			alias = g_strdup(peer_addr);
-			g_strdelimit(alias, ":", '-');
-		} else
-			alias = g_strdup(name);
-	} else
-		real_alias = alias;
-
 	tmp_name = extract_eir_name(data, &name_type);
 	if (tmp_name) {
 		if (name_type == 0x09) {
@@ -781,6 +770,17 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				name = tmp_name;
 		}
 	}
+
+	if (!alias) {
+		real_alias = NULL;
+
+		if (!name) {
+			alias = g_strdup(peer_addr);
+			g_strdelimit(alias, ":", '-');
+		} else
+			alias = g_strdup(name);
+	} else
+		real_alias = alias;
 
 	path = adapter_get_path(adapter);
 	icon = class_to_icon(class);
