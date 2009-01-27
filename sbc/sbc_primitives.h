@@ -27,6 +27,7 @@
 #define __SBC_PRIMITIVES_H
 
 #define SCALE_OUT_BITS 15
+#define SBC_X_BUFFER_SIZE 328
 
 #ifdef __GNUC__
 #define SBC_ALWAYS_INLINE __attribute__((always_inline))
@@ -35,17 +36,28 @@
 #endif
 
 struct sbc_encoder_state {
-	int subbands;
-	int position[2];
-	int16_t SBC_ALIGNED X[2][256];
+	int position;
+	int16_t SBC_ALIGNED X[2][SBC_X_BUFFER_SIZE];
 	/* Polyphase analysis filter for 4 subbands configuration,
 	 * it handles 4 blocks at once */
-	void (*sbc_analyze_4b_4s)(int16_t *pcm, int16_t *x,
-					int32_t *out, int out_stride);
+	void (*sbc_analyze_4b_4s)(int16_t *x, int32_t *out, int out_stride);
 	/* Polyphase analysis filter for 8 subbands configuration,
 	 * it handles 4 blocks at once */
-	void (*sbc_analyze_4b_8s)(int16_t *pcm, int16_t *x,
-					int32_t *out, int out_stride);
+	void (*sbc_analyze_4b_8s)(int16_t *x, int32_t *out, int out_stride);
+	/* Process input data (deinterleave, endian conversion, reordering),
+	 * depending on the number of subbands and input data byte order */
+	int (*sbc_enc_process_input_4s_le)(int position,
+			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+			int nsamples, int nchannels);
+	int (*sbc_enc_process_input_4s_be)(int position,
+			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+			int nsamples, int nchannels);
+	int (*sbc_enc_process_input_8s_le)(int position,
+			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+			int nsamples, int nchannels);
+	int (*sbc_enc_process_input_8s_be)(int position,
+			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+			int nsamples, int nchannels);
 };
 
 /*

@@ -657,14 +657,11 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 		for (ch = 0; ch < frame->channels; ch++)
 			for (blk = 0; blk < frame->blocks; blk += 4) {
 				state->sbc_analyze_4b_4s(
-					&frame->pcm_sample[ch][blk * 4],
-					&state->X[ch][state->position[ch]],
+					&state->X[ch][state->position +
+							48 - blk * 4],
 					frame->sb_sample_f[blk][ch],
 					frame->sb_sample_f[blk + 1][ch] -
 					frame->sb_sample_f[blk][ch]);
-				state->position[ch] -= 16;
-				if (state->position[ch] < 0)
-					state->position[ch] = 64 - 16;
 			}
 		return frame->blocks * 4;
 
@@ -672,14 +669,11 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 		for (ch = 0; ch < frame->channels; ch++)
 			for (blk = 0; blk < frame->blocks; blk += 4) {
 				state->sbc_analyze_4b_8s(
-					&frame->pcm_sample[ch][blk * 8],
-					&state->X[ch][state->position[ch]],
+					&state->X[ch][state->position +
+							96 - blk * 8],
 					frame->sb_sample_f[blk][ch],
 					frame->sb_sample_f[blk + 1][ch] -
 					frame->sb_sample_f[blk][ch]);
-				state->position[ch] -= 32;
-				if (state->position[ch] < 0)
-					state->position[ch] = 128 - 32;
 			}
 		return frame->blocks * 8;
 
@@ -935,8 +929,7 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 				const struct sbc_frame *frame)
 {
 	memset(&state->X, 0, sizeof(state->X));
-	state->subbands = frame->subbands;
-	state->position[0] = state->position[1] = 12 * frame->subbands;
+	state->position = SBC_X_BUFFER_SIZE - frame->subbands * 9;
 
 	sbc_init_primitives(state);
 }
@@ -1060,8 +1053,10 @@ int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 		int output_len, int *written)
 {
 	struct sbc_priv *priv;
-	char *ptr;
-	int i, ch, framelen, samples;
+	int framelen, samples;
+	int (*sbc_enc_process_input)(int position,
+			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+			int nsamples, int nchannels);
 
 	if (!sbc && !input)
 		return -EIO;
@@ -1096,19 +1091,27 @@ int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 	if (!output || output_len < priv->frame.length)
 		return -ENOSPC;
 
-	ptr = input;
-
-	for (i = 0; i < priv->frame.subbands * priv->frame.blocks; i++) {
-		for (ch = 0; ch < priv->frame.channels; ch++) {
-			int16_t s;
-			if (sbc->endian == SBC_BE)
-				s = (ptr[0] & 0xff) << 8 | (ptr[1] & 0xff);
-			else
-				s = (ptr[0] & 0xff) | (ptr[1] & 0xff) << 8;
-			ptr += 2;
-			priv->frame.pcm_sample[ch][i] = s;
-		}
+	/* Select the needed input data processing function and call it */
+	if (priv->frame.subbands == 8) {
+		if (sbc->endian == SBC_BE)
+			sbc_enc_process_input =
+				priv->enc_state.sbc_enc_process_input_8s_be;
+		else
+			sbc_enc_process_input =
+				priv->enc_state.sbc_enc_process_input_8s_le;
+	} else {
+		if (sbc->endian == SBC_BE)
+			sbc_enc_process_input =
+				priv->enc_state.sbc_enc_process_input_4s_be;
+		else
+			sbc_enc_process_input =
+				priv->enc_state.sbc_enc_process_input_4s_le;
 	}
+
+	priv->enc_state.position = sbc_enc_process_input(
+		priv->enc_state.position, (const uint8_t *) input,
+		priv->enc_state.X, priv->frame.subbands * priv->frame.blocks,
+		priv->frame.channels);
 
 	samples = sbc_analyze_audio(&priv->enc_state, &priv->frame);
 

@@ -245,28 +245,9 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		: "memory");
 }
 
-static inline void sbc_analyze_4b_4s_mmx(int16_t *pcm, int16_t *x,
-						int32_t *out, int out_stride)
+static inline void sbc_analyze_4b_4s_mmx(int16_t *x, int32_t *out,
+						int out_stride)
 {
-	/* Fetch audio samples and do input data reordering for SIMD */
-	x[64] = x[0]  = pcm[8 + 7];
-	x[65] = x[1]  = pcm[8 + 3];
-	x[66] = x[2]  = pcm[8 + 6];
-	x[67] = x[3]  = pcm[8 + 4];
-	x[68] = x[4]  = pcm[8 + 0];
-	x[69] = x[5]  = pcm[8 + 2];
-	x[70] = x[6]  = pcm[8 + 1];
-	x[71] = x[7]  = pcm[8 + 5];
-
-	x[72] = x[8]  = pcm[0 + 7];
-	x[73] = x[9]  = pcm[0 + 3];
-	x[74] = x[10] = pcm[0 + 6];
-	x[75] = x[11] = pcm[0 + 4];
-	x[76] = x[12] = pcm[0 + 0];
-	x[77] = x[13] = pcm[0 + 2];
-	x[78] = x[14] = pcm[0 + 1];
-	x[79] = x[15] = pcm[0 + 5];
-
 	/* Analyze blocks */
 	sbc_analyze_four_mmx(x + 12, out, analysis_consts_fixed4_simd_odd);
 	out += out_stride;
@@ -279,44 +260,9 @@ static inline void sbc_analyze_4b_4s_mmx(int16_t *pcm, int16_t *x,
 	asm volatile ("emms\n");
 }
 
-static inline void sbc_analyze_4b_8s_mmx(int16_t *pcm, int16_t *x,
-						int32_t *out, int out_stride)
+static inline void sbc_analyze_4b_8s_mmx(int16_t *x, int32_t *out,
+						int out_stride)
 {
-	/* Fetch audio samples and do input data reordering for SIMD */
-	x[128] = x[0]  = pcm[16 + 15];
-	x[129] = x[1]  = pcm[16 + 7];
-	x[130] = x[2]  = pcm[16 + 14];
-	x[131] = x[3]  = pcm[16 + 8];
-	x[132] = x[4]  = pcm[16 + 13];
-	x[133] = x[5]  = pcm[16 + 9];
-	x[134] = x[6]  = pcm[16 + 12];
-	x[135] = x[7]  = pcm[16 + 10];
-	x[136] = x[8]  = pcm[16 + 11];
-	x[137] = x[9]  = pcm[16 + 3];
-	x[138] = x[10] = pcm[16 + 6];
-	x[139] = x[11] = pcm[16 + 0];
-	x[140] = x[12] = pcm[16 + 5];
-	x[141] = x[13] = pcm[16 + 1];
-	x[142] = x[14] = pcm[16 + 4];
-	x[143] = x[15] = pcm[16 + 2];
-
-	x[144] = x[16] = pcm[0 + 15];
-	x[145] = x[17] = pcm[0 + 7];
-	x[146] = x[18] = pcm[0 + 14];
-	x[147] = x[19] = pcm[0 + 8];
-	x[148] = x[20] = pcm[0 + 13];
-	x[149] = x[21] = pcm[0 + 9];
-	x[150] = x[22] = pcm[0 + 12];
-	x[151] = x[23] = pcm[0 + 10];
-	x[152] = x[24] = pcm[0 + 11];
-	x[153] = x[25] = pcm[0 + 3];
-	x[154] = x[26] = pcm[0 + 6];
-	x[155] = x[27] = pcm[0 + 0];
-	x[156] = x[28] = pcm[0 + 5];
-	x[157] = x[29] = pcm[0 + 1];
-	x[158] = x[30] = pcm[0 + 4];
-	x[159] = x[31] = pcm[0 + 2];
-
 	/* Analyze blocks */
 	sbc_analyze_eight_mmx(x + 24, out, analysis_consts_fixed8_simd_odd);
 	out += out_stride;

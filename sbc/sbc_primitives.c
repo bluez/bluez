@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <limits.h>
+#include <string.h>
 #include "sbc.h"
 #include "sbc_math.h"
 #include "sbc_tables.h"
@@ -179,28 +180,9 @@ static inline void sbc_analyze_eight_simd(const int16_t *in, int32_t *out,
 			(SBC_COS_TABLE_FIXED8_SCALE - SCALE_OUT_BITS);
 }
 
-static inline void sbc_analyze_4b_4s_simd(int16_t *pcm, int16_t *x,
+static inline void sbc_analyze_4b_4s_simd(int16_t *x,
 						int32_t *out, int out_stride)
 {
-	/* Fetch audio samples and do input data reordering for SIMD */
-	x[64] = x[0]  = pcm[8 + 7];
-	x[65] = x[1]  = pcm[8 + 3];
-	x[66] = x[2]  = pcm[8 + 6];
-	x[67] = x[3]  = pcm[8 + 4];
-	x[68] = x[4]  = pcm[8 + 0];
-	x[69] = x[5]  = pcm[8 + 2];
-	x[70] = x[6]  = pcm[8 + 1];
-	x[71] = x[7]  = pcm[8 + 5];
-
-	x[72] = x[8]  = pcm[0 + 7];
-	x[73] = x[9]  = pcm[0 + 3];
-	x[74] = x[10] = pcm[0 + 6];
-	x[75] = x[11] = pcm[0 + 4];
-	x[76] = x[12] = pcm[0 + 0];
-	x[77] = x[13] = pcm[0 + 2];
-	x[78] = x[14] = pcm[0 + 1];
-	x[79] = x[15] = pcm[0 + 5];
-
 	/* Analyze blocks */
 	sbc_analyze_four_simd(x + 12, out, analysis_consts_fixed4_simd_odd);
 	out += out_stride;
@@ -211,44 +193,9 @@ static inline void sbc_analyze_4b_4s_simd(int16_t *pcm, int16_t *x,
 	sbc_analyze_four_simd(x + 0, out, analysis_consts_fixed4_simd_even);
 }
 
-static inline void sbc_analyze_4b_8s_simd(int16_t *pcm, int16_t *x,
+static inline void sbc_analyze_4b_8s_simd(int16_t *x,
 					  int32_t *out, int out_stride)
 {
-	/* Fetch audio samples and do input data reordering for SIMD */
-	x[128] = x[0]  = pcm[16 + 15];
-	x[129] = x[1]  = pcm[16 + 7];
-	x[130] = x[2]  = pcm[16 + 14];
-	x[131] = x[3]  = pcm[16 + 8];
-	x[132] = x[4]  = pcm[16 + 13];
-	x[133] = x[5]  = pcm[16 + 9];
-	x[134] = x[6]  = pcm[16 + 12];
-	x[135] = x[7]  = pcm[16 + 10];
-	x[136] = x[8]  = pcm[16 + 11];
-	x[137] = x[9]  = pcm[16 + 3];
-	x[138] = x[10] = pcm[16 + 6];
-	x[139] = x[11] = pcm[16 + 0];
-	x[140] = x[12] = pcm[16 + 5];
-	x[141] = x[13] = pcm[16 + 1];
-	x[142] = x[14] = pcm[16 + 4];
-	x[143] = x[15] = pcm[16 + 2];
-
-	x[144] = x[16] = pcm[0 + 15];
-	x[145] = x[17] = pcm[0 + 7];
-	x[146] = x[18] = pcm[0 + 14];
-	x[147] = x[19] = pcm[0 + 8];
-	x[148] = x[20] = pcm[0 + 13];
-	x[149] = x[21] = pcm[0 + 9];
-	x[150] = x[22] = pcm[0 + 12];
-	x[151] = x[23] = pcm[0 + 10];
-	x[152] = x[24] = pcm[0 + 11];
-	x[153] = x[25] = pcm[0 + 3];
-	x[154] = x[26] = pcm[0 + 6];
-	x[155] = x[27] = pcm[0 + 0];
-	x[156] = x[28] = pcm[0 + 5];
-	x[157] = x[29] = pcm[0 + 1];
-	x[158] = x[30] = pcm[0 + 4];
-	x[159] = x[31] = pcm[0 + 2];
-
 	/* Analyze blocks */
 	sbc_analyze_eight_simd(x + 24, out, analysis_consts_fixed8_simd_odd);
 	out += out_stride;
@@ -259,6 +206,201 @@ static inline void sbc_analyze_4b_8s_simd(int16_t *pcm, int16_t *x,
 	sbc_analyze_eight_simd(x + 0, out, analysis_consts_fixed8_simd_even);
 }
 
+static inline int16_t unaligned16_be(const uint8_t *ptr)
+{
+	return (int16_t) ((ptr[0] << 8) | ptr[1]);
+}
+
+static inline int16_t unaligned16_le(const uint8_t *ptr)
+{
+	return (int16_t) (ptr[0] | (ptr[1] << 8));
+}
+
+/*
+ * Internal helper functions for input data processing. In order to get
+ * optimal performance, it is important to have "nsamples", "nchannels"
+ * and "big_endian" arguments used with this inline function as compile
+ * time constants.
+ */
+
+static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s4_internal(
+	int position,
+	const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+	int nsamples, int nchannels, int big_endian)
+{
+	/* handle X buffer wraparound */
+	if (position < nsamples) {
+		if (nchannels > 0)
+			memcpy(&X[0][SBC_X_BUFFER_SIZE - 36], &X[0][position],
+							36 * sizeof(int16_t));
+		if (nchannels > 1)
+			memcpy(&X[1][SBC_X_BUFFER_SIZE - 36], &X[1][position],
+							36 * sizeof(int16_t));
+		position = SBC_X_BUFFER_SIZE - 36;
+	}
+
+	#define PCM(i) (big_endian ? \
+		unaligned16_be(pcm + (i) * 2) : unaligned16_le(pcm + (i) * 2))
+
+	/* copy/permutate audio samples */
+	while ((nsamples -= 8) >= 0) {
+		position -= 8;
+		if (nchannels > 0) {
+			int16_t *x = &X[0][position];
+			x[0]  = PCM(0 + 7 * nchannels);
+			x[1]  = PCM(0 + 3 * nchannels);
+			x[2]  = PCM(0 + 6 * nchannels);
+			x[3]  = PCM(0 + 4 * nchannels);
+			x[4]  = PCM(0 + 0 * nchannels);
+			x[5]  = PCM(0 + 2 * nchannels);
+			x[6]  = PCM(0 + 1 * nchannels);
+			x[7]  = PCM(0 + 5 * nchannels);
+		}
+		if (nchannels > 1) {
+			int16_t *x = &X[1][position];
+			x[0]  = PCM(1 + 7 * nchannels);
+			x[1]  = PCM(1 + 3 * nchannels);
+			x[2]  = PCM(1 + 6 * nchannels);
+			x[3]  = PCM(1 + 4 * nchannels);
+			x[4]  = PCM(1 + 0 * nchannels);
+			x[5]  = PCM(1 + 2 * nchannels);
+			x[6]  = PCM(1 + 1 * nchannels);
+			x[7]  = PCM(1 + 5 * nchannels);
+		}
+		pcm += 16 * nchannels;
+	}
+	#undef PCM
+
+	return position;
+}
+
+static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
+	int position,
+	const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+	int nsamples, int nchannels, int big_endian)
+{
+	/* handle X buffer wraparound */
+	if (position < nsamples) {
+		if (nchannels > 0)
+			memcpy(&X[0][SBC_X_BUFFER_SIZE - 72], &X[0][position],
+							72 * sizeof(int16_t));
+		if (nchannels > 1)
+			memcpy(&X[1][SBC_X_BUFFER_SIZE - 72], &X[1][position],
+							72 * sizeof(int16_t));
+		position = SBC_X_BUFFER_SIZE - 72;
+	}
+
+	#define PCM(i) (big_endian ? \
+		unaligned16_be(pcm + (i) * 2) : unaligned16_le(pcm + (i) * 2))
+
+	/* copy/permutate audio samples */
+	while ((nsamples -= 16) >= 0) {
+		position -= 16;
+		if (nchannels > 0) {
+			int16_t *x = &X[0][position];
+			x[0]  = PCM(0 + 15 * nchannels);
+			x[1]  = PCM(0 + 7 * nchannels);
+			x[2]  = PCM(0 + 14 * nchannels);
+			x[3]  = PCM(0 + 8 * nchannels);
+			x[4]  = PCM(0 + 13 * nchannels);
+			x[5]  = PCM(0 + 9 * nchannels);
+			x[6]  = PCM(0 + 12 * nchannels);
+			x[7]  = PCM(0 + 10 * nchannels);
+			x[8]  = PCM(0 + 11 * nchannels);
+			x[9]  = PCM(0 + 3 * nchannels);
+			x[10] = PCM(0 + 6 * nchannels);
+			x[11] = PCM(0 + 0 * nchannels);
+			x[12] = PCM(0 + 5 * nchannels);
+			x[13] = PCM(0 + 1 * nchannels);
+			x[14] = PCM(0 + 4 * nchannels);
+			x[15] = PCM(0 + 2 * nchannels);
+		}
+		if (nchannels > 1) {
+			int16_t *x = &X[1][position];
+			x[0]  = PCM(1 + 15 * nchannels);
+			x[1]  = PCM(1 + 7 * nchannels);
+			x[2]  = PCM(1 + 14 * nchannels);
+			x[3]  = PCM(1 + 8 * nchannels);
+			x[4]  = PCM(1 + 13 * nchannels);
+			x[5]  = PCM(1 + 9 * nchannels);
+			x[6]  = PCM(1 + 12 * nchannels);
+			x[7]  = PCM(1 + 10 * nchannels);
+			x[8]  = PCM(1 + 11 * nchannels);
+			x[9]  = PCM(1 + 3 * nchannels);
+			x[10] = PCM(1 + 6 * nchannels);
+			x[11] = PCM(1 + 0 * nchannels);
+			x[12] = PCM(1 + 5 * nchannels);
+			x[13] = PCM(1 + 1 * nchannels);
+			x[14] = PCM(1 + 4 * nchannels);
+			x[15] = PCM(1 + 2 * nchannels);
+		}
+		pcm += 32 * nchannels;
+	}
+	#undef PCM
+
+	return position;
+}
+
+/*
+ * Input data processing functions. The data is endian converted if needed,
+ * channels are deintrleaved and audio samples are reordered for use in
+ * SIMD-friendly analysis filter function. The results are put into "X"
+ * array, getting appended to the previous data (or it is better to say
+ * prepended, as the buffer is filled from top to bottom). Old data is
+ * discarded when neededed, but availability of (10 * nrof_subbands)
+ * contiguous samples is always guaranteed for the input to the analysis
+ * filter. This is achieved by copying a sufficient part of old data
+ * to the top of the buffer on buffer wraparound.
+ */
+
+static int sbc_enc_process_input_4s_le(int position,
+		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+		int nsamples, int nchannels)
+{
+	if (nchannels > 1)
+		return sbc_encoder_process_input_s4_internal(
+			position, pcm, X, nsamples, 2, 0);
+	else
+		return sbc_encoder_process_input_s4_internal(
+			position, pcm, X, nsamples, 1, 0);
+}
+
+static int sbc_enc_process_input_4s_be(int position,
+		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+		int nsamples, int nchannels)
+{
+	if (nchannels > 1)
+		return sbc_encoder_process_input_s4_internal(
+			position, pcm, X, nsamples, 2, 1);
+	else
+		return sbc_encoder_process_input_s4_internal(
+			position, pcm, X, nsamples, 1, 1);
+}
+
+static int sbc_enc_process_input_8s_le(int position,
+		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+		int nsamples, int nchannels)
+{
+	if (nchannels > 1)
+		return sbc_encoder_process_input_s8_internal(
+			position, pcm, X, nsamples, 2, 0);
+	else
+		return sbc_encoder_process_input_s8_internal(
+			position, pcm, X, nsamples, 1, 0);
+}
+
+static int sbc_enc_process_input_8s_be(int position,
+		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+		int nsamples, int nchannels)
+{
+	if (nchannels > 1)
+		return sbc_encoder_process_input_s8_internal(
+			position, pcm, X, nsamples, 2, 1);
+	else
+		return sbc_encoder_process_input_s8_internal(
+			position, pcm, X, nsamples, 1, 1);
+}
+
 /*
  * Detect CPU features and setup function pointers
  */
@@ -267,6 +409,12 @@ void sbc_init_primitives(struct sbc_encoder_state *state)
 	/* Default implementation for analyze functions */
 	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_simd;
 	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_simd;
+
+	/* Default implementation for input reordering / deinterleaving */
+	state->sbc_enc_process_input_4s_le = sbc_enc_process_input_4s_le;
+	state->sbc_enc_process_input_4s_be = sbc_enc_process_input_4s_be;
+	state->sbc_enc_process_input_8s_le = sbc_enc_process_input_8s_le;
+	state->sbc_enc_process_input_8s_be = sbc_enc_process_input_8s_be;
 
 	/* X86/AMD64 optimizations */
 #ifdef SBC_BUILD_WITH_MMX_SUPPORT
