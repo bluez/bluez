@@ -675,6 +675,8 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
+	ba2str(dst, address);
+
 	if (session->sock >= 0) {
 		error("Refusing unexpected connect from %s", address);
 		goto drop;
