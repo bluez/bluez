@@ -77,7 +77,7 @@ int tty_init(int services, const gchar *root_path,
 
 	tty_needs_reinit = TRUE;
 
-	fd = open(devnode, O_RDWR);
+	fd = open(devnode, O_RDWR | O_NOCTTY);
 	if (fd < 0)
 		return fd;
 
