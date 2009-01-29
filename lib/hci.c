@@ -510,6 +510,7 @@ char *hci_cmdtostr(unsigned int cmd)
 
 char *hci_commandstostr(uint8_t *commands, char *pref, int width)
 {
+	unsigned int maxwidth = width - 3;
 	hci_map *m;
 	char *off, *ptr, *str;
 	int size = 10;
@@ -537,7 +538,7 @@ char *hci_commandstostr(uint8_t *commands, char *pref, int width)
 
 	while (m->str) {
 		if (commands[m->val / 8] & (1 << (m->val % 8))) {
-			if (strlen(off) + strlen(m->str) > width - 3) {
+			if (strlen(off) + strlen(m->str) > maxwidth) {
 				ptr += sprintf(ptr, "\n%s", pref ? pref : "");
 				off = ptr;
 			}
@@ -670,6 +671,7 @@ static hci_map lmp_features_map[8][9] = {
 
 char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 {
+	unsigned int maxwidth = width - 1;
 	char *off, *ptr, *str;
 	int i, size = 10;
 
@@ -699,7 +701,7 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 
 		while (m->str) {
 			if (m->val & features[i]) {
-				if (strlen(off) + strlen(m->str) > width - 1) {
+				if (strlen(off) + strlen(m->str) > maxwidth) {
 					ptr += sprintf(ptr, "\n%s", pref ? pref : "");
 					off = ptr;
 				}
