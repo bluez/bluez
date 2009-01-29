@@ -74,7 +74,7 @@ struct a2dp_setup_cb {
 	a2dp_stream_cb_t resume_cb;
 	a2dp_stream_cb_t suspend_cb;
 	void *user_data;
-	int id;
+	unsigned int id;
 };
 
 struct a2dp_setup {

@@ -462,7 +462,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 
 	debug("Got %d bytes of data for AVCTP session %p", ret, session);
 
-	if (ret < sizeof(struct avctp_header)) {
+	if ((unsigned int) ret < sizeof(struct avctp_header)) {
 		error("Too small AVCTP packet");
 		goto failed;
 	}
@@ -477,7 +477,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 			avctp->cr, avctp->ipid, ntohs(avctp->pid));
 
 	ret -= sizeof(struct avctp_header);
-	if (ret < sizeof(struct avrcp_header)) {
+	if ((unsigned int) ret < sizeof(struct avrcp_header)) {
 		error("Too small AVRCP packet");
 		goto failed;
 	}

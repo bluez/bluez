@@ -456,7 +456,7 @@ static gboolean try_send(int sk, void *data, size_t len)
 
 	if (ret < 0)
 		ret = -errno;
-	else if (ret != len)
+	else if ((size_t) ret != len)
 		ret = -EIO;
 
 	if (ret < 0) {
@@ -471,7 +471,7 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 				uint8_t message_type, uint8_t signal_id,
 				void *data, size_t len)
 {
-	int cont_fragments, sent;
+	unsigned int cont_fragments, sent;
 	struct avdtp_start_header start;
 	struct avdtp_continue_header cont;
 
@@ -1058,7 +1058,7 @@ static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
 							void *buf, int size)
 {
 	GSList *l;
-	int rsp_size, sep_count, i;
+	unsigned int rsp_size, sep_count, i;
 	struct seid_info *seps;
 
 	sep_count = g_slist_length(session->server->seps);
@@ -1077,11 +1077,11 @@ static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
 }
 
 static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
-					struct seid_req *req, int size)
+					struct seid_req *req, unsigned int size)
 {
 	GSList *l, *caps;
 	struct avdtp_local_sep *sep = NULL;
-	int rsp_size;
+	unsigned int rsp_size;
 	uint8_t err, buf[1024], *ptr = buf;
 
 	if (size < sizeof(struct seid_req)) {
@@ -1123,7 +1123,7 @@ failed:
 }
 
 static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
-					struct setconf_req *req, int size)
+				struct setconf_req *req, unsigned int size)
 {
 	struct conf_rej rej;
 	struct avdtp_local_sep *sep;
@@ -1222,7 +1222,7 @@ static gboolean avdtp_reconf_cmd(struct avdtp *session, uint8_t transaction,
 }
 
 static gboolean avdtp_open_cmd(struct avdtp *session, uint8_t transaction,
-				struct seid_req *req, int size)
+				struct seid_req *req, unsigned int size)
 {
 	struct avdtp_local_sep *sep;
 	struct avdtp_stream *stream;
@@ -1270,7 +1270,7 @@ failed:
 }
 
 static gboolean avdtp_start_cmd(struct avdtp *session, uint8_t transaction,
-				struct start_req *req, int size)
+				struct start_req *req, unsigned int size)
 {
 	struct avdtp_local_sep *sep;
 	struct avdtp_stream *stream;
@@ -1326,7 +1326,7 @@ failed:
 }
 
 static gboolean avdtp_close_cmd(struct avdtp *session, uint8_t transaction,
-				struct seid_req *req, int size)
+				struct seid_req *req, unsigned int size)
 {
 	struct avdtp_local_sep *sep;
 	struct avdtp_stream *stream;
@@ -1375,7 +1375,7 @@ failed:
 }
 
 static gboolean avdtp_suspend_cmd(struct avdtp *session, uint8_t transaction,
-					struct suspend_req *req, int size)
+				struct suspend_req *req, unsigned int size)
 {
 	struct avdtp_local_sep *sep;
 	struct avdtp_stream *stream;
@@ -1431,7 +1431,7 @@ failed:
 }
 
 static gboolean avdtp_abort_cmd(struct avdtp *session, uint8_t transaction,
-				struct seid_req *req, int size)
+				struct seid_req *req, unsigned int size)
 {
 	struct avdtp_local_sep *sep;
 	uint8_t err;
@@ -2058,7 +2058,7 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 
 static gboolean avdtp_get_capabilities_resp(struct avdtp *session,
 						struct getcap_resp *resp,
-						int size)
+						unsigned int size)
 {
 	struct avdtp_remote_sep *sep;
 	uint8_t seid;
@@ -2245,7 +2245,7 @@ static gboolean avdtp_parse_resp(struct avdtp *session,
 	return TRUE;
 }
 
-static gboolean seid_rej_to_err(struct seid_rej *rej, int size,
+static gboolean seid_rej_to_err(struct seid_rej *rej, unsigned int size,
 					struct avdtp_error *err)
 {
 	if (size < sizeof(struct seid_rej)) {
@@ -2258,7 +2258,7 @@ static gboolean seid_rej_to_err(struct seid_rej *rej, int size,
 	return TRUE;
 }
 
-static gboolean conf_rej_to_err(struct conf_rej *rej, int size,
+static gboolean conf_rej_to_err(struct conf_rej *rej, unsigned int size,
 				struct avdtp_error *err, uint8_t *category)
 {
 	if (size < sizeof(struct conf_rej)) {
@@ -2274,7 +2274,7 @@ static gboolean conf_rej_to_err(struct conf_rej *rej, int size,
 	return TRUE;
 }
 
-static gboolean stream_rej_to_err(struct stream_rej *rej, int size,
+static gboolean stream_rej_to_err(struct stream_rej *rej, unsigned int size,
 					struct avdtp_error *err,
 					uint8_t *acp_seid)
 {
