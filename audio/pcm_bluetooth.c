@@ -96,10 +96,10 @@ struct bluetooth_a2dp {
 	sbc_capabilities_t sbc_capabilities;
 	sbc_t sbc;				/* Codec data */
 	int sbc_initialized;			/* Keep track if the encoder is initialized */
-	int codesize;				/* SBC codesize */
+	unsigned int codesize;			/* SBC codesize */
 	int samples;				/* Number of encoded samples */
 	uint8_t buffer[BUFFER_SIZE];		/* Codec transfer buffer */
-	int count;				/* Codec transfer buffer counter */
+	unsigned int count;			/* Codec transfer buffer counter */
 
 	int nsamples;				/* Cumulative number of codec samples */
 	uint16_t seq_num;			/* Cumulative packet sequence */
@@ -131,11 +131,11 @@ struct bluetooth_data {
 	struct bluetooth_alsa_config alsa_config;	/* ALSA resource file parameters */
 	volatile snd_pcm_sframes_t hw_ptr;
 	int transport;					/* chosen transport SCO or AD2P */
-	int link_mtu;					/* MTU for selected transport channel */
+	unsigned int link_mtu;				/* MTU for selected transport channel */
 	volatile struct pollfd stream;			/* Audio stream filedescriptor */
 	struct pollfd server;				/* Audio daemon filedescriptor */
 	uint8_t buffer[BUFFER_SIZE];		/* Encoded transfer buffer */
-	int count;					/* Transfer buffer counter */
+	unsigned int count;				/* Transfer buffer counter */
 	struct bluetooth_a2dp a2dp;			/* A2DP data */
 
 	pthread_t hw_thread;				/* Makes virtual hw pointer move */
@@ -812,7 +812,8 @@ static snd_pcm_sframes_t bluetooth_hsp_read(snd_pcm_ioplug_t *io,
 	struct bluetooth_data *data = io->private_data;
 	snd_pcm_uframes_t frames_to_write, ret;
 	unsigned char *buff;
-	int nrecv, frame_size = 0;
+	unsigned int frame_size = 0;
+	int nrecv;
 
 	DBG("areas->step=%u areas->first=%u offset=%lu size=%lu io->nonblock=%u",
 			areas->step, areas->first, offset, size, io->nonblock);
@@ -830,7 +831,7 @@ static snd_pcm_sframes_t bluetooth_hsp_read(snd_pcm_ioplug_t *io,
 		goto done;
 	}
 
-	if (nrecv != data->link_mtu) {
+	if ((unsigned int) nrecv != data->link_mtu) {
 		ret = -EIO;
 		SNDERR(strerror(-ret));
 		goto done;
@@ -969,7 +970,8 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	struct bluetooth_data *data = io->private_data;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	snd_pcm_sframes_t ret = 0;
-	int frame_size, encoded, written, bytes_left;
+	unsigned int bytes_left;
+	int frame_size, encoded, written;
 	uint8_t *buff;
 
 	DBG("areas->step=%u areas->first=%u offset=%lu size=%lu",
