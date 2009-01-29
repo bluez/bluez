@@ -651,30 +651,37 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 				struct sbc_frame *frame)
 {
 	int ch, blk;
+	int16_t *x;
 
 	switch (frame->subbands) {
 	case 4:
-		for (ch = 0; ch < frame->channels; ch++)
+		for (ch = 0; ch < frame->channels; ch++) {
+			x = &state->X[ch][state->position - 16 +
+							frame->blocks * 4];
 			for (blk = 0; blk < frame->blocks; blk += 4) {
 				state->sbc_analyze_4b_4s(
-					&state->X[ch][state->position +
-							48 - blk * 4],
+					x,
 					frame->sb_sample_f[blk][ch],
 					frame->sb_sample_f[blk + 1][ch] -
 					frame->sb_sample_f[blk][ch]);
+				x -= 16;
 			}
+		}
 		return frame->blocks * 4;
 
 	case 8:
-		for (ch = 0; ch < frame->channels; ch++)
+		for (ch = 0; ch < frame->channels; ch++) {
+			x = &state->X[ch][state->position - 32 +
+							frame->blocks * 8];
 			for (blk = 0; blk < frame->blocks; blk += 4) {
 				state->sbc_analyze_4b_8s(
-					&state->X[ch][state->position +
-							96 - blk * 8],
+					x,
 					frame->sb_sample_f[blk][ch],
 					frame->sb_sample_f[blk + 1][ch] -
 					frame->sb_sample_f[blk][ch]);
+				x -= 32;
 			}
+		}
 		return frame->blocks * 8;
 
 	default:
