@@ -213,7 +213,7 @@ static int write_key(const char *pathname, const char *key, const char *value, i
 		goto unmap;
 	}
 
-	if (value && (strlen(value) == end - off - len - 1) &&
+	if (value && ((ssize_t) strlen(value) == end - off - len - 1) &&
 			!strncmp(off + len + 1, value, end - off - len - 1))
 		goto unmap;
 

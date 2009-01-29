@@ -43,7 +43,8 @@ int main(int argc, char *argv[])
 {
 	char filename[] = "/tmp/textfile";
 	char key[18], value[512], *str;
-	int i, j, fd, err, size, max = 10;
+	unsigned int i, j, size, max = 10;
+	int fd, err;
 
 	size = getpagesize();
 	printf("System uses a page size of %d bytes\n\n", size);

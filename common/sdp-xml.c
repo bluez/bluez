@@ -411,8 +411,7 @@ void convert_sdp_record_to_xml(sdp_record_t *rec,
 static sdp_data_t *sdp_xml_parse_uuid128(const char *data)
 {
 	uint128_t val;
-	int i;
-	int j;
+	unsigned int i, j;
 
 	char buf[3];
 

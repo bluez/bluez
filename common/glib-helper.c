@@ -227,7 +227,7 @@ static void search_completed_cb(uint8_t type, uint16_t status,
 		bytesleft -= recsize;
 
 		recs = sdp_list_append(recs, rec);
-	} while (scanned < size && bytesleft > 0);
+	} while (scanned < (ssize_t) size && bytesleft > 0);
 
 done:
 	cache_sdp_session(&ctxt->src, &ctxt->dst, ctxt->session);
