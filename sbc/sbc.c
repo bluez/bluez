@@ -362,7 +362,7 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 				size_t len)
 {
-	int consumed;
+	unsigned int consumed;
 	/* Will copy the parts of the header that are relevant to crc
 	 * calculation here */
 	uint8_t crc_header[11] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -794,7 +794,7 @@ static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(
 		/* like frame->sb_sample but joint stereo */
 		int32_t sb_sample_j[16][2];
 		/* scalefactor and scale_factor in joint case */
-		u_int32_t scalefactor_j[2];
+		uint32_t scalefactor_j[2];
 		uint8_t scale_factor_j[2];
 
 		uint8_t joint = 0;
@@ -807,6 +807,7 @@ static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(
 			scalefactor_j[1] = 2 << SCALE_OUT_BITS;
 
 			for (blk = 0; blk < frame->blocks; blk++) {
+				uint32_t tmp;
 				/* Calculate joint stereo signal */
 				sb_sample_j[blk][0] =
 					ASR(frame->sb_sample_f[blk][0][sb], 1) +
@@ -816,11 +817,13 @@ static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(
 					ASR(frame->sb_sample_f[blk][1][sb], 1);
 
 				/* calculate scale_factor_j and scalefactor_j for joint case */
-				while (scalefactor_j[0] < fabs(sb_sample_j[blk][0])) {
+				tmp = fabs(sb_sample_j[blk][0]);
+				while (scalefactor_j[0] < tmp) {
 					scale_factor_j[0]++;
 					scalefactor_j[0] *= 2;
 				}
-				while (scalefactor_j[1] < fabs(sb_sample_j[blk][1])) {
+				tmp = fabs(sb_sample_j[blk][1]);
+				while (scalefactor_j[1] < tmp) {
 					scale_factor_j[1]++;
 					scalefactor_j[1] *= 2;
 				}
