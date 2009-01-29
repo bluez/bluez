@@ -58,6 +58,10 @@ struct sbc_encoder_state {
 	int (*sbc_enc_process_input_8s_be)(int position,
 			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 			int nsamples, int nchannels);
+	/* Scale factors calculation */
+	void (*sbc_calc_scalefactors)(int32_t sb_sample_f[16][2][8],
+			uint32_t scale_factor[2][8],
+			int blocks, int channels, int subbands);
 };
 
 /*

@@ -77,7 +77,7 @@ struct sbc_frame {
 	uint8_t joint;
 
 	/* only the lower 4 bits of every element are to be used */
-	uint8_t scale_factor[2][8];
+	uint32_t scale_factor[2][8];
 
 	/* raw integer subband samples in the frame */
 	int32_t SBC_ALIGNED sb_sample_f[16][2][8];
@@ -745,8 +745,6 @@ static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(
 	uint32_t levels[2][8];	/* levels are derived from that */
 	uint32_t sb_sample_delta[2][8];
 
-	u_int32_t scalefactor[2][8];	/* derived from frame->scale_factor */
-
 	data[0] = SBC_SYNCWORD;
 
 	data[1] = (frame->frequency & 0x03) << 6;
@@ -784,19 +782,6 @@ static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(
 	crc_header[0] = data[1];
 	crc_header[1] = data[2];
 	crc_pos = 16;
-
-	for (ch = 0; ch < frame_channels; ch++) {
-		for (sb = 0; sb < frame_subbands; sb++) {
-			frame->scale_factor[ch][sb] = 0;
-			scalefactor[ch][sb] = 2 << SCALE_OUT_BITS;
-			for (blk = 0; blk < frame->blocks; blk++) {
-				while (scalefactor[ch][sb] < fabs(frame->sb_sample_f[blk][ch][sb])) {
-					frame->scale_factor[ch][sb]++;
-					scalefactor[ch][sb] *= 2;
-				}
-			}
-		}
-	}
 
 	if (frame->mode == JOINT_STEREO) {
 		/* like frame->sb_sample but joint stereo */
@@ -1114,6 +1099,10 @@ int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 		priv->frame.channels);
 
 	samples = sbc_analyze_audio(&priv->enc_state, &priv->frame);
+
+	priv->enc_state.sbc_calc_scalefactors(
+		priv->frame.sb_sample_f, priv->frame.scale_factor,
+		priv->frame.blocks, priv->frame.channels, priv->frame.subbands);
 
 	framelen = sbc_pack_frame(output, &priv->frame, output_len);
 

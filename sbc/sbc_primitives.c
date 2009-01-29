@@ -401,6 +401,44 @@ static int sbc_enc_process_input_8s_be(int position,
 			position, pcm, X, nsamples, 1, 1);
 }
 
+/* Supplementary function to count the number of leading zeros */
+
+static inline int sbc_clz(uint32_t x)
+{
+#ifdef __GNUC__
+	return __builtin_clz(x);
+#else
+	/* TODO: this should be replaced with something better if good
+	 * performance is wanted when using compilers other than gcc */
+	int cnt = 0;
+	while (x) {
+		cnt++;
+		x >>= 1;
+	}
+	return 32 - cnt;
+#endif
+}
+
+static void sbc_calc_scalefactors(
+	int32_t sb_sample_f[16][2][8],
+	uint32_t scale_factor[2][8],
+	int blocks, int channels, int subbands)
+{
+	int ch, sb, blk;
+	for (ch = 0; ch < channels; ch++) {
+		for (sb = 0; sb < subbands; sb++) {
+			uint32_t x = 1 << SCALE_OUT_BITS;
+			for (blk = 0; blk < blocks; blk++) {
+				int32_t tmp = fabs(sb_sample_f[blk][ch][sb]);
+				if (tmp != 0)
+					x |= tmp - 1;
+			}
+			scale_factor[ch][sb] = (31 - SCALE_OUT_BITS) -
+				sbc_clz(x);
+		}
+	}
+}
+
 /*
  * Detect CPU features and setup function pointers
  */
@@ -415,6 +453,9 @@ void sbc_init_primitives(struct sbc_encoder_state *state)
 	state->sbc_enc_process_input_4s_be = sbc_enc_process_input_4s_be;
 	state->sbc_enc_process_input_8s_le = sbc_enc_process_input_8s_le;
 	state->sbc_enc_process_input_8s_be = sbc_enc_process_input_8s_be;
+
+	/* Default implementation for scale factors calculation */
+	state->sbc_calc_scalefactors = sbc_calc_scalefactors;
 
 	/* X86/AMD64 optimizations */
 #ifdef SBC_BUILD_WITH_MMX_SUPPORT
