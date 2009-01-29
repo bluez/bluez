@@ -174,7 +174,8 @@ static int analyze_file(char *filename)
 	double rate;
 	int bitpool[SIZE], frame_len[SIZE];
 	int subbands, blocks, freq, mode, method;
-	int n, p1, p2, fd, len, size, count, num;
+	int n, p1, p2, fd, len, size, num;
+	unsigned int count;
 
 	if (strcmp(filename, "-")) {
 		printf("Filename\t\t%s\n", basename(filename));
@@ -235,7 +236,7 @@ static int analyze_file(char *filename)
 		if (len == 0)
 			break;
 
-		if (len < sizeof(hdr) || hdr.syncword != 0x9c) {
+		if (len < (int) sizeof(hdr) || hdr.syncword != 0x9c) {
 			fprintf(stderr, "Corrupted SBC stream "
 					"(len %d syncword 0x%02x)\n",
 					len, hdr.syncword);

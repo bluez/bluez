@@ -143,7 +143,7 @@ static void decode(char *filename, char *output, int tofile)
 		au_hdr.channels    = BE_INT(channels);
 
 		written = write(ad, &au_hdr, sizeof(au_hdr));
-		if (written < sizeof(au_hdr)) {
+		if (written < (int) sizeof(au_hdr)) {
 			fprintf(stderr, "Failed to write header\n");
 			goto close;
 		}

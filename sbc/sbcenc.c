@@ -67,7 +67,7 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 		fd = fileno(stdin);
 
 	len = read(fd, &au_hdr, sizeof(au_hdr));
-	if (len < sizeof(au_hdr)) {
+	if (len < (int) sizeof(au_hdr)) {
 		if (fd > fileno(stderr))
 			fprintf(stderr, "Can't read header from file %s: %s\n",
 						filename, strerror(errno));

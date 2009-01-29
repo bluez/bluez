@@ -12,8 +12,8 @@ libsbc_la_SOURCES = sbc.h sbc.c sbc_math.h sbc_tables.h \
 	sbc_primitives.h sbc_primitives_mmx.h sbc_primitives_neon.h \
 	sbc_primitives.c sbc_primitives_mmx.c sbc_primitives_neon.c
 
-libsbc_la_CFLAGS = -finline-functions -funswitch-loops -fgcse-after-reload \
-	-funroll-loops
+libsbc_la_CFLAGS = -finline-functions -funswitch-loops \
+		-fgcse-after-reload -funroll-loops -Wno-sign-compare
 
 noinst_PROGRAMS = sbcinfo sbcdec sbcenc $(sndfile_programs)
 
