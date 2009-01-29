@@ -688,12 +688,13 @@ static void cmd_class(int ctl, int hdev, char *opt)
 		printf("\tClass: 0x%02x%02x%02x\n", cls[2], cls[1], cls[0]);
 		printf("\tService Classes: ");
 		if (cls[2]) {
+			unsigned int i;
 			int first = 1;
-			for (s = 0; s < (sizeof(services) / sizeof(*services)); s++)
-				if (cls[2] & (1 << s)) {
+			for (i = 0; i < (sizeof(services) / sizeof(*services)); i++)
+				if (cls[2] & (1 << i)) {
 					if (!first)
 						printf(", ");
-					printf("%s", services[s]);
+					printf("%s", services[i]);
 					first = 0;
 				}
 		} else

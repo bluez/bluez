@@ -477,7 +477,7 @@ static void sdp_data_printf(sdp_data_t *sdpdata, struct attrib_context *context,
 	case SDP_TEXT_STR8:
 	case SDP_TEXT_STR16:
 	case SDP_TEXT_STR32:
-		if (sdpdata->unitSize > strlen(sdpdata->val.str)) {
+		if (sdpdata->unitSize > (int) strlen(sdpdata->val.str)) {
 			int i;
 			printf("%.*sData :", indent, indent_spaces);
 			for (i = 0; i < sdpdata->unitSize; i++)
@@ -1754,7 +1754,7 @@ static int add_opush(sdp_session_t *session, svc_info_t *si)
 	uint8_t formats[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
 	//uint8_t formats[] = { 0xff };
 	void *dtds[sizeof(formats)], *values[sizeof(formats)];
-	int i;
+	unsigned int i;
 	uint8_t dtd = SDP_UINT8;
 	sdp_data_t *sflist;
 	int ret = 0;
@@ -2164,7 +2164,7 @@ static int add_hid_keyb(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[3];
 	sdp_data_t *psm, *lang_lst, *lang_lst2, *hid_spec_lst, *hid_spec_lst2;
-	int i;
+	unsigned int i;
 	uint8_t dtd = SDP_UINT16;
 	uint8_t dtd2 = SDP_UINT8;
 	uint8_t dtd_data = SDP_TEXT_STR8;
@@ -2327,7 +2327,7 @@ static int add_hid_wiimote(sdp_session_t *session, svc_info_t *si)
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[3];
 	sdp_data_t *psm, *lang_lst, *lang_lst2, *hid_spec_lst, *hid_spec_lst2;
-	int i;
+	unsigned int i;
 	uint8_t dtd = SDP_UINT16;
 	uint8_t dtd2 = SDP_UINT8;
 	uint8_t dtd_data = SDP_TEXT_STR8;
@@ -3940,7 +3940,8 @@ static int cmd_records(int argc, char **argv)
 					0x4000000, 0x100000, 0x1000000,
 						0x4f491100, 0x4f491200 };
 	bdaddr_t bdaddr;
-	int i, n, opt, err = 0, num = 32;
+	unsigned int i, n, num = 32;
+	int opt, err = 0;
 
 	/* Initialise context */
 	memset(&context, '\0', sizeof(struct search_context));

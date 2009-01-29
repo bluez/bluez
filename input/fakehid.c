@@ -147,7 +147,8 @@ static int ps3remote_decode(char *buff, int size, unsigned int *value)
 {
 	static unsigned int lastkey = 0;
 	static unsigned int lastmask = 0;
-	int retval, mask, i;
+	unsigned int i, mask;
+	int retval;
 	guint8 key;
 
 	if (size < 12) {

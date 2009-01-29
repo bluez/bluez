@@ -1098,7 +1098,7 @@ static void cmd_cmd(int dev_id, int argc, char **argv)
 		return;
 	}
 
-	for (i = 2, len = 0; i < argc && len < sizeof(buf); i++, len++)
+	for (i = 2, len = 0; i < argc && len < (int) sizeof(buf); i++, len++)
 		*ptr++ = (uint8_t) strtol(argv[i], NULL, 16);
 
 	dd = hci_open_dev(dev_id);

@@ -177,7 +177,8 @@ int hcrp_print(bdaddr_t *src, bdaddr_t *dst, unsigned short ctrl_psm, unsigned s
 	struct l2cap_options opts;
 	socklen_t size;
 	unsigned char buf[2048];
-	int i, ctrl_sk, data_sk, mtu, count, len, timeout = 0;
+	int i, ctrl_sk, data_sk, count, len, timeout = 0;
+	unsigned int mtu;
 	uint8_t status;
 	uint16_t tid = 0;
 	uint32_t tmp, credit = 0;

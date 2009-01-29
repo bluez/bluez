@@ -175,7 +175,8 @@ int bnep_kill_all_connections(void)
 {
 	struct bnep_connlist_req req;
 	struct bnep_conninfo ci[7];
-	int i, err;
+	unsigned int i;
+	int err;
 
 	memset(&req, 0, sizeof(req));
 	req.cnum = 7;
@@ -187,7 +188,7 @@ int bnep_kill_all_connections(void)
 		return -err;
 	}
 
-	for (i=0; i < req.cnum; i++) {
+	for (i = 0; i < req.cnum; i++) {
 		struct bnep_conndel_req del;
 
 		memset(&del, 0, sizeof(del));

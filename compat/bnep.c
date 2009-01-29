@@ -128,7 +128,7 @@ int bnep_show_connections(void)
 {
 	struct bnep_connlist_req req;
 	struct bnep_conninfo ci[48];
-	int i;
+	unsigned int i;
 
 	req.cnum = 48;
 	req.ci   = ci;
@@ -137,7 +137,7 @@ int bnep_show_connections(void)
 		return -1;
 	}
 
-	for (i=0; i < req.cnum; i++) {
+	for (i = 0; i < req.cnum; i++) {
 		printf("%s %s %s\n", ci[i].device,
 			batostr((bdaddr_t *) ci[i].dst),
 			bnep_svc2str(ci[i].role));
@@ -162,7 +162,7 @@ int bnep_kill_all_connections(void)
 {
 	struct bnep_connlist_req req;
 	struct bnep_conninfo ci[48];
-	int i;
+	unsigned int i;
 
 	req.cnum = 48;
 	req.ci   = ci;
@@ -171,7 +171,7 @@ int bnep_kill_all_connections(void)
 		return -1;
 	}
 
-	for (i=0; i < req.cnum; i++) {
+	for (i = 0; i < req.cnum; i++) {
 		struct bnep_conndel_req req;
 		memcpy(req.dst, ci[i].dst, ETH_ALEN);
 		req.flags = 0;
@@ -227,7 +227,7 @@ int bnep_accept_connection(int sk, uint16_t role, char *dev)
 
 	errno = EPROTO;
 
-	if (r < sizeof(*req))
+	if (r < (int) sizeof(*req))
 		return -1;
 
 	req = (void *) pkt;
@@ -292,7 +292,7 @@ receive:
 
 	errno = EPROTO;
 
-	if (r < sizeof(*rsp))
+	if (r < (int) sizeof(*rsp))
 		return -1;
 	
 	rsp = (void *) pkt;

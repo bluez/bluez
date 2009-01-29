@@ -448,7 +448,7 @@ int remove_record_from_server(uint32_t handle)
 }
 
 // FIXME: refactor for server-side
-static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, int bufsize, uint32_t handleExpected, int *scanned)
+static sdp_record_t *extract_pdu_server(bdaddr_t *device, uint8_t *p, unsigned int bufsize, uint32_t handleExpected, int *scanned)
 {
 	int extractStatus = -1, localExtractedLength = 0;
 	uint8_t dtd;

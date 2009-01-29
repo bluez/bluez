@@ -103,7 +103,8 @@ int proxy_store(bdaddr_t *src, const char *uuid, const char *tty,
 		const char *name, uint8_t ch, int opts, struct termios *ti)
 {
 	char filename[PATH_MAX + 1], key[32], src_addr[18], *value;
-	int i, pos, size, err;
+	unsigned int i;
+	int pos, size, err;
 	uint8_t *pti;
 
 	ba2str(src, src_addr);

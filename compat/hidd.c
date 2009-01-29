@@ -425,7 +425,7 @@ static void do_show(int ctl)
 	struct hidp_connlist_req req;
 	struct hidp_conninfo ci[16];
 	char addr[18];
-	int i;
+	unsigned int i;
 
 	req.cnum = 16;
 	req.ci   = ci;
@@ -598,7 +598,7 @@ static void do_kill(int ctl, bdaddr_t *bdaddr, uint32_t flags)
 	struct hidp_conndel_req req;
 	struct hidp_connlist_req cl;
 	struct hidp_conninfo ci[16];
-	int i;
+	unsigned int i;
 
 	if (!bacmp(bdaddr, BDADDR_ALL)) {
 		cl.cnum = 16;

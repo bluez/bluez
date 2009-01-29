@@ -500,8 +500,8 @@ static int avdtp_get_caps(int sk, int seid)
 	if (ret < 0)
 		return ret;
 
-	if (ret < (sizeof(struct getcap_resp) + 4 +
-			sizeof(struct avdtp_media_codec_capability))) {
+	if (ret < ((int) sizeof(struct getcap_resp) + 4 +
+			(int) sizeof(struct avdtp_media_codec_capability))) {
 		printf("Invalid capabilities\n");
 		return -1;
 	}

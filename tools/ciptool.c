@@ -203,7 +203,7 @@ static void cmd_show(int ctl, bdaddr_t *bdaddr, int argc, char **argv)
 	struct cmtp_connlist_req req;
 	struct cmtp_conninfo ci[16];
 	char addr[18];
-	int i;
+	unsigned int i;
 
 	req.cnum = 16;
 	req.ci   = ci;

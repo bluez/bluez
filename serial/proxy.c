@@ -1033,7 +1033,8 @@ static void parse_proxy(char *key, char *value, void *data)
 	char uuid128[MAX_LEN_UUID_STR], tmp[3];
 	char *pvalue;
 	proxy_type_t type;
-	int ch, opts, pos;
+	unsigned int pos;
+	int ch, opts;
 	struct termios ti;
 	uint8_t *pti;
 

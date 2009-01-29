@@ -16,7 +16,6 @@ AC_DEFUN([COMPILER_FLAGS], [
 	fi
 	if (test "$USE_MAINTAINER_MODE" = "yes"); then
 		CFLAGS+=" -Werror -Wextra"
-		CFLAGS+=" -Wno-sign-compare"
 		CFLAGS+=" -Wno-unused-parameter"
 		CFLAGS+=" -Wno-missing-field-initializers"
 		CFLAGS+=" -Wdeclaration-after-statement"

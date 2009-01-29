@@ -122,7 +122,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		char *pElem = NULL;
 		int localSeqLength = 0;
 
-		if (bufsize < sizeof(uint8_t)) {
+		if (bufsize < (int) sizeof(uint8_t)) {
 			SDPDBG("->Unexpected end of buffer");
 			return -1;
 		}
@@ -145,7 +145,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			p += sizeof(uint8_t);
 			seqlen += sizeof(uint8_t);
 			bufsize -= sizeof(uint8_t);
-			if (bufsize < sizeof(uint16_t)) {
+			if (bufsize < (int) sizeof(uint16_t)) {
 				SDPDBG("->Unexpected end of buffer");
 				return -1;
 			}
@@ -460,9 +460,9 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 			SDPDBG("Setting non-NULL sdp_cstate_t");
 
 			if (cstate)
-				memcpy((char *)&newState, cstate, sizeof(sdp_cont_state_t));
+				memcpy(&newState, cstate, sizeof(sdp_cont_state_t));
 			else {
-				memset((char *)&newState, 0, sizeof(sdp_cont_state_t));
+				memset(&newState, 0, sizeof(sdp_cont_state_t));
 				newState.timestamp = cStateId;
 			}
 			newState.cStateValue.lastIndexSent = i;
@@ -563,7 +563,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	sdp_list_t *seq = NULL;
 	uint8_t dtd = 0;
 	int scanned = 0;
-	int max_rsp_size;
+	unsigned int max_rsp_size;
 	int status = 0, plen, mlen;
 	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
 	uint32_t handle = ntohl(bt_get_unaligned((uint32_t *)pdata));
@@ -679,7 +679,8 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 {
 	int status = 0, plen, totscanned;
 	uint8_t *pdata, *pResponse = NULL;
-	int scanned, max, rsp_count = 0;
+	unsigned int max;
+	int scanned, rsp_count = 0;
 	sdp_list_t *pattern = NULL, *seq = NULL, *svcList;
 	sdp_cont_state_t *cstate = NULL;
 	short cstate_size = 0;

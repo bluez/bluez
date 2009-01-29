@@ -56,7 +56,8 @@ static void sig_alarm(int sig)
 static int w4_str(int fd, char *str)
 {
 	char buf[40];
-	int  r, len = 0;
+	unsigned len = 0;
+	int r;
 	
 	while (1) {
 		r = read(fd, buf + len, sizeof(buf) - len - 1);

@@ -129,7 +129,8 @@ static int send_report(int fd, const char *buf, size_t size)
 {
 	struct hiddev_report_info rinfo;
 	struct hiddev_usage_ref uref;
-	int i, err;
+	unsigned int i;
+	int err;
 
 	for (i = 0; i < size; i++) {
 		memset(&uref, 0, sizeof(uref));
@@ -179,8 +180,8 @@ static int switch_logitech(struct device_info *devinfo)
 
 		memset(&dinfo, 0, sizeof(dinfo));
 		err = ioctl(fd, HIDIOCGDEVINFO, &dinfo);
-		if (err < 0 || dinfo.busnum != atoi(devinfo->dev->bus->dirname) ||
-				dinfo.devnum != atoi(devinfo->dev->filename)) {
+		if (err < 0 || (int) dinfo.busnum != atoi(devinfo->dev->bus->dirname) ||
+				(int) dinfo.devnum != atoi(devinfo->dev->filename)) {
 			close(fd);
 			continue;
 		}
@@ -288,7 +289,7 @@ static int find_devices(int mode, struct device_info *devinfo, size_t size)
 	struct usb_bus *bus;
 	struct usb_device *dev;
 	struct device_id *id;
-	int count = 0;
+	unsigned int count = 0;
 
 	usb_find_busses();
 	usb_find_devices();

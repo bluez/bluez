@@ -115,7 +115,7 @@ static int find_devices(struct device_info *devinfo, size_t size)
 	struct usb_bus *bus;
 	struct usb_device *dev;
 	struct device_id *id;
-	int count = 0;
+	unsigned int count = 0;
 
 	usb_find_busses();
 	usb_find_devices();

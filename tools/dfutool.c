@@ -321,9 +321,10 @@ static void cmd_verify(char *device, int argc, char **argv)
 	uint16_t bcd;
 	char str[16];
 	unsigned char *buf;
-	unsigned long size;
+	size_t size;
 	char *filename;
-	int i, fd, len;
+	unsigned int i, len;
+	int fd;
 
 	if (argc < 2) {
 		usage();
@@ -350,7 +351,7 @@ static void cmd_verify(char *device, int argc, char **argv)
 		exit(1);
 	}
 
-	if (read(fd, buf, size) < size) {
+	if (read(fd, buf, size) < (ssize_t) size) {
 		perror("Can't load firmware");
 		free(buf);
 		close(fd);
@@ -419,10 +420,12 @@ static void cmd_upgrade(char *device, int argc, char **argv)
 	struct dfu_suffix suffix;
 	struct stat st;
 	char *buf;
-	unsigned long filesize, count, timeout = 0;
+	size_t filesize;
+	unsigned long count, timeout = 0;
 	char *filename;
 	uint32_t crc, dwCRC;
-	int fd, i, block, len, size, sent = 0, try = 10;
+	unsigned int i;
+	int fd, block, len, size, sent = 0, try = 10;
 
 	if (argc < 2) {
 		usage();
@@ -449,7 +452,7 @@ static void cmd_upgrade(char *device, int argc, char **argv)
 		exit(1);
 	}
 
-	if (read(fd, buf, filesize) < filesize) {
+	if (read(fd, buf, filesize) < (ssize_t) filesize) {
 		perror("Can't load firmware");
 		free(buf);
 		close(fd);

@@ -43,7 +43,7 @@ static volatile sig_atomic_t __io_finished = 0;
 static void callback(uint8_t type, uint16_t status,
 				uint8_t *rsp, size_t size, void *udata)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < size; i++) {
 		printf("%02x ", rsp[i]);

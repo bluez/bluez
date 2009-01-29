@@ -409,7 +409,8 @@ static int cmd_buildname(int transport, int argc, char *argv[])
 {
 	uint8_t array[130];
 	char name[64];
-	int i, err;
+	unsigned int i;
+	int err;
 
 	OPT_HELP(0, NULL);
 
@@ -699,7 +700,7 @@ static int cmd_psget(int transport, int argc, char *argv[])
 		return err;
 
 	length = array[2] + (array[3] << 8);
-	if (length + 6 > sizeof(array) / 2)
+	if (length + 6 > (int) sizeof(array) / 2)
 		return -EIO;
 
 	memset(array, 0, sizeof(array));
@@ -774,7 +775,7 @@ static int cmd_psset(int transport, int argc, char *argv[])
 		return err;
 
 	length = array[2] + (array[3] << 8);
-	if (length + 6 > sizeof(array) / 2)
+	if (length + 6 > (int) sizeof(array) / 2)
 		return -EIO;
 
 	memset(array, 0, sizeof(array));
@@ -962,7 +963,7 @@ static int cmd_psread(int transport, int argc, char *argv[])
 			continue;
 
 		length = array[2] + (array[3] << 8);
-		if (length + 6 > sizeof(array) / 2)
+		if (length + 6 > (int) sizeof(array) / 2)
 			continue;
 
 		memset(array, 0, sizeof(array));

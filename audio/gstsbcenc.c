@@ -371,7 +371,7 @@ static GstFlowReturn sbc_enc_chain(GstPad *pad, GstBuffer *buffer)
 	gst_adapter_push(adapter, buffer);
 
 	while (gst_adapter_available(adapter) >= enc->codesize &&
-			res == GST_FLOW_OK) {
+							res == GST_FLOW_OK) {
 		GstBuffer *output;
 		GstCaps *caps;
 		const guint8 *data;

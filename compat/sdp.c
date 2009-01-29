@@ -71,7 +71,7 @@ static void epox_endian_quirk(unsigned char *data, int size)
 	 */
 	unsigned char pattern[] = { 0x05, 0x07, 0x19, 0x00, 0x2a, 0x00, 0xff,
 						0x15, 0x00, 0x26, 0x00, 0xff };
-	int i;
+	unsigned int i;
 
 	if (!data)
 		return;
