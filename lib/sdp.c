@@ -913,7 +913,7 @@ int sdp_uuid_extract(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
 {
 	uint8_t type;
 
-	if (bufsize < sizeof(uint8_t)) {
+	if (bufsize < (int) sizeof(uint8_t)) {
 		SDPERR("Unexpected end of packet");
 		return -1;
 	}
@@ -928,7 +928,7 @@ int sdp_uuid_extract(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
 	*scanned += sizeof(uint8_t);
 	bufsize -= sizeof(uint8_t);
 	if (type == SDP_UUID16) {
-		if (bufsize < sizeof(uint16_t)) {
+		if (bufsize < (int) sizeof(uint16_t)) {
 			SDPERR("Not enough room for 16-bit UUID");
 			return -1;
 		}
@@ -936,7 +936,7 @@ int sdp_uuid_extract(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
 		*scanned += sizeof(uint16_t);
 		p += sizeof(uint16_t);
 	} else if (type == SDP_UUID32) {
-		if (bufsize < sizeof(uint32_t)) {
+		if (bufsize < (int) sizeof(uint32_t)) {
 			SDPERR("Not enough room for 32-bit UUID");
 			return -1;
 		}
@@ -944,7 +944,7 @@ int sdp_uuid_extract(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
 		*scanned += sizeof(uint32_t);
 		p += sizeof(uint32_t);
 	} else {
-		if (bufsize < sizeof(uint128_t)) {
+		if (bufsize < (int) sizeof(uint128_t)) {
 			SDPERR("Not enough room for 128-bit UUID");
 			return -1;
 		}
@@ -959,7 +959,7 @@ static sdp_data_t *extract_int(const void *p, int bufsize, int *len)
 {
 	sdp_data_t *d;
 
-	if (bufsize < sizeof(uint8_t)) {
+	if (bufsize < (int) sizeof(uint8_t)) {
 		SDPERR("Unexpected end of packet");
 		return NULL;
 	}
@@ -979,7 +979,7 @@ static sdp_data_t *extract_int(const void *p, int bufsize, int *len)
 	case SDP_BOOL:
 	case SDP_INT8:
 	case SDP_UINT8:
-		if (bufsize < sizeof(uint8_t)) {
+		if (bufsize < (int) sizeof(uint8_t)) {
 			SDPERR("Unexpected end of packet");
 			free(d);
 			return NULL;
@@ -989,7 +989,7 @@ static sdp_data_t *extract_int(const void *p, int bufsize, int *len)
 		break;
 	case SDP_INT16:
 	case SDP_UINT16:
-		if (bufsize < sizeof(uint16_t)) {
+		if (bufsize < (int) sizeof(uint16_t)) {
 			SDPERR("Unexpected end of packet");
 			free(d);
 			return NULL;
@@ -999,7 +999,7 @@ static sdp_data_t *extract_int(const void *p, int bufsize, int *len)
 		break;
 	case SDP_INT32:
 	case SDP_UINT32:
-		if (bufsize < sizeof(uint32_t)) {
+		if (bufsize < (int) sizeof(uint32_t)) {
 			SDPERR("Unexpected end of packet");
 			free(d);
 			return NULL;
@@ -1009,7 +1009,7 @@ static sdp_data_t *extract_int(const void *p, int bufsize, int *len)
 		break;
 	case SDP_INT64:
 	case SDP_UINT64:
-		if (bufsize < sizeof(uint64_t)) {
+		if (bufsize < (int) sizeof(uint64_t)) {
 			SDPERR("Unexpected end of packet");
 			free(d);
 			return NULL;
@@ -1019,7 +1019,7 @@ static sdp_data_t *extract_int(const void *p, int bufsize, int *len)
 		break;
 	case SDP_INT128:
 	case SDP_UINT128:
-		if (bufsize < sizeof(uint128_t)) {
+		if (bufsize < (int) sizeof(uint128_t)) {
 			SDPERR("Unexpected end of packet");
 			free(d);
 			return NULL;
@@ -1060,7 +1060,7 @@ static sdp_data_t *extract_str(const void *p, int bufsize, int *len)
 	int n;
 	sdp_data_t *d;
 
-	if (bufsize < sizeof(uint8_t)) {
+	if (bufsize < (int) sizeof(uint8_t)) {
 		SDPERR("Unexpected end of packet");
 		return NULL;
 	}
@@ -1076,7 +1076,7 @@ static sdp_data_t *extract_str(const void *p, int bufsize, int *len)
 	switch (d->dtd) {
 	case SDP_TEXT_STR8:
 	case SDP_URL_STR8:
-		if (bufsize < sizeof(uint8_t)) {
+		if (bufsize < (int) sizeof(uint8_t)) {
 			SDPERR("Unexpected end of packet");
 			free(d);
 			return NULL;
@@ -1088,7 +1088,7 @@ static sdp_data_t *extract_str(const void *p, int bufsize, int *len)
 		break;
 	case SDP_TEXT_STR16:
 	case SDP_URL_STR16:
-		if (bufsize < sizeof(uint16_t)) {
+		if (bufsize < (int) sizeof(uint16_t)) {
 			SDPERR("Unexpected end of packet");
 			free(d);
 			return NULL;
@@ -1138,7 +1138,7 @@ int sdp_extract_seqtype(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *siz
 	uint8_t dtd;
 	int scanned = sizeof(uint8_t);
 
-	if (bufsize < sizeof(uint8_t)) {
+	if (bufsize < (int) sizeof(uint8_t)) {
 		SDPERR("Unexpected end of packet");
 		return 0;
 	}
@@ -1150,7 +1150,7 @@ int sdp_extract_seqtype(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *siz
 	switch (dtd) {
 	case SDP_SEQ8:
 	case SDP_ALT8:
-		if (bufsize < sizeof(uint8_t)) {
+		if (bufsize < (int) sizeof(uint8_t)) {
 			SDPERR("Unexpected end of packet");
 			return 0;
 		}
@@ -1159,7 +1159,7 @@ int sdp_extract_seqtype(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *siz
 		break;
 	case SDP_SEQ16:
 	case SDP_ALT16:
-		if (bufsize < sizeof(uint16_t)) {
+		if (bufsize < (int) sizeof(uint16_t)) {
 			SDPERR("Unexpected end of packet");
 			return 0;
 		}
@@ -1168,7 +1168,7 @@ int sdp_extract_seqtype(const uint8_t *buf, int bufsize, uint8_t *dtdp, int *siz
 		break;
 	case SDP_SEQ32:
 	case SDP_ALT32:
-		if (bufsize < sizeof(uint32_t)) {
+		if (bufsize < (int) sizeof(uint32_t)) {
 			SDPERR("Unexpected end of packet");
 			return 0;
 		}
@@ -1235,7 +1235,7 @@ sdp_data_t *sdp_extract_attr(const uint8_t *p, int bufsize, int *size,
 	int n = 0;
 	uint8_t dtd;
 
-	if (bufsize < sizeof(uint8_t)) {
+	if (bufsize < (int) sizeof(uint8_t)) {
 		SDPERR("Unexpected end of packet");
 		return NULL;
 	}
@@ -1330,7 +1330,7 @@ sdp_record_t *sdp_extract_pdu(const uint8_t *buf, int bufsize, int *scanned)
 		SDPDBG("Extract PDU, sequenceLength: %d localExtractedLength: %d",
 							seqlen, extracted);
 
-		if (bufsize < n + sizeof(uint16_t)) {
+		if (bufsize < n + (int) sizeof(uint16_t)) {
 			SDPERR("Unexpected end of packet");
 			break;
 		}
@@ -2004,7 +2004,7 @@ int sdp_get_string_attr(const sdp_record_t *rec, uint16_t attrid, char *value,
 		if (sdpdata->dtd == SDP_TEXT_STR8 ||
 				sdpdata->dtd == SDP_TEXT_STR16 ||
 				sdpdata->dtd == SDP_TEXT_STR32)
-			if (strlen(sdpdata->val.str) < valuelen) {
+			if ((int) strlen(sdpdata->val.str) < valuelen) {
 				strcpy(value, sdpdata->val.str);
 				return 0;
 			}
@@ -2102,7 +2102,7 @@ static sdp_data_t *access_proto_to_dataseq(sdp_record_t *rec, sdp_list_t *proto)
 		sdp_list_t *elt = (sdp_list_t *)p->data;
 		sdp_data_t *s;
 		uuid_t *uuid = NULL;
-		int pslen = 0;
+		unsigned int pslen = 0;
 		for (; elt && pslen < sizeof(dtds); elt = elt->next, pslen++) {
 			sdp_data_t *d = (sdp_data_t *)elt->data;
 			dtds[pslen] = &d->dtd;
@@ -2515,7 +2515,7 @@ int sdp_uuid128_to_uuid(uuid_t *uuid)
 	uint128_t *b = &bluetooth_base_uuid;
 	uint128_t *u = &uuid->value.uuid128;
 	uint32_t data;
-	int i;
+	unsigned int i;
 
 	if (uuid->type != SDP_UUID128)
 		return 1;
@@ -2990,7 +2990,7 @@ void sdp_pattern_add_uuidseq(sdp_record_t *rec, sdp_list_t *seq)
  * handles are not in "data element sequence" form, but just like
  * an array of service handles
  */
-static void extract_record_handle_seq(uint8_t *pdu, int bufsize, sdp_list_t **seq, int count, int *scanned)
+static void extract_record_handle_seq(uint8_t *pdu, int bufsize, sdp_list_t **seq, int count, unsigned int *scanned)
 {
 	sdp_list_t *pSeq = *seq;
 	uint8_t *pdata = pdu;
@@ -2998,7 +2998,7 @@ static void extract_record_handle_seq(uint8_t *pdu, int bufsize, sdp_list_t **se
 
 	for (n = 0; n < count; n++) {
 		uint32_t *pSvcRec;
-		if (bufsize < sizeof(uint32_t)) {
+		if (bufsize < (int) sizeof(uint32_t)) {
 			SDPERR("Unexpected end of packet");
 			break;
 		}
@@ -3129,7 +3129,8 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 	uint32_t reqsize = 0, _reqsize;
 	uint32_t rspsize = 0, rsplen;
 	int seqlen = 0;
-	int scanned, total_rec_count, rec_count, pdata_len;
+	int total_rec_count, rec_count;
+	unsigned scanned, pdata_len;
 	uint8_t *pdata, *_pdata;
 	uint8_t *reqbuf, *rspbuf;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
@@ -3294,7 +3295,8 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 	uint32_t reqsize = 0, _reqsize;
 	uint32_t rspsize = 0, rsp_count;
 	int attr_list_len = 0;
-	int seqlen = 0, pdata_len;
+	int seqlen = 0;
+	unsigned int pdata_len;
 	uint8_t *pdata, *_pdata;
 	uint8_t *reqbuf, *rspbuf;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
@@ -3931,7 +3933,7 @@ int sdp_process(sdp_session_t *session)
 	}
 
 	if (n == 0 || reqhdr->tid != rsphdr->tid ||
-		(n != (ntohs(rsphdr->plen) + sizeof(sdp_pdu_hdr_t)))) {
+		(n != (ntohs(rsphdr->plen) + (int) sizeof(sdp_pdu_hdr_t)))) {
 		t->err = EPROTO;
 		SDPERR("Protocol error.");
 		goto end;
@@ -4018,7 +4020,7 @@ int sdp_process(sdp_session_t *session)
 	 * Check out of bound. Continuation state must have at least
 	 * 1 byte: ZERO to indicate that it is not a partial response.
 	 */
-	if ((n - sizeof(sdp_pdu_hdr_t))  != (plen + pcstate->length + 1)) {
+	if ((n - (int) sizeof(sdp_pdu_hdr_t))  != (plen + pcstate->length + 1)) {
 		t->err = EPROTO;
 		SDPERR("Protocol error: wrong PDU size.");
 		status = 0xffff;
@@ -4121,7 +4123,8 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 	uint32_t reqsize = 0, _reqsize;
 	uint32_t rspsize = 0;
 	int seqlen = 0, attr_list_len = 0;
-	int rsp_count = 0, cstate_len = 0, pdata_len;
+	int rsp_count = 0, cstate_len = 0;
+	unsigned int pdata_len;
 	uint8_t *pdata, *_pdata;
 	uint8_t *reqbuf, *rspbuf;
 	sdp_pdu_hdr_t *reqhdr, *rsphdr;
