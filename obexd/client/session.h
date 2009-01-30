@@ -49,7 +49,7 @@ struct session_data {
 	size_t buffer_len;
 	int filled;
 	ssize_t size;
-	size_t transferred;
+	ssize_t transferred;
 	gchar *filename;
 	gchar *agent_name;
 	gchar *agent_path;

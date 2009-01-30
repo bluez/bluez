@@ -51,7 +51,7 @@ struct send_data {
 static void create_callback(struct session_data *session, void *user_data)
 {
 	struct send_data *data = user_data;
-	int i;
+	unsigned int i;
 
 	if (session->obex == NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,

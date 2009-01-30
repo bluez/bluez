@@ -738,7 +738,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 
 	free = buf.f_bsize * buf.f_bavail;
 	debug("Free space in disk: %lu", free);
-	if (os->size > free) {
+	if ((guint64) os->size > free) {
 		debug("Free disk space not available");
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return FALSE;

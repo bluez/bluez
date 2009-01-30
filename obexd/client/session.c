@@ -235,7 +235,8 @@ static void search_callback(uint8_t type, uint16_t status,
 			uint8_t *rsp, size_t size, void *user_data)
 {
 	struct callback_data *callback = user_data;
-	int scanned, seqlen = 0, bytesleft = size;
+	unsigned int scanned, bytesleft = size;
+	int seqlen = 0;
 	uint8_t dataType, channel = 0;
 
 	if (status || type != SDP_SVC_SEARCH_ATTR_RSP)
