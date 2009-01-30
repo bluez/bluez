@@ -359,7 +359,7 @@ static void cmd_verify(char *device, int argc, char **argv)
 	}
 
 	printf("Filename\t%s\n", basename(filename));
-	printf("Filesize\t%ld\n", size);
+	printf("Filesize\t%zd\n", size);
 
 	crc = crc32_init();
 	for (i = 0; i < size - 4; i++)
@@ -463,7 +463,7 @@ static void cmd_upgrade(char *device, int argc, char **argv)
 	dwCRC = le32_to_cpu(suffix.dwCRC);
 
 	printf("Filename\t%s\n", basename(filename));
-	printf("Filesize\t%ld\n", filesize);
+	printf("Filesize\t%zd\n", filesize);
 
 	crc = crc32_init();
 	for (i = 0; i < filesize - 4; i++)
