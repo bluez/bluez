@@ -224,7 +224,7 @@ static void *playback_hw_thread(void *param)
 
 			/* Reset point of reference to avoid too big values
 			 * that wont fit an unsigned int */
-			if (delta.tv_sec < UINT_SECS_MAX)
+			if ((unsigned int) delta.tv_sec < UINT_SECS_MAX)
 				prev_periods = periods;
 			else {
 				prev_periods = 0;
