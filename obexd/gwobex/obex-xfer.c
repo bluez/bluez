@@ -259,7 +259,7 @@ gboolean gw_obex_xfer_write(GwObexXfer *xfer, const char *buf, gint buf_size,
     }
 
     if (xfer->data_length >= ctx->tx_max || !free_space) {
-        gint old_length = xfer->data_length;
+        guint old_length = xfer->data_length;
 
         debug("OBEX_ResumeRequest at %s:%d (%s)\n", __FILE__, __LINE__, __PRETTY_FUNCTION__);
         OBEX_ResumeRequest(ctx->handle);
@@ -301,6 +301,7 @@ out:
 gboolean gw_obex_xfer_read(GwObexXfer *xfer, char *buf, gint buf_size,
 		           gint *bytes_read, gint *err) {
     GwObex *ctx = xfer->ctx;
+    gint data_length;
     gboolean ret = TRUE;
 
     debug("gw_obex_xfer_read(buf_size=%d): entered\n", buf_size);
@@ -349,7 +350,8 @@ gboolean gw_obex_xfer_read(GwObexXfer *xfer, char *buf, gint buf_size,
         }
     }
 
-    *bytes_read = buf_size < xfer->data_length ? buf_size : xfer->data_length;
+    data_length = xfer->data_length;
+    *bytes_read = buf_size < data_length ? buf_size : data_length;
 
     memcpy(buf, &xfer->buf[xfer->data_start], *bytes_read);
 
