@@ -797,8 +797,7 @@ static int bluetooth_playback_poll_revents(snd_pcm_ioplug_t *io,
 	if (pfds[1].revents & (POLLERR | POLLHUP | POLLNVAL))
 		io->state = SND_PCM_STATE_DISCONNECTED;
 
-	revents[0] = (pfds[0].revents & ~POLLIN) | POLLOUT;
-	revents[1] = (pfds[1].revents & ~POLLIN);
+	*revents = (pfds[0].revents & POLLIN) ? POLLOUT : 0;
 
 	return 0;
 }
