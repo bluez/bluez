@@ -183,7 +183,7 @@ static sdp_record_t *avrcp_ct_record()
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
-	uint16_t lp = AVCTP_PSM, ver = 0x0103, feat = 0x000f;
+	uint16_t lp = AVCTP_PSM, ver = 0x0100, feat = 0x000f;
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -246,7 +246,7 @@ static sdp_record_t *avrcp_tg_record()
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
-	uint16_t lp = AVCTP_PSM, ver = 0x0103, feat = 0x000f;
+	uint16_t lp = AVCTP_PSM, ver = 0x0100, feat = 0x000f;
 
 	record = sdp_record_alloc();
 	if (!record)
