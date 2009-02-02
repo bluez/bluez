@@ -98,8 +98,6 @@ typedef struct {
 #define BT_NEW_STREAM			2
 #define BT_START_STREAM			3
 #define BT_STOP_STREAM			4
-#define BT_SUSPEND_STREAM		5
-#define BT_RESUME_STREAM		6
 #define BT_CONTROL			7
 
 #define BT_CAPABILITIES_TRANSPORT_A2DP	0
