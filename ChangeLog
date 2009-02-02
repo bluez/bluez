@@ -1,3 +1,13 @@
+ver 4.28:
+	Add AVDTP signal fragmentation support.
+	Add more SBC performance optimizations.
+	Add more SBC audio quality improvements.
+	Use native byte order for audio plugins.
+	Set the adapter alias only after checking the EIR data.
+	Fix auto-disconnect issue with explicit A2DP connections.
+	Fix invalid memory access of ALSA plugin.
+	Fix compilation with -Wsign-compare.
+
 ver 4.27:
 	Add more SBC optimization (MMX and ARM NEON).
 	Add BT_SECURITY and BT_DEFER_SETUP definitions.
