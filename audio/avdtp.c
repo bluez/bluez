@@ -80,7 +80,7 @@
 #define AVDTP_MSG_TYPE_REJECT			0x03
 
 #define REQ_TIMEOUT 4
-#define DISCONNECT_TIMEOUT 5
+#define DISCONNECT_TIMEOUT 1
 #define STREAM_TIMEOUT 20
 
 typedef enum {
