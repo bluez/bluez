@@ -314,6 +314,13 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 		goto failed;
 	}
 
+	client->data_fd = headset_get_sco_fd(dev);
+	if (client->data_fd < 0) {
+		error("Unable to get a SCO fd");
+		headset_unlock(client->dev, hs->lock);
+		goto failed;
+	}
+
 	memset(buf, 0, sizeof(buf));
 	rsp->h.type = BT_RESPONSE;
 	rsp->h.name = BT_START_STREAM;
@@ -327,8 +334,6 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	ind->h.length = sizeof(*ind);
 
 	unix_ipc_sendmsg(client, &ind->h);
-
-	client->data_fd = headset_get_sco_fd(dev);
 
 	if (unix_sendmsg_fd(client->sock, client->data_fd) < 0) {
 		error("unix_sendmsg_fd: %s(%d)", strerror(errno), errno);
