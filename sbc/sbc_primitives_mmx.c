@@ -275,7 +275,7 @@ static inline void sbc_analyze_4b_8s_mmx(int16_t *x, int32_t *out,
 	asm volatile ("emms\n");
 }
 
-static int check_mmx_support()
+static int check_mmx_support(void)
 {
 #ifdef __amd64__
 	return 1; /* We assume that all 64-bit processors have MMX support */
