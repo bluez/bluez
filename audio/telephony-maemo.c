@@ -959,6 +959,10 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_ACTIVE:
 		if (call->on_hold) {
 			call->on_hold = FALSE;
+			/* Set the status already here since otherwise
+			 * find_call_with_status will match this call even
+			 * though it shouldn't */
+			call->status = (int) status;
 			if (find_call_with_status(CSD_CALL_STATUS_HOLD))
 				telephony_update_indicator(maemo_indicators,
 							"callheld",
@@ -1000,6 +1004,16 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_RECONNECT_PENDING:
 		break;
 	case CSD_CALL_STATUS_TERMINATED:
+		if (call->on_hold) {
+			/* Set the status already here since otherwise
+			 * find_call_with_status will match this call even
+			 * though it shouldn't */
+			call->status = (int) status;
+			if (!find_call_with_status(CSD_CALL_STATUS_HOLD))
+				telephony_update_indicator(maemo_indicators,
+								"callheld",
+								EV_CALLHELD_NONE);
+		}
 		break;
 	case CSD_CALL_STATUS_SWAP_INITIATED:
 		break;
