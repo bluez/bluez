@@ -61,6 +61,34 @@
 
 static DBusConnection *connection = NULL;
 
+static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
+					struct btd_adapter **adapter,
+					struct btd_device **device,
+					gboolean create)
+{
+	char peer_addr[18];
+
+	*adapter = manager_find_adapter(src);
+	if (!*adapter) {
+		error("Unable to find matching adapter");
+		return FALSE;
+	}
+
+	ba2str(dst, peer_addr);
+
+	if (create)
+		*device = adapter_get_device(connection, *adapter, peer_addr);
+	else
+		*device = adapter_find_device(*adapter, peer_addr);
+
+	if (create && !*device) {
+		error("Unable to get device object!");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 const char *class_to_icon(uint32_t class)
 {
 	switch ((class & 0x1f00) >> 8) {
@@ -168,31 +196,19 @@ done:
 
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
-	char addr[18];
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	adapter = manager_find_adapter(sba);
-	if (!adapter) {
-		error("No matching adapter found");
-		return -1;
-	}
-
-	ba2str(&ci->bdaddr, addr);
-
-	device = adapter_find_device(adapter, addr);
-	/* Check if the adapter is not pairable and if there isn't a bonding in
-	 * progress */
-	if (!adapter_is_pairable(adapter) &&
-			!(device && device_is_bonding(device, NULL)))
-		return -EPERM;
-
-	device = adapter_get_device(connection, adapter, addr);
-	if (!device)
+	if (!get_adapter_and_device(sba, &ci->bdaddr, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	return device_request_authentication(device, AUTH_TYPE_PINCODE,
-					0, pincode_cb);
+	/* Check if the adapter is not pairable and if there isn't a bonding in
+	 * progress */
+	if (!adapter_is_pairable(adapter) && !device_is_bonding(device, NULL))
+		return -EPERM;
+
+	return device_request_authentication(device, AUTH_TYPE_PINCODE, 0,
+								pincode_cb);
 }
 
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
@@ -294,15 +310,11 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	char addr[18];
 	uint8_t remcap, remauth, type;
 	uint16_t dev_id;
 
-	adapter = manager_find_adapter(sba);
-	if (!adapter) {
-		error("No matching adapter found");
-		return -1;
-	}
+	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
+		return -ENODEV;
 
 	dev_id = adapter_get_dev_id(adapter);
 
@@ -324,14 +336,6 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	}
 
 	debug("confirm authentication requirement is 0x%02x", type);
-
-	ba2str(dba, addr);
-
-	device = adapter_get_device(connection, adapter, addr);
-	if (!device) {
-		error("Device creation failed");
-		return -1;
-	}
 
 	remcap = device_get_cap(device);
 	remauth = device_get_auth(device);
@@ -368,19 +372,8 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	char addr[18];
 
-	adapter = manager_find_adapter(sba);
-	if (!adapter) {
-		error("No matching adapter found");
-		return -1;
-	}
-
-	ba2str(dba, addr);
-
-	device = adapter_get_device(connection, adapter, addr);
-
-	if (!device)
+	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
 	return device_request_authentication(device, AUTH_TYPE_PASSKEY,
@@ -391,18 +384,8 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	char addr[18];
 
-	adapter = manager_find_adapter(sba);
-	if (!adapter) {
-		error("No matching adapter found");
-		return -1;
-	}
-
-	ba2str(dba, addr);
-
-	device = adapter_get_device(connection, adapter, addr);
-	if (!device)
+	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
 	return device_request_authentication(device, AUTH_TYPE_NOTIFY,
@@ -413,24 +396,12 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 					uint8_t status)
 {
 	struct btd_adapter *adapter;
-	char peer_addr[18];
 	struct btd_device *device;
 
 	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("Unable to find matching adapter");
+	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
-	}
-
-	ba2str(peer, peer_addr);
-
-	device = adapter_find_device(adapter, peer_addr);
-	if (!device) {
-		error("Unable to get device object!");
-		return;
-	}
 
 	if (!device_is_authenticating(device)) {
 		/* This means that there was no pending PIN or SSP token
@@ -448,24 +419,13 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 					uint8_t status)
 {
-	struct btd_adapter *adapter; char peer_addr[18];
+	struct btd_adapter *adapter;
 	struct btd_device *device;
 
 	debug("hcid_dbus_simple_pairing_complete: status=%02x", status);
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("Unable to find matching adapter");
+	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
-	}
-
-	ba2str(peer, peer_addr);
-
-	device = adapter_find_device(adapter, peer_addr);
-	if (!device) {
-		error("Unable to get device object!");
-		return;
-	}
 
 	device_simple_pairing_complete(device, status);
 }
@@ -833,8 +793,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 {
-	char peer_addr[18];
-	const char *paddr = peer_addr;
 	uint32_t old_class = 0;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -845,14 +803,8 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	if (old_class == class)
 		return;
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
+	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
-	}
-
-	ba2str(peer, peer_addr);
-	device = adapter_find_device(adapter, paddr);
 
 	if (!device)
 		return;
@@ -872,11 +824,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	struct btd_device *device;
 	struct remote_dev_info match, *dev_info;
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
+	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
-	}
 
 	ba2str(local, srcaddr);
 	ba2str(peer, dstaddr);
@@ -916,20 +865,19 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 				NULL);
 	}
 
-	device = adapter_find_device(adapter, dstaddr);
 	if (device) {
 		char alias[248];
 		const char *dev_path = device_get_path(device);
 
 		emit_property_changed(connection, dev_path,
-				DEVICE_INTERFACE, "Name",
-				DBUS_TYPE_STRING, &name);
+						DEVICE_INTERFACE, "Name",
+						DBUS_TYPE_STRING, &name);
 
 		if (read_device_alias(srcaddr, dstaddr,
 					alias, sizeof(alias)) < 1)
 			emit_property_changed(connection, dev_path,
-					DEVICE_INTERFACE, "Alias",
-					DBUS_TYPE_STRING, &name);
+						DEVICE_INTERFACE, "Alias",
+						DBUS_TYPE_STRING, &name);
 	}
 
 proceed:
@@ -949,23 +897,11 @@ proceed:
 void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t key_type, uint8_t old_key_type)
 {
-	char peer_addr[18];
 	struct btd_device *device;
 	struct btd_adapter *adapter;
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
+	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
-	}
-
-	ba2str(peer, peer_addr);
-
-	device = adapter_get_device(connection, adapter, peer_addr);
-	if (!device) {
-		error("Couldn't get a device object for %s", peer_addr);
-		return;
-	}
 
 	/* If this is not the first link key set a flag so a subsequent auth
 	 * complete event doesn't trigger SDP */
@@ -983,28 +919,18 @@ void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 				bdaddr_t *peer)
 {
-	char peer_addr[18];
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
+	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
-	}
-
-	ba2str(peer, peer_addr);
-
-	device = adapter_get_device(connection, adapter, peer_addr);
-	if (!device) {
-		error("No matching device found");
-		return;
-	}
 
 	if (status) {
 		device_set_secmode3_conn(device, FALSE);
 		if (device_is_bonding(device, NULL))
 			device_bonding_complete(device, status);
+		if (device_is_temporary(device))
+			adapter_remove_device(connection, adapter, device);
 		return;
 	}
 
@@ -1246,24 +1172,14 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct agent *agent = NULL;
-	char addr[18];
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return -1;
-	}
+	if (!get_adapter_and_device(local, remote, &adapter, &device, TRUE))
+		return -ENODEV;
 
 	if (get_auth_requirements(local, remote, auth) < 0)
 		return -1;
 
 	debug("initial authentication requirement is 0x%02x", *auth);
-
-	ba2str(remote, addr);
-
-	device = adapter_find_device(adapter, addr);
-	if (!device)
-		return -ENODEV;
 
 	/* Check if the adapter is not pairable and if there isn't a bonding
 	 * in progress */
@@ -1335,21 +1251,12 @@ int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	char addr[18];
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return -1;
-	}
+	if (!get_adapter_and_device(local, remote, &adapter, &device, TRUE))
+		return -ENODEV;
 
-	ba2str(remote, addr);
-
-	device = adapter_get_device(connection, adapter, addr);
-	if (device) {
-		device_set_cap(device, cap);
-		device_set_auth(device, auth);
-	}
+	device_set_cap(device, cap);
+	device_set_auth(device, auth);
 
 	return 0;
 }
