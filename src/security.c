@@ -784,6 +784,13 @@ static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
 	hcid_dbus_bonding_process_complete(sba, &dba, evt->status);
 }
 
+static inline void simple_pairing_complete(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_simple_pairing_complete *evt = ptr;
+
+	hcid_dbus_simple_pairing_complete(sba, &evt->bdaddr, evt->status);
+}
+
 static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_conn_request *evt = ptr;
@@ -892,6 +899,10 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 
 	case EVT_AUTH_COMPLETE:
 		auth_complete(dev, &di->bdaddr, ptr);
+		break;
+
+	case EVT_SIMPLE_PAIRING_COMPLETE:
+		simple_pairing_complete(dev, &di->bdaddr, ptr);
 		break;
 
 	case EVT_CONN_REQUEST:

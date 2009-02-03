@@ -1816,9 +1816,24 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	return NULL;
 }
 
+void device_simple_pairing_complete(struct btd_device *device, uint8_t status)
+{
+	struct authentication_req *auth = device->authr;
+
+	if (auth && auth->type == AUTH_TYPE_NOTIFY && auth->agent)
+		agent_cancel(auth->agent);
+
+	g_free(auth);
+	device->authr = NULL;
+}
+
 void device_bonding_complete(struct btd_device *device, uint8_t status)
 {
 	struct bonding_req *bonding = device->bonding;
+	struct authentication_req *auth = device->authr;
+
+	if (auth && auth->type == AUTH_TYPE_NOTIFY && auth->agent)
+		agent_cancel(auth->agent);
 
 	if (status)
 		goto failed;

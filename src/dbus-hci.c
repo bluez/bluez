@@ -445,6 +445,31 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_bonding_complete(device, status);
 }
 
+void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
+					uint8_t status)
+{
+	struct btd_adapter *adapter; char peer_addr[18];
+	struct btd_device *device;
+
+	debug("hcid_dbus_simple_pairing_complete: status=%02x", status);
+
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
+
+	ba2str(peer, peer_addr);
+
+	device = adapter_find_device(adapter, peer_addr);
+	if (!device) {
+		error("Unable to get device object!");
+		return;
+	}
+
+	device_simple_pairing_complete(device, status);
+}
+
 void hcid_dbus_inquiry_start(bdaddr_t *local)
 {
 	struct btd_adapter *adapter;
