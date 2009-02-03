@@ -888,6 +888,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 			close(dd);
 			exit(1);
 		}
+		sleep(1);
 		cc = 1;
 	} else
 		handle = htobs(cr->conn_info->handle);
