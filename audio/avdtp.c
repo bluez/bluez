@@ -391,6 +391,9 @@ struct avdtp {
 
 	guint dc_timer;
 
+	/* Attempt stream setup instead of disconnecting */
+	gboolean stream_setup;
+
 	DBusPendingCall *pending_auth;
 };
 
@@ -597,12 +600,21 @@ static gboolean stream_open_timeout(gpointer user_data)
 static gboolean disconnect_timeout(gpointer user_data)
 {
 	struct avdtp *session = user_data;
+	struct audio_device *dev;
+	gboolean stream_setup;
 
 	assert(session->ref == 1);
 
 	session->dc_timer = 0;
+	stream_setup = session->stream_setup;
+	session->stream_setup = FALSE;
 
-	connection_lost(session, -ETIMEDOUT);
+	dev = manager_get_device(&session->server->src, &session->dst);
+
+	if (dev && dev->sink && stream_setup)
+		sink_setup_stream(dev->sink, session);
+	else
+		connection_lost(session, -ETIMEDOUT);
 
 	return FALSE;
 }
@@ -611,6 +623,7 @@ static void remove_disconnect_timer(struct avdtp *session)
 {
 	g_source_remove(session->dc_timer);
 	session->dc_timer = 0;
+	session->stream_setup = FALSE;
 }
 
 static void set_disconnect_timer(struct avdtp *session)
@@ -2963,6 +2976,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 	/* Here we set the disconnect timer so we don't stay in IDLE state
 	 * indefinitely but set auto_dc to FALSE so that when a stream is
 	 * finally opened it doesn't get closed due to a timeout */
+	session->stream_setup = TRUE;
 	set_disconnect_timer(session);
 	avdtp_set_auto_disconnect(session, FALSE);
 

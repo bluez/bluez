@@ -164,13 +164,16 @@ static gboolean stream_setup_retry(gpointer user_data)
 	struct pending_request *pending = sink->connect;
 
 	if (sink->state >= AVDTP_STATE_OPEN) {
-		DBusMessage *reply;
 		debug("Stream successfully created, after XCASE connect:connect");
-		reply = dbus_message_new_method_return(pending->msg);
-		g_dbus_send_message(pending->conn, reply);
+		if (pending->msg) {
+			DBusMessage *reply;
+			reply = dbus_message_new_method_return(pending->msg);
+			g_dbus_send_message(pending->conn, reply);
+		}
 	} else {
 		debug("Stream setup failed, after XCASE connect:connect");
-		error_failed(pending->conn, pending->msg, "Stream setup failed");
+		if (pending->msg)
+			error_failed(pending->conn, pending->msg, "Stream setup failed");
 	}
 
 	sink->connect = NULL;
@@ -189,26 +192,33 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	pending = sink->connect;
 
 	if (stream) {
-		DBusMessage *reply;
-		sink->connect = NULL;
-		reply = dbus_message_new_method_return(pending->msg);
-		g_dbus_send_message(pending->conn, reply);
-		pending_request_free(pending);
 		debug("Stream successfully created");
-	} else {
-		avdtp_unref(sink->session);
-		sink->session = NULL;
-		if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
-				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
-			debug("connect:connect XCASE detected");
-			g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
-					stream_setup_retry, sink);
-		} else {
-			sink->connect = NULL;
-			error_failed(pending->conn, pending->msg, "Stream setup failed");
-			pending_request_free(pending);
-			debug("Stream setup failed : %s", avdtp_strerror(err));
+
+		if (pending->msg) {
+			DBusMessage *reply;
+			reply = dbus_message_new_method_return(pending->msg);
+			g_dbus_send_message(pending->conn, reply);
 		}
+
+		sink->connect = NULL;
+		pending_request_free(pending);
+
+		return;
+	}
+
+	avdtp_unref(sink->session);
+	sink->session = NULL;
+	if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
+			&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
+		debug("connect:connect XCASE detected");
+		g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
+				stream_setup_retry, sink);
+	} else {
+		if (pending->msg)
+			error_failed(pending->conn, pending->msg, "Stream setup failed");
+		sink->connect = NULL;
+		pending_request_free(pending);
+		debug("Stream setup failed : %s", avdtp_strerror(err));
 	}
 }
 
@@ -395,11 +405,28 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	return;
 
 failed:
-	error_failed(pending->conn, pending->msg, "Stream setup failed");
+	if (pending->msg)
+		error_failed(pending->conn, pending->msg, "Stream setup failed");
 	pending_request_free(pending);
 	sink->connect = NULL;
 	avdtp_unref(sink->session);
 	sink->session = NULL;
+}
+
+gboolean sink_setup_stream(struct sink *sink, struct avdtp *session)
+{
+	if (sink->connect || sink->disconnect)
+		return FALSE;
+
+	if (session && !sink->session)
+		sink->session = avdtp_ref(session);
+
+	if (avdtp_discover(sink->session, discovery_complete, sink) < 0)
+		return FALSE;
+
+	sink->connect = g_new0(struct pending_request, 1);
+
+	return TRUE;
 }
 
 static DBusMessage *sink_connect(DBusConnection *conn,
@@ -427,12 +454,14 @@ static DBusMessage *sink_connect(DBusConnection *conn,
 
 	avdtp_set_auto_disconnect(sink->session, FALSE);
 
-	pending = g_new0(struct pending_request, 1);
+	if (!sink_setup_stream(sink, NULL))
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+						"Failed to create a stream");
+
+	pending = sink->connect;
+
 	pending->conn = dbus_connection_ref(conn);
 	pending->msg = dbus_message_ref(msg);
-	sink->connect = pending;
-
-	avdtp_discover(sink->session, discovery_complete, sink);
 
 	debug("stream creation in progress");
 
