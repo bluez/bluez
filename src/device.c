@@ -1678,7 +1678,7 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 	debug("%s: requestor exited before bonding was completed", device->path);
 
 	if (device->authr)
-		device_cancel_authentication(device);
+		device_cancel_authentication(device, FALSE);
 
 	if (device->bonding) {
 		device->bonding->listener_id = 0;
@@ -1890,7 +1890,7 @@ void device_cancel_bonding(struct btd_device *device, uint8_t status)
 	debug("%s: canceling bonding request", device->path);
 
 	if (device->authr)
-		device_cancel_authentication(device);
+		device_cancel_authentication(device, FALSE);
 
 	reply = new_authentication_return(bonding->msg, status);
 	g_dbus_send_message(bonding->conn, reply);
@@ -2032,7 +2032,7 @@ static void cancel_authentication(struct authentication_req *auth)
 	auth->cb = NULL;
 }
 
-void device_cancel_authentication(struct btd_device *device)
+void device_cancel_authentication(struct btd_device *device, gboolean aborted)
 {
 	struct authentication_req *auth = device->authr;
 
@@ -2044,7 +2044,9 @@ void device_cancel_authentication(struct btd_device *device)
 	if (auth->agent)
 		agent_cancel(auth->agent);
 
-	cancel_authentication(auth);
+	if (!aborted)
+		cancel_authentication(auth);
+
 	device->authr = NULL;
 	g_free(auth);
 }

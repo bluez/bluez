@@ -68,7 +68,7 @@ gboolean device_is_bonding(struct btd_device *device, const char *sender);
 void device_cancel_bonding(struct btd_device *device, uint8_t status);
 int device_request_authentication(struct btd_device *device, auth_type_t type,
 				uint32_t passkey, void *cb);
-void device_cancel_authentication(struct btd_device *device);
+void device_cancel_authentication(struct btd_device *device, gboolean aborted);
 gboolean device_is_authenticating(struct btd_device *device);
 void device_set_renewed_key(struct btd_device *device, gboolean renewed);
 void device_add_connection(struct btd_device *device, DBusConnection *conn,
