@@ -891,8 +891,10 @@ static void connection_lost(struct avdtp *session, int err)
 
 	dev = manager_find_device(&session->dst, AUDIO_CONTROL_INTERFACE,
 					FALSE);
-	if (dev)
+	if (dev && dev->control) {
+		device_remove_control_timer(dev);
 		avrcp_disconnect(dev);
+	}
 
 	if (session->state == AVDTP_SESSION_STATE_CONNECTED) {
 		char address[18];
@@ -2984,8 +2986,8 @@ static void auth_cb(DBusError *derr, void *user_data)
 
 	dev = manager_find_device(&session->dst, AUDIO_CONTROL_INTERFACE,
 					FALSE);
-	if (dev)
-		avrcp_connect(dev);
+	if (dev && dev->control)
+		device_set_control_timer(dev);
 
 	g_source_remove(session->io);
 

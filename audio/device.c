@@ -54,13 +54,52 @@
 #include "headset.h"
 #include "sink.h"
 
+#define CONTROL_CONNECT_TIMEOUT 2
+
 static void device_free(struct audio_device *dev)
 {
 	if (dev->conn)
 		dbus_connection_unref(dev->conn);
 
+	if (dev->control_timer)
+		g_source_remove(dev->control_timer);
+
 	g_free(dev->path);
 	g_free(dev);
+}
+
+static gboolean control_connect_timeout(gpointer user_data)
+{
+	struct audio_device *dev = user_data;
+
+	dev->control_timer = 0;
+
+	if (dev->control)
+		avrcp_connect(dev);
+
+	return FALSE;
+}
+
+gboolean device_set_control_timer(struct audio_device *dev)
+{
+	if (!dev->control)
+		return FALSE;
+
+	if (dev->control_timer)
+		return FALSE;
+
+	dev->control_timer = g_timeout_add_seconds(CONTROL_CONNECT_TIMEOUT,
+							control_connect_timeout,
+							dev);
+
+	return TRUE;
+}
+
+void device_remove_control_timer(struct audio_device *dev)
+{
+	if (dev->control_timer)
+		g_source_remove(dev->control_timer);
+	dev->control_timer = 0;
 }
 
 struct audio_device *audio_device_register(DBusConnection *conn,

@@ -691,6 +691,8 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	if (!dev->control)
 		dev->control = control_init(dev);
 
+	device_remove_control_timer(dev);
+
 	session->state = AVCTP_STATE_CONNECTING;
 	session->sock = g_io_channel_unix_get_fd(chan);
 
@@ -819,6 +821,8 @@ gboolean avrcp_connect(struct audio_device *dev)
 		error("Unable to create new AVCTP session");
 		return FALSE;
 	}
+
+	device_remove_control_timer(dev);
 
 	session->dev = dev;
 	session->state = AVCTP_STATE_CONNECTING;
