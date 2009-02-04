@@ -1200,6 +1200,9 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 
 	debug("initial authentication requirement is 0x%02x", *auth);
 
+	if (*auth == 0xff)
+		*auth = device_get_auth(device);
+
 	/* Check if the adapter is not pairable and if there isn't a bonding
 	 * in progress */
 	if (!adapter_is_pairable(adapter) &&
