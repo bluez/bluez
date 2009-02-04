@@ -326,7 +326,9 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 
 		debug("stored link key type = 0x%02x", type);
 
-		if ((type == 0x03 || type == 0x04) && (req.type & 0x01))
+		/* Don't use debug link keys (0x03) and also don't use
+		 * unauthenticated combination keys if MITM is required */
+		if (type == 0x03 || (type == 0x04 && (req.type & 0x01)))
 			hci_send_cmd(dev, OGF_LINK_CTL,
 					OCF_LINK_KEY_NEG_REPLY, 6, dba);
 		else
