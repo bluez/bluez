@@ -656,7 +656,7 @@ int telephony_event_reporting_rsp(void *telephony_device, cme_error_t err)
 	if (hs->state != HEADSET_STATE_CONNECT_IN_PROGRESS)
 		return 0;
 
-	if (ag.features & AG_FEATURE_THREE_WAY_CALLING)
+	if (hs->hf_features & AG_FEATURE_THREE_WAY_CALLING)
 		return 0;
 
 	hfp_slc_complete(device);
