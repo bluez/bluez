@@ -902,15 +902,22 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 {
 	struct btd_device *device;
 	struct btd_adapter *adapter;
-	int err;
+	uint8_t local_auth = 0xff, remote_auth;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	err = write_link_key(local, peer, key, key_type, pin_length);
-	if (err < 0) {
-		error("write_link_key: %s (%d)", strerror(-err), -err);
-		return err;
+	get_auth_requirements(local, peer, &local_auth);
+	remote_auth = device_get_auth(device);
+
+	/* Only store the link key if neither side had "no bonding" as a
+	 * requirement */
+	if (local_auth > 0x01 && remote_auth > 0x01) {
+		int err = write_link_key(local, peer, key, key_type, pin_length);
+		if (err < 0) {
+			error("write_link_key: %s (%d)", strerror(-err), -err);
+			return err;
+		}
 	}
 
 	/* If this is not the first link key set a flag so a subsequent auth

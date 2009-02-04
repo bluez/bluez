@@ -640,6 +640,8 @@ struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapt
 	str2ba(address, &device->bdaddr);
 	device->adapter = adapter;
 
+	device->auth = 0xff;
+
 	return device;
 }
 
