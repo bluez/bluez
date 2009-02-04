@@ -1495,7 +1495,8 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 				AG_FEATURE_REJECT_A_CALL |
 				AG_FEATURE_ENHANCED_CALL_STATUS |
 				AG_FEATURE_ENHANCED_CALL_CONTROL |
-				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
+				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
+				AG_FEATURE_THREE_WAY_CALLING;
 
 	reply = dbus_pending_call_steal_reply(call);
 
