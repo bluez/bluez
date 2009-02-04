@@ -896,14 +896,22 @@ proceed:
 	adapter_set_state(adapter, state);
 }
 
-void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
-				uint8_t key_type, uint8_t old_key_type)
+int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
+				uint8_t *key, uint8_t key_type,
+				int pin_length, uint8_t old_key_type)
 {
 	struct btd_device *device;
 	struct btd_adapter *adapter;
+	int err;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
-		return;
+		return -ENODEV;
+
+	err = write_link_key(local, peer, key, key_type, pin_length);
+	if (err < 0) {
+		error("write_link_key: %s (%d)", strerror(-err), -err);
+		return err;
+	}
 
 	/* If this is not the first link key set a flag so a subsequent auth
 	 * complete event doesn't trigger SDP */
@@ -916,6 +924,8 @@ void hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 		device_set_secmode3_conn(device, TRUE);
 	else if (!device_is_bonding(device, NULL) && old_key_type == 0xFF)
 		hcid_dbus_bonding_process_complete(local, peer, 0);
+
+	return 0;
 }
 
 void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,

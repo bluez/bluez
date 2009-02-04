@@ -361,14 +361,18 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 
 	dev_id = hci_devid(sa);
 
-	err = write_link_key(sba, dba, evt->link_key, new_key_type,
-						io_data[dev_id].pin_length);
+	err = hcid_dbus_link_key_notify(sba, dba, evt->link_key, evt->key_type,
+						io_data[dev_id].pin_length,
+						old_key_type);
 	if (err < 0) {
 		uint16_t handle;
 
-		error("write_link_key: %s (%d)", strerror(-err), -err);
-
-		hcid_dbus_bonding_process_complete(sba, dba, HCI_MEMORY_FULL);
+		if (err == -ENODEV)
+			hcid_dbus_bonding_process_complete(sba, dba,
+							HCI_OE_LOW_RESOURCES);
+		else
+			hcid_dbus_bonding_process_complete(sba, dba,
+							HCI_MEMORY_FULL);
 
 		if (get_handle(dev, sba, dba, &handle) == 0) {
 			disconnect_cp cp;
@@ -380,9 +384,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 			hci_send_cmd(dev, OGF_LINK_CTL, OCF_DISCONNECT,
 						DISCONNECT_CP_SIZE, &cp);
 		}
-	} else
-		hcid_dbus_link_key_notify(sba, dba, evt->key_type,
-							old_key_type);
+	}
 
 	io_data[dev_id].pin_length = -1;
 }
