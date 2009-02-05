@@ -346,7 +346,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	debug("remote authentication requirement is 0x%02x", remauth);
 
 	/* If no side requires MITM protection; auto-accept */
-	if (!(remauth & 0x01) && (!(type & 0x01) || remcap == 0x03)) {
+	if (!(remauth & 0x01) && (type == 0xff || !(type & 0x01) || remcap == 0x03)) {
 		int dd;
 
 		dd = hci_open_dev(dev_id);
