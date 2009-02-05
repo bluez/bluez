@@ -271,38 +271,6 @@ static struct csd_call *find_call_with_status(int status)
 	return NULL;
 }
 
-static gboolean update_indicators(gpointer user_data)
-{
-	if (net.status < NETWORK_REG_STATUS_NOSERV) {
-		int signal;
-		telephony_update_indicator(maemo_indicators, "service",
-						EV_SERVICE_PRESENT);
-		signal = telephony_get_indicator(maemo_indicators, "signal");
-		telephony_update_indicator(maemo_indicators, "signal", signal);
-	} else
-		telephony_update_indicator(maemo_indicators, "service",
-						EV_SERVICE_NONE);
-
-	switch (net.status) {
-	case NETWORK_REG_STATUS_HOME:
-		telephony_update_indicator(maemo_indicators, "roam",
-						EV_ROAM_INACTIVE);
-		break;
-	case NETWORK_REG_STATUS_ROAM:
-	case NETWORK_REG_STATUS_ROAM_BLINK:
-		telephony_update_indicator(maemo_indicators, "roam",
-						EV_ROAM_ACTIVE);
-		break;
-	}
-
-	if ((battchg_last > 0 || battchg_design > 0) && battchg_cur >= 0) {
-		int bat = telephony_get_indicator(maemo_indicators, "battchg");
-		telephony_update_indicator(maemo_indicators, "battchg", bat);
-	}
-
-	return FALSE;
-}
-
 static int release_call(struct csd_call *call)
 {
 	DBusMessage *msg;
@@ -444,9 +412,19 @@ static int call_transfer(void)
 
 void telephony_device_connected(void *telephony_device)
 {
+	struct csd_call *coming;
+
 	debug("telephony-maemo: device %p connected", telephony_device);
 
-	g_timeout_add_seconds(1, update_indicators, NULL);
+	coming = find_call_with_status(CSD_CALL_STATUS_MT_ALERTING);
+	if (coming) {
+		if (find_call_with_status(CSD_CALL_STATUS_ACTIVE))
+			telephony_call_waiting_ind(coming->number,
+							NUMBER_TYPE_TELEPHONY);
+		else
+			telephony_incoming_call_ind(coming->number,
+							NUMBER_TYPE_TELEPHONY);
+	}
 }
 
 void telephony_device_disconnected(void *telephony_device)
@@ -850,7 +828,12 @@ static void handle_incoming_call(DBusMessage *msg)
 	telephony_update_indicator(maemo_indicators, "callsetup",
 					EV_CALLSETUP_INCOMING);
 
-	telephony_incoming_call_ind(number, NUMBER_TYPE_TELEPHONY);
+	if (find_call_with_status(CSD_CALL_STATUS_ACTIVE))
+		telephony_call_waiting_ind(call->number,
+						NUMBER_TYPE_TELEPHONY);
+	else
+		telephony_incoming_call_ind(call->number,
+						NUMBER_TYPE_TELEPHONY);
 }
 
 static void handle_outgoing_call(DBusMessage *msg)
