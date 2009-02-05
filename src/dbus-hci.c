@@ -1256,7 +1256,8 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		}
 
 		/* If remote requires MITM then also require it */
-		if (device_get_auth(device) & 0x01)
+		if (device_get_auth(device) != 0xff &&
+					(device_get_auth(device) & 0x01))
 			*auth |= 0x01;
 	}
 
