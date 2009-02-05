@@ -922,14 +922,14 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 	/* If this is not the first link key set a flag so a subsequent auth
 	 * complete event doesn't trigger SDP */
-	if (old_key_type != 0xFF)
+	if (old_key_type != 0xff)
 		device_set_renewed_key(device, TRUE);
 
 	device_set_temporary(device, FALSE);
 
 	if (!device_is_connected(device))
 		device_set_secmode3_conn(device, TRUE);
-	else if (!device_is_bonding(device, NULL) && old_key_type == 0xFF)
+	else if (!device_is_bonding(device, NULL) && old_key_type == 0xff)
 		hcid_dbus_bonding_process_complete(local, peer, 0);
 
 	return 0;
