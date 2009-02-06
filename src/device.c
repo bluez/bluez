@@ -1459,7 +1459,7 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 	}
 }
 
-static void bonding_request_free(struct bonding_req *bonding)
+static void bonding_request_free(struct bonding_req *bonding, gboolean close)
 {
 	struct btd_device *device;
 
@@ -1478,8 +1478,11 @@ static void bonding_request_free(struct bonding_req *bonding)
 	if (bonding->io_id)
 		g_source_remove(bonding->io_id);
 
-	if (bonding->io)
+	if (bonding->io) {
+		if (close)
+			g_io_channel_close(bonding->io);
 		g_io_channel_unref(bonding->io);
+	}
 
 	device = bonding->device;
 
@@ -1668,7 +1671,7 @@ failed:
 
 cleanup:
 	device->bonding->io_id = 0;
-	bonding_request_free(device->bonding);
+	bonding_request_free(device->bonding, FALSE);
 
 	return FALSE;
 }
@@ -1685,7 +1688,7 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 	if (device->bonding) {
 		device->bonding->listener_id = 0;
 		g_io_channel_close(device->bonding->io);
-		bonding_request_free(device->bonding);
+		bonding_request_free(device->bonding, TRUE);
 	}
 }
 
@@ -1871,7 +1874,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 	device_set_paired(device, TRUE);
 
-	bonding_request_free(bonding);
+	bonding_request_free(bonding, TRUE);
 
 	return;
 
@@ -1909,7 +1912,7 @@ void device_cancel_bonding(struct btd_device *device, uint8_t status)
 	reply = new_authentication_return(bonding->msg, status);
 	g_dbus_send_message(bonding->conn, reply);
 
-	bonding_request_free(bonding);
+	bonding_request_free(bonding, TRUE);
 }
 
 static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
