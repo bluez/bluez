@@ -1123,11 +1123,8 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct headset *hs;
 	unsigned char buf[BUF_SIZE];
-	char *cr;
 	gsize bytes_read = 0;
 	gsize free_space;
-	int err;
-	off_t cmd_len;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -1157,27 +1154,39 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	 * functions */
 	hs->buf[hs->data_start + hs->data_length] = '\0';
 
-	cr = strchr(&hs->buf[hs->data_start], '\r');
-	if (!cr)
-		return TRUE;
+	while (hs->data_length > 0) {
+		char *cr;
+		int err;
+		off_t cmd_len;
 
-	cmd_len = 1 + (off_t) cr - (off_t) &hs->buf[hs->data_start];
-	*cr = '\0';
+		cr = strchr(&hs->buf[hs->data_start], '\r');
+		if (!cr)
+			break;
 
-	err = handle_event(device, &hs->buf[hs->data_start]);
-	if (err == -EINVAL) {
-		error("Badly formated or unrecognized command: %s",
-				&hs->buf[hs->data_start]);
-		err = headset_send(hs, "\r\nERROR\r\n");
-	} else if (err < 0)
-		error("Error handling command %s: %s (%d)",
-			&hs->buf[hs->data_start], strerror(-err), -err);
+		cmd_len = 1 + (off_t) cr - (off_t) &hs->buf[hs->data_start];
+		*cr = '\0';
 
-	hs->data_start += cmd_len;
-	hs->data_length -= cmd_len;
+		if (cmd_len > 1)
+			err = handle_event(device, &hs->buf[hs->data_start]);
+		else
+			/* Silently skip empty commands */
+			err = 0;
 
-	if (!hs->data_length)
-		hs->data_start = 0;
+		if (err == -EINVAL) {
+			error("Badly formated or unrecognized command: %s",
+					&hs->buf[hs->data_start]);
+			err = headset_send(hs, "\r\nERROR\r\n");
+		} else if (err < 0)
+			error("Error handling command %s: %s (%d)",
+						&hs->buf[hs->data_start],
+						strerror(-err), -err);
+
+		hs->data_start += cmd_len;
+		hs->data_length -= cmd_len;
+
+		if (!hs->data_length)
+			hs->data_start = 0;
+	}
 
 	return TRUE;
 
