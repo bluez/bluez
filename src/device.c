@@ -701,6 +701,8 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 {
 	GSList *list;
 	struct btd_device_driver *driver;
+	bdaddr_t src;
+	char addr[18];
 	gchar *path = g_strdup(device->path);
 
 	debug("Removing device %s", path);
@@ -718,6 +720,10 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 		driver->remove(device);
 		g_free(driver_data);
 	}
+
+	adapter_get_address(device->adapter, &src);
+	ba2str(&device->bdaddr, addr);
+	delete_entry(&src, "trusts", addr);
 
 	g_dbus_unregister_interface(conn, path, DEVICE_INTERFACE);
 
