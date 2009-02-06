@@ -888,6 +888,7 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 static void connection_lost(struct avdtp *session, int err)
 {
 	struct audio_device *dev;
+	char address[18];
 
 	dev = manager_find_device(&session->dst, AUDIO_CONTROL_INTERFACE,
 					FALSE);
@@ -896,13 +897,11 @@ static void connection_lost(struct avdtp *session, int err)
 		avrcp_disconnect(dev);
 	}
 
-	if (session->state == AVDTP_SESSION_STATE_CONNECTED) {
-		char address[18];
+	ba2str(&session->dst, address);
+	debug("Disconnected from %s", address);
 
-		ba2str(&session->dst, address);
-		debug("Disconnected from %s", address);
-	} else if (session->state == AVDTP_SESSION_STATE_CONNECTING)
-		btd_cancel_authorization(&dev->src, &dev->dst);
+	if (session->state == AVDTP_SESSION_STATE_CONNECTING)
+		btd_cancel_authorization(&session->server->src, &session->dst);
 
 	session->free_lock = 1;
 
@@ -3053,13 +3052,15 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	session->io = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) session_cb, session);
 	err = btd_request_authorization(src, dst, ADVANCED_AUDIO_UUID,
-				auth_cb, session);
+							auth_cb, session);
 	if (err < 0) {
 		avdtp_unref(session);
 		goto drop;
 	}
 
 	g_io_channel_unref(chan);
+
+	session->state = AVDTP_SESSION_STATE_CONNECTING;
 
 	return;
 
