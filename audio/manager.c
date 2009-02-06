@@ -1029,7 +1029,6 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 	if (dev)
 		return dev;
 
-
 	ba2str(src, addr);
 
 	adapter = manager_find_adapter(src);
