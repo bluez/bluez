@@ -639,6 +639,8 @@ static int csd_status_to_hfp(struct csd_call *call)
 		return -1;
 	case CSD_CALL_STATUS_CREATE:
 		return CALL_STATUS_DIALING;
+	case CSD_CALL_STATUS_WAITING:
+		return CALL_STATUS_WAITING;
 	case CSD_CALL_STATUS_PROCEEDING:
 		/* PROCEEDING can happen in outgoing/incoming */
 		if (call->originating)
