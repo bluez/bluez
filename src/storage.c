@@ -847,8 +847,8 @@ sdp_record_t *record_from_string(const gchar *str)
 
 	tmp[2] = 0;
 	for (i = 0; i < size; i++) {
-		 memcpy(tmp, str + (i * 2), 2);
-		 pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
+		memcpy(tmp, str + (i * 2), 2);
+		pdata[i] = (uint8_t) strtol(tmp, NULL, 16);
 	}
 
 	rec = sdp_extract_pdu(pdata, size, &len);
@@ -1068,8 +1068,8 @@ int read_device_id(const gchar *srcaddr, const gchar *dstaddr,
 	if (err) {
 		/* FIXME: We should try EIR data if we have it, too */
 
-		/* If we don't have the data, we don't want to go
-		   through the above search every time. */
+		/* If we don't have the data, we don't want to go through the
+		 * above search every time. */
 		lsource = 0xffff;
 		lvendor = 0x0000;
 		lproduct = 0x0000;

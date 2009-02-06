@@ -98,10 +98,13 @@ struct btd_adapter {
 	uint32_t discov_timeout;	/* discoverable time(sec) */
 	guint pairable_timeout_id;	/* pairable timeout id */
 	uint32_t pairable_timeout;	/* pairable time(sec) */
-	uint8_t scan_mode;		/* scan mode: SCAN_DISABLED, SCAN_PAGE, SCAN_INQUIRY */
-	uint8_t mode;			/* off, connectable, discoverable, limited */
+	uint8_t scan_mode;		/* scan mode: SCAN_DISABLED, SCAN_PAGE,
+					 * SCAN_INQUIRY */
+	uint8_t mode;			/* off, connectable, discoverable,
+					 * limited */
 	uint8_t global_mode;		/* last valid global mode */
-	int state;			/* standard inq, periodic inq, name resloving */
+	int state;			/* standard inq, periodic inq, name
+					 * resloving */
 	GSList *found_devices;
 	GSList *oor_devices;		/* out of range device list */
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
@@ -226,7 +229,8 @@ int pending_remote_name_cancel(struct btd_adapter *adapter)
 
 	if (hci_read_remote_name_cancel(dd, &dev->bdaddr,
 					HCI_REQ_TIMEOUT) < 0) {
-		error("Remote name cancel failed: %s(%d)", strerror(errno), errno);
+		error("Remote name cancel failed: %s(%d)", strerror(errno),
+									errno);
 		err = -errno;
 	}
 
@@ -236,10 +240,12 @@ int pending_remote_name_cancel(struct btd_adapter *adapter)
 	adapter->found_devices = NULL;
 
 	hci_close_dev(dd);
+
 	return err;
 }
 
-static int set_limited_discoverable(int dd, const uint8_t *cls, gboolean limited)
+static int set_limited_discoverable(int dd, const uint8_t *cls,
+							gboolean limited)
 {
 	uint32_t dev_class;
 	int num = (limited ? 2 : 1);
@@ -436,18 +442,18 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 			hci_close_dev(dd);
 			return err;
 		}
-	} else {
-		/* discoverable or limited */
-		if ((scan_enable & SCAN_INQUIRY) && (new_mode != adapter->mode)) {
-			adapter_remove_discov_timeout(adapter);
-			if (adapter->discov_timeout)
-				adapter_set_discov_timeout(adapter,
+	} else if ((scan_enable & SCAN_INQUIRY) &&
+						(new_mode != adapter->mode)) {
+		adapter_remove_discov_timeout(adapter);
+		if (adapter->discov_timeout)
+			adapter_set_discov_timeout(adapter,
 						adapter->discov_timeout);
-			if (new_mode == MODE_LIMITED)
-				set_limited_discoverable(dd, adapter->dev.class, TRUE);
-			else if (adapter->mode == MODE_LIMITED)
-				set_limited_discoverable(dd, adapter->dev.class, FALSE);
-		}
+		if (new_mode == MODE_LIMITED)
+			set_limited_discoverable(dd, adapter->dev.class,
+									TRUE);
+		else if (adapter->mode == MODE_LIMITED)
+			set_limited_discoverable(dd, adapter->dev.class,
+									FALSE);
 	}
 done:
 	modestr = mode2str(new_mode);
@@ -559,8 +565,8 @@ static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
 		return;
 
 	adapter->pairable_timeout_id = g_timeout_add_seconds(interval,
-							pairable_timeout_handler,
-							adapter);
+						pairable_timeout_handler,
+						adapter);
 }
 
 static struct session_req *find_session(GSList *list, const char *sender)
@@ -851,7 +857,7 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 	const char *path;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
-		error("Name change failed: the supplied name isn't valid UTF-8");
+		error("Name change failed: supplied name isn't valid UTF-8");
 		return invalid_args(msg);
 	}
 
@@ -867,7 +873,8 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
-struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest)
+struct btd_device *adapter_find_device(struct btd_adapter *adapter,
+							const char *dest)
 {
 	struct btd_device *device;
 	GSList *l;
@@ -875,8 +882,8 @@ struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *
 	if (!adapter)
 		return NULL;
 
-	l = g_slist_find_custom(adapter->devices,
-				dest, (GCompareFunc) device_address_cmp);
+	l = g_slist_find_custom(adapter->devices, dest,
+					(GCompareFunc) device_address_cmp);
 	if (!l)
 		return NULL;
 
@@ -886,7 +893,7 @@ struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *
 }
 
 struct btd_device *adapter_find_connection(struct btd_adapter *adapter,
-					uint16_t handle)
+						uint16_t handle)
 {
 	GSList *l;
 
@@ -920,7 +927,8 @@ static void adapter_update_devices(struct btd_adapter *adapter)
 }
 
 struct btd_device *adapter_create_device(DBusConnection *conn,
-				struct btd_adapter *adapter, const char *address)
+						struct btd_adapter *adapter,
+						const char *address)
 {
 	struct btd_device *device;
 	const char *path;
@@ -979,7 +987,8 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 }
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
-				struct btd_adapter *adapter, const gchar *address)
+						struct btd_adapter *adapter,
+						const gchar *address)
 {
 	struct btd_device *device;
 
@@ -1233,7 +1242,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		struct btd_device *dev = l->data;
 		devices[i] = (char *) device_get_path(dev);
 	}
-	dict_append_array(&dict, "Devices", DBUS_TYPE_OBJECT_PATH, &devices, i);
+	dict_append_array(&dict, "Devices", DBUS_TYPE_OBJECT_PATH,
+								&devices, i);
 	g_free(devices);
 
 	dbus_message_iter_close_container(&iter, &dict);
@@ -1425,7 +1435,7 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct btd_adapter *adapter = data;
-	const gchar *address;
+	const gchar *address, *sender = dbus_message_get_sender(msg);
 	struct btd_device *device;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
@@ -1441,8 +1451,7 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 				ERROR_INTERFACE ".DoesNotExist",
 				"Device does not exist");
 
-	if (!device_is_temporary(device) ||
-			!device_is_bonding(device, dbus_message_get_sender(msg)))
+	if (!device_is_temporary(device) || !device_is_bonding(device, sender))
 		return not_authorized(msg);
 
 	adapter_remove_device(conn, adapter, device);
@@ -1788,7 +1797,8 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 			events[6] |= 0x20;	/* Simple Pairing Complete */
 			events[7] |= 0x04;	/* User Passkey Notification */
 			events[7] |= 0x08;	/* Keypress Notification */
-			events[7] |= 0x10;	/* Remote Host Supported Features Notification */
+			events[7] |= 0x10;	/* Remote Host Supported
+						 * Features Notification */
 		}
 
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
@@ -1873,10 +1883,12 @@ static void load_devices(struct btd_adapter *adapter)
 	ba2str(&adapter->bdaddr, srcaddr);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "profiles");
-	textfile_foreach(filename, create_stored_device_from_profiles, adapter);
+	textfile_foreach(filename, create_stored_device_from_profiles,
+								adapter);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "linkkeys");
-	textfile_foreach(filename, create_stored_device_from_linkkeys, adapter);
+	textfile_foreach(filename, create_stored_device_from_linkkeys,
+								adapter);
 }
 
 static void load_drivers(struct btd_adapter *adapter)
@@ -2093,7 +2105,8 @@ int adapter_start(struct btd_adapter *adapter)
 		return err;
 	}
 
-	if (hci_read_local_name(dd, sizeof(name), name, HCI_REQ_TIMEOUT) < 0) {
+	if (hci_read_local_name(dd, sizeof(name), name,
+						HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Can't read local name on %s: %s (%d)",
 					adapter->path, strerror(err), err);
@@ -2119,8 +2132,8 @@ int adapter_start(struct btd_adapter *adapter)
 	}
 
 setup:
-	hci_send_cmd(dd, OGF_LINK_POLICY,
-				OCF_READ_DEFAULT_LINK_POLICY, 0, NULL);
+	hci_send_cmd(dd, OGF_LINK_POLICY, OCF_READ_DEFAULT_LINK_POLICY,
+								0, NULL);
 
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
 		adapter->state |= STD_INQUIRY;
@@ -2325,8 +2338,7 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id,
 
 	adapter = g_try_new0(struct btd_adapter, 1);
 	if (!adapter) {
-		error("Failed to alloc memory to D-Bus path register data (%s)",
-				path);
+		error("adapter_create: failed to alloc memory for %s", path);
 		return NULL;
 	}
 
@@ -2371,7 +2383,6 @@ void adapter_remove(struct btd_adapter *adapter)
 
 done:
 	g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE);
-
 	g_free(path);
 }
 
@@ -2405,7 +2416,8 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		discov_active = TRUE;
 	else if (adapter->disc_sessions && main_opts.inqmode)
 		adapter->scheduler_id = g_timeout_add_seconds(main_opts.inqmode,
-				(GSourceFunc) start_inquiry, adapter);
+						(GSourceFunc) start_inquiry,
+						adapter);
 
 	/* Send out of range */
 	if (!discov_active)
@@ -2470,10 +2482,10 @@ int adapter_add_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 			dev->alias = g_strdup(alias);
 		}
 
-		 /* Get remote name can be received while inquiring.
-		  * Keep in mind that multiple inquiry result events can
-		  * be received from the same remote device.
-		  */
+		/* Get remote name can be received while inquiring.  Keep in
+		 * mind that multiple inquiry result events can be received
+		 * from the same remote device.
+		 */
 		if (name_status != NAME_NOT_REQUIRED)
 			dev->name_status = name_status;
 
@@ -2732,7 +2744,8 @@ void btd_unregister_adapter_driver(struct btd_adapter_driver *driver)
 	adapter_drivers = g_slist_remove(adapter_drivers, driver);
 }
 
-static void agent_auth_cb(struct agent *agent, DBusError *derr, void *user_data)
+static void agent_auth_cb(struct agent *agent, DBusError *derr,
+							void *user_data)
 {
 	struct service_auth *auth = user_data;
 
@@ -2741,8 +2754,10 @@ static void agent_auth_cb(struct agent *agent, DBusError *derr, void *user_data)
 	g_free(auth);
 }
 
-static int btd_adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
-		const char *uuid, service_auth_cb cb, void *user_data)
+static int btd_adapter_authorize(struct btd_adapter *adapter,
+					const bdaddr_t *dst,
+					const char *uuid,
+					service_auth_cb cb, void *user_data)
 {
 	struct service_auth *auth;
 	struct btd_device *device;

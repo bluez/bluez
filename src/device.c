@@ -94,7 +94,8 @@ struct btd_device {
 	struct agent	*agent;
 	guint		disconn_timer;
 	int		discov_active;		/* Service discovery active */
-	char		*discov_requestor;	/* discovery requestor unique name */
+	char		*discov_requestor;	/* discovery requestor unique
+						 * name */
 	guint		discov_listener;
 	guint		discov_timer;
 	struct bonding_req *bonding;
@@ -346,7 +347,6 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 	char srcaddr[18], dstaddr[18];
 	bdaddr_t src;
 
-
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
@@ -430,7 +430,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 
 	if (device->discov_active)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
-							"Discover in progress");
+						"Discover in progress");
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -465,6 +465,7 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 {
 	struct btd_device *device = user_data;
 	struct btd_adapter *adapter = device->adapter;
+	const char *sender = dbus_message_get_sender(msg);
 	bdaddr_t src;
 
 	adapter_get_address(adapter, &src);
@@ -476,7 +477,7 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 
 	/* only the discover requestor can cancel the inquiry process */
 	if (!device->discov_requestor ||
-			strcmp(device->discov_requestor, dbus_message_get_sender(msg)))
+				!g_str_equal(device->discov_requestor, sender))
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
@@ -515,8 +516,8 @@ fail:
 	return FALSE;
 }
 
-static DBusMessage *disconnect(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
 {
 	struct btd_device *device = user_data;
 
@@ -556,8 +557,9 @@ gboolean device_is_connected(struct btd_device *device)
 	return (device->handle != 0);
 }
 
-static void device_set_connected(struct btd_device *device, DBusConnection *conn,
-			gboolean connected)
+static void device_set_connected(struct btd_device *device,
+					DBusConnection *conn,
+					gboolean connected)
 {
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
 				"Connected", DBUS_TYPE_BOOLEAN, &connected);
@@ -612,7 +614,8 @@ void device_set_secmode3_conn(struct btd_device *device, gboolean enable)
 	device->secmode3 = enable;
 }
 
-struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapter,
+struct btd_device *device_create(DBusConnection *conn,
+					struct btd_adapter *adapter,
 					const gchar *address)
 {
 	gchar *address_up;
@@ -645,7 +648,8 @@ struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapt
 	return device;
 }
 
-static void device_remove_bonding(struct btd_device *device, DBusConnection *conn)
+static void device_remove_bonding(struct btd_device *device,
+							DBusConnection *conn)
 {
 	char filename[PATH_MAX + 1];
 	char *str, srcaddr[18], dstaddr[18];
@@ -851,13 +855,13 @@ void device_probe_drivers(struct btd_device *device, GSList *profiles)
 
 	for (list = profiles; list; list = list->next) {
 		GSList *l = g_slist_find_custom(device->uuids, list->data,
-							(GCompareFunc) strcasecmp);
+						(GCompareFunc) strcasecmp);
 		if (l)
 			continue;
 
 		device->uuids = g_slist_insert_sorted(device->uuids,
-							g_strdup(list->data),
-							(GCompareFunc) strcasecmp);
+						g_strdup(list->data),
+						(GCompareFunc) strcasecmp);
 	}
 
 	if (device->tmp_records) {
@@ -897,7 +901,8 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 					(GCompareFunc) strcasecmp))
 				continue;
 
-			debug("UUID %s was removed from device %s", *uuid, dstaddr);
+			debug("UUID %s was removed from device %s",
+							*uuid, dstaddr);
 
 			driver->remove(device);
 			device->drivers = g_slist_remove(device->drivers,
@@ -1102,7 +1107,8 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		store_record(srcaddr, dstaddr, rec);
 
 		/* Copy record */
-		req->records = sdp_list_append(req->records, sdp_copy_record(rec));
+		req->records = sdp_list_append(req->records,
+							sdp_copy_record(rec));
 
 		l = g_slist_find_custom(device->uuids, profile_uuid,
 							(GCompareFunc) strcmp);
@@ -1184,7 +1190,8 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	}
 
 	if (device->tmp_records && req->records) {
-		sdp_list_free(device->tmp_records, (sdp_free_func_t) sdp_record_free);
+		sdp_list_free(device->tmp_records,
+					(sdp_free_func_t) sdp_record_free);
 		device->tmp_records = req->records;
 		req->records = NULL;
 	}
@@ -1235,8 +1242,8 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	bdaddr_t src;
 	uuid_t uuid;
 
-	/* If we have a valid response and req->search_uuid == 2, then
-	   L2CAP UUID & PNP searching was successful -- we are done */
+	/* If we have a valid response and req->search_uuid == 2, then L2CAP
+	 * UUID & PNP searching was successful -- we are done */
 	if (err < 0 || (req->search_uuid == 2 && req->records))
 		goto done;
 
@@ -1307,12 +1314,14 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	device->discov_active = 1;
 
 	if (msg) {
+		const char *sender = dbus_message_get_sender(msg);
+
 		req->msg = dbus_message_ref(msg);
-		device->discov_requestor = g_strdup(dbus_message_get_sender(msg));
+		device->discov_requestor = g_strdup(sender);
 		/* Track the request owner to cancel it
 		 * automatically if the owner exits */
 		device->discov_listener = g_dbus_add_disconnect_watch(conn,
-						dbus_message_get_sender(msg),
+						sender,
 						discover_services_req_exit,
 						device, NULL);
 	}
@@ -1549,7 +1558,6 @@ static struct bonding_req *bonding_request_new(DBusConnection *conn,
 			device->path, name, agent_path);
 
 proceed:
-
 	bonding = g_new0(struct bonding_req, 1);
 
 	bonding->conn = dbus_connection_ref(conn);

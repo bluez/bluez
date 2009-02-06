@@ -190,7 +190,8 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	bacpy(&pr.bdaddr, &dba);
 	memcpy(pr.pin_code, pincode, len);
 	pr.pin_len = len;
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY, PIN_CODE_REPLY_CP_SIZE, &pr);
+	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
+						PIN_CODE_REPLY_CP_SIZE, &pr);
 
 done:
 	hci_close_dev(dev);
@@ -346,7 +347,8 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	debug("remote authentication requirement is 0x%02x", remauth);
 
 	/* If no side requires MITM protection; auto-accept */
-	if (!(remauth & 0x01) && (type == 0xff || !(type & 0x01) || remcap == 0x03)) {
+	if (!(remauth & 0x01) &&
+			(type == 0xff || !(type & 0x01) || remcap == 0x03)) {
 		int dd;
 
 		dd = hci_open_dev(dev_id);
@@ -378,8 +380,8 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	return device_request_authentication(device, AUTH_TYPE_PASSKEY,
-					0, passkey_cb);
+	return device_request_authentication(device, AUTH_TYPE_PASSKEY, 0,
+								passkey_cb);
 }
 
 int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
@@ -391,11 +393,11 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -ENODEV;
 
 	return device_request_authentication(device, AUTH_TYPE_NOTIFY,
-					passkey, NULL);
+								passkey, NULL);
 }
 
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
-					uint8_t status)
+								uint8_t status)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -502,7 +504,7 @@ static int found_device_req_name(struct btd_adapter *adapter)
 		cp.pscan_rep_mode = 0x02;
 
 		if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0)
-			error("Unable to send the HCI remote name request: %s (%d)",
+			error("Unable to send HCI remote name req: %s (%d)",
 						strerror(errno), errno);
 
 		if (!rp.status) {
@@ -921,7 +923,8 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 				(local_auth > 0x01 && remote_auth > 0x01)) {
 		int err;
 
-		err = write_link_key(local, peer, key, new_key_type, pin_length);
+		err = write_link_key(local, peer, key, new_key_type,
+								pin_length);
 		if (err < 0) {
 			error("write_link_key: %s (%d)", strerror(-err), -err);
 			return err;
@@ -1365,7 +1368,8 @@ int cancel_discovery(struct btd_adapter *adapter)
 
 	dev = adapter_search_found_devices(adapter, &match);
 	if (dev) {
-		if (remote_name_cancel(dd, &dev->bdaddr, HCI_REQ_TIMEOUT) < 0) {
+		if (remote_name_cancel(dd, &dev->bdaddr,
+							HCI_REQ_TIMEOUT) < 0) {
 			error("Read remote name cancel failed: %s, (%d)",
 					strerror(errno), errno);
 			err = -errno;
@@ -1423,7 +1427,8 @@ int cancel_periodic_discovery(struct btd_adapter *adapter)
 
 	dev = adapter_search_found_devices(adapter, &match);
 	if (dev) {
-		if (remote_name_cancel(dd, &dev->bdaddr, HCI_REQ_TIMEOUT) < 0) {
+		if (remote_name_cancel(dd, &dev->bdaddr,
+							HCI_REQ_TIMEOUT) < 0) {
 			error("Read remote name cancel failed: %s, (%d)",
 					strerror(errno), errno);
 			err = -errno;
