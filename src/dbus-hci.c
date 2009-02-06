@@ -902,18 +902,23 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 {
 	struct btd_device *device;
 	struct btd_adapter *adapter;
-	uint8_t local_auth = 0xff, remote_auth;
+	uint8_t local_auth = 0xff, remote_auth, new_key_type;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return -ENODEV;
+
+	if (key_type == 0x06 && old_key_type != 0xff)
+		new_key_type = old_key_type;
+	else
+		new_key_type = key_type;
 
 	get_auth_requirements(local, peer, &local_auth);
 	remote_auth = device_get_auth(device);
 
 	/* Only store the link key if neither side had "no bonding" as a
 	 * requirement */
-	if (local_auth > 0x01 && remote_auth > 0x01) {
-		int err = write_link_key(local, peer, key, key_type, pin_length);
+	if (key_type == 0x06 || (local_auth > 0x01 && remote_auth > 0x01)) {
+		int err = write_link_key(local, peer, key, new_key_type, pin_length);
 		if (err < 0) {
 			error("write_link_key: %s (%d)", strerror(-err), -err);
 			return err;

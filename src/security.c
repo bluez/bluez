@@ -345,7 +345,7 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	char sa[18], da[18];
 	int dev_id, err;
 	unsigned char old_key[16];
-	uint8_t old_key_type, new_key_type;
+	uint8_t old_key_type;
 
 	ba2str(sba, sa); ba2str(dba, da);
 	info("link_key_notify (sba=%s, dba=%s, type=%d)", sa, da,
@@ -355,14 +355,9 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	if (err < 0)
 		old_key_type = 0xff;
 
-	if (evt->key_type == 0x06 && old_key_type != 0xff)
-		new_key_type = old_key_type;
-	else
-		new_key_type = evt->key_type;
-
 	dev_id = hci_devid(sa);
 
-	err = hcid_dbus_link_key_notify(sba, dba, evt->link_key, new_key_type,
+	err = hcid_dbus_link_key_notify(sba, dba, evt->link_key, evt->key_type,
 						io_data[dev_id].pin_length,
 						old_key_type);
 	if (err < 0) {
