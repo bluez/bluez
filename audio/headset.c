@@ -991,7 +991,7 @@ static int call_waiting_notify(struct audio_device *device, const char *buf)
 
 	if (buf[8] == '1') {
 		hs->cwa_enabled = TRUE;
-		debug("Call waiting notifiaction enabled for headset %p", hs);
+		debug("Call waiting notification enabled for headset %p", hs);
 	} else {
 		hs->cwa_enabled = FALSE;
 		debug("Call waiting notification disabled for headset %p", hs);
