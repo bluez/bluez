@@ -776,8 +776,8 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 		}
 		break;
 	case '3':
-		call = find_call_with_status(CSD_CALL_STATUS_HOLD);
-		if (call)
+		if (find_call_with_status(CSD_CALL_STATUS_HOLD) ||
+				find_call_with_status(CSD_CALL_STATUS_WAITING))
 			err = create_conference();
 		break;
 	case '4':
