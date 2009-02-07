@@ -1,3 +1,18 @@
+ver 4.29:
+	Use AVRCP version 1.0 for now.
+	Decrease AVDTP idle timeout to one second.
+	Delay AVRCP connection when remote device connects A2DP.
+	Add workaround for AVDTP stream setup with broken headsets.
+	Add missing three-way calling feature bit for Handsfree.
+	Fix handsfree callheld indicator updating.
+	Fix parsing of all AT commands within the buffer.
+	Fix authentication replies when disconnected.
+	Fix handling of debug combination keys.
+	Fix handling of changed combination keys.
+	Fix handling of link keys when using no bonding.
+	Fix handling of invalid/unknown authentication requirements.
+	Fix closing of L2CAP raw socket used for dedicated bonding.
+
 ver 4.28:
 	Add AVDTP signal fragmentation support.
 	Add more SBC performance optimizations.
