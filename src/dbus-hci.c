@@ -919,7 +919,7 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 	/* Only store the link key if neither side had "no bonding" as a
 	 * requirement */
-	if ((key_type == 0x06 && old_key_type != 0xff) ||
+	if (key_type < 0x03 || (key_type == 0x06 && old_key_type != 0xff) ||
 				(local_auth > 0x01 && remote_auth > 0x01)) {
 		int err;
 
