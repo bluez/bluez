@@ -85,7 +85,10 @@ static void print_dev_list(int ctl, int flags)
 
 static void print_pkt_type(struct hci_dev_info *di)
 {
-	printf("\tPacket type: %s\n", hci_ptypetostr(di->pkt_type));
+	char *str;
+	str = hci_ptypetostr(di->pkt_type);
+	printf("\tPacket type: %s\n", str);
+	bt_free(str);
 }
 
 static void print_link_policy(struct hci_dev_info *di)
@@ -95,7 +98,10 @@ static void print_link_policy(struct hci_dev_info *di)
 
 static void print_link_mode(struct hci_dev_info *di)
 {
-	printf("\tLink mode: %s\n", hci_lmtostr(di->link_mode));
+	char *str;
+	str =  hci_lmtostr(di->link_mode);
+	printf("\tLink mode: %s\n", str);
+	bt_free(str);
 }
 
 static void print_dev_features(struct hci_dev_info *di, int format)
@@ -1586,10 +1592,13 @@ static void print_dev_hdr(struct hci_dev_info *di)
 static void print_dev_info(int ctl, struct hci_dev_info *di)
 {
 	struct hci_dev_stats *st = &di->stat;
+	char *str;
 
 	print_dev_hdr(di);
 
-	printf("\t%s\n", hci_dflagstostr(di->flags) );
+	str = hci_dflagstostr(di->flags);
+	printf("\t%s\n", str);
+	bt_free(str);
 
 	printf("\tRX bytes:%d acl:%d sco:%d events:%d errors:%d\n",
 		st->byte_rx, st->acl_rx, st->sco_rx, st->evt_rx, st->err_rx);

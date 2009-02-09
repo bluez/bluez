@@ -102,11 +102,13 @@ static int conn_list(int s, int dev_id, long arg)
 
 	for (i = 0; i < cl->conn_num; i++, ci++) {
 		char addr[18];
+		char *str;
 		ba2str(&ci->bdaddr, addr);
+		str = hci_lmtostr(ci->link_mode);
 		printf("\t%s %s %s handle %d state %d lm %s\n",
 			ci->out ? "<" : ">", type2str(ci->type),
-			addr, ci->handle, ci->state,
-			hci_lmtostr(ci->link_mode));
+			addr, ci->handle, ci->state, str);
+		bt_free(str);
 	}
 
 	return 0;
