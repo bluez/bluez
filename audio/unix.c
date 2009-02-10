@@ -648,8 +648,6 @@ static void start_discovery(struct audio_device *dev, struct unix_client *client
 	struct a2dp_data *a2dp;
 	int err = 0;
 
-	client->type = select_service(dev, client->interface);
-
 	switch (client->type) {
 	case TYPE_SINK:
 		a2dp = &client->d.a2dp;
@@ -690,8 +688,6 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 	struct a2dp_data *a2dp;
 	struct headset_data *hs;
 	unsigned int id;
-
-	client->type = select_service(dev, client->interface);
 
 	switch (client->type) {
 	case TYPE_SINK:
@@ -758,8 +754,6 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 	struct headset_data *hs;
 	unsigned int id;
 
-	client->type = select_service(dev, client->interface);
-
 	switch (client->type) {
 	case TYPE_SINK:
 		a2dp = &client->d.a2dp;
@@ -812,8 +806,6 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 	struct a2dp_data *a2dp;
 	struct headset_data *hs;
 	unsigned int id;
-
-	client->type = select_service(dev, client->interface);
 
 	switch (client->type) {
 	case TYPE_SINK:
@@ -870,8 +862,8 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	str2ba(req->device, &bdaddr);
 
 	if (client->interface) {
-		g_free(client->interface);
-		client->interface = NULL;
+		error("Got GET_CAPABILITIES for an initialized client");
+		goto failed;
 	}
 
 	if (req->transport == BT_CAPABILITIES_TRANSPORT_SCO)
@@ -883,15 +875,19 @@ static void handle_getcapabilities_req(struct unix_client *client,
 		goto failed;
 
 	dev = manager_find_device(&bdaddr, client->interface, TRUE);
+	if (!dev && (req->flags & BT_FLAG_AUTOCONNECT))
+		dev = manager_find_device(&bdaddr, client->interface, FALSE);
+
 	if (!dev) {
-		if (req->flags & BT_FLAG_AUTOCONNECT)
-			dev = manager_find_device(&bdaddr, client->interface, FALSE);
-		else
-			goto failed;
+		error("Unable to find a matching device");
+		goto failed;
 	}
 
-	if (!dev)
+	client->type = select_service(dev, client->interface);
+	if (client->type == TYPE_NONE) {
+		error("No matching service found");
 		goto failed;
+	}
 
 	start_discovery(dev, client);
 
@@ -904,7 +900,10 @@ failed:
 static int handle_sco_transport(struct unix_client *client,
 				struct bt_set_configuration_req *req)
 {
-	client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
+	if (!client->interface)
+		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
+	else if (!g_str_equal(client->interface, AUDIO_HEADSET_INTERFACE))
+		return -EIO;
 
 	debug("config sco - device = %s access_mode = %u", req->device,
 			req->access_mode);
@@ -919,7 +918,10 @@ static int handle_a2dp_transport(struct unix_client *client,
 	struct sbc_codec_cap sbc_cap;
 	struct mpeg_codec_cap mpeg_cap;
 
-	client->interface = g_strdup(AUDIO_SINK_INTERFACE);
+	if (!client->interface)
+		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
+	else if (!g_str_equal(client->interface, AUDIO_SINK_INTERFACE))
+		return -EIO;
 
 	if (client->caps) {
 		g_slist_foreach(client->caps, (GFunc) g_free, NULL);
@@ -1002,11 +1004,6 @@ static void handle_setconfiguration_req(struct unix_client *client,
 	}
 
 	str2ba(req->device, &bdaddr);
-
-	if (client->interface) {
-		g_free(client->interface);
-		client->interface = NULL;
-	}
 
 	if (req->codec.transport == BT_CAPABILITIES_TRANSPORT_SCO) {
 		err = handle_sco_transport(client, req);
