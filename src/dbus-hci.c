@@ -1185,7 +1185,7 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 
 	if (hci_read_simple_pairing_mode(dd, &mode,
 						HCI_REQ_TIMEOUT) < 0) {
-		error("Can't read class of adapter on %s: %s(%d)",
+		error("Can't read simple pairing mode for %s: %s(%d)",
 					path, strerror(errno), errno);
 		hci_close_dev(dd);
 		return;
