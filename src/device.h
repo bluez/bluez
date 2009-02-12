@@ -37,7 +37,7 @@ typedef enum {
 struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapter,
 				const gchar *address);
 void device_remove(struct btd_device *device, DBusConnection *conn,
-						gboolean remove_bonding);
+						gboolean remove_stored);
 gint device_address_cmp(struct btd_device *device, const gchar *address);
 int device_browse(struct btd_device *device, DBusConnection *conn,
 			DBusMessage *msg, uuid_t *search, gboolean reverse);

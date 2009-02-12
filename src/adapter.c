@@ -957,15 +957,9 @@ struct btd_device *adapter_create_device(DBusConnection *conn,
 void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 				struct btd_device *device)
 {
-	bdaddr_t dst;
 	const gchar *dev_path = device_get_path(device);
 	struct agent *agent;
-	char dstaddr[18];
 
-	device_get_address(device, &dst);
-	ba2str(&dst, dstaddr);
-
-	delete_entry(&adapter->bdaddr, "profiles", dstaddr);
 	adapter->devices = g_slist_remove(adapter->devices, device);
 	adapter->connections = g_slist_remove(adapter->connections, device);
 

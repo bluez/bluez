@@ -700,13 +700,24 @@ static void device_remove_bonding(struct btd_device *device,
 				"Paired", DBUS_TYPE_BOOLEAN, &paired);
 }
 
+static void device_remove_stored(struct btd_device *device,
+					DBusConnection *conn)
+{
+	bdaddr_t src;
+	char addr[18];
+
+	adapter_get_address(device->adapter, &src);
+	ba2str(&device->bdaddr, addr);
+	device_remove_bonding(device, conn);
+	delete_entry(&src, "profiles", addr);
+	delete_entry(&src, "trusts", addr);
+}
+
 void device_remove(struct btd_device *device, DBusConnection *conn,
-						gboolean remove_bonding)
+						gboolean remove_stored)
 {
 	GSList *list;
 	struct btd_device_driver *driver;
-	bdaddr_t src;
-	char addr[18];
 	gchar *path = g_strdup(device->path);
 
 	debug("Removing device %s", path);
@@ -714,8 +725,8 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 	if (device->bonding)
 		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
 
-	if (!device->temporary && remove_bonding)
-		device_remove_bonding(device, conn);
+	if (!device->temporary && remove_stored)
+		device_remove_stored(device, conn);
 
 	for (list = device->drivers; list; list = list->next) {
 		struct btd_driver_data *driver_data = list->data;
@@ -725,9 +736,6 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 		g_free(driver_data);
 	}
 
-	adapter_get_address(device->adapter, &src);
-	ba2str(&device->bdaddr, addr);
-	delete_entry(&src, "trusts", addr);
 
 	g_dbus_unregister_interface(conn, path, DEVICE_INTERFACE);
 
