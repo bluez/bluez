@@ -1,3 +1,12 @@
+ver 4.30:
+	Add CID field to L2CAP socket address structure.
+	Fix reset of authentication requirements after bonding.
+	Fix storing of link keys when using dedicated bonding.
+	Fix storing of pre-Bluetooth 2.1 link keys.
+	Fix resetting trust settings on every reboot.
+	Fix handling of local name changes.
+	Fix memory leaks in hciconfig and hcitool
+
 ver 4.29:
 	Use AVRCP version 1.0 for now.
 	Decrease AVDTP idle timeout to one second.
