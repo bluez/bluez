@@ -923,9 +923,11 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	/* Only store the link key if one of the following is true:
 	 * 1. this is a legacy link key
 	 * 2. this is a changed combination key and there was a previously
-	 * stored one
+	 *    stored one
 	 * 3. neither local nor remote side had no-bonding as a requirement
 	 * 4. the local side had dedicated bonding as a requirement
+	 * 5. the remote side is using dedicated bonding since in that case
+	 *    also the local requirements are set to dedicated bonding
 	 */
 	if (key_type < 0x03 || (key_type == 0x06 && old_key_type != 0xff) ||
 				(local_auth > 0x01 && remote_auth > 0x01) ||
