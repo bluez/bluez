@@ -317,7 +317,7 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	client->data_fd = headset_get_sco_fd(dev);
 	if (client->data_fd < 0) {
 		error("Unable to get a SCO fd");
-		headset_unlock(client->dev, hs->lock);
+		headset_unlock(dev, hs->lock);
 		goto failed;
 	}
 
