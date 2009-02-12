@@ -917,6 +917,9 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	get_auth_requirements(local, peer, &local_auth);
 	remote_auth = device_get_auth(device);
 
+	debug("local auth 0x%02x and remote auth 0x%02x",
+					local_auth, remote_auth);
+
 	/* Only store the link key if one of the following is true:
 	 * 1. this is a legacy link key
 	 * 2. this is a changed combination key and there was a previously
@@ -926,8 +929,11 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	 */
 	if (key_type < 0x03 || (key_type == 0x06 && old_key_type != 0xff) ||
 				(local_auth > 0x01 && remote_auth > 0x01) ||
-				(local_auth == 0x02 || local_auth == 0x03)) {
+				(local_auth == 0x02 || local_auth == 0x03) ||
+				(remote_auth == 0x02 || remote_auth == 0x03)) {
 		int err;
+
+		debug("storing link key of type 0x%02x", key_type);
 
 		err = write_link_key(local, peer, key, new_key_type,
 								pin_length);
