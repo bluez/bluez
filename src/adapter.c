@@ -814,6 +814,28 @@ static void update_ext_inquiry_response(int dd, struct hci_dev *dev)
 						strerror(errno), errno);
 }
 
+void adapter_name_changed(struct btd_adapter *adapter, const char *name)
+{
+	struct hci_dev *dev = &adapter->dev;
+	int dd;
+
+	if (strncmp(name, (char *) dev->name, 248) == 0)
+		return;
+
+	write_local_name(&adapter->bdaddr, (char *) name);
+
+	strncpy((char *) dev->name, name, 248);
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd >= 0) {
+		update_ext_inquiry_response(dd, dev);
+		hci_close_dev(dd);
+	}
+
+	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
+				"Name", DBUS_TYPE_STRING, &name);
+}
+
 static int adapter_set_name(struct btd_adapter *adapter, const char *name)
 {
 	struct hci_dev *dev = &adapter->dev;
@@ -854,7 +876,6 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_adapter *adapter = data;
 	int ecode;
-	const char *path;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
 		error("Name change failed: supplied name isn't valid UTF-8");
@@ -865,10 +886,8 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 	if (ecode < 0)
 		return failed_strerror(msg, -ecode);
 
-	path = dbus_message_get_path(msg);
-
-	emit_property_changed(conn, path, ADAPTER_INTERFACE, "Name",
-				DBUS_TYPE_STRING, &name);
+	emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
+				"Name", DBUS_TYPE_STRING, &name);
 
 	return dbus_message_new_method_return(msg);
 }

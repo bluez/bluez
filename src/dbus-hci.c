@@ -1047,20 +1047,20 @@ int set_major_and_minor_class(int dd, const uint8_t *cls,
 
 void hcid_dbus_setname_complete(bdaddr_t *local)
 {
+	struct btd_adapter *adapter;
 	int id, dd = -1;
 	read_local_name_rp rp;
 	struct hci_request rq;
 	const char *pname = (char *) rp.name;
-	char local_addr[18], name[249];
+	char name[249];
 
-	ba2str(local, local_addr);
-
-	id = hci_devid(local_addr);
-	if (id < 0) {
-		error("No matching device id for %s", local_addr);
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("No matching adapter found");
 		return;
 	}
 
+	id = adapter_get_dev_id(adapter);
 	dd = hci_open_dev(id);
 	if (dd < 0) {
 		error("HCI device open failed: hci%d", id);
@@ -1088,6 +1088,8 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	strncpy(name, pname, sizeof(name) - 1);
 	name[248] = '\0';
 	pname = name;
+
+	adapter_name_changed(adapter, pname);
 }
 
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
