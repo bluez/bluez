@@ -1841,6 +1841,8 @@ void device_simple_pairing_complete(struct btd_device *device, uint8_t status)
 
 	if (auth && auth->type == AUTH_TYPE_NOTIFY && auth->agent)
 		agent_cancel(auth->agent);
+
+	device->auth = 0xff;
 }
 
 void device_bonding_complete(struct btd_device *device, uint8_t status)
@@ -1893,7 +1895,6 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 	return;
 
 failed:
-
 	device_cancel_bonding(device, status);
 }
 
