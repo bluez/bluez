@@ -843,6 +843,8 @@ static int adapter_set_name(struct btd_adapter *adapter, const char *name)
 
 	write_local_name(&adapter->bdaddr, (char *) name);
 
+	strncpy((char *) dev->name, name, 248);
+
 	if (!adapter->up)
 		return 0;
 
@@ -861,8 +863,6 @@ static int adapter_set_name(struct btd_adapter *adapter, const char *name)
 		hci_close_dev(dd);
 		return err;
 	}
-
-	strncpy((char *) dev->name, name, 248);
 
 	update_ext_inquiry_response(dd, dev);
 
