@@ -4390,6 +4390,8 @@ static int sdp_connect_l2cap(const bdaddr_t *src,
 		fcntl(sk, F_SETFL, arg | O_NONBLOCK);
 	}
 
+	memset(&sa, 0, sizeof(sa));
+
 	sa.l2_family = AF_BLUETOOTH;
 	sa.l2_psm = 0;
 
