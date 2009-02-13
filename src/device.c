@@ -87,6 +87,7 @@ struct authentication_req {
 struct btd_device {
 	bdaddr_t	bdaddr;
 	gchar		*path;
+	char		name[248];
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*drivers;		/* List of driver_data */
@@ -254,8 +255,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 
-	if (read_device_name(srcaddr, dstaddr, name) == 0) {
-		ptr = name;
+	if (device->name) {
+		ptr = device->name;
 		dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &ptr);
 	}
 
@@ -621,6 +622,8 @@ struct btd_device *device_create(DBusConnection *conn,
 	gchar *address_up;
 	struct btd_device *device;
 	const gchar *adapter_path = adapter_get_path(adapter);
+	bdaddr_t src;
+	char srcaddr[18];
 
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
@@ -642,10 +645,41 @@ struct btd_device *device_create(DBusConnection *conn,
 
 	str2ba(address, &device->bdaddr);
 	device->adapter = adapter;
+	adapter_get_address(adapter, &src);
+	ba2str(&src, srcaddr);
+	read_device_name(srcaddr, address, device->name);
 
 	device->auth = 0xff;
 
 	return device;
+}
+
+void device_set_name(struct btd_device *device, const char *name)
+{
+	DBusConnection *conn = get_dbus_connection();
+	char alias[248];
+	char srcaddr[18], dstaddr[18];
+	bdaddr_t src;
+
+	if (strncmp(name, device->name, 248) == 0)
+		return;
+
+	strncpy(device->name, name, 248);
+
+	emit_property_changed(conn, device->path,
+				DEVICE_INTERFACE, "Name",
+				DBUS_TYPE_STRING, &name);
+
+	adapter_get_address(device->adapter, &src);
+	ba2str(&src, srcaddr);
+	ba2str(&device->bdaddr, dstaddr);
+
+	if (read_device_alias(srcaddr, dstaddr, alias, sizeof(alias)) == 0)
+		return;
+
+	emit_property_changed(conn, device->path,
+				DEVICE_INTERFACE, "Alias",
+				DBUS_TYPE_STRING, &name);
 }
 
 static void device_remove_bonding(struct btd_device *device,

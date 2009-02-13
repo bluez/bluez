@@ -869,20 +869,8 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 				NULL);
 	}
 
-	if (device) {
-		char alias[248];
-		const char *dev_path = device_get_path(device);
-
-		emit_property_changed(connection, dev_path,
-						DEVICE_INTERFACE, "Name",
-						DBUS_TYPE_STRING, &name);
-
-		if (read_device_alias(srcaddr, dstaddr,
-					alias, sizeof(alias)) < 1)
-			emit_property_changed(connection, dev_path,
-						DEVICE_INTERFACE, "Alias",
-						DBUS_TYPE_STRING, &name);
-	}
+	if (device)
+		device_set_name(device, name);
 
 proceed:
 	/* remove from remote name request list */
