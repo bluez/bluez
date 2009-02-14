@@ -1158,10 +1158,9 @@ void hcid_dbus_write_class_complete(bdaddr_t *local)
 		return;
 	}
 
-	adapter_set_class(adapter, cls);
-	write_local_class(local, cls);
-
 	hci_close_dev(dd);
+
+	adapter_set_class(adapter, cls);
 }
 
 void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)

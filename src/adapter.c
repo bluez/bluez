@@ -2306,7 +2306,12 @@ int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls)
 {
 	struct hci_dev *dev = &adapter->dev;
 
+	if (memcmp(dev->class, cls, 3) == 0)
+		return 0;
+
 	memcpy(dev->class, cls, 3);
+
+	write_local_class(&adapter->bdaddr, cls);
 
 	return 0;
 }
