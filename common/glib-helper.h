@@ -98,6 +98,4 @@ gboolean bt_io_set_psm(BtIO *io, guint16 psm);
 guint16 bt_io_get_psm(BtIO *io);
 gboolean bt_io_set_mtu(BtIO *io, guint16 mtu);
 guint16 bt_io_get_mtu(BtIO *io);
-BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func);
-BtIOError bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func);
 BtIOError bt_io_shutdown(BtIO *io);

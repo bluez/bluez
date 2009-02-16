@@ -68,6 +68,9 @@ struct hci_cmd_data {
 	gpointer		caller_data;
 };
 
+static BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func);
+static BtIOError bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func);
+
 static gboolean cached_session_expired(gpointer user_data)
 {
 	struct cached_sdp_session *cached = user_data;
@@ -1618,7 +1621,7 @@ guint16 bt_io_get_mtu(BtIO *io)
 	return io->mtu;
 }
 
-BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func)
+static BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func)
 {
 	if (!io->connect)
 		return BT_IO_FAILED;
@@ -1626,7 +1629,7 @@ BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func)
 	return io->connect(io, func);
 }
 
-BtIOError bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func)
+static BtIOError bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func)
 {
 	if (!io->listen)
 		return BT_IO_FAILED;
