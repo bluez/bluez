@@ -240,6 +240,7 @@ void sbc_init_primitives_neon(struct sbc_encoder_state *state)
 {
 	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_neon;
 	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_neon;
+	state->implementation_info = "NEON";
 }
 
 #endif

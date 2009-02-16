@@ -456,6 +456,7 @@ void sbc_init_primitives(struct sbc_encoder_state *state)
 
 	/* Default implementation for scale factors calculation */
 	state->sbc_calc_scalefactors = sbc_calc_scalefactors;
+	state->implementation_info = "Generic C";
 
 	/* X86/AMD64 optimizations */
 #ifdef SBC_BUILD_WITH_MMX_SUPPORT

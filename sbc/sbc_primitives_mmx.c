@@ -313,6 +313,7 @@ void sbc_init_primitives_mmx(struct sbc_encoder_state *state)
 	if (check_mmx_support()) {
 		state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_mmx;
 		state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_mmx;
+		state->implementation_info = "MMX";
 	}
 }
 

@@ -1221,6 +1221,20 @@ uint16_t sbc_get_codesize(sbc_t *sbc)
 	return subbands * blocks * channels * 2;
 }
 
+const char *sbc_get_implementation_info(sbc_t *sbc)
+{
+	struct sbc_priv *priv;
+
+	if (!sbc)
+		return NULL;
+
+	priv = sbc->priv;
+	if (!priv)
+		return NULL;
+
+	return priv->enc_state.implementation_info;
+}
+
 int sbc_reinit(sbc_t *sbc, unsigned long flags)
 {
 	struct sbc_priv *priv;
