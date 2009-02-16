@@ -41,6 +41,10 @@
 #include "logging.h"
 #include "btio.h"
 
+#define ERROR_FAILED(gerr, str, err) \
+		g_set_error(gerr, BT_IO_ERROR, BT_IO_ERROR_FAILED, \
+				str ": %s (%d)", strerror(err), err)
+
 #define DEFAULT_DEFER_TIMEOUT 30
 
 struct set_opts {
@@ -99,15 +103,19 @@ static gboolean accept_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct accept *accept = user_data;
+	GError *err = NULL;
 
 	/* If the user aborted this accept attempt */
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
-		accept->connect(io, EIO, accept->user_data);
-	else
-		accept->connect(io, 0, accept->user_data);
+		g_set_error(&err, BT_IO_ERROR, BT_IO_ERROR_DISCONNECTED,
+				"HUP or ERR on socket");
+
+	accept->connect(io, err, accept->user_data);
+
+	g_clear_error(&err);
 
 	return FALSE;
 }
@@ -116,24 +124,30 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct connect *conn = user_data;
-	int err;
+	GError *gerr = NULL;
 
 	/* If the user aborted this connect attempt */
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	err = 0;
-
 	if (cond & G_IO_OUT) {
+		int err = 0, sock = g_io_channel_unix_get_fd(io);
 		socklen_t len = sizeof(err);
-		int sock = g_io_channel_unix_get_fd(io);
+
 		if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len) < 0)
 			err = errno;
 
+		if (err)
+			g_set_error(&gerr, BT_IO_ERROR,
+					BT_IO_ERROR_CONNECT_FAILED, "%s (%d)",
+					strerror(err), err);
 	} else if (cond & (G_IO_HUP | G_IO_ERR))
-		err = EIO;
+		g_set_error(&gerr, BT_IO_ERROR, BT_IO_ERROR_CONNECT_FAILED,
+				"HUP or ERR on socket");
 
-	conn->connect(io, err, conn->user_data);
+	conn->connect(io, gerr, conn->user_data);
+
+	g_clear_error(&gerr);
 
 	return FALSE;
 }
@@ -162,7 +176,7 @@ static gboolean server_cb(GIOChannel *io, GIOCondition cond,
 	if (server->confirm)
 		server->confirm(cli_io, server->user_data);
 	else
-		server->connect(cli_io, 0, server->user_data);
+		server->connect(cli_io, NULL, server->user_data);
 
 	g_io_channel_unref(cli_io);
 
@@ -248,29 +262,31 @@ static int l2cap_connect(int sock, bdaddr_t *dst, uint16_t psm)
 	return 0;
 }
 
-static int l2cap_set(int sock, int sec_level, uint16_t imtu, uint16_t omtu)
+static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
+						uint16_t omtu, GError **err)
 {
-	int err;
-
 	if (imtu || omtu) {
 		struct l2cap_options l2o;
 		socklen_t len;
 
 		memset(&l2o, 0, sizeof(l2o));
 		len = sizeof(l2o);
-		err = getsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len);
-		if (err < 0)
-			return err;
+		if (getsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
+								&len) < 0) {
+			ERROR_FAILED(err, "getsockopt(L2CAP_OPTIONS)", errno);
+			return FALSE;
+		}
 
 		if (imtu)
 			l2o.imtu = imtu;
 		if (omtu)
 			l2o.omtu = omtu;
 
-		err = setsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
-								sizeof(l2o));
-		if (err < 0)
-			return err;
+		if (setsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
+							sizeof(l2o)) < 0) {
+			ERROR_FAILED(err, "setsockopt(L2CAP_OPTIONS)", errno);
+			return FALSE;
+		}
 	}
 
 	if (sec_level) {
@@ -279,13 +295,14 @@ static int l2cap_set(int sock, int sec_level, uint16_t imtu, uint16_t omtu)
 		memset(&sec, 0, sizeof(sec));
 		sec.level = sec_level;
 
-		err = setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec,
-				sizeof(sec));
-		if (err < 0)
-			return err;
+		if (setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec,
+							sizeof(sec)) < 0) {
+			ERROR_FAILED(err, "setsockopt(BT_SECURITY)", errno);
+			return FALSE;
+		}
 	}
 
-	return 0;
+	return TRUE;
 }
 
 static int rfcomm_bind(int sock, bdaddr_t *src, uint8_t channel)
@@ -304,10 +321,6 @@ static int rfcomm_connect(int sock, bdaddr_t *dst, uint8_t channel)
 {
 	int err;
 	struct sockaddr_rc addr;
-	char str[18];
-
-	ba2str(dst, str);
-	debug("Connecting to %s", str);
 
 	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
@@ -321,23 +334,22 @@ static int rfcomm_connect(int sock, bdaddr_t *dst, uint8_t channel)
 	return 0;
 }
 
-static int rfcomm_set(int sock, int sec_level)
+static gboolean rfcomm_set(int sock, int sec_level, GError **err)
 {
-	int err;
-
 	if (sec_level) {
 		struct bt_security sec;
 
 		memset(&sec, 0, sizeof(sec));
 		sec.level = sec_level;
 
-		err = setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec,
-				sizeof(sec));
-		if (err < 0)
-			return err;
+		if (setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec,
+							sizeof(sec)) < 0) {
+			ERROR_FAILED(err, "getsockopt(BT_SECURITY)", errno);
+			return FALSE;
+		}
 	}
 
-	return 0;
+	return TRUE;
 }
 
 static int sco_bind(int sock, bdaddr_t *src)
@@ -367,32 +379,33 @@ static int sco_connect(int sock, bdaddr_t *dst)
 	return 0;
 }
 
-static int sco_set(int sock, uint16_t mtu)
+static gboolean sco_set(int sock, uint16_t mtu, GError **err)
 {
-	int err;
 	struct sco_options sco_opt;
+	socklen_t len;
 
-	if (mtu) {
-		socklen_t len;
+	if (!mtu)
+		return TRUE;
 
-		memset(&sco_opt, 0, len);
-		len = sizeof(sco_opt);
-		err = getsockopt(sock, SOL_SCO, SCO_OPTIONS, &sco_opt, &len);
-		if (err < 0)
-			return err;
-
-		sco_opt.mtu = mtu;
-		err = setsockopt(sock, SOL_SCO, SCO_OPTIONS, &sco_opt,
-							sizeof(sco_opt));
-		if (err < 0)
-			return err;
+	memset(&sco_opt, 0, len);
+	len = sizeof(sco_opt);
+	if (getsockopt(sock, SOL_SCO, SCO_OPTIONS, &sco_opt, &len) < 0) {
+		ERROR_FAILED(err, "getsockopt(SCO_OPTIONS)", errno);
+		return FALSE;
 	}
 
-	return 0;
+	sco_opt.mtu = mtu;
+	if (setsockopt(sock, SOL_SCO, SCO_OPTIONS, &sco_opt,
+						sizeof(sco_opt)) < 0) {
+		ERROR_FAILED(err, "setsockopt(SCO_OPTIONS)", errno);
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static gboolean set_valist(GIOChannel *io, struct set_opts *opts,
-					BtIOOption opt1, va_list args)
+				GError **err, BtIOOption opt1, va_list args)
 {
 	BtIOOption opt = opt1;
 	const char *str;
@@ -443,7 +456,8 @@ static gboolean set_valist(GIOChannel *io, struct set_opts *opts,
 				opts->mtu = opts->imtu;
 			break;
 		default:
-			error("set_valist: unknown option %d", opt);
+			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+					"Unknown option %d", opt);
 			return FALSE;
 		}
 
@@ -453,7 +467,7 @@ static gboolean set_valist(GIOChannel *io, struct set_opts *opts,
 	return TRUE;
 }
 
-static gboolean get_sec_level(int sock, int *level)
+static gboolean get_sec_level(int sock, int *level, GError **err)
 {
 	struct bt_security sec;
 	socklen_t len;
@@ -461,8 +475,7 @@ static gboolean get_sec_level(int sock, int *level)
 	memset(&sec, 0, sizeof(sec));
 	len = sizeof(sec);
 	if (getsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec, &len) < 0) {
-		error("getsockopt(BT_SECURITY): %s (%d)", strerror(errno),
-									errno);
+		ERROR_FAILED(err, "getsockopt(BT_SECURITY)", errno);
 		return FALSE;
 	}
 
@@ -472,28 +485,29 @@ static gboolean get_sec_level(int sock, int *level)
 }
 
 static gboolean get_peers(int sock, struct sockaddr *src, struct sockaddr *dst,
-								socklen_t len)
+				socklen_t len, GError **err)
 {
 	socklen_t olen;
 
 	memset(src, 0, len);
 	olen = len;
 	if (getsockname(sock, src, &olen) < 0) {
-		error("getsockname: %s (%d)", strerror(errno), errno);
+		ERROR_FAILED(err, "getsockname", errno);
 		return FALSE;
 	}
 
 	memset(dst, 0, len);
 	olen = len;
 	if (getpeername(sock, dst, &olen) < 0) {
-		error("getpeername: %s (%d)", strerror(errno), errno);
+		ERROR_FAILED(err, "getpeername", errno);
 		return FALSE;
 	}
 
 	return TRUE;
 }
 
-static gboolean l2cap_get(int sock, BtIOOption opt1, va_list args)
+static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
+								va_list args)
 {
 	BtIOOption opt = opt1;
 	struct sockaddr_l2 src, dst;
@@ -503,12 +517,12 @@ static gboolean l2cap_get(int sock, BtIOOption opt1, va_list args)
 	len = sizeof(l2o);
 	memset(&l2o, 0, len);
 	if (getsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0) {
-		error("getsockopt: %s (%d)", strerror(errno), errno);
+		ERROR_FAILED(err, "getsockopt(L2CAP_OPTIONS)", errno);
 		return FALSE;
 	}
 
 	if (!get_peers(sock, (struct sockaddr *) &src,
-				(struct sockaddr *) &dst, sizeof(src)))
+				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
 
 	while (opt != BT_IO_OPT_INVALID) {
@@ -528,11 +542,14 @@ static gboolean l2cap_get(int sock, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_DEFER_TIMEOUT:
 			len = sizeof(int);
 			if (getsockopt(sock, SOL_BLUETOOTH, BT_DEFER_SETUP,
-						va_arg(args, int *), &len) < 0)
+					va_arg(args, int *), &len) < 0) {
+				ERROR_FAILED(err, "getsockopt(DEFER_SETUP)",
+									errno);
 				return FALSE;
+			}
 			break;
 		case BT_IO_OPT_SEC_LEVEL:
-			if (!get_sec_level(sock, va_arg(args, int *)))
+			if (!get_sec_level(sock, va_arg(args, int *), err))
 				return FALSE;
 			break;
 		case BT_IO_OPT_PSM:
@@ -546,7 +563,8 @@ static gboolean l2cap_get(int sock, BtIOOption opt1, va_list args)
 			*(va_arg(args, int *)) = l2o.imtu;
 			break;
 		default:
-			error("l2cap_get: unknown option %d", opt);
+			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+					"Unknown option %d", opt);
 			return FALSE;
 		}
 
@@ -556,14 +574,15 @@ static gboolean l2cap_get(int sock, BtIOOption opt1, va_list args)
 	return TRUE;
 }
 
-static gboolean rfcomm_get(int sock, BtIOOption opt1, va_list args)
+static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
+								va_list args)
 {
 	BtIOOption opt = opt1;
 	struct sockaddr_rc src, dst;
 	socklen_t len;
 
 	if (!get_peers(sock, (struct sockaddr *) &src,
-				(struct sockaddr *) &dst, sizeof(src)))
+				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
 
 	while (opt != BT_IO_OPT_INVALID) {
@@ -583,11 +602,14 @@ static gboolean rfcomm_get(int sock, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_DEFER_TIMEOUT:
 			len = sizeof(int);
 			if (getsockopt(sock, SOL_BLUETOOTH, BT_DEFER_SETUP,
-						va_arg(args, int *), &len) < 0)
+					va_arg(args, int *), &len) < 0) {
+				ERROR_FAILED(err, "getsockopt(DEFER_SETUP)",
+									errno);
 				return FALSE;
+			}
 			break;
 		case BT_IO_OPT_SEC_LEVEL:
-			if (!get_sec_level(sock, va_arg(args, int *)))
+			if (!get_sec_level(sock, va_arg(args, int *), err))
 				return FALSE;
 			break;
 		case BT_IO_OPT_CHANNEL:
@@ -595,7 +617,8 @@ static gboolean rfcomm_get(int sock, BtIOOption opt1, va_list args)
 					src.rc_channel : dst.rc_channel;
 			break;
 		default:
-			error("rfcomm_get: unknown option %d", opt);
+			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+					"Unknown option %d", opt);
 			return FALSE;
 		}
 
@@ -605,7 +628,7 @@ static gboolean rfcomm_get(int sock, BtIOOption opt1, va_list args)
 	return TRUE;
 }
 
-static gboolean sco_get(int sock, BtIOOption opt1, va_list args)
+static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 {
 	BtIOOption opt = opt1;
 	struct sockaddr_sco src, dst;
@@ -615,12 +638,12 @@ static gboolean sco_get(int sock, BtIOOption opt1, va_list args)
 	len = sizeof(sco_opt);
 	memset(&sco_opt, 0, len);
 	if (getsockopt(sock, SOL_SCO, SCO_OPTIONS, &sco_opt, &len) < 0) {
-		error("getsockopt: %s (%d)", strerror(errno), errno);
+		ERROR_FAILED(err, "getsockopt(SCO_OPTIONS)", errno);
 		return FALSE;
 	}
 
 	if (!get_peers(sock, (struct sockaddr *) &src,
-				(struct sockaddr *) &dst, sizeof(src)))
+				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
 
 	while (opt != BT_IO_OPT_INVALID) {
@@ -637,23 +660,14 @@ static gboolean sco_get(int sock, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_DEST_BDADDR:
 			bacpy(va_arg(args, bdaddr_t *), &dst.sco_bdaddr);
 			break;
-		case BT_IO_OPT_DEFER_TIMEOUT:
-			len = sizeof(int);
-			if (getsockopt(sock, SOL_BLUETOOTH, BT_DEFER_SETUP,
-						va_arg(args, int *), &len) < 0)
-				return FALSE;
-			break;
-		case BT_IO_OPT_SEC_LEVEL:
-			if (!get_sec_level(sock, va_arg(args, int *)))
-				return FALSE;
-			break;
 		case BT_IO_OPT_MTU:
 		case BT_IO_OPT_IMTU:
 		case BT_IO_OPT_OMTU:
 			*(va_arg(args, int *)) = sco_opt.mtu;
 			break;
 		default:
-			error("sco_get: unknown option %d", opt);
+			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+					"Unknown option %d", opt);
 			return FALSE;
 		}
 
@@ -663,8 +677,8 @@ static gboolean sco_get(int sock, BtIOOption opt1, va_list args)
 	return TRUE;
 }
 
-static gboolean get_valist(GIOChannel *io, BtIOType type, BtIOOption opt1,
-								va_list args)
+static gboolean get_valist(GIOChannel *io, BtIOType type, GError **err,
+						BtIOOption opt1, va_list args)
 {
 	int sock;
 
@@ -673,18 +687,20 @@ static gboolean get_valist(GIOChannel *io, BtIOType type, BtIOOption opt1,
 	switch (type) {
 	case BT_IO_L2RAW:
 	case BT_IO_L2CAP:
-		return l2cap_get(sock, opt1, args);
+		return l2cap_get(sock, err, opt1, args);
 	case BT_IO_RFCOMM:
-		return rfcomm_get(sock, opt1, args);
+		return rfcomm_get(sock, err, opt1, args);
 	case BT_IO_SCO:
-		return sco_get(sock, opt1, args);
+		return sco_get(sock, err, opt1, args);
 	}
 
+	g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+			"Unknown BtIO type %d", type);
 	return FALSE;
 }
 
 gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, gpointer user_data,
-						GDestroyNotify destroy)
+					GDestroyNotify destroy, GError **err)
 {
 	int sock;
 	char c;
@@ -696,9 +712,12 @@ gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 	pfd.fd = sock;
 	pfd.events = POLLOUT;
 
-	if (poll(&pfd, 1, 0) < 0)
-		error("poll: %s (%d)", strerror(errno), errno);
-	else if (!(pfd.revents & POLLOUT))
+	if (poll(&pfd, 1, 0) < 0) {
+		ERROR_FAILED(err, "poll", errno);
+		return FALSE;
+	}
+
+	if (!(pfd.revents & POLLOUT))
 		read(sock, &c, 1);
 
 	accept_add(io, connect, user_data, destroy);
@@ -706,7 +725,8 @@ gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 	return TRUE;
 }
 
-gboolean bt_io_set(GIOChannel *io, BtIOType type, BtIOOption opt1, ...)
+gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
+							BtIOOption opt1, ...)
 {
 	va_list args;
 	gboolean ret;
@@ -716,7 +736,7 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, BtIOOption opt1, ...)
 	memset(&opts, 0, sizeof(opts));
 
 	va_start(args, opt1);
-	ret = set_valist(io, &opts, opt1, args);
+	ret = set_valist(io, &opts, err, opt1, args);
 	va_end(args);
 
 	if (!ret)
@@ -727,107 +747,92 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, BtIOOption opt1, ...)
 	switch (type) {
 	case BT_IO_L2RAW:
 	case BT_IO_L2CAP:
-		if (l2cap_set(sock, opts.sec_level, opts.imtu, opts.omtu) < 0)
-			return FALSE;
-		break;
+		return l2cap_set(sock, opts.sec_level, opts.imtu, opts.omtu,
+									err);
 	case BT_IO_RFCOMM:
-		if (rfcomm_set(sock, opts.sec_level) < 0)
-			return FALSE;
-		break;
+		return rfcomm_set(sock, opts.sec_level, err);
 	case BT_IO_SCO:
-		if (sco_set(sock, opts.mtu) < 0)
-			return FALSE;
-		break;
+		return sco_set(sock, opts.mtu, err);
 	}
 
-	return ret;
+	g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+			"Unknown BtIO type %d", type);
+	return FALSE;
 }
 
-gboolean bt_io_get(GIOChannel *io, BtIOType type, BtIOOption opt1, ...)
+gboolean bt_io_get(GIOChannel *io, BtIOType type, GError **err,
+							BtIOOption opt1, ...)
 {
 	va_list args;
 	gboolean ret;
 
 	va_start(args, opt1);
-	ret = get_valist(io, type, opt1, args);
+	ret = get_valist(io, type, err, opt1, args);
 	va_end(args);
 
 	return ret;
 }
 
-static GIOChannel *create_io(BtIOType type, gboolean server, struct set_opts *opts)
+static GIOChannel *create_io(BtIOType type, gboolean server,
+					struct set_opts *opts, GError **err)
 {
-	int sock, err;
+	int sock;
 	GIOChannel *io;
 
 	switch (type) {
 	case BT_IO_L2RAW:
 		sock = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
 		if (sock < 0) {
-			error("socket: %s (%d)", strerror(errno), errno);
+			ERROR_FAILED(err, "socket(RAW, L2CAP)", errno);
 			return NULL;
 		}
-		err = l2cap_bind(sock, &opts->src, server ? opts->psm : 0);
-		if (err < 0) {
-			error("l2cap_bind: %s (%d)", strerror(-err), -err);
+		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0) < 0) {
+			ERROR_FAILED(err, "l2cap_bind", errno);
 			return NULL;
 		}
-		err = l2cap_set(sock, opts->sec_level, 0, 0);
-		if (err < 0) {
-			error("l2cap_set: %s (%d)", strerror(-err), -err);
+		if (!l2cap_set(sock, opts->sec_level, 0, 0, err))
 			return NULL;
-		}
 		break;
 	case BT_IO_L2CAP:
 		sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 		if (sock < 0) {
-			error("socket: %s (%d)", strerror(errno), errno);
+			ERROR_FAILED(err, "socket(SEQPACKET, L2CAP)", errno);
 			return NULL;
 		}
-		err = l2cap_bind(sock, &opts->src, server ? opts->psm : 0);
-		if (err < 0) {
-			error("l2cap_bind: %s (%d)", strerror(-err), -err);
+		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0) < 0) {
+			ERROR_FAILED(err, "l2cap_bind", errno);
 			return NULL;
 		}
-		err = l2cap_set(sock, opts->sec_level, opts->imtu, opts->omtu);
-		if (err < 0) {
-			error("l2cap_set: %s (%d)", strerror(-err), -err);
+		if (!l2cap_set(sock, opts->sec_level, opts->imtu, opts->omtu,
+									err))
 			return NULL;
-		}
 		break;
 	case BT_IO_RFCOMM:
 		sock = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 		if (sock < 0) {
-			error("socket: %s (%d)", strerror(errno), errno);
+			ERROR_FAILED(err, "socket(STREAM, RFCOMM)", errno);
 			return NULL;
 		}
-		err = rfcomm_bind(sock, &opts->src, server ? opts->channel : 0);
-		if (err < 0) {
-			error("rfcomm_bind: %s (%d)", strerror(-err), -err);
+		if (rfcomm_bind(sock, &opts->src,
+					server ? opts->channel : 0) < 0) {
+			ERROR_FAILED(err, "rfcomm_bind", errno);
 			return NULL;
 		}
-		err = rfcomm_set(sock, opts->sec_level);
-		if (err < 0) {
-			error("rfcomm_set: %s (%d)", strerror(-err), -err);
+		if (!rfcomm_set(sock, opts->sec_level, err))
 			return NULL;
-		}
 		break;
 	case BT_IO_SCO:
 		sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
 		if (sock < 0) {
-			error("socket: %s (%d)", strerror(errno), errno);
+			ERROR_FAILED(err, "socket(SEQPACKET, SCO)", errno);
 			return NULL;
 		}
-		err = sco_bind(sock, &opts->src);
-		if (err < 0) {
-			error("sco_bind: %s (%d)", strerror(-err), -err);
+		if (sco_bind(sock, &opts->src) < 0) {
+			ERROR_FAILED(err, "sco_bind", errno);
 			return NULL;
 		}
-		err = sco_set(sock, opts->mtu);
-		if (err < 0) {
-			error("sco_set: %s (%d)", strerror(-err), -err);
+		if (!sco_set(sock, opts->mtu, err))
 			return NULL;
-		}
 		break;
 	}
 
@@ -840,7 +845,7 @@ static GIOChannel *create_io(BtIOType type, gboolean server, struct set_opts *op
 
 GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 				gpointer user_data, GDestroyNotify destroy,
-				BtIOOption opt1, ...)
+				GError **gerr, BtIOOption opt1, ...)
 {
 	GIOChannel *io;
 	va_list args;
@@ -851,13 +856,13 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 	memset(&opts, 0, sizeof(opts));
 
 	va_start(args, opt1);
-	ret = set_valist(io, &opts, opt1, args);
+	ret = set_valist(io, &opts, gerr, opt1, args);
 	va_end(args);
 
 	if (ret == FALSE)
 		return NULL;
 
-	io = create_io(type, FALSE, &opts);
+	io = create_io(type, FALSE, &opts, gerr);
 	if (io == NULL)
 		return NULL;
 
@@ -878,8 +883,9 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 		break;
 	}
 
-	if (ret < 0) {
-		error("connect: %s (%d)", strerror(-err), -err);
+	if (err < 0) {
+		g_set_error(gerr, BT_IO_ERROR, BT_IO_ERROR_CONNECT_FAILED,
+				"connect: %s (%d)", strerror(-err), -err);
 		g_io_channel_unref(io);
 		return NULL;
 	}
@@ -891,7 +897,8 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 
 GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
 				BtIOConfirm confirm, gpointer user_data,
-				GDestroyNotify destroy, BtIOOption opt1, ...)
+				GDestroyNotify destroy, GError **err,
+				BtIOOption opt1, ...)
 {
 	GIOChannel *io;
 	va_list args;
@@ -899,21 +906,24 @@ GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
 	int sock;
 	gboolean ret;
 
-	if (type == BT_IO_L2RAW)
+	if (type == BT_IO_L2RAW) {
+		g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+				"Server L2CAP RAW sockets not supported");
 		return NULL;
+	}
 
 	memset(&opts, 0, sizeof(opts));
 
 	opts.defer = DEFAULT_DEFER_TIMEOUT;
 
 	va_start(args, opt1);
-	ret = set_valist(io, &opts, opt1, args);
+	ret = set_valist(io, &opts, err, opt1, args);
 	va_end(args);
 
 	if (ret == FALSE)
 		return NULL;
 
-	io = create_io(type, TRUE, &opts);
+	io = create_io(type, TRUE, &opts, err);
 	if (io == NULL)
 		return NULL;
 
@@ -933,3 +943,9 @@ GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
 
 	return io;
 }
+
+GQuark bt_io_error_quark(void)
+{
+	return g_quark_from_static_string("bt-io-error-quark");
+}
+
