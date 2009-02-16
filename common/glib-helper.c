@@ -58,8 +58,8 @@ struct cached_sdp_session {
 static GSList *cached_sdp_sessions = NULL;
 
 typedef int (*resolver_t) (int fd, char *src, char *dst);
-typedef BtIOError (*connect_t) (BtIO *io, BtIOFunc func);
-typedef BtIOError (*listen_t) (BtIO *io, BtIOFunc func);
+typedef BtIOReturn (*connect_t) (BtIO *io, BtIOFunc func);
+typedef BtIOReturn (*listen_t) (BtIO *io, BtIOFunc func);
 
 struct hci_cmd_data {
 	bt_hci_result_t		cb;
@@ -68,8 +68,8 @@ struct hci_cmd_data {
 	gpointer		caller_data;
 };
 
-static BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func);
-static BtIOError bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func);
+static BtIOReturn bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func);
+static BtIOReturn bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func);
 
 static gboolean cached_session_expired(gpointer user_data)
 {
@@ -878,7 +878,7 @@ static int sco_bind(struct io_context *io_ctxt, const char *address,
 	return 0;
 }
 
-static BtIOError sco_connect(BtIO *io, BtIOFunc func)
+static BtIOReturn sco_connect(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_sco addr;
@@ -947,7 +947,7 @@ static int l2cap_bind(struct io_context *io_ctxt, const char *address,
 	return 0;
 }
 
-static BtIOError l2cap_listen(BtIO *io, BtIOFunc func)
+static BtIOReturn l2cap_listen(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_l2 addr;
@@ -968,7 +968,7 @@ static BtIOError l2cap_listen(BtIO *io, BtIOFunc func)
 	return BT_IO_SUCCESS;
 }
 
-static BtIOError l2cap_connect(BtIO *io, BtIOFunc func)
+static BtIOReturn l2cap_connect(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_l2 l2a;
@@ -995,7 +995,7 @@ static BtIOError l2cap_connect(BtIO *io, BtIOFunc func)
 	return BT_IO_SUCCESS;
 }
 
-static BtIOError rfcomm_bind(struct io_context *io_ctxt, const char *address,
+static BtIOReturn rfcomm_bind(struct io_context *io_ctxt, const char *address,
 				uint8_t channel, uint32_t flags,
 				struct sockaddr_rc *addr)
 {
@@ -1030,7 +1030,7 @@ static BtIOError rfcomm_bind(struct io_context *io_ctxt, const char *address,
 	return BT_IO_SUCCESS;
 }
 
-static BtIOError rfcomm_listen(BtIO *io, BtIOFunc func)
+static BtIOReturn rfcomm_listen(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_rc addr;
@@ -1062,7 +1062,7 @@ static BtIOError rfcomm_listen(BtIO *io, BtIOFunc func)
 	return BT_IO_SUCCESS;
 }
 
-static BtIOError rfcomm_connect(BtIO *io, BtIOFunc func)
+static BtIOReturn rfcomm_connect(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_rc addr;
@@ -1089,7 +1089,7 @@ static BtIOError rfcomm_connect(BtIO *io, BtIOFunc func)
 	return BT_IO_SUCCESS;
 }
 
-static BtIOError sco_listen(BtIO *io, BtIOFunc func)
+static BtIOReturn sco_listen(BtIO *io, BtIOFunc func)
 {
 	struct io_context *io_ctxt = io->io_ctxt;
 	struct sockaddr_sco addr;
@@ -1317,9 +1317,9 @@ static GIOChannel *rfcomm_listen_internal(const bdaddr_t *src, uint8_t *channel,
 			uint32_t flags, bt_io_callback_t cb, void *user_data)
 {
 	BtIO *io;
-	BtIOError err;
+	BtIOReturn err;
 
-	io = bt_io_create(BT_IO_RFCOMM, user_data, NULL);
+	io = bt_io_create(BT_IO_TRANS_RFCOMM, user_data, NULL);
 	if (!io)
 		return NULL;
 
@@ -1363,9 +1363,9 @@ int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			uint8_t channel, bt_io_callback_t cb, void *user_data)
 {
 	BtIO *io;
-	BtIOError err;
+	BtIOReturn err;
 
-	io = bt_io_create(BT_IO_RFCOMM, user_data, NULL);
+	io = bt_io_create(BT_IO_TRANS_RFCOMM, user_data, NULL);
 	if (!io)
 		return -1;
 
@@ -1386,9 +1386,9 @@ GIOChannel *bt_l2cap_listen(const bdaddr_t *src, uint16_t psm, uint16_t mtu,
 			uint32_t flags, bt_io_callback_t cb, void *user_data)
 {
 	BtIO *io;
-	BtIOError err;
+	BtIOReturn err;
 
-	io = bt_io_create(BT_IO_L2CAP, user_data, NULL);
+	io = bt_io_create(BT_IO_TRANS_L2CAP, user_data, NULL);
 	if (!io)
 		return NULL;
 
@@ -1411,9 +1411,9 @@ int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			void *user_data)
 {
 	BtIO *io;
-	BtIOError err;
+	BtIOReturn err;
 
-	io = bt_io_create(BT_IO_L2CAP, user_data, NULL);
+	io = bt_io_create(BT_IO_TRANS_L2CAP, user_data, NULL);
 	if (!io)
 		return -1;
 
@@ -1435,9 +1435,9 @@ GIOChannel *bt_sco_listen(const bdaddr_t *src, uint16_t mtu,
 				bt_io_callback_t cb, void *user_data)
 {
 	BtIO *io;
-	BtIOError err;
+	BtIOReturn err;
 
-	io = bt_io_create(BT_IO_SCO, user_data, NULL);
+	io = bt_io_create(BT_IO_TRANS_SCO, user_data, NULL);
 	if (!io)
 		return NULL;
 
@@ -1457,9 +1457,9 @@ int bt_sco_connect(const bdaddr_t *src, const bdaddr_t *dst,
 			bt_io_callback_t cb, void *user_data)
 {
 	BtIO *io;
-	BtIOError err;
+	BtIOReturn err;
 
-	io = bt_io_create(BT_IO_SCO, user_data, NULL);
+	io = bt_io_create(BT_IO_TRANS_SCO, user_data, NULL);
 	if (!io)
 		return -1;
 
@@ -1489,19 +1489,19 @@ BtIO *bt_io_create(BtIOTransport type, gpointer user_data, GDestroyNotify notify
 	io->refcount = 1;
 
 	switch (type) {
-	case BT_IO_L2CAP:
+	case BT_IO_TRANS_L2CAP:
 		err = create_io_context(&io->io_ctxt, NULL, NULL,
 				l2cap_resolver, user_data);
 		io->connect = l2cap_connect;
 		io->listen = l2cap_listen;
 		break;
-	case BT_IO_RFCOMM:
+	case BT_IO_TRANS_RFCOMM:
 		err = create_io_context(&io->io_ctxt, NULL, NULL,
 				rfcomm_resolver, user_data);
 		io->connect = rfcomm_connect;
 		io->listen = rfcomm_listen;
 		break;
-	case BT_IO_SCO:
+	case BT_IO_TRANS_SCO:
 		err = create_io_context(&io->io_ctxt, NULL, NULL,
 				sco_resolver, user_data);
 		io->connect = sco_connect;
@@ -1581,7 +1581,7 @@ guint32 bt_io_get_flags(BtIO *io)
 
 gboolean bt_io_set_channel(BtIO *io, guint8 channel)
 {
-	if (io->type != BT_IO_RFCOMM)
+	if (io->type != BT_IO_TRANS_RFCOMM)
 		return FALSE;
 
 	io->channel = channel;
@@ -1596,7 +1596,7 @@ guint8 bt_io_get_channel(BtIO *io)
 
 gboolean bt_io_set_psm(BtIO *io, guint16 psm)
 {
-	if (io->type != BT_IO_L2CAP)
+	if (io->type != BT_IO_TRANS_L2CAP)
 		return FALSE;
 
 	io->psm = psm;
@@ -1621,7 +1621,7 @@ guint16 bt_io_get_mtu(BtIO *io)
 	return io->mtu;
 }
 
-static BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func)
+static BtIOReturn bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func)
 {
 	if (!io->connect)
 		return BT_IO_FAILED;
@@ -1629,7 +1629,7 @@ static BtIOError bt_io_connect(BtIO *io, const char *uuid, BtIOFunc func)
 	return io->connect(io, func);
 }
 
-static BtIOError bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func)
+static BtIOReturn bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func)
 {
 	if (!io->listen)
 		return BT_IO_FAILED;
@@ -1637,7 +1637,7 @@ static BtIOError bt_io_listen(BtIO *io, const char *uuid, BtIOFunc func)
 	return io->listen(io, func);
 }
 
-BtIOError bt_io_shutdown(BtIO *io)
+BtIOReturn bt_io_shutdown(BtIO *io)
 {
 	io_context_cleanup(io->io_ctxt);
 

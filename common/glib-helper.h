@@ -69,18 +69,18 @@ int bt_acl_encrypt(const bdaddr_t *src, const bdaddr_t *dst,
 typedef struct bt_io BtIO;
 
 typedef enum {
-	BT_IO_AUTO,
-	BT_IO_L2CAP,
-	BT_IO_RFCOMM,
-	BT_IO_SCO,
+	BT_IO_TRANS_AUTO,
+	BT_IO_TRANS_L2CAP,
+	BT_IO_TRANS_RFCOMM,
+	BT_IO_TRANS_SCO,
 } BtIOTransport;
 
 typedef enum {
 	BT_IO_SUCCESS,
 	BT_IO_FAILED,
-} BtIOError;
+} BtIOReturn;
 
-typedef void (*BtIOFunc) (BtIO *io, BtIOError err, GIOChannel *chan,
+typedef void (*BtIOFunc) (BtIO *io, BtIOReturn err, GIOChannel *chan,
 				gpointer user_data);
 
 BtIO *bt_io_create(BtIOTransport type, gpointer user_data, GDestroyNotify notify);
@@ -98,4 +98,4 @@ gboolean bt_io_set_psm(BtIO *io, guint16 psm);
 guint16 bt_io_get_psm(BtIO *io);
 gboolean bt_io_set_mtu(BtIO *io, guint16 mtu);
 guint16 bt_io_get_mtu(BtIO *io);
-BtIOError bt_io_shutdown(BtIO *io);
+BtIOReturn bt_io_shutdown(BtIO *io);
