@@ -23,8 +23,6 @@
 
 int set_nonblocking(int fd);
 
-typedef void (*bt_io_callback_t) (GIOChannel *io, int err, const bdaddr_t *src,
-		const bdaddr_t *dst, gpointer user_data);
 typedef void (*bt_callback_t) (sdp_list_t *recs, int err, gpointer user_data);
 typedef void (*bt_destroy_t) (gpointer user_data);
 typedef void (*bt_hci_result_t) (uint8_t status, gpointer user_data);
@@ -44,58 +42,5 @@ int bt_string2uuid(uuid_t *uuid, const char *string);
 gchar *bt_list2string(GSList *list);
 GSList *bt_string2list(const gchar *str);
 
-GIOChannel *bt_rfcomm_listen(const bdaddr_t *src, uint8_t channel,
-			uint32_t flags, bt_io_callback_t cb, void *user_data);
-GIOChannel *bt_rfcomm_listen_allocate(const bdaddr_t *src, uint8_t *channel,
-			uint32_t flags, bt_io_callback_t cb, void *user_data);
-int bt_rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
-			uint8_t channel, bt_io_callback_t cb, void *user_data);
-
-GIOChannel *bt_l2cap_listen(const bdaddr_t *src, uint16_t psm, uint16_t mtu,
-			uint32_t flags, bt_io_callback_t cb, void *user_data);
-int bt_l2cap_connect(const bdaddr_t *src, const bdaddr_t *dst,
-			uint16_t psm, uint16_t mtu, bt_io_callback_t cb,
-			void *user_data);
-int bt_sco_connect(const bdaddr_t *src, const bdaddr_t *dst,
-			bt_io_callback_t cb, void *user_data);
-GIOChannel *bt_sco_listen(const bdaddr_t *src, uint16_t mtu,
-				bt_io_callback_t cb, void *user_data);
-
 int bt_acl_encrypt(const bdaddr_t *src, const bdaddr_t *dst,
 			bt_hci_result_t cb, gpointer user_data);
-
-/* Experiemental bt_io API */
-
-typedef struct bt_io BtIO;
-
-typedef enum {
-	BT_IO_TRANS_AUTO,
-	BT_IO_TRANS_L2CAP,
-	BT_IO_TRANS_RFCOMM,
-	BT_IO_TRANS_SCO,
-} BtIOTransport;
-
-typedef enum {
-	BT_IO_SUCCESS,
-	BT_IO_FAILED,
-} BtIOReturn;
-
-typedef void (*BtIOFunc) (BtIO *io, BtIOReturn err, GIOChannel *chan,
-				gpointer user_data);
-
-BtIO *bt_io_create(BtIOTransport type, gpointer user_data, GDestroyNotify notify);
-BtIO *bt_io_ref(BtIO *io);
-void bt_io_unref(BtIO *io);
-gboolean bt_io_set_source(BtIO *io, const char *address);
-const char *bt_io_get_source(BtIO *io);
-gboolean bt_io_set_destination(BtIO *io, const char *address);
-const char *bt_io_get_destination(BtIO *io);
-gboolean bt_io_set_flags(BtIO *io, guint32 flags);
-guint32 bt_io_get_flags(BtIO *io);
-gboolean bt_io_set_channel(BtIO *io, guint8 channel);
-guint8 bt_io_get_channel(BtIO *io);
-gboolean bt_io_set_psm(BtIO *io, guint16 psm);
-guint16 bt_io_get_psm(BtIO *io);
-gboolean bt_io_set_mtu(BtIO *io, guint16 mtu);
-guint16 bt_io_get_mtu(BtIO *io);
-BtIOReturn bt_io_shutdown(BtIO *io);
