@@ -985,7 +985,7 @@ int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
 	char *ptr;
 	int i, ch, framelen, samples;
 
-	if (!sbc && !input)
+	if (!sbc || !input)
 		return -EIO;
 
 	priv = sbc->priv;
@@ -1053,7 +1053,7 @@ int sbc_encode(sbc_t *sbc, void *input, int input_len, void *output,
 			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 			int nsamples, int nchannels);
 
-	if (!sbc && !input)
+	if (!sbc || !input)
 		return -EIO;
 
 	priv = sbc->priv;
