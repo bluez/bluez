@@ -1122,10 +1122,16 @@ proceed:
 
 	server = find_server(servers, src);
 	if (!server) {
+		int av_err;
+
 		server = g_new0(struct a2dp_server, 1);
 		if (!server)
 			return -ENOMEM;
-		avdtp_init(src, config);
+
+		av_err = avdtp_init(src, config);
+		if (av_err < 0)
+			return av_err;
+
 		bacpy(&server->src, src);
 		servers = g_slist_append(servers, server);
 	}
