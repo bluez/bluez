@@ -233,7 +233,7 @@ static void accept_add(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 					(GDestroyNotify) accept_remove);
 }
 
-static int l2cap_bind(int sock, bdaddr_t *src, uint16_t psm)
+static int l2cap_bind(int sock, const bdaddr_t *src, uint16_t psm)
 {
 	struct sockaddr_l2 addr;
 
@@ -245,7 +245,7 @@ static int l2cap_bind(int sock, bdaddr_t *src, uint16_t psm)
 	return bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 }
 
-static int l2cap_connect(int sock, bdaddr_t *dst, uint16_t psm)
+static int l2cap_connect(int sock, const bdaddr_t *dst, uint16_t psm)
 {
 	int err;
 	struct sockaddr_l2 addr;
@@ -305,7 +305,7 @@ static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
 	return TRUE;
 }
 
-static int rfcomm_bind(int sock, bdaddr_t *src, uint8_t channel)
+static int rfcomm_bind(int sock, const bdaddr_t *src, uint8_t channel)
 {
 	struct sockaddr_rc addr;
 
@@ -317,7 +317,7 @@ static int rfcomm_bind(int sock, bdaddr_t *src, uint8_t channel)
 	return bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 }
 
-static int rfcomm_connect(int sock, bdaddr_t *dst, uint8_t channel)
+static int rfcomm_connect(int sock, const bdaddr_t *dst, uint8_t channel)
 {
 	int err;
 	struct sockaddr_rc addr;
@@ -352,7 +352,7 @@ static gboolean rfcomm_set(int sock, int sec_level, GError **err)
 	return TRUE;
 }
 
-static int sco_bind(int sock, bdaddr_t *src)
+static int sco_bind(int sock, const bdaddr_t *src)
 {
 	struct sockaddr_sco addr;
 
@@ -363,7 +363,7 @@ static int sco_bind(int sock, bdaddr_t *src)
 	return bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 }
 
-static int sco_connect(int sock, bdaddr_t *dst)
+static int sco_connect(int sock, const bdaddr_t *dst)
 {
 	struct sockaddr_sco addr;
 	int err;
@@ -420,13 +420,13 @@ static gboolean set_valist(GIOChannel *io, struct set_opts *opts,
 				str2ba(str, &opts->src);
 			break;
 		case BT_IO_OPT_SOURCE_BDADDR:
-			bacpy(&opts->src, va_arg(args, bdaddr_t *));
+			bacpy(&opts->src, va_arg(args, const bdaddr_t *));
 			break;
 		case BT_IO_OPT_DEST:
 			str2ba(va_arg(args, const char *), &opts->dst);
 			break;
 		case BT_IO_OPT_DEST_BDADDR:
-			bacpy(&opts->dst, va_arg(args, bdaddr_t *));
+			bacpy(&opts->dst, va_arg(args, const bdaddr_t *));
 			break;
 		case BT_IO_OPT_DEFER_TIMEOUT:
 			opts->defer = va_arg(args, int);
