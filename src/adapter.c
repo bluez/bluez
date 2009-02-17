@@ -1904,6 +1904,20 @@ static void load_devices(struct btd_adapter *adapter)
 								adapter);
 }
 
+static void probe_driver(gpointer data, gpointer user_data)
+{
+	struct btd_adapter *adapter = data;
+	struct btd_adapter_driver *driver = user_data;
+	int err;
+
+	if (!adapter->up)
+		return;
+
+	err = driver->probe(adapter);
+	if (err < 0)
+		error("%s: %s (%d)", driver->name, strerror(-err), -err);
+}
+
 static void load_drivers(struct btd_adapter *adapter)
 {
 	GSList *l;
@@ -1911,8 +1925,10 @@ static void load_drivers(struct btd_adapter *adapter)
 	for (l = adapter_drivers; l; l = l->next) {
 		struct btd_adapter_driver *driver = l->data;
 
-		if (driver->probe)
-			driver->probe(adapter);
+		if (driver->probe == NULL)
+			continue;
+
+		probe_driver(adapter, driver);
 	}
 }
 
@@ -2729,17 +2745,6 @@ gboolean adapter_has_discov_sessions(struct btd_adapter *adapter)
 		return FALSE;
 
 	return TRUE;
-}
-
-static void probe_driver(gpointer data, gpointer user_data)
-{
-	struct btd_adapter *adapter = data;
-	struct btd_adapter_driver *driver = user_data;
-
-	if (!adapter->up)
-		return;
-
-	driver->probe(adapter);
 }
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
