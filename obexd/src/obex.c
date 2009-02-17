@@ -522,7 +522,7 @@ gint os_prepare_put(struct obex_session *os)
 
 	path = g_build_filename(os->current_folder, os->name, NULL);
 
-	os->fd = open(path, O_WRONLY | O_CREAT, 0600);
+	os->fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 	if (os->fd < 0) {
 		error("open(%s): %s (%d)", path, strerror(errno), errno);
 		g_free(path);
