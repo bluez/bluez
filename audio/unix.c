@@ -352,7 +352,7 @@ static void headset_suspend_complete(struct audio_device *dev, void *user_data)
 {
 	struct unix_client *client = user_data;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
-	struct bt_start_stream_rsp *rsp = (void *) buf;
+	struct bt_stop_stream_rsp *rsp = (void *) buf;
 
 	if (!dev)
 		goto failed;
@@ -613,7 +613,7 @@ static void a2dp_suspend_complete(struct avdtp *session,
 {
 	struct unix_client *client = user_data;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
-	struct bt_start_stream_rsp *rsp = (void *) buf;
+	struct bt_stop_stream_rsp *rsp = (void *) buf;
 	struct a2dp_data *a2dp = &client->d.a2dp;
 
 	if (err)
