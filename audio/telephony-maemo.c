@@ -802,6 +802,35 @@ void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 	telephony_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+void telephony_key_press_req(void *telephony_device, const char *keys)
+{
+	struct csd_call *active, *waiting;
+	int err;
+
+	debug("telephony-maemo: got key press request for %s", keys);
+
+	waiting = find_call_with_status(CSD_CALL_STATUS_COMING);
+	if (!waiting)
+		waiting = find_call_with_status(CSD_CALL_STATUS_MT_ALERTING);
+	if (!waiting)
+		waiting = find_call_with_status(CSD_CALL_STATUS_PROCEEDING);
+
+	active = find_call_with_status(CSD_CALL_STATUS_ACTIVE);
+
+	if (waiting)
+		err = answer_call(waiting);
+	else if (active)
+		err = release_call(active);
+	else
+		err = 0;
+
+	if (err < 0)
+		telephony_key_press_rsp(telephony_device,
+							CME_ERROR_AG_FAILURE);
+	else
+		telephony_key_press_rsp(telephony_device, CME_ERROR_NONE);
+}
+
 static void handle_incoming_call(DBusMessage *msg)
 {
 	const char *number, *call_path;

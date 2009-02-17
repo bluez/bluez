@@ -728,9 +728,15 @@ static int call_hold(struct audio_device *dev, const char *buf)
 	return 0;
 }
 
-static int button_press(struct audio_device *device, const char *buf)
+int telephony_key_press_rsp(void *telephony_device, cme_error_t err)
 {
-	struct headset *hs = device->headset;
+	return telephony_generic_rsp(telephony_device, err);
+}
+
+static int key_press(struct audio_device *device, const char *buf)
+{
+	if (strlen(buf) < 9)
+		return -EINVAL;
 
 	g_dbus_emit_signal(device->conn, device->path,
 			AUDIO_HEADSET_INTERFACE, "AnswerRequested",
@@ -741,7 +747,9 @@ static int button_press(struct audio_device *device, const char *buf)
 		ag.ring_timer = 0;
 	}
 
-	return headset_send(hs, "\r\nOK\r\n");
+	telephony_key_press_req(device, &buf[8]);
+
+	return 0;
 }
 
 int telephony_answer_call_rsp(void *telephony_device, cme_error_t err)
@@ -1077,7 +1085,7 @@ static struct event event_callbacks[] = {
 	{ "AT+CMER", event_reporting },
 	{ "AT+CHLD", call_hold },
 	{ "AT+CHUP", terminate_call },
-	{ "AT+CKPD", button_press },
+	{ "AT+CKPD", key_press },
 	{ "AT+CLIP", cli_notification },
 	{ "AT+BTRH", response_and_hold },
 	{ "AT+BLDN", last_dialed_number },

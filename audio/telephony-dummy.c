@@ -205,6 +205,12 @@ void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 	telephony_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+void telephony_key_press_req(void *telephony_device, const char *keys)
+{
+	debug("telephony-dummy: got key press request for %s", keys);
+	telephony_key_press_rsp(telephony_device, CME_ERROR_NONE);
+}
+
 /* D-Bus method handlers */
 static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 					void *data)
