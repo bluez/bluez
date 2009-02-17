@@ -1003,9 +1003,9 @@ int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
 	if (cls[2] == value)
 		return 0; /* Already set */
 
-	debug("Changing service classes to 0x%06x", dev_class);
-
 	dev_class = (value << 16) | (cls[1] << 8) | cls[0];
+
+	debug("Changing service classes to 0x%06x", dev_class);
 
 	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
 		int err = -errno;
