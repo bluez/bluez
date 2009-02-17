@@ -37,6 +37,7 @@
 #include "plugin.h"
 #include "logging.h"
 #include "hcid.h"
+#include "btio.h"
 
 static GSList *plugins = NULL;
 
@@ -98,6 +99,10 @@ gboolean plugin_init(GKeyFile *config)
 
 	if (strlen(PLUGINDIR) == 0)
 		return FALSE;
+
+	/* Make a call to BtIO API so its symbols got resolved before the
+	 * plugins are loaded. */
+	bt_io_error_quark();
 
 	if (config)
 		disabled = g_key_file_get_string_list(config, "General",
