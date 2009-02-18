@@ -1126,7 +1126,7 @@ GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
 							sizeof(opts.defer));
 
 	if (listen(sock, 5) < 0) {
-		error("listen: %s (%d)", strerror(errno), errno);
+		ERROR_FAILED(err, "listen", errno);
 		g_io_channel_unref(io);
 		return NULL;
 	}
