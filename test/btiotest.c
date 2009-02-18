@@ -100,15 +100,17 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	GIOCondition cond;
 	char addr[18];
 
-	if (!bt_io_get(io, data->type, NULL, BT_IO_OPT_DEST, addr,
-			BT_IO_OPT_INVALID)) {
-		printf("Unable to get destination address\n");
-		strcpy(addr, "(unknown)");
-	}
-
 	if (err) {
 		printf("Connecting failed: %s\n", err->message);
 		return;
+	}
+
+	if (!bt_io_get(io, data->type, &err, BT_IO_OPT_DEST, addr,
+			BT_IO_OPT_INVALID)) {
+		printf("Unable to get destination address: %s\n",
+								err->message);
+		g_clear_error(&err);
+		strcpy(addr, "(unknown)");
 	}
 
 	printf("Successfully connected to %s\n", addr);
@@ -116,12 +118,14 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	if (data->type == BT_IO_L2CAP) {
 		uint16_t omtu, imtu;
 
-		if (!bt_io_get(io, data->type, NULL,
+		if (!bt_io_get(io, data->type, &err,
 					BT_IO_OPT_OMTU, &omtu,
 					BT_IO_OPT_IMTU, &imtu,
-					BT_IO_OPT_INVALID))
-			printf("Unable to get L2CAP MTU sizes\n");
-		else
+					BT_IO_OPT_INVALID)) {
+			printf("Unable to get L2CAP MTU sizes: %s\n",
+								err->message);
+			g_clear_error(&err);
+		} else
 			printf("L2CAP imtu=%u, omtu=%u\n", imtu, omtu);
 	}
 
@@ -175,11 +179,13 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 {
 	char addr[18];
 	struct io_data *data = user_data;
+	GError *err = NULL;
 
 	if (!bt_io_get(io, data->type, NULL, BT_IO_OPT_DEST, addr,
-							BT_IO_OPT_INVALID))
-		printf("Unable to get destination address\n");
-	else
+							BT_IO_OPT_INVALID)) {
+		printf("bt_io_get(OPT_DEST): %s\n", err->message);
+		g_clear_error(&err);
+	} else
 		printf("Got confirmation request for %s\n", addr);
 
 	if (data->accept < 0 && data->reject < 0)
@@ -197,8 +203,9 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 	if (data->accept == 0) {
 		if (!bt_io_accept(io, connect_cb, data,
 					(GDestroyNotify) io_data_unref,
-					NULL)) {
-			printf("bt_io_accept() failed\n");
+					&err)) {
+			printf("bt_io_accept() failed: %s\n", err->message);
+			g_clear_error(&err);
 			io_data_unref(data);
 			return;
 		}
@@ -254,6 +261,7 @@ static void l2cap_listen(const char *src, uint16_t psm, gint defer,
 	BtIOConnect conn;
 	BtIOConfirm cfm;
 	GIOChannel *l2_srv;
+	GError *err = NULL;
 
 	if (defer) {
 		conn = NULL;
@@ -270,7 +278,7 @@ static void l2cap_listen(const char *src, uint16_t psm, gint defer,
 	if (src)
 		l2_srv = bt_io_listen(BT_IO_L2CAP, conn, cfm,
 					data, (GDestroyNotify) io_data_unref,
-					NULL,
+					&err,
 					BT_IO_OPT_SOURCE, src,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_SEC_LEVEL, sec,
@@ -278,13 +286,14 @@ static void l2cap_listen(const char *src, uint16_t psm, gint defer,
 	else
 		l2_srv = bt_io_listen(BT_IO_L2CAP, conn, cfm,
 					data, (GDestroyNotify) io_data_unref,
-					NULL,
+					&err,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_SEC_LEVEL, sec,
 					BT_IO_OPT_INVALID);
 
 	if (!l2_srv) {
-		printf("Listeing failed\n");
+		printf("Listening failed: %s\n", err->message);
+		g_error_free(err);
 		exit(EXIT_FAILURE);
 	}
 
@@ -295,6 +304,7 @@ static void rfcomm_connect(const char *src, const char *dst, uint8_t ch,
 						gint disconn, gint sec)
 {
 	struct io_data *data;
+	GError *err = NULL;
 
 	printf("Connecting to %s RFCOMM channel %u\n", dst, ch);
 
@@ -303,7 +313,7 @@ static void rfcomm_connect(const char *src, const char *dst, uint8_t ch,
 	if (src)
 		data->io = bt_io_connect(BT_IO_RFCOMM, connect_cb, data,
 						(GDestroyNotify) io_data_unref,
-						NULL,
+						&err,
 						BT_IO_OPT_SOURCE, src,
 						BT_IO_OPT_DEST, dst,
 						BT_IO_OPT_CHANNEL, ch,
@@ -312,14 +322,15 @@ static void rfcomm_connect(const char *src, const char *dst, uint8_t ch,
 	else
 		data->io = bt_io_connect(BT_IO_RFCOMM, connect_cb, data,
 						(GDestroyNotify) io_data_unref,
-						NULL,
+						&err,
 						BT_IO_OPT_DEST, dst,
 						BT_IO_OPT_CHANNEL, ch,
 						BT_IO_OPT_SEC_LEVEL, sec,
 						BT_IO_OPT_INVALID);
 
 	if (!data->io) {
-		printf("Connecting to %s failed\n", dst);
+		printf("Connecting to %s failed: %s\n", dst, err->message);
+		g_error_free(err);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -332,6 +343,7 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 	BtIOConnect conn;
 	BtIOConfirm cfm;
 	GIOChannel *rc_srv;
+	GError *err = NULL;
 
 	if (defer) {
 		conn = NULL;
@@ -348,7 +360,7 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 	if (src)
 		rc_srv = bt_io_listen(BT_IO_RFCOMM, conn, cfm,
 					data, (GDestroyNotify) io_data_unref,
-					NULL,
+					&err,
 					BT_IO_OPT_SOURCE, src,
 					BT_IO_OPT_CHANNEL, ch,
 					BT_IO_OPT_SEC_LEVEL, sec,
@@ -356,13 +368,14 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 	else
 		rc_srv = bt_io_listen(BT_IO_RFCOMM, conn, cfm,
 					data, (GDestroyNotify) io_data_unref,
-					NULL,
+					&err,
 					BT_IO_OPT_CHANNEL, ch,
 					BT_IO_OPT_SEC_LEVEL, sec,
 					BT_IO_OPT_INVALID);
 
 	if (!rc_srv) {
-		printf("Listeing failed\n");
+		printf("Listening failed: %s\n", err->message);
+		g_error_free(err);
 		exit(EXIT_FAILURE);
 	}
 
@@ -372,6 +385,7 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 static void sco_connect(const char *src, const char *dst, gint disconn)
 {
 	struct io_data *data;
+	GError *err = NULL;
 
 	printf("Connecting SCO to %s\n", dst);
 
@@ -380,19 +394,20 @@ static void sco_connect(const char *src, const char *dst, gint disconn)
 	if (src)
 		data->io = bt_io_connect(BT_IO_SCO, connect_cb, data,
 						(GDestroyNotify) io_data_unref,
-						NULL,
+						&err,
 						BT_IO_OPT_SOURCE, src,
 						BT_IO_OPT_DEST, dst,
 						BT_IO_OPT_INVALID);
 	else
 		data->io = bt_io_connect(BT_IO_SCO, connect_cb, data,
 						(GDestroyNotify) io_data_unref,
-						NULL,
+						&err,
 						BT_IO_OPT_DEST, dst,
 						BT_IO_OPT_INVALID);
 
 	if (!data->io) {
-		printf("Connecting to %s failed\n", dst);
+		printf("Connecting to %s failed: %s\n", dst, err->message);
+		g_error_free(err);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -401,6 +416,7 @@ static void sco_listen(const char *src, gint disconn)
 {
 	struct io_data *data;
 	GIOChannel *sco_srv;
+	GError *err = NULL;
 
 	printf("Listening for SCO connections\n");
 
@@ -409,17 +425,17 @@ static void sco_listen(const char *src, gint disconn)
 	if (src)
 		sco_srv = bt_io_listen(BT_IO_SCO, connect_cb, NULL,
 					data, (GDestroyNotify) io_data_unref,
-					NULL,
+					&err,
 					BT_IO_OPT_SOURCE, src,
 					BT_IO_OPT_INVALID);
 	else
 		sco_srv = bt_io_listen(BT_IO_SCO, connect_cb, NULL,
 					data, (GDestroyNotify) io_data_unref,
-					NULL,
-					BT_IO_OPT_INVALID);
+					&err, BT_IO_OPT_INVALID);
 
 	if (!sco_srv) {
-		printf("Listeing failed\n");
+		printf("Listening failed: %s\n", err->message);
+		g_error_free(err);
 		exit(EXIT_FAILURE);
 	}
 
