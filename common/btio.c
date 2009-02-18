@@ -658,14 +658,14 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 				return FALSE;
 			break;
 		case BT_IO_OPT_PSM:
-			*(va_arg(args, int *)) = src.l2_psm ?
+			*(va_arg(args, uint16_t *)) = src.l2_psm ?
 						src.l2_psm : dst.l2_psm;
 			break;
 		case BT_IO_OPT_OMTU:
-			*(va_arg(args, int *)) = l2o.omtu;
+			*(va_arg(args, uint16_t *)) = l2o.omtu;
 			break;
 		case BT_IO_OPT_IMTU:
-			*(va_arg(args, int *)) = l2o.imtu;
+			*(va_arg(args, uint16_t *)) = l2o.imtu;
 			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
@@ -719,7 +719,7 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 				return FALSE;
 			break;
 		case BT_IO_OPT_CHANNEL:
-			*(va_arg(args, int *)) = src.rc_channel ?
+			*(va_arg(args, uint8_t *)) = src.rc_channel ?
 					src.rc_channel : dst.rc_channel;
 			break;
 		default:
