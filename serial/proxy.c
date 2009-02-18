@@ -60,6 +60,7 @@
 #include "storage.h"
 #include "sdpd.h"
 #include "glib-helper.h"
+#include "btio.h"
 #include "proxy.h"
 
 #define SERIAL_PORT_NAME	"spp"
@@ -382,19 +383,26 @@ static inline int tty_open(const char *tty, struct termios *ti)
 	return sk;
 }
 
-static void connect_event_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-				const bdaddr_t *dst, gpointer data)
+static void connect_event_cb(GIOChannel *chan, GError *conn_err, gpointer data)
 {
 	struct serial_proxy *prx = data;
 	GIOChannel *io;
 	int sk;
+	GError *err = NULL;
 
-	if (err < 0) {
-		error("accept: %s (%d)", strerror(-err), -err);
+	if (conn_err) {
+		error("%s", conn_err->message);
 		return;
 	}
 
-	bacpy(&prx->dst, dst);
+	bt_io_get(chan, BT_IO_RFCOMM, &err,
+			BT_IO_OPT_DEST_BDADDR, &prx->dst,
+			NULL);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		return;
+	}
 
 	switch (prx->type) {
 	case UNIX_SOCKET_PROXY:
@@ -439,17 +447,24 @@ static DBusMessage *proxy_enable(DBusConnection *conn,
 	struct serial_proxy *prx = data;
 	struct serial_adapter *adapter = prx->adapter;
 	sdp_record_t *record;
+	GError *err = NULL;
 
 	if (prx->io)
 		return failed(msg, "Already enabled");
 
 	/* Listen */
-	prx->io = bt_rfcomm_listen_allocate(&adapter->src, &prx->channel, 0,
-				connect_event_cb, prx);
+	prx->io = bt_io_listen(BT_IO_RFCOMM, connect_event_cb, NULL, prx,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &adapter->src,
+				BT_IO_OPT_CHANNEL, prx->channel,
+				BT_IO_OPT_INVALID);
 	if (!prx->io) {
-		const char *strerr = strerror(errno);
-		error("RFCOMM listen socket failed: %s(%d)", strerr, errno);
-		return failed(msg, strerr);
+		DBusMessage *reply;
+
+		error("%s", err->message);
+		reply = failed(msg, err->message);
+		g_error_free(err);
+		return reply;
 	}
 
 	g_io_channel_set_close_on_unref(prx->io, TRUE);

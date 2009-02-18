@@ -49,6 +49,7 @@
 
 #include "logging.h"
 #include "glib-helper.h"
+#include "btio.h"
 
 #include "error.h"
 #include "manager.h"
@@ -291,22 +292,22 @@ static int port_open(struct serial_port *port)
 	return fd;
 }
 
-static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer user_data)
+static void rfcomm_connect_cb(GIOChannel *chan, GError *conn_err,
+							gpointer user_data)
 {
 	struct serial_port *port = user_data;
 	struct serial_device *device = port->device;
 	struct rfcomm_dev_req req;
-	int sk, err, fd;
+	int sk, fd;
 	DBusMessage *reply;
 
 	/* Owner exited? */
 	if (!port->listener_id)
 		return;
 
-	if (err_cb < 0) {
-		error("connect(): %s (%d)", strerror(-err_cb), -err_cb);
-		reply = failed(port->msg, strerror(-err_cb));
+	if (conn_err) {
+		error("%s", conn_err->message);
+		reply = failed(port->msg, conn_err->message);
 		goto fail;
 	}
 
@@ -319,17 +320,19 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err_cb, const bdaddr_t *src,
 
 	sk = g_io_channel_unix_get_fd(chan);
 	port->id = ioctl(sk, RFCOMMCREATEDEV, &req);
-	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
 	if (port->id < 0) {
-		err = errno;
+		int err = errno;
 		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
-		reply = failed(port->msg, strerror(-err_cb));
+		reply = failed(port->msg, strerror(err));
+		g_io_channel_close(chan);
 		goto fail;
 	}
+
 	port->dev = g_strdup_printf("/dev/rfcomm%d", port->id);
 
 	debug("Serial port %s created", port->dev);
+
+	g_io_channel_close(chan);
 
 	/* Addressing connect port */
 	fd = port_open(port);
@@ -352,7 +355,8 @@ static DBusMessage *port_connect(DBusConnection *conn,
 	struct serial_device *device = user_data;
 	struct serial_port *port;
 	const char *uuid;
-	int err;
+	GIOChannel *io;
+	GError *err = NULL;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &uuid,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -371,14 +375,24 @@ static DBusMessage *port_connect(DBusConnection *conn,
 						NULL);
 	port->msg = dbus_message_ref(msg);
 
-	err = bt_rfcomm_connect(&device->src, &device->dst, port->channel,
-				rfcomm_connect_cb, port);
-	if (err < 0) {
-		error("RFCOMM connect failed: %s(%d)", strerror(-err), -err);
+	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, port,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &device->src,
+				BT_IO_OPT_DEST_BDADDR, &device->dst,
+				BT_IO_OPT_CHANNEL, port->channel,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		DBusMessage *reply;
+
+		error("%s", err->message);
 		g_dbus_remove_watch(conn, port->listener_id);
 		port->listener_id = 0;
-		return failed(msg, strerror(-err));
+		reply = failed(msg, err->message);
+		g_error_free(err);
+		return reply;
 	}
+
+	g_io_channel_unref(io);
 
 	return NULL;
 }
@@ -450,7 +464,7 @@ static struct serial_device *create_serial_device(DBusConnection *conn,
 }
 
 int port_register(DBusConnection *conn, const char *path, bdaddr_t *src,
-		  bdaddr_t *dst, const char *uuid, uint8_t channel)
+			bdaddr_t *dst, const char *uuid, uint8_t channel)
 {
 	struct serial_device *device;
 	struct serial_port *port;
