@@ -769,7 +769,7 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_MTU:
 		case BT_IO_OPT_IMTU:
 		case BT_IO_OPT_OMTU:
-			*(va_arg(args, int *)) = sco_opt.mtu;
+			*(va_arg(args, uint16_t *)) = sco_opt.mtu;
 			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
