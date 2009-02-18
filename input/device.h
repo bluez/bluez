@@ -36,7 +36,7 @@ struct fake_input {
 	int		uinput;		/* uinput socket */
 	int		rfcomm;		/* RFCOMM socket */
 	uint8_t		ch;		/* RFCOMM channel number */
-	gboolean 	(*connect) (struct input_conn *iconn);
+	gboolean	(*connect) (struct input_conn *iconn, GError **err);
 	int		(*disconnect) (struct input_conn *iconn);
 	void		*priv;
 };

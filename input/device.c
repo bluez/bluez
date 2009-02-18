@@ -59,6 +59,7 @@
 #include "error.h"
 #include "fakehid.h"
 #include "glib-helper.h"
+#include "btio.h"
 
 #define INPUT_DEVICE_INTERFACE "org.bluez.Input"
 
@@ -324,22 +325,26 @@ static inline DBusMessage *already_connected(DBusMessage *msg)
 					"Already connected to a device");
 }
 
-static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
+static inline DBusMessage *connection_attempt_failed(DBusMessage *msg,
+							const char *err)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
-				err ? strerror(err) : "Connection attempt failed");
+	return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".ConnectionAttemptFailed",
+				err ? err : "Connection attempt failed");
 }
 
-static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer user_data)
+static void rfcomm_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct input_conn *iconn = user_data;
 	struct input_device *idev = iconn->idev;
 	struct fake_input *fake = iconn->fake;
 	DBusMessage *reply;
 
-	if (err < 0)
+	if (err) {
+		reply = connection_attempt_failed(iconn->pending_connect,
+								err->message);
 		goto failed;
+	}
 
 	fake->rfcomm = g_io_channel_unix_get_fd(chan);
 
@@ -349,7 +354,9 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	 */
 	fake->uinput = uinput_create(idev->name);
 	if (fake->uinput < 0) {
-		err = errno;
+		g_io_channel_close(chan);
+		reply = connection_attempt_failed(iconn->pending_connect,
+							strerror(errno));
 		goto failed;
 	}
 
@@ -368,26 +375,27 @@ static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	return;
 
 failed:
-	reply = connection_attempt_failed(iconn->pending_connect, err);
 	g_dbus_send_message(idev->conn, reply);
-
 	dbus_message_unref(iconn->pending_connect);
 	iconn->pending_connect = NULL;
 }
 
-static int rfcomm_connect(struct input_conn *iconn)
+static gboolean rfcomm_connect(struct input_conn *iconn, GError **err)
 {
 	struct input_device *idev = iconn->idev;
-	int err;
+	GIOChannel *io;
 
-	err = bt_rfcomm_connect(&idev->src, &idev->dst, iconn->fake->ch,
-			rfcomm_connect_cb, iconn);
-	if (err < 0) {
-		error("connect() failed: %s (%d)", strerror(-err), -err);
-		return err;
-	}
+	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, iconn,
+				NULL, err,
+				BT_IO_OPT_SOURCE_BDADDR, &idev->src,
+				BT_IO_OPT_DEST_BDADDR, &idev->dst,
+				BT_IO_OPT_INVALID);
+	if (!io)
+		return FALSE;
 
-	return 0;
+	g_io_channel_unref(io);
+
+	return TRUE;
 }
 
 static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -448,11 +456,11 @@ static guint create_watch(int sk, GIOFunc cb, struct input_conn *iconn)
 	return id;
 }
 
-static gboolean fake_hid_connect(struct input_conn *iconn)
+static gboolean fake_hid_connect(struct input_conn *iconn, GError **err)
 {
 	struct fake_hid *fhid = iconn->fake->priv;
 
-	return fhid->connect(iconn->fake);
+	return fhid->connect(iconn->fake, err);
 }
 
 static int fake_hid_disconnect(struct input_conn *iconn)
@@ -588,8 +596,7 @@ cleanup:
 }
 
 static int hidp_add_connection(const struct input_device *idev,
-			       const struct input_conn *iconn)
-			       
+				const struct input_conn *iconn)
 {
 	struct hidp_connadd_req *req;
 	struct fake_hid *fake_hid;
@@ -663,23 +670,28 @@ cleanup:
 	return err;
 }
 
-static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer user_data)
+static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
+							gpointer user_data)
 {
 	struct input_conn *iconn = user_data;
 	struct input_device *idev = iconn->idev;
 	DBusMessage *reply;
+	int err;
+	const char *err_msg;
 
+	if (conn_err) {
+		err_msg = conn_err->message;
+		goto failed;
+	}
+
+	err = hidp_add_connection(idev, iconn);
 	if (err < 0) {
-		error("connect(): %s (%d)", strerror(-err), -err);
+		err_msg = strerror(-err);
+		g_io_channel_close(chan);
 		goto failed;
 	}
 
 	iconn->intr_sk = g_io_channel_unix_get_fd(chan);
-	err = hidp_add_connection(idev, iconn);
-
-	if (err < 0)
-		goto failed;
 
 	iconn->intr_watch = create_watch(iconn->intr_sk, intr_watch_cb, iconn);
 	iconn->ctrl_watch = create_watch(iconn->ctrl_sk, ctrl_watch_cb, iconn);
@@ -690,7 +702,8 @@ static void interrupt_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	goto cleanup;
 
 failed:
-	reply = connection_attempt_failed(iconn->pending_connect, -err);
+	error("%s", err_msg);
+	reply = connection_attempt_failed(iconn->pending_connect, err_msg);
 	g_dbus_send_message(idev->conn, reply);
 
 	iconn->intr_sk = -1;
@@ -701,34 +714,46 @@ cleanup:
 	iconn->pending_connect = NULL;
 }
 
-static void control_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer user_data)
+static void control_connect_cb(GIOChannel *chan, GError *conn_err,
+							gpointer user_data)
 {
 	struct input_conn *iconn = user_data;
 	struct input_device *idev = iconn->idev;
 	DBusMessage *reply;
+	GIOChannel *io;
+	GError *err = NULL;
 
-	if (err < 0) {
-		error("connect(): %s (%d)", strerror(-err), -err);
+	if (conn_err) {
+		error("%s", conn_err->message);
+		reply = connection_attempt_failed(iconn->pending_connect,
+							conn_err->message);
 		goto failed;
 	}
+
+	/* Connect to the HID interrupt channel */
+	io = bt_io_connect(BT_IO_L2CAP, interrupt_connect_cb, iconn,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &idev->src,
+				BT_IO_OPT_DEST_BDADDR, &idev->dst,
+				BT_IO_OPT_PSM, L2CAP_PSM_HIDP_INTR,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		error("%s", err->message);
+		reply = connection_attempt_failed(iconn->pending_connect,
+							err->message);
+		g_clear_error(&err);
+		g_io_channel_close(chan);
+		goto failed;
+	}
+
+	g_io_channel_unref(io);
 
 	/* Set HID control channel */
 	iconn->ctrl_sk = g_io_channel_unix_get_fd(chan);
 
-	/* Connect to the HID interrupt channel */
-	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_INTR, 0,
-			interrupt_connect_cb, iconn);
-	if (err < 0) {
-		error("L2CAP connect failed:%s (%d)", strerror(-err), -err);
-		goto failed;
-	}
-
 	return;
 
 failed:
-	iconn->ctrl_sk = -1;
-	reply = connection_attempt_failed(iconn->pending_connect, -err);
 	g_dbus_send_message(idev->conn, reply);
 	dbus_message_unref(iconn->pending_connect);
 	iconn->pending_connect = NULL;
@@ -873,7 +898,8 @@ static DBusMessage *device_connect(DBusConnection *conn,
 	struct input_device *idev = data;
 	struct input_conn *iconn;
 	struct fake_input *fake;
-	int err;
+	DBusMessage *reply;
+	GError *err = NULL;
 
 	iconn = find_connection(idev->connections, "HID");
 	if (!iconn)
@@ -888,31 +914,33 @@ static DBusMessage *device_connect(DBusConnection *conn,
 	iconn->pending_connect = dbus_message_ref(msg);
 	fake = iconn->fake;
 
-	/* Fake input device */
 	if (fake) {
-		if (fake->connect(iconn) < 0) {
-			int err = errno;
-			const char *str = strerror(err);
-			error("Connect failed: %s(%d)", str, err);
-			dbus_message_unref(iconn->pending_connect);
-			iconn->pending_connect = NULL;
-			return connection_attempt_failed(msg, err);
-		}
-		fake->flags |= FI_FLAG_CONNECTED;
+		/* Fake input device */
+		if (fake->connect(iconn, &err))
+			fake->flags |= FI_FLAG_CONNECTED;
+	} else {
+		/* HID devices */
+		GIOChannel *io;
+
+		io = bt_io_connect(BT_IO_L2CAP, control_connect_cb, iconn,
+					NULL, &err,
+					BT_IO_OPT_SOURCE_BDADDR, &idev->src,
+					BT_IO_OPT_DEST_BDADDR, &idev->dst,
+					BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
+					NULL);
+		if (io)
+			g_io_channel_unref(io);
+	}
+
+	if (err == NULL)
 		return NULL;
-	}
 
-	/* HID devices */
-	err = bt_l2cap_connect(&idev->src, &idev->dst, L2CAP_PSM_HIDP_CTRL,
-						0, control_connect_cb, iconn);
-	if (err < 0) {
-		error("L2CAP connect failed: %s(%d)", strerror(-err), -err);
-		dbus_message_unref(iconn->pending_connect);
-		iconn->pending_connect = NULL;
-		return connection_attempt_failed(msg, -err);
-	}
-
-	return NULL;
+	error("%s", err->message);
+	dbus_message_unref(iconn->pending_connect);
+	iconn->pending_connect = NULL;
+	reply = connection_attempt_failed(msg, err->message);
+	g_clear_error(&err);
+	return reply;
 }
 
 static DBusMessage *create_errno_message(DBusMessage *msg, int err)

@@ -325,7 +325,7 @@ err:
 	return 1;
 }
 
-static gboolean fake_hid_common_connect(struct fake_input *fake)
+static gboolean fake_hid_common_connect(struct fake_input *fake, GError **err)
 {
 	return TRUE;
 }
