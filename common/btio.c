@@ -262,6 +262,39 @@ static int l2cap_connect(int sock, const bdaddr_t *dst, uint16_t psm)
 	return 0;
 }
 
+static gboolean set_sec_level(int sock, int level, GError **err)
+{
+	struct bt_security sec;
+
+	memset(&sec, 0, sizeof(sec));
+	sec.level = level;
+
+	if (setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec,
+				sizeof(sec)) < 0) {
+		ERROR_FAILED(err, "setsockopt(BT_SECURITY)", errno);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static gboolean get_sec_level(int sock, int *level, GError **err)
+{
+	struct bt_security sec;
+	socklen_t len;
+
+	memset(&sec, 0, sizeof(sec));
+	len = sizeof(sec);
+	if (getsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec, &len) < 0) {
+		ERROR_FAILED(err, "getsockopt(BT_SECURITY)", errno);
+		return FALSE;
+	}
+
+	*level = sec.level;
+
+	return TRUE;
+}
+
 static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
 						uint16_t omtu, GError **err)
 {
@@ -289,18 +322,8 @@ static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
 		}
 	}
 
-	if (sec_level) {
-		struct bt_security sec;
-
-		memset(&sec, 0, sizeof(sec));
-		sec.level = sec_level;
-
-		if (setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec,
-							sizeof(sec)) < 0) {
-			ERROR_FAILED(err, "setsockopt(BT_SECURITY)", errno);
-			return FALSE;
-		}
-	}
+	if (sec_level && !set_sec_level(sock, sec_level, err))
+		return FALSE;
 
 	return TRUE;
 }
@@ -336,18 +359,8 @@ static int rfcomm_connect(int sock, const bdaddr_t *dst, uint8_t channel)
 
 static gboolean rfcomm_set(int sock, int sec_level, GError **err)
 {
-	if (sec_level) {
-		struct bt_security sec;
-
-		memset(&sec, 0, sizeof(sec));
-		sec.level = sec_level;
-
-		if (setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec,
-							sizeof(sec)) < 0) {
-			ERROR_FAILED(err, "getsockopt(BT_SECURITY)", errno);
-			return FALSE;
-		}
-	}
+	if (sec_level && !set_sec_level(sock, sec_level, err))
+		return FALSE;
 
 	return TRUE;
 }
@@ -463,23 +476,6 @@ static gboolean set_valist(GIOChannel *io, struct set_opts *opts,
 
 		opt = va_arg(args, int);
 	}
-
-	return TRUE;
-}
-
-static gboolean get_sec_level(int sock, int *level, GError **err)
-{
-	struct bt_security sec;
-	socklen_t len;
-
-	memset(&sec, 0, sizeof(sec));
-	len = sizeof(sec);
-	if (getsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec, &len) < 0) {
-		ERROR_FAILED(err, "getsockopt(BT_SECURITY)", errno);
-		return FALSE;
-	}
-
-	*level = sec.level;
 
 	return TRUE;
 }
