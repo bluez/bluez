@@ -47,6 +47,7 @@
 #include "logging.h"
 #include "error.h"
 #include "sdpd.h"
+#include "btio.h"
 #include "glib-helper.h"
 
 #include "bridge.h"
@@ -522,6 +523,8 @@ static void setup_destroy(void *user_data)
 	struct network_adapter *na = user_data;
 	struct timeout *to = na->to;
 
+	na->to = NULL;
+
 	if (to->id)
 		g_source_remove(to->id);
 
@@ -538,13 +541,12 @@ static gboolean timeout_cb(void *user_data)
 	return FALSE;
 }
 
-static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
-				const bdaddr_t *dst, gpointer user_data)
+static void connect_event(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct network_adapter *na = user_data;
 
-	if (err < 0) {
-		error("accept(): %s(%d)", strerror(errno), errno);
+	if (err) {
+		error("%s", err->message);
 		return;
 	}
 
@@ -560,7 +562,6 @@ static void connect_event(GIOChannel *chan, int err, const bdaddr_t *src,
 	na->to->watch = g_io_add_watch_full(chan, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				bnep_setup, na, setup_destroy);
-	g_io_channel_unref(chan);
 
 	return;
 }
@@ -860,23 +861,27 @@ static GDBusSignalTable server_signals[] = {
 static struct network_adapter *create_adapter(const char *path, bdaddr_t *src)
 {
 	struct network_adapter *na;
-	int lm = 0;
-
-	if (security)
-		lm |= L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT;
+	GError *err = NULL;
 
 	na = g_new0(struct network_adapter, 1);
 	na->path = g_strdup(path);
 	bacpy(&na->src, src);
 
-	na->io = bt_l2cap_listen(src, BNEP_PSM, BNEP_MTU, lm,
-			connect_event, na);
+	na->io = bt_io_listen(BT_IO_L2CAP, connect_event, NULL, na,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, src,
+				BT_IO_OPT_PSM, BNEP_PSM,
+				BT_IO_OPT_OMTU, BNEP_MTU,
+				BT_IO_OPT_IMTU, BNEP_MTU,
+				BT_IO_OPT_SEC_LEVEL,
+				security ? BT_IO_SEC_MEDIUM : BT_IO_SEC_LOW,
+				BT_IO_OPT_INVALID);
 	if (!na->io) {
+		error("%s", err->message);
+		g_error_free(err);
 		adapter_free(na);
 		return NULL;
 	}
-
-	g_io_channel_set_close_on_unref(na->io, FALSE);
 
 	return na;
 }

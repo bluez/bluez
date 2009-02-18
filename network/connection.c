@@ -40,6 +40,7 @@
 
 #include "logging.h"
 #include "glib-helper.h"
+#include "btio.h"
 #include "dbus-common.h"
 
 #include "error.h"
@@ -132,10 +133,12 @@ static inline DBusMessage *not_permited(DBusMessage *msg)
 						"Operation not permited");
 }
 
-static inline DBusMessage *connection_attempt_failed(DBusMessage *msg, int err)
+static inline DBusMessage *connection_attempt_failed(DBusMessage *msg,
+							const char *err)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".ConnectionAttemptFailed",
-				err ? strerror(err) : "Connection attempt failed");
+	return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".ConnectionAttemptFailed",
+				err ? err : "Connection attempt failed");
 }
 
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
@@ -270,7 +273,7 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 failed:
 	if (nc->state != DISCONNECTED) {
 		nc->state = DISCONNECTED;
-		reply = connection_attempt_failed(nc->msg, EIO);
+		reply = connection_attempt_failed(nc->msg, strerror(EIO));
 		g_dbus_send_message(connection, reply);
 		g_io_channel_close(chan);
 	}
@@ -317,22 +320,25 @@ out:
 	return err;
 }
 
-static void connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer data)
+static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	struct network_conn *nc = data;
 	DBusMessage *reply;
+	const char *err_msg;
+	int perr;
 
-	if (err < 0) {
-		error("l2cap connect(): %s (%d)", strerror(-err), -err);
+	if (err) {
+		error("%s", err->message);
+		err_msg = err->message;
 		goto failed;
 	}
 
 	nc->sk = g_io_channel_unix_get_fd(chan);
 
-	err = bnep_connect(nc);
-	if (err < 0) {
-		error("bnep connect(): %s (%d)", strerror(-err), -err);
+	perr = bnep_connect(nc);
+	if (perr < 0) {
+		err_msg = strerror(-perr);
+		error("bnep connect(): %s (%d)", err_msg, -perr);
 		g_io_channel_close(chan);
 		g_io_channel_unref(chan);
 		goto failed;
@@ -347,7 +353,7 @@ failed:
 		nc->watch = 0;
 	}
 
-	reply = connection_attempt_failed(nc->msg, -err);
+	reply = connection_attempt_failed(nc->msg, err_msg);
 	g_dbus_send_message(connection, reply);
 }
 
@@ -372,7 +378,8 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 	struct network_conn *nc;
 	const char *svc;
 	uint16_t id;
-	int err;
+	GError *err = NULL;
+	GIOChannel *io;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &svc,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -386,24 +393,30 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 	if (nc->state != DISCONNECTED)
 		return already_connected(msg);
 
+	io = bt_io_connect(BT_IO_L2CAP, connect_cb, nc,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &peer->src,
+				BT_IO_OPT_DEST_BDADDR, &peer->dst,
+				BT_IO_OPT_PSM, BNEP_PSM,
+				BT_IO_OPT_OMTU, BNEP_MTU,
+				BT_IO_OPT_IMTU, BNEP_MTU,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		DBusMessage *reply;
+		error("%s", err->message);
+		reply = connection_attempt_failed(msg, err->message);
+		g_error_free(err);
+		return reply;
+	}
+
+	g_io_channel_unref(io);
+
 	nc->state = CONNECTING;
 	nc->msg = dbus_message_ref(msg);
 	nc->watch = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),
 						connection_destroy,
 						nc, NULL);
-
-	err = bt_l2cap_connect(&peer->src, &peer->dst, BNEP_PSM, BNEP_MTU,
-							connect_cb, nc);
-	if (err < 0) {
-		error("Connect failed. %s(%d)", strerror(errno), errno);
-		dbus_message_unref(nc->msg);
-		nc->msg = NULL;
-		nc->state = DISCONNECTED;
-		g_dbus_remove_watch(conn, nc->watch);
-		nc->watch = 0;
-		return connection_attempt_failed(msg, -err);
-	}
 
 	return NULL;
 }
