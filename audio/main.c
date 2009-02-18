@@ -38,6 +38,7 @@
 #include <dbus/dbus.h>
 
 #include "glib-helper.h"
+#include "btio.h"
 #include "plugin.h"
 #include "logging.h"
 #include "unix.h"
@@ -64,19 +65,28 @@ static GKeyFile *load_config_file(const char *file)
 	return keyfile;
 }
 
-static void sco_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer data)
+static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	int sk;
 	struct audio_device *device;
 	char addr[18];
+	bdaddr_t dst;
 
-	if (err < 0) {
-		error("accept: %s (%d)", strerror(-err), -err);
+	if (err) {
+		error("sco_server_cb: %s", err->message);
 		return;
 	}
 
-	device = manager_find_device(dst, NULL, FALSE);
+	bt_io_get(chan, BT_IO_SCO, &err,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST, addr,
+			BT_IO_OPT_INVALID);
+	if (err) {
+		error("bt_io_get: %s", err->message);
+		goto drop;
+	}
+
+	device = manager_find_device(&dst, NULL, FALSE);
 	if (!device)
 		goto drop;
 
@@ -84,8 +94,6 @@ static void sco_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		debug("Refusing SCO from non-connected headset");
 		goto drop;
 	}
-
-	ba2str(dst, addr);
 
 	if (!get_hfp_active(device)) {
 		error("Refusing non-HFP SCO connect attempt from %s", addr);
@@ -104,7 +112,6 @@ static void sco_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 drop:
 	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
 }
 
 static DBusConnection *connection;
@@ -129,7 +136,9 @@ static int audio_init(void)
 		return -EIO;
 	}
 
-	sco_server = bt_sco_listen(BDADDR_ANY, 0, sco_server_cb, NULL);
+	sco_server = bt_io_listen(BT_IO_SCO, sco_server_cb, NULL, NULL,
+					NULL, NULL,
+					BT_IO_OPT_INVALID);
 	if (!sco_server) {
 		error("Unable to start SCO server socket");
 		return -EIO;

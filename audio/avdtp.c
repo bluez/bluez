@@ -50,6 +50,7 @@
 #include "control.h"
 #include "avdtp.h"
 #include "glib-helper.h"
+#include "btio.h"
 #include "sink.h"
 
 #include <bluetooth/l2cap.h>
@@ -1764,22 +1765,20 @@ failed:
 	return FALSE;
 }
 
-static void l2cap_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer user_data)
+static void l2cap_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct avdtp *session = user_data;
-	struct l2cap_options l2o;
-	socklen_t len;
 	int sk;
 	char address[18];
+	GError *gerr = NULL;
 
 	if (!g_slist_find(sessions, session)) {
 		debug("l2cap_connect_cb: session got removed");
 		return;
 	}
 
-	if (err < 0) {
-		error("connect(): %s (%d)", strerror(-err), -err);
+	if (err) {
+		error("%s", err->message);
 		goto failed;
 	}
 
@@ -1790,26 +1789,23 @@ static void l2cap_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		session->state = AVDTP_SESSION_STATE_CONNECTING;
 	}
 
+	bt_io_get(chan, BT_IO_L2CAP, &gerr,
+			BT_IO_OPT_OMTU, &session->omtu,
+			BT_IO_OPT_IMTU, &session->imtu,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("%s", gerr->message);
+		g_clear_error(&gerr);
+		goto failed;
+	}
+
 	ba2str(&session->dst, address);
 	debug("AVDTP: connected %s channel to %s",
 			session->pending_open ? "transport" : "signaling",
 			address);
 
-	memset(&l2o, 0, sizeof(l2o));
-	len = sizeof(l2o);
-	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
-				&len) < 0) {
-		err = errno;
-		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(err),
-				err);
-		goto failed;
-	}
-
 	if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
 		struct audio_device *dev;
-
-		session->imtu = l2o.imtu;
-		session->omtu = l2o.omtu;
 
 		debug("AVDTP imtu=%u, omtu=%u", session->imtu, session->omtu);
 
@@ -1824,13 +1820,10 @@ static void l2cap_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 						AUDIO_CONTROL_INTERFACE, FALSE);
 		if (dev)
 			avrcp_connect(dev);
-	}
-	else if (session->pending_open)
-		handle_transport_connect(session, sk, l2o.imtu, l2o.omtu);
-	else {
-		err = -EIO;
+	} else if (session->pending_open)
+		handle_transport_connect(session, sk, session->imtu, session->omtu);
+	else
 		goto failed;
-	}
 
 	process_queue(session);
 
@@ -1846,21 +1839,29 @@ failed:
 			avdtp_sep_set_state(session, stream->lsep,
 						AVDTP_STATE_IDLE);
 	} else
-		connection_lost(session, -err);
+		connection_lost(session, EIO);
 
 	return;
 }
 
 static int l2cap_connect(struct avdtp *session)
 {
-	int err;
+	GError *err = NULL;
+	GIOChannel *io;
 
-	err = bt_l2cap_connect(&session->server->src, &session->dst, AVDTP_PSM,
-				0, l2cap_connect_cb, session);
-	if (err < 0) {
-		error("Connect failed. %s(%d)", strerror(-err), -err);
-		return err;
+	io = bt_io_connect(BT_IO_L2CAP, l2cap_connect_cb, session,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &session->server->src,
+				BT_IO_OPT_DEST_BDADDR, &session->dst,
+				BT_IO_OPT_PSM, AVDTP_PSM,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		error("%s", err->message);
+		g_error_free(err);
+		return -EIO;
 	}
+
+	g_io_channel_unref(io);
 
 	return 0;
 }
@@ -2997,38 +2998,43 @@ static void auth_cb(DBusError *derr, void *user_data)
 	g_io_channel_unref(io);
 }
 
-static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-		const bdaddr_t *dst, gpointer data)
+static void avdtp_server_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	int sk;
-	socklen_t size;
-	struct l2cap_options l2o;
 	struct avdtp *session;
 	struct audio_device *dev;
 	char address[18];
+	bdaddr_t src, dst;
+	uint16_t imtu, omtu;
+	int perr;
+	GError *gerr = NULL;
 
-	if (err < 0) {
-		error("accept: %s (%d)", strerror(-err), -err);
+	if (err) {
+		error("%s", err->message);
 		return;
 	}
 
-	sk = g_io_channel_unix_get_fd(chan);
-
-	ba2str(dst, address);
-	debug("AVDTP: incoming connect from %s", address);
-
-	memset(&l2o, 0, sizeof(l2o));
-	size = sizeof(l2o);
-	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &size) < 0) {
-		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(errno),
-			errno);
+	bt_io_get(chan, BT_IO_L2CAP, &gerr,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_OMTU, &omtu,
+			BT_IO_OPT_IMTU, &imtu,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
 		goto drop;
 	}
 
-	session = avdtp_get_internal(src, dst);
+	debug("AVDTP: incoming connect from %s", address);
+
+	session = avdtp_get_internal(&src, &dst);
+
+	sk = g_io_channel_unix_get_fd(chan);
 
 	if (session->pending_open && session->pending_open->open_acp) {
-		handle_transport_connect(session, sk, l2o.imtu, l2o.omtu);
+		handle_transport_connect(session, sk, imtu, omtu);
 		return;
 	}
 
@@ -3037,28 +3043,26 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		goto drop;
 	}
 
-	dev = manager_get_device(src, dst);
+	dev = manager_get_device(&src, &dst);
 	if (!dev) {
 		error("Unable to get audio device object for %s", address);
 		goto drop;
 	}
 
-	session->imtu = l2o.imtu;
-	session->omtu = l2o.omtu;
+	session->imtu = imtu;
+	session->omtu = omtu;
 	session->sock = sk;
 
 	debug("AVDTP imtu=%u, omtu=%u", session->imtu, session->omtu);
 
 	session->io = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) session_cb, session);
-	err = btd_request_authorization(src, dst, ADVANCED_AUDIO_UUID,
+	perr = btd_request_authorization(&src, &dst, ADVANCED_AUDIO_UUID,
 							auth_cb, session);
-	if (err < 0) {
+	if (perr < 0) {
 		avdtp_unref(session);
 		goto drop;
 	}
-
-	g_io_channel_unref(chan);
 
 	session->state = AVDTP_SESSION_STATE_CONNECTING;
 
@@ -3066,18 +3070,26 @@ static void avdtp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 drop:
 	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
 }
 
 static GIOChannel *avdtp_server_socket(const bdaddr_t *src, gboolean master)
 {
-	int lm = L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT;
+	GError *err = NULL;
+	GIOChannel *io;
 
-	if (master)
-		lm |= L2CAP_LM_MASTER;
+	io = bt_io_listen(BT_IO_L2CAP, avdtp_server_cb, NULL, NULL,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, src,
+				BT_IO_OPT_PSM, AVDTP_PSM,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+				BT_IO_OPT_MASTER, master,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		error("%s", err->message);
+		g_error_free(err);
+	}
 
-	return bt_l2cap_listen(src, AVDTP_PSM, 0, lm, avdtp_server_cb,
-			NULL);
+	return io;
 }
 
 const char *avdtp_strerror(struct avdtp_error *err)

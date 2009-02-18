@@ -50,6 +50,7 @@
 #include <gdbus.h>
 
 #include "glib-helper.h"
+#include "btio.h"
 #include "../src/manager.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
@@ -423,21 +424,34 @@ static void auth_cb(DBusError *derr, void *user_data)
 	}
 }
 
-static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer data)
+static void ag_io_cb(GIOChannel *chan, GError *err, gpointer data)
 {
-	struct audio_adapter *adapter = data;
 	const char *server_uuid, *remote_uuid;
 	uint16_t svclass;
 	struct audio_device *device;
 	gboolean hfp_active;
+	bdaddr_t src, dst;
+	int perr;
+	GError *gerr = NULL;
+	uint8_t ch;
 
-	if (err < 0) {
-		error("accept: %s (%d)", strerror(-err), -err);
+	if (err) {
+		error("%s", err->message);
 		return;
 	}
 
-	if (chan == adapter->hsp_ag_server) {
+	bt_io_get(chan, BT_IO_RFCOMM, &gerr,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_CHANNEL &ch,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("%s", gerr->message);
+		g_clear_error(&gerr);
+		goto drop;
+	}
+
+	if (ch == DEFAULT_HS_AG_CHANNEL) {
 		hfp_active = FALSE;
 		server_uuid = HSP_AG_UUID;
 		remote_uuid = HSP_HS_UUID;
@@ -449,7 +463,7 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		svclass = HANDSFREE_SVCLASS_ID;
 	}
 
-	device = manager_get_device(src, dst);
+	device = manager_get_device(&src, &dst);
 	if (!device)
 		goto drop;
 
@@ -478,10 +492,10 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
-	err = btd_request_authorization(&device->src, &device->dst,
+	perr = btd_request_authorization(&device->src, &device->dst,
 					server_uuid, auth_cb, device);
-	if (err < 0) {
-		debug("Authorization denied: %s", strerror(-err));
+	if (perr < 0) {
+		debug("Authorization denied: %s", strerror(-perr));
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 		return;
 	}
@@ -490,11 +504,9 @@ static void ag_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 
 drop:
 	g_io_channel_close(chan);
-	g_io_channel_unref(chan);
 }
 
-static void hs_io_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-		const bdaddr_t *dst, void *data)
+static void hs_io_cb(GIOChannel *chan, GError *err, void *data)
 {
 	/*Stub*/
 	return;
@@ -506,7 +518,8 @@ static int headset_server_init(struct audio_adapter *adapter)
 	sdp_record_t *record;
 	gboolean master = TRUE;
 	GError *err = NULL;
-	uint32_t features, flags;
+	uint32_t features;
+	GIOChannel *io;
 
 	if (config) {
 		gboolean tmp;
@@ -520,15 +533,16 @@ static int headset_server_init(struct audio_adapter *adapter)
 			master = tmp;
 	}
 
-	flags = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
-
-	if (master)
-		flags |= RFCOMM_LM_MASTER;
-
-	adapter->hsp_ag_server = bt_rfcomm_listen(&adapter->src, chan, flags,
-							ag_io_cb, adapter);
-	if (!adapter->hsp_ag_server)
+	io =  bt_io_listen(BT_IO_RFCOMM, ag_io_cb, NULL, adapter, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &adapter->src,
+				BT_IO_OPT_CHANNEL, chan,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+				BT_IO_OPT_MASTER, master,
+				BT_IO_OPT_INVALID);
+	if (!io)
 		goto failed;
+
+	adapter->hsp_ag_server = io;
 
 	record = hsp_ag_record(chan);
 	if (!record) {
@@ -550,10 +564,16 @@ static int headset_server_init(struct audio_adapter *adapter)
 
 	chan = DEFAULT_HF_AG_CHANNEL;
 
-	adapter->hfp_ag_server = bt_rfcomm_listen(&adapter->src, chan, flags,
-							ag_io_cb, adapter);
-	if (!adapter->hfp_ag_server)
+	io = bt_io_listen(BT_IO_RFCOMM, ag_io_cb, NULL, adapter, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &adapter->src,
+				BT_IO_OPT_CHANNEL, chan,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+				BT_IO_OPT_MASTER, master,
+				BT_IO_OPT_INVALID);
+	if (!io)
 		goto failed;
+
+	adapter->hfp_ag_server = io;
 
 	record = hfp_ag_record(chan, features);
 	if (!record) {
@@ -571,12 +591,16 @@ static int headset_server_init(struct audio_adapter *adapter)
 	return 0;
 
 failed:
+	error("%s", err->message);
+	g_clear_error(&err);
 	if (adapter->hsp_ag_server) {
+		g_io_channel_close(adapter->hsp_ag_server);
 		g_io_channel_unref(adapter->hsp_ag_server);
 		adapter->hsp_ag_server = NULL;
 	}
 
 	if (adapter->hfp_ag_server) {
+		g_io_channel_close(adapter->hfp_ag_server);
 		g_io_channel_unref(adapter->hfp_ag_server);
 		adapter->hfp_ag_server = NULL;
 	}
@@ -590,7 +614,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 	sdp_record_t *record;
 	gboolean master = TRUE;
 	GError *err = NULL;
-	uint32_t flags;
+	GIOChannel *io;
 
 	if (config) {
 		gboolean tmp;
@@ -604,15 +628,19 @@ static int gateway_server_init(struct audio_adapter *adapter)
 			master = tmp;
 	}
 
-	flags = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
-
-	if (master)
-		flags |= RFCOMM_LM_MASTER;
-
-	adapter->hsp_hs_server = bt_rfcomm_listen(&adapter->src, chan, flags,
-				hs_io_cb, adapter);
-	if (!adapter->hsp_hs_server)
+	io = bt_io_listen(BT_IO_RFCOMM, hs_io_cb, NULL, adapter, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &adapter->src,
+				BT_IO_OPT_CHANNEL, chan,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+				BT_IO_OPT_MASTER, master,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		error("%s", err->message);
+		g_error_free(err);
 		return -1;
+	}
+
+	adapter->hsp_hs_server = io;
 
 	record = hsp_hs_record(chan);
 	if (!record) {

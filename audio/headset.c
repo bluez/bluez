@@ -58,6 +58,7 @@
 #include "telephony.h"
 #include "headset.h"
 #include "glib-helper.h"
+#include "btio.h"
 #include "dbus-common.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
@@ -509,16 +510,15 @@ static gboolean ring_timer_cb(gpointer data)
 	return TRUE;
 }
 
-static void sco_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer user_data)
+static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	int sk;
 	struct audio_device *dev = user_data;
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
 
-	if (err < 0) {
-		error("connect(): %s (%d)", strerror(-err), -err);
+	if (err) {
+		error("%s", err->message);
 
 		if (p->msg)
 			error_connection_attempt_failed(dev->conn, p->msg, p->err);
@@ -564,16 +564,23 @@ static int sco_connect(struct audio_device *dev, headset_stream_cb_t cb,
 			void *user_data, unsigned int *cb_id)
 {
 	struct headset *hs = dev->headset;
-	int err;
+	GError *err = NULL;
+	GIOChannel *io;
 
 	if (hs->state != HEADSET_STATE_CONNECTED)
 		return -EINVAL;
 
-	err = bt_sco_connect(&dev->src, &dev->dst, sco_connect_cb, dev);
-	if (err < 0) {
-		error("connect: %s (%d)", strerror(-err), -err);
-		return err;
+	io = bt_io_connect(BT_IO_SCO, sco_connect_cb, dev, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
+				BT_IO_OPT_DEST_BDADDR, &dev->dst,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		error("%s", err->message);
+		g_error_free(err);
+		return -EIO;
 	}
+
+	g_io_channel_unref(io);
 
 	headset_set_state(dev, HEADSET_STATE_PLAY_IN_PROGRESS);
 
@@ -1221,16 +1228,15 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
-static void rfcomm_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer user_data)
+static void rfcomm_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct audio_device *dev = user_data;
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
 	char hs_address[18];
 
-	if (err < 0) {
-		error("connect(): %s (%d)", strerror(-err), -err);
+	if (err) {
+		error("%s", err->message);
 		goto failed;
 	}
 
@@ -1397,7 +1403,8 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 {
 	struct headset *hs = dev->headset;
 	char address[18];
-	int err;
+	GError *err = NULL;
+	GIOChannel *io;
 
 	if (hs->rfcomm_ch < 0)
 		return get_records(dev, cb, user_data, cb_id);
@@ -1407,12 +1414,19 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	debug("%s: Connecting to %s channel %d", dev->path, address,
 		hs->rfcomm_ch);
 
-	err = bt_rfcomm_connect(&dev->src, &dev->dst, hs->rfcomm_ch,
-			rfcomm_connect_cb, dev);
-	if (err < 0) {
-		error("connect() failed: %s (%d)", strerror(-err), -err);
-		return err;
+	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, dev,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
+				BT_IO_OPT_DEST_BDADDR, &dev->dst,
+				BT_IO_OPT_CHANNEL, hs->rfcomm_ch,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		error("%s", err->message);
+		g_error_free(err);
+		return -EIO;
 	}
+
+	g_io_channel_unref(io);
 
 	headset_set_state(dev, HEADSET_STATE_CONNECT_IN_PROGRESS);
 

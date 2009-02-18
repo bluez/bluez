@@ -55,6 +55,7 @@
 #include "control.h"
 #include "sdpd.h"
 #include "glib-helper.h"
+#include "btio.h"
 #include "dbus-common.h"
 
 #define AVCTP_PSM 23
@@ -653,36 +654,48 @@ static void auth_cb(DBusError *derr, void *user_data)
 	avctp_connect_session(session);
 }
 
-static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-				const bdaddr_t *dst, gpointer data)
+static void avctp_server_cb(GIOChannel *chan, GError *err, gpointer data)
 {
-	socklen_t size;
-	struct l2cap_options l2o;
 	struct avctp *session;
 	GIOCondition flags = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 	struct audio_device *dev;
 	char address[18];
+	bdaddr_t src, dst;
+	uint16_t imtu;
+	int perr;
+	GError *gerr = NULL;
 
-	if (err < 0) {
-		error("AVCTP server socket: %s (%d)", strerror(-err), -err);
+	if (err) {
+		error("%s", err->message);
 		return;
 	}
 
-	session = avctp_get(src, dst);
+	bt_io_get(chan, BT_IO_L2CAP, &gerr,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_IMTU, &imtu,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+		g_io_channel_close(chan);
+		return;
+	}
+
+	session = avctp_get(&src, &dst);
 
 	if (!session) {
 		error("Unable to create new AVCTP session");
 		goto drop;
 	}
 
-	ba2str(dst, address);
-
 	if (session->sock >= 0) {
 		error("Refusing unexpected connect from %s", address);
 		goto drop;
 	}
 
-	dev = manager_get_device(src, dst);
+	dev = manager_get_device(&src, &dst);
 	if (!dev) {
 		error("Unable to get audio device object for %s", address);
 		goto drop;
@@ -696,27 +709,17 @@ static void avctp_server_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	session->state = AVCTP_STATE_CONNECTING;
 	session->sock = g_io_channel_unix_get_fd(chan);
 
-	memset(&l2o, 0, sizeof(l2o));
-	size = sizeof(l2o);
-	if (getsockopt(session->sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &size) < 0) {
-		err = errno;
-		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(err),
-				err);
-		goto drop;
-	}
-
-	session->mtu = l2o.imtu;
+	session->mtu = imtu;
 
 	session->io = g_io_add_watch(chan, flags, (GIOFunc) session_cb,
 				session);
-	g_io_channel_unref(chan);
 
-	if (avdtp_is_connected(src, dst))
+	if (avdtp_is_connected(&src, &dst))
 		goto proceed;
 
-	err = btd_request_authorization(src, dst, AVRCP_TARGET_UUID,
+	perr = btd_request_authorization(&src, &dst, AVRCP_TARGET_UUID,
 				auth_cb, session);
-	if (err < 0)
+	if (perr < 0)
 		goto drop;
 
 	return;
@@ -734,31 +737,32 @@ drop:
 
 static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)
 {
+	GError *err = NULL;
 	GIOChannel *io;
-	int lm = L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT;
 
-	if (master)
-		lm |= L2CAP_LM_MASTER;
-
-	io = bt_l2cap_listen(src, AVCTP_PSM, 0, lm, avctp_server_cb,
-				NULL);
+	io = bt_io_listen(BT_IO_L2CAP, avctp_server_cb, NULL, NULL,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, src,
+				BT_IO_OPT_PSM, AVCTP_PSM,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+				BT_IO_OPT_MASTER, master,
+				BT_IO_OPT_INVALID);
 	if (!io) {
-		error("Unable to allocate new io channel");
-		return NULL;
+		error("%s", err->message);
+		g_error_free(err);
 	}
 
 	return io;
 }
 
-static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
-			const bdaddr_t *dst, gpointer data)
+static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	struct control *control = data;
 	struct avctp *session = control->session;
-	struct l2cap_options l2o;
-	socklen_t len;
 	int sk;
 	char address[18];
+	uint16_t imtu;
+	GError *gerr = NULL;
 
 	if (!session) {
 		debug("avctp_connect_cb: session removed while connecting");
@@ -767,12 +771,21 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 		return;
 	}
 
-	ba2str(&session->dst, address);
-
-	if (err < 0) {
+	if (err) {
 		avctp_unref(session);
-		error("AVCTP connect(%s): %s (%d)", address, strerror(-err),
-				-err);
+		error("%s", err->message);
+		return;
+	}
+
+	bt_io_get(chan, BT_IO_L2CAP, &gerr,
+			BT_IO_OPT_DEST, &address,
+			BT_IO_OPT_IMTU, &imtu,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		avctp_unref(session);
+		error("%s", gerr->message);
+		g_error_free(gerr);
+		g_io_channel_close(chan);
 		return;
 	}
 
@@ -782,17 +795,6 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 	sk = g_io_channel_unix_get_fd(chan);
 	session->sock = sk;
 
-	memset(&l2o, 0, sizeof(l2o));
-	len = sizeof(l2o);
-	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0) {
-		err = errno;
-		g_io_channel_unref(chan);
-		avctp_unref(session);
-		error("getsockopt(L2CAP_OPTIONS): %s (%d)", strerror(err),
-				err);
-		return;
-	}
-
 	init_uinput(session);
 
 	g_dbus_emit_signal(session->dev->conn, session->dev->path,
@@ -800,7 +802,7 @@ static void avctp_connect_cb(GIOChannel *chan, int err, const bdaddr_t *src,
 				DBUS_TYPE_INVALID);
 
 	session->state = AVCTP_STATE_CONNECTED;
-	session->mtu = l2o.imtu;
+	session->mtu = imtu;
 	session->io = g_io_add_watch(chan,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_cb, session);
@@ -811,7 +813,8 @@ gboolean avrcp_connect(struct audio_device *dev)
 {
 	struct control *control = dev->control;
 	struct avctp *session;
-	int err;
+	GError *err = NULL;
+	GIOChannel *io;
 
 	if (control->session)
 		return TRUE;
@@ -827,13 +830,19 @@ gboolean avrcp_connect(struct audio_device *dev)
 	session->dev = dev;
 	session->state = AVCTP_STATE_CONNECTING;
 
-	err = bt_l2cap_connect(&dev->src, &dev->dst, AVCTP_PSM, 0,
-				avctp_connect_cb, control);
-	if (err < 0) {
+	io = bt_io_connect(BT_IO_L2CAP, avctp_connect_cb, control, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
+				BT_IO_OPT_DEST_BDADDR, &dev->dst,
+				BT_IO_OPT_PSM, AVCTP_PSM,
+				BT_IO_OPT_INVALID);
+	if (err) {
 		avctp_unref(session);
-		error("Connect failed. %s(%d)", strerror(-err), -err);
+		error("%s", err->message);
+		g_error_free(err);
 		return FALSE;
 	}
+
+	g_io_channel_unref(io);
 
 	control->session = session;
 
