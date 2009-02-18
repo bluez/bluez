@@ -57,6 +57,7 @@ struct set_opts {
 	uint16_t mtu;
 	uint16_t imtu;
 	uint16_t omtu;
+	int master;
 };
 
 struct connect {
@@ -262,6 +263,56 @@ static int l2cap_connect(int sock, const bdaddr_t *dst, uint16_t psm)
 	return 0;
 }
 
+static int l2cap_set_master(int sock, int master)
+{
+	int flags;
+	socklen_t len;
+
+	len = sizeof(flags);
+	if (getsockopt(sock, SOL_L2CAP, L2CAP_LM, &flags, &len) < 0)
+		return -errno;
+
+	if (master) {
+		if (flags & L2CAP_LM_MASTER)
+			return 0;
+		flags |= L2CAP_LM_MASTER;
+	} else {
+		if (!(flags & L2CAP_LM_MASTER))
+			return 0;
+		flags &= ~L2CAP_LM_MASTER;
+	}
+
+	if (setsockopt(sock, SOL_L2CAP, L2CAP_LM, &flags, sizeof(flags)) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static int rfcomm_set_master(int sock, int master)
+{
+	int flags;
+	socklen_t len;
+
+	len = sizeof(flags);
+	if (getsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &flags, &len) < 0)
+		return -errno;
+
+	if (master) {
+		if (flags & RFCOMM_LM_MASTER)
+			return 0;
+		flags |= RFCOMM_LM_MASTER;
+	} else {
+		if (!(flags & RFCOMM_LM_MASTER))
+			return 0;
+		flags &= ~RFCOMM_LM_MASTER;
+	}
+
+	if (setsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &flags, sizeof(flags)) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static int l2cap_set_lm(int sock, int level)
 {
 	int lm_map[] = {
@@ -404,7 +455,7 @@ static gboolean get_sec_level(int sock, BtIOType type, int *level,
 }
 
 static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
-						uint16_t omtu, GError **err)
+				uint16_t omtu, int master, GError **err)
 {
 	if (imtu || omtu) {
 		struct l2cap_options l2o;
@@ -428,6 +479,11 @@ static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
 			ERROR_FAILED(err, "setsockopt(L2CAP_OPTIONS)", errno);
 			return FALSE;
 		}
+	}
+
+	if (master >= 0 && l2cap_set_master(sock, master) < 0) {
+		ERROR_FAILED(err, "l2cap_set_master", errno);
+		return FALSE;
 	}
 
 	if (sec_level && !set_sec_level(sock, BT_IO_L2CAP, sec_level, err))
@@ -465,10 +521,15 @@ static int rfcomm_connect(int sock, const bdaddr_t *dst, uint8_t channel)
 	return 0;
 }
 
-static gboolean rfcomm_set(int sock, int sec_level, GError **err)
+static gboolean rfcomm_set(int sock, int sec_level, int master, GError **err)
 {
 	if (sec_level && !set_sec_level(sock, BT_IO_RFCOMM, sec_level, err))
 		return FALSE;
+
+	if (master >= 0 && rfcomm_set_master(sock, master) < 0) {
+		ERROR_FAILED(err, "rfcomm_set_master", errno);
+		return FALSE;
+	}
 
 	return TRUE;
 }
@@ -525,11 +586,17 @@ static gboolean sco_set(int sock, uint16_t mtu, GError **err)
 	return TRUE;
 }
 
-static gboolean set_valist(GIOChannel *io, struct set_opts *opts,
+static gboolean parse_set_opts(GIOChannel *io, struct set_opts *opts,
 				GError **err, BtIOOption opt1, va_list args)
 {
 	BtIOOption opt = opt1;
 	const char *str;
+
+	memset(opts, 0, sizeof(*opts));
+
+	/* Set defaults */
+	opts->defer = DEFAULT_DEFER_TIMEOUT;
+	opts->master = -1;
 
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
@@ -576,6 +643,9 @@ static gboolean set_valist(GIOChannel *io, struct set_opts *opts,
 			if (!opts->mtu)
 				opts->mtu = opts->imtu;
 			break;
+		case BT_IO_OPT_MASTER:
+			opts->master = va_arg(args, gboolean);
+			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
 					"Unknown option %d", opt);
@@ -616,6 +686,7 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 	BtIOOption opt = opt1;
 	struct sockaddr_l2 src, dst;
 	struct l2cap_options l2o;
+	int flags;
 	socklen_t len;
 
 	len = sizeof(l2o);
@@ -667,6 +738,17 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 		case BT_IO_OPT_IMTU:
 			*(va_arg(args, uint16_t *)) = l2o.imtu;
 			break;
+		case BT_IO_OPT_MASTER:
+			len = sizeof(flags);
+			if (getsockopt(sock, SOL_L2CAP, L2CAP_LM, &flags,
+								&len) < 0) {
+				ERROR_FAILED(err, "getsockopt(L2CAP_LM)",
+									errno);
+				return FALSE;
+			}
+			*(va_arg(args, gboolean *)) =
+				(flags & L2CAP_LM_MASTER) ? TRUE : FALSE;
+			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
 					"Unknown option %d", opt);
@@ -684,6 +766,7 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 {
 	BtIOOption opt = opt1;
 	struct sockaddr_rc src, dst;
+	int flags;
 	socklen_t len;
 
 	if (!get_peers(sock, (struct sockaddr *) &src,
@@ -721,6 +804,17 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 		case BT_IO_OPT_CHANNEL:
 			*(va_arg(args, uint8_t *)) = src.rc_channel ?
 					src.rc_channel : dst.rc_channel;
+			break;
+		case BT_IO_OPT_MASTER:
+			len = sizeof(flags);
+			if (getsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &flags,
+								&len) < 0) {
+				ERROR_FAILED(err, "getsockopt(RFCOMM_LM)",
+									errno);
+				return FALSE;
+			}
+			*(va_arg(args, gboolean *)) =
+				(flags & RFCOMM_LM_MASTER) ? TRUE : FALSE;
 			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
@@ -839,10 +933,8 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
 	struct set_opts opts;
 	int sock;
 
-	memset(&opts, 0, sizeof(opts));
-
 	va_start(args, opt1);
-	ret = set_valist(io, &opts, err, opt1, args);
+	ret = parse_set_opts(io, &opts, err, opt1, args);
 	va_end(args);
 
 	if (!ret)
@@ -854,9 +946,9 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
 	case BT_IO_L2RAW:
 	case BT_IO_L2CAP:
 		return l2cap_set(sock, opts.sec_level, opts.imtu, opts.omtu,
-									err);
+							opts.master, err);
 	case BT_IO_RFCOMM:
-		return rfcomm_set(sock, opts.sec_level, err);
+		return rfcomm_set(sock, opts.sec_level, opts.master, err);
 	case BT_IO_SCO:
 		return sco_set(sock, opts.mtu, err);
 	}
@@ -896,7 +988,7 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 			ERROR_FAILED(err, "l2cap_bind", errno);
 			return NULL;
 		}
-		if (!l2cap_set(sock, opts->sec_level, 0, 0, err))
+		if (!l2cap_set(sock, opts->sec_level, 0, 0, -1, err))
 			return NULL;
 		break;
 	case BT_IO_L2CAP:
@@ -910,7 +1002,7 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 			return NULL;
 		}
 		if (!l2cap_set(sock, opts->sec_level, opts->imtu, opts->omtu,
-									err))
+							opts->master, err))
 			return NULL;
 		break;
 	case BT_IO_RFCOMM:
@@ -924,7 +1016,7 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 			ERROR_FAILED(err, "rfcomm_bind", errno);
 			return NULL;
 		}
-		if (!rfcomm_set(sock, opts->sec_level, err))
+		if (!rfcomm_set(sock, opts->sec_level, opts->master, err))
 			return NULL;
 		break;
 	case BT_IO_SCO:
@@ -959,10 +1051,8 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 	int err, sock;
 	gboolean ret;
 
-	memset(&opts, 0, sizeof(opts));
-
 	va_start(args, opt1);
-	ret = set_valist(io, &opts, gerr, opt1, args);
+	ret = parse_set_opts(io, &opts, gerr, opt1, args);
 	va_end(args);
 
 	if (ret == FALSE)
@@ -1018,12 +1108,8 @@ GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
 		return NULL;
 	}
 
-	memset(&opts, 0, sizeof(opts));
-
-	opts.defer = DEFAULT_DEFER_TIMEOUT;
-
 	va_start(args, opt1);
-	ret = set_valist(io, &opts, err, opt1, args);
+	ret = parse_set_opts(io, &opts, err, opt1, args);
 	va_end(args);
 
 	if (ret == FALSE)

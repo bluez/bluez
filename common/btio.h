@@ -56,6 +56,7 @@ typedef enum {
 	BT_IO_OPT_MTU,
 	BT_IO_OPT_OMTU,
 	BT_IO_OPT_IMTU,
+	BT_IO_OPT_MASTER,
 	BT_IO_OPT_INVALID,
 } BtIOOption;
 
