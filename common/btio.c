@@ -262,35 +262,143 @@ static int l2cap_connect(int sock, const bdaddr_t *dst, uint16_t psm)
 	return 0;
 }
 
-static gboolean set_sec_level(int sock, int level, GError **err)
+static int l2cap_set_lm(int sock, int level)
+{
+	int lm_map[] = {
+		0,
+		L2CAP_LM_AUTH,
+		L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT,
+		L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT | L2CAP_LM_SECURE,
+	}, opt = lm_map[level];
+
+	if (setsockopt(sock, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt)) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static int rfcomm_set_lm(int sock, int level)
+{
+	int lm_map[] = {
+		0,
+		RFCOMM_LM_AUTH,
+		RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT,
+		RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT | RFCOMM_LM_SECURE,
+	}, opt = lm_map[level];
+
+	if (setsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &opt, sizeof(opt)) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static gboolean set_sec_level(int sock, BtIOType type, int level, GError **err)
 {
 	struct bt_security sec;
+	int ret;
+
+	if (level < BT_SECURITY_LOW || level > BT_SECURITY_HIGH) {
+		g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+				"Valid security level range is %d-%d",
+				BT_SECURITY_LOW, BT_SECURITY_HIGH);
+		return FALSE;
+	}
 
 	memset(&sec, 0, sizeof(sec));
 	sec.level = level;
 
 	if (setsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec,
-				sizeof(sec)) < 0) {
+							sizeof(sec)) == 0)
+		return TRUE;
+
+	if (errno != ENOPROTOOPT) {
 		ERROR_FAILED(err, "setsockopt(BT_SECURITY)", errno);
+		return FALSE;
+	}
+
+	if (type == BT_IO_L2CAP)
+		ret = l2cap_set_lm(sock, level);
+	else
+		ret = rfcomm_set_lm(sock, level);
+
+	if (ret < 0) {
+		ERROR_FAILED(err, "setsockopt(LM)", -ret);
 		return FALSE;
 	}
 
 	return TRUE;
 }
 
-static gboolean get_sec_level(int sock, int *level, GError **err)
+static int l2cap_get_lm(int sock, int *sec_level)
+{
+	int opt;
+	socklen_t len;
+
+	len = sizeof(opt);
+	if (getsockopt(sock, SOL_L2CAP, L2CAP_LM, &opt, &len) < 0)
+		return -errno;
+
+	*sec_level = 0;
+
+	if (opt & L2CAP_LM_AUTH)
+		*sec_level = BT_SECURITY_LOW;
+	if (opt & L2CAP_LM_ENCRYPT)
+		*sec_level = BT_SECURITY_MEDIUM;
+	if (opt & L2CAP_LM_SECURE)
+		*sec_level = BT_SECURITY_HIGH;
+
+	return 0;
+}
+
+static int rfcomm_get_lm(int sock, int *sec_level)
+{
+	int opt;
+	socklen_t len;
+
+	len = sizeof(opt);
+	if (getsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &opt, &len) < 0)
+		return -errno;
+
+	*sec_level = 0;
+
+	if (opt & RFCOMM_LM_AUTH)
+		*sec_level = BT_SECURITY_LOW;
+	if (opt & RFCOMM_LM_ENCRYPT)
+		*sec_level = BT_SECURITY_MEDIUM;
+	if (opt & RFCOMM_LM_SECURE)
+		*sec_level = BT_SECURITY_HIGH;
+
+	return 0;
+}
+
+static gboolean get_sec_level(int sock, BtIOType type, int *level,
+								GError **err)
 {
 	struct bt_security sec;
 	socklen_t len;
+	int ret;
 
 	memset(&sec, 0, sizeof(sec));
 	len = sizeof(sec);
-	if (getsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec, &len) < 0) {
+	if (getsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec, &len) == 0) {
+		*level = sec.level;
+		return TRUE;
+	}
+
+	if (errno != ENOPROTOOPT) {
 		ERROR_FAILED(err, "getsockopt(BT_SECURITY)", errno);
 		return FALSE;
 	}
 
-	*level = sec.level;
+	if (type == BT_IO_L2CAP)
+		ret = l2cap_get_lm(sock, level);
+	else
+		ret = rfcomm_get_lm(sock, level);
+
+	if (ret < 0) {
+		ERROR_FAILED(err, "getsockopt(LM)", -ret);
+		return FALSE;
+	}
 
 	return TRUE;
 }
@@ -322,7 +430,7 @@ static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
 		}
 	}
 
-	if (sec_level && !set_sec_level(sock, sec_level, err))
+	if (sec_level && !set_sec_level(sock, BT_IO_L2CAP, sec_level, err))
 		return FALSE;
 
 	return TRUE;
@@ -359,7 +467,7 @@ static int rfcomm_connect(int sock, const bdaddr_t *dst, uint8_t channel)
 
 static gboolean rfcomm_set(int sock, int sec_level, GError **err)
 {
-	if (sec_level && !set_sec_level(sock, sec_level, err))
+	if (sec_level && !set_sec_level(sock, BT_IO_RFCOMM, sec_level, err))
 		return FALSE;
 
 	return TRUE;
@@ -545,7 +653,8 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 			}
 			break;
 		case BT_IO_OPT_SEC_LEVEL:
-			if (!get_sec_level(sock, va_arg(args, int *), err))
+			if (!get_sec_level(sock, BT_IO_L2CAP,
+						va_arg(args, int *), err))
 				return FALSE;
 			break;
 		case BT_IO_OPT_PSM:
@@ -605,7 +714,8 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 			}
 			break;
 		case BT_IO_OPT_SEC_LEVEL:
-			if (!get_sec_level(sock, va_arg(args, int *), err))
+			if (!get_sec_level(sock, BT_IO_RFCOMM,
+						va_arg(args, int *), err))
 				return FALSE;
 			break;
 		case BT_IO_OPT_CHANNEL:
