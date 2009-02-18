@@ -359,8 +359,66 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 	g_io_channel_unref(rc_srv);
 }
 
+static void sco_connect(const char *src, const char *dst, gint disconn)
+{
+	struct io_data *data;
+
+	printf("Connecting SCO to %s\n", dst);
+
+	data = io_data_new(NULL, BT_IO_SCO, -1, disconn, -1);
+
+	if (src)
+		data->io = bt_io_connect(BT_IO_SCO, connect_cb, data,
+						(GDestroyNotify) io_data_unref,
+						NULL,
+						BT_IO_OPT_SOURCE, src,
+						BT_IO_OPT_DEST, dst,
+						BT_IO_OPT_INVALID);
+	else
+		data->io = bt_io_connect(BT_IO_SCO, connect_cb, data,
+						(GDestroyNotify) io_data_unref,
+						NULL,
+						BT_IO_OPT_DEST, dst,
+						BT_IO_OPT_INVALID);
+
+	if (!data->io) {
+		printf("Connecting to %s failed\n", dst);
+		exit(EXIT_FAILURE);
+	}
+}
+
+static void sco_listen(const char *src, gint disconn)
+{
+	struct io_data *data;
+	GIOChannel *sco_srv;
+
+	printf("Listening for SCO connections\n");
+
+	data = io_data_new(NULL, BT_IO_SCO, -1, disconn, -1);
+
+	if (src)
+		sco_srv = bt_io_listen(BT_IO_SCO, connect_cb, NULL,
+					data, (GDestroyNotify) io_data_unref,
+					NULL,
+					BT_IO_OPT_SOURCE, src,
+					BT_IO_OPT_INVALID);
+	else
+		sco_srv = bt_io_listen(BT_IO_SCO, connect_cb, NULL,
+					data, (GDestroyNotify) io_data_unref,
+					NULL,
+					BT_IO_OPT_INVALID);
+
+	if (!sco_srv) {
+		printf("Listeing failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	g_io_channel_unref(sco_srv);
+}
+
 static gint opt_channel = 0;
 static gint opt_psm = 0;
+static gboolean opt_sco = FALSE;
 static gboolean opt_defer = FALSE;
 static char *opt_dev = NULL;
 static gint opt_reject = -1;
@@ -374,6 +432,8 @@ static GOptionEntry options[] = {
 				"RFCOMM channel" },
 	{ "psm", 'p', 0, G_OPTION_ARG_INT, &opt_psm,
 				"L2CAP PSM" },
+	{ "sco", 's', 0, G_OPTION_ARG_NONE, &opt_sco,
+				"Use SCO" },
 	{ "defer", 'd', 0, G_OPTION_ARG_NONE, &opt_defer,
 				"Use DEFER_SETUP for incoming connections" },
 	{ "dev", 'i', 0, G_OPTION_ARG_STRING, &opt_dev,
@@ -422,6 +482,13 @@ int main(int argc, char *argv[])
 		else
 			rfcomm_listen(opt_dev, opt_channel, opt_defer,
 					opt_reject, opt_disconn, opt_accept);
+	}
+
+	if (opt_sco) {
+		if (argc > 1)
+			sco_connect(opt_dev, argv[1], opt_disconn);
+		else
+			sco_listen(opt_dev, opt_disconn);
 	}
 
 	signal(SIGTERM, sig_term);
