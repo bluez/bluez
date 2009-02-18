@@ -255,7 +255,7 @@ static void l2cap_connect(const char *src, const char *dst, uint16_t psm,
 
 static void l2cap_listen(const char *src, uint16_t psm, gint defer,
 				gint reject, gint disconn, gint accept,
-				gint sec)
+				gint sec, gboolean master)
 {
 	struct io_data *data;
 	BtIOConnect conn;
@@ -282,6 +282,7 @@ static void l2cap_listen(const char *src, uint16_t psm, gint defer,
 					BT_IO_OPT_SOURCE, src,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_SEC_LEVEL, sec,
+					BT_IO_OPT_MASTER, master,
 					BT_IO_OPT_INVALID);
 	else
 		l2_srv = bt_io_listen(BT_IO_L2CAP, conn, cfm,
@@ -289,6 +290,7 @@ static void l2cap_listen(const char *src, uint16_t psm, gint defer,
 					&err,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_SEC_LEVEL, sec,
+					BT_IO_OPT_MASTER, master,
 					BT_IO_OPT_INVALID);
 
 	if (!l2_srv) {
@@ -337,7 +339,7 @@ static void rfcomm_connect(const char *src, const char *dst, uint8_t ch,
 
 static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 				gint reject, gint disconn, gint accept,
-				gint sec)
+				gint sec, gboolean master)
 {
 	struct io_data *data;
 	BtIOConnect conn;
@@ -364,6 +366,7 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 					BT_IO_OPT_SOURCE, src,
 					BT_IO_OPT_CHANNEL, ch,
 					BT_IO_OPT_SEC_LEVEL, sec,
+					BT_IO_OPT_MASTER, master,
 					BT_IO_OPT_INVALID);
 	else
 		rc_srv = bt_io_listen(BT_IO_RFCOMM, conn, cfm,
@@ -371,6 +374,7 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 					&err,
 					BT_IO_OPT_CHANNEL, ch,
 					BT_IO_OPT_SEC_LEVEL, sec,
+					BT_IO_OPT_MASTER, master,
 					BT_IO_OPT_INVALID);
 
 	if (!rc_srv) {
@@ -451,6 +455,7 @@ static gint opt_reject = -1;
 static gint opt_disconn = -1;
 static gint opt_accept = DEFAULT_ACCEPT_TIMEOUT;
 static gint opt_sec = 0;
+static gboolean opt_master = FALSE;
 
 static GMainLoop *main_loop;
 
@@ -473,6 +478,8 @@ static GOptionEntry options[] = {
 				"Disconnect connection after N seconds" },
 	{ "accept", 'a', 0, G_OPTION_ARG_INT, &opt_accept,
 				"Accept connection after N seconds" },
+	{ "master", 'm', 0, G_OPTION_ARG_NONE, &opt_master,
+				"Master role switch (incoming connections)" },
 	{ NULL },
 };
 
@@ -502,7 +509,8 @@ int main(int argc, char *argv[])
 							opt_disconn, opt_sec);
 		else
 			l2cap_listen(opt_dev, opt_psm, opt_defer, opt_reject,
-					opt_disconn, opt_accept, opt_sec);
+					opt_disconn, opt_accept, opt_sec,
+					opt_master);
 	}
 
 	if (opt_channel) {
@@ -511,8 +519,8 @@ int main(int argc, char *argv[])
 							opt_disconn, opt_sec);
 		else
 			rfcomm_listen(opt_dev, opt_channel, opt_defer,
-					opt_reject, opt_disconn,
-					opt_accept, opt_sec);
+					opt_reject, opt_disconn, opt_accept,
+					opt_sec, opt_master);
 	}
 
 	if (opt_sco) {
