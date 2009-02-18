@@ -115,7 +115,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 
 	printf("Successfully connected to %s\n", addr);
 
-	if (data->type == BT_IO_L2CAP) {
+	if (data->type == BT_IO_L2CAP || data->type == BT_IO_SCO) {
 		uint16_t omtu, imtu;
 
 		if (!bt_io_get(io, data->type, &err,
@@ -126,7 +126,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 								err->message);
 			g_clear_error(&err);
 		} else
-			printf("L2CAP imtu=%u, omtu=%u\n", imtu, omtu);
+			printf("imtu=%u, omtu=%u\n", imtu, omtu);
 	}
 
 	if (data->disconn == 0) {
