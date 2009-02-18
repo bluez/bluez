@@ -2509,6 +2509,11 @@ gboolean headset_get_nrec(struct audio_device *dev)
 	return hs->nrec;
 }
 
+gboolean headset_get_sco_hci(struct audio_device *dev)
+{
+	return sco_hci;
+}
+
 int telephony_event_ind(int index)
 {
 	if (!active_devices)

@@ -250,6 +250,8 @@ static void headset_discovery_complete(struct audio_device *dev, void *user_data
 	pcm->sampling_rate = 8000;
 	if (headset_get_nrec(dev))
 		pcm->flags |= BT_PCM_FLAG_NREC;
+	if (!headset_get_sco_hci(dev))
+		pcm->flags |= BT_PCM_FLAG_PCM_ROUTING;
 
 	rsp->h.type = BT_RESPONSE;
 	rsp->h.name = BT_GET_CAPABILITIES;

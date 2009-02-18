@@ -160,7 +160,8 @@ struct bt_get_capabilities_req {
 
 #define BT_HFP_CODEC_PCM			0x00
 
-#define BT_PCM_FLAG_NREC			1
+#define BT_PCM_FLAG_NREC			0x01
+#define BT_PCM_FLAG_PCM_ROUTING			0x02
 
 typedef struct {
 	uint8_t transport;
