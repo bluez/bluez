@@ -1660,13 +1660,15 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
 	struct avdtp *session = data;
-	struct avdtp_common_header *header = (void *) session->buf;
+	struct avdtp_common_header *header;
 	gsize size;
 
 	debug("session_cb");
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
+
+	header = (void *) session->buf;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		goto failed;
