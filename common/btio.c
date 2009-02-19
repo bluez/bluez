@@ -680,6 +680,24 @@ static gboolean get_peers(int sock, struct sockaddr *src, struct sockaddr *dst,
 	return TRUE;
 }
 
+static int l2cap_get_info(int sock, uint16_t *handle, uint8_t *dev_class)
+{
+	struct l2cap_conninfo info;
+	socklen_t len;
+
+	len = sizeof(info);
+	if (getsockopt(sock, SOL_L2CAP, L2CAP_CONNINFO, &info, &len) < 0)
+		return -errno;
+
+	if (handle)
+		*handle = info.hci_handle;
+
+	if (dev_class)
+		memcpy(dev_class, info.dev_class, 3);
+
+	return 0;
+}
+
 static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 								va_list args)
 {
@@ -687,6 +705,8 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 	struct sockaddr_l2 src, dst;
 	struct l2cap_options l2o;
 	int flags;
+	uint8_t dev_class[3];
+	uint16_t handle;
 	socklen_t len;
 
 	len = sizeof(l2o);
@@ -699,6 +719,11 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 	if (!get_peers(sock, (struct sockaddr *) &src,
 				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
+
+	if (l2cap_get_info(sock, &handle, dev_class) < 0) {
+		ERROR_FAILED(err, "L2CAP_CONNINFO", errno);
+		return FALSE;
+	}
 
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
@@ -749,6 +774,12 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 			*(va_arg(args, gboolean *)) =
 				(flags & L2CAP_LM_MASTER) ? TRUE : FALSE;
 			break;
+		case BT_IO_OPT_HANDLE:
+			*(va_arg(args, uint16_t *)) = handle;
+			break;
+		case BT_IO_OPT_CLASS:
+			memcpy(va_arg(args, uint8_t *), dev_class, 3);
+			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
 					"Unknown option %d", opt);
@@ -761,6 +792,24 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 	return TRUE;
 }
 
+static int rfcomm_get_info(int sock, uint16_t *handle, uint8_t *dev_class)
+{
+	struct rfcomm_conninfo info;
+	socklen_t len;
+
+	len = sizeof(info);
+	if (getsockopt(sock, SOL_RFCOMM, RFCOMM_CONNINFO, &info, &len) < 0)
+		return -errno;
+
+	if (handle)
+		*handle = info.hci_handle;
+
+	if (dev_class)
+		memcpy(dev_class, info.dev_class, 3);
+
+	return 0;
+}
+
 static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 								va_list args)
 {
@@ -768,10 +817,17 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 	struct sockaddr_rc src, dst;
 	int flags;
 	socklen_t len;
+	uint8_t dev_class[3];
+	uint16_t handle;
 
 	if (!get_peers(sock, (struct sockaddr *) &src,
 				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
+
+	if (rfcomm_get_info(sock, &handle, dev_class) < 0) {
+		ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
+		return FALSE;
+	}
 
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
@@ -816,6 +872,12 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 			*(va_arg(args, gboolean *)) =
 				(flags & RFCOMM_LM_MASTER) ? TRUE : FALSE;
 			break;
+		case BT_IO_OPT_HANDLE:
+			*(va_arg(args, uint16_t *)) = handle;
+			break;
+		case BT_IO_OPT_CLASS:
+			memcpy(va_arg(args, uint8_t *), dev_class, 3);
+			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
 					"Unknown option %d", opt);
@@ -828,12 +890,32 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 	return TRUE;
 }
 
+static int sco_get_info(int sock, uint16_t *handle, uint8_t *dev_class)
+{
+	struct sco_conninfo info;
+	socklen_t len;
+
+	len = sizeof(info);
+	if (getsockopt(sock, SOL_SCO, SCO_CONNINFO, &info, &len) < 0)
+		return -errno;
+
+	if (handle)
+		*handle = info.hci_handle;
+
+	if (dev_class)
+		memcpy(dev_class, info.dev_class, 3);
+
+	return 0;
+}
+
 static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 {
 	BtIOOption opt = opt1;
 	struct sockaddr_sco src, dst;
 	struct sco_options sco_opt;
 	socklen_t len;
+	uint8_t dev_class[3];
+	uint16_t handle;
 
 	len = sizeof(sco_opt);
 	memset(&sco_opt, 0, len);
@@ -845,6 +927,11 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 	if (!get_peers(sock, (struct sockaddr *) &src,
 				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
+
+	if (sco_get_info(sock, &handle, dev_class) < 0) {
+		ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
+		return FALSE;
+	}
 
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
@@ -864,6 +951,12 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 		case BT_IO_OPT_IMTU:
 		case BT_IO_OPT_OMTU:
 			*(va_arg(args, uint16_t *)) = sco_opt.mtu;
+			break;
+		case BT_IO_OPT_HANDLE:
+			*(va_arg(args, uint16_t *)) = handle;
+			break;
+		case BT_IO_OPT_CLASS:
+			memcpy(va_arg(args, uint8_t *), dev_class, 3);
 			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,

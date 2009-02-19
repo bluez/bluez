@@ -99,13 +99,18 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	struct io_data *data = user_data;
 	GIOCondition cond;
 	char addr[18];
+	uint16_t handle;
+	uint8_t cls[3];
 
 	if (err) {
 		printf("Connecting failed: %s\n", err->message);
 		return;
 	}
 
-	if (!bt_io_get(io, data->type, &err, BT_IO_OPT_DEST, addr,
+	if (!bt_io_get(io, data->type, &err,
+			BT_IO_OPT_DEST, addr,
+			BT_IO_OPT_HANDLE, &handle,
+			BT_IO_OPT_CLASS, cls,
 			BT_IO_OPT_INVALID)) {
 		printf("Unable to get destination address: %s\n",
 								err->message);
@@ -113,7 +118,8 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		strcpy(addr, "(unknown)");
 	}
 
-	printf("Successfully connected to %s\n", addr);
+	printf("Successfully connected to %s. handle=%u, class=%02x%02x%02x\n",
+			addr, handle, cls[0], cls[1], cls[2]);
 
 	if (data->type == BT_IO_L2CAP || data->type == BT_IO_SCO) {
 		uint16_t omtu, imtu;
