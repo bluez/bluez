@@ -616,7 +616,7 @@ static gboolean disconnect_timeout(gpointer user_data)
 	if (dev && dev->sink && stream_setup)
 		sink_setup_stream(dev->sink, session);
 	else
-		connection_lost(session, -ETIMEDOUT);
+		connection_lost(session, ETIMEDOUT);
 
 	return FALSE;
 }
@@ -900,7 +900,7 @@ static void connection_lost(struct avdtp *session, int err)
 	ba2str(&session->dst, address);
 	debug("Disconnected from %s", address);
 
-	if (session->state == AVDTP_SESSION_STATE_CONNECTING)
+	if (session->state == AVDTP_SESSION_STATE_CONNECTING && err != EACCES)
 		btd_cancel_authorization(&session->server->src, &session->dst);
 
 	session->free_lock = 1;
@@ -1763,7 +1763,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 
 failed:
-	connection_lost(session, -EIO);
+	connection_lost(session, EIO);
 
 	return FALSE;
 }
@@ -1918,14 +1918,14 @@ static void auth_cb(DBusError *derr, void *user_data)
 
 	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
-		connection_lost(session, -EACCES);
+		connection_lost(session, EACCES);
 		return;
 	}
 
 	if (!bt_io_accept(session->io, avdtp_connect_cb, session, NULL,
 								&err)) {
 		error("bt_io_accept: %s", err->message);
-		connection_lost(session, -EACCES);
+		connection_lost(session, EACCES);
 		g_error_free(err);
 		return;
 	}
@@ -2114,7 +2114,7 @@ static gboolean request_timeout(gpointer user_data)
 	goto done;
 
 failed:
-	connection_lost(session, -ETIMEDOUT);
+	connection_lost(session, ETIMEDOUT);
 done:
 	pending_req_free(req);
 	return FALSE;
