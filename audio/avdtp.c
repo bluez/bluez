@@ -334,7 +334,7 @@ struct stream_callback {
 };
 
 struct avdtp_stream {
-	int sock;
+	GIOChannel *io;
 	uint16_t imtu;
 	uint16_t omtu;
 	struct avdtp *session;
@@ -343,7 +343,7 @@ struct avdtp_stream {
 	GSList *caps;
 	GSList *callbacks;
 	struct avdtp_service_capability *codec;
-	guint io;		/* Transport GSource ID */
+	guint io_id;		/* Transport GSource ID */
 	guint timer;		/* Waiting for other side to close or open
 				   the transport channel */
 	gboolean open_acp;	/* If we are in ACT role for Open */
@@ -366,8 +366,8 @@ struct avdtp {
 	/* True if the session should be automatically disconnected */
 	gboolean auto_dc;
 
-	guint io;
-	int sock;
+	GIOChannel *io;
+	guint io_id;
 
 	GSList *seps; /* Elements of type struct avdtp_remote_sep * */
 
@@ -478,11 +478,14 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 	unsigned int cont_fragments, sent;
 	struct avdtp_start_header start;
 	struct avdtp_continue_header cont;
+	int sock;
 
-	if (session->sock < 0) {
+	if (session->io == NULL) {
 		error("avdtp_send: session is closed");
 		return FALSE;
 	}
+
+	sock = g_io_channel_unix_get_fd(session->io);
 
 	/* Single packet - no fragmentation */
 	if (sizeof(struct avdtp_single_header) + len <= session->omtu) {
@@ -498,8 +501,7 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 		memcpy(session->buf, &single, sizeof(single));
 		memcpy(session->buf + sizeof(single), data, len);
 
-		return try_send(session->sock, session->buf,
-							sizeof(single) + len);
+		return try_send(sock, session->buf, sizeof(single) + len);
 	}
 
 	/* Count the number of needed fragments */
@@ -521,7 +523,7 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 	memcpy(session->buf + sizeof(start), data,
 					session->omtu - sizeof(start));
 
-	if (!try_send(session->sock, session->buf, session->omtu))
+	if (!try_send(sock, session->buf, session->omtu))
 		return FALSE;
 
 	debug("avdtp_send: first packet with %d bytes sent",
@@ -552,8 +554,7 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 		memcpy(session->buf, &cont, sizeof(cont));
 		memcpy(session->buf + sizeof(cont), data + sent, to_copy);
 
-		if (!try_send(session->sock, session->buf,
-						to_copy + sizeof(cont)))
+		if (!try_send(sock, session->buf, to_copy + sizeof(cont)))
 			return FALSE;
 
 		sent += to_copy;
@@ -578,7 +579,7 @@ static gboolean stream_close_timeout(gpointer user_data)
 
 	stream->timer = 0;
 
-	close(stream->sock);
+	g_io_channel_shutdown(stream->io, FALSE, NULL);
 
 	return FALSE;
 }
@@ -710,11 +711,13 @@ static void stream_free(struct avdtp_stream *stream)
 	if (stream->timer)
 		g_source_remove(stream->timer);
 
-	if (stream->sock >= 0)
-		close(stream->sock);
+	if (stream->io) {
+		g_io_channel_shutdown(stream->io, FALSE, NULL);
+		g_io_channel_unref(stream->io);
+	}
 
-	if (stream->io)
-		g_source_remove(stream->io);
+	if (stream->io_id)
+		g_source_remove(stream->io_id);
 
 	g_slist_foreach(stream->callbacks, (GFunc) g_free, NULL);
 	g_slist_free(stream->callbacks);
@@ -754,12 +757,11 @@ static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
-static void handle_transport_connect(struct avdtp *session, int sock,
+static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 					uint16_t imtu, uint16_t omtu)
 {
 	struct avdtp_stream *stream = session->pending_open;
 	struct avdtp_local_sep *sep = stream->lsep;
-	GIOChannel *channel;
 
 	session->pending_open = NULL;
 
@@ -768,7 +770,7 @@ static void handle_transport_connect(struct avdtp *session, int sock,
 		stream->timer = 0;
 	}
 
-	if (sock < 0) {
+	if (io == NULL) {
 		if (!stream->open_acp && sep->cfm && sep->cfm->open) {
 			struct avdtp_error err;
 			avdtp_error_init(&err, AVDTP_ERROR_ERRNO, EIO);
@@ -778,7 +780,7 @@ static void handle_transport_connect(struct avdtp *session, int sock,
 		return;
 	}
 
-	stream->sock = sock;
+	stream->io = g_io_channel_ref(io);
 	stream->omtu = omtu;
 	stream->imtu = imtu;
 
@@ -787,11 +789,8 @@ static void handle_transport_connect(struct avdtp *session, int sock,
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_OPEN);
 
-	channel = g_io_channel_unix_new(stream->sock);
-
-	stream->io = g_io_add_watch(channel, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+	stream->io_id = g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) transport_cb, stream);
-	g_io_channel_unref(channel);
 }
 
 static void avdtp_sep_set_state(struct avdtp *session,
@@ -847,7 +846,7 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		}
 		session->streams = g_slist_remove(session->streams, stream);
 		if (session->pending_open == stream)
-			handle_transport_connect(session, -1, 0, 0);
+			handle_transport_connect(session, NULL, 0, 0);
 		if (session->req && session->req->stream == stream)
 			session->req->stream = NULL;
 		stream_free(stream);
@@ -913,16 +912,17 @@ static void connection_lost(struct avdtp *session, int err)
 
 	session->free_lock = 0;
 
-	if (session->sock >= 0) {
-		close(session->sock);
-		session->sock = -1;
+	if (session->io) {
+		g_io_channel_shutdown(session->io, FALSE, NULL);
+		g_io_channel_unref(session->io);
+		session->io = NULL;
 	}
 
 	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
 
-	if (session->io) {
-		g_source_remove(session->io);
-		session->io = 0;
+	if (session->io_id) {
+		g_source_remove(session->io_id);
+		session->io_id = 0;
 	}
 
 	if (session->ref != 1)
@@ -946,12 +946,14 @@ void avdtp_unref(struct avdtp *session)
 	debug("avdtp_unref(%p): ref=%d", session, session->ref);
 
 	if (session->ref == 1) {
-		if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
-			close(session->sock);
-			session->sock = -1;
+		if (session->state == AVDTP_SESSION_STATE_CONNECTING &&
+								session->io) {
+			g_io_channel_shutdown(session->io, TRUE, NULL);
+			g_io_channel_unref(session->io);
+			session->io = NULL;
 		}
 
-		if (session->sock >= 0)
+		if (session->io)
 			set_disconnect_timer(session);
 		else if (!session->free_lock) /* Drop the local ref if we
 						 aren't connected */
@@ -1192,7 +1194,6 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	stream->caps = caps_to_list(req->caps,
 					size - sizeof(struct setconf_req),
 					&stream->codec);
-	stream->sock = -1;
 
 	if (sep->ind && sep->ind->set_configuration) {
 		if (!sep->ind->set_configuration(session, sep, stream,
@@ -1765,15 +1766,71 @@ failed:
 	return FALSE;
 }
 
-static void l2cap_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
+static struct avdtp *find_session(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	GSList *l;
+
+	for (l = sessions; l != NULL; l = g_slist_next(l)) {
+		struct avdtp *s = l->data;
+
+		if (bacmp(src, &s->server->src) || bacmp(dst, &s->dst))
+			continue;
+
+		return s;
+	}
+
+	return NULL;
+}
+
+static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	struct avdtp *session;
+
+	assert(src != NULL);
+	assert(dst != NULL);
+
+	session = find_session(src, dst);
+	if (session) {
+		if (session->pending_auth)
+			return NULL;
+		else
+			return session;
+	}
+
+	session = g_new0(struct avdtp, 1);
+
+	session->server = find_server(servers, src);
+	bacpy(&session->dst, dst);
+	session->ref = 1;
+	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
+	session->auto_dc = TRUE;
+
+	sessions = g_slist_append(sessions, session);
+
+	return session;
+}
+
+struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
+{
+	struct avdtp *session;
+
+	session = avdtp_get_internal(src, dst);
+
+	if (!session)
+		return NULL;
+
+	return avdtp_ref(session);
+}
+
+static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct avdtp *session = user_data;
-	int sk;
 	char address[18];
 	GError *gerr = NULL;
 
 	if (!g_slist_find(sessions, session)) {
-		debug("l2cap_connect_cb: session got removed");
+		debug("avdtp_connect_cb: session got removed");
+		g_io_channel_close(chan);
 		return;
 	}
 
@@ -1782,10 +1839,8 @@ static void l2cap_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		goto failed;
 	}
 
-	sk = g_io_channel_unix_get_fd(chan);
-
 	if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
-		session->sock = sk;
+		session->io = g_io_channel_ref(chan);
 		session->state = AVDTP_SESSION_STATE_CONNECTING;
 	}
 
@@ -1811,17 +1866,27 @@ static void l2cap_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 		session->buf = g_malloc0(session->imtu);
 		session->state = AVDTP_SESSION_STATE_CONNECTED;
-		session->io = g_io_add_watch(chan,
+		session->io_id = g_io_add_watch(chan,
 						G_IO_IN | G_IO_ERR | G_IO_HUP
 						| G_IO_NVAL,
 						(GIOFunc) session_cb, session);
 
+		if (session->stream_setup) {
+			set_disconnect_timer(session);
+			avdtp_set_auto_disconnect(session, FALSE);
+		}
+
 		dev = manager_find_device(&session->dst,
-						AUDIO_CONTROL_INTERFACE, FALSE);
-		if (dev)
-			avrcp_connect(dev);
+					AUDIO_CONTROL_INTERFACE, FALSE);
+		if (dev && dev->control) {
+			if (session->stream_setup)
+				device_set_control_timer(dev);
+			else
+				avrcp_connect(dev);
+		}
 	} else if (session->pending_open)
-		handle_transport_connect(session, sk, session->imtu, session->omtu);
+		handle_transport_connect(session, chan, session->imtu,
+								session->omtu);
 	else
 		goto failed;
 
@@ -1833,7 +1898,7 @@ failed:
 	if (session->pending_open) {
 		struct avdtp_stream *stream = session->pending_open;
 
-		handle_transport_connect(session, -1, 0, 0);
+		handle_transport_connect(session, NULL, 0, 0);
 
 		if (avdtp_abort(session, stream) < 0)
 			avdtp_sep_set_state(session, stream->lsep,
@@ -1844,12 +1909,100 @@ failed:
 	return;
 }
 
+static void auth_cb(DBusError *derr, void *user_data)
+{
+	struct avdtp *session = user_data;
+	GError *err = NULL;
+
+	if (derr && dbus_error_is_set(derr)) {
+		error("Access denied: %s", derr->message);
+		connection_lost(session, -EACCES);
+		return;
+	}
+
+	if (!bt_io_accept(session->io, avdtp_connect_cb, session, NULL,
+								&err)) {
+		error("bt_io_accept: %s", err->message);
+		connection_lost(session, -EACCES);
+		g_error_free(err);
+		return;
+	}
+
+	/* Here we set the disconnect timer so we don't stay in IDLE state
+	 * indefinitely but set auto_dc to FALSE so that when a stream is
+	 * finally opened it doesn't get closed due to a timeout */
+	session->stream_setup = TRUE;
+}
+
+static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
+{
+	int sk;
+	struct avdtp *session;
+	struct audio_device *dev;
+	char address[18];
+	bdaddr_t src, dst;
+	int perr;
+	GError *err = NULL;
+
+	bt_io_get(chan, BT_IO_L2CAP, &err,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		goto drop;
+	}
+
+	debug("AVDTP: incoming connect from %s", address);
+
+	session = avdtp_get_internal(&src, &dst);
+
+	sk = g_io_channel_unix_get_fd(chan);
+
+	if (session->pending_open && session->pending_open->open_acp) {
+		if (!bt_io_accept(chan, avdtp_connect_cb, session, NULL, NULL))
+			goto drop;
+		return;
+	}
+
+	if (session->io) {
+		error("Refusing unexpected connect from %s", address);
+		goto drop;
+	}
+
+	dev = manager_get_device(&src, &dst);
+	if (!dev) {
+		error("Unable to get audio device object for %s", address);
+		goto drop;
+	}
+
+	session->io_id = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					(GIOFunc) session_cb, session);
+	perr = btd_request_authorization(&src, &dst, ADVANCED_AUDIO_UUID,
+							auth_cb, session);
+	if (perr < 0) {
+		avdtp_unref(session);
+		goto drop;
+	}
+
+	session->io = g_io_channel_ref(chan);
+
+	session->state = AVDTP_SESSION_STATE_CONNECTING;
+
+	return;
+
+drop:
+	g_io_channel_close(chan);
+}
+
 static int l2cap_connect(struct avdtp *session)
 {
 	GError *err = NULL;
 	GIOChannel *io;
 
-	io = bt_io_connect(BT_IO_L2CAP, l2cap_connect_cb, session,
+	io = bt_io_connect(BT_IO_L2CAP, avdtp_connect_cb, session,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &session->server->src,
 				BT_IO_OPT_DEST_BDADDR, &session->dst,
@@ -2173,8 +2326,7 @@ static gboolean avdtp_close_resp(struct avdtp *session,
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_CLOSING);
 
-	close(stream->sock);
-	stream->sock = -1;
+	g_io_channel_shutdown(session->io, TRUE, NULL);
 
 	return TRUE;
 }
@@ -2397,63 +2549,6 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 	}
 }
 
-static struct avdtp *find_session(const bdaddr_t *src, const bdaddr_t *dst)
-{
-	GSList *l;
-
-	for (l = sessions; l != NULL; l = g_slist_next(l)) {
-		struct avdtp *s = l->data;
-
-		if (bacmp(src, &s->server->src) || bacmp(dst, &s->dst))
-			continue;
-
-		return s;
-	}
-
-	return NULL;
-}
-
-static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst)
-{
-	struct avdtp *session;
-
-	assert(src != NULL);
-	assert(dst != NULL);
-
-	session = find_session(src, dst);
-	if (session) {
-		if (session->pending_auth)
-			return NULL;
-		else
-			return session;
-	}
-
-	session = g_new0(struct avdtp, 1);
-
-	session->sock = -1;
-	session->server = find_server(servers, src);
-	bacpy(&session->dst, dst);
-	session->ref = 1;
-	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
-	session->auto_dc = TRUE;
-
-	sessions = g_slist_append(sessions, session);
-
-	return session;
-}
-
-struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
-{
-	struct avdtp *session;
-
-	session = avdtp_get_internal(src, dst);
-
-	if (!session)
-		return NULL;
-
-	return avdtp_ref(session);
-}
-
 gboolean avdtp_is_connected(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct avdtp *session;
@@ -2506,11 +2601,11 @@ gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 					uint16_t *imtu, uint16_t *omtu,
 					GSList **caps)
 {
-	if (stream->sock < 0)
+	if (stream->io == NULL)
 		return FALSE;
 
 	if (sock)
-		*sock = stream->sock;
+		*sock = g_io_channel_unix_get_fd(stream->io);
 
 	if (omtu)
 		*omtu = stream->omtu;
@@ -2727,7 +2822,6 @@ int avdtp_set_configuration(struct avdtp *session,
 			session, lsep->info.seid, rsep->seid);
 
 	new_stream = g_new0(struct avdtp_stream, 1);
-	new_stream->sock = -1;
 	new_stream->session = session;
 	new_stream->lsep = lsep;
 	new_stream->rseid = rsep->seid;
@@ -2955,121 +3049,13 @@ int avdtp_unregister_sep(struct avdtp_local_sep *sep)
 	server = sep->server;
 	server->seps = g_slist_remove(server->seps, sep);
 
+	if (sep->stream)
+		avdtp_sep_set_state(sep->stream->session, sep,
+							AVDTP_STATE_IDLE);
+
 	g_free(sep);
 
 	return 0;
-}
-
-static void auth_cb(DBusError *derr, void *user_data)
-{
-	struct avdtp *session = user_data;
-	struct audio_device *dev;
-	GIOChannel *io;
-
-	if (derr && dbus_error_is_set(derr)) {
-		error("Access denied: %s", derr->message);
-
-		connection_lost(session, -EACCES);
-		return;
-	}
-
-	session->buf = g_malloc0(session->imtu);
-
-	/* Here we set the disconnect timer so we don't stay in IDLE state
-	 * indefinitely but set auto_dc to FALSE so that when a stream is
-	 * finally opened it doesn't get closed due to a timeout */
-	session->stream_setup = TRUE;
-	set_disconnect_timer(session);
-	avdtp_set_auto_disconnect(session, FALSE);
-
-	session->state = AVDTP_SESSION_STATE_CONNECTED;
-
-	dev = manager_find_device(&session->dst, AUDIO_CONTROL_INTERFACE,
-					FALSE);
-	if (dev && dev->control)
-		device_set_control_timer(dev);
-
-	g_source_remove(session->io);
-
-	io = g_io_channel_unix_new(session->sock);
-	session->io = g_io_add_watch(io,
-				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				(GIOFunc) session_cb, session);
-	g_io_channel_unref(io);
-}
-
-static void avdtp_server_cb(GIOChannel *chan, GError *err, gpointer data)
-{
-	int sk;
-	struct avdtp *session;
-	struct audio_device *dev;
-	char address[18];
-	bdaddr_t src, dst;
-	uint16_t imtu, omtu;
-	int perr;
-	GError *gerr = NULL;
-
-	if (err) {
-		error("%s", err->message);
-		return;
-	}
-
-	bt_io_get(chan, BT_IO_L2CAP, &gerr,
-			BT_IO_OPT_SOURCE_BDADDR, &src,
-			BT_IO_OPT_DEST_BDADDR, &dst,
-			BT_IO_OPT_DEST, address,
-			BT_IO_OPT_OMTU, &omtu,
-			BT_IO_OPT_IMTU, &imtu,
-			BT_IO_OPT_INVALID);
-	if (gerr) {
-		error("%s", gerr->message);
-		g_error_free(gerr);
-		goto drop;
-	}
-
-	debug("AVDTP: incoming connect from %s", address);
-
-	session = avdtp_get_internal(&src, &dst);
-
-	sk = g_io_channel_unix_get_fd(chan);
-
-	if (session->pending_open && session->pending_open->open_acp) {
-		handle_transport_connect(session, sk, imtu, omtu);
-		return;
-	}
-
-	if (session->sock >= 0) {
-		error("Refusing unexpected connect from %s", address);
-		goto drop;
-	}
-
-	dev = manager_get_device(&src, &dst);
-	if (!dev) {
-		error("Unable to get audio device object for %s", address);
-		goto drop;
-	}
-
-	session->imtu = imtu;
-	session->omtu = omtu;
-	session->sock = sk;
-
-	debug("AVDTP imtu=%u, omtu=%u", session->imtu, session->omtu);
-
-	session->io = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-					(GIOFunc) session_cb, session);
-	perr = btd_request_authorization(&src, &dst, ADVANCED_AUDIO_UUID,
-							auth_cb, session);
-	if (perr < 0) {
-		avdtp_unref(session);
-		goto drop;
-	}
-
-	session->state = AVDTP_SESSION_STATE_CONNECTING;
-
-	return;
-
-drop:
-	g_io_channel_close(chan);
 }
 
 static GIOChannel *avdtp_server_socket(const bdaddr_t *src, gboolean master)
@@ -3077,8 +3063,8 @@ static GIOChannel *avdtp_server_socket(const bdaddr_t *src, gboolean master)
 	GError *err = NULL;
 	GIOChannel *io;
 
-	io = bt_io_listen(BT_IO_L2CAP, avdtp_server_cb, NULL, NULL,
-				NULL, &err,
+	io = bt_io_listen(BT_IO_L2CAP, avdtp_connect_cb, avdtp_confirm_cb,
+				NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, AVDTP_PSM,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
