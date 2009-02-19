@@ -1980,6 +1980,9 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
+	session->io = g_io_channel_ref(chan);
+	session->state = AVDTP_SESSION_STATE_CONNECTING;
+
 	session->io_id = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) session_cb, session);
 	perr = btd_request_authorization(&src, &dst, ADVANCED_AUDIO_UUID,
@@ -1988,10 +1991,6 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 		avdtp_unref(session);
 		goto drop;
 	}
-
-	session->io = g_io_channel_ref(chan);
-
-	session->state = AVDTP_SESSION_STATE_CONNECTING;
 
 	return;
 
