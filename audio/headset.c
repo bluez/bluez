@@ -1241,7 +1241,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 
 	ba2str(&dev->dst, hs_address);
-	hs->rfcomm = chan;
+	hs->rfcomm = g_io_channel_ref(chan);
 	p->io = NULL;
 
 	if (server_is_enabled(&dev->src, HANDSFREE_SVCLASS_ID) &&
