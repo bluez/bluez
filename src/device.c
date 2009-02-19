@@ -1537,7 +1537,7 @@ static void bonding_request_free(struct bonding_req *bonding, gboolean close)
 
 	if (bonding->io) {
 		if (close)
-			g_io_channel_close(bonding->io);
+			g_io_channel_shutdown(bonding->io, TRUE, NULL);
 		g_io_channel_unref(bonding->io);
 	}
 
@@ -1619,7 +1619,7 @@ static gboolean create_bonding_io_cb(GIOChannel *io, GIOCondition cond,
 	int sk, dd, ret;
 
 	if (!device->bonding) {
-		g_io_channel_close(io);
+		g_io_channel_shutdown(io, TRUE, NULL);
 		return FALSE;
 	}
 
@@ -1723,7 +1723,7 @@ static gboolean create_bonding_io_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 
 failed:
-	g_io_channel_close(io);
+	g_io_channel_shutdown(io, TRUE, NULL);
 
 cleanup:
 	device->bonding->io_id = 0;
@@ -1743,7 +1743,7 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 
 	if (device->bonding) {
 		device->bonding->listener_id = 0;
-		g_io_channel_close(device->bonding->io);
+		g_io_channel_shutdown(device->bonding->io, TRUE, NULL);
 		bonding_request_free(device->bonding, TRUE);
 	}
 }

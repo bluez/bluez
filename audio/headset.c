@@ -413,7 +413,7 @@ static void pending_connect_finalize(struct audio_device *dev)
 	g_slist_free(p->callbacks);
 
 	if (p->io) {
-		g_io_channel_close(p->io);
+		g_io_channel_shutdown(p->io, TRUE, NULL);
 		g_io_channel_unref(p->io);
 	}
 
@@ -1130,7 +1130,7 @@ static void close_sco(struct audio_device *device)
 	if (hs->sco) {
 		g_source_remove(hs->sco_id);
 		hs->sco_id = 0;
-		g_io_channel_close(hs->sco);
+		g_io_channel_shutdown(hs->sco, TRUE, NULL);
 		g_io_channel_unref(hs->sco);
 		hs->sco = NULL;
 	}
@@ -2024,12 +2024,12 @@ static void headset_free(struct audio_device *dev)
 	}
 
 	if (hs->sco) {
-		g_io_channel_close(hs->sco);
+		g_io_channel_shutdown(hs->sco, TRUE, NULL);
 		g_io_channel_unref(hs->sco);
 	}
 
 	if (hs->rfcomm) {
-		g_io_channel_close(hs->rfcomm);
+		g_io_channel_shutdown(hs->rfcomm, TRUE, NULL);
 		g_io_channel_unref(hs->rfcomm);
 	}
 
@@ -2341,7 +2341,7 @@ static int headset_close_rfcomm(struct audio_device *dev)
 	GIOChannel *rfcomm = hs->tmp_rfcomm ? hs->tmp_rfcomm : hs->rfcomm;
 
 	if (rfcomm) {
-		g_io_channel_close(rfcomm);
+		g_io_channel_shutdown(rfcomm, TRUE, NULL);
 		g_io_channel_unref(rfcomm);
 		hs->tmp_rfcomm = NULL;
 		hs->rfcomm = NULL;

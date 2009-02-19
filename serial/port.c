@@ -324,7 +324,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *conn_err,
 		int err = errno;
 		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
 		reply = failed(port->msg, strerror(err));
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		goto fail;
 	}
 
@@ -332,7 +332,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *conn_err,
 
 	debug("Serial port %s created", port->dev);
 
-	g_io_channel_close(chan);
+	g_io_channel_shutdown(chan, TRUE, NULL);
 
 	/* Addressing connect port */
 	fd = port_open(port);

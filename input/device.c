@@ -354,7 +354,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	 */
 	fake->uinput = uinput_create(idev->name);
 	if (fake->uinput < 0) {
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		reply = connection_attempt_failed(iconn->pending_connect,
 							strerror(errno));
 		goto failed;
@@ -405,7 +405,7 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	gboolean connected = FALSE;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 
 	emit_property_changed(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
 				"Connected", DBUS_TYPE_BOOLEAN, &connected);
@@ -429,7 +429,7 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	struct input_conn *iconn = data;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 
 	g_source_remove(iconn->intr_watch);
 	iconn->intr_watch = 0;
@@ -687,7 +687,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 	err = hidp_add_connection(idev, iconn);
 	if (err < 0) {
 		err_msg = strerror(-err);
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		goto failed;
 	}
 
@@ -742,7 +742,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 		reply = connection_attempt_failed(iconn->pending_connect,
 							err->message);
 		g_error_free(err);
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		goto failed;
 	}
 
@@ -766,7 +766,7 @@ static int fake_disconnect(struct input_conn *iconn)
 	if (!fake->io)
 		return -ENOTCONN;
 
-	g_io_channel_close(fake->io);
+	g_io_channel_shutdown(fake->io, TRUE, NULL);
 	g_io_channel_unref(fake->io);
 	fake->io = NULL;
 

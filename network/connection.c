@@ -170,7 +170,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	nc->state = DISCONNECTED;
 	memset(nc->dev, 0, 16);
 	strncpy(nc->dev, prefix, strlen(prefix));
-	g_io_channel_close(chan);
+	g_io_channel_shutdown(chan, TRUE, NULL);
 
 	return FALSE;
 }
@@ -275,7 +275,7 @@ failed:
 		nc->state = DISCONNECTED;
 		reply = connection_attempt_failed(nc->msg, strerror(EIO));
 		g_dbus_send_message(connection, reply);
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 	}
 
 	return FALSE;
@@ -339,7 +339,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 	if (perr < 0) {
 		err_msg = strerror(-perr);
 		error("bnep connect(): %s (%d)", err_msg, -perr);
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		g_io_channel_unref(chan);
 		goto failed;
 	}

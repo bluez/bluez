@@ -795,7 +795,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 static void adapter_free(struct network_adapter *na)
 {
 	if (na->io != NULL) {
-		g_io_channel_close(na->io);
+		g_io_channel_shutdown(na->io, TRUE, NULL);
 		g_io_channel_unref(na->io);
 	}
 

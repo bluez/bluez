@@ -111,7 +111,7 @@ static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
 	return;
 
 drop:
-	g_io_channel_close(chan);
+	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
 static DBusConnection *connection;
@@ -150,7 +150,7 @@ static int audio_init(void)
 static void audio_exit(void)
 {
 	if (sco_server) {
-		g_io_channel_close(sco_server);
+		g_io_channel_shutdown(sco_server, TRUE, NULL);
 		g_io_channel_unref(sco_server);
 		sco_server = NULL;
 	}

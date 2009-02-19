@@ -89,7 +89,7 @@ static gboolean disconn_timeout(gpointer user_data)
 
 	printf("Disconnecting\n");
 
-	g_io_channel_close(data->io);
+	g_io_channel_shutdown(data->io, TRUE, NULL);
 
 	return FALSE;
 }
@@ -130,7 +130,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	}
 
 	if (data->disconn == 0) {
-		g_io_channel_close(io);
+		g_io_channel_shutdown(io, TRUE, NULL);
 		printf("Disconnected\n");
 		return;
 	}
@@ -158,7 +158,7 @@ static gboolean confirm_timeout(gpointer user_data)
 
 	if (data->reject >= 0) {
 		printf("Rejecting connection\n");
-		g_io_channel_close(data->io);
+		g_io_channel_shutdown(data->io, TRUE, NULL);
 		return FALSE;
 	}
 
@@ -193,7 +193,7 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 
 	if (data->reject == 0) {
 		printf("Rejecting connection\n");
-		g_io_channel_close(io);
+		g_io_channel_shutdown(io, TRUE, NULL);
 		return;
 	}
 

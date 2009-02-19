@@ -106,7 +106,7 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 	if (gerr) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		return;
 	}
 
@@ -121,7 +121,7 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 			int err;
 			err = write(sk, unplug, sizeof(unplug));
 		}
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		return;
 	}
 
@@ -179,10 +179,10 @@ void server_stop(const bdaddr_t *src)
 
 	server = l->data;
 
-	g_io_channel_close(server->intr);
+	g_io_channel_shutdown(server->intr, TRUE, NULL);
 	g_io_channel_unref(server->intr);
 
-	g_io_channel_close(server->ctrl);
+	g_io_channel_shutdown(server->ctrl, TRUE, NULL);
 	g_io_channel_unref(server->ctrl);
 
 	servers = g_slist_remove(servers, server);

@@ -265,7 +265,7 @@ static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 			err = channel_write(dest, buf, rbytes);
 		} while (err == G_IO_ERROR_NONE);
 
-		g_io_channel_close(dest);
+		g_io_channel_shutdown(dest, TRUE, NULL);
 		return FALSE;
 	}
 

@@ -679,7 +679,7 @@ static void avctp_server_cb(GIOChannel *chan, GError *err, gpointer data)
 	if (gerr) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		return;
 	}
 
@@ -731,7 +731,7 @@ proceed:
 	return;
 
 drop:
-	g_io_channel_close(chan);
+	g_io_channel_shutdown(chan, TRUE, NULL);
 	avctp_unref(session);
 }
 
@@ -766,7 +766,7 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 
 	if (!session) {
 		debug("avctp_connect_cb: session removed while connecting");
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		g_io_channel_unref(chan);
 		return;
 	}
@@ -785,7 +785,7 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 		avctp_unref(session);
 		error("%s", gerr->message);
 		g_error_free(gerr);
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		return;
 	}
 
@@ -952,7 +952,7 @@ void avrcp_unregister(const bdaddr_t *src)
 	remove_record_from_server(server->ct_record_id);
 	remove_record_from_server(server->tg_record_id);
 
-	g_io_channel_close(server->io);
+	g_io_channel_shutdown(server->io, TRUE, NULL);
 	g_io_channel_unref(server->io);
 	g_free(server);
 

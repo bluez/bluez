@@ -1832,7 +1832,7 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	if (!g_slist_find(sessions, session)) {
 		debug("avdtp_connect_cb: session got removed");
-		g_io_channel_close(chan);
+		g_io_channel_shutdown(chan, TRUE, NULL);
 		return;
 	}
 
@@ -1996,7 +1996,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	return;
 
 drop:
-	g_io_channel_close(chan);
+	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
 static int l2cap_connect(struct avdtp *session)
@@ -3181,7 +3181,7 @@ void avdtp_exit(const bdaddr_t *src)
 
 	servers = g_slist_remove(servers, server);
 
-	g_io_channel_close(server->io);
+	g_io_channel_shutdown(server->io, TRUE, NULL);
 	g_io_channel_unref(server->io);
 	g_free(server);
 }

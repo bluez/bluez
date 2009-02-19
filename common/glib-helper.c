@@ -683,7 +683,7 @@ static gboolean hci_event_watch(GIOChannel *io,
 
 failed:
 	cmd->cb(status, cmd->caller_data);
-	g_io_channel_close(io);
+	g_io_channel_shutdown(io, TRUE, NULL);
 
 	return FALSE;
 }

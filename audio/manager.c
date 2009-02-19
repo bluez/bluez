@@ -501,7 +501,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 	return;
 
 drop:
-	g_io_channel_close(chan);
+	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
 static void hs_io_cb(GIOChannel *chan, GError *err, void *data)
@@ -592,13 +592,13 @@ failed:
 	error("%s", err->message);
 	g_error_free(err);
 	if (adapter->hsp_ag_server) {
-		g_io_channel_close(adapter->hsp_ag_server);
+		g_io_channel_shutdown(adapter->hsp_ag_server, TRUE, NULL);
 		g_io_channel_unref(adapter->hsp_ag_server);
 		adapter->hsp_ag_server = NULL;
 	}
 
 	if (adapter->hfp_ag_server) {
-		g_io_channel_close(adapter->hfp_ag_server);
+		g_io_channel_shutdown(adapter->hfp_ag_server, TRUE, NULL);
 		g_io_channel_unref(adapter->hfp_ag_server);
 		adapter->hfp_ag_server = NULL;
 	}
