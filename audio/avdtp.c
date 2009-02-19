@@ -3063,7 +3063,7 @@ static GIOChannel *avdtp_server_socket(const bdaddr_t *src, gboolean master)
 	GError *err = NULL;
 	GIOChannel *io;
 
-	io = bt_io_listen(BT_IO_L2CAP, avdtp_connect_cb, avdtp_confirm_cb,
+	io = bt_io_listen(BT_IO_L2CAP, NULL, avdtp_confirm_cb,
 				NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, AVDTP_PSM,
