@@ -443,7 +443,7 @@ static void ag_io_cb(GIOChannel *chan, GError *err, gpointer data)
 	bt_io_get(chan, BT_IO_RFCOMM, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
-			BT_IO_OPT_CHANNEL &ch,
+			BT_IO_OPT_CHANNEL, &ch,
 			BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("%s", gerr->message);
