@@ -42,6 +42,10 @@ typedef enum {
 
 typedef void (*headset_stream_cb_t) (struct audio_device *dev, void *user_data);
 
+void headset_connect_cb(GIOChannel *chan, GError *err, gpointer user_data);
+
+GIOChannel *headset_get_rfcomm(struct audio_device *dev);
+
 struct headset *headset_init(struct audio_device *dev, uint16_t svc,
 				const char *uuidstr);
 

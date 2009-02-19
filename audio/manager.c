@@ -403,6 +403,8 @@ static void auth_cb(DBusError *derr, void *user_data)
 {
 	struct audio_device *device = user_data;
 	const char *uuid;
+	GError *err = NULL;
+	GIOChannel *io;
 
 	if (get_hfp_active(device))
 		uuid = HFP_AG_UUID;
@@ -411,20 +413,21 @@ static void auth_cb(DBusError *derr, void *user_data)
 
 	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
-
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
-	} else {
-		char hs_address[18];
+		return;
+	}
 
-		ba2str(&device->dst, hs_address);
-		debug("Accepted headset connection from %s for %s",
-						hs_address, device->path);
+	io = headset_get_rfcomm(device);
 
-		headset_set_authorized(device);
+	if (!bt_io_accept(io, headset_connect_cb, device, NULL, &err)) {
+		error("bt_io_accept: %s", err->message);
+		g_error_free(err);
+		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
+		return;
 	}
 }
 
-static void ag_io_cb(GIOChannel *chan, GError *err, gpointer data)
+static void ag_confirm(GIOChannel *chan, gpointer data)
 {
 	const char *server_uuid, *remote_uuid;
 	uint16_t svclass;
@@ -432,22 +435,17 @@ static void ag_io_cb(GIOChannel *chan, GError *err, gpointer data)
 	gboolean hfp_active;
 	bdaddr_t src, dst;
 	int perr;
-	GError *gerr = NULL;
+	GError *err = NULL;
 	uint8_t ch;
 
-	if (err) {
-		error("%s", err->message);
-		return;
-	}
-
-	bt_io_get(chan, BT_IO_RFCOMM, &gerr,
+	bt_io_get(chan, BT_IO_RFCOMM, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_CHANNEL, &ch,
 			BT_IO_OPT_INVALID);
-	if (gerr) {
-		error("%s", gerr->message);
-		g_clear_error(&gerr);
+	if (err) {
+		error("%s", err->message);
+		g_clear_error(&err);
 		goto drop;
 	}
 
@@ -533,7 +531,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 			master = tmp;
 	}
 
-	io =  bt_io_listen(BT_IO_RFCOMM, ag_io_cb, NULL, adapter, NULL, &err,
+	io =  bt_io_listen(BT_IO_RFCOMM, NULL, ag_confirm, adapter, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &adapter->src,
 				BT_IO_OPT_CHANNEL, chan,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
@@ -564,7 +562,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 
 	chan = DEFAULT_HF_AG_CHANNEL;
 
-	io = bt_io_listen(BT_IO_RFCOMM, ag_io_cb, NULL, adapter, NULL, &err,
+	io = bt_io_listen(BT_IO_RFCOMM, NULL, ag_confirm, adapter, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &adapter->src,
 				BT_IO_OPT_CHANNEL, chan,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,

@@ -404,6 +404,9 @@ static void pending_connect_finalize(struct audio_device *dev)
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
 
+	if (p == NULL)
+		return;
+
 	g_slist_foreach(p->callbacks, (GFunc) pending_connect_complete, dev);
 
 	g_slist_foreach(p->callbacks, (GFunc) g_free, NULL);
@@ -1228,7 +1231,7 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
-static void rfcomm_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
+void headset_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct audio_device *dev = user_data;
 	struct headset *hs = dev->headset;
@@ -1240,9 +1243,25 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		goto failed;
 	}
 
+	/* For HFP telephony isn't ready just disconnect */
+	if (hs->hfp_active && !ag.telephony_ready) {
+		error("Unable to accept HFP connection since the telephony "
+				"subsystem isn't initialized");
+		goto failed;
+	}
+
+	if (hs->tmp_rfcomm) {
+		hs->rfcomm = hs->tmp_rfcomm;
+		hs->tmp_rfcomm = NULL;
+	} else
+		hs->rfcomm = g_io_channel_ref(chan);
+
 	ba2str(&dev->dst, hs_address);
-	hs->rfcomm = g_io_channel_ref(chan);
-	p->io = NULL;
+
+	if (p)
+		p->io = NULL;
+	else
+		hs->auto_dc = FALSE;
 
 	if (server_is_enabled(&dev->src, HANDSFREE_SVCLASS_ID) &&
 			hs->hfp_handle != 0)
@@ -1261,14 +1280,14 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	headset_set_state(dev, HEADSET_STATE_CONNECTED);
 
-	if (p->target_state == HEADSET_STATE_PLAYING) {
+	if (p && p->target_state == HEADSET_STATE_PLAYING) {
 		p->err = sco_connect(dev, NULL, NULL, NULL);
 		if (p->err < 0)
 			goto failed;
 		return;
 	}
 
-	if (p->msg) {
+	if (p && p->msg) {
 		DBusMessage *reply = dbus_message_new_method_return(p->msg);
 		g_dbus_send_message(dev->conn, reply);
 	}
@@ -1414,7 +1433,7 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	debug("%s: Connecting to %s channel %d", dev->path, address,
 		hs->rfcomm_ch);
 
-	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, dev,
+	io = bt_io_connect(BT_IO_RFCOMM, headset_connect_cb, dev,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
 				BT_IO_OPT_DEST_BDADDR, &dev->dst,
@@ -2280,6 +2299,13 @@ void set_hfp_active(struct audio_device *dev, gboolean active)
 	hs->hfp_active = active;
 }
 
+GIOChannel *headset_get_rfcomm(struct audio_device *dev)
+{
+	struct headset *hs = dev->headset;
+
+	return hs->tmp_rfcomm;
+}
+
 int headset_connect_rfcomm(struct audio_device *dev, GIOChannel *io)
 {
 	struct headset *hs = dev->headset;
@@ -2327,32 +2353,6 @@ static int headset_close_rfcomm(struct audio_device *dev)
 	hs->nrec = TRUE;
 
 	return 0;
-}
-
-void headset_set_authorized(struct audio_device *dev)
-{
-	struct headset *hs = dev->headset;
-
-	/* For HFP telephony isn't ready just disconnect */
-	if (hs->hfp_active && !ag.telephony_ready) {
-		error("Unable to accept HFP connection since the telephony "
-				"subsystem isn't initialized");
-		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
-		return;
-	}
-
-	hs->rfcomm = hs->tmp_rfcomm;
-	hs->tmp_rfcomm = NULL;
-
-	g_io_add_watch(hs->rfcomm,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			(GIOFunc) rfcomm_io_cb, dev);
-
-	hs->auto_dc = FALSE;
-
-	/* For HSP (no special SLC setup) move to CONNECTED state */
-	if (!hs->hfp_active)
-		headset_set_state(dev, HEADSET_STATE_CONNECTED);
 }
 
 void headset_set_state(struct audio_device *dev, headset_state_t state)
