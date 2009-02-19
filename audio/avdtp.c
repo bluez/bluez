@@ -862,7 +862,7 @@ static void finalize_discovery(struct avdtp *session, int err)
 {
 	struct avdtp_error avdtp_err;
 
-	avdtp_error_init(&avdtp_err, AVDTP_ERROR_ERRNO, -err);
+	avdtp_error_init(&avdtp_err, AVDTP_ERROR_ERRNO, err);
 
 	if (!session->discov_cb)
 		return;
@@ -2218,7 +2218,7 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 					AVDTP_GET_CAPABILITIES,
 					&req, sizeof(req));
 		if (ret < 0) {
-			finalize_discovery(session, ret);
+			finalize_discovery(session, -ret);
 			break;
 		}
 	}
