@@ -1852,7 +1852,7 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 			BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("%s", gerr->message);
-		g_clear_error(&gerr);
+		g_error_free(gerr);
 		goto failed;
 	}
 

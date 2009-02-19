@@ -445,7 +445,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 			BT_IO_OPT_INVALID);
 	if (err) {
 		error("%s", err->message);
-		g_clear_error(&err);
+		g_error_free(err);
 		goto drop;
 	}
 
@@ -590,7 +590,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 
 failed:
 	error("%s", err->message);
-	g_clear_error(&err);
+	g_error_free(err);
 	if (adapter->hsp_ag_server) {
 		g_io_channel_close(adapter->hsp_ag_server);
 		g_io_channel_unref(adapter->hsp_ag_server);

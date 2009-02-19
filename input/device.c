@@ -741,7 +741,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 		error("%s", err->message);
 		reply = connection_attempt_failed(iconn->pending_connect,
 							err->message);
-		g_clear_error(&err);
+		g_error_free(err);
 		g_io_channel_close(chan);
 		goto failed;
 	}
@@ -939,7 +939,7 @@ static DBusMessage *device_connect(DBusConnection *conn,
 	dbus_message_unref(iconn->pending_connect);
 	iconn->pending_connect = NULL;
 	reply = connection_attempt_failed(msg, err->message);
-	g_clear_error(&err);
+	g_error_free(err);
 	return reply;
 }
 

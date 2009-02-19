@@ -142,7 +142,7 @@ int server_start(const bdaddr_t *src)
 				BT_IO_OPT_INVALID);
 	if (!ctrl_io) {
 		error("Failed to listen on control channel");
-		g_clear_error(&err);
+		g_error_free(err);
 		return -1;
 	}
 
@@ -154,7 +154,7 @@ int server_start(const bdaddr_t *src)
 	if (!intr_io) {
 		error("Failed to listen on interrupt channel");
 		g_io_channel_unref(ctrl_io);
-		g_clear_error(&err);
+		g_error_free(err);
 		return -1;
 	}
 
