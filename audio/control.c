@@ -806,7 +806,6 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 	session->io = g_io_add_watch(chan,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_cb, session);
-	g_io_channel_unref(chan);
 }
 
 gboolean avrcp_connect(struct audio_device *dev)
