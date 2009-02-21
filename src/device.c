@@ -57,6 +57,7 @@
 #include "agent.h"
 #include "sdp-xml.h"
 #include "storage.h"
+#include "btio.h"
 
 #define DEFAULT_XML_BUF_SIZE	1024
 #define DISCONNECT_TIMER	2
@@ -73,7 +74,6 @@ struct bonding_req {
 	GIOChannel *io;
 	guint io_id;
 	guint listener_id;
-	gboolean auth_required;
 	struct btd_device *device;
 };
 
@@ -1475,7 +1475,13 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 		return dbus_message_new_method_return(msg);
 
 	case 0x04: /* page timeout */
+		return dbus_message_new_error(msg,
+				ERROR_INTERFACE ".ConnectionAttemptFailed",
+				"Page Timeout");
 	case 0x08: /* connection timeout */
+		return dbus_message_new_error(msg,
+				ERROR_INTERFACE ".ConnectionAttemptFailed",
+				"Connection Timeout");
 	case 0x10: /* connection accept timeout */
 	case 0x22: /* LMP response timeout */
 	case 0x28: /* instant passed - is this a timeout? */
@@ -1608,69 +1614,50 @@ proceed:
 	return bonding;
 }
 
-static gboolean create_bonding_io_cb(GIOChannel *io, GIOCondition cond,
-					struct btd_device *device)
+static gboolean bonding_io_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
 {
+	struct btd_device *device = user_data;
+
+	if (!device->bonding)
+		return FALSE;
+
+	error_connection_attempt_failed(device->bonding->conn,
+					device->bonding->msg, ENETDOWN);
+
+	return FALSE;
+}
+
+static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
+{
+	struct btd_device *device = user_data;
 	struct hci_request rq;
 	auth_requested_cp cp;
 	evt_cmd_status rp;
-	struct l2cap_conninfo cinfo;
-	socklen_t len;
-	int sk, dd, ret;
+	int dd;
+	uint8_t handle;
 
 	if (!device->bonding) {
 		g_io_channel_shutdown(io, TRUE, NULL);
-		return FALSE;
+		return;
 	}
 
-	if (cond & G_IO_NVAL) {
-		if (device->bonding) {
-			DBusMessage *reply;
-
-			reply = new_authentication_return(device->bonding->msg,
-							0x09);
-			g_dbus_send_message(device->bonding->conn, reply);
-		}
-
+	if (err) {
+		error("%s", err->message);
+		error_connection_attempt_failed(device->bonding->conn,
+						device->bonding->msg,
+						ENETDOWN);
 		goto cleanup;
 	}
 
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		debug("Hangup or error on bonding IO channel");
-
-		if (device->bonding)
-			error_connection_attempt_failed(device->bonding->conn,
-							device->bonding->msg,
-							ENETDOWN);
-
-		goto failed;
-	}
-
-	sk = g_io_channel_unix_get_fd(io);
-
-	len = sizeof(ret);
-	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &ret, &len) < 0) {
-		error("Can't get socket error: %s (%d)",
-				strerror(errno), errno);
-		error_failed_errno(device->bonding->conn, device->bonding->msg,
-				errno);
-		goto failed;
-	}
-
-	if (ret != 0) {
-		if (device->bonding)
-			error_connection_attempt_failed(device->bonding->conn,
-							device->bonding->msg,
-							ret);
-		goto failed;
-	}
-
-	len = sizeof(cinfo);
-	if (getsockopt(sk, SOL_L2CAP, L2CAP_CONNINFO, &cinfo, &len) < 0) {
-		error("Can't get connection info: %s (%d)",
-				strerror(errno), errno);
-		error_failed_errno(device->bonding->conn, device->bonding->msg,
-				errno);
+	if (!bt_io_get(io, BT_IO_L2RAW, &err,
+			BT_IO_OPT_HANDLE, &handle,
+			BT_IO_OPT_INVALID)) {
+		error("Unable to get connection handle: %s", err->message);
+		error_connection_attempt_failed(device->bonding->conn,
+						device->bonding->msg,
+						ENETDOWN);
+		g_error_free(err);
 		goto failed;
 	}
 
@@ -1684,7 +1671,7 @@ static gboolean create_bonding_io_cb(GIOChannel *io, GIOCondition cond,
 	memset(&rp, 0, sizeof(rp));
 
 	memset(&cp, 0, sizeof(cp));
-	cp.handle = htobs(cinfo.hci_handle);
+	cp.handle = htobs(handle);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_LINK_CTL;
@@ -1716,11 +1703,10 @@ static gboolean create_bonding_io_cb(GIOChannel *io, GIOCondition cond,
 	hci_close_dev(dd);
 
 	device->bonding->io_id = g_io_add_watch(io,
-						G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-						(GIOFunc) create_bonding_io_cb,
-						device);
+					G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+					bonding_io_cb, device);
 
-	return FALSE;
+	return;
 
 failed:
 	g_io_channel_shutdown(io, TRUE, NULL);
@@ -1728,8 +1714,6 @@ failed:
 cleanup:
 	device->bonding->io_id = 0;
 	bonding_request_free(device->bonding, FALSE);
-
-	return FALSE;
 }
 
 static void create_bond_req_exit(DBusConnection *conn, void *user_data)
@@ -1748,69 +1732,6 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 	}
 }
 
-static int l2raw_connect(const bdaddr_t *src, const bdaddr_t *dst,
-						gboolean *auth_required)
-{
-	struct sockaddr_l2 addr;
-	long arg;
-	int sk, err, opt;
-
-	sk = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
-	if (sk < 0) {
-		error("Can't create socket: %s (%d)", strerror(errno), errno);
-		return sk;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, src);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("Can't bind socket: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	opt = L2CAP_LM_AUTH | L2CAP_LM_ENCRYPT | L2CAP_LM_SECURE;
-
-	err = setsockopt(sk, SOL_L2CAP, L2CAP_LM, &opt, sizeof(opt));
-	if (err < 0) {
-		error("setsockopt: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	arg = fcntl(sk, F_GETFL);
-	if (arg < 0) {
-		error("Can't get file flags: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	arg |= O_NONBLOCK;
-	if (fcntl(sk, F_SETFL, arg) < 0) {
-		error("Can't set file flags: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, dst);
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		if (errno == EAGAIN || errno == EINPROGRESS)
-			return sk;
-		error("Can't connect socket: %s (%d)", strerror(errno), errno);
-		goto failed;
-	}
-
-	if (auth_required)
-		*auth_required = TRUE;
-
-	return sk;
-
-failed:
-	close(sk);
-	return -1;
-}
-
 DBusMessage *device_create_bonding(struct btd_device *device,
 					DBusConnection *conn,
 					DBusMessage *msg,
@@ -1822,8 +1743,8 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	struct btd_adapter *adapter = device->adapter;
 	struct bonding_req *bonding;
 	bdaddr_t src;
-	int sk;
-	gboolean auth_required;
+	GError *err = NULL;
+	GIOChannel *io;
 
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
@@ -1845,26 +1766,30 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	}
 
 
-	sk = l2raw_connect(&src, &device->bdaddr, &auth_required);
-	if (sk < 0)
-		return g_dbus_create_error(msg,
+	io = bt_io_connect(BT_IO_L2RAW, bonding_connect_cb, device,
+				NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_HIGH,
+				BT_IO_OPT_INVALID);
+	if (io == NULL) {
+		DBusMessage *reply;
+		reply = g_dbus_create_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
-				"Connection attempt failed");
+				err->message);
+		error("bt_io_connect: %s", err->message);
+		g_error_free(err);
+		return reply;
+	}
 
 	bonding = bonding_request_new(conn, msg, device, agent_path,
 					capability);
 	if (!bonding) {
-		close(sk);
+		g_io_channel_shutdown(io, TRUE, NULL);
 		return NULL;
 	}
 
-	bonding->auth_required = auth_required;
-
-	bonding->io = g_io_channel_unix_new(sk);
-	bonding->io_id = g_io_add_watch(bonding->io,
-					G_IO_OUT | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-					(GIOFunc) create_bonding_io_cb,
-					device);
+	bonding->io = io;
 
 	bonding->listener_id = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),
