@@ -89,7 +89,8 @@ static int authorize_device(const bdaddr_t *src, const bdaddr_t *dst)
 
 static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 {
-	int sk, psm;
+	int sk;
+	uint16_t psm;
 	bdaddr_t src, dst;
 	GError *gerr = NULL;
 
