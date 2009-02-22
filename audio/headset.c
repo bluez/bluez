@@ -2322,7 +2322,7 @@ int headset_connect_sco(struct audio_device *dev, GIOChannel *io)
 	if (hs->sco)
 		return -EISCONN;
 
-	hs->sco = io;
+	hs->sco = g_io_channel_ref(io);
 
 	if (hs->pending_ring) {
 		ring_timer_cb(NULL);
