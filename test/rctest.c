@@ -43,6 +43,8 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/rfcomm.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 /* Test modes */
 enum {
@@ -70,6 +72,7 @@ static unsigned long delay = 0;
 
 /* Default addr and channel */
 static bdaddr_t bdaddr;
+static uint16_t uuid = 0x0000;
 static uint8_t channel = 10;
 
 static char *filename = NULL;
@@ -88,12 +91,64 @@ static float tv2fl(struct timeval tv)
 	return (float)tv.tv_sec + (float)(tv.tv_usec/1000000.0);
 }
 
-static int do_connect(char *svr)
+static uint8_t get_channel(const char *svr, uint16_t uuid)
+{
+	sdp_session_t *sdp;
+	sdp_list_t *srch, *attrs, *rsp;
+	uuid_t svclass;
+	uint16_t attr;
+	bdaddr_t dst;
+	uint8_t channel = 0;
+	int err;
+
+	str2ba(svr, &dst);
+
+	sdp = sdp_connect(&bdaddr, &dst, SDP_RETRY_IF_BUSY);
+	if (!sdp)
+		return 0;
+
+	sdp_uuid16_create(&svclass, uuid);
+	srch = sdp_list_append(NULL, &svclass);
+
+	attr = SDP_ATTR_PROTO_DESC_LIST;
+	attrs = sdp_list_append(NULL, &attr);
+
+	err = sdp_service_search_attr_req(sdp, srch,
+					SDP_ATTR_REQ_INDIVIDUAL, attrs, &rsp);
+	if (err)
+		goto done;
+
+	for (; rsp; rsp = rsp->next) {
+		sdp_record_t *rec = (sdp_record_t *) rsp->data;
+		sdp_list_t *protos;
+
+		if (!sdp_get_access_protos(rec, &protos)) {
+			channel = sdp_get_proto_port(protos, RFCOMM_UUID);
+			if (channel > 0)
+				break;
+		}
+	}
+
+done:
+	sdp_close(sdp);
+
+	return channel;
+}
+
+static int do_connect(const char *svr)
 {
 	struct sockaddr_rc addr;
 	struct rfcomm_conninfo conn;
 	socklen_t optlen;
 	int sk, opt;
+
+	if (uuid != 0x0000)
+		channel = get_channel(svr, uuid);
+
+	if (channel == 0) {
+		syslog(LOG_ERR, "Can't get channel number");
+		return -1;
+	}
 
 	/* Create socket */
 	sk = socket(PF_BLUETOOTH, socktype, BTPROTO_RFCOMM);
@@ -523,7 +578,7 @@ static void usage(void)
 		"\t-m multiple connects\n");
 
 	printf("Options:\n"
-		"\t[-b bytes] [-i device] [-P channel]\n"
+		"\t[-b bytes] [-i device] [-P channel] [-U uuid]\n"
 		"\t[-L seconds] enabled SO_LINGER option\n"
 		"\t[-F seconds] enable deferred setup\n"
 		"\t[-B filename] use data packets from file\n"
@@ -544,7 +599,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:B:N:MAESL:F:C:D:T")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:U:B:N:MAESL:F:C:D:T")) != EOF) {
 		switch (opt) {
 		case 'r':
 			mode = RECV;
@@ -596,6 +651,15 @@ int main(int argc, char *argv[])
 
 		case 'P':
 			channel = atoi(optarg);
+			break;
+
+		case 'U':
+			if (!strcasecmp(optarg, "spp"))
+				uuid = SERIAL_PORT_SVCLASS_ID;
+			else if (!strncasecmp(optarg, "0x", 2))
+				uuid = strtoul(optarg + 2, NULL, 16);
+			else
+				uuid = atoi(optarg);
 			break;
 
 		case 'M':
