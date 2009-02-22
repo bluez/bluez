@@ -1635,7 +1635,7 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	auth_requested_cp cp;
 	evt_cmd_status rp;
 	int dd;
-	uint8_t handle;
+	uint16_t handle;
 
 	if (!device->bonding) {
 		g_io_channel_shutdown(io, TRUE, NULL);

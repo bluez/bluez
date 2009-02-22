@@ -103,7 +103,7 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_PSM, &psm,
-			NULL);
+			BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("%s", gerr->message);
 		g_error_free(gerr);

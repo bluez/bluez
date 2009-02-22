@@ -397,7 +397,7 @@ static void connect_event_cb(GIOChannel *chan, GError *conn_err, gpointer data)
 
 	bt_io_get(chan, BT_IO_RFCOMM, &err,
 			BT_IO_OPT_DEST_BDADDR, &prx->dst,
-			NULL);
+			BT_IO_OPT_INVALID);
 	if (err) {
 		error("%s", err->message);
 		g_error_free(err);
