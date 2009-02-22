@@ -45,6 +45,7 @@ typedef enum {
 } BtIOType;
 
 typedef enum {
+	BT_IO_OPT_INVALID = 0,
 	BT_IO_OPT_SOURCE,
 	BT_IO_OPT_SOURCE_BDADDR,
 	BT_IO_OPT_DEST,
@@ -59,7 +60,6 @@ typedef enum {
 	BT_IO_OPT_MASTER,
 	BT_IO_OPT_HANDLE,
 	BT_IO_OPT_CLASS,
-	BT_IO_OPT_INVALID,
 } BtIOOption;
 
 typedef enum {
