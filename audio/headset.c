@@ -540,7 +540,7 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	sk = g_io_channel_unix_get_fd(chan);
 
 	debug("SCO fd=%d", sk);
-	hs->sco = chan;
+	hs->sco = g_io_channel_ref(chan);
 	p->io = NULL;
 
 	if (p->msg) {
