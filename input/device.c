@@ -927,7 +927,7 @@ static DBusMessage *device_connect(DBusConnection *conn,
 					BT_IO_OPT_SOURCE_BDADDR, &idev->src,
 					BT_IO_OPT_DEST_BDADDR, &idev->dst,
 					BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
-					NULL);
+					BT_IO_OPT_INVALID);
 		if (io)
 			g_io_channel_unref(io);
 	}
