@@ -63,6 +63,7 @@ test/lmptest
 test/rctest
 test/scotest
 test/sdptest
+test/btiotest
 rfcomm/rfcomm
 compat/dund
 compat/hidd
