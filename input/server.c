@@ -75,18 +75,6 @@ static void auth_callback(DBusError *derr, void *user_data)
 	g_free(auth);
 }
 
-static int authorize_device(const bdaddr_t *src, const bdaddr_t *dst)
-{
-	struct authorization_data *auth;
-
-	auth = g_new0(struct authorization_data, 1);
-	bacpy(&auth->src, src);
-	bacpy(&auth->dst, dst);
-
-	return btd_request_authorization(src, dst, HID_UUID,
-				auth_callback, auth);
-}
-
 static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	uint16_t psm;
@@ -123,8 +111,21 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 		return;
 	}
 
-	if ((psm == L2CAP_PSM_HIDP_INTR) && (authorize_device(&src, &dst) < 0))
-		input_device_close_channels(&src, &dst);
+	if (psm == L2CAP_PSM_HIDP_INTR) {
+		struct authorization_data *auth;
+		int ret;
+
+		auth = g_new0(struct authorization_data, 1);
+		bacpy(&auth->src, &src);
+		bacpy(&auth->dst, &dst);
+
+		ret = btd_request_authorization(&src, &dst, HID_UUID,
+							auth_callback, auth);
+		if (ret < 0) {
+			g_free(auth);
+			input_device_close_channels(&src, &dst);
+		}
+	}
 }
 
 int server_start(const bdaddr_t *src)
