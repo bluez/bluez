@@ -674,6 +674,9 @@ static int input_device_connected(struct input_device *idev,
 	dbus_bool_t connected;
 	int err;
 
+	if (iconn->intr_io == NULL || iconn->ctrl_io == NULL)
+		return -ENOTCONN;
+
 	err = hidp_add_connection(idev, iconn);
 	if (err < 0)
 		return err;
