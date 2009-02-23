@@ -366,7 +366,7 @@ struct fake_hid *get_fake_hid(uint16_t vendor, uint16_t product)
 	return NULL;
 }
 
-int fake_hid_connadd(struct fake_input *fake, int intr_sk,
+int fake_hid_connadd(struct fake_input *fake, GIOChannel *intr_io,
 						struct fake_hid *fake_hid)
 {
 	if (fake_hid->setup_uinput(fake, fake_hid)) {
@@ -374,7 +374,7 @@ int fake_hid_connadd(struct fake_input *fake, int intr_sk,
 		return ENOMEM;
 	}
 
-	fake->io = g_io_channel_unix_new(intr_sk);
+	fake->io = g_io_channel_ref(intr_io);
 	g_io_channel_set_close_on_unref(fake->io, TRUE);
 	g_io_add_watch(fake->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) fake_hid->event, fake);

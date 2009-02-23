@@ -35,5 +35,5 @@ struct fake_hid {
 
 struct fake_hid *get_fake_hid(uint16_t vendor, uint16_t product);
 
-int fake_hid_connadd(struct fake_input *fake, int intr_sk,
+int fake_hid_connadd(struct fake_input *fake, GIOChannel *intr_io,
 						struct fake_hid *fake_hid);

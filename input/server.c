@@ -89,7 +89,6 @@ static int authorize_device(const bdaddr_t *src, const bdaddr_t *dst)
 
 static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 {
-	int sk;
 	uint16_t psm;
 	bdaddr_t src, dst;
 	GError *gerr = NULL;
@@ -113,13 +112,11 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 
 	debug("Incoming connection on PSM %d", psm);
 
-	sk = g_io_channel_unix_get_fd(chan);
-
-	if (input_device_set_channel(&src, &dst, psm, sk) < 0) {
+	if (input_device_set_channel(&src, &dst, psm, chan) < 0) {
 		/* Send unplug virtual cable to unknown devices */
 		if (psm == L2CAP_PSM_HIDP_CTRL) {
 			unsigned char unplug[] = { 0x15 };
-			int err;
+			int err, sk = g_io_channel_unix_get_fd(chan);
 			err = write(sk, unplug, sizeof(unplug));
 		}
 		g_io_channel_shutdown(chan, TRUE, NULL);

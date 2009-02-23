@@ -74,8 +74,8 @@ struct input_conn {
 	DBusMessage		*pending_connect;
 	char			*uuid;
 	char			*alias;
-	int			ctrl_sk;
-	int			intr_sk;
+	GIOChannel		*ctrl_io;
+	GIOChannel		*intr_io;
 	guint			ctrl_watch;
 	guint			intr_watch;
 	int			timeout;
@@ -135,6 +135,12 @@ static void input_conn_free(struct input_conn *iconn)
 
 	if (iconn->intr_watch)
 		g_source_remove(iconn->intr_watch);
+
+	if (iconn->intr_io)
+		g_io_channel_unref(iconn->intr_io);
+
+	if (iconn->ctrl_io)
+		g_io_channel_unref(iconn->ctrl_io);
 
 	g_free(iconn->uuid);
 	g_free(iconn->alias);
@@ -404,56 +410,47 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	struct input_device *idev = iconn->idev;
 	gboolean connected = FALSE;
 
-	if (cond & (G_IO_HUP | G_IO_ERR))
+	/* Checking for ctrl_watch avoids a double g_io_channel_shutdown since
+	 * it's likely that ctrl_watch_cb has been queued for dispatching in
+	 * this mainloop iteration */
+	if ((cond & (G_IO_HUP | G_IO_ERR)) && iconn->ctrl_watch)
 		g_io_channel_shutdown(chan, TRUE, NULL);
 
 	emit_property_changed(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
 				"Connected", DBUS_TYPE_BOOLEAN, &connected);
 
-	g_source_remove(iconn->ctrl_watch);
-	iconn->ctrl_watch = 0;
 	iconn->intr_watch = 0;
 
+	g_io_channel_unref(iconn->intr_io);
+	iconn->intr_io = NULL;
+
 	/* Close control channel */
-	if (iconn->ctrl_sk > 0) {
-		close(iconn->ctrl_sk);
-		iconn->ctrl_sk = -1;
-	}
+	if (iconn->ctrl_io && !(cond & G_IO_NVAL))
+		g_io_channel_shutdown(iconn->ctrl_io, TRUE, NULL);
 
 	return FALSE;
-
 }
 
 static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct input_conn *iconn = data;
 
-	if (cond & (G_IO_HUP | G_IO_ERR))
+	/* Checking for intr_watch avoids a double g_io_channel_shutdown since
+	 * it's likely that intr_watch_cb has been queued for dispatching in
+	 * this mainloop iteration */
+	if ((cond & (G_IO_HUP | G_IO_ERR)) && iconn->intr_watch)
 		g_io_channel_shutdown(chan, TRUE, NULL);
 
-	g_source_remove(iconn->intr_watch);
-	iconn->intr_watch = 0;
 	iconn->ctrl_watch = 0;
 
+	g_io_channel_unref(iconn->ctrl_io);
+	iconn->ctrl_io = NULL;
+
 	/* Close interrupt channel */
-	if (iconn->intr_sk > 0) {
-		close(iconn->intr_sk);
-		iconn->intr_sk = -1;
-	}
+	if (iconn->intr_io && !(cond & G_IO_NVAL))
+		g_io_channel_shutdown(iconn->intr_io, TRUE, NULL);
 
 	return FALSE;
-}
-
-static guint create_watch(int sk, GIOFunc cb, struct input_conn *iconn)
-{
-	guint id;
-	GIOChannel *io;
-
-	io = g_io_channel_unix_new(sk);
-	id = g_io_add_watch(io, G_IO_HUP | G_IO_ERR | G_IO_NVAL, cb, iconn);
-	g_io_channel_unref(io);
-
-	return id;
 }
 
 static gboolean fake_hid_connect(struct input_conn *iconn, GError **err)
@@ -606,8 +603,8 @@ static int hidp_add_connection(const struct input_device *idev,
 	int err;
 
 	req = g_new0(struct hidp_connadd_req, 1);
-	req->ctrl_sock = iconn->ctrl_sk;
-	req->intr_sock = iconn->intr_sk;
+	req->ctrl_sock = g_io_channel_unix_get_fd(iconn->ctrl_io);
+	req->intr_sock = g_io_channel_unix_get_fd(iconn->intr_io);
 	req->flags     = 0;
 	req->idle_to   = iconn->timeout;
 
@@ -633,7 +630,7 @@ static int hidp_add_connection(const struct input_device *idev,
 		fake->connect = fake_hid_connect;
 		fake->disconnect = fake_hid_disconnect;
 		fake->priv = fake_hid;
-		err = fake_hid_connadd(fake, iconn->intr_sk, fake_hid);
+		err = fake_hid_connadd(fake, iconn->intr_io, fake_hid);
 		goto cleanup;
 	}
 
@@ -657,7 +654,8 @@ static int hidp_add_connection(const struct input_device *idev,
 
 	if (req->vendor == 0x054c && req->product == 0x0268) {
 		unsigned char buf[] = { 0x53, 0xf4,  0x42, 0x03, 0x00, 0x00 };
-		err = write(iconn->ctrl_sk, buf, sizeof(buf));
+		int sk = g_io_channel_unix_get_fd(iconn->ctrl_io);
+		err = write(sk, buf, sizeof(buf));
 	}
 
 	err = ioctl_connadd(req);
@@ -668,6 +666,30 @@ cleanup:
 	g_free(req);
 
 	return err;
+}
+
+static int input_device_connected(struct input_device *idev,
+						struct input_conn *iconn)
+{
+	dbus_bool_t connected;
+	int err;
+
+	err = hidp_add_connection(idev, iconn);
+	if (err < 0)
+		return err;
+
+	iconn->intr_watch = g_io_add_watch(iconn->intr_io,
+					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+					intr_watch_cb, iconn);
+	iconn->ctrl_watch = g_io_add_watch(iconn->ctrl_io,
+					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+					ctrl_watch_cb, iconn);
+
+	connected = TRUE;
+	emit_property_changed(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
+				"Connected", DBUS_TYPE_BOOLEAN, &connected);
+
+	return 0;
 }
 
 static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
@@ -681,37 +703,38 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 
 	if (conn_err) {
 		err_msg = conn_err->message;
+		g_io_channel_unref(iconn->intr_io);
+		iconn->intr_io = NULL;
 		goto failed;
 	}
 
-	err = hidp_add_connection(idev, iconn);
+	err = input_device_connected(idev, iconn);
 	if (err < 0) {
 		err_msg = strerror(-err);
-		g_io_channel_shutdown(chan, TRUE, NULL);
 		goto failed;
 	}
-
-	iconn->intr_sk = g_io_channel_unix_get_fd(chan);
-
-	iconn->intr_watch = create_watch(iconn->intr_sk, intr_watch_cb, iconn);
-	iconn->ctrl_watch = create_watch(iconn->ctrl_sk, ctrl_watch_cb, iconn);
 
 	/* Replying to the requestor */
 	g_dbus_send_reply(idev->conn, iconn->pending_connect, DBUS_TYPE_INVALID);
 
-	goto cleanup;
+	dbus_message_unref(iconn->pending_connect);
+	iconn->pending_connect = NULL;
+
+	return;
 
 failed:
 	error("%s", err_msg);
 	reply = connection_attempt_failed(iconn->pending_connect, err_msg);
 	g_dbus_send_message(idev->conn, reply);
 
-	iconn->intr_sk = -1;
-	iconn->ctrl_sk = -1;
+	if (iconn->ctrl_io)
+		g_io_channel_shutdown(iconn->ctrl_io, FALSE, NULL);
 
-cleanup:
-	dbus_message_unref(iconn->pending_connect);
-	iconn->pending_connect = NULL;
+	if (iconn->intr_io) {
+		g_io_channel_shutdown(iconn->intr_io, FALSE, NULL);
+		g_io_channel_unref(iconn->intr_io);
+		iconn->intr_io = NULL;
+	}
 }
 
 static void control_connect_cb(GIOChannel *chan, GError *conn_err,
@@ -746,10 +769,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 		goto failed;
 	}
 
-	g_io_channel_unref(io);
-
-	/* Set HID control channel */
-	iconn->ctrl_sk = g_io_channel_unix_get_fd(chan);
+	iconn->intr_io = io;
 
 	return;
 
@@ -827,14 +847,10 @@ static int connection_disconnect(struct input_conn *iconn, uint32_t flags)
 	}
 
 	/* Standard HID disconnect */
-	if (iconn->ctrl_sk >= 0) {
-		close(iconn->ctrl_sk);
-		iconn->ctrl_sk = -1;
-	}
-	if (iconn->intr_sk >= 0) {
-		close(iconn->intr_sk);
-		iconn->intr_sk = -1;
-	}
+	if (iconn->intr_io)
+		g_io_channel_shutdown(iconn->intr_io, TRUE, NULL);
+	if (iconn->ctrl_io)
+		g_io_channel_shutdown(iconn->ctrl_io, TRUE, NULL);
 
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
 	if (ctl < 0) {
@@ -928,8 +944,7 @@ static DBusMessage *device_connect(DBusConnection *conn,
 					BT_IO_OPT_DEST_BDADDR, &idev->dst,
 					BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
 					BT_IO_OPT_INVALID);
-		if (io)
-			g_io_channel_unref(io);
+		iconn->ctrl_io = io;
 	}
 
 	if (err == NULL)
@@ -1065,8 +1080,6 @@ static struct input_conn *input_conn_new(struct input_device *idev,
 	struct input_conn *iconn;
 
 	iconn = g_new0(struct input_conn, 1);
-	iconn->ctrl_sk = -1;
-	iconn->intr_sk = -1;
 	iconn->timeout = timeout;
 	iconn->uuid = g_strdup(uuid);
 	iconn->alias = g_strdup(alias);
@@ -1170,7 +1183,8 @@ int input_device_unregister(const char *path, const char *uuid)
 	return 0;
 }
 
-int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm, int nsk)
+int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
+								GIOChannel *io)
 {
 	struct input_device *idev = find_device(src, dst);
 	struct input_conn *iconn;
@@ -1184,10 +1198,10 @@ int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm, 
 
 	switch (psm) {
 	case L2CAP_PSM_HIDP_CTRL:
-		iconn->ctrl_sk = nsk;
+		iconn->ctrl_io = g_io_channel_ref(io);
 		break;
 	case L2CAP_PSM_HIDP_INTR:
-		iconn->intr_sk = nsk;
+		iconn->intr_io = g_io_channel_ref(io);
 		break;
 	}
 
@@ -1206,15 +1220,11 @@ int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst)
 	if (!iconn)
 		return -ENOENT;
 
-	if (iconn->ctrl_sk >= 0) {
-		close(iconn->ctrl_sk);
-		iconn->ctrl_sk = -1;
-	}
+	if (iconn->intr_io)
+		g_io_channel_shutdown(iconn->intr_io, TRUE, NULL);
 
-	if (iconn->intr_sk >= 0) {
-		close(iconn->intr_sk);
-		iconn->intr_sk = -1;
-	}
+	if (iconn->ctrl_io)
+		g_io_channel_shutdown(iconn->ctrl_io, TRUE, NULL);
 
 	return 0;
 }
@@ -1224,7 +1234,6 @@ int input_device_connadd(const bdaddr_t *src, const bdaddr_t *dst)
 	struct input_device *idev;
 	struct input_conn *iconn;
 	int err;
-	gboolean connected;
 
 	idev = find_device(src, dst);
 	if (!idev)
@@ -1234,23 +1243,23 @@ int input_device_connadd(const bdaddr_t *src, const bdaddr_t *dst)
 	if (!iconn)
 		return -ENOENT;
 
-	err = hidp_add_connection(idev, iconn);
+	err = input_device_connected(idev, iconn);
 	if (err < 0)
 		goto error;
-
-	iconn->intr_watch = create_watch(iconn->intr_sk, intr_watch_cb, iconn);
-	iconn->ctrl_watch = create_watch(iconn->ctrl_sk, ctrl_watch_cb, iconn);
-	connected = TRUE;
-	emit_property_changed(idev->conn, idev->path, INPUT_DEVICE_INTERFACE,
-				"Connected", DBUS_TYPE_BOOLEAN, &connected);
 
 	return 0;
 
 error:
-	close(iconn->ctrl_sk);
-	close(iconn->intr_sk);
-	iconn->ctrl_sk = -1;
-	iconn->intr_sk = -1;
+	if (iconn->ctrl_io) {
+		g_io_channel_shutdown(iconn->ctrl_io, FALSE, NULL);
+		g_io_channel_unref(iconn->ctrl_io);
+		iconn->ctrl_io = NULL;
+	}
+	if (iconn->intr_io) {
+		g_io_channel_shutdown(iconn->intr_io, FALSE, NULL);
+		g_io_channel_unref(iconn->intr_io);
+		iconn->intr_io = NULL;
+	}
 
 	return err;
 }
