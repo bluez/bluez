@@ -103,9 +103,9 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 	if (input_device_set_channel(&src, &dst, psm, chan) < 0) {
 		/* Send unplug virtual cable to unknown devices */
 		if (psm == L2CAP_PSM_HIDP_CTRL) {
-			unsigned char unplug[] = { 0x15 };
+			unsigned char unplug = 0x15;
 			int err, sk = g_io_channel_unix_get_fd(chan);
-			err = write(sk, unplug, sizeof(unplug));
+			err = write(sk, &unplug, sizeof(unplug));
 		}
 		g_io_channel_shutdown(chan, TRUE, NULL);
 		return;
