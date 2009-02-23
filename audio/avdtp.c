@@ -2327,7 +2327,7 @@ static gboolean avdtp_close_resp(struct avdtp *session,
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_CLOSING);
 
-	g_io_channel_shutdown(session->io, TRUE, NULL);
+	g_io_channel_shutdown(stream->io, TRUE, NULL);
 
 	return TRUE;
 }
