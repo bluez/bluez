@@ -1010,8 +1010,10 @@ gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 		return FALSE;
 	}
 
-	if (!(pfd.revents & POLLOUT))
-		(void) read(sock, &c, 1);
+	if (!(pfd.revents & POLLOUT)) {
+		int ret;
+		ret = read(sock, &c, 1);
+	}
 
 	accept_add(io, connect, user_data, destroy);
 
