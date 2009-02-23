@@ -412,6 +412,8 @@ static void configure_device(int dev_id)
 	policy = htobs(main_opts.link_policy);
 	hci_send_cmd(dd, OGF_LINK_POLICY,
 				OCF_WRITE_DEFAULT_LINK_POLICY, 2, &policy);
+
+	hci_close_dev(dd);
 }
 
 static void init_device(int dev_id)
