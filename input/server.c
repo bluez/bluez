@@ -26,6 +26,7 @@
 #endif
 
 #include <unistd.h>
+#include <errno.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
@@ -80,6 +81,7 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 	uint16_t psm;
 	bdaddr_t src, dst;
 	GError *gerr = NULL;
+	int ret;
 
 	if (err) {
 		error("%s", err->message);
@@ -100,9 +102,10 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 
 	debug("Incoming connection on PSM %d", psm);
 
-	if (input_device_set_channel(&src, &dst, psm, chan) < 0) {
+	ret = input_device_set_channel(&src, &dst, psm, chan);
+	if (ret < 0) {
 		/* Send unplug virtual cable to unknown devices */
-		if (psm == L2CAP_PSM_HIDP_CTRL) {
+		if (ret == -ENOENT && psm == L2CAP_PSM_HIDP_CTRL) {
 			unsigned char unplug = 0x15;
 			int err, sk = g_io_channel_unix_get_fd(chan);
 			err = write(sk, &unplug, sizeof(unplug));
@@ -113,7 +116,6 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 
 	if (psm == L2CAP_PSM_HIDP_INTR) {
 		struct authorization_data *auth;
-		int ret;
 
 		auth = g_new0(struct authorization_data, 1);
 		bacpy(&auth->src, &src);
