@@ -1201,9 +1201,13 @@ int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 
 	switch (psm) {
 	case L2CAP_PSM_HIDP_CTRL:
+		if (iconn->ctrl_io)
+			return -EALREADY;
 		iconn->ctrl_io = g_io_channel_ref(io);
 		break;
 	case L2CAP_PSM_HIDP_INTR:
+		if (iconn->intr_io)
+			return -EALREADY;
 		iconn->intr_io = g_io_channel_ref(io);
 		break;
 	}
