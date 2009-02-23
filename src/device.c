@@ -1021,11 +1021,26 @@ static void append_and_grow_string(void *data, const char *str)
 	buff->data_size += len;
 }
 
-static void discover_device_reply(struct browse_req *req, sdp_list_t *recs)
+static void discover_services_reply(struct browse_req *req, int err,
+							sdp_list_t *recs)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter, dict;
 	sdp_list_t *seq;
+
+	if (err) {
+		const char *err_if;
+
+		if (err == -EHOSTDOWN)
+			err_if = ERROR_INTERFACE ".ConnectionAttemptFailed";
+		else
+			err_if = ERROR_INTERFACE ".Failed";
+
+		reply = dbus_message_new_error(req->msg, err_if,
+							strerror(-err));
+		g_dbus_send_message(req->conn, reply);
+		return;
+	}
 
 	reply = dbus_message_new_method_return(req->msg);
 	if (!reply)
@@ -1258,7 +1273,7 @@ proceed:
 
 	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
 					"DiscoverServices")) {
-		discover_device_reply(req, req->records);
+		discover_services_reply(req, err, req->records);
 		goto cleanup;
 	}
 
