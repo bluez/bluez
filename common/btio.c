@@ -586,8 +586,8 @@ static gboolean sco_set(int sock, uint16_t mtu, GError **err)
 	return TRUE;
 }
 
-static gboolean parse_set_opts(GIOChannel *io, struct set_opts *opts,
-				GError **err, BtIOOption opt1, va_list args)
+static gboolean parse_set_opts(struct set_opts *opts, GError **err,
+						BtIOOption opt1, va_list args)
 {
 	BtIOOption opt = opt1;
 	const char *str;
@@ -1011,7 +1011,7 @@ gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 	}
 
 	if (!(pfd.revents & POLLOUT))
-		read(sock, &c, 1);
+		(void) read(sock, &c, 1);
 
 	accept_add(io, connect, user_data, destroy);
 
@@ -1027,7 +1027,7 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
 	int sock;
 
 	va_start(args, opt1);
-	ret = parse_set_opts(io, &opts, err, opt1, args);
+	ret = parse_set_opts(&opts, err, opt1, args);
 	va_end(args);
 
 	if (!ret)
@@ -1125,6 +1125,10 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 		if (!sco_set(sock, opts->mtu, err))
 			return NULL;
 		break;
+	default:
+		g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+				"Unknown BtIO type %d", type);
+		return NULL;
 	}
 
 	io = g_io_channel_unix_new(sock);
@@ -1145,7 +1149,7 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 	gboolean ret;
 
 	va_start(args, opt1);
-	ret = parse_set_opts(io, &opts, gerr, opt1, args);
+	ret = parse_set_opts(&opts, gerr, opt1, args);
 	va_end(args);
 
 	if (ret == FALSE)
@@ -1170,6 +1174,10 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 	case BT_IO_SCO:
 		err = sco_connect(sock, &opts.dst);
 		break;
+	default:
+		g_set_error(gerr, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+						"Unknown BtIO type %d", type);
+		return NULL;
 	}
 
 	if (err < 0) {
@@ -1202,7 +1210,7 @@ GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
 	}
 
 	va_start(args, opt1);
-	ret = parse_set_opts(io, &opts, err, opt1, args);
+	ret = parse_set_opts(&opts, err, opt1, args);
 	va_end(args);
 
 	if (ret == FALSE)
