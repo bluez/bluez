@@ -175,6 +175,7 @@ static gboolean io_session_event(GIOChannel *chan, GIOCondition cond, gpointer d
 	len = recv(sk, buf, size, 0);
 	if (len <= 0) {
 		sdp_svcdb_collect_all(sk);
+		free(buf);
 		return FALSE;
 	}
 
