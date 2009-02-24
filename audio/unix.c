@@ -94,6 +94,9 @@ static void client_free(struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
 
+	if (client->req_id)
+		client->cancel(client->dev, client->req_id);
+
 	switch (client->type) {
 	case TYPE_SINK:
 	case TYPE_SOURCE:
@@ -796,6 +799,9 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 		error("start_resume: resume failed");
 		goto failed;
 	}
+
+	client->req_id = id;
+	client->dev = dev;
 
 	return;
 
