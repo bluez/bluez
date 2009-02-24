@@ -302,19 +302,27 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 	/* Check bipool range */
 	for (codec_cap = NULL; caps; caps = g_slist_next(caps)) {
 		cap = caps->data;
-		if (cap->category == AVDTP_MEDIA_CODEC) {
-			codec_cap = (void *) cap->data;
-			if (codec_cap->media_codec_type == A2DP_CODEC_SBC) {
-				sbc_cap = (void *) codec_cap;
-				if (sbc_cap->min_bitpool < MIN_BITPOOL ||
+		if (cap->category != AVDTP_MEDIA_CODEC)
+			continue;
+
+		if (cap->length < sizeof(struct sbc_codec_cap))
+			continue;
+
+		codec_cap = (void *) cap->data;
+
+		if (codec_cap->media_codec_type != A2DP_CODEC_SBC)
+			continue;
+
+		sbc_cap = (void *) codec_cap;
+
+		if (sbc_cap->min_bitpool < MIN_BITPOOL ||
 					sbc_cap->max_bitpool > MAX_BITPOOL) {
-					*err = AVDTP_UNSUPPORTED_CONFIGURATION;
-					*category = AVDTP_MEDIA_CODEC;
-					return FALSE;
-				}
-			}
-			break;
+			*err = AVDTP_UNSUPPORTED_CONFIGURATION;
+			*category = AVDTP_MEDIA_CODEC;
+			return FALSE;
 		}
+
+		break;
 	}
 
 	avdtp_stream_add_cb(session, stream, stream_state_changed, a2dp_sep);
