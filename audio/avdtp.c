@@ -1832,7 +1832,6 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	if (!g_slist_find(sessions, session)) {
 		debug("avdtp_connect_cb: session got removed");
-		g_io_channel_shutdown(chan, TRUE, NULL);
 		return;
 	}
 
