@@ -1511,14 +1511,23 @@ static int audioservice_send(int sk, const bt_audio_msg_header_t *msg)
 
 static int audioservice_recv(int sk, bt_audio_msg_header_t *inmsg)
 {
-	int err;
+	int err, ret;
 	const char *type, *name;
 	uint16_t length;
 
 	length = inmsg->length ? inmsg->length : BT_SUGGESTED_BUFFER_SIZE;
 
 	DBG("trying to receive msg from audio service...");
-	if (recv(sk, inmsg, length, 0) > 0) {
+
+	ret = recv(sk, inmsg, length, 0);
+	if (ret < 0) {
+		err = -errno;
+		SNDERR("Error receiving IPC data from bluetoothd: %s (%d)",
+						strerror(errno), errno);
+	} else if (ret < (int) sizeof(bt_audio_msg_header_t)) {
+		SNDERR("Too short (%d bytes) IPC packet from bluetoothd", ret);
+		err = -EINVAL;
+	} else {
 		type = bt_audio_strtype(inmsg->type);
 		name = bt_audio_strname(inmsg->name);
 		if (type && name) {
@@ -1527,13 +1536,10 @@ static int audioservice_recv(int sk, bt_audio_msg_header_t *inmsg)
 		} else {
 			err = -EINVAL;
 			SNDERR("Bogus message type %d - name %d"
-					"received from audio service",
+					" received from audio service",
 					inmsg->type, inmsg->name);
 		}
-	} else {
-		err = -errno;
-		SNDERR("Error receiving data from audio service: %s(%d)",
-					strerror(errno), errno);
+
 	}
 
 	return err;
