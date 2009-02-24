@@ -2157,7 +2157,7 @@ int adapter_start(struct btd_adapter *adapter)
 		error("Can't read simple pairing mode on %s: %s (%d)",
 					adapter->path, strerror(err), err);
 		/* Fall through since some chips have broken
-		 * read_simple_pairing_mode bahavior */
+		 * read_simple_pairing_mode behavior */
 	}
 
 setup:
