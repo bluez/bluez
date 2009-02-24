@@ -56,6 +56,12 @@ libgstbluetooth_la_CFLAGS = -fvisibility=hidden \
 endif
 endif
 
+noinst_PROGRAMS = ipctest
+
+ipctest_SOURCES = ipctest.c ipc.c ipc.h
+ipctest_LDADD = @SBC_LIBS@ @GLIB_LIBS@
+ipctest_CFLAGS = @SBC_CFLAGS@ @GLIB_CFLAGS@ $(AM_CFLAGS) # see libtool issues, 8.3.9.2 Objects 'created with both libtool and without'
+
 AM_CFLAGS = -fvisibility=hidden \
 		@BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
