@@ -431,6 +431,7 @@ static void avctp_unref(struct avctp *session)
 		g_io_channel_shutdown(session->io, TRUE, NULL);
 		g_io_channel_unref(session->io);
 	}
+
 	if (session->io_id)
 		g_source_remove(session->io_id);
 
@@ -686,7 +687,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 {
 	struct avctp *session;
-	GIOCondition flags = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 	struct audio_device *dev;
 	char address[18];
 	bdaddr_t src, dst;
@@ -736,9 +736,6 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 
 	session->state = AVCTP_STATE_CONNECTING;
 	session->io = g_io_channel_ref(chan);
-
-	session->io_id = g_io_add_watch(chan, flags, (GIOFunc) session_cb,
-								session);
 
 	if (avdtp_is_connected(&src, &dst))
 		goto proceed;
