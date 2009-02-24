@@ -490,6 +490,8 @@ static void device_devreg_setup(int dev_id, gboolean devup)
 
 	init_device(dev_id);
 
+	memset(&di, 0, sizeof(di));
+
 	if (hci_devinfo(dev_id, &di) < 0)
 		return;
 
