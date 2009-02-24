@@ -908,7 +908,7 @@ send_rsp:
 		bt_put_unaligned(htons(status), (uint16_t *)rsp.data);
 		rsp.data_size = sizeof(uint16_t);
 	}
-	
+
 	SDPDBG("Sending rsp. status %d", status);
 
 	rsphdr->tid  = reqhdr->tid;

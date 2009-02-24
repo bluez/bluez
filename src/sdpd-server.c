@@ -177,7 +177,7 @@ static gboolean io_session_event(GIOChannel *chan, GIOCondition cond, gpointer d
 		sdp_svcdb_collect_all(sk);
 		return FALSE;
 	}
-		
+
 	handle_request(sk, buf, len);
 
 	return TRUE;
