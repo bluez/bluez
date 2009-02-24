@@ -148,7 +148,10 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 
 	conn->connect(io, gerr, conn->user_data);
 
-	g_clear_error(&gerr);
+	if (gerr) {
+		g_io_channel_shutdown(io, FALSE, NULL);
+		g_error_free(gerr);
+	}
 
 	return FALSE;
 }
