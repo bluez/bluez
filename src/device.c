@@ -1653,7 +1653,8 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	uint16_t handle;
 
 	if (!device->bonding) {
-		g_io_channel_shutdown(io, TRUE, NULL);
+		if (!err)
+			g_io_channel_shutdown(io, TRUE, NULL);
 		return;
 	}
 

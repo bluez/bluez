@@ -734,7 +734,8 @@ failed:
 		g_io_channel_shutdown(iconn->ctrl_io, FALSE, NULL);
 
 	if (iconn->intr_io) {
-		g_io_channel_shutdown(iconn->intr_io, FALSE, NULL);
+		if (!conn_err)
+			g_io_channel_shutdown(iconn->intr_io, FALSE, NULL);
 		g_io_channel_unref(iconn->intr_io);
 		iconn->intr_io = NULL;
 	}
