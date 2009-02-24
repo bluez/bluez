@@ -197,6 +197,7 @@ static sdp_record_t *server_record_new(const char *name, uint16_t id)
 		sdp_set_info_attr(record, name, NULL, desc);
 		break;
 	default:
+		sdp_record_free(record);
 		return NULL;
 	}
 
