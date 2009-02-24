@@ -606,6 +606,9 @@ success:
 	bt_put_unaligned(htonl(rec->handle), (uint32_t *) rsp->data);
 	rsp->data_size = sizeof(uint32_t);
 
+	if (rec)
+		sdp_record_free(rec);
+
 	return 0;
 
 invalid:
@@ -647,10 +650,11 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 			SDPDBG("SvcRecOld : %p", orec);
 			SDPDBG("Failure to update, restore old value");
 
-			if (nrec)
-				sdp_record_free(nrec);
 			status = SDP_INVALID_SYNTAX;
 		}
+
+		if (nrec)
+			sdp_record_free(nrec);
 	} else
 		status = SDP_INVALID_RECORD_HANDLE;
 
