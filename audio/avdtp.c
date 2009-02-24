@@ -1076,6 +1076,7 @@ static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
 	GSList *l;
 	unsigned int rsp_size, sep_count, i;
 	struct seid_info *seps;
+	gboolean ret;
 
 	sep_count = g_slist_length(session->server->seps);
 	rsp_size = sep_count * sizeof(struct seid_info);
@@ -1088,8 +1089,11 @@ static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
 		memcpy(&seps[i], &sep->info, sizeof(struct seid_info));
 	}
 
-	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT,
+	ret = avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT,
 				AVDTP_DISCOVER, seps, rsp_size);
+	g_free(seps);
+
+	return ret;
 }
 
 static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
