@@ -643,8 +643,6 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 
 	debug("AVCTP: connected to %s", address);
 
-	g_io_channel_set_close_on_unref(chan, FALSE);
-
 	if (!session->io)
 		session->io = g_io_channel_ref(chan);
 
