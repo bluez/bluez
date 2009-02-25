@@ -2,8 +2,10 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2006-2007, 2009  Nokia Corporation
+ *  Copyright (C) 2006-2009  Nokia Corporation
  *  Copyright (C) 2004-2009  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2009  Lennart Poettering
+ *  Copyright (C) 2008  Joao Paulo Rechi Vita
  *
  *
  *  This library is free software; you can redistribute it and/or
@@ -32,14 +34,18 @@
 #include <string.h>
 #include <assert.h>
 #include <libgen.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include <glib.h>
 
 #include "ipc.h"
 #include "sbc.h"
 
-#define DBG(fmt, arg...)  printf("debug %s: " fmt "\n" , __FUNCTION__ , ## arg)
-#define ERR(fmt, arg...)  fprintf(stderr, "ERROR %s: " fmt "\n" , __FUNCTION__ , ## arg)
+#define DBG(fmt, arg...)				\
+	printf("debug %s: " fmt "\n" , __FUNCTION__ , ## arg)
+#define ERR(fmt, arg...)				\
+	fprintf(stderr, "ERROR %s: " fmt "\n" , __FUNCTION__ , ## arg)
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -61,6 +67,7 @@
 
 #define YES_NO(t) ((t) ? "yes" : "no")
 
+#define BUFFER_SIZE 2048
 #define MAX_BITPOOL 64
 #define MIN_BITPOOL 2
 
@@ -83,6 +90,8 @@ struct hsp_info {
 struct userdata {
 	int service_fd;
 	int stream_fd;
+	GIOChannel *stream_channel;
+	guint stream_watch;
 	int transport;
 	uint32_t rate;
 	int channels;
@@ -101,6 +110,9 @@ static struct userdata data = {
 	.channels = 2,
 	.address = NULL
 };
+
+static int start_stream(struct userdata *u);
+static int stop_stream(struct userdata *u);
 
 static GMainLoop *main_loop;
 
@@ -127,7 +139,8 @@ static int service_send(struct userdata *u, const bt_audio_msg_header_t *msg)
 	return err;
 }
 
-static int service_recv(struct userdata *u, bt_audio_msg_header_t *rsp, size_t room)
+static int service_recv(struct userdata *u,
+			bt_audio_msg_header_t *rsp, size_t room)
 {
 	int err;
 	const char *type, *name;
@@ -159,8 +172,9 @@ static int service_recv(struct userdata *u, bt_audio_msg_header_t *rsp, size_t r
 	return err;
 }
 
-static ssize_t service_expect(struct userdata *u, bt_audio_msg_header_t *rsp,
-				size_t room, uint8_t expected_name, size_t expected_size)
+static ssize_t service_expect(struct userdata *u,
+				bt_audio_msg_header_t *rsp, size_t room,
+				uint8_t expected_name, size_t expected_size)
 {
 	int r;
 
@@ -172,8 +186,8 @@ static ssize_t service_expect(struct userdata *u, bt_audio_msg_header_t *rsp,
 		return r;
 
 	if ((rsp->type != BT_INDICATION && rsp->type != BT_RESPONSE) ||
-	    rsp->name != expected_name ||
-	    (expected_size > 0 && rsp->length != expected_size)) {
+		rsp->name != expected_name ||
+		(expected_size > 0 && rsp->length != expected_size)) {
 
 		if (rsp->type == BT_ERROR && rsp->length == sizeof(bt_audio_error_t))
 			ERR("Received error condition: %s",
@@ -188,7 +202,8 @@ static ssize_t service_expect(struct userdata *u, bt_audio_msg_header_t *rsp,
 	return 0;
 }
 
-static int init_bt(struct userdata *u) {
+static int init_bt(struct userdata *u)
+{
 	assert(u);
 
 	if (u->service_fd != -1)
@@ -205,7 +220,8 @@ static int init_bt(struct userdata *u) {
 	return 0;
 }
 
-static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *rsp) {
+static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *rsp)
+{
 	uint16_t bytes_left;
 	const codec_capabilities_t *codec;
 
@@ -231,12 +247,14 @@ static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *
 
 	if (u->transport == BT_CAPABILITIES_TRANSPORT_SCO) {
 
-		if (bytes_left <= 0 || codec->length != sizeof(u->hsp.pcm_capabilities))
+		if (bytes_left <= 0 ||
+			codec->length != sizeof(u->hsp.pcm_capabilities))
 			return -1;
 
 		assert(codec->type == BT_HFP_CODEC_PCM);
 
-		memcpy(&u->hsp.pcm_capabilities, codec, sizeof(u->hsp.pcm_capabilities));
+		memcpy(&u->hsp.pcm_capabilities,
+			codec, sizeof(u->hsp.pcm_capabilities));
 
 		DBG("Has NREC: %s",
 			YES_NO(u->hsp.pcm_capabilities.flags & BT_PCM_FLAG_NREC));
@@ -252,12 +270,14 @@ static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *
 					((const uint8_t*) codec + codec->length);
 		}
 
-		if (bytes_left <= 0 || codec->length != sizeof(u->a2dp.sbc_capabilities))
+		if (bytes_left <= 0 ||
+			codec->length != sizeof(u->a2dp.sbc_capabilities))
 			return -1;
 
 		assert(codec->type == BT_A2DP_CODEC_SBC);
 
-		memcpy(&u->a2dp.sbc_capabilities, codec, sizeof(u->a2dp.sbc_capabilities));
+		memcpy(&u->a2dp.sbc_capabilities, codec,
+			sizeof(u->a2dp.sbc_capabilities));
 	} else {
 		assert(0);
 	}
@@ -294,8 +314,8 @@ static int get_caps(struct userdata *u)
 	return parse_caps(u, &msg.getcaps_rsp);
 }
 
-static uint8_t a2dp_default_bitpool(uint8_t freq, uint8_t mode) {
-
+static uint8_t a2dp_default_bitpool(uint8_t freq, uint8_t mode)
+{
 	switch (freq) {
 	case BT_SBC_SAMPLING_FREQ_16000:
 	case BT_SBC_SAMPLING_FREQ_32000:
@@ -339,7 +359,8 @@ static uint8_t a2dp_default_bitpool(uint8_t freq, uint8_t mode) {
 	}
 }
 
-static int setup_a2dp(struct userdata *u) {
+static int setup_a2dp(struct userdata *u)
+{
 	sbc_capabilities_t *cap;
 	int i;
 
@@ -361,7 +382,8 @@ static int setup_a2dp(struct userdata *u) {
 	/* Find the lowest freq that is at least as high as the requested
 	 * sampling rate */
 	for (i = 0; (unsigned) i < ARRAY_SIZE(freq_table); i++)
-		if (freq_table[i].rate >= u->rate && (cap->frequency & freq_table[i].cap)) {
+		if (freq_table[i].rate >= u->rate &&
+			(cap->frequency & freq_table[i].cap)) {
 			u->rate = freq_table[i].rate;
 			cap->frequency = freq_table[i].cap;
 			break;
@@ -436,12 +458,15 @@ static int setup_a2dp(struct userdata *u) {
 		cap->allocation_method = BT_A2DP_ALLOCATION_SNR;
 
 	cap->min_bitpool = (uint8_t) MAX(MIN_BITPOOL, cap->min_bitpool);
-	cap->max_bitpool = (uint8_t) MIN(a2dp_default_bitpool(cap->frequency, cap->channel_mode), cap->max_bitpool);
+	cap->max_bitpool = (uint8_t) MIN(
+		a2dp_default_bitpool(cap->frequency, cap->channel_mode),
+		cap->max_bitpool);
 
 	return 0;
 }
 
-static void setup_sbc(struct a2dp_info *a2dp) {
+static void setup_sbc(struct a2dp_info *a2dp)
+{
 	sbc_capabilities_t *active_capabilities;
 
 	assert(a2dp);
@@ -577,9 +602,9 @@ static int set_conf(struct userdata *u)
 	}
 
 	if ((u->transport == BT_CAPABILITIES_TRANSPORT_A2DP &&
-	     msg.setconf_rsp.access_mode != BT_CAPABILITIES_ACCESS_MODE_WRITE) ||
-	    (u->transport == BT_CAPABILITIES_TRANSPORT_SCO &&
-	     msg.setconf_rsp.access_mode != BT_CAPABILITIES_ACCESS_MODE_READWRITE)) {
+		msg.setconf_rsp.access_mode != BT_CAPABILITIES_ACCESS_MODE_WRITE) ||
+		(u->transport == BT_CAPABILITIES_TRANSPORT_SCO &&
+		msg.setconf_rsp.access_mode != BT_CAPABILITIES_ACCESS_MODE_READWRITE)) {
 		ERR("Access mode doesn't match what we requested.");
 		return -1;
 	}
@@ -619,9 +644,7 @@ static int init_profile(struct userdata *u)
 {
 	assert(u);
 
-	setup_bt(u);
-
-	return 0;
+	return setup_bt(u);
 }
 
 static void shutdown_bt(struct userdata *u)
@@ -639,6 +662,216 @@ static void shutdown_bt(struct userdata *u)
 		bt_audio_service_close(u->service_fd);
 		u->service_fd = -1;
 	}
+}
+
+static void make_fd_nonblock(int fd)
+{
+	int v;
+
+	assert(fd >= 0);
+	assert((v = fcntl(fd, F_GETFL)) >= 0);
+
+	if (!(v & O_NONBLOCK))
+		assert(fcntl(fd, F_SETFL, v|O_NONBLOCK) >= 0);
+}
+
+static void make_socket_low_delay(int fd)
+{
+/* FIXME: is this widely supported? */
+#ifdef SO_PRIORITY
+	int priority;
+	assert(fd >= 0);
+
+	priority = 6;
+	if (setsockopt(fd, SOL_SOCKET, SO_PRIORITY, (void*)&priority,
+			sizeof(priority)) < 0)
+		ERR("SO_PRIORITY failed: %s", strerror(errno));
+#endif
+}
+
+static int read_stream(struct userdata *u)
+{
+	int ret = 0;
+	ssize_t l;
+	char *buf;
+
+	assert(u);
+	assert(u->stream_fd >= 0);
+
+	buf = alloca(u->link_mtu);
+
+	for (;;) {
+		l = read(u->stream_fd, buf, u->link_mtu);
+		if (l <= 0) {
+			if (l < 0 && errno == EINTR)
+				continue;
+			else {
+				ERR("Failed to read date from stream_fd: %s",
+					ret < 0 ? strerror(errno) : "EOF");
+				ret = -1;
+			}
+		} else {
+			DBG("read from socket: %lli bytes", (long long) l);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+/* It's what PulseAudio is doing, not sure it's necessary for this
+ * test */
+static ssize_t pa_write(int fd, const void *buf, size_t count)
+{
+	ssize_t r;
+
+	if ((r = send(fd, buf, count, MSG_NOSIGNAL)) >= 0)
+		return r;
+
+	if (errno != ENOTSOCK)
+		return r;
+
+	return write(fd, buf, count);
+}
+
+static int write_stream(struct userdata *u)
+{
+	int ret = 0;
+	ssize_t l;
+	char *buf;
+
+	assert(u);
+	assert(u->stream_fd >= 0);
+	buf = alloca(u->link_mtu);
+
+	for (;;) {
+		l = pa_write(u->stream_fd, buf, u->link_mtu);
+		DBG("written to socket: %lli bytes", (long long) l);
+		assert(l != 0);
+		if (l < 0) {
+			if (errno == EINTR)
+				continue;
+			else {
+				ERR("Failed to write data: %s", strerror(errno));
+				ret = -1;
+				break;
+			}
+		} else {
+			assert((size_t)l <= u->link_mtu);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static gboolean stream_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
+{
+	struct userdata *u;
+
+	assert(u = data);
+
+	if (condition & G_IO_IN) {
+		if (read_stream(u) < 0)
+			goto fail;
+	} else if (condition & G_IO_OUT) {
+		if (write_stream(u) < 0)
+			goto fail;
+	} else {
+		DBG("Got %d", condition);
+		g_main_loop_quit(main_loop);
+		return FALSE;
+	}
+
+	return TRUE;
+
+fail:
+	stop_stream(u);
+	return FALSE;
+}
+
+static int start_stream(struct userdata *u)
+{
+	union {
+		bt_audio_msg_header_t rsp;
+		struct bt_start_stream_req start_req;
+		struct bt_start_stream_rsp start_rsp;
+		struct bt_new_stream_ind streamfd_ind;
+		bt_audio_error_t error;
+		uint8_t buf[BT_SUGGESTED_BUFFER_SIZE];
+	} msg;
+
+	assert(u);
+	assert(u->stream_fd < 0);
+
+	memset(msg.buf, 0, BT_SUGGESTED_BUFFER_SIZE);
+	msg.start_req.h.type = BT_REQUEST;
+	msg.start_req.h.name = BT_START_STREAM;
+	msg.start_req.h.length = sizeof(msg.start_req);
+
+	if (service_send(u, &msg.start_req.h) < 0)
+		return -1;
+
+	if (service_expect(u, &msg.rsp, sizeof(msg),
+				BT_START_STREAM, sizeof(msg.start_rsp)) < 0)
+		return -1;
+
+	if (service_expect(u, &msg.rsp, sizeof(msg),
+				BT_NEW_STREAM, sizeof(msg.streamfd_ind)) < 0)
+		return -1;
+
+	if ((u->stream_fd = bt_audio_service_get_data_fd(u->service_fd)) < 0) {
+		DBG("Failed to get stream fd from audio service.");
+		return -1;
+	}
+
+	make_fd_nonblock(u->stream_fd);
+	make_socket_low_delay(u->stream_fd);
+
+	assert(u->stream_channel = g_io_channel_unix_new(u->stream_fd));
+
+	u->stream_watch = g_io_add_watch(u->stream_channel,
+					G_IO_IN|G_IO_OUT|G_IO_ERR|G_IO_HUP|G_IO_NVAL,
+					stream_cb, u);
+
+	return 0;
+}
+
+static int stop_stream(struct userdata *u)
+{
+	union {
+		bt_audio_msg_header_t rsp;
+		struct bt_stop_stream_req start_req;
+		struct bt_stop_stream_rsp start_rsp;
+		bt_audio_error_t error;
+		uint8_t buf[BT_SUGGESTED_BUFFER_SIZE];
+	} msg;
+	int r = 0;
+
+	if (u->stream_fd < 0)
+		return 0;
+
+	assert(u);
+	assert(u->stream_channel);
+
+	g_source_remove(u->stream_watch);
+	g_io_channel_unref(u->stream_channel);
+	u->stream_channel = NULL;
+
+	memset(msg.buf, 0, BT_SUGGESTED_BUFFER_SIZE);
+	msg.start_req.h.type = BT_REQUEST;
+	msg.start_req.h.name = BT_STOP_STREAM;
+	msg.start_req.h.length = sizeof(msg.start_req);
+
+	if (service_send(u, &msg.start_req.h) < 0 ||
+		service_expect(u, &msg.rsp, sizeof(msg), BT_STOP_STREAM,
+				sizeof(msg.start_rsp)) < 0)
+		r = -1;
+
+	close(u->stream_fd);
+	u->stream_fd = -1;
+
+	return r;
 }
 
 static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
@@ -678,6 +911,14 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 
 	IF_CMD(init_profile) {
 		DBG("%d", init_profile(u));
+	}
+
+	IF_CMD(start_stream) {
+		DBG("%d", start_stream(u));
+	}
+
+	IF_CMD(stop_stream) {
+		DBG("%d", stop_stream(u));
 	}
 
 	IF_CMD(shutdown_bt) {
@@ -742,6 +983,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	assert(main_loop = g_main_loop_new(NULL, FALSE));
+
 	if (strncmp("--interactive", argv[1], 14) == 0) {
 		if (argc < 3) {
 			show_usage(argv[0]);
@@ -753,26 +996,32 @@ int main(int argc, char *argv[])
 		signal(SIGTERM, sig_term);
 		signal(SIGINT, sig_term);
 
-		assert(main_loop = g_main_loop_new(NULL, FALSE));
 		assert(gin = g_io_channel_unix_new(fileno(stdin)));
 
 		g_io_add_watch(gin, G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL, input_cb, &data);
 
 		printf(">>> ");
 		fflush(stdout);
-		g_main_loop_run(main_loop);
 
-		g_main_loop_unref(main_loop);
+		g_main_loop_run(main_loop);
 
 	} else {
 		data.address = argv[1];
 
 		assert(init_bt(&data) == 0);
 
-		init_profile(&data);
+		assert(init_profile(&data) == 0);
+
+		assert(start_stream(&data) == 0);
+
+		g_main_loop_run(main_loop);
+
+		assert(stop_stream(&data) == 0);
 
 		shutdown_bt(&data);
 	}
+
+	g_main_loop_unref(main_loop);
 
 	printf("\nExiting\n");
 
