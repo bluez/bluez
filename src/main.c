@@ -732,6 +732,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	memset(&addr, 0, sizeof(addr));
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = HCI_DEV_NONE;
 	if (bind(main_opts.sock, (struct sockaddr *) &addr,
