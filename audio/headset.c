@@ -1297,7 +1297,7 @@ void headset_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	return;
 
 failed:
-	if (p->msg)
+	if (p && p->msg)
 		error_connection_attempt_failed(dev->conn, p->msg, p->err);
 	pending_connect_finalize(dev);
 	if (hs->rfcomm)
