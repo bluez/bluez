@@ -148,10 +148,8 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 
 	conn->connect(io, gerr, conn->user_data);
 
-	if (gerr) {
-		g_io_channel_shutdown(io, FALSE, NULL);
+	if (gerr)
 		g_error_free(gerr);
-	}
 
 	return FALSE;
 }
@@ -176,6 +174,9 @@ static gboolean server_cb(GIOChannel *io, GIOCondition cond,
 	}
 
 	cli_io = g_io_channel_unix_new(cli_sock);
+
+	g_io_channel_set_close_on_unref(cli_io, TRUE);
+	g_io_channel_set_flags(cli_io, G_IO_FLAG_NONBLOCK, NULL);
 
 	if (server->confirm)
 		server->confirm(cli_io, server->user_data);
@@ -1138,6 +1139,7 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 
 	io = g_io_channel_unix_new(sock);
 
+	g_io_channel_set_close_on_unref(io, TRUE);
 	g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK, NULL);
 
 	return io;
