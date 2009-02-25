@@ -484,7 +484,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 	set_hfp_active(device, hfp_active);
 
 	if (headset_connect_rfcomm(device, chan) < 0) {
-		error("Allocating new GIOChannel failed!");
+		error("headset_connect_rfcomm failed");
 		goto drop;
 	}
 

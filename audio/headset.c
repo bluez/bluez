@@ -2310,9 +2310,12 @@ int headset_connect_rfcomm(struct audio_device *dev, GIOChannel *io)
 {
 	struct headset *hs = dev->headset;
 
+	if (hs->tmp_rfcomm)
+		return -EALREADY;
+
 	hs->tmp_rfcomm = g_io_channel_ref(io);
 
-	return hs->tmp_rfcomm ? 0 : -EINVAL;
+	return 0;
 }
 
 int headset_connect_sco(struct audio_device *dev, GIOChannel *io)
