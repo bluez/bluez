@@ -95,7 +95,7 @@ struct userdata {
 	int transport;
 	uint32_t rate;
 	int channels;
-	const char *address;
+	char *address;
 	struct a2dp_info a2dp;
 	struct hsp_info hsp;
 	size_t link_mtu;
@@ -905,6 +905,14 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 		return FALSE;
 	}
 
+	IF_CMD(sleep) {
+		unsigned int seconds;
+		if (sscanf(line, "%*s %d", &seconds) != 1)
+			DBG("sleep SECONDS");
+		else
+			sleep(seconds);
+	}
+
 	IF_CMD(init_bt) {
 		DBG("%d", init_bt(u));
 	}
@@ -932,15 +940,17 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 	}
 
 	IF_CMD(btaddr) {
-		if (sscanf(line, "%*s %s", (char*)&u->address) != 1)
+		if (u->address)
+			free(u->address);
+		if (sscanf(line, "%*s %as", &u->address) != 1)
 			DBG("set with btaddr BTADDR");
 		DBG("btaddr %s", u->address);
 	}
 
 	IF_CMD(profile) {
-		char *profile;
+		char *profile = NULL;
 
-		if (sscanf(line, "%*s %s", profile) != 1)
+		if (sscanf(line, "%*s %as", &profile) != 1)
 			DBG("set with profile [hsp|a2dp]");
 		if (strncmp(profile, "hsp", 4) == 0) {
 			u->transport = BT_CAPABILITIES_TRANSPORT_SCO;
@@ -950,6 +960,8 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 			DBG("set with profile [hsp|a2dp]");
 		}
 
+		if (profile)
+			free(profile);
 		DBG("profile %s", u->transport == BT_CAPABILITIES_TRANSPORT_SCO ?
 			"hsp" : "a2dp");
 	}
@@ -991,7 +1003,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		data.address = argv[2];
+		data.address = strdup(argv[2]);
 
 		signal(SIGTERM, sig_term);
 		signal(SIGINT, sig_term);
@@ -1006,7 +1018,7 @@ int main(int argc, char *argv[])
 		g_main_loop_run(main_loop);
 
 	} else {
-		data.address = argv[1];
+		data.address = strdup(argv[1]);
 
 		assert(init_bt(&data) == 0);
 
