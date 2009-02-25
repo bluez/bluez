@@ -689,7 +689,6 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	struct audio_device *dev;
 	char address[18];
 	bdaddr_t src, dst;
-	int perr;
 	GError *err = NULL;
 
 	bt_io_get(chan, BT_IO_L2CAP, &err,
@@ -736,24 +735,19 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	session->state = AVCTP_STATE_CONNECTING;
 	session->io = g_io_channel_ref(chan);
 
-	if (avdtp_is_connected(&src, &dst))
-		goto proceed;
-
-	perr = btd_request_authorization(&src, &dst, AVRCP_TARGET_UUID,
-				auth_cb, dev->control);
-	if (perr < 0)
-		goto drop;
-
-	return;
-
-proceed:
-	if (!bt_io_accept(chan, avctp_connect_cb, dev->control, NULL, NULL))
+	if (avdtp_is_connected(&src, &dst)) {
+		if (!bt_io_accept(chan, avctp_connect_cb, dev->control,
+								NULL, NULL))
+			goto drop;
+	} else if (btd_request_authorization(&src, &dst,
+				AVRCP_TARGET_UUID, auth_cb, dev->control) < 0)
 		goto drop;
 
 	return;
 
 drop:
-	g_io_channel_shutdown(chan, TRUE, NULL);
+	if (!session->io)
+		g_io_channel_shutdown(chan, TRUE, NULL);
 	avctp_unref(session);
 }
 
