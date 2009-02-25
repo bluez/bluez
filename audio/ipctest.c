@@ -4,8 +4,8 @@
  *
  *  Copyright (C) 2006-2009  Nokia Corporation
  *  Copyright (C) 2004-2009  Marcel Holtmann <marcel@holtmann.org>
- *  Copyright (C) 2009  Lennart Poettering
- *  Copyright (C) 2008  Joao Paulo Rechi Vita
+ *  Copyright (C) 2009	Lennart Poettering
+ *  Copyright (C) 2008	Joao Paulo Rechi Vita
  *
  *
  *  This library is free software; you can redistribute it and/or
@@ -92,6 +92,8 @@ struct userdata {
 	int stream_fd;
 	GIOChannel *stream_channel;
 	guint stream_watch;
+	GIOChannel *gin; /* dude, I am thirsty now */
+	guint gin_watch;
 	int transport;
 	uint32_t rate;
 	int channels;
@@ -113,6 +115,7 @@ static struct userdata data = {
 
 static int start_stream(struct userdata *u);
 static int stop_stream(struct userdata *u);
+static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data);
 
 static GMainLoop *main_loop;
 
@@ -874,6 +877,21 @@ static int stop_stream(struct userdata *u)
 	return r;
 }
 
+static gboolean sleep_cb(gpointer data)
+{
+	struct userdata *u;
+
+	assert(u = data);
+
+	u->gin_watch = g_io_add_watch(u->gin,
+		G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL, input_cb, data);
+
+	printf(">>> ");
+	fflush(stdout);
+
+	return FALSE;
+}
+
 static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 {
 	char* line;
@@ -909,8 +927,11 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 		unsigned int seconds;
 		if (sscanf(line, "%*s %d", &seconds) != 1)
 			DBG("sleep SECONDS");
-		else
-			sleep(seconds);
+		else {
+			g_source_remove(u->gin_watch);
+			g_timeout_add_seconds(seconds, sleep_cb, u);
+			return FALSE;
+		}
 	}
 
 	IF_CMD(init_bt) {
@@ -988,8 +1009,6 @@ static void sig_term(int sig)
 
 int main(int argc, char *argv[])
 {
-	GIOChannel *gin; /* dude, I am thirsty now */
-
 	if (argc < 2) {
 		show_usage(argv[0]);
 		exit(EXIT_FAILURE);
@@ -1008,9 +1027,10 @@ int main(int argc, char *argv[])
 		signal(SIGTERM, sig_term);
 		signal(SIGINT, sig_term);
 
-		assert(gin = g_io_channel_unix_new(fileno(stdin)));
+		assert(data.gin = g_io_channel_unix_new(fileno(stdin)));
 
-		g_io_add_watch(gin, G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL, input_cb, &data);
+		data.gin_watch = g_io_add_watch(data.gin,
+			G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL, input_cb, &data);
 
 		printf(">>> ");
 		fflush(stdout);
