@@ -67,6 +67,7 @@ struct a2dp_data {
 
 struct headset_data {
 	headset_lock_t lock;
+	gboolean locked;
 };
 
 struct unix_client {
@@ -314,7 +315,9 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	if (!dev)
 		goto failed;
 
-	if (!headset_lock(dev, hs->lock)) {
+	if (!hs->locked)
+		hs->locked = headset_lock(dev, hs->lock);
+	if (!hs->locked) {
 		error("Unable to lock headset");
 		goto failed;
 	}
@@ -323,6 +326,7 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	if (client->data_fd < 0) {
 		error("Unable to get a SCO fd");
 		headset_unlock(dev, hs->lock);
+		hs->locked = FALSE;
 		goto failed;
 	}
 
@@ -343,6 +347,7 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	if (unix_sendmsg_fd(client->sock, client->data_fd) < 0) {
 		error("unix_sendmsg_fd: %s(%d)", strerror(errno), errno);
 		headset_unlock(client->dev, hs->lock);
+		hs->locked = FALSE;
 		goto failed;
 	}
 
@@ -1107,8 +1112,10 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		debug("Unix client disconnected (fd=%d)", client->sock);
 		switch (client->type) {
 		case TYPE_HEADSET:
-			if (client->dev)
+			if (client->dev && hs->locked) {
 				headset_unlock(client->dev, hs->lock);
+				hs->locked = FALSE;
+			}
 			break;
 		case TYPE_SOURCE:
 		case TYPE_SINK:
