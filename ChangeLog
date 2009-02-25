@@ -1,3 +1,12 @@
+ver 4.31:
+	Add support for new BtIO helper library.
+	Fix AVDTP session close issue.
+	Fix SDP memory leaks.
+	Fix various uninitialized memory issues.
+	Fix duplicate signal emissions.
+	Fix property changes request handling.
+	Fix class of device storage handling.
+
 ver 4.30:
 	Add CID field to L2CAP socket address structure.
 	Fix reset of authentication requirements after bonding.
