@@ -655,6 +655,7 @@ static void shutdown_bt(struct userdata *u)
 	assert(u);
 
 	if (u->stream_fd != -1) {
+		stop_stream(u);
 		DBG("close(stream_fd)");
 		close(u->stream_fd);
 		u->stream_fd = -1;
@@ -858,6 +859,7 @@ static int stop_stream(struct userdata *u)
 	assert(u->stream_channel);
 
 	g_source_remove(u->stream_watch);
+	u->stream_watch = 0;
 	g_io_channel_unref(u->stream_channel);
 	u->stream_channel = NULL;
 

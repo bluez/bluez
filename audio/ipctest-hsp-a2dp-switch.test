@@ -9,6 +9,9 @@ start_stream
 sleep 2
 stop_stream
 
+shutdown_bt
+init_bt
+
 profile hsp
 init_profile
 start_stream
@@ -17,6 +20,9 @@ stop_stream
 start_stream
 sleep 2
 stop_stream
+
+shutdown_bt
+init_bt
 
 profile a2dp
 init_profile
@@ -27,6 +33,9 @@ start_stream
 sleep 2
 stop_stream
 
+shutdown_bt
+init_bt
+
 profile hsp
 init_profile
 start_stream
@@ -35,5 +44,7 @@ stop_stream
 start_stream
 sleep 2
 stop_stream
+
+shutdown_bt
 
 quit
