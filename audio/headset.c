@@ -523,10 +523,11 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	if (err) {
 		error("%s", err->message);
 
-		if (p->msg)
+		if (p && p->msg)
 			error_connection_attempt_failed(dev->conn, p->msg, p->err);
 
 		pending_connect_finalize(dev);
+
 		if (hs->rfcomm)
 			headset_set_state(dev, HEADSET_STATE_CONNECTED);
 		else
@@ -541,14 +542,17 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	debug("SCO fd=%d", sk);
 	hs->sco = g_io_channel_ref(chan);
-	p->io = NULL;
 
-	if (p->msg) {
-		DBusMessage *reply = dbus_message_new_method_return(p->msg);
-		g_dbus_send_message(dev->conn, reply);
+	if (p) {
+		p->io = NULL;
+		if (p->msg) {
+			DBusMessage *reply;
+			reply = dbus_message_new_method_return(p->msg);
+			g_dbus_send_message(dev->conn, reply);
+		}
+
+		pending_connect_finalize(dev);
 	}
-
-	pending_connect_finalize(dev);
 
 	fcntl(sk, F_SETFL, 0);
 
