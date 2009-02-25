@@ -169,7 +169,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	bnep_if_down(nc->dev);
 	nc->state = DISCONNECTED;
 	memset(nc->dev, 0, 16);
-	strncpy(nc->dev, prefix, strlen(prefix));
+	strncpy(nc->dev, prefix, sizeof(nc->dev) - 1);
 	g_io_channel_shutdown(chan, TRUE, NULL);
 
 	return FALSE;
@@ -625,7 +625,7 @@ int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 	nc = g_new0(struct network_conn, 1);
 	nc->id = id;
 	memset(nc->dev, 0, 16);
-	strncpy(nc->dev, prefix, strlen(prefix));
+	strncpy(nc->dev, prefix, sizeof(nc->dev) - 1);
 	nc->state = DISCONNECTED;
 	nc->peer = peer;
 

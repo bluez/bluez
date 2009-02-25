@@ -1314,7 +1314,8 @@ int main(int argc, char *argv[])
 	vdev.features[7] = 0x80;
 
 	memset(vdev.name, 0, sizeof(vdev.name));
-	strncpy((char *) vdev.name, "BlueZ (Virtual HCI)", sizeof(vdev.name));
+	strncpy((char *) vdev.name, "BlueZ (Virtual HCI)",
+							sizeof(vdev.name) - 1);
 
 	vdev.dev_class[0] = 0x00;
 	vdev.dev_class[1] = 0x00;

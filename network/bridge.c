@@ -120,7 +120,7 @@ int bridge_add_interface(int id, const char *dev)
 		return -ENODEV;
 
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, name, IFNAMSIZ);
+	strncpy(ifr.ifr_name, name, IFNAMSIZ - 1);
 	ifr.ifr_ifindex = ifindex;
 
 	err = ioctl(bridge_socket, SIOCBRADDIF, &ifr);

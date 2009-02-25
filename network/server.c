@@ -283,7 +283,7 @@ static int server_connadd(struct network_server *ns,
 		return -EPERM;
 
 	memset(devname, 0, 16);
-	strncpy(devname, prefix, strlen(prefix));
+	strncpy(devname, prefix, sizeof(devname) - 1);
 
 	nsk = g_io_channel_unix_get_fd(session->io);
 	err = bnep_connadd(nsk, dst_role, devname);

@@ -259,11 +259,11 @@ int get_sdp_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp_co
 			strncat(req->name, pdlist->val.str,
 					sizeof(req->name) - strlen(req->name));
 		} else
-			strncpy(req->name, pdlist->val.str, sizeof(req->name));
+			strncpy(req->name, pdlist->val.str, sizeof(req->name) - 1);
 	} else {
 		pdlist2 = sdp_data_get(rec, 0x0100);
 		if (pdlist2)
-			strncpy(req->name, pdlist2->val.str, sizeof(req->name));
+			strncpy(req->name, pdlist2->val.str, sizeof(req->name) - 1);
 	}
 
 	pdlist = sdp_data_get(rec, 0x0201);

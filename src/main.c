@@ -189,7 +189,8 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	} else {
 		debug("deviceid=%s", str);
-		strncpy(main_opts.deviceid, str, sizeof(main_opts.deviceid));
+		strncpy(main_opts.deviceid, str,
+					sizeof(main_opts.deviceid) - 1);
 		g_free(str);
 	}
 
