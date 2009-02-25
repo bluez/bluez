@@ -136,36 +136,3 @@ done:
 	return err;
 }
 
-int read_device_name(bdaddr_t *src, bdaddr_t *dst, char **name)
-{
-	char filename[PATH_MAX + 1], *str;
-	char src_addr[18], dst_addr[18];
-	int len;
-
-	ba2str(src, src_addr);
-	ba2str(dst, dst_addr);
-
-	create_name(filename, PATH_MAX, STORAGEDIR, src_addr, "names");
-
-	str = textfile_get(filename, dst_addr);
-	if (!str)
-		return -ENOENT;
-
-	len = strlen(str);
-
-	/* Max remote device name */
-	if (len < 248) {
-		*name = str;
-		return 0;
-	}
-
-	*name = g_try_malloc0(248);
-	if (!*name)
-		return -ENOMEM;
-
-	snprintf(*name, 248, "%s", str);
-
-	free(str);
-
-	return 0;
-}
