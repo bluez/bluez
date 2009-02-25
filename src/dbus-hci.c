@@ -534,7 +534,6 @@ static int found_device_req_name(struct btd_adapter *adapter)
 void hcid_dbus_inquiry_complete(bdaddr_t *local)
 {
 	struct btd_adapter *adapter;
-	const gchar *path;
 	int state;
 
 	adapter = manager_find_adapter(local);
@@ -542,8 +541,6 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 		error("Unable to find matching adapter");
 		return;
 	}
-
-	path = adapter_get_path(adapter);
 
 	/*
 	 * The following scenarios can happen:
