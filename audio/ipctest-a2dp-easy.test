@@ -1,0 +1,8 @@
+profile a2dp
+init_bt
+init_profile
+start_stream
+sleep 2
+stop_stream
+quit
+
