@@ -2278,10 +2278,11 @@ unsigned int headset_suspend_stream(struct audio_device *dev,
 		hs->dc_timer = 0;
 	}
 
-	close_sco(dev);
+	headset_set_state(dev, HEADSET_STATE_CONNECTED);
 
 	id = connect_cb_new(hs, HEADSET_STATE_CONNECTED, cb, user_data);
 	g_idle_add((GSourceFunc) dummy_connect_complete, dev);
+
 	return id;
 }
 
