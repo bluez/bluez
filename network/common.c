@@ -262,7 +262,7 @@ int bnep_if_up(const char *devname, uint16_t id)
 
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
 	memset(&ifr, 0, sizeof(ifr));
-	strcpy(ifr.ifr_name, devname);
+	strncpy(ifr.ifr_name, devname, IF_NAMESIZE);
 
 	ifr.ifr_flags |= IFF_UP;
 	ifr.ifr_flags |= IFF_MULTICAST;
@@ -352,7 +352,7 @@ int bnep_if_down(const char *devname)
 done:
 	sd = socket(AF_INET6, SOCK_DGRAM, 0);
 	memset(&ifr, 0, sizeof(ifr));
-	strcpy(ifr.ifr_name, devname);
+	strncpy(ifr.ifr_name, devname, IF_NAMESIZE);
 
 	ifr.ifr_flags &= ~IFF_UP;
 
