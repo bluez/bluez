@@ -102,6 +102,8 @@ struct userdata {
 	struct hsp_info hsp;
 	size_t link_mtu;
 	size_t block_size;
+	gboolean debug_stream_read : 1;
+	gboolean debug_stream_write : 1;
 };
 
 static struct userdata data = {
@@ -706,6 +708,8 @@ static int read_stream(struct userdata *u)
 
 	for (;;) {
 		l = read(u->stream_fd, buf, u->link_mtu);
+		if (u->debug_stream_read)
+			DBG("read from socket: %lli bytes", (long long) l);
 		if (l <= 0) {
 			if (l < 0 && errno == EINTR)
 				continue;
@@ -715,7 +719,6 @@ static int read_stream(struct userdata *u)
 				ret = -1;
 			}
 		} else {
-			DBG("read from socket: %lli bytes", (long long) l);
 			break;
 		}
 	}
@@ -750,7 +753,8 @@ static int write_stream(struct userdata *u)
 
 	for (;;) {
 		l = pa_write(u->stream_fd, buf, u->link_mtu);
-		DBG("written to socket: %lli bytes", (long long) l);
+		if (u->debug_stream_write)
+			DBG("written to socket: %lli bytes", (long long) l);
 		assert(l != 0);
 		if (l < 0) {
 			if (errno == EINTR)
@@ -896,7 +900,7 @@ static gboolean sleep_cb(gpointer data)
 
 static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 {
-	char* line;
+	char *line, *tmp;
 	gsize term_pos;
 	GError *error = NULL;
 	struct userdata *u;
@@ -915,6 +919,8 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 
 	line[term_pos] = '\0';
 	g_strstrip(line);
+	if ((tmp = strchr(line, '#')))
+		*tmp = '\0';
 	success = FALSE;
 
 #define IF_CMD(cmd) \
@@ -933,6 +939,21 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 			g_source_remove(u->gin_watch);
 			g_timeout_add_seconds(seconds, sleep_cb, u);
 			return FALSE;
+		}
+	}
+
+	IF_CMD(debug) {
+		char *what = NULL;
+		int enable;
+
+		if (sscanf(line, "%*s %as %d", &what, &enable) != 1)
+			DBG("debug [stream_read|stream_write] [0|1]");
+		if (strncmp(what, "stream_read", 12) == 0) {
+			u->debug_stream_read = enable;
+		} else if (strncmp(what, "stream_write", 13) == 0) {
+			u->debug_stream_write = enable;
+		} else {
+			DBG("debug [stream_read|stream_write] [0|1]");
 		}
 	}
 
