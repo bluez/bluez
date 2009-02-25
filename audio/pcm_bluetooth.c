@@ -1672,7 +1672,8 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 	return 0;
 
 failed:
-	bt_audio_service_close(sk);
+	if (sk >= 0)
+		bt_audio_service_close(sk);
 	return err;
 }
 
