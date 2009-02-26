@@ -792,6 +792,37 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 					(GIOFunc) transport_cb, stream);
 }
 
+static int pending_req_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct pending_req *req = a;
+	const struct avdtp_stream *stream = b;
+
+	if (req->stream == stream)
+		return 0;
+
+	return -1;
+}
+
+static void cleanup_queue(struct avdtp *session, struct avdtp_stream *stream)
+{
+	GSList *l;
+	struct pending_req *req;
+
+	while ((l = g_slist_find_custom(session->prio_queue, stream,
+							pending_req_cmp))) {
+		req = l->data;
+		pending_req_free(req);
+		session->prio_queue = g_slist_remove(session->prio_queue, req);
+	}
+
+	while ((l = g_slist_find_custom(session->req_queue, stream,
+							pending_req_cmp))) {
+		req = l->data;
+		pending_req_free(req);
+		session->req_queue = g_slist_remove(session->req_queue, req);
+	}
+}
+
 static void avdtp_sep_set_state(struct avdtp *session,
 				struct avdtp_local_sep *sep,
 				avdtp_state_t state)
@@ -848,6 +879,8 @@ static void avdtp_sep_set_state(struct avdtp *session,
 			handle_transport_connect(session, NULL, 0, 0);
 		if (session->req && session->req->stream == stream)
 			session->req->stream = NULL;
+		/* Remove pending commands for this stream from the queue */
+		cleanup_queue(session, stream);
 		stream_free(stream);
 		if (session->ref == 1 && !session->streams)
 			set_disconnect_timer(session);
