@@ -124,7 +124,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 
 		if (bufsize < (int) sizeof(uint8_t)) {
 			SDPDBG("->Unexpected end of buffer");
-			return -1;
+			goto failed;
 		}
 
 		if (dataType == SDP_TYPE_ANY)
@@ -137,11 +137,11 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		if (expectedType == SDP_TYPE_UUID) {
 			if (dataType != SDP_UUID16 && dataType != SDP_UUID32 && dataType != SDP_UUID128) {
 				SDPDBG("->Unexpected Data type (expected UUID_ANY)");
-				return -1;
+				goto failed;
 			}
 		} else if (expectedType != SDP_TYPE_ANY && dataType != expectedType) {
 			SDPDBG("->Unexpected Data type (expected 0x%02x)", expectedType);
-			return -1;
+			goto failed;
 		}
 
 		switch (dataType) {
@@ -151,7 +151,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			bufsize -= sizeof(uint8_t);
 			if (bufsize < (int) sizeof(uint16_t)) {
 				SDPDBG("->Unexpected end of buffer");
-				return -1;
+				goto failed;
 			}
 
 			pElem = malloc(sizeof(uint16_t));
@@ -166,7 +166,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			bufsize -= sizeof(uint8_t);
 			if (bufsize < (int)sizeof(uint32_t)) {
 				SDPDBG("->Unexpected end of buffer");
-				return -1;
+				goto failed;
 			}
 
 			pElem = malloc(sizeof(uint32_t));
@@ -182,7 +182,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			status = sdp_uuid_extract(p, bufsize, (uuid_t *) pElem, &localSeqLength);
 			if (status < 0) {
 				free(pElem);
-				return -1;
+				goto failed;
 			}
 			seqlen += localSeqLength;
 			p += localSeqLength;
@@ -199,7 +199,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			if (seqlen == data_size)
 				break;
 			else if (seqlen > data_size || seqlen > len)
-				return -1;
+				goto failed;
 		} else
 			free(pElem);
 	}
@@ -207,6 +207,10 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 	scanned += seqlen;
 	*pDataType = dataType;
 	return scanned;
+
+failed:
+	sdp_list_free(pSeq, free);
+	return -1;
 }
 
 static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
