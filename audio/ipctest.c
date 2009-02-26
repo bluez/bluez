@@ -810,7 +810,17 @@ static int start_stream(struct userdata *u)
 	} msg;
 
 	assert(u);
-	assert(u->stream_fd < 0);
+
+	if (u->stream_fd >= 0)
+		return 0;
+	if (u->stream_watch != 0) {
+		g_source_remove(u->stream_watch);
+		u->stream_watch = 0;
+	}
+	if (u->stream_channel != 0) {
+		g_io_channel_unref(u->stream_channel);
+		u->stream_channel = NULL;
+	}
 
 	memset(msg.buf, 0, BT_SUGGESTED_BUFFER_SIZE);
 	msg.start_req.h.type = BT_REQUEST;
