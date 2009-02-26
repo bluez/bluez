@@ -2448,7 +2448,7 @@ static gboolean stream_rej_to_err(struct stream_rej *rej, unsigned int size,
 					struct avdtp_error *err,
 					uint8_t *acp_seid)
 {
-	if (size < sizeof(struct conf_rej)) {
+	if (size < sizeof(struct stream_rej)) {
 		error("Too small packet for stream_rej");
 		return FALSE;
 	}
