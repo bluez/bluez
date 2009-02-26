@@ -523,6 +523,10 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 		goto failed;
 	}
 
+	if (client->cb_id > 0)
+		avdtp_stream_remove_cb(a2dp->session, a2dp->stream,
+								client->cb_id);
+
 	a2dp->sep = sep;
 	a2dp->stream = stream;
 
