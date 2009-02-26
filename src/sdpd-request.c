@@ -227,28 +227,39 @@ static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
 	return length;
 }
 
-static sdp_cont_state_t *sdp_cstate_get(uint8_t *buffer)
+static int sdp_cstate_get(uint8_t *buffer, size_t len,
+						sdp_cont_state_t **cstate)
 {
-	uint8_t *pdata = buffer;
-	uint8_t cStateSize = *(uint8_t *)pdata;
+	uint8_t cStateSize = *buffer;
+
+	SDPDBG("Continuation State size : %d", cStateSize);
+
+	if (cStateSize == 0) {
+		*cstate = NULL;
+		return 0;
+	}
+
+	buffer++;
+	len--;
+
+	if (len < sizeof(sdp_cont_state_t))
+		return -EINVAL;
 
 	/*
 	 * Check if continuation state exists, if yes attempt
 	 * to get response remainder from cache, else send error
 	 */
-	SDPDBG("Continuation State size : %d", cStateSize);
 
-	pdata += sizeof(uint8_t);
-	if (cStateSize != 0) {
-		sdp_cont_state_t *cstate = malloc(sizeof(sdp_cont_state_t));
-		if (!cstate)
-			return NULL;
-		memcpy(cstate, (sdp_cont_state_t *)pdata, sizeof(sdp_cont_state_t));
-		SDPDBG("Cstate TS : 0x%x", cstate->timestamp);
-		SDPDBG("Bytes sent : %d", cstate->cStateValue.maxBytesSent);
-		return cstate;
-	}
-	return NULL;
+	*cstate = malloc(sizeof(sdp_cont_state_t));
+	if (!(*cstate))
+		return -ENOMEM;
+
+	memcpy(*cstate, buffer, sizeof(sdp_cont_state_t));
+
+	SDPDBG("Cstate TS : 0x%x", (*cstate)->timestamp);
+	SDPDBG("Bytes sent : %d", (*cstate)->cStateValue.maxBytesSent);
+
+	return 0;
 }
 
 /*
@@ -307,15 +318,16 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 	uint32_t cStateId = 0;
 	short *pTotalRecordCount, *pCurrentRecordCount;
 	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
+	size_t data_left = req->len - sizeof(sdp_pdu_hdr_t);
 
-	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
-					&pattern, &dtd, SDP_TYPE_UUID);
+	scanned = extract_des(pdata, data_left, &pattern, &dtd, SDP_TYPE_UUID);
 
 	if (scanned == -1) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
 	}
 	pdata += scanned;
+	data_left -= scanned;
 
 	plen = ntohs(((sdp_pdu_hdr_t *)(req->buf))->plen);
 	mlen = scanned + sizeof(uint16_t) + 1;
@@ -325,18 +337,27 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 		goto done;
 	}
 
+	if (data_left < sizeof(uint16_t)) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
+
 	expected = ntohs(bt_get_unaligned((uint16_t *)pdata));
-	
+
 	SDPDBG("Expected count: %d", expected);
 	SDPDBG("Bytes scanned : %d", scanned);
 
 	pdata += sizeof(uint16_t);
+	data_left -= sizeof(uint16_t);
 
 	/*
 	 * Check if continuation state exists, if yes attempt
 	 * to get rsp remainder from cache, else send error
 	 */
-	cstate = sdp_cstate_get(pdata);
+	if (sdp_cstate_get(pdata, data_left, &cstate) < 0) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
 
 	mtu = req->mtu - sizeof(sdp_pdu_hdr_t) - sizeof(uint16_t) - sizeof(uint16_t) - SDP_CONT_STATE_SIZE;
 	actual = MIN(expected, mtu >> 2);
@@ -566,20 +587,42 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	unsigned int max_rsp_size;
 	int status = 0, plen, mlen;
 	uint8_t *pdata = req->buf + sizeof(sdp_pdu_hdr_t);
-	uint32_t handle = ntohl(bt_get_unaligned((uint32_t *)pdata));
+	size_t data_left = req->len - sizeof(sdp_pdu_hdr_t);
+	uint32_t handle;
+
+	if (data_left < sizeof(uint32_t)) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
+
+	handle = ntohl(bt_get_unaligned((uint32_t *)pdata));
 
 	pdata += sizeof(uint32_t);
+	data_left -= sizeof(uint32_t);
+
+	if (data_left < sizeof(uint16_t)) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
+
 	max_rsp_size = ntohs(bt_get_unaligned((uint16_t *)pdata));
+
 	pdata += sizeof(uint16_t);
+	data_left -= sizeof(uint16_t);
+
+	if (data_left < sizeof(sdp_pdu_hdr_t)) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
 
 	/* extract the attribute list */
-	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
-						&seq, &dtd, SDP_TYPE_ANY);
+	scanned = extract_des(pdata, data_left, &seq, &dtd, SDP_TYPE_ANY);
 	if (scanned == -1) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
 	}
 	pdata += scanned;
+	data_left -= scanned;
 
 	plen = ntohs(((sdp_pdu_hdr_t *)(req->buf))->plen);
 	mlen = scanned + sizeof(uint32_t) + sizeof(uint16_t) + 1;
@@ -593,7 +636,10 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	 * if continuation state exists, attempt
 	 * to get rsp remainder from cache, else send error
 	 */
-	cstate = sdp_cstate_get(pdata);
+	if (sdp_cstate_get(pdata, data_left, &cstate) < 0) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
 
 	SDPDBG("SvcRecHandle : 0x%x", handle);
 	SDPDBG("max_rsp_size : %d", max_rsp_size);
@@ -686,11 +732,12 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	short cstate_size = 0;
 	uint8_t dtd = 0;
 	sdp_buf_t tmpbuf;
+	size_t data_left = req->len;
 
 	tmpbuf.data = NULL;
 	pdata = req->buf + sizeof(sdp_pdu_hdr_t);
-	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
-					&pattern, &dtd, SDP_TYPE_UUID);
+	data_left = req->len - sizeof(sdp_pdu_hdr_t);
+	scanned = extract_des(pdata, data_left, &pattern, &dtd, SDP_TYPE_UUID);
 	if (scanned == -1) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
@@ -700,19 +747,35 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	SDPDBG("Bytes scanned: %d", scanned);
 
 	pdata += scanned;
+	data_left -= scanned;
+
+	if (data_left < sizeof(uint16_t)) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
+
 	max = ntohs(bt_get_unaligned((uint16_t *)pdata));
+
 	pdata += sizeof(uint16_t);
+	data_left -= sizeof(uint16_t);
 
 	SDPDBG("Max Attr expected: %d", max);
 
+	if (data_left < sizeof(sdp_pdu_hdr_t)) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
+
 	/* extract the attribute list */
-	scanned = extract_des(pdata, req->len - sizeof(sdp_pdu_hdr_t),
-						&seq, &dtd, SDP_TYPE_ANY);
+	scanned = extract_des(pdata, data_left, &seq, &dtd, SDP_TYPE_ANY);
 	if (scanned == -1) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
 	}
+
 	pdata += scanned;
+	data_left -= scanned;
+
 	totscanned += scanned + sizeof(uint16_t) + 1;
 
 	plen = ntohs(((sdp_pdu_hdr_t *)(req->buf))->plen);
@@ -725,7 +788,10 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	 * if continuation state exists attempt
 	 * to get rsp remainder from cache, else send error
 	 */
-	cstate = sdp_cstate_get(pdata);	// continuation information
+	if (sdp_cstate_get(pdata, data_left, &cstate) < 0) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
 
 	svcList = sdp_get_record_list();
 
