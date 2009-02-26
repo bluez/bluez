@@ -101,7 +101,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 	short numberOfElements = 0;
 	int seqlen = 0;
 	sdp_list_t *pSeq = NULL;
-	uint8_t dataType;
+	uint8_t dataType = expectedType;
 	int status = 0;
 	const uint8_t *p;
 	int bufsize;
@@ -127,7 +127,11 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			return -1;
 		}
 
-		dataType = *(uint8_t *)p;
+		if (dataType == SDP_TYPE_ANY)
+			expectedType = *p;
+
+		dataType = *p;
+
 		SDPDBG("Data type: 0x%02x", dataType);
 
 		if (expectedType == SDP_TYPE_UUID) {
