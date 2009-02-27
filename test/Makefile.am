@@ -4,7 +4,8 @@ sbin_PROGRAMS = hciemu
 
 bin_PROGRAMS = l2test rctest
 
-noinst_PROGRAMS = sdptest scotest attest hstest bdaddr lmptest agent btiotest
+noinst_PROGRAMS = sdptest scotest attest hstest avtest lmptest \
+						bdaddr agent btiotest
 
 hciemu_LDADD = $(top_builddir)/common/libhelper.a \
 			@GLIB_LIBS@ @BLUEZ_LIBS@
@@ -20,6 +21,8 @@ scotest_LDADD = @BLUEZ_LIBS@
 attest_LDADD = @BLUEZ_LIBS@
 
 hstest_LDADD = @BLUEZ_LIBS@
+
+avtest_LDADD = @BLUEZ_LIBS@
 
 bdaddr_SOURCES = bdaddr.c
 
