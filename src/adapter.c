@@ -121,6 +121,8 @@ struct btd_adapter {
 
 	gboolean initialized;
 	gboolean already_up;		/* adapter was already up on init */
+
+	gboolean off_requested;		/* DEVDOWN ioctl was called */
 };
 
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
@@ -431,6 +433,8 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 			hci_close_dev(dd);
 			return err;
 		}
+
+		adapter->off_requested = TRUE;
 
 		goto done;
 	}
@@ -1990,6 +1994,7 @@ static int adapter_up(struct btd_adapter *adapter, int dd)
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
+	adapter->off_requested = FALSE;
 	adapter->up = 1;
 	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
 	adapter->pairable_timeout = get_pairable_timeout(srcaddr);
@@ -2927,4 +2932,9 @@ void btd_adapter_any_release_path(void)
 gboolean adapter_is_pairable(struct btd_adapter *adapter)
 {
 	return adapter->pairable;
+}
+
+gboolean adapter_powering_down(struct btd_adapter *adapter)
+{
+	return adapter->off_requested;
 }

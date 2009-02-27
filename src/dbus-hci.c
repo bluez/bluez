@@ -1097,6 +1097,9 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		return;
 	}
 
+	if (adapter_powering_down(adapter))
+		return;
+
 	dev_id = adapter_get_dev_id(adapter);
 
 	dd = hci_open_dev(dev_id);
