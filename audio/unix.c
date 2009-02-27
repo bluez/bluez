@@ -509,11 +509,12 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 	uint16_t imtu, omtu;
 	GSList *caps;
 
+	client->req_id = 0;
+
 	if (err)
 		goto failed;
 
 	memset(buf, 0, sizeof(buf));
-	client->req_id = 0;
 
 	if (!stream)
 		goto failed;
