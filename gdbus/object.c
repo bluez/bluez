@@ -224,6 +224,9 @@ static struct interface_data *find_interface(GSList *interfaces,
 {
 	GSList *list;
 
+	if (!name)
+		return NULL;
+
 	for (list = interfaces; list; list = list->next) {
 		struct interface_data *iface = list->data;
 		if (!strcmp(name, iface->name))
@@ -391,7 +394,6 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 	}
 
 	iface = find_interface(data->interfaces, interface);
-
 	if (!iface) {
 		error("dbus_connection_emit_signal: %s does not implement %s",
 				path, interface);
