@@ -606,9 +606,6 @@ success:
 	bt_put_unaligned(htonl(rec->handle), (uint32_t *) rsp->data);
 	rsp->data_size = sizeof(uint32_t);
 
-	if (rec)
-		sdp_record_free(rec);
-
 	return 0;
 
 invalid:
