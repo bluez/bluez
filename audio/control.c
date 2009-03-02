@@ -47,6 +47,7 @@
 #include <gdbus.h>
 
 #include "logging.h"
+#include "error.h"
 #include "uinput.h"
 #include "adapter.h"
 #include "device.h"
@@ -114,6 +115,7 @@ struct avctp_header {
 	uint8_t transaction:4;
 	uint16_t pid;
 } __attribute__ ((packed));
+#define AVCTP_HEADER_LENGTH 3
 
 struct avrcp_header {
 	uint8_t code:4;
@@ -122,6 +124,7 @@ struct avrcp_header {
 	uint8_t subunit_type:5;
 	uint8_t opcode;
 } __attribute__ ((packed));
+#define AVRCP_HEADER_LENGTH 3
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
@@ -965,6 +968,90 @@ static DBusMessage *control_is_connected(DBusConnection *conn,
 	return reply;
 }
 
+static int avctp_send_passthrough(struct avctp *session, uint8_t op)
+{
+	unsigned char buf[AVCTP_HEADER_LENGTH + AVRCP_HEADER_LENGTH + 2];
+	struct avctp_header *avctp = (void *) buf;
+	struct avrcp_header *avrcp = (void *) &buf[AVCTP_HEADER_LENGTH];
+	uint8_t *operands = &buf[AVCTP_HEADER_LENGTH + AVRCP_HEADER_LENGTH];
+	int err, sk = g_io_channel_unix_get_fd(session->io);
+	static uint8_t transaction = 0;
+
+	memset(buf, 0, sizeof(buf));
+
+	avctp->transaction = transaction++;
+	avctp->packet_type = AVCTP_PACKET_SINGLE;
+	avctp->cr = AVCTP_COMMAND;
+	avctp->pid = htons(AV_REMOTE_SVCLASS_ID);
+
+	avrcp->code = CTYPE_CONTROL;
+	avrcp->subunit_type = SUBUNIT_PANEL;
+	avrcp->opcode = OP_PASSTHROUGH;
+
+	operands[0] = op & 0x7f;
+	operands[1] = 0;
+
+	err = write(sk, buf, sizeof(buf));
+	if (err < 0)
+		return err;
+
+	/* Button release */
+	avctp->transaction = transaction++;
+	operands[0] &= 0x80;
+
+	return write(sk, buf, sizeof(buf));
+}
+
+static DBusMessage *volume_up(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct audio_device *device = data;
+	struct control *control = device->control;
+	DBusMessage *reply;
+	int err;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	if (!control->session)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".NotConnected",
+					"Device not Connected");
+
+	err = avctp_send_passthrough(control->session, VOL_UP_OP);
+	if (err < 0)
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							strerror(-err));
+
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *volume_down(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct audio_device *device = data;
+	struct control *control = device->control;
+	DBusMessage *reply;
+	int err;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	if (!control->session)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".NotConnected",
+					"Device not Connected");
+
+	err = avctp_send_passthrough(control->session, VOL_DOWN_OP);
+	if (err < 0)
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							strerror(-err));
+
+	return dbus_message_new_method_return(msg);
+}
+
 static DBusMessage *control_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -998,6 +1085,8 @@ static GDBusMethodTable control_methods[] = {
 	{ "IsConnected",	"",	"b",	control_is_connected,
 						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "GetProperties",	"",	"a{sv}",control_get_properties },
+	{ "VolumeUp",		"",	"",	volume_up },
+	{ "VolumeDown",		"",	"",	volume_down },
 	{ NULL, NULL, NULL, NULL }
 };
 

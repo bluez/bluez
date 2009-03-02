@@ -25,6 +25,14 @@ Methods		void Connect()
 			Returns all properties for the interface. See the
 			properties section for available properties.
 
+		void VolumeUp()
+
+			Adjust remote volume one step up
+
+		void VolumeDown()
+
+			Adjust remote volume one step down
+
 		boolean SendPassthrough(avc_operation_id key, boolean state,
 								string op_data)
 
