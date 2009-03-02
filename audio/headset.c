@@ -2587,6 +2587,11 @@ int telephony_incoming_call_ind(const char *number, int type)
 		return -EBUSY;
 	}
 
+	/* With HSP 1.2 the RING messages should *not* be sent if inband
+	 * ringtone is being used */
+	if (!hs->hfp_active && (ag.features & AG_FEATURE_INBAND_RINGTONE))
+		return 0;
+
 	g_free(ag.number);
 	ag.number = g_strdup(number);
 	ag.number_type = type;
