@@ -87,17 +87,18 @@
 #define SUBUNIT_PANEL		0x09
 
 /* operands in passthrough commands */
-#define VOLUP_OP		0x41
-#define VOLDOWN_OP		0x42
+#define VOL_UP_OP		0x41
+#define VOL_DOWN_OP		0x42
 #define MUTE_OP			0x43
-
 #define PLAY_OP			0x44
 #define STOP_OP			0x45
 #define PAUSE_OP		0x46
+#define RECORD_OP		0x47
 #define REWIND_OP		0x48
 #define FAST_FORWARD_OP		0x49
-#define NEXT_OP			0x4b
-#define PREV_OP			0x4c
+#define EJECT_OP		0x4a
+#define FORWARD_OP		0x4b
+#define BACKWARD_OP		0x4c
 
 static DBusConnection *connection = NULL;
 
@@ -396,12 +397,12 @@ static void handle_panel_passthrough(struct avctp *session,
 		debug("AVRCP: PAUSE %s", status);
 		send_key(session->uinput, KEY_PLAYPAUSE, pressed);
 		break;
-	case NEXT_OP:
-		debug("AVRCP: NEXT %s", status);
+	case FORWARD_OP:
+		debug("AVRCP: FORWARD %s", status);
 		send_key(session->uinput, KEY_NEXTSONG, pressed);
 		break;
-	case PREV_OP:
-		debug("AVRCP: PREV %s", status);
+	case BACKWARD_OP:
+		debug("AVRCP: BACKWARD %s", status);
 		send_key(session->uinput, KEY_PREVIOUSSONG, pressed);
 		break;
 	case REWIND_OP:
