@@ -1,3 +1,10 @@
+ver 4.32:
+	Fix broken SDP record handling.
+	Fix SDP data buffer parsing.
+	Fix more SDP memory leaks.
+	Fix read scan enable calls.
+	Fix A2DP stream handling.
+
 ver 4.31:
 	Add support for new BtIO helper library.
 	Fix AVDTP session close issue.
