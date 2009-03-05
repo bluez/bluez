@@ -1904,6 +1904,9 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		session->buf = g_malloc0(session->imtu);
 		session->state = AVDTP_SESSION_STATE_CONNECTED;
 
+		if (session->io_id)
+			g_source_remove(session->io_id);
+
 		/* This watch should be low priority since otherwise the
 		 * connect callback might be dispatched before the session
 		 * callback if the kernel wakes us up at the same time for
