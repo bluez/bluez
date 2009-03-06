@@ -213,6 +213,8 @@ gboolean avdtp_is_connected(const bdaddr_t *src, const bdaddr_t *dst);
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 							void *data, int size);
 
+uint8_t avdtp_get_seid(struct avdtp_remote_sep *sep);
+
 struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep);
 
 struct avdtp_stream *avdtp_get_stream(struct avdtp_remote_sep *sep);

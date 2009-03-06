@@ -166,6 +166,7 @@ struct bt_get_capabilities_req {
 #define BT_PCM_FLAG_PCM_ROUTING			0x02
 
 typedef struct {
+	uint8_t seid;
 	uint8_t transport;
 	uint8_t type;
 	uint8_t length;

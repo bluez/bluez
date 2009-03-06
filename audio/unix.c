@@ -248,6 +248,8 @@ static void headset_discovery_complete(struct audio_device *dev, void *user_data
 	memset(buf, 0, sizeof(buf));
 
 	codec = (void *) rsp->data;
+	/* A2DP seid are 6 bytes long so HSP/HFP should be assigned to 7-8 bit */
+	codec->seid = (1 << 6);
 	codec->transport = BT_CAPABILITIES_TRANSPORT_SCO;
 	codec->type = BT_HFP_CODEC_PCM;
 	codec->length = sizeof(*pcm);
@@ -443,6 +445,7 @@ static void print_sbc(struct sbc_codec_cap *sbc)
 
 static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 				struct avdtp_service_capability *cap,
+				uint8_t seid,
 				uint8_t configured)
 {
 	struct avdtp_media_codec_capability *codec_cap = (void *) cap->data;
@@ -504,12 +507,13 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		memcpy(codec->data, codec_cap->data, codec_length);
 	}
 
+	codec->seid = seid;
 	codec->type = codec_cap->media_codec_type;
 	codec->configured = configured;
 	rsp->h.length += codec->length;
 
-	debug("Append %s codec %d - length %d - total %d", 
-		configured ? "configured" : "", codec->type, codec->length,
+	debug("Append %s seid %d - length %d - total %d",
+		configured ? "configured" : "", seid, codec->length,
 		rsp->h.length);
 
 	return 0;
@@ -547,8 +551,9 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 		struct avdtp_remote_sep *rsep = l->data;
 		struct avdtp_service_capability *cap;
 		struct avdtp_stream *stream;
-		uint8_t configured = 0;
+		uint8_t seid, configured = 0;
 
+		seid = avdtp_get_seid(rsep);
 		cap = avdtp_get_codec(rsep);
 
 		if (cap->category != AVDTP_MEDIA_CODEC)
@@ -558,7 +563,7 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 		if (stream)
 			configured = 1;
 
-		a2dp_append_codec(rsp, cap, configured);
+		a2dp_append_codec(rsp, cap, seid, configured);
 	}
 
 	unix_ipc_sendmsg(client, &rsp->h);
