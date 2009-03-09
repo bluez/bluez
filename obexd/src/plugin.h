@@ -28,6 +28,8 @@ struct obex_plugin_desc {
 };
 
 #define OBEX_PLUGIN_DEFINE(name,init,exit) \
+		extern struct obex_plugin_desc obex_plugin_desc \
+				__attribute__ ((visibility("default"))); \
 		struct obex_plugin_desc obex_plugin_desc = { \
 			name, init, exit \
 		};
