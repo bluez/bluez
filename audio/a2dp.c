@@ -150,13 +150,15 @@ static gboolean finalize_config(struct a2dp_setup *s)
 	setup_ref(s);
 	for (l = s->cb; l != NULL; l = l->next) {
 		struct a2dp_setup_cb *cb = l->data;
+		struct avdtp_stream *stream = s->err ? NULL : s->stream;
 
-		if (cb->config_cb) {
-			cb->config_cb(s->session, s->sep, s->stream, s->err,
-					cb->user_data);
-			cb->config_cb = NULL;
-			setup_unref(s);
-		}
+		if (!cb->config_cb)
+			continue;
+
+		cb->config_cb(s->session, s->sep, stream, s->err,
+							cb->user_data);
+		cb->config_cb = NULL;
+		setup_unref(s);
 	}
 
 	setup_unref(s);
