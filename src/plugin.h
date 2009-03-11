@@ -28,6 +28,8 @@ struct bluetooth_plugin_desc {
 };
 
 #define BLUETOOTH_PLUGIN_DEFINE(name,init,exit) \
+		extern struct bluetooth_plugin_desc bluetooth_plugin_desc \
+				__attribute__ ((visibility("default"))); \
 		struct bluetooth_plugin_desc bluetooth_plugin_desc = { \
 			name, init, exit \
 		};

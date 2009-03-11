@@ -31,11 +31,10 @@ if SERVICEPLUGIN
 service_la_SOURCES = service.c
 endif
 
-AM_LDFLAGS = -module -avoid-version -no-undefined \
-			-export-symbols-regex bluetooth_plugin_desc
+AM_LDFLAGS = -module -avoid-version -no-undefined
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
-					@GDBUS_CFLAGS@ @NETLINK_CFLAGS@
+AM_CFLAGS = -fvisibility=hidden @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ \
+			@GLIB_CFLAGS@ @GDBUS_CFLAGS@ @NETLINK_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/src
 

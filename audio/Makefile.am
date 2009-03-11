@@ -13,8 +13,7 @@ audio_la_SOURCES = main.c \
 
 nodist_audio_la_SOURCES = $(BUILT_SOURCES)
 
-audio_la_LDFLAGS = -module -avoid-version -no-undefined \
-			-export-symbols-regex bluetooth_plugin_desc
+audio_la_LDFLAGS = -module -avoid-version -no-undefined
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
@@ -49,13 +48,16 @@ libgstbluetooth_la_SOURCES = gstbluetooth.c \
 				gstsbcutil.h gstsbcutil.c \
 				gstrtpsbcpay.h gstrtpsbcpay.c \
 				rtp.h ipc.h ipc.c
-libgstbluetooth_la_LDFLAGS = -module -avoid-version -export-symbols-regex gst_plugin_desc
-libgstbluetooth_la_LIBADD = @SBC_LIBS@ @BLUEZ_LIBS@ @GSTREAMER_LIBS@ -lgstaudio-0.10 -lgstrtp-0.10
-libgstbluetooth_la_CFLAGS = @GSTREAMER_CFLAGS@ @BLUEZ_CFLAGS@ @SBC_CFLAGS@
+libgstbluetooth_la_LDFLAGS = -module -avoid-version
+libgstbluetooth_la_LIBADD = @SBC_LIBS@ @BLUEZ_LIBS@ @GSTREAMER_LIBS@ \
+						-lgstaudio-0.10 -lgstrtp-0.10
+libgstbluetooth_la_CFLAGS = -fvisibility=hidden \
+			 @GSTREAMER_CFLAGS@ @BLUEZ_CFLAGS@ @SBC_CFLAGS@
 endif
 endif
 
-AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
+AM_CFLAGS = -fvisibility=hidden \
+		@BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 CLEANFILES = $(BUILT_SOURCES)
 
