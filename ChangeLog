@@ -1,3 +1,11 @@
+ver 4.33:
+	Add Paired property to the DeviceFound signals.
+	Add support for Headset profile 1.2 version.
+	Fix broken network configuration when IPv6 is disabled.
+	Fix network regression that caused disconnection.
+	Fix SDP truncation of strings with NULL values.
+	Fix service discovery handling of CUPS helper.
+
 ver 4.32:
 	Fix broken SDP record handling.
 	Fix SDP data buffer parsing.
