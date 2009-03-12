@@ -1511,7 +1511,8 @@ static int audioservice_send(int sk, const bt_audio_msg_header_t *msg)
 
 static int audioservice_recv(int sk, bt_audio_msg_header_t *inmsg)
 {
-	int err, ret;
+	int err;
+	ssize_t ret;
 	const char *type, *name;
 	uint16_t length;
 
@@ -1524,7 +1525,7 @@ static int audioservice_recv(int sk, bt_audio_msg_header_t *inmsg)
 		err = -errno;
 		SNDERR("Error receiving IPC data from bluetoothd: %s (%d)",
 						strerror(errno), errno);
-	} else if (ret < (int) sizeof(bt_audio_msg_header_t)) {
+	} else if ((size_t) ret < sizeof(bt_audio_msg_header_t)) {
 		SNDERR("Too short (%d bytes) IPC packet from bluetoothd", ret);
 		err = -EINVAL;
 	} else {

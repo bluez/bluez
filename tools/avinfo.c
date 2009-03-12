@@ -445,9 +445,9 @@ static void init_request(struct avdtp_header *header, int request_id)
 	transaction = (transaction + 1) % 16;
 }
 
-static int avdtp_send(int sk, void *data, int len)
+static ssize_t avdtp_send(int sk, void *data, int len)
 {
-	int ret;
+	ssize_t ret;
 
 	ret = send(sk, data, len, 0);
 
@@ -457,7 +457,7 @@ static int avdtp_send(int sk, void *data, int len)
 		ret = -EIO;
 
 	if (ret < 0) {
-		printf("Unable to send message: %s (%d)\n",
+		printf("Unable to send message: %s (%zd)\n",
 						strerror(-ret), -ret);
 		return ret;
 	}
@@ -465,9 +465,9 @@ static int avdtp_send(int sk, void *data, int len)
 	return ret;
 }
 
-static int avdtp_receive(int sk, void *data, int len)
+static ssize_t avdtp_receive(int sk, void *data, int len)
 {
-	int ret;
+	ssize_t ret;
 
 	ret = recv(sk, data, len, 0);
 
@@ -480,12 +480,12 @@ static int avdtp_receive(int sk, void *data, int len)
 	return ret;
 }
 
-static int avdtp_get_caps(int sk, int seid)
+static ssize_t avdtp_get_caps(int sk, int seid)
 {
 	struct seid_req req;
 	char buffer[1024];
 	struct getcap_resp *caps = (void *) buffer;
-	int ret;
+	ssize_t ret;
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req.header, AVDTP_GET_CAPABILITIES);
@@ -500,8 +500,8 @@ static int avdtp_get_caps(int sk, int seid)
 	if (ret < 0)
 		return ret;
 
-	if (ret < ((int) sizeof(struct getcap_resp) + 4 +
-			(int) sizeof(struct avdtp_media_codec_capability))) {
+	if ((size_t) ret < (sizeof(struct getcap_resp) + 4 +
+			sizeof(struct avdtp_media_codec_capability))) {
 		printf("Invalid capabilities\n");
 		return -1;
 	}
@@ -511,12 +511,13 @@ static int avdtp_get_caps(int sk, int seid)
 	return 0;
 }
 
-static int avdtp_discover(int sk)
+static ssize_t avdtp_discover(int sk)
 {
 	struct avdtp_header req;
 	char buffer[256];
 	struct discover_resp *discover = (void *) buffer;
-	int ret, seps, i;
+	int seps, i;
+	ssize_t ret;
 
 	memset(&req, 0, sizeof(req));
 	init_request(&req, AVDTP_DISCOVER);

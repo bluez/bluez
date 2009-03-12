@@ -104,7 +104,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 	uint8_t dataType = expectedType;
 	int status = 0;
 	const uint8_t *p;
-	int bufsize;
+	size_t bufsize;
 
 	scanned = sdp_extract_seqtype(buf, len, &seqType, &data_size);
 
@@ -122,7 +122,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 		char *pElem = NULL;
 		int localSeqLength = 0;
 
-		if (bufsize < (int) sizeof(uint8_t)) {
+		if (bufsize < sizeof(uint8_t)) {
 			SDPDBG("->Unexpected end of buffer");
 			goto failed;
 		}
@@ -149,7 +149,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			p += sizeof(uint8_t);
 			seqlen += sizeof(uint8_t);
 			bufsize -= sizeof(uint8_t);
-			if (bufsize < (int) sizeof(uint16_t)) {
+			if (bufsize < sizeof(uint16_t)) {
 				SDPDBG("->Unexpected end of buffer");
 				goto failed;
 			}
