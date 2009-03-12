@@ -2720,6 +2720,15 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 	return cap;
 }
 
+static gboolean process_discover(gpointer data)
+{
+	struct avdtp *session = data;
+
+	finalize_discovery(session, 0);
+
+	return FALSE;
+}
+
 int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 			void *user_data)
 {
@@ -2729,7 +2738,9 @@ int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 		return -EBUSY;
 
 	if (session->seps) {
-		cb(session, session->seps, NULL, user_data);
+		session->discov_cb = cb;
+		session->user_data = user_data;
+		g_idle_add(process_discover, session);
 		return 0;
 	}
 
