@@ -49,8 +49,9 @@ static void decode(char *filename, char *output, int tofile)
 	struct stat st;
 	off_t filesize;
 	sbc_t sbc;
-	int fd, ad, pos, streamlen, framelen, count, written, len;
+	int fd, ad, pos, streamlen, framelen, count, len;
 	int format = AFMT_S16_BE, frequency, channels;
+	ssize_t written;
 
 	if (stat(filename, &st) < 0) {
 		fprintf(stderr, "Can't get size of file %s: %s\n",
@@ -143,7 +144,7 @@ static void decode(char *filename, char *output, int tofile)
 		au_hdr.channels    = BE_INT(channels);
 
 		written = write(ad, &au_hdr, sizeof(au_hdr));
-		if (written < (int) sizeof(au_hdr)) {
+		if (written < (ssize_t) sizeof(au_hdr)) {
 			fprintf(stderr, "Failed to write header\n");
 			goto close;
 		}

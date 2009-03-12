@@ -219,7 +219,7 @@ int bnep_accept_connection(int sk, uint16_t role, char *dev)
 	struct bnep_setup_conn_req *req;
 	struct bnep_control_rsp *rsp;
 	unsigned char pkt[BNEP_MTU];
-	int r;
+	ssize_t r;
 
 	r = recv(sk, pkt, BNEP_MTU, 0);
 	if (r <= 0)
@@ -227,7 +227,7 @@ int bnep_accept_connection(int sk, uint16_t role, char *dev)
 
 	errno = EPROTO;
 
-	if (r < (int) sizeof(*req))
+	if ((size_t) r < sizeof(*req))
 		return -1;
 
 	req = (void *) pkt;
@@ -259,7 +259,7 @@ int bnep_create_connection(int sk, uint16_t role, uint16_t svc, char *dev)
 	struct __service_16 *s;
 	struct timeval timeo;
 	unsigned char pkt[BNEP_MTU];
-	int r;
+	ssize_t r;
 
 	/* Send request */
 	req = (void *) pkt;
@@ -292,9 +292,9 @@ receive:
 
 	errno = EPROTO;
 
-	if (r < (int) sizeof(*rsp))
+	if ((size_t) r < sizeof(*rsp))
 		return -1;
-	
+
 	rsp = (void *) pkt;
 	if (rsp->type != BNEP_CONTROL)
 		return -1;

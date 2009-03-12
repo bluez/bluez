@@ -48,7 +48,8 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 {
 	struct au_header au_hdr;
 	sbc_t sbc;
-	int fd, len, size, encoded, srate, codesize, nframes;
+	int fd, size, encoded, srate, codesize, nframes;
+	ssize_t len;
 
 	if (sizeof(au_hdr) != 24) {
 		/* Sanity check just in case */
@@ -67,7 +68,7 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 		fd = fileno(stdin);
 
 	len = read(fd, &au_hdr, sizeof(au_hdr));
-	if (len < (int) sizeof(au_hdr)) {
+	if (len < (ssize_t) sizeof(au_hdr)) {
 		if (fd > fileno(stderr))
 			fprintf(stderr, "Can't read header from file %s: %s\n",
 						filename, strerror(errno));
@@ -170,7 +171,7 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 				&encoded);
 			if (len != codesize || encoded <= 0) {
 				fprintf(stderr,
-					"sbc_encode fail, len=%d, encoded=%d\n",
+					"sbc_encode fail, len=%zd, encoded=%d\n",
 					len, encoded);
 				break;
 			}
