@@ -67,7 +67,7 @@ struct network_conn {
 	char		dev[16];	/* Interface name */
 	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
-	int		sk;
+	GIOChannel	*io;
 	guint		watch;		/* Disconnect watch */
 	struct network_peer *peer;
 };
@@ -170,12 +170,43 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	nc->state = DISCONNECTED;
 	memset(nc->dev, 0, 16);
 	strncpy(nc->dev, prefix, sizeof(nc->dev) - 1);
-	g_io_channel_shutdown(chan, TRUE, NULL);
 
 	return FALSE;
 }
 
-static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
+static void cancel_connection(struct network_conn *nc, const char *err_msg)
+{
+	DBusMessage *reply;
+
+	if (nc->watch) {
+		g_dbus_remove_watch(connection, nc->watch);
+		nc->watch = 0;
+	}
+
+	if (nc->msg && err_msg) {
+		reply = connection_attempt_failed(nc->msg, err_msg);
+		g_dbus_send_message(connection, reply);
+	}
+
+	g_io_channel_shutdown(nc->io, TRUE, NULL);
+	g_io_channel_unref(nc->io);
+	nc->io = NULL;
+
+	nc->state = DISCONNECTED;
+}
+
+static void connection_destroy(DBusConnection *conn, void *user_data)
+{
+	struct network_conn *nc = user_data;
+
+	if (nc->state == CONNECTED) {
+		bnep_if_down(nc->dev);
+		bnep_kill_connection(&nc->peer->dst);
+	} else if (nc->io)
+		cancel_connection(nc, NULL);
+}
+
+static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 							gpointer data)
 {
 	struct network_conn *nc = data;
@@ -184,7 +215,6 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	char pkt[BNEP_MTU];
 	gsize r;
 	int sk;
-	DBusMessage *reply;
 	const char *pdev, *uuid;
 	gboolean connected;
 
@@ -268,15 +298,13 @@ static gboolean bnep_connect_cb(GIOChannel *chan, GIOCondition cond,
 	/* Start watchdog */
 	g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 			(GIOFunc) bnep_watchdog_cb, nc);
+	g_io_channel_unref(nc->io);
+	nc->io = NULL;
+
 	return FALSE;
 
 failed:
-	if (nc->state != DISCONNECTED) {
-		nc->state = DISCONNECTED;
-		reply = connection_attempt_failed(nc->msg, strerror(EIO));
-		g_dbus_send_message(connection, reply);
-		g_io_channel_shutdown(chan, TRUE, NULL);
-	}
+	cancel_connection(nc, "bnep setup failed");
 
 	return FALSE;
 }
@@ -287,8 +315,7 @@ static int bnep_connect(struct network_conn *nc)
 	struct __service_16 *s;
 	struct timeval timeo;
 	unsigned char pkt[BNEP_MTU];
-	GIOChannel *io;
-	int err = 0;
+	int fd;
 
 	/* Send request */
 	req = (void *) pkt;
@@ -302,28 +329,21 @@ static int bnep_connect(struct network_conn *nc)
 	memset(&timeo, 0, sizeof(timeo));
 	timeo.tv_sec = 30;
 
-	setsockopt(nc->sk, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
+	fd = g_io_channel_unix_get_fd(nc->io);
+	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
 
-	io = g_io_channel_unix_new(nc->sk);
-	g_io_channel_set_close_on_unref(io, FALSE);
+	if (send(fd, pkt, sizeof(*req) + sizeof(*s), 0) < 0)
+		return -errno;
 
-	if (send(nc->sk, pkt, sizeof(*req) + sizeof(*s), 0) < 0) {
-		err = -errno;
-		goto out;
-	}
+	g_io_add_watch(nc->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+			(GIOFunc) bnep_setup_cb, nc);
 
-	g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-			(GIOFunc) bnep_connect_cb, nc);
-
-out:
-	g_io_channel_unref(io);
-	return err;
+	return 0;
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	struct network_conn *nc = data;
-	DBusMessage *reply;
 	const char *err_msg;
 	int perr;
 
@@ -333,41 +353,17 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 		goto failed;
 	}
 
-	nc->sk = g_io_channel_unix_get_fd(chan);
-
 	perr = bnep_connect(nc);
 	if (perr < 0) {
 		err_msg = strerror(-perr);
 		error("bnep connect(): %s (%d)", err_msg, -perr);
-		g_io_channel_shutdown(chan, TRUE, NULL);
-		g_io_channel_unref(chan);
 		goto failed;
 	}
 
 	return;
 
 failed:
-	nc->state = DISCONNECTED;
-	if (nc->watch) {
-		g_dbus_remove_watch(connection, nc->watch);
-		nc->watch = 0;
-	}
-
-	reply = connection_attempt_failed(nc->msg, err_msg);
-	g_dbus_send_message(connection, reply);
-}
-
-static void connection_destroy(DBusConnection *conn, void *user_data)
-{
-	struct network_conn *nc = user_data;
-
-	nc->watch = 0;
-
-	if (nc->state == CONNECTED) {
-		bnep_if_down(nc->dev);
-		bnep_kill_connection(&nc->peer->dst);
-	} else
-		close(nc->sk);
+	cancel_connection(nc, err_msg);
 }
 
 /* Connect and initiate BNEP session */
@@ -379,7 +375,6 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 	const char *svc;
 	uint16_t id;
 	GError *err = NULL;
-	GIOChannel *io;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &svc,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -393,7 +388,7 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 	if (nc->state != DISCONNECTED)
 		return already_connected(msg);
 
-	io = bt_io_connect(BT_IO_L2CAP, connect_cb, nc,
+	nc->io = bt_io_connect(BT_IO_L2CAP, connect_cb, nc,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &peer->src,
 				BT_IO_OPT_DEST_BDADDR, &peer->dst,
@@ -401,15 +396,13 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 				BT_IO_OPT_OMTU, BNEP_MTU,
 				BT_IO_OPT_IMTU, BNEP_MTU,
 				BT_IO_OPT_INVALID);
-	if (!io) {
+	if (!nc->io) {
 		DBusMessage *reply;
 		error("%s", err->message);
 		reply = connection_attempt_failed(msg, err->message);
 		g_error_free(err);
 		return reply;
 	}
-
-	g_io_channel_unref(io);
 
 	nc->state = CONNECTING;
 	nc->msg = dbus_message_ref(msg);
@@ -431,12 +424,7 @@ static DBusMessage *connection_cancel(DBusConnection *conn,
 	if (!g_str_equal(owner, caller))
 		return not_permited(msg);
 
-	if (nc->watch) {
-		g_dbus_remove_watch(conn, nc->watch);
-		nc->watch = 0;
-	}
-
-	connection_destroy(conn, data);
+	connection_destroy(conn, nc);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -511,11 +499,7 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 
 static void connection_free(struct network_conn *nc)
 {
-	if (nc->state == CONNECTED) {
-		bnep_if_down(nc->dev);
-		bnep_kill_connection(&nc->peer->dst);
-	} else if (nc->state == CONNECTING)
-		close(nc->sk);
+	connection_destroy(connection, nc);
 
 	g_free(nc);
 	nc = NULL;
