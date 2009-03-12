@@ -982,10 +982,17 @@ proceed:
 
 void audio_manager_exit(void)
 {
-	dbus_connection_unref(connection);
+	/* Bail out early if we haven't been initialized */
+	if (connection == NULL)
+		return;
 
-	if (config)
+	dbus_connection_unref(connection);
+	connection = NULL;
+
+	if (config) {
 		g_key_file_free(config);
+		config = NULL;
+	}
 
 	if (enabled.headset) {
 		btd_unregister_adapter_driver(&headset_server_driver);
@@ -1002,8 +1009,6 @@ void audio_manager_exit(void)
 		btd_unregister_adapter_driver(&avrcp_server_driver);
 
 	btd_unregister_device_driver(&audio_driver);
-
-	connection = NULL;
 }
 
 struct audio_device *manager_find_device(const bdaddr_t *bda, const char *interface,

@@ -128,23 +128,32 @@ static int audio_init(void)
 
 	if (unix_init() < 0) {
 		error("Unable to setup unix socket");
-		return -EIO;
+		goto failed;
 	}
 
-	if (audio_manager_init(connection, config) < 0) {
-		dbus_connection_unref(connection);
-		return -EIO;
-	}
+	if (audio_manager_init(connection, config) < 0)
+		goto failed;
 
 	sco_server = bt_io_listen(BT_IO_SCO, sco_server_cb, NULL, NULL,
 					NULL, NULL,
 					BT_IO_OPT_INVALID);
 	if (!sco_server) {
 		error("Unable to start SCO server socket");
-		return -EIO;
+		goto failed;
 	}
 
 	return 0;
+
+failed:
+	audio_manager_exit();
+	unix_exit();
+
+	if (connection) {
+		dbus_connection_unref(connection);
+		connection = NULL;
+	}
+
+	return -EIO;
 }
 
 static void audio_exit(void)

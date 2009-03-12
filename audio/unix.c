@@ -1275,6 +1275,8 @@ void unix_exit(void)
 {
 	g_slist_foreach(clients, (GFunc) client_free, NULL);
 	g_slist_free(clients);
-	close(unix_sock);
-	unix_sock = -1;
+	if (unix_sock >= 0) {
+		close(unix_sock);
+		unix_sock = -1;
+	}
 }
