@@ -239,9 +239,8 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 		hex = 0;
 
 		for (i = 0; i < length; i++) {
-			if (value->val.str[i] == '\0')
-				break;
-			if (!isprint(value->val.str[i])) {
+			if (!isprint(value->val.str[i]) &&
+					value->val.str[i] != '\0') {
 				hex = 1;
 				break;
 			}
@@ -304,7 +303,9 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 					strBuf[j++] = 'o';
 					strBuf[j++] = 't';
 				}
-				else {
+				else if (value->val.str[i] == '\0') {
+					strBuf[j++] = ' ';
+				} else {
 					strBuf[j++] = value->val.str[i];
 				}
 			}
