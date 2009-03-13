@@ -1441,9 +1441,6 @@ static DBusMessage *list_devices(DBusConnection *conn,
 	for (l = adapter->devices; l; l = l->next) {
 		struct btd_device *device = l->data;
 
-		if (device_is_temporary(device))
-			continue;
-
 		dev_path = device_get_path(device);
 
 		dbus_message_iter_append_basic(&array_iter,
