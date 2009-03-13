@@ -681,16 +681,12 @@ static int audio_probe(struct btd_device *device, GSList *uuids)
 
 static void audio_remove(struct btd_device *device)
 {
-	struct btd_adapter *adapter;
 	struct audio_device *dev;
-	bdaddr_t src, dst;
+	const char *path;
 
-	adapter = device_get_adapter(device);
+	path = device_get_path(device);
 
-	adapter_get_address(adapter, &src);
-	device_get_address(device, &dst);
-
-	dev = manager_find_device(&src, &dst, NULL, FALSE);
+	dev = manager_find_device(path, NULL, NULL, NULL, FALSE);
 	if (!dev)
 		return;
 
@@ -1015,7 +1011,8 @@ void audio_manager_exit(void)
 	btd_unregister_device_driver(&audio_driver);
 }
 
-struct audio_device *manager_find_device(const bdaddr_t *src,
+struct audio_device *manager_find_device(const char *path,
+					const bdaddr_t *src,
 					const bdaddr_t *dst,
 					const char *interface,
 					gboolean connected)
@@ -1025,10 +1022,13 @@ struct audio_device *manager_find_device(const bdaddr_t *src,
 	for (l = devices; l != NULL; l = l->next) {
 		struct audio_device *dev = l->data;
 
-		if (bacmp(src, BDADDR_ANY) && bacmp(&dev->src, src))
+		if ((path && (strcmp(path, "")) && strcmp(dev->path, path)))
 			continue;
 
-		if (bacmp(dst, BDADDR_ANY) && bacmp(&dev->dst, dst))
+		if ((src && bacmp(src, BDADDR_ANY)) && bacmp(&dev->src, src))
+			continue;
+
+		if ((dst && bacmp(dst, BDADDR_ANY)) && bacmp(&dev->dst, dst))
 			continue;
 
 		if (interface && !strcmp(AUDIO_HEADSET_INTERFACE, interface)
@@ -1065,7 +1065,7 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 	char addr[18];
 	const char *path;
 
-	dev = manager_find_device(src, dst, NULL, FALSE);
+	dev = manager_find_device(NULL, src, dst, NULL, FALSE);
 	if (dev)
 		return dev;
 

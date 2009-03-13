@@ -264,6 +264,7 @@ static void headset_discovery_complete(struct audio_device *dev, void *user_data
 	rsp->h.length = sizeof(*rsp) + codec->length;
 	ba2str(&dev->src, rsp->source);
 	ba2str(&dev->dst, rsp->destination);
+	strncpy(rsp->object, dev->path, sizeof(rsp->object));
 
 	unix_ipc_sendmsg(client, &rsp->h);
 
@@ -293,6 +294,7 @@ static void headset_setup_complete(struct audio_device *dev, void *user_data)
 
 	ba2str(&dev->src, rsp->source);
 	ba2str(&dev->dst, rsp->destination);
+	strncpy(rsp->object, dev->path, sizeof(rsp->object));
 	rsp->transport = BT_CAPABILITIES_TRANSPORT_SCO;
 	rsp->access_mode = client->access_mode;
 	rsp->link_mtu = 48;
@@ -480,6 +482,7 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 	rsp->h.length = sizeof(*rsp);
 	ba2str(&client->dev->src, rsp->source);
 	ba2str(&client->dev->dst, rsp->destination);
+	strncpy(rsp->object, client->dev->path, sizeof(rsp->object));
 
 	for (l = seps; l; l = g_slist_next(l)) {
 		struct avdtp_remote_sep *rsep = l->data;
@@ -553,6 +556,7 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 
 	ba2str(&client->dev->src, rsp->source);
 	ba2str(&client->dev->dst, rsp->destination);
+	strncpy(rsp->object, client->dev->path, sizeof(rsp->object));
 	rsp->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
 	client->access_mode = BT_CAPABILITIES_ACCESS_MODE_WRITE;
 	rsp->access_mode = client->access_mode;
@@ -890,7 +894,8 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	bdaddr_t src, dst;
 	int err = EIO;
 
-	if (!check_nul(req->source) || !check_nul(req->destination)) {
+	if (!check_nul(req->source) || !check_nul(req->destination) ||
+			!check_nul(req->object)) {
 		err = EINVAL;
 		goto failed;
 	}
@@ -908,12 +913,14 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	else if (req->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
 		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
 
-	if (!manager_find_device(&src, &dst, NULL, FALSE))
+	if (!manager_find_device(req->object, &src, &dst, NULL, FALSE))
 		goto failed;
 
-	dev = manager_find_device(&src, &dst, client->interface, TRUE);
+	dev = manager_find_device(req->object, &src, &dst, client->interface,
+				TRUE);
 	if (!dev && (req->flags & BT_FLAG_AUTOCONNECT))
-		dev = manager_find_device(&src, &dst, client->interface, FALSE);
+		dev = manager_find_device(req->object, &src, &dst,
+					client->interface, FALSE);
 
 	if (!dev) {
 		error("Unable to find a matching device");
@@ -1036,7 +1043,8 @@ static void handle_setconfiguration_req(struct unix_client *client,
 	int err = 0;
 
 	if (!req->access_mode || !check_nul(req->source) ||
-			!check_nul(req->destination)) {
+			!check_nul(req->destination) ||
+			!check_nul(req->object)) {
 		err = EINVAL;
 		goto failed;
 	}
@@ -1058,12 +1066,14 @@ static void handle_setconfiguration_req(struct unix_client *client,
 		}
 	}
 
-	if (!manager_find_device(&src, &dst, NULL, FALSE))
+	if (!manager_find_device(req->object, &src, &dst, NULL, FALSE))
 		goto failed;
 
-	dev = manager_find_device(&src, &dst, client->interface, TRUE);
+	dev = manager_find_device(req->object, &src, &dst, client->interface,
+				TRUE);
 	if (!dev)
-		dev = manager_find_device(&src, &dst, client->interface, FALSE);
+		dev = manager_find_device(req->object, &src, &dst,
+					client->interface, FALSE);
 
 	if (!dev)
 		goto failed;
