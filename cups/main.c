@@ -147,7 +147,7 @@ static char *device_get_ieee1284_id(const char *adapter, const char *device)
 
 	if (dbus_message_iter_get_arg_type(&reply_iter) != DBUS_TYPE_ARRAY) {
 		dbus_message_unref(reply);
-		return FALSE;
+		return NULL;
 	}
 
 	dbus_message_iter_recurse(&reply_iter, &reply_iter_entry);
