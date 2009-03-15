@@ -679,12 +679,13 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 {
 	char filename[PATH_MAX + 1];
 	struct btd_adapter *adapter;
+	struct btd_device *device;
 	char local_addr[18], peer_addr[18], *alias, *name, *tmp_name;
 	const char *real_alias;
 	const char *path, *icon, *paddr = peer_addr;
 	struct remote_dev_info *dev, match;
 	dbus_int16_t tmp_rssi = rssi;
-	dbus_bool_t legacy = TRUE;
+	dbus_bool_t paired, legacy = TRUE;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
 	int state;
@@ -692,11 +693,15 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
+	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE)) {
 		error("No matching adapter found");
 		return;
 	}
+
+	if (device)
+		paired = device_is_paired(device);
+	else
+		paired = FALSE;
 
 	write_remote_class(local, peer, class);
 
@@ -779,6 +784,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				"Name", DBUS_TYPE_STRING, &name,
 				"Alias", DBUS_TYPE_STRING, &alias,
 				"LegacyPairing", DBUS_TYPE_BOOLEAN, &legacy,
+				"Paired", DBUS_TYPE_BOOLEAN, &paired,
 				NULL);
 
 	if (name && name_type != 0x08)
@@ -843,7 +849,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 		const char *icon = class_to_icon(dev_info->class);
 		const char *alias, *paddr = dstaddr;
 		dbus_int16_t rssi = dev_info->rssi;
-		dbus_bool_t legacy;
+		dbus_bool_t legacy, paired;
 
 		if (dev_info->alias)
 			alias = dev_info->alias;
@@ -855,6 +861,11 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 		else
 			legacy = FALSE;
 
+		if (device)
+			paired = device_is_paired(device);
+		else
+			paired = FALSE;
+
 		emit_device_found(adapter_path, dstaddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
 				"Class", DBUS_TYPE_UINT32, &dev_info->class,
@@ -863,6 +874,7 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 				"Name", DBUS_TYPE_STRING, &name,
 				"Alias", DBUS_TYPE_STRING, &alias,
 				"LegacyPairing", DBUS_TYPE_BOOLEAN, &legacy,
+				"Paired", DBUS_TYPE_BOOLEAN, &paired,
 				NULL);
 	}
 

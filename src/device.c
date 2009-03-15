@@ -194,7 +194,7 @@ static void device_free(gpointer user_data)
 	g_free(device);
 }
 
-static gboolean device_is_paired(struct btd_device *device)
+gboolean device_is_paired(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device->adapter;
 	char filename[PATH_MAX + 1], *str;
