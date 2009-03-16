@@ -1192,6 +1192,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	char str[249], srcaddr[18];
+	uint32_t class;
 	gboolean value;
 	char **devices;
 	int i;
@@ -1223,6 +1224,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	property = str;
 
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &property);
+
+	/* Class */
+	class = adapter->dev.class[0] |
+			adapter->dev.class[1] << 8 |
+			adapter->dev.class[2] << 16;
+	dict_append_entry(&dict, "Class", DBUS_TYPE_UINT32, &class);
 
 	/* Powered */
 	value = adapter->up ? TRUE : FALSE;
@@ -2326,6 +2333,7 @@ int adapter_get_class(struct btd_adapter *adapter, uint8_t *cls)
 int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls)
 {
 	struct hci_dev *dev = &adapter->dev;
+	uint32_t class;
 
 	if (memcmp(dev->class, cls, 3) == 0)
 		return 0;
@@ -2333,6 +2341,11 @@ int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls)
 	memcpy(dev->class, cls, 3);
 
 	write_local_class(&adapter->bdaddr, cls);
+
+	class = cls[0] | (cls[1] << 8) | (cls[2] << 16);
+
+	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
+				"Class", DBUS_TYPE_UINT32, &class);
 
 	return 0;
 }

@@ -210,6 +210,10 @@ Properties	string Address [readonly]
 			The Bluetooth friendly name. This value can be
 			changed and a PropertyChanged signal will be emitted.
 
+		uint32 Class [readonly]
+
+			The Bluetooth class of device.
+
 		boolean Powered [readwrite]
 
 			Switch an adapter on or off. This will also set the
