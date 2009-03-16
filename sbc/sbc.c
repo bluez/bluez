@@ -924,7 +924,7 @@ static void sbc_encoder_init(struct sbc_encoder_state *state,
 				const struct sbc_frame *frame)
 {
 	memset(&state->X, 0, sizeof(state->X));
-	state->position = SBC_X_BUFFER_SIZE - frame->subbands * 9;
+	state->position = (SBC_X_BUFFER_SIZE - frame->subbands * 9) & ~7;
 
 	sbc_init_primitives(state);
 }

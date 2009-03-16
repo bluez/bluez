@@ -231,12 +231,12 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s4_internal(
 	/* handle X buffer wraparound */
 	if (position < nsamples) {
 		if (nchannels > 0)
-			memcpy(&X[0][SBC_X_BUFFER_SIZE - 36], &X[0][position],
+			memcpy(&X[0][SBC_X_BUFFER_SIZE - 40], &X[0][position],
 							36 * sizeof(int16_t));
 		if (nchannels > 1)
-			memcpy(&X[1][SBC_X_BUFFER_SIZE - 36], &X[1][position],
+			memcpy(&X[1][SBC_X_BUFFER_SIZE - 40], &X[1][position],
 							36 * sizeof(int16_t));
-		position = SBC_X_BUFFER_SIZE - 36;
+		position = SBC_X_BUFFER_SIZE - 40;
 	}
 
 	#define PCM(i) (big_endian ? \
