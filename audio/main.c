@@ -171,4 +171,4 @@ static void audio_exit(void)
 	dbus_connection_unref(connection);
 }
 
-BLUETOOTH_PLUGIN_DEFINE("audio", audio_init, audio_exit)
+BLUETOOTH_PLUGIN_DEFINE("audio", VERSION, audio_init, audio_exit)

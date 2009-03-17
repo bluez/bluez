@@ -23,13 +23,14 @@
 
 struct bluetooth_plugin_desc {
 	const char *name;
+	const char *version;
 	int (*init) (void);
 	void (*exit) (void);
 };
 
-#define BLUETOOTH_PLUGIN_DEFINE(name,init,exit) \
+#define BLUETOOTH_PLUGIN_DEFINE(name,version,init,exit) \
 		extern struct bluetooth_plugin_desc bluetooth_plugin_desc \
 				__attribute__ ((visibility("default"))); \
 		struct bluetooth_plugin_desc bluetooth_plugin_desc = { \
-			name, init, exit \
+			name, version, init, exit \
 		};

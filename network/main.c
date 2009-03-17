@@ -55,4 +55,4 @@ static void network_exit(void)
 	dbus_connection_unref(connection);
 }
 
-BLUETOOTH_PLUGIN_DEFINE("network", network_init, network_exit)
+BLUETOOTH_PLUGIN_DEFINE("network", VERSION, network_init, network_exit)

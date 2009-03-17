@@ -82,4 +82,4 @@ static void input_exit(void)
 	dbus_connection_unref(connection);
 }
 
-BLUETOOTH_PLUGIN_DEFINE("input", input_init, input_exit)
+BLUETOOTH_PLUGIN_DEFINE("input", VERSION, input_init, input_exit)

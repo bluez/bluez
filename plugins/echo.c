@@ -163,4 +163,4 @@ static void echo_exit(void)
 	btd_unregister_adapter_driver(&echo_server);
 }
 
-BLUETOOTH_PLUGIN_DEFINE("echo", echo_init, echo_exit)
+BLUETOOTH_PLUGIN_DEFINE("echo", VERSION, echo_init, echo_exit)

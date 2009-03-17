@@ -158,4 +158,4 @@ static void hal_exit(void)
 	btd_unregister_adapter_driver(&hal_driver);
 }
 
-BLUETOOTH_PLUGIN_DEFINE("hal", hal_init, hal_exit)
+BLUETOOTH_PLUGIN_DEFINE("hal", VERSION, hal_init, hal_exit)

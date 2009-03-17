@@ -695,7 +695,7 @@ int main(int argc, char *argv[])
 
 	umask(0077);
 
-	start_logging("bluetoothd", "Bluetooth daemon");
+	start_logging("bluetoothd", "Bluetooth daemon %s", VERSION);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;

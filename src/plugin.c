@@ -53,6 +53,11 @@ static gboolean add_plugin(void *handle, struct bluetooth_plugin_desc *desc)
 	if (desc->init == NULL)
 		return FALSE;
 
+	if (g_str_equal(desc->version, VERSION) == FALSE) {
+		DBG("version mismatch for %s", desc->name);
+		return FALSE;
+	}
+
 	plugin = g_try_new0(struct bluetooth_plugin, 1);
 	if (plugin == NULL)
 		return FALSE;
