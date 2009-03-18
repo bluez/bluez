@@ -1153,8 +1153,10 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 
 	hs = device->headset;
 
-	if (cond & (G_IO_ERR | G_IO_HUP))
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		debug("ERR or HUP on RFCOMM socket");
 		goto failed;
+	}
 
 	if (g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1,
 				&bytes_read) != G_IO_ERROR_NONE)
