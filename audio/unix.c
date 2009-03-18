@@ -1043,6 +1043,69 @@ failed:
 	unix_ipc_error(client, BT_STOP_STREAM, EIO);
 }
 
+static void close_complete(struct audio_device *dev, void *user_data)
+{
+	struct unix_client *client = user_data;
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_close_rsp *rsp = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+
+	rsp->h.type = BT_RESPONSE;
+	rsp->h.name = BT_CLOSE;
+	rsp->h.length = sizeof(*rsp);
+
+	unix_ipc_sendmsg(client, &rsp->h);
+
+	return;
+}
+
+static void start_close(struct audio_device *dev, struct unix_client *client,
+			gboolean reply)
+{
+	struct a2dp_data *a2dp;
+	struct headset_data *hs;
+
+	switch (client->type) {
+	case TYPE_HEADSET:
+		hs = &client->d.hs;
+
+		if (client->dev && hs->locked) {
+			headset_unlock(client->dev, client->lock);
+			hs->locked = FALSE;
+		}
+		break;
+	case TYPE_SOURCE:
+	case TYPE_SINK:
+		a2dp = &client->d.a2dp;
+
+		if (client->cb_id > 0)
+			avdtp_stream_remove_cb(a2dp->session, a2dp->stream,
+								client->cb_id);
+		if (a2dp->sep) {
+			a2dp_sep_unlock(a2dp->sep, a2dp->session);
+			a2dp->sep = NULL;
+		}
+		if (a2dp->session) {
+			avdtp_unref(a2dp->session);
+			a2dp->session = NULL;
+		}
+		break;
+	default:
+		error("No known services for device");
+		goto failed;
+	}
+
+	if (reply)
+		close_complete(dev, client);
+
+	return;
+
+failed:
+	if (reply)
+		unix_ipc_error(client, BT_STOP_STREAM, EINVAL);
+}
+
 static void handle_getcapabilities_req(struct unix_client *client,
 					struct bt_get_capabilities_req *req)
 {
@@ -1323,6 +1386,20 @@ failed:
 	unix_ipc_error(client, BT_STOP_STREAM, EIO);
 }
 
+static void handle_close_req(struct unix_client *client,
+				struct bt_close_req *req)
+{
+	if (!client->dev)
+		goto failed;
+
+	start_close(client->dev, client, TRUE);
+
+	return;
+
+failed:
+	unix_ipc_error(client, BT_CLOSE, EIO);
+}
+
 static void handle_control_req(struct unix_client *client,
 					struct bt_control_req *req)
 {
@@ -1344,8 +1421,6 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	bt_audio_msg_header_t *msghdr = (void *) buf;
 	struct unix_client *client = data;
 	int len;
-	struct a2dp_data *a2dp = &client->d.a2dp;
-	struct headset_data *hs = &client->d.hs;
 	const char *type, *name;
 
 	if (cond & G_IO_NVAL)
@@ -1353,23 +1428,8 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		debug("Unix client disconnected (fd=%d)", client->sock);
-		switch (client->type) {
-		case TYPE_HEADSET:
-			if (client->dev && hs->locked) {
-				headset_unlock(client->dev, client->lock);
-				hs->locked = FALSE;
-			}
-			break;
-		case TYPE_SOURCE:
-		case TYPE_SINK:
-			if (a2dp->sep) {
-				a2dp_sep_unlock(a2dp->sep, a2dp->session);
-				a2dp->sep = NULL;
-			}
-			break;
-		default:
-			break;
-		}
+
+		start_close(client->dev, client, FALSE);
 
 		if (client->cancel && client->req_id > 0)
 			client->cancel(client->dev, client->req_id);
@@ -1414,6 +1474,10 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	case BT_STOP_STREAM:
 		handle_streamstop_req(client,
 				(struct bt_stop_stream_req *) msghdr);
+		break;
+	case BT_CLOSE:
+		handle_close_req(client,
+				(struct bt_close_req *) msghdr);
 		break;
 	case BT_CONTROL:
 		handle_control_req(client,

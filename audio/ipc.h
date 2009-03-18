@@ -99,6 +99,7 @@ typedef struct {
 #define BT_NEW_STREAM			3
 #define BT_START_STREAM			4
 #define BT_STOP_STREAM			5
+#define BT_CLOSE			6
 #define BT_CONTROL			7
 
 #define BT_CAPABILITIES_TRANSPORT_A2DP	0
@@ -266,6 +267,14 @@ struct bt_stop_stream_req {
 } __attribute__ ((packed));
 
 struct bt_stop_stream_rsp {
+	bt_audio_msg_header_t	h;
+} __attribute__ ((packed));
+
+struct bt_close_req {
+	bt_audio_msg_header_t	h;
+} __attribute__ ((packed));
+
+struct bt_close_rsp {
 	bt_audio_msg_header_t	h;
 } __attribute__ ((packed));
 
