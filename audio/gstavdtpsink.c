@@ -892,7 +892,6 @@ static gboolean gst_avdtp_sink_start(GstBaseSink *basesink)
 					G_IO_NVAL, server_callback, self);
 
 	self->data = g_new0(struct bluetooth_data, 1);
-	memset(self->data, 0, sizeof(struct bluetooth_data));
 
 	self->stream = NULL;
 	self->stream_caps = NULL;
