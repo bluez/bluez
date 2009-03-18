@@ -35,6 +35,7 @@ static const char *strtypes[] = {
 /* This table contains the string representation for messages names */
 static const char *strnames[] = {
 	"BT_GET_CAPABILITIES",
+	"BT_OPEN",
 	"BT_SET_CONFIGURATION",
 	"BT_NEW_STREAM",
 	"BT_START_STREAM",

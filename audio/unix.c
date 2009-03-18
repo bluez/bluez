@@ -68,7 +68,6 @@ struct a2dp_data {
 };
 
 struct headset_data {
-	headset_lock_t lock;
 	gboolean locked;
 };
 
@@ -83,7 +82,7 @@ struct unix_client {
 		struct headset_data hs;
 	} d;
 	int sock;
-	int access_mode;
+	int lock;
 	int data_fd; /* To be deleted once two phase configuration is fully implemented */
 	unsigned int req_id;
 	unsigned int cb_id;
@@ -238,8 +237,7 @@ static uint8_t headset_generate_capability(struct audio_device *dev,
 {
 	pcm_capabilities_t *pcm;
 
-	/* A2DP seid are 6 bytes long so HSP/HFP should be assigned to 7-8 bit */
-	codec->seid = (1 << 6);
+	codec->seid = BT_A2DP_SEID_RANGE + 1;
 	codec->transport = BT_CAPABILITIES_TRANSPORT_SCO;
 	codec->type = BT_HFP_CODEC_PCM;
 	codec->length = sizeof(*pcm);
@@ -304,11 +302,6 @@ static void headset_setup_complete(struct audio_device *dev, void *user_data)
 	rsp->h.name = BT_SET_CONFIGURATION;
 	rsp->h.length = sizeof(*rsp);
 
-	ba2str(&dev->src, rsp->source);
-	ba2str(&dev->dst, rsp->destination);
-	strncpy(rsp->object, dev->path, sizeof(rsp->object));
-	rsp->transport = BT_CAPABILITIES_TRANSPORT_SCO;
-	rsp->access_mode = client->access_mode;
 	rsp->link_mtu = 48;
 
 	client->data_fd = headset_get_sco_fd(dev);
@@ -328,25 +321,15 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_start_stream_rsp *rsp = (void *) buf;
 	struct bt_new_stream_ind *ind = (void *) buf;
-	struct headset_data *hs = &client->d.hs;
 
 	client->req_id = 0;
 
 	if (!dev)
 		goto failed;
 
-	if (!hs->locked)
-		hs->locked = headset_lock(dev, hs->lock);
-	if (!hs->locked) {
-		error("Unable to lock headset");
-		goto failed;
-	}
-
 	client->data_fd = headset_get_sco_fd(dev);
 	if (client->data_fd < 0) {
 		error("Unable to get a SCO fd");
-		headset_unlock(dev, hs->lock);
-		hs->locked = FALSE;
 		goto failed;
 	}
 
@@ -366,8 +349,6 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 
 	if (unix_sendmsg_fd(client->sock, client->data_fd) < 0) {
 		error("unix_sendmsg_fd: %s(%d)", strerror(errno), errno);
-		headset_unlock(client->dev, hs->lock);
-		hs->locked = FALSE;
 		goto failed;
 	}
 
@@ -619,11 +600,6 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 	if (!stream)
 		goto failed;
 
-	if (!a2dp_sep_lock(sep, session)) {
-		error("Unable to lock A2DP source SEP");
-		goto failed;
-	}
-
 	if (client->cb_id > 0)
 		avdtp_stream_remove_cb(a2dp->session, a2dp->stream,
 								client->cb_id);
@@ -641,12 +617,6 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 	rsp->h.name = BT_SET_CONFIGURATION;
 	rsp->h.length = sizeof(*rsp);
 
-	ba2str(&client->dev->src, rsp->source);
-	ba2str(&client->dev->dst, rsp->destination);
-	strncpy(rsp->object, client->dev->path, sizeof(rsp->object));
-	rsp->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
-	client->access_mode = BT_CAPABILITIES_ACCESS_MODE_WRITE;
-	rsp->access_mode = client->access_mode;
 	/* FIXME: Use imtu when fd_opt is CFG_FD_OPT_READ */
 	rsp->link_mtu = omtu;
 
@@ -660,10 +630,6 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 failed:
 	error("config failed");
 
-	if (a2dp->sep) {
-		a2dp_sep_unlock(a2dp->sep, a2dp->session);
-		a2dp->sep = NULL;
-	}
 	unix_ipc_error(client, BT_SET_CONFIGURATION, EIO);
 
 	avdtp_unref(a2dp->session);
@@ -708,10 +674,6 @@ static void a2dp_resume_complete(struct avdtp *session,
 failed:
 	error("resume failed");
 
-	if (a2dp->sep) {
-		a2dp_sep_unlock(a2dp->sep, a2dp->session);
-		a2dp->sep = NULL;
-	}
 	unix_ipc_error(client, BT_START_STREAM, EIO);
 
 	if (client->cb_id > 0) {
@@ -749,10 +711,6 @@ static void a2dp_suspend_complete(struct avdtp *session,
 failed:
 	error("suspend failed");
 
-	if (a2dp->sep) {
-		a2dp_sep_unlock(a2dp->sep, a2dp->session);
-		a2dp->sep = NULL;
-	}
 	unix_ipc_error(client, BT_STOP_STREAM, EIO);
 
 	avdtp_unref(a2dp->session);
@@ -801,6 +759,100 @@ failed:
 	unix_ipc_error(client, BT_GET_CAPABILITIES, err ? : EIO);
 }
 
+static void open_complete(struct audio_device *dev, void *user_data)
+{
+	struct unix_client *client = user_data;
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_open_rsp *rsp = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+
+	rsp->h.type = BT_RESPONSE;
+	rsp->h.name = BT_OPEN;
+	rsp->h.length = sizeof(*rsp);
+
+	ba2str(&dev->src, rsp->source);
+	ba2str(&dev->dst, rsp->destination);
+	strncpy(rsp->object, dev->path, sizeof(rsp->object));
+
+	unix_ipc_sendmsg(client, &rsp->h);
+
+	return;
+}
+
+static void start_open(struct audio_device *dev, struct unix_client *client)
+{
+	struct a2dp_data *a2dp;
+	struct headset_data *hs;
+	struct avdtp_remote_sep *rsep;
+
+	switch (client->type) {
+	case TYPE_SINK:
+		a2dp = &client->d.a2dp;
+
+		if (!a2dp->session)
+			a2dp->session = avdtp_get(&dev->src, &dev->dst);
+
+		if (!a2dp->session) {
+			error("Unable to get a session");
+			goto failed;
+		}
+
+		if (a2dp->sep) {
+			error("Client already has an opened session");
+			goto failed;
+		}
+
+		rsep = avdtp_get_remote_sep(a2dp->session, client->seid);
+		if (!rsep) {
+			error("Invalid seid %d", client->seid);
+			goto failed;
+		}
+
+		a2dp->sep = a2dp_source_get(a2dp->session, rsep);
+		if (!a2dp->sep) {
+			error("seid %d not available or locked", client->seid);
+			goto failed;
+		}
+
+		if (!a2dp_sep_lock(a2dp->sep, a2dp->session)) {
+			error("Unable to open seid %s", client->seid);
+			a2dp->sep = NULL;
+			goto failed;
+		}
+
+		break;
+
+	case TYPE_HEADSET:
+		hs = &client->d.hs;
+
+		if (hs->locked) {
+			error("Client already has an opened session");
+			goto failed;
+		}
+
+		hs->locked = headset_lock(dev, client->lock);
+		if (!hs->locked) {
+			error("Unable to open seid %s", client->seid);
+			goto failed;
+		}
+		break;
+
+	default:
+		error("No known services for device");
+		goto failed;
+	}
+
+	client->dev = dev;
+
+	open_complete(dev, client);
+
+	return;
+
+failed:
+	unix_ipc_error(client, BT_OPEN, EINVAL);
+}
+
 static void start_config(struct audio_device *dev, struct unix_client *client)
 {
 	struct a2dp_data *a2dp;
@@ -819,31 +871,27 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 			goto failed;
 		}
 
-		id = a2dp_source_config(a2dp->session, a2dp_config_complete,
-					client->caps, client);
+		if (!a2dp->sep) {
+			error("seid %d not opened", client->seid);
+			goto failed;
+		}
+
+		id = a2dp_source_config(a2dp->session, a2dp->sep,
+					a2dp_config_complete, client->caps,
+					client);
 		client->cancel = a2dp_source_cancel;
 		break;
 
 	case TYPE_HEADSET:
 		hs = &client->d.hs;
 
-		switch (client->access_mode) {
-		case BT_CAPABILITIES_ACCESS_MODE_READ:
-			hs->lock = HEADSET_LOCK_READ;
-			break;
-		case BT_CAPABILITIES_ACCESS_MODE_WRITE:
-			hs->lock = HEADSET_LOCK_WRITE;
-			break;
-		case BT_CAPABILITIES_ACCESS_MODE_READWRITE:
-			hs->lock = HEADSET_LOCK_READ | HEADSET_LOCK_WRITE;
-			break;
-		default:
-			hs->lock = 0;
-			break;
+		if (!hs->locked) {
+			error("seid %d not opened", client->seid);
+			goto failed;
 		}
 
 		id = headset_config_stream(dev, headset_setup_complete,
-					hs->lock, client);
+						client);
 		client->cancel = headset_cancel_stream;
 		break;
 
@@ -885,7 +933,7 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 		}
 
 		if (!a2dp->sep) {
-			error("Unable to get a sep");
+			error("seid not opened");
 			goto failed;
 		}
 
@@ -899,7 +947,7 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 		hs = &client->d.hs;
 
 		id = headset_request_stream(dev, headset_resume_complete,
-					hs->lock, client);
+						client);
 		client->cancel = headset_cancel_stream;
 		break;
 
@@ -954,7 +1002,7 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 		hs = &client->d.hs;
 
 		id = headset_suspend_stream(dev, headset_suspend_complete,
-					hs->lock, client);
+						client);
 		client->cancel = headset_cancel_stream;
 		break;
 
@@ -1025,6 +1073,92 @@ failed:
 	unix_ipc_error(client, BT_GET_CAPABILITIES, err);
 }
 
+static int handle_sco_open(struct unix_client *client, struct bt_open_req *req)
+{
+	if (!client->interface)
+		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
+	else if (!g_str_equal(client->interface, AUDIO_HEADSET_INTERFACE))
+		return -EIO;
+
+	debug("open sco - object=%s source=%s destination=%s lock=%s%s",
+			strcmp(req->object, "") ? req->object : "ANY",
+			strcmp(req->source, "") ? req->source : "ANY",
+			strcmp(req->destination, "") ? req->destination : "ANY",
+			req->lock & BT_READ_LOCK ? "read" : "",
+			req->lock & BT_WRITE_LOCK ? "write" : "");
+
+	return 0;
+}
+
+static int handle_a2dp_open(struct unix_client *client, struct bt_open_req *req)
+{
+	if (!client->interface)
+		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
+	else if (!g_str_equal(client->interface, AUDIO_SINK_INTERFACE))
+		return -EIO;
+
+	debug("open a2dp - object=%s source=%s destination=%s lock=%s%s",
+			strcmp(req->object, "") ? req->object : "ANY",
+			strcmp(req->source, "") ? req->source : "ANY",
+			strcmp(req->destination, "") ? req->destination : "ANY",
+			req->lock & BT_READ_LOCK ? "read" : "",
+			req->lock & BT_WRITE_LOCK ? "write" : "");
+
+	return 0;
+}
+
+static void handle_open_req(struct unix_client *client, struct bt_open_req *req)
+{
+	struct audio_device *dev;
+	bdaddr_t src, dst;
+	int err = 0;
+
+	if (!check_nul(req->source) || !check_nul(req->destination) ||
+			!check_nul(req->object)) {
+		err = EINVAL;
+		goto failed;
+	}
+
+	str2ba(req->source, &src);
+	str2ba(req->destination, &dst);
+
+	if (req->seid > BT_A2DP_SEID_RANGE) {
+		err = handle_sco_open(client, req);
+		if (err < 0) {
+			err = -err;
+			goto failed;
+		}
+	} else {
+		err = handle_a2dp_open(client, req);
+		if (err < 0) {
+			err = -err;
+			goto failed;
+		}
+	}
+
+	if (!manager_find_device(req->object, &src, &dst, NULL, FALSE))
+		goto failed;
+
+	dev = manager_find_device(req->object, &src, &dst, client->interface,
+				TRUE);
+	if (!dev)
+		dev = manager_find_device(req->object, &src, &dst,
+					client->interface, FALSE);
+
+	if (!dev)
+		goto failed;
+
+	client->seid = req->seid;
+	client->lock = req->lock;
+
+	start_open(dev, client);
+
+	return;
+
+failed:
+	unix_ipc_error(client, BT_SET_CONFIGURATION, err ? : EIO);
+}
+
 static int handle_sco_transport(struct unix_client *client,
 				struct bt_set_configuration_req *req)
 {
@@ -1032,9 +1166,6 @@ static int handle_sco_transport(struct unix_client *client,
 		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
 	else if (!g_str_equal(client->interface, AUDIO_HEADSET_INTERFACE))
 		return -EIO;
-
-	debug("config sco - source = %s destination = %s access_mode = %u",
-			req->source, req->destination, req->access_mode);
 
 	return 0;
 }
@@ -1061,9 +1192,6 @@ static int handle_a2dp_transport(struct unix_client *client,
 						NULL, 0);
 
 	client->caps = g_slist_append(client->caps, media_transport);
-
-	debug("config a2dp - source = %s destination = %s access_mode = %u",
-			req->source, req->destination, req->access_mode);
 
 	if (req->codec.type == BT_A2DP_CODEC_MPEG12) {
 		mpeg_capabilities_t *mpeg = (void *) &req->codec;
@@ -1113,19 +1241,13 @@ static int handle_a2dp_transport(struct unix_client *client,
 static void handle_setconfiguration_req(struct unix_client *client,
 					struct bt_set_configuration_req *req)
 {
-	struct audio_device *dev;
-	bdaddr_t src, dst;
 	int err = 0;
 
-	if (!req->access_mode || !check_nul(req->source) ||
-			!check_nul(req->destination) ||
-			!check_nul(req->object)) {
-		err = EINVAL;
+	if (req->codec.seid != client->seid) {
+		error("Unable to set configuration: seid %d not opened",
+				client->seid);
 		goto failed;
 	}
-
-	str2ba(req->source, &src);
-	str2ba(req->destination, &dst);
 
 	if (req->codec.transport == BT_CAPABILITIES_TRANSPORT_SCO) {
 		err = handle_sco_transport(client, req);
@@ -1141,21 +1263,10 @@ static void handle_setconfiguration_req(struct unix_client *client,
 		}
 	}
 
-	if (!manager_find_device(req->object, &src, &dst, NULL, FALSE))
+	if (!client->dev)
 		goto failed;
 
-	dev = manager_find_device(req->object, &src, &dst, client->interface,
-				TRUE);
-	if (!dev)
-		dev = manager_find_device(req->object, &src, &dst,
-					client->interface, FALSE);
-
-	if (!dev)
-		goto failed;
-
-	client->access_mode = req->access_mode;
-
-	start_config(dev, client);
+	start_config(client->dev, client);
 
 	return;
 
@@ -1224,7 +1335,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		switch (client->type) {
 		case TYPE_HEADSET:
 			if (client->dev && hs->locked) {
-				headset_unlock(client->dev, hs->lock);
+				headset_unlock(client->dev, client->lock);
 				hs->locked = FALSE;
 			}
 			break;
@@ -1266,6 +1377,10 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	case BT_GET_CAPABILITIES:
 		handle_getcapabilities_req(client,
 				(struct bt_get_capabilities_req *) msghdr);
+		break;
+	case BT_OPEN:
+		handle_open_req(client,
+				(struct bt_open_req *) msghdr);
 		break;
 	case BT_SET_CONFIGURATION:
 		handle_setconfiguration_req(client,

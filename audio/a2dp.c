@@ -1238,14 +1238,48 @@ gboolean a2dp_source_cancel(struct audio_device *dev, unsigned int id)
 	return TRUE;
 }
 
-unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
-				GSList *caps, void *user_data)
+struct a2dp_sep *a2dp_source_get(struct avdtp *session,
+				struct avdtp_remote_sep *rsep)
+{
+	GSList *l;
+	struct a2dp_server *server;
+	struct avdtp_service_capability *cap;
+	struct avdtp_media_codec_capability *codec_cap = NULL;
+	bdaddr_t src;
+
+	avdtp_get_peers(session, &src, NULL);
+	server = find_server(servers, &src);
+	if (!server)
+		return NULL;
+
+	cap = avdtp_get_codec(rsep);
+	codec_cap = (void *) cap->data;
+
+	for (l = server->sources; l != NULL; l = l->next) {
+		struct a2dp_sep *sep = l->data;
+
+		if (sep->locked)
+			continue;
+
+		if (sep->codec != codec_cap->media_codec_type)
+			continue;
+
+		if (!sep->stream || avdtp_has_stream(session, sep->stream))
+			return sep;
+	}
+
+	return NULL;
+}
+
+unsigned int a2dp_source_config(struct avdtp *session, struct a2dp_sep *sep,
+				a2dp_config_cb_t cb, GSList *caps,
+				void *user_data)
 {
 	struct a2dp_setup_cb *cb_data;
 	GSList *l;
 	struct a2dp_server *server;
 	struct a2dp_setup *setup;
-	struct a2dp_sep *sep = NULL, *tmp;
+	struct a2dp_sep *tmp;
 	struct avdtp_local_sep *lsep;
 	struct avdtp_remote_sep *rsep;
 	struct avdtp_service_capability *cap;
@@ -1271,25 +1305,8 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 	if (!codec_cap)
 		return 0;
 
-	for (l = server->sources; l != NULL; l = l->next) {
-		tmp = l->data;
-
-		if (tmp->locked)
-			continue;
-
-		if (tmp->codec != codec_cap->media_codec_type)
-			continue;
-
-		if (!tmp->stream || avdtp_has_stream(session, tmp->stream)) {
-			sep = tmp;
-			break;
-		}
-	}
-
-	if (!sep) {
-		error("a2dp_source_cfg: no available SEP found");
+	if (sep->codec != codec_cap->media_codec_type)
 		return 0;
-	}
 
 	debug("a2dp_source_config: selected SEP %p", sep->sep);
 

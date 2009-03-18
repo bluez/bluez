@@ -2716,6 +2716,21 @@ static int process_queue(struct avdtp *session)
 	return send_req(session, FALSE, req);
 }
 
+struct avdtp_remote_sep *avdtp_get_remote_sep(struct avdtp *session,
+						uint8_t seid)
+{
+	GSList *l;
+
+	for (l = session->seps; l; l = l->next) {
+		struct avdtp_remote_sep *sep = l->data;
+
+		if (sep->seid == seid)
+			return sep;
+	}
+
+	return NULL;
+}
+
 uint8_t avdtp_get_seid(struct avdtp_remote_sep *sep)
 {
 	return sep->seid;

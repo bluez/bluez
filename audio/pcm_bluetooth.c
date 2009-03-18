@@ -430,6 +430,8 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 {
 	struct bluetooth_data *data = io->private_data;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_open_req *open_req = (void *) buf;
+	struct bt_open_rsp *open_rsp = (void *) buf;
 	struct bt_set_configuration_req *req = (void *) buf;
 	struct bt_set_configuration_rsp *rsp = (void *) buf;
 	int err;
@@ -438,16 +440,33 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 					io->period_size, io->buffer_size);
 
 	memset(req, 0, BT_SUGGESTED_BUFFER_SIZE);
+	open_req->h.type = BT_REQUEST;
+	open_req->h.name = BT_OPEN;
+	open_req->h.length = sizeof(*open_req);
+
+	strncpy(open_req->destination, data->alsa_config.device, 18);
+	open_req->seid = BT_A2DP_SEID_RANGE + 1;
+	open_req->lock = (io->stream == SND_PCM_STREAM_PLAYBACK ?
+			BT_WRITE_LOCK : BT_READ_LOCK);
+
+	err = audioservice_send(data->server.fd, &open_req->h);
+	if (err < 0)
+		return err;
+
+	open_rsp->h.length = sizeof(*open_rsp);
+	err = audioservice_expect(data->server.fd, &open_rsp->h,
+					BT_OPEN);
+	if (err < 0)
+		return err;
+
+	memset(req, 0, BT_SUGGESTED_BUFFER_SIZE);
 	req->h.type = BT_REQUEST;
 	req->h.name = BT_SET_CONFIGURATION;
 	req->h.length = sizeof(*req);
 
-	strncpy(req->destination, data->alsa_config.device, 18);
 	req->codec.transport = BT_CAPABILITIES_TRANSPORT_SCO;
+	req->codec.seid = BT_A2DP_SEID_RANGE + 1;
 	req->codec.length = sizeof(pcm_capabilities_t);
-	req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
-			BT_CAPABILITIES_ACCESS_MODE_WRITE :
-			BT_CAPABILITIES_ACCESS_MODE_READ);
 
 	req->h.length += req->codec.length - sizeof(req->codec);
 	err = audioservice_send(data->server.fd, &req->h);
@@ -460,7 +479,7 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 	if (err < 0)
 		return err;
 
-	data->transport = rsp->transport;
+	data->transport = BT_CAPABILITIES_TRANSPORT_SCO;
 	data->link_mtu = rsp->link_mtu;
 
 	return 0;
@@ -671,12 +690,34 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	struct bluetooth_data *data = io->private_data;
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_open_req *open_req = (void *) buf;
+	struct bt_open_rsp *open_rsp = (void *) buf;
 	struct bt_set_configuration_req *req = (void *) buf;
 	struct bt_set_configuration_rsp *rsp = (void *) buf;
 	int err;
 
 	DBG("Preparing with io->period_size=%lu io->buffer_size=%lu",
 					io->period_size, io->buffer_size);
+
+	memset(req, 0, BT_SUGGESTED_BUFFER_SIZE);
+	open_req->h.type = BT_REQUEST;
+	open_req->h.name = BT_OPEN;
+	open_req->h.length = sizeof(*open_req);
+
+	strncpy(open_req->destination, data->alsa_config.device, 18);
+	open_req->seid = a2dp->sbc_capabilities.capability.seid;
+	open_req->lock = (io->stream == SND_PCM_STREAM_PLAYBACK ?
+			BT_WRITE_LOCK : BT_READ_LOCK);
+
+	err = audioservice_send(data->server.fd, &open_req->h);
+	if (err < 0)
+		return err;
+
+	open_rsp->h.length = sizeof(*open_rsp);
+	err = audioservice_expect(data->server.fd, &open_rsp->h,
+					BT_OPEN);
+	if (err < 0)
+		return err;
 
 	err = bluetooth_a2dp_init(data, params);
 	if (err < 0)
@@ -687,15 +728,11 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	req->h.name = BT_SET_CONFIGURATION;
 	req->h.length = sizeof(*req);
 
-	strncpy(req->destination, data->alsa_config.device, 18);
 	memcpy(&req->codec, &a2dp->sbc_capabilities,
 			sizeof(a2dp->sbc_capabilities));
 
 	req->codec.transport = BT_CAPABILITIES_TRANSPORT_A2DP;
 	req->codec.length = sizeof(a2dp->sbc_capabilities);
-	req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
-			BT_CAPABILITIES_ACCESS_MODE_WRITE :
-			BT_CAPABILITIES_ACCESS_MODE_READ);
 	req->h.length += req->codec.length - sizeof(req->codec);
 
 	err = audioservice_send(data->server.fd, &req->h);
@@ -708,7 +745,7 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	if (err < 0)
 		return err;
 
-	data->transport = rsp->transport;
+	data->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
 	data->link_mtu = rsp->link_mtu;
 
 	/* Setup SBC encoder now we agree on parameters */

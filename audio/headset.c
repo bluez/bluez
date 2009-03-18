@@ -2219,7 +2219,6 @@ static gboolean dummy_connect_complete(struct audio_device *dev)
 
 unsigned int headset_request_stream(struct audio_device *dev,
 					headset_stream_cb_t cb,
-					headset_lock_t lock,
 					void *user_data)
 {
 	struct headset *hs = dev->headset;
@@ -2256,14 +2255,10 @@ unsigned int headset_request_stream(struct audio_device *dev,
 
 unsigned int headset_config_stream(struct audio_device *dev,
 					headset_stream_cb_t cb,
-					headset_lock_t lock,
 					void *user_data)
 {
 	struct headset *hs = dev->headset;
 	unsigned int id;
-
-	if (hs->lock & lock)
-		return 0;
 
 	if (hs->dc_timer) {
 		g_source_remove(hs->dc_timer);
@@ -2293,14 +2288,10 @@ done:
 
 unsigned int headset_suspend_stream(struct audio_device *dev,
 					headset_stream_cb_t cb,
-					headset_lock_t lock,
 					void *user_data)
 {
 	struct headset *hs = dev->headset;
 	unsigned int id;
-
-	if (hs->lock & ~lock || !hs->rfcomm || !hs->sco)
-		return 0;
 
 	if (hs->dc_timer) {
 		g_source_remove(hs->dc_timer);

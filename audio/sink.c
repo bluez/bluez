@@ -435,6 +435,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	struct pending_request *pending;
 	struct avdtp_local_sep *lsep;
 	struct avdtp_remote_sep *rsep;
+	struct a2dp_sep *sep;
 	GSList *caps = NULL;
 	int id;
 
@@ -466,7 +467,8 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 		goto failed;
 	}
 
-	id = a2dp_source_config(sink->session, stream_setup_complete,
+	sep = a2dp_source_get(session, rsep);
+	id = a2dp_source_config(sink->session, sep, stream_setup_complete,
 				caps, sink);
 	if (id == 0)
 		goto failed;

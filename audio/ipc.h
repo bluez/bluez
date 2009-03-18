@@ -94,10 +94,11 @@ typedef struct {
 
 /* Messages names */
 #define BT_GET_CAPABILITIES		0
-#define BT_SET_CONFIGURATION		1
-#define BT_NEW_STREAM			2
-#define BT_START_STREAM			3
-#define BT_STOP_STREAM			4
+#define BT_OPEN				1
+#define BT_SET_CONFIGURATION		2
+#define BT_NEW_STREAM			3
+#define BT_START_STREAM			4
+#define BT_STOP_STREAM			5
 #define BT_CONTROL			7
 
 #define BT_CAPABILITIES_TRANSPORT_A2DP	0
@@ -123,6 +124,9 @@ struct bt_get_capabilities_req {
 /**
  * SBC Codec parameters as per A2DP profile 1.0 § 4.3
  */
+
+/* A2DP seid are 6 bytes long so HSP/HFP are assigned to 7-8 bits */
+#define BT_A2DP_SEID_RANGE			(1 << 6) - 1
 
 #define BT_A2DP_CODEC_SBC			0x00
 #define BT_A2DP_CODEC_MPEG12			0x01
@@ -210,22 +214,29 @@ struct bt_get_capabilities_rsp {
 	uint8_t			data[0];	/* First codec_capabilities_t */
 } __attribute__ ((packed));
 
-struct bt_set_configuration_req {
+struct bt_open_req {
 	bt_audio_msg_header_t	h;
 	char			source[18];	/* Address of the local Device */
 	char			destination[18];/* Address of the remote Device */
 	char			object[128];	/* DBus object path */
-	uint8_t			access_mode;	/* Requested access mode */
+	uint8_t			seid;		/* Requested capability configuration to lock */
+	uint8_t			lock;		/* Requested lock */
+} __attribute__ ((packed));
+
+struct bt_open_rsp {
+	bt_audio_msg_header_t	h;
+	char			source[18];	/* Address of the local Device */
+	char			destination[18];/* Address of the remote Device */
+	char			object[128];	/* DBus object path */
+} __attribute__ ((packed));
+
+struct bt_set_configuration_req {
+	bt_audio_msg_header_t	h;
 	codec_capabilities_t	codec;		/* Requested codec */
 } __attribute__ ((packed));
 
 struct bt_set_configuration_rsp {
 	bt_audio_msg_header_t	h;
-	char			source[18];	/* Address of the local Device */
-	char			destination[18];/* Address of the remote Device */
-	char			object[128];	/* DBus object path */
-	uint8_t			transport;	/* Granted transport */
-	uint8_t			access_mode;	/* Granted access mode */
 	uint16_t		link_mtu;	/* Max length that transport supports */
 } __attribute__ ((packed));
 
