@@ -125,6 +125,7 @@ struct browse_req {
 	GSList *profiles_removed;
 	sdp_list_t *records;
 	int search_uuid;
+	int reconnect_attempt;
 };
 
 static uint16_t uuid_list[] = {
@@ -1301,8 +1302,13 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	/* If we have a valid response and req->search_uuid == 2, then L2CAP
 	 * UUID & PNP searching was successful -- we are done */
-	if (err < 0 || (req->search_uuid == 2 && req->records))
-		goto done;
+	if (err < 0 || (req->search_uuid == 2 && req->records)) {
+		if (err == -ECONNRESET && req->reconnect_attempt < 1) {
+			req->search_uuid--;
+			req->reconnect_attempt++;
+		} else
+			goto done;
+	}
 
 	update_services(req, recs);
 
