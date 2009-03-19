@@ -145,3 +145,6 @@ gboolean a2dp_source_cancel(struct audio_device *dev, unsigned int id);
 
 gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session);
 gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session);
+gboolean a2dp_sep_get_lock(struct a2dp_sep *sep);
+struct a2dp_sep *a2dp_get_sep(struct avdtp *session,
+				struct avdtp_stream *stream);

@@ -1535,3 +1535,45 @@ gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session)
 	return TRUE;
 }
 
+gboolean a2dp_sep_get_lock(struct a2dp_sep *sep)
+{
+	return sep->locked;
+}
+
+static int stream_cmp(gconstpointer data, gconstpointer user_data)
+{
+	const struct a2dp_sep *sep = data;
+	const struct avdtp_stream *stream = user_data;
+
+	return (sep->stream != stream);
+}
+
+struct a2dp_sep *a2dp_get_sep(struct avdtp *session,
+				struct avdtp_stream *stream)
+{
+	struct a2dp_server *server;
+	bdaddr_t src, dst;
+	GSList *l;
+
+	avdtp_get_peers(session, &src, &dst);
+
+	for (l = servers; l; l = l->next) {
+		server = l->data;
+
+		if (bacmp(&src, &server->src) == 0)
+			break;
+	}
+
+	if (!l)
+		return NULL;
+
+	l = g_slist_find_custom(server->sources, stream, stream_cmp);
+	if (l)
+		return l->data;
+
+	l = g_slist_find_custom(server->sinks, stream, stream_cmp);
+	if (l)
+		return l->data;
+
+	return NULL;
+}

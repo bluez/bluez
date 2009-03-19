@@ -170,12 +170,16 @@ struct bt_get_capabilities_req {
 #define BT_PCM_FLAG_NREC			0x01
 #define BT_PCM_FLAG_PCM_ROUTING			0x02
 
+#define BT_WRITE_LOCK				(1 << 1)
+#define BT_READ_LOCK				1
+
 typedef struct {
 	uint8_t seid;
 	uint8_t transport;
 	uint8_t type;
 	uint8_t length;
 	uint8_t configured;
+	uint8_t lock;
 	uint8_t data[0];
 } __attribute__ ((packed)) codec_capabilities_t;
 

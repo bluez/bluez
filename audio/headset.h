@@ -85,6 +85,7 @@ gboolean headset_get_sco_hci(struct audio_device *dev);
 
 gboolean headset_is_active(struct audio_device *dev);
 
+headset_lock_t headset_get_lock(struct audio_device *dev);
 gboolean headset_lock(struct audio_device *dev, headset_lock_t lock);
 gboolean headset_unlock(struct audio_device *dev, headset_lock_t lock);
 gboolean headset_suspend(struct audio_device *dev, void *data);

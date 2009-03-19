@@ -248,6 +248,8 @@ static uint8_t headset_generate_capability(struct audio_device *dev,
 		pcm->flags |= BT_PCM_FLAG_NREC;
 	if (!headset_get_sco_hci(dev))
 		pcm->flags |= BT_PCM_FLAG_PCM_ROUTING;
+	codec->configured = headset_is_active(dev);
+	codec->lock = headset_get_lock(dev);
 
 	return codec->length;
 }
@@ -437,7 +439,8 @@ static void print_sbc(struct sbc_codec_cap *sbc)
 static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 				struct avdtp_service_capability *cap,
 				uint8_t seid,
-				uint8_t configured)
+				uint8_t configured,
+				uint8_t lock)
 {
 	struct avdtp_media_codec_capability *codec_cap = (void *) cap->data;
 	codec_capabilities_t *codec = (void *) rsp + rsp->h.length;
@@ -501,6 +504,7 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 	codec->seid = seid;
 	codec->type = codec_cap->media_codec_type;
 	codec->configured = configured;
+	codec->lock = lock;
 	rsp->h.length += codec->length;
 
 	debug("Append %s seid %d - length %d - total %d",
@@ -540,9 +544,11 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 
 	for (l = seps; l; l = g_slist_next(l)) {
 		struct avdtp_remote_sep *rsep = l->data;
+		struct a2dp_sep *sep;
 		struct avdtp_service_capability *cap;
 		struct avdtp_stream *stream;
-		uint8_t seid, configured = 0;
+		uint8_t seid, configured = 0, lock = 0;
+		GSList *cl;
 
 		cap = avdtp_get_codec(rsep);
 
@@ -561,7 +567,22 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 				cap = avdtp_stream_get_codec(stream);
 		}
 
-		a2dp_append_codec(rsp, cap, seid, configured);
+		for (cl = clients; cl; cl = cl->next) {
+			struct unix_client *c = cl->data;
+			struct a2dp_data *ca2dp = &c->d.a2dp;
+
+			if (ca2dp && ca2dp->session == session &&
+					c->seid == seid) {
+				lock = c->lock;
+				break;
+			}
+		}
+
+		sep = a2dp_get_sep(session, stream);
+		if (sep && a2dp_sep_get_lock(sep))
+			lock = BT_WRITE_LOCK;
+
+		a2dp_append_codec(rsp, cap, seid, configured, lock);
 	}
 
 	unix_ipc_sendmsg(client, &rsp->h);

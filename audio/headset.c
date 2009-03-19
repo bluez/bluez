@@ -2499,6 +2499,13 @@ gboolean headset_is_active(struct audio_device *dev)
 	return FALSE;
 }
 
+headset_lock_t headset_get_lock(struct audio_device *dev)
+{
+	struct headset *hs = dev->headset;
+
+	return hs->lock;
+}
+
 gboolean headset_lock(struct audio_device *dev, headset_lock_t lock)
 {
 	struct headset *hs = dev->headset;
