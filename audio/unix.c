@@ -95,26 +95,8 @@ static int unix_sock = -1;
 
 static void client_free(struct unix_client *client)
 {
-	struct a2dp_data *a2dp;
-
-	if (client->req_id)
+	if (client->cancel && client->req_id > 0)
 		client->cancel(client->dev, client->req_id);
-
-	switch (client->type) {
-	case TYPE_SINK:
-	case TYPE_SOURCE:
-		a2dp = &client->d.a2dp;
-		if (client->cb_id > 0)
-			avdtp_stream_remove_cb(a2dp->session, a2dp->stream,
-								client->cb_id);
-		if (a2dp->sep)
-			a2dp_sep_unlock(a2dp->sep, a2dp->session);
-		if (a2dp->session)
-			avdtp_unref(a2dp->session);
-		break;
-	default:
-		break;
-	}
 
 	if (client->sock >= 0)
 		close(client->sock);
@@ -1429,10 +1411,6 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		debug("Unix client disconnected (fd=%d)", client->sock);
 
-		start_close(client->dev, client, FALSE);
-
-		if (client->cancel && client->req_id > 0)
-			client->cancel(client->dev, client->req_id);
 		goto failed;
 	}
 
@@ -1492,6 +1470,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 failed:
 	clients = g_slist_remove(clients, client);
+	start_close(client->dev, client, FALSE);
 	client_free(client);
 	return FALSE;
 }
