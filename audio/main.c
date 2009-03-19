@@ -72,7 +72,7 @@ static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
 	int sk;
 	struct audio_device *device;
 	char addr[18];
-	bdaddr_t dst;
+	bdaddr_t src, dst;
 
 	if (err) {
 		error("sco_server_cb: %s", err->message);
@@ -80,6 +80,7 @@ static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
 	}
 
 	bt_io_get(chan, BT_IO_SCO, &err,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, addr,
 			BT_IO_OPT_INVALID);
@@ -88,7 +89,7 @@ static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
 		goto drop;
 	}
 
-	device = manager_find_device(&dst, NULL, FALSE);
+	device = manager_find_device(&src, &dst, NULL, FALSE);
 	if (!device)
 		goto drop;
 

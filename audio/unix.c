@@ -50,6 +50,8 @@
 #include "unix.h"
 #include "glib-helper.h"
 
+#define check_nul(str) (str[sizeof(str) - 1] == '\0')
+
 typedef enum {
 	TYPE_NONE,
 	TYPE_HEADSET,
@@ -260,6 +262,8 @@ static void headset_discovery_complete(struct audio_device *dev, void *user_data
 	rsp->h.type = BT_RESPONSE;
 	rsp->h.name = BT_GET_CAPABILITIES;
 	rsp->h.length = sizeof(*rsp) + codec->length;
+	ba2str(&dev->src, rsp->source);
+	ba2str(&dev->dst, rsp->destination);
 
 	unix_ipc_sendmsg(client, &rsp->h);
 
@@ -287,6 +291,8 @@ static void headset_setup_complete(struct audio_device *dev, void *user_data)
 	rsp->h.name = BT_SET_CONFIGURATION;
 	rsp->h.length = sizeof(*rsp);
 
+	ba2str(&dev->src, rsp->source);
+	ba2str(&dev->dst, rsp->destination);
 	rsp->transport = BT_CAPABILITIES_TRANSPORT_SCO;
 	rsp->access_mode = client->access_mode;
 	rsp->link_mtu = 48;
@@ -472,6 +478,8 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 	rsp->h.type = BT_RESPONSE;
 	rsp->h.name = BT_GET_CAPABILITIES;
 	rsp->h.length = sizeof(*rsp);
+	ba2str(&client->dev->src, rsp->source);
+	ba2str(&client->dev->dst, rsp->destination);
 
 	for (l = seps; l; l = g_slist_next(l)) {
 		struct avdtp_remote_sep *rsep = l->data;
@@ -543,6 +551,8 @@ static void a2dp_config_complete(struct avdtp *session, struct a2dp_sep *sep,
 	rsp->h.name = BT_SET_CONFIGURATION;
 	rsp->h.length = sizeof(*rsp);
 
+	ba2str(&client->dev->src, rsp->source);
+	ba2str(&client->dev->dst, rsp->destination);
 	rsp->transport = BT_CAPABILITIES_TRANSPORT_A2DP;
 	client->access_mode = BT_CAPABILITIES_ACCESS_MODE_WRITE;
 	rsp->access_mode = client->access_mode;
@@ -877,9 +887,16 @@ static void handle_getcapabilities_req(struct unix_client *client,
 					struct bt_get_capabilities_req *req)
 {
 	struct audio_device *dev;
-	bdaddr_t bdaddr;
+	bdaddr_t src, dst;
+	int err = EIO;
 
-	str2ba(req->device, &bdaddr);
+	if (!check_nul(req->source) || !check_nul(req->destination)) {
+		err = EINVAL;
+		goto failed;
+	}
+
+	str2ba(req->source, &src);
+	str2ba(req->destination, &dst);
 
 	if (client->interface) {
 		error("Got GET_CAPABILITIES for an initialized client");
@@ -891,12 +908,12 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	else if (req->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
 		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
 
-	if (!manager_find_device(&bdaddr, NULL, FALSE))
+	if (!manager_find_device(&src, &dst, NULL, FALSE))
 		goto failed;
 
-	dev = manager_find_device(&bdaddr, client->interface, TRUE);
+	dev = manager_find_device(&src, &dst, client->interface, TRUE);
 	if (!dev && (req->flags & BT_FLAG_AUTOCONNECT))
-		dev = manager_find_device(&bdaddr, client->interface, FALSE);
+		dev = manager_find_device(&src, &dst, client->interface, FALSE);
 
 	if (!dev) {
 		error("Unable to find a matching device");
@@ -914,7 +931,7 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	return;
 
 failed:
-	unix_ipc_error(client, BT_GET_CAPABILITIES, EIO);
+	unix_ipc_error(client, BT_GET_CAPABILITIES, err);
 }
 
 static int handle_sco_transport(struct unix_client *client,
@@ -925,8 +942,8 @@ static int handle_sco_transport(struct unix_client *client,
 	else if (!g_str_equal(client->interface, AUDIO_HEADSET_INTERFACE))
 		return -EIO;
 
-	debug("config sco - device = %s access_mode = %u", req->device,
-			req->access_mode);
+	debug("config sco - source = %s destination = %s access_mode = %u",
+			req->source, req->destination, req->access_mode);
 
 	return 0;
 }
@@ -954,8 +971,8 @@ static int handle_a2dp_transport(struct unix_client *client,
 
 	client->caps = g_slist_append(client->caps, media_transport);
 
-	debug("config a2dp - device = %s access_mode = %u", req->device,
-			req->access_mode);
+	debug("config a2dp - source = %s destination = %s access_mode = %u",
+			req->source, req->destination, req->access_mode);
 
 	if (req->codec.type == BT_A2DP_CODEC_MPEG12) {
 		mpeg_capabilities_t *mpeg = (void *) &req->codec;
@@ -1015,15 +1032,17 @@ static void handle_setconfiguration_req(struct unix_client *client,
 					struct bt_set_configuration_req *req)
 {
 	struct audio_device *dev;
-	bdaddr_t bdaddr;
+	bdaddr_t src, dst;
 	int err = 0;
 
-	if (!req->access_mode) {
+	if (!req->access_mode || !check_nul(req->source) ||
+			!check_nul(req->destination)) {
 		err = EINVAL;
 		goto failed;
 	}
 
-	str2ba(req->device, &bdaddr);
+	str2ba(req->source, &src);
+	str2ba(req->destination, &dst);
 
 	if (req->codec.transport == BT_CAPABILITIES_TRANSPORT_SCO) {
 		err = handle_sco_transport(client, req);
@@ -1039,12 +1058,12 @@ static void handle_setconfiguration_req(struct unix_client *client,
 		}
 	}
 
-	if (!manager_find_device(&bdaddr, NULL, FALSE))
+	if (!manager_find_device(&src, &dst, NULL, FALSE))
 		goto failed;
 
-	dev = manager_find_device(&bdaddr, client->interface, TRUE);
+	dev = manager_find_device(&src, &dst, client->interface, TRUE);
 	if (!dev)
-		dev = manager_find_device(&bdaddr, client->interface, FALSE);
+		dev = manager_find_device(&src, &dst, client->interface, FALSE);
 
 	if (!dev)
 		goto failed;

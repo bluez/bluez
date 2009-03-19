@@ -71,7 +71,7 @@ extern "C" {
 #include <sys/un.h>
 #include <errno.h>
 
-#define BT_SUGGESTED_BUFFER_SIZE   128
+#define BT_SUGGESTED_BUFFER_SIZE   512
 #define BT_IPC_SOCKET_NAME "\0/org/bluez/audio"
 
 /* Generic message header definition, except for RESPONSE messages */
@@ -112,7 +112,8 @@ typedef struct {
 
 struct bt_get_capabilities_req {
 	bt_audio_msg_header_t	h;
-	char			device[18];	/* Address of the remote Device */
+	char			source[18];	/* Address of the local Device */
+	char			destination[18];/* Address of the remote Device */
 	uint8_t			transport;	/* Requested transport */
 	uint8_t			flags;		/* Requested flags */
 } __attribute__ ((packed));
@@ -199,18 +200,23 @@ typedef struct {
 
 struct bt_get_capabilities_rsp {
 	bt_audio_msg_header_t	h;
+	char			source[18];	/* Address of the local Device */
+	char			destination[18];/* Address of the remote Device */
 	uint8_t			data[0];	/* First codec_capabilities_t */
 } __attribute__ ((packed));
 
 struct bt_set_configuration_req {
 	bt_audio_msg_header_t	h;
-	char			device[18];	/* Address of the remote Device */
+	char			source[18];	/* Address of the local Device */
+	char			destination[18];/* Address of the remote Device */
 	uint8_t			access_mode;	/* Requested access mode */
 	codec_capabilities_t	codec;		/* Requested codec */
 } __attribute__ ((packed));
 
 struct bt_set_configuration_rsp {
 	bt_audio_msg_header_t	h;
+	char			source[18];	/* Address of the local Device */
+	char			destination[18];/* Address of the remote Device */
 	uint8_t			transport;	/* Granted transport */
 	uint8_t			access_mode;	/* Granted access mode */
 	uint16_t		link_mtu;	/* Max length that transport supports */

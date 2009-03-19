@@ -442,7 +442,7 @@ static int bluetooth_hsp_hw_params(snd_pcm_ioplug_t *io,
 	req->h.name = BT_SET_CONFIGURATION;
 	req->h.length = sizeof(*req);
 
-	strncpy(req->device, data->alsa_config.device, 18);
+	strncpy(req->destination, data->alsa_config.device, 18);
 	req->codec.transport = BT_CAPABILITIES_TRANSPORT_SCO;
 	req->codec.length = sizeof(pcm_capabilities_t);
 	req->access_mode = (io->stream == SND_PCM_STREAM_PLAYBACK ?
@@ -687,7 +687,7 @@ static int bluetooth_a2dp_hw_params(snd_pcm_ioplug_t *io,
 	req->h.name = BT_SET_CONFIGURATION;
 	req->h.length = sizeof(*req);
 
-	strncpy(req->device, data->alsa_config.device, 18);
+	strncpy(req->destination, data->alsa_config.device, 18);
 	memcpy(&req->codec, &a2dp->sbc_capabilities,
 			sizeof(a2dp->sbc_capabilities));
 
@@ -1652,7 +1652,7 @@ static int bluetooth_init(struct bluetooth_data *data, snd_pcm_stream_t stream,
 
 	if (alsa_conf->autoconnect)
 		req->flags |= BT_FLAG_AUTOCONNECT;
-	strncpy(req->device, alsa_conf->device, 18);
+	strncpy(req->destination, alsa_conf->device, 18);
 	if (alsa_conf->has_transport)
 		req->transport = alsa_conf->transport;
 	else

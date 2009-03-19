@@ -136,11 +136,11 @@ static void setup_unref(struct a2dp_setup *setup)
 
 static struct audio_device *a2dp_get_dev(struct avdtp *session)
 {
-	bdaddr_t addr;
+	bdaddr_t src, dst;
 
-	avdtp_get_peers(session, NULL, &addr);
+	avdtp_get_peers(session, &src, &dst);
 
-	return manager_find_device(&addr, NULL, FALSE);
+	return manager_find_device(&src, &dst, NULL, FALSE);
 }
 
 static gboolean finalize_config(struct a2dp_setup *s)
