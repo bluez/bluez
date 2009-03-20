@@ -1004,7 +1004,7 @@ int sbc_decode(sbc_t *sbc, void *input, int input_len, void *output,
 		sbc->bitpool = priv->frame.bitpool;
 
 		priv->frame.codesize = sbc_get_codesize(sbc);
-		priv->frame.length = sbc_get_frame_length(sbc);
+		priv->frame.length = framelen;
 	}
 
 	if (!output)
@@ -1136,30 +1136,25 @@ void sbc_finish(sbc_t *sbc)
 int sbc_get_frame_length(sbc_t *sbc)
 {
 	int ret;
-	uint8_t subbands, channels, blocks, joint;
+	uint8_t subbands, channels, blocks, joint, bitpool;
 	struct sbc_priv *priv;
 
 	priv = sbc->priv;
-	if (!priv->init) {
-		subbands = sbc->subbands ? 8 : 4;
-		blocks = 4 + (sbc->blocks * 4);
-		channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
-		joint = sbc->mode == SBC_MODE_JOINT_STEREO ? 1 : 0;
-	} else {
-		subbands = priv->frame.subbands;
-		blocks = priv->frame.blocks;
-		channels = priv->frame.channels;
-		joint = priv->frame.joint;
-	}
+	if (priv->init)
+		return priv->frame.length;
+
+	subbands = sbc->subbands ? 8 : 4;
+	blocks = 4 + (sbc->blocks * 4);
+	channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
+	joint = sbc->mode == SBC_MODE_JOINT_STEREO ? 1 : 0;
+	bitpool = sbc->bitpool;
 
 	ret = 4 + (4 * subbands * channels) / 8;
-
 	/* This term is not always evenly divide so we round it up */
 	if (channels == 1)
-		ret += ((blocks * channels * sbc->bitpool) + 7) / 8;
+		ret += ((blocks * channels * bitpool) + 7) / 8;
 	else
-		ret += (((joint ? subbands : 0) + blocks * sbc->bitpool) + 7)
-			/ 8;
+		ret += (((joint ? subbands : 0) + blocks * bitpool) + 7) / 8;
 
 	return ret;
 }
