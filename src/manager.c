@@ -471,8 +471,15 @@ static void manager_add_adapter(struct btd_adapter *adapter)
 
 int manager_register_adapter(int id, gboolean devup)
 {
-	struct btd_adapter *adapter = adapter_create(connection, id, devup);
+	struct btd_adapter *adapter;
 
+	adapter = manager_find_adapter_by_id(id);
+	if (adapter) {
+		error("Unable to register adapter: hci%d already exist", id);
+		return -1;
+	}
+
+	adapter = adapter_create(connection, id, devup);
 	if (!adapter)
 		return -1;
 
