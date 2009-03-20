@@ -1069,7 +1069,7 @@ static void get_operator_name_reply(DBusPendingCall *pending_call,
 	}
 
 	if (net_err != 0) {
-		error("get_remote_name failed with code %d", net_err);
+		error("get_operator_name failed with code %d", net_err);
 		goto done;
 	}
 
