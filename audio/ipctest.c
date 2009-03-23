@@ -144,8 +144,7 @@ static int service_send(struct userdata *u, const bt_audio_msg_header_t *msg)
 	return err;
 }
 
-static int service_recv(struct userdata *u,
-			bt_audio_msg_header_t *rsp, size_t room)
+static int service_recv(struct userdata *u, bt_audio_msg_header_t *rsp)
 {
 	int err;
 	const char *type, *name;
@@ -153,7 +152,7 @@ static int service_recv(struct userdata *u,
 
 	assert(u);
 
-	length = rsp->length ? rsp->length : BT_SUGGESTED_BUFFER_SIZE;
+	length = rsp->length ? : BT_SUGGESTED_BUFFER_SIZE;
 
 	DBG("trying to receive msg from audio service...");
 	if (recv(u->service_fd, rsp, length, 0) > 0) {
@@ -177,9 +176,8 @@ static int service_recv(struct userdata *u,
 	return err;
 }
 
-static ssize_t service_expect(struct userdata *u,
-				bt_audio_msg_header_t *rsp, size_t room,
-				uint8_t expected_name, size_t expected_size)
+static ssize_t service_expect(struct userdata *u, bt_audio_msg_header_t *rsp,
+				uint8_t expected_name)
 {
 	int r;
 
@@ -187,13 +185,11 @@ static ssize_t service_expect(struct userdata *u,
 	assert(u->service_fd >= 0);
 	assert(rsp);
 
-	if ((r = service_recv(u, rsp, room)) < 0)
+	if ((r = service_recv(u, rsp)) < 0)
 		return r;
 
 	if ((rsp->type != BT_INDICATION && rsp->type != BT_RESPONSE) ||
-		rsp->name != expected_name ||
-		(expected_size > 0 && rsp->length != expected_size)) {
-
+			(rsp->name != expected_name)) {
 		if (rsp->type == BT_ERROR && rsp->length == sizeof(bt_audio_error_t))
 			ERR("Received error condition: %s",
 				strerror(((bt_audio_error_t*) rsp)->posix_errno));
@@ -228,7 +224,7 @@ static int init_bt(struct userdata *u)
 static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *rsp)
 {
 	uint16_t bytes_left;
-	const codec_capabilities_t *codec;
+	codec_capabilities_t *codec;
 
 	assert(u);
 	assert(rsp);
@@ -240,7 +236,7 @@ static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *
 		return -1;
 	}
 
-	codec = (codec_capabilities_t *) rsp->data; /** ALIGNMENT? **/
+	codec = (void *) rsp->data; /** ALIGNMENT? **/
 
 	DBG("Payload size is %lu %lu",
 		(unsigned long) bytes_left, (unsigned long) sizeof(*codec));
@@ -267,13 +263,15 @@ static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *
 	} else if (u->transport == BT_CAPABILITIES_TRANSPORT_A2DP) {
 
 		while (bytes_left > 0) {
-			if (codec->type == BT_A2DP_CODEC_SBC)
+			if ((codec->type == BT_A2DP_CODEC_SBC) &&
+					!(codec->lock & BT_WRITE_LOCK))
 				break;
 
 			bytes_left -= codec->length;
-			codec = (const codec_capabilities_t*)
-					((const uint8_t*) codec + codec->length);
+			codec = (void *) codec + codec->length;
 		}
+
+		DBG("bytes_left = %d, codec->length = %d", bytes_left, codec->length);
 
 		if (bytes_left <= 0 ||
 			codec->length != sizeof(u->a2dp.sbc_capabilities))
@@ -306,14 +304,16 @@ static int get_caps(struct userdata *u)
 	msg.getcaps_req.h.name = BT_GET_CAPABILITIES;
 	msg.getcaps_req.h.length = sizeof(msg.getcaps_req);
 
-	strncpy(msg.getcaps_req.device, u->address, sizeof(msg.getcaps_req.device));
+	strncpy(msg.getcaps_req.destination, u->address,
+			sizeof(msg.getcaps_req.destination));
 	msg.getcaps_req.transport = u->transport;
 	msg.getcaps_req.flags = BT_FLAG_AUTOCONNECT;
 
 	if (service_send(u, &msg.getcaps_req.h) < 0)
 		return -1;
 
-	if (service_expect(u, &msg.getcaps_rsp.h, sizeof(msg), BT_GET_CAPABILITIES, 0) < 0)
+	msg.getcaps_rsp.h.length = 0;
+	if (service_expect(u, &msg.getcaps_rsp.h, BT_GET_CAPABILITIES) < 0)
 		return -1;
 
 	return parse_caps(u, &msg.getcaps_rsp);
@@ -561,6 +561,38 @@ static void setup_sbc(struct a2dp_info *a2dp)
 	a2dp->codesize = (uint16_t) sbc_get_codesize(&a2dp->sbc);
 }
 
+static int bt_open(struct userdata *u)
+{
+	union {
+		struct bt_open_req open_req;
+		struct bt_open_rsp open_rsp;
+		bt_audio_error_t error;
+		uint8_t buf[BT_SUGGESTED_BUFFER_SIZE];
+	} msg;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.open_req.h.type = BT_REQUEST;
+	msg.open_req.h.name = BT_OPEN;
+	msg.open_req.h.length = sizeof(msg.open_req);
+
+	strncpy(msg.open_req.destination, u->address,
+			sizeof(msg.open_req.destination));
+	msg.open_req.seid = u->transport == BT_CAPABILITIES_TRANSPORT_A2DP ?
+				u->a2dp.sbc_capabilities.capability.seid :
+				BT_A2DP_SEID_RANGE + 1;
+	msg.open_req.lock = u->transport == BT_CAPABILITIES_TRANSPORT_A2DP ?
+				BT_WRITE_LOCK : BT_READ_LOCK | BT_WRITE_LOCK;
+
+	if (service_send(u, &msg.open_req.h) < 0)
+		return -1;
+
+	msg.open_rsp.h.length = sizeof(msg.open_rsp);
+	if (service_expect(u, &msg.open_rsp.h, BT_OPEN) < 0)
+		return -1;
+
+	return 0;
+}
+
 static int set_conf(struct userdata *u)
 {
 	union {
@@ -580,39 +612,23 @@ static int set_conf(struct userdata *u)
 	msg.setconf_req.h.name = BT_SET_CONFIGURATION;
 	msg.setconf_req.h.length = sizeof(msg.setconf_req);
 
-	strncpy(msg.setconf_req.device, u->address, sizeof(msg.setconf_req.device));
-	msg.setconf_req.access_mode = u->transport == BT_CAPABILITIES_TRANSPORT_A2DP ?
-		BT_CAPABILITIES_ACCESS_MODE_WRITE : BT_CAPABILITIES_ACCESS_MODE_READWRITE;
-
-	msg.setconf_req.codec.transport = u->transport == BT_CAPABILITIES_TRANSPORT_A2DP ?
-		BT_CAPABILITIES_TRANSPORT_A2DP : BT_CAPABILITIES_TRANSPORT_SCO;
-
 	if (u->transport == BT_CAPABILITIES_TRANSPORT_A2DP) {
 		memcpy(&msg.setconf_req.codec, &u->a2dp.sbc_capabilities,
 			sizeof(u->a2dp.sbc_capabilities));
 		msg.setconf_req.h.length += msg.setconf_req.codec.length -
 			sizeof(msg.setconf_req.codec);
+	} else {
+		msg.setconf_req.codec.transport = BT_CAPABILITIES_TRANSPORT_SCO;
+		msg.setconf_req.codec.seid = BT_A2DP_SEID_RANGE + 1;
+		msg.setconf_req.codec.length = sizeof(pcm_capabilities_t);
 	}
 
 	if (service_send(u, &msg.setconf_req.h) < 0)
 		return -1;
 
-	if (service_expect(u, &msg.setconf_rsp.h, sizeof(msg),
-				BT_SET_CONFIGURATION, sizeof(msg.setconf_rsp)) < 0)
+	msg.setconf_rsp.h.length = sizeof(msg.setconf_rsp);
+	if (service_expect(u, &msg.setconf_rsp.h, BT_SET_CONFIGURATION) < 0)
 		return -1;
-
-	if (u->transport != msg.setconf_rsp.transport) {
-		ERR("Transport doesn't match what we requested.");
-		return -1;
-	}
-
-	if ((u->transport == BT_CAPABILITIES_TRANSPORT_A2DP &&
-		msg.setconf_rsp.access_mode != BT_CAPABILITIES_ACCESS_MODE_WRITE) ||
-		(u->transport == BT_CAPABILITIES_TRANSPORT_SCO &&
-		msg.setconf_rsp.access_mode != BT_CAPABILITIES_ACCESS_MODE_READWRITE)) {
-		ERR("Access mode doesn't match what we requested.");
-		return -1;
-	}
 
 	u->link_mtu = msg.setconf_rsp.link_mtu;
 
@@ -638,6 +654,9 @@ static int setup_bt(struct userdata *u)
 		return -1;
 
 	DBG("Got device caps");
+
+	if (bt_open(u) < 0)
+		return -1;
 
 	if (set_conf(u) < 0)
 		return -1;
@@ -830,12 +849,12 @@ static int start_stream(struct userdata *u)
 	if (service_send(u, &msg.start_req.h) < 0)
 		return -1;
 
-	if (service_expect(u, &msg.rsp, sizeof(msg),
-				BT_START_STREAM, sizeof(msg.start_rsp)) < 0)
+	msg.rsp.length = sizeof(msg.start_rsp);
+	if (service_expect(u, &msg.rsp, BT_START_STREAM) < 0)
 		return -1;
 
-	if (service_expect(u, &msg.rsp, sizeof(msg),
-				BT_NEW_STREAM, sizeof(msg.streamfd_ind)) < 0)
+	msg.rsp.length = sizeof(msg.streamfd_ind);
+	if (service_expect(u, &msg.rsp, BT_NEW_STREAM) < 0)
 		return -1;
 
 	if ((u->stream_fd = bt_audio_service_get_data_fd(u->service_fd)) < 0) {
@@ -859,8 +878,8 @@ static int stop_stream(struct userdata *u)
 {
 	union {
 		bt_audio_msg_header_t rsp;
-		struct bt_stop_stream_req start_req;
-		struct bt_stop_stream_rsp start_rsp;
+		struct bt_stop_stream_req stop_req;
+		struct bt_stop_stream_rsp stop_rsp;
 		bt_audio_error_t error;
 		uint8_t buf[BT_SUGGESTED_BUFFER_SIZE];
 	} msg;
@@ -878,15 +897,20 @@ static int stop_stream(struct userdata *u)
 	u->stream_channel = NULL;
 
 	memset(msg.buf, 0, BT_SUGGESTED_BUFFER_SIZE);
-	msg.start_req.h.type = BT_REQUEST;
-	msg.start_req.h.name = BT_STOP_STREAM;
-	msg.start_req.h.length = sizeof(msg.start_req);
+	msg.stop_req.h.type = BT_REQUEST;
+	msg.stop_req.h.name = BT_STOP_STREAM;
+	msg.stop_req.h.length = sizeof(msg.stop_req);
 
-	if (service_send(u, &msg.start_req.h) < 0 ||
-		service_expect(u, &msg.rsp, sizeof(msg), BT_STOP_STREAM,
-				sizeof(msg.start_rsp)) < 0)
+	if (service_send(u, &msg.stop_req.h) < 0) {
+		r = -1;
+		goto done;
+	}
+
+	msg.rsp.length = sizeof(msg.stop_rsp);
+	if (service_expect(u, &msg.rsp, BT_STOP_STREAM) < 0)
 		r = -1;
 
+done:
 	close(u->stream_fd);
 	u->stream_fd = -1;
 
