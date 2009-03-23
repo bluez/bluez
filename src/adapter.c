@@ -2173,10 +2173,11 @@ setup:
 	hci_send_cmd(dd, OGF_LINK_POLICY, OCF_READ_DEFAULT_LINK_POLICY,
 								0, NULL);
 
-	if (hci_test_bit(HCI_INQUIRY, &di.flags))
-		adapter->state |= STD_INQUIRY;
-	else
-		adapter->state &= ~STD_INQUIRY;
+	if (hci_test_bit(HCI_INQUIRY, &di.flags)) {
+		debug("inquiry_cancel at adapter startup");
+		inquiry_cancel(dd, HCI_REQ_TIMEOUT);
+	}
+	adapter->state &= ~STD_INQUIRY;
 
 	adapter_setup(adapter, dd);
 	err = adapter_up(adapter, dd);

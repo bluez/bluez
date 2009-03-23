@@ -1314,7 +1314,7 @@ int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	return 0;
 }
 
-static int inquiry_cancel(int dd, int to)
+int inquiry_cancel(int dd, int to)
 {
 	struct hci_request rq;
 	uint8_t status;
