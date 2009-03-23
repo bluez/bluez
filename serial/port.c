@@ -170,8 +170,14 @@ static int port_release(struct serial_port *port)
 
 static void serial_port_free(struct serial_port *port)
 {
+	struct serial_device *device = port->device;
+
+	if (device && port->listener_id > 0)
+		g_dbus_remove_watch(device->conn, port->listener_id);
+
 	if (port->id >= 0)
 		port_release(port);
+
 	g_free(port->uuid);
 	g_free(port);
 }
