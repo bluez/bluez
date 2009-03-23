@@ -1406,7 +1406,7 @@ int cancel_discovery(struct btd_adapter *adapter)
 	return err;
 }
 
-static int periodic_inquiry_exit(int dd, int to)
+int periodic_inquiry_exit(int dd, int to)
 {
 	struct hci_request rq;
 	uint8_t status;

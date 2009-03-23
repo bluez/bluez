@@ -2176,7 +2176,11 @@ setup:
 	if (hci_test_bit(HCI_INQUIRY, &di.flags)) {
 		debug("inquiry_cancel at adapter startup");
 		inquiry_cancel(dd, HCI_REQ_TIMEOUT);
+	} else if (!adapter->initialized && adapter->already_up) {
+		debug("periodic_inquiry_exit at adapter startup");
+		periodic_inquiry_exit(dd, HCI_REQ_TIMEOUT);
 	}
+
 	adapter->state &= ~STD_INQUIRY;
 
 	adapter_setup(adapter, dd);
