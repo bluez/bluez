@@ -619,7 +619,6 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 		debug("avctp_connect_cb: session removed while connecting");
 		if (!err)
 			g_io_channel_shutdown(chan, TRUE, NULL);
-		g_io_channel_unref(chan);
 		return;
 	}
 
