@@ -20,6 +20,7 @@ LDADD = $(top_builddir)/common/libhelper.a \
 
 if ALSA
 alsadir = $(libdir)/alsa-lib
+alsaconfdir = $(sysconfdir)/alsa
 
 alsa_LTLIBRARIES = libasound_module_pcm_bluetooth.la libasound_module_ctl_bluetooth.la
 
@@ -32,6 +33,8 @@ libasound_module_ctl_bluetooth_la_SOURCES = ctl_bluetooth.c rtp.h ipc.h ipc.c
 libasound_module_ctl_bluetooth_la_LDFLAGS = -module -avoid-version #-export-symbols-regex [_]*snd_ctl_.*
 libasound_module_ctl_bluetooth_la_LIBADD = @BLUEZ_LIBS@ @ALSA_LIBS@
 libasound_module_ctl_bluetooth_la_CFLAGS = @ALSA_CFLAGS@ @BLUEZ_CFLAGS@
+
+alsaconf_DATA = bluetooth.conf
 endif
 
 if GSTREAMER
@@ -71,7 +74,7 @@ CLEANFILES = $(BUILT_SOURCES)
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/src
 
-EXTRA_DIST = audio.conf asound.conf telephony-dummy.c telephony-maemo.c
+EXTRA_DIST = audio.conf telephony-dummy.c telephony-maemo.c bluetooth.conf
 
 MAINTAINERCLEANFILES = Makefile.in
 
