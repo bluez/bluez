@@ -1007,7 +1007,8 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	struct bluetooth_a2dp *a2dp = &data->a2dp;
 	snd_pcm_sframes_t ret = 0;
 	unsigned int bytes_left;
-	int frame_size, encoded, written;
+	int frame_size, encoded;
+	size_t written;
 	uint8_t *buff;
 
 	DBG("areas->step=%u areas->first=%u offset=%lu size=%lu",
