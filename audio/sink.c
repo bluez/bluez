@@ -56,11 +56,66 @@ struct sink {
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	unsigned int cb_id;
-	uint8_t state;
+	avdtp_session_state_t session_state;
+	avdtp_state_t stream_state;
+	gboolean connecting;
 	struct pending_request *connect;
 	struct pending_request *disconnect;
 	DBusConnection *conn;
 };
+
+static unsigned int avdtp_callback_id = 0;
+
+static const char *state2str(avdtp_state_t stream_state)
+{
+	switch (stream_state) {
+	case AVDTP_STATE_IDLE:
+		return "disconnected";
+	case AVDTP_STATE_CONFIGURED:
+		return NULL;
+	case AVDTP_STATE_OPEN:
+		return "connected";
+	case AVDTP_STATE_STREAMING:
+		return "playing";
+	case AVDTP_STATE_CLOSING:
+	case AVDTP_STATE_ABORTING:
+		return NULL;
+	}
+
+	return NULL;
+}
+
+static void avdtp_state_callback(struct audio_device *dev,
+					avdtp_session_state_t new_state,
+					avdtp_session_state_t old_state,
+					void *user_data)
+{
+	struct sink *sink = dev->sink;
+	const char *state_str;
+
+	switch (new_state) {
+	case AVDTP_SESSION_STATE_DISCONNECTED:
+		if (sink->connecting) {
+			state_str = "disconnected";
+			emit_property_changed(dev->conn, dev->path,
+					AUDIO_SINK_INTERFACE, "State",
+					DBUS_TYPE_STRING, &state_str);
+			sink->connecting = FALSE;
+		}
+		break;
+	case AVDTP_SESSION_STATE_CONNECTING:
+		state_str = "connecting";
+		emit_property_changed(dev->conn, dev->path,
+				AUDIO_SINK_INTERFACE, "State",
+				DBUS_TYPE_STRING, &state_str);
+		sink->connecting = TRUE;
+		break;
+	case AVDTP_SESSION_STATE_CONNECTED:
+		break;
+	}
+
+	sink->session_state = new_state;
+}
 
 static void pending_request_free(struct pending_request *pending)
 {
@@ -79,10 +134,17 @@ static void stream_state_changed(struct avdtp_stream *stream,
 {
 	struct audio_device *dev = user_data;
 	struct sink *sink = dev->sink;
+	const char *state_str;
 	gboolean value;
 
 	if (err)
 		return;
+
+	state_str = state2str(new_state);
+	if (state_str)
+		emit_property_changed(dev->conn, dev->path,
+				AUDIO_SINK_INTERFACE, "State",
+				DBUS_TYPE_STRING, &state_str);
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
@@ -122,6 +184,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 						AUDIO_SINK_INTERFACE,
 						"Connected",
 						DBUS_TYPE_BOOLEAN, &value);
+			sink->connecting = FALSE;
 		} else if (old_state == AVDTP_STATE_STREAMING) {
 			value = FALSE;
 			g_dbus_emit_signal(dev->conn, dev->path,
@@ -149,7 +212,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		break;
 	}
 
-	sink->state = new_state;
+	sink->stream_state = new_state;
 }
 
 static DBusHandlerResult error_failed(DBusConnection *conn,
@@ -163,7 +226,7 @@ static gboolean stream_setup_retry(gpointer user_data)
 	struct sink *sink = user_data;
 	struct pending_request *pending = sink->connect;
 
-	if (sink->state >= AVDTP_STATE_OPEN) {
+	if (sink->stream_state >= AVDTP_STATE_OPEN) {
 		debug("Stream successfully created, after XCASE connect:connect");
 		if (pending->msg) {
 			DBusMessage *reply;
@@ -447,7 +510,7 @@ static DBusMessage *sink_connect(DBusConnection *conn,
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 						"%s", strerror(EBUSY));
 
-	if (sink->state >= AVDTP_STATE_OPEN)
+	if (sink->stream_state >= AVDTP_STATE_OPEN)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".AlreadyConnected",
 						"Device Already Connected");
@@ -485,7 +548,7 @@ static DBusMessage *sink_disconnect(DBusConnection *conn,
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 						"%s", strerror(EBUSY));
 
-	if (sink->state < AVDTP_STATE_OPEN) {
+	if (sink->stream_state < AVDTP_STATE_OPEN) {
 		DBusMessage *reply = dbus_message_new_method_return(msg);
 		if (!reply)
 			return NULL;
@@ -520,7 +583,7 @@ static DBusMessage *sink_is_connected(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
-	connected = (sink->state >= AVDTP_STATE_CONFIGURED);
+	connected = (sink->stream_state >= AVDTP_STATE_CONFIGURED);
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
@@ -549,11 +612,11 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	/* Playing */
-	value = (device->sink->state == AVDTP_STATE_STREAMING);
+	value = (device->sink->stream_state == AVDTP_STATE_STREAMING);
 	dict_append_entry(&dict, "Playing", DBUS_TYPE_BOOLEAN, &value);
 
 	/* Connected */
-	value = (device->sink->state >= AVDTP_STATE_CONFIGURED);
+	value = (device->sink->stream_state >= AVDTP_STATE_CONFIGURED);
 	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &value);
 
 	dbus_message_iter_close_container(&iter, &dict);
@@ -629,6 +692,10 @@ struct sink *sink_init(struct audio_device *dev)
 	debug("Registered interface %s on path %s",
 		AUDIO_SINK_INTERFACE, dev->path);
 
+	if (avdtp_callback_id == 0)
+		avdtp_callback_id = avdtp_add_state_cb(avdtp_state_callback,
+									NULL);
+
 	return g_new0(struct sink, 1);
 }
 
@@ -646,7 +713,7 @@ avdtp_state_t sink_get_state(struct audio_device *dev)
 {
 	struct sink *sink = dev->sink;
 
-	return sink->state;
+	return sink->stream_state;
 }
 
 gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,

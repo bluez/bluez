@@ -211,7 +211,33 @@ Signals		void Connected() {deprecated}
 			This signal indicates a changed value of the given
 			property.
 
-properties	boolean Connected [readonly]
+properties	string State [readonly]
+
+			Possible values: "disconnected", "connecting",
+			"connected", "playing"
+
+			"disconnected" -> "connecting"
+				Either an incoming or outgoing connection
+				attempt ongoing.
+
+			"connecting" -> "disconnected"
+				Connection attempt failed
+
+			"connecting" -> "connected"
+				Successfully connected
+
+			"connected" -> "playing"
+				Audio stream active
+
+			"playing" -> "connected"
+				Audio stream suspended
+
+			"connected" -> "disconnected"
+			"playing" -> "disconnected"
+				Disconnected from the remote device
+
+
+		boolean Connected [readonly]
 
 			Indicates if a stream is setup to a A2DP sink on
 			the remote device.
