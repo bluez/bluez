@@ -60,7 +60,7 @@ const char *manager_get_base_path(void)
 	return base_path;
 }
 
-int manager_update_adapter(uint16_t dev_id)
+int manager_update_adapter(uint16_t dev_id, uint8_t svc, gboolean starting)
 {
 	struct btd_adapter *adapter;
 
@@ -68,7 +68,19 @@ int manager_update_adapter(uint16_t dev_id)
 	if (!adapter)
 		return -EINVAL;
 
-	return adapter_update(adapter);
+	return adapter_update(adapter, svc, starting);
+}
+
+int manager_startup_complete(void)
+{
+	GSList *l;
+
+	for (l = adapters; l != NULL; l = l->next) {
+		struct btd_adapter *adapter = l->data;
+		adapter_update(adapter, 0, FALSE);
+	}
+
+	return 0;
 }
 
 int manager_get_adapter_class(uint16_t dev_id, uint8_t *cls)

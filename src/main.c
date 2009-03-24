@@ -72,6 +72,8 @@ struct main_opts main_opts;
 
 static int child_pipe[2];
 
+static gboolean starting = TRUE;
+
 static GKeyFile *load_config(const char *file)
 {
 	GError *err = NULL;
@@ -233,8 +235,6 @@ static void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		struct hci_dev_info di;
-		uint8_t cls[3];
-		int dd;
 
 		if (hci_devinfo(dr->dev_id, &di) < 0)
 			continue;
@@ -249,18 +249,7 @@ static void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 				bacmp(bdaddr, &di.bdaddr) != 0)
 			continue;
 
-		if (manager_get_adapter_class(di.dev_id, cls) < 0)
-			continue;
-
-		dd = hci_open_dev(di.dev_id);
-		if (dd < 0)
-			continue;
-
-		set_service_classes(dd, cls, value);
-
-		hci_close_dev(dd);
-
-		manager_update_adapter(di.dev_id);
+		manager_update_adapter(di.dev_id, value, starting);
 	}
 
 	g_free(dl);
@@ -789,6 +778,12 @@ int main(int argc, char *argv[])
 
 	/* Initialize already connected devices */
 	init_all_devices(main_opts.sock);
+
+	starting = FALSE;
+
+	manager_startup_complete();
+
+	debug("Entering main loop");
 
 	g_main_loop_run(event_loop);
 

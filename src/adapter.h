@@ -71,7 +71,8 @@ int adapter_start(struct btd_adapter *adapter);
 
 int adapter_stop(struct btd_adapter *adapter);
 
-int adapter_update(struct btd_adapter *adapter);
+int adapter_update(struct btd_adapter *adapter, uint8_t cls,
+						gboolean starting);
 
 int adapter_get_class(struct btd_adapter *adapter, uint8_t *cls);
 

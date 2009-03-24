@@ -123,6 +123,8 @@ struct btd_adapter {
 	gboolean already_up;		/* adapter was already up on init */
 
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
+
+	uint8_t svc_cache;		/* For bluetoothd startup */
 };
 
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
@@ -2300,13 +2302,25 @@ int adapter_stop(struct btd_adapter *adapter)
 	return 0;
 }
 
-int adapter_update(struct btd_adapter *adapter)
+int adapter_update(struct btd_adapter *adapter, uint8_t new_svc,
+							gboolean starting)
 {
 	struct hci_dev *dev = &adapter->dev;
 	int dd;
+	uint8_t svclass;
 
 	if (dev->ignore)
 		return 0;
+
+	if (starting) {
+		adapter->svc_cache = new_svc;
+		return 0;
+	}
+
+	if (new_svc)
+		svclass = new_svc;
+	else
+		svclass = adapter->svc_cache;
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
@@ -2315,6 +2329,9 @@ int adapter_update(struct btd_adapter *adapter)
 					adapter->path, strerror(err), err);
 		return err;
 	}
+
+	if (svclass)
+		set_service_classes(dd, adapter->dev.class, svclass);
 
 	update_ext_inquiry_response(dd, dev);
 
@@ -2336,6 +2353,9 @@ int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls)
 {
 	struct hci_dev *dev = &adapter->dev;
 	uint32_t class;
+
+	if (adapter->svc_cache)
+		adapter->svc_cache = 0;
 
 	if (memcmp(dev->class, cls, 3) == 0)
 		return 0;
@@ -2636,6 +2656,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const gchar *path = adapter_get_path(adapter);
 	gboolean powered, discoverable, pairable;
+	uint8_t real_class[3];
 	int dd;
 
 	if (adapter->scan_mode == scan_mode)
@@ -2695,10 +2716,14 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		goto done;
 	}
 
+	memcpy(real_class, adapter->dev.class, 3);
+	if (adapter->svc_cache)
+		real_class[2] = adapter->svc_cache;
+
 	if (discoverable && adapter->pairable)
-		set_limited_discoverable(dd, adapter->dev.class, TRUE);
+		set_limited_discoverable(dd, real_class, TRUE);
 	else if (!discoverable)
-		set_limited_discoverable(dd, adapter->dev.class, FALSE);
+		set_limited_discoverable(dd, real_class, FALSE);
 
 	hci_close_dev(dd);
 done:
