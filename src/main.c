@@ -245,6 +245,10 @@ static void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 		if (!hci_test_bit(HCI_UP, &di.flags))
 			continue;
 
+		if (bacmp(bdaddr, BDADDR_ANY) != 0 &&
+				bacmp(bdaddr, &di.bdaddr) != 0)
+			continue;
+
 		if (manager_get_adapter_class(di.dev_id, cls) < 0)
 			continue;
 

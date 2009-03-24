@@ -94,7 +94,7 @@ static void update_db_timestamp(void)
 	sdp_attr_replace(server, SDP_ATTR_SVCDB_STATE, d);
 }
 
-static void update_svclass_list(void)
+static void update_svclass_list(const bdaddr_t *src)
 {
 	sdp_list_t *list = sdp_get_record_list();
 	uint8_t val = 0;
@@ -155,7 +155,7 @@ static void update_svclass_list(void)
 	service_classes = val;
 
 	if (service_classes_callback)
-		service_classes_callback(BDADDR_ANY, val);
+		service_classes_callback(src, val);
 }
 
 uint8_t get_service_classes(const bdaddr_t *bdaddr)
@@ -319,7 +319,7 @@ void register_server_service(void)
 	sdp_attr_add(server, SDP_ATTR_VERSION_NUM_LIST, pData);
 
 	update_db_timestamp();
-	update_svclass_list();
+	update_svclass_list(BDADDR_ANY);
 }
 
 void register_device_id(const uint16_t vendor, const uint16_t product,
@@ -381,7 +381,7 @@ void register_device_id(const uint16_t vendor, const uint16_t product,
 	sdp_attr_add(record, 0x0205, source_data);
 
 	update_db_timestamp();
-	update_svclass_list();
+	update_svclass_list(BDADDR_ANY);
 }
 
 int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec)
@@ -422,7 +422,7 @@ int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec)
 	}
 
 	update_db_timestamp();
-	update_svclass_list();
+	update_svclass_list(src);
 
 	return 0;
 }
@@ -439,7 +439,7 @@ int remove_record_from_server(uint32_t handle)
 
 	if (sdp_record_remove(handle) == 0) {
 		update_db_timestamp();
-		update_svclass_list();
+		update_svclass_list(BDADDR_ANY);
 	}
 
 	sdp_record_free(rec);
@@ -600,7 +600,7 @@ success:
 	}
 
 	update_db_timestamp();
-	update_svclass_list();
+	update_svclass_list(BDADDR_ANY);
 
 	/* Build a rsp buffer */
 	bt_put_unaligned(htonl(rec->handle), (uint32_t *) rsp->data);
@@ -639,7 +639,7 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 		sdp_record_t *nrec = extract_pdu_server(BDADDR_ANY, p, bufsize, handle, &scanned);
 		if (nrec && handle == nrec->handle) {
 			update_db_timestamp();
-			update_svclass_list();
+			update_svclass_list(BDADDR_ANY);
 		} else {
 			SDPDBG("SvcRecHandle : 0x%x", handle);
 			SDPDBG("SvcRecHandleNew : 0x%x", nrec->handle);
@@ -681,7 +681,7 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 		sdp_record_free(rec);
 		if (status == 0) {
 			update_db_timestamp();
-			update_svclass_list();
+			update_svclass_list(BDADDR_ANY);
 		}
 	} else {
 		status = SDP_INVALID_RECORD_HANDLE;
