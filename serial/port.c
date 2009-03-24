@@ -204,7 +204,7 @@ static void path_unregister(void *data)
 {
 	struct serial_device *device = data;
 
-	info("Unregistered interface %s on path %s", SERIAL_PORT_INTERFACE,
+	debug("Unregistered interface %s on path %s", SERIAL_PORT_INTERFACE,
 		device->path);
 
 	devices = g_slist_remove(devices, device);
@@ -463,7 +463,7 @@ static struct serial_device *create_serial_device(DBusConnection *conn,
 		return NULL;
 	}
 
-	info("Registered interface %s on path %s",
+	debug("Registered interface %s on path %s",
 		SERIAL_PORT_INTERFACE, path);
 
 	return device;

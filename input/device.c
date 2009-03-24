@@ -985,7 +985,8 @@ static void device_unregister(void *data)
 {
 	struct input_device *idev = data;
 
-	info("Unregistered interface %s on path %s", INPUT_DEVICE_INTERFACE, idev->path);
+	debug("Unregistered interface %s on path %s", INPUT_DEVICE_INTERFACE,
+								idev->path);
 
 	/* Disconnect if applied */
 	disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
@@ -1071,7 +1072,7 @@ static struct input_device *input_device_new(DBusConnection *conn,
 		return NULL;
 	}
 
-	info("Registered interface %s on path %s",
+	debug("Registered interface %s on path %s",
 			INPUT_DEVICE_INTERFACE, idev->path);
 
 	return idev;

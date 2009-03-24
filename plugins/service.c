@@ -785,7 +785,7 @@ static int register_interface(const char *path, struct btd_adapter *adapter)
 		return -EIO;
 	}
 
-	info("Registered interface %s on path %s", SERVICE_INTERFACE, path);
+	debug("Registered interface %s on path %s", SERVICE_INTERFACE, path);
 
 	if (serv_adapter->adapter == NULL)
 		serv_adapter_any = serv_adapter;

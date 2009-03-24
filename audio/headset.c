@@ -2053,7 +2053,7 @@ static void path_unregister(void *data)
 		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 	}
 
-	info("Unregistered interface %s on path %s",
+	debug("Unregistered interface %s on path %s",
 		AUDIO_HEADSET_INTERFACE, dev->path);
 
 	headset_free(dev);
@@ -2109,7 +2109,7 @@ register_iface:
 		return NULL;
 	}
 
-	info("Registered interface %s on path %s",
+	debug("Registered interface %s on path %s",
 		AUDIO_HEADSET_INTERFACE, dev->path);
 
 	return hs;

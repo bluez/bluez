@@ -786,7 +786,7 @@ static void path_unregister(void *data)
 	struct network_server *ns = data;
 	struct network_adapter *na = ns->na;
 
-	info("Unregistered interface %s on path %s",
+	debug("Unregistered interface %s on path %s",
 		ns->iface, na->path);
 
 	na->servers = g_slist_remove(na->servers, ns);
@@ -887,7 +887,7 @@ int server_register(const char *path, bdaddr_t *src, uint16_t id)
 	ns->enable = TRUE;
 	na->servers = g_slist_append(na->servers, ns);
 
-	info("Registered interface %s on path %s", ns->iface, path);
+	debug("Registered interface %s on path %s", ns->iface, path);
 
 	return 0;
 }

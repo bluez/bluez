@@ -1004,7 +1004,7 @@ static void path_unregister(void *data)
 {
 	struct audio_device *dev = data;
 
-	info("Unregistered interface %s on path %s",
+	debug("Unregistered interface %s on path %s",
 		AUDIO_CONTROL_INTERFACE, dev->path);
 
 	control_free(dev);
@@ -1024,7 +1024,7 @@ struct control *control_init(struct audio_device *dev)
 					dev, path_unregister))
 		return NULL;
 
-	info("Registered interface %s on path %s",
+	debug("Registered interface %s on path %s",
 		AUDIO_CONTROL_INTERFACE, dev->path);
 
 	return g_new0(struct control, 1);

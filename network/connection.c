@@ -517,7 +517,7 @@ static void path_unregister(void *data)
 {
 	struct network_peer *peer = data;
 
-	info("Unregistered interface %s on path %s",
+	debug("Unregistered interface %s on path %s",
 		NETWORK_PEER_INTERFACE, peer->path);
 
 	peers = g_slist_remove(peers, peer);
@@ -579,7 +579,7 @@ static struct network_peer *create_peer(const char *path, bdaddr_t *src,
 		return NULL;
 	}
 
-	info("Registered interface %s on path %s",
+	debug("Registered interface %s on path %s",
 		NETWORK_PEER_INTERFACE, path);
 
 	return peer;

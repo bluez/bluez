@@ -700,7 +700,7 @@ static void proxy_path_unregister(gpointer data)
 	struct serial_proxy *prx = data;
 	int sk;
 
-	info("Unregistered proxy: %s", prx->address);
+	debug("Unregistered proxy: %s", prx->address);
 
 	if (prx->type != TTY_PROXY)
 		goto done;
@@ -738,7 +738,7 @@ static int register_proxy_object(struct serial_proxy *prx, char *outpath, size_t
 	if (outpath)
 		strncpy(outpath, path, size);
 
-	info("Registered proxy: %s", path);
+	debug("Registered proxy: %s", path);
 
 	return 0;
 }
@@ -1148,7 +1148,7 @@ int proxy_register(DBusConnection *conn, const char *path, bdaddr_t *src)
 
 	adapters = g_slist_append(adapters, adapter);
 
-	info("Registered interface %s on path %s",
+	debug("Registered interface %s on path %s",
 		SERIAL_MANAGER_INTERFACE, path);
 
 	return 0;
