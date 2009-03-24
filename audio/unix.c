@@ -390,8 +390,60 @@ failed:
 	client->dev = NULL;
 }
 
+static void print_mpeg12(struct mpeg_codec_cap *mpeg)
+{
+	debug("Media Codec: MPEG12"
+		" Channel Modes: %s%s%s%s"
+		" Frequencies: %s%s%s%s%s%s"
+		" Layers: %s%s%s"
+		" CRC: %s",
+		mpeg->channel_mode & MPEG_CHANNEL_MODE_MONO ? "Mono " : "",
+		mpeg->channel_mode & MPEG_CHANNEL_MODE_DUAL_CHANNEL ?
+		"DualChannel " : "",
+		mpeg->channel_mode & MPEG_CHANNEL_MODE_STEREO ? "Stereo " : "",
+		mpeg->channel_mode & MPEG_CHANNEL_MODE_JOINT_STEREO ?
+		"JointStereo " : "",
+		mpeg->frequency & MPEG_SAMPLING_FREQ_16000 ? "16Khz " : "",
+		mpeg->frequency & MPEG_SAMPLING_FREQ_22050 ? "22.05Khz " : "",
+		mpeg->frequency & MPEG_SAMPLING_FREQ_24000 ? "24Khz " : "",
+		mpeg->frequency & MPEG_SAMPLING_FREQ_32000 ? "32Khz " : "",
+		mpeg->frequency & MPEG_SAMPLING_FREQ_44100 ? "44.1Khz " : "",
+		mpeg->frequency & MPEG_SAMPLING_FREQ_48000 ? "48Khz " : "",
+		mpeg->layer & MPEG_LAYER_MP1 ? "1 " : "",
+		mpeg->layer & MPEG_LAYER_MP2 ? "2 " : "",
+		mpeg->layer & MPEG_LAYER_MP3 ? "3 " : "",
+		mpeg->crc ? "Yes" : "No");
+}
+
+static void print_sbc(struct sbc_codec_cap *sbc)
+{
+	debug("Media Codec: SBC"
+		" Channel Modes: %s%s%s%s"
+		" Frequencies: %s%s%s%s"
+		" Subbands: %s%s"
+		" Blocks: %s%s%s%s"
+		" Bitpool: %d-%d",
+		sbc->channel_mode & SBC_CHANNEL_MODE_MONO ? "Mono " : "",
+		sbc->channel_mode & SBC_CHANNEL_MODE_DUAL_CHANNEL ?
+		"DualChannel " : "",
+		sbc->channel_mode & SBC_CHANNEL_MODE_STEREO ? "Stereo " : "",
+		sbc->channel_mode & SBC_CHANNEL_MODE_JOINT_STEREO ? "JointStereo" : "",
+		sbc->frequency & SBC_SAMPLING_FREQ_16000 ? "16Khz " : "",
+		sbc->frequency & SBC_SAMPLING_FREQ_32000 ? "32Khz " : "",
+		sbc->frequency & SBC_SAMPLING_FREQ_44100 ? "44.1Khz " : "",
+		sbc->frequency & SBC_SAMPLING_FREQ_48000 ? "48Khz " : "",
+		sbc->subbands & SBC_SUBBANDS_4 ? "4 " : "",
+		sbc->subbands & SBC_SUBBANDS_8 ? "8 " : "",
+		sbc->block_length & SBC_BLOCK_LENGTH_4 ? "4 " : "",
+		sbc->block_length & SBC_BLOCK_LENGTH_8 ? "8 " : "",
+		sbc->block_length & SBC_BLOCK_LENGTH_12 ? "12 " : "",
+		sbc->block_length & SBC_BLOCK_LENGTH_16 ? "16 " : "",
+		sbc->min_bitpool, sbc->max_bitpool);
+}
+
 static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
-				struct avdtp_service_capability *cap)
+				struct avdtp_service_capability *cap,
+				uint8_t configured)
 {
 	struct avdtp_media_codec_capability *codec_cap = (void *) cap->data;
 	codec_capabilities_t *codec = (void *) rsp + rsp->h.length;
@@ -419,6 +471,8 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		sbc->block_length = sbc_cap->block_length;
 		sbc->min_bitpool = sbc_cap->min_bitpool;
 		sbc->max_bitpool = sbc_cap->max_bitpool;
+
+		print_sbc(sbc_cap);
 	} else if (codec_cap->media_codec_type == A2DP_CODEC_MPEG12) {
 		struct mpeg_codec_cap *mpeg_cap = (void *) codec_cap;
 		mpeg_capabilities_t *mpeg = (void *) codec;
@@ -434,6 +488,9 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		mpeg->frequency = mpeg_cap->frequency;
 		mpeg->mpf = mpeg_cap->mpf;
 		mpeg->bitrate = mpeg_cap->bitrate;
+
+
+		print_mpeg12(mpeg_cap);
 	} else {
 		size_t codec_length;
 
@@ -448,10 +505,12 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 	}
 
 	codec->type = codec_cap->media_codec_type;
+	codec->configured = configured;
 	rsp->h.length += codec->length;
 
-	debug("Append codec %d - length %d - total %d", codec->type,
-			codec->length, rsp->h.length);
+	debug("Append %s codec %d - length %d - total %d", 
+		configured ? "configured" : "", codec->type, codec->length,
+		rsp->h.length);
 
 	return 0;
 }
@@ -487,13 +546,19 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 	for (l = seps; l; l = g_slist_next(l)) {
 		struct avdtp_remote_sep *rsep = l->data;
 		struct avdtp_service_capability *cap;
+		struct avdtp_stream *stream;
+		uint8_t configured = 0;
 
 		cap = avdtp_get_codec(rsep);
 
 		if (cap->category != AVDTP_MEDIA_CODEC)
 			continue;
 
-		a2dp_append_codec(rsp, cap);
+		stream = avdtp_get_stream(rsep);
+		if (stream)
+			configured = 1;
+
+		a2dp_append_codec(rsp, cap, configured);
 	}
 
 	unix_ipc_sendmsg(client, &rsp->h);
@@ -998,11 +1063,7 @@ static int handle_a2dp_transport(struct unix_client *client,
 		media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &mpeg_cap,
 							sizeof(mpeg_cap));
 
-		debug("codec mpeg12 - frequency = %u channel_mode = %u "
-			"layer = %u crc = %u mpf = %u bitrate = %u",
-			mpeg_cap.frequency, mpeg_cap.channel_mode,
-			mpeg_cap.layer, mpeg_cap.crc, mpeg_cap.mpf,
-			mpeg_cap.bitrate);
+		print_mpeg12(&mpeg_cap);
 	} else if (req->codec.type == BT_A2DP_CODEC_SBC) {
 		sbc_capabilities_t *sbc = (void *) &req->codec;
 
@@ -1021,12 +1082,7 @@ static int handle_a2dp_transport(struct unix_client *client,
 		media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
 							sizeof(sbc_cap));
 
-		debug("codec sbc - frequency = %u channel_mode = %u "
-			"allocation = %u subbands = %u blocks = %u "
-			"bitpool = %u", sbc_cap.frequency,
-			sbc_cap.channel_mode, sbc_cap.allocation_method,
-			sbc_cap.subbands, sbc_cap.block_length,
-			sbc_cap.max_bitpool);
+		print_sbc(&sbc_cap);
 	} else
 		return -EINVAL;
 

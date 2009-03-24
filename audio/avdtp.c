@@ -2620,6 +2620,21 @@ gboolean avdtp_is_connected(const bdaddr_t *src, const bdaddr_t *dst)
 	return FALSE;
 }
 
+struct avdtp_service_capability *avdtp_stream_get_codec(
+						struct avdtp_stream *stream)
+{
+	GSList *l;
+
+	for (l = stream->caps; l; l = l->next) {
+		struct avdtp_service_capability *cap = l->data;
+
+		if (cap->category == AVDTP_MEDIA_CODEC)
+			return cap;
+	}
+
+	return NULL;
+}
+
 gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 				struct avdtp_service_capability *cap)
 {
@@ -2628,11 +2643,13 @@ gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 
 	for (l = stream->caps; l; l = g_slist_next(l)) {
 		stream_cap = l->data;
-		if (stream_cap->category == cap->category &&
-			stream_cap->length == cap->length) {
-			if (!memcmp(stream_cap->data, cap->data, cap->length))
-				return TRUE;
-		}
+
+		if (stream_cap->category != cap->category ||
+			stream_cap->length != cap->length)
+			continue;
+
+		if (memcmp(stream_cap->data, cap->data, cap->length) == 0)
+			return TRUE;
 	}
 
 	return FALSE;
@@ -2702,6 +2719,11 @@ static int process_queue(struct avdtp *session)
 struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep)
 {
 	return sep->codec;
+}
+
+struct avdtp_stream *avdtp_get_stream(struct avdtp_remote_sep *sep)
+{
+	return sep->stream;
 }
 
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,

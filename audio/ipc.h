@@ -169,6 +169,7 @@ typedef struct {
 	uint8_t transport;
 	uint8_t type;
 	uint8_t length;
+	uint8_t configured;
 	uint8_t data[0];
 } __attribute__ ((packed)) codec_capabilities_t;
 

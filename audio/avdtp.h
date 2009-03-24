@@ -215,6 +215,8 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 
 struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep);
 
+struct avdtp_stream *avdtp_get_stream(struct avdtp_remote_sep *sep);
+
 int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 			void *user_data);
 
@@ -230,7 +232,8 @@ gboolean avdtp_stream_remove_cb(struct avdtp *session,
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 					uint16_t *imtu, uint16_t *omtu,
 					GSList **caps);
-
+struct avdtp_service_capability *avdtp_stream_get_codec(
+						struct avdtp_stream *stream);
 gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 				struct avdtp_service_capability *cap);
 gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,

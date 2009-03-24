@@ -1347,9 +1347,10 @@ unsigned int a2dp_source_config(struct avdtp *session, a2dp_config_cb_t cb,
 		break;
 	case AVDTP_STATE_OPEN:
 	case AVDTP_STATE_STREAMING:
-		if (avdtp_stream_has_capabilities(setup->stream, caps))
+		if (avdtp_stream_has_capabilities(setup->stream, caps)) {
+			debug("Configuration match: resuming");
 			g_idle_add((GSourceFunc) finalize_config, setup);
-		else if (!setup->reconfigure) {
+		} else if (!setup->reconfigure) {
 			setup->reconfigure = TRUE;
 			if (avdtp_close(session, sep->stream) < 0) {
 				error("avdtp_close failed");
