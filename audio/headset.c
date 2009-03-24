@@ -270,9 +270,8 @@ static const char *state2str(headset_state_t state)
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
 		return "connecting";
 	case HEADSET_STATE_CONNECTED:
-		return "connected";
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
-		return NULL;
+		return "connected";
 	case HEADSET_STATE_PLAYING:
 		return "playing";
 	}
@@ -2399,16 +2398,15 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		return;
 
 	state_str = state2str(state);
-	if (state_str)
-		emit_property_changed(dev->conn, dev->path,
-					AUDIO_HEADSET_INTERFACE, "State",
-					DBUS_TYPE_STRING, &state_str);
 
 	switch (state) {
 	case HEADSET_STATE_DISCONNECTED:
 		value = FALSE;
 		close_sco(dev);
 		headset_close_rfcomm(dev);
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_HEADSET_INTERFACE, "State",
+					DBUS_TYPE_STRING, &state_str);
 		g_dbus_emit_signal(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE,
 					"Disconnected",
@@ -2422,9 +2420,16 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		active_devices = g_slist_remove(active_devices, dev);
 		break;
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_HEADSET_INTERFACE, "State",
+					DBUS_TYPE_STRING, &state_str);
 		break;
 	case HEADSET_STATE_CONNECTED:
 		close_sco(dev);
+		if (hs->state != HEADSET_STATE_PLAY_IN_PROGRESS)
+			emit_property_changed(dev->conn, dev->path,
+					AUDIO_HEADSET_INTERFACE, "State",
+					DBUS_TYPE_STRING, &state_str);
 		if (hs->state < state) {
 			value = TRUE;
 			g_dbus_emit_signal(dev->conn, dev->path,
@@ -2453,6 +2458,9 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		break;
 	case HEADSET_STATE_PLAYING:
 		value = TRUE;
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_HEADSET_INTERFACE, "State",
+					DBUS_TYPE_STRING, &state_str);
 		hs->sco_id = g_io_add_watch(hs->sco,
 					G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) sco_cb, dev);
