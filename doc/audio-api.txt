@@ -122,6 +122,26 @@ properties	string State [readonly]
 			Possible values: "disconnected", "connecting",
 			"connected", "playing"
 
+			"disconnected" -> "connecting"
+				Either an incoming or outgoing connection
+				attempt ongoing.
+
+			"connecting" -> "disconnected"
+				Connection attempt failed
+
+			"connecting" -> "connected"
+				Successfully connected
+
+			"connected" -> "playing"
+				SCO audio connection successfully opened
+
+			"playing" -> "connected"
+				SCO audio connection closed
+
+			"connected" -> "disconnected"
+			"playing" -> "disconnected"
+				Disconnected from the remote device
+
 		boolean Connected [readonly]
 
 			Indicates if there is a active connection to the
