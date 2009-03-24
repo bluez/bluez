@@ -236,7 +236,6 @@ properties	string State [readonly]
 			"playing" -> "disconnected"
 				Disconnected from the remote device
 
-
 		boolean Connected [readonly]
 
 			Indicates if a stream is setup to a A2DP sink on
