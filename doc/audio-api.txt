@@ -122,6 +122,11 @@ properties	boolean Connected [readonly]
 			Indicates if there is a active connection to the
 			HSP/HFP connection on the remote device.
 
+		boolean Connecting [readonly]
+
+			Indicates that there is a HFP or HSP connection attempt
+			in progress.
+
 		boolean Playing  [readonly]
 
 			Indicates if an audio connection to the headset
