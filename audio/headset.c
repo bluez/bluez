@@ -262,6 +262,24 @@ static void print_hf_features(uint32_t features)
 	g_free(str);
 }
 
+static const char *state2str(headset_state_t state)
+{
+	switch (state) {
+	case HEADSET_STATE_DISCONNECTED:
+		return "disconnected";
+	case HEADSET_STATE_CONNECT_IN_PROGRESS:
+		return "connecting";
+	case HEADSET_STATE_CONNECTED:
+		return "connected";
+	case HEADSET_STATE_PLAY_IN_PROGRESS:
+		return "play_requested";
+	case HEADSET_STATE_PLAYING:
+		return "playing";
+	}
+
+	return NULL;
+}
+
 static int headset_send_valist(struct headset *hs, char *format, va_list ap)
 {
 	char rsp[BUF_SIZE];
@@ -1836,6 +1854,7 @@ static DBusMessage *hs_get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	gboolean value;
+	const char *state;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1853,9 +1872,9 @@ static DBusMessage *hs_get_properties(DBusConnection *conn,
 	value = (device->headset->state == HEADSET_STATE_PLAYING);
 	dict_append_entry(&dict, "Playing", DBUS_TYPE_BOOLEAN, &value);
 
-	/* Connecting */
-	value = (device->headset->state == HEADSET_STATE_CONNECT_IN_PROGRESS);
-	dict_append_entry(&dict, "Connecting", DBUS_TYPE_BOOLEAN, &value);
+	/* State */
+	state = state2str(device->headset->state);
+	dict_append_entry(&dict, "State", DBUS_TYPE_STRING, &state);
 
 	/* Connected */
 	value = (device->headset->state >= HEADSET_STATE_CONNECTED);
@@ -2373,9 +2392,15 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 {
 	struct headset *hs = dev->headset;
 	gboolean value;
+	const char *state_str;
 
 	if (hs->state == state)
 		return;
+
+	state_str = state2str(state);
+	emit_property_changed(dev->conn, dev->path,
+			AUDIO_HEADSET_INTERFACE, "State",
+			DBUS_TYPE_STRING, &state_str);
 
 	switch (state) {
 	case HEADSET_STATE_DISCONNECTED:
@@ -2390,19 +2415,11 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 			emit_property_changed(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
-		else
-			emit_property_changed(dev->conn, dev->path,
-					AUDIO_HEADSET_INTERFACE,
-					"Connecting",
-					DBUS_TYPE_BOOLEAN, &value);
+
 		telephony_device_disconnected(dev);
 		active_devices = g_slist_remove(active_devices, dev);
 		break;
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
-		value = TRUE;
-		emit_property_changed(dev->conn, dev->path,
-					AUDIO_HEADSET_INTERFACE, "Connecting",
-					DBUS_TYPE_BOOLEAN, &value);
 		break;
 	case HEADSET_STATE_CONNECTED:
 		close_sco(dev);
@@ -2415,11 +2432,6 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 			emit_property_changed(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Connected",
-						DBUS_TYPE_BOOLEAN, &value);
-			value = FALSE;
-			emit_property_changed(dev->conn, dev->path,
-						AUDIO_HEADSET_INTERFACE,
-						"Connecting",
 						DBUS_TYPE_BOOLEAN, &value);
 			active_devices = g_slist_append(active_devices, dev);
 			telephony_device_connected(dev);

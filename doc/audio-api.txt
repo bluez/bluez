@@ -117,15 +117,15 @@ Signals		void AnswerRequested()
 			This signal indicates a changed value of the given
 			property.
 
-properties	boolean Connected [readonly]
+properties	string State [readonly]
+
+			Possible values: "disconnected", "connecting",
+			"connected", "play_requested", "playing"
+
+		boolean Connected [readonly]
 
 			Indicates if there is a active connection to the
 			HSP/HFP connection on the remote device.
-
-		boolean Connecting [readonly]
-
-			Indicates that there is a HFP or HSP connection attempt
-			in progress.
 
 		boolean Playing  [readonly]
 
