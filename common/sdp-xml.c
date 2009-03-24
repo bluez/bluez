@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
@@ -323,11 +324,17 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 	case SDP_URL_STR8:
 	case SDP_URL_STR16:
 	case SDP_URL_STR32:
+	{
+		char *strBuf;
+
 		appender(data, indent);
 		appender(data, "<url value=\"");
-		appender(data, value->val.str);
+		strBuf = strndup(value->val.str, value->unitSize);
+		appender(data, strBuf);
+		free(strBuf);
 		appender(data, "\" />\n");
 		break;
+	}
 
 	case SDP_SEQ8:
 	case SDP_SEQ16:
