@@ -37,8 +37,8 @@
 
 #include "logging.h"
 
-#include "avdtp.h"
 #include "device.h"
+#include "avdtp.h"
 #include "a2dp.h"
 #include "error.h"
 #include "sink.h"

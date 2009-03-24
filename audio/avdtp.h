@@ -27,6 +27,12 @@ typedef enum {
 	AVDTP_ERROR_ERROR_CODE
 } avdtp_error_type_t;
 
+typedef enum {
+	AVDTP_SESSION_STATE_DISCONNECTED,
+	AVDTP_SESSION_STATE_CONNECTING,
+	AVDTP_SESSION_STATE_CONNECTED
+} avdtp_session_state_t;
+
 struct avdtp;
 struct avdtp_stream;
 struct avdtp_local_sep;
@@ -112,6 +118,11 @@ struct avdtp_media_codec_capability {
 #else
 #error "Unknown byte order"
 #endif
+
+typedef void (*avdtp_session_state_cb) (struct audio_device *dev,
+					avdtp_session_state_t old_state,
+					avdtp_session_state_t new_state,
+					void *user_data);
 
 typedef void (*avdtp_stream_state_cb) (struct avdtp_stream *stream,
 					avdtp_state_t old_state,
@@ -223,6 +234,10 @@ gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 				struct avdtp_service_capability *cap);
 gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
 					GSList *caps);
+
+unsigned int avdtp_add_state_cb(avdtp_session_state_cb cb, void *user_data);
+
+gboolean avdtp_remove_state_cb(unsigned int id);
 
 int avdtp_set_configuration(struct avdtp *session,
 				struct avdtp_remote_sep *rsep,

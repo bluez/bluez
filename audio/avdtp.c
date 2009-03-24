@@ -84,12 +84,6 @@
 #define DISCONNECT_TIMEOUT 1
 #define STREAM_TIMEOUT 20
 
-typedef enum {
-	AVDTP_SESSION_STATE_DISCONNECTED,
-	AVDTP_SESSION_STATE_CONNECTING,
-	AVDTP_SESSION_STATE_CONNECTED
-} avdtp_session_state_t;
-
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
 struct avdtp_common_header {
@@ -333,6 +327,12 @@ struct stream_callback {
 	unsigned int id;
 };
 
+struct avdtp_state_callback {
+	avdtp_session_state_cb cb;
+	void *user_data;
+	unsigned int id;
+};
+
 struct avdtp_stream {
 	GIOChannel *io;
 	uint16_t imtu;
@@ -360,7 +360,6 @@ struct avdtp {
 	struct avdtp_server *server;
 	bdaddr_t dst;
 
-	avdtp_session_state_t last_state;
 	avdtp_session_state_t state;
 
 	/* True if the session should be automatically disconnected */
@@ -400,6 +399,8 @@ struct avdtp {
 
 static GSList *servers = NULL;
 static GSList *sessions = NULL;
+
+static GSList *avdtp_callbacks = NULL;
 
 static int send_request(struct avdtp *session, gboolean priority,
 			struct avdtp_stream *stream, uint8_t signal_id,
@@ -697,6 +698,29 @@ static struct avdtp_remote_sep *find_remote_sep(GSList *seps, uint8_t seid)
 	return NULL;
 }
 
+static void avdtp_set_state(struct avdtp *session,
+					avdtp_session_state_t new_state)
+{
+	GSList *l;
+	struct audio_device *dev;
+	bdaddr_t src, dst;
+	avdtp_session_state_t old_state = session->state;
+
+	session->state = new_state;
+
+	avdtp_get_peers(session, &src, &dst);
+	dev = manager_get_device(&src, &dst);
+	if (dev == NULL) {
+		error("avdtp_set_state(): no matching audio device");
+		return;
+	}
+
+	for (l = avdtp_callbacks; l != NULL; l = l->next) {
+		struct avdtp_state_callback *cb = l->data;
+		cb->cb(dev, new_state, old_state, cb->user_data);
+	}
+}
+
 static void stream_free(struct avdtp_stream *stream)
 {
 	struct avdtp_remote_sep *rsep;
@@ -950,7 +974,7 @@ static void connection_lost(struct avdtp *session, int err)
 		session->io = NULL;
 	}
 
-	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
+	avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
 
 	if (session->io_id) {
 		g_source_remove(session->io_id);
@@ -1840,6 +1864,8 @@ static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst
 	session->server = find_server(servers, src);
 	bacpy(&session->dst, dst);
 	session->ref = 1;
+	/* We don't use avdtp_set_state() here since this isn't a state change
+	 * but just setting of the initial state */
 	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
 	session->auto_dc = TRUE;
 
@@ -1878,7 +1904,7 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
 		session->io = g_io_channel_ref(chan);
-		session->state = AVDTP_SESSION_STATE_CONNECTING;
+		avdtp_set_state(session, AVDTP_SESSION_STATE_CONNECTING);
 	}
 
 	bt_io_get(chan, BT_IO_L2CAP, &gerr,
@@ -1902,7 +1928,7 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		debug("AVDTP imtu=%u, omtu=%u", session->imtu, session->omtu);
 
 		session->buf = g_malloc0(session->imtu);
-		session->state = AVDTP_SESSION_STATE_CONNECTED;
+		avdtp_set_state(session, AVDTP_SESSION_STATE_CONNECTED);
 
 		if (session->io_id)
 			g_source_remove(session->io_id);
@@ -2029,7 +2055,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	}
 
 	session->io = g_io_channel_ref(chan);
-	session->state = AVDTP_SESSION_STATE_CONNECTING;
+	avdtp_set_state(session, AVDTP_SESSION_STATE_CONNECTING);
 
 	session->io_id = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) session_cb, session);
@@ -3241,4 +3267,41 @@ gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream)
 void avdtp_set_auto_disconnect(struct avdtp *session, gboolean auto_dc)
 {
 	session->auto_dc = auto_dc;
+}
+
+unsigned int avdtp_add_state_cb(avdtp_session_state_cb cb, void *user_data)
+{
+	struct avdtp_state_callback *state_cb;
+	static unsigned int id = 0;
+
+	state_cb = g_new(struct avdtp_state_callback, 1);
+	state_cb->cb = cb;
+	state_cb->user_data = user_data;
+	state_cb->id = ++id;
+
+	avdtp_callbacks = g_slist_append(avdtp_callbacks, state_cb);;
+
+	return state_cb->id;
+}
+
+gboolean avdtp_remove_state_cb(unsigned int id)
+{
+	GSList *l;
+	struct avdtp_state_callback *state_cb;
+
+	for (state_cb = NULL, l = avdtp_callbacks; l != NULL; l = l->next) {
+		struct avdtp_state_callback *tmp = l->data;
+		if (tmp && tmp->id == id) {
+			state_cb = tmp;
+			break;
+		}
+	}
+
+	if (!state_cb)
+		return FALSE;
+
+	avdtp_callbacks = g_slist_remove(avdtp_callbacks, state_cb);
+	g_free(state_cb);
+
+	return TRUE;
 }
