@@ -487,6 +487,9 @@ gboolean sink_setup_stream(struct sink *sink, struct avdtp *session)
 	if (session && !sink->session)
 		sink->session = avdtp_ref(session);
 
+	if (!sink->session)
+		return FALSE;
+
 	if (avdtp_discover(sink->session, discovery_complete, sink) < 0)
 		return FALSE;
 
