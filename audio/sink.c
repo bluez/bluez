@@ -86,8 +86,9 @@ static const char *state2str(avdtp_state_t stream_state)
 }
 
 static void avdtp_state_callback(struct audio_device *dev,
-					avdtp_session_state_t new_state,
+					struct avdtp *session,
 					avdtp_session_state_t old_state,
+					avdtp_session_state_t new_state,
 					void *user_data)
 {
 	struct sink *sink = dev->sink;

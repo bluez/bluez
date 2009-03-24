@@ -56,6 +56,8 @@
 
 #define CONTROL_CONNECT_TIMEOUT 2
 
+static unsigned int avdtp_callback_id = 0;
+
 static void device_free(struct audio_device *dev)
 {
 	if (dev->conn)
@@ -80,7 +82,7 @@ static gboolean control_connect_timeout(gpointer user_data)
 	return FALSE;
 }
 
-gboolean device_set_control_timer(struct audio_device *dev)
+static gboolean device_set_control_timer(struct audio_device *dev)
 {
 	if (!dev->control)
 		return FALSE;
@@ -102,6 +104,32 @@ void device_remove_control_timer(struct audio_device *dev)
 	dev->control_timer = 0;
 }
 
+static void device_avdtp_cb(struct audio_device *dev,
+				struct avdtp *session,
+				avdtp_session_state_t old_state,
+				avdtp_session_state_t new_state,
+				void *user_data)
+{
+
+	if (!dev->control || !dev->sink)
+		return;
+
+	switch (new_state) {
+	case AVDTP_SESSION_STATE_DISCONNECTED:
+		device_remove_control_timer(dev);
+		avrcp_disconnect(dev);
+		break;
+	case AVDTP_SESSION_STATE_CONNECTING:
+		break;
+	case AVDTP_SESSION_STATE_CONNECTED:
+		if (avdtp_stream_setup_active(session))
+			device_set_control_timer(dev);
+		else
+			avrcp_connect(dev);
+		break;
+	}
+}
+
 struct audio_device *audio_device_register(DBusConnection *conn,
 					const char *path, const bdaddr_t *src,
 					const bdaddr_t *dst)
@@ -117,6 +145,9 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 	bacpy(&dev->dst, dst);
 	bacpy(&dev->src, src);
 	dev->conn = dbus_connection_ref(conn);
+
+	if (avdtp_callback_id == 0)
+		avdtp_callback_id = avdtp_add_state_cb(device_avdtp_cb, NULL);
 
 	return dev;
 }

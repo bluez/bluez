@@ -717,7 +717,7 @@ static void avdtp_set_state(struct avdtp *session,
 
 	for (l = avdtp_callbacks; l != NULL; l = l->next) {
 		struct avdtp_state_callback *cb = l->data;
-		cb->cb(dev, new_state, old_state, cb->user_data);
+		cb->cb(dev, session, old_state, new_state, cb->user_data);
 	}
 }
 
@@ -943,15 +943,7 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 
 static void connection_lost(struct avdtp *session, int err)
 {
-	struct audio_device *dev;
 	char address[18];
-
-	dev = manager_find_device(&session->dst, AUDIO_CONTROL_INTERFACE,
-					FALSE);
-	if (dev && dev->control) {
-		device_remove_control_timer(dev);
-		avrcp_disconnect(dev);
-	}
 
 	ba2str(&session->dst, address);
 	debug("Disconnected from %s", address);
@@ -1923,8 +1915,6 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 			address);
 
 	if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
-		struct audio_device *dev;
-
 		debug("AVDTP imtu=%u, omtu=%u", session->imtu, session->omtu);
 
 		session->buf = g_malloc0(session->imtu);
@@ -1950,15 +1940,6 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		if (session->stream_setup) {
 			set_disconnect_timer(session);
 			avdtp_set_auto_disconnect(session, FALSE);
-		}
-
-		dev = manager_find_device(&session->dst,
-					AUDIO_CONTROL_INTERFACE, FALSE);
-		if (dev && dev->control) {
-			if (session->stream_setup)
-				device_set_control_timer(dev);
-			else
-				avrcp_connect(dev);
 		}
 	} else if (session->pending_open)
 		handle_transport_connect(session, chan, session->imtu,
@@ -3267,6 +3248,11 @@ gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream)
 void avdtp_set_auto_disconnect(struct avdtp *session, gboolean auto_dc)
 {
 	session->auto_dc = auto_dc;
+}
+
+gboolean avdtp_stream_setup_active(struct avdtp *session)
+{
+	return session->stream_setup;
 }
 
 unsigned int avdtp_add_state_cb(avdtp_session_state_cb cb, void *user_data)
