@@ -93,6 +93,9 @@ static void avdtp_state_callback(struct audio_device *dev,
 	struct sink *sink = dev->sink;
 	const char *state_str;
 
+	if (sink == NULL)
+		return;
+
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
 		if (sink->connecting) {
