@@ -77,6 +77,7 @@ struct unix_client {
 	GSList *caps;
 	service_type_t type;
 	char *interface;
+	uint8_t seid;
 	union {
 		struct a2dp_data a2dp;
 		struct headset_data hs;
@@ -232,22 +233,11 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	}
 }
 
-static void headset_discovery_complete(struct audio_device *dev, void *user_data)
+static uint8_t headset_generate_capability(struct audio_device *dev,
+						codec_capabilities_t *codec)
 {
-	struct unix_client *client = user_data;
-	char buf[BT_SUGGESTED_BUFFER_SIZE];
-	struct bt_get_capabilities_rsp *rsp = (void *) buf;
-	codec_capabilities_t *codec;
 	pcm_capabilities_t *pcm;
 
-	client->req_id = 0;
-
-	if (!dev)
-		goto failed;
-
-	memset(buf, 0, sizeof(buf));
-
-	codec = (void *) rsp->data;
 	/* A2DP seid are 6 bytes long so HSP/HFP should be assigned to 7-8 bit */
 	codec->seid = (1 << 6);
 	codec->transport = BT_CAPABILITIES_TRANSPORT_SCO;
@@ -261,9 +251,29 @@ static void headset_discovery_complete(struct audio_device *dev, void *user_data
 	if (!headset_get_sco_hci(dev))
 		pcm->flags |= BT_PCM_FLAG_PCM_ROUTING;
 
+	return codec->length;
+}
+
+static void headset_discovery_complete(struct audio_device *dev, void *user_data)
+{
+	struct unix_client *client = user_data;
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_get_capabilities_rsp *rsp = (void *) buf;
+	uint8_t length;
+
+	client->req_id = 0;
+
+	if (!dev)
+		goto failed;
+
+	memset(buf, 0, sizeof(buf));
+
+	length = headset_generate_capability(dev, (void *) rsp->data);
+
 	rsp->h.type = BT_RESPONSE;
 	rsp->h.name = BT_GET_CAPABILITIES;
-	rsp->h.length = sizeof(*rsp) + codec->length;
+	rsp->h.length = sizeof(*rsp) + length;
+
 	ba2str(&dev->src, rsp->source);
 	ba2str(&dev->dst, rsp->destination);
 	strncpy(rsp->object, dev->path, sizeof(rsp->object));
@@ -553,15 +563,22 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 		struct avdtp_stream *stream;
 		uint8_t seid, configured = 0;
 
-		seid = avdtp_get_seid(rsep);
 		cap = avdtp_get_codec(rsep);
 
 		if (cap->category != AVDTP_MEDIA_CODEC)
 			continue;
 
+		seid = avdtp_get_seid(rsep);
+
+		if (client->seid != 0 && client->seid != seid)
+			continue;
+
 		stream = avdtp_get_stream(rsep);
-		if (stream)
+		if (stream) {
 			configured = 1;
+			if (client->seid == seid)
+				cap = avdtp_stream_get_codec(stream);
+		}
 
 		a2dp_append_codec(rsp, cap, seid, configured);
 	}
@@ -973,11 +990,6 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	str2ba(req->source, &src);
 	str2ba(req->destination, &dst);
 
-	if (client->interface) {
-		error("Got GET_CAPABILITIES for an initialized client");
-		goto failed;
-	}
-
 	if (req->transport == BT_CAPABILITIES_TRANSPORT_SCO)
 		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
 	else if (req->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
@@ -1002,6 +1014,8 @@ static void handle_getcapabilities_req(struct unix_client *client,
 		error("No matching service found");
 		goto failed;
 	}
+
+	client->seid = req->seid;
 
 	start_discovery(dev, client);
 

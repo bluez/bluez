@@ -117,6 +117,7 @@ struct bt_get_capabilities_req {
 	char			object[128];	/* DBus object path */
 	uint8_t			transport;	/* Requested transport */
 	uint8_t			flags;		/* Requested flags */
+	uint8_t			seid;		/* Requested capability configuration */
 } __attribute__ ((packed));
 
 /**
