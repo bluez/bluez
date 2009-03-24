@@ -120,7 +120,7 @@ Signals		void AnswerRequested()
 properties	string State [readonly]
 
 			Possible values: "disconnected", "connecting",
-			"connected", "play_requested", "playing"
+			"connected", "playing"
 
 		boolean Connected [readonly]
 

@@ -272,7 +272,7 @@ static const char *state2str(headset_state_t state)
 	case HEADSET_STATE_CONNECTED:
 		return "connected";
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
-		return "play_requested";
+		return NULL;
 	case HEADSET_STATE_PLAYING:
 		return "playing";
 	}
