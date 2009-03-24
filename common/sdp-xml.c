@@ -329,7 +329,7 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 
 		appender(data, indent);
 		appender(data, "<url value=\"");
-		strBuf = strndup(value->val.str, value->unitSize);
+		strBuf = strndup(value->val.str, value->unitSize - 1);
 		appender(data, strBuf);
 		free(strBuf);
 		appender(data, "\" />\n");
