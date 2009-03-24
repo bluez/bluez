@@ -1874,7 +1874,8 @@ static DBusMessage *hs_get_properties(DBusConnection *conn,
 
 	/* State */
 	state = state2str(device->headset->state);
-	dict_append_entry(&dict, "State", DBUS_TYPE_STRING, &state);
+	if (state)
+		dict_append_entry(&dict, "State", DBUS_TYPE_STRING, &state);
 
 	/* Connected */
 	value = (device->headset->state >= HEADSET_STATE_CONNECTED);
@@ -2398,9 +2399,10 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		return;
 
 	state_str = state2str(state);
-	emit_property_changed(dev->conn, dev->path,
-			AUDIO_HEADSET_INTERFACE, "State",
-			DBUS_TYPE_STRING, &state_str);
+	if (state_str)
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_HEADSET_INTERFACE, "State",
+					DBUS_TYPE_STRING, &state_str);
 
 	switch (state) {
 	case HEADSET_STATE_DISCONNECTED:
