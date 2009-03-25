@@ -2066,6 +2066,8 @@ proceed:
 		load_connections(adapter, dd);
 
 		adapter->initialized = TRUE;
+
+		adapter_update(adapter, 0, FALSE);
 	}
 
 	if (dev_down) {
@@ -2312,7 +2314,7 @@ int adapter_update(struct btd_adapter *adapter, uint8_t new_svc,
 	if (dev->ignore)
 		return 0;
 
-	if (starting) {
+	if (starting || !adapter->initialized) {
 		adapter->svc_cache = new_svc;
 		return 0;
 	}
