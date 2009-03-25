@@ -1623,7 +1623,7 @@ static int bluetooth_parse_capabilities(struct bluetooth_data *data,
 		return 0;
 
 	while (bytes_left > 0) {
-		if ((codec->type == BT_A2DP_CODEC_SBC) &&
+		if ((codec->type == BT_A2DP_SBC_SINK) &&
 				!(codec->lock & BT_WRITE_LOCK))
 			break;
 

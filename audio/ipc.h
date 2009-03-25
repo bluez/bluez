@@ -129,10 +129,16 @@ struct bt_get_capabilities_req {
 /* A2DP seid are 6 bytes long so HSP/HFP are assigned to 7-8 bits */
 #define BT_A2DP_SEID_RANGE			(1 << 6) - 1
 
-#define BT_A2DP_CODEC_SBC			0x00
-#define BT_A2DP_CODEC_MPEG12			0x01
-#define BT_A2DP_CODEC_MPEG24			0x02
-#define BT_A2DP_CODEC_ATRAC			0x03
+#define BT_A2DP_SBC_SOURCE			0x00
+#define BT_A2DP_SBC_SINK			0x01
+#define BT_A2DP_MPEG12_SOURCE			0x02
+#define BT_A2DP_MPEG12_SINK			0x03
+#define BT_A2DP_MPEG24_SOURCE			0x04
+#define BT_A2DP_MPEG24_SINK			0x05
+#define BT_A2DP_ATRAC_SOURCE			0x06
+#define BT_A2DP_ATRAC_SINK			0x07
+#define BT_A2DP_UNKNOWN_SOURCE			0x08
+#define BT_A2DP_UNKNOWN_SINK			0x09
 
 #define BT_SBC_SAMPLING_FREQ_16000		(1 << 3)
 #define BT_SBC_SAMPLING_FREQ_32000		(1 << 2)

@@ -452,6 +452,7 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		sbc->max_bitpool = sbc_cap->max_bitpool;
 
 		print_sbc(sbc_cap);
+		codec->type = BT_A2DP_SBC_SINK;
 	} else if (codec_cap->media_codec_type == A2DP_CODEC_MPEG12) {
 		struct mpeg_codec_cap *mpeg_cap = (void *) codec_cap;
 		mpeg_capabilities_t *mpeg = (void *) codec;
@@ -468,23 +469,28 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		mpeg->mpf = mpeg_cap->mpf;
 		mpeg->bitrate = mpeg_cap->bitrate;
 
-
 		print_mpeg12(mpeg_cap);
+		codec->type = BT_A2DP_MPEG12_SINK;
 	} else {
-		size_t codec_length;
+		size_t codec_length, type_length, total_length;
 
 		codec_length = cap->length - (sizeof(struct avdtp_service_capability)
 				+ sizeof(struct avdtp_media_codec_capability));
+		type_length = sizeof(codec_cap->media_codec_type);
+		total_length = type_length + codec_length +
+				sizeof(codec_capabilities_t);
 
-		if (space_left < codec_length + sizeof(codec_capabilities_t))
+		if (space_left < total_length)
 			return -ENOMEM;
 
-		codec->length = codec_length + sizeof(codec_capabilities_t);
-		memcpy(codec->data, codec_cap->data, codec_length);
+		codec->length = total_length;
+		memcpy(codec->data, &codec_cap->media_codec_type, type_length);
+		memcpy(codec->data + type_length, codec_cap->data,
+			codec_length);
+		codec->type = BT_A2DP_UNKNOWN_SINK;
 	}
 
 	codec->seid = seid;
-	codec->type = codec_cap->media_codec_type;
 	codec->configured = configured;
 	codec->lock = lock;
 	rsp->h.length += codec->length;
@@ -529,8 +535,13 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 		struct a2dp_sep *sep;
 		struct avdtp_service_capability *cap;
 		struct avdtp_stream *stream;
-		uint8_t seid, configured = 0, lock = 0;
+		uint8_t type, seid, configured = 0, lock = 0;
 		GSList *cl;
+
+		type = avdtp_get_type(rsep);
+
+		if (type != AVDTP_SEP_TYPE_SINK)
+			continue;
 
 		cap = avdtp_get_codec(rsep);
 
@@ -1259,7 +1270,7 @@ static int handle_a2dp_transport(struct unix_client *client,
 
 	client->caps = g_slist_append(client->caps, media_transport);
 
-	if (req->codec.type == BT_A2DP_CODEC_MPEG12) {
+	if (req->codec.type == BT_A2DP_MPEG12_SINK) {
 		mpeg_capabilities_t *mpeg = (void *) &req->codec;
 
 		memset(&mpeg_cap, 0, sizeof(mpeg_cap));
@@ -1277,7 +1288,7 @@ static int handle_a2dp_transport(struct unix_client *client,
 							sizeof(mpeg_cap));
 
 		print_mpeg12(&mpeg_cap);
-	} else if (req->codec.type == BT_A2DP_CODEC_SBC) {
+	} else if (req->codec.type == BT_A2DP_SBC_SINK) {
 		sbc_capabilities_t *sbc = (void *) &req->codec;
 
 		memset(&sbc_cap, 0, sizeof(sbc_cap));
