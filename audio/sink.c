@@ -69,17 +69,15 @@ static unsigned int avdtp_callback_id = 0;
 static const char *state2str(avdtp_state_t stream_state)
 {
 	switch (stream_state) {
+	case AVDTP_STATE_CLOSING:
+	case AVDTP_STATE_ABORTING:
 	case AVDTP_STATE_IDLE:
-		return "disconnected";
 	case AVDTP_STATE_CONFIGURED:
-		return NULL;
+		return "disconnected";
 	case AVDTP_STATE_OPEN:
 		return "connected";
 	case AVDTP_STATE_STREAMING:
 		return "playing";
-	case AVDTP_STATE_CLOSING:
-	case AVDTP_STATE_ABORTING:
-		return NULL;
 	}
 
 	return NULL;
@@ -145,13 +143,12 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		return;
 
 	state_str = state2str(new_state);
-	if (state_str)
-		emit_property_changed(dev->conn, dev->path,
-				AUDIO_SINK_INTERFACE, "State",
-				DBUS_TYPE_STRING, &state_str);
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_SINK_INTERFACE, "State",
+					DBUS_TYPE_STRING, &state_str);
 		value = FALSE;
 		g_dbus_emit_signal(dev->conn, dev->path, AUDIO_SINK_INTERFACE,
 					"Disconnected", DBUS_TYPE_INVALID);
@@ -178,6 +175,9 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		sink->cb_id = 0;
 		break;
 	case AVDTP_STATE_OPEN:
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_SINK_INTERFACE, "State",
+					DBUS_TYPE_STRING, &state_str);
 		if (old_state == AVDTP_STATE_CONFIGURED) {
 			value = TRUE;
 			g_dbus_emit_signal(dev->conn, dev->path,
@@ -202,6 +202,9 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		}
 		break;
 	case AVDTP_STATE_STREAMING:
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_SINK_INTERFACE, "State",
+					DBUS_TYPE_STRING, &state_str);
 		value = TRUE;
 		g_dbus_emit_signal(dev->conn, dev->path, AUDIO_SINK_INTERFACE,
 					"Playing", DBUS_TYPE_INVALID);
@@ -602,9 +605,11 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct audio_device *device = data;
+	struct sink *sink = device->sink;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
+	const char *state;
 	gboolean value;
 
 	reply = dbus_message_new_method_return(msg);
@@ -619,12 +624,20 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	/* Playing */
-	value = (device->sink->stream_state == AVDTP_STATE_STREAMING);
+	value = (sink->stream_state == AVDTP_STATE_STREAMING);
 	dict_append_entry(&dict, "Playing", DBUS_TYPE_BOOLEAN, &value);
 
 	/* Connected */
-	value = (device->sink->stream_state >= AVDTP_STATE_CONFIGURED);
+	value = (sink->stream_state >= AVDTP_STATE_CONFIGURED);
 	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &value);
+
+	/* State */
+	if (sink->connecting)
+		state = "connecting";
+	else
+		state = state2str(sink->stream_state);
+	if (state)
+		dict_append_entry(&dict, "State", DBUS_TYPE_STRING, &state);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
