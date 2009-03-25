@@ -263,7 +263,7 @@ static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *
 	} else if (u->transport == BT_CAPABILITIES_TRANSPORT_A2DP) {
 
 		while (bytes_left > 0) {
-			if ((codec->type == BT_A2DP_CODEC_SBC) &&
+			if ((codec->type == BT_A2DP_SBC_SINK) &&
 					!(codec->lock & BT_WRITE_LOCK))
 				break;
 
@@ -277,7 +277,7 @@ static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *
 			codec->length != sizeof(u->a2dp.sbc_capabilities))
 			return -1;
 
-		assert(codec->type == BT_A2DP_CODEC_SBC);
+		assert(codec->type == BT_A2DP_SBC_SINK);
 
 		memcpy(&u->a2dp.sbc_capabilities, codec,
 			sizeof(u->a2dp.sbc_capabilities));
