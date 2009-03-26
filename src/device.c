@@ -1713,7 +1713,6 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 
 	if (device->bonding) {
 		device->bonding->listener_id = 0;
-		g_io_channel_shutdown(device->bonding->io, TRUE, NULL);
 		bonding_request_free(device->bonding, TRUE);
 	}
 }
