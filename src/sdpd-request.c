@@ -86,7 +86,15 @@ static uint32_t sdp_cstate_alloc_buf(sdp_buf_t *buf)
 
 /* Additional values for checking datatype (not in spec) */
 #define SDP_TYPE_UUID	0xfe
-#define SDP_TYPE_ANY	0xff
+#define SDP_TYPE_ATTRID	0xff
+
+struct attrid {
+	uint8_t dtd;
+	union {
+		uint16_t uint16;
+		uint32_t uint32;
+	};
+};
 
 /*
  * Generic data element sequence extractor. Builds
@@ -101,7 +109,7 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 	short numberOfElements = 0;
 	int seqlen = 0;
 	sdp_list_t *pSeq = NULL;
-	uint8_t dataType = expectedType;
+	uint8_t dataType;
 	int status = 0;
 	const uint8_t *p;
 	size_t bufsize;
@@ -127,9 +135,6 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 			goto failed;
 		}
 
-		if (dataType == SDP_TYPE_ANY)
-			expectedType = *p;
-
 		dataType = *p;
 
 		SDPDBG("Data type: 0x%02x", dataType);
@@ -139,7 +144,12 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 				SDPDBG("->Unexpected Data type (expected UUID_ANY)");
 				goto failed;
 			}
-		} else if (expectedType != SDP_TYPE_ANY && dataType != expectedType) {
+		} else if (expectedType == SDP_TYPE_ATTRID &&
+				(dataType != SDP_UINT16 && dataType != SDP_UINT32)) {
+			SDPDBG("->Unexpected Data type (expected 0x%02x or 0x%02x)",
+								SDP_UINT16, SDP_UINT32);
+			goto failed;
+		} else if (expectedType != SDP_TYPE_ATTRID && dataType != expectedType) {
 			SDPDBG("->Unexpected Data type (expected 0x%02x)", expectedType);
 			goto failed;
 		}
@@ -154,8 +164,16 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 				goto failed;
 			}
 
-			pElem = malloc(sizeof(uint16_t));
-			bt_put_unaligned(ntohs(bt_get_unaligned((uint16_t *)p)), (uint16_t *)pElem);
+			if (expectedType == SDP_TYPE_ATTRID) {
+				struct attrid *aid;
+				aid = malloc(sizeof(struct attrid));
+				aid->dtd = dataType;
+				bt_put_unaligned(ntohs(bt_get_unaligned((uint16_t *)p)), (uint16_t *)&aid->uint16);
+				pElem = (char *) aid;
+			} else {
+				pElem = malloc(sizeof(uint16_t));
+				bt_put_unaligned(ntohs(bt_get_unaligned((uint16_t *)p)), (uint16_t *)pElem);
+			}
 			p += sizeof(uint16_t);
 			seqlen += sizeof(uint16_t);
 			bufsize -= sizeof(uint16_t);
@@ -169,8 +187,16 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 				goto failed;
 			}
 
-			pElem = malloc(sizeof(uint32_t));
-			bt_put_unaligned(ntohl(bt_get_unaligned((uint32_t *)p)), (uint32_t *)pElem);
+			if (expectedType == SDP_TYPE_ATTRID) {
+				struct attrid *aid;
+				aid = malloc(sizeof(struct attrid));
+				aid->dtd = dataType;
+				bt_put_unaligned(ntohl(bt_get_unaligned((uint32_t *)p)), (uint32_t *)&aid->uint32);
+				pElem = (char *) aid;
+			} else {
+				pElem = malloc(sizeof(uint32_t));
+				bt_put_unaligned(ntohl(bt_get_unaligned((uint32_t *)p)), (uint32_t *)pElem);
+			}
 			p += sizeof(uint32_t);
 			seqlen += sizeof(uint32_t);
 			bufsize -= sizeof(uint32_t);
@@ -515,8 +541,10 @@ done:
  * requested identifiers are present in the PDU form of
  * the request
  */
-static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_buf_t *buf)
+static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, sdp_buf_t *buf)
 {
+	sdp_buf_t pdu;
+
 	if (!rec)
 		return SDP_INVALID_RECORD_HANDLE;
 
@@ -526,24 +554,25 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 		SDPDBG("NULL attribute descriptor");
 	}
 
-	SDPDBG("AttrDataType : %d", dtd);
-
 	if (seq == NULL) {
 		SDPDBG("Attribute sequence is NULL");
 		return 0;
 	}
-	if (dtd == SDP_UINT16)
-		for (; seq; seq = seq->next) {
-			uint16_t attr = bt_get_unaligned((uint16_t *)seq->data);
+
+	sdp_gen_record_pdu(rec, &pdu);
+
+	for (; seq; seq = seq->next) {
+		struct attrid *aid = seq->data;
+
+		SDPDBG("AttrDataType : %d", aid->dtd);
+
+		if (aid->dtd == SDP_UINT16) {
+			uint16_t attr = bt_get_unaligned((uint16_t *)&aid->uint16);
 			sdp_data_t *a = (sdp_data_t *)sdp_data_get(rec, attr);
 			if (a)
 				sdp_append_to_pdu(buf, a);
-		}
-	else if (dtd == SDP_UINT32) {
-		sdp_buf_t pdu;
-		sdp_gen_record_pdu(rec, &pdu);
-		for (; seq; seq = seq->next) {
-			uint32_t range = bt_get_unaligned((uint32_t *)seq->data);
+		} else if (aid->dtd == SDP_UINT32) {
+			uint32_t range = bt_get_unaligned((uint32_t *)&aid->uint32);
 			uint16_t attr;
 			uint16_t low = (0xffff0000 & range) >> 16;
 			uint16_t high = 0x0000ffff & range;
@@ -568,13 +597,16 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, uint8_t dtd, sdp_bu
 			data = sdp_data_get(rec, high);
 			if (data)
 				sdp_append_to_pdu(buf, data);
+		} else {
+			error("Unexpected data type : 0x%x", aid->dtd);
+			error("Expect uint16_t or uint32_t");
+			free(pdu.data);
+			return SDP_INVALID_SYNTAX;
 		}
-		free(pdu.data);
-	} else {
-		error("Unexpected data type : 0x%x", dtd);
-		error("Expect uint16_t or uint32_t");
-		return SDP_INVALID_SYNTAX;
 	}
+
+	free(pdu.data);
+
 	return 0;
 }
 
@@ -624,7 +656,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	}
 
 	/* extract the attribute list */
-	scanned = extract_des(pdata, data_left, &seq, &dtd, SDP_TYPE_ANY);
+	scanned = extract_des(pdata, data_left, &seq, &dtd, SDP_TYPE_ATTRID);
 	if (scanned == -1) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
@@ -687,7 +719,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 		}
 	} else {
 		sdp_record_t *rec = sdp_record_find(handle);
-		status = extract_attrs(rec, seq, dtd, buf);
+		status = extract_attrs(rec, seq, buf);
 		if (buf->data_size > max_rsp_size) {
 			sdp_cont_state_t newState;
 
@@ -775,7 +807,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	}
 
 	/* extract the attribute list */
-	scanned = extract_des(pdata, data_left, &seq, &dtd, SDP_TYPE_ANY);
+	scanned = extract_des(pdata, data_left, &seq, &dtd, SDP_TYPE_ATTRID);
 	if (scanned == -1) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
@@ -826,7 +858,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 			if (sdp_match_uuid(pattern, rec->pattern) > 0 &&
 					sdp_check_access(rec->handle, &req->device)) {
 				rsp_count++;
-				status = extract_attrs(rec, seq, dtd, &tmpbuf);
+				status = extract_attrs(rec, seq, &tmpbuf);
 
 				SDPDBG("Response count : %d", rsp_count);
 				SDPDBG("Local PDU size : %d", tmpbuf.data_size);
