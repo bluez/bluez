@@ -52,6 +52,7 @@ tools/hid2hci
 tools/l2ping
 tools/ppporc
 tools/sdptool
+audio/ipctest
 cups/bluetooth
 test/agent
 test/bdaddr
