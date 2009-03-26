@@ -49,7 +49,6 @@
 #include "agent.h"
 
 #define REQUEST_TIMEOUT (60 * 1000)		/* 60 seconds */
-#define AGENT_TIMEOUT (10 * 60 * 1000)		/* 10 minutes */
 
 typedef enum {
 	AGENT_REQUEST_PASSKEY,
