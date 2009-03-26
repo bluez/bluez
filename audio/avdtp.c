@@ -1985,9 +1985,8 @@ static void auth_cb(DBusError *derr, void *user_data)
 		return;
 	}
 
-	/* Here we set the disconnect timer so we don't stay in IDLE state
-	 * indefinitely but set auto_dc to FALSE so that when a stream is
-	 * finally opened it doesn't get closed due to a timeout */
+	/* This is so that avdtp_connect_cb will know to do the right thing
+	 * with respect to the disconnect timer */
 	session->stream_setup = TRUE;
 }
 
