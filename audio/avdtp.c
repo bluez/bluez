@@ -1298,7 +1298,7 @@ static gboolean avdtp_getconf_cmd(struct avdtp *session, uint8_t transaction,
 	uint8_t buf[1024];
 	uint8_t *ptr = buf;
 
-	if (size < sizeof(struct seid_req)) {
+	if (size < (int) sizeof(struct seid_req)) {
 		error("Too short getconf request");
 		return FALSE;
 	}
@@ -1318,7 +1318,7 @@ static gboolean avdtp_getconf_cmd(struct avdtp *session, uint8_t transaction,
 	for (l = sep->stream->caps, rsp_size = 0; l != NULL; l = g_slist_next(l)) {
 		struct avdtp_service_capability *cap = l->data;
 
-		if (rsp_size + cap->length + 2 > sizeof(buf))
+		if (rsp_size + cap->length + 2 > (int) sizeof(buf))
 			break;
 
 		memcpy(ptr, cap, cap->length + 2);
