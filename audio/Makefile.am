@@ -15,7 +15,7 @@ nodist_audio_la_SOURCES = $(BUILT_SOURCES)
 
 audio_la_LDFLAGS = -module -avoid-version -no-undefined
 
-LDADD = $(top_builddir)/common/libhelper.a \
+audio_la_LIBADD = $(top_builddir)/common/libhelper.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 
 if ALSA
@@ -56,13 +56,15 @@ libgstbluetooth_la_CFLAGS = -fvisibility=hidden \
 endif
 endif
 
+noinst_LTLIBRARIES = libipc.la
+
+libipc_la_SOURCES = ipc.h ipc.c
+
 noinst_PROGRAMS = ipctest
 
-ipctest_SOURCES = ipctest.c ipc.c ipc.h
-ipctest_LDADD = @SBC_LIBS@ @GLIB_LIBS@
-ipctest_CFLAGS = @SBC_CFLAGS@ @GLIB_CFLAGS@ $(AM_CFLAGS) # see libtool issues, 8.3.9.2 Objects 'created with both libtool and without'
+ipctest_LDADD= libipc.la @SBC_LIBS@ @GLIB_LIBS@
 
-AM_CFLAGS = -fvisibility=hidden \
+AM_CFLAGS = -fvisibility=hidden @SBC_CFLAGS@ \
 		@BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 CLEANFILES = $(BUILT_SOURCES)
