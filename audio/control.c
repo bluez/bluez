@@ -435,7 +435,7 @@ static void avctp_unref(struct avctp *session)
 	if (session->io_id)
 		g_source_remove(session->io_id);
 
-	if (session->dev)
+	if (session->dev && session->dev->control)
 		session->dev->control->session = NULL;
 
 	if (session->uinput >= 0) {
