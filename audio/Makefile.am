@@ -15,7 +15,7 @@ nodist_audio_la_SOURCES = $(BUILT_SOURCES)
 
 audio_la_LDFLAGS = -module -avoid-version -no-undefined
 
-audio_la_LIBADD = $(top_builddir)/common/libhelper.a \
+LDADD = $(top_builddir)/common/libhelper.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
 
 if ALSA
