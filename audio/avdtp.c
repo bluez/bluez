@@ -1200,6 +1200,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	uint8_t err, category = 0x00;
 	struct audio_device *dev;
 	bdaddr_t src, dst;
+	GSList *l;
 
 	if (size < sizeof(struct setconf_req)) {
 		error("Too short getcap request");
@@ -1246,6 +1247,16 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	stream->caps = caps_to_list(req->caps,
 					size - sizeof(struct setconf_req),
 					&stream->codec);
+
+	/* Verify that the Media Transport capability's length = 0. Reject otherwise */
+	for (l = stream->caps; l != NULL; l = g_slist_next(l)) {
+		struct avdtp_service_capability *cap = l->data;
+
+		if (cap->category == AVDTP_MEDIA_TRANSPORT && cap->length != 0) {
+			err = AVDTP_BAD_MEDIA_TRANSPORT_FORMAT;
+			goto failed;
+		}
+	}
 
 	if (sep->ind && sep->ind->set_configuration) {
 		if (!sep->ind->set_configuration(session, sep, stream,
