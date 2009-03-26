@@ -183,7 +183,7 @@ static gboolean finalize_resume(struct a2dp_setup *s)
 	for (l = s->cb; l != NULL; l = l->next) {
 		struct a2dp_setup_cb *cb = l->data;
 
-		if (cb->resume_cb) {
+		if (cb && cb->resume_cb) {
 			cb->resume_cb(s->session, s->err, cb->user_data);
 			cb->resume_cb = NULL;
 			setup_unref(s);
