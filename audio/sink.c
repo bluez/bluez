@@ -97,12 +97,19 @@ static void avdtp_state_callback(struct audio_device *dev,
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
-		if (sink->connecting) {
-			state_str = "disconnected";
-			emit_property_changed(dev->conn, dev->path,
+		state_str = "disconnected";
+		emit_property_changed(dev->conn, dev->path,
 					AUDIO_SINK_INTERFACE, "State",
 					DBUS_TYPE_STRING, &state_str);
-			sink->connecting = FALSE;
+
+		if (!sink->connecting) {
+			gboolean value = FALSE;
+			g_dbus_emit_signal(dev->conn, dev->path,
+					AUDIO_SINK_INTERFACE, "Disconnected",
+					DBUS_TYPE_INVALID);
+			emit_property_changed(dev->conn, dev->path,
+					AUDIO_SINK_INTERFACE, "Connected",
+					DBUS_TYPE_BOOLEAN, &value);
 		}
 		break;
 	case AVDTP_SESSION_STATE_CONNECTING:
@@ -146,15 +153,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
-		emit_property_changed(dev->conn, dev->path,
-					AUDIO_SINK_INTERFACE, "State",
-					DBUS_TYPE_STRING, &state_str);
-		value = FALSE;
-		g_dbus_emit_signal(dev->conn, dev->path, AUDIO_SINK_INTERFACE,
-					"Disconnected", DBUS_TYPE_INVALID);
-		emit_property_changed(dev->conn, dev->path,
-					AUDIO_SINK_INTERFACE, "Connected",
-					DBUS_TYPE_BOOLEAN, &value);
 		if (sink->disconnect) {
 			DBusMessage *reply;
 			struct pending_request *p;
@@ -178,7 +176,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		emit_property_changed(dev->conn, dev->path,
 					AUDIO_SINK_INTERFACE, "State",
 					DBUS_TYPE_STRING, &state_str);
-		if (old_state == AVDTP_STATE_CONFIGURED) {
+		if (old_state == AVDTP_STATE_CONFIGURED && sink->connecting) {
 			value = TRUE;
 			g_dbus_emit_signal(dev->conn, dev->path,
 						AUDIO_SINK_INTERFACE,
