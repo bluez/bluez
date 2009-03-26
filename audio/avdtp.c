@@ -1154,8 +1154,8 @@ static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
 	uint8_t err, buf[1024], *ptr = buf;
 
 	if (size < sizeof(struct seid_req)) {
-		error("Too short getcap request");
-		return FALSE;
+		err = AVDTP_BAD_LENGTH;
+		goto failed;
 	}
 
 	sep = find_local_sep_by_seid(session->server, req->acp_seid);
