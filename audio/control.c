@@ -73,7 +73,9 @@
 /* ctype entries */
 #define CTYPE_CONTROL		0x0
 #define CTYPE_STATUS		0x1
+#define CTYPE_NOT_IMPLEMENTED	0x8
 #define CTYPE_ACCEPTED		0x9
+#define CTYPE_REJECTED		0xA
 #define CTYPE_STABLE		0xC
 
 /* opcodes */
@@ -502,21 +504,21 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 			avrcp->code, avrcp->subunit_type, avrcp->subunit_id,
 			avrcp->opcode, operand_count);
 
-	if (avctp->packet_type == AVCTP_PACKET_SINGLE &&
-			avctp->cr == AVCTP_COMMAND &&
-			avctp->pid == htons(AV_REMOTE_SVCLASS_ID) &&
+	if (avctp->packet_type != AVCTP_PACKET_SINGLE) {
+		avctp->cr = AVCTP_RESPONSE;
+		avrcp->code = CTYPE_NOT_IMPLEMENTED;
+	} else if (avctp->pid != htons(AV_REMOTE_SVCLASS_ID)) {
+		avctp->ipid = 1;
+		avctp->cr = AVCTP_RESPONSE;
+		avrcp->code = CTYPE_REJECTED;
+	} else if (avctp->cr == AVCTP_COMMAND &&
 			avrcp->code == CTYPE_CONTROL &&
 			avrcp->subunit_type == SUBUNIT_PANEL &&
 			avrcp->opcode == OP_PASSTHROUGH) {
 		handle_panel_passthrough(session, operands, operand_count);
 		avctp->cr = AVCTP_RESPONSE;
 		avrcp->code = CTYPE_ACCEPTED;
-		ret = write(sock, buf, packet_size);
-	}
-
-	if (avctp->packet_type == AVCTP_PACKET_SINGLE &&
-			avctp->cr == AVCTP_COMMAND &&
-			avctp->pid == htons(AV_REMOTE_SVCLASS_ID) &&
+	} else if (avctp->cr == AVCTP_COMMAND &&
 			avrcp->code == CTYPE_STATUS &&
 			(avrcp->opcode == OP_UNITINFO
 			|| avrcp->opcode == OP_SUBUNITINFO)) {
@@ -524,8 +526,11 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 		avrcp->code = CTYPE_STABLE;
 		debug("reply to %s", avrcp->opcode == OP_UNITINFO ?
 				"OP_UNITINFO" : "OP_SUBUNITINFO");
-		ret = write(sock, buf, packet_size);
+	} else {
+		avctp->cr = AVCTP_RESPONSE;
+		avrcp->code = CTYPE_REJECTED;
 	}
+	ret = write(sock, buf, packet_size);
 
 	return TRUE;
 
