@@ -1947,6 +1947,9 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		goto failed;
 	}
 
+	if (!session->io)
+		session->io = g_io_channel_ref(chan);
+
 	bt_io_get(chan, BT_IO_L2CAP, &gerr,
 			BT_IO_OPT_OMTU, &session->omtu,
 			BT_IO_OPT_IMTU, &session->imtu,
