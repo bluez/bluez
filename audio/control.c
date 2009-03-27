@@ -1063,7 +1063,7 @@ unsigned int avctp_add_state_cb(avctp_state_cb cb, void *user_data)
 	state_cb->user_data = user_data;
 	state_cb->id = ++id;
 
-	avctp_callbacks = g_slist_append(avctp_callbacks, state_cb);;
+	avctp_callbacks = g_slist_append(avctp_callbacks, state_cb);
 
 	return state_cb->id;
 }
