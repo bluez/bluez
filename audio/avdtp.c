@@ -1947,11 +1947,6 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		goto failed;
 	}
 
-	if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
-		session->io = g_io_channel_ref(chan);
-		avdtp_set_state(session, AVDTP_SESSION_STATE_CONNECTING);
-	}
-
 	bt_io_get(chan, BT_IO_L2CAP, &gerr,
 			BT_IO_OPT_OMTU, &session->omtu,
 			BT_IO_OPT_IMTU, &session->imtu,
@@ -2238,6 +2233,7 @@ static int send_req(struct avdtp *session, gboolean priority,
 		err = l2cap_connect(session);
 		if (err < 0)
 			goto failed;
+		avdtp_set_state(session, AVDTP_SESSION_STATE_CONNECTING);
 	}
 
 	if (session->state < AVDTP_SESSION_STATE_CONNECTED ||
