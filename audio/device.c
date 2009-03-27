@@ -57,6 +57,7 @@
 #define CONTROL_CONNECT_TIMEOUT 2
 
 static unsigned int avdtp_callback_id = 0;
+static unsigned int avctp_callback_id = 0;
 
 static void device_free(struct audio_device *dev)
 {
@@ -97,7 +98,7 @@ static gboolean device_set_control_timer(struct audio_device *dev)
 	return TRUE;
 }
 
-void device_remove_control_timer(struct audio_device *dev)
+static void device_remove_control_timer(struct audio_device *dev)
 {
 	if (dev->control_timer)
 		g_source_remove(dev->control_timer);
@@ -110,7 +111,6 @@ static void device_avdtp_cb(struct audio_device *dev,
 				avdtp_session_state_t new_state,
 				void *user_data)
 {
-
 	if (!dev->control || !dev->sink)
 		return;
 
@@ -126,6 +126,25 @@ static void device_avdtp_cb(struct audio_device *dev,
 			device_set_control_timer(dev);
 		else
 			avrcp_connect(dev);
+		break;
+	}
+}
+
+static void device_avctp_cb(struct audio_device *dev,
+				avctp_state_t old_state,
+				avctp_state_t new_state,
+				void *user_data)
+{
+	if (!dev->control)
+		return;
+
+	switch (new_state) {
+	case AVCTP_STATE_DISCONNECTED:
+		break;
+	case AVCTP_STATE_CONNECTING:
+		device_remove_control_timer(dev);
+		break;
+	case AVCTP_STATE_CONNECTED:
 		break;
 	}
 }
@@ -148,6 +167,9 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 
 	if (avdtp_callback_id == 0)
 		avdtp_callback_id = avdtp_add_state_cb(device_avdtp_cb, NULL);
+
+	if (avctp_callback_id == 0)
+		avctp_callback_id = avctp_add_state_cb(device_avctp_cb, NULL);
 
 	return dev;
 }

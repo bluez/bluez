@@ -67,8 +67,6 @@ struct audio_device {
 	guint control_timer;
 };
 
-void device_remove_control_timer(struct audio_device *dev);
-
 struct audio_device *audio_device_register(DBusConnection *conn,
 					const char *path, const bdaddr_t *src,
 					const bdaddr_t *dst);

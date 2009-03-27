@@ -102,12 +102,6 @@ static DBusConnection *connection = NULL;
 static GSList *servers = NULL;
 static GSList *sessions = NULL;
 
-typedef enum {
-	AVCTP_STATE_DISCONNECTED = 0,
-	AVCTP_STATE_CONNECTING,
-	AVCTP_STATE_CONNECTED
-} avctp_state_t;
-
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
 struct avctp_header {
@@ -148,6 +142,12 @@ struct avrcp_header {
 #error "Unknown byte order"
 #endif
 
+struct avctp_state_callback {
+	avctp_state_cb cb;
+	void *user_data;
+	unsigned int id;
+};
+
 struct avctp_server {
 	bdaddr_t src;
 	GIOChannel *io;
@@ -174,6 +174,8 @@ struct avctp {
 struct control {
 	struct avctp *session;
 };
+
+static GSList *avctp_callbacks = NULL;
 
 static sdp_record_t *avrcp_ct_record()
 {
@@ -330,6 +332,7 @@ static struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst)
 
 	session = g_new0(struct avctp, 1);
 
+	session->state = AVCTP_STATE_DISCONNECTED;
 	session->uinput = -1;
 	bacpy(&session->src, src);
 	bacpy(&session->dst, dst);
@@ -606,6 +609,19 @@ static void init_uinput(struct avctp *session)
 		debug("AVRCP: uinput initialized for %s", address);
 }
 
+static void avctp_set_state(struct avctp *session, avctp_state_t new_state)
+{
+	GSList *l;
+	avdtp_session_state_t old_state = session->state;
+
+	session->state = new_state;
+
+	for (l = avctp_callbacks; l != NULL; l = l->next) {
+		struct avctp_state_callback *cb = l->data;
+		cb->cb(session->dev, old_state, new_state, cb->user_data);
+	}
+}
+
 static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	struct control *control = data;
@@ -655,7 +671,7 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 				AUDIO_CONTROL_INTERFACE, "Connected",
 				DBUS_TYPE_BOOLEAN, &value);
 
-	session->state = AVCTP_STATE_CONNECTED;
+	avctp_set_state(session, AVCTP_STATE_CONNECTED);
 	session->mtu = imtu;
 	session->io_id = g_io_add_watch(chan,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
@@ -729,9 +745,7 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	if (!session->dev)
 		session->dev = dev;
 
-	device_remove_control_timer(dev);
-
-	session->state = AVCTP_STATE_CONNECTING;
+	avctp_set_state(session, AVCTP_STATE_CONNECTING);
 	session->io = g_io_channel_ref(chan);
 
 	if (avdtp_is_connected(&src, &dst)) {
@@ -786,10 +800,8 @@ gboolean avrcp_connect(struct audio_device *dev)
 		return FALSE;
 	}
 
-	device_remove_control_timer(dev);
-
 	session->dev = dev;
-	session->state = AVCTP_STATE_CONNECTING;
+	avctp_set_state(session, AVCTP_STATE_CONNECTING);
 
 	io = bt_io_connect(BT_IO_L2CAP, avctp_connect_cb, control, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
@@ -1037,6 +1049,37 @@ gboolean control_is_active(struct audio_device *dev)
 	if (control->session &&
 			control->session->state != AVCTP_STATE_DISCONNECTED)
 		return TRUE;
+
+	return FALSE;
+}
+
+unsigned int avctp_add_state_cb(avctp_state_cb cb, void *user_data)
+{
+	struct avctp_state_callback *state_cb;
+	static unsigned int id = 0;
+
+	state_cb = g_new(struct avctp_state_callback, 1);
+	state_cb->cb = cb;
+	state_cb->user_data = user_data;
+	state_cb->id = ++id;
+
+	avctp_callbacks = g_slist_append(avctp_callbacks, state_cb);;
+
+	return state_cb->id;
+}
+
+gboolean avctp_remove_state_cb(unsigned int id)
+{
+	GSList *l;
+
+	for (l = avctp_callbacks; l != NULL; l = l->next) {
+		struct avctp_state_callback *cb = l->data;
+		if (cb && cb->id == id) {
+			avctp_callbacks = g_slist_remove(avctp_callbacks, cb);
+			g_free(cb);
+			return TRUE;
+		}
+	}
 
 	return FALSE;
 }
