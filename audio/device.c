@@ -71,7 +71,7 @@ struct dev_priv {
 	audio_state_t state;
 
 	headset_state_t hs_state;
-	avdtp_state_t avdtp_state;
+	sink_state_t sink_state;
 	avctp_state_t avctp_state;
 
 	DBusMessage *conn_req;
@@ -82,8 +82,9 @@ struct dev_priv {
 	guint headset_timer;
 };
 
-static unsigned int avdtp_callback_id = 0;
+static unsigned int sink_callback_id = 0;
 static unsigned int avctp_callback_id = 0;
+static unsigned int avdtp_callback_id = 0;
 static unsigned int headset_callback_id = 0;
 
 static void device_free(struct audio_device *dev)
@@ -284,10 +285,25 @@ static void device_remove_headset_timer(struct audio_device *dev)
 	dev->priv->headset_timer = 0;
 }
 
-static void device_avdtp_cb(struct audio_device *dev,
-				struct avdtp *session,
+static void device_avdtp_cb(struct audio_device *dev, struct avdtp *session,
 				avdtp_session_state_t old_state,
 				avdtp_session_state_t new_state,
+				void *user_data)
+{
+	if (!dev->sink || !dev->control)
+		return;
+
+	if (new_state == AVDTP_SESSION_STATE_CONNECTED) {
+		if (avdtp_stream_setup_active(session))
+			device_set_control_timer(dev);
+		else
+			avrcp_connect(dev);
+	}
+}
+
+static void device_sink_cb(struct audio_device *dev,
+				sink_state_t old_state,
+				sink_state_t new_state,
 				void *user_data)
 {
 	struct dev_priv *priv = dev->priv;
@@ -295,10 +311,10 @@ static void device_avdtp_cb(struct audio_device *dev,
 	if (!dev->sink)
 		return;
 
-	dev->priv->avdtp_state = new_state;
+	priv->sink_state = new_state;
 
 	switch (new_state) {
-	case AVDTP_SESSION_STATE_DISCONNECTED:
+	case SINK_STATE_DISCONNECTED:
 		if (dev->control) {
 			device_remove_control_timer(dev);
 			avrcp_disconnect(dev);
@@ -309,18 +325,14 @@ static void device_avdtp_cb(struct audio_device *dev,
 				priv->hs_state == HEADSET_STATE_CONNECTED)
 			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
-	case AVDTP_SESSION_STATE_CONNECTING:
+	case SINK_STATE_CONNECTING:
 		device_remove_avdtp_timer(dev);
 		if (priv->hs_state == HEADSET_STATE_DISCONNECTED)
 			device_set_state(dev, AUDIO_STATE_CONNECTING);
 		break;
-	case AVDTP_SESSION_STATE_CONNECTED:
-		if (dev->control) {
-			if (avdtp_stream_setup_active(session))
-				device_set_control_timer(dev);
-			else
-				avrcp_connect(dev);
-		}
+	case SINK_STATE_CONNECTED:
+		if (old_state == SINK_STATE_PLAYING)
+			break;
 		if (dev->auto_connect) {
 			if (!dev->headset)
 				device_set_state(dev, AUDIO_STATE_CONNECTED);
@@ -330,6 +342,8 @@ static void device_avdtp_cb(struct audio_device *dev,
 				device_set_state(dev, AUDIO_STATE_CONNECTED);
 		} else if (priv->hs_state != HEADSET_STATE_CONNECTED)
 			device_set_state(dev, AUDIO_STATE_CONNECTED);
+		break;
+	case SINK_STATE_PLAYING:
 		break;
 	}
 }
@@ -370,20 +384,20 @@ static void device_headset_cb(struct audio_device *dev,
 	switch (new_state) {
 	case HEADSET_STATE_DISCONNECTED:
 		device_remove_avdtp_timer(dev);
-		if (priv->avdtp_state != AVDTP_SESSION_STATE_DISCONNECTED &&
+		if (priv->sink_state != SINK_STATE_DISCONNECTED &&
 						dev->sink && priv->dc_req) {
 			sink_shutdown(dev->sink);
 			break;
 		}
-		if (priv->avdtp_state == AVDTP_SESSION_STATE_DISCONNECTED)
+		if (priv->sink_state == AVDTP_SESSION_STATE_DISCONNECTED)
 			device_set_state(dev, AUDIO_STATE_DISCONNECTED);
 		else if (old_state == HEADSET_STATE_CONNECT_IN_PROGRESS &&
-				priv->avdtp_state == AVDTP_SESSION_STATE_CONNECTED)
+				priv->sink_state == SINK_STATE_CONNECTED)
 			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
 		device_remove_headset_timer(dev);
-		if (priv->avdtp_state == AVDTP_SESSION_STATE_DISCONNECTED)
+		if (priv->sink_state == SINK_STATE_DISCONNECTED)
 			device_set_state(dev, AUDIO_STATE_CONNECTING);
 		break;
 	case HEADSET_STATE_CONNECTED:
@@ -392,11 +406,11 @@ static void device_headset_cb(struct audio_device *dev,
 		if (dev->auto_connect) {
 			if (!dev->sink)
 				device_set_state(dev, AUDIO_STATE_CONNECTED);
-			else if (priv->avdtp_state == AVDTP_SESSION_STATE_DISCONNECTED)
+			else if (priv->sink_state == SINK_STATE_DISCONNECTED)
 				device_set_avdtp_timer(dev);
-			else if (priv->avdtp_state == AVDTP_SESSION_STATE_CONNECTED)
+			else if (priv->sink_state == SINK_STATE_CONNECTED)
 				device_set_state(dev, AUDIO_STATE_CONNECTED);
-		} else if (priv->avdtp_state != AVDTP_SESSION_STATE_CONNECTED)
+		} else if (priv->sink_state != SINK_STATE_CONNECTED)
 			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
@@ -465,7 +479,7 @@ static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 
 	if (priv->hs_state != HEADSET_STATE_DISCONNECTED)
 		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
-	else if (dev->sink && priv->avdtp_state != AVDTP_SESSION_STATE_DISCONNECTED)
+	else if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
 		sink_shutdown(dev->sink);
 	else {
 		dbus_message_unref(priv->dc_req);
@@ -550,9 +564,11 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 	debug("Registered interface %s on path %s", AUDIO_INTERFACE,
 								dev->path);
 
+	if (sink_callback_id == 0)
+		sink_callback_id = sink_add_state_cb(device_sink_cb, NULL);
+
 	if (avdtp_callback_id == 0)
 		avdtp_callback_id = avdtp_add_state_cb(device_avdtp_cb, NULL);
-
 	if (avctp_callback_id == 0)
 		avctp_callback_id = avctp_add_state_cb(device_avctp_cb, NULL);
 
