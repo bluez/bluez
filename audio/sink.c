@@ -756,3 +756,14 @@ gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 
 	return TRUE;
 }
+
+gboolean sink_shutdown(struct sink *sink)
+{
+	if (!sink->stream)
+		return FALSE;
+
+	if (avdtp_close(sink->session, sink->stream) < 0)
+		return FALSE;
+
+	return TRUE;
+}

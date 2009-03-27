@@ -74,6 +74,9 @@ struct dev_priv {
 	avdtp_state_t avdtp_state;
 	avctp_state_t avctp_state;
 
+	DBusMessage *conn_req;
+	DBusMessage *dc_req;
+
 	guint control_timer;
 	guint avdtp_timer;
 	guint headset_timer;
@@ -85,17 +88,23 @@ static unsigned int headset_callback_id = 0;
 
 static void device_free(struct audio_device *dev)
 {
+	struct dev_priv *priv = dev->priv;
+
 	if (dev->conn)
 		dbus_connection_unref(dev->conn);
 
-	if (dev->priv) {
-		if (dev->priv->control_timer)
-			g_source_remove(dev->priv->control_timer);
-		if (dev->priv->avdtp_timer)
-			g_source_remove(dev->priv->avdtp_timer);
-		if (dev->priv->headset_timer)
-			g_source_remove(dev->priv->headset_timer);
-		g_free(dev->priv);
+	if (priv) {
+		if (priv->control_timer)
+			g_source_remove(priv->control_timer);
+		if (priv->avdtp_timer)
+			g_source_remove(priv->avdtp_timer);
+		if (priv->headset_timer)
+			g_source_remove(priv->headset_timer);
+		if (priv->dc_req)
+			dbus_message_unref(priv->dc_req);
+		if (priv->conn_req)
+			dbus_message_unref(priv->conn_req);
+		g_free(priv);
 	}
 
 	g_free(dev->path);
@@ -119,7 +128,9 @@ static const char *state2str(audio_state_t state)
 
 static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 {
+	struct dev_priv *priv = dev->priv;
 	const char *state_str;
+	DBusMessage *reply = NULL;
 
 	state_str = state2str(new_state);
 	if (!state_str)
@@ -132,6 +143,27 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 	}
 
 	dev->priv->state = new_state;
+
+	if (priv->dc_req && new_state == AUDIO_STATE_DISCONNECTED) {
+		reply = dbus_message_new_method_return(priv->dc_req);
+		dbus_message_unref(priv->dc_req);
+		priv->dc_req = NULL;
+	}
+
+	if (priv->conn_req && new_state != AUDIO_STATE_CONNECTING) {
+		if (new_state == AUDIO_STATE_CONNECTED)
+			reply = dbus_message_new_method_return(priv->conn_req);
+		else
+			reply = g_dbus_create_error(priv->conn_req,
+							ERROR_INTERFACE
+							".ConnectFailed",
+							"Connecting failed");
+		dbus_message_unref(priv->conn_req);
+		priv->conn_req = NULL;
+	}
+
+	if (reply)
+		g_dbus_send_message(dev->conn, reply);
 
 	emit_property_changed(dev->conn, dev->path,
 				AUDIO_INTERFACE, "State",
@@ -338,6 +370,11 @@ static void device_headset_cb(struct audio_device *dev,
 	switch (new_state) {
 	case HEADSET_STATE_DISCONNECTED:
 		device_remove_avdtp_timer(dev);
+		if (priv->avdtp_state != AVDTP_SESSION_STATE_DISCONNECTED &&
+						dev->sink && priv->dc_req) {
+			sink_shutdown(dev->sink);
+			break;
+		}
 		if (priv->avdtp_state == AVDTP_SESSION_STATE_DISCONNECTED)
 			device_set_state(dev, AUDIO_STATE_DISCONNECTED);
 		else if (old_state == HEADSET_STATE_CONNECT_IN_PROGRESS &&
@@ -372,15 +409,71 @@ static void device_headset_cb(struct audio_device *dev,
 static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotImplemented",
-							"Not yet implemented");
+	struct audio_device *dev = data;
+	struct dev_priv *priv = dev->priv;
+
+	if (priv->state == AUDIO_STATE_CONNECTING)
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
+						"Connect in Progress");
+	else if (priv->state == AUDIO_STATE_CONNECTED)
+		return g_dbus_create_error(msg, ERROR_INTERFACE
+						".AlreadyConnected",
+						"Already Connected");
+
+	dev->auto_connect = TRUE;
+
+	if (dev->headset)
+		headset_config_stream(dev, NULL, NULL);
+	else if (dev->sink) {
+		struct avdtp *session = avdtp_get(&dev->src, &dev->dst);
+
+		if (!session)
+			return g_dbus_create_error(msg, ERROR_INTERFACE
+					".Failed",
+					"Failed to get AVDTP session");
+
+		sink_setup_stream(dev->sink, session);
+		avdtp_unref(session);
+	}
+
+	/* The previous call should cause a call to the state callback to
+	 * indicate AUDIO_STATE_CONNECTING */
+	if (priv->state != AUDIO_STATE_CONNECTING)
+		return g_dbus_create_error(msg, ERROR_INTERFACE
+				".ConnectFailed",
+				"Headset connect failed");
+
+	priv->conn_req = dbus_message_ref(msg);
+
+	return NULL;
 }
 
 static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotImplemented",
-							"Not yet implemented");
+	struct audio_device *dev = data;
+	struct dev_priv *priv = dev->priv;
+
+	if (priv->state == AUDIO_STATE_DISCONNECTED)
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotConnected",
+						"Not connected");
+
+	if (priv->dc_req)
+		return dbus_message_new_method_return(msg);
+
+	priv->dc_req = dbus_message_ref(msg);
+
+	if (priv->hs_state != HEADSET_STATE_DISCONNECTED)
+		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	else if (dev->sink && priv->avdtp_state != AVDTP_SESSION_STATE_DISCONNECTED)
+		sink_shutdown(dev->sink);
+	else {
+		dbus_message_unref(priv->dc_req);
+		priv->dc_req = NULL;
+		return dbus_message_new_method_return(msg);
+	}
+
+	return NULL;
 }
 
 static DBusMessage *dev_get_properties(DBusConnection *conn, DBusMessage *msg,

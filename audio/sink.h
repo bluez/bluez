@@ -31,3 +31,4 @@ avdtp_state_t sink_get_state(struct audio_device *dev);
 gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 				struct avdtp_stream *stream);
 gboolean sink_setup_stream(struct sink *sink, struct avdtp *session);
+gboolean sink_shutdown(struct sink *sink);
