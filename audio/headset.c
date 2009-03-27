@@ -1600,6 +1600,8 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAllowed",
 						"Too many connected devices");
 
+	device->auto_connect = FALSE;
+
 	err = rfcomm_connect(device, NULL, NULL, NULL);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
@@ -2266,7 +2268,7 @@ unsigned int headset_config_stream(struct audio_device *dev,
 					void *user_data)
 {
 	struct headset *hs = dev->headset;
-	unsigned int id;
+	unsigned int id = 0;
 
 	if (hs->dc_timer) {
 		g_source_remove(hs->dc_timer);

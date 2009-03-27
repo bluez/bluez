@@ -58,6 +58,8 @@ struct audio_device {
 	bdaddr_t src;
 	bdaddr_t dst;
 
+	gboolean auto_connect;
+
 	struct headset *headset;
 	struct gateway *gateway;
 	struct sink *sink;

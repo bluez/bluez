@@ -98,6 +98,7 @@ struct audio_adapter {
 	GIOChannel *hsp_hs_server;
 };
 
+static gboolean auto_connect = TRUE;
 static int max_connected_headsets = 1;
 static DBusConnection *connection = NULL;
 static GKeyFile *config = NULL;
@@ -497,6 +498,8 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 		return;
 	}
+
+	device->auto_connect = auto_connect;
 
 	return;
 
@@ -901,7 +904,7 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 	char **list;
 	int i;
 	gboolean b;
-	GError *err;
+	GError *err = NULL;
 
 	connection = dbus_connection_ref(conn);
 
@@ -942,13 +945,18 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
 	}
 	g_strfreev(list);
 
-	err = NULL;
-	b = g_key_file_get_boolean(config, "Headset", "HFP",
-					&err);
+	b = g_key_file_get_boolean(config, "General", "AutoConnect", &err);
 	if (err) {
 		debug("audio.conf: %s", err->message);
 		g_clear_error(&err);
 	} else
+		auto_connect = b;
+
+	b = g_key_file_get_boolean(config, "Headset", "HFP",
+					&err);
+	if (err)
+		g_clear_error(&err);
+	else
 		enabled.hfp = b;
 
 	err = NULL;

@@ -531,6 +531,8 @@ static DBusMessage *sink_connect(DBusConnection *conn,
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 						"Failed to create a stream");
 
+	dev->auto_connect = FALSE;
+
 	pending = sink->connect;
 
 	pending->conn = dbus_connection_ref(conn);

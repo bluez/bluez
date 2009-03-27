@@ -57,6 +57,8 @@
 #define AUDIO_INTERFACE "org.bluez.Audio"
 
 #define CONTROL_CONNECT_TIMEOUT 2
+#define AVDTP_CONNECT_TIMEOUT 1
+#define HEADSET_CONNECT_TIMEOUT 1
 
 typedef enum {
 	AUDIO_STATE_DISCONNECTED,
@@ -73,6 +75,8 @@ struct dev_priv {
 	avctp_state_t avctp_state;
 
 	guint control_timer;
+	guint avdtp_timer;
+	guint headset_timer;
 };
 
 static unsigned int avdtp_callback_id = 0;
@@ -87,6 +91,10 @@ static void device_free(struct audio_device *dev)
 	if (dev->priv) {
 		if (dev->priv->control_timer)
 			g_source_remove(dev->priv->control_timer);
+		if (dev->priv->avdtp_timer)
+			g_source_remove(dev->priv->avdtp_timer);
+		if (dev->priv->headset_timer)
+			g_source_remove(dev->priv->headset_timer);
 		g_free(dev->priv);
 	}
 
@@ -130,29 +138,117 @@ static void device_remove_control_timer(struct audio_device *dev)
 	dev->priv->control_timer = 0;
 }
 
+static gboolean avdtp_connect_timeout(gpointer user_data)
+{
+	struct audio_device *dev = user_data;
+
+	dev->priv->avdtp_timer = 0;
+
+	if (dev->sink) {
+		struct avdtp *session = avdtp_get(&dev->src, &dev->dst);
+
+		if (!session)
+			return FALSE;
+
+		sink_setup_stream(dev->sink, session);
+		avdtp_unref(session);
+	}
+
+	return FALSE;
+}
+
+static gboolean device_set_avdtp_timer(struct audio_device *dev)
+{
+	struct dev_priv *priv = dev->priv;
+
+	if (!dev->sink)
+		return FALSE;
+
+	if (priv->avdtp_timer)
+		return FALSE;
+
+	priv->avdtp_timer = g_timeout_add_seconds(AVDTP_CONNECT_TIMEOUT,
+							avdtp_connect_timeout,
+							dev);
+
+	return TRUE;
+}
+
+static void device_remove_avdtp_timer(struct audio_device *dev)
+{
+	if (dev->priv->avdtp_timer)
+		g_source_remove(dev->priv->avdtp_timer);
+	dev->priv->avdtp_timer = 0;
+}
+
+static gboolean headset_connect_timeout(gpointer user_data)
+{
+	struct audio_device *dev = user_data;
+
+	dev->priv->headset_timer = 0;
+
+	if (dev->headset)
+		headset_config_stream(dev, NULL, NULL);
+
+	return FALSE;
+}
+
+static gboolean device_set_headset_timer(struct audio_device *dev)
+{
+	struct dev_priv *priv = dev->priv;
+
+	if (!dev->headset)
+		return FALSE;
+
+	if (priv->headset_timer)
+		return FALSE;
+
+	priv->headset_timer = g_timeout_add_seconds(HEADSET_CONNECT_TIMEOUT,
+						headset_connect_timeout, dev);
+
+	return TRUE;
+}
+
+static void device_remove_headset_timer(struct audio_device *dev)
+{
+	if (dev->priv->headset_timer)
+		g_source_remove(dev->priv->headset_timer);
+	dev->priv->headset_timer = 0;
+}
+
 static void device_avdtp_cb(struct audio_device *dev,
 				struct avdtp *session,
 				avdtp_session_state_t old_state,
 				avdtp_session_state_t new_state,
 				void *user_data)
 {
-	if (!dev->control || !dev->sink)
+	struct dev_priv *priv = dev->priv;
+
+	if (!dev->sink)
 		return;
 
 	dev->priv->avdtp_state = new_state;
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
-		device_remove_control_timer(dev);
-		avrcp_disconnect(dev);
+		if (dev->control) {
+			device_remove_control_timer(dev);
+			avrcp_disconnect(dev);
+		}
 		break;
 	case AVDTP_SESSION_STATE_CONNECTING:
+		device_remove_avdtp_timer(dev);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTED:
-		if (avdtp_stream_setup_active(session))
-			device_set_control_timer(dev);
-		else
-			avrcp_connect(dev);
+		if (dev->control) {
+			if (avdtp_stream_setup_active(session))
+				device_set_control_timer(dev);
+			else
+				avrcp_connect(dev);
+		}
+		if (priv->hs_state == HEADSET_STATE_DISCONNECTED
+							&& dev->auto_connect)
+			device_set_headset_timer(dev);
 		break;
 	}
 }
@@ -183,17 +279,24 @@ static void device_headset_cb(struct audio_device *dev,
 				headset_state_t new_state,
 				void *user_data)
 {
+	struct dev_priv *priv = dev->priv;
+
 	if (!dev->headset)
 		return;
 
-	dev->priv->hs_state = new_state;
+	priv->hs_state = new_state;
 
 	switch (new_state) {
 	case HEADSET_STATE_DISCONNECTED:
+		device_remove_avdtp_timer(dev);
 		break;
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
+		device_remove_headset_timer(dev);
 		break;
 	case HEADSET_STATE_CONNECTED:
+		if (priv->avdtp_state == AVDTP_SESSION_STATE_DISCONNECTED
+							&& dev->auto_connect)
+			device_set_avdtp_timer(dev);
 		break;
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
 		break;
