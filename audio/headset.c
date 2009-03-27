@@ -1538,12 +1538,7 @@ static DBusMessage *hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 {
 	struct audio_device *device = data;
 	struct headset *hs = device->headset;
-	DBusMessage *reply = NULL;
 	char hs_address[18];
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
 
 	if (hs->state == HEADSET_STATE_DISCONNECTED)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
@@ -1554,7 +1549,8 @@ static DBusMessage *hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 	ba2str(&device->dst, hs_address);
 	info("Disconnected from %s, %s", hs_address, device->path);
 
-	return reply;
+	return dbus_message_new_method_return(msg);
+
 }
 
 static DBusMessage *hs_is_connected(DBusConnection *conn,
