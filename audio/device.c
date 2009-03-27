@@ -58,6 +58,7 @@
 
 static unsigned int avdtp_callback_id = 0;
 static unsigned int avctp_callback_id = 0;
+static unsigned int headset_callback_id = 0;
 
 static void device_free(struct audio_device *dev)
 {
@@ -149,6 +150,28 @@ static void device_avctp_cb(struct audio_device *dev,
 	}
 }
 
+static void device_headset_cb(struct audio_device *dev,
+				headset_state_t old_state,
+				headset_state_t new_state,
+				void *user_data)
+{
+	if (!dev->headset)
+		return;
+
+	switch (new_state) {
+	case HEADSET_STATE_DISCONNECTED:
+		break;
+	case HEADSET_STATE_CONNECT_IN_PROGRESS:
+		break;
+	case HEADSET_STATE_CONNECTED:
+		break;
+	case HEADSET_STATE_PLAY_IN_PROGRESS:
+		break;
+	case HEADSET_STATE_PLAYING:
+		break;
+	}
+}
+
 struct audio_device *audio_device_register(DBusConnection *conn,
 					const char *path, const bdaddr_t *src,
 					const bdaddr_t *dst)
@@ -170,6 +193,10 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 
 	if (avctp_callback_id == 0)
 		avctp_callback_id = avctp_add_state_cb(device_avctp_cb, NULL);
+
+	if (headset_callback_id == 0)
+		headset_callback_id = headset_add_state_cb(device_headset_cb,
+									NULL);
 
 	return dev;
 }
