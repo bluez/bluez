@@ -3381,21 +3381,15 @@ unsigned int avdtp_add_state_cb(avdtp_session_state_cb cb, void *user_data)
 gboolean avdtp_remove_state_cb(unsigned int id)
 {
 	GSList *l;
-	struct avdtp_state_callback *state_cb;
 
-	for (state_cb = NULL, l = avdtp_callbacks; l != NULL; l = l->next) {
-		struct avdtp_state_callback *tmp = l->data;
-		if (tmp && tmp->id == id) {
-			state_cb = tmp;
-			break;
+	for (l = avdtp_callbacks; l != NULL; l = l->next) {
+		struct avdtp_state_callback *cb = l->data;
+		if (cb && cb->id == id) {
+			avdtp_callbacks = g_slist_remove(avdtp_callbacks, cb);
+			g_free(cb);
+			return TRUE;
 		}
 	}
 
-	if (!state_cb)
-		return FALSE;
-
-	avdtp_callbacks = g_slist_remove(avdtp_callbacks, state_cb);
-	g_free(state_cb);
-
-	return TRUE;
+	return FALSE;
 }
