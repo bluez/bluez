@@ -54,7 +54,26 @@
 #include "headset.h"
 #include "sink.h"
 
+#define AUDIO_INTERFACE "org.bluez.Audio"
+
 #define CONTROL_CONNECT_TIMEOUT 2
+
+typedef enum {
+	AUDIO_STATE_DISCONNECTED,
+	AUDIO_STATE_CONNECTING,
+	AUDIO_STATE_CONNECTED,
+	AUDIO_STATE_PLAYING
+} audio_state_t;
+
+struct dev_priv {
+	audio_state_t state;
+
+	headset_state_t hs_state;
+	avdtp_state_t avdtp_state;
+	avctp_state_t avctp_state;
+
+	guint control_timer;
+};
 
 static unsigned int avdtp_callback_id = 0;
 static unsigned int avctp_callback_id = 0;
@@ -65,8 +84,11 @@ static void device_free(struct audio_device *dev)
 	if (dev->conn)
 		dbus_connection_unref(dev->conn);
 
-	if (dev->control_timer)
-		g_source_remove(dev->control_timer);
+	if (dev->priv) {
+		if (dev->priv->control_timer)
+			g_source_remove(dev->priv->control_timer);
+		g_free(dev->priv);
+	}
 
 	g_free(dev->path);
 	g_free(dev);
@@ -76,7 +98,7 @@ static gboolean control_connect_timeout(gpointer user_data)
 {
 	struct audio_device *dev = user_data;
 
-	dev->control_timer = 0;
+	dev->priv->control_timer = 0;
 
 	if (dev->control)
 		avrcp_connect(dev);
@@ -86,13 +108,15 @@ static gboolean control_connect_timeout(gpointer user_data)
 
 static gboolean device_set_control_timer(struct audio_device *dev)
 {
+	struct dev_priv *priv = dev->priv;
+
 	if (!dev->control)
 		return FALSE;
 
-	if (dev->control_timer)
+	if (priv->control_timer)
 		return FALSE;
 
-	dev->control_timer = g_timeout_add_seconds(CONTROL_CONNECT_TIMEOUT,
+	priv->control_timer = g_timeout_add_seconds(CONTROL_CONNECT_TIMEOUT,
 							control_connect_timeout,
 							dev);
 
@@ -101,9 +125,9 @@ static gboolean device_set_control_timer(struct audio_device *dev)
 
 static void device_remove_control_timer(struct audio_device *dev)
 {
-	if (dev->control_timer)
-		g_source_remove(dev->control_timer);
-	dev->control_timer = 0;
+	if (dev->priv->control_timer)
+		g_source_remove(dev->priv->control_timer);
+	dev->priv->control_timer = 0;
 }
 
 static void device_avdtp_cb(struct audio_device *dev,
@@ -114,6 +138,8 @@ static void device_avdtp_cb(struct audio_device *dev,
 {
 	if (!dev->control || !dev->sink)
 		return;
+
+	dev->priv->avdtp_state = new_state;
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
@@ -139,6 +165,8 @@ static void device_avctp_cb(struct audio_device *dev,
 	if (!dev->control)
 		return;
 
+	dev->priv->avctp_state = new_state;
+
 	switch (new_state) {
 	case AVCTP_STATE_DISCONNECTED:
 		break;
@@ -158,6 +186,8 @@ static void device_headset_cb(struct audio_device *dev,
 	if (!dev->headset)
 		return;
 
+	dev->priv->hs_state = new_state;
+
 	switch (new_state) {
 	case HEADSET_STATE_DISCONNECTED:
 		break;
@@ -171,6 +201,40 @@ static void device_headset_cb(struct audio_device *dev,
 		break;
 	}
 }
+
+static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotImplemented",
+							"Not yet implemented");
+}
+
+static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotImplemented",
+							"Not yet implemented");
+}
+
+static DBusMessage *dev_get_properties(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotImplemented",
+							"Not yet implemented");
+}
+
+static GDBusMethodTable dev_methods[] = {
+	{ "Connect",		"",	"",	dev_connect,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "Disconnect",		"",	"",	dev_disconnect },
+	{ "GetProperties",	"",	"a{sv}",dev_get_properties },
+	{ NULL, NULL, NULL, NULL }
+};
+
+static GDBusSignalTable dev_signals[] = {
+	{ "PropertyChanged",		"sv"	},
+	{ NULL, NULL }
+};
 
 struct audio_device *audio_device_register(DBusConnection *conn,
 					const char *path, const bdaddr_t *src,
@@ -187,6 +251,21 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 	bacpy(&dev->dst, dst);
 	bacpy(&dev->src, src);
 	dev->conn = dbus_connection_ref(conn);
+	dev->priv = g_new0(struct dev_priv, 1);
+	dev->priv->state = AUDIO_STATE_DISCONNECTED;
+
+	if (!g_dbus_register_interface(dev->conn, dev->path,
+					AUDIO_INTERFACE,
+					dev_methods, dev_signals, NULL,
+					dev, NULL)) {
+		error("Unable to register %s on %s", AUDIO_INTERFACE,
+								dev->path);
+		device_free(dev);
+		return NULL;
+	}
+
+	debug("Registered interface %s on path %s", AUDIO_INTERFACE,
+								dev->path);
 
 	if (avdtp_callback_id == 0)
 		avdtp_callback_id = avdtp_add_state_cb(device_avdtp_cb, NULL);

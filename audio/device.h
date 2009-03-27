@@ -48,6 +48,7 @@ struct target;
 struct sink;
 struct headset;
 struct gateway;
+struct dev_priv;
 
 struct audio_device {
 	struct btd_device *btd_dev;
@@ -64,7 +65,7 @@ struct audio_device {
 	struct control *control;
 	struct target *target;
 
-	guint control_timer;
+	struct dev_priv *priv;
 };
 
 struct audio_device *audio_device_register(DBusConnection *conn,
