@@ -830,7 +830,7 @@ static void start_open(struct audio_device *dev, struct unix_client *client)
 		}
 
 		if (!a2dp_sep_lock(a2dp->sep, a2dp->session)) {
-			error("Unable to open seid %s", client->seid);
+			error("Unable to open seid %d", client->seid);
 			a2dp->sep = NULL;
 			goto failed;
 		}
@@ -847,7 +847,7 @@ static void start_open(struct audio_device *dev, struct unix_client *client)
 
 		hs->locked = headset_lock(dev, client->lock);
 		if (!hs->locked) {
-			error("Unable to open seid %s", client->seid);
+			error("Unable to open seid %d", client->seid);
 			goto failed;
 		}
 		break;
