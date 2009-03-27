@@ -48,6 +48,7 @@
 
 #include "error.h"
 #include "ipc.h"
+#include "dbus-common.h"
 #include "device.h"
 #include "avdtp.h"
 #include "control.h"
@@ -64,7 +65,6 @@ typedef enum {
 	AUDIO_STATE_DISCONNECTED,
 	AUDIO_STATE_CONNECTING,
 	AUDIO_STATE_CONNECTED,
-	AUDIO_STATE_PLAYING
 } audio_state_t;
 
 struct dev_priv {
@@ -100,6 +100,42 @@ static void device_free(struct audio_device *dev)
 
 	g_free(dev->path);
 	g_free(dev);
+}
+
+static const char *state2str(audio_state_t state)
+{
+	switch (state) {
+	case AUDIO_STATE_DISCONNECTED:
+		return "disconnected";
+	case AUDIO_STATE_CONNECTING:
+		return "connecting";
+	case AUDIO_STATE_CONNECTED:
+		return "connected";
+	default:
+		error("Invalid audio state %d", state);
+		return NULL;
+	}
+}
+
+static void device_set_state(struct audio_device *dev, audio_state_t new_state)
+{
+	const char *state_str;
+
+	state_str = state2str(new_state);
+	if (!state_str)
+		return;
+
+	if (dev->priv->state == new_state) {
+		debug("state change attempted from %s to %s",
+							state_str, state_str);
+		return;
+	}
+
+	dev->priv->state = new_state;
+
+	emit_property_changed(dev->conn, dev->path,
+				AUDIO_INTERFACE, "State",
+				DBUS_TYPE_STRING, &state_str);
 }
 
 static gboolean control_connect_timeout(gpointer user_data)
@@ -235,9 +271,16 @@ static void device_avdtp_cb(struct audio_device *dev,
 			device_remove_control_timer(dev);
 			avrcp_disconnect(dev);
 		}
+		if (priv->hs_state == HEADSET_STATE_DISCONNECTED)
+			device_set_state(dev, AUDIO_STATE_DISCONNECTED);
+		else if (old_state == AVDTP_SESSION_STATE_CONNECTING &&
+				priv->hs_state == HEADSET_STATE_CONNECTED)
+			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTING:
 		device_remove_avdtp_timer(dev);
+		if (priv->hs_state == HEADSET_STATE_DISCONNECTED)
+			device_set_state(dev, AUDIO_STATE_CONNECTING);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTED:
 		if (dev->control) {
@@ -246,9 +289,15 @@ static void device_avdtp_cb(struct audio_device *dev,
 			else
 				avrcp_connect(dev);
 		}
-		if (priv->hs_state == HEADSET_STATE_DISCONNECTED
-							&& dev->auto_connect)
-			device_set_headset_timer(dev);
+		if (dev->auto_connect) {
+			if (!dev->headset)
+				device_set_state(dev, AUDIO_STATE_CONNECTED);
+			if (priv->hs_state == HEADSET_STATE_DISCONNECTED)
+				device_set_headset_timer(dev);
+			else if (priv->hs_state == HEADSET_STATE_CONNECTED)
+				device_set_state(dev, AUDIO_STATE_CONNECTED);
+		} else if (priv->hs_state != HEADSET_STATE_CONNECTED)
+			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
 	}
 }
@@ -289,14 +338,29 @@ static void device_headset_cb(struct audio_device *dev,
 	switch (new_state) {
 	case HEADSET_STATE_DISCONNECTED:
 		device_remove_avdtp_timer(dev);
+		if (priv->avdtp_state == AVDTP_SESSION_STATE_DISCONNECTED)
+			device_set_state(dev, AUDIO_STATE_DISCONNECTED);
+		else if (old_state == HEADSET_STATE_CONNECT_IN_PROGRESS &&
+				priv->avdtp_state == AVDTP_SESSION_STATE_CONNECTED)
+			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
 		device_remove_headset_timer(dev);
+		if (priv->avdtp_state == AVDTP_SESSION_STATE_DISCONNECTED)
+			device_set_state(dev, AUDIO_STATE_CONNECTING);
 		break;
 	case HEADSET_STATE_CONNECTED:
-		if (priv->avdtp_state == AVDTP_SESSION_STATE_DISCONNECTED
-							&& dev->auto_connect)
-			device_set_avdtp_timer(dev);
+		if (old_state == HEADSET_STATE_PLAYING)
+			break;
+		if (dev->auto_connect) {
+			if (!dev->sink)
+				device_set_state(dev, AUDIO_STATE_CONNECTED);
+			else if (priv->avdtp_state == AVDTP_SESSION_STATE_DISCONNECTED)
+				device_set_avdtp_timer(dev);
+			else if (priv->avdtp_state == AVDTP_SESSION_STATE_CONNECTED)
+				device_set_state(dev, AUDIO_STATE_CONNECTED);
+		} else if (priv->avdtp_state != AVDTP_SESSION_STATE_CONNECTED)
+			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
 		break;
@@ -322,8 +386,31 @@ static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 static DBusMessage *dev_get_properties(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotImplemented",
-							"Not yet implemented");
+	struct audio_device *device = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	const char *state;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	/* State */
+	state = state2str(device->priv->state);
+	if (state)
+		dict_append_entry(&dict, "State", DBUS_TYPE_STRING, &state);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
 }
 
 static GDBusMethodTable dev_methods[] = {

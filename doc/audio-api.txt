@@ -35,7 +35,7 @@ Signals		void PropertyChanged(string name, variant value)
 Properties	string State
 
 			Possible values: "disconnected", "connecting",
-			"connected", "playing"
+			"connected"
 
 			"disconnected" -> "connecting"
 				Either an incoming or outgoing connection
@@ -47,14 +47,7 @@ Properties	string State
 			"connecting" -> "connected"
 				Successfully connected
 
-			"connected" -> "playing"
-				Audio stream active
-
-			"playing" -> "connected"
-				Audio stream suspended
-
 			"connected" -> "disconnected"
-			"playing" -> "disconnected"
 				Disconnected from the remote device
 
 Headset hierarchy
