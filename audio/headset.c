@@ -106,6 +106,12 @@ static char *str_state[] = {
 	"HEADSET_STATE_PLAYING",
 };
 
+struct headset_state_callback {
+	headset_state_cb cb;
+	void *user_data;
+	unsigned int id;
+};
+
 struct connect_cb {
 	unsigned int id;
 	headset_stream_cb_t cb;
@@ -163,6 +169,8 @@ struct event {
 	const char *cmd;
 	int (*callback) (struct audio_device *device, const char *buf);
 };
+
+static GSList *headset_callbacks = NULL;
 
 static inline DBusMessage *invalid_args(DBusMessage *msg)
 {
@@ -2384,8 +2392,10 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 	struct headset *hs = dev->headset;
 	gboolean value;
 	const char *state_str;
+	headset_state_t old_state = hs->state;
+	GSList *l;
 
-	if (hs->state == state)
+	if (old_state == state)
 		return;
 
 	state_str = state2str(state);
@@ -2470,9 +2480,15 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		break;
 	}
 
-	debug("State changed %s: %s -> %s", dev->path, str_state[hs->state],
-		str_state[state]);
 	hs->state = state;
+
+	debug("State changed %s: %s -> %s", dev->path, str_state[old_state],
+		str_state[state]);
+
+	for (l = headset_callbacks; l != NULL; l = l->next) {
+		struct headset_state_callback *cb = l->data;
+		cb->cb(dev, old_state, state, cb->user_data);
+	}
 }
 
 headset_state_t headset_get_state(struct audio_device *dev)
@@ -2751,4 +2767,35 @@ int telephony_call_waiting_ind(const char *number, int type)
 				number, type);
 
 	return 0;
+}
+
+unsigned int headset_add_state_cb(headset_state_cb cb, void *user_data)
+{
+	struct headset_state_callback *state_cb;
+	static unsigned int id = 0;
+
+	state_cb = g_new(struct headset_state_callback, 1);
+	state_cb->cb = cb;
+	state_cb->user_data = user_data;
+	state_cb->id = ++id;
+
+	headset_callbacks = g_slist_append(headset_callbacks, state_cb);
+
+	return state_cb->id;
+}
+
+gboolean headset_remove_state_cb(unsigned int id)
+{
+	GSList *l;
+
+	for (l = headset_callbacks; l != NULL; l = l->next) {
+		struct headset_state_callback *cb = l->data;
+		if (cb && cb->id == id) {
+			headset_callbacks = g_slist_remove(headset_callbacks, cb);
+			g_free(cb);
+			return TRUE;
+		}
+	}
+
+	return FALSE;
 }

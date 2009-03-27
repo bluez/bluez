@@ -40,6 +40,14 @@ typedef enum {
 	HEADSET_LOCK_WRITE = 1 << 1,
 } headset_lock_t;
 
+typedef void (*headset_state_cb) (struct audio_device *dev,
+					headset_state_t old_state,
+					headset_state_t new_state,
+					void *user_data);
+
+unsigned int headset_add_state_cb(headset_state_cb cb, void *user_data);
+gboolean headset_remove_state_cb(unsigned int id);
+
 typedef void (*headset_stream_cb_t) (struct audio_device *dev, void *user_data);
 
 void headset_connect_cb(GIOChannel *chan, GError *err, gpointer user_data);
