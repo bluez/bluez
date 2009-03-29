@@ -1,3 +1,19 @@
+ver 4.34:
+	Add support for version checks of plugins.
+	Add support for class property on adapter interface.
+	Add support for second SDP attempt after connection reset.
+	Add support for more detailed audio states.
+	Add support for HFP+A2DP auto connection feature.
+	Add support for new and improved audio IPC.
+	Add program for testing audio IPC interface.
+	Fix various AVDTP qualification related issues.
+	Fix broken SDP AttributeIdList parsing.
+	Fix invalid memory access of SDP URL handling.
+	Fix local class of device race conditions.
+	Fix issue with periodic inquiry on startup.
+	Fix missing temporary devices in some situations.
+	Fix SBC alignment issue for encoding with four subbands.
+
 ver 4.33:
 	Add Paired property to the DeviceFound signals.
 	Add support for Headset profile 1.2 version.
