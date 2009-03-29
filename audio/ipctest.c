@@ -1018,12 +1018,12 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 		DBG("rate %d", u->rate);
 	}
 
-	IF_CMD(btaddr) {
+	IF_CMD(bdaddr) {
 		if (u->address)
 			free(u->address);
 		if (sscanf(line, "%*s %as", &u->address) != 1)
-			DBG("set with btaddr BTADDR");
-		DBG("btaddr %s", u->address);
+			DBG("set with bdaddr BDADDR");
+		DBG("bdaddr %s", u->address);
 	}
 
 	IF_CMD(profile) {
@@ -1057,7 +1057,7 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 
 static void show_usage(char* prgname)
 {
-	printf("%s: ipctest [--interactive] BTADDR\n", basename(prgname));
+	printf("%s: ipctest [--interactive] BDADDR\n", basename(prgname));
 }
 
 static void sig_term(int sig)
