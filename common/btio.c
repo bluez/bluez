@@ -724,11 +724,6 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
 
-	if (l2cap_get_info(sock, &handle, dev_class) < 0) {
-		ERROR_FAILED(err, "L2CAP_CONNINFO", errno);
-		return FALSE;
-	}
-
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
 		case BT_IO_OPT_SOURCE:
@@ -779,9 +774,17 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 				(flags & L2CAP_LM_MASTER) ? TRUE : FALSE;
 			break;
 		case BT_IO_OPT_HANDLE:
+			if (l2cap_get_info(sock, &handle, dev_class) < 0) {
+				ERROR_FAILED(err, "L2CAP_CONNINFO", errno);
+				return FALSE;
+			}
 			*(va_arg(args, uint16_t *)) = handle;
 			break;
 		case BT_IO_OPT_CLASS:
+			if (l2cap_get_info(sock, &handle, dev_class) < 0) {
+				ERROR_FAILED(err, "L2CAP_CONNINFO", errno);
+				return FALSE;
+			}
 			memcpy(va_arg(args, uint8_t *), dev_class, 3);
 			break;
 		default:
@@ -828,11 +831,6 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
 
-	if (rfcomm_get_info(sock, &handle, dev_class) < 0) {
-		ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
-		return FALSE;
-	}
-
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
 		case BT_IO_OPT_SOURCE:
@@ -877,9 +875,17 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 				(flags & RFCOMM_LM_MASTER) ? TRUE : FALSE;
 			break;
 		case BT_IO_OPT_HANDLE:
+			if (rfcomm_get_info(sock, &handle, dev_class) < 0) {
+				ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
+				return FALSE;
+			}
 			*(va_arg(args, uint16_t *)) = handle;
 			break;
 		case BT_IO_OPT_CLASS:
+			if (rfcomm_get_info(sock, &handle, dev_class) < 0) {
+				ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
+				return FALSE;
+			}
 			memcpy(va_arg(args, uint8_t *), dev_class, 3);
 			break;
 		default:
@@ -932,11 +938,6 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 				(struct sockaddr *) &dst, sizeof(src), err))
 		return FALSE;
 
-	if (sco_get_info(sock, &handle, dev_class) < 0) {
-		ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
-		return FALSE;
-	}
-
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
 		case BT_IO_OPT_SOURCE:
@@ -957,9 +958,17 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 			*(va_arg(args, uint16_t *)) = sco_opt.mtu;
 			break;
 		case BT_IO_OPT_HANDLE:
+			if (sco_get_info(sock, &handle, dev_class) < 0) {
+				ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
+				return FALSE;
+			}
 			*(va_arg(args, uint16_t *)) = handle;
 			break;
 		case BT_IO_OPT_CLASS:
+			if (sco_get_info(sock, &handle, dev_class) < 0) {
+				ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
+				return FALSE;
+			}
 			memcpy(va_arg(args, uint8_t *), dev_class, 3);
 			break;
 		default:
