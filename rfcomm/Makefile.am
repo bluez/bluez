@@ -10,10 +10,9 @@ bin_PROGRAMS = rfcomm
 
 rfcomm_SOURCES = main.c parser.h parser.y lexer.l kword.h kword.c
 
+rfcomm_CFLAGS = @BLUEZ_CFLAGS@ -Wno-sign-compare
 rfcomm_LDADD = @BLUEZ_LIBS@
 endif
-
-AM_CFLAGS = @BLUEZ_CFLAGS@
 
 INCLUDES = -I$(top_srcdir)/common
 
