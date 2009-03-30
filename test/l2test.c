@@ -334,6 +334,7 @@ static void do_listen(void (*handler)(int sk))
 	}
 
 	/* Bind to local address */
+	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, &bdaddr);
 	addr.l2_psm = htobs(psm);

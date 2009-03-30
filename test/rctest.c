@@ -260,6 +260,7 @@ static void do_listen(void (*handler)(int sk))
 	}
 
 	/* Bind to local address */
+	memset(&addr, 0, sizeof(addr));
 	addr.rc_family = AF_BLUETOOTH;
 	bacpy(&addr.rc_bdaddr, &bdaddr);
 	addr.rc_channel = channel;
