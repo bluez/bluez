@@ -52,6 +52,7 @@
 #include <gdbus.h>
 
 #include "../src/dbus-common.h"
+#include "../src/adapter.h"
 
 #include "logging.h"
 #include "textfile.h"
@@ -99,8 +100,8 @@ struct serial_proxy {
 	uint8_t		channel;	/* RFCOMM channel */
 	uint32_t	record_id;	/* Service record id */
 	GIOChannel	*io;		/* Server listen */
-	guint		rfcomm_watch;	/* RFCOMM watch: Remote */
-	guint		local_watch;	/* Local watch: TTY or Unix socket */
+	GIOChannel	*rfcomm;	/* Remote RFCOMM channel*/
+	GIOChannel	*local;		/* Local channel: TTY or Unix socket */
 	struct serial_adapter *adapter;	/* Adapter pointer */
 };
 
@@ -109,14 +110,16 @@ static int sk_counter = 0;
 
 static void disable_proxy(struct serial_proxy *prx)
 {
-	if (prx->rfcomm_watch) {
-		g_source_remove(prx->rfcomm_watch);
-		prx->rfcomm_watch = 0;
+	if (prx->rfcomm) {
+		g_io_channel_shutdown(prx->rfcomm, TRUE, NULL);
+		g_io_channel_unref(prx->rfcomm);
+		prx->rfcomm = NULL;
 	}
 
-	if (prx->local_watch) {
-		g_source_remove(prx->local_watch);
-		prx->local_watch = 0;
+	if (prx->local) {
+		g_io_channel_shutdown(prx->local, TRUE, NULL);
+		g_io_channel_unref(prx->local);
+		prx->local = NULL;
 	}
 
 	remove_record_from_server(prx->record_id);
@@ -247,12 +250,15 @@ static GIOError channel_write(GIOChannel *chan, char *buf, size_t size)
 static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	char buf[BUF_SIZE];
-	GIOChannel *dest = data;
+	struct serial_proxy *prx = data;
+	GIOChannel *dest;
 	GIOError err;
 	size_t rbytes;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
+
+	dest = (chan == prx->rfcomm) ? prx->local : prx->rfcomm;
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		/* Try forward remaining data */
@@ -265,7 +271,14 @@ static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 			err = channel_write(dest, buf, rbytes);
 		} while (err == G_IO_ERROR_NONE);
 
-		g_io_channel_shutdown(dest, TRUE, NULL);
+		g_io_channel_shutdown(prx->local, TRUE, NULL);
+		g_io_channel_unref(prx->local);
+		prx->local = NULL;
+
+		g_io_channel_shutdown(prx->rfcomm, TRUE, NULL);
+		g_io_channel_unref(prx->rfcomm);
+		prx->rfcomm = NULL;
+
 		return FALSE;
 	}
 
@@ -386,24 +399,14 @@ static inline int tty_open(const char *tty, struct termios *ti)
 static void connect_event_cb(GIOChannel *chan, GError *conn_err, gpointer data)
 {
 	struct serial_proxy *prx = data;
-	GIOChannel *io;
 	int sk;
-	GError *err = NULL;
 
 	if (conn_err) {
 		error("%s", conn_err->message);
-		return;
+		goto drop;
 	}
 
-	bt_io_get(chan, BT_IO_RFCOMM, &err,
-			BT_IO_OPT_DEST_BDADDR, &prx->dst,
-			BT_IO_OPT_INVALID);
-	if (err) {
-		error("%s", err->message);
-		g_error_free(err);
-		return;
-	}
-
+	/* Connect local */
 	switch (prx->type) {
 	case UNIX_SOCKET_PROXY:
 		sk = unix_socket_connect(prx->address);
@@ -418,27 +421,93 @@ static void connect_event_cb(GIOChannel *chan, GError *conn_err, gpointer data)
 		sk = -1;
 	}
 
-	if (sk < 0) {
-		g_io_channel_unref(chan);
-		return;
-	}
+	if (sk < 0)
+		goto drop;
 
-	g_io_channel_set_close_on_unref(chan, TRUE);
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	prx->local = g_io_channel_unix_new(sk);
 
-	prx->rfcomm_watch = g_io_add_watch(chan,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				forward_data, io);
+	g_io_add_watch(prx->rfcomm,
+			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			forward_data, prx);
 
-	prx->local_watch = g_io_add_watch(io,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				forward_data, chan);
-
-	g_io_channel_unref(chan);
-	g_io_channel_unref(io);
+	g_io_add_watch(prx->local,
+			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			forward_data, prx);
 
 	return;
+
+drop:
+	g_io_channel_shutdown(prx->rfcomm, TRUE, NULL);
+	g_io_channel_unref(prx->rfcomm);
+	prx->rfcomm = NULL;
+}
+
+static void auth_cb(DBusError *derr, void *user_data)
+{
+	struct serial_proxy *prx = user_data;
+	GError *err = NULL;
+
+	if (derr) {
+		error("Access denied: %s", derr->message);
+		goto reject;
+	}
+
+	if (!bt_io_accept(prx->rfcomm, connect_event_cb, prx, NULL,
+							&err)) {
+		error("bt_io_accept: %s", err->message);
+		g_error_free(err);
+		goto reject;
+	}
+
+	return;
+
+reject:
+	g_io_channel_shutdown(prx->rfcomm, TRUE, NULL);
+	g_io_channel_unref(prx->rfcomm);
+	prx->rfcomm = NULL;
+}
+
+static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
+{
+	struct serial_proxy *prx = user_data;
+	int perr;
+	char *address[18];
+	GError *err = NULL;
+
+	bt_io_get(chan, BT_IO_RFCOMM, &err,
+			BT_IO_OPT_DEST_BDADDR, &prx->dst,
+			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		goto drop;
+	}
+
+	if (prx->rfcomm) {
+		error("Refusing connect from %s: Proxy already in use",
+				address);
+		goto drop;
+	}
+
+	debug("Serial Proxy: incoming connect from %s", address);
+
+	prx->rfcomm = g_io_channel_ref(chan);
+
+	perr = btd_request_authorization(&prx->adapter->src, &prx->dst,
+					prx->uuid128, auth_cb, prx);
+	if (perr < 0) {
+		error("Refusing connect from %s: %s (%d)", address,
+				strerror(-perr), -perr);
+		g_io_channel_unref(prx->rfcomm);
+		prx->rfcomm = NULL;
+		goto drop;
+	}
+
+	return;
+
+drop:
+	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
 static DBusMessage *proxy_enable(DBusConnection *conn,
@@ -448,24 +517,29 @@ static DBusMessage *proxy_enable(DBusConnection *conn,
 	struct serial_adapter *adapter = prx->adapter;
 	sdp_record_t *record;
 	GError *err = NULL;
+	DBusMessage *reply;
 
 	if (prx->io)
 		return failed(msg, "Already enabled");
 
 	/* Listen */
-	prx->io = bt_io_listen(BT_IO_RFCOMM, connect_event_cb, NULL, prx,
+	prx->io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event_cb, prx,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &adapter->src,
-				BT_IO_OPT_CHANNEL, prx->channel,
 				BT_IO_OPT_INVALID);
-	if (!prx->io) {
-		DBusMessage *reply;
+	if (!prx->io)
+		goto failed;
 
-		error("%s", err->message);
-		reply = failed(msg, err->message);
-		g_error_free(err);
-		return reply;
+	bt_io_get(prx->io, BT_IO_RFCOMM, &err,
+			BT_IO_OPT_CHANNEL, &prx->channel,
+			BT_IO_OPT_INVALID);
+	if (err) {
+		g_io_channel_unref(prx->io);
+		prx->io = NULL;
+		goto failed;
 	}
+
+	debug("Allocated channel %d", prx->channel);
 
 	g_io_channel_set_close_on_unref(prx->io, TRUE);
 
@@ -484,6 +558,12 @@ static DBusMessage *proxy_enable(DBusConnection *conn,
 	prx->record_id = record->handle;
 
 	return dbus_message_new_method_return(msg);
+
+failed:
+	error("%s", err->message);
+	reply = failed(msg, err->message);
+	g_error_free(err);
+	return reply;
 }
 
 static DBusMessage *proxy_disable(DBusConnection *conn,
@@ -530,7 +610,7 @@ static DBusMessage *proxy_get_info(DBusConnection *conn,
 	boolean = (prx->io ? TRUE : FALSE);
 	dict_append_entry(&dict, "enabled", DBUS_TYPE_BOOLEAN, &boolean);
 
-	boolean = (prx->rfcomm_watch ? TRUE : FALSE);
+	boolean = (prx->rfcomm ? TRUE : FALSE);
 	dict_append_entry(&dict, "connected", DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* If connected: append the remote address */
@@ -652,7 +732,7 @@ static DBusMessage *proxy_set_serial_params(DBusConnection *conn,
 	speed_t speed = B0;	/* In/Out speed */
 
 	/* Don't allow change TTY settings if it is open */
-	if (prx->local_watch)
+	if (prx->local)
 		return failed(msg, "Not allowed");
 
 	if (!dbus_message_get_args(msg, NULL,
