@@ -885,65 +885,66 @@ static DBusMessage *create_proxy(DBusConnection *conn,
 {
 	struct serial_adapter *adapter = data;
 	char path[MAX_PATH_LENGTH + 1];
-	const char *uuid128, *address, *ppath = path;
-	DBusMessage *reply;
+	const char *pattern, *address, *ppath = path;
+	char *uuid_str;
 	proxy_type_t type;
 	uuid_t uuid;
 	int ret;
 
 	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &uuid128,
+				DBUS_TYPE_STRING, &pattern,
 				DBUS_TYPE_STRING, &address,
 				DBUS_TYPE_INVALID))
 		return NULL;
 
-	if (bt_string2uuid(&uuid, uuid128) < 0)
+	uuid_str = bt_name2string(pattern);
+	if (!uuid_str)
 		return invalid_arguments(msg, "Invalid UUID");
 
+	bt_string2uuid(&uuid, uuid_str);
+
 	type = addr2type(address);
-	if (type == UNKNOWN_PROXY_TYPE)
+	if (type == UNKNOWN_PROXY_TYPE) {
+		g_free(uuid_str);
 		return invalid_arguments(msg, "Invalid address");
+	}
 
 	/* Only one proxy per address(TTY or unix socket) is allowed */
-	if (g_slist_find_custom(adapter->proxies, address, proxy_addrcmp))
+	if (g_slist_find_custom(adapter->proxies, address, proxy_addrcmp)) {
+		g_free(uuid_str);
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyExist",
 						"Proxy already exists");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
+	}
 
 	switch (type) {
 	case UNIX_SOCKET_PROXY:
-		ret = proxy_socket_register(adapter, uuid128, address,
+		ret = proxy_socket_register(adapter, uuid_str, address,
 						path, sizeof(path), TRUE);
 		break;
 	case TTY_PROXY:
-		ret = proxy_tty_register(adapter, uuid128, address,
+		ret = proxy_tty_register(adapter, uuid_str, address,
 				NULL, path, sizeof(path), TRUE);
 		break;
 	case TCP_SOCKET_PROXY:
-		ret = proxy_tcp_register(adapter, uuid128, address,
+		ret = proxy_tcp_register(adapter, uuid_str, address,
 					path, sizeof(path), TRUE);
 		break;
 	default:
 		ret = -1;
 	}
-	if (ret < 0) {
-		dbus_message_unref(reply);
+
+	g_free(uuid_str);
+
+	if (ret < 0)
 		return failed(msg, "Create object path failed");
-	}
 
 	g_dbus_emit_signal(adapter->conn, adapter->path,
 			SERIAL_MANAGER_INTERFACE, "ProxyCreated",
 			DBUS_TYPE_STRING, &ppath,
 			DBUS_TYPE_INVALID);
 
-	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &ppath,
-			DBUS_TYPE_INVALID);
-
-	return reply;
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &ppath,
+					DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *list_proxies(DBusConnection *conn,
