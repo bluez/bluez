@@ -361,8 +361,6 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 		cfm = NULL;
 	}
 
-	printf("Listening on RFCOMM channel %u\n", ch);
-
 	data = io_data_new(NULL, BT_IO_RFCOMM, reject, disconn, accept);
 
 	if (src)
@@ -388,6 +386,12 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 		g_error_free(err);
 		exit(EXIT_FAILURE);
 	}
+
+	bt_io_get(rc_srv, BT_IO_RFCOMM, &err,
+			BT_IO_OPT_CHANNEL, &ch,
+			BT_IO_OPT_INVALID);
+
+	printf("Listening on RFCOMM channel %u\n", ch);
 
 	g_io_channel_unref(rc_srv);
 }
@@ -452,7 +456,7 @@ static void sco_listen(const char *src, gint disconn)
 	g_io_channel_unref(sco_srv);
 }
 
-static gint opt_channel = 0;
+static gint opt_channel = -1;
 static gint opt_psm = 0;
 static gboolean opt_sco = FALSE;
 static gboolean opt_defer = FALSE;
@@ -519,7 +523,7 @@ int main(int argc, char *argv[])
 					opt_master);
 	}
 
-	if (opt_channel) {
+	if (opt_channel != -1) {
 		if (argc > 1)
 			rfcomm_connect(opt_dev, argv[1], opt_channel,
 							opt_disconn, opt_sec);
