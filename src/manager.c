@@ -196,7 +196,7 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 		if (path != NULL)
 			goto done;
 		dev_id = -1;
-	} if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4)
+	} else if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4)
 		dev_id = atoi(pattern + 3);
 	else
 		dev_id = find_by_address(pattern);
