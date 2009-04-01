@@ -1533,14 +1533,18 @@ static void bonding_request_free(struct bonding_req *bonding, gboolean close)
 	}
 
 	device = bonding->device;
+	g_free(bonding);
 
-	if (device && device->agent) {
-		agent_destroy(device->agent, FALSE);
-		device->agent = NULL;
-	}
+	if (!device)
+		return;
 
 	device->bonding = NULL;
-	g_free(bonding);
+
+	if (!device->agent)
+		return;
+
+	agent_destroy(device->agent, FALSE);
+	device->agent = NULL;
 }
 
 static void device_set_paired(struct btd_device *device, gboolean value)
