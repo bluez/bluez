@@ -123,7 +123,6 @@ static int find_by_address(const char *str)
 	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 
 	dl->dev_num = HCI_MAX_DEV;
-	dr = dl->dev_req;
 
 	if (ioctl(sk, HCIGETDEVLIST, dl) < 0)
 		goto out;
