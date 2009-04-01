@@ -647,9 +647,6 @@ static int hidp_add_connection(const struct input_device *idev,
 			error("bt_acl_encrypt(): %s(%d)", strerror(-err), -err);
 			goto cleanup;
 		}
-
-		/* Link already encrypted - reset error */
-		err = 0;
 	}
 
 	if (req->vendor == 0x054c && req->product == 0x0268) {
