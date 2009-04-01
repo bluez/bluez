@@ -727,7 +727,8 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 
 	if (!session) {
 		error("Unable to create new AVCTP session");
-		goto drop;
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		return;
 	}
 
 	if (session->io) {
