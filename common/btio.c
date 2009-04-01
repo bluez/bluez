@@ -573,8 +573,8 @@ static gboolean sco_set(int sock, uint16_t mtu, GError **err)
 	if (!mtu)
 		return TRUE;
 
-	memset(&sco_opt, 0, len);
 	len = sizeof(sco_opt);
+	memset(&sco_opt, 0, len);
 	if (getsockopt(sock, SOL_SCO, SCO_OPTIONS, &sco_opt, &len) < 0) {
 		ERROR_FAILED(err, "getsockopt(SCO_OPTIONS)", errno);
 		return FALSE;
