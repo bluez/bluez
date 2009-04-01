@@ -266,7 +266,7 @@ static char *expand_name(char *dst, int size, char *str, int dev_id)
 	register int sp, np, olen;
 	char *opt, buf[10];
 
-	if (!str && !dst)
+	if (!str || !dst)
 		return NULL;
 
 	sp = np = 0;
