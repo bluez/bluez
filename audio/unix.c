@@ -960,6 +960,11 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 	case TYPE_HEADSET:
 		hs = &client->d.hs;
 
+		if (!hs->locked) {
+			error("seid not opened");
+			goto failed;
+		}
+
 		id = headset_request_stream(dev, headset_resume_complete,
 						client);
 		client->cancel = headset_cancel_stream;
