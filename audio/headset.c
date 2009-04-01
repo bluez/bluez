@@ -290,7 +290,7 @@ static const char *state2str(headset_state_t state)
 static int headset_send_valist(struct headset *hs, char *format, va_list ap)
 {
 	char rsp[BUF_SIZE];
-	ssize_t total_written, written, count;
+	ssize_t total_written, count;
 	int fd;
 
 	count = vsnprintf(rsp, sizeof(rsp), format, ap);
@@ -303,11 +303,14 @@ static int headset_send_valist(struct headset *hs, char *format, va_list ap)
 		return -EIO;
 	}
 
-	written = total_written = 0;
+	total_written = 0;
 	fd = g_io_channel_unix_get_fd(hs->rfcomm);
 
 	while (total_written < count) {
-		written = write(fd, rsp + total_written, count - total_written);
+		ssize_t written;
+
+		written = write(fd, rsp + total_written,
+				count - total_written);
 		if (written < 0)
 			return -errno;
 
