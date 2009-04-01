@@ -856,6 +856,12 @@ static void avdtp_sep_set_state(struct avdtp *session,
 	struct avdtp_stream *stream = sep->stream;
 	avdtp_state_t old_state;
 	struct avdtp_error err, *err_ptr = NULL;
+	GSList *l;
+
+	if (!stream) {
+		error("Error changing sep state: stream not available");
+		return;
+	}
 
 	if (sep->state == state) {
 		avdtp_error_init(&err, AVDTP_ERROR_ERRNO, EIO);
@@ -871,13 +877,9 @@ static void avdtp_sep_set_state(struct avdtp *session,
 	old_state = sep->state;
 	sep->state = state;
 
-	if (stream) {
-		GSList *l;
-		for (l = stream->callbacks; l != NULL; l = g_slist_next(l)) {
-			struct stream_callback *cb = l->data;
-			cb->cb(stream, old_state, state, err_ptr,
-					cb->user_data);
-		}
+	for (l = stream->callbacks; l != NULL; l = g_slist_next(l)) {
+		struct stream_callback *cb = l->data;
+		cb->cb(stream, old_state, state, err_ptr, cb->user_data);
 	}
 
 	switch (state) {
