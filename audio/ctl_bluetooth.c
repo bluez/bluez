@@ -267,6 +267,12 @@ static int bluetooth_read_event(snd_ctl_ext_t *ext, snd_ctl_elem_id_t *id,
 	memset(buf, 0, sizeof(buf));
 
 	ret = recv(data->sock, ind, BT_SUGGESTED_BUFFER_SIZE, MSG_DONTWAIT);
+	if (ret < 0) {
+		SNDERR("Failed while receiving data: %s (%d)",
+				strerror(errno), errno);
+		return -errno;
+	}
+
 	type = bt_audio_strtype(ind->h.type);
 	if (!type) {
 		SNDERR("Bogus message type %d "
