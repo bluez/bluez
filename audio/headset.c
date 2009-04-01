@@ -1248,12 +1248,8 @@ failed:
 static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 			struct audio_device *device)
 {
-	struct headset *hs;
-
 	if (cond & G_IO_NVAL)
 		return FALSE;
-
-	hs = device->headset;
 
 	error("Audio connection got disconnected");
 
