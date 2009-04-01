@@ -3314,7 +3314,6 @@ end:
 sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle, 
 			sdp_attrreq_type_t reqtype, const sdp_list_t *attrids)
 {
-	int status = 0;
 	uint32_t reqsize = 0, _reqsize;
 	uint32_t rspsize = 0, rsp_count;
 	int attr_list_len = 0;
@@ -3337,7 +3336,6 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 	rspbuf = malloc(SDP_RSP_BUFFER_SIZE);
 	if (!reqbuf || !rspbuf) {
 		errno = ENOMEM;
-		status = -1;
 		goto end;
 	}
 	memset((char *) &rsp_concat_buf, 0, sizeof(sdp_buf_t));
@@ -3362,7 +3360,6 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 		reqtype == SDP_ATTR_REQ_INDIVIDUAL? SDP_UINT16 : SDP_UINT32);
 	if (seqlen == -1) {
 		errno = EINVAL;
-		status = -1;
 		goto end;
 	}
 	pdata += seqlen;
@@ -3374,6 +3371,8 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 	_reqsize = reqsize;
 
 	do {
+		int status;
+
 		// add NULL continuation state
 		reqsize = _reqsize + copy_cstate(_pdata,
 					SDP_REQ_BUFFER_SIZE - _reqsize, cstate);
@@ -3388,7 +3387,6 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 
 		if (rspsize < sizeof(sdp_pdu_hdr_t)) {
 			SDPERR("Unexpected end of packet");
-			status = -1;
 			goto end;
 		}
 
@@ -3396,7 +3394,6 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 		rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 		if (rsphdr->pdu_id == SDP_ERROR_RSP) {
 			SDPDBG("PDU ID : 0x%x\n", rsphdr->pdu_id);
-			status = -1;
 			goto end;
 		}
 		pdata = rspbuf + sizeof(sdp_pdu_hdr_t);
@@ -3404,7 +3401,6 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 
 		if (pdata_len < sizeof(uint16_t)) {
 			SDPERR("Unexpected end of packet");
-			status = -1;
 			goto end;
 		}
 
@@ -3416,7 +3412,6 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 		// if continuation state set need to re-issue request before parsing
 		if (pdata_len < rsp_count + sizeof(uint8_t)) {
 			SDPERR("Unexpected end of packet: continuation state data missing");
-			status = -1;
 			goto end;
 		}
 		cstate_len = *(uint8_t *) (pdata + rsp_count);
@@ -3450,9 +3445,6 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 			pdata_len = rsp_concat_buf.data_size;
 		}
 		rec = sdp_extract_pdu(pdata, pdata_len, &scanned);
-
-		if (!rec)
-			status = -1;
 	}
 	
 end:
