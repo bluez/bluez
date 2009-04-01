@@ -2043,7 +2043,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 
 static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 {
-	int sk;
 	struct avdtp *session;
 	struct audio_device *dev;
 	char address[18];
@@ -2065,8 +2064,6 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	debug("AVDTP: incoming connect from %s", address);
 
 	session = avdtp_get_internal(&src, &dst);
-
-	sk = g_io_channel_unix_get_fd(chan);
 
 	if (session->pending_open && session->pending_open->open_acp) {
 		if (!bt_io_accept(chan, avdtp_connect_cb, session, NULL, NULL))
