@@ -47,7 +47,6 @@ static void decode(char *filename, char *output, int tofile)
 {
 	unsigned char buf[BUF_SIZE], *stream;
 	struct stat st;
-	off_t filesize;
 	sbc_t sbc;
 	int fd, ad, pos, streamlen, framelen, count, len;
 	int format = AFMT_S16_BE, frequency, channels;
@@ -59,7 +58,6 @@ static void decode(char *filename, char *output, int tofile)
 		return;
 	}
 
-	filesize = st.st_size;
 	stream = malloc(st.st_size);
 
 	if (!stream) {
