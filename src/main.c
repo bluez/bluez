@@ -223,7 +223,6 @@ static void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
 
 	dl->dev_num = HCI_MAX_DEV;
-	dr = dl->dev_req;
 
 	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
 		close(sk);
