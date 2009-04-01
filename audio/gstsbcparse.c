@@ -64,9 +64,6 @@ static GstFlowReturn sbc_parse_chain(GstPad *pad, GstBuffer *buffer)
 	GstFlowReturn res = GST_FLOW_OK;
 	guint size, offset = 0;
 	guint8 *data;
-	GstClockTime timestamp;
-
-	timestamp = GST_BUFFER_TIMESTAMP(buffer);
 
 	/* FIXME use a gstadpter */
 	if (parse->buffer) {
