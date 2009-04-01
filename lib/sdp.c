@@ -3390,7 +3390,6 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 			goto end;
 		}
 
-		rsp_count = 0;
 		rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 		if (rsphdr->pdu_id == SDP_ERROR_RSP) {
 			SDPDBG("PDU ID : 0x%x\n", rsphdr->pdu_id);
