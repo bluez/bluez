@@ -403,14 +403,8 @@ static sdp_record_t *hfp_ag_record(uint8_t ch, uint32_t feat)
 static void auth_cb(DBusError *derr, void *user_data)
 {
 	struct audio_device *device = user_data;
-	const char *uuid;
 	GError *err = NULL;
 	GIOChannel *io;
-
-	if (get_hfp_active(device))
-		uuid = HFP_AG_UUID;
-	else
-		uuid = HSP_AG_UUID;
 
 	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
