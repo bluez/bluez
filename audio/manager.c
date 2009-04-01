@@ -431,7 +431,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 static void ag_confirm(GIOChannel *chan, gpointer data)
 {
 	const char *server_uuid, *remote_uuid;
-	uint16_t svclass;
 	struct audio_device *device;
 	gboolean hfp_active;
 	bdaddr_t src, dst;
@@ -454,12 +453,10 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 		hfp_active = FALSE;
 		server_uuid = HSP_AG_UUID;
 		remote_uuid = HSP_HS_UUID;
-		svclass = HEADSET_SVCLASS_ID;
 	} else {
 		hfp_active = TRUE;
 		server_uuid = HFP_AG_UUID;
 		remote_uuid = HFP_HS_UUID;
-		svclass = HANDSFREE_SVCLASS_ID;
 	}
 
 	device = manager_get_device(&src, &dst);
