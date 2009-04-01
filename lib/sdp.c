@@ -1207,7 +1207,7 @@ static sdp_data_t *extract_seq(const void *p, int bufsize, int *len,
 
 	p += *len;
 	bufsize -= *len;
-	curr = prev = NULL;
+	prev = NULL;
 	while (n < seqlen) {
 		int attrlen = 0;
 		curr = sdp_extract_attr(p, bufsize, &attrlen, rec);
