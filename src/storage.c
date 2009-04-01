@@ -808,7 +808,7 @@ int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
 	char filename[PATH_MAX + 1], key[28];
 	sdp_buf_t buf;
 	int err, size, i;
-	char *pdata, *str;
+	char *str;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
 
@@ -819,7 +819,6 @@ int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
 	if (sdp_gen_record_pdu(rec, &buf) < 0)
 		return -1;
 
-	pdata = (char *)buf.data;
 	size = buf.data_size;
 
 	str = g_malloc0(size*2+1);
