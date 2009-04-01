@@ -759,24 +759,33 @@ static gboolean a2dp_reconfigure(gpointer data)
 		break;
 	}
 
+	if (!codec_cap) {
+		error("Cannot find capabilities to reconfigure");
+		posix_err = -EINVAL;
+		goto failed;
+	}
+
 	posix_err = avdtp_get_seps(setup->session, AVDTP_SEP_TYPE_SINK,
 					codec_cap->media_type,
 					codec_cap->media_codec_type,
 					&lsep, &rsep);
 	if (posix_err < 0) {
 		error("No matching ACP and INT SEPs found");
-		finalize_config_errno(setup, posix_err);
+		goto failed;
 	}
 
 	posix_err = avdtp_set_configuration(setup->session, rsep, lsep,
 						setup->client_caps,
 						&setup->stream);
 	if (posix_err < 0) {
-		error("avdtp_set_configuration: %s",
-			strerror(-posix_err));
-		finalize_config_errno(setup, posix_err);
+		error("avdtp_set_configuration: %s", strerror(-posix_err));
+		goto failed;
 	}
 
+	return FALSE;
+
+failed:
+	finalize_config_errno(setup, posix_err);
 	return FALSE;
 }
 
