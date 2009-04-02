@@ -37,6 +37,9 @@
 #define error(fmt...)
 #define debug(fmt...)
 
+static DBusHandlerResult name_exit_filter(DBusConnection *connection,
+					DBusMessage *message, void *user_data);
+
 static guint listener_id = 0;
 static GSList *name_listeners = NULL;
 
@@ -62,13 +65,11 @@ static struct name_data *name_data_find(DBusConnection *connection,
 			current != NULL; current = current->next) {
 		struct name_data *data = current->data;
 
-		if (name == NULL && data->name == NULL) {
-			if (connection == data->connection)
-				return data;
-		} else {
-			if (strcmp(name, data->name) == 0)
-				return data;
-		}
+		if (connection != data->connection)
+			continue;
+
+		if (name == NULL || g_str_equal(name, data->name))
+			return data;
 	}
 
 	return NULL;
@@ -165,10 +166,18 @@ static void name_data_remove(DBusConnection *connection,
 		g_free(cb);
 	}
 
-	if (!data->callbacks) {
-		name_listeners = g_slist_remove(name_listeners, data);
-		name_data_free(data);
-	}
+	if (data->callbacks)
+		return;
+
+	name_listeners = g_slist_remove(name_listeners, data);
+	name_data_free(data);
+
+	/* Remove filter if there are no listeners left for the connection */
+	data = name_data_find(connection, NULL);
+	if (!data)
+		dbus_connection_remove_filter(connection,
+						name_exit_filter,
+						NULL);
 }
 
 static gboolean add_match(DBusConnection *connection, const char *name)
@@ -263,6 +272,12 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 	name_listeners = g_slist_remove(name_listeners, data);
 	name_data_free(data);
 
+	/* Remove filter if there no listener left for the connection */
+	data = name_data_find(connection, NULL);
+	if (!data)
+		dbus_connection_remove_filter(connection, name_exit_filter,
+						NULL);
+
 	remove_match(connection, name);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -275,7 +290,7 @@ guint g_dbus_add_service_watch(DBusConnection *connection, const char *name,
 {
 	int first;
 
-	if (!listener_id) {
+	if (!name_data_find(connection, NULL)) {
 		if (!dbus_connection_add_filter(connection,
 					name_exit_filter, NULL, NULL)) {
 			error("dbus_connection_add_filter() failed");
@@ -353,6 +368,12 @@ remove:
 
 	name_listeners = g_slist_remove(name_listeners, data);
 	name_data_free(data);
+
+	/* Remove filter if there are no listeners left for the connection */
+	data = name_data_find(connection, NULL);
+	if (!data)
+		dbus_connection_remove_filter(connection, name_exit_filter,
+						NULL);
 
 	return TRUE;
 }
