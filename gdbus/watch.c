@@ -382,13 +382,10 @@ void g_dbus_remove_all_watches(DBusConnection *connection)
 {
 	struct name_data *data;
 
-	data = name_data_find(connection, NULL);
-	if (!data) {
-		error("name_listener_indicate_disconnect: no listener found");
-		return;
+	while ((data = name_data_find(connection, NULL))) {
+		name_listeners = g_slist_remove(name_listeners, data);
+		name_data_call_and_free(data);
 	}
 
-	debug("name_listener_indicate_disconnect");
-
-	name_data_call_and_free(data);
+	dbus_connection_remove_filter(connection, name_exit_filter, NULL);
 }
