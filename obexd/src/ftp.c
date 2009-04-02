@@ -76,7 +76,7 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 				struct stat *dstat)
 {
 	gchar perm[51], atime[18], ctime[18], mtime[18];
-	gchar *escaped, *ret;
+	gchar *escaped, *ret = NULL;
 
 	snprintf(perm, 50, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
 			"other-perm=\"%s%s%s\"",
@@ -99,7 +99,7 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 	if (S_ISDIR(fstat->st_mode))
 		ret = g_strdup_printf(FL_FOLDER_ELEMENT, escaped,
 					perm, atime, mtime, ctime);
-	else
+	else if (S_ISREG(fstat->st_mode))
 		ret = g_strdup_printf(FL_FILE_ELEMENT, escaped, fstat->st_size,
 					perm, atime, mtime, ctime);
 
