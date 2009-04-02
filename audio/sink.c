@@ -507,6 +507,8 @@ gboolean sink_setup_stream(struct sink *sink, struct avdtp *session)
 	if (!sink->session)
 		return FALSE;
 
+	avdtp_set_auto_disconnect(sink->session, FALSE);
+
 	if (avdtp_discover(sink->session, discovery_complete, sink) < 0)
 		return FALSE;
 
@@ -537,8 +539,6 @@ static DBusMessage *sink_connect(DBusConnection *conn,
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".AlreadyConnected",
 						"Device Already Connected");
-
-	avdtp_set_auto_disconnect(sink->session, FALSE);
 
 	if (!sink_setup_stream(sink, NULL))
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",

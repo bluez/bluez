@@ -257,7 +257,7 @@ static gboolean headset_connect_timeout(gpointer user_data)
 	dev->priv->headset_timer = 0;
 
 	if (dev->headset)
-		headset_config_stream(dev, NULL, NULL);
+		headset_config_stream(dev, FALSE, NULL, NULL);
 
 	return FALSE;
 }
@@ -437,7 +437,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	dev->auto_connect = TRUE;
 
 	if (dev->headset)
-		headset_config_stream(dev, NULL, NULL);
+		headset_config_stream(dev, FALSE, NULL, NULL);
 	else if (dev->sink) {
 		struct avdtp *session = avdtp_get(&dev->src, &dev->dst);
 

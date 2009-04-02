@@ -65,6 +65,7 @@ void headset_update(struct audio_device *dev, uint16_t svc,
 			const char *uuidstr);
 
 unsigned int headset_config_stream(struct audio_device *dev,
+					gboolean auto_dc,
 					headset_stream_cb_t cb,
 					void *user_data);
 unsigned int headset_request_stream(struct audio_device *dev,

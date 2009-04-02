@@ -2259,6 +2259,7 @@ unsigned int headset_request_stream(struct audio_device *dev,
 }
 
 unsigned int headset_config_stream(struct audio_device *dev,
+					gboolean auto_dc,
 					headset_stream_cb_t cb,
 					void *user_data)
 {
@@ -2280,7 +2281,7 @@ unsigned int headset_config_stream(struct audio_device *dev,
 	if (rfcomm_connect(dev, cb, user_data, &id) < 0)
 		return 0;
 
-	hs->auto_dc = TRUE;
+	hs->auto_dc = auto_dc;
 	hs->pending->target_state = HEADSET_STATE_CONNECTED;
 
 	return id;

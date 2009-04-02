@@ -904,7 +904,7 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 			goto failed;
 		}
 
-		id = headset_config_stream(dev, headset_setup_complete,
+		id = headset_config_stream(dev, TRUE, headset_setup_complete,
 						client);
 		client->cancel = headset_cancel_stream;
 		break;
