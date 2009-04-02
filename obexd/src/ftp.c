@@ -124,6 +124,7 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 
 	if (lstat(os->current_folder, &dstat) < 0) {
 		error("lstat: %s(%d)", strerror(errno), errno);
+		g_string_free(listing, TRUE);
 		return FALSE;
 	}
 
