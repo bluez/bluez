@@ -22,13 +22,13 @@
  *
  */
 
-#define AUDIO_GATEWAY_INTERFACE "org.bluez.Gateway"
+#define AUDIO_GATEWAY_INTERFACE "org.bluez.HeadsetGateway"
 
 #define DEFAULT_HSP_HS_CHANNEL 6
 #define DEFAULT_HFP_HS_CHANNEL 7
 
-int gateway_init(DBusConnection *conn, gboolean disable_hfp, gboolean sco_hci);
-
-void gateway_exit(void);
-
-gboolean gateway_is_enabled(uint16_t svc);
+typedef void (*gateway_stream_cb_t) (struct audio_device *dev, void *user_data);
+struct gateway *gateway_init(struct audio_device *device);
+gboolean gateway_is_connected(struct audio_device *dev);
+int gateway_connect_rfcomm(struct audio_device *dev, GIOChannel *chan);
+void gateway_start_service(struct audio_device *device);

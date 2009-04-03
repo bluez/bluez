@@ -53,6 +53,7 @@
 #include "avdtp.h"
 #include "control.h"
 #include "headset.h"
+#include "gateway.h"
 #include "sink.h"
 
 #define AUDIO_INTERFACE "org.bluez.Audio"
@@ -601,6 +602,9 @@ gboolean audio_device_is_connected(struct audio_device *dev,
 		return TRUE;
 	else if (!strcmp(interface, AUDIO_CONTROL_INTERFACE) && dev->control &&
 			control_is_active(dev))
+		return TRUE;
+	else if (!strcmp(interface, AUDIO_GATEWAY_INTERFACE) && dev->gateway &&
+			gateway_is_connected(dev))
 		return TRUE;
 
 	return FALSE;
