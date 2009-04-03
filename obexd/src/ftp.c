@@ -114,16 +114,25 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 	struct dirent *ep;
 	DIR *dp;
 	GString *listing;
+	gboolean root;
+	int err;
 
 	listing = g_string_new(FL_VERSION);
 	listing = g_string_append(listing, FL_TYPE);
 	listing = g_string_append(listing, FL_BODY_BEGIN);
 
-	if (strcmp(os->current_folder,os->server->folder))
-		listing = g_string_append(listing, FL_PARENT_FOLDER_ELEMENT);
+	root = g_str_equal(os->current_folder, os->server->folder);
 
-	if (lstat(os->current_folder, &dstat) < 0) {
-		error("lstat: %s(%d)", strerror(errno), errno);
+	if (root && os->server->symlinks)
+		err = stat(os->current_folder, &dstat);
+	else {
+		listing = g_string_append(listing, FL_PARENT_FOLDER_ELEMENT);
+		err = lstat(os->current_folder, &dstat);
+	}
+
+	if (err < 0) {
+		error("%s: %s(%d)", root ? "stat" : "lstat",
+				strerror(errno), errno);
 		goto failed;
 	}
 
@@ -149,8 +158,14 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 
 		fullname = g_build_filename(os->current_folder, ep->d_name, NULL);
 
-		if (lstat(fullname, &fstat) < 0) {
-			debug("lstat: %s(%d)", strerror(errno), errno);
+		if (root && os->server->symlinks)
+			err = stat(fullname, &fstat);
+		else
+			err = lstat(fullname, &fstat);
+
+		if (err < 0) {
+			debug("%s: %s(%d)", root ? "stat" : "lstat",
+					strerror(errno), errno);
 			g_free(name);
 			g_free(fullname);
 			continue;
@@ -229,6 +244,30 @@ static gboolean get_by_type(struct obex_session *os, gchar *type, guint32 *size)
 	return FALSE;
 }
 
+static gboolean ftp_prepare_get(struct obex_session *os, gchar *file,
+				guint32 *size)
+{
+	gboolean root;
+
+	root = g_str_equal(os->server->folder, os->current_folder);
+
+	if (!root || !os->server->symlinks) {
+		struct stat dstat;
+		int err;
+
+		err = lstat(file, &dstat);
+		if (err < 0) {
+			debug("lstat: %s(%d)", strerror(errno), errno);
+			return FALSE;
+		}
+
+		if (S_ISLNK(dstat.st_mode))
+			return FALSE;
+	}
+
+	return os_prepare_get(os, file, size);
+}
+
 void ftp_get(obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hv;
@@ -248,10 +287,9 @@ void ftp_get(obex_t *obex, obex_object_t *obj)
 		if (!os->name)
 			goto fail;
 
-		path = g_build_filename(os->current_folder,
-					os->name, NULL);
+		path = g_build_filename(os->current_folder, os->name, NULL);
 
-		ret = os_prepare_get(os, path, &size);
+		ret = ftp_prepare_get(os, path, &size);
 
 		g_free(path);
 
@@ -357,6 +395,8 @@ void ftp_setpath(obex_t *obex, obex_object_t *obj)
 	guint8 *nonhdr;
 	gchar *fullname;
 	struct stat dstat;
+	gboolean root;
+	int err;
 
 	os = OBEX_GetUserData(obex);
 
@@ -367,12 +407,14 @@ void ftp_setpath(obex_t *obex, obex_object_t *obj)
 		return;
 	}
 
+	root = g_str_equal(os->server->folder, os->current_folder);
+
 	/* Check flag "Backup" */
 	if ((nonhdr[0] & 0x01) == 0x01) {
 
 		debug("Set to parent path");
 
-		if (strcmp(os->server->folder, os->current_folder) == 0) {
+		if (root) {
 			OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 			return;
 		}
@@ -414,9 +456,15 @@ void ftp_setpath(obex_t *obex, obex_object_t *obj)
 
 	debug("Fullname: %s", fullname);
 
-	if (lstat(fullname, &dstat) < 0) {
+	if (root && os->server->symlinks)
+		err = stat(fullname, &dstat);
+	else
+		err = lstat(fullname, &dstat);
+
+	if (err < 0) {
 		int err = errno;
-		debug("lstat: %s(%d)", strerror(err), err);
+		debug("%s: %s(%d)", root ? "stat" : "lstat",
+				strerror(err), err);
 		if (err == ENOENT)
 			goto not_found;
 

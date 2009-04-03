@@ -172,7 +172,8 @@ static gint server_stop(struct server *server)
 
 static gint server_register(guint16 service, const gchar *name, guint8 channel,
 			const gchar *folder, gboolean secure,
-			gboolean auto_accept, const gchar *capability)
+			gboolean auto_accept, gboolean symlinks,
+			const gchar *capability)
 {
 	struct server *server;
 	int err;
@@ -182,6 +183,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	server->name = g_strdup(name);
 	server->folder = g_strdup(folder);
 	server->auto_accept = auto_accept;
+	server->symlinks = symlinks;
 	server->capability = g_strdup(capability);
 	server->channel = channel;
 	server->secure = secure;
@@ -203,10 +205,12 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 
 gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
 				guint8 channel, gboolean secure,
-				gboolean auto_accept, const gchar *capability)
+				gboolean auto_accept, gboolean symlinks,
+				const gchar *capability)
 {
 	return server_register(service, name, channel, folder,
-					secure, auto_accept, capability);
+					secure, auto_accept, symlinks,
+					capability);
 }
 
 void bluetooth_exit(void)

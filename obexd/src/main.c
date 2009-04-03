@@ -124,6 +124,7 @@ static gboolean option_opp = FALSE;
 static gboolean option_ftp = FALSE;
 static gboolean option_pbap = FALSE;
 static gboolean option_pcsuite = FALSE;
+static gboolean option_symlinks = FALSE;
 
 static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
@@ -133,6 +134,8 @@ static GOptionEntry options[] = {
 				"Enable debug information output" },
 	{ "root", 'r', 0, G_OPTION_ARG_STRING, &option_root,
 				"Specify root folder location", "PATH" },
+	{ "symlinks", 'l', 0, G_OPTION_ARG_NONE, &option_symlinks,
+				"Enable symlinks on root folder" },
 	{ "capability", 'c', 0, G_OPTION_ARG_STRING, &option_capability,
 				"Sepcify capability file", "FILE" },
 	{ "tty", 't', 0, G_OPTION_ARG_STRING, &option_devnode,
@@ -266,27 +269,29 @@ int main(int argc, char *argv[])
 	if (option_opp == TRUE) {
 		services |= OBEX_OPP;
 		bluetooth_init(OBEX_OPP, "Object Push server", option_root,
-				OPP_CHANNEL, FALSE, option_autoaccept, NULL);
+				OPP_CHANNEL, FALSE, option_autoaccept,
+				option_symlinks, NULL);
 	}
 
 	if (option_ftp == TRUE) {
 		services |= OBEX_FTP;
 		bluetooth_init(OBEX_FTP, "File Transfer server", option_root,
 				FTP_CHANNEL, TRUE, option_autoaccept,
-				option_capability);
+				option_symlinks, option_capability);
 	}
 
 	if (option_pbap == TRUE) {
 		services |= OBEX_PBAP;
 		bluetooth_init(OBEX_PBAP, "Phonebook Access server", NULL,
-				PBAP_CHANNEL, TRUE, FALSE, NULL);
+				PBAP_CHANNEL, TRUE, FALSE, FALSE, NULL);
 	}
 
 	if (option_pcsuite == TRUE) {
 		services |= OBEX_PCSUITE;
 		bluetooth_init(OBEX_PCSUITE, "Nokia OBEX PC Suite Services",
 				option_root, PCSUITE_CHANNEL, TRUE,
-				option_autoaccept, option_capability);
+				option_autoaccept, option_symlinks,
+				option_capability);
 	}
 
 	if (option_devnode)

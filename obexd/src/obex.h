@@ -52,6 +52,7 @@ struct server {
 	gboolean	auto_accept;
 	gchar		*name;
 	gchar		*folder;
+	gboolean	symlinks;
 	gchar		*capability;
 	guint32		handle;
 	uint8_t		channel;
