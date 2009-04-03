@@ -62,7 +62,7 @@ static struct name_data *name_data_find(DBusConnection *connection,
 			current != NULL; current = current->next) {
 		struct name_data *data = current->data;
 
-		if (name == NULL || data->name == NULL) {
+		if (name == NULL && data->name == NULL) {
 			if (connection == data->connection)
 				return data;
 		} else {
