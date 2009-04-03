@@ -107,6 +107,11 @@ int tty_init(int services, const gchar *root_path,
 	return ret;
 }
 
+void tty_closed(void)
+{
+	tty_needs_reinit = TRUE;
+}
+
 static void sig_term(int sig)
 {
 	g_main_loop_quit(main_loop);

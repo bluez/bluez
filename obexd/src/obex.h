@@ -112,3 +112,4 @@ void server_free(struct server *server);
 
 int tty_init(gint service, const gchar *folder, const gchar *capability,
 		const gchar *devnode);
+void tty_closed(void);
