@@ -192,6 +192,9 @@ static int devnode_setup(void)
 	sa.sa_handler = sig_usr1;
 	sigaction(SIGUSR1, &sa, NULL);
 
+	if (option_pcsuite)
+		return 0;
+
 	return tty_init(services, option_root, option_capability,
 			option_devnode);
 }
