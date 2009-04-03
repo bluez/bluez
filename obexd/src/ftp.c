@@ -124,13 +124,16 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 
 	if (lstat(os->current_folder, &dstat) < 0) {
 		error("lstat: %s(%d)", strerror(errno), errno);
-		g_string_free(listing, TRUE);
-		return FALSE;
+		goto failed;
 	}
 
 	dp = opendir(os->current_folder);
+	if (dp == NULL) {
+		error("opendir: failed to access %s", os->current_folder);
+		goto failed;
+	}
 
-	while (dp && (ep = readdir(dp))) {
+	while ((ep = readdir(dp))) {
 		gchar *name;
 		gchar *fullname;
 		gchar *line;
@@ -174,6 +177,10 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 	os->buf = (guint8*) g_string_free(listing, FALSE);
 
 	return TRUE;
+
+failed:
+	g_string_free(listing, TRUE);
+	return FALSE;
 }
 
 static gboolean get_capability(struct obex_session *os, guint32 *size)
