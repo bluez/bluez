@@ -854,6 +854,7 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 				DBUS_TYPE_INVALID)) {
 		/* Splits folder and name */
 		const gchar *slash = strrchr(name, '/');
+		debug("Agent replied with %s", name);
 		if (!slash) {
 			agent->new_name = g_strdup(name);
 			agent->new_folder = NULL;
@@ -910,7 +911,7 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	addrlen = sizeof(addr);
 
 	if (getpeername(fd, (struct sockaddr *) &addr, &addrlen) < 0)
-		return -1;
+		return -errno;
 
 	ba2str(&addr.rc_bdaddr, address);
 

@@ -547,6 +547,8 @@ gint os_prepare_put(struct obex_session *os)
 		w = write(os->fd, os->buf + len, os->offset - len);
 		if (w < 0) {
 			gint err = errno;
+			error("write(%s): %s (%d)", path, strerror(errno),
+									errno);
 			if (err == EINTR)
 				continue;
 			else
