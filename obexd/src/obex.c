@@ -412,7 +412,7 @@ static void cmd_setpath(struct obex_session *os,
 		}
 
 		/* This is because OBEX_UnicodeToChar() accesses the string
-		   even if its size is zero */
+		 * even if its size is zero */
 		if (hlen == 0) {
 			os->name = g_strdup("");
 			break;

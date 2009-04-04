@@ -420,7 +420,6 @@ void ftp_setpath(obex_t *obex, obex_object_t *obj)
 
 	/* Check flag "Backup" */
 	if ((nonhdr[0] & 0x01) == 0x01) {
-
 		debug("Set to parent path");
 
 		if (root) {
