@@ -105,7 +105,7 @@ gboolean pbap_phonebook_context_create(struct obex_session *session);
 void pbap_phonebook_context_destroy(struct obex_session *session);
 struct obex_session *pbap_get_session(struct phonebook_context *context);
 
-gboolean os_prepare_get(struct obex_session *os, gchar *file, guint32 *size);
+gint os_prepare_get(struct obex_session *os, gchar *file, guint32 *size);
 gint os_prepare_put(struct obex_session *os);
 
 void server_free(struct server *server);

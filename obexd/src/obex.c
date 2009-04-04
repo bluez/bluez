@@ -428,9 +428,9 @@ static void cmd_setpath(struct obex_session *os,
 	os->cmds->setpath(obex, obj);
 }
 
-gboolean os_prepare_get(struct obex_session *os, gchar *file, guint32 *size)
+int os_prepare_get(struct obex_session *os, gchar *file, guint32 *size)
 {
-	gint fd;
+	gint fd, err;
 	struct stat stats;
 
 	fd = open(file, O_RDONLY);
@@ -448,13 +448,14 @@ gboolean os_prepare_get(struct obex_session *os, gchar *file, guint32 *size)
 
 	*size = stats.st_size;
 
-	return TRUE;
+	return 0;
 
 fail:
+	err = -errno;
 	if (fd >= 0)
 		close(fd);
 
-	return FALSE;
+	return err;
 }
 
 static gint obex_write_stream(struct obex_session *os,

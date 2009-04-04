@@ -108,14 +108,14 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 	return ret;
 }
 
-static gboolean folder_listing(struct obex_session *os, guint32 *size)
+static gint folder_listing(struct obex_session *os, guint32 *size)
 {
 	struct stat fstat, dstat;
 	struct dirent *ep;
 	DIR *dp;
 	GString *listing;
 	gboolean root;
-	int err;
+	gint err;
 
 	listing = g_string_new(FL_VERSION);
 	listing = g_string_append(listing, FL_TYPE);
@@ -131,6 +131,7 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 	}
 
 	if (err < 0) {
+		err = -errno;
 		error("%s: %s(%d)", root ? "stat" : "lstat",
 				strerror(errno), errno);
 		goto failed;
@@ -138,6 +139,7 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 
 	dp = opendir(os->current_folder);
 	if (dp == NULL) {
+		err = -errno;
 		error("opendir: failed to access %s", os->current_folder);
 		goto failed;
 	}
@@ -191,14 +193,14 @@ static gboolean folder_listing(struct obex_session *os, guint32 *size)
 	*size = listing->len + 1;
 	os->buf = (guint8*) g_string_free(listing, FALSE);
 
-	return TRUE;
+	return 0;
 
 failed:
 	g_string_free(listing, TRUE);
-	return FALSE;
+	return err;
 }
 
-static gboolean get_capability(struct obex_session *os, guint32 *size)
+static gint get_capability(struct obex_session *os, guint32 *size)
 {
 	GError *gerr = NULL;
 	gchar *buf;
@@ -206,7 +208,7 @@ static gboolean get_capability(struct obex_session *os, guint32 *size)
 	gboolean ret;
 
 	if (os->server->capability == NULL)
-		return FALSE;
+		return -ENOENT;
 
 	if (os->server->capability[0] != '!')
 		return os_prepare_get(os, os->server->capability, size);
@@ -216,24 +218,24 @@ static gboolean get_capability(struct obex_session *os, guint32 *size)
 	if (ret == FALSE) {
 		error("g_spawn_command_line_sync: %s", gerr->message);
 		g_error_free(gerr);
-		return FALSE;
+		return -EPERM;
 	}
 
 	if (WEXITSTATUS(exit) != EXIT_SUCCESS) {
 		g_free(buf);
-		return FALSE;
+		return -EPERM;
 	}
 
 	os->buf = (guint8 *) buf;
 	*size = strlen(buf);
 
-	return TRUE;
+	return 0;
 }
 
-static gboolean get_by_type(struct obex_session *os, gchar *type, guint32 *size)
+static gint get_by_type(struct obex_session *os, gchar *type, guint32 *size)
 {
 	if (type == NULL)
-		return FALSE;
+		return -ENOENT;
 
 	if (g_str_equal(type, CAP_TYPE))
 		return get_capability(os, size);
@@ -244,7 +246,7 @@ static gboolean get_by_type(struct obex_session *os, gchar *type, guint32 *size)
 	return FALSE;
 }
 
-static gboolean ftp_prepare_get(struct obex_session *os, gchar *file,
+static gint ftp_prepare_get(struct obex_session *os, gchar *file,
 				guint32 *size)
 {
 	gboolean root;
@@ -253,16 +255,16 @@ static gboolean ftp_prepare_get(struct obex_session *os, gchar *file,
 
 	if (!root || !os->server->symlinks) {
 		struct stat dstat;
-		int err;
+		gint err;
 
-		err = lstat(file, &dstat);
-		if (err < 0) {
+		if (lstat(file, &dstat) < 0) {
+			err = -errno;
 			debug("lstat: %s(%d)", strerror(errno), errno);
-			return FALSE;
+			return err;
 		}
 
 		if (S_ISLNK(dstat.st_mode))
-			return FALSE;
+			return -EPERM;
 	}
 
 	return os_prepare_get(os, file, size);
@@ -273,7 +275,7 @@ void ftp_get(obex_t *obex, obex_object_t *obj)
 	obex_headerdata_t hv;
 	struct obex_session *os;
 	guint32 size;
-	gboolean ret;
+	gint err;
 	gchar *path;
 
 	os = OBEX_GetUserData(obex);
@@ -283,17 +285,18 @@ void ftp_get(obex_t *obex, obex_object_t *obj)
 	if (os->current_folder == NULL)
 		goto fail;
 
-	if (!get_by_type(os, os->type, &size)) {
+	err = get_by_type(os, os->type, &size);
+	if (err < 0) {
 		if (!os->name)
 			goto fail;
 
 		path = g_build_filename(os->current_folder, os->name, NULL);
 
-		ret = ftp_prepare_get(os, path, &size);
+		err = ftp_prepare_get(os, path, &size);
 
 		g_free(path);
 
-		if (!ret)
+		if (err < 0)
 			goto fail;
 	}
 
@@ -316,7 +319,13 @@ void ftp_get(obex_t *obex, obex_object_t *obj)
 	return;
 
 fail:
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+	switch (err) {
+	case -ENOENT:
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_FOUND, OBEX_RSP_NOT_FOUND);
+		break;
+	default:
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+	}
 }
 
 static gint ftp_delete(struct obex_session *os)

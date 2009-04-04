@@ -120,7 +120,7 @@ void opp_get(obex_t *obex, obex_object_t *obj)
 		goto fail;
 
 	if (g_str_equal(os->type, VCARD_TYPE)) {
-		if (!os_prepare_get(os, VCARD_FILE, &size))
+		if (os_prepare_get(os, VCARD_FILE, &size) < 0)
 			goto fail;
 	} else
 		goto fail;
