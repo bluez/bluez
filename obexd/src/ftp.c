@@ -382,12 +382,13 @@ void ftp_put(obex_t *obex, obex_object_t *obj)
 	if (os->size == OBJECT_SIZE_DELETE)
 		ret = ftp_delete(os);
 
-	if (ret == 0) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
-		return;
-	}
-
 	switch (ret) {
+	case 0:
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+		break;
+	case -ENOENT:
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_FOUND, OBEX_RSP_NOT_FOUND);
+		break;
 	case -ENOTEMPTY:
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_PRECONDITION_FAILED,
 					OBEX_RSP_PRECONDITION_FAILED);
