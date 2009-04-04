@@ -150,6 +150,7 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 		reply = dbus_message_new_method_return(priv->dc_req);
 		dbus_message_unref(priv->dc_req);
 		priv->dc_req = NULL;
+		g_dbus_send_message(dev->conn, reply);
 	}
 
 	if (priv->conn_req && new_state != AUDIO_STATE_CONNECTING) {
@@ -162,10 +163,8 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 							"Connecting failed");
 		dbus_message_unref(priv->conn_req);
 		priv->conn_req = NULL;
-	}
-
-	if (reply)
 		g_dbus_send_message(dev->conn, reply);
+	}
 
 	emit_property_changed(dev->conn, dev->path,
 				AUDIO_INTERFACE, "State",
