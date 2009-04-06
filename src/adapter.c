@@ -233,9 +233,9 @@ int pending_remote_name_cancel(struct btd_adapter *adapter)
 
 	if (hci_read_remote_name_cancel(dd, &dev->bdaddr,
 					HCI_REQ_TIMEOUT) < 0) {
-		error("Remote name cancel failed: %s(%d)", strerror(errno),
-									errno);
 		err = -errno;
+		error("Remote name cancel failed: %s(%d)",
+						strerror(errno), errno);
 	}
 
 	/* free discovered devices list */
@@ -261,7 +261,7 @@ static int set_limited_discoverable(int dd, const uint8_t *cls,
 	if (hci_write_current_iac_lap(dd, num, lap, HCI_REQ_TIMEOUT) < 0) {
 		int err = -errno;
 		error("Can't write current IAC LAP: %s(%d)",
-				strerror(err), err);
+						strerror(errno), errno);
 		return err;
 	}
 
@@ -280,7 +280,7 @@ static int set_limited_discoverable(int dd, const uint8_t *cls,
 	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
 		int err = -errno;
 		error("Can't write class of device: %s (%d)",
-							strerror(err), err);
+						strerror(errno), errno);
 		return err;
 	}
 
@@ -858,14 +858,14 @@ static int adapter_set_name(struct btd_adapter *adapter, const char *name)
 	if (dd < 0) {
 		err = -errno;
 		error("Can't open device hci%d: %s (%d)",
-					adapter->dev_id, strerror(err), err);
+				adapter->dev_id, strerror(errno), errno);
 		return err;
 	}
 
 	if (hci_write_local_name(dd, name, HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Can't write name for hci%d: %s (%d)",
-					adapter->dev_id, strerror(err), err);
+				adapter->dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
 	}
@@ -1054,7 +1054,7 @@ static int start_inquiry(struct btd_adapter *adapter)
 	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Unable to start inquiry: %s (%d)",
-			strerror(err), err);
+						strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
 	}
@@ -1104,7 +1104,7 @@ static int start_periodic_inquiry(struct btd_adapter *adapter)
 	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Unable to start periodic inquiry: %s (%d)",
-				strerror(err), err);
+						strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
 	}
@@ -1770,14 +1770,14 @@ static int adapter_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 	if (dd < 0) {
 		err = -errno;
 		error("Can't open device hci%d: %s (%d)",
-					dev_id, strerror(err), err);
+					dev_id, strerror(errno), errno);
 		return err;
 	}
 
 	if (hci_read_bd_addr(dd, bdaddr, HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Can't read address for hci%d: %s (%d)",
-					dev_id, strerror(err), err);
+					dev_id, strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
 	}
@@ -1842,7 +1842,7 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 	if (hci_write_inquiry_mode(dd, inqmode, HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Can't write inquiry mode for %s: %s (%d)",
-					adapter->path, strerror(err), err);
+					adapter->path, strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
 	}
@@ -2112,14 +2112,14 @@ int adapter_start(struct btd_adapter *adapter)
 	if (dd < 0) {
 		err = -errno;
 		error("Can't open adapter %s: %s (%d)",
-					adapter->path, strerror(err), err);
+					adapter->path, strerror(errno), errno);
 		return err;
 	}
 
 	if (hci_read_local_version(dd, &ver, HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Can't read version info for %s: %s (%d)",
-					adapter->path, strerror(err), err);
+					adapter->path, strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
 	}
@@ -2132,7 +2132,7 @@ int adapter_start(struct btd_adapter *adapter)
 	if (hci_read_local_features(dd, features, HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Can't read features for %s: %s (%d)",
-					adapter->path, strerror(err), err);
+					adapter->path, strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
 	}
@@ -2142,7 +2142,7 @@ int adapter_start(struct btd_adapter *adapter)
 	if (hci_read_class_of_dev(dd, dev->class, HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Can't read class of adapter on %s: %s (%d)",
-					adapter->path, strerror(err), err);
+					adapter->path, strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
 	}
@@ -2151,7 +2151,7 @@ int adapter_start(struct btd_adapter *adapter)
 						HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Can't read local name on %s: %s (%d)",
-					adapter->path, strerror(err), err);
+					adapter->path, strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
 	}
@@ -2168,7 +2168,7 @@ int adapter_start(struct btd_adapter *adapter)
 						HCI_REQ_TIMEOUT) < 0) {
 		err = -errno;
 		error("Can't read simple pairing mode on %s: %s (%d)",
-					adapter->path, strerror(err), err);
+					adapter->path, strerror(errno), errno);
 		/* Fall through since some chips have broken
 		 * read_simple_pairing_mode behavior */
 	}
@@ -2328,7 +2328,7 @@ int adapter_update(struct btd_adapter *adapter, uint8_t new_svc,
 	if (dd < 0) {
 		int err = -errno;
 		error("Can't open adapter %s: %s (%d)",
-					adapter->path, strerror(err), err);
+					adapter->path, strerror(errno), errno);
 		return err;
 	}
 

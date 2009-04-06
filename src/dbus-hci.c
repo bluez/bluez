@@ -1019,7 +1019,7 @@ int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
 	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
 		int err = -errno;
 		error("Can't write class of device: %s (%d)",
-							strerror(err), err);
+						strerror(errno), errno);
 		return err;
 	}
 
@@ -1039,7 +1039,7 @@ int set_major_and_minor_class(int dd, const uint8_t *cls,
 	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
 		int err = -errno;
 		error("Can't write class of device: %s (%d)",
-							strerror(err), err);
+						strerror(errno), errno);
 		return err;
 	}
 
@@ -1389,15 +1389,15 @@ int cancel_discovery(struct btd_adapter *adapter)
 	if (dev) {
 		if (remote_name_cancel(dd, &dev->bdaddr,
 							HCI_REQ_TIMEOUT) < 0) {
-			error("Read remote name cancel failed: %s, (%d)",
-					strerror(errno), errno);
 			err = -errno;
+			error("Read remote name cancel failed: %s, (%d)",
+						strerror(errno), errno);
 		}
 	} else {
 		if (inquiry_cancel(dd, HCI_REQ_TIMEOUT) < 0) {
-			error("Inquiry cancel failed:%s (%d)",
-					strerror(errno), errno);
 			err = -errno;
+			error("Inquiry cancel failed:%s (%d)",
+						strerror(errno), errno);
 		}
 	}
 
@@ -1447,19 +1447,19 @@ int cancel_periodic_discovery(struct btd_adapter *adapter)
 	dev = adapter_search_found_devices(adapter, &match);
 	if (dev) {
 		if (remote_name_cancel(dd, &dev->bdaddr,
-							HCI_REQ_TIMEOUT) < 0) {
-			error("Read remote name cancel failed: %s, (%d)",
-					strerror(errno), errno);
+						HCI_REQ_TIMEOUT) < 0) {
 			err = -errno;
+			error("Read remote name cancel failed: %s, (%d)",
+						strerror(errno), errno);
 		}
 	}
 
 	/* ovewrite err if necessary: stop periodic inquiry has higher
 	 * priority */
 	if (periodic_inquiry_exit(dd, HCI_REQ_TIMEOUT) < 0) {
-		error("Periodic Inquiry exit failed:%s (%d)",
-				strerror(errno), errno);
 		err = -errno;
+		error("Periodic Inquiry exit failed:%s (%d)",
+						strerror(errno), errno);
 	}
 
 	hci_close_dev(dd);
