@@ -454,6 +454,14 @@ char *bt_compidtostr(int compid)
 		return "J&M Corporation";
 	case 83:
 		return "Free2move AB";
+	case 84:
+		return "3DiJoy Corporation";
+	case 85:
+		return "Plantronics, Inc.";
+	case 86:
+		return "Sony Ericsson Mobile Communications";
+	case 87:
+		return "Harman International Industries, Inc.";
 	case 65535:
 		return "internal use";
 	default:
