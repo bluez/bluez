@@ -1022,7 +1022,6 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 	DBusMessage *msg;
 	DBusPendingCall *pcall;
 	GIOChannel *io;
-	guint watch;
 	const char *paddr = pending->address;
 	const char *path;
 	DBusError derr;
@@ -1068,7 +1067,7 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 
 	/* Catches errors before authorization response comes */
 	io = g_io_channel_unix_new(pending->nsk);
-	watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+	g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
 			G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			service_error, NULL, NULL);
 	g_io_channel_unref(io);
