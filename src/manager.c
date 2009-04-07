@@ -136,7 +136,6 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	struct btd_adapter *adapter;
-	struct hci_dev_info di;
 	const char *pattern;
 	int dev_id;
 	const gchar *path;
@@ -151,26 +150,13 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 		path = adapter_any_get_path();
 		if (path != NULL)
 			goto done;
-		dev_id = -1;
-	} else if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4)
+		return no_such_adapter(msg);
+	} else if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4) {
 		dev_id = atoi(pattern + 3);
-	else {
+		adapter = manager_find_adapter_by_id(dev_id);
+	} else
 		adapter = manager_find_adapter_by_address(pattern);
-		goto proceed;
-	}
 
-	if (dev_id < 0)
-		return no_such_adapter(msg);
-
-	if (hci_devinfo(dev_id, &di) < 0)
-		return no_such_adapter(msg);
-
-	if (hci_test_bit(HCI_RAW, &di.flags))
-		return no_such_adapter(msg);
-
-	adapter = manager_find_adapter_by_id(dev_id);
-
-proceed:
 	if (!adapter)
 		return no_such_adapter(msg);
 
