@@ -180,7 +180,6 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 	DBusMessageIter array_iter;
 	DBusMessage *reply;
 	GSList *l;
-	uint16_t dev_id;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -193,16 +192,7 @@ static DBusMessage *list_adapters(DBusConnection *conn,
 
 	for (l = adapters; l; l = l->next) {
 		struct btd_adapter *adapter = l->data;
-		struct hci_dev_info di;
 		const gchar *path = adapter_get_path(adapter);
-
-		dev_id = adapter_get_dev_id(adapter);
-
-		if (hci_devinfo(dev_id, &di) < 0)
-			continue;
-
-		if (hci_test_bit(HCI_RAW, &di.flags))
-			continue;
 
 		dbus_message_iter_append_basic(&array_iter,
 					DBUS_TYPE_OBJECT_PATH, &path);
