@@ -108,49 +108,6 @@ static inline DBusMessage *no_such_adapter(DBusMessage *msg)
 			"No such adapter");
 }
 
-static int find_by_address(const char *str)
-{
-	struct hci_dev_list_req *dl;
-	struct hci_dev_req *dr;
-	bdaddr_t ba;
-	int i, sk;
-	int devid = -1;
-
-	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (sk < 0)
-		return -1;
-
-	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
-
-	dl->dev_num = HCI_MAX_DEV;
-
-	if (ioctl(sk, HCIGETDEVLIST, dl) < 0)
-		goto out;
-
-	dr = dl->dev_req;
-	str2ba(str, &ba);
-
-	for (i = 0; i < dl->dev_num; i++, dr++) {
-		struct hci_dev_info di;
-
-		if (hci_devinfo(dr->dev_id, &di) < 0)
-			continue;
-
-		if (hci_test_bit(HCI_RAW, &di.flags))
-			continue;
-
-		if (!bacmp(&ba, &di.bdaddr)) {
-			devid = dr->dev_id;
-			break;
-		}
-	}
-
-out:
-	g_free(dl);
-	close(sk);
-	return devid;
-}
-
 static DBusMessage *default_adapter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -183,6 +140,7 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 	const char *pattern;
 	int dev_id;
 	const gchar *path;
+	bdaddr_t src;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 							DBUS_TYPE_INVALID))
@@ -197,8 +155,11 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 		dev_id = -1;
 	} else if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4)
 		dev_id = atoi(pattern + 3);
-	else
-		dev_id = find_by_address(pattern);
+	else {
+		str2ba(pattern, &src);
+		adapter = manager_find_adapter(&src);
+		goto proceed;
+	}
 
 	if (dev_id < 0)
 		return no_such_adapter(msg);
@@ -210,6 +171,8 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 		return no_such_adapter(msg);
 
 	adapter = manager_find_adapter_by_id(dev_id);
+
+proceed:
 	if (!adapter)
 		return no_such_adapter(msg);
 
