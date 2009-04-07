@@ -22,5 +22,7 @@
  *
  */
 
+void unix_device_removed(struct audio_device *dev);
+
 int unix_init(void);
 void unix_exit(void);

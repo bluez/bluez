@@ -1069,6 +1069,9 @@ static void start_close(struct audio_device *dev, struct unix_client *client,
 	struct a2dp_data *a2dp;
 	struct headset_data *hs;
 
+	if (!client->dev)
+		goto failed;
+
 	switch (client->type) {
 	case TYPE_HEADSET:
 		hs = &client->d.hs;
@@ -1536,6 +1539,18 @@ static gboolean server_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	g_io_channel_unref(io);
 
 	return TRUE;
+}
+
+void unix_device_removed(struct audio_device *dev)
+{
+	GSList *l;
+
+	for (l = clients; l != NULL; l = l->next) {
+		struct unix_client *client = l->data;
+
+		if (client->dev == dev)
+			client->dev = NULL;
+	}
 }
 
 int unix_init(void)

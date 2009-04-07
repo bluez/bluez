@@ -50,6 +50,7 @@
 #include "ipc.h"
 #include "dbus-common.h"
 #include "device.h"
+#include "unix.h"
 #include "avdtp.h"
 #include "control.h"
 #include "headset.h"
@@ -619,6 +620,8 @@ void audio_device_unregister(struct audio_device *device)
 
 	if (device->control)
 		control_unregister(device);
+
+	unix_device_removed(device);
 
 	g_dbus_unregister_interface(device->conn, device->path,
 						AUDIO_INTERFACE);

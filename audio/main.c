@@ -41,8 +41,8 @@
 #include "btio.h"
 #include "plugin.h"
 #include "logging.h"
-#include "unix.h"
 #include "device.h"
+#include "unix.h"
 #include "headset.h"
 #include "manager.h"
 
