@@ -29,6 +29,7 @@ void manager_cleanup(DBusConnection *conn, const char *path);
 
 const char *manager_get_base_path(void);
 struct btd_adapter *manager_find_adapter(const bdaddr_t *sba);
+struct btd_adapter *manager_find_adapter_by_address(const char *address);
 struct btd_adapter *manager_find_adapter_by_path(const char *path);
 struct btd_adapter *manager_find_adapter_by_id(int id);
 GSList *manager_get_adapters(void);
