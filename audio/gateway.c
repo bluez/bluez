@@ -253,7 +253,7 @@ static guint get_hold_mpty_features(gchar *features)
 		result |= AG_CHLD_3;
 
 	if (strstr(features, "4"))
-	        result |= AG_CHLD_4;
+		result |= AG_CHLD_4;
 
 	return result;
 }
