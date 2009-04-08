@@ -625,55 +625,6 @@ static char *extract_eir_name(uint8_t *data, uint8_t *type)
 	return NULL;
 }
 
-static void append_dict_valist(DBusMessageIter *iter,
-					const char *first_key,
-					va_list var_args)
-{
-	DBusMessageIter dict;
-	const char *key;
-	int type;
-	void *val;
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	key = first_key;
-	while (key) {
-		type = va_arg(var_args, int);
-		val = va_arg(var_args, void *);
-		dict_append_entry(&dict, key, type, val);
-		key = va_arg(var_args, char *);
-	}
-
-	dbus_message_iter_close_container(iter, &dict);
-}
-
-static void emit_device_found(const char *path, const char *address,
-				const char *first_key, ...)
-{
-	DBusMessage *signal;
-	DBusMessageIter iter;
-	va_list var_args;
-
-	signal = dbus_message_new_signal(path, ADAPTER_INTERFACE,
-					"DeviceFound");
-	if (!signal) {
-		error("Unable to allocate new %s.DeviceFound signal",
-				ADAPTER_INTERFACE);
-		return;
-	}
-	dbus_message_iter_init_append(signal, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &address);
-
-	va_start(var_args, first_key);
-	append_dict_valist(&iter, first_key, var_args);
-	va_end(var_args);
-
-	g_dbus_send_message(connection, signal);
-}
-
 void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				int8_t rssi, uint8_t *data)
 {
@@ -681,14 +632,11 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char local_addr[18], peer_addr[18], *alias, *name, *tmp_name;
-	const char *real_alias;
-	const char *path, *icon, *paddr = peer_addr;
 	struct remote_dev_info *dev, match;
-	dbus_int16_t tmp_rssi = rssi;
-	dbus_bool_t paired, legacy = TRUE;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
 	int state;
+	dbus_bool_t legacy;
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -698,17 +646,10 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		return;
 	}
 
-	if (device)
-		paired = device_is_paired(device);
-	else
-		paired = FALSE;
-
 	write_remote_class(local, peer, class);
 
-	if (data) {
+	if (data)
 		write_remote_eir(local, peer, data);
-		legacy = FALSE;
-	}
 
 	/*
 	 * workaround to identify situation when the daemon started and
@@ -763,36 +704,21 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	}
 
 	if (!alias) {
-		real_alias = NULL;
-
 		if (!name) {
 			alias = g_strdup(peer_addr);
 			g_strdelimit(alias, ":", '-');
 		} else
 			alias = g_strdup(name);
-	} else
-		real_alias = alias;
+	}
 
-	path = adapter_get_path(adapter);
-	icon = class_to_icon(class);
-
-	emit_device_found(path, paddr,
-				"Address", DBUS_TYPE_STRING, &paddr,
-				"Class", DBUS_TYPE_UINT32, &class,
-				"Icon", DBUS_TYPE_STRING, &icon,
-				"RSSI", DBUS_TYPE_INT16, &tmp_rssi,
-				"Name", DBUS_TYPE_STRING, &name,
-				"Alias", DBUS_TYPE_STRING, &alias,
-				"LegacyPairing", DBUS_TYPE_BOOLEAN, &legacy,
-				"Paired", DBUS_TYPE_BOOLEAN, &paired,
-				NULL);
+	legacy = (data == NULL);
 
 	if (name && name_type != 0x08)
 		name_status = NAME_SENT;
 
 	/* add in the list to track name sent/pending */
-	adapter_add_found_device(adapter, peer, rssi, class, real_alias,
-					name_status);
+	adapter_update_found_devices(adapter, peer, rssi, class, name, alias,
+					legacy, name_status);
 
 	g_free(name);
 	g_free(alias);
@@ -845,37 +771,9 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 
 	dev_info = adapter_search_found_devices(adapter, &match);
 	if (dev_info) {
-		const char *adapter_path = adapter_get_path(adapter);
-		const char *icon = class_to_icon(dev_info->class);
-		const char *alias, *paddr = dstaddr;
-		dbus_int16_t rssi = dev_info->rssi;
-		dbus_bool_t legacy, paired;
-
-		if (dev_info->alias)
-			alias = dev_info->alias;
-		else
-			alias = name;
-
-		if (read_remote_eir(local, peer, NULL) < 0)
-			legacy = TRUE;
-		else
-			legacy = FALSE;
-
-		if (device)
-			paired = device_is_paired(device);
-		else
-			paired = FALSE;
-
-		emit_device_found(adapter_path, dstaddr,
-				"Address", DBUS_TYPE_STRING, &paddr,
-				"Class", DBUS_TYPE_UINT32, &dev_info->class,
-				"Icon", DBUS_TYPE_STRING, &icon,
-				"RSSI", DBUS_TYPE_INT16, &rssi,
-				"Name", DBUS_TYPE_STRING, &name,
-				"Alias", DBUS_TYPE_STRING, &alias,
-				"LegacyPairing", DBUS_TYPE_BOOLEAN, &legacy,
-				"Paired", DBUS_TYPE_BOOLEAN, &paired,
-				NULL);
+		g_free(dev_info->name);
+		dev_info->name = g_strdup(name);
+		adapter_emit_device_found(adapter, dev_info);
 	}
 
 	if (device)

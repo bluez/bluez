@@ -205,6 +205,7 @@ static int found_device_cmp(const struct remote_dev_info *d1,
 
 static void dev_info_free(struct remote_dev_info *dev)
 {
+	g_free(dev->name);
 	g_free(dev->alias);
 	g_free(dev);
 }
@@ -2534,8 +2535,88 @@ static int dev_rssi_cmp(struct remote_dev_info *d1, struct remote_dev_info *d2)
 	return rssi1 - rssi2;
 }
 
-int adapter_add_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-				int8_t rssi, uint32_t class, const char *alias,
+static void append_dict_valist(DBusMessageIter *iter,
+					const char *first_key,
+					va_list var_args)
+{
+	DBusMessageIter dict;
+	const char *key;
+	int type;
+	void *val;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	key = first_key;
+	while (key) {
+		type = va_arg(var_args, int);
+		val = va_arg(var_args, void *);
+		dict_append_entry(&dict, key, type, val);
+		key = va_arg(var_args, char *);
+	}
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void emit_device_found(const char *path, const char *address,
+				const char *first_key, ...)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+	va_list var_args;
+
+	signal = dbus_message_new_signal(path, ADAPTER_INTERFACE,
+					"DeviceFound");
+	if (!signal) {
+		error("Unable to allocate new %s.DeviceFound signal",
+				ADAPTER_INTERFACE);
+		return;
+	}
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &address);
+
+	va_start(var_args, first_key);
+	append_dict_valist(&iter, first_key, var_args);
+	va_end(var_args);
+
+	g_dbus_send_message(connection, signal);
+}
+
+void adapter_emit_device_found(struct btd_adapter *adapter,
+				struct remote_dev_info *dev)
+{
+	struct btd_device *device;
+	char peer_addr[18], local_addr[18];
+	const char *icon, *paddr = peer_addr;
+	dbus_bool_t paired = FALSE;
+	dbus_int16_t rssi = dev->rssi;
+
+	ba2str(&dev->bdaddr, peer_addr);
+	ba2str(&adapter->bdaddr, local_addr);
+
+	device = adapter_find_device(adapter, paddr);
+	if (device)
+		paired = device_is_paired(device);
+
+	icon = class_to_icon(dev->class);
+
+	emit_device_found(adapter->path, paddr,
+			"Address", DBUS_TYPE_STRING, &paddr,
+			"Class", DBUS_TYPE_UINT32, &dev->class,
+			"Icon", DBUS_TYPE_STRING, &icon,
+			"RSSI", DBUS_TYPE_INT16, &rssi,
+			"Name", DBUS_TYPE_STRING, &dev->name,
+			"Alias", DBUS_TYPE_STRING, &dev->alias,
+			"LegacyPairing", DBUS_TYPE_BOOLEAN, &dev->legacy,
+			"Paired", DBUS_TYPE_BOOLEAN, &paired,
+			NULL);
+}
+
+void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+				int8_t rssi, uint32_t class, const char *name,
+				const char *alias, gboolean legacy,
 				name_status_t name_status)
 {
 	struct remote_dev_info *dev, match;
@@ -2544,46 +2625,33 @@ int adapter_add_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 	bacpy(&match.bdaddr, bdaddr);
 	match.name_status = NAME_ANY;
 
-	/* ignore repeated entries */
 	dev = adapter_search_found_devices(adapter, &match);
 	if (dev) {
-		/* device found, update the attributes */
-		if (rssi != 0)
-			dev->rssi = rssi;
-
-		dev->class = class;
-
-		if (alias) {
-			g_free(dev->alias);
-			dev->alias = g_strdup(alias);
-		}
-
-		/* Get remote name can be received while inquiring.  Keep in
-		 * mind that multiple inquiry result events can be received
-		 * from the same remote device.
-		 */
-		if (name_status != NAME_NOT_REQUIRED)
-			dev->name_status = name_status;
-
-		adapter->found_devices = g_slist_sort(adapter->found_devices,
-						(GCompareFunc) dev_rssi_cmp);
-
-		return -EALREADY;
+		if (rssi == dev->rssi)
+			return;
+		goto done;
 	}
 
 	dev = g_new0(struct remote_dev_info, 1);
 
 	bacpy(&dev->bdaddr, bdaddr);
-	dev->rssi = rssi;
 	dev->class = class;
+	if (name)
+		dev->name = g_strdup(name);
 	if (alias)
 		dev->alias = g_strdup(alias);
+	dev->legacy = legacy;
 	dev->name_status = name_status;
 
-	adapter->found_devices = g_slist_insert_sorted(adapter->found_devices,
-						dev, (GCompareFunc) dev_rssi_cmp);
+	adapter->found_devices = g_slist_prepend(adapter->found_devices, dev);
 
-	return 0;
+done:
+	dev->rssi = rssi;
+
+	adapter->found_devices = g_slist_sort(adapter->found_devices,
+						(GCompareFunc) dev_rssi_cmp);
+
+	adapter_emit_device_found(adapter, dev);
 }
 
 int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr)
