@@ -1126,3 +1126,82 @@ int gateway_close(struct audio_device *device)
 				"Connected", DBUS_TYPE_BOOLEAN, &value);
 	return 0;
 }
+
+/* These are functions to be called from unix.c for audio system
+ * ifaces (alsa, gstreamer, etc.) */
+gboolean gateway_request_stream(struct audio_device *dev,
+				gateway_stream_cb_t cb, void *user_data)
+{
+	struct gateway *gw = dev->gateway;
+	GError *err = NULL;
+	GIOChannel *io;
+
+	if (!gw->sco) {
+		if (!gw->rfcomm)
+			return FALSE;
+		gw->sco_start_cb = cb;
+		gw->sco_start_cb_data = user_data;
+		io = bt_io_connect(BT_IO_SCO, sco_connect_cb, dev, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
+				BT_IO_OPT_DEST_BDADDR, &dev->dst,
+				BT_IO_OPT_INVALID);
+		if (!io) {
+			error("%s", err->message);
+			g_error_free(err);
+			return FALSE;
+		}
+	} else {
+		if (cb)
+			cb(dev, user_data);
+	}
+
+	return TRUE;
+}
+
+int gateway_config_stream(struct audio_device *dev, gateway_stream_cb_t sco_cb,
+				void *user_data)
+{
+	struct gateway *gw = dev->gateway;
+
+	if (!gw->rfcomm) {
+		gw->sco_start_cb = sco_cb;
+		gw->sco_start_cb_data = user_data;
+		return get_records(dev);
+	}
+
+	if (sco_cb)
+		sco_cb(dev, user_data);
+
+	return 0;
+}
+
+gboolean gateway_cancel_stream(struct audio_device *dev, unsigned int id)
+{
+	gateway_close(dev);
+	return TRUE;
+}
+
+int gateway_get_sco_fd(struct audio_device *dev)
+{
+	struct gateway *gw = dev->gateway;
+
+	if (!gw || !gw->sco)
+		return -1;
+
+	return g_io_channel_unix_get_fd(gw->sco);
+}
+
+void gateway_suspend_stream(struct audio_device *dev)
+{
+	struct gateway *gw = dev->gateway;
+
+	if (!gw || !gw->sco)
+		return;
+
+	g_io_channel_close(gw->sco);
+	g_io_channel_unref(gw->sco);
+	gw->sco = NULL;
+	gw->sco_start_cb = NULL;
+	gw->sco_start_cb_data = NULL;
+}
+
