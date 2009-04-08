@@ -595,7 +595,7 @@ void device_add_connection(struct btd_device *device, DBusConnection *conn,
 void device_remove_connection(struct btd_device *device, DBusConnection *conn,
 				uint16_t handle)
 {
-	if (device->handle != handle) {
+	if (handle && device->handle != handle) {
 		error("%s: Unable to remove connection %u, handle mismatch (%u)",
 			device->path, handle, device->handle);
 		return;

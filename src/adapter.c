@@ -2271,9 +2271,9 @@ int adapter_stop(struct btd_adapter *adapter)
 		adapter->oor_devices = NULL;
 	}
 
-	if (adapter->connections) {
-		g_slist_free(adapter->connections);
-		adapter->connections = NULL;
+	while (adapter->connections) {
+		struct btd_device *device = adapter->connections->data;
+		adapter_remove_connection(adapter, device, 0);
 	}
 
 	if (adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY)) {
