@@ -2657,7 +2657,7 @@ void adapter_remove_oor_device(struct btd_adapter *adapter, char *peer_addr)
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const gchar *path = adapter_get_path(adapter);
-	gboolean powered, discoverable, pairable;
+	gboolean discoverable, pairable;
 	uint8_t real_class[3];
 	int dd;
 
@@ -2669,19 +2669,16 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 	switch (scan_mode) {
 	case SCAN_DISABLED:
 		adapter->mode = MODE_OFF;
-		powered = FALSE;
 		discoverable = FALSE;
 		pairable = FALSE;
 		break;
 	case SCAN_PAGE:
 		adapter->mode = MODE_CONNECTABLE;
-		powered = TRUE;
 		discoverable = FALSE;
 		pairable = adapter->pairable;
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
 		adapter->mode = MODE_DISCOVERABLE;
-		powered = TRUE;
 		discoverable = TRUE;
 		pairable = adapter->pairable;
 		if (adapter->discov_timeout != 0)
@@ -2700,11 +2697,6 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		/* ignore, reserved */
 		return;
 	}
-
-	if (powered == FALSE)
-		emit_property_changed(connection, path,
-					ADAPTER_INTERFACE, "Powered",
-					DBUS_TYPE_BOOLEAN, &powered);
 
 	/* If page scanning gets toggled emit the Pairable property */
 	if ((adapter->scan_mode & SCAN_PAGE) != (scan_mode & SCAN_PAGE))
