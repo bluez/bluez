@@ -798,7 +798,7 @@ static DBusMessage *ag_terminate_call(DBusConnection *conn, DBusMessage *msg,
 
 /* according to GSM spec */
 #define ALLOWED_NUMBER_SYMBOLS "1234567890*#ABCD"
-#define AG_PLACE_CALL "ATD%s\r"
+#define AG_PLACE_CALL "ATD%s;\r"
 /* dialing from memory is not supported as headset spec doesn't define a way
  * to retreive phone memory entries.
  */
