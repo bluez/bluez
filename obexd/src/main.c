@@ -72,7 +72,7 @@ int tty_init(int services, const gchar *root_path,
 {
 	struct server *server;
 	struct termios options;
-	int fd, ret;
+	int fd, err, arg;
 	glong flags;
 
 	tty_needs_reinit = TRUE;
@@ -88,6 +88,18 @@ int tty_init(int services, const gchar *root_path,
 	cfmakeraw(&options);
 	tcsetattr(fd, TCSANOW, &options);
 
+	arg = fcntl(fd, F_GETFL);
+	if (arg < 0) {
+		err = -errno;
+		goto failed;
+	}
+
+	arg |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, arg) < 0) {
+		err = -errno;
+		goto failed;
+	}
+
 	server = g_new0(struct server, 1);
 	server->services = services;
 	server->folder = g_strdup(root_path);
@@ -97,14 +109,21 @@ int tty_init(int services, const gchar *root_path,
 	server->rx_mtu = TTY_RX_MTU;
 	server->tx_mtu = TTY_TX_MTU;
 
-	ret = obex_session_start(fd, server);
-	if (ret < 0) {
+	err = obex_session_start(fd, server);
+	if (err < 0) {
 		server_free(server);
-		close(fd);
+		goto failed;
 	} else
 		tty_needs_reinit = FALSE;
 
-	return ret;
+	debug("Successfully opened %s", devnode);
+
+	return 0;
+
+failed:
+	error("tty_init(): %s (%d)", strerror(-err), -err);
+	close(fd);
+	return err;
 }
 
 void tty_closed(void)
