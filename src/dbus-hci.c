@@ -703,14 +703,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		}
 	}
 
-	if (!alias) {
-		if (!name) {
-			alias = g_strdup(peer_addr);
-			g_strdelimit(alias, ":", '-');
-		} else
-			alias = g_strdup(name);
-	}
-
 	legacy = (data == NULL);
 
 	if (name && name_type != 0x08)

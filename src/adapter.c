@@ -2592,6 +2592,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	const char *icon, *paddr = peer_addr;
 	dbus_bool_t paired = FALSE;
 	dbus_int16_t rssi = dev->rssi;
+	char *alias;
 
 	ba2str(&dev->bdaddr, peer_addr);
 	ba2str(&adapter->bdaddr, local_addr);
@@ -2602,16 +2603,27 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 
 	icon = class_to_icon(dev->class);
 
+	if (!dev->alias) {
+		if (!dev->name) {
+			alias = g_strdup(peer_addr);
+			g_strdelimit(alias, ":", '-');
+		} else
+			alias = g_strdup(dev->name);
+	} else
+		alias = g_strdup(dev->alias);
+
 	emit_device_found(adapter->path, paddr,
 			"Address", DBUS_TYPE_STRING, &paddr,
 			"Class", DBUS_TYPE_UINT32, &dev->class,
 			"Icon", DBUS_TYPE_STRING, &icon,
 			"RSSI", DBUS_TYPE_INT16, &rssi,
 			"Name", DBUS_TYPE_STRING, &dev->name,
-			"Alias", DBUS_TYPE_STRING, &dev->alias,
+			"Alias", DBUS_TYPE_STRING, &alias,
 			"LegacyPairing", DBUS_TYPE_BOOLEAN, &dev->legacy,
 			"Paired", DBUS_TYPE_BOOLEAN, &paired,
 			NULL);
+
+	g_free(alias);
 }
 
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
