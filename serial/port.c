@@ -355,14 +355,88 @@ fail:
 	port->listener_id = 0;
 }
 
+static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
+{
+	struct serial_port *port = user_data;
+	struct serial_device *device = port->device;
+	sdp_record_t *record = NULL;
+	sdp_list_t *protos;
+	DBusMessage *reply;
+	GIOChannel *io;
+	GError *gerr = NULL;
+
+	if (err < 0) {
+		error("Unable to get service record: %s (%d)", strerror(-err),
+			-err);
+		reply = failed(port->msg, strerror(-err));
+		goto failed;
+	}
+
+	if (!recs || !recs->data) {
+		error("No record found");
+		reply = failed(port->msg, "No record found");
+		goto failed;
+	}
+
+	record = recs->data;
+
+	if (sdp_get_access_protos(record, &protos) < 0) {
+		error("Unable to get access protos from port record");
+		reply = failed(port->msg, "Invalid channel");
+		goto failed;
+	}
+
+	port->channel = sdp_get_proto_port(protos, RFCOMM_UUID);
+
+	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
+	sdp_list_free(protos, NULL);
+
+	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, port,
+				NULL, &gerr,
+				BT_IO_OPT_SOURCE_BDADDR, &device->src,
+				BT_IO_OPT_DEST_BDADDR, &device->dst,
+				BT_IO_OPT_CHANNEL, port->channel,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		error("%s", gerr->message);
+		reply = failed(port->msg, gerr->message);
+		g_error_free(gerr);
+		goto failed;
+	}
+
+	g_io_channel_unref(io);
+
+	return;
+
+failed:
+	g_dbus_remove_watch(device->conn, port->listener_id);
+	port->listener_id = 0;
+	g_dbus_send_message(device->conn, reply);
+}
+
+static int connect_port(struct serial_port *port)
+{
+	struct serial_device *device = port->device;
+	uuid_t uuid;
+	int err;
+
+	err = bt_string2uuid(&uuid, port->uuid);
+	if (err < 0)
+		return err;
+
+	sdp_uuid128_to_uuid(&uuid);
+
+	return bt_search_service(&device->src, &device->dst, &uuid,
+				get_record_cb, port, NULL);
+}
+
 static DBusMessage *port_connect(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct serial_device *device = user_data;
 	struct serial_port *port;
 	const char *uuid;
-	GIOChannel *io;
-	GError *err = NULL;
+	int err;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &uuid,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -381,24 +455,16 @@ static DBusMessage *port_connect(DBusConnection *conn,
 						NULL);
 	port->msg = dbus_message_ref(msg);
 
-	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, port,
-				NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &device->src,
-				BT_IO_OPT_DEST_BDADDR, &device->dst,
-				BT_IO_OPT_CHANNEL, port->channel,
-				BT_IO_OPT_INVALID);
-	if (!io) {
+	err = connect_port(port);
+	if (err < 0) {
 		DBusMessage *reply;
 
-		error("%s", err->message);
+		error("%s", strerror(-err));
 		g_dbus_remove_watch(conn, port->listener_id);
 		port->listener_id = 0;
-		reply = failed(msg, err->message);
-		g_error_free(err);
+		reply = failed(msg, strerror(-err));
 		return reply;
 	}
-
-	g_io_channel_unref(io);
 
 	return NULL;
 }
