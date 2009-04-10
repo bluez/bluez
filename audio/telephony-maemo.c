@@ -899,6 +899,24 @@ static void handle_outgoing_call(DBusMessage *msg)
 					EV_CALLSETUP_OUTGOING);
 }
 
+/* Convenience function for determining the value of the "call" indicator */
+static gboolean single_call(struct csd_call *call)
+{
+	GSList *l;
+
+	for (l = calls; l != NULL; l = l->next) {
+		struct csd_call *c = l->data;
+
+		if (c == call)
+			continue;
+
+		if (c->status != CSD_CALL_STATUS_IDLE)
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
 static void handle_call_status(DBusMessage *msg, const char *call_path)
 {
 	struct csd_call *call, *active_call;
@@ -938,7 +956,7 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 							EV_CALLSETUP_INACTIVE);
 			if (!call->originating)
 				telephony_calling_stopped_ind();
-		} else
+		} else if (single_call(call))
 			telephony_update_indicator(maemo_indicators, "call",
 							EV_CALL_INACTIVE);
 
@@ -986,8 +1004,10 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 							"callheld",
 							EV_CALLHELD_NONE);
 		} else {
-			telephony_update_indicator(maemo_indicators, "call",
-							EV_CALL_ACTIVE);
+			if (single_call(call))
+				telephony_update_indicator(maemo_indicators,
+								"call",
+								EV_CALL_ACTIVE);
 			telephony_update_indicator(maemo_indicators,
 							"callsetup",
 							EV_CALLSETUP_INACTIVE);
