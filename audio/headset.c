@@ -1336,14 +1336,38 @@ failed:
 		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 }
 
+static void headset_set_channel(struct headset *headset,
+				const sdp_record_t *record, uint16_t svc)
+{
+	int ch;
+	sdp_list_t *protos;
+
+	if (sdp_get_access_protos(record, &protos) < 0) {
+		error("Unable to get access protos from headset record");
+		return;
+	}
+
+	ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+
+	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
+	sdp_list_free(protos, NULL);
+
+	if (ch > 0) {
+		headset->rfcomm_ch = ch;
+		debug("Discovered %s service on RFCOMM channel %d",
+			svc == HEADSET_SVCLASS_ID ? "Headset" : "Handsfree",
+			ch);
+	} else
+		error("Unable to get RFCOMM channel from Headset record");
+}
+
 static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct audio_device *dev = user_data;
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
-	int ch = -1;
 	sdp_record_t *record = NULL;
-	sdp_list_t *protos, *classes = NULL;
+	sdp_list_t *classes = NULL;
 	uuid_t uuid;
 
 	if (err < 0) {
@@ -1385,20 +1409,12 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		hs->hsp_handle = record->handle;
 	}
 
-	if (!sdp_get_access_protos(record, &protos)) {
-		ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
-					NULL);
-		sdp_list_free(protos, NULL);
-		protos = NULL;
-	}
+	headset_set_channel(hs, record, uuid.value.uuid16);
 
-	if (ch == -1) {
+	if (hs->rfcomm_ch == -1) {
 		error("Unable to extract RFCOMM channel from service record");
 		goto failed_not_supported;
 	}
-
-	hs->rfcomm_ch = ch;
 
 	err = rfcomm_connect(dev, NULL, NULL, NULL);
 	if (err < 0) {
@@ -1469,6 +1485,9 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 				BT_IO_OPT_DEST_BDADDR, &dev->dst,
 				BT_IO_OPT_CHANNEL, hs->rfcomm_ch,
 				BT_IO_OPT_INVALID);
+
+	hs->rfcomm_ch = -1;
+
 	if (!io) {
 		error("%s", err->message);
 		g_error_free(err);
@@ -1979,31 +1998,6 @@ static GDBusSignalTable headset_signals[] = {
 	{ NULL, NULL }
 };
 
-static void headset_set_channel(struct headset *headset,
-				const sdp_record_t *record, uint16_t svc)
-{
-	int ch;
-	sdp_list_t *protos;
-
-	if (sdp_get_access_protos(record, &protos) < 0) {
-		error("Unable to get access protos from headset record");
-		return;
-	}
-
-	ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-
-	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
-	sdp_list_free(protos, NULL);
-
-	if (ch > 0) {
-		headset->rfcomm_ch = ch;
-		debug("Discovered %s service on RFCOMM channel %d",
-			svc == HEADSET_SVCLASS_ID ? "Headset" : "Handsfree",
-			ch);
-	} else
-		error("Unable to get RFCOMM channel from Headset record");
-}
-
 void headset_update(struct audio_device *dev, uint16_t svc,
 			const char *uuidstr)
 {
@@ -2044,8 +2038,6 @@ void headset_update(struct audio_device *dev, uint16_t svc,
 		debug("Invalid record passed to headset_update");
 		return;
 	}
-
-	headset_set_channel(headset, record, svc);
 }
 
 static void headset_free(struct audio_device *dev)
@@ -2127,7 +2119,6 @@ struct headset *headset_init(struct audio_device *dev, uint16_t svc,
 		return NULL;
 	}
 
-	headset_set_channel(hs, record, svc);
 register_iface:
 	if (!g_dbus_register_interface(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE,
