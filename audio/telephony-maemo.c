@@ -243,6 +243,23 @@ static struct csd_call *find_call(const char *path)
 	return NULL;
 }
 
+static struct csd_call *find_non_held_call(void)
+{
+	GSList *l;
+
+	for (l = calls; l != NULL; l = l->next) {
+		struct csd_call *call = l->data;
+
+		if (call->status == CSD_CALL_STATUS_IDLE)
+			continue;
+
+		if (call->status != CSD_CALL_STATUS_HOLD)
+			return call;
+	}
+
+	return NULL;
+}
+
 static struct csd_call *find_active_call(void)
 {
 	GSList *l;
@@ -1020,7 +1037,7 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		break;
 	case CSD_CALL_STATUS_HOLD:
 		call->on_hold = TRUE;
-		if (find_call_with_status(CSD_CALL_STATUS_ACTIVE))
+		if (find_non_held_call())
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_MULTIPLE);
