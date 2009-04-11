@@ -833,6 +833,9 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	const gchar *name;
 	DBusError derr;
+	gboolean *got_reply = user_data;
+
+	*got_reply = TRUE;
 
 	/* Received a reply after the agent exited */
 	if (!agent)
@@ -870,16 +873,7 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 static gboolean auth_error(GIOChannel *io, GIOCondition cond,
 			gpointer user_data)
 {
-	DBusMessage *msg;
-
 	agent->auth_pending = FALSE;
-
-	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
-					"org.openobex.Agent", "Cancel");
-
-	dbus_connection_send_with_reply(connection, msg, NULL, -1);
-
-	dbus_message_unref(msg);
 
 	return FALSE;
 }
@@ -897,6 +891,7 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	const gchar *bda = address;
 	gchar *path;
 	guint watch;
+	gboolean got_reply;
 
 	if (!agent)
 		return -1;
@@ -940,6 +935,7 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	dbus_message_unref(msg);
 
 	agent->auth_pending = TRUE;
+	got_reply = FALSE;
 
 	/* Catches errors before authorization response comes */
 	io = g_io_channel_unix_new(fd);
@@ -948,7 +944,7 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 			auth_error, NULL, NULL);
 	g_io_channel_unref(io);
 
-	dbus_pending_call_set_notify(call, agent_reply, NULL, NULL);
+	dbus_pending_call_set_notify(call, agent_reply, &got_reply, NULL);
 
 	/* Workaround: process events while agent doesn't reply */
 	while (agent && agent->auth_pending)
@@ -956,7 +952,15 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 
 	g_source_remove(watch);
 
-	dbus_pending_call_cancel(call);
+	if (!got_reply) {
+		dbus_pending_call_cancel(call);
+		msg = dbus_message_new_method_call(agent->bus_name,
+							agent->path,
+							"org.openobex.Agent",
+							"Cancel");
+		g_dbus_send_message(connection, msg);
+	}
+
 	dbus_pending_call_unref(call);
 
 	if (!agent || !agent->new_name)
