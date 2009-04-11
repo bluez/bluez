@@ -1394,7 +1394,7 @@ static DBusMessage *request_session(DBusConnection *conn,
 		return dbus_message_new_method_return(msg);
 
 	ret = agent_confirm_mode_change(adapter->agent, mode2str(new_mode),
-					confirm_mode_cb, req);
+					confirm_mode_cb, req, NULL);
 	if (ret < 0) {
 		session_unref(req);
 		return failed_strerror(msg, -ret);
@@ -2945,7 +2945,8 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 
 	dev_path = device_get_path(device);
 
-	return agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth);
+	return agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth,
+									NULL);
 }
 
 int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,

@@ -77,6 +77,7 @@ struct agent_request {
 	DBusPendingCall *call;
 	void *cb;
 	void *user_data;
+	GDestroyNotify destroy;
 };
 
 static DBusConnection *connection = NULL;
@@ -127,6 +128,8 @@ static void agent_request_free(struct agent_request *req)
 		dbus_pending_call_unref(req->call);
 	if (req->agent && req->agent->request)
 		req->agent->request = NULL;
+	if (req->destroy)
+		req->destroy(req->user_data);
 	g_free(req);
 }
 
@@ -216,7 +219,8 @@ int agent_destroy(struct agent *agent, gboolean exited)
 static struct agent_request *agent_request_new(struct agent *agent,
 						agent_request_type_t type,
 						void *cb,
-						void *user_data)
+						void *user_data,
+						GDestroyNotify destroy)
 {
 	struct agent_request *req;
 
@@ -226,6 +230,7 @@ static struct agent_request *agent_request_new(struct agent *agent,
 	req->type = type;
 	req->cb = cb;
 	req->user_data = user_data;
+	req->destroy = destroy;
 
 	return req;
 }
@@ -332,7 +337,8 @@ int agent_authorize(struct agent *agent,
 			const char *path,
 			const char *uuid,
 			agent_cb cb,
-			void *user_data)
+			void *user_data,
+			GDestroyNotify destroy)
 {
 	struct agent_request *req;
 	int err;
@@ -340,7 +346,8 @@ int agent_authorize(struct agent *agent,
 	if (agent->request)
 		return -EBUSY;
 
-	req = agent_request_new(agent, AGENT_REQUEST_AUTHORIZE, cb, user_data);
+	req = agent_request_new(agent, AGENT_REQUEST_AUTHORIZE, cb,
+							user_data, destroy);
 
 	err = agent_call_authorize(req, path, uuid);
 	if (err < 0) {
@@ -451,7 +458,8 @@ static int pincode_request_new(struct agent_request *req, const char *device_pat
 }
 
 int agent_request_pincode(struct agent *agent, struct btd_device *device,
-				agent_pincode_cb cb, void *user_data)
+				agent_pincode_cb cb, void *user_data,
+				GDestroyNotify destroy)
 {
 	struct agent_request *req;
 	const gchar *dev_path = device_get_path(device);
@@ -460,7 +468,8 @@ int agent_request_pincode(struct agent *agent, struct btd_device *device,
 	if (agent->request)
 		return -EBUSY;
 
-	req = agent_request_new(agent, AGENT_REQUEST_PINCODE, cb, user_data);
+	req = agent_request_new(agent, AGENT_REQUEST_PINCODE, cb,
+							user_data, destroy);
 
 	err = pincode_request_new(req, dev_path, FALSE);
 	if (err < 0)
@@ -502,7 +511,8 @@ static int confirm_mode_change_request_new(struct agent_request *req,
 }
 
 int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
-				agent_cb cb, void *user_data)
+				agent_cb cb, void *user_data,
+				GDestroyNotify destroy)
 {
 	struct agent_request *req;
 	int err;
@@ -514,7 +524,7 @@ int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 			agent->name, agent->path, new_mode);
 
 	req = agent_request_new(agent, AGENT_REQUEST_CONFIRM_MODE,
-				cb, user_data);
+				cb, user_data, destroy);
 
 	err = confirm_mode_change_request_new(req, new_mode);
 	if (err < 0)
@@ -605,7 +615,8 @@ static int passkey_request_new(struct agent_request *req,
 }
 
 int agent_request_passkey(struct agent *agent, struct btd_device *device,
-				agent_passkey_cb cb, void *user_data)
+				agent_passkey_cb cb, void *user_data,
+				GDestroyNotify destroy)
 {
 	struct agent_request *req;
 	const gchar *dev_path = device_get_path(device);
@@ -617,7 +628,8 @@ int agent_request_passkey(struct agent *agent, struct btd_device *device,
 	debug("Calling Agent.RequestPasskey: name=%s, path=%s",
 			agent->name, agent->path);
 
-	req = agent_request_new(agent, AGENT_REQUEST_PASSKEY, cb, user_data);
+	req = agent_request_new(agent, AGENT_REQUEST_PASSKEY, cb,
+							user_data, destroy);
 
 	err = passkey_request_new(req, dev_path);
 	if (err < 0)
@@ -663,7 +675,7 @@ static int confirmation_request_new(struct agent_request *req,
 
 int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 				uint32_t passkey, agent_cb cb,
-				void *user_data)
+				void *user_data, GDestroyNotify destroy)
 {
 	struct agent_request *req;
 	const gchar *dev_path = device_get_path(device);
@@ -676,7 +688,7 @@ int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 			agent->name, agent->path, passkey);
 
 	req = agent_request_new(agent, AGENT_REQUEST_CONFIRMATION, cb,
-				user_data);
+				user_data, destroy);
 
 	err = confirmation_request_new(req, dev_path, passkey);
 	if (err < 0)

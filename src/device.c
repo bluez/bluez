@@ -1958,15 +1958,15 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 	switch (type) {
 	case AUTH_TYPE_PINCODE:
 		ret = agent_request_pincode(agent, device, pincode_cb,
-					auth);
+								auth, NULL);
 		break;
 	case AUTH_TYPE_PASSKEY:
 		ret = agent_request_passkey(agent, device, passkey_cb,
-					auth);
+								auth, NULL);
 		break;
 	case AUTH_TYPE_CONFIRM:
 		ret = agent_request_confirmation(agent, device, passkey,
-					confirm_cb, auth);
+						confirm_cb, auth, NULL);
 		break;
 	case AUTH_TYPE_NOTIFY:
 		ret = agent_display_passkey(agent, device, passkey);

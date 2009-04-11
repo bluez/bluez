@@ -42,20 +42,24 @@ struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 int agent_destroy(struct agent *agent, gboolean exited);
 
 int agent_authorize(struct agent *agent, const char *path,
-			const char *uuid, agent_cb cb, void *user_data);
+			const char *uuid, agent_cb cb, void *user_data,
+			GDestroyNotify destroy);
 
 int agent_request_pincode(struct agent *agent, struct btd_device *device,
-				agent_pincode_cb cb, void *user_data);
+				agent_pincode_cb cb, void *user_data,
+				GDestroyNotify destroy);
 
 int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
-				agent_cb cb, void *user_data);
+				agent_cb cb, void *user_data,
+				GDestroyNotify destroy);
 
 int agent_request_passkey(struct agent *agent, struct btd_device *device,
-				agent_passkey_cb cb, void *user_data);
+				agent_passkey_cb cb, void *user_data,
+				GDestroyNotify destroy);
 
 int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 				uint32_t passkey, agent_cb cb,
-				void *user_data);
+				void *user_data, GDestroyNotify destroy);
 
 int agent_display_passkey(struct agent *agent, struct btd_device *device,
 				uint32_t passkey);
