@@ -2931,7 +2931,7 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 	agent = device_get_agent(device);
 
 	if (!agent)
-		agent =  adapter->agent;
+		agent = adapter->agent;
 
 	if (!agent)
 		return -EPERM;
