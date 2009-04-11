@@ -2066,6 +2066,8 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	debug("AVDTP: incoming connect from %s", address);
 
 	session = avdtp_get_internal(&src, &dst);
+	if (!session)
+		goto drop;
 
 	if (session->pending_open && session->pending_open->open_acp) {
 		if (!bt_io_accept(chan, avdtp_connect_cb, session, NULL, NULL))
