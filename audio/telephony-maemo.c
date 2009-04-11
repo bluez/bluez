@@ -919,7 +919,7 @@ static gboolean single_call(struct csd_call *call)
 
 static void handle_call_status(DBusMessage *msg, const char *call_path)
 {
-	struct csd_call *call, *active_call;
+	struct csd_call *call;
 	dbus_uint32_t status, cause_type, cause;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -946,7 +946,7 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	debug("Call %s changed from %s to %s", call_path,
 		call_status_str[call->status], call_status_str[status]);
 
-	active_call = find_call_with_status(CSD_CALL_STATUS_ACTIVE);
+	call->status = (int) status;
 
 	switch (status) {
 	case CSD_CALL_STATUS_IDLE:
@@ -991,10 +991,6 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_ACTIVE:
 		if (call->on_hold) {
 			call->on_hold = FALSE;
-			/* Set the status already here since otherwise
-			 * find_call_with_status will match this call even
-			 * though it shouldn't */
-			call->status = (int) status;
 			if (find_call_with_status(CSD_CALL_STATUS_HOLD))
 				telephony_update_indicator(maemo_indicators,
 							"callheld",
@@ -1024,7 +1020,7 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		break;
 	case CSD_CALL_STATUS_HOLD:
 		call->on_hold = TRUE;
-		if (active_call && active_call != call)
+		if (find_call_with_status(CSD_CALL_STATUS_ACTIVE))
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_MULTIPLE);
@@ -1039,10 +1035,6 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		break;
 	case CSD_CALL_STATUS_TERMINATED:
 		if (call->on_hold) {
-			/* Set the status already here since otherwise
-			 * find_call_with_status will match this call even
-			 * though it shouldn't */
-			call->status = (int) status;
 			if (!find_call_with_status(CSD_CALL_STATUS_HOLD))
 				telephony_update_indicator(maemo_indicators,
 								"callheld",
@@ -1055,8 +1047,6 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		error("Unknown call status %u", status);
 		break;
 	}
-
-	call->status = (int) status;
 }
 
 static void get_operator_name_reply(DBusPendingCall *pending_call,
