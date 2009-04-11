@@ -614,7 +614,7 @@ static gboolean disconnect_timeout(gpointer user_data)
 	stream_setup = session->stream_setup;
 	session->stream_setup = FALSE;
 
-	dev = manager_get_device(&session->server->src, &session->dst);
+	dev = manager_get_device(&session->server->src, &session->dst, FALSE);
 
 	if (dev && dev->sink && stream_setup)
 		sink_setup_stream(dev->sink, session);
@@ -711,7 +711,7 @@ static void avdtp_set_state(struct avdtp *session,
 	session->state = new_state;
 
 	avdtp_get_peers(session, &src, &dst);
-	dev = manager_get_device(&src, &dst);
+	dev = manager_get_device(&src, &dst, FALSE);
 	if (dev == NULL) {
 		error("avdtp_set_state(): no matching audio device");
 		return;
@@ -1223,7 +1223,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	}
 
 	avdtp_get_peers(session, &src, &dst);
-	dev = manager_get_device(&src, &dst);
+	dev = manager_get_device(&src, &dst, FALSE);
 	if (!dev) {
 		error("Unable to get a audio device object");
 		goto failed;
@@ -2080,7 +2080,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	dev = manager_get_device(&src, &dst);
+	dev = manager_get_device(&src, &dst, TRUE);
 	if (!dev) {
 		error("Unable to get audio device object for %s", address);
 		goto drop;

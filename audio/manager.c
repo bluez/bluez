@@ -455,7 +455,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 		remote_uuid = HFP_HS_UUID;
 	}
 
-	device = manager_get_device(&src, &dst);
+	device = manager_get_device(&src, &dst, TRUE);
 	if (!device)
 		goto drop;
 
@@ -543,7 +543,7 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 	remote_uuid = HFP_AG_UUID;
 	svclass = HANDSFREE_AGW_SVCLASS_ID;
 
-	device = manager_get_device(&src, &dst);
+	device = manager_get_device(&src, &dst, TRUE);
 	if (!device)
 		goto drop;
 
@@ -735,7 +735,7 @@ static int audio_probe(struct btd_device *device, GSList *uuids)
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst);
 
-	audio_dev = manager_get_device(&src, &dst);
+	audio_dev = manager_get_device(&src, &dst, TRUE);
 	if (!audio_dev) {
 		debug("audio_probe: unable to get a device object");
 		return -1;
@@ -1133,7 +1133,8 @@ struct audio_device *manager_find_device(const char *path,
 }
 
 struct audio_device *manager_get_device(const bdaddr_t *src,
-					const bdaddr_t *dst)
+					const bdaddr_t *dst,
+					gboolean create)
 {
 	struct audio_device *dev;
 	struct btd_adapter *adapter;
@@ -1144,6 +1145,9 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 	dev = manager_find_device(NULL, src, dst, NULL, FALSE);
 	if (dev)
 		return dev;
+
+	if (!create)
+		return NULL;
 
 	ba2str(src, addr);
 

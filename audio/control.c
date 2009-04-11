@@ -736,7 +736,7 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	dev = manager_get_device(&src, &dst);
+	dev = manager_get_device(&src, &dst, TRUE);
 	if (!dev) {
 		error("Unable to get audio device object for %s", address);
 		goto drop;
