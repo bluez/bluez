@@ -1,3 +1,15 @@
+ver 4.35:
+	Add support for Handsfree profile headset role.
+	Add additional checks for open SEIDs from clients.
+	Fix device removal while audio IPC client is connected.
+	Fix device removal when an authorization request is pending.
+	Fix incoming AVDTP connect while authorization in progress.
+	Fix disconnection timers for audio support.
+	Fix various potential NULL pointer deferences.
+	Fix callheld indicator value for multiple calls.
+	Fix voice number type usage.
+	Fix GDBus watch handling.
+
 ver 4.34:
 	Add support for version checks of plugins.
 	Add support for class property on adapter interface.
