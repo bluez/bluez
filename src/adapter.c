@@ -87,6 +87,7 @@ struct session_req {
 struct service_auth {
 	service_auth_cb cb;
 	void *user_data;
+	struct btd_device *device;
 };
 
 struct btd_adapter {
@@ -995,6 +996,13 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 			ADAPTER_INTERFACE, "DeviceRemoved",
 			DBUS_TYPE_OBJECT_PATH, &dev_path,
 			DBUS_TYPE_INVALID);
+
+	agent = device_get_agent(device);
+	if (!agent)
+		agent = adapter->agent;
+
+	if (agent && device_is_authorizing(device))
+		agent_cancel(agent);
 
 	agent = device_get_agent(device);
 
@@ -2891,9 +2899,9 @@ static void agent_auth_cb(struct agent *agent, DBusError *derr,
 {
 	struct service_auth *auth = user_data;
 
-	auth->cb(derr, auth->user_data);
+	device_set_authorizing(auth->device, FALSE);
 
-	g_free(auth);
+	auth->cb(derr, auth->user_data);
 }
 
 static int btd_adapter_authorize(struct btd_adapter *adapter,
@@ -2907,6 +2915,7 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 	char address[18];
 	gboolean trusted;
 	const gchar *dev_path;
+	int err;
 
 	ba2str(dst, address);
 	device = adapter_find_device(adapter, address);
@@ -2942,11 +2951,16 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 
 	auth->cb = cb;
 	auth->user_data = user_data;
+	auth->device = device;
 
 	dev_path = device_get_path(device);
 
-	return agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth,
-									NULL);
+	err = agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth, g_free);
+
+	if (err == 0)
+		device_set_authorizing(device, TRUE);
+
+	return err;
 }
 
 int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
@@ -2989,6 +3003,7 @@ int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
 	struct btd_device *device;
 	struct agent *agent;
 	char address[18];
+	int err;
 
 	if (!adapter)
 		return -EPERM;
@@ -3006,12 +3021,17 @@ int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
 	agent = device_get_agent(device);
 
 	if (!agent)
-		agent =  adapter->agent;
+		agent = adapter->agent;
 
 	if (!agent)
 		return -EPERM;
 
-	return agent_cancel(agent);
+	err = agent_cancel(agent);
+
+	if (err == 0)
+		device_set_authorizing(device, FALSE);
+
+	return err;
 }
 
 static gchar *adapter_any_path = NULL;

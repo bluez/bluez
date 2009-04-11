@@ -114,6 +114,8 @@ struct btd_device {
 	sdp_list_t	*tmp_records;
 
 	gboolean	renewed_key;
+
+	gboolean	authorizing;
 };
 
 struct browse_req {
@@ -2041,6 +2043,16 @@ void device_cancel_authentication(struct btd_device *device, gboolean aborted)
 gboolean device_is_authenticating(struct btd_device *device)
 {
 	return (device->authr != NULL);
+}
+
+gboolean device_is_authorizing(struct btd_device *device)
+{
+	return device->authorizing;
+}
+
+void device_set_authorizing(struct btd_device *device, gboolean auth)
+{
+	device->authorizing = auth;
 }
 
 void device_set_renewed_key(struct btd_device *device, gboolean renewed)
