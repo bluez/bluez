@@ -204,6 +204,8 @@ static inline int telephony_update_indicator(struct indicator *indicators,
 	if (!ind)
 		return -ENOENT;
 
+	debug("Telephony indicator \"%s\" %d->%d", desc, ind->val, new_val);
+
 	ind->val = new_val;
 
 	return telephony_event_ind(i);
