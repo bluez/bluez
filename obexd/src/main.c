@@ -161,7 +161,7 @@ static GOptionEntry options[] = {
 	{ "symlinks", 'l', 0, G_OPTION_ARG_NONE, &option_symlinks,
 				"Enable symlinks on root folder" },
 	{ "capability", 'c', 0, G_OPTION_ARG_STRING, &option_capability,
-				"Sepcify capability file", "FILE" },
+				"Specify capability file", "FILE" },
 	{ "tty", 't', 0, G_OPTION_ARG_STRING, &option_devnode,
 				"Specify the TTY device", "DEVICE" },
 	{ "auto-accept", 'a', 0, G_OPTION_ARG_NONE, &option_autoaccept,
