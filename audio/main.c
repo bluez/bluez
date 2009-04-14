@@ -89,7 +89,8 @@ static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
 		goto drop;
 	}
 
-	device = manager_find_device(NULL, &src, &dst, NULL, FALSE);
+	device = manager_find_device(NULL, &src, &dst, AUDIO_HEADSET_INTERFACE,
+					FALSE);
 	if (!device)
 		goto drop;
 
