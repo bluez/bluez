@@ -78,6 +78,7 @@ struct serial_port {
 	char		*uuid;		/* service identification */
 	char		*dev;		/* RFCOMM device name */
 	int		fd;		/* Opened file descriptor */
+	GIOChannel	*io;		/* BtIO channel */
 	guint		listener_id;
 	struct serial_device *device;
 };
@@ -134,6 +135,15 @@ static int port_release(struct serial_port *port)
 	int rfcomm_ctl;
 	int err = 0;
 
+	if (port->id < 0) {
+		if (port->io) {
+			g_io_channel_shutdown(port->io, TRUE, NULL);
+			g_io_channel_unref(port->io);
+			port->io = NULL;
+		}
+		return 0;
+	}
+
 	debug("Serial port %s released", port->dev);
 
 	rfcomm_ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
@@ -175,8 +185,7 @@ static void serial_port_free(struct serial_port *port)
 	if (device && port->listener_id > 0)
 		g_dbus_remove_watch(device->conn, port->listener_id);
 
-	if (port->id >= 0)
-		port_release(port);
+	port_release(port);
 
 	g_free(port->uuid);
 	g_free(port);
@@ -194,8 +203,7 @@ static void port_owner_exited(DBusConnection *conn, void *user_data)
 {
 	struct serial_port *port = user_data;
 
-	if (port->id >= 0)
-		port_release(port);
+	port_release(port);
 
 	port->listener_id = 0;
 }
@@ -324,6 +332,9 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *conn_err,
 	bacpy(&req.dst, &device->dst);
 	req.channel = port->channel;
 
+	g_io_channel_unref(port->io);
+	port->io = NULL;
+
 	sk = g_io_channel_unix_get_fd(chan);
 	port->id = ioctl(sk, RFCOMMCREATEDEV, &req);
 	if (port->id < 0) {
@@ -362,8 +373,10 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	sdp_record_t *record = NULL;
 	sdp_list_t *protos;
 	DBusMessage *reply;
-	GIOChannel *io;
 	GError *gerr = NULL;
+
+	if (!port->listener_id)
+		goto failed;
 
 	if (err < 0) {
 		error("Unable to get service record: %s (%d)", strerror(-err),
@@ -391,20 +404,18 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
 	sdp_list_free(protos, NULL);
 
-	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, port,
+	port->io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, port,
 				NULL, &gerr,
 				BT_IO_OPT_SOURCE_BDADDR, &device->src,
 				BT_IO_OPT_DEST_BDADDR, &device->dst,
 				BT_IO_OPT_CHANNEL, port->channel,
 				BT_IO_OPT_INVALID);
-	if (!io) {
+	if (!port->io) {
 		error("%s", gerr->message);
 		reply = failed(port->msg, gerr->message);
 		g_error_free(gerr);
 		goto failed;
 	}
-
-	g_io_channel_unref(io);
 
 	return;
 
@@ -492,8 +503,7 @@ static DBusMessage *port_disconnect(DBusConnection *conn,
 	if (!g_str_equal(owner, caller))
 		return failed(msg, "Operation not permited");
 
-	if (port->id >= 0)
-		port_release(port);
+	port_release(port);
 
 	g_dbus_remove_watch(conn, port->listener_id);
 	port->listener_id = 0;
