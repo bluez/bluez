@@ -11,11 +11,15 @@ Service		org.bluez
 Interface	org.bluez.Serial
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		string Connect(string uuid)
+Methods		string Connect(string pattern)
 
 			Connects to a specific RFCOMM based service on a
 			remote device and then creates a RFCOMM TTY
 			device for it. The RFCOMM TTY device is returned.
+
+			Possible patterns: UUID 128 bit as string
+					   Profile short names, e.g: spp, dun
+					   RFCOMM channel as string, 1-30
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.InProgress
@@ -30,7 +34,7 @@ Methods		string Connect(string uuid)
 			To abort a connection attempt in case of errors or
 			timeouts in the client it is fine to call this method.
 
-			In that case the UUID of the Connect method should
+			In that case one of patterns of the Connect method should
 			be suplied instead of the TTY device.
 
 			Possible errors: org.bluez.Error.InvalidArguments
