@@ -480,6 +480,9 @@ static unsigned int connect_cb_new(struct headset *hs,
 
 	pending_connect_init(hs, target_state);
 
+	if (!func)
+		return 0;
+
 	cb = g_new(struct connect_cb, 1);
 
 	cb->cb = func;
