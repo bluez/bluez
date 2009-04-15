@@ -102,13 +102,19 @@ static struct serial_device *find_device(GSList *devices, const char *path)
 static struct serial_port *find_port(GSList *ports, const char *pattern)
 {
 	GSList *l;
+	int channel;
+
+	channel = strtol(pattern, NULL, 10);
 
 	for (l = ports; l != NULL; l = l->next) {
 		struct serial_port *port = l->data;
 		char *uuid_str;
 		int ret;
 
-		if (!strcasecmp(port->uuid, pattern))
+		if (port->channel == channel)
+			return port;
+
+		if (port->uuid && !strcasecmp(port->uuid, pattern))
 			return port;
 
 		if (port->dev && !strcmp(port->dev, pattern))
@@ -119,9 +125,7 @@ static struct serial_port *find_port(GSList *ports, const char *pattern)
 			continue;
 
 		ret = strcasecmp(port->uuid, uuid_str);
-
 		g_free(uuid_str);
-
 		if (ret == 0)
 			return port;
 	}
@@ -431,6 +435,9 @@ static int connect_port(struct serial_port *port)
 	uuid_t uuid;
 	int err;
 
+	if (!port->uuid)
+		goto connect;
+
 	err = bt_string2uuid(&uuid, port->uuid);
 	if (err < 0)
 		return err;
@@ -439,6 +446,35 @@ static int connect_port(struct serial_port *port)
 
 	return bt_search_service(&device->src, &device->dst, &uuid,
 				get_record_cb, port, NULL);
+
+connect:
+	port->io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, port,
+				NULL, NULL,
+				BT_IO_OPT_SOURCE_BDADDR, &device->src,
+				BT_IO_OPT_DEST_BDADDR, &device->dst,
+				BT_IO_OPT_CHANNEL, port->channel,
+				BT_IO_OPT_INVALID);
+	if (port->io)
+		return 0;
+
+	return -errno;
+}
+
+static struct serial_port *create_port(struct serial_device *device,
+					const char *uuid, uint8_t channel)
+{
+	struct serial_port *port;
+
+	port = g_new0(struct serial_port, 1);
+	port->uuid = g_strdup(uuid);
+	port->channel = channel;
+	port->device = device;
+	port->id = -1;
+	port->fd = -1;
+
+	device->ports = g_slist_append(device->ports, port);
+
+	return port;
 }
 
 static DBusMessage *port_connect(DBusConnection *conn,
@@ -446,16 +482,20 @@ static DBusMessage *port_connect(DBusConnection *conn,
 {
 	struct serial_device *device = user_data;
 	struct serial_port *port;
-	const char *uuid;
+	const char *pattern;
 	int err;
 
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &uuid,
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 						DBUS_TYPE_INVALID) == FALSE)
 		return NULL;
 
-	port = find_port(device->ports, uuid);
-	if (!port)
-		return does_not_exist(msg, "Does not match");
+	port = find_port(device->ports, pattern);
+	if (!port) {
+		int channel = strtol(pattern, NULL, 10);
+		if (channel < 1 || channel > 30)
+			return does_not_exist(msg, "Does not match");
+		port = create_port(device, NULL, channel);
+	}
 
 	if (port->listener_id)
 		return failed(msg, "Port already in use");
