@@ -486,6 +486,11 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	}
 
 	sep = a2dp_source_get(session, rsep);
+	if (!sep) {
+		error("Unable to get a local source SEP");
+		goto failed;
+	}
+
 	id = a2dp_source_config(sink->session, sep, stream_setup_complete,
 				caps, sink);
 	if (id == 0)
