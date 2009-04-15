@@ -821,7 +821,7 @@ gboolean avrcp_connect(struct audio_device *dev)
 		return FALSE;
 	}
 
-	g_io_channel_unref(io);
+	session->io = io;
 
 	control->session = session;
 
