@@ -53,6 +53,7 @@ struct pending_request {
 };
 
 struct sink {
+	struct audio_device *dev;
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	unsigned int cb_id;
@@ -146,12 +147,16 @@ static void avdtp_state_callback(struct audio_device *dev,
 	sink->session_state = new_state;
 }
 
-static void pending_request_free(struct pending_request *pending)
+static void pending_request_free(struct audio_device *dev,
+					struct pending_request *pending)
 {
 	if (pending->conn)
 		dbus_connection_unref(pending->conn);
 	if (pending->msg)
 		dbus_message_unref(pending->msg);
+	if (pending->id)
+		a2dp_source_cancel(dev, pending->id);
+
 	g_free(pending);
 }
 
@@ -179,7 +184,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 
 			reply = dbus_message_new_method_return(p->msg);
 			g_dbus_send_message(p->conn, reply);
-			pending_request_free(p);
+			pending_request_free(dev, p);
 		}
 
 		if (sink->session) {
@@ -258,7 +263,7 @@ static gboolean stream_setup_retry(gpointer user_data)
 	}
 
 	sink->connect = NULL;
-	pending_request_free(pending);
+	pending_request_free(sink->dev, pending);
 
 	return FALSE;
 }
@@ -272,6 +277,8 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 
 	pending = sink->connect;
 
+	pending->id = 0;
+
 	if (stream) {
 		debug("Stream successfully created");
 
@@ -282,7 +289,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		}
 
 		sink->connect = NULL;
-		pending_request_free(pending);
+		pending_request_free(sink->dev, pending);
 
 		return;
 	}
@@ -298,7 +305,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		if (pending->msg)
 			error_failed(pending->conn, pending->msg, "Stream setup failed");
 		sink->connect = NULL;
-		pending_request_free(pending);
+		pending_request_free(sink->dev, pending);
 		debug("Stream setup failed : %s", avdtp_strerror(err));
 	}
 }
@@ -490,7 +497,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 failed:
 	if (pending->msg)
 		error_failed(pending->conn, pending->msg, "Stream setup failed");
-	pending_request_free(pending);
+	pending_request_free(sink->dev, pending);
 	sink->connect = NULL;
 	avdtp_unref(sink->session);
 	sink->session = NULL;
@@ -688,10 +695,10 @@ static void sink_free(struct audio_device *dev)
 		avdtp_unref(sink->session);
 
 	if (sink->connect)
-		pending_request_free(sink->connect);
+		pending_request_free(dev, sink->connect);
 
 	if (sink->disconnect)
-		pending_request_free(sink->disconnect);
+		pending_request_free(dev, sink->disconnect);
 
 	g_free(sink);
 	dev->sink = NULL;
@@ -715,6 +722,8 @@ void sink_unregister(struct audio_device *dev)
 
 struct sink *sink_init(struct audio_device *dev)
 {
+	struct sink *sink;
+
 	if (!g_dbus_register_interface(dev->conn, dev->path,
 					AUDIO_SINK_INTERFACE,
 					sink_methods, sink_signals, NULL,
@@ -728,7 +737,11 @@ struct sink *sink_init(struct audio_device *dev)
 		avdtp_callback_id = avdtp_add_state_cb(avdtp_state_callback,
 									NULL);
 
-	return g_new0(struct sink, 1);
+	sink = g_new0(struct sink, 1);
+
+	sink->dev = dev;
+
+	return sink;
 }
 
 gboolean sink_is_active(struct audio_device *dev)

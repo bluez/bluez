@@ -78,6 +78,7 @@ struct a2dp_setup_cb {
 };
 
 struct a2dp_setup {
+	struct audio_device *dev;
 	struct avdtp *session;
 	struct a2dp_sep *sep;
 	struct avdtp_stream *stream;
@@ -243,9 +244,8 @@ static struct a2dp_setup *find_setup_by_dev(struct audio_device *dev)
 
 	for (l = setups; l != NULL; l = l->next) {
 		struct a2dp_setup *setup = l->data;
-		struct audio_device *setup_dev = a2dp_get_dev(setup->session);
 
-		if (setup_dev == dev)
+		if (setup->dev == dev)
 			return setup;
 	}
 
@@ -1220,6 +1220,8 @@ gboolean a2dp_source_cancel(struct audio_device *dev, unsigned int id)
 	struct a2dp_setup *setup;
 	GSList *l;
 
+	debug("a2dp_source_cancel()");
+
 	setup = find_setup_by_dev(dev);
 	if (!setup)
 		return FALSE;
@@ -1234,7 +1236,7 @@ gboolean a2dp_source_cancel(struct audio_device *dev, unsigned int id)
 	}
 
 	if (!cb_data)
-		return FALSE;
+		error("a2dp_source_cancel: no matching callback with id %u", id);
 
 	setup->cb = g_slist_remove(setup->cb, cb_data);
 	g_free(cb_data);
@@ -1328,6 +1330,7 @@ unsigned int a2dp_source_config(struct avdtp *session, struct a2dp_sep *sep,
 	if (!setup) {
 		setup = g_new0(struct a2dp_setup, 1);
 		setup->session = avdtp_ref(session);
+		setup->dev = a2dp_get_dev(session);
 		setups = g_slist_append(setups, setup);
 	}
 
@@ -1412,6 +1415,7 @@ unsigned int a2dp_source_resume(struct avdtp *session, struct a2dp_sep *sep,
 	if (!setup) {
 		setup = g_new0(struct a2dp_setup, 1);
 		setup->session = avdtp_ref(session);
+		setup->dev = a2dp_get_dev(session);
 		setups = g_slist_append(setups, setup);
 	}
 
@@ -1470,6 +1474,7 @@ unsigned int a2dp_source_suspend(struct avdtp *session, struct a2dp_sep *sep,
 	if (!setup) {
 		setup = g_new0(struct a2dp_setup, 1);
 		setup->session = avdtp_ref(session);
+		setup->dev = a2dp_get_dev(session);
 		setups = g_slist_append(setups, setup);
 	}
 
