@@ -322,7 +322,7 @@ static void device_sink_cb(struct audio_device *dev,
 		}
 		if (priv->hs_state == HEADSET_STATE_DISCONNECTED)
 			device_set_state(dev, AUDIO_STATE_DISCONNECTED);
-		else if (old_state == AVDTP_SESSION_STATE_CONNECTING &&
+		else if (old_state == SINK_STATE_CONNECTING &&
 				priv->hs_state == HEADSET_STATE_CONNECTED)
 			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
