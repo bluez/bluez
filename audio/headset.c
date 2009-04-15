@@ -402,6 +402,11 @@ static int report_indicators(struct audio_device *device, const char *buf)
 	if (strlen(buf) < 8)
 		return -EINVAL;
 
+	if (ag.indicators == NULL) {
+		error("HFP AG indicators not initialized");
+		return headset_send(hs, "\r\nERROR\r\n");
+	}
+
 	if (buf[7] == '=')
 		str = indicator_ranges(ag.indicators);
 	else
