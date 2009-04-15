@@ -173,6 +173,9 @@ static DBusConnection *connection = NULL;
 
 static GSList *calls = NULL;
 
+/* Reference count for determining the call indicator status */
+static GSList *active_calls = NULL;
+
 static char *msisdn = NULL;	/* Subscriber number */
 static char *vmbx = NULL;	/* Voice mailbox number */
 
@@ -916,24 +919,6 @@ static void handle_outgoing_call(DBusMessage *msg)
 					EV_CALLSETUP_OUTGOING);
 }
 
-/* Convenience function for determining the value of the "call" indicator */
-static gboolean single_call(struct csd_call *call)
-{
-	GSList *l;
-
-	for (l = calls; l != NULL; l = l->next) {
-		struct csd_call *c = l->data;
-
-		if (c == call)
-			continue;
-
-		if (c->status != CSD_CALL_STATUS_IDLE)
-			return FALSE;
-	}
-
-	return TRUE;
-}
-
 static void handle_call_status(DBusMessage *msg, const char *call_path)
 {
 	struct csd_call *call;
@@ -973,9 +958,7 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 							EV_CALLSETUP_INACTIVE);
 			if (!call->originating)
 				telephony_calling_stopped_ind();
-		} else if (single_call(call))
-			telephony_update_indicator(maemo_indicators, "call",
-							EV_CALL_INACTIVE);
+		}
 
 		g_free(call->number);
 		call->number = NULL;
@@ -1017,7 +1000,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 							"callheld",
 							EV_CALLHELD_NONE);
 		} else {
-			if (single_call(call))
+			active_calls = g_slist_prepend(active_calls, call);
+			if (g_slist_length(active_calls) == 1)
 				telephony_update_indicator(maemo_indicators,
 								"call",
 								EV_CALL_ACTIVE);
@@ -1030,8 +1014,11 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		}
 		break;
 	case CSD_CALL_STATUS_MO_RELEASE:
-		break;
 	case CSD_CALL_STATUS_MT_RELEASE:
+		active_calls = g_slist_remove(active_calls, call);
+		if (g_slist_length(active_calls) == 0)
+			telephony_update_indicator(maemo_indicators, "call",
+							EV_CALL_INACTIVE);
 		break;
 	case CSD_CALL_STATUS_HOLD_INITIATED:
 		break;
