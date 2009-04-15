@@ -646,8 +646,12 @@ failed:
 	error("discovery failed");
 	unix_ipc_error(client, BT_GET_CAPABILITIES, EIO);
 
-	avdtp_unref(a2dp->session);
+	if (a2dp->sep) {
+		a2dp_sep_unlock(a2dp->sep, a2dp->session);
+		a2dp->sep = NULL;
+	}
 
+	avdtp_unref(a2dp->session);
 	a2dp->session = NULL;
 	a2dp->stream = NULL;
 }
@@ -710,6 +714,7 @@ failed:
 
 	a2dp->session = NULL;
 	a2dp->stream = NULL;
+	a2dp->sep = NULL;
 }
 
 static void a2dp_resume_complete(struct avdtp *session,
@@ -756,8 +761,12 @@ failed:
 		client->cb_id = 0;
 	}
 
-	avdtp_unref(a2dp->session);
+	if (a2dp->sep) {
+		a2dp_sep_unlock(a2dp->sep, a2dp->session);
+		a2dp->sep = NULL;
+	}
 
+	avdtp_unref(a2dp->session);
 	a2dp->session = NULL;
 	a2dp->stream = NULL;
 }
@@ -787,8 +796,12 @@ failed:
 
 	unix_ipc_error(client, BT_STOP_STREAM, EIO);
 
-	avdtp_unref(a2dp->session);
+	if (a2dp->sep) {
+		a2dp_sep_unlock(a2dp->sep, a2dp->session);
+		a2dp->sep = NULL;
+	}
 
+	avdtp_unref(a2dp->session);
 	a2dp->session = NULL;
 	a2dp->stream = NULL;
 }
