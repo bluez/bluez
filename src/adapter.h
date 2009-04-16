@@ -106,6 +106,7 @@ const gchar *adapter_get_path(struct btd_adapter *adapter);
 void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 void adapter_set_state(struct btd_adapter *adapter, int state);
 int adapter_get_state(struct btd_adapter *adapter);
+gboolean adapter_is_ready(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
 						struct remote_dev_info *match);
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,

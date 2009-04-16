@@ -37,6 +37,7 @@ int manager_register_adapter(int id, gboolean devup);
 int manager_unregister_adapter(int id);
 int manager_start_adapter(int id);
 int manager_stop_adapter(int id);
+void manager_add_adapter(const char *path);
 int manager_get_default_adapter();
 void manager_set_default_adapter(int id);
 int manager_update_adapter(uint16_t id, uint8_t svc, gboolean starting);

@@ -1243,7 +1243,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Class", DBUS_TYPE_UINT32, &class);
 
 	/* Powered */
-	value = adapter->up ? TRUE : FALSE;
+	value = (adapter->up && !adapter->off_requested) ? TRUE : FALSE;
 	dict_append_entry(&dict, "Powered", DBUS_TYPE_BOOLEAN, &value);
 
 	/* Discoverable */
@@ -2057,14 +2057,9 @@ static int adapter_up(struct btd_adapter *adapter, int dd)
 	}
 
 proceed:
-	if (dev_down == FALSE) {
+	if (dev_down == FALSE)
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 				1, &scan_mode);
-
-		emit_property_changed(connection, adapter->path,
-					ADAPTER_INTERFACE, "Powered",
-					DBUS_TYPE_BOOLEAN, &powered);
-	}
 
 	if (adapter->initialized == FALSE) {
 		load_drivers(adapter);
@@ -2077,12 +2072,18 @@ proceed:
 		adapter->initialized = TRUE;
 
 		adapter_update(adapter, 0, FALSE);
+
+		manager_add_adapter(adapter->path);
 	}
 
 	if (dev_down) {
 		ioctl(dd, HCIDEVDOWN, adapter->dev_id);
+		adapter->off_requested = TRUE;
 		return 1;
-	}
+	} else
+		emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Powered",
+					DBUS_TYPE_BOOLEAN, &powered);
 
 	return 0;
 }
@@ -2518,6 +2519,11 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 int adapter_get_state(struct btd_adapter *adapter)
 {
 	return adapter->state;
+}
+
+gboolean adapter_is_ready(struct btd_adapter *adapter)
+{
+	return adapter->initialized;
 }
 
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,

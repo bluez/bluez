@@ -227,6 +227,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	array = g_new0(char *, g_slist_length(adapters) + 1);
 	for (i = 0, list = adapters; list; list = list->next, i++) {
 		struct btd_adapter *adapter = list->data;
+
+		if (!adapter_is_ready(adapter))
+			continue;
+
 		array[i] = (char *) adapter_get_path(adapter);
 	}
 	dict_append_array(&dict, "Adapters", DBUS_TYPE_OBJECT_PATH, &array, i);
@@ -273,6 +277,10 @@ static void manager_update_adapters(void)
 	array = g_new0(char *, g_slist_length(adapters) + 1);
 	for (i = 0, list = adapters; list; list = list->next, i++) {
 		struct btd_adapter *adapter = list->data;
+
+		if (!adapter_is_ready(adapter))
+			continue;
+
 		array[i] = (char *) adapter_get_path(adapter);
 	}
 
@@ -405,22 +413,12 @@ GSList *manager_get_adapters(void)
 	return adapters;
 }
 
-static void manager_add_adapter(struct btd_adapter *adapter)
+void manager_add_adapter(const char *path)
 {
-	const gchar *path = adapter_get_path(adapter);
-
-	adapters = g_slist_append(adapters, adapter);
-
 	g_dbus_emit_signal(connection, "/",
 			MANAGER_INTERFACE, "AdapterAdded",
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
-
-	if (default_adapter_id < 0) {
-		int new_default = hci_get_route(NULL);
-
-		manager_set_default_adapter(new_default);
-	}
 
 	manager_update_adapters();
 }
@@ -439,7 +437,7 @@ int manager_register_adapter(int id, gboolean devup)
 	if (!adapter)
 		return -1;
 
-	manager_add_adapter(adapter);
+	adapters = g_slist_append(adapters, adapter);
 
 	return 0;
 }
