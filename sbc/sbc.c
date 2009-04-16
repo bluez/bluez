@@ -360,7 +360,7 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
  *  -4   Bitpool value out of bounds
  */
 static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
-				size_t len)
+								size_t len)
 {
 	unsigned int consumed;
 	/* Will copy the parts of the header that are relevant to crc
@@ -522,7 +522,7 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 }
 
 static void sbc_decoder_init(struct sbc_decoder_state *state,
-				const struct sbc_frame *frame)
+					const struct sbc_frame *frame)
 {
 	int i, ch;
 
@@ -623,7 +623,7 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 }
 
 static int sbc_synthesize_audio(struct sbc_decoder_state *state,
-				struct sbc_frame *frame)
+						struct sbc_frame *frame)
 {
 	int ch, blk;
 
@@ -648,7 +648,7 @@ static int sbc_synthesize_audio(struct sbc_decoder_state *state,
 }
 
 static int sbc_analyze_audio(struct sbc_encoder_state *state,
-				struct sbc_frame *frame)
+						struct sbc_frame *frame)
 {
 	int ch, blk;
 	int16_t *x;
@@ -732,9 +732,9 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
  * -99 not implemented
  */
 
-static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(
-	uint8_t *data, struct sbc_frame *frame, size_t len,
-	int frame_subbands, int frame_channels)
+static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(uint8_t *data,
+					struct sbc_frame *frame, size_t len,
+					int frame_subbands, int frame_channels)
 {
 	/* Bitstream writer starts from the fourth byte */
 	uint8_t *data_ptr = data + 4;
@@ -921,7 +921,7 @@ static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len)
 }
 
 static void sbc_encoder_init(struct sbc_encoder_state *state,
-				const struct sbc_frame *frame)
+					const struct sbc_frame *frame)
 {
 	memset(&state->X, 0, sizeof(state->X));
 	state->position = (SBC_X_BUFFER_SIZE - frame->subbands * 9) & ~7;
@@ -978,10 +978,8 @@ ssize_t sbc_parse(sbc_t *sbc, const void *input, size_t input_len)
 	return sbc_decode(sbc, input, input_len, NULL, 0, NULL);
 }
 
-ssize_t sbc_decode(sbc_t *sbc,
-		   const void *input, size_t input_len,
-		   void *output, size_t output_len,
-		   size_t *written)
+ssize_t sbc_decode(sbc_t *sbc, const void *input, size_t input_len,
+			void *output, size_t output_len, size_t *written)
 {
 	struct sbc_priv *priv;
 	char *ptr;
@@ -1046,10 +1044,8 @@ ssize_t sbc_decode(sbc_t *sbc,
 	return framelen;
 }
 
-ssize_t sbc_encode(sbc_t *sbc,
-		   const void *input, size_t input_len,
-		   void *output, size_t output_len,
-		   size_t *written)
+ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
+			void *output, size_t output_len, size_t *written)
 {
 	struct sbc_priv *priv;
 	int framelen, samples;
