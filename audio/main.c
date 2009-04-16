@@ -107,10 +107,11 @@ static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
 	sk = g_io_channel_unix_get_fd(chan);
 	fcntl(sk, F_SETFL, 0);
 
-	if (headset_connect_sco(device, chan) == 0) {
-		debug("Accepted SCO connection from %s", addr);
-		headset_set_state(device, HEADSET_STATE_PLAYING);
-	}
+	if (headset_connect_sco(device, chan) < 0)
+		goto drop;
+
+	debug("Accepted SCO connection from %s", addr);
+	headset_set_state(device, HEADSET_STATE_PLAYING);
 
 	return;
 

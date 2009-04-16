@@ -577,7 +577,6 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	sk = g_io_channel_unix_get_fd(chan);
 
 	debug("SCO fd=%d", sk);
-	hs->sco = g_io_channel_ref(chan);
 
 	if (p) {
 		p->io = NULL;
@@ -623,7 +622,7 @@ static int sco_connect(struct audio_device *dev, headset_stream_cb_t cb,
 		return -EIO;
 	}
 
-	g_io_channel_unref(io);
+	hs->sco = io;
 
 	headset_set_state(dev, HEADSET_STATE_PLAY_IN_PROGRESS);
 
@@ -1168,11 +1167,14 @@ static void close_sco(struct audio_device *device)
 	struct headset *hs = device->headset;
 
 	if (hs->sco) {
-		g_source_remove(hs->sco_id);
-		hs->sco_id = 0;
 		g_io_channel_shutdown(hs->sco, TRUE, NULL);
 		g_io_channel_unref(hs->sco);
 		hs->sco = NULL;
+	}
+
+	if (hs->sco_id) {
+		g_source_remove(hs->sco_id);
+		hs->sco_id = 0;
 	}
 }
 
@@ -2228,7 +2230,7 @@ unsigned int headset_request_stream(struct audio_device *dev,
 	struct headset *hs = dev->headset;
 	unsigned int id;
 
-	if (hs->rfcomm && hs->sco) {
+	if (hs->state == HEADSET_STATE_PLAYING) {
 		id = connect_cb_new(hs, HEADSET_STATE_PLAYING, cb, user_data);
 		g_idle_add((GSourceFunc) dummy_connect_complete, dev);
 		return id;
@@ -2247,7 +2249,7 @@ unsigned int headset_request_stream(struct audio_device *dev,
 		if (rfcomm_connect(dev, cb, user_data, &id) < 0)
 			return 0;
 		hs->auto_dc = TRUE;
-	} else {
+	} else if (hs->sco == NULL) {
 		if (sco_connect(dev, cb, user_data, &id) < 0)
 			return 0;
 	}
