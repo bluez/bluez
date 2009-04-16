@@ -20,7 +20,6 @@ LDADD = $(top_builddir)/common/libhelper.a \
 
 if ALSA
 alsadir = $(libdir)/alsa-lib
-alsaconfdir = $(sysconfdir)/alsa
 
 alsa_LTLIBRARIES = libasound_module_pcm_bluetooth.la libasound_module_ctl_bluetooth.la
 
@@ -34,7 +33,11 @@ libasound_module_ctl_bluetooth_la_LDFLAGS = -module -avoid-version #-export-symb
 libasound_module_ctl_bluetooth_la_LIBADD = @BLUEZ_LIBS@ @ALSA_LIBS@
 libasound_module_ctl_bluetooth_la_CFLAGS = @ALSA_CFLAGS@ @BLUEZ_CFLAGS@
 
+if CONFIGFILES
+alsaconfdir = $(sysconfdir)/alsa
+
 alsaconf_DATA = bluetooth.conf
+endif
 endif
 
 if GSTREAMER
