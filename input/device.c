@@ -1185,6 +1185,29 @@ int input_device_unregister(const char *path, const char *uuid)
 	return 0;
 }
 
+static int input_device_connadd(struct input_device *idev,
+				struct input_conn *iconn)
+{
+	int err;
+
+	err = input_device_connected(idev, iconn);
+	if (err == 0)
+		return 0;
+
+	if (iconn->ctrl_io) {
+		g_io_channel_shutdown(iconn->ctrl_io, FALSE, NULL);
+		g_io_channel_unref(iconn->ctrl_io);
+		iconn->ctrl_io = NULL;
+	}
+	if (iconn->intr_io) {
+		g_io_channel_shutdown(iconn->intr_io, FALSE, NULL);
+		g_io_channel_unref(iconn->intr_io);
+		iconn->intr_io = NULL;
+	}
+
+	return err;
+}
+
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 								GIOChannel *io)
 {
@@ -1211,6 +1234,9 @@ int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 		break;
 	}
 
+	if (iconn->intr_io && iconn->ctrl_io)
+		input_device_connadd(idev, iconn);
+
 	return 0;
 }
 
@@ -1233,39 +1259,4 @@ int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst)
 		g_io_channel_shutdown(iconn->ctrl_io, TRUE, NULL);
 
 	return 0;
-}
-
-int input_device_connadd(const bdaddr_t *src, const bdaddr_t *dst)
-{
-	struct input_device *idev;
-	struct input_conn *iconn;
-	int err;
-
-	idev = find_device(src, dst);
-	if (!idev)
-		return -ENOENT;
-
-	iconn = find_connection(idev->connections, "hid");
-	if (!iconn)
-		return -ENOENT;
-
-	err = input_device_connected(idev, iconn);
-	if (err < 0)
-		goto error;
-
-	return 0;
-
-error:
-	if (iconn->ctrl_io) {
-		g_io_channel_shutdown(iconn->ctrl_io, FALSE, NULL);
-		g_io_channel_unref(iconn->ctrl_io);
-		iconn->ctrl_io = NULL;
-	}
-	if (iconn->intr_io) {
-		g_io_channel_shutdown(iconn->intr_io, FALSE, NULL);
-		g_io_channel_unref(iconn->intr_io);
-		iconn->intr_io = NULL;
-	}
-
-	return err;
 }

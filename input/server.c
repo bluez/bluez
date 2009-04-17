@@ -43,37 +43,19 @@
 #include "server.h"
 
 static GSList *servers = NULL;
-struct server {
+struct input_server {
 	bdaddr_t src;
 	GIOChannel *ctrl;
 	GIOChannel *intr;
-};
-
-struct authorization_data {
-	bdaddr_t src;
-	bdaddr_t dst;
+	GIOChannel *confirm;
 };
 
 static gint server_cmp(gconstpointer s, gconstpointer user_data)
 {
-	const struct server *server = s;
+	const struct input_server *server = s;
 	const bdaddr_t *src = user_data;
 
 	return bacmp(&server->src, src);
-}
-
-static void auth_callback(DBusError *derr, void *user_data)
-{
-	struct authorization_data *auth = user_data;
-
-	if (derr) {
-		error("Access denied: %s", derr->message);
-
-		input_device_close_channels(&auth->src, &auth->dst);
-	} else
-		input_device_connadd(&auth->src, &auth->dst);
-
-	g_free(auth);
 }
 
 static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
@@ -103,66 +85,128 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 	debug("Incoming connection on PSM %d", psm);
 
 	ret = input_device_set_channel(&src, &dst, psm, chan);
-	if (ret < 0) {
-		/* Send unplug virtual cable to unknown devices */
-		if (ret == -ENOENT && psm == L2CAP_PSM_HIDP_CTRL) {
-			unsigned char unplug = 0x15;
-			int err, sk = g_io_channel_unix_get_fd(chan);
-			err = write(sk, &unplug, sizeof(unplug));
-		}
-		g_io_channel_shutdown(chan, TRUE, NULL);
+	if (ret == 0)
 		return;
+
+	/* Send unplug virtual cable to unknown devices */
+	if (ret == -ENOENT && psm == L2CAP_PSM_HIDP_CTRL) {
+		unsigned char unplug = 0x15;
+		int err, sk = g_io_channel_unix_get_fd(chan);
+		err = write(sk, &unplug, sizeof(unplug));
 	}
 
-	if (psm == L2CAP_PSM_HIDP_INTR) {
-		struct authorization_data *auth;
+	g_io_channel_shutdown(chan, TRUE, NULL);
+}
 
-		auth = g_new0(struct authorization_data, 1);
-		bacpy(&auth->src, &src);
-		bacpy(&auth->dst, &dst);
+static void auth_callback(DBusError *derr, void *user_data)
+{
+	struct input_server *server = user_data;
+	bdaddr_t src, dst;
+	GError *err = NULL;
 
-		ret = btd_request_authorization(&src, &dst, HID_UUID,
-							auth_callback, auth);
-		if (ret < 0) {
-			g_free(auth);
-			input_device_close_channels(&src, &dst);
-		}
+	bt_io_get(server->confirm, BT_IO_L2CAP, &err,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		goto reject;
 	}
+
+	if (derr) {
+		error("Access denied: %s", derr->message);
+		goto reject;
+	}
+
+	if (!bt_io_accept(server->confirm, connect_event_cb, server,
+				NULL, &err)) {
+		error("bt_io_accept: %s", err->message);
+		g_error_free(err);
+		goto reject;
+	}
+
+	g_io_channel_unref(server->confirm);
+	server->confirm = NULL;
+
+	return;
+
+reject:
+	g_io_channel_shutdown(server->confirm, TRUE, NULL);
+	g_io_channel_unref(server->confirm);
+	server->confirm = NULL;
+	input_device_close_channels(&src, &dst);
+}
+
+static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
+{
+	struct input_server *server = user_data;
+	bdaddr_t src, dst;
+	GError *err = NULL;
+	int ret;
+
+	bt_io_get(chan, BT_IO_L2CAP, &err,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		goto drop;
+	}
+
+	if (server->confirm) {
+		error("Refusing connection: setup in progress");
+		goto drop;
+	}
+
+	server->confirm = g_io_channel_ref(chan);
+
+	ret = btd_request_authorization(&src, &dst, HID_UUID,
+					auth_callback, server);
+	if (ret == 0)
+		return;
+
+	g_io_channel_unref(server->confirm);
+	server->confirm = NULL;
+
+drop:
+	input_device_close_channels(&src, &dst);
+	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
 int server_start(const bdaddr_t *src)
 {
-	struct server *server;
-	GIOChannel *ctrl_io, *intr_io;
+	struct input_server *server;
 	GError *err = NULL;
 
-	ctrl_io = bt_io_listen(BT_IO_L2CAP, connect_event_cb, NULL,
-				NULL, NULL, &err,
+	server = g_new0(struct input_server, 1);
+	bacpy(&server->src, src);
+
+	server->ctrl = bt_io_listen(BT_IO_L2CAP, connect_event_cb, NULL,
+				server, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
 				BT_IO_OPT_INVALID);
-	if (!ctrl_io) {
+	if (!server->ctrl) {
 		error("Failed to listen on control channel");
 		g_error_free(err);
+		g_free(server);
 		return -1;
 	}
 
-	intr_io = bt_io_listen(BT_IO_L2CAP, connect_event_cb, NULL,
-				NULL, NULL, &err,
+	server->intr = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event_cb,
+				server, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, L2CAP_PSM_HIDP_INTR,
 				BT_IO_OPT_INVALID);
-	if (!intr_io) {
+	if (!server->intr) {
 		error("Failed to listen on interrupt channel");
-		g_io_channel_unref(ctrl_io);
+		g_io_channel_unref(server->ctrl);
 		g_error_free(err);
+		g_free(server);
 		return -1;
 	}
-
-	server = g_new0(struct server, 1);
-	bacpy(&server->src, src);
-	server->ctrl = ctrl_io;
-	server->intr = intr_io;
 
 	servers = g_slist_append(servers, server);
 
@@ -171,7 +215,7 @@ int server_start(const bdaddr_t *src)
 
 void server_stop(const bdaddr_t *src)
 {
-	struct server *server;
+	struct input_server *server;
 	GSList *l;
 
 	l = g_slist_find_custom(servers, src, server_cmp);
