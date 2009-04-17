@@ -2654,16 +2654,7 @@ int telephony_incoming_call_ind(const char *number, int type)
 
 	if (ag.features & AG_FEATURE_INBAND_RINGTONE && hs->hfp_active &&
 			hs->state != HEADSET_STATE_PLAYING) {
-		if (hs->state == HEADSET_STATE_CONNECTED) {
-			int ret;
-
-			ret = sco_connect(dev, NULL, NULL, NULL);
-			if (ret < 0)
-				return ret;
-		}
-
 		hs->pending_ring = TRUE;
-
 		return 0;
 	}
 
