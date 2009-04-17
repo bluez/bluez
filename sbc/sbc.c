@@ -534,6 +534,16 @@ static void sbc_decoder_init(struct sbc_decoder_state *state,
 			state->offset[ch][i] = (10 * i + 10);
 }
 
+static SBC_ALWAYS_INLINE int16_t sbc_clip16(int32_t s)
+{
+	if (s > 0x7FFF)
+		return 0x7FFF;
+	else if (s < -0x8000)
+		return -0x8000;
+	else
+		return s;
+}
+
 static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 				struct sbc_frame *frame, int ch, int blk)
 {
@@ -562,7 +572,7 @@ static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 		k = (i + 4) & 0xf;
 
 		/* Store in output, Q0 */
-		frame->pcm_sample[ch][blk * 4 + i] = SCALE4_STAGED1(
+		frame->pcm_sample[ch][blk * 4 + i] = sbc_clip16(SCALE4_STAGED1(
 			MULA(v[offset[i] + 0], sbc_proto_4_40m0[idx + 0],
 			MULA(v[offset[k] + 1], sbc_proto_4_40m1[idx + 0],
 			MULA(v[offset[i] + 2], sbc_proto_4_40m0[idx + 1],
@@ -572,7 +582,7 @@ static inline void sbc_synthesize_four(struct sbc_decoder_state *state,
 			MULA(v[offset[i] + 6], sbc_proto_4_40m0[idx + 3],
 			MULA(v[offset[k] + 7], sbc_proto_4_40m1[idx + 3],
 			MULA(v[offset[i] + 8], sbc_proto_4_40m0[idx + 4],
-			MUL( v[offset[k] + 9], sbc_proto_4_40m1[idx + 4])))))))))));
+			MUL( v[offset[k] + 9], sbc_proto_4_40m1[idx + 4]))))))))))));
 	}
 }
 
@@ -607,8 +617,8 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 	for (idx = 0, i = 0; i < 8; i++, idx += 5) {
 		k = (i + 8) & 0xf;
 
-		/* Store in output */
-		frame->pcm_sample[ch][blk * 8 + i] = SCALE8_STAGED1( // Q0
+		/* Store in output, Q0 */
+		frame->pcm_sample[ch][blk * 8 + i] = sbc_clip16(SCALE8_STAGED1(
 			MULA(state->V[ch][offset[i] + 0], sbc_proto_8_80m0[idx + 0],
 			MULA(state->V[ch][offset[k] + 1], sbc_proto_8_80m1[idx + 0],
 			MULA(state->V[ch][offset[i] + 2], sbc_proto_8_80m0[idx + 1],
@@ -618,7 +628,7 @@ static inline void sbc_synthesize_eight(struct sbc_decoder_state *state,
 			MULA(state->V[ch][offset[i] + 6], sbc_proto_8_80m0[idx + 3],
 			MULA(state->V[ch][offset[k] + 7], sbc_proto_8_80m1[idx + 3],
 			MULA(state->V[ch][offset[i] + 8], sbc_proto_8_80m0[idx + 4],
-			MUL( state->V[ch][offset[k] + 9], sbc_proto_8_80m1[idx + 4])))))))))));
+			MUL( state->V[ch][offset[k] + 9], sbc_proto_8_80m1[idx + 4]))))))))))));
 	}
 }
 
