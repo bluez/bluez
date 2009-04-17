@@ -1,3 +1,11 @@
+ver 4.36:
+	Add proper tracking of AVCTP connect attempts.
+	Add support to channel pattern in Serial interface.
+	Fix A2DP sink crash if removing device while connecting.
+	Fix error handling if HFP indicators aren't initialized.
+	Fix segfault while handling an incoming SCO connection.
+	Fix Serial.Disconnect to abort connection attempt.
+
 ver 4.35:
 	Add support for Handsfree profile headset role.
 	Add additional checks for open SEIDs from clients.
