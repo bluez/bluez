@@ -1065,7 +1065,7 @@ static void get_operator_name_reply(DBusPendingCall *pending_call,
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, reply)) {
-		error("%s get_operator_name failed: %s, %s",
+		error("get_operator_name failed: %s, %s",
 			err.name, err.message);
 		dbus_error_free(&err);
 		goto done;
