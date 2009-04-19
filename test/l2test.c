@@ -914,6 +914,14 @@ static void info_request(char *svr)
 			printf("  Streaming mode\n");
 		if (mask & 0x20)
 			printf("  FCS Option\n");
+		if (mask & 0x40)
+			printf("  Extended Flow Specification\n");
+		if (mask & 0x80)
+			printf("  Fixed Channels\n");
+		if (mask & 0x0100)
+			printf("  Extended Window Size\n");
+		if (mask & 0x0200)
+			printf("  Unicast Connectionless Data Reception\n");
 		break;
 	case 0x0001:
 		printf("Extended feature mask is not supported\n");
