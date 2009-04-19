@@ -2042,7 +2042,8 @@ static int adapter_up(struct btd_adapter *adapter, int dd)
 			goto proceed;
 		}
 
-		if (read_on_mode(srcaddr, mode, sizeof(mode)) < 0)
+		if (read_on_mode(srcaddr, mode, sizeof(mode)) < 0 ||
+						g_str_equal(mode, "off"))
 			write_device_mode(&adapter->bdaddr, "connectable");
 		else
 			write_device_mode(&adapter->bdaddr, mode);
