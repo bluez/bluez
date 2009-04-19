@@ -826,7 +826,7 @@ static void info_request(char *svr)
 	l2cap_info_req *req = (l2cap_info_req *) (buf + L2CAP_CMD_HDR_SIZE);
 	l2cap_info_rsp *rsp = (l2cap_info_rsp *) (buf + L2CAP_CMD_HDR_SIZE);
 	uint16_t mtu;
-	uint32_t mask;
+	uint32_t mask, channels;
 	struct sockaddr_l2 addr;
 	int sk, err;
 
@@ -856,7 +856,7 @@ static void info_request(char *svr)
 
 	memset(buf, 0, sizeof(buf));
 	cmd->code  = L2CAP_INFO_REQ;
-	cmd->ident = 42;
+	cmd->ident = 141;
 	cmd->len   = htobs(2);
 	req->type  = htobs(0x0001);
 
@@ -883,7 +883,7 @@ static void info_request(char *svr)
 
 	memset(buf, 0, sizeof(buf));
 	cmd->code  = L2CAP_INFO_REQ;
-	cmd->ident = 42;
+	cmd->ident = 142;
 	cmd->len   = htobs(2);
 	req->type  = htobs(0x0002);
 
@@ -925,6 +925,35 @@ static void info_request(char *svr)
 		break;
 	case 0x0001:
 		printf("Extended feature mask is not supported\n");
+		break;
+	}
+
+	if (!(mask & 0x80))
+		goto failed;
+
+	memset(buf, 0, sizeof(buf));
+	cmd->code  = L2CAP_INFO_REQ;
+	cmd->ident = 143;
+	cmd->len   = htobs(2);
+	req->type  = htobs(0x0003);
+
+	if (send(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_REQ_SIZE, 0) < 0) {
+		perror("Can't send info request");
+		goto failed;
+	}
+
+	err = recv(sk, buf, L2CAP_CMD_HDR_SIZE + L2CAP_INFO_RSP_SIZE + 8, 0);
+	if (err < 0) {
+		perror("Can't receive info response");
+		goto failed;
+	}
+
+	switch (btohs(rsp->result)) {
+	case 0x0000:
+		channels = btohl(bt_get_unaligned((uint32_t *) rsp->data));
+		printf("Fixed channels list is 0x%04x\n", channels);
+	case 0x0001:
+		printf("Fixed channels list is not supported\n");
 		break;
 	}
 
