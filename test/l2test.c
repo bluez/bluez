@@ -908,6 +908,12 @@ static void info_request(char *svr)
 			printf("  Retransmission mode\n");
 		if (mask & 0x04)
 			printf("  Bi-directional QoS\n");
+		if (mask & 0x08)
+			printf("  Enhanced Retransmission mode\n");
+		if (mask & 0x10)
+			printf("  Streaming mode\n");
+		if (mask & 0x20)
+			printf("  FCS Option\n");
 		break;
 	case 0x0001:
 		printf("Extended feature mask is not supported\n");
