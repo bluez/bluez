@@ -762,7 +762,7 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 	if (device->bonding)
 		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
 
-	if (!device->temporary && remove_stored)
+	if (remove_stored)
 		device_remove_stored(device, conn);
 
 	for (list = device->drivers; list; list = list->next) {
