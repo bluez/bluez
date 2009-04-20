@@ -116,6 +116,7 @@ struct btd_device {
 	gboolean	renewed_key;
 
 	gboolean	authorizing;
+	gint		ref;
 };
 
 struct browse_req {
@@ -137,6 +138,7 @@ static uint16_t uuid_list[] = {
 	0
 };
 
+static DBusConnection *connection = NULL;
 static GSList *device_drivers = NULL;
 
 static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
@@ -192,6 +194,8 @@ static void device_free(gpointer user_data)
 
 	if (device->discov_timer)
 		g_source_remove(device->discov_timer);
+
+	debug("device_free(%p)", device);
 
 	g_free(device->path);
 	g_free(device);
@@ -628,6 +632,9 @@ struct btd_device *device_create(DBusConnection *conn,
 	bdaddr_t src;
 	char srcaddr[18];
 
+	if (!connection)
+		connection = conn;
+
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
 		return NULL;
@@ -654,7 +661,7 @@ struct btd_device *device_create(DBusConnection *conn,
 
 	device->auth = 0xff;
 
-	return device;
+	return btd_device_ref(device);
 }
 
 void device_set_name(struct btd_device *device, const char *name)
@@ -755,9 +762,8 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 {
 	GSList *list;
 	struct btd_device_driver *driver;
-	gchar *path = g_strdup(device->path);
 
-	debug("Removing device %s", path);
+	debug("Removing device %s", device->path);
 
 	if (device->bonding)
 		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
@@ -773,10 +779,7 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 		g_free(driver_data);
 	}
 
-
-	g_dbus_unregister_interface(conn, path, DEVICE_INTERFACE);
-
-	g_free(path);
+	btd_device_unref(device);
 }
 
 gint device_address_cmp(struct btd_device *device, const gchar *address)
@@ -2108,4 +2111,31 @@ int btd_register_device_driver(struct btd_device_driver *driver)
 void btd_unregister_device_driver(struct btd_device_driver *driver)
 {
 	device_drivers = g_slist_remove(device_drivers, driver);
+}
+
+struct btd_device *btd_device_ref(struct btd_device *device)
+{
+	device->ref++;
+
+	debug("btd_device_ref(%p): ref=%d", device, device->ref);
+
+	return device;
+}
+
+void btd_device_unref(struct btd_device *device)
+{
+	gchar *path;
+
+	device->ref--;
+
+	debug("btd_device_unref(%p): ref=%d", device, device->ref);
+
+	if (device->ref > 0)
+		return;
+
+	path = g_strdup(device->path);
+
+	g_dbus_unregister_interface(connection, path, DEVICE_INTERFACE);
+
+	g_free(path);
 }

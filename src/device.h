@@ -93,3 +93,6 @@ struct btd_device_driver {
 
 int btd_register_device_driver(struct btd_device_driver *driver);
 void btd_unregister_device_driver(struct btd_device_driver *driver);
+
+struct btd_device *btd_device_ref(struct btd_device *device);
+void btd_device_unref(struct btd_device *device);
