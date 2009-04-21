@@ -36,5 +36,5 @@ struct bluetooth_plugin_desc {
 		extern struct bluetooth_plugin_desc bluetooth_plugin_desc \
 				__attribute__ ((visibility("default"))); \
 		struct bluetooth_plugin_desc bluetooth_plugin_desc = { \
-			name, version, priority, init, exit \
+			#name, version, priority, init, exit \
 		};

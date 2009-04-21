@@ -123,5 +123,5 @@ static void netlink_exit(void)
 	nl_handle_destroy(handle);
 }
 
-BLUETOOTH_PLUGIN_DEFINE("netlink", VERSION,
+BLUETOOTH_PLUGIN_DEFINE(netlink, VERSION,
 			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, netlink_init, netlink_exit)

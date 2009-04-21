@@ -859,5 +859,5 @@ static void service_exit(void)
 	dbus_connection_unref(connection);
 }
 
-BLUETOOTH_PLUGIN_DEFINE("service", VERSION,
+BLUETOOTH_PLUGIN_DEFINE(service, VERSION,
 			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, service_init, service_exit)
