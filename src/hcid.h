@@ -68,6 +68,7 @@ struct main_opts {
 
 extern struct main_opts main_opts;
 
+void device_event(int event, int dev_id);
 void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
 
 void start_security_manager(int hdev);
