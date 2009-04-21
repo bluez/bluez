@@ -101,10 +101,10 @@ struct indicator {
 };
 
 struct gateway {
+	gateway_state_t state;
 	GIOChannel *rfcomm;
 	guint rfcomm_watch_id;
 	GIOChannel *sco;
-	GIOChannel *sco_server;
 	gateway_stream_cb_t sco_start_cb;
 	void *sco_start_cb_data;
 	DBusMessage *connect_message;
@@ -559,32 +559,24 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 	gw->rfcomm = chan;
 
 	if (establish_service_level_conn(dev->gateway)) {
-		GIOChannel *sco_server = bt_io_listen(BT_IO_SCO, sco_connect_cb,
-					NULL, dev, NULL, NULL,
-					BT_IO_OPT_SOURCE_BDADDR, &dev->src,
-					BT_IO_OPT_INVALID);
+		gboolean value = TRUE;
 
-		if (sco_server) {
-			gboolean value = TRUE;
-			debug("%s: Connected to %s", dev->path, gw_addr);
-			rfcomm_start_watch(dev);
-			gw->sco_server = sco_server;
-			if (conn_mes) {
-				DBusMessage *reply =
+		debug("%s: Connected to %s", dev->path, gw_addr);
+		rfcomm_start_watch(dev);
+		if (conn_mes) {
+			DBusMessage *reply =
 				dbus_message_new_method_return(conn_mes);
-				dbus_connection_send(dev->conn, reply, NULL);
-				dbus_message_unref(reply);
-				dbus_message_unref(conn_mes);
-				gw->connect_message = NULL;
-			}
+			dbus_connection_send(dev->conn, reply, NULL);
+			dbus_message_unref(reply);
+			dbus_message_unref(conn_mes);
+			gw->connect_message = NULL;
+		}
 
-			emit_property_changed(dev->conn, dev->path,
-					AUDIO_GATEWAY_INTERFACE,
-					"Connected", DBUS_TYPE_BOOLEAN,	&value);
-			return;
-		} else
-			error("%s: Failed to setup SCO server socket",
-						dev->path);
+		gw->state = GATEWAY_STATE_CONNECTED;
+		emit_property_changed(dev->conn, dev->path,
+				AUDIO_GATEWAY_INTERFACE,
+				"Connected", DBUS_TYPE_BOOLEAN,	&value);
+		return;
 	} else
 		error("%s: Failed to establish service layer connection to %s",
 			dev->path, gw_addr);
@@ -1061,13 +1053,15 @@ struct gateway *gateway_init(struct audio_device *dev)
 	gw->indies = NULL;
 	gw->is_dialing = FALSE;
 	gw->call_active = FALSE;
+	gw->state = GATEWAY_STATE_DISCONNECTED;
 	return gw;
 
 }
 
 gboolean gateway_is_connected(struct audio_device *dev)
 {
-	return (dev && dev->gateway && dev->gateway->rfcomm);
+	return (dev && dev->gateway &&
+			dev->gateway->state == GATEWAY_STATE_CONNECTED);
 }
 
 int gateway_connect_rfcomm(struct audio_device *dev, GIOChannel *io)
@@ -1077,6 +1071,18 @@ int gateway_connect_rfcomm(struct audio_device *dev, GIOChannel *io)
 
 	g_io_channel_ref(io);
 	dev->gateway->rfcomm = io;
+
+	return 0;
+}
+
+int gateway_connect_sco(struct audio_device *dev, GIOChannel *io)
+{
+	struct gateway *gw = dev->gateway;
+
+	if (gw->sco)
+		return -EISCONN;
+
+	gw->sco = g_io_channel_ref(io);
 
 	return 0;
 }
@@ -1096,7 +1102,6 @@ int gateway_close(struct audio_device *device)
 	struct gateway *gw = device->gateway;
 	GIOChannel *rfcomm = gw->rfcomm;
 	GIOChannel *sco = gw->sco;
-	GIOChannel *sco_server = gw->sco_server;
 	gboolean value = FALSE;
 
 	g_slist_foreach(gw->indies, (GFunc) indicator_slice_free, NULL);
@@ -1115,11 +1120,7 @@ int gateway_close(struct audio_device *device)
 		gw->sco_start_cb_data = NULL;
 	}
 
-	if (sco_server) {
-		g_io_channel_close(sco_server);
-		g_io_channel_unref(sco_server);
-		gw->sco_server = NULL;
-	}
+	gw->state = GATEWAY_STATE_DISCONNECTED;
 
 	emit_property_changed(device->conn, device->path,
 				AUDIO_GATEWAY_INTERFACE,

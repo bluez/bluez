@@ -27,10 +27,16 @@
 #define DEFAULT_HSP_HS_CHANNEL 6
 #define DEFAULT_HFP_HS_CHANNEL 7
 
+typedef enum {
+	GATEWAY_STATE_DISCONNECTED,
+	GATEWAY_STATE_CONNECTED
+} gateway_state_t;
+
 typedef void (*gateway_stream_cb_t) (struct audio_device *dev, void *user_data);
 struct gateway *gateway_init(struct audio_device *device);
 gboolean gateway_is_connected(struct audio_device *dev);
 int gateway_connect_rfcomm(struct audio_device *dev, GIOChannel *chan);
+int gateway_connect_sco(struct audio_device *dev, GIOChannel *chan);
 void gateway_start_service(struct audio_device *device);
 gboolean gateway_request_stream(struct audio_device *dev,
 			gateway_stream_cb_t cb, void *user_data);
