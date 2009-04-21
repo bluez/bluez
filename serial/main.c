@@ -55,4 +55,5 @@ static void serial_exit(void)
 	dbus_connection_unref(connection);
 }
 
-BLUETOOTH_PLUGIN_DEFINE("serial", VERSION, serial_init, serial_exit)
+BLUETOOTH_PLUGIN_DEFINE("serial", VERSION,
+			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, serial_init, serial_exit)

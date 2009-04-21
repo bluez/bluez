@@ -43,8 +43,17 @@ static GSList *plugins = NULL;
 
 struct bluetooth_plugin {
 	void *handle;
+	gboolean active;
 	struct bluetooth_plugin_desc *desc;
 };
+
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct bluetooth_plugin *plugin1 = a;
+	const struct bluetooth_plugin *plugin2 = b;
+
+	return plugin2->desc->priority - plugin1->desc->priority;
+}
 
 static gboolean add_plugin(void *handle, struct bluetooth_plugin_desc *desc)
 {
@@ -63,14 +72,10 @@ static gboolean add_plugin(void *handle, struct bluetooth_plugin_desc *desc)
 		return FALSE;
 
 	plugin->handle = handle;
+	plugin->active = FALSE;
 	plugin->desc = desc;
 
-	if (desc->init() < 0) {
-		g_free(plugin);
-		return FALSE;
-	}
-
-	plugins = g_slist_append(plugins, plugin);
+	plugins = g_slist_insert_sorted(plugins, plugin, compare_priority);
 
 	return TRUE;
 }
@@ -98,6 +103,7 @@ static gboolean is_disabled(const char *name, char **list)
 
 gboolean plugin_init(GKeyFile *config)
 {
+	GSList *list;
 	GDir *dir;
 	const gchar *file;
 	gchar **disabled;
@@ -171,6 +177,15 @@ gboolean plugin_init(GKeyFile *config)
 
 	g_strfreev(disabled);
 
+	for (list = plugins; list; list = list->next) {
+		struct bluetooth_plugin *plugin = list->data;
+
+		if (plugin->desc->init() < 0)
+			continue;
+
+		plugin->active = TRUE;
+	}
+
 	return TRUE;
 }
 
@@ -183,7 +198,7 @@ void plugin_cleanup(void)
 	for (list = plugins; list; list = list->next) {
 		struct bluetooth_plugin *plugin = list->data;
 
-		if (plugin->desc->exit)
+		if (plugin->active == TRUE && plugin->desc->exit)
 			plugin->desc->exit();
 
 		dlclose(plugin->handle);
