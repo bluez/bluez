@@ -30,6 +30,7 @@
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -43,6 +44,8 @@
 #include "error.h"
 #include "sink.h"
 #include "dbus-common.h"
+#include "../src/adapter.h"
+#include "../src/device.h"
 
 #define STREAM_SETUP_RETRY_TIMER 2
 
@@ -57,6 +60,7 @@ struct sink {
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	unsigned int cb_id;
+	guint dc_id;
 	avdtp_session_state_t session_state;
 	avdtp_state_t stream_state;
 	sink_state_t state;
@@ -134,6 +138,8 @@ static void avdtp_state_callback(struct audio_device *dev,
 			emit_property_changed(dev->conn, dev->path,
 					AUDIO_SINK_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
+			device_remove_disconnect_watch(dev->btd_dev,
+							sink->dc_id);
 		}
 		sink_set_state(dev, SINK_STATE_DISCONNECTED);
 		break;
@@ -158,6 +164,16 @@ static void pending_request_free(struct audio_device *dev,
 		a2dp_source_cancel(dev, pending->id);
 
 	g_free(pending);
+}
+
+static void disconnect_cb(struct btd_device *btd_dev, void *user_data)
+{
+	struct audio_device *device = user_data;
+	struct sink *sink = device->sink;
+
+	debug("Sink: disconnect %s", device->path);
+
+	avdtp_close(sink->session, sink->stream);
 }
 
 static void stream_state_changed(struct avdtp_stream *stream,
@@ -206,6 +222,9 @@ static void stream_state_changed(struct avdtp_stream *stream,
 						AUDIO_SINK_INTERFACE,
 						"Connected",
 						DBUS_TYPE_BOOLEAN, &value);
+			sink->dc_id = device_add_disconnect_watch(dev->btd_dev,
+								disconnect_cb,
+								dev, NULL);
 		} else if (old_state == AVDTP_STATE_STREAMING) {
 			value = FALSE;
 			g_dbus_emit_signal(dev->conn, dev->path,

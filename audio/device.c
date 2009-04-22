@@ -45,6 +45,8 @@
 
 #include "logging.h"
 #include "textfile.h"
+#include "../src/adapter.h"
+#include "../src/device.h"
 
 #include "error.h"
 #include "ipc.h"
@@ -95,6 +97,8 @@ static void device_free(struct audio_device *dev)
 
 	if (dev->conn)
 		dbus_connection_unref(dev->conn);
+
+	btd_device_unref(dev->btd_dev);
 
 	if (priv) {
 		if (priv->control_timer)
@@ -535,6 +539,7 @@ static GDBusSignalTable dev_signals[] = {
 };
 
 struct audio_device *audio_device_register(DBusConnection *conn,
+					struct btd_device *device,
 					const char *path, const bdaddr_t *src,
 					const bdaddr_t *dst)
 {
@@ -545,6 +550,7 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 
 	dev = g_new0(struct audio_device, 1);
 
+	dev->btd_dev = btd_device_ref(device);
 	dev->path = g_strdup(path);
 	bacpy(&dev->dst, dst);
 	bacpy(&dev->src, src);

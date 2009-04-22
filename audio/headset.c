@@ -137,6 +137,7 @@ struct headset {
 	GIOChannel *tmp_rfcomm;
 	GIOChannel *sco;
 	guint sco_id;
+	guint dc_id;
 
 	gboolean auto_dc;
 
@@ -2386,6 +2387,15 @@ static int headset_close_rfcomm(struct audio_device *dev)
 	return 0;
 }
 
+static void disconnect_cb(struct btd_device *btd_dev, void *user_data)
+{
+	struct audio_device *device = user_data;
+
+	info("Headset: disconnect %s", device->path);
+
+	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
+}
+
 void headset_set_state(struct audio_device *dev, headset_state_t state)
 {
 	struct headset *hs = dev->headset;
@@ -2418,6 +2428,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 
 		telephony_device_disconnected(dev);
 		active_devices = g_slist_remove(active_devices, dev);
+		device_remove_disconnect_watch(dev->btd_dev, hs->dc_id);
 		break;
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
 		emit_property_changed(dev->conn, dev->path,
@@ -2442,6 +2453,9 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 						DBUS_TYPE_BOOLEAN, &value);
 			active_devices = g_slist_append(active_devices, dev);
 			telephony_device_connected(dev);
+			hs->dc_id = device_add_disconnect_watch(dev->btd_dev,
+								disconnect_cb,
+								dev, NULL);
 		} else if (hs->state == HEADSET_STATE_PLAYING) {
 			value = FALSE;
 			g_dbus_emit_signal(dev->conn, dev->path,

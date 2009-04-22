@@ -71,6 +71,7 @@ struct audio_device {
 };
 
 struct audio_device *audio_device_register(DBusConnection *conn,
+					struct btd_device *device,
 					const char *path, const bdaddr_t *src,
 					const bdaddr_t *dst);
 

@@ -1168,11 +1168,9 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 
 	path = device_get_path(device);
 
-	dev = audio_device_register(connection, path, src, dst);
+	dev = audio_device_register(connection, device, path, src, dst);
 	if (!dev)
 		return NULL;
-
-	dev->btd_dev = device;
 
 	devices = g_slist_append(devices, dev);
 
