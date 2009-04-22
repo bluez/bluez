@@ -23,6 +23,6 @@
 
 int connection_init(DBusConnection *conn, const char *iface_prefix);
 void connection_exit();
-int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
-			uint16_t id);
+int connection_register(struct btd_device *device, const char *path,
+			bdaddr_t *src, bdaddr_t *dst, uint16_t id);
 void connection_unregister(const char *path, uint16_t id);

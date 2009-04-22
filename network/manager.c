@@ -196,7 +196,7 @@ static int network_probe(struct btd_device *device, GSList *uuids, uint16_t id)
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst);
 
-	return connection_register(path, &src, &dst, id);
+	return connection_register(device, path, &src, &dst, id);
 }
 
 static void network_remove(struct btd_device *device, uint16_t id)

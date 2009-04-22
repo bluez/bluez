@@ -42,6 +42,8 @@
 #include "glib-helper.h"
 #include "btio.h"
 #include "dbus-common.h"
+#include "adapter.h"
+#include "device.h"
 
 #include "error.h"
 #include "common.h"
@@ -59,6 +61,7 @@ struct network_peer {
 	bdaddr_t	src;
 	bdaddr_t	dst;
 	char		*path;		/* D-Bus path */
+	struct btd_device *device;
 	GSList		*connections;
 };
 
@@ -69,6 +72,7 @@ struct network_conn {
 	conn_state	state;
 	GIOChannel	*io;
 	guint		watch;		/* Disconnect watch */
+	guint		dc_id;
 	struct network_peer *peer;
 };
 
@@ -158,6 +162,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 		emit_property_changed(connection, nc->peer->path,
 					NETWORK_PEER_INTERFACE, "UUID",
 					DBUS_TYPE_STRING, &property);
+		device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
 		if (nc->watch) {
 			g_dbus_remove_watch(connection, nc->watch);
 			nc->watch = 0;
@@ -204,6 +209,15 @@ static void connection_destroy(DBusConnection *conn, void *user_data)
 		bnep_kill_connection(&nc->peer->dst);
 	} else if (nc->io)
 		cancel_connection(nc, NULL);
+}
+
+static void disconnect_cb(struct btd_device *device, void *user_data)
+{
+	struct network_conn *nc = user_data;
+
+	info("Network: disconnect %s", nc->peer->path);
+
+	connection_destroy(NULL, user_data);
 }
 
 static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
@@ -293,6 +307,8 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 				DBUS_TYPE_STRING, &uuid);
 
 	nc->state = CONNECTED;
+	nc->dc_id = device_add_disconnect_watch(nc->peer->device, disconnect_cb,
+						nc, NULL);
 
 	info("%s connected", nc->dev);
 	/* Start watchdog */
@@ -509,6 +525,7 @@ static void peer_free(struct network_peer *peer)
 {
 	g_slist_foreach(peer->connections, (GFunc) connection_free, NULL);
 	g_slist_free(peer->connections);
+	btd_device_unref(peer->device);
 	g_free(peer->path);
 	g_free(peer);
 }
@@ -558,12 +575,14 @@ void connection_unregister(const char *path, uint16_t id)
 	g_dbus_unregister_interface(connection, path, NETWORK_PEER_INTERFACE);
 }
 
-static struct network_peer *create_peer(const char *path, bdaddr_t *src,
-				bdaddr_t *dst)
+static struct network_peer *create_peer(struct btd_device *device,
+					const char *path, bdaddr_t *src,
+					bdaddr_t *dst)
 {
 	struct network_peer *peer;
 
 	peer = g_new0(struct network_peer, 1);
+	peer->device = btd_device_ref(device);
 	peer->path = g_strdup(path);
 	bacpy(&peer->src, src);
 	bacpy(&peer->dst, dst);
@@ -585,8 +604,8 @@ static struct network_peer *create_peer(const char *path, bdaddr_t *src,
 	return peer;
 }
 
-int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
-			uint16_t id)
+int connection_register(struct btd_device *device, const char *path,
+			bdaddr_t *src, bdaddr_t *dst, uint16_t id)
 {
 	struct network_peer *peer;
 	struct network_conn *nc;
@@ -596,7 +615,7 @@ int connection_register(const char *path, bdaddr_t *src, bdaddr_t *dst,
 
 	peer = find_peer(peers, path);
 	if (!peer) {
-		peer = create_peer(path, src, dst);
+		peer = create_peer(device, path, src, dst);
 		if (!peer)
 			return -1;
 		peers = g_slist_append(peers, peer);
