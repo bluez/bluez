@@ -206,16 +206,13 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 		debug("Found Audio Source");
 		break;
 	case AV_REMOTE_SVCLASS_ID:
-		debug("Found AV Remote");
-		if (device->control == NULL)
-			device->control = control_init(device);
-		if (device->sink && sink_is_active(device))
-			avrcp_connect(device);
-		break;
 	case AV_REMOTE_TARGET_SVCLASS_ID:
-		debug("Found AV Target");
-		if (device->control == NULL)
-			device->control = control_init(device);
+		debug("Found AV %s", uuid16 == AV_REMOTE_SVCLASS_ID ?
+							"Remote" : "Target");
+		if (device->control)
+			control_update(device, uuid16);
+		else
+			device->control = control_init(device, uuid16);
 		if (device->sink && sink_is_active(device))
 			avrcp_connect(device);
 		break;

@@ -44,6 +44,7 @@ void avrcp_unregister(const bdaddr_t *src);
 gboolean avrcp_connect(struct audio_device *dev);
 void avrcp_disconnect(struct audio_device *dev);
 
-struct control *control_init(struct audio_device *dev);
+struct control *control_init(struct audio_device *dev, uint16_t uuid16);
+void control_update(struct audio_device *dev, uint16_t uuid16);
 void control_unregister(struct audio_device *dev);
 gboolean control_is_active(struct audio_device *dev);

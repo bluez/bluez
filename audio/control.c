@@ -171,6 +171,8 @@ struct control {
 	guint io_id;
 
 	uint16_t mtu;
+
+	gboolean target;
 };
 
 static GSList *avctp_callbacks = NULL;
@@ -693,7 +695,7 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	}
 
 	if (!dev->control)
-		dev->control = control_init(dev);
+		dev->control = control_init(dev, AV_REMOTE_SVCLASS_ID);
 
 	control = dev->control;
 
@@ -955,6 +957,11 @@ static DBusMessage *volume_up(DBusConnection *conn, DBusMessage *msg,
 					ERROR_INTERFACE ".NotConnected",
 					"Device not Connected");
 
+	if (!control->target)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".NotSupported",
+					"AVRCP Target role not supported");
+
 	err = avctp_send_passthrough(control, VOL_UP_OP);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
@@ -979,6 +986,11 @@ static DBusMessage *volume_down(DBusConnection *conn, DBusMessage *msg,
 		return g_dbus_create_error(msg,
 					ERROR_INTERFACE ".NotConnected",
 					"Device not Connected");
+
+	if (!control->target)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".NotSupported",
+					"AVRCP Target role not supported");
 
 	err = avctp_send_passthrough(control, VOL_DOWN_OP);
 	if (err < 0)
@@ -1054,7 +1066,15 @@ void control_unregister(struct audio_device *dev)
 		AUDIO_CONTROL_INTERFACE);
 }
 
-struct control *control_init(struct audio_device *dev)
+void control_update(struct audio_device *dev, uint16_t uuid16)
+{
+	struct control *control = dev->control;
+
+	if (uuid16 == AV_REMOTE_TARGET_SVCLASS_ID)
+		control->target = TRUE;
+}
+
+struct control *control_init(struct audio_device *dev, uint16_t uuid16)
 {
 	struct control *control;
 
@@ -1071,6 +1091,9 @@ struct control *control_init(struct audio_device *dev)
 	control->dev = dev;
 	control->state = AVCTP_STATE_DISCONNECTED;
 	control->uinput = -1;
+
+	if (uuid16 == AV_REMOTE_TARGET_SVCLASS_ID)
+		control->target = TRUE;
 
 	return control;
 }
