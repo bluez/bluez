@@ -104,7 +104,6 @@
 static DBusConnection *connection = NULL;
 
 static GSList *servers = NULL;
-static GSList *sessions = NULL;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
@@ -161,13 +160,10 @@ struct avctp_server {
 	uint32_t ct_record_id;
 };
 
-struct avctp {
+struct control {
 	struct audio_device *dev;
 
 	avctp_state_t state;
-
-	bdaddr_t src;
-	bdaddr_t dst;
 
 	int uinput;
 
@@ -175,10 +171,6 @@ struct avctp {
 	guint io_id;
 
 	uint16_t mtu;
-};
-
-struct control {
-	struct avctp *session;
 };
 
 static GSList *avctp_callbacks = NULL;
@@ -309,45 +301,6 @@ static sdp_record_t *avrcp_tg_record()
 	return record;
 }
 
-static struct avctp *find_session(const bdaddr_t *src, const bdaddr_t *dst)
-{
-	GSList *l;
-
-	for (l = sessions; l != NULL; l = g_slist_next(l)) {
-		struct avctp *s = l->data;
-
-		if (bacmp(src, &s->src) || bacmp(dst, &s->dst))
-			continue;
-
-		return s;
-	}
-
-	return NULL;
-}
-
-static struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst)
-{
-	struct avctp *session;
-
-	assert(src != NULL);
-	assert(dst != NULL);
-
-	session = find_session(src, dst);
-	if (session)
-		return session;
-
-	session = g_new0(struct avctp, 1);
-
-	session->state = AVCTP_STATE_DISCONNECTED;
-	session->uinput = -1;
-	bacpy(&session->src, src);
-	bacpy(&session->dst, dst);
-
-	sessions = g_slist_append(sessions, session);
-
-	return session;
-}
-
 static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
 	struct uinput_event event;
@@ -369,7 +322,7 @@ static void send_key(int fd, uint16_t key, int pressed)
 	send_event(fd, EV_SYN, SYN_REPORT, 0);
 }
 
-static void handle_panel_passthrough(struct avctp *session,
+static void handle_panel_passthrough(struct control *control,
 					const unsigned char *operands,
 					int operand_count)
 {
@@ -390,31 +343,31 @@ static void handle_panel_passthrough(struct avctp *session,
 	switch (operands[0] & 0x7F) {
 	case PLAY_OP:
 		debug("AVRCP: PLAY %s", status);
-		send_key(session->uinput, KEY_PLAYPAUSE, pressed);
+		send_key(control->uinput, KEY_PLAYPAUSE, pressed);
 		break;
 	case STOP_OP:
 		debug("AVRCP: STOP %s", status);
-		send_key(session->uinput, KEY_STOP, pressed);
+		send_key(control->uinput, KEY_STOP, pressed);
 		break;
 	case PAUSE_OP:
 		debug("AVRCP: PAUSE %s", status);
-		send_key(session->uinput, KEY_PLAYPAUSE, pressed);
+		send_key(control->uinput, KEY_PLAYPAUSE, pressed);
 		break;
 	case FORWARD_OP:
 		debug("AVRCP: FORWARD %s", status);
-		send_key(session->uinput, KEY_NEXTSONG, pressed);
+		send_key(control->uinput, KEY_NEXTSONG, pressed);
 		break;
 	case BACKWARD_OP:
 		debug("AVRCP: BACKWARD %s", status);
-		send_key(session->uinput, KEY_PREVIOUSSONG, pressed);
+		send_key(control->uinput, KEY_PREVIOUSSONG, pressed);
 		break;
 	case REWIND_OP:
 		debug("AVRCP: REWIND %s", status);
-		send_key(session->uinput, KEY_REWIND, pressed);
+		send_key(control->uinput, KEY_REWIND, pressed);
 		break;
 	case FAST_FORWARD_OP:
 		debug("AVRCP: FAST FORWARD %s", status);
-		send_key(session->uinput, KEY_FORWARD, pressed);
+		send_key(control->uinput, KEY_FORWARD, pressed);
 		break;
 	default:
 		debug("AVRCP: unknown button 0x%02X %s", operands[0] & 0x7F, status);
@@ -422,43 +375,81 @@ static void handle_panel_passthrough(struct avctp *session,
 	}
 }
 
-static void avctp_unref(struct avctp *session)
+static void avctp_disconnected(struct audio_device *dev)
 {
-	sessions = g_slist_remove(sessions, session);
+	struct control *control = dev->control;
 
-	if (session->state == AVCTP_STATE_CONNECTED) {
-		gboolean value = FALSE;
-		g_dbus_emit_signal(session->dev->conn, session->dev->path,
-					AUDIO_CONTROL_INTERFACE,
-					"Disconnected", DBUS_TYPE_INVALID);
-		emit_property_changed(session->dev->conn, session->dev->path,
-					AUDIO_CONTROL_INTERFACE, "Connected",
-					DBUS_TYPE_BOOLEAN, &value);
+	if (!control)
+		return;
+
+	if (control->io) {
+		g_io_channel_shutdown(control->io, TRUE, NULL);
+		g_io_channel_unref(control->io);
+		control->io = NULL;
 	}
 
-	if (session->io) {
-		g_io_channel_shutdown(session->io, TRUE, NULL);
-		g_io_channel_unref(session->io);
+	if (control->io_id) {
+		g_source_remove(control->io_id);
+		control->io_id = 0;
 	}
 
-	if (session->io_id)
-		g_source_remove(session->io_id);
-
-	if (session->dev && session->dev->control)
-		session->dev->control->session = NULL;
-
-	if (session->uinput >= 0) {
-		ioctl(session->uinput, UI_DEV_DESTROY);
-		close(session->uinput);
+	if (control->uinput >= 0) {
+		ioctl(control->uinput, UI_DEV_DESTROY);
+		close(control->uinput);
+		control->uinput = -1;
 	}
-
-	g_free(session);
 }
 
-static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
+static void avctp_set_state(struct control *control, avctp_state_t new_state)
+{
+	GSList *l;
+	struct audio_device *dev = control->dev;
+	avdtp_session_state_t old_state = control->state;
+	gboolean value;
+
+	switch (new_state) {
+	case AVCTP_STATE_DISCONNECTED:
+		avctp_disconnected(control->dev);
+
+		if (old_state != AVCTP_STATE_CONNECTED)
+			break;
+
+		value = FALSE;
+		g_dbus_emit_signal(dev->conn, dev->path,
+					AUDIO_CONTROL_INTERFACE,
+					"Disconnected", DBUS_TYPE_INVALID);
+		emit_property_changed(dev->conn, dev->path,
+					AUDIO_CONTROL_INTERFACE, "Connected",
+					DBUS_TYPE_BOOLEAN, &value);
+		break;
+	case AVCTP_STATE_CONNECTING:
+		break;
+	case AVCTP_STATE_CONNECTED:
+		value = TRUE;
+		g_dbus_emit_signal(control->dev->conn, control->dev->path,
+				AUDIO_CONTROL_INTERFACE, "Connected",
+				DBUS_TYPE_INVALID);
+		emit_property_changed(control->dev->conn, control->dev->path,
+				AUDIO_CONTROL_INTERFACE, "Connected",
+				DBUS_TYPE_BOOLEAN, &value);
+		break;
+	default:
+		error("Invalid AVCTP state %d", new_state);
+		return;
+	}
+
+	control->state = new_state;
+
+	for (l = avctp_callbacks; l != NULL; l = l->next) {
+		struct avctp_state_callback *cb = l->data;
+		cb->cb(control->dev, old_state, new_state, cb->user_data);
+	}
+}
+
+static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
-	struct avctp *session = data;
+	struct control *control = data;
 	unsigned char buf[1024], *operands;
 	struct avctp_header *avctp;
 	struct avrcp_header *avrcp;
@@ -467,13 +458,13 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	if (!(cond | G_IO_IN))
 		goto failed;
 
-	sock = g_io_channel_unix_get_fd(session->io);
+	sock = g_io_channel_unix_get_fd(control->io);
 
 	ret = read(sock, buf, sizeof(buf));
 	if (ret <= 0)
 		goto failed;
 
-	debug("Got %d bytes of data for AVCTP session %p", ret, session);
+	debug("Got %d bytes of data for AVCTP session %p", ret, control);
 
 	if ((unsigned int) ret < sizeof(struct avctp_header)) {
 		error("Too small AVCTP packet");
@@ -519,7 +510,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 			avrcp->code == CTYPE_CONTROL &&
 			avrcp->subunit_type == SUBUNIT_PANEL &&
 			avrcp->opcode == OP_PASSTHROUGH) {
-		handle_panel_passthrough(session, operands, operand_count);
+		handle_panel_passthrough(control, operands, operand_count);
 		avctp->cr = AVCTP_RESPONSE;
 		avrcp->code = CTYPE_ACCEPTED;
 	} else if (avctp->cr == AVCTP_COMMAND &&
@@ -539,8 +530,8 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 
 failed:
-	debug("AVCTP session %p got disconnected", session);
-	avctp_unref(session);
+	debug("AVCTP session %p got disconnected", control);
+	avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
 	return FALSE;
 }
 
@@ -605,50 +596,28 @@ static int uinput_create(char *name)
 	return fd;
 }
 
-static void init_uinput(struct avctp *session)
+static void init_uinput(struct control *control)
 {
 	char address[18];
 
-	ba2str(&session->dst, address);
+	ba2str(&control->dev->dst, address);
 
-	session->uinput = uinput_create(address);
-	if (session->uinput < 0)
+	control->uinput = uinput_create(address);
+	if (control->uinput < 0)
 		error("AVRCP: failed to init uinput for %s", address);
 	else
 		debug("AVRCP: uinput initialized for %s", address);
 }
 
-static void avctp_set_state(struct avctp *session, avctp_state_t new_state)
-{
-	GSList *l;
-	avdtp_session_state_t old_state = session->state;
-
-	session->state = new_state;
-
-	for (l = avctp_callbacks; l != NULL; l = l->next) {
-		struct avctp_state_callback *cb = l->data;
-		cb->cb(session->dev, old_state, new_state, cb->user_data);
-	}
-}
-
 static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	struct control *control = data;
-	struct avctp *session = control->session;
 	char address[18];
 	uint16_t imtu;
 	GError *gerr = NULL;
-	gboolean value;
-
-	if (!session) {
-		debug("avctp_connect_cb: session removed while connecting");
-		if (!err)
-			g_io_channel_shutdown(chan, TRUE, NULL);
-		return;
-	}
 
 	if (err) {
-		avctp_unref(session);
+		avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
 		error("%s", err->message);
 		return;
 	}
@@ -658,58 +627,48 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 			BT_IO_OPT_IMTU, &imtu,
 			BT_IO_OPT_INVALID);
 	if (gerr) {
-		avctp_unref(session);
+		avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
 		error("%s", gerr->message);
 		g_error_free(gerr);
-		g_io_channel_shutdown(chan, TRUE, NULL);
 		return;
 	}
 
 	debug("AVCTP: connected to %s", address);
 
-	if (!session->io)
-		session->io = g_io_channel_ref(chan);
+	if (!control->io)
+		control->io = g_io_channel_ref(chan);
 
-	init_uinput(session);
+	init_uinput(control);
 
-	value = TRUE;
-	g_dbus_emit_signal(session->dev->conn, session->dev->path,
-				AUDIO_CONTROL_INTERFACE, "Connected",
-				DBUS_TYPE_INVALID);
-	emit_property_changed(session->dev->conn, session->dev->path,
-				AUDIO_CONTROL_INTERFACE, "Connected",
-				DBUS_TYPE_BOOLEAN, &value);
-
-	avctp_set_state(session, AVCTP_STATE_CONNECTED);
-	session->mtu = imtu;
-	session->io_id = g_io_add_watch(chan,
+	avctp_set_state(control, AVCTP_STATE_CONNECTED);
+	control->mtu = imtu;
+	control->io_id = g_io_add_watch(chan,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				(GIOFunc) session_cb, session);
+				(GIOFunc) control_cb, control);
 }
 
 static void auth_cb(DBusError *derr, void *user_data)
 {
 	struct control *control = user_data;
-	struct avctp *session = control->session;
 	GError *err = NULL;
 
 	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
-		avctp_unref(session);
+		avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
 		return;
 	}
 
-	if (!bt_io_accept(session->io, avctp_connect_cb, control,
+	if (!bt_io_accept(control->io, avctp_connect_cb, control,
 								NULL, &err)) {
 		error("bt_io_accept: %s", err->message);
 		g_error_free(err);
-		avctp_unref(session);
+		avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
 	}
 }
 
 static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 {
-	struct avctp *session;
+	struct control *control = NULL;
 	struct audio_device *dev;
 	char address[18];
 	bdaddr_t src, dst;
@@ -727,19 +686,6 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 		return;
 	}
 
-	session = avctp_get(&src, &dst);
-
-	if (!session) {
-		error("Unable to create new AVCTP session");
-		g_io_channel_shutdown(chan, TRUE, NULL);
-		return;
-	}
-
-	if (session->io) {
-		error("Refusing unexpected connect from %s", address);
-		goto drop;
-	}
-
 	dev = manager_get_device(&src, &dst, TRUE);
 	if (!dev) {
 		error("Unable to get audio device object for %s", address);
@@ -749,14 +695,15 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	if (!dev->control)
 		dev->control = control_init(dev);
 
-	if (!dev->control->session)
-		dev->control->session = session;
+	control = dev->control;
 
-	if (!session->dev)
-		session->dev = dev;
+	if (control->io) {
+		error("Refusing unexpected connect from %s", address);
+		goto drop;
+	}
 
-	avctp_set_state(session, AVCTP_STATE_CONNECTING);
-	session->io = g_io_channel_ref(chan);
+	avctp_set_state(control, AVCTP_STATE_CONNECTING);
+	control->io = g_io_channel_ref(chan);
 
 	if (avdtp_is_connected(&src, &dst)) {
 		if (!bt_io_accept(chan, avctp_connect_cb, dev->control,
@@ -769,9 +716,10 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	return;
 
 drop:
-	if (!session->io)
+	if (!control || !control->io)
 		g_io_channel_shutdown(chan, TRUE, NULL);
-	avctp_unref(session);
+	if (control)
+		avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
 }
 
 static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)
@@ -797,21 +745,13 @@ static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)
 gboolean avrcp_connect(struct audio_device *dev)
 {
 	struct control *control = dev->control;
-	struct avctp *session;
 	GError *err = NULL;
 	GIOChannel *io;
 
-	if (control->session)
+	if (control->state > AVCTP_STATE_DISCONNECTED)
 		return TRUE;
 
-	session = avctp_get(&dev->src, &dev->dst);
-	if (!session) {
-		error("Unable to create new AVCTP session");
-		return FALSE;
-	}
-
-	session->dev = dev;
-	avctp_set_state(session, AVCTP_STATE_CONNECTING);
+	avctp_set_state(control, AVCTP_STATE_CONNECTING);
 
 	io = bt_io_connect(BT_IO_L2CAP, avctp_connect_cb, control, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
@@ -819,15 +759,13 @@ gboolean avrcp_connect(struct audio_device *dev)
 				BT_IO_OPT_PSM, AVCTP_PSM,
 				BT_IO_OPT_INVALID);
 	if (err) {
-		avctp_unref(session);
+		avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
 		error("%s", err->message);
 		g_error_free(err);
 		return FALSE;
 	}
 
-	session->io = io;
-
-	control->session = session;
+	control->io = io;
 
 	return TRUE;
 }
@@ -835,13 +773,11 @@ gboolean avrcp_connect(struct audio_device *dev)
 void avrcp_disconnect(struct audio_device *dev)
 {
 	struct control *control = dev->control;
-	struct avctp *session = control->session;
 
-	if (!session)
+	if (!(control && control->io))
 		return;
 
-	avctp_unref(session);
-	control->session = NULL;
+	avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
 }
 
 int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
@@ -960,7 +896,7 @@ static DBusMessage *control_is_connected(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
-	connected = (control->session != NULL);
+	connected = (control->state == AVCTP_STATE_CONNECTED);
 
 	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
 					DBUS_TYPE_INVALID);
@@ -968,13 +904,13 @@ static DBusMessage *control_is_connected(DBusConnection *conn,
 	return reply;
 }
 
-static int avctp_send_passthrough(struct avctp *session, uint8_t op)
+static int avctp_send_passthrough(struct control *control, uint8_t op)
 {
 	unsigned char buf[AVCTP_HEADER_LENGTH + AVRCP_HEADER_LENGTH + 2];
 	struct avctp_header *avctp = (void *) buf;
 	struct avrcp_header *avrcp = (void *) &buf[AVCTP_HEADER_LENGTH];
 	uint8_t *operands = &buf[AVCTP_HEADER_LENGTH + AVRCP_HEADER_LENGTH];
-	int err, sk = g_io_channel_unix_get_fd(session->io);
+	int err, sk = g_io_channel_unix_get_fd(control->io);
 	static uint8_t transaction = 0;
 
 	memset(buf, 0, sizeof(buf));
@@ -1014,12 +950,12 @@ static DBusMessage *volume_up(DBusConnection *conn, DBusMessage *msg,
 	if (!reply)
 		return NULL;
 
-	if (!control->session)
+	if (control->state != AVCTP_STATE_CONNECTED)
 		return g_dbus_create_error(msg,
 					ERROR_INTERFACE ".NotConnected",
 					"Device not Connected");
 
-	err = avctp_send_passthrough(control->session, VOL_UP_OP);
+	err = avctp_send_passthrough(control, VOL_UP_OP);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 							strerror(-err));
@@ -1039,12 +975,12 @@ static DBusMessage *volume_down(DBusConnection *conn, DBusMessage *msg,
 	if (!reply)
 		return NULL;
 
-	if (!control->session)
+	if (control->state != AVCTP_STATE_CONNECTED)
 		return g_dbus_create_error(msg,
 					ERROR_INTERFACE ".NotConnected",
 					"Device not Connected");
 
-	err = avctp_send_passthrough(control->session, VOL_DOWN_OP);
+	err = avctp_send_passthrough(control, VOL_DOWN_OP);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 							strerror(-err));
@@ -1073,7 +1009,7 @@ static DBusMessage *control_get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	/* Connected */
-	value = (device->control->session != NULL);
+	value = (device->control->state == AVCTP_STATE_CONNECTED);
 	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &value);
 
 	dbus_message_iter_close_container(&iter, &dict);
@@ -1097,25 +1033,19 @@ static GDBusSignalTable control_signals[] = {
 	{ NULL, NULL }
 };
 
-static void control_free(struct audio_device *dev)
-{
-	struct control *control = dev->control;
-
-	if (control->session)
-		avctp_unref(control->session);
-
-	g_free(control);
-	dev->control = NULL;
-}
-
 static void path_unregister(void *data)
 {
 	struct audio_device *dev = data;
+	struct control *control = dev->control;
 
 	debug("Unregistered interface %s on path %s",
 		AUDIO_CONTROL_INTERFACE, dev->path);
 
-	control_free(dev);
+	if (control->state != AVCTP_STATE_DISCONNECTED)
+		avctp_disconnected(dev);
+
+	g_free(control);
+	dev->control = NULL;
 }
 
 void control_unregister(struct audio_device *dev)
@@ -1126,6 +1056,8 @@ void control_unregister(struct audio_device *dev)
 
 struct control *control_init(struct audio_device *dev)
 {
+	struct control *control;
+
 	if (!g_dbus_register_interface(dev->conn, dev->path,
 					AUDIO_CONTROL_INTERFACE,
 					control_methods, control_signals, NULL,
@@ -1135,15 +1067,19 @@ struct control *control_init(struct audio_device *dev)
 	debug("Registered interface %s on path %s",
 		AUDIO_CONTROL_INTERFACE, dev->path);
 
-	return g_new0(struct control, 1);
+	control = g_new0(struct control, 1);
+	control->dev = dev;
+	control->state = AVCTP_STATE_DISCONNECTED;
+	control->uinput = -1;
+
+	return control;
 }
 
 gboolean control_is_active(struct audio_device *dev)
 {
 	struct control *control = dev->control;
 
-	if (control->session &&
-			control->session->state != AVCTP_STATE_DISCONNECTED)
+	if (control && control->state != AVCTP_STATE_DISCONNECTED)
 		return TRUE;
 
 	return FALSE;
