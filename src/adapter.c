@@ -1603,7 +1603,11 @@ static DBusMessage *remove_device(DBusConnection *conn,
 				ERROR_INTERFACE ".DoesNotExist",
 				"Device creation in progress");
 
-	adapter_remove_device(conn, adapter, device);
+	if (device_is_connected(device)) {
+		device_set_temporary(device, TRUE);
+		device_disconnect(device);
+	} else
+		adapter_remove_device(conn, adapter, device);
 
 	return dbus_message_new_method_return(msg);
 }

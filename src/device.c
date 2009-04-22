@@ -64,8 +64,16 @@
 #define DISCOVERY_TIMER		2
 
 struct btd_driver_data {
+	guint id;
 	struct btd_device_driver *driver;
 	void *priv;
+};
+
+struct btd_disconnect_data {
+	guint id;
+	disconnect_watch watch;
+	void *user_data;
+	GDestroyNotify destroy;
 };
 
 struct bonding_req {
@@ -91,6 +99,7 @@ struct btd_device {
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*drivers;		/* List of driver_data */
+	GSList		*watches;		/* List of disconnect_data */
 	gboolean	temporary;
 	struct agent	*agent;
 	guint		disconn_timer;
@@ -138,7 +147,6 @@ static uint16_t uuid_list[] = {
 	0
 };
 
-static DBusConnection *connection = NULL;
 static GSList *device_drivers = NULL;
 
 static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
@@ -524,6 +532,28 @@ fail:
 	return FALSE;
 }
 
+void device_disconnect(struct btd_device *device)
+{
+	GSList *l;
+
+	l = device->watches;
+	while (l) {
+		struct btd_disconnect_data *data = l->data;
+
+		l = l->next;
+
+		if (data->watch)
+			data->watch(device, data->user_data);
+	}
+
+	g_slist_foreach(device->watches, (GFunc) g_free, NULL);
+	g_slist_free(device->watches);
+	device->watches = NULL;
+
+	device->disconn_timer = g_timeout_add_seconds(DISCONNECT_TIMER,
+						disconnect_timeout, device);
+}
+
 static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
@@ -538,8 +568,7 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 			DEVICE_INTERFACE, "DisconnectRequested",
 			DBUS_TYPE_INVALID);
 
-	device->disconn_timer = g_timeout_add_seconds(DISCONNECT_TIMER,
-						disconnect_timeout, device);
+	device_disconnect(device);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -617,6 +646,42 @@ gboolean device_has_connection(struct btd_device *device, uint16_t handle)
 	return (handle == device->handle);
 }
 
+guint device_add_disconnect_watch(struct btd_device *device,
+				disconnect_watch watch, void *user_data,
+				GDestroyNotify destroy)
+{
+	struct btd_disconnect_data *data;
+	static guint id = 0;
+
+	data = g_new0(struct btd_disconnect_data, 1);
+	data->id = ++id;
+	data->watch = watch;
+	data->user_data = user_data;
+	data->destroy = destroy;
+
+	device->watches = g_slist_append(device->watches, data);
+
+	return data->id;
+}
+
+void device_remove_disconnect_watch(struct btd_device *device, guint id)
+{
+	GSList *l;
+
+	for (l = device->watches; l; l = l->next) {
+		struct btd_disconnect_data *data = l->data;
+
+		if (data->id == id) {
+			device->watches = g_slist_remove(device->watches,
+							data);
+			if (data->destroy)
+				data->destroy(data->user_data);
+			g_free(data);
+			return;
+		}
+	}
+}
+
 void device_set_secmode3_conn(struct btd_device *device, gboolean enable)
 {
 	device->secmode3 = enable;
@@ -631,9 +696,6 @@ struct btd_device *device_create(DBusConnection *conn,
 	const gchar *adapter_path = adapter_get_path(adapter);
 	bdaddr_t src;
 	char srcaddr[18];
-
-	if (!connection)
-		connection = conn;
 
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
@@ -2124,6 +2186,7 @@ struct btd_device *btd_device_ref(struct btd_device *device)
 
 void btd_device_unref(struct btd_device *device)
 {
+	DBusConnection *conn = get_dbus_connection();
 	gchar *path;
 
 	device->ref--;
@@ -2135,7 +2198,7 @@ void btd_device_unref(struct btd_device *device)
 
 	path = g_strdup(device->path);
 
-	g_dbus_unregister_interface(connection, path, DEVICE_INTERFACE);
+	g_dbus_unregister_interface(conn, path, DEVICE_INTERFACE);
 
 	g_free(path);
 }
