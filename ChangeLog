@@ -1,3 +1,15 @@
+ver 4.37:
+	Add version value for Bluetooth 3.0 devices.
+	Add additional L2CAP extended feature mask bits.
+	Add support for loading plugins in priority order.
+	Add support for more detailed usage of disconnect watches.
+	Add support for AVRCP volume control.
+	Add saturated clipping of SBC decoder output to 16-bit.
+	Fix potentially infinite recursion of adapter_up.
+	Fix SCO handling in the case of an incoming call.
+	Fix input service to use confirm callback.
+	Fix cleanup of temporary device entries from storage.
+
 ver 4.36:
 	Add proper tracking of AVCTP connect attempts.
 	Add support to channel pattern in Serial interface.
