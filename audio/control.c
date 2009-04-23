@@ -134,6 +134,7 @@ struct avctp_header {
 	uint8_t ipid:1;
 	uint16_t pid;
 } __attribute__ ((packed));
+#define AVCTP_HEADER_LENGTH 3
 
 struct avrcp_header {
 	uint8_t _hdr0:4;
@@ -142,6 +143,7 @@ struct avrcp_header {
 	uint8_t subunit_id:3;
 	uint8_t opcode;
 } __attribute__ ((packed));
+#define AVRCP_HEADER_LENGTH 3
 
 #else
 #error "Unknown byte order"
