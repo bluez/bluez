@@ -233,6 +233,8 @@ static struct agent *agent = NULL;
 struct pending_request {
 	struct server *server;
 	gchar address[18];
+	gchar *adapter_path;
+	guint watch;
 	gint nsk;
 };
 
@@ -995,6 +997,9 @@ static void service_reply(DBusPendingCall *call, gpointer user_data)
 		close(pending->nsk);
 
 done:
+	if (pending->watch)
+		g_source_remove(pending->watch);
+	g_free(pending->adapter_path);
 	g_free(pending);
 	dbus_message_unref(reply);
 }
@@ -1002,17 +1007,17 @@ done:
 static gboolean service_error(GIOChannel *io, GIOCondition cond,
 			gpointer user_data)
 {
+	struct pending_request *pending = user_data;
 	DBusMessage *msg;
 
-	if (any->path == NULL)
-		return FALSE;
+	pending->watch = 0;
 
 	msg = dbus_message_new_method_call("org.bluez",
-					any->path,
+					pending->adapter_path,
 					"org.bluez.Service",
 					"CancelAuthorization");
 
-	dbus_connection_send_with_reply(system_conn, msg, NULL, -1);
+	dbus_connection_send(system_conn, msg, NULL);
 
 	dbus_message_unref(msg);
 
@@ -1035,7 +1040,7 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 		error("Replied with an error: %s, %s",
 				derr.name, derr.message);
 		dbus_error_free(&derr);
-		goto done;
+		goto failed;
 	}
 
 	dbus_message_get_args(reply, NULL,
@@ -1043,6 +1048,8 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 			DBUS_TYPE_INVALID);
 
 	debug("FindAdapter -> %s", path);
+	pending->adapter_path = g_strdup(path);
+	dbus_message_unref(reply);
 
 	msg = dbus_message_new_method_call("org.bluez", path,
 			"org.bluez.Service", "RequestAuthorization");
@@ -1054,30 +1061,31 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 	if (!dbus_connection_send_with_reply(system_conn,
 					msg, &pcall, TIMEOUT)) {
 		dbus_message_unref(msg);
-		goto done;
+		goto failed;
 	}
 
 	dbus_message_unref(msg);
 
 	debug("RequestAuthorization(%s, %x)", paddr, pending->server->handle);
 
-	if (!dbus_pending_call_set_notify(pcall, service_reply, pending, NULL)) {
-		close(pending->nsk);
-		g_free(pending);
-		goto done;
-	}
+	if (!dbus_pending_call_set_notify(pcall, service_reply, pending, NULL))
+		goto failed;
 
 	dbus_pending_call_unref(pcall);
 
 	/* Catches errors before authorization response comes */
 	io = g_io_channel_unix_new(pending->nsk);
-	g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
-			G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			service_error, NULL, NULL);
+	pending->watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+					service_error, pending, NULL);
 	g_io_channel_unref(io);
 
-done:
-	dbus_message_unref(reply);
+	return;
+
+failed:
+	g_free(pending->adapter_path);
+	close(pending->nsk);
+	g_free(pending);
 }
 
 gint request_service_authorization(struct server *server, gint nsk)
