@@ -94,7 +94,7 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 	strftime(ctime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_ctime));
 	strftime(mtime, 17, "%Y%m%dT%H%M%SZ", gmtime(&fstat->st_mtime));
 
-	escaped = g_uri_escape_string(filename, " ", TRUE);
+	escaped = g_markup_escape_text(filename, -1);
 
 	if (S_ISDIR(fstat->st_mode))
 		ret = g_strdup_printf(FL_FOLDER_ELEMENT, escaped,
