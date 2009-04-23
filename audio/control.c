@@ -937,7 +937,7 @@ static int avctp_send_passthrough(struct control *control, uint8_t op)
 
 	/* Button release */
 	avctp->transaction = transaction++;
-	operands[0] &= 0x80;
+	operands[0] |= 0x80;
 
 	return write(sk, buf, sizeof(buf));
 }
