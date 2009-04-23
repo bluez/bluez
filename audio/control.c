@@ -349,7 +349,7 @@ static void handle_panel_passthrough(struct control *control,
 		break;
 	case STOP_OP:
 		debug("AVRCP: STOP %s", status);
-		send_key(control->uinput, KEY_STOP, pressed);
+		send_key(control->uinput, KEY_STOPCD, pressed);
 		break;
 	case PAUSE_OP:
 		debug("AVRCP: PAUSE %s", status);
@@ -369,7 +369,7 @@ static void handle_panel_passthrough(struct control *control,
 		break;
 	case FAST_FORWARD_OP:
 		debug("AVRCP: FAST FORWARD %s", status);
-		send_key(control->uinput, KEY_FORWARD, pressed);
+		send_key(control->uinput, KEY_FASTFORWARD, pressed);
 		break;
 	default:
 		debug("AVRCP: unknown button 0x%02X %s", operands[0] & 0x7F, status);
@@ -580,11 +580,11 @@ static int uinput_create(char *name)
 	ioctl(fd, UI_SET_EVBIT, EV_SYN);
 
 	ioctl(fd, UI_SET_KEYBIT, KEY_PLAYPAUSE);
-	ioctl(fd, UI_SET_KEYBIT, KEY_STOP);
+	ioctl(fd, UI_SET_KEYBIT, KEY_STOPCD);
 	ioctl(fd, UI_SET_KEYBIT, KEY_NEXTSONG);
 	ioctl(fd, UI_SET_KEYBIT, KEY_PREVIOUSSONG);
 	ioctl(fd, UI_SET_KEYBIT, KEY_REWIND);
-	ioctl(fd, UI_SET_KEYBIT, KEY_FORWARD);
+	ioctl(fd, UI_SET_KEYBIT, KEY_FASTFORWARD);
 
 	if (ioctl(fd, UI_DEV_CREATE, NULL) < 0) {
 		err = errno;
