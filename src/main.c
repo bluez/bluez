@@ -531,14 +531,11 @@ static void init_all_devices(int ctl)
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		gboolean devup;
 
-		info("HCI dev %d registered", dr->dev_id);
-		device_devreg_setup(dr->dev_id);
+		device_event(HCI_DEV_REG, dr->dev_id);
 
 		devup = hci_test_bit(HCI_UP, &dr->dev_opt);
-		if (devup) {
-			info("HCI dev %d already up", dr->dev_id);
-			device_devup_setup(dr->dev_id);
-		}
+		if (devup)
+			device_event(HCI_DEV_UP, dr->dev_id);
 	}
 
 	g_free(dl);
