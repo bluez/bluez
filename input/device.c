@@ -781,10 +781,13 @@ static void disconnect_cb(struct btd_device *device, gboolean removal,
 				void *user_data)
 {
 	struct input_device *idev = user_data;
+	int flags;
 
 	info("Input: disconnect %s", idev->path);
 
-	disconnect(idev, 0);
+	flags = removal ? (1 << HIDP_VIRTUAL_CABLE_UNPLUG) : 0;
+
+	disconnect(idev, flags);
 }
 
 static int input_device_connected(struct input_device *idev,
@@ -1004,8 +1007,6 @@ static void device_unregister(void *data)
 	debug("Unregistered interface %s on path %s", INPUT_DEVICE_INTERFACE,
 								idev->path);
 
-	/* Disconnect if applied */
-	disconnect(idev, (1 << HIDP_VIRTUAL_CABLE_UNPLUG));
 	devices = g_slist_remove(devices, idev);
 	input_device_free(idev);
 }
