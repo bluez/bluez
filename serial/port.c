@@ -103,18 +103,19 @@ static struct serial_port *find_port(GSList *ports, const char *pattern)
 {
 	GSList *l;
 	int channel;
+	char *endptr = NULL;
 
-	channel = strtol(pattern, NULL, 10);
+	channel = strtol(pattern, &endptr, 10);
 
 	for (l = ports; l != NULL; l = l->next) {
 		struct serial_port *port = l->data;
 		char *uuid_str;
 		int ret;
 
-		if (port->channel == channel)
+		if (port->uuid && !strcasecmp(port->uuid, pattern))
 			return port;
 
-		if (port->uuid && !strcasecmp(port->uuid, pattern))
+		if (endptr && *endptr == '\0' && port->channel == channel)
 			return port;
 
 		if (port->dev && !strcmp(port->dev, pattern))
@@ -493,9 +494,13 @@ static DBusMessage *port_connect(DBusConnection *conn,
 
 	port = find_port(device->ports, pattern);
 	if (!port) {
-		int channel = strtol(pattern, NULL, 10);
-		if (channel < 1 || channel > 30)
+		char *endptr = NULL;
+		int channel;
+
+		channel = strtol(pattern, &endptr, 10);
+		if ((endptr && *endptr != '\0') || channel < 1 || channel > 30)
 			return does_not_exist(msg, "Does not match");
+
 		port = create_port(device, NULL, channel);
 	}
 
