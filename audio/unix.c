@@ -97,7 +97,7 @@ static int unix_sock = -1;
 
 static void client_free(struct unix_client *client)
 {
-	if (client->cancel && client->req_id > 0)
+	if (client->cancel && client->dev && client->req_id > 0)
 		client->cancel(client->dev, client->req_id);
 
 	if (client->sock >= 0)
