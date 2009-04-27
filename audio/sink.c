@@ -61,6 +61,7 @@ struct sink {
 	struct avdtp_stream *stream;
 	unsigned int cb_id;
 	guint dc_id;
+	guint retry_id;
 	avdtp_session_state_t session_state;
 	avdtp_state_t stream_state;
 	sink_state_t state;
@@ -268,6 +269,8 @@ static gboolean stream_setup_retry(gpointer user_data)
 	struct sink *sink = user_data;
 	struct pending_request *pending = sink->connect;
 
+	sink->retry_id = 0;
+
 	if (sink->stream_state >= AVDTP_STATE_OPEN) {
 		debug("Stream successfully created, after XCASE connect:connect");
 		if (pending->msg) {
@@ -318,8 +321,9 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
 			&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
 		debug("connect:connect XCASE detected");
-		g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
-				stream_setup_retry, sink);
+		sink->retry_id = g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
+							stream_setup_retry,
+							sink);
 	} else {
 		if (pending->msg)
 			error_failed(pending->conn, pending->msg, "Stream setup failed");
@@ -484,8 +488,10 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 		if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
 				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
 			debug("connect:connect XCASE detected");
-			g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
-					stream_setup_retry, sink);
+			sink->retry_id =
+				g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
+							stream_setup_retry,
+							sink);
 		} else
 			goto failed;
 		return;
@@ -723,6 +729,9 @@ static void sink_free(struct audio_device *dev)
 
 	if (sink->disconnect)
 		pending_request_free(dev, sink->disconnect);
+
+	if (sink->retry_id)
+		g_source_remove(sink->retry_id);
 
 	g_free(sink);
 	dev->sink = NULL;
