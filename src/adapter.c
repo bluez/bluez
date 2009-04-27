@@ -2457,11 +2457,11 @@ void adapter_remove(struct btd_adapter *adapter)
 
 	debug("Removing adapter %s", path);
 
-	unload_drivers(adapter);
-
 	for (l = adapter->devices; l; l = l->next)
 		device_remove(l->data, connection, FALSE);
 	g_slist_free(adapter->devices);
+
+	unload_drivers(adapter);
 
 	/* Return adapter to down state if it was not up on init */
 	if (adapter->up && !adapter->already_up) {
