@@ -971,16 +971,15 @@ gboolean gw_obex_put(GwObex *ctx,
         return FALSE;
     }
 
-    ctx->obex_op = OBEX_CMD_PUT;
-
     if (remote) {
         uname_len = get_uname(&uname, remote);
         if (uname_len < 0) {
             ctx->error = GW_OBEX_ERROR_INVALID_PARAMS;
-            goto out;
+            return FALSE;
         }
     }
 
+    ctx->obex_op = OBEX_CMD_PUT;
     ctx->xfer = gw_obex_xfer_new(ctx, async, stream_fd);
 
     if (local) {
