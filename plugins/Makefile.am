@@ -13,13 +13,15 @@ else
 service_plugins =
 endif
 
-plugin_LTLIBRARIES = hal.la $(netlink_plugins) $(service_plugins)
+plugin_LTLIBRARIES = hal.la hciops.la $(netlink_plugins) $(service_plugins)
 
 noinst_LTLIBRARIES = echo.la storage.la
 
 echo_la_SOURCES = echo.c
 
 storage_la_SOURCES = storage.c
+
+hciops_la_SOURCES = hciops.c
 
 if NETLINK
 netlink_la_SOURCES = netlink.c
@@ -47,6 +49,7 @@ all-local:
 	@$(LN_S) -f $(top_srcdir)/network/.libs/network.so
 	@$(LN_S) -f .libs/service.so
 	@$(LN_S) -f .libs/hal.so
+	@$(LN_S) -f .libs/hciops.so
 
 clean-local:
 	@rm -f hal.so
@@ -55,3 +58,4 @@ clean-local:
 	@rm -f serial.so
 	@rm -f audio.so
 	@rm -f input.so
+	@rm -f hciops.so
