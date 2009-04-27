@@ -211,7 +211,8 @@ static void connection_destroy(DBusConnection *conn, void *user_data)
 		cancel_connection(nc, NULL);
 }
 
-static void disconnect_cb(struct btd_device *device, void *user_data)
+static void disconnect_cb(struct btd_device *device, gboolean removal,
+				void *user_data)
 {
 	struct network_conn *nc = user_data;
 

@@ -83,7 +83,8 @@ void device_remove_connection(struct btd_device *device, DBusConnection *conn,
 gboolean device_has_connection(struct btd_device *device, uint16_t handle);
 void device_disconnect(struct btd_device *device);
 
-typedef void (*disconnect_watch) (struct btd_device *device, void *user_data);
+typedef void (*disconnect_watch) (struct btd_device *device, gboolean removal,
+					void *user_data);
 
 guint device_add_disconnect_watch(struct btd_device *device,
 				disconnect_watch watch, void *user_data,

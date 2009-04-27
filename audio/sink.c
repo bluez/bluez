@@ -167,7 +167,8 @@ static void pending_request_free(struct audio_device *dev,
 	g_free(pending);
 }
 
-static void disconnect_cb(struct btd_device *btd_dev, void *user_data)
+static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
+				void *user_data)
 {
 	struct audio_device *device = user_data;
 	struct sink *sink = device->sink;

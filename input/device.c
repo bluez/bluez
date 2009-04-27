@@ -777,7 +777,8 @@ static int disconnect(struct input_device *idev, uint32_t flags)
 	return connection_disconnect(iconn, flags);
 }
 
-static void disconnect_cb(struct btd_device *device, void *user_data)
+static void disconnect_cb(struct btd_device *device, gboolean removal,
+				void *user_data)
 {
 	struct input_device *idev = user_data;
 

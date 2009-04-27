@@ -543,7 +543,9 @@ void device_disconnect(struct btd_device *device)
 		l = l->next;
 
 		if (data->watch)
-			data->watch(device, data->user_data);
+			/* temporary is set if device is going to be removed */
+			data->watch(device, device->temporary,
+					data->user_data);
 	}
 
 	g_slist_foreach(device->watches, (GFunc) g_free, NULL);

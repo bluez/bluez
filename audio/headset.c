@@ -2387,7 +2387,8 @@ static int headset_close_rfcomm(struct audio_device *dev)
 	return 0;
 }
 
-static void disconnect_cb(struct btd_device *btd_dev, void *user_data)
+static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
+				void *user_data)
 {
 	struct audio_device *device = user_data;
 
