@@ -133,6 +133,7 @@ void tty_closed(void)
 
 static void sig_term(int sig)
 {
+	info("Terminating due to signal %d", sig);
 	g_main_loop_quit(main_loop);
 }
 
