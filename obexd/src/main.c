@@ -141,6 +141,11 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
+static void sig_debug(int sig)
+{
+	toggle_debug();
+}
+
 static gboolean option_detach = TRUE;
 static gboolean option_debug = FALSE;
 
@@ -348,6 +353,9 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_term;
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
+
+	sa.sa_handler = sig_debug;
+	sigaction(SIGUSR2, &sa, NULL);
 
 	g_main_loop_run(main_loop);
 
