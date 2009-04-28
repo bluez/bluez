@@ -97,6 +97,8 @@ static int unix_sock = -1;
 
 static void client_free(struct unix_client *client)
 {
+	debug("client_free(%p)", client);
+
 	if (client->cancel && client->dev && client->req_id > 0)
 		client->cancel(client->dev, client->req_id);
 
@@ -205,7 +207,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 			a2dp_sep_unlock(a2dp->sep, a2dp->session);
 			a2dp->sep = NULL;
 		}
-		client->dev = NULL;
 		if (a2dp->session) {
 			avdtp_unref(a2dp->session);
 			a2dp->session = NULL;
@@ -424,7 +425,6 @@ static void headset_suspend_complete(struct audio_device *dev, void *user_data)
 failed:
 	error("suspend failed");
 	unix_ipc_error(client, BT_STOP_STREAM, EIO);
-	client->dev = NULL;
 }
 
 static void print_mpeg12(struct mpeg_codec_cap *mpeg)
@@ -1001,7 +1001,6 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 	}
 
 	client->req_id = id;
-	client->dev = dev;
 
 	return;
 
@@ -1070,7 +1069,6 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 	}
 
 	client->req_id = id;
-	client->dev = dev;
 
 	return;
 
@@ -1198,8 +1196,11 @@ static void start_close(struct audio_device *dev, struct unix_client *client,
 		goto failed;
 	}
 
-	if (reply)
-		close_complete(dev, client);
+	if (!reply)
+		return;
+
+	close_complete(dev, client);
+	client->dev = NULL;
 
 	return;
 
@@ -1660,11 +1661,19 @@ void unix_device_removed(struct audio_device *dev)
 {
 	GSList *l;
 
-	for (l = clients; l != NULL; l = l->next) {
+	debug("unix_device_removed(%p)", dev);
+
+	l = clients;
+	while (l) {
 		struct unix_client *client = l->data;
 
-		if (client->dev == dev)
-			client->dev = NULL;
+		l = l->next;
+
+		if (client->dev == dev) {
+			clients = g_slist_remove(clients, client);
+			start_close(client->dev, client, FALSE);
+			client_free(client);
+		}
 	}
 }
 
