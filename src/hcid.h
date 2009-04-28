@@ -42,6 +42,8 @@
 #define MODE_LIMITED		0x03
 #define MODE_UNKNOWN		0xff
 
+#define HCID_DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
+
 /* Timeout for hci_send_req (milliseconds) */
 #define HCI_REQ_TIMEOUT		5000
 
@@ -66,9 +68,17 @@ struct main_opts {
 	int		sock;
 };
 
+enum {
+	HCID_SET_NAME,
+	HCID_SET_CLASS,
+	HCID_SET_PAGETO,
+	HCID_SET_DISCOVTO,
+};
+
 extern struct main_opts main_opts;
 
-void device_event(int event, int dev_id);
+char *expand_name(char *dst, int size, char *str, int dev_id);
+
 void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
 
 void start_security_manager(int hdev);
