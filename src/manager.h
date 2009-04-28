@@ -43,3 +43,12 @@ void manager_set_default_adapter(int id);
 int manager_update_adapter(uint16_t id, uint8_t svc, gboolean starting);
 int manager_startup_complete(void);
 int manager_get_adapter_class(uint16_t dev_id, uint8_t *cls);
+void manager_init_adapters();
+
+struct btd_adapter_ops {
+	int (*setup) (void);
+	void (*cleanup) (void);
+};
+
+int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
+void btd_adapter_cleanup_ops();

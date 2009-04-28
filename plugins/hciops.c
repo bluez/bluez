@@ -354,7 +354,7 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 }
 
-static int hciops_init(void)
+static int hciops_setup(void)
 {
 	struct sockaddr_hci addr;
 	struct hci_filter flt;
@@ -412,8 +412,22 @@ static int hciops_init(void)
 	return init_all_devices(sock);
 }
 
+static void hciops_cleanup(void)
+{
+}
+
+static struct btd_adapter_ops hci_ops = {
+	.setup = hciops_setup,
+	.cleanup = hciops_cleanup,
+};
+
+static int hciops_init(void)
+{
+	return btd_register_adapter_ops(&hci_ops);
+}
 static void hciops_exit(void)
 {
+	btd_adapter_cleanup_ops(&hci_ops);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(hciops, VERSION,
