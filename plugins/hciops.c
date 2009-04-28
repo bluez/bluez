@@ -81,22 +81,22 @@ static void at_child_exit(void)
 		error("unable to write to child pipe");
 }
 
-static void configure_device(int dev_id)
+static void configure_device(int index)
 {
 	struct hci_dev_info di;
 	uint16_t policy;
 	int dd;
 
-	if (hci_devinfo(dev_id, &di) < 0)
+	if (hci_devinfo(index, &di) < 0)
 		return;
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
 		return;
 
-	dd = hci_open_dev(dev_id);
+	dd = hci_open_dev(index);
 	if (dd < 0) {
 		error("Can't open device hci%d: %s (%d)",
-						dev_id, strerror(errno), errno);
+						index, strerror(errno), errno);
 		return;
 	}
 
@@ -106,7 +106,7 @@ static void configure_device(int dev_id)
 
 		memset(cp.name, 0, sizeof(cp.name));
 		expand_name((char *) cp.name, sizeof(cp.name),
-						main_opts.name, dev_id);
+						main_opts.name, index);
 
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
 					CHANGE_LOCAL_NAME_CP_SIZE, &cp);
@@ -150,7 +150,7 @@ static void configure_device(int dev_id)
 	hci_close_dev(dd);
 }
 
-static void init_device(int dev_id)
+static void init_device(int index)
 {
 	struct hci_dev_req dr;
 	struct hci_dev_info di;
@@ -165,27 +165,27 @@ static void init_device(int dev_id)
 			break;
 		case -1:
 			error("Fork failed. Can't init device hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					index, strerror(errno), errno);
 		default:
 			debug("child %d forked", pid);
 			return;
 	}
 
-	dd = hci_open_dev(dev_id);
+	dd = hci_open_dev(index);
 	if (dd < 0) {
 		error("Can't open device hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					index, strerror(errno), errno);
 		exit(1);
 	}
 
 	memset(&dr, 0, sizeof(dr));
-	dr.dev_id = dev_id;
+	dr.dev_id = index;
 
 	/* Set link mode */
 	dr.dev_opt = main_opts.link_mode;
 	if (ioctl(dd, HCISETLINKMODE, (unsigned long) &dr) < 0) {
 		error("Can't set link mode on hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					index, strerror(errno), errno);
 	}
 
 	/* Set link policy */
@@ -193,17 +193,17 @@ static void init_device(int dev_id)
 	if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0 &&
 							errno != ENETDOWN) {
 		error("Can't set link policy on hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					index, strerror(errno), errno);
 	}
 
 	/* Start HCI device */
-	if (ioctl(dd, HCIDEVUP, dev_id) < 0 && errno != EALREADY) {
+	if (ioctl(dd, HCIDEVUP, index) < 0 && errno != EALREADY) {
 		error("Can't init device hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
+					index, strerror(errno), errno);
 		goto fail;
 	}
 
-	if (hci_devinfo(dev_id, &di) < 0)
+	if (hci_devinfo(index, &di) < 0)
 		goto fail;
 
 	if (hci_test_bit(HCI_RAW, &di.flags))
@@ -218,62 +218,62 @@ fail:
 	exit(1);
 }
 
-static void device_devreg_setup(int dev_id)
+static void device_devreg_setup(int index)
 {
 	struct hci_dev_info di;
 	gboolean devup;
 
-	init_device(dev_id);
+	init_device(index);
 
 	memset(&di, 0, sizeof(di));
 
-	if (hci_devinfo(dev_id, &di) < 0)
+	if (hci_devinfo(index, &di) < 0)
 		return;
 
 	devup = hci_test_bit(HCI_UP, &di.flags);
 
 	if (!hci_test_bit(HCI_RAW, &di.flags))
-		manager_register_adapter(dev_id, devup);
+		manager_register_adapter(index, devup);
 }
 
-static void device_devup_setup(int dev_id)
+static void device_devup_setup(int index)
 {
-	configure_device(dev_id);
+	configure_device(index);
 
-	start_security_manager(dev_id);
+	start_security_manager(index);
 
 	/* Return value 1 means ioctl(DEVDOWN) was performed */
-	if (manager_start_adapter(dev_id) == 1)
-		stop_security_manager(dev_id);
+	if (manager_start_adapter(index) == 1)
+		stop_security_manager(index);
 }
 
-static void device_event(int event, int dev_id)
+static void device_event(int event, int index)
 {
 	switch (event) {
 	case HCI_DEV_REG:
-		info("HCI dev %d registered", dev_id);
-		device_devreg_setup(dev_id);
+		info("HCI dev %d registered", index);
+		device_devreg_setup(index);
 		break;
 
 	case HCI_DEV_UNREG:
-		info("HCI dev %d unregistered", dev_id);
-		manager_unregister_adapter(dev_id);
+		info("HCI dev %d unregistered", index);
+		manager_unregister_adapter(index);
 		break;
 
 	case HCI_DEV_UP:
-		info("HCI dev %d up", dev_id);
-		device_devup_setup(dev_id);
+		info("HCI dev %d up", index);
+		device_devup_setup(index);
 		break;
 
 	case HCI_DEV_DOWN:
-		info("HCI dev %d down", dev_id);
-		manager_stop_adapter(dev_id);
-		stop_security_manager(dev_id);
+		info("HCI dev %d down", index);
+		manager_stop_adapter(index);
+		stop_security_manager(index);
 		break;
 	}
 }
 
-static int init_all_devices(int ctl)
+static int init_known_adapters(int ctl)
 {
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
@@ -409,7 +409,7 @@ static int hciops_setup(void)
 	g_io_channel_unref(ctl_io);
 
 	/* Initialize already connected devices */
-	return init_all_devices(sock);
+	return init_known_adapters(sock);
 }
 
 static void hciops_cleanup(void)
