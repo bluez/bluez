@@ -62,6 +62,7 @@ static GMainLoop *main_loop = NULL;
 
 static int services = 0;
 static gboolean tty_needs_reinit = FALSE;
+static gboolean tty_open_allowed = TRUE;
 static int signal_pipe[2];
 
 #define TTY_RX_MTU 65535
@@ -76,6 +77,9 @@ int tty_init(int services, const gchar *root_path,
 	glong flags;
 
 	tty_needs_reinit = TRUE;
+
+	if (!tty_open_allowed)
+		return -EACCES;
 
 	fd = open(devnode, O_RDWR | O_NOCTTY);
 	if (fd < 0)
@@ -178,7 +182,7 @@ static GOptionEntry options[] = {
 	{ NULL },
 };
 
-static void sig_usr1(int sig)
+static void sig_tty(int sig)
 {
 	if (write(signal_pipe[1], &sig, sizeof(sig)) != sizeof(sig))
 		error("unable to write to signal pipe");
@@ -190,13 +194,27 @@ static gboolean handle_signal(GIOChannel *io, GIOCondition cond,
 	int sig, fd = g_io_channel_unix_get_fd(io);
 
 	if (read(fd, &sig, sizeof(sig)) != sizeof(sig)) {
-		error("handle_sigusr1: unable to read signal from pipe");
+		error("handle_signal: unable to read signal from pipe");
 		return TRUE;
 	}
 
-	if (sig == SIGUSR1 && tty_needs_reinit)
-		tty_init(services, option_root, option_capability,
-				option_devnode);
+	switch (sig) {
+	case SIGUSR1:
+		debug("SIGUSR1");
+		tty_open_allowed = TRUE;
+		if (tty_needs_reinit)
+			tty_init(services, option_root, option_capability,
+							option_devnode);
+		break;
+	case SIGHUP:
+		debug("SIGHUP");
+		tty_open_allowed = FALSE;
+		obex_tty_session_stop();
+		break;
+	default:
+		error("handle_signal: got unexpected signal %d", sig);
+		break;
+	}
 
 	return TRUE;
 }
@@ -214,13 +232,12 @@ static int devnode_setup(void)
 	g_io_channel_unref(pipe_io);
 
 	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = sig_usr1;
+	sa.sa_handler = sig_tty;
 	sigaction(SIGUSR1, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
 
-	if (option_pcsuite) {
-		tty_needs_reinit = TRUE;
-		return 0;
-	}
+	if (option_pcsuite)
+		tty_open_allowed = FALSE;
 
 	return tty_init(services, option_root, option_capability,
 			option_devnode);

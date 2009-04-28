@@ -65,6 +65,7 @@ struct server {
 };
 
 struct obex_session {
+	GIOChannel	*io;
 	guint32		cid;
 	guint16		tx_mtu;
 	guint16		rx_mtu;
@@ -88,7 +89,7 @@ struct obex_session {
 };
 
 gint obex_session_start(gint fd, struct server *server);
-gint obex_session_stop();
+gint obex_tty_session_stop(void);
 
 void opp_get(obex_t *obex, obex_object_t *obj);
 void opp_put(obex_t *obex, obex_object_t *obj);

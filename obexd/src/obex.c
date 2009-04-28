@@ -65,6 +65,8 @@ static const guint8 PBAP_TARGET[TARGET_SIZE] = {
 /* Connection ID */
 static guint32 cid = 0x0000;
 
+static GSList *sessions = NULL;
+
 typedef struct {
 	guint8  version;
 	guint8  flags;
@@ -131,10 +133,15 @@ static void os_session_mark_aborted(struct obex_session *os)
 
 static void obex_session_free(struct obex_session *os)
 {
+	sessions = g_slist_remove(sessions, os);
+
 	os_reset_session(os);
 
 	if (os->current_folder)
 		g_free(os->current_folder);
+
+	if (os->io)
+		g_io_channel_unref(os->io);
 
 	if (os->target && !memcmp(os->target, PBAP_TARGET, TARGET_SIZE))
 		pbap_phonebook_context_destroy(os);
@@ -932,28 +939,27 @@ static gboolean obex_handle_input(GIOChannel *io,
 				GIOCondition cond, gpointer user_data)
 {
 	obex_t *obex = user_data;
+	struct obex_session *os = OBEX_GetUserData(obex);
 
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		struct obex_session *os;
-
-		error("HUP");
-
-		os = OBEX_GetUserData(obex);
-		if (os->server->devnode)
-			tty_closed();
-
-		return FALSE;
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		error("obex_handle_input: poll event %s%s%s",
+				(cond & G_IO_HUP) ? "HUP " : "",
+				(cond & G_IO_ERR) ? "ERR " : "",
+				(cond & G_IO_NVAL) ? "NVAL " : "");
+		goto failed;
 	}
 
 	if (OBEX_HandleInput(obex, 1) < 0) {
 		error("Handle input error");
-		return FALSE;
+		goto failed;
 	}
 
 	return TRUE;
+
+failed:
+	if (os->server->devnode)
+		tty_closed();
+	return FALSE;
 }
 
 gint obex_session_start(gint fd, struct server *server)
@@ -1000,12 +1006,23 @@ gint obex_session_start(gint fd, struct server *server)
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			obex_handle_input, obex, obex_handle_destroy);
 	g_io_channel_set_close_on_unref(io, TRUE);
-	g_io_channel_unref(io);
+	os->io = io;
+
+	sessions = g_slist_prepend(sessions, os);
 
 	return 0;
 }
 
-gint obex_session_stop()
+gint obex_tty_session_stop(void)
 {
+	GSList *l;
+
+	for (l = sessions; l != NULL; l = l->next) {
+		struct obex_session *os = l->data;
+
+		if (os->server->devnode && os->io)
+			g_io_channel_shutdown(os->io, TRUE, NULL);
+	}
+
 	return 0;
 }
