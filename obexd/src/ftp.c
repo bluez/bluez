@@ -282,8 +282,10 @@ void ftp_get(obex_t *obex, obex_object_t *obj)
 	if (os == NULL)
 		return;
 
-	if (os->current_folder == NULL)
+	if (os->current_folder == NULL) {
+		err = -ENOENT;
 		goto fail;
+	}
 
 	err = get_by_type(os, os->type, &size);
 	if (err < 0) {
