@@ -820,6 +820,7 @@ static void headset_server_remove(struct btd_adapter *adapter)
 	}
 
 	if (adp->hsp_ag_server) {
+		g_io_channel_shutdown(adp->hsp_ag_server, TRUE, NULL);
 		g_io_channel_unref(adp->hsp_ag_server);
 		adp->hsp_ag_server = NULL;
 	}
@@ -830,6 +831,7 @@ static void headset_server_remove(struct btd_adapter *adapter)
 	}
 
 	if (adp->hfp_ag_server) {
+		g_io_channel_shutdown(adp->hfp_ag_server, TRUE, NULL);
 		g_io_channel_unref(adp->hfp_ag_server);
 		adp->hfp_ag_server = NULL;
 	}
