@@ -2081,6 +2081,7 @@ static void path_unregister(void *data)
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED) {
 		debug("Headset unregistered while device was connected!");
+		bt_cancel_discovery(&dev->src, &dev->dst);
 		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 	}
 

@@ -145,7 +145,10 @@ static int port_release(struct serial_port *port)
 			g_io_channel_shutdown(port->io, TRUE, NULL);
 			g_io_channel_unref(port->io);
 			port->io = NULL;
-		}
+		} else
+			bt_cancel_discovery(&port->device->src,
+						&port->device->dst);
+
 		return 0;
 	}
 

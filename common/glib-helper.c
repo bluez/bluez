@@ -147,6 +147,7 @@ struct search_context {
 	bt_destroy_t		destroy;
 	gpointer		user_data;
 	uuid_t			uuid;
+	guint			io_id;
 };
 
 static GSList *context_list = NULL;
@@ -252,6 +253,7 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond, gpointer user
 	int sk, err = 0;
 
 	sk = g_io_channel_unix_get_fd(chan);
+	ctxt->io_id = 0;
 
 	len = sizeof(err);
 	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
@@ -322,8 +324,9 @@ static int create_search_context(struct search_context **ctxt,
 	(*ctxt)->uuid = *uuid;
 
 	chan = g_io_channel_unix_new(sdp_get_socket(s));
-	g_io_add_watch(chan, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			connect_watch, *ctxt);
+	(*ctxt)->io_id = g_io_add_watch(chan,
+				G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				connect_watch, *ctxt);
 	g_io_channel_unref(chan);
 
 	return 0;
@@ -388,7 +391,12 @@ int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
 	if (!ctxt->session)
 		return -ENOTCONN;
 
-	close(ctxt->session->sock);
+	if (ctxt->io_id)
+		g_source_remove(ctxt->io_id);
+
+	sdp_close(ctxt->session);
+
+	search_context_cleanup(ctxt);
 	return 0;
 }
 

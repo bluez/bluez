@@ -424,9 +424,35 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return invalid_args(msg);
 }
 
+static void browse_req_free(struct browse_req *req)
+{
+	struct btd_device *device = req->device;
+
+	device->discov_active = 0;
+
+	if (device->discov_requestor) {
+		g_dbus_remove_watch(req->conn, device->discov_listener);
+		device->discov_listener = 0;
+		g_free(device->discov_requestor);
+		device->discov_requestor = NULL;
+	}
+
+	if (req->msg)
+		dbus_message_unref(req->msg);
+	if (req->conn)
+		dbus_connection_unref(req->conn);
+	g_slist_foreach(req->profiles_added, (GFunc) g_free, NULL);
+	g_slist_free(req->profiles_added);
+	g_slist_free(req->profiles_removed);
+	if (req->records)
+		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
+	g_free(req);
+}
+
 static void discover_services_req_exit(DBusConnection *conn, void *user_data)
 {
-	struct btd_device *device = user_data;
+	struct browse_req *req = user_data;
+	struct btd_device *device = req->device;
 	struct btd_adapter *adapter = device->adapter;
 	bdaddr_t src;
 
@@ -435,6 +461,8 @@ static void discover_services_req_exit(DBusConnection *conn, void *user_data)
 	debug("DiscoverDevices requestor exited");
 
 	bt_cancel_discovery(&src, &device->bdaddr);
+
+	browse_req_free(req);
 }
 
 static DBusMessage *discover_services(DBusConnection *conn,
@@ -1236,31 +1264,6 @@ static void store_profiles(struct btd_device *device)
 	g_free(str);
 }
 
-static void browse_req_free(struct browse_req *req)
-{
-	struct btd_device *device = req->device;
-
-	device->discov_active = 0;
-
-	if (device->discov_requestor) {
-		g_dbus_remove_watch(req->conn, device->discov_listener);
-		device->discov_listener = 0;
-		g_free(device->discov_requestor);
-		device->discov_requestor = NULL;
-	}
-
-	if (req->msg)
-		dbus_message_unref(req->msg);
-	if (req->conn)
-		dbus_connection_unref(req->conn);
-	g_slist_foreach(req->profiles_added, (GFunc) g_free, NULL);
-	g_slist_free(req->profiles_added);
-	g_slist_free(req->profiles_removed);
-	if (req->records)
-		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
-	g_free(req);
-}
-
 static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
@@ -1419,7 +1422,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 		device->discov_listener = g_dbus_add_disconnect_watch(conn,
 						sender,
 						discover_services_req_exit,
-						device, NULL);
+						req, NULL);
 	}
 
 	err = bt_search_service(&src, &device->bdaddr,
