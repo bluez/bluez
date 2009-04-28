@@ -3211,15 +3211,11 @@ int avdtp_unregister_sep(struct avdtp_local_sep *sep)
 	if (!sep)
 		return -EINVAL;
 
-	if (sep->info.inuse)
-		return -EBUSY;
-
 	server = sep->server;
 	server->seps = g_slist_remove(server->seps, sep);
 
 	if (sep->stream)
-		avdtp_sep_set_state(sep->stream->session, sep,
-							AVDTP_STATE_IDLE);
+		release_stream(sep->stream, sep->stream->session);
 
 	g_free(sep);
 
@@ -3347,10 +3343,18 @@ int avdtp_init(const bdaddr_t *src, GKeyFile *config)
 void avdtp_exit(const bdaddr_t *src)
 {
 	struct avdtp_server *server;
+	GSList *l;
 
 	server = find_server(servers, src);
 	if (!server)
 		return;
+
+	for (l = sessions; l; l = l->next) {
+		struct avdtp *session = l->data;
+
+		if (session->server == server)
+			connection_lost(session, -ECONNABORTED);
+	}
 
 	servers = g_slist_remove(servers, server);
 

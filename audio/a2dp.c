@@ -1198,6 +1198,8 @@ void a2dp_unregister(const bdaddr_t *src)
 	g_slist_foreach(server->sources, (GFunc) a2dp_unregister_sep, NULL);
 	g_slist_free(server->sources);
 
+	avdtp_exit(src);
+
 	if (server->source_record_id)
 		remove_record_from_server(server->source_record_id);
 
