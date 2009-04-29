@@ -307,6 +307,7 @@ struct avdtp_server {
 	bdaddr_t src;
 	GIOChannel *io;
 	GSList *seps;
+	GSList *sessions;
 };
 
 struct avdtp_local_sep {
@@ -398,7 +399,6 @@ struct avdtp {
 };
 
 static GSList *servers = NULL;
-static GSList *sessions = NULL;
 
 static GSList *avdtp_callbacks = NULL;
 
@@ -985,13 +985,10 @@ static void connection_lost(struct avdtp *session, int err)
 
 void avdtp_unref(struct avdtp *session)
 {
+	struct avdtp_server *server;
+
 	if (!session)
 		return;
-
-	if (!g_slist_find(sessions, session)) {
-		error("avdtp_unref: trying to unref a unknown session");
-		return;
-	}
 
 	session->ref--;
 
@@ -1015,13 +1012,15 @@ void avdtp_unref(struct avdtp *session)
 	if (session->ref > 0)
 		return;
 
+	server = session->server;
+
 	debug("avdtp_unref(%p): freeing session and removing from list",
 			session);
 
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
 
-	sessions = g_slist_remove(sessions, session);
+	server->sessions = g_slist_remove(server->sessions, session);
 
 	if (session->req)
 		pending_req_free(session->req);
@@ -1875,14 +1874,14 @@ failed:
 	return FALSE;
 }
 
-static struct avdtp *find_session(const bdaddr_t *src, const bdaddr_t *dst)
+static struct avdtp *find_session(GSList *list, const bdaddr_t *dst)
 {
 	GSList *l;
 
-	for (l = sessions; l != NULL; l = g_slist_next(l)) {
+	for (l = list; l != NULL; l = g_slist_next(l)) {
 		struct avdtp *s = l->data;
 
-		if (bacmp(src, &s->server->src) || bacmp(dst, &s->dst))
+		if (bacmp(dst, &s->dst))
 			continue;
 
 		return s;
@@ -1893,12 +1892,17 @@ static struct avdtp *find_session(const bdaddr_t *src, const bdaddr_t *dst)
 
 static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst)
 {
+	struct avdtp_server *server;
 	struct avdtp *session;
 
 	assert(src != NULL);
 	assert(dst != NULL);
 
-	session = find_session(src, dst);
+	server = find_server(servers, src);
+	if (server == NULL)
+		return NULL;
+
+	session = find_session(server->sessions, dst);
 	if (session) {
 		if (session->pending_auth)
 			return NULL;
@@ -1908,7 +1912,7 @@ static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst
 
 	session = g_new0(struct avdtp, 1);
 
-	session->server = find_server(servers, src);
+	session->server = server;
 	bacpy(&session->dst, dst);
 	session->ref = 1;
 	/* We don't use avdtp_set_state() here since this isn't a state change
@@ -1916,7 +1920,7 @@ static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst
 	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
 	session->auto_dc = TRUE;
 
-	sessions = g_slist_append(sessions, session);
+	server->sessions = g_slist_append(server->sessions, session);
 
 	return session;
 }
@@ -1938,11 +1942,6 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	struct avdtp *session = user_data;
 	char address[18];
 	GError *gerr = NULL;
-
-	if (!g_slist_find(sessions, session)) {
-		debug("avdtp_connect_cb: session got removed");
-		return;
-	}
 
 	if (err) {
 		error("%s", err->message);
@@ -2661,10 +2660,14 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 
 gboolean avdtp_is_connected(const bdaddr_t *src, const bdaddr_t *dst)
 {
+	struct avdtp_server *server;
 	struct avdtp *session;
 
-	session = find_session(src, dst);
+	server = find_server(servers, src);
+	if (!server)
+		return FALSE;
 
+	session = find_session(server->sessions, dst);
 	if (!session)
 		return FALSE;
 
@@ -3349,11 +3352,10 @@ void avdtp_exit(const bdaddr_t *src)
 	if (!server)
 		return;
 
-	for (l = sessions; l; l = l->next) {
+	for (l = server->sessions; l; l = l->next) {
 		struct avdtp *session = l->data;
 
-		if (session->server == server)
-			connection_lost(session, -ECONNABORTED);
+		connection_lost(session, -ECONNABORTED);
 	}
 
 	servers = g_slist_remove(servers, server);
