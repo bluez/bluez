@@ -74,6 +74,8 @@
 static DBusConnection *connection = NULL;
 static GSList *adapter_drivers = NULL;
 
+const struct btd_adapter_ops *adapter_ops = NULL;
+
 struct session_req {
 	struct btd_adapter	*adapter;
 	DBusConnection		*conn;		/* Connection reference */
@@ -3084,4 +3086,31 @@ gboolean adapter_is_pairable(struct btd_adapter *adapter)
 gboolean adapter_powering_down(struct btd_adapter *adapter)
 {
 	return adapter->off_requested;
+}
+
+int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops)
+{
+	/* Already registered */
+	if (adapter_ops)
+		return -EALREADY;
+
+	if (btd_adapter_ops->setup == NULL)
+		return -EINVAL;
+
+	adapter_ops = btd_adapter_ops;
+
+	return 0;
+}
+
+void btd_adapter_cleanup_ops()
+{
+	adapter_ops->cleanup();
+}
+
+int adapter_ops_setup()
+{
+	if (!adapter_ops)
+		return -EINVAL;
+
+	return adapter_ops->setup();
 }

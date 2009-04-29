@@ -411,7 +411,10 @@ int main(int argc, char *argv[])
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 
-	manager_init_adapters();
+	if (adapter_ops_setup() < 0) {
+		error("adapter_ops_setup failed");
+		exit(1);
+	}
 
 	starting = FALSE;
 

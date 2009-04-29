@@ -147,3 +147,13 @@ const char *btd_adapter_any_request_path(void);
 void btd_adapter_any_release_path(void);
 gboolean adapter_is_pairable(struct btd_adapter *adapter);
 gboolean adapter_powering_down(struct btd_adapter *adapter);
+
+
+struct btd_adapter_ops {
+	int (*setup) (void);
+	void (*cleanup) (void);
+};
+
+int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
+void btd_adapter_cleanup_ops();
+int adapter_ops_setup();

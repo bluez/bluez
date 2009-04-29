@@ -55,8 +55,6 @@ static DBusConnection *connection = NULL;
 static int default_adapter_id = -1;
 static GSList *adapters = NULL;
 
-const struct btd_adapter_ops *adapter_ops = NULL;
-
 const char *manager_get_base_path(void)
 {
 	return base_path;
@@ -519,37 +517,4 @@ void manager_set_default_adapter(int id)
 			"DefaultAdapterChanged",
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
-}
-
-int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops)
-{
-	/* Already registered */
-	if (adapter_ops)
-		return -EALREADY;
-
-	if (btd_adapter_ops->setup == NULL)
-		return -EINVAL;
-
-	adapter_ops = btd_adapter_ops;
-
-	return 0;
-}
-
-void btd_adapter_cleanup_ops()
-{
-	adapter_ops->cleanup();
-}
-
-void manager_init_adapters()
-{
-	int err;
-
-	if (!adapter_ops) {
-		info("No adapter_ops registered.");
-		return;
-	}
-
-	err = adapter_ops->setup();
-	if (err < 0)
-		error("btd_register_adapter_ops failed:%s (%d)", strerror(-err), -err);
 }
