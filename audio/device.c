@@ -618,6 +618,8 @@ gboolean audio_device_is_connected(struct audio_device *dev,
 
 void audio_device_unregister(struct audio_device *device)
 {
+	unix_device_removed(device);
+
 	if (device->headset)
 		headset_unregister(device);
 
@@ -626,8 +628,6 @@ void audio_device_unregister(struct audio_device *device)
 
 	if (device->control)
 		control_unregister(device);
-
-	unix_device_removed(device);
 
 	g_dbus_unregister_interface(device->conn, device->path,
 						AUDIO_INTERFACE);
