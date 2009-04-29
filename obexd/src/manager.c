@@ -830,6 +830,16 @@ void unregister_transfer(guint32 id)
 	g_free(path);
 }
 
+static void agent_cancel()
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
+					"org.openobex.Agent", "Cancel");
+
+	g_dbus_send_message(connection, msg);
+}
+
 static void agent_reply(DBusPendingCall *call, gpointer user_data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
@@ -849,6 +859,10 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("Agent replied with an error: %s, %s",
 				derr.name, derr.message);
+
+		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY))
+			agent_cancel();
+
 		dbus_error_free(&derr);
 		dbus_message_unref(reply);
 		return;
@@ -956,11 +970,7 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 
 	if (!got_reply) {
 		dbus_pending_call_cancel(call);
-		msg = dbus_message_new_method_call(agent->bus_name,
-							agent->path,
-							"org.openobex.Agent",
-							"Cancel");
-		g_dbus_send_message(connection, msg);
+		agent_cancel();
 	}
 
 	dbus_pending_call_unref(call);
@@ -976,6 +986,18 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	return 0;
 }
 
+static void service_cancel(struct pending_request *pending)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call("org.bluez",
+					pending->adapter_path,
+					"org.bluez.Service",
+					"CancelAuthorization");
+
+	g_dbus_send_message(system_conn, msg);
+}
+
 static void service_reply(DBusPendingCall *call, gpointer user_data)
 {
 	struct pending_request *pending = user_data;
@@ -986,6 +1008,10 @@ static void service_reply(DBusPendingCall *call, gpointer user_data)
 	if (dbus_set_error_from_message(&derr, reply)) {
 		error("RequestAuthorization error: %s, %s",
 				derr.name, derr.message);
+
+		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY))
+			service_cancel(pending);
+
 		dbus_error_free(&derr);
 		close(pending->nsk);
 		goto done;
@@ -1008,18 +1034,10 @@ static gboolean service_error(GIOChannel *io, GIOCondition cond,
 			gpointer user_data)
 {
 	struct pending_request *pending = user_data;
-	DBusMessage *msg;
 
 	pending->watch = 0;
 
-	msg = dbus_message_new_method_call("org.bluez",
-					pending->adapter_path,
-					"org.bluez.Service",
-					"CancelAuthorization");
-
-	dbus_connection_send(system_conn, msg, NULL);
-
-	dbus_message_unref(msg);
+	service_cancel(pending);
 
 	return FALSE;
 }
