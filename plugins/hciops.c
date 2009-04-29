@@ -416,9 +416,33 @@ static void hciops_cleanup(void)
 {
 }
 
+static int hciops_start(int index)
+{
+	int dd;
+	int err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	if (ioctl(dd, HCIDEVUP, index) == 0)
+		goto done; /* on success */
+
+	if (errno != EALREADY) {
+		err = -errno;
+		error("Can't init device hci%d: %s (%d)",
+				index, strerror(errno), errno);
+	}
+
+done:
+	hci_close_dev(dd);
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
+	.start = hciops_start,
 };
 
 static int hciops_init(void)

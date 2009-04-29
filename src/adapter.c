@@ -405,24 +405,15 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 
 	scan_enable = mode2scan(new_mode);
 
+	if (!adapter->up && scan_enable != SCAN_DISABLED) {
+		err = adapter_ops->start(adapter->dev_id);
+		if (err < 0)
+			return err;
+	}
+
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0)
 		return -EIO;
-
-	if (!adapter->up && scan_enable != SCAN_DISABLED) {
-		/* Start HCI device */
-		if (ioctl(dd, HCIDEVUP, adapter->dev_id) == 0)
-			goto done; /* on success */
-
-		if (errno != EALREADY) {
-			err = -errno;
-			error("Can't init device hci%d: %s (%d)\n",
-				adapter->dev_id, strerror(errno), errno);
-
-			hci_close_dev(dd);
-			return err;
-		}
-	}
 
 	if (adapter->up && scan_enable == SCAN_DISABLED) {
 		struct hci_request rq = {
