@@ -935,6 +935,17 @@ static void obex_handle_destroy(gpointer user_data)
 	OBEX_Cleanup(obex);
 }
 
+static gboolean tty_reinit(gpointer data)
+{
+	struct server *server = data;
+
+	tty_init(server->services, server->folder, server->capability, server->devnode);
+
+	server_free(server);
+
+	return FALSE;
+}
+
 static gboolean obex_handle_input(GIOChannel *io,
 				GIOCondition cond, gpointer user_data)
 {
@@ -957,8 +968,13 @@ static gboolean obex_handle_input(GIOChannel *io,
 	return TRUE;
 
 failed:
-	if (os->server->devnode)
-		tty_closed();
+	if (os->server->devnode) {
+		if (cond & G_IO_NVAL)
+			tty_closed();
+		else
+			g_idle_add(tty_reinit, os->server);
+	}
+
 	return FALSE;
 }
 
