@@ -42,6 +42,7 @@
 #include "obex.h"
 #include "dbus.h"
 #include "logging.h"
+#include "btio.h"
 
 static const gchar *opp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
 <record>									\
@@ -232,10 +233,10 @@ static struct agent *agent = NULL;
 
 struct pending_request {
 	struct server *server;
-	gchar address[18];
 	gchar *adapter_path;
+	char address[18];
 	guint watch;
-	gint nsk;
+	GIOChannel *io;
 };
 
 struct adapter_any {
@@ -998,11 +999,32 @@ static void service_cancel(struct pending_request *pending)
 	g_dbus_send_message(system_conn, msg);
 }
 
+static void connect_event(GIOChannel *io, GError *err, gpointer user_data)
+{
+	struct server *server = user_data;
+	gint sk;
+
+	if (err) {
+		error("%s", err->message);
+		return;
+	}
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	if (obex_session_start(sk, server) == 0)
+		return;
+
+	g_io_channel_shutdown(io, TRUE, NULL);
+}
+
 static void service_reply(DBusPendingCall *call, gpointer user_data)
 {
 	struct pending_request *pending = user_data;
+	GIOChannel *io = pending->io;
+	struct server *server = pending->server;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
+	GError *err = NULL;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -1013,14 +1035,17 @@ static void service_reply(DBusPendingCall *call, gpointer user_data)
 			service_cancel(pending);
 
 		dbus_error_free(&derr);
-		close(pending->nsk);
+		g_io_channel_shutdown(io, TRUE, NULL);
 		goto done;
 	}
 
 	debug("RequestAuthorization succeeded");
 
-	if (obex_session_start(pending->nsk, pending->server) < 0)
-		close(pending->nsk);
+	if (!bt_io_accept(io, connect_event, server, NULL, &err)) {
+		error("%s", err->message);
+		g_error_free(err);
+		g_io_channel_shutdown(io, TRUE, NULL);
+	}
 
 done:
 	if (pending->watch)
@@ -1048,7 +1073,6 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusMessage *msg;
 	DBusPendingCall *pcall;
-	GIOChannel *io;
 	const char *paddr = pending->address;
 	const char *path;
 	DBusError derr;
@@ -1092,50 +1116,45 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 	dbus_pending_call_unref(pcall);
 
 	/* Catches errors before authorization response comes */
-	io = g_io_channel_unix_new(pending->nsk);
-	pending->watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+	pending->watch = g_io_add_watch_full(pending->io, G_PRIORITY_DEFAULT,
 					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 					service_error, pending, NULL);
-	g_io_channel_unref(io);
+	g_io_channel_unref(pending->io);
 
 	return;
 
 failed:
 	g_free(pending->adapter_path);
-	close(pending->nsk);
+	g_io_channel_shutdown(pending->io, TRUE, NULL);
+	g_io_channel_unref(pending->io);
 	g_free(pending);
 }
 
-gint request_service_authorization(struct server *server, gint nsk)
+gint request_service_authorization(struct server *server, GIOChannel *io,
+					const char *address)
 {
-	struct sockaddr_rc src, dst;
-	socklen_t addrlen;
-	gchar address[18];
-	const gchar *paddr = address;
 	struct pending_request *pending;
+	char source[18];
+	GError *err = NULL;
 
 	if (system_conn == NULL || any->path == NULL)
 		return -1;
 
-	memset(&src, 0, sizeof(src));
-	memset(&dst, 0, sizeof(dst));
-	addrlen = sizeof(src);
-
-	if (getsockname(nsk, (struct sockaddr *) &src, &addrlen) < 0)
-		return -1;
-
-	ba2str(&src.rc_bdaddr, address);
-
-	if (getpeername(nsk, (struct sockaddr *) &dst, &addrlen) < 0)
-		return -1;
+	bt_io_get(io, BT_IO_RFCOMM, &err,
+			BT_IO_OPT_SOURCE, source,
+			BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		return -EINVAL;
+	}
 
 	pending = g_new0(struct pending_request, 1);
 	pending->server = server;
-	pending->nsk = nsk;
+	pending->io = g_io_channel_ref(io);
+	memcpy(pending->address, address, sizeof(pending->address));
 
-	ba2str(&dst.rc_bdaddr, pending->address);
-
-	find_adapter(paddr, find_adapter_reply, pending);
+	find_adapter(source, find_adapter_reply, pending);
 
 	return 0;
 }

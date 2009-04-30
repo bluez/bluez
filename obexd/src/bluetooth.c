@@ -46,112 +46,98 @@
 #include "bluetooth.h"
 #include "obex.h"
 #include "dbus.h"
+#include "btio.h"
 
 #define BT_RX_MTU 32767
 #define BT_TX_MTU 32767
 
 static GSList *servers = NULL;
 
-static gboolean connect_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
+static void connect_event(GIOChannel *io, GError *err, gpointer user_data)
 {
-	struct sockaddr_rc raddr;
-	socklen_t alen;
 	struct server *server = user_data;
-	gchar address[18];
-	gint err, sk, nsk;
+	gint sk;
+
+	if (err) {
+		error("%s", err->message);
+		return;
+	}
 
 	sk = g_io_channel_unix_get_fd(io);
-	alen = sizeof(raddr);
-	nsk = accept(sk, (struct sockaddr *) &raddr, &alen);
-	if (nsk < 0)
-		return TRUE;
 
-	alen = sizeof(raddr);
-	if (getpeername(nsk, (struct sockaddr *) &raddr, &alen) < 0) {
-		err = errno;
-		error("getpeername(): %s(%d)", strerror(err), err);
-		close(nsk);
-		return TRUE;
+	if (obex_session_start(sk, server) == 0)
+		return;
+
+	g_io_channel_shutdown(io, TRUE, NULL);
+}
+
+static void confirm_event(GIOChannel *io, gpointer user_data)
+{
+	struct server *server = user_data;
+	GError *err = NULL;
+	char address[18];
+	guint8 channel;
+
+	bt_io_get(io, BT_IO_RFCOMM, &err,
+			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_CHANNEL, &channel,
+			BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		goto drop;
 	}
 
-	ba2str(&raddr.rc_bdaddr, address);
-	info("New connection from: %s, channel %u, fd %d", address,
-			raddr.rc_channel, nsk);
+	info("New connection from: %s, channel %u", address, channel);
+	g_io_channel_set_close_on_unref(io, FALSE);
 
 	if (server->services != OBEX_OPP) {
-		if (request_service_authorization(server, nsk) < 0)
-			close(nsk);
+		if (request_service_authorization(server, io, address) < 0)
+			goto drop;
 
-		return TRUE;
+		return;
 	}
 
-	if (obex_session_start(nsk, server) < 0)
-		close(nsk);
+	if (!bt_io_accept(io, connect_event, server, NULL, &err)) {
+		error("%s", err->message);
+		g_error_free(err);
+		goto drop;
+	}
 
-	return TRUE;
+	return;
+
+drop:
+	g_io_channel_shutdown(io, TRUE, NULL);
 }
 
 static gint server_start(struct server *server)
 {
-	struct sockaddr_rc laddr;
-	int err, sk, arg;
+	GError *err = NULL;
 
-	sk = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sk < 0) {
-		err = errno;
-		error("socket(): %s(%d)", strerror(err), err);
-		return -err;
-	}
-
-	arg = fcntl(sk, F_GETFL);
-	if (arg < 0) {
-		err = errno;
+	/* Listen */
+	if (server->secure)
+		server->io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event,
+					server, NULL, &err,
+					BT_IO_OPT_CHANNEL, server->channel,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+					BT_IO_OPT_INVALID);
+	else
+		server->io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event,
+					server, NULL, &err,
+					BT_IO_OPT_CHANNEL, server->channel,
+					BT_IO_OPT_INVALID);
+	if (!server->io)
 		goto failed;
-	}
 
-	arg |= O_NONBLOCK;
-	if (fcntl(sk, F_SETFL, arg) < 0) {
-		err = errno;
-		goto failed;
-	}
-
-	if (server->secure) {
-		int lm = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
-
-		if (setsockopt(sk, SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0) {
-			err = errno;
-			goto failed;
-		}
-	}
-
-	memset(&laddr, 0, sizeof(laddr));
-	laddr.rc_family = AF_BLUETOOTH;
-	bacpy(&laddr.rc_bdaddr, BDADDR_ANY);
-	laddr.rc_channel = server->channel;
-
-	if (bind(sk, (struct sockaddr *) &laddr, sizeof(laddr)) < 0) {
-		err = errno;
-		goto failed;
-	}
-
-	if (listen(sk, 10) < 0) {
-		err = errno;
-		goto failed;
-	}
-
-	server->io = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(server->io, TRUE);
-	server->watch = g_io_add_watch(server->io,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				connect_event, server);
 
 	return 0;
 
 failed:
-	error("Bluetooth server register failed: %s(%d)", strerror(err), err);
-	close(sk);
+	error("Bluetooth server register failed: ", err->message);
+	g_error_free(err);
 
-	return -err;
+	return -EINVAL;
 }
 
 static gint server_stop(struct server *server)
