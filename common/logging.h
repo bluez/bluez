@@ -24,9 +24,9 @@
 #ifndef __LOGGING_H
 #define __LOGGING_H
 
-void info(const char *format, ...);
-void error(const char *format, ...);
-void debug(const char *format, ...);
+void info(const char *format, ...) __attribute__((format(printf, 1, 2)));
+void error(const char *format, ...) __attribute__((format(printf, 1, 2)));
+void debug(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void toggle_debug(void);
 void enable_debug(void);
 void disable_debug(void);
