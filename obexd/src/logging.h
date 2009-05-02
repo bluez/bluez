@@ -21,9 +21,9 @@
  *
  */
 
-void info(const char *format, ...);
-void error(const char *format, ...);
-void debug(const char *format, ...);
+void info(const char *format, ...) __attribute__((format(printf, 1, 2)));
+void error(const char *format, ...) __attribute__((format(printf, 1, 2)));
+void debug(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void obex_debug(int evt, int cmd, int rsp);
 void toggle_debug(void);
 void enable_debug(void);
