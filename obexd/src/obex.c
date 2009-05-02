@@ -635,7 +635,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	obex_headerdata_t hd;
 	guint hlen;
 	guint8 hi;
-	guint64 free;
+	long long unsigned int free;
 	int ret;
 
 	os = OBEX_GetUserData(obex);

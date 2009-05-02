@@ -134,7 +134,7 @@ static gint server_start(struct server *server)
 	return 0;
 
 failed:
-	error("Bluetooth server register failed: ", err->message);
+	error("Bluetooth server register failed: %s", err->message);
 	g_error_free(err);
 
 	return -EINVAL;
