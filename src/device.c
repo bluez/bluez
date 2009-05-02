@@ -797,12 +797,6 @@ static void device_remove_bonding(struct btd_device *device,
 	ba2str(&bdaddr, srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
 
-	dev_id = adapter_get_dev_id(device->adapter);
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0)
-		return;
-
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
 			"linkkeys");
 
@@ -812,6 +806,12 @@ static void device_remove_bonding(struct btd_device *device,
 	g_free(str);
 
 	if (!paired)
+		return;
+
+	dev_id = adapter_get_dev_id(device->adapter);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0)
 		return;
 
 	/* Delete the link key from storage */
