@@ -27,6 +27,8 @@
 #define OPENOBEX_MANAGER_INTERFACE	OPENOBEX_SERVICE ".Manager"
 #define ERROR_INTERFACE			OPENOBEX_SERVICE ".Error"
 
+void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data);
+
 gboolean manager_init(void);
 void manager_cleanup(void);
 

@@ -999,7 +999,7 @@ static void service_cancel(struct pending_request *pending)
 	g_dbus_send_message(system_conn, msg);
 }
 
-static void connect_event(GIOChannel *io, GError *err, gpointer user_data)
+void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct server *server = user_data;
 	gint sk;
@@ -1011,10 +1011,8 @@ static void connect_event(GIOChannel *io, GError *err, gpointer user_data)
 
 	sk = g_io_channel_unix_get_fd(io);
 
-	if (obex_session_start(sk, server) == 0)
-		return;
-
-	g_io_channel_shutdown(io, TRUE, NULL);
+	if (obex_session_start(sk, server) < 0)
+		g_io_channel_shutdown(io, TRUE, NULL);
 }
 
 static void service_reply(DBusPendingCall *call, gpointer user_data)
@@ -1041,7 +1039,7 @@ static void service_reply(DBusPendingCall *call, gpointer user_data)
 
 	debug("RequestAuthorization succeeded");
 
-	if (!bt_io_accept(io, connect_event, server, NULL, &err)) {
+	if (!bt_io_accept(io, obex_connect_cb, server, NULL, &err)) {
 		error("%s", err->message);
 		g_error_free(err);
 		g_io_channel_shutdown(io, TRUE, NULL);

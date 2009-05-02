@@ -42,6 +42,7 @@
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
 
+#include "obexd.h"
 #include "logging.h"
 #include "bluetooth.h"
 #include "obex.h"
@@ -52,24 +53,6 @@
 #define BT_TX_MTU 32767
 
 static GSList *servers = NULL;
-
-static void connect_event(GIOChannel *io, GError *err, gpointer user_data)
-{
-	struct server *server = user_data;
-	gint sk;
-
-	if (err) {
-		error("%s", err->message);
-		return;
-	}
-
-	sk = g_io_channel_unix_get_fd(io);
-
-	if (obex_session_start(sk, server) == 0)
-		return;
-
-	g_io_channel_shutdown(io, TRUE, NULL);
-}
 
 static void confirm_event(GIOChannel *io, gpointer user_data)
 {
@@ -98,7 +81,7 @@ static void confirm_event(GIOChannel *io, gpointer user_data)
 		return;
 	}
 
-	if (!bt_io_accept(io, connect_event, server, NULL, &err)) {
+	if (!bt_io_accept(io, obex_connect_cb, server, NULL, &err)) {
 		error("%s", err->message);
 		g_error_free(err);
 		goto drop;
