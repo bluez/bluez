@@ -485,7 +485,7 @@ static void confirm_event(GIOChannel *chan, gpointer user_data)
 	struct network_adapter *na = user_data;
 	int perr;
 	bdaddr_t src, dst;
-	char *address[18];
+	char address[18];
 	GError *err = NULL;
 
 	bt_io_get(chan, BT_IO_L2CAP, &err,

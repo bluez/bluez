@@ -471,7 +471,7 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 {
 	struct serial_proxy *prx = user_data;
 	int perr;
-	char *address[18];
+	char address[18];
 	GError *err = NULL;
 
 	bt_io_get(chan, BT_IO_RFCOMM, &err,
