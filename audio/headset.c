@@ -1429,7 +1429,7 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	err = rfcomm_connect(dev, NULL, NULL, NULL);
 	if (err < 0) {
-		error("Unable to connect: %s (%s)", strerror(-err), -err);
+		error("Unable to connect: %s (%d)", strerror(-err), -err);
 		p->err = -err;
 		error_connection_attempt_failed(dev->conn, p->msg, p->err);
 		goto failed;
