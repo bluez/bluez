@@ -72,7 +72,6 @@ static void confirm_event(GIOChannel *io, gpointer user_data)
 	}
 
 	info("New connection from: %s, channel %u", address, channel);
-	g_io_channel_set_close_on_unref(io, FALSE);
 
 	if (server->services != OBEX_OPP) {
 		if (request_service_authorization(server, io, address) < 0)

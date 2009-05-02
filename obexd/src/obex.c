@@ -978,12 +978,11 @@ failed:
 	return FALSE;
 }
 
-gint obex_session_start(gint fd, struct server *server)
+gint obex_session_start(GIOChannel *io, struct server *server)
 {
 	struct obex_session *os;
-	GIOChannel *io;
 	obex_t *obex;
-	gint ret;
+	gint ret, fd;
 
 	os = g_new0(struct obex_session, 1);
 
@@ -1010,6 +1009,8 @@ gint obex_session_start(gint fd, struct server *server)
 
 	OBEX_SetTransportMTU(obex, os->rx_mtu, os->tx_mtu);
 
+	fd = g_io_channel_unix_get_fd(io);
+
 	ret = FdOBEX_TransportSetup(obex, fd, fd, 0);
 	if (ret < 0) {
 		obex_session_free(os);
@@ -1017,12 +1018,10 @@ gint obex_session_start(gint fd, struct server *server)
 		return ret;
 	}
 
-	io = g_io_channel_unix_new(fd);
 	g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			obex_handle_input, obex, obex_handle_destroy);
-	g_io_channel_set_close_on_unref(io, TRUE);
-	os->io = io;
+	os->io = g_io_channel_ref(io);
 
 	sessions = g_slist_prepend(sessions, os);
 

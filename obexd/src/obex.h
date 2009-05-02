@@ -88,7 +88,7 @@ struct obex_session {
 	gboolean	finished;
 };
 
-gint obex_session_start(gint fd, struct server *server);
+gint obex_session_start(GIOChannel *io, struct server *server);
 gint obex_tty_session_stop(void);
 
 void opp_get(obex_t *obex, obex_object_t *obj);

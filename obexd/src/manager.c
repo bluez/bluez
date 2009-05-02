@@ -232,6 +232,7 @@ struct agent {
 static struct agent *agent = NULL;
 
 struct pending_request {
+	DBusPendingCall *call;
 	struct server *server;
 	gchar *adapter_path;
 	char address[18];
@@ -641,7 +642,7 @@ done:
 
 	dbus_message_unref(reply);
 }
-static void find_adapter(const char *pattern,
+static DBusPendingCall *find_adapter(const char *pattern,
 				DBusPendingCallNotifyFunction function,
 				gpointer user_data)
 {
@@ -658,21 +659,29 @@ static void find_adapter(const char *pattern,
 
 	dbus_connection_send_with_reply(system_conn, msg, &call, -1);
 	dbus_pending_call_set_notify(call, function, user_data, NULL);
-	dbus_pending_call_unref(call);
 
 	dbus_message_unref(msg);
+
+	return call;
 }
 
-static gboolean find_adapter_any(gpointer user_data)
+static gboolean find_adapter_any_idle(gpointer user_data)
 {
-	find_adapter("any", find_adapter_any_reply, user_data);
+	DBusPendingCall *call;
+
+	call = find_adapter("any", find_adapter_any_reply, NULL);
+	dbus_pending_call_unref(call);
 
 	return FALSE;
 }
 
 static void name_acquired(DBusConnection *conn, void *user_data)
 {
-	find_adapter_any(NULL);
+	DBusPendingCall *call;
+
+	call = find_adapter("any", find_adapter_any_reply, NULL);
+	dbus_pending_call_unref(call);
+
 	bluetooth_start();
 }
 
@@ -710,7 +719,7 @@ gboolean manager_init(void)
 	listener_id = g_dbus_add_service_watch(system_conn, "org.bluez",
 				name_acquired, name_released, NULL, NULL);
 
-	g_idle_add(find_adapter_any, NULL);
+	g_idle_add(find_adapter_any_idle, NULL);
 
 	return g_dbus_register_interface(connection, OPENOBEX_MANAGER_PATH,
 					OPENOBEX_MANAGER_INTERFACE,
@@ -1002,17 +1011,24 @@ static void service_cancel(struct pending_request *pending)
 void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct server *server = user_data;
-	gint sk;
 
 	if (err) {
 		error("%s", err->message);
+		g_io_channel_shutdown(io, TRUE, NULL);
 		return;
 	}
 
-	sk = g_io_channel_unix_get_fd(io);
-
-	if (obex_session_start(sk, server) < 0)
+	if (obex_session_start(io, server) < 0)
 		g_io_channel_shutdown(io, TRUE, NULL);
+}
+
+static void pending_request_free(struct pending_request *pending)
+{
+	if (pending->call)
+		dbus_pending_call_unref(pending->call);
+	g_io_channel_unref(pending->io);
+	g_free(pending->adapter_path);
+	g_free(pending);
 }
 
 static void service_reply(DBusPendingCall *call, gpointer user_data)
@@ -1046,10 +1062,8 @@ static void service_reply(DBusPendingCall *call, gpointer user_data)
 	}
 
 done:
-	if (pending->watch)
-		g_source_remove(pending->watch);
-	g_free(pending->adapter_path);
-	g_free(pending);
+	g_source_remove(pending->watch);
+	pending_request_free(pending);
 	dbus_message_unref(reply);
 }
 
@@ -1058,9 +1072,11 @@ static gboolean service_error(GIOChannel *io, GIOCondition cond,
 {
 	struct pending_request *pending = user_data;
 
-	pending->watch = 0;
-
 	service_cancel(pending);
+
+	dbus_pending_call_cancel(pending->call);
+
+	pending_request_free(pending);
 
 	return FALSE;
 }
@@ -1071,8 +1087,7 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusMessage *msg;
 	DBusPendingCall *pcall;
-	const char *paddr = pending->address;
-	const char *path;
+	const char *path, *paddr = pending->address;
 	DBusError derr;
 
 	dbus_error_init(&derr);
@@ -1108,24 +1123,25 @@ static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
 
 	debug("RequestAuthorization(%s, %x)", paddr, pending->server->handle);
 
-	if (!dbus_pending_call_set_notify(pcall, service_reply, pending, NULL))
+	if (!dbus_pending_call_set_notify(pcall, service_reply, pending,
+								NULL)) {
+		dbus_pending_call_unref(pcall);
 		goto failed;
+	}
 
-	dbus_pending_call_unref(pcall);
+	dbus_pending_call_unref(pending->call);
+	pending->call = pcall;
 
 	/* Catches errors before authorization response comes */
-	pending->watch = g_io_add_watch_full(pending->io, G_PRIORITY_DEFAULT,
+	pending->watch = g_io_add_watch(pending->io,
 					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-					service_error, pending, NULL);
-	g_io_channel_unref(pending->io);
+					service_error, pending);
 
 	return;
 
 failed:
-	g_free(pending->adapter_path);
 	g_io_channel_shutdown(pending->io, TRUE, NULL);
-	g_io_channel_unref(pending->io);
-	g_free(pending);
+	pending_request_free(pending);
 }
 
 gint request_service_authorization(struct server *server, GIOChannel *io,
@@ -1152,7 +1168,7 @@ gint request_service_authorization(struct server *server, GIOChannel *io,
 	pending->io = g_io_channel_ref(io);
 	memcpy(pending->address, address, sizeof(pending->address));
 
-	find_adapter(source, find_adapter_reply, pending);
+	pending->call = find_adapter(source, find_adapter_reply, pending);
 
 	return 0;
 }

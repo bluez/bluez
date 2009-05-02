@@ -75,6 +75,7 @@ int tty_init(int services, const gchar *root_path,
 	struct termios options;
 	int fd, err, arg;
 	glong flags;
+	GIOChannel *io = NULL;
 
 	tty_needs_reinit = TRUE;
 
@@ -113,12 +114,18 @@ int tty_init(int services, const gchar *root_path,
 	server->rx_mtu = TTY_RX_MTU;
 	server->tx_mtu = TTY_TX_MTU;
 
-	err = obex_session_start(fd, server);
+	io = g_io_channel_unix_new(fd);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	err = obex_session_start(io, server);
+	g_io_channel_unref(io);
+
 	if (err < 0) {
 		server_free(server);
 		goto failed;
-	} else
-		tty_needs_reinit = FALSE;
+	}
+
+	tty_needs_reinit = FALSE;
 
 	debug("Successfully opened %s", devnode);
 
@@ -126,7 +133,8 @@ int tty_init(int services, const gchar *root_path,
 
 failed:
 	error("tty_init(): %s (%d)", strerror(-err), -err);
-	close(fd);
+	if (io == NULL)
+		close(fd);
 	return err;
 }
 
