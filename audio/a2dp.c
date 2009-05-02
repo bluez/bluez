@@ -507,8 +507,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	ret = avdtp_open(session, stream);
 	if (ret < 0) {
-		error("Error on avdtp_open %s (%d)", strerror(-ret),
-				-ret);
+		error("Error on avdtp_open %s (%d)", strerror(-ret), -ret);
 		setup->stream = NULL;
 		finalize_config_errno(setup, ret);
 	}
@@ -520,9 +519,9 @@ static gboolean getconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
-		debug("Sink %p: Get_Configuration_Ind");
+		debug("Sink %p: Get_Configuration_Ind", sep);
 	else
-		debug("Source %p: Get_Configuration_Ind");
+		debug("Source %p: Get_Configuration_Ind", sep);
 	return TRUE;
 }
 

@@ -1485,8 +1485,8 @@ static void signal_strength_reply(DBusPendingCall *call, void *user_data)
 					DBUS_TYPE_BYTE, &rssi_in_dbm,
 					DBUS_TYPE_INT32, &net_err,
 					DBUS_TYPE_INVALID)) {
-		error("Unable to parse signal_strength reply:",
-				err.name, err.message);
+		error("Unable to parse signal_strength reply: %s, %s",
+							err.name, err.message);
 		dbus_error_free(&err);
 		return;
 	}
@@ -1547,8 +1547,8 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 					DBUS_TYPE_BYTE, &supported_services,
 					DBUS_TYPE_INT32, &net_err,
 					DBUS_TYPE_INVALID)) {
-		error("Unable to parse registration_status_change reply:",
-				err.name, err.message);
+		error("Unable to parse registration_status_change reply:"
+					" %s, %s", err.name, err.message);
 		dbus_error_free(&err);
 		return;
 	}

@@ -510,7 +510,7 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	debug("at the begin of sco_connect_cb() in gateway.c\n");
 
 	if (err) {
-		error("sco_connect_cb(): %s (%d)", err->message);
+		error("sco_connect_cb(): %s", err->message);
 		/* not sure, but from other point of view,
 		 * what is the reason to have headset which
 		 * cannot play audio? */

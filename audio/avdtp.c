@@ -511,7 +511,7 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 	cont_fragments = (len - (session->omtu - sizeof(start))) /
 					(session->omtu - sizeof(cont)) + 1;
 
-	debug("avdtp_send: %u bytes split into %d fragments", len,
+	debug("avdtp_send: %zu bytes split into %d fragments", len,
 							cont_fragments + 1);
 
 	/* Send the start packet */
@@ -529,7 +529,7 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 	if (!try_send(sock, session->buf, session->omtu))
 		return FALSE;
 
-	debug("avdtp_send: first packet with %d bytes sent",
+	debug("avdtp_send: first packet with %lu bytes sent",
 						session->omtu - sizeof(start));
 
 	sent = session->omtu - sizeof(start);
@@ -1652,7 +1652,7 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 	switch (header->packet_type) {
 	case AVDTP_PKT_TYPE_SINGLE:
 		if (size < sizeof(*single)) {
-			error("Received too small single packet (%d bytes)", size);
+			error("Received too small single packet (%zu bytes)", size);
 			return PARSE_ERROR;
 		}
 		if (session->in.active) {
@@ -1673,7 +1673,7 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 		break;
 	case AVDTP_PKT_TYPE_START:
 		if (size < sizeof(*start)) {
-			error("Received too small start packet (%d bytes)", size);
+			error("Received too small start packet (%zu bytes)", size);
 			return PARSE_ERROR;
 		}
 		if (session->in.active) {
@@ -1694,7 +1694,7 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 		break;
 	case AVDTP_PKT_TYPE_CONTINUE:
 		if (size < sizeof(struct avdtp_continue_header)) {
-			error("Received too small continue packet (%d bytes)",
+			error("Received too small continue packet (%zu bytes)",
 									size);
 			return PARSE_ERROR;
 		}
@@ -1717,7 +1717,7 @@ static enum avdtp_parse_result avdtp_parse_data(struct avdtp *session,
 		break;
 	case AVDTP_PKT_TYPE_END:
 		if (size < sizeof(struct avdtp_continue_header)) {
-			error("Received too small end packet (%d bytes)", size);
+			error("Received too small end packet (%zu bytes)", size);
 			return PARSE_ERROR;
 		}
 		if (!session->in.active) {
@@ -1787,7 +1787,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	if (size < sizeof(struct avdtp_common_header)) {
-		error("Received too small packet (%d bytes)", size);
+		error("Received too small packet (%zu bytes)", size);
 		goto failed;
 	}
 
