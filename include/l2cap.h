@@ -163,6 +163,8 @@ typedef struct {
 #define L2CAP_MODE_BASIC	0x00
 #define L2CAP_MODE_RETRANS	0x01
 #define L2CAP_MODE_FLOWCTL	0x02
+#define L2CAP_MODE_ERTM		0x03
+#define L2CAP_MODE_STREAMING	0x04
 
 typedef struct {
 	uint16_t	dcid;
