@@ -1156,7 +1156,10 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'X':
-			rfcmode = atoi(optarg);
+			if (strcasecmp(optarg, "ertm") == 0)
+				rfcmode = L2CAP_MODE_ERTM;
+			else
+				rfcmode = atoi(optarg);
 			break;
 
 		case 'R':
