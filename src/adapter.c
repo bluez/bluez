@@ -66,7 +66,7 @@
 #define IO_CAPABILITY_DISPLAYONLY	0x00
 #define IO_CAPABILITY_DISPLAYYESNO	0x01
 #define IO_CAPABILITY_KEYBOARDONLY	0x02
-#define IO_CAPABILITY_NOINPUTOUTPUT	0x03
+#define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
 #define IO_CAPABILITY_INVALID		0xFF
 
 #define check_address(address) bachk(address)
@@ -1526,8 +1526,8 @@ static uint8_t parse_io_capability(const char *capability)
 		return IO_CAPABILITY_DISPLAYYESNO;
 	if (g_str_equal(capability, "KeyboardOnly"))
 		return IO_CAPABILITY_KEYBOARDONLY;
-	if (g_str_equal(capability, "NoInputOutput"))
-		return IO_CAPABILITY_NOINPUTOUTPUT;
+	if (g_str_equal(capability, "NoInputNoOutput"))
+		return IO_CAPABILITY_NOINPUTNOOUTPUT;
 	return IO_CAPABILITY_INVALID;
 }
 
