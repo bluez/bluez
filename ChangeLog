@@ -1,3 +1,15 @@
+ver 4.38:
+	Add support for builtin plugins.
+	Add framework for adapter operations.
+	Add constants for Enhanced Retransmission modes.
+	Fix HCI socket leak in device_remove_bonding.
+	Fix various format string issues.
+	Fix crashes with various free functions.
+	Fix issues with Headset and A2DP drivers to load again.
+	Fix sending AVRCP button released passthrough messages
+	Fix bug which prevent input devices to work after restart.
+	Fix issue with interpretation of UUID-128 as channel.
+
 ver 4.37:
 	Add version value for Bluetooth 3.0 devices.
 	Add additional L2CAP extended feature mask bits.
