@@ -826,7 +826,7 @@ static void info_request(char *svr)
 	l2cap_info_req *req = (l2cap_info_req *) (buf + L2CAP_CMD_HDR_SIZE);
 	l2cap_info_rsp *rsp = (l2cap_info_rsp *) (buf + L2CAP_CMD_HDR_SIZE);
 	uint16_t mtu;
-	uint32_t mask, channels;
+	uint32_t channels, mask = 0x0000;
 	struct sockaddr_l2 addr;
 	int sk, err;
 
