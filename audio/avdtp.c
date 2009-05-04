@@ -529,7 +529,7 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 	if (!try_send(sock, session->buf, session->omtu))
 		return FALSE;
 
-	debug("avdtp_send: first packet with %lu bytes sent",
+	debug("avdtp_send: first packet with %zu bytes sent",
 						session->omtu - sizeof(start));
 
 	sent = session->omtu - sizeof(start);
