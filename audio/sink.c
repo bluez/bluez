@@ -141,6 +141,7 @@ static void avdtp_state_callback(struct audio_device *dev,
 					DBUS_TYPE_BOOLEAN, &value);
 			device_remove_disconnect_watch(dev->btd_dev,
 							sink->dc_id);
+			sink->dc_id = 0;
 		}
 		sink_set_state(dev, SINK_STATE_DISCONNECTED);
 		break;
@@ -721,6 +722,9 @@ static void sink_free(struct audio_device *dev)
 	if (sink->cb_id)
 		avdtp_stream_remove_cb(sink->session, sink->stream,
 					sink->cb_id);
+
+	if (sink->dc_id)
+		device_remove_disconnect_watch(dev->btd_dev, sink->dc_id);
 
 	if (sink->session)
 		avdtp_unref(sink->session);

@@ -153,6 +153,9 @@ static void input_conn_free(struct input_conn *iconn)
 
 static void input_device_free(struct input_device *idev)
 {
+	if (idev->dc_id)
+		device_remove_disconnect_watch(idev->device, idev->dc_id);
+
 	dbus_connection_unref(idev->conn);
 	btd_device_unref(idev->device);
 	g_free(idev->name);
@@ -424,6 +427,7 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 				"Connected", DBUS_TYPE_BOOLEAN, &connected);
 
 	device_remove_disconnect_watch(idev->device, idev->dc_id);
+	idev->dc_id = 0;
 
 	iconn->intr_watch = 0;
 

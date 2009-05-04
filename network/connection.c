@@ -163,6 +163,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 					NETWORK_PEER_INTERFACE, "UUID",
 					DBUS_TYPE_STRING, &property);
 		device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
+		nc->dc_id = 0;
 		if (nc->watch) {
 			g_dbus_remove_watch(connection, nc->watch);
 			nc->watch = 0;
@@ -516,6 +517,9 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 
 static void connection_free(struct network_conn *nc)
 {
+	if (nc->dc_id)
+		device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
+
 	connection_destroy(connection, nc);
 
 	g_free(nc);

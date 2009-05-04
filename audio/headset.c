@@ -2060,6 +2060,9 @@ static void headset_free(struct audio_device *dev)
 		hs->dc_timer = 0;
 	}
 
+	if (hs->dc_id)
+		device_remove_disconnect_watch(dev->btd_dev, hs->dc_id);
+
 	if (hs->sco) {
 		g_io_channel_shutdown(hs->sco, TRUE, NULL);
 		g_io_channel_unref(hs->sco);
@@ -2431,6 +2434,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		telephony_device_disconnected(dev);
 		active_devices = g_slist_remove(active_devices, dev);
 		device_remove_disconnect_watch(dev->btd_dev, hs->dc_id);
+		hs->dc_id = 0;
 		break;
 	case HEADSET_STATE_CONNECT_IN_PROGRESS:
 		emit_property_changed(dev->conn, dev->path,
