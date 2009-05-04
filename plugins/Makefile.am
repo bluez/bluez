@@ -1,37 +1,41 @@
 
 plugindir = $(libdir)/bluetooth/plugins
 
-if NETLINK
-netlink_plugins = netlink.la
-else
-netlink_plugins =
-endif
+plugin_LTLIBRARIES =
+
+builtin_modules =
+builtin_sources =
+builtin_cflags =
 
 if SERVICEPLUGIN
-service_plugins = service.la
-else
-service_plugins =
+builtin_modules += service
+builtin_sources += service.c
 endif
 
-plugin_LTLIBRARIES = hal.la hciops.la $(netlink_plugins) $(service_plugins)
-
-noinst_LTLIBRARIES = echo.la storage.la
-
-echo_la_SOURCES = echo.c
-
-storage_la_SOURCES = storage.c
-
-hciops_la_SOURCES = hciops.c
+builtin_modules += hciops
+builtin_sources += hciops.c
 
 if NETLINK
-netlink_la_SOURCES = netlink.c
-
+plugin_LTLIBRARIES += netlink.la
 netlink_la_LIBADD = @NETLINK_LIBS@
 endif
 
-if SERVICEPLUGIN
-service_la_SOURCES = service.c
-endif
+builtin_modules += hal
+builtin_sources += hal.c
+
+builtin_modules += storage
+builtin_sources += storage.c
+
+noinst_LTLIBRARIES = libbuiltin.la echo.la
+
+libbuiltin_la_SOURCES = $(builtin_sources)
+libbuiltin_la_LDFLAGS =
+libbuiltin_la_CFLAGS = $(AM_CFLAGS) \
+			$(builtin_cflags) -DBLUETOOTH_PLUGIN_BUILTIN
+
+BUILT_SOURCES = builtin.h
+
+nodist_libbuiltin_la_SOURCES = $(BUILT_SOURCES)
 
 AM_LDFLAGS = -module -avoid-version -no-undefined
 
@@ -40,22 +44,28 @@ AM_CFLAGS = -fvisibility=hidden @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ \
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/src
 
+CLEANFILES = $(BUILT_SOURCES)
+
 MAINTAINERCLEANFILES = Makefile.in
+
+builtin.h:
+	echo "" > $@
+	list='$(builtin_modules)'; for i in $$list; \
+	  do echo "extern struct bluetooth_plugin_desc __bluetooth_builtin_$$i;" >> $@; done
+	echo "" >> $@
+	echo "static struct bluetooth_plugin_desc *__bluetooth_builtin[] = {" >> $@
+	list='$(builtin_modules)'; for i in $$list; \
+	  do echo "&__bluetooth_builtin_$$i," >> $@; done
+	echo "NULL };" >> $@
 
 all-local:
 	@$(LN_S) -f $(top_srcdir)/input/.libs/input.so
 	@$(LN_S) -f $(top_srcdir)/audio/.libs/audio.so
 	@$(LN_S) -f $(top_srcdir)/serial/.libs/serial.so
 	@$(LN_S) -f $(top_srcdir)/network/.libs/network.so
-	@$(LN_S) -f .libs/service.so
-	@$(LN_S) -f .libs/hal.so
-	@$(LN_S) -f .libs/hciops.so
 
 clean-local:
-	@rm -f hal.so
-	@rm -f service.so
 	@rm -f network.so
 	@rm -f serial.so
 	@rm -f audio.so
 	@rm -f input.so
-	@rm -f hciops.so

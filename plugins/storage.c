@@ -40,4 +40,4 @@ static void storage_exit(void)
 }
 
 BLUETOOTH_PLUGIN_DEFINE(storage, VERSION,
-			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, storage_init, storage_exit)
+		BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, storage_init, storage_exit)

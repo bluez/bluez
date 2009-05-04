@@ -22,6 +22,7 @@ bluetoothd_SOURCES = main.c security.c hcid.h sdpd.h \
 	device.h device.c dbus-common.c dbus-common.h dbus-hci.h dbus-hci.c
 
 bluetoothd_LDADD = $(top_builddir)/common/libhelper.a \
+			$(top_builddir)/plugins/libbuiltin.la \
 			@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@ -ldl
 
 bluetoothd_LDFLAGS = -Wl,--export-dynamic
@@ -35,7 +36,7 @@ endif
 AM_CFLAGS = @BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
 						-DPLUGINDIR=\""$(plugindir)"\"
 
-INCLUDES = -I$(top_srcdir)/common
+INCLUDES = -I$(top_srcdir)/common -I$(top_builddir)/plugins
 
 if MANPAGES
 man_MANS = bluetoothd.8

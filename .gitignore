@@ -31,6 +31,7 @@ parser.c
 bluez.pc
 include/bluetooth
 src/bluetoothd
+plugins/builtin.h
 audio/telephony.c
 
 sbc/sbcdec

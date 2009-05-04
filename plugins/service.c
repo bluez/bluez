@@ -860,4 +860,4 @@ static void service_exit(void)
 }
 
 BLUETOOTH_PLUGIN_DEFINE(service, VERSION,
-			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, service_init, service_exit)
+		BLUETOOTH_PLUGIN_PRIORITY_HIGH, service_init, service_exit)

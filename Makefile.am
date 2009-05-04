@@ -1,7 +1,7 @@
 
-SUBDIRS = include lib sbc gdbus common src client\
-	plugins network serial input audio \
-	tools rfcomm compat cups test scripts doc
+SUBDIRS = include lib sbc gdbus common plugins src client\
+			network serial input audio tools \
+			rfcomm compat cups test scripts doc
 
 EXTRA_DIST = bluez.m4
 

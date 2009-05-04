@@ -164,4 +164,4 @@ static void echo_exit(void)
 }
 
 BLUETOOTH_PLUGIN_DEFINE(echo, VERSION,
-			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, echo_init, echo_exit)
+		BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, echo_init, echo_exit)

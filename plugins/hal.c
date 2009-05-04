@@ -159,4 +159,4 @@ static void hal_exit(void)
 }
 
 BLUETOOTH_PLUGIN_DEFINE(hal, VERSION,
-			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, hal_init, hal_exit)
+		BLUETOOTH_PLUGIN_PRIORITY_LOW, hal_init, hal_exit)

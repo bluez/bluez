@@ -455,4 +455,4 @@ static void hciops_exit(void)
 }
 
 BLUETOOTH_PLUGIN_DEFINE(hciops, VERSION,
-			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, hciops_init, hciops_exit)
+		BLUETOOTH_PLUGIN_PRIORITY_LOW, hciops_init, hciops_exit)
