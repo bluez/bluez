@@ -661,8 +661,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		state |= PERIODIC_INQUIRY;
 		adapter_set_state(adapter, state);
 	}
-	/* Out of range list update */
-	adapter_remove_oor_device(adapter, peer_addr);
 
 	legacy = (data == NULL);
 

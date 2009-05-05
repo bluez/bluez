@@ -633,6 +633,9 @@ static void session_remove(struct session_req *req)
 		g_slist_free(adapter->found_devices);
 		adapter->found_devices = NULL;
 
+		g_slist_free(adapter->oor_devices);
+		adapter->oor_devices = NULL;
+
 		if (adapter->state & STD_INQUIRY)
 			cancel_discovery(adapter);
 		else if (adapter->scheduler_id)
@@ -2654,6 +2657,11 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 	if (dev) {
 		if (rssi == dev->rssi)
 			return;
+
+		/* Out of range list update */
+		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
+							dev);
+
 		goto done;
 	}
 
@@ -2698,53 +2706,27 @@ int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 void adapter_update_oor_devices(struct btd_adapter *adapter)
 {
 	GSList *l;
-	struct remote_dev_info *dev;
-	bdaddr_t tmp;
 
 	for (l = adapter->oor_devices; l; l = l->next) {
-		char *address = l->data;
-		struct remote_dev_info match;
+		char address[18];
+		const char *paddr = address;
+		struct remote_dev_info *dev = l->data;
 
-		memset(&match, 0, sizeof(struct remote_dev_info));
-		str2ba(address, &match.bdaddr);
+		ba2str(&dev->bdaddr, address);
 
 		g_dbus_emit_signal(connection, adapter->path,
 				ADAPTER_INTERFACE, "DeviceDisappeared",
-				DBUS_TYPE_STRING, &address,
+				DBUS_TYPE_STRING, &paddr,
 				DBUS_TYPE_INVALID);
-
-		dev = adapter_search_found_devices(adapter, &match);
-		if (!dev)
-			continue;
 
 		adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
 		dev_info_free(dev);
 	}
 
-	g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
 	g_slist_free(adapter->oor_devices);
 	adapter->oor_devices = NULL;
 
-	for (l = adapter->found_devices; l; l = l->next) {
-		dev = l->data;
-		baswap(&tmp, &dev->bdaddr);
-		adapter->oor_devices = g_slist_append(adapter->oor_devices,
-							batostr(&tmp));
-	}
-}
-
-void adapter_remove_oor_device(struct btd_adapter *adapter, char *peer_addr)
-{
-	GSList *l;
-
-	l = g_slist_find_custom(adapter->oor_devices, peer_addr,
-				(GCompareFunc) strcmp);
-	if (l) {
-		char *dev = l->data;
-		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
-								dev);
-		g_free(dev);
-	}
+	adapter->oor_devices = g_slist_copy(adapter->found_devices);
 }
 
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
