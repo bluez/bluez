@@ -665,13 +665,19 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	if (adapter_get_state(adapter) & PERIODIC_INQUIRY)
 		adapter_remove_oor_device(adapter, peer_addr);
 
+	legacy = (data == NULL);
+
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
 	/* if found: don't send the name again */
 	dev = adapter_search_found_devices(adapter, &match);
-	if (dev)
+	if (dev) {
+		adapter_update_found_devices(adapter, peer, rssi, class,
+						NULL, NULL, legacy,
+						NAME_NOT_REQUIRED);
 		return;
+	}
 
 	/* the inquiry result can be triggered by NON D-Bus client */
 	if (adapter_get_state(adapter) & RESOLVE_NAME)
@@ -703,7 +709,6 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		}
 	}
 
-	legacy = (data == NULL);
 
 	if (name && name_type != 0x08)
 		name_status = NAME_SENT;
