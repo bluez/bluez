@@ -761,6 +761,8 @@ static void path_unregister(void *data)
 		g_dbus_remove_watch(connection, user_record->listener_id);
 		exit_callback(connection, user_record);
 	}
+
+	g_free(serv_adapter);
 }
 
 static int register_interface(const char *path, struct btd_adapter *adapter)
