@@ -556,9 +556,19 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	if (found_device_req_name(adapter) == 0)
 		return;
 
+	state = adapter_get_state(adapter);
+
+	/*
+	 * workaround to identify situation when there is no devices around
+	 * but periodic inquiry is active.
+	 */
+	if (!(state & STD_INQUIRY) && !(state & PERIODIC_INQUIRY)) {
+		state |= PERIODIC_INQUIRY;
+		adapter_set_state(adapter, state);
+	}
+
 	/* reset the discover type to be able to handle D-Bus and non D-Bus
 	 * requests */
-	state = adapter_get_state(adapter);
 	state &= ~STD_INQUIRY;
 	state &= ~PERIODIC_INQUIRY;
 	adapter_set_state(adapter, state);
