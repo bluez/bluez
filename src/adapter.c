@@ -2341,7 +2341,7 @@ int adapter_update(struct btd_adapter *adapter, uint8_t new_svc)
 	if (dev->ignore)
 		return 0;
 
-	if (!adapter->initialized) {
+	if (!adapter->up) {
 		adapter->svc_cache = new_svc;
 		return 0;
 	}
