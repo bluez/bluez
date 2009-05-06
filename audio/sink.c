@@ -139,9 +139,11 @@ static void avdtp_state_callback(struct audio_device *dev,
 			emit_property_changed(dev->conn, dev->path,
 					AUDIO_SINK_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
-			device_remove_disconnect_watch(dev->btd_dev,
-							sink->dc_id);
-			sink->dc_id = 0;
+			if (sink->dc_id) {
+				device_remove_disconnect_watch(dev->btd_dev,
+								sink->dc_id);
+				sink->dc_id = 0;
+			}
 		}
 		sink_set_state(dev, SINK_STATE_DISCONNECTED);
 		break;
@@ -204,6 +206,12 @@ static void stream_state_changed(struct avdtp_stream *stream,
 			reply = dbus_message_new_method_return(p->msg);
 			g_dbus_send_message(p->conn, reply);
 			pending_request_free(dev, p);
+		}
+
+		if (sink->dc_id) {
+			device_remove_disconnect_watch(dev->btd_dev,
+							sink->dc_id);
+			sink->dc_id = 0;
 		}
 
 		if (sink->session) {
