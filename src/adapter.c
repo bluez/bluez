@@ -2082,10 +2082,11 @@ proceed:
 
 		adapter->initialized = TRUE;
 
-		adapter_update(adapter, 0, FALSE);
-
 		manager_add_adapter(adapter->path);
 	}
+
+	if (adapter->svc_cache)
+		adapter_update(adapter, 0, FALSE);
 
 	if (dev_down) {
 		adapter_ops->stop(adapter->dev_id);
