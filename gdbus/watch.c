@@ -54,6 +54,8 @@ struct name_data {
 	DBusConnection *connection;
 	char *name;
 	GSList *callbacks;
+	GSList *processed;
+	gboolean lock;
 };
 
 static struct name_data *name_data_find(DBusConnection *connection,
@@ -146,7 +148,11 @@ static int name_data_add(DBusConnection *connection, const char *name,
 	name_listeners = g_slist_append(name_listeners, data);
 
 done:
-	data->callbacks = g_slist_append(data->callbacks, cb);
+	if (data->lock)
+		data->processed = g_slist_append(data->processed, cb);
+	else
+		data->callbacks = g_slist_append(data->callbacks, cb);
+
 	return first;
 }
 
@@ -229,10 +235,9 @@ static gboolean remove_match(DBusConnection *connection, const char *name)
 static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	GSList *l;
 	struct name_data *data;
+	struct name_callback *cb;
 	char *name, *old, *new;
-	int keep = 0;
 
 	if (!dbus_message_is_signal(message, DBUS_INTERFACE_DBUS,
 							"NameOwnerChanged"))
@@ -253,8 +258,11 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
-	for (l = data->callbacks; l != NULL; l = l->next) {
-		struct name_callback *cb = l->data;
+	data->lock = TRUE;
+
+	while (data->callbacks) {
+		cb = data->callbacks->data;
+
 		if (*new == '\0') {
 			if (cb->disc_func)
 				cb->disc_func(connection, cb->user_data);
@@ -262,11 +270,27 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 			if (cb->conn_func)
 				cb->conn_func(connection, cb->user_data);
 		}
-		if (cb->conn_func && cb->disc_func)
-			keep = 1;
+
+		/* Check if the watch was removed/freed by the callback
+		 * function */
+		if (!g_slist_find(data->callbacks, cb))
+			continue;
+
+		data->callbacks = g_slist_remove(data->callbacks, cb);
+
+		if (!cb->conn_func || !cb->disc_func) {
+			g_free(cb);
+			continue;
+		}
+
+		data->processed = g_slist_append(data->processed, cb);
 	}
 
-	if (keep)
+	data->callbacks = data->processed;
+	data->processed = NULL;
+	data->lock = FALSE;
+
+	if (data->callbacks)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	name_listeners = g_slist_remove(name_listeners, data);
@@ -349,16 +373,23 @@ gboolean g_dbus_remove_watch(DBusConnection *connection, guint id)
 			if (cb->id == id)
 				goto remove;
 		}
+		for (lcb = data->processed; lcb; lcb = lcb->next) {
+			cb = lcb->data;
+			if (cb->id == id)
+				goto remove;
+		}
 	}
 
 	return FALSE;
 
 remove:
 	data->callbacks = g_slist_remove(data->callbacks, cb);
+	data->processed = g_slist_remove(data->processed, cb);
 	g_free(cb);
 
-	/* Don't remove the filter if other callbacks exist */
-	if (data->callbacks)
+	/* Don't remove the filter if other callbacks exist or data is lock
+	 * processing callbacks */
+	if (data->callbacks || data->lock)
 		return TRUE;
 
 	if (data->name) {
