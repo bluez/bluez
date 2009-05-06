@@ -424,17 +424,20 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 		};
 
 		hci_send_req(dd, &rq, HCI_REQ_TIMEOUT);
+		hci_close_dev(dd);
 
-		if (ioctl(dd, HCIDEVDOWN, adapter->dev_id) < 0) {
-			err = -errno;
-			hci_close_dev(dd);
+		err = adapter_ops->stop(adapter->dev_id);
+		if (err < 0)
 			return err;
-		}
 
 		adapter->off_requested = TRUE;
 
 		goto done;
 	}
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0)
+		return -EIO;
 
 	if (current_scan != scan_enable) {
 		err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
@@ -2085,7 +2088,7 @@ proceed:
 	}
 
 	if (dev_down) {
-		ioctl(dd, HCIDEVDOWN, adapter->dev_id);
+		adapter_ops->stop(adapter->dev_id);
 		adapter->off_requested = TRUE;
 		return 1;
 	} else
@@ -2468,16 +2471,9 @@ void adapter_remove(struct btd_adapter *adapter)
 	unload_drivers(adapter);
 
 	/* Return adapter to down state if it was not up on init */
-	if (adapter->up && !adapter->already_up) {
-		int dd = hci_open_dev(adapter->dev_id);
-		if (dd < 0)
-			goto done;
+	if (adapter->up && !adapter->already_up)
+		adapter_ops->stop(adapter->dev_id);
 
-		ioctl(dd, HCIDEVDOWN, adapter->dev_id);
-		hci_close_dev(dd);
-	}
-
-done:
 	g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE);
 	g_free(path);
 }

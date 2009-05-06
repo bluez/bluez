@@ -439,10 +439,34 @@ done:
 	return err;
 }
 
+static int hciops_stop(int index)
+{
+	int dd;
+	int err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	if (ioctl(dd, HCIDEVDOWN, index) == 0)
+		goto done; /* on success */
+
+	if (errno != EALREADY) {
+		err = -errno;
+		error("Can't stop device hci%d: %s (%d)",
+				index, strerror(errno), errno);
+	}
+
+done:
+	hci_close_dev(dd);
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
 	.start = hciops_start,
+	.stop = hciops_stop,
 };
 
 static int hciops_init(void)
