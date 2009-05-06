@@ -62,7 +62,7 @@ struct main_opts {
 
 	uint8_t		scan;
 	uint8_t		mode;
-	uint8_t		inqmode;
+	uint8_t		discov_interval;
 	char		deviceid[15]; /* FIXME: */
 
 	int		sock;

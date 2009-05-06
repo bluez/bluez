@@ -148,8 +148,8 @@ static void parse_config(GKeyFile *config)
 		debug("%s", err->message);
 		g_clear_error(&err);
 	} else {
-		debug("inqmode=%d", val);
-		main_opts.inqmode = val;
+		debug("discov_interval=%d", val);
+		main_opts.discov_interval = val;
 	}
 
 	boolean = g_key_file_get_boolean(config, "General",

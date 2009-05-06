@@ -1151,7 +1151,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	if (adapter->disc_sessions)
 		goto done;
 
-	if (main_opts.inqmode)
+	if (main_opts.discov_interval)
 		err = start_inquiry(adapter);
 	else
 		err = start_periodic_inquiry(adapter);
@@ -2510,8 +2510,9 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 
 	if (state & PERIODIC_INQUIRY || state & STD_INQUIRY)
 		discov_active = TRUE;
-	else if (adapter->disc_sessions && main_opts.inqmode)
-		adapter->scheduler_id = g_timeout_add_seconds(main_opts.inqmode,
+	else if (adapter->disc_sessions && main_opts.discov_interval)
+		adapter->scheduler_id = g_timeout_add_seconds(
+						main_opts.discov_interval,
 						(GSourceFunc) start_inquiry,
 						adapter);
 
