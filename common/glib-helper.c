@@ -283,8 +283,9 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond, gpointer user
 	sdp_list_free(search, NULL);
 
 	/* Set callback responsible for update the internal SDP transaction */
-	g_io_add_watch(chan, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			search_process_cb, ctxt);
+	ctxt->io_id = g_io_add_watch(chan,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				search_process_cb, ctxt);
 	return FALSE;
 
 failed:
