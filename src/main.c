@@ -57,8 +57,6 @@
 
 struct main_opts main_opts;
 
-static gboolean starting = TRUE;
-
 static GKeyFile *load_config(const char *file)
 {
 	GError *err = NULL;
@@ -233,7 +231,7 @@ static void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
 				bacmp(bdaddr, &di.bdaddr) != 0)
 			continue;
 
-		manager_update_adapter(di.dev_id, value, starting);
+		manager_update_adapter(di.dev_id, value);
 	}
 
 	g_free(dl);
@@ -416,8 +414,6 @@ int main(int argc, char *argv[])
 		error("adapter_ops_setup failed");
 		exit(1);
 	}
-
-	starting = FALSE;
 
 	manager_startup_complete();
 

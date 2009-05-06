@@ -2086,7 +2086,7 @@ proceed:
 	}
 
 	if (adapter->svc_cache)
-		adapter_update(adapter, 0, FALSE);
+		adapter_update(adapter, 0);
 
 	if (dev_down) {
 		adapter_ops->stop(adapter->dev_id);
@@ -2328,8 +2328,7 @@ int adapter_stop(struct btd_adapter *adapter)
 	return 0;
 }
 
-int adapter_update(struct btd_adapter *adapter, uint8_t new_svc,
-							gboolean starting)
+int adapter_update(struct btd_adapter *adapter, uint8_t new_svc)
 {
 	struct hci_dev *dev = &adapter->dev;
 	int dd;
@@ -2338,7 +2337,7 @@ int adapter_update(struct btd_adapter *adapter, uint8_t new_svc,
 	if (dev->ignore)
 		return 0;
 
-	if (starting || !adapter->initialized) {
+	if (!adapter->initialized) {
 		adapter->svc_cache = new_svc;
 		return 0;
 	}
