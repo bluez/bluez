@@ -2002,11 +2002,12 @@ static int get_pairable_timeout(const char *src)
 	return main_opts.pairto;
 }
 
-static int adapter_up(struct btd_adapter *adapter, int dd)
+static int adapter_up(struct btd_adapter *adapter)
 {
 	char mode[14], srcaddr[18];
 	uint8_t scan_mode;
 	gboolean powered, dev_down = FALSE;
+	int dd;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
@@ -2049,7 +2050,7 @@ static int adapter_up(struct btd_adapter *adapter, int dd)
 		else
 			write_device_mode(&adapter->bdaddr, mode);
 
-		return adapter_up(adapter, dd);
+		return adapter_up(adapter);
 	} else if (!g_str_equal(mode, "connectable") &&
 			adapter->discov_timeout == 0) {
 		/* Set discoverable only if timeout is 0 */
@@ -2059,6 +2060,11 @@ static int adapter_up(struct btd_adapter *adapter, int dd)
 	}
 
 proceed:
+	dd = hci_open_dev(adapter->dev_id);
+
+	if (dd < 0)
+		return -EIO;
+
 	if (dev_down == FALSE)
 		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 				1, &scan_mode);
@@ -2086,6 +2092,8 @@ proceed:
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
+
+	hci_close_dev(dd);
 
 	return 0;
 }
@@ -2200,9 +2208,9 @@ setup:
 	adapter->state &= ~STD_INQUIRY;
 
 	adapter_setup(adapter, dd);
-	err = adapter_up(adapter, dd);
-
 	hci_close_dev(dd);
+
+	err = adapter_up(adapter);
 
 	info("Adapter %s has been enabled", adapter->path);
 
