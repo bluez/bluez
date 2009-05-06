@@ -1566,6 +1566,10 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 		return invalid_args(msg);
 
 	device = adapter_get_device(conn, adapter, address);
+	if (!device)
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".Failed",
+				"Unable to create a new device object");
 
 	return device_create_bonding(device, conn, msg, agent_path, cap);
 }
