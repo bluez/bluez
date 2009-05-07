@@ -457,17 +457,18 @@ static const char *avdtp_statestr(avdtp_state_t state)
 
 static gboolean try_send(int sk, void *data, size_t len)
 {
-	gboolean ret;
+	int err;
 
-	ret = send(sk, data, len, 0);
+	do {
+		err = send(sk, data, len, 0);
+	} while (err < 0 && errno == EINTR);
 
-	if (ret < 0)
-		ret = -errno;
-	else if ((size_t) ret != len)
-		ret = -EIO;
-
-	if (ret < 0) {
-		error("try_send: %s (%d)", strerror(-ret), -ret);
+	if (err < 0) {
+		error("send: %s (%d)", strerror(errno), errno);
+		return FALSE;
+	} else if ((size_t) err != len) {
+		error("try_send: complete buffer not sent (%d/%zu bytes)",
+								err, len);
 		return FALSE;
 	}
 
