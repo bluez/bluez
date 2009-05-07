@@ -16,7 +16,7 @@ Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods		dict GetProperties()
 
-			Returns all properties for the adapter. See the
+			Returns all properties for the device. See the
 			properties section for available properties.
 
 			Possible Errors: org.bluez.Error.DoesNotExist
