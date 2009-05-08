@@ -191,7 +191,8 @@ static void device_free(gpointer user_data)
 	if (device->agent)
 		agent_destroy(device->agent, FALSE);
 
-	if (agent && agent_is_busy(agent, device))
+	if (agent && (agent_is_busy(agent, device) ||
+				agent_is_busy(agent, device->authr)))
 		agent_cancel(agent);
 
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
@@ -205,6 +206,7 @@ static void device_free(gpointer user_data)
 
 	debug("device_free(%p)", device);
 
+	g_free(device->authr);
 	g_free(device->path);
 	g_free(device);
 }
