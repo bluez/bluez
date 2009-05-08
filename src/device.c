@@ -1326,6 +1326,8 @@ proceed:
 
 	g_dbus_send_message(req->conn, reply);
 
+	device_set_temporary(device, FALSE);
+
 cleanup:
 	browse_req_free(req);
 }
@@ -1885,7 +1887,6 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 		goto failed;
 
 	device->auth = 0xff;
-	device->temporary = FALSE;
 
 	g_free(device->authr);
 	device->authr = NULL;

@@ -804,6 +804,7 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	struct btd_device *device;
 	struct btd_adapter *adapter;
 	uint8_t local_auth = 0xff, remote_auth, new_key_type;
+	gboolean bonding;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return -ENODEV;
@@ -815,6 +816,7 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 	get_auth_requirements(local, peer, &local_auth);
 	remote_auth = device_get_auth(device);
+	bonding = device_is_bonding(device, NULL);
 
 	debug("local auth 0x%02x and remote auth 0x%02x",
 					local_auth, remote_auth);
@@ -843,7 +845,10 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 			return err;
 		}
 
-		device_set_temporary(device, FALSE);
+		/* If not the initiator consider the device permanent otherwise
+		 * wait to service discover to complete */
+		if (!bonding)
+			device_set_temporary(device, FALSE);
 	}
 
 	/* If this is not the first link key set a flag so a subsequent auth
