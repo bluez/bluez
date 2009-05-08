@@ -27,6 +27,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -49,6 +50,10 @@
 #include <bluetooth/hci_lib.h>
 
 #include "hciattach.h"
+
+#ifdef NEED_PPOLL
+#include "ppoll.h"
+#endif
 
 struct uart_t {
 	char *type;
@@ -1182,6 +1187,7 @@ int main(int argc, char *argv[])
 	pid_t pid;
 	struct sigaction sa;
 	struct pollfd p;
+	sigset_t sigs;
 	char dev[PATH_MAX];
 
 	detach = 1;
@@ -1328,9 +1334,16 @@ int main(int argc, char *argv[])
 	p.fd = n;
 	p.events = POLLERR | POLLHUP;
 
+	sigfillset(&sigs);
+	sigdelset(&sigs, SIGCHLD);
+	sigdelset(&sigs, SIGPIPE);
+	sigdelset(&sigs, SIGTERM);
+	sigdelset(&sigs, SIGINT);
+	sigdelset(&sigs, SIGHUP);
+
 	while (!__io_canceled) {
 		p.revents = 0;
-		err = poll(&p, 1, 500);
+		err = ppoll(&p, 1, NULL, &sigs);
 		if (err < 0 && errno == EINTR)
 			continue;
 		if (err)
