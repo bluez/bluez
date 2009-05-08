@@ -1583,7 +1583,17 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 	}
 }
 
-static void bonding_request_free(struct bonding_req *bonding, gboolean close)
+static void bonding_request_cancel(struct bonding_req *bonding)
+{
+	if (!bonding->io)
+		return;
+
+	g_io_channel_shutdown(bonding->io, TRUE, NULL);
+	g_io_channel_unref(bonding->io);
+	bonding->io = NULL;
+}
+
+static void bonding_request_free(struct bonding_req *bonding)
 {
 	struct btd_device *device;
 
@@ -1602,11 +1612,8 @@ static void bonding_request_free(struct bonding_req *bonding, gboolean close)
 	if (bonding->io_id)
 		g_source_remove(bonding->io_id);
 
-	if (bonding->io) {
-		if (close)
-			g_io_channel_shutdown(bonding->io, TRUE, NULL);
+	if (bonding->io)
 		g_io_channel_unref(bonding->io);
-	}
 
 	device = bonding->device;
 	g_free(bonding);
@@ -1689,6 +1696,8 @@ static gboolean bonding_io_cb(GIOChannel *io, GIOCondition cond,
 
 	error_connection_attempt_failed(device->bonding->conn,
 					device->bonding->msg, ENETDOWN);
+
+	bonding_request_free(device->bonding);
 
 	return FALSE;
 }
@@ -1779,7 +1788,7 @@ failed:
 
 cleanup:
 	device->bonding->io_id = 0;
-	bonding_request_free(device->bonding, FALSE);
+	bonding_request_free(device->bonding);
 }
 
 static void create_bond_req_exit(DBusConnection *conn, void *user_data)
@@ -1793,7 +1802,7 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 
 	if (device->bonding) {
 		device->bonding->listener_id = 0;
-		bonding_request_free(device->bonding, TRUE);
+		bonding_request_cancel(device->bonding);
 	}
 }
 
@@ -1920,7 +1929,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 	device_set_paired(device, TRUE);
 
-	bonding_request_free(bonding, TRUE);
+	bonding_request_free(bonding);
 
 	return;
 
@@ -1957,7 +1966,8 @@ void device_cancel_bonding(struct btd_device *device, uint8_t status)
 	reply = new_authentication_return(bonding->msg, status);
 	g_dbus_send_message(bonding->conn, reply);
 
-	bonding_request_free(bonding, TRUE);
+	bonding_request_cancel(bonding);
+	bonding_request_free(bonding);
 }
 
 static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
