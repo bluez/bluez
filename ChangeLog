@@ -1,3 +1,15 @@
+ver 4.39:
+	Add workaround for dealing with unknown inquiry complete.
+	Fix discovering when using software scheduler.
+	Fix wrong NoInputNoOutput IO capability string.
+	Fix race condition with agent during pairing.
+	Fix agent cancellation for security mode 3 acceptor failure.
+	Fix temporary flag removal when device creation fails.
+	Fix hciattach to use ppoll instead of poll.
+	Fix service class update when adapter is down.
+	Fix service classes race condition during startup.
+	Fix release of audio client before freeing the device.
+
 ver 4.38:
 	Add support for builtin plugins.
 	Add framework for adapter operations.
