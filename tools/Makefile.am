@@ -41,7 +41,9 @@ sbin_PROGRAMS = hciattach hciconfig $(bccmd_programs) $(avctrl_programs) $(hid2h
 
 bin_PROGRAMS = $(tools_programs) $(dfutool_programs) $(dfubabel_programs)
 
-noinst_PROGRAMS = hcisecfilter ppporc avinfo $(usb_programs)
+noinst_PROGRAMS = hcieventmask hcisecfilter ppporc avinfo $(usb_programs)
+
+hcieventmask_LDADD = @BLUEZ_LIBS@
 
 hciattach_SOURCES = hciattach.c hciattach.h \
 			hciattach_st.c hciattach_ti.c hciattach_tialt.c

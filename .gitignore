@@ -47,6 +47,7 @@ tools/dfubabel
 tools/dfutool
 tools/hciattach
 tools/hciconfig
+tools/hcieventmask
 tools/hcisecfilter
 tools/hcitool
 tools/hid2hci
