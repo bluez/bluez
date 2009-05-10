@@ -124,7 +124,7 @@ int csr_open_bcsp(char *device)
 		if (delay) {
 			usleep(delay * 100);
 
-			if (timeout++ > 100) {
+			if (timeout++ > 5000) {
 				fprintf(stderr, "Initialization timed out\n");
 				return -1;
 			}
@@ -217,7 +217,7 @@ static int do_command(uint16_t command, uint16_t seqnum, uint16_t varid, uint8_t
 		if (delay) {
 			usleep(delay * 100);
 
-			if (timeout++ > 100) {
+			if (timeout++ > 5000) {
 				fprintf(stderr, "Operation timed out\n");
 				return -1;
 			}
