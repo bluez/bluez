@@ -1812,7 +1812,7 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 	int err;
 	char name[249];
 
-	if (dev->hci_rev > 1) {
+	if (dev->lmp_ver > 1) {
 		if (dev->features[5] & LMP_SNIFF_SUBR)
 			events[5] |= 0x20;
 
