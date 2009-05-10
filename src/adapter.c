@@ -1076,7 +1076,8 @@ static int start_inquiry(struct btd_adapter *adapter)
 
 	hci_close_dev(dd);
 
-	adapter->state |= RESOLVE_NAME;
+	if (main_opts.name_resolv)
+		adapter->state |= RESOLVE_NAME;
 
 	return 0;
 }
@@ -1126,7 +1127,8 @@ static int start_periodic_inquiry(struct btd_adapter *adapter)
 
 	hci_close_dev(dd);
 
-	adapter->state |= RESOLVE_NAME;
+	if (main_opts.name_resolv)
+		adapter->state |= RESOLVE_NAME;
 
 	return 0;
 }
@@ -2446,7 +2448,8 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id,
 	}
 
 	adapter->dev_id = id;
-	adapter->state |= RESOLVE_NAME;
+	if (main_opts.name_resolv)
+		adapter->state |= RESOLVE_NAME;
 	adapter->path = g_strdup(path);
 	adapter->already_up = devup;
 

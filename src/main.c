@@ -187,6 +187,13 @@ static void parse_config(GKeyFile *config)
 	} else
 		main_opts.reverse_sdp = boolean;
 
+	boolean = g_key_file_get_boolean(config, "General",
+						"NameResolving", &err);
+	if (err)
+		g_clear_error(&err);
+	else
+		main_opts.name_resolv = boolean;
+
 	main_opts.link_mode = HCI_LM_ACCEPT;
 
 	main_opts.link_policy = HCI_LP_RSWITCH | HCI_LP_SNIFF |
@@ -304,6 +311,7 @@ static void init_defaults(void)
 	main_opts.discovto	= HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
 	main_opts.remember_powered = TRUE;
 	main_opts.reverse_sdp = TRUE;
+	main_opts.name_resolv = TRUE;
 
 	if (gethostname(main_opts.host_name, sizeof(main_opts.host_name) - 1) < 0)
 		strcpy(main_opts.host_name, "noname");
