@@ -320,15 +320,15 @@ static int read_check(int fd, void *buf, int count)
 /*
  * BCSP specific initialization
  */
-int serial_fd;
+static int serial_fd;
+static int bcsp_max_retries = 10;
 
 static void bcsp_tshy_sig_alarm(int sig)
 {
-	static int retries=0;
 	unsigned char bcsp_sync_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xda,0xdc,0xed,0xed,0xc0};
-	int len;
+	int len, retries = 0;
 
-	if (retries < 10) {
+	if (retries < bcsp_max_retries) {
 		retries++;
 		len = write(serial_fd, &bcsp_sync_pkt, 10);
 		alarm(1);
@@ -342,11 +342,10 @@ static void bcsp_tshy_sig_alarm(int sig)
 
 static void bcsp_tconf_sig_alarm(int sig)
 {
-	static int retries=0;
 	unsigned char bcsp_conf_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xad,0xef,0xac,0xed,0xc0};
-	int len;
+	int len, retries = 0;
 
-	if (retries < 10){
+	if (retries < bcsp_max_retries){
 		retries++;
 		len = write(serial_fd, &bcsp_conf_pkt, 10);
 		alarm(1);
@@ -1297,12 +1296,15 @@ int main(int argc, char *argv[])
 
 	/* 10 seconds should be enough for initialization */
 	alarm(to);
+	bcsp_max_retries = to;
 
 	n = init_uart(dev, u, send_break);
 	if (n < 0) {
 		perror("Can't initialize device"); 
 		exit(1);
 	}
+
+	printf("Device setup complete\n");
 
 	alarm(0);
 
