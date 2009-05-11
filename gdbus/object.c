@@ -307,7 +307,11 @@ static void invalidate_parent_data(DBusConnection *conn, const char *child_path)
 	if (!slash)
 		goto done;
 
-	*slash = '\0';
+	if (slash == parent_path && parent_path[1] != '\0')
+		parent_path[1] = '\0';
+	else
+		*slash = '\0';
+
 	if (!strlen(parent_path))
 		goto done;
 
