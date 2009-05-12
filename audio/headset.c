@@ -1084,7 +1084,8 @@ int telephony_operator_selection_ind(int mode, const char *oper)
 	if (!active_devices)
 		return -ENODEV;
 
-	send_foreach_headset(active_devices, hfp_cmp, "\r\n+COPS: %d,0,%s\r\n",
+	send_foreach_headset(active_devices, hfp_cmp,
+				"\r\n+COPS: %d,0,\"%s\"\r\n",
 				mode, oper);
 	return 0;
 }
