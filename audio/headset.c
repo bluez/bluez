@@ -1305,12 +1305,6 @@ void headset_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	else
 		hs->auto_dc = FALSE;
 
-	if (server_is_enabled(&dev->src, HANDSFREE_SVCLASS_ID) &&
-			hs->hfp_handle != 0)
-		hs->hfp_active = TRUE;
-	else
-		hs->hfp_active = FALSE;
-
 	g_io_add_watch(chan, G_IO_IN | G_IO_ERR | G_IO_HUP| G_IO_NVAL,
 			(GIOFunc) rfcomm_io_cb, dev);
 
@@ -1505,6 +1499,8 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 		g_error_free(err);
 		return -EIO;
 	}
+
+	hs->hfp_active = hs->hfp_handle != 0 ? TRUE : FALSE;
 
 	g_io_channel_unref(io);
 
