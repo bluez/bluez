@@ -92,6 +92,20 @@ struct authentication_req {
 	struct btd_device *device;
 };
 
+struct browse_req {
+	DBusConnection *conn;
+	DBusMessage *msg;
+	struct btd_device *device;
+	GSList *match_uuids;
+	GSList *profiles_added;
+	GSList *profiles_removed;
+	sdp_list_t *records;
+	int search_uuid;
+	int reconnect_attempt;
+	guint listener_id;
+	guint timer;
+};
+
 struct btd_device {
 	bdaddr_t	bdaddr;
 	gchar		*path;
@@ -103,11 +117,8 @@ struct btd_device {
 	gboolean	temporary;
 	struct agent	*agent;
 	guint		disconn_timer;
-	int		discov_active;		/* Service discovery active */
-	char		*discov_requestor;	/* discovery requestor unique
-						 * name */
-	guint		discov_listener;
 	guint		discov_timer;
+	struct browse_req *browse;		/* service discover request */
 	struct bonding_req *bonding;
 	struct authentication_req *authr;	/* authentication request */
 
@@ -126,18 +137,6 @@ struct btd_device {
 
 	gboolean	authorizing;
 	gint		ref;
-};
-
-struct browse_req {
-	DBusConnection *conn;
-	DBusMessage *msg;
-	struct btd_device *device;
-	GSList *match_uuids;
-	GSList *profiles_added;
-	GSList *profiles_removed;
-	sdp_list_t *records;
-	int search_uuid;
-	int reconnect_attempt;
 };
 
 static uint16_t uuid_list[] = {
@@ -182,6 +181,36 @@ static inline DBusMessage *in_progress(DBusMessage *msg, const char *str)
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress", str);
 }
 
+static void browse_request_free(struct browse_req *req)
+{
+	if (req->listener_id)
+		g_dbus_remove_watch(req->conn, req->listener_id);
+	if (req->msg)
+		dbus_message_unref(req->msg);
+	if (req->conn)
+		dbus_connection_unref(req->conn);
+	g_slist_foreach(req->profiles_added, (GFunc) g_free, NULL);
+	g_slist_free(req->profiles_added);
+	g_slist_free(req->profiles_removed);
+	if (req->records)
+		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
+	g_free(req);
+}
+
+static void browse_request_cancel(struct browse_req *req)
+{
+	struct btd_device *device = req->device;
+	struct btd_adapter *adapter = device->adapter;
+	bdaddr_t src;
+
+	adapter_get_address(adapter, &src);
+
+	bt_cancel_discovery(&src, &device->bdaddr);
+
+	browse_request_free(req);
+	device->browse = NULL;
+}
+
 static void device_free(gpointer user_data)
 {
 	struct btd_device *device = user_data;
@@ -201,8 +230,8 @@ static void device_free(gpointer user_data)
 	if (device->disconn_timer)
 		g_source_remove(device->disconn_timer);
 
-	if (device->discov_timer)
-		g_source_remove(device->discov_timer);
+	if (device->browse)
+		browse_request_cancel(device->browse);
 
 	debug("device_free(%p)", device);
 
@@ -426,45 +455,13 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return invalid_args(msg);
 }
 
-static void browse_req_free(struct browse_req *req)
-{
-	struct btd_device *device = req->device;
-
-	device->discov_active = 0;
-
-	if (device->discov_requestor) {
-		g_dbus_remove_watch(req->conn, device->discov_listener);
-		device->discov_listener = 0;
-		g_free(device->discov_requestor);
-		device->discov_requestor = NULL;
-	}
-
-	if (req->msg)
-		dbus_message_unref(req->msg);
-	if (req->conn)
-		dbus_connection_unref(req->conn);
-	g_slist_foreach(req->profiles_added, (GFunc) g_free, NULL);
-	g_slist_free(req->profiles_added);
-	g_slist_free(req->profiles_removed);
-	if (req->records)
-		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
-	g_free(req);
-}
-
 static void discover_services_req_exit(DBusConnection *conn, void *user_data)
 {
 	struct browse_req *req = user_data;
-	struct btd_device *device = req->device;
-	struct btd_adapter *adapter = device->adapter;
-	bdaddr_t src;
 
-	adapter_get_address(adapter, &src);
+	debug("DiscoverServices requestor exited");
 
-	debug("DiscoverDevices requestor exited");
-
-	bt_cancel_discovery(&src, &device->bdaddr);
-
-	browse_req_free(req);
+	browse_request_cancel(req);
 }
 
 static DBusMessage *discover_services(DBusConnection *conn,
@@ -474,7 +471,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 	const char *pattern;
 	int err;
 
-	if (device->discov_active)
+	if (device->browse)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
 						"Discover in progress");
 
@@ -506,32 +503,113 @@ fail:
 					"Discovery Failed");
 }
 
+static const char *browse_request_get_requestor(struct browse_req *req)
+{
+	if (!req->msg)
+		return NULL;
+
+	return dbus_message_get_sender(req->msg);
+}
+
+static void iter_append_record(DBusMessageIter *dict, uint32_t handle,
+							const char *record)
+{
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+							NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_UINT32, &handle);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &record);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void discover_services_reply(struct browse_req *req, int err,
+							sdp_list_t *recs)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, dict;
+	sdp_list_t *seq;
+
+	if (err) {
+		const char *err_if;
+
+		if (err == -EHOSTDOWN)
+			err_if = ERROR_INTERFACE ".ConnectionAttemptFailed";
+		else
+			err_if = ERROR_INTERFACE ".Failed";
+
+		reply = dbus_message_new_error(req->msg, err_if,
+							strerror(-err));
+		g_dbus_send_message(req->conn, reply);
+		return;
+	}
+
+	reply = dbus_message_new_method_return(req->msg);
+	if (!reply)
+		return;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_UINT32_AS_STRING DBUS_TYPE_STRING_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	for (seq = recs; seq; seq = seq->next) {
+		sdp_record_t *rec = (sdp_record_t *) seq->data;
+		GString *result;
+
+		if (!rec)
+			break;
+
+		result = g_string_new(NULL);
+
+		convert_sdp_record_to_xml(rec, result,
+				(void *) g_string_append);
+
+		if (result->len)
+			iter_append_record(&dict, rec->handle, result->str);
+
+		g_string_free(result, TRUE);
+	}
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	g_dbus_send_message(req->conn, reply);
+}
+
 static DBusMessage *cancel_discover(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct btd_device *device = user_data;
-	struct btd_adapter *adapter = device->adapter;
 	const char *sender = dbus_message_get_sender(msg);
-	bdaddr_t src;
+	const char *requestor;
 
-	adapter_get_address(adapter, &src);
-
-	if (!device->discov_active)
+	if (!device->browse)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".Failed",
 				"No pending discovery");
 
-	/* only the discover requestor can cancel the inquiry process */
-	if (!device->discov_requestor ||
-				!g_str_equal(device->discov_requestor, sender))
+	if (!dbus_message_is_method_call(device->browse->msg, DEVICE_INTERFACE,
+					"DiscoverServices"))
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
 
-	if (bt_cancel_discovery(&src, &device->bdaddr) < 0)
+	requestor = browse_request_get_requestor(device->browse);
+
+	/* only the discover requestor can cancel the inquiry process */
+	if (!requestor || !g_str_equal(requestor, sender))
 		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".Failed",
-				"No pending discover");
+				ERROR_INTERFACE ".NotAuthorized",
+				"Not Authorized");
+
+	discover_services_reply(device->browse, -ECANCELED, NULL);
+
+	browse_request_cancel(device->browse);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1071,76 +1149,6 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 		device->uuids = g_slist_remove(device->uuids, list->data);
 }
 
-static void iter_append_record(DBusMessageIter *dict, uint32_t handle,
-							const char *record)
-{
-	DBusMessageIter entry;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-							NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_UINT32, &handle);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &record);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void discover_services_reply(struct browse_req *req, int err,
-							sdp_list_t *recs)
-{
-	DBusMessage *reply;
-	DBusMessageIter iter, dict;
-	sdp_list_t *seq;
-
-	if (err) {
-		const char *err_if;
-
-		if (err == -EHOSTDOWN)
-			err_if = ERROR_INTERFACE ".ConnectionAttemptFailed";
-		else
-			err_if = ERROR_INTERFACE ".Failed";
-
-		reply = dbus_message_new_error(req->msg, err_if,
-							strerror(-err));
-		g_dbus_send_message(req->conn, reply);
-		return;
-	}
-
-	reply = dbus_message_new_method_return(req->msg);
-	if (!reply)
-		return;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_UINT32_AS_STRING DBUS_TYPE_STRING_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	for (seq = recs; seq; seq = seq->next) {
-		sdp_record_t *rec = (sdp_record_t *) seq->data;
-		GString *result;
-
-		if (!rec)
-			break;
-
-		result = g_string_new(NULL);
-
-		convert_sdp_record_to_xml(rec, result,
-				(void *) g_string_append);
-
-		if (result->len)
-			iter_append_record(&dict, rec->handle, result->str);
-
-		g_string_free(result, TRUE);
-	}
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	g_dbus_send_message(req->conn, reply);
-}
-
 static void services_changed(struct btd_device *device)
 {
 	DBusConnection *conn = get_dbus_connection();
@@ -1329,7 +1337,8 @@ proceed:
 	device_set_temporary(device, FALSE);
 
 cleanup:
-	browse_req_free(req);
+	browse_request_free(req);
+	device->browse = NULL;
 }
 
 static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
@@ -1392,7 +1401,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	bt_callback_t cb;
 	int err;
 
-	if (device->discov_active)
+	if (device->browse)
 		return -EBUSY;
 
 	adapter_get_address(adapter, &src);
@@ -1414,16 +1423,15 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 		cb = browse_cb;
 	}
 
-	device->discov_active = 1;
+	device->browse = req;
 
 	if (msg) {
 		const char *sender = dbus_message_get_sender(msg);
 
 		req->msg = dbus_message_ref(msg);
-		device->discov_requestor = g_strdup(sender);
 		/* Track the request owner to cancel it
 		 * automatically if the owner exits */
-		device->discov_listener = g_dbus_add_disconnect_watch(conn,
+		req->listener_id = g_dbus_add_disconnect_watch(conn,
 						sender,
 						discover_services_req_exit,
 						req, NULL);
@@ -1431,8 +1439,10 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 
 	err = bt_search_service(&src, &device->bdaddr,
 				&uuid, cb, req, NULL);
-	if (err < 0)
-		browse_req_free(req);
+	if (err < 0) {
+		browse_request_free(req);
+		device->browse = NULL;
+	}
 
 	return err;
 }
@@ -1476,7 +1486,7 @@ void device_set_agent(struct btd_device *device, struct agent *agent)
 
 gboolean device_is_busy(struct btd_device *device)
 {
-	return device->discov_active ? TRUE : FALSE;
+	return device->browse ? TRUE : FALSE;
 }
 
 gboolean device_is_temporary(struct btd_device *device)
@@ -1917,7 +1927,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 		device_browse(device, bonding->conn, bonding->msg,
 				NULL, FALSE);
-	} else if (!device->discov_active && !device->discov_timer &&
+	} else if (!device->browse && !device->discov_timer &&
 			main_opts.reverse_sdp) {
 		/* If we are not initiators and there is no currently active
 		 * discovery or discovery timer, set the discovery timer */
