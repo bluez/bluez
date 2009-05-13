@@ -77,7 +77,8 @@ CLEANFILES = $(BUILT_SOURCES)
 
 INCLUDES = -I$(top_srcdir)/common -I$(top_srcdir)/src
 
-EXTRA_DIST = audio.conf telephony-dummy.c telephony-maemo.c bluetooth.conf
+EXTRA_DIST = audio.conf telephony-dummy.c telephony-maemo.c telephony-ofono.c \
+		bluetooth.conf
 
 MAINTAINERCLEANFILES = Makefile.in
 
