@@ -430,6 +430,17 @@ static int call_transfer(void)
 	return 0;
 }
 
+static int number_type(const char *number)
+{
+	if (number == NULL)
+		return NUMBER_TYPE_TELEPHONY;
+
+	if (number[0] == '+' || strncmp(number, "00", 2) == 0)
+		return NUMBER_TYPE_INTERNATIONAL;
+
+	return NUMBER_TYPE_TELEPHONY;
+}
+
 void telephony_device_connected(void *telephony_device)
 {
 	struct csd_call *coming;
@@ -440,10 +451,10 @@ void telephony_device_connected(void *telephony_device)
 	if (coming) {
 		if (find_call_with_status(CSD_CALL_STATUS_ACTIVE))
 			telephony_call_waiting_ind(coming->number,
-							NUMBER_TYPE_TELEPHONY);
+						number_type(coming->number));
 		else
 			telephony_incoming_call_ind(coming->number,
-							NUMBER_TYPE_TELEPHONY);
+						number_type(coming->number));
 	}
 }
 
@@ -644,7 +655,7 @@ void telephony_subscriber_number_req(void *telephony_device)
 	debug("telephony-maemo: subscriber number request");
 	if (msisdn)
 		telephony_subscriber_number_ind(msisdn,
-						NUMBER_TYPE_TELEPHONY,
+						number_type(msisdn),
 						SUBSCRIBER_SERVICE_VOICE);
 	telephony_subscriber_number_rsp(telephony_device, CME_ERROR_NONE);
 }
@@ -711,7 +722,7 @@ void telephony_list_current_calls_req(void *telephony_device)
 		telephony_list_current_call_ind(i, direction, status,
 						CALL_MODE_VOICE, multiparty,
 						call->number,
-						NUMBER_TYPE_TELEPHONY);
+						number_type(call->number));
 	}
 
 	telephony_list_current_calls_rsp(telephony_device, CME_ERROR_NONE);
@@ -881,10 +892,10 @@ static void handle_incoming_call(DBusMessage *msg)
 
 	if (find_call_with_status(CSD_CALL_STATUS_ACTIVE))
 		telephony_call_waiting_ind(call->number,
-						NUMBER_TYPE_TELEPHONY);
+						number_type(call->number));
 	else
 		telephony_incoming_call_ind(call->number,
-						NUMBER_TYPE_TELEPHONY);
+						number_type(call->number));
 }
 
 static void handle_outgoing_call(DBusMessage *msg)
