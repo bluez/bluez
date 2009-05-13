@@ -2731,9 +2731,8 @@ int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 
 	if (number)
 		send_foreach_headset(active_devices, hfp_cmp,
-					"\r\n+CLCC: %d,%d,%d,%d,%d,%s,%d\r\n",
-					idx, dir, status, mode, mprty,
-					number, type);
+				"\r\n+CLCC: %d,%d,%d,%d,%d,\"%s\",%d\r\n",
+				idx, dir, status, mode, mprty, number, type);
 	else
 		send_foreach_headset(active_devices, hfp_cmp,
 					"\r\n+CLCC: %d,%d,%d,%d,%d\r\n",
