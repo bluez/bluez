@@ -223,14 +223,11 @@ void telephony_terminate_call_req(void *telephony_device)
 	struct voice_call *vc;
 	int ret;
 
-	if ((vc = find_vc_with_status(CALL_STATUS_ACTIVE)))
-		;
-	else if ((vc = find_vc_with_status(CALL_STATUS_DIALING)))
-		;
-	else if ((vc = find_vc_with_status(CALL_STATUS_ALERTING)))
-		;
-	else if ((vc = find_vc_with_status(CALL_STATUS_INCOMING)))
-		;
+	if ((vc = find_vc_with_status(CALL_STATUS_ACTIVE))) {
+	} else if ((vc = find_vc_with_status(CALL_STATUS_DIALING))) {
+	} else if ((vc = find_vc_with_status(CALL_STATUS_ALERTING))) {
+	} else if ((vc = find_vc_with_status(CALL_STATUS_INCOMING))) {
+	}
 
 	if (!vc) {
 		error("in telephony_terminate_call_req, no active call");
@@ -418,7 +415,7 @@ static gboolean iter_get_basic_args(DBusMessageIter *iter,
 	return type == DBUS_TYPE_INVALID ? TRUE : FALSE;
 }
 
-void handle_registration_property(const char *property, DBusMessageIter sub)
+static void handle_registration_property(const char *property, DBusMessageIter sub)
 {
 	char *status, *operator;
 	unsigned int signals_bar;
