@@ -50,6 +50,7 @@
 #include "error.h"
 #include "uinput.h"
 #include "adapter.h"
+#include "../src/device.h"
 #include "device.h"
 #include "manager.h"
 #include "avdtp.h"
@@ -696,8 +697,11 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	if (!dev->control)
-		dev->control = control_init(dev, AV_REMOTE_SVCLASS_ID);
+	if (!dev->control) {
+		btd_device_add_uuid(dev->btd_dev, AVRCP_REMOTE_UUID);
+		if (!dev->control)
+			goto drop;
+	}
 
 	control = dev->control;
 

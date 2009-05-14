@@ -2080,10 +2080,15 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	dev = manager_get_device(&src, &dst, TRUE);
+	dev = manager_get_device(&src, &dst, FALSE);
 	if (!dev) {
-		error("Unable to get audio device object for %s", address);
-		goto drop;
+		dev = manager_get_device(&src, &dst, TRUE);
+		if (!dev) {
+			error("Unable to get audio device object for %s",
+					address);
+			goto drop;
+		}
+		btd_device_add_uuid(dev->btd_dev, ADVANCED_AUDIO_UUID);
 	}
 
 	session->io = g_io_channel_ref(chan);
