@@ -207,10 +207,19 @@ static int switch_logitech(struct device_info *devinfo)
 
 static int switch_dell(struct device_info *devinfo)
 {
-	char report[] = { 0x7f, 0x13, 0x00, 0x00 };
+	char report[] = { 0x7f, 0x00, 0x00, 0x00 };
 
 	struct usb_dev_handle *handle;
 	int err;
+
+	switch(devinfo->mode) {
+		case HCI:
+			report[1] = 0x13;
+			break;
+		case HID:
+			report[1] = 0x14;
+			break;
+	}
 
 	handle = usb_open(devinfo->dev);
 	if (handle) {
