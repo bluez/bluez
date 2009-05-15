@@ -222,15 +222,11 @@ static int switch_dell(struct device_info *devinfo)
 	}
 
 	handle = usb_open(devinfo->dev);
-	if (handle) {
-		usb_claim_interface(handle, 0);
-		usb_detach_kernel_driver_np(handle, 0);
-	}
-
-	err = usb_control_msg(handle,
+	if (handle && usb_claim_interface(handle,0) == 0)
+		err = usb_control_msg(handle,
 			USB_ENDPOINT_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
-			0x09, 0x7f | (0x03 << 8), 0,
-			report, sizeof(report), 10000);
+			USB_REQ_SET_CONFIGURATION, 0x7f | (0x03 << 8), 0,
+			report, sizeof(report), 5000);
 
 	if (err == 0) {
 		err = -1;
