@@ -14,7 +14,7 @@
 .\"	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 .\"
 .\"
-.TH HID2HCI 8 "JUNE 6, 2003" "" ""
+.TH HID2HCI 8 "MAY 15, 2009" "" ""
 
 .SH NAME
 hid2hci \- Bluetooth HID to HCI mode switching utility
@@ -25,7 +25,7 @@ hid2hci \- Bluetooth HID to HCI mode switching utility
 ]
 .SH DESCRIPTION
 .B hid2hci
-is used to set up switch HID proxy Bluetooth dongle into the HCI
+is used to set up switch supported Bluetooth devices into the HCI
 mode and back.
 .SH OPTIONS
 .TP
@@ -35,11 +35,17 @@ Gives a list of possible options.
 .BI -q
 Don't display any messages.
 .TP
-.BI -0
-Switches the device into HCI mode.
+.BI -r [hid,hci]
+Sets the mode to switch the device into
 .TP
-.BI -1
-Switches the device into HID mode.
+.BI -v
+Specifies the 4 digit vendor ID assigned to the device being switched
+.TP
+.BI -p
+Specifies the 4 digit product ID assigned to the device being switched
+.TP
+.BI -m [csr, logitech, dell]
+Which vendor method to use for switching the device.
 .SH AUTHOR
 Written by Marcel Holtmann <marcel@holtmann.org>.
 .br

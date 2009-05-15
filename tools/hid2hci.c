@@ -86,21 +86,14 @@ struct hiddev_usage_ref {
 #define HCI 0
 #define HID 1
 
-struct device_info;
-
-struct device_id {
+struct device_info {
+	struct usb_device *dev;
 	int mode;
 	uint16_t vendor;
 	uint16_t product;
-	int (*func)(struct device_info *dev);
 };
 
-struct device_info {
-	struct usb_device *dev;
-	struct device_id *id;
-};
-
-static int switch_hidproxy(struct device_info *devinfo)
+static int switch_csr(struct device_info *devinfo)
 {
 	struct usb_dev_handle *udev;
 	int err;
@@ -110,7 +103,7 @@ static int switch_hidproxy(struct device_info *devinfo)
 		return -errno;
 
 	err = usb_control_msg(udev, USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_DEVICE,
-				0, devinfo->id->mode, 0, NULL, 0, 10000);
+				0, devinfo->mode, 0, NULL, 0, 10000);
 
 	if (err == 0) {
 		err = -1;
@@ -243,77 +236,31 @@ static int switch_dell(struct device_info *devinfo)
 	return err;
 }
 
-static struct device_id device_list[] = {
-	{ HCI, 0x0a12, 0x1000, switch_hidproxy },
-	{ HID, 0x0a12, 0x0001, switch_hidproxy },
-	{ HCI, 0x0458, 0x1000, switch_hidproxy },
-	{ HID, 0x0458, 0x003f, switch_hidproxy },
-	{ HCI, 0x05ac, 0x1000, switch_hidproxy },
-	{ HID, 0x05ac, 0x8203, switch_hidproxy },
-	{ HID, 0x05ac, 0x8204, switch_hidproxy },	/* Apple Mac mini */
-	{ HID, 0x05ac, 0x8207, switch_hidproxy },	/* Apple Power Mac G5 */
-	{ HCI, 0x046d, 0xc703, switch_logitech },
-	{ HCI, 0x046d, 0xc704, switch_logitech },
-	{ HCI, 0x046d, 0xc705, switch_logitech },
-	{ HCI, 0x046d, 0xc70a, switch_logitech },	/* Logitech diNovo mouse */
-	{ HCI, 0x046d, 0xc70b, switch_logitech },	/* Logitech diNovo Laser keyboard */
-	{ HCI, 0x046d, 0xc70c, switch_logitech },	/* Logitech diNovo Laser mouse */
-	{ HCI, 0x046d, 0xc70e, switch_logitech },	/* Logitech diNovo keyboard */
-	{ HCI, 0x046d, 0xc713, switch_logitech },	/* Logitech diNovo Edge */
-	{ HCI, 0x046d, 0xc714, switch_logitech },	/* Logitech diNovo Edge */
-	{ HCI, 0x046d, 0xc71b, switch_logitech },	/* Logitech diNovo Edge */
-	{ HCI, 0x046d, 0xc71c, switch_logitech },	/* Logitech diNovo Edge */
-	{ HCI, 0x413c, 0x8154, switch_dell     },	/* Dell Wireless 410 */
-	{ HCI, 0x413c, 0x8158, switch_dell     },	/* Dell Wireless 370 */
-	{ HCI, 0x413c, 0x8162, switch_dell     },	/* Dell Wireless 365 */
-	{ -1 }
-};
-
-static struct device_id *match_device(int mode, uint16_t vendor, uint16_t product)
-{
-	int i;
-
-	for (i = 0; device_list[i].mode >= 0; i++) {
-		if (mode != device_list[i].mode)
-			continue;
-		if (vendor == device_list[i].vendor &&
-				product == device_list[i].product)
-			return &device_list[i];
-	}
-
-	return NULL;
-}
-
-static int find_devices(int mode, struct device_info *devinfo, size_t size)
+static int find_device(struct device_info* devinfo)
 {
 	struct usb_bus *bus;
 	struct usb_device *dev;
-	struct device_id *id;
-	unsigned int count = 0;
 
 	usb_find_busses();
 	usb_find_devices();
 
 	for (bus = usb_get_busses(); bus; bus = bus->next)
 		for (dev = bus->devices; dev; dev = dev->next) {
-			id = match_device(mode, dev->descriptor.idVendor,
-						dev->descriptor.idProduct);
-			if (!id)
-				continue;
-
-			if (count < size) {
-				devinfo[count].dev = dev;
-				devinfo[count].id = id;
-				count++;
+			if (dev->descriptor.idVendor == devinfo->vendor &&
+			    dev->descriptor.idProduct == devinfo->product) {
+				devinfo->dev=dev;
+				return 1;
 			}
 		}
-
-	return count;
+	return 0;
 }
 
-static void usage(void)
+static void usage(char* error)
 {
-	printf("hid2hci - Bluetooth HID to HCI mode switching utility\n\n");
+	if (error)
+		fprintf(stderr,"\n%s\n", error);
+	else
+		printf("hid2hci - Bluetooth HID to HCI mode switching utility\n\n");
 
 	printf("Usage:\n"
 		"\thid2hci [options]\n"
@@ -322,42 +269,69 @@ static void usage(void)
 	printf("Options:\n"
 		"\t-h, --help           Display help\n"
 		"\t-q, --quiet          Don't display any messages\n"
-		"\t-0, --tohci          Switch to HCI mode (default)\n"
-		"\t-1, --tohid          Switch to HID mode\n"
+		"\t-r, --mode=          Mode to switch to [hid, hci]\n"
+		"\t-v, --vendor=        Vendor ID to act upon\n"
+		"\t-p, --product=       Product ID to act upon\n"
+		"\t-m, --method=        Method to use to switch [csr, logitech, dell]\n"
 		"\n");
+	if (error)
+		exit(1);
 }
 
 static struct option main_options[] = {
-	{ "help",	0, 0, 'h' },
-	{ "quiet",	0, 0, 'q' },
-	{ "tohci",	0, 0, '0' },
-	{ "tohid",	0, 0, '1' },
+	{ "help",	no_argument, 0, 'h' },
+	{ "quiet",	no_argument, 0, 'q' },
+	{ "mode",	required_argument, 0, 'r' },
+	{ "vendor",	required_argument, 0, 'v' },
+	{ "product",	required_argument, 0, 'p' },
+	{ "method",	required_argument, 0, 'm' },
 	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char *argv[])
 {
-	struct device_info dev[16];
-	int i, opt, num, quiet = 0, mode = HCI;
+	struct device_info dev = { NULL, HCI, 0, 0 };
+	int opt, quiet = 0;
+	int (*method)(struct device_info *dev) = NULL;
 
-	while ((opt = getopt_long(argc, argv, "+01qh", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+r:v:p:m:qh", main_options, NULL)) != -1) {
 		switch (opt) {
-		case '0':
-			mode = HCI;
+		case 'r':
+			if (optarg && !strcmp(optarg, "hid"))
+				dev.mode = HID;
+			else if (optarg && !strcmp(optarg, "hci"))
+				dev.mode = HCI;
+			else
+				usage("ERROR: Undefined radio mode\n");
 			break;
-		case '1':
-			mode = HID;
+		case 'v':
+			sscanf(optarg, "%4hx", &dev.vendor);
+			break;
+		case 'p':
+			sscanf(optarg, "%4hx", &dev.product);
+			break;
+		case 'm':
+			if (optarg && !strcmp(optarg, "csr"))
+				method = switch_csr;
+			else if (optarg && !strcmp(optarg, "logitech"))
+				method = switch_logitech;
+			else if (optarg && !strcmp(optarg, "dell"))
+				method = switch_dell;
+			else
+				usage("ERROR: Undefined switching method\n");
 			break;
 		case 'q':
 			quiet = 1;
 			break;
 		case 'h':
-			usage();
-			exit(0);
+			usage(NULL);
 		default:
 			exit(0);
 		}
 	}
+
+	if (!quiet && (!dev.vendor || !dev.product || !method))
+		usage("ERROR: Vendor ID, Product ID, and Switching Method must all be defined.\n");
 
 	argc -= optind;
 	argv += optind;
@@ -365,30 +339,22 @@ int main(int argc, char *argv[])
 
 	usb_init();
 
-	num = find_devices(mode, dev, sizeof(dev) / sizeof(dev[0]));
-	if (num <= 0) {
+	if (!find_device(&dev)) {
 		if (!quiet)
-			fprintf(stderr, "No devices in %s mode found\n",
-							mode ? "HCI" : "HID");
+			fprintf(stderr, "Device %04x:%04x not found on USB bus.\n",
+				dev.vendor, dev.product);
 		exit(1);
 	}
 
-	for (i = 0; i < num; i++) {
-		struct device_id *id = dev[i].id;
+	if (!quiet)
+		printf("Attempting to switch device %04x:%04x to %s mode ",
+			dev.vendor, dev.product, dev.mode ? "HID" : "HCI");
+	fflush(stdout);
 
-		if (!quiet)
-			printf("Switching device %04x:%04x to %s mode ",
-				id->vendor, id->product, mode ? "HID" : "HCI");
-		fflush(stdout);
+	if (method(&dev) < 0 && !quiet)
+		printf("failed (%s)\n", strerror(errno));
+	else if (!quiet)
+		printf("was successful\n");
 
-		if (id->func(&dev[i]) < 0) {
-			if (!quiet)
-				printf("failed (%s)\n", strerror(errno));
-		} else {
-			if (!quiet)
-				printf("was successful\n");
-		}
-	}
-
-	return 0;
+	return errno;
 }
