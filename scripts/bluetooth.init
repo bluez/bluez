@@ -10,13 +10,10 @@ NAME=bluetooth
 DESC="Bluetooth subsystem"
 
 DAEMON_NAME=bluetoothd
-HID2HCI_NAME=hid2hci
 
 DAEMON_EXEC="`which $DAEMON_NAME || true`"
-HID2HCI_EXEC="`which $HID2HCI_NAME || true`"
 
 DAEMON_ENABLE=true
-HID2HCI_ENABLE=false
 
 [ -e /etc/default/bluetooth ] && . /etc/default/bluetooth
 
@@ -26,10 +23,6 @@ case "$1" in
 	if $DAEMON_ENABLE && [ -x "$DAEMON_EXEC" ]; then
 		$DAEMON_EXEC
 		echo -n " $DAEMON_NAME"
-	fi
-	if $HID2HCI_ENABLE && [ -x "$HID2HCI_EXEC" ] ; then
-		$HID2HCI_EXEC --tohci > /dev/null 2>&1 || true
-		echo -n " $HID2HCI_NAME"
 	fi
 	echo "."
 	;;

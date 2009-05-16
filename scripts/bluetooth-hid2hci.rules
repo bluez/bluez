@@ -1,0 +1,36 @@
+# Variety of Dell Bluetooth devices
+#
+# it looks like a bit of an odd rule, because it is matching
+# on a mouse device that is self powered, but that is where
+# a HID report needs to be sent to switch modes.
+#
+# Known supported devices:
+#   413c:8154
+#   413c:8158
+#   413c:8162
+ACTION=="add", ENV{ID_VENDOR}=="413c", ENV{ID_CLASS}=="mouse", ATTRS{bmAttributes}=="e0", KERNEL=="mouse*", RUN+="/usr/sbin/hid2hci --method dell -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+
+# Logitech devices
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c703" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c704" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c705" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c70a" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c70b" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c70c" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c70e" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c713" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c714" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c71b" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="046d", ENV{ID_MODEL}=="c71c" RUN+="/usr/sbin/hid2hci --method logitech -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+
+# CSR devices (in HID mode)
+ACTION=="add", ENV{ID_VENDOR}=="0a12", ENV{ID_MODEL}=="1000" RUN+="/usr/sbin/hid2hci --method csr -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="0458", ENV{ID_MODEL}=="1000" RUN+="/usr/sbin/hid2hci --method csr -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+ACTION=="add", ENV{ID_VENDOR}=="05ac", ENV{ID_MODEL}=="1000" RUN+="/usr/sbin/hid2hci --method csr -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hci"
+
+# CSR devices (in HCI mode)
+#ACTION=="add", ENV{ID_VENDOR}=="0a12", ENV{ID_MODEL}=="0001" RUN+="/usr/sbin/hid2hci --method csr -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hid"
+#ACTION=="add", ENV{ID_VENDOR}=="0458", ENV{ID_MODEL}=="003f" RUN+="/usr/sbin/hid2hci --method csr -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hid"
+#ACTION=="add", ENV{ID_VENDOR}=="05ac", ENV{ID_MODEL}=="8203" RUN+="/usr/sbin/hid2hci --method csr -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hid"
+#ACTION=="add", ENV{ID_VENDOR}=="05ac", ENV{ID_MODEL}=="8204" RUN+="/usr/sbin/hid2hci --method csr -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hid"
+#ACTION=="add", ENV{ID_VENDOR}=="05ac", ENV{ID_MODEL}=="8207" RUN+="/usr/sbin/hid2hci --method csr -v $env{ID_VENDOR} -p $env{ID_MODEL} --mode hid"
