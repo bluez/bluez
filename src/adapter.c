@@ -343,23 +343,10 @@ static void adapter_remove_discov_timeout(struct btd_adapter *adapter)
 static gboolean discov_timeout_handler(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	int dd;
-	uint8_t scan_enable;
-	uint16_t dev_id = adapter->dev_id;
 
 	adapter->discov_timeout_id = 0;
 
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("HCI device open failed: hci%d", dev_id);
-		return FALSE;
-	}
-
-	scan_enable = adapter->scan_mode & ~SCAN_INQUIRY;
-
-	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-					1, &scan_enable);
-	hci_close_dev(dd);
+	adapter_ops->set_connectable(adapter->dev_id);
 
 	return FALSE;
 }
@@ -421,16 +408,24 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 		goto done;
 	}
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return -EIO;
-
 	if (current_scan != scan_enable) {
-		err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+		if (scan_enable == SCAN_PAGE) {
+			err = adapter_ops->set_connectable(adapter->dev_id);
+			if (err < 0)
+				return err;
+		} else {
+			dd = hci_open_dev(adapter->dev_id);
+			if (dd < 0)
+				return -EIO;
+
+			err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 					1, &scan_enable);
-		if (err < 0) {
+			if (err < 0) {
+				hci_close_dev(dd);
+				return err;
+			}
+
 			hci_close_dev(dd);
-			return err;
 		}
 	} else if ((scan_enable & SCAN_INQUIRY) &&
 						(new_mode != adapter->mode)) {
@@ -438,15 +433,20 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 		if (adapter->discov_timeout)
 			adapter_set_discov_timeout(adapter,
 						adapter->discov_timeout);
+
+		dd = hci_open_dev(adapter->dev_id);
+		if (dd < 0)
+			return -EIO;
+
 		if (new_mode == MODE_LIMITED)
 			set_limited_discoverable(dd, adapter->dev.class,
 									TRUE);
 		else if (adapter->mode == MODE_LIMITED)
 			set_limited_discoverable(dd, adapter->dev.class,
 									FALSE);
+		hci_close_dev(dd);
 	}
 
-	hci_close_dev(dd);
 done:
 	modestr = mode2str(new_mode);
 

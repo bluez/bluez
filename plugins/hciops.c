@@ -482,12 +482,30 @@ static int hciops_powered(int index, gboolean powered)
 	return hciops_stop(index);
 }
 
+static int hciops_connectable(int index)
+{
+	int dd;
+	uint8_t mode = SCAN_PAGE;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+					1, &mode);
+
+	hci_close_dev(dd);
+
+	return 0;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
 	.start = hciops_start,
 	.stop = hciops_stop,
 	.set_powered = hciops_powered,
+	.set_connectable = hciops_connectable,
 };
 
 static int hciops_init(void)
