@@ -154,6 +154,7 @@ struct btd_adapter_ops {
 	int (*stop) (int index);
 	int (*set_powered) (int index, gboolean powered);
 	int (*set_connectable) (int index);
+	int (*set_discoverable) (int index);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);

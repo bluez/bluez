@@ -409,24 +409,13 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 	}
 
 	if (current_scan != scan_enable) {
-		if (scan_enable == SCAN_PAGE) {
+		if (scan_enable == SCAN_PAGE)
 			err = adapter_ops->set_connectable(adapter->dev_id);
-			if (err < 0)
-				return err;
-		} else {
-			dd = hci_open_dev(adapter->dev_id);
-			if (dd < 0)
-				return -EIO;
+		else
+			err = adapter_ops->set_discoverable(adapter->dev_id);
 
-			err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-					1, &scan_enable);
-			if (err < 0) {
-				hci_close_dev(dd);
-				return err;
-			}
-
-			hci_close_dev(dd);
-		}
+		if (err < 0)
+			return err;
 	} else if ((scan_enable & SCAN_INQUIRY) &&
 						(new_mode != adapter->mode)) {
 		adapter_remove_discov_timeout(adapter);
@@ -2002,7 +1991,7 @@ static int adapter_up(struct btd_adapter *adapter)
 	char mode[14], srcaddr[18];
 	uint8_t scan_mode;
 	gboolean powered, dev_down = FALSE;
-	int dd;
+	int dd, err;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
@@ -2055,18 +2044,21 @@ static int adapter_up(struct btd_adapter *adapter)
 	}
 
 proceed:
-	dd = hci_open_dev(adapter->dev_id);
+	if (scan_mode == SCAN_PAGE)
+		err = adapter_ops->set_connectable(adapter->dev_id);
+	else
+		err = adapter_ops->set_discoverable(adapter->dev_id);
 
-	if (dd < 0)
-		return -EIO;
-
-	if (dev_down == FALSE)
-		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-				1, &scan_mode);
+	if (err < 0)
+		return err;
 
 	if (adapter->initialized == FALSE) {
 		load_drivers(adapter);
 		load_devices(adapter);
+
+		dd = hci_open_dev(adapter->dev_id);
+		if (dd < 0)
+			return -EIO;
 
 		/* retrieve the active connections: address the scenario where
 		 * the are active connections before the daemon've started */
@@ -2075,6 +2067,8 @@ proceed:
 		adapter->initialized = TRUE;
 
 		manager_add_adapter(adapter->path);
+
+		hci_close_dev(dd);
 	}
 
 	if (adapter->svc_cache)
@@ -2088,8 +2082,6 @@ proceed:
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
-
-	hci_close_dev(dd);
 
 	return 0;
 }
