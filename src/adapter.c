@@ -1437,8 +1437,6 @@ static DBusMessage *create_device(DBusConnection *conn,
 	if (!device)
 		return NULL;
 
-	device_set_temporary(device, FALSE);
-
 	device_browse(device, conn, msg, NULL, FALSE);
 
 	return NULL;
