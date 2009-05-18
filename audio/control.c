@@ -348,7 +348,7 @@ static void handle_panel_passthrough(struct control *control,
 	switch (operands[0] & 0x7F) {
 	case PLAY_OP:
 		debug("AVRCP: PLAY %s", status);
-		send_key(control->uinput, KEY_PLAYPAUSE, pressed);
+		send_key(control->uinput, KEY_PLAY, pressed);
 		break;
 	case STOP_OP:
 		debug("AVRCP: STOP %s", status);
@@ -356,7 +356,7 @@ static void handle_panel_passthrough(struct control *control,
 		break;
 	case PAUSE_OP:
 		debug("AVRCP: PAUSE %s", status);
-		send_key(control->uinput, KEY_PLAYPAUSE, pressed);
+		send_key(control->uinput, KEY_PAUSE, pressed);
 		break;
 	case FORWARD_OP:
 		debug("AVRCP: FORWARD %s", status);
