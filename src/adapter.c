@@ -1398,8 +1398,14 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 				ERROR_INTERFACE ".NotInProgress",
 				"Device creation not in progress");
 
-	if (!device_is_bonding(device, sender))
+	if (device_is_bonding(device, NULL) &&
+			!device_is_bonding(device, sender))
 		return not_authorized(msg);
+
+	if (device_is_connected(device)) {
+		device_request_disconnect(device, msg);
+		return NULL;
+	}
 
 	adapter_remove_device(conn, adapter, device);
 
@@ -1524,12 +1530,13 @@ static DBusMessage *remove_device(DBusConnection *conn,
 
 	device_set_temporary(device, TRUE);
 
-	if (device_is_connected(device))
-		device_disconnect(device);
-	else
+	if (!device_is_connected(device)) {
 		adapter_remove_device(conn, adapter, device);
+		return dbus_message_new_method_return(msg);
+	}
 
-	return dbus_message_new_method_return(msg);
+	device_request_disconnect(device, msg);
+	return NULL;
 }
 
 static DBusMessage *find_device(DBusConnection *conn,
@@ -1650,8 +1657,10 @@ static GDBusMethodTable adapter_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "CreatePairedDevice",	"sos",	"o",	create_paired_device,
 						G_DBUS_METHOD_FLAG_ASYNC},
-	{ "CancelDeviceCreation","s",	"",	cancel_device_creation	},
-	{ "RemoveDevice",	"o",	"",	remove_device		},
+	{ "CancelDeviceCreation","s",	"",	cancel_device_creation,
+						G_DBUS_METHOD_FLAG_ASYNC},
+	{ "RemoveDevice",	"o",	"",	remove_device,
+						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "FindDevice",		"s",	"o",	find_device		},
 	{ "RegisterAgent",	"os",	"",	register_agent		},
 	{ "UnregisterAgent",	"o",	"",	unregister_agent	},

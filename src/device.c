@@ -121,6 +121,7 @@ struct btd_device {
 	struct browse_req *browse;		/* service discover request */
 	struct bonding_req *bonding;
 	struct authentication_req *authr;	/* authentication request */
+	GSList		*disconnects;		/* disconnects message */
 
 	/* For Secure Simple Pairing */
 	uint8_t		cap;
@@ -229,9 +230,6 @@ static void device_free(gpointer user_data)
 
 	if (device->disconn_timer)
 		g_source_remove(device->disconn_timer);
-
-	if (device->browse)
-		browse_request_cancel(device->browse);
 
 	debug("device_free(%p)", device);
 
@@ -614,14 +612,22 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static gboolean disconnect_timeout(gpointer user_data)
+static gboolean do_disconnect(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 	disconnect_cp cp;
 	int dd;
 	uint16_t dev_id = adapter_get_dev_id(device->adapter);
+	DBusConnection *conn = get_dbus_connection();
 
 	device->disconn_timer = 0;
+
+	while (device->disconnects) {
+		DBusMessage *msg = device->disconnects->data;
+
+		g_dbus_send_reply(conn, msg, DBUS_TYPE_INVALID);
+		device->disconnects = g_slist_remove(device->disconnects, msg);
+	}
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0)
@@ -640,9 +646,38 @@ fail:
 	return FALSE;
 }
 
-void device_disconnect(struct btd_device *device)
+static void bonding_request_cancel(struct bonding_req *bonding)
+{
+	if (!bonding->io)
+		return;
+
+	if (bonding->io_id) {
+		g_source_remove(bonding->io_id);
+		bonding->io_id = 0;
+	}
+
+	g_io_channel_shutdown(bonding->io, TRUE, NULL);
+	g_io_channel_unref(bonding->io);
+	bonding->io = NULL;
+}
+
+void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 {
 	GSList *l;
+	DBusConnection *conn = get_dbus_connection();
+
+	if (device->bonding)
+		bonding_request_cancel(device->bonding);
+
+	if (device->browse)
+		browse_request_cancel(device->browse);
+
+	if (msg)
+		device->disconnects = g_slist_append(device->disconnects,
+						dbus_message_ref(msg));
+
+	if (device->disconn_timer)
+		return;
 
 	l = device->watches;
 	while (l) {
@@ -661,7 +696,11 @@ void device_disconnect(struct btd_device *device)
 	device->watches = NULL;
 
 	device->disconn_timer = g_timeout_add_seconds(DISCONNECT_TIMER,
-						disconnect_timeout, device);
+						do_disconnect, device);
+
+	g_dbus_emit_signal(conn, device->path,
+			DEVICE_INTERFACE, "DisconnectRequested",
+			DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
@@ -674,13 +713,9 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 				ERROR_INTERFACE ".NotConnected",
 				"Device is not connected");
 
-	g_dbus_emit_signal(conn, device->path,
-			DEVICE_INTERFACE, "DisconnectRequested",
-			DBUS_TYPE_INVALID);
+	device_request_disconnect(device, msg);
 
-	device_disconnect(device);
-
-	return dbus_message_new_method_return(msg);
+	return NULL;
 }
 
 static GDBusMethodTable device_methods[] = {
@@ -689,7 +724,8 @@ static GDBusMethodTable device_methods[] = {
 	{ "DiscoverServices",	"s",	"a{us}",	discover_services,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "CancelDiscovery",	"",	"",		cancel_discover	},
-	{ "Disconnect",		"",	"",		disconnect	},
+	{ "Disconnect",		"",	"",		disconnect,
+						G_DBUS_METHOD_FLAG_ASYNC},
 	{ }
 };
 
@@ -939,6 +975,16 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 
 	if (device->bonding)
 		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
+
+	if (device->browse)
+		browse_request_cancel(device->browse);
+
+	while (device->disconnects) {
+		DBusMessage *msg = device->disconnects->data;
+
+		g_dbus_send_reply(conn, msg, DBUS_TYPE_INVALID);
+		device->disconnects = g_slist_remove(device->disconnects, msg);
+	}
 
 	if (remove_stored)
 		device_remove_stored(device, conn);
@@ -1593,16 +1639,6 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 	}
 }
 
-static void bonding_request_cancel(struct bonding_req *bonding)
-{
-	if (!bonding->io)
-		return;
-
-	g_io_channel_shutdown(bonding->io, TRUE, NULL);
-	g_io_channel_unref(bonding->io);
-	bonding->io = NULL;
-}
-
 static void bonding_request_free(struct bonding_req *bonding)
 {
 	struct btd_device *device;
@@ -1812,7 +1848,7 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 
 	if (device->bonding) {
 		device->bonding->listener_id = 0;
-		bonding_request_cancel(device->bonding);
+		device_request_disconnect(device, NULL);
 	}
 }
 
