@@ -516,6 +516,51 @@ static int hciops_discoverable(int index)
 	return 0;
 }
 
+static int hciops_set_limited_discoverable(int index, const uint8_t *cls,
+							gboolean limited)
+{
+	int dd, err = 0;
+	uint32_t dev_class;
+	int num = (limited ? 2 : 1);
+	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
+	/*
+	 * 1: giac
+	 * 2: giac + liac
+	 */
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	if (hci_write_current_iac_lap(dd, num, lap, HCI_REQ_TIMEOUT) < 0) {
+		err = -errno;
+		error("Can't write current IAC LAP: %s(%d)",
+						strerror(errno), errno);
+		goto done;
+	}
+
+	if (limited) {
+		if (cls[1] & 0x20)
+			goto done; /* Already limited */
+
+		dev_class = (cls[2] << 16) | ((cls[1] | 0x20) << 8) | cls[0];
+	} else {
+		if (!(cls[1] & 0x20))
+			goto done; /* Already clear */
+
+		dev_class = (cls[2] << 16) | ((cls[1] & 0xdf) << 8) | cls[0];
+	}
+
+	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
+		err = -errno;
+		error("Can't write class of device: %s (%d)",
+						strerror(errno), errno);
+		goto done;
+	}
+done:
+	hci_close_dev(dd);
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -524,6 +569,7 @@ static struct btd_adapter_ops hci_ops = {
 	.set_powered = hciops_powered,
 	.set_connectable = hciops_connectable,
 	.set_discoverable = hciops_discoverable,
+	.set_limited_discoverable = hciops_set_limited_discoverable,
 };
 
 static int hciops_init(void)
