@@ -210,28 +210,33 @@ static int switch_dell(struct device_info *devinfo)
 	char report[] = { 0x7f, 0x00, 0x00, 0x00 };
 
 	struct usb_dev_handle *handle;
-	int err = -EINVAL;
+	int err;
 
-	switch(devinfo->mode) {
-		case HCI:
-			report[1] = 0x13;
-			break;
-		case HID:
-			report[1] = 0x14;
-			break;
+	switch (devinfo->mode) {
+	case HCI:
+		report[1] = 0x13;
+		break;
+	case HID:
+		report[1] = 0x14;
+		break;
 	}
 
 	handle = usb_open(devinfo->dev);
+	if (!handle)
+		return -EIO;
 
 	/* Don't need to check return, as might not be in use */
-	if (handle)
-		usb_detach_kernel_driver_np(handle, 0);
+	usb_detach_kernel_driver_np(handle, 0);
 
-	if (handle && usb_claim_interface(handle,0) == 0)
-		err = usb_control_msg(handle,
-			USB_ENDPOINT_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
+	if (usb_claim_interface(handle, 0) < 0) {
+		usb_close(handle);
+		return -EIO;
+	}
+
+	err = usb_control_msg(handle,
+		USB_ENDPOINT_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
 			USB_REQ_SET_CONFIGURATION, 0x7f | (0x03 << 8), 0,
-			report, sizeof(report), 5000);
+						report, sizeof(report), 5000);
 
 	if (err == 0) {
 		err = -1;
