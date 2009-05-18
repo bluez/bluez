@@ -1936,11 +1936,15 @@ static void load_drivers(struct btd_adapter *adapter)
 	}
 }
 
-static void load_connections(struct btd_adapter *adapter, int dd)
+static void load_connections(struct btd_adapter *adapter)
 {
 	struct hci_conn_list_req *cl = NULL;
 	struct hci_conn_info *ci;
-	int i;
+	int i, dd;
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0)
+		return;
 
 	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
 
@@ -1950,6 +1954,7 @@ static void load_connections(struct btd_adapter *adapter, int dd)
 
 	if (ioctl(dd, HCIGETCONNLIST, cl) != 0) {
 		g_free(cl);
+		hci_close_dev(dd);
 		return;
 	}
 
@@ -1964,6 +1969,7 @@ static void load_connections(struct btd_adapter *adapter, int dd)
 	}
 
 	g_free(cl);
+	hci_close_dev(dd);
 }
 
 static int get_discoverable_timeout(const char *src)
@@ -1991,7 +1997,7 @@ static int adapter_up(struct btd_adapter *adapter)
 	char mode[14], srcaddr[18];
 	uint8_t scan_mode;
 	gboolean powered, dev_down = FALSE;
-	int dd, err;
+	int err;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
@@ -2056,19 +2062,14 @@ proceed:
 		load_drivers(adapter);
 		load_devices(adapter);
 
-		dd = hci_open_dev(adapter->dev_id);
-		if (dd < 0)
-			return -EIO;
-
 		/* retrieve the active connections: address the scenario where
 		 * the are active connections before the daemon've started */
-		load_connections(adapter, dd);
+		load_connections(adapter);
 
 		adapter->initialized = TRUE;
 
 		manager_add_adapter(adapter->path);
 
-		hci_close_dev(dd);
 	}
 
 	if (adapter->svc_cache)
