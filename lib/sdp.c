@@ -99,6 +99,7 @@ static uint128_t bluetooth_base_uuid = {
 static sdp_data_t *sdp_copy_seq(sdp_data_t *data);
 static int sdp_attr_add_new_with_length(sdp_record_t *rec,
 	uint16_t attr, uint8_t dtd, const void *value, uint32_t len);
+int sdp_gen_buffer(sdp_buf_t *buf, sdp_data_t *d);
 
 /* Message structure. */
 struct tupla {
@@ -659,36 +660,49 @@ void sdp_set_seq_len(uint8_t *ptr, uint32_t length)
 	}
 }
 
-static int sdp_set_data_type(sdp_buf_t *buf, uint8_t dtd)
+static int sdp_get_data_type(sdp_buf_t *buf, uint8_t dtd)
 {
-	int orig = buf->data_size;
-	uint8_t *p = buf->data + buf->data_size;
+	int data_type = 0;
 
-	*p++ = dtd;
-	buf->data_size += sizeof(uint8_t);
+	data_type += sizeof(uint8_t);
 
 	switch (dtd) {
 	case SDP_SEQ8:
 	case SDP_TEXT_STR8:
 	case SDP_URL_STR8:
 	case SDP_ALT8:
-		buf->data_size += sizeof(uint8_t);
+		data_type += sizeof(uint8_t);
 		break;
 	case SDP_SEQ16:
 	case SDP_TEXT_STR16:
 	case SDP_URL_STR16:
 	case SDP_ALT16:
-		buf->data_size += sizeof(uint16_t);
+		data_type += sizeof(uint16_t);
 		break;
 	case SDP_SEQ32:
 	case SDP_TEXT_STR32:
 	case SDP_URL_STR32:
 	case SDP_ALT32:
-		buf->data_size += sizeof(uint32_t);
+		data_type += sizeof(uint32_t);
 		break;
 	}
 
-	return buf->data_size - orig;
+	if (!buf->data)
+		buf->buf_size += data_type;
+
+	return data_type;
+}
+
+static int sdp_set_data_type(sdp_buf_t *buf, uint8_t dtd)
+{
+	int data_type = 0;
+	uint8_t *p = buf->data + buf->data_size;
+
+	*p++ = dtd;
+	data_type = sdp_get_data_type(buf, dtd);
+	buf->data_size += data_type;
+
+	return data_type;
 }
 
 void sdp_set_attrid(sdp_buf_t *buf, uint16_t attr)
@@ -708,10 +722,115 @@ static int get_data_size(sdp_buf_t *buf, sdp_data_t *sdpdata)
 	sdp_data_t *d;
 	int n = 0;
 
-	for (d = sdpdata->val.dataseq; d; d = d->next)
-		n += sdp_gen_pdu(buf, d);
+	for (d = sdpdata->val.dataseq; d; d = d->next) {
+		if (buf->data)
+			n += sdp_gen_pdu(buf, d);
+		else
+			n += sdp_gen_buffer(buf, d);
+	}
 
 	return n;
+}
+
+static int sdp_get_data_size(sdp_buf_t *buf, sdp_data_t *d)
+{
+	uint32_t data_size = 0;
+	uint8_t dtd = d->dtd;
+
+	switch (dtd) {
+	case SDP_DATA_NIL:
+		break;
+	case SDP_UINT8:
+		data_size = sizeof(uint8_t);
+		break;
+	case SDP_UINT16:
+		data_size = sizeof(uint16_t);
+		break;
+	case SDP_UINT32:
+		data_size = sizeof(uint32_t);
+		break;
+	case SDP_UINT64:
+		data_size = sizeof(uint64_t);
+		break;
+	case SDP_UINT128:
+		data_size = sizeof(uint128_t);
+		break;
+	case SDP_INT8:
+	case SDP_BOOL:
+		data_size = sizeof(int8_t);
+		break;
+	case SDP_INT16:
+		data_size = sizeof(int16_t);
+		break;
+	case SDP_INT32:
+		data_size = sizeof(int32_t);
+		break;
+	case SDP_INT64:
+		data_size = sizeof(int64_t);
+		break;
+	case SDP_INT128:
+		data_size = sizeof(uint128_t);
+		break;
+	case SDP_TEXT_STR8:
+	case SDP_TEXT_STR16:
+	case SDP_TEXT_STR32:
+	case SDP_URL_STR8:
+	case SDP_URL_STR16:
+	case SDP_URL_STR32:
+		data_size = d->unitSize - sizeof(uint8_t);
+		break;
+	case SDP_SEQ8:
+	case SDP_SEQ16:
+	case SDP_SEQ32:
+		data_size = get_data_size(buf, d);
+		break;
+	case SDP_ALT8:
+	case SDP_ALT16:
+	case SDP_ALT32:
+		data_size = get_data_size(buf, d);
+		break;
+	case SDP_UUID16:
+		data_size = sizeof(uint16_t);
+		break;
+	case SDP_UUID32:
+		data_size = sizeof(uint32_t);
+		break;
+	case SDP_UUID128:
+		data_size = sizeof(uint128_t);
+		break;
+	default:
+		break;
+	}
+
+	if (!buf->data)
+		buf->buf_size += data_size;
+
+	return data_size;
+}
+
+
+int sdp_gen_buffer(sdp_buf_t *buf, sdp_data_t *d)
+{
+	int orig = buf->buf_size;
+
+	if (buf->buf_size == 0 && d->dtd == 0) {
+		/* create initial sequence */
+		buf->buf_size += sizeof(uint8_t);
+
+		/* reserve space for sequence size */
+		buf->buf_size += sizeof(uint8_t);
+	}
+
+	/* attribute length */
+	buf->buf_size += sizeof(uint8_t) + sizeof(uint16_t);
+
+	sdp_get_data_type(buf, d->dtd);
+	sdp_get_data_size(buf, d);
+
+	if (buf->buf_size > UCHAR_MAX && d->dtd == SDP_SEQ8)
+		buf->buf_size += sizeof(uint8_t);
+
+	return buf->buf_size - orig;
 }
 
 int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
@@ -726,58 +845,49 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	uint8_t *seqp = buf->data + buf->data_size;
 
 	pdu_size = sdp_set_data_type(buf, dtd);
+	data_size = sdp_get_data_size(buf, d);
 
 	switch (dtd) {
 	case SDP_DATA_NIL:
 		break;
 	case SDP_UINT8:
 		src = &d->val.uint8;
-		data_size = sizeof(uint8_t);
 		break;
 	case SDP_UINT16:
 		u16 = htons(d->val.uint16);
 		src = (unsigned char *) &u16;
-		data_size = sizeof(uint16_t);
 		break;
 	case SDP_UINT32:
 		u32 = htonl(d->val.uint32);
 		src = (unsigned char *) &u32;
-		data_size = sizeof(uint32_t);
 		break;
 	case SDP_UINT64:
 		u64 = hton64(d->val.uint64);
 		src = (unsigned char *) &u64;
-		data_size = sizeof(uint64_t);
 		break;
 	case SDP_UINT128:
 		hton128(&d->val.uint128, &u128);
 		src = (unsigned char *) &u128;
-		data_size = sizeof(uint128_t);
 		break;
 	case SDP_INT8:
 	case SDP_BOOL:
 		src = (unsigned char *) &d->val.int8;
-		data_size = sizeof(int8_t);
 		break;
 	case SDP_INT16:
 		u16 = htons(d->val.int16);
 		src = (unsigned char *) &u16;
-		data_size = sizeof(int16_t);
 		break;
 	case SDP_INT32:
 		u32 = htonl(d->val.int32);
 		src = (unsigned char *) &u32;
-		data_size = sizeof(int32_t);
 		break;
 	case SDP_INT64:
 		u64 = hton64(d->val.int64);
 		src = (unsigned char *) &u64;
-		data_size = sizeof(int64_t);
 		break;
 	case SDP_INT128:
 		hton128(&d->val.int128, &u128);
 		src = (unsigned char *) &u128;
-		data_size = sizeof(uint128_t);
 		break;
 	case SDP_TEXT_STR8:
 	case SDP_TEXT_STR16:
@@ -786,36 +896,30 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	case SDP_URL_STR16:
 	case SDP_URL_STR32:
 		src = (unsigned char *) d->val.str;
-		data_size = d->unitSize - sizeof(uint8_t);
 		sdp_set_seq_len(seqp, data_size);
 		break;
 	case SDP_SEQ8:
 	case SDP_SEQ16:
 	case SDP_SEQ32:
 		is_seq = 1;
-		data_size = get_data_size(buf, d);
 		sdp_set_seq_len(seqp, data_size);
 		break;
 	case SDP_ALT8:
 	case SDP_ALT16:
 	case SDP_ALT32:
 		is_alt = 1;
-		data_size = get_data_size(buf, d);
 		sdp_set_seq_len(seqp, data_size);
 		break;
 	case SDP_UUID16:
 		u16 = htons(d->val.uuid.value.uuid16);
 		src = (unsigned char *) &u16;
-		data_size = sizeof(uint16_t);
 		break;
 	case SDP_UUID32:
 		u32 = htonl(d->val.uuid.value.uuid32);
 		src = (unsigned char *) &u32;
-		data_size = sizeof(uint32_t);
 		break;
 	case SDP_UUID128:
 		src = (unsigned char *) &d->val.uuid.value.uuid128;
-		data_size = sizeof(uint128_t);
 		break;
 	default:
 		break;
@@ -840,15 +944,22 @@ static void sdp_attr_pdu(void *value, void *udata)
 	sdp_append_to_pdu((sdp_buf_t *)udata, (sdp_data_t *)value);
 }
 
+static void sdp_attr_size(void *value, void *udata)
+{
+	sdp_gen_buffer((sdp_buf_t *)udata, (sdp_data_t *)value);
+}
+
 int sdp_gen_record_pdu(const sdp_record_t *rec, sdp_buf_t *buf)
 {
-	buf->data = malloc(SDP_PDU_CHUNK_SIZE);
+	memset(buf, 0, sizeof(sdp_buf_t));
+	sdp_list_foreach(rec->attrlist, sdp_attr_size, buf);
+
+	buf->data = malloc(buf->buf_size);
 	if (!buf->data)
 		return -ENOMEM;
-
-	buf->buf_size = SDP_PDU_CHUNK_SIZE;
 	buf->data_size = 0;
 	memset(buf->data, 0, buf->buf_size);
+
 	sdp_list_foreach(rec->attrlist, sdp_attr_pdu, buf);
 
 	return 0;
@@ -2590,17 +2701,6 @@ void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 	SDPDBG("Append src size: %d\n", len);
 	SDPDBG("Append dst size: %d\n", dst->data_size);
 	SDPDBG("Dst buffer size: %d\n", dst->buf_size);
-	if (dst->data_size + len > dst->buf_size) {
-		int need = SDP_PDU_CHUNK_SIZE * ((len / SDP_PDU_CHUNK_SIZE) + 1);
-		dst->data = realloc(dst->data, dst->buf_size + need);
-
-		SDPDBG("Realloc'ing : %d\n", need);
-
-		if (dst->data == NULL) {
-			SDPERR("Realloc fails \n");
-		}
-		dst->buf_size += need;
-	}
 	if (dst->data_size == 0 && dtd == 0) {
 		/* create initial sequence */
 		*(uint8_t *)p = SDP_SEQ8;
@@ -2642,17 +2742,18 @@ void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 
 void sdp_append_to_pdu(sdp_buf_t *pdu, sdp_data_t *d)
 {
-	uint8_t buf[512];
 	sdp_buf_t append;
 
 	memset(&append, 0, sizeof(sdp_buf_t));
-	append.data = buf;
-	append.buf_size = sizeof(buf);
-	append.data_size = 0;
+	sdp_gen_buffer(&append, d);
+	append.data = malloc(append.buf_size);
+	if (!append.data)
+		return;
 
 	sdp_set_attrid(&append, d->attrId);
 	sdp_gen_pdu(&append, d);
 	sdp_append_to_buf(pdu, append.data, append.data_size);
+	free(append.data);
 }
 
 /*
@@ -3050,13 +3151,6 @@ static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 	// Fill up the value and the dtd arrays
 	SDPDBG("");
 
-	memset(&buf, 0, sizeof(sdp_buf_t));
-	buf.data = malloc(512);
-	buf.buf_size = 512;
-
-	if (!buf.data)
-		return -ENOMEM;
-
 	SDPDBG("Seq length : %d\n", seqlen);
 
 	types = malloc(seqlen * sizeof(void *));
@@ -3071,6 +3165,13 @@ static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 	}
 
 	dataseq = sdp_seq_alloc(types, values, seqlen);
+	memset(&buf, 0, sizeof(sdp_buf_t));
+	sdp_gen_buffer(&buf, dataseq);
+	buf.data = malloc(buf.buf_size);
+
+	if (!buf.data)
+		return -ENOMEM;
+
 	SDPDBG("Data Seq : 0x%p\n", seq);
 	seqlen = sdp_gen_pdu(&buf, dataseq);
 	SDPDBG("Copying : %d\n", buf.data_size);
