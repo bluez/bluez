@@ -416,14 +416,8 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 		return -EIO;
 
 	if (adapter->up && scan_enable == SCAN_DISABLED) {
-		struct hci_request rq = {
-			.ogf = OGF_HOST_CTL,
-			.ocf = OCF_WRITE_SCAN_ENABLE,
-			.cparam = &scan_enable,
-			.clen = sizeof(scan_enable),
-		};
-
-		hci_send_req(dd, &rq, HCI_REQ_TIMEOUT);
+		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+					1, &scan_enable);
 		hci_close_dev(dd);
 
 		err = adapter_ops->stop(adapter->dev_id);
