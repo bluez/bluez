@@ -808,7 +808,6 @@ static int sdp_get_data_size(sdp_buf_t *buf, sdp_data_t *d)
 	return data_size;
 }
 
-
 static int sdp_gen_buffer(sdp_buf_t *buf, sdp_data_t *d)
 {
 	int orig = buf->buf_size;
