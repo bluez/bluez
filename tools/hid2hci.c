@@ -223,6 +223,10 @@ static int switch_dell(struct device_info *devinfo)
 
 	handle = usb_open(devinfo->dev);
 
+	/* Don't need to check return, as might not be in use */
+	if (handle)
+		usb_detach_kernel_driver_np(handle, 0);
+
 	if (handle && usb_claim_interface(handle,0) == 0)
 		err = usb_control_msg(handle,
 			USB_ENDPOINT_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
