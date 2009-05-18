@@ -462,11 +462,32 @@ done:
 	return err;
 }
 
+static int hciops_powered(int index, gboolean powered)
+{
+	int dd;
+	uint8_t mode = SCAN_DISABLED;
+
+	if (powered)
+		return hciops_start(index);
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+					1, &mode);
+
+	hci_close_dev(dd);
+
+	return hciops_stop(index);
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
 	.start = hciops_start,
 	.stop = hciops_stop,
+	.set_powered = hciops_powered,
 };
 
 static int hciops_init(void)

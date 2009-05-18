@@ -406,21 +406,13 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 	scan_enable = mode2scan(new_mode);
 
 	if (!adapter->up && scan_enable != SCAN_DISABLED) {
-		err = adapter_ops->start(adapter->dev_id);
+		err = adapter_ops->set_powered(adapter->dev_id, TRUE);
 		if (err < 0)
 			return err;
 	}
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return -EIO;
-
 	if (adapter->up && scan_enable == SCAN_DISABLED) {
-		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-					1, &scan_enable);
-		hci_close_dev(dd);
-
-		err = adapter_ops->stop(adapter->dev_id);
+		err = adapter_ops->set_powered(adapter->dev_id, FALSE);
 		if (err < 0)
 			return err;
 
@@ -453,12 +445,12 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 			set_limited_discoverable(dd, adapter->dev.class,
 									FALSE);
 	}
+
+	hci_close_dev(dd);
 done:
 	modestr = mode2str(new_mode);
 
 	write_device_mode(&adapter->bdaddr, modestr);
-
-	hci_close_dev(dd);
 
 	adapter->mode = new_mode;
 
