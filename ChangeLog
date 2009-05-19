@@ -1,3 +1,15 @@
+ver 4.40:
+	Add telephony driver for oFono telephony stack.
+	Add support for Dell specific HID proxy switching.
+	Add support for running hid2hci from udev.
+	Add mapping for AVRCP Play and Pause to dedicated key codes.
+	Fix AVRCP keycodes to better match existing X keymap support.
+	Fix various quoting issues within telephony support.
+	Fix memory allocation issue when generating PDUs for SDP.
+	Fix race condition on device removal.
+	Fix non-cancelable issue with CreateDevice method.
+	Fix non-working CancelDiscovery method call.
+
 ver 4.39:
 	Add workaround for dealing with unknown inquiry complete.
 	Fix discovering when using software scheduler.
