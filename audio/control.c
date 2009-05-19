@@ -582,7 +582,8 @@ static int uinput_create(char *name)
 	ioctl(fd, UI_SET_EVBIT, EV_REP);
 	ioctl(fd, UI_SET_EVBIT, EV_SYN);
 
-	ioctl(fd, UI_SET_KEYBIT, KEY_PLAYPAUSE);
+	ioctl(fd, UI_SET_KEYBIT, KEY_PLAYCD);
+	ioctl(fd, UI_SET_KEYBIT, KEY_PAUSECD);
 	ioctl(fd, UI_SET_KEYBIT, KEY_STOPCD);
 	ioctl(fd, UI_SET_KEYBIT, KEY_NEXTSONG);
 	ioctl(fd, UI_SET_KEYBIT, KEY_PREVIOUSSONG);
