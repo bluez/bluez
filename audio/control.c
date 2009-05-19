@@ -178,6 +178,21 @@ struct control {
 	gboolean target;
 };
 
+static struct {
+	const char *name;
+	uint8_t avrcp;
+	uint16_t uinput;
+} key_map[] = {
+	{ "PLAY",		PLAY_OP,		KEY_PLAYCD },
+	{ "STOP",		STOP_OP,		KEY_STOPCD },
+	{ "PAUSE",		PAUSE_OP,		KEY_PAUSECD },
+	{ "FORWARD",		FORWARD_OP,		KEY_NEXTSONG },
+	{ "BACKWARD",		BACKWARD_OP,		KEY_PREVIOUSSONG },
+	{ "REWIND",		REWIND_OP,		KEY_REWIND },
+	{ "FAST FORWARD",	FAST_FORWARD_OP,	KEY_FASTFORWARD },
+	{ NULL }
+};
+
 static GSList *avctp_callbacks = NULL;
 
 static sdp_record_t *avrcp_ct_record()
@@ -332,7 +347,7 @@ static void handle_panel_passthrough(struct control *control,
 					int operand_count)
 {
 	const char *status;
-	int pressed;
+	int pressed, i;
 
 	if (operand_count == 0)
 		return;
@@ -345,39 +360,17 @@ static void handle_panel_passthrough(struct control *control,
 		pressed = 1;
 	}
 
-	switch (operands[0] & 0x7F) {
-	case PLAY_OP:
-		debug("AVRCP: PLAY %s", status);
-		send_key(control->uinput, KEY_PLAYCD, pressed);
-		break;
-	case STOP_OP:
-		debug("AVRCP: STOP %s", status);
-		send_key(control->uinput, KEY_STOPCD, pressed);
-		break;
-	case PAUSE_OP:
-		debug("AVRCP: PAUSE %s", status);
-		send_key(control->uinput, KEY_PAUSECD, pressed);
-		break;
-	case FORWARD_OP:
-		debug("AVRCP: FORWARD %s", status);
-		send_key(control->uinput, KEY_NEXTSONG, pressed);
-		break;
-	case BACKWARD_OP:
-		debug("AVRCP: BACKWARD %s", status);
-		send_key(control->uinput, KEY_PREVIOUSSONG, pressed);
-		break;
-	case REWIND_OP:
-		debug("AVRCP: REWIND %s", status);
-		send_key(control->uinput, KEY_REWIND, pressed);
-		break;
-	case FAST_FORWARD_OP:
-		debug("AVRCP: FAST FORWARD %s", status);
-		send_key(control->uinput, KEY_FASTFORWARD, pressed);
-		break;
-	default:
-		debug("AVRCP: unknown button 0x%02X %s", operands[0] & 0x7F, status);
-		break;
+	for (i = 0; key_map[i].name != NULL; i++) {
+		if ((operands[0] & 0x7F) == key_map[i].avrcp) {
+			debug("AVRCP: %s %s", key_map[i].name, status);
+			send_key(control->uinput, key_map[i].uinput, pressed);
+			break;
+		}
 	}
+
+	if (key_map[i].name == NULL)
+		debug("AVRCP: unknown button 0x%02X %s",
+						operands[0] & 0x7F, status);
 }
 
 static void avctp_disconnected(struct audio_device *dev)
@@ -543,7 +536,7 @@ failed:
 static int uinput_create(char *name)
 {
 	struct uinput_dev dev;
-	int fd, err;
+	int fd, err, i;
 
 	fd = open("/dev/uinput", O_RDWR);
 	if (fd < 0) {
@@ -582,13 +575,8 @@ static int uinput_create(char *name)
 	ioctl(fd, UI_SET_EVBIT, EV_REP);
 	ioctl(fd, UI_SET_EVBIT, EV_SYN);
 
-	ioctl(fd, UI_SET_KEYBIT, KEY_PLAYCD);
-	ioctl(fd, UI_SET_KEYBIT, KEY_PAUSECD);
-	ioctl(fd, UI_SET_KEYBIT, KEY_STOPCD);
-	ioctl(fd, UI_SET_KEYBIT, KEY_NEXTSONG);
-	ioctl(fd, UI_SET_KEYBIT, KEY_PREVIOUSSONG);
-	ioctl(fd, UI_SET_KEYBIT, KEY_REWIND);
-	ioctl(fd, UI_SET_KEYBIT, KEY_FASTFORWARD);
+	for (i = 0; key_map[i].name != NULL; i++)
+		ioctl(fd, UI_SET_KEYBIT, key_map[i].uinput);
 
 	if (ioctl(fd, UI_DEV_CREATE, NULL) < 0) {
 		err = errno;
