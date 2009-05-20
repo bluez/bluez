@@ -936,15 +936,6 @@ static void device_remove_bonding(struct btd_device *device,
 	/* Delete the link key from the Bluetooth chip */
 	hci_delete_stored_link_key(dd, &device->bdaddr, 0, HCI_REQ_TIMEOUT);
 
-	/* Send the HCI disconnect command */
-	if (device->handle) {
-		int err = hci_disconnect(dd, htobs(device->handle),
-					HCI_OE_USER_ENDED_CONNECTION,
-					HCI_REQ_TIMEOUT);
-		if (err < 0)
-			error("Disconnect: %s (%d)", strerror(-err), -err);
-	}
-
 	hci_close_dev(dd);
 
 	paired = FALSE;
@@ -979,12 +970,8 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 	if (device->browse)
 		browse_request_cancel(device->browse);
 
-	while (device->disconnects) {
-		DBusMessage *msg = device->disconnects->data;
-
-		g_dbus_send_reply(conn, msg, DBUS_TYPE_INVALID);
-		device->disconnects = g_slist_remove(device->disconnects, msg);
-	}
+	if (device->handle)
+		do_disconnect(device);
 
 	if (remove_stored)
 		device_remove_stored(device, conn);
