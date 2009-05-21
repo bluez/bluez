@@ -111,8 +111,6 @@ static gint server_start(struct server *server)
 	if (!server->io)
 		goto failed;
 
-	g_io_channel_set_close_on_unref(server->io, TRUE);
-
 	return 0;
 
 failed:
@@ -132,6 +130,7 @@ static gint server_stop(struct server *server)
 		server->watch = 0;
 	}
 
+	g_io_channel_shutdown(server->io, TRUE, NULL);
 	g_io_channel_unref(server->io);
 	server->io = NULL;
 
