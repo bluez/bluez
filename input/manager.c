@@ -45,6 +45,7 @@
 static int idle_timeout = 0;
 
 static DBusConnection *connection = NULL;
+GSList *adapters = NULL;
 
 static void input_remove(struct btd_device *device, const char *uuid)
 {
@@ -125,10 +126,17 @@ static void headset_remove(struct btd_device *device)
 static int hid_server_probe(struct btd_adapter *adapter)
 {
 	bdaddr_t src;
+	int ret;
 
 	adapter_get_address(adapter, &src);
 
-	return server_start(&src);
+	ret = server_start(&src);
+	if (ret < 0)
+		return ret;
+
+	adapters = g_slist_append(adapters, btd_adapter_ref(adapter));
+
+	return 0;
 }
 
 static void hid_server_remove(struct btd_adapter *adapter)
@@ -138,6 +146,9 @@ static void hid_server_remove(struct btd_adapter *adapter)
 	adapter_get_address(adapter, &src);
 
 	server_stop(&src);
+
+	adapters = g_slist_remove(adapters, adapter);
+	btd_adapter_unref(adapter);
 }
 
 static struct btd_device_driver input_hid_driver = {
