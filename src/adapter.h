@@ -125,6 +125,9 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 				struct btd_device *device, uint16_t handle);
 gboolean adapter_has_discov_sessions(struct btd_adapter *adapter);
 
+struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter);
+void btd_adapter_unref(struct btd_adapter *adapter);
+
 struct btd_adapter_driver {
 	const char *name;
 	int (*probe) (struct btd_adapter *adapter);

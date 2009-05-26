@@ -128,6 +128,7 @@ struct btd_adapter {
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
 
 	uint8_t svc_cache;		/* For bluetoothd startup */
+	gint ref;
 };
 
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
@@ -2348,10 +2349,37 @@ static void adapter_free(gpointer user_data)
 	agent_destroy(adapter->agent, FALSE);
 	adapter->agent = NULL;
 
+	debug("adapter_free(%p)", adapter);
+
 	g_free(adapter->path);
 	g_free(adapter);
+}
 
-	return;
+struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter)
+{
+	adapter->ref++;
+
+	debug("btd_adapter_ref(%p): ref=%d", adapter, adapter->ref);
+
+	return adapter;
+}
+
+void btd_adapter_unref(struct btd_adapter *adapter)
+{
+	gchar *path;
+
+	adapter->ref--;
+
+	debug("btd_adapter_unref(%p): ref=%d", adapter, adapter->ref);
+
+	if (adapter->ref > 0)
+		return;
+
+	path = g_strdup(adapter->path);
+
+	g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE);
+
+	g_free(path);
 }
 
 struct btd_adapter *adapter_create(DBusConnection *conn, int id,
@@ -2386,15 +2414,14 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id,
 		return NULL;
 	}
 
-	return adapter;
+	return btd_adapter_ref(adapter);
 }
 
 void adapter_remove(struct btd_adapter *adapter)
 {
 	GSList *l;
-	char *path = g_strdup(adapter->path);
 
-	debug("Removing adapter %s", path);
+	debug("Removing adapter %s", adapter->path);
 
 	for (l = adapter->devices; l; l = l->next)
 		device_remove(l->data, connection, FALSE);
@@ -2406,8 +2433,7 @@ void adapter_remove(struct btd_adapter *adapter)
 	if (adapter->up && !adapter->already_up)
 		adapter_ops->stop(adapter->dev_id);
 
-	g_dbus_unregister_interface(connection, path, ADAPTER_INTERFACE);
-	g_free(path);
+	btd_adapter_unref(adapter);
 }
 
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter)
