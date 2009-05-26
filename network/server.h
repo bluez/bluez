@@ -24,8 +24,8 @@
 int server_init(DBusConnection *conn, const char *iface_prefix,
 		gboolean secure);
 void server_exit();
-int server_register(const char *path, bdaddr_t *src, uint16_t id);
-int server_unregister(const char *path, uint16_t id);
+int server_register(struct btd_adapter *adapter, uint16_t id);
+int server_unregister(struct btd_adapter *adapter, uint16_t id);
 int server_register_from_file(const char *path, const bdaddr_t *src,
 		uint16_t id, const char *filename);
 

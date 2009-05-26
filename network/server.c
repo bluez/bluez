@@ -67,8 +67,7 @@ struct network_session {
 };
 
 struct network_adapter {
-	bdaddr_t	src;		/* Bluetooth Local Address */
-	char		*path;		/* D-Bus path */
+	struct btd_adapter *adapter;	/* Adapter pointer */
 	GIOChannel	*io;		/* Bnep socket */
 	struct network_session *setup;	/* Setup in progress */
 	GSList		*servers;	/* Server register to adapter */
@@ -76,6 +75,7 @@ struct network_adapter {
 
 /* Main server structure */
 struct network_server {
+	bdaddr_t	src;		/* Bluetooth Local Address */
 	char		*iface;		/* DBus interface */
 	char		*name;		/* Server service name */
 	char		*range;		/* IP Address range */
@@ -91,14 +91,15 @@ static GSList *adapters = NULL;
 static const char *prefix = NULL;
 static gboolean security = TRUE;
 
-static struct network_adapter *find_adapter(GSList *list, const char *path)
+static struct network_adapter *find_adapter(GSList *list,
+					struct btd_adapter *adapter)
 {
 	GSList *l;
 
 	for (l = list; l; l = l->next) {
 		struct network_adapter *na = l->data;
 
-		if (g_str_equal(na->path, path))
+		if (na->adapter == adapter)
 			return na;
 	}
 
@@ -549,7 +550,6 @@ void server_exit()
 
 static uint32_t register_server_record(struct network_server *ns)
 {
-	struct network_adapter *na = ns->na;
 	sdp_record_t *record;
 
 	record = server_record_new(ns->name, ns->id);
@@ -558,7 +558,7 @@ static uint32_t register_server_record(struct network_server *ns)
 		return 0;
 	}
 
-	if (add_record_to_server(&na->src, record) < 0) {
+	if (add_record_to_server(&ns->src, record) < 0) {
 		error("Failed to register service record");
 		sdp_record_free(record);
 		return 0;
@@ -751,7 +751,7 @@ static void adapter_free(struct network_adapter *na)
 	}
 
 	setup_destroy(na);
-	g_free(na->path);
+	btd_adapter_unref(na->adapter);
 	g_free(na);
 }
 
@@ -787,7 +787,7 @@ static void path_unregister(void *data)
 	struct network_adapter *na = ns->na;
 
 	debug("Unregistered interface %s on path %s",
-		ns->iface, na->path);
+		ns->iface, adapter_get_path(na->adapter));
 
 	na->servers = g_slist_remove(na->servers, ns);
 	server_free(ns);
@@ -810,18 +810,20 @@ static GDBusSignalTable server_signals[] = {
 	{ }
 };
 
-static struct network_adapter *create_adapter(const char *path, bdaddr_t *src)
+static struct network_adapter *create_adapter(struct btd_adapter *adapter)
 {
 	struct network_adapter *na;
 	GError *err = NULL;
+	bdaddr_t src;
 
 	na = g_new0(struct network_adapter, 1);
-	na->path = g_strdup(path);
-	bacpy(&na->src, src);
+	na->adapter = btd_adapter_ref(adapter);
+
+	adapter_get_address(adapter, &src);
 
 	na->io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event, na,
 				NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, src,
+				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_PSM, BNEP_PSM,
 				BT_IO_OPT_OMTU, BNEP_MTU,
 				BT_IO_OPT_IMTU, BNEP_MTU,
@@ -838,14 +840,15 @@ static struct network_adapter *create_adapter(const char *path, bdaddr_t *src)
 	return na;
 }
 
-int server_register(const char *path, bdaddr_t *src, uint16_t id)
+int server_register(struct btd_adapter *adapter, uint16_t id)
 {
 	struct network_adapter *na;
 	struct network_server *ns;
+	const char *path;
 
-	na = find_adapter(adapters, path);
+	na = find_adapter(adapters, adapter);
 	if (!na) {
-		na = create_adapter(path, src);
+		na = create_adapter(adapter);
 		if (!na)
 			return -EINVAL;
 		adapters = g_slist_append(adapters, na);
@@ -872,6 +875,8 @@ int server_register(const char *path, bdaddr_t *src, uint16_t id)
 		break;
 	}
 
+	path = adapter_get_path(adapter);
+
 	if (!g_dbus_register_interface(connection, path, ns->iface,
 					server_methods, server_signals, NULL,
 					ns, path_unregister)) {
@@ -881,6 +886,7 @@ int server_register(const char *path, bdaddr_t *src, uint16_t id)
 		return -1;
 	}
 
+	adapter_get_address(adapter, &ns->src);
 	ns->id = id;
 	ns->na = na;
 	ns->record_id = register_server_record(ns);
@@ -892,12 +898,12 @@ int server_register(const char *path, bdaddr_t *src, uint16_t id)
 	return 0;
 }
 
-int server_unregister(const char *path, uint16_t id)
+int server_unregister(struct btd_adapter *adapter, uint16_t id)
 {
 	struct network_adapter *na;
 	struct network_server *ns;
 
-	na = find_adapter(adapters, path);
+	na = find_adapter(adapters, adapter);
 	if (!na)
 		return -EINVAL;
 
@@ -905,7 +911,8 @@ int server_unregister(const char *path, uint16_t id)
 	if (!ns)
 		return -EINVAL;
 
-	g_dbus_unregister_interface(connection, path, ns->iface);
+	g_dbus_unregister_interface(connection, adapter_get_path(adapter),
+					ns->iface);
 
 	return 0;
 }

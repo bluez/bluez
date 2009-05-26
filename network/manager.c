@@ -241,16 +241,13 @@ static void nap_remove(struct btd_device *device)
 static int network_server_probe(struct btd_adapter *adapter, uint16_t id)
 {
 	const gchar *path = adapter_get_path(adapter);
-	bdaddr_t src;
 
 	DBG("path %s", path);
 
 	if (!conf.server_enabled)
 		return 0;
 
-	adapter_get_address(adapter, &src);
-
-	return server_register(path, &src, id);
+	return server_register(adapter, id);
 }
 
 static void network_server_remove(struct btd_adapter *adapter, uint16_t id)
@@ -259,7 +256,7 @@ static void network_server_remove(struct btd_adapter *adapter, uint16_t id)
 
 	DBG("path %s", path);
 
-	server_unregister(path, id);
+	server_unregister(adapter, id);
 }
 
 static int panu_server_probe(struct btd_adapter *adapter)
