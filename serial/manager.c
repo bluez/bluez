@@ -73,6 +73,7 @@
 #define RFCOMM_UUID_STR		"00000003-0000-1000-8000-00805F9B34FB"
 
 static DBusConnection *connection = NULL;
+GSList *adapters = NULL;
 
 static int serial_probe(struct btd_device *device, const char *uuid)
 {
@@ -142,12 +143,10 @@ static struct btd_device_driver serial_port_driver = {
 static int proxy_probe(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
-	bdaddr_t src;
 
 	DBG("path %s", path);
-	adapter_get_address(adapter, &src);
 
-	return proxy_register(connection, path, &src);
+	return proxy_register(connection, adapter);
 }
 
 static void proxy_remove(struct btd_adapter *adapter)
@@ -156,7 +155,7 @@ static void proxy_remove(struct btd_adapter *adapter)
 
 	DBG("path %s", path);
 
-	proxy_unregister(path);
+	proxy_unregister(adapter);
 }
 
 static struct btd_adapter_driver serial_proxy_driver = {
