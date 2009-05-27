@@ -844,11 +844,6 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 			error("write_link_key: %s (%d)", strerror(-err), -err);
 			return err;
 		}
-
-		/* If not the initiator consider the device permanent otherwise
-		 * wait to service discover to complete */
-		if (!bonding)
-			device_set_temporary(device, FALSE);
 	}
 
 	/* If this is not the first link key set a flag so a subsequent auth

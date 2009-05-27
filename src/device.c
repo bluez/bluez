@@ -1950,14 +1950,22 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 		device_browse(device, bonding->conn, bonding->msg,
 				NULL, FALSE);
-	} else if (!device->browse && !device->discov_timer &&
-			main_opts.reverse_sdp) {
-		/* If we are not initiators and there is no currently active
-		 * discovery or discovery timer, set the discovery timer */
-		debug("setting timer for reverse service discovery");
-		device->discov_timer = g_timeout_add_seconds(DISCOVERY_TIMER,
-						start_discovery,
-						device);
+	} else {
+		/* If not the initiator consider the device permanent otherwise
+		 * wait to service discover to complete */
+		device_set_temporary(device, FALSE);
+
+		if (!device->browse && !device->discov_timer &&
+				main_opts.reverse_sdp) {
+			/* If we are not initiators and there is no currently
+			 * active discovery or discovery timer, set discovery
+			 * timer */
+			debug("setting timer for reverse service discovery");
+			device->discov_timer = g_timeout_add_seconds(
+							DISCOVERY_TIMER,
+							start_discovery,
+							device);
+		}
 	}
 
 	device_set_paired(device, TRUE);
