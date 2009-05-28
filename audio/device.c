@@ -258,11 +258,19 @@ static void device_remove_avdtp_timer(struct audio_device *dev)
 static gboolean headset_connect_timeout(gpointer user_data)
 {
 	struct audio_device *dev = user_data;
+	struct dev_priv *priv = dev->priv;
 
 	dev->priv->headset_timer = 0;
 
-	if (dev->headset)
-		headset_config_stream(dev, FALSE, NULL, NULL);
+	if (dev->headset == NULL)
+		return FALSE;
+
+	if (headset_config_stream(dev, FALSE, NULL, NULL) == 0) {
+		if (priv->state != AUDIO_STATE_CONNECTED &&
+				(priv->sink_state == SINK_STATE_CONNECTED ||
+				priv->sink_state == SINK_STATE_PLAYING))
+			device_set_state(dev, AUDIO_STATE_CONNECTED);
+	}
 
 	return FALSE;
 }
@@ -453,7 +461,8 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 
 	if (dev->headset)
 		headset_config_stream(dev, FALSE, NULL, NULL);
-	else if (dev->sink) {
+
+	if (priv->state != AUDIO_STATE_CONNECTING && dev->sink) {
 		struct avdtp *session = avdtp_get(&dev->src, &dev->dst);
 
 		if (!session)
@@ -465,7 +474,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 		avdtp_unref(session);
 	}
 
-	/* The previous call should cause a call to the state callback to
+	/* The previous calls should cause a call to the state callback to
 	 * indicate AUDIO_STATE_CONNECTING */
 	if (priv->state != AUDIO_STATE_CONNECTING)
 		return g_dbus_create_error(msg, ERROR_INTERFACE

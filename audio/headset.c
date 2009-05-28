@@ -1495,6 +1495,9 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	GError *err = NULL;
 	GIOChannel *io;
 
+	if (!manager_allow_headset_connection(&dev->src))
+		return -ECONNREFUSED;
+
 	if (hs->rfcomm_ch < 0)
 		return get_records(dev, cb, user_data, cb_id);
 
@@ -1636,14 +1639,13 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
 					"Telephony subsystem not ready");
 
-	if (!manager_allow_headset_connection(&device->src))
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAllowed",
-						"Too many connected devices");
-
 	device->auto_connect = FALSE;
 
 	err = rfcomm_connect(device, NULL, NULL, NULL);
-	if (err < 0)
+	if (err == -ECONNREFUSED)
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAllowed",
+						"Too many connected devices");
+	else if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".ConnectAttemptFailed",
 						"Connect Attempt Failed");
