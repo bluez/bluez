@@ -2142,6 +2142,14 @@ static void queue_request(struct avdtp *session, struct pending_req *req,
 		session->req_queue = g_slist_append(session->req_queue, req);
 }
 
+static uint8_t req_get_seid(struct pending_req *req)
+{
+	if (req->signal_id == AVDTP_DISCOVER)
+		return 0;
+
+	return ((struct seid_req *) (req->data))->acp_seid;
+}
+
 static gboolean request_timeout(gpointer user_data)
 {
 	struct avdtp *session = user_data;
@@ -2157,9 +2165,11 @@ static gboolean request_timeout(gpointer user_data)
 
 	avdtp_error_init(&err, AVDTP_ERROR_ERRNO, ETIMEDOUT);
 
-	seid = ((struct seid_req *) (req->data))->acp_seid;
-
-	stream = find_stream_by_rseid(session, seid);
+	seid = req_get_seid(req);
+	if (seid)
+		stream = find_stream_by_rseid(session, seid);
+	else
+		stream = NULL;
 
 	if (stream)
 		lsep = stream->lsep;
