@@ -1936,6 +1936,8 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 	if (device->renewed_key)
 		return;
 
+	device_set_temporary(device, FALSE);
+
 	/* If we were initiators start service discovery immediately.
 	 * However if the other end was the initator wait a few seconds
 	 * before SDP. This is due to potential IOP issues if the other
@@ -1950,11 +1952,9 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 		device_browse(device, bonding->conn, bonding->msg,
 				NULL, FALSE);
-	} else {
-		/* If not the initiator consider the device permanent otherwise
-		 * wait to service discover to complete */
-		device_set_temporary(device, FALSE);
 
+		bonding_request_free(bonding);
+	} else {
 		if (!device->browse && !device->discov_timer &&
 				main_opts.reverse_sdp) {
 			/* If we are not initiators and there is no currently
@@ -1970,12 +1970,33 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 	device_set_paired(device, TRUE);
 
-	bonding_request_free(bonding);
-
 	return;
 
 failed:
 	device_cancel_bonding(device, status);
+}
+
+gboolean device_is_creating(struct btd_device *device, const char *sender)
+{
+	DBusMessage *msg;
+
+	if (device->bonding && device->bonding->msg)
+		msg = device->bonding->msg;
+	else if (device->browse && device->browse->msg)
+		msg = device->browse->msg;
+	else
+		return FALSE;
+
+	if (!dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
+						"CreatePairedDevice") &&
+			!dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
+							"CreateDevice"))
+		return FALSE;
+
+	if (sender == NULL)
+		return TRUE;
+
+	return g_str_equal(sender, dbus_message_get_sender(msg));
 }
 
 gboolean device_is_bonding(struct btd_device *device, const char *sender)

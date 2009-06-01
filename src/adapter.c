@@ -1394,14 +1394,15 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 		return invalid_args(msg);
 
 	device = adapter_find_device(adapter, address);
-	if (!device || !device_is_temporary(device))
+	if (!device || !device_is_creating(device, NULL))
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".NotInProgress",
 				"Device creation not in progress");
 
-	if (device_is_bonding(device, NULL) &&
-			!device_is_bonding(device, sender))
+	if (!device_is_creating(device, sender))
 		return not_authorized(msg);
+
+	device_set_temporary(device, FALSE);
 
 	if (device_is_connected(device)) {
 		device_request_disconnect(device, msg);
