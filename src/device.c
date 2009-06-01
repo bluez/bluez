@@ -204,6 +204,9 @@ static void browse_request_cancel(struct browse_req *req)
 	struct btd_adapter *adapter = device->adapter;
 	bdaddr_t src;
 
+	if (device_is_creating(device, NULL))
+		device_set_temporary(device, TRUE);
+
 	adapter_get_address(adapter, &src);
 
 	bt_cancel_discovery(&src, &device->bdaddr);
