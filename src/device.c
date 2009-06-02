@@ -621,16 +621,8 @@ static gboolean do_disconnect(gpointer user_data)
 	disconnect_cp cp;
 	int dd;
 	uint16_t dev_id = adapter_get_dev_id(device->adapter);
-	DBusConnection *conn = get_dbus_connection();
 
 	device->disconn_timer = 0;
-
-	while (device->disconnects) {
-		DBusMessage *msg = device->disconnects->data;
-
-		g_dbus_send_reply(conn, msg, DBUS_TYPE_INVALID);
-		device->disconnects = g_slist_remove(device->disconnects, msg);
-	}
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0)
@@ -786,6 +778,13 @@ void device_remove_connection(struct btd_device *device, DBusConnection *conn,
 	}
 
 	device->handle = 0;
+
+	while (device->disconnects) {
+		DBusMessage *msg = device->disconnects->data;
+
+		g_dbus_send_reply(conn, msg, DBUS_TYPE_INVALID);
+		device->disconnects = g_slist_remove(device->disconnects, msg);
+	}
 
 	device_set_connected(device, conn, FALSE);
 }
