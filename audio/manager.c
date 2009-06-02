@@ -457,7 +457,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 	if (!device)
 		goto drop;
 
-	if (!manager_allow_headset_connection(&device->src)) {
+	if (!manager_allow_headset_connection(device)) {
 		debug("Refusing headset: too many existing connections");
 		goto drop;
 	}
@@ -1239,7 +1239,7 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 	return dev;
 }
 
-gboolean manager_allow_headset_connection(bdaddr_t *src)
+gboolean manager_allow_headset_connection(struct audio_device *device)
 {
 	GSList *l;
 	int connected = 0;
@@ -1248,7 +1248,10 @@ gboolean manager_allow_headset_connection(bdaddr_t *src)
 		struct audio_device *dev = l->data;
 		struct headset *hs = dev->headset;
 
-		if (bacmp(&dev->src, src))
+		if (dev == device)
+			continue;
+
+		if (bacmp(&dev->src, &device->src))
 			continue;
 
 		if (!hs)

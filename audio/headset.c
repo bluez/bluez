@@ -1495,7 +1495,7 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	GError *err = NULL;
 	GIOChannel *io;
 
-	if (!manager_allow_headset_connection(&dev->src))
+	if (!manager_allow_headset_connection(dev))
 		return -ECONNREFUSED;
 
 	if (hs->rfcomm_ch < 0)
