@@ -1457,6 +1457,7 @@ static int get_records(struct audio_device *device, headset_stream_cb_t cb,
 	struct headset *hs = device->headset;
 	uint16_t svclass;
 	uuid_t uuid;
+	int err;
 
 	if (hs->pending && hs->pending->svclass == HANDSFREE_SVCLASS_ID)
 		svclass = HEADSET_SVCLASS_ID;
@@ -1466,12 +1467,21 @@ static int get_records(struct audio_device *device, headset_stream_cb_t cb,
 
 	sdp_uuid16_create(&uuid, svclass);
 
-	if (hs->pending)
-		goto search;
+	err = bt_search_service(&device->src, &device->dst, &uuid,
+						get_record_cb, device, NULL);
+	if (err < 0)
+		return err;
+
+	if (hs->pending) {
+		hs->pending->svclass = svclass;
+		return 0;
+	}
 
 	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
 	pending_connect_init(hs, HEADSET_STATE_CONNECTED);
+
+	hs->pending->svclass = svclass;
 
 	if (cb) {
 		unsigned int id;
@@ -1481,10 +1491,7 @@ static int get_records(struct audio_device *device, headset_stream_cb_t cb,
 			*cb_id = id;
 	}
 
-search:
-	hs->pending->svclass = svclass;
-	return bt_search_service(&device->src, &device->dst, &uuid,
-			get_record_cb, device, NULL);
+	return 0;
 }
 
 static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
