@@ -58,7 +58,7 @@ static GSList *calls = NULL;
 
 #define OFONO_BUS_NAME "org.ofono"
 #define OFONO_PATH "/"
-#define OFONO_MANAGER_INTERFACE "org.ofono.ModemManager"
+#define OFONO_MANAGER_INTERFACE "org.ofono.Manager"
 #define OFONO_NETWORKREG_INTERFACE "org.ofono.NetworkRegistration"
 #define OFONO_VCMANAGER_INTERFACE "org.ofono.VoiceCallManager"
 #define OFONO_VC_INTERFACE "org.ofono.VoiceCall"
