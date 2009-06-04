@@ -366,6 +366,14 @@ int main(int argc, char *argv[])
 	if (option_root == NULL)
 		option_root = g_strdup(DEFAULT_ROOT_PATH);
 
+	if (option_root[0] != '/') {
+		char *old_root = option_root, *home = getenv("HOME");
+		if (home) {
+			option_root = g_strdup_printf("%s/%s", home, old_root);
+			g_free(old_root);
+		}
+	}
+
 	if (option_capability == NULL)
 		option_capability = g_strdup(DEFAULT_CAP_FILE);
 
