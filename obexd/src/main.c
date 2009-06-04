@@ -33,6 +33,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <getopt.h>
@@ -158,6 +159,7 @@ static gboolean option_detach = TRUE;
 static gboolean option_debug = FALSE;
 
 static gchar *option_root = NULL;
+static gchar *option_root_setup = NULL;
 static gchar *option_capability = NULL;
 static gchar *option_devnode = NULL;
 
@@ -176,6 +178,8 @@ static GOptionEntry options[] = {
 				"Enable debug information output" },
 	{ "root", 'r', 0, G_OPTION_ARG_STRING, &option_root,
 				"Specify root folder location", "PATH" },
+	{ "root-setup", 'S', 0, G_OPTION_ARG_STRING, &option_root_setup,
+				"Root folder setup script", "SCRIPT" },
 	{ "symlinks", 'l', 0, G_OPTION_ARG_NONE, &option_symlinks,
 				"Enable symlinks on root folder" },
 	{ "capability", 'c', 0, G_OPTION_ARG_STRING, &option_capability,
@@ -254,6 +258,45 @@ static int devnode_setup(void)
 
 	return tty_init(services, option_root, option_capability,
 			option_devnode);
+}
+
+static gboolean is_dir(const char *dir) {
+	struct stat st;
+
+	if (stat(dir, &st) < 0) {
+		error("stat(%s): %s (%d)", dir, strerror(errno), errno);
+		return FALSE;
+	}
+
+	return S_ISDIR(st.st_mode);
+}
+
+static gboolean root_folder_setup(char *root, char *root_setup)
+{
+	gint status;
+	char *argv[3] = { root_setup, root, NULL };
+
+	if (is_dir(root))
+		return TRUE;
+
+	if (root_setup == NULL)
+		return FALSE;
+
+	debug("Setting up %s using %s", root, root_setup);
+
+	if (!g_spawn_sync(NULL, argv, NULL, 0, NULL, NULL, NULL, NULL,
+							&status, NULL)) {
+		error("Unable to execute %s", root_setup);
+		return FALSE;
+	}
+
+	if (WEXITSTATUS(status) != EXIT_SUCCESS) {
+		error("%s exited with status %d", root_setup,
+							WEXITSTATUS(status));
+		return FALSE;
+	}
+
+	return is_dir(root);
 }
 
 int main(int argc, char *argv[])
@@ -356,6 +399,11 @@ int main(int argc, char *argv[])
 
 	if (option_devnode)
 		devnode_setup();
+
+	if (!root_folder_setup(option_root, option_root_setup)) {
+		error("Unable to setup root folder %s", option_root);
+		exit(EXIT_FAILURE);
+	}
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
