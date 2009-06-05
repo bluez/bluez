@@ -442,6 +442,9 @@ static void pending_connect_finalize(struct audio_device *dev)
 	if (p == NULL)
 		return;
 
+	if (p->svclass)
+		bt_cancel_discovery(&dev->src, &dev->dst);
+
 	g_slist_foreach(p->callbacks, (GFunc) pending_connect_complete, dev);
 
 	g_slist_foreach(p->callbacks, (GFunc) g_free, NULL);
@@ -1432,6 +1435,10 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto failed_not_supported;
 	}
 
+	/* Set svclass to 0 so we can easily check that SDP is no-longer
+	 * going on (to know if bt_cancel_discovery needs to be called) */
+	p->svclass = 0;
+
 	err = rfcomm_connect(dev, NULL, NULL, NULL);
 	if (err < 0) {
 		error("Unable to connect: %s (%d)", strerror(-err), -err);
@@ -2110,7 +2117,8 @@ static void path_unregister(void *data)
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED) {
 		debug("Headset unregistered while device was connected!");
-		bt_cancel_discovery(&dev->src, &dev->dst);
+		if (hs->pending)
+			pending_connect_finalize(dev);
 		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 	}
 
