@@ -1,3 +1,14 @@
+ver 4.41:
+	Fix pairing even if the ACL gets dropped before successful SDP.
+	Fix regression which caused device to be removed after pairing.
+	Fix HSP record fetching when remote device doesn't support it.
+	Fix SDP discovery canceling when clearing hs->pending.
+	Fix headset never connecting on the first attempt.
+	Fix headset state tracking if bt_search_service() fails.
+	Fix maximum headset connection count check.
+	Fix AVDTP Discover timeout handling.
+	Fix also UI_SET_KEYBIT for the new pause and play key codes.
+
 ver 4.40:
 	Add telephony driver for oFono telephony stack.
 	Add support for Dell specific HID proxy switching.
