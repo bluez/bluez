@@ -1456,6 +1456,7 @@ failed_not_supported:
 	if (p->msg)
 		error_not_supported(dev->conn, p->msg);
 failed:
+	p->svclass = 0;
 	pending_connect_finalize(dev);
 	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 }
