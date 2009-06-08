@@ -234,6 +234,7 @@ static gboolean search_process_cb(GIOChannel *chan,
 failed:
 	if (err) {
 		sdp_close(ctxt->session);
+		ctxt->session = NULL;
 
 		if (ctxt->cb)
 			ctxt->cb(NULL, err, ctxt->user_data);
@@ -290,6 +291,7 @@ static gboolean connect_watch(GIOChannel *chan, GIOCondition cond, gpointer user
 
 failed:
 	sdp_close(ctxt->session);
+	ctxt->session = NULL;
 
 	if (ctxt->cb)
 		ctxt->cb(NULL, -err, ctxt->user_data);
@@ -395,7 +397,8 @@ int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
 	if (ctxt->io_id)
 		g_source_remove(ctxt->io_id);
 
-	sdp_close(ctxt->session);
+	if (ctxt->session)
+		sdp_close(ctxt->session);
 
 	search_context_cleanup(ctxt);
 	return 0;
