@@ -2767,7 +2767,7 @@ int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 	if (!active_devices)
 		return -ENODEV;
 
-	if (number)
+	if (number && strlen(number) > 0)
 		send_foreach_headset(active_devices, hfp_cmp,
 				"\r\n+CLCC: %d,%d,%d,%d,%d,\"%s\",%d\r\n",
 				idx, dir, status, mode, mprty, number, type);
