@@ -517,6 +517,12 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 			|| avrcp->opcode == OP_SUBUNITINFO)) {
 		avctp->cr = AVCTP_RESPONSE;
 		avrcp->code = CTYPE_STABLE;
+		/* The first operand should be 0x07 for the UNITINFO response.
+		 * Neither AVRCP (section 22.1, page 117) nor AVC Digital
+		 * Interface Command Set (section 9.2.1, page 45) specs
+		 * explain this value but both use it */
+		if (operand_count >= 1 && avrcp->opcode == OP_UNITINFO)
+			operands[0] = 0x07;
 		if (operand_count >= 2)
 			operands[1] = SUBUNIT_PANEL << 3;
 		debug("reply to %s", avrcp->opcode == OP_UNITINFO ?
