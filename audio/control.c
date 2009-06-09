@@ -517,6 +517,8 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 			|| avrcp->opcode == OP_SUBUNITINFO)) {
 		avctp->cr = AVCTP_RESPONSE;
 		avrcp->code = CTYPE_STABLE;
+		if (operand_count >= 2)
+			operands[1] = SUBUNIT_PANEL << 3;
 		debug("reply to %s", avrcp->opcode == OP_UNITINFO ?
 				"OP_UNITINFO" : "OP_SUBUNITINFO");
 	} else {
