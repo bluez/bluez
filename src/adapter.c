@@ -551,20 +551,17 @@ static void session_remove(struct session_req *req)
 
 		debug("Stopping discovery");
 
-		g_slist_foreach(adapter->found_devices, (GFunc) dev_info_free,
-				NULL);
-		g_slist_free(adapter->found_devices);
-		adapter->found_devices = NULL;
+		pending_remote_name_cancel(adapter);
+
+		clear_found_devices_list(adapter);
 
 		g_slist_free(adapter->oor_devices);
 		adapter->oor_devices = NULL;
 
-		if (adapter->state & STD_INQUIRY)
-			cancel_discovery(adapter);
-		else if (adapter->scheduler_id)
+		if (adapter->scheduler_id)
 			g_source_remove(adapter->scheduler_id);
-		else
-			cancel_periodic_discovery(adapter);
+
+		adapter_ops->stop_discovery(adapter->dev_id);
 	}
 }
 
@@ -1015,7 +1012,7 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 				"Invalid discovery session");
 
 	session_unref(req);
-
+	info("Stopping discovery");
 	return dbus_message_new_method_return(msg);
 }
 
@@ -2048,18 +2045,13 @@ setup:
 	hci_send_cmd(dd, OGF_LINK_POLICY, OCF_READ_DEFAULT_LINK_POLICY,
 								0, NULL);
 
-	if (hci_test_bit(HCI_INQUIRY, &di.flags)) {
-		debug("inquiry_cancel at adapter startup");
-		inquiry_cancel(dd, HCI_REQ_TIMEOUT);
-	} else if (!adapter->initialized && adapter->already_up) {
-		debug("periodic_inquiry_exit at adapter startup");
-		periodic_inquiry_exit(dd, HCI_REQ_TIMEOUT);
-	}
-
-	adapter->state &= ~STD_INQUIRY;
-
 	adapter_setup(adapter, dd);
 	hci_close_dev(dd);
+
+	if (!adapter->initialized && adapter->already_up) {
+		debug("Stopping Inquiry at adapter startup");
+		adapter_ops->stop_discovery(adapter->dev_id);
+	}
 
 	err = adapter_up(adapter);
 
@@ -2084,16 +2076,10 @@ static void reply_pending_requests(struct btd_adapter *adapter)
 						HCI_OE_USER_ENDED_CONNECTION);
 	}
 
-	if (adapter->state & STD_INQUIRY) {
+	if (adapter->state & STD_INQUIRY || adapter->state & PERIODIC_INQUIRY) {
 		/* Cancel inquiry initiated by D-Bus client */
 		if (adapter->disc_sessions)
-			cancel_discovery(adapter);
-	}
-
-	if (adapter->state & PERIODIC_INQUIRY) {
-		/* Stop periodic inquiry initiated by D-Bus client */
-		if (adapter->disc_sessions)
-			cancel_periodic_discovery(adapter);
+			adapter_ops->stop_discovery(adapter->dev_id);
 	}
 }
 

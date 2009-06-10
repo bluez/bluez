@@ -52,14 +52,9 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 
-int cancel_discovery(struct btd_adapter *adapter);
-int cancel_periodic_discovery(struct btd_adapter *adapter);
-
 int set_service_classes(int dd, const uint8_t *cls, uint8_t value);
 int set_major_and_minor_class(int dd, const uint8_t *cls,
 						uint8_t major, uint8_t minor);
-int inquiry_cancel(int dd, int to);
-int periodic_inquiry_exit(int dd, int to);
 
 const char *class_to_icon(uint32_t class);
 

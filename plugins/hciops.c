@@ -602,6 +602,32 @@ static int hciops_start_discovery(int index, gboolean periodic)
 	return err;
 }
 
+static int hciops_stop_discovery(int index)
+{
+	struct hci_dev_info di;
+	int dd, err = 0;
+
+	if (hci_devinfo(index, &di) < 0)
+		return -errno;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	if (hci_test_bit(HCI_INQUIRY, &di.flags))
+		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_INQUIRY_CANCEL,
+				0, 0);
+	else
+		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY,
+				0, 0);
+	if (err < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -612,6 +638,7 @@ static struct btd_adapter_ops hci_ops = {
 	.set_discoverable = hciops_discoverable,
 	.set_limited_discoverable = hciops_set_limited_discoverable,
 	.start_discovery = hciops_start_discovery,
+	.stop_discovery = hciops_stop_discovery,
 };
 
 static int hciops_init(void)
