@@ -452,8 +452,11 @@ void hcid_dbus_inquiry_start(bdaddr_t *local)
 	 * Cancel pending remote name request and clean the device list
 	 * when inquiry is supported in periodic inquiry idle state.
 	 */
-	if (adapter_get_state(adapter) & PERIODIC_INQUIRY)
+	if (adapter_get_state(adapter) & PERIODIC_INQUIRY) {
 		pending_remote_name_cancel(adapter);
+
+		clear_found_devices_list(adapter);
+	}
 
 	/* Disable name resolution for non D-Bus clients */
 	if (!adapter_has_discov_sessions(adapter)) {

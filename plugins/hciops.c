@@ -561,6 +561,47 @@ done:
 	return err;
 }
 
+static int hciops_start_discovery(int index, gboolean periodic)
+{
+	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
+	int dd, err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	if (periodic) {
+		periodic_inquiry_cp cp;
+
+		memset(&cp, 0, sizeof(cp));
+		memcpy(&cp.lap, lap, 3);
+		cp.max_period = htobs(24);
+		cp.min_period = htobs(16);
+		cp.length  = 0x08;
+		cp.num_rsp = 0x00;
+
+		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_PERIODIC_INQUIRY,
+					PERIODIC_INQUIRY_CP_SIZE, &cp);
+	} else {
+		inquiry_cp inq_cp;
+
+		memset(&inq_cp, 0, sizeof(inq_cp));
+		memcpy(&inq_cp.lap, lap, 3);
+		inq_cp.length = 0x08;
+		inq_cp.num_rsp = 0x00;
+
+		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_INQUIRY,
+					INQUIRY_CP_SIZE, &inq_cp);
+	}
+
+	if (err < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -570,6 +611,7 @@ static struct btd_adapter_ops hci_ops = {
 	.set_connectable = hciops_connectable,
 	.set_discoverable = hciops_discoverable,
 	.set_limited_discoverable = hciops_set_limited_discoverable,
+	.start_discovery = hciops_start_discovery,
 };
 
 static int hciops_init(void)
