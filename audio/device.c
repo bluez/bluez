@@ -409,7 +409,7 @@ static void device_headset_cb(struct audio_device *dev,
 			sink_shutdown(dev->sink);
 			break;
 		}
-		if (priv->sink_state == AVDTP_SESSION_STATE_DISCONNECTED)
+		if (priv->sink_state == SINK_STATE_DISCONNECTED)
 			device_set_state(dev, AUDIO_STATE_DISCONNECTED);
 		else if (old_state == HEADSET_STATE_CONNECT_IN_PROGRESS &&
 				(priv->sink_state == SINK_STATE_CONNECTED ||
