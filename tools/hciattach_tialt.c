@@ -211,12 +211,15 @@ int texasalt_init(int fd, int speed, struct termios *ti)
 	{
 		unsigned short lmp_subv = resp[13] | (resp[14] << 8);
 		unsigned short brf_chip = (lmp_subv & 0x7c00) >> 10;
-		static const char *c_brf_chip[5] = {
+		static const char *c_brf_chip[8] = {
 			"unknown",
 			"unknown",
 			"brf6100",
 			"brf6150",
-			"brf6300"
+			"brf6300",
+			"unknown",
+			"unknown",
+			"wl1271"
 		};
 		char fw[100];
 
@@ -228,7 +231,7 @@ int texasalt_init(int fd, int speed, struct termios *ti)
 				"\tchip: %s (%d)\n",
 				lmp_subv & 0x7f,
 				((lmp_subv & 0x8000) >> (15-3)) | ((lmp_subv & 0x380) >> 7),
-				((brf_chip > 4) ? "unknown" : c_brf_chip[brf_chip]),
+				((brf_chip > 7) ? "unknown" : c_brf_chip[brf_chip]),
 				brf_chip);
 
 		sprintf(fw, "/etc/firmware/%s.bin", c_brf_chip[brf_chip]);
