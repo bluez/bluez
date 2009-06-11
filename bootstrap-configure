@@ -10,7 +10,6 @@ fi
 
 ./bootstrap && \
     ./configure --enable-maintainer-mode \
-		--enable-gtk-doc \
 		--enable-debug \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
