@@ -165,19 +165,27 @@ void hcid_dbus_exit(void)
 int hcid_dbus_init(void)
 {
 	DBusConnection *conn;
+	DBusError err;
 
-	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, BLUEZ_NAME, NULL);
-	if (!conn)
-		return -1;
+	dbus_error_init(&err);
+
+	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, BLUEZ_NAME, &err);
+	if (!conn) {
+		if (error != NULL && dbus_error_is_set(&err)) {
+			dbus_error_free(&err);
+			return -EIO;
+		}
+		return -EALREADY;
+	}
 
 	if (g_dbus_set_disconnect_function(conn, disconnect_callback,
 							NULL, NULL) == FALSE) {
 		dbus_connection_unref(conn);
-		return -1;
+		return -EIO;
 	}
 
 	if (!manager_init(conn, "/"))
-		return -1;
+		return -EIO;
 
 	set_dbus_connection(conn);
 

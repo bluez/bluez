@@ -43,6 +43,7 @@
 
 #include <gdbus.h>
 
+#include "hcid.h"
 #include "dbus-common.h"
 #include "logging.h"
 #include "adapter.h"
@@ -312,6 +313,9 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 			DBUS_TYPE_INVALID);
 
 	adapter_remove(adapter);
+
+	if (adapters == NULL)
+		btd_start_exit_timer();
 }
 
 void manager_cleanup(DBusConnection *conn, const char *path)
@@ -421,6 +425,8 @@ void manager_add_adapter(const char *path)
 			DBUS_TYPE_INVALID);
 
 	manager_update_adapters();
+
+	btd_stop_exit_timer();
 }
 
 int manager_register_adapter(int id, gboolean devup)
