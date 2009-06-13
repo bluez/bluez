@@ -502,8 +502,11 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	dev = a2dp_get_dev(session);
 
-	/* Notify sink.c of the new stream */
-	sink_new_stream(dev, session, setup->stream);
+	/* Notify D-Bus interface of the new stream */
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE)
+		sink_new_stream(dev, session, setup->stream);
+	else
+		source_new_stream(dev, session, setup->stream);
 
 	ret = avdtp_open(session, stream);
 	if (ret < 0) {

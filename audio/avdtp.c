@@ -52,6 +52,7 @@
 #include "glib-helper.h"
 #include "btio.h"
 #include "sink.h"
+#include "source.h"
 
 #include <bluetooth/l2cap.h>
 
@@ -631,6 +632,8 @@ static gboolean disconnect_timeout(gpointer user_data)
 
 	if (dev && dev->sink && stream_setup)
 		sink_setup_stream(dev->sink, session);
+	else if (dev && dev->source && stream_setup)
+		source_setup_stream(dev->source, session);
 	else
 		connection_lost(session, ETIMEDOUT);
 

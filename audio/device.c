@@ -58,6 +58,7 @@
 #include "headset.h"
 #include "gateway.h"
 #include "sink.h"
+#include "source.h"
 
 #define AUDIO_INTERFACE "org.bluez.Audio"
 
@@ -650,6 +651,9 @@ void audio_device_unregister(struct audio_device *device)
 
 	if (device->sink)
 		sink_unregister(device);
+
+	if (device->source)
+		source_unregister(device);
 
 	if (device->control)
 		control_unregister(device);

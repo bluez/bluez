@@ -65,6 +65,7 @@
 #include "headset.h"
 #include "gateway.h"
 #include "sink.h"
+#include "source.h"
 #include "control.h"
 #include "manager.h"
 #include "sdpd.h"
@@ -142,6 +143,8 @@ gboolean server_is_enabled(bdaddr_t *src, uint16_t svc)
 		return enabled.gateway;
 	case AUDIO_SINK_SVCLASS_ID:
 		return enabled.sink;
+	case AUDIO_SOURCE_SVCLASS_ID:
+		return enabled.source;
 	case AV_REMOTE_TARGET_SVCLASS_ID:
 	case AV_REMOTE_SVCLASS_ID:
 		return enabled.control;
@@ -205,6 +208,8 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 		break;
 	case AUDIO_SOURCE_SVCLASS_ID:
 		debug("Found Audio Source");
+		if (device->source == NULL)
+			device->source = source_init(device);
 		break;
 	case AV_REMOTE_SVCLASS_ID:
 	case AV_REMOTE_TARGET_SVCLASS_ID:
