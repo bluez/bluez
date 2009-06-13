@@ -1074,9 +1074,9 @@ static struct a2dp_server *find_server(GSList *list, const bdaddr_t *src)
 
 int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 {
-	int sbc_srcs = 1, sbc_sinks = 0;
+	int sbc_srcs = 1, sbc_sinks = 1;
 	int mpeg12_srcs = 0, mpeg12_sinks = 0;
-	gboolean source = TRUE, sink = TRUE;
+	gboolean source = TRUE, sink = FALSE;
 	char *str;
 	GError *err = NULL;
 	int i;
@@ -1084,6 +1084,19 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 
 	if (!config)
 		goto proceed;
+
+	str = g_key_file_get_string(config, "General", "Enable", &err);
+
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_clear_error(&err);
+	} else {
+		if (strstr(str, "Sink"))
+			source = TRUE;
+		if (strstr(str, "Source"))
+			sink = TRUE;
+		g_free(str);
+	}
 
 	str = g_key_file_get_string(config, "General", "Disable", &err);
 
