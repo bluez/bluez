@@ -1809,7 +1809,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 			goto failed;
 		}
 
-		if (session->ref == 1 && !session->streams)
+		if (session->ref == 1 && !session->streams && !session->req)
 			set_disconnect_timer(session);
 
 		if (session->streams && session->dc_timer)
