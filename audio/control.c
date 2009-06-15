@@ -714,8 +714,8 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 		if (!bt_io_accept(chan, avctp_connect_cb, dev->control,
 								NULL, NULL))
 			goto drop;
-	} else if (btd_request_authorization(&src, &dst,
-				AVRCP_TARGET_UUID, auth_cb, dev->control) < 0)
+	} else if (audio_device_request_authorization(dev, AVRCP_TARGET_UUID,
+			auth_cb, dev->control) < 0)
 		goto drop;
 
 	return;

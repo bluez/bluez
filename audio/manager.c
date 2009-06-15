@@ -482,8 +482,8 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 
 	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
 
-	perr = btd_request_authorization(&device->src, &device->dst,
-					server_uuid, headset_auth_cb, device);
+	perr = audio_device_request_authorization(device, server_uuid,
+						headset_auth_cb, device);
 	if (perr < 0) {
 		debug("Authorization denied: %s", strerror(-perr));
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
@@ -561,8 +561,8 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	perr = btd_request_authorization(&device->src, &device->dst,
-				server_uuid, gateway_auth_cb, device);
+	perr = audio_device_request_authorization(device, server_uuid,
+						gateway_auth_cb, device);
 	if (perr < 0) {
 		debug("Authorization denied!");
 		goto drop;

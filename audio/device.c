@@ -71,12 +71,18 @@ typedef enum {
 	AUDIO_STATE_CONNECTED,
 } audio_state_t;
 
+struct service_auth {
+	service_auth_cb cb;
+	void *user_data;
+};
+
 struct dev_priv {
 	audio_state_t state;
 
 	headset_state_t hs_state;
 	sink_state_t sink_state;
 	avctp_state_t avctp_state;
+	GSList *auths;
 
 	DBusMessage *conn_req;
 	DBusMessage *dc_req;
@@ -652,4 +658,40 @@ void audio_device_unregister(struct audio_device *device)
 						AUDIO_INTERFACE);
 
 	device_free(device);
+}
+
+static void auth_cb(DBusError *derr, void *user_data)
+{
+	struct audio_device *dev = user_data;
+	struct dev_priv *priv = dev->priv;
+
+	while (priv->auths) {
+		struct service_auth *auth = priv->auths->data;
+
+		auth->cb(derr, auth->user_data);
+		priv->auths = g_slist_remove(priv->auths, auth);
+		g_free(auth);
+	}
+}
+
+int audio_device_request_authorization(struct audio_device *dev,
+					const char *uuid, service_auth_cb cb,
+					void *user_data)
+{
+	struct dev_priv *priv = dev->priv;
+	struct service_auth *auth;
+
+	auth = g_try_new0(struct service_auth, 1);
+	if (!auth)
+		return -ENOMEM;
+
+	auth->cb = cb;
+	auth->user_data = user_data;
+
+	priv->auths = g_slist_append(priv->auths, auth);
+	if (g_slist_length(priv->auths) > 1)
+		return 0;
+
+	return btd_request_authorization(&dev->src, &dev->dst, uuid, auth_cb,
+					dev);
 }

@@ -79,3 +79,9 @@ void audio_device_unregister(struct audio_device *device);
 
 gboolean audio_device_is_connected(struct audio_device *dev,
 						const char *interface);
+
+typedef void (*authorization_cb) (DBusError *derr, void *user_data);
+
+int audio_device_request_authorization(struct audio_device *dev,
+					const char *uuid, authorization_cb cb,
+					void *user_data);
