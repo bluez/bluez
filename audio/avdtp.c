@@ -575,6 +575,20 @@ static void pending_req_free(struct pending_req *req)
 	g_free(req);
 }
 
+static void close_stream(struct avdtp_stream *stream)
+{
+	int sock;
+
+	if (stream->io == NULL)
+		return;
+
+	sock = g_io_channel_unix_get_fd(stream->io);
+
+	shutdown(sock, SHUT_RDWR);
+
+	g_io_channel_shutdown(stream->io, FALSE, NULL);
+}
+
 static gboolean stream_close_timeout(gpointer user_data)
 {
 	struct avdtp_stream *stream = user_data;
@@ -583,7 +597,7 @@ static gboolean stream_close_timeout(gpointer user_data)
 
 	stream->timer = 0;
 
-	g_io_channel_shutdown(stream->io, FALSE, NULL);
+	close_stream(stream);
 
 	return FALSE;
 }
@@ -776,7 +790,7 @@ static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 				sep->user_data);
 
 	if (!(cond & G_IO_NVAL))
-		g_io_channel_shutdown(stream->io, FALSE, NULL);
+		close_stream(stream);
 
 	avdtp_sep_set_state(stream->session, sep, AVDTP_STATE_IDLE);
 
@@ -2451,7 +2465,7 @@ static gboolean avdtp_close_resp(struct avdtp *session,
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_CLOSING);
 
-	g_io_channel_shutdown(stream->io, TRUE, NULL);
+	close_stream(stream);
 
 	return TRUE;
 }
