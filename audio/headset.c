@@ -1173,6 +1173,8 @@ static void close_sco(struct audio_device *device)
 	struct headset *hs = device->headset;
 
 	if (hs->sco) {
+		int sock = g_io_channel_unix_get_fd(hs->sco);
+		shutdown(sock, SHUT_RDWR);
 		g_io_channel_shutdown(hs->sco, TRUE, NULL);
 		g_io_channel_unref(hs->sco);
 		hs->sco = NULL;
