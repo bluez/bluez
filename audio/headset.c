@@ -2085,6 +2085,26 @@ void headset_update(struct audio_device *dev, uint16_t svc,
 	}
 }
 
+static int headset_close_rfcomm(struct audio_device *dev)
+{
+	struct headset *hs = dev->headset;
+	GIOChannel *rfcomm = hs->tmp_rfcomm ? hs->tmp_rfcomm : hs->rfcomm;
+
+	if (rfcomm) {
+		g_io_channel_shutdown(rfcomm, TRUE, NULL);
+		g_io_channel_unref(rfcomm);
+		hs->tmp_rfcomm = NULL;
+		hs->rfcomm = NULL;
+	}
+
+	hs->data_start = 0;
+	hs->data_length = 0;
+
+	hs->nrec = TRUE;
+
+	return 0;
+}
+
 static void headset_free(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
@@ -2097,15 +2117,9 @@ static void headset_free(struct audio_device *dev)
 	if (hs->dc_id)
 		device_remove_disconnect_watch(dev->btd_dev, hs->dc_id);
 
-	if (hs->sco) {
-		g_io_channel_shutdown(hs->sco, TRUE, NULL);
-		g_io_channel_unref(hs->sco);
-	}
+	close_sco(dev);
 
-	if (hs->rfcomm) {
-		g_io_channel_shutdown(hs->rfcomm, TRUE, NULL);
-		g_io_channel_unref(hs->rfcomm);
-	}
+	headset_close_rfcomm(dev);
 
 	g_free(hs);
 	dev->headset = NULL;
@@ -2402,26 +2416,6 @@ int headset_connect_sco(struct audio_device *dev, GIOChannel *io)
 						NULL);
 		hs->pending_ring = FALSE;
 	}
-
-	return 0;
-}
-
-static int headset_close_rfcomm(struct audio_device *dev)
-{
-	struct headset *hs = dev->headset;
-	GIOChannel *rfcomm = hs->tmp_rfcomm ? hs->tmp_rfcomm : hs->rfcomm;
-
-	if (rfcomm) {
-		g_io_channel_shutdown(rfcomm, TRUE, NULL);
-		g_io_channel_unref(rfcomm);
-		hs->tmp_rfcomm = NULL;
-		hs->rfcomm = NULL;
-	}
-
-	hs->data_start = 0;
-	hs->data_length = 0;
-
-	hs->nrec = TRUE;
 
 	return 0;
 }
