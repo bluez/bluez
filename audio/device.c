@@ -680,6 +680,7 @@ int audio_device_request_authorization(struct audio_device *dev,
 {
 	struct dev_priv *priv = dev->priv;
 	struct service_auth *auth;
+	int err;
 
 	auth = g_try_new0(struct service_auth, 1);
 	if (!auth)
@@ -692,6 +693,12 @@ int audio_device_request_authorization(struct audio_device *dev,
 	if (g_slist_length(priv->auths) > 1)
 		return 0;
 
-	return btd_request_authorization(&dev->src, &dev->dst, uuid, auth_cb,
+	err = btd_request_authorization(&dev->src, &dev->dst, uuid, auth_cb,
 					dev);
+	if (err < 0) {
+		priv->auths = g_slist_remove(priv->auths, auth);
+		g_free(auth);
+	}
+
+	return err;
 }
