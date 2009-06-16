@@ -623,8 +623,6 @@ static gboolean disconnect_timeout(gpointer user_data)
 	struct audio_device *dev;
 	gboolean stream_setup;
 
-	assert(session->ref == 1);
-
 	session->dc_timer = 0;
 	stream_setup = session->stream_setup;
 	session->stream_setup = FALSE;
@@ -991,6 +989,11 @@ static void connection_lost(struct avdtp *session, int err)
 		g_source_remove(session->io_id);
 		session->io_id = 0;
 	}
+
+	if (session->dc_timer)
+		remove_disconnect_timer(session);
+
+	session->auto_dc = TRUE;
 
 	if (session->ref != 1)
 		error("connection_lost: ref count not 1 after all callbacks");
