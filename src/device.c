@@ -1611,6 +1611,7 @@ DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 	case 0x0d: /* limited resources */
 	case 0x13: /* user ended the connection */
 	case 0x14: /* terminated due to low resources */
+	case 0x16: /* connection terminated */
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationCanceled",
 					"Authentication Canceled");
@@ -1725,12 +1726,14 @@ static gboolean bonding_io_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct btd_device *device = user_data;
+	DBusMessage *reply;
 
 	if (!device->bonding)
 		return FALSE;
 
-	error_connection_attempt_failed(device->bonding->conn,
-					device->bonding->msg, ENETDOWN);
+	reply = new_authentication_return(device->bonding->msg,
+					HCI_CONNECTION_TERMINATED);
+	g_dbus_send_message(device->bonding->conn, reply);
 
 	bonding_request_free(device->bonding);
 
