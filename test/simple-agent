@@ -27,6 +27,10 @@ class Agent(dbus.service.Object):
 					in_signature="os", out_signature="")
 	def Authorize(self, device, uuid):
 		print "Authorize (%s, %s)" % (device, uuid)
+		authorize = raw_input("Authorize connection (yes/no): ")
+		if (authorize == "yes"):
+			return
+		raise Rejected("Connection rejected by user")
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="s")
