@@ -35,7 +35,8 @@ Methods		dict GetProperties()
 
 			This method starts the service discovery to retrieve
 			remote service records. The pattern parameter can
-			be used to specific specific UUIDs.
+			be used to specify specific UUIDs. And empty string
+			will look for the public browse group.
 
 			The return value is a dictionary with the record
 			handles as keys and the service record in XML format
