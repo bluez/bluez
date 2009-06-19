@@ -135,7 +135,7 @@ gboolean server_is_enabled(bdaddr_t *src, uint16_t svc)
 	case HEADSET_SVCLASS_ID:
 		return enabled.headset;
 	case HEADSET_AGW_SVCLASS_ID:
-		return  FALSE;
+		return FALSE;
 	case HANDSFREE_SVCLASS_ID:
 		return enabled.headset && enabled.hfp;
 	case HANDSFREE_AGW_SVCLASS_ID:
