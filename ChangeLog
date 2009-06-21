@@ -1,3 +1,16 @@
+ver 4.42:
+	Add TI WL1271 to Texas Instruments chip list.
+	Add special udev mode to bluetoothd.
+	Fix regression when there is no agent registered.
+	Fix error return when bonding socket hang up.
+	Fix SCO server socket for HFP handsfree role.
+	Fix shutdown on SCO socket before closing.
+	Fix shutdown on A2DP audio stream channel before closing.
+	Fix issue with asserting on AVDTP reference count bugs.
+	Fix authorization denied issue with certain headsets.
+	Fix AVRCP UNITINFO and SUBUNIT INFO responses.
+	Fix discovery cancel issues in case SDP discovery fails.
+
 ver 4.41:
 	Fix pairing even if the ACL gets dropped before successful SDP.
 	Fix regression which caused device to be removed after pairing.
