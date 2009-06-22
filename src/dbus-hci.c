@@ -434,38 +434,6 @@ void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
-void hcid_dbus_inquiry_start(bdaddr_t *local)
-{
-	struct btd_adapter *adapter;
-	int state;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
-
-	state = adapter_get_state(adapter);
-	state |= STD_INQUIRY;
-	adapter_set_state(adapter, state);
-	/*
-	 * Cancel pending remote name request and clean the device list
-	 * when inquiry is supported in periodic inquiry idle state.
-	 */
-	if (adapter_get_state(adapter) & PERIODIC_INQUIRY) {
-		pending_remote_name_cancel(adapter);
-
-		clear_found_devices_list(adapter);
-	}
-
-	/* Disable name resolution for non D-Bus clients */
-	if (!adapter_has_discov_sessions(adapter)) {
-		state = adapter_get_state(adapter);
-		state &= ~RESOLVE_NAME;
-		adapter_set_state(adapter, state);
-	}
-}
-
 static int found_device_req_name(struct btd_adapter *adapter)
 {
 	struct hci_request rq;
@@ -574,26 +542,6 @@ void hcid_dbus_inquiry_complete(bdaddr_t *local)
 	 * requests */
 	state &= ~STD_INQUIRY;
 	state &= ~PERIODIC_INQUIRY;
-	adapter_set_state(adapter, state);
-}
-
-void hcid_dbus_periodic_inquiry_start(bdaddr_t *local, uint8_t status)
-{
-	struct btd_adapter *adapter;
-	int state;
-
-	/* Don't send the signal if the cmd failed */
-	if (status)
-		return;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	state = adapter_get_state(adapter);
-	state |= PERIODIC_INQUIRY;
 	adapter_set_state(adapter, state);
 }
 

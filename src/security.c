@@ -53,6 +53,7 @@
 #include "adapter.h"
 #include "dbus-hci.h"
 #include "storage.h"
+#include "manager.h"
 
 typedef enum {
 	REQ_PENDING,
@@ -551,16 +552,59 @@ reject:
 	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 }
 
+static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
+{
+	struct btd_adapter *adapter;
+	int state;
+
+	/* Don't send the signal if the cmd failed */
+	if (status) {
+		error("Inquiry Failed with status 0x%02x", status);
+		return;
+	}
+
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
+
+	state = adapter_get_state(adapter);
+
+	if (periodic) {
+		state |= PERIODIC_INQUIRY;
+		adapter_set_state(adapter, state);
+		return;
+	}
+
+	state |= STD_INQUIRY;
+	adapter_set_state(adapter, state);
+
+	/*
+	 * Cancel pending remote name request and clean the device list
+	 * when inquiry is supported in periodic inquiry idle state.
+	 */
+	if (adapter_get_state(adapter) & PERIODIC_INQUIRY) {
+		pending_remote_name_cancel(adapter);
+
+		clear_found_devices_list(adapter);
+	}
+
+	/* Disable name resolution for non D-Bus clients */
+	if (!adapter_has_discov_sessions(adapter)) {
+		state = adapter_get_state(adapter);
+		state &= ~RESOLVE_NAME;
+		adapter_set_state(adapter, state);
+	}
+}
+
 static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_status *evt = ptr;
 	uint16_t opcode = btohs(evt->opcode);
 
-	if (evt->status)
-		return;
-
 	if (opcode == cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY))
-		hcid_dbus_inquiry_start(sba);
+		start_inquiry(sba, evt->status, FALSE);
 }
 
 static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
@@ -572,7 +616,7 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 	switch (opcode) {
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PERIODIC_INQUIRY):
 		status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
-		hcid_dbus_periodic_inquiry_start(sba, status);
+		start_inquiry(sba, status, TRUE);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY):
 		status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
