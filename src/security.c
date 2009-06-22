@@ -598,6 +598,62 @@ static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
 	}
 }
 
+static void inquiry_complete(bdaddr_t *local, uint8_t status, gboolean periodic)
+{
+	struct btd_adapter *adapter;
+	int state;
+
+	/* Don't send the signal if the cmd failed */
+	if (status) {
+		error("Inquiry Failed with status 0x%02x", status);
+		return;
+	}
+
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
+
+	/*
+	 * The following scenarios can happen:
+	 * 1. standard inquiry: always send discovery completed signal
+	 * 2. standard inquiry + name resolving: send discovery completed
+	 *    after name resolving
+	 * 3. periodic inquiry: skip discovery completed signal
+	 * 4. periodic inquiry + standard inquiry: always send discovery
+	 *    completed signal
+	 *
+	 * Keep in mind that non D-Bus requests can arrive.
+	 */
+	if (periodic) {
+		state = adapter_get_state(adapter);
+		state &= ~PERIODIC_INQUIRY;
+		adapter_set_state(adapter, state);
+		return;
+	}
+
+	if (found_device_req_name(adapter) == 0)
+		return;
+
+	state = adapter_get_state(adapter);
+	/*
+	 * workaround to identify situation when there is no devices around
+	 * but periodic inquiry is active.
+	 */
+	if (!(state & STD_INQUIRY) && !(state & PERIODIC_INQUIRY)) {
+		state |= PERIODIC_INQUIRY;
+		adapter_set_state(adapter, state);
+		return;
+	}
+
+	/* reset the discover type to be able to handle D-Bus and non D-Bus
+	 * requests */
+	state &= ~STD_INQUIRY;
+	state &= ~PERIODIC_INQUIRY;
+	adapter_set_state(adapter, state);
+}
+
 static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_status *evt = ptr;
@@ -611,19 +667,17 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_complete *evt = ptr;
 	uint16_t opcode = btohs(evt->opcode);
-	uint8_t status;
+	uint8_t status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
 
 	switch (opcode) {
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PERIODIC_INQUIRY):
-		status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
 		start_inquiry(sba, status, TRUE);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY):
-		status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
-		hcid_dbus_periodic_inquiry_exit(sba, status);
+		inquiry_complete(sba, status, TRUE);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
-		hcid_dbus_inquiry_complete(sba);
+		inquiry_complete(sba, status, FALSE);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME):
 		hcid_dbus_setname_complete(sba);
@@ -675,11 +729,6 @@ static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 
 	write_version_info(sba, &dba, btohs(evt->manufacturer),
 				evt->lmp_ver, btohs(evt->lmp_subver));
-}
-
-static inline void inquiry_complete(int dev, bdaddr_t *sba, void *ptr)
-{
-	hcid_dbus_inquiry_complete(sba);
 }
 
 static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
@@ -885,6 +934,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 	size_t len;
 	hci_event_hdr *eh;
 	GIOError err;
+	evt_cmd_status *evt;
 
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
 		delete_channel(chan);
@@ -935,7 +985,8 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer 
 		break;
 
 	case EVT_INQUIRY_COMPLETE:
-		inquiry_complete(dev, &di->bdaddr, ptr);
+		evt = (evt_cmd_status *) ptr;
+		inquiry_complete(&di->bdaddr, evt->status, FALSE);
 		break;
 
 	case EVT_INQUIRY_RESULT:

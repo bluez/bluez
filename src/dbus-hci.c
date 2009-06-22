@@ -434,7 +434,7 @@ void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
-static int found_device_req_name(struct btd_adapter *adapter)
+int found_device_req_name(struct btd_adapter *adapter)
 {
 	struct hci_request rq;
 	evt_cmd_status rp;
@@ -500,71 +500,6 @@ static int found_device_req_name(struct btd_adapter *adapter)
 		return -ENODATA;
 
 	return 0;
-}
-
-void hcid_dbus_inquiry_complete(bdaddr_t *local)
-{
-	struct btd_adapter *adapter;
-	int state;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
-
-	/*
-	 * The following scenarios can happen:
-	 * 1. standard inquiry: always send discovery completed signal
-	 * 2. standard inquiry + name resolving: send discovery completed
-	 *    after name resolving
-	 * 3. periodic inquiry: skip discovery completed signal
-	 * 4. periodic inquiry + standard inquiry: always send discovery
-	 *    completed signal
-	 *
-	 * Keep in mind that non D-Bus requests can arrive.
-	 */
-	if (found_device_req_name(adapter) == 0)
-		return;
-
-	state = adapter_get_state(adapter);
-
-	/*
-	 * workaround to identify situation when there is no devices around
-	 * but periodic inquiry is active.
-	 */
-	if (!(state & STD_INQUIRY) && !(state & PERIODIC_INQUIRY)) {
-		state |= PERIODIC_INQUIRY;
-		adapter_set_state(adapter, state);
-	}
-
-	/* reset the discover type to be able to handle D-Bus and non D-Bus
-	 * requests */
-	state &= ~STD_INQUIRY;
-	state &= ~PERIODIC_INQUIRY;
-	adapter_set_state(adapter, state);
-}
-
-void hcid_dbus_periodic_inquiry_exit(bdaddr_t *local, uint8_t status)
-{
-	struct btd_adapter *adapter;
-	int state;
-
-	/* Don't send the signal if the cmd failed */
-	if (status)
-		return;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	/* reset the discover type to be able to handle D-Bus and non D-Bus
-	 * requests */
-	state = adapter_get_state(adapter);
-	state &= ~PERIODIC_INQUIRY;
-	adapter_set_state(adapter, state);
 }
 
 static char *extract_eir_name(uint8_t *data, uint8_t *type)
