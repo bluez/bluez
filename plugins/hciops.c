@@ -682,6 +682,28 @@ static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 	return err;
 }
 
+static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
+{
+	remote_name_req_cancel_cp cp;
+	int dd, err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+
+	err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ_CANCEL,
+					REMOTE_NAME_REQ_CANCEL_CP_SIZE, &cp);
+	if (err < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -694,6 +716,7 @@ static struct btd_adapter_ops hci_ops = {
 	.start_discovery = hciops_start_discovery,
 	.stop_discovery = hciops_stop_discovery,
 	.resolve_name = hciops_resolve_name,
+	.cancel_resolve_name = hciops_cancel_resolve_name,
 };
 
 static int hciops_init(void)

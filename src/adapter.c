@@ -227,34 +227,21 @@ void clear_found_devices_list(struct btd_adapter *adapter)
 int pending_remote_name_cancel(struct btd_adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
-	GSList *l;
-	int dd, err = 0;
+	int err = 0;
 
 	/* find the pending remote name request */
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUESTED;
 
-	l = g_slist_find_custom(adapter->found_devices, &match,
-			(GCompareFunc) found_device_cmp);
-	if (!l) /* no pending request */
-		return 0;
+	dev = adapter_search_found_devices(adapter, &match);
+	if (!dev) /* no pending request */
+		return -ENODATA;
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return -ENODEV;
-
-	dev = l->data;
-
-	if (hci_read_remote_name_cancel(dd, &dev->bdaddr,
-					HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
+	err = adapter_ops->cancel_resolve_name(adapter->dev_id, &dev->bdaddr);
+	if (err < 0)
 		error("Remote name cancel failed: %s(%d)",
 						strerror(errno), errno);
-	}
-
-	hci_close_dev(dd);
-
 	return err;
 }
 
