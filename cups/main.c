@@ -536,15 +536,15 @@ static gboolean list_printers(void)
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 	if (conn == NULL)
-		return FALSE;
+		return TRUE;
 
 	dbus_error_init(&error);
 	hcid_exists = dbus_bus_name_has_owner(conn, "org.bluez", &error);
 	if (&error != NULL && dbus_error_is_set(&error))
-		return FALSE;
+		return TRUE;
 
 	if (!hcid_exists)
-		return FALSE;
+		return TRUE;
 
 	/* Get the default adapter */
 	message = dbus_message_new_method_call("org.bluez", "/",
@@ -562,7 +562,8 @@ static gboolean list_printers(void)
 
 	if (&error != NULL && dbus_error_is_set(&error)) {
 		dbus_connection_unref(conn);
-		return FALSE;
+		/* No adapter */
+		return TRUE;
 	}
 
 	dbus_message_iter_init(reply, &reply_iter);
