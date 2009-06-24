@@ -2803,7 +2803,8 @@ int telephony_call_waiting_ind(const char *number, int type)
 	if (!active_devices)
 		return -ENODEV;
 
-	send_foreach_headset(active_devices, cwa_cmp, "\r\n+CCWA: %s,%d\r\n",
+	send_foreach_headset(active_devices, cwa_cmp,
+				"\r\n+CCWA: \"%s\",%d\r\n",
 				number, type);
 
 	return 0;
