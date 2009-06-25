@@ -1313,7 +1313,7 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 	if (!device_is_creating(device, sender))
 		return not_authorized(msg);
 
-	device_set_temporary(device, FALSE);
+	device_set_temporary(device, TRUE);
 
 	if (device_is_connected(device)) {
 		device_request_disconnect(device, msg);
