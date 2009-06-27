@@ -107,6 +107,9 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 				[Directory for the configuration files])
 	AC_DEFINE_UNQUOTED(STORAGEDIR, "${storagedir}",
 				[Directory for the storage files])
+
+	AC_SUBST(CONFIGDIR, "${configdir}")
+	AC_SUBST(STORAGEDIR, "${storagedir}")
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
