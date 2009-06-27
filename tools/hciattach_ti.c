@@ -383,7 +383,7 @@ static int brf_do_script(int fd, struct termios *ti, const char *bts_file)
 	int ret = 0,  hcill_installed = bts_file ? 0 : 1;
 	uint32_t vers;
 	static FILE *brf_script_file = NULL;
-	static uint8_t brf_action[256];
+	static uint8_t brf_action[512];
 	static long brf_size;
 	static uint16_t brf_type;
 
