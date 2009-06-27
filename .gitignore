@@ -83,3 +83,5 @@ doc/*.sgml
 doc/version.xml
 doc/xml
 doc/html
+src/bluetoothd.8
+src/hcid.conf.5
