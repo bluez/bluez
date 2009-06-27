@@ -64,4 +64,5 @@ AC_OUTPUT([
 	doc/Makefile
 	doc/version.xml
 	bluez.pc
+	src/bluetoothd.8
 ])
