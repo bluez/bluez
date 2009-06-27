@@ -92,12 +92,12 @@ specified channel. If no channel is specified, it will use the
 channel number 1. If also the Bluetooth address is left out, it
 tries to read the data from the config file. This command can
 be terminated with the key sequence CTRL-C.
-.TP 
+.TP
 .BI listen " <dev> [channel] [cmd]"
 Listen on a specified RFCOMM channel for incoming connections.
 If no channel is specified, it will use the channel number 1, but
 a channel must be specified before cmd. If cmd is given, it will be
-executed as soon as a client connects. When the child process 
+executed as soon as a client connects. When the child process
 terminates or the client disconnect, the command will terminate.
 Occurences of {} in cmd will be replaced by the name of the device
 used by the connection. This command can be terminated with the key
@@ -107,7 +107,7 @@ sequence CTRL-C.
 Watch is identical to
 .B listen
 except that when the child process terminates or the client
-disconnect, the command will restart listening with the same 
+disconnect, the command will restart listening with the same
 parameters.
 .TP
 .BI bind " <dev> [bdaddr] [channel]"

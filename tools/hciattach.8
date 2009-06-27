@@ -5,7 +5,7 @@ hciattach \- attach serial devices via UART HCI to BlueZ stack
 .B hciattach
 .RB [\| \-n \|]
 .RB [\| \-p \|]
-.RB [\| \-t 
+.RB [\| \-t
 .IR timeout \|]
 .I tty
 .IR type \||\| id
@@ -108,10 +108,10 @@ instead.
 
 .TP
 .I bdaddr
-The 
+The
 .I bdaddr
-specifies the Bluetooth Address to use.  Some devices (like the STLC2500) 
-do not store the Bluetooth address in hardware memory.  Instead it must 
+specifies the Bluetooth Address to use.  Some devices (like the STLC2500)
+do not store the Bluetooth address in hardware memory.  Instead it must
 be uploaded during the initialization process.  If this argument
 is specified, then the address will be used to initialize the device.
 Otherwise, a default address will be used.
