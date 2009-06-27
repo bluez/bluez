@@ -65,4 +65,5 @@ AC_OUTPUT([
 	doc/version.xml
 	bluez.pc
 	src/bluetoothd.8
+	src/hcid.conf.5
 ])
