@@ -152,7 +152,6 @@ gboolean plugin_init(GKeyFile *config)
 		struct bluetooth_plugin_desc *desc;
 		void *handle;
 		gchar *filename;
-		struct stat st;
 
 		if (g_str_has_prefix(file, "lib") == TRUE ||
 				g_str_has_suffix(file, ".so") == FALSE)
@@ -162,13 +161,6 @@ gboolean plugin_init(GKeyFile *config)
 			continue;
 
 		filename = g_build_filename(PLUGINDIR, file, NULL);
-
-		if (stat(filename, &st) < 0) {
-			error("Can't find plugin %s: %s", filename,
-							strerror(errno));
-			g_free(filename);
-			continue;
-		}
 
 		handle = dlopen(filename, RTLD_NOW);
 		if (handle == NULL) {
