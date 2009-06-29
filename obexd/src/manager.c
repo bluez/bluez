@@ -642,6 +642,7 @@ done:
 
 	dbus_message_unref(reply);
 }
+
 static DBusPendingCall *find_adapter(const char *pattern,
 				DBusPendingCallNotifyFunction function,
 				gpointer user_data)
@@ -653,11 +654,17 @@ static DBusPendingCall *find_adapter(const char *pattern,
 
 	msg = dbus_message_new_method_call("org.bluez", "/",
 					"org.bluez.Manager", "FindAdapter");
+	if (!msg)
+		return NULL;
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &pattern,
 			DBUS_TYPE_INVALID);
 
-	dbus_connection_send_with_reply(system_conn, msg, &call, -1);
+	if (!dbus_connection_send_with_reply(system_conn, msg, &call, -1)) {
+		dbus_message_unref(msg);
+		return NULL;
+	}
+
 	dbus_pending_call_set_notify(call, function, user_data, NULL);
 
 	dbus_message_unref(msg);
@@ -670,7 +677,8 @@ static gboolean find_adapter_any_idle(gpointer user_data)
 	DBusPendingCall *call;
 
 	call = find_adapter("any", find_adapter_any_reply, NULL);
-	dbus_pending_call_unref(call);
+	if (call)
+		dbus_pending_call_unref(call);
 
 	return FALSE;
 }
@@ -680,7 +688,8 @@ static void name_acquired(DBusConnection *conn, void *user_data)
 	DBusPendingCall *call;
 
 	call = find_adapter("any", find_adapter_any_reply, NULL);
-	dbus_pending_call_unref(call);
+	if (call)
+		dbus_pending_call_unref(call);
 
 	bluetooth_start();
 }
@@ -1164,11 +1173,16 @@ gint request_service_authorization(struct server *server, GIOChannel *io,
 	}
 
 	pending = g_new0(struct pending_request, 1);
+	pending->call = find_adapter(source, find_adapter_reply, pending);
+	if (!pending->call) {
+		g_free(pending);
+		return -ENOMEM;
+	}
+
 	pending->server = server;
 	pending->io = g_io_channel_ref(io);
 	memcpy(pending->address, address, sizeof(pending->address));
 
-	pending->call = find_adapter(source, find_adapter_reply, pending);
 
 	return 0;
 }
