@@ -96,20 +96,12 @@ gboolean plugin_init(void)
 		struct obex_plugin_desc *desc;
 		void *handle;
 		gchar *filename;
-		struct stat st;
 
 		if (g_str_has_prefix(file, "lib") == TRUE ||
 				g_str_has_suffix(file, ".so") == FALSE)
 			continue;
 
 		filename = g_build_filename(PLUGINDIR, file, NULL);
-
-		if (stat(filename, &st) < 0) {
-			error("Can't find plugin %s: %s", filename,
-							strerror(errno));
-			g_free(filename);
-			continue;
-		}
 
 		handle = dlopen(filename, PLUGINFLAG);
 		if (handle == NULL) {
