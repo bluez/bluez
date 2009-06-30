@@ -134,7 +134,7 @@ static void hci_req_queue_process(int dev_id)
 			g_free(data);
 		}
 
-	} while(ret_val < 0);
+	} while (ret_val < 0);
 
 	hci_close_dev(dd);
 }
