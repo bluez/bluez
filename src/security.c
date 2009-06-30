@@ -590,14 +590,14 @@ static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_remote_name_req_complete *evt = ptr;
 	bdaddr_t dba;
-	char name[249];
+	char name[MAX_NAME_LENGTH + 1];
 
 	memset(name, 0, sizeof(name));
 	bacpy(&dba, &evt->bdaddr);
 
 	if (!evt->status) {
 		char *end;
-		memcpy(name, evt->name, 248);
+		memcpy(name, evt->name, MAX_NAME_LENGTH);
 		/* It's ok to cast end between const and non-const since
 		 * we know it points to inside of name which is non-const */
 		if (!g_utf8_validate(name, -1, (const char **) &end))

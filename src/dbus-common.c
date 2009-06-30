@@ -44,6 +44,7 @@
 
 #include "logging.h"
 
+#include "hcid.h"
 #include "manager.h"
 #include "adapter.h"
 #include "dbus-hci.h"

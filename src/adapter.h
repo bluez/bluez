@@ -65,7 +65,7 @@ struct hci_dev {
 	uint16_t manufacturer;
 
 	uint8_t  ssp_mode;
-	uint8_t  name[248];
+	uint8_t  name[MAX_NAME_LENGTH];
 	uint8_t  class[3];
 };
 

@@ -743,12 +743,12 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 	struct hci_dev *dev = &adapter->dev;
 	int dd;
 
-	if (strncmp(name, (char *) dev->name, 248) == 0)
+	if (strncmp(name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
 		return;
 
 	write_local_name(&adapter->bdaddr, (char *) name);
 
-	strncpy((char *) dev->name, name, 248);
+	strncpy((char *) dev->name, name, MAX_NAME_LENGTH);
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd >= 0) {
@@ -767,7 +767,7 @@ static int adapter_set_name(struct btd_adapter *adapter, const char *name)
 
 	write_local_name(&adapter->bdaddr, (char *) name);
 
-	strncpy((char *) dev->name, name, 248);
+	strncpy((char *) dev->name, name, MAX_NAME_LENGTH);
 
 	if (!adapter->up)
 		return 0;
@@ -1029,7 +1029,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	char str[249], srcaddr[18];
+	char str[MAX_NAME_LENGTH + 1], srcaddr[18];
 	uint32_t class;
 	gboolean value;
 	char **devices;
@@ -1058,7 +1058,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	/* Name */
 	memset(str, 0, sizeof(str));
-	strncpy(str, (char *) adapter->dev.name, 248);
+	strncpy(str, (char *) adapter->dev.name, MAX_NAME_LENGTH);
 	property = str;
 
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &property);
@@ -1646,7 +1646,7 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
 	uint8_t inqmode;
 	int err;
-	char name[249];
+	char name[MAX_NAME_LENGTH + 1];
 
 	if (dev->lmp_ver > 1) {
 		if (dev->features[5] & LMP_SNIFF_SUBR)
@@ -1682,7 +1682,7 @@ static int adapter_setup(struct btd_adapter *adapter, int dd)
 	}
 
 	if (read_local_name(&adapter->bdaddr, name) == 0) {
-		memcpy(dev->name, name, 248);
+		memcpy(dev->name, name, MAX_NAME_LENGTH);
 		hci_write_local_name(dd, name, HCI_REQ_TIMEOUT);
 	}
 
@@ -1953,7 +1953,7 @@ int adapter_start(struct btd_adapter *adapter)
 	struct hci_version ver;
 	uint8_t features[8];
 	int dd, err;
-	char name[249];
+	char name[MAX_NAME_LENGTH + 1];
 
 	if (hci_devinfo(adapter->dev_id, &di) < 0)
 		return -errno;
@@ -2024,7 +2024,7 @@ int adapter_start(struct btd_adapter *adapter)
 		return err;
 	}
 
-	memcpy(dev->name, name, 248);
+	memcpy(dev->name, name, MAX_NAME_LENGTH);
 
 	if (!(features[6] & LMP_SIMPLE_PAIR))
 		goto setup;

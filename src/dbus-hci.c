@@ -960,7 +960,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	read_local_name_rp rp;
 	struct hci_request rq;
 	const char *pname = (char *) rp.name;
-	char name[249];
+	char name[MAX_NAME_LENGTH + 1];
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -994,7 +994,7 @@ void hcid_dbus_setname_complete(bdaddr_t *local)
 	}
 
 	strncpy(name, pname, sizeof(name) - 1);
-	name[248] = '\0';
+	name[MAX_NAME_LENGTH] = '\0';
 	pname = name;
 
 	adapter_name_changed(adapter, pname);
