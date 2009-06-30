@@ -437,8 +437,11 @@ static gboolean rfcomm_ag_data_cb(GIOChannel *chan, GIOCondition cond,
 
 	gw = device->gateway;
 
-	if (cond & (G_IO_ERR | G_IO_HUP))
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		debug("connection with remote BT is closed");
+		gateway_close(device);
 		return FALSE;
+	}
 
 	if (g_io_channel_read_chars(chan, buf, sizeof(buf) - 1, &read, NULL)
 			!= G_IO_STATUS_NORMAL)
@@ -492,9 +495,9 @@ static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond,
 		return FALSE;
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		GIOChannel *chan = gw->sco;
-		g_io_channel_unref(chan);
-		g_io_channel_close(chan);
+		debug("sco connection is released");
+		g_io_channel_shutdown(gw->sco, TRUE, NULL);
+		g_io_channel_unref(gw->sco);
 		gw->sco = NULL;
 		return FALSE;
 	}
@@ -514,12 +517,13 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		/* not sure, but from other point of view,
 		 * what is the reason to have headset which
 		 * cannot play audio? */
+		if (gw->sco_start_cb)
+			gw->sco_start_cb(NULL, gw->sco_start_cb_data);
 		gateway_close(dev);
 		return;
 	}
 
-	gw->sco = chan;
-	g_io_channel_ref(chan);
+	gw->sco = g_io_channel_ref(chan);
 	if (gw->sco_start_cb)
 		gw->sco_start_cb(dev, gw->sco_start_cb_data);
 
@@ -554,9 +558,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 	g_io_channel_set_encoding(chan, NULL, NULL);
 	g_io_channel_set_buffered(chan, FALSE);
 	if (!gw->rfcomm)
-		g_io_channel_ref(chan);
-
-	gw->rfcomm = chan;
+		gw->rfcomm = g_io_channel_ref(chan);
 
 	if (establish_service_level_conn(dev->gateway)) {
 		gboolean value = TRUE;
@@ -639,6 +641,7 @@ static void get_record_cb(sdp_list_t *recs, int perr, gpointer user_data)
 					g_error_free(err);
 					gateway_close(dev);
 				}
+				g_io_channel_unref(io);
 				sdp_list_free(classes, free);
 				return;
 			}
@@ -1084,6 +1087,8 @@ int gateway_connect_sco(struct audio_device *dev, GIOChannel *io)
 
 	gw->sco = g_io_channel_ref(io);
 
+	g_io_add_watch(gw->sco, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+                                (GIOFunc) sco_io_cb, dev);
 	return 0;
 }
 
@@ -1107,13 +1112,13 @@ int gateway_close(struct audio_device *device)
 	g_slist_foreach(gw->indies, (GFunc) indicator_slice_free, NULL);
 	g_slist_free(gw->indies);
 	if (rfcomm) {
-		g_io_channel_close(rfcomm);
+		g_io_channel_shutdown(rfcomm, TRUE, NULL);
 		g_io_channel_unref(rfcomm);
 		gw->rfcomm = NULL;
 	}
 
 	if (sco) {
-		g_io_channel_close(sco);
+		g_io_channel_shutdown(sco, TRUE, NULL);
 		g_io_channel_unref(sco);
 		gw->sco = NULL;
 		gw->sco_start_cb = NULL;
@@ -1137,9 +1142,11 @@ gboolean gateway_request_stream(struct audio_device *dev,
 	GError *err = NULL;
 	GIOChannel *io;
 
-	if (!gw->sco) {
-		if (!gw->rfcomm)
-			return FALSE;
+	if (!gw->rfcomm) {
+		gw->sco_start_cb = cb;
+		gw->sco_start_cb_data = user_data;
+		get_records(dev);
+	} else if (!gw->sco) {
 		gw->sco_start_cb = cb;
 		gw->sco_start_cb_data = user_data;
 		io = bt_io_connect(BT_IO_SCO, sco_connect_cb, dev, NULL, &err,
@@ -1199,7 +1206,7 @@ void gateway_suspend_stream(struct audio_device *dev)
 	if (!gw || !gw->sco)
 		return;
 
-	g_io_channel_close(gw->sco);
+	g_io_channel_shutdown(gw->sco, TRUE, NULL);
 	g_io_channel_unref(gw->sco);
 	gw->sco = NULL;
 	gw->sco_start_cb = NULL;

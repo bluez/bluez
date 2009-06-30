@@ -571,7 +571,7 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 	return;
 
 drop:
-	g_io_channel_close(chan);
+	g_io_channel_shutdown(chan, TRUE, NULL);
 	g_io_channel_unref(chan);
 	return;
 }

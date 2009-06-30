@@ -231,12 +231,18 @@ static uint8_t headset_generate_capability(struct audio_device *dev,
 
 	pcm = (void *) codec;
 	pcm->sampling_rate = 8000;
-	if (dev->headset && headset_get_nrec(dev))
+	if (dev->headset) {
+		if (headset_get_nrec(dev))
+			pcm->flags |= BT_PCM_FLAG_NREC;
+		if (!headset_get_sco_hci(dev))
+			pcm->flags |= BT_PCM_FLAG_PCM_ROUTING;
+		codec->configured = headset_is_active(dev);
+		codec->lock = headset_get_lock(dev);
+	} else {
 		pcm->flags |= BT_PCM_FLAG_NREC;
-	if (!headset_get_sco_hci(dev))
-		pcm->flags |= BT_PCM_FLAG_PCM_ROUTING;
-	codec->configured = headset_is_active(dev);
-	codec->lock = headset_get_lock(dev);
+		codec->configured = TRUE;
+		codec->lock = 0;
+	}
 
 	return codec->length;
 }
@@ -926,6 +932,8 @@ static void start_open(struct audio_device *dev, struct unix_client *client)
 		}
 		break;
 
+        case TYPE_GATEWAY:
+                break;
 	default:
 		error("No known services for device");
 		goto failed;
@@ -1175,6 +1183,8 @@ static void start_close(struct audio_device *dev, struct unix_client *client,
 			hs->locked = FALSE;
 		}
 		break;
+        case TYPE_GATEWAY:
+                break;
 	case TYPE_SOURCE:
 	case TYPE_SINK:
 		a2dp = &client->d.a2dp;
@@ -1275,7 +1285,8 @@ static int handle_sco_open(struct unix_client *client, struct bt_open_req *req)
 {
 	if (!client->interface)
 		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
-	else if (!g_str_equal(client->interface, AUDIO_HEADSET_INTERFACE))
+	else if (!g_str_equal(client->interface, AUDIO_HEADSET_INTERFACE) &&
+		!g_str_equal(client->interface, AUDIO_GATEWAY_INTERFACE))
 		return -EIO;
 
 	debug("open sco - object=%s source=%s destination=%s lock=%s%s",
@@ -1354,7 +1365,7 @@ static void handle_open_req(struct unix_client *client, struct bt_open_req *req)
 	return;
 
 failed:
-	unix_ipc_error(client, BT_SET_CONFIGURATION, err ? : EIO);
+	unix_ipc_error(client, BT_OPEN, err ? : EIO);
 }
 
 static int handle_sco_transport(struct unix_client *client,
