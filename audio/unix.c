@@ -1713,9 +1713,14 @@ int unix_init(void)
 
 	set_nonblocking(sk);
 
-	unix_sock = sk;
+	if (listen(sk, 1) < 0) {
+		error("Can't listen on unix socket: %s (%d)",
+						strerror(errno), errno);
+		close(sk);
+		return -1;
+	}
 
-	listen(sk, 1);
+	unix_sock = sk;
 
 	io = g_io_channel_unix_new(sk);
 	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
