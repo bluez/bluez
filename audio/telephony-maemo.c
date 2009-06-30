@@ -263,7 +263,7 @@ static struct csd_call *find_non_held_call(void)
 	return NULL;
 }
 
-static struct csd_call *find_active_call(void)
+static struct csd_call *find_non_idle_call(void)
 {
 	GSList *l;
 
@@ -496,7 +496,10 @@ void telephony_terminate_call_req(void *telephony_device)
 {
 	struct csd_call *call;
 
-	call = find_active_call();
+	call = find_call_with_status(CSD_CALL_STATUS_ACTIVE);
+	if (!call)
+		call = find_non_idle_call();
+
 	if (!call) {
 		error("No active call");
 		telephony_terminate_call_rsp(telephony_device,
