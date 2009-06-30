@@ -121,6 +121,9 @@ static struct serial_port *find_port(GSList *ports, const char *pattern)
 		if (port->dev && !strcmp(port->dev, pattern))
 			return port;
 
+		if (!port->uuid)
+			continue;
+
 		uuid_str = bt_name2string(pattern);
 		if (!uuid_str)
 			continue;
