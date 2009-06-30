@@ -35,6 +35,8 @@
 /* Actions executed after inquiry complete */
 #define RESOLVE_NAME		0x10
 
+#define MAX_NAME_LENGTH		248
+
 typedef enum {
 	NAME_ANY,
 	NAME_NOT_REQUIRED, /* used by get remote name without name resolving */
