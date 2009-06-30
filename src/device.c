@@ -109,7 +109,7 @@ struct browse_req {
 struct btd_device {
 	bdaddr_t	bdaddr;
 	gchar		*path;
-	char		name[248];
+	char		name[MAX_NAME_LENGTH + 1];
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*drivers;		/* List of driver_data */
@@ -271,7 +271,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	bdaddr_t src;
-	char name[248], srcaddr[18], dstaddr[18];
+	char name[MAX_NAME_LENGTH + 1], srcaddr[18], dstaddr[18];
 	char **uuids;
 	const char *ptr;
 	dbus_bool_t boolean;
@@ -874,14 +874,14 @@ struct btd_device *device_create(DBusConnection *conn,
 void device_set_name(struct btd_device *device, const char *name)
 {
 	DBusConnection *conn = get_dbus_connection();
-	char alias[248];
+	char alias[MAX_NAME_LENGTH + 1];
 	char srcaddr[18], dstaddr[18];
 	bdaddr_t src;
 
-	if (strncmp(name, device->name, 248) == 0)
+	if (strncmp(name, device->name, MAX_NAME_LENGTH) == 0)
 		return;
 
-	strncpy(device->name, name, 248);
+	strncpy(device->name, name, MAX_NAME_LENGTH);
 
 	emit_property_changed(conn, device->path,
 				DEVICE_INTERFACE, "Name",
