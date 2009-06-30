@@ -356,8 +356,11 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 		old_key_type = 0xff;
 
 	dev_id = hci_devid(sa);
-
-	err = hcid_dbus_link_key_notify(sba, dba, evt->link_key, evt->key_type,
+	if (dev_id < 0)
+		err = -errno;
+	else
+		err = hcid_dbus_link_key_notify(sba, dba, evt->link_key,
+						evt->key_type,
 						io_data[dev_id].pin_length,
 						old_key_type);
 	if (err < 0) {
