@@ -263,7 +263,7 @@ static gboolean establish_service_level_conn(struct gateway *gw)
 	gchar buf[RFCOMM_BUF_SIZE];
 	gboolean res;
 
-	debug("at the begin of establish_service_level_conn()\n");
+	debug("at the begin of establish_service_level_conn()");
 	res = rfcomm_send_and_read(gw, AG_FEATURES, buf,
 				sizeof(AG_FEATURES) - 1);
 	if (!res || sscanf(buf, "\r\n+BRSF:%d", &gw->ag_features) != 1)
@@ -323,7 +323,7 @@ static void process_ind_change(struct audio_device *dev, guint index,
 
 	ind->value = value;
 
-	debug("at the begin of process_ind_change, name is %s\n", name);
+	debug("at the begin of process_ind_change, name is %s", name);
 	if (!strcmp(name, "\"call\"")) {
 		if (value > 0) {
 			g_dbus_emit_signal(dev->conn, dev->path,
@@ -395,7 +395,7 @@ static void process_ring(struct audio_device *device, GIOChannel *chan,
 	rfcomm_stop_watch(device);
 	g_io_channel_read_chars(chan, buf, RFCOMM_BUF_SIZE - 1, &read, NULL);
 
-	debug("at the begin of process_ring\n");
+	debug("at the begin of process_ring");
 	if (strlen(buf) > AG_CALLER_NUM_SIZE + 10)
 		error("process_ring(): buf is too long '%s'", buf);
 	else if ((cli = strstr(buf, "\r\n+CLIP"))) {
@@ -431,7 +431,7 @@ static gboolean rfcomm_ag_data_cb(GIOChannel *chan, GIOCondition cond,
 	guint index;
 	gchar *sep;
 
-	debug("at the begin of rfcomm_ag_data_cb()\n");
+	debug("at the begin of rfcomm_ag_data_cb()");
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
@@ -510,7 +510,7 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	struct audio_device *dev = (struct audio_device *) user_data;
 	struct gateway *gw = dev->gateway;
 
-	debug("at the begin of sco_connect_cb() in gateway.c\n");
+	debug("at the begin of sco_connect_cb() in gateway.c");
 
 	if (err) {
 		error("sco_connect_cb(): %s", err->message);
@@ -681,7 +681,7 @@ static DBusMessage *ag_connect(DBusConnection *conn, DBusMessage *msg,
 	struct audio_device *au_dev = (struct audio_device *) data;
 	struct gateway *gw = au_dev->gateway;
 
-	debug("at the begin of ag_connect() \n");
+	debug("at the begin of ag_connect()");
 	if (gw->rfcomm)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 					".AlreadyConnected",
@@ -694,7 +694,7 @@ static DBusMessage *ag_connect(DBusConnection *conn, DBusMessage *msg,
 					".ConnectAttemptFailed",
 					"Connect Attempt Failed");
 	}
-	debug("at the end of ag_connect() \n");
+	debug("at the end of ag_connect()");
 	return NULL;
 }
 
@@ -727,7 +727,7 @@ static DBusMessage *process_ag_reponse(DBusMessage *msg, gchar *response)
 	DBusMessage *reply;
 
 
-	debug("in process_ag_reponse, response is %s\n", response);
+	debug("in process_ag_reponse, response is %s", response);
 	if (strstr(response, OK_RESPONSE))
 		reply = dbus_message_new_method_return(msg);
 	else {
@@ -807,7 +807,7 @@ static DBusMessage *ag_call(DBusConnection *conn, DBusMessage *msg,
 	gint atd_len;
 	DBusMessage *result;
 
-	debug("at the begin of ag_call()\n");
+	debug("at the begin of ag_call()");
 	if (!gw->rfcomm)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 					".NotConnected",
@@ -1051,7 +1051,7 @@ struct gateway *gateway_init(struct audio_device *dev)
 					NULL, dev, NULL))
 		return NULL;
 
-	debug("in gateway_init, dev is %p\n", dev);
+	debug("in gateway_init, dev is %p", dev);
 	gw = g_new0(struct gateway, 1);
 	gw->indies = NULL;
 	gw->is_dialing = FALSE;
