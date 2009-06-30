@@ -785,7 +785,7 @@ static void proxy_path_unregister(gpointer data)
 		goto done;
 
 	/* Restore the initial TTY configuration */
-	sk =  open(prx->address, O_RDWR | O_NOCTTY);
+	sk = open(prx->address, O_RDWR | O_NOCTTY);
 	if (sk >= 0) {
 		tcsetattr(sk, TCSAFLUSH, &prx->sys_ti);
 		close(sk);
