@@ -26,7 +26,7 @@ fi
 		--enable-dund \
 		--enable-test \
 		--enable-cups \
+		--disable-pcmcia \
 		--disable-manpages \
-		--disable-configfiles \
-		--disable-initscripts \
-		--disable-pcmciarules $*
+		--disable-udevrules \
+		--disable-configfiles $*

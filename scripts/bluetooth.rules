@@ -1,0 +1,3 @@
+# Run helper every time a Bluetooth device appears
+# On remove actions, bluetoothd should go away by itself
+ACTION=="add", SUBSYSTEM=="bluetooth", RUN+="/usr/sbin/bluetoothd --udev"

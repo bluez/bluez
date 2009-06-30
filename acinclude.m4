@@ -196,12 +196,12 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	cups_enable=no
 	test_enable=no
 	bccmd_enable=no
+	pcmcia_enable=no
 	hid2hci_enable=no
 	dfutool_enable=no
 	manpages_enable=yes
+	udevrules_enable=yes
 	configfiles_enable=yes
-	initscripts_enable=no
-	pcmciarules_enable=no
 	telephony_driver=dummy
 
 	AC_ARG_ENABLE(fortify, AC_HELP_STRING([--disable-fortify], [disable compile time buffer checks]), [
@@ -256,6 +256,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		bccmd_enable=${enableval}
 	])
 
+	AC_ARG_ENABLE(pcmcia, AC_HELP_STRING([--enable-pcmcia], [install PCMCIA script and udev rules]), [
+		pcmcia_enable=${enableval}
+	])
+
 	AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci], [install HID mode switching utility]), [
 		hid2hci_enable=${enableval}
 	])
@@ -288,16 +292,12 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		manpages_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(configfiles, AC_HELP_STRING([--enable-configfiles], [install Bluetooth config files]), [
+	AC_ARG_ENABLE(udevrules, AC_HELP_STRING([--enable-udevrules], [install Bluetooth on-demand udev rules]), [
+		udevrules_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(configfiles, AC_HELP_STRING([--enable-configfiles], [install Bluetooth configuration files]), [
 		configfiles_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(initscripts, AC_HELP_STRING([--enable-initscripts], [install Bluetooth boot scripts]), [
-		initscripts_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(pcmciarules, AC_HELP_STRING([--enable-pcmciarules], [install PCMCIA udev rules]), [
-		pcmciarules_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
@@ -354,10 +354,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(TOOLS, test "${tools_enable}" = "yes")
 	AM_CONDITIONAL(BCCMD, test "${bccmd_enable}" = "yes")
+	AM_CONDITIONAL(PCMCIA, test "${pcmcia_enable}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(MANPAGES, test "${manpages_enable}" = "yes")
+	AM_CONDITIONAL(UDEVRULES, test "${udevrules_enable}" = "yes")
 	AM_CONDITIONAL(CONFIGFILES, test "${configfiles_enable}" = "yes")
-	AM_CONDITIONAL(INITSCRIPTS, test "${initscripts_enable}" = "yes")
-	AM_CONDITIONAL(PCMCIARULES, test "${pcmciarules_enable}" = "yes")
 ])
