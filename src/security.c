@@ -117,6 +117,12 @@ static void hci_req_queue_process(int dev_id)
 
 	/* send the next pending cmd */
 	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("hci_open_dev(%d): %s (%d)", dev_id, strerror(errno),
+									errno);
+		return;
+	}
+
 	do {
 		struct hci_req_data *data;
 		GSList *l = g_slist_find_custom(hci_req_queue, &dev_id, hci_req_find_by_devid);
