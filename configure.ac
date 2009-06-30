@@ -63,7 +63,7 @@ AC_OUTPUT([
 	test/Makefile
 	doc/Makefile
 	doc/version.xml
-	bluez.pc
 	src/bluetoothd.8
 	src/hcid.conf.5
+	bluez.pc
 ])
