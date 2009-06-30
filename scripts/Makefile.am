@@ -1,8 +1,8 @@
 
-if CONFIGFILES
+if UDEVRULES
 rulesdir = $(sysconfdir)/udev
 
-rules_DATA =
+rules_DATA = bluetooth.rules
 
 if HID2HCI
 rules_DATA += bluetooth-hid2hci.rules
@@ -10,10 +10,6 @@ endif
 
 if PCMCIA
 rules_DATA += bluetooth-serial.rules
-endif
-
-if UDEVRULES
-rules_DATA += bluetooth.rules
 endif
 endif
 

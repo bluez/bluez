@@ -256,7 +256,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		bccmd_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(pcmcia, AC_HELP_STRING([--enable-pcmcia], [install PCMCIA script and udev rules]), [
+	AC_ARG_ENABLE(pcmcia, AC_HELP_STRING([--enable-pcmcia], [install PCMCIA serial script]), [
 		pcmcia_enable=${enableval}
 	])
 
@@ -292,7 +292,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		manpages_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(udevrules, AC_HELP_STRING([--enable-udevrules], [install Bluetooth on-demand udev rules]), [
+	AC_ARG_ENABLE(udevrules, AC_HELP_STRING([--enable-udevrules], [install Bluetooth udev rules]), [
 		udevrules_enable=${enableval}
 	])
 
