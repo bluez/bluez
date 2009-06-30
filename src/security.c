@@ -498,7 +498,8 @@ void set_pin_length(bdaddr_t *sba, int length)
 	ba2str(sba, addr);
 	dev_id = hci_devid(addr);
 
-	io_data[dev_id].pin_length = length;
+	if (dev_id >= 0)
+		io_data[dev_id].pin_length = length;
 }
 
 static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
