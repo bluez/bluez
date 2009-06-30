@@ -1769,7 +1769,8 @@ SND_PCM_PLUGIN_DEFINE_FUNC(bluetooth)
 	return 0;
 
 error:
-	bluetooth_exit(data);
+	if (data)
+		bluetooth_exit(data);
 
 	return err;
 }
