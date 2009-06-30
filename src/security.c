@@ -571,6 +571,10 @@ static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
 
 	state = adapter_get_state(adapter);
 
+	/* Disable name resolution for non D-Bus clients */
+	if (!adapter_has_discov_sessions(adapter))
+		state &= ~RESOLVE_NAME;
+
 	if (periodic) {
 		state |= PERIODIC_INQUIRY;
 		adapter_set_state(adapter, state);
@@ -588,13 +592,6 @@ static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
 		pending_remote_name_cancel(adapter);
 
 		clear_found_devices_list(adapter);
-	}
-
-	/* Disable name resolution for non D-Bus clients */
-	if (!adapter_has_discov_sessions(adapter)) {
-		state = adapter_get_state(adapter);
-		state &= ~RESOLVE_NAME;
-		adapter_set_state(adapter, state);
 	}
 }
 
