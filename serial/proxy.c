@@ -307,10 +307,11 @@ static inline int unix_socket_connect(const char *address)
 		 * Abstract namespace: first byte NULL, x00
 		 * must be removed from the original address.
 		 */
-		strcpy(addr.sun_path + 1, address + 3);
+		strncpy(addr.sun_path + 1, address + 3,
+						sizeof(addr.sun_path) - 2);
 	} else {
 		/* Filesystem address */
-		strcpy(addr.sun_path, address);
+		strncpy(addr.sun_path, address, sizeof(addr.sun_path) - 1);
 	}
 
 	/* Unix socket */
