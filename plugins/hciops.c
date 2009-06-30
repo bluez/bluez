@@ -55,6 +55,9 @@
 
 static int child_pipe[2] = { -1, -1 };
 
+static guint child_io_id = 0;
+static guint ctl_io_id = 0;
+
 static gboolean child_exit(GIOChannel *io, GIOCondition cond, void *user_data)
 {
 	int status, fd = g_io_channel_unix_get_fd(io);
@@ -374,9 +377,9 @@ static int hciops_setup(void)
 
 	child_io = g_io_channel_unix_new(child_pipe[0]);
 	g_io_channel_set_close_on_unref(child_io, TRUE);
-	g_io_add_watch(child_io,
-			G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-			child_exit, NULL);
+	child_io_id = g_io_add_watch(child_io,
+				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+				child_exit, NULL);
 	g_io_channel_unref(child_io);
 
 	/* Create and bind HCI socket */
@@ -413,7 +416,7 @@ static int hciops_setup(void)
 	ctl_io = g_io_channel_unix_new(sock);
 	g_io_channel_set_close_on_unref(ctl_io, TRUE);
 
-	g_io_add_watch(ctl_io, G_IO_IN, io_stack_event, NULL);
+	ctl_io_id = g_io_add_watch(ctl_io, G_IO_IN, io_stack_event, NULL);
 
 	g_io_channel_unref(ctl_io);
 
@@ -423,6 +426,25 @@ static int hciops_setup(void)
 
 static void hciops_cleanup(void)
 {
+	if (child_io_id) {
+		g_source_remove(child_io_id);
+		child_io_id = 0;
+	}
+
+	if (ctl_io_id) {
+		g_source_remove(ctl_io_id);
+		ctl_io_id = 0;
+	}
+
+	if (child_pipe[0] >= 0) {
+		close(child_pipe[0]);
+		child_pipe[0] = -1;
+	}
+
+	if (child_pipe[1] >= 0) {
+		close(child_pipe[1]);
+		child_pipe[1] = -1;
+	}
 }
 
 static int hciops_start(int index)
