@@ -302,22 +302,19 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 
-	if (device->name) {
-		ptr = device->name;
-		dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &ptr);
-	}
+	ptr = device->name;
+	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &ptr);
 
 	/* Alias (fallback to name or address) */
 	if (read_device_alias(srcaddr, dstaddr, name, sizeof(name)) < 1) {
-		if (!ptr) {
+		if (strlen(ptr) == 0) {
 			g_strdelimit(dstaddr, ":", '-');
 			ptr = dstaddr;
 		}
 	} else
 		ptr = name;
 
-	if (ptr)
-		dict_append_entry(&dict, "Alias", DBUS_TYPE_STRING, &ptr);
+	dict_append_entry(&dict, "Alias", DBUS_TYPE_STRING, &ptr);
 
 	/* Class */
 	if (read_remote_class(&src, &device->bdaddr, &class) == 0) {
