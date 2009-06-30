@@ -52,13 +52,17 @@ static DBusHandlerResult agent_filter(DBusConnection *conn,
 {
 	const char *name, *old, *new;
 
-	if (!dbus_message_is_signal(msg, DBUS_INTERFACE_DBUS, "NameOwnerChanged"))
+	if (!dbus_message_is_signal(msg, DBUS_INTERFACE_DBUS,
+						"NameOwnerChanged"))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (!dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &old,
-				DBUS_TYPE_STRING, &new, DBUS_TYPE_INVALID)) {
-		fprintf(stderr, "Invalid arguments for NameOwnerChanged signal");
+					DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_STRING, &old,
+					DBUS_TYPE_STRING, &new,
+					DBUS_TYPE_INVALID)) {
+		fprintf(stderr,
+			"Invalid arguments for NameOwnerChanged signal");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
@@ -80,7 +84,8 @@ static DBusHandlerResult request_pincode_message(DBusConnection *conn,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (!dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID)) {
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID)) {
 		fprintf(stderr, "Invalid arguments for RequestPinCode method");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
@@ -124,7 +129,8 @@ static DBusHandlerResult request_passkey_message(DBusConnection *conn,
 
 
 	if (!dbus_message_get_args(msg, NULL,
-			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID)) {
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID)) {
 		fprintf(stderr, "Invalid arguments for RequestPasskey method");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
@@ -222,7 +228,8 @@ static DBusHandlerResult authorize_message(DBusConnection *conn,
 	const char *path, *uuid;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID)) {
+					DBUS_TYPE_STRING, &uuid,
+					DBUS_TYPE_INVALID)) {
 		fprintf(stderr, "Invalid arguments for Authorize method");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
@@ -254,10 +261,12 @@ send:
 static DBusHandlerResult agent_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	if (dbus_message_is_method_call(msg, "org.bluez.Agent", "RequestPinCode"))
+	if (dbus_message_is_method_call(msg, "org.bluez.Agent",
+							"RequestPinCode"))
 		return request_pincode_message(conn, msg, data);
 
-	if (dbus_message_is_method_call(msg, "org.bluez.Agent", "RequestPasskey"))
+	if (dbus_message_is_method_call(msg, "org.bluez.Agent",
+							"RequestPasskey"))
 		return request_passkey_message(conn, msg, data);
 
 	if (dbus_message_is_method_call(msg, "org.bluez.Agent", "Cancel"))
@@ -298,7 +307,7 @@ static int register_agent(DBusConnection *conn, const char *device_path,
 
 	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &agent_path,
 					DBUS_TYPE_STRING, &capabilities,
-							DBUS_TYPE_INVALID);
+					DBUS_TYPE_INVALID);
 
 	dbus_error_init(&err);
 
@@ -364,13 +373,15 @@ static int unregister_agent(DBusConnection *conn, const char *device_path,
 
 static int create_paired_device(DBusConnection *conn, const char *device_path,
 						const char *agent_path,
-						const char *capabilities, const char *target)
+						const char *capabilities,
+						const char *target)
 {
 	dbus_bool_t success;
 	DBusMessage *msg;
 
 	msg = dbus_message_new_method_call("org.bluez", device_path,
-					"org.bluez.Adapter", "CreatePairedDevice");
+						"org.bluez.Adapter",
+						"CreatePairedDevice");
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");
 		return -1;
@@ -379,7 +390,7 @@ static int create_paired_device(DBusConnection *conn, const char *device_path,
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &target,
 					DBUS_TYPE_OBJECT_PATH, &agent_path,
 					DBUS_TYPE_STRING, &capabilities,
-							DBUS_TYPE_INVALID);
+					DBUS_TYPE_INVALID);
 
 	success = dbus_connection_send(conn, msg, NULL);
 
@@ -422,7 +433,8 @@ static char *get_device(DBusConnection *conn, const char *device)
 	dbus_message_unref(msg);
 
 	if (!reply) {
-		fprintf(stderr, "Can't get default adapter, using default adapter\n");
+		fprintf(stderr,
+			"Can't get default adapter, using default adapter\n");
 		if (dbus_error_is_set(&err)) {
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
@@ -431,8 +443,10 @@ static char *get_device(DBusConnection *conn, const char *device)
 	}
 
 	if (!dbus_message_get_args(reply, &err,
-			DBUS_TYPE_OBJECT_PATH, &tmppath, DBUS_TYPE_INVALID)) {
-		fprintf(stderr, "Can't get reply arguments, using default adapter\n");
+					DBUS_TYPE_OBJECT_PATH, &tmppath,
+					DBUS_TYPE_INVALID)) {
+		fprintf(stderr,
+			"Can't get reply arguments, using default adapter\n");
 		if (dbus_error_is_set(&err)) {
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
@@ -531,14 +545,15 @@ int main(int argc, char *argv[])
 	if (!device_path)
 		device_path = get_device(conn, device_id);
 
-	if (!target) {
-		if (register_agent(conn, device_path, agent_path, capabilities) < 0) {
+	if (target) {
+		if (create_paired_device(conn, device_path, agent_path,
+						capabilities, target) < 0) {
 			dbus_connection_unref(conn);
 			exit(1);
 		}
 	} else {
-		if (create_paired_device(conn, device_path, agent_path,
-						capabilities, target) < 0) {
+		if (register_agent(conn, device_path, agent_path,
+							capabilities) < 0) {
 			dbus_connection_unref(conn);
 			exit(1);
 		}
@@ -549,7 +564,7 @@ int main(int argc, char *argv[])
 
 	snprintf(match_string, sizeof(match_string),
 			"interface=%s,member=NameOwnerChanged,arg0=%s",
-					DBUS_INTERFACE_DBUS, "org.bluez");
+			DBUS_INTERFACE_DBUS, "org.bluez");
 
 	dbus_bus_add_match(conn, match_string, NULL);
 
@@ -564,10 +579,8 @@ int main(int argc, char *argv[])
 			break;
 	}
 
-	if (!__io_terminated) {
-		if (!target)
-			unregister_agent(conn, device_path, agent_path);
-	}
+	if (!__io_terminated && !target)
+		unregister_agent(conn, device_path, agent_path);
 
 	free(device_path);
 	free(agent_path);
