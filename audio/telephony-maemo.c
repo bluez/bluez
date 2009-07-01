@@ -962,6 +962,11 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	debug("Call %s changed from %s to %s", call_path,
 		call_status_str[call->status], call_status_str[status]);
 
+	if (call->status == (int) status) {
+		debug("Ignoring CSD Call state change to existing state");
+		return;
+	}
+
 	call->status = (int) status;
 
 	switch (status) {
