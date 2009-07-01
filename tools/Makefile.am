@@ -1,7 +1,7 @@
 
 if TOOLS
 tools_programs = hcitool l2ping sdptool ciptool
-tools_manfiles = hcitool.1 l2ping.1 sdptool.1 ciptool.1
+tools_manfiles = hcitool.1 l2ping.8 sdptool.1 ciptool.1
 else
 tools_programs =
 tools_manfiles =
