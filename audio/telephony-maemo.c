@@ -169,6 +169,8 @@ static struct {
 	.operator_name = NULL,
 };
 
+static gboolean initialized = FALSE;
+
 static DBusConnection *connection = NULL;
 
 static GSList *calls = NULL;
@@ -933,6 +935,15 @@ static void handle_outgoing_call(DBusMessage *msg)
 					EV_CALLSETUP_OUTGOING);
 }
 
+static void call_info_reply(DBusPendingCall *call, void *user_data);
+
+static int update_call_list(void)
+{
+	return send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+				CSD_CALL_INTERFACE, "GetCallInfoAll",
+				call_info_reply, NULL, DBUS_TYPE_INVALID);
+}
+
 static void handle_call_status(DBusMessage *msg, const char *call_path)
 {
 	struct csd_call *call;
@@ -1031,6 +1042,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 				telephony_calling_stopped_ind();
 			call->setup = FALSE;
 		}
+		if (g_slist_length(active_calls) > 1)
+			update_call_list();
 		break;
 	case CSD_CALL_STATUS_MO_RELEASE:
 	case CSD_CALL_STATUS_MT_RELEASE:
@@ -1051,6 +1064,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_ON_HOLD);
+		if (g_slist_length(active_calls) > 1)
+			update_call_list();
 		break;
 	case CSD_CALL_STATUS_RETRIEVE_INITIATED:
 		break;
@@ -1458,14 +1473,15 @@ static void parse_call_list(DBusMessageIter *iter)
 			continue;
 		}
 
-		call = g_new0(struct csd_call, 1);
-
-		call->object_path = g_strdup(object_path);
-		call->status = (int) status;
-
-		calls = g_slist_append(calls, call);
-
-		debug("telephony-maemo: new csd call instance at %s", object_path);
+		call = find_call(object_path);
+		if (!call) {
+			call = g_new0(struct csd_call, 1);
+			call->object_path = g_strdup(object_path);
+			call->status = (int) status;
+			calls = g_slist_append(calls, call);
+			debug("telephony-maemo: new csd call instance at %s",
+								object_path);
+		}
 
 		if (call->status == CSD_CALL_STATUS_IDLE) {
 			dbus_message_iter_next(iter);
@@ -1475,6 +1491,7 @@ static void parse_call_list(DBusMessageIter *iter)
 		call->originating = originating;
 		call->on_hold = on_hold;
 		call->conference = conf;
+		g_free(call->number);
 		call->number = g_strdup(number);
 
 		dbus_message_iter_next(iter);
@@ -1583,6 +1600,7 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 
 	telephony_ready_ind(features, maemo_indicators, response_and_hold,
 				chld_str);
+	initialized = TRUE;
 
 	get_signal_strength();
 
@@ -1625,7 +1643,8 @@ static void call_info_reply(DBusPendingCall *call, void *user_data)
 
 	parse_call_list(&sub);
 
-	get_registration_status();
+	if (!initialized)
+		get_registration_status();
 
 done:
 	dbus_message_unref(reply);
@@ -1765,9 +1784,7 @@ int telephony_init(void)
 			"type=signal,interface=%s", NETWORK_INTERFACE);
 	dbus_bus_add_match(connection, match_string, NULL);
 
-	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
-				CSD_CALL_INTERFACE, "GetCallInfoAll",
-				call_info_reply, NULL, DBUS_TYPE_INVALID);
+	ret = update_call_list();
 	if (ret < 0)
 		return ret;
 
@@ -1818,4 +1835,5 @@ void telephony_exit(void)
 
 	dbus_connection_unref(connection);
 	connection = NULL;
+	initialized = FALSE;
 }
