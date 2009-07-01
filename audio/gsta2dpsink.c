@@ -698,6 +698,6 @@ static void gst_a2dp_sink_init(GstA2dpSink *self,
 gboolean gst_a2dp_sink_plugin_init(GstPlugin *plugin)
 {
 	return gst_element_register(plugin, "a2dpsink",
-			GST_RANK_PRIMARY, GST_TYPE_A2DP_SINK);
+			GST_RANK_MARGINAL, GST_TYPE_A2DP_SINK);
 }
 
