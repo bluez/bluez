@@ -1488,6 +1488,14 @@ static void parse_call_list(DBusMessageIter *iter)
 			continue;
 		}
 
+		/* CSD gives incorrect call_hold property sometimes */
+		if ((call->status != CSD_CALL_STATUS_HOLD && on_hold) ||
+				(call->status == CSD_CALL_STATUS_HOLD &&
+								!on_hold)) {
+			error("Conflicting call status and on_hold property!");
+			on_hold = call->status == CSD_CALL_STATUS_HOLD;
+		}
+
 		call->originating = originating;
 		call->on_hold = on_hold;
 		call->conference = conf;
