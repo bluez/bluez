@@ -1390,6 +1390,8 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	sdp_record_t *record = NULL;
 	sdp_list_t *r;
 
+	assert(hs->pending != NULL);
+
 	if (err < 0) {
 		error("Unable to get service record: %s (%d)",
 							strerror(-err), -err);
