@@ -508,7 +508,7 @@ static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 	priv->dc_req = dbus_message_ref(msg);
 
 	if (priv->hs_state != HEADSET_STATE_DISCONNECTED)
-		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+		headset_shutdown(dev);
 	else if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
 		sink_shutdown(dev->sink);
 	else {

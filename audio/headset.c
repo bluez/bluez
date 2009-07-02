@@ -1613,7 +1613,7 @@ static DBusMessage *hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 						".NotConnected",
 						"Device not Connected");
 
-	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
+	headset_shutdown(device);
 	ba2str(&device->dst, hs_address);
 	info("Disconnected from %s, %s", hs_address, device->path);
 
@@ -2136,9 +2136,7 @@ static void path_unregister(void *data)
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED) {
 		debug("Headset unregistered while device was connected!");
-		if (hs->pending)
-			pending_connect_finalize(dev);
-		headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+		headset_shutdown(dev);
 	}
 
 	debug("Unregistered interface %s on path %s",
@@ -2429,7 +2427,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 
 	info("Headset: disconnect %s", device->path);
 
-	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
+	headset_shutdown(device);
 }
 
 void headset_set_state(struct audio_device *dev, headset_state_t state)
@@ -2641,6 +2639,17 @@ gboolean headset_get_nrec(struct audio_device *dev)
 gboolean headset_get_sco_hci(struct audio_device *dev)
 {
 	return sco_hci;
+}
+
+void headset_shutdown(struct audio_device *dev)
+{
+	struct pending_connect *p = dev->headset->pending;
+
+	if (p && p->msg)
+		error_connection_attempt_failed(dev->conn, p->msg, ECANCELED);
+
+	pending_connect_finalize(dev);
+	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
 }
 
 int telephony_event_ind(int index)
