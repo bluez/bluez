@@ -468,12 +468,12 @@ static void usage(void)
 	printf("Bluetooth agent ver %s\n\n", VERSION);
 
 	printf("Usage:\n"
-		"\tagent [--device interface] [--path agent-path] <passkey> [<target_device>]\n"
+		"\tagent [--adapter adapter-path] [--path agent-path] <passkey> [<target_device>]\n"
 		"\n");
 }
 
 static struct option main_options[] = {
-	{ "device",	1, 0, 'i' },
+	{ "adapter",	1, 0, 'a' },
 	{ "path",	1, 0, 'p' },
 	{ "capabilites",1, 0, 'c' },
 	{ "reject",	0, 0, 'r' },
@@ -493,9 +493,9 @@ int main(int argc, char *argv[])
 	snprintf(default_path, sizeof(default_path),
 					"/org/bluez/agent_%d", getpid());
 
-	while ((opt = getopt_long(argc, argv, "+i:p:c:rh", main_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+a:p:c:rh", main_options, NULL)) != EOF) {
 		switch(opt) {
-		case 'i':
+		case 'a':
 			adapter_id = optarg;
 			break;
 		case 'p':
