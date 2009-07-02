@@ -659,6 +659,29 @@ static int hciops_stop_discovery(int index)
 	return err;
 }
 
+static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
+{
+	remote_name_req_cp cp;
+	int dd, err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+	cp.pscan_rep_mode = 0x02;
+
+	err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
+					REMOTE_NAME_REQ_CP_SIZE, &cp);
+	if (err < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -670,6 +693,7 @@ static struct btd_adapter_ops hci_ops = {
 	.set_limited_discoverable = hciops_set_limited_discoverable,
 	.start_discovery = hciops_start_discovery,
 	.stop_discovery = hciops_stop_discovery,
+	.resolve_name = hciops_resolve_name,
 };
 
 static int hciops_init(void)

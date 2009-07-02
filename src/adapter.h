@@ -166,6 +166,7 @@ struct btd_adapter_ops {
 						gboolean limited);
 	int (*start_discovery) (int index, gboolean periodic);
 	int (*stop_discovery) (int index);
+	int (*resolve_name) (int index, bdaddr_t *bdaddr);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);

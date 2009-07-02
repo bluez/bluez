@@ -260,9 +260,8 @@ int pending_remote_name_cancel(struct btd_adapter *adapter)
 
 int adapter_resolve_names(struct btd_adapter *adapter)
 {
-	remote_name_req_cp cp;
 	struct remote_dev_info *dev, match;
-	int dd, err;
+	int err;
 
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
@@ -272,21 +271,12 @@ int adapter_resolve_names(struct btd_adapter *adapter)
 	if (!dev)
 		return -ENODATA;
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return -errno;
-
 	/* send at least one request or return failed if the list is empty */
 	do {
 		/* flag to indicate the current remote name requested */
 		dev->name_status = NAME_REQUESTED;
 
-		memset(&cp, 0, sizeof(cp));
-		bacpy(&cp.bdaddr, &dev->bdaddr);
-		cp.pscan_rep_mode = 0x02;
-
-		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
-						REMOTE_NAME_REQ_CP_SIZE, &cp);
+		err = adapter_ops->resolve_name(adapter->dev_id, &dev->bdaddr);
 
 		if (!err)
 			break;
@@ -301,11 +291,6 @@ int adapter_resolve_names(struct btd_adapter *adapter)
 		/* get the next element */
 		dev = adapter_search_found_devices(adapter, &match);
 	} while (dev);
-
-	hci_close_dev(dd);
-
-	if (err < 0)
-		err = -errno;
 
 	return err;
 }
