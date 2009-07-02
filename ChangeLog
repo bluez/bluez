@@ -1,3 +1,11 @@
+ver 4.43:
+	Add support for udev based on-demand startup.
+	Fix verbose error reporting of CUPS backend.
+	Fix various string length issues.
+	Fix issues with Maemo telephony driver.
+	Fix another device setup and temporary flag issue.
+	Fix and update example agent implementation.
+
 ver 4.42:
 	Add TI WL1271 to Texas Instruments chip list.
 	Add special udev mode to bluetoothd.
