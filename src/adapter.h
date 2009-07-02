@@ -97,6 +97,8 @@ struct btd_device *adapter_create_device(DBusConnection *conn,
 
 int pending_remote_name_cancel(struct btd_adapter *adapter);
 
+int adapter_resolve_names(struct btd_adapter *adapter);
+
 void clear_found_devices_list(struct btd_adapter *adapter);
 
 struct btd_adapter *adapter_create(DBusConnection *conn, int id,

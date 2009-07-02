@@ -630,7 +630,7 @@ static void inquiry_complete(bdaddr_t *local, uint8_t status, gboolean periodic)
 		return;
 	}
 
-	if (found_device_req_name(adapter) == 0)
+	if (adapter_resolve_names(adapter) == 0)
 		return;
 
 	state = adapter_get_state(adapter);

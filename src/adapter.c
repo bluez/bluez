@@ -258,6 +258,58 @@ int pending_remote_name_cancel(struct btd_adapter *adapter)
 	return err;
 }
 
+int adapter_resolve_names(struct btd_adapter *adapter)
+{
+	remote_name_req_cp cp;
+	struct remote_dev_info *dev, match;
+	int dd, err;
+
+	memset(&match, 0, sizeof(struct remote_dev_info));
+	bacpy(&match.bdaddr, BDADDR_ANY);
+	match.name_status = NAME_REQUIRED;
+
+	dev = adapter_search_found_devices(adapter, &match);
+	if (!dev)
+		return -ENODATA;
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0)
+		return -errno;
+
+	/* send at least one request or return failed if the list is empty */
+	do {
+		/* flag to indicate the current remote name requested */
+		dev->name_status = NAME_REQUESTED;
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.bdaddr, &dev->bdaddr);
+		cp.pscan_rep_mode = 0x02;
+
+		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
+						REMOTE_NAME_REQ_CP_SIZE, &cp);
+
+		if (!err)
+			break;
+
+		error("Unable to send HCI remote name req: %s (%d)",
+						strerror(errno), errno);
+
+		/* if failed, request the next element */
+		/* remove the element from the list */
+		adapter_remove_found_device(adapter, &dev->bdaddr);
+
+		/* get the next element */
+		dev = adapter_search_found_devices(adapter, &match);
+	} while (dev);
+
+	hci_close_dev(dd);
+
+	if (err < 0)
+		err = -errno;
+
+	return err;
+}
+
 static const char *mode2str(uint8_t mode)
 {
 	switch(mode) {

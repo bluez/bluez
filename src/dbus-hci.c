@@ -434,74 +434,6 @@ void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
-int found_device_req_name(struct btd_adapter *adapter)
-{
-	struct hci_request rq;
-	evt_cmd_status rp;
-	remote_name_req_cp cp;
-	struct remote_dev_info *dev, match;
-	int dd, req_sent = 0;
-	uint16_t dev_id = adapter_get_dev_id(adapter);
-
-	memset(&match, 0, sizeof(struct remote_dev_info));
-	bacpy(&match.bdaddr, BDADDR_ANY);
-	match.name_status = NAME_REQUIRED;
-
-	dev = adapter_search_found_devices(adapter, &match);
-	if (!dev)
-		return -ENODATA;
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0)
-		return -errno;
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_REMOTE_NAME_REQ;
-	rq.cparam = &cp;
-	rq.clen   = REMOTE_NAME_REQ_CP_SIZE;
-	rq.rparam = &rp;
-	rq.rlen   = EVT_CMD_STATUS_SIZE;
-	rq.event  = EVT_CMD_STATUS;
-
-	/* send at least one request or return failed if the list is empty */
-	do {
-		/* flag to indicate the current remote name requested */
-		dev->name_status = NAME_REQUESTED;
-
-		memset(&rp, 0, sizeof(rp));
-		memset(&cp, 0, sizeof(cp));
-		bacpy(&cp.bdaddr, &dev->bdaddr);
-		cp.pscan_rep_mode = 0x02;
-
-		if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0)
-			error("Unable to send HCI remote name req: %s (%d)",
-						strerror(errno), errno);
-
-		if (!rp.status) {
-			req_sent = 1;
-			break;
-		}
-
-		error("Remote name request failed with status 0x%02x",
-								rp.status);
-
-		/* if failed, request the next element */
-		/* remove the element from the list */
-		adapter_remove_found_device(adapter, &dev->bdaddr);
-
-		/* get the next element */
-		dev = adapter_search_found_devices(adapter, &match);
-	} while (dev);
-
-	hci_close_dev(dd);
-
-	if (!req_sent)
-		return -ENODATA;
-
-	return 0;
-}
-
 static char *extract_eir_name(uint8_t *data, uint8_t *type)
 {
 	if (!data || !type)
@@ -674,7 +606,7 @@ proceed:
 	adapter_remove_found_device(adapter, peer);
 
 	/* check if there is more devices to request names */
-	if (found_device_req_name(adapter) == 0)
+	if (adapter_resolve_names(adapter) == 0)
 		return;
 
 	state = adapter_get_state(adapter);
