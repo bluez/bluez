@@ -206,6 +206,11 @@ static inline int telephony_update_indicator(struct indicator *indicators,
 
 	debug("Telephony indicator \"%s\" %d->%d", desc, ind->val, new_val);
 
+	if (ind->val == new_val) {
+		debug("Ignoring no-change indication");
+		return 0;
+	}
+
 	ind->val = new_val;
 
 	return telephony_event_ind(i);
