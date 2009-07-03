@@ -1471,7 +1471,7 @@ static void parse_call_list(DBusMessageIter *iter)
 					DBUS_TYPE_STRING, &number,
 					DBUS_TYPE_INVALID)) {
 			error("Parsing call D-Bus parameters failed");
-			continue;
+			break;
 		}
 
 		call = find_call(object_path);
