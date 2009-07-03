@@ -199,6 +199,9 @@ static int response_and_hold = -1;
 
 static char *last_dialed_number = NULL;
 
+/* Timer for tracking call creation requests */
+static guint create_request_timer = 0;
+
 static struct indicator maemo_indicators[] =
 {
 	{ "battchg",	"0-5",	5 },
@@ -929,8 +932,32 @@ static void handle_outgoing_call(DBusMessage *msg)
 	g_free(last_dialed_number);
 	last_dialed_number = g_strdup(number);
 
+	if (create_request_timer) {
+		g_source_remove(create_request_timer);
+		create_request_timer = 0;
+	}
+
 	telephony_update_indicator(maemo_indicators, "callsetup",
-					EV_CALLSETUP_OUTGOING);
+						EV_CALLSETUP_OUTGOING);
+}
+
+static gboolean create_timeout(gpointer user_data)
+{
+	create_request_timer = 0;
+	return FALSE;
+}
+
+static void handle_create_requested(DBusMessage *msg)
+{
+	debug("Call.CreateRequested()");
+
+	if (g_slist_length(active_calls) == 0)
+		return;
+
+	if (create_request_timer)
+		g_source_remove(create_request_timer);
+
+	create_request_timer = g_timeout_add_seconds(5, create_timeout, NULL);
 }
 
 static void handle_call_status(DBusMessage *msg, const char *call_path)
@@ -1044,11 +1071,15 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		break;
 	case CSD_CALL_STATUS_HOLD:
 		call->on_hold = TRUE;
-		if (find_non_held_call())
+		if (find_non_held_call() || create_request_timer) {
+			if (create_request_timer) {
+				g_source_remove(create_request_timer);
+				create_request_timer = 0;
+			}
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_MULTIPLE);
-		else
+		} else
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_ON_HOLD);
@@ -1431,6 +1462,9 @@ static DBusHandlerResult signal_filter(DBusConnection *conn,
 		handle_incoming_call(msg);
 	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Created"))
 		handle_outgoing_call(msg);
+	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE,
+							"CreateRequested"))
+		handle_create_requested(msg);
 	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE, "CallStatus"))
 		handle_call_status(msg, path);
 	else if (dbus_message_is_signal(msg, CSD_CALL_CONFERENCE, "Joined"))
