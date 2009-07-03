@@ -951,7 +951,7 @@ static void handle_create_requested(DBusMessage *msg)
 {
 	debug("Call.CreateRequested()");
 
-	if (g_slist_length(active_calls) == 0)
+	if (!find_call_with_status(CSD_CALL_STATUS_ACTIVE))
 		return;
 
 	if (create_request_timer)
