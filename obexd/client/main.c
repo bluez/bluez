@@ -97,7 +97,8 @@ done:
 }
 
 static int parse_device_dict(DBusMessageIter *iter,
-		const char **source, const char **dest, const char **target)
+		const char **source, const char **dest, const char **target,
+		uint8_t *channel)
 {
 	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
@@ -117,6 +118,11 @@ static int parse_device_dict(DBusMessageIter *iter,
 				dbus_message_iter_get_basic(&value, dest);
 			else if (g_str_equal(key, "Target") == TRUE)
 				dbus_message_iter_get_basic(&value, target);
+			break;
+		case DBUS_TYPE_BYTE:
+			if (g_str_equal(key, "Channel") == TRUE)
+				dbus_message_iter_get_basic(&value, channel);
+			break;
 		}
 
 		dbus_message_iter_next(iter);
@@ -132,11 +138,12 @@ static DBusMessage *send_files(DBusConnection *connection,
 	GPtrArray *files;
 	struct send_data *data;
 	const char *agent, *source = NULL, *dest = NULL, *target = NULL;
+	uint8_t channel = 0;
 
 	dbus_message_iter_init(message, &iter);
 	dbus_message_iter_recurse(&iter, &array);
 
-	parse_device_dict(&array, &source, &dest, &target);
+	parse_device_dict(&array, &source, &dest, &target, &channel);
 	if (dest == NULL)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
@@ -180,7 +187,8 @@ static DBusMessage *send_files(DBusConnection *connection,
 	data->agent = g_strdup(agent);
 	data->files = files;
 
-	if (session_create(NULL, dest, "OPP", create_callback, data) == 0)
+	if (session_create(NULL, dest, "OPP", channel, create_callback,
+				data) == 0)
 		return NULL;
 
 	g_ptr_array_free(data->files, TRUE);
@@ -238,11 +246,12 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 	DBusMessageIter iter, dict;
 	struct send_data *data;
 	const char *source = NULL, *dest = NULL, *target = NULL;
+	uint8_t channel = 0;
 
 	dbus_message_iter_init(message, &iter);
 	dbus_message_iter_recurse(&iter, &dict);
 
-	parse_device_dict(&dict, &source, &dest, &target);
+	parse_device_dict(&dict, &source, &dest, &target, &channel);
 	if (dest == NULL)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
@@ -256,7 +265,7 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 	data->message = dbus_message_ref(message);
 	data->sender = g_strdup(dbus_message_get_sender(message));
 
-	if (session_create(source, dest, "OPP",
+	if (session_create(source, dest, "OPP", channel,
 					pull_session_callback, data) == 0)
 		return NULL;
 
@@ -280,11 +289,12 @@ static DBusMessage *create_session(DBusConnection *connection,
 	DBusMessageIter iter, dict;
 	struct send_data *data;
 	const char *source = NULL, *dest = NULL, *target = NULL;
+	uint8_t channel = 0;
 
 	dbus_message_iter_init(message, &iter);
 	dbus_message_iter_recurse(&iter, &dict);
 
-	parse_device_dict(&dict, &source, &dest, &target);
+	parse_device_dict(&dict, &source, &dest, &target, &channel);
 	if (dest == NULL || target == NULL)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
@@ -298,7 +308,8 @@ static DBusMessage *create_session(DBusConnection *connection,
 	data->message = dbus_message_ref(message);
 	data->sender = g_strdup(dbus_message_get_sender(message));
 
-	if (session_create(source, dest, target, create_callback, data) == 0)
+	if (session_create(source, dest, target, channel, create_callback,
+				data) == 0)
 		return NULL;
 
 	dbus_message_unref(data->message);
@@ -368,11 +379,12 @@ static DBusMessage *get_capabilities(DBusConnection *connection,
 	DBusMessageIter iter, dict;
 	struct send_data *data;
 	const char *source = NULL, *dest = NULL, *target = NULL;
+	uint8_t channel = 0;
 
 	dbus_message_iter_init(message, &iter);
 	dbus_message_iter_recurse(&iter, &dict);
 
-	parse_device_dict(&dict, &source, &dest, &target);
+	parse_device_dict(&dict, &source, &dest, &target, &channel);
 	if (dest == NULL)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
@@ -389,7 +401,8 @@ static DBusMessage *get_capabilities(DBusConnection *connection,
 	if (!target)
 		target = "OPP";
 
-	if (session_create(source, dest, target, capability_session_callback, data) == 0)
+	if (session_create(source, dest, target, channel, capability_session_callback, 
+				data) == 0)
 		return NULL;
 
 	dbus_message_unref(data->message);

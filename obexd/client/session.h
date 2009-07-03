@@ -65,7 +65,8 @@ typedef void (*session_callback_t) (struct session_data *session,
 
 int session_create(const char *source,
 			const char *destination, const char *target,
-				session_callback_t function, void *user_data);
+			uint8_t channel, session_callback_t function,
+			void *user_data);
 int session_set_agent(struct session_data *session, const char *name,
 							const char *path);
 int session_send(struct session_data *session, const char *filename,

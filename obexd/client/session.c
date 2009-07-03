@@ -286,6 +286,8 @@ static void search_callback(uint8_t type, uint16_t status,
 	if (channel == 0)
 		goto failed;
 
+	callback->session->channel = channel;
+
 	if (rfcomm_connect(&callback->session->src, &callback->session->dst,
 					channel, rfcomm_callback, callback) == 0) {
 		sdp_close(callback->sdp);
@@ -380,7 +382,8 @@ static sdp_session_t *service_connect(const bdaddr_t *src, const bdaddr_t *dst,
 
 int session_create(const char *source,
 			const char *destination, const char *target,
-				session_callback_t function, void *user_data)
+			uint8_t channel, session_callback_t function,
+			void *user_data)
 {
 	struct session_data *session;
 	struct callback_data *callback;
@@ -395,6 +398,7 @@ int session_create(const char *source,
 
 	session->refcount = 1;
 	session->sock = -1;
+	session->channel = channel;
 
 	session->conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
 	if (session->conn == NULL) {
@@ -617,6 +621,9 @@ static void append_entry(DBusMessageIter *dict,
 	switch (type) {
 	case DBUS_TYPE_STRING:
 		signature = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_BYTE:
+		signature = DBUS_TYPE_BYTE_AS_STRING;
 		break;
 	case DBUS_TYPE_UINT64:
 		signature = DBUS_TYPE_UINT64_AS_STRING;
@@ -854,6 +861,8 @@ static DBusMessage *session_get_properties(DBusConnection *connection,
 
 	ba2str(&session->dst, addr);
 	append_entry(&dict, "Destination", DBUS_TYPE_STRING, &paddr);
+
+	append_entry(&dict, "Channel", DBUS_TYPE_BYTE, &session->channel);
 
 	if (session->agent_path)
 		append_entry(&dict, "AgentPath", DBUS_TYPE_STRING, &session->agent_path);
