@@ -1030,7 +1030,8 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 							"callheld",
 							EV_CALLHELD_NONE);
 		} else {
-			active_calls = g_slist_prepend(active_calls, call);
+			if (!g_slist_find(active_calls, call))
+				active_calls = g_slist_prepend(active_calls, call);
 			if (g_slist_length(active_calls) == 1)
 				telephony_update_indicator(maemo_indicators,
 								"call",
