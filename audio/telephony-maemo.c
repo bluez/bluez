@@ -908,6 +908,7 @@ static void handle_outgoing_call(DBusMessage *msg)
 {
 	const char *number, *call_path;
 	struct csd_call *call;
+	int callheld = telephony_get_indicator(maemo_indicators, "callheld");
 
 	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_OBJECT_PATH, &call_path,
@@ -937,6 +938,12 @@ static void handle_outgoing_call(DBusMessage *msg)
 		create_request_timer = 0;
 	}
 
+	/* Upgrade the callheld status if necessary */
+	if (callheld == EV_CALLHELD_ON_HOLD)
+		telephony_update_indicator(maemo_indicators,
+						"callheld",
+						EV_CALLHELD_MULTIPLE);
+
 	telephony_update_indicator(maemo_indicators, "callsetup",
 						EV_CALLSETUP_OUTGOING);
 }
@@ -964,6 +971,7 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 {
 	struct csd_call *call;
 	dbus_uint32_t status, cause_type, cause;
+	int callheld = telephony_get_indicator(maemo_indicators, "callheld");
 
 	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_UINT32, &status,
@@ -1055,8 +1063,15 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 			telephony_update_indicator(maemo_indicators,
 							"callsetup",
 							EV_CALLSETUP_INACTIVE);
-			if (!call->originating)
+			if (!call->originating) {
 				telephony_calling_stopped_ind();
+				/* Upgrade callheld status if necessary */
+				if (callheld == EV_CALLHELD_ON_HOLD)
+					telephony_update_indicator(
+							maemo_indicators,
+							"callheld",
+							EV_CALLHELD_MULTIPLE);
+			}
 			call->setup = FALSE;
 		}
 		break;
@@ -1089,12 +1104,16 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 	case CSD_CALL_STATUS_RECONNECT_PENDING:
 		break;
 	case CSD_CALL_STATUS_TERMINATED:
-		if (call->on_hold) {
-			if (!find_call_with_status(CSD_CALL_STATUS_HOLD))
-				telephony_update_indicator(maemo_indicators,
-								"callheld",
-								EV_CALLHELD_NONE);
-		}
+		if (call->on_hold &&
+				!find_call_with_status(CSD_CALL_STATUS_HOLD))
+			telephony_update_indicator(maemo_indicators,
+							"callheld",
+							EV_CALLHELD_NONE);
+		else if (callheld == EV_CALLHELD_MULTIPLE &&
+				find_call_with_status(CSD_CALL_STATUS_HOLD))
+			telephony_update_indicator(maemo_indicators,
+							"callheld",
+							EV_CALLHELD_ON_HOLD);
 		break;
 	case CSD_CALL_STATUS_SWAP_INITIATED:
 		break;
