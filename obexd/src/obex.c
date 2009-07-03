@@ -441,11 +441,18 @@ int os_prepare_get(struct obex_session *os, gchar *file, guint32 *size)
 	struct stat stats;
 
 	fd = open(file, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
+		err = -errno;
+		error("open(%s): %s (%d)", file, strerror(errno), errno);
 		goto fail;
+	}
 
-	if (fstat(fd, &stats))
+	if (fstat(fd, &stats) < 0) {
+		err = -errno;
+		error("fstat(fd=%d (%s)): %s (%d)", fd, file,
+						strerror(errno), errno);
 		goto fail;
+	}
 
 	os->fd = fd;
 	os->offset = 0;
@@ -458,10 +465,8 @@ int os_prepare_get(struct obex_session *os, gchar *file, guint32 *size)
 	return 0;
 
 fail:
-	err = -errno;
 	if (fd >= 0)
 		close(fd);
-
 	return err;
 }
 
