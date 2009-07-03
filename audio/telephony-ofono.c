@@ -888,19 +888,16 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 					" is %d", *value);
 
 	if ((battchg_design > 0 || battchg_last > 0) && battchg_cur >= 0) {
-		int new, cur, max;
+		int new, max;
 
 		if (battchg_last > 0)
 			max = battchg_last;
 		else
 			max = battchg_design;
 
-		cur = telephony_get_indicator(ofono_indicators, "battchg");
 		new = battchg_cur * 5 / max;
 
-		if (new != cur)
-			telephony_update_indicator(ofono_indicators,
-							"battchg", new);
+		telephony_update_indicator(ofono_indicators, "battchg", new);
 	}
 done:
 	dbus_message_unref(reply);
