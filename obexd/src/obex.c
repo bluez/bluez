@@ -944,7 +944,8 @@ static gboolean tty_reinit(gpointer data)
 {
 	struct server *server = data;
 
-	tty_init(server->services, server->folder, server->capability, server->devnode);
+	tty_init(server->services, server->folder, server->capability,
+					server->symlinks, server->devnode);
 
 	server_free(server);
 

@@ -112,5 +112,5 @@ gint os_prepare_put(struct obex_session *os);
 void server_free(struct server *server);
 
 int tty_init(gint service, const gchar *folder, const gchar *capability,
-		const gchar *devnode);
+		gboolean symlinks, const gchar *devnode);
 void tty_closed(void);

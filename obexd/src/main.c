@@ -70,7 +70,8 @@ static int signal_pipe[2];
 #define TTY_TX_MTU 65535
 
 int tty_init(int services, const gchar *root_path,
-		const gchar *capability, const gchar *devnode)
+		const gchar *capability, gboolean symlinks,
+		const gchar *devnode)
 {
 	struct server *server;
 	struct termios options;
@@ -114,6 +115,7 @@ int tty_init(int services, const gchar *root_path,
 	server->devnode = g_strdup(devnode);
 	server->rx_mtu = TTY_RX_MTU;
 	server->tx_mtu = TTY_TX_MTU;
+	server->symlinks = symlinks;
 
 	io = g_io_channel_unix_new(fd);
 	g_io_channel_set_close_on_unref(io, TRUE);
@@ -221,7 +223,7 @@ static gboolean handle_signal(GIOChannel *io, GIOCondition cond,
 		tty_open_allowed = TRUE;
 		if (tty_needs_reinit)
 			tty_init(services, option_root, option_capability,
-							option_devnode);
+					option_symlinks, option_devnode);
 		break;
 	case SIGHUP:
 		debug("SIGHUP");
@@ -257,7 +259,7 @@ static int devnode_setup(void)
 		tty_open_allowed = FALSE;
 
 	return tty_init(services, option_root, option_capability,
-			option_devnode);
+			option_symlinks, option_devnode);
 }
 
 static gboolean is_dir(const char *dir) {
