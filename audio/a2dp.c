@@ -41,6 +41,7 @@
 #include "manager.h"
 #include "avdtp.h"
 #include "sink.h"
+#include "source.h"
 #include "a2dp.h"
 #include "sdpd.h"
 
@@ -936,10 +937,10 @@ static struct avdtp_sep_ind mpeg_ind = {
 	.reconfigure		= reconf_ind
 };
 
-static sdp_record_t *a2dp_source_record()
+static sdp_record_t *a2dp_record(uint8_t type)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
-	uuid_t root_uuid, l2cap, avdtp, a2src;
+	uuid_t root_uuid, l2cap_uuid, avdtp_uuid, a2dp_uuid;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t *record;
@@ -954,8 +955,11 @@ static sdp_record_t *a2dp_source_record()
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(record, root);
 
-	sdp_uuid16_create(&a2src, AUDIO_SOURCE_SVCLASS_ID);
-	svclass_id = sdp_list_append(0, &a2src);
+	if (type == AVDTP_SEP_TYPE_SOURCE)
+		sdp_uuid16_create(&a2dp_uuid, AUDIO_SOURCE_SVCLASS_ID);
+	else
+		sdp_uuid16_create(&a2dp_uuid, AUDIO_SINK_SVCLASS_ID);
+	svclass_id = sdp_list_append(0, &a2dp_uuid);
 	sdp_set_service_classes(record, svclass_id);
 
 	sdp_uuid16_create(&profile[0].uuid, ADVANCED_AUDIO_PROFILE_ID);
@@ -963,14 +967,14 @@ static sdp_record_t *a2dp_source_record()
 	pfseq = sdp_list_append(0, &profile[0]);
 	sdp_set_profile_descs(record, pfseq);
 
-	sdp_uuid16_create(&l2cap, L2CAP_UUID);
-	proto[0] = sdp_list_append(0, &l2cap);
+	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
+	proto[0] = sdp_list_append(0, &l2cap_uuid);
 	psm = sdp_data_alloc(SDP_UINT16, &lp);
 	proto[0] = sdp_list_append(proto[0], psm);
 	apseq = sdp_list_append(0, proto[0]);
 
-	sdp_uuid16_create(&avdtp, AVDTP_UUID);
-	proto[1] = sdp_list_append(0, &avdtp);
+	sdp_uuid16_create(&avdtp_uuid, AVDTP_UUID);
+	proto[1] = sdp_list_append(0, &avdtp_uuid);
 	version = sdp_data_alloc(SDP_UINT16, &ver);
 	proto[1] = sdp_list_append(proto[1], version);
 	apseq = sdp_list_append(apseq, proto[1]);
@@ -981,7 +985,10 @@ static sdp_record_t *a2dp_source_record()
 	features = sdp_data_alloc(SDP_UINT16, &feat);
 	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
-	sdp_set_info_attr(record, "Audio Source", 0, 0);
+	if (type == AVDTP_SEP_TYPE_SOURCE)
+		sdp_set_info_attr(record, "Audio Source", 0, 0);
+	else
+		sdp_set_info_attr(record, "Audio Sink", 0, 0);
 
 	free(psm);
 	free(version);
@@ -996,17 +1003,11 @@ static sdp_record_t *a2dp_source_record()
 	return record;
 }
 
-static sdp_record_t *a2dp_sink_record()
-{
-	return NULL;
-}
-
 static struct a2dp_sep *a2dp_add_sep(struct a2dp_server *server, uint8_t type,
 					uint8_t codec)
 {
 	struct a2dp_sep *sep;
 	GSList **l;
-	sdp_record_t *(*create_record)(void);
 	uint32_t *record_id;
 	sdp_record_t *record;
 	struct avdtp_sep_ind *ind;
@@ -1027,18 +1028,16 @@ static struct a2dp_sep *a2dp_add_sep(struct a2dp_server *server, uint8_t type,
 
 	if (type == AVDTP_SEP_TYPE_SOURCE) {
 		l = &server->sources;
-		create_record = a2dp_source_record;
 		record_id = &server->source_record_id;
 	} else {
 		l = &server->sinks;
-		create_record = a2dp_sink_record;
 		record_id = &server->sink_record_id;
 	}
 
 	if (*record_id != 0)
 		goto add;
 
-	record = create_record();
+	record = a2dp_record(type);
 	if (!record) {
 		error("Unable to allocate new service record");
 		avdtp_unregister_sep(sep->sep);
@@ -1231,42 +1230,7 @@ void a2dp_unregister(const bdaddr_t *src)
 	connection = NULL;
 }
 
-gboolean a2dp_source_cancel(struct audio_device *dev, unsigned int id)
-{
-	struct a2dp_setup_cb *cb_data;
-	struct a2dp_setup *setup;
-	GSList *l;
-
-	debug("a2dp_source_cancel()");
-
-	setup = find_setup_by_dev(dev);
-	if (!setup)
-		return FALSE;
-
-	for (cb_data = NULL, l = setup->cb; l != NULL; l = g_slist_next(l)) {
-		struct a2dp_setup_cb *cb = l->data;
-
-		if (cb->id == id) {
-			cb_data = cb;
-			break;
-		}
-	}
-
-	if (!cb_data)
-		error("a2dp_source_cancel: no matching callback with id %u", id);
-
-	setup->cb = g_slist_remove(setup->cb, cb_data);
-	g_free(cb_data);
-
-	if (!setup->cb) {
-		setup->canceled = TRUE;
-		setup->sep = NULL;
-	}
-
-	return TRUE;
-}
-
-struct a2dp_sep *a2dp_source_get(struct avdtp *session,
+struct a2dp_sep *a2dp_get(struct avdtp *session,
 				struct avdtp_remote_sep *rsep)
 {
 	GSList *l;
@@ -1283,7 +1247,12 @@ struct a2dp_sep *a2dp_source_get(struct avdtp *session,
 	cap = avdtp_get_codec(rsep);
 	codec_cap = (void *) cap->data;
 
-	for (l = server->sources; l != NULL; l = l->next) {
+	if (avdtp_get_type(rsep) == AVDTP_SEP_TYPE_SINK)
+		l = server->sources;
+	else
+		l = server->sinks;
+
+	for (; l != NULL; l = l->next) {
 		struct a2dp_sep *sep = l->data;
 
 		if (sep->locked)
@@ -1299,7 +1268,7 @@ struct a2dp_sep *a2dp_source_get(struct avdtp *session,
 	return NULL;
 }
 
-unsigned int a2dp_source_config(struct avdtp *session, struct a2dp_sep *sep,
+unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_config_cb_t cb, GSList *caps,
 				void *user_data)
 {
@@ -1314,6 +1283,7 @@ unsigned int a2dp_source_config(struct avdtp *session, struct a2dp_sep *sep,
 	struct avdtp_media_codec_capability *codec_cap = NULL;
 	int posix_err;
 	bdaddr_t src;
+	uint8_t remote_type;
 
 	avdtp_get_peers(session, &src, NULL);
 	server = find_server(servers, &src);
@@ -1336,7 +1306,7 @@ unsigned int a2dp_source_config(struct avdtp *session, struct a2dp_sep *sep,
 	if (sep->codec != codec_cap->media_codec_type)
 		return 0;
 
-	debug("a2dp_source_config: selected SEP %p", sep->sep);
+	debug("a2dp_config: selected SEP %p", sep->sep);
 
 	cb_data = g_new0(struct a2dp_setup_cb, 1);
 	cb_data->config_cb = cb;
@@ -1359,9 +1329,16 @@ unsigned int a2dp_source_config(struct avdtp *session, struct a2dp_sep *sep,
 
 	switch (avdtp_sep_get_state(sep->sep)) {
 	case AVDTP_STATE_IDLE:
-		for (l = server->sources; l != NULL; l = l->next) {
-			tmp = l->data;
+		if (sep->type == AVDTP_SEP_TYPE_SOURCE) {
+			l = server->sources;
+			remote_type = AVDTP_SEP_TYPE_SINK;
+		} else {
+			remote_type = AVDTP_SEP_TYPE_SOURCE;
+			l = server->sinks;
+		}
 
+		for (; l != NULL; l = l->next) {
+			tmp = l->data;
 			if (avdtp_has_stream(session, tmp->stream))
 				break;
 		}
@@ -1375,7 +1352,7 @@ unsigned int a2dp_source_config(struct avdtp *session, struct a2dp_sep *sep,
 			break;
 		}
 
-		if (avdtp_get_seps(session, AVDTP_SEP_TYPE_SINK,
+		if (avdtp_get_seps(session, remote_type,
 				codec_cap->media_type,
 				codec_cap->media_codec_type,
 				&lsep, &rsep) < 0) {
@@ -1417,7 +1394,7 @@ failed:
 	return 0;
 }
 
-unsigned int a2dp_source_resume(struct avdtp *session, struct a2dp_sep *sep,
+unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_stream_cb_t cb, void *user_data)
 {
 	struct a2dp_setup_cb *cb_data;
@@ -1476,7 +1453,7 @@ failed:
 	return 0;
 }
 
-unsigned int a2dp_source_suspend(struct avdtp *session, struct a2dp_sep *sep,
+unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_stream_cb_t cb, void *user_data)
 {
 	struct a2dp_setup_cb *cb_data;
@@ -1502,7 +1479,7 @@ unsigned int a2dp_source_suspend(struct avdtp *session, struct a2dp_sep *sep,
 
 	switch (avdtp_sep_get_state(sep->sep)) {
 	case AVDTP_STATE_IDLE:
-		error("a2dp_source_suspend: no stream to suspend");
+		error("a2dp_suspend: no stream to suspend");
 		goto failed;
 		break;
 	case AVDTP_STATE_OPEN:
@@ -1525,6 +1502,41 @@ failed:
 	setup_unref(setup);
 	cb_id--;
 	return 0;
+}
+
+gboolean a2dp_cancel(struct audio_device *dev, unsigned int id)
+{
+	struct a2dp_setup_cb *cb_data;
+	struct a2dp_setup *setup;
+	GSList *l;
+
+	debug("a2dp_cancel()");
+
+	setup = find_setup_by_dev(dev);
+	if (!setup)
+		return FALSE;
+
+	for (cb_data = NULL, l = setup->cb; l != NULL; l = g_slist_next(l)) {
+		struct a2dp_setup_cb *cb = l->data;
+
+		if (cb->id == id) {
+			cb_data = cb;
+			break;
+		}
+	}
+
+	if (!cb_data)
+		error("a2dp_cancel: no matching callback with id %u", id);
+
+	setup->cb = g_slist_remove(setup->cb, cb_data);
+	g_free(cb_data);
+
+	if (!setup->cb) {
+		setup->canceled = TRUE;
+		setup->sep = NULL;
+	}
+
+	return TRUE;
 }
 
 gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session)

@@ -132,16 +132,15 @@ typedef void (*a2dp_stream_cb_t) (struct avdtp *session,
 int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config);
 void a2dp_unregister(const bdaddr_t *src);
 
-struct a2dp_sep *a2dp_source_get(struct avdtp *session,
-				struct avdtp_remote_sep *sep);
-unsigned int a2dp_source_config(struct avdtp *session, struct a2dp_sep *sep,
+struct a2dp_sep *a2dp_get(struct avdtp *session, struct avdtp_remote_sep *sep);
+unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_config_cb_t cb, GSList *caps,
 				void *user_data);
-unsigned int a2dp_source_resume(struct avdtp *session, struct a2dp_sep *sep,
+unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_stream_cb_t cb, void *user_data);
-unsigned int a2dp_source_suspend(struct avdtp *session, struct a2dp_sep *sep,
+unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_stream_cb_t cb, void *user_data);
-gboolean a2dp_source_cancel(struct audio_device *dev, unsigned int id);
+gboolean a2dp_cancel(struct audio_device *dev, unsigned int id);
 
 gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session);
 gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session);

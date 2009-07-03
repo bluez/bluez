@@ -903,7 +903,7 @@ static void start_open(struct audio_device *dev, struct unix_client *client)
 			goto failed;
 		}
 
-		a2dp->sep = a2dp_source_get(a2dp->session, rsep);
+		a2dp->sep = a2dp_get(a2dp->session, rsep);
 		if (!a2dp->sep) {
 			error("seid %d not available or locked", client->seid);
 			goto failed;
@@ -972,10 +972,9 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 			goto failed;
 		}
 
-		id = a2dp_source_config(a2dp->session, a2dp->sep,
-					a2dp_config_complete, client->caps,
-					client);
-		client->cancel = a2dp_source_cancel;
+		id = a2dp_config(a2dp->session, a2dp->sep, a2dp_config_complete,
+					client->caps, client);
+		client->cancel = a2dp_cancel;
 		break;
 
 	case TYPE_HEADSET:
@@ -1039,9 +1038,9 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 			goto failed;
 		}
 
-		id = a2dp_source_resume(a2dp->session, a2dp->sep,
-					a2dp_resume_complete, client);
-		client->cancel = a2dp_source_cancel;
+		id = a2dp_resume(a2dp->session, a2dp->sep, a2dp_resume_complete,
+					client);
+		client->cancel = a2dp_cancel;
 
 		break;
 
@@ -1107,9 +1106,9 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 			goto failed;
 		}
 
-		id = a2dp_source_suspend(a2dp->session, a2dp->sep,
+		id = a2dp_suspend(a2dp->session, a2dp->sep,
 					a2dp_suspend_complete, client);
-		client->cancel = a2dp_source_cancel;
+		client->cancel = a2dp_cancel;
 		break;
 
 	case TYPE_HEADSET:

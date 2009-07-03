@@ -165,7 +165,7 @@ static void pending_request_free(struct audio_device *dev,
 	if (pending->msg)
 		dbus_message_unref(pending->msg);
 	if (pending->id)
-		a2dp_source_cancel(dev, pending->id);
+		a2dp_cancel(dev, pending->id);
 
 	g_free(pending);
 }
@@ -520,14 +520,13 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 		goto failed;
 	}
 
-	sep = a2dp_source_get(session, rsep);
+	sep = a2dp_get(session, rsep);
 	if (!sep) {
 		error("Unable to get a local source SEP");
 		goto failed;
 	}
 
-	id = a2dp_source_config(sink->session, sep, stream_setup_complete,
-				caps, sink);
+	id = a2dp_config(sink->session, sep, stream_setup_complete, caps, sink);
 	if (id == 0)
 		goto failed;
 
