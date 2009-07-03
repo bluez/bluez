@@ -54,13 +54,13 @@ static int response_and_hold = -1;
 
 static struct indicator dummy_indicators[] =
 {
-	{ "battchg",	"0-5",	5 },
-	{ "signal",	"0-5",	5 },
-	{ "service",	"0,1",	1 },
-	{ "call",	"0,1",	0 },
-	{ "callsetup",	"0-3",	0 },
-	{ "callheld",	"0-2",	0 },
-	{ "roam",	"0,1",	0 },
+	{ "battchg",	"0-5",	5,	TRUE },
+	{ "signal",	"0-5",	5,	TRUE },
+	{ "service",	"0,1",	1,	TRUE },
+	{ "call",	"0,1",	0,	TRUE },
+	{ "callsetup",	"0-3",	0,	TRUE },
+	{ "callheld",	"0-2",	0,	FALSE },
+	{ "roam",	"0,1",	0,	TRUE },
 	{ NULL }
 };
 
