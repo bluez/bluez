@@ -1450,13 +1450,17 @@ static void csd_call_free(struct csd_call *call)
 
 static void parse_call_list(DBusMessageIter *iter)
 {
-	while (dbus_message_iter_get_arg_type(iter)
-						!= DBUS_TYPE_INVALID) {
+	do {
 		DBusMessageIter call_iter;
 		struct csd_call *call;
 		const char *object_path, *number;
 		dbus_uint32_t status;
 		dbus_bool_t originating, terminating, emerg, on_hold, conf;
+
+		if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRUCT) {
+			error("Unexpected signature in GetCallInfoAll reply");
+			break;
+		}
 
 		dbus_message_iter_recurse(iter, &call_iter);
 
@@ -1484,10 +1488,8 @@ static void parse_call_list(DBusMessageIter *iter)
 								object_path);
 		}
 
-		if (call->status == CSD_CALL_STATUS_IDLE) {
-			dbus_message_iter_next(iter);
+		if (call->status == CSD_CALL_STATUS_IDLE)
 			continue;
-		}
 
 		/* CSD gives incorrect call_hold property sometimes */
 		if ((call->status != CSD_CALL_STATUS_HOLD && on_hold) ||
@@ -1503,8 +1505,7 @@ static void parse_call_list(DBusMessageIter *iter)
 		g_free(call->number);
 		call->number = g_strdup(number);
 
-		dbus_message_iter_next(iter);
-	}
+	} while (dbus_message_iter_next(iter));
 }
 
 static void signal_strength_reply(DBusPendingCall *call, void *user_data)
