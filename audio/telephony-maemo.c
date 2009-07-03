@@ -169,8 +169,6 @@ static struct {
 	.operator_name = NULL,
 };
 
-static gboolean initialized = FALSE;
-
 static DBusConnection *connection = NULL;
 
 static GSList *calls = NULL;
@@ -935,15 +933,6 @@ static void handle_outgoing_call(DBusMessage *msg)
 					EV_CALLSETUP_OUTGOING);
 }
 
-static void call_info_reply(DBusPendingCall *call, void *user_data);
-
-static int update_call_list(void)
-{
-	return send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
-				CSD_CALL_INTERFACE, "GetCallInfoAll",
-				call_info_reply, NULL, DBUS_TYPE_INVALID);
-}
-
 static void handle_call_status(DBusMessage *msg, const char *call_path)
 {
 	struct csd_call *call;
@@ -1043,8 +1032,6 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 				telephony_calling_stopped_ind();
 			call->setup = FALSE;
 		}
-		if (g_slist_length(active_calls) > 1)
-			update_call_list();
 		break;
 	case CSD_CALL_STATUS_MO_RELEASE:
 	case CSD_CALL_STATUS_MT_RELEASE:
@@ -1065,8 +1052,6 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_ON_HOLD);
-		if (g_slist_length(active_calls) > 1)
-			update_call_list();
 		break;
 	case CSD_CALL_STATUS_RETRIEVE_INITIATED:
 		break;
@@ -1086,6 +1071,30 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		error("Unknown call status %u", status);
 		break;
 	}
+}
+
+static void handle_conference(DBusMessage *msg, gboolean joined)
+{
+	const char *path;
+	struct csd_call *call;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected parameters in Conference.%s",
+					dbus_message_get_member(msg));
+		return;
+	}
+
+	call = find_call(path);
+	if (!call) {
+		error("Conference signal for unknown call %s", path);
+		return;
+	}
+
+	debug("Call %s %s the conference", path, joined ? "joined" : "left");
+
+	call->conference = joined;
 }
 
 static void get_operator_name_reply(DBusPendingCall *pending_call,
@@ -1424,6 +1433,10 @@ static DBusHandlerResult signal_filter(DBusConnection *conn,
 		handle_outgoing_call(msg);
 	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE, "CallStatus"))
 		handle_call_status(msg, path);
+	else if (dbus_message_is_signal(msg, CSD_CALL_CONFERENCE, "Joined"))
+		handle_conference(msg, TRUE);
+	else if (dbus_message_is_signal(msg, CSD_CALL_CONFERENCE, "Left"))
+		handle_conference(msg, FALSE);
 	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
 					"registration_status_change"))
 		handle_registration_status_change(msg);
@@ -1610,7 +1623,6 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 
 	telephony_ready_ind(features, maemo_indicators, response_and_hold,
 				chld_str);
-	initialized = TRUE;
 
 	get_signal_strength();
 
@@ -1653,8 +1665,7 @@ static void call_info_reply(DBusPendingCall *call, void *user_data)
 
 	parse_call_list(&sub);
 
-	if (!initialized)
-		get_registration_status();
+	get_registration_status();
 
 done:
 	dbus_message_unref(reply);
@@ -1791,10 +1802,16 @@ int telephony_init(void)
 	dbus_bus_add_match(connection, match_string, NULL);
 
 	snprintf(match_string, sizeof(match_string),
+			"type=signal,interface=%s", CSD_CALL_CONFERENCE);
+	dbus_bus_add_match(connection, match_string, NULL);
+
+	snprintf(match_string, sizeof(match_string),
 			"type=signal,interface=%s", NETWORK_INTERFACE);
 	dbus_bus_add_match(connection, match_string, NULL);
 
-	ret = update_call_list();
+	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+				CSD_CALL_INTERFACE, "GetCallInfoAll",
+				call_info_reply, NULL, DBUS_TYPE_INVALID);
 	if (ret < 0)
 		return ret;
 
@@ -1845,5 +1862,4 @@ void telephony_exit(void)
 
 	dbus_connection_unref(connection);
 	connection = NULL;
-	initialized = FALSE;
 }
