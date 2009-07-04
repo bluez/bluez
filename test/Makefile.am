@@ -32,7 +32,7 @@ lmptest_LDADD = @BLUEZ_LIBS@
 
 agent_LDADD = @DBUS_LIBS@
 
-btiotest_LDADD = @GLIB_LIBS@ @BLUEZ_LIBS@ $(top_builddir)/common/libhelper.a
+btiotest_LDADD = $(top_builddir)/common/libhelper.a @GLIB_LIBS@ @BLUEZ_LIBS@
 
 noinst_MANS = bdaddr.8
 
