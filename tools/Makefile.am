@@ -1,7 +1,7 @@
 
 if TOOLS
-tools_programs = hcitool l2ping sdptool ciptool
-tools_manfiles = hcitool.1 l2ping.8 sdptool.1 ciptool.1
+tools_programs = l2ping hcitool sdptool ciptool
+tools_manfiles = l2ping.8 hcitool.1 sdptool.1 ciptool.1
 else
 tools_programs =
 tools_manfiles =
@@ -100,7 +100,7 @@ man_MANS = hciattach.8 hciconfig.8 $(tools_manfiles) \
 		$(bccmd_manfiles) $(hid2hci_manfiles) $(dfutool_manfiles)
 endif
 
-EXTRA_DIST = hciattach.8 hciconfig.8 hcitool.1 l2ping.1 sdptool.1 ciptool.1 \
+EXTRA_DIST = hciattach.8 hciconfig.8 l2ping.8 hcitool.1 sdptool.1 ciptool.1 \
 		 bccmd.8 avctrl.8 hid2hci.8 dfutool.1 dfubabel.1 example.psr
 
 MAINTAINERCLEANFILES = Makefile.in
