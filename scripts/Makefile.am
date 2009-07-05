@@ -1,6 +1,6 @@
 
 if UDEVRULES
-rulesdir = $(sysconfdir)/udev
+rulesdir = @UDEV_DATADIR@
 
 rules_DATA = 97-bluetooth.rules
 

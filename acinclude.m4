@@ -110,6 +110,9 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 
 	AC_SUBST(CONFIGDIR, "${configdir}")
 	AC_SUBST(STORAGEDIR, "${storagedir}")
+
+	UDEV_DATADIR="${sysconfdir}/udev/rules.d"
+	AC_SUBST(UDEV_DATADIR)
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
