@@ -1,7 +1,7 @@
 AC_PREREQ(2.60)
 AC_INIT()
 
-AM_INIT_AUTOMAKE(bluez, 4.43)
+AM_INIT_AUTOMAKE(bluez, 4.44)
 AM_CONFIG_HEADER(config.h)
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])

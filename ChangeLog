@@ -1,3 +1,14 @@
+ver 4.44:
+	Add some missing manual pages.
+	Fix missing number prefix when installing udev rules.
+	Fix program prefix used in Bluetooth udev rules.
+	Fix three-way calling indicator order.
+	Fix downgrade/upgrade of callheld indicator.
+	Fix +CIEV sending when indicator value changes.
+	Fix signal handling for Maemo telephony driver.
+	Fix parsing issues with messages from Maemo CSD.
+	Fix issue with duplicate active calls.
+
 ver 4.43:
 	Add support for udev based on-demand startup.
 	Fix verbose error reporting of CUPS backend.
