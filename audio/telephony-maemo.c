@@ -1797,6 +1797,8 @@ static void phonebook_read_reply(DBusPendingCall *call, void *user_data)
 
 	if (err != 0) {
 		error("SIM.Phonebook.read failed with error %d", err);
+		if (number_type == &vmbx)
+			vmbx = g_strdup(getenv("VMBX_NUMBER"));
 		goto done;
 	}
 
