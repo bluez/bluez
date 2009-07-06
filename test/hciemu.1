@@ -1,0 +1,31 @@
+.TH HCIEMU 1 "Jul 6 2009" BlueZ ""
+.SH NAME
+hciemu \- HCI emulator
+.SH SYNOPSIS
+.B hciemu
+[\fIoptions\fR] \fIlocal_address\fR
+
+.SH DESCRIPTION
+.LP
+.B
+hciemu
+is used to emulate an HCI via \fBhci_vhci\fR kernel module
+
+.SH OPTIONS
+.TP
+.BI -d\  device
+use specified \fIdevice\fR
+.TP
+.BI -b\  bdaddr
+emulate \fIbdaddr\fR
+.TP
+.BI -s\  file
+create snoop file \fIfile\fR
+.TP
+.B -n
+do not detach
+
+.SH AUTHORS
+Written by Marcel Holtmann <marcel@holtmann.org> and Maxim Krasnyansky
+<maxk@qualcomm.com>, man page by Filippo Giunchedi <filippo@debian.org>
+.PP
