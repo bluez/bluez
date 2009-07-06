@@ -1172,7 +1172,13 @@ static void usage(void)
 {
 	printf("hciemu - HCI emulator ver %s\n", VERSION);
 	printf("Usage: \n");
-	printf("\thciemu [-n] local_address\n");
+	printf("\thciemu [options] local_address\n"
+		"Options:\n"
+		"\t[-d device] use specified device\n"
+		"\t[-b bdaddr] emulate specified address\n"
+		"\t[-s file] create snoop file\n"
+		"\t[-n] do not detach\n"
+		"\t[-h] help, you are looking at it\n");
 }
 
 static struct option main_options[] = {
