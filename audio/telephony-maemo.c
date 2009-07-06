@@ -937,19 +937,12 @@ static void handle_outgoing_call(DBusMessage *msg)
 		g_source_remove(create_request_timer);
 		create_request_timer = 0;
 	}
-
-	/* Upgrade the callheld status if necessary */
-	if (callheld == EV_CALLHELD_ON_HOLD)
-		telephony_update_indicator(maemo_indicators,
-						"callheld",
-						EV_CALLHELD_MULTIPLE);
-
-	telephony_update_indicator(maemo_indicators, "callsetup",
-						EV_CALLSETUP_OUTGOING);
 }
 
 static gboolean create_timeout(gpointer user_data)
 {
+	telephony_update_indicator(maemo_indicators, "callsetup",
+					EV_CALLSETUP_INACTIVE);
 	create_request_timer = 0;
 	return FALSE;
 }
@@ -958,13 +951,13 @@ static void handle_create_requested(DBusMessage *msg)
 {
 	debug("Call.CreateRequested()");
 
-	if (!find_call_with_status(CSD_CALL_STATUS_ACTIVE))
-		return;
-
 	if (create_request_timer)
 		g_source_remove(create_request_timer);
 
 	create_request_timer = g_timeout_add_seconds(5, create_timeout, NULL);
+
+	telephony_update_indicator(maemo_indicators, "callsetup",
+					EV_CALLSETUP_OUTGOING);
 }
 
 static void handle_call_status(DBusMessage *msg, const char *call_path)
@@ -1060,18 +1053,16 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 				telephony_update_indicator(maemo_indicators,
 								"call",
 								EV_CALL_ACTIVE);
+			/* Upgrade callheld status if necessary */
+			if (callheld == EV_CALLHELD_ON_HOLD)
+				telephony_update_indicator(maemo_indicators,
+							"callheld",
+							EV_CALLHELD_MULTIPLE);
 			telephony_update_indicator(maemo_indicators,
 							"callsetup",
 							EV_CALLSETUP_INACTIVE);
-			if (!call->originating) {
+			if (!call->originating)
 				telephony_calling_stopped_ind();
-				/* Upgrade callheld status if necessary */
-				if (callheld == EV_CALLHELD_ON_HOLD)
-					telephony_update_indicator(
-							maemo_indicators,
-							"callheld",
-							EV_CALLHELD_MULTIPLE);
-			}
 			call->setup = FALSE;
 		}
 		break;
@@ -1086,15 +1077,11 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		break;
 	case CSD_CALL_STATUS_HOLD:
 		call->on_hold = TRUE;
-		if (find_non_held_call() || create_request_timer) {
-			if (create_request_timer) {
-				g_source_remove(create_request_timer);
-				create_request_timer = 0;
-			}
+		if (find_non_held_call())
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_MULTIPLE);
-		} else
+		else
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_ON_HOLD);
