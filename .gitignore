@@ -34,6 +34,7 @@ include/bluetooth
 src/bluetoothd
 plugins/builtin.h
 audio/telephony.c
+scripts/bluetooth.rules
 
 sbc/sbcdec
 sbc/sbcenc

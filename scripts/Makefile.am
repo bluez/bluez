@@ -21,8 +21,7 @@ endif
 
 CLEANFILES = $(rules_DATA)
 
-EXTRA_DIST = bluetooth.init bluetooth.default bluetooth.rules \
-	bluetooth-hid2hci.rules bluetooth-serial.rules bluetooth_serial
+EXTRA_DIST = bluetooth-hid2hci.rules bluetooth-serial.rules bluetooth_serial
 
 MAINTAINERCLEANFILES = Makefile.in
 

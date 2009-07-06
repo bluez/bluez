@@ -9,6 +9,9 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = bluez.pc
 
+DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
+				--disable-udevrules
+
 DISTCLEANFILES = $(pkgconfig_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in \

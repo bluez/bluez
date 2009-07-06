@@ -51,18 +51,19 @@ AC_OUTPUT([
 	common/Makefile
 	sbc/Makefile
 	src/Makefile
+	test/Makefile
+	cups/Makefile
+	tools/Makefile
 	client/Makefile
+	rfcomm/Makefile
+	compat/Makefile
 	plugins/Makefile
 	network/Makefile
 	serial/Makefile
 	input/Makefile
 	audio/Makefile
-	tools/Makefile
-	rfcomm/Makefile
-	compat/Makefile
 	scripts/Makefile
-	cups/Makefile
-	test/Makefile
+	scripts/bluetooth.rules
 	doc/Makefile
 	doc/version.xml
 	src/bluetoothd.8
