@@ -47,10 +47,6 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 
-int set_service_classes(int dd, const uint8_t *cls, uint8_t value);
-int set_major_and_minor_class(int dd, const uint8_t *cls,
-						uint8_t major, uint8_t minor);
-
 const char *class_to_icon(uint32_t class);
 
 void set_dbus_connection(DBusConnection *conn);

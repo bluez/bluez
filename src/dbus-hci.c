@@ -725,47 +725,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 	adapter_remove_connection(adapter, device, handle);
 }
 
-int set_service_classes(int dd, const uint8_t *cls, uint8_t value)
-{
-	uint32_t dev_class;
-
-	if (cls[2] == value)
-		return 0; /* Already set */
-
-	dev_class = (value << 16) | (cls[1] << 8) | cls[0];
-
-	debug("Changing service classes to 0x%06x", dev_class);
-
-	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		int err = -errno;
-		error("Can't write class of device: %s (%d)",
-						strerror(errno), errno);
-		return err;
-	}
-
-	return 0;
-}
-
-int set_major_and_minor_class(int dd, const uint8_t *cls,
-						uint8_t major, uint8_t minor)
-{
-	uint32_t dev_class;
-
-	dev_class = (cls[2] << 16) | ((cls[1] & 0x20) << 8) |
-						((major & 0xdf) << 8) | minor;
-
-	debug("Changing major/minor class to 0x%06x", dev_class);
-
-	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		int err = -errno;
-		error("Can't write class of device: %s (%d)",
-						strerror(errno), errno);
-		return err;
-	}
-
-	return 0;
-}
-
 /* Section reserved to device HCI callbacks */
 
 void hcid_dbus_setname_complete(bdaddr_t *local)
@@ -930,9 +889,9 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 		return;
 	}
 
-	adapter_update_ssp_mode(adapter, dd, mode);
-
 	hci_close_dev(dd);
+
+	adapter_update_ssp_mode(adapter, mode);
 }
 
 int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,

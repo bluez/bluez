@@ -81,7 +81,7 @@ int adapter_get_class(struct btd_adapter *adapter, uint8_t *cls);
 
 int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls);
 
-int adapter_update_ssp_mode(struct btd_adapter *adapter, int dd, uint8_t mode);
+int adapter_update_ssp_mode(struct btd_adapter *adapter, uint8_t mode);
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
 				struct btd_adapter *adapter, const char *address);
@@ -131,6 +131,9 @@ gboolean adapter_has_discov_sessions(struct btd_adapter *adapter);
 
 struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter);
 void btd_adapter_unref(struct btd_adapter *adapter);
+int set_major_and_minor_class(struct btd_adapter *adapter, uint8_t major,
+								uint8_t minor);
+
 
 struct btd_adapter_driver {
 	const char *name;
