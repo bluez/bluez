@@ -2142,7 +2142,6 @@ int adapter_stop(struct btd_adapter *adapter)
 	clear_found_devices_list(adapter);
 
 	if (adapter->oor_devices) {
-		g_slist_foreach(adapter->oor_devices, (GFunc) free, NULL);
 		g_slist_free(adapter->oor_devices);
 		adapter->oor_devices = NULL;
 	}
