@@ -1,3 +1,10 @@
+ver 4.45:
+	Fix UDEV_DATADIR fallback if pkg-config fails.
+	Fix adapter cleanup and setup prototypes.
+	Fix double-free with out-of-range devices.
+	Fix inband ring setting to be per-headset.
+	Fix handling of Maemo CSD startup.
+
 ver 4.44:
 	Add some missing manual pages.
 	Fix missing number prefix when installing udev rules.
