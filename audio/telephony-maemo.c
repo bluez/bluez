@@ -908,7 +908,6 @@ static void handle_outgoing_call(DBusMessage *msg)
 {
 	const char *number, *call_path;
 	struct csd_call *call;
-	int callheld = telephony_get_indicator(maemo_indicators, "callheld");
 
 	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_OBJECT_PATH, &call_path,
