@@ -169,6 +169,8 @@ static struct {
 	.operator_name = NULL,
 };
 
+static guint csd_watch = 0;
+
 static DBusConnection *connection = NULL;
 
 static GSList *calls = NULL;
@@ -1815,7 +1817,7 @@ done:
 	dbus_message_unref(reply);
 }
 
-int telephony_init(void)
+static gboolean csd_init(gpointer user_data)
 {
 	char match_string[128];
 	const char *battery_cap = "battery";
@@ -1823,12 +1825,10 @@ int telephony_init(void)
 	uint8_t pb_type, location_type;
 	int ret;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-
 	if (!dbus_connection_add_filter(connection, signal_filter,
 						NULL, NULL)) {
 		error("Can't add signal filter");
-		return -EIO;
+		return FALSE;
 	}
 
 	snprintf(match_string, sizeof(match_string),
@@ -1850,8 +1850,10 @@ int telephony_init(void)
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 				CSD_CALL_INTERFACE, "GetCallInfoAll",
 				call_info_reply, NULL, DBUS_TYPE_INVALID);
-	if (ret < 0)
-		return ret;
+	if (ret < 0) {
+		error("Unable to sent GetCallInfoAll method call");
+		return FALSE;
+	}
 
 	ret = send_method_call("org.freedesktop.Hal",
 				"/org/freedesktop/Hal/Manager",
@@ -1860,8 +1862,10 @@ int telephony_init(void)
 				hal_find_device_reply, NULL,
 				DBUS_TYPE_STRING, &battery_cap,
 				DBUS_TYPE_INVALID);
-	if (ret < 0)
-		return ret;
+	if (ret < 0) {
+		error("Unable to send HAL method call");
+		return FALSE;
+	}
 
 	pb_type = SIM_PHONEBOOK_TYPE_MSISDN;
 	location = PHONEBOOK_INDEX_FIRST_ENTRY;
@@ -1874,24 +1878,60 @@ int telephony_init(void)
 				DBUS_TYPE_INT32, &location,
 				DBUS_TYPE_BYTE, &location_type,
 				DBUS_TYPE_INVALID);
-	if (ret < 0)
-		return ret;
+	if (ret < 0) {
+		error("Unable to send " SIM_PHONEBOOK_INTERFACE ".read()");
+		return FALSE;
+	}
 
 	pb_type = SIM_PHONEBOOK_TYPE_VMBX;
 	location = PHONEBOOK_INDEX_FIRST_ENTRY;
 	location_type = SIM_PHONEBOOK_LOCATION_NEXT;
 
-	return send_method_call(SIM_PHONEBOOK_BUS_NAME, SIM_PHONEBOOK_PATH,
+	ret = send_method_call(SIM_PHONEBOOK_BUS_NAME, SIM_PHONEBOOK_PATH,
 				SIM_PHONEBOOK_INTERFACE, "read",
 				phonebook_read_reply, &vmbx,
 				DBUS_TYPE_BYTE, &pb_type,
 				DBUS_TYPE_INT32, &location,
 				DBUS_TYPE_BYTE, &location_type,
 				DBUS_TYPE_INVALID);
+	if (ret < 0) {
+		error("Unable to send " SIM_PHONEBOOK_INTERFACE ".read()");
+		return FALSE;
+	}
+
+	return FALSE;
+}
+
+static void csd_ready(DBusConnection *conn, void *user_data)
+{
+	g_dbus_remove_watch(conn, csd_watch);
+	csd_watch = 0;
+
+	g_timeout_add_seconds(2, csd_init, NULL);
+}
+
+int telephony_init(void)
+{
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+
+	csd_watch = g_dbus_add_service_watch(connection, CSD_CALL_BUS_NAME,
+						csd_ready, NULL, NULL, NULL);
+
+	if (dbus_bus_name_has_owner(connection, CSD_CALL_BUS_NAME, NULL))
+		csd_ready(connection, NULL);
+	else
+		info("CSD not yet available. Waiting for it...");
+
+	return 0;
 }
 
 void telephony_exit(void)
 {
+	if (csd_watch) {
+		g_dbus_remove_watch(connection, csd_watch);
+		csd_watch = 0;
+	}
+
 	g_slist_foreach(calls, (GFunc) csd_call_free, NULL);
 	g_slist_free(calls);
 	calls = NULL;
