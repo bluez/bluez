@@ -2950,12 +2950,12 @@ int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops)
 	return 0;
 }
 
-void btd_adapter_cleanup_ops()
+void btd_adapter_cleanup_ops(struct btd_adapter_ops *btd_adapter_ops)
 {
 	adapter_ops->cleanup();
 }
 
-int adapter_ops_setup()
+int adapter_ops_setup(void)
 {
 	if (!adapter_ops)
 		return -EINVAL;
