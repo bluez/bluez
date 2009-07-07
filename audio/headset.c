@@ -154,6 +154,7 @@ struct headset {
 	gboolean cme_enabled;
 	gboolean cwa_enabled;
 	gboolean pending_ring;
+	gboolean inband_ring;
 	gboolean nrec;
 	gboolean nrec_req;
 
@@ -2471,11 +2472,15 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 					AUDIO_HEADSET_INTERFACE, "State",
 					DBUS_TYPE_STRING, &state_str);
 		if (hs->state < state) {
-			value = TRUE;
+			if (ag.features & AG_FEATURE_INBAND_RINGTONE)
+				hs->inband_ring = TRUE;
+			else
+				hs->inband_ring = FALSE;
 			g_dbus_emit_signal(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Connected",
 						DBUS_TYPE_INVALID);
+			value = TRUE;
 			emit_property_changed(dev->conn, dev->path,
 						AUDIO_HEADSET_INTERFACE,
 						"Connected",
@@ -2699,15 +2704,15 @@ int telephony_incoming_call_ind(const char *number, int type)
 
 	/* With HSP 1.2 the RING messages should *not* be sent if inband
 	 * ringtone is being used */
-	if (!hs->hfp_active && (ag.features & AG_FEATURE_INBAND_RINGTONE))
+	if (!hs->hfp_active && hs->inband_ring)
 		return 0;
 
 	g_free(ag.number);
 	ag.number = g_strdup(number);
 	ag.number_type = type;
 
-	if (ag.features & AG_FEATURE_INBAND_RINGTONE && hs->hfp_active &&
-			hs->state != HEADSET_STATE_PLAYING) {
+	if (hs->inband_ring && hs->hfp_active &&
+					hs->state != HEADSET_STATE_PLAYING) {
 		hs->pending_ring = TRUE;
 		return 0;
 	}
