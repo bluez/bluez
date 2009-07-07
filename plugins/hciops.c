@@ -725,7 +725,7 @@ static int hciops_init(void)
 }
 static void hciops_exit(void)
 {
-	btd_adapter_cleanup_ops();
+	btd_adapter_cleanup_ops(&hci_ops);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(hciops, VERSION,
