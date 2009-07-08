@@ -217,7 +217,7 @@ int texasalt_init(int fd, int speed, struct termios *ti)
 			"brf6100",
 			"brf6150",
 			"brf6300",
-			"unknown",
+			"brf6350",
 			"unknown",
 			"wl1271"
 		};
