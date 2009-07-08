@@ -882,6 +882,7 @@ static void start_open(struct audio_device *dev, struct unix_client *client)
 
 	switch (client->type) {
 	case TYPE_SINK:
+	case TYPE_SOURCE:
 		a2dp = &client->d.a2dp;
 
 		if (!a2dp->session)
@@ -957,6 +958,7 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 
 	switch (client->type) {
 	case TYPE_SINK:
+	case TYPE_SOURCE:
 		a2dp = &client->d.a2dp;
 
 		if (!a2dp->session)
@@ -1023,6 +1025,7 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 
 	switch (client->type) {
 	case TYPE_SINK:
+	case TYPE_SOURCE:
 		a2dp = &client->d.a2dp;
 
 		if (!a2dp->session)
@@ -1091,6 +1094,7 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 
 	switch (client->type) {
 	case TYPE_SINK:
+	case TYPE_SOURCE:
 		a2dp = &client->d.a2dp;
 
 		if (!a2dp->session)
