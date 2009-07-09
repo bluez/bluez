@@ -28,6 +28,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <string.h>
 #include <glib.h>
@@ -82,6 +84,16 @@ enum network_alpha_tag_name_type {
 	NETWORK_NITZ_SHORT_OPER_NAME,
 	NETWORK_NITZ_FULL_OPER_NAME,
 };
+
+#define TELEPHONY_MAEMO_PATH		"/com/nokia/MaemoTelephony"
+#define TELEPHONY_MAEMO_INTERFACE	"com.nokia.MaemoTelephony"
+
+#define CALLERID_BASE		"/var/lib/bluetooth/maemo-callerid-"
+#define ALLOWED_FLAG_FILE	"/var/lib/bluetooth/maemo-callerid-allowed"
+#define RESTRICTED_FLAG_FILE	"/var/lib/bluetooth/maemo-callerid-restricted"
+#define NONE_FLAG_FILE		"/var/lib/bluetooth/maemo-callerid-none"
+
+static uint32_t callerid = 0;
 
 /* CSD CALL plugin D-Bus definitions */
 #define CSD_CALL_BUS_NAME	"com.nokia.csd.Call"
@@ -599,7 +611,7 @@ static const char *memory_dial_lookup(int location)
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
 {
-	uint32_t flags = CALL_FLAG_NONE;
+	uint32_t flags = callerid;
 	int ret;
 
 	debug("telephony-maemo: dial request to %s", number);
@@ -1910,6 +1922,99 @@ static void csd_ready(DBusConnection *conn, void *user_data)
 	g_timeout_add_seconds(2, csd_init, NULL);
 }
 
+static inline DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg,"org.bluez.Error.InvalidArguments",
+					"Invalid arguments in method call");
+}
+
+static uint32_t get_callflag(const char *callerid_setting)
+{
+	if (callerid_setting != NULL) {
+		if (g_str_equal(callerid_setting, "allowed"))
+			return CALL_FLAG_PRESENTATION_ALLOWED;
+		else if (g_str_equal(callerid_setting, "restricted"))
+			return CALL_FLAG_PRESENTATION_RESTRICTED;
+		else
+			return CALL_FLAG_NONE;
+	} else
+		return CALL_FLAG_NONE;
+}
+
+static void generate_flag_file(const char *filename)
+{
+	int fd;
+
+	if (g_file_test(ALLOWED_FLAG_FILE, G_FILE_TEST_EXISTS) ||
+			g_file_test(RESTRICTED_FLAG_FILE, G_FILE_TEST_EXISTS) ||
+			g_file_test(NONE_FLAG_FILE, G_FILE_TEST_EXISTS))
+		return;
+
+	fd = open(filename, O_WRONLY | O_CREAT, 0);
+	if (fd >= 0)
+		close(fd);
+}
+
+static void save_callerid_to_file(const char *callerid_setting)
+{
+	char callerid_file[FILENAME_MAX];
+
+	snprintf(callerid_file, sizeof(callerid_file), "%s%s",
+					CALLERID_BASE, callerid_setting);
+
+	if (g_file_test(ALLOWED_FLAG_FILE, G_FILE_TEST_EXISTS))
+		rename(ALLOWED_FLAG_FILE, callerid_file);
+	else if (g_file_test(RESTRICTED_FLAG_FILE, G_FILE_TEST_EXISTS))
+		rename(RESTRICTED_FLAG_FILE, callerid_file);
+	else if (g_file_test(NONE_FLAG_FILE, G_FILE_TEST_EXISTS))
+		rename(NONE_FLAG_FILE, callerid_file);
+	else
+		generate_flag_file(callerid_file);
+}
+
+static uint32_t callerid_from_file(void)
+{
+	if (g_file_test(ALLOWED_FLAG_FILE, G_FILE_TEST_EXISTS))
+		return CALL_FLAG_PRESENTATION_ALLOWED;
+	else if (g_file_test(RESTRICTED_FLAG_FILE, G_FILE_TEST_EXISTS))
+		return CALL_FLAG_PRESENTATION_RESTRICTED;
+	else if (g_file_test(NONE_FLAG_FILE, G_FILE_TEST_EXISTS))
+		return CALL_FLAG_NONE;
+	else
+		return CALL_FLAG_NONE;
+}
+
+static DBusMessage *set_callerid(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	const char *callerid_setting;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING,
+						&callerid_setting,
+						DBUS_TYPE_INVALID) == FALSE)
+		return invalid_args(msg);
+
+	if (g_str_equal(callerid_setting, "allowed") ||
+			g_str_equal(callerid_setting, "restricted") ||
+			g_str_equal(callerid_setting, "none")) {
+		save_callerid_to_file(callerid_setting);
+		callerid = get_callflag(callerid_setting);
+		debug("telephony-maemo setting callerid flag: %s",
+							callerid_setting);
+		return dbus_message_new_method_return(msg);
+	}
+
+	error("telephony-maemo: invalid argument %s for method call"
+					" SetCallerId", callerid_setting);
+		return invalid_args(msg);
+}
+
+static GDBusMethodTable telephony_maemo_methods[] = {
+	{"SetCallerId",		"s",	"",	set_callerid,
+						G_DBUS_METHOD_FLAG_ASYNC},
+	{ }
+};
+
 int telephony_init(void)
 {
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
@@ -1921,6 +2026,19 @@ int telephony_init(void)
 		csd_ready(connection, NULL);
 	else
 		info("CSD not yet available. Waiting for it...");
+
+	generate_flag_file(NONE_FLAG_FILE);
+	callerid = callerid_from_file();
+
+	if (!g_dbus_register_interface(connection, TELEPHONY_MAEMO_PATH,
+			TELEPHONY_MAEMO_INTERFACE, telephony_maemo_methods,
+			NULL, NULL, NULL, NULL)) {
+		error("telephony-maemo interface %s init failed on path %s",
+			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
+	}
+
+	debug("telephony-maemo registering %s interface on path %s",
+			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
 
 	return 0;
 }
