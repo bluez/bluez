@@ -877,7 +877,7 @@ void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 void adapter_setname_complete(bdaddr_t *local, uint8_t status)
 {
 	struct btd_adapter *adapter;
-	int dd, err;
+	int err;
 
 	if (status)
 		return;
@@ -888,18 +888,11 @@ void adapter_setname_complete(bdaddr_t *local, uint8_t status)
 		return;
 	}
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0) {
-		error("HCI device open failed: hci%d", adapter->dev_id);
-		return;
-	}
-
-	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_LOCAL_NAME, 0, 0);
+	err = adapter_ops->read_name(adapter->dev_id);
 	if (err < 0)
 		error("Sending getting name command failed: %s (%d)",
 						strerror(errno), errno);
 
-	hci_close_dev(dd);
 }
 
 static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
@@ -2132,7 +2125,7 @@ int adapter_start(struct btd_adapter *adapter)
 		return err;
 	}
 
-	hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_LOCAL_NAME, 0, 0);
+	adapter_ops->read_name(adapter->dev_id);
 
 	if (!(features[6] & LMP_SIMPLE_PAIR))
 		goto setup;

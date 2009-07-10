@@ -704,6 +704,23 @@ static int hciops_set_name(int index, const char *name)
 	return err;
 }
 
+static int hciops_read_name(int index)
+{
+	int dd, err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_LOCAL_NAME, 0, 0);
+	if (err < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	remote_name_req_cancel_cp cp;
@@ -740,6 +757,7 @@ static struct btd_adapter_ops hci_ops = {
 	.resolve_name = hciops_resolve_name,
 	.cancel_resolve_name = hciops_cancel_resolve_name,
 	.set_name = hciops_set_name,
+	.read_name = hciops_read_name,
 };
 
 static int hciops_init(void)
