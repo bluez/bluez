@@ -121,7 +121,9 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 				struct remote_dev_info *dev);
 void adapter_update_oor_devices(struct btd_adapter *adapter);
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
-void adapter_name_changed(struct btd_adapter *adapter, const char *name);
+void adapter_setname_complete(bdaddr_t *local, uint8_t status);
+void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr);
+
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
 void adapter_add_connection(struct btd_adapter *adapter,
 				struct btd_device *device, uint16_t handle);
@@ -171,6 +173,7 @@ struct btd_adapter_ops {
 	int (*stop_discovery) (int index);
 	int (*resolve_name) (int index, bdaddr_t *bdaddr);
 	int (*cancel_resolve_name) (int index, bdaddr_t *bdaddr);
+	int (*set_name) (int index, const char *name);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);

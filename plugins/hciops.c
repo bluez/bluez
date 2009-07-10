@@ -682,6 +682,28 @@ static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 	return err;
 }
 
+static int hciops_set_name(int index, const char *name)
+{
+	change_local_name_cp cp;
+	int dd, err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	memset(&cp, 0, sizeof(cp));
+	strncpy((char *) cp.name, name, sizeof(cp.name));
+
+	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
+					CHANGE_LOCAL_NAME_CP_SIZE, &cp);
+	if (err < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	remote_name_req_cancel_cp cp;
@@ -717,6 +739,7 @@ static struct btd_adapter_ops hci_ops = {
 	.stop_discovery = hciops_stop_discovery,
 	.resolve_name = hciops_resolve_name,
 	.cancel_resolve_name = hciops_cancel_resolve_name,
+	.set_name = hciops_set_name,
 };
 
 static int hciops_init(void)

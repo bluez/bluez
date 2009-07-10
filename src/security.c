@@ -677,7 +677,7 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 		inquiry_complete(sba, status, FALSE);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME):
-		hcid_dbus_setname_complete(sba);
+		adapter_setname_complete(sba, status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE):
 		hcid_dbus_setscan_enable_complete(sba);
@@ -687,6 +687,10 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE):
 		hcid_dbus_write_simple_pairing_mode_complete(sba);
+		break;
+	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_LOCAL_NAME):
+		ptr += sizeof(evt_cmd_complete);
+		adapter_update_local_name(sba, status, ptr);
 		break;
 	};
 }

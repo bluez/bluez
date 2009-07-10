@@ -838,76 +838,93 @@ static void update_ext_inquiry_response(struct btd_adapter *adapter)
 	hci_close_dev(dd);
 }
 
-void adapter_name_changed(struct btd_adapter *adapter, const char *name)
+void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 {
-	struct hci_dev *dev = &adapter->dev;
+	read_local_name_rp rp;
+	struct hci_dev *dev;
+	struct btd_adapter *adapter;
+	gchar *name;
 
-	if (strncmp(name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
+	if (status)
 		return;
 
-	write_local_name(&adapter->bdaddr, (char *) name);
+	adapter = manager_find_adapter(bdaddr);
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
 
-	strncpy((char *) dev->name, name, MAX_NAME_LENGTH);
+	dev = &adapter->dev;
+
+	memcpy(&rp, ptr, MAX_NAME_LENGTH);
+	if (strncmp((char *) rp.name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
+		return;
+
+	strncpy((char *) dev->name, (char *) rp.name, MAX_NAME_LENGTH);
+
+	write_local_name(bdaddr, (char *) dev->name);
 
 	update_ext_inquiry_response(adapter);
 
-	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
+	name = g_strdup((char *) dev->name);
+
+	if (connection)
+		emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
 				"Name", DBUS_TYPE_STRING, &name);
+	g_free(name);
 }
 
-static int adapter_set_name(struct btd_adapter *adapter, const char *name)
+void adapter_setname_complete(bdaddr_t *local, uint8_t status)
 {
-	struct hci_dev *dev = &adapter->dev;
+	struct btd_adapter *adapter;
 	int dd, err;
 
-	write_local_name(&adapter->bdaddr, (char *) name);
+	if (status)
+		return;
 
-	strncpy((char *) dev->name, name, MAX_NAME_LENGTH);
-
-	if (!adapter->up)
-		return 0;
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("No matching adapter found");
+		return;
+	}
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
-		err = -errno;
-		error("Can't open device hci%d: %s (%d)",
-				adapter->dev_id, strerror(errno), errno);
-		return err;
+		error("HCI device open failed: hci%d", adapter->dev_id);
+		return;
 	}
 
-	if (hci_write_local_name(dd, name, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
-		error("Can't write name for hci%d: %s (%d)",
-				adapter->dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
-		return err;
-	}
+	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_LOCAL_NAME, 0, 0);
+	if (err < 0)
+		error("Sending getting name command failed: %s (%d)",
+						strerror(errno), errno);
 
 	hci_close_dev(dd);
-
-	update_ext_inquiry_response(adapter);
-
-	return 0;
 }
 
 static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 					const char *name, void *data)
 {
 	struct btd_adapter *adapter = data;
-	int ecode;
+	struct hci_dev *dev = &adapter->dev;
+	int err;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
 		error("Name change failed: supplied name isn't valid UTF-8");
 		return invalid_args(msg);
 	}
 
-	ecode = adapter_set_name(adapter, name);
-	if (ecode < 0)
-		return failed_strerror(msg, -ecode);
+	if (strncmp(name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
+		goto done;
 
-	emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
-				"Name", DBUS_TYPE_STRING, &name);
+	if (!adapter->up)
+		return failed_strerror(msg, -EHOSTDOWN);
 
+	err = adapter_ops->set_name(adapter->dev_id, name);
+	if (err < 0)
+		return failed_strerror(msg, err);
+
+done:
 	return dbus_message_new_method_return(msg);
 }
 
@@ -1784,12 +1801,8 @@ static int adapter_setup(struct btd_adapter *adapter)
 						sizeof(events), events);
 	}
 
-	if (read_local_name(&adapter->bdaddr, name) == 0) {
-		memcpy(dev->name, name, MAX_NAME_LENGTH);
-		hci_write_local_name(dd, name, HCI_REQ_TIMEOUT);
-	}
-
-	update_ext_inquiry_response(adapter);
+	if (read_local_name(&adapter->bdaddr, name) == 0)
+		adapter_ops->set_name(adapter->dev_id, name);
 
 	inqmode = get_inquiry_mode(dev);
 	if (inqmode < 1)
@@ -2058,7 +2071,6 @@ int adapter_start(struct btd_adapter *adapter)
 	struct hci_version ver;
 	uint8_t features[8];
 	int dd, err;
-	char name[MAX_NAME_LENGTH + 1];
 
 	if (hci_devinfo(adapter->dev_id, &di) < 0)
 		return -errno;
@@ -2120,16 +2132,7 @@ int adapter_start(struct btd_adapter *adapter)
 		return err;
 	}
 
-	if (hci_read_local_name(dd, sizeof(name), name,
-						HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
-		error("Can't read local name on %s: %s (%d)",
-					adapter->path, strerror(errno), errno);
-		hci_close_dev(dd);
-		return err;
-	}
-
-	memcpy(dev->name, name, MAX_NAME_LENGTH);
+	hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_LOCAL_NAME, 0, 0);
 
 	if (!(features[6] & LMP_SIMPLE_PAIR))
 		goto setup;

@@ -727,53 +727,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 /* Section reserved to device HCI callbacks */
 
-void hcid_dbus_setname_complete(bdaddr_t *local)
-{
-	struct btd_adapter *adapter;
-	int id, dd = -1;
-	read_local_name_rp rp;
-	struct hci_request rq;
-	const char *pname = (char *) rp.name;
-	char name[MAX_NAME_LENGTH + 1];
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	id = adapter_get_dev_id(adapter);
-	dd = hci_open_dev(id);
-	if (dd < 0) {
-		error("HCI device open failed: hci%d", id);
-		memset(&rp, 0, sizeof(rp));
-	} else {
-		memset(&rq, 0, sizeof(rq));
-		rq.ogf    = OGF_HOST_CTL;
-		rq.ocf    = OCF_READ_LOCAL_NAME;
-		rq.rparam = &rp;
-		rq.rlen   = READ_LOCAL_NAME_RP_SIZE;
-		rq.event  = EVT_CMD_COMPLETE;
-
-		if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
-			error("Sending getting name command failed: %s (%d)",
-						strerror(errno), errno);
-			rp.name[0] = '\0';
-		} else if (rp.status) {
-			error("Getting name failed with status 0x%02x",
-					rp.status);
-			rp.name[0] = '\0';
-		}
-		hci_close_dev(dd);
-	}
-
-	strncpy(name, pname, sizeof(name) - 1);
-	name[MAX_NAME_LENGTH] = '\0';
-	pname = name;
-
-	adapter_name_changed(adapter, pname);
-}
-
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
 	struct btd_adapter *adapter;
