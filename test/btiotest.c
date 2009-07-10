@@ -187,7 +187,7 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 	struct io_data *data = user_data;
 	GError *err = NULL;
 
-	if (!bt_io_get(io, data->type, NULL, BT_IO_OPT_DEST, addr,
+	if (!bt_io_get(io, data->type, &err, BT_IO_OPT_DEST, addr,
 							BT_IO_OPT_INVALID)) {
 		printf("bt_io_get(OPT_DEST): %s\n", err->message);
 		g_clear_error(&err);
