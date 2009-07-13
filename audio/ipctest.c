@@ -736,7 +736,7 @@ static int read_stream(struct userdata *u)
 			else {
 				ERR("Failed to read date from stream_fd: %s",
 					ret < 0 ? strerror(errno) : "EOF");
-				ret = -1;
+				return -1;
 			}
 		} else {
 			break;
