@@ -214,7 +214,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	telephony_driver=dummy
 
 	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization], [disable code optimization]), [
-		fortify_optimization=${enableval}
+		optimization_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(fortify, AC_HELP_STRING([--disable-fortify], [disable compile time buffer checks]), [
