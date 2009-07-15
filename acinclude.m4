@@ -184,6 +184,7 @@ AC_DEFUN([AC_PATH_SNDFILE], [
 
 AC_DEFUN([AC_ARG_BLUEZ], [
 	debug_enable=no
+	optimization_enable=yes
 	fortify_enable=yes
 	pie_enable=yes
 	sndfile_enable=${sndfile_found}
@@ -211,6 +212,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	udevrules_enable=yes
 	configfiles_enable=yes
 	telephony_driver=dummy
+
+	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization], [disable code optimization]), [
+		fortify_optimization=${enableval}
+	])
 
 	AC_ARG_ENABLE(fortify, AC_HELP_STRING([--disable-fortify], [disable compile time buffer checks]), [
 		fortify_enable=${enableval}
@@ -328,7 +333,11 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
-		CFLAGS="$CFLAGS -g -O0"
+		CFLAGS="$CFLAGS -g"
+	fi
+
+	if (test "${optimization_enable}" = "no"); then
+		CFLAGS="$CFLAGS -O0"
 	fi
 
 	if (test "${usb_enable}" = "yes" && test "${usb_found}" = "yes"); then
