@@ -391,9 +391,12 @@ static void process_ring(struct audio_device *device, GIOChannel *chan,
 	gchar *cli;
 	gchar *sep;
 	gsize read;
+	GIOStatus status;
 
 	rfcomm_stop_watch(device);
-	g_io_channel_read_chars(chan, buf, RFCOMM_BUF_SIZE - 1, &read, NULL);
+	status = g_io_channel_read_chars(chan, buf, RFCOMM_BUF_SIZE - 1, &read, NULL);
+	if (status != G_IO_STATUS_NORMAL)
+		return;
 
 	debug("at the begin of process_ring");
 	if (strlen(buf) > AG_CALLER_NUM_SIZE + 10)
