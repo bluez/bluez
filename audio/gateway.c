@@ -595,78 +595,83 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 static void get_record_cb(sdp_list_t *recs, int perr, gpointer user_data)
 {
 	struct audio_device *dev = user_data;
-	DBusMessage *conn_mes = dev->gateway->connect_message;
+	DBusMessage *msg = dev->gateway->connect_message;
 	int ch = -1;
-	sdp_list_t *protos, *classes = NULL;
+	sdp_list_t *protos, *classes;
 	uuid_t uuid;
 	gateway_stream_cb_t sco_cb;
 	GIOChannel *io;
 	GError *err = NULL;
 
-	if (perr < 0)
+	if (perr < 0) {
 		error("Unable to get service record: %s (%d)", strerror(-perr),
 					-perr);
-	else if (!recs || !recs->data)
+		goto fail;
+	}
+
+	if (!recs || !recs->data) {
 		error("No records found");
-	else if (sdp_get_service_classes(recs->data, &classes) < 0)
+		goto fail;
+	}
+
+	if (sdp_get_service_classes(recs->data, &classes) < 0) {
 		error("Unable to get service classes from record");
-	else {
-		memcpy(&uuid, classes->data, sizeof(uuid));
+		goto fail;
+	}
 
-		if (!sdp_uuid128_to_uuid(&uuid) || uuid.type != SDP_UUID16)
-			error("Not a 16 bit UUID");
-		else if (uuid.value.uuid16 != HANDSFREE_AGW_SVCLASS_ID)
-			error("Service record didn't contain the HFP UUID");
-		else if (!sdp_get_access_protos(recs->data, &protos)) {
-			ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-			sdp_list_foreach(protos,
-				(sdp_list_func_t) sdp_list_free, NULL);
-			sdp_list_free(protos, NULL);
-			if (ch == -1)
-				error("Unable to extract RFCOMM channel"
-						" from service record");
-			else {
-				io = bt_io_connect(BT_IO_RFCOMM,
-					rfcomm_connect_cb, dev, NULL, &err,
-					BT_IO_OPT_SOURCE_BDADDR, &dev->src,
-					BT_IO_OPT_DEST_BDADDR, &dev->dst,
-					BT_IO_OPT_CHANNEL, ch,
-					BT_IO_OPT_INVALID);
-				if (!io) {
+	if (sdp_get_access_protos(recs->data, &protos) < 0) {
+		error("Unable to get access protocols from record");
+		goto fail;
+	}
 
-					error("Unable to connect: %s",
-						err->message);
-					if (conn_mes)
-						error_common_reply(dev->conn,
-						conn_mes, ERROR_INTERFACE
+	memcpy(&uuid, classes->data, sizeof(uuid));
+	sdp_list_free(classes, free);
+
+	if (!sdp_uuid128_to_uuid(&uuid) || uuid.type != SDP_UUID16 ||
+			uuid.value.uuid16 != HANDSFREE_AGW_SVCLASS_ID) {
+		sdp_list_free(protos, NULL);
+		error("Invalid service record or not HFP");
+		goto fail;
+	}
+
+	ch = sdp_get_proto_port(protos, RFCOMM_UUID);
+	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
+	sdp_list_free(protos, NULL);
+	if (ch <= 0) {
+		error("Unable to extract RFCOMM channel from service record");
+		goto fail;
+	}
+
+	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, dev, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
+				BT_IO_OPT_DEST_BDADDR, &dev->dst,
+				BT_IO_OPT_CHANNEL, ch,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		error("Unable to connect: %s", err->message);
+		if (msg) {
+			error_common_reply(dev->conn, msg, ERROR_INTERFACE
 						".ConnectionAttemptFailed",
 						err->message);
-					g_error_free(err);
-					gateway_close(dev);
-				}
-				g_io_channel_unref(io);
-				sdp_list_free(classes, free);
-				return;
-			}
+			msg = NULL;
 		}
+		g_error_free(err);
+		gateway_close(dev);
 	}
 
-	if (classes)
-		sdp_list_free(classes, free);
+	g_io_channel_unref(io);
+	return;
 
-	if (recs && recs->data)
-		sdp_record_free(recs->data);
+fail:
+	if (msg)
+		error_common_reply(dev->conn, msg, ERROR_INTERFACE
+					".NotSupported", "Not supported");
 
-	if (conn_mes) {
-		error_common_reply(dev->conn, conn_mes,
-			ERROR_INTERFACE".NotSupported", "Not supported");
-		dbus_message_unref(conn_mes);
-		dev->gateway->connect_message = NULL;
-	}
+	dev->gateway->connect_message = NULL;
+
 	sco_cb = dev->gateway->sco_start_cb;
 	if (sco_cb)
 		sco_cb(NULL, dev->gateway->sco_start_cb_data);
-
 }
 
 static int get_records(struct audio_device *device)
