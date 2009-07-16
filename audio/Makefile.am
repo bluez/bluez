@@ -58,7 +58,7 @@ libgstbluetooth_la_SOURCES = gstbluetooth.c \
 libgstbluetooth_la_LDFLAGS = -module -avoid-version
 libgstbluetooth_la_LIBADD = @SBC_LIBS@ @BLUEZ_LIBS@ @GSTREAMER_LIBS@ \
 						-lgstaudio-0.10 -lgstrtp-0.10
-libgstbluetooth_la_CFLAGS = -fvisibility=hidden \
+libgstbluetooth_la_CFLAGS = -fvisibility=hidden -fno-strict-aliasing \
 			 @GSTREAMER_CFLAGS@ @BLUEZ_CFLAGS@ @SBC_CFLAGS@
 endif
 endif
@@ -71,7 +71,7 @@ noinst_PROGRAMS = ipctest
 
 ipctest_LDADD= libipc.la @SBC_LIBS@ @GLIB_LIBS@
 
-AM_CFLAGS = -fvisibility=hidden @SBC_CFLAGS@ \
+AM_CFLAGS = -fvisibility=hidden -fno-strict-aliasing @SBC_CFLAGS@ \
 		@BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 CLEANFILES = $(BUILT_SOURCES)
