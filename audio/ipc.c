@@ -106,8 +106,10 @@ int bt_audio_service_get_data_fd(int sk)
 	for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
 			cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
 		if (cmsg->cmsg_level == SOL_SOCKET
-				&& cmsg->cmsg_type == SCM_RIGHTS)
-			return (*(int *) CMSG_DATA(cmsg));
+				&& cmsg->cmsg_type == SCM_RIGHTS) {
+			memcpy(&ret, CMSG_DATA(cmsg), sizeof(int));
+			return ret;
+		}
 	}
 
 	errno = EINVAL;
