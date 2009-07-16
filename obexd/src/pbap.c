@@ -136,22 +136,29 @@ static int pbap_parse_apparam_header(obex_t *obex, obex_object_t *obj,
 				}
 				break;
 			case FILTER_TAG:
-				if (hdr->len == FILTER_LEN)
-					apparam->filter = get_be64(hdr->val);
+				if (hdr->len == FILTER_LEN) {
+					guint64 val;
+					memcpy(&val, hdr->val, sizeof(val));
+					apparam->filter = get_be64(&val);
+				}
 				break;
 			case FORMAT_TAG:
 				if (hdr->len == FORMAT_LEN)
 					apparam->format = hdr->val[0];
 				break;
 			case MAXLISTCOUNT_TAG:
-				if (hdr->len == MAXLISTCOUNT_LEN)
-					apparam->maxlistcount =
-							get_be16(hdr->val);
+				if (hdr->len == MAXLISTCOUNT_LEN) {
+					guint16 val;
+					memcpy(&val, hdr->val, sizeof(val));
+					apparam->maxlistcount = get_be16(&val);
+				}
 				break;
 			case LISTSTARTOFFSET_TAG:
-				if (hdr->len == LISTSTARTOFFSET_LEN)
-					apparam->liststartoffset =
-							get_be16(hdr->val);
+				if (hdr->len == LISTSTARTOFFSET_LEN) {
+					guint16 val;
+					memcpy(&val, hdr->val, sizeof(val));
+					apparam->liststartoffset = get_be16(&val);
+				}
 				break;
 			default:
 				g_free(apparam->searchval);
@@ -204,10 +211,11 @@ static int pbap_add_result_apparam_header(obex_t *obex, obex_object_t *obj,
 
 		if (maxlistcount == 0) {
 			struct apparam_hdr *hdr = ptr;
+			guint16 val = GUINT16_TO_BE(phonebooksize);
 
 			hdr->tag = PHONEBOOKSIZE_TAG;
 			hdr->len = PHONEBOOKSIZE_LEN;
-			put_be16(phonebooksize, hdr->val);
+			memcpy(hdr->val, &val, sizeof(val));
 
 			ptr += APPARAM_HDR_SIZE + PHONEBOOKSIZE_LEN;
 		}

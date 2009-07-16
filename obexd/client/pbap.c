@@ -306,8 +306,11 @@ static void read_return_apparam(struct session_data *session,
 
 		switch (hdr->tag) {
 		case PHONEBOOKSIZE_TAG:
-			if (hdr->len == PHONEBOOKSIZE_LEN)
-				*phone_book_size = get_be16(hdr->val);
+			if (hdr->len == PHONEBOOKSIZE_LEN) {
+				guint16 val;
+				memcpy(&val, hdr->val, sizeof(val));
+				*phone_book_size = val;
+			}
 			break;
 		case NEWMISSEDCALLS_TAG:
 			if (hdr->len == NEWMISSEDCALLS_LEN)
