@@ -459,7 +459,7 @@ static int scan_enable(uint8_t *data)
 
 	baswap(&ba, &vdev.bdaddr);
 	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = *(uint32_t *) &ba;
+	memcpy(&sa.sin_addr.s_addr, &ba, sizeof(sa.sin_addr.s_addr));
 	sa.sin_port = *(uint16_t *) &ba.b[4];
 	if (bind(sk, (struct sockaddr *) &sa, sizeof(sa))) {
 		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
@@ -566,7 +566,7 @@ do_connect:
 
 	baswap(&ba, &cp->bdaddr);
 	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = *(uint32_t *) &ba;
+	memcpy(&sa.sin_addr.s_addr, &ba, sizeof(sa.sin_addr.s_addr));
 	sa.sin_port = *(uint16_t *) &ba.b[4];
 	if (connect(sk, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
 		syslog(LOG_ERR, "Can't connect: %s (%d)",
