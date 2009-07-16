@@ -873,8 +873,8 @@ static void info_request(char *svr)
 
 	switch (btohs(rsp->result)) {
 	case 0x0000:
-		mtu = btohs(bt_get_unaligned((uint16_t *) rsp->data));
-		printf("Connectionless MTU size is %d\n", mtu);
+		memcpy(&mtu, rsp->data, sizeof(mtu));
+		printf("Connectionless MTU size is %d\n", btohs(mtu));
 		break;
 	case 0x0001:
 		printf("Connectionless MTU is not supported\n");
@@ -900,8 +900,8 @@ static void info_request(char *svr)
 
 	switch (btohs(rsp->result)) {
 	case 0x0000:
-		mask = btohl(bt_get_unaligned((uint32_t *) rsp->data));
-		printf("Extended feature mask is 0x%04x\n", mask);
+		memcpy(&mask, rsp->data, sizeof(mask));
+		printf("Extended feature mask is 0x%04x\n", btohl(mask));
 		if (mask & 0x01)
 			printf("  Flow control mode\n");
 		if (mask & 0x02)
@@ -950,8 +950,8 @@ static void info_request(char *svr)
 
 	switch (btohs(rsp->result)) {
 	case 0x0000:
-		channels = btohl(bt_get_unaligned((uint32_t *) rsp->data));
-		printf("Fixed channels list is 0x%04x\n", channels);
+		memcpy(&channels, rsp->data, sizeof(channels));
+		printf("Fixed channels list is 0x%04x\n", btohl(channels));
 	case 0x0001:
 		printf("Fixed channels list is not supported\n");
 		break;
