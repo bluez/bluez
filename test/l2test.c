@@ -952,6 +952,7 @@ static void info_request(char *svr)
 	case 0x0000:
 		memcpy(&channels, rsp->data, sizeof(channels));
 		printf("Fixed channels list is 0x%04x\n", btohl(channels));
+		break;
 	case 0x0001:
 		printf("Fixed channels list is not supported\n");
 		break;
