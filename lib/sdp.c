@@ -3153,7 +3153,13 @@ static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 	SDPDBG("Seq length : %d\n", seqlen);
 
 	types = malloc(seqlen * sizeof(void *));
+	if (!types)
+		return -ENOMEM;
+
 	values = malloc(seqlen * sizeof(void *));
+	if (!values)
+		return -ENOMEM;
+
 	for (i = 0; i < seqlen; i++) {
 		void *data = seq->data;
 		types[i] = &dtd;
@@ -3164,12 +3170,22 @@ static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 	}
 
 	dataseq = sdp_seq_alloc(types, values, seqlen);
+	if (!dataseq) {
+		free(types);
+		free(values);
+		return -ENOMEM;
+	}
+
 	memset(&buf, 0, sizeof(sdp_buf_t));
 	sdp_gen_buffer(&buf, dataseq);
 	buf.data = malloc(buf.buf_size);
 
-	if (!buf.data)
+	if (!buf.data) {
+		sdp_data_free(dataseq);
+		free(types);
+		free(values);
 		return -ENOMEM;
+	}
 
 	SDPDBG("Data Seq : 0x%p\n", seq);
 	seqlen = sdp_gen_pdu(&buf, dataseq);
