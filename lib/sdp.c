@@ -3157,8 +3157,10 @@ static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 		return -ENOMEM;
 
 	values = malloc(seqlen * sizeof(void *));
-	if (!values)
+	if (!values) {
+		free(types);
 		return -ENOMEM;
+	}
 
 	for (i = 0; i < seqlen; i++) {
 		void *data = seq->data;
