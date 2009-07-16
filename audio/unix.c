@@ -136,7 +136,7 @@ static int unix_sendmsg_fd(int sock, int fd)
 	cmsg->cmsg_type = SCM_RIGHTS;
 	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
 	/* Initialize the payload */
-	(*(int *) CMSG_DATA(cmsg)) = fd;
+	memcpy(CMSG_DATA(cmsg), &fd, sizeof(int));
 
 	return sendmsg(sock, &msgh, MSG_NOSIGNAL);
 }
