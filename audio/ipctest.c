@@ -1019,10 +1019,15 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 	}
 
 	IF_CMD(bdaddr) {
+		char *address;
+
+		if (sscanf(line, "%*s %as", &address) != 1)
+			DBG("set with bdaddr BDADDR");
+
 		if (u->address)
 			free(u->address);
-		if (sscanf(line, "%*s %as", &u->address) != 1)
-			DBG("set with bdaddr BDADDR");
+
+		u->address = address;
 		DBG("bdaddr %s", u->address);
 	}
 
