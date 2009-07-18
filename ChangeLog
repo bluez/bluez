@@ -1,3 +1,9 @@
+ver 4.46:
+	Add support for A2DP sink role.
+	Fix clearing svc_cache before the adapter is up.
+	Fix various pointer after free usages.
+	Fix various memory leaks.
+
 ver 4.45:
 	Fix UDEV_DATADIR fallback if pkg-config fails.
 	Fix adapter cleanup and setup prototypes.
