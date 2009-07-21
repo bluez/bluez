@@ -171,7 +171,7 @@ int hcid_dbus_init(void)
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, BLUEZ_NAME, &err);
 	if (!conn) {
-		if (error != NULL && dbus_error_is_set(&err)) {
+		if (dbus_error_is_set(&err)) {
 			dbus_error_free(&err);
 			return -EIO;
 		}
