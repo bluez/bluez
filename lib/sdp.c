@@ -53,6 +53,8 @@
 #define SDPINF(fmt, arg...) syslog(LOG_INFO, fmt "\n", ## arg)
 #define SDPERR(fmt, arg...) syslog(LOG_ERR, "%s: " fmt "\n", __func__ , ## arg)
 
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
 #ifdef SDP_DEBUG
 #define SDPDBG(fmt, arg...) syslog(LOG_DEBUG, "%s: " fmt "\n", __func__ , ## arg)
 #else
@@ -2236,7 +2238,7 @@ static sdp_data_t *access_proto_to_dataseq(sdp_record_t *rec, sdp_list_t *proto)
 		sdp_data_t *s;
 		uuid_t *uuid = NULL;
 		unsigned int pslen = 0;
-		for (; elt && pslen < sizeof(dtds); elt = elt->next, pslen++) {
+		for (; elt && pslen < ARRAY_SIZE(dtds); elt = elt->next, pslen++) {
 			sdp_data_t *d = (sdp_data_t *)elt->data;
 			dtds[pslen] = &d->dtd;
 			switch (d->dtd) {
