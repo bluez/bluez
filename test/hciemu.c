@@ -518,7 +518,7 @@ static void disconnect(uint8_t *data)
 
 	handle = btohs(cp->handle);
 
-	if (handle - 1 > VHCI_MAX_CONN)
+	if (handle > VHCI_MAX_CONN)
 		return;
 
 	if (!(conn = vconn[handle-1]))
