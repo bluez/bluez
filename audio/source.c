@@ -132,19 +132,11 @@ static void avdtp_state_callback(struct audio_device *dev,
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
-		if (source->state != SOURCE_STATE_CONNECTING) {
-			gboolean value = FALSE;
-			g_dbus_emit_signal(dev->conn, dev->path,
-					AUDIO_SOURCE_INTERFACE, "Disconnected",
-					DBUS_TYPE_INVALID);
-			emit_property_changed(dev->conn, dev->path,
-					AUDIO_SOURCE_INTERFACE, "Connected",
-					DBUS_TYPE_BOOLEAN, &value);
-			if (source->dc_id) {
-				device_remove_disconnect_watch(dev->btd_dev,
-								source->dc_id);
-				source->dc_id = 0;
-			}
+		if (source->state != SOURCE_STATE_CONNECTING &&
+				source->dc_id) {
+			device_remove_disconnect_watch(dev->btd_dev,
+							source->dc_id);
+			source->dc_id = 0;
 		}
 		source_set_state(dev, SOURCE_STATE_DISCONNECTED);
 		break;
@@ -190,7 +182,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 {
 	struct audio_device *dev = user_data;
 	struct source *source = dev->source;
-	gboolean value;
 
 	if (err)
 		return;
@@ -225,38 +216,13 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	case AVDTP_STATE_OPEN:
 		if (old_state == AVDTP_STATE_CONFIGURED &&
 				source->state == SOURCE_STATE_CONNECTING) {
-			value = TRUE;
-			g_dbus_emit_signal(dev->conn, dev->path,
-						AUDIO_SOURCE_INTERFACE,
-						"Connected",
-						DBUS_TYPE_INVALID);
-			emit_property_changed(dev->conn, dev->path,
-						AUDIO_SOURCE_INTERFACE,
-						"Connected",
-						DBUS_TYPE_BOOLEAN, &value);
 			source->dc_id = device_add_disconnect_watch(dev->btd_dev,
 								disconnect_cb,
 								dev, NULL);
-		} else if (old_state == AVDTP_STATE_STREAMING) {
-			value = FALSE;
-			g_dbus_emit_signal(dev->conn, dev->path,
-						AUDIO_SOURCE_INTERFACE,
-						"Stopped",
-						DBUS_TYPE_INVALID);
-			emit_property_changed(dev->conn, dev->path,
-						AUDIO_SOURCE_INTERFACE,
-						"Playing",
-						DBUS_TYPE_BOOLEAN, &value);
 		}
 		source_set_state(dev, SOURCE_STATE_CONNECTED);
 		break;
 	case AVDTP_STATE_STREAMING:
-		value = TRUE;
-		g_dbus_emit_signal(dev->conn, dev->path, AUDIO_SOURCE_INTERFACE,
-					"Playing", DBUS_TYPE_INVALID);
-		emit_property_changed(dev->conn, dev->path,
-					AUDIO_SOURCE_INTERFACE, "Playing",
-					DBUS_TYPE_BOOLEAN, &value);
 		source_set_state(dev, SOURCE_STATE_PLAYING);
 		break;
 	case AVDTP_STATE_CONFIGURED:
@@ -643,27 +609,6 @@ static DBusMessage *source_disconnect(DBusConnection *conn,
 	return NULL;
 }
 
-static DBusMessage *source_is_connected(DBusConnection *conn,
-					DBusMessage *msg,
-					void *data)
-{
-	struct audio_device *device = data;
-	struct source *source = device->source;
-	DBusMessage *reply;
-	dbus_bool_t connected;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	connected = (source->stream_state >= AVDTP_STATE_CONFIGURED);
-
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
-					DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
 static DBusMessage *source_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -673,7 +618,6 @@ static DBusMessage *source_get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	const char *state;
-	gboolean value;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -685,14 +629,6 @@ static DBusMessage *source_get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	/* Playing */
-	value = (source->stream_state == AVDTP_STATE_STREAMING);
-	dict_append_entry(&dict, "Playing", DBUS_TYPE_BOOLEAN, &value);
-
-	/* Connected */
-	value = (source->stream_state >= AVDTP_STATE_CONFIGURED);
-	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &value);
 
 	/* State */
 	state = state2str(source->state);
@@ -709,17 +645,11 @@ static GDBusMethodTable source_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	source_disconnect,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "IsConnected",	"",	"b",	source_is_connected,
-						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "GetProperties",	"",	"a{sv}",source_get_properties },
 	{ NULL, NULL, NULL, NULL }
 };
 
 static GDBusSignalTable source_signals[] = {
-	{ "Connected",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
-	{ "Disconnected",		"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
-	{ "Playing",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
-	{ "Stopped",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
 	{ "PropertyChanged",		"sv"	},
 	{ NULL, NULL }
 };
