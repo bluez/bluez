@@ -290,6 +290,59 @@ properties	string State [readonly]
 			Indicates if a stream is active to a A2DP sink on
 			the remote device.
 
+AudioSource hierarchy
+=====================
+
+Service		org.bluez
+Interface	org.bluez.AudioSource
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+
+Methods		void Connect()
+
+			Connect and setup a stream to a A2DP source on the
+			remote device.
+
+		void Disconnect()
+
+			Disconnect from the remote device.
+
+		dict GetProperties()
+
+			Returns all properties for the interface. See the
+			properties section for available properties.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+properties	string State [readonly]
+
+			Possible values: "disconnected", "connecting",
+			"connected", "playing"
+
+			"disconnected" -> "connecting"
+				Either an incoming or outgoing connection
+				attempt ongoing.
+
+			"connecting" -> "disconnected"
+				Connection attempt failed
+
+			"connecting" -> "connected"
+				Successfully connected
+
+			"connected" -> "playing"
+				Audio stream active
+
+			"playing" -> "connected"
+				Audio stream suspended
+
+			"connected" -> "disconnected"
+			"playing" -> "disconnected"
+				Disconnected from the remote device
+
 
 HeadsetGateway hierarchy
 ========================
