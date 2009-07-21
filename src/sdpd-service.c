@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 
@@ -624,7 +625,7 @@ invalid:
  */
 int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 {
-	sdp_record_t *orec;
+	sdp_record_t *orec, *nrec;
 	int status = 0, scanned = 0;
 	uint8_t *p = req->buf + sizeof(sdp_pdu_hdr_t);
 	int bufsize = req->len - sizeof(sdp_pdu_hdr_t);
@@ -639,27 +640,23 @@ int service_update_req(sdp_req_t *req, sdp_buf_t *rsp)
 
 	SDPDBG("SvcRecOld: %p", orec);
 
-	if (orec) {
-		sdp_record_t *nrec = extract_pdu_server(BDADDR_ANY, p, bufsize,
-							handle, &scanned);
-		if (nrec && handle == nrec->handle) {
-			update_db_timestamp();
-			update_svclass_list(BDADDR_ANY);
-		} else {
-			SDPDBG("SvcRecHandle : 0x%x", handle);
-			SDPDBG("SvcRecHandleNew : 0x%x", nrec->handle);
-			SDPDBG("SvcRecNew : %p", nrec);
-			SDPDBG("SvcRecOld : %p", orec);
-			SDPDBG("Failure to update, restore old value");
-
-			status = SDP_INVALID_SYNTAX;
-		}
-
-		if (nrec)
-			sdp_record_free(nrec);
-	} else
+	if (!orec) {
 		status = SDP_INVALID_RECORD_HANDLE;
+		goto done;
+	}
 
+	nrec = extract_pdu_server(BDADDR_ANY, p, bufsize, handle, &scanned);
+	if (!nrec) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
+
+	assert(nrec == orec);
+
+	update_db_timestamp();
+	update_svclass_list(BDADDR_ANY);
+
+done:
 	p = rsp->data;
 	bt_put_unaligned(htons(status), (uint16_t *) p);
 	rsp->data_size = sizeof(uint16_t);
