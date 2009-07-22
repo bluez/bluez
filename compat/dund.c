@@ -560,7 +560,8 @@ int main(int argc, char *argv[])
 
 	/* The rest is pppd options */
 	if (argc > 0) {
-		for (opt = 3; argc && opt < DUN_MAX_PPP_OPTS; argc--, opt++)
+		for (opt = 3; argc && opt < DUN_MAX_PPP_OPTS - 1;
+							argc--, opt++)
 			pppd_opts[opt] = *argv++;
 		pppd_opts[opt] = NULL;
 	}
