@@ -61,27 +61,21 @@ const char *manager_get_base_path(void)
 	return base_path;
 }
 
-int manager_update_adapter(uint16_t dev_id, uint8_t svc)
-{
-	struct btd_adapter *adapter;
-
-	adapter = manager_find_adapter_by_id(dev_id);
-	if (!adapter)
-		return -EINVAL;
-
-	return adapter_update(adapter, svc);
-}
-
-int manager_startup_complete(void)
+void manager_update_svc(const bdaddr_t *bdaddr, uint8_t svc)
 {
 	GSList *l;
+	bdaddr_t src;
 
 	for (l = adapters; l != NULL; l = l->next) {
 		struct btd_adapter *adapter = l->data;
-		adapter_update(adapter, 0);
-	}
 
-	return 0;
+		adapter_get_address(adapter, &src);
+
+		if (bacmp(bdaddr, BDADDR_ANY) != 0 && bacmp(bdaddr, &src) != 0)
+			continue;
+
+		adapter_update(adapter, svc);
+	}
 }
 
 int manager_get_adapter_class(uint16_t dev_id, uint8_t *cls)

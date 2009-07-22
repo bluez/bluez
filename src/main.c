@@ -203,49 +203,6 @@ static void parse_config(GKeyFile *config)
 						HCI_LP_HOLD | HCI_LP_PARK;
 }
 
-static void update_service_classes(const bdaddr_t *bdaddr, uint8_t value)
-{
-	struct hci_dev_list_req *dl;
-	struct hci_dev_req *dr;
-	int i, sk;
-
-	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (sk < 0)
-		return;
-
-	dl = g_malloc0(HCI_MAX_DEV * sizeof(*dr) + sizeof(*dl));
-
-	dl->dev_num = HCI_MAX_DEV;
-
-	if (ioctl(sk, HCIGETDEVLIST, dl) < 0) {
-		close(sk);
-		g_free(dl);
-		return;
-	}
-
-	dr = dl->dev_req;
-
-	for (i = 0; i < dl->dev_num; i++, dr++) {
-		struct hci_dev_info di;
-
-		if (hci_devinfo(dr->dev_id, &di) < 0)
-			continue;
-
-		if (hci_test_bit(HCI_RAW, &di.flags))
-			continue;
-
-		if (bacmp(bdaddr, BDADDR_ANY) != 0 &&
-				bacmp(bdaddr, &di.bdaddr) != 0)
-			continue;
-
-		manager_update_adapter(di.dev_id, value);
-	}
-
-	g_free(dl);
-
-	close(sk);
-}
-
 /*
  * Device name expansion
  *   %d - device id
@@ -460,7 +417,6 @@ int main(int argc, char *argv[])
 	}
 
 	start_sdp_server(mtu, main_opts.deviceid, SDP_SERVER_COMPAT);
-	set_service_classes_callback(update_service_classes);
 
 	/* Loading plugins has to be done after D-Bus has been setup since
 	 * the plugins might wanna expose some paths on the bus. However the
@@ -475,7 +431,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	manager_startup_complete();
+	manager_update_svc(BDADDR_ANY, 0);
 
 	debug("Entering main loop");
 

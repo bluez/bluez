@@ -93,8 +93,5 @@ void stop_sdp_server(void);
 int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec);
 int remove_record_from_server(uint32_t handle);
 
-typedef void (*service_classes_callback_t) (const bdaddr_t *bdaddr, uint8_t value);
-
 uint8_t get_service_classes(const bdaddr_t *bdaddr);
-void set_service_classes_callback(service_classes_callback_t callback);
 void create_ext_inquiry_response(const char *name, uint8_t *data);

@@ -41,13 +41,16 @@
 
 #include <netinet/in.h>
 
+#include <glib.h>
+#include <dbus/dbus.h>
+
 #include "sdpd.h"
 #include "logging.h"
+#include "manager.h"
 
 static sdp_record_t *server = NULL;
 
 static uint8_t service_classes = 0x00;
-static service_classes_callback_t service_classes_callback = NULL;
 
 static uint16_t did_vendor = 0x0000;
 static uint16_t did_product = 0x0000;
@@ -155,18 +158,12 @@ static void update_svclass_list(const bdaddr_t *src)
 
 	service_classes = val;
 
-	if (service_classes_callback)
-		service_classes_callback(src, val);
+	manager_update_svc(src, val);
 }
 
 uint8_t get_service_classes(const bdaddr_t *bdaddr)
 {
 	return service_classes;
-}
-
-void set_service_classes_callback(service_classes_callback_t callback)
-{
-	service_classes_callback = callback;
 }
 
 void create_ext_inquiry_response(const char *name, uint8_t *data)
