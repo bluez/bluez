@@ -577,7 +577,7 @@ static DBusMessage *proxy_enable(DBusConnection *conn,
 		return failed(msg, "Unable to allocate new service record");
 	else if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE "Failed",
-				"Proxy enable failed (%s)",  strerror(-err));
+				"Proxy enable failed (%s)", strerror(-err));
 
 	return dbus_message_new_method_return(msg);
 }
