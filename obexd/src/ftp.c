@@ -58,6 +58,9 @@
 
 #define FL_TYPE "<!DOCTYPE folder-listing SYSTEM \"obex-folder-listing.dtd\">" EOL_CHARS
 
+#define FL_TYPE_PCSUITE "<!DOCTYPE folder-listing SYSTEM \"obex-folder-listing.dtd\"" EOL_CHARS \
+                        "  [ <!ATTLIST folder mem-type CDATA #IMPLIED> ]>" EOL_CHARS
+
 #define FL_BODY_BEGIN "<folder-listing version=\"1.0\">" EOL_CHARS
 
 #define FL_BODY_END "</folder-listing>" EOL_CHARS
@@ -71,9 +74,13 @@
 #define FL_FOLDER_ELEMENT "<folder name=\"%s\" %s accessed=\"%s\" " \
 			"modified=\"%s\" created=\"%s\"/>" EOL_CHARS
 
+#define FL_FOLDER_ELEMENT_PCSUITE "<folder name=\"%s\" %s accessed=\"%s\"" \
+			" modified=\"%s\" mem-type=\"DEV\"" \
+			" created=\"%s\"/>" EOL_CHARS
 
 static gchar *file_stat_line(gchar *filename, struct stat *fstat,
-				struct stat *dstat)
+				struct stat *dstat, gboolean root,
+				gboolean pcsuite)
 {
 	gchar perm[51], atime[18], ctime[18], mtime[18];
 	gchar *escaped, *ret = NULL;
@@ -96,10 +103,15 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 
 	escaped = g_markup_escape_text(filename, -1);
 
-	if (S_ISDIR(fstat->st_mode))
-		ret = g_strdup_printf(FL_FOLDER_ELEMENT, escaped,
-					perm, atime, mtime, ctime);
-	else if (S_ISREG(fstat->st_mode))
+	if (S_ISDIR(fstat->st_mode)) {
+		if (pcsuite && root && g_str_equal(filename, "Data"))
+			ret = g_strdup_printf(FL_FOLDER_ELEMENT_PCSUITE,
+						escaped, perm, atime,
+						mtime, ctime);
+		else
+			ret = g_strdup_printf(FL_FOLDER_ELEMENT, escaped, perm,
+						atime, mtime, ctime);
+	} else if (S_ISREG(fstat->st_mode))
 		ret = g_strdup_printf(FL_FILE_ELEMENT, escaped, fstat->st_size,
 					perm, atime, mtime, ctime);
 
@@ -114,11 +126,14 @@ static gint folder_listing(struct obex_session *os, guint32 *size)
 	struct dirent *ep;
 	DIR *dp;
 	GString *listing;
-	gboolean root;
+	gboolean root, pcsuite;
 	gint err;
 
+	pcsuite = os->server->services & OBEX_PCSUITE ? TRUE : FALSE;
+
 	listing = g_string_new(FL_VERSION);
-	listing = g_string_append(listing, FL_TYPE);
+	listing = g_string_append(listing, pcsuite ? FL_TYPE_PCSUITE : FL_TYPE);
+
 	listing = g_string_append(listing, FL_BODY_BEGIN);
 
 	root = g_str_equal(os->current_folder, os->server->folder);
@@ -175,7 +190,7 @@ static gint folder_listing(struct obex_session *os, guint32 *size)
 
 		g_free(fullname);
 
-		line = file_stat_line(name, &fstat, &dstat);
+		line = file_stat_line(name, &fstat, &dstat, root, pcsuite);
 		if (line == NULL) {
 			g_free(name);
 			continue;
