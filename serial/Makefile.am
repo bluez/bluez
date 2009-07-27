@@ -6,7 +6,7 @@ plugin_LTLIBRARIES = serial.la
 
 serial_la_SOURCES = main.c \
 			manager.h manager.c port.h port.c \
-			storage.h storage.c proxy.h proxy.c
+			proxy.h proxy.c
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
