@@ -92,6 +92,8 @@ struct serial_proxy {
 	char		*path;		/* Proxy path */
 	char		*uuid128;	/* UUID 128 */
 	char		*address;	/* TTY or Unix socket name */
+	char		*owner;		/* Application bus name */
+	guint		watch;		/* Application watch */
 	short int	port;		/* TCP port */
 	proxy_type_t	type;		/* TTY or Unix socket */
 	struct termios  sys_ti;		/* Default TTY setting */
@@ -130,6 +132,7 @@ static void disable_proxy(struct serial_proxy *prx)
 
 static void proxy_free(struct serial_proxy *prx)
 {
+	g_free(prx->owner);
 	g_free(prx->path);
 	g_free(prx->address);
 	g_free(prx->uuid128);
@@ -807,7 +810,7 @@ done:
 	proxy_free(prx);
 }
 
-static int register_proxy_object(struct serial_proxy *prx, char *outpath, size_t size)
+static int register_proxy_object(struct serial_proxy *prx)
 {
 	struct serial_adapter *adapter = prx->adapter;
 	char path[MAX_PATH_LENGTH + 1];
@@ -826,9 +829,6 @@ static int register_proxy_object(struct serial_proxy *prx, char *outpath, size_t
 	prx->path = g_strdup(path);
 	adapter->proxies = g_slist_append(adapter->proxies, prx);
 
-	if (outpath)
-		strncpy(outpath, path, size);
-
 	debug("Registered proxy: %s", path);
 
 	return 0;
@@ -836,7 +836,8 @@ static int register_proxy_object(struct serial_proxy *prx, char *outpath, size_t
 
 static int proxy_tty_register(struct serial_adapter *adapter,
 				const char *uuid128, const char *address,
-				struct termios *ti, char *outpath, size_t size)
+				struct termios *ti,
+				struct serial_proxy **proxy)
 {
 	struct termios sys_ti;
 	struct serial_proxy *prx;
@@ -869,16 +870,20 @@ static int proxy_tty_register(struct serial_adapter *adapter,
 		memcpy(&prx->proxy_ti, ti, sizeof(*ti));
 	}
 
-	ret = register_proxy_object(prx, outpath, size);
-	if (ret < 0)
+	ret = register_proxy_object(prx);
+	if (ret < 0) {
 		proxy_free(prx);
+		return ret;
+	}
+
+	*proxy = prx;
 
 	return ret;
 }
 
 static int proxy_socket_register(struct serial_adapter *adapter,
 				const char *uuid128, const char *address,
-				char *outpath, size_t size)
+				struct serial_proxy **proxy)
 {
 	struct serial_proxy *prx;
 	int ret;
@@ -890,16 +895,20 @@ static int proxy_socket_register(struct serial_adapter *adapter,
 	adapter_get_address(adapter->btd_adapter, &prx->src);
 	prx->adapter = adapter;
 
-	ret = register_proxy_object(prx, outpath, size);
-	if (ret < 0)
+	ret = register_proxy_object(prx);
+	if (ret < 0) {
 		proxy_free(prx);
+		return ret;
+	}
+
+	*proxy = prx;
 
 	return ret;
 }
 
 static int proxy_tcp_register(struct serial_adapter *adapter,
 				const char *uuid128, const char *address,
-				char *outpath, size_t size)
+				struct serial_proxy **proxy)
 {
 	struct serial_proxy *prx;
 	int ret;
@@ -911,9 +920,13 @@ static int proxy_tcp_register(struct serial_adapter *adapter,
 	adapter_get_address(adapter->btd_adapter, &prx->src);
 	prx->adapter = adapter;
 
-	ret = register_proxy_object(prx, outpath, size);
-	if (ret < 0)
+	ret = register_proxy_object(prx);
+	if (ret < 0) {
 		proxy_free(prx);
+		return ret;
+	}
+
+	*proxy = prx;
 
 	return ret;
 }
@@ -961,8 +974,9 @@ static int proxy_pathcmp(gconstpointer proxy, gconstpointer p)
 	return strcmp(prx->path, path);
 }
 
-static int register_proxy(struct serial_adapter *adapter, const char *uuid_str,
-				const char *address, char *path, size_t length)
+static int register_proxy(struct serial_adapter *adapter,
+				const char *uuid_str, const char *address,
+				struct serial_proxy **proxy)
 {
 	proxy_type_t type;
 	int err;
@@ -977,16 +991,14 @@ static int register_proxy(struct serial_adapter *adapter, const char *uuid_str,
 
 	switch (type) {
 	case UNIX_SOCKET_PROXY:
-		err = proxy_socket_register(adapter, uuid_str, address,
-							path, length);
+		err = proxy_socket_register(adapter, uuid_str, address, proxy);
 		break;
 	case TTY_PROXY:
 		err = proxy_tty_register(adapter, uuid_str, address, NULL,
-							path, length);
+					proxy);
 		break;
 	case TCP_SOCKET_PROXY:
-		err = proxy_tcp_register(adapter, uuid_str, address,
-							path, length);
+		err = proxy_tcp_register(adapter, uuid_str, address, proxy);
 		break;
 	default:
 		err = -EINVAL;
@@ -998,19 +1010,49 @@ static int register_proxy(struct serial_adapter *adapter, const char *uuid_str,
 	g_dbus_emit_signal(adapter->conn,
 				adapter_get_path(adapter->btd_adapter),
 				SERIAL_MANAGER_INTERFACE, "ProxyCreated",
-				DBUS_TYPE_STRING, &path,
+				DBUS_TYPE_STRING, &(*proxy)->path,
 				DBUS_TYPE_INVALID);
 
 	return 0;
+}
+
+static void unregister_proxy(struct serial_proxy *proxy)
+{
+	struct serial_adapter *adapter = proxy->adapter;
+	char *path = g_strdup(proxy->path);
+
+	if (proxy->watch > 0)
+		g_dbus_remove_watch(adapter->conn, proxy->watch);
+
+	g_dbus_emit_signal(adapter->conn,
+			adapter_get_path(adapter->btd_adapter),
+			SERIAL_MANAGER_INTERFACE, "ProxyRemoved",
+			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_INVALID);
+
+	adapter->proxies = g_slist_remove(adapter->proxies, proxy);
+
+	g_dbus_unregister_interface(adapter->conn, path,
+					SERIAL_PROXY_INTERFACE);
+
+	g_free(path);
+}
+
+static void watch_proxy(DBusConnection *connection, void *user_data)
+{
+	struct serial_proxy *proxy = user_data;
+
+	proxy->watch = 0;
+	unregister_proxy(proxy);
 }
 
 static DBusMessage *create_proxy(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct serial_adapter *adapter = data;
-	char path[MAX_PATH_LENGTH + 1];
+	struct serial_proxy *proxy;
 	const char *pattern, *address;
-	char *uuid_str, *ppath = path;
+	char *uuid_str;
 	int err;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -1023,7 +1065,7 @@ static DBusMessage *create_proxy(DBusConnection *conn,
 	if (!uuid_str)
 		return invalid_arguments(msg, "Invalid UUID");
 
-	err = register_proxy(adapter, uuid_str, address, ppath, sizeof(path));
+	err = register_proxy(adapter, uuid_str, address, &proxy);
 	g_free(uuid_str);
 
 	if (err == -EINVAL)
@@ -1035,7 +1077,12 @@ static DBusMessage *create_proxy(DBusConnection *conn,
 		return g_dbus_create_error(msg, ERROR_INTERFACE "Failed",
 				"Proxy creation failed (%s)", strerror(-err));
 
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &ppath,
+	proxy->owner = g_strdup(dbus_message_get_sender(msg));
+	proxy->watch = g_dbus_add_disconnect_watch(conn, proxy->owner,
+						watch_proxy,
+						proxy, NULL);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &proxy->path,
 					DBUS_TYPE_INVALID);
 }
 
@@ -1072,7 +1119,7 @@ static DBusMessage *remove_proxy(DBusConnection *conn,
 {
 	struct serial_adapter *adapter = data;
 	struct serial_proxy *prx;
-	const char *path;
+	const char *path, *sender;
 	GSList *l;
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -1084,16 +1131,13 @@ static DBusMessage *remove_proxy(DBusConnection *conn,
 	if (!l)
 		return does_not_exist(msg, "Invalid proxy path");
 
-	g_dbus_emit_signal(conn,
-			adapter_get_path(adapter->btd_adapter),
-			SERIAL_MANAGER_INTERFACE, "ProxyRemoved",
-			DBUS_TYPE_STRING, &path,
-			DBUS_TYPE_INVALID);
-
 	prx = l->data;
-	adapter->proxies = g_slist_remove(adapter->proxies, prx);
 
-	g_dbus_unregister_interface(conn, path, SERIAL_PROXY_INTERFACE);
+	sender = dbus_message_get_sender(msg);
+	if (g_strcmp0(prx->owner, sender) != 0)
+		return failed(msg, "Permission denied");
+
+	unregister_proxy(prx);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1171,10 +1215,7 @@ static void serial_proxy_init(struct serial_adapter *adapter)
 
 	for (i = 0; group_list[i] != NULL; i++) {
 		char *group_str = group_list[i], *uuid_str, *address;
-		char path[MAX_PATH_LENGTH + 1];
-		char *ppath = path;
 		int err;
-		GSList *l;
 		struct serial_proxy *prx;
 
 		/* string length of "Proxy" is 5 */
@@ -1200,8 +1241,7 @@ static void serial_proxy_init(struct serial_adapter *adapter)
 			return;
 		}
 
-		err = register_proxy(adapter, uuid_str, address, ppath,
-								sizeof(path));
+		err = register_proxy(adapter, uuid_str, address, &prx);
 		if (err == -EINVAL)
 			error("Invalid address.");
 		else if (err == -EALREADY)
@@ -1209,17 +1249,10 @@ static void serial_proxy_init(struct serial_adapter *adapter)
 		else if (err < 0)
 			error("Proxy creation failed (%s)", strerror(-err));
 		else {
-			l = g_slist_find_custom(adapter->proxies, ppath,
-							proxy_pathcmp);
-			if (!l)
-				error("Can't find proxy.");
-			else {
-				prx = l->data;
-				err = enable_proxy(prx);
-				if (err < 0)
-					error("Proxy enable failed (%s)",
-							strerror(-err));
-			}
+			err = enable_proxy(prx);
+			if (err < 0)
+				error("Proxy enable failed (%s)",
+						strerror(-err));
 		}
 
 		g_free(uuid_str);
