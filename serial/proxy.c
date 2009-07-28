@@ -217,8 +217,7 @@ static sdp_record_t *proxy_record_new(const char *uuid128, uint8_t channel)
 
 	add_lang_attr(record);
 
-	sdp_set_info_attr(record, "Port Proxy Entity",
-				NULL, "Port Proxy Entity");
+	sdp_set_info_attr(record, "Serial Proxy", NULL, "Serial Proxy");
 
 	sdp_data_free(ch);
 	sdp_list_free(proto[0], NULL);
