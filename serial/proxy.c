@@ -191,6 +191,7 @@ static sdp_record_t *proxy_record_new(const char *uuid128, uint8_t channel)
 	sdp_list_free(root, NULL);
 
 	bt_string2uuid(&uuid, uuid128);
+	sdp_uuid128_to_uuid(&uuid);
 	svclass_id = sdp_list_append(NULL, &uuid);
 	sdp_set_service_classes(record, svclass_id);
 	sdp_list_free(svclass_id, NULL);
