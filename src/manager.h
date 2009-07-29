@@ -22,6 +22,9 @@
  *
  */
 
+#include <bluetooth/bluetooth.h>
+#include <dbus/dbus.h>
+
 #define MANAGER_INTERFACE "org.bluez.Manager"
 
 dbus_bool_t manager_init(DBusConnection *conn, const char *path);

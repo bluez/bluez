@@ -23,6 +23,7 @@
  */
 
 #include <bluetooth/bluetooth.h>
+#include <dbus/dbus.h>
 #include <glib.h>
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter"
