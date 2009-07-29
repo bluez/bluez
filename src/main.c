@@ -431,6 +431,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	rfkill_init();
+
 	manager_update_svc(BDADDR_ANY, 0);
 
 	debug("Entering main loop");
@@ -440,6 +442,8 @@ int main(int argc, char *argv[])
 	hcid_dbus_unregister();
 
 	hcid_dbus_exit();
+
+	rfkill_exit();
 
 	plugin_cleanup();
 

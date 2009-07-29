@@ -93,5 +93,8 @@ void set_pin_length(bdaddr_t *sba, int length);
 gboolean plugin_init(GKeyFile *config);
 void plugin_cleanup(void);
 
+void rfkill_init(void);
+void rfkill_exit(void);
+
 void __probe_servers(const char *adapter);
 void __remove_servers(const char *adapter);

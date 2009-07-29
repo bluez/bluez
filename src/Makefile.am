@@ -17,7 +17,7 @@ sbin_PROGRAMS = bluetoothd
 
 bluetoothd_SOURCES = main.c security.c hcid.h sdpd.h \
 	sdpd-server.c sdpd-request.c sdpd-service.c sdpd-database.c \
-	plugin.h plugin.c storage.h storage.c agent.h agent.c \
+	plugin.h plugin.c storage.h storage.c agent.h agent.c rfkill.c \
 	error.h error.c manager.h manager.c adapter.h adapter.c \
 	device.h device.c dbus-common.c dbus-common.h dbus-hci.h dbus-hci.c
 
