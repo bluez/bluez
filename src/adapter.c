@@ -127,7 +127,9 @@ struct btd_adapter {
 
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
 
-	uint8_t svc_cache;		/* For bluetoothd startup */
+	uint8_t svc_cache;		/* Service Class cache */
+	gboolean cache_enable;
+
 	gint ref;
 };
 
@@ -1977,6 +1979,7 @@ static int adapter_up(struct btd_adapter *adapter)
 	adapter->pairable_timeout = get_pairable_timeout(srcaddr);
 	adapter->state = DISCOVER_TYPE_NONE;
 	adapter->mode = MODE_CONNECTABLE;
+	adapter->cache_enable = TRUE;
 	scan_mode = SCAN_PAGE;
 	powered = TRUE;
 
@@ -2042,9 +2045,6 @@ proceed:
 
 	}
 
-	if (adapter->svc_cache)
-		adapter_update(adapter, 0);
-
 	if (dev_down) {
 		adapter_ops->stop(adapter->dev_id);
 		adapter->off_requested = TRUE;
@@ -2054,6 +2054,7 @@ proceed:
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
 
+	adapter_disable_svc_cache(adapter);
 	return 0;
 }
 
@@ -2250,6 +2251,7 @@ int adapter_stop(struct btd_adapter *adapter)
 	adapter->scan_mode = SCAN_DISABLED;
 	adapter->mode = MODE_OFF;
 	adapter->state = DISCOVER_TYPE_NONE;
+	adapter->cache_enable = TRUE;
 
 	info("Adapter %s has been disabled", adapter->path);
 
@@ -2259,28 +2261,37 @@ int adapter_stop(struct btd_adapter *adapter)
 int adapter_update(struct btd_adapter *adapter, uint8_t new_svc)
 {
 	struct hci_dev *dev = &adapter->dev;
-	uint8_t svclass;
 
 	if (dev->ignore)
 		return 0;
 
-	if (!adapter->up) {
-		if (new_svc)
-			adapter->svc_cache = new_svc;
+	if (adapter->cache_enable) {
+		adapter->svc_cache = new_svc;
 		return 0;
 	}
 
-	if (new_svc)
-		svclass = new_svc;
-	else
-		svclass = adapter->svc_cache;
-
-	if (svclass)
-		set_service_classes(adapter, svclass);
+	set_service_classes(adapter, new_svc);
 
 	update_ext_inquiry_response(adapter);
 
 	return 0;
+}
+
+void adapter_disable_svc_cache(struct btd_adapter *adapter)
+{
+	if (!adapter)
+		return;
+
+	if (!adapter->cache_enable)
+		return;
+
+	/* Disable and flush svc cache. All successive service class updates
+	   will be written to the device */
+	adapter->cache_enable = FALSE;
+
+	set_service_classes(adapter, adapter->svc_cache);
+
+	update_ext_inquiry_response(adapter);
 }
 
 int adapter_get_class(struct btd_adapter *adapter, uint8_t *cls)
@@ -2296,9 +2307,6 @@ int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls)
 {
 	struct hci_dev *dev = &adapter->dev;
 	uint32_t class;
-
-	if (adapter->svc_cache)
-		adapter->svc_cache = 0;
 
 	if (memcmp(dev->class, cls, 3) == 0)
 		return 0;

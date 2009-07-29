@@ -433,8 +433,6 @@ int main(int argc, char *argv[])
 
 	rfkill_init();
 
-	manager_update_svc(BDADDR_ANY, 0);
-
 	debug("Entering main loop");
 
 	g_main_loop_run(event_loop);
