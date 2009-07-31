@@ -224,8 +224,9 @@ static int init_bt(struct userdata *u)
 
 static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *rsp)
 {
+	unsigned char *ptr;
 	uint16_t bytes_left;
-	codec_capabilities_t *codec;
+	codec_capabilities_t codec;
 
 	assert(u);
 	assert(rsp);
@@ -237,12 +238,14 @@ static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *
 		return -1;
 	}
 
-	codec = (void *) rsp->data; /** ALIGNMENT? **/
+	ptr = ((void *) rsp) + sizeof(*rsp);
+
+	memcpy(&codec, ptr, sizeof(codec)); /** ALIGNMENT? **/
 
 	DBG("Payload size is %lu %lu",
-		(unsigned long) bytes_left, (unsigned long) sizeof(*codec));
+		(unsigned long) bytes_left, (unsigned long) sizeof(codec));
 
-	if (u->transport != codec->transport) {
+	if (u->transport != codec.transport) {
 		ERR("Got capabilities for wrong codec.");
 		return -1;
 	}
@@ -250,13 +253,13 @@ static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *
 	if (u->transport == BT_CAPABILITIES_TRANSPORT_SCO) {
 
 		if (bytes_left <= 0 ||
-			codec->length != sizeof(u->hsp.pcm_capabilities))
+				codec.length != sizeof(u->hsp.pcm_capabilities))
 			return -1;
 
-		assert(codec->type == BT_HFP_CODEC_PCM);
+		assert(codec.type == BT_HFP_CODEC_PCM);
 
 		memcpy(&u->hsp.pcm_capabilities,
-			codec, sizeof(u->hsp.pcm_capabilities));
+				&codec, sizeof(u->hsp.pcm_capabilities));
 
 		DBG("Has NREC: %s",
 			YES_NO(u->hsp.pcm_capabilities.flags & BT_PCM_FLAG_NREC));
@@ -264,24 +267,26 @@ static int parse_caps(struct userdata *u, const struct bt_get_capabilities_rsp *
 	} else if (u->transport == BT_CAPABILITIES_TRANSPORT_A2DP) {
 
 		while (bytes_left > 0) {
-			if ((codec->type == BT_A2DP_SBC_SINK) &&
-					!(codec->lock & BT_WRITE_LOCK))
+			if (codec.type == BT_A2DP_SBC_SINK &&
+					!(codec.lock & BT_WRITE_LOCK))
 				break;
 
-			bytes_left -= codec->length;
-			codec = (void *) codec + codec->length;
+			bytes_left -= codec.length;
+			ptr += codec.length;
+			memcpy(&codec, ptr, sizeof(codec));
 		}
 
-		DBG("bytes_left = %d, codec->length = %d", bytes_left, codec->length);
+		DBG("bytes_left = %d, codec.length = %d",
+						bytes_left, codec.length);
 
 		if (bytes_left <= 0 ||
-			codec->length != sizeof(u->a2dp.sbc_capabilities))
+				codec.length != sizeof(u->a2dp.sbc_capabilities))
 			return -1;
 
-		assert(codec->type == BT_A2DP_SBC_SINK);
+		assert(codec.type == BT_A2DP_SBC_SINK);
 
-		memcpy(&u->a2dp.sbc_capabilities, codec,
-			sizeof(u->a2dp.sbc_capabilities));
+		memcpy(&u->a2dp.sbc_capabilities, &codec,
+					sizeof(u->a2dp.sbc_capabilities));
 	} else {
 		assert(0);
 	}

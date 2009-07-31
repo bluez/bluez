@@ -71,7 +71,7 @@ noinst_PROGRAMS = ipctest
 
 ipctest_LDADD= libipc.la @SBC_LIBS@ @GLIB_LIBS@
 
-AM_CFLAGS = -fvisibility=hidden -fno-strict-aliasing @SBC_CFLAGS@ \
+AM_CFLAGS = -fvisibility=hidden @SBC_CFLAGS@ \
 		@BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 CLEANFILES = $(BUILT_SOURCES)
