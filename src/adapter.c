@@ -513,7 +513,9 @@ static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
 
 	mode = discoverable ? MODE_DISCOVERABLE : MODE_CONNECTABLE;
 
-	if (mode == MODE_DISCOVERABLE && adapter->pairable)
+	if (mode == MODE_DISCOVERABLE && adapter->pairable &&
+					adapter->discov_timeout > 0 &&
+					adapter->discov_timeout <= 60)
 		mode = MODE_LIMITED;
 
 	if (mode == adapter->mode)
@@ -554,7 +556,9 @@ static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 	if (!(adapter->scan_mode & SCAN_INQUIRY))
 		goto done;
 
-	mode = pairable ? MODE_LIMITED : MODE_DISCOVERABLE;
+	mode = (pairable && adapter->discov_timeout > 0 &&
+				adapter->discov_timeout <= 60) ?
+					MODE_LIMITED : MODE_DISCOVERABLE;
 
 	err = set_mode(adapter, mode);
 	if (err < 0 && msg)
@@ -2017,8 +2021,7 @@ static int adapter_up(struct btd_adapter *adapter)
 	} else if (!g_str_equal(mode, "connectable") &&
 			adapter->discov_timeout == 0) {
 		/* Set discoverable only if timeout is 0 */
-		adapter->mode = adapter->pairable ?
-					MODE_LIMITED : MODE_DISCOVERABLE;
+		adapter->mode = MODE_DISCOVERABLE;
 		scan_mode = SCAN_PAGE | SCAN_INQUIRY;
 	}
 
@@ -2737,7 +2740,8 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 	if (adapter->svc_cache)
 		real_class[2] = adapter->svc_cache;
 
-	if (discoverable && adapter->pairable)
+	if (discoverable && adapter->pairable && adapter->discov_timeout > 0 &&
+						adapter->discov_timeout <= 60)
 		adapter_ops->set_limited_discoverable(adapter->dev_id,
 							real_class, TRUE);
 	else if (!discoverable)
