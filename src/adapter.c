@@ -3001,6 +3001,38 @@ gboolean adapter_powering_down(struct btd_adapter *adapter)
 	return adapter->off_requested;
 }
 
+int btd_adapter_restore_powered(struct btd_adapter *adapter)
+{
+	char mode[14], address[18];
+
+	if (!adapter_ops)
+		return -EINVAL;
+
+	if (!main_opts.remember_powered)
+		return -EINVAL;
+
+	if (adapter->up)
+		return 0;
+
+	ba2str(&adapter->bdaddr, address);
+	if (read_device_mode(address, mode, sizeof(mode)) == 0 &&
+						g_str_equal(mode, "off"))
+		return 0;
+
+	return adapter_ops->set_powered(adapter->dev_id, TRUE);
+}
+
+int btd_adapter_switch_offline(struct btd_adapter *adapter)
+{
+	if (!adapter_ops)
+		return -EINVAL;
+
+	if (!adapter->up)
+		return 0;
+
+	return adapter_ops->set_powered(adapter->dev_id, FALSE);
+}
+
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops)
 {
 	/* Already registered */

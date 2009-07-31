@@ -518,3 +518,17 @@ void manager_set_default_adapter(int id)
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 }
+
+void btd_manager_set_offline(gboolean offline)
+{
+	GSList *l;
+
+	for (l = adapters; l != NULL; l = g_slist_next(l)) {
+		struct btd_adapter *adapter = l->data;
+
+		if (offline)
+			btd_adapter_switch_offline(adapter);
+		else
+			btd_adapter_restore_powered(adapter);
+	}
+}
