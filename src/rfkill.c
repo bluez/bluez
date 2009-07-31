@@ -133,6 +133,8 @@ static gboolean rfkill_event(GIOChannel *chan,
 
 	debug("RFKILL unblock for hci%d", id);
 
+	btd_adapter_restore_powered(adapter);
+
 	return TRUE;
 }
 
