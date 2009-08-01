@@ -1,3 +1,11 @@
+ver 4.47:
+	Add support for RFKILL unblock handling.
+	Add support for serial proxy configurations.
+	Add support for caching service class updates.
+	Fix issues with updating SDP service records.
+	Fix usage of limited discoverable mode.
+	Remove deprecated methods and signals for AudioSource.
+
 ver 4.46:
 	Add support for A2DP sink role.
 	Fix clearing svc_cache before the adapter is up.
