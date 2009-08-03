@@ -1829,7 +1829,7 @@ static int add_pbap(sdp_session_t *session, svc_info_t *si)
 	sdp_record_t record;
 	uint8_t chan = si->channel ? si->channel : 19;
 	sdp_data_t *channel;
-	uint8_t formats[] = {0x03};
+	uint8_t formats[] = {0x01};
 	void *dtds[sizeof(formats)], *values[sizeof(formats)];
 	unsigned int i;
 	uint8_t dtd = SDP_UINT8;
@@ -1869,12 +1869,7 @@ static int add_pbap(sdp_session_t *session, svc_info_t *si)
 	aproto = sdp_list_append(0, apseq);
 	sdp_set_access_protos(&record, aproto);
 
-
-	for (i = 0; i < sizeof(formats); i++) {
-		dtds[i] = &dtd;
-		values[i] = &formats[i];
-	}
-	sflist = sdp_seq_alloc(dtds, values, sizeof(formats));
+	sflist = sdp_data_alloc(dtd,formats);
 	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_REPOSITORIES, sflist);
 
 	sdp_set_info_attr(&record, "OBEX Phonebook Access Server", 0, 0);
