@@ -118,12 +118,10 @@ static void configure_device(int index)
 	/* Set device class */
 	if ((main_opts.flags & (1 << HCID_SET_CLASS))) {
 		write_class_of_dev_cp cp;
-		uint32_t class;
 		uint8_t cls[3];
 
 		if (read_local_class(&di.bdaddr, cls) < 0) {
-			class = htobl(main_opts.class);
-			cls[2] = get_service_classes(&di.bdaddr);
+			uint32_t class = htobl(main_opts.class);
 			memcpy(cp.dev_class, &class, 3);
 		} else {
 			if (!(main_opts.scan & SCAN_INQUIRY))
