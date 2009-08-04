@@ -1748,7 +1748,7 @@ static int adapter_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int adapter_setup(struct btd_adapter *adapter)
+static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 {
 	struct hci_dev *dev = &adapter->dev;
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
@@ -1797,9 +1797,6 @@ static int adapter_setup(struct btd_adapter *adapter)
 						sizeof(events), events);
 	}
 
-	if (read_local_name(&adapter->bdaddr, name) == 0)
-		adapter_ops->set_name(adapter->dev_id, name);
-
 	inqmode = get_inquiry_mode(dev);
 	if (inqmode < 1)
 		goto done;
@@ -1811,6 +1808,14 @@ static int adapter_setup(struct btd_adapter *adapter)
 		hci_close_dev(dd);
 		return err;
 	}
+
+	if (read_local_name(&adapter->bdaddr, name) < 0)
+		expand_name(name, MAX_NAME_LENGTH, main_opts.name,
+							adapter->dev_id);
+
+	adapter_ops->set_name(adapter->dev_id, name);
+	if (g_str_equal(mode, "off"))
+		strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
 
 done:
 	hci_close_dev(dd);
@@ -1965,9 +1970,9 @@ static int get_pairable_timeout(const char *src)
 	return main_opts.pairto;
 }
 
-static int adapter_up(struct btd_adapter *adapter)
+static int adapter_up(struct btd_adapter *adapter, const char *mode)
 {
-	char mode[14], srcaddr[18];
+	char srcaddr[18];
 	uint8_t scan_mode;
 	gboolean powered, dev_down = FALSE;
 	int err;
@@ -1988,19 +1993,9 @@ static int adapter_up(struct btd_adapter *adapter)
 	if (read_device_pairable(&adapter->bdaddr, &adapter->pairable) < 0)
 		adapter->pairable = TRUE;
 
-	if (!adapter->initialized && !main_opts.remember_powered) {
-		if (main_opts.mode == MODE_OFF)
-			strcpy(mode, "off");
-		else
-			strcpy(mode, "connectable");
-	} else if (read_device_mode(srcaddr, mode, sizeof(mode)) < 0) {
-		if (!adapter->initialized && main_opts.mode == MODE_OFF)
-			strcpy(mode, "off");
-		else
-			goto proceed;
-	}
-
 	if (g_str_equal(mode, "off")) {
+		char onmode[14];
+
 		powered = FALSE;
 
 		if (!adapter->initialized) {
@@ -2008,13 +2003,13 @@ static int adapter_up(struct btd_adapter *adapter)
 			goto proceed;
 		}
 
-		if (read_on_mode(srcaddr, mode, sizeof(mode)) < 0 ||
-						g_str_equal(mode, "off"))
-			write_device_mode(&adapter->bdaddr, "connectable");
-		else
-			write_device_mode(&adapter->bdaddr, mode);
+		if (read_on_mode(srcaddr, onmode, sizeof(onmode)) < 0 ||
+						g_str_equal(onmode, "off"))
+			strcpy(onmode, "connectable");
 
-		return adapter_up(adapter);
+		write_device_mode(&adapter->bdaddr, onmode);
+
+		return adapter_up(adapter, onmode);
 	} else if (!g_str_equal(mode, "connectable") &&
 			adapter->discov_timeout == 0) {
 		/* Set discoverable only if timeout is 0 */
@@ -2065,6 +2060,7 @@ int adapter_start(struct btd_adapter *adapter)
 	struct hci_version ver;
 	uint8_t features[8];
 	int dd, err;
+	char mode[14], address[18];
 
 	if (hci_devinfo(adapter->dev_id, &di) < 0)
 		return -errno;
@@ -2086,6 +2082,15 @@ int adapter_start(struct btd_adapter *adapter)
 
 	bacpy(&adapter->bdaddr, &di.bdaddr);
 	memcpy(dev->features, di.features, 8);
+	ba2str(&adapter->bdaddr, address);
+
+	if (!main_opts.remember_powered ||
+			read_device_mode(address, mode, sizeof(mode)) < 0) {
+		if (!adapter->initialized && main_opts.mode == MODE_OFF)
+			strcpy(mode, "off");
+		else
+			strcpy(mode, "connectable");
+	}
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
@@ -2148,14 +2153,14 @@ setup:
 								0, NULL);
 	hci_close_dev(dd);
 
-	adapter_setup(adapter);
+	adapter_setup(adapter, mode);
 
 	if (!adapter->initialized && adapter->already_up) {
 		debug("Stopping Inquiry at adapter startup");
 		adapter_ops->stop_discovery(adapter->dev_id);
 	}
 
-	err = adapter_up(adapter);
+	err = adapter_up(adapter, mode);
 
 	info("Adapter %s has been enabled", adapter->path);
 

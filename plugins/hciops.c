@@ -103,18 +103,6 @@ static void configure_device(int index)
 		return;
 	}
 
-	/* Set device name */
-	if ((main_opts.flags & (1 << HCID_SET_NAME)) && main_opts.name) {
-		change_local_name_cp cp;
-
-		memset(cp.name, 0, sizeof(cp.name));
-		expand_name((char *) cp.name, sizeof(cp.name),
-						main_opts.name, index);
-
-		hci_send_cmd(dd, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
-					CHANGE_LOCAL_NAME_CP_SIZE, &cp);
-	}
-
 	/* Set device class */
 	if ((main_opts.flags & (1 << HCID_SET_CLASS))) {
 		write_class_of_dev_cp cp;
