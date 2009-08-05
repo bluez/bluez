@@ -903,7 +903,6 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_adapter *adapter = data;
 	struct hci_dev *dev = &adapter->dev;
-	int err;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
 		error("Name change failed: supplied name isn't valid UTF-8");
@@ -913,12 +912,14 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 	if (strncmp(name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
 		goto done;
 
-	if (!adapter->up)
-		return failed_strerror(msg, -EHOSTDOWN);
-
-	err = adapter_ops->set_name(adapter->dev_id, name);
-	if (err < 0)
-		return failed_strerror(msg, err);
+	if (!adapter->up) {
+		strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
+		write_local_name(&adapter->bdaddr, name);
+	} else {
+		int err = adapter_ops->set_name(adapter->dev_id, name);
+		if (err < 0)
+			return failed_strerror(msg, err);
+	}
 
 done:
 	return dbus_message_new_method_return(msg);
