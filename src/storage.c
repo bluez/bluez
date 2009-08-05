@@ -203,7 +203,7 @@ int read_on_mode(const char *src, char *mode, int length)
 	return 0;
 }
 
-int write_local_name(bdaddr_t *bdaddr, char *name)
+int write_local_name(bdaddr_t *bdaddr, const char *name)
 {
 	char filename[PATH_MAX + 1], str[249];
 	int i;

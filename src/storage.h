@@ -30,7 +30,7 @@ int read_pairable_timeout(const char *src, int *timeout);
 int write_device_mode(bdaddr_t *bdaddr, const char *mode);
 int read_device_mode(const char *src, char *mode, int length);
 int read_on_mode(const char *src, char *mode, int length);
-int write_local_name(bdaddr_t *bdaddr, char *name);
+int write_local_name(bdaddr_t *bdaddr, const char *name);
 int read_local_name(bdaddr_t *bdaddr, char *name);
 int write_local_class(bdaddr_t *bdaddr, uint8_t *class);
 int read_local_class(bdaddr_t *bdaddr, uint8_t *class);
