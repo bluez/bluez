@@ -1830,8 +1830,6 @@ static int add_pbap(sdp_session_t *session, svc_info_t *si)
 	uint8_t chan = si->channel ? si->channel : 19;
 	sdp_data_t *channel;
 	uint8_t formats[] = {0x01};
-	void *dtds[sizeof(formats)], *values[sizeof(formats)];
-	unsigned int i;
 	uint8_t dtd = SDP_UINT8;
 	sdp_data_t *sflist;
 	int ret = 0;
