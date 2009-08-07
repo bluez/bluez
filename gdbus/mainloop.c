@@ -281,49 +281,6 @@ gboolean g_dbus_request_name(DBusConnection *connection, const char *name,
 	return TRUE;
 }
 
-gboolean g_dbus_check_service(DBusConnection *connection, const char *name)
-{
-	DBusMessage *message, *reply;
-	const char **names;
-	int i, count;
-	gboolean result = FALSE;
-
-	message = dbus_message_new_method_call(DBUS_SERVICE_DBUS,
-			DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS, "ListNames");
-	if (message == NULL) {
-		error("Can't allocate new message");
-		return FALSE;
-	}
-
-	reply = dbus_connection_send_with_reply_and_block(connection,
-							message, -1, NULL);
-
-	dbus_message_unref(message);
-
-	if (reply == NULL) {
-		error("Failed to execute method call");
-		return FALSE;
-	}
-
-	if (dbus_message_get_args(reply, NULL,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
-				&names, &count, DBUS_TYPE_INVALID) == FALSE) {
-		error("Failed to read name list");
-		goto done;
-	}
-
-	for (i = 0; i < count; i++)
-		if (g_str_equal(names[i], name) == TRUE) {
-			result = TRUE;
-			break;
-		}
-
-done:
-	dbus_message_unref(reply);
-
-	return result;
-}
-
 gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 				GDBusWatchFunction function,
 				void *user_data, DBusFreeFunction destroy)
