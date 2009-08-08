@@ -309,7 +309,6 @@ static DBusHandlerResult name_exit_filter(DBusConnection *connection,
 
 struct service_data {
 	DBusConnection *conn;
-	const char *name;
 	GDBusWatchFunction conn_func;
 	void *user_data;
 };
@@ -319,8 +318,7 @@ static void service_reply(DBusPendingCall *call, void *user_data)
 	struct service_data *data = user_data;
 	DBusMessage *reply;
 	DBusError error;
-	char **names;
-	int i, count;
+	dbus_bool_t has_owner;
 
 	reply = dbus_pending_call_steal_reply(call);
 	if (reply == NULL)
@@ -329,25 +327,19 @@ static void service_reply(DBusPendingCall *call, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_message_get_args(reply, &error,
-			DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &names, &count,
+					DBUS_TYPE_BOOLEAN, &has_owner,
 						DBUS_TYPE_INVALID) == FALSE) {
 		if (dbus_error_is_set(&error) == TRUE) {
 			error("%s", error.message);
 			dbus_error_free(&error);
 		} else {
-			error("Wrong arguments for name list");
+			error("Wrong arguments for NameHasOwner reply");
 		}
 		goto done;
 	}
 
-	for (i = 0; i < count; i++)
-		if (g_strcmp0(names[i], data->name) == 0) {
-			if (data->conn_func)
-				data->conn_func(data->conn, data->user_data);
-			break;
-		}
-
-	g_strfreev(names);
+	if (has_owner && data->conn_func)
+		data->conn_func(data->conn, data->user_data);
 
 done:
 	dbus_message_unref(reply);
@@ -367,17 +359,19 @@ static void check_service(DBusConnection *connection, const char *name,
 	}
 
 	data->conn = connection;
-	data->name = name;
 	data->conn_func = connect;
 	data->user_data = user_data;
 
 	message = dbus_message_new_method_call(DBUS_SERVICE_DBUS,
-			DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS, "ListNames");
+			DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS, "NameHasOwner");
 	if (message == NULL) {
 		error("Can't allocate new message");
 		g_free(data);
 		return;
 	}
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &name,
+							DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(connection, message,
 							&call, -1) == FALSE) {
