@@ -2,9 +2,7 @@
 BUILT_SOURCES = telephony.c
 
 if AUDIOPLUGIN
-plugindir = $(libdir)/bluetooth/plugins
-
-plugin_LTLIBRARIES = audio.la
+noinst_LTLIBRARIES = audio.la libipc.la
 
 audio_la_SOURCES = main.c \
 	ipc.h ipc.c unix.h unix.c manager.h manager.c telephony.h \
@@ -18,6 +16,8 @@ audio_la_LDFLAGS = -module -avoid-version -no-undefined
 
 LDADD = $(top_builddir)/common/libhelper.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@
+
+libipc_la_SOURCES = ipc.h ipc.c
 
 if ALSA
 alsadir = $(libdir)/alsa-lib
@@ -61,17 +61,13 @@ libgstbluetooth_la_LIBADD = @SBC_LIBS@ @BLUEZ_LIBS@ @GSTREAMER_LIBS@ \
 libgstbluetooth_la_CFLAGS = -fvisibility=hidden -fno-strict-aliasing \
 			 @GSTREAMER_CFLAGS@ @BLUEZ_CFLAGS@ @SBC_CFLAGS@
 endif
-endif
-
-noinst_LTLIBRARIES = libipc.la
-
-libipc_la_SOURCES = ipc.h ipc.c
 
 noinst_PROGRAMS = ipctest
 
 ipctest_LDADD= libipc.la @SBC_LIBS@ @GLIB_LIBS@
+endif
 
-AM_CFLAGS = -fvisibility=hidden @SBC_CFLAGS@ \
+AM_CFLAGS = -fvisibility=hidden -DBLUETOOTH_PLUGIN_BUILTIN @SBC_CFLAGS@ \
 		@BLUEZ_CFLAGS@ @DBUS_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 CLEANFILES = $(BUILT_SOURCES)

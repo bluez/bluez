@@ -16,6 +16,7 @@ endif
 builtin_modules =
 builtin_sources =
 builtin_cflags =
+builtin_libadd =
 
 if SERVICEPLUGIN
 builtin_modules += service
@@ -30,6 +31,26 @@ builtin_sources += $(top_srcdir)/plugins/hal.c
 
 builtin_modules += storage
 builtin_sources += $(top_srcdir)/plugins/storage.c
+
+if NETWORKPLUGIN
+builtin_modules += network
+builtin_libadd += $(top_builddir)/network/network.la
+endif
+
+if SERIALPLUGIN
+builtin_modules += serial
+builtin_libadd += $(top_builddir)/serial/serial.la
+endif
+
+if INPUTPLUGIN
+builtin_modules += input
+builtin_libadd += $(top_builddir)/input/input.la
+endif
+
+if AUDIOPLUGIN
+builtin_modules += audio
+builtin_libadd += $(top_builddir)/audio/audio.la
+endif
 
 noinst_LTLIBRARIES = libbuiltin.la
 
@@ -52,7 +73,8 @@ bluetoothd_SOURCES = main.c security.c hcid.h sdpd.h \
 	error.h error.c manager.h manager.c adapter.h adapter.c \
 	device.h device.c dbus-common.c dbus-common.h dbus-hci.h dbus-hci.c
 
-bluetoothd_LDADD = $(top_builddir)/common/libhelper.a libbuiltin.la \
+bluetoothd_LDADD = $(top_builddir)/common/libhelper.a \
+			libbuiltin.la $(builtin_libadd) \
 			@GDBUS_LIBS@ @GLIB_LIBS@ @DBUS_LIBS@ @BLUEZ_LIBS@ -ldl
 
 bluetoothd_LDFLAGS = -Wl,--export-dynamic

@@ -73,7 +73,6 @@
 #define RFCOMM_UUID_STR		"00000003-0000-1000-8000-00805F9B34FB"
 
 static DBusConnection *connection = NULL;
-GSList *adapters = NULL;
 
 static int serial_probe(struct btd_device *device, const char *uuid)
 {

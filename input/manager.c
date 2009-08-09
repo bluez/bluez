@@ -45,7 +45,7 @@
 static int idle_timeout = 0;
 
 static DBusConnection *connection = NULL;
-GSList *adapters = NULL;
+static GSList *adapters = NULL;
 
 static void input_remove(struct btd_device *device, const char *uuid)
 {
