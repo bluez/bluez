@@ -432,7 +432,7 @@ static void conf_rfc(void *ptr, int len, int in, uint16_t cid)
 	set_mode(in, cid, mode);
 
 	printf("RFC 0x%02x (%s", mode, mode2str(mode));
-	if (mode == 0x01 || mode == 0x02) {
+	if (mode >= 0x01 && mode <= 0x04) {
 		uint8_t txwin, maxtrans;
 		uint16_t rto, mto, mps;
 		txwin = *((uint8_t *) (ptr + 1));
