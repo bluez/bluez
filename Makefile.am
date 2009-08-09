@@ -1,5 +1,5 @@
 
-SUBDIRS = include lib sbc gdbus common plugins src client\
+SUBDIRS = include lib sbc gdbus common src client plugins \
 			network serial input audio tools \
 			rfcomm compat cups test scripts doc
 
@@ -9,12 +9,10 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = bluez.pc
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
-				--disable-udevrules
+DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc --disable-udevrules
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
 	ltmain.sh depcomp compile missing install-sh mkinstalldirs ylwrap
-
