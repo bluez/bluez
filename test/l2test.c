@@ -70,6 +70,9 @@ static unsigned char *buf;
 static int imtu = 672;
 static int omtu = 0;
 
+/* Default FCS option */
+static int fcs = 0x01;
+
 /* Default data size */
 static long data_size = -1;
 static long buffer_size = 2048;
@@ -219,6 +222,8 @@ static int do_connect(char *svr)
 	opts.imtu = imtu;
 	if (rfcmode > 0)
 		opts.mode = rfcmode;
+
+	opts.fcs = fcs;
 
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)",
@@ -379,6 +384,8 @@ static void do_listen(void (*handler)(int sk))
 	opts.imtu = imtu;
 	if (rfcmode > 0)
 		opts.mode = rfcmode;
+
+	opts.fcs = fcs;
 
 	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &opts, sizeof(opts)) < 0) {
 		syslog(LOG_ERR, "Can't set L2CAP options: %s (%d)",
@@ -1029,6 +1036,7 @@ static void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P psm]\n"
 		"\t[-I imtu] [-O omtu]\n"
+		"\t[-f fcs] use CRC16 check (default = 1)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
 		"\t[-F seconds] enable deferred setup\n"
 		"\t[-B filename] use data packets from file\n"
@@ -1052,7 +1060,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyzpb:i:P:I:O:B:N:L:F:C:D:X:RGAESMT")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyzpb:f:i:P:I:O:B:N:L:F:C:D:X:RGAESMT")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -1111,6 +1119,10 @@ int main(int argc, char *argv[])
 
 		case 'b':
 			data_size = atoi(optarg);
+			break;
+
+		case 'f':
+			fcs = atoi(optarg);
 			break;
 
 		case 'i':
