@@ -93,6 +93,7 @@ int tty_init(int services, const gchar *root_path,
 
 	tcgetattr(fd, &options);
 	cfmakeraw(&options);
+	options.c_oflag &= ~ONLCR;
 	tcsetattr(fd, TCSANOW, &options);
 
 	arg = fcntl(fd, F_GETFL);
