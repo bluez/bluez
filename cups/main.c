@@ -506,6 +506,8 @@ static DBusHandlerResult filter_func(DBusConnection *connection, DBusMessage *me
 
 		dbus_message_iter_init(message, &iter);
 		dbus_message_iter_get_basic(&iter, &name);
+		if (name == NULL || strcmp(name, "Discovering") != 0)
+			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 		dbus_message_iter_next(&iter);
 		dbus_message_iter_recurse(&iter, &value_iter);
 		dbus_message_iter_get_basic(&value_iter, &discovering);
