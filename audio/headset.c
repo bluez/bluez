@@ -1387,6 +1387,7 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	struct pending_connect *p = hs->pending;
 	sdp_record_t *record = NULL;
 	sdp_list_t *r;
+	uuid_t uuid;
 
 	assert(hs->pending != NULL);
 
@@ -1403,9 +1404,11 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto failed_not_supported;
 	}
 
+	sdp_uuid16_create(&uuid, p->svclass);
+
 	for (r = recs; r != NULL; r = r->next) {
 		sdp_list_t *classes;
-		uuid_t uuid;
+		uuid_t class;
 
 		record = r->data;
 
@@ -1414,16 +1417,12 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 			continue;
 		}
 
-		memcpy(&uuid, classes->data, sizeof(uuid));
+		memcpy(&class, classes->data, sizeof(uuid));
 
 		sdp_list_free(classes, free);
 
-		if (!sdp_uuid128_to_uuid(&uuid) || uuid.type != SDP_UUID16) {
-			error("Not a 16 bit UUID");
-			continue;
-		}
 
-		if (uuid.value.uuid16 == p->svclass)
+		if (sdp_uuid_cmp(&class, &uuid) == 0)
 			break;
 	}
 
