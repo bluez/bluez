@@ -226,7 +226,7 @@ static void print_printer_details(const char *name, const char *bdaddr, const ch
 		 bdaddr[9], bdaddr[10],
 		 bdaddr[12], bdaddr[13],
 		 bdaddr[15], bdaddr[16]);
-	printf("network %s \"Unknown\" \"%s (Bluetooth)\"", uri, escaped);
+	printf("direct %s \"%s\" \"%s (Bluetooth)\"", uri, escaped, escaped);
 	if (id != NULL)
 		printf(" \"%s\"\n", id);
 	else
