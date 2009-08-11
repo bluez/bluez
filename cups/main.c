@@ -371,9 +371,10 @@ static void remote_device_found(const char *adapter, const char *bdaddr, const c
 
 		if (!reply)
 			return;
-	} else {
-		if (dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH, &object_path, DBUS_TYPE_INVALID) == FALSE)
-			return;
+	}
+	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH, &object_path,
+				  DBUS_TYPE_INVALID) == FALSE) {
+		return;
 	}
 
 	id = device_get_ieee1284_id(adapter, object_path);
