@@ -1030,7 +1030,8 @@ static struct btd_adapter_driver avrcp_server_driver = {
 	.remove	= avrcp_server_remove,
 };
 
-int audio_manager_init(DBusConnection *conn, GKeyFile *conf)
+int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
+							gboolean *enable_sco)
 {
 	char **list;
 	int i;
@@ -1115,6 +1116,8 @@ proceed:
 		btd_register_adapter_driver(&avrcp_server_driver);
 
 	btd_register_device_driver(&audio_driver);
+
+	*enable_sco = (enabled.gateway || enabled.headset);
 
 	return 0;
 }

@@ -31,7 +31,8 @@ struct enabled_interfaces {
 	gboolean control;
 };
 
-int audio_manager_init(DBusConnection *conn, GKeyFile *config);
+int audio_manager_init(DBusConnection *conn, GKeyFile *config,
+							gboolean *enable_sco);
 void audio_manager_exit(void);
 
 gboolean server_is_enabled(bdaddr_t *src, uint16_t svc);

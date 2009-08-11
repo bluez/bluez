@@ -143,6 +143,7 @@ static DBusConnection *connection;
 static int audio_init(void)
 {
 	GKeyFile *config;
+	gboolean enable_sco;
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL)
@@ -155,8 +156,11 @@ static int audio_init(void)
 		goto failed;
 	}
 
-	if (audio_manager_init(connection, config) < 0)
+	if (audio_manager_init(connection, config, &enable_sco) < 0)
 		goto failed;
+
+	if (!enable_sco)
+		return 0;
 
 	sco_server = bt_io_listen(BT_IO_SCO, sco_server_cb, NULL, NULL,
 					NULL, NULL,
