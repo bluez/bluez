@@ -473,6 +473,7 @@ uuid_t *sdp_uuid32_create(uuid_t *uuid, uint32_t data);
 uuid_t *sdp_uuid128_create(uuid_t *uuid, const void *data);
 int sdp_uuid16_cmp(const void *p1, const void *p2);
 int sdp_uuid128_cmp(const void *p1, const void *p2);
+int sdp_uuid_cmp(const void *p1, const void *p2);
 uuid_t *sdp_uuid_to_uuid128(uuid_t *uuid);
 void sdp_uuid16_to_uuid128(uuid_t *uuid128, uuid_t *uuid16);
 void sdp_uuid32_to_uuid128(uuid_t *uuid128, uuid_t *uuid32);

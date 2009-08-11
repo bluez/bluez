@@ -2556,6 +2556,24 @@ uuid_t *sdp_uuid128_create(uuid_t *u, const void *val)
  * UUID comparison function
  * returns 0 if uuidValue1 == uuidValue2 else -1
  */
+int sdp_uuid_cmp(const void *p1, const void *p2)
+{
+	uuid_t *u1 = sdp_uuid_to_uuid128((uuid_t *) p1);
+	uuid_t *u2 = sdp_uuid_to_uuid128((uuid_t *) p2);
+	int ret;
+
+	ret = sdp_uuid128_cmp(u1, u2);
+
+	bt_free(u1);
+	bt_free(u2);
+
+	return ret;
+}
+
+/*
+ * UUID comparison function
+ * returns 0 if uuidValue1 == uuidValue2 else -1
+ */
 int sdp_uuid16_cmp(const void *p1, const void *p2)
 {
 	const uuid_t *u1 = (const uuid_t *)p1;
