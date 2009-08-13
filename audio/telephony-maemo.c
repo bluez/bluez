@@ -39,6 +39,11 @@
 #include "logging.h"
 #include "telephony.h"
 
+/* SSC D-Bus definitions */
+#define SSC_DBUS_NAME  "com.nokia.phone.SSC"
+#define SSC_DBUS_IFACE "com.nokia.phone.SSC"
+#define SSC_DBUS_PATH  "/com/nokia/phone/SSC"
+
 /* libcsnet D-Bus definitions */
 #define NETWORK_BUS_NAME		"com.nokia.phone.net"
 #define NETWORK_INTERFACE		"Phone.Net"
@@ -181,8 +186,6 @@ static struct {
 	.operator_name = NULL,
 };
 
-static guint csd_watch = 0;
-
 static DBusConnection *connection = NULL;
 
 static GSList *calls = NULL;
@@ -197,6 +200,8 @@ static char *vmbx = NULL;	/* Voice mailbox number */
 static int battchg_cur = -1;	/* "battery.charge_level.current" */
 static int battchg_last = -1;	/* "battery.charge_level.last_full" */
 static int battchg_design = -1;	/* "battery.charge_level.design" */
+
+static gboolean get_calls_active = FALSE;
 
 static gboolean events_enabled = FALSE;
 
@@ -1466,40 +1471,6 @@ static void handle_hal_property_modified(DBusMessage *msg)
 	}
 }
 
-static DBusHandlerResult signal_filter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	const char *path = dbus_message_get_path(msg);
-
-	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Coming"))
-		handle_incoming_call(msg);
-	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Created"))
-		handle_outgoing_call(msg);
-	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE,
-							"CreateRequested"))
-		handle_create_requested(msg);
-	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE, "CallStatus"))
-		handle_call_status(msg, path);
-	else if (dbus_message_is_signal(msg, CSD_CALL_CONFERENCE, "Joined"))
-		handle_conference(msg, TRUE);
-	else if (dbus_message_is_signal(msg, CSD_CALL_CONFERENCE, "Left"))
-		handle_conference(msg, FALSE);
-	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
-					"registration_status_change"))
-		handle_registration_status_change(msg);
-	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
-					"signal_strength_change"))
-		handle_signal_strength_change(msg);
-	else if (dbus_message_is_signal(msg, "org.freedesktop.Hal.Device",
-					"PropertyModified"))
-		handle_hal_property_modified(msg);
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static void csd_call_free(struct csd_call *call)
 {
 	if (!call)
@@ -1627,13 +1598,6 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 	dbus_uint16_t lac, network_type, supported_services;
 	dbus_uint32_t cell_id, operator_code, country_code;
 	dbus_int32_t net_err;
-	uint32_t features = AG_FEATURE_EC_ANDOR_NR |
-				AG_FEATURE_INBAND_RINGTONE |
-				AG_FEATURE_REJECT_A_CALL |
-				AG_FEATURE_ENHANCED_CALL_STATUS |
-				AG_FEATURE_ENHANCED_CALL_CONTROL |
-				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
-				AG_FEATURE_THREE_WAY_CALLING;
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -1671,9 +1635,6 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 					country_code, network_type,
 					supported_services);
 
-	telephony_ready_ind(features, maemo_indicators, response_and_hold,
-				chld_str);
-
 	get_signal_strength();
 
 done:
@@ -1693,6 +1654,8 @@ static void call_info_reply(DBusPendingCall *call, void *user_data)
 	DBusError err;
 	DBusMessage *reply;
 	DBusMessageIter iter, sub;;
+
+	get_calls_active = FALSE;
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -1743,7 +1706,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 	dbus_message_iter_init(reply, &iter);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
-		error("Unexpected signature in GetCallInfoAll return");
+		error("Unexpected signature in FindDeviceByCapability return");
 		goto done;
 	}
 
@@ -1829,55 +1792,21 @@ done:
 	dbus_message_unref(reply);
 }
 
-static gboolean csd_init(gpointer user_data)
+static void csd_init(void)
 {
-	char match_string[128];
-	const char *battery_cap = "battery";
 	dbus_uint32_t location;
 	uint8_t pb_type, location_type;
 	int ret;
-
-	if (!dbus_connection_add_filter(connection, signal_filter,
-						NULL, NULL)) {
-		error("Can't add signal filter");
-		return FALSE;
-	}
-
-	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=%s", CSD_CALL_INTERFACE);
-	dbus_bus_add_match(connection, match_string, NULL);
-
-	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=%s", CSD_CALL_INSTANCE);
-	dbus_bus_add_match(connection, match_string, NULL);
-
-	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=%s", CSD_CALL_CONFERENCE);
-	dbus_bus_add_match(connection, match_string, NULL);
-
-	snprintf(match_string, sizeof(match_string),
-			"type=signal,interface=%s", NETWORK_INTERFACE);
-	dbus_bus_add_match(connection, match_string, NULL);
 
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 				CSD_CALL_INTERFACE, "GetCallInfoAll",
 				call_info_reply, NULL, DBUS_TYPE_INVALID);
 	if (ret < 0) {
 		error("Unable to sent GetCallInfoAll method call");
-		return FALSE;
+		return;
 	}
 
-	ret = send_method_call("org.freedesktop.Hal",
-				"/org/freedesktop/Hal/Manager",
-				"org.freedesktop.Hal.Manager",
-				"FindDeviceByCapability",
-				hal_find_device_reply, NULL,
-				DBUS_TYPE_STRING, &battery_cap,
-				DBUS_TYPE_INVALID);
-	if (ret < 0) {
-		error("Unable to send HAL method call");
-		return FALSE;
-	}
+	get_calls_active = TRUE;
 
 	pb_type = SIM_PHONEBOOK_TYPE_MSISDN;
 	location = PHONEBOOK_INDEX_FIRST_ENTRY;
@@ -1892,7 +1821,7 @@ static gboolean csd_init(gpointer user_data)
 				DBUS_TYPE_INVALID);
 	if (ret < 0) {
 		error("Unable to send " SIM_PHONEBOOK_INTERFACE ".read()");
-		return FALSE;
+		return;
 	}
 
 	pb_type = SIM_PHONEBOOK_TYPE_VMBX;
@@ -1908,18 +1837,8 @@ static gboolean csd_init(gpointer user_data)
 				DBUS_TYPE_INVALID);
 	if (ret < 0) {
 		error("Unable to send " SIM_PHONEBOOK_INTERFACE ".read()");
-		return FALSE;
+		return;
 	}
-
-	return FALSE;
-}
-
-static void csd_ready(DBusConnection *conn, void *user_data)
-{
-	g_dbus_remove_watch(conn, csd_watch);
-	csd_watch = 0;
-
-	g_timeout_add_seconds(2, csd_init, NULL);
 }
 
 static inline DBusMessage *invalid_args(DBusMessage *msg)
@@ -2015,17 +1934,110 @@ static GDBusMethodTable telephony_maemo_methods[] = {
 	{ }
 };
 
+static void handle_modem_state(DBusMessage *msg)
+{
+	const char *state;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &state,
+							DBUS_TYPE_INVALID)) {
+		error("Unexpected modem state parameters");
+		return;
+	}
+
+	debug("SSC modem state: %s", state);
+
+	if (calls != NULL || get_calls_active)
+		return;
+
+	if (g_str_equal(state, "cmt_ready") || g_str_equal(state, "online"))
+		csd_init();
+}
+
+static void modem_state_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("get_modem_status: %s, %s", err.name, err.message);
+		dbus_error_free(&err);
+	} else
+		handle_modem_state(reply);
+
+	dbus_message_unref(reply);
+}
+
+static DBusHandlerResult signal_filter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *path = dbus_message_get_path(msg);
+
+	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Coming"))
+		handle_incoming_call(msg);
+	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Created"))
+		handle_outgoing_call(msg);
+	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE,
+							"CreateRequested"))
+		handle_create_requested(msg);
+	else if (dbus_message_is_signal(msg, CSD_CALL_INSTANCE, "CallStatus"))
+		handle_call_status(msg, path);
+	else if (dbus_message_is_signal(msg, CSD_CALL_CONFERENCE, "Joined"))
+		handle_conference(msg, TRUE);
+	else if (dbus_message_is_signal(msg, CSD_CALL_CONFERENCE, "Left"))
+		handle_conference(msg, FALSE);
+	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
+					"registration_status_change"))
+		handle_registration_status_change(msg);
+	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
+					"signal_strength_change"))
+		handle_signal_strength_change(msg);
+	else if (dbus_message_is_signal(msg, "org.freedesktop.Hal.Device",
+					"PropertyModified"))
+		handle_hal_property_modified(msg);
+	else if (dbus_message_is_signal(msg, SSC_DBUS_IFACE,
+						"modem_state_changed_ind"))
+		handle_modem_state(msg);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 int telephony_init(void)
 {
+	const char *battery_cap = "battery";
+	uint32_t features = AG_FEATURE_EC_ANDOR_NR |
+				AG_FEATURE_INBAND_RINGTONE |
+				AG_FEATURE_REJECT_A_CALL |
+				AG_FEATURE_ENHANCED_CALL_STATUS |
+				AG_FEATURE_ENHANCED_CALL_CONTROL |
+				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
+				AG_FEATURE_THREE_WAY_CALLING;
+
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
-	csd_watch = g_dbus_add_service_watch(connection, CSD_CALL_BUS_NAME,
-						csd_ready, NULL, NULL, NULL);
+	if (!dbus_connection_add_filter(connection, signal_filter,
+						NULL, NULL))
+		error("Can't add signal filter");
 
-	if (dbus_bus_name_has_owner(connection, CSD_CALL_BUS_NAME, NULL))
-		csd_ready(connection, NULL);
-	else
-		info("CSD not yet available. Waiting for it...");
+	dbus_bus_add_match(connection,
+			"type=signal,interface=" CSD_CALL_INTERFACE, NULL);
+	dbus_bus_add_match(connection,
+			"type=signal,interface=" CSD_CALL_INSTANCE, NULL);
+	dbus_bus_add_match(connection,
+			"type=signal,interface=" CSD_CALL_CONFERENCE, NULL);
+	dbus_bus_add_match(connection,
+			"type=signal,interface=" NETWORK_INTERFACE, NULL);
+	dbus_bus_add_match(connection,
+				"type=signal,interface=" SSC_DBUS_IFACE
+				",member=modem_state_changed_ind", NULL);
+
+	if (send_method_call(SSC_DBUS_NAME, SSC_DBUS_PATH, SSC_DBUS_IFACE,
+					"get_modem_state", modem_state_reply,
+					NULL, DBUS_TYPE_INVALID) < 0)
+		error("Unable to send " SSC_DBUS_IFACE ".get_modem_state()");
 
 	generate_flag_file(NONE_FLAG_FILE);
 	callerid = callerid_from_file();
@@ -2040,16 +2052,22 @@ int telephony_init(void)
 	debug("telephony-maemo registering %s interface on path %s",
 			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
 
+	telephony_ready_ind(features, maemo_indicators, response_and_hold,
+								chld_str);
+	if (send_method_call("org.freedesktop.Hal",
+				"/org/freedesktop/Hal/Manager",
+				"org.freedesktop.Hal.Manager",
+				"FindDeviceByCapability",
+				hal_find_device_reply, NULL,
+				DBUS_TYPE_STRING, &battery_cap,
+				DBUS_TYPE_INVALID) < 0)
+		error("Unable to send HAL method call");
+
 	return 0;
 }
 
 void telephony_exit(void)
 {
-	if (csd_watch) {
-		g_dbus_remove_watch(connection, csd_watch);
-		csd_watch = 0;
-	}
-
 	g_slist_foreach(calls, (GFunc) csd_call_free, NULL);
 	g_slist_free(calls);
 	calls = NULL;
