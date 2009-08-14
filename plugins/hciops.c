@@ -103,25 +103,6 @@ static void configure_device(int index)
 		return;
 	}
 
-	/* Set device class */
-	if ((main_opts.flags & (1 << HCID_SET_CLASS))) {
-		write_class_of_dev_cp cp;
-		uint8_t cls[3];
-
-		if (read_local_class(&di.bdaddr, cls) < 0) {
-			uint32_t class = htobl(main_opts.class);
-			memcpy(cp.dev_class, &class, 3);
-		} else {
-			if (!(main_opts.scan & SCAN_INQUIRY))
-				cls[1] &= 0xdf; /* Clear discoverable bit */
-			cls[2] = get_service_classes(&di.bdaddr);
-			memcpy(cp.dev_class, cls, 3);
-		}
-
-		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
-					WRITE_CLASS_OF_DEV_CP_SIZE, &cp);
-	}
-
 	/* Set page timeout */
 	if ((main_opts.flags & (1 << HCID_SET_PAGETO))) {
 		write_page_timeout_cp cp;
@@ -533,13 +514,36 @@ static int hciops_discoverable(int index)
 	return 0;
 }
 
-static int hciops_set_limited_discoverable(int index, const uint8_t *cls,
+static int hciops_set_class(int index, uint32_t class)
+{
+	int dd, err;
+	write_class_of_dev_cp cp;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	memcpy(cp.dev_class, &class, 3);
+
+	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
+					WRITE_CLASS_OF_DEV_CP_SIZE, &cp);
+
+	if (err < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
+static int hciops_set_limited_discoverable(int index, uint32_t class,
 							gboolean limited)
 {
 	int dd, err = 0;
-	uint32_t dev_class;
 	int num = (limited ? 2 : 1);
 	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
+	write_current_iac_lap_cp cp;
+
 	/*
 	 * 1: giac
 	 * 2: giac + liac
@@ -548,34 +552,16 @@ static int hciops_set_limited_discoverable(int index, const uint8_t *cls,
 	if (dd < 0)
 		return -EIO;
 
-	if (hci_write_current_iac_lap(dd, num, lap, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
-		error("Can't write current IAC LAP: %s(%d)",
-						strerror(errno), errno);
-		goto done;
-	}
+	memset(&cp, 0, sizeof(cp));
+	cp.num_current_iac = num;
+	memcpy(&cp.lap, lap, num * 3);
 
-	if (limited) {
-		if (cls[1] & 0x20)
-			goto done; /* Already limited */
+	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_CURRENT_IAC_LAP,
+					(num * 3 + 1), &cp);
 
-		dev_class = (cls[2] << 16) | ((cls[1] | 0x20) << 8) | cls[0];
-	} else {
-		if (!(cls[1] & 0x20))
-			goto done; /* Already clear */
-
-		dev_class = (cls[2] << 16) | ((cls[1] & 0xdf) << 8) | cls[0];
-	}
-
-	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
-		error("Can't write class of device: %s (%d)",
-						strerror(errno), errno);
-		goto done;
-	}
-done:
 	hci_close_dev(dd);
-	return err;
+
+	return hciops_set_class(index, class);
 }
 
 static int hciops_start_discovery(int index, gboolean periodic)
@@ -744,6 +730,7 @@ static struct btd_adapter_ops hci_ops = {
 	.cancel_resolve_name = hciops_cancel_resolve_name,
 	.set_name = hciops_set_name,
 	.read_name = hciops_read_name,
+	.set_class = hciops_set_class,
 };
 
 static int hciops_init(void)

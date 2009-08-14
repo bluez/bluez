@@ -78,17 +78,6 @@ void manager_update_svc(const bdaddr_t *bdaddr, uint8_t svc)
 	}
 }
 
-int manager_get_adapter_class(uint16_t dev_id, uint8_t *cls)
-{
-	struct btd_adapter *adapter;
-
-	adapter = manager_find_adapter_by_id(dev_id);
-	if (!adapter)
-		return -EINVAL;
-
-	return adapter_get_class(adapter, cls);
-}
-
 static inline DBusMessage *invalid_args(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg,

@@ -683,7 +683,7 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 		hcid_dbus_setscan_enable_complete(sba);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV):
-		hcid_dbus_write_class_complete(sba);
+		adapter_set_class_complete(sba, status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE):
 		hcid_dbus_write_simple_pairing_mode_complete(sba);

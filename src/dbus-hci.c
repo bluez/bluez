@@ -778,39 +778,6 @@ failed:
 		hci_close_dev(dd);
 }
 
-void hcid_dbus_write_class_complete(bdaddr_t *local)
-{
-	struct btd_adapter *adapter;
-	int dd;
-	uint8_t cls[3];
-	uint16_t dev_id;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	dev_id = adapter_get_dev_id(adapter);
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("HCI device open failed: hci%d", dev_id);
-		return;
-	}
-
-	if (hci_read_class_of_dev(dd, cls, HCI_REQ_TIMEOUT) < 0) {
-		error("Can't read class of device on hci%d: %s (%d)",
-			dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
-		return;
-	}
-
-	hci_close_dev(dd);
-
-	adapter_set_class(adapter, cls);
-}
-
 void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 {
 	struct btd_adapter *adapter;

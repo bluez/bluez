@@ -69,6 +69,9 @@
 #define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
 #define IO_CAPABILITY_INVALID		0xFF
 
+/* Limited Discoverable bit mask in CoD */
+#define LIMITED_BIT			0x002000
+
 #define check_address(address) bachk(address)
 
 static DBusConnection *connection = NULL;
@@ -127,7 +130,10 @@ struct btd_adapter {
 
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
 
-	uint8_t svc_cache;		/* Service Class cache */
+	uint32_t current_cod;		/* Adapter's current class */
+	uint32_t pending_cod;
+	uint32_t wanted_cod;		/* CoD cache */
+
 	gboolean cache_enable;
 
 	gint ref;
@@ -226,72 +232,57 @@ void clear_found_devices_list(struct btd_adapter *adapter)
 	adapter->found_devices = NULL;
 }
 
-static int set_service_classes(struct btd_adapter *adapter, uint8_t value)
+static int adapter_set_service_classes(struct btd_adapter *adapter, uint8_t value)
 {
-	struct hci_dev *dev = &adapter->dev;
-	const uint8_t *cls = dev->class;
-	uint32_t dev_class;
-	int dd, err;
+	int err;
 
-	if (cls[2] == value)
-		return 0; /* Already set */
+	/* Update only the service class, keep the limited bit, major/minor class
+	 * bits intact */
+	adapter->wanted_cod &= 0x00ffff;
+	adapter->wanted_cod |= (value << 16);
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0) {
-		err = -errno;
-		error("Can't open device hci%d: %s (%d)",
-				adapter->dev_id, strerror(errno), errno);
-		return err;
-	}
+	/* If we already have the CoD we want or the cache is enabled or an
+	 * existing CoD write is in progress just bail out */
+	if (adapter->current_cod == adapter->wanted_cod ||
+			adapter->cache_enable || adapter->pending_cod)
+		return 0;
 
-	dev_class = (value << 16) | (cls[1] << 8) | cls[0];
+	debug("Changing service classes to 0x%06x", adapter->wanted_cod);
 
-	debug("Changing service classes to 0x%06x", dev_class);
+	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
+	if (err < 0)
+		error("Adapter class update failed: %s(%d)",
+						strerror(err), err);
+	else
+		adapter->pending_cod = adapter->wanted_cod;
 
-	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
-		error("Can't write class of device: %s (%d)",
-						strerror(errno), errno);
-		hci_close_dev(dd);
-		return err;
-	}
-
-	hci_close_dev(dd);
-
-	return 0;
+	return err;
 }
 
-int set_major_and_minor_class(struct btd_adapter *adapter, uint8_t major,
+int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 								uint8_t minor)
 {
-	struct hci_dev *dev = &adapter->dev;
-	const uint8_t *cls = dev->class;
-	uint32_t dev_class;
-	int dd, err;
+	int err;
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0) {
-		err = -errno;
-		error("Can't open device hci%d: %s (%d)",
-				adapter->dev_id, strerror(errno), errno);
-		return err;
-	}
+	/* Update only the major and minor class bits keeping remaining bits
+	 * intact*/
+	adapter->wanted_cod &= 0xffe000;
+	adapter->wanted_cod |= ((major & 0x1f) << 8) | minor;
 
-	dev_class = (cls[2] << 16) | ((cls[1] & 0x20) << 8) |
-						((major & 0xdf) << 8) | minor;
+	if (adapter->wanted_cod == adapter->current_cod ||
+			adapter->cache_enable || adapter->pending_cod)
+		return 0;
 
-	debug("Changing major/minor class to 0x%06x", dev_class);
+	debug("Changing Major/Minor class to 0x%06x", adapter->wanted_cod);
 
-	if (hci_write_class_of_dev(dd, dev_class, HCI_REQ_TIMEOUT) < 0) {
-		int err = -errno;
-		error("Can't write class of device: %s (%d)",
-						strerror(errno), errno);
-		hci_close_dev(dd);
-		return err;
-	}
+	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
+	if (err < 0)
+		error("Adapter class update failed: %s(%d)",
+						strerror(err), err);
+	else
+		adapter->pending_cod = adapter->wanted_cod;
 
-	hci_close_dev(dd);
-	return 0;
+	return err;
 }
 
 int pending_remote_name_cancel(struct btd_adapter *adapter)
@@ -428,6 +419,25 @@ static void adapter_set_discov_timeout(struct btd_adapter *adapter,
 							adapter);
 }
 
+static void adapter_set_limited_discoverable(struct btd_adapter *adapter,
+							gboolean limited)
+{
+	/* Check if limited bit needs to be set/reset */
+	if (limited)
+		adapter->wanted_cod |= LIMITED_BIT;
+	else
+		adapter->wanted_cod &= ~LIMITED_BIT;
+
+	/* If we dont need the toggling, save an unnecessary CoD write */
+	if (adapter->pending_cod ||
+			adapter->wanted_cod == adapter->current_cod)
+		return;
+
+	if (adapter_ops->set_limited_discoverable(adapter->dev_id,
+					adapter->wanted_cod, limited) == 0)
+		adapter->pending_cod = adapter->wanted_cod;
+}
+
 static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 {
 	int err;
@@ -468,8 +478,7 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 						adapter->discov_timeout);
 
 		if (new_mode != MODE_LIMITED && adapter->mode == MODE_LIMITED)
-			adapter_ops->set_limited_discoverable(adapter->dev_id,
-						adapter->dev.class, FALSE);
+			adapter_set_limited_discoverable(adapter, FALSE);
 	}
 
 done:
@@ -841,6 +850,58 @@ static void update_ext_inquiry_response(struct btd_adapter *adapter)
 	hci_close_dev(dd);
 }
 
+void adapter_set_class_complete(bdaddr_t *bdaddr, uint8_t status)
+{
+	uint8_t class[3];
+	struct btd_adapter *adapter;
+	int ret;
+
+	if (status)
+		return;
+
+	adapter = manager_find_adapter(bdaddr);
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
+
+	if (adapter->pending_cod == 0)
+		return;
+
+	adapter->current_cod = adapter->pending_cod;
+	adapter->pending_cod = 0;
+
+	class[2] = (adapter->current_cod >> 16) & 0xff;
+	class[1] = (adapter->current_cod >> 8) & 0xff;
+	class[0] = adapter->current_cod & 0xff;
+
+	write_local_class(&adapter->bdaddr, class);
+
+	emit_property_changed(connection, adapter->path,
+				ADAPTER_INTERFACE, "Class",
+				DBUS_TYPE_UINT32, &adapter->current_cod);
+
+	update_ext_inquiry_response(adapter);
+
+	if (adapter->wanted_cod == adapter->current_cod)
+		return;
+
+	if (adapter->wanted_cod & LIMITED_BIT &&
+			!(adapter->current_cod & LIMITED_BIT))
+		ret = adapter_ops->set_limited_discoverable(adapter->dev_id,
+						adapter->wanted_cod, TRUE);
+	else if (!(adapter->wanted_cod & LIMITED_BIT) &&
+					adapter->current_cod & LIMITED_BIT)
+		ret = adapter_ops->set_limited_discoverable(adapter->dev_id,
+						adapter->wanted_cod, FALSE);
+	else
+		ret = adapter_ops->set_class(adapter->dev_id,
+							adapter->wanted_cod);
+
+	if (ret == 0)
+		adapter->pending_cod = adapter->wanted_cod;
+}
+
 void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 {
 	read_local_name_rp rp;
@@ -1139,7 +1200,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	char str[MAX_NAME_LENGTH + 1], srcaddr[18];
-	uint32_t class;
 	gboolean value;
 	char **devices;
 	int i;
@@ -1173,10 +1233,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &property);
 
 	/* Class */
-	class = adapter->dev.class[0] |
-			adapter->dev.class[1] << 8 |
-			adapter->dev.class[2] << 16;
-	dict_append_entry(&dict, "Class", DBUS_TYPE_UINT32, &class);
+	dict_append_entry(&dict, "Class",
+				DBUS_TYPE_UINT32, &adapter->current_cod);
 
 	/* Powered */
 	value = (adapter->up && !adapter->off_requested) ? TRUE : FALSE;
@@ -1756,6 +1814,7 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 	uint8_t inqmode;
 	int err , dd;
 	char name[MAX_NAME_LENGTH + 1];
+	uint8_t cls[3];
 
 	dd = hci_open_dev(adapter->dev_id);
 	if (dd < 0) {
@@ -1818,6 +1877,19 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 	if (g_str_equal(mode, "off"))
 		strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
 
+       /* Set device class */
+	if (adapter->wanted_cod) {
+		cls[1] = (adapter->wanted_cod >> 8) & 0xff;
+		cls[0] = adapter->wanted_cod & 0xff;
+	} else if (read_local_class(&adapter->bdaddr, cls) < 0) {
+		uint32_t class = htobl(main_opts.class);
+		if (class)
+			memcpy(cls, &class, 3);
+		else
+			goto done;
+	}
+
+	btd_adapter_set_class(adapter, cls[1], cls[0]);
 done:
 	hci_close_dev(dd);
 	return 0;
@@ -1971,6 +2043,31 @@ static int get_pairable_timeout(const char *src)
 	return main_opts.pairto;
 }
 
+static void adapter_disable_cod_cache(struct btd_adapter *adapter)
+{
+	int err;
+
+	if (!adapter)
+		return;
+
+	if (!adapter->cache_enable)
+		return;
+
+	/* Disable and flush svc cache. All successive service class updates
+	   will be written to the device */
+	adapter->cache_enable = FALSE;
+
+	if (adapter->current_cod == adapter->wanted_cod)
+		return;
+
+	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
+	if (err < 0)
+		error("Adapter class update failed: %s(%d)",
+						strerror(err), err);
+	else
+		adapter->pending_cod = adapter->wanted_cod;
+}
+
 static int adapter_up(struct btd_adapter *adapter, const char *mode)
 {
 	char srcaddr[18];
@@ -2050,7 +2147,7 @@ proceed:
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
 
-	adapter_disable_svc_cache(adapter);
+	adapter_disable_cod_cache(adapter);
 	return 0;
 }
 
@@ -2124,14 +2221,6 @@ int adapter_start(struct btd_adapter *adapter)
 
 	memcpy(dev->features, features, 8);
 
-	if (hci_read_class_of_dev(dd, dev->class, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
-		error("Can't read class of adapter on %s: %s (%d)",
-					adapter->path, strerror(errno), errno);
-		hci_close_dev(dd);
-		return err;
-	}
-
 	adapter_ops->read_name(adapter->dev_id);
 
 	if (!(features[6] & LMP_SIMPLE_PAIR))
@@ -2153,6 +2242,8 @@ setup:
 	hci_send_cmd(dd, OGF_LINK_POLICY, OCF_READ_DEFAULT_LINK_POLICY,
 								0, NULL);
 	hci_close_dev(dd);
+
+	adapter->current_cod = 0;
 
 	adapter_setup(adapter, mode);
 
@@ -2258,6 +2349,7 @@ int adapter_stop(struct btd_adapter *adapter)
 	adapter->mode = MODE_OFF;
 	adapter->state = DISCOVER_TYPE_NONE;
 	adapter->cache_enable = TRUE;
+	adapter->pending_cod = 0;
 
 	info("Adapter %s has been disabled", adapter->path);
 
@@ -2271,60 +2363,7 @@ int adapter_update(struct btd_adapter *adapter, uint8_t new_svc)
 	if (dev->ignore)
 		return 0;
 
-	if (adapter->cache_enable) {
-		adapter->svc_cache = new_svc;
-		return 0;
-	}
-
-	set_service_classes(adapter, new_svc);
-
-	update_ext_inquiry_response(adapter);
-
-	return 0;
-}
-
-void adapter_disable_svc_cache(struct btd_adapter *adapter)
-{
-	if (!adapter)
-		return;
-
-	if (!adapter->cache_enable)
-		return;
-
-	/* Disable and flush svc cache. All successive service class updates
-	   will be written to the device */
-	adapter->cache_enable = FALSE;
-
-	set_service_classes(adapter, adapter->svc_cache);
-
-	update_ext_inquiry_response(adapter);
-}
-
-int adapter_get_class(struct btd_adapter *adapter, uint8_t *cls)
-{
-	struct hci_dev *dev = &adapter->dev;
-
-	memcpy(cls, dev->class, 3);
-
-	return 0;
-}
-
-int adapter_set_class(struct btd_adapter *adapter, uint8_t *cls)
-{
-	struct hci_dev *dev = &adapter->dev;
-	uint32_t class;
-
-	if (memcmp(dev->class, cls, 3) == 0)
-		return 0;
-
-	memcpy(dev->class, cls, 3);
-
-	write_local_class(&adapter->bdaddr, cls);
-
-	class = cls[0] | (cls[1] << 8) | (cls[2] << 16);
-
-	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
-				"Class", DBUS_TYPE_UINT32, &class);
+	adapter_set_service_classes(adapter, new_svc);
 
 	return 0;
 }
@@ -2694,7 +2733,6 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 {
 	const gchar *path = adapter_get_path(adapter);
 	gboolean discoverable, pairable;
-	uint8_t real_class[3];
 
 	if (adapter->scan_mode == scan_mode)
 		return;
@@ -2739,17 +2777,11 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 					ADAPTER_INTERFACE, "Pairable",
 					DBUS_TYPE_BOOLEAN, &pairable);
 
-	memcpy(real_class, adapter->dev.class, 3);
-	if (adapter->svc_cache)
-		real_class[2] = adapter->svc_cache;
-
 	if (discoverable && adapter->pairable && adapter->discov_timeout > 0 &&
 						adapter->discov_timeout <= 60)
-		adapter_ops->set_limited_discoverable(adapter->dev_id,
-							real_class, TRUE);
+		adapter_set_limited_discoverable(adapter, TRUE);
 	else if (!discoverable)
-		adapter_ops->set_limited_discoverable(adapter->dev_id,
-							real_class, FALSE);
+		adapter_set_limited_discoverable(adapter, FALSE);
 
 	emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discoverable",
