@@ -36,7 +36,6 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "logging.h"
 #include "sdp-xml.h"
 
 #define STRBUFSIZE 1024
@@ -675,8 +674,6 @@ sdp_data_t *sdp_xml_parse_url(const char *data)
 
 	ret = sdp_data_alloc_with_length(dtd, url, length);
 
-	debug("URL size %d length %d: -->%s<--", ret->unitSize, length, url);
-
 	free(url);
 
 	return ret;
@@ -695,8 +692,6 @@ sdp_data_t *sdp_xml_parse_text(const char *data, char encoding)
 		dtd = SDP_TEXT_STR16;
 
 	ret = sdp_data_alloc_with_length(dtd, text, length);
-
-	debug("Text size %d length %d: -->%s<--", ret->unitSize, length, text);
 
 	free(text);
 
