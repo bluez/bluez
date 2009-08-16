@@ -1257,14 +1257,13 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	str2ba(req->source, &src);
 	str2ba(req->destination, &dst);
 
+	if (!manager_find_device(req->object, &src, &dst, NULL, FALSE))
+		goto failed;
+
 	if (req->transport == BT_CAPABILITIES_TRANSPORT_SCO)
 		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
 	else if (req->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
 		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
-
-	if (!manager_find_device(req->object, &src, &dst, NULL, FALSE))
-		goto failed;
-
 	dev = manager_find_device(req->object, &src, &dst, client->interface,
 				TRUE);
 	if (!dev && (req->flags & BT_FLAG_AUTOCONNECT))
