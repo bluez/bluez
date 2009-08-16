@@ -3,6 +3,8 @@ SUBDIRS = include lib sbc gdbus common \
 		plugins network serial input audio src \
 		client tools rfcomm compat cups test scripts doc
 
+AM_MAKEFLAGS = --no-print-directory
+
 pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = bluez.pc
