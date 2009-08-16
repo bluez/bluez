@@ -175,16 +175,17 @@ static void unix_ipc_error(struct unix_client *client, uint8_t name, int err)
 static service_type_t select_service(struct audio_device *dev, const char *interface)
 {
 	if (!interface) {
-		if (dev->source && avdtp_is_connected(&dev->src, &dev->dst))
-			return TYPE_SOURCE;
-		else if (dev->sink && avdtp_is_connected(&dev->src, &dev->dst))
+		if (dev->sink && avdtp_is_connected(&dev->src, &dev->dst))
 			return TYPE_SINK;
+		else if (dev->source && avdtp_is_connected(&dev->src,
+								&dev->dst))
+			return TYPE_SOURCE;
 		else if (dev->headset && headset_is_active(dev))
 			return TYPE_HEADSET;
-		else if (dev->source)
-			return TYPE_SOURCE;
 		else if (dev->sink)
 			return TYPE_SINK;
+		else if (dev->source)
+			return TYPE_SOURCE;
 		else if (dev->headset)
 			return TYPE_HEADSET;
 	} else if (!strcmp(interface, AUDIO_SOURCE_INTERFACE) && dev->source)
@@ -515,6 +516,13 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		if (space_left < sizeof(sbc_capabilities_t))
 			return -ENOMEM;
 
+		if (type == AVDTP_SEP_TYPE_SINK)
+			codec->type = BT_A2DP_SBC_SINK;
+		else if (type == AVDTP_SEP_TYPE_SOURCE)
+			codec->type = BT_A2DP_SBC_SOURCE;
+		else
+			return -EINVAL;
+
 		codec->length = sizeof(sbc_capabilities_t);
 
 		sbc->channel_mode = sbc_cap->channel_mode;
@@ -526,16 +534,19 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		sbc->max_bitpool = sbc_cap->max_bitpool;
 
 		print_sbc(sbc_cap);
-		if (type == AVDTP_SEP_TYPE_SINK)
-			codec->type = BT_A2DP_SBC_SINK;
-		else if (type == AVDTP_SEP_TYPE_SOURCE)
-			codec->type = BT_A2DP_SBC_SOURCE;
 	} else if (codec_cap->media_codec_type == A2DP_CODEC_MPEG12) {
 		struct mpeg_codec_cap *mpeg_cap = (void *) codec_cap;
 		mpeg_capabilities_t *mpeg = (void *) codec;
 
 		if (space_left < sizeof(mpeg_capabilities_t))
 			return -ENOMEM;
+
+		if (type == AVDTP_SEP_TYPE_SINK)
+			codec->type = BT_A2DP_MPEG12_SINK;
+		else if (type == AVDTP_SEP_TYPE_SOURCE)
+			codec->type = BT_A2DP_MPEG12_SOURCE;
+		else
+			return -EINVAL;
 
 		codec->length = sizeof(mpeg_capabilities_t);
 
@@ -547,10 +558,6 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		mpeg->bitrate = mpeg_cap->bitrate;
 
 		print_mpeg12(mpeg_cap);
-		if (type == AVDTP_SEP_TYPE_SINK)
-			codec->type = BT_A2DP_MPEG12_SINK;
-		else if (type == AVDTP_SEP_TYPE_SOURCE)
-			codec->type = BT_A2DP_MPEG12_SOURCE;
 	} else {
 		size_t codec_length, type_length, total_length;
 
@@ -563,14 +570,17 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 		if (space_left < total_length)
 			return -ENOMEM;
 
-		codec->length = total_length;
-		memcpy(codec->data, &codec_cap->media_codec_type, type_length);
-		memcpy(codec->data + type_length, codec_cap->data,
-			codec_length);
 		if (type == AVDTP_SEP_TYPE_SINK)
 			codec->type = BT_A2DP_UNKNOWN_SINK;
 		else if (type == AVDTP_SEP_TYPE_SOURCE)
 			codec->type = BT_A2DP_UNKNOWN_SOURCE;
+		else
+			return -EINVAL;
+
+		codec->length = total_length;
+		memcpy(codec->data, &codec_cap->media_codec_type, type_length);
+		memcpy(codec->data + type_length, codec_cap->data,
+			codec_length);
 	}
 
 	codec->seid = seid;
@@ -624,7 +634,7 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 		type = avdtp_get_type(rsep);
 
 		if (type != AVDTP_SEP_TYPE_SINK &&
-			type != AVDTP_SEP_TYPE_SOURCE)
+						type != AVDTP_SEP_TYPE_SOURCE)
 			continue;
 
 		cap = avdtp_get_codec(rsep);
@@ -1276,6 +1286,8 @@ static void handle_getcapabilities_req(struct unix_client *client,
 			client->interface = g_strdup(AUDIO_GATEWAY_INTERFACE);
 		else if (req->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
 			client->interface = g_strdup(AUDIO_SOURCE_INTERFACE);
+		else
+			client->interface = NULL;
 		dev = manager_find_device(req->object, &src, &dst,
 				client->interface, TRUE);
 		if (!dev && (req->flags & BT_FLAG_AUTOCONNECT))
