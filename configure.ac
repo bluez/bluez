@@ -1,5 +1,5 @@
 AC_PREREQ(2.60)
-AC_INIT(bluez, 4.47)
+AC_INIT(bluez, 4.48)
 
 AM_INIT_AUTOMAKE()
 AM_CONFIG_HEADER(config.h)

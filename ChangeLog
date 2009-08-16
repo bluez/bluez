@@ -1,3 +1,14 @@
+ver 4.48:
+	Add library function for comparing UUID values.
+	Add support for creating all plugins as builtins.
+	Add support for async handling of service class changes.
+	Add support for source interface to audio IPC.
+	Fix device name settings when device is off or down.
+	Fix issue with enabled SCO server when not necessary.
+	Fix missing D-Bus access policy for CUPS backend.
+	Fix discovery results of CUPS backend.
+	Fix initialization handling of Maemo telephony.
+
 ver 4.47:
 	Add support for RFKILL unblock handling.
 	Add support for serial proxy configurations.
