@@ -1878,7 +1878,7 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 		strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
 
        /* Set device class */
-	if (adapter->wanted_cod) {
+	if (adapter->initialized && adapter->wanted_cod) {
 		cls[1] = (adapter->wanted_cod >> 8) & 0xff;
 		cls[0] = adapter->wanted_cod & 0xff;
 	} else if (read_local_class(&adapter->bdaddr, cls) < 0) {
