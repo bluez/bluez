@@ -292,12 +292,6 @@ static int register_agent(DBusConnection *conn, const char *adapter_path,
 	DBusMessage *msg, *reply;
 	DBusError err;
 
-	if (!dbus_connection_register_object_path(conn, agent_path,
-							&agent_table, NULL)) {
-		fprintf(stderr, "Can't register object path for agent\n");
-		return -1;
-	}
-
 	msg = dbus_message_new_method_call("org.bluez", adapter_path,
 					"org.bluez.Adapter", "RegisterAgent");
 	if (!msg) {
@@ -598,6 +592,12 @@ int main(int argc, char *argv[])
 	adapter_path = get_adapter_path(conn, adapter_id);
 	if (!adapter_path)
 		exit(1);
+
+	if (!dbus_connection_register_object_path(conn, agent_path,
+							&agent_table, NULL)) {
+		fprintf(stderr, "Can't register object path for agent\n");
+		exit(1);
+	}
 
 	if (device) {
 		if (create_paired_device(conn, adapter_path, agent_path,
