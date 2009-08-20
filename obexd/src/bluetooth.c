@@ -143,7 +143,6 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 			const gchar *capability)
 {
 	struct server *server;
-	int err;
 
 	server = g_new0(struct server, 1);
 	server->services = service;
@@ -157,15 +156,7 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	server->rx_mtu = BT_RX_MTU;
 	server->tx_mtu = BT_TX_MTU;
 
-	err = server_start(server);
-	if (err < 0) {
-		server_free(server);
-		return err;
-	}
-
 	servers = g_slist_append(servers, server);
-
-	register_record(server, NULL);
 
 	return 0;
 }

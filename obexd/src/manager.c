@@ -672,17 +672,6 @@ static DBusPendingCall *find_adapter(const char *pattern,
 	return call;
 }
 
-static gboolean find_adapter_any_idle(gpointer user_data)
-{
-	DBusPendingCall *call;
-
-	call = find_adapter("any", find_adapter_any_reply, NULL);
-	if (call)
-		dbus_pending_call_unref(call);
-
-	return FALSE;
-}
-
 static void name_acquired(DBusConnection *conn, void *user_data)
 {
 	DBusPendingCall *call;
@@ -727,8 +716,6 @@ gboolean manager_init(void)
 
 	listener_id = g_dbus_add_service_watch(system_conn, "org.bluez",
 				name_acquired, name_released, NULL, NULL);
-
-	g_idle_add(find_adapter_any_idle, NULL);
 
 	return g_dbus_register_interface(connection, OPENOBEX_MANAGER_PATH,
 					OPENOBEX_MANAGER_INTERFACE,
