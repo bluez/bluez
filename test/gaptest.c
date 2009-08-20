@@ -187,7 +187,7 @@ static void usage(void)
 		"\t-P <powered>        Set powered\n"
 		"\t-D <discoverable>   Set discoverable\n"
 		"\t-B <pairable>       Set pairable\n"
-		"\t-C <address>        Create device"
+		"\t-C <address>        Create device\n"
 		"\t-R <address>        Remove device\n");
 }
 
