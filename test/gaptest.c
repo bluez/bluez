@@ -123,6 +123,41 @@ done:
 	return result;
 }
 
+static int remove_device(DBusConnection *conn, const char *adapter,
+							const char *device)
+{
+	DBusMessage *message, *reply;
+	DBusError error;
+
+	message = dbus_message_new_method_call(BLUEZ_SERVICE, adapter,
+					ADAPTER_INTF, "RemoveDevice");
+	if (!message)
+		return -ENOMEM;
+
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &device,
+							DBUS_TYPE_INVALID);
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(conn,
+							message, -1, &error);
+
+	dbus_message_unref(message);
+
+	if (!reply) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			fprintf(stderr, "%s\n", error.message);
+			dbus_error_free(&error);
+		} else
+			fprintf(stderr, "Failed to set property\n");
+		return -EIO;
+	}
+
+	dbus_message_unref(reply);
+
+	return 0;
+}
+
 static int set_property(DBusConnection *conn, const char *adapter,
 					const char *key, int type, void *val)
 {
@@ -268,6 +303,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Can't find device\n");
 			exit(1);
 		}
+
+		free(device);
 	}
 
 	if (remove) {
@@ -276,6 +313,10 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Can't find device\n");
 			exit(1);
 		}
+
+		remove_device(conn, adapter, device);
+
+		free(device);
 	}
 
 	free(adapter);
