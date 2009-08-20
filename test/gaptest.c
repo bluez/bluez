@@ -71,6 +71,8 @@ static char *get_adapter(DBusConnection *conn)
 						DBUS_TYPE_INVALID) == FALSE)
 		goto done;
 
+	printf("Using default adapter %s\n", path);
+
 	result = strdup(path);
 
 done:
@@ -115,6 +117,8 @@ static char *find_device(DBusConnection *conn, const char *adapter,
 						DBUS_TYPE_INVALID) == FALSE)
 		goto done;
 
+	printf("Using device %s for address %s\n", path, address);
+
 	result = strdup(path);
 
 done:
@@ -154,6 +158,8 @@ static int remove_device(DBusConnection *conn, const char *adapter,
 	}
 
 	dbus_message_unref(reply);
+
+	printf("Removed device %s\n", device);
 
 	return 0;
 }
@@ -208,6 +214,8 @@ static int set_property(DBusConnection *conn, const char *adapter,
 	}
 
 	dbus_message_unref(reply);
+
+	printf("Set property %s for %s\n", key, adapter);
 
 	return 0;
 }
