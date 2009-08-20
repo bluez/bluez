@@ -36,7 +36,7 @@
 #include <dbus/dbus.h>
 
 static char *passkey_value = NULL;
-
+static int passkey_delay = 0;
 static int do_reject = 0;
 
 static volatile sig_atomic_t __io_canceled = 0;
@@ -101,6 +101,11 @@ static DBusHandlerResult request_pincode_message(DBusConnection *conn,
 
 	printf("Pincode request for device %s\n", path);
 
+	if (passkey_delay) {
+		printf("Waiting for %d seconds", passkey_delay);
+		sleep(passkey_delay);
+	}
+
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &passkey_value,
 							DBUS_TYPE_INVALID);
 
@@ -142,6 +147,11 @@ static DBusHandlerResult request_passkey_message(DBusConnection *conn,
 	}
 
 	printf("Passkey request for device %s\n", path);
+
+	if (passkey_delay) {
+		printf("Waiting for %d seconds", passkey_delay);
+		sleep(passkey_delay);
+	}
 
 	passkey = strtoul(passkey_value, NULL, 10);
 
@@ -185,6 +195,10 @@ static DBusHandlerResult request_confirmation_message(DBusConnection *conn,
 
 	printf("Confirmation request of %u for device %s\n", passkey, path);
 
+	if (passkey_delay) {
+		printf("Waiting for %d seconds", passkey_delay);
+		sleep(passkey_delay);
+	}
 
 send:
 	dbus_connection_send(conn, reply, NULL);
@@ -558,6 +572,7 @@ static struct option main_options[] = {
 	{ "adapter",	1, 0, 'a' },
 	{ "path",	1, 0, 'p' },
 	{ "capabilites",1, 0, 'c' },
+	{ "delay",	1, 0, 'd' },
 	{ "reject",	0, 0, 'r' },
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
@@ -575,7 +590,7 @@ int main(int argc, char *argv[])
 	snprintf(default_path, sizeof(default_path),
 					"/org/bluez/agent_%d", getpid());
 
-	while ((opt = getopt_long(argc, argv, "+a:p:c:rh", main_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+a:p:c:d:rh", main_options, NULL)) != EOF) {
 		switch(opt) {
 		case 'a':
 			adapter_id = optarg;
@@ -589,6 +604,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'c':
 			capabilities = optarg;
+			break;
+		case 'd':
+			passkey_delay = atoi(optarg);
 			break;
 		case 'r':
 			do_reject = 1;
