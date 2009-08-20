@@ -102,7 +102,7 @@ static DBusHandlerResult request_pincode_message(DBusConnection *conn,
 	printf("Pincode request for device %s\n", path);
 
 	if (passkey_delay) {
-		printf("Waiting for %d seconds", passkey_delay);
+		printf("Waiting for %d seconds\n", passkey_delay);
 		sleep(passkey_delay);
 	}
 
@@ -149,7 +149,7 @@ static DBusHandlerResult request_passkey_message(DBusConnection *conn,
 	printf("Passkey request for device %s\n", path);
 
 	if (passkey_delay) {
-		printf("Waiting for %d seconds", passkey_delay);
+		printf("Waiting for %d seconds\n", passkey_delay);
 		sleep(passkey_delay);
 	}
 
@@ -196,7 +196,7 @@ static DBusHandlerResult request_confirmation_message(DBusConnection *conn,
 	printf("Confirmation request of %u for device %s\n", passkey, path);
 
 	if (passkey_delay) {
-		printf("Waiting for %d seconds", passkey_delay);
+		printf("Waiting for %d seconds\n", passkey_delay);
 		sleep(passkey_delay);
 	}
 
