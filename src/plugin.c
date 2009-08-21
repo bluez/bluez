@@ -86,6 +86,9 @@ static gboolean is_disabled(const char *name, char **list)
 {
 	int i;
 
+	if (list == NULL)
+		return FALSE;
+
 	for (i = 0; list[i] != NULL; i++) {
 		char *str;
 		gboolean equal;
@@ -130,8 +133,7 @@ gboolean plugin_init(GKeyFile *config)
 	debug("Loading builtin plugins");
 
 	for (i = 0; __bluetooth_builtin[i]; i++) {
-		if (disabled && is_disabled(__bluetooth_builtin[i]->name,
-								disabled))
+		if (is_disabled(__bluetooth_builtin[i]->name, disabled))
 			continue;
 
 		add_plugin(NULL,  __bluetooth_builtin[i]);
@@ -157,7 +159,7 @@ gboolean plugin_init(GKeyFile *config)
 				g_str_has_suffix(file, ".so") == FALSE)
 			continue;
 
-		if (disabled && is_disabled(file, disabled))
+		if (is_disabled(file, disabled))
 			continue;
 
 		filename = g_build_filename(PLUGINDIR, file, NULL);
@@ -190,8 +192,10 @@ gboolean plugin_init(GKeyFile *config)
 	for (list = plugins; list; list = list->next) {
 		struct bluetooth_plugin *plugin = list->data;
 
-		if (plugin->desc->init() < 0)
+		if (plugin->desc->init() < 0) {
+			error("Failed to init %s plugin", plugin->desc->name);
 			continue;
+		}
 
 		plugin->active = TRUE;
 	}
