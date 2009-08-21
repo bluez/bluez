@@ -140,7 +140,7 @@ gboolean plugin_init(GKeyFile *config)
 	}
 
 	if (strlen(PLUGINDIR) == 0)
-		return FALSE;
+		goto start;
 
 	debug("Loading plugins %s", PLUGINDIR);
 
