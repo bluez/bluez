@@ -351,6 +351,9 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 			(type == 0xff || !(type & 0x01) || remcap == 0x03)) {
 		int dd;
 
+		/* Wait 5 milliseconds before doing auto-accept */
+		usleep(5000);
+
 		dd = hci_open_dev(dev_id);
 		if (dd < 0) {
 			error("Unable to open hci%d", dev_id);
