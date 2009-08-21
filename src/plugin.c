@@ -147,7 +147,7 @@ gboolean plugin_init(GKeyFile *config)
 	dir = g_dir_open(PLUGINDIR, 0, NULL);
 	if (!dir) {
 		g_strfreev(disabled);
-		return FALSE;
+		goto start;
 	}
 
 	while ((file = g_dir_read_name(dir)) != NULL) {
@@ -189,6 +189,7 @@ gboolean plugin_init(GKeyFile *config)
 
 	g_strfreev(disabled);
 
+start:
 	for (list = plugins; list; list = list->next) {
 		struct bluetooth_plugin *plugin = list->data;
 
