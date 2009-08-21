@@ -116,9 +116,6 @@ gboolean plugin_init(GKeyFile *config)
 	gchar **disabled;
 	unsigned int i;
 
-	if (strlen(PLUGINDIR) == 0)
-		return FALSE;
-
 	/* Make a call to BtIO API so its symbols got resolved before the
 	 * plugins are loaded. */
 	bt_io_error_quark();
@@ -139,6 +136,9 @@ gboolean plugin_init(GKeyFile *config)
 
 		add_plugin(NULL,  __bluetooth_builtin[i]);
 	}
+
+	if (strlen(PLUGINDIR) == 0)
+		return FALSE;
 
 	debug("Loading plugins %s", PLUGINDIR);
 
