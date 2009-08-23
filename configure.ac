@@ -45,4 +45,4 @@ AC_PATH_SNDFILE
 AC_ARG_BLUEZ
 
 AC_OUTPUT(Makefile scripts/bluetooth.rules doc/version.xml
-			src/bluetoothd.8 src/hcid.conf.5 bluez.pc)
+					src/bluetoothd.8 bluez.pc)

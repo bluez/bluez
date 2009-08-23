@@ -193,7 +193,9 @@ if CONFIGFILES
 conf_DATA += src/main.conf
 endif
 
-EXTRA_DIST += src/genbuiltin src/main.conf audio/telephony-dummy.c \
+EXTRA_DIST += src/genbuiltin src/main.conf network/network.conf \
+			input/input.conf serial/serial.conf \
+			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo.c audio/telephony-ofono.c
 
 
