@@ -5,6 +5,7 @@
 *.so
 .deps
 .libs
+.dirstamp
 Makefile
 Makefile.in
 aclocal.m4
@@ -67,6 +68,7 @@ test/avtest
 test/l2test
 test/rctest
 test/scotest
+test/gaptest
 test/sdptest
 test/lmptest
 test/btiotest

@@ -1,7 +1,7 @@
 AC_PREREQ(2.60)
 AC_INIT(bluez, 4.48)
 
-AM_INIT_AUTOMAKE()
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 AM_CONFIG_HEADER(config.h)
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -17,6 +17,7 @@ COMPILER_FLAGS
 AC_LANG_C
 
 AC_PROG_CC
+AM_PROG_CC_C_O
 AC_PROG_CC_PIE
 AC_PROG_INSTALL
 AC_PROG_YACC
@@ -27,8 +28,6 @@ m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
-
-GTK_DOC_CHECK
 
 AC_FUNC_PPOLL
 
@@ -45,30 +44,5 @@ AC_PATH_SNDFILE
 
 AC_ARG_BLUEZ
 
-AC_OUTPUT([
-	Makefile
-	include/Makefile
-	lib/Makefile
-	gdbus/Makefile
-	common/Makefile
-	sbc/Makefile
-	src/Makefile
-	test/Makefile
-	cups/Makefile
-	tools/Makefile
-	client/Makefile
-	rfcomm/Makefile
-	compat/Makefile
-	plugins/Makefile
-	network/Makefile
-	serial/Makefile
-	input/Makefile
-	audio/Makefile
-	scripts/Makefile
-	scripts/bluetooth.rules
-	doc/Makefile
-	doc/version.xml
-	src/bluetoothd.8
-	src/hcid.conf.5
-	bluez.pc
-])
+AC_OUTPUT(Makefile scripts/bluetooth.rules doc/version.xml
+			src/bluetoothd.8 src/hcid.conf.5 bluez.pc)

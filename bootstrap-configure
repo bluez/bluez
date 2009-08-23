@@ -27,6 +27,5 @@ fi
 		--enable-test \
 		--enable-cups \
 		--disable-pcmcia \
-		--disable-manpages \
 		--disable-udevrules \
 		--disable-configfiles $*

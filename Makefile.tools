@@ -1,0 +1,161 @@
+
+if TOOLS
+if CONFIGFILES
+conf_DATA += rfcomm/rfcomm.conf
+endif
+
+bin_PROGRAMS += rfcomm/rfcomm tools/l2ping \
+				tools/hcitool tools/sdptool tools/ciptool
+
+noinst_PROGRAMS += tools/avinfo tools/ppporc \
+				tools/hcieventmask tools/hcisecfilter
+
+rfcomm_rfcomm_SOURCES = rfcomm/main.c rfcomm/parser.y rfcomm/lexer.l \
+					rfcomm/kword.h rfcomm/kword.c
+EXTRA_rfcomm_rfcomm_SOURCES = rfcomm/parser.h rfcomm/parser.c \
+							rfcomm/lexer.c
+rfcomm_rfcomm_LDADD = lib/libbluetooth.la
+
+tools_l2ping_LDADD = lib/libbluetooth.la
+
+tools_hcitool_SOURCES = tools/hcitool.c \
+				common/textfile.h common/textfile.c \
+						common/oui.h common/oui.c
+tools_hcitool_LDADD = lib/libbluetooth.la
+
+tools_sdptool_SOURCES = tools/sdptool.c common/sdp-xml.h common/sdp-xml.c
+tools_sdptool_LDADD = lib/libbluetooth.la
+
+tools_ciptool_LDADD = lib/libbluetooth.la
+
+tools_avinfo_LDADD = lib/libbluetooth.la
+
+tools_ppporc_LDADD = lib/libbluetooth.la
+
+tools_hcieventmask_LDADD = lib/libbluetooth.la
+
+dist_man_MANS += rfcomm/rfcomm.1 tools/l2ping.8 \
+			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
+endif
+
+CLEANFILES += rfcomm/lexer.c rfcomm/parser.c rfcomm/parser.h
+
+EXTRA_DIST += rfcomm/rfcomm.conf
+
+
+if DFUTOOL
+bin_PROGRAMS += tools/dfutool
+
+tools_dfutool_SOURCES = tools/dfutool.c tools/dfu.h tools/dfu.c
+tools_dfutool_LDADD = @USB_LIBS@
+
+dist_man_MANS += tools/dfutool.1
+endif
+
+
+if USB
+noinst_PROGRAMS += tools/dfubabel tools/avctrl
+
+tools_dfubabel_LDADD = @USB_LIBS@
+
+tools_avctrl_LDADD = @USB_LIBS@
+
+dist_man_MANS += tools/dfubabel.1 tools/avctrl.8
+endif
+
+
+if CUPS
+cupsdir = $(libdir)/cups/backend
+
+cups_PROGRAMS = cups/bluetooth
+
+cups_bluetooth_SOURCES = $(gdbus_sources) cups/main.c cups/cups.h \
+					cups/sdp.c cups/spp.c cups/hcrp.c
+
+cups_bluetooth_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ lib/libbluetooth.la
+endif
+
+
+if TEST
+sbin_PROGRAMS += test/hciemu
+
+bin_PROGRAMS += test/l2test test/rctest
+
+noinst_PROGRAMS += test/gaptest test/sdptest test/scotest \
+			test/attest test/hstest test/avtest test/lmptest \
+					test/bdaddr test/agent test/btiotest
+
+test_hciemu_LDADD = @GLIB_LIBS@ lib/libbluetooth.la
+
+test_l2test_LDADD = lib/libbluetooth.la
+
+test_rctest_LDADD = lib/libbluetooth.la
+
+test_gaptest_LDADD = @DBUS_LIBS@
+
+test_sdptest_LDADD = lib/libbluetooth.la
+
+test_scotest_LDADD = lib/libbluetooth.la
+
+test_attest_LDADD = lib/libbluetooth.la
+
+test_hstest_LDADD = lib/libbluetooth.la
+
+test_avtest_LDADD = lib/libbluetooth.la
+
+test_bdaddr_SOURCES = test/bdaddr.c common/oui.h common/oui.c
+test_bdaddr_LDADD = lib/libbluetooth.la
+
+test_lmptest_LDADD = lib/libbluetooth.la
+
+test_agent_LDADD = @DBUS_LIBS@
+
+test_btiotest_SOURCES = test/btiotest.c common/btio.h common/btio.c
+test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth.la
+
+dist_man_MANS += test/rctest.1 test/hciemu.1
+
+dist_noinst_MANS += test/bdaddr.8
+endif
+
+EXTRA_DIST += test/apitest test/hsplay test/hsmicro test/dbusdef.py \
+		test/monitor-bluetooth test/list-devices test/test-discovery \
+		test/test-manager test/test-adapter test/test-device \
+		test/test-service test/test-serial test/test-telephony \
+		test/test-network test/simple-agent test/simple-service \
+		test/service-record.dtd test/service-did.xml \
+		test/service-spp.xml test/service-opp.xml test/service-ftp.xml
+
+
+if HIDD
+bin_PROGRAMS += compat/hidd
+
+compat_hidd_SOURCES = compat/hidd.c compat/hidd.h \
+				compat/sdp.h compat/sdp.c compat/fakehid.c \
+					common/textfile.h common/textfile.c
+compat_hidd_LDADD = -lm lib/libbluetooth.la
+
+dist_man_MANS += compat/hidd.1
+endif
+
+if PAND
+bin_PROGRAMS += compat/pand
+
+compat_pand_SOURCES = compat/pand.c compat/pand.h \
+				compat/bnep.c compat/sdp.h compat/sdp.c \
+					common/textfile.h common/textfile.c
+compat_pand_LDADD = lib/libbluetooth.la
+
+dist_man_MANS += compat/pand.1
+endif
+
+if DUND
+bin_PROGRAMS += compat/dund
+
+compat_dund_SOURCES = compat/dund.c compat/dund.h compat/lib.h \
+			compat/sdp.h compat/sdp.c compat/dun.c compat/msdun.c \
+					common/textfile.h common/textfile.c
+compat_dund_LDADD = lib/libbluetooth.la
+
+dist_man_MANS += compat/dund.1
+endif

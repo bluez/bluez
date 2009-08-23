@@ -25,34 +25,6 @@ AC_DEFUN([COMPILER_FLAGS], [
 	fi
 ])
 
-AC_DEFUN([GTK_DOC_CHECK], [
-	AC_ARG_WITH([html-dir],
-		AS_HELP_STRING([--with-html-dir=PATH], [path to installed docs]),,
-					[with_html_dir='${datadir}/gtk-doc/html'])
-	HTML_DIR="$with_html_dir"
-	AC_SUBST([HTML_DIR])
-
-	AC_ARG_ENABLE([gtk-doc],
-		AS_HELP_STRING([--enable-gtk-doc], [use gtk-doc to build documentation [[default=no]]]),,
-					[enable_gtk_doc=no])
-
-	if test x$enable_gtk_doc = xyes; then
-		ifelse([$1],[],
-			[PKG_CHECK_EXISTS([gtk-doc],,
-				AC_MSG_ERROR([gtk-doc not installed and --enable-gtk-doc requested]))],
-			[PKG_CHECK_EXISTS([gtk-doc >= $1],,
-				AC_MSG_ERROR([You need to have gtk-doc >= $1 installed to build gtk-doc]))])
-	fi
-
-	AC_MSG_CHECKING([whether to build gtk-doc documentation])
-	AC_MSG_RESULT($enable_gtk_doc)
-
-	AC_PATH_PROGS(GTKDOC_CHECK,gtkdoc-check,)
-
-	AM_CONDITIONAL([ENABLE_GTK_DOC], [test x$enable_gtk_doc = xyes])
-	AM_CONDITIONAL([GTK_DOC_USE_LIBTOOL], [test -n "$LIBTOOL"])
-])
-
 AC_DEFUN([AC_FUNC_PPOLL], [
 	AC_CHECK_FUNC(ppoll, dummy=yes, AC_DEFINE(NEED_PPOLL, 1,
 			[Define to 1 if you need the ppoll() function.]))
@@ -208,7 +180,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	pcmcia_enable=no
 	hid2hci_enable=no
 	dfutool_enable=no
-	manpages_enable=yes
 	udevrules_enable=yes
 	configfiles_enable=yes
 	telephony_driver=dummy
@@ -301,10 +272,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		test_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(manpages, AC_HELP_STRING([--enable-manpages], [install Bluetooth manual pages]), [
-		manpages_enable=${enableval}
-	])
-
 	AC_ARG_ENABLE(udevrules, AC_HELP_STRING([--enable-udevrules], [install Bluetooth udev rules]), [
 		udevrules_enable=${enableval}
 	])
@@ -344,15 +311,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
 	fi
 
-	AC_SUBST([BLUEZ_CFLAGS], ['-I$(top_builddir)/include'])
-	AC_SUBST([BLUEZ_LIBS], ['$(top_builddir)/lib/libbluetooth.la'])
-
-	AC_SUBST([GDBUS_CFLAGS], ['-I$(top_srcdir)/gdbus'])
-	AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la'])
-
-	AC_SUBST([SBC_CFLAGS], ['-I$(top_srcdir)/sbc'])
-	AC_SUBST([SBC_LIBS], ['$(top_builddir)/sbc/libsbc.la'])
-
 	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
 	AM_CONDITIONAL(NETLINK, test "${netlink_enable}" = "yes" && test "${netlink_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
@@ -364,6 +322,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(SERIALPLUGIN, test "${serial_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKPLUGIN, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(SERVICEPLUGIN, test "${service_enable}" = "yes")
+	AM_CONDITIONAL(ECHOPLUGIN, test "no" = "yes")
 	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")
 	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")
 	AM_CONDITIONAL(DUND, test "${dund_enable}" = "yes")
@@ -374,7 +333,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(PCMCIA, test "${pcmcia_enable}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
-	AM_CONDITIONAL(MANPAGES, test "${manpages_enable}" = "yes")
 	AM_CONDITIONAL(UDEVRULES, test "${udevrules_enable}" = "yes")
 	AM_CONDITIONAL(CONFIGFILES, test "${configfiles_enable}" = "yes")
 ])
