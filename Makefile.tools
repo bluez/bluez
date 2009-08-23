@@ -7,6 +7,8 @@ endif
 bin_PROGRAMS += rfcomm/rfcomm tools/l2ping \
 				tools/hcitool tools/sdptool tools/ciptool
 
+sbin_PROGRAMS += tools/hciattach tools/hciconfig
+
 noinst_PROGRAMS += tools/avinfo tools/ppporc \
 				tools/hcieventmask tools/hcisecfilter
 
@@ -17,6 +19,16 @@ EXTRA_rfcomm_rfcomm_SOURCES = rfcomm/parser.h rfcomm/parser.c \
 rfcomm_rfcomm_LDADD = lib/libbluetooth.la
 
 tools_l2ping_LDADD = lib/libbluetooth.la
+
+tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
+						tools/hciattach_st.c \
+						tools/hciattach_ti.c \
+						tools/hciattach_tialt.c
+tools_hciattach_LDADD = lib/libbluetooth.la
+
+tools_hciconfig_SOURCES = tools/hciconfig.c tools/csr.h tools/csr.c \
+					common/textfile.h common/textfile.c
+tools_hciconfig_LDADD = lib/libbluetooth.la
 
 tools_hcitool_SOURCES = tools/hcitool.c \
 				common/textfile.h common/textfile.c \
@@ -35,6 +47,7 @@ tools_ppporc_LDADD = lib/libbluetooth.la
 tools_hcieventmask_LDADD = lib/libbluetooth.la
 
 dist_man_MANS += rfcomm/rfcomm.1 tools/l2ping.8 \
+			tools/hciattach.8 tools/hciconfig.8 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
 endif
 
@@ -42,6 +55,30 @@ CLEANFILES += rfcomm/lexer.c rfcomm/parser.c rfcomm/parser.h
 
 EXTRA_DIST += rfcomm/rfcomm.conf
 
+
+if BCCMD
+sbin_PROGRAMS += tools/bccmd
+
+tools_bccmd_SOURCES = tools/bccmd.c tools/csr.h tools/csr.c \
+			tools/csr_hci.c tools/csr_h4.c tools/csr_3wire.c \
+			tools/csr_bcsp.c tools/ubcsp.h tools/ubcsp.c
+tools_bccmd_LDADD = lib/libbluetooth.la
+
+if USB
+tools_bccmd_SOURCES += tools/csr_usb.c
+tools_bccmd_LDADD += @USB_LIBS@
+endif
+
+dist_man_MANS += tools/bccmd.8
+endif
+
+if HID2HCI
+sbin_PROGRAMS += tools/hid2hci
+
+tools_hid2hci_LDADD = @USB_LIBS@
+
+dist_man_MANS += tools/hid2hci.8
+endif
 
 if DFUTOOL
 bin_PROGRAMS += tools/dfutool
