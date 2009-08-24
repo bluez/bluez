@@ -249,7 +249,14 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = bluez.pc
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-udevrules
+DISTCHECK_CONFIGURE_FLAGS = --disable-udevrules \
+				--enable-bccmd \
+				--enable-dfutool \
+				--enable-hid2hci \
+				--enable-hidd \
+				--enable-pand \
+				--enable-dund \
+				--enable-test
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
