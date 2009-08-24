@@ -282,4 +282,4 @@ lib/bluetooth/%.h: lib/%.h
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
 clean-local: lib/bluetooth
-	@rm -r $<
+	@$(RM) -r $<
