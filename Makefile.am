@@ -268,6 +268,8 @@ audio/telephony.c: audio/@TELEPHONY_DRIVER@
 scripts/%.rules:
 	$(AM_V_GEN)cp $(subst 97-,,$@) $@
 
+$(lib_libbluetooth_la_OBJECTS): $(local_headers)
+
 lib/bluetooth/%.h: lib/%.h
 	$(AM_V_at)if [ ! -e lib/bluetooth ] ; then mkdir lib/bluetooth ; fi
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
