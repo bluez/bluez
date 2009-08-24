@@ -23,9 +23,19 @@ includedir = @includedir@/bluetooth
 
 include_HEADERS =
 
+if CONFIGFILES
+dbusdir = $(sysconfdir)/dbus-1/system.d
+
+dbus_DATA = src/bluetooth.conf
+
 confdir = $(sysconfdir)/bluetooth
 
 conf_DATA =
+
+statedir = $(localstatedir)/lib/bluetooth
+
+state_DATA =
+endif
 
 plugindir = $(libdir)/bluetooth/plugins
 
@@ -193,7 +203,8 @@ if CONFIGFILES
 conf_DATA += src/main.conf
 endif
 
-EXTRA_DIST += src/genbuiltin src/main.conf network/network.conf \
+EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
+			src/main.conf network/network.conf \
 			input/input.conf serial/serial.conf \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo.c audio/telephony-ofono.c
