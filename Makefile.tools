@@ -106,11 +106,9 @@ noinst_PROGRAMS += tools/dfubabel tools/avctrl
 tools_dfubabel_LDADD = @USB_LIBS@
 
 tools_avctrl_LDADD = @USB_LIBS@
-
-dist_man_MANS += tools/dfubabel.1 tools/avctrl.8
-else
-EXTRA_DIST += tools/dfubabel.1 tools/avctrl.8
 endif
+
+EXTRA_DIST += tools/dfubabel.1 tools/avctrl.8
 
 
 if CUPS
