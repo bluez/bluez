@@ -1,3 +1,9 @@
+ver 4.50:
+	Fix issue with missing manual pages in distribution.
+	Fix issue with the configuration and state directories.
+	Fix issue with creating include directory.
+	Fix dependencies of include file generation.
+
 ver 4.49:
 	Add simple test program for basic GAP testing.
 	Add support for confirmation requests to agent example.
