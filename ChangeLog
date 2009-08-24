@@ -1,3 +1,10 @@
+ver 4.49:
+	Add simple test program for basic GAP testing.
+	Add support for confirmation requests to agent example.
+	Add support for full non-recursive build.
+	Add five millisecond delay for Simple Pairing auto-accept.
+	Fix Class of Device setting when InitiallyPowered=false.
+
 ver 4.48:
 	Add library function for comparing UUID values.
 	Add support for creating all plugins as builtins.
