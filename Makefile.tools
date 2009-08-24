@@ -49,6 +49,10 @@ tools_hcieventmask_LDADD = lib/libbluetooth.la
 dist_man_MANS += rfcomm/rfcomm.1 tools/l2ping.8 \
 			tools/hciattach.8 tools/hciconfig.8 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
+else
+EXTRA_DIST += rfcomm/rfcomm.1 tools/l2ping.8 \
+			tools/hciattach.8 tools/hciconfig.8 \
+			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
 endif
 
 CLEANFILES += rfcomm/lexer.c rfcomm/parser.c rfcomm/parser.h
@@ -70,6 +74,8 @@ tools_bccmd_LDADD += @USB_LIBS@
 endif
 
 dist_man_MANS += tools/bccmd.8
+else
+EXTRA_DIST += tools/bccmd.8
 endif
 
 if HID2HCI
@@ -78,6 +84,8 @@ sbin_PROGRAMS += tools/hid2hci
 tools_hid2hci_LDADD = @USB_LIBS@
 
 dist_man_MANS += tools/hid2hci.8
+else
+EXTRA_DIST += tools/hid2hci.8
 endif
 
 if DFUTOOL
@@ -87,6 +95,8 @@ tools_dfutool_SOURCES = tools/dfutool.c tools/dfu.h tools/dfu.c
 tools_dfutool_LDADD = @USB_LIBS@
 
 dist_man_MANS += tools/dfutool.1
+else
+EXTRA_DIST += tools/dfutool.1
 endif
 
 
@@ -98,6 +108,8 @@ tools_dfubabel_LDADD = @USB_LIBS@
 tools_avctrl_LDADD = @USB_LIBS@
 
 dist_man_MANS += tools/dfubabel.1 tools/avctrl.8
+else
+EXTRA_DIST += tools/dfubabel.1 tools/avctrl.8
 endif
 
 
@@ -152,7 +164,9 @@ test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth.la
 
 dist_man_MANS += test/rctest.1 test/hciemu.1
 
-dist_noinst_MANS += test/bdaddr.8
+EXTRA_DIST += test/bdaddr.8
+else
+EXTRA_DIST += test/rctest.1 test/hciemu.1 test/bdaddr.8
 endif
 
 EXTRA_DIST += test/apitest test/hsplay test/hsmicro test/dbusdef.py \
@@ -173,6 +187,8 @@ compat_hidd_SOURCES = compat/hidd.c compat/hidd.h \
 compat_hidd_LDADD = -lm lib/libbluetooth.la
 
 dist_man_MANS += compat/hidd.1
+else
+EXTRA_DIST += compat/hidd.1
 endif
 
 if PAND
@@ -184,6 +200,8 @@ compat_pand_SOURCES = compat/pand.c compat/pand.h \
 compat_pand_LDADD = lib/libbluetooth.la
 
 dist_man_MANS += compat/pand.1
+else
+EXTRA_DIST += compat/pand.1
 endif
 
 if DUND
@@ -195,4 +213,6 @@ compat_dund_SOURCES = compat/dund.c compat/dund.h compat/lib.h \
 compat_dund_LDADD = lib/libbluetooth.la
 
 dist_man_MANS += compat/dund.1
+else
+EXTRA_DIST += compat/dund.1
 endif
