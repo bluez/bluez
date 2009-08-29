@@ -72,7 +72,7 @@ test/sdptest
 test/lmptest
 test/ipctest
 test/btiotest
-test/test_textfile
+test/test-textfile
 rfcomm/rfcomm
 compat/dund
 compat/hidd

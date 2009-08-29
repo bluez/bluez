@@ -130,7 +130,7 @@ bin_PROGRAMS += test/l2test test/rctest
 noinst_PROGRAMS += test/gaptest test/sdptest test/scotest \
 			test/attest test/hstest test/avtest test/ipctest \
 					test/lmptest test/bdaddr test/agent \
-					test/btiotest test/test_textfile
+					test/btiotest test/test-textfile
 
 test_hciemu_LDADD = @GLIB_LIBS@ lib/libbluetooth.la
 
@@ -163,7 +163,7 @@ test_agent_LDADD = @DBUS_LIBS@
 test_btiotest_SOURCES = test/btiotest.c src/btio.h src/btio.c
 test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth.la
 
-test_test_textfile_SOURCES = test/test_textfile.c src/textfile.h src/textfile.c
+test_test_textfile_SOURCES = test/test-textfile.c src/textfile.h src/textfile.c
 
 dist_man_MANS += test/rctest.1 test/hciemu.1
 
