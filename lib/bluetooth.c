@@ -462,6 +462,8 @@ char *bt_compidtostr(int compid)
 		return "Sony Ericsson Mobile Communications";
 	case 87:
 		return "Harman International Industries, Inc.";
+	case 88:
+		return "Vizio, Inc.";
 	case 65535:
 		return "internal use";
 	default:
