@@ -32,8 +32,10 @@ parser.c
 
 bluez.pc
 lib/bluetooth
-src/bluetoothd
 src/builtin.h
+src/bluetoothd
+src/bluetooth.exp
+src/bluetooth.ver
 audio/telephony.c
 scripts/bluetooth.rules
 
