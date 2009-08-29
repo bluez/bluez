@@ -46,11 +46,6 @@ audio_libgstbluetooth_la_LIBADD = sbc/libsbc.la lib/libbluetooth.la \
 audio_libgstbluetooth_la_CFLAGS = -fvisibility=hidden -fno-strict-aliasing \
 						$(AM_CFLAGS) @GSTREAMER_CFLAGS@
 endif
-
-noinst_PROGRAMS += audio/ipctest
-
-audio_ipctest_SOURCES = audio/ipctest.c audio/ipc.h audio/ipc.c
-audio_ipctest_LDADD= sbc/libsbc.la @GLIB_LIBS@
 endif
 
 EXTRA_DIST += audio/bluetooth.conf

@@ -57,7 +57,6 @@ tools/hid2hci
 tools/l2ping
 tools/ppporc
 tools/sdptool
-audio/ipctest
 cups/bluetooth
 test/agent
 test/bdaddr
@@ -71,6 +70,7 @@ test/scotest
 test/gaptest
 test/sdptest
 test/lmptest
+test/ipctest
 test/btiotest
 test/test_textfile
 rfcomm/rfcomm

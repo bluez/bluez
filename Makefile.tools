@@ -128,8 +128,9 @@ sbin_PROGRAMS += test/hciemu
 bin_PROGRAMS += test/l2test test/rctest
 
 noinst_PROGRAMS += test/gaptest test/sdptest test/scotest \
-			test/attest test/hstest test/avtest test/lmptest \
-			test/bdaddr test/agent test/btiotest test/test_textfile
+			test/attest test/hstest test/avtest test/ipctest \
+					test/lmptest test/bdaddr test/agent \
+					test/btiotest test/test_textfile
 
 test_hciemu_LDADD = @GLIB_LIBS@ lib/libbluetooth.la
 
@@ -149,10 +150,13 @@ test_hstest_LDADD = lib/libbluetooth.la
 
 test_avtest_LDADD = lib/libbluetooth.la
 
+test_lmptest_LDADD = lib/libbluetooth.la
+
+test_ipctest_SOURCES = test/ipctest.c audio/ipc.h audio/ipc.c
+test_ipctest_LDADD= @GLIB_LIBS@ sbc/libsbc.la
+
 test_bdaddr_SOURCES = test/bdaddr.c src/oui.h src/oui.c
 test_bdaddr_LDADD = lib/libbluetooth.la
-
-test_lmptest_LDADD = lib/libbluetooth.la
 
 test_agent_LDADD = @DBUS_LIBS@
 
