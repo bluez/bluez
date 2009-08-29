@@ -169,16 +169,14 @@ builtin_sources += plugins/storage.c
 sbin_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
-			common/uinput.h common/ppoll.h \
-			common/glib-helper.h common/glib-helper.c \
-			common/btio.h common/btio.c \
-			common/oui.h common/oui.c \
-			common/textfile.h common/textfile.c \
-			common/sdp-xml.h common/sdp-xml.c \
 			src/main.c src/logging.h src/logging.c \
 			src/security.c src/rfkill.c src/hcid.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \
 			src/sdpd-service.c src/sdpd-database.c \
+			src/sdp-xml.h src/sdp-xml.c src/btio.h src/btio.c \
+			src/textfile.h src/textfile.c \
+			src/glib-helper.h src/glib-helper.c \
+			src/oui.h src/oui.c src/uinput.h src/ppoll.h \
 			src/plugin.h src/plugin.c \
 			src/storage.h src/storage.c \
 			src/agent.h src/agent.c \
@@ -251,8 +249,7 @@ AM_YFLAGS = -d
 AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
 		-DBLUETOOTH_PLUGIN_BUILTIN -DPLUGINDIR=\""$(plugindir)"\"
 
-INCLUDES = -I$(builddir)/lib \
-			-I$(builddir)/src -I$(srcdir)/src -I$(srcdir)/common \
+INCLUDES = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/audio -I$(srcdir)/sbc -I$(srcdir)/gdbus
 
 

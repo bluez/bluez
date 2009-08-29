@@ -27,15 +27,14 @@ tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 tools_hciattach_LDADD = lib/libbluetooth.la
 
 tools_hciconfig_SOURCES = tools/hciconfig.c tools/csr.h tools/csr.c \
-					common/textfile.h common/textfile.c
+						src/textfile.h src/textfile.c
 tools_hciconfig_LDADD = lib/libbluetooth.la
 
-tools_hcitool_SOURCES = tools/hcitool.c \
-				common/textfile.h common/textfile.c \
-						common/oui.h common/oui.c
+tools_hcitool_SOURCES = tools/hcitool.c src/oui.h src/oui.c \
+						src/textfile.h src/textfile.c
 tools_hcitool_LDADD = lib/libbluetooth.la
 
-tools_sdptool_SOURCES = tools/sdptool.c common/sdp-xml.h common/sdp-xml.c
+tools_sdptool_SOURCES = tools/sdptool.c src/sdp-xml.h src/sdp-xml.c
 tools_sdptool_LDADD = lib/libbluetooth.la
 
 tools_ciptool_LDADD = lib/libbluetooth.la
@@ -130,7 +129,7 @@ bin_PROGRAMS += test/l2test test/rctest
 
 noinst_PROGRAMS += test/gaptest test/sdptest test/scotest \
 			test/attest test/hstest test/avtest test/lmptest \
-					test/bdaddr test/agent test/btiotest
+			test/bdaddr test/agent test/btiotest test/test_textfile
 
 test_hciemu_LDADD = @GLIB_LIBS@ lib/libbluetooth.la
 
@@ -150,15 +149,17 @@ test_hstest_LDADD = lib/libbluetooth.la
 
 test_avtest_LDADD = lib/libbluetooth.la
 
-test_bdaddr_SOURCES = test/bdaddr.c common/oui.h common/oui.c
+test_bdaddr_SOURCES = test/bdaddr.c src/oui.h src/oui.c
 test_bdaddr_LDADD = lib/libbluetooth.la
 
 test_lmptest_LDADD = lib/libbluetooth.la
 
 test_agent_LDADD = @DBUS_LIBS@
 
-test_btiotest_SOURCES = test/btiotest.c common/btio.h common/btio.c
+test_btiotest_SOURCES = test/btiotest.c src/btio.h src/btio.c
 test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth.la
+
+test_test_textfile_SOURCES = test/test_textfile.c src/textfile.h src/textfile.c
 
 dist_man_MANS += test/rctest.1 test/hciemu.1
 
@@ -179,9 +180,9 @@ EXTRA_DIST += test/apitest test/hsplay test/hsmicro test/dbusdef.py \
 if HIDD
 bin_PROGRAMS += compat/hidd
 
-compat_hidd_SOURCES = compat/hidd.c compat/hidd.h \
+compat_hidd_SOURCES = compat/hidd.c compat/hidd.h src/uinput.h \
 				compat/sdp.h compat/sdp.c compat/fakehid.c \
-					common/textfile.h common/textfile.c
+						src/textfile.h src/textfile.c
 compat_hidd_LDADD = -lm lib/libbluetooth.la
 
 dist_man_MANS += compat/hidd.1
@@ -194,7 +195,7 @@ bin_PROGRAMS += compat/pand
 
 compat_pand_SOURCES = compat/pand.c compat/pand.h \
 				compat/bnep.c compat/sdp.h compat/sdp.c \
-					common/textfile.h common/textfile.c
+						src/textfile.h src/textfile.c
 compat_pand_LDADD = lib/libbluetooth.la
 
 dist_man_MANS += compat/pand.1
@@ -207,7 +208,7 @@ bin_PROGRAMS += compat/dund
 
 compat_dund_SOURCES = compat/dund.c compat/dund.h compat/lib.h \
 			compat/sdp.h compat/sdp.c compat/dun.c compat/msdun.c \
-					common/textfile.h common/textfile.c
+						src/textfile.h src/textfile.c
 compat_dund_LDADD = lib/libbluetooth.la
 
 dist_man_MANS += compat/dund.1

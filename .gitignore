@@ -72,11 +72,11 @@ test/gaptest
 test/sdptest
 test/lmptest
 test/btiotest
+test/test_textfile
 rfcomm/rfcomm
 compat/dund
 compat/hidd
 compat/pand
-common/test_textfile
 
 doc/*.bak
 doc/*.stamp
