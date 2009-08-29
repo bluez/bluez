@@ -123,6 +123,11 @@ builtin_sources += audio/main.c \
 			audio/unix.h audio/unix.c \
 			audio/telephony.h
 builtin_nodist += audio/telephony.c
+
+noinst_LIBRARIES = audio/libtelephony.a
+
+audio_libtelephony_a_SOURCES = audio/telephony.h audio/telephony-dummy.c \
+                                audio/telephony-maemo.c audio/telephony-ofono.c
 endif
 
 if INPUTPLUGIN
