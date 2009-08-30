@@ -1,10 +1,10 @@
 
 if TOOLS
 if CONFIGFILES
-conf_DATA += rfcomm/rfcomm.conf
+conf_DATA += tools/rfcomm.conf
 endif
 
-bin_PROGRAMS += rfcomm/rfcomm tools/l2ping \
+bin_PROGRAMS += tools/rfcomm tools/l2ping \
 				tools/hcitool tools/sdptool tools/ciptool
 
 sbin_PROGRAMS += tools/hciattach tools/hciconfig
@@ -12,11 +12,11 @@ sbin_PROGRAMS += tools/hciattach tools/hciconfig
 noinst_PROGRAMS += tools/avinfo tools/ppporc \
 				tools/hcieventmask tools/hcisecfilter
 
-rfcomm_rfcomm_SOURCES = rfcomm/main.c rfcomm/parser.y rfcomm/lexer.l \
-					rfcomm/kword.h rfcomm/kword.c
-EXTRA_rfcomm_rfcomm_SOURCES = rfcomm/parser.h rfcomm/parser.c \
-							rfcomm/lexer.c
-rfcomm_rfcomm_LDADD = lib/libbluetooth.la
+tools_rfcomm_SOURCES = tools/main.c tools/parser.y tools/lexer.l \
+					tools/kword.h tools/kword.c
+EXTRA_tools_rfcomm_SOURCES = tools/parser.h tools/parser.c \
+							tools/lexer.c
+tools_rfcomm_LDADD = lib/libbluetooth.la
 
 tools_l2ping_LDADD = lib/libbluetooth.la
 
@@ -45,18 +45,18 @@ tools_ppporc_LDADD = lib/libbluetooth.la
 
 tools_hcieventmask_LDADD = lib/libbluetooth.la
 
-dist_man_MANS += rfcomm/rfcomm.1 tools/l2ping.8 \
+dist_man_MANS += tools/rfcomm.1 tools/l2ping.8 \
 			tools/hciattach.8 tools/hciconfig.8 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
 else
-EXTRA_DIST += rfcomm/rfcomm.1 tools/l2ping.8 \
+EXTRA_DIST += tools/rfcomm.1 tools/l2ping.8 \
 			tools/hciattach.8 tools/hciconfig.8 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
 endif
 
-CLEANFILES += rfcomm/lexer.c rfcomm/parser.c rfcomm/parser.h
+CLEANFILES += tools/lexer.c tools/parser.c tools/parser.h
 
-EXTRA_DIST += rfcomm/rfcomm.conf
+EXTRA_DIST += tools/rfcomm.conf
 
 
 if BCCMD

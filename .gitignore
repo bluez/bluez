@@ -56,6 +56,7 @@ tools/hcieventmask
 tools/hcisecfilter
 tools/hcitool
 tools/hid2hci
+tools/rfcomm
 tools/l2ping
 tools/ppporc
 tools/sdptool
@@ -75,7 +76,6 @@ test/lmptest
 test/ipctest
 test/btiotest
 test/test-textfile
-rfcomm/rfcomm
 compat/dund
 compat/hidd
 compat/pand
