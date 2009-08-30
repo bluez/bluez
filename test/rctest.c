@@ -581,7 +581,7 @@ static void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P channel] [-U uuid]\n"
 		"\t[-L seconds] enabled SO_LINGER option\n"
-		"\t[-F seconds] enable deferred setup\n"
+		"\t[-W seconds] enable deferred setup\n"
 		"\t[-B filename] use data packets from file\n"
 		"\t[-N num] number of frames to send\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
@@ -600,7 +600,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:U:B:N:MAESL:F:C:D:T")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnb:i:P:U:B:N:MAESL:W:C:D:T")) != EOF) {
 		switch (opt) {
 		case 'r':
 			mode = RECV;
@@ -683,7 +683,7 @@ int main(int argc, char *argv[])
 			linger = atoi(optarg);
 			break;
 
-		case 'F':
+		case 'W':
 			defer_setup = atoi(optarg);
 			break;
 

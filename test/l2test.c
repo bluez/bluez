@@ -1036,14 +1036,14 @@ static void usage(void)
 	printf("Options:\n"
 		"\t[-b bytes] [-i device] [-P psm]\n"
 		"\t[-I imtu] [-O omtu]\n"
-		"\t[-f fcs] use CRC16 check (default = 1)\n"
 		"\t[-L seconds] enable SO_LINGER\n"
-		"\t[-F seconds] enable deferred setup\n"
+		"\t[-W seconds] enable deferred setup\n"
 		"\t[-B filename] use data packets from file\n"
 		"\t[-N num] send num frames (default = infinite)\n"
 		"\t[-C num] send num frames before delay (default = 1)\n"
 		"\t[-D milliseconds] delay after sending num frames (default = 0)\n"
 		"\t[-X mode] select retransmission/flow-control mode\n"
+		"\t[-F fcs] use CRC16 check (default = 1)\n"
 		"\t[-R] reliable mode\n"
 		"\t[-G] use connectionless channel (datagram)\n"
 		"\t[-A] request authentication\n"
@@ -1060,7 +1060,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyzpb:f:i:P:I:O:B:N:L:F:C:D:X:RGAESMT")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyzpb:i:P:I:O:B:N:L:W:C:D:X:F:RGAESMT")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -1121,10 +1121,6 @@ int main(int argc, char *argv[])
 			data_size = atoi(optarg);
 			break;
 
-		case 'f':
-			fcs = atoi(optarg);
-			break;
-
 		case 'i':
 			if (!strncasecmp(optarg, "hci", 3))
 				hci_devba(atoi(optarg + 3), &bdaddr);
@@ -1148,7 +1144,7 @@ int main(int argc, char *argv[])
 			linger = atoi(optarg);
 			break;
 
-		case 'F':
+		case 'W':
 			defer_setup = atoi(optarg);
 			break;
 
@@ -1173,6 +1169,10 @@ int main(int argc, char *argv[])
 				rfcmode = L2CAP_MODE_ERTM;
 			else
 				rfcmode = atoi(optarg);
+			break;
+
+		case 'F':
+			fcs = atoi(optarg);
 			break;
 
 		case 'R':
