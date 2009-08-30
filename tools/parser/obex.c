@@ -236,7 +236,7 @@ void obex_dump(int level, struct frame *frm)
 
 	frm = add_frame(frm);
 
-	while (frm->len > 0) {
+	while (frm->len > 2) {
 		opcode = get_u8(frm);
 		length = get_u16(frm);
 		status = opcode & 0x7f;
