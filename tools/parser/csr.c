@@ -146,7 +146,7 @@ static inline void features_dump(int level, char *str, struct frame *frm)
 static inline void commands_dump(int level, char *str, struct frame *frm)
 {
 	unsigned char commands[64];
-	int i;
+	unsigned int i;
 
 	memcpy(commands, frm->ptr, frm->len);
 

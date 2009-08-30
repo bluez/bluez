@@ -743,7 +743,8 @@ static int wait_connection(char *addr, char *port)
 	struct addrinfo *ai, *runp;
 	struct addrinfo hints;
 	struct pollfd fds[3];
-	int err, opt, datagram, nfds = 0;
+	unsigned int nfds = 0;
+	int err, opt, datagram;
 
 	memset(&hints, 0, sizeof (hints));
 	hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG;
@@ -815,7 +816,8 @@ static int wait_connection(char *addr, char *port)
 	freeaddrinfo(ai);
 
 	while (1) {
-		int i, n = poll(fds, nfds, -1);
+		unsigned int i;
+		int n = poll(fds, nfds, -1);
 		if (n <= 0)
 			continue;
 
@@ -844,7 +846,7 @@ static int wait_connection(char *addr, char *port)
 			printf("client: %s:%s snap_len: %d filter: 0x%lx\n",
 					hname, hport, snap_len, parser.filter);
 
-			for (n = 0; n < nfds; n++)
+			for (n = 0; n < (int) nfds; n++)
 				close(fds[n].fd);
 
 			return sk;

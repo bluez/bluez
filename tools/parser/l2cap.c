@@ -899,7 +899,7 @@ void l2cap_dump(int level, struct frame *frm)
 		hdr  = frm->ptr;
 		dlen = btohs(hdr->len);
 
-		if (frm->len == (dlen + L2CAP_HDR_SIZE)) {
+		if ((int) frm->len == (dlen + L2CAP_HDR_SIZE)) {
 			/* Complete frame */
 			l2cap_parse(level, frm);
 			return;

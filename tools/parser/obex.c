@@ -241,7 +241,7 @@ void obex_dump(int level, struct frame *frm)
 		length = get_u16(frm);
 		status = opcode & 0x7f;
 
-		if (frm->len < length - 3) {
+		if ((int) frm->len < length - 3) {
 			frm->ptr -= 3;
 			frm->len += 3;
 			return;

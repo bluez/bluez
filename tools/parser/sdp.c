@@ -222,7 +222,7 @@ static sdp_attr_id_nam_lookup_table_t sdp_attr_id_nam_lookup_table[] = {
 
 char* get_uuid_name(int uuid)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < SDP_UUID_NAM_LOOKUP_TABLE_SIZE; i++) {
 		if (sdp_uuid_nam_lookup_table[i].uuid == uuid)
@@ -234,7 +234,7 @@ char* get_uuid_name(int uuid)
 
 static inline char* get_attr_id_name(int attr_id)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < SDP_ATTR_ID_NAM_LOOKUP_TABLE_SIZE; i++)
 		if (sdp_attr_id_nam_lookup_table[i].attr_id == attr_id)
@@ -399,7 +399,7 @@ static inline void print_de(int, struct frame *frm, int *split, uint16_t *psm, u
 static inline void print_des(uint8_t de_type, int level, int n, struct frame *frm, int *split, uint16_t *psm, uint8_t *channel)
 {
 	int len = frm->len;
-	while (len - frm->len < n && frm->len > 0)
+	while (len - (int) frm->len < n && (int) frm->len > 0)
 		print_de(level, frm, split, psm, channel);
 }
 
@@ -455,7 +455,7 @@ static inline void print_srv_srch_pat(int level, struct frame *frm)
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
 		len = frm->len;
-		while (len - frm->len < n1 && frm->len > 0) {
+		while (len - (int) frm->len < n1 && (int) frm->len > 0) {
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UUID) {
 				print_uuid(n2, frm, NULL, NULL);
 			} else {
@@ -481,7 +481,7 @@ static inline void print_attr_id_list(int level, struct frame *frm)
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
 		len = frm->len;
-		while (len - frm->len < n1 && frm->len > 0) {
+		while (len - (int) frm->len < n1 && (int) frm->len > 0) {
 			/* Print AttributeID */
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT) {
 				char *name;
@@ -520,7 +520,7 @@ static inline void print_attr_list(int level, struct frame *frm)
 
 	if (parse_de_hdr(frm, &n1) == SDP_DE_SEQ) {
 		len = frm->len;
-		while (len - frm->len < n1 && frm->len > 0) {
+		while (len - (int) frm->len < n1 && (int) frm->len > 0) {
 			/* Print AttributeID */
 			if (parse_de_hdr(frm, &n2) == SDP_DE_UINT && n2 == sizeof(attr_id)) {
 				char *name;
@@ -558,7 +558,7 @@ static inline void print_attr_lists(int level, struct frame *frm)
 	int count = frm->len;
 
 	if (parse_de_hdr(frm, &n) == SDP_DE_SEQ) {
-		while (count - frm->len < n && frm->len > 0) {
+		while (count - (int) frm->len < n && (int) frm->len > 0) {
 			p_indent(level, 0);
 			printf("record #%d\n", cnt++);
 			print_attr_list(level + 2, frm);

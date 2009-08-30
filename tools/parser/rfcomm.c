@@ -93,7 +93,7 @@ static inline void mcc_fcoff(int level, uint8_t *ptr, int len,
 	print_mcc(mcc_head);
 }
 
-static inline void mcc_msc(int level, uint8_t *ptr, int len,
+static inline void mcc_msc(int level, uint8_t *ptr, unsigned int len,
 				long_frame_head *head, mcc_long_frame_head *mcc_head)
 {
 	msc_msg *msc = (void*) (ptr - STRUCT_END(msc_msg, mcc_s_head));
@@ -116,7 +116,7 @@ static inline void mcc_msc(int level, uint8_t *ptr, int len,
 		printf("\n");
 }
 
-static inline void mcc_rpn(int level, uint8_t *ptr, int len,
+static inline void mcc_rpn(int level, uint8_t *ptr, unsigned int len,
 				long_frame_head *head, mcc_long_frame_head *mcc_head)
 {
 	rpn_msg *rpn = (void *) (ptr - STRUCT_END(rpn_msg, mcc_s_head));

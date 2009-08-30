@@ -46,7 +46,7 @@ static unsigned char ppp_magic3[] = { 0x7e, 0x7d, 0xdf, 0x7d, 0x23, 0xc0, 0x21 }
 
 static inline int check_for_ppp_traffic(unsigned char *data, int size)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < size - sizeof(ppp_magic1); i++)
 		if (!memcmp(data + i, ppp_magic1, sizeof(ppp_magic1))) {
