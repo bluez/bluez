@@ -51,6 +51,7 @@ struct l2cap_options {
 	uint16_t	imtu;
 	uint16_t	flush_to;
 	uint8_t		mode;
+	uint8_t		fcs;
 };
 
 #define L2CAP_CONNINFO	0x02
