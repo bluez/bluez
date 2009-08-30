@@ -305,10 +305,11 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
 		while (cmsg) {
 			switch (cmsg->cmsg_type) {
 			case HCI_CMSG_DIR:
-				frm.in = *((int *) CMSG_DATA(cmsg));
+				memcpy(&frm.in, CMSG_DATA(cmsg), sizeof(int));
 				break;
 			case HCI_CMSG_TSTAMP:
-				frm.ts = *((struct timeval *) CMSG_DATA(cmsg));
+				memcpy(&frm.ts, CMSG_DATA(cmsg),
+						sizeof(struct timeval));
 				break;
 			}
 			cmsg = CMSG_NXTHDR(&msg, cmsg);
@@ -626,6 +627,8 @@ static int open_socket(int dev, unsigned long flags)
 static int open_connection(char *addr, char *port)
 {
 	struct sockaddr_storage ss;
+	struct sockaddr_in *in = (struct sockaddr_in *) &ss;
+	struct sockaddr_in6 *in6 = (struct sockaddr_in6 *) &ss;
 	struct addrinfo hints, *res0, *res;
 	int sk = -1, opt = 1;
 
@@ -657,13 +660,13 @@ static int open_connection(char *addr, char *port)
 
 		switch(ss.ss_family) {
 		case AF_INET:
-			((struct sockaddr_in *) &ss)->sin_addr.s_addr = htonl(INADDR_ANY);
-			((struct sockaddr_in *) &ss)->sin_port = 0;
+			in->sin_addr.s_addr = htonl(INADDR_ANY);
+			in->sin_port = 0;
 			break;
 		case AF_INET6:
-			memcpy(&((struct sockaddr_in6 *) &ss)->sin6_addr,
-						&in6addr_any, sizeof(in6addr_any));
-			((struct sockaddr_in6 *) &ss)->sin6_port = 0;
+			memcpy(&in6->sin6_addr, &in6addr_any,
+							sizeof(in6addr_any));
+			in6->sin6_port = 0;
 			break;
 		}
 
