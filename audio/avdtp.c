@@ -2223,9 +2223,12 @@ static gboolean request_timeout(gpointer user_data)
 		break;
 	case AVDTP_CLOSE:
 		error("Close request timed out");
-		if (lsep && lsep->cfm && lsep->cfm->close)
+		if (lsep && lsep->cfm && lsep->cfm->close) {
 			lsep->cfm->close(session, lsep, stream, &err,
 						lsep->user_data);
+			if (stream)
+				stream->close_int = FALSE;
+		}
 		break;
 	case AVDTP_SET_CONFIGURATION:
 		error("SetConfiguration request timed out");
@@ -2675,9 +2678,11 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 			return FALSE;
 		error("CLOSE request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
-		if (sep && sep->cfm && sep->cfm->close)
+		if (sep && sep->cfm && sep->cfm->close) {
 			sep->cfm->close(session, sep, stream, &err,
 					sep->user_data);
+			stream->close_int = FALSE;
+		}
 		return TRUE;
 	case AVDTP_ABORT:
 		if (!stream_rej_to_err(buf, size, &err, &acp_seid))
@@ -3138,6 +3143,11 @@ int avdtp_start(struct avdtp *session, struct avdtp_stream *stream)
 	if (stream->lsep->state != AVDTP_STATE_OPEN)
 		return -EINVAL;
 
+	if (stream->close_int == TRUE) {
+		error("avdtp_start: rejecting start since close is initiated");
+		return -EINVAL;
+	}
+
 	memset(&req, 0, sizeof(req));
 	req.first_seid.seid = stream->rseid;
 
@@ -3155,6 +3165,11 @@ int avdtp_close(struct avdtp *session, struct avdtp_stream *stream)
 
 	if (stream->lsep->state < AVDTP_STATE_OPEN)
 		return -EINVAL;
+
+	if (stream->close_int == TRUE) {
+		error("avdtp_close: rejecting since close is already initiated");
+		return -EINVAL;
+	}
 
 	memset(&req, 0, sizeof(req));
 	req.acp_seid = stream->rseid;
