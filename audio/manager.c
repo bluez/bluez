@@ -485,7 +485,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
+	headset_set_state(device, HEADSET_STATE_CONNECTING);
 
 	perr = audio_device_request_authorization(device, server_uuid,
 						headset_auth_cb, device);

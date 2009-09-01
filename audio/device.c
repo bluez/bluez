@@ -370,7 +370,7 @@ static void device_sink_cb(struct audio_device *dev,
 					priv->hs_state == HEADSET_STATE_PLAYING)
 				device_set_state(dev, AUDIO_STATE_CONNECTED);
 		} else if (priv->hs_state == HEADSET_STATE_DISCONNECTED ||
-				priv->hs_state == HEADSET_STATE_CONNECT_IN_PROGRESS)
+				priv->hs_state == HEADSET_STATE_CONNECTING)
 			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
 	case SINK_STATE_PLAYING:
@@ -421,12 +421,12 @@ static void device_headset_cb(struct audio_device *dev,
 		}
 		if (priv->sink_state == SINK_STATE_DISCONNECTED)
 			device_set_state(dev, AUDIO_STATE_DISCONNECTED);
-		else if (old_state == HEADSET_STATE_CONNECT_IN_PROGRESS &&
+		else if (old_state == HEADSET_STATE_CONNECTING &&
 				(priv->sink_state == SINK_STATE_CONNECTED ||
 				priv->sink_state == SINK_STATE_PLAYING))
 			device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
-	case HEADSET_STATE_CONNECT_IN_PROGRESS:
+	case HEADSET_STATE_CONNECTING:
 		device_remove_headset_timer(dev);
 		if (priv->sink_state == SINK_STATE_DISCONNECTED)
 			device_set_state(dev, AUDIO_STATE_CONNECTING);

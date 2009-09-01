@@ -278,7 +278,7 @@ static const char *state2str(headset_state_t state)
 	switch (state) {
 	case HEADSET_STATE_DISCONNECTED:
 		return "disconnected";
-	case HEADSET_STATE_CONNECT_IN_PROGRESS:
+	case HEADSET_STATE_CONNECTING:
 		return "connecting";
 	case HEADSET_STATE_CONNECTED:
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
@@ -708,7 +708,7 @@ int telephony_event_reporting_rsp(void *telephony_device, cme_error_t err)
 	if (ret < 0)
 		return ret;
 
-	if (hs->state != HEADSET_STATE_CONNECT_IN_PROGRESS)
+	if (hs->state != HEADSET_STATE_CONNECTING)
 		return 0;
 
 	if (hs->hf_features & HF_FEATURE_CALL_WAITING_AND_3WAY &&
@@ -775,7 +775,7 @@ static int call_hold(struct audio_device *dev, const char *buf)
 	if (err < 0)
 		return err;
 
-	if (hs->state != HEADSET_STATE_CONNECT_IN_PROGRESS)
+	if (hs->state != HEADSET_STATE_CONNECTING)
 		return 0;
 
 	hfp_slc_complete(dev);
@@ -1488,7 +1488,7 @@ static int get_records(struct audio_device *device, headset_stream_cb_t cb,
 		return 0;
 	}
 
-	headset_set_state(device, HEADSET_STATE_CONNECT_IN_PROGRESS);
+	headset_set_state(device, HEADSET_STATE_CONNECTING);
 
 	pending_connect_init(hs, HEADSET_STATE_CONNECTED);
 
@@ -1540,7 +1540,7 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 
 	hs->hfp_active = hs->hfp_handle != 0 ? TRUE : FALSE;
 
-	headset_set_state(dev, HEADSET_STATE_CONNECT_IN_PROGRESS);
+	headset_set_state(dev, HEADSET_STATE_CONNECTING);
 
 	pending_connect_init(hs, HEADSET_STATE_CONNECTED);
 
@@ -1642,10 +1642,10 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 	struct headset *hs = device->headset;
 	int err;
 
-	if (hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS)
+	if (hs->state == HEADSET_STATE_CONNECTING)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
 						"Connect in Progress");
-	else if (hs->state > HEADSET_STATE_CONNECT_IN_PROGRESS)
+	else if (hs->state > HEADSET_STATE_CONNECTING)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".AlreadyConnected",
 						"Already Connected");
@@ -1751,7 +1751,7 @@ static DBusMessage *hs_play(DBusConnection *conn, DBusMessage *msg,
 
 	switch (hs->state) {
 	case HEADSET_STATE_DISCONNECTED:
-	case HEADSET_STATE_CONNECT_IN_PROGRESS:
+	case HEADSET_STATE_CONNECTING:
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".NotConnected",
 						"Device not Connected");
@@ -2291,7 +2291,7 @@ unsigned int headset_request_stream(struct audio_device *dev,
 		hs->dc_timer = 0;
 	}
 
-	if (hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS ||
+	if (hs->state == HEADSET_STATE_CONNECTING ||
 			hs->state == HEADSET_STATE_PLAY_IN_PROGRESS)
 		return connect_cb_new(hs, HEADSET_STATE_PLAYING, cb, user_data);
 
@@ -2320,7 +2320,7 @@ unsigned int headset_config_stream(struct audio_device *dev,
 		hs->dc_timer = 0;
 	}
 
-	if (hs->state == HEADSET_STATE_CONNECT_IN_PROGRESS)
+	if (hs->state == HEADSET_STATE_CONNECTING)
 		return connect_cb_new(hs, HEADSET_STATE_CONNECTED, cb,
 					user_data);
 
@@ -2449,7 +2449,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 					AUDIO_HEADSET_INTERFACE,
 					"Disconnected",
 					DBUS_TYPE_INVALID);
-		if (hs->state > HEADSET_STATE_CONNECT_IN_PROGRESS)
+		if (hs->state > HEADSET_STATE_CONNECTING)
 			emit_property_changed(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
@@ -2459,7 +2459,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		device_remove_disconnect_watch(dev->btd_dev, hs->dc_id);
 		hs->dc_id = 0;
 		break;
-	case HEADSET_STATE_CONNECT_IN_PROGRESS:
+	case HEADSET_STATE_CONNECTING:
 		emit_property_changed(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE, "State",
 					DBUS_TYPE_STRING, &state_str);
