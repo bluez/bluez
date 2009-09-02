@@ -98,6 +98,19 @@ struct seid_info {
 #error "Unknown byte order"
 #endif
 
+static const unsigned char media_transport[] = {
+		0x01,	/* Media transport category */
+		0x00,
+		0x07,	/* Media codec category */
+		0x06,
+		0x00,	/* Media type audio */
+		0x00,	/* Codec SBC */
+		0x22,	/* 44.1 kHz, stereo */
+		0x15,	/* 16 blocks, 8 subbands */
+		0x02,
+		0x33,
+};
+
 static void dump_header(struct avdtp_header *hdr)
 {
 	printf("TL %d PT %d MT %d SI %d\n", hdr->transaction,
@@ -168,18 +181,11 @@ static void process_sigchan(int sk, unsigned char reject)
 				len = write(sk, buf, 3);
 			} else {
 				hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
-				buf[2] = 0x01;	/* Media transport category */
-				buf[3] = 0x00;
-				buf[4] = 0x07;	/* Media codec category */
-				buf[5] = 0x06;
-				buf[6] = 0x00;	/* Media type audio */
-				buf[7] = 0x00;	/* Codec SBC */
-				buf[8] = 0x22;	/* 44.1 kHz, stereo */
-				buf[9] = 0x15;	/* 16 blocks, 8 subbands */
-				buf[10] = 0x02;
-				buf[11] = 0x33;
+				memcpy(&buf[2], media_transport,
+						sizeof(media_transport));
 				printf("Accepting get capabilities command\n");
-				len = write(sk, buf, 12);
+				len = write(sk, buf,
+						2 + sizeof(media_transport));
 			}
 			break;
 
@@ -311,17 +317,8 @@ static void do_send(int sk, unsigned char cmd, int invalid, int preconf)
 		hdr->signal_id = AVDTP_SET_CONFIGURATION;
 		buf[2] = 1 << 2; /* ACP SEID */
 		buf[3] = 1 << 2; /* INT SEID */
-		buf[4] = 0x01;	/* Media transport category */
-		buf[5] = 0x00;
-		buf[6] = 0x07;	/* Media codec category */
-		buf[7] = 0x06;
-		buf[8] = 0x00;	/* Media type audio */
-		buf[9] = 0x00;	/* Codec SBC */
-		buf[10] = 0x22;	/* 44.1 kHz, stereo */
-		buf[11] = 0x15;	/* 16 blocks, 8 subbands */
-		buf[12] = 0x02;
-		buf[13] = 0x33;
-		len = write(sk, buf, 14);
+		memcpy(&buf[4], media_transport, sizeof(media_transport));
+		len = write(sk, buf, 4 + sizeof(media_transport));
 		break;
 
 	case AVDTP_GET_CONFIGURATION:
