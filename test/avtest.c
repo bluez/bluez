@@ -294,6 +294,7 @@ static void do_send(int sk, unsigned char cmd, int invalid)
 		hdr->signal_id = AVDTP_DISCOVER;
 		len = write(sk, buf, 2);
 		break;
+
 	case AVDTP_GET_CAPABILITIES:
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
@@ -301,6 +302,26 @@ static void do_send(int sk, unsigned char cmd, int invalid)
 		buf[2] = 1 << 2; /* SEID 1 */
 		len = write(sk, buf, invalid ? 2 : 3);
 		break;
+
+	case AVDTP_SET_CONFIGURATION:
+		if (invalid)
+			do_send(sk, cmd, 0);
+		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
+		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
+		hdr->signal_id = AVDTP_SET_CONFIGURATION;
+		buf[2] = 1 << 2; /* ACP SEID */
+		buf[3] = 1 << 2; /* INT SEID */
+		buf[4] = 0x01;	/* Media transport category */
+		buf[5] = 0x00;
+		buf[6] = 0x07;	/* Media codec category */
+		buf[7] = 0x06;
+		buf[8] = 0x00;	/* Media type audio */
+		buf[9] = 0x00;	/* Codec SBC */
+		buf[10] = 0x22;	/* 44.1 kHz, stereo */
+		buf[11] = 0x15;	/* 16 blocks, 8 subbands */
+		buf[12] = 0x02;
+		buf[13] = 0x33;
+		len = write(sk, buf, 14);
 	}
 
 	len = read(sk, buf, sizeof(buf));
