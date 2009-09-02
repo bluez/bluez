@@ -365,6 +365,30 @@ static void process_sigchan(int srv_sk, int sk, unsigned char reject,
 	}
 }
 
+static int set_minimum_mtu(int sk)
+{
+	struct l2cap_options l2o;
+	socklen_t optlen;
+
+	memset(&l2o, 0, sizeof(l2o));
+	optlen = sizeof(l2o);
+
+	if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &optlen) < 0) {
+		perror("getsockopt");
+		return -1;
+	}
+
+	l2o.imtu = 48;
+	l2o.omtu = 48;
+
+	if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, sizeof(l2o)) < 0) {
+		perror("setsockopt");
+		return -1;
+	}
+
+	return 0;
+}
+
 static void do_listen(const bdaddr_t *src, unsigned char reject, int fragment)
 {
 	struct sockaddr_l2 addr;
@@ -387,27 +411,8 @@ static void do_listen(const bdaddr_t *src, unsigned char reject, int fragment)
 		goto error;
 	}
 
-	if (fragment) {
-		struct l2cap_options l2o;
-
-		memset(&l2o, 0, sizeof(l2o));
-		optlen = sizeof(l2o);
-
-		if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
-								&optlen) < 0) {
-			perror("getsockopt");
-			goto error;
-		}
-
-		l2o.imtu = 48;
-		l2o.omtu = 48;
-
-		if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
-							sizeof(l2o)) < 0) {
-			perror("setsockopt");
-			goto error;
-		}
-	}
+	if (fragment)
+		set_minimum_mtu(sk);
 
 	if (listen(sk, 10)) {
 		perror("Can't listen on the socket");
@@ -438,7 +443,7 @@ error:
 	close(sk);
 }
 
-static int do_connect(const bdaddr_t *src, const bdaddr_t *dst)
+static int do_connect(const bdaddr_t *src, const bdaddr_t *dst, int fragment)
 {
 	struct sockaddr_l2 addr;
 	int sk, err;
@@ -457,6 +462,9 @@ static int do_connect(const bdaddr_t *src, const bdaddr_t *dst)
 		perror("Can't bind socket");
 		goto error;
 	}
+
+	if (fragment)
+		set_minimum_mtu(sk);
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
@@ -595,7 +603,7 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 
 	if (cmd == AVDTP_OPEN && len >= 2 &&
 				hdr->message_type == AVDTP_MSG_TYPE_ACCEPT)
-		media_sock = do_connect(src, dst);
+		media_sock = do_connect(src, dst, 0);
 }
 
 static void usage()
@@ -704,7 +712,7 @@ int main(int argc, char *argv[])
 		do_listen(&src, cmd, fragment);
 		break;
 	case MODE_SEND:
-		sk = do_connect(&src, &dst);
+		sk = do_connect(&src, &dst, fragment);
 		if (sk < 0)
 			exit(1);
 		do_send(sk, &src, &dst, cmd, invalid, preconf);
