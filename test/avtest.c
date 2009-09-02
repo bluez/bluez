@@ -52,6 +52,7 @@
 #define AVDTP_OPEN			0x06
 #define AVDTP_START			0x07
 #define AVDTP_CLOSE			0x08
+#define AVDTP_SUSPEND			0x09
 
 #define AVDTP_SEP_TYPE_SOURCE		0x00
 #define AVDTP_SEP_TYPE_SINK		0x01
@@ -377,6 +378,18 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 			buf[2] = 1 << 2; /* Valid ACP SEID */
 		len = write(sk, buf, 3);
 		break;
+
+	case AVDTP_SUSPEND:
+		if (invalid)
+			do_send(sk, src, dst, AVDTP_OPEN, 0, preconf);
+		else
+			do_send(sk, src, dst, AVDTP_START, 0, preconf);
+		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
+		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
+		hdr->signal_id = AVDTP_SUSPEND;
+		buf[2] = 1 << 2; /* ACP SEID */
+		len = write(sk, buf, 3);
+		break;
 	}
 
 	len = read(sk, buf, sizeof(buf));
@@ -428,6 +441,8 @@ static unsigned char parse_cmd(const char *arg)
 		return AVDTP_START;
 	else if (!strncmp(arg, "close", 5))
 		return AVDTP_CLOSE;
+	else if (!strncmp(arg, "suspend", 7))
+		return AVDTP_SUSPEND;
 	else
 		return atoi(arg);
 }
