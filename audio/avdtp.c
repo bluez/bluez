@@ -78,6 +78,7 @@
 #define AVDTP_PKT_TYPE_END			0x03
 
 #define AVDTP_MSG_TYPE_COMMAND			0x00
+#define AVDTP_MSG_TYPE_GEN_REJECT		0x01
 #define AVDTP_MSG_TYPE_ACCEPT			0x02
 #define AVDTP_MSG_TYPE_REJECT			0x03
 
@@ -1137,10 +1138,10 @@ static GSList *caps_to_list(uint8_t *data, int size,
 }
 
 static gboolean avdtp_unknown_cmd(struct avdtp *session, uint8_t transaction,
-							void *buf, int size)
+							uint8_t signal_id)
 {
-	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_REJECT,
-								0, NULL, 0);
+	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_GEN_REJECT,
+							signal_id, NULL, 0);
 }
 
 static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
@@ -1368,7 +1369,7 @@ failed:
 static gboolean avdtp_reconf_cmd(struct avdtp *session, uint8_t transaction,
 					struct seid_req *req, int size)
 {
-	return avdtp_unknown_cmd(session, transaction, (void *) req, size);
+	return avdtp_unknown_cmd(session, transaction, AVDTP_RECONFIGURE);
 }
 
 static gboolean avdtp_open_cmd(struct avdtp *session, uint8_t transaction,
@@ -1619,7 +1620,7 @@ failed:
 static gboolean avdtp_secctl_cmd(struct avdtp *session, uint8_t transaction,
 					struct seid_req *req, int size)
 {
-	return avdtp_unknown_cmd(session, transaction, (void *) req, size);
+	return avdtp_unknown_cmd(session, transaction, AVDTP_SECURITY_CONTROL);
 }
 
 static gboolean avdtp_parse_cmd(struct avdtp *session, uint8_t transaction,
@@ -1661,7 +1662,7 @@ static gboolean avdtp_parse_cmd(struct avdtp *session, uint8_t transaction,
 		return avdtp_secctl_cmd(session, transaction, buf, size);
 	default:
 		debug("Received unknown request id %u", signal_id);
-		return avdtp_unknown_cmd(session, transaction, buf, size);
+		return avdtp_unknown_cmd(session, transaction, signal_id);
 	}
 }
 
@@ -1883,6 +1884,9 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 			error("Unable to parse reject response");
 			goto failed;
 		}
+		break;
+	case AVDTP_MSG_TYPE_GEN_REJECT:
+		error("Received a General Reject message");
 		break;
 	default:
 		error("Unknown message type 0x%02X", header->message_type);
