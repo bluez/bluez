@@ -196,6 +196,20 @@ static void process_sigchan(int sk, unsigned char reject)
 			}
 			break;
 
+		case AVDTP_SET_CONFIGURATION:
+			if (reject == AVDTP_SET_CONFIGURATION) {
+				hdr->message_type = AVDTP_MSG_TYPE_REJECT;
+				buf[2] = buf[4];
+				buf[3] = 0x13; /* SEP In Use */
+				printf("Rejecting set configuration command\n");
+				len = write(sk, buf, 4);
+			} else {
+				hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
+				printf("Accepting set configuration command\n");
+				len = write(sk, buf, 2);
+			}
+			break;
+
 		default:
 			buf[1] = 0x00;
 			printf("Unknown command\n");
