@@ -318,7 +318,7 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 		break;
 
 	case AVDTP_SET_CONFIGURATION:
-		if (invalid)
+		if (preconf)
 			do_send(sk, src, dst, cmd, 0, 0);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
@@ -326,6 +326,8 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 		buf[2] = 1 << 2; /* ACP SEID */
 		buf[3] = 1 << 2; /* INT SEID */
 		memcpy(&buf[4], media_transport, sizeof(media_transport));
+		if (invalid)
+			buf[5] = 0x01; /* LOSC != 0 */
 		len = write(sk, buf, 4 + sizeof(media_transport));
 		break;
 
