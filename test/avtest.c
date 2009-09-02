@@ -48,6 +48,8 @@
 #define AVDTP_GET_CAPABILITIES		0x02
 #define AVDTP_SET_CONFIGURATION		0x03
 #define AVDTP_GET_CONFIGURATION		0x04
+#define AVDTP_RECONFIGURE		0x05
+#define AVDTP_OPEN			0x06
 
 #define AVDTP_SEP_TYPE_SOURCE		0x00
 #define AVDTP_SEP_TYPE_SINK		0x01
@@ -110,6 +112,8 @@ static const unsigned char media_transport[] = {
 		0x02,
 		0x33,
 };
+
+static int media_sock = -1;
 
 static void dump_header(struct avdtp_header *hdr)
 {
@@ -282,7 +286,8 @@ error:
 	return -1;
 }
 
-static void do_send(int sk, unsigned char cmd, int invalid, int preconf)
+static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
+				unsigned char cmd, int invalid, int preconf)
 {
 	unsigned char buf[672];
 	struct avdtp_header *hdr = (void *) buf;
@@ -311,7 +316,7 @@ static void do_send(int sk, unsigned char cmd, int invalid, int preconf)
 
 	case AVDTP_SET_CONFIGURATION:
 		if (invalid)
-			do_send(sk, cmd, 0, 0);
+			do_send(sk, src, dst, cmd, 0, 0);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_SET_CONFIGURATION;
@@ -323,7 +328,7 @@ static void do_send(int sk, unsigned char cmd, int invalid, int preconf)
 
 	case AVDTP_GET_CONFIGURATION:
 		if (preconf)
-			do_send(sk, AVDTP_SET_CONFIGURATION, 0, 0);
+			do_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_GET_CONFIGURATION;
@@ -333,12 +338,25 @@ static void do_send(int sk, unsigned char cmd, int invalid, int preconf)
 			buf[2] = 1 << 2; /* Valid ACP SEID */
 		len = write(sk, buf, 3);
 		break;
+
+	case AVDTP_OPEN:
+		if (preconf)
+			do_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
+		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
+		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
+		hdr->signal_id = AVDTP_OPEN;
+		buf[2] = 1 << 2; /* ACP SEID */
+		len = write(sk, buf, 3);
+		break;
 	}
 
 	len = read(sk, buf, sizeof(buf));
 
 	dump_buffer(buf, len);
 	dump_header(hdr);
+
+	if (cmd == AVDTP_OPEN)
+		media_sock = do_connect(src, dst);
 }
 
 static void usage()
@@ -374,6 +392,8 @@ static unsigned char parse_cmd(const char *arg)
 		return AVDTP_SET_CONFIGURATION;
 	else if (!strncmp(arg, "getconf", 7))
 		return AVDTP_GET_CONFIGURATION;
+	else if (!strncmp(arg, "open", 4))
+		return AVDTP_OPEN;
 	else
 		return atoi(arg);
 }
@@ -437,7 +457,9 @@ int main(int argc, char *argv[])
 		sk = do_connect(&src, &dst);
 		if (sk < 0)
 			exit(1);
-		do_send(sk, cmd, invalid, preconf);
+		do_send(sk, &src, &dst, cmd, invalid, preconf);
+		if (media_sock >= 0)
+			close(media_sock);
 		close(sk);
 		break;
 	default:
