@@ -39,6 +39,9 @@
 #include <bluetooth/l2cap.h>
 
 #define AVDTP_PKT_TYPE_SINGLE		0x00
+#define AVDTP_PKT_TYPE_START		0x01
+#define AVDTP_PKT_TYPE_CONTINUE		0x02
+#define AVDTP_PKT_TYPE_END		0x03
 
 #define AVDTP_MSG_TYPE_COMMAND		0x00
 #define AVDTP_MSG_TYPE_ACCEPT		0x02
@@ -80,6 +83,21 @@ struct seid_info {
 	uint8_t media_type:4;
 } __attribute__ ((packed));
 
+struct avdtp_start_header {
+	uint8_t message_type:2;
+	uint8_t packet_type:2;
+	uint8_t transaction:4;
+	uint8_t no_of_packets;
+	uint8_t signal_id:6;
+	uint8_t rfa0:2;
+} __attribute__ ((packed));
+
+struct avdtp_continue_header {
+	uint8_t message_type:2;
+	uint8_t packet_type:2;
+	uint8_t transaction:4;
+} __attribute__ ((packed));
+
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
 struct avdtp_header {
@@ -97,6 +115,21 @@ struct seid_info {
 	uint8_t media_type:4;
 	uint8_t type:1;
 	uint8_t rfa2:3;
+} __attribute__ ((packed));
+
+struct avdtp_start_header {
+	uint8_t transaction:4;
+	uint8_t packet_type:2;
+	uint8_t message_type:2;
+	uint8_t no_of_packets;
+	uint8_t rfa0:2;
+	uint8_t signal_id:6;
+} __attribute__ ((packed));
+
+struct avdtp_continue_header {
+	uint8_t transaction:4;
+	uint8_t packet_type:2;
+	uint8_t message_type:2;
 } __attribute__ ((packed));
 
 #else
@@ -133,7 +166,8 @@ static void dump_buffer(const unsigned char *buf, int len)
 	printf("\n");
 }
 
-static void process_sigchan(int srv_sk, int sk, unsigned char reject)
+static void process_sigchan(int srv_sk, int sk, unsigned char reject,
+								int fragment)
 {
 	unsigned char buf[672];
 	ssize_t len;
@@ -186,6 +220,35 @@ static void process_sigchan(int srv_sk, int sk, unsigned char reject)
 				buf[2] = 0x29; /* Unsupported configuration */
 				printf("Rejecting get capabilties command\n");
 				len = write(sk, buf, 3);
+			} else if (fragment) {
+				struct avdtp_start_header *start = (void *) buf;
+
+				printf("Sending fragmented reply to getcap\n");
+
+				hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
+
+				/* Start packet */
+				hdr->packet_type = AVDTP_PKT_TYPE_START;
+				start->signal_id = AVDTP_GET_CAPABILITIES;
+				start->no_of_packets = 3;
+				memcpy(&buf[3], media_transport,
+						sizeof(media_transport));
+				len = write(sk, buf,
+						3 + sizeof(media_transport));
+
+				/* Continue packet */
+				hdr->packet_type = AVDTP_PKT_TYPE_CONTINUE;
+				memcpy(&buf[1], media_transport,
+						sizeof(media_transport));
+				len = write(sk, buf,
+						1 + sizeof(media_transport));
+
+				/* End packet */
+				hdr->packet_type = AVDTP_PKT_TYPE_END;
+				memcpy(&buf[1], media_transport,
+						sizeof(media_transport));
+				len = write(sk, buf,
+						1 + sizeof(media_transport));
 			} else {
 				hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
 				memcpy(&buf[2], media_transport,
@@ -302,7 +365,7 @@ static void process_sigchan(int srv_sk, int sk, unsigned char reject)
 	}
 }
 
-static void do_listen(const bdaddr_t *src, unsigned char reject)
+static void do_listen(const bdaddr_t *src, unsigned char reject, int fragment)
 {
 	struct sockaddr_l2 addr;
 	socklen_t optlen;
@@ -324,6 +387,28 @@ static void do_listen(const bdaddr_t *src, unsigned char reject)
 		goto error;
 	}
 
+	if (fragment) {
+		struct l2cap_options l2o;
+
+		memset(&l2o, 0, sizeof(l2o));
+		optlen = sizeof(l2o);
+
+		if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
+								&optlen) < 0) {
+			perror("getsockopt");
+			goto error;
+		}
+
+		l2o.imtu = 48;
+		l2o.omtu = 48;
+
+		if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
+							sizeof(l2o)) < 0) {
+			perror("setsockopt");
+			goto error;
+		}
+	}
+
 	if (listen(sk, 10)) {
 		perror("Can't listen on the socket");
 		goto error;
@@ -339,7 +424,7 @@ static void do_listen(const bdaddr_t *src, unsigned char reject)
 			continue;
 		}
 
-		process_sigchan(sk, nsk, reject);
+		process_sigchan(sk, nsk, reject, fragment);
 
 		if (media_sock >= 0) {
 			close(media_sock);
@@ -531,6 +616,7 @@ static struct option main_options[] = {
 	{ "send",	1, 0, 's' },
 	{ "invalid",	1, 0, 'f' },
 	{ "preconf",	0, 0, 'c' },
+	{ "fragment",   0, 0, 'F' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -566,12 +652,12 @@ int main(int argc, char *argv[])
 {
 	unsigned char cmd = 0x00;
 	bdaddr_t src, dst;
-	int opt, mode = MODE_NONE, sk, invalid = 0, preconf = 0;
+	int opt, mode = MODE_NONE, sk, invalid = 0, preconf = 0, fragment = 0;
 
 	bacpy(&src, BDADDR_ANY);
 	bacpy(&dst, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hc",
+	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hcF",
 						main_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'i':
@@ -599,6 +685,10 @@ int main(int argc, char *argv[])
 			preconf = 1;
 			break;
 
+		case 'F':
+			fragment = 1;
+			break;
+
 		case 'h':
 		default:
 			usage();
@@ -611,7 +701,7 @@ int main(int argc, char *argv[])
 
 	switch (mode) {
 	case MODE_REJECT:
-		do_listen(&src, cmd);
+		do_listen(&src, cmd, fragment);
 		break;
 	case MODE_SEND:
 		sk = do_connect(&src, &dst);
