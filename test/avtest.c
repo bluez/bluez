@@ -238,32 +238,117 @@ error:
 	close(sk);
 }
 
+static int do_connect(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	struct sockaddr_l2 addr;
+	int sk, err;
+
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+	if (sk < 0) {
+		perror("Can't create socket");
+		return -1;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, src);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Can't bind socket");
+		goto error;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, dst);
+	addr.l2_psm = htobs(25);
+
+	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
+	if (err < 0) {
+		perror("Unable to connect");
+		goto error;
+	}
+
+	return sk;
+
+error:
+	close(sk);
+	return -1;
+}
+
+static void do_send(int sk, unsigned char cmd)
+{
+	unsigned char buf[672];
+	struct avdtp_header *hdr = (void *) buf;
+	ssize_t len;
+
+	memset(buf, 0, sizeof(buf));
+
+	switch (cmd) {
+	case AVDTP_DISCOVER:
+		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
+		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
+		hdr->signal_id = AVDTP_DISCOVER;
+		len = write(sk, buf, 2);
+		break;
+	}
+
+	len = read(sk, buf, sizeof(buf));
+
+	dump_buffer(buf, len);
+	dump_header(hdr);
+}
+
 static void usage()
 {
 	printf("avtest - Audio/Video testing ver %s\n", VERSION);
 	printf("Usage:\n"
-		"\tavtest [options]\n");
+		"\tavtest [options] [remote address]\n");
 	printf("Options:\n"
-		"\t--reject <command>\tReject command\n");
+		"\t--reject <command>\tReject command\n"
+		"\t--send <command>\tSend command\n"
+		"\t--invalid <command>\tSend invalid command\n");
 }
 
 static struct option main_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "device",	1, 0, 'i' },
 	{ "reject",	1, 0, 'r' },
+	{ "send",	1, 0, 's' },
+	{ "invalid",	1, 0, 'f' },
 	{ 0, 0, 0, 0 }
+};
+
+static unsigned char parse_cmd(const char *arg)
+{
+	if (!strncmp(arg, "discov", 6))
+		return AVDTP_DISCOVER;
+	else if (!strncmp(arg, "capa", 4))
+		return AVDTP_GET_CAPABILITIES;
+	else if (!strncmp(arg, "getcapa", 7))
+		return AVDTP_GET_CAPABILITIES;
+	else if (!strncmp(arg, "setconf", 7))
+		return AVDTP_SET_CONFIGURATION;
+	else if (!strncmp(arg, "getconf", 7))
+		return AVDTP_GET_CONFIGURATION;
+	else
+		return atoi(arg);
+}
+
+enum {
+	MODE_NONE, MODE_REJECT, MODE_SEND, MODE_SEND_INVALID,
 };
 
 int main(int argc, char *argv[])
 {
-	unsigned char reject = 0x00;
+	unsigned char cmd = 0x00;
 	bdaddr_t src, dst;
-	int opt;
+	int opt, mode = MODE_NONE, sk;
 
 	bacpy(&src, BDADDR_ANY);
 	bacpy(&dst, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:r:h",
+	while ((opt = getopt_long(argc, argv, "+i:r:s:f:h",
 						main_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'i':
@@ -274,18 +359,18 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'r':
-			if (!strncmp(optarg, "discov", 6))
-				reject = AVDTP_DISCOVER;
-			else if (!strncmp(optarg, "capa", 4))
-				reject = AVDTP_GET_CAPABILITIES;
-			else if (!strncmp(optarg, "getcapa", 7))
-				reject = AVDTP_GET_CAPABILITIES;
-			else if (!strncmp(optarg, "setconf", 7))
-				reject = AVDTP_SET_CONFIGURATION;
-			else if (!strncmp(optarg, "getconf", 7))
-				reject = AVDTP_GET_CONFIGURATION;
-			else
-				reject = atoi(optarg);
+			mode = MODE_REJECT;
+			cmd = parse_cmd(optarg);
+			break;
+
+		case 's':
+			mode = MODE_SEND;
+			cmd = parse_cmd(optarg);
+			break;
+
+		case 'v':
+			mode = MODE_SEND_INVALID;
+			cmd = parse_cmd(optarg);
 			break;
 
 		case 'h':
@@ -295,7 +380,25 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	do_listen(&src, reject);
+	if (argv[optind])
+		str2ba(argv[optind], &dst);
+
+	switch (mode) {
+	case MODE_REJECT:
+		do_listen(&src, cmd);
+		break;
+	case MODE_SEND:
+	case MODE_SEND_INVALID:
+		sk = do_connect(&src, &dst);
+		if (sk < 0)
+			exit(1);
+		do_send(sk, cmd);
+		close(sk);
+		break;
+	default:
+		fprintf(stderr, "No operating mode specified!\n");
+		exit(1);
+	}
 
 	return 0;
 }
