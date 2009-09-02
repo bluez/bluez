@@ -263,6 +263,19 @@ static void process_sigchan(int srv_sk, int sk, unsigned char reject)
 			}
 			break;
 
+		case AVDTP_CLOSE:
+			if (reject == AVDTP_CLOSE) {
+				hdr->message_type = AVDTP_MSG_TYPE_REJECT;
+				buf[2] = 0x31; /* Bad State */
+				printf("Rejecting close command\n");
+				len = write(sk, buf, 3);
+			} else {
+				hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
+				printf("Accepting close command\n");
+				len = write(sk, buf, 2);
+			}
+			break;
+
 		default:
 			buf[1] = 0x00;
 			printf("Unknown command\n");
