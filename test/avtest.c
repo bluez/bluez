@@ -322,6 +322,18 @@ static void do_send(int sk, unsigned char cmd, int invalid)
 		buf[12] = 0x02;
 		buf[13] = 0x33;
 		len = write(sk, buf, 14);
+		break;
+
+	case AVDTP_GET_CONFIGURATION:
+		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
+		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
+		hdr->signal_id = AVDTP_GET_CONFIGURATION;
+		if (invalid)
+			buf[2] = 13 << 2; /* Invalid ACP SEID */
+		else
+			buf[2] = 1 << 2; /* Valid ACP SEID */
+		len = write(sk, buf, 3);
+		break;
 	}
 
 	len = read(sk, buf, sizeof(buf));
