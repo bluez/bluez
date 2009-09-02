@@ -276,7 +276,7 @@ error:
 	return -1;
 }
 
-static void do_send(int sk, unsigned char cmd)
+static void do_send(int sk, unsigned char cmd, int invalid)
 {
 	unsigned char buf[672];
 	struct avdtp_header *hdr = (void *) buf;
@@ -286,7 +286,10 @@ static void do_send(int sk, unsigned char cmd)
 
 	switch (cmd) {
 	case AVDTP_DISCOVER:
-		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
+		if (invalid)
+			hdr->message_type = 0x01;
+		else
+			hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_DISCOVER;
 		len = write(sk, buf, 2);
@@ -336,14 +339,14 @@ static unsigned char parse_cmd(const char *arg)
 }
 
 enum {
-	MODE_NONE, MODE_REJECT, MODE_SEND, MODE_SEND_INVALID,
+	MODE_NONE, MODE_REJECT, MODE_SEND,
 };
 
 int main(int argc, char *argv[])
 {
 	unsigned char cmd = 0x00;
 	bdaddr_t src, dst;
-	int opt, mode = MODE_NONE, sk;
+	int opt, mode = MODE_NONE, sk, invalid = 0;
 
 	bacpy(&src, BDADDR_ANY);
 	bacpy(&dst, BDADDR_ANY);
@@ -363,13 +366,12 @@ int main(int argc, char *argv[])
 			cmd = parse_cmd(optarg);
 			break;
 
+		case 'f':
+			invalid = 1;
+			/* Intentionally missing break */
+
 		case 's':
 			mode = MODE_SEND;
-			cmd = parse_cmd(optarg);
-			break;
-
-		case 'v':
-			mode = MODE_SEND_INVALID;
 			cmd = parse_cmd(optarg);
 			break;
 
@@ -388,11 +390,10 @@ int main(int argc, char *argv[])
 		do_listen(&src, cmd);
 		break;
 	case MODE_SEND:
-	case MODE_SEND_INVALID:
 		sk = do_connect(&src, &dst);
 		if (sk < 0)
 			exit(1);
-		do_send(sk, cmd);
+		do_send(sk, cmd, invalid);
 		close(sk);
 		break;
 	default:
