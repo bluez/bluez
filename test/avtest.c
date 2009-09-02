@@ -355,7 +355,8 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 	dump_buffer(buf, len);
 	dump_header(hdr);
 
-	if (cmd == AVDTP_OPEN)
+	if (cmd == AVDTP_OPEN && len >= 2 &&
+				hdr->message_type == AVDTP_MSG_TYPE_ACCEPT)
 		media_sock = do_connect(src, dst);
 }
 
