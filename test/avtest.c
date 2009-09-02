@@ -390,6 +390,13 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 		buf[2] = 1 << 2; /* ACP SEID */
 		len = write(sk, buf, 3);
 		break;
+
+	default:
+		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
+		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
+		hdr->signal_id = cmd;
+		len = write(sk, buf, 2);
+		break;
 	}
 
 	len = read(sk, buf, sizeof(buf));
