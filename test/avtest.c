@@ -133,7 +133,7 @@ static void dump_buffer(const unsigned char *buf, int len)
 	printf("\n");
 }
 
-static void process_sigchan(int sk, unsigned char reject)
+static void process_sigchan(int srv_sk, int sk, unsigned char reject)
 {
 	unsigned char buf[672];
 	ssize_t len;
@@ -223,6 +223,33 @@ static void process_sigchan(int sk, unsigned char reject)
 			}
 			break;
 
+		case AVDTP_OPEN:
+			if (reject == AVDTP_OPEN) {
+				hdr->message_type = AVDTP_MSG_TYPE_REJECT;
+				buf[2] = 0x31; /* Bad State */
+				printf("Rejecting open command\n");
+				len = write(sk, buf, 3);
+			} else {
+				struct sockaddr_l2 addr;
+				socklen_t optlen;
+
+				hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
+				printf("Accepting open command\n");
+				len = write(sk, buf, 2);
+
+				memset(&addr, 0, sizeof(addr));
+				optlen = sizeof(addr);
+
+				media_sock = accept(srv_sk,
+						(struct sockaddr *) &addr,
+								&optlen);
+				if (media_sock < 0) {
+					perror("Accept failed");
+					break;
+				}
+			}
+			break;
+
 		default:
 			buf[1] = 0x00;
 			printf("Unknown command\n");
@@ -269,7 +296,12 @@ static void do_listen(const bdaddr_t *src, unsigned char reject)
 			continue;
 		}
 
-		process_sigchan(nsk, reject);
+		process_sigchan(sk, nsk, reject);
+
+		if (media_sock >= 0) {
+			close(media_sock);
+			media_sock = -1;
+		}
 
 		close(nsk);
 	}
