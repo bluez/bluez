@@ -276,7 +276,7 @@ error:
 	return -1;
 }
 
-static void do_send(int sk, unsigned char cmd, int invalid)
+static void do_send(int sk, unsigned char cmd, int invalid, int preconf)
 {
 	unsigned char buf[672];
 	struct avdtp_header *hdr = (void *) buf;
@@ -305,7 +305,7 @@ static void do_send(int sk, unsigned char cmd, int invalid)
 
 	case AVDTP_SET_CONFIGURATION:
 		if (invalid)
-			do_send(sk, cmd, 0);
+			do_send(sk, cmd, 0, 0);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_SET_CONFIGURATION;
@@ -325,6 +325,8 @@ static void do_send(int sk, unsigned char cmd, int invalid)
 		break;
 
 	case AVDTP_GET_CONFIGURATION:
+		if (preconf)
+			do_send(sk, AVDTP_SET_CONFIGURATION, 0, 0);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_GET_CONFIGURATION;
@@ -359,6 +361,7 @@ static struct option main_options[] = {
 	{ "reject",	1, 0, 'r' },
 	{ "send",	1, 0, 's' },
 	{ "invalid",	1, 0, 'f' },
+	{ "preconf",	0, 0, 'c' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -386,12 +389,12 @@ int main(int argc, char *argv[])
 {
 	unsigned char cmd = 0x00;
 	bdaddr_t src, dst;
-	int opt, mode = MODE_NONE, sk, invalid = 0;
+	int opt, mode = MODE_NONE, sk, invalid = 0, preconf = 0;
 
 	bacpy(&src, BDADDR_ANY);
 	bacpy(&dst, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:r:s:f:h",
+	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hc",
 						main_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'i':
@@ -415,6 +418,10 @@ int main(int argc, char *argv[])
 			cmd = parse_cmd(optarg);
 			break;
 
+		case 'c':
+			preconf = 1;
+			break;
+
 		case 'h':
 		default:
 			usage();
@@ -433,7 +440,7 @@ int main(int argc, char *argv[])
 		sk = do_connect(&src, &dst);
 		if (sk < 0)
 			exit(1);
-		do_send(sk, cmd, invalid);
+		do_send(sk, cmd, invalid, preconf);
 		close(sk);
 		break;
 	default:
