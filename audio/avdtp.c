@@ -1152,6 +1152,13 @@ static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
 	gboolean ret;
 
 	sep_count = g_slist_length(session->server->seps);
+
+	if (sep_count == 0) {
+		uint8_t err = AVDTP_NOT_SUPPORTED_COMMAND;
+		return avdtp_send(session, transaction, AVDTP_MSG_TYPE_REJECT,
+					AVDTP_DISCOVER, &err, sizeof(err));
+	}
+
 	rsp_size = sep_count * sizeof(struct seid_info);
 
 	seps = g_new0(struct seid_info, sep_count);
