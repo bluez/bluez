@@ -210,6 +210,19 @@ static void process_sigchan(int sk, unsigned char reject)
 			}
 			break;
 
+		case AVDTP_GET_CONFIGURATION:
+			if (reject == AVDTP_GET_CONFIGURATION) {
+				hdr->message_type = AVDTP_MSG_TYPE_REJECT;
+				buf[2] = 0x12; /* Bad ACP SEID */
+				printf("Rejecting get configuration command\n");
+				len = write(sk, buf, 3);
+			} else {
+				hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
+				printf("Accepting get configuration command\n");
+				len = write(sk, buf, 2);
+			}
+			break;
+
 		default:
 			buf[1] = 0x00;
 			printf("Unknown command\n");
