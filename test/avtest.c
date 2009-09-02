@@ -294,6 +294,13 @@ static void do_send(int sk, unsigned char cmd, int invalid)
 		hdr->signal_id = AVDTP_DISCOVER;
 		len = write(sk, buf, 2);
 		break;
+	case AVDTP_GET_CAPABILITIES:
+		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
+		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
+		hdr->signal_id = AVDTP_GET_CAPABILITIES;
+		buf[2] = 1 << 2; /* SEID 1 */
+		len = write(sk, buf, invalid ? 2 : 3);
+		break;
 	}
 
 	len = read(sk, buf, sizeof(buf));
