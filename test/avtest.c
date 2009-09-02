@@ -408,7 +408,7 @@ static unsigned char parse_cmd(const char *arg)
 		return AVDTP_GET_CONFIGURATION;
 	else if (!strncmp(arg, "open", 4))
 		return AVDTP_OPEN;
-	else if (!strncmp(arg, "start", 4))
+	else if (!strncmp(arg, "start", 5))
 		return AVDTP_START;
 	else
 		return atoi(arg);
