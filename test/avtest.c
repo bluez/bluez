@@ -640,9 +640,12 @@ static void usage()
 	printf("Usage:\n"
 		"\tavtest [options] [remote address]\n");
 	printf("Options:\n"
-		"\t--reject <command>\tReject command\n"
-		"\t--send <command>\tSend command\n"
-		"\t--invalid <command>\tSend invalid command\n");
+		"\t--device <hcidev>    HCI device\n"
+		"\t--reject <command>   Reject command\n"
+		"\t--send <command>     Send command\n"
+		"\t--preconf            Configure stream before actual command\n"
+		"\t--fragment           Use minimum MTU and fragmented messages\n"
+		"\t--invalid <command>  Send invalid command\n");
 }
 
 static struct option main_options[] = {
