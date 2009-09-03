@@ -1,3 +1,9 @@
+ver 4.52:
+	Add AVCTP support to test utility.
+	Fix AVDTP Abort when transport closes before response.
+	Fix authorization when the audio profiles are slow to connect.
+	Fix potential AVDTP reference leaks.
+
 ver 4.51:
 	Add utility for basic AVDTP testing.
 	Add support for configuring L2CAP FCS option.
