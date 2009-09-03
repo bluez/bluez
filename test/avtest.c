@@ -724,6 +724,7 @@ static void usage()
 		"\t--reject <command>   Reject command\n"
 		"\t--send <command>     Send command\n"
 		"\t--preconf            Configure stream before actual command\n"
+		"\t--wait <N>           Wait N seconds before exiting\n"
 		"\t--fragment           Use minimum MTU and fragmented messages\n"
 		"\t--invalid <command>  Send invalid command\n");
 }
@@ -737,6 +738,7 @@ static struct option main_options[] = {
 	{ "preconf",	0, 0, 'c' },
 	{ "fragment",   0, 0, 'F' },
 	{ "avctp",	0, 0, 'C' },
+	{ "wait",	1, 0, 'w' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -775,12 +777,12 @@ int main(int argc, char *argv[])
 	unsigned char cmd = 0x00;
 	bdaddr_t src, dst;
 	int opt, mode = MODE_NONE, sk, invalid = 0, preconf = 0, fragment = 0;
-	int avctp = 0;
+	int avctp = 0, wait_before_exit = 0;
 
 	bacpy(&src, BDADDR_ANY);
 	bacpy(&dst, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hcFC",
+	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hcFCw:",
 						main_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'i':
@@ -816,6 +818,10 @@ int main(int argc, char *argv[])
 			avctp = 1;
 			break;
 
+		case 'w':
+			wait_before_exit = atoi(optarg);
+			break;
+
 		case 'h':
 		default:
 			usage();
@@ -846,6 +852,10 @@ int main(int argc, char *argv[])
 				process_avctp(sk, cmd);
 		} else
 			do_avdtp_send(sk, &src, &dst, cmd, invalid, preconf);
+		if (wait_before_exit) {
+			printf("Waiting %d seconds before exiting\n", wait_before_exit);
+			sleep(wait_before_exit);
+		}
 		if (media_sock >= 0)
 			close(media_sock);
 		close(sk);
