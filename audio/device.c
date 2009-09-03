@@ -683,6 +683,42 @@ static void auth_cb(DBusError *derr, void *user_data)
 	}
 }
 
+static gboolean auth_idle_cb(gpointer user_data)
+{
+	auth_cb(NULL, user_data);
+	return FALSE;
+}
+
+static gboolean audio_device_is_connected(struct audio_device *dev)
+{
+	if (dev->headset) {
+		headset_state_t state = headset_get_state(dev);
+
+		if (state == HEADSET_STATE_CONNECTED ||
+				state == HEADSET_STATE_PLAY_IN_PROGRESS ||
+				state == HEADSET_STATE_PLAYING)
+			return TRUE;
+	}
+
+	if (dev->sink) {
+		sink_state_t state = sink_get_state(dev);
+
+		if (state == SINK_STATE_CONNECTED ||
+				state == SINK_STATE_PLAYING)
+			return TRUE;
+	}
+
+	if (dev->source) {
+		source_state_t state = source_get_state(dev);
+
+		if (state == SOURCE_STATE_CONNECTED ||
+				state == SOURCE_STATE_PLAYING)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 int audio_device_request_authorization(struct audio_device *dev,
 					const char *uuid, service_auth_cb cb,
 					void *user_data)
@@ -701,6 +737,11 @@ int audio_device_request_authorization(struct audio_device *dev,
 	priv->auths = g_slist_append(priv->auths, auth);
 	if (g_slist_length(priv->auths) > 1)
 		return 0;
+
+	if (audio_device_is_connected(dev)) {
+		g_idle_add(auth_idle_cb, dev);
+		return 0;
+	}
 
 	err = btd_request_authorization(&dev->src, &dev->dst, uuid, auth_cb,
 					dev);

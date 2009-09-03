@@ -710,12 +710,8 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	avctp_set_state(control, AVCTP_STATE_CONNECTING);
 	control->io = g_io_channel_ref(chan);
 
-	if (avdtp_is_connected(&src, &dst)) {
-		if (!bt_io_accept(chan, avctp_connect_cb, dev->control,
-								NULL, NULL))
-			goto drop;
-	} else if (audio_device_request_authorization(dev, AVRCP_TARGET_UUID,
-			auth_cb, dev->control) < 0)
+	if (audio_device_request_authorization(dev, AVRCP_TARGET_UUID,
+						auth_cb, dev->control) < 0)
 		goto drop;
 
 	return;
