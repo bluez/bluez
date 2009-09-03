@@ -58,6 +58,7 @@
 #define AVDTP_START			0x07
 #define AVDTP_CLOSE			0x08
 #define AVDTP_SUSPEND			0x09
+#define AVDTP_ABORT			0x0A
 
 #define AVDTP_SEP_TYPE_SOURCE		0x00
 #define AVDTP_SEP_TYPE_SINK		0x01
@@ -316,7 +317,9 @@ static void process_sigchan(int srv_sk, int sk, unsigned char reject,
 			break;
 
 		case AVDTP_START:
-			if (reject == AVDTP_START) {
+			if (reject == AVDTP_ABORT)
+				printf("Ignoring start to cause abort");
+			else if (reject == AVDTP_START) {
 				hdr->message_type = AVDTP_MSG_TYPE_REJECT;
 				buf[3] = 0x31; /* Bad State */
 				printf("Rejecting start command\n");
@@ -355,6 +358,16 @@ static void process_sigchan(int srv_sk, int sk, unsigned char reject,
 				hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
 				printf("Accepting suspend command\n");
 				len = write(sk, buf, 2);
+			}
+			break;
+
+		case AVDTP_ABORT:
+			hdr->message_type = AVDTP_MSG_TYPE_ACCEPT;
+			printf("Accepting abort command\n");
+			len = write(sk, buf, 2);
+			if (media_sock >= 0) {
+				close(media_sock);
+				media_sock = -1;
 			}
 			break;
 
@@ -590,6 +603,15 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 		len = write(sk, buf, 3);
 		break;
 
+	case AVDTP_ABORT:
+		do_send(sk, src, dst, AVDTP_OPEN, 0, 1);
+		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
+		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
+		hdr->signal_id = AVDTP_ABORT;
+		buf[2] = 1 << 2; /* ACP SEID */
+		len = write(sk, buf, 3);
+		break;
+
 	default:
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
@@ -654,6 +676,8 @@ static unsigned char parse_cmd(const char *arg)
 		return AVDTP_CLOSE;
 	else if (!strncmp(arg, "suspend", 7))
 		return AVDTP_SUSPEND;
+	else if (!strncmp(arg, "abort", 7))
+		return AVDTP_ABORT;
 	else
 		return atoi(arg);
 }
