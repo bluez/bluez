@@ -1,3 +1,10 @@
+ver 4.51:
+	Add utility for basic AVDTP testing.
+	Add support for configuring L2CAP FCS option.
+	Fix discovery mode for CUPS 1.4.x and later.
+	Fix global state tracking of audio service.
+	Fix last issues with the new build system.
+
 ver 4.50:
 	Fix issue with missing manual pages in distribution.
 	Fix issue with the configuration and state directories.
