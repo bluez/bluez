@@ -169,7 +169,7 @@ static void dump_buffer(const unsigned char *buf, int len)
 	printf("\n");
 }
 
-static void process_sigchan(int srv_sk, int sk, unsigned char reject,
+static void process_avdtp(int srv_sk, int sk, unsigned char reject,
 								int fragment)
 {
 	unsigned char buf[672];
@@ -380,6 +380,20 @@ static void process_sigchan(int srv_sk, int sk, unsigned char reject,
 	}
 }
 
+static void process_avctp(int sk, int reject)
+{
+	unsigned char buf[672];
+	ssize_t len;
+
+	while (1) {
+		len = read(sk, buf, sizeof(buf));
+		if (len <= 0) {
+			perror("Read failed");
+			break;
+		}
+	}
+}
+
 static int set_minimum_mtu(int sk)
 {
 	struct l2cap_options l2o;
@@ -444,7 +458,7 @@ static void do_listen(const bdaddr_t *src, unsigned char reject, int fragment)
 			continue;
 		}
 
-		process_sigchan(sk, nsk, reject, fragment);
+		process_avdtp(sk, nsk, reject, fragment);
 
 		if (media_sock >= 0) {
 			close(media_sock);
@@ -458,7 +472,8 @@ error:
 	close(sk);
 }
 
-static int do_connect(const bdaddr_t *src, const bdaddr_t *dst, int fragment)
+static int do_connect(const bdaddr_t *src, const bdaddr_t *dst, int avctp,
+								int fragment)
 {
 	struct sockaddr_l2 addr;
 	int sk, err;
@@ -484,7 +499,7 @@ static int do_connect(const bdaddr_t *src, const bdaddr_t *dst, int fragment)
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, dst);
-	addr.l2_psm = htobs(25);
+	addr.l2_psm = htobs(avctp ? 23 : 25);
 
 	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
 	if (err < 0) {
@@ -499,7 +514,7 @@ error:
 	return -1;
 }
 
-static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
+static void do_avdtp_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 				unsigned char cmd, int invalid, int preconf)
 {
 	unsigned char buf[672];
@@ -529,7 +544,7 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 
 	case AVDTP_SET_CONFIGURATION:
 		if (preconf)
-			do_send(sk, src, dst, cmd, 0, 0);
+			do_avdtp_send(sk, src, dst, cmd, 0, 0);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_SET_CONFIGURATION;
@@ -543,7 +558,7 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 
 	case AVDTP_GET_CONFIGURATION:
 		if (preconf)
-			do_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
+			do_avdtp_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_GET_CONFIGURATION;
@@ -556,7 +571,7 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 
 	case AVDTP_OPEN:
 		if (preconf)
-			do_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
+			do_avdtp_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_OPEN;
@@ -566,9 +581,9 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 
 	case AVDTP_START:
 		if (preconf)
-			do_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
+			do_avdtp_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
 		if (!invalid)
-			do_send(sk, src, dst, AVDTP_OPEN, 0, 0);
+			do_avdtp_send(sk, src, dst, AVDTP_OPEN, 0, 0);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_START;
@@ -578,8 +593,8 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 
 	case AVDTP_CLOSE:
 		if (preconf) {
-			do_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
-			do_send(sk, src, dst, AVDTP_OPEN, 0, 0);
+			do_avdtp_send(sk, src, dst, AVDTP_SET_CONFIGURATION, 0, 0);
+			do_avdtp_send(sk, src, dst, AVDTP_OPEN, 0, 0);
 		}
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
@@ -593,9 +608,9 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 
 	case AVDTP_SUSPEND:
 		if (invalid)
-			do_send(sk, src, dst, AVDTP_OPEN, 0, preconf);
+			do_avdtp_send(sk, src, dst, AVDTP_OPEN, 0, preconf);
 		else
-			do_send(sk, src, dst, AVDTP_START, 0, preconf);
+			do_avdtp_send(sk, src, dst, AVDTP_START, 0, preconf);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_SUSPEND;
@@ -604,7 +619,7 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 		break;
 
 	case AVDTP_ABORT:
-		do_send(sk, src, dst, AVDTP_OPEN, 0, 1);
+		do_avdtp_send(sk, src, dst, AVDTP_OPEN, 0, 1);
 		hdr->message_type = AVDTP_MSG_TYPE_COMMAND;
 		hdr->packet_type = AVDTP_PKT_TYPE_SINGLE;
 		hdr->signal_id = AVDTP_ABORT;
@@ -631,7 +646,11 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 
 	if (cmd == AVDTP_OPEN && len >= 2 &&
 				hdr->message_type == AVDTP_MSG_TYPE_ACCEPT)
-		media_sock = do_connect(src, dst, 0);
+		media_sock = do_connect(src, dst, 0, 0);
+}
+
+static void do_avctp_send(int sk, int invalid)
+{
 }
 
 static void usage()
@@ -656,6 +675,7 @@ static struct option main_options[] = {
 	{ "invalid",	1, 0, 'f' },
 	{ "preconf",	0, 0, 'c' },
 	{ "fragment",   0, 0, 'F' },
+	{ "avctp",	0, 0, 'C' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -694,11 +714,12 @@ int main(int argc, char *argv[])
 	unsigned char cmd = 0x00;
 	bdaddr_t src, dst;
 	int opt, mode = MODE_NONE, sk, invalid = 0, preconf = 0, fragment = 0;
+	int avctp = 0;
 
 	bacpy(&src, BDADDR_ANY);
 	bacpy(&dst, BDADDR_ANY);
 
-	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hcF",
+	while ((opt = getopt_long(argc, argv, "+i:r:s:f:hcFC",
 						main_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'i':
@@ -730,6 +751,10 @@ int main(int argc, char *argv[])
 			fragment = 1;
 			break;
 
+		case 'C':
+			avctp = 1;
+			break;
+
 		case 'h':
 		default:
 			usage();
@@ -740,15 +765,26 @@ int main(int argc, char *argv[])
 	if (argv[optind])
 		str2ba(argv[optind], &dst);
 
+	if (avctp) {
+		avctp = mode;
+		mode = MODE_SEND;
+	}
+
 	switch (mode) {
 	case MODE_REJECT:
 		do_listen(&src, cmd, fragment);
 		break;
 	case MODE_SEND:
-		sk = do_connect(&src, &dst, fragment);
+		sk = do_connect(&src, &dst, avctp, fragment);
 		if (sk < 0)
 			exit(1);
-		do_send(sk, &src, &dst, cmd, invalid, preconf);
+		if (avctp) {
+			if (avctp == MODE_SEND)
+				do_avctp_send(sk, invalid);
+			else
+				process_avctp(sk, cmd);
+		} else
+			do_avdtp_send(sk, &src, &dst, cmd, invalid, preconf);
 		if (media_sock >= 0)
 			close(media_sock);
 		close(sk);
