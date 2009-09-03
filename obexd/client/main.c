@@ -187,7 +187,7 @@ static DBusMessage *send_files(DBusConnection *connection,
 	data->agent = g_strdup(agent);
 	data->files = files;
 
-	if (session_create(NULL, dest, "OPP", channel, create_callback,
+	if (session_create(source, dest, "OPP", channel, create_callback,
 				data) == 0)
 		return NULL;
 
