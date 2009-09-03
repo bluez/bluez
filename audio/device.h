@@ -77,7 +77,7 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 
 void audio_device_unregister(struct audio_device *device);
 
-gboolean audio_device_is_connected(struct audio_device *dev,
+gboolean audio_device_is_active(struct audio_device *dev,
 						const char *interface);
 
 typedef void (*authorization_cb) (DBusError *derr, void *user_data);

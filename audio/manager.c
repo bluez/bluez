@@ -1193,7 +1193,7 @@ struct audio_device *manager_find_device(const char *path,
 				&& !dev->control)
 			continue;
 
-		if (connected && !audio_device_is_connected(dev, interface))
+		if (connected && !audio_device_is_active(dev, interface))
 			continue;
 
 		return dev;

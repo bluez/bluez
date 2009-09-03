@@ -617,7 +617,7 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 	return dev;
 }
 
-gboolean audio_device_is_connected(struct audio_device *dev,
+gboolean audio_device_is_active(struct audio_device *dev,
 						const char *interface)
 {
 	if (!interface) {
