@@ -45,6 +45,7 @@
 #define AVDTP_PKT_TYPE_END		0x03
 
 #define AVDTP_MSG_TYPE_COMMAND		0x00
+#define AVDTP_MSG_TYPE_GEN_REJECT	0x01
 #define AVDTP_MSG_TYPE_ACCEPT		0x02
 #define AVDTP_MSG_TYPE_REJECT		0x03
 
@@ -597,10 +598,14 @@ static void do_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 		break;
 	}
 
-	len = read(sk, buf, sizeof(buf));
+	do {
+		len = read(sk, buf, sizeof(buf));
 
-	dump_buffer(buf, len);
-	dump_header(hdr);
+		dump_buffer(buf, len);
+		dump_header(hdr);
+	} while (len < 2 || (hdr->message_type != AVDTP_MSG_TYPE_ACCEPT &&
+				hdr->message_type != AVDTP_MSG_TYPE_REJECT &&
+				hdr->message_type != AVDTP_MSG_TYPE_GEN_REJECT));
 
 	if (cmd == AVDTP_OPEN && len >= 2 &&
 				hdr->message_type == AVDTP_MSG_TYPE_ACCEPT)
