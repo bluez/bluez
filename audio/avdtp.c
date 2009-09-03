@@ -348,9 +348,10 @@ struct avdtp_stream {
 	struct avdtp_service_capability *codec;
 	guint io_id;		/* Transport GSource ID */
 	guint timer;		/* Waiting for other side to close or open
-				   the transport channel */
+				 * the transport channel */
 	gboolean open_acp;	/* If we are in ACT role for Open */
 	gboolean close_int;	/* If we are in INT role for Close */
+	gboolean abort_int;	/* If we are in INT role for Abort */
 	guint idle_timer;
 };
 
@@ -589,6 +590,9 @@ static void close_stream(struct avdtp_stream *stream)
 	shutdown(sock, SHUT_RDWR);
 
 	g_io_channel_shutdown(stream->io, FALSE, NULL);
+
+	g_io_channel_unref(stream->io);
+	stream->io = NULL;
 }
 
 static gboolean stream_close_timeout(gpointer user_data)
@@ -794,7 +798,10 @@ static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 	if (!(cond & G_IO_NVAL))
 		close_stream(stream);
 
-	avdtp_sep_set_state(stream->session, sep, AVDTP_STATE_IDLE);
+	stream->io_id = 0;
+
+	if (!stream->abort_int)
+		avdtp_sep_set_state(stream->session, sep, AVDTP_STATE_IDLE);
 
 	return FALSE;
 }
@@ -956,7 +963,9 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 {
 	struct avdtp_local_sep *sep = stream->lsep;
 
-	if (sep->cfm && sep->cfm->abort)
+	if (sep->cfm && sep->cfm->abort &&
+				(sep->state != AVDTP_STATE_ABORTING ||
+							stream->abort_int))
 		sep->cfm->abort(session, sep, stream, NULL, sep->user_data);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
@@ -2267,6 +2276,9 @@ static gboolean request_timeout(gpointer user_data)
 		goto failed;
 	}
 
+	stream->abort_int = TRUE;
+	avdtp_sep_set_state(session, stream->lsep, AVDTP_STATE_ABORTING);
+
 	goto done;
 
 failed:
@@ -2509,6 +2521,8 @@ static gboolean avdtp_abort_resp(struct avdtp *session,
 					struct seid_rej *resp, int size)
 {
 	struct avdtp_local_sep *sep = stream->lsep;
+
+	avdtp_sep_set_state(session, sep, AVDTP_STATE_ABORTING);
 
 	if (sep->cfm && sep->cfm->abort)
 		sep->cfm->abort(session, sep, stream, NULL, sep->user_data);
@@ -3226,9 +3240,11 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 
 	ret = send_request(session, TRUE, stream, AVDTP_ABORT,
 							&req, sizeof(req));
-	if (ret == 0)
+	if (ret == 0) {
+		stream->abort_int = TRUE;
 		avdtp_sep_set_state(session, stream->lsep,
 					AVDTP_STATE_ABORTING);
+	}
 
 	return ret;
 }
