@@ -33,11 +33,13 @@
 #include <string.h>
 #include <getopt.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
+#include <bluetooth/sdp.h>
 
 #define AVDTP_PKT_TYPE_SINGLE		0x00
 #define AVDTP_PKT_TYPE_START		0x01
@@ -101,6 +103,15 @@ struct avdtp_continue_header {
 	uint8_t transaction:4;
 } __attribute__ ((packed));
 
+struct avctp_header {
+	uint8_t ipid:1;
+	uint8_t cr:1;
+	uint8_t packet_type:2;
+	uint8_t transaction:4;
+	uint16_t pid;
+} __attribute__ ((packed));
+#define AVCTP_HEADER_LENGTH 3
+
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
 struct avdtp_header {
@@ -135,9 +146,23 @@ struct avdtp_continue_header {
 	uint8_t message_type:2;
 } __attribute__ ((packed));
 
+struct avctp_header {
+	uint8_t transaction:4;
+	uint8_t packet_type:2;
+	uint8_t cr:1;
+	uint8_t ipid:1;
+	uint16_t pid;
+} __attribute__ ((packed));
+#define AVCTP_HEADER_LENGTH 3
+
 #else
 #error "Unknown byte order"
 #endif
+
+#define AVCTP_COMMAND		0
+#define AVCTP_RESPONSE		1
+
+#define AVCTP_PACKET_SINGLE	0
 
 static const unsigned char media_transport[] = {
 		0x01,	/* Media transport category */
@@ -154,7 +179,13 @@ static const unsigned char media_transport[] = {
 
 static int media_sock = -1;
 
-static void dump_header(struct avdtp_header *hdr)
+static void dump_avctp_header(struct avctp_header *hdr)
+{
+	printf("TL %d PT %d CR %d IPID %d PID 0x%04x\n", hdr->transaction,
+			hdr->packet_type, hdr->cr, hdr->ipid, ntohs(hdr->pid));
+}
+
+static void dump_avdtp_header(struct avdtp_header *hdr)
 {
 	printf("TL %d PT %d MT %d SI %d\n", hdr->transaction,
 			hdr->packet_type, hdr->message_type, hdr->signal_id);
@@ -185,7 +216,7 @@ static void process_avdtp(int srv_sk, int sk, unsigned char reject,
 		}
 
 		dump_buffer(buf, len);
-		dump_header(hdr);
+		dump_avdtp_header(hdr);
 
 		if (hdr->packet_type != AVDTP_PKT_TYPE_SINGLE) {
 			fprintf(stderr, "Only single packets are supported\n");
@@ -386,11 +417,18 @@ static void process_avctp(int sk, int reject)
 	ssize_t len;
 
 	while (1) {
+		struct avctp_header *hdr = (void *) buf;
+
 		len = read(sk, buf, sizeof(buf));
 		if (len <= 0) {
 			perror("Read failed");
 			break;
 		}
+
+		dump_buffer(buf, len);
+
+		if (len >= AVCTP_HEADER_LENGTH)
+			dump_avctp_header(hdr);
 	}
 }
 
@@ -639,7 +677,7 @@ static void do_avdtp_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 		len = read(sk, buf, sizeof(buf));
 
 		dump_buffer(buf, len);
-		dump_header(hdr);
+		dump_avdtp_header(hdr);
 	} while (len < 2 || (hdr->message_type != AVDTP_MSG_TYPE_ACCEPT &&
 				hdr->message_type != AVDTP_MSG_TYPE_REJECT &&
 				hdr->message_type != AVDTP_MSG_TYPE_GEN_REJECT));
@@ -651,6 +689,29 @@ static void do_avdtp_send(int sk, const bdaddr_t *src, const bdaddr_t *dst,
 
 static void do_avctp_send(int sk, int invalid)
 {
+	unsigned char buf[672];
+	struct avctp_header *hdr = (void *) buf;
+	unsigned char play_pressed[] = { 0x00, 0x48, 0x7c, 0x44, 0x00 };
+	ssize_t len;
+
+	memset(buf, 0, sizeof(buf));
+
+	hdr->packet_type = AVCTP_PACKET_SINGLE;
+	hdr->cr = AVCTP_COMMAND;
+	if (invalid)
+		hdr->pid = 0xffff;
+	else
+		hdr->pid = htons(AV_REMOTE_SVCLASS_ID);
+
+	memcpy(&buf[AVCTP_HEADER_LENGTH], play_pressed, sizeof(play_pressed));
+
+	len = write(sk, buf, AVCTP_HEADER_LENGTH + sizeof(play_pressed));
+
+	len = read(sk, buf, sizeof(buf));
+
+	dump_buffer(buf, len);
+	if (len >= AVCTP_HEADER_LENGTH)
+		dump_avctp_header(hdr);
 }
 
 static void usage()
