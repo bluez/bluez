@@ -860,8 +860,13 @@ static void start_discovery(struct audio_device *dev, struct unix_client *client
 
 		err = avdtp_discover(a2dp->session, a2dp_discovery_complete,
 					client);
-		if (err)
+		if (err) {
+			if (a2dp->session) {
+				avdtp_unref(a2dp->session);
+				a2dp->session = NULL;
+			}
 			goto failed;
+		}
 		break;
 
 	case TYPE_HEADSET:
