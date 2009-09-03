@@ -913,14 +913,17 @@ static void start_open(struct audio_device *dev, struct unix_client *client)
 	struct a2dp_data *a2dp;
 	struct headset_data *hs;
 	struct avdtp_remote_sep *rsep;
+	gboolean unref_avdtp_on_fail = FALSE;
 
 	switch (client->type) {
 	case TYPE_SINK:
 	case TYPE_SOURCE:
 		a2dp = &client->d.a2dp;
 
-		if (!a2dp->session)
+		if (!a2dp->session) {
 			a2dp->session = avdtp_get(&dev->src, &dev->dst);
+			unref_avdtp_on_fail = TRUE;
+		}
 
 		if (!a2dp->session) {
 			error("Unable to get a session");
@@ -981,6 +984,10 @@ static void start_open(struct audio_device *dev, struct unix_client *client)
 	return;
 
 failed:
+	if (unref_avdtp_on_fail && a2dp->session) {
+		avdtp_unref(a2dp->session);
+		a2dp->session = NULL;
+	}
 	unix_ipc_error(client, BT_OPEN, EINVAL);
 }
 
@@ -1056,14 +1063,17 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 	struct a2dp_data *a2dp;
 	struct headset_data *hs;
 	unsigned int id;
+	gboolean unref_avdtp_on_fail = FALSE;
 
 	switch (client->type) {
 	case TYPE_SINK:
 	case TYPE_SOURCE:
 		a2dp = &client->d.a2dp;
 
-		if (!a2dp->session)
+		if (!a2dp->session) {
 			a2dp->session = avdtp_get(&dev->src, &dev->dst);
+			unref_avdtp_on_fail = TRUE;
+		}
 
 		if (!a2dp->session) {
 			error("Unable to get a session");
@@ -1117,6 +1127,10 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 	return;
 
 failed:
+	if (unref_avdtp_on_fail && a2dp->session) {
+		avdtp_unref(a2dp->session);
+		a2dp->session = NULL;
+	}
 	unix_ipc_error(client, BT_START_STREAM, EIO);
 }
 
@@ -1125,14 +1139,17 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 	struct a2dp_data *a2dp;
 	struct headset_data *hs;
 	unsigned int id;
+	gboolean unref_avdtp_on_fail = FALSE;
 
 	switch (client->type) {
 	case TYPE_SINK:
 	case TYPE_SOURCE:
 		a2dp = &client->d.a2dp;
 
-		if (!a2dp->session)
+		if (!a2dp->session) {
 			a2dp->session = avdtp_get(&dev->src, &dev->dst);
+			unref_avdtp_on_fail = TRUE;
+		}
 
 		if (!a2dp->session) {
 			error("Unable to get a session");
@@ -1182,6 +1199,10 @@ static void start_suspend(struct audio_device *dev, struct unix_client *client)
 	return;
 
 failed:
+	if (unref_avdtp_on_fail && a2dp->session) {
+		avdtp_unref(a2dp->session);
+		a2dp->session = NULL;
+	}
 	unix_ipc_error(client, BT_STOP_STREAM, EIO);
 }
 
