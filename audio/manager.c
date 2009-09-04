@@ -411,6 +411,11 @@ static void headset_auth_cb(DBusError *derr, void *user_data)
 	GError *err = NULL;
 	GIOChannel *io;
 
+	if (device->hs_preauth_id) {
+		g_source_remove(device->hs_preauth_id);
+		device->hs_preauth_id = 0;
+	}
+
 	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
@@ -425,6 +430,22 @@ static void headset_auth_cb(DBusError *derr, void *user_data)
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 		return;
 	}
+}
+
+static gboolean hs_preauth_cb(GIOChannel *chan, GIOCondition cond,
+							gpointer user_data)
+{
+	struct audio_device *device = user_data;
+
+	debug("Headset disconnected during authorization");
+
+	audio_device_cancel_authorization(device, headset_auth_cb, device);
+
+	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
+
+	device->hs_preauth_id = 0;
+
+	return FALSE;
 }
 
 static void ag_confirm(GIOChannel *chan, gpointer data)
@@ -494,6 +515,10 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 		return;
 	}
+
+	device->hs_preauth_id = g_io_add_watch(chan,
+					G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+					hs_preauth_cb, device);
 
 	device->auto_connect = auto_connect;
 

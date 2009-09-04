@@ -195,6 +195,8 @@ static struct {
 
 static GSList *avctp_callbacks = NULL;
 
+static void auth_cb(DBusError *derr, void *user_data);
+
 static sdp_record_t *avrcp_ct_record()
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
@@ -389,6 +391,10 @@ static void avctp_disconnected(struct audio_device *dev)
 	if (control->io_id) {
 		g_source_remove(control->io_id);
 		control->io_id = 0;
+
+		if (control->state == AVCTP_STATE_CONNECTING)
+			audio_device_cancel_authorization(dev, auth_cb,
+								control);
 	}
 
 	if (control->uinput >= 0) {
@@ -654,6 +660,11 @@ static void auth_cb(DBusError *derr, void *user_data)
 	struct control *control = user_data;
 	GError *err = NULL;
 
+	if (control->io_id) {
+		g_source_remove(control->io_id);
+		control->io_id = 0;
+	}
+
 	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
 		avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
@@ -714,6 +725,8 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 						auth_cb, dev->control) < 0)
 		goto drop;
 
+	control->io_id = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+							control_cb, control);
 	return;
 
 drop:

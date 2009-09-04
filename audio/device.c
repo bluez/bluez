@@ -651,6 +651,11 @@ void audio_device_unregister(struct audio_device *device)
 {
 	unix_device_removed(device);
 
+	if (device->hs_preauth_id) {
+		g_source_remove(device->hs_preauth_id);
+		device->hs_preauth_id = 0;
+	}
+
 	if (device->headset)
 		headset_unregister(device);
 
@@ -751,4 +756,31 @@ int audio_device_request_authorization(struct audio_device *dev,
 	}
 
 	return err;
+}
+
+int audio_device_cancel_authorization(struct audio_device *dev,
+					authorization_cb cb, void *user_data)
+{
+	struct dev_priv *priv = dev->priv;
+	GSList *l, *next;
+
+	for (l = priv->auths; l != NULL; l = next) {
+		struct service_auth *auth = priv->auths->data;
+
+		next = g_slist_next(l);
+
+		if (cb && auth->cb != cb)
+			continue;
+
+		if (user_data && auth->user_data != user_data)
+			continue;
+
+		priv->auths = g_slist_remove(priv->auths, auth);
+		g_free(auth);
+	}
+
+	if (g_slist_length(priv->auths) == 0)
+		btd_cancel_authorization(&dev->src, &dev->dst);
+
+	return 0;
 }

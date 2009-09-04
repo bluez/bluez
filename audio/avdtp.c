@@ -423,6 +423,7 @@ static void connection_lost(struct avdtp *session, int err);
 static void avdtp_sep_set_state(struct avdtp *session,
 				struct avdtp_local_sep *sep,
 				avdtp_state_t state);
+static void auth_cb(DBusError *derr, void *user_data);
 
 static struct avdtp_server *find_server(GSList *list, const bdaddr_t *src)
 {
@@ -974,12 +975,16 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 static void connection_lost(struct avdtp *session, int err)
 {
 	char address[18];
+	struct audio_device *dev;
 
 	ba2str(&session->dst, address);
 	debug("Disconnected from %s", address);
 
-	if (session->state == AVDTP_SESSION_STATE_CONNECTING && err != EACCES)
-		btd_cancel_authorization(&session->server->src, &session->dst);
+	dev = manager_get_device(&session->server->src, &session->dst, FALSE);
+
+	if (dev != NULL && session->state == AVDTP_SESSION_STATE_CONNECTING &&
+								err != EACCES)
+		audio_device_cancel_authorization(dev, auth_cb, session);
 
 	session->free_lock = 1;
 
@@ -1028,8 +1033,11 @@ void avdtp_unref(struct avdtp *session)
 	if (session->ref == 1) {
 		if (session->state == AVDTP_SESSION_STATE_CONNECTING &&
 								session->io) {
-			btd_cancel_authorization(&session->server->src,
-							&session->dst);
+			struct audio_device *dev;
+			dev = manager_get_device(&session->server->src,
+							&session->dst, FALSE);
+			audio_device_cancel_authorization(dev, auth_cb,
+								session);
 			g_io_channel_shutdown(session->io, TRUE, NULL);
 			g_io_channel_unref(session->io);
 			session->io = NULL;

@@ -67,6 +67,8 @@ struct audio_device {
 	struct control *control;
 	struct target *target;
 
+	guint hs_preauth_id;
+
 	struct dev_priv *priv;
 };
 
@@ -81,6 +83,9 @@ gboolean audio_device_is_active(struct audio_device *dev,
 						const char *interface);
 
 typedef void (*authorization_cb) (DBusError *derr, void *user_data);
+
+int audio_device_cancel_authorization(struct audio_device *dev,
+					authorization_cb cb, void *user_data);
 
 int audio_device_request_authorization(struct audio_device *dev,
 					const char *uuid, authorization_cb cb,
