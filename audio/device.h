@@ -59,6 +59,7 @@ struct audio_device {
 	bdaddr_t dst;
 
 	gboolean auto_connect;
+	gboolean authorized;
 
 	struct headset *headset;
 	struct gateway *gateway;

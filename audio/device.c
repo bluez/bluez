@@ -150,6 +150,9 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 	if (!state_str)
 		return;
 
+	if (new_state == AUDIO_STATE_DISCONNECTED)
+		dev->authorized = FALSE;
+
 	if (dev->priv->state == new_state) {
 		debug("state change attempted from %s to %s",
 							state_str, state_str);
@@ -679,6 +682,9 @@ static void auth_cb(DBusError *derr, void *user_data)
 	struct audio_device *dev = user_data;
 	struct dev_priv *priv = dev->priv;
 
+	if (derr == NULL)
+		dev->authorized = TRUE;
+
 	while (priv->auths) {
 		struct service_auth *auth = priv->auths->data;
 
@@ -743,7 +749,7 @@ int audio_device_request_authorization(struct audio_device *dev,
 	if (g_slist_length(priv->auths) > 1)
 		return 0;
 
-	if (audio_device_is_connected(dev)) {
+	if (dev->authorized || audio_device_is_connected(dev)) {
 		g_idle_add(auth_idle_cb, dev);
 		return 0;
 	}
