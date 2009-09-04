@@ -413,6 +413,8 @@ static void avctp_set_state(struct control *control, avctp_state_t new_state)
 
 	switch (new_state) {
 	case AVCTP_STATE_DISCONNECTED:
+		debug("AVCTP Disconnected");
+
 		avctp_disconnected(control->dev);
 
 		if (old_state != AVCTP_STATE_CONNECTED)
@@ -427,8 +429,10 @@ static void avctp_set_state(struct control *control, avctp_state_t new_state)
 					DBUS_TYPE_BOOLEAN, &value);
 		break;
 	case AVCTP_STATE_CONNECTING:
+		debug("AVCTP Connecting");
 		break;
 	case AVCTP_STATE_CONNECTED:
+		debug("AVCTP Connected");
 		value = TRUE;
 		g_dbus_emit_signal(control->dev->conn, control->dev->path,
 				AUDIO_CONTROL_INTERFACE, "Connected",
