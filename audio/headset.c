@@ -2449,12 +2449,12 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 					AUDIO_HEADSET_INTERFACE,
 					"Disconnected",
 					DBUS_TYPE_INVALID);
-		if (hs->state > HEADSET_STATE_CONNECTING)
+		if (hs->state > HEADSET_STATE_CONNECTING) {
 			emit_property_changed(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
-
-		telephony_device_disconnected(dev);
+			telephony_device_disconnected(dev);
+		}
 		active_devices = g_slist_remove(active_devices, dev);
 		device_remove_disconnect_watch(dev->btd_dev, hs->dc_id);
 		hs->dc_id = 0;
