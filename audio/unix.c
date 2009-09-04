@@ -1283,6 +1283,7 @@ static void handle_getcapabilities_req(struct unix_client *client,
 	struct audio_device *dev;
 	bdaddr_t src, dst;
 	int err = EIO;
+	const char *interface;
 
 	if (!check_nul(req->source) || !check_nul(req->destination) ||
 			!check_nul(req->object)) {
@@ -1297,28 +1298,29 @@ static void handle_getcapabilities_req(struct unix_client *client,
 		goto failed;
 
 	if (req->transport == BT_CAPABILITIES_TRANSPORT_SCO)
-		client->interface = g_strdup(AUDIO_HEADSET_INTERFACE);
+		interface = AUDIO_HEADSET_INTERFACE;
 	else if (req->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
-		client->interface = g_strdup(AUDIO_SINK_INTERFACE);
-	dev = manager_find_device(req->object, &src, &dst, client->interface,
-				TRUE);
+		interface = AUDIO_SINK_INTERFACE;
+	else
+		interface = client->interface;
+
+	dev = manager_find_device(req->object, &src, &dst, interface, TRUE);
 	if (!dev && (req->flags & BT_FLAG_AUTOCONNECT))
 		dev = manager_find_device(req->object, &src, &dst,
-					client->interface, FALSE);
+							interface, FALSE);
 
 	if (!dev) {
-		g_free(client->interface);
 		if (req->transport == BT_CAPABILITIES_TRANSPORT_SCO)
-			client->interface = g_strdup(AUDIO_GATEWAY_INTERFACE);
+			interface = AUDIO_GATEWAY_INTERFACE;
 		else if (req->transport == BT_CAPABILITIES_TRANSPORT_A2DP)
-			client->interface = g_strdup(AUDIO_SOURCE_INTERFACE);
+			interface = AUDIO_SOURCE_INTERFACE;
 		else
-			client->interface = NULL;
+			interface = NULL;
 		dev = manager_find_device(req->object, &src, &dst,
-				client->interface, TRUE);
+							interface, TRUE);
 		if (!dev && (req->flags & BT_FLAG_AUTOCONNECT))
 			dev = manager_find_device(req->object, &src, &dst,
-					client->interface, FALSE);
+							interface, FALSE);
 	}
 
 	if (!dev) {
@@ -1326,10 +1328,15 @@ static void handle_getcapabilities_req(struct unix_client *client,
 		goto failed;
 	}
 
-	client->type = select_service(dev, client->interface);
+	client->type = select_service(dev, interface);
 	if (client->type == TYPE_NONE) {
 		error("No matching service found");
 		goto failed;
+	}
+
+	if (g_strcmp0(interface, client->interface) != 0) {
+		g_free(client->interface);
+		client->interface = g_strdup(interface);
 	}
 
 	client->seid = req->seid;
