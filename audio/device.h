@@ -90,3 +90,5 @@ int audio_device_cancel_authorization(struct audio_device *dev,
 int audio_device_request_authorization(struct audio_device *dev,
 					const char *uuid, authorization_cb cb,
 					void *user_data);
+
+void audio_device_set_authorized(struct audio_device *dev, gboolean auth);

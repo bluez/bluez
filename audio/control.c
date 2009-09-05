@@ -427,6 +427,10 @@ static void avctp_set_state(struct control *control, avctp_state_t new_state)
 		emit_property_changed(dev->conn, dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
+
+		if (!audio_device_is_active(dev, NULL))
+			audio_device_set_authorized(dev, FALSE);
+
 		break;
 	case AVCTP_STATE_CONNECTING:
 		debug("AVCTP Connecting");

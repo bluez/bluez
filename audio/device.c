@@ -804,3 +804,10 @@ int audio_device_cancel_authorization(struct audio_device *dev,
 
 	return 0;
 }
+
+void audio_device_set_authorized(struct audio_device *dev, gboolean auth)
+{
+	struct dev_priv *priv = dev->priv;
+
+	priv->authorized = auth;
+}
