@@ -93,6 +93,7 @@ struct service_auth {
 	service_auth_cb cb;
 	void *user_data;
 	struct btd_device *device;
+	struct btd_adapter *adapter;
 };
 
 struct btd_adapter {
@@ -116,6 +117,7 @@ struct btd_adapter {
 	DBusMessage *discovery_cancel;	/* discovery cancel message request */
 	GSList *passkey_agents;
 	struct agent *agent;		/* For the new API */
+	guint auth_idle_id;		/* Ongoing authorization */
 	GSList *connections;		/* Connected devices */
 	GSList *devices;		/* Devices structure pointers */
 	GSList *mode_sessions;		/* Request Mode sessions */
@@ -2388,6 +2390,9 @@ static void adapter_free(gpointer user_data)
 
 	debug("adapter_free(%p)", adapter);
 
+	if (adapter->auth_idle_id)
+		g_source_remove(adapter->auth_idle_id);
+
 	g_free(adapter->path);
 	g_free(adapter);
 }
@@ -2878,6 +2883,18 @@ static void agent_auth_cb(struct agent *agent, DBusError *derr,
 	auth->cb(derr, auth->user_data);
 }
 
+static gboolean auth_idle_cb(gpointer user_data)
+{
+	struct service_auth *auth = user_data;
+	struct btd_adapter *adapter = auth->adapter;
+
+	adapter->auth_idle_id = 0;
+
+	auth->cb(NULL, auth->user_data);
+
+	return FALSE;
+}
+
 static int btd_adapter_authorize(struct btd_adapter *adapter,
 					const bdaddr_t *dst,
 					const char *uuid,
@@ -2900,24 +2917,8 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 	if (!g_slist_find(adapter->connections, device))
 		return -ENOTCONN;
 
-	trusted = read_trust(&adapter->bdaddr, address, GLOBAL_TRUST);
-
-	if (trusted) {
-		cb(NULL, user_data);
-		return 0;
-	}
-
-	device = adapter_find_device(adapter, address);
-	if (!device)
-		return -EPERM;
-
-	agent = device_get_agent(device);
-
-	if (!agent)
-		agent = adapter->agent;
-
-	if (!agent)
-		return -EPERM;
+	if (adapter->auth_idle_id)
+		return -EBUSY;
 
 	auth = g_try_new0(struct service_auth, 1);
 	if (!auth)
@@ -2926,12 +2927,33 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 	auth->cb = cb;
 	auth->user_data = user_data;
 	auth->device = device;
+	auth->adapter = adapter;
+
+	trusted = read_trust(&adapter->bdaddr, address, GLOBAL_TRUST);
+
+	if (trusted) {
+		adapter->auth_idle_id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+							auth_idle_cb, auth,
+							g_free);
+		return 0;
+	}
+
+	agent = device_get_agent(device);
+
+	if (!agent)
+		agent = adapter->agent;
+
+	if (!agent) {
+		g_free(auth);
+		return -EPERM;
+	}
 
 	dev_path = device_get_path(device);
 
 	err = agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth, g_free);
-
-	if (err == 0)
+	if (err < 0)
+		g_free(auth);
+	else
 		device_set_authorizing(device, TRUE);
 
 	return err;
@@ -2986,6 +3008,12 @@ int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
 	device = adapter_find_device(adapter, address);
 	if (!device)
 		return -EPERM;
+
+	if (adapter->auth_idle_id) {
+		g_source_remove(adapter->auth_idle_id);
+		adapter->auth_idle_id = 0;
+		return 0;
+	}
 
 	/*
 	 * FIXME: Cancel fails if authorization is requested to adapter's
