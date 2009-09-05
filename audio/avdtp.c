@@ -1305,7 +1305,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 
 		if (cap->category == AVDTP_MEDIA_TRANSPORT && cap->length != 0) {
 			err = AVDTP_BAD_MEDIA_TRANSPORT_FORMAT;
-			goto failed;
+			goto failed_stream;
 		}
 	}
 
@@ -1313,10 +1313,8 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 		if (!sep->ind->set_configuration(session, sep, stream,
 							stream->caps, &err,
 							&category,
-							sep->user_data)) {
-			stream_free(stream);
-			goto failed;
-		}
+							sep->user_data))
+			goto failed_stream;
 	}
 
 	if (!avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT,
@@ -1332,6 +1330,8 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 
 	return TRUE;
 
+failed_stream:
+	stream_free(stream);
 failed:
 	rej.error = err;
 	rej.category = category;
