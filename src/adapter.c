@@ -664,8 +664,10 @@ static void session_remove(struct session_req *req)
 		g_slist_free(adapter->oor_devices);
 		adapter->oor_devices = NULL;
 
-		if (adapter->scheduler_id)
+		if (adapter->scheduler_id) {
 			g_source_remove(adapter->scheduler_id);
+			adapter->scheduler_id = 0;
+		}
 
 		adapter_ops->stop_discovery(adapter->dev_id);
 	}
