@@ -91,6 +91,8 @@ struct dev_priv {
 	guint control_timer;
 	guint avdtp_timer;
 	guint headset_timer;
+
+	gboolean authorized;
 };
 
 static unsigned int sink_callback_id = 0;
@@ -151,7 +153,7 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 		return;
 
 	if (new_state == AUDIO_STATE_DISCONNECTED)
-		dev->authorized = FALSE;
+		priv->authorized = FALSE;
 
 	if (dev->priv->state == new_state) {
 		debug("state change attempted from %s to %s",
@@ -683,7 +685,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 	struct dev_priv *priv = dev->priv;
 
 	if (derr == NULL)
-		dev->authorized = TRUE;
+		priv->authorized = TRUE;
 
 	while (priv->auths) {
 		struct service_auth *auth = priv->auths->data;
@@ -749,7 +751,7 @@ int audio_device_request_authorization(struct audio_device *dev,
 	if (g_slist_length(priv->auths) > 1)
 		return 0;
 
-	if (dev->authorized || audio_device_is_connected(dev)) {
+	if (priv->authorized || audio_device_is_connected(dev)) {
 		g_idle_add(auth_idle_cb, dev);
 		return 0;
 	}
