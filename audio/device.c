@@ -93,6 +93,7 @@ struct dev_priv {
 	guint headset_timer;
 
 	gboolean authorized;
+	guint auth_idle_id;
 };
 
 static unsigned int sink_callback_id = 0;
@@ -698,7 +699,13 @@ static void auth_cb(DBusError *derr, void *user_data)
 
 static gboolean auth_idle_cb(gpointer user_data)
 {
-	auth_cb(NULL, user_data);
+	struct audio_device *dev = user_data;
+	struct dev_priv *priv = dev->priv;
+
+	priv->auth_idle_id = 0;
+
+	auth_cb(NULL, dev);
+
 	return FALSE;
 }
 
@@ -752,7 +759,7 @@ int audio_device_request_authorization(struct audio_device *dev,
 		return 0;
 
 	if (priv->authorized || audio_device_is_connected(dev)) {
-		g_idle_add(auth_idle_cb, dev);
+		priv->auth_idle_id = g_idle_add(auth_idle_cb, dev);
 		return 0;
 	}
 
@@ -787,8 +794,13 @@ int audio_device_cancel_authorization(struct audio_device *dev,
 		g_free(auth);
 	}
 
-	if (g_slist_length(priv->auths) == 0)
-		btd_cancel_authorization(&dev->src, &dev->dst);
+	if (g_slist_length(priv->auths) == 0) {
+		if (priv->auth_idle_id > 0) {
+			g_source_remove(priv->auth_idle_id);
+			priv->auth_idle_id = 0;
+		} else
+			btd_cancel_authorization(&dev->src, &dev->dst);
+	}
 
 	return 0;
 }
