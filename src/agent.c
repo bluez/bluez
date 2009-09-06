@@ -352,7 +352,7 @@ int agent_authorize(struct agent *agent,
 	err = agent_call_authorize(req, path, uuid);
 	if (err < 0) {
 		agent_request_free(req);
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return -ENOMEM;
 	}
 
 	agent->request = req;
