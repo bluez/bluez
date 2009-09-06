@@ -120,7 +120,7 @@ static int send_cancel_request(struct agent_request *req)
 	return 0;
 }
 
-static void agent_request_free(struct agent_request *req)
+static void agent_request_free(struct agent_request *req, gboolean destroy)
 {
 	if (req->msg)
 		dbus_message_unref(req->msg);
@@ -128,7 +128,7 @@ static void agent_request_free(struct agent_request *req)
 		dbus_pending_call_unref(req->call);
 	if (req->agent && req->agent->request)
 		req->agent->request = NULL;
-	if (req->destroy)
+	if (destroy && req->destroy)
 		req->destroy(req->user_data);
 	g_free(req);
 }
@@ -246,7 +246,7 @@ int agent_cancel(struct agent *agent)
 	if (!agent->exited)
 		send_cancel_request(agent->request);
 
-	agent_request_free(agent->request);
+	agent_request_free(agent->request, TRUE);
 	agent->request = NULL;
 
 	return 0;
@@ -302,7 +302,7 @@ done:
 	dbus_message_unref(message);
 
 	agent->request = NULL;
-	agent_request_free(req);
+	agent_request_free(req, TRUE);
 }
 
 static int agent_call_authorize(struct agent_request *req,
@@ -351,7 +351,7 @@ int agent_authorize(struct agent *agent,
 
 	err = agent_call_authorize(req, path, uuid);
 	if (err < 0) {
-		agent_request_free(req);
+		agent_request_free(req, FALSE);
 		return -ENOMEM;
 	}
 
@@ -429,7 +429,7 @@ done:
 
 	dbus_pending_call_cancel(req->call);
 	agent->request = NULL;
-	agent_request_free(req);
+	agent_request_free(req, TRUE);
 }
 
 static int pincode_request_new(struct agent_request *req, const char *device_path,
@@ -535,7 +535,7 @@ int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 	return 0;
 
 failed:
-	agent_request_free(req);
+	agent_request_free(req, FALSE);
 	return err;
 }
 
@@ -586,7 +586,7 @@ done:
 
 	dbus_pending_call_cancel(req->call);
 	agent->request = NULL;
-	agent_request_free(req);
+	agent_request_free(req, TRUE);
 }
 
 static int passkey_request_new(struct agent_request *req,
@@ -640,7 +640,7 @@ int agent_request_passkey(struct agent *agent, struct btd_device *device,
 	return 0;
 
 failed:
-	agent_request_free(req);
+	agent_request_free(req, FALSE);
 	return err;
 }
 
@@ -699,7 +699,7 @@ int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 	return 0;
 
 failed:
-	agent_request_free(req);
+	agent_request_free(req, FALSE);
 	return err;
 }
 
