@@ -628,26 +628,24 @@ gboolean audio_device_is_active(struct audio_device *dev,
 {
 	if (!interface) {
 		if ((dev->sink || dev->source) &&
-			avdtp_is_connected(&dev->src, &dev->dst))
+				avdtp_is_connected(&dev->src, &dev->dst))
 			return TRUE;
-
 		if (dev->headset && headset_is_active(dev))
 			return TRUE;
-	}
-	else if (!strcmp(interface, AUDIO_SINK_INTERFACE) && dev->sink &&
-			avdtp_is_connected(&dev->src, &dev->dst))
+	} else if (!strcmp(interface, AUDIO_SINK_INTERFACE) && dev->sink &&
+				avdtp_is_connected(&dev->src, &dev->dst))
 		return TRUE;
 	else if (!strcmp(interface, AUDIO_SOURCE_INTERFACE) && dev->source &&
-			avdtp_is_connected(&dev->src, &dev->dst))
+				avdtp_is_connected(&dev->src, &dev->dst))
 		return TRUE;
 	else if (!strcmp(interface, AUDIO_HEADSET_INTERFACE) && dev->headset &&
-			headset_is_active(dev))
+				headset_is_active(dev))
 		return TRUE;
 	else if (!strcmp(interface, AUDIO_CONTROL_INTERFACE) && dev->control &&
-			control_is_active(dev))
+				control_is_active(dev))
 		return TRUE;
 	else if (!strcmp(interface, AUDIO_GATEWAY_INTERFACE) && dev->gateway &&
-			gateway_is_connected(dev))
+				gateway_is_connected(dev))
 		return TRUE;
 
 	return FALSE;
