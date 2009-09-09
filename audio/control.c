@@ -398,6 +398,11 @@ static void avctp_disconnected(struct audio_device *dev)
 	}
 
 	if (control->uinput >= 0) {
+		char address[18];
+
+		ba2str(&dev->dst, address);
+		debug("AVRCP: closing uinput for %s", address);
+
 		ioctl(control->uinput, UI_DEV_DESTROY);
 		close(control->uinput);
 		control->uinput = -1;
