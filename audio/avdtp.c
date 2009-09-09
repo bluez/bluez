@@ -2119,6 +2119,18 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	if (!session)
 		goto drop;
 
+	/* This state (ie, session is already *connecting*) happens when the
+	 * device initiates a connect (really a config'd L2CAP channel) even
+	 * though there is a connect we initiated in progress. In sink.c &
+	 * source.c, this state is referred to as XCASE connect:connect.
+	 * Abort the device's channel in favor of our own.
+	 */
+	if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
+		debug("avdtp_confirm_cb: connect already in progress"
+						" (XCASE connect:connect)");
+		goto drop;
+	}
+
 	if (session->pending_open && session->pending_open->open_acp) {
 		if (!bt_io_accept(chan, avdtp_connect_cb, session, NULL, NULL))
 			goto drop;
