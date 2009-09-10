@@ -1,3 +1,11 @@
+ver 4.53:
+	Fix issue with telephony connection state notifications.
+	Fix AVDTP stream leak for invalid media transport config.
+	Fix audio connection authorization handling with timeouts.
+	Fix race condition in authorizing audio connections.
+	Fix device authorized setting for AVRCP-only connections.
+	Fix duplicate attempts from device to connect signal channel.
+
 ver 4.52:
 	Add AVCTP support to test utility.
 	Fix AVDTP Abort when transport closes before response.
