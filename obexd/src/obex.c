@@ -751,7 +751,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 		return FALSE;
 	}
 
-	free = buf.f_bsize * buf.f_bavail;
+	free = (unsigned long long) buf.f_bsize * buf.f_bavail;
 	debug("Free space in disk: %llu", free);
 	if ((guint64) os->size > free) {
 		debug("Free disk space not available");
