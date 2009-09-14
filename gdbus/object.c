@@ -155,7 +155,13 @@ static void generate_introspection_xml(DBusConnection *conn,
 
 	gstr = g_string_new(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE);
 
-	g_string_append_printf(gstr, "<node name=\"%s\">\n", path);
+	g_string_append_printf(gstr,
+		"<node name=\"%s\">\n"
+		"\t<interface name=\"org.freedesktop.DBus.Introspectable\">\n"
+		"\t\t<method name=\"Introspect\">\n"
+		"\t\t\t<arg name=\"xml_data\" type=\"s\" direction=\"out\"/>\n"
+		"\t\t</method>\n"
+		"\t</interface>\n", path);
 
 	for (list = data->interfaces; list; list = list->next) {
 		struct interface_data *iface = list->data;
