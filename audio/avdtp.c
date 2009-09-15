@@ -2580,6 +2580,16 @@ static gboolean avdtp_parse_resp(struct avdtp *session,
 		if (!(next && next->signal_id == AVDTP_GET_CAPABILITIES))
 			finalize_discovery(session, 0);
 		return TRUE;
+	}
+
+	/* The remaining commands require an existing stream so bail out
+	 * here if the stream got unexpectedly disconnected */
+	if (!stream) {
+		debug("AVDTP: stream was closed while waiting for reply");
+		return TRUE;
+	}
+
+	switch (signal_id) {
 	case AVDTP_SET_CONFIGURATION:
 		debug("SET_CONFIGURATION request succeeded");
 		return avdtp_set_configuration_resp(session, stream,
