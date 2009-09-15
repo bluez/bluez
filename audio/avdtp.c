@@ -2300,7 +2300,6 @@ static gboolean request_timeout(gpointer user_data)
 	}
 
 	stream->abort_int = TRUE;
-	avdtp_sep_set_state(session, stream->lsep, AVDTP_STATE_ABORTING);
 
 	goto done;
 
@@ -3273,11 +3272,8 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 
 	ret = send_request(session, TRUE, stream, AVDTP_ABORT,
 							&req, sizeof(req));
-	if (ret == 0) {
+	if (ret == 0)
 		stream->abort_int = TRUE;
-		avdtp_sep_set_state(session, stream->lsep,
-					AVDTP_STATE_ABORTING);
-	}
 
 	return ret;
 }
