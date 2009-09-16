@@ -155,13 +155,7 @@ static void generate_introspection_xml(DBusConnection *conn,
 
 	gstr = g_string_new(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE);
 
-	g_string_append_printf(gstr,
-		"<node name=\"%s\">\n"
-		"\t<interface name=\"org.freedesktop.DBus.Introspectable\">\n"
-		"\t\t<method name=\"Introspect\">\n"
-		"\t\t\t<arg name=\"xml_data\" type=\"s\" direction=\"out\"/>\n"
-		"\t\t</method>\n"
-		"\t</interface>\n", path);
+	g_string_append_printf(gstr, "<node name=\"%s\">\n", path);
 
 	for (list = data->interfaces; list; list = list->next) {
 		struct interface_data *iface = list->data;
@@ -189,14 +183,15 @@ done:
 	data->introspect = g_string_free(gstr, FALSE);
 }
 
-static DBusHandlerResult introspect(DBusConnection *connection,
-				DBusMessage *message, struct generic_data *data)
+static DBusMessage *introspect(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
 {
+	struct generic_data *data = user_data;
 	DBusMessage *reply;
 
 	if (!dbus_message_has_signature(message, DBUS_TYPE_INVALID_AS_STRING)) {
 		error("Unexpected signature to introspect call");
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return NULL;
 	}
 
 	if (!data->introspect)
@@ -205,16 +200,12 @@ static DBusHandlerResult introspect(DBusConnection *connection,
 
 	reply = dbus_message_new_method_return(message);
 	if (!reply)
-		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_STRING, &data->introspect,
 					DBUS_TYPE_INVALID);
 
-	dbus_connection_send(connection, reply, NULL);
-
-	dbus_message_unref(reply);
-
-	return DBUS_HANDLER_RESULT_HANDLED;
+	return reply;
 }
 
 static void generic_unregister(DBusConnection *connection, void *user_data)
@@ -249,11 +240,6 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 	struct interface_data *iface;
 	GDBusMethodTable *method;
 	const char *interface;
-
-	if (dbus_message_is_method_call(message,
-					DBUS_INTERFACE_INTROSPECTABLE,
-								"Introspect"))
-		return introspect(connection, message, data);
 
 	interface = dbus_message_get_interface(message);
 
@@ -335,6 +321,31 @@ done:
 	g_free(parent_path);
 }
 
+static GDBusMethodTable introspect_methods[] = {
+	{ "Introspect",	"",	"s", introspect	},
+	{ }
+};
+
+static void add_interface(struct generic_data *data, const char *name,
+				GDBusMethodTable *methods,
+				GDBusSignalTable *signals,
+				GDBusPropertyTable *properties,
+				void *user_data,
+				GDBusDestroyFunction destroy)
+{
+	struct interface_data *iface;
+
+	iface = g_new0(struct interface_data, 1);
+	iface->name = g_strdup(name);
+	iface->methods = methods;
+	iface->signals = signals;
+	iface->properties = properties;
+	iface->user_data = user_data;
+	iface->destroy = destroy;
+
+	data->interfaces = g_slist_append(data->interfaces, iface);
+}
+
 static struct generic_data *object_path_ref(DBusConnection *connection,
 							const char *path)
 {
@@ -363,7 +374,29 @@ static struct generic_data *object_path_ref(DBusConnection *connection,
 
 	invalidate_parent_data(connection, path);
 
+	add_interface(data, DBUS_INTERFACE_INTROSPECTABLE,
+			introspect_methods, NULL, NULL, data, NULL);
+
 	return data;
+}
+
+static gboolean remove_interface(struct generic_data *data, const char *name)
+{
+	struct interface_data *iface;
+
+	iface = find_interface(data->interfaces, name);
+	if (!iface)
+		return FALSE;
+
+	data->interfaces = g_slist_remove(data->interfaces, iface);
+
+	if (iface->destroy)
+		iface->destroy(iface->user_data);
+
+	g_free(iface->name);
+	g_free(iface);
+
+	return TRUE;
 }
 
 static void object_path_unref(DBusConnection *connection, const char *path)
@@ -381,6 +414,8 @@ static void object_path_unref(DBusConnection *connection, const char *path)
 
 	if (data->refcount > 0)
 		return;
+
+	remove_interface(data, DBUS_INTERFACE_INTROSPECTABLE);
 
 	invalidate_parent_data(connection, path);
 
@@ -474,7 +509,6 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 					GDBusDestroyFunction destroy)
 {
 	struct generic_data *data;
-	struct interface_data *iface;
 
 	data = object_path_ref(connection, path);
 	if (data == NULL)
@@ -483,16 +517,8 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 	if (find_interface(data->interfaces, name))
 		return FALSE;
 
-	iface = g_new0(struct interface_data, 1);
-
-	iface->name = g_strdup(name);
-	iface->methods = methods;
-	iface->signals = signals;
-	iface->properties = properties;
-	iface->user_data = user_data;
-	iface->destroy = destroy;
-
-	data->interfaces = g_slist_append(data->interfaces, iface);
+	add_interface(data, name, methods, signals,
+			properties, user_data, destroy);
 
 	g_free(data->introspect);
 	data->introspect = NULL;
@@ -504,7 +530,6 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 					const char *path, const char *name)
 {
 	struct generic_data *data = NULL;
-	struct interface_data *iface;
 
 	if (!path)
 		return FALSE;
@@ -516,17 +541,8 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 	if (data == NULL)
 		return FALSE;
 
-	iface = find_interface(data->interfaces, name);
-	if (!iface)
+	if (remove_interface(data, name) == FALSE)
 		return FALSE;
-
-	data->interfaces = g_slist_remove(data->interfaces, iface);
-
-	if (iface->destroy)
-		iface->destroy(iface->user_data);
-
-	g_free(iface->name);
-	g_free(iface);
 
 	g_free(data->introspect);
 	data->introspect = NULL;
