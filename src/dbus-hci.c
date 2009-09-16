@@ -721,7 +721,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 	device = adapter_find_connection(adapter, handle);
 	if (!device) {
-		error("No matching connection found for handle %u", handle);
+		debug("No matching connection found for handle %u", handle);
 		return;
 	}
 
