@@ -2348,6 +2348,10 @@ unsigned int headset_suspend_stream(struct audio_device *dev,
 	struct headset *hs = dev->headset;
 	unsigned int id;
 
+	if (hs->state == HEADSET_STATE_DISCONNECTED ||
+				hs->state == HEADSET_STATE_CONNECTING)
+		return 0;
+
 	if (hs->dc_timer) {
 		g_source_remove(hs->dc_timer);
 		hs->dc_timer = 0;
