@@ -1101,7 +1101,7 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 		device_set_agent(device, NULL);
 	}
 
-	device_remove(device, conn, TRUE);
+	device_remove(device, TRUE);
 }
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
@@ -2468,7 +2468,7 @@ void adapter_remove(struct btd_adapter *adapter)
 	debug("Removing adapter %s", adapter->path);
 
 	for (l = adapter->devices; l; l = l->next)
-		device_remove(l->data, connection, FALSE);
+		device_remove(l->data, FALSE);
 	g_slist_free(adapter->devices);
 
 	unload_drivers(adapter);

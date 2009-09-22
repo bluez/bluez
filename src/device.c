@@ -899,14 +899,12 @@ void device_set_name(struct btd_device *device, const char *name)
 				DBUS_TYPE_STRING, &name);
 }
 
-static void device_remove_bonding(struct btd_device *device,
-							DBusConnection *conn)
+static void device_remove_bonding(struct btd_device *device)
 {
 	char filename[PATH_MAX + 1];
-	char *str, srcaddr[18], dstaddr[18];
+	char srcaddr[18], dstaddr[18];
 	int dd, dev_id;
 	bdaddr_t bdaddr;
-	gboolean paired;
 
 	adapter_get_address(device->adapter, &bdaddr);
 	ba2str(&bdaddr, srcaddr);
@@ -915,13 +913,8 @@ static void device_remove_bonding(struct btd_device *device,
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
 			"linkkeys");
 
-	/* textfile_del doesn't return an error when the key is not found */
-	str = textfile_caseget(filename, dstaddr);
-	paired = str ? TRUE : FALSE;
-	g_free(str);
-
-	if (!paired)
-		return;
+	/* Delete the link key from storage */
+	textfile_casedel(filename, dstaddr);
 
 	dev_id = adapter_get_dev_id(device->adapter);
 
@@ -929,34 +922,25 @@ static void device_remove_bonding(struct btd_device *device,
 	if (dd < 0)
 		return;
 
-	/* Delete the link key from storage */
-	textfile_casedel(filename, dstaddr);
-
 	/* Delete the link key from the Bluetooth chip */
 	hci_delete_stored_link_key(dd, &device->bdaddr, 0, HCI_REQ_TIMEOUT);
 
 	hci_close_dev(dd);
-
-	paired = FALSE;
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
-				"Paired", DBUS_TYPE_BOOLEAN, &paired);
 }
 
-static void device_remove_stored(struct btd_device *device,
-					DBusConnection *conn)
+static void device_remove_stored(struct btd_device *device)
 {
 	bdaddr_t src;
 	char addr[18];
 
 	adapter_get_address(device->adapter, &src);
 	ba2str(&device->bdaddr, addr);
-	device_remove_bonding(device, conn);
+	device_remove_bonding(device);
 	delete_entry(&src, "profiles", addr);
 	delete_entry(&src, "trusts", addr);
 }
 
-void device_remove(struct btd_device *device, DBusConnection *conn,
-						gboolean remove_stored)
+void device_remove(struct btd_device *device, gboolean remove_stored)
 {
 	GSList *list;
 	struct btd_device_driver *driver;
@@ -973,7 +957,7 @@ void device_remove(struct btd_device *device, DBusConnection *conn,
 		do_disconnect(device);
 
 	if (remove_stored)
-		device_remove_stored(device, conn);
+		device_remove_stored(device);
 
 	for (list = device->drivers; list; list = list->next) {
 		struct btd_driver_data *driver_data = list->data;
