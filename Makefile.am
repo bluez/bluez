@@ -194,7 +194,7 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 src_bluetoothd_LDADD = lib/libbluetooth.la @GLIB_LIBS@ @DBUS_LIBS@ -ldl
 src_bluetoothd_LDFLAGS = -Wl,--export-dynamic \
 					-Wl,--version-script=src/bluetooth.ver
-src_bluetoothd_DEPENDENCIES = src/bluetooth.ver
+src_bluetoothd_DEPENDENCIES = src/bluetooth.ver lib/libbluetooth.la
 
 builtin_files = src/builtin.h $(builtin_nodist)
 
