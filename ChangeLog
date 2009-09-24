@@ -1,3 +1,11 @@
+ver 4.54:
+	Add introspection interface to output of introspection calls.
+	Fix stream handling when media transport disconnects prematurely.
+	Fix command timeout handling when there's no stream.
+	Fix headset_suspend_stream behavior for invalid states
+	Fix issue with AVDTP ABORTING state transition.
+	Fix issue with AVDTP suspend while closing.
+
 ver 4.53:
 	Fix issue with telephony connection state notifications.
 	Fix AVDTP stream leak for invalid media transport config.
