@@ -599,6 +599,7 @@ static gboolean list_printers(void)
 	loop = g_main_loop_new(NULL, TRUE);
 	g_main_loop_run(loop);
 
+	g_free(adapter);
 	dbus_connection_unref(conn);
 
 	return TRUE;

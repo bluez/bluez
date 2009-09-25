@@ -111,6 +111,7 @@ static int conn_list(int s, int dev_id, long arg)
 		bt_free(str);
 	}
 
+	free(cl);
 	return 0;
 }
 
@@ -134,9 +135,12 @@ static int find_conn(int s, int dev_id, long arg)
 	}
 
 	for (i = 0; i < cl->conn_num; i++, ci++)
-		if (!bacmp((bdaddr_t *) arg, &ci->bdaddr))
+		if (!bacmp((bdaddr_t *) arg, &ci->bdaddr)) {
+			free(cl);
 			return 1;
+		}
 
+	free(cl);
 	return 0;
 }
 

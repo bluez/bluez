@@ -86,6 +86,7 @@ static int for_each_port(int (*func)(struct rfcomm_dev_info *, unsigned long), u
 	}
 
 	close(sk);
+	free(dl);
 	return r;
 }
 

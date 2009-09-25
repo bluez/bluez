@@ -1228,6 +1228,7 @@ static void serial_proxy_init(struct serial_adapter *adapter)
 			debug("%s: %s", file, gerr->message);
 			g_error_free(gerr);
 			g_key_file_free(config);
+			g_strfreev(group_list);
 			return;
 		}
 
@@ -1238,6 +1239,7 @@ static void serial_proxy_init(struct serial_adapter *adapter)
 			g_error_free(gerr);
 			g_key_file_free(config);
 			g_free(uuid_str);
+			g_strfreev(group_list);
 			return;
 		}
 

@@ -765,6 +765,7 @@ int bt_acl_encrypt(const bdaddr_t *src, const bdaddr_t *dst,
 
 	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &nf, sizeof(nf)) < 0) {
 		err = errno;
+		g_free(cmd);
 		goto failed;
 	}
 

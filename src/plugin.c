@@ -139,8 +139,10 @@ gboolean plugin_init(GKeyFile *config)
 		add_plugin(NULL,  __bluetooth_builtin[i]);
 	}
 
-	if (strlen(PLUGINDIR) == 0)
+	if (strlen(PLUGINDIR) == 0) {
+		g_strfreev(disabled);
 		goto start;
+	}
 
 	debug("Loading plugins %s", PLUGINDIR);
 

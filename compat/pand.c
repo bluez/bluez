@@ -721,21 +721,26 @@ int main(int argc, char *argv[])
 	argv += optind;
 	optind = 0;
 
-	if (bnep_init())
+	if (bnep_init()) {
+		free(dst);
 		return -1;
+	}
 
 	/* Check non daemon modes first */
 	switch (mode) {
 	case SHOW:
 		do_show();
+		free(dst);
 		return 0;
 
 	case KILL:
 		do_kill(dst);
+		free(dst);
 		return 0;
 
 	case NONE:
 		printf(main_help, VERSION);
+		free(dst);
 		return 0;
 	}
 
@@ -766,12 +771,15 @@ int main(int argc, char *argv[])
 		if (src_dev < 0 || hci_devba(src_dev, &src_addr) < 0) {
 			syslog(LOG_ERR, "Invalid source. %s(%d)",
 						strerror(errno), errno);
+			free(dst);
 			return -1;
 		}
 	}
 
-	if (pidfile && write_pidfile())
+	if (pidfile && write_pidfile()) {
+		free(dst);
 		return -1;
+	}
 
 	if (dst) {
 		/* Disable cache invalidation */

@@ -1162,8 +1162,10 @@ proceed:
 			return -ENOMEM;
 
 		av_err = avdtp_init(src, config);
-		if (av_err < 0)
+		if (av_err < 0) {
+			g_free(server);
 			return av_err;
+		}
 
 		bacpy(&server->src, src);
 		servers = g_slist_append(servers, server);

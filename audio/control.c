@@ -834,11 +834,13 @@ int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	record = avrcp_tg_record();
 	if (!record) {
 		error("Unable to allocate new service record");
+		g_free(server);
 		return -1;
 	}
 
 	if (add_record_to_server(src, record) < 0) {
 		error("Unable to register AVRCP target service record");
+		g_free(server);
 		sdp_record_free(record);
 		return -1;
 	}
@@ -847,12 +849,14 @@ int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	record = avrcp_ct_record();
 	if (!record) {
 		error("Unable to allocate new service record");
+		g_free(server);
 		return -1;
 	}
 
 	if (add_record_to_server(src, record) < 0) {
 		error("Unable to register AVRCP controller service record");
 		sdp_record_free(record);
+		g_free(server);
 		return -1;
 	}
 	server->ct_record_id = record->handle;

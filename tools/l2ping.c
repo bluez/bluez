@@ -240,6 +240,8 @@ static void ping(char *svr)
 			id = ident;
 	}
 	stat(0);
+	free(send_buf);
+	free(recv_buf);
 	return;
 
 error:
