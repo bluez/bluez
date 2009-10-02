@@ -102,6 +102,8 @@
 #define FORWARD_OP		0x4b
 #define BACKWARD_OP		0x4c
 
+#define QUIRK_NO_RELEASE	1 << 0
+
 static DBusConnection *connection = NULL;
 
 static GSList *servers = NULL;
@@ -176,6 +178,8 @@ struct control {
 	uint16_t mtu;
 
 	gboolean target;
+
+	uint8_t key_quirks[256];
 };
 
 static struct {
@@ -363,11 +367,29 @@ static void handle_panel_passthrough(struct control *control,
 	}
 
 	for (i = 0; key_map[i].name != NULL; i++) {
-		if ((operands[0] & 0x7F) == key_map[i].avrcp) {
-			debug("AVRCP: %s %s", key_map[i].name, status);
-			send_key(control->uinput, key_map[i].uinput, pressed);
+		uint8_t key_quirks;
+
+		if ((operands[0] & 0x7F) != key_map[i].avrcp)
+			continue;
+
+		debug("AVRCP: %s %s", key_map[i].name, status);
+
+		key_quirks = control->key_quirks[key_map[i].avrcp];
+
+		if (key_quirks & QUIRK_NO_RELEASE) {
+			if (!pressed) {
+				debug("AVRCP: Ignoring release");
+				break;
+			}
+
+			debug("AVRCP: treating key press as press + release");
+			send_key(control->uinput, key_map[i].uinput, 1);
+			send_key(control->uinput, key_map[i].uinput, 0);
 			break;
 		}
+
+		send_key(control->uinput, key_map[i].uinput, pressed);
+		break;
 	}
 
 	if (key_map[i].name == NULL)
@@ -619,9 +641,16 @@ static int uinput_create(char *name)
 
 static void init_uinput(struct control *control)
 {
-	char address[18];
+	struct audio_device *dev = control->dev;
+	char address[18], name[248 + 1];
 
-	ba2str(&control->dev->dst, address);
+	device_get_name(dev->btd_dev, name, sizeof(name));
+	if (strcmp(name, "Nokia CK-20W")) {
+		control->key_quirks[FORWARD_OP] |= QUIRK_NO_RELEASE;
+		control->key_quirks[BACKWARD_OP] |= QUIRK_NO_RELEASE;
+	}
+
+	ba2str(&dev->dst, address);
 
 	control->uinput = uinput_create(address);
 	if (control->uinput < 0)
