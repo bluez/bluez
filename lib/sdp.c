@@ -2026,7 +2026,7 @@ int sdp_get_lang_attr(const sdp_record_t *rec, sdp_list_t **langSeq)
 		sdp_data_t *pCode = curr_data;
 		sdp_data_t *pEncoding = pCode->next;
 		sdp_data_t *pOffset = pEncoding->next;
-		if (pCode && pEncoding && pOffset) {
+		if (pEncoding && pOffset) {
 			lang = malloc(sizeof(sdp_lang_attr_t));
 			lang->code_ISO639 = pCode->val.uint16;
 			lang->encoding = pEncoding->val.uint16;

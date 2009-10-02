@@ -658,8 +658,7 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 			struct unix_client *c = cl->data;
 			struct a2dp_data *ca2dp = &c->d.a2dp;
 
-			if (ca2dp && ca2dp->session == session &&
-					c->seid == seid) {
+			if (ca2dp->session == session && c->seid == seid) {
 				lock = c->lock;
 				break;
 			}
