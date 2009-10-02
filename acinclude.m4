@@ -148,6 +148,12 @@ AC_DEFUN([AC_PATH_NETLINK], [
 	AC_SUBST(NETLINK_LIBS)
 ])
 
+AC_DEFUN([AC_PATH_CAPNG], [
+        PKG_CHECK_MODULES(CAPNG, libcap-ng, capng_found=yes, capng_found=no)
+        AC_SUBST(CAPNG_CFLAGS)
+        AC_SUBST(CAPNG_LIBS)
+])
+
 AC_DEFUN([AC_PATH_SNDFILE], [
 	PKG_CHECK_MODULES(SNDFILE, sndfile, sndfile_found=yes, sndfile_found=no)
 	AC_SUBST(SNDFILE_CFLAGS)
@@ -159,6 +165,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	optimization_enable=yes
 	fortify_enable=yes
 	pie_enable=yes
+	capng_eanble=${capng_found}
 	sndfile_enable=${sndfile_found}
 	netlink_enable=no
 	hal_enable=${hal_found}
@@ -194,6 +201,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(pie, AC_HELP_STRING([--disable-pie], [disable position independent executables flag]), [
 		pie_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(capng, AC_HELP_STRING([--disable-capng], [disable capabilities dropping]), [
+		capng_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(network, AC_HELP_STRING([--disable-network], [disable network plugin]), [
@@ -309,6 +320,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	if (test "${usb_enable}" = "yes" && test "${usb_found}" = "yes"); then
 		AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
+	fi
+
+	if (test "${capng_enable}" = "yes" && test "${capng_found}" = "yes"); then
+		AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
 	fi
 
 	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
