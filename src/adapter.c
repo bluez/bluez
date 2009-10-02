@@ -2662,12 +2662,12 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 
 	dev = adapter_search_found_devices(adapter, &match);
 	if (dev) {
-		if (rssi == dev->rssi)
-			return;
-
 		/* Out of range list update */
 		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
 							dev);
+
+		if (rssi == dev->rssi)
+			return;
 
 		goto done;
 	}
