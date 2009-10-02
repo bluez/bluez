@@ -453,6 +453,7 @@ static void do_connect(int ctl, bdaddr_t *src, bdaddr_t *dst, uint8_t subclass, 
 	int csk, isk, err;
 
 	memset(&req, 0, sizeof(req));
+	name[0] = '\0';
 
 	err = get_sdp_device_info(src, dst, &req);
 	if (err < 0 && fakehid)
