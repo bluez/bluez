@@ -472,7 +472,7 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 	struct avrcp_header *avrcp;
 	int ret, packet_size, operand_count, sock;
 
-	if (!(cond | G_IO_IN))
+	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
 		goto failed;
 
 	sock = g_io_channel_unix_get_fd(control->io);
