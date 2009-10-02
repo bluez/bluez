@@ -55,6 +55,7 @@
 #include "dbus-common.h"
 #include "agent.h"
 #include "manager.h"
+
 #ifdef HAVE_CAPNG
 #include <cap-ng.h>
 #endif
@@ -346,12 +347,13 @@ int main(int argc, char *argv[])
 	GKeyFile *config;
 
 	init_defaults();
+
 #ifdef HAVE_CAPNG
 	/* Drop capabilities */
 	capng_clear(CAPNG_SELECT_BOTH);
-	capng_updatev(CAPNG_ADD, CAPNG_EFFECTIVE|CAPNG_PERMITTED,
-			CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, CAP_NET_RAW,
-			CAP_IPC_LOCK, -1);
+	capng_updatev(CAPNG_ADD, CAPNG_EFFECTIVE | CAPNG_PERMITTED,
+					CAP_NET_BIND_SERVICE, CAP_NET_ADMIN,
+						CAP_NET_RAW, CAP_IPC_LOCK, -1);
 	capng_apply(CAPNG_SELECT_BOTH);
 #endif
 
