@@ -1273,6 +1273,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	dev = manager_get_device(&src, &dst, FALSE);
 	if (!dev) {
 		error("Unable to get a audio device object");
+		err = AVDTP_BAD_STATE;
 		goto failed;
 	}
 
@@ -1282,6 +1283,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 			btd_device_add_uuid(dev->btd_dev, A2DP_SINK_UUID);
 			if (!dev->sink) {
 				error("Unable to get a audio sink object");
+				err = AVDTP_BAD_STATE;
 				goto failed;
 			}
 		}
