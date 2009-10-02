@@ -165,7 +165,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	optimization_enable=yes
 	fortify_enable=yes
 	pie_enable=yes
-	capng_eanble=${capng_found}
+	capng_enable=${capng_found}
 	sndfile_enable=${sndfile_found}
 	netlink_enable=no
 	hal_enable=${hal_found}
