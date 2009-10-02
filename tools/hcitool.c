@@ -509,7 +509,6 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int num_rsp, length, flags;
 	uint8_t cls[3], features[8];
-	uint16_t handle;
 	char addr[18], name[249], oui[9], *comp, *tmp;
 	struct hci_version version;
 	struct hci_dev_info di;
@@ -609,6 +608,8 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 		printf("\n");
 
 	for (i = 0; i < num_rsp; i++) {
+		uint16_t handle = 0;
+
 		if (!refresh) {
 			memset(name, 0, sizeof(name));
 			tmp = get_device_name(&di.bdaddr, &(info+i)->bdaddr);
