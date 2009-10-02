@@ -645,7 +645,7 @@ static void init_uinput(struct control *control)
 	char address[18], name[248 + 1];
 
 	device_get_name(dev->btd_dev, name, sizeof(name));
-	if (strcmp(name, "Nokia CK-20W")) {
+	if (g_str_equal(name, "Nokia CK-20W")) {
 		control->key_quirks[FORWARD_OP] |= QUIRK_NO_RELEASE;
 		control->key_quirks[BACKWARD_OP] |= QUIRK_NO_RELEASE;
 	}
