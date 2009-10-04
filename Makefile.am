@@ -53,7 +53,7 @@ lib_LTLIBRARIES += lib/libbluetooth.la
 
 lib_libbluetooth_la_SOURCES = $(lib_headers) \
 					lib/bluetooth.c lib/hci.c lib/sdp.c
-lib_libbluetooth_la_LDFLAGS = -version-info 7:0:4
+lib_libbluetooth_la_LDFLAGS = -version-info 7:1:4
 lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
 
 CLEANFILES += $(local_headers)
