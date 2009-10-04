@@ -1,3 +1,10 @@
+ver 4.55:
+	Add support for POSIX capabilities dropping.
+	Add special quirk for the Nokia CK-20W car kit.
+	Fix error code handling for AVDTP SetConfiguration response.
+	Fix updating out of range list when RSSI hasn't changed.
+	Fix various memory leaks and unnecessary error checks.
+
 ver 4.54:
 	Add introspection interface to output of introspection calls.
 	Fix stream handling when media transport disconnects prematurely.
