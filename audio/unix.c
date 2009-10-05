@@ -1535,7 +1535,7 @@ static void handle_setconfiguration_req(struct unix_client *client,
 
 	if (req->codec.seid != client->seid) {
 		error("Unable to set configuration: seid %d not opened",
-				client->seid);
+				req->codec.seid);
 		goto failed;
 	}
 
