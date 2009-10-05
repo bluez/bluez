@@ -309,7 +309,7 @@ static sdp_record_t *hfp_hs_record(uint8_t ch)
 	sdp_set_service_classes(record, svclass_id);
 
 	sdp_uuid16_create(&profile.uuid, HANDSFREE_PROFILE_ID);
-	profile.version = 0x0100;
+	profile.version = 0x0105;
 	pfseq = sdp_list_append(0, &profile);
 	sdp_set_profile_descs(record, pfseq);
 
