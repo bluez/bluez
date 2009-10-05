@@ -690,11 +690,15 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		return;
 
 	if (status) {
+		gboolean secmode3 = device_get_secmode3_conn(device);
+
 		device_set_secmode3_conn(device, FALSE);
+
 		if (device_is_bonding(device, NULL))
 			device_bonding_complete(device, status);
 		if (device_is_temporary(device))
-			adapter_remove_device(connection, adapter, device);
+			adapter_remove_device(connection, adapter, device,
+								secmode3);
 		return;
 	}
 

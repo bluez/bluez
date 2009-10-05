@@ -1072,7 +1072,8 @@ struct btd_device *adapter_create_device(DBusConnection *conn,
 }
 
 void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
-				struct btd_device *device)
+						struct btd_device *device,
+						gboolean remove_storage)
 {
 	const gchar *dev_path = device_get_path(device);
 	struct agent *agent;
@@ -1101,7 +1102,7 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 		device_set_agent(device, NULL);
 	}
 
-	device_remove(device, TRUE);
+	device_remove(device, remove_storage);
 }
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
@@ -1491,7 +1492,7 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 		return NULL;
 	}
 
-	adapter_remove_device(conn, adapter, device);
+	adapter_remove_device(conn, adapter, device, TRUE);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1613,7 +1614,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 	device_set_temporary(device, TRUE);
 
 	if (!device_is_connected(device)) {
-		adapter_remove_device(conn, adapter, device);
+		adapter_remove_device(conn, adapter, device, TRUE);
 		return dbus_message_new_method_return(msg);
 	}
 
@@ -2843,7 +2844,7 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 		const char *path = device_get_path(device);
 
 		debug("Removing temporary device %s", path);
-		adapter_remove_device(connection, adapter, device);
+		adapter_remove_device(connection, adapter, device, TRUE);
 	}
 }
 

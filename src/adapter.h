@@ -87,7 +87,8 @@ struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *
 struct btd_device *adapter_find_connection(struct btd_adapter *adapter, uint16_t handle);
 
 void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
-				struct btd_device *device);
+						struct btd_device *device,
+						gboolean remove_storage);
 struct btd_device *adapter_create_device(DBusConnection *conn,
 				struct btd_adapter *adapter, const char *address);
 

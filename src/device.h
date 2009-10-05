@@ -60,6 +60,7 @@ uint8_t device_get_cap(struct btd_device *device);
 void device_set_auth(struct btd_device *device, uint8_t auth);
 uint8_t device_get_auth(struct btd_device *device);
 gboolean device_is_connected(struct btd_device *device);
+gboolean device_get_secmode3_conn(struct btd_device *device);
 void device_set_secmode3_conn(struct btd_device *device, gboolean enable);
 DBusMessage *device_create_bonding(struct btd_device *device,
 				DBusConnection *conn, DBusMessage *msg,

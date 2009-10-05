@@ -827,6 +827,11 @@ void device_remove_disconnect_watch(struct btd_device *device, guint id)
 	}
 }
 
+gboolean device_get_secmode3_conn(struct btd_device *device)
+{
+	return device->secmode3;
+}
+
 void device_set_secmode3_conn(struct btd_device *device, gboolean enable)
 {
 	device->secmode3 = enable;
