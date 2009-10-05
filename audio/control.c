@@ -209,7 +209,8 @@ static sdp_record_t *avrcp_ct_record()
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
-	uint16_t lp = AVCTP_PSM, ver = 0x0100, feat = 0x000f;
+	uint16_t lp = AVCTP_PSM;
+	uint16_t avrcp_ver = 0x0100, avctp_ver = 0x0103, feat = 0x000f;
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -233,7 +234,7 @@ static sdp_record_t *avrcp_ct_record()
 
 	sdp_uuid16_create(&avctp, AVCTP_UUID);
 	proto[1] = sdp_list_append(0, &avctp);
-	version = sdp_data_alloc(SDP_UINT16, &ver);
+	version = sdp_data_alloc(SDP_UINT16, &avctp_ver);
 	proto[1] = sdp_list_append(proto[1], version);
 	apseq = sdp_list_append(apseq, proto[1]);
 
@@ -242,7 +243,7 @@ static sdp_record_t *avrcp_ct_record()
 
 	/* Bluetooth Profile Descriptor List */
 	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
-	profile[0].version = ver;
+	profile[0].version = avrcp_ver;
 	pfseq = sdp_list_append(0, &profile[0]);
 	sdp_set_profile_descs(record, pfseq);
 
@@ -272,7 +273,8 @@ static sdp_record_t *avrcp_tg_record()
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
-	uint16_t lp = AVCTP_PSM, ver = 0x0100, feat = 0x000f;
+	uint16_t lp = AVCTP_PSM;
+	uint16_t avrcp_ver = 0x0100, avctp_ver = 0x0103, feat = 0x000f;
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -296,7 +298,7 @@ static sdp_record_t *avrcp_tg_record()
 
 	sdp_uuid16_create(&avctp, AVCTP_UUID);
 	proto[1] = sdp_list_append(0, &avctp);
-	version = sdp_data_alloc(SDP_UINT16, &ver);
+	version = sdp_data_alloc(SDP_UINT16, &avctp_ver);
 	proto[1] = sdp_list_append(proto[1], version);
 	apseq = sdp_list_append(apseq, proto[1]);
 
@@ -305,7 +307,7 @@ static sdp_record_t *avrcp_tg_record()
 
 	/* Bluetooth Profile Descriptor List */
 	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
-	profile[0].version = ver;
+	profile[0].version = avrcp_ver;
 	pfseq = sdp_list_append(0, &profile[0]);
 	sdp_set_profile_descs(record, pfseq);
 
