@@ -945,7 +945,8 @@ static sdp_record_t *a2dp_record(uint8_t type)
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
-	uint16_t lp = AVDTP_UUID, ver = 0x0100, feat = 0x000F;
+	uint16_t lp = AVDTP_UUID;
+	uint16_t avdtp_ver = 0x0102, a2dp_ver = 0x0102, feat = 0x000f;
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -963,7 +964,7 @@ static sdp_record_t *a2dp_record(uint8_t type)
 	sdp_set_service_classes(record, svclass_id);
 
 	sdp_uuid16_create(&profile[0].uuid, ADVANCED_AUDIO_PROFILE_ID);
-	profile[0].version = 0x0100;
+	profile[0].version = a2dp_ver;
 	pfseq = sdp_list_append(0, &profile[0]);
 	sdp_set_profile_descs(record, pfseq);
 
@@ -975,7 +976,7 @@ static sdp_record_t *a2dp_record(uint8_t type)
 
 	sdp_uuid16_create(&avdtp_uuid, AVDTP_UUID);
 	proto[1] = sdp_list_append(0, &avdtp_uuid);
-	version = sdp_data_alloc(SDP_UINT16, &ver);
+	version = sdp_data_alloc(SDP_UINT16, &avdtp_ver);
 	proto[1] = sdp_list_append(proto[1], version);
 	apseq = sdp_list_append(apseq, proto[1]);
 
