@@ -629,6 +629,8 @@ static void get_record_cb(sdp_list_t *recs, int perr, gpointer user_data)
 
 	if (!sdp_uuid128_to_uuid(&uuid) || uuid.type != SDP_UUID16 ||
 			uuid.value.uuid16 != HANDSFREE_AGW_SVCLASS_ID) {
+		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
+									NULL);
 		sdp_list_free(protos, NULL);
 		error("Invalid service record or not HFP");
 		goto fail;

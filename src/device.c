@@ -231,6 +231,10 @@ static void device_free(gpointer user_data)
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
 	g_slist_free(device->uuids);
 
+	if (device->tmp_records)
+		sdp_list_free(device->tmp_records,
+					(sdp_free_func_t) sdp_record_free);
+
 	if (device->disconn_timer)
 		g_source_remove(device->disconn_timer);
 
