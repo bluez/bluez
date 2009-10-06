@@ -1621,6 +1621,56 @@ static void handle_control_req(struct unix_client *client,
 	unix_ipc_sendmsg(client, &rsp->h);
 }
 
+static void handle_delay_report_req(struct unix_client *client,
+					struct bt_delay_report_req *req)
+{
+	char buf[BT_SUGGESTED_BUFFER_SIZE];
+	struct bt_set_configuration_rsp *rsp = (void *) buf;
+	struct a2dp_data *a2dp;
+	int err;
+
+	if (!client->dev) {
+		err = -ENODEV;
+		goto failed;
+	}
+
+	switch (client->type) {
+	case TYPE_HEADSET:
+        case TYPE_GATEWAY:
+		err = -EINVAL;
+		goto failed;
+	case TYPE_SOURCE:
+	case TYPE_SINK:
+		a2dp = &client->d.a2dp;
+		if (a2dp->session && a2dp->stream) {
+			err = avdtp_delay_report(a2dp->session, a2dp->stream,
+								req->delay);
+			if (err < 0)
+				goto failed;
+		} else {
+			err = -EINVAL;
+			goto failed;
+		}
+		break;
+	default:
+		error("No known services for device");
+		err = -EINVAL;
+		goto failed;
+	}
+
+	memset(buf, 0, sizeof(buf));
+	rsp->h.type = BT_RESPONSE;
+	rsp->h.name = BT_DELAY_REPORT;
+	rsp->h.length = sizeof(*rsp);
+
+	unix_ipc_sendmsg(client, &rsp->h);
+
+	return;
+
+failed:
+	unix_ipc_error(client, BT_DELAY_REPORT, -err);
+}
+
 static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
@@ -1684,6 +1734,10 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	case BT_CONTROL:
 		handle_control_req(client,
 				(struct bt_control_req *) msghdr);
+		break;
+	case BT_DELAY_REPORT:
+		handle_delay_report_req(client,
+				(struct bt_delay_report_req *) msghdr);
 		break;
 	default:
 		error("Audio API: received unexpected message name %d",
@@ -1758,6 +1812,29 @@ void unix_device_removed(struct audio_device *dev)
 			start_close(client->dev, client, FALSE);
 			client_free(client);
 		}
+	}
+}
+
+void unix_delay_report(struct audio_device *dev, uint8_t seid, uint16_t delay)
+{
+	GSList *l;
+	struct bt_delay_report_ind ind;
+
+	debug("unix_delay_report(%p): %u.%ums", dev, delay / 10, delay % 10);
+
+	memset(&ind, 0, sizeof(ind));
+	ind.h.type = BT_INDICATION;
+	ind.h.name = BT_DELAY_REPORT;
+	ind.h.length = sizeof(ind);
+	ind.delay = delay;
+
+	for (l = clients; l != NULL; l = g_slist_next(l)) {
+		struct unix_client *client = l->data;
+
+		if (client->dev != dev || client->seid != seid)
+			continue;
+
+		unix_ipc_sendmsg(client, (void *) &ind);
 	}
 }
 

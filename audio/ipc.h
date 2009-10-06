@@ -101,6 +101,7 @@ typedef struct {
 #define BT_STOP_STREAM			5
 #define BT_CLOSE			6
 #define BT_CONTROL			7
+#define BT_DELAY_REPORT			8
 
 #define BT_CAPABILITIES_TRANSPORT_A2DP	0
 #define BT_CAPABILITIES_TRANSPORT_SCO	1
@@ -322,6 +323,16 @@ struct bt_control_ind {
 	bt_audio_msg_header_t	h;
 	uint8_t			mode;		/* Control Mode */
 	uint8_t			key;		/* Control Key */
+} __attribute__ ((packed));
+
+struct bt_delay_report_req {
+	bt_audio_msg_header_t	h;
+	uint16_t		delay;
+} __attribute__ ((packed));
+
+struct bt_delay_report_ind {
+	bt_audio_msg_header_t	h;
+	uint16_t		delay;
 } __attribute__ ((packed));
 
 /* Function declaration */

@@ -42,6 +42,7 @@
 #include "avdtp.h"
 #include "sink.h"
 #include "source.h"
+#include "unix.h"
 #include "a2dp.h"
 #include "sdpd.h"
 
@@ -65,6 +66,7 @@ struct a2dp_sep {
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	guint suspend_timer;
+	gboolean delay_reporting;
 	gboolean locked;
 	gboolean suspending;
 	gboolean starting;
@@ -100,6 +102,7 @@ struct a2dp_server {
 	GSList *sources;
 	uint32_t source_record_id;
 	uint32_t sink_record_id;
+	uint16_t version;
 };
 
 static GSList *servers = NULL;
@@ -286,9 +289,6 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct audio_device *dev;
-	struct avdtp_service_capability *cap;
-	struct avdtp_media_codec_capability *codec_cap;
-	struct sbc_codec_cap *sbc_cap;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		debug("Sink %p: Set_Configuration_Ind", sep);
@@ -302,9 +302,19 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 		return FALSE;
 	}
 
-	/* Check bipool range */
-	for (codec_cap = NULL; caps; caps = g_slist_next(caps)) {
-		cap = caps->data;
+	/* Check valid settings */
+	for (; caps != NULL; caps = g_slist_next(caps)) {
+		struct avdtp_service_capability *cap = caps->data;
+		struct avdtp_media_codec_capability *codec_cap;
+		struct sbc_codec_cap *sbc_cap;
+
+		if (cap->category == AVDTP_DELAY_REPORTING &&
+					!a2dp_sep->delay_reporting) {
+			*err = AVDTP_UNSUPPORTED_CONFIGURATION;
+			*category = AVDTP_DELAY_REPORTING;
+			return FALSE;
+		}
+
 		if (cap->category != AVDTP_MEDIA_CODEC)
 			continue;
 
@@ -324,8 +334,6 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 			*category = AVDTP_MEDIA_CODEC;
 			return FALSE;
 		}
-
-		break;
 	}
 
 	avdtp_stream_add_cb(session, stream, stream_state_changed, a2dp_sep);
@@ -338,7 +346,8 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 }
 
 static gboolean sbc_getcap_ind(struct avdtp *session, struct avdtp_local_sep *sep,
-				GSList **caps, uint8_t *err, void *user_data)
+				gboolean get_all, GSList **caps, uint8_t *err,
+				void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct avdtp_service_capability *media_transport, *media_codec;
@@ -389,6 +398,13 @@ static gboolean sbc_getcap_ind(struct avdtp *session, struct avdtp_local_sep *se
 
 	*caps = g_slist_append(*caps, media_codec);
 
+	if (get_all) {
+		struct avdtp_service_capability *delay_reporting;
+		delay_reporting = avdtp_service_cap_new(AVDTP_DELAY_REPORTING,
+								NULL, 0);
+		*caps = g_slist_append(*caps, delay_reporting);
+	}
+
 	return TRUE;
 }
 
@@ -413,6 +429,17 @@ static gboolean mpeg_setconf_ind(struct avdtp *session,
 		return FALSE;
 	}
 
+	for (; caps != NULL; caps = g_slist_next(caps)) {
+		struct avdtp_service_capability *cap = caps->data;
+
+		if (cap->category == AVDTP_DELAY_REPORTING &&
+					!a2dp_sep->delay_reporting) {
+			*err = AVDTP_UNSUPPORTED_CONFIGURATION;
+			*category = AVDTP_DELAY_REPORTING;
+			return FALSE;
+		}
+	}
+
 	avdtp_stream_add_cb(session, stream, stream_state_changed, a2dp_sep);
 	a2dp_sep->stream = stream;
 
@@ -424,6 +451,7 @@ static gboolean mpeg_setconf_ind(struct avdtp *session,
 
 static gboolean mpeg_getcap_ind(struct avdtp *session,
 				struct avdtp_local_sep *sep,
+				gboolean get_all,
 				GSList **caps, uint8_t *err, void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
@@ -467,6 +495,13 @@ static gboolean mpeg_getcap_ind(struct avdtp *session,
 						sizeof(mpeg_cap));
 
 	*caps = g_slist_append(*caps, media_codec);
+
+	if (get_all) {
+		struct avdtp_service_capability *delay_reporting;
+		delay_reporting = avdtp_service_cap_new(AVDTP_DELAY_REPORTING,
+								NULL, 0);
+		*caps = g_slist_append(*caps, delay_reporting);
+	}
 
 	return TRUE;
 }
@@ -871,6 +906,24 @@ static gboolean reconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	return TRUE;
 }
 
+static gboolean delayreport_ind(struct avdtp *session,
+				struct avdtp_local_sep *sep,
+				uint8_t rseid, uint16_t delay,
+				uint8_t *err, void *user_data)
+{
+	struct a2dp_sep *a2dp_sep = user_data;
+	struct audio_device *dev = a2dp_get_dev(session);
+
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
+		debug("Sink %p: DelayReport_Ind", sep);
+	else
+		debug("Source %p: DelayReport_Ind", sep);
+
+	unix_delay_report(dev, rseid, delay);
+
+	return TRUE;
+}
+
 static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream, struct avdtp_error *err,
 			void *user_data)
@@ -902,6 +955,18 @@ static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	finalize_config(setup);
 }
 
+static void delay_report_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+				struct avdtp_stream *stream,
+				struct avdtp_error *err, void *user_data)
+{
+	struct a2dp_sep *a2dp_sep = user_data;
+
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
+		debug("Sink %p: DelayReport_Cfm", sep);
+	else
+		debug("Source %p: DelayReport_Cfm", sep);
+}
+
 static struct avdtp_sep_cfm cfm = {
 	.set_configuration	= setconf_cfm,
 	.get_configuration	= getconf_cfm,
@@ -910,7 +975,8 @@ static struct avdtp_sep_cfm cfm = {
 	.suspend		= suspend_cfm,
 	.close			= close_cfm,
 	.abort			= abort_cfm,
-	.reconfigure		= reconf_cfm
+	.reconfigure		= reconf_cfm,
+	.delay_report		= delay_report_cfm,
 };
 
 static struct avdtp_sep_ind sbc_ind = {
@@ -922,7 +988,8 @@ static struct avdtp_sep_ind sbc_ind = {
 	.suspend		= suspend_ind,
 	.close			= close_ind,
 	.abort			= abort_ind,
-	.reconfigure		= reconf_ind
+	.reconfigure		= reconf_ind,
+	.delayreport		= delayreport_ind,
 };
 
 static struct avdtp_sep_ind mpeg_ind = {
@@ -934,10 +1001,11 @@ static struct avdtp_sep_ind mpeg_ind = {
 	.suspend		= suspend_ind,
 	.close			= close_ind,
 	.abort			= abort_ind,
-	.reconfigure		= reconf_ind
+	.reconfigure		= reconf_ind,
+	.delayreport		= delayreport_ind,
 };
 
-static sdp_record_t *a2dp_record(uint8_t type)
+static sdp_record_t *a2dp_record(uint8_t type, uint16_t avdtp_ver)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap_uuid, avdtp_uuid, a2dp_uuid;
@@ -946,7 +1014,7 @@ static sdp_record_t *a2dp_record(uint8_t type)
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
 	uint16_t lp = AVDTP_UUID;
-	uint16_t avdtp_ver = 0x0102, a2dp_ver = 0x0102, feat = 0x000f;
+	uint16_t a2dp_ver = 0x0102, feat = 0x000f;
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -1005,7 +1073,7 @@ static sdp_record_t *a2dp_record(uint8_t type)
 }
 
 static struct a2dp_sep *a2dp_add_sep(struct a2dp_server *server, uint8_t type,
-					uint8_t codec)
+					uint8_t codec, gboolean delay_reporting)
 {
 	struct a2dp_sep *sep;
 	GSList **l;
@@ -1017,8 +1085,8 @@ static struct a2dp_sep *a2dp_add_sep(struct a2dp_server *server, uint8_t type,
 
 	ind = (codec == A2DP_CODEC_MPEG12) ? &mpeg_ind : &sbc_ind;
 	sep->sep = avdtp_register_sep(&server->src, type,
-					AVDTP_MEDIA_TYPE_AUDIO, codec, ind,
-					&cfm, sep);
+					AVDTP_MEDIA_TYPE_AUDIO, codec,
+					delay_reporting, ind, &cfm, sep);
 	if (sep->sep == NULL) {
 		g_free(sep);
 		return NULL;
@@ -1026,6 +1094,7 @@ static struct a2dp_sep *a2dp_add_sep(struct a2dp_server *server, uint8_t type,
 
 	sep->codec = codec;
 	sep->type = type;
+	sep->delay_reporting = delay_reporting;
 
 	if (type == AVDTP_SEP_TYPE_SOURCE) {
 		l = &server->sources;
@@ -1038,7 +1107,7 @@ static struct a2dp_sep *a2dp_add_sep(struct a2dp_server *server, uint8_t type,
 	if (*record_id != 0)
 		goto add;
 
-	record = a2dp_record(type);
+	record = a2dp_record(type, server->version);
 	if (!record) {
 		error("Unable to allocate new service record");
 		avdtp_unregister_sep(sep->sep);
@@ -1079,7 +1148,7 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 {
 	int sbc_srcs = 1, sbc_sinks = 1;
 	int mpeg12_srcs = 0, mpeg12_sinks = 0;
-	gboolean source = TRUE, sink = FALSE;
+	gboolean source = TRUE, sink = FALSE, delay_reporting;
 	char *str;
 	GError *err = NULL;
 	int i;
@@ -1162,7 +1231,7 @@ proceed:
 		if (!server)
 			return -ENOMEM;
 
-		av_err = avdtp_init(src, config);
+		av_err = avdtp_init(src, config, &server->version);
 		if (av_err < 0) {
 			g_free(server);
 			return av_err;
@@ -1172,24 +1241,31 @@ proceed:
 		servers = g_slist_append(servers, server);
 	}
 
+	delay_reporting = g_key_file_get_boolean(config, "A2DP",
+						"DelayReporting", NULL);
+	if (delay_reporting)
+		server->version = 0x0103;
+	else
+		server->version = 0x0102;
+
 	if (source) {
 		for (i = 0; i < sbc_srcs; i++)
 			a2dp_add_sep(server, AVDTP_SEP_TYPE_SOURCE,
-					A2DP_CODEC_SBC);
+					A2DP_CODEC_SBC, delay_reporting);
 
 		for (i = 0; i < mpeg12_srcs; i++)
 			a2dp_add_sep(server, AVDTP_SEP_TYPE_SOURCE,
-					A2DP_CODEC_MPEG12);
+					A2DP_CODEC_MPEG12, delay_reporting);
 	}
 
 	if (sink) {
 		for (i = 0; i < sbc_sinks; i++)
 			a2dp_add_sep(server, AVDTP_SEP_TYPE_SINK,
-					A2DP_CODEC_SBC);
+					A2DP_CODEC_SBC, delay_reporting);
 
 		for (i = 0; i < mpeg12_sinks; i++)
 			a2dp_add_sep(server, AVDTP_SEP_TYPE_SINK,
-					A2DP_CODEC_MPEG12);
+					A2DP_CODEC_MPEG12, delay_reporting);
 	}
 
 	return 0;

@@ -53,6 +53,7 @@ struct avdtp_error {
 #define AVDTP_HEADER_COMPRESSION		0x05
 #define AVDTP_MULTIPLEXING			0x06
 #define AVDTP_MEDIA_CODEC			0x07
+#define AVDTP_DELAY_REPORTING			0x08
 
 /* AVDTP error definitions */
 #define AVDTP_BAD_HEADER_FORMAT			0x01
@@ -162,6 +163,9 @@ struct avdtp_sep_cfm {
 				struct avdtp_local_sep *lsep,
 				struct avdtp_stream *stream,
 				struct avdtp_error *err, void *user_data);
+	void (*delay_report) (struct avdtp *session, struct avdtp_local_sep *lsep,
+				struct avdtp_stream *stream,
+				struct avdtp_error *err, void *user_data);
 };
 
 /* Callbacks for indicating when we received a new command. The return value
@@ -169,6 +173,7 @@ struct avdtp_sep_cfm {
 struct avdtp_sep_ind {
 	gboolean (*get_capability) (struct avdtp *session,
 					struct avdtp_local_sep *sep,
+					gboolean get_all,
 					GSList **caps, uint8_t *err,
 					void *user_data);
 	gboolean (*set_configuration) (struct avdtp *session,
@@ -198,6 +203,10 @@ struct avdtp_sep_ind {
 	gboolean (*reconfigure) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
 					uint8_t *err, void *user_data);
+	gboolean (*delayreport) (struct avdtp *session,
+					struct avdtp_local_sep *lsep,
+					uint8_t rseid, uint16_t delay,
+					uint8_t *err, void *user_data);
 };
 
 typedef void (*avdtp_discover_cb_t) (struct avdtp *session, GSList *seps,
@@ -221,6 +230,8 @@ uint8_t avdtp_get_seid(struct avdtp_remote_sep *sep);
 uint8_t avdtp_get_type(struct avdtp_remote_sep *sep);
 
 struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep);
+
+gboolean avdtp_get_delay_reporting(struct avdtp_remote_sep *sep);
 
 struct avdtp_stream *avdtp_get_stream(struct avdtp_remote_sep *sep);
 
@@ -266,10 +277,13 @@ int avdtp_start(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_suspend(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_close(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream);
+int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
+							uint16_t delay);
 
 struct avdtp_local_sep *avdtp_register_sep(const bdaddr_t *src, uint8_t type,
 						uint8_t media_type,
 						uint8_t codec_type,
+						gboolean delay_reporting,
 						struct avdtp_sep_ind *ind,
 						struct avdtp_sep_cfm *cfm,
 						void *user_data);
@@ -294,5 +308,5 @@ void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 void avdtp_set_auto_disconnect(struct avdtp *session, gboolean auto_dc);
 gboolean avdtp_stream_setup_active(struct avdtp *session);
 
-int avdtp_init(const bdaddr_t *src, GKeyFile *config);
+int avdtp_init(const bdaddr_t *src, GKeyFile *config, uint16_t *version);
 void avdtp_exit(const bdaddr_t *src);

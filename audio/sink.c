@@ -475,6 +475,12 @@ static gboolean select_capabilities(struct avdtp *session,
 
 	*caps = g_slist_append(*caps, media_codec);
 
+	if (avdtp_get_delay_reporting(rsep)) {
+		struct avdtp_service_capability *delay_reporting;
+		delay_reporting = avdtp_service_cap_new(AVDTP_DELAY_REPORTING,
+								NULL, 0);
+		*caps = g_slist_append(*caps, delay_reporting);
+	}
 
 	return TRUE;
 }

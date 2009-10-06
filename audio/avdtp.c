@@ -26,6 +26,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
@@ -36,12 +37,14 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
 
 #include "logging.h"
 
+#include "../src/manager.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
 
@@ -71,6 +74,8 @@
 #define AVDTP_SUSPEND				0x09
 #define AVDTP_ABORT				0x0A
 #define AVDTP_SECURITY_CONTROL			0x0B
+#define AVDTP_GET_ALL_CAPABILITIES		0x0C
+#define AVDTP_DELAY_REPORT			0x0D
 
 #define AVDTP_PKT_TYPE_SINGLE			0x00
 #define AVDTP_PKT_TYPE_START			0x01
@@ -241,6 +246,12 @@ struct reconf_req {
 	uint8_t caps[0];
 } __attribute__ ((packed));
 
+struct delay_req {
+	uint8_t rfa0:2;
+	uint8_t acp_seid:6;
+	uint16_t delay;
+} __attribute__ ((packed));
+
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
 struct seid_req {
@@ -273,6 +284,12 @@ struct reconf_req {
 	uint8_t caps[0];
 } __attribute__ ((packed));
 
+struct delay_req {
+	uint8_t acp_seid:6;
+	uint8_t rfa0:2;
+	uint16_t delay;
+} __attribute__ ((packed));
+
 #else
 #error "Unknown byte order"
 #endif
@@ -301,12 +318,14 @@ struct avdtp_remote_sep {
 	uint8_t type;
 	uint8_t media_type;
 	struct avdtp_service_capability *codec;
+	gboolean delay_reporting;
 	GSList *caps; /* of type struct avdtp_service_capability */
 	struct avdtp_stream *stream;
 };
 
 struct avdtp_server {
 	bdaddr_t src;
+	uint16_t version;
 	GIOChannel *io;
 	GSList *seps;
 	GSList *sessions;
@@ -317,6 +336,7 @@ struct avdtp_local_sep {
 	struct avdtp_stream *stream;
 	struct seid_info info;
 	uint8_t codec;
+	gboolean delay_reporting;
 	GSList *caps;
 	struct avdtp_sep_ind *ind;
 	struct avdtp_sep_cfm *cfm;
@@ -353,6 +373,8 @@ struct avdtp_stream {
 	gboolean close_int;	/* If we are in INT role for Close */
 	gboolean abort_int;	/* If we are in INT role for Abort */
 	guint idle_timer;
+	gboolean delay_reporting;
+	uint16_t delay;		/* AVDTP 1.3 Delay Reporting feature */
 };
 
 /* Structure describing an AVDTP connection between two devices */
@@ -360,6 +382,8 @@ struct avdtp_stream {
 struct avdtp {
 	int ref;
 	int free_lock;
+
+	uint16_t version;
 
 	struct avdtp_server *server;
 	bdaddr_t dst;
@@ -908,6 +932,10 @@ static void avdtp_sep_set_state(struct avdtp *session,
 	}
 
 	switch (state) {
+	case AVDTP_STATE_CONFIGURED:
+		if (sep->info.type == AVDTP_SEP_TYPE_SINK)
+			avdtp_delay_report(session, stream, stream->delay);
+		break;
 	case AVDTP_STATE_OPEN:
 		if (old_state > AVDTP_STATE_OPEN && session->auto_dc)
 			stream->idle_timer = g_timeout_add_seconds(STREAM_TIMEOUT,
@@ -1121,10 +1149,14 @@ static struct avdtp_local_sep *find_local_sep(struct avdtp_server *server,
 }
 
 static GSList *caps_to_list(uint8_t *data, int size,
-				struct avdtp_service_capability **codec)
+				struct avdtp_service_capability **codec,
+				gboolean *delay_reporting)
 {
 	GSList *caps;
 	int processed;
+
+	if (delay_reporting)
+		*delay_reporting = FALSE;
 
 	for (processed = 0, caps = NULL; processed + 2 <= size;) {
 		struct avdtp_service_capability *cap;
@@ -1151,6 +1183,8 @@ static GSList *caps_to_list(uint8_t *data, int size,
 				length >=
 				sizeof(struct avdtp_media_codec_capability))
 			*codec = cap;
+		else if (category == AVDTP_DELAY_REPORTING && delay_reporting)
+			*delay_reporting = TRUE;
 	}
 
 	return caps;
@@ -1197,12 +1231,16 @@ static gboolean avdtp_discover_cmd(struct avdtp *session, uint8_t transaction,
 }
 
 static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
-					struct seid_req *req, unsigned int size)
+					struct seid_req *req, unsigned int size,
+					gboolean get_all)
 {
 	GSList *l, *caps;
 	struct avdtp_local_sep *sep = NULL;
 	unsigned int rsp_size;
 	uint8_t err, buf[1024], *ptr = buf;
+	uint8_t cmd;
+
+	cmd = get_all ? AVDTP_GET_ALL_CAPABILITIES : AVDTP_GET_CAPABILITIES;
 
 	if (size < sizeof(struct seid_req)) {
 		err = AVDTP_BAD_LENGTH;
@@ -1215,8 +1253,11 @@ static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
 		goto failed;
 	}
 
-	if (!sep->ind->get_capability(session, sep, &caps, &err,
-					sep->user_data))
+	if (get_all && session->server->version < 0x0103)
+		return avdtp_unknown_cmd(session, transaction, cmd);
+
+	if (!sep->ind->get_capability(session, sep, get_all, &caps,
+							&err, sep->user_data))
 		goto failed;
 
 	for (l = caps, rsp_size = 0; l != NULL; l = g_slist_next(l)) {
@@ -1234,12 +1275,12 @@ static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
 
 	g_slist_free(caps);
 
-	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT,
-				AVDTP_GET_CAPABILITIES, buf, rsp_size);
+	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT, cmd,
+								buf, rsp_size);
 
 failed:
-	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_REJECT,
-				AVDTP_GET_CAPABILITIES, &err, sizeof(err));
+	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_REJECT, cmd,
+							&err, sizeof(err));
 }
 
 static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
@@ -1299,7 +1340,8 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	stream->rseid = req->int_seid;
 	stream->caps = caps_to_list(req->caps,
 					size - sizeof(struct setconf_req),
-					&stream->codec);
+					&stream->codec,
+					&stream->delay_reporting);
 
 	/* Verify that the Media Transport capability's length = 0. Reject otherwise */
 	for (l = stream->caps; l != NULL; l = g_slist_next(l)) {
@@ -1310,6 +1352,9 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 			goto failed_stream;
 		}
 	}
+
+	if (stream->delay_reporting && session->version < 0x0103)
+		session->version = 0x0103;
 
 	if (sep->ind && sep->ind->set_configuration) {
 		if (!sep->ind->set_configuration(session, sep, stream,
@@ -1644,6 +1689,51 @@ static gboolean avdtp_secctl_cmd(struct avdtp *session, uint8_t transaction,
 	return avdtp_unknown_cmd(session, transaction, AVDTP_SECURITY_CONTROL);
 }
 
+static gboolean avdtp_delayreport_cmd(struct avdtp *session,
+					uint8_t transaction,
+					struct delay_req *req,
+					unsigned int size)
+{
+	struct avdtp_local_sep *sep;
+	struct avdtp_stream *stream;
+	uint8_t err;
+
+	if (size < sizeof(struct delay_req)) {
+		error("Too short delay report request");
+		return FALSE;
+	}
+
+	sep = find_local_sep_by_seid(session->server, req->acp_seid);
+	if (!sep || !sep->stream) {
+		err = AVDTP_BAD_ACP_SEID;
+		goto failed;
+	}
+
+	stream = sep->stream;
+
+	if (sep->state != AVDTP_STATE_CONFIGURED &&
+					sep->state != AVDTP_STATE_STREAMING) {
+		err = AVDTP_BAD_STATE;
+		goto failed;
+	}
+
+	stream->delay = ntohs(req->delay);
+
+	if (sep->ind && sep->ind->delayreport) {
+		if (!sep->ind->delayreport(session, sep, stream->rseid,
+						stream->delay, &err,
+						sep->user_data))
+			goto failed;
+	}
+
+	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT,
+						AVDTP_DELAY_REPORT, NULL, 0);
+
+failed:
+	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_REJECT,
+					AVDTP_DELAY_REPORT, &err, sizeof(err));
+}
+
 static gboolean avdtp_parse_cmd(struct avdtp *session, uint8_t transaction,
 				uint8_t signal_id, void *buf, int size)
 {
@@ -1653,7 +1743,11 @@ static gboolean avdtp_parse_cmd(struct avdtp *session, uint8_t transaction,
 		return avdtp_discover_cmd(session, transaction, buf, size);
 	case AVDTP_GET_CAPABILITIES:
 		debug("Received  GET_CAPABILITIES_CMD");
-		return avdtp_getcap_cmd(session, transaction, buf, size);
+		return avdtp_getcap_cmd(session, transaction, buf, size,
+									FALSE);
+	case AVDTP_GET_ALL_CAPABILITIES:
+		debug("Received  GET_ALL_CAPABILITIES_CMD");
+		return avdtp_getcap_cmd(session, transaction, buf, size, TRUE);
 	case AVDTP_SET_CONFIGURATION:
 		debug("Received SET_CONFIGURATION_CMD");
 		return avdtp_setconf_cmd(session, transaction, buf, size);
@@ -1681,6 +1775,9 @@ static gboolean avdtp_parse_cmd(struct avdtp *session, uint8_t transaction,
 	case AVDTP_SECURITY_CONTROL:
 		debug("Received SECURITY_CONTROL_CMD");
 		return avdtp_secctl_cmd(session, transaction, buf, size);
+	case AVDTP_DELAY_REPORT:
+		debug("Received DELAY_REPORT_CMD");
+		return avdtp_delayreport_cmd(session, transaction, buf, size);
 	default:
 		debug("Received unknown request id %u", signal_id);
 		return avdtp_unknown_cmd(session, transaction, signal_id);
@@ -1943,6 +2040,46 @@ static struct avdtp *find_session(GSList *list, const bdaddr_t *dst)
 	return NULL;
 }
 
+static uint16_t get_version(struct avdtp *session)
+{
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+	const sdp_record_t *rec;
+	sdp_list_t *protos;
+	sdp_data_t *proto_desc;
+	char addr[18];
+	uint16_t ver = 0x0100;
+
+	adapter = manager_find_adapter(&session->server->src);
+	if (!adapter)
+		goto done;
+
+	ba2str(&session->dst, addr);
+	device = adapter_find_device(adapter, addr);
+	if (!device)
+		goto done;
+
+	rec = btd_device_get_record(device, A2DP_SINK_UUID);
+	if (!rec)
+		rec = btd_device_get_record(device, A2DP_SOURCE_UUID);
+
+	if (!rec)
+		goto done;
+
+	if (sdp_get_access_protos(rec, &protos) < 0)
+		goto done;
+
+	proto_desc = sdp_get_proto_desc(protos, AVDTP_UUID);
+	if (proto_desc->dtd == SDP_UINT16)
+		ver = proto_desc->val.uint16;
+
+	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
+	sdp_list_free(protos, NULL);
+
+done:
+	return ver;
+}
+
 static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct avdtp_server *server;
@@ -1972,6 +2109,8 @@ static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst
 	 * but just setting of the initial state */
 	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
 	session->auto_dc = TRUE;
+
+	session->version = get_version(session);
 
 	server->sessions = g_slist_append(server->sessions, session);
 
@@ -2379,6 +2518,12 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 					struct discover_resp *resp, int size)
 {
 	int sep_count, i;
+	uint8_t getcap_cmd;
+
+	if (session->version >= 0x0103 && session->server->version >= 0x0103)
+		getcap_cmd = AVDTP_GET_ALL_CAPABILITIES;
+	else
+		getcap_cmd = AVDTP_GET_CAPABILITIES;
 
 	sep_count = size / sizeof(struct seid_info);
 
@@ -2410,9 +2555,8 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 		memset(&req, 0, sizeof(req));
 		req.acp_seid = sep->seid;
 
-		ret = send_request(session, TRUE, NULL,
-					AVDTP_GET_CAPABILITIES,
-					&req, sizeof(req));
+		ret = send_request(session, TRUE, NULL, getcap_cmd,
+							&req, sizeof(req));
 		if (ret < 0) {
 			finalize_discovery(session, -ret);
 			break;
@@ -2453,10 +2597,11 @@ static gboolean avdtp_get_capabilities_resp(struct avdtp *session,
 		g_slist_free(sep->caps);
 		sep->caps = NULL;
 		sep->codec = NULL;
+		sep->delay_reporting = FALSE;
 	}
 
 	sep->caps = caps_to_list(resp->caps, size - sizeof(struct getcap_resp),
-					&sep->codec);
+					&sep->codec, &sep->delay_reporting);
 
 	return TRUE;
 }
@@ -2559,12 +2704,25 @@ static gboolean avdtp_abort_resp(struct avdtp *session,
 	return TRUE;
 }
 
+static gboolean avdtp_delay_report_resp(struct avdtp *session,
+					struct avdtp_stream *stream,
+					void *data, int size)
+{
+	struct avdtp_local_sep *sep = stream->lsep;
+
+	if (sep->cfm && sep->cfm->delay_report)
+		sep->cfm->delay_report(session, sep, stream, NULL, sep->user_data);
+
+	return TRUE;
+}
+
 static gboolean avdtp_parse_resp(struct avdtp *session,
 					struct avdtp_stream *stream,
 					uint8_t transaction, uint8_t signal_id,
 					void *buf, int size)
 {
 	struct pending_req *next;
+	const char *get_all = "";
 
 	if (session->prio_queue)
 		next = session->prio_queue->data;
@@ -2577,11 +2735,14 @@ static gboolean avdtp_parse_resp(struct avdtp *session,
 	case AVDTP_DISCOVER:
 		debug("DISCOVER request succeeded");
 		return avdtp_discover_resp(session, buf, size);
+	case AVDTP_GET_ALL_CAPABILITIES:
+		get_all = "ALL_";
 	case AVDTP_GET_CAPABILITIES:
-		debug("GET_CAPABILITIES request succeeded");
+		debug("GET_%sCAPABILITIES request succeeded", get_all);
 		if (!avdtp_get_capabilities_resp(session, buf, size))
 			return FALSE;
-		if (!(next && next->signal_id == AVDTP_GET_CAPABILITIES))
+		if (!(next && (next->signal_id == AVDTP_GET_CAPABILITIES ||
+				next->signal_id == AVDTP_GET_ALL_CAPABILITIES)))
 			finalize_discovery(session, 0);
 		return TRUE;
 	}
@@ -2616,6 +2777,9 @@ static gboolean avdtp_parse_resp(struct avdtp *session,
 	case AVDTP_ABORT:
 		debug("ABORT request succeeded");
 		return avdtp_abort_resp(session, stream, buf, size);
+	case AVDTP_DELAY_REPORT:
+		debug("DELAY_REPORT request succeeded");
+		return avdtp_delay_report_resp(session, stream, buf, size);
 	}
 
 	error("Unknown signal id in accept response: %u", signal_id);
@@ -2685,6 +2849,7 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 				avdtp_strerror(&err), err.err.error_code);
 		return TRUE;
 	case AVDTP_GET_CAPABILITIES:
+	case AVDTP_GET_ALL_CAPABILITIES:
 		if (!seid_rej_to_err(buf, size, &err))
 			return FALSE;
 		error("GET_CAPABILITIES request rejected: %s (%d)",
@@ -2754,6 +2919,15 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 		if (sep && sep->cfm && sep->cfm->abort)
 			sep->cfm->abort(session, sep, stream, &err,
 					sep->user_data);
+		return TRUE;
+	case AVDTP_DELAY_REPORT:
+		if (!stream_rej_to_err(buf, size, &err, &acp_seid))
+			return FALSE;
+		error("DELAY_REPORT request rejected: %s (%d)",
+				avdtp_strerror(&err), err.err.error_code);
+		if (sep && sep->cfm && sep->cfm->delay_report)
+			sep->cfm->delay_report(session, sep, stream, &err,
+							sep->user_data);
 		return TRUE;
 	default:
 		error("Unknown reject response signal id: %u", signal_id);
@@ -2906,6 +3080,11 @@ struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep)
 	return sep->codec;
 }
 
+gboolean avdtp_get_delay_reporting(struct avdtp_remote_sep *sep)
+{
+	return sep->delay_reporting;
+}
+
 struct avdtp_stream *avdtp_get_stream(struct avdtp_remote_sep *sep)
 {
 	return sep->stream;
@@ -2916,7 +3095,7 @@ struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 {
 	struct avdtp_service_capability *cap;
 
-	if (category < AVDTP_MEDIA_TRANSPORT || category > AVDTP_MEDIA_CODEC)
+	if (category < AVDTP_MEDIA_TRANSPORT || category > AVDTP_DELAY_REPORTING)
 		return NULL;
 
 	cap = g_malloc(sizeof(struct avdtp_service_capability) + length);
@@ -3099,6 +3278,9 @@ int avdtp_set_configuration(struct avdtp *session,
 	new_stream->session = session;
 	new_stream->lsep = lsep;
 	new_stream->rseid = rsep->seid;
+
+	if (rsep->delay_reporting && lsep->delay_reporting)
+		new_stream->delay_reporting = TRUE;
 
 	g_slist_foreach(caps, copy_capabilities, &new_stream->caps);
 
@@ -3283,9 +3465,36 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 	return ret;
 }
 
+int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
+							uint16_t delay)
+{
+	struct delay_req req;
+
+	if (!g_slist_find(session->streams, stream))
+		return -EINVAL;
+
+	if (stream->lsep->state != AVDTP_STATE_CONFIGURED &&
+				stream->lsep->state != AVDTP_STATE_STREAMING)
+		return -EINVAL;
+
+	if (!stream->delay_reporting || session->version < 0x0103 ||
+					session->server->version < 0x0103)
+		return -EINVAL;
+
+	stream->delay = delay;
+
+	memset(&req, 0, sizeof(req));
+	req.acp_seid = stream->rseid;
+	req.delay = htons(delay);
+
+	return send_request(session, TRUE, stream, AVDTP_DELAY_REPORT,
+							&req, sizeof(req));
+}
+
 struct avdtp_local_sep *avdtp_register_sep(const bdaddr_t *src, uint8_t type,
 						uint8_t media_type,
 						uint8_t codec_type,
+						gboolean delay_reporting,
 						struct avdtp_sep_ind *ind,
 						struct avdtp_sep_cfm *cfm,
 						void *user_data)
@@ -3311,6 +3520,7 @@ struct avdtp_local_sep *avdtp_register_sep(const bdaddr_t *src, uint8_t type,
 	sep->cfm = cfm;
 	sep->user_data = user_data;
 	sep->server = server;
+	sep->delay_reporting = TRUE;
 
 	debug("SEP %p registered: type:%d codec:%d seid:%d", sep,
 			sep->info.type, sep->codec, sep->info.seid);
@@ -3415,32 +3625,43 @@ void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst)
 		bacpy(dst, &session->dst);
 }
 
-int avdtp_init(const bdaddr_t *src, GKeyFile *config)
+int avdtp_init(const bdaddr_t *src, GKeyFile *config, uint16_t *version)
 {
 	GError *err = NULL;
 	gboolean tmp, master = TRUE;
 	struct avdtp_server *server;
+	uint16_t ver = 0x0102;
 
-	if (config) {
-		tmp = g_key_file_get_boolean(config, "General",
-							"Master", &err);
-		if (err) {
-			debug("audio.conf: %s", err->message);
-			g_clear_error(&err);
-		} else
-			master = tmp;
+	if (!config)
+		goto proceed;
 
-		tmp = g_key_file_get_boolean(config, "General", "AutoConnect",
-									&err);
-		if (err)
-			g_clear_error(&err);
-		else
-			auto_connect = tmp;
-	}
+	tmp = g_key_file_get_boolean(config, "General",
+			"Master", &err);
+	if (err) {
+		debug("audio.conf: %s", err->message);
+		g_clear_error(&err);
+	} else
+		master = tmp;
 
+	tmp = g_key_file_get_boolean(config, "General", "AutoConnect",
+			&err);
+	if (err)
+		g_clear_error(&err);
+	else
+		auto_connect = tmp;
+
+	if (g_key_file_get_boolean(config, "A2DP", "DelayReporting", NULL))
+		ver = 0x0103;
+
+proceed:
 	server = g_new0(struct avdtp_server, 1);
 	if (!server)
 		return -ENOMEM;
+
+	server->version = ver;
+
+	if (version)
+		*version = server->version;
 
 	server->io = avdtp_server_socket(src, master);
 	if (!server->io) {
