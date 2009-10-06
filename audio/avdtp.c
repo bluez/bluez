@@ -1126,7 +1126,7 @@ static GSList *caps_to_list(uint8_t *data, int size,
 	GSList *caps;
 	int processed;
 
-	for (processed = 0, caps = NULL; processed + 2 < size;) {
+	for (processed = 0, caps = NULL; processed + 2 <= size;) {
 		struct avdtp_service_capability *cap;
 		uint8_t length, category;
 
