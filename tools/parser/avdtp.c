@@ -61,6 +61,10 @@ static char *si2str(uint8_t si)
 		return "Abort";
 	case 0x0b:
 		return "Security";
+	case 0x0c:
+		return "All Capabilities";
+	case 0x0d:
+		return "Delay Report";
 	default:
 		return "Unknown";
 	}
@@ -166,6 +170,8 @@ static char *cat2str(uint8_t cat)
 		return "Multiplexing";
 	case 7:
 		return "Media Codec";
+	case 8:
+		return "Delay Reporting";
 	default:
 		return "Reserved";
 	}
@@ -420,6 +426,25 @@ static inline void security(int level, uint8_t hdr, struct frame *frm)
 	}
 }
 
+static inline void delay_report(int level, uint8_t hdr, struct frame *frm)
+{
+	uint8_t seid;
+	uint16_t delay;
+
+	switch (hdr & 0x03) {
+	case 0x00:
+		p_indent(level, frm);
+		seid = get_u8(frm);
+		delay = get_u16(frm);
+		printf("ACP SEID %d delay %u.%ums\n", seid >> 2,
+						delay / 10, delay % 10);
+		break;
+	case 0x03:
+		errorcode(level, frm);
+		break;
+	}
+}
+
 void avdtp_dump(int level, struct frame *frm)
 {
 	uint8_t hdr, sid, nsp, type;
@@ -442,6 +467,7 @@ void avdtp_dump(int level, struct frame *frm)
 			discover(level + 1, hdr, frm);
 			break;
 		case 0x02:
+		case 0x0c:
 			get_capabilities(level + 1, hdr, frm);
 			break;
 		case 0x03:
@@ -470,6 +496,9 @@ void avdtp_dump(int level, struct frame *frm)
 			break;
 		case 0x0b:
 			security(level + 1, hdr, frm);
+			break;
+		case 0x0d:
+			delay_report(level + 1, hdr, frm);
 			break;
 		}
 
