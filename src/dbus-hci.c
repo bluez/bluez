@@ -549,6 +549,27 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	g_free(alias);
 }
 
+void hcid_dbus_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
+							gboolean legacy)
+{
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+	struct remote_dev_info *dev, match;
+
+	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE)) {
+		error("No matching adapter found");
+		return;
+	}
+
+	memset(&match, 0, sizeof(struct remote_dev_info));
+	bacpy(&match.bdaddr, peer);
+	match.name_status = NAME_ANY;
+
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev)
+		dev->legacy = legacy;
+}
+
 void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 {
 	uint32_t old_class = 0;
