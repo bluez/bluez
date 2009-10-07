@@ -570,6 +570,11 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *
 	if (!str)
 		return -ENOENT;
 
+	if (!key) {
+		free(str);
+		return 0;
+	}
+
 	memset(tmp, 0, sizeof(tmp));
 	for (i = 0; i < 16; i++) {
 		memcpy(tmp, str + (i * 2), 2);
