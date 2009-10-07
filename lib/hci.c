@@ -495,7 +495,7 @@ static hci_map commands_map[] = {
 	{ "Reserved",					161 },
 	{ "Send Keypress Notification",			162 },
 	{ "IO Capabilities Response Negative Reply",	163 },
-	{ "Reserved",					164 },
+	{ "Read Encryption Key Size",			164 },
 	{ "Reserved",					165 },
 	{ "Reserved",					166 },
 	{ "Reserved",					167 },
