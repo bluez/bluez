@@ -660,7 +660,7 @@ static hci_map lmp_features_map[8][9] = {
 	{	/* Byte 7 */
 		{ "<LSTO>",		LMP_LSTO	},	/* Bit 1 */
 		{ "<inquiry TX power>",	LMP_INQ_TX_PWR	},	/* Bit 1 */
-		{ "<no. 58>",		0x04		},	/* Bit 2 */
+		{ "<EPC>",		LMP_EPC		},	/* Bit 2 */
 		{ "<no. 59>",		0x08		},	/* Bit 3 */
 		{ "<no. 60>",		0x10		},	/* Bit 4 */
 		{ "<no. 61>",		0x20		},	/* Bit 5 */
