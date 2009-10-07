@@ -500,6 +500,42 @@ static hci_map commands_map[] = {
 	{ "Reserved",					166 },
 	{ "Reserved",					167 },
 
+	{ "Create Physical Link",			168 },
+	{ "Accept Physical Link",			169 },
+	{ "Disconnect Physical Link",			170 },
+	{ "Create Logical Link",			171 },
+	{ "Accept Logical Link",			172 },
+	{ "Disconnect Logical Link",			173 },
+	{ "Logical Link Cancel",			174 },
+	{ "Flow Specification Modify",			175 },
+
+	{ "Read Logical Link Accept Timeout",		176 },
+	{ "Write Logical Link Accept Timeout",		177 },
+	{ "Set Event Mask Page 2",			178 },
+	{ "Read Location Data",				179 },
+	{ "Write Location Data",			180 },
+	{ "Read Local AMP Info",			181 },
+	{ "Read Local AMP_ASSOC",			182 },
+	{ "Write Remote AMP_ASSOC",			183 },
+
+	{ "Read Flow Control Mode",			184 },
+	{ "Write Flow Control Mode",			185 },
+	{ "Read Data Block Size",			186 },
+	{ "Reserved",					187 },
+	{ "Reserved",					188 },
+	{ "Enable AMP Receiver Reports",		189 },
+	{ "AMP Test End",				190 },
+	{ "AMP Test Command",				191 },
+
+	{ "Read Enhanced Transmit Power Level",		192 },
+	{ "Reserved",					193 },
+	{ "Read Best Effort Flush Timeout",		194 },
+	{ "Write Best Effort Flush Timeout",		195 },
+	{ "Short Range Mode",				196 },
+	{ "Reserved",					197 },
+	{ "Reserved",					198 },
+	{ "Reserved",					200 },
+
 	{ NULL }
 };
 
