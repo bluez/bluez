@@ -413,6 +413,8 @@ static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
 
 		info("return_link_keys (sba=%s, dba=%s)", sa, da);
 
+		hcid_dbus_returned_link_key(sba, &dba);
+
 		ptr += 22;
 	}
 }

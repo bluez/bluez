@@ -821,6 +821,17 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 	adapter_update_ssp_mode(adapter, mode);
 }
 
+void hcid_dbus_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
+{
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+
+	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
+		return;
+
+	device_set_paired(device, TRUE);
+}
+
 int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 						uint8_t *cap, uint8_t *auth)
 {

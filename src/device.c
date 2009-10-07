@@ -134,6 +134,7 @@ struct btd_device {
 
 	sdp_list_t	*tmp_records;
 
+	gboolean	paired;
 	gboolean	renewed_key;
 
 	gboolean	authorizing;
@@ -247,23 +248,7 @@ static void device_free(gpointer user_data)
 
 gboolean device_is_paired(struct btd_device *device)
 {
-	struct btd_adapter *adapter = device->adapter;
-	char filename[PATH_MAX + 1], *str;
-	char srcaddr[18], dstaddr[18];
-	gboolean ret;
-	bdaddr_t src;
-
-	adapter_get_address(adapter, &src);
-	ba2str(&src, srcaddr);
-	ba2str(&device->bdaddr, dstaddr);
-
-	create_name(filename, PATH_MAX, STORAGEDIR,
-			srcaddr, "linkkeys");
-	str = textfile_caseget(filename, dstaddr);
-	ret = str ? TRUE : FALSE;
-	g_free(str);
-
-	return ret;
+	return device->paired;
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -877,6 +862,9 @@ struct btd_device *device_create(DBusConnection *conn,
 
 	device->auth = 0xff;
 
+	if (read_link_key(&src, &device->bdaddr, NULL, NULL) == 0)
+		device->paired = TRUE;
+
 	return btd_device_ref(device);
 }
 
@@ -949,7 +937,8 @@ static void device_remove_stored(struct btd_device *device)
 
 	adapter_get_address(device->adapter, &src);
 	ba2str(&device->bdaddr, addr);
-	device_remove_bonding(device);
+	if (device->paired)
+		device_remove_bonding(device);
 	delete_entry(&src, "profiles", addr);
 	delete_entry(&src, "trusts", addr);
 }
@@ -1661,9 +1650,14 @@ static void bonding_request_free(struct bonding_req *bonding)
 	device->agent = NULL;
 }
 
-static void device_set_paired(struct btd_device *device, gboolean value)
+void device_set_paired(struct btd_device *device, gboolean value)
 {
 	DBusConnection *conn = get_dbus_connection();
+
+	if (device->paired == value)
+		return;
+
+	device->paired = value;
 
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Paired",
 				DBUS_TYPE_BOOLEAN, &value);
