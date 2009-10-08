@@ -1646,6 +1646,7 @@ static void bonding_request_free(struct bonding_req *bonding)
 	if (!device->agent)
 		return;
 
+	agent_cancel(device->agent);
 	agent_destroy(device->agent, FALSE);
 	device->agent = NULL;
 }
