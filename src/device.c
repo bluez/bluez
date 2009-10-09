@@ -1217,6 +1217,12 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 		if (sdp_get_service_classes(rec, &svcclass) < 0)
 			continue;
 
+		/* Check for empty service classes list */
+		if (svcclass == NULL) {
+			debug("Skipping record with no service classes");
+			continue;
+		}
+
 		/* Extract the first element and skip the remainning */
 		profile_uuid = bt_uuid2string(svcclass->data);
 		if (!profile_uuid) {
