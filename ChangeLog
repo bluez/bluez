@@ -1,3 +1,15 @@
+ver 4.56:
+	Add missing values from Bluetooth 3.0 specification.
+	Add proper tracking of device paired status.
+	Fix tracking of devices without permanently stored link key.
+	Fix issue with link key removal after connection failures.
+	Fix legacy pairing information based on remote host features.
+	Fix off-by-one issue with AVDTP capability parsing.
+	Fix AVRCP, AVCTP, AVDTP, A2DP and HFP version numbers.
+	Fix agent canceling before calling agent_destroy.
+	Fix service record parsing with an empty UUID list.
+	Fix various SDP related memory leaks.
+
 ver 4.55:
 	Add support for POSIX capabilities dropping.
 	Add special quirk for the Nokia CK-20W car kit.
