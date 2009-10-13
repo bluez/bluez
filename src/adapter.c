@@ -1906,10 +1906,6 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	struct btd_adapter *adapter = user_data;
 	GSList *uuids = bt_string2list(value);
 	struct btd_device *device;
-	bdaddr_t dst;
-	char srcaddr[18], dstaddr[18];
-
-	ba2str(&adapter->bdaddr, srcaddr);
 
 	if (g_slist_find_custom(adapter->devices,
 				key, (GCompareFunc) device_address_cmp))
@@ -1921,9 +1917,6 @@ static void create_stored_device_from_profiles(char *key, char *value,
 
 	device_set_temporary(device, FALSE);
 	adapter->devices = g_slist_append(adapter->devices, device);
-
-	device_get_address(device, &dst);
-	ba2str(&dst, dstaddr);
 
 	device_probe_drivers(device, uuids);
 
