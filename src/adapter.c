@@ -108,8 +108,6 @@ struct btd_adapter {
 					 * resloving */
 	GSList *found_devices;
 	GSList *oor_devices;		/* out of range device list */
-	DBusMessage *discovery_cancel;	/* discovery cancel message request */
-	GSList *passkey_agents;
 	struct agent *agent;		/* For the new API */
 	guint auth_idle_id;		/* Ongoing authorization */
 	GSList *connections;		/* Connected devices */
