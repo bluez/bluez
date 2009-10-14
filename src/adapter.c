@@ -29,7 +29,6 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
@@ -37,9 +36,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
-#include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -50,7 +47,6 @@
 
 #include "hcid.h"
 #include "sdpd.h"
-#include "sdp-xml.h"
 #include "manager.h"
 #include "adapter.h"
 #include "device.h"
@@ -60,8 +56,6 @@
 #include "glib-helper.h"
 #include "agent.h"
 #include "storage.h"
-
-#define NUM_ELEMENTS(table) (sizeof(table)/sizeof(const char *))
 
 #define IO_CAPABILITY_DISPLAYONLY	0x00
 #define IO_CAPABILITY_DISPLAYYESNO	0x01
@@ -150,33 +144,16 @@ static inline DBusMessage *invalid_args(DBusMessage *msg)
 			"Invalid arguments in method call");
 }
 
-static inline DBusMessage *not_available(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
-			"Not Available");
-}
-
 static inline DBusMessage *adapter_not_ready(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
 			"Adapter is not ready");
 }
 
-static inline DBusMessage *no_such_adapter(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
-							"No such adapter");
-}
-
 static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 							strerror(err));
-}
-
-static inline DBusMessage *in_progress(DBusMessage *msg, const char *str)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress", str);
 }
 
 static inline DBusMessage *not_in_progress(DBusMessage *msg, const char *str)
@@ -188,13 +165,6 @@ static inline DBusMessage *not_authorized(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAuthorized",
 			"Not authorized");
-}
-
-static inline DBusMessage *unsupported_major_class(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg,
-			ERROR_INTERFACE ".UnsupportedMajorClass",
-			"Unsupported Major Class");
 }
 
 static int found_device_cmp(const struct remote_dev_info *d1,
@@ -1478,9 +1448,7 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 
 	device = adapter_find_device(adapter, address);
 	if (!device || !device_is_creating(device, NULL))
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".NotInProgress",
-				"Device creation not in progress");
+		return not_in_progress(msg, "Device creation not in progress");
 
 	if (!device_is_creating(device, sender))
 		return not_authorized(msg);
