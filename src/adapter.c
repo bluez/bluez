@@ -2431,7 +2431,8 @@ void adapter_remove(struct btd_adapter *adapter)
 		device_remove(l->data, FALSE);
 	g_slist_free(adapter->devices);
 
-	unload_drivers(adapter);
+	if (adapter->initialized)
+		unload_drivers(adapter);
 
 	/* Return adapter to down state if it was not up on init */
 	if (adapter->up && !adapter->already_up)
