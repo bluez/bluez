@@ -451,7 +451,7 @@ int manager_unregister_adapter(int id)
 
 int manager_start_adapter(int id)
 {
-	struct btd_adapter* adapter;
+	struct btd_adapter *adapter;
 	int ret;
 
 	adapter = manager_find_adapter_by_id(id);

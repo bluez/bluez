@@ -131,12 +131,6 @@ static struct voice_call *find_vc_with_status(int status)
 	return NULL;
 }
 
-static inline DBusMessage *invalid_args(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, "org.bluez.Error.InvalidArguments",
-					"Invalid arguments in method call");
-}
-
 void telephony_device_connected(void *telephony_device)
 {
 	debug("telephony-ofono: device %p connected", telephony_device);
@@ -277,18 +271,19 @@ void telephony_answer_call_req(void *telephony_device)
 
 void telephony_dial_number_req(void *telephony_device, const char *number)
 {
-	char *clir = "default";
+	const char *clir;
 	int ret;
 
 	debug("telephony-ofono: dial request to %s", number);
 
 	if (!strncmp(number, "*31#", 4)) {
 		number += 4;
-		clir = g_strdup("enabled");
+		clir = "enabled";
 	} else if (!strncmp(number, "#31#", 4)) {
 		number += 4;
-		clir = g_strdup("disabled");
-	}
+		clir =  "disabled";
+	} else
+		clir = "default";
 
 	ret = send_method_call(OFONO_BUS_NAME, modem_obj_path,
 			OFONO_VCMANAGER_INTERFACE,
@@ -417,7 +412,7 @@ static gboolean iter_get_basic_args(DBusMessageIter *iter,
 
 static void handle_registration_property(const char *property, DBusMessageIter sub)
 {
-	char *status, *operator;
+	const char *status, *operator;
 	unsigned int signals_bar;
 
 	if (g_str_equal(property, "Status")) {
@@ -627,7 +622,7 @@ static void vc_getproperties_reply(DBusPendingCall *call, void *user_data)
 				err.name, err.message);
 		dbus_error_free(&err);
 		goto done;
-        }
+	}
 
 	vc = find_vc(path);
 	if (!vc) {
@@ -640,28 +635,28 @@ static void vc_getproperties_reply(DBusPendingCall *call, void *user_data)
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
 		error("Unexpected signature in vc_getproperties_reply()");
 		goto done;
-        }
+	}
 
 	dbus_message_iter_recurse(&iter, &iter_entry);
 
 	if (dbus_message_iter_get_arg_type(&iter_entry)
-				!= DBUS_TYPE_DICT_ENTRY) {
+			!= DBUS_TYPE_DICT_ENTRY) {
 		error("Unexpected signature in vc_getproperties_reply()");
 		goto done;
-        }
+	}
 
 	while (dbus_message_iter_get_arg_type(&iter_entry)
-				!= DBUS_TYPE_INVALID) {
+			!= DBUS_TYPE_INVALID) {
 		DBusMessageIter iter_property, sub;
 		char *property, *cli, *state;
 
 		dbus_message_iter_recurse(&iter_entry, &iter_property);
 		if (dbus_message_iter_get_arg_type(&iter_property)
-					!= DBUS_TYPE_STRING) {
+				!= DBUS_TYPE_STRING) {
 			error("Unexpected signature in"
 					" vc_getproperties_reply()");
 			goto done;
-                }
+		}
 
 		dbus_message_iter_get_basic(&iter_property, &property);
 
@@ -729,7 +724,7 @@ static void handle_vcmanager_property_changed(DBusMessage *msg,
 {
 	DBusMessageIter iter, sub, array;
 	const char *property, *vc_obj_path = NULL;
-	struct voice_call *vc = NULL, *vc_new = NULL;
+	struct voice_call *vc, *vc_new = NULL;
 
 	debug("in handle_vcmanager_property_changed");
 
@@ -790,7 +785,7 @@ static void handle_vc_property_changed(DBusMessage *msg, const char *obj_path)
 {
 	DBusMessageIter iter, sub;
 	const char *property, *state;
-	struct voice_call *vc = NULL;
+	struct voice_call *vc;
 
 	debug("in handle_vc_property_changed, obj_path is %s", obj_path);
 
