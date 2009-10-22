@@ -1313,16 +1313,16 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	update_services(req, recs);
 
-	if (!req->profiles_added && !req->profiles_removed) {
-		debug("%s: No service update", device->path);
-		goto proceed;
-	}
-
 	if (device->tmp_records && req->records) {
 		sdp_list_free(device->tmp_records,
 					(sdp_free_func_t) sdp_record_free);
 		device->tmp_records = req->records;
 		req->records = NULL;
+	}
+
+	if (!req->profiles_added && !req->profiles_removed) {
+		debug("%s: No service update", device->path);
+		goto proceed;
 	}
 
 	/* Probe matching drivers for services added */
