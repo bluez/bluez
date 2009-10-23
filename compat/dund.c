@@ -192,7 +192,7 @@ static int do_listen(void)
 		}
 
 		ba2str(&sa.rc_bdaddr, ba);
-		sprintf(ch, "%d", channel);
+		snprintf(ch, sizeof(ch), "%d", channel);
 
 		/* Setup environment */
 		setenv("DUN_BDADDR",  ba, 1);
