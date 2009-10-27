@@ -272,6 +272,9 @@ DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 
 	setup_dbus_with_main_loop(conn);
 
+	if (dbus_connection_get_dispatch_status(conn) == DBUS_DISPATCH_DATA_REMAINS)
+		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, conn);
+
 	return conn;
 }
 
