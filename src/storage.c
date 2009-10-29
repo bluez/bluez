@@ -913,7 +913,7 @@ static void create_stored_records_from_keys(char *key, char *value,
 	rec_list->recs = sdp_list_append(rec_list->recs, rec);
 }
 
-void delete_all_records(bdaddr_t *src, bdaddr_t *dst)
+void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	sdp_list_t *records, *seq;
 	char srcaddr[18], dstaddr[18];
@@ -932,7 +932,7 @@ void delete_all_records(bdaddr_t *src, bdaddr_t *dst)
 		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
 }
 
-sdp_list_t *read_records(bdaddr_t *src, bdaddr_t *dst)
+sdp_list_t *read_records(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	char filename[PATH_MAX + 1];
 	struct record_list rec_list;
