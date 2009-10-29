@@ -1136,10 +1136,8 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 		next = list->next;
 
 		for (uuid = driver->uuids; *uuid; uuid++) {
-			sdp_record_t *rec;
-
 			if (!g_slist_find_custom(uuids, *uuid,
-					(GCompareFunc) strcasecmp))
+						(GCompareFunc) strcasecmp))
 				continue;
 
 			debug("UUID %s was removed from device %s",
@@ -1150,24 +1148,28 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 								driver_data);
 			g_free(driver_data);
 
-			rec = find_record_in_list(records, *uuid);
-			if (!rec)
-				break;
-
-			delete_record(srcaddr, dstaddr, rec->handle);
-
-			records = sdp_list_remove(records, rec);
-			sdp_record_free(rec);
-
 			break;
 		}
 	}
 
+	for (list = uuids; list; list = list->next) {
+		sdp_record_t *rec;
+
+		device->uuids = g_slist_remove(device->uuids, list->data);
+
+		rec = find_record_in_list(records, list->data);
+		if (!rec)
+			continue;
+
+		delete_record(srcaddr, dstaddr, rec->handle);
+
+		records = sdp_list_remove(records, rec);
+		sdp_record_free(rec);
+
+	}
+
 	if (records)
 		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
-
-	for (list = uuids; list; list = list->next)
-		device->uuids = g_slist_remove(device->uuids, list->data);
 }
 
 static void services_changed(struct btd_device *device)
