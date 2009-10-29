@@ -913,6 +913,25 @@ static void create_stored_records_from_keys(char *key, char *value,
 	rec_list->recs = sdp_list_append(rec_list->recs, rec);
 }
 
+void delete_all_records(bdaddr_t *src, bdaddr_t *dst)
+{
+	sdp_list_t *records, *seq;
+	char srcaddr[18], dstaddr[18];
+
+	ba2str(src, srcaddr);
+	ba2str(dst, dstaddr);
+
+	records = read_records(src, dst);
+
+	for (seq = records; seq; seq = seq->next) {
+		sdp_record_t *rec = seq->data;
+		delete_record(srcaddr, dstaddr, rec->handle);
+	}
+
+	if (records)
+		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
+}
+
 sdp_list_t *read_records(bdaddr_t *src, bdaddr_t *dst)
 {
 	char filename[PATH_MAX + 1];

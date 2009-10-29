@@ -937,10 +937,12 @@ static void device_remove_stored(struct btd_device *device)
 
 	adapter_get_address(device->adapter, &src);
 	ba2str(&device->bdaddr, addr);
+
 	if (device->paired)
 		device_remove_bonding(device);
 	delete_entry(&src, "profiles", addr);
 	delete_entry(&src, "trusts", addr);
+	delete_all_records(&src, &device->bdaddr);
 }
 
 void device_remove(struct btd_device *device, gboolean remove_stored)
