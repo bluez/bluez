@@ -1,3 +1,13 @@
+ver 4.57:
+	Fix unloading of drivers for uninitialized adapters.
+	Fix debug message to use requested and not opened SEID.
+	Fix codec selection for GStreamer plugin.
+	Fix deleting of SDP records during service updates.
+	Fix deleting of SDP records when a device is removed.
+	Fix handling when the SDP record is modified on remote device.
+	Fix potential buffer overflow by using snprintf instead of sprintf.
+	Fix const declarations for some storage function parameters.
+
 ver 4.56:
 	Add missing values from Bluetooth 3.0 specification.
 	Add proper tracking of device paired status.
