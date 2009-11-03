@@ -107,7 +107,7 @@ void opp_get(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
 	obex_headerdata_t hv;
-	guint32 size;
+	size_t size;
 
 	os = OBEX_GetUserData(obex);
 	if (os == NULL)

@@ -74,6 +74,7 @@ static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
 	}
 
 	plugins = g_slist_append(plugins, plugin);
+	debug("Plugin %s loaded", desc->name);
 
 	return TRUE;
 }

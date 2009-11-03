@@ -47,6 +47,7 @@
 #include "logging.h"
 #include "obex.h"
 #include "dbus.h"
+#include "mimetype.h"
 
 /* Default MTU's */
 #define DEFAULT_RX_MTU 32767
@@ -93,16 +94,17 @@ struct obex_commands pbap = {
 
 static void os_reset_session(struct obex_session *os)
 {
-	if (os->fd > 0) {
-		close(os->fd);
-		os->fd = -1;
+	if (os->object) {
+		os->driver->close(os->object);
+		os->object = NULL;
 		if (os->aborted && os->cmd == OBEX_CMD_PUT && os->current_folder) {
 			gchar *path;
 			path = g_build_filename(os->current_folder, os->name, NULL);
-			unlink(path);
+			os->driver->remove(path);
 			g_free(path);
 		}
 	}
+
 	if (os->name) {
 		g_free(os->name);
 		os->name = NULL;
@@ -115,6 +117,7 @@ static void os_reset_session(struct obex_session *os)
 		g_free(os->buf);
 		os->buf = NULL;
 	}
+	os->driver = NULL;
 	os->aborted = FALSE;
 	os->offset = 0;
 	os->size = OBJECT_SIZE_DELETE;
@@ -234,6 +237,7 @@ static void cmd_connect(struct obex_session *os,
 				os->server->services &
 						(OBEX_FTP | OBEX_PCSUITE)) {
 			os->target = FTP_TARGET;
+			os->services = OBEX_FTP | OBEX_PCSUITE;
 			os->cmds = &ftp;
 			break;
 		}
@@ -241,6 +245,7 @@ static void cmd_connect(struct obex_session *os,
 		if (memcmp(hd.bs, PBAP_TARGET, TARGET_SIZE) == 0 &&
 				os->server->services & OBEX_PBAP) {
 			os->target = PBAP_TARGET;
+			os->services = OBEX_PBAP;
 			os->cmds = &pbap;
 			pbap_phonebook_context_create(os);
 			break;
@@ -379,7 +384,18 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 
 			os->type = g_strndup((const gchar *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
+			os->driver = obex_mime_type_driver_find(os->target, os->type);
 			break;
+		}
+	}
+
+	if (!os->driver) {
+		os->driver = obex_mime_type_driver_find(os->target, NULL);
+		if (!os->driver) {
+			error("No driver found");
+			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
+					OBEX_RSP_NOT_IMPLEMENTED);
+			return;
 		}
 	}
 
@@ -435,38 +451,34 @@ static void cmd_setpath(struct obex_session *os,
 	os->cmds->setpath(obex, obj);
 }
 
-int os_prepare_get(struct obex_session *os, gchar *file, guint32 *size)
+int os_prepare_get(struct obex_session *os, gchar *filename, size_t *size)
 {
-	gint fd, err;
-	struct stat stats;
+	gint err;
+	gpointer object;
 
-	fd = open(file, O_RDONLY);
-	if (fd < 0) {
+	if (!os->driver) {
+		error("No driver to handle %s", os->type);
+		return -ENOENT;
+	}
+
+	object = os->driver->open(filename, O_RDONLY, 0, size);
+	if (object == NULL) {
 		err = -errno;
-		error("open(%s): %s (%d)", file, strerror(errno), errno);
+		error("open(%s): %s (%d)", filename, strerror(errno), errno);
 		goto fail;
 	}
 
-	if (fstat(fd, &stats) < 0) {
-		err = -errno;
-		error("fstat(fd=%d (%s)): %s (%d)", fd, file,
-						strerror(errno), errno);
-		goto fail;
-	}
-
-	os->fd = fd;
+	os->object = object;
 	os->offset = 0;
 
-	if (stats.st_size > 0)
+	if (*size > 0)
 		os->buf = g_malloc0(os->tx_mtu);
-
-	*size = stats.st_size;
 
 	return 0;
 
 fail:
-	if (fd >= 0)
-		close(fd);
+	if (object)
+		os->driver->close(object);
 	return err;
 }
 
@@ -477,14 +489,15 @@ static gint obex_write_stream(struct obex_session *os,
 	gint32 len;
 	guint8 *ptr;
 
-	debug("obex_write_stream: name=%s type=%s tx_mtu=%d fd=%d",
+	debug("obex_write_stream: name=%s type=%s tx_mtu=%d file=%p",
 		os->name ? os->name : "", os->type ? os->type : "",
-		os->tx_mtu, os->fd);
+		os->tx_mtu, os->object);
 
 	if (os->aborted)
 		return -EPERM;
 
-	if (os->fd < 0) {
+
+	if (os->object == NULL) {
 		if (os->buf == NULL && os->finished == FALSE)
 			return -EIO;
 
@@ -493,7 +506,7 @@ static gint obex_write_stream(struct obex_session *os,
 		goto add_header;
 	}
 
-	len = read(os->fd, os->buf, os->tx_mtu);
+	len = os->driver->read(os->object, os->buf, os->tx_mtu);
 	if (len < 0) {
 		gint err = errno;
 		error("read(): %s (%d)", strerror(err), err);
@@ -535,8 +548,9 @@ gint os_prepare_put(struct obex_session *os)
 
 	path = g_build_filename(os->current_folder, os->name, NULL);
 
-	os->fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-	if (os->fd < 0) {
+	os->object = os->driver->open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600,
+					(size_t *) &os->size);
+	if (os->object == NULL) {
 		error("open(%s): %s (%d)", path, strerror(errno), errno);
 		g_free(path);
 		return -EPERM;
@@ -556,7 +570,7 @@ gint os_prepare_put(struct obex_session *os)
 	while (len < os->offset) {
 		gint w;
 
-		w = write(os->fd, os->buf + len, os->offset - len);
+		w = os->driver->write(os->object, os->buf + len, os->offset - len);
 		if (w < 0) {
 			gint err = errno;
 			error("write(%s): %s (%d)", path, strerror(errno),
@@ -598,7 +612,7 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 		return -EIO;
 	}
 
-	if (os->fd < 0 && size > 0) {
+	if (os->object == NULL && size > 0) {
 		if (os->buf) {
 			error("Got more data but there is still a pending buffer");
 			return -EIO;
@@ -616,7 +630,7 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 	while (len < size) {
 		gint w;
 
-		w = write(os->fd, buffer + len, size - len);
+		w = os->driver->write(os->object, buffer + len, size - len);
 		if (w < 0) {
 			gint err = errno;
 			if (err == EINTR)
@@ -636,11 +650,9 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 static gboolean check_put(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
-	struct statvfs buf;
 	obex_headerdata_t hd;
 	guint hlen;
 	guint8 hi;
-	long long unsigned int free;
 	int ret;
 
 	os = OBEX_GetUserData(obex);
@@ -691,6 +703,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 
 			os->type = g_strndup((const gchar *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
+			os->driver = obex_mime_type_driver_find(os->target, os->type);
 			break;
 
 		case OBEX_HDR_BODY:
@@ -718,6 +731,16 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 		return FALSE;
 	}
 
+	if (!os->driver) {
+		os->driver = obex_mime_type_driver_find(os->target, NULL);
+		if (!os->driver) {
+			error("No driver found");
+			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
+					OBEX_RSP_NOT_IMPLEMENTED);
+			return FALSE;
+		}
+	}
+
 	if (!os->cmds || !os->cmds->chkput)
 		goto done;
 
@@ -742,21 +765,6 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	if (os->size == OBJECT_SIZE_DELETE || os->size == OBJECT_SIZE_UNKNOWN) {
 		debug("Got a PUT without a Length");
 		goto done;
-	}
-
-	if (fstatvfs(os->fd, &buf) < 0) {
-		int err = errno;
-		error("fstatvfs(): %s(%d)", strerror(err), err);
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-		return FALSE;
-	}
-
-	free = (unsigned long long) buf.f_bsize * buf.f_bavail;
-	debug("Free space in disk: %llu", free);
-	if ((guint64) os->size > free) {
-		debug("Free disk space not available");
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-		return FALSE;
 	}
 
 done:
@@ -926,7 +934,7 @@ static void obex_handle_destroy(gpointer user_data)
 
 	if (os->target == NULL) {
 		/* Got an error during a transfer. */
-		if (os->fd >= 0)
+		if (os->object)
 			emit_transfer_completed(os->cid, os->offset == os->size);
 
 		unregister_transfer(os->cid);
@@ -1001,7 +1009,6 @@ gint obex_session_start(GIOChannel *io, struct server *server)
 	os->server = server;
 	os->rx_mtu = server->rx_mtu ? server->rx_mtu : DEFAULT_RX_MTU;
 	os->tx_mtu = server->tx_mtu ? server->tx_mtu : DEFAULT_TX_MTU;
-	os->fd = -1;
 	os->size = OBJECT_SIZE_DELETE;
 
 	obex = OBEX_Init(OBEX_TRANS_FD, obex_event, 0);
@@ -1046,4 +1053,18 @@ gint obex_tty_session_stop(void)
 	}
 
 	return 0;
+}
+
+struct obex_session *obex_get_session(gpointer object)
+{
+	GSList *l;
+
+	for (l = sessions; l; l = l->next) {
+		struct obex_session *os = l->data;
+
+		if (os->object == object)
+			return os;
+	}
+
+	return NULL;
 }

@@ -31,14 +31,16 @@
 
 #include "phonebook.h"
 
+#define OBJECT_SIZE_UNKNOWN -1
+#define OBJECT_SIZE_DELETE -2
+
 #define OBEX_OPP	(1 << 0)
 #define OBEX_FTP	(1 << 2)
 #define OBEX_BIP	(1 << 3)
 #define OBEX_PBAP	(1 << 4)
 #define OBEX_PCSUITE	(1 << 5)
 
-#define OBJECT_SIZE_UNKNOWN -1
-#define OBJECT_SIZE_DELETE -2
+struct obex_mime_type_driver;
 
 struct obex_commands {
 	void (*get) (obex_t *obex, obex_object_t *obj);
@@ -67,6 +69,7 @@ struct server {
 struct obex_session {
 	GIOChannel	*io;
 	guint32		cid;
+	guint16		services;
 	guint16		tx_mtu;
 	guint16		rx_mtu;
 	uint8_t		cmd;
@@ -77,7 +80,7 @@ struct obex_session {
 	guint8		*buf;
 	gint32		offset;
 	gint32		size;
-	gint		fd;
+	gpointer	object;
 	gboolean	aborted;
 	const guint8	*target;
 	struct obex_commands *cmds;
@@ -85,10 +88,12 @@ struct obex_session {
 	gboolean	checked;
 	obex_t		*obex;
 	struct phonebook_context *pbctx;
+	struct obex_mime_type_driver *driver;
 	gboolean	finished;
 };
 
 gint obex_session_start(GIOChannel *io, struct server *server);
+struct obex_session *obex_get_session(gpointer object);
 gint obex_tty_session_stop(void);
 
 void opp_get(obex_t *obex, obex_object_t *obj);
@@ -106,7 +111,7 @@ gboolean pbap_phonebook_context_create(struct obex_session *session);
 void pbap_phonebook_context_destroy(struct obex_session *session);
 struct obex_session *pbap_get_session(struct phonebook_context *context);
 
-gint os_prepare_get(struct obex_session *os, gchar *file, guint32 *size);
+gint os_prepare_get(struct obex_session *os, gchar *file, size_t *size);
 gint os_prepare_put(struct obex_session *os);
 
 void server_free(struct server *server);
