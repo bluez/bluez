@@ -227,6 +227,7 @@ struct agent {
 	gboolean	auth_pending;
 	gchar		*new_name;
 	gchar		*new_folder;
+	guint		watch_id;
 };
 
 static struct agent *agent = NULL;
@@ -252,6 +253,9 @@ static guint listener_id = 0;
 
 static void agent_free(struct agent *agent)
 {
+	if(!agent)
+		return;
+
 	g_free(agent->new_folder);
 	g_free(agent->new_name);
 	g_free(agent->bus_name);
@@ -387,8 +391,8 @@ static DBusMessage *register_agent(DBusConnection *conn,
 	agent->bus_name = g_strdup(sender);
 	agent->path = g_strdup(path);
 
-	g_dbus_add_disconnect_watch(conn, sender,
-			agent_disconnected, NULL, NULL);
+	agent->watch_id = g_dbus_add_disconnect_watch(conn, sender,
+					agent_disconnected, NULL, NULL);
 
 	debug("Agent registered");
 
@@ -415,8 +419,12 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	if (strcmp(agent->bus_name, sender) != 0)
 		return not_authorized(msg);
 
+	g_dbus_remove_watch(conn, agent->watch_id);
+
 	agent_free(agent);
 	agent = NULL;
+
+	debug("Agent unregistered");
 
 	return dbus_message_new_method_return(msg);
 }
