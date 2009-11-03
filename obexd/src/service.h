@@ -2,8 +2,6 @@
  *
  *  OBEX Server
  *
- *  Copyright (C) 2007-2008  Nokia Corporation
- *  Copyright (C) 2007-2008  Instituto Nokia de Tecnologia (INdT)
  *  Copyright (C) 2007-2009  Marcel Holtmann <marcel@holtmann.org>
  *
  *
@@ -23,13 +21,20 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+struct obex_service_driver {
+	const char *name;
+	guint16 service;
+	guint8 channel;
+	const guint8 *target;
+	const gchar *record;
+	void (*get) (obex_t *obex, obex_object_t *obj);
+	void (*put) (obex_t *obex, obex_object_t *obj);
+	gint (*chkput) (obex_t *obex, obex_object_t *obj);
+	void (*setpath) (obex_t *obex, obex_object_t *obj);
+};
 
-gint bluetooth_init(guint service, const gchar *folder, gboolean secure,
-				gboolean auto_accept, gboolean symlinks,
-				const gchar *capability);
-void bluetooth_exit(void);
-void bluetooth_start(void);
-void bluetooth_stop(void);
+int obex_service_driver_register(struct obex_service_driver *driver);
+void obex_service_driver_unregister(struct obex_service_driver *driver);
+GSList *obex_service_driver_list(guint16 services);
+struct obex_service_driver *obex_service_driver_find(GSList *drivers,
+						const guint8 *uuid);

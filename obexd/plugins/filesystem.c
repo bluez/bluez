@@ -48,6 +48,7 @@
 #include "logging.h"
 #include "mimetype.h"
 #include "obex.h"
+#include "service.h"
 
 #define EOL_CHARS "\n"
 
@@ -266,7 +267,7 @@ static ssize_t folder_read(gpointer object, void *buf, size_t count)
 	if (os->finished)
 		return 0;
 
-	pcsuite = os->server->services & OBEX_PCSUITE ? TRUE : FALSE;
+	pcsuite = os->service->service & OBEX_PCSUITE ? TRUE : FALSE;
 
 	listing = g_string_new(FL_VERSION);
 	listing = g_string_append(listing, pcsuite ? FL_TYPE_PCSUITE : FL_TYPE);

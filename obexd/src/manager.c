@@ -43,178 +43,7 @@
 #include "dbus.h"
 #include "logging.h"
 #include "btio.h"
-
-static const gchar *opp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
-<record>									\
-  <attribute id=\"0x0001\">							\
-    <sequence>									\
-      <uuid value=\"0x1105\"/>							\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0004\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x0100\"/>						\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0003\"/>						\
-        <uint8 value=\"%u\" name=\"channel\"/>					\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0008\"/>						\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0009\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x1105\"/>						\
-        <uint16 value=\"0x0100\" name=\"version\"/>				\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0100\">							\
-    <text value=\"%s\" name=\"name\"/>						\
-  </attribute>									\
-										\
-  <attribute id=\"0x0303\">							\
-    <sequence>									\
-      <uint8 value=\"0x01\"/>							\
-      <uint8 value=\"0x01\"/>							\
-      <uint8 value=\"0x02\"/>							\
-      <uint8 value=\"0x03\"/>							\
-      <uint8 value=\"0x04\"/>							\
-      <uint8 value=\"0x05\"/>							\
-      <uint8 value=\"0x06\"/>							\
-      <uint8 value=\"0xff\"/>							\
-    </sequence>									\
-  </attribute>									\
-</record>";
-
-static const gchar *ftp_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
-<record>									\
-  <attribute id=\"0x0001\">							\
-    <sequence>									\
-      <uuid value=\"0x1106\"/>							\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0004\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x0100\"/>						\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0003\"/>						\
-        <uint8 value=\"%u\" name=\"channel\"/>					\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0008\"/>						\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0009\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x1106\"/>						\
-        <uint16 value=\"0x0100\" name=\"version\"/>				\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0100\">							\
-    <text value=\"%s\" name=\"name\"/>						\
-  </attribute>									\
-</record>";
-
-static const gchar *pbap_record = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
-<record>									\
-  <attribute id=\"0x0001\">							\
-    <sequence>									\
-      <uuid value=\"0x112f\"/>							\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0004\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x0100\"/>						\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0003\"/>						\
-        <uint8 value=\"%u\" name=\"channel\"/>					\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0008\"/>						\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0009\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x1130\"/>						\
-        <uint16 value=\"0x0100\" name=\"version\"/>				\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0100\">							\
-    <text value=\"%s\" name=\"name\"/>						\
-  </attribute>									\
-										\
-  <attribute id=\"0x0314\">							\
-    <uint8 value=\"0x01\"/>							\
-  </attribute>									\
-</record>";
-
-static const gchar *pcsuite_record =
-"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>					\
-<record>									\
-  <attribute id=\"0x0001\">							\
-    <sequence>									\
-      <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/>			\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0004\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x0100\"/>						\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0003\"/>						\
-        <uint8 value=\"%u\" name=\"channel\"/>					\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0008\"/>						\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0005\">							\
-    <sequence>									\
-      <uuid value=\"0x1002\"/>							\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0009\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/> 			\
-        <uint16 value=\"0x0100\" name=\"version\"/>				\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0100\">							\
-    <text value=\"%s\" name=\"name\"/>						\
-  </attribute>									\
-</record>";
+#include "service.h"
 
 #define TRANSFER_INTERFACE OPENOBEX_SERVICE ".Transfer"
 #define SESSION_INTERFACE OPENOBEX_SERVICE ".Session"
@@ -429,6 +258,17 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static char *target2str(const uint8_t *t)
+{
+	if (!t)
+		return NULL;
+
+	return g_strdup_printf("%02X%02X%02X%02X-%02X%02X-%02X%02X-"
+				"%02X%02X-%02X%02X%02X%02X%02X%02X",
+				t[0], t[1], t[2], t[3], t[4], t[5], t[6],t[7],
+				t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
@@ -436,9 +276,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	gchar uuid[37];
-	const gchar *ptr = uuid;
-	const uint8_t *t = os->target;
+	gchar *uuid;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -451,12 +289,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	/* Target */
-	sprintf(uuid, "%02X%02X%02X%02X-%02X%02X-%02X%02X-"
-				"%02X%02X-%02X%02X%02X%02X%02X%02X",
-				t[0], t[1], t[2], t[3], t[4], t[5], t[6],t[7],
-				t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
+	uuid = target2str(os->service->target);
 	dbus_message_iter_append_dict_entry(&dict, "Target",
-					DBUS_TYPE_STRING, &ptr);
+					DBUS_TYPE_STRING, &uuid);
+	g_free(uuid);
+
 	/* Root folder */
 	dbus_message_iter_append_dict_entry(&dict, "Root",
 					DBUS_TYPE_STRING, &os->server->folder);
@@ -515,32 +352,6 @@ static GDBusMethodTable session_methods[] = {
 	{ }
 };
 
-static gchar *create_xml_record(const char *name,
-			uint16_t service, uint8_t channel)
-{
-	gchar *xml;
-
-	switch (service) {
-	case OBEX_OPP:
-		xml = g_markup_printf_escaped(opp_record, channel, name);
-		break;
-	case OBEX_FTP:
-		xml = g_markup_printf_escaped(ftp_record, channel, name);
-		break;
-	case OBEX_PBAP:
-		xml = g_markup_printf_escaped(pbap_record, channel, name);
-		break;
-	case OBEX_PCSUITE:
-		xml = g_markup_printf_escaped(pcsuite_record, channel, name);
-		break;
-	default:
-		xml = NULL;
-		break;
-	}
-
-	return xml;
-}
-
 static void add_record_reply(DBusPendingCall *call, gpointer user_data)
 {
 	struct server *server = user_data;
@@ -555,13 +366,17 @@ static void add_record_reply(DBusPendingCall *call, gpointer user_data)
 		dbus_error_free(&derr);
 		handle = 0;
 	} else {
+		struct obex_service_driver *driver;
+
 		dbus_message_get_args(reply, NULL,
 				DBUS_TYPE_UINT32, &handle,
 				DBUS_TYPE_INVALID);
 		server->handle = handle;
 
+		driver = (struct obex_service_driver *) server->drivers->data;
+
 		debug("Registered: %s, handle: 0x%x, folder: %s",
-				server->name, handle, server->folder);
+				driver->name, handle, server->folder);
 	}
 
 	dbus_message_unref(reply);
@@ -596,6 +411,7 @@ failed:
 
 void register_record(struct server *server, gpointer user_data)
 {
+	struct obex_service_driver *driver;
 	gchar *xml;
 	gint ret;
 
@@ -608,7 +424,9 @@ void register_record(struct server *server, gpointer user_data)
 		return;
 	}
 
-	xml = create_xml_record(server->name, server->services, server->channel);
+	driver = (struct obex_service_driver *) server->drivers->data;
+	xml = g_markup_printf_escaped(driver->record, driver->channel,
+					driver->name);
 	ret = add_record(any->path, xml, server);
 	g_free(xml);
 }
@@ -616,7 +434,6 @@ void register_record(struct server *server, gpointer user_data)
 static void find_adapter_any_reply(DBusPendingCall *call, gpointer user_data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	struct server *server;
 	const char *path;
 	gchar *xml;
 	GSList *l;
@@ -637,9 +454,12 @@ static void find_adapter_any_reply(DBusPendingCall *call, gpointer user_data)
 	any->path = g_strdup(path);
 
 	for (l = any->servers; l; l = l->next) {
-		server = l->data;
-		xml = create_xml_record(server->name,
-				server->services, server->channel);
+		struct server *server = l->data;
+		struct obex_service_driver *driver;
+
+		driver = (struct obex_service_driver *) server->drivers->data;
+		xml = g_markup_printf_escaped(driver->record, driver->channel,
+						driver->name);
 		add_record(path, xml, server);
 		g_free(xml);
 	}
@@ -1207,3 +1027,5 @@ void unregister_session(guint32 id)
 
 	g_free(path);
 }
+
+

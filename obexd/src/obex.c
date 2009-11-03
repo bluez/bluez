@@ -48,20 +48,11 @@
 #include "obex.h"
 #include "dbus.h"
 #include "mimetype.h"
+#include "service.h"
 
 /* Default MTU's */
 #define DEFAULT_RX_MTU 32767
 #define DEFAULT_TX_MTU 32767
-
-#define TARGET_SIZE 16
-
-static const guint8 FTP_TARGET[TARGET_SIZE] = {
-			0xF9, 0xEC, 0x7B, 0xC4,  0x95, 0x3C, 0x11, 0xD2,
-			0x98, 0x4E, 0x52, 0x54,  0x00, 0xDC, 0x9E, 0x09  };
-
-static const guint8 PBAP_TARGET[TARGET_SIZE] = {
-			0x79, 0x61, 0x35, 0xF0,  0xF0, 0xC5, 0x11, 0xD8,
-			0x09, 0x66, 0x08, 0x00,  0x20, 0x0C, 0x9A, 0x66  };
 
 /* Connection ID */
 static guint32 cid = 0x0000;
@@ -73,24 +64,6 @@ typedef struct {
 	guint8  flags;
 	guint16 mtu;
 } __attribute__ ((packed)) obex_connect_hdr_t;
-
-struct obex_commands opp = {
-	.get		= opp_get,
-	.put		= opp_put,
-	.chkput		= opp_chkput,
-};
-
-struct obex_commands ftp = {
-	.get		= ftp_get,
-	.put		= ftp_put,
-	.chkput		= ftp_chkput,
-	.setpath	= ftp_setpath,
-};
-
-struct obex_commands pbap = {
-	.get		= pbap_get,
-	.setpath	= pbap_setpath,
-};
 
 static void os_reset_session(struct obex_session *os)
 {
@@ -145,9 +118,6 @@ static void obex_session_free(struct obex_session *os)
 
 	if (os->io)
 		g_io_channel_unref(os->io);
-
-	if (os->target && !memcmp(os->target, PBAP_TARGET, TARGET_SIZE))
-		pbap_phonebook_context_destroy(os);
 
 	g_free(os);
 }
@@ -233,31 +203,18 @@ static void cmd_connect(struct obex_session *os,
 		if (hi != OBEX_HDR_TARGET || hlen != TARGET_SIZE)
 			continue;
 
-		if (memcmp(hd.bs, FTP_TARGET, TARGET_SIZE) == 0 &&
-				os->server->services &
-						(OBEX_FTP | OBEX_PCSUITE)) {
-			os->target = FTP_TARGET;
-			os->services = OBEX_FTP | OBEX_PCSUITE;
-			os->cmds = &ftp;
+		os->service = obex_service_driver_find(os->server->drivers, hd.bs);
+		if (os->service)
 			break;
-		}
-
-		if (memcmp(hd.bs, PBAP_TARGET, TARGET_SIZE) == 0 &&
-				os->server->services & OBEX_PBAP) {
-			os->target = PBAP_TARGET;
-			os->services = OBEX_PBAP;
-			os->cmds = &pbap;
-			pbap_phonebook_context_create(os);
-			break;
-		}
 
 		error("Connect attempt to a non-supported target");
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return;
 	}
 
-	if (os->target == NULL) {
-		if (os->server->services & OBEX_OPP) {
+	if (os->service == NULL) {
+		os->service = obex_service_driver_find(os->server->drivers, NULL);
+		if (os->service) {
 			register_transfer(os->cid, os);
 			/* OPP doesn't contains target or connection id. */
 			OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
@@ -273,7 +230,7 @@ static void cmd_connect(struct obex_session *os,
 	emit_session_created(cid);
 
 	/* Append received UUID in WHO header */
-	hd.bs = os->target;
+	hd.bs = os->service->target;
 	OBEX_ObjectAddHeader(obex, obj,
 			OBEX_HDR_WHO, hd, TARGET_SIZE,
 			OBEX_FL_FIT_ONE_PACKET);
@@ -296,7 +253,7 @@ static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)
 	os = OBEX_GetUserData(obex);
 
 	/* Object Push doesn't provide a connection id. */
-	if (os->target == NULL)
+	if (os->service == NULL)
 		return TRUE;
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
@@ -321,10 +278,10 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	guint hlen;
 	guint8 hi;
 
-	if (!os->cmds) {
+	if (!os->service) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return;
-	} else if (!os->cmds->get) {
+	} else if (!os->service->get) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
 				OBEX_RSP_NOT_IMPLEMENTED);
 		return;
@@ -384,13 +341,13 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 
 			os->type = g_strndup((const gchar *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
-			os->driver = obex_mime_type_driver_find(os->target, os->type);
+			os->driver = obex_mime_type_driver_find(os->service->target, os->type);
 			break;
 		}
 	}
 
 	if (!os->driver) {
-		os->driver = obex_mime_type_driver_find(os->target, NULL);
+		os->driver = obex_mime_type_driver_find(os->service->target, NULL);
 		if (!os->driver) {
 			error("No driver found");
 			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
@@ -399,7 +356,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		}
 	}
 
-	os->cmds->get(obex, obj);
+	os->service->get(obex, obj);
 }
 
 static void cmd_setpath(struct obex_session *os,
@@ -409,10 +366,10 @@ static void cmd_setpath(struct obex_session *os,
 	guint32 hlen;
 	guint8 hi;
 
-	if (!os->cmds) {
+	if (!os->service) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return;
-	} else if (!os->cmds->setpath) {
+	} else if (!os->service->setpath) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
 				OBEX_RSP_NOT_IMPLEMENTED);
 		return;
@@ -448,18 +405,13 @@ static void cmd_setpath(struct obex_session *os,
 		break;
 	}
 
-	os->cmds->setpath(obex, obj);
+	os->service->setpath(obex, obj);
 }
 
 int os_prepare_get(struct obex_session *os, gchar *filename, size_t *size)
 {
 	gint err;
 	gpointer object;
-
-	if (!os->driver) {
-		error("No driver to handle %s", os->type);
-		return -ENOENT;
-	}
 
 	object = os->driver->open(filename, O_RDONLY, 0, size);
 	if (object == NULL) {
@@ -495,7 +447,6 @@ static gint obex_write_stream(struct obex_session *os,
 
 	if (os->aborted)
 		return -EPERM;
-
 
 	if (os->object == NULL) {
 		if (os->buf == NULL && os->finished == FALSE)
@@ -534,10 +485,6 @@ add_header:
 	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, len,
 				OBEX_FL_STREAM_DATA);
 
-	if (!memcmp(os->target, PBAP_TARGET, TARGET_SIZE))
-		if (os->offset == os->size && os->finished == FALSE)
-			OBEX_SuspendRequest(obex, obj);
-
 	return len;
 }
 
@@ -558,7 +505,7 @@ gint os_prepare_put(struct obex_session *os)
 
 	g_free(path);
 
-	if (os->target == NULL)
+	if (os->service == NULL)
 		emit_transfer_started(os->cid);
 
 	if (!os->buf) {
@@ -703,7 +650,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 
 			os->type = g_strndup((const gchar *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
-			os->driver = obex_mime_type_driver_find(os->target, os->type);
+			os->driver = obex_mime_type_driver_find(os->service->target, os->type);
 			break;
 
 		case OBEX_HDR_BODY:
@@ -732,7 +679,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	}
 
 	if (!os->driver) {
-		os->driver = obex_mime_type_driver_find(os->target, NULL);
+		os->driver = obex_mime_type_driver_find(os->service->target, NULL);
 		if (!os->driver) {
 			error("No driver found");
 			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
@@ -741,10 +688,10 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 		}
 	}
 
-	if (!os->cmds || !os->cmds->chkput)
+	if (!os->service || !os->service->chkput)
 		goto done;
 
-	ret = os->cmds->chkput(obex, obj);
+	ret = os->service->chkput(obex, obj);
 	switch (ret) {
 	case 0:
 		break;
@@ -775,10 +722,10 @@ done:
 
 static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 {
-	if (!os->cmds) {
+	if (!os->service) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return;
-	} else if (!os->cmds->put) {
+	} else if (!os->service->put) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
 				OBEX_RSP_NOT_IMPLEMENTED);
 		return;
@@ -791,7 +738,7 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 			return;
 	}
 
-	os->cmds->put(obex, obj);
+	os->service->put(obex, obj);
 }
 
 static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
@@ -806,12 +753,12 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	switch (evt) {
 	case OBEX_EV_PROGRESS:
 		/* Just emit progress for Object Push */
-		if (os->target == NULL)
+		if (os->service == NULL)
 			emit_transfer_progress(os->cid, os->size, os->offset);
 		break;
 	case OBEX_EV_ABORT:
 		os->aborted = TRUE;
-		if (os->target == NULL)
+		if (os->service == NULL)
 			emit_transfer_completed(os->cid, FALSE);
 		os_reset_session(os);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
@@ -824,7 +771,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		case OBEX_CMD_PUT:
 		case OBEX_CMD_GET:
 			os_session_mark_aborted(os);
-			if (os->target == NULL)
+			if (os->service == NULL)
 				emit_transfer_completed(os->cid, !os->aborted);
 			os_reset_session(os);
 			break;
@@ -854,7 +801,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	case OBEX_EV_REQCHECK:
 		switch (cmd) {
 		case OBEX_CMD_PUT:
-			if (os->cmds && os->cmds->put)
+			if (os->service && os->service->put)
 				check_put(obex, obj);
 			break;
 		default:
@@ -918,7 +865,6 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 
 void server_free(struct server *server)
 {
-	g_free(server->name);
 	g_free(server->folder);
 	g_free(server->capability);
 	g_free(server->devnode);
@@ -932,7 +878,7 @@ static void obex_handle_destroy(gpointer user_data)
 
 	os = OBEX_GetUserData(obex);
 
-	if (os->target == NULL) {
+	if (os->service == NULL) {
 		/* Got an error during a transfer. */
 		if (os->object)
 			emit_transfer_completed(os->cid, os->offset == os->size);
@@ -951,9 +897,17 @@ static void obex_handle_destroy(gpointer user_data)
 static gboolean tty_reinit(gpointer data)
 {
 	struct server *server = data;
+	GSList *l;
+	guint services = 0;
 
-	tty_init(server->services, server->folder, server->capability,
-					server->symlinks, server->devnode);
+	for (l = server->drivers; l; l = l->next) {
+		struct obex_service_driver *driver = l->data;
+
+		services |= driver->service;
+	}
+
+	tty_init(services, server->folder, server->capability,
+			server->symlinks, server->devnode);
 
 	server_free(server);
 
@@ -1000,10 +954,9 @@ gint obex_session_start(GIOChannel *io, struct server *server)
 
 	os = g_new0(struct obex_session, 1);
 
-	os->target = NULL;
+	os->service = NULL;
 
-	if (server->services & OBEX_OPP)
-		os->cmds = &opp;
+	os->service = obex_service_driver_find(server->drivers, NULL);
 
 	os->current_folder = g_strdup(server->folder);
 	os->server = server;

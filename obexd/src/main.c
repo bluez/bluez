@@ -49,6 +49,7 @@
 #include "bluetooth.h"
 #include "obexd.h"
 #include "obex.h"
+#include "service.h"
 
 #define OPP_CHANNEL	9
 #define FTP_CHANNEL	10
@@ -109,7 +110,7 @@ int tty_init(int services, const gchar *root_path,
 	}
 
 	server = g_new0(struct server, 1);
-	server->services = services;
+	server->drivers = obex_service_driver_list(services);
 	server->folder = g_strdup(root_path);
 	server->auto_accept = TRUE;
 	server->capability = g_strdup(capability);
@@ -382,28 +383,26 @@ int main(int argc, char *argv[])
 
 	if (option_opp == TRUE) {
 		services |= OBEX_OPP;
-		bluetooth_init(OBEX_OPP, "Object Push server", option_root,
-				OPP_CHANNEL, FALSE, option_autoaccept,
-				option_symlinks, NULL);
+		bluetooth_init(OBEX_OPP, option_root, FALSE,
+				option_autoaccept, option_symlinks,
+				NULL);
 	}
 
 	if (option_ftp == TRUE) {
 		services |= OBEX_FTP;
-		bluetooth_init(OBEX_FTP, "File Transfer server", option_root,
-				FTP_CHANNEL, TRUE, option_autoaccept,
-				option_symlinks, option_capability);
+		bluetooth_init(OBEX_FTP, option_root, TRUE,
+				option_autoaccept, option_symlinks,
+				option_capability);
 	}
 
 	if (option_pbap == TRUE) {
 		services |= OBEX_PBAP;
-		bluetooth_init(OBEX_PBAP, "Phonebook Access server", NULL,
-				PBAP_CHANNEL, TRUE, FALSE, FALSE, NULL);
+		bluetooth_init(OBEX_PBAP, NULL, TRUE, FALSE, FALSE, NULL);
 	}
 
 	if (option_pcsuite == TRUE) {
 		services |= OBEX_PCSUITE;
-		bluetooth_init(OBEX_PCSUITE, "Nokia OBEX PC Suite Services",
-				option_root, PCSUITE_CHANNEL, TRUE,
+		bluetooth_init(OBEX_PCSUITE, option_root, TRUE,
 				option_autoaccept, option_symlinks,
 				option_capability);
 	}

@@ -34,6 +34,8 @@
 
 #include <glib.h>
 
+#include "plugin.h"
+#include "service.h"
 #include "logging.h"
 #include "obex.h"
 #include "dbus.h"
@@ -41,7 +43,58 @@
 #define VCARD_TYPE "text/x-vcard"
 #define VCARD_FILE CONFIGDIR "/vcard.vcf"
 
-gint opp_chkput(obex_t *obex, obex_object_t *obj)
+#define OPP_CHANNEL	9
+#define OPP_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+<record>									\
+  <attribute id=\"0x0001\">							\
+    <sequence>									\
+      <uuid value=\"0x1105\"/>							\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0004\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x0100\"/>						\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0003\"/>						\
+        <uint8 value=\"%u\" name=\"channel\"/>					\
+      </sequence>								\
+      <sequence>								\
+        <uuid value=\"0x0008\"/>						\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0009\">							\
+    <sequence>									\
+      <sequence>								\
+        <uuid value=\"0x1105\"/>						\
+        <uint16 value=\"0x0100\" name=\"version\"/>				\
+      </sequence>								\
+    </sequence>									\
+  </attribute>									\
+										\
+  <attribute id=\"0x0100\">							\
+    <text value=\"%s\" name=\"name\"/>						\
+  </attribute>									\
+										\
+  <attribute id=\"0x0303\">							\
+    <sequence>									\
+      <uint8 value=\"0x01\"/>							\
+      <uint8 value=\"0x01\"/>							\
+      <uint8 value=\"0x02\"/>							\
+      <uint8 value=\"0x03\"/>							\
+      <uint8 value=\"0x04\"/>							\
+      <uint8 value=\"0x05\"/>							\
+      <uint8 value=\"0x06\"/>							\
+      <uint8 value=\"0xff\"/>							\
+    </sequence>									\
+  </attribute>									\
+</record>"
+
+static gint opp_chkput(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
 	gchar *new_folder, *new_name;
@@ -82,7 +135,7 @@ skip_auth:
 	return os_prepare_put(os);
 }
 
-void opp_put(obex_t *obex, obex_object_t *obj)
+static void opp_put(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
 
@@ -103,7 +156,7 @@ void opp_put(obex_t *obex, obex_object_t *obj)
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
 }
 
-void opp_get(obex_t *obex, obex_object_t *obj)
+static void opp_get(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
 	obex_headerdata_t hv;
@@ -145,3 +198,25 @@ void opp_get(obex_t *obex, obex_object_t *obj)
 fail:
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 }
+
+struct obex_service_driver driver = {
+	.name = "Object Push server",
+	.service = OBEX_OPP,
+	.channel = OPP_CHANNEL,
+	.record = OPP_RECORD,
+	.get = opp_get,
+	.put = opp_put,
+	.chkput = opp_chkput,
+};
+
+static int opp_init(void)
+{
+	return obex_service_driver_register(&driver);
+}
+
+static void opp_exit(void)
+{
+	obex_service_driver_unregister(&driver);
+}
+
+OBEX_PLUGIN_DEFINE("opp", opp_init, opp_exit)

@@ -48,6 +48,7 @@
 #include "obex.h"
 #include "dbus.h"
 #include "btio.h"
+#include "service.h"
 
 #define BT_RX_MTU 32767
 #define BT_TX_MTU 32767
@@ -57,6 +58,7 @@ static GSList *servers = NULL;
 static void confirm_event(GIOChannel *io, gpointer user_data)
 {
 	struct server *server = user_data;
+	struct obex_service_driver *driver;
 	GError *err = NULL;
 	char address[18];
 	guint8 channel;
@@ -73,7 +75,9 @@ static void confirm_event(GIOChannel *io, gpointer user_data)
 
 	info("New connection from: %s, channel %u", address, channel);
 
-	if (server->services != OBEX_OPP) {
+	driver = (struct obex_service_driver *) server->drivers->data;
+
+	if (driver->service != OBEX_OPP) {
 		if (request_service_authorization(server, io, address) < 0)
 			goto drop;
 
@@ -95,18 +99,21 @@ drop:
 static gint server_start(struct server *server)
 {
 	GError *err = NULL;
+	struct obex_service_driver *driver;
+
+	driver = (struct obex_service_driver *) server->drivers->data;
 
 	/* Listen */
 	if (server->secure)
 		server->io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event,
 					server, NULL, &err,
-					BT_IO_OPT_CHANNEL, server->channel,
+					BT_IO_OPT_CHANNEL, driver->channel,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_INVALID);
 	else
 		server->io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event,
 					server, NULL, &err,
-					BT_IO_OPT_CHANNEL, server->channel,
+					BT_IO_OPT_CHANNEL, driver->channel,
 					BT_IO_OPT_INVALID);
 	if (!server->io)
 		goto failed;
@@ -137,21 +144,23 @@ static gint server_stop(struct server *server)
 	return 0;
 }
 
-static gint server_register(guint16 service, const gchar *name, guint8 channel,
-			const gchar *folder, gboolean secure,
-			gboolean auto_accept, gboolean symlinks,
-			const gchar *capability)
+static gint server_register(guint16 service, const gchar *folder,
+				gboolean secure, gboolean auto_accept,
+				gboolean symlinks, const gchar *capability)
 {
 	struct server *server;
+	GSList *drivers;
+
+	drivers = obex_service_driver_list(service);
+	if (drivers == NULL)
+		return -EINVAL;
 
 	server = g_new0(struct server, 1);
-	server->services = service;
-	server->name = g_strdup(name);
+	server->drivers = drivers;
 	server->folder = g_strdup(folder);
 	server->auto_accept = auto_accept;
 	server->symlinks = symlinks;
 	server->capability = g_strdup(capability);
-	server->channel = channel;
 	server->secure = secure;
 	server->rx_mtu = BT_RX_MTU;
 	server->tx_mtu = BT_TX_MTU;
@@ -161,13 +170,11 @@ static gint server_register(guint16 service, const gchar *name, guint8 channel,
 	return 0;
 }
 
-gint bluetooth_init(guint service, const gchar *name, const gchar *folder,
-				guint8 channel, gboolean secure,
+gint bluetooth_init(guint service, const gchar *folder, gboolean secure,
 				gboolean auto_accept, gboolean symlinks,
 				const gchar *capability)
 {
-	return server_register(service, name, channel, folder,
-					secure, auto_accept, symlinks,
+	return server_register(service, folder, secure, auto_accept, symlinks,
 					capability);
 }
 
