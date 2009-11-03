@@ -392,4 +392,4 @@ static void filesystem_exit(void)
 	obex_mime_type_driver_unregister(&file);
 }
 
-OBEX_PLUGIN_DEFINE("filesystem", filesystem_init, filesystem_exit)
+OBEX_PLUGIN_DEFINE(filesystem, filesystem_init, filesystem_exit)

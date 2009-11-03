@@ -79,13 +79,21 @@ static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
 	return TRUE;
 }
 
+#include "builtin.h"
+
 gboolean plugin_init(void)
 {
 	GDir *dir;
 	const gchar *file;
+	unsigned int i;
 
 	if (strlen(PLUGINDIR) == 0)
 		return FALSE;
+
+	debug("Loading builtin plugins");
+
+	for (i = 0; __obex_builtin[i]; i++)
+		add_plugin(NULL,  __obex_builtin[i]);
 
 	debug("Loading plugins %s", PLUGINDIR);
 
@@ -142,7 +150,8 @@ void plugin_cleanup(void)
 		if (plugin->desc->exit)
 			plugin->desc->exit();
 
-		dlclose(plugin->handle);
+		if (plugin->handle != NULL)
+			dlclose(plugin->handle);
 
 		g_free(plugin);
 	}

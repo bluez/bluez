@@ -473,4 +473,4 @@ static void ftp_exit(void)
 	obex_service_driver_unregister(&pcsuite);
 }
 
-OBEX_PLUGIN_DEFINE("ftp", ftp_init, ftp_exit)
+OBEX_PLUGIN_DEFINE(ftp, ftp_init, ftp_exit)

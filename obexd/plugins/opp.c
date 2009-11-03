@@ -219,4 +219,4 @@ static void opp_exit(void)
 	obex_service_driver_unregister(&driver);
 }
 
-OBEX_PLUGIN_DEFINE("opp", opp_init, opp_exit)
+OBEX_PLUGIN_DEFINE(opp, opp_init, opp_exit)
