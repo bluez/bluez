@@ -82,7 +82,7 @@ static guint listener_id = 0;
 
 static void agent_free(struct agent *agent)
 {
-	if(!agent)
+	if (!agent)
 		return;
 
 	g_free(agent->new_folder);
