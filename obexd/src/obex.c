@@ -204,26 +204,20 @@ static void cmd_connect(struct obex_session *os,
 			continue;
 
 		os->service = obex_service_driver_find(os->server->drivers, hd.bs);
-		if (os->service)
-			break;
-
-		error("Connect attempt to a non-supported target");
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-		return;
+		break;
 	}
 
 	if (os->service == NULL) {
-		os->service = obex_service_driver_find(os->server->drivers, NULL);
-		if (os->service) {
-			register_transfer(os->cid, os);
-			/* OPP doesn't contains target or connection id. */
-			OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
-		} else {
-			error("Object Push connect attempt to a non-OPP server");
-			OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-		}
+		error("Connect attempt to a non-supported target");
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 
 		return;
+	}
+
+	if (os->service->service == OBEX_OPP) {
+		register_transfer(os->cid, os);
+		/* OPP doesn't contains target or connection id. */
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
 	}
 
 	register_session(cid, os);
@@ -253,7 +247,7 @@ static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)
 	os = OBEX_GetUserData(obex);
 
 	/* Object Push doesn't provide a connection id. */
-	if (os->service == NULL)
+	if (os->service->service == OBEX_OPP)
 		return TRUE;
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
@@ -505,7 +499,7 @@ gint os_prepare_put(struct obex_session *os)
 
 	g_free(path);
 
-	if (os->service == NULL)
+	if (os->service->service == OBEX_OPP)
 		emit_transfer_started(os->cid);
 
 	if (!os->buf) {
@@ -753,12 +747,12 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	switch (evt) {
 	case OBEX_EV_PROGRESS:
 		/* Just emit progress for Object Push */
-		if (os->service == NULL)
+		if (os->service->service == OBEX_OPP)
 			emit_transfer_progress(os->cid, os->size, os->offset);
 		break;
 	case OBEX_EV_ABORT:
 		os->aborted = TRUE;
-		if (os->service == NULL)
+		if (os->service->service == OBEX_OPP)
 			emit_transfer_completed(os->cid, FALSE);
 		os_reset_session(os);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
@@ -771,7 +765,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		case OBEX_CMD_PUT:
 		case OBEX_CMD_GET:
 			os_session_mark_aborted(os);
-			if (os->service == NULL)
+			if (os->service->service == OBEX_OPP)
 				emit_transfer_completed(os->cid, !os->aborted);
 			os_reset_session(os);
 			break;
@@ -878,7 +872,7 @@ static void obex_handle_destroy(gpointer user_data)
 
 	os = OBEX_GetUserData(obex);
 
-	if (os->service == NULL) {
+	if (os->service->service == OBEX_OPP) {
 		/* Got an error during a transfer. */
 		if (os->object)
 			emit_transfer_completed(os->cid, os->offset == os->size);
@@ -953,8 +947,6 @@ gint obex_session_start(GIOChannel *io, struct server *server)
 	gint ret, fd;
 
 	os = g_new0(struct obex_session, 1);
-
-	os->service = NULL;
 
 	os->service = obex_service_driver_find(server->drivers, NULL);
 
