@@ -189,6 +189,27 @@ static gint ftp_prepare_get(struct obex_session *os, gchar *file,
 	return os_prepare_get(os, file, size);
 }
 
+static void ftp_connect(obex_t *obex, obex_object_t *obj)
+{
+	struct obex_session *os = OBEX_GetUserData(obex);
+	obex_headerdata_t hd;
+
+	register_session(os->cid, os);
+	emit_session_created(os->cid);
+
+	/* Append received UUID in WHO header */
+	hd.bs = FTP_TARGET;
+	OBEX_ObjectAddHeader(obex, obj,
+			OBEX_HDR_WHO, hd, sizeof(FTP_TARGET),
+			OBEX_FL_FIT_ONE_PACKET);
+	hd.bq4 = os->cid;
+	OBEX_ObjectAddHeader(obex, obj,
+			OBEX_HDR_CONNECTION, hd, 4,
+			OBEX_FL_FIT_ONE_PACKET);
+
+	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+}
+
 static void ftp_get(obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hv;
@@ -432,16 +453,26 @@ done:
 	g_free(fullname);
 }
 
+static void ftp_disconnect(obex_t *obex)
+{
+	struct obex_session *os = OBEX_GetUserData(obex);
+
+	emit_session_removed(os->cid);
+	unregister_session(os->cid);
+}
+
 struct obex_service_driver pcsuite = {
 	.name = "Nokia OBEX PC Suite Services",
 	.service = OBEX_PCSUITE,
 	.channel = PCSUITE_CHANNEL,
 	.record = PCSUITE_RECORD,
 	.target = FTP_TARGET,
+	.connect = ftp_connect,
 	.get = ftp_get,
 	.put = ftp_put,
 	.chkput = ftp_chkput,
-	.setpath = ftp_setpath
+	.setpath = ftp_setpath,
+	.disconnect = ftp_disconnect
 };
 
 struct obex_service_driver ftp = {
@@ -450,10 +481,12 @@ struct obex_service_driver ftp = {
 	.channel = FTP_CHANNEL,
 	.record = FTP_RECORD,
 	.target = FTP_TARGET,
+	.connect = ftp_connect,
 	.get = ftp_get,
 	.put = ftp_put,
 	.chkput = ftp_chkput,
-	.setpath = ftp_setpath
+	.setpath = ftp_setpath,
+	.disconnect = ftp_disconnect
 };
 
 static int ftp_init(void)

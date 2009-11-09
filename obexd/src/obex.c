@@ -214,28 +214,8 @@ static void cmd_connect(struct obex_session *os,
 		return;
 	}
 
-	if (os->service->service == OBEX_OPP) {
-		register_transfer(os->cid, os);
-		/* OPP doesn't contains target or connection id. */
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
-
-		return;
-	}
-
-	register_session(cid, os);
-	emit_session_created(cid);
-
-	/* Append received UUID in WHO header */
-	hd.bs = os->service->target;
-	OBEX_ObjectAddHeader(obex, obj,
-			OBEX_HDR_WHO, hd, TARGET_SIZE,
-			OBEX_FL_FIT_ONE_PACKET);
-	hd.bq4 = cid;
-	OBEX_ObjectAddHeader(obex, obj,
-			OBEX_HDR_CONNECTION, hd, 4,
-			OBEX_FL_FIT_ONE_PACKET);
-
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+	if (os->service->connect)
+		os->service->connect(obex, obj);
 }
 
 static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)
@@ -501,9 +481,6 @@ gint os_prepare_put(struct obex_session *os)
 
 	g_free(path);
 
-	if (os->service->service == OBEX_OPP)
-		emit_transfer_started(os->cid);
-
 	if (!os->buf) {
 		debug("PUT request checked, no buffered data");
 		return 0;
@@ -754,8 +731,8 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		break;
 	case OBEX_EV_ABORT:
 		os->aborted = TRUE;
-		if (os->service->service == OBEX_OPP)
-			emit_transfer_completed(os->cid, FALSE);
+		if (os->service->reset)
+			os->service->reset(obex);
 		os_reset_session(os);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 		break;
@@ -767,8 +744,8 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		case OBEX_CMD_PUT:
 		case OBEX_CMD_GET:
 			os_session_mark_aborted(os);
-			if (os->service->service == OBEX_OPP)
-				emit_transfer_completed(os->cid, !os->aborted);
+			if (os->service->reset)
+				os->service->reset(obex);
 			os_reset_session(os);
 			break;
 		default:
@@ -874,16 +851,8 @@ static void obex_handle_destroy(gpointer user_data)
 
 	os = OBEX_GetUserData(obex);
 
-	if (os->service->service == OBEX_OPP) {
-		/* Got an error during a transfer. */
-		if (os->object)
-			emit_transfer_completed(os->cid, os->offset == os->size);
-
-		unregister_transfer(os->cid);
-	} else {
-		emit_session_removed(os->cid);
-		unregister_session(os->cid);
-	}
+	if (os->service && os->service->disconnect)
+		os->service->disconnect(obex);
 
 	obex_session_free(os);
 

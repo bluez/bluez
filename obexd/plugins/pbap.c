@@ -40,6 +40,7 @@
 #include "service.h"
 #include "phonebook.h"
 #include "telephony.h"
+#include "dbus.h"
 
 #define PHONEBOOK_TYPE		"x-bt/phonebook"
 #define VCARDLISTING_TYPE	"x-bt/vcard-listing"
@@ -377,6 +378,27 @@ static int pbap_pullvcardentry(obex_t *obex, obex_object_t *obj)
 	return err;
 }
 
+static void pbap_connect(obex_t *obex, obex_object_t *obj)
+{
+	struct obex_session *os = OBEX_GetUserData(obex);
+	obex_headerdata_t hd;
+
+	register_session(os->cid, os);
+	emit_session_created(os->cid);
+
+	/* Append received UUID in WHO header */
+	hd.bs = PBAP_TARGET;
+	OBEX_ObjectAddHeader(obex, obj,
+			OBEX_HDR_WHO, hd, sizeof(PBAP_TARGET),
+			OBEX_FL_FIT_ONE_PACKET);
+	hd.bq4 = os->cid;
+	OBEX_ObjectAddHeader(obex, obj,
+			OBEX_HDR_CONNECTION, hd, 4,
+			OBEX_FL_FIT_ONE_PACKET);
+
+	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+}
+
 static void pbap_get(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *session = OBEX_GetUserData(obex);
@@ -528,14 +550,24 @@ static void pbap_setpath(obex_t *obex, obex_object_t *obj)
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 }
 
+static void pbap_disconnect(obex_t *obex)
+{
+	struct obex_session *os = OBEX_GetUserData(obex);
+
+	emit_session_removed(os->cid);
+	unregister_session(os->cid);
+}
+
 struct obex_service_driver pbap = {
 	.name = "Phonebook Access server",
 	.service = OBEX_PBAP,
 	.channel = PBAP_CHANNEL,
 	.record = PBAP_RECORD,
 	.target = PBAP_TARGET,
+	.connect = pbap_connect,
 	.get = pbap_get,
-	.setpath = pbap_setpath
+	.setpath = pbap_setpath,
+	.disconnect = pbap_disconnect
 };
 
 static int pbap_init(void)

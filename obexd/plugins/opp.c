@@ -94,6 +94,15 @@
   </attribute>									\
 </record>"
 
+static void opp_connect(obex_t *obex, obex_object_t *obj)
+{
+	struct obex_session *os = OBEX_GetUserData(obex);
+
+	register_transfer(os->cid, os);
+	/* OPP doesn't contains target or connection id. */
+	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+}
+
 static gint opp_chkput(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
@@ -132,6 +141,7 @@ static gint opp_chkput(obex_t *obex, obex_object_t *obj)
 	}
 
 skip_auth:
+	emit_transfer_started(os->cid);
 	return os_prepare_put(os);
 }
 
@@ -199,14 +209,35 @@ fail:
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 }
 
+static void opp_disconnect(obex_t *obex)
+{
+	struct obex_session *os = OBEX_GetUserData(obex);
+
+	/* Got an error during a transfer. */
+	if (os->object)
+		emit_transfer_completed(os->cid, os->offset == os->size);
+
+	unregister_transfer(os->cid);
+}
+
+static void opp_reset(obex_t *obex)
+{
+	struct obex_session *os = OBEX_GetUserData(obex);
+
+	emit_transfer_completed(os->cid, !os->aborted);
+}
+
 struct obex_service_driver driver = {
 	.name = "Object Push server",
 	.service = OBEX_OPP,
 	.channel = OPP_CHANNEL,
 	.record = OPP_RECORD,
+	.connect = opp_connect,
+	.disconnect = opp_disconnect,
 	.get = opp_get,
 	.put = opp_put,
 	.chkput = opp_chkput,
+	.reset = opp_reset
 };
 
 static int opp_init(void)

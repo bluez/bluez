@@ -27,10 +27,13 @@ struct obex_service_driver {
 	guint8 channel;
 	const guint8 *target;
 	const gchar *record;
+	void (*connect) (obex_t *obex, obex_object_t *obj);
 	void (*get) (obex_t *obex, obex_object_t *obj);
 	void (*put) (obex_t *obex, obex_object_t *obj);
 	gint (*chkput) (obex_t *obex, obex_object_t *obj);
 	void (*setpath) (obex_t *obex, obex_object_t *obj);
+	void (*disconnect) (obex_t *obex);
+	void (*reset) (obex_t *obex);
 };
 
 int obex_service_driver_register(struct obex_service_driver *driver);
