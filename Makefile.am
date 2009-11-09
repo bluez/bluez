@@ -332,6 +332,9 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 src/bluetooth.exp: $(src_bluetoothd_OBJECTS)
 	$(AM_V_GEN)$(NM) $^ | $(AWK) '{ print $$3 }' | sort -u | \
 				$(EGREP) -e '^btd_' -e '^g_dbus_' > $@
+	$(AM_V_at)echo -e "info" >> $@
+	$(AM_V_at)echo -e "error" >> $@
+	$(AM_V_at)echo -e "debug" >> $@
 
 src/bluetooth.ver: src/bluetooth.exp
 	$(AM_V_at)echo "{ global:" > $@
