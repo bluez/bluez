@@ -725,9 +725,8 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 
 	switch (evt) {
 	case OBEX_EV_PROGRESS:
-		/* Just emit progress for Object Push */
-		if (os->service->service == OBEX_OPP)
-			emit_transfer_progress(os->cid, os->size, os->offset);
+		if (os->service->progress)
+			os->service->progress(obex, obj);
 		break;
 	case OBEX_EV_ABORT:
 		os->aborted = TRUE;

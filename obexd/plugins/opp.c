@@ -103,6 +103,13 @@ static void opp_connect(obex_t *obex, obex_object_t *obj)
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
 }
 
+static void opp_progress(obex_t *obex, obex_object_t *obj)
+{
+	struct obex_session *os = OBEX_GetUserData(obex);
+
+	emit_transfer_progress(os->cid, os->size, os->offset);
+}
+
 static gint opp_chkput(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
@@ -233,6 +240,7 @@ struct obex_service_driver driver = {
 	.channel = OPP_CHANNEL,
 	.record = OPP_RECORD,
 	.connect = opp_connect,
+	.progress = opp_progress,
 	.disconnect = opp_disconnect,
 	.get = opp_get,
 	.put = opp_put,

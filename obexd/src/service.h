@@ -28,6 +28,7 @@ struct obex_service_driver {
 	const guint8 *target;
 	const gchar *record;
 	void (*connect) (obex_t *obex, obex_object_t *obj);
+	void (*progress) (obex_t *obex, obex_object_t *obj);
 	void (*get) (obex_t *obex, obex_object_t *obj);
 	void (*put) (obex_t *obex, obex_object_t *obj);
 	gint (*chkput) (obex_t *obex, obex_object_t *obj);
