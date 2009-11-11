@@ -223,7 +223,7 @@ static void device_free(gpointer user_data)
 	struct agent *agent = adapter_get_agent(adapter);
 
 	if (device->agent)
-		agent_destroy(device->agent, FALSE);
+		agent_free(device->agent);
 
 	if (agent && (agent_is_busy(agent, device) ||
 				agent_is_busy(agent, device->authr)))
@@ -1657,7 +1657,7 @@ static void bonding_request_free(struct bonding_req *bonding)
 		return;
 
 	agent_cancel(device->agent);
-	agent_destroy(device->agent, FALSE);
+	agent_free(device->agent);
 	device->agent = NULL;
 }
 

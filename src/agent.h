@@ -39,7 +39,7 @@ struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 				const char *path, uint8_t capability,
 				agent_remove_cb cb, void *remove_cb_data);
 
-int agent_destroy(struct agent *agent, gboolean exited);
+void agent_free(struct agent *agent);
 
 int agent_authorize(struct agent *agent, const char *path,
 			const char *uuid, agent_cb cb, void *user_data,
