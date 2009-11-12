@@ -51,11 +51,6 @@
 #include "obex.h"
 #include "service.h"
 
-#define OPP_CHANNEL	9
-#define FTP_CHANNEL	10
-#define PBAP_CHANNEL	15
-#define PCSUITE_CHANNEL	24
-
 #define DEFAULT_ROOT_PATH "/tmp"
 
 #define DEFAULT_CAP_FILE CONFIGDIR "/capability.xml"
