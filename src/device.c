@@ -2049,8 +2049,8 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 
 	((agent_pincode_cb) auth->cb)(agent, err, pincode, device);
 
-	device->authr = NULL;
-	g_free(auth);
+	device->authr->cb = NULL;
+	device->authr->agent = NULL;
 }
 
 static void confirm_cb(struct agent *agent, DBusError *err, void *data)
@@ -2064,8 +2064,8 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *data)
 
 	((agent_cb) auth->cb)(agent, err, device);
 
-	device->authr = NULL;
-	g_free(auth);
+	device->authr->cb = NULL;
+	device->authr->agent = NULL;
 }
 
 static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
@@ -2080,8 +2080,8 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 
 	((agent_passkey_cb) auth->cb)(agent, err, passkey, device);
 
-	device->authr = NULL;
-	g_free(auth);
+	device->authr->cb = NULL;
+	device->authr->agent = NULL;
 }
 
 int device_request_authentication(struct btd_device *device, auth_type_t type,
