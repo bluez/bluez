@@ -91,8 +91,8 @@ static int netlink_init(void)
 	cache = genl_ctrl_alloc_cache(handle);
 	if (!cache) {
 		error("Failed to allocate generic netlink cache");
-		return -ENOMEM;
 		nl_handle_destroy(handle);
+		return -ENOMEM;
 	}
 
 	family = genl_ctrl_search_by_name(cache, "bluetooth");
