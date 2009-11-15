@@ -1,3 +1,7 @@
+ver 4.58:
+	Fix crash when adapter agent exists during authentication.
+	Fix CK-20W quirks for play and pause events.
+
 ver 4.57:
 	Fix unloading of drivers for uninitialized adapters.
 	Fix debug message to use requested and not opened SEID.
