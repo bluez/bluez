@@ -38,7 +38,8 @@
 
 static GSList *drivers = NULL;
 
-struct obex_service_driver *obex_service_driver_find(GSList *list, const guint8 *target)
+struct obex_service_driver *obex_service_driver_find(GSList *list,
+					const guint8 *target, guint target_size)
 {
 	GSList *l;
 
@@ -49,7 +50,8 @@ struct obex_service_driver *obex_service_driver_find(GSList *list, const guint8 
 			return driver;
 
 		if (driver->target && target &&
-				memcmp(driver->target, target, TARGET_SIZE) == 0)
+				driver->target_size == target_size &&
+				memcmp(driver->target, target, target_size) == 0)
 			return driver;
 	}
 

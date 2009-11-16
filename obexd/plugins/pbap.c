@@ -564,6 +564,7 @@ struct obex_service_driver pbap = {
 	.channel = PBAP_CHANNEL,
 	.record = PBAP_RECORD,
 	.target = PBAP_TARGET,
+	.target_size = TARGET_SIZE,
 	.connect = pbap_connect,
 	.get = pbap_get,
 	.setpath = pbap_setpath,

@@ -200,10 +200,11 @@ static void cmd_connect(struct obex_session *os,
 	os->cid = ++cid;
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
-		if (hi != OBEX_HDR_TARGET || hlen != TARGET_SIZE)
+		if (hi != OBEX_HDR_TARGET)
 			continue;
 
-		os->service = obex_service_driver_find(os->server->drivers, hd.bs);
+		os->service = obex_service_driver_find(os->server->drivers,
+								hd.bs, hlen);
 		break;
 	}
 
@@ -890,7 +891,7 @@ gint obex_session_start(GIOChannel *io, struct server *server)
 
 	os = g_new0(struct obex_session, 1);
 
-	os->service = obex_service_driver_find(server->drivers, NULL);
+	os->service = obex_service_driver_find(server->drivers, NULL, 0);
 
 	os->current_folder = g_strdup(server->folder);
 	os->server = server;
