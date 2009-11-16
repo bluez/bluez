@@ -643,14 +643,6 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 
 	OBEX_ObjectReParseHeaders(obex, obj);
 
-	if (!os->name) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST,
-				OBEX_RSP_BAD_REQUEST);
-		g_free(os->type);
-		os->type = NULL;
-		return FALSE;
-	}
-
 	if (!os->driver) {
 		os->driver = obex_mime_type_driver_find(os->service->target, NULL);
 		if (!os->driver) {

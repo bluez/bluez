@@ -296,6 +296,9 @@ static gint ftp_chkput(obex_t *obex, obex_object_t *obj)
 	if (os == NULL)
 		return -EINVAL;
 
+	if (!os->name)
+		return -EINVAL;
+
 	if (os->size == OBJECT_SIZE_DELETE)
 		return 0;
 
