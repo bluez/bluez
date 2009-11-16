@@ -518,14 +518,9 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 	}
 
 	if (os->object == NULL && size > 0) {
-		if (os->buf) {
-			error("Got more data but there is still a pending buffer");
-			return -EIO;
-		}
-
-		os->buf = g_malloc0(os->rx_mtu);
-		memcpy(os->buf, buffer, size);
-		os->offset = size;
+		os->buf = g_realloc(os->buf, os->offset + size);
+		memcpy(os->buf + os->offset, buffer, size);
+		os->offset += size;
 
 		debug("Stored %u bytes into temporary buffer", size);
 
