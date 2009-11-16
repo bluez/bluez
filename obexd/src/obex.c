@@ -265,21 +265,6 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 
 	g_return_if_fail(chk_cid(obex, obj, os->cid));
 
-	if (os->type) {
-		g_free(os->type);
-		os->type = NULL;
-	}
-
-	if (os->name) {
-		g_free(os->name);
-		os->name = NULL;
-	}
-
-	if (os->buf) {
-		g_free(os->buf);
-		os->buf = NULL;
-	}
-
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
 		switch (hi) {
 		case OBEX_HDR_NAME:
