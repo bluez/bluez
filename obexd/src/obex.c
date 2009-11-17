@@ -715,6 +715,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			break;
 		case OBEX_CMD_PUT:
 		case OBEX_CMD_GET:
+		case OBEX_CMD_SETPATH:
 			os_session_mark_aborted(os);
 			if (os->service->reset)
 				os->service->reset(obex);
