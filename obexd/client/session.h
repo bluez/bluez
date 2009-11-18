@@ -48,8 +48,8 @@ struct session_data {
 	char *buffer;
 	size_t buffer_len;
 	int filled;
-	ssize_t size;
-	ssize_t transferred;
+	gint64 size;
+	gint64 transferred;
 	gchar *filename;
 	gchar *agent_name;
 	gchar *agent_path;
