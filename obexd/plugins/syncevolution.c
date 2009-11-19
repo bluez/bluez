@@ -215,6 +215,7 @@ static void connect_cb(DBusPendingCall *call, void *user_data)
 	struct synce_context *context;
 	DBusConnection *conn;
 	DBusMessage *reply;
+	DBusError err;
 	gchar *path;
 	obex_headerdata_t hd;
 
@@ -228,8 +229,14 @@ static void connect_cb(DBusPendingCall *call, void *user_data)
 
 	reply = dbus_pending_call_steal_reply(call);
 
-	dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-						DBUS_TYPE_INVALID);
+	dbus_error_init(&err);
+	if (dbus_message_get_args(reply, &err, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_INVALID) == FALSE) {
+		error("%s", err.message);
+		dbus_error_free(&err);
+		goto failed;
+	}
+
 	debug("Got conn object %s from syncevolution", path);
 	context->conn_obj = g_strdup(path);
 
