@@ -1,0 +1,30 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
+adapter = dbus.Interface(bus.get_object("org.bluez", manager.DefaultAdapter()),
+				"org.bluez.Adapter")
+
+if len(sys.argv) < 3:
+	print """Usage: %s <command>
+
+	connect <bdaddr>
+	disconnect <bdaddr>
+	""" % sys.argv[0]
+	sys.exit(1)
+
+device = adapter.FindDevice(sys.argv[2])
+input = dbus.Interface(bus.get_object("org.bluez", device),
+				"org.bluez.Input")
+
+if sys.argv[1] == "connect":
+	input.Connect()
+elif sys.argv[1] == "disconnect":
+	input.Disconnect()
+else:
+	print "Unknown command"
+	sys.exit(1)
