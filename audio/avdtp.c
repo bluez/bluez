@@ -2375,9 +2375,10 @@ static gboolean request_timeout(gpointer user_data)
 	else
 		stream = NULL;
 
-	if (stream)
+	if (stream) {
+		stream->abort_int = TRUE;
 		lsep = stream->lsep;
-	else
+	} else
 		lsep = NULL;
 
 	switch (req->signal_id) {
@@ -2443,8 +2444,6 @@ static gboolean request_timeout(gpointer user_data)
 		goto failed;
 	}
 
-	stream->abort_int = TRUE;
-
 	goto done;
 
 failed:
@@ -2503,6 +2502,9 @@ static int send_request(struct avdtp *session, gboolean priority,
 			void *buffer, size_t size)
 {
 	struct pending_req *req;
+
+	if (stream && stream->abort_int && signal_id != AVDTP_ABORT)
+		return -EINVAL;
 
 	req = g_new0(struct pending_req, 1);
 	req->signal_id = signal_id;
