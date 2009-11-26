@@ -249,7 +249,7 @@ static void accept_add(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 					(GDestroyNotify) accept_remove);
 }
 
-static int l2cap_bind(int sock, const bdaddr_t *src, uint16_t psm)
+static int l2cap_bind(int sock, const bdaddr_t *src, uint16_t psm, GError **err)
 {
 	struct sockaddr_l2 addr;
 
@@ -258,7 +258,12 @@ static int l2cap_bind(int sock, const bdaddr_t *src, uint16_t psm)
 	bacpy(&addr.l2_bdaddr, src);
 	addr.l2_psm = htobs(psm);
 
-	return bind(sock, (struct sockaddr *) &addr, sizeof(addr));
+	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		ERROR_FAILED(err, "l2cap_bind", errno);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int l2cap_connect(int sock, const bdaddr_t *dst, uint16_t psm)
@@ -507,7 +512,8 @@ static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
 	return TRUE;
 }
 
-static int rfcomm_bind(int sock, const bdaddr_t *src, uint8_t channel)
+static int rfcomm_bind(int sock,
+		const bdaddr_t *src, uint8_t channel, GError **err)
 {
 	struct sockaddr_rc addr;
 
@@ -516,7 +522,12 @@ static int rfcomm_bind(int sock, const bdaddr_t *src, uint8_t channel)
 	bacpy(&addr.rc_bdaddr, src);
 	addr.rc_channel = channel;
 
-	return bind(sock, (struct sockaddr *) &addr, sizeof(addr));
+	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		ERROR_FAILED(err, "rfcomm_bind", errno);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int rfcomm_connect(int sock, const bdaddr_t *dst, uint8_t channel)
@@ -549,7 +560,7 @@ static gboolean rfcomm_set(int sock, int sec_level, int master, GError **err)
 	return TRUE;
 }
 
-static int sco_bind(int sock, const bdaddr_t *src)
+static int sco_bind(int sock, const bdaddr_t *src, GError **err)
 {
 	struct sockaddr_sco addr;
 
@@ -557,7 +568,12 @@ static int sco_bind(int sock, const bdaddr_t *src)
 	addr.sco_family = AF_BLUETOOTH;
 	bacpy(&addr.sco_bdaddr, src);
 
-	return bind(sock, (struct sockaddr *) &addr, sizeof(addr));
+	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		ERROR_FAILED(err, "sco_bind", errno);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int sco_connect(int sock, const bdaddr_t *dst)
@@ -1103,12 +1119,11 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 			ERROR_FAILED(err, "socket(RAW, L2CAP)", errno);
 			return NULL;
 		}
-		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0) < 0) {
-			ERROR_FAILED(err, "l2cap_bind", errno);
-			return NULL;
-		}
+		if (l2cap_bind(sock, &opts->src,
+					server ? opts->psm : 0, err) < 0)
+			goto failed;
 		if (!l2cap_set(sock, opts->sec_level, 0, 0, -1, err))
-			return NULL;
+			goto failed;
 		break;
 	case BT_IO_L2CAP:
 		sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
@@ -1116,13 +1131,12 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 			ERROR_FAILED(err, "socket(SEQPACKET, L2CAP)", errno);
 			return NULL;
 		}
-		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0) < 0) {
-			ERROR_FAILED(err, "l2cap_bind", errno);
-			return NULL;
-		}
+		if (l2cap_bind(sock, &opts->src,
+					server ? opts->psm : 0, err) < 0)
+			goto failed;
 		if (!l2cap_set(sock, opts->sec_level, opts->imtu, opts->omtu,
 							opts->master, err))
-			return NULL;
+			goto failed;
 		break;
 	case BT_IO_RFCOMM:
 		sock = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
@@ -1131,12 +1145,10 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 			return NULL;
 		}
 		if (rfcomm_bind(sock, &opts->src,
-					server ? opts->channel : 0) < 0) {
-			ERROR_FAILED(err, "rfcomm_bind", errno);
-			return NULL;
-		}
+					server ? opts->channel : 0, err) < 0)
+			goto failed;
 		if (!rfcomm_set(sock, opts->sec_level, opts->master, err))
-			return NULL;
+			goto failed;
 		break;
 	case BT_IO_SCO:
 		sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO);
@@ -1144,12 +1156,10 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 			ERROR_FAILED(err, "socket(SEQPACKET, SCO)", errno);
 			return NULL;
 		}
-		if (sco_bind(sock, &opts->src) < 0) {
-			ERROR_FAILED(err, "sco_bind", errno);
-			return NULL;
-		}
+		if (sco_bind(sock, &opts->src, err) < 0)
+			goto failed;
 		if (!sco_set(sock, opts->mtu, err))
-			return NULL;
+			goto failed;
 		break;
 	default:
 		g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
@@ -1163,6 +1173,11 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 	g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK, NULL);
 
 	return io;
+
+failed:
+	close(sock);
+
+	return NULL;
 }
 
 GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
