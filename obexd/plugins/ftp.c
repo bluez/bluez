@@ -141,26 +141,16 @@ static const guint8 FTP_TARGET[TARGET_SIZE] = {
 			0xF9, 0xEC, 0x7B, 0xC4,  0x95, 0x3C, 0x11, 0xD2,
 			0x98, 0x4E, 0x52, 0x54,  0x00, 0xDC, 0x9E, 0x09  };
 
-static gint folder_listing(struct obex_session *os, size_t *size)
-{
-	return os_prepare_get(os, os->current_folder, size);
-}
-
-static gint get_capability(struct obex_session *os, size_t *size)
-{
-	return os_prepare_get(os, os->server->capability, size);
-}
-
 static gint get_by_type(struct obex_session *os, gchar *type, size_t *size)
 {
 	if (type == NULL)
 		return -ENOENT;
 
 	if (g_str_equal(type, CAP_TYPE))
-		return get_capability(os, size);
+		return os_prepare_get(os, os->server->capability, size);
 
 	if (g_str_equal(type, LST_TYPE))
-		return folder_listing(os, size);
+		return os_prepare_get(os, os->current_folder, size);
 
 	return FALSE;
 }
