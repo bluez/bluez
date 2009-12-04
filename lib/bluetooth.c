@@ -464,6 +464,8 @@ char *bt_compidtostr(int compid)
 		return "Harman International Industries, Inc.";
 	case 88:
 		return "Vizio, Inc.";
+	case 89:
+		return "Nordic Semiconductor ASA";
 	case 65535:
 		return "internal use";
 	default:
