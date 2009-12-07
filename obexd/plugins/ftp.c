@@ -141,6 +141,10 @@ static const guint8 FTP_TARGET[TARGET_SIZE] = {
 			0xF9, 0xEC, 0x7B, 0xC4,  0x95, 0x3C, 0x11, 0xD2,
 			0x98, 0x4E, 0x52, 0x54,  0x00, 0xDC, 0x9E, 0x09  };
 
+static const guint8 PCSUITE_TARGET[TARGET_SIZE] = {
+			0x00, 0x00, 0x50, 0x05, 0x00, 0x00, 0x10, 0x00,
+			0x80, 0x00, 0x00, 0x02, 0xEE, 0x00, 0x00, 0x01 };
+
 static gint get_by_type(struct obex_session *os, gchar *type, size_t *size)
 {
 	if (type == NULL)
@@ -461,6 +465,8 @@ struct obex_service_driver pcsuite = {
 	.record = PCSUITE_RECORD,
 	.target = FTP_TARGET,
 	.target_size = TARGET_SIZE,
+	.who = PCSUITE_TARGET,
+	.who_size = TARGET_SIZE,
 	.connect = ftp_connect,
 	.get = ftp_get,
 	.put = ftp_put,

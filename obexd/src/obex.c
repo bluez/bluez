@@ -178,6 +178,8 @@ static void cmd_connect(struct obex_session *os,
 	guint hlen, newsize;
 	guint16 mtu;
 	guint8 hi;
+	const guint8 *target = NULL, *who = NULL;
+	guint target_size = 0, who_size = 0;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &buffer) != sizeof(*nonhdr)) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
@@ -200,20 +202,29 @@ static void cmd_connect(struct obex_session *os,
 	os->cid = ++cid;
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
-		if (hi != OBEX_HDR_TARGET)
-			continue;
-
-		os->service = obex_service_driver_find(os->server->drivers,
-								hd.bs, hlen);
-		break;
+		switch (hi) {
+		case OBEX_HDR_WHO:
+			who = hd.bs;
+			who_size = hlen;
+			break;
+		case OBEX_HDR_TARGET:
+			target = hd.bs;
+			target_size = hlen;
+			break;
+		}
 	}
 
+	os->service = obex_service_driver_find(os->server->drivers,
+						target, target_size,
+						who, who_size);
 	if (os->service == NULL) {
 		error("Connect attempt to a non-supported target");
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 
 		return;
 	}
+
+	debug("Selected driver: %s", os->service->name);
 
 	if (os->service->connect)
 		os->service->connect(obex, obj);
@@ -892,8 +903,8 @@ gint obex_session_start(GIOChannel *io, struct server *server)
 
 	os = g_new0(struct obex_session, 1);
 
-	os->service = obex_service_driver_find(server->drivers, NULL, 0);
-
+	os->service = obex_service_driver_find(server->drivers, NULL, 0,
+						NULL, 0);
 	os->current_folder = g_strdup(server->folder);
 	os->server = server;
 	os->rx_mtu = server->rx_mtu ? server->rx_mtu : DEFAULT_RX_MTU;

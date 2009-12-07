@@ -27,6 +27,8 @@ struct obex_service_driver {
 	guint8 channel;
 	const guint8 *target;
 	guint target_size;
+	const guint8 *who;
+	guint who_size;
 	const gchar *record;
 	void (*connect) (obex_t *obex, obex_object_t *obj);
 	void (*progress) (obex_t *obex, obex_object_t *obj);
@@ -42,4 +44,5 @@ int obex_service_driver_register(struct obex_service_driver *driver);
 void obex_service_driver_unregister(struct obex_service_driver *driver);
 GSList *obex_service_driver_list(guint16 services);
 struct obex_service_driver *obex_service_driver_find(GSList *drivers,
-					const guint8 *target, guint target_size);
+					const guint8 *target, guint target_size,
+					const guint8 *who, guint who_size);
