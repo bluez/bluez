@@ -335,8 +335,8 @@ static ssize_t string_read(gpointer object, void *buf, size_t count)
 	if (string->len == 0)
 		return 0;
 
-	strncpy(buf, string->str, count);
-	len = strlen(buf);
+	len = count > string->len ? string->len : count;
+	memcpy(buf, string->str, len);
 	string = g_string_erase(string, 0, len);
 
 	return len;
