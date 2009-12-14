@@ -364,8 +364,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	plugin_init();
-
 	if (option_root == NULL)
 		option_root = g_strdup(DEFAULT_ROOT_PATH);
 
@@ -376,6 +374,8 @@ int main(int argc, char *argv[])
 			g_free(old_root);
 		}
 	}
+
+	plugin_init();
 
 	if (option_capability == NULL)
 		option_capability = g_strdup(DEFAULT_CAP_FILE);

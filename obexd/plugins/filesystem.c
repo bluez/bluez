@@ -223,82 +223,42 @@ fail:
 	return NULL;
 }
 
-static int capability_close(gpointer object)
-{
-	GString *capability = object;
-
-	g_string_free(capability, TRUE);
-	return 0;
-}
-
-static ssize_t capability_read(gpointer object, void *buf, size_t count)
-{
-	GString *capability = object;
-	ssize_t len;
-
-	if (capability->len == 0)
-		return 0;
-
-	strncpy(buf, capability->str, count);
-	len = strlen(buf);
-	capability = g_string_erase(capability, 0, len);
-
-	return len;
-}
-
 static gpointer folder_open(const char *name, int oflag, mode_t mode,
 				size_t *size)
-{
-	DIR *dir = opendir(name);
-
-	if (dir == NULL)
-		return NULL;
-
-	if (size)
-		*size = 1;
-
-	return dir;
-}
-
-static int folder_close(gpointer object)
-{
-	DIR *dir = (DIR *) object;
-
-	return closedir(dir);
-}
-
-static ssize_t folder_read(gpointer object, void *buf, size_t count)
 {
 	struct obex_session *os;
 	struct stat fstat, dstat;
 	struct dirent *ep;
-	DIR *dp = (DIR *) object;
-	GString *listing;
+	DIR *dp;
+	GString *object;
 	gboolean root, pcsuite;
-	gint err, len;
+	gint err;
 
-	os = obex_get_session(object);
-	if (os->finished)
-		return 0;
+	os = obex_get_session(NULL);
 
 	pcsuite = os->service->service & OBEX_PCSUITE ? TRUE : FALSE;
 
-	listing = g_string_new(FL_VERSION);
-	listing = g_string_append(listing, pcsuite ? FL_TYPE_PCSUITE : FL_TYPE);
+	object = g_string_new(FL_VERSION);
+	object = g_string_append(object, pcsuite ? FL_TYPE_PCSUITE : FL_TYPE);
 
-	listing = g_string_append(listing, FL_BODY_BEGIN);
+	object = g_string_append(object, FL_BODY_BEGIN);
 
-	root = g_str_equal(os->current_folder, os->server->folder);
+	root = g_str_equal(name, os->server->folder);
+
+	dp = opendir(name);
+	if (dp == NULL) {
+		errno = ENOENT;
+		goto failed;
+	}
 
 	if (root && os->server->symlinks)
-		err = stat(os->current_folder, &dstat);
+		err = stat(name, &dstat);
 	else {
-		listing = g_string_append(listing, FL_PARENT_FOLDER_ELEMENT);
-		err = lstat(os->current_folder, &dstat);
+		object = g_string_append(object, FL_PARENT_FOLDER_ELEMENT);
+		err = lstat(name, &dstat);
 	}
 
 	if (err < 0) {
-		err = -errno;
 		error("%s: %s(%d)", root ? "stat" : "lstat",
 				strerror(errno), errno);
 		goto failed;
@@ -343,21 +303,43 @@ static ssize_t folder_read(gpointer object, void *buf, size_t count)
 
 		g_free(name);
 
-		listing = g_string_append(listing, line);
+		object = g_string_append(object, line);
 		g_free(line);
 	}
 
-	listing = g_string_append(listing, FL_BODY_END);
-	len = listing->len;
-	memcpy(buf, listing->str, len);
-	g_string_free(listing, TRUE);
-	os->finished = TRUE;
+	object = g_string_append(object, FL_BODY_END);
+	if (size)
+		*size = object->len;
 
-	return len;
+	return object;
 
 failed:
-	g_string_free(listing, TRUE);
-	return err;
+	g_string_free(object, TRUE);
+	return NULL;
+}
+
+static int string_free(gpointer object)
+{
+	GString *string = object;
+
+	g_string_free(string, TRUE);
+
+	return 0;
+}
+
+static ssize_t string_read(gpointer object, void *buf, size_t count)
+{
+	GString *string = object;
+	ssize_t len;
+
+	if (string->len == 0)
+		return 0;
+
+	strncpy(buf, string->str, count);
+	len = strlen(buf);
+	string = g_string_erase(string, 0, len);
+
+	return len;
 }
 
 struct obex_mime_type_driver file = {
@@ -372,16 +354,16 @@ struct obex_mime_type_driver capability = {
 	.target = FTP_TARGET,
 	.mimetype = "x-obex/capability",
 	.open = capability_open,
-	.close = capability_close,
-	.read = capability_read,
+	.close = string_free,
+	.read = string_read,
 };
 
 struct obex_mime_type_driver folder = {
 	.target = FTP_TARGET,
 	.mimetype = "x-obex/folder-listing",
 	.open = folder_open,
-	.close = folder_close,
-	.read = folder_read,
+	.close = string_free,
+	.read = string_read,
 };
 
 static int filesystem_init(void)
