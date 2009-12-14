@@ -180,6 +180,7 @@ static gpointer capability_open(const char *name, int oflag, mode_t mode,
 	gchar *buf;
 	gint exit;
 	gboolean ret;
+	GString *object;
 
 	if (oflag != O_RDONLY)
 		goto fail;
@@ -207,10 +208,12 @@ static gpointer capability_open(const char *name, int oflag, mode_t mode,
 	}
 
 done:
-	if (size)
-		*size = strlen(buf);
+	object = g_string_new(buf);
 
-	return buf;
+	if (size)
+		*size = object->len;
+
+	return object;
 
 fail:
 	if (gerr)
@@ -222,14 +225,25 @@ fail:
 
 static int capability_close(gpointer object)
 {
-	g_free(object);
+	GString *capability = object;
+
+	g_string_free(capability, TRUE);
 	return 0;
 }
 
 static ssize_t capability_read(gpointer object, void *buf, size_t count)
 {
-	strncpy(buf, object, count);
-	return strlen(buf);
+	GString *capability = object;
+	ssize_t len;
+
+	if (capability->len == 0)
+		return 0;
+
+	strncpy(buf, capability->str, count);
+	len = strlen(buf);
+	capability = g_string_erase(capability, 0, len);
+
+	return len;
 }
 
 static gpointer folder_open(const char *name, int oflag, mode_t mode,
