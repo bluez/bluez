@@ -183,7 +183,11 @@ static void timeout_handler_free(void *data)
 	if (!handler)
 		return;
 
-	g_source_remove(handler->id);
+	if (handler->id > 0) {
+		g_source_remove(handler->id);
+		handler->id = 0;
+	}
+
 	g_free(handler);
 }
 
@@ -207,6 +211,17 @@ static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
 
 static void remove_timeout(DBusTimeout *timeout, void *data)
 {
+        timeout_handler_t *handler;
+
+        handler = dbus_timeout_get_data(timeout);
+
+        if (!handler)
+                return;
+
+        if (handler->id > 0) {
+                g_source_remove(handler->id);
+                handler->id = 0;
+        }
 }
 
 static void timeout_toggled(DBusTimeout *timeout, void *data)
