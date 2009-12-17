@@ -765,6 +765,11 @@ void device_remove_connection(struct btd_device *device, DBusConnection *conn,
 
 	device->handle = 0;
 
+	if (device->disconn_timer > 0) {
+		g_source_remove(device->disconn_timer);
+		device->disconn_timer = 0;
+	}
+
 	while (device->disconnects) {
 		DBusMessage *msg = device->disconnects->data;
 
