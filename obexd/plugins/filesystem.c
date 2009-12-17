@@ -146,8 +146,7 @@ static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
 		goto failed;
 
 	if (buf.f_bsize * buf.f_bavail < *size) {
-		debug("Not enough free space on disk");
-		errno = -ENOSPC;
+		errno = ENOSPC;
 		goto failed;
 	}
 
