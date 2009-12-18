@@ -467,9 +467,9 @@ gint os_prepare_put(struct obex_session *os)
 	gint len;
 
 	path = g_build_filename(os->current_folder, os->name, NULL);
-
 	os->object = os->driver->open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600,
-					(size_t *) &os->size);
+					os->size != OBJECT_SIZE_UNKNOWN ?
+					(size_t *) &os->size : NULL);
 	if (os->object == NULL) {
 		error("open(%s): %s (%d)", path, strerror(errno), errno);
 		g_free(path);

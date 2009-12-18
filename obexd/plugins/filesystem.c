@@ -138,14 +138,18 @@ static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
 	}
 
 	if (oflag == O_RDONLY) {
-		*size =  stats.st_size;
+		if (size)
+			*size =  stats.st_size;
 		return GINT_TO_POINTER(fd);
 	}
 
 	if (fstatvfs(fd, &buf) < 0)
 		goto failed;
 
-	if (buf.f_bsize * buf.f_bavail < *size) {
+	if (size == NULL)
+		return GINT_TO_POINTER(fd);
+
+	if (buf.f_bsize * buf.f_bavail < (size_t) *size) {
 		errno = ENOSPC;
 		goto failed;
 	}
