@@ -139,7 +139,7 @@ static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
 
 	if (oflag == O_RDONLY) {
 		if (size)
-			*size =  stats.st_size;
+			*size = stats.st_size;
 		return GINT_TO_POINTER(fd);
 	}
 
@@ -149,7 +149,7 @@ static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
 	if (size == NULL)
 		return GINT_TO_POINTER(fd);
 
-	if (buf.f_bsize * buf.f_bavail < (size_t) *size) {
+	if (buf.f_bsize * buf.f_bavail < *size) {
 		errno = ENOSPC;
 		goto failed;
 	}
