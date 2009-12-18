@@ -236,6 +236,8 @@ enum {
 #define LMP_EV5		0x02
 #define LMP_AFH_CAP_SLV	0x08
 #define LMP_AFH_CLS_SLV	0x10
+#define LMP_NO_BREDR	0x20
+#define LMP_LE		0x40
 #define LMP_EDR_3SLOT	0x80
 
 #define LMP_EDR_5SLOT	0x01
@@ -248,6 +250,7 @@ enum {
 #define LMP_EDR_3S_ESCO	0x80
 
 #define LMP_EXT_INQ	0x01
+#define LMP_LE_BREDR	0x02
 #define LMP_SIMPLE_PAIR	0x08
 #define LMP_ENCAPS_PDU	0x10
 #define LMP_ERR_DAT_REP	0x20

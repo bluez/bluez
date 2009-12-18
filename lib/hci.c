@@ -667,8 +667,8 @@ static hci_map lmp_features_map[8][9] = {
 		{ "<no. 34>",		0x04		},	/* Bit 2 */
 		{ "<AFH cap. slave>",	LMP_AFH_CAP_SLV	},	/* Bit 3 */
 		{ "<AFH class. slave>",	LMP_AFH_CLS_SLV	},	/* Bit 4 */
-		{ "<no. 37>",		0x20		},	/* Bit 5 */
-		{ "<no. 38>",		0x40		},	/* Bit 6 */
+		{ "<BR/EDR not supp.>",	LMP_NO_BREDR	},	/* Bit 5 */
+		{ "<LE support>",	LMP_LE		},	/* Bit 6 */
 		{ "<3-slot EDR ACL>",	LMP_EDR_3SLOT	},	/* Bit 7 */
 		{ NULL }
 	},
@@ -685,7 +685,7 @@ static hci_map lmp_features_map[8][9] = {
 	},
 	{	/* Byte 6 */
 		{ "<extended inquiry>",	LMP_EXT_INQ	},	/* Bit 0 */
-		{ "<no. 49>",		0x02		},	/* Bit 1 */
+		{ "<LE and BR/EDR>",	LMP_LE_BREDR	},	/* Bit 1 */
 		{ "<no. 50>",		0x04		},	/* Bit 2 */
 		{ "<simple pairing>",	LMP_SIMPLE_PAIR	},	/* Bit 3 */
 		{ "<encapsulated PDU>",	LMP_ENCAPS_PDU	},	/* Bit 4 */
