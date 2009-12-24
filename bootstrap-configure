@@ -17,6 +17,7 @@ fi
 		--localstatedir=/var \
 		--libexecdir=/lib \
 		--enable-netlink \
+		--enable-tracer \
 		--enable-tools \
 		--enable-bccmd \
 		--enable-dfutool \

@@ -58,6 +58,15 @@ CLEANFILES += tools/lexer.c tools/parser.c tools/parser.h
 
 EXTRA_DIST += tools/rfcomm.conf
 
+if TRACER
+sbin_PROGRAMS += tracer/hcitrace
+
+tracer_hcitrace_SOURCES = tracer/main.c \
+				src/logging.h src/logging.c
+tracer_hcitrace_LDADD = lib/libbluetooth.la \
+				@GLIB_LIBS@ @DBUS_LIBS@ @CAPNG_LIBS@
+tracer_hcitrace_DEPENDENCIES = lib/libbluetooth.la
+endif
 
 if BCCMD
 sbin_PROGRAMS += tools/bccmd
