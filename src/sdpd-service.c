@@ -192,7 +192,7 @@ void create_ext_inquiry_response(const char *name, uint8_t *data)
 	if (did_vendor != 0x0000) {
 		uint16_t source = 0x0002;
 		*ptr++ = 9;
-		*ptr++ = 11;
+		*ptr++ = 0x10;
 		*ptr++ = (source & 0x00ff);
 		*ptr++ = (source & 0xff00) >> 8;
 		*ptr++ = (did_vendor & 0x00ff);
