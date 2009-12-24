@@ -1,3 +1,12 @@
+ver 4.59:
+	Add values for Bluetooth 4.0 specification.
+	Add SDP functions for HDP support.
+	Add test scripts for input and audio.
+	Fix missing close on BtIO create_io function.
+	Fix sending incorrect AVDTP commands after timeout occurs.
+	Fix timer removal when device disconnects unexpectedly.
+	Fix Extended Inquiry Response record for Device ID.
+
 ver 4.58:
 	Fix crash when adapter agent exists during authentication.
 	Fix CK-20W quirks for play and pause events.
