@@ -64,19 +64,16 @@ struct disconnect_data {
 	void *user_data;
 };
 
-static DBusHandlerResult disconnect_filter(DBusConnection *conn,
+static gboolean disconnected_signal(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct disconnect_data *dc_data = data;
 
-	if (dbus_message_is_signal(msg,
-			DBUS_INTERFACE_LOCAL, "Disconnected") == TRUE) {
-		error("Got disconnected from the system message bus");
-		dc_data->disconnect_cb(conn, dc_data->user_data);
-		dbus_connection_unref(conn);
-	}
+	error("Got disconnected from the system message bus");
+	dc_data->disconnect_cb(conn, dc_data->user_data);
+	dbus_connection_unref(conn);
 
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return TRUE;
 }
 
 static gboolean message_dispatch_cb(void *data)
@@ -312,9 +309,11 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
 
-	if (dbus_connection_add_filter(connection, disconnect_filter,
-						dc_data, g_free) == FALSE) {
-		error("Can't add D-Bus disconnect filter");
+	if (g_dbus_add_signal_watch(connection, NULL, NULL,
+				DBUS_INTERFACE_LOCAL, "Disconnected",
+				disconnected_signal, dc_data,
+				g_free) == 0) {
+		error("Can't add watch for D-Bus Disconnected signal\n");
 		g_free(dc_data);
 		return FALSE;
 	}
