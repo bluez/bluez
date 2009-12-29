@@ -142,7 +142,7 @@ static gboolean add_match(struct filter_data *data,
 
 	dbus_bus_add_match(data->connection, rule, &err);
 	if (dbus_error_is_set(&err)) {
-		error("Adding match rule \"%s\" failed: %s", match_string,
+		error("Adding match rule \"%s\" failed: %s", rule,
 				err.message);
 		dbus_error_free(&err);
 		return FALSE;
@@ -166,7 +166,7 @@ static gboolean remove_match(struct filter_data *data)
 	dbus_bus_remove_match(data->connection, rule, &err);
 	if (dbus_error_is_set(&err)) {
 		error("Removing owner match rule for %s failed: %s",
-				name, err.message);
+				rule, err.message);
 		dbus_error_free(&err);
 		return FALSE;
 	}
