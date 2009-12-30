@@ -43,6 +43,7 @@
 #include "dbus.h"
 #include "btio.h"
 #include "obexd.h"
+#include "gdbus.h"
 
 #define SYNCML_TARGET_SIZE 11
 
@@ -85,13 +86,13 @@ static const guint8 SYNCML_TARGET[SYNCML_TARGET_SIZE] = {
 #define SYNCE_SERVER_INTERFACE	"org.syncevolution.Server"
 #define SYNCE_CONN_INTERFACE	"org.syncevolution.Connection"
 
-static char match_string[256];
-
 struct synce_context {
 	struct obex_session *os;
 	DBusConnection *dbus_conn;
 	gchar *conn_obj;
 	gboolean reply_received;
+	guint reply_watch;
+	guint abort_watch;
 };
 
 struct callback_data {
@@ -115,20 +116,6 @@ static struct synce_context *find_context(struct obex_session *os)
 	return NULL;
 }
 
-static struct synce_context *find_context_by_conn_obj(const char *path)
-{
-	GSList *l;
-
-	for (l = context_list; l != NULL; l = l->next) {
-		struct synce_context *context = l->data;
-
-		if (strcmp(context->conn_obj, path) == 0)
-			return context;
-	}
-
-	return NULL;
-}
-
 static void append_dict_entry(DBusMessageIter *dict, const char *key,
 							int type, void *val)
 {
@@ -141,17 +128,18 @@ static void append_dict_entry(DBusMessageIter *dict, const char *key,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static void handle_connection_reply_signal(DBusMessage *msg,
-				const char *obj_path, void *data)
+static gboolean reply_signal(DBusConnection *conn, DBusMessage *msg,
+				void *data)
 {
 	struct synce_context *context = data;
 	struct obex_session *os = context->os;
+	const char *path = dbus_message_get_path(msg);
 	DBusMessageIter iter, array_iter;
 	gchar *value;
 	gint length;
 
-	if (strcmp(context->conn_obj, obj_path) != 0)
-		return;
+	if (strcmp(context->conn_obj, path) != 0)
+		return FALSE;
 
 	dbus_message_iter_init(msg, &iter);
 
@@ -159,7 +147,7 @@ static void handle_connection_reply_signal(DBusMessage *msg,
 	dbus_message_iter_get_fixed_array(&array_iter, &value, &length);
 
 	if (length == 0)
-		return;
+		return TRUE;
 
 	os->buf = g_malloc(length);
 	memcpy(os->buf, value, length);
@@ -167,10 +155,12 @@ static void handle_connection_reply_signal(DBusMessage *msg,
 	os->finished = TRUE;
 	context->reply_received = TRUE;
 	OBEX_ResumeRequest(os->obex);
+
+	return TRUE;
 }
 
-static void handle_connection_abort_signal(DBusMessage *msg,
-				const char *obj_path, void *data)
+static gboolean abort_signal(DBusConnection *conn, DBusMessage *msg,
+				void *data)
 {
 	struct synce_context *context = data;
 	struct obex_session *os = context->os;
@@ -179,35 +169,12 @@ static void handle_connection_abort_signal(DBusMessage *msg,
 	os->finished = TRUE;
 	OBEX_ResumeRequest(os->obex);
 	OBEX_TransportDisconnect(os->obex);
-}
 
-static DBusHandlerResult signal_filter(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	const char *path = dbus_message_get_path(msg);
-	struct synce_context *context;
-
-	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	context = find_context_by_conn_obj(path);
-	if (!context)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	if (dbus_message_is_signal(msg, SYNCE_CONN_INTERFACE, "Reply")) {
-		debug("Reply signal is received.");
-		handle_connection_reply_signal(msg, path, context);
-	} else if (dbus_message_is_signal(msg, SYNCE_CONN_INTERFACE, "Abort")) {
-		debug("Abort signal is received.");
-		handle_connection_abort_signal(msg, path, context);
-	}
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return TRUE;
 }
 
 static void connect_cb(DBusPendingCall *call, void *user_data)
 {
-	static gboolean signal_filter_added = FALSE;
 	struct callback_data *cb_data = user_data;
 	obex_t *obex = cb_data->obex;
 	obex_object_t *obj = cb_data->obj;
@@ -240,22 +207,13 @@ static void connect_cb(DBusPendingCall *call, void *user_data)
 	debug("Got conn object %s from syncevolution", path);
 	context->conn_obj = g_strdup(path);
 
-	/* add signal filter */
-	if (!signal_filter_added) {
-		if (!dbus_connection_add_filter(conn, signal_filter,
-							os, NULL)) {
-			error("Can't add signal filter");
-			dbus_message_unref(reply);
-			g_free(cb_data);
-			goto failed;
-		}
-		signal_filter_added = TRUE;
-	}
+	context->reply_watch = g_dbus_add_signal_watch(conn, NULL, path,
+						SYNCE_CONN_INTERFACE, "Reply",
+						reply_signal, context, NULL);
 
-	snprintf(match_string, sizeof(match_string), "type=signal,interface=%s,"
-			"path=%s", SYNCE_CONN_INTERFACE, context->conn_obj);
-	dbus_bus_add_match(conn, match_string, NULL);
-	dbus_connection_flush(conn);
+	context->abort_watch = g_dbus_add_signal_watch(conn, NULL, path,
+						SYNCE_CONN_INTERFACE, "Abort",
+						abort_signal, context, NULL);
 
 	dbus_message_unref(reply);
 	g_free(cb_data);
@@ -507,10 +465,11 @@ static void synce_disconnect(obex_t *obex)
 	dbus_pending_call_unref(call);
 
 failed:
-	snprintf(match_string, sizeof(match_string),
-				"type=signal,interface=%s,path=%s",
-				SYNCE_CONN_INTERFACE, context->conn_obj);
-	dbus_bus_remove_match(context->dbus_conn, match_string, NULL);
+	g_dbus_remove_watch(context->dbus_conn, context->reply_watch);
+	context->reply_watch = 0;
+	g_dbus_remove_watch(context->dbus_conn, context->abort_watch);
+	context->abort_watch = 0;
+
 	g_free(context->conn_obj);
 	context->conn_obj = NULL;
 
