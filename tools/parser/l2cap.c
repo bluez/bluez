@@ -667,6 +667,9 @@ static void info_opt(int level, int type, void *ptr, int len)
 			}
 		}
 		break;
+	case 0x0003:
+		printf("Fixed channel list\n");
+		break;
 	default:
 		printf("Unknown (len %d)\n", len);
 		break;
