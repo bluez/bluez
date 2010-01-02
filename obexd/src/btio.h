@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2009  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2010  Marcel Holtmann <marcel@holtmann.org>
  *  Copyright (C) 2009  Nokia Corporation
  *
  *
