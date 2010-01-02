@@ -74,8 +74,6 @@ enum {
 	PARSE,
 	READ,
 	WRITE,
-	RECEIVE,
-	SEND,
 	SERVER,
 	PPPDUMP,
 	AUDIO
@@ -320,7 +318,6 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
 
 		switch (mode) {
 		case WRITE:
-		case SEND:
 		case SERVER:
 			/* Save or send dump */
 			if (flags & DUMP_BTSNOOP) {
@@ -624,72 +621,6 @@ static int open_socket(int dev, unsigned long flags)
 	return sk;
 }
 
-static int open_connection(char *addr, char *port)
-{
-	struct sockaddr_storage ss;
-	struct sockaddr_in *in = (struct sockaddr_in *) &ss;
-	struct sockaddr_in6 *in6 = (struct sockaddr_in6 *) &ss;
-	struct addrinfo hints, *res0, *res;
-	int sk = -1, opt = 1;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = af;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-
-	if (getaddrinfo(addr, port, &hints, &res0))
-		if(getaddrinfo(NULL, port, &hints, &res0)) {
-			perror("getaddrinfo");
-			exit(1);
-		}
-	
-	for (res = res0; res; res = res->ai_next) {
-		sk = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-		if (sk < 0) {
-			if (res->ai_next)
-				continue;
-
-			perror("Can't create socket");
-			freeaddrinfo(res0);
-			exit(1);
-		}
-
-		setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-		memcpy(&ss, res->ai_addr, res->ai_addrlen);
-
-		switch(ss.ss_family) {
-		case AF_INET:
-			in->sin_addr.s_addr = htonl(INADDR_ANY);
-			in->sin_port = 0;
-			break;
-		case AF_INET6:
-			memcpy(&in6->sin6_addr, &in6addr_any,
-							sizeof(in6addr_any));
-			in6->sin6_port = 0;
-			break;
-		}
-
-		if (bind(sk, (struct sockaddr *) &ss, sizeof(ss)) < 0) {
-			perror("Can't bind socket");
-			close(sk);
-			freeaddrinfo(res0);
-			exit(1);
-		}
-		
-		if (connect(sk, res->ai_addr, res->ai_addrlen) < 0) {
-			perror("Can't connect socket");
-			close(sk);
-			freeaddrinfo(res0);
-			exit(1);
-		}
-	}
-
-	freeaddrinfo(res0);
-
-	return sk;
-}
-
 static int create_datagram(unsigned short port)
 {
 	struct sockaddr_in addr;
@@ -936,8 +867,6 @@ static void usage(void)
 	"  -m, --manufacturer=compid  Default manufacturer\n"
 	"  -w, --save-dump=file       Save dump to a file\n"
 	"  -r, --read-dump=file       Read dump from a file\n"
-	"  -s, --send-dump=host       Send dump to a host\n"
-	"  -n, --recv-dump=host       Receive dump on a host\n"
 	"  -d, --wait-dump=host       Wait on a host and send\n"
 	"  -t, --ts                   Display time stamps\n"
 	"  -a, --ascii                Dump data in ascii\n"
@@ -968,8 +897,6 @@ static struct option main_options[] = {
 	{ "manufacturer",	1, 0, 'm' },
 	{ "save-dump",		1, 0, 'w' },
 	{ "read-dump",		1, 0, 'r' },
-	{ "send-dump",		1, 0, 's' },
-	{ "recv-dump",		1, 0, 'n' },
 	{ "wait-dump",		1, 0, 'd' },
 	{ "timestamp",		0, 0, 't' },
 	{ "ascii",		0, 0, 'a' },
@@ -1004,7 +931,7 @@ int main(int argc, char *argv[])
 
 	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:s:n:d:taxXRC:H:O:P:D:A:BVYZN46h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:d:taxXRC:H:O:P:D:A:BVYZN46h", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -1033,16 +960,6 @@ int main(int argc, char *argv[])
 		case 'r':
 			mode = READ;
 			dump_file = strdup(optarg);
-			break;
-
-		case 's':
-			mode = SEND;
-			dump_addr = optarg;
-			break;
-
-		case 'n':
-			mode = RECEIVE;
-			dump_addr = optarg;
 			break;
 
 		case 'd':
@@ -1160,16 +1077,6 @@ int main(int argc, char *argv[])
 	case WRITE:
 		process_frames(device, open_socket(device, flags),
 				open_file(dump_file, mode, flags), flags);
-		break;
-
-	case RECEIVE:
-		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
-		read_dump(wait_connection(dump_addr, dump_port));
-		break;
-
-	case SEND:
-		process_frames(device, open_socket(device, flags),
-				open_connection(dump_addr, dump_port), flags);
 		break;
 
 	case SERVER:
