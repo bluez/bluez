@@ -25,8 +25,6 @@
 #include <config.h>
 #endif
 
-#include <stdint.h>
-
 #include <glib.h>
 #include <dbus/dbus.h>
 
@@ -42,25 +40,19 @@
 #define error(fmt...)
 #define debug(fmt...)
 
-typedef struct {
-	uint32_t id;
+struct timeout_handler {
+	guint id;
 	DBusTimeout *timeout;
-} timeout_handler_t;
+};
 
 struct watch_info {
-	guint watch_id;
-	GIOChannel *io;
+	guint id;
+	DBusWatch *watch;
 	DBusConnection *conn;
 };
 
-struct server_info {
-	guint watch_id;
-	GIOChannel *io;
-	DBusServer *server;
-};
-
 struct disconnect_data {
-	GDBusWatchFunction disconnect_cb;
+	GDBusWatchFunction function;
 	void *user_data;
 };
 
@@ -70,85 +62,109 @@ static gboolean disconnected_signal(DBusConnection *conn,
 	struct disconnect_data *dc_data = data;
 
 	error("Got disconnected from the system message bus");
-	dc_data->disconnect_cb(conn, dc_data->user_data);
+
+	dc_data->function(conn, dc_data->user_data);
+
 	dbus_connection_unref(conn);
 
 	return TRUE;
 }
 
-static gboolean message_dispatch_cb(void *data)
+static gboolean message_dispatch(void *data)
 {
-	DBusConnection *connection = data;
+	DBusConnection *conn = data;
 
-	dbus_connection_ref(connection);
+	dbus_connection_ref(conn);
 
 	/* Dispatch messages */
-	while (dbus_connection_dispatch(connection) == DBUS_DISPATCH_DATA_REMAINS);
+	while (dbus_connection_dispatch(conn) == DBUS_DISPATCH_DATA_REMAINS);
 
-	dbus_connection_unref(connection);
+	dbus_connection_unref(conn);
 
 	return FALSE;
 }
 
+static inline void queue_dispatch(DBusConnection *conn,
+						DBusDispatchStatus status)
+{
+	if (status == DBUS_DISPATCH_DATA_REMAINS)
+		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch, conn);
+}
+
 static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
-	DBusWatch *watch = data;
-	struct watch_info *info = dbus_watch_get_data(watch);
-	int flags = 0;
+	struct watch_info *info = data;
+	unsigned int flags = 0;
+
+	dbus_connection_ref(info->conn);
 
 	if (cond & G_IO_IN)  flags |= DBUS_WATCH_READABLE;
 	if (cond & G_IO_OUT) flags |= DBUS_WATCH_WRITABLE;
 	if (cond & G_IO_HUP) flags |= DBUS_WATCH_HANGUP;
 	if (cond & G_IO_ERR) flags |= DBUS_WATCH_ERROR;
 
-	dbus_watch_handle(watch, flags);
+	dbus_watch_handle(info->watch, flags);
 
-	if (dbus_connection_get_dispatch_status(info->conn) == DBUS_DISPATCH_DATA_REMAINS)
-		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, info->conn);
+	dbus_connection_unref(info->conn);
 
 	return TRUE;
 }
 
+static void watch_info_free(void *data)
+{
+	struct watch_info *info = data;
+
+	if (info->id > 0) {
+		g_source_remove(info->id);
+		info->id = 0;
+	}
+
+	dbus_connection_unref(info->conn);
+
+	g_free(info);
+}
+
 static dbus_bool_t add_watch(DBusWatch *watch, void *data)
 {
-	GIOCondition cond = G_IO_HUP | G_IO_ERR;
 	DBusConnection *conn = data;
+	GIOCondition cond = G_IO_HUP | G_IO_ERR;
+	GIOChannel *chan;
 	struct watch_info *info;
-	int fd, flags;
+	unsigned int flags;
+	int fd;
 
 	if (!dbus_watch_get_enabled(watch))
 		return TRUE;
 
-	info = g_new(struct watch_info, 1);
+	info = g_new0(struct watch_info, 1);
 
 	fd = dbus_watch_get_unix_fd(watch);
-	info->io = g_io_channel_unix_new(fd);
+	chan = g_io_channel_unix_new(fd);
+
+	info->watch = watch;
 	info->conn = dbus_connection_ref(conn);
 
-	dbus_watch_set_data(watch, info, NULL);
+	dbus_watch_set_data(watch, info, watch_info_free);
 
 	flags = dbus_watch_get_flags(watch);
 
 	if (flags & DBUS_WATCH_READABLE) cond |= G_IO_IN;
 	if (flags & DBUS_WATCH_WRITABLE) cond |= G_IO_OUT;
 
-	info->watch_id = g_io_add_watch(info->io, cond, watch_func, watch);
+	info->id = g_io_add_watch(chan, cond, watch_func, info);
+
+	g_io_channel_unref(chan);
 
 	return TRUE;
 }
 
 static void remove_watch(DBusWatch *watch, void *data)
 {
-	struct watch_info *info = dbus_watch_get_data(watch);
+	if (dbus_watch_get_enabled(watch))
+		return;
 
+	/* will trigger watch_info_free() */
 	dbus_watch_set_data(watch, NULL, NULL);
-
-	if (info) {
-		g_source_remove(info->watch_id);
-		g_io_channel_unref(info->io);
-		dbus_connection_unref(info->conn);
-		g_free(info);
-	}
 }
 
 static void watch_toggled(DBusWatch *watch, void *data)
@@ -163,10 +179,12 @@ static void watch_toggled(DBusWatch *watch, void *data)
 
 static gboolean timeout_handler_dispatch(gpointer data)
 {
-	timeout_handler_t *handler = data;
+	struct timeout_handler *handler = data;
+
+	handler->id = 0;
 
 	/* if not enabled should not be polled by the main loop */
-	if (dbus_timeout_get_enabled(handler->timeout) != TRUE)
+	if (!dbus_timeout_get_enabled(handler->timeout))
 		return FALSE;
 
 	dbus_timeout_handle(handler->timeout);
@@ -176,9 +194,7 @@ static gboolean timeout_handler_dispatch(gpointer data)
 
 static void timeout_handler_free(void *data)
 {
-	timeout_handler_t *handler = data;
-	if (!handler)
-		return;
+	struct timeout_handler *handler = data;
 
 	if (handler->id > 0) {
 		g_source_remove(handler->id);
@@ -190,35 +206,31 @@ static void timeout_handler_free(void *data)
 
 static dbus_bool_t add_timeout(DBusTimeout *timeout, void *data)
 {
-	timeout_handler_t *handler;
+	int interval = dbus_timeout_get_interval(timeout);
+	struct timeout_handler *handler;
 
 	if (!dbus_timeout_get_enabled(timeout))
 		return TRUE;
 
-	handler = g_new0(timeout_handler_t, 1);
+	handler = g_new0(struct timeout_handler, 1);
 
 	handler->timeout = timeout;
-	handler->id = g_timeout_add(dbus_timeout_get_interval(timeout),
-					timeout_handler_dispatch, handler);
 
 	dbus_timeout_set_data(timeout, handler, timeout_handler_free);
+
+	handler->id = g_timeout_add(interval, timeout_handler_dispatch,
+								handler);
 
 	return TRUE;
 }
 
 static void remove_timeout(DBusTimeout *timeout, void *data)
 {
-        timeout_handler_t *handler;
+	if (dbus_timeout_get_enabled(timeout))
+		return;
 
-        handler = dbus_timeout_get_data(timeout);
-
-        if (!handler)
-                return;
-
-        if (handler->id > 0) {
-                g_source_remove(handler->id);
-                handler->id = 0;
-        }
+	/* will trigger timeout_handler_free() */
+	dbus_timeout_set_data(timeout, NULL, NULL);
 }
 
 static void timeout_toggled(DBusTimeout *timeout, void *data)
@@ -229,32 +241,33 @@ static void timeout_toggled(DBusTimeout *timeout, void *data)
 		remove_timeout(timeout, data);
 }
 
-static void dispatch_status_cb(DBusConnection *conn,
-				DBusDispatchStatus new_status, void *data)
+static void dispatch_status(DBusConnection *conn,
+					DBusDispatchStatus status, void *data)
 {
 	if (!dbus_connection_get_is_connected(conn))
 		return;
 
-	if (new_status == DBUS_DISPATCH_DATA_REMAINS)
-		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, data);
+	queue_dispatch(conn, status);
 }
 
-static void setup_dbus_with_main_loop(DBusConnection *conn)
+static inline void setup_dbus_with_main_loop(DBusConnection *conn)
 {
 	dbus_connection_set_watch_functions(conn, add_watch, remove_watch,
 						watch_toggled, conn, NULL);
 
 	dbus_connection_set_timeout_functions(conn, add_timeout, remove_timeout,
-						timeout_toggled, conn, NULL);
+						timeout_toggled, NULL, NULL);
 
-	dbus_connection_set_dispatch_status_function(conn, dispatch_status_cb,
-								conn, NULL);
+	dbus_connection_set_dispatch_status_function(conn, dispatch_status,
+								NULL, NULL);
 }
 
 DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 							DBusError *error)
 {
 	DBusConnection *conn;
+	DBusDispatchStatus status;
+	gboolean result;
 
 	conn = dbus_bus_get(type, error);
 
@@ -267,25 +280,23 @@ DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 		return NULL;
 
 	if (name != NULL) {
-		if (dbus_bus_request_name(conn, name,
-				DBUS_NAME_FLAG_DO_NOT_QUEUE, error) !=
-				DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER ) {
-			dbus_connection_unref(conn);
-			return NULL;
-		}
+		result = g_dbus_request_name(conn, name, error);
 
 		if (error != NULL) {
-			if (dbus_error_is_set(error) == TRUE) {
-				dbus_connection_unref(conn);
-				return NULL;
-			}
+			if (dbus_error_is_set(error) == TRUE)
+				result = FALSE;
+		}
+
+		if (result == FALSE) {
+			dbus_connection_unref(conn);
+			return NULL;
 		}
 	}
 
 	setup_dbus_with_main_loop(conn);
 
-	if (dbus_connection_get_dispatch_status(conn) == DBUS_DISPATCH_DATA_REMAINS)
-		g_timeout_add(DISPATCH_TIMEOUT, message_dispatch_cb, conn);
+	status = dbus_connection_get_dispatch_status(conn);
+	queue_dispatch(conn, status);
 
 	return conn;
 }
@@ -293,6 +304,19 @@ DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 gboolean g_dbus_request_name(DBusConnection *connection, const char *name,
 							DBusError *error)
 {
+	int result;
+
+	result = dbus_bus_request_name(connection, name,
+					DBUS_NAME_FLAG_DO_NOT_QUEUE, error);
+
+	if (error != NULL) {
+		if (dbus_error_is_set(error) == TRUE)
+			return FALSE;
+	}
+
+	if (result != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)
+		return FALSE;
+
 	return TRUE;
 }
 
@@ -302,18 +326,17 @@ gboolean g_dbus_set_disconnect_function(DBusConnection *connection,
 {
 	struct disconnect_data *dc_data;
 
-	dc_data = g_new(struct disconnect_data, 1);
+	dc_data = g_new0(struct disconnect_data, 1);
 
-	dc_data->disconnect_cb = function;
+	dc_data->function = function;
 	dc_data->user_data = user_data;
 
 	dbus_connection_set_exit_on_disconnect(connection, FALSE);
 
 	if (g_dbus_add_signal_watch(connection, NULL, NULL,
 				DBUS_INTERFACE_LOCAL, "Disconnected",
-				disconnected_signal, dc_data,
-				g_free) == 0) {
-		error("Can't add watch for D-Bus Disconnected signal\n");
+				disconnected_signal, dc_data, g_free) == 0) {
+		error("Failed to add watch for D-Bus Disconnected signal");
 		g_free(dc_data);
 		return FALSE;
 	}
