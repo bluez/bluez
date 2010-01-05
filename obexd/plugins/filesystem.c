@@ -310,6 +310,8 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 		g_free(line);
 	}
 
+	closedir(dp);
+
 	object = g_string_append(object, FL_BODY_END);
 	if (size)
 		*size = object->len;
@@ -317,6 +319,9 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 	return object;
 
 failed:
+	if (dp)
+		closedir(dp);
+
 	g_string_free(object, TRUE);
 	return NULL;
 }
