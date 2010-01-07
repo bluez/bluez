@@ -2,6 +2,7 @@
  *
  *  Bluetooth low-complexity, subband codec (SBC) library
  *
+ *  Copyright (C) 2008-2010  Nokia Corporation
  *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
  *  Copyright (C) 2007-2008  Frederic Dalleau <fdalleau@free.fr>
  *
