@@ -2,7 +2,7 @@
  *
  *  OBEX Client
  *
- *  Copyright (C) 2007-2008  Intel Corporation
+ *  Copyright (C) 2007-2010  Intel Corporation
  *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
  *
  *

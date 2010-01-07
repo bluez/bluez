@@ -2,7 +2,7 @@
  *
  *  OBEX Server
  *
- *  Copyright (C) 2009  Intel Corporation
+ *  Copyright (C) 2009-2010  Intel Corporation
  *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
  *
  *
