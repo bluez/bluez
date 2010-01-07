@@ -2,8 +2,7 @@
  *
  *  OBEX Server
  *
- *  Copyright (C) 2007-2008  Nokia Corporation
- *  Copyright (C) 2007-2008  Instituto Nokia de Tecnologia (INdT)
+ *  Copyright (C) 2007-2010  Nokia Corporation
  *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
  *
  *
