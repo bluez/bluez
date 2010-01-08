@@ -1824,7 +1824,7 @@ static void csd_init(void)
 		return;
 	}
 
-	pb_type = SIM_PHONEBOOK_TYPE_VMBX;
+	pb_type = SIM_PHONEBOOK_TYPE_MBDN;
 	location = PHONEBOOK_INDEX_FIRST_ENTRY;
 	location_type = SIM_PHONEBOOK_LOCATION_NEXT;
 
