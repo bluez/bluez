@@ -1,3 +1,8 @@
+ver 4.60:
+	Fix voice mailbox number reading from SIM.
+	Fix some races with D-Bus mainloop integration.
+	Add helpers for D-Bus signal watches.
+
 ver 4.59:
 	Add values for Bluetooth 4.0 specification.
 	Add SDP functions for HDP support.
