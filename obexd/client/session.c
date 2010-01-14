@@ -55,6 +55,8 @@
 
 #define DEFAULT_BUFFER_SIZE 4096
 
+typedef int (*reply_callback_t) (struct session_data *session, void *data);
+
 static guint64 counter = 0;
 
 static unsigned char pcsuite_uuid[] = { 0x00, 0x00, 0x50, 0x05, 0x00, 0x00,
@@ -66,6 +68,19 @@ struct callback_data {
 	sdp_session_t *sdp;
 	session_callback_t func;
 	void *data;
+};
+
+struct pending_request {
+	struct session_data *session;
+	reply_callback_t callback;
+	void *data;
+};
+
+struct get_params {
+	const char *type;
+	const guint8 *apparam;
+	gint apparam_size;
+	session_callback_t func;
 };
 
 static struct session_data *session_ref(struct session_data *session)
@@ -459,26 +474,6 @@ int session_create(const char *source,
 	}
 
 	return 0;
-}
-
-static void agent_request(DBusConnection *conn, const char *agent_name,
-			const char *agent_path, const char *transfer_path)
-{
-	DBusMessage *message;
-
-	if (agent_name == NULL || agent_path == NULL || transfer_path == NULL)
-		return;
-
-	message = dbus_message_new_method_call(agent_name,
-			agent_path, AGENT_INTERFACE, "Request");
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer_path,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(conn, message);
-
-	/* FIXME: Reply needs be handled */
 }
 
 static void agent_notify_progress(DBusConnection *conn, const char *agent_name,
@@ -978,9 +973,11 @@ static char *register_transfer(DBusConnection *conn, void *user_data)
 
 static void unregister_transfer(struct session_data *session)
 {
-	gw_obex_xfer_close(session->xfer, NULL);
-	gw_obex_xfer_free(session->xfer);
-	session->xfer = NULL;
+	if (session->xfer) {
+		gw_obex_xfer_close(session->xfer, NULL);
+		gw_obex_xfer_free(session->xfer);
+		session->xfer = NULL;
+	}
 
 	g_free(session->filename);
 	session->filename = NULL;
@@ -1215,13 +1212,212 @@ complete:
 	g_free(callback);
 }
 
+static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+{
+	struct session_data *session = user_data;
+	ssize_t len;
+	gint written;
+
+	if (session->buffer_len == 0) {
+		session->buffer_len = DEFAULT_BUFFER_SIZE;
+		session->buffer = g_new0(char, DEFAULT_BUFFER_SIZE);
+	}
+
+	len = read(session->fd, session->buffer + session->filled,
+				session->buffer_len - session->filled);
+	if (len <= 0)
+		goto complete;
+
+	if (gw_obex_xfer_write(xfer, session->buffer, session->filled + len,
+						&written, NULL) == FALSE)
+		goto complete;
+
+	if (gw_obex_xfer_flush(xfer, NULL) == FALSE)
+		goto complete;
+
+	session->filled = (session->filled + len) - written;
+
+	memmove(session->buffer + written, session->buffer, session->filled);
+
+	session->transferred += written;
+
+	agent_notify_progress(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path,
+			session->transferred);
+	return;
+
+complete:
+	if (len == 0)
+		agent_notify_complete(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path);
+	else
+		agent_notify_error(session->conn, session->agent_name,
+				session->agent_path, session->transfer_path,
+				"Error sending object");
+
+	unregister_transfer(session);
+
+	if (session->pending->len > 0) {
+		gchar *filename = g_ptr_array_index(session->pending, 0);
+		gchar *basename = g_path_get_basename(filename);
+
+		g_ptr_array_remove(session->pending, filename);
+
+		session_send(session, filename, basename);
+		g_free(filename);
+		g_free(basename);
+	}
+
+	session_unref(session);
+}
+
+static void agent_request_reply(DBusPendingCall *call, gpointer user_data)
+{
+	struct pending_request *pending = user_data;
+	struct session_data *session = pending->session;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	const char *name;
+	DBusError derr;
+
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		fprintf(stderr, "Replied with an error: %s, %s\n",
+				derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
+	}
+
+	dbus_message_get_args(reply, NULL,
+			DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_INVALID);
+
+	if (strlen(name)) {
+		g_free(session->name);
+		session->name = g_strdup(name);
+	}
+
+	if (pending->callback(session, pending->data))
+		goto fail;
+
+	g_free(pending);
+
+	return;
+
+fail:
+	unregister_transfer(session);
+
+	session_unref(session);
+
+	if (session->pending->len > 0) {
+		gchar *filename = g_ptr_array_index(session->pending, 0);
+		gchar *basename = g_path_get_basename(filename);
+
+		g_ptr_array_remove(session->pending, filename);
+
+		session_send(session, filename, basename);
+		g_free(filename);
+		g_free(basename);
+	}
+
+	g_free(pending);
+}
+
+static void agent_request(DBusConnection *conn, struct session_data *session,
+		reply_callback_t cb, void *user_data)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+	struct pending_request *pending;
+
+	if (session->agent_name == NULL || session->agent_path == NULL ||
+			session->transfer_path == NULL) {
+		if (cb(session, user_data))
+			goto fail;
+
+		return;
+	}
+
+	message = dbus_message_new_method_call(session->agent_name,
+			session->agent_path, AGENT_INTERFACE, "Request");
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &session->transfer_path,
+			DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(conn, message, &call, -1)) {
+		dbus_message_unref(message);
+		return;
+	}
+
+	dbus_message_unref(message);
+
+	pending = g_new0(struct pending_request, 1);
+	pending->session = session;
+	pending->callback = cb;
+	pending->data = user_data;
+
+	dbus_pending_call_set_notify(call, agent_request_reply, pending, NULL);
+	dbus_pending_call_unref(call);
+
+	return;
+
+fail:
+	unregister_transfer(session);
+
+	session_unref(session);
+}
+
+static int session_get_reply(struct session_data *session, void *data)
+{
+	struct get_params *params = data;
+	struct callback_data *callback;
+	GwObexXfer *xfer;
+
+	xfer = gw_obex_get_async_with_apparam(session->obex, session->filename,
+			params->type, params->apparam, params->apparam_size,
+			NULL);
+
+	if (xfer == NULL) {
+		close(session->fd);
+		session_unref(session);
+		g_free(params);
+		return -EIO;
+	}
+
+	callback = g_try_malloc0(sizeof(*callback));
+	if (callback == NULL) {
+		close(session->fd);
+		session_unref(session);
+		gw_obex_xfer_free(xfer);
+		g_free(params);
+		return -ENOMEM;
+	}
+
+	callback->session = session;
+	callback->func = params->func;
+
+	if (params->type == NULL)
+		gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
+	else
+		gw_obex_xfer_set_callback(xfer, get_xfer_listing_progress,
+					callback);
+
+	session->xfer = xfer;
+
+	agent_notify_progress(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path, 0);
+
+	g_free(params);
+
+	return 0;
+}
+
 int session_get(struct session_data *session, const char *type,
 		const char *filename, const char *targetname,
 		const guint8  *apparam, gint apparam_size,
 		session_callback_t func)
 {
-	struct callback_data *callback;
-	GwObexXfer *xfer;
+	struct get_params *params;
 	int err, fd = 0;
 
 	if (session->obex == NULL)
@@ -1239,7 +1435,8 @@ int session_get(struct session_data *session, const char *type,
 		}
 	}
 
-	if (type == NULL || !g_str_equal(type, "x-obex/folder-listing")) {
+	/* for OBEX specific mime types we don't need to register a transfer */
+	if (type == NULL || (strncmp(type, "x-obex/", 7) && strncmp(type, "x-bt/", 5))) {
 		session->transfer_path = register_transfer(session->conn, session);
 		if (session->transfer_path == NULL) {
 			if (fd)
@@ -1257,38 +1454,13 @@ int session_get(struct session_data *session, const char *type,
 
 	session_ref(session);
 
-	xfer = gw_obex_get_async_with_apparam(session->obex,
-				filename, type, apparam, apparam_size, NULL);
-	if (xfer == NULL) {
-		close(session->fd);
-		session_unref(session);
-		return -EIO;
-	}
+	params = g_new0(struct get_params, 1);
+	params->type = type;
+	params->apparam = apparam;
+	params->apparam_size = apparam_size;
+	params->func = func;
 
-	callback = g_try_malloc0(sizeof(*callback));
-	if (callback == NULL) {
-		close(session->fd);
-		session_unref(session);
-		gw_obex_xfer_free(xfer);
-		return -ENOMEM;
-	}
-
-	callback->session = session;
-	callback->func = func;
-
-	if (type == NULL)
-		gw_obex_xfer_set_callback(xfer, get_xfer_progress, callback);
-	else
-		gw_obex_xfer_set_callback(xfer, get_xfer_listing_progress,
-					callback);
-
-	session->xfer = xfer;
-
-	agent_request(session->conn, session->agent_name,
-			session->agent_path, session->transfer_path);
-
-	agent_notify_progress(session->conn, session->agent_name,
-			session->agent_path, session->transfer_path, 0);
+	agent_request(session->conn, session, session_get_reply, params);
 
 	return 0;
 }
@@ -1458,76 +1630,36 @@ static GDBusMethodTable ftp_methods[] = {
 	{ }
 };
 
-static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+
+static int session_send_reply(struct session_data *session, void *data)
 {
-	struct session_data *session = user_data;
-	ssize_t len;
-	gint written;
+	GwObexXfer *xfer;
 
-	if (session->buffer_len == 0) {
-		session->buffer_len = DEFAULT_BUFFER_SIZE;
-		session->buffer = g_new0(char, DEFAULT_BUFFER_SIZE);
-	}
+	xfer = gw_obex_put_async(session->obex, session->name, NULL,
+			session->size, -1, NULL);
+	if (xfer == NULL)
+		return -ENOTCONN;
 
-	len = read(session->fd, session->buffer + session->filled,
-				session->buffer_len - session->filled);
-	if (len <= 0)
-		goto complete;
+	gw_obex_xfer_set_callback(xfer, put_xfer_progress, session);
 
-	if (gw_obex_xfer_write(xfer, session->buffer, session->filled + len,
-						&written, NULL) == FALSE)
-		goto complete;
-
-	if (gw_obex_xfer_flush(xfer, NULL) == FALSE)
-		goto complete;
-
-	session->filled = (session->filled + len) - written;
-
-	memmove(session->buffer + written, session->buffer, session->filled);
-
-	session->transferred += written;
+	session->xfer = xfer;
 
 	agent_notify_progress(session->conn, session->agent_name,
-			session->agent_path, session->transfer_path,
-			session->transferred);
-	return;
+			session->agent_path, session->transfer_path, 0);
 
-complete:
-	if (len == 0)
-		agent_notify_complete(session->conn, session->agent_name,
-				session->agent_path, session->transfer_path);
-	else
-		agent_notify_error(session->conn, session->agent_name,
-				session->agent_path, session->transfer_path,
-				"Error sending object");
-
-	unregister_transfer(session);
-
-	if (session->pending->len > 0) {
-		gchar *filename = g_ptr_array_index(session->pending, 0);
-		gchar *basename = g_path_get_basename(filename);
-
-		g_ptr_array_remove(session->pending, filename);
-
-		session_send(session, filename, basename);
-		g_free(filename);
-		g_free(basename);
-	}
-
-	session_unref(session);
+	return 0;
 }
 
 int session_send(struct session_data *session, const char *filename,
 				const char *targetname)
 {
-	GwObexXfer *xfer;
 	struct stat st;
 	int fd, err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	if (session->xfer != NULL) {
+	if (session->transfer_path != NULL) {
 		g_ptr_array_add(session->pending, g_strdup(filename));
 		return 0;
 	}
@@ -1558,22 +1690,7 @@ int session_send(struct session_data *session, const char *filename,
 
 	session_ref(session);
 
-	xfer = gw_obex_put_async(session->obex, session->name, NULL,
-						session->size, -1, NULL);
-	if (xfer == NULL) {
-		err = -ENOTCONN;
-		goto error;
-	}
-
-	gw_obex_xfer_set_callback(xfer, put_xfer_progress, session);
-
-	session->xfer = xfer;
-
-	agent_request(session->conn, session->agent_name,
-			session->agent_path, session->transfer_path);
-
-	agent_notify_progress(session->conn, session->agent_name,
-			session->agent_path, session->transfer_path, 0);
+	agent_request(session->conn, session, session_send_reply, NULL);
 
 	return 0;
 
@@ -1707,21 +1824,10 @@ complete:
 	session_unref(session);
 }
 
-int session_put(struct session_data *session, char *buf, const char *targetname)
+
+static int session_put_reply(struct session_data *session, void *data)
 {
 	GwObexXfer *xfer;
-
-	if (session->obex == NULL)
-		return -ENOTCONN;
-
-	session->transfer_path = register_transfer(session->conn, session);
-	if (session->transfer_path == NULL)
-		return -EIO;
-
-	session->size = strlen(buf);
-	session->transferred = 0;
-	session->name = g_strdup(targetname);
-	session->buffer = buf;
 
 	xfer = gw_obex_put_async(session->obex, session->name, NULL,
 						session->size, -1, NULL);
@@ -1734,11 +1840,27 @@ int session_put(struct session_data *session, char *buf, const char *targetname)
 
 	session->xfer = xfer;
 
-	agent_request(session->conn, session->agent_name,
-		session->agent_path, session->transfer_path);
-
 	agent_notify_progress(session->conn, session->agent_name,
 		session->agent_path, session->transfer_path, 0);
+
+	return 0;
+}
+
+int session_put(struct session_data *session, char *buf, const char *targetname)
+{
+	if (session->obex == NULL)
+		return -ENOTCONN;
+
+	session->transfer_path = register_transfer(session->conn, session);
+	if (session->transfer_path == NULL)
+		return -EIO;
+
+	session->size = strlen(buf);
+	session->transferred = 0;
+	session->name = g_strdup(targetname);
+	session->buffer = buf;
+
+	agent_request(session->conn, session, session_put_reply, NULL);
 
 	return 0;
 }
