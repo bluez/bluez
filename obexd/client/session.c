@@ -1522,7 +1522,7 @@ int session_send(struct session_data *session, const char *filename,
 {
 	GwObexXfer *xfer;
 	struct stat st;
-	int fd;
+	int fd, err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
@@ -1532,19 +1532,22 @@ int session_send(struct session_data *session, const char *filename,
 		return 0;
 	}
 
+	session->transfer_path = register_transfer(session->conn, session);
+	if (session->transfer_path == NULL) {
+		err = -EINVAL;
+		goto fail;
+	}
+
 	fd = open(filename, O_RDONLY);
-	if (fd < 0)
-		return -EIO;
+	if (fd < 0) {
+		err = -EIO;
+		goto fail;
+	}
 
 	if (fstat(fd, &st) < 0) {
 		close(fd);
-		return -EIO;
-	}
-
-	session->transfer_path = register_transfer(session->conn, session);
-	if (session->transfer_path == NULL) {
-		close(fd);
-		return -EIO;
+		err = -EIO;
+		goto fail;
 	}
 
 	session->fd = fd;
@@ -1557,8 +1560,10 @@ int session_send(struct session_data *session, const char *filename,
 
 	xfer = gw_obex_put_async(session->obex, session->name, NULL,
 						session->size, -1, NULL);
-	if (xfer == NULL)
-		return -ENOTCONN;
+	if (xfer == NULL) {
+		err = -ENOTCONN;
+		goto error;
+	}
 
 	gw_obex_xfer_set_callback(xfer, put_xfer_progress, session);
 
@@ -1571,6 +1576,13 @@ int session_send(struct session_data *session, const char *filename,
 			session->agent_path, session->transfer_path, 0);
 
 	return 0;
+
+fail:
+	agent_notify_error(session->conn, session->agent_name,
+			session->agent_path, session->transfer_path,
+			"Could not open file for sending");
+
+	return err;
 }
 
 int session_pull(struct session_data *session,
