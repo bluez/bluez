@@ -887,6 +887,14 @@ void telephony_key_press_req(void *telephony_device, const char *keys)
 		telephony_key_press_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+void telephony_voice_dial_req(void *telephony_device, gboolean enable)
+{
+	debug("telephony-maemo: got %s voice dial request",
+			enable ? "enable" : "disable");
+
+	telephony_voice_dial_rsp(telephony_device, CME_ERROR_NOT_SUPPORTED);
+}
+
 static void handle_incoming_call(DBusMessage *msg)
 {
 	const char *number, *call_path;

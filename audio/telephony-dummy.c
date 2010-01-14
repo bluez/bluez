@@ -36,6 +36,8 @@
 #include "logging.h"
 #include "telephony.h"
 
+static DBusConnection *connection = NULL;
+
 static const char *chld_str = "0,1,1x,2,2x,3,4";
 static char *subscriber_number = NULL;
 static char *active_call_number = NULL;
@@ -203,6 +205,18 @@ void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 			enable ? "enable" : "disable");
 
 	telephony_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
+}
+
+void telephony_voice_dial_req(void *telephony_device, gboolean enable)
+{
+	debug("telephony-dummy: got %s voice dial request",
+			enable ? "enable" : "disable");
+
+	g_dbus_emit_signal(connection, "/org/bluez/test",
+			"org.bluez.TelephonyTest", "VoiceDial",
+			DBUS_TYPE_INVALID);
+
+	telephony_voice_dial_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_key_press_req(void *telephony_device, const char *keys)
@@ -389,7 +403,10 @@ static GDBusMethodTable dummy_methods[] = {
 	{ }
 };
 
-static DBusConnection *connection = NULL;
+static GDBusSignalTable dummy_signals[] = {
+	{ "VoiceDial",	"" },
+	{ }
+};
 
 int telephony_init(void)
 {
@@ -401,7 +418,7 @@ int telephony_init(void)
 
 	g_dbus_register_interface(connection, "/org/bluez/test",
 					"org.bluez.TelephonyTest",
-					dummy_methods, NULL,
+					dummy_methods, dummy_signals,
 					NULL, NULL, NULL);
 
 	telephony_ready_ind(features, dummy_indicators, response_and_hold,

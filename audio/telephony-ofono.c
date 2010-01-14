@@ -387,6 +387,14 @@ void telephony_key_press_req(void *telephony_device, const char *keys)
 	telephony_key_press_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+void telephony_voice_dial_req(void *telephony_device, gboolean enable)
+{
+	debug("telephony-ofono: got %s voice dial request",
+			enable ? "enable" : "disable");
+
+	telephony_voice_dial_rsp(telephony_device, CME_ERROR_NOT_SUPPORTED);
+}
+
 static gboolean iter_get_basic_args(DBusMessageIter *iter,
 					int first_arg_type, ...)
 {
