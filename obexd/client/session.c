@@ -39,6 +39,7 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include "logging.h"
 #include "pbap.h"
 #include "sync.h"
 #include "session.h"
@@ -1078,7 +1079,7 @@ static void get_xfer_listing_progress(GwObexXfer *xfer,
 	}
 
 	if (err) {
-		fprintf(stderr, "gw_obex_xfer_read(): %s\n",
+		error("gw_obex_xfer_read(): %s",
 				OBEX_ResponseToString(err));
 		goto complete;
 	}
@@ -1154,7 +1155,7 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	}
 
 	if (ret == FALSE) {
-		fprintf(stderr, "gw_obex_xfer_read(): %s\n",
+		error("gw_obex_xfer_read(): %s",
 				OBEX_ResponseToString(err));
 		goto complete;
 	}
@@ -1281,7 +1282,7 @@ static void agent_request_reply(DBusPendingCall *call, gpointer user_data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		fprintf(stderr, "Replied with an error: %s, %s\n",
+		error("Replied with an error: %s, %s",
 				derr.name, derr.message);
 		dbus_error_free(&derr);
 		goto fail;
@@ -1430,7 +1431,7 @@ int session_get(struct session_data *session, const char *type,
 		fd = open(targetname, O_WRONLY | O_CREAT, 0600);
 		if (fd < 0) {
 			err = errno;
-			fprintf(stderr, "open(): %s(%d)\n", strerror(err), err);
+			error("open(): %s(%d)", strerror(err), err);
 			return -err;
 		}
 	}

@@ -30,6 +30,7 @@
 #include <glib.h>
 #include <gdbus.h>
 
+#include "logging.h"
 #include "session.h"
 #include "pbap.h"
 
@@ -298,8 +299,8 @@ static void read_return_apparam(struct session_data *session,
 		struct apparam_hdr *hdr = (struct apparam_hdr *) buf;
 
 		if (hdr->len > size - APPARAM_HDR_SIZE) {
-			fprintf(stderr, "Unexpected PBAP pullphonebook app"
-					" length, tag %d, len %d\n",
+			error("Unexpected PBAP pullphonebook app"
+					" length, tag %d, len %d",
 					hdr->tag, hdr->len);
 			return;
 		}
@@ -317,8 +318,8 @@ static void read_return_apparam(struct session_data *session,
 				*new_missed_calls = hdr->val[0];
 			break;
 		default:
-			fprintf(stderr, "Unexpected PBAP pullphonebook app"
-					" parameter, tag %d, len %d\n",
+			error("Unexpected PBAP pullphonebook app"
+					" parameter, tag %d, len %d",
 					hdr->tag, hdr->len);
 		}
 
@@ -443,7 +444,7 @@ static DBusMessage *pull_phonebook(struct session_data *session,
 		func = phonebook_size_callback;
 		break;
 	default:
-		fprintf(stderr, "Unexpected type : 0x%2x\n", type);
+		error("Unexpected type : 0x%2x", type);
 		return NULL;
 	}
 

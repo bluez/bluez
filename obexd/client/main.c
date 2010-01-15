@@ -29,10 +29,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <syslog.h>
 
 #include <glib.h>
 #include <gdbus.h>
 
+#include "logging.h"
 #include "session.h"
 
 #define CLIENT_SERVICE  "org.openobex.client"
@@ -429,6 +431,17 @@ static GDBusMethodTable client_methods[] = {
 
 static GMainLoop *event_loop = NULL;
 
+static gboolean option_debug = FALSE;
+static gboolean option_stderr = FALSE;
+
+static GOptionEntry options[] = {
+	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
+				"Enable debug information output" },
+	{ "stderr", 's', 0, G_OPTION_ARG_NONE, &option_stderr,
+				"Write log information to stderr" },
+	{ NULL },
+};
+
 static void sig_term(int sig)
 {
 	g_main_loop_quit(event_loop);
@@ -436,31 +449,58 @@ static void sig_term(int sig)
 
 int main(int argc, char *argv[])
 {
+	GOptionContext *context;
 	struct sigaction sa;
 	DBusConnection *conn;
-	DBusError err;
+	DBusError derr;
+	GError *gerr = NULL;
+	int log_option;
 
-	dbus_error_init(&err);
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
 
-	conn = g_dbus_setup_bus(DBUS_BUS_SESSION, CLIENT_SERVICE, &err);
+	g_option_context_parse(context, &argc, &argv, &gerr);
+	if (gerr != NULL) {
+		g_printerr("%s\n", gerr->message);
+		g_error_free(gerr);
+		exit(EXIT_FAILURE);
+	}
+
+	g_option_context_free(context);
+
+	dbus_error_init(&derr);
+
+	conn = g_dbus_setup_bus(DBUS_BUS_SESSION, CLIENT_SERVICE, &derr);
 	if (conn == NULL) {
-		if (dbus_error_is_set(&err) == TRUE) {
-			fprintf(stderr, "%s\n", err.message);
-			dbus_error_free(&err);
+		if (dbus_error_is_set(&derr) == TRUE) {
+			g_printerr("%s", derr.message);
+			dbus_error_free(&derr);
 		} else
-			fprintf(stderr, "Can't register with session bus\n");
+			g_printerr("Can't register with session bus\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (g_dbus_register_interface(conn, CLIENT_PATH, CLIENT_INTERFACE,
 						client_methods, NULL, NULL,
 							NULL, NULL) == FALSE) {
-		fprintf(stderr, "Can't register client interface\n");
+		g_printerr("Can't register client interface\n");
 		dbus_connection_unref(conn);
 		exit(EXIT_FAILURE);
 	}
 
 	event_loop = g_main_loop_new(NULL, FALSE);
+
+	log_option = LOG_NDELAY | LOG_PID;
+
+	if (option_stderr == TRUE)
+		log_option |= LOG_PERROR;
+
+	openlog("obex-client", log_option, LOG_DAEMON);
+
+	if (option_debug == TRUE) {
+		info("Enabling debug information");
+		enable_debug();
+	}
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
