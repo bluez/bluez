@@ -429,7 +429,7 @@ char *bt_compidtostr(int compid)
 	case 70:
 		return "MediaTek, Inc.";
 	case 71:
-		return "Bluegiga";	/* (tentative) */
+		return "Bluegiga";
 	case 72:
 		return "Marvell Technology Group Ltd.";
 	case 73:
