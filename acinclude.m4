@@ -181,6 +181,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	serial_enable=yes
 	network_enable=yes
 	service_enable=yes
+	pnat_enable=no
 	tracer_enable=no
 	tools_enable=yes
 	hidd_enable=no
@@ -230,6 +231,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(service, AC_HELP_STRING([--disable-service], [disable service plugin]), [
 		service_enable=${enableval}
+	])
+
+	AC_ARG_ENABLE(pnat, AC_HELP_STRING([--enable-pnat], [enable pnat plugin]), [
+		pnat_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(gstreamer, AC_HELP_STRING([--enable-gstreamer], [enable GStreamer support]), [
@@ -347,6 +352,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(NETWORKPLUGIN, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(SERVICEPLUGIN, test "${service_enable}" = "yes")
 	AM_CONDITIONAL(ECHOPLUGIN, test "no" = "yes")
+	AM_CONDITIONAL(PNATPLUGIN, test "${pnat_enable}" = "yes")
 	AM_CONDITIONAL(TRACER, test "${tracer_enable}" = "yes")
 	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")
 	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")

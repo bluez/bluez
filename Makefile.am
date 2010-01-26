@@ -102,6 +102,11 @@ builtin_modules =
 builtin_sources =
 builtin_nodist =
 
+if PNATPLUGIN
+builtin_modules += pnat
+builtin_sources += plugins/pnat.c
+endif
+
 if ECHOPLUGIN
 builtin_modules += echo
 builtin_sources += plugins/echo.c
