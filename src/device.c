@@ -239,6 +239,9 @@ static void device_free(gpointer user_data)
 	if (device->disconn_timer)
 		g_source_remove(device->disconn_timer);
 
+	if (device->discov_timer)
+		g_source_remove(device->discov_timer);
+
 	debug("device_free(%p)", device);
 
 	g_free(device->authr);
