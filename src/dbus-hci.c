@@ -114,6 +114,10 @@ const char *class_to_icon(uint32_t class)
 			return "audio-card";	/* Headset */
 		case 0x06:
 			return "audio-card";	/* Headphone */
+		case 0x0b: /* VCR */
+		case 0x0c: /* Video Camera */
+		case 0x0d: /* Camcorder */
+			return "camera-video";
 		default:
 			return "audio-card";	/* Other audio device */
 		}
