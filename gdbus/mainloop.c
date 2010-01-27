@@ -262,11 +262,36 @@ static inline void setup_dbus_with_main_loop(DBusConnection *conn)
 								NULL, NULL);
 }
 
+static gboolean setup_bus(DBusConnection *conn, const char *name,
+						DBusError *error)
+{
+	gboolean result;
+	DBusDispatchStatus status;
+
+	if (name != NULL) {
+		result = g_dbus_request_name(conn, name, error);
+
+		if (error != NULL) {
+			if (dbus_error_is_set(error) == TRUE)
+				return FALSE;
+		}
+
+		if (result == FALSE)
+			return FALSE;
+	}
+
+	setup_dbus_with_main_loop(conn);
+
+	status = dbus_connection_get_dispatch_status(conn);
+	queue_dispatch(conn, status);
+
+	return TRUE;
+}
+
 DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 							DBusError *error)
 {
 	DBusConnection *conn;
-	DBusDispatchStatus status;
 	gboolean result;
 
 	conn = dbus_bus_get(type, error);
@@ -279,24 +304,38 @@ DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 	if (conn == NULL)
 		return NULL;
 
-	if (name != NULL) {
-		result = g_dbus_request_name(conn, name, error);
+	result = setup_bus(conn, name, error);
 
-		if (error != NULL) {
-			if (dbus_error_is_set(error) == TRUE)
-				result = FALSE;
-		}
-
-		if (result == FALSE) {
-			dbus_connection_unref(conn);
-			return NULL;
-		}
+	if (result == FALSE) {
+		dbus_connection_unref(conn);
+		return NULL;
 	}
 
-	setup_dbus_with_main_loop(conn);
+	return conn;
+}
 
-	status = dbus_connection_get_dispatch_status(conn);
-	queue_dispatch(conn, status);
+DBusConnection *g_dbus_setup_private(DBusBusType type, const char *name,
+							DBusError *error)
+{
+	DBusConnection *conn;
+	gboolean result;
+
+	conn = dbus_bus_get_private(type, error);
+
+	if (error != NULL) {
+		if (dbus_error_is_set(error) == TRUE)
+			return NULL;
+	}
+
+	if (conn == NULL)
+		return NULL;
+
+	result = setup_bus(conn, name, error);
+
+	if (result == FALSE) {
+		dbus_connection_unref(conn);
+		return NULL;
+	}
 
 	return conn;
 }
