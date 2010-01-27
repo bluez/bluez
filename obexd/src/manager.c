@@ -539,8 +539,11 @@ gboolean manager_init(void)
 	}
 
 	system_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
-	if (system_conn == NULL)
+	if (system_conn == NULL) {
+		dbus_connection_unref(connection);
+		connection = NULL;
 		return FALSE;
+	}
 
 	listener_id = g_dbus_add_service_watch(system_conn, "org.bluez",
 				name_acquired, name_released, NULL, NULL);
