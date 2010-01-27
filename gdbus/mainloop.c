@@ -292,7 +292,6 @@ DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 							DBusError *error)
 {
 	DBusConnection *conn;
-	gboolean result;
 
 	conn = dbus_bus_get(type, error);
 
@@ -304,9 +303,7 @@ DBusConnection *g_dbus_setup_bus(DBusBusType type, const char *name,
 	if (conn == NULL)
 		return NULL;
 
-	result = setup_bus(conn, name, error);
-
-	if (result == FALSE) {
+	if (setup_bus(conn, name, error) == FALSE) {
 		dbus_connection_unref(conn);
 		return NULL;
 	}
@@ -318,7 +315,6 @@ DBusConnection *g_dbus_setup_private(DBusBusType type, const char *name,
 							DBusError *error)
 {
 	DBusConnection *conn;
-	gboolean result;
 
 	conn = dbus_bus_get_private(type, error);
 
@@ -330,9 +326,7 @@ DBusConnection *g_dbus_setup_private(DBusBusType type, const char *name,
 	if (conn == NULL)
 		return NULL;
 
-	result = setup_bus(conn, name, error);
-
-	if (result == FALSE) {
+	if (setup_bus(conn, name, error) == FALSE) {
 		dbus_connection_unref(conn);
 		return NULL;
 	}
