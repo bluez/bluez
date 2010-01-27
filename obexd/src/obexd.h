@@ -21,6 +21,8 @@
  *
  */
 
+#include <dbus/dbus.h>
+
 #define OPENOBEX_SERVICE  "org.openobex"
 
 #define OPENOBEX_MANAGER_PATH		"/"
@@ -34,3 +36,5 @@ void manager_cleanup(void);
 
 gboolean plugin_init(void);
 void plugin_cleanup(void);
+
+DBusConnection *obex_dbus_get_connection(void);

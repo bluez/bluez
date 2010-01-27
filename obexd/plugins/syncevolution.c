@@ -269,7 +269,7 @@ static void synce_connect(obex_t *obex, obex_object_t *obj)
 	struct callback_data *cb_data;
 	struct synce_context *context;
 
-	conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
+	conn = obex_dbus_get_connection();
 	if (!conn)
 		goto failed;
 

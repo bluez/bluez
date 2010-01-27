@@ -1028,4 +1028,10 @@ void unregister_session(guint32 id)
 	g_free(path);
 }
 
+DBusConnection *obex_dbus_get_connection(void)
+{
+	if (connection == NULL)
+		return NULL;
 
+	return dbus_connection_ref(connection);
+}
