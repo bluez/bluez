@@ -106,6 +106,7 @@ static uint32_t callerid = 0;
 #define CSD_CALL_INSTANCE	"com.nokia.csd.Call.Instance"
 #define CSD_CALL_CONFERENCE	"com.nokia.csd.Call.Conference"
 #define CSD_CALL_PATH		"/com/nokia/csd/call"
+#define CSD_CALL_CONFERENCE_PATH "/com/nokia/csd/call/conference"
 
 /* Call status values as exported by the CSD CALL plugin */
 #define CSD_CALL_STATUS_IDLE			0
@@ -313,6 +314,26 @@ static struct csd_call *find_call_with_status(int status)
 	return NULL;
 }
 
+static int release_conference(void)
+{
+	DBusMessage *msg;
+
+	debug("telephony-maemo: releasing conference call");
+
+	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
+						CSD_CALL_CONFERENCE_PATH,
+						CSD_CALL_INSTANCE,
+						"Release");
+	if (!msg) {
+		error("Unable to allocate new D-Bus message");
+		return -ENOMEM;
+	}
+
+	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
 static int release_call(struct csd_call *call)
 {
 	DBusMessage *msg;
@@ -517,6 +538,7 @@ void telephony_last_dialed_number_req(void *telephony_device)
 void telephony_terminate_call_req(void *telephony_device)
 {
 	struct csd_call *call;
+	int err;
 
 	call = find_call_with_status(CSD_CALL_STATUS_ACTIVE);
 	if (!call)
@@ -529,7 +551,12 @@ void telephony_terminate_call_req(void *telephony_device)
 		return;
 	}
 
-	if (release_call(call) < 0)
+	if (call->conference)
+		err = release_conference();
+	else
+		err = release_call(call);
+
+	if (err < 0)
 		telephony_terminate_call_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
 	else
