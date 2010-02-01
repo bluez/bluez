@@ -347,8 +347,12 @@ gboolean g_dbus_request_name(DBusConnection *connection, const char *name,
 			return FALSE;
 	}
 
-	if (result != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)
+	if (result != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
+		if (error != NULL)
+			dbus_set_error(error, name, "Name already in use");
+
 		return FALSE;
+	}
 
 	return TRUE;
 }
