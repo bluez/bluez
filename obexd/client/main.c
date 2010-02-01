@@ -471,12 +471,9 @@ int main(int argc, char *argv[])
 	dbus_error_init(&derr);
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SESSION, CLIENT_SERVICE, &derr);
-	if (conn == NULL) {
-		if (dbus_error_is_set(&derr) == TRUE) {
-			g_printerr("%s", derr.message);
-			dbus_error_free(&derr);
-		} else
-			g_printerr("Can't register with session bus\n");
+	if (dbus_error_is_set(&derr) == TRUE) {
+		g_printerr("%s: %s\n", derr.name, derr.message);
+		dbus_error_free(&derr);
 		exit(EXIT_FAILURE);
 	}
 
