@@ -225,8 +225,8 @@ static guint create_request_timer = 0;
 static struct indicator maemo_indicators[] =
 {
 	{ "battchg",	"0-5",	5,	TRUE },
-	{ "signal",	"0-5",	5,	TRUE },
-	{ "service",	"0,1",	1,	TRUE },
+	{ "signal",	"0-5",	0,	TRUE },
+	{ "service",	"0,1",	0,	TRUE },
 	{ "call",	"0,1",	0,	TRUE },
 	{ "callsetup",	"0-3",	0,	TRUE },
 	{ "callheld",	"0-2",	0,	FALSE },
