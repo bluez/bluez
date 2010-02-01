@@ -644,7 +644,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 		}
 	}
 
-	if (!os->service || !os->service->chkput)
+	if (!os->service->chkput)
 		goto done;
 
 	ret = os->service->chkput(obex, obj);
@@ -757,7 +757,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	case OBEX_EV_REQCHECK:
 		switch (cmd) {
 		case OBEX_CMD_PUT:
-			if (os->service && os->service->put)
+			if (os->service)
 				check_put(obex, obj);
 			break;
 		default:
