@@ -558,6 +558,12 @@ static void pbap_disconnect(obex_t *obex)
 	unregister_session(os->cid);
 }
 
+static gint pbap_chkput(obex_t *obex, obex_object_t *obj)
+{
+	/* Rejects all PUTs */
+	return -EINVAL;
+}
+
 struct obex_service_driver pbap = {
 	.name = "Phonebook Access server",
 	.service = OBEX_PBAP,
@@ -568,7 +574,8 @@ struct obex_service_driver pbap = {
 	.connect = pbap_connect,
 	.get = pbap_get,
 	.setpath = pbap_setpath,
-	.disconnect = pbap_disconnect
+	.disconnect = pbap_disconnect,
+	.chkput = pbap_chkput
 };
 
 static int pbap_init(void)
