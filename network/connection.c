@@ -157,7 +157,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 					NETWORK_PEER_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &connected);
 		emit_property_changed(connection, nc->peer->path,
-					NETWORK_PEER_INTERFACE, "Device",
+					NETWORK_PEER_INTERFACE, "Interface",
 					DBUS_TYPE_STRING, &property);
 		emit_property_changed(connection, nc->peer->path,
 					NETWORK_PEER_INTERFACE, "UUID",
@@ -302,7 +302,7 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 				NETWORK_PEER_INTERFACE, "Connected",
 				DBUS_TYPE_BOOLEAN, &connected);
 	emit_property_changed(connection, nc->peer->path,
-				NETWORK_PEER_INTERFACE, "Device",
+				NETWORK_PEER_INTERFACE, "Interface",
 				DBUS_TYPE_STRING, &pdev);
 	emit_property_changed(connection, nc->peer->path,
 				NETWORK_PEER_INTERFACE, "UUID",
@@ -502,9 +502,9 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 	connected = nc ? TRUE : FALSE;
 	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &connected);
 
-	/* Device */
+	/* Interface */
 	property = nc ? nc->dev : "";
-	dict_append_entry(&dict, "Device", DBUS_TYPE_STRING, &property);
+	dict_append_entry(&dict, "Interface", DBUS_TYPE_STRING, &property);
 
 	/* UUID */
 	property = nc ? bnep_uuid(nc->id) : "";

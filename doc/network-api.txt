@@ -14,8 +14,8 @@ Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 Methods		string Connect(string uuid)
 
 			Connect to the network device and return the network
-			device name. Examples of the device name are bnep0,
-			bnep1 etc.
+			interface name. Examples of the interface name are
+			bnep0, bnep1 etc.
 
 			uuid can be either one of "gn", "panu" or "nap" (case
 			insensitive) or a traditional string representation of
@@ -51,7 +51,7 @@ Properties	boolean Connected [readonly]
 
 			Indicates if the device is connected.
 
-		string Device [readonly]
+		string Interface [readonly]
 
 			Indicates the network interface name when available.
 
