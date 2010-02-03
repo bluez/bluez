@@ -515,6 +515,51 @@ int write_features_info(bdaddr_t *local, bdaddr_t *peer,
 	return textfile_put(filename, addr, str);
 }
 
+static int decode_bytes(const char *str, unsigned char *bytes, size_t len)
+{
+	unsigned int i;
+
+	for (i = 0; i < len; i++) {
+		if (sscanf(str + (i * 2), "%02hhX", &bytes[i]) != 1)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+int read_remote_features(bdaddr_t *local, bdaddr_t *peer,
+				unsigned char *page1, unsigned char *page2)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+	size_t len;
+	int err;
+
+	if (page1 == NULL && page2 == NULL)
+		return -EINVAL;
+
+	create_filename(filename, PATH_MAX, local, "features");
+
+	ba2str(peer, addr);
+
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
+
+	len = strlen(str);
+
+	err = -ENOENT;
+
+	if (page1 && len >= 16)
+		err = decode_bytes(str, page1, 8);
+
+	if (page2 && len >= 33)
+		err = decode_bytes(str + 17, page2, 8);
+
+	free(str);
+
+	return err;
+}
+
 int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
 {
 	char filename[PATH_MAX + 1], addr[18], str[24];
