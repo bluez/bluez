@@ -2146,8 +2146,9 @@ int adapter_start(struct btd_adapter *adapter)
 	memcpy(dev->features, di.features, 8);
 	ba2str(&adapter->bdaddr, address);
 
-	if (!main_opts.remember_powered ||
-			read_device_mode(address, mode, sizeof(mode)) < 0) {
+	err = read_device_mode(address, mode, sizeof(mode));
+
+	if ((!adapter->initialized && !main_opts.remember_powered) || err < 0) {
 		if (!adapter->initialized && main_opts.mode == MODE_OFF)
 			strcpy(mode, "off");
 		else
