@@ -146,18 +146,6 @@ AC_DEFUN([AC_PATH_USB], [
 			[Define to 1 if you need the usb_interrupt_read() function.]))
 ])
 
-AC_DEFUN([AC_PATH_NETLINK], [
-	PKG_CHECK_MODULES(NETLINK, libnl-1, netlink_found=yes, netlink_found=no)
-	AC_SUBST(NETLINK_CFLAGS)
-	AC_SUBST(NETLINK_LIBS)
-])
-
-AC_DEFUN([AC_PATH_CAPNG], [
-        PKG_CHECK_MODULES(CAPNG, libcap-ng, capng_found=yes, capng_found=no)
-        AC_SUBST(CAPNG_CFLAGS)
-        AC_SUBST(CAPNG_LIBS)
-])
-
 AC_DEFUN([AC_PATH_SNDFILE], [
 	PKG_CHECK_MODULES(SNDFILE, sndfile, sndfile_found=yes, sndfile_found=no)
 	AC_SUBST(SNDFILE_CFLAGS)
@@ -169,9 +157,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	optimization_enable=yes
 	fortify_enable=yes
 	pie_enable=yes
-	capng_enable=${capng_found}
 	sndfile_enable=${sndfile_found}
-	netlink_enable=no
 	hal_enable=${hal_found}
 	usb_enable=${usb_found}
 	alsa_enable=${alsa_found}
@@ -209,10 +195,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		pie_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(capng, AC_HELP_STRING([--disable-capng], [disable capabilities dropping]), [
-		capng_enable=${enableval}
-	])
-
 	AC_ARG_ENABLE(network, AC_HELP_STRING([--disable-network], [disable network plugin]), [
 		network_enable=${enableval}
 	])
@@ -247,10 +229,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
 		usb_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(netlink, AC_HELP_STRING([--enable-netlink], [enable NETLINK support]), [
-		netlink_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(tracer, AC_HELP_STRING([--enable-tracer], [install Tracing daemon]), [
@@ -336,12 +314,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
 	fi
 
-	if (test "${capng_enable}" = "yes" && test "${capng_found}" = "yes"); then
-		AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
-	fi
-
 	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
-	AM_CONDITIONAL(NETLINK, test "${netlink_enable}" = "yes" && test "${netlink_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(SBC, test "${alsa_enable}" = "yes" || test "${gstreamer_enable}" = "yes")
 	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")

@@ -40,11 +40,29 @@ AC_PATH_GLIB
 AC_PATH_ALSA
 AC_PATH_GSTREAMER
 AC_PATH_USB
-AC_PATH_NETLINK
 AC_PATH_SNDFILE
-AC_PATH_CAPNG
 
 AC_ARG_BLUEZ
+
+AC_ARG_ENABLE(capng, AC_HELP_STRING([--enable-capng],
+		[enable capabilities support]), [enable_capng=${enableval}])
+if (test "${enable_capng}" = "yes"); then
+	PKG_CHECK_MODULES(CAPNG, libcap-ng, dummy=yes,
+				AC_MSG_ERROR(Capabilities library is required))
+	AC_SUBST(CAPNG_CFLAGS)
+	AC_SUBST(CAPNG_LIBS)
+	AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
+fi
+
+AC_ARG_ENABLE(netlink, AC_HELP_STRING([--enable-netlink],
+		[enable netlink support]), [enable_netlink=${enableval}])
+if (test "${enable_netlink}" = "yes"); then
+	PKG_CHECK_MODULES(NETLINK, libnl-1, dummy=yes,
+				AC_MSG_ERROR(Netlink library is required))
+	AC_SUBST(NETLINK_CFLAGS)
+	AC_SUBST(NETLINK_LIBS)
+fi
+AM_CONDITIONAL(NETLINK, test "${enable_netlink}" = "yes")
 
 AC_OUTPUT(Makefile scripts/bluetooth.rules doc/version.xml
 					src/bluetoothd.8 bluez.pc)

@@ -17,6 +17,7 @@ fi
 		--localstatedir=/var \
 		--libexecdir=/lib \
 		--enable-netlink \
+		--enable-capng \
 		--enable-tracer \
 		--enable-tools \
 		--enable-bccmd \
