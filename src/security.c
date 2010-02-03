@@ -661,6 +661,8 @@ static inline void remote_features_notify(int dev, bdaddr_t *sba, void *ptr)
 		hcid_dbus_set_legacy_pairing(sba, &evt->bdaddr, FALSE);
 	else
 		hcid_dbus_set_legacy_pairing(sba, &evt->bdaddr, TRUE);
+
+	write_features_info(sba, &evt->bdaddr, NULL, evt->features);
 }
 
 static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
@@ -833,7 +835,7 @@ static inline void remote_features_information(int dev, bdaddr_t *sba, void *ptr
 	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0)
 		return;
 
-	write_features_info(sba, &dba, evt->features);
+	write_features_info(sba, &dba, evt->features, NULL);
 }
 
 static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
