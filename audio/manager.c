@@ -198,7 +198,7 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 		break;
 	case HANDSFREE_AGW_SVCLASS_ID:
 		debug("Found Handsfree AG record");
-		if (device->gateway == NULL)
+		if (enabled.gateway && (device->gateway == NULL))
 			device->gateway = gateway_init(device);
 		break;
 	case AUDIO_SINK_SVCLASS_ID:
@@ -567,8 +567,8 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 		return;
 	}
 
-	server_uuid = HFP_HS_UUID;
-	remote_uuid = HFP_AG_UUID;
+	server_uuid = HFP_AG_UUID;
+	remote_uuid = HFP_HS_UUID;
 	svclass = HANDSFREE_AGW_SVCLASS_ID;
 
 	device = manager_get_device(&src, &dst, TRUE);
@@ -794,6 +794,7 @@ static void audio_remove(struct btd_device *device)
 	devices = g_slist_remove(devices, dev);
 
 	audio_device_unregister(dev);
+
 }
 
 static struct audio_adapter *audio_adapter_ref(struct audio_adapter *adp)
@@ -905,22 +906,12 @@ static void headset_server_remove(struct btd_adapter *adapter)
 static int gateway_server_probe(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
-	const gchar *path = adapter_get_path(adapter);
-	int ret;
-
-	DBG("path %s", path);
 
 	adp = audio_adapter_get(adapter);
 	if (!adp)
 		return -EINVAL;
 
-	ret = gateway_server_init(adp);
-	if (ret < 0) {
-		audio_adapter_ref(adp);
-		return ret;
-	}
-
-	return 0;
+	return gateway_server_init(adp);
 }
 
 static void gateway_server_remove(struct btd_adapter *adapter)

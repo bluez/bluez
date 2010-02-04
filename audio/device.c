@@ -663,6 +663,9 @@ void audio_device_unregister(struct audio_device *device)
 	if (device->headset)
 		headset_unregister(device);
 
+	if (device->gateway)
+		gateway_unregister(device);
+
 	if (device->sink)
 		sink_unregister(device);
 

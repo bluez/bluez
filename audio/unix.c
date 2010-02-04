@@ -318,14 +318,14 @@ failed:
 	unix_ipc_error(client, BT_SET_CONFIGURATION, EIO);
 }
 
-static void gateway_setup_complete(struct audio_device *dev, void *user_data)
+static void gateway_setup_complete(struct audio_device *dev, GError *err, void *user_data)
 {
 	struct unix_client *client = user_data;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_set_configuration_rsp *rsp = (void *) buf;
 
-	if (!dev) {
-		unix_ipc_error(client, BT_SET_CONFIGURATION, EIO);
+	if (err) {
+		unix_ipc_error(client, BT_SET_CONFIGURATION, err->code);
 		return;
 	}
 
@@ -388,12 +388,17 @@ failed:
 	unix_ipc_error(client, BT_START_STREAM, EIO);
 }
 
-static void gateway_resume_complete(struct audio_device *dev, void *user_data)
+static void gateway_resume_complete(struct audio_device *dev, GError *err, void *user_data)
 {
 	struct unix_client *client = user_data;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_start_stream_rsp *rsp = (void *) buf;
 	struct bt_new_stream_ind *ind = (void *) buf;
+
+	if (err) {
+		unix_ipc_error(client, BT_START_STREAM, err->code);
+		return;
+	}
 
 	memset(buf, 0, sizeof(buf));
 	rsp->h.type = BT_RESPONSE;
