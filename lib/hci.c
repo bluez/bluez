@@ -473,7 +473,7 @@ static hci_map commands_map[] = {
 	{ "Write Simple Pairing Mode",			142 },
 	{ "Read Local OOB Data",			143 },
 
-	{ "Read Inquiry Transmit Power Level",		144 },
+	{ "Read Inquiry Response Transmit Power Level",	144 },
 	{ "Write Inquiry Transmit Power Level",		145 },
 	{ "Read Default Erroneous Data Reporting",	146 },
 	{ "Write Default Erroneous Data Reporting",	147 },
