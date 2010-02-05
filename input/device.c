@@ -659,12 +659,6 @@ static int hidp_add_connection(const struct input_device *idev,
 		}
 	}
 
-	if (req->vendor == 0x054c && req->product == 0x0268) {
-		unsigned char buf[] = { 0x53, 0xf4,  0x42, 0x03, 0x00, 0x00 };
-		int sk = g_io_channel_unix_get_fd(iconn->ctrl_io);
-		err = write(sk, buf, sizeof(buf));
-	}
-
 	err = ioctl_connadd(req);
 
 cleanup:
