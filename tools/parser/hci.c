@@ -286,7 +286,7 @@ static char *cmd_hostctl_str[CMD_HOSTCTL_NUM + 1] = {
 	"Write Simple Pairing Mode",
 	"Read Local OOB Data",
 	"Read Inquiry Response Transmit Power Level",
-	"Write Inquiry Response Transmit Power Level",
+	"Write Inquiry Transmit Power Level",
 	"Read Default Erroneous Data Reporting",
 	"Write Default Erroneous Data Reporting",
 	"Unknown",
