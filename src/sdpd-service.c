@@ -214,6 +214,9 @@ void create_ext_inquiry_response(const char *name, uint8_t *data)
 		if (rec->svclass.value.uuid16 < 0x1100)
 			continue;
 
+		if (rec->svclass.value.uuid16 == PNP_INFO_SVCLASS_ID)
+			continue;
+
 		if (index > 23) {
 			ptr[1] = 0x02;
 			break;
