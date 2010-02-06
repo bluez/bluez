@@ -706,6 +706,10 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 		ptr += sizeof(evt_cmd_complete);
 		adapter_update_local_name(sba, status, ptr);
 		break;
+	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL):
+		ptr += sizeof(evt_cmd_complete);
+		adapter_update_tx_power(sba, status, ptr);
+		break;
 	};
 }
 

@@ -117,6 +117,7 @@ struct btd_adapter {
 	guint scheduler_id;		/* Scheduler handle */
 
 	struct hci_dev dev;		/* hci info */
+	int8_t tx_power;		/* inq response tx power level */
 	gboolean pairable;		/* pairable state */
 
 	gboolean initialized;
@@ -812,7 +813,8 @@ static void update_ext_inquiry_response(struct btd_adapter *adapter)
 		return;
 
 	if (dev->ssp_mode > 0)
-		create_ext_inquiry_response((char *) dev->name, data);
+		create_ext_inquiry_response((char *) dev->name,
+						adapter->tx_power, data);
 
 	if (hci_write_ext_inquiry_response(dd, fec, data,
 						HCI_REQ_TIMEOUT) < 0)
@@ -872,6 +874,26 @@ void adapter_set_class_complete(bdaddr_t *bdaddr, uint8_t status)
 
 	if (ret == 0)
 		adapter->pending_cod = adapter->wanted_cod;
+}
+
+void adapter_update_tx_power(bdaddr_t *bdaddr, uint8_t status, void *ptr)
+{
+	struct btd_adapter *adapter;
+
+	if (status)
+		return;
+
+	adapter = manager_find_adapter(bdaddr);
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
+
+	adapter->tx_power = *((int8_t *) ptr);
+
+	debug("inquiry respone tx power level is %d", adapter->tx_power);
+
+	update_ext_inquiry_response(adapter);
 }
 
 void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
@@ -1840,6 +1862,10 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 		return err;
 	}
 
+	if (dev->features[7] & LMP_INQ_TX_PWR)
+		hci_send_cmd(dd, OGF_HOST_CTL,
+				OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL);
+
 	if (read_local_name(&adapter->bdaddr, name) < 0)
 		expand_name(name, MAX_NAME_LENGTH, main_opts.name,
 							adapter->dev_id);
@@ -2410,6 +2436,8 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id,
 		adapter->state |= RESOLVE_NAME;
 	adapter->path = g_strdup(path);
 	adapter->already_up = devup;
+
+	adapter->tx_power = 0;
 
 	if (!g_dbus_register_interface(conn, path, ADAPTER_INTERFACE,
 			adapter_methods, adapter_signals, NULL,

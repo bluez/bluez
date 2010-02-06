@@ -166,7 +166,8 @@ uint8_t get_service_classes(const bdaddr_t *bdaddr)
 	return service_classes;
 }
 
-void create_ext_inquiry_response(const char *name, uint8_t *data)
+void create_ext_inquiry_response(const char *name,
+					int8_t tx_power, uint8_t *data)
 {
 	sdp_list_t *list = sdp_get_record_list();
 	uint8_t *ptr = data;
@@ -187,6 +188,12 @@ void create_ext_inquiry_response(const char *name, uint8_t *data)
 		memcpy(ptr + 2, name, len);
 
 		ptr += len + 2;
+	}
+
+	if (tx_power != 0) {
+		*ptr++ = 2;
+		*ptr++ = 0x0a;
+		*ptr++ = (uint8_t) tx_power;
 	}
 
 	if (did_vendor != 0x0000) {
