@@ -1127,7 +1127,7 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 				}
 				break;
 			case 0x0a:
-				printf("\tTX power level: %d\n", *((uint8_t *) ptr));
+				printf("\tTX power level: %d\n", *((int8_t *) ptr));
 				break;
 			case 0x10:
 				printf("\tDevice ID with %d bytes data\n",
