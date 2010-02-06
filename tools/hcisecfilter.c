@@ -121,7 +121,7 @@ int main(void)
 	hci_set_bit(OCF_READ_AFH_MODE,			ocf_mask);
 	hci_set_bit(OCF_READ_EXT_INQUIRY_RESPONSE,	ocf_mask);
 	hci_set_bit(OCF_READ_SIMPLE_PAIRING_MODE,	ocf_mask);
-	hci_set_bit(OCF_READ_INQUIRY_TRANSMIT_POWER_LEVEL,	ocf_mask);
+	hci_set_bit(OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL,	ocf_mask);
 	hci_set_bit(OCF_READ_DEFAULT_ERROR_DATA_REPORTING,	ocf_mask);
 
 	printf("OGF_HOST_CTL:     { 0x%08x, 0x%08x, 0x%08x, 0x%02x }\n",

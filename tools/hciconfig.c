@@ -980,7 +980,7 @@ static void cmd_inq_tpl(int ctl, int hdev, char *opt)
 	} else {
 		int8_t level;
 
-		if (hci_read_inquiry_transmit_power_level(dd, &level, 1000) < 0) {
+		if (hci_read_inq_response_tx_power_level(dd, &level, 1000) < 0) {
 			fprintf(stderr, "Can't read inquiry transmit power level on hci%d: %s (%d)\n",
 						hdev, strerror(errno), errno);
 			exit(1);

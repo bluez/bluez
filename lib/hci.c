@@ -2246,16 +2246,16 @@ int hci_read_local_oob_data(int dd, uint8_t *hash, uint8_t *randomizer, int to)
 	return 0;
 }
 
-int hci_read_inquiry_transmit_power_level(int dd, int8_t *level, int to)
+int hci_read_inq_response_tx_power_level(int dd, int8_t *level, int to)
 {
-	read_inquiry_transmit_power_level_rp rp;
+	read_inq_response_tx_power_level_rp rp;
 	struct hci_request rq;
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_READ_INQUIRY_TRANSMIT_POWER_LEVEL;
+	rq.ocf    = OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL;
 	rq.rparam = &rp;
-	rq.rlen   = READ_INQUIRY_TRANSMIT_POWER_LEVEL_RP_SIZE;
+	rq.rlen   = READ_INQ_RESPONSE_TX_POWER_LEVEL_RP_SIZE;
 
 	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
