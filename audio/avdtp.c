@@ -898,6 +898,61 @@ static void cleanup_queue(struct avdtp *session, struct avdtp_stream *stream)
 	}
 }
 
+static void handle_unanswered_req(struct avdtp *session,
+						struct avdtp_stream *stream)
+{
+	struct pending_req *req;
+	struct avdtp_local_sep *lsep;
+	struct avdtp_error err;
+
+	req = session->req;
+	session->req = NULL;
+
+	avdtp_error_init(&err, AVDTP_ERROR_ERRNO, EIO);
+
+	lsep = stream->lsep;
+
+	switch (req->signal_id) {
+	case AVDTP_RECONFIGURE:
+		error("No reply to Reconfigure request");
+		if (lsep && lsep->cfm && lsep->cfm->reconfigure)
+			lsep->cfm->reconfigure(session, lsep, stream, &err,
+						lsep->user_data);
+		break;
+	case AVDTP_OPEN:
+		error("No reply to Open request");
+		if (lsep && lsep->cfm && lsep->cfm->open)
+			lsep->cfm->open(session, lsep, stream, &err,
+					lsep->user_data);
+		break;
+	case AVDTP_START:
+		error("No reply to Start request");
+		if (lsep && lsep->cfm && lsep->cfm->start)
+			lsep->cfm->start(session, lsep, stream, &err,
+						lsep->user_data);
+		break;
+	case AVDTP_SUSPEND:
+		error("No reply to Suspend request");
+		if (lsep && lsep->cfm && lsep->cfm->suspend)
+			lsep->cfm->suspend(session, lsep, stream, &err,
+						lsep->user_data);
+		break;
+	case AVDTP_CLOSE:
+		error("No reply to Close request");
+		if (lsep && lsep->cfm && lsep->cfm->close)
+			lsep->cfm->close(session, lsep, stream, &err,
+						lsep->user_data);
+		break;
+	case AVDTP_SET_CONFIGURATION:
+		error("No reply to SetConfiguration request");
+		if (lsep && lsep->cfm && lsep->cfm->set_configuration)
+			lsep->cfm->set_configuration(session, lsep, stream,
+							&err, lsep->user_data);
+	}
+
+	pending_req_free(req);
+}
+
 static void avdtp_sep_set_state(struct avdtp *session,
 				struct avdtp_local_sep *sep,
 				avdtp_state_t state)
@@ -959,7 +1014,7 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		if (session->pending_open == stream)
 			handle_transport_connect(session, NULL, 0, 0);
 		if (session->req && session->req->stream == stream)
-			session->req->stream = NULL;
+			handle_unanswered_req(session, stream);
 		/* Remove pending commands for this stream from the queue */
 		cleanup_queue(session, stream);
 		stream_free(stream);
