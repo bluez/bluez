@@ -513,6 +513,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 {
 	struct audio_device *device = data;
 	struct gateway *gw = device->gateway;
+	const char *path;
 
 	if (!gw->agent)
 		goto done;
@@ -520,6 +521,18 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	if (strcmp(gw->agent->name, dbus_message_get_sender(msg)) != 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 							"Permission denied");
+
+	if (!dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID))
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".InvalidArguments",
+				"Invalid argument");
+
+	if (strcmp(gw->agent->path, path) != 0)
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".Failed",
+				"Unknown object path");
 
 	g_dbus_remove_watch(device->conn, gw->agent->watch);
 

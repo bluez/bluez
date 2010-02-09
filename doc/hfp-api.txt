@@ -37,6 +37,10 @@ Methods		void Connect()
 			registered. The object path parameter must match the
 			same value that has been used on registration.
 
+			Possible Errors: org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
+
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
