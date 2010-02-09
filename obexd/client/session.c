@@ -588,21 +588,6 @@ static void abort_transfer(struct session_data *session)
 	session_unref(session);
 }
 
-int session_set_agent(struct session_data *session, const char *name,
-							const char *path)
-{
-	if (session == NULL)
-		return -EINVAL;
-
-	if (session->agent_name != NULL || session->agent_path != NULL)
-		return -EALREADY;
-
-	session->agent_name = g_strdup(name);
-	session->agent_path = g_strdup(path);
-
-	return 0;
-}
-
 static void append_entry(DBusMessageIter *dict,
 				const char *key, int type, void *val)
 {
@@ -1862,6 +1847,27 @@ int session_put(struct session_data *session, char *buf, const char *targetname)
 	session->buffer = buf;
 
 	agent_request(session->conn, session, session_put_reply, NULL);
+
+	return 0;
+}
+
+int session_set_agent(struct session_data *session, const char *name,
+							const char *path)
+{
+	if (session == NULL)
+		return -EINVAL;
+
+	if (session->agent_name != NULL || session->agent_path != NULL)
+		return -EALREADY;
+
+	session->agent_name = g_strdup(name);
+	session->agent_path = g_strdup(path);
+
+	session->owner_watch = g_dbus_add_disconnect_watch(session->conn,
+					session->owner, owner_disconnected,
+								session, NULL);
+
+	session_ref(session);
 
 	return 0;
 }
