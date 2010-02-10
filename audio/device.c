@@ -781,7 +781,7 @@ int audio_device_cancel_authorization(struct audio_device *dev,
 	GSList *l, *next;
 
 	for (l = priv->auths; l != NULL; l = next) {
-		struct service_auth *auth = priv->auths->data;
+		struct service_auth *auth = l->data;
 
 		next = g_slist_next(l);
 
