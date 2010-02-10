@@ -917,8 +917,9 @@ static inline void setup_sync_conn_dump(int level, struct frame *frm)
 	setup_sync_conn_cp *cp = frm->ptr;
 
 	p_indent(level, frm);
-	printf("handle %d voice setting 0x%4.4x\n", btohs(cp->handle),
-						btohs(cp->voice_setting));
+	printf("handle %d voice setting 0x%4.4x ptype 0x%4.4x\n",
+		btohs(cp->handle), btohs(cp->voice_setting),
+		btohs(cp->pkt_type));
 }
 
 static inline void hold_mode_dump(int level, struct frame *frm)
