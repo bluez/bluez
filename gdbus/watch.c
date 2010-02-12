@@ -535,6 +535,8 @@ static void check_service(DBusConnection *connection, const char *name,
 
 	dbus_pending_call_set_notify(call, service_reply, data, NULL);
 
+	dbus_pending_call_unref(call);
+
 done:
 	dbus_message_unref(message);
 }
