@@ -1,3 +1,14 @@
+ver 4.61:
+	Fix issues with Read Inquiry Response Transmit Power Level.
+	Fix possible invalid read when removing a temporary device.
+	Fix mode restoration when remember_powered is false.
+	Fix conference call releasing in telephony-maemo.
+	Fix segmentation fault with authorization during headset disconnects.
+	Add support for handling unanswered AVDTP request on disconnect.
+	Add support for handling Inquiry Response Transmit Power Level.
+	Add support for caching of remote host features.
+	Add preliminary voice dialing support for HSP.
+
 ver 4.60:
 	Fix voice mailbox number reading from SIM.
 	Fix some races with D-Bus mainloop integration.
