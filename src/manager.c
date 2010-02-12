@@ -229,7 +229,8 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",get_properties	},
 	{ "DefaultAdapter",	"",	"o",	default_adapter	},
 	{ "FindAdapter",	"s",	"o",	find_adapter	},
-	{ "ListAdapters",	"",	"ao",	list_adapters	},
+	{ "ListAdapters",	"",	"ao",	list_adapters,
+						G_DBUS_METHOD_FLAG_DEPRECATED},
 	{ }
 };
 
