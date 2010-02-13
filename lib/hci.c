@@ -138,9 +138,9 @@ static int hci_str2uint(hci_map *map, char *str, unsigned int *val)
 	return set;
 }
 
-char *hci_dtypetostr(int type)
+char *hci_bustostr(int bus)
 {
-	switch (type) {
+	switch (bus) {
 	case HCI_VIRTUAL:
 		return "VIRTUAL";
 	case HCI_USB:
@@ -155,6 +155,23 @@ char *hci_dtypetostr(int type)
 		return "PCI";
 	case HCI_SDIO:
 		return "SDIO";
+	default:
+		return "UNKNOWN";
+	}
+}
+
+char *hci_dtypetostr(int type)
+{
+	return hci_bustostr(type & 0x0f);
+}
+
+char *hci_typetostr(int type)
+{
+	switch (type) {
+	case HCI_BREDR:
+		return "BR/EDR";
+	case HCI_80211:
+		return "802.11";
 	default:
 		return "UNKNOWN";
 	}
