@@ -102,6 +102,7 @@ int hci_read_simple_pairing_mode(int dd, uint8_t *mode, int to);
 int hci_write_simple_pairing_mode(int dd, uint8_t mode, int to);
 int hci_read_local_oob_data(int dd, uint8_t *hash, uint8_t *randomizer, int to);
 int hci_read_inq_response_tx_power_level(int dd, int8_t *level, int to);
+int hci_read_inquiry_transmit_power_level(int dd, int8_t *level, int to);
 int hci_write_inquiry_transmit_power_level(int dd, int8_t level, int to);
 int hci_read_transmit_power_level(int dd, uint16_t handle, uint8_t type, int8_t *level, int to);
 int hci_read_link_policy(int dd, uint16_t handle, uint16_t *policy, int to);

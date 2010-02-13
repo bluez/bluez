@@ -2286,6 +2286,11 @@ int hci_read_inq_response_tx_power_level(int dd, int8_t *level, int to)
 	return 0;
 }
 
+int hci_read_inquiry_transmit_power_level(int dd, int8_t *level, int to)
+{
+	return hci_read_inq_response_tx_power_level(dd, level, to);
+}
+
 int hci_write_inquiry_transmit_power_level(int dd, int8_t level, int to)
 {
 	write_inquiry_transmit_power_level_cp cp;
