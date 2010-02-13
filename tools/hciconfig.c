@@ -944,7 +944,8 @@ static void cmd_version(int ctl, int hdev, char *opt)
 	lmpver = lmp_vertostr(ver.hci_ver);
 
 	print_dev_hdr(&di);
-	printf("\tHCI Ver: %s (0x%x) HCI Rev: 0x%x LMP Ver: %s (0x%x) LMP Subver: 0x%x\n"
+	printf("\tHCI Ver: %s (0x%x)  HCI Rev: 0x%x\n"
+		"\tLMP Ver: %s (0x%x)  LMP Subver: 0x%x\n"
 		"\tManufacturer: %s (%d)\n",
 		hciver ? hciver : "n/a", ver.hci_ver, ver.hci_rev,
 		lmpver ? lmpver : "n/a", ver.lmp_ver, ver.lmp_subver,
