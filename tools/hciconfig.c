@@ -1587,10 +1587,12 @@ static void print_dev_hdr(struct hci_dev_info *di)
 
 	ba2str(&di->bdaddr, addr);
 
-	printf("%s:\tType: %s\n", di->name, hci_dtypetostr(di->type) );
-	printf("\tBD Address: %s ACL MTU: %d:%d SCO MTU: %d:%d\n",
-		addr, di->acl_mtu, di->acl_pkts,
-		di->sco_mtu, di->sco_pkts);
+	printf("%s:\tType: %s  Bus: %s\n", di->name,
+					hci_typetostr(di->type >> 4),
+					hci_bustostr(di->type & 0x0f));
+	printf("\tBD Address: %s  ACL MTU: %d:%d  SCO MTU: %d:%d\n",
+					addr, di->acl_mtu, di->acl_pkts,
+						di->sco_mtu, di->sco_pkts);
 }
 
 static void print_dev_info(int ctl, struct hci_dev_info *di)
