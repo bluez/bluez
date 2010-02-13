@@ -47,7 +47,7 @@ extern "C" {
 #define HCI_DEV_SUSPEND	5
 #define HCI_DEV_RESUME	6
 
-/* HCI device types */
+/* HCI bus types */
 #define HCI_VIRTUAL	0
 #define HCI_USB		1
 #define HCI_PCCARD	2
@@ -55,6 +55,10 @@ extern "C" {
 #define HCI_RS232	4
 #define HCI_PCI		5
 #define HCI_SDIO	6
+
+/* HCI controller types */
+#define HCI_BREDR	0x00
+#define HCI_80211	0x01
 
 /* HCI device flags */
 enum {
