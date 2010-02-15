@@ -81,7 +81,7 @@ sbc_sbcenc_LDADD = sbc/libsbc.la
 if SNDFILE
 noinst_PROGRAMS += sbc/sbctester
 
-sbc_sbctester_LDADD = @SNDFILE_LIBS@
+sbc_sbctester_LDADD = @SNDFILE_LIBS@ -lm
 sbc_sbctest_CFLAGS = @SNDFILE_CFLAGS@
 endif
 endif
