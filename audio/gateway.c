@@ -224,7 +224,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 	struct audio_device *dev = user_data;
 	struct gateway *gw = dev->gateway;
 	DBusMessage *reply;
-	int sk;
+	int sk, ret;
 
 	if (err) {
 		error("connect(): %s", err->message);
@@ -242,11 +242,16 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 
 	gw->rfcomm = g_io_channel_ref(chan);
 
-	if (!agent_sendfd(gw->agent, sk, newconnection_reply, dev))
+	ret = agent_sendfd(gw->agent, sk, newconnection_reply, dev);
+
+	if (!gw->msg)
+		return;
+
+	if (ret)
+		reply = dbus_message_new_method_return(gw->msg);
+	else
 		reply = g_dbus_create_error(gw->msg, ERROR_INTERFACE ".Failed",
 					"Can not pass file descriptor");
-	else
-		reply = dbus_message_new_method_return(gw->msg);
 
 	g_dbus_send_message(dev->conn, reply);
 
@@ -257,7 +262,6 @@ fail:
 		error_common_reply(dev->conn, gw->msg,
 						ERROR_INTERFACE ".Failed",
 						"Connection attempt failed");
-
 
 	change_state(dev, GATEWAY_STATE_DISCONNECTED);
 }
