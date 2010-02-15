@@ -155,7 +155,7 @@ static gint get_by_type(struct obex_session *os, gchar *type, size_t *size)
 	if (g_str_equal(type, LST_TYPE))
 		return os_prepare_get(os, os->current_folder, size);
 
-	return FALSE;
+	return -ENOENT;
 }
 
 static gint ftp_prepare_get(struct obex_session *os, gchar *file,
