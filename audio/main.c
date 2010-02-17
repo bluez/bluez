@@ -42,7 +42,6 @@
 #include "plugin.h"
 #include "log.h"
 #include "device.h"
-#include "unix.h"
 #include "headset.h"
 #include "manager.h"
 #include "gateway.h"
@@ -151,11 +150,6 @@ static int audio_init(void)
 
 	config = load_config_file(CONFIGDIR "/audio.conf");
 
-	if (unix_init() < 0) {
-		error("Unable to setup unix socket");
-		goto failed;
-	}
-
 	if (audio_manager_init(connection, config, &enable_sco) < 0)
 		goto failed;
 
@@ -174,7 +168,6 @@ static int audio_init(void)
 
 failed:
 	audio_manager_exit();
-	unix_exit();
 
 	if (connection) {
 		dbus_connection_unref(connection);
@@ -193,8 +186,6 @@ static void audio_exit(void)
 	}
 
 	audio_manager_exit();
-
-	unix_exit();
 
 	dbus_connection_unref(connection);
 }

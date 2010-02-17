@@ -70,6 +70,7 @@
 #include "manager.h"
 #include "sdpd.h"
 #include "telephony.h"
+#include "unix.h"
 
 typedef enum {
 	HEADSET	= 1 << 0,
@@ -113,6 +114,7 @@ static struct enabled_interfaces enabled = {
 	.sink		= TRUE,
 	.source		= FALSE,
 	.control	= TRUE,
+	.socket		= TRUE,
 };
 
 static struct audio_adapter *find_adapter(GSList *list,
@@ -1074,6 +1076,8 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.source = TRUE;
 		else if (g_str_equal(list[i], "Control"))
 			enabled.control = TRUE;
+		else if (g_str_equal(list[i], "Socket"))
+			enabled.socket = TRUE;
 	}
 	g_strfreev(list);
 
@@ -1090,6 +1094,8 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.source = FALSE;
 		else if (g_str_equal(list[i], "Control"))
 			enabled.control = FALSE;
+		else if (g_str_equal(list[i], "Socket"))
+			enabled.socket = FALSE;
 	}
 	g_strfreev(list);
 
@@ -1117,6 +1123,9 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 		max_connected_headsets = i;
 
 proceed:
+	if (enabled.socket)
+		unix_init();
+
 	if (enabled.headset) {
 		telephony_init();
 		btd_register_adapter_driver(&headset_server_driver);
@@ -1151,6 +1160,9 @@ void audio_manager_exit(void)
 		g_key_file_free(config);
 		config = NULL;
 	}
+
+	if (enabled.socket)
+		unix_exit();
 
 	if (enabled.headset) {
 		btd_unregister_adapter_driver(&headset_server_driver);

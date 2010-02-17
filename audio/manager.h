@@ -29,6 +29,7 @@ struct enabled_interfaces {
 	gboolean sink;
 	gboolean source;
 	gboolean control;
+	gboolean socket;
 };
 
 int audio_manager_init(DBusConnection *conn, GKeyFile *config,
