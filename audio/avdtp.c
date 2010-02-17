@@ -2125,7 +2125,7 @@ static uint16_t get_version(struct avdtp *session)
 		goto done;
 
 	proto_desc = sdp_get_proto_desc(protos, AVDTP_UUID);
-	if (proto_desc->dtd == SDP_UINT16)
+	if (proto_desc && proto_desc->dtd == SDP_UINT16)
 		ver = proto_desc->val.uint16;
 
 	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
