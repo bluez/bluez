@@ -1426,6 +1426,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	}
 
 	sep->stream = stream;
+	sep->info.inuse = 1;
 	session->streams = g_slist_append(session->streams, stream);
 
 	avdtp_sep_set_state(session, sep, AVDTP_STATE_CONFIGURED);
