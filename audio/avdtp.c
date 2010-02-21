@@ -905,6 +905,13 @@ static void handle_unanswered_req(struct avdtp *session,
 	struct avdtp_local_sep *lsep;
 	struct avdtp_error err;
 
+	if (session->req->signal_id == AVDTP_ABORT) {
+		/* Avoid freeing the Abort request here */
+		debug("handle_unanswered_req: Abort req, returning");
+		session->req->stream = NULL;
+		return;
+	}
+
 	req = session->req;
 	session->req = NULL;
 
