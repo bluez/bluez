@@ -49,8 +49,8 @@ struct obex_service_driver *obex_service_driver_find(GSList *list,
 		struct obex_service_driver *driver = l->data;
 
 		if (driver->who && who &&
-				driver->who_size == who_size &&
-				memcmp(driver->who, who, who_size) != 0)
+				(driver->who_size != who_size ||
+				memcmp(driver->who, who, who_size) != 0))
 			continue;
 
 		if (driver->target == NULL && target == NULL)
@@ -97,7 +97,11 @@ int obex_service_driver_register(struct obex_service_driver *driver)
 
 	debug("driver %p service %s registered", driver, driver->name);
 
-	drivers = g_slist_append(drivers, driver);
+	/* Drivers that support who has priority */
+	if (driver->who)
+		drivers = g_slist_prepend(drivers, driver);
+	else
+		drivers = g_slist_append(drivers, driver);
 
 	return 0;
 }
