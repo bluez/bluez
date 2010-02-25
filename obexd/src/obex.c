@@ -64,6 +64,21 @@ typedef struct {
 	guint16 mtu;
 } __attribute__ ((packed)) obex_connect_hdr_t;
 
+static void os_set_response(obex_object_t *obj, obex_rsp_t lastrsp)
+{
+	guint8 rsp;
+
+	switch (lastrsp) {
+	case OBEX_RSP_SUCCESS:
+		rsp = OBEX_RSP_CONTINUE;
+		break;
+	default:
+		rsp = lastrsp;
+	}
+
+	OBEX_ObjectSetRsp(obj, rsp, lastrsp);
+}
+
 static void os_reset_session(struct obex_session *os)
 {
 	if (os->object) {
@@ -182,6 +197,7 @@ static void cmd_connect(struct obex_session *os,
 	guint8 hi;
 	const guint8 *target = NULL, *who = NULL;
 	guint target_size = 0, who_size = 0;
+	obex_rsp_t rsp;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &buffer) != sizeof(*nonhdr)) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
@@ -228,8 +244,24 @@ static void cmd_connect(struct obex_session *os,
 
 	debug("Selected driver: %s", os->service->name);
 
-	if (os->service->connect)
-		os->service->connect(obex, obj);
+	if (!os->service->connect) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		return;
+	}
+
+	rsp = os->service->connect(os);
+	if (rsp == OBEX_RSP_SUCCESS && os->service->target) {
+		hd.bs = os->service->target;
+		OBEX_ObjectAddHeader(obex, obj,
+				OBEX_HDR_WHO, hd, 16,
+				OBEX_FL_FIT_ONE_PACKET);
+		hd.bq4 = os->cid;
+		OBEX_ObjectAddHeader(obex, obj,
+				OBEX_HDR_CONNECTION, hd, 4,
+				OBEX_FL_FIT_ONE_PACKET);
+	}
+
+	os_set_response(obj, rsp);
 }
 
 static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)

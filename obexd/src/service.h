@@ -21,6 +21,8 @@
  *
  */
 
+typedef guint8		obex_rsp_t;
+
 struct obex_service_driver {
 	const char *name;
 	guint16 service;
@@ -30,7 +32,7 @@ struct obex_service_driver {
 	const guint8 *who;
 	guint who_size;
 	const gchar *record;
-	void (*connect) (obex_t *obex, obex_object_t *obj);
+	obex_rsp_t (*connect) (struct OBEX_session *os);
 	void (*progress) (obex_t *obex, obex_object_t *obj);
 	void (*get) (obex_t *obex, obex_object_t *obj);
 	void (*put) (obex_t *obex, obex_object_t *obj);

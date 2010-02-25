@@ -642,6 +642,11 @@ void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered)
 	g_free(path);
 }
 
+void manager_register_transfer(struct OBEX_session *os)
+{
+	register_transfer(os->cid, os);
+}
+
 void register_transfer(guint32 id, struct obex_session *os)
 {
 	gchar *path = g_strdup_printf("/transfer%u", id);
@@ -1020,6 +1025,12 @@ void register_session(guint32 id, struct obex_session *os)
 	}
 
 	g_free(path);
+}
+
+void manager_register_session(struct OBEX_session *os)
+{
+	register_session(os->cid, os);
+	emit_session_created(os->cid);
 }
 
 void unregister_session(guint32 id)

@@ -47,3 +47,6 @@ gint request_service_authorization(struct server *server, GIOChannel *io,
 void register_session(guint32 id, struct obex_session *os);
 
 void unregister_session(guint32 id);
+
+void manager_register_session(struct OBEX_session *os);
+void manager_register_transfer(struct OBEX_session *os);

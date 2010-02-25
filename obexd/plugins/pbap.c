@@ -378,25 +378,11 @@ static int pbap_pullvcardentry(obex_t *obex, obex_object_t *obj)
 	return err;
 }
 
-static void pbap_connect(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t pbap_connect(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
-	obex_headerdata_t hd;
+	manager_register_session(os);
 
-	register_session(os->cid, os);
-	emit_session_created(os->cid);
-
-	/* Append received UUID in WHO header */
-	hd.bs = PBAP_TARGET;
-	OBEX_ObjectAddHeader(obex, obj,
-			OBEX_HDR_WHO, hd, sizeof(PBAP_TARGET),
-			OBEX_FL_FIT_ONE_PACKET);
-	hd.bq4 = os->cid;
-	OBEX_ObjectAddHeader(obex, obj,
-			OBEX_HDR_CONNECTION, hd, 4,
-			OBEX_FL_FIT_ONE_PACKET);
-
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+	return OBEX_RSP_SUCCESS;
 }
 
 static void pbap_get(obex_t *obex, obex_object_t *obj)

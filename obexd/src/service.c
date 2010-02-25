@@ -32,9 +32,9 @@
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
 
+#include "obex.h"
 #include "service.h"
 #include "logging.h"
-#include "obex.h"
 
 static GSList *drivers = NULL;
 

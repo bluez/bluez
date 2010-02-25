@@ -82,6 +82,9 @@ struct obex_session {
 	gboolean	finished;
 };
 
+/* FIXME: first step to obsfuscate */
+#define OBEX_session obex_session
+
 gint obex_session_start(GIOChannel *io, struct server *server);
 struct obex_session *obex_get_session(gpointer object);
 gint obex_tty_session_stop(void);

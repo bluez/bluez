@@ -219,8 +219,7 @@ static void connect_cb(DBusPendingCall *call, void *user_data)
 	g_free(cb_data);
 
 	/* Append received UUID in WHO header */
-	register_session(os->cid, os);
-	emit_session_created(os->cid);
+	manager_register_session(os);
 
 	hd.bs = SYNCML_TARGET;
 	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_WHO, hd, SYNCML_TARGET_SIZE,
@@ -254,9 +253,8 @@ static void process_cb(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 }
 
-static void synce_connect(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t synce_connect(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
 	DBusConnection *conn;
 	GError *err = NULL;
 	gchar address[18], id[36], transport[36], transport_description[24];
@@ -320,9 +318,13 @@ static void synce_connect(obex_t *obex, obex_object_t *obj)
 		goto failed;
 	}
 
+	/* FIXME: completely broken */
+
 	cb_data = g_malloc0(sizeof(struct callback_data));
-	cb_data->obex = obex;
-	cb_data->obj = obj;
+#if 0
+	cb_data->obex = os->obex;
+	cb_data->obj = os->obj;
+#endif
 	dbus_pending_call_set_notify(call, connect_cb, cb_data, NULL);
 
 	context = g_new0(struct synce_context, 1);
@@ -332,12 +334,14 @@ static void synce_connect(obex_t *obex, obex_object_t *obj)
 
 	dbus_pending_call_unref(call);
 	dbus_message_unref(msg);
+#if 0
+	/* FIXME: broken */
 	OBEX_SuspendRequest(obex, obj);
-
-	return;
+#endif
+	return OBEX_RSP_SUCCESS;
 
 failed:
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+	return OBEX_RSP_FORBIDDEN;
 }
 
 static void synce_put(obex_t *obex, obex_object_t *obj)

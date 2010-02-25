@@ -34,9 +34,9 @@
 #include <glib.h>
 
 #include "plugin.h"
+#include "obex.h"
 #include "service.h"
 #include "logging.h"
-#include "obex.h"
 #include "dbus.h"
 
 #define VCARD_TYPE "text/x-vcard"
@@ -93,13 +93,11 @@
   </attribute>									\
 </record>"
 
-static void opp_connect(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t opp_connect(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
+	manager_register_transfer(os);
 
-	register_transfer(os->cid, os);
-	/* OPP doesn't contains target or connection id. */
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+	return OBEX_RSP_SUCCESS;
 }
 
 static void opp_progress(obex_t *obex, obex_object_t *obj)
