@@ -816,20 +816,6 @@ static void service_cancel(struct pending_request *pending)
 	g_dbus_send_message(system_conn, msg);
 }
 
-void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
-{
-	struct server *server = user_data;
-
-	if (err) {
-		error("%s", err->message);
-		g_io_channel_shutdown(io, TRUE, NULL);
-		return;
-	}
-
-	if (obex_session_start(io, server) < 0)
-		g_io_channel_shutdown(io, TRUE, NULL);
-}
-
 static void pending_request_free(struct pending_request *pending)
 {
 	if (pending->call)

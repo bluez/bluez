@@ -21,20 +21,8 @@
  *
  */
 
-#include <dbus/dbus.h>
-
-#define OPENOBEX_SERVICE  "org.openobex"
-
-#define OPENOBEX_MANAGER_PATH		"/"
-#define OPENOBEX_MANAGER_INTERFACE	OPENOBEX_SERVICE ".Manager"
-#define ERROR_INTERFACE			OPENOBEX_SERVICE ".Error"
-
-void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data);
-
-gboolean manager_init(void);
-void manager_cleanup(void);
-
 gboolean plugin_init(void);
 void plugin_cleanup(void);
 
-DBusConnection *obex_dbus_get_connection(void);
+gboolean manager_init(void);
+void manager_cleanup(void);
