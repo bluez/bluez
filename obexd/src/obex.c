@@ -299,6 +299,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	obex_headerdata_t hd;
 	guint hlen;
 	guint8 hi;
+	guint rsp;
 
 	if (!os->service) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
@@ -363,7 +364,22 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		}
 	}
 
-	os->service->get(obex, obj);
+	rsp = os->service->get(os);
+	if (rsp == OBEX_RSP_SUCCESS) {
+		hd.bq4 = os->size;
+		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_LENGTH, hd, 4, 0);
+
+		/* Add body header */
+		hd.bs = NULL;
+		if (os->size == 0)
+			OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
+					hd, 0, OBEX_FL_FIT_ONE_PACKET);
+		else
+			OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
+					hd, 0, OBEX_FL_STREAM_START);
+	}
+
+	os_set_response(obj, rsp);
 }
 
 static void cmd_setpath(struct obex_session *os,
@@ -415,12 +431,13 @@ static void cmd_setpath(struct obex_session *os,
 	os->service->setpath(obex, obj);
 }
 
-int os_prepare_get(struct obex_session *os, gchar *filename, size_t *size)
+int obex_stream_start(struct OBEX_session *os, gchar *filename)
 {
 	gint err;
 	gpointer object;
+	size_t size;
 
-	object = os->driver->open(filename, O_RDONLY, 0, size, &err);
+	object = os->driver->open(filename, O_RDONLY, 0, &size, &err);
 	if (object == NULL) {
 		error("open(%s): %s (%d)", filename, strerror(-err), -err);
 		goto fail;
@@ -428,8 +445,9 @@ int os_prepare_get(struct obex_session *os, gchar *filename, size_t *size)
 
 	os->object = object;
 	os->offset = 0;
+	os->size = size;
 
-	if (*size > 0)
+	if (size > 0)
 		os->buf = g_malloc0(os->tx_mtu);
 
 	return 0;
@@ -1076,4 +1094,19 @@ struct obex_session *obex_get_session(gpointer object)
 	}
 
 	return NULL;
+}
+
+const char *obex_session_get_name(struct OBEX_session *os)
+{
+	return os->name;
+}
+
+const char *obex_session_get_type(struct OBEX_session *os)
+{
+	return os->type;
+}
+
+ssize_t obex_session_get_size(struct OBEX_session *os)
+{
+	return os->size;
 }

@@ -397,28 +397,15 @@ static void synce_put(obex_t *obex, obex_object_t *obj)
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
 }
 
-static void synce_get(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t synce_get(struct OBEX_session *os)
 {
-	obex_headerdata_t hd;
-	struct obex_session *os;
 	struct synce_context *context;
-
-	os = OBEX_GetUserData(obex);
-	if (!os)
-		return;
 
 	context = find_context(os);
 	if (!context)
-		return;
+		return OBEX_RSP_FORBIDDEN;
 
-	if (!context->reply_received)
-		OBEX_SuspendRequest(obex, obj);
-
-	hd.bs = NULL;
-	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, 0,
-					OBEX_FL_STREAM_START);
-
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+	return OBEX_RSP_SUCCESS;
 }
 
 static void close_cb(DBusPendingCall *call, void *user_data)

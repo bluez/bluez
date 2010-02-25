@@ -144,22 +144,21 @@ static const guint8 FTP_TARGET[TARGET_SIZE] = {
 static const guint8 PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
 			'P','C',' ','S','u','i','t','e' };
 
-static gint get_by_type(struct obex_session *os, gchar *type, size_t *size)
+static gint get_by_type(struct OBEX_session *os, gchar *type)
 {
 	if (type == NULL)
 		return -ENOENT;
 
 	if (g_str_equal(type, CAP_TYPE))
-		return os_prepare_get(os, os->server->capability, size);
+		return obex_stream_start(os, os->server->capability);
 
 	if (g_str_equal(type, LST_TYPE))
-		return os_prepare_get(os, os->current_folder, size);
+		return obex_stream_start(os, os->current_folder);
 
 	return -ENOENT;
 }
 
-static gint ftp_prepare_get(struct obex_session *os, gchar *file,
-				size_t *size)
+static gint ftp_prepare_get(struct obex_session *os, gchar *file)
 {
 	gboolean root;
 
@@ -179,7 +178,7 @@ static gint ftp_prepare_get(struct obex_session *os, gchar *file,
 			return -EPERM;
 	}
 
-	return os_prepare_get(os, file, size);
+	return obex_stream_start(os, file);
 }
 
 static obex_rsp_t ftp_connect(struct OBEX_session *os)
@@ -189,31 +188,24 @@ static obex_rsp_t ftp_connect(struct OBEX_session *os)
 	return OBEX_RSP_SUCCESS;
 }
 
-static void ftp_get(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t ftp_get(struct OBEX_session *os)
 {
-	obex_headerdata_t hv;
-	struct obex_session *os;
-	size_t size;
 	gint err;
 	gchar *path;
-
-	os = OBEX_GetUserData(obex);
-	if (os == NULL)
-		return;
 
 	if (os->current_folder == NULL) {
 		err = -ENOENT;
 		goto fail;
 	}
 
-	err = get_by_type(os, os->type, &size);
+	err = get_by_type(os, os->type);
 	if (err < 0) {
 		if (!os->name)
 			goto fail;
 
 		path = g_build_filename(os->current_folder, os->name, NULL);
 
-		err = ftp_prepare_get(os, path, &size);
+		err = ftp_prepare_get(os, path);
 
 		g_free(path);
 
@@ -221,31 +213,15 @@ static void ftp_get(obex_t *obex, obex_object_t *obj)
 			goto fail;
 	}
 
-	hv.bq4 = size;
-	os->size = size;
-	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_LENGTH, hv, 4, 0);
-
-	/* Add body header */
-	hv.bs = NULL;
-	if (size == 0)
-		OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
-				hv, 0, OBEX_FL_FIT_ONE_PACKET);
-	else
-		OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
-				hv, 0, OBEX_FL_STREAM_START);
-
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE,
-			OBEX_RSP_SUCCESS);
-
-	return;
+	return OBEX_RSP_SUCCESS;
 
 fail:
 	switch (err) {
 	case -ENOENT:
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_FOUND, OBEX_RSP_NOT_FOUND);
-		break;
+		return OBEX_RSP_NOT_FOUND;
+
 	default:
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		return OBEX_RSP_FORBIDDEN;
 	}
 }
 

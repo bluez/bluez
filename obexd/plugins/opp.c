@@ -171,50 +171,26 @@ static void opp_put(obex_t *obex, obex_object_t *obj)
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
 }
 
-static void opp_get(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t opp_get(struct OBEX_session *os)
 {
-	struct obex_session *os;
-	obex_headerdata_t hv;
-	size_t size;
+	const char *type;
 
-	os = OBEX_GetUserData(obex);
-	if (os == NULL)
-		return;
+	if (obex_session_get_name(os) == NULL)
+		return OBEX_RSP_FORBIDDEN;
 
-	if (os->name)
-		goto fail;
+	type = obex_session_get_type(os);
 
-	if (os->type == NULL)
-		goto fail;
+	if (type == NULL)
+		return OBEX_RSP_FORBIDDEN;
 
 	if (g_str_equal(os->type, VCARD_TYPE)) {
-		if (os_prepare_get(os, VCARD_FILE, &size) < 0) {
-			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_FOUND,
-					OBEX_RSP_NOT_FOUND);
-			return;
-		}
+		if (obex_stream_start(os, VCARD_FILE) < 0)
+			return OBEX_RSP_NOT_FOUND;
+
 	} else
-		goto fail;
+		return OBEX_RSP_FORBIDDEN;
 
-
-	hv.bq4 = size;
-	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_LENGTH, hv, 4, 0);
-
-	/* Add body header */
-	hv.bs = NULL;
-	if (size == 0)
-		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
-						hv, 0, OBEX_FL_FIT_ONE_PACKET);
-	else
-		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
-						hv, 0, OBEX_FL_STREAM_START);
-
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
-
-	return;
-
-fail:
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+	return OBEX_RSP_SUCCESS;
 }
 
 static void opp_disconnect(struct OBEX_session *os)

@@ -385,31 +385,30 @@ static obex_rsp_t pbap_connect(struct OBEX_session *os)
 	return OBEX_RSP_SUCCESS;
 }
 
-static void pbap_get(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t pbap_get(struct OBEX_session *os)
 {
-	struct obex_session *session = OBEX_GetUserData(obex);
-	obex_headerdata_t hd;
-	gboolean addbody = TRUE;
+	int addbody = TRUE;
+	const char *type = obex_session_get_type(os);
+	const char *name = obex_session_get_name(os);
 	int err;
 
-	if (session == NULL)
-		return;
-
-	if (session->type == NULL)
+	if (type == NULL)
 		goto fail;
 
-	if (g_str_equal(session->type, VCARDLISTING_TYPE) == FALSE
-						&& session->name == NULL)
+	if (g_str_equal(type, VCARDLISTING_TYPE) == FALSE
+						&& name == NULL)
 		goto fail;
 
-	OBEX_ObjectReParseHeaders(obex, obj);
-
-	if (g_str_equal(session->type, PHONEBOOK_TYPE) == TRUE)
-		err = pbap_pullphonebook(obex, obj, &addbody);
-	else if (g_str_equal(session->type, VCARDLISTING_TYPE) == TRUE)
-		err = pbap_pullvcardlisting(obex, obj, &addbody);
-	else if (g_str_equal(session->type, VCARDENTRY_TYPE) == TRUE)
-		err = pbap_pullvcardentry(obex, obj);
+	/* FIXME: broken */
+#if 0
+	OBEX_ObjectReParseHeaders(, obj);
+#endif
+	if (g_str_equal(type, PHONEBOOK_TYPE) == TRUE)
+		err = pbap_pullphonebook(NULL, NULL, NULL);
+	else if (g_str_equal(type, VCARDLISTING_TYPE) == TRUE)
+		err = pbap_pullvcardlisting(NULL, NULL, NULL);
+	else if (g_str_equal(type, VCARDENTRY_TYPE) == TRUE)
+		err = pbap_pullvcardentry(NULL, NULL);
 	else
 		goto fail;
 
@@ -417,21 +416,25 @@ static void pbap_get(obex_t *obex, obex_object_t *obj)
 		goto fail;
 
 	if (addbody == TRUE) {
+#if 0
 		OBEX_SuspendRequest(obex, obj);
 		session->size = 0;
 
 		/* Add body header */
 		hd.bs = NULL;
 		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
-						hd, 0, OBEX_FL_STREAM_START);
+				hd, 0, OBEX_FL_STREAM_START);
+#endif
 	}
 
+#if 0
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+#endif
 
-	return;
+	return OBEX_RSP_SUCCESS;
 
 fail:
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+	return OBEX_RSP_FORBIDDEN;
 }
 
 static gboolean pbap_is_valid_folder(struct obex_session *session)

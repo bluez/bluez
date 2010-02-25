@@ -91,7 +91,7 @@ gint obex_session_start(GIOChannel *io, struct server *server);
 struct obex_session *obex_get_session(gpointer object);
 gint obex_tty_session_stop(void);
 
-gint os_prepare_get(struct obex_session *os, gchar *file, size_t *size);
+int obex_stream_start(struct OBEX_session *os, gchar *filename);
 gint os_prepare_put(struct obex_session *os);
 
 void server_free(struct server *server);
@@ -99,3 +99,9 @@ void server_free(struct server *server);
 int tty_init(gint service, const gchar *folder, const gchar *capability,
 		gboolean symlinks, const gchar *devnode);
 void tty_closed(void);
+
+const char *obex_session_get_name(struct OBEX_session *os);
+
+ssize_t obex_session_get_size(struct OBEX_session *os);
+
+const char *obex_session_get_type(struct OBEX_session *os);
