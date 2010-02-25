@@ -931,7 +931,7 @@ static void obex_handle_destroy(gpointer user_data)
 	os = OBEX_GetUserData(obex);
 
 	if (os->service && os->service->disconnect)
-		os->service->disconnect(obex);
+		os->service->disconnect(os);
 
 	obex_session_free(os);
 

@@ -435,12 +435,9 @@ done:
 	g_free(fullname);
 }
 
-static void ftp_disconnect(obex_t *obex)
+static void ftp_disconnect(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
-
-	emit_session_removed(os->cid);
-	unregister_session(os->cid);
+	manager_unregister_session(os);
 }
 
 struct obex_service_driver pcsuite = {

@@ -21,10 +21,6 @@
  *
  */
 
-void emit_session_created(guint32 id);
-
-void emit_session_removed(guint32 id);
-
 void emit_transfer_started(guint32 id);
 
 void emit_transfer_completed(guint32 id, gboolean success);
@@ -35,18 +31,12 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 			const gchar *type, gint32 length, gint32 time,
 			gchar **new_folder, gchar **new_name);
 
-void register_transfer(guint32 id, struct obex_session *os);
-
-void unregister_transfer(guint32 id);
-
 void register_record(struct server *server, gpointer user_data);
 
 gint request_service_authorization(struct server *server, GIOChannel *io,
 					const char *address);
 
-void register_session(guint32 id, struct obex_session *os);
-
-void unregister_session(guint32 id);
-
 void manager_register_session(struct OBEX_session *os);
+void manager_unregister_session(struct OBEX_session *os);
 void manager_register_transfer(struct OBEX_session *os);
+void manager_unregister_transfer(struct OBEX_session *os);

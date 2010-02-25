@@ -536,12 +536,9 @@ static void pbap_setpath(obex_t *obex, obex_object_t *obj)
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 }
 
-static void pbap_disconnect(obex_t *obex)
+static void pbap_disconnect(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
-
-	emit_session_removed(os->cid);
-	unregister_session(os->cid);
+	manager_unregister_session(os);
 }
 
 static gint pbap_chkput(obex_t *obex, obex_object_t *obj)

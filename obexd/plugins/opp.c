@@ -219,15 +219,9 @@ fail:
 	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 }
 
-static void opp_disconnect(obex_t *obex)
+static void opp_disconnect(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
-
-	/* Got an error during a transfer. */
-	if (os->object)
-		emit_transfer_completed(os->cid, os->offset == os->size);
-
-	unregister_transfer(os->cid);
+	manager_unregister_transfer(os);
 }
 
 static void opp_reset(obex_t *obex)

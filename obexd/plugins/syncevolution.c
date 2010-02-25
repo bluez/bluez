@@ -437,9 +437,8 @@ static void close_cb(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 }
 
-static void synce_disconnect(obex_t *obex)
+static void synce_disconnect(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
 	struct synce_context *context;
 	DBusMessage *msg;
 	const gchar *error;

@@ -580,30 +580,6 @@ void manager_cleanup(void)
 	dbus_connection_unref(connection);
 }
 
-void emit_session_created(guint32 id)
-{
-	gchar *path = g_strdup_printf("/session%u", id);
-
-	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
-			OPENOBEX_MANAGER_INTERFACE, "SessionCreated",
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
-
-	g_free(path);
-}
-
-void emit_session_removed(guint32 id)
-{
-	gchar *path = g_strdup_printf("/session%u", id);
-
-	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
-			OPENOBEX_MANAGER_INTERFACE, "SessionRemoved",
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
-
-	g_free(path);
-}
-
 void emit_transfer_started(guint32 id)
 {
 	gchar *path = g_strdup_printf("/transfer%u", id);
@@ -644,12 +620,7 @@ void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered)
 
 void manager_register_transfer(struct OBEX_session *os)
 {
-	register_transfer(os->cid, os);
-}
-
-void register_transfer(guint32 id, struct obex_session *os)
-{
-	gchar *path = g_strdup_printf("/transfer%u", id);
+	gchar *path = g_strdup_printf("/transfer%u", os->cid);
 
 	if (!g_dbus_register_interface(connection, path,
 				TRANSFER_INTERFACE,
@@ -663,9 +634,13 @@ void register_transfer(guint32 id, struct obex_session *os)
 	g_free(path);
 }
 
-void unregister_transfer(guint32 id)
+void manager_unregister_transfer(struct OBEX_session *os)
 {
-	gchar *path = g_strdup_printf("/transfer%u", id);
+	gchar *path = g_strdup_printf("/transfer%u", os->cid);
+
+	/* Got an error during a transfer. */
+	if (os->object)
+		emit_transfer_completed(os->cid, os->offset == os->size);
 
 	g_dbus_unregister_interface(connection, path,
 				TRANSFER_INTERFACE);
@@ -1011,9 +986,9 @@ gint request_service_authorization(struct server *server, GIOChannel *io,
 	return 0;
 }
 
-void register_session(guint32 id, struct obex_session *os)
+void manager_register_session(struct OBEX_session *os)
 {
-	gchar *path = g_strdup_printf("/session%u", id);
+	gchar *path = g_strdup_printf("/session%u", os->cid);
 
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
@@ -1024,18 +999,22 @@ void register_session(guint32 id, struct obex_session *os)
 		return;
 	}
 
+	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
+			OPENOBEX_MANAGER_INTERFACE, "SessionCreated",
+			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_INVALID);
+
 	g_free(path);
 }
 
-void manager_register_session(struct OBEX_session *os)
+void manager_unregister_session(struct OBEX_session *os)
 {
-	register_session(os->cid, os);
-	emit_session_created(os->cid);
-}
+	gchar *path = g_strdup_printf("/session%u", os->cid);
 
-void unregister_session(guint32 id)
-{
-	gchar *path = g_strdup_printf("/session%u", id);
+	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
+			OPENOBEX_MANAGER_INTERFACE, "SessionRemoved",
+			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_INVALID);
 
 	g_dbus_unregister_interface(connection, path,
 				SESSION_INTERFACE);
