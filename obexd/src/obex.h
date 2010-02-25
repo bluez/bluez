@@ -77,6 +77,7 @@ struct obex_session {
 	struct server *server;
 	gboolean	checked;
 	obex_t		*obex;
+	obex_object_t	*obj;
 	struct obex_mime_type_driver *driver;
 	gboolean	finished;
 };

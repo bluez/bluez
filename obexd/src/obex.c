@@ -67,8 +67,10 @@ typedef struct {
 static void os_reset_session(struct obex_session *os)
 {
 	if (os->object) {
+		os->driver->set_io_watch(os->object, NULL, NULL);
 		os->driver->close(os->object);
 		os->object = NULL;
+		os->obj = NULL;
 		if (os->aborted && os->cmd == OBEX_CMD_PUT && os->current_folder) {
 			gchar *path;
 			path = g_build_filename(os->current_folder, os->name, NULL);
@@ -89,6 +91,7 @@ static void os_reset_session(struct obex_session *os)
 		g_free(os->buf);
 		os->buf = NULL;
 	}
+
 	os->driver = NULL;
 	os->aborted = FALSE;
 	os->offset = 0;
@@ -432,7 +435,11 @@ static gint obex_write_stream(struct obex_session *os,
 	len = os->driver->read(os->object, os->buf, os->tx_mtu);
 	if (len < 0) {
 		gint err = errno;
+
 		error("read(): %s (%d)", strerror(err), err);
+		if (err == EAGAIN)
+			return -err;
+
 		g_free(os->buf);
 		os->buf = NULL;
 		return -err;
@@ -558,6 +565,43 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 	return 0;
 }
 
+static gboolean handle_async_io(gpointer object, int flags, gpointer user_data)
+{
+	struct obex_session *os = user_data;
+	int ret = 0;
+
+	if (flags & (G_IO_ERR | G_IO_HUP)) {
+		ret = -errno;
+		goto proceed;
+	}
+
+	if (flags & (G_IO_IN | G_IO_PRI))
+		ret = obex_write_stream(os, os->obex, os->obj);
+	else if (flags & G_IO_OUT)
+		ret = obex_read_stream(os, os->obex, os->obj);
+
+proceed:
+	switch (ret) {
+	case -EINVAL:
+		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_BAD_REQUEST,
+				OBEX_RSP_BAD_REQUEST);
+	case -EPERM:
+		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_FORBIDDEN,
+					OBEX_RSP_FORBIDDEN);
+		break;
+	default:
+		if (ret < 0)
+			OBEX_ObjectSetRsp(os->obj,
+					OBEX_RSP_INTERNAL_SERVER_ERROR,
+					OBEX_RSP_INTERNAL_SERVER_ERROR);
+		break;
+	}
+
+	OBEX_ResumeRequest(os->obex);
+
+	return FALSE;
+}
+
 static gboolean check_put(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
@@ -658,6 +702,11 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	case -EPERM:
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return FALSE;
+	case -EAGAIN:
+		OBEX_SuspendRequest(obex, obj);
+		os->obj = obj;
+		os->driver->set_io_watch(os->object, handle_async_io, os);
+		return TRUE;
 	default:
 		debug("Unhandled chkput error: %d", ret);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_INTERNAL_SERVER_ERROR,
@@ -726,12 +775,11 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		case OBEX_CMD_PUT:
 		case OBEX_CMD_GET:
 		case OBEX_CMD_SETPATH:
+		default:
 			os_session_mark_aborted(os);
 			if (os->service->reset)
 				os->service->reset(obex);
 			os_reset_session(os);
-			break;
-		default:
 			break;
 		}
 		break;
@@ -795,6 +843,11 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			OBEX_ObjectSetRsp(obj,
 				OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 			break;
+		case -EAGAIN:
+			OBEX_SuspendRequest(obex, obj);
+			os->obj = obj;
+			os->driver->set_io_watch(os->object, handle_async_io, os);
+			break;
 		default:
 			OBEX_ObjectSetRsp(obj,
 				OBEX_RSP_INTERNAL_SERVER_ERROR,
@@ -804,7 +857,21 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 
 		break;
 	case OBEX_EV_STREAMEMPTY:
-		obex_write_stream(os, obex, obj);
+		switch (obex_write_stream(os, obex, obj)) {
+		case -EPERM:
+			OBEX_ObjectSetRsp(obj,
+				OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+			break;
+		case -EAGAIN:
+			OBEX_SuspendRequest(obex, obj);
+			os->obj = obj;
+			os->driver->set_io_watch(os->object, handle_async_io,
+							os);
+			break;
+		default:
+			break;
+		}
+
 		break;
 	case OBEX_EV_LINKERR:
 		break;

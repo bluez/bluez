@@ -38,6 +38,85 @@
 
 static GSList *drivers = NULL;
 
+static GSList *watches = NULL;
+
+struct io_watch {
+	gpointer object;
+	obex_object_io_func func;
+	gpointer user_data;
+};
+
+void obex_object_set_io_flags(gpointer object, int flags)
+{
+	GSList *l;
+
+	for (l = watches; l; l = l->next) {
+		struct io_watch *watch = l->data;
+
+		if (watch->object != object)
+			continue;
+
+		if (watch->func(object, flags, watch->user_data) == TRUE)
+			continue;
+
+		if (g_slist_find(watches, watch) == NULL)
+			continue;
+
+		watches = g_slist_remove(watches, watch);
+		g_free(watch);
+	}
+}
+
+static struct io_watch *find_io_watch(gpointer object)
+{
+	GSList *l;
+
+	for (l = watches; l; l = l->next) {
+		struct io_watch *watch = l->data;
+
+		if (watch->object == object)
+			return watch;
+	}
+
+	return NULL;
+}
+
+static void reset_io_watch(gpointer object)
+{
+	struct io_watch *watch;
+
+	watch = find_io_watch(object);
+	if (watch == NULL)
+		return;
+
+	watches = g_slist_remove(watches, watch);
+	g_free(watch);
+}
+
+static int set_io_watch(gpointer object, obex_object_io_func func,
+				gpointer user_data)
+{
+	struct io_watch *watch;
+
+	if (func == NULL) {
+		reset_io_watch(object);
+		return 0;
+	}
+
+	watch = find_io_watch(object);
+	if (watch)
+		return -EPERM;
+
+	watch = g_new0(struct io_watch, 1);
+	watch->object = object;
+	watch->func = func;
+	watch->user_data = user_data;
+
+	watches = g_slist_append(watches, watch);
+
+	return 0;
+}
+
 struct obex_mime_type_driver *obex_mime_type_driver_find(const guint8 *target, const char *mimetype)
 {
 	GSList *l;
@@ -67,6 +146,9 @@ int obex_mime_type_driver_register(struct obex_mime_type_driver *driver)
 		error("Permission denied: %s could not be registered", driver->mimetype);
 		return -EPERM;
 	}
+
+	if (driver->set_io_watch == NULL)
+		driver->set_io_watch = set_io_watch;
 
 	debug("driver %p mimetype %s registered", driver, driver->mimetype);
 

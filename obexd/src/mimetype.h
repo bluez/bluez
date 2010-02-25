@@ -23,6 +23,9 @@
 
 #define TARGET_SIZE 16
 
+typedef gboolean (*obex_object_io_func) (gpointer object, int flags,
+					gpointer user_data);
+
 struct obex_mime_type_driver {
 	const guint8 *target;
 	const char *mimetype;
@@ -31,9 +34,13 @@ struct obex_mime_type_driver {
 	ssize_t (*read) (gpointer object, void *buf, size_t count);
 	ssize_t (*write) (gpointer object, const void *buf, size_t count);
 	int (*remove) (const char *name);
+	int (*set_io_watch) (gpointer object, obex_object_io_func func,
+				gpointer user_data);
 };
 
 int obex_mime_type_driver_register(struct obex_mime_type_driver *driver);
 void obex_mime_type_driver_unregister(struct obex_mime_type_driver *driver);
 struct obex_mime_type_driver *obex_mime_type_driver_find(const guint8 *target,
 							const char *mimetype);
+
+void obex_object_set_io_flags(gpointer object, int flags);
