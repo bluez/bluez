@@ -787,7 +787,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	switch (evt) {
 	case OBEX_EV_PROGRESS:
 		if (os->service->progress)
-			os->service->progress(obex, obj);
+			os->service->progress(os);
 		break;
 	case OBEX_EV_ABORT:
 		os->aborted = TRUE;

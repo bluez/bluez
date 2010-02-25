@@ -1022,6 +1022,11 @@ void manager_unregister_session(struct OBEX_session *os)
 	g_free(path);
 }
 
+void manager_emit_transfer_progress(struct OBEX_session *os)
+{
+	emit_transfer_progress(os->cid, os->size, os->offset);
+}
+
 DBusConnection *obex_dbus_get_connection(void)
 {
 	if (connection == NULL)

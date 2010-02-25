@@ -40,3 +40,4 @@ void manager_register_session(struct OBEX_session *os);
 void manager_unregister_session(struct OBEX_session *os);
 void manager_register_transfer(struct OBEX_session *os);
 void manager_unregister_transfer(struct OBEX_session *os);
+void manager_emit_transfer_progress(struct OBEX_session *os);

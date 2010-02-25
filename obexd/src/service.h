@@ -33,7 +33,7 @@ struct obex_service_driver {
 	guint who_size;
 	const gchar *record;
 	obex_rsp_t (*connect) (struct OBEX_session *os);
-	void (*progress) (obex_t *obex, obex_object_t *obj);
+	void (*progress) (struct OBEX_session *os);
 	void (*get) (obex_t *obex, obex_object_t *obj);
 	void (*put) (obex_t *obex, obex_object_t *obj);
 	gint (*chkput) (obex_t *obex, obex_object_t *obj);

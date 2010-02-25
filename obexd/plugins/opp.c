@@ -100,11 +100,9 @@ static obex_rsp_t opp_connect(struct OBEX_session *os)
 	return OBEX_RSP_SUCCESS;
 }
 
-static void opp_progress(obex_t *obex, obex_object_t *obj)
+static void opp_progress(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
-
-	emit_transfer_progress(os->cid, os->size, os->offset);
+	manager_emit_transfer_progress(os);
 }
 
 static gint opp_chkput(obex_t *obex, obex_object_t *obj)
