@@ -176,52 +176,98 @@ static ssize_t filesystem_write(gpointer object, const void *buf, size_t count)
 	return write(GPOINTER_TO_INT(object), buf, count);
 }
 
+struct capability_object {
+	int pid;
+	int output;
+	int err;
+	guint watch;
+	GString *buffer;
+};
+
+static void script_exited(GPid pid, gint status, gpointer data)
+{
+	struct capability_object *object = data;
+	char buf[128];
+
+	object->pid = -1;
+
+	if (WEXITSTATUS(status) != EXIT_SUCCESS) {
+		memset(buf, 0, sizeof(buf));
+		if (read(object->err, buf, sizeof(buf)) > 0)
+			error("%s", buf);
+		obex_object_set_io_flags(data, G_IO_ERR);
+	} else
+		obex_object_set_io_flags(data, G_IO_IN);
+
+	g_spawn_close_pid(pid);
+}
+
+static int capability_exec(const char **argv, int *output, int *err)
+{
+	GError *gerr = NULL;
+	int pid;
+	GSpawnFlags flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
+
+	if (!g_spawn_async_with_pipes(NULL, (char **) argv, NULL, flags, NULL,
+				NULL, &pid, NULL, output, err, &gerr)) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+		return -EINVAL;
+	}
+
+	return pid;
+}
+
 static gpointer capability_open(const char *name, int oflag, mode_t mode,
 				size_t *size)
 {
-	GError *gerr = NULL;
+	struct capability_object *object = NULL;
 	gchar *buf;
-	gint exit;
-	gboolean ret;
-	GString *object;
+	const char *argv[2];
 
 	if (oflag != O_RDONLY)
 		goto fail;
 
+	object = g_new0(struct capability_object, 1);
+	object->pid = -1;
+	object->output = -1;
+	object->err = -1;
+
 	if (name[0] != '!') {
+		GError *gerr = NULL;
+		gboolean ret;
+
 		ret = g_file_get_contents(name, &buf, NULL, &gerr);
 		if (ret == FALSE) {
 			error("%s", gerr->message);
+			g_error_free(gerr);
 			goto fail;
 		}
 
-		goto done;
+		object->buffer = g_string_new(buf);
+
+		if (size)
+			*size = object->buffer->len;
+
+		return object;
 	}
 
-	ret = g_spawn_command_line_sync(name + 1, &buf, NULL, &exit, &gerr);
-	if (ret == FALSE) {
-		error("%s", gerr->message);
+	argv[0] = &name[1];
+	argv[1] = NULL;
+
+	object->pid = capability_exec(argv, &object->output, &object->err);
+	if (object->pid < 0)
 		goto fail;
-	}
 
-	if (WEXITSTATUS(exit) != EXIT_SUCCESS) {
-		error("%s failed", name + 1);
-		g_free(buf);
-		goto fail;
-	}
-
-done:
-	object = g_string_new(buf);
+	object->watch = g_child_watch_add(object->pid, script_exited, object);
 
 	if (size)
-		*size = object->len;
+		*size = 1;
 
 	return object;
 
 fail:
-	if (gerr)
-		g_error_free(gerr);
-
+	g_free(object);
 	errno = EPERM;
 	return NULL;
 }
@@ -350,6 +396,39 @@ static ssize_t string_read(gpointer object, void *buf, size_t count)
 	return len;
 }
 
+static ssize_t capability_read(gpointer object, void *buf, size_t count)
+{
+	struct capability_object *obj = object;
+
+	if (obj->buffer)
+		return string_read(obj->buffer, buf, count);
+
+	if (obj->pid >= 0) {
+		errno = EAGAIN;
+		return -EAGAIN;
+	}
+
+	return read(obj->output, buf, count);
+}
+
+static int capability_close(gpointer object)
+{
+	struct capability_object *obj = object;
+
+	if (obj->pid >= 0) {
+		g_source_remove(obj->watch);
+		kill(obj->pid, SIGTERM);
+		g_spawn_close_pid(obj->pid);
+	}
+
+	if (obj->buffer != NULL)
+		g_string_free(obj->buffer, TRUE);
+
+	g_free(obj);
+
+	return 0;
+}
+
 struct obex_mime_type_driver file = {
 	.open = filesystem_open,
 	.close = filesystem_close,
@@ -362,8 +441,8 @@ struct obex_mime_type_driver capability = {
 	.target = FTP_TARGET,
 	.mimetype = "x-obex/capability",
 	.open = capability_open,
-	.close = string_free,
-	.read = string_read,
+	.close = capability_close,
+	.read = capability_read,
 };
 
 struct obex_mime_type_driver folder = {
