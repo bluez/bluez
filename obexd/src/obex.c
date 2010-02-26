@@ -433,7 +433,7 @@ static void cmd_setpath(struct obex_session *os,
 	os_set_response(obj, rsp);
 }
 
-int obex_stream_start(struct OBEX_session *os, gchar *filename)
+int obex_stream_start(struct OBEX_session *os, const gchar *filename)
 {
 	gint err;
 	gpointer object;
@@ -1141,4 +1141,17 @@ const char *obex_get_root_folder(struct OBEX_session *os)
 gboolean obex_get_symlinks(struct OBEX_session *os)
 {
 	return os->server->symlinks;
+}
+
+const char *obex_get_capability_path(struct OBEX_session *os)
+{
+	return os->server->capability;
+}
+
+int obex_remove(struct OBEX_session *os, const char *path)
+{
+	if (os->driver == NULL)
+		return -EINVAL;
+
+	return os->driver->remove(path);
 }

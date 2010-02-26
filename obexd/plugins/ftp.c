@@ -144,27 +144,32 @@ static const guint8 FTP_TARGET[TARGET_SIZE] = {
 static const guint8 PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
 			'P','C',' ','S','u','i','t','e' };
 
-static gint get_by_type(struct OBEX_session *os, gchar *type)
+static gint get_by_type(struct OBEX_session *os, const gchar *type)
 {
+	const char *folder = obex_get_folder(os);
+	const char *capability = obex_get_capability_path(os);
+
 	if (type == NULL)
 		return -ENOENT;
 
 	if (g_str_equal(type, CAP_TYPE))
-		return obex_stream_start(os, os->server->capability);
+		return obex_stream_start(os, capability);
 
 	if (g_str_equal(type, LST_TYPE))
-		return obex_stream_start(os, os->current_folder);
+		return obex_stream_start(os, folder);
 
 	return -ENOENT;
 }
 
-static gint ftp_prepare_get(struct obex_session *os, gchar *file)
+static gint ftp_prepare_get(struct OBEX_session *os, gchar *file)
 {
+	const char *root_folder = obex_get_root_folder(os);
+	const char *folder = obex_get_folder(os);
 	gboolean root;
 
-	root = g_str_equal(os->server->folder, os->current_folder);
+	root = g_str_equal(root_folder, folder);
 
-	if (!root || !os->server->symlinks) {
+	if (!root || !obex_get_symlinks(os)) {
 		struct stat dstat;
 		gint err;
 
@@ -190,20 +195,23 @@ static obex_rsp_t ftp_connect(struct OBEX_session *os)
 
 static obex_rsp_t ftp_get(struct OBEX_session *os)
 {
+	const char *folder = obex_get_folder(os);
+	const char *type = obex_get_type(os);
+	const char *name = obex_get_name(os);
 	gint err;
 	gchar *path;
 
-	if (os->current_folder == NULL) {
+	if (folder == NULL) {
 		err = -ENOENT;
 		goto fail;
 	}
 
-	err = get_by_type(os, os->type);
+	err = get_by_type(os, type);
 	if (err < 0) {
-		if (!os->name)
+		if (!name)
 			goto fail;
 
-		path = g_build_filename(os->current_folder, os->name, NULL);
+		path = g_build_filename(folder, name, NULL);
 
 		err = ftp_prepare_get(os, path);
 
@@ -237,7 +245,7 @@ static gint ftp_delete(struct OBEX_session *os)
 
 	path = g_build_filename(folder, name, NULL);
 
-	if (os->driver->remove(path) < 0)
+	if (obex_remove(os, path) < 0)
 		ret = -errno;
 
 	g_free(path);
