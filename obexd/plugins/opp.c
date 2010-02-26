@@ -198,11 +198,9 @@ static void opp_disconnect(struct OBEX_session *os)
 	manager_unregister_transfer(os);
 }
 
-static void opp_reset(obex_t *obex)
+static void opp_reset(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
-
-	emit_transfer_completed(os->cid, !os->aborted);
+	manager_emit_transfer_completed(os);
 }
 
 struct obex_service_driver driver = {

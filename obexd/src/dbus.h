@@ -31,7 +31,6 @@
 
 void emit_transfer_started(guint32 id);
 
-void emit_transfer_completed(guint32 id, gboolean success);
 
 void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered);
 
@@ -49,5 +48,6 @@ void manager_unregister_session(struct OBEX_session *os);
 void manager_register_transfer(struct OBEX_session *os);
 void manager_unregister_transfer(struct OBEX_session *os);
 void manager_emit_transfer_progress(struct OBEX_session *os);
+void manager_emit_transfer_completed(struct OBEX_session *os);
 
 DBusConnection *obex_dbus_get_connection(void);

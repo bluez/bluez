@@ -810,7 +810,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	case OBEX_EV_ABORT:
 		os->aborted = TRUE;
 		if (os->service->reset)
-			os->service->reset(obex);
+			os->service->reset(os);
 		os_reset_session(os);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 		break;
@@ -825,7 +825,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		default:
 			os_session_mark_aborted(os);
 			if (os->service->reset)
-				os->service->reset(obex);
+				os->service->reset(os);
 			os_reset_session(os);
 			break;
 		}

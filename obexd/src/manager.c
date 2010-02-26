@@ -592,7 +592,7 @@ void emit_transfer_started(guint32 id)
 	g_free(path);
 }
 
-void emit_transfer_completed(guint32 id, gboolean success)
+static void emit_transfer_completed(guint32 id, gboolean success)
 {
 	gchar *path = g_strdup_printf("/transfer%u", id);
 
@@ -1011,6 +1011,11 @@ void manager_unregister_session(struct OBEX_session *os)
 void manager_emit_transfer_progress(struct OBEX_session *os)
 {
 	emit_transfer_progress(os->cid, os->size, os->offset);
+}
+
+void manager_emit_transfer_completed(struct OBEX_session *os)
+{
+	emit_transfer_completed(os->cid, !os->aborted);
 }
 
 DBusConnection *obex_dbus_get_connection(void)

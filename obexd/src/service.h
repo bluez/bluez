@@ -39,7 +39,7 @@ struct obex_service_driver {
 	gint (*chkput) (obex_t *obex, obex_object_t *obj);
 	void (*setpath) (obex_t *obex, obex_object_t *obj);
 	void (*disconnect) (struct OBEX_session *os);
-	void (*reset) (obex_t *obex);
+	void (*reset) (struct OBEX_session *os);
 };
 
 int obex_service_driver_register(struct obex_service_driver *driver);

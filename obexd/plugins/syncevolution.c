@@ -469,9 +469,8 @@ done:
 	g_free(context);
 }
 
-static void synce_reset(obex_t *obex)
+static void synce_reset(struct OBEX_session *os)
 {
-	struct obex_session *os = OBEX_GetUserData(obex);
 	struct synce_context *context = find_context(os);
 
 	if (context)
