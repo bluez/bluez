@@ -114,7 +114,7 @@ static gint opp_chkput(struct OBEX_session *os)
 	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return -EINVAL;
 
-	if (os->server->auto_accept)
+	if (obex_get_auto_accept(os))
 		goto skip_auth;
 
 	time = 0;
@@ -163,7 +163,7 @@ static obex_rsp_t opp_get(struct OBEX_session *os)
 	if (type == NULL)
 		return OBEX_RSP_FORBIDDEN;
 
-	if (g_str_equal(os->type, VCARD_TYPE)) {
+	if (g_str_equal(type, VCARD_TYPE)) {
 		if (obex_stream_start(os, VCARD_FILE) < 0)
 			return OBEX_RSP_NOT_FOUND;
 

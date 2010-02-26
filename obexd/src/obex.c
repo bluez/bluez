@@ -748,6 +748,8 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 
 	ret = os->service->chkput(os);
 	switch (ret) {
+	case 0:
+		break;
 	case -EPERM:
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return FALSE;
@@ -1146,6 +1148,11 @@ gboolean obex_get_symlinks(struct OBEX_session *os)
 const char *obex_get_capability_path(struct OBEX_session *os)
 {
 	return os->server->capability;
+}
+
+gboolean obex_get_auto_accept(struct OBEX_session *os)
+{
+	return os->server->auto_accept;
 }
 
 int obex_remove(struct OBEX_session *os, const char *path)

@@ -100,6 +100,7 @@ void obex_set_folder(struct OBEX_session *os, const char *folder);
 const char *obex_get_root_folder(struct OBEX_session *os);
 gboolean obex_get_symlinks(struct OBEX_session *os);
 const char *obex_get_capability_path(struct OBEX_session *os);
+gboolean obex_get_auto_accept(struct OBEX_session *os);
 int obex_remove(struct OBEX_session *os, const char *path);
 
 void server_free(struct server *server);
