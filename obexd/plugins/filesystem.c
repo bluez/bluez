@@ -46,8 +46,8 @@
 
 #include "plugin.h"
 #include "logging.h"
-#include "mimetype.h"
 #include "obex.h"
+#include "mimetype.h"
 #include "service.h"
 
 #define EOL_CHARS "\n"
@@ -123,7 +123,7 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 }
 
 static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
-				size_t *size, int *err)
+		size_t *size, struct OBEX_session *os, int *err)
 {
 	struct stat stats;
 	struct statvfs buf;
@@ -246,7 +246,7 @@ static int capability_exec(const char **argv, int *output, int *err)
 }
 
 static gpointer capability_open(const char *name, int oflag, mode_t mode,
-				size_t *size, int *err)
+		size_t *size, struct OBEX_session *os, int *err)
 {
 	struct capability_object *object = NULL;
 	gchar *buf;
@@ -306,26 +306,25 @@ fail:
 }
 
 static gpointer folder_open(const char *name, int oflag, mode_t mode,
-				size_t *size, int *err)
+		size_t *size, struct OBEX_session *os, int *err)
 {
-	struct obex_session *os;
 	struct stat fstat, dstat;
 	struct dirent *ep;
-	DIR *dp;
+	const gchar *folder;
 	GString *object;
-	gboolean root, pcsuite;
-	int ret;
+	DIR *dp;
+	gboolean root, pcsuite, symlinks;
+	gint ret;
 
-	os = obex_get_session(NULL);
-
-	pcsuite = os->service->service & OBEX_PCSUITE ? TRUE : FALSE;
+	pcsuite = obex_get_service(os) & OBEX_PCSUITE ? TRUE : FALSE;
 
 	object = g_string_new(FL_VERSION);
 	object = g_string_append(object, pcsuite ? FL_TYPE_PCSUITE : FL_TYPE);
 
 	object = g_string_append(object, FL_BODY_BEGIN);
 
-	root = g_str_equal(name, os->server->folder);
+	folder = obex_get_folder(os);
+	root = g_str_equal(name, folder);
 
 	dp = opendir(name);
 	if (dp == NULL) {
@@ -334,7 +333,8 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 		goto failed;
 	}
 
-	if (root && os->server->symlinks)
+	symlinks = obex_get_symlinks(os);
+	if (root && symlinks)
 		ret = stat(name, &dstat);
 	else {
 		object = g_string_append(object, FL_PARENT_FOLDER_ELEMENT);
@@ -361,9 +361,9 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 			continue;
 		}
 
-		fullname = g_build_filename(os->current_folder, ep->d_name, NULL);
+		fullname = g_build_filename(folder, ep->d_name, NULL);
 
-		if (root && os->server->symlinks)
+		if (root && symlinks)
 			ret = stat(fullname, &fstat);
 		else
 			ret = lstat(fullname, &fstat);

@@ -88,7 +88,6 @@ struct obex_session {
 void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data);
 
 gint obex_session_start(GIOChannel *io, struct server *server);
-struct obex_session *obex_get_session(gpointer object);
 int obex_stream_start(struct OBEX_session *os, const gchar *filename);
 gint obex_prepare_put(struct obex_session *os);
 const char *obex_get_name(struct OBEX_session *os);
@@ -98,6 +97,7 @@ const char *obex_get_type(struct OBEX_session *os);
 const char *obex_get_folder(struct OBEX_session *os);
 void obex_set_folder(struct OBEX_session *os, const char *folder);
 const char *obex_get_root_folder(struct OBEX_session *os);
+guint16 obex_get_service(struct OBEX_session *os);
 gboolean obex_get_symlinks(struct OBEX_session *os);
 const char *obex_get_capability_path(struct OBEX_session *os);
 gboolean obex_get_auto_accept(struct OBEX_session *os);

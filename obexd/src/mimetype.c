@@ -33,8 +33,8 @@
 #include <openobex/obex_const.h>
 
 #include "logging.h"
-#include "mimetype.h"
 #include "obex.h"
+#include "mimetype.h"
 
 static GSList *drivers = NULL;
 

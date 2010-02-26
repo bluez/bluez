@@ -439,7 +439,7 @@ int obex_stream_start(struct OBEX_session *os, const gchar *filename)
 	gpointer object;
 	size_t size;
 
-	object = os->driver->open(filename, O_RDONLY, 0, &size, &err);
+	object = os->driver->open(filename, O_RDONLY, 0, &size, os, &err);
 	if (object == NULL) {
 		error("open(%s): %s (%d)", filename, strerror(-err), -err);
 		goto fail;
@@ -525,7 +525,7 @@ gint obex_prepare_put(struct obex_session *os)
 	path = g_build_filename(os->current_folder, os->name, NULL);
 	os->object = os->driver->open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600,
 					os->size != OBJECT_SIZE_UNKNOWN ?
-					(size_t *) &os->size : NULL, &err);
+					(size_t *) &os->size : NULL, os, &err);
 	if (os->object == NULL) {
 		error("open(%s): %s (%d)", path, strerror(-err), -err);
 		g_free(path);
@@ -1087,20 +1087,6 @@ gint obex_tty_session_stop(void)
 	return 0;
 }
 
-struct obex_session *obex_get_session(gpointer object)
-{
-	GSList *l;
-
-	for (l = sessions; l; l = l->next) {
-		struct obex_session *os = l->data;
-
-		if (os->object == object)
-			return os;
-	}
-
-	return NULL;
-}
-
 const char *obex_get_name(struct OBEX_session *os)
 {
 	return os->name;
@@ -1138,6 +1124,11 @@ void obex_set_folder(struct OBEX_session *os, const gchar *folder)
 const char *obex_get_root_folder(struct OBEX_session *os)
 {
 	return os->server->folder;
+}
+
+guint16 obex_get_service(struct OBEX_session *os)
+{
+	return os->service->service;
 }
 
 gboolean obex_get_symlinks(struct OBEX_session *os)
