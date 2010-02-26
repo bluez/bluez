@@ -46,7 +46,7 @@ struct io_watch {
 	gpointer user_data;
 };
 
-void obex_object_set_io_flags(gpointer object, int flags)
+void obex_object_set_io_flags(gpointer object, int flags, int err)
 {
 	GSList *l;
 
@@ -56,7 +56,7 @@ void obex_object_set_io_flags(gpointer object, int flags)
 		if (watch->object != object)
 			continue;
 
-		if (watch->func(object, flags, watch->user_data) == TRUE)
+		if (watch->func(object, flags, err, watch->user_data) == TRUE)
 			continue;
 
 		if (g_slist_find(watches, watch) == NULL)

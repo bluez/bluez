@@ -388,10 +388,9 @@ int os_prepare_get(struct obex_session *os, gchar *filename, size_t *size)
 	gint err;
 	gpointer object;
 
-	object = os->driver->open(filename, O_RDONLY, 0, size);
+	object = os->driver->open(filename, O_RDONLY, 0, size, &err);
 	if (object == NULL) {
-		err = -errno;
-		error("open(%s): %s (%d)", filename, strerror(errno), errno);
+		error("open(%s): %s (%d)", filename, strerror(-err), -err);
 		goto fail;
 	}
 
@@ -434,15 +433,13 @@ static gint obex_write_stream(struct obex_session *os,
 
 	len = os->driver->read(os->object, os->buf, os->tx_mtu);
 	if (len < 0) {
-		gint err = errno;
-
-		error("read(): %s (%d)", strerror(err), err);
-		if (err == EAGAIN)
-			return -err;
+		error("read(): %s (%d)", strerror(-len), -len);
+		if (len == -EAGAIN)
+			return len;
 
 		g_free(os->buf);
 		os->buf = NULL;
-		return -err;
+		return len;
 	}
 
 	ptr = os->buf;
@@ -471,13 +468,14 @@ gint os_prepare_put(struct obex_session *os)
 {
 	gchar *path;
 	gint len;
+	int err;
 
 	path = g_build_filename(os->current_folder, os->name, NULL);
 	os->object = os->driver->open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600,
 					os->size != OBJECT_SIZE_UNKNOWN ?
-					(size_t *) &os->size : NULL);
+					(size_t *) &os->size : NULL, &err);
 	if (os->object == NULL) {
-		error("open(%s): %s (%d)", path, strerror(errno), errno);
+		error("open(%s): %s (%d)", path, strerror(-err), -err);
 		g_free(path);
 		return -EPERM;
 	}
@@ -495,13 +493,11 @@ gint os_prepare_put(struct obex_session *os)
 
 		w = os->driver->write(os->object, os->buf + len, os->offset - len);
 		if (w < 0) {
-			gint err = errno;
-			error("write(%s): %s (%d)", path, strerror(errno),
-									errno);
-			if (err == EINTR)
+			error("write(%s): %s (%d)", path, strerror(-w), -w);
+			if (w == -EINTR)
 				continue;
 			else
-				return -err;
+				return w;
 		}
 
 		len += w;
@@ -550,11 +546,10 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 
 		w = os->driver->write(os->object, buffer + len, size - len);
 		if (w < 0) {
-			gint err = errno;
-			if (err == EINTR)
+			if (w == -EINTR)
 				continue;
 			else
-				return -err;
+				return w;
 		}
 
 		len += w;
@@ -565,13 +560,14 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 	return 0;
 }
 
-static gboolean handle_async_io(gpointer object, int flags, gpointer user_data)
+static gboolean handle_async_io(gpointer object, int flags, int err,
+				gpointer user_data)
 {
 	struct obex_session *os = user_data;
 	int ret = 0;
 
-	if (flags & (G_IO_ERR | G_IO_HUP)) {
-		ret = -errno;
+	if (err < 0) {
+		ret = err;
 		goto proceed;
 	}
 

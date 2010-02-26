@@ -123,36 +123,48 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 }
 
 static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
-				size_t *size)
+				size_t *size, int *err)
 {
 	struct stat stats;
 	struct statvfs buf;
 	int fd = open(name, oflag, mode);
 
-	if (fd < 0)
+	if (fd < 0) {
+		if (err)
+			*err = -errno;
 		return NULL;
+	}
 
 	if (fstat(fd, &stats) < 0) {
-		error("fstat(fd=%d): %s (%d)", fd, strerror(errno), errno);
+		if (err)
+			*err = -errno;
 		goto failed;
 	}
 
 	if (oflag == O_RDONLY) {
 		if (size)
 			*size = stats.st_size;
-		return GINT_TO_POINTER(fd);
+		goto done;
 	}
 
-	if (fstatvfs(fd, &buf) < 0)
+	if (fstatvfs(fd, &buf) < 0) {
+		if (err)
+			*err = -errno;
 		goto failed;
+	}
 
 	if (size == NULL)
-		return GINT_TO_POINTER(fd);
+		goto done;
 
 	if (buf.f_bsize * buf.f_bavail < *size) {
-		errno = ENOSPC;
+		if (err)
+			*err = -ENOSPC;
 		goto failed;
 	}
+
+done:
+	if (err)
+		*err = 0;
 
 	return GINT_TO_POINTER(fd);
 
@@ -163,17 +175,32 @@ failed:
 
 static int filesystem_close(gpointer object)
 {
-	return close(GPOINTER_TO_INT(object));
+	if (close(GPOINTER_TO_INT(object)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static ssize_t filesystem_read(gpointer object, void *buf, size_t count)
 {
-	return read(GPOINTER_TO_INT(object), buf, count);
+	ssize_t ret;
+
+	ret = read(GPOINTER_TO_INT(object), buf, count);
+	if (ret < 0)
+		return -errno;
+
+	return ret;
 }
 
 static ssize_t filesystem_write(gpointer object, const void *buf, size_t count)
 {
-	return write(GPOINTER_TO_INT(object), buf, count);
+	ssize_t ret;
+
+	ret = write(GPOINTER_TO_INT(object), buf, count);
+	if (ret < 0)
+		return -errno;
+
+	return ret;
 }
 
 struct capability_object {
@@ -195,9 +222,9 @@ static void script_exited(GPid pid, gint status, gpointer data)
 		memset(buf, 0, sizeof(buf));
 		if (read(object->err, buf, sizeof(buf)) > 0)
 			error("%s", buf);
-		obex_object_set_io_flags(data, G_IO_ERR);
+		obex_object_set_io_flags(data, G_IO_ERR, -EPERM);
 	} else
-		obex_object_set_io_flags(data, G_IO_IN);
+		obex_object_set_io_flags(data, G_IO_IN, 0);
 
 	g_spawn_close_pid(pid);
 }
@@ -212,14 +239,14 @@ static int capability_exec(const char **argv, int *output, int *err)
 				NULL, &pid, NULL, output, err, &gerr)) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
-		return -EINVAL;
+		return -EPERM;
 	}
 
 	return pid;
 }
 
 static gpointer capability_open(const char *name, int oflag, mode_t mode,
-				size_t *size)
+				size_t *size, int *err)
 {
 	struct capability_object *object = NULL;
 	gchar *buf;
@@ -249,7 +276,7 @@ static gpointer capability_open(const char *name, int oflag, mode_t mode,
 		if (size)
 			*size = object->buffer->len;
 
-		return object;
+		goto done;
 	}
 
 	argv[0] = &name[1];
@@ -264,16 +291,22 @@ static gpointer capability_open(const char *name, int oflag, mode_t mode,
 	if (size)
 		*size = 1;
 
+done:
+	if (err)
+		*err = 0;
+
 	return object;
 
 fail:
+	if (err)
+		*err = -EPERM;
+
 	g_free(object);
-	errno = EPERM;
 	return NULL;
 }
 
 static gpointer folder_open(const char *name, int oflag, mode_t mode,
-				size_t *size)
+				size_t *size, int *err)
 {
 	struct obex_session *os;
 	struct stat fstat, dstat;
@@ -281,7 +314,7 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 	DIR *dp;
 	GString *object;
 	gboolean root, pcsuite;
-	gint err;
+	int ret;
 
 	os = obex_get_session(NULL);
 
@@ -296,20 +329,21 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 
 	dp = opendir(name);
 	if (dp == NULL) {
-		errno = ENOENT;
+		if (err)
+			*err = -ENOENT;
 		goto failed;
 	}
 
 	if (root && os->server->symlinks)
-		err = stat(name, &dstat);
+		ret = stat(name, &dstat);
 	else {
 		object = g_string_append(object, FL_PARENT_FOLDER_ELEMENT);
-		err = lstat(name, &dstat);
+		ret = lstat(name, &dstat);
 	}
 
-	if (err < 0) {
-		error("%s: %s(%d)", root ? "stat" : "lstat",
-				strerror(errno), errno);
+	if (ret < 0) {
+		if (err)
+			*err = -errno;
 		goto failed;
 	}
 
@@ -330,11 +364,11 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 		fullname = g_build_filename(os->current_folder, ep->d_name, NULL);
 
 		if (root && os->server->symlinks)
-			err = stat(fullname, &fstat);
+			ret = stat(fullname, &fstat);
 		else
-			err = lstat(fullname, &fstat);
+			ret = lstat(fullname, &fstat);
 
-		if (err < 0) {
+		if (ret < 0) {
 			debug("%s: %s(%d)", root ? "stat" : "lstat",
 					strerror(errno), errno);
 			g_free(name);
@@ -361,6 +395,9 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 	object = g_string_append(object, FL_BODY_END);
 	if (size)
 		*size = object->len;
+
+	if (err)
+		*err = 0;
 
 	return object;
 
@@ -403,10 +440,8 @@ static ssize_t capability_read(gpointer object, void *buf, size_t count)
 	if (obj->buffer)
 		return string_read(obj->buffer, buf, count);
 
-	if (obj->pid >= 0) {
-		errno = EAGAIN;
+	if (obj->pid >= 0)
 		return -EAGAIN;
-	}
 
 	return read(obj->output, buf, count);
 }
