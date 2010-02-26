@@ -387,6 +387,7 @@ static void cmd_setpath(struct obex_session *os,
 {
 	obex_headerdata_t hd;
 	guint32 hlen;
+	obex_rsp_t rsp;
 	guint8 hi;
 
 	if (!os->service) {
@@ -428,7 +429,8 @@ static void cmd_setpath(struct obex_session *os,
 		break;
 	}
 
-	os->service->setpath(obex, obj);
+	rsp = os->service->setpath(os, obj);
+	os_set_response(obj, rsp);
 }
 
 int obex_stream_start(struct OBEX_session *os, gchar *filename)
@@ -1101,12 +1103,34 @@ const char *obex_session_get_name(struct OBEX_session *os)
 	return os->name;
 }
 
+ssize_t obex_session_get_size(struct OBEX_session *os)
+{
+	return os->size;
+}
+
 const char *obex_session_get_type(struct OBEX_session *os)
 {
 	return os->type;
 }
 
-ssize_t obex_session_get_size(struct OBEX_session *os)
+const char *obex_get_folder(struct OBEX_session *os)
 {
-	return os->size;
+	return os->current_folder;
+}
+
+void obex_set_folder(struct OBEX_session *os, const gchar *folder)
+{
+	g_free(os->current_folder);
+
+	os->current_folder = (folder ? g_strdup(folder) : NULL);
+}
+
+const char *obex_get_root_folder(struct OBEX_session *os)
+{
+	return os->server->folder;
+}
+
+gboolean obex_get_symlinks(struct OBEX_session *os)
+{
+	return os->server->symlinks;
 }

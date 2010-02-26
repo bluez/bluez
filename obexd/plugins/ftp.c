@@ -299,73 +299,64 @@ static void ftp_put(obex_t *obex, obex_object_t *obj)
 	}
 }
 
-static void ftp_setpath(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t ftp_setpath(struct OBEX_session *os, obex_object_t *obj)
 {
-	struct obex_session *os;
+	const gchar *root_folder, *current_folder, *name;
 	guint8 *nonhdr;
 	gchar *fullname;
 	struct stat dstat;
 	gboolean root;
+	obex_rsp_t rsp = OBEX_RSP_SUCCESS;
 	int err;
 
-	os = OBEX_GetUserData(obex);
-
 	if (OBEX_ObjectGetNonHdrData(obj, &nonhdr) != 2) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE,
-				OBEX_RSP_PRECONDITION_FAILED);
 		error("Set path failed: flag and constants not found!");
-		return;
+		return OBEX_RSP_PRECONDITION_FAILED;
 	}
 
-	root = g_str_equal(os->server->folder, os->current_folder);
+	name = obex_session_get_name(os);
+	root_folder = obex_get_root_folder(os);
+	current_folder = obex_get_folder(os);
+	root = g_str_equal(root_folder, current_folder);
 
 	/* Check flag "Backup" */
 	if ((nonhdr[0] & 0x01) == 0x01) {
 		debug("Set to parent path");
 
-		if (root) {
-			OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-			return;
-		}
+		if (root)
+			return OBEX_RSP_FORBIDDEN;
 
-		fullname = g_path_get_dirname(os->current_folder);
-		g_free(os->current_folder);
-		os->current_folder = g_strdup(fullname);
+		fullname = g_path_get_dirname(current_folder);
+		obex_set_folder(os, fullname);
 		g_free(fullname);
 
-		debug("Set to parent path: %s", os->current_folder);
+		debug("Set to parent path: %s", current_folder);
 
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
-		return;
+		return OBEX_RSP_SUCCESS;
 	}
 
-	if (!os->name) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_BAD_REQUEST);
+	if (!name) {
 		debug("Set path failed: name missing!");
-		return;
+		return OBEX_RSP_BAD_REQUEST;
 	}
 
-	if (strlen(os->name) == 0) {
+	if (strlen(name) == 0) {
 		debug("Set to root");
-		g_free(os->current_folder);
-		os->current_folder = g_strdup(os->server->folder);
-
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
-		return;
+		obex_set_folder(os, root_folder);
+		return OBEX_RSP_SUCCESS;
 	}
 
 	/* Check and set to name path */
-	if (strstr(os->name, "/") || strcmp(os->name, "..") == 0) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+	if (strstr(name, "/") || strcmp(name, "..") == 0) {
 		error("Set path failed: name incorrect!");
-		return;
+		return OBEX_RSP_FORBIDDEN;
 	}
 
-	fullname = g_build_filename(os->current_folder, os->name, NULL);
+	fullname = g_build_filename(current_folder, name, NULL);
 
 	debug("Fullname: %s", fullname);
 
-	if (root && os->server->symlinks)
+	if (root && obex_get_symlinks(os))
 		err = stat(fullname, &dstat);
 	else
 		err = lstat(fullname, &dstat);
@@ -377,38 +368,35 @@ static void ftp_setpath(obex_t *obex, obex_object_t *obj)
 		if (err == ENOENT)
 			goto not_found;
 
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		rsp = OBEX_RSP_FORBIDDEN;
 		goto done;
 	}
 
 	if (S_ISDIR(dstat.st_mode) && (dstat.st_mode & S_IRUSR) &&
 						(dstat.st_mode & S_IXUSR)) {
-		g_free(os->current_folder);
-		os->current_folder = g_strdup(fullname);
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
+		obex_set_folder(os, fullname);
 		goto done;
 	}
 
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+	rsp = OBEX_RSP_FORBIDDEN;
 	goto done;
 
 not_found:
 	if (nonhdr[0] != 0) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_FOUND, OBEX_RSP_NOT_FOUND);
+		rsp = OBEX_RSP_NOT_FOUND;
 		goto done;
 	}
 
 	if (mkdir(fullname, 0755) <  0) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		rsp = OBEX_RSP_FORBIDDEN;
 		goto done;
 	}
 
-	g_free(os->current_folder);
-	os->current_folder = g_strdup(fullname);
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
+	obex_set_folder(os, fullname);
 
 done:
 	g_free(fullname);
+	return rsp;
 }
 
 static void ftp_disconnect(struct OBEX_session *os)

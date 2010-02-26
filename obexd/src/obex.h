@@ -101,7 +101,10 @@ int tty_init(gint service, const gchar *folder, const gchar *capability,
 void tty_closed(void);
 
 const char *obex_session_get_name(struct OBEX_session *os);
-
 ssize_t obex_session_get_size(struct OBEX_session *os);
-
 const char *obex_session_get_type(struct OBEX_session *os);
+const char *obex_get_folder(struct OBEX_session *os);
+void obex_set_folder(struct OBEX_session *os, const char *folder);
+const char *obex_get_root_folder(struct OBEX_session *os);
+gboolean obex_get_symlinks(struct OBEX_session *os);
+

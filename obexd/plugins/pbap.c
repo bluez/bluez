@@ -459,84 +459,75 @@ static gboolean pbap_is_valid_folder(struct obex_session *session)
 	return FALSE;
 }
 
-static void pbap_setpath(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t pbap_setpath(struct OBEX_session *os, obex_object_t *obj)
 {
-	struct obex_session *session = OBEX_GetUserData(obex);
+	const gchar *current_folder, *name;
 	guint8 *nonhdr;
 	gchar *fullname;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &nonhdr) != 2) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE,
-				OBEX_RSP_PRECONDITION_FAILED);
 		error("Set path failed: flag and constants not found!");
-		return;
+		return OBEX_RSP_PRECONDITION_FAILED;
 	}
+
+	current_folder = obex_get_folder(os);
+	name = obex_session_get_name(os);
 
 	/* Check "Backup" flag */
 	if ((nonhdr[0] & 0x01) == 0x01) {
 		debug("Set to parent path");
 
-		if (session->current_folder == NULL) {
+		if (current_folder == NULL) {
 			/* we are already in top level folder */
-			OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN,
-					OBEX_RSP_FORBIDDEN);
-			return;
+			return OBEX_RSP_FORBIDDEN;
 		}
 
-		fullname = g_path_get_dirname(session->current_folder);
-		g_free(session->current_folder);
+		fullname = g_path_get_dirname(current_folder);
 
 		if (strlen(fullname) == 1 && *fullname == '.')
-			session->current_folder = NULL;
+			obex_set_folder(os, NULL);
 		else
-			session->current_folder = g_strdup(fullname);
+			obex_set_folder(os, fullname);
 
 		g_free(fullname);
 
-		debug("Set to parent path: %s", session->current_folder);
+		debug("Set to parent path: %s", current_folder);
 
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
-		return;
+		return OBEX_RSP_SUCCESS;
 	}
 
-	if (!session->name) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_BAD_REQUEST);
+	if (!name) {
 		error("Set path failed: name missing!");
-		return;
+		return OBEX_RSP_BAD_REQUEST;
 	}
 
-	if (strlen(session->name) == 0) {
+	if (strlen(name) == 0) {
 		debug("Set to root");
 
-		g_free(session->current_folder);
-		session->current_folder = NULL;
+		obex_set_folder(os, NULL);
 
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
-		return;
+		return OBEX_RSP_SUCCESS;
 	}
 
 	/* Check and set to name path */
-	if (strstr(session->name, "/")) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+	if (strstr(name, "/")) {
 		error("Set path failed: name incorrect!");
-		return;
+		return OBEX_RSP_FORBIDDEN;
 	}
 
-	if (pbap_is_valid_folder(session) == FALSE) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_FOUND, OBEX_RSP_NOT_FOUND);
-		return;
-	}
+	if (pbap_is_valid_folder(os) == FALSE)
+		return OBEX_RSP_NOT_FOUND;
 
-	if (session->current_folder == NULL)
-		fullname = g_build_filename("", session->name, NULL);
+	if (current_folder == NULL)
+		fullname = g_build_filename("", name, NULL);
 	else
-		fullname = g_build_filename(session->current_folder, session->name, NULL);
+		fullname = g_build_filename(current_folder, name, NULL);
 
 	debug("Fullname: %s", fullname);
 
-	g_free(session->current_folder);
-	session->current_folder = fullname;
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
+	obex_set_folder(os, fullname);
+
+	return OBEX_RSP_SUCCESS;
 }
 
 static void pbap_disconnect(struct OBEX_session *os)
