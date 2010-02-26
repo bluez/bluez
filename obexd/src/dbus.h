@@ -29,14 +29,8 @@
 #define OPENOBEX_MANAGER_INTERFACE	OPENOBEX_SERVICE ".Manager"
 #define ERROR_INTERFACE			OPENOBEX_SERVICE ".Error"
 
-void emit_transfer_started(guint32 id);
-
 
 void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered);
-
-int request_authorization(gint32 cid, int fd, const gchar *filename,
-			const gchar *type, gint32 length, gint32 time,
-			gchar **new_folder, gchar **new_name);
 
 void register_record(struct server *server, gpointer user_data);
 
@@ -47,7 +41,10 @@ void manager_register_session(struct OBEX_session *os);
 void manager_unregister_session(struct OBEX_session *os);
 void manager_register_transfer(struct OBEX_session *os);
 void manager_unregister_transfer(struct OBEX_session *os);
+void manager_emit_transfer_started(struct OBEX_session *os);
 void manager_emit_transfer_progress(struct OBEX_session *os);
 void manager_emit_transfer_completed(struct OBEX_session *os);
+int manager_request_authorization(struct OBEX_session *os, gint32 time,
+		gchar **new_folder, gchar **new_name);
 
 DBusConnection *obex_dbus_get_connection(void);

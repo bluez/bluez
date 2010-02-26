@@ -36,7 +36,7 @@ struct obex_service_driver {
 	void (*progress) (struct OBEX_session *os);
 	obex_rsp_t (*get) (struct OBEX_session *os);
 	obex_rsp_t (*put) (struct OBEX_session *os);
-	gint (*chkput) (obex_t *obex, obex_object_t *obj);
+	gint (*chkput) (struct OBEX_session *os);
 	obex_rsp_t (*setpath) (struct OBEX_session *os, obex_object_t *obj);
 	void (*disconnect) (struct OBEX_session *os);
 	void (*reset) (struct OBEX_session *os);

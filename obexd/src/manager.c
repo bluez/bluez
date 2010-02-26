@@ -580,9 +580,9 @@ void manager_cleanup(void)
 	dbus_connection_unref(connection);
 }
 
-void emit_transfer_started(guint32 id)
+void manager_emit_transfer_started(struct OBEX_session *os)
 {
-	gchar *path = g_strdup_printf("/transfer%u", id);
+	gchar *path = g_strdup_printf("/transfer%u", os->cid);
 
 	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
 			OPENOBEX_MANAGER_INTERFACE, "TransferStarted",
@@ -712,9 +712,8 @@ static gboolean auth_error(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-int request_authorization(gint32 cid, int fd, const gchar *filename,
-			const gchar *type, gint32 length, gint32 time,
-			gchar **new_folder, gchar **new_name)
+int manager_request_authorization(struct OBEX_session *os, gint32 time,
+		gchar **new_folder, gchar **new_name)
 {
 	DBusMessage *msg;
 	DBusPendingCall *call;
@@ -723,8 +722,10 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	socklen_t addrlen;
 	gchar address[18];
 	const gchar *bda = address;
+	const gchar *filename = (os->name ? os->name : "");
+	const gchar *type = (os->type ? os->type : "");
 	gchar *path;
-	guint watch;
+	guint watch, fd;
 	gboolean got_reply;
 
 	if (!agent)
@@ -739,12 +740,13 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 	memset(&addr, 0, sizeof(addr));
 	addrlen = sizeof(addr);
 
+	fd = OBEX_GetFD(os->obex);
 	if (getpeername(fd, (struct sockaddr *) &addr, &addrlen) < 0)
 		return -errno;
 
 	ba2str(&addr.rc_bdaddr, address);
 
-	path = g_strdup_printf("/transfer%d", cid);
+	path = g_strdup_printf("/transfer%d", os->cid);
 
 	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
 					"org.openobex.Agent", "Authorize");
@@ -754,7 +756,7 @@ int request_authorization(gint32 cid, int fd, const gchar *filename,
 			DBUS_TYPE_STRING, &bda,
 			DBUS_TYPE_STRING, &filename,
 			DBUS_TYPE_STRING, &type,
-			DBUS_TYPE_INT32, &length,
+			DBUS_TYPE_INT32, &os->size,
 			DBUS_TYPE_INT32, &time,
 			DBUS_TYPE_INVALID);
 

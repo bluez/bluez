@@ -245,21 +245,13 @@ static gint ftp_delete(struct OBEX_session *os)
 	return ret;
 }
 
-static gint ftp_chkput(obex_t *obex, obex_object_t *obj)
+static gint ftp_chkput(struct OBEX_session *os)
 {
-	struct obex_session *os;
 
-	os = OBEX_GetUserData(obex);
-	if (os == NULL)
-		return -EINVAL;
-
-	if (!os->name)
-		return -EINVAL;
-
-	if (os->size == OBJECT_SIZE_DELETE)
+	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return 0;
 
-	return os_prepare_put(os);
+	return obex_prepare_put(os);
 }
 
 static obex_rsp_t ftp_put(struct OBEX_session *os)

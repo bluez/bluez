@@ -516,7 +516,7 @@ add_header:
 	return len;
 }
 
-gint os_prepare_put(struct obex_session *os)
+gint obex_prepare_put(struct obex_session *os)
 {
 	gchar *path;
 	gint len;
@@ -657,7 +657,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	obex_headerdata_t hd;
 	guint hlen;
 	guint8 hi;
-	int ret;
+	gint ret;
 
 	os = OBEX_GetUserData(obex);
 
@@ -740,14 +740,14 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	if (!os->service->chkput)
 		goto done;
 
-	ret = os->service->chkput(obex, obj);
-	switch (ret) {
-	case 0:
-		break;
-	case -EINVAL:
+	if (!os->name) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST,
 				OBEX_RSP_BAD_REQUEST);
 		return FALSE;
+	}
+
+	ret = os->service->chkput(os);
+	switch (ret) {
 	case -EPERM:
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return FALSE;
@@ -761,6 +761,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_INTERNAL_SERVER_ERROR,
 				OBEX_RSP_INTERNAL_SERVER_ERROR);
 		return FALSE;
+
 	}
 
 	if (os->size == OBJECT_SIZE_DELETE || os->size == OBJECT_SIZE_UNKNOWN) {
@@ -1101,6 +1102,13 @@ struct obex_session *obex_get_session(gpointer object)
 const char *obex_get_name(struct OBEX_session *os)
 {
 	return os->name;
+}
+
+void obex_set_name(struct OBEX_session *os, const gchar *name)
+{
+	g_free(os->name);
+
+	os->name = (name ? g_strdup(name) : NULL);
 }
 
 ssize_t obex_get_size(struct OBEX_session *os)

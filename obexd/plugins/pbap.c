@@ -535,7 +535,7 @@ static void pbap_disconnect(struct OBEX_session *os)
 	manager_unregister_session(os);
 }
 
-static gint pbap_chkput(obex_t *obex, obex_object_t *obj)
+static gint pbap_chkput(struct OBEX_session *os)
 {
 	/* Rejects all PUTs */
 	return -EINVAL;

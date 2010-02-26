@@ -105,49 +105,36 @@ static void opp_progress(struct OBEX_session *os)
 	manager_emit_transfer_progress(os);
 }
 
-static gint opp_chkput(obex_t *obex, obex_object_t *obj)
+static gint opp_chkput(struct OBEX_session *os)
 {
-	struct obex_session *os;
 	gchar *new_folder, *new_name;
 	gint32 time;
 	gint ret;
 
-	os = OBEX_GetUserData(obex);
-	if (os == NULL)
-		return -EINVAL;
-
-	if (!os->name)
-		return -EINVAL;
-
-	if (os->size == OBJECT_SIZE_DELETE)
+	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return -EINVAL;
 
 	if (os->server->auto_accept)
 		goto skip_auth;
 
 	time = 0;
-	ret = request_authorization(os->cid, OBEX_GetFD(obex),
-					os->name ? os->name : "",
-					os->type ? os->type : "",
-					os->size, time, &new_folder,
-					&new_name);
-
+	ret = manager_request_authorization(os, time, &new_folder, &new_name);
 	if (ret < 0)
 		return -EPERM;
 
 	if (new_folder) {
-		g_free(os->current_folder);
-		os->current_folder = new_folder;
+		obex_set_folder(os, new_folder);
+		g_free(new_folder);
 	}
 
 	if (new_name) {
-		g_free(os->name);
-		os->name = new_name;
+		obex_set_name(os, new_name);
+		g_free(new_name);
 	}
 
 skip_auth:
-	emit_transfer_started(os->cid);
-	return os_prepare_put(os);
+	manager_emit_transfer_started(os);
+	return obex_prepare_put(os);
 }
 
 static obex_rsp_t opp_put(struct OBEX_session *os)
