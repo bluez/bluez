@@ -344,49 +344,44 @@ failed:
 	return OBEX_RSP_FORBIDDEN;
 }
 
-static void synce_put(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t synce_put(struct OBEX_session *os)
 {
-	struct obex_session *os;
 	struct synce_context *context;
 	DBusMessage *msg;
 	DBusMessageIter iter, array_iter;
 	DBusPendingCall *call;
-
-	os = OBEX_GetUserData(obex);
-	if (!os)
-		return;
+	const char *type = obex_session_get_type(os);
 
 	context = find_context(os);
 	if (!context)
-		return;
+		return OBEX_RSP_SERVICE_UNAVAILABLE;
 
-	if (!context->conn_obj) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_SERVICE_UNAVAILABLE,
-					OBEX_RSP_SERVICE_UNAVAILABLE);
-		return;
-	}
+	if (!context->conn_obj)
+		return OBEX_RSP_SERVICE_UNAVAILABLE;
 
 	msg = dbus_message_new_method_call(SYNCE_BUS_NAME, context->conn_obj,
 					SYNCE_CONN_INTERFACE, "Process");
 	if (!msg)
-		return;
+		return OBEX_RSP_SERVICE_UNAVAILABLE;
 
 	dbus_message_iter_init_append(msg, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_BYTE_AS_STRING, &array_iter);
+	/* FIXME: broken */
+#if 0
 	dbus_message_iter_append_fixed_array(&array_iter, DBUS_TYPE_BYTE,
 						&os->buf, os->offset);
+#endif
 	dbus_message_iter_close_container(&iter, &array_iter);
 
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &os->type,
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &type,
 						DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send_with_reply(context->dbus_conn, msg,
 								&call, -1)) {
 		error("D-Bus call to %s failed.", SYNCE_CONN_INTERFACE);
 		dbus_message_unref(msg);
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-		return;
+		return OBEX_RSP_FORBIDDEN;
 	}
 
 	dbus_pending_call_set_notify(call, process_cb, os, NULL);
@@ -394,7 +389,7 @@ static void synce_put(obex_t *obex, obex_object_t *obj)
 	dbus_message_unref(msg);
 	dbus_pending_call_unref(call);
 
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+	return OBEX_RSP_SUCCESS;
 }
 
 static obex_rsp_t synce_get(struct OBEX_session *os)

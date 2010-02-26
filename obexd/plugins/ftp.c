@@ -225,15 +225,17 @@ fail:
 	}
 }
 
-static gint ftp_delete(struct obex_session *os)
+static gint ftp_delete(struct OBEX_session *os)
 {
+	const char *name = obex_session_get_name(os);
+	const char *folder = obex_get_folder(os);
 	gchar *path;
 	int ret = 0;
 
-	if (!(os->current_folder && os->name))
+	if (!(folder && name))
 		return -EINVAL;
 
-	path = g_build_filename(os->current_folder, os->name, NULL);
+	path = g_build_filename(folder, name, NULL);
 
 	if (os->driver->remove(path) < 0)
 		ret = -errno;
@@ -260,42 +262,31 @@ static gint ftp_chkput(obex_t *obex, obex_object_t *obj)
 	return os_prepare_put(os);
 }
 
-static void ftp_put(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t ftp_put(struct OBEX_session *os)
 {
-	struct obex_session *os;
+	const char *folder = obex_get_folder(os);
+	const char *name = obex_session_get_name(os);
+	ssize_t size = obex_session_get_size(os);
 	int ret = 0;
 
-	os = OBEX_GetUserData(obex);
-	if (os == NULL)
-		return;
+	if (folder == NULL)
+		return OBEX_RSP_FORBIDDEN;
 
-	if (os->current_folder == NULL) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-		return;
-	}
+	if (name == NULL)
+		return OBEX_RSP_BAD_REQUEST;
 
-	if (os->name == NULL) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST, OBEX_RSP_BAD_REQUEST);
-		return;
-	}
-
-	if (os->size == OBJECT_SIZE_DELETE)
+	if (size == OBJECT_SIZE_DELETE)
 		ret = ftp_delete(os);
 
 	switch (ret) {
 	case 0:
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
-		break;
+		return OBEX_RSP_SUCCESS;
 	case -ENOENT:
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_FOUND, OBEX_RSP_NOT_FOUND);
-		break;
+		return OBEX_RSP_NOT_FOUND;
 	case -ENOTEMPTY:
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_PRECONDITION_FAILED,
-					OBEX_RSP_PRECONDITION_FAILED);
-		break;
+		return OBEX_RSP_PRECONDITION_FAILED;
 	default:
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-		break;
+		return OBEX_RSP_FORBIDDEN;
 	}
 }
 

@@ -792,7 +792,7 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 			return;
 	}
 
-	os->service->put(obex, obj);
+	os->service->put(os);
 }
 
 static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,

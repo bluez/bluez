@@ -150,25 +150,18 @@ skip_auth:
 	return os_prepare_put(os);
 }
 
-static void opp_put(obex_t *obex, obex_object_t *obj)
+static obex_rsp_t opp_put(struct OBEX_session *os)
 {
-	struct obex_session *os;
+	const char *name = obex_session_get_name(os);
+	const char *folder = obex_get_folder(os);
 
-	os = OBEX_GetUserData(obex);
-	if (os == NULL)
-		return;
+	if (folder == NULL)
+		return OBEX_RSP_FORBIDDEN;
 
-	if (os->current_folder == NULL) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-		return;
-	}
+	if (name == NULL)
+		return OBEX_RSP_BAD_REQUEST;
 
-	if (os->name == NULL) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST, OBEX_RSP_BAD_REQUEST);
-		return;
-	}
-
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
+	return OBEX_RSP_SUCCESS;
 }
 
 static obex_rsp_t opp_get(struct OBEX_session *os)
