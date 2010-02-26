@@ -350,7 +350,7 @@ static obex_rsp_t synce_put(struct OBEX_session *os)
 	DBusMessage *msg;
 	DBusMessageIter iter, array_iter;
 	DBusPendingCall *call;
-	const char *type = obex_session_get_type(os);
+	const char *type = obex_get_type(os);
 
 	context = find_context(os);
 	if (!context)

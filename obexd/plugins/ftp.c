@@ -227,7 +227,7 @@ fail:
 
 static gint ftp_delete(struct OBEX_session *os)
 {
-	const char *name = obex_session_get_name(os);
+	const char *name = obex_get_name(os);
 	const char *folder = obex_get_folder(os);
 	gchar *path;
 	int ret = 0;
@@ -265,8 +265,8 @@ static gint ftp_chkput(obex_t *obex, obex_object_t *obj)
 static obex_rsp_t ftp_put(struct OBEX_session *os)
 {
 	const char *folder = obex_get_folder(os);
-	const char *name = obex_session_get_name(os);
-	ssize_t size = obex_session_get_size(os);
+	const char *name = obex_get_name(os);
+	ssize_t size = obex_get_size(os);
 	int ret = 0;
 
 	if (folder == NULL)
@@ -305,7 +305,7 @@ static obex_rsp_t ftp_setpath(struct OBEX_session *os, obex_object_t *obj)
 		return OBEX_RSP_PRECONDITION_FAILED;
 	}
 
-	name = obex_session_get_name(os);
+	name = obex_get_name(os);
 	root_folder = obex_get_root_folder(os);
 	current_folder = obex_get_folder(os);
 	root = g_str_equal(root_folder, current_folder);

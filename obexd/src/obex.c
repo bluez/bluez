@@ -1098,17 +1098,17 @@ struct obex_session *obex_get_session(gpointer object)
 	return NULL;
 }
 
-const char *obex_session_get_name(struct OBEX_session *os)
+const char *obex_get_name(struct OBEX_session *os)
 {
 	return os->name;
 }
 
-ssize_t obex_session_get_size(struct OBEX_session *os)
+ssize_t obex_get_size(struct OBEX_session *os)
 {
 	return os->size;
 }
 
-const char *obex_session_get_type(struct OBEX_session *os)
+const char *obex_get_type(struct OBEX_session *os)
 {
 	return os->type;
 }

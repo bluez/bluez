@@ -152,7 +152,7 @@ skip_auth:
 
 static obex_rsp_t opp_put(struct OBEX_session *os)
 {
-	const char *name = obex_session_get_name(os);
+	const char *name = obex_get_name(os);
 	const char *folder = obex_get_folder(os);
 
 	if (folder == NULL)
@@ -168,10 +168,10 @@ static obex_rsp_t opp_get(struct OBEX_session *os)
 {
 	const char *type;
 
-	if (obex_session_get_name(os) == NULL)
+	if (obex_get_name(os) == NULL)
 		return OBEX_RSP_FORBIDDEN;
 
-	type = obex_session_get_type(os);
+	type = obex_get_type(os);
 
 	if (type == NULL)
 		return OBEX_RSP_FORBIDDEN;

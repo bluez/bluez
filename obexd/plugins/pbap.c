@@ -388,8 +388,8 @@ static obex_rsp_t pbap_connect(struct OBEX_session *os)
 static obex_rsp_t pbap_get(struct OBEX_session *os)
 {
 	int addbody = TRUE;
-	const char *type = obex_session_get_type(os);
-	const char *name = obex_session_get_name(os);
+	const char *type = obex_get_type(os);
+	const char *name = obex_get_name(os);
 	int err;
 
 	if (type == NULL)
@@ -471,7 +471,7 @@ static obex_rsp_t pbap_setpath(struct OBEX_session *os, obex_object_t *obj)
 	}
 
 	current_folder = obex_get_folder(os);
-	name = obex_session_get_name(os);
+	name = obex_get_name(os);
 
 	/* Check "Backup" flag */
 	if ((nonhdr[0] & 0x01) == 0x01) {
