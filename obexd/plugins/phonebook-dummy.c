@@ -26,27 +26,56 @@
 #include <config.h>
 #endif
 
+#include <string.h>
 #include <glib.h>
 
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
 
+#include "logging.h"
 #include "phonebook.h"
 
-int phonebook_pullphonebook(obex_t *obex, obex_object_t *obj,
-				struct apparam_field params)
+#define VCARD0				\
+        "BEGIN:VCARD\n"			\
+        "VERSION:3.0\n"			\
+        "N:Klaus;Santa\n"		\
+        "FN:\n"				\
+        "TEL:+001122334455\n"		\
+        "END:VCARD\n"
+
+
+struct dummy_data {
+	phonebook_cb	cb;
+	gpointer	user_data;
+};
+
+int phonebook_init(void)
 {
 	return 0;
 }
 
-int phonebook_pullvcardlisting(obex_t *obex, obex_object_t *obj,
-				struct apparam_field params)
+void phonebook_exit(void)
 {
-	return 0;
 }
 
-int phonebook_pullvcardentry(obex_t *obex, obex_object_t *obj,
-				struct apparam_field params)
+static gboolean dummy_result(gpointer data)
 {
+	struct dummy_data *dummy = data;
+
+	dummy->cb(VCARD0, strlen(VCARD0), 1, 0, dummy->user_data);
+
+	return FALSE;
+}
+
+int phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data)
+{
+	struct dummy_data *dummy;
+
+	dummy = g_new0(struct dummy_data, 1);
+	dummy->cb = cb;
+	dummy->user_data = user_data;
+
+	g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+			dummy_result, dummy, g_free);
 	return 0;
 }

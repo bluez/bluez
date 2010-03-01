@@ -193,7 +193,7 @@ static obex_rsp_t ftp_connect(struct OBEX_session *os)
 	return OBEX_RSP_SUCCESS;
 }
 
-static obex_rsp_t ftp_get(struct OBEX_session *os)
+static obex_rsp_t ftp_get(struct OBEX_session *os, obex_object_t *obj)
 {
 	const char *folder = obex_get_folder(os);
 	const char *type = obex_get_type(os);

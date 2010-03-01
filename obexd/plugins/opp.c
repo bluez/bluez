@@ -151,7 +151,7 @@ static obex_rsp_t opp_put(struct OBEX_session *os)
 	return OBEX_RSP_SUCCESS;
 }
 
-static obex_rsp_t opp_get(struct OBEX_session *os)
+static obex_rsp_t opp_get(struct OBEX_session *os, obex_object_t *obj)
 {
 	const char *type;
 

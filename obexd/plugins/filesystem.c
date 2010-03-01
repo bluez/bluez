@@ -49,6 +49,7 @@
 #include "obex.h"
 #include "mimetype.h"
 #include "service.h"
+#include "filesystem.h"
 
 #define EOL_CHARS "\n"
 
@@ -409,7 +410,7 @@ failed:
 	return NULL;
 }
 
-static int string_free(gpointer object)
+int string_free(gpointer object)
 {
 	GString *string = object;
 
@@ -418,7 +419,7 @@ static int string_free(gpointer object)
 	return 0;
 }
 
-static ssize_t string_read(gpointer object, void *buf, size_t count)
+ssize_t string_read(gpointer object, void *buf, size_t count)
 {
 	GString *string = object;
 	ssize_t len;
@@ -426,7 +427,7 @@ static ssize_t string_read(gpointer object, void *buf, size_t count)
 	if (string->len == 0)
 		return 0;
 
-	len = count > string->len ? string->len : count;
+	len = MIN(string->len, count);
 	memcpy(buf, string->str, len);
 	string = g_string_erase(string, 0, len);
 

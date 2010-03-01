@@ -21,22 +21,5 @@
  *
  */
 
-struct apparam_field {
-	guint64		filter;
-	guint16		maxlistcount;
-	guint16		liststartoffset;
-	guint8		format;
-	guint8		order;
-	guint8		searchattrib;
-	guint8		*searchval;
-};
-
-typedef void (*phonebook_cb) (const gchar *buffer, size_t bufsize,
-		gint vcards, gint missed, gpointer user_data);
-
-int phonebook_init(void);
-void phonebook_exit(void);
-
-int phonebook_setfolder(const gchar *name);
-
-int phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data);
+int string_free(gpointer object);
+ssize_t string_read(gpointer object, void *buf, size_t count);

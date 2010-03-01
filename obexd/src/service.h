@@ -34,7 +34,7 @@ struct obex_service_driver {
 	const gchar *record;
 	obex_rsp_t (*connect) (struct OBEX_session *os);
 	void (*progress) (struct OBEX_session *os);
-	obex_rsp_t (*get) (struct OBEX_session *os);
+	obex_rsp_t (*get) (struct OBEX_session *os, obex_object_t *obj);
 	obex_rsp_t (*put) (struct OBEX_session *os);
 	gint (*chkput) (struct OBEX_session *os);
 	obex_rsp_t (*setpath) (struct OBEX_session *os, obex_object_t *obj);

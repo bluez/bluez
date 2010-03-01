@@ -29,6 +29,11 @@
 #include <string.h>
 #include <errno.h>
 #include <glib.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <bluetooth/bluetooth.h>
 
 #include <openobex/obex.h>
@@ -40,6 +45,8 @@
 #include "service.h"
 #include "phonebook.h"
 #include "telephony.h"
+#include "mimetype.h"
+#include "filesystem.h"
 #include "dbus.h"
 
 #define PHONEBOOK_TYPE		"x-bt/phonebook"
@@ -127,256 +134,15 @@ struct apparam_hdr {
 	uint8_t		val[0];
 } __attribute__ ((packed));
 
+struct phonebook_query {
+	const char *type;
+	GString *buffer;
+	struct OBEX_session *os;
+};
+
 static const guint8 PBAP_TARGET[TARGET_SIZE] = {
 			0x79, 0x61, 0x35, 0xF0,  0xF0, 0xC5, 0x11, 0xD8,
 			0x09, 0x66, 0x08, 0x00,  0x20, 0x0C, 0x9A, 0x66  };
-
-static int pbap_parse_apparam_header(obex_t *obex, obex_object_t *obj,
-						struct apparam_field *apparam)
-{
-	obex_headerdata_t hd;
-	guint8 hi;
-	guint32 hlen;
-
-	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
-		void *ptr = (void *) hd.bs;
-		uint32_t len = hlen;
-
-		if (hi != OBEX_HDR_APPARAM)
-			continue;
-
-		if (hlen < APPARAM_HDR_SIZE) {
-			g_free(apparam->searchval);
-			error("PBAP pullphonebook app parameters header"
-						" is too short: %d", hlen);
-			return -1;
-		}
-
-		while (len > APPARAM_HDR_SIZE) {
-			struct apparam_hdr *hdr = ptr;
-
-			if (hdr->len > len - APPARAM_HDR_SIZE) {
-				g_free(apparam->searchval);
-				error("Unexpected PBAP pullphonebook app"
-						" length, tag %d, len %d",
-							hdr->tag, hdr->len);
-				return -1;
-			}
-
-			switch (hdr->tag) {
-			case ORDER_TAG:
-				if (hdr->len == ORDER_LEN)
-					apparam->order = hdr->val[0];
-				break;
-			case SEARCHATTRIB_TAG:
-				if (hdr->len == SEARCHATTRIB_LEN)
-					apparam->searchattrib = hdr->val[0];
-				break;
-			case SEARCHVALUE_TAG:
-				apparam->searchval = g_try_malloc(hdr->len + 1);
-				if (apparam->searchval != NULL) {
-					memcpy(apparam->searchval, hdr->val,
-								hdr->len);
-					apparam->searchval[hdr->len] = '\0';
-				}
-				break;
-			case FILTER_TAG:
-				if (hdr->len == FILTER_LEN) {
-					guint64 val;
-					memcpy(&val, hdr->val, sizeof(val));
-					apparam->filter = get_be64(&val);
-				}
-				break;
-			case FORMAT_TAG:
-				if (hdr->len == FORMAT_LEN)
-					apparam->format = hdr->val[0];
-				break;
-			case MAXLISTCOUNT_TAG:
-				if (hdr->len == MAXLISTCOUNT_LEN) {
-					guint16 val;
-					memcpy(&val, hdr->val, sizeof(val));
-					apparam->maxlistcount = get_be16(&val);
-				}
-				break;
-			case LISTSTARTOFFSET_TAG:
-				if (hdr->len == LISTSTARTOFFSET_LEN) {
-					guint16 val;
-					memcpy(&val, hdr->val, sizeof(val));
-					apparam->liststartoffset = get_be16(&val);
-				}
-				break;
-			default:
-				g_free(apparam->searchval);
-				error("Unexpected PBAP pullphonebook app"
-						" parameter, tag %d, len %d",
-							hdr->tag, hdr->len);
-				return -1;
-			}
-
-			ptr += APPARAM_HDR_SIZE + hdr->len;
-			len -= APPARAM_HDR_SIZE + hdr->len;
-		}
-
-		/* Ignore multiple app param headers */
-		break;
-	}
-
-	return 0;
-}
-
-/* Add app parameter header, that is sent back to PBAP client */
-static int pbap_add_result_apparam_header(obex_t *obex, obex_object_t *obj,
-				guint16 maxlistcount, gchar *path_name,
-				guint16 phonebooksize,
-				guint8 newmissedcalls, gboolean *addbody)
-{
-	guint8 rspsize = 0;
-	gboolean addmissedcalls = FALSE;
-	obex_headerdata_t hd;
-
-	if (maxlistcount == 0) {
-		rspsize += APPARAM_HDR_SIZE + PHONEBOOKSIZE_LEN;
-		*addbody = FALSE;
-	}
-
-	if (g_str_equal(path_name, SIM1_MCH) == TRUE ||
-				g_str_equal(path_name, MCH) == TRUE) {
-		rspsize += APPARAM_HDR_SIZE + NEWMISSEDCALLS_LEN;
-		addmissedcalls = TRUE;
-	}
-
-	if (rspsize > 0) {
-		void *buf, *ptr;
-
-		buf = g_try_malloc0(rspsize);
-		if (buf == NULL)
-			return -ENOMEM;
-
-		ptr = buf;
-
-		if (maxlistcount == 0) {
-			struct apparam_hdr *hdr = ptr;
-			guint16 val = GUINT16_TO_BE(phonebooksize);
-
-			hdr->tag = PHONEBOOKSIZE_TAG;
-			hdr->len = PHONEBOOKSIZE_LEN;
-			memcpy(hdr->val, &val, sizeof(val));
-
-			ptr += APPARAM_HDR_SIZE + PHONEBOOKSIZE_LEN;
-		}
-
-		if (addmissedcalls == TRUE) {
-			struct apparam_hdr *hdr = ptr;
-
-			hdr->tag = NEWMISSEDCALLS_TAG;
-			hdr->len = NEWMISSEDCALLS_LEN;
-			hdr->val[0] = newmissedcalls;
-
-			ptr += APPARAM_HDR_SIZE + NEWMISSEDCALLS_LEN;
-		}
-
-		hd.bs = buf;
-		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_APPARAM,
-							hd, rspsize, 0);
-		g_free(buf);
-	}
-
-	return 0;
-}
-
-static int pbap_pullphonebook(obex_t *obex, obex_object_t *obj,
-							gboolean *addbody)
-{
-	struct obex_session *session = OBEX_GetUserData(obex);
-	struct apparam_field params;
-	guint8 newmissedcalls = 0;
-	guint16 phonebooksize = 0;
-	int err;
-
-	memset(&params, 0, sizeof(struct apparam_field));
-
-	err = pbap_parse_apparam_header(obex, obj, &params);
-	if (err < 0)
-		return err;
-
-	if (params.maxlistcount == 0) {
-		phonebooksize = DEFAULT_COUNT;
-		goto done;
-	}
-
-	err = phonebook_pullphonebook(obex, obj, params);
-	if (err < 0)
-		return err;
-
-done:
-	return pbap_add_result_apparam_header(obex, obj, params.maxlistcount,
-						session->name, phonebooksize,
-						newmissedcalls, addbody);
-}
-
-static int pbap_pullvcardlisting(obex_t *obex, obex_object_t *obj,
-							gboolean *addbody)
-{
-	struct obex_session *session = OBEX_GetUserData(obex);
-	gchar *fullname;
-	struct apparam_field params;
-	guint8 newmissedcalls = 0;
-	guint16 phonebooksize = 0;
-	int err;
-
-	memset(&params, 0, sizeof(struct apparam_field));
-
-	err = pbap_parse_apparam_header(obex, obj, &params);
-	if (err < 0)
-		return err;
-
-	if (params.maxlistcount == 0) {
-		phonebooksize = DEFAULT_COUNT;
-		goto proceed;
-	}
-
-	/* libebook does not support sound attribute */
-	if (params.searchattrib >= 2) {
-		DBG("libebook does not support sound attribute");
-		goto done;
-	}
-
-	err = phonebook_pullvcardlisting(obex, obj, params);
-	if (err < 0)
-		goto done;
-
-proceed:
-
-	fullname = g_build_filename(session->current_folder, session->name,
-								NULL);
-	if (fullname != NULL)
-		fullname = g_strconcat(fullname, ".vcf", NULL);
-
-	err = pbap_add_result_apparam_header(obex, obj, params.maxlistcount,
-						fullname, phonebooksize,
-						newmissedcalls, addbody);
-	g_free(fullname);
-
-done:
-	g_free(params.searchval);
-	return err;
-}
-
-static int pbap_pullvcardentry(obex_t *obex, obex_object_t *obj)
-{
-	struct apparam_field params;
-	int err;
-
-	memset(&params, 0, sizeof(struct apparam_field));
-	err = pbap_parse_apparam_header(obex, obj, &params);
-	if (err < 0)
-		return err;
-
-	err = phonebook_pullvcardentry(obex, obj, params);
-
-	g_free(params.searchval);
-	return err;
-}
 
 static obex_rsp_t pbap_connect(struct OBEX_session *os)
 {
@@ -385,56 +151,47 @@ static obex_rsp_t pbap_connect(struct OBEX_session *os)
 	return OBEX_RSP_SUCCESS;
 }
 
-static obex_rsp_t pbap_get(struct OBEX_session *os)
+static obex_rsp_t pbap_get(struct OBEX_session *os, obex_object_t *obj)
 {
-	int addbody = TRUE;
-	const char *type = obex_get_type(os);
-	const char *name = obex_get_name(os);
-	int err;
+	const gchar *type = obex_get_type(os);
+	const gchar *folder = obex_get_folder(os);
+	const gchar *name = obex_get_name(os);
+	gchar *path;
+	gint ret;
 
 	if (type == NULL)
-		goto fail;
+		return OBEX_RSP_BAD_REQUEST;
 
-	if (g_str_equal(type, VCARDLISTING_TYPE) == FALSE
-						&& name == NULL)
-		goto fail;
+	if (strcmp(type, PHONEBOOK_TYPE) == 0)
+		/* Always contains the absolute path */
+		path = g_strdup(name);
+	else if (strcmp(type, VCARDLISTING_TYPE) == 0)
+		/* Always relative */
+		if (!name || strlen(name) == 0)
+			/* Current folder */
+			path = g_strdup(folder);
+		else
+			/* Current folder + relative path */
+			path = g_build_filename(folder, name, NULL);
 
-	/* FIXME: broken */
-#if 0
-	OBEX_ObjectReParseHeaders(, obj);
-#endif
-	if (g_str_equal(type, PHONEBOOK_TYPE) == TRUE)
-		err = pbap_pullphonebook(NULL, NULL, NULL);
-	else if (g_str_equal(type, VCARDLISTING_TYPE) == TRUE)
-		err = pbap_pullvcardlisting(NULL, NULL, NULL);
-	else if (g_str_equal(type, VCARDENTRY_TYPE) == TRUE)
-		err = pbap_pullvcardentry(NULL, NULL);
+	else if (strcmp(type, VCARDENTRY_TYPE) == 0)
+		/* Always relative */
+		path = g_build_filename(folder, name, NULL);
 	else
-		goto fail;
+		return OBEX_RSP_BAD_REQUEST;
 
-	if (err < 0)
-		goto fail;
+	ret = obex_stream_start(os, path);
+	g_free(path);
 
-	if (addbody == TRUE) {
-#if 0
-		OBEX_SuspendRequest(obex, obj);
-		session->size = 0;
+	switch (ret) {
+	case 0:
+		return OBEX_RSP_SUCCESS;
+	case -ENOENT:
+		return OBEX_RSP_NOT_FOUND;
+	default:
+		return OBEX_RSP_FORBIDDEN;
 
-		/* Add body header */
-		hd.bs = NULL;
-		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY,
-				hd, 0, OBEX_FL_STREAM_START);
-#endif
 	}
-
-#if 0
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
-#endif
-
-	return OBEX_RSP_SUCCESS;
-
-fail:
-	return OBEX_RSP_FORBIDDEN;
 }
 
 static gboolean pbap_is_valid_folder(struct obex_session *session)
@@ -555,14 +312,128 @@ struct obex_service_driver pbap = {
 	.chkput = pbap_chkput
 };
 
+static void query_result(const gchar *buffer, size_t bufsize,
+		gint vcards, gint missed, gpointer user_data)
+{
+	struct phonebook_query *query = user_data;
+
+	if (!query->buffer)
+		query->buffer = g_string_new_len(buffer, bufsize);
+	else
+		query->buffer = g_string_append_len(query->buffer, buffer, bufsize);
+
+	obex_object_set_io_flags(query, G_IO_IN, 0);
+}
+
+static gpointer vobject_open(const char *name, int oflag, mode_t mode,
+		size_t *size, struct OBEX_session *os, int *err)
+{
+	const gchar *type = obex_get_type(os);
+	struct phonebook_query *query;
+
+	if (oflag != O_RDONLY)
+		goto fail;
+
+	/* TODO: mch? */
+
+	/* TODO: get application parameter */
+	query = g_new0(struct phonebook_query, 1);
+	query->type = type;
+	query->os = os;
+
+	if (phonebook_query(name, query_result, query) < 0) {
+		g_free(query);
+		goto fail;
+	}
+
+	if (size)
+		*size = 1;
+
+	return query;
+
+fail:
+	if (err)
+		*err = -EPERM;
+
+	return NULL;
+}
+
+static ssize_t vobject_read(gpointer object, void *buf, size_t count)
+{
+	struct phonebook_query *query = object;
+
+	if (query->buffer)
+		return string_read(query->buffer, buf, count);
+
+	return -EAGAIN;
+}
+
+static int vobject_close(gpointer object)
+{
+	struct phonebook_query *query = object;
+
+	if (query->buffer)
+		string_free(query->buffer);
+
+	g_free(query);
+
+	return 0;
+}
+
+struct obex_mime_type_driver mime_pull = {
+	.target		= PBAP_TARGET,
+	.mimetype	= "x-bt/phonebook",
+	.open		= vobject_open,
+	.close		= vobject_close,
+	.read		= vobject_read,
+};
+
+struct obex_mime_type_driver mime_list = {
+	.target		= PBAP_TARGET,
+	.mimetype	= "x-bt/vcard-listing",
+	.open		= vobject_open,
+	.close		= vobject_close,
+	.read		= vobject_read,
+};
+
+struct obex_mime_type_driver mime_vcard = {
+	.target		= PBAP_TARGET,
+	.mimetype	= "x-bt/vcard",
+	.open		= vobject_open,
+	.close		= vobject_close,
+	.read		= vobject_read,
+};
+
 static int pbap_init(void)
 {
+	int err;
+
+	err = phonebook_init();
+	if (err < 0)
+		return err;
+
+	err = obex_mime_type_driver_register(&mime_pull);
+	if (err < 0)
+		return err;
+
+	err = obex_mime_type_driver_register(&mime_list);
+	if (err < 0)
+		return err;
+
+	err = obex_mime_type_driver_register(&mime_vcard);
+	if (err < 0)
+		return err;
+
 	return obex_service_driver_register(&pbap);
 }
 
 static void pbap_exit(void)
 {
 	obex_service_driver_unregister(&pbap);
+	obex_mime_type_driver_unregister(&mime_pull);
+	obex_mime_type_driver_unregister(&mime_list);
+	obex_mime_type_driver_unregister(&mime_vcard);
+	phonebook_exit();
 }
 
 OBEX_PLUGIN_DEFINE(pbap, pbap_init, pbap_exit)
