@@ -113,7 +113,7 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *list,
 		for (l = attrib_list; l; l = l->next) {
 			int i;
 			const char *attrib_name = e_vcard_attribute_get_name(
-						(EVCardAttribute *)l->data);
+						(EVCardAttribute *) l->data);
 
 			for (i = 0; i <= 28; i++) {
 				int mask;
@@ -123,10 +123,9 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *list,
 					continue;
 				if (g_strcmp0(vcard_attribs[i], attrib_name))
 					continue;
-				e_vcard_add_attribute(
-					evcard_filtered,
-					e_vcard_attribute_copy(
-					(EVCardAttribute *)l->data));
+				e_vcard_add_attribute(evcard_filtered,
+						e_vcard_attribute_copy(
+						(EVCardAttribute *) l->data));
 				break;
 			}
 		}
@@ -365,7 +364,7 @@ static void ebookpullentry_cb(EBook *book, EBookStatus status, GList *list,
 		for (l = attrib_list; l; l = l->next) {
 			int i;
 			const char *attrib_name = e_vcard_attribute_get_name(
-						(EVCardAttribute *)l->data);
+						(EVCardAttribute *) l->data);
 			for (i = 0; i <= 28; i++) {
 				int mask;
 
@@ -375,11 +374,10 @@ static void ebookpullentry_cb(EBook *book, EBookStatus status, GList *list,
 				if (g_strcmp0(vcard_attribs[i], attrib_name))
 					continue;
 
-				e_vcard_add_attribute(
-					evcard_filtered,
-					e_vcard_attribute_copy(
-					(EVCardAttribute *)l->data));
-				 break;
+				e_vcard_add_attribute(evcard_filtered,
+						e_vcard_attribute_copy(
+						(EVCardAttribute *) l->data));
+				break;
 			}
 		}
 		vcard = e_vcard_to_string(evcard_filtered, params->format);
