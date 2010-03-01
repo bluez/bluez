@@ -2984,7 +2984,7 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 		if (sep && sep->cfm && sep->cfm->abort)
 			sep->cfm->abort(session, sep, stream, &err,
 					sep->user_data);
-		return TRUE;
+		return FALSE;
 	case AVDTP_DELAY_REPORT:
 		if (!stream_rej_to_err(buf, size, &err, &acp_seid))
 			return FALSE;
