@@ -366,8 +366,11 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 
 	rsp = os->service->get(os, obj);
 	if (rsp == OBEX_RSP_SUCCESS) {
-		hd.bq4 = os->size;
-		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_LENGTH, hd, 4, 0);
+		if (os->size != OBJECT_SIZE_UNKNOWN) {
+			hd.bq4 = os->size;
+			OBEX_ObjectAddHeader(obex, obj,
+					OBEX_HDR_LENGTH, hd, 4, 0);
+		}
 
 		/* Add body header */
 		hd.bs = NULL;

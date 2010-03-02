@@ -347,7 +347,7 @@ static gpointer vobject_open(const char *name, int oflag, mode_t mode,
 	}
 
 	if (size)
-		*size = 1;
+		*size = OBJECT_SIZE_UNKNOWN;
 
 	return query;
 
