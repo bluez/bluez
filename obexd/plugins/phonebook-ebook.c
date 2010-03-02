@@ -109,7 +109,13 @@ void phonebook_exit(void)
 		g_object_unref(ebook);
 }
 
-int phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data)
+int phonebook_set_folder(const gchar *current_folder,
+		const gchar *new_folder, guint8 flags)
+{
+	return 0;
+}
+
+gint phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data)
 {
 	struct query_data *data;
 	EBookQuery *query;

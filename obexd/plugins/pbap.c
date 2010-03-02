@@ -34,7 +34,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <bluetooth/bluetooth.h>
 
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
@@ -44,7 +43,6 @@
 #include "obex.h"
 #include "service.h"
 #include "phonebook.h"
-#include "telephony.h"
 #include "mimetype.h"
 #include "filesystem.h"
 #include "dbus.h"
@@ -186,33 +184,13 @@ static int pbap_get(struct OBEX_session *os, obex_object_t *obj)
 	return ret;
 }
 
-static gboolean pbap_is_valid_folder(struct obex_session *session)
-{
-	if (session->current_folder == NULL) {
-		if (g_str_equal(session->name, "telecom") == TRUE ||
-			g_str_equal(session->name, "SIM1") == TRUE)
-			return TRUE;
-	} else if (g_str_equal(session->current_folder, "SIM1") == TRUE) {
-		if (g_str_equal(session->name, "telecom") == TRUE)
-			return TRUE;
-	} else if (g_str_equal(session->current_folder, "telecom") == TRUE ||
-		g_str_equal(session->current_folder, "SIM1/telecom") == TRUE) {
-		if (g_str_equal(session->name, "pb") == TRUE ||
-				g_str_equal(session->name, "ich") == TRUE ||
-				g_str_equal(session->name, "och") == TRUE ||
-				g_str_equal(session->name, "mch") == TRUE ||
-				g_str_equal(session->name, "cch") == TRUE)
-			return TRUE;
-	}
-
-	return FALSE;
-}
 
 static int pbap_setpath(struct OBEX_session *os, obex_object_t *obj)
 {
 	const gchar *current_folder, *name;
 	guint8 *nonhdr;
 	gchar *fullname;
+	int ret;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &nonhdr) != 2) {
 		error("Set path failed: flag and constants not found!");
@@ -222,59 +200,22 @@ static int pbap_setpath(struct OBEX_session *os, obex_object_t *obj)
 	current_folder = obex_get_folder(os);
 	name = obex_get_name(os);
 
-	/* Check "Backup" flag */
-	if ((nonhdr[0] & 0x01) == 0x01) {
-		debug("Set to parent path");
+	ret = phonebook_set_folder(current_folder, name, nonhdr[0]);
+	if (ret < 0)
+		return ret;
 
-		if (current_folder == NULL) {
-			/* we are already in top level folder */
-			return -EPERM;
-		}
-
-		fullname = g_path_get_dirname(current_folder);
-
-		if (strlen(fullname) == 1 && *fullname == '.')
-			obex_set_folder(os, NULL);
-		else
-			obex_set_folder(os, fullname);
-
-		g_free(fullname);
-
-		debug("Set to parent path: %s", current_folder);
-
-		return 0;
-	}
-
-	if (!name) {
-		error("Set path failed: name missing!");
-		return -EBADR;
-	}
-
-	if (strlen(name) == 0) {
-		debug("Set to root");
-
-		obex_set_folder(os, NULL);
-
-		return 0;
-	}
-
-	/* Check and set to name path */
-	if (strstr(name, "/")) {
-		error("Set path failed: name incorrect!");
-		return -EPERM;
-	}
-
-	if (pbap_is_valid_folder(os) == FALSE)
-		return -ENOENT;
-
-	if (current_folder == NULL)
-		fullname = g_build_filename("", name, NULL);
+	/*
+	 * TODO: current folder should not be stored in the
+	 * "core", it is a service specific attribute.
+	 */
+	if (!current_folder)
+		fullname = g_strdup(name);
 	else
 		fullname = g_build_filename(current_folder, name, NULL);
 
-	debug("Fullname: %s", fullname);
-
 	obex_set_folder(os, fullname);
+
+	g_free(fullname);
 
 	return 0;
 }

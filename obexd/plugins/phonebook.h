@@ -37,6 +37,7 @@ typedef void (*phonebook_cb) (const gchar *buffer, size_t bufsize,
 int phonebook_init(void);
 void phonebook_exit(void);
 
-int phonebook_setfolder(const gchar *name);
+int phonebook_set_folder(const gchar *current_folder,
+		const gchar *new_folder, guint8 flags);
 
 int phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data);

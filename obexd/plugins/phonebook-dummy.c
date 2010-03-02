@@ -29,9 +29,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
-
 #include "logging.h"
 #include "phonebook.h"
 
@@ -42,7 +39,6 @@
         "FN:\n"				\
         "TEL:+001122334455\n"		\
         "END:VCARD\n"
-
 
 struct dummy_data {
 	phonebook_cb	cb;
@@ -65,6 +61,12 @@ static gboolean dummy_result(gpointer data)
 	dummy->cb(VCARD0, strlen(VCARD0), 1, 0, dummy->user_data);
 
 	return FALSE;
+}
+
+int phonebook_set_folder(const gchar *current_folder,
+		const gchar *new_folder, guint8 flags)
+{
+	return 0;
 }
 
 int phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data)
