@@ -80,6 +80,8 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 
 	data->cb(string->str, string->len,
 			g_list_length(contacts), 0, data->user_data);
+
+	g_free(data);
 }
 
 int phonebook_init(void)
@@ -112,7 +114,51 @@ void phonebook_exit(void)
 int phonebook_set_folder(const gchar *current_folder,
 		const gchar *new_folder, guint8 flags)
 {
-	return 0;
+	gboolean root, child;
+	int ret;
+
+	root = (!current_folder || strlen(current_folder) == 0);
+	child = (new_folder && strlen(new_folder) != 0);
+
+	/* Evolution back-end will support telecom/pb folder only */
+	switch (flags) {
+	case 0x02:
+		/* Go back to root */
+		if (!child)
+			return 0;
+
+		/* Go down 1 level */
+		if (root)
+			ret = (strcmp("telecom", new_folder) != 0) ? -EBADR: 0;
+		else if (strcmp("telecom", current_folder) == 0)
+			ret = (strcmp("pb", new_folder) != 0) ? -EBADR: 0;
+		else
+			ret = -EBADR;
+
+		break;
+	case 0x03:
+		/* Go up 1 level */
+		if (root)
+			/* Already root */
+			return -EBADR;
+
+		if (!child)
+			return 0;
+
+		/* /telecom or /telecom/pb */
+		if (strcmp("telecom", current_folder) == 0)
+			ret = (strcmp("telecom", new_folder) != 0) ? -EBADR : 0;
+		else if (strcmp("telecom/pb", current_folder) == 0)
+			ret = (strcmp("pb", new_folder) != 0) ? -EBADR : 0;
+		else
+			ret = -EBADR;
+		break;
+	default:
+		ret = -EBADR;
+		break;
+	}
+
+	return ret;
 }
 
 gint phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data)
