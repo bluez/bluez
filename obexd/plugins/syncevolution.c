@@ -40,11 +40,13 @@
 #include "plugin.h"
 #include "obex.h"
 #include "service.h"
+#include "mimetype.h"
 #include "logging.h"
 #include "dbus.h"
 #include "btio.h"
 #include "obexd.h"
 #include "gdbus.h"
+#include "filesystem.h"
 
 #define SYNCML_TARGET_SIZE 11
 
@@ -91,31 +93,11 @@ struct synce_context {
 	struct obex_session *os;
 	DBusConnection *dbus_conn;
 	gchar *conn_obj;
-	gboolean reply_received;
 	guint reply_watch;
 	guint abort_watch;
+	GString *buffer;
+	int lasterr;
 };
-
-struct callback_data {
-	obex_t *obex;
-	obex_object_t *obj;
-};
-
-static GSList *context_list = NULL;
-
-static struct synce_context *find_context(struct obex_session *os)
-{
-	GSList *l;
-
-	for (l = context_list; l != NULL; l = l->next) {
-		struct synce_context *context = l->data;
-
-		if (context->os == os)
-			return context;
-	}
-
-	return NULL;
-}
 
 static void append_dict_entry(DBusMessageIter *dict, const char *key,
 							int type, void *val)
@@ -133,29 +115,25 @@ static gboolean reply_signal(DBusConnection *conn, DBusMessage *msg,
 				void *data)
 {
 	struct synce_context *context = data;
-	struct obex_session *os = context->os;
 	const char *path = dbus_message_get_path(msg);
 	DBusMessageIter iter, array_iter;
 	gchar *value;
 	gint length;
 
-	if (strcmp(context->conn_obj, path) != 0)
+	if (strcmp(context->conn_obj, path) != 0) {
+		obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
+		context->lasterr = -EPERM;
 		return FALSE;
+	}
 
 	dbus_message_iter_init(msg, &iter);
 
 	dbus_message_iter_recurse(&iter, &array_iter);
 	dbus_message_iter_get_fixed_array(&array_iter, &value, &length);
 
-	if (length == 0)
-		return TRUE;
-
-	os->buf = g_malloc(length);
-	memcpy(os->buf, value, length);
-	os->size = length;
-	os->finished = TRUE;
-	context->reply_received = TRUE;
-	OBEX_ResumeRequest(os->obex);
+	context->buffer = g_string_new_len(value, length);
+	obex_object_set_io_flags(context, G_IO_IN, 0);
+	context->lasterr = 0;
 
 	return TRUE;
 }
@@ -164,34 +142,19 @@ static gboolean abort_signal(DBusConnection *conn, DBusMessage *msg,
 				void *data)
 {
 	struct synce_context *context = data;
-	struct obex_session *os = context->os;
 
-	os->size = 0;
-	os->finished = TRUE;
-	OBEX_ResumeRequest(os->obex);
-	OBEX_TransportDisconnect(os->obex);
-
+	obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
+	context->lasterr = -EPERM;
 	return TRUE;
 }
 
 static void connect_cb(DBusPendingCall *call, void *user_data)
 {
-	struct callback_data *cb_data = user_data;
-	obex_t *obex = cb_data->obex;
-	obex_object_t *obj = cb_data->obj;
-	struct obex_session *os = OBEX_GetUserData(obex);
-	struct synce_context *context;
+	struct synce_context *context = user_data;
 	DBusConnection *conn;
 	DBusMessage *reply;
 	DBusError err;
 	gchar *path;
-	obex_headerdata_t hd;
-
-	context = find_context(os);
-	if (!context) {
-		g_free(cb_data);
-		goto failed;
-	}
 
 	conn = context->dbus_conn;
 
@@ -217,29 +180,17 @@ static void connect_cb(DBusPendingCall *call, void *user_data)
 						abort_signal, context, NULL);
 
 	dbus_message_unref(reply);
-	g_free(cb_data);
-
-	/* Append received UUID in WHO header */
-	manager_register_session(os);
-
-	hd.bs = SYNCML_TARGET;
-	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_WHO, hd, SYNCML_TARGET_SIZE,
-							OBEX_FL_FIT_ONE_PACKET);
-	hd.bq4 = os->cid;
-	OBEX_ObjectAddHeader(obex, obj,	OBEX_HDR_CONNECTION, hd, 4,
-						OBEX_FL_FIT_ONE_PACKET);
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE, OBEX_RSP_SUCCESS);
-	OBEX_ResumeRequest(obex);
 
 	return;
 
 failed:
-	OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-	OBEX_ResumeRequest(obex);
+	obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
+	context->lasterr = -EPERM;
 }
 
 static void process_cb(DBusPendingCall *call, void *user_data)
 {
+	struct synce_context *context = user_data;
 	DBusMessage *reply;
 	DBusError derr;
 
@@ -249,158 +200,33 @@ static void process_cb(DBusPendingCall *call, void *user_data)
 		error("process_cb(): syncevolution replied with an error:"
 					" %s, %s", derr.name, derr.message);
 		dbus_error_free(&derr);
+
+		obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
+		context->lasterr = -EPERM;
+		goto done;
 	}
 
+	obex_object_set_io_flags(context, G_IO_OUT, 0);
+	context->lasterr = 0;
+
+done:
 	dbus_message_unref(reply);
 }
 
 static int synce_connect(struct OBEX_session *os)
 {
-	DBusConnection *conn;
-	GError *err = NULL;
-	gchar address[18], id[36], transport[36], transport_description[24];
-	const char *session;
-	guint8 channel;
-	DBusMessage *msg;
-	DBusMessageIter iter, dict;
-	gboolean authenticate;
-	DBusPendingCall *call;
-	struct callback_data *cb_data;
-	struct synce_context *context;
+	manager_register_session(os);
 
-	conn = obex_dbus_get_connection();
-	if (!conn)
-		goto failed;
-
-	bt_io_get(os->io, BT_IO_RFCOMM, &err,
-			BT_IO_OPT_DEST, address,
-			BT_IO_OPT_CHANNEL, &channel,
-			BT_IO_OPT_INVALID);
-
-	if (err) {
-		error("%s", err->message);
-		g_error_free(err);
-		goto failed;
-	}
-
-	msg = dbus_message_new_method_call(SYNCE_BUS_NAME, SYNCE_PATH,
-				SYNCE_SERVER_INTERFACE, "Connect");
-	if (!msg)
-		goto failed;
-
-	dbus_message_iter_init_append(msg, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-		DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_STRING_AS_STRING
-		DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	snprintf(id, sizeof(id), "%s+%u", address, channel);
-	append_dict_entry(&dict, "id", DBUS_TYPE_STRING, id);
-
-	snprintf(transport, sizeof(transport), "%s.obexd",
-					OPENOBEX_SERVICE);
-	append_dict_entry(&dict, "transport", DBUS_TYPE_STRING, transport);
-
-	snprintf(transport_description, sizeof(transport_description),
-						"version %s", VERSION);
-	append_dict_entry(&dict, "transport_description", DBUS_TYPE_STRING,
-							transport_description);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	authenticate = FALSE;
-	session = "";
-	dbus_message_append_args(msg, DBUS_TYPE_BOOLEAN, &authenticate,
-			DBUS_TYPE_STRING, &session, DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(conn, msg, &call, -1)) {
-		error("D-Bus call to %s failed.", SYNCE_SERVER_INTERFACE);
-		dbus_message_unref(msg);
-		goto failed;
-	}
-
-	/* FIXME: completely broken */
-
-	cb_data = g_malloc0(sizeof(struct callback_data));
-#if 0
-	cb_data->obex = os->obex;
-	cb_data->obj = os->obj;
-#endif
-	dbus_pending_call_set_notify(call, connect_cb, cb_data, NULL);
-
-	context = g_new0(struct synce_context, 1);
-	context->os = os;
-	context->dbus_conn = conn;
-	context_list = g_slist_append(context_list, context);
-
-	dbus_pending_call_unref(call);
-	dbus_message_unref(msg);
-#if 0
-	/* FIXME: broken */
-	OBEX_SuspendRequest(obex, obj);
-#endif
 	return 0;
-
-failed:
-	return -EPERM;
 }
 
 static int synce_put(struct OBEX_session *os)
 {
-	struct synce_context *context;
-	DBusMessage *msg;
-	DBusMessageIter iter, array_iter;
-	DBusPendingCall *call;
-	const char *type = obex_get_type(os);
-
-	context = find_context(os);
-	if (!context)
-		return -EFAULT;
-
-	if (!context->conn_obj)
-		return -EFAULT;
-
-	msg = dbus_message_new_method_call(SYNCE_BUS_NAME, context->conn_obj,
-					SYNCE_CONN_INTERFACE, "Process");
-	if (!msg)
-		return -EFAULT;
-
-	dbus_message_iter_init_append(msg, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_BYTE_AS_STRING, &array_iter);
-	/* FIXME: broken */
-#if 0
-	dbus_message_iter_append_fixed_array(&array_iter, DBUS_TYPE_BYTE,
-						&os->buf, os->offset);
-#endif
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &type,
-						DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(context->dbus_conn, msg,
-								&call, -1)) {
-		error("D-Bus call to %s failed.", SYNCE_CONN_INTERFACE);
-		dbus_message_unref(msg);
-		return -EPERM;
-	}
-
-	dbus_pending_call_set_notify(call, process_cb, os, NULL);
-
-	dbus_message_unref(msg);
-	dbus_pending_call_unref(call);
-
 	return 0;
 }
 
 static int synce_get(struct OBEX_session *os, obex_object_t *obj)
 {
-	struct synce_context *context;
-
-	context = find_context(os);
-	if (!context)
-		return -EPERM;
-
 	return 0;
 }
 
@@ -422,15 +248,43 @@ static void close_cb(DBusPendingCall *call, void *user_data)
 
 static void synce_disconnect(struct OBEX_session *os)
 {
+
+}
+
+static gpointer synce_open(const char *name, int oflag, mode_t mode,
+		size_t *size, struct OBEX_session *os, int *err)
+{
+	DBusConnection *conn;
 	struct synce_context *context;
+
+	conn = obex_dbus_get_connection();
+	if (!conn)
+		goto failed;
+
+	context = g_new0(struct synce_context, 1);
+	context->os = os;
+	context->dbus_conn = conn;
+	context->lasterr = -EAGAIN;
+
+	if (err)
+		*err = 0;
+
+	return context;
+
+failed:
+	if (err)
+		*err = -EPERM;
+
+	return NULL;
+}
+
+static int synce_close(gpointer object)
+{
+	struct synce_context *context = object;
 	DBusMessage *msg;
 	const gchar *error;
 	gboolean normal;
 	DBusPendingCall *call;
-
-	context = find_context(os);
-	if (!context)
-		return;
 
 	if (!context->conn_obj)
 		goto done;
@@ -461,17 +315,134 @@ failed:
 
 done:
 	dbus_connection_unref(context->dbus_conn);
-	context_list = g_slist_remove(context_list, context);
 	g_free(context);
+	return 0;
 }
 
-static void synce_reset(struct OBEX_session *os)
+static ssize_t synce_read(gpointer object, void *buf, size_t count)
 {
-	struct synce_context *context = find_context(os);
+	struct synce_context *context = object;
+	struct OBEX_session *os = context->os;
+	DBusConnection *conn;
+	gchar *id, transport[36], transport_description[24];
+	const char *session;
+	DBusMessage *msg;
+	DBusMessageIter iter, dict;
+	gboolean authenticate;
+	DBusPendingCall *call;
 
-	if (context)
-		context->reply_received = 0;
+	if (context->buffer)
+		return string_read(context->buffer, buf, count);
+
+	conn = obex_dbus_get_connection();
+	if (conn == NULL)
+		goto failed;
+
+	msg = dbus_message_new_method_call(SYNCE_BUS_NAME, SYNCE_PATH,
+				SYNCE_SERVER_INTERFACE, "Connect");
+	if (!msg)
+		goto failed;
+
+	id = obex_get_id(os);
+	if (id == NULL) {
+		dbus_message_unref(msg);
+		goto failed;
+	}
+
+	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+		DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_STRING_AS_STRING
+		DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	append_dict_entry(&dict, "id", DBUS_TYPE_STRING, id);
+	g_free(id);
+
+	snprintf(transport, sizeof(transport), "%s.obexd",
+					OPENOBEX_SERVICE);
+	append_dict_entry(&dict, "transport", DBUS_TYPE_STRING, transport);
+
+	snprintf(transport_description, sizeof(transport_description),
+						"version %s", VERSION);
+	append_dict_entry(&dict, "transport_description", DBUS_TYPE_STRING,
+							transport_description);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	authenticate = FALSE;
+	session = "";
+	dbus_message_append_args(msg, DBUS_TYPE_BOOLEAN, &authenticate,
+			DBUS_TYPE_STRING, &session, DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(conn, msg, &call, -1)) {
+		error("D-Bus call to %s failed.", SYNCE_SERVER_INTERFACE);
+		dbus_message_unref(msg);
+		goto failed;
+	}
+
+	dbus_pending_call_set_notify(call, connect_cb, context, NULL);
+
+	dbus_pending_call_unref(call);
+	dbus_message_unref(msg);
+
+	return -EAGAIN;
+
+failed:
+	return -EPERM;
 }
+
+static ssize_t synce_write(gpointer object, const void *buf, size_t count)
+{
+	struct synce_context *context = object;
+	DBusMessage *msg;
+	DBusMessageIter iter, array_iter;
+	DBusPendingCall *call;
+	const char *type = obex_get_type(context->os);
+
+	if (context->lasterr == 0)
+		return count;
+
+	if (!context->conn_obj)
+		return -EFAULT;
+
+	msg = dbus_message_new_method_call(SYNCE_BUS_NAME, context->conn_obj,
+					SYNCE_CONN_INTERFACE, "Process");
+	if (!msg)
+		return -EFAULT;
+
+	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_BYTE_AS_STRING, &array_iter);
+
+	dbus_message_iter_append_fixed_array(&array_iter, DBUS_TYPE_BYTE,
+						&buf, count);
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &type,
+						DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(context->dbus_conn, msg,
+								&call, -1)) {
+		error("D-Bus call to %s failed.", SYNCE_CONN_INTERFACE);
+		dbus_message_unref(msg);
+		return -EPERM;
+	}
+
+	dbus_pending_call_set_notify(call, process_cb, context, NULL);
+
+	dbus_message_unref(msg);
+	dbus_pending_call_unref(call);
+
+	return -EAGAIN;
+}
+
+struct obex_mime_type_driver synce_driver = {
+	.target = SYNCML_TARGET,
+	.open = synce_open,
+	.close = synce_close,
+	.read = synce_read,
+	.write = synce_write,
+};
 
 struct obex_service_driver synce = {
 	.name = "OBEX server for SyncML, using SyncEvolution",
@@ -484,7 +455,6 @@ struct obex_service_driver synce = {
 	.put = synce_put,
 	.connect = synce_connect,
 	.disconnect = synce_disconnect,
-	.reset = synce_reset
 };
 
 static int synce_init(void)
