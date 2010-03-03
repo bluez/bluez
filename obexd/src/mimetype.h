@@ -30,7 +30,7 @@ struct obex_mime_type_driver {
 	const guint8 *target;
 	const char *mimetype;
 	gpointer (*open) (const char *name, int oflag, mode_t mode,
-			size_t *size, struct OBEX_session *os, int *err);
+			size_t *size, struct obex_session *os, int *err);
 	int (*close) (gpointer object);
 	ssize_t (*read) (gpointer object, void *buf, size_t count);
 	ssize_t (*write) (gpointer object, const void *buf, size_t count);

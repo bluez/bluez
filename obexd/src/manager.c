@@ -44,6 +44,7 @@
 #include "logging.h"
 #include "btio.h"
 #include "service.h"
+#include "obex-priv.h"
 
 #define TRANSFER_INTERFACE OPENOBEX_SERVICE ".Transfer"
 #define SESSION_INTERFACE OPENOBEX_SERVICE ".Session"
@@ -580,7 +581,7 @@ void manager_cleanup(void)
 	dbus_connection_unref(connection);
 }
 
-void manager_emit_transfer_started(struct OBEX_session *os)
+void manager_emit_transfer_started(struct obex_session *os)
 {
 	gchar *path = g_strdup_printf("/transfer%u", os->cid);
 
@@ -618,7 +619,7 @@ void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered)
 	g_free(path);
 }
 
-void manager_register_transfer(struct OBEX_session *os)
+void manager_register_transfer(struct obex_session *os)
 {
 	gchar *path = g_strdup_printf("/transfer%u", os->cid);
 
@@ -634,7 +635,7 @@ void manager_register_transfer(struct OBEX_session *os)
 	g_free(path);
 }
 
-void manager_unregister_transfer(struct OBEX_session *os)
+void manager_unregister_transfer(struct obex_session *os)
 {
 	gchar *path = g_strdup_printf("/transfer%u", os->cid);
 
@@ -712,7 +713,7 @@ static gboolean auth_error(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-int manager_request_authorization(struct OBEX_session *os, gint32 time,
+int manager_request_authorization(struct obex_session *os, gint32 time,
 		gchar **new_folder, gchar **new_name)
 {
 	DBusMessage *msg;
@@ -974,7 +975,7 @@ gint request_service_authorization(struct server *server, GIOChannel *io,
 	return 0;
 }
 
-void manager_register_session(struct OBEX_session *os)
+void manager_register_session(struct obex_session *os)
 {
 	gchar *path = g_strdup_printf("/session%u", os->cid);
 
@@ -995,7 +996,7 @@ void manager_register_session(struct OBEX_session *os)
 	g_free(path);
 }
 
-void manager_unregister_session(struct OBEX_session *os)
+void manager_unregister_session(struct obex_session *os)
 {
 	gchar *path = g_strdup_printf("/session%u", os->cid);
 
@@ -1010,12 +1011,12 @@ void manager_unregister_session(struct OBEX_session *os)
 	g_free(path);
 }
 
-void manager_emit_transfer_progress(struct OBEX_session *os)
+void manager_emit_transfer_progress(struct obex_session *os)
 {
 	emit_transfer_progress(os->cid, os->size, os->offset);
 }
 
-void manager_emit_transfer_completed(struct OBEX_session *os)
+void manager_emit_transfer_completed(struct obex_session *os)
 {
 	emit_transfer_completed(os->cid, !os->aborted);
 }

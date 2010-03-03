@@ -124,7 +124,7 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 }
 
 static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
-		size_t *size, struct OBEX_session *os, int *err)
+		size_t *size, struct obex_session *os, int *err)
 {
 	struct stat stats;
 	struct statvfs buf;
@@ -247,7 +247,7 @@ static int capability_exec(const char **argv, int *output, int *err)
 }
 
 static gpointer capability_open(const char *name, int oflag, mode_t mode,
-		size_t *size, struct OBEX_session *os, int *err)
+		size_t *size, struct obex_session *os, int *err)
 {
 	struct capability_object *object = NULL;
 	gchar *buf;
@@ -307,7 +307,7 @@ fail:
 }
 
 static gpointer folder_open(const char *name, int oflag, mode_t mode,
-		size_t *size, struct OBEX_session *os, int *err)
+		size_t *size, struct obex_session *os, int *err)
 {
 	struct stat fstat, dstat;
 	struct dirent *ep;

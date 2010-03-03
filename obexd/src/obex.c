@@ -49,6 +49,7 @@
 #include "mimetype.h"
 #include "service.h"
 #include "btio.h"
+#include "obex-priv.h"
 
 /* Default MTU's */
 #define DEFAULT_RX_MTU 32767
@@ -460,7 +461,7 @@ static void cmd_setpath(struct obex_session *os,
 	os_set_response(obj, err);
 }
 
-int obex_stream_start(struct OBEX_session *os, const gchar *filename)
+int obex_stream_start(struct obex_session *os, const gchar *filename)
 {
 	gint err;
 	gpointer object;
@@ -1114,66 +1115,66 @@ gint obex_tty_session_stop(void)
 	return 0;
 }
 
-const char *obex_get_name(struct OBEX_session *os)
+const char *obex_get_name(struct obex_session *os)
 {
 	return os->name;
 }
 
-void obex_set_name(struct OBEX_session *os, const gchar *name)
+void obex_set_name(struct obex_session *os, const gchar *name)
 {
 	g_free(os->name);
 
 	os->name = (name ? g_strdup(name) : NULL);
 }
 
-ssize_t obex_get_size(struct OBEX_session *os)
+ssize_t obex_get_size(struct obex_session *os)
 {
 	return os->size;
 }
 
-const char *obex_get_type(struct OBEX_session *os)
+const char *obex_get_type(struct obex_session *os)
 {
 	return os->type;
 }
 
-const char *obex_get_folder(struct OBEX_session *os)
+const char *obex_get_folder(struct obex_session *os)
 {
 	return os->current_folder;
 }
 
-void obex_set_folder(struct OBEX_session *os, const gchar *folder)
+void obex_set_folder(struct obex_session *os, const gchar *folder)
 {
 	g_free(os->current_folder);
 
 	os->current_folder = (folder ? g_strdup(folder) : NULL);
 }
 
-const char *obex_get_root_folder(struct OBEX_session *os)
+const char *obex_get_root_folder(struct obex_session *os)
 {
 	return os->server->folder;
 }
 
-guint16 obex_get_service(struct OBEX_session *os)
+guint16 obex_get_service(struct obex_session *os)
 {
 	return os->service->service;
 }
 
-gboolean obex_get_symlinks(struct OBEX_session *os)
+gboolean obex_get_symlinks(struct obex_session *os)
 {
 	return os->server->symlinks;
 }
 
-const char *obex_get_capability_path(struct OBEX_session *os)
+const char *obex_get_capability_path(struct obex_session *os)
 {
 	return os->server->capability;
 }
 
-gboolean obex_get_auto_accept(struct OBEX_session *os)
+gboolean obex_get_auto_accept(struct obex_session *os)
 {
 	return os->server->auto_accept;
 }
 
-int obex_remove(struct OBEX_session *os, const char *path)
+int obex_remove(struct obex_session *os, const char *path)
 {
 	if (os->driver == NULL)
 		return -EINVAL;
@@ -1182,7 +1183,7 @@ int obex_remove(struct OBEX_session *os, const char *path)
 }
 
 /* TODO: find a way to do this for tty or fix syncevolution */
-char *obex_get_id(struct OBEX_session *os)
+char *obex_get_id(struct obex_session *os)
 {
 	GError *gerr = NULL;
 	gchar address[18];

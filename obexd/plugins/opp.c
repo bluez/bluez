@@ -93,19 +93,19 @@
   </attribute>									\
 </record>"
 
-static int opp_connect(struct OBEX_session *os)
+static int opp_connect(struct obex_session *os)
 {
 	manager_register_transfer(os);
 
 	return 0;
 }
 
-static void opp_progress(struct OBEX_session *os)
+static void opp_progress(struct obex_session *os)
 {
 	manager_emit_transfer_progress(os);
 }
 
-static gint opp_chkput(struct OBEX_session *os)
+static gint opp_chkput(struct obex_session *os)
 {
 	gchar *new_folder, *new_name;
 	gint32 time;
@@ -137,7 +137,7 @@ skip_auth:
 	return obex_prepare_put(os);
 }
 
-static int opp_put(struct OBEX_session *os)
+static int opp_put(struct obex_session *os)
 {
 	const char *name = obex_get_name(os);
 	const char *folder = obex_get_folder(os);
@@ -151,7 +151,7 @@ static int opp_put(struct OBEX_session *os)
 	return 0;
 }
 
-static int opp_get(struct OBEX_session *os, obex_object_t *obj)
+static int opp_get(struct obex_session *os, obex_object_t *obj)
 {
 	const char *type;
 
@@ -173,12 +173,12 @@ static int opp_get(struct OBEX_session *os, obex_object_t *obj)
 	return 0;
 }
 
-static void opp_disconnect(struct OBEX_session *os)
+static void opp_disconnect(struct obex_session *os)
 {
 	manager_unregister_transfer(os);
 }
 
-static void opp_reset(struct OBEX_session *os)
+static void opp_reset(struct obex_session *os)
 {
 	manager_emit_transfer_completed(os);
 }

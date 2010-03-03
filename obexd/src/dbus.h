@@ -37,14 +37,14 @@ void register_record(struct server *server, gpointer user_data);
 gint request_service_authorization(struct server *server, GIOChannel *io,
 					const char *address);
 
-void manager_register_session(struct OBEX_session *os);
-void manager_unregister_session(struct OBEX_session *os);
-void manager_register_transfer(struct OBEX_session *os);
-void manager_unregister_transfer(struct OBEX_session *os);
-void manager_emit_transfer_started(struct OBEX_session *os);
-void manager_emit_transfer_progress(struct OBEX_session *os);
-void manager_emit_transfer_completed(struct OBEX_session *os);
-int manager_request_authorization(struct OBEX_session *os, gint32 time,
+void manager_register_session(struct obex_session *os);
+void manager_unregister_session(struct obex_session *os);
+void manager_register_transfer(struct obex_session *os);
+void manager_unregister_transfer(struct obex_session *os);
+void manager_emit_transfer_started(struct obex_session *os);
+void manager_emit_transfer_progress(struct obex_session *os);
+void manager_emit_transfer_completed(struct obex_session *os);
+int manager_request_authorization(struct obex_session *os, gint32 time,
 		gchar **new_folder, gchar **new_name);
 
 DBusConnection *obex_dbus_get_connection(void);

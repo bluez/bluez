@@ -58,51 +58,26 @@ struct server {
 	GSList		*drivers;
 };
 
-struct obex_session {
-	GIOChannel	*io;
-	guint32		cid;
-	guint16		tx_mtu;
-	guint16		rx_mtu;
-	guint8		cmd;
-	gchar		*name;
-	gchar		*type;
-	time_t		time;
-	gchar		*current_folder;
-	guint8		*buf;
-	gint32		offset;
-	gint32		size;
-	gpointer	object;
-	gboolean	aborted;
-	struct obex_service_driver *service;
-	struct server *server;
-	gboolean	checked;
-	obex_t		*obex;
-	obex_object_t	*obj;
-	struct obex_mime_type_driver *driver;
-	gboolean	finished;
-};
-
-/* FIXME: first step to obsfuscate */
-#define OBEX_session obex_session
+struct obex_session;
 
 void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data);
 
 gint obex_session_start(GIOChannel *io, struct server *server);
-int obex_stream_start(struct OBEX_session *os, const gchar *filename);
+int obex_stream_start(struct obex_session *os, const gchar *filename);
 gint obex_prepare_put(struct obex_session *os);
-const char *obex_get_name(struct OBEX_session *os);
-void obex_set_name(struct OBEX_session *os, const gchar *name);
-ssize_t obex_get_size(struct OBEX_session *os);
-const char *obex_get_type(struct OBEX_session *os);
-const char *obex_get_folder(struct OBEX_session *os);
-void obex_set_folder(struct OBEX_session *os, const char *folder);
-const char *obex_get_root_folder(struct OBEX_session *os);
-guint16 obex_get_service(struct OBEX_session *os);
-gboolean obex_get_symlinks(struct OBEX_session *os);
-const char *obex_get_capability_path(struct OBEX_session *os);
-gboolean obex_get_auto_accept(struct OBEX_session *os);
-int obex_remove(struct OBEX_session *os, const char *path);
-char *obex_get_id(struct OBEX_session *os);
+const char *obex_get_name(struct obex_session *os);
+void obex_set_name(struct obex_session *os, const gchar *name);
+ssize_t obex_get_size(struct obex_session *os);
+const char *obex_get_type(struct obex_session *os);
+const char *obex_get_folder(struct obex_session *os);
+void obex_set_folder(struct obex_session *os, const char *folder);
+const char *obex_get_root_folder(struct obex_session *os);
+guint16 obex_get_service(struct obex_session *os);
+gboolean obex_get_symlinks(struct obex_session *os);
+const char *obex_get_capability_path(struct obex_session *os);
+gboolean obex_get_auto_accept(struct obex_session *os);
+int obex_remove(struct obex_session *os, const char *path);
+char *obex_get_id(struct obex_session *os);
 
 void server_free(struct server *server);
 int tty_init(gint service, const gchar *folder, const gchar *capability,

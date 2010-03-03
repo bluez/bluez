@@ -132,24 +132,26 @@ struct apparam_hdr {
 	uint8_t		val[0];
 } __attribute__ ((packed));
 
+struct obex_session;
+
 struct phonebook_query {
 	const char *type;
 	GString *buffer;
-	struct OBEX_session *os;
+	struct obex_session *os;
 };
 
 static const guint8 PBAP_TARGET[TARGET_SIZE] = {
 			0x79, 0x61, 0x35, 0xF0,  0xF0, 0xC5, 0x11, 0xD8,
 			0x09, 0x66, 0x08, 0x00,  0x20, 0x0C, 0x9A, 0x66  };
 
-static int pbap_connect(struct OBEX_session *os)
+static int pbap_connect(struct obex_session *os)
 {
 	manager_register_session(os);
 
 	return 0;
 }
 
-static int pbap_get(struct OBEX_session *os, obex_object_t *obj)
+static int pbap_get(struct obex_session *os, obex_object_t *obj)
 {
 	const gchar *type = obex_get_type(os);
 	const gchar *folder = obex_get_folder(os);
@@ -185,7 +187,7 @@ static int pbap_get(struct OBEX_session *os, obex_object_t *obj)
 }
 
 
-static int pbap_setpath(struct OBEX_session *os, obex_object_t *obj)
+static int pbap_setpath(struct obex_session *os, obex_object_t *obj)
 {
 	const gchar *current_folder, *name;
 	guint8 *nonhdr;
@@ -220,12 +222,12 @@ static int pbap_setpath(struct OBEX_session *os, obex_object_t *obj)
 	return 0;
 }
 
-static void pbap_disconnect(struct OBEX_session *os)
+static void pbap_disconnect(struct obex_session *os)
 {
 	manager_unregister_session(os);
 }
 
-static gint pbap_chkput(struct OBEX_session *os)
+static gint pbap_chkput(struct obex_session *os)
 {
 	/* Rejects all PUTs */
 	return -EINVAL;
@@ -259,7 +261,7 @@ static void query_result(const gchar *buffer, size_t bufsize,
 }
 
 static gpointer vobject_open(const char *name, int oflag, mode_t mode,
-		size_t *size, struct OBEX_session *os, int *err)
+		size_t *size, struct obex_session *os, int *err)
 {
 	const gchar *type = obex_get_type(os);
 	struct phonebook_query *query;

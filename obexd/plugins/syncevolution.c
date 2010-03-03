@@ -213,19 +213,19 @@ done:
 	dbus_message_unref(reply);
 }
 
-static int synce_connect(struct OBEX_session *os)
+static int synce_connect(struct obex_session *os)
 {
 	manager_register_session(os);
 
 	return 0;
 }
 
-static int synce_put(struct OBEX_session *os)
+static int synce_put(struct obex_session *os)
 {
 	return 0;
 }
 
-static int synce_get(struct OBEX_session *os, obex_object_t *obj)
+static int synce_get(struct obex_session *os, obex_object_t *obj)
 {
 	return 0;
 }
@@ -246,13 +246,13 @@ static void close_cb(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 }
 
-static void synce_disconnect(struct OBEX_session *os)
+static void synce_disconnect(struct obex_session *os)
 {
 
 }
 
 static gpointer synce_open(const char *name, int oflag, mode_t mode,
-		size_t *size, struct OBEX_session *os, int *err)
+		size_t *size, struct obex_session *os, int *err)
 {
 	DBusConnection *conn;
 	struct synce_context *context;
@@ -322,7 +322,7 @@ done:
 static ssize_t synce_read(gpointer object, void *buf, size_t count)
 {
 	struct synce_context *context = object;
-	struct OBEX_session *os = context->os;
+	struct obex_session *os = context->os;
 	DBusConnection *conn;
 	gchar *id, transport[36], transport_description[24];
 	const char *session;
