@@ -48,6 +48,7 @@
 #include "dbus.h"
 #include "mimetype.h"
 #include "service.h"
+#include "btio.h"
 
 /* Default MTU's */
 #define DEFAULT_RX_MTU 32767
@@ -1178,4 +1179,21 @@ int obex_remove(struct OBEX_session *os, const char *path)
 		return -EINVAL;
 
 	return os->driver->remove(path);
+}
+
+/* TODO: find a way to do this for tty or fix syncevolution */
+char *obex_get_id(struct OBEX_session *os)
+{
+	GError *gerr = NULL;
+	gchar address[18];
+	guint8 channel;
+
+	bt_io_get(os->io, BT_IO_RFCOMM, &gerr,
+			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_CHANNEL, &channel,
+			BT_IO_OPT_INVALID);
+	if (gerr)
+		return NULL;
+
+	return g_strdup_printf("%s+%d", address, channel);
 }

@@ -102,6 +102,7 @@ gboolean obex_get_symlinks(struct OBEX_session *os);
 const char *obex_get_capability_path(struct OBEX_session *os);
 gboolean obex_get_auto_accept(struct OBEX_session *os);
 int obex_remove(struct OBEX_session *os, const char *path);
+char *obex_get_id(struct OBEX_session *os);
 
 void server_free(struct server *server);
 int tty_init(gint service, const gchar *folder, const gchar *capability,
