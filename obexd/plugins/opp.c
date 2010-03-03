@@ -93,11 +93,11 @@
   </attribute>									\
 </record>"
 
-static obex_rsp_t opp_connect(struct OBEX_session *os)
+static int opp_connect(struct OBEX_session *os)
 {
 	manager_register_transfer(os);
 
-	return OBEX_RSP_SUCCESS;
+	return 0;
 }
 
 static void opp_progress(struct OBEX_session *os)
@@ -137,40 +137,40 @@ skip_auth:
 	return obex_prepare_put(os);
 }
 
-static obex_rsp_t opp_put(struct OBEX_session *os)
+static int opp_put(struct OBEX_session *os)
 {
 	const char *name = obex_get_name(os);
 	const char *folder = obex_get_folder(os);
 
 	if (folder == NULL)
-		return OBEX_RSP_FORBIDDEN;
+		return -EPERM;
 
 	if (name == NULL)
-		return OBEX_RSP_BAD_REQUEST;
+		return -EBADR;
 
-	return OBEX_RSP_SUCCESS;
+	return 0;
 }
 
-static obex_rsp_t opp_get(struct OBEX_session *os, obex_object_t *obj)
+static int opp_get(struct OBEX_session *os, obex_object_t *obj)
 {
 	const char *type;
 
 	if (obex_get_name(os) == NULL)
-		return OBEX_RSP_FORBIDDEN;
+		return -EPERM;
 
 	type = obex_get_type(os);
 
 	if (type == NULL)
-		return OBEX_RSP_FORBIDDEN;
+		return -EPERM;
 
 	if (g_str_equal(type, VCARD_TYPE)) {
 		if (obex_stream_start(os, VCARD_FILE) < 0)
-			return OBEX_RSP_NOT_FOUND;
+			return -ENOENT;
 
 	} else
-		return OBEX_RSP_FORBIDDEN;
+		return -EPERM;
 
-	return OBEX_RSP_SUCCESS;
+	return 0;
 }
 
 static void opp_disconnect(struct OBEX_session *os)

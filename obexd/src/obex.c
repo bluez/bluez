@@ -64,16 +64,39 @@ typedef struct {
 	guint16 mtu;
 } __attribute__ ((packed)) obex_connect_hdr_t;
 
-static void os_set_response(obex_object_t *obj, obex_rsp_t lastrsp)
+static void os_set_response(obex_object_t *obj, int err)
 {
 	guint8 rsp;
+	guint8 lastrsp;
 
-	switch (lastrsp) {
-	case OBEX_RSP_SUCCESS:
+	switch (err) {
+	case 0:
 		rsp = OBEX_RSP_CONTINUE;
+		lastrsp = OBEX_RSP_SUCCESS;
+		break;
+	case -EPERM:
+		rsp = OBEX_RSP_FORBIDDEN;
+		lastrsp = OBEX_RSP_FORBIDDEN;
+		break;
+	case -ENOENT:
+		rsp = OBEX_RSP_NOT_FOUND;
+		lastrsp = OBEX_RSP_NOT_FOUND;
+		break;
+	case -EBADR:
+		rsp = OBEX_RSP_BAD_REQUEST;
+		lastrsp = OBEX_RSP_BAD_REQUEST;
+		break;
+	case -EFAULT:
+		rsp = OBEX_RSP_SERVICE_UNAVAILABLE;
+		lastrsp = OBEX_RSP_SERVICE_UNAVAILABLE;
+		break;
+	case -EINVAL:
+		rsp = OBEX_RSP_NOT_IMPLEMENTED;
+		lastrsp = OBEX_RSP_NOT_IMPLEMENTED;
 		break;
 	default:
-		rsp = lastrsp;
+		rsp = OBEX_RSP_INTERNAL_SERVER_ERROR;
+		lastrsp = OBEX_RSP_INTERNAL_SERVER_ERROR;
 	}
 
 	OBEX_ObjectSetRsp(obj, rsp, lastrsp);
@@ -197,7 +220,7 @@ static void cmd_connect(struct obex_session *os,
 	guint8 hi;
 	const guint8 *target = NULL, *who = NULL;
 	guint target_size = 0, who_size = 0;
-	obex_rsp_t rsp;
+	int err;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &buffer) != sizeof(*nonhdr)) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
@@ -249,8 +272,8 @@ static void cmd_connect(struct obex_session *os,
 		return;
 	}
 
-	rsp = os->service->connect(os);
-	if (rsp == OBEX_RSP_SUCCESS && os->service->target) {
+	err = os->service->connect(os);
+	if (err == 0 && os->service->target) {
 		hd.bs = os->service->target;
 		OBEX_ObjectAddHeader(obex, obj,
 				OBEX_HDR_WHO, hd, 16,
@@ -261,7 +284,7 @@ static void cmd_connect(struct obex_session *os,
 				OBEX_FL_FIT_ONE_PACKET);
 	}
 
-	os_set_response(obj, rsp);
+	os_set_response(obj, err);
 }
 
 static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)
@@ -299,7 +322,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	obex_headerdata_t hd;
 	guint hlen;
 	guint8 hi;
-	guint rsp;
+	int err;
 
 	if (!os->service) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
@@ -364,8 +387,8 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		}
 	}
 
-	rsp = os->service->get(os, obj);
-	if (rsp == OBEX_RSP_SUCCESS) {
+	err = os->service->get(os, obj);
+	if (err == 0) {
 		if (os->size != OBJECT_SIZE_UNKNOWN) {
 			hd.bq4 = os->size;
 			OBEX_ObjectAddHeader(obex, obj,
@@ -382,7 +405,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 					hd, 0, OBEX_FL_STREAM_START);
 	}
 
-	os_set_response(obj, rsp);
+	os_set_response(obj, err);
 }
 
 static void cmd_setpath(struct obex_session *os,
@@ -390,7 +413,7 @@ static void cmd_setpath(struct obex_session *os,
 {
 	obex_headerdata_t hd;
 	guint32 hlen;
-	obex_rsp_t rsp;
+	int err;
 	guint8 hi;
 
 	if (!os->service) {
@@ -432,8 +455,8 @@ static void cmd_setpath(struct obex_session *os,
 		break;
 	}
 
-	rsp = os->service->setpath(os, obj);
-	os_set_response(obj, rsp);
+	err = os->service->setpath(os, obj);
+	os_set_response(obj, err);
 }
 
 int obex_stream_start(struct OBEX_session *os, const gchar *filename)

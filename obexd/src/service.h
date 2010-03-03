@@ -21,8 +21,6 @@
  *
  */
 
-typedef guint8		obex_rsp_t;
-
 struct obex_service_driver {
 	const char *name;
 	guint16 service;
@@ -32,12 +30,12 @@ struct obex_service_driver {
 	const guint8 *who;
 	guint who_size;
 	const gchar *record;
-	obex_rsp_t (*connect) (struct OBEX_session *os);
+	int (*connect) (struct OBEX_session *os);
 	void (*progress) (struct OBEX_session *os);
-	obex_rsp_t (*get) (struct OBEX_session *os, obex_object_t *obj);
-	obex_rsp_t (*put) (struct OBEX_session *os);
+	int (*get) (struct OBEX_session *os, obex_object_t *obj);
+	int (*put) (struct OBEX_session *os);
 	gint (*chkput) (struct OBEX_session *os);
-	obex_rsp_t (*setpath) (struct OBEX_session *os, obex_object_t *obj);
+	int (*setpath) (struct OBEX_session *os, obex_object_t *obj);
 	void (*disconnect) (struct OBEX_session *os);
 	void (*reset) (struct OBEX_session *os);
 };

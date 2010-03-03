@@ -186,14 +186,14 @@ static gint ftp_prepare_get(struct OBEX_session *os, gchar *file)
 	return obex_stream_start(os, file);
 }
 
-static obex_rsp_t ftp_connect(struct OBEX_session *os)
+static int ftp_connect(struct OBEX_session *os)
 {
 	manager_register_session(os);
 
-	return OBEX_RSP_SUCCESS;
+	return 0;
 }
 
-static obex_rsp_t ftp_get(struct OBEX_session *os, obex_object_t *obj)
+static int ftp_get(struct OBEX_session *os, obex_object_t *obj)
 {
 	const char *folder = obex_get_folder(os);
 	const char *type = obex_get_type(os);
@@ -221,16 +221,10 @@ static obex_rsp_t ftp_get(struct OBEX_session *os, obex_object_t *obj)
 			goto fail;
 	}
 
-	return OBEX_RSP_SUCCESS;
+	return 0;
 
 fail:
-	switch (err) {
-	case -ENOENT:
-		return OBEX_RSP_NOT_FOUND;
-
-	default:
-		return OBEX_RSP_FORBIDDEN;
-	}
+	return err;
 }
 
 static gint ftp_delete(struct OBEX_session *os)
@@ -262,47 +256,36 @@ static gint ftp_chkput(struct OBEX_session *os)
 	return obex_prepare_put(os);
 }
 
-static obex_rsp_t ftp_put(struct OBEX_session *os)
+static int ftp_put(struct OBEX_session *os)
 {
 	const char *folder = obex_get_folder(os);
 	const char *name = obex_get_name(os);
 	ssize_t size = obex_get_size(os);
-	int ret = 0;
 
 	if (folder == NULL)
-		return OBEX_RSP_FORBIDDEN;
+		return -EPERM;
 
 	if (name == NULL)
-		return OBEX_RSP_BAD_REQUEST;
+		return -EBADR;
 
 	if (size == OBJECT_SIZE_DELETE)
-		ret = ftp_delete(os);
+		return ftp_delete(os);
 
-	switch (ret) {
-	case 0:
-		return OBEX_RSP_SUCCESS;
-	case -ENOENT:
-		return OBEX_RSP_NOT_FOUND;
-	case -ENOTEMPTY:
-		return OBEX_RSP_PRECONDITION_FAILED;
-	default:
-		return OBEX_RSP_FORBIDDEN;
-	}
+	return 0;
 }
 
-static obex_rsp_t ftp_setpath(struct OBEX_session *os, obex_object_t *obj)
+static int ftp_setpath(struct OBEX_session *os, obex_object_t *obj)
 {
 	const gchar *root_folder, *current_folder, *name;
 	guint8 *nonhdr;
 	gchar *fullname;
 	struct stat dstat;
 	gboolean root;
-	obex_rsp_t rsp = OBEX_RSP_SUCCESS;
 	int err;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &nonhdr) != 2) {
 		error("Set path failed: flag and constants not found!");
-		return OBEX_RSP_PRECONDITION_FAILED;
+		return -EBADMSG;
 	}
 
 	name = obex_get_name(os);
@@ -315,7 +298,7 @@ static obex_rsp_t ftp_setpath(struct OBEX_session *os, obex_object_t *obj)
 		debug("Set to parent path");
 
 		if (root)
-			return OBEX_RSP_FORBIDDEN;
+			return -EPERM;
 
 		fullname = g_path_get_dirname(current_folder);
 		obex_set_folder(os, fullname);
@@ -323,24 +306,24 @@ static obex_rsp_t ftp_setpath(struct OBEX_session *os, obex_object_t *obj)
 
 		debug("Set to parent path: %s", current_folder);
 
-		return OBEX_RSP_SUCCESS;
+		return 0;
 	}
 
 	if (!name) {
 		debug("Set path failed: name missing!");
-		return OBEX_RSP_BAD_REQUEST;
+		return -EINVAL;
 	}
 
 	if (strlen(name) == 0) {
 		debug("Set to root");
 		obex_set_folder(os, root_folder);
-		return OBEX_RSP_SUCCESS;
+		return 0;
 	}
 
 	/* Check and set to name path */
 	if (strstr(name, "/") || strcmp(name, "..") == 0) {
 		error("Set path failed: name incorrect!");
-		return OBEX_RSP_FORBIDDEN;
+		return -EPERM;
 	}
 
 	fullname = g_build_filename(current_folder, name, NULL);
@@ -359,7 +342,6 @@ static obex_rsp_t ftp_setpath(struct OBEX_session *os, obex_object_t *obj)
 		if (err == ENOENT)
 			goto not_found;
 
-		rsp = OBEX_RSP_FORBIDDEN;
 		goto done;
 	}
 
@@ -369,17 +351,17 @@ static obex_rsp_t ftp_setpath(struct OBEX_session *os, obex_object_t *obj)
 		goto done;
 	}
 
-	rsp = OBEX_RSP_FORBIDDEN;
+	err = -EPERM;
 	goto done;
 
 not_found:
 	if (nonhdr[0] != 0) {
-		rsp = OBEX_RSP_NOT_FOUND;
+		err = -ENOENT;
 		goto done;
 	}
 
 	if (mkdir(fullname, 0755) <  0) {
-		rsp = OBEX_RSP_FORBIDDEN;
+		err = -EPERM;
 		goto done;
 	}
 
@@ -387,7 +369,7 @@ not_found:
 
 done:
 	g_free(fullname);
-	return rsp;
+	return err;
 }
 
 static void ftp_disconnect(struct OBEX_session *os)

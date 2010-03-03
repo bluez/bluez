@@ -28,6 +28,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include <glib.h>
 #include <dbus/dbus.h>
 
@@ -253,7 +254,7 @@ static void process_cb(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 }
 
-static obex_rsp_t synce_connect(struct OBEX_session *os)
+static int synce_connect(struct OBEX_session *os)
 {
 	DBusConnection *conn;
 	GError *err = NULL;
@@ -338,13 +339,13 @@ static obex_rsp_t synce_connect(struct OBEX_session *os)
 	/* FIXME: broken */
 	OBEX_SuspendRequest(obex, obj);
 #endif
-	return OBEX_RSP_SUCCESS;
+	return 0;
 
 failed:
-	return OBEX_RSP_FORBIDDEN;
+	return -EPERM;
 }
 
-static obex_rsp_t synce_put(struct OBEX_session *os)
+static int synce_put(struct OBEX_session *os)
 {
 	struct synce_context *context;
 	DBusMessage *msg;
@@ -354,15 +355,15 @@ static obex_rsp_t synce_put(struct OBEX_session *os)
 
 	context = find_context(os);
 	if (!context)
-		return OBEX_RSP_SERVICE_UNAVAILABLE;
+		return -EFAULT;
 
 	if (!context->conn_obj)
-		return OBEX_RSP_SERVICE_UNAVAILABLE;
+		return -EFAULT;
 
 	msg = dbus_message_new_method_call(SYNCE_BUS_NAME, context->conn_obj,
 					SYNCE_CONN_INTERFACE, "Process");
 	if (!msg)
-		return OBEX_RSP_SERVICE_UNAVAILABLE;
+		return -EFAULT;
 
 	dbus_message_iter_init_append(msg, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -381,7 +382,7 @@ static obex_rsp_t synce_put(struct OBEX_session *os)
 								&call, -1)) {
 		error("D-Bus call to %s failed.", SYNCE_CONN_INTERFACE);
 		dbus_message_unref(msg);
-		return OBEX_RSP_FORBIDDEN;
+		return -EPERM;
 	}
 
 	dbus_pending_call_set_notify(call, process_cb, os, NULL);
@@ -389,18 +390,18 @@ static obex_rsp_t synce_put(struct OBEX_session *os)
 	dbus_message_unref(msg);
 	dbus_pending_call_unref(call);
 
-	return OBEX_RSP_SUCCESS;
+	return 0;
 }
 
-static obex_rsp_t synce_get(struct OBEX_session *os, obex_object_t *obj)
+static int synce_get(struct OBEX_session *os, obex_object_t *obj)
 {
 	struct synce_context *context;
 
 	context = find_context(os);
 	if (!context)
-		return OBEX_RSP_FORBIDDEN;
+		return -EPERM;
 
-	return OBEX_RSP_SUCCESS;
+	return 0;
 }
 
 static void close_cb(DBusPendingCall *call, void *user_data)
