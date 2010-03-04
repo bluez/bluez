@@ -78,11 +78,6 @@
 
 #define APPARAM_HDR_SIZE 2
 
-#define get_be64(val)	GUINT64_FROM_BE(bt_get_unaligned((guint64 *) val))
-#define get_be16(val)	GUINT16_FROM_BE(bt_get_unaligned((guint16 *) val))
-
-#define put_be16(val, ptr) bt_put_unaligned(GUINT16_TO_BE(val), (guint16 *) ptr)
-
 #define PBAP_CHANNEL	15
 
 #define PBAP_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
@@ -126,21 +121,17 @@
   </attribute>									\
 </record>"
 
-struct apparam_hdr {
+struct aparam_header {
 	uint8_t		tag;
 	uint8_t		len;
 	uint8_t		val[0];
 } __attribute__ ((packed));
 
-struct phonebook_query {
-	const char *type;
-	GString *buffer;
-	struct obex_session *os;
-};
-
 struct pbap_session {
 	struct obex_session *os;
+	struct apparam_field *params;
 	gchar *folder;
+	GString *buffer;
 };
 
 static const guint8 PBAP_TARGET[TARGET_SIZE] = {
@@ -152,6 +143,81 @@ static void set_folder(struct pbap_session *pbap, const char *new_folder)
 	g_free(pbap->folder);
 
 	pbap->folder = new_folder ? g_strdup(new_folder) : NULL;
+}
+
+static struct apparam_field *parse_aparam(const guint8 *buffer, guint32 hlen)
+{
+	struct apparam_field *param;
+	struct aparam_header *hdr;
+	guint32 len = 0;
+	guint16 val16;
+	guint64 val64;
+
+	param = g_new0(struct apparam_field, 1);
+
+	while (len < hlen) {
+		hdr = (void *) buffer + len;
+
+		switch (hdr->tag) {
+		case ORDER_TAG:
+			if (hdr->len != ORDER_LEN)
+				goto failed;
+
+			param->order = hdr->val[0];
+			break;
+
+		case SEARCHATTRIB_TAG:
+			if (hdr->len != SEARCHATTRIB_LEN)
+				goto failed;
+
+			param->searchattrib = hdr->val[0];
+			break;
+		case SEARCHVALUE_TAG:
+			param->searchval = g_try_malloc0(hdr->len + 1);
+			if (param->searchval)
+				memcpy(param->searchval, hdr->val, hdr->len);
+			break;
+		case FILTER_TAG:
+			if (hdr->len != FILTER_LEN)
+				goto failed;
+
+			memcpy(&val64, hdr->val, sizeof(val64));
+			param->filter = GUINT64_FROM_BE(val64);
+
+			break;
+		case FORMAT_TAG:
+			if (hdr->len != FORMAT_LEN)
+				goto failed;
+
+			param->format = hdr->val[0];
+			break;
+		case MAXLISTCOUNT_TAG:
+			if (hdr->len != MAXLISTCOUNT_LEN)
+				goto failed;
+
+			memcpy(&val16, hdr->val, sizeof(val16));
+			param->maxlistcount = GUINT16_FROM_BE(val16);
+			break;
+		case LISTSTARTOFFSET_TAG:
+			if (hdr->len != LISTSTARTOFFSET_LEN)
+				goto failed;
+
+			memcpy(&val16, hdr->val, sizeof(val16));
+			param->liststartoffset = GUINT16_FROM_BE(val16);
+			break;
+		default:
+			goto failed;
+		}
+
+		len += hdr->len + sizeof(struct aparam_header);
+	}
+
+	return param;
+
+failed:
+	g_free(param);
+
+	return NULL;
 }
 
 static gpointer pbap_connect(struct obex_session *os, int *err)
@@ -176,7 +242,10 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 	struct pbap_session *pbap = user_data;
 	const gchar *type = obex_get_type(os);
 	const gchar *name = obex_get_name(os);
+	struct apparam_field *params;
+	const guint8 *buffer;
 	gchar *path;
+	ssize_t rsize;
 	gint ret;
 
 	if (type == NULL)
@@ -200,7 +269,27 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 	else
 		return -EBADR;
 
-	ret = obex_stream_start(os, path);
+	rsize = obex_aparam_read(os, obj, &buffer);
+	if (rsize < 0) {
+		ret = -EBADR;
+		goto failed;
+	}
+
+	params = parse_aparam(buffer, rsize);
+	if (params == NULL) {
+		ret = -EBADR;
+		goto failed;
+	}
+
+	if (pbap->params) {
+		g_free(pbap->params->searchval);
+		g_free(pbap->params);
+	}
+
+	pbap->params = params;
+	ret = obex_stream_start(os, path, pbap);
+
+failed:
 	g_free(path);
 
 	return ret;
@@ -246,6 +335,11 @@ static void pbap_disconnect(struct obex_session *os,
 
 	manager_unregister_session(os);
 
+	if (pbap->params) {
+		g_free(pbap->params->searchval);
+		g_free(pbap->params);
+	}
+
 	g_free(pbap->folder);
 	g_free(pbap);
 }
@@ -274,67 +368,61 @@ struct obex_service_driver pbap = {
 static void query_result(const gchar *buffer, size_t bufsize,
 		gint vcards, gint missed, gpointer user_data)
 {
-	struct phonebook_query *query = user_data;
+	struct pbap_session *pbap = user_data;
 
-	if (!query->buffer)
-		query->buffer = g_string_new_len(buffer, bufsize);
+	if (!pbap->buffer)
+		pbap->buffer = g_string_new_len(buffer, bufsize);
 	else
-		query->buffer = g_string_append_len(query->buffer, buffer, bufsize);
+		pbap->buffer = g_string_append_len(pbap->buffer, buffer, bufsize);
 
-	obex_object_set_io_flags(query, G_IO_IN, 0);
+	obex_object_set_io_flags(pbap, G_IO_IN, 0);
 }
 
 static gpointer vobject_open(const char *name, int oflag, mode_t mode,
-		size_t *size, struct obex_session *os, int *err)
+		gpointer context, size_t *size, int *err)
 {
-	const gchar *type = obex_get_type(os);
-	struct phonebook_query *query;
+	struct pbap_session *pbap = context;
+	int ret;
 
-	if (oflag != O_RDONLY)
-		goto fail;
-
-	/* TODO: mch? */
-
-	/* TODO: get application parameter */
-	query = g_new0(struct phonebook_query, 1);
-	query->type = type;
-	query->os = os;
-
-	if (phonebook_query(name, query_result, query) < 0) {
-		g_free(query);
+	if (oflag != O_RDONLY) {
+		ret = -EPERM;
 		goto fail;
 	}
+
+	ret = phonebook_pull(name, pbap->params, query_result, pbap);
+	if (ret < 0)
+		goto fail;
 
 	if (size)
 		*size = OBJECT_SIZE_UNKNOWN;
 
-	return query;
+	return pbap;
 
 fail:
 	if (err)
-		*err = -EPERM;
+		*err = ret;
 
 	return NULL;
 }
 
 static ssize_t vobject_read(gpointer object, void *buf, size_t count)
 {
-	struct phonebook_query *query = object;
+	struct pbap_session *pbap = object;
 
-	if (query->buffer)
-		return string_read(query->buffer, buf, count);
+	if (pbap->buffer)
+		return string_read(pbap->buffer, buf, count);
 
 	return -EAGAIN;
 }
 
 static int vobject_close(gpointer object)
 {
-	struct phonebook_query *query = object;
+	struct pbap_session *pbap = object;
 
-	if (query->buffer)
-		string_free(query->buffer);
-
-	g_free(query);
+	if (pbap->buffer) {
+		string_free(pbap->buffer);
+		pbap->buffer = NULL;
+	}
 
 	return 0;
 }

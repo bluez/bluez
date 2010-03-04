@@ -124,7 +124,7 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 }
 
 static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
-		size_t *size, struct obex_session *os, int *err)
+		gpointer context, size_t *size, int *err)
 {
 	struct stat stats;
 	struct statvfs buf;
@@ -247,7 +247,7 @@ static int capability_exec(const char **argv, int *output, int *err)
 }
 
 static gpointer capability_open(const char *name, int oflag, mode_t mode,
-		size_t *size, struct obex_session *os, int *err)
+		gpointer context, size_t *size, int *err)
 {
 	struct capability_object *object = NULL;
 	gchar *buf;
@@ -306,9 +306,10 @@ fail:
 	return NULL;
 }
 
-static gpointer folder_open(const char *folder, int oflag, mode_t mode,
-		size_t *size, struct obex_session *os, int *err)
+static gpointer folder_open(const char *name, int oflag, mode_t mode,
+		 gpointer context, size_t *size, int *err)
 {
+	struct obex_session *os = context;
 	struct stat fstat, dstat;
 	struct dirent *ep;
 	GString *object;
@@ -323,9 +324,9 @@ static gpointer folder_open(const char *folder, int oflag, mode_t mode,
 
 	object = g_string_append(object, FL_BODY_BEGIN);
 
-	root = g_str_equal(folder, obex_get_root_folder(os));
+	root = g_str_equal(name, obex_get_root_folder(os));
 
-	dp = opendir(folder);
+	dp = opendir(name);
 	if (dp == NULL) {
 		if (err)
 			*err = -ENOENT;
@@ -334,10 +335,10 @@ static gpointer folder_open(const char *folder, int oflag, mode_t mode,
 
 	symlinks = obex_get_symlinks(os);
 	if (root && symlinks)
-		ret = stat(folder, &dstat);
+		ret = stat(name, &dstat);
 	else {
 		object = g_string_append(object, FL_PARENT_FOLDER_ELEMENT);
-		ret = lstat(folder, &dstat);
+		ret = lstat(name, &dstat);
 	}
 
 	if (ret < 0) {
@@ -347,20 +348,20 @@ static gpointer folder_open(const char *folder, int oflag, mode_t mode,
 	}
 
 	while ((ep = readdir(dp))) {
-		gchar *name;
+		gchar *filename;
 		gchar *fullname;
 		gchar *line;
 
 		if (ep->d_name[0] == '.')
 			continue;
 
-		name = g_filename_to_utf8(ep->d_name, -1, NULL, NULL, NULL);
+		filename = g_filename_to_utf8(ep->d_name, -1, NULL, NULL, NULL);
 		if (name == NULL) {
 			error("g_filename_to_utf8: invalid filename");
 			continue;
 		}
 
-		fullname = g_build_filename(folder, ep->d_name, NULL);
+		fullname = g_build_filename(name, ep->d_name, NULL);
 
 		if (root && symlinks)
 			ret = stat(fullname, &fstat);
@@ -370,20 +371,20 @@ static gpointer folder_open(const char *folder, int oflag, mode_t mode,
 		if (ret < 0) {
 			debug("%s: %s(%d)", root ? "stat" : "lstat",
 					strerror(errno), errno);
-			g_free(name);
+			g_free(filename);
 			g_free(fullname);
 			continue;
 		}
 
 		g_free(fullname);
 
-		line = file_stat_line(name, &fstat, &dstat, root, pcsuite);
+		line = file_stat_line(filename, &fstat, &dstat, root, pcsuite);
 		if (line == NULL) {
-			g_free(name);
+			g_free(filename);
 			continue;
 		}
 
-		g_free(name);
+		g_free(filename);
 
 		object = g_string_append(object, line);
 		g_free(line);

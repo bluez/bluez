@@ -456,18 +456,20 @@ static void cmd_setpath(struct obex_session *os,
 	os_set_response(obj, err);
 }
 
-int obex_stream_start(struct obex_session *os, const gchar *filename)
+int obex_stream_start(struct obex_session *os,
+		const gchar *filename, gpointer context)
 {
 	gint err;
 	gpointer object;
 	size_t size;
 
-	object = os->driver->open(filename, O_RDONLY, 0, &size, os, &err);
+	object = os->driver->open(filename, O_RDONLY, 0, context, &size, &err);
 	if (object == NULL) {
 		error("open(%s): %s (%d)", filename, strerror(-err), -err);
 		goto fail;
 	}
 
+	os->driver->context = context;
 	os->object = object;
 	os->offset = 0;
 	os->size = size;
@@ -480,6 +482,7 @@ int obex_stream_start(struct obex_session *os, const gchar *filename)
 fail:
 	if (object)
 		os->driver->close(object);
+
 	return err;
 }
 
@@ -544,9 +547,10 @@ gint obex_prepare_put(struct obex_session *os, const gchar *filename)
 	gint len;
 	int err;
 
-	os->object = os->driver->open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600,
+	os->object = os->driver->open(filename, O_WRONLY | O_CREAT | O_TRUNC,
+					0600, os->driver->context,
 					os->size != OBJECT_SIZE_UNKNOWN ?
-					(size_t *) &os->size : NULL, os, &err);
+					(size_t *) &os->size : NULL, &err);
 	if (os->object == NULL) {
 		error("open(%s): %s (%d)", filename, strerror(-err), -err);
 		return -EPERM;
@@ -1169,4 +1173,23 @@ char *obex_get_id(struct obex_session *os)
 		return NULL;
 
 	return g_strdup_printf("%s+%d", address, channel);
+}
+
+ssize_t obex_aparam_read(struct obex_session *os,
+		obex_object_t *obj, const guint8 **buffer)
+{
+	obex_headerdata_t hd;
+	guint8 hi;
+	guint32 hlen;
+
+	OBEX_ObjectReParseHeaders(os->obex, obj);
+
+	while (OBEX_ObjectGetNextHeader(os->obex, obj, &hi, &hd, &hlen)) {
+		if (hi == OBEX_HDR_APPARAM) {
+			*buffer = hd.bs;
+			return hlen;
+		}
+	}
+
+	return -EBADR;
 }

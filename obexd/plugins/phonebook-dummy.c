@@ -43,6 +43,7 @@
 struct dummy_data {
 	phonebook_cb	cb;
 	gpointer	user_data;
+	const struct apparam_field *apparams;
 };
 
 int phonebook_init(void)
@@ -69,13 +70,15 @@ int phonebook_set_folder(const gchar *current_folder,
 	return 0;
 }
 
-int phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data)
+int phonebook_pull(const gchar *name, const struct apparam_field *params,
+		phonebook_cb cb, gpointer user_data)
 {
 	struct dummy_data *dummy;
 
 	dummy = g_new0(struct dummy_data, 1);
 	dummy->cb = cb;
 	dummy->user_data = user_data;
+	dummy->apparams = params;
 
 	g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
 			dummy_result, dummy, g_free);

@@ -53,6 +53,7 @@
 #define QUERY_PHONE "(contains \"phone\" \"%s\")"
 
 struct query_data {
+	const struct apparam_field *params;
 	phonebook_cb cb;
 	gpointer user_data;
 };
@@ -161,7 +162,8 @@ int phonebook_set_folder(const gchar *current_folder,
 	return ret;
 }
 
-gint phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data)
+gint phonebook_pull(const gchar *name, const struct apparam_field *params,
+		phonebook_cb cb, gpointer user_data)
 {
 	struct query_data *data;
 	EBookQuery *query;
@@ -170,6 +172,7 @@ gint phonebook_query(const gchar *name, phonebook_cb cb, gpointer user_data)
 
 	data = g_new0(struct query_data, 1);
 	data->cb = cb;
+	data->params = params;
 	data->user_data = user_data;
 
 	e_book_async_get_contacts(ebook, query, ebookpull_cb, data);

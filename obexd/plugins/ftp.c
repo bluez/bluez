@@ -165,10 +165,10 @@ static gint get_by_type(struct ftp_session *ftp, const gchar *type)
 		return -ENOENT;
 
 	if (g_str_equal(type, CAP_TYPE))
-		return obex_stream_start(os, capability);
+		return obex_stream_start(os, capability, NULL);
 
 	if (g_str_equal(type, LST_TYPE))
-		return obex_stream_start(os, ftp->folder);
+		return obex_stream_start(os, ftp->folder, os);
 
 	return -ENOENT;
 }
@@ -195,7 +195,7 @@ static gint ftp_prepare_get(struct ftp_session *ftp, gchar *file)
 			return -EPERM;
 	}
 
-	return obex_stream_start(os, file);
+	return obex_stream_start(os, file, NULL);
 }
 
 static gpointer ftp_connect(struct obex_session *os, int *err)

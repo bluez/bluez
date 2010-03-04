@@ -177,7 +177,7 @@ static int opp_get(struct obex_session *os, obex_object_t *obj,
 		return -EPERM;
 
 	if (g_str_equal(type, VCARD_TYPE)) {
-		if (obex_stream_start(os, VCARD_FILE) < 0)
+		if (obex_stream_start(os, VCARD_FILE, NULL) < 0)
 			return -ENOENT;
 
 	} else
