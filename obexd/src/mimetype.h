@@ -21,8 +21,6 @@
  *
  */
 
-#define TARGET_SIZE 16
-
 typedef gboolean (*obex_object_io_func) (gpointer object, int flags, int err,
 					gpointer user_data);
 

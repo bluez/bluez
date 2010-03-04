@@ -26,8 +26,6 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
-
 #define OBJECT_SIZE_UNKNOWN -1
 #define OBJECT_SIZE_DELETE -2
 
@@ -39,9 +37,6 @@
 #define OBEX_SYNCEVOLUTION	(1 << 6)
 
 #define TARGET_SIZE 16
-
-struct obex_service_driver;
-struct obex_mime_type_driver;
 
 struct server {
 	gboolean	auto_accept;

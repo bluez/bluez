@@ -32,16 +32,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/rfcomm.h>
-
 #include <glib.h>
 
 #include <openobex/obex.h>
-#include <openobex/obex_const.h>
 
-#include "obexd.h"
 #include "logging.h"
 #include "bluetooth.h"
 #include "obex.h"
