@@ -39,6 +39,7 @@
 #include "logging.h"
 #include "bluetooth.h"
 #include "obex.h"
+#include "obex-priv.h"
 #include "dbus.h"
 #include "btio.h"
 #include "service.h"

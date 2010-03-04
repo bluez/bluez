@@ -40,11 +40,11 @@
 #include "bluetooth.h"
 #include "obexd.h"
 #include "obex.h"
+#include "obex-priv.h"
 #include "dbus.h"
 #include "logging.h"
 #include "btio.h"
 #include "service.h"
-#include "obex-priv.h"
 
 #define OPENOBEX_MANAGER_PATH		"/"
 #define OPENOBEX_MANAGER_INTERFACE	OPENOBEX_SERVICE ".Manager"

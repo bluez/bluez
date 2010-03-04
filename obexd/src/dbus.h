@@ -25,10 +25,6 @@
 
 #define OPENOBEX_SERVICE  "org.openobex"
 
-void register_record(struct server *server);
-gint request_service_authorization(struct server *server, GIOChannel *io,
-					const char *address);
-
 void manager_register_session(struct obex_session *os);
 void manager_unregister_session(struct obex_session *os);
 void manager_register_transfer(struct obex_session *os);

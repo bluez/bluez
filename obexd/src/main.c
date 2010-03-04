@@ -49,6 +49,7 @@
 #include "bluetooth.h"
 #include "obexd.h"
 #include "obex.h"
+#include "obex-priv.h"
 #include "service.h"
 
 #define DEFAULT_ROOT_PATH "/tmp"

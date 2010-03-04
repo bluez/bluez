@@ -22,6 +22,21 @@
  *
  */
 
+struct server {
+	gboolean	auto_accept;
+	gchar		*folder;
+	gboolean	symlinks;
+	gchar		*capability;
+	guint32		handle;
+	gchar		*devnode;
+	gboolean	secure;
+	GIOChannel	*io;
+	guint		watch;
+	guint16		tx_mtu;
+	guint16		rx_mtu;
+	GSList		*drivers;
+};
+
 struct obex_session {
 	GIOChannel	*io;
 	guint32		cid;
@@ -45,3 +60,10 @@ struct obex_session {
 	struct obex_mime_type_driver *driver;
 	gboolean	finished;
 };
+
+gint obex_session_start(GIOChannel *io, struct server *server);
+void server_free(struct server *server);
+
+void register_record(struct server *server);
+gint request_service_authorization(struct server *server, GIOChannel *io,
+					const char *address);

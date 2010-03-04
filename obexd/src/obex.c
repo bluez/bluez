@@ -44,11 +44,11 @@
 
 #include "logging.h"
 #include "obex.h"
+#include "obex-priv.h"
 #include "dbus.h"
 #include "mimetype.h"
 #include "service.h"
 #include "btio.h"
-#include "obex-priv.h"
 
 /* Default MTU's */
 #define DEFAULT_RX_MTU 32767

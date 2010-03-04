@@ -38,26 +38,10 @@
 
 #define TARGET_SIZE 16
 
-struct server {
-	gboolean	auto_accept;
-	gchar		*folder;
-	gboolean	symlinks;
-	gchar		*capability;
-	guint32		handle;
-	gchar		*devnode;
-	gboolean	secure;
-	GIOChannel	*io;
-	guint		watch;
-	guint16		tx_mtu;
-	guint16		rx_mtu;
-	GSList		*drivers;
-};
-
 struct obex_session;
 
 void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data);
 
-gint obex_session_start(GIOChannel *io, struct server *server);
 int obex_stream_start(struct obex_session *os, const gchar *filename);
 gint obex_prepare_put(struct obex_session *os);
 const char *obex_get_name(struct obex_session *os);
@@ -74,7 +58,6 @@ gboolean obex_get_auto_accept(struct obex_session *os);
 int obex_remove(struct obex_session *os, const char *path);
 char *obex_get_id(struct obex_session *os);
 
-void server_free(struct server *server);
 int tty_init(gint service, const gchar *folder, const gchar *capability,
 		gboolean symlinks, const gchar *devnode);
 gint obex_tty_session_stop(void);
