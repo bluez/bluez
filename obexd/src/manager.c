@@ -609,7 +609,7 @@ static void emit_transfer_completed(guint32 id, gboolean success)
 	g_free(path);
 }
 
-void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered)
+static void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered)
 {
 	gchar *path = g_strdup_printf("/transfer%u", id);
 

@@ -25,8 +25,6 @@
 
 #define OPENOBEX_SERVICE  "org.openobex"
 
-void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered);
-
 void register_record(struct server *server, gpointer user_data);
 
 gint request_service_authorization(struct server *server, GIOChannel *io,
