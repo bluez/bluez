@@ -46,8 +46,11 @@
 #include "service.h"
 #include "obex-priv.h"
 
-#define TRANSFER_INTERFACE OPENOBEX_SERVICE ".Transfer"
-#define SESSION_INTERFACE OPENOBEX_SERVICE ".Session"
+#define OPENOBEX_MANAGER_PATH		"/"
+#define OPENOBEX_MANAGER_INTERFACE	OPENOBEX_SERVICE ".Manager"
+#define ERROR_INTERFACE			OPENOBEX_SERVICE ".Error"
+#define TRANSFER_INTERFACE		OPENOBEX_SERVICE ".Transfer"
+#define SESSION_INTERFACE		OPENOBEX_SERVICE ".Session"
 
 #define TIMEOUT 60*1000 /* Timeout for user response (miliseconds) */
 

@@ -25,11 +25,6 @@
 
 #define OPENOBEX_SERVICE  "org.openobex"
 
-#define OPENOBEX_MANAGER_PATH		"/"
-#define OPENOBEX_MANAGER_INTERFACE	OPENOBEX_SERVICE ".Manager"
-#define ERROR_INTERFACE			OPENOBEX_SERVICE ".Error"
-
-
 void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered);
 
 void register_record(struct server *server, gpointer user_data);
