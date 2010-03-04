@@ -191,7 +191,7 @@ void bluetooth_start(void)
 		if (server_start(server) < 0)
 			continue;
 
-		register_record(server, NULL);
+		register_record(server);
 	}
 }
 

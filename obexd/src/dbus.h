@@ -25,8 +25,8 @@
 
 #define OPENOBEX_SERVICE  "org.openobex"
 
-void register_record(struct server *server, gpointer user_data);
 
+void register_record(struct server *server);
 gint request_service_authorization(struct server *server, GIOChannel *io,
 					const char *address);
 

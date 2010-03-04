@@ -413,7 +413,7 @@ failed:
 	return ret;
 }
 
-void register_record(struct server *server, gpointer user_data)
+void register_record(struct server *server)
 {
 	struct obex_service_driver *driver;
 	gchar *xml;
