@@ -1223,7 +1223,7 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 	session->filled = (session->filled + len) - written;
 
-	memmove(session->buffer + written, session->buffer, session->filled);
+	memmove(session->buffer, session->buffer + written, session->filled);
 
 	session->transferred += written;
 
