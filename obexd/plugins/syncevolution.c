@@ -213,19 +213,22 @@ done:
 	dbus_message_unref(reply);
 }
 
-static int synce_connect(struct obex_session *os)
+static gpointer synce_connect(struct obex_session *os, int *err)
 {
 	manager_register_session(os);
 
-	return 0;
+	if (err)
+		*err = 0;
+
+	return NULL;
 }
 
-static int synce_put(struct obex_session *os)
+static int synce_put(struct obex_session *os, gpointer user_data)
 {
 	return 0;
 }
 
-static int synce_get(struct obex_session *os, obex_object_t *obj)
+static int synce_get(struct obex_session *os, obex_object_t *obj, gpointer user_data)
 {
 	return 0;
 }
@@ -246,7 +249,7 @@ static void close_cb(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 }
 
-static void synce_disconnect(struct obex_session *os)
+static void synce_disconnect(struct obex_session *os, gpointer user_data)
 {
 
 }

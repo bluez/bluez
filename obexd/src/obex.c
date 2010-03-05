@@ -222,6 +222,7 @@ static void cmd_connect(struct obex_session *os,
 	const guint8 *target = NULL, *who = NULL;
 	guint target_size = 0, who_size = 0;
 	int err;
+	gpointer user_data;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &buffer) != sizeof(*nonhdr)) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
@@ -273,7 +274,7 @@ static void cmd_connect(struct obex_session *os,
 		return;
 	}
 
-	err = os->service->connect(os);
+	user_data = os->service->connect(os, &err);
 	if (err == 0 && os->service->target) {
 		hd.bs = os->service->target;
 		OBEX_ObjectAddHeader(obex, obj,
@@ -283,6 +284,8 @@ static void cmd_connect(struct obex_session *os,
 		OBEX_ObjectAddHeader(obex, obj,
 				OBEX_HDR_CONNECTION, hd, 4,
 				OBEX_FL_FIT_ONE_PACKET);
+
+		os->service_data = user_data;
 	}
 
 	os_set_response(obj, err);
@@ -388,7 +391,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		}
 	}
 
-	err = os->service->get(os, obj);
+	err = os->service->get(os, obj, os->service_data);
 	if (err == 0) {
 		if (os->size != OBJECT_SIZE_UNKNOWN) {
 			hd.bq4 = os->size;
@@ -456,7 +459,7 @@ static void cmd_setpath(struct obex_session *os,
 		break;
 	}
 
-	err = os->service->setpath(os, obj);
+	err = os->service->setpath(os, obj, os->service_data);
 	os_set_response(obj, err);
 }
 
@@ -773,7 +776,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 		return FALSE;
 	}
 
-	ret = os->service->chkput(os);
+	ret = os->service->chkput(os, os->service_data);
 	switch (ret) {
 	case 0:
 		break;
@@ -822,7 +825,7 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 			return;
 	}
 
-	os->service->put(os);
+	os->service->put(os, os->service_data);
 }
 
 static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
@@ -837,12 +840,12 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	switch (evt) {
 	case OBEX_EV_PROGRESS:
 		if (os->service->progress)
-			os->service->progress(os);
+			os->service->progress(os, os->service_data);
 		break;
 	case OBEX_EV_ABORT:
 		os->aborted = TRUE;
 		if (os->service->reset)
-			os->service->reset(os);
+			os->service->reset(os, os->service_data);
 		os_reset_session(os);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 		break;
@@ -857,7 +860,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		default:
 			os_session_mark_aborted(os);
 			if (os->service->reset)
-				os->service->reset(os);
+				os->service->reset(os, os->service_data);
 			os_reset_session(os);
 			break;
 		}
@@ -981,7 +984,7 @@ static void obex_handle_destroy(gpointer user_data)
 	os = OBEX_GetUserData(obex);
 
 	if (os->service && os->service->disconnect)
-		os->service->disconnect(os);
+		os->service->disconnect(os, os->service_data);
 
 	obex_session_free(os);
 

@@ -53,6 +53,7 @@ struct obex_session {
 	gpointer	object;
 	gboolean	aborted;
 	struct obex_service_driver *service;
+	gpointer	service_data;
 	struct server *server;
 	gboolean	checked;
 	obex_t		*obex;

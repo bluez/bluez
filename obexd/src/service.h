@@ -30,14 +30,14 @@ struct obex_service_driver {
 	const guint8 *who;
 	guint who_size;
 	const gchar *record;
-	int (*connect) (struct obex_session *os);
-	void (*progress) (struct obex_session *os);
-	int (*get) (struct obex_session *os, obex_object_t *obj);
-	int (*put) (struct obex_session *os);
-	gint (*chkput) (struct obex_session *os);
-	int (*setpath) (struct obex_session *os, obex_object_t *obj);
-	void (*disconnect) (struct obex_session *os);
-	void (*reset) (struct obex_session *os);
+	gpointer (*connect) (struct obex_session *os, int *err);
+	void (*progress) (struct obex_session *os, gpointer user_data);
+	int (*get) (struct obex_session *os, obex_object_t *obj, gpointer user_data);
+	int (*put) (struct obex_session *os, gpointer user_data);
+	gint (*chkput) (struct obex_session *os, gpointer user_data);
+	int (*setpath) (struct obex_session *os, obex_object_t *obj, gpointer user_data);
+	void (*disconnect) (struct obex_session *os, gpointer user_data);
+	void (*reset) (struct obex_session *os, gpointer user_data);
 };
 
 int obex_service_driver_register(struct obex_service_driver *driver);

@@ -144,14 +144,18 @@ static const guint8 PBAP_TARGET[TARGET_SIZE] = {
 			0x79, 0x61, 0x35, 0xF0,  0xF0, 0xC5, 0x11, 0xD8,
 			0x09, 0x66, 0x08, 0x00,  0x20, 0x0C, 0x9A, 0x66  };
 
-static int pbap_connect(struct obex_session *os)
+static gpointer pbap_connect(struct obex_session *os, int *err)
 {
 	manager_register_session(os);
 
-	return 0;
+	if (*err)
+		err = 0;
+
+	return NULL;
 }
 
-static int pbap_get(struct obex_session *os, obex_object_t *obj)
+static int pbap_get(struct obex_session *os, obex_object_t *obj,
+		gpointer user_data)
 {
 	const gchar *type = obex_get_type(os);
 	const gchar *folder = obex_get_folder(os);
@@ -187,7 +191,8 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj)
 }
 
 
-static int pbap_setpath(struct obex_session *os, obex_object_t *obj)
+static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
+		gpointer user_data)
 {
 	const gchar *current_folder, *name;
 	guint8 *nonhdr;
@@ -222,12 +227,14 @@ static int pbap_setpath(struct obex_session *os, obex_object_t *obj)
 	return 0;
 }
 
-static void pbap_disconnect(struct obex_session *os)
+static void pbap_disconnect(struct obex_session *os,
+		gpointer user_data)
 {
 	manager_unregister_session(os);
 }
 
-static gint pbap_chkput(struct obex_session *os)
+static gint pbap_chkput(struct obex_session *os,
+		gpointer user_data)
 {
 	/* Rejects all PUTs */
 	return -EINVAL;
