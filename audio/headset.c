@@ -198,7 +198,7 @@ static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
 {
 	return error_common_reply(conn, msg,
 			ERROR_INTERFACE ".ConnectionAttemptFailed",
-			err > 0 ? strerror(err) : "Connection attempt failed");
+			err < 0 ? strerror(-err) : "Connection attempt failed");
 }
 
 static int rfcomm_connect(struct audio_device *device, headset_stream_cb_t cb,
@@ -435,7 +435,7 @@ static void pending_connect_complete(struct connect_cb *cb, struct audio_device 
 {
 	struct headset *hs = dev->headset;
 
-	if (hs->pending->err)
+	if (hs->pending->err < 0)
 		cb->cb(NULL, cb->cb_data);
 	else
 		cb->cb(dev, cb->cb_data);
