@@ -45,9 +45,9 @@ struct generic_data {
 
 struct interface_data {
 	char *name;
-	GDBusMethodTable *methods;
-	GDBusSignalTable *signals;
-	GDBusPropertyTable *properties;
+	const GDBusMethodTable *methods;
+	const GDBusSignalTable *signals;
+	const GDBusPropertyTable *properties;
 	void *user_data;
 	GDBusDestroyFunction destroy;
 };
@@ -114,8 +114,8 @@ static void print_arguments(GString *gstr, const char *sig,
 
 static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 {
-	GDBusMethodTable *method;
-	GDBusSignalTable *signal;
+	const GDBusMethodTable *method;
+	const GDBusSignalTable *signal;
 
 	for (method = iface->methods; method && method->name; method++) {
 		if (!strlen(method->signature) && !strlen(method->reply))
@@ -238,7 +238,7 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 {
 	struct generic_data *data = user_data;
 	struct interface_data *iface;
-	GDBusMethodTable *method;
+	const GDBusMethodTable *method;
 	const char *interface;
 
 	interface = dbus_message_get_interface(message);
@@ -327,9 +327,9 @@ static GDBusMethodTable introspect_methods[] = {
 };
 
 static void add_interface(struct generic_data *data, const char *name,
-				GDBusMethodTable *methods,
-				GDBusSignalTable *signals,
-				GDBusPropertyTable *properties,
+				const GDBusMethodTable *methods,
+				const GDBusSignalTable *signals,
+				const GDBusPropertyTable *properties,
 				void *user_data,
 				GDBusDestroyFunction destroy)
 {
@@ -428,7 +428,7 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 {
 	struct generic_data *data = NULL;
 	struct interface_data *iface;
-	GDBusSignalTable *signal;
+	const GDBusSignalTable *signal;
 
 	*args = NULL;
 	if (!dbus_connection_get_object_path_data(conn, path,
@@ -502,9 +502,9 @@ fail:
 
 gboolean g_dbus_register_interface(DBusConnection *connection,
 					const char *path, const char *name,
-					GDBusMethodTable *methods,
-					GDBusSignalTable *signals,
-					GDBusPropertyTable *properties,
+					const GDBusMethodTable *methods,
+					const GDBusSignalTable *signals,
+					const GDBusPropertyTable *properties,
 					void *user_data,
 					GDBusDestroyFunction destroy)
 {
