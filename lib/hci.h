@@ -1068,6 +1068,13 @@ typedef struct {
 } __attribute__ ((packed)) read_inq_response_tx_power_level_rp;
 #define READ_INQ_RESPONSE_TX_POWER_LEVEL_RP_SIZE 2
 
+#define OCF_READ_INQUIRY_TRANSMIT_POWER_LEVEL	0x0058
+typedef struct {
+	uint8_t		status;
+	int8_t		level;
+} __attribute__ ((packed)) read_inquiry_transmit_power_level_rp;
+#define READ_INQUIRY_TRANSMIT_POWER_LEVEL_RP_SIZE 2
+
 #define OCF_WRITE_INQUIRY_TRANSMIT_POWER_LEVEL	0x0059
 typedef struct {
 	int8_t		level;
