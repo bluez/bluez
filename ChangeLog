@@ -1,3 +1,11 @@
+ver 4.62:
+	Fix accidental symbol breakage with inquiry transmit power.
+	Fix using invalid data from previous headset connection.
+	Fix double free on AVDTP Abort response.
+	Fix possible crash while verifying AVDTP version.
+	Fix missing inuse flag when AVDTP stream is configured.
+	Add support for Bluetooth controller types.
+
 ver 4.61:
 	Fix issues with Read Inquiry Response Transmit Power Level.
 	Fix possible invalid read when removing a temporary device.
