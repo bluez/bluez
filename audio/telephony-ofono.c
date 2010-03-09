@@ -486,7 +486,7 @@ static void get_registration_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_init(reply, &iter);
 
-	/* ARRAY -> ENTRY -> VARIANT*/
+	/* ARRAY -> ENTRY -> VARIANT */
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
 		error("Unexpected signature in GetProperties return");
 		goto done;
@@ -788,14 +788,13 @@ static gboolean handle_vc_property_changed(DBusConnection *conn,
 			telephony_update_indicator(ofono_indicators,
 							"callsetup",
 							EV_CALLSETUP_INACTIVE);
-			if (vc->status == CALL_STATUS_INCOMING) {
+			if (vc->status == CALL_STATUS_INCOMING)
 				telephony_calling_stopped_ind();
-			}
 			vc->status = CALL_STATUS_ACTIVE;
 			debug("vc status is CALL_STATUS_ACTIVE");
 		} else if (g_str_equal(state, "alerting")) {
 			telephony_update_indicator(ofono_indicators,
-					 "callsetup", EV_CALLSETUP_ALERTING);
+					"callsetup", EV_CALLSETUP_ALERTING);
 			vc->status = CALL_STATUS_ALERTING;
 			debug("vc status is CALL_STATUS_ALERTING");
 		} else if (g_str_equal(state, "incoming")) {
