@@ -53,11 +53,11 @@
 # define OBEX_HDR_DESTNAME    0x15
 # define OBEX_HDR_PERMISSIONS 0xD6
 
-# define OBEX_ACTION_COPY     0x00
-# define OBEX_ACTION_MOVE     0x01
-# define OBEX_ACTION_SETPERM  0x02
-
 #endif /* OBEX_CMD_ACTION */
+
+#define OBEX_ACTION_COPY     0x00
+#define OBEX_ACTION_MOVE     0x01
+#define OBEX_ACTION_SETPERM  0x02
 
 #define CONID_INVALID 0xFFFFFFFF
 
