@@ -110,7 +110,8 @@ static void opp_progress(struct obex_session *os, gpointer user_data)
 
 static gint opp_chkput(struct obex_session *os, gpointer user_data)
 {
-	gchar *new_folder, *new_name;
+	gchar *folder, *name;
+	gchar *path;
 	gint32 time;
 	gint ret;
 
@@ -121,29 +122,34 @@ static gint opp_chkput(struct obex_session *os, gpointer user_data)
 		goto skip_auth;
 
 	time = 0;
-	ret = manager_request_authorization(os, time, &new_folder, &new_name);
+	ret = manager_request_authorization(os, time, &folder, &name);
 	if (ret < 0)
 		return -EPERM;
 
-	if (new_folder) {
-		obex_set_folder(os, new_folder);
-		g_free(new_folder);
-	}
+	if (folder == NULL)
+		folder = g_strdup(obex_get_root_folder(os));
 
-	if (new_name) {
-		obex_set_name(os, new_name);
-		g_free(new_name);
-	}
+	if (name == NULL)
+		name = g_strdup(obex_get_name(os));
 
 skip_auth:
+	path = g_build_filename(folder, name, NULL);
+
 	manager_emit_transfer_started(os);
-	return obex_prepare_put(os);
+
+	ret = obex_prepare_put(os, path);
+
+	g_free(path);
+	g_free(folder);
+	g_free(name);
+
+	return ret;
 }
 
 static int opp_put(struct obex_session *os, gpointer user_data)
 {
 	const char *name = obex_get_name(os);
-	const char *folder = obex_get_folder(os);
+	const char *folder = obex_get_root_folder(os);
 
 	if (folder == NULL)
 		return -EPERM;

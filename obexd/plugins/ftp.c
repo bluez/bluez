@@ -144,9 +144,21 @@ static const guint8 FTP_TARGET[TARGET_SIZE] = {
 static const guint8 PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
 			'P','C',' ','S','u','i','t','e' };
 
-static gint get_by_type(struct obex_session *os, const gchar *type)
+struct ftp_session {
+	struct obex_session *os;
+	gchar *folder;
+};
+
+static void set_folder(struct ftp_session *ftp, const char *new_folder)
 {
-	const char *folder = obex_get_folder(os);
+	g_free(ftp->folder);
+
+	ftp->folder = new_folder ? g_strdup(new_folder) : NULL;
+}
+
+static gint get_by_type(struct ftp_session *ftp, const gchar *type)
+{
+	struct obex_session *os = ftp->os;
 	const char *capability = obex_get_capability_path(os);
 
 	if (type == NULL)
@@ -156,18 +168,18 @@ static gint get_by_type(struct obex_session *os, const gchar *type)
 		return obex_stream_start(os, capability);
 
 	if (g_str_equal(type, LST_TYPE))
-		return obex_stream_start(os, folder);
+		return obex_stream_start(os, ftp->folder);
 
 	return -ENOENT;
 }
 
-static gint ftp_prepare_get(struct obex_session *os, gchar *file)
+static gint ftp_prepare_get(struct ftp_session *ftp, gchar *file)
 {
+	struct obex_session *os = ftp->os;
 	const char *root_folder = obex_get_root_folder(os);
-	const char *folder = obex_get_folder(os);
 	gboolean root;
 
-	root = g_str_equal(root_folder, folder);
+	root = g_str_equal(root_folder, ftp->folder);
 
 	if (!root || !obex_get_symlinks(os)) {
 		struct stat dstat;
@@ -188,36 +200,45 @@ static gint ftp_prepare_get(struct obex_session *os, gchar *file)
 
 static gpointer ftp_connect(struct obex_session *os, int *err)
 {
+	struct ftp_session *ftp;
+	const char *root_folder;
+
+	root_folder = obex_get_root_folder(os);
+
 	manager_register_session(os);
+
+	ftp = g_new0(struct ftp_session, 1);
+	set_folder(ftp, root_folder);
+	ftp->os = os;
 
 	if (err)
 		*err = 0;
 
-	return NULL;
+	return ftp;
 }
 
 static int ftp_get(struct obex_session *os, obex_object_t *obj,
 		gpointer user_data)
 {
-	const char *folder = obex_get_folder(os);
+	struct ftp_session *ftp = user_data;
 	const char *type = obex_get_type(os);
 	const char *name = obex_get_name(os);
 	gint err;
 	gchar *path;
 
-	if (folder == NULL) {
+	if (ftp->folder == NULL) {
 		err = -ENOENT;
 		goto fail;
 	}
 
-	err = get_by_type(os, type);
+	err = get_by_type(ftp, type);
 	if (err < 0) {
 		if (!name)
 			goto fail;
 
-		path = g_build_filename(folder, name, NULL);
+		path = g_build_filename(ftp->folder, name, NULL);
 
-		err = ftp_prepare_get(os, path);
+		err = ftp_prepare_get(ftp, path);
 
 		g_free(path);
 
@@ -231,19 +252,17 @@ fail:
 	return err;
 }
 
-static gint ftp_delete(struct obex_session *os)
+static gint ftp_delete(struct ftp_session *ftp, const char *name)
 {
-	const char *name = obex_get_name(os);
-	const char *folder = obex_get_folder(os);
 	gchar *path;
 	int ret = 0;
 
-	if (!(folder && name))
+	if (!(ftp->folder && name))
 		return -EINVAL;
 
-	path = g_build_filename(folder, name, NULL);
+	path = g_build_filename(ftp->folder, name, NULL);
 
-	if (obex_remove(os, path) < 0)
+	if (obex_remove(ftp->os, path) < 0)
 		ret = -errno;
 
 	g_free(path);
@@ -253,27 +272,37 @@ static gint ftp_delete(struct obex_session *os)
 
 static gint ftp_chkput(struct obex_session *os, gpointer user_data)
 {
+	struct ftp_session *ftp = user_data;
+	const gchar *name = obex_get_name(os);
+	gchar *path;
+	int ret;
 
 	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return 0;
 
-	return obex_prepare_put(os);
+	path = g_build_filename(ftp->folder, name, NULL);
+
+	ret = obex_prepare_put(os, path);
+
+	g_free(path);
+
+	return ret;
 }
 
 static int ftp_put(struct obex_session *os, gpointer user_data)
 {
-	const char *folder = obex_get_folder(os);
+	struct ftp_session *ftp = user_data;
 	const char *name = obex_get_name(os);
 	ssize_t size = obex_get_size(os);
 
-	if (folder == NULL)
+	if (ftp->folder == NULL)
 		return -EPERM;
 
 	if (name == NULL)
 		return -EBADR;
 
 	if (size == OBJECT_SIZE_DELETE)
-		return ftp_delete(os);
+		return ftp_delete(ftp, name);
 
 	return 0;
 }
@@ -281,7 +310,8 @@ static int ftp_put(struct obex_session *os, gpointer user_data)
 static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 		gpointer user_data)
 {
-	const gchar *root_folder, *current_folder, *name;
+	struct ftp_session *ftp = user_data;
+	const gchar *root_folder, *name;
 	guint8 *nonhdr;
 	gchar *fullname;
 	struct stat dstat;
@@ -295,8 +325,7 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 
 	name = obex_get_name(os);
 	root_folder = obex_get_root_folder(os);
-	current_folder = obex_get_folder(os);
-	root = g_str_equal(root_folder, current_folder);
+	root = g_str_equal(root_folder, ftp->folder);
 
 	/* Check flag "Backup" */
 	if ((nonhdr[0] & 0x01) == 0x01) {
@@ -305,11 +334,11 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 		if (root)
 			return -EPERM;
 
-		fullname = g_path_get_dirname(current_folder);
-		obex_set_folder(os, fullname);
+		fullname = g_path_get_dirname(ftp->folder);
+		set_folder(ftp, fullname);
 		g_free(fullname);
 
-		debug("Set to parent path: %s", current_folder);
+		debug("Set to parent path: %s", ftp->folder);
 
 		return 0;
 	}
@@ -321,7 +350,7 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 
 	if (strlen(name) == 0) {
 		debug("Set to root");
-		obex_set_folder(os, root_folder);
+		set_folder(ftp, root_folder);
 		return 0;
 	}
 
@@ -331,7 +360,7 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 		return -EPERM;
 	}
 
-	fullname = g_build_filename(current_folder, name, NULL);
+	fullname = g_build_filename(ftp->folder, name, NULL);
 
 	debug("Fullname: %s", fullname);
 
@@ -352,7 +381,7 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 
 	if (S_ISDIR(dstat.st_mode) && (dstat.st_mode & S_IRUSR) &&
 						(dstat.st_mode & S_IXUSR)) {
-		obex_set_folder(os, fullname);
+		set_folder(ftp, fullname);
 		goto done;
 	}
 
@@ -370,7 +399,7 @@ not_found:
 		goto done;
 	}
 
-	obex_set_folder(os, fullname);
+	set_folder(ftp, fullname);
 
 done:
 	g_free(fullname);
@@ -379,7 +408,12 @@ done:
 
 static void ftp_disconnect(struct obex_session *os, gpointer user_data)
 {
+	struct ftp_session *ftp = user_data;
+
 	manager_unregister_session(os);
+
+	g_free(ftp->folder);
+	g_free(ftp);
 }
 
 struct obex_service_driver pcsuite = {

@@ -306,12 +306,11 @@ fail:
 	return NULL;
 }
 
-static gpointer folder_open(const char *name, int oflag, mode_t mode,
+static gpointer folder_open(const char *folder, int oflag, mode_t mode,
 		size_t *size, struct obex_session *os, int *err)
 {
 	struct stat fstat, dstat;
 	struct dirent *ep;
-	const gchar *folder;
 	GString *object;
 	DIR *dp;
 	gboolean root, pcsuite, symlinks;
@@ -324,10 +323,9 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 
 	object = g_string_append(object, FL_BODY_BEGIN);
 
-	folder = obex_get_folder(os);
-	root = g_str_equal(name, folder);
+	root = g_str_equal(folder, obex_get_root_folder(os));
 
-	dp = opendir(name);
+	dp = opendir(folder);
 	if (dp == NULL) {
 		if (err)
 			*err = -ENOENT;
@@ -336,10 +334,10 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 
 	symlinks = obex_get_symlinks(os);
 	if (root && symlinks)
-		ret = stat(name, &dstat);
+		ret = stat(folder, &dstat);
 	else {
 		object = g_string_append(object, FL_PARENT_FOLDER_ELEMENT);
-		ret = lstat(name, &dstat);
+		ret = lstat(folder, &dstat);
 	}
 
 	if (ret < 0) {

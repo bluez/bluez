@@ -110,12 +110,8 @@ static void os_reset_session(struct obex_session *os)
 		os->driver->close(os->object);
 		os->object = NULL;
 		os->obj = NULL;
-		if (os->aborted && os->cmd == OBEX_CMD_PUT && os->current_folder) {
-			gchar *path;
-			path = g_build_filename(os->current_folder, os->name, NULL);
-			os->driver->remove(path);
-			g_free(path);
-		}
+		if (os->aborted && os->cmd == OBEX_CMD_PUT && os->path)
+			os->driver->remove(os->path);
 	}
 
 	if (os->name) {
@@ -153,9 +149,6 @@ static void obex_session_free(struct obex_session *os)
 	sessions = g_slist_remove(sessions, os);
 
 	os_reset_session(os);
-
-	if (os->current_folder)
-		g_free(os->current_folder);
 
 	if (os->io)
 		g_io_channel_unref(os->io);
@@ -546,23 +539,20 @@ add_header:
 	return len;
 }
 
-gint obex_prepare_put(struct obex_session *os)
+gint obex_prepare_put(struct obex_session *os, const gchar *filename)
 {
-	gchar *path;
 	gint len;
 	int err;
 
-	path = g_build_filename(os->current_folder, os->name, NULL);
-	os->object = os->driver->open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600,
+	os->object = os->driver->open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600,
 					os->size != OBJECT_SIZE_UNKNOWN ?
 					(size_t *) &os->size : NULL, os, &err);
 	if (os->object == NULL) {
-		error("open(%s): %s (%d)", path, strerror(-err), -err);
-		g_free(path);
+		error("open(%s): %s (%d)", filename, strerror(-err), -err);
 		return -EPERM;
 	}
 
-	g_free(path);
+	os->path = filename;
 
 	if (!os->buf) {
 		debug("PUT request checked, no buffered data");
@@ -575,7 +565,7 @@ gint obex_prepare_put(struct obex_session *os)
 
 		w = os->driver->write(os->object, os->buf + len, os->offset - len);
 		if (w < 0) {
-			error("write(%s): %s (%d)", path, strerror(-w), -w);
+			error("write(%s): %s (%d)", filename, strerror(-w), -w);
 			if (w == -EINTR)
 				continue;
 			else
@@ -1067,7 +1057,6 @@ gint obex_session_start(GIOChannel *io, struct server *server)
 
 	os->service = obex_service_driver_find(server->drivers, NULL, 0,
 						NULL, 0);
-	os->current_folder = g_strdup(server->folder);
 	os->server = server;
 	os->rx_mtu = server->rx_mtu ? server->rx_mtu : DEFAULT_RX_MTU;
 	os->tx_mtu = server->tx_mtu ? server->tx_mtu : DEFAULT_TX_MTU;
@@ -1137,18 +1126,6 @@ ssize_t obex_get_size(struct obex_session *os)
 const char *obex_get_type(struct obex_session *os)
 {
 	return os->type;
-}
-
-const char *obex_get_folder(struct obex_session *os)
-{
-	return os->current_folder;
-}
-
-void obex_set_folder(struct obex_session *os, const gchar *folder)
-{
-	g_free(os->current_folder);
-
-	os->current_folder = (folder ? g_strdup(folder) : NULL);
 }
 
 const char *obex_get_root_folder(struct obex_session *os)

@@ -132,33 +132,49 @@ struct apparam_hdr {
 	uint8_t		val[0];
 } __attribute__ ((packed));
 
-struct obex_session;
-
 struct phonebook_query {
 	const char *type;
 	GString *buffer;
 	struct obex_session *os;
 };
 
+struct pbap_session {
+	struct obex_session *os;
+	gchar *folder;
+};
+
 static const guint8 PBAP_TARGET[TARGET_SIZE] = {
 			0x79, 0x61, 0x35, 0xF0,  0xF0, 0xC5, 0x11, 0xD8,
 			0x09, 0x66, 0x08, 0x00,  0x20, 0x0C, 0x9A, 0x66  };
 
+static void set_folder(struct pbap_session *pbap, const char *new_folder)
+{
+	g_free(pbap->folder);
+
+	pbap->folder = new_folder ? g_strdup(new_folder) : NULL;
+}
+
 static gpointer pbap_connect(struct obex_session *os, int *err)
 {
+	struct pbap_session *pbap;
+
 	manager_register_session(os);
+
+	pbap = g_new0(struct pbap_session, 1);
+	pbap->folder = g_strdup("/");
+	pbap->os = os;
 
 	if (*err)
 		err = 0;
 
-	return NULL;
+	return pbap;
 }
 
 static int pbap_get(struct obex_session *os, obex_object_t *obj,
 		gpointer user_data)
 {
+	struct pbap_session *pbap = user_data;
 	const gchar *type = obex_get_type(os);
-	const gchar *folder = obex_get_folder(os);
 	const gchar *name = obex_get_name(os);
 	gchar *path;
 	gint ret;
@@ -173,14 +189,14 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 		/* Always relative */
 		if (!name || strlen(name) == 0)
 			/* Current folder */
-			path = g_strdup(folder);
+			path = g_strdup(pbap->folder);
 		else
 			/* Current folder + relative path */
-			path = g_build_filename(folder, name, NULL);
+			path = g_build_filename(pbap->folder, name, NULL);
 
 	else if (strcmp(type, VCARDENTRY_TYPE) == 0)
 		/* Always relative */
-		path = g_build_filename(folder, name, NULL);
+		path = g_build_filename(pbap->folder, name, NULL);
 	else
 		return -EBADR;
 
@@ -194,7 +210,8 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
 		gpointer user_data)
 {
-	const gchar *current_folder, *name;
+	struct pbap_session *pbap = user_data;
+	const gchar *name;
 	guint8 *nonhdr;
 	gchar *fullname;
 	int ret;
@@ -204,23 +221,18 @@ static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
 		return -EBADMSG;
 	}
 
-	current_folder = obex_get_folder(os);
 	name = obex_get_name(os);
 
-	ret = phonebook_set_folder(current_folder, name, nonhdr[0]);
+	ret = phonebook_set_folder(pbap->folder, name, nonhdr[0]);
 	if (ret < 0)
 		return ret;
 
-	/*
-	 * TODO: current folder should not be stored in the
-	 * "core", it is a service specific attribute.
-	 */
-	if (!current_folder)
+	if (!pbap->folder)
 		fullname = g_strdup(name);
 	else
-		fullname = g_build_filename(current_folder, name, NULL);
+		fullname = g_build_filename(pbap->folder, name, NULL);
 
-	obex_set_folder(os, fullname);
+	set_folder(pbap, fullname);
 
 	g_free(fullname);
 
@@ -230,7 +242,12 @@ static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
 static void pbap_disconnect(struct obex_session *os,
 		gpointer user_data)
 {
+	struct pbap_session *pbap = user_data;
+
 	manager_unregister_session(os);
+
+	g_free(pbap->folder);
+	g_free(pbap);
 }
 
 static gint pbap_chkput(struct obex_session *os,

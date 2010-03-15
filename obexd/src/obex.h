@@ -43,12 +43,11 @@ struct obex_session;
 void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data);
 
 int obex_stream_start(struct obex_session *os, const gchar *filename);
-gint obex_prepare_put(struct obex_session *os);
+gint obex_prepare_put(struct obex_session *os, const  gchar *filename);
 const char *obex_get_name(struct obex_session *os);
 void obex_set_name(struct obex_session *os, const gchar *name);
 ssize_t obex_get_size(struct obex_session *os);
 const char *obex_get_type(struct obex_session *os);
-const char *obex_get_folder(struct obex_session *os);
 void obex_set_folder(struct obex_session *os, const char *folder);
 const char *obex_get_root_folder(struct obex_session *os);
 guint16 obex_get_service(struct obex_session *os);
