@@ -168,7 +168,7 @@ static int opp_get(struct obex_session *os, obex_object_t *obj,
 {
 	const char *type;
 
-	if (obex_get_name(os) == NULL)
+	if (obex_get_name(os))
 		return -EPERM;
 
 	type = obex_get_type(os);
