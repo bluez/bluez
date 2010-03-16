@@ -164,8 +164,8 @@ static gpointer pbap_connect(struct obex_session *os, int *err)
 	pbap->folder = g_strdup("/");
 	pbap->os = os;
 
-	if (*err)
-		err = 0;
+	if (err)
+		*err = 0;
 
 	return pbap;
 }
