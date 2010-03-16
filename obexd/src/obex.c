@@ -215,7 +215,6 @@ static void cmd_connect(struct obex_session *os,
 	const guint8 *target = NULL, *who = NULL;
 	guint target_size = 0, who_size = 0;
 	int err;
-	gpointer user_data;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &buffer) != sizeof(*nonhdr)) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
@@ -267,7 +266,7 @@ static void cmd_connect(struct obex_session *os,
 		return;
 	}
 
-	user_data = os->service->connect(os, &err);
+	os->service_data = os->service->connect(os, &err);
 	if (err == 0 && os->service->target) {
 		hd.bs = os->service->target;
 		OBEX_ObjectAddHeader(obex, obj,
@@ -277,8 +276,6 @@ static void cmd_connect(struct obex_session *os,
 		OBEX_ObjectAddHeader(obex, obj,
 				OBEX_HDR_CONNECTION, hd, 4,
 				OBEX_FL_FIT_ONE_PACKET);
-
-		os->service_data = user_data;
 	}
 
 	os_set_response(obj, err);
