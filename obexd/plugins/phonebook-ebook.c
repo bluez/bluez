@@ -65,9 +65,9 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 {
 	struct query_data *data = user_data;
 	GString *string = g_string_new("");
-	GList *l;
+	GList *l = g_list_nth(contacts, data->params->liststartoffset);
 
-	for (l = contacts; l; l = g_list_next(l)) {
+	for (; l; l = g_list_next(l)) {
 		EContact *contact;
 		EVCard *evcard;
 		gchar *vcard;
