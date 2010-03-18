@@ -1201,7 +1201,6 @@ complete:
 static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
 	struct session_data *session = user_data;
-	ssize_t len;
 	gint written;
 
 	if (session->buffer_len == 0) {
@@ -1209,23 +1208,29 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 		session->buffer = g_new0(char, DEFAULT_BUFFER_SIZE);
 	}
 
-	len = read(session->fd, session->buffer + session->filled,
+	do {
+		ssize_t len;
+
+		len = read(session->fd, session->buffer + session->filled,
 				session->buffer_len - session->filled);
-	if (len <= 0)
-		goto complete;
+		if (len < 0)
+			goto failed;
 
-	if (gw_obex_xfer_write(xfer, session->buffer, session->filled + len,
-						&written, NULL) == FALSE)
-		goto complete;
+		session->filled += len;
 
-	if (gw_obex_xfer_flush(xfer, NULL) == FALSE)
-		goto complete;
+		if (session->filled == 0)
+			goto complete;
 
-	session->filled = (session->filled + len) - written;
+		if (gw_obex_xfer_write(xfer, session->buffer,
+					session->filled,
+					&written, NULL) == FALSE)
+			goto failed;
+
+		session->filled -= written;
+		session->transferred += written;
+	} while (session->filled == 0);
 
 	memmove(session->buffer, session->buffer + written, session->filled);
-
-	session->transferred += written;
 
 	agent_notify_progress(session->conn, session->agent_name,
 			session->agent_path, session->transfer_path,
@@ -1233,14 +1238,16 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 	return;
 
 complete:
-	if (len == 0)
-		agent_notify_complete(session->conn, session->agent_name,
+	agent_notify_complete(session->conn, session->agent_name,
 				session->agent_path, session->transfer_path);
-	else
-		agent_notify_error(session->conn, session->agent_name,
+	goto done;
+
+failed:
+	agent_notify_error(session->conn, session->agent_name,
 				session->agent_path, session->transfer_path,
 				"Error sending object");
 
+done:
 	unregister_transfer(session);
 
 	if (session->pending->len > 0) {
