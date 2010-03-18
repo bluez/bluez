@@ -1111,13 +1111,6 @@ const char *obex_get_name(struct obex_session *os)
 	return os->name;
 }
 
-void obex_set_name(struct obex_session *os, const gchar *name)
-{
-	g_free(os->name);
-
-	os->name = (name ? g_strdup(name) : NULL);
-}
-
 ssize_t obex_get_size(struct obex_session *os)
 {
 	return os->size;
