@@ -47,3 +47,9 @@ int phonebook_set_folder(const gchar *current_folder,
 
 int phonebook_pull(const gchar *name, const struct apparam_field *params,
 		phonebook_cb cb, gpointer user_data);
+
+int phonebook_get_entry(const gchar *name, const struct apparam_field *params,
+		phonebook_cb cb, gpointer user_data);
+
+int phonebook_list(const gchar *name, const struct apparam_field *params,
+		phonebook_cb cb, gpointer user_data);

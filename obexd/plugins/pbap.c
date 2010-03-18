@@ -401,6 +401,8 @@ static gpointer vobject_open(const char *name, int oflag, mode_t mode,
 		gpointer context, size_t *size, int *err)
 {
 	struct pbap_session *pbap = context;
+	const gchar *type = obex_get_type(pbap->os);
+	phonebook_cb cb;
 	int ret;
 
 	if (oflag != O_RDONLY) {
@@ -408,16 +410,21 @@ static gpointer vobject_open(const char *name, int oflag, mode_t mode,
 		goto fail;
 	}
 
-	/*
-	 * Zero means that the PCE wants to know the number of used indexes in
-	 * the phone book of interest. PSE shall ignore all other application
-	 * parameter that may be present in the request.
-	 */
 	if (pbap->params->maxlistcount == 0)
-		ret = phonebook_pull(name, pbap->params,
-				phonebook_size_result, pbap);
+		cb = phonebook_size_result;
 	else
-		ret = phonebook_pull(name, pbap->params, query_result, pbap);
+		cb = query_result;
+
+	if (g_strcmp0(type, "x-bt/phonebook") == 0)
+		ret = phonebook_pull(name, pbap->params, cb, pbap);
+	else if (g_strcmp0(type, "x-bt/vcard-listing") == 0)
+		ret = phonebook_list(name, pbap->params, cb, pbap);
+	else if (g_strcmp0(type, "x-bt/vcard") == 0)
+		ret = phonebook_get_entry(name, pbap->params, query_result, pbap);
+	else {
+		ret = -EINVAL;
+		goto fail;
+	}
 
 	if (ret < 0)
 		goto fail;

@@ -261,3 +261,15 @@ gint phonebook_pull(const gchar *name, const struct apparam_field *params,
 
 	return 0;
 }
+
+int phonebook_get_entry(const gchar *name, const struct apparam_field *params,
+		phonebook_cb cb, gpointer user_data)
+{
+	return -1;
+}
+
+int phonebook_list(const gchar *name, const struct apparam_field *params,
+		phonebook_cb cb, gpointer user_data)
+{
+	return -1;
+}
