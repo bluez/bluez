@@ -164,7 +164,7 @@ static int opp_put(struct obex_session *os, gpointer user_data)
 }
 
 static int opp_get(struct obex_session *os, obex_object_t *obj,
-		gpointer user_data)
+			gboolean *stream, gpointer user_data)
 {
 	const char *type;
 
@@ -182,6 +182,9 @@ static int opp_get(struct obex_session *os, obex_object_t *obj,
 
 	} else
 		return -EPERM;
+
+	if (stream)
+		*stream = TRUE;
 
 	return 0;
 }

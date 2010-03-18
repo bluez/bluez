@@ -228,8 +228,12 @@ static int synce_put(struct obex_session *os, gpointer user_data)
 	return 0;
 }
 
-static int synce_get(struct obex_session *os, obex_object_t *obj, gpointer user_data)
+static int synce_get(struct obex_session *os, obex_object_t *obj,
+			gboolean *stream, gpointer user_data)
 {
+	if (stream)
+		*stream = TRUE;
+
 	return obex_get_stream_start(os, NULL, os);
 }
 

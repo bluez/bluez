@@ -58,6 +58,8 @@ int obex_remove(struct obex_session *os, const char *path);
 char *obex_get_id(struct obex_session *os);
 ssize_t obex_aparam_read(struct obex_session *os,
 		obex_object_t *obj, const guint8 **buffer);
+int obex_aparam_write(struct obex_session *os,
+		obex_object_t *obj, const guint8 *buffer, guint size);
 
 const gchar *obex_option_root_folder(void);
 gboolean obex_option_symlinks(void);

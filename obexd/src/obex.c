@@ -316,6 +316,159 @@ static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)
 	return ret;
 }
 
+static gint obex_read_stream(struct obex_session *os, obex_t *obex,
+						obex_object_t *obj)
+{
+	gint size;
+	gint32 len = 0;
+	const guint8 *buffer;
+
+	if (os->aborted)
+		return -EPERM;
+
+	/* workaround: client didn't send the object lenght */
+	if (os->size == OBJECT_SIZE_DELETE)
+		os->size = OBJECT_SIZE_UNKNOWN;
+
+	size = OBEX_ObjectReadStream(obex, obj, &buffer);
+	if (size < 0) {
+		error("Error on OBEX stream");
+		return -EIO;
+	}
+
+	if (size > os->rx_mtu) {
+		error("Received more data than RX_MAX");
+		return -EIO;
+	}
+
+	if (os->object == NULL && size > 0) {
+		os->buf = g_realloc(os->buf, os->offset + size);
+		memcpy(os->buf + os->offset, buffer, size);
+		os->offset += size;
+
+		debug("Stored %u bytes into temporary buffer", size);
+
+		return 0;
+	}
+
+	while (len < size) {
+		gint w;
+
+		w = os->driver->write(os->object, buffer + len, size - len);
+		if (w < 0) {
+			if (w == -EINTR)
+				continue;
+			else
+				return w;
+		}
+
+		len += w;
+	}
+
+	os->offset += len;
+
+	return 0;
+}
+
+static gint obex_write_stream(struct obex_session *os,
+			obex_t *obex, obex_object_t *obj)
+{
+	obex_headerdata_t hd;
+	gint32 len;
+	guint8 *ptr;
+
+	debug("obex_write_stream: name=%s type=%s tx_mtu=%d file=%p",
+		os->name ? os->name : "", os->type ? os->type : "",
+		os->tx_mtu, os->object);
+
+	if (os->aborted)
+		return -EPERM;
+
+	if (os->object == NULL) {
+		if (os->buf == NULL && os->finished == FALSE)
+			return -EIO;
+
+		len = MIN(os->size - os->offset, os->tx_mtu);
+		ptr = os->buf + os->offset;
+		goto add_header;
+	}
+
+	len = os->driver->read(os->object, os->buf, os->tx_mtu);
+	if (len < 0) {
+		error("read(): %s (%d)", strerror(-len), -len);
+		if (len == -EAGAIN)
+			return len;
+		else if (len == -ENOSTR)
+			return 0;
+
+		g_free(os->buf);
+		os->buf = NULL;
+		return len;
+	}
+
+	if (!os->stream)
+		return 0;
+
+	ptr = os->buf;
+
+add_header:
+
+	hd.bs = ptr;
+
+	if (len == 0) {
+		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, 0,
+					OBEX_FL_STREAM_DATAEND);
+		g_free(os->buf);
+		os->buf = NULL;
+		return len;
+	}
+
+	os->offset += len;
+
+	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, len,
+				OBEX_FL_STREAM_DATA);
+
+	return len;
+}
+
+static gboolean handle_async_io(gpointer object, int flags, int err,
+						gpointer user_data)
+{
+	struct obex_session *os = user_data;
+	int ret = 0;
+
+	if (err < 0) {
+		ret = err;
+		goto proceed;
+	}
+
+	if (flags & (G_IO_IN | G_IO_PRI))
+		ret = obex_write_stream(os, os->obex, os->obj);
+	else if (flags & G_IO_OUT)
+		ret = obex_read_stream(os, os->obex, os->obj);
+
+proceed:
+	switch (ret) {
+	case -EINVAL:
+		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_BAD_REQUEST,
+				OBEX_RSP_BAD_REQUEST);
+	case -EPERM:
+		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_FORBIDDEN,
+					OBEX_RSP_FORBIDDEN);
+		break;
+	default:
+		if (ret < 0)
+			OBEX_ObjectSetRsp(os->obj,
+					OBEX_RSP_INTERNAL_SERVER_ERROR,
+					OBEX_RSP_INTERNAL_SERVER_ERROR);
+		break;
+	}
+
+	OBEX_ResumeRequest(os->obex);
+
+	return FALSE;
+}
+
 static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hd;
@@ -397,24 +550,34 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		}
 	}
 
-	err = os->service->get(os, obj, os->service_data);
-	if (err == 0) {
-		if (os->size != OBJECT_SIZE_UNKNOWN) {
-			hd.bq4 = os->size;
-			OBEX_ObjectAddHeader(obex, obj,
-					OBEX_HDR_LENGTH, hd, 4, 0);
-		}
+	err = os->service->get(os, obj, &os->stream, os->service_data);
 
-		/* Add body header */
-		hd.bs = NULL;
-		if (os->size == 0)
-			OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
-					hd, 0, OBEX_FL_FIT_ONE_PACKET);
-		else
-			OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
-					hd, 0, OBEX_FL_STREAM_START);
+	if (err < 0)
+		goto done;
+
+	if (os->size != OBJECT_SIZE_UNKNOWN) {
+		hd.bq4 = os->size;
+		OBEX_ObjectAddHeader(obex, obj,
+				OBEX_HDR_LENGTH, hd, 4, 0);
 	}
 
+	/* Add body header */
+	hd.bs = NULL;
+	if (os->size == 0)
+		OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
+				hd, 0, OBEX_FL_FIT_ONE_PACKET);
+	else if (!os->stream) {
+		/* Asynchronous operation that doesn't use stream */
+		OBEX_SuspendRequest(obex, obj);
+		os->obj = obj;
+		os->driver->set_io_watch(os->object, handle_async_io, os);
+		return;
+	} else
+		/* Standard data stream */
+		OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
+				hd, 0, OBEX_FL_STREAM_START);
+
+done:
 	os_set_response(obj, err);
 }
 
@@ -500,62 +663,6 @@ fail:
 	return err;
 }
 
-static gint obex_write_stream(struct obex_session *os,
-			obex_t *obex, obex_object_t *obj)
-{
-	obex_headerdata_t hd;
-	gint32 len;
-	guint8 *ptr;
-
-	debug("obex_write_stream: name=%s type=%s tx_mtu=%d file=%p",
-		os->name ? os->name : "", os->type ? os->type : "",
-		os->tx_mtu, os->object);
-
-	if (os->aborted)
-		return -EPERM;
-
-	if (os->object == NULL) {
-		if (os->buf == NULL && os->finished == FALSE)
-			return -EIO;
-
-		len = MIN(os->size - os->offset, os->tx_mtu);
-		ptr = os->buf + os->offset;
-		goto add_header;
-	}
-
-	len = os->driver->read(os->object, os->buf, os->tx_mtu);
-	if (len < 0) {
-		error("read(): %s (%d)", strerror(-len), -len);
-		if (len == -EAGAIN)
-			return len;
-
-		g_free(os->buf);
-		os->buf = NULL;
-		return len;
-	}
-
-	ptr = os->buf;
-
-add_header:
-
-	hd.bs = ptr;
-
-	if (len == 0) {
-		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, 0,
-					OBEX_FL_STREAM_DATAEND);
-		g_free(os->buf);
-		os->buf = NULL;
-		return len;
-	}
-
-	os->offset += len;
-
-	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, len,
-				OBEX_FL_STREAM_DATA);
-
-	return len;
-}
-
 int obex_put_stream_start(struct obex_session *os,
 		const gchar *filename, gpointer driver_data)
 {
@@ -597,99 +704,6 @@ int obex_put_stream_start(struct obex_session *os,
 	}
 
 	return 0;
-}
-
-static gint obex_read_stream(struct obex_session *os, obex_t *obex,
-				obex_object_t *obj)
-{
-	gint size;
-	gint32 len = 0;
-	const guint8 *buffer;
-
-	if (os->aborted)
-		return -EPERM;
-
-	/* workaround: client didn't send the object lenght */
-	if (os->size == OBJECT_SIZE_DELETE)
-		os->size = OBJECT_SIZE_UNKNOWN;
-
-	size = OBEX_ObjectReadStream(obex, obj, &buffer);
-	if (size < 0) {
-		error("Error on OBEX stream");
-		return -EIO;
-	}
-
-	if (size > os->rx_mtu) {
-		error("Received more data than RX_MAX");
-		return -EIO;
-	}
-
-	if (os->object == NULL && size > 0) {
-		os->buf = g_realloc(os->buf, os->offset + size);
-		memcpy(os->buf + os->offset, buffer, size);
-		os->offset += size;
-
-		debug("Stored %u bytes into temporary buffer", size);
-
-		return 0;
-	}
-
-	while (len < size) {
-		gint w;
-
-		w = os->driver->write(os->object, buffer + len, size - len);
-		if (w < 0) {
-			if (w == -EINTR)
-				continue;
-			else
-				return w;
-		}
-
-		len += w;
-	}
-
-	os->offset += len;
-
-	return 0;
-}
-
-static gboolean handle_async_io(gpointer object, int flags, int err,
-				gpointer user_data)
-{
-	struct obex_session *os = user_data;
-	int ret = 0;
-
-	if (err < 0) {
-		ret = err;
-		goto proceed;
-	}
-
-	if (flags & (G_IO_IN | G_IO_PRI))
-		ret = obex_write_stream(os, os->obex, os->obj);
-	else if (flags & G_IO_OUT)
-		ret = obex_read_stream(os, os->obex, os->obj);
-
-proceed:
-	switch (ret) {
-	case -EINVAL:
-		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_BAD_REQUEST,
-				OBEX_RSP_BAD_REQUEST);
-		break;
-	case -EPERM:
-		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_FORBIDDEN,
-					OBEX_RSP_FORBIDDEN);
-		break;
-	default:
-		if (ret < 0)
-			OBEX_ObjectSetRsp(os->obj,
-					OBEX_RSP_INTERNAL_SERVER_ERROR,
-					OBEX_RSP_INTERNAL_SERVER_ERROR);
-		break;
-	}
-
-	OBEX_ResumeRequest(os->obex);
-
-	return FALSE;
 }
 
 static gboolean check_put(obex_t *obex, obex_object_t *obj)
@@ -1227,6 +1241,17 @@ ssize_t obex_aparam_read(struct obex_session *os,
 	}
 
 	return -EBADR;
+}
+
+int obex_aparam_write(struct obex_session *os,
+		obex_object_t *obj, const guint8 *data, guint size)
+{
+	obex_headerdata_t hd;
+
+	hd.bs = data;
+
+	return OBEX_ObjectAddHeader(os->obex, obj,
+			OBEX_HDR_APPARAM, hd, size, 0);
 }
 
 int memcmp0(const void *a, const void *b, size_t n)

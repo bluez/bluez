@@ -70,6 +70,10 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 
 	/* FIXME: Missing 0.vcf */
 
+	/* PCE wants only the number of indexes in the phonebook */
+	if (maxcount == 0)
+		goto done;
+
 	for (; l && count < maxcount; l = g_list_next(l), count++) {
 		EContact *contact;
 		EVCard *evcard;
@@ -82,6 +86,7 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 		g_free(vcard);
 	}
 
+done:
 	data->cb(string->str, string->len,
 			g_list_length(contacts), 0, data->user_data);
 

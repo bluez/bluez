@@ -31,6 +31,7 @@
 #include <glib.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -131,7 +132,9 @@ struct pbap_session {
 	struct obex_session *os;
 	struct apparam_field *params;
 	gchar *folder;
-	GString *buffer;
+	GString	*buffer;
+	guint16	phonebooksize;
+	obex_object_t *object;
 };
 
 static const guint8 PBAP_TARGET[TARGET_SIZE] = {
@@ -143,6 +146,29 @@ static void set_folder(struct pbap_session *pbap, const char *new_folder)
 	g_free(pbap->folder);
 
 	pbap->folder = new_folder ? g_strdup(new_folder) : NULL;
+}
+
+static void phonebook_size_result(const gchar *buffer, size_t bufsize,
+			gint vcards, gint missed, gpointer user_data)
+{
+	struct pbap_session *pbap = user_data;
+
+	pbap->phonebooksize = vcards;
+
+	obex_object_set_io_flags(pbap, G_IO_IN, 0);
+}
+
+static void query_result(const gchar *buffer, size_t bufsize,
+		gint vcards, gint missed, gpointer user_data)
+{
+	struct pbap_session *pbap = user_data;
+
+	if (!pbap->buffer)
+		pbap->buffer = g_string_new_len(buffer, bufsize);
+	else
+		pbap->buffer = g_string_append_len(pbap->buffer, buffer, bufsize);
+
+	obex_object_set_io_flags(pbap, G_IO_IN, 0);
 }
 
 static struct apparam_field *parse_aparam(const guint8 *buffer, guint32 hlen)
@@ -237,7 +263,7 @@ static gpointer pbap_connect(struct obex_session *os, int *err)
 }
 
 static int pbap_get(struct obex_session *os, obex_object_t *obj,
-		gpointer user_data)
+			gboolean *stream, gpointer user_data)
 {
 	struct pbap_session *pbap = user_data;
 	const gchar *type = obex_get_type(os);
@@ -286,7 +312,13 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 		g_free(pbap->params);
 	}
 
+	if (params->maxlistcount == 0)
+		*stream = FALSE;
+	else
+		*stream = TRUE;
+
 	pbap->params = params;
+	pbap->object = obj;
 
 	ret = obex_get_stream_start(os, path, pbap);
 failed:
@@ -365,19 +397,6 @@ static struct obex_service_driver pbap = {
 	.chkput = pbap_chkput
 };
 
-static void query_result(const gchar *buffer, size_t bufsize,
-		gint vcards, gint missed, gpointer user_data)
-{
-	struct pbap_session *pbap = user_data;
-
-	if (!pbap->buffer)
-		pbap->buffer = g_string_new_len(buffer, bufsize);
-	else
-		pbap->buffer = g_string_append_len(pbap->buffer, buffer, bufsize);
-
-	obex_object_set_io_flags(pbap, G_IO_IN, 0);
-}
-
 static gpointer vobject_open(const char *name, int oflag, mode_t mode,
 		gpointer context, size_t *size, int *err)
 {
@@ -389,7 +408,17 @@ static gpointer vobject_open(const char *name, int oflag, mode_t mode,
 		goto fail;
 	}
 
-	ret = phonebook_pull(name, pbap->params, query_result, pbap);
+	/*
+	 * Zero means that the PCE wants to know the number of used indexes in
+	 * the phone book of interest. PSE shall ignore all other application
+	 * parameter that may be present in the request.
+	 */
+	if (pbap->params->maxlistcount == 0)
+		ret = phonebook_pull(name, pbap->params,
+				phonebook_size_result, pbap);
+	else
+		ret = phonebook_pull(name, pbap->params, query_result, pbap);
+
 	if (ret < 0)
 		goto fail;
 
@@ -409,6 +438,23 @@ static ssize_t vobject_read(gpointer object, void *buf, size_t count)
 {
 	struct pbap_session *pbap = object;
 
+	/* PhoneBookSize */
+	if (pbap->params->maxlistcount == 0) {
+		guint8 data[4];
+		guint16 phonebooksize;
+		struct aparam_header *hdr = (struct aparam_header *) data;
+
+		phonebooksize = htons(pbap->phonebooksize);
+		hdr->tag = PHONEBOOKSIZE_TAG;
+		hdr->len = PHONEBOOKSIZE_LEN;
+		memcpy(hdr->val, &phonebooksize, sizeof(phonebooksize));
+
+		obex_aparam_write(pbap->os, pbap->object, data, sizeof(data));
+
+		return 0;
+	}
+
+	/* Stream data */
 	if (pbap->buffer)
 		return string_read(pbap->buffer, buf, count);
 

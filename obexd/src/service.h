@@ -32,7 +32,8 @@ struct obex_service_driver {
 	const gchar *record;
 	gpointer (*connect) (struct obex_session *os, int *err);
 	void (*progress) (struct obex_session *os, gpointer user_data);
-	int (*get) (struct obex_session *os, obex_object_t *obj, gpointer user_data);
+	int (*get) (struct obex_session *os, obex_object_t *obj,
+			gboolean *stream, gpointer user_data);
 	int (*put) (struct obex_session *os, gpointer user_data);
 	gint (*chkput) (struct obex_session *os, gpointer user_data);
 	int (*setpath) (struct obex_session *os, obex_object_t *obj, gpointer user_data);

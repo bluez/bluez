@@ -193,7 +193,7 @@ static gpointer ftp_connect(struct obex_session *os, int *err)
 }
 
 static int ftp_get(struct obex_session *os, obex_object_t *obj,
-		gpointer user_data)
+			gboolean *stream, gpointer user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *type = obex_get_type(os);
@@ -205,6 +205,9 @@ static int ftp_get(struct obex_session *os, obex_object_t *obj,
 	ret = get_by_type(ftp, type);
 	if (ret < 0)
 		return ret;
+
+	if (stream)
+		*stream = TRUE;
 
 	return 0;
 }
