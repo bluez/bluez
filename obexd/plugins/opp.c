@@ -118,8 +118,11 @@ static gint opp_chkput(struct obex_session *os, gpointer user_data)
 	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return -EINVAL;
 
-	if (obex_get_auto_accept(os))
+	if (obex_get_auto_accept(os)) {
+		folder = g_strdup(obex_get_root_folder(os));
+		name = g_strdup(obex_get_name(os));
 		goto skip_auth;
+	}
 
 	time = 0;
 	ret = manager_request_authorization(os, time, &folder, &name);
