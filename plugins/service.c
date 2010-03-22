@@ -640,6 +640,8 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 	}
 
 	record = sdp_record_find(user_record->handle);
+	if (record == NULL)
+		return not_authorized(msg);
 
 	if (sdp_get_service_classes(record, &services) < 0) {
 		sdp_record_free(record);
