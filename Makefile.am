@@ -132,7 +132,7 @@ builtin_nodist += audio/telephony.c
 noinst_LIBRARIES = audio/libtelephony.a
 
 audio_libtelephony_a_SOURCES = audio/telephony.h audio/telephony-dummy.c \
-                                audio/telephony-maemo.c audio/telephony-ofono.c
+                                audio/telephony-maemo5.c audio/telephony-ofono.c
 endif
 
 if INPUTPLUGIN
@@ -218,7 +218,7 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf network/network.conf \
 			input/input.conf serial/serial.conf \
 			audio/audio.conf audio/telephony-dummy.c \
-			audio/telephony-maemo.c audio/telephony-ofono.c
+			audio/telephony-maemo5.c audio/telephony-ofono.c
 
 
 if ALSA
