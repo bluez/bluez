@@ -113,7 +113,10 @@ static int init_server(uint16_t mtu, int master, int compat)
 		}
 	}
 
-	listen(l2cap_sock, 5);
+	if (listen(l2cap_sock, 5) < 0) {
+		error("listen: %s", strerror(errno));
+		return -1;
+	}
 
 	if (!compat) {
 		unix_sock = -1;
@@ -138,7 +141,10 @@ static int init_server(uint16_t mtu, int master, int compat)
 		return -1;
 	}
 
-	listen(unix_sock, 5);
+	if (listen(unix_sock, 5) < 0) {
+		error("listen UNIX socket: %s", strerror(errno));
+		return -1;
+	}
 
 	chmod(SDP_UNIX_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 
