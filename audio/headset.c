@@ -574,10 +574,14 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	if (err) {
 		error("%s", err->message);
 
-		if (p && p->msg)
-			error_connection_attempt_failed(dev->conn, p->msg, p->err);
-
-		pending_connect_finalize(dev);
+		if (p != NULL) {
+			p->err = -errno;
+			if (p->msg)
+				error_connection_attempt_failed(dev->conn,
+								p->msg,
+								p->err);
+			pending_connect_finalize(dev);
+		}
 
 		if (hs->rfcomm)
 			headset_set_state(dev, HEADSET_STATE_CONNECTED);
