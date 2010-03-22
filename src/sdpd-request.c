@@ -1040,20 +1040,33 @@ void handle_request(int sk, uint8_t *data, int len)
 	sdp_req_t req;
 
 	size = sizeof(sa);
-	if (getpeername(sk, (struct sockaddr *) &sa, &size) < 0)
+	if (getpeername(sk, (struct sockaddr *) &sa, &size) < 0) {
+		error("getpeername: %s", strerror(errno));
 		return;
+	}
 
-	if (sa.l2_family == AF_BLUETOOTH) { 
+	if (sa.l2_family == AF_BLUETOOTH) {
 		struct l2cap_options lo;
+
 		memset(&lo, 0, sizeof(lo));
 		size = sizeof(lo);
-		getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &lo, &size);
+
+		if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &lo, &size) < 0) {
+			error("getsockopt: %s", strerror(errno));
+			return;
+		}
+
 		bacpy(&req.bdaddr, &sa.l2_bdaddr);
 		req.mtu = lo.omtu;
 		req.local = 0;
 		memset(&sa, 0, sizeof(sa));
 		size = sizeof(sa);
-		getsockname(sk, (struct sockaddr *) &sa, &size);
+
+		if (getsockname(sk, (struct sockaddr *) &sa, &size) < 0) {
+			error("getsockname: %s", strerror(errno));
+			return;
+		}
+
 		bacpy(&req.device, &sa.l2_bdaddr);
 	} else {
 		bacpy(&req.device, BDADDR_ANY);
