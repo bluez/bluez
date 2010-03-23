@@ -162,40 +162,15 @@ static gint get_by_type(struct ftp_session *ftp, const gchar *type)
 	const char *capability = obex_get_capability_path(os);
 
 	if (type == NULL)
-		return -ENOENT;
+		return obex_stream_start(os, ftp->folder, os);
 
 	if (g_str_equal(type, CAP_TYPE))
-		return obex_stream_start(os, capability, NULL);
+		return obex_stream_start(os, capability, os);
 
 	if (g_str_equal(type, LST_TYPE))
 		return obex_stream_start(os, ftp->folder, os);
 
 	return -ENOENT;
-}
-
-static gint ftp_prepare_get(struct ftp_session *ftp, gchar *file)
-{
-	struct obex_session *os = ftp->os;
-	const char *root_folder = obex_get_root_folder(os);
-	gboolean root;
-
-	root = g_str_equal(root_folder, ftp->folder);
-
-	if (!root || !obex_get_symlinks(os)) {
-		struct stat dstat;
-		gint err;
-
-		if (lstat(file, &dstat) < 0) {
-			err = -errno;
-			debug("lstat: %s(%d)", strerror(errno), errno);
-			return err;
-		}
-
-		if (S_ISLNK(dstat.st_mode))
-			return -EPERM;
-	}
-
-	return obex_stream_start(os, file, NULL);
 }
 
 static gpointer ftp_connect(struct obex_session *os, int *err)
@@ -222,34 +197,16 @@ static int ftp_get(struct obex_session *os, obex_object_t *obj,
 {
 	struct ftp_session *ftp = user_data;
 	const char *type = obex_get_type(os);
-	const char *name = obex_get_name(os);
-	gint err;
-	gchar *path;
+	int ret;
 
-	if (ftp->folder == NULL) {
-		err = -ENOENT;
-		goto fail;
-	}
+	if (ftp->folder == NULL)
+		return -ENOENT;
 
-	err = get_by_type(ftp, type);
-	if (err < 0) {
-		if (!name)
-			goto fail;
-
-		path = g_build_filename(ftp->folder, name, NULL);
-
-		err = ftp_prepare_get(ftp, path);
-
-		g_free(path);
-
-		if (err < 0)
-			goto fail;
-	}
+	ret = get_by_type(ftp, type);
+	if (ret < 0)
+		return ret;
 
 	return 0;
-
-fail:
-	return err;
 }
 
 static gint ftp_delete(struct ftp_session *ftp, const char *name)

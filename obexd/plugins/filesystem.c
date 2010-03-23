@@ -126,8 +126,11 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
 		gpointer context, size_t *size, int *err)
 {
+	struct obex_session *os = context;
 	struct stat stats;
 	struct statvfs buf;
+	const char *root_folder, *folder;
+	gboolean root;
 	int fd = open(name, oflag, mode);
 
 	if (fd < 0) {
@@ -140,6 +143,19 @@ static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
 		if (err)
 			*err = -errno;
 		goto failed;
+	}
+
+	root_folder = obex_get_root_folder(os);
+	folder = g_path_get_dirname(name);
+	root = g_strcmp0(folder, root_folder);
+
+	if (!root || obex_get_symlinks(os)) {
+		if (S_ISLNK(stats.st_mode)) {
+			if (err)
+				*err = -EPERM;
+			goto failed;
+		}
+
 	}
 
 	if (oflag == O_RDONLY) {
