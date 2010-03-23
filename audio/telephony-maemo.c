@@ -1412,9 +1412,15 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_message_get_args(reply, NULL,
+	dbus_error_init(&err);
+	if (dbus_message_get_args(reply, &err,
 				DBUS_TYPE_INT32, &level,
-				DBUS_TYPE_INVALID);
+				DBUS_TYPE_INVALID) == FALSE) {
+		error("Unable to parse GetPropertyInteger reply: %s, %s",
+							err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
 
 	*value = (int) level;
 
@@ -1595,7 +1601,7 @@ static void signal_strength_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	dbus_error_init(&err);
-	if (!dbus_message_get_args(reply, NULL,
+	if (!dbus_message_get_args(reply, &err,
 					DBUS_TYPE_BYTE, &signals_bar,
 					DBUS_TYPE_BYTE, &rssi_in_dbm,
 					DBUS_TYPE_INT32, &net_err,
@@ -1645,7 +1651,7 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	dbus_error_init(&err);
-	if (!dbus_message_get_args(reply, NULL,
+	if (!dbus_message_get_args(reply, &err,
 					DBUS_TYPE_BYTE, &status,
 					DBUS_TYPE_UINT16, &lac,
 					DBUS_TYPE_UINT32, &cell_id,
@@ -1792,14 +1798,12 @@ static void phonebook_read_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	dbus_error_init(&derr);
-	dbus_message_get_args(reply, NULL,
+	if (dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_STRING, &number,
 				DBUS_TYPE_INT32, &current_location,
 				DBUS_TYPE_INT32, &err,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_error_is_set(&derr)) {
+				DBUS_TYPE_INVALID) == FALSE) {
 		error("Unable to parse SIM.Phonebook.read arguments: %s, %s",
 				derr.name, derr.message);
 		dbus_error_free(&derr);

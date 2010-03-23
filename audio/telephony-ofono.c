@@ -888,9 +888,15 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_message_get_args(reply, NULL,
+	dbus_error_init(&err);
+	if (dbus_message_get_args(reply, &err,
 				DBUS_TYPE_INT32, &level,
-				DBUS_TYPE_INVALID);
+				DBUS_TYPE_INVALID) == FALSE) {
+		error("Unable to parse GetPropertyInteger reply: %s, %s",
+							err.name, err.message);
+		dbus_error_free(&err);
+		goto done;
+	}
 
 	*value = (int) level;
 
