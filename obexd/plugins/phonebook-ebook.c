@@ -67,6 +67,8 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 	GString *string = g_string_new("");
 	GList *l = g_list_nth(contacts, data->params->liststartoffset);
 	guint count = 0, maxcount = data->params->maxlistcount;
+	guint format = (data->params->format ?
+			EVC_FORMAT_VCARD_30 : EVC_FORMAT_VCARD_21);
 
 	/* FIXME: Missing 0.vcf */
 
@@ -81,7 +83,7 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 
 		contact = E_CONTACT(contacts->data);
 		evcard = E_VCARD(contact);
-		vcard = e_vcard_to_string(evcard, EVC_FORMAT_VCARD_30);
+		vcard = e_vcard_to_string(evcard, format);
 		string = g_string_append(string, vcard);
 		g_free(vcard);
 	}
