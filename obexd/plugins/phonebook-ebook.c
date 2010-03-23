@@ -60,6 +60,75 @@ struct query_data {
 
 static EBook *ebook = NULL;
 
+static gchar *attribute_mask[] = {
+/* 0 */		"VERSION",
+		"FN",
+		"N",
+		"PHOTO",
+		"BDAY",
+		"ADR",
+		"LABEL",
+		"TEL",
+/* 8 */		"EMAIL",
+		"MAILER",
+		"TZ",
+		"GEO",
+		"TITLE",
+		"ROLE",
+		"LOGO",
+		"AGENT",
+/* 16 */	"ORG",
+		"NOTE",
+		"REV",
+		"SOUND",
+		"URL",
+		"UID",
+		"KEY",
+		"NICKNAME",
+/* 24 */	"CATEGORIES",
+		"PROID",
+		"CLASS",
+		"SORT-STRING",
+/* 28 */	"X-IRMC-CALL-DATETIME",
+		NULL
+
+};
+
+static gchar *vcard_to_string(EVCard *evcard, guint format, guint64 filter)
+{
+	EVCardAttribute *attrib;
+	EVCard *evcard2;
+	gchar *vcard;
+	guint i;
+
+	if (!filter)
+		return e_vcard_to_string(evcard, format);
+
+	/*
+	 * Mandatory attributes for vCard 2.1 are VERSION ,N and TEL.
+	 * Mandatory attributes for vCard 3.0 are VERSION, N, FN and TEL
+	 */
+	filter = (format == EVC_FORMAT_VCARD_30 ? filter | 0x85: filter | 0x87);
+
+	evcard2 = e_vcard_new();
+	for (i = 0; i < 29; i++) {
+		if (!(filter & (1 << i)))
+			continue;
+
+		attrib = e_vcard_get_attribute(evcard, attribute_mask[i]);
+		if (!attrib)
+			continue;
+
+		e_vcard_add_attribute(evcard2, e_vcard_attribute_copy(attrib));
+	}
+
+	vcard = e_vcard_to_string(evcard2, format);
+	g_object_unref(evcard2);
+
+	return vcard;
+
+}
+
 static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 				gpointer user_data)
 {
@@ -67,8 +136,6 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 	GString *string = g_string_new("");
 	GList *l = g_list_nth(contacts, data->params->liststartoffset);
 	guint count = 0, maxcount = data->params->maxlistcount;
-	guint format = (data->params->format ?
-			EVC_FORMAT_VCARD_30 : EVC_FORMAT_VCARD_21);
 
 	/* FIXME: Missing 0.vcf */
 
@@ -83,7 +150,10 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 
 		contact = E_CONTACT(contacts->data);
 		evcard = E_VCARD(contact);
-		vcard = e_vcard_to_string(evcard, format);
+
+		vcard = vcard_to_string(evcard,
+				data->params->format, data->params->filter);
+
 		string = g_string_append(string, vcard);
 		g_free(vcard);
 	}
