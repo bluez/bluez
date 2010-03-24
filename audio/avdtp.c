@@ -804,7 +804,7 @@ static gboolean stream_timeout(gpointer user_data)
 	struct avdtp_stream *stream = user_data;
 	struct avdtp *session = stream->session;
 
-	avdtp_close(session, stream);
+	avdtp_close(session, stream, FALSE);
 
 	stream->idle_timer = 0;
 
@@ -3475,7 +3475,8 @@ int avdtp_start(struct avdtp *session, struct avdtp_stream *stream)
 							&req, sizeof(req));
 }
 
-int avdtp_close(struct avdtp *session, struct avdtp_stream *stream)
+int avdtp_close(struct avdtp *session, struct avdtp_stream *stream,
+		gboolean immediate)
 {
 	struct seid_req req;
 	int ret;
@@ -3490,6 +3491,9 @@ int avdtp_close(struct avdtp *session, struct avdtp_stream *stream)
 		error("avdtp_close: rejecting since close is already initiated");
 		return -EINVAL;
 	}
+
+	if (immediate && session->req && stream == session->req->stream)
+		return avdtp_abort(session, stream);
 
 	memset(&req, 0, sizeof(req));
 	req.acp_seid = stream->rseid;

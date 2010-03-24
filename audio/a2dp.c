@@ -1393,7 +1393,7 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 
 		if (l != NULL) {
 			setup->reconfigure = TRUE;
-			if (avdtp_close(session, tmp->stream) < 0) {
+			if (avdtp_close(session, tmp->stream, FALSE) < 0) {
 				error("avdtp_close failed");
 				goto failed;
 			}
@@ -1423,7 +1423,7 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 			g_idle_add((GSourceFunc) finalize_config, setup);
 		} else if (!setup->reconfigure) {
 			setup->reconfigure = TRUE;
-			if (avdtp_close(session, sep->stream) < 0) {
+			if (avdtp_close(session, sep->stream, FALSE) < 0) {
 				error("avdtp_close failed");
 				goto failed;
 			}

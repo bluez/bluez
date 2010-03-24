@@ -275,7 +275,8 @@ int avdtp_reconfigure(struct avdtp *session, GSList *caps,
 			struct avdtp_stream *stream);
 int avdtp_start(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_suspend(struct avdtp *session, struct avdtp_stream *stream);
-int avdtp_close(struct avdtp *session, struct avdtp_stream *stream);
+int avdtp_close(struct avdtp *session, struct avdtp_stream *stream,
+		gboolean immediate);
 int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 							uint16_t delay);

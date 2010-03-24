@@ -171,7 +171,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 
 	debug("Source: disconnect %s", device->path);
 
-	avdtp_close(source->session, source->stream);
+	avdtp_close(source->session, source->stream, TRUE);
 }
 
 static void stream_state_changed(struct avdtp_stream *stream,
@@ -596,7 +596,7 @@ static DBusMessage *source_disconnect(DBusConnection *conn,
 		return reply;
 	}
 
-	err = avdtp_close(source->session, source->stream);
+	err = avdtp_close(source->session, source->stream, FALSE);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 						"%s", strerror(-err));
@@ -762,7 +762,7 @@ gboolean source_shutdown(struct source *source)
 	if (!source->stream)
 		return FALSE;
 
-	if (avdtp_close(source->session, source->stream) < 0)
+	if (avdtp_close(source->session, source->stream, FALSE) < 0)
 		return FALSE;
 
 	return TRUE;

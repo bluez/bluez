@@ -178,7 +178,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 
 	debug("Sink: disconnect %s", device->path);
 
-	avdtp_close(sink->session, sink->stream);
+	avdtp_close(sink->session, sink->stream, TRUE);
 }
 
 static void stream_state_changed(struct avdtp_stream *stream,
@@ -634,7 +634,7 @@ static DBusMessage *sink_disconnect(DBusConnection *conn,
 		return reply;
 	}
 
-	err = avdtp_close(sink->session, sink->stream);
+	err = avdtp_close(sink->session, sink->stream, FALSE);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 						"%s", strerror(-err));
@@ -836,7 +836,7 @@ gboolean sink_shutdown(struct sink *sink)
 	if (!sink->stream)
 		return FALSE;
 
-	if (avdtp_close(sink->session, sink->stream) < 0)
+	if (avdtp_close(sink->session, sink->stream, FALSE) < 0)
 		return FALSE;
 
 	return TRUE;
