@@ -88,7 +88,6 @@ struct a2dp_setup {
 	struct avdtp_error *err;
 	GSList *client_caps;
 	gboolean reconfigure;
-	gboolean canceled;
 	gboolean start;
 	GSList *cb;
 	int ref;
@@ -605,13 +604,6 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!setup)
 		return;
 
-	if (setup->canceled) {
-		if (!err)
-			avdtp_close(session, stream);
-		setup_unref(setup);
-		return;
-	}
-
 	if (setup->reconfigure)
 		setup->reconfigure = FALSE;
 
@@ -649,12 +641,8 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		debug("Source %p: Start_Ind", sep);
 
 	setup = find_setup_by_session(session);
-	if (setup) {
-		if (setup->canceled)
-			setup_unref(setup);
-		else
-			finalize_resume(setup);
-	}
+	if (setup)
+		finalize_resume(setup);
 
 	if (!a2dp_sep->locked) {
 		a2dp_sep->session = avdtp_ref(session);
@@ -681,13 +669,6 @@ static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	setup = find_setup_by_session(session);
 	if (!setup)
 		return;
-
-	if (setup->canceled) {
-		if (!err)
-			avdtp_close(session, stream);
-		setup_unref(setup);
-		return;
-	}
 
 	if (err) {
 		setup->stream = NULL;
@@ -843,11 +824,6 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!setup)
 		return;
 
-	if (setup->canceled) {
-		setup_unref(setup);
-		return;
-	}
-
 	if (err) {
 		setup->stream = NULL;
 		setup->err = err;
@@ -939,13 +915,6 @@ static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	setup = find_setup_by_session(session);
 	if (!setup)
 		return;
-
-	if (setup->canceled) {
-		if (!err)
-			avdtp_close(session, stream);
-		setup_unref(setup);
-		return;
-	}
 
 	if (err) {
 		setup->stream = NULL;
@@ -1610,10 +1579,10 @@ gboolean a2dp_cancel(struct audio_device *dev, unsigned int id)
 	setup->cb = g_slist_remove(setup->cb, cb_data);
 	g_free(cb_data);
 
-	if (!setup->cb) {
-		setup->canceled = TRUE;
-		setup->sep = NULL;
-	}
+	if (setup->cb)
+		return TRUE;
+
+	avdtp_abort(setup->session, setup->stream);
 
 	return TRUE;
 }

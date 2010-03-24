@@ -3527,7 +3527,8 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 	if (!g_slist_find(session->streams, stream))
 		return -EINVAL;
 
-	if (stream->lsep->state <= AVDTP_STATE_OPEN)
+	if (stream->lsep->state == AVDTP_STATE_IDLE ||
+			stream->lsep->state == AVDTP_STATE_ABORTING)
 		return -EINVAL;
 
 	if (session->req && stream == session->req->stream)
