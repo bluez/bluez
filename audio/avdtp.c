@@ -88,6 +88,7 @@
 #define AVDTP_MSG_TYPE_REJECT			0x03
 
 #define REQ_TIMEOUT 4
+#define ABORT_TIMEOUT 2
 #define DISCONNECT_TIMEOUT 1
 #define STREAM_TIMEOUT 20
 
@@ -2558,7 +2559,8 @@ static int send_req(struct avdtp *session, gboolean priority,
 
 	session->req = req;
 
-	req->timeout = g_timeout_add_seconds(REQ_TIMEOUT,
+	req->timeout = g_timeout_add_seconds(req->signal_id == AVDTP_ABORT ?
+					ABORT_TIMEOUT : REQ_TIMEOUT,
 					request_timeout,
 					session);
 	return 0;
