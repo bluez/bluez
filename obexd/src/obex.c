@@ -454,19 +454,19 @@ static void cmd_setpath(struct obex_session *os,
 }
 
 int obex_stream_start(struct obex_session *os,
-		const gchar *filename, gpointer context)
+		const gchar *filename, gpointer driver_data)
 {
 	gint err;
 	gpointer object;
 	size_t size;
 
-	object = os->driver->open(filename, O_RDONLY, 0, context, &size, &err);
+	object = os->driver->open(filename, O_RDONLY, 0, driver_data, &size, &err);
 	if (object == NULL) {
 		error("open(%s): %s (%d)", filename, strerror(-err), -err);
 		goto fail;
 	}
 
-	os->driver->context = context;
+	os->driver->driver_data = driver_data;
 	os->object = object;
 	os->offset = 0;
 	os->size = size;
@@ -545,7 +545,7 @@ gint obex_prepare_put(struct obex_session *os, const gchar *filename)
 	int err;
 
 	os->object = os->driver->open(filename, O_WRONLY | O_CREAT | O_TRUNC,
-					0600, os->driver->context,
+					0600, os->driver->driver_data,
 					os->size != OBJECT_SIZE_UNKNOWN ?
 					(size_t *) &os->size : NULL, &err);
 	if (os->object == NULL) {
