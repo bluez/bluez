@@ -2052,7 +2052,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
 	struct btd_device *device = auth->device;
 
 	/* No need to reply anything if the authentication already failed */
-	if (!auth || !auth->cb)
+	if (auth->cb == NULL)
 		return;
 
 	((agent_pincode_cb) auth->cb)(agent, err, pincode, device);
@@ -2067,7 +2067,7 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *data)
 	struct btd_device *device = auth->device;
 
 	/* No need to reply anything if the authentication already failed */
-	if (!auth || !auth->cb)
+	if (auth->cb == NULL)
 		return;
 
 	((agent_cb) auth->cb)(agent, err, device);
@@ -2083,7 +2083,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	struct btd_device *device = auth->device;
 
 	/* No need to reply anything if the authentication already failed */
-	if (!auth || !auth->cb)
+	if (auth->cb == NULL)
 		return;
 
 	((agent_passkey_cb) auth->cb)(agent, err, passkey, device);
@@ -2152,12 +2152,15 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 
 static void cancel_authentication(struct authentication_req *auth)
 {
-	struct btd_device *device = auth->device;
-	struct agent *agent = auth->agent;
+	struct btd_device *device;
+	struct agent *agent;
 	DBusError err;
 
 	if (!auth || !auth->cb)
 		return;
+
+	device = auth->device;
+	agent = auth->agent;
 
 	dbus_error_init(&err);
 	dbus_set_error_const(&err, "org.bluez.Error.Canceled", NULL);
