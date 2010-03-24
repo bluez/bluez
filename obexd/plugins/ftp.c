@@ -162,13 +162,13 @@ static gint get_by_type(struct ftp_session *ftp, const gchar *type)
 	const char *capability = obex_get_capability_path(os);
 
 	if (type == NULL)
-		return obex_stream_start(os, ftp->folder, os);
+		return obex_get_stream_start(os, ftp->folder, os);
 
 	if (g_str_equal(type, CAP_TYPE))
-		return obex_stream_start(os, capability, os);
+		return obex_get_stream_start(os, capability, os);
 
 	if (g_str_equal(type, LST_TYPE))
-		return obex_stream_start(os, ftp->folder, os);
+		return obex_get_stream_start(os, ftp->folder, os);
 
 	return -ENOENT;
 }
@@ -239,7 +239,7 @@ static gint ftp_chkput(struct obex_session *os, gpointer user_data)
 
 	path = g_build_filename(ftp->folder, name, NULL);
 
-	ret = obex_prepare_put(os, path);
+	ret = obex_put_stream_start(os, path, os);
 
 	g_free(path);
 

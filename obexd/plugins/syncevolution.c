@@ -230,7 +230,7 @@ static int synce_put(struct obex_session *os, gpointer user_data)
 
 static int synce_get(struct obex_session *os, obex_object_t *obj, gpointer user_data)
 {
-	return obex_stream_start(os, NULL, os);
+	return obex_get_stream_start(os, NULL, os);
 }
 
 static void close_cb(DBusPendingCall *call, void *user_data)

@@ -140,7 +140,7 @@ skip_auth:
 
 	manager_emit_transfer_started(os);
 
-	ret = obex_prepare_put(os, path);
+	ret = obex_put_stream_start(os, path, os);
 
 	g_free(path);
 	g_free(folder);
@@ -177,7 +177,7 @@ static int opp_get(struct obex_session *os, obex_object_t *obj,
 		return -EPERM;
 
 	if (g_str_equal(type, VCARD_TYPE)) {
-		if (obex_stream_start(os, VCARD_FILE, NULL) < 0)
+		if (obex_get_stream_start(os, VCARD_FILE, NULL) < 0)
 			return -ENOENT;
 
 	} else

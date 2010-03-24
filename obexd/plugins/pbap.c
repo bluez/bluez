@@ -287,8 +287,8 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 	}
 
 	pbap->params = params;
-	ret = obex_stream_start(os, path, pbap);
 
+	ret = obex_get_stream_start(os, path, pbap);
 failed:
 	g_free(path);
 
