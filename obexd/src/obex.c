@@ -581,6 +581,7 @@ proceed:
 	case -EINVAL:
 		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_BAD_REQUEST,
 				OBEX_RSP_BAD_REQUEST);
+		break;
 	case -EPERM:
 		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_FORBIDDEN,
 					OBEX_RSP_FORBIDDEN);
