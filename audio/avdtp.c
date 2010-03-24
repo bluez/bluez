@@ -2417,20 +2417,19 @@ static uint8_t req_get_seid(struct pending_req *req)
 	return ((struct seid_req *) (req->data))->acp_seid;
 }
 
-static gboolean request_timeout(gpointer user_data)
+static int cancel_request(struct avdtp *session, int err)
 {
-	struct avdtp *session = user_data;
 	struct pending_req *req;
 	struct seid_req sreq;
 	struct avdtp_local_sep *lsep;
 	struct avdtp_stream *stream;
 	uint8_t seid;
-	struct avdtp_error err;
+	struct avdtp_error averr;
 
 	req = session->req;
 	session->req = NULL;
 
-	avdtp_error_init(&err, AVDTP_ERROR_ERRNO, ETIMEDOUT);
+	avdtp_error_init(&averr, AVDTP_ERROR_ERRNO, err);
 
 	seid = req_get_seid(req);
 	if (seid)
@@ -2446,52 +2445,52 @@ static gboolean request_timeout(gpointer user_data)
 
 	switch (req->signal_id) {
 	case AVDTP_RECONFIGURE:
-		error("Reconfigure request timed out");
+		error("Reconfigure: %s (%d)", strerror(err), err);
 		if (lsep && lsep->cfm && lsep->cfm->reconfigure)
-			lsep->cfm->reconfigure(session, lsep, stream, &err,
+			lsep->cfm->reconfigure(session, lsep, stream, &averr,
 						lsep->user_data);
 		break;
 	case AVDTP_OPEN:
-		error("Open request timed out");
+		error("Open: %s (%d)", strerror(err), err);
 		if (lsep && lsep->cfm && lsep->cfm->open)
-			lsep->cfm->open(session, lsep, stream, &err,
+			lsep->cfm->open(session, lsep, stream, &averr,
 					lsep->user_data);
 		break;
 	case AVDTP_START:
-		error("Start request timed out");
+		error("Start: %s (%d)", strerror(err), err);
 		if (lsep && lsep->cfm && lsep->cfm->start)
-			lsep->cfm->start(session, lsep, stream, &err,
+			lsep->cfm->start(session, lsep, stream, &averr,
 						lsep->user_data);
 		break;
 	case AVDTP_SUSPEND:
-		error("Suspend request timed out");
+		error("Suspend: %s (%d)", strerror(err), err);
 		if (lsep && lsep->cfm && lsep->cfm->suspend)
-			lsep->cfm->suspend(session, lsep, stream, &err,
+			lsep->cfm->suspend(session, lsep, stream, &averr,
 						lsep->user_data);
 		break;
 	case AVDTP_CLOSE:
-		error("Close request timed out");
+		error("Close: %s (%d)", strerror(err), err);
 		if (lsep && lsep->cfm && lsep->cfm->close) {
-			lsep->cfm->close(session, lsep, stream, &err,
+			lsep->cfm->close(session, lsep, stream, &averr,
 						lsep->user_data);
 			if (stream)
 				stream->close_int = FALSE;
 		}
 		break;
 	case AVDTP_SET_CONFIGURATION:
-		error("SetConfiguration request timed out");
+		error("SetConfiguration: %s (%d)", strerror(err), err);
 		if (lsep && lsep->cfm && lsep->cfm->set_configuration)
 			lsep->cfm->set_configuration(session, lsep, stream,
-							&err, lsep->user_data);
+							&averr, lsep->user_data);
 		goto failed;
 	case AVDTP_DISCOVER:
-		error("Discover request timed out");
+		error("Discover: %s (%d)", strerror(err), err);
 		goto failed;
 	case AVDTP_GET_CAPABILITIES:
-		error("GetCapabilities request timed out");
+		error("GetCapabilities: %s (%d)", strerror(err), err);
 		goto failed;
 	case AVDTP_ABORT:
-		error("Abort request timed out");
+		error("Abort: %s (%d)", strerror(err), err);
 		goto failed;
 	}
 
@@ -2501,8 +2500,9 @@ static gboolean request_timeout(gpointer user_data)
 	memset(&sreq, 0, sizeof(sreq));
 	sreq.acp_seid = seid;
 
-	if (send_request(session, TRUE, stream, AVDTP_ABORT,
-						&sreq, sizeof(sreq)) < 0) {
+	err = send_request(session, TRUE, stream, AVDTP_ABORT, &sreq,
+				sizeof(sreq));
+	if (err < 0) {
 		error("Unable to send abort request");
 		goto failed;
 	}
@@ -2510,9 +2510,18 @@ static gboolean request_timeout(gpointer user_data)
 	goto done;
 
 failed:
-	connection_lost(session, ETIMEDOUT);
+	connection_lost(session, err);
 done:
 	pending_req_free(req);
+	return err;
+}
+
+static gboolean request_timeout(gpointer user_data)
+{
+	struct avdtp *session = user_data;
+
+	cancel_request(session, ETIMEDOUT);
+
 	return FALSE;
 }
 
@@ -3518,6 +3527,9 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 
 	if (stream->lsep->state <= AVDTP_STATE_OPEN)
 		return -EINVAL;
+
+	if (session->req && stream == session->req->stream)
+		return cancel_request(session, ECANCELED);
 
 	memset(&req, 0, sizeof(req));
 	req.acp_seid = stream->rseid;
