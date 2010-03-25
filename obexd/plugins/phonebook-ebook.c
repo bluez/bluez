@@ -41,15 +41,16 @@
 #include "service.h"
 #include "phonebook.h"
 
-#define EOL_CHARS "\n"
-#define VL_VERSION "<?xml version=\"1.0\"?>" EOL_CHARS
-#define VL_TYPE "<!DOCTYPE vcard-listing SYSTEM \"vcard-listing.dtd\">" EOL_CHARS
-#define VL_BODY_BEGIN "<vCard-listing version=\"1.0\">" EOL_CHARS
-#define VL_BODY_END "</vCard-listing>" EOL_CHARS
-#define VL_ELEMENT "<card handle = \"%d.vcf\" name = \"%s\"/>" EOL_CHARS
+#define EOL	"\r\n"
+#define VCARD_LISTING_BEGIN						\
+	"<?xml version=\"1.0\"?>" EOL					\
+	"<!DOCTYPE vcard-listing SYSTEM \"vcard-listing.dtd\">" EOL 	\
+	"<vCard-listing version=\"1.0\">" EOL
+#define VCARD_LISTING_ELEMENT	"<card handle = \"%d.vcf\" name = \"%s\"/>" EOL
+#define VCARD_LISTING_END	"</vCard-listing>"
 
-#define QUERY_FAMILY_NAME "(contains \"family_name\" \"%s\")"
-#define QUERY_GIVEN_NAME "(contains \"given_name\" \"%s\")"
+#define QUERY_FN "(contains \"family_name\" \"%s\")"
+#define QUERY_NAME "(contains \"given_name\" \"%s\")"
 #define QUERY_PHONE "(contains \"phone\" \"%s\")"
 
 struct query_data {
@@ -94,9 +95,8 @@ static gchar *attribute_mask[] = {
 
 };
 
-static gchar *vcard_to_string(EVCard *evcard, guint format, guint64 filter)
+static gchar *evcard_to_string(EVCard *evcard, guint format, guint64 filter)
 {
-	EVCardAttribute *attrib;
 	EVCard *evcard2;
 	gchar *vcard;
 	guint i;
@@ -112,6 +112,8 @@ static gchar *vcard_to_string(EVCard *evcard, guint format, guint64 filter)
 
 	evcard2 = e_vcard_new();
 	for (i = 0; i < 29; i++) {
+		EVCardAttribute *attrib;
+
 		if (!(filter & (1 << i)))
 			continue;
 
@@ -139,29 +141,83 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 
 	/* FIXME: Missing 0.vcf */
 
-	/* PCE wants only the number of indexes in the phonebook */
-	if (maxcount == 0)
-		goto done;
-
 	for (; l && count < maxcount; l = g_list_next(l), count++) {
-		EContact *contact;
-		EVCard *evcard;
+		EContact *contact = E_CONTACT(l->data);
+		EVCard *evcard = E_VCARD(contact);
 		gchar *vcard;
 
-		contact = E_CONTACT(contacts->data);
-		evcard = E_VCARD(contact);
-
-		vcard = vcard_to_string(evcard,
+		vcard = evcard_to_string(evcard,
 				data->params->format, data->params->filter);
 
 		string = g_string_append(string, vcard);
 		g_free(vcard);
 	}
 
-done:
-	data->cb(string->str, string->len,
-			g_list_length(contacts), 0, data->user_data);
+	data->cb(string->str, string->len, count, 0, data->user_data);
 
+	g_string_free(string, TRUE);
+	g_free(data);
+}
+
+static gchar *evcard_name_attribute_to_string(EVCard *evcard)
+{
+	EVCardAttribute *attrib;
+	GList *l;
+	GString *name = NULL;
+
+	attrib = e_vcard_get_attribute(evcard, EVC_N);
+	if (!attrib)
+		return NULL;
+
+	for (l = e_vcard_attribute_get_values(attrib); l; l = l->next) {
+		if (!name)
+			name = g_string_new(l->data);
+		else {
+			const gchar *value = l->data;
+
+			if (!strlen(value))
+				continue;
+
+			name = g_string_append(name, ";");
+			name = g_string_append(name, l->data);
+		}
+	}
+
+	if (!name)
+		return NULL;
+
+	return g_string_free(name, FALSE);
+}
+
+static void ebooklist_cb(EBook *book, EBookStatus status, GList *contacts,
+				gpointer user_data)
+{
+	struct query_data *data = user_data;
+	GString *string = g_string_new(VCARD_LISTING_BEGIN);
+	GList *l = g_list_nth(contacts, data->params->liststartoffset);
+	guint count = 0, maxcount = data->params->maxlistcount;
+
+	for (; l && count < maxcount; l = g_list_next(l), count++) {
+		EContact *contact = E_CONTACT(l->data);
+		EVCard *evcard = E_VCARD(contact);
+		gchar *element, *name;
+
+		name = evcard_name_attribute_to_string(evcard);
+		if (!name)
+			continue;
+
+		element = g_strdup_printf(VCARD_LISTING_ELEMENT, count, name);
+
+		string = g_string_append(string, element);
+		g_free(name);
+		g_free(element);
+	}
+
+	string = g_string_append(string, VCARD_LISTING_END);
+
+	data->cb(string->str, string->len, count, 0, data->user_data);
+
+	g_string_free(string, TRUE);
 	g_free(data);
 }
 
@@ -268,8 +324,70 @@ int phonebook_get_entry(const gchar *name, const struct apparam_field *params,
 	return -1;
 }
 
+static EBookQuery *create_query(guint8 attrib, guint8 *searchval)
+{
+	EBookQuery *query;
+	gchar *fam, *given, *str, **values;
+
+	if (!searchval || strlen((gchar *) searchval) == 0)
+		return e_book_query_any_field_contains("");
+
+	switch (attrib) {
+	case 0:
+		/* Name */
+		values = g_strsplit((gchar *) searchval, ";", 2);
+
+		str = NULL;
+
+		fam = (values[0] ? g_strdup_printf(QUERY_FN, values[0]) : NULL);
+
+		if (values[1]) {
+			given =	g_strdup_printf(QUERY_NAME, values[1]);
+			str = (fam ? g_strconcat(fam, " and ", given, NULL) : given);
+			g_free(fam);
+			g_free(given);
+		}
+
+		if (!str)
+			str = fam;
+
+		g_strfreev(values);
+		break;
+	case 1:
+		/* Number */
+		str = g_strdup_printf(QUERY_PHONE, searchval);
+		break;
+	case 2:
+		/* Sound */
+		/* TODO: not yet implemented */
+	default:
+		return NULL;
+	}
+
+	query = e_book_query_from_string(str);
+	g_free(str);
+
+	return query;
+}
+
 int phonebook_list(const gchar *name, const struct apparam_field *params,
 		phonebook_cb cb, gpointer user_data)
 {
-	return -1;
+	struct query_data *data;
+	EBookQuery *query;
+
+	query = create_query(params->searchattrib, params->searchval);
+	if (!query)
+		return -EBADR;
+
+	data = g_new0(struct query_data, 1);
+	data->cb = cb;
+	data->params = params;
+	data->user_data = user_data;
+
+	e_book_async_get_contacts(ebook, query, ebooklist_cb, data);
+
+	e_book_query_unref(query);
+
+	return 0;
 }
