@@ -850,7 +850,7 @@ static gboolean handle_vcmanager_property_changed(DBusConnection *conn,
 			vc_new = g_new0(struct voice_call, 1);
 			vc_new->obj_path = g_strdup(vc_obj_path);
 			calls = g_slist_append(calls, vc_new);
-			device_watch = g_dbus_add_signal_watch(connection,
+			vc_new->watch = g_dbus_add_signal_watch(connection,
 					NULL, vc_obj_path,
 					OFONO_VC_INTERFACE,
 					"PropertyChanged",
