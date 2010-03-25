@@ -128,7 +128,6 @@ static gchar *evcard_to_string(EVCard *evcard, guint format, guint64 filter)
 	g_object_unref(evcard2);
 
 	return vcard;
-
 }
 
 static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
@@ -170,14 +169,14 @@ static gchar *evcard_name_attribute_to_string(EVCard *evcard)
 		return NULL;
 
 	for (l = e_vcard_attribute_get_values(attrib); l; l = l->next) {
+		const gchar *value = l->data;
+
+		if (!strlen(value))
+			continue;
+
 		if (!name)
-			name = g_string_new(l->data);
+			name = g_string_new(value);
 		else {
-			const gchar *value = l->data;
-
-			if (!strlen(value))
-				continue;
-
 			name = g_string_append(name, ";");
 			name = g_string_append(name, l->data);
 		}
