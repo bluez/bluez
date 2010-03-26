@@ -128,20 +128,96 @@ struct aparam_header {
 	uint8_t		val[0];
 } __attribute__ ((packed));
 
+struct cache {
+	gboolean ready;
+	GSList *entries;
+};
+
+struct cache_entry {
+	gchar *handle;
+	gpointer id;
+	gchar *name;
+	gchar *sound;
+	gchar *tel;
+};
+
 struct pbap_session {
 	struct obex_session *os;
 	struct apparam_field *params;
 	gchar *folder;
-	GString	*buffer;
-	guint16	phonebooksize;
+	GString *buffer;
+	guint16 phonebooksize;
 	obex_object_t *object;
+	struct cache cache;
 };
 
 static const guint8 PBAP_TARGET[TARGET_SIZE] = {
 			0x79, 0x61, 0x35, 0xF0,  0xF0, 0xC5, 0x11, 0xD8,
 			0x09, 0x66, 0x08, 0x00,  0x20, 0x0C, 0x9A, 0x66  };
 
-static void set_folder(struct pbap_session *pbap, const char *new_folder)
+typedef int (*cache_sort_f) (struct cache_entry *entry, gpointer user_data);
+typedef void (*cache_element_f) (struct cache_entry *entry, gpointer user_data);
+
+static gint entry_handle_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct cache_entry *entry = a;
+	const char* handle = b;
+
+	return strcmp(entry->handle, handle);
+}
+
+static void cache_entry_free(struct cache_entry *entry)
+{
+	g_free(entry->handle);
+	g_free(entry->id);
+	g_free(entry->name);
+	g_free(entry->sound);
+	g_free(entry->tel);
+	g_free(entry);
+}
+
+static void cache_foreach(struct cache *cache, cache_sort_f sort,
+		cache_element_f elem, gpointer user_data)
+{
+
+	GSList *l;
+
+	/* TODO: sort not implemented */
+
+	for (l = cache->entries; l; l = l->next) {
+		struct cache_entry *entry = l->data;
+
+		elem(entry, user_data);
+	}
+}
+
+static gpointer cache_find(struct cache *cache, const gchar *handle)
+{
+	struct cache_entry *entry;
+	GSList *l;
+
+	l = g_slist_find_custom(cache->entries, handle, entry_handle_cmp);
+	if (!l)
+		return NULL;
+
+	entry = l->data;
+
+	return entry->id;
+}
+
+static void cache_add(struct cache *cache, struct cache_entry *entry)
+{
+	cache->entries = g_slist_append(cache->entries, entry);
+}
+
+static void cache_clear(struct cache *cache)
+{
+	g_slist_foreach(cache->entries, (GFunc) cache_entry_free, NULL);
+	g_slist_free(cache->entries);
+	cache->entries = NULL;
+}
+
+static void set_folder(struct pbap_session *pbap, const gchar *new_folder)
 {
 	g_free(pbap->folder);
 
@@ -372,6 +448,7 @@ static void pbap_disconnect(struct obex_session *os,
 		g_free(pbap->params);
 	}
 
+	cache_clear(&pbap->cache);
 	g_free(pbap->folder);
 	g_free(pbap);
 }
@@ -417,11 +494,17 @@ static gpointer vobject_open(const char *name, int oflag, mode_t mode,
 
 	if (g_strcmp0(type, "x-bt/phonebook") == 0)
 		ret = phonebook_pull(name, pbap->params, cb, pbap);
-	else if (g_strcmp0(type, "x-bt/vcard-listing") == 0)
+	else if (g_strcmp0(type, "x-bt/vcard-listing") == 0) {
+		/* FIXME: */
+		cache_add(&pbap->cache, NULL);
+		cache_foreach(&pbap->cache, NULL, NULL, NULL);
 		ret = phonebook_list(name, pbap->params, cb, pbap);
-	else if (g_strcmp0(type, "x-bt/vcard") == 0)
+	} else if (g_strcmp0(type, "x-bt/vcard") == 0) {
+		/* FIXME: */
+		gpointer id = cache_find(&pbap->cache, name);
+		debug("cache entry id: %p", id);
 		ret = phonebook_get_entry(name, pbap->params, query_result, pbap);
-	else {
+	} else {
 		ret = -EINVAL;
 		goto fail;
 	}
