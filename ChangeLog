@@ -1,3 +1,7 @@
+ver 4.63:
+	Fix avdtp_abort not canceling pending requests.
+	Fix stale connection when abort gets rejected.
+
 ver 4.62:
 	Fix accidental symbol breakage with inquiry transmit power.
 	Fix using invalid data from previous headset connection.
