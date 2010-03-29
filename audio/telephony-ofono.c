@@ -281,6 +281,12 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 
 	debug("telephony-ofono: dial request to %s", number);
 
+	if (!modem_obj_path) {
+		telephony_dial_number_rsp(telephony_device,
+					CME_ERROR_AG_FAILURE);
+		return;
+	}
+
 	if (!strncmp(number, "*31#", 4)) {
 		number += 4;
 		clir = "enabled";
@@ -310,6 +316,12 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 	int ret;
 
 	debug("telephony-ofono: transmit dtmf: %c", tone);
+
+	if (!modem_obj_path) {
+		telephony_transmit_dtmf_rsp(telephony_device,
+					CME_ERROR_AG_FAILURE);
+		return;
+	}
 
 	tone_string = g_strdup_printf("%c", tone);
 	ret = send_method_call(OFONO_BUS_NAME, modem_obj_path,
@@ -531,6 +543,9 @@ done:
 
 static int get_registration_and_signal_status()
 {
+	if (!modem_obj_path)
+		return -ENOENT;
+
 	return send_method_call(OFONO_BUS_NAME, modem_obj_path,
 			OFONO_NETWORKREG_INTERFACE,
 			"GetProperties", get_registration_reply,
