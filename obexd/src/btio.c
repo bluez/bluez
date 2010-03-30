@@ -628,6 +628,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 	/* Set defaults */
 	opts->defer = DEFAULT_DEFER_TIMEOUT;
 	opts->master = -1;
+	opts->sec_level = BT_IO_SEC_MEDIUM;
 
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
