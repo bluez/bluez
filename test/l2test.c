@@ -1046,6 +1046,7 @@ static void usage(void)
 		"\t[-F fcs] use CRC16 check (default = 1)\n"
 		"\t[-R] reliable mode\n"
 		"\t[-G] use connectionless channel (datagram)\n"
+		"\t[-U] use sock stream\n"
 		"\t[-A] request authentication\n"
 		"\t[-E] request encryption\n"
 		"\t[-S] secure connection\n"
@@ -1060,7 +1061,7 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmnxyzpb:i:P:I:O:B:N:L:W:C:D:X:F:RGAESMT")) != EOF) {
+	while ((opt=getopt(argc,argv,"rdscuwmnxyzpb:i:P:I:O:B:N:L:W:C:D:X:F:RGUAESMT")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -1197,6 +1198,10 @@ int main(int argc, char *argv[])
 
 		case 'G':
 			socktype = SOCK_DGRAM;
+			break;
+
+		case 'U':
+			socktype = SOCK_STREAM;
 			break;
 
 		case 'T':
