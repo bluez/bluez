@@ -21,6 +21,14 @@
  *
  */
 
+#define EOL	"\r\n"
+#define VCARD_LISTING_BEGIN \
+	"<?xml version=\"1.0\"?>"				EOL\
+	"<!DOCTYPE vcard-listing SYSTEM \"vcard-listing.dtd\">" EOL\
+	"<vCard-listing version=\"1.0\">"			EOL
+#define VCARD_LISTING_ELEMENT		"<card handle = \"%d.vcf\" name = \"%s\"/>" EOL
+#define VCARD_LISTING_END	"</vCard-listing>"
+
 struct apparam_field {
 	/* list and pull attributes */
 	guint16		maxlistcount;
@@ -36,8 +44,27 @@ struct apparam_field {
 	guint8		*searchval;
 };
 
+/*
+ * Interface between the PBAP core and backends to retrieve
+ * all contacts that match the application parameters rules.
+ * Contacts will be returned in the vcard format.
+ */
 typedef void (*phonebook_cb) (const gchar *buffer, size_t bufsize,
 		gint vcards, gint missed, gpointer user_data);
+
+/*
+ * Interface between the PBAP core and backends to
+ * append a new entry in the PBAP folder cache.
+ */
+typedef void (*phonebook_entry_cb) (const gchar *id, const gchar *name,
+		const gchar *sound, const gchar *tel, gpointer user_data);
+
+/*
+ * After notify all entries to PBAP core, the backend
+ * needs to notify that the operation has finished.
+ */
+typedef void (*phonebook_cache_ready_cb) (gpointer user_data);
+
 
 int phonebook_init(void);
 void phonebook_exit(void);
@@ -45,11 +72,19 @@ void phonebook_exit(void);
 int phonebook_set_folder(const gchar *current_folder,
 		const gchar *new_folder, guint8 flags);
 
+/*
+ * PullPhoneBook never use cached entries. PCE use this
+ * function to get all entries of a given folder.
+ */
 int phonebook_pull(const gchar *name, const struct apparam_field *params,
 		phonebook_cb cb, gpointer user_data);
 
-int phonebook_get_entry(const gchar *name, const struct apparam_field *params,
+int phonebook_get_entry(const gchar *id, const struct apparam_field *params,
 		phonebook_cb cb, gpointer user_data);
 
-int phonebook_list(const gchar *name, const struct apparam_field *params,
-		phonebook_cb cb, gpointer user_data);
+/*
+ * PBAP core will keep the contacts cache per folder. SetPhoneBook or
+ * PullvCardListing can invalidate the cache if the current folder changes.
+ */
+int phonebook_create_cache(const gchar *name, phonebook_entry_cb entry_cb,
+		phonebook_cache_ready_cb ready_cb, gpointer user_data);

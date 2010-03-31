@@ -85,14 +85,14 @@ int phonebook_pull(const gchar *name, const struct apparam_field *params,
 	return 0;
 }
 
-int phonebook_get_entry(const gchar *name, const struct apparam_field *params,
+int phonebook_get_entry(const gchar *id, const struct apparam_field *params,
 					phonebook_cb cb, gpointer user_data)
 {
 	return -1;
 }
 
-int phonebook_list(const gchar *name, const struct apparam_field *params,
-					phonebook_cb cb, gpointer user_data)
+int phonebook_create_cache(const gchar *name, phonebook_entry_cb entry_cb,
+		phonebook_cache_ready_cb ready_cb, gpointer user_data)
 {
-	return -1;
+	return 0;
 }

@@ -22,4 +22,4 @@
  */
 
 int string_free(gpointer object);
-ssize_t string_read(gpointer object, void *buf, size_t count, guint8 *hi);
+ssize_t string_read(gpointer object, void *buf, size_t count);

@@ -468,12 +468,10 @@ int string_free(gpointer object)
 	return 0;
 }
 
-ssize_t string_read(gpointer object, void *buf, size_t count, guint8 *hi)
+ssize_t string_read(gpointer object, void *buf, size_t count)
 {
 	GString *string = object;
 	ssize_t len;
-
-	*hi = OBEX_HDR_BODY;
 
 	if (string->len == 0)
 		return 0;
@@ -485,18 +483,25 @@ ssize_t string_read(gpointer object, void *buf, size_t count, guint8 *hi)
 	return len;
 }
 
+static ssize_t folder_read(gpointer object, void *buf, size_t count, guint8 *hi)
+{
+	*hi = OBEX_HDR_BODY;
+	return string_read(object, buf, count);
+}
+
 static ssize_t capability_read(gpointer object, void *buf, size_t count,
 								guint8 *hi)
 {
 	struct capability_object *obj = object;
 
+	*hi = OBEX_HDR_BODY;
+
 	if (obj->buffer)
-		return string_read(obj->buffer, buf, count, hi);
+		return string_read(obj->buffer, buf, count);
 
 	if (obj->pid >= 0)
 		return -EAGAIN;
 
-	*hi = OBEX_HDR_BODY;
 	return read(obj->output, buf, count);
 }
 
@@ -539,7 +544,7 @@ static struct obex_mime_type_driver folder = {
 	.mimetype = "x-obex/folder-listing",
 	.open = folder_open,
 	.close = string_free,
-	.read = string_read,
+	.read = folder_read,
 };
 
 static struct obex_mime_type_driver pcsuite = {
@@ -549,7 +554,7 @@ static struct obex_mime_type_driver pcsuite = {
 	.mimetype = "x-obex/folder-listing",
 	.open = pcsuite_open,
 	.close = string_free,
-	.read = string_read,
+	.read = folder_read,
 };
 
 static int filesystem_init(void)

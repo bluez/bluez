@@ -41,21 +41,19 @@
 #include "service.h"
 #include "phonebook.h"
 
-#define EOL	"\r\n"
-#define VCARD_LISTING_BEGIN						\
-	"<?xml version=\"1.0\"?>" EOL					\
-	"<!DOCTYPE vcard-listing SYSTEM \"vcard-listing.dtd\">" EOL 	\
-	"<vCard-listing version=\"1.0\">" EOL
-#define VCARD_LISTING_ELEMENT	"<card handle = \"%d.vcf\" name = \"%s\"/>" EOL
-#define VCARD_LISTING_END	"</vCard-listing>"
-
 #define QUERY_FN "(contains \"family_name\" \"%s\")"
 #define QUERY_NAME "(contains \"given_name\" \"%s\")"
 #define QUERY_PHONE "(contains \"phone\" \"%s\")"
 
-struct query_data {
+struct contacts_query {
 	const struct apparam_field *params;
 	phonebook_cb cb;
+	gpointer user_data;
+};
+
+struct cache_query {
+	phonebook_entry_cb entry_cb;
+	phonebook_cache_ready_cb ready_cb;
 	gpointer user_data;
 };
 
@@ -130,13 +128,21 @@ static gchar *evcard_to_string(EVCard *evcard, guint format, guint64 filter)
 	return vcard;
 }
 
-static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
+static void ebookpull_cb(EBook *book, EBookStatus estatus, GList *contacts,
 							gpointer user_data)
 {
-	struct query_data *data = user_data;
+	struct contacts_query *data = user_data;
 	GString *string = g_string_new("");
-	GList *l = g_list_nth(contacts, data->params->liststartoffset);
-	guint count = 0, maxcount = data->params->maxlistcount;
+	guint count = 0, maxcount;
+	GList *l;
+
+	if (estatus != E_BOOK_ERROR_OK) {
+		error("E-Book query failed: status %d", estatus);
+		goto done;
+	}
+
+	maxcount = data->params->maxlistcount;
+	l = g_list_nth(contacts, data->params->liststartoffset);
 
 	/* FIXME: Missing 0.vcf */
 
@@ -145,16 +151,44 @@ static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
 		EVCard *evcard = E_VCARD(contact);
 		gchar *vcard;
 
-		vcard = evcard_to_string(evcard,
-				data->params->format, data->params->filter);
+		vcard = evcard_to_string(evcard, data->params->format,
+						data->params->filter);
 
 		string = g_string_append(string, vcard);
 		g_free(vcard);
 	}
 
+done:
 	data->cb(string->str, string->len, count, 0, data->user_data);
 
 	g_string_free(string, TRUE);
+	g_free(data);
+}
+
+static void ebook_entry_cb(EBook *book, EBookStatus estatus,
+			EContact *contact, gpointer user_data)
+{
+	struct contacts_query *data = user_data;
+	EVCard *evcard;
+	gchar *vcard;
+	size_t len;
+
+	if (estatus != E_BOOK_ERROR_OK) {
+		error("E-Book query failed: status %d", estatus);
+		data->cb(NULL, 0, 1, 0, data->user_data);
+		g_free(data);
+		return;
+	}
+
+	evcard = E_VCARD(contact);
+
+	vcard = evcard_to_string(evcard, data->params->format,
+					data->params->filter);
+
+	len = vcard ? strlen(vcard) : 0;
+
+	data->cb(vcard, len, 1, 0, data->user_data);
+
 	g_free(data);
 }
 
@@ -188,36 +222,48 @@ static gchar *evcard_name_attribute_to_string(EVCard *evcard)
 	return g_string_free(name, FALSE);
 }
 
-static void ebooklist_cb(EBook *book, EBookStatus status, GList *contacts,
+static void cache_cb(EBook *book, EBookStatus estatus, GList *contacts,
 							gpointer user_data)
 {
-	struct query_data *data = user_data;
-	GString *string = g_string_new(VCARD_LISTING_BEGIN);
-	GList *l = g_list_nth(contacts, data->params->liststartoffset);
-	guint count = 0, maxcount = data->params->maxlistcount;
+	struct cache_query *data = user_data;
+	GList *l;
 
-	for (; l && count < maxcount; l = g_list_next(l), count++) {
+	if (estatus != E_BOOK_ERROR_OK) {
+		error("E-Book query failed: status %d", estatus);
+		goto done;
+	}
+
+	for (l = contacts; l; l = g_list_next(l)) {
 		EContact *contact = E_CONTACT(l->data);
 		EVCard *evcard = E_VCARD(contact);
-		gchar *element, *name;
+		EVCardAttribute *attrib;
+		gchar *uid, *tel, *name;
 
 		name = evcard_name_attribute_to_string(evcard);
 		if (!name)
 			continue;
 
-		element = g_strdup_printf(VCARD_LISTING_ELEMENT, count, name);
+		attrib = e_vcard_get_attribute(evcard, EVC_UID);
+		if (!attrib)
+			continue;
 
-		string = g_string_append(string, element);
+		uid =  e_vcard_attribute_get_value(attrib);
+		if (!uid)
+			continue;
+
+		attrib = e_vcard_get_attribute(evcard, EVC_TEL);
+		if (!attrib)
+			continue;
+
+		tel =  e_vcard_attribute_get_value(attrib);
+
+		data->entry_cb(uid, name, NULL, tel, data->user_data);
 		g_free(name);
-		g_free(element);
+		g_free(uid);
+		g_free(tel);
 	}
-
-	string = g_string_append(string, VCARD_LISTING_END);
-
-	data->cb(string->str, string->len, count, 0, data->user_data);
-
-	g_string_free(string, TRUE);
-	g_free(data);
+done:
+	data->ready_cb(data->user_data);
 }
 
 int phonebook_init(void)
@@ -253,7 +299,7 @@ int phonebook_set_folder(const gchar *current_folder,
 	gboolean root, child;
 	int ret;
 
-	root = (!current_folder || strlen(current_folder) == 0);
+	root = (g_strcmp0("/", current_folder) == 0);
 	child = (new_folder && strlen(new_folder) != 0);
 
 	/* Evolution back-end will support telecom/pb folder only */
@@ -266,7 +312,7 @@ int phonebook_set_folder(const gchar *current_folder,
 		/* Go down 1 level */
 		if (root)
 			ret = (strcmp("telecom", new_folder) != 0) ? -EBADR: 0;
-		else if (strcmp("telecom", current_folder) == 0)
+		else if (strcmp("/telecom", current_folder) == 0)
 			ret = (strcmp("pb", new_folder) != 0) ? -EBADR: 0;
 		else
 			ret = -EBADR;
@@ -282,9 +328,9 @@ int phonebook_set_folder(const gchar *current_folder,
 			return 0;
 
 		/* /telecom or /telecom/pb */
-		if (strcmp("telecom", current_folder) == 0)
+		if (strcmp("/telecom", current_folder) == 0)
 			ret = (strcmp("telecom", new_folder) != 0) ? -EBADR : 0;
-		else if (strcmp("telecom/pb", current_folder) == 0)
+		else if (strcmp("/telecom/pb", current_folder) == 0)
 			ret = (strcmp("pb", new_folder) != 0) ? -EBADR : 0;
 		else
 			ret = -EBADR;
@@ -298,14 +344,14 @@ int phonebook_set_folder(const gchar *current_folder,
 }
 
 gint phonebook_pull(const gchar *name, const struct apparam_field *params,
-		phonebook_cb cb, gpointer user_data)
+					phonebook_cb cb, gpointer user_data)
 {
-	struct query_data *data;
+	struct contacts_query *data;
 	EBookQuery *query;
 
 	query = e_book_query_any_field_contains("");
 
-	data = g_new0(struct query_data, 1);
+	data = g_new0(struct contacts_query, 1);
 	data->cb = cb;
 	data->params = params;
 	data->user_data = user_data;
@@ -317,79 +363,41 @@ gint phonebook_pull(const gchar *name, const struct apparam_field *params,
 	return 0;
 }
 
-int phonebook_get_entry(const gchar *name, const struct apparam_field *params,
+int phonebook_get_entry(const gchar *id, const struct apparam_field *params,
 					phonebook_cb cb, gpointer user_data)
 {
-	return -1;
-}
+	struct contacts_query *data;
 
-static EBookQuery *create_query(guint8 attrib, guint8 *searchval)
-{
-	EBookQuery *query;
-	gchar *fam, *str, **values;
-
-	if (!searchval || strlen((gchar *) searchval) == 0)
-		return e_book_query_any_field_contains("");
-
-	switch (attrib) {
-	case 0:
-		/* Name */
-		values = g_strsplit((gchar *) searchval, ";", 2);
-
-		str = NULL;
-
-		fam = (values[0] ? g_strdup_printf(QUERY_FN, values[0]) : NULL);
-
-		if (values[1]) {
-			char *given = g_strdup_printf(QUERY_NAME, values[1]);
-
-			str = fam ?
-				g_strconcat(fam, " and ", given, NULL) : given;
-
-			g_free(fam);
-			g_free(given);
-		}
-
-		if (!str)
-			str = fam;
-
-		g_strfreev(values);
-		break;
-	case 1:
-		/* Number */
-		str = g_strdup_printf(QUERY_PHONE, searchval);
-		break;
-	case 2:
-		/* Sound */
-		/* TODO: not yet implemented */
-	default:
-		return NULL;
-	}
-
-	query = e_book_query_from_string(str);
-	g_free(str);
-
-	return query;
-}
-
-int phonebook_list(const gchar *name, const struct apparam_field *params,
-					phonebook_cb cb, gpointer user_data)
-{
-	struct query_data *data;
-	EBookQuery *query;
-
-	query = create_query(params->searchattrib, params->searchval);
-	if (!query)
-		return -EBADR;
-
-	data = g_new0(struct query_data, 1);
+	data = g_new0(struct contacts_query, 1);
 	data->cb = cb;
 	data->params = params;
 	data->user_data = user_data;
 
-	e_book_async_get_contacts(ebook, query, ebooklist_cb, data);
+	if (e_book_async_get_contact(ebook, id, ebook_entry_cb, data)) {
+		g_free(data);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+int phonebook_create_cache(const gchar *name, phonebook_entry_cb entry_cb,
+		phonebook_cache_ready_cb ready_cb, gpointer user_data)
+{
+	struct cache_query *data;
+	EBookQuery *query;
+	gboolean ret;
+
+	query = e_book_query_any_field_contains("");
+
+	data = g_new0(struct cache_query, 1);
+	data->entry_cb = entry_cb;
+	data->ready_cb = ready_cb;
+	data->user_data = user_data;
+
+	ret = e_book_async_get_contacts(ebook, query, cache_cb, data);
 
 	e_book_query_unref(query);
 
-	return 0;
+	return (ret == FALSE ? 0 : -EBADR);
 }

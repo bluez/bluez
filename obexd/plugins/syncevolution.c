@@ -339,8 +339,10 @@ static ssize_t synce_read(gpointer object, void *buf, size_t count, guint8 *hi)
 	gboolean authenticate;
 	DBusPendingCall *call;
 
-	if (context->buffer)
-		return string_read(context->buffer, buf, count, hi);
+	if (context->buffer) {
+		*hi = OBEX_HDR_BODY;
+		return string_read(context->buffer, buf, count);
+	}
 
 	conn = obex_dbus_get_connection();
 	if (conn == NULL)
