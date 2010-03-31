@@ -46,6 +46,18 @@ struct io_watch {
 	gpointer user_data;
 };
 
+/* Just thin wrapper around memcmp to deal with NULL values */
+static int memcmp0(const void *a, const void *b, size_t n)
+{
+	if (a == NULL)
+		return -(a != b);
+
+	if (b == NULL)
+		return a != b;
+
+	return memcmp(a, b, n);
+}
+
 void obex_object_set_io_flags(gpointer object, int flags, int err)
 {
 	GSList *l;
@@ -117,15 +129,18 @@ static int set_io_watch(gpointer object, obex_object_io_func func,
 	return 0;
 }
 
-struct obex_mime_type_driver *obex_mime_type_driver_find(const guint8 *target, const char *mimetype)
+struct obex_mime_type_driver *obex_mime_type_driver_find(const guint8 *target,
+		const char *mimetype, const guint8 *who, guint who_size)
 {
 	GSList *l;
 
 	for (l = drivers; l; l = l->next) {
 		struct obex_mime_type_driver *driver = l->data;
 
-		if (driver->target && target &&
-				memcmp(target, driver->target, TARGET_SIZE))
+		if (memcmp0(target, driver->target, TARGET_SIZE))
+			continue;
+
+		if (memcmp0(who, driver->who, who_size))
 			continue;
 
 		if (g_strcmp0(mimetype, driver->mimetype) == 0)
@@ -142,8 +157,10 @@ int obex_mime_type_driver_register(struct obex_mime_type_driver *driver)
 		return -EINVAL;
 	}
 
-	if (obex_mime_type_driver_find(driver->target, driver->mimetype)) {
-		error("Permission denied: %s could not be registered", driver->mimetype);
+	if (obex_mime_type_driver_find(driver->target, driver->mimetype,
+					driver->who, driver->who_size)) {
+		error("Permission denied: %s could not be registered",
+				driver->mimetype);
 		return -EPERM;
 	}
 

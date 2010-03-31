@@ -27,6 +27,8 @@ typedef gboolean (*obex_object_io_func) (gpointer object, int flags, int err,
 struct obex_mime_type_driver {
 	const guint8 *target;
 	const char *mimetype;
+	const guint8 *who;
+	guint who_size;
 	gpointer driver_data;
 	gpointer (*open) (const char *name, int oflag, mode_t mode,
 			gpointer driver_data, size_t *size, int *err);
@@ -41,6 +43,6 @@ struct obex_mime_type_driver {
 int obex_mime_type_driver_register(struct obex_mime_type_driver *driver);
 void obex_mime_type_driver_unregister(struct obex_mime_type_driver *driver);
 struct obex_mime_type_driver *obex_mime_type_driver_find(const guint8 *target,
-							const char *mimetype);
+		const char *mimetype, const guint8 *who, guint who_size);
 
 void obex_object_set_io_flags(gpointer object, int flags, int err);

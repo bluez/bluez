@@ -366,13 +366,14 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 
 			os->type = g_strndup((const gchar *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
-			os->driver = obex_mime_type_driver_find(os->service->target, os->type);
+			os->driver = obex_mime_type_driver_find(os->service->target,
+					os->type, os->service->who, os->service->who_size);
 			break;
 		}
 	}
 
 	if (!os->driver) {
-		os->driver = obex_mime_type_driver_find(os->service->target, NULL);
+		os->driver = obex_mime_type_driver_find(os->service->target, NULL, NULL, 0);
 		if (!os->driver) {
 			error("No driver found");
 			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
@@ -730,7 +731,8 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 
 			os->type = g_strndup((const gchar *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
-			os->driver = obex_mime_type_driver_find(os->service->target, os->type);
+			os->driver = obex_mime_type_driver_find(os->service->target,
+					os->type, os->service->who, os->service->who_size);
 			break;
 
 		case OBEX_HDR_BODY:
@@ -751,7 +753,8 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	OBEX_ObjectReParseHeaders(obex, obj);
 
 	if (!os->driver) {
-		os->driver = obex_mime_type_driver_find(os->service->target, NULL);
+		os->driver = obex_mime_type_driver_find(os->service->target,
+				NULL, NULL, 0);
 		if (!os->driver) {
 			error("No driver found");
 			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
