@@ -463,12 +463,19 @@ struct obex_service_driver synce = {
 
 static int synce_init(void)
 {
+	int err;
+
+	err = obex_mime_type_driver_register(&synce_driver);
+	if (err < 0)
+		return err;
+
 	return obex_service_driver_register(&synce);
 }
 
 static void synce_exit(void)
 {
 	obex_service_driver_unregister(&synce);
+	obex_mime_type_driver_unregister(&synce_driver);
 }
 
 OBEX_PLUGIN_DEFINE(syncevolution, synce_init, synce_exit)
