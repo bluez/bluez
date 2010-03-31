@@ -99,20 +99,19 @@ static gint server_start(struct server *server)
 {
 	GError *err = NULL;
 	struct obex_service_driver *driver;
+	BtIOSecLevel sec_level;
 
 	driver = (struct obex_service_driver *) server->drivers->data;
 
-	/* Listen */
 	if (server->secure)
-		server->io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event,
-					server, NULL, &err,
-					BT_IO_OPT_CHANNEL, driver->channel,
-					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
-					BT_IO_OPT_INVALID);
+		sec_level = BT_IO_SEC_MEDIUM;
 	else
-		server->io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event,
+		sec_level = BT_IO_SEC_LOW;
+
+	server->io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event,
 					server, NULL, &err,
 					BT_IO_OPT_CHANNEL, driver->channel,
+					BT_IO_OPT_SEC_LEVEL, sec_level,
 					BT_IO_OPT_INVALID);
 	if (!server->io)
 		goto failed;
