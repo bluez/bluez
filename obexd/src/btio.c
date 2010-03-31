@@ -891,6 +891,12 @@ static gboolean rfcomm_get(int sock, GError **err, BtIOOption opt1,
 			*(va_arg(args, uint8_t *)) = src.rc_channel ?
 					src.rc_channel : dst.rc_channel;
 			break;
+		case BT_IO_OPT_SOURCE_CHANNEL:
+			*(va_arg(args, uint8_t *)) = src.rc_channel;
+			break;
+		case BT_IO_OPT_DEST_CHANNEL:
+			*(va_arg(args, uint8_t *)) = dst.rc_channel;
+			break;
 		case BT_IO_OPT_MASTER:
 			len = sizeof(flags);
 			if (getsockopt(sock, SOL_RFCOMM, RFCOMM_LM, &flags,
