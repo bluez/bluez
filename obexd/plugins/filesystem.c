@@ -480,7 +480,7 @@ static int capability_close(gpointer object)
 	return 0;
 }
 
-struct obex_mime_type_driver file = {
+static struct obex_mime_type_driver file = {
 	.open = filesystem_open,
 	.close = filesystem_close,
 	.read = filesystem_read,
@@ -488,7 +488,7 @@ struct obex_mime_type_driver file = {
 	.remove = remove,
 };
 
-struct obex_mime_type_driver capability = {
+static struct obex_mime_type_driver capability = {
 	.target = FTP_TARGET,
 	.mimetype = "x-obex/capability",
 	.open = capability_open,
@@ -496,7 +496,7 @@ struct obex_mime_type_driver capability = {
 	.read = capability_read,
 };
 
-struct obex_mime_type_driver folder = {
+static struct obex_mime_type_driver folder = {
 	.target = FTP_TARGET,
 	.mimetype = "x-obex/folder-listing",
 	.open = folder_open,

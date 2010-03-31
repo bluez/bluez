@@ -196,7 +196,7 @@ static void opp_reset(struct obex_session *os, gpointer user_data)
 	manager_emit_transfer_completed(os);
 }
 
-struct obex_service_driver driver = {
+static struct obex_service_driver driver = {
 	.name = "Object Push server",
 	.service = OBEX_OPP,
 	.channel = OPP_CHANNEL,

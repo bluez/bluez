@@ -351,7 +351,7 @@ static gint pbap_chkput(struct obex_session *os,
 	return -EINVAL;
 }
 
-struct obex_service_driver pbap = {
+static struct obex_service_driver pbap = {
 	.name = "Phonebook Access server",
 	.service = OBEX_PBAP,
 	.channel = PBAP_CHANNEL,
@@ -427,7 +427,7 @@ static int vobject_close(gpointer object)
 	return 0;
 }
 
-struct obex_mime_type_driver mime_pull = {
+static struct obex_mime_type_driver mime_pull = {
 	.target		= PBAP_TARGET,
 	.mimetype	= "x-bt/phonebook",
 	.open		= vobject_open,
@@ -435,7 +435,7 @@ struct obex_mime_type_driver mime_pull = {
 	.read		= vobject_read,
 };
 
-struct obex_mime_type_driver mime_list = {
+static struct obex_mime_type_driver mime_list = {
 	.target		= PBAP_TARGET,
 	.mimetype	= "x-bt/vcard-listing",
 	.open		= vobject_open,
@@ -443,7 +443,7 @@ struct obex_mime_type_driver mime_list = {
 	.read		= vobject_read,
 };
 
-struct obex_mime_type_driver mime_vcard = {
+static struct obex_mime_type_driver mime_vcard = {
 	.target		= PBAP_TARGET,
 	.mimetype	= "x-bt/vcard",
 	.open		= vobject_open,

@@ -377,7 +377,7 @@ static void ftp_disconnect(struct obex_session *os, gpointer user_data)
 	g_free(ftp);
 }
 
-struct obex_service_driver pcsuite = {
+static struct obex_service_driver pcsuite = {
 	.name = "Nokia OBEX PC Suite Services",
 	.service = OBEX_PCSUITE,
 	.channel = PCSUITE_CHANNEL,
@@ -394,7 +394,7 @@ struct obex_service_driver pcsuite = {
 	.disconnect = ftp_disconnect
 };
 
-struct obex_service_driver ftp = {
+static struct obex_service_driver ftp = {
 	.name = "File Transfer server",
 	.service = OBEX_FTP,
 	.channel = FTP_CHANNEL,

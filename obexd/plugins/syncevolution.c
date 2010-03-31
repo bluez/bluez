@@ -440,7 +440,7 @@ static ssize_t synce_write(gpointer object, const void *buf, size_t count)
 	return -EAGAIN;
 }
 
-struct obex_mime_type_driver synce_driver = {
+static struct obex_mime_type_driver synce_driver = {
 	.target = SYNCML_TARGET,
 	.open = synce_open,
 	.close = synce_close,
@@ -448,7 +448,7 @@ struct obex_mime_type_driver synce_driver = {
 	.write = synce_write,
 };
 
-struct obex_service_driver synce = {
+static struct obex_service_driver synce = {
 	.name = "OBEX server for SyncML, using SyncEvolution",
 	.service = OBEX_SYNCEVOLUTION,
 	.channel = SYNCEVOLUTION_CHANNEL,
