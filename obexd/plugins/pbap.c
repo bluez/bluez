@@ -142,12 +142,10 @@ struct cache_entry {
 };
 
 struct pbap_session {
-	struct obex_session *os;
 	struct apparam_field *params;
 	gchar *folder;
 	GString *buffer;
 	guint16 phonebooksize;
-	obex_object_t *object;
 	struct cache cache;
 };
 
@@ -330,7 +328,6 @@ static gpointer pbap_connect(struct obex_session *os, int *err)
 
 	pbap = g_new0(struct pbap_session, 1);
 	pbap->folder = g_strdup("/");
-	pbap->os = os;
 
 	if (err)
 		*err = 0;
@@ -394,7 +391,6 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 		*stream = TRUE;
 
 	pbap->params = params;
-	pbap->object = obj;
 
 	ret = obex_get_stream_start(os, path, pbap);
 failed:
@@ -474,11 +470,10 @@ static struct obex_service_driver pbap = {
 	.chkput = pbap_chkput
 };
 
-static gpointer vobject_open(const char *name, int oflag, mode_t mode,
+static gpointer vobject_pull_open(const char *name, int oflag, mode_t mode,
 		gpointer context, size_t *size, int *err)
 {
 	struct pbap_session *pbap = context;
-	const gchar *type = obex_get_type(pbap->os);
 	phonebook_cb cb;
 	int ret;
 
@@ -492,23 +487,7 @@ static gpointer vobject_open(const char *name, int oflag, mode_t mode,
 	else
 		cb = query_result;
 
-	if (g_strcmp0(type, "x-bt/phonebook") == 0)
-		ret = phonebook_pull(name, pbap->params, cb, pbap);
-	else if (g_strcmp0(type, "x-bt/vcard-listing") == 0) {
-		/* FIXME: */
-		cache_add(&pbap->cache, NULL);
-		cache_foreach(&pbap->cache, NULL, NULL, NULL);
-		ret = phonebook_list(name, pbap->params, cb, pbap);
-	} else if (g_strcmp0(type, "x-bt/vcard") == 0) {
-		/* FIXME: */
-		gpointer id = cache_find(&pbap->cache, name);
-		debug("cache entry id: %p", id);
-		ret = phonebook_get_entry(name, pbap->params, query_result, pbap);
-	} else {
-		ret = -EINVAL;
-		goto fail;
-	}
-
+	ret = phonebook_pull(name, pbap->params, cb, pbap);
 	if (ret < 0)
 		goto fail;
 
@@ -524,9 +503,83 @@ fail:
 	return NULL;
 }
 
-static ssize_t vobject_read(gpointer object, void *buf, size_t count)
+static gpointer vobject_list_open(const char *name, int oflag, mode_t mode,
+		gpointer context, size_t *size, int *err)
+{
+	struct pbap_session *pbap = context;
+	phonebook_cb cb;
+	int ret;
+
+	if (oflag != O_RDONLY) {
+		ret = -EPERM;
+		goto fail;
+	}
+
+	if (pbap->params->maxlistcount == 0)
+		cb = phonebook_size_result;
+	else
+		cb = query_result;
+
+	/* FIXME: PullvCardList should read data from the cache only */
+	cache_add(&pbap->cache, NULL);
+	cache_foreach(&pbap->cache, NULL, NULL, NULL);
+
+	ret = phonebook_list(name, pbap->params, cb, pbap);
+	if (ret < 0)
+		goto fail;
+
+	if (size)
+		*size = OBJECT_SIZE_UNKNOWN;
+
+	return pbap;
+
+fail:
+	if (err)
+		*err = ret;
+
+	return NULL;
+}
+
+
+static gpointer vobject_vcard_open(const char *name, int oflag, mode_t mode,
+		gpointer context, size_t *size, int *err)
+{
+	struct pbap_session *pbap = context;
+	gpointer id;
+	int ret;
+
+	if (oflag != O_RDONLY) {
+		ret = -EPERM;
+		goto fail;
+	}
+
+	id = cache_find(&pbap->cache, name);
+	if (!id) {
+		ret = -ENOENT;
+		goto fail;
+	}
+
+	/* FIXME: use id */
+	ret = phonebook_get_entry(name, pbap->params, query_result, pbap);
+	if (ret < 0)
+		goto fail;
+
+	if (size)
+		*size = OBJECT_SIZE_UNKNOWN;
+
+	return pbap;
+
+fail:
+	if (err)
+		*err = ret;
+
+	return NULL;
+}
+
+static ssize_t vobject_read(gpointer object, void *buf, size_t count, guint8 *hi)
 {
 	struct pbap_session *pbap = object;
+	ssize_t ret = -EAGAIN;
 
 	/* PhoneBookSize */
 	if (pbap->params->maxlistcount == 0) {
@@ -539,16 +592,16 @@ static ssize_t vobject_read(gpointer object, void *buf, size_t count)
 		hdr->len = PHONEBOOKSIZE_LEN;
 		memcpy(hdr->val, &phonebooksize, sizeof(phonebooksize));
 
-		obex_aparam_write(pbap->os, pbap->object, data, sizeof(data));
-
-		return 0;
+		memcpy(buf, data, sizeof(data));
+		*hi = OBEX_HDR_APPARAM;
+		ret = 0;
+	} else if (pbap->buffer) {
+		/* Stream data */
+		*hi = OBEX_HDR_BODY;
+		ret = string_read(pbap->buffer, buf, count, hi);
 	}
 
-	/* Stream data */
-	if (pbap->buffer)
-		return string_read(pbap->buffer, buf, count);
-
-	return -EAGAIN;
+	return ret;
 }
 
 static int vobject_close(gpointer object)
@@ -566,7 +619,7 @@ static int vobject_close(gpointer object)
 static struct obex_mime_type_driver mime_pull = {
 	.target		= PBAP_TARGET,
 	.mimetype	= "x-bt/phonebook",
-	.open		= vobject_open,
+	.open		= vobject_pull_open,
 	.close		= vobject_close,
 	.read		= vobject_read,
 };
@@ -574,7 +627,7 @@ static struct obex_mime_type_driver mime_pull = {
 static struct obex_mime_type_driver mime_list = {
 	.target		= PBAP_TARGET,
 	.mimetype	= "x-bt/vcard-listing",
-	.open		= vobject_open,
+	.open		= vobject_list_open,
 	.close		= vobject_close,
 	.read		= vobject_read,
 };
@@ -582,7 +635,7 @@ static struct obex_mime_type_driver mime_list = {
 static struct obex_mime_type_driver mime_vcard = {
 	.target		= PBAP_TARGET,
 	.mimetype	= "x-bt/vcard",
-	.open		= vobject_open,
+	.open		= vobject_vcard_open,
 	.close		= vobject_close,
 	.read		= vobject_read,
 };

@@ -374,8 +374,10 @@ static gint obex_write_stream(struct obex_session *os,
 			obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hd;
-	gint32 len;
 	guint8 *ptr;
+	gint32 len;
+	guint flags;
+	guint8 hi;
 
 	debug("obex_write_stream: name=%s type=%s tx_mtu=%d file=%p",
 		os->name ? os->name : "", os->type ? os->type : "",
@@ -393,7 +395,7 @@ static gint obex_write_stream(struct obex_session *os,
 		goto add_header;
 	}
 
-	len = os->driver->read(os->object, os->buf, os->tx_mtu);
+	len = os->driver->read(os->object, os->buf, os->tx_mtu, &hi);
 	if (len < 0) {
 		error("read(): %s (%d)", strerror(-len), -len);
 		if (len == -EAGAIN)
@@ -406,27 +408,30 @@ static gint obex_write_stream(struct obex_session *os,
 		return len;
 	}
 
-	if (!os->stream)
-		return 0;
-
 	ptr = os->buf;
 
 add_header:
 
 	hd.bs = ptr;
 
+	switch (hi) {
+	case OBEX_HDR_BODY:
+		flags = (len ? OBEX_FL_STREAM_DATA : OBEX_FL_STREAM_DATAEND);
+		break;
+	case OBEX_HDR_APPARAM:
+		flags =  0;
+		break;
+	}
+
+	OBEX_ObjectAddHeader(obex, obj, hi, hd, len, flags);
+
 	if (len == 0) {
-		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, 0,
-					OBEX_FL_STREAM_DATAEND);
 		g_free(os->buf);
 		os->buf = NULL;
 		return len;
 	}
 
 	os->offset += len;
-
-	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, len,
-				OBEX_FL_STREAM_DATA);
 
 	return len;
 }
@@ -472,6 +477,7 @@ proceed:
 static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hd;
+	gboolean stream;
 	guint hlen;
 	guint8 hi;
 	int err;
@@ -550,7 +556,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		}
 	}
 
-	err = os->service->get(os, obj, &os->stream, os->service_data);
+	err = os->service->get(os, obj, &stream, os->service_data);
 
 	if (err < 0)
 		goto done;
@@ -566,7 +572,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	if (os->size == 0)
 		OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
 				hd, 0, OBEX_FL_FIT_ONE_PACKET);
-	else if (!os->stream) {
+	else if (!stream) {
 		/* Asynchronous operation that doesn't use stream */
 		OBEX_SuspendRequest(obex, obj);
 		os->obj = obj;

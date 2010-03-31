@@ -60,7 +60,6 @@ struct obex_session {
 	obex_object_t	*obj;
 	struct obex_mime_type_driver *driver;
 	gboolean	finished;
-	gboolean	stream;
 };
 
 gint obex_session_start(GIOChannel *io, struct server *server);

@@ -204,13 +204,15 @@ static int filesystem_close(gpointer object)
 	return 0;
 }
 
-static ssize_t filesystem_read(gpointer object, void *buf, size_t count)
+static ssize_t filesystem_read(gpointer object, void *buf, size_t count, guint8 *hi)
 {
 	ssize_t ret;
 
 	ret = read(GPOINTER_TO_INT(object), buf, count);
 	if (ret < 0)
 		return -errno;
+
+	*hi = OBEX_HDR_BODY;
 
 	return ret;
 }
@@ -465,10 +467,12 @@ int string_free(gpointer object)
 	return 0;
 }
 
-ssize_t string_read(gpointer object, void *buf, size_t count)
+ssize_t string_read(gpointer object, void *buf, size_t count, guint8 *hi)
 {
 	GString *string = object;
 	ssize_t len;
+
+	*hi = OBEX_HDR_BODY;
 
 	if (string->len == 0)
 		return 0;
@@ -480,16 +484,18 @@ ssize_t string_read(gpointer object, void *buf, size_t count)
 	return len;
 }
 
-static ssize_t capability_read(gpointer object, void *buf, size_t count)
+static ssize_t capability_read(gpointer object, void *buf, size_t count,
+							guint8 *hi)
 {
 	struct capability_object *obj = object;
 
 	if (obj->buffer)
-		return string_read(obj->buffer, buf, count);
+		return string_read(obj->buffer, buf, count, hi);
 
 	if (obj->pid >= 0)
 		return -EAGAIN;
 
+	*hi = OBEX_HDR_BODY;
 	return read(obj->output, buf, count);
 }
 

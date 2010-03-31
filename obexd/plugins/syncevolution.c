@@ -327,7 +327,7 @@ done:
 	return 0;
 }
 
-static ssize_t synce_read(gpointer object, void *buf, size_t count)
+static ssize_t synce_read(gpointer object, void *buf, size_t count, guint8 *hi)
 {
 	struct synce_context *context = object;
 	struct obex_session *os = context->os;
@@ -340,7 +340,7 @@ static ssize_t synce_read(gpointer object, void *buf, size_t count)
 	DBusPendingCall *call;
 
 	if (context->buffer)
-		return string_read(context->buffer, buf, count);
+		return string_read(context->buffer, buf, count, hi);
 
 	conn = obex_dbus_get_connection();
 	if (conn == NULL)
