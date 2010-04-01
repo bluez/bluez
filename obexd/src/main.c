@@ -202,6 +202,16 @@ static GOptionEntry options[] = {
 	{ NULL },
 };
 
+const gchar *obex_option_root_folder(void)
+{
+	return option_root;
+}
+
+gboolean obex_option_symlinks(void)
+{
+	return option_symlinks;
+}
+
 static void sig_tty(int sig)
 {
 	if (write(signal_pipe[1], &sig, sizeof(sig)) != sizeof(sig))

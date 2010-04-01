@@ -59,6 +59,9 @@ char *obex_get_id(struct obex_session *os);
 ssize_t obex_aparam_read(struct obex_session *os,
 		obex_object_t *obj, const guint8 **buffer);
 
+const gchar *obex_option_root_folder(void);
+gboolean obex_option_symlinks(void);
+
 int tty_init(gint service, const gchar *folder, const gchar *capability,
 		gboolean symlinks, const gchar *devnode);
 gint obex_tty_session_stop(void);
