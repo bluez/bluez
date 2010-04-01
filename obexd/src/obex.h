@@ -42,10 +42,8 @@ struct obex_session;
 
 void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data);
 
-int obex_get_stream_start(struct obex_session *os,
-		const gchar *filename, gpointer user_data);
-int obex_put_stream_start(struct obex_session *os,
-		const gchar *filename, gpointer user_data);
+int obex_get_stream_start(struct obex_session *os, const gchar *filename);
+int obex_put_stream_start(struct obex_session *os, const gchar *filename);
 const char *obex_get_name(struct obex_session *os);
 ssize_t obex_get_size(struct obex_session *os);
 const char *obex_get_type(struct obex_session *os);

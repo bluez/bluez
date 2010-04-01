@@ -29,7 +29,6 @@ struct obex_mime_type_driver {
 	const char *mimetype;
 	const guint8 *who;
 	guint who_size;
-	gpointer driver_data;
 	gpointer (*open) (const char *name, int oflag, mode_t mode,
 			gpointer driver_data, size_t *size, int *err);
 	int (*close) (gpointer object);

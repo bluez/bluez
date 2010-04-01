@@ -638,21 +638,19 @@ static void cmd_setpath(struct obex_session *os,
 	os_set_response(obj, err);
 }
 
-int obex_get_stream_start(struct obex_session *os,
-		const gchar *filename, gpointer driver_data)
+int obex_get_stream_start(struct obex_session *os, const gchar *filename)
 {
 	gint err;
 	gpointer object;
 	size_t size;
 
-	object = os->driver->open(filename, O_RDONLY, 0, driver_data,
+	object = os->driver->open(filename, O_RDONLY, 0, os->service_data,
 								&size, &err);
 	if (object == NULL) {
 		error("open(%s): %s (%d)", filename, strerror(-err), -err);
 		goto fail;
 	}
 
-	os->driver->driver_data = driver_data;
 	os->object = object;
 	os->offset = 0;
 	os->size = size;
@@ -669,14 +667,13 @@ fail:
 	return err;
 }
 
-int obex_put_stream_start(struct obex_session *os,
-		const gchar *filename, gpointer driver_data)
+gint obex_put_stream_start(struct obex_session *os, const gchar *filename)
 {
 	gint len;
 	int err;
 
 	os->object = os->driver->open(filename, O_WRONLY | O_CREAT | O_TRUNC,
-					0600, driver_data,
+					0600, os->service_data,
 					os->size != OBJECT_SIZE_UNKNOWN ?
 					(size_t *) &os->size : NULL, &err);
 	if (os->object == NULL) {
@@ -685,7 +682,6 @@ int obex_put_stream_start(struct obex_session *os,
 	}
 
 	os->path = filename;
-	os->driver->driver_data = driver_data;
 
 	if (!os->buf) {
 		debug("PUT request checked, no buffered data");

@@ -97,6 +97,7 @@ struct synce_context {
 	guint abort_watch;
 	GString *buffer;
 	int lasterr;
+	gchar *id;
 };
 
 static void append_dict_entry(DBusMessageIter *dict, const char *key,
@@ -215,10 +216,28 @@ done:
 
 static gpointer synce_connect(struct obex_session *os, int *err)
 {
+	DBusConnection *conn;
+	struct synce_context *context;
+
 	manager_register_session(os);
+
+	conn = obex_dbus_get_connection();
+	if (!conn)
+		goto failed;
+
+	context = g_new0(struct synce_context, 1);
+	context->dbus_conn = conn;
+	context->lasterr = -EAGAIN;
+	context->id = obex_get_id(os);
 
 	if (err)
 		*err = 0;
+
+	return context;
+
+failed:
+	if (err)
+		*err = -EPERM;
 
 	return NULL;
 }
@@ -234,7 +253,7 @@ static int synce_get(struct obex_session *os, obex_object_t *obj,
 	if (stream)
 		*stream = TRUE;
 
-	return obex_get_stream_start(os, NULL, os);
+	return obex_get_stream_start(os, NULL);
 }
 
 static void close_cb(DBusPendingCall *call, void *user_data)
@@ -255,35 +274,18 @@ static void close_cb(DBusPendingCall *call, void *user_data)
 
 static void synce_disconnect(struct obex_session *os, gpointer user_data)
 {
+	struct synce_context *context = user_data;
 
+	g_free(context);
 }
 
 static gpointer synce_open(const char *name, int oflag, mode_t mode,
 		gpointer user_data, size_t *size, int *err)
 {
-	struct obex_session *os = user_data;
-	DBusConnection *conn;
-	struct synce_context *context;
-
-	conn = obex_dbus_get_connection();
-	if (!conn)
-		goto failed;
-
-	context = g_new0(struct synce_context, 1);
-	context->os = os;
-	context->dbus_conn = conn;
-	context->lasterr = -EAGAIN;
-
 	if (err)
 		*err = 0;
 
-	return context;
-
-failed:
-	if (err)
-		*err = -EPERM;
-
-	return NULL;
+	return user_data;
 }
 
 static int synce_close(gpointer object)
@@ -330,9 +332,8 @@ done:
 static ssize_t synce_read(gpointer object, void *buf, size_t count, guint8 *hi)
 {
 	struct synce_context *context = object;
-	struct obex_session *os = context->os;
 	DBusConnection *conn;
-	gchar *id, transport[36], transport_description[24];
+	gchar transport[36], transport_description[24];
 	const char *session;
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
@@ -353,20 +354,13 @@ static ssize_t synce_read(gpointer object, void *buf, size_t count, guint8 *hi)
 	if (!msg)
 		goto failed;
 
-	id = obex_get_id(os);
-	if (id == NULL) {
-		dbus_message_unref(msg);
-		goto failed;
-	}
-
 	dbus_message_iter_init_append(msg, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 		DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_STRING_AS_STRING
 		DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	append_dict_entry(&dict, "id", DBUS_TYPE_STRING, id);
-	g_free(id);
+	append_dict_entry(&dict, "id", DBUS_TYPE_STRING, context->id);
 
 	snprintf(transport, sizeof(transport), "%s.obexd",
 					OPENOBEX_SERVICE);
