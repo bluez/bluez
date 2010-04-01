@@ -81,6 +81,12 @@ static const guint8 FTP_TARGET[TARGET_SIZE] = {
 			0xF9, 0xEC, 0x7B, 0xC4,  0x95, 0x3C, 0x11, 0xD2,
 			0x98, 0x4E, 0x52, 0x54,  0x00, 0xDC, 0x9E, 0x09  };
 
+#define PCSUITE_WHO_SIZE 8
+
+static const guint8 PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
+			'P','C',' ','S','u','i','t','e' };
+
+
 static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 				struct stat *dstat, gboolean root,
 				gboolean pcsuite)
@@ -322,25 +328,26 @@ fail:
 	return NULL;
 }
 
-static gpointer folder_open(const char *name, int oflag, mode_t mode,
-		 gpointer context, size_t *size, int *err)
+static GString *append_pcsuite_preamble(GString *object)
 {
-	struct obex_session *os = context;
+	return g_string_append(object, FL_TYPE_PCSUITE);
+}
+
+static GString *append_folder_preamble(GString *object)
+{
+	return g_string_append(object, FL_TYPE);
+}
+
+static GString *append_listing(GString *object, const char *name,
+			gboolean pcsuite, size_t *size, int *err)
+{
 	struct stat fstat, dstat;
 	struct dirent *ep;
-	GString *object;
 	DIR *dp;
-	gboolean root, pcsuite, symlinks;
+	gboolean root, symlinks;
 	gint ret;
 
-	pcsuite = obex_get_service(os) & OBEX_PCSUITE ? TRUE : FALSE;
-
-	object = g_string_new(FL_VERSION);
-	object = g_string_append(object, pcsuite ? FL_TYPE_PCSUITE : FL_TYPE);
-
-	object = g_string_append(object, FL_BODY_BEGIN);
-
-	root = g_str_equal(name, obex_get_root_folder(os));
+	root = g_str_equal(name, obex_option_root_folder());
 
 	dp = opendir(name);
 	if (dp == NULL) {
@@ -349,7 +356,7 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 		goto failed;
 	}
 
-	symlinks = obex_get_symlinks(os);
+	symlinks = obex_option_symlinks();
 	if (root && symlinks)
 		ret = stat(name, &dstat);
 	else {
@@ -394,7 +401,7 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 
 		g_free(fullname);
 
-		line = file_stat_line(filename, &fstat, &dstat, root, pcsuite);
+		line = file_stat_line(filename, &fstat, &dstat, root, FALSE);
 		if (line == NULL) {
 			g_free(filename);
 			continue;
@@ -423,6 +430,30 @@ failed:
 
 	g_string_free(object, TRUE);
 	return NULL;
+}
+
+static gpointer folder_open(const char *name, int oflag, mode_t mode,
+			gpointer context, size_t *size, int *err)
+{
+	GString *object;
+
+	object = g_string_new(FL_VERSION);
+	object = append_folder_preamble(object);
+	object = g_string_append(object, FL_BODY_BEGIN);
+
+	return append_listing(object, name, FALSE, size, err);
+}
+
+static gpointer pcsuite_open(const char *name, int oflag, mode_t mode,
+			 gpointer context, size_t *size, int *err)
+{
+	GString *object;
+
+	object = g_string_new(FL_VERSION);
+	object = append_pcsuite_preamble(object);
+	object = g_string_append(object, FL_BODY_BEGIN);
+
+	return append_listing(object, name, TRUE, size, err);
 }
 
 int string_free(gpointer object)
@@ -504,6 +535,16 @@ static struct obex_mime_type_driver folder = {
 	.read = string_read,
 };
 
+static struct obex_mime_type_driver pcsuite = {
+	.target = FTP_TARGET,
+	.who = PCSUITE_WHO,
+	.who_size = PCSUITE_WHO_SIZE,
+	.mimetype = "x-obex/folder-listing",
+	.open = pcsuite_open,
+	.close = string_free,
+	.read = string_read,
+};
+
 static int filesystem_init(void)
 {
 	int err;
@@ -513,6 +554,10 @@ static int filesystem_init(void)
 		return err;
 
 	err = obex_mime_type_driver_register(&capability);
+	if (err < 0)
+		return err;
+
+	err = obex_mime_type_driver_register(&pcsuite);
 	if (err < 0)
 		return err;
 
