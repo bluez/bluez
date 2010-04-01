@@ -29,6 +29,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
@@ -45,62 +50,228 @@
 #include "adapter.h"
 #include "logging.h"
 
+/* FIXME: This location should be build-time configurable */
+#define PNATD "/usr/sbin/phonet-at"
+
 #define DUN_CHANNEL 1
 #define DUN_UUID "00001103-0000-1000-8000-00805F9B34FB"
 
+#define TTY_TIMEOUT 100
+#define TTY_TRIES 10
+
+struct dun_client {
+	bdaddr_t bda;
+
+	GIOChannel *io;	/* Client socket */
+	guint io_watch;	/* Client IO watch id */
+
+	guint tty_timer;
+	int tty_tries;
+	gboolean tty_open;
+	int tty_id;
+	char tty_name[PATH_MAX];
+
+	GPid pnatd_pid;
+	guint pnatd_watch;
+};
+
 struct dun_server {
-	bdaddr_t src;		/* Local adapter address */
-	bdaddr_t dst;		/* Remote address (only meaningful when
-					there's a client connected) */
+	bdaddr_t bda;		/* Local adapter address */
+
 	uint32_t record_handle; /* Local SDP record handle */
 	GIOChannel *server;	/* Server socket */
-	GIOChannel *client;	/* Client socket */
-	guint client_id;	/* Client IO watch id */
+
+	int rfcomm_ctl;
+
+	struct dun_client client;
 };
 
 static GSList *servers = NULL;
 
 static void disconnect(struct dun_server *server)
 {
-	g_io_channel_unref(server->client);
-	server->client = NULL;
-	if (server->client_id > 0)
-		g_source_remove(server->client_id);
-	server->client_id = 0;
+	struct dun_client *client = &server->client;
+
+	if (!client->io)
+		return;
+
+	g_io_channel_unref(client->io);
+	client->io = NULL;
+
+	if (client->io_watch > 0) {
+		g_source_remove(client->io_watch);
+		client->io_watch = 0;
+	}
+
+	if (client->pnatd_watch > 0) {
+		g_source_remove(client->pnatd_watch);
+		client->pnatd_watch = 0;
+		if (client->pnatd_pid > 0)
+			kill(client->pnatd_pid, SIGTERM);
+	}
+
+	if (client->pnatd_pid > 0) {
+		g_spawn_close_pid(client->pnatd_pid);
+		client->pnatd_pid = 0;
+	}
+
+	if (client->tty_timer > 0) {
+		g_source_remove(client->tty_timer);
+		client->tty_timer = 0;
+	}
+
+	if (client->tty_id >= 0) {
+		struct rfcomm_dev_req req;
+
+		memset(&req, 0, sizeof(req));
+		req.dev_id = client->tty_id;
+		req.flags = (1 << RFCOMM_HANGUP_NOW);
+		ioctl(server->rfcomm_ctl, RFCOMMRELEASEDEV, &req);
+
+		client->tty_name[0] = '\0';
+		client->tty_open = FALSE;
+		client->tty_id = -1;
+	}
 }
 
-static gboolean session_event(GIOChannel *chan,
+static gboolean client_event(GIOChannel *chan,
 					GIOCondition cond, gpointer data)
 {
 	struct dun_server *server = data;
-	unsigned char buf[672];
-	gsize len, written;
-	GIOError err;
+	struct dun_client *client = &server->client;
+	char addr[18];
 
-	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
-		goto disconnected;
+	ba2str(&client->bda, addr);
 
-	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
-	if (err == G_IO_ERROR_AGAIN)
-		return TRUE;
+	debug("Disconnected DUN from %s (%s)", addr, client->tty_name);
 
-	g_io_channel_write(chan, (const gchar *) buf, len, &written);
+	client->io_watch = 0;
+	if (client->pnatd_pid < 0)
+	disconnect(server);
+
+	return FALSE;
+}
+
+static void pnatd_exit(GPid pid, gint status, gpointer user_data)
+{
+	struct dun_server *server = user_data;
+	struct dun_client *client = &server->client;
+
+        if (WIFEXITED(status))
+                debug("pnatd (%d) exited with status %d", pid,
+							WEXITSTATUS(status));
+        else
+                debug("pnatd (%d) was killed by signal %d", pid,
+							WTERMSIG(status));
+
+	client->pnatd_watch = 0;
+
+	disconnect(server);
+}
+
+static gboolean start_pnatd(struct dun_server *server)
+{
+	struct dun_client *client = &server->client;
+	GSpawnFlags flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
+	char *argv[] = { PNATD, client->tty_name, NULL };
+	GError *err = NULL;
+	GPid pid;
+
+	g_spawn_async(NULL, argv, NULL, flags, NULL, NULL, &pid, &err);
+	if (err != NULL) {
+		error("Unable to spawn pnatd: %s", err->message);
+		return FALSE;
+	}
+
+	debug("pnatd started for %s with pid %d", client->tty_name, pid);
+
+	client->pnatd_pid = pid;
+	client->pnatd_watch = g_child_watch_add(pid, pnatd_exit, server);
 
 	return TRUE;
+}
 
-disconnected:
-	server->client_id = 0;
+static gboolean tty_try_open(gpointer user_data)
+{
+	struct dun_server *server = user_data;
+	struct dun_client *client = &server->client;
+	int tty_fd;
+
+	tty_fd = open(client->tty_name, O_RDONLY | O_NOCTTY);
+	if (tty_fd < 0) {
+		if (errno == EACCES)
+			goto disconnect;
+
+		client->tty_tries--;
+
+		if (client->tty_tries <= 0)
+			goto disconnect;
+
+		return TRUE;
+	}
+
+	debug("%s created for DUN", client->tty_name);
+
+	client->tty_open = TRUE;
+	client->tty_timer = 0;
+
+	g_io_channel_unref(client->io);
+	g_source_remove(client->io_watch);
+
+	client->io = g_io_channel_unix_new(tty_fd);
+	client->io_watch = g_io_add_watch(client->io,
+					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+					client_event, server);
+
+	if (!start_pnatd(server))
+		goto disconnect;
+
+	return FALSE;
+
+disconnect:
+	client->tty_timer = 0;
 	disconnect(server);
 	return FALSE;
+}
+
+static gboolean create_tty(struct dun_server *server)
+{
+	struct dun_client *client = &server->client;
+	struct rfcomm_dev_req req;
+	int dev, sk = g_io_channel_unix_get_fd(client->io);
+
+	memset(&req, 0, sizeof(req));
+	req.dev_id = -1;
+	req.flags = (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP);
+
+	bacpy(&req.src, &server->bda);
+	bacpy(&req.dst, &client->bda);
+
+	bt_io_get(client->io, BT_IO_RFCOMM, NULL,
+			BT_IO_OPT_DEST_CHANNEL, &req.channel,
+			BT_IO_OPT_INVALID);
+
+	dev = ioctl(sk, RFCOMMCREATEDEV, &req);
+	if (dev < 0) {
+		error("Can't create RFCOMM TTY: %s", strerror(errno));
+		return FALSE;
+	}
+
+	snprintf(client->tty_name, PATH_MAX - 1, "/dev/rfcomm%d", dev);
+
+	client->tty_tries = TTY_TRIES;
+
+	tty_try_open(server);
+	if (!client->tty_open && client->tty_tries > 0)
+		client->tty_timer = g_timeout_add(TTY_TIMEOUT,
+							tty_try_open, server);
+
+	return TRUE;
 }
 
 static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct dun_server *server = user_data;
-	guint id;
-
-	g_source_remove(server->client_id);
-	server->client_id = 0;
 
 	if (err) {
 		error("Accepting DUN connection failed: %s", err->message);
@@ -108,14 +279,16 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		return;
 	}
 
-	id = g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-							session_event, server);
-	server->client_id = id;
+	if (!create_tty(server)) {
+		error("Device creation failed");
+		disconnect(server);
+	}
 }
 
 static void auth_cb(DBusError *derr, void *user_data)
 {
 	struct dun_server *server = user_data;
+	struct dun_client *client = &server->client;
 	GError *err = NULL;
 
 	if (derr && dbus_error_is_set(derr)) {
@@ -123,7 +296,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 		goto drop;
 	}
 
-	if (!bt_io_accept(server->client, connect_cb, server, NULL, &err)) {
+	if (!bt_io_accept(client->io, connect_cb, server, NULL, &err)) {
 		error("bt_io_accept: %s", err->message);
 		g_error_free(err);
 		goto drop;
@@ -138,10 +311,11 @@ drop:
 static gboolean auth_watch(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct dun_server *server = data;
+	struct dun_client *client = &server->client;
 
 	error("DUN client disconnected while waiting for authorization");
 
-	btd_cancel_authorization(&server->src, &server->dst);
+	btd_cancel_authorization(&server->bda, &client->bda);
 
 	disconnect(server);
 
@@ -151,15 +325,16 @@ static gboolean auth_watch(GIOChannel *chan, GIOCondition cond, gpointer data)
 static void confirm_cb(GIOChannel *io, gpointer user_data)
 {
 	struct dun_server *server = user_data;
+	struct dun_client *client = &server->client;
 	GError *err = NULL;
 
-	if (server->client) {
+	if (client->io) {
 		error("Rejecting DUN connection since one already exists");
 		return;
 	}
 
 	bt_io_get(io, BT_IO_RFCOMM, &err,
-			BT_IO_OPT_DEST_BDADDR, &server->dst,
+			BT_IO_OPT_DEST_BDADDR, &client->bda,
 			BT_IO_OPT_INVALID);
 	if (err != NULL) {
 		error("Unable to get DUN source and dest address: %s",
@@ -168,15 +343,15 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 		return;
 	}
 
-	if (btd_request_authorization(&server->src, &server->dst, DUN_UUID,
+	if (btd_request_authorization(&server->bda, &client->bda, DUN_UUID,
 						auth_cb, user_data) < 0) {
 		error("Requesting DUN authorization failed");
 		return;
 	}
 
-	server->client_id = g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+	client->io_watch = g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 						(GIOFunc) auth_watch, server);
-	server->client = g_io_channel_ref(io);
+	client->io = g_io_channel_ref(io);
 }
 
 static sdp_record_t *dun_record(uint8_t ch)
@@ -239,7 +414,7 @@ static gint server_cmp(gconstpointer a, gconstpointer b)
 	const struct dun_server *server = a;
 	const bdaddr_t *src = b;
 
-	return bacmp(src, &server->src);
+	return bacmp(src, &server->bda);
 }
 
 static int pnat_probe(struct btd_adapter *adapter)
@@ -276,9 +451,16 @@ static int pnat_probe(struct btd_adapter *adapter)
 		goto fail;
 	}
 
+	server->rfcomm_ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
+	if (server->rfcomm_ctl < 0) {
+		error("Unable to create RFCOMM control socket: %s (%d)",
+						strerror(errno), errno);
+		goto fail;
+	}
+
 	server->server = io;
 	server->record_handle = record->handle;
-	bacpy(&server->src, &src);
+	bacpy(&server->bda, &src);
 
 	servers = g_slist_append(servers, server);
 
@@ -307,10 +489,10 @@ static void pnat_remove(struct btd_adapter *adapter)
 
 	servers = g_slist_delete_link(servers, match);
 
-	if (server->client)
-		disconnect(server);
+	disconnect(server);
 
 	remove_record_from_server(server->record_handle);
+	close(server->rfcomm_ctl);
 	g_io_channel_shutdown(server->server, TRUE, NULL);
 	g_io_channel_unref(server->server);
 	g_free(server);
