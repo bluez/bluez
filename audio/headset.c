@@ -2685,6 +2685,9 @@ gboolean headset_get_nrec(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
+	if (!hs->slc)
+		return TRUE;
+
 	return hs->slc->nrec;
 }
 
