@@ -436,8 +436,7 @@ static int pnat_probe(struct btd_adapter *adapter)
 	if (err != NULL) {
 		error("Failed to start DUN server: %s", err->message);
 		g_error_free(err);
-		g_free(server);
-		return -EIO;
+		goto fail;
 	}
 
 	record = dun_record(DUN_CHANNEL);
