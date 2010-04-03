@@ -191,6 +191,8 @@ static void browse_request_free(struct browse_req *req)
 		dbus_message_unref(req->msg);
 	if (req->conn)
 		dbus_connection_unref(req->conn);
+	if (req->device)
+		btd_device_unref(req->device);
 	g_slist_foreach(req->profiles_added, (GFunc) g_free, NULL);
 	g_slist_free(req->profiles_added);
 	g_slist_free(req->profiles_removed);
@@ -212,8 +214,8 @@ static void browse_request_cancel(struct browse_req *req)
 
 	bt_cancel_discovery(&src, &device->bdaddr);
 
-	browse_request_free(req);
 	device->browse = NULL;
+	browse_request_free(req);
 }
 
 static void device_free(gpointer user_data)
@@ -1374,8 +1376,8 @@ proceed:
 	device_set_temporary(device, FALSE);
 
 cleanup:
-	browse_request_free(req);
 	device->browse = NULL;
+	browse_request_free(req);
 }
 
 static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
@@ -1449,7 +1451,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 		conn = get_dbus_connection();
 
 	req->conn = dbus_connection_ref(conn);
-	req->device = device;
+	req->device = btd_device_ref(device);
 
 	if (search) {
 		memcpy(&uuid, search, sizeof(uuid_t));
@@ -1477,8 +1479,8 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	err = bt_search_service(&src, &device->bdaddr,
 				&uuid, cb, req, NULL);
 	if (err < 0) {
-		browse_request_free(req);
 		device->browse = NULL;
+		browse_request_free(req);
 	}
 
 	return err;
