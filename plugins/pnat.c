@@ -146,7 +146,6 @@ static gboolean client_event(GIOChannel *chan,
 	debug("Disconnected DUN from %s (%s)", addr, client->tty_name);
 
 	client->io_watch = 0;
-	if (client->pnatd_pid < 0)
 	disconnect(server);
 
 	return FALSE;
