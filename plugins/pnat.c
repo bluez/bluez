@@ -179,6 +179,7 @@ static gboolean start_pnatd(struct dun_server *server)
 	g_spawn_async(NULL, argv, NULL, flags, NULL, NULL, &pid, &err);
 	if (err != NULL) {
 		error("Unable to spawn pnatd: %s", err->message);
+		g_error_free(err);
 		return FALSE;
 	}
 
