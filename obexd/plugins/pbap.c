@@ -154,6 +154,8 @@ static const guint8 PBAP_TARGET[TARGET_SIZE] = {
 
 typedef int (*cache_sort_f) (struct cache_entry *entry, gpointer user_data);
 typedef void (*cache_element_f) (struct cache_entry *entry, gpointer user_data);
+typedef int (*cache_entry_find_f) (const struct cache_entry *entry,
+			const gchar *value);
 
 static void cache_entry_free(struct cache_entry *entry)
 {
@@ -179,6 +181,40 @@ static void cache_foreach(struct cache *cache, cache_sort_f sort,
 	}
 }
 #endif
+
+static gboolean entry_name_find(const struct cache_entry *entry,
+		const gchar *value)
+{
+	gchar *name;
+	gboolean ret;
+
+	if (!entry->name)
+		return FALSE;
+
+	name = g_utf8_strdown(entry->name, -1);
+	ret = (g_strstr_len(name, -1, value) ? TRUE : FALSE);
+	g_free(name);
+
+	return ret;
+}
+
+static gboolean entry_sound_find(const struct cache_entry *entry,
+		const gchar *value)
+{
+	if (!entry->sound)
+		return FALSE;
+
+	return (g_strstr_len(entry->sound, -1, value) ? TRUE : FALSE);
+}
+
+static gboolean entry_tel_find(const struct cache_entry *entry,
+		const gchar *value)
+{
+	if (!entry->tel)
+		return FALSE;
+
+	return (g_strstr_len(entry->tel, -1, value) ? TRUE : FALSE);
+}
 
 static const gchar *cache_find(struct cache *cache, guint32 handle)
 {
@@ -261,6 +297,9 @@ static void cache_entry_notify(const gchar *id, const gchar *name,
 static void cache_ready_notify(gpointer user_data)
 {
 	struct pbap_session *pbap = user_data;
+	cache_entry_find_f find;
+	gchar *searchval;
+	GSList *l;
 
 	if (pbap->params->maxlistcount == 0) {
 		/* Ignore all other parameter and return PhoneBookSize */
@@ -273,26 +312,51 @@ static void cache_ready_notify(gpointer user_data)
 		memcpy(hdr->val, &size, sizeof(size));
 
 		pbap->buffer = g_string_new_len(aparam, sizeof(aparam));
-	} else {
-		GSList *l;
-
-		pbap->buffer = g_string_new(VCARD_LISTING_BEGIN);
-		l = g_slist_nth(pbap->cache.entries,
-				pbap->params->liststartoffset);
-
-		for (; l; l = l->next) {
-			struct cache_entry *entry = l->data;
-
-			/* FIXME: check if the entry matches */
-
-			g_string_append_printf(pbap->buffer,
-					VCARD_LISTING_ELEMENT,
-					entry->handle, entry->name);
-		}
-
-		pbap->buffer = g_string_append(pbap->buffer, VCARD_LISTING_END);
+		goto done;
 	}
 
+	pbap->buffer = g_string_new(VCARD_LISTING_BEGIN);
+	l = g_slist_nth(pbap->cache.entries,
+			pbap->params->liststartoffset);
+
+	/*
+	 * FIXME: See PBAP spec section 5.3.4.1
+	 * Order{Alphabetical | Indexed | Phonetical} not yet implemented
+	 *
+	 * This implementation checks if the given field CONTAINS the
+	 * search value(case insensitive). Name is the default field
+	 * when the attribute is not provided.
+	 */
+	switch (pbap->params->searchattrib) {
+		case 1:
+			/* Number */
+			find = entry_tel_find;
+			break;
+			/* Sound */
+		case 2:
+			find = entry_sound_find;
+			break;
+		default:
+			find = entry_name_find;
+			break;
+	}
+
+	searchval = g_utf8_strdown((gchar *) pbap->params->searchval, -1);
+	for (; l; l = l->next) {
+		const struct cache_entry *entry = l->data;
+
+		if (searchval && !find(entry, (const gchar *) searchval))
+			continue;
+
+		g_string_append_printf(pbap->buffer,
+				VCARD_LISTING_ELEMENT,
+				entry->handle, entry->name);
+	}
+
+	g_free(searchval);
+	pbap->buffer = g_string_append(pbap->buffer, VCARD_LISTING_END);
+
+done:
 	if (!pbap->cache.valid) {
 		pbap->cache.valid = TRUE;
 		obex_object_set_io_flags(pbap, G_IO_IN, 0);
