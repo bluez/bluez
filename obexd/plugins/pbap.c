@@ -73,9 +73,6 @@
 #define PHONEBOOKSIZE_LEN	2
 #define NEWMISSEDCALLS_LEN	1
 
-#define MCH		"telecom/mch.vcf"
-#define SIM1_MCH	"SIM1/telecom/mch.vcf"
-
 #define PBAP_CHANNEL	15
 
 #define PBAP_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
@@ -126,7 +123,6 @@ struct aparam_header {
 } __attribute__ ((packed));
 
 struct cache {
-	gboolean ready;
 	gboolean valid;
 	guint32 index;
 	gchar *folder;
@@ -165,22 +161,6 @@ static void cache_entry_free(struct cache_entry *entry)
 	g_free(entry->tel);
 	g_free(entry);
 }
-#if 0
-static void cache_foreach(struct cache *cache, cache_sort_f sort,
-		cache_element_f elem, gpointer user_data)
-{
-
-	GSList *l;
-
-	/* TODO: sort not implemented */
-
-	for (l = cache->entries; l; l = l->next) {
-		struct cache_entry *entry = l->data;
-
-		elem(entry, user_data);
-	}
-}
-#endif
 
 static gboolean entry_name_find(const struct cache_entry *entry,
 		const gchar *value)
@@ -367,9 +347,9 @@ static struct apparam_field *parse_aparam(const guint8 *buffer, guint32 hlen)
 {
 	struct apparam_field *param;
 	struct aparam_header *hdr;
+	guint64 val64;
 	guint32 len = 0;
 	guint16 val16;
-	guint64 val64;
 
 	param = g_new0(struct apparam_field, 1);
 
@@ -633,10 +613,6 @@ static gpointer vobject_list_open(const char *name, int oflag, mode_t mode,
 
 	/* PullvCardListing always get the contacts from the cache */
 
-	/*
-	 * FIXME: When the name is given and the OBEX non header flags are
-	 * provided it is necessary to check if the cache still valid.
-	 */
 	if (pbap->cache.valid) {
 		cache_ready_notify(pbap);
 		goto done;

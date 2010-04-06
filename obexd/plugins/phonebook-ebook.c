@@ -189,6 +189,7 @@ static void ebook_entry_cb(EBook *book, EBookStatus estatus,
 
 	data->cb(vcard, len, 1, 0, data->user_data);
 
+	g_free(vcard);
 	g_free(data);
 }
 
