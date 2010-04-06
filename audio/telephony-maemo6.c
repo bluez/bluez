@@ -45,51 +45,27 @@
 #define SSC_DBUS_PATH  "/com/nokia/phone/SSC"
 
 /* libcsnet D-Bus definitions */
-#define NETWORK_BUS_NAME		"com.nokia.phone.net"
-#define NETWORK_INTERFACE		"Phone.Net"
-#define NETWORK_PATH			"/com/nokia/phone/net"
-
-/* Mask bits for supported services */
-#define NETWORK_MASK_GPRS_SUPPORT	0x01
-#define NETWORK_MASK_CS_SERVICES	0x02
-#define NETWORK_MASK_EGPRS_SUPPORT	0x04
-#define NETWORK_MASK_HSDPA_AVAIL	0x08
-#define NETWORK_MASK_HSUPA_AVAIL	0x10
-
-/* network get cell info: cell type */
-#define NETWORK_UNKNOWN_CELL		0
-#define NETWORK_GSM_CELL		1
-#define NETWORK_WCDMA_CELL		2
+#define CSD_CSNET_BUS_NAME	"com.nokia.csd.CSNet"
+#define CSD_CSNET_PATH		"/com/nokia/csd/csnet"
+#define CSD_CSNET_IFACE		"com.nokia.csd.CSNet"
+#define CSD_CSNET_REGISTRATION	"com.nokia.csd.CSNet.NetworkRegistration"
+#define CSD_CSNET_OPERATOR	"com.nokia.csd.CSNet.NetworkOperator"
+#define CSD_CSNET_SIGNAL	"com.nokia.csd.CSNet.SignalStrength"
 
 enum net_registration_status {
-	NETWORK_REG_STATUS_HOME = 0x00,
-	NETWORK_REG_STATUS_ROAM,
-	NETWORK_REG_STATUS_ROAM_BLINK,
-	NETWORK_REG_STATUS_NOSERV,
-	NETWORK_REG_STATUS_NOSERV_SEARCHING,
-	NETWORK_REG_STATUS_NOSERV_NOTSEARCHING,
-	NETWORK_REG_STATUS_NOSERV_NOSIM,
-	NETWORK_REG_STATUS_POWER_OFF = 0x08,
-	NETWORK_REG_STATUS_NSPS,
-	NETWORK_REG_STATUS_NSPS_NO_COVERAGE,
-	NETWORK_REG_STATUS_NOSERV_SIM_REJECTED_BY_NW
+	NETWORK_REG_STATUS_HOME,
+	NETWORK_REG_STATUS_ROAMING,
+	NETWORK_REG_STATUS_OFFLINE,
+	NETWORK_REG_STATUS_SEARCHING,
+	NETWORK_REG_STATUS_NO_SIM,
+	NETWORK_REG_STATUS_POWEROFF,
+	NETWORK_REG_STATUS_POWERSAFE,
+	NETWORK_REG_STATUS_NO_COVERAGE,
+	NETWORK_REG_STATUS_REJECTED,
+	NETWORK_REG_STATUS_UNKOWN
 };
 
-enum network_types {
-	NETWORK_GSM_HOME_PLMN = 0,
-	NETWORK_GSM_PREFERRED_PLMN,
-	NETWORK_GSM_FORBIDDEN_PLMN,
-	NETWORK_GSM_OTHER_PLMN,
-	NETWORK_GSM_NO_PLMN_AVAIL
-};
-
-enum network_alpha_tag_name_type {
-	NETWORK_HARDCODED_LATIN_OPER_NAME = 0,
-	NETWORK_HARDCODED_USC2_OPER_NAME,
-	NETWORK_NITZ_SHORT_OPER_NAME,
-	NETWORK_NITZ_FULL_OPER_NAME,
-};
-
+/* Driver definitions */
 #define TELEPHONY_MAEMO_PATH		"/com/nokia/MaemoTelephony"
 #define TELEPHONY_MAEMO_INTERFACE	"com.nokia.MaemoTelephony"
 
@@ -132,27 +108,17 @@ static uint32_t callerid = 0;
 #define CALL_FLAG_PRESENTATION_RESTRICTED	0x02
 
 /* SIM Phonebook D-Bus definitions */
-#define SIM_PHONEBOOK_BUS_NAME			"com.nokia.phone.SIM"
-#define SIM_PHONEBOOK_INTERFACE			"Phone.Sim.Phonebook"
-#define SIM_PHONEBOOK_PATH			"/com/nokia/phone/SIM/phonebook"
+#define CSD_SIMPB_BUS_NAME			"com.nokia.csd.SIM"
+#define CSD_SIMPB_INTERFACE			"com.nokia.csd.SIM.Phonebook"
+#define CSD_SIMPB_PATH				"/com/nokia/csd/sim/phonebook"
 
-#define PHONEBOOK_INDEX_FIRST_ENTRY		0xFFFF
-#define PHONEBOOK_INDEX_NEXT_FREE_LOCATION	0xFFFE
-
-enum sim_phonebook_type {
-	SIM_PHONEBOOK_TYPE_ADN = 0x0,
-	SIM_PHONEBOOK_TYPE_SDN,
-	SIM_PHONEBOOK_TYPE_FDN,
-	SIM_PHONEBOOK_TYPE_VMBX,
-	SIM_PHONEBOOK_TYPE_MBDN,
-	SIM_PHONEBOOK_TYPE_EN,
-	SIM_PHONEBOOK_TYPE_MSISDN
-};
-
-enum sim_phonebook_location_type {
-	SIM_PHONEBOOK_LOCATION_EXACT = 0x0,
-	SIM_PHONEBOOK_LOCATION_NEXT
-};
+#define CSD_SIMPB_TYPE_ADN			"ADN"
+#define CSD_SIMPB_TYPE_FDN			"FDN"
+#define CSD_SIMPB_TYPE_SDN			"SDN"
+#define CSD_SIMPB_TYPE_VMBX			"VMBX"
+#define CSD_SIMPB_TYPE_MBDN			"MBDN"
+#define CSD_SIMPB_TYPE_EN			"EN"
+#define CSD_SIMPB_TYPE_MSISDN			"MSISDN"
 
 struct csd_call {
 	char *object_path;
@@ -166,26 +132,16 @@ struct csd_call {
 };
 
 static struct {
-	uint8_t status;
-	uint16_t lac;
-	uint32_t cell_id;
-	uint32_t operator_code;
-	uint32_t country_code;
-	uint8_t network_type;
-	uint8_t supported_services;
-	uint16_t signals_bar;
 	char *operator_name;
+	uint8_t status;
+	uint32_t signals_bar;
 } net = {
-	.status = NETWORK_REG_STATUS_NOSERV,
-	.lac = 0,
-	.cell_id = 0,
-	.operator_code = 0,
-	.country_code = 0,
-	.network_type = NETWORK_GSM_NO_PLMN_AVAIL,
-	.supported_services = 0,
-	.signals_bar = 0,
 	.operator_name = NULL,
+	.status = NETWORK_REG_STATUS_UNKOWN,
+	.signals_bar = 0,
 };
+
+static int get_property(const char *iface, const char *prop);
 
 static DBusConnection *connection = NULL;
 
@@ -318,7 +274,7 @@ static int release_conference(void)
 {
 	DBusMessage *msg;
 
-	debug("telephony-maemo: releasing conference call");
+	debug("telephony-maemo6: releasing conference call");
 
 	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
 						CSD_CALL_CONFERENCE_PATH,
@@ -488,7 +444,7 @@ void telephony_device_connected(void *telephony_device)
 {
 	struct csd_call *coming;
 
-	debug("telephony-maemo: device %p connected", telephony_device);
+	debug("telephony-maemo6: device %p connected", telephony_device);
 
 	coming = find_call_with_status(CSD_CALL_STATUS_MT_ALERTING);
 	if (coming) {
@@ -503,7 +459,7 @@ void telephony_device_connected(void *telephony_device)
 
 void telephony_device_disconnected(void *telephony_device)
 {
-	debug("telephony-maemo: device %p disconnected", telephony_device);
+	debug("telephony-maemo6: device %p disconnected", telephony_device);
 	events_enabled = FALSE;
 }
 
@@ -525,7 +481,7 @@ void telephony_response_and_hold_req(void *telephony_device, int rh)
 
 void telephony_last_dialed_number_req(void *telephony_device)
 {
-	debug("telephony-maemo: last dialed number request");
+	debug("telephony-maemo6: last dialed number request");
 
 	if (last_dialed_number)
 		telephony_dial_number_req(telephony_device,
@@ -646,7 +602,7 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 	uint32_t flags = callerid;
 	int ret;
 
-	debug("telephony-maemo: dial request to %s", number);
+	debug("telephony-maemo6: dial request to %s", number);
 
 	if (strncmp(number, "*31#", 4) == 0) {
 		number += 4;
@@ -686,7 +642,7 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 	int ret;
 	char buf[2] = { tone, '\0' }, *buf_ptr = buf;
 
-	debug("telephony-maemo: transmit dtmf: %s", buf);
+	debug("telephony-maemo6: transmit dtmf: %s", buf);
 
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 				CSD_CALL_INTERFACE, "SendDTMF",
@@ -704,7 +660,7 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 
 void telephony_subscriber_number_req(void *telephony_device)
 {
-	debug("telephony-maemo: subscriber number request");
+	debug("telephony-maemo6: subscriber number request");
 	if (msisdn)
 		telephony_subscriber_number_ind(msisdn,
 						number_type(msisdn),
@@ -755,7 +711,7 @@ void telephony_list_current_calls_req(void *telephony_device)
 	GSList *l;
 	int i;
 
-	debug("telephony-maemo: list current calls request");
+	debug("telephony-maemo6: list current calls request");
 
 	for (l = calls, i = 1; l != NULL; l = l->next, i++) {
 		struct csd_call *call = l->data;
@@ -806,7 +762,7 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 	struct csd_call *call;
 	int err = 0;
 
-	debug("telephony-maemo: got call hold request %s", cmd);
+	debug("telephony-maemo6: got call hold request %s", cmd);
 
 	if (strlen(cmd) > 1)
 		idx = &cmd[1];
@@ -880,7 +836,7 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 
 void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 {
-	debug("telephony-maemo: got %s NR and EC request",
+	debug("telephony-maemo6: got %s NR and EC request",
 			enable ? "enable" : "disable");
 	telephony_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
 }
@@ -890,7 +846,7 @@ void telephony_key_press_req(void *telephony_device, const char *keys)
 	struct csd_call *active, *waiting;
 	int err;
 
-	debug("telephony-maemo: got key press request for %s", keys);
+	debug("telephony-maemo6: got key press request for %s", keys);
 
 	waiting = find_call_with_status(CSD_CALL_STATUS_COMING);
 	if (!waiting)
@@ -916,7 +872,7 @@ void telephony_key_press_req(void *telephony_device, const char *keys)
 
 void telephony_voice_dial_req(void *telephony_device, gboolean enable)
 {
-	debug("telephony-maemo: got %s voice dial request",
+	debug("telephony-maemo6: got %s voice dial request",
 			enable ? "enable" : "disable");
 
 	telephony_voice_dial_rsp(telephony_device, CME_ERROR_NOT_SUPPORTED);
@@ -1187,150 +1143,90 @@ static void handle_conference(DBusMessage *msg, gboolean joined)
 	call->conference = joined;
 }
 
-static void get_operator_name_reply(DBusPendingCall *pending_call,
-					void *user_data)
+static uint8_t str2status(const char *state)
 {
-	DBusMessage *reply;
-	DBusError err;
-	const char *name;
-	dbus_int32_t net_err;
-
-	reply = dbus_pending_call_steal_reply(pending_call);
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, reply)) {
-		error("get_operator_name failed: %s, %s",
-			err.name, err.message);
-		dbus_error_free(&err);
-		goto done;
-	}
-
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(reply, &err,
-					DBUS_TYPE_STRING, &name,
-					DBUS_TYPE_INT32, &net_err,
-					DBUS_TYPE_INVALID)) {
-		error("Unexpected get_operator_name reply parameters: %s, %s",
-			err.name, err.message);
-		dbus_error_free(&err);
-		goto done;
-	}
-
-	if (net_err != 0) {
-		error("get_operator_name failed with code %d", net_err);
-		goto done;
-	}
-
-	if (strlen(name) == 0)
-		goto done;
-
-	g_free(net.operator_name);
-	net.operator_name = g_strdup(name);
-
-	debug("telephony-maemo: operator name updated: %s", name);
-
-done:
-	dbus_message_unref(reply);
+	if (g_strcmp0(state, "Home") == 0)
+		return NETWORK_REG_STATUS_HOME;
+	else if (g_strcmp0(state, "Roaming") == 0)
+		return NETWORK_REG_STATUS_ROAMING;
+	else if (g_strcmp0(state, "Offline") == 0)
+		return NETWORK_REG_STATUS_OFFLINE;
+	else if (g_strcmp0(state, "Searching") == 0)
+		return NETWORK_REG_STATUS_SEARCHING;
+	else if (g_strcmp0(state, "NoSim") == 0)
+		return NETWORK_REG_STATUS_NO_SIM;
+	else if (g_strcmp0(state, "Poweroff") == 0)
+		return NETWORK_REG_STATUS_POWEROFF;
+	else if (g_strcmp0(state, "Powersafe") == 0)
+		return NETWORK_REG_STATUS_POWERSAFE;
+	else if (g_strcmp0(state, "NoCoverage") == 0)
+		return NETWORK_REG_STATUS_NO_COVERAGE;
+	else if (g_strcmp0(state, "Reject") == 0)
+		return NETWORK_REG_STATUS_REJECTED;
+	else
+		return NETWORK_REG_STATUS_UNKOWN;
 }
 
-static void resolve_operator_name(uint32_t operator, uint32_t country)
+static void update_registration_status(const char *status)
 {
-	uint8_t name_type = NETWORK_HARDCODED_LATIN_OPER_NAME;
+	uint8_t new_status;
 
-	send_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
-				NETWORK_INTERFACE, "get_operator_name",
-				get_operator_name_reply, NULL,
-				DBUS_TYPE_BYTE, &name_type,
-				DBUS_TYPE_UINT32, &operator,
-				DBUS_TYPE_UINT32, &country,
-				DBUS_TYPE_INVALID);
-}
+	new_status = str2status(status);
 
-static void update_registration_status(uint8_t status, uint16_t lac,
-					uint32_t cell_id,
-					uint32_t operator_code,
-					uint32_t country_code,
-					uint8_t network_type,
-					uint8_t supported_services)
-{
-	if (net.status != status) {
-		switch (status) {
-		case NETWORK_REG_STATUS_HOME:
-			telephony_update_indicator(maemo_indicators, "roam",
+	if (net.status == new_status)
+		return;
+
+	switch (new_status) {
+	case NETWORK_REG_STATUS_HOME:
+		telephony_update_indicator(maemo_indicators, "roam",
 							EV_ROAM_INACTIVE);
-			if (net.status >= NETWORK_REG_STATUS_NOSERV)
-				telephony_update_indicator(maemo_indicators,
+		if (net.status > NETWORK_REG_STATUS_ROAMING)
+			telephony_update_indicator(maemo_indicators,
 							"service",
 							EV_SERVICE_PRESENT);
-			break;
-		case NETWORK_REG_STATUS_ROAM:
-		case NETWORK_REG_STATUS_ROAM_BLINK:
-			telephony_update_indicator(maemo_indicators, "roam",
+		break;
+	case NETWORK_REG_STATUS_ROAMING:
+		telephony_update_indicator(maemo_indicators, "roam",
 							EV_ROAM_ACTIVE);
-			if (net.status >= NETWORK_REG_STATUS_NOSERV)
-				telephony_update_indicator(maemo_indicators,
+		if (net.status > NETWORK_REG_STATUS_ROAMING)
+			telephony_update_indicator(maemo_indicators,
 							"service",
 							EV_SERVICE_PRESENT);
-			break;
-		case NETWORK_REG_STATUS_NOSERV:
-		case NETWORK_REG_STATUS_NOSERV_SEARCHING:
-		case NETWORK_REG_STATUS_NOSERV_NOTSEARCHING:
-		case NETWORK_REG_STATUS_NOSERV_NOSIM:
-		case NETWORK_REG_STATUS_POWER_OFF:
-		case NETWORK_REG_STATUS_NSPS:
-		case NETWORK_REG_STATUS_NSPS_NO_COVERAGE:
-		case NETWORK_REG_STATUS_NOSERV_SIM_REJECTED_BY_NW:
-			if (net.status < NETWORK_REG_STATUS_NOSERV)
-				telephony_update_indicator(maemo_indicators,
+		break;
+	case NETWORK_REG_STATUS_OFFLINE:
+	case NETWORK_REG_STATUS_NO_SIM:
+	case NETWORK_REG_STATUS_POWEROFF:
+	case NETWORK_REG_STATUS_POWERSAFE:
+	case NETWORK_REG_STATUS_NO_COVERAGE:
+	case NETWORK_REG_STATUS_REJECTED:
+	case NETWORK_REG_STATUS_UNKOWN:
+		if (net.status < NETWORK_REG_STATUS_OFFLINE)
+			telephony_update_indicator(maemo_indicators,
 							"service",
 							EV_SERVICE_NONE);
-			break;
-		}
-
-		net.status = status;
+		break;
 	}
 
-	net.lac = lac;
-	net.cell_id = cell_id;
+	net.status = new_status;
 
-	if (net.operator_code != operator_code ||
-			net.country_code != country_code) {
-		g_free(net.operator_name);
-		net.operator_name = NULL;
-		resolve_operator_name(operator_code, country_code);
-		net.operator_code = operator_code;
-		net.country_code = country_code;
-	}
-
-	net.network_type = network_type;
-	net.supported_services = supported_services;
+	debug("telephony-maemo6: registration status changed: %s", status);
 }
 
-static void handle_registration_status_change(DBusMessage *msg)
+static void handle_registration_changed(DBusMessage *msg)
 {
-	uint8_t status;
-	dbus_uint16_t lac, network_type, supported_services;
-	dbus_uint32_t cell_id, operator_code, country_code;
+	const char *status;
 
 	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &status,
-					DBUS_TYPE_UINT16, &lac,
-					DBUS_TYPE_UINT32, &cell_id,
-					DBUS_TYPE_UINT32, &operator_code,
-					DBUS_TYPE_UINT32, &country_code,
-					DBUS_TYPE_BYTE, &network_type,
-					DBUS_TYPE_BYTE, &supported_services,
+					DBUS_TYPE_STRING, &status,
 					DBUS_TYPE_INVALID)) {
-		error("Unexpected parameters in registration_status_change");
+		error("Unexpected parameters in RegistrationChanged");
 		return;
 	}
 
-	update_registration_status(status, lac, cell_id, operator_code,
-					country_code, network_type,
-					supported_services);
+	update_registration_status(status);
 }
 
-static void update_signal_strength(uint8_t signals_bar)
+static void update_signal_strength(uint32_t signals_bar)
 {
 	int signal;
 
@@ -1349,18 +1245,18 @@ static void update_signal_strength(uint8_t signals_bar)
 
 	net.signals_bar = signals_bar;
 
-	debug("Signal strength updated: %u/100, %d/5", signals_bar, signal);
+	debug("telephony-maemo6: signal strength updated: %u/100, %d/5", signals_bar, signal);
 }
 
-static void handle_signal_strength_change(DBusMessage *msg)
+static void handle_signal_strength_changed(DBusMessage *msg)
 {
 	uint8_t signals_bar, rssi_in_dbm;
 
 	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_BYTE, &signals_bar,
-					DBUS_TYPE_BYTE, &rssi_in_dbm,
+					DBUS_TYPE_INT32, &signals_bar,
+					DBUS_TYPE_INT32, &rssi_in_dbm,
 					DBUS_TYPE_INVALID)) {
-		error("Unexpected parameters in signal_strength_change");
+		error("Unexpected parameters in SignalStrengthChanged");
 		return;
 	}
 
@@ -1412,26 +1308,20 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_error_init(&err);
-	if (dbus_message_get_args(reply, &err,
+	dbus_message_get_args(reply, NULL,
 				DBUS_TYPE_INT32, &level,
-				DBUS_TYPE_INVALID) == FALSE) {
-		error("Unable to parse GetPropertyInteger reply: %s, %s",
-							err.name, err.message);
-		dbus_error_free(&err);
-		goto done;
-	}
+				DBUS_TYPE_INVALID);
 
 	*value = (int) level;
 
 	if (value == &battchg_last)
-		debug("telephony-maemo: battery.charge_level.last_full is %d",
+		debug("telephony-maemo6: battery.charge_level.last_full is %d",
 				*value);
 	else if (value == &battchg_design)
-		debug("telephony-maemo: battery.charge_level.design is %d",
+		debug("telephony-maemo6: battery.charge_level.design is %d",
 				*value);
 	else
-		debug("telephony-maemo: battery.charge_level.current is %d",
+		debug("telephony-maemo6: battery.charge_level.current is %d",
 				*value);
 
 	if ((battchg_design > 0 || battchg_last > 0) && battchg_cur >= 0) {
@@ -1559,7 +1449,7 @@ static void parse_call_list(DBusMessageIter *iter)
 			call->object_path = g_strdup(object_path);
 			call->status = (int) status;
 			calls = g_slist_append(calls, call);
-			debug("telephony-maemo: new csd call instance at %s",
+			debug("telephony-maemo6: new csd call instance at %s",
 								object_path);
 		}
 
@@ -1583,111 +1473,90 @@ static void parse_call_list(DBusMessageIter *iter)
 	} while (dbus_message_iter_next(iter));
 }
 
-static void signal_strength_reply(DBusPendingCall *call, void *user_data)
+static void update_operator_name(const char *name)
 {
+	if (name == NULL || strlen(name) == 0)
+		return;
+
+	g_free(net.operator_name);
+	net.operator_name = g_strdup(name);
+
+	debug("telephony-maemo6: operator name updated: %s", name);
+}
+
+static void get_property_reply(DBusPendingCall *call, void *user_data)
+{
+	char *prop = user_data;
 	DBusError err;
 	DBusMessage *reply;
-	uint8_t signals_bar, rssi_in_dbm;
-	dbus_int32_t net_err;
+	DBusMessageIter iter, sub;
 
 	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, reply)) {
-		error("Unable to get signal strength: %s, %s",
-			err.name, err.message);
-		dbus_error_free(&err);
-		goto done;
-	}
-
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(reply, &err,
-					DBUS_TYPE_BYTE, &signals_bar,
-					DBUS_TYPE_BYTE, &rssi_in_dbm,
-					DBUS_TYPE_INT32, &net_err,
-					DBUS_TYPE_INVALID)) {
-		error("Unable to parse signal_strength reply: %s, %s",
-							err.name, err.message);
-		dbus_error_free(&err);
-		return;
-	}
-
-	if (net_err != 0) {
-		error("get_signal_strength failed with code %d", net_err);
-		return;
-	}
-
-	update_signal_strength(signals_bar);
-
-done:
-	dbus_message_unref(reply);
-}
-
-static int get_signal_strength(void)
-{
-	return send_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
-				NETWORK_INTERFACE, "get_signal_strength",
-				signal_strength_reply, NULL,
-				DBUS_TYPE_INVALID);
-}
-
-static void registration_status_reply(DBusPendingCall *call, void *user_data)
-{
-	DBusError err;
-	DBusMessage *reply;
-	uint8_t status;
-	dbus_uint16_t lac, network_type, supported_services;
-	dbus_uint32_t cell_id, operator_code, country_code;
-	dbus_int32_t net_err;
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	dbus_error_init(&err);
-	if (dbus_set_error_from_message(&err, reply)) {
-		error("Unable to get registration status: %s, %s",
+		error("csd replied with an error: %s, %s",
 				err.name, err.message);
 		dbus_error_free(&err);
 		goto done;
 	}
 
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(reply, &err,
-					DBUS_TYPE_BYTE, &status,
-					DBUS_TYPE_UINT16, &lac,
-					DBUS_TYPE_UINT32, &cell_id,
-					DBUS_TYPE_UINT32, &operator_code,
-					DBUS_TYPE_UINT32, &country_code,
-					DBUS_TYPE_BYTE, &network_type,
-					DBUS_TYPE_BYTE, &supported_services,
-					DBUS_TYPE_INT32, &net_err,
-					DBUS_TYPE_INVALID)) {
-		error("Unable to parse registration_status_change reply:"
-					" %s, %s", err.name, err.message);
-		dbus_error_free(&err);
-		return;
+	dbus_message_iter_init(reply, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT) {
+		error("Unexpected signature in Get return");
+		goto done;
 	}
 
-	if (net_err != 0) {
-		error("get_registration_status failed with code %d", net_err);
-		return;
+	dbus_message_iter_recurse(&iter, &sub);
+
+	if (g_strcmp0(prop, "RegistrationStatus") == 0) {
+		const char *status;
+
+		dbus_message_iter_get_basic(&sub, &status);
+		update_registration_status(status);
+
+		get_property(CSD_CSNET_OPERATOR, "OperatorName");
+		get_property(CSD_CSNET_SIGNAL, "SignalBars");
+	} else if (g_strcmp0(prop, "OperatorName") == 0) {
+		const char *name;
+
+		dbus_message_iter_get_basic(&sub, &name);
+		update_operator_name(name);
+	} else if (g_strcmp0(prop, "SignalBars") == 0) {
+		uint32_t signal_bars;
+
+		dbus_message_iter_get_basic(&sub, &signal_bars);
+		update_signal_strength(signal_bars);
 	}
-
-	update_registration_status(status, lac, cell_id, operator_code,
-					country_code, network_type,
-					supported_services);
-
-	get_signal_strength();
 
 done:
+	g_free(prop);
 	dbus_message_unref(reply);
 }
 
-static int get_registration_status(void)
+static int get_property(const char *iface, const char *prop)
 {
-	return send_method_call(NETWORK_BUS_NAME, NETWORK_PATH,
-				NETWORK_INTERFACE, "get_registration_status",
-				registration_status_reply, NULL,
+	return send_method_call(CSD_CSNET_BUS_NAME, CSD_CSNET_PATH,
+				DBUS_INTERFACE_PROPERTIES, "Get",
+				get_property_reply, g_strdup(prop),
+				DBUS_TYPE_STRING, &iface,
+				DBUS_TYPE_STRING, &prop,
 				DBUS_TYPE_INVALID);
+}
+
+static void handle_operator_name_changed(DBusMessage *msg)
+{
+	const char *name;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected parameters in OperatorNameChanged");
+		return;
+	}
+
+	update_operator_name(name);
 }
 
 static void call_info_reply(DBusPendingCall *call, void *user_data)
@@ -1719,7 +1588,7 @@ static void call_info_reply(DBusPendingCall *call, void *user_data)
 
 	parse_call_list(&sub);
 
-	get_registration_status();
+	get_property(CSD_CSNET_REGISTRATION, "RegistrationStatus");
 
 done:
 	dbus_message_unref(reply);
@@ -1762,7 +1631,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_get_basic(&sub, &path);
 
-	debug("telephony-maemo: found battery device at %s", path);
+	debug("telephony-maemo6: found battery device at %s", path);
 
 	snprintf(match_string, sizeof(match_string),
 			"type='signal',"
@@ -1783,37 +1652,34 @@ static void phonebook_read_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusError derr;
 	DBusMessage *reply;
-	const char *name, *number;
+	const char *name, *number, *secondname, *additionalnumber, *email;
+	int index;
 	char **number_type = user_data;
-	dbus_int32_t current_location, err;
 
 	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
-		error("SIM.Phonebook replied with an error: %s, %s",
-				derr.name, derr.message);
+		error("%s.ReadFirst replied with an error: %s, %s",
+				CSD_SIMPB_INTERFACE, derr.name, derr.message);
 		dbus_error_free(&derr);
+		if (number_type == &vmbx)
+			vmbx = g_strdup(getenv("VMBX_NUMBER"));
 		goto done;
 	}
 
 	dbus_error_init(&derr);
-	if (dbus_message_get_args(reply, &derr,
+	if (dbus_message_get_args(reply, NULL,
+				DBUS_TYPE_INT32, &index,
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_STRING, &number,
-				DBUS_TYPE_INT32, &current_location,
-				DBUS_TYPE_INT32, &err,
+				DBUS_TYPE_STRING, &secondname,
+				DBUS_TYPE_STRING, &additionalnumber,
+				DBUS_TYPE_STRING, &email,
 				DBUS_TYPE_INVALID) == FALSE) {
-		error("Unable to parse SIM.Phonebook.read arguments: %s, %s",
-				derr.name, derr.message);
+		error("Unable to parse %s.ReadFirst arguments: %s, %s",
+				CSD_SIMPB_INTERFACE, derr.name, derr.message);
 		dbus_error_free(&derr);
-		goto done;
-	}
-
-	if (err != 0) {
-		error("SIM.Phonebook.read failed with error %d", err);
-		if (number_type == &vmbx)
-			vmbx = g_strdup(getenv("VMBX_NUMBER"));
 		goto done;
 	}
 
@@ -1833,8 +1699,7 @@ done:
 
 static void csd_init(void)
 {
-	dbus_uint32_t location;
-	uint8_t pb_type, location_type;
+	const char *pb_type;
 	int ret;
 
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
@@ -1847,35 +1712,28 @@ static void csd_init(void)
 
 	get_calls_active = TRUE;
 
-	pb_type = SIM_PHONEBOOK_TYPE_MSISDN;
-	location = PHONEBOOK_INDEX_FIRST_ENTRY;
-	location_type = SIM_PHONEBOOK_LOCATION_NEXT;
+	pb_type = CSD_SIMPB_TYPE_MSISDN;
 
-	ret = send_method_call(SIM_PHONEBOOK_BUS_NAME, SIM_PHONEBOOK_PATH,
-				SIM_PHONEBOOK_INTERFACE, "read",
+	ret = send_method_call(CSD_SIMPB_BUS_NAME, CSD_SIMPB_PATH,
+				CSD_SIMPB_INTERFACE, "ReadFirst",
 				phonebook_read_reply, &msisdn,
-				DBUS_TYPE_BYTE, &pb_type,
-				DBUS_TYPE_INT32, &location,
-				DBUS_TYPE_BYTE, &location_type,
+				DBUS_TYPE_STRING, &pb_type,
 				DBUS_TYPE_INVALID);
 	if (ret < 0) {
-		error("Unable to send " SIM_PHONEBOOK_INTERFACE ".read()");
+		error("Unable to send " CSD_SIMPB_INTERFACE ".read()");
 		return;
 	}
 
-	pb_type = SIM_PHONEBOOK_TYPE_MBDN;
-	location = PHONEBOOK_INDEX_FIRST_ENTRY;
-	location_type = SIM_PHONEBOOK_LOCATION_NEXT;
+	/* Voicemail should be in MBDN index 0 */
+	pb_type = CSD_SIMPB_TYPE_MBDN;
 
-	ret = send_method_call(SIM_PHONEBOOK_BUS_NAME, SIM_PHONEBOOK_PATH,
-				SIM_PHONEBOOK_INTERFACE, "read",
+	ret = send_method_call(CSD_SIMPB_BUS_NAME, CSD_SIMPB_PATH,
+				CSD_SIMPB_INTERFACE, "ReadFirst",
 				phonebook_read_reply, &vmbx,
-				DBUS_TYPE_BYTE, &pb_type,
-				DBUS_TYPE_INT32, &location,
-				DBUS_TYPE_BYTE, &location_type,
+				DBUS_TYPE_STRING, &pb_type,
 				DBUS_TYPE_INVALID);
 	if (ret < 0) {
-		error("Unable to send " SIM_PHONEBOOK_INTERFACE ".read()");
+		error("Unable to send " CSD_SIMPB_INTERFACE ".read()");
 		return;
 	}
 }
@@ -1957,12 +1815,12 @@ static DBusMessage *set_callerid(DBusConnection *conn, DBusMessage *msg,
 			g_str_equal(callerid_setting, "none")) {
 		save_callerid_to_file(callerid_setting);
 		callerid = get_callflag(callerid_setting);
-		debug("telephony-maemo setting callerid flag: %s",
+		debug("telephony-maemo6 setting callerid flag: %s",
 							callerid_setting);
 		return dbus_message_new_method_return(msg);
 	}
 
-	error("telephony-maemo: invalid argument %s for method call"
+	error("telephony-maemo6: invalid argument %s for method call"
 					" SetCallerId", callerid_setting);
 		return invalid_args(msg);
 }
@@ -1999,7 +1857,7 @@ static void modem_state_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, reply)) {
-		error("get_modem_status: %s, %s", err.name, err.message);
+		error("get_modem_state: %s, %s", err.name, err.message);
 		dbus_error_free(&err);
 	} else
 		handle_modem_state(reply);
@@ -2028,12 +1886,15 @@ static DBusHandlerResult signal_filter(DBusConnection *conn,
 		handle_conference(msg, TRUE);
 	else if (dbus_message_is_signal(msg, CSD_CALL_CONFERENCE, "Left"))
 		handle_conference(msg, FALSE);
-	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
-					"registration_status_change"))
-		handle_registration_status_change(msg);
-	else if (dbus_message_is_signal(msg, NETWORK_INTERFACE,
-					"signal_strength_change"))
-		handle_signal_strength_change(msg);
+	else if (dbus_message_is_signal(msg, CSD_CSNET_REGISTRATION,
+				"RegistrationChanged"))
+		handle_registration_changed(msg);
+	else if (dbus_message_is_signal(msg, CSD_CSNET_OPERATOR,
+				"OperatorNameChanged"))
+		handle_operator_name_changed(msg);
+	else if (dbus_message_is_signal(msg, CSD_CSNET_SIGNAL,
+				"SignalStrengthChanged"))
+		handle_signal_strength_changed(msg);
 	else if (dbus_message_is_signal(msg, "org.freedesktop.Hal.Device",
 					"PropertyModified"))
 		handle_hal_property_modified(msg);
@@ -2068,7 +1929,14 @@ int telephony_init(void)
 	dbus_bus_add_match(connection,
 			"type=signal,interface=" CSD_CALL_CONFERENCE, NULL);
 	dbus_bus_add_match(connection,
-			"type=signal,interface=" NETWORK_INTERFACE, NULL);
+			"type=signal,interface=" CSD_CSNET_REGISTRATION,
+			NULL);
+	dbus_bus_add_match(connection,
+			"type=signal,interface=" CSD_CSNET_OPERATOR,
+			NULL);
+	dbus_bus_add_match(connection,
+			"type=signal,interface=" CSD_CSNET_SIGNAL,
+			NULL);
 	dbus_bus_add_match(connection,
 				"type=signal,interface=" SSC_DBUS_IFACE
 				",member=modem_state_changed_ind", NULL);
@@ -2084,11 +1952,11 @@ int telephony_init(void)
 	if (!g_dbus_register_interface(connection, TELEPHONY_MAEMO_PATH,
 			TELEPHONY_MAEMO_INTERFACE, telephony_maemo_methods,
 			NULL, NULL, NULL, NULL)) {
-		error("telephony-maemo interface %s init failed on path %s",
+		error("telephony-maemo6 interface %s init failed on path %s",
 			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
 	}
 
-	debug("telephony-maemo registering %s interface on path %s",
+	debug("telephony-maemo6 registering %s interface on path %s",
 			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
 
 	telephony_ready_ind(features, maemo_indicators, response_and_hold,
