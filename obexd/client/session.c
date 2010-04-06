@@ -99,6 +99,9 @@ static void session_unref(struct session_data *session)
 	if (session->agent_watch)
 		g_dbus_remove_watch(session->conn, session->agent_watch);
 
+	if (session->owner_watch)
+		g_dbus_remove_watch(session->conn, session->owner_watch);
+
 	if (session->agent_name != NULL) {
 		DBusMessage *message;
 
@@ -802,8 +805,6 @@ static DBusMessage *close_session(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
 				"Not Authorized");
-
-	g_dbus_remove_watch(session->conn, session->owner_watch);
 
 	session_shutdown(session);
 
