@@ -270,3 +270,8 @@ Properties	string Address [readonly]
 		array{object} Devices [readonly]
 
 			List of device object paths.
+
+		array{string} UUIDs [readonly]
+
+			List of 128-bit UUIDs that represents the available
+			local services.

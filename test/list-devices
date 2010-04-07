@@ -40,6 +40,9 @@ for i in adapter_list:
 		if (key == "Devices"):
 			list = extract_objects(value)
 			print "    %s = %s" % (key, list)
+		elif (key == "UUIDs"):
+			list = extract_uuids(value)
+			print "    %s = %s" % (key, list)
 		else:
 			print "    %s = %s" % (key, value)
 

@@ -40,6 +40,7 @@
 
 #include "sdpd.h"
 #include "logging.h"
+#include "adapter.h"
 
 static sdp_list_t *service_db;
 static sdp_list_t *access_db;
@@ -183,6 +184,8 @@ void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec)
 	dev->handle = rec->handle;
 
 	access_db = sdp_list_insert_sorted(access_db, dev, access_sort);
+
+	adapter_service_insert(device, rec);
 }
 
 static sdp_list_t *record_locate(uint32_t handle)
@@ -252,6 +255,7 @@ int sdp_record_remove(uint32_t handle)
 	if (p) {
 		a = (sdp_access_t *) p->data;
 		if (a) {
+			adapter_service_remove(&a->device, r);
 			access_db = sdp_list_remove(access_db, a);
 			access_free(a);
 		}

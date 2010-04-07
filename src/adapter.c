@@ -37,6 +37,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -115,6 +116,7 @@ struct btd_adapter {
 	GSList *mode_sessions;		/* Request Mode sessions */
 	GSList *disc_sessions;		/* Discovery sessions */
 	guint scheduler_id;		/* Scheduler handle */
+	sdp_list_t *services;		/* Services associated to adapter */
 
 	struct hci_dev dev;		/* hci info */
 	int8_t tx_power;		/* inq response tx power level */
@@ -1033,6 +1035,73 @@ static void adapter_update_devices(struct btd_adapter *adapter)
 	g_free(devices);
 }
 
+static void adapter_emit_uuids_updated(struct btd_adapter *adapter)
+{
+	char **uuids;
+	int i;
+	sdp_list_t *list;
+
+	uuids = g_new0(char *, sdp_list_len(adapter->services) + 1);
+
+	for (i = 0, list = adapter->services; list; list = list->next, i++) {
+		sdp_record_t *rec = list->data;
+		uuids[i] = bt_uuid2string(&rec->svclass);
+	}
+
+	emit_array_property_changed(connection, adapter->path,
+			ADAPTER_INTERFACE, "UUIDs", DBUS_TYPE_STRING, &uuids);
+
+	g_strfreev(uuids);
+}
+
+/*
+ * adapter_services_inc_rem - Insert or remove UUID from adapter
+ */
+static void adapter_service_ins_rem(const bdaddr_t *bdaddr, void *rec,
+		gboolean insert)
+{
+	struct btd_adapter *adapter;
+	GSList *adapters;
+
+	adapters = NULL;
+
+	if (bacmp(bdaddr, BDADDR_ANY) != 0) {
+		/* Only one adapter */
+		adapter = manager_find_adapter(bdaddr);
+		if (!adapter)
+			return;
+
+		adapters = g_slist_append(adapters, adapter);
+	} else
+		/* Emit D-Bus msg to all adapters */
+		adapters = manager_get_adapters();
+
+	for (; adapters; adapters = adapters->next) {
+		adapter = adapters->data;
+
+		if (insert == TRUE)
+			adapter->services = sdp_list_append(adapter->services,
+					rec);
+		else
+			adapter->services = sdp_list_remove(adapter->services,
+					rec);
+
+		adapter_emit_uuids_updated(adapter);
+	}
+}
+
+void adapter_service_insert(const bdaddr_t *bdaddr, void *rec)
+{
+	/* TRUE to include service*/
+	adapter_service_ins_rem(bdaddr, rec, TRUE);
+}
+
+void adapter_service_remove(const bdaddr_t *bdaddr, void *rec)
+{
+	/* FALSE to remove service*/
+	adapter_service_ins_rem(bdaddr, rec, FALSE);
+}
+
 struct btd_device *adapter_create_device(DBusConnection *conn,
 						struct btd_adapter *adapter,
 						const char *address)
@@ -1196,9 +1265,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter dict;
 	char str[MAX_NAME_LENGTH + 1], srcaddr[18];
 	gboolean value;
-	char **devices;
+	char **devices, **uuids;
 	int i;
 	GSList *l;
+	sdp_list_t *list;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
@@ -1269,6 +1339,18 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_array(&dict, "Devices", DBUS_TYPE_OBJECT_PATH,
 								&devices, i);
 	g_free(devices);
+
+	/* UUIDs */
+	uuids = g_new0(char *, sdp_list_len(adapter->services) + 1);
+
+	for (i = 0, list = adapter->services; list; list = list->next, i++) {
+		sdp_record_t *rec = list->data;
+		uuids[i] = bt_uuid2string(&rec->svclass);
+	}
+
+	dict_append_array(&dict, "UUIDs", DBUS_TYPE_STRING, &uuids, i);
+
+	g_strfreev(uuids);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
