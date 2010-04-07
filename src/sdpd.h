@@ -95,4 +95,5 @@ int remove_record_from_server(uint32_t handle);
 
 uint8_t get_service_classes(const bdaddr_t *bdaddr);
 void create_ext_inquiry_response(const char *name,
-					int8_t tx_power, uint8_t *data);
+					int8_t tx_power, sdp_list_t *services,
+					uint8_t *data);

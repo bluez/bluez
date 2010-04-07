@@ -816,7 +816,8 @@ static void update_ext_inquiry_response(struct btd_adapter *adapter)
 
 	if (dev->ssp_mode > 0)
 		create_ext_inquiry_response((char *) dev->name,
-						adapter->tx_power, data);
+						adapter->tx_power,
+						adapter->services, data);
 
 	if (hci_write_ext_inquiry_response(dd, fec, data,
 						HCI_REQ_TIMEOUT) < 0)

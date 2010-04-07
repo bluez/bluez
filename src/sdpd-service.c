@@ -167,9 +167,10 @@ uint8_t get_service_classes(const bdaddr_t *bdaddr)
 }
 
 void create_ext_inquiry_response(const char *name,
-					int8_t tx_power, uint8_t *data)
+					int8_t tx_power, sdp_list_t *services,
+					uint8_t *data)
 {
-	sdp_list_t *list = sdp_get_record_list();
+	sdp_list_t *list = services;
 	uint8_t *ptr = data;
 	uint16_t uuid[24];
 	int i, index = 0;
