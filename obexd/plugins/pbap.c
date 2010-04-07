@@ -218,13 +218,6 @@ static void cache_clear(struct cache *cache)
 	cache->entries = NULL;
 }
 
-static void set_folder(struct pbap_session *pbap, const gchar *new_folder)
-{
-	g_free(pbap->folder);
-
-	pbap->folder = new_folder ? g_strdup(new_folder) : NULL;
-}
-
 static void phonebook_size_result(const gchar *buffer, size_t bufsize,
 				gint vcards, gint missed, gpointer user_data)
 {
@@ -499,7 +492,7 @@ static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
 	const gchar *name;
 	guint8 *nonhdr;
 	gchar *fullname;
-	int ret;
+	int err;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &nonhdr) != 2) {
 		error("Set path failed: flag and constants not found!");
@@ -508,16 +501,12 @@ static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
 
 	name = obex_get_name(os);
 
-	ret = phonebook_set_folder(pbap->folder, name, nonhdr[0]);
-	if (ret < 0)
-		return ret;
+	fullname = phonebook_set_folder(pbap->folder, name, nonhdr[0], &err);
+	if (err < 0)
+		return err;
 
-	if (!pbap->folder)
-		fullname = g_strdup(name);
-	else
-		fullname = g_build_filename(pbap->folder, name, NULL);
-
-	set_folder(pbap, fullname);
+	g_free(pbap->folder);
+	pbap->folder = fullname;
 
 	/*
 	 * FIXME: Define a criteria to mark the cache as invalid
@@ -525,8 +514,6 @@ static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
 	pbap->cache.valid = FALSE;
 	pbap->cache.index = 0;
 	cache_clear(&pbap->cache);
-
-	g_free(fullname);
 
 	return 0;
 }

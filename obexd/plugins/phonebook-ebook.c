@@ -294,54 +294,88 @@ void phonebook_exit(void)
 		g_object_unref(ebook);
 }
 
-int phonebook_set_folder(const gchar *current_folder,
-		const gchar *new_folder, guint8 flags)
+gchar *phonebook_set_folder(const gchar *current_folder,
+		const gchar *new_folder, guint8 flags, int *err)
 {
 	gboolean root, child;
-	int ret;
+	gchar *fullname = NULL, *tmp1, *tmp2, *base;
+	int ret = 0, len;
 
 	root = (g_strcmp0("/", current_folder) == 0);
 	child = (new_folder && strlen(new_folder) != 0);
 
 	/* Evolution back-end will support telecom/pb folder only */
+
 	switch (flags) {
 	case 0x02:
 		/* Go back to root */
-		if (!child)
-			return 0;
+		if (!child) {
+			fullname = g_strdup("/");
+			goto done;
+		}
 
 		/* Go down 1 level */
-		if (root)
-			ret = (strcmp("telecom", new_folder) != 0) ? -EBADR: 0;
-		else if (strcmp("/telecom", current_folder) == 0)
-			ret = (strcmp("pb", new_folder) != 0) ? -EBADR: 0;
-		else
+		fullname = g_build_filename(current_folder, new_folder, NULL);
+		if (strcmp("/telecom", fullname) != 0 &&
+				strcmp("/telecom/pb", fullname) != 0) {
+			g_free(fullname);
+			fullname = NULL;
 			ret = -EBADR;
+		}
 
 		break;
 	case 0x03:
 		/* Go up 1 level */
-		if (root)
+		if (root) {
 			/* Already root */
-			return -EBADR;
-
-		if (!child)
-			return 0;
-
-		/* /telecom or /telecom/pb */
-		if (strcmp("/telecom", current_folder) == 0)
-			ret = (strcmp("telecom", new_folder) != 0) ? -EBADR : 0;
-		else if (strcmp("/telecom/pb", current_folder) == 0)
-			ret = (strcmp("pb", new_folder) != 0) ? -EBADR : 0;
-		else
 			ret = -EBADR;
+			goto done;
+		}
+
+		/*
+		 * Removing one level of the current folder. Current folder
+		 * contains AT LEAST one level since it is not at root folder.
+		 * Use glib utility functions to handle invalid chars in the
+		 * folder path properly.
+		 */
+		tmp1 = g_path_get_basename(current_folder);
+		tmp2 = g_strrstr(current_folder, tmp1);
+		len = tmp2 - (current_folder + 1);
+
+		g_free(tmp1);
+
+		if (len == 0)
+			base = g_strdup("/");
+		else
+			base = g_strndup(current_folder, len);
+
+		/* Return one level only */
+		if (!child) {
+			fullname = base;
+			goto done;
+		}
+
+		fullname = g_build_filename(base, new_folder, NULL);
+		if (strcmp(fullname, "/telecom") != 0 &&
+				strcmp(fullname, "/telecom/pb") != 0) {
+			g_free(fullname);
+			fullname = NULL;
+			ret = -EBADR;
+		}
+
+		g_free(base);
+
 		break;
 	default:
 		ret = -EBADR;
 		break;
 	}
 
-	return ret;
+done:
+	if (err)
+		*err = ret;
+
+	return fullname;
 }
 
 gint phonebook_pull(const gchar *name, const struct apparam_field *params,

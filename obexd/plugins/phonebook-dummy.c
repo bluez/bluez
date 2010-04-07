@@ -26,6 +26,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <string.h>
 #include <glib.h>
 
@@ -64,10 +65,13 @@ static gboolean dummy_result(gpointer data)
 	return FALSE;
 }
 
-int phonebook_set_folder(const gchar *current_folder, const gchar *new_folder,
-								guint8 flags)
+gchar *phonebook_set_folder(const gchar *current_folder,
+		const gchar *new_folder, guint8 flags, int *err)
 {
-	return 0;
+	if (err)
+		*err = -EINVAL;
+
+	return NULL;
 }
 
 int phonebook_pull(const gchar *name, const struct apparam_field *params,

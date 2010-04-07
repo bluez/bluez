@@ -69,8 +69,8 @@ typedef void (*phonebook_cache_ready_cb) (gpointer user_data);
 int phonebook_init(void);
 void phonebook_exit(void);
 
-int phonebook_set_folder(const gchar *current_folder,
-		const gchar *new_folder, guint8 flags);
+gchar *phonebook_set_folder(const gchar *current_folder,
+		const gchar *new_folder, guint8 flags, int *err);
 
 /*
  * PullPhoneBook never use cached entries. PCE use this
