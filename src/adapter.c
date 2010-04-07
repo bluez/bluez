@@ -1059,7 +1059,7 @@ static void adapter_emit_uuids_updated(struct btd_adapter *adapter)
  * adapter_services_inc_rem - Insert or remove UUID from adapter
  */
 static void adapter_service_ins_rem(const bdaddr_t *bdaddr, void *rec,
-		gboolean insert)
+							gboolean insert)
 {
 	struct btd_adapter *adapter;
 	GSList *adapters;
@@ -1082,10 +1082,10 @@ static void adapter_service_ins_rem(const bdaddr_t *bdaddr, void *rec,
 
 		if (insert == TRUE)
 			adapter->services = sdp_list_append(adapter->services,
-					rec);
+									rec);
 		else
 			adapter->services = sdp_list_remove(adapter->services,
-					rec);
+									rec);
 
 		adapter_emit_uuids_updated(adapter);
 	}
