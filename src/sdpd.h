@@ -70,6 +70,7 @@ sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate);
 void sdp_cstate_cache_init(void);
 void sdp_cstate_clean_buf(void);
 
+int record_sort(const void *r1, const void *r2);
 void sdp_svcdb_reset(void);
 void sdp_svcdb_collect_all(int sock);
 void sdp_svcdb_set_collectable(sdp_record_t *rec, int sock);

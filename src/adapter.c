@@ -1081,8 +1081,9 @@ static void adapter_service_ins_rem(const bdaddr_t *bdaddr, void *rec,
 		adapter = adapters->data;
 
 		if (insert == TRUE)
-			adapter->services = sdp_list_append(adapter->services,
-									rec);
+			adapter->services = sdp_list_insert_sorted(
+							adapter->services, rec,
+							record_sort);
 		else
 			adapter->services = sdp_list_remove(adapter->services,
 									rec);

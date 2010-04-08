@@ -55,7 +55,7 @@ typedef struct {
  * The service repository is a linked list in sorted order
  * and the service record handle is the sort key
  */
-static int record_sort(const void *r1, const void *r2)
+int record_sort(const void *r1, const void *r2)
 {
 	const sdp_record_t *rec1 = (const sdp_record_t *) r1;
 	const sdp_record_t *rec2 = (const sdp_record_t *) r2;
