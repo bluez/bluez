@@ -29,6 +29,10 @@
 #include <errno.h>
 #include <string.h>
 #include <glib.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "logging.h"
 #include "phonebook.h"
@@ -47,13 +51,19 @@ struct dummy_data {
 	const struct apparam_field *apparams;
 };
 
+static gchar *root_folder = NULL;
+
 int phonebook_init(void)
 {
+	/* FIXME: It should NOT be hard-coded */
+	root_folder = g_build_filename(getenv("HOME"), "phonebook", NULL);
+
 	return 0;
 }
 
 void phonebook_exit(void)
 {
+	g_free(root_folder);
 }
 
 static gboolean dummy_result(gpointer data)
@@ -65,13 +75,97 @@ static gboolean dummy_result(gpointer data)
 	return FALSE;
 }
 
+static gboolean is_dir(const gchar *dir)
+{
+	struct stat st;
+
+	if (stat(dir, &st) < 0)
+		return FALSE;
+
+	return S_ISDIR(st.st_mode);
+}
+
 gchar *phonebook_set_folder(const gchar *current_folder,
 		const gchar *new_folder, guint8 flags, int *err)
 {
-	if (err)
-		*err = -EINVAL;
+	gboolean root, child;
+	gchar *tmp1, *tmp2, *base, *absolute, *relative = NULL;
+	int ret, len;
 
-	return NULL;
+	root = (g_strcmp0("/", current_folder) == 0);
+	child = (new_folder && strlen(new_folder) != 0);
+
+	switch (flags) {
+	case 0x02:
+		/* Go back to root */
+		if (!child) {
+			relative = g_strdup("/");
+			goto done;
+		}
+
+		relative = g_build_filename(current_folder, new_folder, NULL);
+		break;
+	case 0x03:
+		/* Go up 1 level */
+		if (root) {
+			/* Already root */
+			ret = -EBADR;
+			goto done;
+		}
+
+		/*
+		 * Removing one level of the current folder. Current folder
+		 * contains AT LEAST one level since it is not at root folder.
+		 * Use glib utility functions to handle invalid chars in the
+		 * folder path properly.
+		 */
+		tmp1 = g_path_get_basename(current_folder);
+		tmp2 = g_strrstr(current_folder, tmp1);
+		len = tmp2 - (current_folder + 1);
+
+		g_free(tmp1);
+
+		if (len == 0)
+			base = g_strdup("/");
+		else
+			base = g_strndup(current_folder, len);
+
+		/* Return: one level only */
+		if (!child) {
+			relative = base;
+			goto done;
+		}
+
+		relative = g_build_filename(base, new_folder, NULL);
+		g_free(base);
+
+		break;
+	default:
+		ret = -EBADR;
+		break;
+	}
+
+done:
+	if (!relative) {
+		if (err)
+			*err = ret;
+
+		return NULL;
+	}
+
+	absolute = g_build_filename(root_folder, relative, NULL);
+	if (!is_dir(absolute)) {
+		ret = -EBADR;
+		g_free(relative);
+		relative = NULL;
+	}
+
+	g_free(absolute);
+
+	if (err)
+		*err = ret;
+
+	return relative;
 }
 
 int phonebook_pull(const gchar *name, const struct apparam_field *params,
