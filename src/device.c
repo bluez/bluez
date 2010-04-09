@@ -1313,16 +1313,29 @@ static void store_profiles(struct btd_device *device)
 	g_free(str);
 }
 
+static void create_device_reply(struct btd_device *device, struct browse_req *req)
+{
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(req->msg);
+	if (!reply)
+		return;
+
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
+					DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(req->conn, reply);
+}
+
 static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
-	DBusMessage *reply;
 
 	if (err < 0) {
 		error("%s: error updating services: %s (%d)",
 				device->path, strerror(-err), -err);
-		goto proceed;
+		goto send_reply;
 	}
 
 	update_services(req, recs);
@@ -1336,7 +1349,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	if (!req->profiles_added && !req->profiles_removed) {
 		debug("%s: No service update", device->path);
-		goto proceed;
+		goto send_reply;
 	}
 
 	/* Probe matching drivers for services added */
@@ -1350,32 +1363,30 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	/* Propagate services changes */
 	services_changed(req->device);
 
-proceed:
-	/* Store the device's profiles in the filesystem */
-	store_profiles(device);
-
+send_reply:
 	if (!req->msg)
 		goto cleanup;
 
 	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
-					"DiscoverServices")) {
+					"DiscoverServices"))
 		discover_services_reply(req, err, req->records);
-		goto cleanup;
+	else if (dbus_message_is_method_call(req->msg, ADAPTER_INTERFACE,
+						"CreatePairedDevice"))
+		create_device_reply(device, req);
+	else if (dbus_message_is_method_call(req->msg, ADAPTER_INTERFACE,
+						"CreateDevice")) {
+		if (err < 0) {
+			error_failed_errno(req->conn, req->msg, -err);
+			goto cleanup;
+		}
+
+		create_device_reply(device, req);
+		device_set_temporary(device, FALSE);
 	}
 
-	/* Reply create device request */
-	reply = dbus_message_new_method_return(req->msg);
-	if (!reply)
-		goto cleanup;
-
-	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &device->path,
-							DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(req->conn, reply);
-
-	device_set_temporary(device, FALSE);
-
 cleanup:
+	if (!device->temporary)
+		store_profiles(device);
 	device->browse = NULL;
 	browse_request_free(req);
 }
