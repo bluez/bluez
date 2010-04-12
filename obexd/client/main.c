@@ -325,6 +325,7 @@ static DBusMessage *create_session(DBusConnection *connection,
 static void capabilities_complete_callback(struct session_data *session,
 							void *user_data)
 {
+	struct transfer_data *transfer = session->pending->data;
 	struct send_data *data = user_data;
 	char *capabilities;
 
@@ -335,7 +336,7 @@ static void capabilities_complete_callback(struct session_data *session,
 		goto done;
 	}
 
-	capabilities = g_strndup(session->buffer, session->filled);
+	capabilities = g_strndup(transfer->buffer, transfer->filled);
 
 	g_dbus_send_reply(data->connection, data->message,
 			DBUS_TYPE_STRING, &capabilities,

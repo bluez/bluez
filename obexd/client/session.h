@@ -28,6 +28,26 @@
 #include <bluetooth/sdp.h>
 #include <gw-obex.h>
 
+struct transfer_request;
+struct transfer_params;
+
+struct transfer_data {
+	struct session_data *session;
+	struct transfer_params *params;
+	struct transfer_request *request;
+	char *path;		/* Transfer path */
+	gchar *filename;	/* Transfer file location */
+	char *name;		/* Transfer object name */
+	char *type;		/* Transfer object type */
+	int fd;
+	GwObexXfer *xfer;
+	char *buffer;
+	size_t buffer_len;
+	int filled;
+	gint64 size;
+	gint64 transferred;
+};
+
 struct session_data {
 	gint refcount;
 	bdaddr_t src;
@@ -36,27 +56,17 @@ struct session_data {
 	const char *target;	/* OBEX Target UUID */
 	int target_len;
 	uuid_t uuid;		/* Bluetooth Service Class */
-	gchar *name;
 	gchar *path;		/* Session path */
-	gchar *transfer_path;	/* Transfer path */
 	int sock;
-	int fd;
 	DBusConnection *conn;
 	DBusMessage *msg;
 	GwObex *obex;
-	GwObexXfer *xfer;
-	char *buffer;
-	size_t buffer_len;
-	int filled;
-	gint64 size;
-	gint64 transferred;
-	gchar *filename;
 	gchar *agent_name;
 	gchar *agent_path;
 	guint agent_watch;
 	gchar *owner;		/* Session owner */
 	guint owner_watch;
-	GPtrArray *pending;
+	GSList *pending;
 	void *priv;
 };
 

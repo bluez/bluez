@@ -280,7 +280,8 @@ fail:
 static void read_return_apparam(struct session_data *session,
 				guint16 *phone_book_size, guint8 *new_missed_calls)
 {
-	GwObexXfer *xfer = session->xfer;
+	struct transfer_data *transfer = session->pending->data;
+	GwObexXfer *xfer = transfer->xfer;
 	unsigned char *buf;
 	size_t size = 0;
 
@@ -331,19 +332,20 @@ static void read_return_apparam(struct session_data *session,
 static void pull_phonebook_callback(struct session_data *session,
 					void *user_data)
 {
+	struct transfer_data *transfer = session->pending->data;
 	DBusMessage *reply;
 	char *buf = "";
 
 	reply = dbus_message_new_method_return(session->msg);
 
-	if (session->filled > 0)
-		buf = session->buffer;
+	if (transfer->filled > 0)
+		buf = transfer->buffer;
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &buf,
 			DBUS_TYPE_INVALID);
 
-	session->filled = 0;
+	transfer->filled = 0;
 	g_dbus_send_message(session->conn, reply);
 	dbus_message_unref(session->msg);
 	session->msg = NULL;
@@ -352,6 +354,7 @@ static void pull_phonebook_callback(struct session_data *session,
 static void phonebook_size_callback(struct session_data *session,
 					void *user_data)
 {
+	struct transfer_data *transfer = session->pending->data;
 	DBusMessage *reply;
 	guint16 phone_book_size;
 	guint8 new_missed_calls;
@@ -364,7 +367,7 @@ static void phonebook_size_callback(struct session_data *session,
 			DBUS_TYPE_UINT16, &phone_book_size,
 			DBUS_TYPE_INVALID);
 
-	session->filled = 0;
+	transfer->filled = 0;
 	g_dbus_send_message(session->conn, reply);
 	dbus_message_unref(session->msg);
 	session->msg = NULL;
@@ -373,6 +376,7 @@ static void phonebook_size_callback(struct session_data *session,
 static void pull_vcard_listing_callback(struct session_data *session,
 					void *user_data)
 {
+	struct transfer_data *transfer = session->pending->data;
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
@@ -380,14 +384,14 @@ static void pull_vcard_listing_callback(struct session_data *session,
 
 	reply = dbus_message_new_method_return(session->msg);
 
-	if (session->filled == 0)
+	if (transfer->filled == 0)
 		goto done;
 
-	for (i = session->filled - 1; i > 0; i--) {
-		if (session->buffer[i] != '\0')
+	for (i = transfer->filled - 1; i > 0; i--) {
+		if (transfer->buffer[i] != '\0')
 			break;
 
-		session->filled--;
+		transfer->filled--;
 	}
 
 	dbus_message_iter_init_append(reply, &iter);
@@ -396,12 +400,12 @@ static void pull_vcard_listing_callback(struct session_data *session,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_STRING_AS_STRING
 			DBUS_STRUCT_END_CHAR_AS_STRING, &array);
 	ctxt = g_markup_parse_context_new(&listing_parser, 0, &array, NULL);
-	g_markup_parse_context_parse(ctxt, session->buffer,
-					session->filled, NULL);
+	g_markup_parse_context_parse(ctxt, transfer->buffer,
+					transfer->filled, NULL);
 	g_markup_parse_context_free(ctxt);
 	dbus_message_iter_close_container(&iter, &array);
 
-	session->filled = 0;
+	transfer->filled = 0;
 
 done:
 	g_dbus_send_message(session->conn, reply);
@@ -456,7 +460,6 @@ static DBusMessage *pull_phonebook(struct session_data *session,
 				"Failed");
 
 	session->msg = dbus_message_ref(message);
-	session->filled = 0;
 
 	return NULL;
 }
@@ -522,7 +525,6 @@ static DBusMessage *pull_vcard_listing(struct session_data *session,
 				"Failed");
 
 	session->msg = dbus_message_ref(message);
-	session->filled = 0;
 
 	return NULL;
 }
@@ -735,7 +737,6 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 				"Failed");
 
 	session->msg = dbus_message_ref(message);
-	session->filled = 0;
 
 	return NULL;
 }

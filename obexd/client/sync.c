@@ -73,19 +73,20 @@ static DBusMessage *sync_setlocation(DBusConnection *connection,
 static void sync_getphonebook_callback(struct session_data *session,
 						void *user_data)
 {
+	struct transfer_data *transfer = session->pending->data;
 	DBusMessage *reply;
 	char *buf = NULL;
 
 	reply = dbus_message_new_method_return(session->msg);
 
-	if (session->filled > 0)
-		buf = session->buffer;
+	if (transfer->filled > 0)
+		buf = transfer->buffer;
 
 	dbus_message_append_args(reply,
 		DBUS_TYPE_STRING, &buf,
 		DBUS_TYPE_INVALID);
 
-	session->filled = 0;
+	transfer->filled = 0;
 	g_dbus_send_message(session->conn, reply);
 	dbus_message_unref(session->msg);
 	session->msg = NULL;
@@ -111,7 +112,6 @@ static DBusMessage *sync_getphonebook(DBusConnection *connection,
 			ERROR_INF ".Failed", "Failed");
 
 	session->msg = dbus_message_ref(message);
-	session->filled = 0;
 
 	return NULL;
 }
