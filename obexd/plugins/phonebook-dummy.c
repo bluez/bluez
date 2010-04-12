@@ -37,22 +37,20 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <libical/ical.h>
+#include <libical/vobject.h>
+#include <libical/vcc.h>
 
 #include "logging.h"
 #include "phonebook.h"
 
-#define VCARD0				\
-        "BEGIN:VCARD\n"			\
-        "VERSION:3.0\n"			\
-        "N:Klaus;Santa\n"		\
-        "FN:\n"				\
-        "TEL:+001122334455\n"		\
-        "END:VCARD\n"
+typedef void (*vcard_func_t) (const char *file, VObject *vo, void *user_data);
 
 struct dummy_data {
 	phonebook_cb	cb;
 	gpointer	user_data;
 	const struct apparam_field *apparams;
+	char *folder;
 	int fd;
 };
 
@@ -72,6 +70,7 @@ static void dummy_free(gpointer user_data)
 	if (dummy->fd >= 0)
 		close(dummy->fd);
 
+	g_free(dummy->folder);
 	g_free(dummy);
 }
 
@@ -98,23 +97,22 @@ void phonebook_exit(void)
 	g_free(root_folder);
 }
 
-static gboolean dummy_result(gpointer data)
+static void foreach_vcard(DIR *dp, vcard_func_t func, void *user_data)
 {
-	struct dummy_data *dummy = data;
-
-	dummy->cb(VCARD0, strlen(VCARD0), 1, 0, dummy->user_data);
-
-	return FALSE;
-}
-
-static gboolean create_cache(void *user_data)
-{
-	struct cache_query *query = user_data;
 	struct dirent *ep;
+	VObject *v;
+	FILE *fp;
+	int err, fd, folderfd;
 
-	while ((ep = readdir(query->dp))) {
+	folderfd = dirfd(dp);
+	if (folderfd < 0) {
+		err = errno;
+		error("dirfd(): %s(%d)", strerror(err), err);
+		return;
+	}
+
+	while ((ep = readdir(dp))) {
 		char *filename;
-		uint32_t handle;
 
 		if (ep->d_name[0] == '.')
 			continue;
@@ -125,16 +123,138 @@ static gboolean create_cache(void *user_data)
 			continue;
 		}
 
-		if (sscanf(filename, "%u.vcf", &handle) != 1) {
+		if (!g_str_has_suffix(filename, ".vcf")) {
 			g_free(filename);
 			continue;
 		}
 
-		query->entry_cb(filename, handle, "FIXME:name", NULL,
-						"FIXME:tel", query->user_data);
+		fd = openat(folderfd, filename, O_RDONLY);
+		if (fd < 0) {
+			err = errno;
+			error("openat(%s): %s(%d)", filename, strerror(err), err);
+			g_free(filename);
+			continue;
+		}
+
+		fp = fdopen(fd, "r");
+		v = Parse_MIME_FromFile(fp);
+		if (v != NULL) {
+			func(filename, v, user_data);
+			deleteVObject(v);
+		}
 
 		g_free(filename);
+		close(fd);
 	}
+}
+
+static void entry_concat(const char *filename, VObject *v, void *user_data)
+{
+	GString *buffer = user_data;
+	char tmp[1024];
+	int len;
+
+	/*
+	 * VObject API uses len for IN and OUT
+	 * Written bytes is also returned in the len variable
+	 */
+	len = sizeof(tmp);
+	memset(tmp, 0, len);
+
+	writeMemVObject(tmp, &len, v);
+
+	/* FIXME: only the requested fields must be added */
+	g_string_append_len(buffer, tmp, len);
+}
+
+static gboolean read_dir(void *user_data)
+{
+	struct dummy_data *dummy = user_data;
+	GString *buffer;
+	DIR *dp;
+
+	buffer = g_string_new("");
+
+	dp = opendir(dummy->folder);
+	if (dp == NULL) {
+		int err = errno;
+		debug("opendir(): %s(%d)", strerror(err), err);
+		goto done;
+	}
+
+	foreach_vcard(dp, entry_concat, buffer);
+
+	closedir(dp);
+done:
+	/* FIXME: Missing vCards fields filtering */
+	dummy->cb(buffer->str, buffer->len, 1, 0, dummy->user_data);
+
+	g_string_free(buffer, TRUE);
+
+	return FALSE;
+}
+
+static void entry_notify(const char *filename, VObject *v, void *user_data)
+{
+	struct cache_query *query = user_data;
+	VObject *property, *subproperty;
+	GString *name;
+	const char *tel;
+	unsigned int handle;
+
+	property = isAPropertyOf(v, VCNameProp);
+	if (!property)
+		return;
+
+	/* LastName; FirstName; MiddleName; Prefix; Suffix */
+
+	name = g_string_new("");
+	subproperty = isAPropertyOf(property, VCFamilyNameProp);
+	if (subproperty) {
+		g_string_append(name,
+				fakeCString(vObjectUStringZValue(subproperty)));
+	}
+
+	subproperty = isAPropertyOf(property, VCGivenNameProp);
+	if (subproperty)
+		g_string_append_printf(name, ";%s",
+				fakeCString(vObjectUStringZValue(subproperty)));
+
+	subproperty = isAPropertyOf(property, VCAdditionalNamesProp);
+	if (subproperty)
+		g_string_append_printf(name, ";%s",
+				fakeCString(vObjectUStringZValue(subproperty)));
+
+	subproperty = isAPropertyOf(property, VCNamePrefixesProp);
+	if (subproperty)
+		g_string_append_printf(name, ";%s",
+				fakeCString(vObjectUStringZValue(subproperty)));
+
+
+	subproperty = isAPropertyOf(property, VCNameSuffixesProp);
+	if (subproperty)
+		g_string_append_printf(name, ";%s",
+				fakeCString(vObjectUStringZValue(subproperty)));
+
+	property = isAPropertyOf(v, VCTelephoneProp);
+	if (!property)
+		goto done;
+
+	tel = fakeCString(vObjectUStringZValue(property));
+	if (sscanf(filename, "%u.vcf", &handle) == 1)
+		handle = handle > UINT32_MAX ? UINT32_MAX : handle;
+		query->entry_cb(filename, handle, name->str, NULL, tel,
+							query->user_data);
+
+done:
+	g_string_free(name, TRUE);
+}
+
+static gboolean create_cache(void *user_data)
+{
+	struct cache_query *query = user_data;
+
+	foreach_vcard(query->dp, entry_notify, query);
 
 	query->ready_cb(query->user_data);
 
@@ -263,14 +383,37 @@ int phonebook_pull(const gchar *name, const struct apparam_field *params,
 					phonebook_cb cb, gpointer user_data)
 {
 	struct dummy_data *dummy;
+	char *filename, *folder;
+
+	/*
+	 * Main phonebook objects will be created dinamically based on the
+	 * folder content. All vcards inside the given folder will be appended
+	 * in the "virtual" main phonebook object.
+	 */
+
+	filename = g_build_filename(root_folder, name, NULL);
+
+	if (!g_str_has_suffix(filename, ".vcf")) {
+		g_free(filename);
+		return -EBADR;
+	}
+
+	folder = g_strndup(filename, strlen(filename) - 4);
+	g_free(filename);
+	if (!is_dir(folder)) {
+		g_free(folder);
+		return -EBADR;
+	}
 
 	dummy = g_new0(struct dummy_data, 1);
 	dummy->cb = cb;
 	dummy->user_data = user_data;
 	dummy->apparams = params;
+	dummy->folder = folder;
+	dummy->fd = -1;
 
-	g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, dummy_result, dummy,
-								dummy_free);
+	g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, read_dir, dummy, dummy_free);
+
 	return 0;
 }
 
