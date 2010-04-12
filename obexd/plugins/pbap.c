@@ -642,14 +642,19 @@ static gpointer vobject_vcard_open(const char *name, int oflag, mode_t mode,
 		goto fail;
 	}
 
-	sscanf(name, "%u.vcf", &handle);
+	if (sscanf(name, "%u.vcf", &handle) != 1) {
+		ret = -EBADR;
+		goto fail;
+	}
+
 	id = cache_find(&pbap->cache, handle);
 	if (!id) {
 		ret = -ENOENT;
 		goto fail;
 	}
 
-	ret = phonebook_get_entry(id, pbap->params, query_result, pbap);
+	ret = phonebook_get_entry(pbap->folder, id, pbap->params, query_result,
+									pbap);
 	if (ret < 0)
 		goto fail;
 

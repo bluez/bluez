@@ -71,22 +71,39 @@ typedef void (*phonebook_cache_ready_cb) (gpointer user_data);
 int phonebook_init(void);
 void phonebook_exit(void);
 
+/*
+ * Changes the current folder in the phonebook back-end. The PBAP core
+ * doesn't validate or restrict the possible values for the folders,
+ * allowing non-standard backends implementation which doesn't follow
+ * the PBAP virtual folder architecture. Validate the folder's name
+ * is responsibility of the back-ends.
+*/
 gchar *phonebook_set_folder(const gchar *current_folder,
 		const gchar *new_folder, guint8 flags, int *err);
 
 /*
- * PullPhoneBook never use cached entries. PCE use this
- * function to get all entries of a given folder.
+ * PullPhoneBook never use cached entries. PCE use this function to get all
+ * entries of a given folder. The back-end MUST return only the content based
+ * on the application parameters requested by the client.
  */
 int phonebook_pull(const gchar *name, const struct apparam_field *params,
 		phonebook_cb cb, gpointer user_data);
 
-int phonebook_get_entry(const gchar *id, const struct apparam_field *params,
-		phonebook_cb cb, gpointer user_data);
+/*
+ * Function used to retrieve a contact from the backend. Only contacts
+ * found in the cache are requested to the back-ends. The back-end MUST
+ * return only the content based on the application parameters requested
+ * by the client.
+ */
+int phonebook_get_entry(const gchar *folder, const gchar *id,
+				const struct apparam_field *params,
+				phonebook_cb cb, gpointer user_data);
 
 /*
  * PBAP core will keep the contacts cache per folder. SetPhoneBook or
  * PullvCardListing can invalidate the cache if the current folder changes.
+ * Cache will store only the necessary information required to reply to
+ * PullvCardListing request and verify if a given contact belongs to the source.
  */
 int phonebook_create_cache(const gchar *name, phonebook_entry_cb entry_cb,
 		phonebook_cache_ready_cb ready_cb, gpointer user_data);

@@ -399,7 +399,8 @@ gint phonebook_pull(const gchar *name, const struct apparam_field *params,
 	return 0;
 }
 
-int phonebook_get_entry(const gchar *id, const struct apparam_field *params,
+int phonebook_get_entry(const gchar *folder, const gchar *id,
+					const struct apparam_field *params,
 					phonebook_cb cb, gpointer user_data)
 {
 	struct contacts_query *data;

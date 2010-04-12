@@ -64,7 +64,6 @@ struct cache_query {
 };
 
 static gchar *root_folder = NULL;
-static int folderfd = -1;
 
 static void dummy_free(gpointer user_data)
 {
@@ -97,9 +96,6 @@ int phonebook_init(void)
 void phonebook_exit(void)
 {
 	g_free(root_folder);
-
-	if (folderfd >= 0)
-		close(folderfd);
 }
 
 static gboolean dummy_result(gpointer data)
@@ -167,32 +163,17 @@ static gboolean read_entry(gpointer user_data)
 	return FALSE;
 }
 
-static int open_folder(const char *folder)
+static gboolean is_dir(const char *dir)
 {
 	struct stat st;
-	int fd, err;
 
-	if (stat(folder, &st) < 0) {
-		err = errno;
-		error("stat(): %s(%d)", strerror(err), err);
-		return -err;
+	if (stat(dir, &st) < 0) {
+		int err = errno;
+		error("stat(%s): %s (%d)", dir, strerror(err), err);
+		return FALSE;
 	}
 
-	if (!S_ISDIR(st.st_mode)) {
-		error("folder %s is not a folder!", folder);
-		return -EBADR;
-	}
-
-	debug("open_folder: %s", folder);
-
-	fd = open(folder, O_RDONLY);
-	if (fd < 0) {
-		err = errno;
-		error("open(): %s(%d)", strerror(err), err);
-		return -err;
-	}
-
-	return fd;
+	return S_ISDIR(st.st_mode);
 }
 
 gchar *phonebook_set_folder(const gchar *current_folder,
@@ -200,7 +181,7 @@ gchar *phonebook_set_folder(const gchar *current_folder,
 {
 	gboolean root, child;
 	gchar *tmp1, *tmp2, *base, *absolute, *relative = NULL;
-	int ret, len, fd;
+	int ret, len;
 
 	root = (g_strcmp0("/", current_folder) == 0);
 	child = (new_folder && strlen(new_folder) != 0);
@@ -264,17 +245,10 @@ done:
 	}
 
 	absolute = g_build_filename(root_folder, relative, NULL);
-	fd = open_folder(absolute);
-	if (fd < 0) {
-		ret = -EBADR;
+	if (!is_dir(absolute)) {
 		g_free(relative);
 		relative = NULL;
-	} else {
-		/* Keep the current folderfd open */
-		if (folderfd >= 0)
-			close(folderfd);
-
-		folderfd = fd;
+		ret = -EBADR;
 	}
 
 	g_free(absolute);
@@ -300,19 +274,20 @@ int phonebook_pull(const gchar *name, const struct apparam_field *params,
 	return 0;
 }
 
-int phonebook_get_entry(const gchar *id, const struct apparam_field *params,
+int phonebook_get_entry(const gchar *folder, const gchar *id,
+					const struct apparam_field *params,
 					phonebook_cb cb, gpointer user_data)
 {
 	struct dummy_data *dummy;
+	char *filename;
 	int fd;
 
-	if (folderfd < 0)
-		return -EBADR;
+	filename = g_build_filename(root_folder, folder, id, NULL);
 
-	fd = openat(folderfd, id, 0);
+	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
 		int err = errno;
-		debug("openat(): %s(%d)", strerror(err), err);
+		debug("open(): %s(%d)", strerror(err), err);
 		return -EBADR;
 	}
 
