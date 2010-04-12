@@ -171,6 +171,9 @@ static gboolean entry_name_find(const struct cache_entry *entry,
 	if (!entry->name)
 		return FALSE;
 
+	if (strlen(value) == 0)
+		return TRUE;
+
 	name = g_utf8_strdown(entry->name, -1);
 	ret = (g_strstr_len(name, -1, value) ? TRUE : FALSE);
 	g_free(name);
