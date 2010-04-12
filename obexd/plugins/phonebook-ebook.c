@@ -258,7 +258,8 @@ static void cache_cb(EBook *book, EBookStatus estatus, GList *contacts,
 
 		tel =  e_vcard_attribute_get_value(attrib);
 
-		data->entry_cb(uid, name, NULL, tel, data->user_data);
+		data->entry_cb(uid, PHONEBOOK_INVALID_HANDLE, name, NULL,
+							tel, data->user_data);
 		g_free(name);
 		g_free(uid);
 		g_free(tel);

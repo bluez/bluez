@@ -56,8 +56,10 @@ typedef void (*phonebook_cb) (const gchar *buffer, size_t bufsize,
  * Interface between the PBAP core and backends to
  * append a new entry in the PBAP folder cache.
  */
-typedef void (*phonebook_entry_cb) (const gchar *id, const gchar *name,
-		const gchar *sound, const gchar *tel, gpointer user_data);
+#define PHONEBOOK_INVALID_HANDLE	0xffffffff
+typedef void (*phonebook_entry_cb) (const char *id, uint32_t handle,
+					const char *name, const char *sound,
+					const char *tel, void *user_data);
 
 /*
  * After notify all entries to PBAP core, the backend

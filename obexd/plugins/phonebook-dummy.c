@@ -26,7 +26,10 @@
 #include <config.h>
 #endif
 
+#include <dirent.h>
 #include <errno.h>
+#include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <glib.h>
 #include <stdlib.h>
@@ -53,8 +56,15 @@ struct dummy_data {
 	int fd;
 };
 
+struct cache_query {
+	phonebook_entry_cb entry_cb;
+	phonebook_cache_ready_cb ready_cb;
+	void *user_data;
+	DIR *dp;
+};
+
 static gchar *root_folder = NULL;
-static int dirfd = -1;
+static int folderfd = -1;
 
 static void dummy_free(gpointer user_data)
 {
@@ -64,6 +74,16 @@ static void dummy_free(gpointer user_data)
 		close(dummy->fd);
 
 	g_free(dummy);
+}
+
+static void query_free(void *user_data)
+{
+	struct cache_query *query = user_data;
+
+	if (query->dp)
+		closedir(query->dp);
+
+	g_free(query);
 }
 
 int phonebook_init(void)
@@ -78,8 +98,8 @@ void phonebook_exit(void)
 {
 	g_free(root_folder);
 
-	if (dirfd >= 0)
-		close(dirfd);
+	if (folderfd >= 0)
+		close(folderfd);
 }
 
 static gboolean dummy_result(gpointer data)
@@ -87,6 +107,40 @@ static gboolean dummy_result(gpointer data)
 	struct dummy_data *dummy = data;
 
 	dummy->cb(VCARD0, strlen(VCARD0), 1, 0, dummy->user_data);
+
+	return FALSE;
+}
+
+static gboolean create_cache(void *user_data)
+{
+	struct cache_query *query = user_data;
+	struct dirent *ep;
+
+	while ((ep = readdir(query->dp))) {
+		char *filename;
+		uint32_t handle;
+
+		if (ep->d_name[0] == '.')
+			continue;
+
+		filename = g_filename_to_utf8(ep->d_name, -1, NULL, NULL, NULL);
+		if (filename == NULL) {
+			error("g_filename_to_utf8: invalid filename");
+			continue;
+		}
+
+		if (sscanf(filename, "%u.vcf", &handle) != 1) {
+			g_free(filename);
+			continue;
+		}
+
+		query->entry_cb(filename, handle, "FIXME:name", NULL,
+						"FIXME:tel", query->user_data);
+
+		g_free(filename);
+	}
+
+	query->ready_cb(query->user_data);
 
 	return FALSE;
 }
@@ -216,11 +270,11 @@ done:
 		g_free(relative);
 		relative = NULL;
 	} else {
-		/* Keep the current dirfd open */
-		if (dirfd >= 0)
-			close(dirfd);
+		/* Keep the current folderfd open */
+		if (folderfd >= 0)
+			close(folderfd);
 
-		dirfd = fd;
+		folderfd = fd;
 	}
 
 	g_free(absolute);
@@ -252,10 +306,10 @@ int phonebook_get_entry(const gchar *id, const struct apparam_field *params,
 	struct dummy_data *dummy;
 	int fd;
 
-	if (dirfd < 0)
+	if (folderfd < 0)
 		return -EBADR;
 
-	fd = openat(dirfd, id, 0);
+	fd = openat(folderfd, id, 0);
 	if (fd < 0) {
 		int err = errno;
 		debug("openat(): %s(%d)", strerror(err), err);
@@ -276,5 +330,27 @@ int phonebook_get_entry(const gchar *id, const struct apparam_field *params,
 int phonebook_create_cache(const gchar *name, phonebook_entry_cb entry_cb,
 		phonebook_cache_ready_cb ready_cb, gpointer user_data)
 {
+	struct cache_query *query;
+	char *foldername;
+	DIR *dp;
+
+	foldername = g_build_filename(root_folder, name, NULL);
+	dp = opendir(foldername);
+	g_free(foldername);
+
+	if (dp == NULL) {
+		int err = errno;
+		debug("opendir(): %s(%d)", strerror(err), err);
+		return -EBADR;
+	}
+
+	query = g_new0(struct cache_query, 1);
+	query->entry_cb = entry_cb;
+	query->ready_cb = ready_cb;
+	query->user_data = user_data;
+	query->dp = dp;
+
+	g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, create_cache, query,
+								query_free);
 	return 0;
 }

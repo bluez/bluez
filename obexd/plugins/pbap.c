@@ -251,14 +251,19 @@ static void query_result(const gchar *buffer, size_t bufsize, gint vcards,
 	obex_object_set_io_flags(pbap, G_IO_IN, 0);
 }
 
-static void cache_entry_notify(const gchar *id, const gchar *name,
-		const gchar *sound, const gchar *tel, gpointer user_data)
+static void cache_entry_notify(const gchar *id, guint32 handle,
+					const gchar *name, const gchar *sound,
+					const gchar *tel, gpointer user_data)
 {
 	struct pbap_session *pbap = user_data;
 	struct cache_entry *entry = g_new0(struct cache_entry, 1);
 	struct cache *cache = &pbap->cache;
 
-	entry->handle = ++pbap->cache.index;
+	if (handle != PHONEBOOK_INVALID_HANDLE)
+		entry->handle = handle;
+	else
+		entry->handle = ++pbap->cache.index;
+
 	entry->id = g_strdup(id);
 	entry->name = g_strdup(name);
 	entry->sound = g_strdup(sound);
