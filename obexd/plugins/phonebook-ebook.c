@@ -141,7 +141,17 @@ static void ebookpull_cb(EBook *book, EBookStatus estatus, GList *contacts,
 		goto done;
 	}
 
+	/*
+	 * When MaxListCount s zero, PCE wants to know the number of used
+	 * indexes in the phonebook of interest. All other parameters that
+	 * may be present in the request shall be ignored.
+	 */
 	maxcount = data->params->maxlistcount;
+	if (maxcount == 0) {
+		count = g_list_length(contacts);
+		goto done;
+	}
+
 	l = g_list_nth(contacts, data->params->liststartoffset);
 
 	/* FIXME: Missing 0.vcf */
