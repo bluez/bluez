@@ -49,29 +49,29 @@
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
-		"nco:hasPhoneNumber ?phone ."				\
+		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
 	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
 	"}"
 
-#define CONTACTS_QUERY_ALL_LIST						\
+#define CONTACTS_QUERY_ALL_LIST \
 	"SELECT ?contact ?family ?given ?additional ?prefix "		\
 		"?suffix ?phone "					\
 	"WHERE { "							\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
-		"nco:hasPhoneNumber ?phone ."				\
+		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
 	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
 	"}"
 
-#define MISSED_CALLS_QUERY						\
-	"SELECT ?contact ?family ?given ?additional ?prefix "		\
-		"?suffix ?phone ?email "				\
+#define MISSED_CALLS_QUERY \
+	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+		"?suffix ?email "					\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?contact ; "					\
@@ -80,16 +80,34 @@
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
-		"nco:hasPhoneNumber ?phone ."				\
+		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
 	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
 	"}"
 
-#define INCOMING_CALLS_QUERY						\
+#define MISSED_CALLS_LIST \
 	"SELECT ?contact ?family ?given ?additional ?prefix "		\
-		"?suffix ?phone ?fullname ?email "			\
+		"?suffix ?phone "					\
+	"WHERE { "							\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?contact ; "					\
+		"nmo:to " TRACKER_DEFAULT_CONTACT_ME " ; "		\
+		"nmo:isRead false ."					\
+		"?contact a nco:PersonContact ; "			\
+		"nco:nameFamily ?family ; "				\
+		"nco:nameGiven ?given ; "				\
+		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
+	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
+	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
+	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+	"}"
+
+#define INCOMING_CALLS_QUERY \
+	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+		"?suffix ?email "					\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?contact ; "					\
@@ -97,16 +115,32 @@
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
-		"nco:hasPhoneNumber ?phone ."				\
+		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
 	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
 	"}"
 
-#define OUTGOING_CALLS_QUERY						\
+#define INCOMING_CALLS_LIST						\
 	"SELECT ?contact ?family ?given ?additional ?prefix "		\
-		"?suffix ?phone ?fullname ?email "			\
+		"?suffix ?phone "					\
+	"WHERE { "							\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?contact ; "					\
+		"nmo:to " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"?contact a nco:PersonContact ; "			\
+		"nco:nameFamily ?family ; "				\
+		"nco:nameGiven ?given ; "				\
+		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
+	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
+	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+	"}"
+
+#define OUTGOING_CALLS_QUERY \
+	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+		"?suffix ?email "					\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?contact ; "					\
@@ -114,19 +148,87 @@
 			"?contact a nco:PersonContact ; "		\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
-		"nco:hasPhoneNumber ?phone ."				\
+		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
 	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
 	"}"
 
-/* FIXME: still not sure about how to implement this */
-#define COMBINED_CALLS_QUERY						\
-	"SELECT ?contact "						\
+#define OUTGOING_CALLS_LIST \
+	"SELECT ?contact ?family ?given ?additional ?prefix "		\
+		"?suffix ?phone "					\
 	"WHERE { "							\
-		"?call a nmo:Call . "					\
+		"?call a nmo:Call ; "					\
+		"nmo:to ?contact ; "					\
+		"nmo:from " TRACKER_DEFAULT_CONTACT_ME " . "		\
+			"?contact a nco:PersonContact ; "		\
+		"nco:nameFamily ?family ; "				\
+		"nco:nameGiven ?given ; "				\
+		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
+	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
+	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
 	"}"
+
+#define COMBINED_CALLS_QUERY \
+	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+		"?suffix ?email "					\
+	"WHERE { "							\
+	"{ "								\
+		"?call a nmo:Call ; "					\
+		"nmo:to ?contact ; "					\
+		"nmo:from " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"?contact a nco:PersonContact ; "			\
+		"nco:nameFamily ?family ; "				\
+		"nco:nameGiven ?given ; "				\
+		"nco:hasPhoneNumber ?phone . "				\
+		"OPTIONAL { ?contact nco:hasEmailAddress ?email } "	\
+		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
+		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
+		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
+	"} UNION { "							\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?contact ; "					\
+		"nmo:to " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"?contact a nco:PersonContact ; "			\
+		"nco:nameFamily ?family ; "				\
+		"nco:nameGiven ?given ; "				\
+		"nco:hasPhoneNumber ?phone . "				\
+		"OPTIONAL { ?contact nco:hasEmailAddress ?email } "	\
+		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
+		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
+		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
+	"} } "
+
+#define COMBINED_CALLS_LIST \
+	"SELECT ?contact ?family ?given ?additional ?prefix "		\
+		"?suffix ?phone "					\
+	"WHERE { "							\
+	"{ "								\
+		"?call a nmo:Call ; "					\
+		"nmo:to ?contact ; "					\
+		"nmo:from " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"?contact a nco:PersonContact ; "			\
+		"nco:nameFamily ?family ; "				\
+		"nco:nameGiven ?given ; "				\
+		"nco:hasPhoneNumber ?phone . "				\
+		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
+		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
+		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
+	"} UNION { "							\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?contact ; "					\
+		"nmo:to " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"?contact a nco:PersonContact ; "			\
+		"nco:nameFamily ?family ; "				\
+		"nco:nameGiven ?given ; "				\
+		"nco:hasPhoneNumber ?phone . "				\
+		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
+		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
+		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
+	"} } "
+
 
 #define CONTACTS_QUERY_FROM_URI \
 	"SELECT ?phone ?family ?given ?additional ?prefix "		\
@@ -135,7 +237,7 @@
 		"<%s> a nco:PersonContact ; "				\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
-		"nco:hasPhoneNumber ?phone ."				\
+		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { <%s> nco:hasEmailAddress ?email } "			\
 	"OPTIONAL { <%s> nco:nameAdditional ?additional } "		\
 	"OPTIONAL { <%s> nco:nameHonorificPrefix ?prefix } "		\
@@ -172,6 +274,58 @@ struct phonebook_index {
 };
 
 static DBusConnection *connection = NULL;
+
+static const char *name2query(const char *name)
+{
+	if (g_str_equal(name, "telecom/pb.vcf"))
+		return CONTACTS_QUERY_ALL;
+	else if (g_str_equal(name, "telecom/ich.vcf"))
+		return INCOMING_CALLS_QUERY;
+	else if (g_str_equal(name, "telecom/och.vcf"))
+		return OUTGOING_CALLS_QUERY;
+	else if (g_str_equal(name, "telecom/mch.vcf"))
+		return MISSED_CALLS_QUERY;
+	else if (g_str_equal(name, "telecom/cch.vcf"))
+		return COMBINED_CALLS_QUERY;
+
+	return NULL;
+}
+
+static gboolean folder_is_valid(const char *folder)
+{
+	if (g_str_equal(folder, "/"))
+		return TRUE;
+	else if (g_str_equal(folder, "/telecom"))
+		return TRUE;
+	else if (g_str_equal(folder, "/telecom/pb"))
+		return TRUE;
+	else if (g_str_equal(folder, "/telecom/ich"))
+		return TRUE;
+	else if (g_str_equal(folder, "/telecom/och"))
+		return TRUE;
+	else if (g_str_equal(folder, "/telecom/mch"))
+		return TRUE;
+	else if (g_str_equal(folder, "/telecom/cch"))
+		return TRUE;
+
+	return FALSE;
+}
+
+static const char *folder2query(const char *folder)
+{
+	if (g_str_equal(folder, "/telecom/pb"))
+		return CONTACTS_QUERY_ALL_LIST;
+	else if (g_str_equal(folder, "/telecom/ich"))
+		return INCOMING_CALLS_LIST;
+	else if (g_str_equal(folder, "/telecom/och"))
+		return OUTGOING_CALLS_LIST;
+	else if (g_str_equal(folder, "/telecom/mch"))
+		return MISSED_CALLS_LIST;
+	else if (g_str_equal(folder, "/telecom/cch"))
+		return COMBINED_CALLS_LIST;
+
+	return NULL;
+}
 
 static char **string_array_from_iter(DBusMessageIter iter, int array_len)
 {
@@ -364,27 +518,95 @@ void phonebook_exit(void)
 char *phonebook_set_folder(const char *current_folder, const char *new_folder,
 							uint8_t flags, int *err)
 {
-	char *folder;
+	char *tmp1, *tmp2, *base, *path = NULL;
+	gboolean root, child;
+	int ret, len;
+
+	root = (g_strcmp0("/", current_folder) == 0);
+	child = (new_folder && strlen(new_folder) != 0);
+
+	switch (flags) {
+	case 0x02:
+		/* Go back to root */
+		if (!child) {
+			path = g_strdup("/");
+			goto done;
+		}
+
+		path = g_build_filename(current_folder, new_folder, NULL);
+		break;
+	case 0x03:
+		/* Go up 1 level */
+		if (root) {
+			/* Already root */
+			path = g_strdup("/");
+			goto done;
+		}
+
+		/*
+		 * Removing one level of the current folder. Current folder
+		 * contains AT LEAST one level since it is not at root folder.
+		 * Use glib utility functions to handle invalid chars in the
+		 * folder path properly.
+		 */
+		tmp1 = g_path_get_basename(current_folder);
+		tmp2 = g_strrstr(current_folder, tmp1);
+		len = tmp2 - (current_folder + 1);
+
+		g_free(tmp1);
+		g_free(tmp2);
+
+		if (len == 0)
+			base = g_strdup("/");
+		else
+			base = g_strndup(current_folder, len);
+
+		/* Return: one level only */
+		if (!child) {
+			path = base;
+			goto done;
+		}
+
+		path = g_build_filename(base, new_folder, NULL);
+		g_free(base);
+
+		break;
+	default:
+		ret = -EBADR;
+		break;
+	}
+
+done:
+
+	if (!folder_is_valid(path)) {
+		g_free(path);
+		path = NULL;
+		ret = -EBADR;
+	} else
+		ret = 0;
 
 	if (err)
-		*err = 0;
+		*err = ret;
 
-	folder = g_build_path(current_folder, new_folder, NULL);
-
-	return folder;
+	return path;
 }
 
 int phonebook_pull(const char *name, const struct apparam_field *params,
 					phonebook_cb cb, void *user_data)
 {
 	struct phonebook_data *data;
+	const char *query;
+
+	query = name2query(name);
+	if (query == NULL)
+		return -1;
 
 	data = g_new0(struct phonebook_data, 1);
 	data->vcards = g_string_new(NULL);
 	data->user_data = user_data;
 	data->cb = cb;
 
-	return query_tracker(CONTACTS_QUERY_ALL, 7, pull_contacts, data);
+	return query_tracker(query, 7, pull_contacts, data);
 }
 
 int phonebook_get_entry(const char *folder, const char *id,
@@ -413,11 +635,16 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 			phonebook_cache_ready_cb ready_cb, void *user_data)
 {
 	struct cache_data *cache;
+	const char *query;
+
+	query = folder2query(name);
+	if (query == NULL)
+		return -1;
 
 	cache = g_new0(struct cache_data, 1);
 	cache->entry_cb = entry_cb;
 	cache->ready_cb = ready_cb;
 	cache->user_data = user_data;
 
-	return query_tracker(CONTACTS_QUERY_ALL_LIST, 7, add_to_cache, cache);
+	return query_tracker(query, 7, add_to_cache, cache);
 }
