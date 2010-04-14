@@ -468,6 +468,12 @@ char *bt_compidtostr(int compid)
 		return "Nordic Semiconductor ASA";
 	case 90:
 		return "EM Microelectronic-Marin SA";
+	case 91:
+		return "Ralink Technology Corporation";
+	case 92:
+		return "Belkin International, Inc.";
+	case 93:
+		return "Realtek Semiconductor Corporation";
 	case 65535:
 		return "internal use";
 	default:
