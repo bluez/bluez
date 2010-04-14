@@ -228,8 +228,7 @@ static int do_connect(char *svr)
 	/* Set new options */
 	opts.omtu = omtu;
 	opts.imtu = imtu;
-	if (rfcmode > 0)
-		opts.mode = rfcmode;
+	opts.mode = rfcmode;
 
 	opts.fcs = fcs;
 	opts.txwin_size = txwin_size;
