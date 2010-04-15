@@ -63,3 +63,6 @@ int tty_init(gint service, const gchar *folder, const gchar *capability,
 		gboolean symlinks, const gchar *devnode);
 gint obex_tty_session_stop(void);
 void tty_closed(void);
+
+/* Just a thin wrapper around memcmp to deal with NULL values */
+int memcmp0(const void *a, const void *b, size_t n);

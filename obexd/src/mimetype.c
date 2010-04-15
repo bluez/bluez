@@ -46,18 +46,6 @@ struct io_watch {
 	gpointer user_data;
 };
 
-/* Just thin wrapper around memcmp to deal with NULL values */
-static int memcmp0(const void *a, const void *b, size_t n)
-{
-	if (a == NULL)
-		return -(a != b);
-
-	if (b == NULL)
-		return a != b;
-
-	return memcmp(a, b, n);
-}
-
 void obex_object_set_io_flags(gpointer object, int flags, int err)
 {
 	GSList *l;

@@ -1197,3 +1197,14 @@ ssize_t obex_aparam_read(struct obex_session *os,
 
 	return -EBADR;
 }
+
+int memcmp0(const void *a, const void *b, size_t n)
+{
+	if (a == NULL)
+		return -(a != b);
+
+	if (b == NULL)
+		return a != b;
+
+	return memcmp(a, b, n);
+}
