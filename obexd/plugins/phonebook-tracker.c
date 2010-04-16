@@ -258,6 +258,7 @@ struct phonebook_data {
 	phonebook_cb cb;
 	void *user_data;
 	int index;
+	const struct apparam_field *params;
 };
 
 struct cache_data {
@@ -458,11 +459,24 @@ static int query_tracker(const char* query, int num_fields,
 static void pull_contacts(char **reply, int num_fields, void *user_data)
 {
 	struct phonebook_data *data = user_data;
+	const struct apparam_field *params = data->params;
 	GString *vcards = data->vcards;
 	char *formatted;
+	int last_index;
 
 	if (reply == NULL)
 		goto done;
+
+	data->index++;
+
+	/* Just interested in knowing the phonebook size */
+	if (params->maxlistcount == 0)
+		return;
+
+	last_index = params->liststartoffset + params->maxlistcount;
+
+	if (data->index < params->liststartoffset || data->index > last_index)
+		return;
 
 	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[1], reply[2],
 						reply[3], reply[4], reply[5]);
@@ -471,8 +485,6 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 								reply[6]);
 
 	g_free(formatted);
-
-	data->index++;
 
 	return;
 
@@ -603,6 +615,7 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 
 	data = g_new0(struct phonebook_data, 1);
 	data->vcards = g_string_new(NULL);
+	data->params = params;
 	data->user_data = user_data;
 	data->cb = cb;
 
@@ -620,6 +633,7 @@ int phonebook_get_entry(const char *folder, const char *id,
 	data = g_new0(struct phonebook_data, 1);
 	data->vcards = g_string_new(NULL);
 	data->user_data = user_data;
+	data->params = params;
 	data->cb = cb;
 
 	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id, id);
