@@ -97,9 +97,25 @@ void phonebook_exit(void)
 	g_free(root_folder);
 }
 
+static int handle_cmp(gconstpointer a, gconstpointer b)
+{
+	const char *f1 = a;
+	const char *f2 = b;
+	unsigned int i1, i2;
+
+	if (sscanf(f1, "%u.vcf", &i1) != 1)
+		return -1;
+
+	if (sscanf(f2, "%u.vcf", &i2) != 1)
+		return -1;
+
+	return (i1 - i2);
+}
+
 static void foreach_vcard(DIR *dp, vcard_func_t func, void *user_data)
 {
 	struct dirent *ep;
+	GSList *sorted = NULL, *l;
 	VObject *v;
 	FILE *fp;
 	int err, fd, folderfd;
@@ -111,6 +127,12 @@ static void foreach_vcard(DIR *dp, vcard_func_t func, void *user_data)
 		return;
 	}
 
+	/*
+	 * Sorting vcards by file name. versionsort is a GNU extension.
+	 * The simple sorting function implemented on handle_cmp address
+	 * vcards handle only(handle is always a number). This sort function
+	 * doesn't address filename started by "0".
+	 */
 	while ((ep = readdir(dp))) {
 		char *filename;
 
@@ -128,11 +150,16 @@ static void foreach_vcard(DIR *dp, vcard_func_t func, void *user_data)
 			continue;
 		}
 
+		sorted = g_slist_insert_sorted(sorted, filename, handle_cmp);
+	}
+
+	for (l = sorted; l; l = l->next) {
+		const gchar *filename = l->data;
+
 		fd = openat(folderfd, filename, O_RDONLY);
 		if (fd < 0) {
 			err = errno;
 			error("openat(%s): %s(%d)", filename, strerror(err), err);
-			g_free(filename);
 			continue;
 		}
 
@@ -143,9 +170,11 @@ static void foreach_vcard(DIR *dp, vcard_func_t func, void *user_data)
 			deleteVObject(v);
 		}
 
-		g_free(filename);
 		close(fd);
 	}
+
+	g_slist_foreach(sorted, (GFunc) g_free, NULL);
+	g_slist_free(sorted);
 }
 
 static void entry_concat(const char *filename, VObject *v, void *user_data)
