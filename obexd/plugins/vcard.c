@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <ctype.h>
 #include <errno.h>
 
@@ -34,6 +35,36 @@
 #define TYPE_INTERNATIONAL 145
 
 #define PHONEBOOK_FLAG_CACHED 0x1
+
+#define FILTER_VERSION (1 << 0)
+#define FILTER_FN (1 << 1)
+#define FILTER_N (1 << 2)
+#define FILTER_PHOTO (1 << 3)
+#define FILTER_BDAY (1 << 4)
+#define FILTER_ADR (1 << 5)
+#define FILTER_LABEL (1 << 6)
+#define FILTER_TEL (1 << 7)
+#define FILTER_EMAIL (1 << 8)
+#define FILTER_MAILER (1 << 9)
+#define FILTER_TZ (1 << 10)
+#define FILTER_GEO (1 << 11)
+#define FILTER_TITLE (1 << 12)
+#define FILTER_ROLE (1 << 13)
+#define FILTER_LOGO (1 << 14)
+#define FILTER_AGENT (1 << 15)
+#define FILTER_ORG (1 << 16)
+#define FILTER_NOTE (1 << 17)
+#define FILTER_REV (1 << 18)
+#define FILTER_SOUND (1 << 19)
+#define FILTER_URL (1 << 20)
+#define FILTER_UID (1 << 21)
+#define FILTER_KEY (1 << 22)
+#define FILTER_NICKNAME (1 << 23)
+#define FILTER_CATEGORIES (1 << 24)
+#define FILTER_PROID (1 << 25)
+#define FILTER_CLASS (1 << 26)
+#define FILTER_SORT_STRING (1 << 27)
+#define FILTER_X_IRMC_CALL_DATETIME (1 << 28)
 
 /* according to RFC 2425, the output string may need folding */
 static void vcard_printf(GString *str, const char *fmt, ...)
@@ -95,11 +126,18 @@ static void vcard_printf_begin(GString *vcards)
 	vcard_printf(vcards, "VERSION:3.0");
 }
 
-static void vcard_printf_text(GString *vcards, const char *text)
+static void vcard_printf_fullname(GString *vcards, const char *text)
 {
 	char field[LEN_MAX];
 	add_slash(field, text, LEN_MAX, strlen(text));
 	vcard_printf(vcards, "FN:%s", field);
+}
+
+static void vcard_printf_name(GString *vcards, const char *text)
+{
+	char field[LEN_MAX];
+	add_slash(field, text, LEN_MAX, strlen(text));
+	vcard_printf(vcards, "N:%s", field);
 }
 
 static void vcard_printf_number(GString *vcards, const char *number, int type,
@@ -159,21 +197,33 @@ static void vcard_printf_end(GString *vcards)
 }
 
 void phonebook_add_entry(GString *vcards, const char *number, int type,
-					const char *text, const char *email)
+					const char *name, const char *fullname,
+					const char *email, uint64_t filter)
 {
 	/* There's really nothing to do */
 	if ((number == NULL || number[0] == '\0') &&
-			(text == NULL || text[0] == '\0'))
+			(fullname == NULL || fullname[0] == '\0'))
 		return;
+
+	filter |= (FILTER_VERSION | FILTER_FN | FILTER_N | FILTER_TEL);
 
 	vcard_printf_begin(vcards);
 
-	if (text == NULL || text[0] == '\0')
-		vcard_printf_text(vcards, number);
-	else
-		vcard_printf_text(vcards, text);
+	if (filter & FILTER_FN) {
+		if (fullname == NULL || fullname[0] == '\0')
+			vcard_printf_fullname(vcards, number);
+		else
+			vcard_printf_fullname(vcards, fullname);
+	}
 
-	vcard_printf_email(vcards, email);
-	vcard_printf_number(vcards, number, type, TEL_TYPE_OTHER);
+	if (filter & FILTER_TEL)
+		vcard_printf_number(vcards, number, type, TEL_TYPE_OTHER);
+
+	if (filter & FILTER_N)
+		vcard_printf_name(vcards, name);
+
+	if (filter & FILTER_EMAIL)
+		vcard_printf_email(vcards, email);
+
 	vcard_printf_end(vcards);
 }

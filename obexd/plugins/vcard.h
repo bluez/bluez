@@ -28,4 +28,5 @@ enum phonebook_number_type {
 };
 
 void phonebook_add_entry(GString *vcards, const char *number, int type,
-					const char *text, const char *email);
+					const char *name, const char *fullname,
+					const char *email, uint64_t filter);

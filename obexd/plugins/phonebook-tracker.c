@@ -43,12 +43,13 @@
 #define TRACKER_DEFAULT_CONTACT_ME "<urn:nco:default-contact-me>"
 
 #define CONTACTS_QUERY_ALL \
-	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
 		"?suffix ?email "					\
 	"WHERE { "							\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
+		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
@@ -70,7 +71,7 @@
 	"}"
 
 #define MISSED_CALLS_QUERY \
-	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
 		"?suffix ?email "					\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
@@ -80,6 +81,7 @@
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
+		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
@@ -106,7 +108,7 @@
 	"}"
 
 #define INCOMING_CALLS_QUERY \
-	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
 		"?suffix ?email "					\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
@@ -115,6 +117,7 @@
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
+		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
@@ -139,7 +142,7 @@
 	"}"
 
 #define OUTGOING_CALLS_QUERY \
-	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
 		"?suffix ?email "					\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
@@ -148,6 +151,7 @@
 			"?contact a nco:PersonContact ; "		\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
+		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
@@ -172,7 +176,7 @@
 	"}"
 
 #define COMBINED_CALLS_QUERY \
-	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
 		"?suffix ?email "					\
 	"WHERE { "							\
 	"{ "								\
@@ -182,6 +186,7 @@
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
+		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
 		"OPTIONAL { ?contact nco:hasEmailAddress ?email } "	\
 		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
@@ -194,6 +199,7 @@
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
+		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
 		"OPTIONAL { ?contact nco:hasEmailAddress ?email } "	\
 		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
@@ -231,12 +237,13 @@
 
 
 #define CONTACTS_QUERY_FROM_URI \
-	"SELECT ?phone ?family ?given ?additional ?prefix "		\
+	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
 	"	?suffix ?email "					\
 	"WHERE { "							\
 		"<%s> a nco:PersonContact ; "				\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
+		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
 	"OPTIONAL { <%s> nco:hasEmailAddress ?email } "			\
 	"OPTIONAL { <%s> nco:nameAdditional ?additional } "		\
@@ -478,11 +485,11 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	if (data->index < params->liststartoffset || data->index > last_index)
 		return;
 
-	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[1], reply[2],
-						reply[3], reply[4], reply[5]);
+	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[2], reply[3],
+						reply[4], reply[5], reply[6]);
 
 	phonebook_add_entry(vcards, reply[0], TEL_TYPE_HOME, formatted,
-								reply[6]);
+					reply[6], reply[1], params->filter);
 
 	g_free(formatted);
 
@@ -619,7 +626,7 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 	data->user_data = user_data;
 	data->cb = cb;
 
-	return query_tracker(query, 7, pull_contacts, data);
+	return query_tracker(query, 8, pull_contacts, data);
 }
 
 int phonebook_get_entry(const char *folder, const char *id,
