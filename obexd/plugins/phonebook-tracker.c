@@ -467,8 +467,8 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 {
 	struct phonebook_data *data = user_data;
 	const struct apparam_field *params = data->params;
+	struct phonebook_contact *contact;
 	GString *vcards = data->vcards;
-	char *formatted;
 	int last_index;
 
 	if (reply == NULL)
@@ -485,13 +485,19 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	if (data->index < params->liststartoffset || data->index > last_index)
 		return;
 
-	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[2], reply[3],
-						reply[4], reply[5], reply[6]);
+	contact = g_new0(struct phonebook_contact, 1);
+	contact->tel = g_strdup(reply[0]);
+	contact->tel_type = 1; /* HOME */
+	contact->fullname = g_strdup(reply[1]);
+	contact->family = g_strdup(reply[2]);
+	contact->given = g_strdup(reply[3]);
+	contact->additional = g_strdup(reply[4]);
+	contact->prefix = g_strdup(reply[5]);
+	contact->suffix = g_strdup(reply[6]);
+	contact->email = g_strdup(reply[7]);
 
-	phonebook_add_entry(vcards, reply[0], TEL_TYPE_HOME, formatted,
-					reply[6], reply[1], params->filter);
-
-	g_free(formatted);
+	phonebook_add_contact(vcards, contact, params->filter);
+	phonebook_contact_free(contact);
 
 	return;
 

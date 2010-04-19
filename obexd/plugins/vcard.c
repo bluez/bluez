@@ -126,18 +126,19 @@ static void vcard_printf_begin(GString *vcards)
 	vcard_printf(vcards, "VERSION:3.0");
 }
 
+static void vcard_printf_name(GString *vcards,
+					struct phonebook_contact *contact)
+{
+	vcard_printf(vcards, "N:%s;%s;%s;%s;%s", contact->family,
+				contact->given, contact->additional,
+				contact->prefix, contact->suffix);
+}
+
 static void vcard_printf_fullname(GString *vcards, const char *text)
 {
 	char field[LEN_MAX];
 	add_slash(field, text, LEN_MAX, strlen(text));
 	vcard_printf(vcards, "FN:%s", field);
-}
-
-static void vcard_printf_name(GString *vcards, const char *text)
-{
-	char field[LEN_MAX];
-	add_slash(field, text, LEN_MAX, strlen(text));
-	vcard_printf(vcards, "N:%s", field);
 }
 
 static void vcard_printf_number(GString *vcards, const char *number, int type,
@@ -196,13 +197,13 @@ static void vcard_printf_end(GString *vcards)
 	vcard_printf(vcards, "");
 }
 
-void phonebook_add_entry(GString *vcards, const char *number, int type,
-					const char *name, const char *fullname,
-					const char *email, uint64_t filter)
+void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
+								uint64_t filter)
 {
 	/* There's really nothing to do */
-	if ((number == NULL || number[0] == '\0') &&
-			(fullname == NULL || fullname[0] == '\0'))
+	if ((contact->tel == NULL || contact->tel[0] == '\0') &&
+					(contact->fullname == NULL ||
+					contact->fullname[0] == '\0'))
 		return;
 
 	filter |= (FILTER_VERSION | FILTER_FN | FILTER_N | FILTER_TEL);
@@ -210,20 +211,38 @@ void phonebook_add_entry(GString *vcards, const char *number, int type,
 	vcard_printf_begin(vcards);
 
 	if (filter & FILTER_FN) {
-		if (fullname == NULL || fullname[0] == '\0')
-			vcard_printf_fullname(vcards, number);
+		if (contact->fullname == NULL || contact->fullname[0] == '\0')
+			vcard_printf_fullname(vcards, contact->tel);
 		else
-			vcard_printf_fullname(vcards, fullname);
+			vcard_printf_fullname(vcards, contact->fullname);
 	}
 
 	if (filter & FILTER_TEL)
-		vcard_printf_number(vcards, number, type, TEL_TYPE_OTHER);
+		vcard_printf_number(vcards, contact->tel, contact->tel_type,
+				TEL_TYPE_OTHER);
 
 	if (filter & FILTER_N)
-		vcard_printf_name(vcards, name);
+		vcard_printf_name(vcards, contact);
 
 	if (filter & FILTER_EMAIL)
-		vcard_printf_email(vcards, email);
+		vcard_printf_email(vcards, contact->email);
 
 	vcard_printf_end(vcards);
+}
+
+void phonebook_contact_free(struct phonebook_contact *contact)
+{
+	if (contact == NULL)
+		return;
+
+	g_free(contact->fullname);
+	g_free(contact->given);
+	g_free(contact->family);
+	g_free(contact->additional);
+	g_free(contact->tel);
+	g_free(contact->email);
+	g_free(contact->prefix);
+	g_free(contact->suffix);
+	g_free(contact);
+
 }

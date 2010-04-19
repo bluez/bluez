@@ -27,6 +27,19 @@ enum phonebook_number_type {
 	TEL_TYPE_OTHER,
 };
 
-void phonebook_add_entry(GString *vcards, const char *number, int type,
-					const char *name, const char *fullname,
-					const char *email, uint64_t filter);
+struct phonebook_contact {
+	char *fullname;
+	char *given;
+	char *family;
+	char *additional;
+	char *tel;
+	int tel_type;
+	char *email;
+	char *prefix;
+	char *suffix;
+};
+
+void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
+							uint64_t filter);
+
+void phonebook_contact_free(struct phonebook_contact *contact);
