@@ -33,6 +33,7 @@
 
 #include <glib.h>
 #include <gdbus.h>
+#include <gw-obex.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
@@ -42,23 +43,15 @@
 #include "logging.h"
 #include "pbap.h"
 #include "sync.h"
+#include "transfer.h"
 #include "session.h"
 
 #define AGENT_INTERFACE  "org.openobex.Agent"
-
-#define TRANSFER_INTERFACE  "org.openobex.Transfer"
-#define TRANSFER_BASEPATH   "/org/openobex"
 
 #define SESSION_INTERFACE  "org.openobex.Session"
 #define SESSION_BASEPATH   "/org/openobex"
 
 #define FTP_INTERFACE  "org.openobex.FileTransfer"
-
-#define DEFAULT_BUFFER_SIZE 4096
-
-typedef int (*transfer_callback_t) (struct transfer_data *session, void *data);
-
-static void finalize_transfer(struct transfer_data *transfer);
 
 static guint64 counter = 0;
 
@@ -73,20 +66,27 @@ struct callback_data {
 	void *data;
 };
 
-struct transfer_request {
-	DBusPendingCall *call;
-	transfer_callback_t callback;
+struct session_callback {
+	session_callback_t func;
 	void *data;
 };
 
-struct transfer_params {
-	const guint8 *data;
-	gint size;
+struct agent_pending {
+	DBusPendingCall *call;
 	session_callback_t cb;
-	void *user_data;
+	struct transfer_data *transfer;
 };
 
-static struct session_data *session_ref(struct session_data *session)
+struct agent_data {
+	char *name;
+	char *path;
+	guint watch;
+	struct agent_pending *pending;
+};
+
+static void session_prepare_put(struct session_data *session, void *data);
+
+struct session_data *session_ref(struct session_data *session)
 {
 	g_atomic_int_inc(&session->refcount);
 
@@ -95,24 +95,79 @@ static struct session_data *session_ref(struct session_data *session)
 	return session;
 }
 
+static void free_pending(struct agent_pending *pending)
+{
+	if (pending->call)
+		dbus_pending_call_unref(pending->call);
+
+	g_free(pending);
+}
+
+static void agent_free(struct session_data *session)
+{
+	struct agent_data *agent = session->agent;
+
+	if (agent->watch)
+		g_dbus_remove_watch(session->conn, agent->watch);
+
+	if (agent->pending) {
+		dbus_pending_call_cancel(agent->pending->call);
+		free_pending(agent->pending);
+	}
+
+	session->agent = NULL;
+
+	g_free(agent->name);
+	g_free(agent->path);
+	g_free(agent);
+}
+
+static void agent_release(struct session_data *session)
+{
+	struct agent_data *agent = session->agent;
+	DBusMessage *message;
+
+	message = dbus_message_new_method_call(agent->name,
+			agent->path, AGENT_INTERFACE, "Release");
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	g_dbus_send_message(session->conn, message);
+
+	agent_free(session);
+}
+
+static void session_unregistered(struct session_data *session)
+{
+	switch (session->uuid.value.uuid16) {
+	case OBEX_FILETRANS_SVCLASS_ID:
+		g_dbus_unregister_interface(session->conn, session->path,
+						FTP_INTERFACE);
+		break;
+	case PBAP_PSE_SVCLASS_ID:
+		pbap_unregister_interface(session->conn, session->path,
+						session);
+		break;
+	case IRMC_SYNC_SVCLASS_ID:
+		sync_unregister_interface(session->conn, session->path,
+						session);
+	}
+
+	g_dbus_unregister_interface(session->conn, session->path,
+					SESSION_INTERFACE);
+
+	debug("Session(%p) unregistered %s", session, session->path);
+}
+
 static void session_free(struct session_data *session)
 {
-	if (session->agent_watch)
-		g_dbus_remove_watch(session->conn, session->agent_watch);
+	debug("session_free(%p)", session);
 
-	if (session->owner_watch)
-		g_dbus_remove_watch(session->conn, session->owner_watch);
+	if (session->agent)
+		agent_release(session);
 
-	if (session->agent_name != NULL) {
-		DBusMessage *message;
-
-		message = dbus_message_new_method_call(session->agent_name,
-			session->agent_path, AGENT_INTERFACE, "Release");
-
-		dbus_message_set_no_reply(message, TRUE);
-
-		g_dbus_send_message(session->conn, message);
-	}
+	if (session->watch)
+		g_dbus_remove_watch(session->conn, session->watch);
 
 	if (session->obex != NULL)
 		gw_obex_close(session->obex);
@@ -120,35 +175,20 @@ static void session_free(struct session_data *session)
 	if (session->sock > 2)
 		close(session->sock);
 
+	if (session->path)
+		session_unregistered(session);
+
 	if (session->conn) {
-		switch (session->uuid.value.uuid16) {
-		case OBEX_FILETRANS_SVCLASS_ID:
-			g_dbus_unregister_interface(session->conn,
-					session->path,	FTP_INTERFACE);
-			break;
-		case PBAP_PSE_SVCLASS_ID:
-			pbap_unregister_interface(session->conn,
-					session->path, session);
-			break;
-		case IRMC_SYNC_SVCLASS_ID:
-			sync_unregister_interface(session->conn,
-					session->path, session);
-		}
-
-		g_dbus_unregister_interface(session->conn,
-				session->path, SESSION_INTERFACE);
-
 		dbus_connection_unref(session->conn);
 	}
 
+	g_free(session->callback);
 	g_free(session->path);
-	g_free(session->agent_name);
-	g_free(session->agent_path);
 	g_free(session->owner);
 	g_free(session);
 }
 
-static void session_unref(struct session_data *session)
+void session_unref(struct session_data *session)
 {
 	gboolean ret;
 
@@ -395,7 +435,7 @@ static sdp_session_t *service_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	return sdp;
 }
 
-int session_create(const char *source,
+struct session_data *session_create(const char *source,
 			const char *destination, const char *target,
 			uint8_t channel, session_callback_t function,
 			void *user_data)
@@ -405,11 +445,11 @@ int session_create(const char *source,
 	int err;
 
 	if (destination == NULL)
-		return -EINVAL;
+		return NULL;
 
 	session = g_try_malloc0(sizeof(*session));
 	if (session == NULL)
-		return -ENOMEM;
+		return NULL;
 
 	session->refcount = 1;
 	session->sock = -1;
@@ -418,7 +458,7 @@ int session_create(const char *source,
 	session->conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
 	if (session->conn == NULL) {
 		session_free(session);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	if (source == NULL)
@@ -445,13 +485,13 @@ int session_create(const char *source,
 	} else if (!g_ascii_strncasecmp(target, "PCSUITE", 7)) {
 		sdp_uuid128_create(&session->uuid, pcsuite_uuid);
 	} else {
-		return -EINVAL;
+		return NULL;
 	}
 
 	callback = g_try_malloc0(sizeof(*callback));
 	if (callback == NULL) {
 		session_free(session);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	callback->session = session_ref(session);
@@ -470,81 +510,92 @@ int session_create(const char *source,
 	if (err < 0) {
 		session_free(session);
 		g_free(callback);
-		return -EINVAL;
+		return NULL;
 	}
 
-	return 0;
+	return session;
 }
 
-static void agent_notify_progress(DBusConnection *conn, const char *agent_name,
-			const char *agent_path, const char *transfer_path,
-			uint64_t transferred)
+void session_shutdown(struct session_data *session)
 {
-	DBusMessage *message;
+	struct transfer_data *transfer;
 
-	if (agent_name == NULL || agent_path == NULL || transfer_path == NULL)
-		return;
+	debug("session_shutdown(%p)", session);
+	transfer = session->pending ? session->pending->data : NULL;
 
-	message = dbus_message_new_method_call(agent_name,
-			agent_path, AGENT_INTERFACE, "Progress");
-	if (message == NULL)
-		return;
+	session_ref(session);
 
-	dbus_message_set_no_reply(message, TRUE);
+	/* Unregister any pending transfer */
+	g_slist_foreach(session->pending, (GFunc) transfer_unregister, NULL);
 
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer_path,
-			DBUS_TYPE_UINT64, &transferred,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(conn, message);
+	session_unref(session);
 }
 
-static void agent_notify_complete(DBusConnection *conn, const char *agent_name,
-			const char *agent_path, const char *transfer_path)
+static void agent_disconnected(DBusConnection *connection, void *user_data)
 {
-	DBusMessage *message;
+	struct session_data *session = user_data;
 
-	if (agent_name == NULL || agent_path == NULL || transfer_path == NULL)
-		return;
+	session->agent->watch = 0;
 
-	message = dbus_message_new_method_call(agent_name,
-			agent_path, AGENT_INTERFACE, "Complete");
-	if (message == NULL)
-		return;
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer_path,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(conn, message);
-
+	agent_free(session);
 }
 
-static void agent_notify_error(DBusConnection *conn, const char *agent_name,
-			const char *agent_path, const char *transfer_path,
-			const char *error_msg)
+static DBusMessage *assign_agent(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
 {
-	DBusMessage *message;
+	struct session_data *session = user_data;
+	const gchar *sender, *path;
 
-	if (agent_name == NULL || agent_path == NULL || transfer_path == NULL)
-		return;
+	if (dbus_message_get_args(message, NULL,
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments",
+				"Invalid arguments in method call");
 
-	message = dbus_message_new_method_call(agent_name,
-			agent_path, AGENT_INTERFACE, "Error");
-	if (message == NULL)
-		return;
+	sender = dbus_message_get_sender(message);
 
-	dbus_message_set_no_reply(message, TRUE);
+	if (session_set_agent(session, sender, path) < 0)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.AlreadyExists",
+				"Already exists");
 
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer_path,
-			DBUS_TYPE_STRING, &error_msg,
-			DBUS_TYPE_INVALID);
+	return dbus_message_new_method_return(message);
+}
 
-	g_dbus_send_message(conn, message);
+static DBusMessage *release_agent(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	struct session_data *session = user_data;
+	struct agent_data *agent = session->agent;
+	const gchar *sender;
+	gchar *path;
+
+	if (dbus_message_get_args(message, NULL,
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments",
+				"Invalid arguments in method call");
+
+	sender = dbus_message_get_sender(message);
+
+	if (agent == NULL || g_str_equal(sender, agent->name) == FALSE ||
+				g_str_equal(path, agent->path) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.NotAuthorized",
+				"Not Authorized");
+
+	agent_free(session);
+
+	return dbus_message_new_method_return(message);
+}
+
+static void owner_disconnected(DBusConnection *connection, void *user_data)
+{
+	struct session_data *session = user_data;
+
+	session_shutdown(session);
 }
 
 static void append_entry(DBusMessageIter *dict,
@@ -581,465 +632,6 @@ static void append_entry(DBusMessageIter *dict,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static DBusMessage *transfer_get_properties(DBusConnection *connection,
-					DBusMessage *message, void *user_data)
-{
-	struct transfer_data *transfer = user_data;
-	DBusMessage *reply;
-	DBusMessageIter iter, dict;
-
-	reply = dbus_message_new_method_return(message);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	append_entry(&dict, "Name", DBUS_TYPE_STRING, &transfer->name);
-	append_entry(&dict, "Size", DBUS_TYPE_UINT64, &transfer->size);
-	append_entry(&dict, "Filename", DBUS_TYPE_STRING, &transfer->filename);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
-}
-
-static void free_request(struct transfer_request *request)
-{
-	if (request->call)
-		dbus_pending_call_unref(request->call);
-
-	g_free(request);
-}
-
-static void free_transfer(struct transfer_data *transfer)
-{
-	struct session_data *session = transfer->session;
-
-	if (transfer->xfer) {
-		gw_obex_xfer_close(transfer->xfer, NULL);
-		gw_obex_xfer_free(transfer->xfer);
-	}
-
-	if (transfer->fd > 0)
-		close(transfer->fd);
-
-	if (transfer->request)
-		free_request(transfer->request);
-
-	session->pending = g_slist_remove(session->pending, transfer);
-
-	session_unref(session);
-
-	g_free(transfer->params);
-	g_free(transfer->filename);
-	g_free(transfer->name);
-	g_free(transfer->type);
-	g_free(transfer->path);
-	g_free(transfer->buffer);
-	g_free(transfer);
-}
-
-static void unregister_transfer(struct transfer_data *transfer)
-{
-	struct session_data *session = transfer->session;
-
-	/* Before unregistering cancel any pending call */
-	if (transfer->request)
-		dbus_pending_call_cancel(transfer->request->call);
-
-	if (transfer->path) {
-		g_dbus_unregister_interface(session->conn,
-			transfer->path, TRANSFER_INTERFACE);
-
-		debug("Transfer unregistered %s", transfer->path);
-	}
-
-	free_transfer(transfer);
-}
-
-static void agent_request_reply(DBusPendingCall *call, gpointer user_data)
-{
-	struct transfer_data *transfer = user_data;
-	struct transfer_request *request = transfer->request;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	const char *name;
-	DBusError derr;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("Replied with an error: %s, %s",
-				derr.name, derr.message);
-		dbus_error_free(&derr);
-		goto fail;
-	}
-
-	dbus_message_get_args(reply, NULL,
-			DBUS_TYPE_STRING, &name,
-			DBUS_TYPE_INVALID);
-
-	if (strlen(name)) {
-		g_free(transfer->name);
-		transfer->name = g_strdup(name);
-	}
-
-	if (request->callback(transfer, request->data))
-		goto fail;
-
-	free_request(request);
-	transfer->request = NULL;
-
-	return;
-
-fail:
-	finalize_transfer(transfer);
-}
-
-static void agent_request(struct transfer_data *transfer,
-				transfer_callback_t cb, void *user_data)
-{
-	struct session_data *session = transfer->session;
-	DBusMessage *message;
-	DBusPendingCall *call;
-	struct transfer_request *request;
-
-	if (session->agent_name == NULL || session->agent_path == NULL ||
-			transfer == NULL || transfer->path == NULL) {
-		if (cb(transfer, user_data))
-			goto fail;
-
-		return;
-	}
-
-	message = dbus_message_new_method_call(session->agent_name,
-			session->agent_path, AGENT_INTERFACE, "Request");
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer->path,
-			DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(session->conn, message, &call, -1)) {
-		dbus_message_unref(message);
-		return;
-	}
-
-	dbus_message_unref(message);
-
-	request = g_new0(struct transfer_request, 1);
-	request->call = call;
-	request->callback = cb;
-	request->data = user_data;
-	transfer->request = request;
-
-	dbus_pending_call_set_notify(call, agent_request_reply, transfer, NULL);
-
-	return;
-
-fail:
-	finalize_transfer(transfer);
-}
-
-static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
-{
-	struct transfer_data *transfer = user_data;
-	struct session_data *session = transfer->session;
-	gint written;
-
-	if (transfer->buffer_len == 0) {
-		transfer->buffer_len = DEFAULT_BUFFER_SIZE;
-		transfer->buffer = g_new0(char, DEFAULT_BUFFER_SIZE);
-	}
-
-	do {
-		ssize_t len;
-
-		len = read(transfer->fd, transfer->buffer + transfer->filled,
-				transfer->buffer_len - transfer->filled);
-		if (len < 0)
-			goto failed;
-
-		transfer->filled += len;
-
-		if (transfer->filled == 0)
-			goto complete;
-
-		if (gw_obex_xfer_write(xfer, transfer->buffer,
-					transfer->filled,
-					&written, NULL) == FALSE)
-			goto failed;
-
-		transfer->filled -= written;
-		transfer->transferred += written;
-	} while (transfer->filled == 0);
-
-	memmove(transfer->buffer, transfer->buffer + written, transfer->filled);
-
-	agent_notify_progress(session->conn, session->agent_name,
-			session->agent_path, transfer->path,
-			transfer->transferred);
-	return;
-
-complete:
-	agent_notify_complete(session->conn, session->agent_name,
-				session->agent_path, transfer->path);
-	goto done;
-
-failed:
-	agent_notify_error(session->conn, session->agent_name,
-				session->agent_path, transfer->path,
-				"Error sending object");
-
-done:
-	finalize_transfer(transfer);
-}
-
-static int session_send_reply(struct transfer_data *transfer, void *data)
-{
-	struct session_data *session = transfer->session;
-
-	transfer->xfer = gw_obex_put_async(session->obex, transfer->name,
-						NULL, transfer->size, -1,
-						NULL);
-	if (transfer->xfer == NULL)
-		return -ENOTCONN;
-
-	gw_obex_xfer_set_callback(transfer->xfer, put_xfer_progress, transfer);
-
-	agent_notify_progress(session->conn, session->agent_name,
-			session->agent_path, transfer->path, 0);
-
-	return 0;
-}
-
-static void abort_transfer(struct transfer_data *transfer)
-{
-	struct session_data *session = transfer->session;
-
-	agent_notify_error(session->conn, session->agent_name,
-			session->agent_path, transfer->path,
-			"The transfer was cancelled");
-
-	if (transfer->request && transfer->request->call)
-		dbus_pending_call_cancel(transfer->request->call);
-
-	if (transfer->xfer) {
-		gw_obex_xfer_abort(transfer->xfer, NULL);
-		gw_obex_xfer_free(transfer->xfer);
-		transfer->xfer = NULL;
-	}
-}
-
-static void session_shutdown(struct session_data *session)
-{
-	struct transfer_data *transfer;
-
-	transfer = session->pending ? session->pending->data : NULL;
-
-	/* Abort active transfer */
-	if (transfer)
-		abort_transfer(transfer);
-
-	/* Unregister any pending transfer */
-	g_slist_foreach(session->pending, (GFunc) unregister_transfer, NULL);
-
-	session_unref(session);
-}
-
-static void finalize_transfer(struct transfer_data *transfer)
-{
-	struct session_data *session = transfer->session;
-
-	unregister_transfer(transfer);
-
-	if (session->pending == NULL) {
-		session_shutdown(session);
-		return;
-	}
-
-	/* Request next transfer */
-	agent_request(session->pending->data, session_send_reply, NULL);
-}
-
-static DBusMessage *transfer_cancel(DBusConnection *connection,
-					DBusMessage *message, void *user_data)
-{
-	struct transfer_data *transfer = user_data;
-	struct session_data *session = transfer->session;
-	const gchar *sender;
-	DBusMessage *reply;
-
-	sender = dbus_message_get_sender(message);
-	if (g_str_equal(sender, session->agent_name) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.NotAuthorized",
-				"Not Authorized");
-
-	reply = dbus_message_new_method_return(message);
-	if (!reply)
-		return NULL;
-
-	abort_transfer(transfer);
-
-	finalize_transfer(transfer);
-
-	return reply;
-}
-
-static GDBusMethodTable transfer_methods[] = {
-	{ "GetProperties", "", "a{sv}", transfer_get_properties },
-	{ "Cancel", "", "", transfer_cancel },
-	{ }
-};
-
-static struct transfer_data *register_transfer(struct session_data *session,
-						const char *filename,
-						const char *name,
-						const char *type,
-						struct transfer_params *params)
-{
-	struct transfer_data *transfer;
-
-	transfer = g_new0(struct transfer_data, 1);
-	transfer->session = session_ref(session);
-	transfer->filename = g_strdup(filename);
-	transfer->name = g_strdup(name);
-	transfer->type = g_strdup(type);
-	transfer->params = params;
-
-	/* for OBEX specific mime types we don't need to register a transfer */
-	if (type != NULL &&
-			(strncmp(type, "x-obex/", 7) == 0 ||
-			strncmp(type, "x-bt/", 5) == 0))
-		goto done;
-
-	transfer->path = g_strdup_printf("%s/transfer%ju",
-			TRANSFER_BASEPATH, counter++);
-
-	if (g_dbus_register_interface(session->conn, transfer->path,
-				TRANSFER_INTERFACE,
-				transfer_methods, NULL, NULL,
-				transfer, NULL) == FALSE) {
-		free_transfer(transfer);
-		return NULL;
-	}
-
-	debug("Transfer registered %s", transfer->path);
-
-done:
-	session->pending = g_slist_append(session->pending, transfer);
-
-	return transfer;
-}
-
-static void agent_disconnected(DBusConnection *connection, void *user_data)
-{
-	struct session_data *session = user_data;
-
-	if (session->agent_name) {
-		g_free(session->agent_name);
-		session->agent_name = NULL;
-	}
-
-	if (session->agent_path) {
-		g_free(session->agent_path);
-		session->agent_path = NULL;
-	}
-}
-
-static DBusMessage *assign_agent(DBusConnection *connection,
-				DBusMessage *message, void *user_data)
-{
-	struct session_data *session = user_data;
-	const gchar *sender;
-	gchar *path;
-
-	if (dbus_message_get_args(message, NULL,
-					DBUS_TYPE_OBJECT_PATH, &path,
-					DBUS_TYPE_INVALID) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments",
-				"Invalid arguments in method call");
-
-	if (session->agent_path != NULL || session->agent_name != NULL)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.AlreadyExists",
-				"Already exists");
-
-	sender = dbus_message_get_sender(message);
-
-	session->agent_name = g_strdup(sender);
-	session->agent_path = g_strdup(path);
-
-	session->agent_watch = g_dbus_add_disconnect_watch(connection, sender,
-				agent_disconnected, session, NULL);
-
-	return dbus_message_new_method_return(message);
-}
-
-static DBusMessage *release_agent(DBusConnection *connection,
-				DBusMessage *message, void *user_data)
-{
-	struct session_data *session = user_data;
-	const gchar *sender;
-	gchar *path;
-
-	if (dbus_message_get_args(message, NULL,
-					DBUS_TYPE_OBJECT_PATH, &path,
-					DBUS_TYPE_INVALID) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments",
-				"Invalid arguments in method call");
-
-	sender = dbus_message_get_sender(message);
-
-	if (g_str_equal(sender, session->agent_name) == FALSE ||
-				g_str_equal(path, session->agent_path) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.NotAuthorized",
-				"Not Authorized");
-
-	g_free(session->agent_name);
-	session->agent_name = NULL;
-
-	g_free(session->agent_path);
-	session->agent_path = NULL;
-
-	if (session->agent_watch) {
-		g_dbus_remove_watch(session->conn, session->agent_watch);
-		session->agent_watch = 0;
-	}
-
-	return dbus_message_new_method_return(message);
-}
-
-static DBusMessage *close_session(DBusConnection *connection,
-				DBusMessage *message, void *user_data)
-{
-	struct session_data *session = user_data;
-	const gchar *sender;
-
-	sender = dbus_message_get_sender(message);
-	if (g_str_equal(sender, session->owner) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.NotAuthorized",
-				"Not Authorized");
-
-	session_shutdown(session);
-
-	return dbus_message_new_method_return(message);
-}
-
-static void owner_disconnected(DBusConnection *connection, void *user_data)
-{
-	struct session_data *session = user_data;
-
-	session_shutdown(session);
-}
-
 static DBusMessage *session_get_properties(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
@@ -1068,9 +660,6 @@ static DBusMessage *session_get_properties(DBusConnection *connection,
 
 	append_entry(&dict, "Channel", DBUS_TYPE_BYTE, &session->channel);
 
-	if (session->agent_path)
-		append_entry(&dict, "AgentPath", DBUS_TYPE_STRING, &session->agent_path);
-
 	dbus_message_iter_close_container(&iter, &dict);
 
 	return reply;
@@ -1080,7 +669,6 @@ static GDBusMethodTable session_methods[] = {
 	{ "GetProperties",	"", "a{sv}",	session_get_properties	},
 	{ "AssignAgent",	"o", "",	assign_agent	},
 	{ "ReleaseAgent",	"o", "",	release_agent	},
-	{ "Close",		"", "",		close_session	},
 	{ }
 };
 
@@ -1208,189 +796,244 @@ static void get_file_callback(struct session_data *session, void *user_data)
 
 }
 
-static void get_xfer_listing_progress(GwObexXfer *xfer,
-					gpointer user_data)
+static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 {
-	struct transfer_data *transfer = user_data;
-	struct transfer_params *params = transfer->params;
-	struct session_data *session = transfer->session;
-	gint bsize, bread, err = 0;
+	struct session_data *session = user_data;
+	struct agent_data *agent = session->agent;
+	struct agent_pending *pending = agent->pending;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	const char *name;
+	DBusError derr;
 
-	bsize = transfer->buffer_len - transfer->filled;
-
-	if (bsize < DEFAULT_BUFFER_SIZE) {
-		transfer->buffer_len += DEFAULT_BUFFER_SIZE;
-		transfer->buffer = g_realloc(transfer->buffer, transfer->buffer_len);
-		bsize += DEFAULT_BUFFER_SIZE;
+	dbus_error_init(&derr);
+	if (dbus_set_error_from_message(&derr, reply)) {
+		error("Replied with an error: %s, %s",
+				derr.name, derr.message);
+		dbus_error_free(&derr);
+		goto fail;
 	}
 
-	gw_obex_xfer_read(xfer, transfer->buffer + transfer->filled,
-			bsize, &bread, &err);
+	dbus_message_get_args(reply, NULL,
+			DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_INVALID);
+
+	debug("Agent.Request() reply: %s", name);
+
+	if (strlen(name)) {
+		g_free(pending->transfer->name);
+		pending->transfer->name = g_strdup(name);
+	}
+
+	pending->cb(session, pending->transfer);
+
+	free_pending(pending);
+	agent->pending = NULL;
+
+	return;
+
+fail:
+	transfer_unregister(pending->transfer);
+}
+
+static int session_request(struct session_data *session, session_callback_t cb,
+				struct transfer_data *transfer)
+{
+	struct agent_data *agent = session->agent;
+	DBusMessage *message;
+	DBusPendingCall *call;
+	struct agent_pending *pending;
+
+	if (agent == NULL || transfer->path == NULL) {
+		cb(session, transfer);
+		return 0;
+	}
+
+	message = dbus_message_new_method_call(agent->name,
+			agent->path, AGENT_INTERFACE, "Request");
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer->path,
+			DBUS_TYPE_INVALID);
 
 
-	if (session->msg && err) {
+	if (!dbus_connection_send_with_reply(session->conn, message, &call, -1)) {
+		dbus_message_unref(message);
+		return -ENOMEM;
+	}
+
+	dbus_message_unref(message);
+
+	pending = g_new0(struct agent_pending, 1);
+	pending->call = call;
+	pending->cb = cb;
+	pending->transfer = transfer;
+	agent->pending = pending;
+
+	dbus_pending_call_set_notify(call, session_request_reply, session, NULL);
+
+	debug("Agent.Request(\"%s\")", transfer->path);
+
+	return 0;
+}
+
+static void session_terminate_transfer(struct session_data *session,
+					struct transfer_data *transfer)
+{
+	struct session_callback *callback = session->callback;
+
+	if (callback) {
+		callback->func(session, callback->data);
+		return;
+	}
+
+	session_ref(session);
+
+	transfer_unregister(transfer);
+
+	if (session->pending)
+		session_request(session, session_prepare_put,
+				session->pending->data);
+
+	session_unref(session);
+}
+
+static void session_notify_complete(struct session_data *session,
+				struct transfer_data *transfer)
+{
+	struct agent_data *agent = session->agent;
+	DBusMessage *message;
+
+	if (agent == NULL || transfer->path == NULL)
+		goto done;
+
+	message = dbus_message_new_method_call(agent->name,
+			agent->path, AGENT_INTERFACE, "Complete");
+	if (message == NULL)
+		return;
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer->path,
+			DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(session->conn, message);
+
+done:
+
+	debug("Transfer(%p) complete", transfer);
+
+	session_terminate_transfer(session, transfer);
+}
+
+static void session_notify_error(struct session_data *session,
+				struct transfer_data *transfer,
+				const char *err)
+{
+	struct agent_data *agent = session->agent;
+	DBusMessage *message;
+
+	if (session->msg) {
 		DBusMessage *reply;
 
 		reply = g_dbus_create_error(session->msg,
-				"org.openobex.Error.Failed",
-				OBEX_ResponseToString(err));
-
+					"org.openobex.Error.Failed",
+					err);
 		g_dbus_send_message(session->conn, reply);
 
 		dbus_message_unref(session->msg);
 		session->msg = NULL;
 	}
 
-	if (err) {
-		error("gw_obex_xfer_read(): %s",
-				OBEX_ResponseToString(err));
-		goto complete;
-	}
+	if (agent == NULL || transfer->path == NULL)
+		goto done;
 
-	transfer->filled += bread;
+	message = dbus_message_new_method_call(agent->name,
+			agent->path, AGENT_INTERFACE, "Error");
+	if (message == NULL)
+		return;
 
-	if (gw_obex_xfer_object_done(xfer)) {
-		if (transfer->buffer[transfer->filled - 1] == '\0')
-			goto complete;
+	dbus_message_set_no_reply(message, TRUE);
 
-		bsize = transfer->buffer_len - transfer->filled;
-		if (bsize < 1) {
-			transfer->buffer_len += DEFAULT_BUFFER_SIZE;
-			transfer->buffer = g_realloc(transfer->buffer, transfer->buffer_len);
-		}
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer->path,
+			DBUS_TYPE_STRING, &err,
+			DBUS_TYPE_INVALID);
 
-		transfer->buffer[transfer->filled] = '\0';
-		goto complete;
-	}
+	g_dbus_send_message(session->conn, message);
 
-	return;
+done:
+	error("Transfer(%p) Error: %s", transfer, err);
 
-complete:
-	if (err == 0) {
-		agent_notify_progress(session->conn, session->agent_name,
-				session->agent_path, transfer->path,
-				transfer->filled);
-		agent_notify_complete(session->conn, session->agent_name,
-				session->agent_path, transfer->path);
-	}
-
-	params->cb(session, params->user_data);
-
-	unregister_transfer(transfer);
+	session_terminate_transfer(session, transfer);
 }
 
-static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+static void session_notify_progress(struct session_data *session,
+					struct transfer_data *transfer,
+					gint64 transferred)
 {
-	struct transfer_data *transfer = user_data;
-	struct transfer_params *params = transfer->params;
-	struct session_data *session = transfer->session;
-	gint bsize, bread, err = 0;
-	gboolean ret;
-
-	if (transfer->buffer_len == 0) {
-		transfer->buffer_len = DEFAULT_BUFFER_SIZE;
-		transfer->buffer = g_new0(char, DEFAULT_BUFFER_SIZE);
-	}
-
-	bsize = transfer->buffer_len - transfer->filled;
-
-	ret = gw_obex_xfer_read(xfer, transfer->buffer + transfer->filled,
-					bsize, &bread, &err);
+	struct agent_data *agent = session->agent;
+	DBusMessage *message;
 
 	/* For GetFile reply on the first received stream */
 	if (transfer->fd > 0 && session->msg) {
 		DBusMessage *reply;
 
-		if (ret == FALSE)
-			reply = g_dbus_create_error(session->msg,
-					"org.openobex.Error.Failed",
-					OBEX_ResponseToString(err));
-		else
-			reply = dbus_message_new_method_return(session->msg);
-
+		reply = dbus_message_new_method_return(session->msg);
 		g_dbus_send_message(session->conn, reply);
 
 		dbus_message_unref(session->msg);
 		session->msg = NULL;
 	}
 
-	if (ret == FALSE) {
-		error("gw_obex_xfer_read(): %s",
-				OBEX_ResponseToString(err));
-		goto complete;
-	}
+	if (agent == NULL || transfer->path == NULL)
+		goto done;
 
-	transfer->filled += bread;
-	transfer->transferred += bread;
-	if (transfer->size == 0)
-		transfer->size = gw_obex_xfer_object_size(xfer);
+	message = dbus_message_new_method_call(agent->name,
+			agent->path, AGENT_INTERFACE, "Progress");
+	if (message == NULL)
+		goto done;
 
-	if (transfer->fd > 0) {
-		gint w;
+	dbus_message_set_no_reply(message, TRUE);
 
-		w = write(transfer->fd, transfer->buffer, bread);
-		if (w < 0) {
-			ret = FALSE;
-			goto complete;
-		}
+	dbus_message_append_args(message,
+			DBUS_TYPE_OBJECT_PATH, &transfer->path,
+			DBUS_TYPE_UINT64, &transferred,
+			DBUS_TYPE_INVALID);
 
-		transfer->filled = 0;
-	}
+	g_dbus_send_message(session->conn, message);
 
-	if (transfer->transferred == transfer->size)
-		goto complete;
+done:
+	debug("Transfer(%p) progress: %ld bytes", transfer,
+			(long int ) transferred);
 
-	gw_obex_xfer_flush(xfer, NULL);
+	if (transferred == transfer->size)
+		session_notify_complete(session, transfer);
+}
 
-	agent_notify_progress(session->conn, session->agent_name,
-			session->agent_path, transfer->path,
-			transfer->transferred);
+static void transfer_progress(struct transfer_data *transfer, gint64 transferred,
+				int err, void *user_data)
+{
+	struct session_data *session = user_data;
+
+	if (err != 0)
+		goto fail;
+
+	session_notify_progress(session, transfer, transferred);
 
 	return;
 
-complete:
-
-	if (ret == TRUE) {
-		agent_notify_progress(session->conn, session->agent_name,
-				session->agent_path, transfer->path,
-				transfer->transferred);
-		agent_notify_complete(session->conn, session->agent_name,
-				session->agent_path, transfer->path);
-	} else
-		agent_notify_error(session->conn, session->agent_name,
-				session->agent_path, transfer->path,
-				"Error getting object");
-
-	params->cb(session, params->user_data);
-
-	unregister_transfer(transfer);
+fail:
+	session_notify_error(session, transfer,
+			err > 0 ? OBEX_ResponseToString(err) : strerror(-err));
 }
 
-static int session_get_reply(struct transfer_data *transfer, void *data)
+static void session_prepare_get(struct session_data *session, void *data)
 {
-	struct session_data *session = transfer->session;
+	struct transfer_data *transfer = data;
 
-	transfer->xfer = gw_obex_get_async_with_apparam(session->obex,
-							transfer->filename,
-							transfer->type,
-							transfer->params->data,
-							transfer->params->size,
-							NULL);
-	if (transfer->xfer == NULL) {
-		unregister_transfer(transfer);
-		return -EIO;
-	}
-
-	if (transfer->type == NULL)
-		gw_obex_xfer_set_callback(transfer->xfer, get_xfer_progress, transfer);
-	else
-		gw_obex_xfer_set_callback(transfer->xfer, get_xfer_listing_progress,
-					transfer);
-
-	agent_notify_progress(session->conn, session->agent_name,
-			session->agent_path, transfer->path, 0);
-
-	return 0;
+	if (transfer_get(transfer, transfer_progress, session) < 0)
+		transfer_unregister(transfer);
 }
 
 int session_get(struct session_data *session, const char *type,
@@ -1400,41 +1043,32 @@ int session_get(struct session_data *session, const char *type,
 {
 	struct transfer_data *transfer;
 	struct transfer_params *params;
-	int err, fd = 0;
+	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	if (type == NULL) {
-		if (targetname == NULL)
-			targetname = filename;
-
-		fd = open(targetname, O_WRONLY | O_CREAT, 0600);
-		if (fd < 0) {
-			err = errno;
-			error("open(): %s(%d)", strerror(err), err);
-			return -err;
-		}
-	}
-
 	params = g_new0(struct transfer_params, 1);
 	params->data = apparam;
 	params->size = apparam_size;
-	params->cb = func;
 
-	transfer = register_transfer(session, filename, targetname, type,
+	transfer = transfer_register(session, filename, targetname, type,
 					params);
 	if (transfer == NULL) {
-		if (fd)
-			close(fd);
-
 		g_free(params);
 		return -EIO;
 	}
 
-	transfer->fd = fd;
+	if (func != NULL) {
+		struct session_callback *callback;
+		callback = g_new0(struct session_callback, 1);
+		callback->func = func;
+		session->callback = callback;
+	}
 
-	agent_request(transfer, session_get_reply, NULL);
+	err = session_request(session, session_prepare_get, transfer);
+	if (err < 0)
+		return err;
 
 	return 0;
 }
@@ -1606,46 +1240,30 @@ int session_send(struct session_data *session, const char *filename,
 				const char *targetname)
 {
 	struct transfer_data *transfer;
-	struct stat st;
-	int fd, err;
+	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	transfer = register_transfer(session, filename, targetname, NULL, NULL);
+	transfer = transfer_register(session, filename, targetname, NULL,
+					NULL);
 	if (transfer == NULL) {
 		err = -EINVAL;
 		goto fail;
 	}
 
-	fd = open(filename, O_RDONLY);
-	if (fd < 0) {
-		err = -EIO;
-		goto fail;
-	}
-
-	if (fstat(fd, &st) < 0) {
-		close(fd);
-		err = -EIO;
-		goto fail;
-	}
-
-	transfer->fd = fd;
-
 	/* Transfer should start if it is the first in the pending list */
 	if (transfer != session->pending->data)
 		return 0;
 
-	agent_request(transfer, session_send_reply, NULL);
+	err = session_request(session, session_prepare_put, transfer);
+	if (err < 0)
+		goto fail;
 
 	return 0;
 
 fail:
-	agent_notify_error(session->conn, session->agent_name,
-			session->agent_path, transfer->path,
-			"Could not open file for sending");
-
-	unregister_transfer(transfer);
+	transfer_unregister(transfer);
 
 	return err;
 }
@@ -1655,36 +1273,30 @@ int session_pull(struct session_data *session,
 				session_callback_t function, void *user_data)
 {
 	struct transfer_data *transfer;
-	struct transfer_params *params;
+	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	transfer = register_transfer(session, NULL, NULL, type, NULL);
-	if (transfer == NULL)
+	transfer = transfer_register(session, NULL, NULL, type, NULL);
+	if (transfer == NULL) {
 		return -EIO;
-
-	params = g_try_malloc0(sizeof(*params));
-	if (params == NULL) {
-		unregister_transfer(transfer);
-		return -ENOMEM;
 	}
 
-	params->cb = function;
-	params->user_data = user_data;
-
-	transfer->xfer = gw_obex_get_async(session->obex, NULL, type, NULL);
-	if (transfer->xfer == NULL) {
-		unregister_transfer(transfer);
-		g_free(params);
-		return -ENOTCONN;
+	if (function != NULL) {
+		struct session_callback *callback;
+		callback = g_new0(struct session_callback, 1);
+		callback->func = function;
+		callback->data = user_data;
+		session->callback = callback;
 	}
 
-	transfer->params = params;
+	err = session_request(session, session_prepare_get, transfer);
+	if (err == 0)
+		return 0;
 
-	gw_obex_xfer_set_callback(transfer->xfer, get_xfer_listing_progress, transfer);
-
-	return 0;
+	transfer_unregister(transfer);
+	return err;
 }
 
 int session_register(struct session_data *session)
@@ -1720,9 +1332,7 @@ int session_register(struct session_data *session)
 		return -EIO;
 	}
 
-	session->owner_watch = g_dbus_add_disconnect_watch(session->conn,
-					session->owner, owner_disconnected,
-								session, NULL);
+	debug("Session(%p) registered %s", session, session->path);
 
 	return 0;
 }
@@ -1737,64 +1347,18 @@ void session_set_data(struct session_data *session, void *priv)
 	session->priv = priv;
 }
 
-static void put_buf_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+static void session_prepare_put(struct session_data *session, void *data)
 {
-	struct transfer_data *transfer = user_data;
-	struct session_data *session = transfer->session;
-	gint written;
+	struct transfer_data *transfer = data;
 
-	if (transfer->transferred == transfer->size)
-		goto complete;
-
-	if (gw_obex_xfer_write(xfer, transfer->buffer + transfer->transferred,
-				transfer->size - transfer->transferred,
-				&written, NULL) == FALSE)
-		goto complete;
-
-	if (gw_obex_xfer_flush(xfer, NULL) == FALSE)
-		goto complete;
-
-	transfer->transferred += written;
-
-	agent_notify_progress(session->conn, session->agent_name,
-		session->agent_path, transfer->path,
-		transfer->transferred);
-
-	return;
-
-complete:
-	if (transfer->transferred == transfer->size)
-		agent_notify_complete(session->conn, session->agent_name,
-			session->agent_path, transfer->path);
-	else
-		agent_notify_error(session->conn, session->agent_name,
-			session->agent_path, transfer->path,
-			"Error sending object");
-
-	finalize_transfer(transfer);
-}
-
-static int session_put_reply(struct transfer_data *transfer, void *data)
-{
-	struct session_data *session = transfer->session;
-
-	transfer->xfer = gw_obex_put_async(session->obex, transfer->name, NULL,
-						transfer->size, -1, NULL);
-	if (transfer->xfer == NULL)
-		return -ENOTCONN;
-
-	gw_obex_xfer_set_callback(transfer->xfer, put_buf_xfer_progress,
-					transfer);
-
-	agent_notify_progress(session->conn, session->agent_name,
-		session->agent_path, transfer->path, 0);
-
-	return 0;
+	if (transfer_put(transfer, transfer_progress, session) < 0)
+		transfer_unregister(transfer);
 }
 
 int session_put(struct session_data *session, char *buf, const char *targetname)
 {
 	struct transfer_data *transfer;
+	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
@@ -1802,14 +1366,16 @@ int session_put(struct session_data *session, char *buf, const char *targetname)
 	if (session->pending != NULL)
 		return -EISCONN;
 
-	transfer = register_transfer(session, NULL, targetname, NULL, NULL);
+	transfer = transfer_register(session, NULL, targetname, NULL, NULL);
 	if (transfer == NULL)
 		return -EIO;
 
 	transfer->size = strlen(buf);
 	transfer->buffer = buf;
 
-	agent_request(transfer, session_put_reply, NULL);
+	err = session_request(session, session_prepare_put, transfer);
+	if (err < 0)
+		return err;
 
 	return 0;
 }
@@ -1817,19 +1383,67 @@ int session_put(struct session_data *session, char *buf, const char *targetname)
 int session_set_agent(struct session_data *session, const char *name,
 							const char *path)
 {
+	struct agent_data *agent;
+
 	if (session == NULL)
 		return -EINVAL;
 
-	if (session->agent_name != NULL || session->agent_path != NULL ||
-			session->owner_watch != 0)
+	if (session->agent)
 		return -EALREADY;
 
-	session->agent_name = g_strdup(name);
-	session->agent_path = g_strdup(path);
+	agent = g_new0(struct agent_data, 1);
+	agent->name = g_strdup(name);
+	agent->path = g_strdup(path);
 
-	session->owner_watch = g_dbus_add_disconnect_watch(session->conn,
-					session->owner, owner_disconnected,
-								session, NULL);
+	if (session->watch == 0)
+		session_set_owner(session, name, owner_disconnected);
+
+	agent->watch = g_dbus_add_disconnect_watch(session->conn, name,
+							agent_disconnected,
+							session, NULL);
+
+	session->agent = agent;
 
 	return 0;
+}
+
+const char *session_get_agent(struct session_data *session)
+{
+	struct agent_data *agent;
+
+	if (session == NULL)
+		return NULL;
+
+	agent = session->agent;
+	if (agent == NULL)
+		return NULL;
+
+	return agent->name;
+}
+
+int session_set_owner(struct session_data *session, const char *name,
+			GDBusWatchFunction func)
+{
+	if (session == NULL)
+		return -EINVAL;
+
+	if (session->watch != 0)
+		return -EALREADY;
+
+	session->watch = g_dbus_add_disconnect_watch(session->conn, name, func,
+							session, NULL);
+	if (session->watch == 0)
+		return -EINVAL;
+
+	session->owner = g_strdup(name);
+
+	return 0;
+}
+
+const char *session_get_owner(struct session_data *session)
+{
+	if (session == NULL)
+		return NULL;
+
+	return session->owner;
 }

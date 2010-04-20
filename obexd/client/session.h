@@ -23,30 +23,13 @@
 
 #include <glib.h>
 #include <gdbus.h>
+#include <gw-obex.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
-#include <gw-obex.h>
 
-struct transfer_request;
-struct transfer_params;
-
-struct transfer_data {
-	struct session_data *session;
-	struct transfer_params *params;
-	struct transfer_request *request;
-	char *path;		/* Transfer path */
-	gchar *filename;	/* Transfer file location */
-	char *name;		/* Transfer object name */
-	char *type;		/* Transfer object type */
-	int fd;
-	GwObexXfer *xfer;
-	char *buffer;
-	size_t buffer_len;
-	int filled;
-	gint64 size;
-	gint64 transferred;
-};
+struct agent_data;
+struct session_callback;
 
 struct session_data {
 	gint refcount;
@@ -61,11 +44,10 @@ struct session_data {
 	DBusConnection *conn;
 	DBusMessage *msg;
 	GwObex *obex;
-	gchar *agent_name;
-	gchar *agent_path;
-	guint agent_watch;
+	struct agent_data *agent;
+	struct session_callback *callback;
 	gchar *owner;		/* Session owner */
-	guint owner_watch;
+	guint watch;
 	GSList *pending;
 	void *priv;
 };
@@ -73,12 +55,23 @@ struct session_data {
 typedef void (*session_callback_t) (struct session_data *session,
 							void *user_data);
 
-int session_create(const char *source,
+struct session_data *session_create(const char *source,
 			const char *destination, const char *target,
 			uint8_t channel, session_callback_t function,
 			void *user_data);
+
+struct session_data *session_ref(struct session_data *session);
+void session_unref(struct session_data *session);
+void session_shutdown(struct session_data *session);
+
+int session_set_owner(struct session_data *session, const char *name,
+			GDBusWatchFunction func);
+const char *session_get_owner(struct session_data *session);
+
 int session_set_agent(struct session_data *session, const char *name,
 							const char *path);
+const char *session_get_agent(struct session_data *session);
+
 int session_send(struct session_data *session, const char *filename,
 				const char *remotename);
 int session_get(struct session_data *session, const char *type,

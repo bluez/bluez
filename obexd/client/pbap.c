@@ -31,6 +31,7 @@
 #include <gdbus.h>
 
 #include "logging.h"
+#include "transfer.h"
 #include "session.h"
 #include "pbap.h"
 
