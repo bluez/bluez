@@ -110,6 +110,7 @@ struct btd_device {
 	bdaddr_t	bdaddr;
 	gchar		*path;
 	char		name[MAX_NAME_LENGTH + 1];
+	char		*alias;
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*drivers;		/* List of driver_data */
@@ -249,6 +250,7 @@ static void device_free(gpointer user_data)
 
 	g_free(device->authr);
 	g_free(device->path);
+	g_free(device->alias);
 	g_free(device);
 }
 
@@ -306,13 +308,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &ptr);
 
 	/* Alias (fallback to name or address) */
-	if (read_device_alias(srcaddr, dstaddr, name, sizeof(name)) < 1) {
-		if (strlen(ptr) == 0) {
-			g_strdelimit(dstaddr, ":", '-');
-			ptr = dstaddr;
-		}
-	} else
-		ptr = name;
+	if (device->alias != NULL)
+		ptr = device->alias;
+	else if (strlen(ptr) == 0) {
+		g_strdelimit(dstaddr, ":", '-');
+		ptr = dstaddr;
+	}
 
 	dict_append_entry(&dict, "Alias", DBUS_TYPE_STRING, &ptr);
 
@@ -365,6 +366,11 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 	bdaddr_t src;
 	int err;
 
+	/* No change */
+	if ((device->alias == NULL && g_str_equal(alias, "")) ||
+			g_strcmp0(device->alias, alias) == 0)
+		return dbus_message_new_method_return(msg);
+
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
@@ -376,6 +382,9 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".Failed",
 				strerror(-err));
+
+	g_free(device->alias);
+	device->alias = g_str_equal(alias, "") ? NULL : g_strdup(alias);
 
 	emit_property_changed(conn, dbus_message_get_path(msg),
 				DEVICE_INTERFACE, "Alias",
@@ -860,7 +869,7 @@ struct btd_device *device_create(DBusConnection *conn,
 	struct btd_device *device;
 	const gchar *adapter_path = adapter_get_path(adapter);
 	bdaddr_t src;
-	char srcaddr[18];
+	char srcaddr[18], alias[MAX_NAME_LENGTH + 1];
 
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
@@ -885,6 +894,8 @@ struct btd_device *device_create(DBusConnection *conn,
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 	read_device_name(srcaddr, address, device->name);
+	if (read_device_alias(srcaddr, address, alias, sizeof(alias)) == 0)
+		device->alias = g_strdup(alias);
 	device->trusted = read_trust(&src, address, GLOBAL_TRUST);
 
 	device->auth = 0xff;
@@ -898,9 +909,6 @@ struct btd_device *device_create(DBusConnection *conn,
 void device_set_name(struct btd_device *device, const char *name)
 {
 	DBusConnection *conn = get_dbus_connection();
-	char alias[MAX_NAME_LENGTH + 1];
-	char srcaddr[18], dstaddr[18];
-	bdaddr_t src;
 
 	if (strncmp(name, device->name, MAX_NAME_LENGTH) == 0)
 		return;
@@ -911,11 +919,7 @@ void device_set_name(struct btd_device *device, const char *name)
 				DEVICE_INTERFACE, "Name",
 				DBUS_TYPE_STRING, &name);
 
-	adapter_get_address(device->adapter, &src);
-	ba2str(&src, srcaddr);
-	ba2str(&device->bdaddr, dstaddr);
-
-	if (read_device_alias(srcaddr, dstaddr, alias, sizeof(alias)) == 0)
+	if (device->alias != NULL)
 		return;
 
 	emit_property_changed(conn, device->path,
