@@ -134,6 +134,7 @@ struct btd_device {
 
 	sdp_list_t	*tmp_records;
 
+	gboolean	trusted;
 	gboolean	paired;
 	gboolean	renewed_key;
 
@@ -256,6 +257,11 @@ gboolean device_is_paired(struct btd_device *device)
 	return device->paired;
 }
 
+gboolean device_is_trusted(struct btd_device *device)
+{
+	return device->trusted;
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 				DBusMessage *msg, void *user_data)
 {
@@ -326,7 +332,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Paired", DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Trusted */
-	boolean = read_trust(&src, dstaddr, GLOBAL_TRUST);
+	boolean = device_is_trusted(device);
 	dict_append_entry(&dict, "Trusted", DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Connected */
@@ -379,18 +385,28 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 }
 
 static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
-					dbus_bool_t value, void *data)
+					gboolean value, void *data)
 {
 	struct btd_device *device = data;
 	struct btd_adapter *adapter = device->adapter;
 	char srcaddr[18], dstaddr[18];
 	bdaddr_t src;
+	int err;
+
+	if (device->trusted == value)
+		return dbus_message_new_method_return(msg);
 
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
 
-	write_trust(srcaddr, dstaddr, GLOBAL_TRUST, value);
+	err = write_trust(srcaddr, dstaddr, GLOBAL_TRUST, value);
+	if (err < 0)
+		return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".Failed",
+				strerror(-err));
+
+	device->trusted = value;
 
 	emit_property_changed(conn, dbus_message_get_path(msg),
 				DEVICE_INTERFACE, "Trusted",
@@ -869,6 +885,7 @@ struct btd_device *device_create(DBusConnection *conn,
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 	read_device_name(srcaddr, address, device->name);
+	device->trusted = read_trust(&src, address, GLOBAL_TRUST);
 
 	device->auth = 0xff;
 

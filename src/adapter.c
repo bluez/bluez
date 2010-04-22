@@ -2980,7 +2980,6 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 	struct btd_device *device;
 	struct agent *agent;
 	char address[18];
-	gboolean trusted;
 	const gchar *dev_path;
 	int err;
 
@@ -3005,9 +3004,7 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 	auth->device = device;
 	auth->adapter = adapter;
 
-	trusted = read_trust(&adapter->bdaddr, address, GLOBAL_TRUST);
-
-	if (trusted) {
+	if (device_is_trusted(device) == TRUE) {
 		adapter->auth_idle_id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
 							auth_idle_cb, auth,
 							g_free);
