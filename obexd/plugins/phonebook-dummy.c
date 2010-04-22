@@ -112,19 +112,21 @@ static int handle_cmp(gconstpointer a, gconstpointer b)
 	return (i1 - i2);
 }
 
-static void foreach_vcard(DIR *dp, vcard_func_t func, void *user_data)
+static int foreach_vcard(DIR *dp, vcard_func_t func, uint16_t offset,
+			uint16_t maxlistcount, void *user_data, uint16_t *count)
 {
 	struct dirent *ep;
 	GSList *sorted = NULL, *l;
 	VObject *v;
 	FILE *fp;
 	int err, fd, folderfd;
+	uint16_t n = 0;
 
 	folderfd = dirfd(dp);
 	if (folderfd < 0) {
 		err = errno;
 		error("dirfd(): %s(%d)", strerror(err), err);
-		return;
+		return -err;
 	}
 
 	/*
@@ -153,7 +155,12 @@ static void foreach_vcard(DIR *dp, vcard_func_t func, void *user_data)
 		sorted = g_slist_insert_sorted(sorted, filename, handle_cmp);
 	}
 
-	for (l = sorted; l; l = l->next) {
+	/*
+	 * Filtering only the requested vCards attributes. Offset
+	 * shall be based on the first entry of the phonebook.
+	 */
+	for (l = g_slist_nth(sorted, offset);
+			l && n < maxlistcount; l = l->next) {
 		const gchar *filename = l->data;
 
 		fd = openat(folderfd, filename, O_RDONLY);
@@ -168,6 +175,7 @@ static void foreach_vcard(DIR *dp, vcard_func_t func, void *user_data)
 		if (v != NULL) {
 			func(filename, v, user_data);
 			deleteVObject(v);
+			n++;
 		}
 
 		close(fd);
@@ -175,6 +183,11 @@ static void foreach_vcard(DIR *dp, vcard_func_t func, void *user_data)
 
 	g_slist_foreach(sorted, (GFunc) g_free, NULL);
 	g_slist_free(sorted);
+
+	if (count)
+		*count = n;
+
+	return 0;
 }
 
 static void entry_concat(const char *filename, VObject *v, void *user_data)
@@ -201,6 +214,7 @@ static gboolean read_dir(void *user_data)
 	struct dummy_data *dummy = user_data;
 	GString *buffer;
 	DIR *dp;
+	uint16_t count, max, offset;
 
 	buffer = g_string_new("");
 
@@ -211,12 +225,26 @@ static gboolean read_dir(void *user_data)
 		goto done;
 	}
 
-	foreach_vcard(dp, entry_concat, buffer);
+	/*
+	 * For PullPhoneBook function, the decision of returning the size
+	 * or contacts is made in the PBAP core. When MaxListCount is ZERO,
+	 * PCE wants to know the size of a given folder, PSE shall ignore all
+	 * other applicattion parameters that may be present in the request.
+	 */
+	if (dummy->apparams->maxlistcount == 0) {
+		max = 0xffff;
+		offset = 0;
+	} else {
+		max = dummy->apparams->maxlistcount;
+		offset = dummy->apparams->liststartoffset;
+	}
+
+	foreach_vcard(dp, entry_concat, offset, max, buffer, &count);
 
 	closedir(dp);
 done:
 	/* FIXME: Missing vCards fields filtering */
-	dummy->cb(buffer->str, buffer->len, 1, 0, dummy->user_data);
+	dummy->cb(buffer->str, buffer->len, count, 0, dummy->user_data);
 
 	g_string_free(buffer, TRUE);
 
@@ -283,7 +311,13 @@ static gboolean create_cache(void *user_data)
 {
 	struct cache_query *query = user_data;
 
-	foreach_vcard(query->dp, entry_notify, query);
+	/*
+	 * MaxListCount and ListStartOffset shall not be used
+	 * when creating the cache. All entries shall be fetched.
+	 * PBAP core is responsible for consider these application
+	 * parameters before reply the entries.
+	 */
+	foreach_vcard(query->dp, entry_notify, 0, 0xffff, query, NULL);
 
 	query->ready_cb(query->user_data);
 
