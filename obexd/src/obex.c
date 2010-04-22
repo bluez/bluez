@@ -842,6 +842,8 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		break;
 	case OBEX_EV_REQDONE:
 		switch (cmd) {
+		case OBEX_CMD_CONNECT:
+			break;
 		case OBEX_CMD_DISCONNECT:
 			OBEX_TransportDisconnect(obex);
 			break;
