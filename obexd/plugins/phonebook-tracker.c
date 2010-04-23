@@ -76,8 +76,8 @@
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?contact ; "					\
-		"nmo:to <nco:default-contact-me> ; "			\
-		"nmo:isRead false ."					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered false ."				\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
@@ -95,8 +95,8 @@
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?contact ; "					\
-		"nmo:to " TRACKER_DEFAULT_CONTACT_ME " ; "		\
-		"nmo:isRead false ."					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered false ."				\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
@@ -113,7 +113,7 @@
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?contact ; "					\
-		"nmo:to " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"nmo:isSent false . "					\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
@@ -131,7 +131,7 @@
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?contact ; "					\
-		"nmo:to " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"nmo:isSent false . "					\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
@@ -147,8 +147,8 @@
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?contact ; "					\
-		"nmo:from " TRACKER_DEFAULT_CONTACT_ME " . "		\
-			"?contact a nco:PersonContact ; "		\
+		"nmo:isSent true . "					\
+		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
 		"nco:fullname ?fullname ; "				\
@@ -165,8 +165,8 @@
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?contact ; "					\
-		"nmo:from " TRACKER_DEFAULT_CONTACT_ME " . "		\
-			"?contact a nco:PersonContact ; "		\
+		"nmo:isSent true . "					\
+		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
@@ -182,7 +182,7 @@
 	"{ "								\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?contact ; "					\
-		"nmo:from " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"nmo:isSent true . "					\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
@@ -195,7 +195,7 @@
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?contact ; "					\
-		"nmo:to " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"nmo:isSent false . "					\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
@@ -214,7 +214,7 @@
 	"{ "								\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?contact ; "					\
-		"nmo:from " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"nmo:isSent true . "					\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
@@ -225,7 +225,7 @@
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?contact ; "					\
-		"nmo:to " TRACKER_DEFAULT_CONTACT_ME " . "		\
+		"nmo:isSent false . "					\
 		"?contact a nco:PersonContact ; "			\
 		"nco:nameFamily ?family ; "				\
 		"nco:nameGiven ?given ; "				\
