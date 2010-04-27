@@ -1214,7 +1214,7 @@ static sdp_data_t *extract_str(const void *p, int bufsize, int *len)
 	default:
 		SDPERR("Sizeof text string > UINT16_MAX\n");
 		free(d);
-		return 0;
+		return NULL;
 	}
 
 	if (bufsize < n) {
@@ -1771,7 +1771,7 @@ sdp_list_t *sdp_list_append(sdp_list_t *p, void *d)
 	sdp_list_t *q, *n = malloc(sizeof(sdp_list_t));
 
 	if (!n)
-		return 0;
+		return NULL;
 
 	n->data = d;
 	n->next = 0;
@@ -1809,7 +1809,7 @@ sdp_list_t *sdp_list_insert_sorted(sdp_list_t *list, void *d,
 
 	n = malloc(sizeof(sdp_list_t));
 	if (!n)
-		return 0;
+		return NULL;
 	n->data = d;
 	for (q = 0, p = list; p; q = p, p = p->next)
 		if (f(p->data, d) >= 0)
@@ -3466,7 +3466,7 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 
 	if (reqtype != SDP_ATTR_REQ_INDIVIDUAL && reqtype != SDP_ATTR_REQ_RANGE) {
 		errno = EINVAL;
-		return 0;
+		return NULL;
 	}
 
 	memset(&rsp_concat_buf, 0, sizeof(sdp_buf_t));
