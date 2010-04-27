@@ -370,11 +370,13 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 		err = lstat(fullname, &dstat);
 
 	if (err < 0) {
-		int err = errno;
-		debug("%s: %s(%d)", root ? "stat" : "lstat",
-				strerror(err), err);
-		if (err == ENOENT)
+		err = -errno;
+
+		if (err == -ENOENT)
 			goto not_found;
+
+		debug("%s: %s(%d)", root ? "stat" : "lstat",
+				strerror(-err), -err);
 
 		goto done;
 	}
@@ -395,10 +397,12 @@ not_found:
 	}
 
 	if (mkdir(fullname, 0755) <  0) {
-		err = -EPERM;
+		err = -errno;
+		debug("mkdir: %s(%d)", strerror(-err), -err);
 		goto done;
 	}
 
+	err = 0;
 	set_folder(ftp, fullname);
 
 done:
