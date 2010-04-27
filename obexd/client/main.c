@@ -232,9 +232,21 @@ static void pull_complete_callback(struct session_data *session,
 							void *user_data)
 {
 	struct send_data *data = user_data;
+	struct transfer_data *transfer = session->pending->data;
+
+	if (transfer->err != 0) {
+		DBusMessage *error = g_dbus_create_error(data->message,
+					"org.openobex.Error.Failed",
+					transfer->err > 0 ?
+					OBEX_ResponseToString(transfer->err) :
+					strerror(-transfer->err));
+		g_dbus_send_message(data->connection, error);
+		goto done;
+	}
 
 	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
 
+done:
 	shutdown_session(session);
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
