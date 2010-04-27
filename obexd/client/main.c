@@ -379,7 +379,7 @@ static DBusMessage *remove_session(DBusConnection *connection,
 	const gchar *sender, *path;
 
 	if (dbus_message_get_args(message, NULL,
-			DBUS_TYPE_STRING, &path,
+			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
