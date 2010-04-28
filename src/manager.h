@@ -43,5 +43,5 @@ int manager_stop_adapter(int id);
 void manager_add_adapter(const char *path);
 int manager_get_default_adapter();
 void manager_set_default_adapter(int id);
-void manager_update_svc(const bdaddr_t *bdaddr, uint8_t svc);
+void manager_update_svc(struct btd_adapter *adapter, uint8_t svc);
 void btd_manager_set_offline(gboolean offline);

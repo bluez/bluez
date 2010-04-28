@@ -23,6 +23,7 @@
  */
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
 #include <dbus/dbus.h>
 #include <glib.h>
 
@@ -123,6 +124,7 @@ void adapter_update_tx_power(bdaddr_t *bdaddr, uint8_t status, void *ptr);
 void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr);
 void adapter_service_insert(const bdaddr_t *bdaddr, void *rec);
 void adapter_service_remove(const bdaddr_t *bdaddr, void *rec);
+sdp_list_t *adapter_get_services(struct btd_adapter *adapter);
 void adapter_set_class_complete(bdaddr_t *bdaddr, uint8_t status);
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);

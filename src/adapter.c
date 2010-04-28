@@ -1104,6 +1104,11 @@ void adapter_service_remove(const bdaddr_t *bdaddr, void *rec)
 	adapter_service_ins_rem(bdaddr, rec, FALSE);
 }
 
+sdp_list_t *adapter_get_services(struct btd_adapter *adapter)
+{
+	return adapter->services;
+}
+
 struct btd_device *adapter_create_device(DBusConnection *conn,
 						struct btd_adapter *adapter,
 						const char *address)

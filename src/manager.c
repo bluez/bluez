@@ -61,21 +61,9 @@ const char *manager_get_base_path(void)
 	return base_path;
 }
 
-void manager_update_svc(const bdaddr_t *bdaddr, uint8_t svc)
+void manager_update_svc(struct btd_adapter* adapter, uint8_t svc)
 {
-	GSList *l;
-	bdaddr_t src;
-
-	for (l = adapters; l != NULL; l = l->next) {
-		struct btd_adapter *adapter = l->data;
-
-		adapter_get_address(adapter, &src);
-
-		if (bacmp(bdaddr, BDADDR_ANY) != 0 && bacmp(bdaddr, &src) != 0)
-			continue;
-
-		adapter_update(adapter, svc);
-	}
+	adapter_update(adapter, svc);
 }
 
 static inline DBusMessage *invalid_args(DBusMessage *msg)

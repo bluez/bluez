@@ -47,10 +47,9 @@
 #include "sdpd.h"
 #include "logging.h"
 #include "manager.h"
+#include "adapter.h"
 
 static sdp_record_t *server = NULL;
-
-static uint8_t service_classes = 0x00;
 
 static uint16_t did_vendor = 0x0000;
 static uint16_t did_product = 0x0000;
@@ -98,9 +97,9 @@ static void update_db_timestamp(void)
 	sdp_attr_replace(server, SDP_ATTR_SVCDB_STATE, d);
 }
 
-static void update_svclass_list(const bdaddr_t *src)
+static void update_adapter_svclass_list(struct btd_adapter *adapter)
 {
-	sdp_list_t *list = sdp_get_record_list();
+	sdp_list_t *list = adapter_get_services(adapter);
 	uint8_t val = 0;
 
 	for (; list; list = list->next) {
@@ -156,14 +155,23 @@ static void update_svclass_list(const bdaddr_t *src)
 
 	SDPDBG("Service classes 0x%02x", val);
 
-	service_classes = val;
-
-	manager_update_svc(src, val);
+	manager_update_svc(adapter, val);
 }
 
-uint8_t get_service_classes(const bdaddr_t *bdaddr)
+static void update_svclass_list(const bdaddr_t *src)
 {
-	return service_classes;
+	bdaddr_t bdaddr;
+	GSList *adapters = manager_get_adapters();
+
+	for (; adapters; adapters = adapters->next) {
+		struct btd_adapter *adapter = adapters->data;
+
+		adapter_get_address(adapter, &bdaddr);
+
+		if (bacmp(src, BDADDR_ANY) == 0 || bacmp(src, &bdaddr) == 0)
+			update_adapter_svclass_list(adapter);
+	}
+
 }
 
 void create_ext_inquiry_response(const char *name,
@@ -613,7 +621,7 @@ success:
 	}
 
 	update_db_timestamp();
-	update_svclass_list(BDADDR_ANY);
+	update_svclass_list(&req->device);
 
 	/* Build a rsp buffer */
 	bt_put_unaligned(htonl(rec->handle), (uint32_t *) rsp->data);
