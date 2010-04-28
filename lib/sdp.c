@@ -2614,8 +2614,8 @@ uuid_t *sdp_uuid128_create(uuid_t *u, const void *val)
  */
 int sdp_uuid_cmp(const void *p1, const void *p2)
 {
-	uuid_t *u1 = sdp_uuid_to_uuid128((uuid_t *) p1);
-	uuid_t *u2 = sdp_uuid_to_uuid128((uuid_t *) p2);
+	uuid_t *u1 = sdp_uuid_to_uuid128(p1);
+	uuid_t *u2 = sdp_uuid_to_uuid128(p2);
 	int ret;
 
 	ret = sdp_uuid128_cmp(u1, u2);
@@ -2653,7 +2653,7 @@ int sdp_uuid128_cmp(const void *p1, const void *p2)
  * yet to be implemented. Note that the input is in NBO in
  * both 32 and 128 bit UUIDs and conversion is needed
  */
-void sdp_uuid16_to_uuid128(uuid_t *uuid128, uuid_t *uuid16)
+void sdp_uuid16_to_uuid128(uuid_t *uuid128, const uuid_t *uuid16)
 {
 	/*
 	 * We have a 16 bit value, which needs to be added to
@@ -2675,7 +2675,7 @@ void sdp_uuid16_to_uuid128(uuid_t *uuid128, uuid_t *uuid16)
 	memcpy(&uuid128->value.uuid128.data[2], &data1, 2);
 }
 
-void sdp_uuid32_to_uuid128(uuid_t *uuid128, uuid_t *uuid32)
+void sdp_uuid32_to_uuid128(uuid_t *uuid128, const uuid_t *uuid32)
 {
 	/*
 	 * We have a 32 bit value, which needs to be added to
@@ -2697,7 +2697,7 @@ void sdp_uuid32_to_uuid128(uuid_t *uuid128, uuid_t *uuid32)
 	memcpy(&uuid128->value.uuid128.data[0], &data0, 4);
 }
 
-uuid_t *sdp_uuid_to_uuid128(uuid_t *uuid)
+uuid_t *sdp_uuid_to_uuid128(const uuid_t *uuid)
 {
 	uuid_t *uuid128 = bt_malloc(sizeof(uuid_t));
 
