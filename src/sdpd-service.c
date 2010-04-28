@@ -160,11 +160,11 @@ static void update_adapter_svclass_list(struct btd_adapter *adapter)
 
 static void update_svclass_list(const bdaddr_t *src)
 {
-	bdaddr_t bdaddr;
 	GSList *adapters = manager_get_adapters();
 
 	for (; adapters; adapters = adapters->next) {
 		struct btd_adapter *adapter = adapters->data;
+		bdaddr_t bdaddr;
 
 		adapter_get_address(adapter, &bdaddr);
 
