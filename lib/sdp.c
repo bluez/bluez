@@ -4709,6 +4709,7 @@ int sdp_set_supp_feat(sdp_record_t *rec, const sdp_list_t *sf)
 	for (p = sf, i = 0; p; p = p->next, i++) {
 		int plen, j;
 		void **dtds, **vals;
+		int *lengths;
 
 		plen = sdp_list_len(p->data);
 		dtds = malloc(plen * sizeof(void *));
@@ -4719,14 +4720,42 @@ int sdp_set_supp_feat(sdp_record_t *rec, const sdp_list_t *sf)
 			free(dtds);
 			goto fail;
 		}
+		lengths = malloc(plen * sizeof(int *));
+		if (!lengths) {
+			free(dtds);
+			free(vals);
+			goto fail;
+		}
 		for (r = p->data, j = 0; r; r = r->next, j++) {
 			sdp_data_t *data = (sdp_data_t*)r->data;
 			dtds[j] = &data->dtd;
-			vals[j] = &data->val;
+			switch (data->dtd) {
+			case SDP_URL_STR8:
+			case SDP_URL_STR16:
+			case SDP_TEXT_STR8:
+			case SDP_TEXT_STR16:
+				vals[j] = data->val.str;
+				lengths[j] = data->unitSize - sizeof(uint8_t);
+				break;
+			case SDP_ALT8:
+			case SDP_ALT16:
+			case SDP_ALT32:
+			case SDP_SEQ8:
+			case SDP_SEQ16:
+			case SDP_SEQ32:
+				vals[j] = data->val.dataseq;
+				lengths[j] = 0;
+				break;
+			default:
+				vals[j] = &data->val;
+				lengths[j] = 0;
+				break;
+			}
 		}
-		feat = sdp_seq_alloc(dtds, vals, plen);
+		feat = sdp_seq_alloc_with_length(dtds, vals, lengths, plen);
 		free(dtds);
 		free(vals);
+		free(lengths);
 		if (!feat)
 			goto fail;
 		seqDTDs[i] = &feat->dtd;
