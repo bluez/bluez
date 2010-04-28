@@ -366,8 +366,10 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 
 			os->type = g_strndup((const gchar *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
-			os->driver = obex_mime_type_driver_find(os->service->target,
-					os->type, os->service->who, os->service->who_size);
+			os->driver = obex_mime_type_driver_find(
+						os->service->target, os->type,
+						os->service->who,
+						os->service->who_size);
 			break;
 		}
 	}
@@ -461,7 +463,8 @@ int obex_get_stream_start(struct obex_session *os,
 	gpointer object;
 	size_t size;
 
-	object = os->driver->open(filename, O_RDONLY, 0, driver_data, &size, &err);
+	object = os->driver->open(filename, O_RDONLY, 0, driver_data,
+								&size, &err);
 	if (object == NULL) {
 		error("open(%s): %s (%d)", filename, strerror(-err), -err);
 		goto fail;
@@ -567,7 +570,8 @@ int obex_put_stream_start(struct obex_session *os,
 	while (len < os->offset) {
 		gint w;
 
-		w = os->driver->write(os->object, os->buf + len, os->offset - len);
+		w = os->driver->write(os->object, os->buf + len,
+							os->offset - len);
 		if (w < 0) {
 			error("write(%s): %s (%d)", filename, strerror(-w), -w);
 			if (w == -EINTR)
@@ -731,8 +735,10 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 
 			os->type = g_strndup((const gchar *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
-			os->driver = obex_mime_type_driver_find(os->service->target,
-					os->type, os->service->who, os->service->who_size);
+			os->driver = obex_mime_type_driver_find(
+						os->service->target, os->type,
+						os->service->who,
+						os->service->who_size);
 			break;
 
 		case OBEX_HDR_BODY:
@@ -910,8 +916,8 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 			break;
 		default:
 			debug("Unknown request: 0x%X", cmd);
-			OBEX_ObjectSetRsp(obj,
-				OBEX_RSP_NOT_IMPLEMENTED, OBEX_RSP_NOT_IMPLEMENTED);
+			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
+						OBEX_RSP_NOT_IMPLEMENTED);
 			break;
 		}
 		break;
@@ -926,7 +932,8 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 		case -EAGAIN:
 			OBEX_SuspendRequest(obex, obj);
 			os->obj = obj;
-			os->driver->set_io_watch(os->object, handle_async_io, os);
+			os->driver->set_io_watch(os->object, handle_async_io,
+									os);
 			break;
 		default:
 			OBEX_ObjectSetRsp(obj,
@@ -939,14 +946,14 @@ static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
 	case OBEX_EV_STREAMEMPTY:
 		switch (obex_write_stream(os, obex, obj)) {
 		case -EPERM:
-			OBEX_ObjectSetRsp(obj,
-				OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+			OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN,
+							OBEX_RSP_FORBIDDEN);
 			break;
 		case -EAGAIN:
 			OBEX_SuspendRequest(obex, obj);
 			os->obj = obj;
 			os->driver->set_io_watch(os->object, handle_async_io,
-							os);
+									os);
 			break;
 		default:
 			break;
