@@ -375,12 +375,20 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	}
 
 	if (!os->driver) {
-		os->driver = obex_mime_type_driver_find(os->service->target, NULL, NULL, 0);
+		/* Fallback to target default */
+		os->driver = obex_mime_type_driver_find(os->service->target,
+							NULL, NULL, 0);
 		if (!os->driver) {
-			error("No driver found");
-			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
-					OBEX_RSP_NOT_IMPLEMENTED);
-			return;
+			/* Fallback to general default */
+			os->driver = obex_mime_type_driver_find(NULL,
+							NULL, NULL, 0);
+			if (!os->driver) {
+				error("No driver found");
+				OBEX_ObjectSetRsp(obj,
+						OBEX_RSP_NOT_IMPLEMENTED,
+						OBEX_RSP_NOT_IMPLEMENTED);
+				return;
+			}
 		}
 	}
 
@@ -759,13 +767,20 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	OBEX_ObjectReParseHeaders(obex, obj);
 
 	if (!os->driver) {
+		/* Fallback to target default */
 		os->driver = obex_mime_type_driver_find(os->service->target,
-				NULL, NULL, 0);
+							NULL, NULL, 0);
 		if (!os->driver) {
-			error("No driver found");
-			OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
-					OBEX_RSP_NOT_IMPLEMENTED);
-			return FALSE;
+			/* Fallback to general default */
+			os->driver = obex_mime_type_driver_find(NULL,
+							NULL, NULL, 0);
+			if (!os->driver) {
+				error("No driver found");
+				OBEX_ObjectSetRsp(obj,
+						OBEX_RSP_NOT_IMPLEMENTED,
+						OBEX_RSP_NOT_IMPLEMENTED);
+				return FALSE;
+			}
 		}
 	}
 
