@@ -514,8 +514,10 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 	if (data == NULL)
 		return FALSE;
 
-	if (find_interface(data->interfaces, name))
+	if (find_interface(data->interfaces, name)) {
+		object_path_unref(connection, path);
 		return FALSE;
+	}
 
 	add_interface(data, name, methods, signals,
 			properties, user_data, destroy);
