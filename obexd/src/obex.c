@@ -826,6 +826,8 @@ done:
 
 static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 {
+	int err;
+
 	if (!os->service) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return;
@@ -842,7 +844,9 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 			return;
 	}
 
-	os->service->put(os, os->service_data);
+	err = os->service->put(os, os->service_data);
+	if (err < 0)
+		os_set_response(obj, err);
 }
 
 static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
