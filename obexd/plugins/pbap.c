@@ -148,8 +148,6 @@ static const guint8 PBAP_TARGET[TARGET_SIZE] = {
 			0x79, 0x61, 0x35, 0xF0,  0xF0, 0xC5, 0x11, 0xD8,
 			0x09, 0x66, 0x08, 0x00,  0x20, 0x0C, 0x9A, 0x66  };
 
-typedef int (*cache_sort_f) (struct cache_entry *entry, gpointer user_data);
-typedef void (*cache_element_f) (struct cache_entry *entry, gpointer user_data);
 typedef int (*cache_entry_find_f) (const struct cache_entry *entry,
 			const gchar *value);
 
@@ -275,40 +273,70 @@ static void cache_entry_notify(const gchar *id, guint32 handle,
 	cache->entries = g_slist_append(cache->entries, entry);
 }
 
-static void cache_ready_notify(gpointer user_data)
+static int alpha_sort(gconstpointer a, gconstpointer b)
 {
-	struct pbap_session *pbap = user_data;
-	cache_entry_find_f find;
-	gchar *searchval;
-	GSList *l;
+	const struct cache_entry *e1 = a;
+	const struct cache_entry *e2 = b;
 
-	if (pbap->params->maxlistcount == 0) {
-		/* Ignore all other parameter and return PhoneBookSize */
-		gchar aparam[4];
-		struct aparam_header *hdr = (struct aparam_header *) aparam;
-		guint16 size = g_slist_length(pbap->cache.entries);
+	return g_strcmp0(e1->name, e2->name);
+}
 
-		hdr->tag = PHONEBOOKSIZE_TAG;
-		hdr->len = PHONEBOOKSIZE_LEN;
-		memcpy(hdr->val, &size, sizeof(size));
-
-		pbap->buffer = g_string_new_len(aparam, sizeof(aparam));
-		goto done;
-	}
-
-	pbap->buffer = g_string_new(VCARD_LISTING_BEGIN);
-	l = g_slist_nth(pbap->cache.entries,
-			pbap->params->liststartoffset);
+static int phonetical_sort(gconstpointer a, gconstpointer b)
+{
+	const struct cache_entry *e1 = a;
+	const struct cache_entry *e2 = b;
 
 	/*
-	 * FIXME: See PBAP spec section 5.3.4.1
-	 * Order{Alphabetical | Indexed | Phonetical} not yet implemented
-	 *
+	 * SOUND attribute is optinal. Keep the order
+	 * when this attribute is not available.
+	 */
+	if (!e1->sound)
+		return 1;
+
+	return g_strcmp0(e1->sound, e2->sound);
+}
+
+static int indexed_sort(gconstpointer a, gconstpointer b)
+{
+	const struct cache_entry *e1 = a;
+	const struct cache_entry *e2 = b;
+
+	return (e1->handle - e2->handle);
+}
+
+static GSList *sort_entries(GSList *l, uint8_t order, uint8_t search_attrib,
+							const char *value)
+{
+	GSList *sorted = NULL;
+	cache_entry_find_f find;
+	GCompareFunc sort;
+	char *searchval;
+
+	/*
+	 * Default sorter is "Indexed". Some backends doesn't inform the index,
+	 * for this case a sequential internal index is assigned.
+	 * 0x00 = indexed
+	 * 0x01 = alphanumeric
+	 * 0x02 = phonetic
+	 */
+	switch (order) {
+	case 0x01:
+		sort = alpha_sort;
+		break;
+	case 0x02:
+		sort = phonetical_sort;
+		break;
+	default:
+		sort = indexed_sort;
+		break;
+	}
+
+	/*
 	 * This implementation checks if the given field CONTAINS the
 	 * search value(case insensitive). Name is the default field
 	 * when the attribute is not provided.
 	 */
-	switch (pbap->params->searchattrib) {
+	switch (search_attrib) {
 		case 1:
 			/* Number */
 			find = entry_tel_find;
@@ -322,21 +350,63 @@ static void cache_ready_notify(gpointer user_data)
 			break;
 	}
 
-	searchval = g_utf8_strdown((gchar *) pbap->params->searchval, -1);
+	searchval = value ? g_utf8_strdown(value, -1) : NULL;
 	for (; l; l = l->next) {
-		const struct cache_entry *entry = l->data;
+		struct cache_entry *entry = l->data;
 
 		if (searchval && !find(entry, (const gchar *) searchval))
 			continue;
 
-		g_string_append_printf(pbap->buffer,
-				VCARD_LISTING_ELEMENT,
-				entry->handle, entry->name);
+		sorted = g_slist_insert_sorted(sorted, entry, sort);
 	}
 
 	g_free(searchval);
+
+	return sorted;
+}
+
+static void cache_ready_notify(void *user_data)
+{
+	struct pbap_session *pbap = user_data;
+	GSList *sorted;
+	GSList *l;
+	uint16_t max = pbap->params->maxlistcount;
+
+	if (max == 0) {
+		/* Ignore all other parameter and return PhoneBookSize */
+		char aparam[4];
+		struct aparam_header *hdr = (struct aparam_header *) aparam;
+		uint16_t size = htons(g_slist_length(pbap->cache.entries));
+
+		hdr->tag = PHONEBOOKSIZE_TAG;
+		hdr->len = PHONEBOOKSIZE_LEN;
+		memcpy(hdr->val, &size, sizeof(size));
+
+		pbap->buffer = g_string_new_len(aparam, sizeof(aparam));
+		goto done;
+	}
+
+	/* Computing off set considering first entry of the phonebook */
+	l = g_slist_nth(pbap->cache.entries, pbap->params->liststartoffset);
+
+	/*
+	 * Don't free the sorted list content: this list contains
+	 * only the reference for the "real" cache entry.
+	 */
+	sorted = sort_entries(l, pbap->params->order,
+			pbap->params->searchattrib,
+			(const char *) pbap->params->searchval);
+
+	pbap->buffer = g_string_new(VCARD_LISTING_BEGIN);
+	for (l = sorted; l && max; l = l->next, max--) {
+		const struct cache_entry *entry = l->data;
+		g_string_append_printf(pbap->buffer, VCARD_LISTING_ELEMENT,
+						entry->handle, entry->name);
+	}
+
 	pbap->buffer = g_string_append(pbap->buffer, VCARD_LISTING_END);
 
+	g_slist_free(sorted);
 done:
 	if (!pbap->cache.valid) {
 		pbap->cache.valid = TRUE;
