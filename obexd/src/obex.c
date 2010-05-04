@@ -95,6 +95,11 @@ static void os_set_response(obex_object_t *obj, int err)
 		rsp = OBEX_RSP_NOT_IMPLEMENTED;
 		lastrsp = OBEX_RSP_NOT_IMPLEMENTED;
 		break;
+	case -ENOTEMPTY:
+	case -EEXIST:
+		rsp = OBEX_RSP_PRECONDITION_FAILED;
+		lastrsp = OBEX_RSP_PRECONDITION_FAILED;
+		break;
 	default:
 		rsp = OBEX_RSP_INTERNAL_SERVER_ERROR;
 		lastrsp = OBEX_RSP_INTERNAL_SERVER_ERROR;
