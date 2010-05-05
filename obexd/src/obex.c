@@ -76,6 +76,7 @@ static void os_set_response(obex_object_t *obj, int err)
 		lastrsp = OBEX_RSP_SUCCESS;
 		break;
 	case -EPERM:
+	case -EACCES:
 		rsp = OBEX_RSP_FORBIDDEN;
 		lastrsp = OBEX_RSP_FORBIDDEN;
 		break;
