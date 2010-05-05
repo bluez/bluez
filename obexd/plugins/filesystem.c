@@ -447,7 +447,7 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 }
 
 static gpointer pcsuite_open(const char *name, int oflag, mode_t mode,
-			 gpointer context, size_t *size, int *err)
+			gpointer context, size_t *size, int *err)
 {
 	GString *object;
 
