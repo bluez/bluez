@@ -47,10 +47,10 @@
 		"?suffix ?email "					\
 	"WHERE { "							\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
-		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
+	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
+	"OPTIONAL { ?contact nco:fullname ?fullname } "			\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
@@ -62,9 +62,9 @@
 		"?suffix ?phone "					\
 	"WHERE { "							\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
+	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
 	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
@@ -79,10 +79,10 @@
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
-		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
+	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
+	"OPTIONAL { ?contact nco:fullname ?fullname } "			\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
@@ -98,9 +98,9 @@
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
+	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
@@ -115,10 +115,10 @@
 		"nmo:from ?contact ; "					\
 		"nmo:isSent false . "					\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
-		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
+	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
+	"OPTIONAL { ?contact nco:fullname ?fullname } "			\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
@@ -133,9 +133,9 @@
 		"nmo:from ?contact ; "					\
 		"nmo:isSent false . "					\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
+	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
 	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
@@ -149,10 +149,10 @@
 		"nmo:to ?contact ; "					\
 		"nmo:isSent true . "					\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
-		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
+	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
+	"OPTIONAL { ?contact nco:fullname ?fullname } "			\
 	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
@@ -167,9 +167,9 @@
 		"nmo:to ?contact ; "					\
 		"nmo:isSent true . "					\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
+	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
 	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
 	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
 	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
@@ -184,10 +184,10 @@
 		"nmo:to ?contact ; "					\
 		"nmo:isSent true . "					\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
-		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+		"OPTIONAL { ?contact nco:nameFamily ?family } "		\
+		"OPTIONAL { ?contact nco:nameGiven ?given } "		\
+		"OPTIONAL { ?contact nco:fullname ?fullname } "		\
 		"OPTIONAL { ?contact nco:hasEmailAddress ?email } "	\
 		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
 		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
@@ -197,10 +197,10 @@
 		"nmo:from ?contact ; "					\
 		"nmo:isSent false . "					\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
-		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+		"OPTIONAL { ?contact nco:nameFamily ?family } "		\
+		"OPTIONAL { ?contact nco:nameGiven ?given } "		\
+		"OPTIONAL { ?contact nco:fullname ?fullname } "		\
 		"OPTIONAL { ?contact nco:hasEmailAddress ?email } "	\
 		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
 		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
@@ -216,9 +216,9 @@
 		"nmo:to ?contact ; "					\
 		"nmo:isSent true . "					\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+		"OPTIONAL { ?contact nco:nameFamily ?family } "		\
+		"OPTIONAL { ?contact nco:nameGiven ?given } "		\
 		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
 		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
 		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
@@ -227,9 +227,9 @@
 		"nmo:from ?contact ; "					\
 		"nmo:isSent false . "					\
 		"?contact a nco:PersonContact ; "			\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+		"OPTIONAL { ?contact nco:nameFamily ?family } "		\
+		"OPTIONAL { ?contact nco:nameGiven ?given } "		\
 		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
 		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
 		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
@@ -241,10 +241,10 @@
 	"	?suffix ?email "					\
 	"WHERE { "							\
 		"<%s> a nco:PersonContact ; "				\
-		"nco:nameFamily ?family ; "				\
-		"nco:nameGiven ?given ; "				\
-		"nco:fullname ?fullname ; "				\
 		"nco:hasPhoneNumber ?phone . "				\
+	"OPTIONAL { <%s> nco:nameFamily ?family } "			\
+	"OPTIONAL { <%s> nco:nameGiven ?given } "			\
+	"OPTIONAL { <%s> nco:fullname ?fullname } "			\
 	"OPTIONAL { <%s> nco:hasEmailAddress ?email } "			\
 	"OPTIONAL { <%s> nco:nameAdditional ?additional } "		\
 	"OPTIONAL { <%s> nco:nameHonorificPrefix ?prefix } "		\
@@ -651,7 +651,8 @@ int phonebook_get_entry(const char *folder, const char *id,
 	data->params = params;
 	data->cb = cb;
 
-	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id, id);
+	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI,
+						id, id, id, id, id, id, id, id);
 
 	ret = query_tracker(query, 8, pull_contacts, data);;
 
