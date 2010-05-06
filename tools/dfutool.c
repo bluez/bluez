@@ -341,7 +341,7 @@ static void cmd_verify(char *device, int argc, char **argv)
 	size = st.st_size;
 
 	if (!(buf = malloc(size))) {
-		perror("Unable to allocate file buffer"); 
+		perror("Unable to allocate file buffer");
 		exit(1);
 	}
 
@@ -442,7 +442,7 @@ static void cmd_upgrade(char *device, int argc, char **argv)
 	filesize = st.st_size;
 
 	if (!(buf = malloc(filesize))) {
-		perror("Unable to allocate file buffer"); 
+		perror("Unable to allocate file buffer");
 		exit(1);
 	}
 

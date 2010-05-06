@@ -28,7 +28,7 @@ struct keyword_t {
 	int type;
 };
 
-extern struct keyword_t rfcomm_keyword[]; 
+extern struct keyword_t rfcomm_keyword[];
 
 int rfcomm_find_keyword(struct keyword_t *keyword, char *string);
 

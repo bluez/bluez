@@ -68,10 +68,10 @@ static int read_command_complete(int fd, unsigned short opcode, unsigned char le
 	/* Read reply. */
 	FAILIF(read_hci_event(fd, (unsigned char *)&resp, sizeof(resp)) < 0,
 		   "Failed to read response");
-	
+
 	/* Parse speed-change reply */
 	FAILIF(resp.uart_prefix != HCI_EVENT_PKT,
-		   "Error in response: not an event packet, but 0x%02x!\n", 
+		   "Error in response: not an event packet, but 0x%02x!\n",
 		   resp.uart_prefix);
 
 	FAILIF(resp.hci_hdr.evt != EVT_CMD_COMPLETE, /* event must be event-complete */
@@ -107,7 +107,7 @@ static int texas_load_firmware(int fd, const char *firmware) {
 
 	fprintf(stdout, "Opening firmware file: %s\n", firmware);
 
-	FAILIF(fw < 0, 
+	FAILIF(fw < 0,
 		   "Could not open firmware file %s: %s (%d).\n",
 		   firmware, strerror(errno), errno);
 
@@ -123,17 +123,17 @@ static int texas_load_firmware(int fd, const char *firmware) {
 			break;
 		FAILIF(nr != sizeof(cmdp), "Could not read H4 + HCI header!\n");
 		FAILIF(*cmdp != HCI_COMMAND_PKT, "Command is not an H4 command packet!\n");
-		
+
 		FAILIF(read(fw, data, cmd->plen) != cmd->plen,
 			   "Could not read %d bytes of data for command with opcode %04x!\n",
 			   cmd->plen,
 			   cmd->opcode);
-				
+
 		{
 			int nw;
 #if 0
-			fprintf(stdout, "\topcode 0x%04x (%d bytes of data).\n", 
-					cmd->opcode, 
+			fprintf(stdout, "\topcode 0x%04x (%d bytes of data).\n",
+					cmd->opcode,
 					cmd->plen);
 #endif
 			struct iovec iov_cmd[2];
@@ -142,18 +142,18 @@ static int texas_load_firmware(int fd, const char *firmware) {
 			iov_cmd[1].iov_base = data;
 			iov_cmd[1].iov_len	= cmd->plen;
 			nw = writev(fd, iov_cmd, 2);
-			FAILIF(nw != (int) sizeof(cmd) +	cmd->plen, 
+			FAILIF(nw != (int) sizeof(cmd) +	cmd->plen,
 				   "Could not send entire command (sent only %d bytes)!\n",
 				   nw);
 		}
 
 		/* Wait for response */
-		if (read_command_complete(fd, 
+		if (read_command_complete(fd,
 								  cmd->opcode,
 								  cmd->plen) < 0) {
 			return -1;
 		}
-			
+
 	} while(1);
 	fprintf(stdout, "Firmware upload successful.\n");
 
@@ -170,7 +170,7 @@ int texasalt_init(int fd, int speed, struct termios *ti)
 
 	memset(resp,'\0', 100);
 
-	/* It is possible to get software version with manufacturer specific 
+	/* It is possible to get software version with manufacturer specific
 	   HCI command HCI_VS_TI_Version_Number. But the only thing you get more
 	   is if this is point-to-point or point-to-multipoint module */
 

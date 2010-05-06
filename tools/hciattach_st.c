@@ -140,7 +140,7 @@ static int load_file(int dd, uint16_t version, const char *suffix)
 			return -errno;
 	}
 
-	found_fw_file = 0;	
+	found_fw_file = 0;
 	while (1) {
 		d = readdir(dir);
 		if (!d)
@@ -203,14 +203,14 @@ int stlc2500_init(int dd, bdaddr_t *bdaddr)
 	int len;
 	int err;
 
-	/* Hci_Cmd_Ericsson_Read_Revision_Information */	
+	/* Hci_Cmd_Ericsson_Read_Revision_Information */
 	len = do_command(dd, 0xff, 0x000f, NULL, 0, buf, sizeof(buf));
 	if (len < 0)
 		return -1;
 
 	printf("%s\n", buf);
 
-	/* HCI_Read_Local_Version_Information */	
+	/* HCI_Read_Local_Version_Information */
 	len = do_command(dd, 0x04, 0x0001, NULL, 0, buf, sizeof(buf));
 	if (len < 0)
 		return -1;
@@ -219,7 +219,7 @@ int stlc2500_init(int dd, bdaddr_t *bdaddr)
 
 	err = load_file(dd, version, ".ptc");
 	if (err < 0) {
-		if (err == -ENOENT) 	
+		if (err == -ENOENT)
 			fprintf(stderr, "No ROM patch file loaded.\n");
 		else
 			return -1;
@@ -227,7 +227,7 @@ int stlc2500_init(int dd, bdaddr_t *bdaddr)
 
 	err = load_file(dd, buf[2] << 8 | buf[1], ".ssf");
 	if (err < 0) {
-		if (err == -ENOENT) 	
+		if (err == -ENOENT)
 			fprintf(stderr, "No static settings file loaded.\n");
 		else
 			return -1;
@@ -237,7 +237,7 @@ int stlc2500_init(int dd, bdaddr_t *bdaddr)
 	cmd[1] = 0x06;
 	bacpy((bdaddr_t *) (cmd + 2), bdaddr);
 
-	/* Hci_Cmd_ST_Store_In_NVDS */	
+	/* Hci_Cmd_ST_Store_In_NVDS */
 	len = do_command(dd, 0xff, 0x0022, cmd, 8, buf, sizeof(buf));
 	if (len < 0)
 		return -1;

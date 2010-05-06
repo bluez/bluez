@@ -446,7 +446,7 @@ int texas_init(int fd, struct termios *ti)
 
 	memset(resp,'\0', 100);
 
-	/* It is possible to get software version with manufacturer specific 
+	/* It is possible to get software version with manufacturer specific
 	   HCI command HCI_VS_TI_Version_Number. But the only thing you get more
 	   is if this is point-to-point or point-to-multipoint module */
 

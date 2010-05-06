@@ -753,7 +753,7 @@ static void print_raw_attr(sdp_record_t *rec)
  * Set attributes with single values in SDP record
  * Jean II
  */
-static int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, char *value) 
+static int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, char *value)
 {
 	sdp_list_t *attrid_list;
 	uint32_t range = 0x0000ffff;
@@ -783,7 +783,7 @@ static int set_attrib(sdp_session_t *sess, uint32_t handle, uint16_t attrib, cha
 		sdp_attr_add_new(rec, attrib, SDP_UUID16, &value_uuid.value.uuid16);
 	} else if (!strncasecmp(value, "0x", 2)) {
 		/* Int */
-		uint32_t value_int;  
+		uint32_t value_int;
 		value_int = strtoul(value + 2, NULL, 16);
 		printf("Adding attrib 0x%X int 0x%X to record 0x%X\n",
 			attrib, value_int, handle);
@@ -811,7 +811,7 @@ static struct option set_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static const char *set_help = 
+static const char *set_help =
 	"Usage:\n"
 	"\tget record_handle attrib_id attrib_value\n";
 
@@ -949,7 +949,7 @@ static struct option seq_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static const char *seq_help = 
+static const char *seq_help =
 	"Usage:\n"
 	"\tget record_handle attrib_id attrib_values\n";
 
@@ -1685,7 +1685,7 @@ static int add_simaccess(sdp_session_t *session, svc_info_t *si)
 	sdp_record_t record;
 	uint8_t u8 = si->channel? si->channel : 8;
 	uint16_t u16 = 0x31;
-	sdp_data_t *channel, *features;	
+	sdp_data_t *channel, *features;
 	int ret = 0;
 
 	memset((void *)&record, 0, sizeof(sdp_record_t));
@@ -2250,7 +2250,7 @@ static int add_hid_keyb(sdp_session_t *session, svc_info_t *si)
 	static const uint16_t intr = 0x13;
 	static const uint16_t hid_attr[] = { 0x100, 0x111, 0x40, 0x0d, 0x01, 0x01 };
 	static const uint16_t hid_attr2[] = { 0x0, 0x01, 0x100, 0x1f40, 0x01, 0x01 };
-	const uint8_t hid_spec[] = { 
+	const uint8_t hid_spec[] = {
 		0x05, 0x01, // usage page
 		0x09, 0x06, // keyboard
 		0xa1, 0x01, // key codes
@@ -2263,14 +2263,14 @@ static int add_hid_keyb(sdp_session_t *session, svc_info_t *si)
 		0x75, 0x01, // input data variable absolute
 		0x95, 0x08, // report count
 		0x81, 0x02, // report size
-		0x75, 0x08, 
-		0x95, 0x01, 
-		0x81, 0x01, 
-		0x75, 0x01, 
+		0x75, 0x08,
+		0x95, 0x01,
+		0x81, 0x01,
+		0x75, 0x01,
 		0x95, 0x05,
 		0x05, 0x08,
 		0x19, 0x01,
-		0x29, 0x05, 
+		0x29, 0x05,
 		0x91, 0x02,
 		0x75, 0x03,
 		0x95, 0x01,
@@ -3526,7 +3526,7 @@ static struct option add_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static const char *add_help = 
+static const char *add_help =
 	"Usage:\n"
 	"\tadd [--handle=RECORD_HANDLE --channel=CHANNEL] service\n";
 
@@ -3591,7 +3591,7 @@ static int del_service(bdaddr_t *bdaddr, void *arg)
 	sdp_session_t *sess;
 	sdp_record_t *rec;
 
-	if (!arg) { 
+	if (!arg) {
 		printf("Record handle was not specified.\n");
 		return -1;
 	}
@@ -3630,7 +3630,7 @@ static struct option del_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static const char *del_help = 
+static const char *del_help =
 	"Usage:\n"
 	"\tdel record_handle\n";
 
@@ -3771,7 +3771,7 @@ static struct option browse_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static const char *browse_help = 
+static const char *browse_help =
 	"Usage:\n"
 	"\tbrowse [--tree] [--raw] [--xml] [--uuid uuid] [--l2cap] [bdaddr]\n";
 
@@ -3837,7 +3837,7 @@ static struct option search_options[] = {
 	{ 0, 0, 0, 0}
 };
 
-static const char *search_help = 
+static const char *search_help =
 	"Usage:\n"
 	"\tsearch [--bdaddr bdaddr] [--tree] [--raw] [--xml] SERVICE\n"
 	"SERVICE is a name (string) or UUID (0x1002)\n";
@@ -3996,7 +3996,7 @@ static struct option records_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static const char *records_help = 
+static const char *records_help =
 	"Usage:\n"
 	"\trecords [--tree] [--raw] [--xml] bdaddr\n";
 
@@ -4066,7 +4066,7 @@ static struct option get_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static const char *get_help = 
+static const char *get_help =
 	"Usage:\n"
 	"\tget [--tree] [--raw] [--xml] [--bdaddr bdaddr] record_handle\n";
 

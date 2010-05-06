@@ -146,10 +146,10 @@ int set_speed(int fd, struct termios *ti, int speed)
 	return tcsetattr(fd, TCSANOW, ti);
 }
 
-/* 
+/*
  * Read an HCI event from the given file descriptor.
  */
-int read_hci_event(int fd, unsigned char* buf, int size) 
+int read_hci_event(int fd, unsigned char* buf, int size)
 {
 	int remain, r;
 	int count = 0;
@@ -177,9 +177,9 @@ int read_hci_event(int fd, unsigned char* buf, int size)
 	}
 
 	/* Now we read the parameters. */
-	if (buf[2] < (size - 3)) 
+	if (buf[2] < (size - 3))
 		remain = buf[2];
-	else 
+	else
 		remain = size - 3;
 
 	while ((count - 3) < remain) {
@@ -192,8 +192,8 @@ int read_hci_event(int fd, unsigned char* buf, int size)
 	return count;
 }
 
-/* 
- * Ericsson specific initialization 
+/*
+ * Ericsson specific initialization
  */
 static int ericsson(int fd, struct uart_t *u, struct termios *ti)
 {
@@ -247,8 +247,8 @@ static int ericsson(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
-/* 
- * Digianswer specific initialization 
+/*
+ * Digianswer specific initialization
  */
 static int digi(int fd, struct uart_t *u, struct termios *ti)
 {
@@ -306,7 +306,7 @@ static int read_check(int fd, void *buf, int count)
 	do {
 		res = read(fd, buf, count);
 		if (res != -1) {
-			buf += res; 
+			buf += res;
 			count -= res;
 		}
 	} while (count && (errno == 0 || errno == EINTR));
@@ -480,8 +480,8 @@ static int bcsp(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
-/* 
- * CSR specific initialization 
+/*
+ * CSR specific initialization
  * Inspired strongly by code in OpenBT and experimentations with Brainboxes
  * Pcmcia card.
  * Jean Tourrilhes <jt@hpl.hp.com> - 14.11.01
@@ -544,7 +544,7 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 			return -1;
 		}
 
-	/* Event code 0xFF is for vendor-specific events, which is 
+	/* Event code 0xFF is for vendor-specific events, which is
 	 * what we're looking for. */
 	} while (resp[1] != 0xFF);
 
@@ -560,7 +560,7 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 	}
 #endif
 	/* Display that to user */
-	fprintf(stderr, "CSR build ID 0x%02X-0x%02X\n", 
+	fprintf(stderr, "CSR build ID 0x%02X-0x%02X\n",
 		resp[15] & 0xFF, resp[14] & 0xFF);
 
 	/* Try to read the current speed of the CSR chip */
@@ -588,7 +588,7 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 			return -1;
 		}
 
-	/* Event code 0xFF is for vendor-specific events, which is 
+	/* Event code 0xFF is for vendor-specific events, which is
 	 * what we're looking for. */
 	} while (resp[1] != 0xFF);
 
@@ -602,7 +602,7 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 #endif
 
 	if (u->speed > 1500000) {
-		fprintf(stderr, "Speed %d too high. Remaining at %d baud\n", 
+		fprintf(stderr, "Speed %d too high. Remaining at %d baud\n",
 			u->speed, u->init_speed);
 		u->speed = u->init_speed;
 	} else if (u->speed != 57600 && uart_speed(u->speed) == B57600) {
@@ -652,8 +652,8 @@ static int csr(int fd, struct uart_t *u, struct termios *ti)
 	return 0;
 }
 
-/* 
- * Silicon Wave specific initialization 
+/*
+ * Silicon Wave specific initialization
  * Thomas Moser <thomas.moser@tmoser.ch>
  */
 static int swave(int fd, struct uart_t *u, struct termios *ti)
@@ -669,7 +669,7 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 	// Subcommand", e.g. "soft reset" to make the changes effective.
 
 	cmd[0] = HCI_COMMAND_PKT;	// it's a command packet
-	cmd[1] = 0x0B;			// OCF 0x0B	= param access set	
+	cmd[1] = 0x0B;			// OCF 0x0B	= param access set
 	cmd[2] = 0xfc;			// OGF bx111111 = vendor specific
 	cmd[3] = 0x06;			// 6 bytes of data following
 	cmd[4] = 0x01;			// param sub command
@@ -703,9 +703,9 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 		return -1;
 	}
 
-	// We should wait for a "GET Event" to confirm the success of 
-	// the baud rate setting. Wait some time before reading. Better:  
-	// read with timeout, parse data 
+	// We should wait for a "GET Event" to confirm the success of
+	// the baud rate setting. Wait some time before reading. Better:
+	// read with timeout, parse data
 	// until correct answer, else error handling ... todo ...
 
 	nanosleep(&tm, NULL);
@@ -749,7 +749,7 @@ static int swave(int fd, struct uart_t *u, struct termios *ti)
 	// now the uart baud rate on the silicon wave module is set and effective.
 	// change our own baud rate as well. Then there is a reset event comming in
  	// on the *new* baud rate. This is *undocumented*! The packet looks like this:
-	// 04 FF 01 0B (which would make that a confirmation of 0x0B = "Param 
+	// 04 FF 01 0B (which would make that a confirmation of 0x0B = "Param
 	// subcommand class". So: change to new baud rate, read with timeout, parse
 	// data, error handling. BTW: all param access in Silicon Wave is done this way.
 	// Maybe this code would belong in a seperate file, or at least code reuse...
@@ -1259,7 +1259,7 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Unknown device type or id\n");
 				exit(1);
 			}
-			
+
 			break;
 
 		case 2:
@@ -1300,7 +1300,7 @@ int main(int argc, char *argv[])
 
 	n = init_uart(dev, u, send_break);
 	if (n < 0) {
-		perror("Can't initialize device"); 
+		perror("Can't initialize device");
 		exit(1);
 	}
 

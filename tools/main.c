@@ -118,7 +118,7 @@ static void print_dev_info(struct rfcomm_dev_info *di)
 
 	printf("rfcomm%d: %s channel %d %s %s\n",
 		di->id, addr, di->channel,
-		rfcomm_state[di->state], 
+		rfcomm_state[di->state],
 		di->flags ? rfcomm_flagstostr(di->flags) : "");
 }
 
@@ -717,7 +717,7 @@ static void usage(void)
 		"\t-E, --encrypt         Enable encryption\n"
 		"\t-S, --secure          Secure connection\n"
 		"\t-M, --master          Become the master of a piconet\n"
-		"\t-f, --config [file]   Specify alternate config file\n" 
+		"\t-f, --config [file]   Specify alternate config file\n"
 		"\t-a                    Show all devices (default)\n"
 		"\n");
 
@@ -743,7 +743,7 @@ static struct option main_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
 	bdaddr_t bdaddr;
 	int i, opt, ctl, dev_id, show_all = 0;

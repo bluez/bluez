@@ -147,7 +147,7 @@ static int process_data(int fd)
 
 	p[0].fd = 0;
 	p[0].events = POLLIN | POLLERR | POLLHUP | POLLNVAL;
-	
+
 	p[1].fd = fd;
 	p[1].events = POLLIN | POLLERR | POLLHUP | POLLNVAL;
 
@@ -156,7 +156,7 @@ static int process_data(int fd)
 	while (!__io_canceled) {
 		p[0].revents = 0;
 		p[1].revents = 0;
-		
+
 		err = poll(p, 2, -1);
 		if (err < 0)
 			break;
