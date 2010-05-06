@@ -131,7 +131,7 @@ static gchar *evcard_to_string(EVCard *evcard, guint format, guint64 filter)
 }
 
 static void ebookpull_cb(EBook *book, EBookStatus status, GList *contacts,
-				gpointer user_data)
+							gpointer user_data)
 {
 	struct query_data *data = user_data;
 	GString *string = g_string_new("");
@@ -189,7 +189,7 @@ static gchar *evcard_name_attribute_to_string(EVCard *evcard)
 }
 
 static void ebooklist_cb(EBook *book, EBookStatus status, GList *contacts,
-				gpointer user_data)
+							gpointer user_data)
 {
 	struct query_data *data = user_data;
 	GString *string = g_string_new(VCARD_LISTING_BEGIN);
@@ -318,7 +318,7 @@ gint phonebook_pull(const gchar *name, const struct apparam_field *params,
 }
 
 int phonebook_get_entry(const gchar *name, const struct apparam_field *params,
-		phonebook_cb cb, gpointer user_data)
+					phonebook_cb cb, gpointer user_data)
 {
 	return -1;
 }
@@ -326,7 +326,7 @@ int phonebook_get_entry(const gchar *name, const struct apparam_field *params,
 static EBookQuery *create_query(guint8 attrib, guint8 *searchval)
 {
 	EBookQuery *query;
-	gchar *fam, *given, *str, **values;
+	gchar *fam, *str, **values;
 
 	if (!searchval || strlen((gchar *) searchval) == 0)
 		return e_book_query_any_field_contains("");
@@ -341,8 +341,11 @@ static EBookQuery *create_query(guint8 attrib, guint8 *searchval)
 		fam = (values[0] ? g_strdup_printf(QUERY_FN, values[0]) : NULL);
 
 		if (values[1]) {
-			given =	g_strdup_printf(QUERY_NAME, values[1]);
-			str = (fam ? g_strconcat(fam, " and ", given, NULL) : given);
+			char *given = g_strdup_printf(QUERY_NAME, values[1]);
+
+			str = fam ?
+				g_strconcat(fam, " and ", given, NULL) : given;
+
 			g_free(fam);
 			g_free(given);
 		}
@@ -370,7 +373,7 @@ static EBookQuery *create_query(guint8 attrib, guint8 *searchval)
 }
 
 int phonebook_list(const gchar *name, const struct apparam_field *params,
-		phonebook_cb cb, gpointer user_data)
+					phonebook_cb cb, gpointer user_data)
 {
 	struct query_data *data;
 	EBookQuery *query;

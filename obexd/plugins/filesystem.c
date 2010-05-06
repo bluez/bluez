@@ -204,7 +204,8 @@ static int filesystem_close(gpointer object)
 	return 0;
 }
 
-static ssize_t filesystem_read(gpointer object, void *buf, size_t count, guint8 *hi)
+static ssize_t filesystem_read(gpointer object, void *buf, size_t count,
+								guint8 *hi)
 {
 	ssize_t ret;
 
@@ -271,7 +272,7 @@ static int capability_exec(const char **argv, int *output, int *err)
 }
 
 static gpointer capability_open(const char *name, int oflag, mode_t mode,
-		gpointer context, size_t *size, int *err)
+				gpointer context, size_t *size, int *err)
 {
 	struct capability_object *object = NULL;
 	gchar *buf;
@@ -435,7 +436,7 @@ failed:
 }
 
 static gpointer folder_open(const char *name, int oflag, mode_t mode,
-			gpointer context, size_t *size, int *err)
+				gpointer context, size_t *size, int *err)
 {
 	GString *object;
 
@@ -485,7 +486,7 @@ ssize_t string_read(gpointer object, void *buf, size_t count, guint8 *hi)
 }
 
 static ssize_t capability_read(gpointer object, void *buf, size_t count,
-							guint8 *hi)
+								guint8 *hi)
 {
 	struct capability_object *obj = object;
 

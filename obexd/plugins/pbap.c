@@ -223,7 +223,7 @@ static void set_folder(struct pbap_session *pbap, const gchar *new_folder)
 }
 
 static void phonebook_size_result(const gchar *buffer, size_t bufsize,
-			gint vcards, gint missed, gpointer user_data)
+				gint vcards, gint missed, gpointer user_data)
 {
 	struct pbap_session *pbap = user_data;
 
@@ -232,15 +232,16 @@ static void phonebook_size_result(const gchar *buffer, size_t bufsize,
 	obex_object_set_io_flags(pbap, G_IO_IN, 0);
 }
 
-static void query_result(const gchar *buffer, size_t bufsize,
-		gint vcards, gint missed, gpointer user_data)
+static void query_result(const gchar *buffer, size_t bufsize, gint vcards,
+					gint missed, gpointer user_data)
 {
 	struct pbap_session *pbap = user_data;
 
 	if (!pbap->buffer)
 		pbap->buffer = g_string_new_len(buffer, bufsize);
 	else
-		pbap->buffer = g_string_append_len(pbap->buffer, buffer, bufsize);
+		pbap->buffer = g_string_append_len(pbap->buffer, buffer,
+								bufsize);
 
 	obex_object_set_io_flags(pbap, G_IO_IN, 0);
 }
@@ -336,7 +337,7 @@ static gpointer pbap_connect(struct obex_session *os, int *err)
 }
 
 static int pbap_get(struct obex_session *os, obex_object_t *obj,
-			gboolean *stream, gpointer user_data)
+					gboolean *stream, gpointer user_data)
 {
 	struct pbap_session *pbap = user_data;
 	const gchar *type = obex_get_type(os);
@@ -401,7 +402,7 @@ failed:
 
 
 static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
-		gpointer user_data)
+							gpointer user_data)
 {
 	struct pbap_session *pbap = user_data;
 	const gchar *name;
@@ -432,8 +433,7 @@ static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
 	return 0;
 }
 
-static void pbap_disconnect(struct obex_session *os,
-		gpointer user_data)
+static void pbap_disconnect(struct obex_session *os, gpointer user_data)
 {
 	struct pbap_session *pbap = user_data;
 
@@ -449,8 +449,7 @@ static void pbap_disconnect(struct obex_session *os,
 	g_free(pbap);
 }
 
-static gint pbap_chkput(struct obex_session *os,
-		gpointer user_data)
+static gint pbap_chkput(struct obex_session *os, gpointer user_data)
 {
 	/* Rejects all PUTs */
 	return -EINVAL;
@@ -471,7 +470,7 @@ static struct obex_service_driver pbap = {
 };
 
 static gpointer vobject_pull_open(const char *name, int oflag, mode_t mode,
-		gpointer context, size_t *size, int *err)
+				gpointer context, size_t *size, int *err)
 {
 	struct pbap_session *pbap = context;
 	phonebook_cb cb;
@@ -504,7 +503,7 @@ fail:
 }
 
 static gpointer vobject_list_open(const char *name, int oflag, mode_t mode,
-		gpointer context, size_t *size, int *err)
+				gpointer context, size_t *size, int *err)
 {
 	struct pbap_session *pbap = context;
 	phonebook_cb cb;
@@ -542,7 +541,7 @@ fail:
 
 
 static gpointer vobject_vcard_open(const char *name, int oflag, mode_t mode,
-		gpointer context, size_t *size, int *err)
+				gpointer context, size_t *size, int *err)
 {
 	struct pbap_session *pbap = context;
 	gpointer id;
@@ -576,7 +575,8 @@ fail:
 	return NULL;
 }
 
-static ssize_t vobject_read(gpointer object, void *buf, size_t count, guint8 *hi)
+static ssize_t vobject_read(gpointer object, void *buf, size_t count,
+								guint8 *hi)
 {
 	struct pbap_session *pbap = object;
 	ssize_t ret = -EAGAIN;

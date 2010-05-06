@@ -64,14 +64,14 @@ static gboolean dummy_result(gpointer data)
 	return FALSE;
 }
 
-int phonebook_set_folder(const gchar *current_folder,
-		const gchar *new_folder, guint8 flags)
+int phonebook_set_folder(const gchar *current_folder, const gchar *new_folder,
+								guint8 flags)
 {
 	return 0;
 }
 
 int phonebook_pull(const gchar *name, const struct apparam_field *params,
-		phonebook_cb cb, gpointer user_data)
+					phonebook_cb cb, gpointer user_data)
 {
 	struct dummy_data *dummy;
 
@@ -86,13 +86,13 @@ int phonebook_pull(const gchar *name, const struct apparam_field *params,
 }
 
 int phonebook_get_entry(const gchar *name, const struct apparam_field *params,
-		phonebook_cb cb, gpointer user_data)
+					phonebook_cb cb, gpointer user_data)
 {
 	return -1;
 }
 
 int phonebook_list(const gchar *name, const struct apparam_field *params,
-		phonebook_cb cb, gpointer user_data)
+					phonebook_cb cb, gpointer user_data)
 {
 	return -1;
 }
