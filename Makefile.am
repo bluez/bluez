@@ -307,9 +307,9 @@ audio_libgstbluetooth_la_SOURCES = audio/gstbluetooth.c audio/gstpragma.h \
 				audio/rtp.h audio/ipc.h audio/ipc.c
 audio_libgstbluetooth_la_LDFLAGS = -module -avoid-version
 audio_libgstbluetooth_la_LIBADD = sbc/libsbc.la lib/libbluetooth.la \
-				@GSTREAMER_LIBS@ -lgstaudio-0.10 -lgstrtp-0.10
+				@DBUS_LIBS@ @GSTREAMER_LIBS@ -lgstaudio-0.10 -lgstrtp-0.10
 audio_libgstbluetooth_la_CFLAGS = -fvisibility=hidden -fno-strict-aliasing \
-						$(AM_CFLAGS) @GSTREAMER_CFLAGS@
+						$(AM_CFLAGS) @DBUS_CFLAGS@ @GSTREAMER_CFLAGS@
 endif
 endif
 

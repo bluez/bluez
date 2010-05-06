@@ -44,7 +44,8 @@ GST_DEBUG_CATEGORY_STATIC(gst_a2dp_sink_debug);
 enum {
 	PROP_0,
 	PROP_DEVICE,
-	PROP_AUTOCONNECT
+	PROP_AUTOCONNECT,
+	PROP_TRANSPORT
 };
 
 GST_BOILERPLATE(GstA2dpSink, gst_a2dp_sink, GstBin, GST_TYPE_BIN);
@@ -175,6 +176,16 @@ static void gst_a2dp_sink_set_property(GObject *object, guint prop_id,
 		self->device = g_value_dup_string(value);
 		break;
 
+	case PROP_TRANSPORT:
+		if (self->sink != NULL)
+			gst_avdtp_sink_set_transport(self->sink,
+				g_value_get_string(value));
+
+		if (self->transport != NULL)
+			g_free(self->transport);
+		self->transport = g_value_dup_string(value);
+		break;
+
 	case PROP_AUTOCONNECT:
 		self->autoconnect = g_value_get_boolean(value);
 
@@ -193,7 +204,7 @@ static void gst_a2dp_sink_get_property(GObject *object, guint prop_id,
 					GValue *value, GParamSpec *pspec)
 {
 	GstA2dpSink *self = GST_A2DP_SINK(object);
-	gchar *device;
+	gchar *device, *transport;
 
 	switch (prop_id) {
 	case PROP_DEVICE:
@@ -209,6 +220,13 @@ static void gst_a2dp_sink_get_property(GObject *object, guint prop_id,
 				&self->autoconnect, NULL);
 
 		g_value_set_boolean(value, self->autoconnect);
+		break;
+	case PROP_TRANSPORT:
+		if (self->sink != NULL) {
+			transport = gst_avdtp_sink_get_transport(self->sink);
+			if (transport != NULL)
+				g_value_take_string(value, transport);
+		}
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -284,6 +302,10 @@ static GstStateChangeReturn gst_a2dp_sink_change_state(GstElement *element,
 		if (self->device != NULL)
 			gst_avdtp_sink_set_device(self->sink,
 					self->device);
+
+		if (self->transport != NULL)
+			gst_avdtp_sink_set_transport(self->sink,
+					self->transport);
 
 		g_object_set(G_OBJECT(self->sink), "auto-connect",
 					self->autoconnect, NULL);
@@ -365,6 +387,11 @@ static void gst_a2dp_sink_class_init(GstA2dpSinkClass *klass)
 			"Automatically attempt to connect to device",
 			DEFAULT_AUTOCONNECT, G_PARAM_READWRITE));
 
+	g_object_class_install_property(object_class, PROP_TRANSPORT,
+			g_param_spec_string("transport", "Transport",
+			"Use configured transport",
+			NULL, G_PARAM_READWRITE));
+
 	GST_DEBUG_CATEGORY_INIT(gst_a2dp_sink_debug, "a2dpsink", 0,
 				"A2DP sink element");
 }
@@ -437,6 +464,7 @@ static gboolean gst_a2dp_sink_init_avdtp_sink(GstA2dpSink *self)
 	self->sink = GST_AVDTP_SINK(sink);
 	self->sink_is_in_bin = TRUE;
 	g_object_set(G_OBJECT(self->sink), "device", self->device, NULL);
+	g_object_set(G_OBJECT(self->sink), "transport", self->transport, NULL);
 
 	gst_element_set_state(sink, GST_STATE_PAUSED);
 
@@ -674,6 +702,7 @@ static void gst_a2dp_sink_init(GstA2dpSink *self,
 	self->fakesink = NULL;
 	self->rtp = NULL;
 	self->device = NULL;
+	self->transport = NULL;
 	self->autoconnect = DEFAULT_AUTOCONNECT;
 	self->capsfilter = NULL;
 	self->newseg_event = NULL;
