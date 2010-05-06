@@ -733,14 +733,14 @@ typedef struct {
 typedef struct {
 	uint8_t		name[248];
 } __attribute__ ((packed)) change_local_name_cp;
-#define CHANGE_LOCAL_NAME_CP_SIZE 248 
+#define CHANGE_LOCAL_NAME_CP_SIZE 248
 
 #define OCF_READ_LOCAL_NAME		0x0014
 typedef struct {
 	uint8_t		status;
 	uint8_t		name[248];
 } __attribute__ ((packed)) read_local_name_rp;
-#define READ_LOCAL_NAME_RP_SIZE 249 
+#define READ_LOCAL_NAME_RP_SIZE 249
 
 #define OCF_READ_CONN_ACCEPT_TIMEOUT	0x0015
 typedef struct {
@@ -828,7 +828,7 @@ typedef struct {
 	uint8_t		status;
 	uint8_t		dev_class[3];
 } __attribute__ ((packed)) read_class_of_dev_rp;
-#define READ_CLASS_OF_DEV_RP_SIZE 4 
+#define READ_CLASS_OF_DEV_RP_SIZE 4
 
 #define OCF_WRITE_CLASS_OF_DEV		0x0024
 typedef struct {

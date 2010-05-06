@@ -54,7 +54,7 @@ typedef struct {
 	unsigned int val;
 } hci_map;
 
-static char *hci_bit2str(hci_map *m, unsigned int val) 
+static char *hci_bit2str(hci_map *m, unsigned int val)
 {
 	char *str = malloc(120);
 	char *ptr = str;
@@ -95,7 +95,7 @@ static int hci_str2bit(hci_map *map, char *str, unsigned int *val)
 	return set;
 }
 
-static char *hci_uint2str(hci_map *m, unsigned int val) 
+static char *hci_uint2str(hci_map *m, unsigned int val)
 {
 	char *str = malloc(50);
 	char *ptr = str;
@@ -209,7 +209,7 @@ char *hci_dflagstostr(uint32_t flags)
 		if (hci_test_bit(m->val, &flags))
 			ptr += sprintf(ptr, "%s ", m->str);
 		m++;
-	} 	
+	}
 	return str;
 }
 
@@ -959,7 +959,7 @@ int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info 
 			errno = ENODEV;
 			return -1;
 		}
-	}	
+	}
 
 	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (dd < 0)
@@ -1009,7 +1009,7 @@ done:
 	return ret;
 }
 
-/* Open HCI device. 
+/* Open HCI device.
  * Returns device descriptor (dd). */
 int hci_open_dev(int dev_id)
 {

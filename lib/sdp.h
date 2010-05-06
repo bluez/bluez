@@ -297,7 +297,7 @@ extern "C" {
 #define SDP_ATTR_HID_BOOT_DEVICE		0x020e
 
 /*
- * These identifiers are based on the SDP spec stating that 
+ * These identifiers are based on the SDP spec stating that
  * "base attribute id of the primary (universal) language must be 0x0100"
  *
  * Other languages should have their own offset; e.g.:
