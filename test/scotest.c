@@ -230,7 +230,7 @@ static void recv_mode(int sk)
 				if (r < 0)
 					syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
-				return;	
+				return;
 			}
 			total += r;
 		}

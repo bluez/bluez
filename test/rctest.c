@@ -436,7 +436,7 @@ static void recv_mode(int sk)
 				if (r < 0)
 					syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
-				return;	
+				return;
 			}
 
 			if (timestamp) {
@@ -459,15 +459,15 @@ static void recv_mode(int sk)
 				seq = sq;
 			}
 			seq++;
-			
+
 			/* Check length */
 			l = btohs(*(uint16_t *) (buf + 4));
 			if (r != l) {
 				syslog(LOG_INFO, "size missmatch: %d -> %d", r, l);
 				continue;
 			}
-			
-			/* Verify data */	
+
+			/* Verify data */
 			for (i = 6; i < r; i++) {
 				if (buf[i] != 0x7f)
 					syslog(LOG_INFO, "data missmatch: byte %d 0x%2.2x", i, buf[i]);
@@ -511,7 +511,7 @@ static void do_send(int sk)
 		*(uint32_t *) buf = htobl(seq);
 		*(uint16_t *) (buf + 4) = htobs(data_size);
 		seq++;
-		
+
 		if (send(sk, buf, data_size, 0) <= 0) {
 			syslog(LOG_ERR, "Send failed: %s (%d)",
 							strerror(errno), errno);

@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
 
 	sprintf(key, "00:00:00:00:00:00");
-	if (textfile_del(filename, key) < 0) 
+	if (textfile_del(filename, key) < 0)
 		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
 
 	memset(value, 0, sizeof(value));
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 	if (textfile_put(filename, key, value) < 0)
 		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
 
-	if (textfile_del(filename, key) < 0) 
+	if (textfile_del(filename, key) < 0)
 		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
 
 	str = textfile_get(filename, key);

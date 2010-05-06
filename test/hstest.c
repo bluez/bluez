@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
 					case PLAY:
 						rlen = read(fd, buf, rlen);
 
-						wlen = 0; 
+						wlen = 0;
 						p = buf;
 						while (rlen > sco_mtu) {
 						        wlen += write(sd, p, sco_mtu);
