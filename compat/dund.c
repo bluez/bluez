@@ -247,7 +247,7 @@ static int create_connection(char *dst, bdaddr_t *bdaddr, int mrouter)
 	sa.rc_bdaddr  = src_addr;
 
 	if (bind(sk, (struct sockaddr *) &sa, sizeof(sa)))
-		syslog(LOG_ERR, "Bind failed. %s(%d)", 
+		syslog(LOG_ERR, "Bind failed. %s(%d)",
 			strerror(errno), errno);
 
 	sa.rc_channel = ch;
@@ -337,7 +337,7 @@ static int do_connect(void)
 		for (i = 0; i < n; i++) {
 			char dst[40];
 			ba2str(&ii[i].bdaddr, dst);
-			
+
 			r = create_connection(dst, &ii[i].bdaddr, 0);
 			if (r < 0) {
 				terminate = 1;
@@ -405,7 +405,7 @@ static struct option main_lopts[] = {
 
 static const char *main_sopts = "hsc:k:Kr:i:lnp::DQ::AESMP:C::P:Xam:u";
 
-static const char *main_help = 
+static const char *main_help =
 	"Bluetooth LAP (LAN Access over PPP) daemon version %s\n"
 	"Usage:\n"
 	"\tdund <options> [pppd options]\n"

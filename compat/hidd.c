@@ -573,7 +573,7 @@ static void do_search(int ctl, bdaddr_t *bdaddr, uint8_t subclass, int fakehid, 
 
 	for (i = 0; i < num_rsp; i++) {
 		memcpy(class, (info+i)->dev_class, 3);
-		if ((class[0] == 0x00 && class[2] == 0x00 && 
+		if ((class[0] == 0x00 && class[2] == 0x00 &&
 				(class[1] == 0x40 || class[1] == 0x1f)) ||
 				(class[0] == 0x10 && class[1] == 0x02 && class[2] == 0x40)) {
 			bacpy(&dst, &(info+i)->bdaddr);

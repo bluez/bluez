@@ -343,7 +343,7 @@ static int create_connection(char *dst, bdaddr_t *bdaddr)
 	bacpy(&l2a.l2_bdaddr, bdaddr);
 	l2a.l2_psm = htobs(BNEP_PSM);
 
-	if (!connect(sk, (struct sockaddr *) &l2a, sizeof(l2a)) && 
+	if (!connect(sk, (struct sockaddr *) &l2a, sizeof(l2a)) &&
 			!bnep_create_connection(sk, role, service, netdev)) {
 
 		syslog(LOG_INFO, "%s connected", netdev);
@@ -430,7 +430,7 @@ static int do_connect(void)
 			ba2str(&ii[i].bdaddr, dst);
 
 			if (use_sdp) {
-				syslog(LOG_INFO, "Searching for %s on %s", 
+				syslog(LOG_INFO, "Searching for %s on %s",
 						bnep_svc2str(service), dst);
 
 				if (bnep_sdp_search(&src_addr, &ii[i].bdaddr, service) <= 0)
@@ -488,7 +488,7 @@ static int write_pidfile(void)
 							strerror(errno), errno);
 				return -1;
 			}
-			
+
 			/* We're already running; send a SIGHUP (we presume that they
 			 * are calling ifup for a reason, so they probably want to
 			 * rescan) and then exit cleanly and let things go on in the
@@ -571,7 +571,7 @@ static struct option main_lopts[] = {
 
 static const char *main_sopts = "hsc:k:Kr:d:e:i:lnp::DQ::AESMC::P:u:o:z";
 
-static const char *main_help = 
+static const char *main_help =
 	"Bluetooth PAN daemon version %s\n"
 	"Usage:\n"
 	"\tpand <options>\n"

@@ -158,7 +158,7 @@ static int dun_exec(char *tty, char *prog, char **args)
 {
 	int pid = fork();
 	int fd;
-	
+
 	switch (pid) {
 	case -1:
 		return -1;
@@ -244,7 +244,7 @@ int dun_cleanup(void)
 static int show_conn(struct rfcomm_dev_info *di, unsigned long arg)
 {
 	pid_t pid;
-	
+
 	if (di->state == BT_CONNECTED &&
 		(di->flags & (1<<RFCOMM_REUSE_DLC)) &&
 		(di->flags & (1<<RFCOMM_TTY_ATTACHED)) &&

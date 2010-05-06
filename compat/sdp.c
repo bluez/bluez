@@ -368,7 +368,7 @@ int get_alternate_device_info(const bdaddr_t *src, const bdaddr_t *dst, uint16_t
 	return -EIO;
 }
 
-void bnep_sdp_unregister(void) 
+void bnep_sdp_unregister(void)
 {
 	if (record && sdp_record_unregister(session, record))
 		syslog(LOG_ERR, "Service record unregistration failed.");
@@ -424,7 +424,7 @@ int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 
 	/* Supported protocols */
 	{
-		uint16_t ptype[4] = { 
+		uint16_t ptype[4] = {
 			0x0800,  /* IPv4 */
 			0x0806,  /* ARP */
 		};
@@ -483,7 +483,7 @@ int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 		profile[0].version = 0x0100;
 		pfseq = sdp_list_append(NULL, &profile[0]);
 		sdp_set_profile_descs(record, pfseq);
-		
+
 		sdp_set_info_attr(record, "Group Network Service", name, desc);
 		break;
 
@@ -558,7 +558,7 @@ int bnep_sdp_search(bdaddr_t *src, bdaddr_t *dst, uint16_t service)
 static unsigned char async_uuid[] = {	0x03, 0x50, 0x27, 0x8F, 0x3D, 0xCA, 0x4E, 0x62,
 					0x83, 0x1D, 0xA4, 0x11, 0x65, 0xFF, 0x90, 0x6C };
 
-void dun_sdp_unregister(void) 
+void dun_sdp_unregister(void)
 {
 	if (record && sdp_record_unregister(session, record))
 		syslog(LOG_ERR, "Service record unregistration failed.");
@@ -575,7 +575,7 @@ int dun_sdp_register(bdaddr_t *device, uint8_t channel, int type)
 
 	session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, 0);
 	if (!session) {
-		syslog(LOG_ERR, "Failed to connect to the local SDP server. %s(%d)", 
+		syslog(LOG_ERR, "Failed to connect to the local SDP server. %s(%d)",
 				strerror(errno), errno);
 		return -1;
 	}
@@ -670,7 +670,7 @@ int dun_sdp_search(bdaddr_t *src, bdaddr_t *dst, int *channel, int type)
 
 	s = sdp_connect(src, dst, 0);
 	if (!s) {
-		syslog(LOG_ERR, "Failed to connect to the SDP server. %s(%d)", 
+		syslog(LOG_ERR, "Failed to connect to the SDP server. %s(%d)",
 				strerror(errno), errno);
 		return -1;
 	}

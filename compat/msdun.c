@@ -58,7 +58,7 @@ static int w4_str(int fd, char *str)
 	char buf[40];
 	unsigned len = 0;
 	int r;
-	
+
 	while (1) {
 		r = read(fd, buf + len, sizeof(buf) - len - 1);
 		if (r < 0) {
@@ -92,7 +92,7 @@ static int ms_server(int fd)
 		write_n(fd, "CLIENTSERVER", 12);
 	case MS_PPP:
 		return MS_SUCCESS;
-	default:	
+	default:
 		return MS_FAILED;
 	}
 }
@@ -123,7 +123,7 @@ int ms_dun(int fd, int server, int timeo)
 
 			alarm(0);
 			signal(SIGALRM, osig);
-		
+
 			switch (r) {
 			case MS_SUCCESS:
 			case MS_PPP:
@@ -142,7 +142,7 @@ int ms_dun(int fd, int server, int timeo)
 		}
 
 		alarm(timeout);
-		
+
 		if (server)
 			r = ms_server(fd);
 		else
