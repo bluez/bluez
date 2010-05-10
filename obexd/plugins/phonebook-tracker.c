@@ -496,7 +496,7 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	contact->suffix = g_strdup(reply[6]);
 	contact->email = g_strdup(reply[7]);
 
-	phonebook_add_contact(vcards, contact, params->filter);
+	phonebook_add_contact(vcards, contact, params->filter, params->format);
 	phonebook_contact_free(contact);
 
 	return;

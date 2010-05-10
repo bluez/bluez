@@ -66,6 +66,9 @@
 #define FILTER_SORT_STRING (1 << 27)
 #define FILTER_X_IRMC_CALL_DATETIME (1 << 28)
 
+#define FORMAT_VCARD21 0x00
+#define FORMAT_VCARD30 0x01
+
 /* according to RFC 2425, the output string may need folding */
 static void vcard_printf(GString *str, const char *fmt, ...)
 {
@@ -120,10 +123,14 @@ static void add_slash(char *dest, const char *src, int len_max, int len)
 	return;
 }
 
-static void vcard_printf_begin(GString *vcards)
+static void vcard_printf_begin(GString *vcards, uint8_t format)
 {
 	vcard_printf(vcards, "BEGIN:VCARD");
-	vcard_printf(vcards, "VERSION:3.0");
+
+	if (format == FORMAT_VCARD30)
+		vcard_printf(vcards, "VERSION:3.0");
+	else if (format == FORMAT_VCARD21)
+		vcard_printf(vcards, "VERSION:2.1");
 }
 
 static void vcard_printf_name(GString *vcards,
@@ -198,7 +205,7 @@ static void vcard_printf_end(GString *vcards)
 }
 
 void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
-								uint64_t filter)
+					uint64_t filter, uint8_t format)
 {
 	/* There's really nothing to do */
 	if ((contact->tel == NULL || contact->tel[0] == '\0') &&
@@ -206,9 +213,12 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 					contact->fullname[0] == '\0'))
 		return;
 
-	filter |= (FILTER_VERSION | FILTER_FN | FILTER_N | FILTER_TEL);
+	if (format == FORMAT_VCARD30)
+		filter |= (FILTER_VERSION | FILTER_FN | FILTER_N | FILTER_TEL);
+	else if (format == FORMAT_VCARD21)
+		filter |= (FILTER_VERSION | FILTER_N | FILTER_TEL);
 
-	vcard_printf_begin(vcards);
+	vcard_printf_begin(vcards, format);
 
 	if (filter & FILTER_FN) {
 		if (contact->fullname == NULL || contact->fullname[0] == '\0')

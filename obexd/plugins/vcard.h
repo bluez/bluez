@@ -40,6 +40,6 @@ struct phonebook_contact {
 };
 
 void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
-							uint64_t filter);
+					uint64_t filter, uint8_t format);
 
 void phonebook_contact_free(struct phonebook_contact *contact);
