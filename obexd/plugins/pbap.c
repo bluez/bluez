@@ -459,6 +459,9 @@ static struct apparam_field *parse_aparam(const guint8 *buffer, guint32 hlen)
 			param->searchattrib = hdr->val[0];
 			break;
 		case SEARCHVALUE_TAG:
+			if (hdr->len == 0)
+				goto failed;
+
 			param->searchval = g_try_malloc0(hdr->len + 1);
 			if (param->searchval)
 				memcpy(param->searchval, hdr->val, hdr->len);
