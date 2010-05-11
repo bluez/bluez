@@ -282,6 +282,8 @@ int phonebook_init(void)
 {
 	GError *gerr = NULL;
 
+	g_type_init();
+
 	ebook = e_book_new_default_addressbook(&gerr);
 	if (!ebook) {
 		error("Can't create user's default address book: %s",
