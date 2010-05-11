@@ -140,6 +140,7 @@ struct cache_entry {
 struct pbap_session {
 	struct apparam_field *params;
 	gchar *folder;
+	uint32_t find_handle;
 	GString *buffer;
 	struct cache cache;
 };
@@ -414,6 +415,22 @@ done:
 	}
 }
 
+static void cache_entry_done(void *user_data)
+{
+	struct pbap_session *pbap = user_data;
+	const char *id;
+	int ret;
+
+	pbap->cache.valid = TRUE;
+
+	id = cache_find(&pbap->cache, pbap->find_handle);
+
+	ret = phonebook_get_entry(pbap->folder, id, pbap->params, query_result,
+								pbap);
+	if (ret < 0)
+		obex_object_set_io_flags(pbap, G_IO_ERR, ret);
+}
+
 static struct apparam_field *parse_aparam(const guint8 *buffer, guint32 hlen)
 {
 	struct apparam_field *param;
@@ -497,6 +514,7 @@ static gpointer pbap_connect(struct obex_session *os, int *err)
 
 	pbap = g_new0(struct pbap_session, 1);
 	pbap->folder = g_strdup("/");
+	pbap->find_handle = PHONEBOOK_INVALID_HANDLE;
 
 	if (err)
 		*err = 0;
@@ -720,6 +738,13 @@ static gpointer vobject_vcard_open(const char *name, int oflag, mode_t mode,
 		goto fail;
 	}
 
+	if (pbap->cache.valid == FALSE) {
+		pbap->find_handle = handle;
+		ret = phonebook_create_cache(pbap->folder, cache_entry_notify,
+						cache_entry_done, pbap);
+		goto done;
+	}
+
 	id = cache_find(&pbap->cache, handle);
 	if (!id) {
 		ret = -ENOENT;
@@ -728,6 +753,8 @@ static gpointer vobject_vcard_open(const char *name, int oflag, mode_t mode,
 
 	ret = phonebook_get_entry(pbap->folder, id, pbap->params, query_result,
 									pbap);
+
+done:
 	if (ret < 0)
 		goto fail;
 
