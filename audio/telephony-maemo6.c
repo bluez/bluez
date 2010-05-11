@@ -134,7 +134,7 @@ struct csd_call {
 static struct {
 	char *operator_name;
 	uint8_t status;
-	uint32_t signals_bar;
+	int32_t signals_bar;
 } net = {
 	.operator_name = NULL,
 	.status = NETWORK_REG_STATUS_UNKOWN,
@@ -1226,11 +1226,13 @@ static void handle_registration_changed(DBusMessage *msg)
 	update_registration_status(status);
 }
 
-static void update_signal_strength(uint32_t signals_bar)
+static void update_signal_strength(int32_t signals_bar)
 {
 	int signal;
 
-	if (signals_bar > 100) {
+	if (signals_bar < 0)
+		signals_bar = 0;
+	else if (signals_bar > 100) {
 		debug("signals_bar greater than expected: %u", signals_bar);
 		signals_bar = 100;
 	}
@@ -1250,7 +1252,7 @@ static void update_signal_strength(uint32_t signals_bar)
 
 static void handle_signal_strength_changed(DBusMessage *msg)
 {
-	uint8_t signals_bar, rssi_in_dbm;
+	int32_t signals_bar, rssi_in_dbm;
 
 	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_INT32, &signals_bar,
