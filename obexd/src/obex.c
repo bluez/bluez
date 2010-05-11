@@ -331,6 +331,9 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 	if (os->size == OBJECT_SIZE_DELETE)
 		os->size = OBJECT_SIZE_UNKNOWN;
 
+	if (os->pending > 0)
+		goto write;
+
 	size = OBEX_ObjectReadStream(obex, obj, &buffer);
 	if (size < 0) {
 		error("Error on OBEX stream");
@@ -342,31 +345,33 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 		return -EIO;
 	}
 
-	if (os->object == NULL && size > 0) {
-		os->buf = g_realloc(os->buf, os->offset + size);
-		memcpy(os->buf + os->offset, buffer, size);
-		os->offset += size;
-
-		debug("Stored %u bytes into temporary buffer", size);
-
+	os->buf = g_realloc(os->buf, os->pending + size);
+	memcpy(os->buf + os->pending, buffer, size);
+	os->pending += size;
+	if (os->object == NULL) {
+		debug("Stored %u bytes into temporary buffer", os->pending);
 		return 0;
 	}
 
-	while (len < size) {
+write:
+	while (os->pending > 0) {
 		gint w;
 
-		w = os->driver->write(os->object, buffer + len, size - len);
+		w = os->driver->write(os->object, os->buf + len,
+					os->pending);
 		if (w < 0) {
 			if (w == -EINTR)
 				continue;
-			else
+			else {
+				memmove(os->buf, os->buf + len, os->pending);
 				return w;
+			}
 		}
 
 		len += w;
+		os->offset += w;
+		os->pending -= w;
 	}
-
-	os->offset += len;
 
 	return 0;
 }
@@ -670,7 +675,6 @@ fail:
 
 gint obex_put_stream_start(struct obex_session *os, const gchar *filename)
 {
-	gint len;
 	int err;
 
 	os->object = os->driver->open(filename, O_WRONLY | O_CREAT | O_TRUNC,
@@ -689,24 +693,10 @@ gint obex_put_stream_start(struct obex_session *os, const gchar *filename)
 		return 0;
 	}
 
-	len = 0;
-	while (len < os->offset) {
-		gint w;
+	if (os->pending == 0)
+		return 0;
 
-		w = os->driver->write(os->object, os->buf + len,
-							os->offset - len);
-		if (w < 0) {
-			error("write(%s): %s (%d)", filename, strerror(-w), -w);
-			if (w == -EINTR)
-				continue;
-			else
-				return w;
-		}
-
-		len += w;
-	}
-
-	return 0;
+	return obex_read_stream(os, os->obex, NULL);
 }
 
 static gboolean check_put(obex_t *obex, obex_object_t *obj)

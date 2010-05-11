@@ -48,6 +48,7 @@ struct obex_session {
 	const gchar	*path;
 	time_t		time;
 	guint8		*buf;
+	gint32		pending;
 	gint32		offset;
 	gint32		size;
 	gpointer	object;
