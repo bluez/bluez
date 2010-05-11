@@ -1475,7 +1475,7 @@ static void parse_call_list(DBusMessageIter *iter)
 
 static void update_operator_name(const char *name)
 {
-	if (name == NULL || strlen(name) == 0)
+	if (name == NULL)
 		return;
 
 	g_free(net.operator_name);
