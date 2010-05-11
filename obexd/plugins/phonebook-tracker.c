@@ -529,6 +529,8 @@ static void add_to_cache(char **reply, int num_fields, void *user_data)
 done:
 	if (num_fields == 0)
 		cache->ready_cb(cache->user_data);
+
+	g_free(cache);
 }
 
 int phonebook_init(void)
