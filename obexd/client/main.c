@@ -268,7 +268,6 @@ static void pull_session_callback(struct session_data *session,
 	}
 
 	session_set_owner(session, data->sender, owner_exit);
-	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
 
 	session_pull(session, "text/x-vcard", "/tmp/x.vcf",
 						pull_complete_callback, data);
