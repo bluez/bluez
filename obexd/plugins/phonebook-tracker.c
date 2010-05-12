@@ -519,8 +519,13 @@ static void add_to_cache(char **reply, int num_fields, void *user_data)
 	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[1], reply[2],
 						reply[3], reply[4], reply[5]);
 
-	cache->entry_cb(reply[0], PHONEBOOK_INVALID_HANDLE, formatted, "",
+	/* The owner vCard must have the 0 handle */
+	if (strcmp(reply[0], TRACKER_DEFAULT_CONTACT_ME) == 0)
+		cache->entry_cb(reply[0], 0, formatted, "",
 						reply[6], cache->user_data);
+	else
+		cache->entry_cb(reply[0], PHONEBOOK_INVALID_HANDLE, formatted,
+					"", reply[6], cache->user_data);
 
 	g_free(formatted);
 
