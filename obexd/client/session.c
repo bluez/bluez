@@ -1278,7 +1278,7 @@ int session_pull(struct session_data *session,
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	transfer = transfer_register(session, NULL, NULL, type, NULL);
+	transfer = transfer_register(session, NULL, filename, type, NULL);
 	if (transfer == NULL) {
 		return -EIO;
 	}
