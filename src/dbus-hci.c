@@ -895,10 +895,14 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	 * in progress */
 	if (!adapter_is_pairable(adapter) &&
 				!device_is_bonding(device, NULL)) {
-		if (*auth < 0x02 && device_get_auth(device) < 0x02) {
+		if (device_get_auth(device) < 0x02) {
 			debug("Allowing no bonding in non-bondable mode");
 			/* No input, no output */
 			*cap = 0x03;
+			/* Kernel defaults to general bonding and so
+			 * overwrite for this special case. Otherwise
+			 * non-pairable test cases will fail. */
+			*auth = 0x00;
 			goto done;
 		}
 		return -EPERM;
@@ -917,10 +921,13 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		}
 
 		/* No agent available, and no bonding case */
-		if (*auth == 0x00) {
+		if (*auth == 0x00 || *auth == 0x04) {
 			debug("Allowing no bonding without agent");
 			/* No input, no output */
 			*cap = 0x03;
+			/* If kernel defaults to general bonding, set it
+			 * back to no bonding */
+			*auth = 0x00;
 			goto done;
 		}
 
@@ -928,7 +935,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		return -1;
 	}
 
-	if (*auth == 0x00) {
+	if (*auth == 0x00 || *auth == 0x04) {
 		/* If remote requests dedicated bonding follow that lead */
 		if (device_get_auth(device) == 0x02 ||
 				device_get_auth(device) == 0x03) {
@@ -942,6 +949,13 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 			else
 				*auth = 0x03;
 		}
+
+		/* If remote indicates no bonding then follow that. This
+		 * is important since the kernel might give general bonding
+		 * as default. */
+		if (device_get_auth(device) == 0x00 ||
+					device_get_auth(device) == 0x01)
+			*auth = 0x00;
 
 		/* If remote requires MITM then also require it */
 		if (device_get_auth(device) != 0xff &&
