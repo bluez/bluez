@@ -406,17 +406,20 @@ int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
 	if (transfer->xfer != NULL)
 		return -EALREADY;
 
-	if (transfer->type == NULL) {
+	if (g_strcmp0(transfer->type, "x-bt/vcard-listing") == 0 ||
+			g_strcmp0(transfer->type, "x-obex/folder-listing") == 0)
+		cb = get_xfer_listing_progress;
+	else {
 		int fd = open(transfer->name ? : transfer->filename,
 				O_WRONLY | O_CREAT, 0600);
+
 		if (transfer->fd < 0) {
 			error("open(): %s(%d)", strerror(errno), errno);
 			return -errno;
 		}
 		transfer->fd = fd;
 		cb = get_xfer_progress;
-	} else
-		cb = get_xfer_listing_progress;
+	}
 
 	if (transfer->params != NULL)
 		transfer->xfer = gw_obex_get_async_with_apparam(session->obex,
