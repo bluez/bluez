@@ -48,6 +48,7 @@ struct send_data {
 	DBusMessage *message;
 	gchar *sender;
 	gchar *agent;
+	char *filename;
 	GPtrArray *files;
 };
 
@@ -250,6 +251,7 @@ done:
 	shutdown_session(session);
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
+	g_free(data->filename);
 	g_free(data->sender);
 	g_free(data);
 }
@@ -269,7 +271,7 @@ static void pull_session_callback(struct session_data *session,
 
 	session_set_owner(session, data->sender, owner_exit);
 
-	session_pull(session, "text/x-vcard", "/tmp/x.vcf",
+	session_pull(session, "text/x-vcard", data->filename,
 						pull_complete_callback, data);
 
 	return;
@@ -277,6 +279,7 @@ static void pull_session_callback(struct session_data *session,
 done:
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
+	g_free(data->filename);
 	g_free(data->sender);
 	g_free(data);
 }
@@ -288,6 +291,7 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 	struct session_data *session;
 	struct send_data *data;
 	const char *source = NULL, *dest = NULL, *target = NULL;
+	const char *name = NULL;
 	uint8_t channel = 0;
 
 	dbus_message_iter_init(message, &iter);
@@ -298,6 +302,14 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
+	dbus_message_iter_get_basic(&iter, &name);
+
 	data = g_try_malloc0(sizeof(*data));
 	if (data == NULL)
 		return g_dbus_create_error(message,
@@ -306,6 +318,7 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 	data->connection = dbus_connection_ref(connection);
 	data->message = dbus_message_ref(message);
 	data->sender = g_strdup(dbus_message_get_sender(message));
+	data->filename = g_strdup(name);
 
 	session = session_create(source, dest, "OPP", channel,
 					pull_session_callback, data);
@@ -317,6 +330,7 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
 	g_free(data->sender);
+	g_free(data->filename);
 	g_free(data);
 
 	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
