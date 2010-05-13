@@ -41,12 +41,12 @@ static GSList *drivers = NULL;
 static GSList *watches = NULL;
 
 struct io_watch {
-	gpointer object;
+	void *object;
 	obex_object_io_func func;
-	gpointer user_data;
+	void *user_data;
 };
 
-void obex_object_set_io_flags(gpointer object, int flags, int err)
+void obex_object_set_io_flags(void *object, int flags, int err)
 {
 	GSList *l;
 
@@ -67,7 +67,7 @@ void obex_object_set_io_flags(gpointer object, int flags, int err)
 	}
 }
 
-static struct io_watch *find_io_watch(gpointer object)
+static struct io_watch *find_io_watch(void *object)
 {
 	GSList *l;
 
@@ -81,7 +81,7 @@ static struct io_watch *find_io_watch(gpointer object)
 	return NULL;
 }
 
-static void reset_io_watch(gpointer object)
+static void reset_io_watch(void *object)
 {
 	struct io_watch *watch;
 
@@ -93,8 +93,8 @@ static void reset_io_watch(gpointer object)
 	g_free(watch);
 }
 
-static int set_io_watch(gpointer object, obex_object_io_func func,
-				gpointer user_data)
+static int set_io_watch(void *object, obex_object_io_func func,
+				void *user_data)
 {
 	struct io_watch *watch;
 
@@ -117,8 +117,9 @@ static int set_io_watch(gpointer object, obex_object_io_func func,
 	return 0;
 }
 
-struct obex_mime_type_driver *obex_mime_type_driver_find(const guint8 *target,
-		const char *mimetype, const guint8 *who, guint who_size)
+struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
+				const char *mimetype, const uint8_t *who,
+				unsigned int who_size)
 {
 	GSList *l;
 

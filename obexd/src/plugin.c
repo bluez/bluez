@@ -84,7 +84,7 @@ static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
 gboolean plugin_init(void)
 {
 	GDir *dir;
-	const gchar *file;
+	const char *file;
 	unsigned int i;
 
 	if (strlen(PLUGINDIR) == 0)
@@ -104,7 +104,7 @@ gboolean plugin_init(void)
 	while ((file = g_dir_read_name(dir)) != NULL) {
 		struct obex_plugin_desc *desc;
 		void *handle;
-		gchar *filename;
+		char *filename;
 
 		if (g_str_has_prefix(file, "lib") == TRUE ||
 				g_str_has_suffix(file, ".so") == FALSE)

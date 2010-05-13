@@ -46,21 +46,21 @@
 #include "btio.h"
 #include "service.h"
 
-#define OPENOBEX_MANAGER_PATH		"/"
-#define OPENOBEX_MANAGER_INTERFACE	OPENOBEX_SERVICE ".Manager"
-#define ERROR_INTERFACE			OPENOBEX_SERVICE ".Error"
-#define TRANSFER_INTERFACE		OPENOBEX_SERVICE ".Transfer"
-#define SESSION_INTERFACE		OPENOBEX_SERVICE ".Session"
+#define OPENOBEX_MANAGER_PATH "/"
+#define OPENOBEX_MANAGER_INTERFACE OPENOBEX_SERVICE ".Manager"
+#define ERROR_INTERFACE OPENOBEX_SERVICE ".Error"
+#define TRANSFER_INTERFACE OPENOBEX_SERVICE ".Transfer"
+#define SESSION_INTERFACE OPENOBEX_SERVICE ".Session"
 
 #define TIMEOUT 60*1000 /* Timeout for user response (miliseconds) */
 
 struct agent {
-	gchar		*bus_name;
-	gchar		*path;
-	gboolean	auth_pending;
-	gchar		*new_name;
-	gchar		*new_folder;
-	guint		watch_id;
+	char *bus_name;
+	char *path;
+	gboolean auth_pending;
+	char *new_name;
+	char *new_folder;
+	unsigned int watch_id;
 };
 
 static struct agent *agent = NULL;
@@ -68,9 +68,9 @@ static struct agent *agent = NULL;
 struct pending_request {
 	DBusPendingCall *call;
 	struct server *server;
-	gchar *adapter_path;
+	char *adapter_path;
 	char address[18];
-	guint watch;
+	unsigned int watch;
 	GIOChannel *io;
 };
 
@@ -82,7 +82,7 @@ struct adapter_any {
 static DBusConnection *connection = NULL;
 static DBusConnection *system_conn = NULL;
 static struct adapter_any *any = NULL;
-static guint listener_id = 0;
+static unsigned int listener_id = 0;
 
 static void agent_free(struct agent *agent)
 {
@@ -209,7 +209,7 @@ static void agent_disconnected(DBusConnection *conn, void *user_data)
 static DBusMessage *register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const gchar *path, *sender;
+	const char *path, *sender;
 
 	if (agent)
 		return agent_already_exists(msg);
@@ -235,7 +235,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 static DBusMessage *unregister_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const gchar *path, *sender;
+	const char *path, *sender;
 
 	if (!agent)
 		return agent_does_not_exist(msg);
@@ -280,7 +280,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	gchar *uuid;
+	char *uuid;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -313,7 +313,7 @@ static DBusMessage *transfer_cancel(DBusConnection *connection,
 				DBusMessage *msg, void *user_data)
 {
 	struct obex_session *os = user_data;
-	const gchar *sender;
+	const char *sender;
 
 	if (!os)
 		return invalid_args(msg);
@@ -356,7 +356,7 @@ static GDBusMethodTable session_methods[] = {
 	{ }
 };
 
-static void add_record_reply(DBusPendingCall *call, gpointer user_data)
+static void add_record_reply(DBusPendingCall *call, void *user_data)
 {
 	struct server *server = user_data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
@@ -386,12 +386,12 @@ static void add_record_reply(DBusPendingCall *call, gpointer user_data)
 	dbus_message_unref(reply);
 }
 
-static gint add_record(const gchar *path,
-		const gchar *xml, struct server *server)
+static int add_record(const char *path,
+		const char *xml, struct server *server)
 {
 	DBusMessage *msg;
 	DBusPendingCall *call;
-	gint ret = 0;
+	int ret = 0;
 
 	msg = dbus_message_new_method_call("org.bluez", path,
 					"org.bluez.Service", "AddRecord");
@@ -416,8 +416,8 @@ failed:
 void register_record(struct server *server)
 {
 	struct obex_service_driver *driver;
-	gchar *xml;
-	gint ret;
+	char *xml;
+	int ret;
 
 	if (system_conn == NULL)
 		return;
@@ -435,11 +435,11 @@ void register_record(struct server *server)
 	g_free(xml);
 }
 
-static void find_adapter_any_reply(DBusPendingCall *call, gpointer user_data)
+static void find_adapter_any_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	const char *path;
-	gchar *xml;
+	char *xml;
 	GSList *l;
 	DBusError derr;
 
@@ -477,7 +477,7 @@ done:
 
 static DBusPendingCall *find_adapter(const char *pattern,
 				DBusPendingCallNotifyFunction function,
-				gpointer user_data)
+				void *user_data)
 {
 	DBusMessage *msg;
 	DBusPendingCall *call;
@@ -586,7 +586,7 @@ void manager_cleanup(void)
 
 void manager_emit_transfer_started(struct obex_session *os)
 {
-	gchar *path = g_strdup_printf("/transfer%u", os->cid);
+	char *path = g_strdup_printf("/transfer%u", os->cid);
 
 	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
 			OPENOBEX_MANAGER_INTERFACE, "TransferStarted",
@@ -596,9 +596,9 @@ void manager_emit_transfer_started(struct obex_session *os)
 	g_free(path);
 }
 
-static void emit_transfer_completed(guint32 id, gboolean success)
+static void emit_transfer_completed(uint32_t id, gboolean success)
 {
-	gchar *path = g_strdup_printf("/transfer%u", id);
+	char *path = g_strdup_printf("/transfer%u", id);
 
 	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
 			OPENOBEX_MANAGER_INTERFACE, "TransferCompleted",
@@ -609,9 +609,10 @@ static void emit_transfer_completed(guint32 id, gboolean success)
 	g_free(path);
 }
 
-static void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered)
+static void emit_transfer_progress(uint32_t id, uint32_t total,
+							uint32_t transfered)
 {
-	gchar *path = g_strdup_printf("/transfer%u", id);
+	char *path = g_strdup_printf("/transfer%u", id);
 
 	g_dbus_emit_signal(connection, path,
 			TRANSFER_INTERFACE, "Progress",
@@ -624,7 +625,7 @@ static void emit_transfer_progress(guint32 id, guint32 total, guint32 transfered
 
 void manager_register_transfer(struct obex_session *os)
 {
-	gchar *path = g_strdup_printf("/transfer%u", os->cid);
+	char *path = g_strdup_printf("/transfer%u", os->cid);
 
 	if (!g_dbus_register_interface(connection, path,
 				TRANSFER_INTERFACE,
@@ -640,7 +641,7 @@ void manager_register_transfer(struct obex_session *os)
 
 void manager_unregister_transfer(struct obex_session *os)
 {
-	gchar *path = g_strdup_printf("/transfer%u", os->cid);
+	char *path = g_strdup_printf("/transfer%u", os->cid);
 
 	/* Got an error during a transfer. */
 	if (os->object)
@@ -662,10 +663,10 @@ static void agent_cancel()
 	g_dbus_send_message(connection, msg);
 }
 
-static void agent_reply(DBusPendingCall *call, gpointer user_data)
+static void agent_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	const gchar *name;
+	const char *name;
 	DBusError derr;
 	gboolean *got_reply = user_data;
 
@@ -694,7 +695,7 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 				DBUS_TYPE_STRING, &name,
 				DBUS_TYPE_INVALID)) {
 		/* Splits folder and name */
-		const gchar *slash = strrchr(name, '/');
+		const char *slash = strrchr(name, '/');
 		debug("Agent replied with %s", name);
 		if (!slash) {
 			agent->new_name = g_strdup(name);
@@ -708,28 +709,27 @@ static void agent_reply(DBusPendingCall *call, gpointer user_data)
 	dbus_message_unref(reply);
 }
 
-static gboolean auth_error(GIOChannel *io, GIOCondition cond,
-			gpointer user_data)
+static gboolean auth_error(GIOChannel *io, GIOCondition cond, void *user_data)
 {
 	agent->auth_pending = FALSE;
 
 	return FALSE;
 }
 
-int manager_request_authorization(struct obex_session *os, gint32 time,
-		gchar **new_folder, gchar **new_name)
+int manager_request_authorization(struct obex_session *os, int32_t time,
+					char **new_folder, char **new_name)
 {
 	DBusMessage *msg;
 	DBusPendingCall *call;
 	GIOChannel *io;
 	struct sockaddr_rc addr;
 	socklen_t addrlen;
-	gchar address[18];
-	const gchar *bda = address;
-	const gchar *filename = (os->name ? os->name : "");
-	const gchar *type = (os->type ? os->type : "");
-	gchar *path;
-	guint watch, fd;
+	char address[18];
+	const char *bda = address;
+	const char *filename = os->name ? os->name : "";
+	const char *type = os->type ? os->type : "";
+	char *path;
+	unsigned int watch, fd;
 	gboolean got_reply;
 
 	if (!agent)
@@ -831,7 +831,7 @@ static void pending_request_free(struct pending_request *pending)
 	g_free(pending);
 }
 
-static void service_reply(DBusPendingCall *call, gpointer user_data)
+static void service_reply(DBusPendingCall *call, void *user_data)
 {
 	struct pending_request *pending = user_data;
 	GIOChannel *io = pending->io;
@@ -868,7 +868,7 @@ done:
 }
 
 static gboolean service_error(GIOChannel *io, GIOCondition cond,
-			gpointer user_data)
+			void *user_data)
 {
 	struct pending_request *pending = user_data;
 
@@ -881,7 +881,7 @@ static gboolean service_error(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static void find_adapter_reply(DBusPendingCall *call, gpointer user_data)
+static void find_adapter_reply(DBusPendingCall *call, void *user_data)
 {
 	struct pending_request *pending = user_data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
@@ -944,7 +944,7 @@ failed:
 	pending_request_free(pending);
 }
 
-gint request_service_authorization(struct server *server, GIOChannel *io,
+int request_service_authorization(struct server *server, GIOChannel *io,
 					const char *address)
 {
 	struct pending_request *pending;
@@ -980,7 +980,7 @@ gint request_service_authorization(struct server *server, GIOChannel *io,
 
 void manager_register_session(struct obex_session *os)
 {
-	gchar *path = g_strdup_printf("/session%u", os->cid);
+	char *path = g_strdup_printf("/session%u", os->cid);
 
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
@@ -1001,7 +1001,7 @@ void manager_register_session(struct obex_session *os)
 
 void manager_unregister_session(struct obex_session *os)
 {
-	gchar *path = g_strdup_printf("/session%u", os->cid);
+	char *path = g_strdup_printf("/session%u", os->cid);
 
 	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
 			OPENOBEX_MANAGER_INTERFACE, "SessionRemoved",

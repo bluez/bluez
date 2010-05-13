@@ -66,9 +66,9 @@ static int signal_pipe[2];
 #define TTY_RX_MTU 65535
 #define TTY_TX_MTU 65535
 
-int tty_init(int services, const gchar *root_path,
-		const gchar *capability, gboolean symlinks,
-		const gchar *devnode)
+int tty_init(int services, const char *root_path,
+		const char *capability, gboolean symlinks,
+		const char *devnode)
 {
 	struct server *server;
 	struct termios options;
@@ -158,10 +158,10 @@ static void sig_debug(int sig)
 static gboolean option_detach = TRUE;
 static gboolean option_debug = FALSE;
 
-static gchar *option_root = NULL;
-static gchar *option_root_setup = NULL;
-static gchar *option_capability = NULL;
-static gchar *option_devnode = NULL;
+static char *option_root = NULL;
+static char *option_root_setup = NULL;
+static char *option_capability = NULL;
+static char *option_devnode = NULL;
 
 static gboolean option_autoaccept = FALSE;
 static gboolean option_opp = FALSE;
@@ -202,7 +202,7 @@ static GOptionEntry options[] = {
 	{ NULL },
 };
 
-const gchar *obex_option_root_folder(void)
+const char *obex_option_root_folder(void)
 {
 	return option_root;
 }
@@ -286,7 +286,7 @@ static gboolean is_dir(const char *dir) {
 
 static gboolean root_folder_setup(char *root, char *root_setup)
 {
-	gint status;
+	int status;
 	char *argv[3] = { root_setup, root, NULL };
 
 	if (is_dir(root))

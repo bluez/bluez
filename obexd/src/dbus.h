@@ -32,7 +32,7 @@ void manager_unregister_transfer(struct obex_session *os);
 void manager_emit_transfer_started(struct obex_session *os);
 void manager_emit_transfer_progress(struct obex_session *os);
 void manager_emit_transfer_completed(struct obex_session *os);
-int manager_request_authorization(struct obex_session *os, gint32 time,
-		gchar **new_folder, gchar **new_name);
+int manager_request_authorization(struct obex_session *os, int32_t time,
+		char **new_folder, char **new_name);
 
 DBusConnection *obex_dbus_get_connection(void);

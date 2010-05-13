@@ -48,18 +48,18 @@
 struct contacts_query {
 	const struct apparam_field *params;
 	phonebook_cb cb;
-	gpointer user_data;
+	void *user_data;
 };
 
 struct cache_query {
 	phonebook_entry_cb entry_cb;
 	phonebook_cache_ready_cb ready_cb;
-	gpointer user_data;
+	void *user_data;
 };
 
 static EBook *ebook = NULL;
 
-static gchar *attribute_mask[] = {
+static char *attribute_mask[] = {
 /* 0 */		"VERSION",
 		"FN",
 		"N",
@@ -93,11 +93,12 @@ static gchar *attribute_mask[] = {
 
 };
 
-static gchar *evcard_to_string(EVCard *evcard, guint format, guint64 filter)
+static char *evcard_to_string(EVCard *evcard, unsigned int format,
+							uint64_t filter)
 {
 	EVCard *evcard2;
-	gchar *vcard;
-	guint i;
+	char *vcard;
+	unsigned int i;
 
 	if (!filter)
 		return e_vcard_to_string(evcard, format);
@@ -106,7 +107,7 @@ static gchar *evcard_to_string(EVCard *evcard, guint format, guint64 filter)
 	 * Mandatory attributes for vCard 2.1 are VERSION ,N and TEL.
 	 * Mandatory attributes for vCard 3.0 are VERSION, N, FN and TEL
 	 */
-	filter = (format == EVC_FORMAT_VCARD_30 ? filter | 0x85: filter | 0x87);
+	filter = format == EVC_FORMAT_VCARD_30 ? filter | 0x85: filter | 0x87;
 
 	evcard2 = e_vcard_new();
 	for (i = 0; i < 29; i++) {
@@ -129,11 +130,11 @@ static gchar *evcard_to_string(EVCard *evcard, guint format, guint64 filter)
 }
 
 static void ebookpull_cb(EBook *book, EBookStatus estatus, GList *contacts,
-							gpointer user_data)
+							void *user_data)
 {
 	struct contacts_query *data = user_data;
 	GString *string = g_string_new("");
-	guint count = 0, maxcount;
+	unsigned int count = 0, maxcount;
 	GList *l;
 
 	if (estatus != E_BOOK_ERROR_OK) {
@@ -159,7 +160,7 @@ static void ebookpull_cb(EBook *book, EBookStatus estatus, GList *contacts,
 	for (; l && count < maxcount; l = g_list_next(l), count++) {
 		EContact *contact = E_CONTACT(l->data);
 		EVCard *evcard = E_VCARD(contact);
-		gchar *vcard;
+		char *vcard;
 
 		vcard = evcard_to_string(evcard, data->params->format,
 						data->params->filter);
@@ -176,11 +177,11 @@ done:
 }
 
 static void ebook_entry_cb(EBook *book, EBookStatus estatus,
-			EContact *contact, gpointer user_data)
+			EContact *contact, void *user_data)
 {
 	struct contacts_query *data = user_data;
 	EVCard *evcard;
-	gchar *vcard;
+	char *vcard;
 	size_t len;
 
 	if (estatus != E_BOOK_ERROR_OK) {
@@ -203,7 +204,7 @@ static void ebook_entry_cb(EBook *book, EBookStatus estatus,
 	g_free(data);
 }
 
-static gchar *evcard_name_attribute_to_string(EVCard *evcard)
+static char *evcard_name_attribute_to_string(EVCard *evcard)
 {
 	EVCardAttribute *attrib;
 	GList *l;
@@ -214,7 +215,7 @@ static gchar *evcard_name_attribute_to_string(EVCard *evcard)
 		return NULL;
 
 	for (l = e_vcard_attribute_get_values(attrib); l; l = l->next) {
-		const gchar *value = l->data;
+		const char *value = l->data;
 
 		if (!strlen(value))
 			continue;
@@ -234,7 +235,7 @@ static gchar *evcard_name_attribute_to_string(EVCard *evcard)
 }
 
 static void cache_cb(EBook *book, EBookStatus estatus, GList *contacts,
-							gpointer user_data)
+							void *user_data)
 {
 	struct cache_query *data = user_data;
 	GList *l;
@@ -248,7 +249,7 @@ static void cache_cb(EBook *book, EBookStatus estatus, GList *contacts,
 		EContact *contact = E_CONTACT(l->data);
 		EVCard *evcard = E_VCARD(contact);
 		EVCardAttribute *attrib;
-		gchar *uid, *tel, *name;
+		char *uid, *tel, *name;
 
 		name = evcard_name_attribute_to_string(evcard);
 		if (!name)
@@ -307,11 +308,11 @@ void phonebook_exit(void)
 		g_object_unref(ebook);
 }
 
-gchar *phonebook_set_folder(const gchar *current_folder,
-		const gchar *new_folder, guint8 flags, int *err)
+char *phonebook_set_folder(const char *current_folder,
+		const char *new_folder, uint8_t flags, int *err)
 {
 	gboolean root, child;
-	gchar *fullname = NULL, *tmp1, *tmp2, *base;
+	char *fullname = NULL, *tmp1, *tmp2, *base;
 	int ret = 0, len;
 
 	root = (g_strcmp0("/", current_folder) == 0);
@@ -391,8 +392,8 @@ done:
 	return fullname;
 }
 
-gint phonebook_pull(const gchar *name, const struct apparam_field *params,
-					phonebook_cb cb, gpointer user_data)
+int phonebook_pull(const char *name, const struct apparam_field *params,
+					phonebook_cb cb, void *user_data)
 {
 	struct contacts_query *data;
 	EBookQuery *query;
@@ -411,9 +412,9 @@ gint phonebook_pull(const gchar *name, const struct apparam_field *params,
 	return 0;
 }
 
-int phonebook_get_entry(const gchar *folder, const gchar *id,
+int phonebook_get_entry(const char *folder, const char *id,
 					const struct apparam_field *params,
-					phonebook_cb cb, gpointer user_data)
+					phonebook_cb cb, void *user_data)
 {
 	struct contacts_query *data;
 
@@ -430,8 +431,8 @@ int phonebook_get_entry(const gchar *folder, const gchar *id,
 	return 0;
 }
 
-int phonebook_create_cache(const gchar *name, phonebook_entry_cb entry_cb,
-		phonebook_cache_ready_cb ready_cb, gpointer user_data)
+int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
+			phonebook_cache_ready_cb ready_cb, void *user_data)
 {
 	struct cache_query *data;
 	EBookQuery *query;
@@ -448,5 +449,5 @@ int phonebook_create_cache(const gchar *name, phonebook_entry_cb entry_cb,
 
 	e_book_query_unref(query);
 
-	return (ret == FALSE ? 0 : -EBADR);
+	return ret == FALSE ? 0 : -EBADR;
 }

@@ -26,9 +26,9 @@
 #include <config.h>
 #endif
 
-gint bluetooth_init(guint service, const gchar *folder, gboolean secure,
+int bluetooth_init(unsigned int service, const char *folder, gboolean secure,
 				gboolean auto_accept, gboolean symlinks,
-				const gchar *capability);
+				const char *capability);
 void bluetooth_exit(void);
 void bluetooth_start(void);
 void bluetooth_stop(void);

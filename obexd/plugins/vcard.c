@@ -254,5 +254,4 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_free(contact->prefix);
 	g_free(contact->suffix);
 	g_free(contact);
-
 }

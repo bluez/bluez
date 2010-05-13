@@ -23,49 +23,49 @@
  */
 
 struct server {
-	gboolean	auto_accept;
-	gchar		*folder;
-	gboolean	symlinks;
-	gchar		*capability;
-	guint32		handle;
-	gchar		*devnode;
-	gboolean	secure;
-	GIOChannel	*io;
-	guint		watch;
-	guint16		tx_mtu;
-	guint16		rx_mtu;
-	GSList		*drivers;
+	gboolean auto_accept;
+	char *folder;
+	gboolean symlinks;
+	char *capability;
+	uint32_t handle;
+	char *devnode;
+	gboolean secure;
+	GIOChannel *io;
+	unsigned int watch;
+	uint16_t tx_mtu;
+	uint16_t rx_mtu;
+	GSList *drivers;
 };
 
 struct obex_session {
-	GIOChannel	*io;
-	guint32		cid;
-	guint16		tx_mtu;
-	guint16		rx_mtu;
-	guint8		cmd;
-	gchar		*name;
-	gchar		*type;
-	const gchar	*path;
-	time_t		time;
-	guint8		*buf;
-	gint32		pending;
-	gint32		offset;
-	gint32		size;
-	gpointer	object;
-	gboolean	aborted;
+	GIOChannel *io;
+	uint32_t cid;
+	uint16_t tx_mtu;
+	uint16_t rx_mtu;
+	uint8_t cmd;
+	char *name;
+	char *type;
+	const char *path;
+	time_t time;
+	uint8_t *buf;
+	int32_t pending;
+	int32_t offset;
+	int32_t size;
+	void *object;
+	gboolean aborted;
 	struct obex_service_driver *service;
-	gpointer	service_data;
+	void *service_data;
 	struct server *server;
-	gboolean	checked;
-	obex_t		*obex;
-	obex_object_t	*obj;
+	gboolean checked;
+	obex_t *obex;
+	obex_object_t *obj;
 	struct obex_mime_type_driver *driver;
-	gboolean	finished;
+	gboolean finished;
 };
 
-gint obex_session_start(GIOChannel *io, struct server *server);
+int obex_session_start(GIOChannel *io, struct server *server);
 void server_free(struct server *server);
 
 void register_record(struct server *server);
-gint request_service_authorization(struct server *server, GIOChannel *io,
-					const char *address);
+int request_service_authorization(struct server *server, GIOChannel *io,
+							const char *address);

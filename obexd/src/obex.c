@@ -55,20 +55,20 @@
 #define DEFAULT_TX_MTU 32767
 
 /* Connection ID */
-static guint32 cid = 0x0000;
+static uint32_t cid = 0x0000;
 
 static GSList *sessions = NULL;
 
 typedef struct {
-	guint8  version;
-	guint8  flags;
-	guint16 mtu;
+	uint8_t  version;
+	uint8_t  flags;
+	uint16_t mtu;
 } __attribute__ ((packed)) obex_connect_hdr_t;
 
 static void os_set_response(obex_object_t *obj, int err)
 {
-	guint8 rsp;
-	guint8 lastrsp;
+	uint8_t rsp;
+	uint8_t lastrsp;
 
 	switch (err) {
 	case 0:
@@ -163,12 +163,12 @@ static void obex_session_free(struct obex_session *os)
 }
 
 /* From Imendio's GnomeVFS OBEX module (om-utils.c) */
-static time_t parse_iso8610(const gchar *val, int size)
+static time_t parse_iso8610(const char *val, int size)
 {
 	time_t time, tz_offset = 0;
 	struct tm tm;
-	gchar *date;
-	gchar tz;
+	char *date;
+	char tz;
 	int nr;
 
 	memset(&tm, 0, sizeof(tm));
@@ -215,11 +215,11 @@ static void cmd_connect(struct obex_session *os,
 	obex_connect_hdr_t *nonhdr;
 	obex_headerdata_t hd;
 	uint8_t *buffer;
-	guint hlen, newsize;
-	guint16 mtu;
-	guint8 hi;
-	const guint8 *target = NULL, *who = NULL;
-	guint target_size = 0, who_size = 0;
+	unsigned int hlen, newsize;
+	uint16_t mtu;
+	uint8_t hi;
+	const uint8_t *target = NULL, *who = NULL;
+	unsigned int target_size = 0, who_size = 0;
 	int err;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &buffer) != sizeof(*nonhdr)) {
@@ -287,12 +287,12 @@ static void cmd_connect(struct obex_session *os,
 	os_set_response(obj, err);
 }
 
-static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)
+static gboolean chk_cid(obex_t *obex, obex_object_t *obj, uint32_t cid)
 {
 	struct obex_session *os;
 	obex_headerdata_t hd;
-	guint hlen;
-	guint8 hi;
+	unsigned int hlen;
+	uint8_t hi;
 	gboolean ret = FALSE;
 
 	os = OBEX_GetUserData(obex);
@@ -317,12 +317,12 @@ static gboolean chk_cid(obex_t *obex, obex_object_t *obj, guint32 cid)
 	return ret;
 }
 
-static gint obex_read_stream(struct obex_session *os, obex_t *obex,
+static int obex_read_stream(struct obex_session *os, obex_t *obex,
 						obex_object_t *obj)
 {
-	gint size;
-	gint32 len = 0;
-	const guint8 *buffer;
+	int size;
+	int32_t len = 0;
+	const uint8_t *buffer;
 
 	if (os->aborted)
 		return -EPERM;
@@ -355,7 +355,7 @@ static gint obex_read_stream(struct obex_session *os, obex_t *obex,
 
 write:
 	while (os->pending > 0) {
-		gint w;
+		int w;
 
 		w = os->driver->write(os->object, os->buf + len,
 					os->pending);
@@ -376,14 +376,14 @@ write:
 	return 0;
 }
 
-static gint obex_write_stream(struct obex_session *os,
+static int obex_write_stream(struct obex_session *os,
 			obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hd;
-	guint8 *ptr;
-	gint32 len;
-	guint flags;
-	guint8 hi;
+	uint8_t *ptr;
+	int32_t len;
+	unsigned int flags;
+	uint8_t hi;
 
 	debug("obex_write_stream: name=%s type=%s tx_mtu=%d file=%p",
 		os->name ? os->name : "", os->type ? os->type : "",
@@ -422,7 +422,7 @@ add_header:
 
 	switch (hi) {
 	case OBEX_HDR_BODY:
-		flags = (len ? OBEX_FL_STREAM_DATA : OBEX_FL_STREAM_DATAEND);
+		flags = len ? OBEX_FL_STREAM_DATA : OBEX_FL_STREAM_DATAEND;
 		break;
 	case OBEX_HDR_APPARAM:
 		flags =  0;
@@ -442,8 +442,8 @@ add_header:
 	return len;
 }
 
-static gboolean handle_async_io(gpointer object, int flags, int err,
-						gpointer user_data)
+static gboolean handle_async_io(void *object, int flags, int err,
+						void *user_data)
 {
 	struct obex_session *os = user_data;
 	int ret = 0;
@@ -484,8 +484,8 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hd;
 	gboolean stream;
-	guint hlen;
-	guint8 hi;
+	unsigned int hlen;
+	uint8_t hi;
 	int err;
 
 	if (!os->service) {
@@ -510,7 +510,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 			if (hlen == 0)
 				continue;
 
-			os->name = g_convert((const gchar *) hd.bs, hlen,
+			os->name = g_convert((const char *) hd.bs, hlen,
 					"UTF8", "UTF16BE", NULL, NULL, NULL);
 			debug("OBEX_HDR_NAME: %s", os->name);
 			break;
@@ -527,14 +527,14 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 			if (hd.bs[hlen - 1] != '\0')
 				break;
 
-			if (!g_utf8_validate((const gchar *) hd.bs, -1, NULL)) {
+			if (!g_utf8_validate((const char *) hd.bs, -1, NULL)) {
 				debug("Invalid type header: %s", hd.bs);
 				break;
 			}
 
 			/* FIXME: x-obex/folder-listing - type is mandatory */
 
-			os->type = g_strndup((const gchar *) hd.bs, hlen);
+			os->type = g_strndup((const char *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
 			os->driver = obex_mime_type_driver_find(
 						os->service->target, os->type,
@@ -597,9 +597,9 @@ static void cmd_setpath(struct obex_session *os,
 			obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hd;
-	guint32 hlen;
+	uint32_t hlen;
 	int err;
-	guint8 hi;
+	uint8_t hi;
 
 	if (!os->service) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
@@ -633,7 +633,7 @@ static void cmd_setpath(struct obex_session *os,
 			break;
 		}
 
-		os->name = g_convert((const gchar *) hd.bs, hlen,
+		os->name = g_convert((const char *) hd.bs, hlen,
 				"UTF8", "UTF16BE", NULL, NULL, NULL);
 
 		debug("Set path name: %s", os->name);
@@ -644,10 +644,10 @@ static void cmd_setpath(struct obex_session *os,
 	os_set_response(obj, err);
 }
 
-int obex_get_stream_start(struct obex_session *os, const gchar *filename)
+int obex_get_stream_start(struct obex_session *os, const char *filename)
 {
-	gint err;
-	gpointer object;
+	int err;
+	void *object;
 	size_t size;
 
 	object = os->driver->open(filename, O_RDONLY, 0, os->service_data,
@@ -673,7 +673,7 @@ fail:
 	return err;
 }
 
-gint obex_put_stream_start(struct obex_session *os, const gchar *filename)
+int obex_put_stream_start(struct obex_session *os, const char *filename)
 {
 	int err;
 
@@ -703,9 +703,9 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 {
 	struct obex_session *os;
 	obex_headerdata_t hd;
-	guint hlen;
-	guint8 hi;
-	gint ret;
+	unsigned int hlen;
+	uint8_t hi;
+	int ret;
 
 	os = OBEX_GetUserData(obex);
 
@@ -730,7 +730,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 			if (hlen == 0)
 				continue;
 
-			os->name = g_convert((const gchar *) hd.bs, hlen,
+			os->name = g_convert((const char *) hd.bs, hlen,
 					"UTF8", "UTF16BE", NULL, NULL, NULL);
 			debug("OBEX_HDR_NAME: %s", os->name);
 			break;
@@ -748,12 +748,12 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 			if (hd.bs[hlen - 1] != '\0')
 				break;
 
-			if (!g_utf8_validate((const gchar *) hd.bs, -1, NULL)) {
+			if (!g_utf8_validate((const char *) hd.bs, -1, NULL)) {
 				debug("Invalid type header: %s", hd.bs);
 				break;
 			}
 
-			os->type = g_strndup((const gchar *) hd.bs, hlen);
+			os->type = g_strndup((const char *) hd.bs, hlen);
 			debug("OBEX_HDR_TYPE: %s", os->type);
 			os->driver = obex_mime_type_driver_find(
 						os->service->target, os->type,
@@ -771,7 +771,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 			debug("OBEX_HDR_LENGTH: %d", os->size);
 			break;
 		case OBEX_HDR_TIME:
-			os->time = parse_iso8610((const gchar *) hd.bs, hlen);
+			os->time = parse_iso8610((const char *) hd.bs, hlen);
 			break;
 		}
 	}
@@ -859,8 +859,8 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		os_set_response(obj, err);
 }
 
-static void obex_event(obex_t *obex, obex_object_t *obj, gint mode,
-					gint evt, gint cmd, gint rsp)
+static void obex_event(obex_t *obex, obex_object_t *obj, int mode,
+					int evt, int cmd, int rsp)
 {
 	struct obex_session *os;
 
@@ -1010,7 +1010,7 @@ void server_free(struct server *server)
 	g_free(server);
 }
 
-static void obex_handle_destroy(gpointer user_data)
+static void obex_handle_destroy(void *user_data)
 {
 	struct obex_session *os;
 	obex_t *obex = user_data;
@@ -1025,11 +1025,11 @@ static void obex_handle_destroy(gpointer user_data)
 	OBEX_Cleanup(obex);
 }
 
-static gboolean tty_reinit(gpointer data)
+static gboolean tty_reinit(void *data)
 {
 	struct server *server = data;
 	GSList *l;
-	guint services = 0;
+	unsigned int services = 0;
 
 	for (l = server->drivers; l; l = l->next) {
 		struct obex_service_driver *driver = l->data;
@@ -1046,7 +1046,7 @@ static gboolean tty_reinit(gpointer data)
 }
 
 static gboolean obex_handle_input(GIOChannel *io,
-				GIOCondition cond, gpointer user_data)
+				GIOCondition cond, void *user_data)
 {
 	obex_t *obex = user_data;
 	struct obex_session *os = OBEX_GetUserData(obex);
@@ -1077,7 +1077,7 @@ failed:
 	return FALSE;
 }
 
-void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
+void obex_connect_cb(GIOChannel *io, GError *err, void *user_data)
 {
 	struct server *server = user_data;
 
@@ -1091,11 +1091,11 @@ void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		g_io_channel_shutdown(io, TRUE, NULL);
 }
 
-gint obex_session_start(GIOChannel *io, struct server *server)
+int obex_session_start(GIOChannel *io, struct server *server)
 {
 	struct obex_session *os;
 	obex_t *obex;
-	gint ret, fd;
+	int ret, fd;
 
 	os = g_new0(struct obex_session, 1);
 
@@ -1136,7 +1136,7 @@ gint obex_session_start(GIOChannel *io, struct server *server)
 	return 0;
 }
 
-gint obex_tty_session_stop(void)
+int obex_tty_session_stop(void)
 {
 	GSList *l;
 
@@ -1170,7 +1170,7 @@ const char *obex_get_root_folder(struct obex_session *os)
 	return os->server->folder;
 }
 
-guint16 obex_get_service(struct obex_session *os)
+uint16_t obex_get_service(struct obex_session *os)
 {
 	return os->service->service;
 }
@@ -1202,8 +1202,8 @@ int obex_remove(struct obex_session *os, const char *path)
 char *obex_get_id(struct obex_session *os)
 {
 	GError *gerr = NULL;
-	gchar address[18];
-	guint8 channel;
+	char address[18];
+	uint8_t channel;
 
 	bt_io_get(os->io, BT_IO_RFCOMM, &gerr,
 			BT_IO_OPT_DEST, address,
@@ -1216,11 +1216,11 @@ char *obex_get_id(struct obex_session *os)
 }
 
 ssize_t obex_aparam_read(struct obex_session *os,
-		obex_object_t *obj, const guint8 **buffer)
+		obex_object_t *obj, const uint8_t **buffer)
 {
 	obex_headerdata_t hd;
-	guint8 hi;
-	guint32 hlen;
+	uint8_t hi;
+	uint32_t hlen;
 
 	OBEX_ObjectReParseHeaders(os->obex, obj);
 
@@ -1235,7 +1235,7 @@ ssize_t obex_aparam_read(struct obex_session *os,
 }
 
 int obex_aparam_write(struct obex_session *os,
-		obex_object_t *obj, const guint8 *data, guint size)
+		obex_object_t *obj, const uint8_t *data, unsigned int size)
 {
 	obex_headerdata_t hd;
 

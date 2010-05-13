@@ -54,99 +54,100 @@
 #define LST_TYPE "x-obex/folder-listing"
 #define CAP_TYPE "x-obex/capability"
 
-#define FTP_CHANNEL    10
-#define FTP_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>        \
-<record>                                                                       \
-  <attribute id=\"0x0001\">                                                    \
-    <sequence>                                                                 \
-      <uuid value=\"0x1106\"/>                                                 \
-    </sequence>                                                                        \
-  </attribute>                                                                 \
-                                                                               \
-  <attribute id=\"0x0004\">                                                    \
-    <sequence>                                                                 \
-      <sequence>                                                               \
-        <uuid value=\"0x0100\"/>                                               \
-      </sequence>                                                              \
-      <sequence>                                                               \
-        <uuid value=\"0x0003\"/>                                               \
-        <uint8 value=\"%u\" name=\"channel\"/>                                 \
-      </sequence>                                                              \
-      <sequence>                                                               \
-        <uuid value=\"0x0008\"/>                                               \
-      </sequence>                                                              \
-    </sequence>                                                                        \
-  </attribute>                                                                 \
-                                                                               \
-  <attribute id=\"0x0009\">                                                    \
-    <sequence>                                                                 \
-      <sequence>                                                               \
-        <uuid value=\"0x1106\"/>                                               \
-        <uint16 value=\"0x0100\" name=\"version\"/>                            \
-      </sequence>                                                              \
-    </sequence>                                                                        \
-  </attribute>                                                                 \
-                                                                               \
-  <attribute id=\"0x0100\">                                                    \
-    <text value=\"%s\" name=\"name\"/>                                         \
-  </attribute>                                                                 \
+#define FTP_CHANNEL 10
+#define FTP_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>		\
+<record>								\
+  <attribute id=\"0x0001\">						\
+    <sequence>								\
+      <uuid value=\"0x1106\"/>						\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0004\">						\
+    <sequence>								\
+      <sequence>							\
+        <uuid value=\"0x0100\"/>					\
+      </sequence>							\
+      <sequence>							\
+        <uuid value=\"0x0003\"/>					\
+        <uint8 value=\"%u\" name=\"channel\"/>				\
+      </sequence>							\
+      <sequence>							\
+        <uuid value=\"0x0008\"/>					\
+      </sequence>							\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0009\">						\
+    <sequence>								\
+      <sequence>							\
+        <uuid value=\"0x1106\"/>					\
+        <uint16 value=\"0x0100\" name=\"version\"/>			\
+      </sequence>							\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0100\">						\
+    <text value=\"%s\" name=\"name\"/>					\
+  </attribute>								\
 </record>"
 
-#define PCSUITE_CHANNEL        24
+#define PCSUITE_CHANNEL 24
 #define PCSUITE_WHO_SIZE 8
-#define PCSUITE_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>                                    \
-<record>                                                                       \
-  <attribute id=\"0x0001\">                                                    \
-    <sequence>                                                                 \
-      <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/>                   \
-    </sequence>                                                                        \
-  </attribute>                                                                 \
-                                                                               \
-  <attribute id=\"0x0004\">                                                    \
-    <sequence>                                                                 \
-      <sequence>                                                               \
-        <uuid value=\"0x0100\"/>                                               \
-      </sequence>                                                              \
-      <sequence>                                                               \
-        <uuid value=\"0x0003\"/>                                               \
-        <uint8 value=\"%u\" name=\"channel\"/>                                 \
-      </sequence>                                                              \
-      <sequence>                                                               \
-        <uuid value=\"0x0008\"/>                                               \
-      </sequence>                                                              \
-    </sequence>                                                                        \
-  </attribute>                                                                 \
-                                                                               \
-  <attribute id=\"0x0005\">                                                    \
-    <sequence>                                                                 \
-      <uuid value=\"0x1002\"/>                                                 \
-    </sequence>                                                                        \
-  </attribute>                                                                 \
-                                                                               \
-  <attribute id=\"0x0009\">                                                    \
-    <sequence>                                                                 \
-      <sequence>                                                               \
-        <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/>                         \
-        <uint16 value=\"0x0100\" name=\"version\"/>                            \
-      </sequence>                                                              \
-    </sequence>                                                                        \
-  </attribute>                                                                 \
-                                                                               \
-  <attribute id=\"0x0100\">                                                    \
-    <text value=\"%s\" name=\"name\"/>                                         \
-  </attribute>                                                                 \
+
+#define PCSUITE_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+<record>								\
+  <attribute id=\"0x0001\">						\
+    <sequence>								\
+      <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/>		\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0004\">						\
+    <sequence>								\
+      <sequence>							\
+        <uuid value=\"0x0100\"/>					\
+      </sequence>							\
+      <sequence>							\
+        <uuid value=\"0x0003\"/>					\
+        <uint8 value=\"%u\" name=\"channel\"/>				\
+      </sequence>							\
+      <sequence>							\
+        <uuid value=\"0x0008\"/>					\
+      </sequence>							\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0005\">						\
+    <sequence>								\
+      <uuid value=\"0x1002\"/>						\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0009\">						\
+    <sequence>								\
+      <sequence>							\
+        <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/>		\
+        <uint16 value=\"0x0100\" name=\"version\"/>			\
+      </sequence>							\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0100\">						\
+    <text value=\"%s\" name=\"name\"/>					\
+  </attribute>								\
 </record>"
 
-static const guint8 FTP_TARGET[TARGET_SIZE] = {
-			0xF9, 0xEC, 0x7B, 0xC4,  0x95, 0x3C, 0x11, 0xD2,
-			0x98, 0x4E, 0x52, 0x54,  0x00, 0xDC, 0x9E, 0x09  };
+static const uint8_t FTP_TARGET[TARGET_SIZE] = {
+			0xF9, 0xEC, 0x7B, 0xC4, 0x95, 0x3C, 0x11, 0xD2,
+			0x98, 0x4E, 0x52, 0x54, 0x00, 0xDC, 0x9E, 0x09 };
 
-static const guint8 PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
+static const uint8_t PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
 			'P','C',' ','S','u','i','t','e' };
 
 struct ftp_session {
 	struct obex_session *os;
-	gchar *folder;
+	char *folder;
 };
 
 static void set_folder(struct ftp_session *ftp, const char *new_folder)
@@ -156,7 +157,7 @@ static void set_folder(struct ftp_session *ftp, const char *new_folder)
 	ftp->folder = new_folder ? g_strdup(new_folder) : NULL;
 }
 
-static gint get_by_type(struct ftp_session *ftp, const gchar *type)
+static int get_by_type(struct ftp_session *ftp, const char *type)
 {
 	struct obex_session *os = ftp->os;
 	const char *capability = obex_get_capability_path(os);
@@ -173,7 +174,7 @@ static gint get_by_type(struct ftp_session *ftp, const gchar *type)
 	return -ENOENT;
 }
 
-static gpointer ftp_connect(struct obex_session *os, int *err)
+static void *ftp_connect(struct obex_session *os, int *err)
 {
 	struct ftp_session *ftp;
 	const char *root_folder;
@@ -193,7 +194,7 @@ static gpointer ftp_connect(struct obex_session *os, int *err)
 }
 
 static int ftp_get(struct obex_session *os, obex_object_t *obj,
-			gboolean *stream, gpointer user_data)
+					gboolean *stream, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *type = obex_get_type(os);
@@ -212,9 +213,9 @@ static int ftp_get(struct obex_session *os, obex_object_t *obj,
 	return 0;
 }
 
-static gint ftp_delete(struct ftp_session *ftp, const char *name)
+static int ftp_delete(struct ftp_session *ftp, const char *name)
 {
-	gchar *path;
+	char *path;
 	int ret = 0;
 
 	if (!(ftp->folder && name))
@@ -230,11 +231,11 @@ static gint ftp_delete(struct ftp_session *ftp, const char *name)
 	return ret;
 }
 
-static gint ftp_chkput(struct obex_session *os, gpointer user_data)
+static int ftp_chkput(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
-	const gchar *name = obex_get_name(os);
-	gchar *path;
+	const char *name = obex_get_name(os);
+	char *path;
 	int ret;
 
 	if (name == NULL)
@@ -252,7 +253,7 @@ static gint ftp_chkput(struct obex_session *os, gpointer user_data)
 	return ret;
 }
 
-static int ftp_put(struct obex_session *os, gpointer user_data)
+static int ftp_put(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *name = obex_get_name(os);
@@ -271,12 +272,12 @@ static int ftp_put(struct obex_session *os, gpointer user_data)
 }
 
 static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
-		gpointer user_data)
+							void *user_data)
 {
 	struct ftp_session *ftp = user_data;
-	const gchar *root_folder, *name;
-	guint8 *nonhdr;
-	gchar *fullname;
+	const char *root_folder, *name;
+	uint8_t *nonhdr;
+	char *fullname;
 	struct stat dstat;
 	gboolean root;
 	int err;
@@ -373,7 +374,7 @@ done:
 	return err;
 }
 
-static void ftp_disconnect(struct obex_session *os, gpointer user_data)
+static void ftp_disconnect(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 

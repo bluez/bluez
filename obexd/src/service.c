@@ -37,14 +37,13 @@
 
 static GSList *drivers = NULL;
 
-struct obex_service_driver *obex_service_driver_find(GSList *list,
-					const guint8 *target, guint target_size,
-					const guint8 *who, guint who_size)
-
+struct obex_service_driver *obex_service_driver_find(GSList *drivers,
+			const uint8_t *target, unsigned int target_size,
+			const uint8_t *who, unsigned int who_size)
 {
 	GSList *l;
 
-	for (l = list; l; l = l->next) {
+	for (l = drivers; l; l = l->next) {
 		struct obex_service_driver *driver = l->data;
 
 		if (memcmp0(who, driver->who, who_size))
@@ -57,7 +56,7 @@ struct obex_service_driver *obex_service_driver_find(GSList *list,
 	return NULL;
 }
 
-GSList *obex_service_driver_list(guint16 services)
+GSList *obex_service_driver_list(uint16_t services)
 {
 	GSList *l;
 	GSList *list = NULL;

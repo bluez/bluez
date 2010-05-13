@@ -58,7 +58,7 @@
 #define FL_TYPE "<!DOCTYPE folder-listing SYSTEM \"obex-folder-listing.dtd\">" EOL_CHARS
 
 #define FL_TYPE_PCSUITE "<!DOCTYPE folder-listing SYSTEM \"obex-folder-listing.dtd\"" EOL_CHARS \
-                        "  [ <!ATTLIST folder mem-type CDATA #IMPLIED> ]>" EOL_CHARS
+			"  [ <!ATTLIST folder mem-type CDATA #IMPLIED> ]>" EOL_CHARS
 
 #define FL_BODY_BEGIN "<folder-listing version=\"1.0\">" EOL_CHARS
 
@@ -77,22 +77,22 @@
 			" modified=\"%s\" mem-type=\"DEV\"" \
 			" created=\"%s\"/>" EOL_CHARS
 
-static const guint8 FTP_TARGET[TARGET_SIZE] = {
+static const uint8_t FTP_TARGET[TARGET_SIZE] = {
 			0xF9, 0xEC, 0x7B, 0xC4,  0x95, 0x3C, 0x11, 0xD2,
 			0x98, 0x4E, 0x52, 0x54,  0x00, 0xDC, 0x9E, 0x09  };
 
 #define PCSUITE_WHO_SIZE 8
 
-static const guint8 PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
+static const uint8_t PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
 			'P','C',' ','S','u','i','t','e' };
 
 
-static gchar *file_stat_line(gchar *filename, struct stat *fstat,
-				struct stat *dstat, gboolean root,
-				gboolean pcsuite)
+static char *file_stat_line(char *filename, struct stat *fstat,
+					struct stat *dstat, gboolean root,
+					gboolean pcsuite)
 {
-	gchar perm[51], atime[18], ctime[18], mtime[18];
-	gchar *escaped, *ret = NULL;
+	char perm[51], atime[18], ctime[18], mtime[18];
+	char *escaped, *ret = NULL;
 
 	snprintf(perm, 50, "user-perm=\"%s%s%s\" group-perm=\"%s%s%s\" "
 			"other-perm=\"%s%s%s\"",
@@ -119,18 +119,18 @@ static gchar *file_stat_line(gchar *filename, struct stat *fstat,
 						mtime, ctime);
 		else
 			ret = g_strdup_printf(FL_FOLDER_ELEMENT, escaped, perm,
-						atime, mtime, ctime);
+							atime, mtime, ctime);
 	} else if (S_ISREG(fstat->st_mode))
 		ret = g_strdup_printf(FL_FILE_ELEMENT, escaped, fstat->st_size,
-					perm, atime, mtime, ctime);
+						perm, atime, mtime, ctime);
 
 	g_free(escaped);
 
 	return ret;
 }
 
-static gpointer filesystem_open(const char *name, int oflag, mode_t mode,
-		gpointer context, size_t *size, int *err)
+static void *filesystem_open(const char *name, int oflag, mode_t mode,
+					void *context, size_t *size, int *err)
 {
 	struct stat stats;
 	struct statvfs buf;
@@ -198,7 +198,7 @@ failed:
 	return NULL;
 }
 
-static int filesystem_close(gpointer object)
+static int filesystem_close(void *object)
 {
 	if (close(GPOINTER_TO_INT(object)) < 0)
 		return -errno;
@@ -206,8 +206,8 @@ static int filesystem_close(gpointer object)
 	return 0;
 }
 
-static ssize_t filesystem_read(gpointer object, void *buf, size_t count,
-								guint8 *hi)
+static ssize_t filesystem_read(void *object, void *buf, size_t count,
+								uint8_t *hi)
 {
 	ssize_t ret;
 
@@ -220,7 +220,7 @@ static ssize_t filesystem_read(gpointer object, void *buf, size_t count,
 	return ret;
 }
 
-static ssize_t filesystem_write(gpointer object, const void *buf, size_t count)
+static ssize_t filesystem_write(void *object, const void *buf, size_t count)
 {
 	ssize_t ret;
 
@@ -235,11 +235,11 @@ struct capability_object {
 	int pid;
 	int output;
 	int err;
-	guint watch;
+	unsigned int watch;
 	GString *buffer;
 };
 
-static void script_exited(GPid pid, gint status, gpointer data)
+static void script_exited(GPid pid, int status, void *data)
 {
 	struct capability_object *object = data;
 	char buf[128];
@@ -273,11 +273,11 @@ static int capability_exec(const char **argv, int *output, int *err)
 	return pid;
 }
 
-static gpointer capability_open(const char *name, int oflag, mode_t mode,
-				gpointer context, size_t *size, int *err)
+static void *capability_open(const char *name, int oflag, mode_t mode,
+					void *context, size_t *size, int *err)
 {
 	struct capability_object *object = NULL;
-	gchar *buf;
+	char *buf;
 	const char *argv[2];
 
 	if (oflag != O_RDONLY)
@@ -344,13 +344,13 @@ static GString *append_folder_preamble(GString *object)
 }
 
 static GString *append_listing(GString *object, const char *name,
-			gboolean pcsuite, size_t *size, int *err)
+				gboolean pcsuite, size_t *size, int *err)
 {
 	struct stat fstat, dstat;
 	struct dirent *ep;
 	DIR *dp;
 	gboolean root, symlinks;
-	gint ret;
+	int ret;
 
 	root = g_str_equal(name, obex_option_root_folder());
 
@@ -376,9 +376,9 @@ static GString *append_listing(GString *object, const char *name,
 	}
 
 	while ((ep = readdir(dp))) {
-		gchar *filename;
-		gchar *fullname;
-		gchar *line;
+		char *filename;
+		char *fullname;
+		char *line;
 
 		if (ep->d_name[0] == '.')
 			continue;
@@ -437,8 +437,8 @@ failed:
 	return NULL;
 }
 
-static gpointer folder_open(const char *name, int oflag, mode_t mode,
-				gpointer context, size_t *size, int *err)
+static void *folder_open(const char *name, int oflag, mode_t mode,
+					void *context, size_t *size, int *err)
 {
 	GString *object;
 
@@ -449,8 +449,8 @@ static gpointer folder_open(const char *name, int oflag, mode_t mode,
 	return append_listing(object, name, FALSE, size, err);
 }
 
-static gpointer pcsuite_open(const char *name, int oflag, mode_t mode,
-			gpointer context, size_t *size, int *err)
+static void *pcsuite_open(const char *name, int oflag, mode_t mode,
+					void *context, size_t *size, int *err)
 {
 	GString *object;
 
@@ -461,7 +461,7 @@ static gpointer pcsuite_open(const char *name, int oflag, mode_t mode,
 	return append_listing(object, name, TRUE, size, err);
 }
 
-int string_free(gpointer object)
+int string_free(void *object)
 {
 	GString *string = object;
 
@@ -470,7 +470,7 @@ int string_free(gpointer object)
 	return 0;
 }
 
-ssize_t string_read(gpointer object, void *buf, size_t count)
+ssize_t string_read(void *object, void *buf, size_t count)
 {
 	GString *string = object;
 	ssize_t len;
@@ -485,14 +485,14 @@ ssize_t string_read(gpointer object, void *buf, size_t count)
 	return len;
 }
 
-static ssize_t folder_read(gpointer object, void *buf, size_t count, guint8 *hi)
+static ssize_t folder_read(void *object, void *buf, size_t count, uint8_t *hi)
 {
 	*hi = OBEX_HDR_BODY;
 	return string_read(object, buf, count);
 }
 
-static ssize_t capability_read(gpointer object, void *buf, size_t count,
-								guint8 *hi)
+static ssize_t capability_read(void *object, void *buf, size_t count,
+								uint8_t *hi)
 {
 	struct capability_object *obj = object;
 
@@ -507,7 +507,7 @@ static ssize_t capability_read(gpointer object, void *buf, size_t count,
 	return read(obj->output, buf, count);
 }
 
-static int capability_close(gpointer object)
+static int capability_close(void *object)
 {
 	struct capability_object *obj = object;
 

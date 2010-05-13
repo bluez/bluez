@@ -23,25 +23,25 @@
 
 #define EOL	"\r\n"
 #define VCARD_LISTING_BEGIN \
-	"<?xml version=\"1.0\"?>"				EOL\
+	"<?xml version=\"1.0\"?>" EOL\
 	"<!DOCTYPE vcard-listing SYSTEM \"vcard-listing.dtd\">" EOL\
-	"<vCard-listing version=\"1.0\">"			EOL
-#define VCARD_LISTING_ELEMENT		"<card handle = \"%d.vcf\" name = \"%s\"/>" EOL
-#define VCARD_LISTING_END	"</vCard-listing>"
+	"<vCard-listing version=\"1.0\">" EOL
+#define VCARD_LISTING_ELEMENT "<card handle = \"%d.vcf\" name = \"%s\"/>" EOL
+#define VCARD_LISTING_END "</vCard-listing>"
 
 struct apparam_field {
 	/* list and pull attributes */
-	guint16		maxlistcount;
-	guint16		liststartoffset;
+	uint16_t maxlistcount;
+	uint16_t liststartoffset;
 
 	/* pull and vcard attributes */
-	guint64		filter;
-	guint8		format;
+	uint64_t filter;
+	uint8_t format;
 
 	/* list attributes only */
-	guint8		order;
-	guint8		searchattrib;
-	guint8		*searchval;
+	uint8_t order;
+	uint8_t searchattrib;
+	uint8_t *searchval;
 };
 
 /*
@@ -49,14 +49,14 @@ struct apparam_field {
  * all contacts that match the application parameters rules.
  * Contacts will be returned in the vcard format.
  */
-typedef void (*phonebook_cb) (const gchar *buffer, size_t bufsize,
-		gint vcards, gint missed, gpointer user_data);
+typedef void (*phonebook_cb) (const char *buffer, size_t bufsize,
+		int vcards, int missed, void *user_data);
 
 /*
  * Interface between the PBAP core and backends to
  * append a new entry in the PBAP folder cache.
  */
-#define PHONEBOOK_INVALID_HANDLE	0xffffffff
+#define PHONEBOOK_INVALID_HANDLE 0xffffffff
 typedef void (*phonebook_entry_cb) (const char *id, uint32_t handle,
 					const char *name, const char *sound,
 					const char *tel, void *user_data);
@@ -65,7 +65,7 @@ typedef void (*phonebook_entry_cb) (const char *id, uint32_t handle,
  * After notify all entries to PBAP core, the backend
  * needs to notify that the operation has finished.
  */
-typedef void (*phonebook_cache_ready_cb) (gpointer user_data);
+typedef void (*phonebook_cache_ready_cb) (void *user_data);
 
 
 int phonebook_init(void);
@@ -78,16 +78,16 @@ void phonebook_exit(void);
  * the PBAP virtual folder architecture. Validate the folder's name
  * is responsibility of the back-ends.
 */
-gchar *phonebook_set_folder(const gchar *current_folder,
-		const gchar *new_folder, guint8 flags, int *err);
+char *phonebook_set_folder(const char *current_folder,
+		const char *new_folder, uint8_t flags, int *err);
 
 /*
  * PullPhoneBook never use cached entries. PCE use this function to get all
  * entries of a given folder. The back-end MUST return only the content based
  * on the application parameters requested by the client.
  */
-int phonebook_pull(const gchar *name, const struct apparam_field *params,
-		phonebook_cb cb, gpointer user_data);
+int phonebook_pull(const char *name, const struct apparam_field *params,
+					phonebook_cb cb, void *user_data);
 
 /*
  * Function used to retrieve a contact from the backend. Only contacts
@@ -95,9 +95,9 @@ int phonebook_pull(const gchar *name, const struct apparam_field *params,
  * return only the content based on the application parameters requested
  * by the client.
  */
-int phonebook_get_entry(const gchar *folder, const gchar *id,
+int phonebook_get_entry(const char *folder, const char *id,
 				const struct apparam_field *params,
-				phonebook_cb cb, gpointer user_data);
+				phonebook_cb cb, void *user_data);
 
 /*
  * PBAP core will keep the contacts cache per folder. SetPhoneBook or
@@ -105,5 +105,5 @@ int phonebook_get_entry(const gchar *folder, const gchar *id,
  * Cache will store only the necessary information required to reply to
  * PullvCardListing request and verify if a given contact belongs to the source.
  */
-int phonebook_create_cache(const gchar *name, phonebook_entry_cb entry_cb,
-		phonebook_cache_ready_cb ready_cb, gpointer user_data);
+int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
+			phonebook_cache_ready_cb ready_cb, void *user_data);

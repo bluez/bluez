@@ -50,7 +50,7 @@
 
 #define SYNCML_TARGET_SIZE 11
 
-static const guint8 SYNCML_TARGET[SYNCML_TARGET_SIZE] = {
+static const uint8_t SYNCML_TARGET[SYNCML_TARGET_SIZE] = {
 			0x53, 0x59, 0x4E, 0x43, 0x4D, 0x4C, 0x2D, 0x53,
 			0x59, 0x4E, 0x43 };
 
@@ -92,12 +92,12 @@ static const guint8 SYNCML_TARGET[SYNCML_TARGET_SIZE] = {
 struct synce_context {
 	struct obex_session *os;
 	DBusConnection *dbus_conn;
-	gchar *conn_obj;
-	guint reply_watch;
-	guint abort_watch;
+	char *conn_obj;
+	unsigned int reply_watch;
+	unsigned int abort_watch;
 	GString *buffer;
 	int lasterr;
-	gchar *id;
+	char *id;
 };
 
 static void append_dict_entry(DBusMessageIter *dict, const char *key,
@@ -113,13 +113,13 @@ static void append_dict_entry(DBusMessageIter *dict, const char *key,
 }
 
 static gboolean reply_signal(DBusConnection *conn, DBusMessage *msg,
-				void *data)
+								void *data)
 {
 	struct synce_context *context = data;
 	const char *path = dbus_message_get_path(msg);
 	DBusMessageIter iter, array_iter;
-	gchar *value;
-	gint length;
+	char *value;
+	int length;
 
 	if (strcmp(context->conn_obj, path) != 0) {
 		obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
@@ -140,12 +140,13 @@ static gboolean reply_signal(DBusConnection *conn, DBusMessage *msg,
 }
 
 static gboolean abort_signal(DBusConnection *conn, DBusMessage *msg,
-				void *data)
+								void *data)
 {
 	struct synce_context *context = data;
 
 	obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
 	context->lasterr = -EPERM;
+
 	return TRUE;
 }
 
@@ -155,7 +156,7 @@ static void connect_cb(DBusPendingCall *call, void *user_data)
 	DBusConnection *conn;
 	DBusMessage *reply;
 	DBusError err;
-	gchar *path;
+	char *path;
 
 	conn = context->dbus_conn;
 
@@ -214,7 +215,7 @@ done:
 	dbus_message_unref(reply);
 }
 
-static gpointer synce_connect(struct obex_session *os, int *err)
+static void *synce_connect(struct obex_session *os, int *err)
 {
 	DBusConnection *conn;
 	struct synce_context *context;
@@ -242,13 +243,13 @@ failed:
 	return NULL;
 }
 
-static int synce_put(struct obex_session *os, gpointer user_data)
+static int synce_put(struct obex_session *os, void *user_data)
 {
 	return 0;
 }
 
 static int synce_get(struct obex_session *os, obex_object_t *obj,
-			gboolean *stream, gpointer user_data)
+					gboolean *stream, void *user_data)
 {
 	if (stream)
 		*stream = TRUE;
@@ -272,15 +273,15 @@ static void close_cb(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 }
 
-static void synce_disconnect(struct obex_session *os, gpointer user_data)
+static void synce_disconnect(struct obex_session *os, void *user_data)
 {
 	struct synce_context *context = user_data;
 
 	g_free(context);
 }
 
-static gpointer synce_open(const char *name, int oflag, mode_t mode,
-		gpointer user_data, size_t *size, int *err)
+static void *synce_open(const char *name, int oflag, mode_t mode,
+				void *user_data, size_t *size, int *err)
 {
 	if (err)
 		*err = 0;
@@ -288,11 +289,11 @@ static gpointer synce_open(const char *name, int oflag, mode_t mode,
 	return user_data;
 }
 
-static int synce_close(gpointer object)
+static int synce_close(void *object)
 {
 	struct synce_context *context = object;
 	DBusMessage *msg;
-	const gchar *error;
+	const char *error;
 	gboolean normal;
 	DBusPendingCall *call;
 
@@ -329,11 +330,11 @@ done:
 	return 0;
 }
 
-static ssize_t synce_read(gpointer object, void *buf, size_t count, guint8 *hi)
+static ssize_t synce_read(void *object, void *buf, size_t count, uint8_t *hi)
 {
 	struct synce_context *context = object;
 	DBusConnection *conn;
-	gchar transport[36], transport_description[24];
+	char transport[36], transport_description[24];
 	const char *session;
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
@@ -395,7 +396,7 @@ failed:
 	return -EPERM;
 }
 
-static ssize_t synce_write(gpointer object, const void *buf, size_t count)
+static ssize_t synce_write(void *object, const void *buf, size_t count)
 {
 	struct synce_context *context = object;
 	DBusMessage *msg;

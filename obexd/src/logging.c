@@ -110,28 +110,40 @@ void stop_logging(void)
 }
 
 static struct {
-	int		evt;
-	const char	*name;
+	int evt;
+	const char *name;
 } obex_event[] = {
-	{ OBEX_EV_PROGRESS,	"PROGRESS"	},	/* Progress has been made */
-	{ OBEX_EV_REQHINT,	"REQHINT"	},	/* An incoming request is about to come */
-	{ OBEX_EV_REQ,		"REQ"		},	/* An incoming request has arrived */
-	{ OBEX_EV_REQDONE,	"REQDONE"	},	/* Request has finished */
-	{ OBEX_EV_LINKERR,	"LINKERR"	},	/* Link has been disconnected */
-	{ OBEX_EV_PARSEERR,	"PARSEERR"	},	/* Malformed data encountered */
-	{ OBEX_EV_ACCEPTHINT, 	"ACCEPTHINT"	},	/* Connection accepted */
-	{ OBEX_EV_ABORT, 	"ABORT"		},	/* Request was aborted */
-	{ OBEX_EV_STREAMEMPTY, 	"STREAMEMPTY"	},	/* Need to feed more data when sending a stream */
-	{ OBEX_EV_STREAMAVAIL,	"STREAMAVAIL"	},	/* Time to pick up data when receiving a stream */
-	{ OBEX_EV_UNEXPECTED,	"UNEXPECTED"	},	/* Unexpected data, not fatal */
-	{ OBEX_EV_REQCHECK,	"REQCHECK"	},	/* First packet of an incoming request has been parsed */
+	/* Progress has been made */
+	{ OBEX_EV_PROGRESS,	"PROGRESS"	},
+	/* An incoming request is about to come */
+	{ OBEX_EV_REQHINT,	"REQHINT"	},
+	/* An incoming request has arrived */
+	{ OBEX_EV_REQ,		"REQ"		},
+	/* Request has finished */
+	{ OBEX_EV_REQDONE,	"REQDONE"	},
+	/* Link has been disconnected */
+	{ OBEX_EV_LINKERR,	"LINKERR"	},
+	/* Malformed data encountered */
+	{ OBEX_EV_PARSEERR,	"PARSEERR"	},
+	/* Connection accepted */
+	{ OBEX_EV_ACCEPTHINT,	"ACCEPTHINT"	},
+	/* Request was aborted */
+	{ OBEX_EV_ABORT,	"ABORT"		},
+	/* Need to feed more data when sending a stream */
+	{ OBEX_EV_STREAMEMPTY,	"STREAMEMPTY"	},
+	/* Time to pick up data when receiving a stream */
+	{ OBEX_EV_STREAMAVAIL,	"STREAMAVAIL"	},
+	/* Unexpected data, not fatal */
+	{ OBEX_EV_UNEXPECTED,	"UNEXPECTED"	},
+	/* First packet of an incoming request has been parsed */
+	{ OBEX_EV_REQCHECK,	"REQCHECK"	},
 	{ 0xFF,			NULL		},
 };
 
 /* Possible commands */
 static struct {
-	int		cmd;
-	const char	*name;
+	int cmd;
+	const char *name;
 } obex_command[] = {
 	{ OBEX_CMD_CONNECT,	"CONNECT"	},
 	{ OBEX_CMD_DISCONNECT,	"DISCONNECT"	},
@@ -146,8 +158,8 @@ static struct {
 
 /* Possible Response */
 static struct {
-	int		rsp;
-	const char	*name;
+	int rsp;
+	const char *name;
 } obex_response[] = {
 	{ OBEX_RSP_CONTINUE,			"CONTINUE"		},
 	{ OBEX_RSP_SWITCH_PRO,			"SWITCH_PRO"		},
@@ -217,5 +229,6 @@ void obex_debug(int evt, int cmd, int rsp)
 		rspstr = obex_response[i].name;
 	}
 
-	debug("%s(0x%x), %s(0x%x), %s(0x%x)", evtstr, evt, cmdstr, cmd, rspstr, rsp);
+	debug("%s(0x%x), %s(0x%x), %s(0x%x)", evtstr, evt, cmdstr, cmd,
+								rspstr, rsp);
 }

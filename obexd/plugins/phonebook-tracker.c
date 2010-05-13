@@ -503,7 +503,8 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 
 done:
 	if (num_fields == 0)
-		data->cb(vcards->str, vcards->len, data->index, 0, data->user_data);
+		data->cb(vcards->str, vcards->len, data->index, 0,
+							data->user_data);
 
 	g_string_free(vcards, TRUE);
 }
@@ -657,7 +658,7 @@ int phonebook_get_entry(const char *folder, const char *id,
 	data->cb = cb;
 
 	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI,
-						id, id, id, id, id, id, id, id);
+					id, id, id, id, id, id, id, id);
 
 	ret = query_tracker(query, 8, pull_contacts, data);;
 

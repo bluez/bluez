@@ -40,31 +40,31 @@
 
 struct obex_session;
 
-void obex_connect_cb(GIOChannel *io, GError *err, gpointer user_data);
+void obex_connect_cb(GIOChannel *io, GError *err, void *user_data);
 
-int obex_get_stream_start(struct obex_session *os, const gchar *filename);
-int obex_put_stream_start(struct obex_session *os, const gchar *filename);
+int obex_get_stream_start(struct obex_session *os, const char *filename);
+int obex_put_stream_start(struct obex_session *os, const char *filename);
 const char *obex_get_name(struct obex_session *os);
 ssize_t obex_get_size(struct obex_session *os);
 const char *obex_get_type(struct obex_session *os);
 const char *obex_get_root_folder(struct obex_session *os);
-guint16 obex_get_service(struct obex_session *os);
+uint16_t obex_get_service(struct obex_session *os);
 gboolean obex_get_symlinks(struct obex_session *os);
 const char *obex_get_capability_path(struct obex_session *os);
 gboolean obex_get_auto_accept(struct obex_session *os);
 int obex_remove(struct obex_session *os, const char *path);
 char *obex_get_id(struct obex_session *os);
-ssize_t obex_aparam_read(struct obex_session *os,
-		obex_object_t *obj, const guint8 **buffer);
-int obex_aparam_write(struct obex_session *os,
-		obex_object_t *obj, const guint8 *buffer, guint size);
+ssize_t obex_aparam_read(struct obex_session *os, obex_object_t *obj,
+						const uint8_t **buffer);
+int obex_aparam_write(struct obex_session *os, obex_object_t *obj,
+				const uint8_t *buffer, unsigned int size);
 
-const gchar *obex_option_root_folder(void);
+const char *obex_option_root_folder(void);
 gboolean obex_option_symlinks(void);
 
-int tty_init(gint service, const gchar *folder, const gchar *capability,
-		gboolean symlinks, const gchar *devnode);
-gint obex_tty_session_stop(void);
+int tty_init(int service, const char *folder, const char *capability,
+				gboolean symlinks, const char *devnode);
+int obex_tty_session_stop(void);
 void tty_closed(void);
 
 /* Just a thin wrapper around memcmp to deal with NULL values */

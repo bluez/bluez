@@ -21,27 +21,28 @@
  *
  */
 
-typedef gboolean (*obex_object_io_func) (gpointer object, int flags, int err,
-					gpointer user_data);
+typedef gboolean (*obex_object_io_func) (void *object, int flags, int err,
+							void *user_data);
 
 struct obex_mime_type_driver {
-	const guint8 *target;
+	const uint8_t *target;
 	const char *mimetype;
-	const guint8 *who;
-	guint who_size;
-	gpointer (*open) (const char *name, int oflag, mode_t mode,
-			gpointer driver_data, size_t *size, int *err);
-	int (*close) (gpointer object);
-	ssize_t (*read) (gpointer object, void *buf, size_t count, guint8 *hi);
-	ssize_t (*write) (gpointer object, const void *buf, size_t count);
+	const uint8_t *who;
+	unsigned int who_size;
+	void *(*open) (const char *name, int oflag, mode_t mode,
+			void *driver_data, size_t *size, int *err);
+	int (*close) (void *object);
+	ssize_t (*read) (void *object, void *buf, size_t count, uint8_t *hi);
+	ssize_t (*write) (void *object, const void *buf, size_t count);
 	int (*remove) (const char *name);
-	int (*set_io_watch) (gpointer object, obex_object_io_func func,
-				gpointer user_data);
+	int (*set_io_watch) (void *object, obex_object_io_func func,
+				void *user_data);
 };
 
 int obex_mime_type_driver_register(struct obex_mime_type_driver *driver);
 void obex_mime_type_driver_unregister(struct obex_mime_type_driver *driver);
-struct obex_mime_type_driver *obex_mime_type_driver_find(const guint8 *target,
-		const char *mimetype, const guint8 *who, guint who_size);
+struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
+				const char *mimetype, const uint8_t *who,
+				unsigned int who_size);
 
-void obex_object_set_io_flags(gpointer object, int flags, int err);
+void obex_object_set_io_flags(void *object, int flags, int err);

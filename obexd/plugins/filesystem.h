@@ -21,5 +21,5 @@
  *
  */
 
-int string_free(gpointer object);
-ssize_t string_read(gpointer object, void *buf, size_t count);
+int string_free(void *object);
+ssize_t string_read(void *object, void *buf, size_t count);

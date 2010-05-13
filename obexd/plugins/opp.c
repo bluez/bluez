@@ -45,56 +45,56 @@
 
 #define OPP_CHANNEL	9
 #define OPP_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
-<record>									\
-  <attribute id=\"0x0001\">							\
-    <sequence>									\
-      <uuid value=\"0x1105\"/>							\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0004\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x0100\"/>						\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0003\"/>						\
-        <uint8 value=\"%u\" name=\"channel\"/>					\
-      </sequence>								\
-      <sequence>								\
-        <uuid value=\"0x0008\"/>						\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0009\">							\
-    <sequence>									\
-      <sequence>								\
-        <uuid value=\"0x1105\"/>						\
-        <uint16 value=\"0x0100\" name=\"version\"/>				\
-      </sequence>								\
-    </sequence>									\
-  </attribute>									\
-										\
-  <attribute id=\"0x0100\">							\
-    <text value=\"%s\" name=\"name\"/>						\
-  </attribute>									\
-										\
-  <attribute id=\"0x0303\">							\
-    <sequence>									\
-      <uint8 value=\"0x01\"/>							\
-      <uint8 value=\"0x01\"/>							\
-      <uint8 value=\"0x02\"/>							\
-      <uint8 value=\"0x03\"/>							\
-      <uint8 value=\"0x04\"/>							\
-      <uint8 value=\"0x05\"/>							\
-      <uint8 value=\"0x06\"/>							\
-      <uint8 value=\"0xff\"/>							\
-    </sequence>									\
-  </attribute>									\
+<record>							\
+  <attribute id=\"0x0001\">					\
+    <sequence>							\
+      <uuid value=\"0x1105\"/>					\
+    </sequence>							\
+  </attribute>							\
+								\
+  <attribute id=\"0x0004\">					\
+    <sequence>							\
+      <sequence>						\
+        <uuid value=\"0x0100\"/>				\
+      </sequence>						\
+      <sequence>						\
+        <uuid value=\"0x0003\"/>				\
+        <uint8 value=\"%u\" name=\"channel\"/>			\
+      </sequence>						\
+      <sequence>						\
+        <uuid value=\"0x0008\"/>				\
+      </sequence>						\
+    </sequence>							\
+  </attribute>							\
+								\
+  <attribute id=\"0x0009\">					\
+    <sequence>							\
+      <sequence>						\
+        <uuid value=\"0x1105\"/>				\
+        <uint16 value=\"0x0100\" name=\"version\"/>		\
+      </sequence>						\
+    </sequence>							\
+  </attribute>							\
+								\
+  <attribute id=\"0x0100\">					\
+    <text value=\"%s\" name=\"name\"/>				\
+  </attribute>							\
+								\
+  <attribute id=\"0x0303\">					\
+    <sequence>							\
+      <uint8 value=\"0x01\"/>					\
+      <uint8 value=\"0x01\"/>					\
+      <uint8 value=\"0x02\"/>					\
+      <uint8 value=\"0x03\"/>					\
+      <uint8 value=\"0x04\"/>					\
+      <uint8 value=\"0x05\"/>					\
+      <uint8 value=\"0x06\"/>					\
+      <uint8 value=\"0xff\"/>					\
+    </sequence>							\
+  </attribute>							\
 </record>"
 
-static gpointer opp_connect(struct obex_session *os, int *err)
+static void *opp_connect(struct obex_session *os, int *err)
 {
 	manager_register_transfer(os);
 
@@ -104,17 +104,17 @@ static gpointer opp_connect(struct obex_session *os, int *err)
 	return NULL;
 }
 
-static void opp_progress(struct obex_session *os, gpointer user_data)
+static void opp_progress(struct obex_session *os, void *user_data)
 {
 	manager_emit_transfer_progress(os);
 }
 
-static gint opp_chkput(struct obex_session *os, gpointer user_data)
+static int opp_chkput(struct obex_session *os, void *user_data)
 {
-	gchar *folder, *name;
-	gchar *path;
-	gint32 time;
-	gint ret;
+	char *folder, *name;
+	char *path;
+	int32_t time;
+	int ret;
 
 	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return -EINVAL;
@@ -153,7 +153,7 @@ skip_auth:
 	return ret;
 }
 
-static int opp_put(struct obex_session *os, gpointer user_data)
+static int opp_put(struct obex_session *os, void *user_data)
 {
 	const char *name = obex_get_name(os);
 	const char *folder = obex_get_root_folder(os);
@@ -168,7 +168,7 @@ static int opp_put(struct obex_session *os, gpointer user_data)
 }
 
 static int opp_get(struct obex_session *os, obex_object_t *obj,
-			gboolean *stream, gpointer user_data)
+			gboolean *stream, void *user_data)
 {
 	const char *type;
 
@@ -193,12 +193,12 @@ static int opp_get(struct obex_session *os, obex_object_t *obj,
 	return 0;
 }
 
-static void opp_disconnect(struct obex_session *os, gpointer user_data)
+static void opp_disconnect(struct obex_session *os, void *user_data)
 {
 	manager_unregister_transfer(os);
 }
 
-static void opp_reset(struct obex_session *os, gpointer user_data)
+static void opp_reset(struct obex_session *os, void *user_data)
 {
 	manager_emit_transfer_completed(os);
 }

@@ -49,13 +49,13 @@
 
 static GSList *servers = NULL;
 
-static void confirm_event(GIOChannel *io, gpointer user_data)
+static void confirm_event(GIOChannel *io, void *user_data)
 {
 	struct server *server = user_data;
 	struct obex_service_driver *driver;
 	GError *err = NULL;
 	char address[18];
-	guint8 channel;
+	uint8_t channel;
 
 	bt_io_get(io, BT_IO_RFCOMM, &err,
 			BT_IO_OPT_DEST, address,
@@ -90,7 +90,7 @@ drop:
 	g_io_channel_shutdown(io, TRUE, NULL);
 }
 
-static gint server_start(struct server *server)
+static int server_start(struct server *server)
 {
 	GError *err = NULL;
 	struct obex_service_driver *driver;
@@ -120,7 +120,7 @@ failed:
 	return -EINVAL;
 }
 
-static gint server_stop(struct server *server)
+static int server_stop(struct server *server)
 {
 	if (!server->io)
 		return -EINVAL;
@@ -137,9 +137,9 @@ static gint server_stop(struct server *server)
 	return 0;
 }
 
-static gint server_register(guint16 service, const gchar *folder,
+static int server_register(uint16_t service, const char *folder,
 				gboolean secure, gboolean auto_accept,
-				gboolean symlinks, const gchar *capability)
+				gboolean symlinks, const char *capability)
 {
 	struct server *server;
 	GSList *drivers;
@@ -163,12 +163,12 @@ static gint server_register(guint16 service, const gchar *folder,
 	return 0;
 }
 
-gint bluetooth_init(guint service, const gchar *folder, gboolean secure,
+int bluetooth_init(unsigned int service, const char *folder, gboolean secure,
 				gboolean auto_accept, gboolean symlinks,
-				const gchar *capability)
+				const char *capability)
 {
 	return server_register(service, folder, secure, auto_accept, symlinks,
-					capability);
+								capability);
 }
 
 void bluetooth_exit(void)

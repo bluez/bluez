@@ -47,8 +47,8 @@
 typedef void (*vcard_func_t) (const char *file, VObject *vo, void *user_data);
 
 struct dummy_data {
-	phonebook_cb	cb;
-	gpointer	user_data;
+	phonebook_cb cb;
+	void *user_data;
 	const struct apparam_field *apparams;
 	char *folder;
 	int fd;
@@ -61,9 +61,9 @@ struct cache_query {
 	DIR *dp;
 };
 
-static gchar *root_folder = NULL;
+static char *root_folder = NULL;
 
-static void dummy_free(gpointer user_data)
+static void dummy_free(void *user_data)
 {
 	struct dummy_data *dummy = user_data;
 
@@ -161,7 +161,7 @@ static int foreach_vcard(DIR *dp, vcard_func_t func, uint16_t offset,
 	 */
 	for (l = g_slist_nth(sorted, offset);
 			l && n < maxlistcount; l = l->next) {
-		const gchar *filename = l->data;
+		const char *filename = l->data;
 
 		fd = openat(folderfd, filename, O_RDONLY);
 		if (fd < 0) {
@@ -324,7 +324,7 @@ static gboolean create_cache(void *user_data)
 	return FALSE;
 }
 
-static gboolean read_entry(gpointer user_data)
+static gboolean read_entry(void *user_data)
 {
 	struct dummy_data *dummy = user_data;
 	char buffer[1024];
@@ -359,11 +359,11 @@ static gboolean is_dir(const char *dir)
 	return S_ISDIR(st.st_mode);
 }
 
-gchar *phonebook_set_folder(const gchar *current_folder,
-		const gchar *new_folder, guint8 flags, int *err)
+char *phonebook_set_folder(const char *current_folder,
+		const char *new_folder, uint8_t flags, int *err)
 {
 	gboolean root, child;
-	gchar *tmp1, *tmp2, *base, *absolute, *relative = NULL;
+	char *tmp1, *tmp2, *base, *absolute, *relative = NULL;
 	int ret, len;
 
 	root = (g_strcmp0("/", current_folder) == 0);
@@ -442,8 +442,8 @@ done:
 	return relative;
 }
 
-int phonebook_pull(const gchar *name, const struct apparam_field *params,
-					phonebook_cb cb, gpointer user_data)
+int phonebook_pull(const char *name, const struct apparam_field *params,
+					phonebook_cb cb, void *user_data)
 {
 	struct dummy_data *dummy;
 	char *filename, *folder;
@@ -480,9 +480,9 @@ int phonebook_pull(const gchar *name, const struct apparam_field *params,
 	return 0;
 }
 
-int phonebook_get_entry(const gchar *folder, const gchar *id,
+int phonebook_get_entry(const char *folder, const char *id,
 					const struct apparam_field *params,
-					phonebook_cb cb, gpointer user_data)
+					phonebook_cb cb, void *user_data)
 {
 	struct dummy_data *dummy;
 	char *filename;
@@ -508,8 +508,8 @@ int phonebook_get_entry(const gchar *folder, const gchar *id,
 	return 0;
 }
 
-int phonebook_create_cache(const gchar *name, phonebook_entry_cb entry_cb,
-		phonebook_cache_ready_cb ready_cb, gpointer user_data)
+int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
+		phonebook_cache_ready_cb ready_cb, void *user_data)
 {
 	struct cache_query *query;
 	char *foldername;
