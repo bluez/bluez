@@ -522,7 +522,7 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	if (dp == NULL) {
 		int err = errno;
 		debug("opendir(): %s(%d)", strerror(err), err);
-		return -EBADR;
+		return -ENOENT;
 	}
 
 	query = g_new0(struct cache_query, 1);
