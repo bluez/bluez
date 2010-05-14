@@ -799,18 +799,16 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	if (!os->service->chkput)
 		goto done;
 
-	if (!os->name) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST,
-				OBEX_RSP_BAD_REQUEST);
-		return FALSE;
-	}
-
 	ret = os->service->chkput(os, os->service_data);
 	switch (ret) {
 	case 0:
 		break;
 	case -EPERM:
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		return FALSE;
+	case -EBADR:
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST,
+					OBEX_RSP_BAD_REQUEST);
 		return FALSE;
 	case -EAGAIN:
 		OBEX_SuspendRequest(obex, obj);

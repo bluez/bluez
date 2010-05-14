@@ -27,6 +27,7 @@
 #endif
 
 #include <errno.h>
+#include <string.h>
 
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
@@ -136,6 +137,9 @@ static gint opp_chkput(struct obex_session *os, gpointer user_data)
 		name = g_strdup(obex_get_name(os));
 
 skip_auth:
+	if (name == NULL || strlen(name) == 0)
+		return -EBADR;
+
 	path = g_build_filename(folder, name, NULL);
 
 	manager_emit_transfer_started(os);

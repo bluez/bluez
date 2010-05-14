@@ -237,6 +237,9 @@ static gint ftp_chkput(struct obex_session *os, gpointer user_data)
 	gchar *path;
 	int ret;
 
+	if (name == NULL)
+		return -EBADR;
+
 	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return 0;
 
