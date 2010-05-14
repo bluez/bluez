@@ -364,7 +364,7 @@ char *phonebook_set_folder(const char *current_folder,
 {
 	gboolean root, child;
 	char *tmp1, *tmp2, *base, *absolute, *relative = NULL;
-	int ret, len;
+	int len, ret = 0;
 
 	root = (g_strcmp0("/", current_folder) == 0);
 	child = (new_folder && strlen(new_folder) != 0);
