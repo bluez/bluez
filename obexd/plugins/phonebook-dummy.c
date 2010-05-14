@@ -431,7 +431,7 @@ done:
 	if (!is_dir(absolute)) {
 		g_free(relative);
 		relative = NULL;
-		ret = -EBADR;
+		ret = -ENOENT;
 	}
 
 	g_free(absolute);
@@ -465,7 +465,7 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 	g_free(filename);
 	if (!is_dir(folder)) {
 		g_free(folder);
-		return -EBADR;
+		return -ENOENT;
 	}
 
 	dummy = g_new0(struct dummy_data, 1);
@@ -494,7 +494,7 @@ int phonebook_get_entry(const char *folder, const char *id,
 	if (fd < 0) {
 		int err = errno;
 		debug("open(): %s(%d)", strerror(err), err);
-		return -EBADR;
+		return -ENOENT;
 	}
 
 	dummy = g_new0(struct dummy_data, 1);

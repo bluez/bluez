@@ -334,7 +334,7 @@ char *phonebook_set_folder(const char *current_folder,
 				strcmp("/telecom/pb", fullname) != 0) {
 			g_free(fullname);
 			fullname = NULL;
-			ret = -EBADR;
+			ret = -ENOENT;
 		}
 
 		break;
@@ -374,7 +374,7 @@ char *phonebook_set_folder(const char *current_folder,
 				strcmp(fullname, "/telecom/pb") != 0) {
 			g_free(fullname);
 			fullname = NULL;
-			ret = -EBADR;
+			ret = -ENOENT;
 		}
 
 		g_free(base);
@@ -425,7 +425,7 @@ int phonebook_get_entry(const char *folder, const char *id,
 
 	if (e_book_async_get_contact(ebook, id, ebook_entry_cb, data)) {
 		g_free(data);
-		return -EPERM;
+		return -ENOENT;
 	}
 
 	return 0;

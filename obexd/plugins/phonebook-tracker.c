@@ -614,7 +614,7 @@ done:
 	if (!folder_is_valid(path)) {
 		g_free(path);
 		path = NULL;
-		ret = -EBADR;
+		ret = -ENOENT;
 	} else
 		ret = 0;
 
