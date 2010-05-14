@@ -282,27 +282,24 @@ static int alpha_sort(gconstpointer a, gconstpointer b)
 	return g_strcmp0(e1->name, e2->name);
 }
 
-static int phonetical_sort(gconstpointer a, gconstpointer b)
-{
-	const struct cache_entry *e1 = a;
-	const struct cache_entry *e2 = b;
-
-	/*
-	 * SOUND attribute is optinal. Keep the order
-	 * when this attribute is not available.
-	 */
-	if (!e1->sound)
-		return 1;
-
-	return g_strcmp0(e1->sound, e2->sound);
-}
-
 static int indexed_sort(gconstpointer a, gconstpointer b)
 {
 	const struct cache_entry *e1 = a;
 	const struct cache_entry *e2 = b;
 
 	return (e1->handle - e2->handle);
+}
+
+static int phonetical_sort(gconstpointer a, gconstpointer b)
+{
+	const struct cache_entry *e1 = a;
+	const struct cache_entry *e2 = b;
+
+	/* SOUND attribute is optional. Use Indexed sort if not present. */
+	if (!e1->sound || !e2->sound)
+		return indexed_sort(a, b);
+
+	return g_strcmp0(e1->sound, e2->sound);
 }
 
 static GSList *sort_entries(GSList *l, uint8_t order, uint8_t search_attrib,
