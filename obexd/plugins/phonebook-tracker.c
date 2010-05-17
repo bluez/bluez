@@ -42,213 +42,143 @@
 
 #define TRACKER_DEFAULT_CONTACT_ME "<urn:nco:default-contact-me>"
 
-#define CONTACTS_QUERY_ALL \
-	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
-		"?suffix ?email "					\
+#define CONTACTS_QUERY_ALL						\
+	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
+	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
 	"WHERE { "							\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
-	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
-	"OPTIONAL { ?contact nco:fullname ?fullname } "			\
-	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
-	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
-	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
-	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+	"	?c a nco:PersonContact . "				\
 	"}"
 
-#define CONTACTS_QUERY_ALL_LIST \
-	"SELECT ?contact ?family ?given ?additional ?prefix "		\
-		"?suffix ?phone "					\
+#define CONTACTS_QUERY_ALL_LIST						\
+	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
+	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
+	"nco:hasPhoneNumber(?c) "					\
 	"WHERE { "							\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
-	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
-	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
-	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
-	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+		"?c a nco:PersonContact . "				\
 	"}"
 
-#define MISSED_CALLS_QUERY \
-	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
-		"?suffix ?email "					\
+#define MISSED_CALLS_QUERY						\
+	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
+	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
-		"nmo:from ?contact ; "					\
+		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
-	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
-	"OPTIONAL { ?contact nco:fullname ?fullname } "			\
-	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
-	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
-	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
-	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+		"?c a nco:PersonContact . "				\
 	"}"
 
-#define MISSED_CALLS_LIST \
-	"SELECT ?contact ?family ?given ?additional ?prefix "		\
-		"?suffix ?phone "					\
+#define MISSED_CALLS_LIST						\
+	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
+	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
+	"nco:hasPhoneNumber(?c) "					\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
-		"nmo:from ?contact ; "					\
+		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
-	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
-	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
-	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
-	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
-	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+		"?c a nco:PersonContact . "				\
 	"}"
 
-#define INCOMING_CALLS_QUERY \
-	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
-		"?suffix ?email "					\
+#define INCOMING_CALLS_QUERY						\
+	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
+	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
-		"nmo:from ?contact ; "					\
+		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
-	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
-	"OPTIONAL { ?contact nco:fullname ?fullname } "			\
-	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
-	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
-	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
-	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+		"?c a nco:PersonContact . "				\
 	"}"
 
 #define INCOMING_CALLS_LIST						\
-	"SELECT ?contact ?family ?given ?additional ?prefix "		\
-		"?suffix ?phone "					\
+	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
+	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
+	"nco:hasPhoneNumber(?c) "					\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
-		"nmo:from ?contact ; "					\
+		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
-	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
-	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
-	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
-	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+		"?c a nco:PersonContact . "				\
 	"}"
 
-#define OUTGOING_CALLS_QUERY \
-	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
-		"?suffix ?email "					\
+#define OUTGOING_CALLS_QUERY						\
+	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
+	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
-		"nmo:to ?contact ; "					\
+		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
-	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
-	"OPTIONAL { ?contact nco:fullname ?fullname } "			\
-	"OPTIONAL { ?contact nco:hasEmailAddress ?email } "		\
-	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
-	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
-	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+		"?c a nco:PersonContact . "				\
 	"}"
 
-#define OUTGOING_CALLS_LIST \
-	"SELECT ?contact ?family ?given ?additional ?prefix "		\
-		"?suffix ?phone "					\
+#define OUTGOING_CALLS_LIST						\
+	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
+	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
+	"nco:hasPhoneNumber(?c) "					\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
-		"nmo:to ?contact ; "					\
+		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-	"OPTIONAL { ?contact nco:nameFamily ?family } "			\
-	"OPTIONAL { ?contact nco:nameGiven ?given } "			\
-	"OPTIONAL { ?contact nco:nameAdditional ?additional } "		\
-	"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "	\
-	"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "	\
+		"?c a nco:PersonContact . "				\
 	"}"
 
-#define COMBINED_CALLS_QUERY \
-	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
-		"?suffix ?email "					\
+#define COMBINED_CALLS_QUERY						\
+	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
+	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
 	"WHERE { "							\
 	"{ "								\
 		"?call a nmo:Call ; "					\
-		"nmo:to ?contact ; "					\
+		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-		"OPTIONAL { ?contact nco:nameFamily ?family } "		\
-		"OPTIONAL { ?contact nco:nameGiven ?given } "		\
-		"OPTIONAL { ?contact nco:fullname ?fullname } "		\
-		"OPTIONAL { ?contact nco:hasEmailAddress ?email } "	\
-		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
-		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
-		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
+		"?c a nco:PersonContact . "				\
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
-		"nmo:from ?contact ; "					\
+		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-		"OPTIONAL { ?contact nco:nameFamily ?family } "		\
-		"OPTIONAL { ?contact nco:nameGiven ?given } "		\
-		"OPTIONAL { ?contact nco:fullname ?fullname } "		\
-		"OPTIONAL { ?contact nco:hasEmailAddress ?email } "	\
-		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
-		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
-		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
+		"?c a nco:PersonContact . "				\
 	"} } "
 
-#define COMBINED_CALLS_LIST \
-	"SELECT ?contact ?family ?given ?additional ?prefix "		\
-		"?suffix ?phone "					\
+#define COMBINED_CALLS_LIST						\
+	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
+	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
+	"nco:hasPhoneNumber(?c) "					\
 	"WHERE { "							\
 	"{ "								\
 		"?call a nmo:Call ; "					\
-		"nmo:to ?contact ; "					\
+		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-		"OPTIONAL { ?contact nco:nameFamily ?family } "		\
-		"OPTIONAL { ?contact nco:nameGiven ?given } "		\
-		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
-		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
-		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
+		"?c a nco:PersonContact . "				\
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
-		"nmo:from ?contact ; "					\
+		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?contact a nco:PersonContact ; "			\
-		"nco:hasPhoneNumber ?phone . "				\
-		"OPTIONAL { ?contact nco:nameFamily ?family } "		\
-		"OPTIONAL { ?contact nco:nameGiven ?given } "		\
-		"OPTIONAL { ?contact nco:nameAdditional ?additional } "	\
-		"OPTIONAL { ?contact nco:nameHonorificPrefix ?prefix } "\
-		"OPTIONAL { ?contact nco:nameHonorificSuffix ?suffix } "\
+		"?c a nco:PersonContact . "				\
 	"} } "
 
 
-#define CONTACTS_QUERY_FROM_URI \
-	"SELECT ?phone ?fullname ?family ?given ?additional ?prefix "	\
-	"	?suffix ?email "					\
+#define CONTACTS_QUERY_FROM_URI						\
+	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"nco:nameFamily(?c) nco:nameGiven(?c) nco:nameAdditional(?c) "	\
+	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c)  "	\
+	"nco:hasEmailAddress(?c) "					\
 	"WHERE { "							\
-		"<%s> a nco:PersonContact ; "				\
-		"nco:hasPhoneNumber ?phone . "				\
-	"OPTIONAL { <%s> nco:nameFamily ?family } "			\
-	"OPTIONAL { <%s> nco:nameGiven ?given } "			\
-	"OPTIONAL { <%s> nco:fullname ?fullname } "			\
-	"OPTIONAL { <%s> nco:hasEmailAddress ?email } "			\
-	"OPTIONAL { <%s> nco:nameAdditional ?additional } "		\
-	"OPTIONAL { <%s> nco:nameHonorificPrefix ?prefix } "		\
-	"OPTIONAL { <%s> nco:nameHonorificSuffix ?suffix } "		\
+		"?c a nco:PersonContact ; "				\
+		"nco:contactUID <%s> . "				\
 	"}"
 
 typedef void (*reply_list_foreach_t) (char **reply, int num_fields,
@@ -265,6 +195,7 @@ struct phonebook_data {
 	phonebook_cb cb;
 	void *user_data;
 	int index;
+	gboolean vcardentry;
 	const struct apparam_field *params;
 };
 
@@ -427,7 +358,7 @@ done:
 	g_free(pending);
 }
 
-static int query_tracker(const char* query, int num_fields,
+static int query_tracker(const char *query, int num_fields,
 				reply_list_foreach_t callback, void *user_data)
 {
 	struct pending_reply *pending;
@@ -474,10 +405,14 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	if (reply == NULL)
 		goto done;
 
+	/* We are doing a PullvCardEntry, no need for those checks */
+	if (data->vcardentry)
+		goto add_entry;
+
 	data->index++;
 
 	/* Just interested in knowing the phonebook size */
-	if (params->maxlistcount == 0)
+	if (!data->vcardentry && params->maxlistcount == 0)
 		return;
 
 	last_index = params->liststartoffset + params->maxlistcount;
@@ -485,6 +420,7 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	if (data->index < params->liststartoffset || data->index > last_index)
 		return;
 
+add_entry:
 	contact = g_new0(struct phonebook_contact, 1);
 	contact->tel = g_strdup(reply[0]);
 	contact->tel_type = 1; /* HOME */
@@ -656,11 +592,11 @@ int phonebook_get_entry(const char *folder, const char *id,
 	data->user_data = user_data;
 	data->params = params;
 	data->cb = cb;
+	data->vcardentry = TRUE;
 
-	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI,
-					id, id, id, id, id, id, id, id);
+	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id);
 
-	ret = query_tracker(query, 8, pull_contacts, data);;
+	ret = query_tracker(query, 8, pull_contacts, data);
 
 	g_free(query);
 
