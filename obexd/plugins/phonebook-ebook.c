@@ -449,8 +449,11 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	data->user_data = user_data;
 
 	ret = e_book_async_get_contacts(ebook, query, cache_cb, data);
-
 	e_book_query_unref(query);
+	if (ret == FALSE) {
+		g_free(data);
+		return -EFAULT;
+	}
 
-	return ret == FALSE ? 0 : -EBADR;
+	return 0;
 }
