@@ -1577,6 +1577,59 @@ static void cmd_revision(int ctl, int hdev, char *opt)
 	return;
 }
 
+static void cmd_block(int ctl, int hdev, char *opt)
+{
+	bdaddr_t bdaddr;
+	int dd;
+
+	if (!opt)
+		return;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	str2ba(opt, &bdaddr);
+
+	if (ioctl(dd, HCIBLOCKADDR, &bdaddr) < 0) {
+		perror("ioctl(HCIBLOCKADDR)");
+		exit(1);
+	}
+
+	hci_close_dev(dd);
+}
+
+static void cmd_unblock(int ctl, int hdev, char *opt)
+{
+	bdaddr_t bdaddr;
+	int dd;
+
+	if (!opt)
+		return;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		fprintf(stderr, "Can't open device hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (!strcasecmp(opt, "all"))
+		bacpy(&bdaddr, BDADDR_ANY);
+	else
+		str2ba(opt, &bdaddr);
+
+	if (ioctl(dd, HCIUNBLOCKADDR, &bdaddr) < 0) {
+		perror("ioctl(HCIUNBLOCKADDR)");
+		exit(1);
+	}
+
+	hci_close_dev(dd);
+}
+
 static void print_dev_hdr(struct hci_dev_info *di)
 {
 	static int hdr = -1;
@@ -1673,6 +1726,8 @@ static struct {
 	{ "features",	cmd_features,	0,		"Display device features" },
 	{ "version",	cmd_version,	0,		"Display version information" },
 	{ "revision",	cmd_revision,	0,		"Display revision information" },
+	{ "block",	cmd_block,	"<bdaddr>",	"Add a device to the blacklist" },
+	{ "unblock",	cmd_unblock,	"<bdaddr>",	"Remove a device from the blacklist" },
 	{ NULL, NULL, 0 }
 };
 
