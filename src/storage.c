@@ -1205,3 +1205,37 @@ int read_device_pairable(bdaddr_t *bdaddr, gboolean *mode)
 
 	return 0;
 }
+
+gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote)
+{
+	char filename[PATH_MAX + 1], *str, addr[18];
+
+	create_filename(filename, PATH_MAX, local, "blocked");
+
+	ba2str(remote, addr);
+
+	str = textfile_caseget(filename, addr);
+	if (!str)
+		return FALSE;
+
+	free(str);
+
+	return TRUE;
+}
+
+int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
+							gboolean blocked)
+{
+	char filename[PATH_MAX + 1], addr[18];
+
+	create_filename(filename, PATH_MAX, local, "blocked");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(remote, addr);
+
+	if (blocked == FALSE)
+		return textfile_casedel(filename, addr);
+
+	return textfile_caseput(filename, addr, "");
+}

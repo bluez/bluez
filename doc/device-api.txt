@@ -154,6 +154,13 @@ Properties	string Address [readonly]
 			Indicates if the remote is seen as trusted. This
 			setting can be changed by the application.
 
+		boolean Blocked [readwrite]
+
+			If set to true any incoming connections from the
+			device will be immediately rejected. Any device
+			drivers will also be removed and no new ones will
+			be probed as long as the device is blocked.
+
 		string Alias [readwrite]
 
 			The name alias for the remote device. The alias can

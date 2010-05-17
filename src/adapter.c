@@ -2022,6 +2022,23 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 	}
 }
 
+static void create_stored_device_from_blocked(char *key, char *value,
+						void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+
+	if (g_slist_find_custom(adapter->devices,
+				key, (GCompareFunc) device_address_cmp))
+		return;
+
+	device = device_create(connection, adapter, key);
+	if (device) {
+		device_set_temporary(device, FALSE);
+		adapter->devices = g_slist_append(adapter->devices, device);
+	}
+}
+
 static void load_devices(struct btd_adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
@@ -2036,6 +2053,26 @@ static void load_devices(struct btd_adapter *adapter)
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "linkkeys");
 	textfile_foreach(filename, create_stored_device_from_linkkeys,
 								adapter);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "blocked");
+	textfile_foreach(filename, create_stored_device_from_blocked, adapter);
+}
+
+static void clear_blocked(struct btd_adapter *adapter)
+{
+	int dd;
+
+	dd = hci_open_dev(adapter->dev_id);
+	if (dd < 0) {
+		error("hci_open_dev(hci%d): %s (%d)", adapter->dev_id,
+						strerror(errno), errno);
+		return;
+	}
+
+	if (ioctl(dd, HCIUNBLOCKADDR, BDADDR_ANY) < 0)
+		error("ioctl(HCIUNBLOCKADDR): %s (%d)", strerror(errno), errno);
+
+	hci_close_dev(dd);
 }
 
 static void probe_driver(gpointer data, gpointer user_data)
@@ -2205,6 +2242,7 @@ proceed:
 
 	if (adapter->initialized == FALSE) {
 		load_drivers(adapter);
+		clear_blocked(adapter);
 		load_devices(adapter);
 
 		/* retrieve the active connections: address the scenario where

@@ -124,5 +124,25 @@ if (sys.argv[1] == "trusted"):
 			device.SetProperty("Trusted", value)
 	sys.exit(0)
 
+if (sys.argv[1] == "blocked"):
+	if (len(sys.argv) < 3):
+		print "Need address parameter"
+	else:
+		path = adapter.FindDevice(sys.argv[2])
+		device = dbus.Interface(bus.get_object("org.bluez", path),
+							"org.bluez.Device")
+		if (len(sys.argv) < 4):
+			properties = device.GetProperties()
+			print properties["Blocked"]
+		else:
+			if (sys.argv[3] == "yes"):
+				value = dbus.Boolean(1)
+			elif (sys.argv[3] == "no"):
+				value = dbus.Boolean(0)
+			else:
+				value = dbus.Boolean(sys.argv[3])
+			device.SetProperty("Blocked", value)
+	sys.exit(0)
+
 print "Unknown command"
 sys.exit(1)
