@@ -438,6 +438,9 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	EBookQuery *query;
 	gboolean ret;
 
+	if (g_strcmp0("/telecom/pb", name) != 0)
+		return -ENOENT;
+
 	query = e_book_query_any_field_contains("");
 
 	data = g_new0(struct cache_query, 1);
