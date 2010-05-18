@@ -32,10 +32,9 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <syslog.h>
 
 #include <glib.h>
-
-#include "logging.h"
 
 #ifdef HAVE_CAPNG
 #include <cap-ng.h>
@@ -46,11 +45,6 @@ static GMainLoop *event_loop;
 static void sig_term(int sig)
 {
 	g_main_loop_quit(event_loop);
-}
-
-static void sig_debug(int sig)
-{
-	toggle_debug();
 }
 
 static gboolean option_detach = TRUE;
@@ -64,6 +58,25 @@ static GOptionEntry options[] = {
 				"Enable debug information output" },
 	{ NULL },
 };
+
+static void debug(const char *format, ...)
+{
+	va_list ap;
+
+	if (!option_debug)
+		return;
+
+	va_start(ap, format);
+
+	vsyslog(LOG_DEBUG, format, ap);
+
+	va_end(ap);
+}
+
+static void sig_debug(int sig)
+{
+	option_debug = !option_debug;
+}
 
 int main(int argc, char *argv[])
 {
@@ -103,7 +116,9 @@ int main(int argc, char *argv[])
 
 	umask(0077);
 
-	start_logging("hcitrace", "HCI trace daemon %s", VERSION);
+	openlog("hcitrace", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
+
+	syslog(LOG_INFO, "HCI trace deamon %s", VERSION);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
@@ -118,8 +133,7 @@ int main(int argc, char *argv[])
 	sigaction(SIGPIPE, &sa, NULL);
 
 	if (option_debug == TRUE) {
-		info("Enabling debug information");
-		enable_debug();
+		syslog(LOG_INFO, "Enabling debug information");
 	}
 
 	event_loop = g_main_loop_new(NULL, FALSE);
@@ -130,9 +144,9 @@ int main(int argc, char *argv[])
 
 	g_main_loop_unref(event_loop);
 
-	info("Exit");
+	syslog(LOG_INFO, "Exit");
 
-	stop_logging();
+	closelog();
 
 	return 0;
 }
