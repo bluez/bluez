@@ -288,13 +288,8 @@ static void sig_term(int sig)
 	g_main_loop_quit(event_loop);
 }
 
-static void sig_debug(int sig)
-{
-	toggle_debug();
-}
-
+static gchar *option_debug = NULL;
 static gboolean option_detach = TRUE;
-static gboolean option_debug = FALSE;
 static gboolean option_udev = FALSE;
 
 static guint last_adapter_timeout = 0;
@@ -327,12 +322,23 @@ void btd_stop_exit_timer(void)
 	last_adapter_timeout = 0;
 }
 
+static gboolean parse_debug(const char *key, const char *value, gpointer user_data, GError **error)
+{
+	if (value)
+		option_debug = g_strdup(value);
+	else
+		option_debug = g_strdup("*");
+
+	return TRUE;
+}
+
 static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Don't run as daemon in background" },
-	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
-				"Enable debug information output" },
+	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
+				G_OPTION_ARG_CALLBACK, parse_debug,
+				"Enable debug information output", "DEBUG" },
 	{ "udev", 'u', 0, G_OPTION_ARG_NONE, &option_udev,
 				"Run from udev mode of operation" },
 	{ NULL },
@@ -392,7 +398,7 @@ int main(int argc, char *argv[])
 
 	umask(0077);
 
-	start_logging("bluetoothd", "Bluetooth daemon %s", VERSION);
+	__btd_log_init(option_debug, option_detach);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
@@ -400,16 +406,8 @@ int main(int argc, char *argv[])
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT,  &sa, NULL);
 
-	sa.sa_handler = sig_debug;
-	sigaction(SIGUSR2, &sa, NULL);
-
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGPIPE, &sa, NULL);
-
-	if (option_debug == TRUE) {
-		info("Enabling debug information");
-		enable_debug();
-	}
 
 	config = load_config(CONFIGDIR "/main.conf");
 
@@ -446,7 +444,7 @@ int main(int argc, char *argv[])
 
 	rfkill_init();
 
-	debug("Entering main loop");
+	DBG("Entering main loop");
 
 	g_main_loop_run(event_loop);
 
@@ -469,7 +467,7 @@ int main(int argc, char *argv[])
 
 	info("Exit");
 
-	stop_logging();
+	__btd_log_cleanup();
 
 	return 0;
 }
