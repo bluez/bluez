@@ -422,6 +422,10 @@ static void cache_entry_done(void *user_data)
 	pbap->cache.valid = TRUE;
 
 	id = cache_find(&pbap->cache, pbap->find_handle);
+	if (id == NULL) {
+		obex_object_set_io_flags(pbap, G_IO_ERR, -ENOENT);
+		return;
+	}
 
 	ret = phonebook_get_entry(pbap->folder, id, pbap->params,
 						query_result, pbap);
