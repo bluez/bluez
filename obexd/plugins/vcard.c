@@ -208,9 +208,8 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 					uint64_t filter, uint8_t format)
 {
 	/* There's really nothing to do */
-	if ((contact->tel == NULL || contact->tel[0] == '\0') &&
-					(contact->fullname == NULL ||
-					contact->fullname[0] == '\0'))
+	if ((contact->numbers == NULL && (contact->fullname == NULL ||
+						contact->fullname[0] == '\0')))
 		return;
 
 	if (format == FORMAT_VCARD30)
@@ -221,15 +220,28 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	vcard_printf_begin(vcards, format);
 
 	if (filter & FILTER_FN) {
-		if (contact->fullname == NULL || contact->fullname[0] == '\0')
-			vcard_printf_fullname(vcards, contact->tel);
-		else
-			vcard_printf_fullname(vcards, contact->fullname);
+		char* fullname;
+		if (contact->fullname == NULL || contact->fullname[0] == '\0') {
+			struct phonebook_number *number;
+
+			number = contact->numbers->data;
+			fullname = number->tel;
+		} else
+			fullname = contact->fullname;
+
+		vcard_printf_fullname(vcards, fullname);
 	}
 
-	if (filter & FILTER_TEL)
-		vcard_printf_number(vcards, contact->tel, contact->tel_type,
-				TEL_TYPE_OTHER);
+	if (filter & FILTER_TEL) {
+		GSList *l;
+
+		for (l = contact->numbers; l; l = l->next) {
+			struct phonebook_number *number = l->data;
+
+			vcard_printf_number(vcards, number->tel, 1,
+								number->type);
+		}
+	}
 
 	if (filter & FILTER_N)
 		vcard_printf_name(vcards, contact);
@@ -240,16 +252,26 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	vcard_printf_end(vcards);
 }
 
+static void number_free(gpointer data, gpointer user_data)
+{
+	struct phonebook_number *number = data;
+
+	g_free(number->tel);
+	g_free(number);
+}
+
 void phonebook_contact_free(struct phonebook_contact *contact)
 {
 	if (contact == NULL)
 		return;
 
+	g_slist_foreach(contact->numbers, number_free, NULL);
+	g_slist_free(contact->numbers);
+
 	g_free(contact->fullname);
 	g_free(contact->given);
 	g_free(contact->family);
 	g_free(contact->additional);
-	g_free(contact->tel);
 	g_free(contact->email);
 	g_free(contact->prefix);
 	g_free(contact->suffix);

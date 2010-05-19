@@ -27,13 +27,17 @@ enum phonebook_number_type {
 	TEL_TYPE_OTHER,
 };
 
+struct phonebook_number {
+	char *tel;
+	int type;
+};
+
 struct phonebook_contact {
 	char *fullname;
 	char *given;
 	char *family;
 	char *additional;
-	char *tel;
-	int tel_type;
+	GSList *numbers;
 	char *email;
 	char *prefix;
 	char *suffix;

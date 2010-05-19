@@ -43,142 +43,189 @@
 #define TRACKER_DEFAULT_CONTACT_ME "<urn:nco:default-contact-me>"
 
 #define CONTACTS_QUERY_ALL						\
-	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
-	"	?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
+	"OPTIONAL { "							\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?w . "				\
+	"} "								\
 	"}"
 
 #define CONTACTS_QUERY_ALL_LIST						\
 	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
-	"nco:hasPhoneNumber(?c) "					\
+	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
 	"}"
 
 #define MISSED_CALLS_QUERY						\
-	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
+	"OPTIONAL { "							\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?w . "				\
+	"} "								\
 	"}"
 
 #define MISSED_CALLS_LIST						\
 	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
-	"nco:hasPhoneNumber(?c) "					\
+	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
 	"}"
 
 #define INCOMING_CALLS_QUERY						\
-	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
+	"OPTIONAL { "							\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?w . "				\
+	"} "								\
 	"}"
 
 #define INCOMING_CALLS_LIST						\
 	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
-	"nco:hasPhoneNumber(?c) "					\
+	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
 	"}"
 
 #define OUTGOING_CALLS_QUERY						\
-	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
+	"OPTIONAL { "							\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?w . "				\
+	"} "								\
 	"}"
 
 #define OUTGOING_CALLS_LIST						\
 	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
-	"nco:hasPhoneNumber(?c) "					\
+	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
 	"}"
 
 #define COMBINED_CALLS_QUERY						\
-	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 	"{ "								\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
+		"OPTIONAL { "						\
+			"?c nco:hasAffiliation ?a . "			\
+			"?a nco:hasPhoneNumber ?w . "			\
+		"} "							\
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
+		"OPTIONAL { "						\
+			"?c nco:hasAffiliation ?a . "			\
+			"?a nco:hasPhoneNumber ?w . "			\
+		"} "							\
 	"} } "
 
 #define COMBINED_CALLS_LIST						\
 	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
-	"nco:hasPhoneNumber(?c) "					\
+	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
 	"{ "								\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:PersonContact . "				\
+		"?c a nco:PersonContact ; "				\
+		"nco:hasPhoneNumber ?h . "				\
 	"} } "
 
 
 #define CONTACTS_QUERY_FROM_URI						\
-	"SELECT nco:hasPhoneNumber(?c) nco:fullname(?c) "		\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) nco:nameAdditional(?c) "	\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c)  "	\
 	"nco:hasEmailAddress(?c) "					\
+	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 		"?c a nco:PersonContact ; "				\
-		"nco:contactUID <%s> . "				\
+		"nco:contactUID <%s> ; "				\
+		"nco:hasPhoneNumber ?h . "				\
+	"OPTIONAL { "							\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?w . "				\
+	"} "								\
 	"}"
 
 typedef void (*reply_list_foreach_t) (char **reply, int num_fields,
@@ -399,6 +446,7 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	struct phonebook_data *data = user_data;
 	const struct apparam_field *params = data->params;
 	struct phonebook_contact *contact;
+	struct phonebook_number *number;
 	GString *vcards = data->vcards;
 	int last_index;
 
@@ -424,8 +472,6 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 
 add_entry:
 	contact = g_new0(struct phonebook_contact, 1);
-	contact->tel = g_strdup(reply[0]);
-	contact->tel_type = 1; /* HOME */
 	contact->fullname = g_strdup(reply[1]);
 	contact->family = g_strdup(reply[2]);
 	contact->given = g_strdup(reply[3]);
@@ -433,6 +479,21 @@ add_entry:
 	contact->prefix = g_strdup(reply[5]);
 	contact->suffix = g_strdup(reply[6]);
 	contact->email = g_strdup(reply[7]);
+
+	number = g_new0(struct phonebook_number, 1);
+	number->tel = g_strdup(reply[0]);
+	number->type = 0; /* HOME */
+
+	contact->numbers = g_slist_append(contact->numbers, number);
+
+	/* Has WORK Phonenumber */
+	if (strlen(reply[8])) {
+		number = g_new0(struct phonebook_number, 1);
+		number->tel = g_strdup(reply[8]);
+		number->type = 3; /* WORK */
+
+		contact->numbers = g_slist_append(contact->numbers, number);
+	}
 
 	DBG("contact %p", contact);
 
@@ -582,7 +643,7 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 	data->user_data = user_data;
 	data->cb = cb;
 
-	return query_tracker(query, 8, pull_contacts, data);
+	return query_tracker(query, 9, pull_contacts, data);
 }
 
 int phonebook_get_entry(const char *folder, const char *id,
@@ -604,7 +665,7 @@ int phonebook_get_entry(const char *folder, const char *id,
 
 	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id);
 
-	ret = query_tracker(query, 8, pull_contacts, data);
+	ret = query_tracker(query, 9, pull_contacts, data);
 
 	g_free(query);
 
