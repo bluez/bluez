@@ -255,7 +255,7 @@ gstreamerdir = $(libdir)/gstreamer-0.10
 
 gstreamer_LTLIBRARIES = audio/libgstbluetooth.la
 
-audio_libgstbluetooth_la_SOURCES = audio/gstbluetooth.c \
+audio_libgstbluetooth_la_SOURCES = audio/gstbluetooth.c audio/gstpragma.h \
 				audio/gstsbcenc.h audio/gstsbcenc.c \
 				audio/gstsbcdec.h audio/gstsbcdec.c \
 				audio/gstsbcparse.h audio/gstsbcparse.c \
