@@ -402,6 +402,8 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	GString *vcards = data->vcards;
 	int last_index;
 
+	DBG("reply %p", reply);
+
 	if (reply == NULL)
 		goto done;
 
@@ -431,6 +433,8 @@ add_entry:
 	contact->prefix = g_strdup(reply[5]);
 	contact->suffix = g_strdup(reply[6]);
 	contact->email = g_strdup(reply[7]);
+
+	DBG("contact %p", contact);
 
 	phonebook_add_contact(vcards, contact, params->filter, params->format);
 	phonebook_contact_free(contact);
@@ -566,6 +570,8 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 	struct phonebook_data *data;
 	const char *query;
 
+	DBG("name %s", name);
+
 	query = name2query(name);
 	if (query == NULL)
 		return -ENOENT;
@@ -586,6 +592,8 @@ int phonebook_get_entry(const char *folder, const char *id,
 	struct phonebook_data *data;
 	char *query;
 	int ret;
+
+	DBG("folder %s id %s", folder, id);
 
 	data = g_new0(struct phonebook_data, 1);
 	data->vcards = g_string_new(NULL);
@@ -608,6 +616,8 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 {
 	struct cache_data *cache;
 	const char *query;
+
+	DBG("name %s", name);
 
 	query = folder2query(name);
 	if (query == NULL)

@@ -228,6 +228,8 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	struct aparam_header *hdr = (struct aparam_header *) aparam;
 	uint16_t phonebooksize;
 
+	DBG("vcards %d", vcards);
+
 	phonebooksize = htons(vcards);
 
 	hdr->tag = PHONEBOOKSIZE_TAG;
@@ -243,6 +245,8 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 					int missed, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
+
+	DBG("");
 
 	if (!pbap->buffer)
 		pbap->buffer = g_string_new_len(buffer, bufsize);
@@ -370,6 +374,8 @@ static void cache_ready_notify(void *user_data)
 	GSList *l;
 	uint16_t max = pbap->params->maxlistcount;
 
+	DBG("");
+
 	if (max == 0) {
 		/* Ignore all other parameter and return PhoneBookSize */
 		char aparam[4];
@@ -419,10 +425,13 @@ static void cache_entry_done(void *user_data)
 	const char *id;
 	int ret;
 
+	DBG("");
+
 	pbap->cache.valid = TRUE;
 
 	id = cache_find(&pbap->cache, pbap->find_handle);
 	if (id == NULL) {
+		debug("Entry %d not found on cache", pbap->find_handle);
 		obex_object_set_io_flags(pbap, G_IO_ERR, -ENOENT);
 		return;
 	}
@@ -503,6 +512,11 @@ static struct apparam_field *parse_aparam(const uint8_t *buffer, uint32_t hlen)
 		len += hdr->len + sizeof(struct aparam_header);
 	}
 
+	DBG("o %x sa %x sv %s fil %" G_GINT64_MODIFIER "x for %x max %x off %x",
+			param->order, param->searchattrib, param->searchval,
+			param->filter, param->format, param->maxlistcount,
+			param->liststartoffset);
+
 	return param;
 
 failed:
@@ -538,6 +552,8 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 	char *path;
 	ssize_t rsize;
 	int ret;
+
+	DBG("name %s type %s pbap %p", name, type, pbap);
 
 	if (type == NULL)
 		return -EBADR;
@@ -602,6 +618,9 @@ static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
 
 	name = obex_get_name(os);
 
+	DBG("name %s folder %s nonhdr 0x%x%x", name, pbap->folder,
+							nonhdr[0], nonhdr[1]);
+
 	fullname = phonebook_set_folder(pbap->folder, name, nonhdr[0], &err);
 	if (err < 0)
 		return err;
@@ -662,6 +681,9 @@ static void *vobject_pull_open(const char *name, int oflag, mode_t mode,
 	phonebook_cb cb;
 	int ret;
 
+	DBG("name %s context %p maxlistcount %d", name, context,
+						pbap->params->maxlistcount);
+
 	if (oflag != O_RDONLY) {
 		ret = -EPERM;
 		goto fail;
@@ -693,6 +715,8 @@ static void *vobject_list_open(const char *name, int oflag, mode_t mode,
 {
 	struct pbap_session *pbap = context;
 	int ret;
+
+	DBG("name %s context %p valid %d", name, context, pbap->cache.valid);
 
 	if (oflag != O_RDONLY) {
 		ret = -EPERM;
@@ -732,6 +756,8 @@ static void *vobject_vcard_open(const char *name, int oflag, mode_t mode,
 	const char *id;
 	uint32_t handle;
 	int ret;
+
+	DBG("name %s context %p valid %d", name, context, pbap->cache.valid);
 
 	if (oflag != O_RDONLY) {
 		ret = -EPERM;
@@ -780,6 +806,9 @@ static ssize_t vobject_pull_read(void *object, void *buf, size_t count,
 {
 	struct pbap_session *pbap = object;
 
+	DBG("buffer %p maxlistcount %d", pbap->buffer,
+						pbap->params->maxlistcount);
+
 	if (!pbap->buffer)
 		return -EAGAIN;
 
@@ -798,6 +827,9 @@ static ssize_t vobject_list_read(void *object, void *buf, size_t count,
 {
 	struct pbap_session *pbap = object;
 
+	DBG("valid %d maxlistcount %d", pbap->cache.valid,
+						pbap->params->maxlistcount);
+
 	/* Backend still busy reading contacts */
 	if (!pbap->cache.valid)
 		return -EAGAIN;
@@ -814,6 +846,8 @@ static ssize_t vobject_vcard_read(void *object, void *buf, size_t count,
 								uint8_t *hi)
 {
 	struct pbap_session *pbap = object;
+
+	DBG("buffer %p", pbap->buffer);
 
 	if (!pbap->buffer)
 		return -EAGAIN;
