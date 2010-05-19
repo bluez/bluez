@@ -84,7 +84,7 @@
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
 	"} "								\
-	"}"
+	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define MISSED_CALLS_LIST						\
 	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
@@ -98,7 +98,7 @@
 		"nmo:isAnswered false ."				\
 		"?c a nco:PersonContact ; "				\
 		"nco:hasPhoneNumber ?h . "				\
-	"}"
+	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define INCOMING_CALLS_QUERY						\
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
@@ -116,7 +116,7 @@
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
 	"} "								\
-	"}"
+	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define INCOMING_CALLS_LIST						\
 	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
@@ -129,7 +129,7 @@
 		"nmo:isSent false . "					\
 		"?c a nco:PersonContact ; "				\
 		"nco:hasPhoneNumber ?h . "				\
-	"}"
+	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define OUTGOING_CALLS_QUERY						\
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
@@ -147,7 +147,7 @@
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
 	"} "								\
-	"}"
+	"} ORDER BY DESC(nmo:sentDate(?call))"
 
 #define OUTGOING_CALLS_LIST						\
 	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
@@ -160,7 +160,7 @@
 		"nmo:isSent true . "					\
 		"?c a nco:PersonContact ; "				\
 		"nco:hasPhoneNumber ?h . "				\
-	"}"
+	"} ORDER BY DESC(nmo:sentDate(?call))"
 
 #define COMBINED_CALLS_QUERY						\
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
