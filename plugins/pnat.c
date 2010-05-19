@@ -51,7 +51,7 @@
 #include "logging.h"
 
 /* FIXME: This location should be build-time configurable */
-#define PNATD "/usr/sbin/phonet-at"
+#define PNATD "/usr/bin/phonet-at"
 
 #define DUN_CHANNEL 1
 #define DUN_UUID "00001103-0000-1000-8000-00805F9B34FB"
