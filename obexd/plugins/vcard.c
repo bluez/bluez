@@ -198,6 +198,14 @@ static void vcard_printf_email(GString *vcards, const char *email)
 	}
 }
 
+static void vcard_printf_adr(GString *vcards, struct phonebook_contact *contact)
+{
+	vcard_printf(vcards, "ADR:%s;%s;%s;%s;%s;%s;%s", contact->pobox,
+					contact->extended, contact->street,
+					contact->locality, contact->region,
+					contact->postal, contact->country);
+}
+
 static void vcard_printf_end(GString *vcards)
 {
 	vcard_printf(vcards, "END:VCARD");
@@ -249,6 +257,9 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	if (filter & FILTER_EMAIL)
 		vcard_printf_email(vcards, contact->email);
 
+	if (filter & FILTER_ADR)
+		vcard_printf_adr(vcards, contact);
+
 	vcard_printf_end(vcards);
 }
 
@@ -275,5 +286,12 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_free(contact->email);
 	g_free(contact->prefix);
 	g_free(contact->suffix);
+	g_free(contact->pobox);
+	g_free(contact->extended);
+	g_free(contact->street);
+	g_free(contact->locality);
+	g_free(contact->region);
+	g_free(contact->postal);
+	g_free(contact->country);
 	g_free(contact);
 }

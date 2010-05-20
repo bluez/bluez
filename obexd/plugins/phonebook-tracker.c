@@ -47,14 +47,17 @@
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
-	"nco:phoneNumber(?w) "						\
+	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
+	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
+	"nco:postalcode(?p) nco:country(?p) "				\
 	"WHERE { "							\
 		"?c a nco:PersonContact ; "				\
 		"nco:hasPhoneNumber ?h . "				\
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e"				\
+		"?c nco:hasEmailAddress ?e . "				\
+		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"}"
 
@@ -73,7 +76,9 @@
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
-	"nco:phoneNumber(?w) "						\
+	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
+	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
+	"nco:postalcode(?p) nco:country(?p) "				\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
@@ -84,7 +89,8 @@
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e"				\
+		"?c nco:hasEmailAddress ?e . "				\
+		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
@@ -107,7 +113,9 @@
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
-	"nco:phoneNumber(?w) "						\
+	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
+	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
+	"nco:postalcode(?p) nco:country(?p) "				\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
@@ -117,7 +125,8 @@
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e"				\
+		"?c nco:hasEmailAddress ?e . "				\
+		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
@@ -139,7 +148,9 @@
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
-	"nco:phoneNumber(?w) "						\
+	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
+	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
+	"nco:postalcode(?p) nco:country(?p) "				\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
@@ -149,7 +160,8 @@
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e"				\
+		"?c nco:hasEmailAddress ?e . "				\
+		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"} ORDER BY DESC(nmo:sentDate(?call))"
 
@@ -171,7 +183,9 @@
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
-	"nco:phoneNumber(?w) "						\
+	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
+	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
+	"nco:postalcode(?p) nco:country(?p) "				\
 	"WHERE { "							\
 	"{ "								\
 		"?call a nmo:Call ; "					\
@@ -182,7 +196,8 @@
 		"OPTIONAL { "						\
 			"?c nco:hasAffiliation ?a . "			\
 			"?a nco:hasPhoneNumber ?w . "			\
-			"?c nco:hasEmailAddress ?e"			\
+			"?c nco:hasEmailAddress ?e . "			\
+			"?c nco:hasPostalAddress ?p . "			\
 		"} "							\
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
@@ -193,7 +208,8 @@
 		"OPTIONAL { "						\
 			"?c nco:hasAffiliation ?a . "			\
 			"?a nco:hasPhoneNumber ?w . "			\
-			"?c nco:hasEmailAddress ?e"			\
+			"?c nco:hasEmailAddress ?e . "			\
+			"?c nco:hasPostalAddress ?p . "			\
 		"} "							\
 	"} } "
 
@@ -223,7 +239,9 @@
 	"nco:nameFamily(?c) nco:nameGiven(?c) nco:nameAdditional(?c) "	\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c)  "	\
 	"nco:emailAddress(?e) "						\
-	"nco:phoneNumber(?w) "						\
+	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
+	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
+	"nco:postalcode(?p) nco:country(?p) "				\
 	"WHERE { "							\
 		"?c a nco:PersonContact ; "				\
 		"nco:contactUID <%s> ; "				\
@@ -231,7 +249,8 @@
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e"				\
+		"?c nco:hasEmailAddress ?e . "				\
+		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"}"
 
@@ -486,6 +505,13 @@ add_entry:
 	contact->prefix = g_strdup(reply[5]);
 	contact->suffix = g_strdup(reply[6]);
 	contact->email = g_strdup(reply[7]);
+	contact->pobox = g_strdup(reply[9]);
+	contact->extended = g_strdup(reply[10]);
+	contact->street = g_strdup(reply[11]);
+	contact->locality = g_strdup(reply[12]);
+	contact->region = g_strdup(reply[13]);
+	contact->postal = g_strdup(reply[14]);
+	contact->country = g_strdup(reply[15]);
 
 	number = g_new0(struct phonebook_number, 1);
 	number->tel = g_strdup(reply[0]);
@@ -650,7 +676,7 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 	data->user_data = user_data;
 	data->cb = cb;
 
-	return query_tracker(query, 9, pull_contacts, data);
+	return query_tracker(query, 16, pull_contacts, data);
 }
 
 int phonebook_get_entry(const char *folder, const char *id,
@@ -672,7 +698,7 @@ int phonebook_get_entry(const char *folder, const char *id,
 
 	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id);
 
-	ret = query_tracker(query, 9, pull_contacts, data);
+	ret = query_tracker(query, 16, pull_contacts, data);
 
 	g_free(query);
 

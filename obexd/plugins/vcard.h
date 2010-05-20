@@ -41,6 +41,13 @@ struct phonebook_contact {
 	char *email;
 	char *prefix;
 	char *suffix;
+	char *pobox;
+	char *extended;
+	char *street;
+	char *locality;
+	char *region;
+	char *postal;
+	char *country;
 };
 
 void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
