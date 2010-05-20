@@ -46,7 +46,7 @@
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
-	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 		"?c a nco:PersonContact ; "				\
@@ -54,6 +54,7 @@
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
+		"?c nco:hasEmailAddress ?e"				\
 	"} "								\
 	"}"
 
@@ -71,7 +72,7 @@
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
-	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
@@ -83,6 +84,7 @@
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
+		"?c nco:hasEmailAddress ?e"				\
 	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
@@ -104,7 +106,7 @@
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
-	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
@@ -115,6 +117,7 @@
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
+		"?c nco:hasEmailAddress ?e"				\
 	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
@@ -135,7 +138,7 @@
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
-	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
@@ -146,6 +149,7 @@
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
+		"?c nco:hasEmailAddress ?e"				\
 	"} "								\
 	"} ORDER BY DESC(nmo:sentDate(?call))"
 
@@ -166,7 +170,7 @@
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
-	"nco:nameHonorificSuffix(?c) nco:hasEmailAddress(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 	"{ "								\
@@ -178,6 +182,7 @@
 		"OPTIONAL { "						\
 			"?c nco:hasAffiliation ?a . "			\
 			"?a nco:hasPhoneNumber ?w . "			\
+			"?c nco:hasEmailAddress ?e"			\
 		"} "							\
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
@@ -188,6 +193,7 @@
 		"OPTIONAL { "						\
 			"?c nco:hasAffiliation ?a . "			\
 			"?a nco:hasPhoneNumber ?w . "			\
+			"?c nco:hasEmailAddress ?e"			\
 		"} "							\
 	"} } "
 
@@ -216,7 +222,7 @@
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) nco:nameAdditional(?c) "	\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c)  "	\
-	"nco:hasEmailAddress(?c) "					\
+	"nco:emailAddress(?e) "						\
 	"nco:phoneNumber(?w) "						\
 	"WHERE { "							\
 		"?c a nco:PersonContact ; "				\
@@ -225,6 +231,7 @@
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
+		"?c nco:hasEmailAddress ?e"				\
 	"} "								\
 	"}"
 
