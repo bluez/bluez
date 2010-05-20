@@ -135,6 +135,7 @@ static void os_reset_session(struct obex_session *os)
 
 	os->driver = NULL;
 	os->aborted = FALSE;
+	os->pending = 0;
 	os->offset = 0;
 	os->size = OBJECT_SIZE_DELETE;
 	os->finished = 0;
