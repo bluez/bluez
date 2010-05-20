@@ -45,7 +45,7 @@ struct obex_session {
 	uint8_t cmd;
 	char *name;
 	char *type;
-	const char *path;
+	char *path;
 	time_t time;
 	uint8_t *buf;
 	int32_t pending;

@@ -132,6 +132,10 @@ static void os_reset_session(struct obex_session *os)
 		g_free(os->buf);
 		os->buf = NULL;
 	}
+	if (os->path) {
+		g_free(os->path);
+		os->path = NULL;
+	}
 
 	os->driver = NULL;
 	os->aborted = FALSE;
@@ -693,7 +697,7 @@ int obex_put_stream_start(struct obex_session *os, const char *filename)
 		return -EPERM;
 	}
 
-	os->path = filename;
+	os->path = g_strdup(filename);
 
 	if (!os->buf) {
 		debug("PUT request checked, no buffered data");
