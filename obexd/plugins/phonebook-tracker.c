@@ -541,6 +541,7 @@ done:
 							data->user_data);
 
 	g_string_free(vcards, TRUE);
+	g_free(data);
 }
 
 static void add_to_cache(char **reply, int num_fields, void *user_data)
