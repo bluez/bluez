@@ -1194,6 +1194,7 @@ static void update_registration_status(const char *status)
 							EV_SERVICE_PRESENT);
 		break;
 	case NETWORK_REG_STATUS_OFFLINE:
+	case NETWORK_REG_STATUS_SEARCHING:
 	case NETWORK_REG_STATUS_NO_SIM:
 	case NETWORK_REG_STATUS_POWEROFF:
 	case NETWORK_REG_STATUS_POWERSAFE:
