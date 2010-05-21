@@ -55,7 +55,7 @@
 #include "adapter.h"
 #include "device.h"
 
-#include "logging.h"
+#include "log.h"
 #include "textfile.h"
 
 #include "error.h"

@@ -39,7 +39,7 @@
 #include <dbus/dbus.h>
 #include <glib.h>
 
-#include "logging.h"
+#include "log.h"
 #include "ipc.h"
 #include "device.h"
 #include "manager.h"

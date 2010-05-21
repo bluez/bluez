@@ -47,7 +47,7 @@
 
 #include "../src/dbus-common.h"
 
-#include "logging.h"
+#include "log.h"
 #include "glib-helper.h"
 #include "btio.h"
 

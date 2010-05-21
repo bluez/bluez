@@ -46,7 +46,7 @@
 
 #include <dbus/dbus.h>
 
-#include "logging.h"
+#include "log.h"
 
 #include "hcid.h"
 #include "sdpd.h"

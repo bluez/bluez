@@ -42,7 +42,7 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
-#include "logging.h"
+#include "log.h"
 
 #include "manager.h"
 #include "adapter.h"

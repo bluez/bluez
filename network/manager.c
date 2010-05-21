@@ -33,7 +33,7 @@
 #include <glib.h>
 #include <gdbus.h>
 
-#include "logging.h"
+#include "log.h"
 
 #include "adapter.h"
 #include "device.h"

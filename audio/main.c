@@ -40,7 +40,7 @@
 #include "glib-helper.h"
 #include "btio.h"
 #include "plugin.h"
-#include "logging.h"
+#include "log.h"
 #include "device.h"
 #include "unix.h"
 #include "headset.h"

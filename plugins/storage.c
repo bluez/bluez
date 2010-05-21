@@ -28,7 +28,7 @@
 #include <bluetooth/bluetooth.h>
 
 #include "plugin.h"
-#include "logging.h"
+#include "log.h"
 
 static int storage_init(void)
 {

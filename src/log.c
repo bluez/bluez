@@ -31,7 +31,7 @@
 
 #include <glib.h>
 
-#include "logging.h"
+#include "log.h"
 
 static inline void vinfo(const char *format, va_list ap)
 {

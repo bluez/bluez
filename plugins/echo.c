@@ -38,7 +38,7 @@
 
 #include "plugin.h"
 #include "adapter.h"
-#include "logging.h"
+#include "log.h"
 
 static gboolean session_event(GIOChannel *chan,
 					GIOCondition cond, gpointer data)

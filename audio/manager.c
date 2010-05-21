@@ -55,7 +55,7 @@
 #include "../src/adapter.h"
 #include "../src/device.h"
 
-#include "logging.h"
+#include "log.h"
 #include "textfile.h"
 #include "ipc.h"
 #include "device.h"

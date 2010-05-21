@@ -45,7 +45,7 @@
 #include <dbus/dbus.h>
 
 #include "sdpd.h"
-#include "logging.h"
+#include "log.h"
 #include "manager.h"
 #include "adapter.h"
 

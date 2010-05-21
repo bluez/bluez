@@ -44,7 +44,7 @@
 #include "../src/dbus-common.h"
 #include "../src/adapter.h"
 
-#include "logging.h"
+#include "log.h"
 #include "error.h"
 #include "sdpd.h"
 #include "btio.h"

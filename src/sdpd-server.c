@@ -45,7 +45,7 @@
 
 #include <glib.h>
 
-#include "logging.h"
+#include "log.h"
 #include "sdpd.h"
 
 static GIOChannel *l2cap_io = NULL, *unix_io = NULL;

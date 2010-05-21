@@ -46,7 +46,7 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
-#include "logging.h"
+#include "log.h"
 #include "textfile.h"
 #include "uinput.h"
 

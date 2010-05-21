@@ -48,7 +48,7 @@
 #include "sdpd.h"
 #include "btio.h"
 #include "adapter.h"
-#include "logging.h"
+#include "log.h"
 
 /* FIXME: This location should be build-time configurable */
 #define PNATD "/usr/bin/phonet-at"

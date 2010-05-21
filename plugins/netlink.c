@@ -37,7 +37,7 @@
 #include <glib.h>
 
 #include "plugin.h"
-#include "logging.h"
+#include "log.h"
 
 static struct nl_handle *handle;
 static struct nl_cache *cache;

@@ -38,7 +38,7 @@
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
 
-#include "logging.h"
+#include "log.h"
 #include "bridge.h"
 #include "common.h"
 

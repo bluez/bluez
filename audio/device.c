@@ -43,7 +43,7 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
-#include "logging.h"
+#include "log.h"
 #include "textfile.h"
 #include "../src/adapter.h"
 #include "../src/device.h"

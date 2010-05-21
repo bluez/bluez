@@ -39,7 +39,7 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "sdpd.h"
-#include "logging.h"
+#include "log.h"
 #include "adapter.h"
 
 static sdp_list_t *service_db;

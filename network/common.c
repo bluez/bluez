@@ -41,7 +41,7 @@
 
 #include <glib.h>
 
-#include "logging.h"
+#include "log.h"
 #include "common.h"
 
 static int ctl;

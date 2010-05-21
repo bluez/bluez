@@ -32,7 +32,7 @@
 #include <gdbus.h>
 
 #include "plugin.h"
-#include "logging.h"
+#include "log.h"
 #include "manager.h"
 
 static GKeyFile *load_config_file(const char *file)

@@ -43,7 +43,7 @@
 #include "plugin.h"
 #include "adapter.h"
 #include "error.h"
-#include "logging.h"
+#include "log.h"
 
 #define SERVICE_INTERFACE "org.bluez.Service"
 

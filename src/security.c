@@ -47,7 +47,7 @@
 #include <dbus/dbus.h>
 
 #include "hcid.h"
-#include "logging.h"
+#include "log.h"
 #include "textfile.h"
 
 #include "adapter.h"

@@ -48,7 +48,7 @@
 #include "glib-helper.h"
 #include "device.h"
 #include "gateway.h"
-#include "logging.h"
+#include "log.h"
 #include "error.h"
 #include "btio.h"
 #include "dbus-common.h"

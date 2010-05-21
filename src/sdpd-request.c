@@ -43,7 +43,7 @@
 #include <netinet/in.h>
 
 #include "sdpd.h"
-#include "logging.h"
+#include "log.h"
 
 #define MIN(x, y) ((x) < (y)) ? (x): (y)
 

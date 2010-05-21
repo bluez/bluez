@@ -34,7 +34,7 @@
 #include <glib.h>
 #include <dbus/dbus.h>
 
-#include "logging.h"
+#include "log.h"
 
 #include "glib-helper.h"
 #include "btio.h"

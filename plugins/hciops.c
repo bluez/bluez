@@ -42,7 +42,7 @@
 #include "sdpd.h"
 #include "adapter.h"
 #include "plugin.h"
-#include "logging.h"
+#include "log.h"
 #include "manager.h"
 
 static int child_pipe[2] = { -1, -1 };

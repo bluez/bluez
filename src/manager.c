@@ -45,7 +45,7 @@
 
 #include "hcid.h"
 #include "dbus-common.h"
-#include "logging.h"
+#include "log.h"
 #include "adapter.h"
 #include "error.h"
 #include "manager.h"
