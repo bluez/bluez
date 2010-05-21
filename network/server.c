@@ -500,7 +500,7 @@ static void confirm_event(GIOChannel *chan, gpointer user_data)
 		goto drop;
 	}
 
-	debug("BNEP: incoming connect from %s", address);
+	DBG("BNEP: incoming connect from %s", address);
 
 	if (na->setup) {
 		error("Refusing connect from %s: setup in progress", address);
@@ -564,7 +564,7 @@ static uint32_t register_server_record(struct network_server *ns)
 		return 0;
 	}
 
-	debug("register_server_record: got record id 0x%x", record->handle);
+	DBG("register_server_record: got record id 0x%x", record->handle);
 
 	return record->handle;
 }
@@ -786,7 +786,7 @@ static void path_unregister(void *data)
 	struct network_server *ns = data;
 	struct network_adapter *na = ns->na;
 
-	debug("Unregistered interface %s on path %s",
+	DBG("Unregistered interface %s on path %s",
 		ns->iface, adapter_get_path(na->adapter));
 
 	na->servers = g_slist_remove(na->servers, ns);
@@ -893,7 +893,7 @@ int server_register(struct btd_adapter *adapter, uint16_t id)
 	ns->enable = TRUE;
 	na->servers = g_slist_append(na->servers, ns);
 
-	debug("Registered interface %s on path %s", ns->iface, path);
+	DBG("Registered interface %s on path %s", ns->iface, path);
 
 	return 0;
 }

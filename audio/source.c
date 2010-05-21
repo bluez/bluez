@@ -169,7 +169,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 	struct audio_device *device = user_data;
 	struct source *source = device->source;
 
-	debug("Source: disconnect %s", device->path);
+	DBG("Source: disconnect %s", device->path);
 
 	avdtp_close(source->session, source->stream, TRUE);
 }
@@ -249,14 +249,14 @@ static gboolean stream_setup_retry(gpointer user_data)
 	source->retry_id = 0;
 
 	if (source->stream_state >= AVDTP_STATE_OPEN) {
-		debug("Stream successfully created, after XCASE connect:connect");
+		DBG("Stream successfully created, after XCASE connect:connect");
 		if (pending->msg) {
 			DBusMessage *reply;
 			reply = dbus_message_new_method_return(pending->msg);
 			g_dbus_send_message(pending->conn, reply);
 		}
 	} else {
-		debug("Stream setup failed, after XCASE connect:connect");
+		DBG("Stream setup failed, after XCASE connect:connect");
 		if (pending->msg)
 			error_failed(pending->conn, pending->msg, "Stream setup failed");
 	}
@@ -279,7 +279,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	pending->id = 0;
 
 	if (stream) {
-		debug("Stream successfully created");
+		DBG("Stream successfully created");
 
 		if (pending->msg) {
 			DBusMessage *reply;
@@ -297,7 +297,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	source->session = NULL;
 	if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
 			&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
-		debug("connect:connect XCASE detected");
+		DBG("connect:connect XCASE detected");
 		source->retry_id = g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
 							stream_setup_retry,
 							source);
@@ -306,7 +306,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 			error_failed(pending->conn, pending->msg, "Stream setup failed");
 		source->connect = NULL;
 		pending_request_free(source->dev, pending);
-		debug("Stream setup failed : %s", avdtp_strerror(err));
+		DBG("Stream setup failed : %s", avdtp_strerror(err));
 	}
 }
 
@@ -464,7 +464,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 		source->session = NULL;
 		if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
 				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
-			debug("connect:connect XCASE detected");
+			DBG("connect:connect XCASE detected");
 			source->retry_id =
 				g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
 							stream_setup_retry,
@@ -474,7 +474,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 		return;
 	}
 
-	debug("Discovery complete");
+	DBG("Discovery complete");
 
 	if (avdtp_get_seps(session, AVDTP_SEP_TYPE_SOURCE, AVDTP_MEDIA_TYPE_AUDIO,
 				A2DP_CODEC_SBC, &lsep, &rsep) < 0) {
@@ -565,7 +565,7 @@ static DBusMessage *source_connect(DBusConnection *conn,
 	pending->conn = dbus_connection_ref(conn);
 	pending->msg = dbus_message_ref(msg);
 
-	debug("stream creation in progress");
+	DBG("stream creation in progress");
 
 	return NULL;
 }
@@ -685,7 +685,7 @@ static void path_unregister(void *data)
 {
 	struct audio_device *dev = data;
 
-	debug("Unregistered interface %s on path %s",
+	DBG("Unregistered interface %s on path %s",
 		AUDIO_SOURCE_INTERFACE, dev->path);
 
 	source_free(dev);
@@ -707,7 +707,7 @@ struct source *source_init(struct audio_device *dev)
 					dev, path_unregister))
 		return NULL;
 
-	debug("Registered interface %s on path %s",
+	DBG("Registered interface %s on path %s",
 		AUDIO_SOURCE_INTERFACE, dev->path);
 
 	if (avdtp_callback_id == 0)

@@ -374,17 +374,17 @@ static void handle_panel_passthrough(struct control *control,
 		if ((operands[0] & 0x7F) != key_map[i].avrcp)
 			continue;
 
-		debug("AVRCP: %s %s", key_map[i].name, status);
+		DBG("AVRCP: %s %s", key_map[i].name, status);
 
 		key_quirks = control->key_quirks[key_map[i].avrcp];
 
 		if (key_quirks & QUIRK_NO_RELEASE) {
 			if (!pressed) {
-				debug("AVRCP: Ignoring release");
+				DBG("AVRCP: Ignoring release");
 				break;
 			}
 
-			debug("AVRCP: treating key press as press + release");
+			DBG("AVRCP: treating key press as press + release");
 			send_key(control->uinput, key_map[i].uinput, 1);
 			send_key(control->uinput, key_map[i].uinput, 0);
 			break;
@@ -395,7 +395,7 @@ static void handle_panel_passthrough(struct control *control,
 	}
 
 	if (key_map[i].name == NULL)
-		debug("AVRCP: unknown button 0x%02X %s",
+		DBG("AVRCP: unknown button 0x%02X %s",
 						operands[0] & 0x7F, status);
 }
 
@@ -425,7 +425,7 @@ static void avctp_disconnected(struct audio_device *dev)
 		char address[18];
 
 		ba2str(&dev->dst, address);
-		debug("AVRCP: closing uinput for %s", address);
+		DBG("AVRCP: closing uinput for %s", address);
 
 		ioctl(control->uinput, UI_DEV_DESTROY);
 		close(control->uinput);
@@ -442,7 +442,7 @@ static void avctp_set_state(struct control *control, avctp_state_t new_state)
 
 	switch (new_state) {
 	case AVCTP_STATE_DISCONNECTED:
-		debug("AVCTP Disconnected");
+		DBG("AVCTP Disconnected");
 
 		avctp_disconnected(control->dev);
 
@@ -462,10 +462,10 @@ static void avctp_set_state(struct control *control, avctp_state_t new_state)
 
 		break;
 	case AVCTP_STATE_CONNECTING:
-		debug("AVCTP Connecting");
+		DBG("AVCTP Connecting");
 		break;
 	case AVCTP_STATE_CONNECTED:
-		debug("AVCTP Connected");
+		DBG("AVCTP Connected");
 		value = TRUE;
 		g_dbus_emit_signal(control->dev->conn, control->dev->path,
 				AUDIO_CONTROL_INTERFACE, "Connected",
@@ -505,7 +505,7 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 	if (ret <= 0)
 		goto failed;
 
-	debug("Got %d bytes of data for AVCTP session %p", ret, control);
+	DBG("Got %d bytes of data for AVCTP session %p", ret, control);
 
 	if ((unsigned int) ret < sizeof(struct avctp_header)) {
 		error("Too small AVCTP packet");
@@ -516,7 +516,7 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 
 	avctp = (struct avctp_header *) buf;
 
-	debug("AVCTP transaction %u, packet type %u, C/R %u, IPID %u, "
+	DBG("AVCTP transaction %u, packet type %u, C/R %u, IPID %u, "
 			"PID 0x%04X",
 			avctp->transaction, avctp->packet_type,
 			avctp->cr, avctp->ipid, ntohs(avctp->pid));
@@ -534,7 +534,7 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 	operands = buf + sizeof(struct avctp_header) + sizeof(struct avrcp_header);
 	operand_count = ret;
 
-	debug("AVRCP %s 0x%01X, subunit_type 0x%02X, subunit_id 0x%01X, "
+	DBG("AVRCP %s 0x%01X, subunit_type 0x%02X, subunit_id 0x%01X, "
 			"opcode 0x%02X, %d operands",
 			avctp->cr ? "response" : "command",
 			avrcp->code, avrcp->subunit_type, avrcp->subunit_id,
@@ -568,7 +568,7 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 			operands[0] = 0x07;
 		if (operand_count >= 2)
 			operands[1] = SUBUNIT_PANEL << 3;
-		debug("reply to %s", avrcp->opcode == OP_UNITINFO ?
+		DBG("reply to %s", avrcp->opcode == OP_UNITINFO ?
 				"OP_UNITINFO" : "OP_SUBUNITINFO");
 	} else {
 		avctp->cr = AVCTP_RESPONSE;
@@ -579,7 +579,7 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 
 failed:
-	debug("AVCTP session %p got disconnected", control);
+	DBG("AVCTP session %p got disconnected", control);
 	avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
 	return FALSE;
 }
@@ -660,7 +660,7 @@ static void init_uinput(struct control *control)
 	if (control->uinput < 0)
 		error("AVRCP: failed to init uinput for %s", address);
 	else
-		debug("AVRCP: uinput initialized for %s", address);
+		DBG("AVRCP: uinput initialized for %s", address);
 }
 
 static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
@@ -687,7 +687,7 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 		return;
 	}
 
-	debug("AVCTP: connected to %s", address);
+	DBG("AVCTP: connected to %s", address);
 
 	if (!control->io)
 		control->io = g_io_channel_ref(chan);
@@ -851,7 +851,7 @@ int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 		tmp = g_key_file_get_boolean(config, "General",
 							"Master", &err);
 		if (err) {
-			debug("audio.conf: %s", err->message);
+			DBG("audio.conf: %s", err->message);
 			g_error_free(err);
 		} else
 			master = tmp;
@@ -1112,7 +1112,7 @@ static void path_unregister(void *data)
 	struct audio_device *dev = data;
 	struct control *control = dev->control;
 
-	debug("Unregistered interface %s on path %s",
+	DBG("Unregistered interface %s on path %s",
 		AUDIO_CONTROL_INTERFACE, dev->path);
 
 	if (control->state != AVCTP_STATE_DISCONNECTED)
@@ -1146,7 +1146,7 @@ struct control *control_init(struct audio_device *dev, uint16_t uuid16)
 					dev, path_unregister))
 		return NULL;
 
-	debug("Registered interface %s on path %s",
+	DBG("Registered interface %s on path %s",
 		AUDIO_CONTROL_INTERFACE, dev->path);
 
 	control = g_new0(struct control, 1);

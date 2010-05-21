@@ -79,9 +79,9 @@ static gint find_devname(gconstpointer a, gconstpointer b)
 static void script_exited(GPid pid, gint status, gpointer data)
 {
 	if (WIFEXITED(status))
-		debug("%d exited with status %d", pid, WEXITSTATUS(status));
+		DBG("%d exited with status %d", pid, WEXITSTATUS(status));
 	else
-		debug("%d was killed by signal %d", pid, WTERMSIG(status));
+		DBG("%d was killed by signal %d", pid, WTERMSIG(status));
 
 	g_spawn_close_pid(pid);
 }

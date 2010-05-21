@@ -212,7 +212,7 @@ static void print_ag_features(uint32_t features)
 	char *str;
 
 	if (features == 0) {
-		debug("HFP AG features: (none)");
+		DBG("HFP AG features: (none)");
 		return;
 	}
 
@@ -239,7 +239,7 @@ static void print_ag_features(uint32_t features)
 
 	str = g_string_free(gstr, FALSE);
 
-	debug("%s", str);
+	DBG("%s", str);
 
 	g_free(str);
 }
@@ -250,7 +250,7 @@ static void print_hf_features(uint32_t features)
 	char *str;
 
 	if (features == 0) {
-		debug("HFP HF features: (none)");
+		DBG("HFP HF features: (none)");
 		return;
 	}
 
@@ -273,7 +273,7 @@ static void print_hf_features(uint32_t features)
 
 	str = g_string_free(gstr, FALSE);
 
-	debug("%s", str);
+	DBG("%s", str);
 
 	g_free(str);
 }
@@ -591,11 +591,11 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		return;
 	}
 
-	debug("SCO socket opened for headset %s", dev->path);
+	DBG("SCO socket opened for headset %s", dev->path);
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	debug("SCO fd=%d", sk);
+	DBG("SCO fd=%d", sk);
 
 	if (p) {
 		p->io = NULL;
@@ -670,7 +670,7 @@ static void hfp_slc_complete(struct audio_device *dev)
 	struct headset *hs = dev->headset;
 	struct pending_connect *p = hs->pending;
 
-	debug("HFP Service Level Connection established");
+	DBG("HFP Service Level Connection established");
 
 	headset_set_state(dev, HEADSET_STATE_CONNECTED);
 
@@ -754,7 +754,7 @@ static int event_reporting(struct audio_device *dev, const char *buf)
 	g_strfreev(tokens);
 	tokens = NULL;
 
-	debug("Event reporting (CMER): mode=%d, ind=%d",
+	DBG("Event reporting (CMER): mode=%d, ind=%d",
 			ag.er_mode, ag.er_ind);
 
 	switch (ag.er_ind) {
@@ -938,7 +938,7 @@ static int dial_number(struct audio_device *device, const char *buf)
 	buf_len = strlen(buf);
 
 	if (buf[buf_len - 1] != ';') {
-		debug("Rejecting non-voice call dial request");
+		DBG("Rejecting non-voice call dial request");
 		return -EINVAL;
 	}
 
@@ -1054,10 +1054,10 @@ static int extended_errors(struct audio_device *device, const char *buf)
 
 	if (buf[8] == '1') {
 		slc->cme_enabled = TRUE;
-		debug("CME errors enabled for headset %p", hs);
+		DBG("CME errors enabled for headset %p", hs);
 	} else {
 		slc->cme_enabled = FALSE;
-		debug("CME errors disabled for headset %p", hs);
+		DBG("CME errors disabled for headset %p", hs);
 	}
 
 	return headset_send(hs, "\r\nOK\r\n");
@@ -1073,10 +1073,10 @@ static int call_waiting_notify(struct audio_device *device, const char *buf)
 
 	if (buf[8] == '1') {
 		slc->cwa_enabled = TRUE;
-		debug("Call waiting notification enabled for headset %p", hs);
+		DBG("Call waiting notification enabled for headset %p", hs);
 	} else {
 		slc->cwa_enabled = FALSE;
-		debug("Call waiting notification disabled for headset %p", hs);
+		DBG("Call waiting notification disabled for headset %p", hs);
 	}
 
 	return headset_send(hs, "\r\nOK\r\n");
@@ -1203,7 +1203,7 @@ static int handle_event(struct audio_device *device, const char *buf)
 {
 	struct event *ev;
 
-	debug("Received %s", buf);
+	DBG("Received %s", buf);
 
 	for (ev = event_callbacks; ev->cmd; ev++) {
 		if (!strncmp(buf, ev->cmd, strlen(ev->cmd)))
@@ -1247,7 +1247,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	slc = hs->slc;
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		debug("ERR or HUP on RFCOMM socket");
+		DBG("ERR or HUP on RFCOMM socket");
 		goto failed;
 	}
 
@@ -1359,7 +1359,7 @@ void headset_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	g_io_add_watch(chan, G_IO_IN | G_IO_ERR | G_IO_HUP| G_IO_NVAL,
 			(GIOFunc) rfcomm_io_cb, dev);
 
-	debug("%s: Connected to %s", dev->path, hs_address);
+	DBG("%s: Connected to %s", dev->path, hs_address);
 
 	hs->slc = g_new0(struct headset_slc, 1);
 	hs->slc->nrec = TRUE;
@@ -1421,10 +1421,10 @@ static int headset_set_channel(struct headset *headset,
 
 	if (svc == HANDSFREE_SVCLASS_ID) {
 		headset->hfp_handle = record->handle;
-		debug("Discovered Handsfree service on channel %d", ch);
+		DBG("Discovered Handsfree service on channel %d", ch);
 	} else {
 		headset->hsp_handle = record->handle;
-		debug("Discovered Headset service on channel %d", ch);
+		DBG("Discovered Headset service on channel %d", ch);
 	}
 
 	return 0;
@@ -1570,7 +1570,7 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 
 	ba2str(&dev->dst, address);
 
-	debug("%s: Connecting to %s channel %d", dev->path, address,
+	DBG("%s: Connecting to %s channel %d", dev->path, address,
 		hs->rfcomm_ch);
 
 	hs->tmp_rfcomm = bt_io_connect(BT_IO_RFCOMM, headset_connect_cb, dev,
@@ -1740,7 +1740,7 @@ static DBusMessage *hs_ring(DBusConnection *conn, DBusMessage *msg,
 		return NULL;
 
 	if (ag.ring_timer) {
-		debug("IndicateCall received when already indicating");
+		DBG("IndicateCall received when already indicating");
 		goto done;
 	}
 
@@ -1780,7 +1780,7 @@ static DBusMessage *hs_cancel_call(DBusConnection *conn,
 		g_source_remove(ag.ring_timer);
 		ag.ring_timer = 0;
 	} else
-		debug("Got CancelCall method call but no call is active");
+		DBG("Got CancelCall method call but no call is active");
 
 	return reply;
 }
@@ -2133,7 +2133,7 @@ void headset_update(struct audio_device *dev, uint16_t svc,
 		break;
 
 	default:
-		debug("Invalid record passed to headset_update");
+		DBG("Invalid record passed to headset_update");
 		return;
 	}
 }
@@ -2182,11 +2182,11 @@ static void path_unregister(void *data)
 	struct headset *hs = dev->headset;
 
 	if (hs->state > HEADSET_STATE_DISCONNECTED) {
-		debug("Headset unregistered while device was connected!");
+		DBG("Headset unregistered while device was connected!");
 		headset_shutdown(dev);
 	}
 
-	debug("Unregistered interface %s on path %s",
+	DBG("Unregistered interface %s on path %s",
 		AUDIO_HEADSET_INTERFACE, dev->path);
 
 	headset_free(dev);
@@ -2222,7 +2222,7 @@ struct headset *headset_init(struct audio_device *dev, uint16_t svc,
 		break;
 
 	default:
-		debug("Invalid record passed to headset_init");
+		DBG("Invalid record passed to headset_init");
 		g_free(hs);
 		return NULL;
 	}
@@ -2236,7 +2236,7 @@ register_iface:
 		return NULL;
 	}
 
-	debug("Registered interface %s on path %s",
+	DBG("Registered interface %s on path %s",
 		AUDIO_HEADSET_INTERFACE, dev->path);
 
 	return hs;
@@ -2254,7 +2254,7 @@ uint32_t headset_config_init(GKeyFile *config)
 	str = g_key_file_get_string(config, "General", "SCORouting",
 					&err);
 	if (err) {
-		debug("audio.conf: %s", err->message);
+		DBG("audio.conf: %s", err->message);
 		g_clear_error(&err);
 	} else {
 		if (strcmp(str, "PCM") == 0)
@@ -2582,7 +2582,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 
 	hs->state = state;
 
-	debug("State changed %s: %s -> %s", dev->path, str_state[old_state],
+	DBG("State changed %s: %s -> %s", dev->path, str_state[old_state],
 		str_state[state]);
 
 	for (l = headset_callbacks; l != NULL; l = l->next) {
@@ -2713,7 +2713,7 @@ int telephony_event_ind(int index)
 		return -ENODEV;
 
 	if (!ag.er_ind) {
-		debug("telephony_report_event called but events are disabled");
+		DBG("telephony_report_event called but events are disabled");
 		return -EINVAL;
 	}
 
@@ -2756,7 +2756,7 @@ int telephony_incoming_call_ind(const char *number, int type)
 	slc = hs->slc;
 
 	if (ag.ring_timer) {
-		debug("telephony_incoming_call_ind: already calling");
+		DBG("telephony_incoming_call_ind: already calling");
 		return -EBUSY;
 	}
 
@@ -2815,7 +2815,7 @@ int telephony_ready_ind(uint32_t features,
 	ag.rh = rh;
 	ag.chld = g_strdup(chld);
 
-	debug("Telephony plugin initialized");
+	DBG("Telephony plugin initialized");
 
 	print_ag_features(ag.features);
 

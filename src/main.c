@@ -93,15 +93,15 @@ static void parse_config(GKeyFile *config)
 	if (!config)
 		return;
 
-	debug("parsing main.conf");
+	DBG("parsing main.conf");
 
 	val = g_key_file_get_integer(config, "General",
 						"DiscoverableTimeout", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else {
-		debug("discovto=%d", val);
+		DBG("discovto=%d", val);
 		main_opts.discovto = val;
 		main_opts.flags |= 1 << HCID_SET_DISCOVTO;
 	}
@@ -109,29 +109,29 @@ static void parse_config(GKeyFile *config)
 	val = g_key_file_get_integer(config, "General",
 						"PairableTimeout", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else {
-		debug("pairto=%d", val);
+		DBG("pairto=%d", val);
 		main_opts.pairto = val;
 	}
 
 	val = g_key_file_get_integer(config, "General", "PageTimeout", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else {
-		debug("pageto=%d", val);
+		DBG("pageto=%d", val);
 		main_opts.pageto = val;
 		main_opts.flags |= 1 << HCID_SET_PAGETO;
 	}
 
 	str = g_key_file_get_string(config, "General", "Name", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else {
-		debug("name=%s", str);
+		DBG("name=%s", str);
 		g_free(main_opts.name);
 		main_opts.name = g_strdup(str);
 		main_opts.flags |= 1 << HCID_SET_NAME;
@@ -140,10 +140,10 @@ static void parse_config(GKeyFile *config)
 
 	str = g_key_file_get_string(config, "General", "Class", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else {
-		debug("class=%s", str);
+		DBG("class=%s", str);
 		main_opts.class = strtol(str, NULL, 16);
 		main_opts.flags |= 1 << HCID_SET_CLASS;
 		g_free(str);
@@ -152,17 +152,17 @@ static void parse_config(GKeyFile *config)
 	val = g_key_file_get_integer(config, "General",
 					"DiscoverSchedulerInterval", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else {
-		debug("discov_interval=%d", val);
+		DBG("discov_interval=%d", val);
 		main_opts.discov_interval = val;
 	}
 
 	boolean = g_key_file_get_boolean(config, "General",
 						"InitiallyPowered", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else if (boolean == FALSE)
 		main_opts.mode = MODE_OFF;
@@ -170,17 +170,17 @@ static void parse_config(GKeyFile *config)
 	boolean = g_key_file_get_boolean(config, "General",
 						"RememberPowered", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else
 		main_opts.remember_powered = boolean;
 
 	str = g_key_file_get_string(config, "General", "DeviceID", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else {
-		debug("deviceid=%s", str);
+		DBG("deviceid=%s", str);
 		strncpy(main_opts.deviceid, str,
 					sizeof(main_opts.deviceid) - 1);
 		g_free(str);
@@ -189,7 +189,7 @@ static void parse_config(GKeyFile *config)
 	boolean = g_key_file_get_boolean(config, "General",
 						"ReverseServiceDiscovery", &err);
 	if (err) {
-		debug("%s", err->message);
+		DBG("%s", err->message);
 		g_clear_error(&err);
 	} else
 		main_opts.reverse_sdp = boolean;

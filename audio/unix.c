@@ -97,7 +97,7 @@ static int unix_sock = -1;
 
 static void client_free(struct unix_client *client)
 {
-	debug("client_free(%p)", client);
+	DBG("client_free(%p)", client);
 
 	if (client->cancel && client->dev && client->req_id > 0)
 		client->cancel(client->dev, client->req_id);
@@ -147,7 +147,7 @@ static void unix_ipc_sendmsg(struct unix_client *client,
 	const char *type = bt_audio_strtype(msg->type);
 	const char *name = bt_audio_strname(msg->name);
 
-	debug("Audio API: %s -> %s", type, name);
+	DBG("Audio API: %s -> %s", type, name);
 
 	if (send(client->sock, msg, msg->length, 0) < 0)
 		error("Error %s(%d)", strerror(errno), errno);
@@ -168,7 +168,7 @@ static void unix_ipc_error(struct unix_client *client, uint8_t name, int err)
 
 	rsp->posix_errno = err;
 
-	debug("sending error %s(%d)", strerror(err), err);
+	DBG("sending error %s(%d)", strerror(err), err);
 	unix_ipc_sendmsg(client, &rsp->h);
 }
 
@@ -448,7 +448,7 @@ failed:
 
 static void print_mpeg12(struct mpeg_codec_cap *mpeg)
 {
-	debug("Media Codec: MPEG12"
+	DBG("Media Codec: MPEG12"
 		" Channel Modes: %s%s%s%s"
 		" Frequencies: %s%s%s%s%s%s"
 		" Layers: %s%s%s"
@@ -473,7 +473,7 @@ static void print_mpeg12(struct mpeg_codec_cap *mpeg)
 
 static void print_sbc(struct sbc_codec_cap *sbc)
 {
-	debug("Media Codec: SBC"
+	DBG("Media Codec: SBC"
 		" Channel Modes: %s%s%s%s"
 		" Frequencies: %s%s%s%s"
 		" Subbands: %s%s"
@@ -593,7 +593,7 @@ static int a2dp_append_codec(struct bt_get_capabilities_rsp *rsp,
 	codec->lock = lock;
 	rsp->h.length += codec->length;
 
-	debug("Append %s seid %d - length %d - total %d",
+	DBG("Append %s seid %d - length %d - total %d",
 		configured ? "configured" : "", seid, codec->length,
 		rsp->h.length);
 
@@ -611,7 +611,7 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 	GSList *l;
 
 	if (!g_slist_find(clients, client)) {
-		debug("Client disconnected during discovery");
+		DBG("Client disconnected during discovery");
 		return;
 	}
 
@@ -1361,7 +1361,7 @@ static int handle_sco_open(struct unix_client *client, struct bt_open_req *req)
 		!g_str_equal(client->interface, AUDIO_GATEWAY_INTERFACE))
 		return -EIO;
 
-	debug("open sco - object=%s source=%s destination=%s lock=%s%s",
+	DBG("open sco - object=%s source=%s destination=%s lock=%s%s",
 			strcmp(req->object, "") ? req->object : "ANY",
 			strcmp(req->source, "") ? req->source : "ANY",
 			strcmp(req->destination, "") ? req->destination : "ANY",
@@ -1380,7 +1380,7 @@ static int handle_a2dp_open(struct unix_client *client, struct bt_open_req *req)
 			!g_str_equal(client->interface, AUDIO_SOURCE_INTERFACE))
 		return -EIO;
 
-	debug("open a2dp - object=%s source=%s destination=%s lock=%s%s",
+	DBG("open a2dp - object=%s source=%s destination=%s lock=%s%s",
 			strcmp(req->object, "") ? req->object : "ANY",
 			strcmp(req->source, "") ? req->source : "ANY",
 			strcmp(req->destination, "") ? req->destination : "ANY",
@@ -1688,7 +1688,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		return FALSE;
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		debug("Unix client disconnected (fd=%d)", client->sock);
+		DBG("Unix client disconnected (fd=%d)", client->sock);
 
 		goto failed;
 	}
@@ -1704,7 +1704,7 @@ static gboolean client_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	type = bt_audio_strtype(msghdr->type);
 	name = bt_audio_strname(msghdr->name);
 
-	debug("Audio API: %s <- %s", type, name);
+	DBG("Audio API: %s <- %s", type, name);
 
 	if (msghdr->length != len) {
 		error("Invalid message: length mismatch");
@@ -1785,7 +1785,7 @@ static gboolean server_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		return TRUE;
 	}
 
-	debug("Accepted new client connection on unix socket (fd=%d)", cli_sk);
+	DBG("Accepted new client connection on unix socket (fd=%d)", cli_sk);
 	set_nonblocking(cli_sk);
 
 	client = g_new0(struct unix_client, 1);
@@ -1804,7 +1804,7 @@ void unix_device_removed(struct audio_device *dev)
 {
 	GSList *l;
 
-	debug("unix_device_removed(%p)", dev);
+	DBG("unix_device_removed(%p)", dev);
 
 	l = clients;
 	while (l) {
@@ -1825,7 +1825,7 @@ void unix_delay_report(struct audio_device *dev, uint8_t seid, uint16_t delay)
 	GSList *l;
 	struct bt_delay_report_ind ind;
 
-	debug("unix_delay_report(%p): %u.%ums", dev, delay / 10, delay % 10);
+	DBG("unix_delay_report(%p): %u.%ums", dev, delay / 10, delay % 10);
 
 	memset(&ind, 0, sizeof(ind));
 	ind.h.type = BT_INDICATION;
@@ -1882,7 +1882,7 @@ int unix_init(void)
 							server_cb, NULL);
 	g_io_channel_unref(io);
 
-	debug("Unix socket created: %d", sk);
+	DBG("Unix socket created: %d", sk);
 
 	return 0;
 }

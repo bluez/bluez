@@ -102,7 +102,7 @@ static void read_config(const char *file)
 	disabled = g_key_file_get_string_list(keyfile, "General",
 						"Disable", NULL, &err);
 	if (err) {
-		debug("%s: %s", file, err->message);
+		DBG("%s: %s", file, err->message);
 		g_clear_error(&err);
 	} else {
 		int i;
@@ -118,7 +118,7 @@ static void read_config(const char *file)
 	conf.security = !g_key_file_get_boolean(keyfile, "General",
 						"DisableSecurity", &err);
 	if (err) {
-		debug("%s: %s", file, err->message);
+		DBG("%s: %s", file, err->message);
 		g_clear_error(&err);
 	}
 
@@ -126,21 +126,21 @@ static void read_config(const char *file)
 	conf.panu_script = g_key_file_get_string(keyfile, "PANU Role",
 						"Script", &err);
 	if (err) {
-		debug("%s: %s", file, err->message);
+		DBG("%s: %s", file, err->message);
 		g_clear_error(&err);
 	}
 
 	conf.gn_script = g_key_file_get_string(keyfile, "GN Role",
 						"Script", &err);
 	if (err) {
-		debug("%s: %s", file, err->message);
+		DBG("%s: %s", file, err->message);
 		g_clear_error(&err);
 	}
 
 	conf.nap_script = g_key_file_get_string(keyfile, "NAP Role",
 						"Script", &err);
 	if (err) {
-		debug("%s: %s", file, err->message);
+		DBG("%s: %s", file, err->message);
 		g_clear_error(&err);
 	}
 #endif
@@ -148,21 +148,21 @@ static void read_config(const char *file)
 	conf.iface_prefix = g_key_file_get_string(keyfile, "PANU Role",
 						"Interface", &err);
 	if (err) {
-		debug("%s: %s", file, err->message);
+		DBG("%s: %s", file, err->message);
 		g_clear_error(&err);
 	}
 
 	conf.gn_iface = g_key_file_get_string(keyfile, "GN Role",
 						"Interface", &err);
 	if (err) {
-		debug("%s: %s", file, err->message);
+		DBG("%s: %s", file, err->message);
 		g_clear_error(&err);
 	}
 
 	conf.nap_iface = g_key_file_get_string(keyfile, "NAP Role",
 						"Interface", &err);
 	if (err) {
-		debug("%s: %s", file, err->message);
+		DBG("%s: %s", file, err->message);
 		g_clear_error(&err);
 	}
 
@@ -177,7 +177,7 @@ done:
 	if (!conf.nap_iface)
 		conf.nap_iface = g_strdup(NAP_IFACE);
 
-	debug("Config options: InterfacePrefix=%s, PANU_Script=%s, "
+	DBG("Config options: InterfacePrefix=%s, PANU_Script=%s, "
 		"GN_Script=%s, NAP_Script=%s, GN_Interface=%s, "
 		"NAP_Interface=%s, Security=%s",
 		conf.iface_prefix, conf.panu_script, conf.gn_script,

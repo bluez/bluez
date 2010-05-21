@@ -299,7 +299,7 @@ static int get_auth_requirements(bdaddr_t *local, bdaddr_t *remote,
 
 	err = ioctl(dd, HCIGETAUTHINFO, (unsigned long) &req);
 	if (err < 0) {
-		debug("HCIGETAUTHINFO failed: %s (%d)",
+		DBG("HCIGETAUTHINFO failed: %s (%d)",
 					strerror(errno), errno);
 		hci_close_dev(dd);
 		return err;
@@ -342,13 +342,13 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return 0;
 	}
 
-	debug("confirm authentication requirement is 0x%02x", type);
+	DBG("confirm authentication requirement is 0x%02x", type);
 
 	remcap = device_get_cap(device);
 	remauth = device_get_auth(device);
 
-	debug("remote IO capabilities are 0x%02x", remcap);
-	debug("remote authentication requirement is 0x%02x", remauth);
+	DBG("remote IO capabilities are 0x%02x", remcap);
+	DBG("remote authentication requirement is 0x%02x", remauth);
 
 	/* If no side requires MITM protection; auto-accept */
 	if (!(remauth & 0x01) &&
@@ -369,7 +369,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 		hci_close_dev(dd);
 
-		debug("auto accept of confirmation");
+		DBG("auto accept of confirmation");
 
 		return device_request_authentication(device,
 						AUTH_TYPE_AUTO, 0, NULL);
@@ -409,7 +409,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	debug("hcid_dbus_bonding_process_complete: status=%02x", status);
+	DBG("hcid_dbus_bonding_process_complete: status=%02x", status);
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
@@ -418,7 +418,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		/* This means that there was no pending PIN or SSP token
 		 * request from the controller, i.e. this is not a new
 		 * pairing */
-		debug("hcid_dbus_bonding_process_complete: no pending auth request");
+		DBG("hcid_dbus_bonding_process_complete: no pending auth request");
 		return;
 	}
 
@@ -433,7 +433,7 @@ void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	debug("hcid_dbus_simple_pairing_complete: status=%02x", status);
+	DBG("hcid_dbus_simple_pairing_complete: status=%02x", status);
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
@@ -674,7 +674,7 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	remote_auth = device_get_auth(device);
 	bonding = device_is_bonding(device, NULL);
 
-	debug("local auth 0x%02x and remote auth 0x%02x",
+	DBG("local auth 0x%02x and remote auth 0x%02x",
 					local_auth, remote_auth);
 
 	/* Only store the link key if one of the following is true:
@@ -692,7 +692,7 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 				(remote_auth == 0x02 || remote_auth == 0x03)) {
 		int err;
 
-		debug("storing link key of type 0x%02x", key_type);
+		DBG("storing link key of type 0x%02x", key_type);
 
 		err = write_link_key(local, peer, key, new_key_type,
 								pin_length);
@@ -766,7 +766,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 	device = adapter_find_connection(adapter, handle);
 	if (!device) {
-		debug("No matching connection found for handle %u", handle);
+		DBG("No matching connection found for handle %u", handle);
 		return;
 	}
 
@@ -886,7 +886,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	if (get_auth_requirements(local, remote, auth) < 0)
 		return -1;
 
-	debug("initial authentication requirement is 0x%02x", *auth);
+	DBG("initial authentication requirement is 0x%02x", *auth);
 
 	if (*auth == 0xff)
 		*auth = device_get_auth(device);
@@ -896,7 +896,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	if (!adapter_is_pairable(adapter) &&
 				!device_is_bonding(device, NULL)) {
 		if (device_get_auth(device) < 0x02) {
-			debug("Allowing no bonding in non-bondable mode");
+			DBG("Allowing no bonding in non-bondable mode");
 			/* No input, no output */
 			*cap = 0x03;
 			/* Kernel defaults to general bonding and so
@@ -916,13 +916,13 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	if (!agent) {
 		/* This is the non bondable mode case */
 		if (device_get_auth(device) > 0x01) {
-			debug("Bonding request, but no agent present");
+			DBG("Bonding request, but no agent present");
 			return -1;
 		}
 
 		/* No agent available, and no bonding case */
 		if (*auth == 0x00 || *auth == 0x04) {
-			debug("Allowing no bonding without agent");
+			DBG("Allowing no bonding without agent");
 			/* No input, no output */
 			*cap = 0x03;
 			/* If kernel defaults to general bonding, set it
@@ -966,7 +966,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	*cap = agent_get_io_capability(agent);
 
 done:
-	debug("final authentication requirement is 0x%02x", *auth);
+	DBG("final authentication requirement is 0x%02x", *auth);
 
 	return 0;
 }

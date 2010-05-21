@@ -298,7 +298,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		goto failed;
 	}
 
-	debug("Received: %s", buf);
+	DBG("Received: %s", buf);
 
 	if (g_io_channel_write(chan, ok, 6, &bwritten) != G_IO_ERROR_NONE) {
 		error("IO Channel write error");
@@ -1004,7 +1004,7 @@ static void device_unregister(void *data)
 {
 	struct input_device *idev = data;
 
-	debug("Unregistered interface %s on path %s", INPUT_DEVICE_INTERFACE,
+	DBG("Unregistered interface %s on path %s", INPUT_DEVICE_INTERFACE,
 								idev->path);
 
 	devices = g_slist_remove(devices, idev);
@@ -1091,7 +1091,7 @@ static struct input_device *input_device_new(DBusConnection *conn,
 		return NULL;
 	}
 
-	debug("Registered interface %s on path %s",
+	DBG("Registered interface %s on path %s",
 			INPUT_DEVICE_INTERFACE, idev->path);
 
 	return idev;

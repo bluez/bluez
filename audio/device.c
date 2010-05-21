@@ -157,7 +157,7 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 		priv->authorized = FALSE;
 
 	if (dev->priv->state == new_state) {
-		debug("state change attempted from %s to %s",
+		DBG("state change attempted from %s to %s",
 							state_str, state_str);
 		return;
 	}
@@ -605,7 +605,7 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 		return NULL;
 	}
 
-	debug("Registered interface %s on path %s", AUDIO_INTERFACE,
+	DBG("Registered interface %s on path %s", AUDIO_INTERFACE,
 								dev->path);
 
 	if (sink_callback_id == 0)

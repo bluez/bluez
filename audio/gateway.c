@@ -158,7 +158,7 @@ static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond,
 		return FALSE;
 
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		debug("sco connection is released");
+		DBG("sco connection is released");
 		g_io_channel_shutdown(gw->sco, TRUE, NULL);
 		g_io_channel_unref(gw->sco);
 		gw->sco = NULL;
@@ -174,7 +174,7 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	struct audio_device *dev = (struct audio_device *) user_data;
 	struct gateway *gw = dev->gateway;
 
-	debug("at the begin of sco_connect_cb() in gateway.c");
+	DBG("at the begin of sco_connect_cb() in gateway.c");
 
 	gw->sco = g_io_channel_ref(chan);
 
@@ -198,18 +198,18 @@ static void newconnection_reply(DBusPendingCall *call, void *data)
 	DBusError derr;
 
 	if (!dev->gateway->rfcomm) {
-		debug("RFCOMM disconnected from server before agent reply");
+		DBG("RFCOMM disconnected from server before agent reply");
 		goto done;
 	}
 
 	dbus_error_init(&derr);
 	if (!dbus_set_error_from_message(&derr, reply)) {
-		debug("Agent reply: file descriptor passed successfuly");
+		DBG("Agent reply: file descriptor passed successfuly");
 		change_state(dev, GATEWAY_STATE_CONNECTED);
 		goto done;
 	}
 
-	debug("Agent reply: %s", derr.message);
+	DBG("Agent reply: %s", derr.message);
 
 	dbus_error_free(&derr);
 	gateway_close(dev);
@@ -432,7 +432,7 @@ static DBusMessage *ag_disconnect(DBusConnection *conn, DBusMessage *msg,
 
 	gateway_close(device);
 	ba2str(&device->dst, gw_addr);
-	debug("Disconnected from %s, %s", gw_addr, device->path);
+	DBG("Disconnected from %s, %s", gw_addr, device->path);
 
 	return reply;
 }
@@ -442,7 +442,7 @@ static void agent_exited(DBusConnection *conn, void *data)
 	struct gateway *gateway = data;
 	struct hf_agent *agent = gateway->agent;
 
-	debug("Agent %s exited", agent->name);
+	DBG("Agent %s exited", agent->name);
 
 	agent_free(agent);
 	gateway->agent = NULL;

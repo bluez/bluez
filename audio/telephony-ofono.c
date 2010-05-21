@@ -138,12 +138,12 @@ static struct voice_call *find_vc_with_status(int status)
 
 void telephony_device_connected(void *telephony_device)
 {
-	debug("telephony-ofono: device %p connected", telephony_device);
+	DBG("telephony-ofono: device %p connected", telephony_device);
 }
 
 void telephony_device_disconnected(void *telephony_device)
 {
-	debug("telephony-ofono: device %p disconnected", telephony_device);
+	DBG("telephony-ofono: device %p disconnected", telephony_device);
 	events_enabled = FALSE;
 }
 
@@ -165,7 +165,7 @@ void telephony_response_and_hold_req(void *telephony_device, int rh)
 
 void telephony_last_dialed_number_req(void *telephony_device)
 {
-	debug("telephony-ofono: last dialed number request");
+	DBG("telephony-ofono: last dialed number request");
 
 	if (last_dialed_number)
 		telephony_dial_number_req(telephony_device, last_dialed_number);
@@ -279,7 +279,7 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 	const char *clir;
 	int ret;
 
-	debug("telephony-ofono: dial request to %s", number);
+	DBG("telephony-ofono: dial request to %s", number);
 
 	if (!modem_obj_path) {
 		telephony_dial_number_rsp(telephony_device,
@@ -315,7 +315,7 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 	char *tone_string;
 	int ret;
 
-	debug("telephony-ofono: transmit dtmf: %c", tone);
+	DBG("telephony-ofono: transmit dtmf: %c", tone);
 
 	if (!modem_obj_path) {
 		telephony_transmit_dtmf_rsp(telephony_device,
@@ -340,7 +340,7 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 
 void telephony_subscriber_number_req(void *telephony_device)
 {
-	debug("telephony-ofono: subscriber number request");
+	DBG("telephony-ofono: subscriber number request");
 
 	if (subscriber_number)
 		telephony_subscriber_number_ind(subscriber_number,
@@ -354,7 +354,7 @@ void telephony_list_current_calls_req(void *telephony_device)
 	GSList *l;
 	int i;
 
-	debug("telephony-ofono: list current calls request");
+	DBG("telephony-ofono: list current calls request");
 
 	for (l = calls, i = 1; l != NULL; l = l->next, i++) {
 		struct voice_call *vc = l->data;
@@ -372,7 +372,7 @@ void telephony_list_current_calls_req(void *telephony_device)
 
 void telephony_operator_selection_req(void *telephony_device)
 {
-	debug("telephony-ofono: operator selection request");
+	DBG("telephony-ofono: operator selection request");
 
 	telephony_operator_selection_ind(OPERATOR_MODE_AUTO,
 				net.operator_name ? net.operator_name : "");
@@ -381,13 +381,13 @@ void telephony_operator_selection_req(void *telephony_device)
 
 void telephony_call_hold_req(void *telephony_device, const char *cmd)
 {
-	debug("telephony-ofono: got call hold request %s", cmd);
+	DBG("telephony-ofono: got call hold request %s", cmd);
 	telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 {
-	debug("telephony-ofono: got %s NR and EC request",
+	DBG("telephony-ofono: got %s NR and EC request",
 			enable ? "enable" : "disable");
 
 	telephony_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
@@ -395,13 +395,13 @@ void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 
 void telephony_key_press_req(void *telephony_device, const char *keys)
 {
-	debug("telephony-ofono: got key press request for %s", keys);
+	DBG("telephony-ofono: got key press request for %s", keys);
 	telephony_key_press_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_voice_dial_req(void *telephony_device, gboolean enable)
 {
-	debug("telephony-ofono: got %s voice dial request",
+	DBG("telephony-ofono: got %s voice dial request",
 			enable ? "enable" : "disable");
 
 	telephony_voice_dial_rsp(telephony_device, CME_ERROR_NOT_SUPPORTED);
@@ -442,7 +442,7 @@ static void handle_registration_property(const char *property, DBusMessageIter s
 
 	if (g_str_equal(property, "Status")) {
 		dbus_message_iter_get_basic(&sub, &status);
-		debug("Status is %s", status);
+		DBG("Status is %s", status);
 		if (g_str_equal(status, "registered")) {
 			net.status = NETWORK_REG_STATUS_HOME;
 			telephony_update_indicator(ofono_indicators,
@@ -464,12 +464,12 @@ static void handle_registration_property(const char *property, DBusMessageIter s
 		}
 	} else if (g_str_equal(property, "Operator")) {
 		dbus_message_iter_get_basic(&sub, &operator);
-		debug("Operator is %s", operator);
+		DBG("Operator is %s", operator);
 		g_free(net.operator_name);
 		net.operator_name = g_strdup(operator);
 	} else if (g_str_equal(property, "SignalStrength")) {
 		dbus_message_iter_get_basic(&sub, &signals_bar);
-		debug("SignalStrength is %d", signals_bar);
+		DBG("SignalStrength is %d", signals_bar);
 		net.signals_bar = signals_bar;
 		telephony_update_indicator(ofono_indicators, "signal",
 						(signals_bar + 20) / 21);
@@ -560,7 +560,7 @@ static void list_modem_reply(DBusPendingCall *call, void *user_data)
 	char *property, *modem_obj_path_local;
 	int ret;
 
-	debug("list_modem_reply is called\n");
+	DBG("list_modem_reply is called\n");
 	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_error_init(&err);
@@ -598,7 +598,7 @@ static void list_modem_reply(DBusPendingCall *call, void *user_data)
 
 		dbus_message_iter_get_basic(&sub, &modem_obj_path_local);
 		modem_obj_path = g_strdup(modem_obj_path_local);
-		debug("modem_obj_path is %p, %s\n", modem_obj_path,
+		DBG("modem_obj_path is %p, %s\n", modem_obj_path,
 						modem_obj_path);
 		dbus_message_iter_next(&sub);
 	}
@@ -624,7 +624,7 @@ static gboolean handle_registration_property_changed(DBusConnection *conn,
 		return TRUE;
 	}
 	dbus_message_iter_get_basic(&iter, &property);
-	debug("in handle_registration_property_changed(),"
+	DBG("in handle_registration_property_changed(),"
 					" the property is %s", property);
 
 	dbus_message_iter_next(&iter);
@@ -643,7 +643,7 @@ static void vc_getproperties_reply(DBusPendingCall *call, void *user_data)
 	const char *path = user_data;
 	struct voice_call *vc;
 
-	debug("in vc_getproperties_reply");
+	DBG("in vc_getproperties_reply");
 
 	reply = dbus_pending_call_steal_reply(call);
 	dbus_error_init(&err);
@@ -694,11 +694,11 @@ static void vc_getproperties_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_recurse(&iter_property, &sub);
 		if (g_str_equal(property, "LineIdentification")) {
 			dbus_message_iter_get_basic(&sub, &cli);
-			debug("in vc_getproperties_reply(), cli is %s", cli);
+			DBG("in vc_getproperties_reply(), cli is %s", cli);
 			vc->number = g_strdup(cli);
 		} else if (g_str_equal(property, "State")) {
 			dbus_message_iter_get_basic(&sub, &state);
-			debug("in vc_getproperties_reply(),"
+			DBG("in vc_getproperties_reply(),"
 					" state is %s", state);
 			if (g_str_equal(state, "incoming"))
 				vc->status = CALL_STATUS_INCOMING;
@@ -738,7 +738,7 @@ static void vc_getproperties_reply(DBusPendingCall *call, void *user_data)
 					EV_CALLSETUP_ALERTING);
 		break;
 	case CALL_STATUS_WAITING:
-		debug("in CALL_STATUS_WAITING: case");
+		DBG("in CALL_STATUS_WAITING: case");
 		vc->originating = FALSE;
 		telephony_update_indicator(ofono_indicators, "callsetup",
 					EV_CALLSETUP_INCOMING);
@@ -768,7 +768,7 @@ static gboolean handle_vc_property_changed(DBusConnection *conn,
 	DBusMessageIter iter, sub;
 	const char *property, *state;
 
-	debug("in handle_vc_property_changed, obj_path is %s", obj_path);
+	DBG("in handle_vc_property_changed, obj_path is %s", obj_path);
 
 	dbus_message_iter_init(msg, &iter);
 
@@ -778,13 +778,13 @@ static gboolean handle_vc_property_changed(DBusConnection *conn,
 	}
 
 	dbus_message_iter_get_basic(&iter, &property);
-	debug("in handle_vc_property_changed(), the property is %s", property);
+	DBG("in handle_vc_property_changed(), the property is %s", property);
 
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &sub);
 	if (g_str_equal(property, "State")) {
 		dbus_message_iter_get_basic(&sub, &state);
-		debug("in handle_vc_property_changed(), State is %s", state);
+		DBG("in handle_vc_property_changed(), State is %s", state);
 		if (g_str_equal(state, "disconnected")) {
 			printf("in disconnected case\n");
 			if (vc->status == CALL_STATUS_ACTIVE)
@@ -806,12 +806,12 @@ static gboolean handle_vc_property_changed(DBusConnection *conn,
 			if (vc->status == CALL_STATUS_INCOMING)
 				telephony_calling_stopped_ind();
 			vc->status = CALL_STATUS_ACTIVE;
-			debug("vc status is CALL_STATUS_ACTIVE");
+			DBG("vc status is CALL_STATUS_ACTIVE");
 		} else if (g_str_equal(state, "alerting")) {
 			telephony_update_indicator(ofono_indicators,
 					"callsetup", EV_CALLSETUP_ALERTING);
 			vc->status = CALL_STATUS_ALERTING;
-			debug("vc status is CALL_STATUS_ALERTING");
+			DBG("vc status is CALL_STATUS_ALERTING");
 		} else if (g_str_equal(state, "incoming")) {
 			/* state change from waiting to incoming */
 			telephony_update_indicator(ofono_indicators,
@@ -819,7 +819,7 @@ static gboolean handle_vc_property_changed(DBusConnection *conn,
 			telephony_incoming_call_ind(vc->number,
 						NUMBER_TYPE_TELEPHONY);
 			vc->status = CALL_STATUS_INCOMING;
-			debug("vc status is CALL_STATUS_INCOMING");
+			DBG("vc status is CALL_STATUS_INCOMING");
 		}
 	}
 
@@ -833,7 +833,7 @@ static gboolean handle_vcmanager_property_changed(DBusConnection *conn,
 	const char *property, *vc_obj_path = NULL;
 	struct voice_call *vc, *vc_new = NULL;
 
-	debug("in handle_vcmanager_property_changed");
+	DBG("in handle_vcmanager_property_changed");
 
 	dbus_message_iter_init(msg, &iter);
 
@@ -844,7 +844,7 @@ static gboolean handle_vcmanager_property_changed(DBusConnection *conn,
 	}
 
 	dbus_message_iter_get_basic(&iter, &property);
-	debug("in handle_vcmanager_property_changed(),"
+	DBG("in handle_vcmanager_property_changed(),"
 				" the property is %s", property);
 
 	dbus_message_iter_next(&iter);
@@ -859,7 +859,7 @@ static gboolean handle_vcmanager_property_changed(DBusConnection *conn,
 		dbus_message_iter_get_basic(&array, &vc_obj_path);
 		vc = find_vc(vc_obj_path);
 		if (vc) {
-			debug("in handle_vcmanager_property_changed,"
+			DBG("in handle_vcmanager_property_changed,"
 					" found an existing vc");
 		} else {
 			vc_new = g_new0(struct voice_call, 1);
@@ -916,13 +916,13 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 	*value = (int) level;
 
 	if (value == &battchg_last)
-		debug("telephony-ofono: battery.charge_level.last_full"
+		DBG("telephony-ofono: battery.charge_level.last_full"
 					" is %d", *value);
 	else if (value == &battchg_design)
-		debug("telephony-ofono: battery.charge_level.design"
+		DBG("telephony-ofono: battery.charge_level.design"
 					" is %d", *value);
 	else
-		debug("telephony-ofono: battery.charge_level.current"
+		DBG("telephony-ofono: battery.charge_level.current"
 					" is %d", *value);
 
 	if ((battchg_design > 0 || battchg_last > 0) && battchg_cur >= 0) {
@@ -1014,7 +1014,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 	int type;
 	const char *path;
 
-	debug("begin of hal_find_device_reply()");
+	DBG("begin of hal_find_device_reply()");
 	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_error_init(&err);
@@ -1044,7 +1044,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_get_basic(&sub, &path);
 
-	debug("telephony-ofono: found battery device at %s", path);
+	DBG("telephony-ofono: found battery device at %s", path);
 
 	device_watch = g_dbus_add_signal_watch(connection, NULL, path,
 					"org.freedesktop.Hal.Device",
@@ -1094,7 +1094,7 @@ int telephony_init(void)
 	if (ret < 0)
 		return ret;
 
-	debug("telephony_init() successfully");
+	DBG("telephony_init() successfully");
 
 	return ret;
 }

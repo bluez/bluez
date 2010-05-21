@@ -248,7 +248,7 @@ static void device_free(gpointer user_data)
 	if (device->discov_timer)
 		g_source_remove(device->discov_timer);
 
-	debug("device_free(%p)", device);
+	DBG("device_free(%p)", device);
 
 	g_free(device->authr);
 	g_free(device->path);
@@ -640,7 +640,7 @@ static void discover_services_req_exit(DBusConnection *conn, void *user_data)
 {
 	struct browse_req *req = user_data;
 
-	debug("DiscoverServices requestor exited");
+	DBG("DiscoverServices requestor exited");
 
 	browse_request_cancel(req);
 }
@@ -1018,7 +1018,7 @@ struct btd_device *device_create(DBusConnection *conn,
 	g_strdelimit(device->path, ":", '_');
 	g_free(address_up);
 
-	debug("Creating device %s", device->path);
+	DBG("Creating device %s", device->path);
 
 	if (g_dbus_register_interface(conn, device->path, DEVICE_INTERFACE,
 				device_methods, device_signals, NULL,
@@ -1120,7 +1120,7 @@ static void device_remove_stored(struct btd_device *device)
 void device_remove(struct btd_device *device, gboolean remove_stored)
 {
 
-	debug("Removing device %s", device->path);
+	DBG("Removing device %s", device->path);
 
 	if (device->bonding)
 		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
@@ -1232,11 +1232,11 @@ void device_probe_drivers(struct btd_device *device, GSList *profiles)
 	int err;
 
 	if (device->blocked) {
-		debug("Skipping drivers for blocked device %s", device->path);
+		DBG("Skipping drivers for blocked device %s", device->path);
 		goto add_uuids;
 	}
 
-	debug("Probe drivers for %s", device->path);
+	DBG("Probe drivers for %s", device->path);
 
 	for (list = device_drivers; list; list = list->next) {
 		struct btd_device_driver *driver = list->data;
@@ -1298,7 +1298,7 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 
 	records = read_records(&src, &device->bdaddr);
 
-	debug("Remove drivers for %s", device->path);
+	DBG("Remove drivers for %s", device->path);
 
 	for (list = device->drivers; list; list = next) {
 		struct btd_driver_data *driver_data = list->data;
@@ -1312,7 +1312,7 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 						(GCompareFunc) strcasecmp))
 				continue;
 
-			debug("UUID %s was removed from device %s",
+			DBG("UUID %s was removed from device %s",
 							*uuid, dstaddr);
 
 			driver->remove(device);
@@ -1395,7 +1395,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 
 		/* Check for empty service classes list */
 		if (svcclass == NULL) {
-			debug("Skipping record with no service classes");
+			DBG("Skipping record with no service classes");
 			continue;
 		}
 
@@ -1510,7 +1510,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	}
 
 	if (!req->profiles_added && !req->profiles_removed) {
-		debug("%s: No service update", device->path);
+		DBG("%s: No service update", device->path);
 		goto send_reply;
 	}
 
@@ -1877,7 +1877,7 @@ static struct bonding_req *bonding_request_new(DBusConnection *conn,
 	const char *name = dbus_message_get_sender(msg);
 	struct agent *agent;
 
-	debug("%s: requesting bonding", device->path);
+	DBG("%s: requesting bonding", device->path);
 
 	if (!agent_path)
 		goto proceed;
@@ -1893,7 +1893,7 @@ static struct bonding_req *bonding_request_new(DBusConnection *conn,
 
 	device->agent = agent;
 
-	debug("Temporary agent registered for %s at %s:%s",
+	DBG("Temporary agent registered for %s at %s:%s",
 			device->path, name, agent_path);
 
 proceed:
@@ -2016,7 +2016,7 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 {
 	struct btd_device *device = user_data;
 
-	debug("%s: requestor exited before bonding was completed", device->path);
+	DBG("%s: requestor exited before bonding was completed", device->path);
 
 	if (device->authr)
 		device_cancel_authentication(device, FALSE);
@@ -2148,7 +2148,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 			/* If we are not initiators and there is no currently
 			 * active discovery or discovery timer, set discovery
 			 * timer */
-			debug("setting timer for reverse service discovery");
+			DBG("setting timer for reverse service discovery");
 			device->discov_timer = g_timeout_add_seconds(
 							DISCOVERY_TIMER,
 							start_discovery,
@@ -2208,7 +2208,7 @@ void device_cancel_bonding(struct btd_device *device, uint8_t status)
 	if (!bonding)
 		return;
 
-	debug("%s: canceling bonding request", device->path);
+	DBG("%s: canceling bonding request", device->path);
 
 	if (device->authr)
 		device_cancel_authentication(device, FALSE);
@@ -2274,7 +2274,7 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 	struct agent *agent;
 	int ret;
 
-	debug("%s: requesting agent authentication", device->path);
+	DBG("%s: requesting agent authentication", device->path);
 
 	agent = device->agent;
 
@@ -2367,7 +2367,7 @@ void device_cancel_authentication(struct btd_device *device, gboolean aborted)
 	if (!auth)
 		return;
 
-	debug("%s: canceling authentication request", device->path);
+	DBG("%s: canceling authentication request", device->path);
 
 	if (auth->agent)
 		agent_cancel(auth->agent);
@@ -2453,7 +2453,7 @@ struct btd_device *btd_device_ref(struct btd_device *device)
 {
 	device->ref++;
 
-	debug("btd_device_ref(%p): ref=%d", device, device->ref);
+	DBG("btd_device_ref(%p): ref=%d", device, device->ref);
 
 	return device;
 }
@@ -2465,7 +2465,7 @@ void btd_device_unref(struct btd_device *device)
 
 	device->ref--;
 
-	debug("btd_device_unref(%p): ref=%d", device, device->ref);
+	DBG("btd_device_unref(%p): ref=%d", device, device->ref);
 
 	if (device->ref > 0)
 		return;

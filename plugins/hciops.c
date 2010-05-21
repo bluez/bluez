@@ -63,7 +63,7 @@ static gboolean child_exit(GIOChannel *io, GIOCondition cond, void *user_data)
 	if (waitpid(child_pid, &status, 0) != child_pid)
 		error("waitpid(%d) failed", child_pid);
 	else
-		debug("child %d exited", child_pid);
+		DBG("child %d exited", child_pid);
 
 	return TRUE;
 }
@@ -131,7 +131,7 @@ static void init_device(int index)
 			error("Fork failed. Can't init device hci%d: %s (%d)",
 					index, strerror(err), err);
 		default:
-			debug("child %d forked", pid);
+			DBG("child %d forked", pid);
 			return;
 	}
 

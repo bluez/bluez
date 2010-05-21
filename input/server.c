@@ -82,7 +82,7 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 		return;
 	}
 
-	debug("Incoming connection on PSM %d", psm);
+	DBG("Incoming connection on PSM %d", psm);
 
 	ret = input_device_set_channel(&src, &dst, psm, chan);
 	if (ret == 0)

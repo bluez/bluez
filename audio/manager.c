@@ -171,14 +171,14 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 	uuid16 = uuid.value.uuid16;
 
 	if (!server_is_enabled(&device->src, uuid16)) {
-		debug("audio handle_uuid: server not enabled for %s (0x%04x)",
+		DBG("audio handle_uuid: server not enabled for %s (0x%04x)",
 				uuidstr, uuid16);
 		return;
 	}
 
 	switch (uuid16) {
 	case HEADSET_SVCLASS_ID:
-		debug("Found Headset record");
+		DBG("Found Headset record");
 		if (device->headset)
 			headset_update(device, uuid16, uuidstr);
 		else
@@ -186,10 +186,10 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 							uuidstr);
 		break;
 	case HEADSET_AGW_SVCLASS_ID:
-		debug("Found Headset AG record");
+		DBG("Found Headset AG record");
 		break;
 	case HANDSFREE_SVCLASS_ID:
-		debug("Found Handsfree record");
+		DBG("Found Handsfree record");
 		if (device->headset)
 			headset_update(device, uuid16, uuidstr);
 		else
@@ -197,23 +197,23 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 							uuidstr);
 		break;
 	case HANDSFREE_AGW_SVCLASS_ID:
-		debug("Found Handsfree AG record");
+		DBG("Found Handsfree AG record");
 		if (enabled.gateway && (device->gateway == NULL))
 			device->gateway = gateway_init(device);
 		break;
 	case AUDIO_SINK_SVCLASS_ID:
-		debug("Found Audio Sink");
+		DBG("Found Audio Sink");
 		if (device->sink == NULL)
 			device->sink = sink_init(device);
 		break;
 	case AUDIO_SOURCE_SVCLASS_ID:
-		debug("Found Audio Source");
+		DBG("Found Audio Source");
 		if (device->source == NULL)
 			device->source = source_init(device);
 		break;
 	case AV_REMOTE_SVCLASS_ID:
 	case AV_REMOTE_TARGET_SVCLASS_ID:
-		debug("Found AV %s", uuid16 == AV_REMOTE_SVCLASS_ID ?
+		DBG("Found AV %s", uuid16 == AV_REMOTE_SVCLASS_ID ?
 							"Remote" : "Target");
 		if (device->control)
 			control_update(device, uuid16);
@@ -223,7 +223,7 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 			avrcp_connect(device);
 		break;
 	default:
-		debug("Unrecognized UUID: 0x%04X", uuid16);
+		DBG("Unrecognized UUID: 0x%04X", uuid16);
 		break;
 	}
 }
@@ -437,7 +437,7 @@ static gboolean hs_preauth_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct audio_device *device = user_data;
 
-	debug("Headset disconnected during authorization");
+	DBG("Headset disconnected during authorization");
 
 	audio_device_cancel_authorization(device, headset_auth_cb, device);
 
@@ -484,7 +484,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 		goto drop;
 
 	if (!manager_allow_headset_connection(device)) {
-		debug("Refusing headset: too many existing connections");
+		DBG("Refusing headset: too many existing connections");
 		goto drop;
 	}
 
@@ -495,7 +495,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 	}
 
 	if (headset_get_state(device) > HEADSET_STATE_DISCONNECTED) {
-		debug("Refusing new connection since one already exists");
+		DBG("Refusing new connection since one already exists");
 		goto drop;
 	}
 
@@ -511,7 +511,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 	perr = audio_device_request_authorization(device, server_uuid,
 						headset_auth_cb, device);
 	if (perr < 0) {
-		debug("Authorization denied: %s", strerror(-perr));
+		DBG("Authorization denied: %s", strerror(-perr));
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 		return;
 	}
@@ -538,7 +538,7 @@ static void gateway_auth_cb(DBusError *derr, void *user_data)
 		char ag_address[18];
 
 		ba2str(&device->dst, ag_address);
-		debug("Accepted AG connection from %s for %s",
+		DBG("Accepted AG connection from %s for %s",
 			ag_address, device->path);
 
 		gateway_start_service(device);
@@ -582,7 +582,7 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 	}
 
 	if (gateway_is_connected(device)) {
-		debug("Refusing new connection since one already exists");
+		DBG("Refusing new connection since one already exists");
 		goto drop;
 	}
 
@@ -594,7 +594,7 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 	perr = audio_device_request_authorization(device, server_uuid,
 						gateway_auth_cb, device);
 	if (perr < 0) {
-		debug("Authorization denied!");
+		DBG("Authorization denied!");
 		goto drop;
 	}
 
@@ -622,7 +622,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 		tmp = g_key_file_get_boolean(config, "General", "Master",
 						&err);
 		if (err) {
-			debug("audio.conf: %s", err->message);
+			DBG("audio.conf: %s", err->message);
 			g_clear_error(&err);
 		} else
 			master = tmp;
@@ -720,7 +720,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 		tmp = g_key_file_get_boolean(config, "General", "Master",
 						&err);
 		if (err) {
-			debug("audio.conf: %s", err->message);
+			DBG("audio.conf: %s", err->message);
 			g_clear_error(&err);
 		} else
 			master = tmp;
@@ -771,7 +771,7 @@ static int audio_probe(struct btd_device *device, GSList *uuids)
 
 	audio_dev = manager_get_device(&src, &dst, TRUE);
 	if (!audio_dev) {
-		debug("audio_probe: unable to get a device object");
+		DBG("audio_probe: unable to get a device object");
 		return -1;
 	}
 
@@ -801,7 +801,7 @@ static struct audio_adapter *audio_adapter_ref(struct audio_adapter *adp)
 {
 	adp->ref++;
 
-	debug("audio_adapter_ref(%p): ref=%d", adp, adp->ref);
+	DBG("audio_adapter_ref(%p): ref=%d", adp, adp->ref);
 
 	return adp;
 }
@@ -810,7 +810,7 @@ static void audio_adapter_unref(struct audio_adapter *adp)
 {
 	adp->ref--;
 
-	debug("audio_adapter_unref(%p): ref=%d", adp, adp->ref);
+	DBG("audio_adapter_unref(%p): ref=%d", adp, adp->ref);
 
 	if (adp->ref > 0)
 		return;
@@ -1095,7 +1095,7 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 
 	b = g_key_file_get_boolean(config, "General", "AutoConnect", &err);
 	if (err) {
-		debug("audio.conf: %s", err->message);
+		DBG("audio.conf: %s", err->message);
 		g_clear_error(&err);
 	} else
 		auto_connect = b;
@@ -1111,7 +1111,7 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 	i = g_key_file_get_integer(config, "Headset", "MaxConnected",
 					&err);
 	if (err) {
-		debug("audio.conf: %s", err->message);
+		DBG("audio.conf: %s", err->message);
 		g_clear_error(&err);
 	} else
 		max_connected_headsets = i;

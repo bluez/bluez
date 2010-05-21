@@ -89,7 +89,7 @@ static void agent_release(struct agent *agent)
 {
 	DBusMessage *message;
 
-	debug("Releasing agent %s, %s", agent->name, agent->path);
+	DBG("Releasing agent %s, %s", agent->name, agent->path);
 
 	if (agent->request)
 		agent_cancel(agent);
@@ -137,7 +137,7 @@ static void agent_exited(DBusConnection *conn, void *user_data)
 {
 	struct agent *agent = user_data;
 
-	debug("Agent exited without calling Unregister");
+	DBG("Agent exited without calling Unregister");
 
 	agent->exited = TRUE;
 
@@ -349,7 +349,7 @@ int agent_authorize(struct agent *agent,
 
 	agent->request = req;
 
-	debug("authorize request was sent for %s", path);
+	DBG("authorize request was sent for %s", path);
 
 	return 0;
 }
@@ -512,7 +512,7 @@ int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 	if (agent->request)
 		return -EBUSY;
 
-	debug("Calling Agent.ConfirmModeChange: name=%s, path=%s, mode=%s",
+	DBG("Calling Agent.ConfirmModeChange: name=%s, path=%s, mode=%s",
 			agent->name, agent->path, new_mode);
 
 	req = agent_request_new(agent, AGENT_REQUEST_CONFIRM_MODE,
@@ -617,7 +617,7 @@ int agent_request_passkey(struct agent *agent, struct btd_device *device,
 	if (agent->request)
 		return -EBUSY;
 
-	debug("Calling Agent.RequestPasskey: name=%s, path=%s",
+	DBG("Calling Agent.RequestPasskey: name=%s, path=%s",
 			agent->name, agent->path);
 
 	req = agent_request_new(agent, AGENT_REQUEST_PASSKEY, cb,
@@ -676,7 +676,7 @@ int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 	if (agent->request)
 		return -EBUSY;
 
-	debug("Calling Agent.RequestConfirmation: name=%s, path=%s, passkey=%06u",
+	DBG("Calling Agent.RequestConfirmation: name=%s, path=%s, passkey=%06u",
 			agent->name, agent->path, passkey);
 
 	req = agent_request_new(agent, AGENT_REQUEST_CONFIRMATION, cb,

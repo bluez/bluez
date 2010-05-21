@@ -207,10 +207,10 @@ static inline int telephony_update_indicator(struct indicator *indicators,
 	if (!ind)
 		return -ENOENT;
 
-	debug("Telephony indicator \"%s\" %d->%d", desc, ind->val, new_val);
+	DBG("Telephony indicator \"%s\" %d->%d", desc, ind->val, new_val);
 
 	if (ind->ignore_redundant && ind->val == new_val) {
-		debug("Ignoring no-change indication");
+		DBG("Ignoring no-change indication");
 		return 0;
 	}
 

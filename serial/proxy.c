@@ -487,7 +487,7 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 		goto drop;
 	}
 
-	debug("Serial Proxy: incoming connect from %s", address);
+	DBG("Serial Proxy: incoming connect from %s", address);
 
 	prx->rfcomm = g_io_channel_ref(chan);
 
@@ -533,7 +533,7 @@ static int enable_proxy(struct serial_proxy *prx)
 		goto failed;
 	}
 
-	debug("Allocated channel %d", prx->channel);
+	DBG("Allocated channel %d", prx->channel);
 
 	g_io_channel_set_close_on_unref(prx->io, TRUE);
 
@@ -788,7 +788,7 @@ static void proxy_path_unregister(gpointer data)
 	struct serial_proxy *prx = data;
 	int sk;
 
-	debug("Unregistered proxy: %s", prx->address);
+	DBG("Unregistered proxy: %s", prx->address);
 
 	if (prx->type != TTY_PROXY)
 		goto done;
@@ -823,7 +823,7 @@ static int register_proxy_object(struct serial_proxy *prx)
 	prx->path = g_strdup(path);
 	adapter->proxies = g_slist_append(adapter->proxies, prx);
 
-	debug("Registered proxy: %s", path);
+	DBG("Registered proxy: %s", path);
 
 	return 0;
 }
@@ -1219,7 +1219,7 @@ static void serial_proxy_init(struct serial_adapter *adapter)
 		uuid_str = g_key_file_get_string(config, group_str, "UUID",
 									&gerr);
 		if (gerr) {
-			debug("%s: %s", file, gerr->message);
+			DBG("%s: %s", file, gerr->message);
 			g_error_free(gerr);
 			g_key_file_free(config);
 			g_strfreev(group_list);
@@ -1229,7 +1229,7 @@ static void serial_proxy_init(struct serial_adapter *adapter)
 		address = g_key_file_get_string(config, group_str, "Address",
 									&gerr);
 		if (gerr) {
-			debug("%s: %s", file, gerr->message);
+			DBG("%s: %s", file, gerr->message);
 			g_error_free(gerr);
 			g_key_file_free(config);
 			g_free(uuid_str);
@@ -1241,7 +1241,7 @@ static void serial_proxy_init(struct serial_adapter *adapter)
 		if (err == -EINVAL)
 			error("Invalid address.");
 		else if (err == -EALREADY)
-			debug("Proxy already exists.");
+			DBG("Proxy already exists.");
 		else if (err < 0)
 			error("Proxy creation failed (%s)", strerror(-err));
 		else {
@@ -1285,7 +1285,7 @@ int proxy_register(DBusConnection *conn, struct btd_adapter *btd_adapter)
 
 	adapters = g_slist_append(adapters, adapter);
 
-	debug("Registered interface %s on path %s",
+	DBG("Registered interface %s on path %s",
 		SERIAL_MANAGER_INTERFACE, path);
 
 	serial_proxy_init(adapter);

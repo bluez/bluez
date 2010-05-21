@@ -274,7 +274,7 @@ static int release_conference(void)
 {
 	DBusMessage *msg;
 
-	debug("telephony-maemo6: releasing conference call");
+	DBG("telephony-maemo6: releasing conference call");
 
 	msg = dbus_message_new_method_call(CSD_CALL_BUS_NAME,
 						CSD_CALL_CONFERENCE_PATH,
@@ -444,7 +444,7 @@ void telephony_device_connected(void *telephony_device)
 {
 	struct csd_call *coming;
 
-	debug("telephony-maemo6: device %p connected", telephony_device);
+	DBG("telephony-maemo6: device %p connected", telephony_device);
 
 	coming = find_call_with_status(CSD_CALL_STATUS_MT_ALERTING);
 	if (coming) {
@@ -459,7 +459,7 @@ void telephony_device_connected(void *telephony_device)
 
 void telephony_device_disconnected(void *telephony_device)
 {
-	debug("telephony-maemo6: device %p disconnected", telephony_device);
+	DBG("telephony-maemo6: device %p disconnected", telephony_device);
 	events_enabled = FALSE;
 }
 
@@ -481,7 +481,7 @@ void telephony_response_and_hold_req(void *telephony_device, int rh)
 
 void telephony_last_dialed_number_req(void *telephony_device)
 {
-	debug("telephony-maemo6: last dialed number request");
+	DBG("telephony-maemo6: last dialed number request");
 
 	if (last_dialed_number)
 		telephony_dial_number_req(telephony_device,
@@ -602,7 +602,7 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 	uint32_t flags = callerid;
 	int ret;
 
-	debug("telephony-maemo6: dial request to %s", number);
+	DBG("telephony-maemo6: dial request to %s", number);
 
 	if (strncmp(number, "*31#", 4) == 0) {
 		number += 4;
@@ -642,7 +642,7 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 	int ret;
 	char buf[2] = { tone, '\0' }, *buf_ptr = buf;
 
-	debug("telephony-maemo6: transmit dtmf: %s", buf);
+	DBG("telephony-maemo6: transmit dtmf: %s", buf);
 
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 				CSD_CALL_INTERFACE, "SendDTMF",
@@ -660,7 +660,7 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 
 void telephony_subscriber_number_req(void *telephony_device)
 {
-	debug("telephony-maemo6: subscriber number request");
+	DBG("telephony-maemo6: subscriber number request");
 	if (msisdn)
 		telephony_subscriber_number_ind(msisdn,
 						number_type(msisdn),
@@ -711,7 +711,7 @@ void telephony_list_current_calls_req(void *telephony_device)
 	GSList *l;
 	int i;
 
-	debug("telephony-maemo6: list current calls request");
+	DBG("telephony-maemo6: list current calls request");
 
 	for (l = calls, i = 1; l != NULL; l = l->next, i++) {
 		struct csd_call *call = l->data;
@@ -762,7 +762,7 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 	struct csd_call *call;
 	int err = 0;
 
-	debug("telephony-maemo6: got call hold request %s", cmd);
+	DBG("telephony-maemo6: got call hold request %s", cmd);
 
 	if (strlen(cmd) > 1)
 		idx = &cmd[1];
@@ -823,7 +823,7 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 		err = call_transfer();
 		break;
 	default:
-		debug("Unknown call hold request");
+		DBG("Unknown call hold request");
 		break;
 	}
 
@@ -836,7 +836,7 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 
 void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 {
-	debug("telephony-maemo6: got %s NR and EC request",
+	DBG("telephony-maemo6: got %s NR and EC request",
 			enable ? "enable" : "disable");
 	telephony_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
 }
@@ -846,7 +846,7 @@ void telephony_key_press_req(void *telephony_device, const char *keys)
 	struct csd_call *active, *waiting;
 	int err;
 
-	debug("telephony-maemo6: got key press request for %s", keys);
+	DBG("telephony-maemo6: got key press request for %s", keys);
 
 	waiting = find_call_with_status(CSD_CALL_STATUS_COMING);
 	if (!waiting)
@@ -872,7 +872,7 @@ void telephony_key_press_req(void *telephony_device, const char *keys)
 
 void telephony_voice_dial_req(void *telephony_device, gboolean enable)
 {
-	debug("telephony-maemo6: got %s voice dial request",
+	DBG("telephony-maemo6: got %s voice dial request",
 			enable ? "enable" : "disable");
 
 	telephony_voice_dial_rsp(telephony_device, CME_ERROR_NOT_SUPPORTED);
@@ -898,7 +898,7 @@ static void handle_incoming_call(DBusMessage *msg)
 		return;
 	}
 
-	debug("Incoming call to %s from number %s", call_path, number);
+	DBG("Incoming call to %s from number %s", call_path, number);
 
 	g_free(call->number);
 	call->number = g_strdup(number);
@@ -934,7 +934,7 @@ static void handle_outgoing_call(DBusMessage *msg)
 		return;
 	}
 
-	debug("Outgoing call from %s to number %s", call_path, number);
+	DBG("Outgoing call from %s to number %s", call_path, number);
 
 	g_free(call->number);
 	call->number = g_strdup(number);
@@ -958,7 +958,7 @@ static gboolean create_timeout(gpointer user_data)
 
 static void handle_create_requested(DBusMessage *msg)
 {
-	debug("Call.CreateRequested()");
+	DBG("Call.CreateRequested()");
 
 	if (create_request_timer)
 		g_source_remove(create_request_timer);
@@ -996,11 +996,11 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		return;
 	}
 
-	debug("Call %s changed from %s to %s", call_path,
+	DBG("Call %s changed from %s to %s", call_path,
 		call_status_str[call->status], call_status_str[status]);
 
 	if (call->status == (int) status) {
-		debug("Ignoring CSD Call state change to existing state");
+		DBG("Ignoring CSD Call state change to existing state");
 		return;
 	}
 
@@ -1138,7 +1138,7 @@ static void handle_conference(DBusMessage *msg, gboolean joined)
 		return;
 	}
 
-	debug("Call %s %s the conference", path, joined ? "joined" : "left");
+	DBG("Call %s %s the conference", path, joined ? "joined" : "left");
 
 	call->conference = joined;
 }
@@ -1210,7 +1210,7 @@ static void update_registration_status(const char *status)
 
 	net.status = new_status;
 
-	debug("telephony-maemo6: registration status changed: %s", status);
+	DBG("telephony-maemo6: registration status changed: %s", status);
 }
 
 static void handle_registration_changed(DBusMessage *msg)
@@ -1234,7 +1234,7 @@ static void update_signal_strength(int32_t signals_bar)
 	if (signals_bar < 0)
 		signals_bar = 0;
 	else if (signals_bar > 100) {
-		debug("signals_bar greater than expected: %u", signals_bar);
+		DBG("signals_bar greater than expected: %u", signals_bar);
 		signals_bar = 100;
 	}
 
@@ -1248,7 +1248,7 @@ static void update_signal_strength(int32_t signals_bar)
 
 	net.signals_bar = signals_bar;
 
-	debug("telephony-maemo6: signal strength updated: %u/100, %d/5", signals_bar, signal);
+	DBG("telephony-maemo6: signal strength updated: %u/100, %d/5", signals_bar, signal);
 }
 
 static void handle_signal_strength_changed(DBusMessage *msg)
@@ -1318,13 +1318,13 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 	*value = (int) level;
 
 	if (value == &battchg_last)
-		debug("telephony-maemo6: battery.charge_level.last_full is %d",
+		DBG("telephony-maemo6: battery.charge_level.last_full is %d",
 				*value);
 	else if (value == &battchg_design)
-		debug("telephony-maemo6: battery.charge_level.design is %d",
+		DBG("telephony-maemo6: battery.charge_level.design is %d",
 				*value);
 	else
-		debug("telephony-maemo6: battery.charge_level.current is %d",
+		DBG("telephony-maemo6: battery.charge_level.current is %d",
 				*value);
 
 	if ((battchg_design > 0 || battchg_last > 0) && battchg_cur >= 0) {
@@ -1452,7 +1452,7 @@ static void parse_call_list(DBusMessageIter *iter)
 			call->object_path = g_strdup(object_path);
 			call->status = (int) status;
 			calls = g_slist_append(calls, call);
-			debug("telephony-maemo6: new csd call instance at %s",
+			DBG("telephony-maemo6: new csd call instance at %s",
 								object_path);
 		}
 
@@ -1484,7 +1484,7 @@ static void update_operator_name(const char *name)
 	g_free(net.operator_name);
 	net.operator_name = g_strdup(name);
 
-	debug("telephony-maemo6: operator name updated: %s", name);
+	DBG("telephony-maemo6: operator name updated: %s", name);
 }
 
 static void get_property_reply(DBusPendingCall *call, void *user_data)
@@ -1634,7 +1634,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_get_basic(&sub, &path);
 
-	debug("telephony-maemo6: found battery device at %s", path);
+	DBG("telephony-maemo6: found battery device at %s", path);
 
 	snprintf(match_string, sizeof(match_string),
 			"type='signal',"
@@ -1689,11 +1689,11 @@ static void phonebook_read_reply(DBusPendingCall *call, void *user_data)
 	if (number_type == &msisdn) {
 		g_free(msisdn);
 		msisdn = g_strdup(number);
-		debug("Got MSISDN %s (%s)", number, name);
+		DBG("Got MSISDN %s (%s)", number, name);
 	} else {
 		g_free(vmbx);
 		vmbx = g_strdup(number);
-		debug("Got voice mailbox number %s (%s)", number, name);
+		DBG("Got voice mailbox number %s (%s)", number, name);
 	}
 
 done:
@@ -1818,7 +1818,7 @@ static DBusMessage *set_callerid(DBusConnection *conn, DBusMessage *msg,
 			g_str_equal(callerid_setting, "none")) {
 		save_callerid_to_file(callerid_setting);
 		callerid = get_callflag(callerid_setting);
-		debug("telephony-maemo6 setting callerid flag: %s",
+		DBG("telephony-maemo6 setting callerid flag: %s",
 							callerid_setting);
 		return dbus_message_new_method_return(msg);
 	}
@@ -1844,7 +1844,7 @@ static void handle_modem_state(DBusMessage *msg)
 		return;
 	}
 
-	debug("SSC modem state: %s", state);
+	DBG("SSC modem state: %s", state);
 
 	if (calls != NULL || get_calls_active)
 		return;
@@ -1959,7 +1959,7 @@ int telephony_init(void)
 			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
 	}
 
-	debug("telephony-maemo6 registering %s interface on path %s",
+	DBG("telephony-maemo6 registering %s interface on path %s",
 			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
 
 	telephony_ready_ind(features, maemo_indicators, response_and_hold,

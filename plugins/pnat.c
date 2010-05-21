@@ -143,7 +143,7 @@ static gboolean client_event(GIOChannel *chan,
 
 	ba2str(&client->bda, addr);
 
-	debug("Disconnected DUN from %s (%s)", addr, client->tty_name);
+	DBG("Disconnected DUN from %s (%s)", addr, client->tty_name);
 
 	client->io_watch = 0;
 	disconnect(server);
@@ -157,10 +157,10 @@ static void pnatd_exit(GPid pid, gint status, gpointer user_data)
 	struct dun_client *client = &server->client;
 
         if (WIFEXITED(status))
-                debug("pnatd (%d) exited with status %d", pid,
+                DBG("pnatd (%d) exited with status %d", pid,
 							WEXITSTATUS(status));
         else
-                debug("pnatd (%d) was killed by signal %d", pid,
+                DBG("pnatd (%d) was killed by signal %d", pid,
 							WTERMSIG(status));
 
 	client->pnatd_watch = 0;
@@ -183,7 +183,7 @@ static gboolean start_pnatd(struct dun_server *server)
 		return FALSE;
 	}
 
-	debug("pnatd started for %s with pid %d", client->tty_name, pid);
+	DBG("pnatd started for %s with pid %d", client->tty_name, pid);
 
 	client->pnatd_pid = pid;
 	client->pnatd_watch = g_child_watch_add(pid, pnatd_exit, server);
@@ -210,7 +210,7 @@ static gboolean tty_try_open(gpointer user_data)
 		return TRUE;
 	}
 
-	debug("%s created for DUN", client->tty_name);
+	DBG("%s created for DUN", client->tty_name);
 
 	client->tty_open = TRUE;
 	client->tty_timer = 0;
@@ -505,14 +505,14 @@ static struct btd_adapter_driver pnat_server = {
 
 static int pnat_init(void)
 {
-	debug("Setup Phonet AT (DUN) plugin");
+	DBG("Setup Phonet AT (DUN) plugin");
 
 	return btd_register_adapter_driver(&pnat_server);
 }
 
 static void pnat_exit(void)
 {
-	debug("Cleanup Phonet AT (DUN) plugin");
+	DBG("Cleanup Phonet AT (DUN) plugin");
 
 	btd_unregister_adapter_driver(&pnat_server);
 }

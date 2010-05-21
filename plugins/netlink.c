@@ -53,7 +53,7 @@ static gboolean channel_callback(GIOChannel *chan,
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
 		return FALSE;
 
-	debug("Message available on netlink channel");
+	DBG("Message available on netlink channel");
 
 	err = nl_recvmsgs_default(handle);
 

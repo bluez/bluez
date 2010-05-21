@@ -155,7 +155,7 @@ static int port_release(struct serial_port *port)
 		return 0;
 	}
 
-	debug("Serial port %s released", port->dev);
+	DBG("Serial port %s released", port->dev);
 
 	rfcomm_ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_RFCOMM);
 	if (rfcomm_ctl < 0)
@@ -223,7 +223,7 @@ static void path_unregister(void *data)
 {
 	struct serial_device *device = data;
 
-	debug("Unregistered interface %s on path %s", SERIAL_PORT_INTERFACE,
+	DBG("Unregistered interface %s on path %s", SERIAL_PORT_INTERFACE,
 		device->path);
 
 	devices = g_slist_remove(devices, device);
@@ -358,7 +358,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *conn_err,
 
 	port->dev = g_strdup_printf("/dev/rfcomm%d", port->id);
 
-	debug("Serial port %s created", port->dev);
+	DBG("Serial port %s created", port->dev);
 
 	g_io_channel_shutdown(chan, TRUE, NULL);
 
@@ -592,7 +592,7 @@ static struct serial_device *create_serial_device(DBusConnection *conn,
 		return NULL;
 	}
 
-	debug("Registered interface %s on path %s",
+	DBG("Registered interface %s on path %s",
 		SERIAL_PORT_INTERFACE, path);
 
 	return device;

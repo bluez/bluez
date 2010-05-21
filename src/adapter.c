@@ -220,7 +220,7 @@ static int adapter_set_service_classes(struct btd_adapter *adapter, uint8_t valu
 			adapter->cache_enable || adapter->pending_cod)
 		return 0;
 
-	debug("Changing service classes to 0x%06x", adapter->wanted_cod);
+	DBG("Changing service classes to 0x%06x", adapter->wanted_cod);
 
 	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
 	if (err < 0)
@@ -246,7 +246,7 @@ int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 			adapter->cache_enable || adapter->pending_cod)
 		return 0;
 
-	debug("Changing Major/Minor class to 0x%06x", adapter->wanted_cod);
+	DBG("Changing Major/Minor class to 0x%06x", adapter->wanted_cod);
 
 	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
 	if (err < 0)
@@ -616,7 +616,7 @@ static void session_remove(struct session_req *req)
 		if (mode == adapter->mode)
 			return;
 
-		debug("Switching to '%s' mode", mode2str(mode));
+		DBG("Switching to '%s' mode", mode2str(mode));
 
 		set_mode(adapter, mode);
 	} else {
@@ -626,7 +626,7 @@ static void session_remove(struct session_req *req)
 		if (adapter->disc_sessions)
 			return;
 
-		debug("Stopping discovery");
+		DBG("Stopping discovery");
 
 		pending_remote_name_cancel(adapter);
 
@@ -646,7 +646,7 @@ static void session_remove(struct session_req *req)
 
 static void session_free(struct session_req *req)
 {
-	debug("%s session %p with %s deactivated",
+	DBG("%s session %p with %s deactivated",
 		req->mode ? "Mode" : "Discovery", req, req->owner);
 
 	if (req->id)
@@ -675,7 +675,7 @@ static struct session_req *session_ref(struct session_req *req)
 {
 	req->refcount++;
 
-	debug("session_ref(%p): ref=%d", req, req->refcount);
+	DBG("session_ref(%p): ref=%d", req, req->refcount);
 
 	return req;
 }
@@ -684,7 +684,7 @@ static void session_unref(struct session_req *req)
 {
 	req->refcount--;
 
-	debug("session_unref(%p): ref=%d", req, req->refcount);
+	DBG("session_unref(%p): ref=%d", req, req->refcount);
 
 	if (req->refcount)
 		return;
@@ -894,7 +894,7 @@ void adapter_update_tx_power(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 
 	adapter->tx_power = *((int8_t *) ptr);
 
-	debug("inquiry respone tx power level is %d", adapter->tx_power);
+	DBG("inquiry respone tx power level is %d", adapter->tx_power);
 
 	update_ext_inquiry_response(adapter);
 }
@@ -1116,7 +1116,7 @@ struct btd_device *adapter_create_device(DBusConnection *conn,
 	struct btd_device *device;
 	const char *path;
 
-	debug("adapter_create_device(%s)", address);
+	DBG("adapter_create_device(%s)", address);
 
 	device = device_create(conn, adapter, address);
 	if (!device)
@@ -1177,7 +1177,7 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 {
 	struct btd_device *device;
 
-	debug("adapter_get_device(%s)", address);
+	DBG("adapter_get_device(%s)", address);
 
 	if (!adapter)
 		return NULL;
@@ -1593,7 +1593,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 				ERROR_INTERFACE ".AlreadyExists",
 				"Device already exists");
 
-	debug("create_device(%s)", address);
+	DBG("create_device(%s)", address);
 
 	device = adapter_create_device(conn, adapter, address);
 	if (!device)
@@ -1772,7 +1772,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 
 	adapter->agent = agent;
 
-	debug("Agent registered for hci%d at %s:%s", adapter->dev_id, name,
+	DBG("Agent registered for hci%d at %s:%s", adapter->dev_id, name,
 			path);
 
 	return dbus_message_new_method_return(msg);
@@ -2288,7 +2288,7 @@ int adapter_start(struct btd_adapter *adapter)
 	if (!bacmp(&di.bdaddr, BDADDR_ANY)) {
 		int err;
 
-		debug("Adapter %s without an address", adapter->path);
+		DBG("Adapter %s without an address", adapter->path);
 
 		err = adapter_read_bdaddr(adapter->dev_id, &di.bdaddr);
 		if (err < 0)
@@ -2366,7 +2366,7 @@ setup:
 	adapter_setup(adapter, mode);
 
 	if (!adapter->initialized && adapter->already_up) {
-		debug("Stopping Inquiry at adapter startup");
+		DBG("Stopping Inquiry at adapter startup");
 		adapter_ops->stop_discovery(adapter->dev_id);
 	}
 
@@ -2504,7 +2504,7 @@ static void adapter_free(gpointer user_data)
 	agent_free(adapter->agent);
 	adapter->agent = NULL;
 
-	debug("adapter_free(%p)", adapter);
+	DBG("adapter_free(%p)", adapter);
 
 	if (adapter->auth_idle_id)
 		g_source_remove(adapter->auth_idle_id);
@@ -2517,7 +2517,7 @@ struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter)
 {
 	adapter->ref++;
 
-	debug("btd_adapter_ref(%p): ref=%d", adapter, adapter->ref);
+	DBG("btd_adapter_ref(%p): ref=%d", adapter, adapter->ref);
 
 	return adapter;
 }
@@ -2528,7 +2528,7 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 
 	adapter->ref--;
 
-	debug("btd_adapter_unref(%p): ref=%d", adapter, adapter->ref);
+	DBG("btd_adapter_unref(%p): ref=%d", adapter, adapter->ref);
 
 	if (adapter->ref > 0)
 		return;
@@ -2581,7 +2581,7 @@ void adapter_remove(struct btd_adapter *adapter)
 {
 	GSList *l;
 
-	debug("Removing adapter %s", adapter->path);
+	DBG("Removing adapter %s", adapter->path);
 
 	for (l = adapter->devices; l; l = l->next)
 		device_remove(l->data, FALSE);
@@ -2959,7 +2959,7 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 	if (device_is_temporary(device)) {
 		const char *path = device_get_path(device);
 
-		debug("Removing temporary device %s", path);
+		DBG("Removing temporary device %s", path);
 		adapter_remove_device(connection, adapter, device, TRUE);
 	}
 }

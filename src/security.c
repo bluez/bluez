@@ -314,12 +314,12 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	err = ioctl(dev, HCIGETAUTHINFO, (unsigned long) &req);
 	if (err < 0) {
 		if (errno != EINVAL)
-			debug("HCIGETAUTHINFO failed %s (%d)",
+			DBG("HCIGETAUTHINFO failed %s (%d)",
 						strerror(errno), errno);
 		req.type = 0x00;
 	}
 
-	debug("kernel auth requirements = 0x%02x", req.type);
+	DBG("kernel auth requirements = 0x%02x", req.type);
 
 	err = read_link_key(sba, dba, key, &type);
 	if (err < 0) {
@@ -331,7 +331,7 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		memcpy(lr.link_key, key, 16);
 		bacpy(&lr.bdaddr, dba);
 
-		debug("stored link key type = 0x%02x", type);
+		DBG("stored link key type = 0x%02x", type);
 
 		/* Don't use debug link keys (0x03) and also don't use
 		 * unauthenticated combination keys if MITM is required */

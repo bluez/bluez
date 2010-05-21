@@ -415,7 +415,7 @@ int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec)
 			return -1;
 	}
 
-	debug("Adding record with handle 0x%05x", rec->handle);
+	DBG("Adding record with handle 0x%05x", rec->handle);
 
 	sdp_record_add(src, rec);
 
@@ -435,7 +435,7 @@ int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec)
 			continue;
 
 		sdp_uuid2strn((uuid_t *) pattern->data, uuid, sizeof(uuid));
-		debug("Record pattern UUID %s", uuid);
+		DBG("Record pattern UUID %s", uuid);
 	}
 
 	update_db_timestamp();
@@ -448,7 +448,7 @@ int remove_record_from_server(uint32_t handle)
 {
 	sdp_record_t *rec;
 
-	debug("Removing record with handle 0x%05x", handle);
+	DBG("Removing record with handle 0x%05x", handle);
 
 	rec = sdp_record_find(handle);
 	if (!rec)

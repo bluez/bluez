@@ -77,12 +77,12 @@ static inline DBusMessage *invalid_args(DBusMessage *msg)
 
 void telephony_device_connected(void *telephony_device)
 {
-	debug("telephony-dummy: device %p connected", telephony_device);
+	DBG("telephony-dummy: device %p connected", telephony_device);
 }
 
 void telephony_device_disconnected(void *telephony_device)
 {
-	debug("telephony-dummy: device %p disconnected", telephony_device);
+	DBG("telephony-dummy: device %p disconnected", telephony_device);
 	events_enabled = FALSE;
 }
 
@@ -147,7 +147,7 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 	g_free(active_call_number);
 	active_call_number = g_strdup(number);
 
-	debug("telephony-dummy: dial request to %s", active_call_number);
+	DBG("telephony-dummy: dial request to %s", active_call_number);
 
 	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
 
@@ -163,13 +163,13 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 
 void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 {
-	debug("telephony-dummy: transmit dtmf: %c", tone);
+	DBG("telephony-dummy: transmit dtmf: %c", tone);
 	telephony_transmit_dtmf_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_subscriber_number_req(void *telephony_device)
 {
-	debug("telephony-dummy: subscriber number request");
+	DBG("telephony-dummy: subscriber number request");
 	if (subscriber_number)
 		telephony_subscriber_number_ind(subscriber_number,
 						NUMBER_TYPE_TELEPHONY,
@@ -179,7 +179,7 @@ void telephony_subscriber_number_req(void *telephony_device)
 
 void telephony_list_current_calls_req(void *telephony_device)
 {
-	debug("telephony-dummy: list current calls request");
+	DBG("telephony-dummy: list current calls request");
 	if (active_call_number)
 		telephony_list_current_call_ind(1, active_call_dir,
 						active_call_status,
@@ -198,13 +198,13 @@ void telephony_operator_selection_req(void *telephony_device)
 
 void telephony_call_hold_req(void *telephony_device, const char *cmd)
 {
-	debug("telephony-dymmy: got call hold request %s", cmd);
+	DBG("telephony-dymmy: got call hold request %s", cmd);
 	telephony_call_hold_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 {
-	debug("telephony-dummy: got %s NR and EC request",
+	DBG("telephony-dummy: got %s NR and EC request",
 			enable ? "enable" : "disable");
 
 	telephony_nr_and_ec_rsp(telephony_device, CME_ERROR_NONE);
@@ -212,7 +212,7 @@ void telephony_nr_and_ec_req(void *telephony_device, gboolean enable)
 
 void telephony_voice_dial_req(void *telephony_device, gboolean enable)
 {
-	debug("telephony-dummy: got %s voice dial request",
+	DBG("telephony-dummy: got %s voice dial request",
 			enable ? "enable" : "disable");
 
 	g_dbus_emit_signal(connection, TELEPHONY_DUMMY_PATH,
@@ -224,7 +224,7 @@ void telephony_voice_dial_req(void *telephony_device, gboolean enable)
 
 void telephony_key_press_req(void *telephony_device, const char *keys)
 {
-	debug("telephony-dummy: got key press request for %s", keys);
+	DBG("telephony-dummy: got key press request for %s", keys);
 	telephony_key_press_rsp(telephony_device, CME_ERROR_NONE);
 }
 
@@ -238,7 +238,7 @@ static DBusMessage *outgoing_call(DBusConnection *conn, DBusMessage *msg,
 						DBUS_TYPE_INVALID))
 		return invalid_args(msg);
 
-	debug("telephony-dummy: outgoing call to %s", number);
+	DBG("telephony-dummy: outgoing call to %s", number);
 
 	g_free(active_call_number);
 	active_call_number = g_strdup(number);
@@ -263,7 +263,7 @@ static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
 						DBUS_TYPE_INVALID))
 		return invalid_args(msg);
 
-	debug("telephony-dummy: incoming call to %s", number);
+	DBG("telephony-dummy: incoming call to %s", number);
 
 	g_free(active_call_number);
 	active_call_number = g_strdup(number);
@@ -282,7 +282,7 @@ static DBusMessage *incoming_call(DBusConnection *conn, DBusMessage *msg,
 static DBusMessage *cancel_call(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
-	debug("telephony-dummy: cancel call");
+	DBG("telephony-dummy: cancel call");
 
 	g_free(active_call_number);
 	active_call_number = NULL;
@@ -314,7 +314,7 @@ static DBusMessage *signal_strength(DBusConnection *conn, DBusMessage *msg,
 
 	telephony_update_indicator(dummy_indicators, "signal", strength);
 
-	debug("telephony-dummy: signal strength set to %u", strength);
+	DBG("telephony-dummy: signal strength set to %u", strength);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -333,7 +333,7 @@ static DBusMessage *battery_level(DBusConnection *conn, DBusMessage *msg,
 
 	telephony_update_indicator(dummy_indicators, "battchg", level);
 
-	debug("telephony-dummy: battery level set to %u", level);
+	DBG("telephony-dummy: battery level set to %u", level);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -352,7 +352,7 @@ static DBusMessage *roaming_status(DBusConnection *conn, DBusMessage *msg,
 
 	telephony_update_indicator(dummy_indicators, "roam", val);
 
-	debug("telephony-dummy: roaming status set to %d", val);
+	DBG("telephony-dummy: roaming status set to %d", val);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -371,7 +371,7 @@ static DBusMessage *registration_status(DBusConnection *conn, DBusMessage *msg,
 
 	telephony_update_indicator(dummy_indicators, "service", val);
 
-	debug("telephony-dummy: registration status set to %d", val);
+	DBG("telephony-dummy: registration status set to %d", val);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -389,7 +389,7 @@ static DBusMessage *set_subscriber_number(DBusConnection *conn,
 	g_free(subscriber_number);
 	subscriber_number = g_strdup(number);
 
-	debug("telephony-dummy: subscriber number set to %s", number);
+	DBG("telephony-dummy: subscriber number set to %s", number);
 
 	return dbus_message_new_method_return(msg);
 }
