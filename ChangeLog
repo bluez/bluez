@@ -1,3 +1,10 @@
+ver 4.65:
+	Fix issues with general bonding being default setting now.
+	Fix driver removal upon device removal.
+	Add new "Blocked" property to device objects.
+	Add hciconfig support for blacklisting.
+	Add support for dynamic debug feature.
+
 ver 4.64:
 	Fix invalid memory access in headset_get_nrec function.
 	Fix issue with disconnect event on higher protocol layers.
