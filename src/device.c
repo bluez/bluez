@@ -436,16 +436,8 @@ static void driver_remove(struct btd_driver_data *driver_data,
 	struct btd_device_driver *driver = driver_data->driver;
 
 	driver->remove(device);
-}
 
-static void driver_free(struct btd_driver_data *driver_data,
-					struct btd_device *device)
-{
-	struct btd_device_driver *driver = driver_data->driver;
-
-	driver->remove(device);
-
-	g_free(driver);
+	device->drivers = g_slist_remove(device->drivers, driver_data);
 	g_free(driver_data);
 }
 
@@ -1134,7 +1126,7 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	if (remove_stored)
 		device_remove_stored(device);
 
-	g_slist_foreach(device->drivers, (GFunc) driver_free, device);
+	g_slist_foreach(device->drivers, (GFunc) driver_remove, device);
 	g_slist_free(device->drivers);
 	device->drivers = NULL;
 
