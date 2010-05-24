@@ -46,7 +46,8 @@ struct obex_service_driver *obex_service_driver_find(GSList *drivers,
 	for (l = drivers; l; l = l->next) {
 		struct obex_service_driver *driver = l->data;
 
-		if (memcmp0(who, driver->who, who_size))
+		/* who is optional, so only check for it if not NULL */
+		if (who != NULL && memcmp0(who, driver->who, who_size))
 			continue;
 
 		if (memcmp0(target, driver->target, target_size) == 0)
