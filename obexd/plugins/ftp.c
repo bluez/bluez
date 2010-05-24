@@ -161,17 +161,25 @@ static int get_by_type(struct ftp_session *ftp, const char *type)
 {
 	struct obex_session *os = ftp->os;
 	const char *capability = obex_get_capability_path(os);
+	const char *name = obex_get_name(os);
+	char *path;
+	int err;
 
-	if (type == NULL)
-		return obex_get_stream_start(os, ftp->folder);
+	if (type == NULL && name == NULL)
+		return -EBADR;
 
-	if (g_str_equal(type, CAP_TYPE))
+	if (g_strcmp0(type, CAP_TYPE) == 0)
 		return obex_get_stream_start(os, capability);
 
-	if (g_str_equal(type, LST_TYPE))
+	if (g_strcmp0(type, LST_TYPE) == 0)
 		return obex_get_stream_start(os, ftp->folder);
 
-	return -ENOENT;
+	path = g_build_filename(ftp->folder, name, NULL);
+	err = obex_get_stream_start(os, path);
+
+	g_free(path);
+
+	return err;
 }
 
 static void *ftp_connect(struct obex_session *os, int *err)
