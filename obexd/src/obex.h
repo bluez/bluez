@@ -45,6 +45,7 @@ void obex_connect_cb(GIOChannel *io, GError *err, void *user_data);
 int obex_get_stream_start(struct obex_session *os, const char *filename);
 int obex_put_stream_start(struct obex_session *os, const char *filename);
 const char *obex_get_name(struct obex_session *os);
+void obex_set_name(struct obex_session *os, const char *name);
 ssize_t obex_get_size(struct obex_session *os);
 const char *obex_get_type(struct obex_session *os);
 const char *obex_get_root_folder(struct obex_session *os);

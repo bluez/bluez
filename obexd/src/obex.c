@@ -1166,6 +1166,13 @@ const char *obex_get_name(struct obex_session *os)
 	return os->name;
 }
 
+void obex_set_name(struct obex_session *os, const char *name)
+{
+	g_free(os->name);
+	os->name = g_strdup(name);
+	debug("Name changed: %s", os->name);
+}
+
 ssize_t obex_get_size(struct obex_session *os)
 {
 	return os->size;
