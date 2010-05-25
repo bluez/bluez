@@ -1892,6 +1892,7 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	struct headset_slc *slc = hs->slc;
+	const char *signal;
 	DBusMessage *reply;
 	int err;
 
@@ -1909,6 +1910,24 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
+	if (type == HEADSET_GAIN_SPEAKER) {
+		if (slc->sp_gain == gain) {
+			debug("Ignoring no-change in speaker gain");
+			return reply;
+		}
+
+		slc->sp_gain = gain;
+		signal = "SpeakerGainChanged";
+	} else {
+		if (slc->mic_gain == gain) {
+			debug("Ignoring no-change in microphone gain");
+			return reply;
+		}
+
+		slc->mic_gain = gain;
+		signal = "MicrophoneGainChanged";
+	}
+
 	if (hs->state != HEADSET_STATE_PLAYING)
 		goto done;
 
@@ -1920,21 +1939,10 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 	}
 
 done:
-	if (type == HEADSET_GAIN_SPEAKER) {
-		slc->sp_gain = gain;
-		g_dbus_emit_signal(conn, device->path,
-					AUDIO_HEADSET_INTERFACE,
-					"SpeakerGainChanged",
-					DBUS_TYPE_UINT16, &gain,
-					DBUS_TYPE_INVALID);
-	} else {
-		slc->mic_gain = gain;
-		g_dbus_emit_signal(conn, device->path,
-					AUDIO_HEADSET_INTERFACE,
-					"MicrophoneGainChanged",
-					DBUS_TYPE_UINT16, &gain,
-					DBUS_TYPE_INVALID);
-	}
+	g_dbus_emit_signal(conn, device->path,
+			AUDIO_HEADSET_INTERFACE, signal,
+			DBUS_TYPE_UINT16, &gain,
+			DBUS_TYPE_INVALID);
 
 	return reply;
 }
