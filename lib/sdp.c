@@ -133,6 +133,7 @@ static struct tupla Protocol[] = {
 	{ MCAP_CTRL_UUID,	"MCAP-Ctrl"	},
 	{ MCAP_DATA_UUID,	"MCAP-Data"	},
 	{ L2CAP_UUID,		"L2CAP"		},
+	{ ATT_UUID,		"ATT"		},
 	{ 0 }
 };
 
@@ -205,6 +206,7 @@ static struct tupla ServiceClass[] = {
 	{ HDP_SOURCE_SVCLASS_ID,		"HDP Source"			},
 	{ HDP_SINK_SVCLASS_ID,			"HDP Sink"			},
 	{ APPLE_AGENT_SVCLASS_ID,		"Apple Agent"			},
+	{ GENERIC_ATTRIB_SVCLASS_ID,		"Generic Attribute"		},
 	{ 0 }
 };
 

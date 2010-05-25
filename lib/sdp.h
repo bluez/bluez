@@ -72,6 +72,7 @@ extern "C" {
 #define MCAP_CTRL_UUID	0x001e
 #define MCAP_DATA_UUID	0x001f
 #define L2CAP_UUID	0x0100
+#define ATT_UUID	0x1801
 
 /*
  * Service class identifiers of standard services and service groups
@@ -144,6 +145,7 @@ extern "C" {
 #define HDP_SOURCE_SVCLASS_ID		0x1401
 #define HDP_SINK_SVCLASS_ID		0x1402
 #define APPLE_AGENT_SVCLASS_ID		0x2112
+#define GENERIC_ATTRIB_SVCLASS_ID	0x1801
 
 /*
  * Standard profile descriptor identifiers; note these
@@ -216,6 +218,7 @@ extern "C" {
 #define HDP_SOURCE_PROFILE_ID		HDP_SOURCE_SVCLASS_ID
 #define HDP_SINK_PROFILE_ID		HDP_SINK_SVCLASS_ID
 #define APPLE_AGENT_PROFILE_ID		APPLE_AGENT_SVCLASS_ID
+#define GENERIC_ATTRIB_PROFILE_ID	GENERIC_ATTRIB_SVCLASS_ID
 
 /*
  * Compatibility macros for the old MDP acronym
