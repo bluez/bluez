@@ -168,6 +168,11 @@ builtin_modules += service
 builtin_sources += plugins/service.c
 endif
 
+if ATTRIBPLUGIN
+builtin_modules += attrib
+builtin_sources += attrib/main.c attrib/manager.h attrib/manager.c
+endif
+
 builtin_modules += hciops
 builtin_sources += plugins/hciops.c
 
