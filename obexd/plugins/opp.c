@@ -140,6 +140,9 @@ skip_auth:
 	if (name == NULL || strlen(name) == 0)
 		return -EBADR;
 
+	if (g_str_equal(name, obex_get_name(os)) == FALSE)
+		obex_set_name(os, name);
+
 	path = g_build_filename(folder, name, NULL);
 
 	manager_emit_transfer_started(os);
