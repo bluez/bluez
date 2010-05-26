@@ -574,9 +574,8 @@ static DBusMessage *set_blocked(DBusConnection *conn, DBusMessage *msg,
 
 static inline DBusMessage *invalid_args(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg,
-			ERROR_INTERFACE ".InvalidArguments",
-			"Invalid arguments in method call");
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
 }
 
 static DBusMessage *set_property(DBusConnection *conn,
@@ -1907,7 +1906,7 @@ static gboolean bonding_io_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 
 	reply = new_authentication_return(device->bonding->msg,
-					HCI_CONNECTION_TERMINATED);
+						HCI_CONNECTION_TERMINATED);
 	g_dbus_send_message(device->bonding->conn, reply);
 
 	bonding_request_free(device->bonding);
@@ -2105,8 +2104,10 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 	if (auth && auth->type == AUTH_TYPE_NOTIFY && auth->agent)
 		agent_cancel(auth->agent);
 
-	if (status)
-		goto failed;
+	if (status) {
+		device_cancel_bonding(device, status);
+		return;
+	}
 
 	device->auth = 0xff;
 
@@ -2149,11 +2150,6 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 	}
 
 	device_set_paired(device, TRUE);
-
-	return;
-
-failed:
-	device_cancel_bonding(device, status);
 }
 
 gboolean device_is_creating(struct btd_device *device, const char *sender)
@@ -2212,8 +2208,8 @@ void device_cancel_bonding(struct btd_device *device, uint8_t status)
 	bonding_request_free(bonding);
 }
 
-static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
-			void *data)
+static void pincode_cb(struct agent *agent, DBusError *err,
+					const char *pincode, void *data)
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
@@ -2243,8 +2239,8 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *data)
 	device->authr->agent = NULL;
 }
 
-static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
-			void *data)
+static void passkey_cb(struct agent *agent, DBusError *err,
+						uint32_t passkey, void *data)
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
@@ -2260,11 +2256,11 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 }
 
 int device_request_authentication(struct btd_device *device, auth_type_t type,
-				uint32_t passkey, void *cb)
+						uint32_t passkey, void *cb)
 {
 	struct authentication_req *auth;
 	struct agent *agent;
-	int ret;
+	int err;
 
 	DBG("%s: requesting agent authentication", device->path);
 
@@ -2287,34 +2283,34 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 
 	switch (type) {
 	case AUTH_TYPE_PINCODE:
-		ret = agent_request_pincode(agent, device, pincode_cb,
+		err = agent_request_pincode(agent, device, pincode_cb,
 								auth, NULL);
 		break;
 	case AUTH_TYPE_PASSKEY:
-		ret = agent_request_passkey(agent, device, passkey_cb,
+		err = agent_request_passkey(agent, device, passkey_cb,
 								auth, NULL);
 		break;
 	case AUTH_TYPE_CONFIRM:
-		ret = agent_request_confirmation(agent, device, passkey,
+		err = agent_request_confirmation(agent, device, passkey,
 						confirm_cb, auth, NULL);
 		break;
 	case AUTH_TYPE_NOTIFY:
-		ret = agent_display_passkey(agent, device, passkey);
+		err = agent_display_passkey(agent, device, passkey);
 		break;
 	case AUTH_TYPE_AUTO:
-		ret = 0;
+		err = 0;
 		break;
 	default:
-		ret = -EINVAL;
+		err = -EINVAL;
 	}
 
-	if (ret < 0) {
+	if (err < 0) {
 		error("Failed requesting authentication");
 		g_free(auth);
 		device->authr = NULL;
 	}
 
-	return ret;
+	return err;
 }
 
 static void cancel_authentication(struct authentication_req *auth)
@@ -2413,7 +2409,7 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 }
 
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
-						const char *uuid)
+							const char *uuid)
 {
 	bdaddr_t src;
 

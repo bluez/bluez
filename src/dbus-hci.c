@@ -160,8 +160,8 @@ const char *class_to_icon(uint32_t class)
  *
  *****************************************************************/
 
-static void pincode_cb(struct agent *agent, DBusError *err, const char *pincode,
-			struct btd_device *device)
+static void pincode_cb(struct agent *agent, DBusError *err,
+				const char *pincode, struct btd_device *device)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	pin_code_reply_cp pr;
@@ -428,7 +428,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 }
 
 void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
-					uint8_t status)
+								uint8_t status)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;

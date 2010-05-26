@@ -205,12 +205,13 @@ void clear_found_devices_list(struct btd_adapter *adapter)
 	adapter->found_devices = NULL;
 }
 
-static int adapter_set_service_classes(struct btd_adapter *adapter, uint8_t value)
+static int adapter_set_service_classes(struct btd_adapter *adapter,
+							uint8_t value)
 {
 	int err;
 
-	/* Update only the service class, keep the limited bit, major/minor class
-	 * bits intact */
+	/* Update only the service class, keep the limited bit,
+	 * major/minor class bits intact */
 	adapter->wanted_cod &= 0x00ffff;
 	adapter->wanted_cod |= (value << 16);
 
@@ -831,7 +832,7 @@ void adapter_set_class_complete(bdaddr_t *bdaddr, uint8_t status)
 {
 	uint8_t class[3];
 	struct btd_adapter *adapter;
-	int ret;
+	int err;
 
 	if (status)
 		return;
@@ -865,17 +866,17 @@ void adapter_set_class_complete(bdaddr_t *bdaddr, uint8_t status)
 
 	if (adapter->wanted_cod & LIMITED_BIT &&
 			!(adapter->current_cod & LIMITED_BIT))
-		ret = adapter_ops->set_limited_discoverable(adapter->dev_id,
+		err = adapter_ops->set_limited_discoverable(adapter->dev_id,
 						adapter->wanted_cod, TRUE);
 	else if (!(adapter->wanted_cod & LIMITED_BIT) &&
 					adapter->current_cod & LIMITED_BIT)
-		ret = adapter_ops->set_limited_discoverable(adapter->dev_id,
+		err = adapter_ops->set_limited_discoverable(adapter->dev_id,
 						adapter->wanted_cod, FALSE);
 	else
-		ret = adapter_ops->set_class(adapter->dev_id,
+		err = adapter_ops->set_class(adapter->dev_id,
 							adapter->wanted_cod);
 
-	if (ret == 0)
+	if (err == 0)
 		adapter->pending_cod = adapter->wanted_cod;
 }
 
@@ -930,8 +931,9 @@ void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 	name = g_strdup((char *) dev->name);
 
 	if (connection)
-		emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
-				"Name", DBUS_TYPE_STRING, &name);
+		emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Name",
+					DBUS_TYPE_STRING, &name);
 	g_free(name);
 }
 
@@ -1453,7 +1455,7 @@ static DBusMessage *request_session(DBusConnection *conn,
 	struct session_req *req;
 	const char *sender = dbus_message_get_sender(msg);
 	uint8_t new_mode;
-	int ret;
+	int err;
 
 	if (!adapter->agent)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
@@ -1479,11 +1481,11 @@ static DBusMessage *request_session(DBusConnection *conn,
 	if (adapter->mode >= new_mode)
 		return dbus_message_new_method_return(msg);
 
-	ret = agent_confirm_mode_change(adapter->agent, mode2str(new_mode),
+	err = agent_confirm_mode_change(adapter->agent, mode2str(new_mode),
 					confirm_mode_cb, req, NULL);
-	if (ret < 0) {
+	if (err < 0) {
 		session_unref(req);
-		return failed_strerror(msg, -ret);
+		return failed_strerror(msg, -err);
 	}
 
 	return NULL;
@@ -1630,7 +1632,7 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_OBJECT_PATH, &agent_path,
 					DBUS_TYPE_STRING, &capability,
-						DBUS_TYPE_INVALID) == FALSE)
+					DBUS_TYPE_INVALID) == FALSE)
 		return invalid_args(msg);
 
 	if (check_address(address) < 0)
@@ -1663,8 +1665,8 @@ static gint device_path_cmp(struct btd_device *device, const gchar *path)
 	return strcasecmp(dev_path, path);
 }
 
-static DBusMessage *remove_device(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *remove_device(DBusConnection *conn, DBusMessage *msg,
+								void *data)
 {
 	struct btd_adapter *adapter = data;
 	struct btd_device *device;
@@ -1699,8 +1701,8 @@ static DBusMessage *remove_device(DBusConnection *conn,
 	return NULL;
 }
 
-static DBusMessage *find_device(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *find_device(DBusConnection *conn, DBusMessage *msg,
+								void *data)
 {
 	struct btd_adapter *adapter = data;
 	struct btd_device *device;
@@ -1740,8 +1742,8 @@ static void agent_removed(struct agent *agent, struct btd_adapter *adapter)
 	adapter->agent = NULL;
 }
 
-static DBusMessage *register_agent(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
+								void *data)
 {
 	const char *path, *name, *capability;
 	struct agent *agent;
@@ -1778,8 +1780,8 @@ static DBusMessage *register_agent(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static DBusMessage *unregister_agent(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusMessage *unregister_agent(DBusConnection *conn, DBusMessage *msg,
+								void *data)
 {
 	const char *path, *name;
 	struct btd_adapter *adapter = data;
@@ -1792,8 +1794,8 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 
 	if (!adapter->agent || !agent_matches(adapter->agent, name, path))
 		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".DoesNotExist",
-				"No such agent");
+					ERROR_INTERFACE ".DoesNotExist",
+					"No such agent");
 
 	agent_free(adapter->agent);
 	adapter->agent = NULL;
@@ -1963,7 +1965,7 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 	if (g_str_equal(mode, "off"))
 		strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
 
-       /* Set device class */
+	/* Set device class */
 	if (adapter->initialized && adapter->wanted_cod) {
 		cls[1] = (adapter->wanted_cod >> 8) & 0xff;
 		cls[0] = adapter->wanted_cod & 0xff;
@@ -2006,13 +2008,13 @@ static void create_stored_device_from_profiles(char *key, char *value,
 }
 
 static void create_stored_device_from_linkkeys(char *key, char *value,
-						void *user_data)
+							void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	struct btd_device *device;
 
-	if (g_slist_find_custom(adapter->devices,
-				key, (GCompareFunc) device_address_cmp))
+	if (g_slist_find_custom(adapter->devices, key,
+					(GCompareFunc) device_address_cmp))
 		return;
 
 	device = device_create(connection, adapter, key);
@@ -2023,7 +2025,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 }
 
 static void create_stored_device_from_blocked(char *key, char *value,
-						void *user_data)
+							void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	struct btd_device *device;
@@ -2265,6 +2267,7 @@ proceed:
 					DBUS_TYPE_BOOLEAN, &powered);
 
 	adapter_disable_cod_cache(adapter);
+
 	return 0;
 }
 
@@ -2843,7 +2846,8 @@ void adapter_update_oor_devices(struct btd_adapter *adapter)
 				DBUS_TYPE_STRING, &paddr,
 				DBUS_TYPE_INVALID);
 
-		adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
+		adapter->found_devices = g_slist_remove(adapter->found_devices,
+							dev);
 		dev_info_free(dev);
 	}
 

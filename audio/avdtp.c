@@ -2270,8 +2270,6 @@ failed:
 						AVDTP_STATE_IDLE);
 	} else
 		connection_lost(session, EIO);
-
-	return;
 }
 
 static void auth_cb(DBusError *derr, void *user_data)
@@ -3194,7 +3192,7 @@ static gboolean process_discover(gpointer data)
 int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 			void *user_data)
 {
-	int ret;
+	int err;
 
 	if (session->discov_cb)
 		return -EBUSY;
@@ -3206,13 +3204,13 @@ int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 		return 0;
 	}
 
-	ret = send_request(session, FALSE, NULL, AVDTP_DISCOVER, NULL, 0);
-	if (ret == 0) {
+	err = send_request(session, FALSE, NULL, AVDTP_DISCOVER, NULL, 0);
+	if (err == 0) {
 		session->discov_cb = cb;
 		session->user_data = user_data;
 	}
 
-	return ret;
+	return err;
 }
 
 int avdtp_get_seps(struct avdtp *session, uint8_t acp_type, uint8_t media_type,
@@ -3337,7 +3335,7 @@ int avdtp_set_configuration(struct avdtp *session,
 	struct setconf_req *req;
 	struct avdtp_stream *new_stream;
 	unsigned char *ptr;
-	int ret, caps_len;
+	int err, caps_len;
 	struct avdtp_service_capability *cap;
 	GSList *l;
 
@@ -3378,10 +3376,10 @@ int avdtp_set_configuration(struct avdtp *session,
 		ptr += cap->length + 2;
 	}
 
-	ret = send_request(session, FALSE, new_stream,
+	err = send_request(session, FALSE, new_stream,
 				AVDTP_SET_CONFIGURATION, req,
 				sizeof(struct setconf_req) + caps_len);
-	if (ret < 0)
+	if (err < 0)
 		stream_free(new_stream);
 	else {
 		lsep->info.inuse = 1;
@@ -3394,7 +3392,7 @@ int avdtp_set_configuration(struct avdtp *session,
 
 	g_free(req);
 
-	return ret;
+	return err;
 }
 
 int avdtp_reconfigure(struct avdtp *session, GSList *caps,

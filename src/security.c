@@ -126,7 +126,8 @@ static void hci_req_queue_process(int dev_id)
 
 	do {
 		struct hci_req_data *data;
-		GSList *l = g_slist_find_custom(hci_req_queue, &dev_id, hci_req_find_by_devid);
+		GSList *l = g_slist_find_custom(hci_req_queue, &dev_id,
+							hci_req_find_by_devid);
 
 		if (!l)
 			break;
@@ -134,7 +135,8 @@ static void hci_req_queue_process(int dev_id)
 		data = l->data;
 		data->status = REQ_SENT;
 
-		ret_val = hci_send_cmd(dd, data->ogf, data->ocf, data->clen, data->cparam);
+		ret_val = hci_send_cmd(dd, data->ogf, data->ocf,
+						data->clen, data->cparam);
 		if (ret_val < 0) {
 			hci_req_queue = g_slist_remove(hci_req_queue, data);
 			g_free(data->cparam);
@@ -151,10 +153,10 @@ static void hci_req_queue_append(struct hci_req_data *data)
 	GSList *l;
 	struct hci_req_data *match;
 
-
 	hci_req_queue = g_slist_append(hci_req_queue, data);
 
-	l = g_slist_find_custom(hci_req_queue, &data->dev_id, hci_req_find_by_devid);
+	l = g_slist_find_custom(hci_req_queue, &data->dev_id,
+							hci_req_find_by_devid);
 	match = l->data;
 
 	if (match->status == REQ_SENT)
@@ -769,7 +771,8 @@ static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
 	}
 }
 
-static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, void *ptr)
+static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba,
+							int plen, void *ptr)
 {
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
@@ -808,7 +811,8 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba, int plen, vo
 	}
 }
 
-static inline void extended_inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
+static inline void extended_inquiry_result(int dev, bdaddr_t *sba,
+							int plen, void *ptr)
 {
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
@@ -828,7 +832,8 @@ static inline void extended_inquiry_result(int dev, bdaddr_t *sba, int plen, voi
 	}
 }
 
-static inline void remote_features_information(int dev, bdaddr_t *sba, void *ptr)
+static inline void remote_features_information(int dev, bdaddr_t *sba,
+								void *ptr)
 {
 	evt_read_remote_features_complete *evt = ptr;
 	bdaddr_t dba;
@@ -867,7 +872,8 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 	cp_name.pscan_rep_mode = 0x02;
 
 	data = hci_req_data_new(dev_id, &evt->bdaddr, OGF_LINK_CTL,
-				OCF_REMOTE_NAME_REQ, EVT_REMOTE_NAME_REQ_COMPLETE,
+				OCF_REMOTE_NAME_REQ,
+				EVT_REMOTE_NAME_REQ_COMPLETE,
 				&cp_name, REMOTE_NAME_REQ_CP_SIZE);
 
 	hci_req_queue_append(data);
@@ -876,7 +882,8 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 	ba2str(sba, local_addr);
 	ba2str(&evt->bdaddr, peer_addr);
 
-	create_name(filename, sizeof(filename), STORAGEDIR, local_addr, "manufacturers");
+	create_name(filename, sizeof(filename), STORAGEDIR, local_addr,
+							"manufacturers");
 
 	str = textfile_get(filename, peer_addr);
 	if (!str) {
@@ -886,7 +893,8 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 		cp.handle = evt->handle;
 
 		data = hci_req_data_new(dev_id, &evt->bdaddr, OGF_LINK_CTL,
-					OCF_READ_REMOTE_VERSION, EVT_READ_REMOTE_VERSION_COMPLETE,
+					OCF_READ_REMOTE_VERSION,
+					EVT_READ_REMOTE_VERSION_COMPLETE,
 					&cp, READ_REMOTE_VERSION_CP_SIZE);
 
 		hci_req_queue_append(data);
@@ -945,7 +953,8 @@ static void delete_channel(GIOChannel *chan)
 	error("IO channel not found in the io_data table");
 }
 
-static gboolean io_security_event(GIOChannel *chan, GIOCondition cond, gpointer data)
+static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
+								gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
 	struct hci_dev_info *di = data;

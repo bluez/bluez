@@ -908,8 +908,6 @@ static void open_complete(struct audio_device *dev, void *user_data)
 	strncpy(rsp->object, dev->path, sizeof(rsp->object));
 
 	unix_ipc_sendmsg(client, &rsp->h);
-
-	return;
 }
 
 static void start_open(struct audio_device *dev, struct unix_client *client)

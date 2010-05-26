@@ -194,7 +194,7 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 			headset_update(device, uuid16, uuidstr);
 		else
 			device->headset = headset_init(device, uuid16,
-							uuidstr);
+								uuidstr);
 		break;
 	case HANDSFREE_AGW_SVCLASS_ID:
 		DBG("Found Handsfree AG record");
@@ -603,7 +603,6 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
 	g_io_channel_unref(chan);
-	return;
 }
 
 static int headset_server_init(struct audio_adapter *adapter)
@@ -850,7 +849,7 @@ static int headset_server_probe(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
-	int ret;
+	int err;
 
 	DBG("path %s", path);
 
@@ -858,13 +857,11 @@ static int headset_server_probe(struct btd_adapter *adapter)
 	if (!adp)
 		return -EINVAL;
 
-	ret = headset_server_init(adp);
-	if (ret < 0) {
+	err = headset_server_init(adp);
+	if (err < 0)
 		audio_adapter_unref(adp);
-		return ret;
-	}
 
-	return 0;
+	return err;
 }
 
 static void headset_server_remove(struct btd_adapter *adapter)
@@ -943,7 +940,7 @@ static int a2dp_server_probe(struct btd_adapter *adapter)
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
 	bdaddr_t src;
-	int ret;
+	int err;
 
 	DBG("path %s", path);
 
@@ -953,13 +950,11 @@ static int a2dp_server_probe(struct btd_adapter *adapter)
 
 	adapter_get_address(adapter, &src);
 
-	ret = a2dp_register(connection, &src, config);
-	if (ret < 0) {
+	err = a2dp_register(connection, &src, config);
+	if (err < 0)
 		audio_adapter_unref(adp);
-		return ret;
-	}
 
-	return 0;
+	return err;
 }
 
 static void a2dp_server_remove(struct btd_adapter *adapter)

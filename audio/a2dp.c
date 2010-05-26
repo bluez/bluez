@@ -879,6 +879,7 @@ static gboolean reconf_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		DBG("Sink %p: ReConfigure_Ind", sep);
 	else
 		DBG("Source %p: ReConfigure_Ind", sep);
+
 	return TRUE;
 }
 
