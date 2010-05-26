@@ -257,10 +257,16 @@ static void entry_notify(const char *filename, VObject *v, void *user_data)
 	VObject *property, *subproperty;
 	GString *name;
 	const char *tel;
-	unsigned int handle;
+	long unsigned int handle;
 
 	property = isAPropertyOf(v, VCNameProp);
 	if (!property)
+		return;
+
+	if (sscanf(filename, "%lu.vcf", &handle) != 1)
+		return;
+
+	if (handle > UINT32_MAX)
 		return;
 
 	/* LastName; FirstName; MiddleName; Prefix; Suffix */
@@ -294,16 +300,11 @@ static void entry_notify(const char *filename, VObject *v, void *user_data)
 				fakeCString(vObjectUStringZValue(subproperty)));
 
 	property = isAPropertyOf(v, VCTelephoneProp);
-	if (!property)
-		goto done;
 
-	tel = fakeCString(vObjectUStringZValue(property));
-	if (sscanf(filename, "%u.vcf", &handle) == 1)
-		handle = handle > UINT32_MAX ? UINT32_MAX : handle;
-		query->entry_cb(filename, handle, name->str, NULL, tel,
+	tel = property ? fakeCString(vObjectUStringZValue(property)) : NULL;
+
+	query->entry_cb(filename, handle, name->str, NULL, tel,
 							query->user_data);
-
-done:
 	g_string_free(name, TRUE);
 }
 
