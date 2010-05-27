@@ -950,37 +950,32 @@ static int dial_number(struct audio_device *device, const char *buf)
 	return 0;
 }
 
-static int signal_gain_setting(struct audio_device *device, const char *buf)
+static int headset_set_gain(struct audio_device *device, uint16_t gain, char type)
 {
 	struct headset *hs = device->headset;
 	struct headset_slc *slc = hs->slc;
-	const char *property;
-	const char *name;
-	dbus_uint16_t gain;
-
-	if (strlen(buf) < 8) {
-		error("Too short string for Gain setting");
-		return -EINVAL;
-	}
-
-	gain = (dbus_uint16_t) strtol(&buf[7], NULL, 10);
+	const char *name, *property;
 
 	if (gain > 15) {
-		error("Invalid gain value received: %u", gain);
+		error("Invalid gain value: %u", gain);
 		return -EINVAL;
 	}
 
-	switch (buf[5]) {
+	switch (type) {
 	case HEADSET_GAIN_SPEAKER:
-		if (slc->sp_gain == gain)
-			goto ok;
+		if (slc->sp_gain == gain) {
+			DBG("Ignoring no-change in speaker gain");
+			return 0;
+		}
 		name = "SpeakerGainChanged";
 		property = "SpeakerGain";
 		slc->sp_gain = gain;
 		break;
 	case HEADSET_GAIN_MICROPHONE:
-		if (slc->mic_gain == gain)
-			goto ok;
+		if (slc->mic_gain == gain) {
+			DBG("Ignoring no-change in microphone gain");
+			return 0;
+		}
 		name = "MicrophoneGainChanged";
 		property = "MicrophoneGain";
 		slc->mic_gain = gain;
@@ -999,7 +994,26 @@ static int signal_gain_setting(struct audio_device *device, const char *buf)
 				AUDIO_HEADSET_INTERFACE, property,
 				DBUS_TYPE_UINT16, &gain);
 
-ok:
+	return 0;
+}
+
+static int signal_gain_setting(struct audio_device *device, const char *buf)
+{
+	struct headset *hs = device->headset;
+	dbus_uint16_t gain;
+	int err;
+
+	if (strlen(buf) < 8) {
+		error("Too short string for Gain setting");
+		return -EINVAL;
+	}
+
+	gain = (dbus_uint16_t) strtol(&buf[7], NULL, 10);
+
+	err = headset_set_gain(device, gain, buf[5]);
+	if (err < 0)
+		return err;
+
 	return headset_send(hs, "\r\nOK\r\n");
 }
 
@@ -1891,8 +1905,6 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 {
 	struct audio_device *device = data;
 	struct headset *hs = device->headset;
-	struct headset_slc *slc = hs->slc;
-	const char *signal, *property;
 	DBusMessage *reply;
 	int err;
 
@@ -1901,7 +1913,8 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 						".NotConnected",
 						"Device not Connected");
 
-	if (gain > 15)
+	err = headset_set_gain(device, gain, type);
+	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".InvalidArgument",
 						"Must be less than or equal to 15");
@@ -1910,45 +1923,14 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
-	if (type == HEADSET_GAIN_SPEAKER) {
-		if (slc->sp_gain == gain) {
-			DBG("Ignoring no-change in speaker gain");
-			return reply;
-		}
-
-		slc->sp_gain = gain;
-		signal = "SpeakerGainChanged";
-		property = "SpeakerGain";
-	} else {
-		if (slc->mic_gain == gain) {
-			DBG("Ignoring no-change in microphone gain");
-			return reply;
-		}
-
-		slc->mic_gain = gain;
-		signal = "MicrophoneGainChanged";
-		property = "MicrophoneGain";
-	}
-
-	if (hs->state != HEADSET_STATE_PLAYING)
-		goto done;
-
-	err = headset_send(hs, "\r\n+VG%c=%u\r\n", type, gain);
-	if (err < 0) {
-		dbus_message_unref(reply);
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+	if (hs->state == HEADSET_STATE_PLAYING) {
+		err = headset_send(hs, "\r\n+VG%c=%u\r\n", type, gain);
+		if (err < 0) {
+			dbus_message_unref(reply);
+			return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 						"%s", strerror(-err));
+		}
 	}
-
-done:
-	g_dbus_emit_signal(conn, device->path,
-			AUDIO_HEADSET_INTERFACE, signal,
-			DBUS_TYPE_UINT16, &gain,
-			DBUS_TYPE_INVALID);
-
-	emit_property_changed(conn, device->path,
-			AUDIO_HEADSET_INTERFACE, property,
-			DBUS_TYPE_UINT16, &gain);
 
 	return reply;
 }
