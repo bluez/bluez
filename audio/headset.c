@@ -1912,7 +1912,7 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 
 	if (type == HEADSET_GAIN_SPEAKER) {
 		if (slc->sp_gain == gain) {
-			debug("Ignoring no-change in speaker gain");
+			DBG("Ignoring no-change in speaker gain");
 			return reply;
 		}
 
@@ -1920,7 +1920,7 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 		signal = "SpeakerGainChanged";
 	} else {
 		if (slc->mic_gain == gain) {
-			debug("Ignoring no-change in microphone gain");
+			DBG("Ignoring no-change in microphone gain");
 			return reply;
 		}
 
