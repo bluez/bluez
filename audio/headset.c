@@ -1892,7 +1892,7 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 	struct audio_device *device = data;
 	struct headset *hs = device->headset;
 	struct headset_slc *slc = hs->slc;
-	const char *signal;
+	const char *signal, *property;
 	DBusMessage *reply;
 	int err;
 
@@ -1918,6 +1918,7 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 
 		slc->sp_gain = gain;
 		signal = "SpeakerGainChanged";
+		property = "SpeakerGain";
 	} else {
 		if (slc->mic_gain == gain) {
 			DBG("Ignoring no-change in microphone gain");
@@ -1926,6 +1927,7 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 
 		slc->mic_gain = gain;
 		signal = "MicrophoneGainChanged";
+		property = "MicrophoneGain";
 	}
 
 	if (hs->state != HEADSET_STATE_PLAYING)
@@ -1943,6 +1945,10 @@ done:
 			AUDIO_HEADSET_INTERFACE, signal,
 			DBUS_TYPE_UINT16, &gain,
 			DBUS_TYPE_INVALID);
+
+	emit_property_changed(conn, device->path,
+			AUDIO_HEADSET_INTERFACE, property,
+			DBUS_TYPE_UINT16, &gain);
 
 	return reply;
 }
