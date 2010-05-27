@@ -305,6 +305,9 @@ static const char *name2query(const char *name)
 
 static gboolean folder_is_valid(const char *folder)
 {
+	if (folder == NULL)
+		return FALSE;
+
 	if (g_str_equal(folder, "/"))
 		return TRUE;
 	else if (g_str_equal(folder, "/telecom"))
