@@ -622,7 +622,6 @@ char *phonebook_set_folder(const char *current_folder, const char *new_folder,
 		len = tmp2 - (current_folder + 1);
 
 		g_free(tmp1);
-		g_free(tmp2);
 
 		if (len == 0)
 			base = g_strdup("/");
