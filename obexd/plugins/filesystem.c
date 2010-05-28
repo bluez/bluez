@@ -138,6 +138,7 @@ static void *filesystem_open(const char *name, int oflag, mode_t mode,
 	char *folder;
 	gboolean root;
 	int fd = open(name, oflag, mode);
+	uint64_t avail;
 
 	if (fd < 0) {
 		if (err)
@@ -181,7 +182,8 @@ static void *filesystem_open(const char *name, int oflag, mode_t mode,
 	if (size == NULL)
 		goto done;
 
-	if (buf.f_bsize * buf.f_bavail < *size) {
+	avail = (uint64_t) buf.f_bsize * buf.f_bavail;
+	if (avail < *size) {
 		if (err)
 			*err = -ENOSPC;
 		goto failed;
