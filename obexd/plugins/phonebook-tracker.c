@@ -40,7 +40,7 @@
 #define TRACKER_RESOURCES_PATH "/org/freedesktop/Tracker1/Resources"
 #define TRACKER_RESOURCES_INTERFACE "org.freedesktop.Tracker1.Resources"
 
-#define TRACKER_DEFAULT_CONTACT_ME "<urn:nco:default-contact-me>"
+#define TRACKER_DEFAULT_CONTACT_ME "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#default-contact-me"
 
 #define CONTACTS_QUERY_ALL						\
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
@@ -62,7 +62,7 @@
 	"}"
 
 #define CONTACTS_QUERY_ALL_LIST						\
-	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
@@ -95,7 +95,7 @@
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define MISSED_CALLS_LIST						\
-	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
@@ -131,7 +131,7 @@
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define INCOMING_CALLS_LIST						\
-	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
@@ -166,7 +166,7 @@
 	"} ORDER BY DESC(nmo:sentDate(?call))"
 
 #define OUTGOING_CALLS_LIST						\
-	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
@@ -214,7 +214,7 @@
 	"} } "
 
 #define COMBINED_CALLS_LIST						\
-	"SELECT nco:contactUID(?c) nco:nameFamily(?c) "			\
+	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
@@ -555,16 +555,16 @@ static void add_to_cache(char **reply, int num_fields, void *user_data)
 	if (reply == NULL)
 		goto done;
 
-	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[1], reply[2],
-						reply[3], reply[4], reply[5]);
+	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[2], reply[3],
+						reply[4], reply[5], reply[6]);
 
 	/* The owner vCard must have the 0 handle */
 	if (strcmp(reply[0], TRACKER_DEFAULT_CONTACT_ME) == 0)
-		cache->entry_cb(reply[0], 0, formatted, "",
-						reply[6], cache->user_data);
+		cache->entry_cb(reply[1], 0, formatted, "",
+						reply[7], cache->user_data);
 	else
-		cache->entry_cb(reply[0], PHONEBOOK_INVALID_HANDLE, formatted,
-					"", reply[6], cache->user_data);
+		cache->entry_cb(reply[1], PHONEBOOK_INVALID_HANDLE, formatted,
+					"", reply[7], cache->user_data);
 
 	g_free(formatted);
 
@@ -725,5 +725,5 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	cache->ready_cb = ready_cb;
 	cache->user_data = user_data;
 
-	return query_tracker(query, 7, add_to_cache, cache);
+	return query_tracker(query, 8, add_to_cache, cache);
 }
