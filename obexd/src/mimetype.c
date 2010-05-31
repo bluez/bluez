@@ -117,7 +117,7 @@ static int set_io_watch(void *object, obex_object_io_func func,
 	return 0;
 }
 
-struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
+static struct obex_mime_type_driver *find_driver(const uint8_t *target,
 				const char *mimetype, const uint8_t *who,
 				unsigned int who_size)
 {
@@ -139,6 +139,33 @@ struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
 	return NULL;
 }
 
+struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
+				const char *mimetype, const uint8_t *who,
+				unsigned int who_size)
+{
+	struct obex_mime_type_driver *driver;
+
+	driver = find_driver(target, mimetype, who, who_size);
+	if (driver == NULL) {
+		if (who != NULL) {
+			/* Fallback to non-who specific */
+			driver = find_driver(target, mimetype, NULL, 0);
+			if (driver != NULL)
+				return driver;
+		}
+
+		if (mimetype != NULL)
+			/* Fallback to target default */
+			driver = find_driver(target, NULL, NULL, 0);
+
+		if (driver == NULL)
+			/* Fallback to general default */
+			driver = find_driver(NULL, NULL, NULL, 0);
+	}
+
+	return driver;
+}
+
 int obex_mime_type_driver_register(struct obex_mime_type_driver *driver)
 {
 	if (!driver) {
@@ -146,7 +173,7 @@ int obex_mime_type_driver_register(struct obex_mime_type_driver *driver)
 		return -EINVAL;
 	}
 
-	if (obex_mime_type_driver_find(driver->target, driver->mimetype,
+	if (find_driver(driver->target, driver->mimetype,
 					driver->who, driver->who_size)) {
 		error("Permission denied: %s could not be registered",
 				driver->mimetype);
