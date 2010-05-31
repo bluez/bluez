@@ -657,7 +657,7 @@ static void pbap_disconnect(struct obex_session *os, void *user_data)
 static int pbap_chkput(struct obex_session *os, void *user_data)
 {
 	/* Rejects all PUTs */
-	return -EINVAL;
+	return -EBADR;
 }
 
 static struct obex_service_driver pbap = {
