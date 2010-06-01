@@ -322,9 +322,9 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1303, "VideoSource", NULL, 0 },
 	{ 0x1304, "VideoSink", NULL, 0 },
 	{ 0x1305, "VideoDistribution", NULL, 0 },
-	{ 0x1400, "MDP", NULL, 0 },
-	{ 0x1401, "MDPSource", NULL, 0 },
-	{ 0x1402, "MDPSink", NULL, 0 },
+	{ 0x1400, "HDP", NULL, 0 },
+	{ 0x1401, "HDPSource", NULL, 0 },
+	{ 0x1402, "HDPSink", NULL, 0 },
 	{ 0x2112, "AppleAgent", NULL, 0 },
 };
 
