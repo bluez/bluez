@@ -22,21 +22,6 @@
  *
  */
 
-struct server {
-	gboolean auto_accept;
-	char *folder;
-	gboolean symlinks;
-	char *capability;
-	uint32_t handle;
-	char *devnode;
-	gboolean secure;
-	GIOChannel *io;
-	unsigned int watch;
-	uint16_t tx_mtu;
-	uint16_t rx_mtu;
-	GSList *drivers;
-};
-
 struct obex_session {
 	GIOChannel *io;
 	uint32_t cid;
@@ -55,7 +40,7 @@ struct obex_session {
 	gboolean aborted;
 	struct obex_service_driver *service;
 	void *service_data;
-	struct server *server;
+	struct obex_server *server;
 	gboolean checked;
 	obex_t *obex;
 	obex_object_t *obj;
@@ -63,9 +48,5 @@ struct obex_session {
 	gboolean finished;
 };
 
-int obex_session_start(GIOChannel *io, struct server *server);
-void server_free(struct server *server);
-
-void register_record(struct server *server);
-int request_service_authorization(struct server *server, GIOChannel *io,
-							const char *address);
+int obex_session_start(GIOChannel *io, uint16_t tx_mtu, uint16_t rx_mtu,
+			struct obex_server *server);

@@ -46,10 +46,10 @@
 #include <openobex/obex_const.h>
 
 #include "logging.h"
-#include "bluetooth.h"
 #include "obexd.h"
 #include "obex.h"
 #include "obex-priv.h"
+#include "server.h"
 #include "service.h"
 
 #define DEFAULT_ROOT_PATH "/tmp"
@@ -57,92 +57,6 @@
 #define DEFAULT_CAP_FILE CONFIGDIR "/capability.xml"
 
 static GMainLoop *main_loop = NULL;
-
-static int services = 0;
-static gboolean tty_needs_reinit = FALSE;
-static gboolean tty_open_allowed = TRUE;
-static int signal_pipe[2];
-
-#define TTY_RX_MTU 65535
-#define TTY_TX_MTU 65535
-
-int tty_init(int services, const char *root_path,
-		const char *capability, gboolean symlinks,
-		const char *devnode)
-{
-	struct server *server;
-	struct termios options;
-	int fd, err, arg;
-	glong flags;
-	GIOChannel *io = NULL;
-
-	tty_needs_reinit = TRUE;
-
-	if (!tty_open_allowed)
-		return -EACCES;
-
-	fd = open(devnode, O_RDWR | O_NOCTTY);
-	if (fd < 0)
-		return fd;
-
-	flags = fcntl(fd, F_GETFL);
-	fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
-
-	tcgetattr(fd, &options);
-	cfmakeraw(&options);
-	options.c_oflag &= ~ONLCR;
-	tcsetattr(fd, TCSANOW, &options);
-
-	arg = fcntl(fd, F_GETFL);
-	if (arg < 0) {
-		err = -errno;
-		goto failed;
-	}
-
-	arg |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, arg) < 0) {
-		err = -errno;
-		goto failed;
-	}
-
-	server = g_new0(struct server, 1);
-	server->drivers = obex_service_driver_list(services);
-	server->folder = g_strdup(root_path);
-	server->auto_accept = TRUE;
-	server->capability = g_strdup(capability);
-	server->devnode = g_strdup(devnode);
-	server->rx_mtu = TTY_RX_MTU;
-	server->tx_mtu = TTY_TX_MTU;
-	server->symlinks = symlinks;
-
-	io = g_io_channel_unix_new(fd);
-	g_io_channel_set_close_on_unref(io, TRUE);
-
-	err = obex_session_start(io, server);
-	g_io_channel_unref(io);
-
-	if (err < 0) {
-		server_free(server);
-		goto failed;
-	}
-
-	tty_needs_reinit = FALSE;
-
-	debug("Successfully opened %s", devnode);
-
-	return 0;
-
-failed:
-	error("tty_init(): %s (%d)", strerror(-err), -err);
-	if (io == NULL)
-		close(fd);
-	return err;
-}
-
-void tty_closed(void)
-{
-	tty_needs_reinit = TRUE;
-}
 
 static void sig_term(int sig)
 {
@@ -161,7 +75,6 @@ static gboolean option_debug = FALSE;
 static char *option_root = NULL;
 static char *option_root_setup = NULL;
 static char *option_capability = NULL;
-static char *option_devnode = NULL;
 
 static gboolean option_autoaccept = FALSE;
 static gboolean option_opp = FALSE;
@@ -185,8 +98,6 @@ static GOptionEntry options[] = {
 				"Enable symlinks on root folder" },
 	{ "capability", 'c', 0, G_OPTION_ARG_STRING, &option_capability,
 				"Specify capability file", "FILE" },
-	{ "tty", 't', 0, G_OPTION_ARG_STRING, &option_devnode,
-				"Specify the TTY device", "DEVICE" },
 	{ "auto-accept", 'a', 0, G_OPTION_ARG_NONE, &option_autoaccept,
 				"Automatically accept push requests" },
 	{ "opp", 'o', 0, G_OPTION_ARG_NONE, &option_opp,
@@ -210,67 +121,6 @@ const char *obex_option_root_folder(void)
 gboolean obex_option_symlinks(void)
 {
 	return option_symlinks;
-}
-
-static void sig_tty(int sig)
-{
-	if (write(signal_pipe[1], &sig, sizeof(sig)) != sizeof(sig))
-		error("unable to write to signal pipe");
-}
-
-static gboolean handle_signal(GIOChannel *io, GIOCondition cond,
-				void *user_data)
-{
-	int sig, fd = g_io_channel_unix_get_fd(io);
-
-	if (read(fd, &sig, sizeof(sig)) != sizeof(sig)) {
-		error("handle_signal: unable to read signal from pipe");
-		return TRUE;
-	}
-
-	switch (sig) {
-	case SIGUSR1:
-		debug("SIGUSR1");
-		tty_open_allowed = TRUE;
-		if (tty_needs_reinit)
-			tty_init(services, option_root, option_capability,
-					option_symlinks, option_devnode);
-		break;
-	case SIGHUP:
-		debug("SIGHUP");
-		tty_open_allowed = FALSE;
-		obex_tty_session_stop();
-		break;
-	default:
-		error("handle_signal: got unexpected signal %d", sig);
-		break;
-	}
-
-	return TRUE;
-}
-
-static int devnode_setup(void)
-{
-	struct sigaction sa;
-	GIOChannel *pipe_io;
-
-	if (pipe(signal_pipe) < 0)
-		return -errno;
-
-	pipe_io = g_io_channel_unix_new(signal_pipe[0]);
-	g_io_add_watch(pipe_io, G_IO_IN, handle_signal, NULL);
-	g_io_channel_unref(pipe_io);
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = sig_tty;
-	sigaction(SIGUSR1, &sa, NULL);
-	sigaction(SIGHUP, &sa, NULL);
-
-	if (option_pcsuite)
-		tty_open_allowed = FALSE;
-
-	return tty_init(services, option_root, option_capability,
-			option_symlinks, option_devnode);
 }
 
 static gboolean is_dir(const char *dir) {
@@ -391,40 +241,27 @@ int main(int argc, char *argv[])
 	if (option_capability == NULL)
 		option_capability = g_strdup(DEFAULT_CAP_FILE);
 
-	if (option_opp == TRUE) {
-		services |= OBEX_OPP;
-		bluetooth_init(OBEX_OPP, option_root, FALSE,
+	if (option_opp == TRUE)
+		obex_server_init(OBEX_OPP, option_root, FALSE,
 				option_autoaccept, option_symlinks,
 				NULL);
-	}
 
-	if (option_ftp == TRUE) {
-		services |= OBEX_FTP;
-		bluetooth_init(OBEX_FTP, option_root, TRUE,
+	if (option_ftp == TRUE)
+		obex_server_init(OBEX_FTP, option_root, TRUE,
 				option_autoaccept, option_symlinks,
 				option_capability);
-	}
 
-	if (option_pbap == TRUE) {
-		services |= OBEX_PBAP;
-		bluetooth_init(OBEX_PBAP, NULL, TRUE, FALSE, FALSE, NULL);
-	}
+	if (option_pbap == TRUE)
+		obex_server_init(OBEX_PBAP, NULL, TRUE, FALSE, FALSE, NULL);
 
-	if (option_pcsuite == TRUE) {
-		services |= OBEX_PCSUITE;
-		bluetooth_init(OBEX_PCSUITE, option_root, TRUE,
+	if (option_pcsuite == TRUE)
+		obex_server_init(OBEX_PCSUITE, option_root, TRUE,
 				option_autoaccept, option_symlinks,
 				option_capability);
-	}
 
-	if (option_syncevolution == TRUE) {
-		services |= OBEX_SYNCEVOLUTION;
-		bluetooth_init(OBEX_SYNCEVOLUTION, NULL, TRUE, FALSE,
+	if (option_syncevolution == TRUE)
+		obex_server_init(OBEX_SYNCEVOLUTION, NULL, TRUE, FALSE,
 							FALSE, NULL);
-	}
-
-	if (option_devnode)
-		devnode_setup();
 
 	if (!root_folder_setup(option_root, option_root_setup)) {
 		error("Unable to setup root folder %s", option_root);
@@ -441,7 +278,7 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(main_loop);
 
-	bluetooth_exit();
+	obex_server_exit();
 
 	plugin_cleanup();
 
@@ -449,7 +286,6 @@ int main(int argc, char *argv[])
 
 	g_main_loop_unref(main_loop);
 
-	g_free(option_devnode);
 	g_free(option_capability);
 	g_free(option_root);
 

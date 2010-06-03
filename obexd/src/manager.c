@@ -37,10 +37,10 @@
 
 #include <openobex/obex.h>
 
-#include "bluetooth.h"
 #include "obexd.h"
 #include "obex.h"
 #include "obex-priv.h"
+#include "server.h"
 #include "dbus.h"
 #include "logging.h"
 #include "btio.h"
@@ -65,24 +65,7 @@ struct agent {
 
 static struct agent *agent = NULL;
 
-struct pending_request {
-	DBusPendingCall *call;
-	struct server *server;
-	char *adapter_path;
-	char address[18];
-	unsigned int watch;
-	GIOChannel *io;
-};
-
-struct adapter_any {
-	char *path;		/* Adapter ANY path */
-	GSList *servers;	/* List of servers to register records */
-};
-
 static DBusConnection *connection = NULL;
-static DBusConnection *system_conn = NULL;
-static struct adapter_any *any = NULL;
-static unsigned int listener_id = 0;
 
 static void agent_free(struct agent *agent)
 {
@@ -356,183 +339,15 @@ static GDBusMethodTable session_methods[] = {
 	{ }
 };
 
-static void add_record_reply(DBusPendingCall *call, void *user_data)
-{
-	struct server *server = user_data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError derr;
-	uint32_t handle;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("Replied with an error: %s, %s",
-				derr.name, derr.message);
-		dbus_error_free(&derr);
-		handle = 0;
-	} else {
-		struct obex_service_driver *driver;
-
-		dbus_message_get_args(reply, NULL,
-				DBUS_TYPE_UINT32, &handle,
-				DBUS_TYPE_INVALID);
-		server->handle = handle;
-
-		driver = (struct obex_service_driver *) server->drivers->data;
-
-		debug("Registered: %s, handle: 0x%x, folder: %s",
-				driver->name, handle, server->folder);
-	}
-
-	dbus_message_unref(reply);
-}
-
-static int add_record(const char *path,
-		const char *xml, struct server *server)
-{
-	DBusMessage *msg;
-	DBusPendingCall *call;
-	int ret = 0;
-
-	msg = dbus_message_new_method_call("org.bluez", path,
-					"org.bluez.Service", "AddRecord");
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &xml,
-			DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(system_conn,
-				msg, &call, -1) == FALSE) {
-		ret = -1;
-		goto failed;
-	}
-
-	dbus_pending_call_set_notify(call, add_record_reply, server, NULL);
-	dbus_pending_call_unref(call);
-
-failed:
-	dbus_message_unref(msg);
-	return ret;
-}
-
-void register_record(struct server *server)
-{
-	struct obex_service_driver *driver;
-	char *xml;
-	int ret;
-
-	if (system_conn == NULL)
-		return;
-
-	if (any->path == NULL) {
-		/* Adapter ANY is not available yet: Add record later */
-		any->servers = g_slist_append(any->servers, server);
-		return;
-	}
-
-	driver = (struct obex_service_driver *) server->drivers->data;
-	xml = g_markup_printf_escaped(driver->record, driver->channel,
-					driver->name);
-	ret = add_record(any->path, xml, server);
-	g_free(xml);
-}
-
-static void find_adapter_any_reply(DBusPendingCall *call, void *user_data)
-{
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	const char *path;
-	char *xml;
-	GSList *l;
-	DBusError derr;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("Replied with an error: %s, %s",
-				derr.name, derr.message);
-		dbus_error_free(&derr);
-		bluetooth_stop();
-		goto done;
-	}
-
-	dbus_message_get_args(reply, NULL,
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
-	any->path = g_strdup(path);
-
-	for (l = any->servers; l; l = l->next) {
-		struct server *server = l->data;
-		struct obex_service_driver *driver;
-
-		driver = (struct obex_service_driver *) server->drivers->data;
-		xml = g_markup_printf_escaped(driver->record, driver->channel,
-						driver->name);
-		add_record(path, xml, server);
-		g_free(xml);
-	}
-
-done:
-	g_slist_free(any->servers);
-	any->servers = NULL;
-
-	dbus_message_unref(reply);
-}
-
-static DBusPendingCall *find_adapter(const char *pattern,
-				DBusPendingCallNotifyFunction function,
-				void *user_data)
-{
-	DBusMessage *msg;
-	DBusPendingCall *call;
-
-	debug("FindAdapter(%s)", pattern);
-
-	msg = dbus_message_new_method_call("org.bluez", "/",
-					"org.bluez.Manager", "FindAdapter");
-	if (!msg)
-		return NULL;
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &pattern,
-			DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(system_conn, msg, &call, -1)) {
-		dbus_message_unref(msg);
-		return NULL;
-	}
-
-	dbus_pending_call_set_notify(call, function, user_data, NULL);
-
-	dbus_message_unref(msg);
-
-	return call;
-}
-
-static void name_acquired(DBusConnection *conn, void *user_data)
-{
-	DBusPendingCall *call;
-
-	call = find_adapter("any", find_adapter_any_reply, NULL);
-	if (call)
-		dbus_pending_call_unref(call);
-
-	bluetooth_start();
-}
-
-static void name_released(DBusConnection *conn, void *user_data)
-{
-	g_free(any->path);
-	any->path = NULL;
-	bluetooth_stop();
-}
-
 gboolean manager_init(void)
 {
 	DBusError err;
 
 	DBG("");
 
-	any = g_new0(struct adapter_any, 1);
-
 	dbus_error_init(&err);
 
-	connection = g_dbus_setup_private(DBUS_BUS_SESSION, OPENOBEX_SERVICE,
+	connection = g_dbus_setup_bus(DBUS_BUS_SESSION, OPENOBEX_SERVICE,
 									&err);
 	if (connection == NULL) {
 		if (dbus_error_is_set(&err) == TRUE) {
@@ -542,16 +357,6 @@ gboolean manager_init(void)
 			fprintf(stderr, "Can't register with session bus\n");
 		return FALSE;
 	}
-
-	system_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
-	if (system_conn == NULL) {
-		dbus_connection_unref(connection);
-		connection = NULL;
-		return FALSE;
-	}
-
-	listener_id = g_dbus_add_service_watch(system_conn, "org.bluez",
-				name_acquired, name_released, NULL, NULL);
 
 	return g_dbus_register_interface(connection, OPENOBEX_MANAGER_PATH,
 					OPENOBEX_MANAGER_INTERFACE,
@@ -570,16 +375,6 @@ void manager_cleanup(void)
 
 	if (agent)
 		agent_free(agent);
-
-	g_dbus_remove_watch(system_conn, listener_id);
-
-	if (any) {
-		g_free(any->path);
-		g_free(any);
-	}
-
-	if (system_conn)
-		dbus_connection_unref(system_conn);
 
 	dbus_connection_unref(connection);
 }
@@ -806,174 +601,6 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 	*new_name = agent->new_name;
 	agent->new_folder = NULL;
 	agent->new_name = NULL;
-
-	return 0;
-}
-
-static void service_cancel(struct pending_request *pending)
-{
-	DBusMessage *msg;
-
-	msg = dbus_message_new_method_call("org.bluez",
-					pending->adapter_path,
-					"org.bluez.Service",
-					"CancelAuthorization");
-
-	g_dbus_send_message(system_conn, msg);
-}
-
-static void pending_request_free(struct pending_request *pending)
-{
-	if (pending->call)
-		dbus_pending_call_unref(pending->call);
-	g_io_channel_unref(pending->io);
-	g_free(pending->adapter_path);
-	g_free(pending);
-}
-
-static void service_reply(DBusPendingCall *call, void *user_data)
-{
-	struct pending_request *pending = user_data;
-	GIOChannel *io = pending->io;
-	struct server *server = pending->server;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError derr;
-	GError *err = NULL;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("RequestAuthorization error: %s, %s",
-				derr.name, derr.message);
-
-		if (dbus_error_has_name(&derr, DBUS_ERROR_NO_REPLY))
-			service_cancel(pending);
-
-		dbus_error_free(&derr);
-		g_io_channel_shutdown(io, TRUE, NULL);
-		goto done;
-	}
-
-	debug("RequestAuthorization succeeded");
-
-	if (!bt_io_accept(io, obex_connect_cb, server, NULL, &err)) {
-		error("%s", err->message);
-		g_error_free(err);
-		g_io_channel_shutdown(io, TRUE, NULL);
-	}
-
-done:
-	g_source_remove(pending->watch);
-	pending_request_free(pending);
-	dbus_message_unref(reply);
-}
-
-static gboolean service_error(GIOChannel *io, GIOCondition cond,
-			void *user_data)
-{
-	struct pending_request *pending = user_data;
-
-	service_cancel(pending);
-
-	dbus_pending_call_cancel(pending->call);
-
-	pending_request_free(pending);
-
-	return FALSE;
-}
-
-static void find_adapter_reply(DBusPendingCall *call, void *user_data)
-{
-	struct pending_request *pending = user_data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusMessage *msg;
-	DBusPendingCall *pcall;
-	const char *path, *paddr = pending->address;
-	DBusError derr;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		error("Replied with an error: %s, %s",
-				derr.name, derr.message);
-		dbus_error_free(&derr);
-		goto failed;
-	}
-
-	dbus_message_get_args(reply, NULL,
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
-
-	debug("FindAdapter -> %s", path);
-	pending->adapter_path = g_strdup(path);
-	dbus_message_unref(reply);
-
-	msg = dbus_message_new_method_call("org.bluez", path,
-			"org.bluez.Service", "RequestAuthorization");
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &paddr,
-			DBUS_TYPE_UINT32, &pending->server->handle,
-			DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(system_conn,
-					msg, &pcall, TIMEOUT)) {
-		dbus_message_unref(msg);
-		goto failed;
-	}
-
-	dbus_message_unref(msg);
-
-	debug("RequestAuthorization(%s, %x)", paddr, pending->server->handle);
-
-	if (!dbus_pending_call_set_notify(pcall, service_reply, pending,
-								NULL)) {
-		dbus_pending_call_unref(pcall);
-		goto failed;
-	}
-
-	dbus_pending_call_unref(pending->call);
-	pending->call = pcall;
-
-	/* Catches errors before authorization response comes */
-	pending->watch = g_io_add_watch(pending->io,
-					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-					service_error, pending);
-
-	return;
-
-failed:
-	g_io_channel_shutdown(pending->io, TRUE, NULL);
-	pending_request_free(pending);
-}
-
-int request_service_authorization(struct server *server, GIOChannel *io,
-					const char *address)
-{
-	struct pending_request *pending;
-	char source[18];
-	GError *err = NULL;
-
-	if (system_conn == NULL || any->path == NULL)
-		return -1;
-
-	bt_io_get(io, BT_IO_RFCOMM, &err,
-			BT_IO_OPT_SOURCE, source,
-			BT_IO_OPT_INVALID);
-	if (err) {
-		error("%s", err->message);
-		g_error_free(err);
-		return -EINVAL;
-	}
-
-	pending = g_new0(struct pending_request, 1);
-	pending->call = find_adapter(source, find_adapter_reply, pending);
-	if (!pending->call) {
-		g_free(pending);
-		return -ENOMEM;
-	}
-
-	pending->server = server;
-	pending->io = g_io_channel_ref(io);
-	memcpy(pending->address, address, sizeof(pending->address));
-
 
 	return 0;
 }

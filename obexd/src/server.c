@@ -142,5 +142,5 @@ struct obex_service_driver *obex_server_find_driver(
 int obex_server_new_connection(struct obex_server *server, GIOChannel *io,
 				uint16_t tx_mtu, uint16_t rx_mtu)
 {
-	return 0;
+	return obex_session_start(io, tx_mtu, rx_mtu, server);
 }

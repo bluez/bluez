@@ -29,7 +29,7 @@
 #define OBJECT_SIZE_UNKNOWN -1
 #define OBJECT_SIZE_DELETE -2
 
-#define OBEX_OPP	(1 << 0)
+#define OBEX_OPP	(1 << 1)
 #define OBEX_FTP	(1 << 2)
 #define OBEX_BIP	(1 << 3)
 #define OBEX_PBAP	(1 << 4)
@@ -62,11 +62,6 @@ int obex_aparam_write(struct obex_session *os, obex_object_t *obj,
 
 const char *obex_option_root_folder(void);
 gboolean obex_option_symlinks(void);
-
-int tty_init(int service, const char *folder, const char *capability,
-				gboolean symlinks, const char *devnode);
-int obex_tty_session_stop(void);
-void tty_closed(void);
 
 /* Just a thin wrapper around memcmp to deal with NULL values */
 int memcmp0(const void *a, const void *b, size_t n);

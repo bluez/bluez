@@ -45,9 +45,11 @@
 #include "logging.h"
 #include "obex.h"
 #include "obex-priv.h"
+#include "server.h"
 #include "dbus.h"
 #include "mimetype.h"
 #include "service.h"
+#include "transport.h"
 #include "btio.h"
 
 /* Default MTU's */
@@ -1003,14 +1005,6 @@ static void obex_event(obex_t *obex, obex_object_t *obj, int mode,
 	}
 }
 
-void server_free(struct server *server)
-{
-	g_free(server->folder);
-	g_free(server->capability);
-	g_free(server->devnode);
-	g_free(server);
-}
-
 static void obex_handle_destroy(void *user_data)
 {
 	struct obex_session *os;
@@ -1026,73 +1020,29 @@ static void obex_handle_destroy(void *user_data)
 	OBEX_Cleanup(obex);
 }
 
-static gboolean tty_reinit(void *data)
-{
-	struct server *server = data;
-	GSList *l;
-	unsigned int services = 0;
-
-	for (l = server->drivers; l; l = l->next) {
-		struct obex_service_driver *driver = l->data;
-
-		services |= driver->service;
-	}
-
-	tty_init(services, server->folder, server->capability,
-			server->symlinks, server->devnode);
-
-	server_free(server);
-
-	return FALSE;
-}
-
 static gboolean obex_handle_input(GIOChannel *io,
 				GIOCondition cond, void *user_data)
 {
 	obex_t *obex = user_data;
-	struct obex_session *os = OBEX_GetUserData(obex);
 
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
 		error("obex_handle_input: poll event %s%s%s",
 				(cond & G_IO_HUP) ? "HUP " : "",
 				(cond & G_IO_ERR) ? "ERR " : "",
 				(cond & G_IO_NVAL) ? "NVAL " : "");
-		goto failed;
+		return FALSE;
 	}
 
 	if (OBEX_HandleInput(obex, 1) < 0) {
 		error("Handle input error");
-		goto failed;
+		return FALSE;
 	}
 
 	return TRUE;
-
-failed:
-	if (os->server->devnode) {
-		if (cond & G_IO_NVAL)
-			tty_closed();
-		else
-			g_idle_add(tty_reinit, os->server);
-	}
-
-	return FALSE;
 }
 
-void obex_connect_cb(GIOChannel *io, GError *err, void *user_data)
-{
-	struct server *server = user_data;
-
-	if (err) {
-		error("%s", err->message);
-		g_io_channel_shutdown(io, TRUE, NULL);
-		return;
-	}
-
-	if (obex_session_start(io, server) < 0)
-		g_io_channel_shutdown(io, TRUE, NULL);
-}
-
-int obex_session_start(GIOChannel *io, struct server *server)
+int obex_session_start(GIOChannel *io, uint16_t tx_mtu, uint16_t rx_mtu,
+			struct obex_server *server)
 {
 	struct obex_session *os;
 	obex_t *obex;
@@ -1100,11 +1050,11 @@ int obex_session_start(GIOChannel *io, struct server *server)
 
 	os = g_new0(struct obex_session, 1);
 
-	os->service = obex_service_driver_find(server->drivers, NULL, 0,
-						NULL, 0);
+	os->service = obex_service_driver_find(server->drivers, NULL,
+							0, NULL, 0);
 	os->server = server;
-	os->rx_mtu = server->rx_mtu ? server->rx_mtu : DEFAULT_RX_MTU;
-	os->tx_mtu = server->tx_mtu ? server->tx_mtu : DEFAULT_TX_MTU;
+	os->rx_mtu = rx_mtu != 0 ? rx_mtu : DEFAULT_RX_MTU;
+	os->tx_mtu = tx_mtu != 0 ? tx_mtu : DEFAULT_TX_MTU;
 	os->size = OBJECT_SIZE_DELETE;
 
 	obex = OBEX_Init(OBEX_TRANS_FD, obex_event, 0);
@@ -1133,20 +1083,6 @@ int obex_session_start(GIOChannel *io, struct server *server)
 	os->io = g_io_channel_ref(io);
 
 	sessions = g_slist_prepend(sessions, os);
-
-	return 0;
-}
-
-int obex_tty_session_stop(void)
-{
-	GSList *l;
-
-	for (l = sessions; l != NULL; l = l->next) {
-		struct obex_session *os = l->data;
-
-		if (os->server->devnode && os->io)
-			g_io_channel_shutdown(os->io, TRUE, NULL);
-	}
 
 	return 0;
 }
