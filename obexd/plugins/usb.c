@@ -51,7 +51,7 @@
 static GIOChannel *usb_io = NULL;
 static guint usb_reconnecting = 0;
 static guint usb_watch = 0;
-static int signal_pipe[2];
+static DBusConnection *connection = NULL;
 
 #define USB_RX_MTU 65535
 #define USB_TX_MTU 65535
@@ -85,6 +85,7 @@ static gboolean usb_reconnect(void *data)
 {
 	struct obex_server *server = data;
 
+	debug("usb: reconnecting");
 	usb_reconnecting = 0;
 	usb_connect(server);
 
@@ -170,34 +171,22 @@ failed:
 
 static void sig_usb(int sig)
 {
-	if (write(signal_pipe[1], &sig, sizeof(sig)) != sizeof(sig))
-		error("unable to write to signal pipe");
 }
 
-static gboolean handle_signal(GIOChannel *io, GIOCondition cond,
-				void *user_data)
+static gboolean handle_signal(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
 {
 	struct obex_server *server = user_data;
-	int sig, fd = g_io_channel_unix_get_fd(io);
+	const char *state;
 
-	if (read(fd, &sig, sizeof(sig)) != sizeof(sig)) {
-		error("handle_signal: unable to read signal from pipe");
-		return TRUE;
-	}
+	dbus_message_get_args(message, NULL,
+				DBUS_TYPE_STRING, &state,
+				DBUS_TYPE_INVALID);
 
-	switch (sig) {
-	case SIGUSR1:
-		debug("SIGUSR1");
+	if (g_str_equal(state, "ovi_suite") == TRUE)
 		usb_connect(server);
-		break;
-	case SIGHUP:
-		debug("SIGHUP");
+	else if (g_str_equal(state, "USB disconnected") == TRUE)
 		usb_disconnect(server);
-		break;
-	default:
-		error("handle_signal: got unexpected signal %d", sig);
-		break;
-	}
 
 	return TRUE;
 }
@@ -210,13 +199,12 @@ static void usb_stop(void *data)
 
 static void *usb_start(struct obex_server *server, int *err)
 {
-	GIOChannel *io;
 	guint id;
 
-	io = g_io_channel_unix_new(signal_pipe[0]);
-	id = g_io_add_watch(io, G_IO_IN, handle_signal, server);
-	g_io_channel_unref(io);
-
+	id = g_dbus_add_signal_watch(connection, NULL, NULL,
+					"com.meego.usb_moded",
+					"sig_usb_state_ind",
+					handle_signal, server, NULL);
 	if (err != NULL)
 		*err = 0;
 
@@ -234,21 +222,22 @@ static int usb_init(void)
 {
 	struct sigaction sa;
 
-	if (pipe(signal_pipe) < 0)
-		return -errno;
-
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_usb;
 	sigaction(SIGUSR1, &sa, NULL);
 	sigaction(SIGHUP, &sa, NULL);
+
+	connection = g_dbus_setup_private(DBUS_BUS_SYSTEM, NULL, NULL);
+	if (connection == NULL)
+		return -EPERM;
 
 	return obex_transport_driver_register(&driver);
 }
 
 static void usb_exit(void)
 {
-	close(signal_pipe[0]);
-	close(signal_pipe[1]);
+	if (connection)
+		dbus_connection_unref(connection);
 
 	obex_transport_driver_unregister(&driver);
 }
