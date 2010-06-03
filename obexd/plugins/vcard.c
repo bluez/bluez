@@ -148,7 +148,8 @@ static void vcard_printf_fullname(GString *vcards, const char *text)
 	vcard_printf(vcards, "FN:%s", field);
 }
 
-static void vcard_printf_number(GString *vcards, const char *number, int type,
+static void vcard_printf_number(GString *vcards, uint8_t format,
+					const char *number, int type,
 					enum phonebook_number_type category)
 {
 	char *pref = "", *intl = "", *category_string = "";
@@ -178,8 +179,13 @@ static void vcard_printf_number(GString *vcards, const char *number, int type,
 	if ((type == TYPE_INTERNATIONAL) && (number[0] != '+'))
 		intl = "+";
 
-	snprintf(buf, sizeof(buf), "TEL;TYPE=\%s%s:\%s\%s", pref,
-			category_string, intl, number);
+	if (format == FORMAT_VCARD30)
+		snprintf(buf, sizeof(buf), "TEL;TYPE=\%s%s:\%s\%s", pref,
+				category_string, intl, number);
+	else if (format == FORMAT_VCARD21)
+		snprintf(buf, sizeof(buf), "TEL;\%s%s:\%s\%s", pref,
+				category_string, intl, number);
+
 	vcard_printf(vcards, buf, number);
 }
 
@@ -246,7 +252,7 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 		for (l = contact->numbers; l; l = l->next) {
 			struct phonebook_number *number = l->data;
 
-			vcard_printf_number(vcards, number->tel, 1,
+			vcard_printf_number(vcards, format, number->tel, 1,
 								number->type);
 		}
 	}
