@@ -932,7 +932,7 @@ static void gateway_server_remove(struct btd_adapter *adapter)
 		adp->hfp_hs_server = NULL;
 	}
 
-	audio_adapter_ref(adp);
+	audio_adapter_unref(adp);
 }
 
 static int a2dp_server_probe(struct btd_adapter *adapter)
