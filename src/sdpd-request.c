@@ -526,8 +526,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 	}
 
 done:
-	if (cstate)
-		free(cstate);
+	free(cstate);
 	if (pattern)
 		sdp_list_free(pattern, free);
 
@@ -745,8 +744,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	buf->buf_size += sizeof(uint16_t);
 
 done:
-	if (cstate)
-		free(cstate);
+	free(cstate);
 	if (seq)
 		sdp_list_free(seq, free);
 	if (status)
@@ -929,10 +927,8 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	}
 
 done:
-	if (cstate)
-		free(cstate);
-	if (tmpbuf.data)
-		free(tmpbuf.data);
+	free(cstate);
+	free(tmpbuf.data);
 	if (pattern)
 		sdp_list_free(pattern, free);
 	if (seq)

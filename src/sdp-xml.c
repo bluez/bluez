@@ -728,12 +728,8 @@ void sdp_xml_data_free(struct sdp_xml_data *elem)
 	if (elem->data)
 		sdp_data_free(elem->data);
 
-	if (elem->name)
-		free(elem->name);
-
-	if (elem->text)
-
-		free(elem->text);
+	free(elem->name);
+	free(elem->text);
 	free(elem);
 }
 

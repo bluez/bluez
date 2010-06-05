@@ -763,8 +763,7 @@ int write_trust(const char *src, const char *addr, const char *service,
 	/* If the old setting is the same as the requested one, we're done */
 	if (trusted == trust) {
 		g_slist_free(services);
-		if (str)
-			free(str);
+		free(str);
 		return 0;
 	}
 
@@ -784,8 +783,7 @@ int write_trust(const char *src, const char *addr, const char *service,
 
 	g_slist_free(services);
 
-	if (str)
-		free(str);
+	free(str);
 
 	return ret;
 }

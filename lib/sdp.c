@@ -2915,11 +2915,8 @@ int sdp_device_record_register_binary(sdp_session_t *session, bdaddr_t *device, 
 	}
 
 end:
-	if (req)
-		free(req);
-
-	if (rsp)
-		free(rsp);
+	free(req);
+	free(rsp);
 
 	return status;
 }
@@ -3025,11 +3022,8 @@ int sdp_device_record_unregister_binary(sdp_session_t *session, bdaddr_t *device
 		status = -1;
 	}
 end:
-	if (reqbuf)
-		free(reqbuf);
-
-	if (rspbuf)
-		free(rspbuf);
+	free(reqbuf);
+	free(rspbuf);
 
 	return status;
 }
@@ -3133,10 +3127,8 @@ int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp
 		status = -1;
 	}
 end:
-	if (reqbuf)
-		free(reqbuf);
-	if (rspbuf)
-		free(rspbuf);
+	free(reqbuf);
+	free(rspbuf);
 	return status;
 }
 
@@ -3472,10 +3464,8 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 	} while (cstate);
 
 end:
-	if (reqbuf)
-		free(reqbuf);
-	if (rspbuf)
-		free(rspbuf);
+	free(reqbuf);
+	free(rspbuf);
 
 	return status;
 }
@@ -3649,12 +3639,9 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 	}
 
 end:
-	if (reqbuf)
-		free(reqbuf);
-	if (rsp_concat_buf.data)
-		free(rsp_concat_buf.data);
-	if (rspbuf)
-		free(rspbuf);
+	free(reqbuf);
+	free(rsp_concat_buf.data);
+	free(rspbuf);
 	return rec;
 }
 
@@ -3777,9 +3764,8 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 
 	t = session->priv;
 
-	/* check if the buffer is already allocated */
-	if (t->rsp_concat_buf.data)
-		free(t->rsp_concat_buf.data);
+	/* clean possible allocated buffer */
+	free(t->rsp_concat_buf.data);
 	memset(&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
 
 	if (!t->reqbuf) {
@@ -3825,10 +3811,8 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	return 0;
 end:
 
-	if (t->reqbuf) {
-		free(t->reqbuf);
-		t->reqbuf = NULL;
-	}
+	free(t->reqbuf);
+	t->reqbuf = NULL;
 
 	return -1;
 }
@@ -3881,9 +3865,8 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 
 	t = session->priv;
 
-	/* check if the buffer is already allocated */
-	if (t->rsp_concat_buf.data)
-		free(t->rsp_concat_buf.data);
+	/* clean possible allocated buffer */
+	free(t->rsp_concat_buf.data);
 	memset(&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
 
 	if (!t->reqbuf) {
@@ -3939,10 +3922,8 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 	return 0;
 end:
 
-	if (t->reqbuf) {
-		free(t->reqbuf);
-		t->reqbuf = NULL;
-	}
+	free(t->reqbuf);
+	t->reqbuf = NULL;
 
 	return -1;
 }
@@ -3996,9 +3977,8 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 
 	t = session->priv;
 
-	/* check if the buffer is already allocated */
-	if (t->rsp_concat_buf.data)
-		free(t->rsp_concat_buf.data);
+	/* clean possible allocated buffer */
+	free(t->rsp_concat_buf.data);
 	memset(&t->rsp_concat_buf, 0, sizeof(sdp_buf_t));
 
 	if (!t->reqbuf) {
@@ -4058,10 +4038,8 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	return 0;
 end:
 
-	if (t->reqbuf) {
-		free(t->reqbuf);
-		t->reqbuf = NULL;
-	}
+	free(t->reqbuf);
+	t->reqbuf = NULL;
 
 	return -1;
 }
@@ -4286,8 +4264,7 @@ end:
 			t->cb(pdu_id, status, pdata, size, t->udata);
 	}
 
-	if (rspbuf)
-		free(rspbuf);
+	free(rspbuf);
 
 	return err;
 }
@@ -4521,12 +4498,9 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 		}
 	}
 end:
-	if (rsp_concat_buf.data)
-		free(rsp_concat_buf.data);
-	if (reqbuf)
-		free(reqbuf);
-	if (rspbuf)
-		free(rspbuf);
+	free(rsp_concat_buf.data);
+	free(reqbuf);
+	free(rspbuf);
 	return status;
 }
 
@@ -4557,11 +4531,9 @@ int sdp_close(sdp_session_t *session)
 	t = session->priv;
 
 	if (t) {
-		if (t->reqbuf)
-			free(t->reqbuf);
+		free(t->reqbuf);
 
-		if (t->rsp_concat_buf.data)
-			free(t->rsp_concat_buf.data);
+		free(t->rsp_concat_buf.data);
 
 		free(t);
 	}
@@ -4668,8 +4640,7 @@ fail:
 	err = errno;
 	if (session->sock >= 0)
 		close(session->sock);
-	if (session->priv)
-		free(session->priv);
+	free(session->priv);
 	free(session);
 	errno = err;
 

@@ -1029,8 +1029,7 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 		if (sscanf(line, "%*s %as", &address) != 1)
 			DBG("set with bdaddr BDADDR");
 
-		if (u->address)
-			free(u->address);
+		free(u->address);
 
 		u->address = address;
 		DBG("bdaddr %s", u->address);
@@ -1049,8 +1048,7 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 			DBG("set with profile [hsp|a2dp]");
 		}
 
-		if (profile)
-			free(profile);
+		free(profile);
 		DBG("profile %s", u->transport == BT_CAPABILITIES_TRANSPORT_SCO ?
 			"hsp" : "a2dp");
 	}

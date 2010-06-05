@@ -596,8 +596,7 @@ failed:
 	close(req->ctrl_sock);
 
 cleanup:
-	if (req->rd_data)
-		free(req->rd_data);
+	free(req->rd_data);
 
 	g_free(req);
 }
@@ -662,8 +661,7 @@ static int hidp_add_connection(const struct input_device *idev,
 	err = ioctl_connadd(req);
 
 cleanup:
-	if (req->rd_data)
-		free(req->rd_data);
+	free(req->rd_data);
 	g_free(req);
 
 	return err;
