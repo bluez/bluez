@@ -259,15 +259,13 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'd':
-			if (output)
-				free(output);
+			free(output);
 			output = strdup(optarg);
 			tofile = 0;
 			break;
 
 		case 'f' :
-			if (output)
-				free(output);
+			free(output);
 			output = strdup(optarg);
 			tofile = 1;
 			break;
@@ -289,8 +287,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < argc; i++)
 		decode(argv[i], output ? output : "/dev/dsp", tofile);
 
-	if (output)
-		free(output);
+	free(output);
 
 	return 0;
 }

@@ -1138,8 +1138,7 @@ void sbc_finish(sbc_t *sbc)
 	if (!sbc)
 		return;
 
-	if (sbc->priv_alloc_base)
-		free(sbc->priv_alloc_base);
+	free(sbc->priv_alloc_base);
 
 	memset(sbc, 0, sizeof(sbc_t));
 }
