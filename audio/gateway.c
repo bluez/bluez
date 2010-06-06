@@ -204,7 +204,7 @@ static void newconnection_reply(DBusPendingCall *call, void *data)
 
 	dbus_error_init(&derr);
 	if (!dbus_set_error_from_message(&derr, reply)) {
-		DBG("Agent reply: file descriptor passed successfuly");
+		DBG("Agent reply: file descriptor passed successfully");
 		change_state(dev, GATEWAY_STATE_CONNECTED);
 		goto done;
 	}
@@ -234,7 +234,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 	}
 
 	if (!gw->agent) {
-		error("Handfree Agent not registered");
+		error("Handsfree Agent not registered");
 		goto fail;
 	}
 
