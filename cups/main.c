@@ -605,6 +605,79 @@ static gboolean list_printers(void)
 	return TRUE;
 }
 
+static gboolean print_ieee1284(const char *bdaddr)
+{
+	DBusMessage *message, *reply, *adapter_reply;
+	DBusMessageIter iter;
+	char *object_path = NULL;
+	char *adapter;
+	char *id;
+
+	adapter_reply = NULL;
+
+	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
+	if (conn == NULL)
+		return FALSE;
+
+	message = dbus_message_new_method_call("org.bluez", "/",
+			"org.bluez.Manager",
+			"DefaultAdapter");
+
+	adapter_reply = dbus_connection_send_with_reply_and_block(conn,
+			message, -1, NULL);
+
+	dbus_message_unref(message);
+
+	if (dbus_message_get_args(adapter_reply, NULL,
+			DBUS_TYPE_OBJECT_PATH, &adapter,
+			DBUS_TYPE_INVALID) == FALSE)
+		return FALSE;
+
+	message = dbus_message_new_method_call("org.bluez", adapter,
+			"org.bluez.Adapter",
+			"FindDevice");
+	dbus_message_iter_init_append(message, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
+
+	if (adapter_reply != NULL)
+		dbus_message_unref(adapter_reply);
+
+	reply = dbus_connection_send_with_reply_and_block(conn,
+			message, -1, NULL);
+
+	dbus_message_unref(message);
+
+	if (!reply) {
+		message = dbus_message_new_method_call("org.bluez", adapter,
+				"org.bluez.Adapter",
+				"CreateDevice");
+		dbus_message_iter_init_append(message, &iter);
+		dbus_message_iter_append_basic(&iter,
+				DBUS_TYPE_STRING, &bdaddr);
+
+		reply = dbus_connection_send_with_reply_and_block(conn,
+				message, -1, NULL);
+
+		dbus_message_unref(message);
+
+		if (!reply)
+			return FALSE;
+	}
+	if (dbus_message_get_args(reply, NULL,
+			DBUS_TYPE_OBJECT_PATH, &object_path,
+			DBUS_TYPE_INVALID) == FALSE) {
+		return FALSE;
+	}
+
+	id = device_get_ieee1284_id(adapter, object_path);
+	if (id == NULL)
+		return FALSE;
+	printf("%s", id);
+	g_free(id);
+
+	return TRUE;
+}
+
 /*
  *  Usage: printer-uri job-id user title copies options [file]
  *
@@ -642,10 +715,20 @@ int main(int argc, char *argv[])
 			return CUPS_BACKEND_OK;
 		else
 			return CUPS_BACKEND_FAILED;
+	} else if (argc == 3 && strcmp(argv[1], "--get-deviceid") == 0) {
+		if (bachk(argv[2]) < 0) {
+			fprintf(stderr, "Invalid Bluetooth address '%s'\n",
+					argv[2]);
+			return CUPS_BACKEND_FAILED;
+		}
+		if (print_ieee1284(argv[2]) == FALSE)
+			return CUPS_BACKEND_FAILED;
+		return CUPS_BACKEND_OK;
 	}
 
 	if (argc < 6 || argc > 7) {
 		fprintf(stderr, "Usage: bluetooth job-id user title copies options [file]\n");
+		fprintf(stderr, "       bluetooth --get-deviceid [bdaddr]\n");
 		return CUPS_BACKEND_FAILED;
 	}
 
