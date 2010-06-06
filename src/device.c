@@ -2031,6 +2031,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	bdaddr_t src;
 	GError *err = NULL;
 	GIOChannel *io;
+	BtIOSecLevel sec_level;
 
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
@@ -2051,12 +2052,19 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 				"Bonding already exists");
 	}
 
+	/* If our IO capability is NoInputNoOutput use medium security
+	 * level (i.e. don't require MITM protection) else use high
+	 * security level */
+	if (capability == 0x03)
+		sec_level = BT_IO_SEC_MEDIUM;
+	else
+		sec_level = BT_IO_SEC_HIGH;
 
 	io = bt_io_connect(BT_IO_L2RAW, bonding_connect_cb, device,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_HIGH,
+				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
 	if (io == NULL) {
 		DBusMessage *reply;
