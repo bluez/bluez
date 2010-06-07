@@ -844,10 +844,6 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	if (!os->service) {
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
 		return;
-	} else if (!os->service->put) {
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
-				OBEX_RSP_NOT_IMPLEMENTED);
-		return;
 	}
 
 	g_return_if_fail(chk_cid(obex, obj, os->cid));
@@ -855,6 +851,12 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	if (!os->checked) {
 		if (!check_put(obex, obj))
 			return;
+	}
+
+	if (!os->service->put) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
+				OBEX_RSP_NOT_IMPLEMENTED);
+		return;
 	}
 
 	err = os->service->put(os, os->service_data);
