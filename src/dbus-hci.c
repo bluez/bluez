@@ -318,7 +318,9 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	uint8_t remcap, remauth, type;
+	gboolean bonding_initiator;
 	uint16_t dev_id;
+	int dd;
 
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
@@ -326,20 +328,8 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	dev_id = adapter_get_dev_id(adapter);
 
 	if (get_auth_requirements(sba, dba, &type) < 0) {
-		int dd;
-
-		dd = hci_open_dev(dev_id);
-		if (dd < 0) {
-			error("Unable to open hci%d", dev_id);
-			return -1;
-		}
-
-		hci_send_cmd(dd, OGF_LINK_CTL,
-					OCF_USER_CONFIRM_NEG_REPLY, 6, dba);
-
-		hci_close_dev(dd);
-
-		return 0;
+		error("Unable to get local authentication requirements");
+		goto fail;
 	}
 
 	DBG("confirm authentication requirement is 0x%02x", type);
@@ -349,6 +339,16 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 	DBG("remote IO capabilities are 0x%02x", remcap);
 	DBG("remote authentication requirement is 0x%02x", remauth);
+
+	/* If we require MITM but the remote device can't provide that
+	 * (it has NoInputNoOutput) then reject the confirmation
+	 * request. The only exception is when we're dedicated bonding
+	 * initiators since then we always have the MITM bit set. */
+	bonding_initiator = device_is_bonding(device, NULL);
+	if (!bonding_initiator && (type & 0x01) && remcap == 0x03) {
+		error("Rejecting request: remote device can't provide MITM");
+		goto fail;
+	}
 
 	/* If no side requires MITM protection; auto-accept */
 	if (!(remauth & 0x01) &&
@@ -377,6 +377,20 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 	return device_request_authentication(device, AUTH_TYPE_CONFIRM,
 							passkey, confirm_cb);
+
+fail:
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		error("Unable to open hci%d", dev_id);
+		return -1;
+	}
+
+	hci_send_cmd(dd, OGF_LINK_CTL,
+			OCF_USER_CONFIRM_NEG_REPLY, 6, dba);
+
+	hci_close_dev(dd);
+
+	return 0;
 }
 
 int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
