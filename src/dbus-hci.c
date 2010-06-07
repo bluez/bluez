@@ -61,7 +61,7 @@
 
 static DBusConnection *connection = NULL;
 
-static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
+gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					struct btd_adapter **adapter,
 					struct btd_device **device,
 					gboolean create)
@@ -669,15 +669,19 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	struct btd_device *device;
 	struct btd_adapter *adapter;
 	uint8_t local_auth = 0xff, remote_auth, new_key_type;
-	gboolean bonding, stored;
+	gboolean bonding, temporary = FALSE;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	if (key_type == 0x06 && old_key_type != 0xff)
-		new_key_type = old_key_type;
-	else
-		new_key_type = key_type;
+	new_key_type = key_type;
+
+	if (key_type == 0x06) {
+		if (device_get_debug_key(device, NULL))
+			old_key_type = 0x03;
+		if (old_key_type != 0xff)
+			new_key_type = old_key_type;
+	}
 
 	get_auth_requirements(local, peer, &local_auth);
 	remote_auth = device_get_auth(device);
@@ -686,7 +690,12 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	DBG("local auth 0x%02x and remote auth 0x%02x",
 					local_auth, remote_auth);
 
-	/* Only store the link key if one of the following is true:
+	/* Clear any previous debug key */
+	device_set_debug_key(device, NULL);
+
+	/* Store the link key only in runtime memory if it's a debug
+	 * key, else store the link key persistently if one of the
+	 * following is true:
 	 * 1. this is a legacy link key
 	 * 2. this is a changed combination key and there was a previously
 	 *    stored one
@@ -694,8 +703,14 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	 * 4. the local side had dedicated bonding as a requirement
 	 * 5. the remote side is using dedicated bonding since in that case
 	 *    also the local requirements are set to dedicated bonding
+	 * If none of the above match only keep the link key around for
+	 * this connection and set the temporary flag for the device.
 	 */
-	if (key_type < 0x03 || (key_type == 0x06 && old_key_type != 0xff) ||
+	if (new_key_type == 0x03) {
+		DBG("Storing debug key in runtime memory");
+		device_set_debug_key(device, key);
+	} else if (key_type < 0x03 ||
+				(key_type == 0x06 && old_key_type != 0xff) ||
 				(local_auth > 0x01 && remote_auth > 0x01) ||
 				(local_auth == 0x02 || local_auth == 0x03) ||
 				(remote_auth == 0x02 || remote_auth == 0x03)) {
@@ -709,10 +724,8 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 			error("write_link_key: %s (%d)", strerror(-err), -err);
 			return err;
 		}
-
-		stored = TRUE;
 	} else
-		stored = FALSE;
+		temporary = TRUE;
 
 	/* If this is not the first link key set a flag so a subsequent auth
 	 * complete event doesn't trigger SDP */
@@ -724,7 +737,7 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	else if (!bonding && old_key_type == 0xff)
 		hcid_dbus_bonding_process_complete(local, peer, 0);
 
-	if (!stored)
+	if (temporary)
 		device_set_temporary(device, TRUE);
 
 	return 0;

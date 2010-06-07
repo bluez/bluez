@@ -45,6 +45,11 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t *key, uint8_t key_type,
 				int pin_length, uint8_t old_key_type);
 
+gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
+					struct btd_adapter **adapter,
+					struct btd_device **device,
+					gboolean create);
+
 DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
 
 const char *class_to_icon(uint32_t class);

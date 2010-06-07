@@ -60,6 +60,7 @@ struct main_opts {
 	gboolean	remember_powered;
 	gboolean	reverse_sdp;
 	gboolean	name_resolv;
+	gboolean	debug_keys;
 
 	uint8_t		scan;
 	uint8_t		mode;

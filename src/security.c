@@ -51,6 +51,7 @@
 #include "textfile.h"
 
 #include "adapter.h"
+#include "device.h"
 #include "dbus-hci.h"
 #include "storage.h"
 #include "manager.h"
@@ -301,11 +302,16 @@ static inline void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 
 static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 {
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	struct hci_auth_info_req req;
 	unsigned char key[16];
 	char sa[18], da[18];
 	uint8_t type;
 	int err;
+
+	if (!get_adapter_and_device(sba, dba, &adapter, &device, FALSE))
+		device = NULL;
 
 	ba2str(sba, sa); ba2str(dba, da);
 	info("link_key_request (sba=%s, dba=%s)", sa, da);
@@ -323,26 +329,30 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 
 	DBG("kernel auth requirements = 0x%02x", req.type);
 
-	err = read_link_key(sba, dba, key, &type);
-	if (err < 0) {
+	if (main_opts.debug_keys && device && device_get_debug_key(device, key))
+		type = 0x03;
+	else if (read_link_key(sba, dba, key, &type) < 0 || type == 0x03) {
 		/* Link key not found */
 		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY, 6, dba);
-	} else {
-		/* Link key found */
+		return;
+	}
+
+	/* Link key found */
+
+	DBG("link key type = 0x%02x", type);
+
+	/* Don't use unauthenticated combination keys if MITM is
+	 * required */
+	if (type == 0x04 && req.type != 0xff && (req.type & 0x01))
+		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
+								6, dba);
+	else {
 		link_key_reply_cp lr;
+
 		memcpy(lr.link_key, key, 16);
 		bacpy(&lr.bdaddr, dba);
 
-		DBG("stored link key type = 0x%02x", type);
-
-		/* Don't use debug link keys (0x03) and also don't use
-		 * unauthenticated combination keys if MITM is required */
-		if (type == 0x03 || (type == 0x04 && req.type != 0xff &&
-							(req.type & 0x01)))
-			hci_send_cmd(dev, OGF_LINK_CTL,
-					OCF_LINK_KEY_NEG_REPLY, 6, dba);
-		else
-			hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
+		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
 						LINK_KEY_REPLY_CP_SIZE, &lr);
 	}
 }
