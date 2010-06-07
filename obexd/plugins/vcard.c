@@ -236,19 +236,6 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 
 	vcard_printf_begin(vcards, format);
 
-	if (filter & FILTER_FN) {
-		char* fullname;
-		if (contact->fullname == NULL || contact->fullname[0] == '\0') {
-			struct phonebook_number *number;
-
-			number = contact->numbers->data;
-			fullname = number->tel;
-		} else
-			fullname = contact->fullname;
-
-		vcard_printf_fullname(vcards, fullname);
-	}
-
 	if (filter & FILTER_TEL) {
 		GSList *l;
 
@@ -262,6 +249,9 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 
 	if (filter & FILTER_N)
 		vcard_printf_name(vcards, contact);
+
+	if (filter & FILTER_FN)
+		vcard_printf_fullname(vcards, contact->fullname);
 
 	if (filter & FILTER_EMAIL)
 		vcard_printf_email(vcards, contact->email);

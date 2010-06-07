@@ -558,12 +558,21 @@ static void add_to_cache(char **reply, int num_fields, void *user_data)
 {
 	struct cache_data *cache = user_data;
 	char *formatted;
+	int i;
 
 	if (reply == NULL)
 		goto done;
 
-	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[1], reply[2],
-						reply[3], reply[4], reply[5]);
+	for (i = 1; i < 6; i++)
+		if (reply[i][0] != '\0') {
+			formatted = g_strdup_printf("%s;%s;%s;%s;%s",
+					reply[1], reply[2], reply[3], reply[4],
+					reply[5]);
+			break;
+		}
+
+	if (i == 6)
+		formatted = g_strdup(reply[6]);
 
 	/* The owner vCard must have the 0 handle */
 	if (strcmp(reply[0], TRACKER_DEFAULT_CONTACT_ME) == 0)
