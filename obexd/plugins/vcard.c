@@ -155,8 +155,11 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 	char *pref = "", *intl = "", *category_string = "";
 	char buf[128];
 
-	if (!number || !strlen(number) || !type)
+	/* TEL is a mandatory field, include even if empty */
+	if (!number || !strlen(number) || !type) {
+		vcard_printf(vcards, "TEL:");
 		return;
+	}
 
 	switch (category) {
 	case TEL_TYPE_HOME:
