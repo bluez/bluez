@@ -51,24 +51,24 @@
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) "				\
 	"WHERE { "							\
-		"?c a nco:PersonContact ; "				\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
+	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
+	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e . "				\
-		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"}"
 
 #define CONTACTS_QUERY_ALL_LIST						\
-	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
+	"SELECT ?c nco:nameFamily(?c) "					\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
-		"?c a nco:PersonContact ; "				\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
 	"}"
 
 #define MISSED_CALLS_QUERY						\
@@ -84,18 +84,18 @@
 		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?c a nco:Contact ; "					\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
+	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
+	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e . "				\
-		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define MISSED_CALLS_LIST						\
-	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
+	"SELECT ?c nco:nameFamily(?c) "					\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
@@ -104,8 +104,8 @@
 		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?c a nco:Contact ; "					\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define INCOMING_CALLS_QUERY						\
@@ -120,18 +120,18 @@
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:Contact ; "					\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
+	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
+	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e . "				\
-		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define INCOMING_CALLS_LIST						\
-	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
+	"SELECT ?c nco:nameFamily(?c) "					\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
@@ -139,8 +139,8 @@
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:PersonContact ; "				\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact ; "					\
+	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "				\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define OUTGOING_CALLS_QUERY						\
@@ -155,18 +155,18 @@
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:Contact ; "					\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
+	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
+	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e . "				\
-		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"} ORDER BY DESC(nmo:sentDate(?call))"
 
 #define OUTGOING_CALLS_LIST						\
-	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
+	"SELECT ?c nco:nameFamily(?c) "					\
 	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
@@ -174,8 +174,8 @@
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:Contact ; "					\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+	"OPTIONAL { nco:hasPhoneNumber ?h . } "				\
 	"} ORDER BY DESC(nmo:sentDate(?call))"
 
 #define COMBINED_CALLS_QUERY						\
@@ -191,66 +191,64 @@
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:Contact ; "					\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+		"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "		\
+		"OPTIONAL { ?c nco:hasEmailAddress ?e . } "		\
+		"OPTIONAL { ?c nco:hasPostalAddress ?p . } "		\
 		"OPTIONAL { "						\
 			"?c nco:hasAffiliation ?a . "			\
 			"?a nco:hasPhoneNumber ?w . "			\
-			"?c nco:hasEmailAddress ?e . "			\
-			"?c nco:hasPostalAddress ?p . "			\
 		"} "							\
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:Contact ; "					\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+		"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "		\
+		"OPTIONAL { ?c nco:hasEmailAddress ?e . } "		\
+		"OPTIONAL { ?c nco:hasPostalAddress ?p . } "		\
 		"OPTIONAL { "						\
 			"?c nco:hasAffiliation ?a . "			\
 			"?a nco:hasPhoneNumber ?w . "			\
-			"?c nco:hasEmailAddress ?e . "			\
-			"?c nco:hasPostalAddress ?p . "			\
 		"} "							\
 	"} } "
 
 #define COMBINED_CALLS_LIST						\
-	"SELECT ?c nco:contactUID(?c) nco:nameFamily(?c) "		\
-	"nco:nameGiven(?c) nco:nameAdditional(?c) "			\
-	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
-	"nco:phoneNumber(?h) "						\
+	"SELECT ?c nco:nameFamily(?c) nco:nameGiven(?c) "		\
+	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
+	"nco:nameHonorificSuffix(?c) nco:phoneNumber(?h) "		\
 	"WHERE { "							\
 	"{ "								\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:Contact ; "					\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+		"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "		\
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:PersonContact ; "				\
-		"nco:hasPhoneNumber ?h . "				\
+		"?c a nco:Contact . "					\
+		"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "		\
 	"} } "
 
 
 #define CONTACTS_QUERY_FROM_URI						\
-	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
-	"nco:nameFamily(?c) nco:nameGiven(?c) nco:nameAdditional(?c) "	\
-	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c)  "	\
-	"nco:emailAddress(?e) "						\
+	"SELECT nco:phoneNumber(?h) nco:fullname(<%s>) "		\
+	"nco:nameFamily(<%s>) nco:nameGiven(<%s>) "			\
+	"nco:nameAdditional(<%s>) nco:nameHonorificPrefix(<%s>) "	\
+	"nco:nameHonorificSuffix(<%s>) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) "				\
 	"WHERE { "							\
-		"?c a nco:Contact ; "					\
-		"nco:contactUID <%s> ; "				\
-		"nco:hasPhoneNumber ?h . "				\
+		"<%s> a nco:Contact . "					\
+	"OPTIONAL { <%s> nco:hasPhoneNumber ?h . } "			\
+	"OPTIONAL { <%s> nco:hasEmailAddress ?e . } "			\
+	"OPTIONAL { <%s> nco:hasPostalAddress ?p . } "			\
 	"OPTIONAL { "							\
-		"?c nco:hasAffiliation ?a . "				\
+		"<%s> nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?w . "				\
-		"?c nco:hasEmailAddress ?e . "				\
-		"?c nco:hasPostalAddress ?p . "				\
 	"} "								\
 	"}"
 
@@ -411,6 +409,7 @@ static void query_reply(DBusPendingCall *call, void *user_data)
 
 	while (dbus_message_iter_get_arg_type(&element) != DBUS_TYPE_INVALID) {
 		char **node;
+		int i;
 
 		if (dbus_message_iter_get_arg_type(&element) !=
 						DBUS_TYPE_ARRAY) {
@@ -419,8 +418,16 @@ static void query_reply(DBusPendingCall *call, void *user_data)
 		}
 
 		node = string_array_from_iter(element, pending->num_fields);
-		pending->callback(node, pending->num_fields,
+
+		/* Ignoring empty responses */
+		for (i = 0; i < pending->num_fields; i++) {
+			if (node[i][0] != '\0') {
+				pending->callback(node, pending->num_fields,
 							pending->user_data);
+				break;
+			}
+		}
+
 		g_free(node);
 
 		dbus_message_iter_next(&element);
@@ -555,16 +562,16 @@ static void add_to_cache(char **reply, int num_fields, void *user_data)
 	if (reply == NULL)
 		goto done;
 
-	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[2], reply[3],
-						reply[4], reply[5], reply[6]);
+	formatted = g_strdup_printf("%s;%s;%s;%s;%s", reply[1], reply[2],
+						reply[3], reply[4], reply[5]);
 
 	/* The owner vCard must have the 0 handle */
 	if (strcmp(reply[0], TRACKER_DEFAULT_CONTACT_ME) == 0)
-		cache->entry_cb(reply[1], 0, formatted, "",
-						reply[7], cache->user_data);
+		cache->entry_cb(reply[0], 0, formatted, "",
+						reply[6], cache->user_data);
 	else
-		cache->entry_cb(reply[1], PHONEBOOK_INVALID_HANDLE, formatted,
-					"", reply[7], cache->user_data);
+		cache->entry_cb(reply[0], PHONEBOOK_INVALID_HANDLE, formatted,
+					"", reply[6], cache->user_data);
 
 	g_free(formatted);
 
@@ -699,7 +706,8 @@ int phonebook_get_entry(const char *folder, const char *id,
 	data->cb = cb;
 	data->vcardentry = TRUE;
 
-	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id);
+	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id, id,
+						id, id, id, id, id, id);
 
 	ret = query_tracker(query, 16, pull_contacts, data);
 
@@ -725,5 +733,5 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	cache->ready_cb = ready_cb;
 	cache->user_data = user_data;
 
-	return query_tracker(query, 8, add_to_cache, cache);
+	return query_tracker(query, 7, add_to_cache, cache);
 }
