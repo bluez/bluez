@@ -879,6 +879,7 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct agent *agent = NULL;
+	uint8_t agent_cap;
 
 	if (!get_adapter_and_device(local, remote, &adapter, &device, TRUE))
 		return -ENODEV;
@@ -935,11 +936,12 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 		return -1;
 	}
 
+	agent_cap = agent_get_io_capability(agent);
+
 	if (*auth == 0x00 || *auth == 0x04) {
 		/* If remote requests dedicated bonding follow that lead */
 		if (device_get_auth(device) == 0x02 ||
 				device_get_auth(device) == 0x03) {
-			uint8_t agent_cap = agent_get_io_capability(agent);
 
 			/* If both remote and local IO capabilities allow MITM
 			 * then require it, otherwise don't */
@@ -957,9 +959,12 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 					device_get_auth(device) == 0x01)
 			*auth = 0x00;
 
-		/* If remote requires MITM then also require it */
+		/* If remote requires MITM then also require it, unless
+		 * our IO capability is NoInputNoOutput (so some
+		 * just-works security cases can be tested) */
 		if (device_get_auth(device) != 0xff &&
-					(device_get_auth(device) & 0x01))
+					(device_get_auth(device) & 0x01) &&
+					agent_cap != 0x03)
 			*auth |= 0x01;
 	}
 
