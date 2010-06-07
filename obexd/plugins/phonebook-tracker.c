@@ -84,7 +84,7 @@
 		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?c a nco:PersonContact ; "				\
+		"?c a nco:Contact ; "					\
 		"nco:hasPhoneNumber ?h . "				\
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
@@ -104,7 +104,7 @@
 		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?c a nco:PersonContact ; "				\
+		"?c a nco:Contact ; "					\
 		"nco:hasPhoneNumber ?h . "				\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
@@ -120,7 +120,7 @@
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:PersonContact ; "				\
+		"?c a nco:Contact ; "					\
 		"nco:hasPhoneNumber ?h . "				\
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
@@ -155,7 +155,7 @@
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:PersonContact ; "				\
+		"?c a nco:Contact ; "					\
 		"nco:hasPhoneNumber ?h . "				\
 	"OPTIONAL { "							\
 		"?c nco:hasAffiliation ?a . "				\
@@ -174,7 +174,7 @@
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:PersonContact ; "				\
+		"?c a nco:Contact ; "					\
 		"nco:hasPhoneNumber ?h . "				\
 	"} ORDER BY DESC(nmo:sentDate(?call))"
 
@@ -191,7 +191,7 @@
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:PersonContact ; "				\
+		"?c a nco:Contact ; "					\
 		"nco:hasPhoneNumber ?h . "				\
 		"OPTIONAL { "						\
 			"?c nco:hasAffiliation ?a . "			\
@@ -203,7 +203,7 @@
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:PersonContact ; "				\
+		"?c a nco:Contact ; "					\
 		"nco:hasPhoneNumber ?h . "				\
 		"OPTIONAL { "						\
 			"?c nco:hasAffiliation ?a . "			\
@@ -223,7 +223,7 @@
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:PersonContact ; "				\
+		"?c a nco:Contact ; "					\
 		"nco:hasPhoneNumber ?h . "				\
 	"} UNION { "							\
 		"?call a nmo:Call ; "					\
@@ -243,7 +243,7 @@
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) "				\
 	"WHERE { "							\
-		"?c a nco:PersonContact ; "				\
+		"?c a nco:Contact ; "					\
 		"nco:contactUID <%s> ; "				\
 		"nco:hasPhoneNumber ?h . "				\
 	"OPTIONAL { "							\
