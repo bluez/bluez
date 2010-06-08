@@ -21,8 +21,6 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-#ifndef BT_IO_H
-#define BT_IO_H
 
 #include <glib.h>
 
@@ -93,4 +91,3 @@ GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
 				GDestroyNotify destroy, GError **err,
 				BtIOOption opt1, ...);
 
-#endif

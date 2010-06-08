@@ -21,9 +21,6 @@
  *
  */
 
-#ifndef __LOGGING_H
-#define __LOGGING_H
-
 void info(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void error(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void debug(const char *format, ...) __attribute__((format(printf, 1, 2)));
@@ -57,4 +54,3 @@ struct btd_debug_desc {
                                         __FILE__, __FUNCTION__ , ## arg); \
 } while (0)
 
-#endif /* __LOGGING_H */
