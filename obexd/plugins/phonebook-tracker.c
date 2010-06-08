@@ -503,7 +503,7 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 
 	last_index = params->liststartoffset + params->maxlistcount;
 
-	if (data->index < params->liststartoffset || data->index > last_index)
+	if (data->index <= params->liststartoffset || data->index > last_index)
 		return;
 
 add_entry:
