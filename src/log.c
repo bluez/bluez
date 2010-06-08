@@ -33,18 +33,13 @@
 
 #include "log.h"
 
-static inline void vinfo(const char *format, va_list ap)
-{
-	vsyslog(LOG_INFO, format, ap);
-}
-
 void info(const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
 
-	vinfo(format, ap);
+	vsyslog(LOG_INFO, format, ap);
 
 	va_end(ap);
 }
