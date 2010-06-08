@@ -288,6 +288,11 @@ static void sig_term(int sig)
 	g_main_loop_quit(event_loop);
 }
 
+static void sig_debug(int sig)
+{
+	__btd_toggle_debug();
+}
+
 static gchar *option_debug = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_udev = FALSE;
@@ -405,6 +410,9 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_term;
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT,  &sa, NULL);
+
+	sa.sa_handler = sig_debug;
+	sigaction(SIGUSR2, &sa, NULL);
 
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGPIPE, &sa, NULL);
