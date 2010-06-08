@@ -22,6 +22,7 @@ if (len(sys.argv) < 2):
 	print "  name <address>"
 	print "  alias <address> [alias]"
 	print "  trusted <address> [yes/no]"
+	print "  blocked <address> [yes/no]"
 	sys.exit(1)
 
 if (sys.argv[1] == "list"):
