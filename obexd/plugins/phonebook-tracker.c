@@ -598,7 +598,8 @@ char *phonebook_set_folder(const char *current_folder, const char *new_folder,
 {
 	char *tmp1, *tmp2, *base, *path = NULL;
 	gboolean root, child;
-	int ret, len;
+	int ret = 0;
+	int len;
 
 	root = (g_strcmp0("/", current_folder) == 0);
 	child = (new_folder && strlen(new_folder) != 0);
@@ -654,13 +655,11 @@ char *phonebook_set_folder(const char *current_folder, const char *new_folder,
 	}
 
 done:
-
-	if (!folder_is_valid(path)) {
+	if (ret || !folder_is_valid(path)) {
 		g_free(path);
 		path = NULL;
-		ret = -ENOENT;
-	} else
-		ret = 0;
+		ret = ret ? ret : -ENOENT;
+	}
 
 	if (err)
 		*err = ret;
