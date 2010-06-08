@@ -561,6 +561,19 @@ static GDBusSignalTable gateway_signals[] = {
 	{ NULL, NULL }
 };
 
+static void path_unregister(void *data)
+{
+	struct audio_device *dev = data;
+
+	DBG("Unregistered interface %s on path %s",
+		AUDIO_GATEWAY_INTERFACE, dev->path);
+
+	gateway_close(dev);
+
+	g_free(dev->gateway);
+	dev->gateway = NULL;
+}
+
 void gateway_unregister(struct audio_device *dev)
 {
 	if (dev->gateway->agent)
@@ -578,7 +591,7 @@ struct gateway *gateway_init(struct audio_device *dev)
 	if (!g_dbus_register_interface(dev->conn, dev->path,
 					AUDIO_GATEWAY_INTERFACE,
 					gateway_methods, gateway_signals,
-					NULL, dev, NULL))
+					NULL, dev, path_unregister))
 		return NULL;
 
 	return g_new0(struct gateway, 1);
