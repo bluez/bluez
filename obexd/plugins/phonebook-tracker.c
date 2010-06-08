@@ -139,8 +139,8 @@
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:Contact ; "					\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "				\
+		"?c a nco:Contact . "					\
+	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define OUTGOING_CALLS_QUERY						\
@@ -175,7 +175,7 @@
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
 		"?c a nco:Contact . "					\
-	"OPTIONAL { nco:hasPhoneNumber ?h . } "				\
+	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "				\
 	"} ORDER BY DESC(nmo:sentDate(?call))"
 
 #define COMBINED_CALLS_QUERY						\
