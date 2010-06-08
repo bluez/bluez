@@ -389,21 +389,21 @@ static void cache_ready_notify(void *user_data)
 		pbap->buffer = g_string_new_len(aparam, sizeof(aparam));
 		goto done;
 	}
-
-	/* Computing off set considering first entry of the phonebook */
-	l = g_slist_nth(pbap->cache.entries, pbap->params->liststartoffset);
-
 	/*
 	 * Don't free the sorted list content: this list contains
 	 * only the reference for the "real" cache entry.
 	 */
-	sorted = sort_entries(l, pbap->params->order,
+	sorted = sort_entries(pbap->cache.entries, pbap->params->order,
 			pbap->params->searchattrib,
 			(const char *) pbap->params->searchval);
 
+	/* Computing offset considering first entry of the phonebook */
+	l = g_slist_nth(sorted, pbap->params->liststartoffset);
+
 	pbap->buffer = g_string_new(VCARD_LISTING_BEGIN);
-	for (l = sorted; l && max; l = l->next, max--) {
+	for (; l && max; l = l->next, max--) {
 		const struct cache_entry *entry = l->data;
+
 		g_string_append_printf(pbap->buffer, VCARD_LISTING_ELEMENT,
 						entry->handle, entry->name);
 	}
