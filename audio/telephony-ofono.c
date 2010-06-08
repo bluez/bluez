@@ -598,8 +598,11 @@ static void list_modem_reply(DBusPendingCall *call, void *user_data)
 
 		dbus_message_iter_get_basic(&sub, &modem_obj_path_local);
 		modem_obj_path = g_strdup(modem_obj_path_local);
-		DBG("modem_obj_path is %p, %s\n", modem_obj_path,
-						modem_obj_path);
+		if (modem_obj_path != NULL) {
+			DBG("modem_obj_path is %p, %s\n", modem_obj_path,
+							modem_obj_path);
+			break;
+		}
 		dbus_message_iter_next(&sub);
 	}
 
