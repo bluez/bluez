@@ -52,7 +52,7 @@
 	"nco:postalcode(?p) nco:country(?p) \"NOTACALL\" \"false\" "	\
 	"\"false\" "							\
 	"WHERE { "							\
-		"?c a nco:Contact . "					\
+		"?c a nco:PersonContact . "				\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
 	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
 	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
@@ -68,7 +68,7 @@
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
-		"?c a nco:Contact . "					\
+		"?c a nco:PersonContact . "				\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
 	"}"
 
