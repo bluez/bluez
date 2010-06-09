@@ -345,6 +345,11 @@ static void device_sink_cb(struct audio_device *dev,
 			device_remove_control_timer(dev);
 			avrcp_disconnect(dev);
 		}
+		if (priv->hs_state != HEADSET_STATE_DISCONNECTED &&
+								priv->dc_req) {
+			headset_shutdown(dev);
+			break;
+		}
 		if (priv->hs_state == HEADSET_STATE_DISCONNECTED)
 			device_set_state(dev, AUDIO_STATE_DISCONNECTED);
 		else if (old_state == SINK_STATE_CONNECTING) {
@@ -519,10 +524,15 @@ static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 
 	priv->dc_req = dbus_message_ref(msg);
 
-	if (priv->hs_state != HEADSET_STATE_DISCONNECTED)
-		headset_shutdown(dev);
-	else if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
+	if (dev->control) {
+		device_remove_control_timer(dev);
+		avrcp_disconnect(dev);
+	}
+
+	if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
 		sink_shutdown(dev->sink);
+	else if (priv->hs_state != HEADSET_STATE_DISCONNECTED)
+		headset_shutdown(dev);
 	else {
 		dbus_message_unref(priv->dc_req);
 		priv->dc_req = NULL;
