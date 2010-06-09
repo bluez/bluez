@@ -27,6 +27,13 @@ enum phonebook_number_type {
 	TEL_TYPE_OTHER,
 };
 
+enum phonebook_call_type {
+	CALL_TYPE_NOT_A_CALL,
+	CALL_TYPE_MISSED,
+	CALL_TYPE_INCOMING,
+	CALL_TYPE_OUTGOING,
+};
+
 struct phonebook_number {
 	char *tel;
 	int type;
@@ -48,6 +55,8 @@ struct phonebook_contact {
 	char *region;
 	char *postal;
 	char *country;
+	char *datetime;
+	int calltype;
 };
 
 void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,

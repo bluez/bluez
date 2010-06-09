@@ -215,6 +215,33 @@ static void vcard_printf_adr(GString *vcards, struct phonebook_contact *contact)
 					contact->postal, contact->country);
 }
 
+static void vcard_printf_datetime(GString *vcards,
+					struct phonebook_contact *contact)
+{
+	const char *type;
+
+	switch (contact->calltype) {
+	case CALL_TYPE_MISSED:
+		type = "MISSED";
+		break;
+
+	case CALL_TYPE_INCOMING:
+		type = "RECEIVED";
+		break;
+
+	case CALL_TYPE_OUTGOING:
+		type = "DIALED";
+		break;
+
+	case CALL_TYPE_NOT_A_CALL:
+	default:
+		return;
+	}
+
+	vcard_printf(vcards, "X-IRMC-CALL-DATETIME;%s:%s", type,
+							contact->datetime);
+}
+
 static void vcard_printf_end(GString *vcards)
 {
 	vcard_printf(vcards, "END:VCARD");
@@ -259,6 +286,9 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	if (filter & FILTER_ADR)
 		vcard_printf_adr(vcards, contact);
 
+	if (filter & FILTER_X_IRMC_CALL_DATETIME)
+		vcard_printf_datetime(vcards, contact);
+
 	vcard_printf_end(vcards);
 }
 
@@ -292,5 +322,6 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_free(contact->region);
 	g_free(contact->postal);
 	g_free(contact->country);
+	g_free(contact->datetime);
 	g_free(contact);
 }

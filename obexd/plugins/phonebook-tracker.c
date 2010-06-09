@@ -49,7 +49,8 @@
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) "				\
+	"nco:postalcode(?p) nco:country(?p) \"NOTACALL\" \"false\" "	\
+	"\"false\" "							\
 	"WHERE { "							\
 		"?c a nco:Contact . "					\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
@@ -78,7 +79,8 @@
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) "				\
+	"nco:postalcode(?p) nco:country(?p) nmo:receivedDate(?call) "	\
+	"nmo:isSent(?call) nmo:isAnswered(?call)"			\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
@@ -115,7 +117,8 @@
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) "				\
+	"nco:postalcode(?p) nco:country(?p) nmo:receivedDate(?call) "	\
+	"nmo:isSent(?call) nmo:isAnswered(?call)"			\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
@@ -150,7 +153,8 @@
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) "				\
+	"nco:postalcode(?p) nco:country(?p) nmo:receivedDate(?call) "	\
+	"nmo:isSent(?call) nmo:isAnswered(?call)"			\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
@@ -185,7 +189,8 @@
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) "				\
+	"nco:postalcode(?p) nco:country(?p) nmo:receivedDate(?call) "	\
+	"nmo:isSent(?call) nmo:isAnswered(?call)"			\
 	"WHERE { "							\
 	"{ "								\
 		"?call a nmo:Call ; "					\
@@ -240,7 +245,8 @@
 	"nco:nameHonorificSuffix(<%s>) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) "				\
+	"nco:postalcode(?p) nco:country(?p) \"NOTACALL\" \"false\" "	\
+	"\"false\" "							\
 	"WHERE { "							\
 		"<%s> a nco:Contact . "					\
 	"OPTIONAL { <%s> nco:hasPhoneNumber ?h . } "			\
@@ -477,6 +483,37 @@ static int query_tracker(const char *query, int num_fields,
 	return 0;
 }
 
+static void set_call_type(struct phonebook_contact *contact,
+				const char *datetime, const char *is_sent,
+				const char *is_answered)
+{
+	gboolean sent, answered;
+
+	if (g_strcmp0(datetime, "NOTACALL") == 0) {
+		contact->calltype = CALL_TYPE_NOT_A_CALL;
+		return;
+	}
+
+	sent = FALSE;
+	if (g_strcmp0(is_sent, "true") == 0)
+		sent = TRUE;
+
+	answered = FALSE;
+	if (g_strcmp0(is_answered, "true") == 0)
+		answered = TRUE;
+
+	if (sent == FALSE)
+		if (answered == FALSE)
+			contact->calltype = CALL_TYPE_MISSED;
+		else
+			contact->calltype = CALL_TYPE_INCOMING;
+	else
+		contact->calltype = CALL_TYPE_OUTGOING;
+
+	/* Tracker already gives time in the ISO 8601 format */
+	contact->datetime = g_strdup(datetime);
+}
+
 static void pull_contacts(char **reply, int num_fields, void *user_data)
 {
 	struct phonebook_data *data = user_data;
@@ -522,6 +559,8 @@ add_entry:
 	contact->region = g_strdup(reply[13]);
 	contact->postal = g_strdup(reply[14]);
 	contact->country = g_strdup(reply[15]);
+
+	set_call_type(contact, reply[16], reply[17], reply[18]);
 
 	number = g_new0(struct phonebook_number, 1);
 	number->tel = g_strdup(reply[0]);
@@ -694,7 +733,7 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 	data->user_data = user_data;
 	data->cb = cb;
 
-	return query_tracker(query, 16, pull_contacts, data);
+	return query_tracker(query, 19, pull_contacts, data);
 }
 
 int phonebook_get_entry(const char *folder, const char *id,
@@ -717,7 +756,7 @@ int phonebook_get_entry(const char *folder, const char *id,
 	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id, id,
 						id, id, id, id, id, id);
 
-	ret = query_tracker(query, 16, pull_contacts, data);
+	ret = query_tracker(query, 19, pull_contacts, data);
 
 	g_free(query);
 
