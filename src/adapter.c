@@ -676,7 +676,7 @@ static struct session_req *session_ref(struct session_req *req)
 {
 	req->refcount++;
 
-	DBG("session_ref(%p): ref=%d", req, req->refcount);
+	DBG("%p: ref=%d", req, req->refcount);
 
 	return req;
 }
@@ -685,7 +685,7 @@ static void session_unref(struct session_req *req)
 {
 	req->refcount--;
 
-	DBG("session_unref(%p): ref=%d", req, req->refcount);
+	DBG("%p: ref=%d", req, req->refcount);
 
 	if (req->refcount)
 		return;
@@ -1118,7 +1118,7 @@ struct btd_device *adapter_create_device(DBusConnection *conn,
 	struct btd_device *device;
 	const char *path;
 
-	DBG("adapter_create_device(%s)", address);
+	DBG("%s", address);
 
 	device = device_create(conn, adapter, address);
 	if (!device)
@@ -1170,7 +1170,7 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 {
 	struct btd_device *device;
 
-	DBG("adapter_get_device(%s)", address);
+	DBG("%s", address);
 
 	if (!adapter)
 		return NULL;
@@ -1586,7 +1586,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 				ERROR_INTERFACE ".AlreadyExists",
 				"Device already exists");
 
-	DBG("create_device(%s)", address);
+	DBG("%s", address);
 
 	device = adapter_create_device(conn, adapter, address);
 	if (!device)
@@ -2498,7 +2498,7 @@ static void adapter_free(gpointer user_data)
 	agent_free(adapter->agent);
 	adapter->agent = NULL;
 
-	DBG("adapter_free(%p)", adapter);
+	DBG("%p", adapter);
 
 	if (adapter->auth_idle_id)
 		g_source_remove(adapter->auth_idle_id);
@@ -2511,7 +2511,7 @@ struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter)
 {
 	adapter->ref++;
 
-	DBG("btd_adapter_ref(%p): ref=%d", adapter, adapter->ref);
+	DBG("%p: ref=%d", adapter, adapter->ref);
 
 	return adapter;
 }
@@ -2522,7 +2522,7 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 
 	adapter->ref--;
 
-	DBG("btd_adapter_unref(%p): ref=%d", adapter, adapter->ref);
+	DBG("%p: ref=%d", adapter, adapter->ref);
 
 	if (adapter->ref > 0)
 		return;

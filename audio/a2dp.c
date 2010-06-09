@@ -112,14 +112,14 @@ static struct a2dp_setup *setup_ref(struct a2dp_setup *setup)
 {
 	setup->ref++;
 
-	DBG("setup_ref(%p): ref=%d", setup, setup->ref);
+	DBG("%p: ref=%d", setup, setup->ref);
 
 	return setup;
 }
 
 static void setup_free(struct a2dp_setup *s)
 {
-	DBG("setup_free(%p)", s);
+	DBG("%p", s);
 	setups = g_slist_remove(setups, s);
 	if (s->session)
 		avdtp_unref(s->session);
@@ -132,7 +132,7 @@ static void setup_unref(struct a2dp_setup *setup)
 {
 	setup->ref--;
 
-	DBG("setup_unref(%p): ref=%d", setup, setup->ref);
+	DBG("%p: ref=%d", setup, setup->ref);
 
 	if (setup->ref <= 0)
 		setup_free(setup);

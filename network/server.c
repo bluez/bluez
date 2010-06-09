@@ -564,7 +564,7 @@ static uint32_t register_server_record(struct network_server *ns)
 		return 0;
 	}
 
-	DBG("register_server_record: got record id 0x%x", record->handle);
+	DBG("got record id 0x%x", record->handle);
 
 	return record->handle;
 }

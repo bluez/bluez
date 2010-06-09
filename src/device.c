@@ -251,7 +251,7 @@ static void device_free(gpointer user_data)
 	if (device->discov_timer)
 		g_source_remove(device->discov_timer);
 
-	DBG("device_free(%p)", device);
+	DBG("%p", device);
 
 	g_free(device->authr);
 	g_free(device->path);
@@ -2476,7 +2476,7 @@ struct btd_device *btd_device_ref(struct btd_device *device)
 {
 	device->ref++;
 
-	DBG("btd_device_ref(%p): ref=%d", device, device->ref);
+	DBG("%p: ref=%d", device, device->ref);
 
 	return device;
 }
@@ -2488,7 +2488,7 @@ void btd_device_unref(struct btd_device *device)
 
 	device->ref--;
 
-	DBG("btd_device_unref(%p): ref=%d", device, device->ref);
+	DBG("%p: ref=%d", device, device->ref);
 
 	if (device->ref > 0)
 		return;

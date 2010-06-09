@@ -541,8 +541,7 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 	cont_fragments = (len - (session->omtu - sizeof(start))) /
 					(session->omtu - sizeof(cont)) + 1;
 
-	DBG("avdtp_send: %zu bytes split into %d fragments", len,
-							cont_fragments + 1);
+	DBG("%zu bytes split into %d fragments", len, cont_fragments + 1);
 
 	/* Send the start packet */
 	memset(&start, 0, sizeof(start));
@@ -559,8 +558,7 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 	if (!try_send(sock, session->buf, session->omtu))
 		return FALSE;
 
-	DBG("avdtp_send: first packet with %zu bytes sent",
-						session->omtu - sizeof(start));
+	DBG("first packet with %zu bytes sent", session->omtu - sizeof(start));
 
 	sent = session->omtu - sizeof(start);
 
@@ -572,13 +570,11 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 		if (left + sizeof(cont) > session->omtu) {
 			cont.packet_type = AVDTP_PKT_TYPE_CONTINUE;
 			to_copy = session->omtu - sizeof(cont);
-			DBG("avdtp_send: sending continue with %d bytes",
-								to_copy);
+			DBG("sending continue with %d bytes", to_copy);
 		} else {
 			cont.packet_type = AVDTP_PKT_TYPE_END;
 			to_copy = left;
-			DBG("avdtp_send: sending end with %d bytes",
-								to_copy);
+			DBG("sending end with %d bytes", to_copy);
 		}
 
 		cont.transaction = transaction;
@@ -1120,7 +1116,7 @@ void avdtp_unref(struct avdtp *session)
 
 	session->ref--;
 
-	DBG("avdtp_unref(%p): ref=%d", session, session->ref);
+	DBG("%p: ref=%d", session, session->ref);
 
 	if (session->ref == 1) {
 		if (session->state == AVDTP_SESSION_STATE_CONNECTING &&
@@ -1147,8 +1143,7 @@ void avdtp_unref(struct avdtp *session)
 
 	server = session->server;
 
-	DBG("avdtp_unref(%p): freeing session and removing from list",
-			session);
+	DBG("%p: freeing session and removing from list", session);
 
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
@@ -1169,7 +1164,7 @@ void avdtp_unref(struct avdtp *session)
 struct avdtp *avdtp_ref(struct avdtp *session)
 {
 	session->ref++;
-	DBG("avdtp_ref(%p): ref=%d", session, session->ref);
+	DBG("%p: ref=%d", session, session->ref);
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
 	return session;
@@ -1981,7 +1976,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	struct avdtp_common_header *header;
 	gsize size;
 
-	DBG("session_cb");
+	DBG("");
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -2330,8 +2325,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	 * Abort the device's channel in favor of our own.
 	 */
 	if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
-		DBG("avdtp_confirm_cb: connect already in progress"
-						" (XCASE connect:connect)");
+		DBG("connect already in progress (XCASE connect:connect)");
 		goto drop;
 	}
 
@@ -3346,8 +3340,8 @@ int avdtp_set_configuration(struct avdtp *session,
 	if (!(lsep && rsep))
 		return -EINVAL;
 
-	DBG("avdtp_set_configuration(%p): int_seid=%u, acp_seid=%u",
-			session, lsep->info.seid, rsep->seid);
+	DBG("%p: int_seid=%u, acp_seid=%u", session,
+			lsep->info.seid, rsep->seid);
 
 	new_stream = g_new0(struct avdtp_stream, 1);
 	new_stream->session = session;

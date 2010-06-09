@@ -418,7 +418,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	DBG("hcid_dbus_bonding_process_complete: status=%02x", status);
+	DBG("status=%02x", status);
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
@@ -427,7 +427,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 		/* This means that there was no pending PIN or SSP token
 		 * request from the controller, i.e. this is not a new
 		 * pairing */
-		DBG("hcid_dbus_bonding_process_complete: no pending auth request");
+		DBG("no pending auth request");
 		return;
 	}
 
@@ -442,7 +442,7 @@ void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	DBG("hcid_dbus_simple_pairing_complete: status=%02x", status);
+	DBG("status=%02x", status);
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
