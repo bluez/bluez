@@ -494,13 +494,8 @@ static void set_call_type(struct phonebook_contact *contact,
 		return;
 	}
 
-	sent = FALSE;
-	if (g_strcmp0(is_sent, "true") == 0)
-		sent = TRUE;
-
-	answered = FALSE;
-	if (g_strcmp0(is_answered, "true") == 0)
-		answered = TRUE;
+	sent = g_str_equal(is_sent, "true");
+	answered = g_str_equal(is_answered, "true");
 
 	if (sent == FALSE)
 		if (answered == FALSE)
