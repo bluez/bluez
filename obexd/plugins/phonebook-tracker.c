@@ -22,6 +22,8 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
+#include <stdio.h>
 #include <errno.h>
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -483,6 +485,42 @@ static int query_tracker(const char *query, int num_fields,
 	return 0;
 }
 
+static char *iso8601_utc_to_localtime(const char *datetime)
+{
+	time_t time;
+	struct tm tm, *local;
+	char localdate[32];
+	char tz;
+	int nr;
+
+	memset(&tm, 0, sizeof(tm));
+
+	nr = sscanf(datetime, "%04u-%02u-%02uT%02u:%02u:%02u%c",
+			&tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+			&tm.tm_hour, &tm.tm_min, &tm.tm_sec,
+			&tz);
+	if (nr < 6) {
+		/* Invalid time format */
+		return g_strdup("");
+	}
+
+	/* Time already in localtime */
+	if (nr == 6)
+		return g_strdup(datetime);
+
+	tm.tm_year -= 1900;	/* Year since 1900 */
+	tm.tm_mon--;		/* Months since January, values 0-11 */
+
+	time = mktime(&tm);
+	time -= timezone;
+
+	local = localtime(&time);
+
+	strftime(localdate, sizeof(localdate), "%Y-%m-%dT%H:%M:%S", local);
+
+	return g_strdup(localdate);
+}
+
 static void set_call_type(struct phonebook_contact *contact,
 				const char *datetime, const char *is_sent,
 				const char *is_answered)
@@ -505,8 +543,8 @@ static void set_call_type(struct phonebook_contact *contact,
 	else
 		contact->calltype = CALL_TYPE_OUTGOING;
 
-	/* Tracker already gives time in the ISO 8601 format */
-	contact->datetime = g_strdup(datetime);
+	/* Tracker gives time in the ISO 8601 format, UTC time */
+	contact->datetime = iso8601_utc_to_localtime(datetime);
 }
 
 static void pull_contacts(char **reply, int num_fields, void *user_data)
