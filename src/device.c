@@ -2415,8 +2415,13 @@ const sdp_record_t *btd_device_get_record(struct btd_device *device,
 {
 	bdaddr_t src;
 
-	if (device->tmp_records)
-		return find_record_in_list(device->tmp_records, uuid);
+	if (device->tmp_records) {
+		const sdp_record_t *record;
+
+		record = find_record_in_list(device->tmp_records, uuid);
+		if (record != NULL)
+			return record;
+	}
 
 	adapter_get_address(device->adapter, &src);
 
