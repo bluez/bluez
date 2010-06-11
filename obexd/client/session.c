@@ -810,7 +810,9 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 		error("Replied with an error: %s, %s",
 				derr.name, derr.message);
 		dbus_error_free(&derr);
-		goto fail;
+		dbus_message_unref(reply);
+		transfer_unregister(pending->transfer);
+		return;
 	}
 
 	dbus_message_get_args(reply, NULL,
@@ -825,14 +827,11 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 	}
 
 	pending->cb(session, pending->transfer);
-
+	dbus_message_unref(reply);
 	free_pending(pending);
 	agent->pending = NULL;
 
 	return;
-
-fail:
-	transfer_unregister(pending->transfer);
 }
 
 static int session_request(struct session_data *session, session_callback_t cb,
