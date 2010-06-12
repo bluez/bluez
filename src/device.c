@@ -1679,14 +1679,6 @@ struct agent *device_get_agent(struct btd_device *device)
 	return adapter_get_agent(device->adapter);
 }
 
-void device_set_agent(struct btd_device *device, struct agent *agent)
-{
-	if (!device)
-		return;
-
-	device->agent = agent;
-}
-
 gboolean device_is_busy(struct btd_device *device)
 {
 	return device->browse ? TRUE : FALSE;
@@ -1852,7 +1844,7 @@ static void device_agent_removed(struct agent *agent, void *user_data)
 {
 	struct btd_device *device = user_data;
 
-	device_set_agent(device, NULL);
+	device->agent = NULL;
 
 	if (device->authr)
 		device->authr->agent = NULL;
