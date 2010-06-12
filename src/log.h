@@ -23,7 +23,8 @@
 
 void info(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void error(const char *format, ...) __attribute__((format(printf, 1, 2)));
-void debug(const char *format, ...) __attribute__((format(printf, 1, 2)));
+
+void btd_debug(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 void __btd_log_init(const char *debug, int detach);
 void __btd_log_cleanup(void);
@@ -44,7 +45,7 @@ struct btd_debug_desc {
  * @fmt: format string
  * @arg...: list of arguments
  *
- * Simple macro around debug() which also include the function
+ * Simple macro around btd_debug() which also include the function
  * name it is called in.
  */
 #define DBG(fmt, arg...) do { \
@@ -54,7 +55,7 @@ struct btd_debug_desc {
         }; \
         if (debug_enabled && \
 			__btd_debug_desc.flags & BTD_DEBUG_FLAG_PRINT) \
-                debug("%s:%s() " fmt, \
+                btd_debug("%s:%s() " fmt, \
                                         __FILE__, __FUNCTION__ , ## arg); \
 } while (0)
 
