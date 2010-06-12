@@ -30,8 +30,6 @@ void __btd_log_init(const char *debug, int detach);
 void __btd_log_cleanup(void);
 void __btd_toggle_debug();
 
-extern int debug_enabled;
-
 struct btd_debug_desc {
         const char *name;
         const char *file;
@@ -53,8 +51,7 @@ struct btd_debug_desc {
         __attribute__((used, section("__debug"), aligned(8))) = { \
                 .file = __FILE__, .flags = BTD_DEBUG_FLAG_DEFAULT, \
         }; \
-        if (debug_enabled && \
-			__btd_debug_desc.flags & BTD_DEBUG_FLAG_PRINT) \
+        if (__btd_debug_desc.flags & BTD_DEBUG_FLAG_PRINT) \
                 btd_debug("%s:%s() " fmt, \
                                         __FILE__, __FUNCTION__ , ## arg); \
 } while (0)

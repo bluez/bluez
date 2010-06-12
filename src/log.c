@@ -71,8 +71,6 @@ extern struct btd_debug_desc __stop___debug[];
 
 static gchar **enabled = NULL;
 
-int debug_enabled = FALSE;
-
 static gboolean is_enabled(struct btd_debug_desc *desc)
 {
         int i;
@@ -94,7 +92,7 @@ static gboolean is_enabled(struct btd_debug_desc *desc)
 
 void __btd_toggle_debug()
 {
-	debug_enabled = !debug_enabled;
+	/* FIXME: if not '*' already switch to full debug */
 }
 
 void __btd_log_init(const char *debug, int detach)
@@ -103,14 +101,8 @@ void __btd_log_init(const char *debug, int detach)
 	struct btd_debug_desc *desc;
 	const char *name = NULL, *file = NULL;
 
-	if (debug != NULL) {
-		debug_enabled = TRUE;
-	} else {
-		debug = g_strdup("*");
-		debug_enabled = FALSE;
-	}
-
-	enabled = g_strsplit_set(debug, ":, ", 0);
+	if (debug != NULL)
+		enabled = g_strsplit_set(debug, ":, ", 0);
 
 	for (desc = __start___debug; desc < __stop___debug; desc++) {
 		if (file != NULL || name != NULL) {
