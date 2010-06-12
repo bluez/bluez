@@ -1157,18 +1157,9 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 			DBUS_TYPE_INVALID);
 
 	agent = device_get_agent(device);
-	if (!agent)
-		agent = adapter->agent;
 
 	if (agent && device_is_authorizing(device))
 		agent_cancel(agent);
-
-	agent = device_get_agent(device);
-
-	if (agent) {
-		agent_free(agent);
-		device_set_agent(device, NULL);
-	}
 
 	device_remove(device, remove_storage);
 }
@@ -3059,10 +3050,6 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 	}
 
 	agent = device_get_agent(device);
-
-	if (!agent)
-		agent = adapter->agent;
-
 	if (!agent) {
 		g_free(auth);
 		return -EPERM;
@@ -3141,10 +3128,6 @@ int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
 	 */
 
 	agent = device_get_agent(device);
-
-	if (!agent)
-		agent = adapter->agent;
-
 	if (!agent)
 		return -EPERM;
 

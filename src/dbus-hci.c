@@ -925,9 +925,6 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 
 	/* For CreatePairedDevice use dedicated bonding */
 	agent = device_get_agent(device);
-	if (!agent)
-		agent = adapter_get_agent(adapter);
-
 	if (!agent) {
 		/* This is the non bondable mode case */
 		if (device_get_auth(device) > 0x01) {

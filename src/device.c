@@ -1113,6 +1113,9 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 
 	DBG("Removing device %s", device->path);
 
+	if (device->agent)
+		agent_free(device->agent);
+
 	if (device->bonding)
 		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
 
@@ -1670,7 +1673,10 @@ struct agent *device_get_agent(struct btd_device *device)
 	if (!device)
 		return NULL;
 
-	return  device->agent;
+	if (device->agent)
+		return device->agent;
+
+	return adapter_get_agent(device->adapter);
 }
 
 void device_set_agent(struct btd_device *device, struct agent *agent)
