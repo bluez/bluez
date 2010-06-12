@@ -368,7 +368,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 	/* If no side requires MITM protection; auto-accept */
 	if ((loc_auth == 0xff || !(loc_auth & 0x01) || rem_cap == 0x03) &&
-							!(rem_auth & 0x01)) {
+				(!(rem_auth & 0x01) || loc_cap == 0x03)) {
 		DBG("auto accept of confirmation");
 
 		/* Wait 5 milliseconds before doing auto-accept */
