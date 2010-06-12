@@ -218,31 +218,41 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 								pincode_cb);
 }
 
-static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
+static int confirm_reply(struct btd_adapter *adapter,
+				struct btd_device *device, gboolean success)
 {
-	struct btd_device *device = user_data;
-	struct btd_adapter *adapter = device_get_adapter(device);
-	user_confirm_reply_cp cp;
 	int dd;
+	user_confirm_reply_cp cp;
 	uint16_t dev_id = adapter_get_dev_id(adapter);
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		error("Unable to open hci%d", dev_id);
-		return;
+		return dd;
 	}
 
 	memset(&cp, 0, sizeof(cp));
 	device_get_address(device, &cp.bdaddr);
 
-	if (err)
-		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
+	if (success)
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 	else
-		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
+		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 
 	hci_close_dev(dd);
+
+	return 0;
+}
+
+static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
+{
+	struct btd_device *device = user_data;
+	struct btd_adapter *adapter = device_get_adapter(device);
+	gboolean success = (err == NULL) ? TRUE : FALSE;
+
+	confirm_reply(adapter, device, success);
 }
 
 static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
@@ -317,80 +327,65 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	uint8_t remcap, remauth, type;
+	struct agent *agent;
+	uint8_t rem_cap, rem_auth, loc_cap, loc_auth;
 	gboolean bonding_initiator;
-	uint16_t dev_id;
-	int dd;
 
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	dev_id = adapter_get_dev_id(adapter);
-
-	if (get_auth_requirements(sba, dba, &type) < 0) {
+	if (get_auth_requirements(sba, dba, &loc_auth) < 0) {
 		error("Unable to get local authentication requirements");
 		goto fail;
 	}
 
-	DBG("confirm authentication requirement is 0x%02x", type);
+	agent = device_get_agent(device);
+	if (agent == NULL) {
+		error("No agent available for user confirmation");
+		goto fail;
+	}
 
-	remcap = device_get_cap(device);
-	remauth = device_get_auth(device);
+	loc_cap = agent_get_io_capability(agent);
 
-	DBG("remote IO capabilities are 0x%02x", remcap);
-	DBG("remote authentication requirement is 0x%02x", remauth);
+	DBG("confirm IO capabilities are 0x%02x", loc_cap);
+	DBG("confirm authentication requirement is 0x%02x", loc_auth);
+
+	rem_cap = device_get_cap(device);
+	rem_auth = device_get_auth(device);
+
+	DBG("remote IO capabilities are 0x%02x", rem_cap);
+	DBG("remote authentication requirement is 0x%02x", rem_auth);
 
 	/* If we require MITM but the remote device can't provide that
 	 * (it has NoInputNoOutput) then reject the confirmation
 	 * request. The only exception is when we're dedicated bonding
 	 * initiators since then we always have the MITM bit set. */
 	bonding_initiator = device_is_bonding(device, NULL);
-	if (!bonding_initiator && (type & 0x01) && remcap == 0x03) {
+	if (!bonding_initiator && (loc_auth & 0x01) && rem_cap == 0x03) {
 		error("Rejecting request: remote device can't provide MITM");
 		goto fail;
 	}
 
 	/* If no side requires MITM protection; auto-accept */
-	if (!(remauth & 0x01) &&
-			(type == 0xff || !(type & 0x01) || remcap == 0x03)) {
-		int dd;
+	if ((loc_auth == 0xff || !(loc_auth & 0x01) || rem_cap == 0x03) &&
+							!(rem_auth & 0x01)) {
+		DBG("auto accept of confirmation");
 
 		/* Wait 5 milliseconds before doing auto-accept */
 		usleep(5000);
 
-		dd = hci_open_dev(dev_id);
-		if (dd < 0) {
-			error("Unable to open hci%d", dev_id);
-			return -1;
-		}
+		if (confirm_reply(adapter, device, TRUE) < 0)
+			return -EIO;
 
-		hci_send_cmd(dd, OGF_LINK_CTL,
-					OCF_USER_CONFIRM_REPLY, 6, dba);
-
-		hci_close_dev(dd);
-
-		DBG("auto accept of confirmation");
-
-		return device_request_authentication(device,
-						AUTH_TYPE_AUTO, 0, NULL);
+		return device_request_authentication(device, AUTH_TYPE_AUTO,
+								0, NULL);
 	}
 
 	return device_request_authentication(device, AUTH_TYPE_CONFIRM,
 							passkey, confirm_cb);
 
 fail:
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("Unable to open hci%d", dev_id);
-		return -1;
-	}
-
-	hci_send_cmd(dd, OGF_LINK_CTL,
-			OCF_USER_CONFIRM_NEG_REPLY, 6, dba);
-
-	hci_close_dev(dd);
-
-	return 0;
+	return confirm_reply(adapter, device, FALSE);
 }
 
 int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
