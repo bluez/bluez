@@ -92,7 +92,10 @@ static gboolean is_enabled(struct btd_debug_desc *desc)
 
 void __btd_toggle_debug()
 {
-	/* FIXME: if not '*' already switch to full debug */
+	struct btd_debug_desc *desc;
+
+	for (desc = __start___debug; desc < __stop___debug; desc++)
+		desc->flags |= BTD_DEBUG_FLAG_PRINT;
 }
 
 void __btd_log_init(const char *debug, int detach)
