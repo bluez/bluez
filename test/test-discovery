@@ -4,6 +4,7 @@ import gobject
 
 import dbus
 import dbus.mainloop.glib
+from optparse import OptionParser, make_option
 
 def device_found(address, properties):
 	print "[ " + address + " ]"
@@ -26,8 +27,20 @@ if __name__ == '__main__':
 	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
 							"org.bluez.Manager")
 
-	path = manager.DefaultAdapter()
-	adapter = dbus.Interface(bus.get_object("org.bluez", path),
+	option_list = [
+			make_option("-i", "--device", action="store",
+					type="string", dest="dev_id"),
+			]
+	parser = OptionParser(option_list=option_list)
+
+	(options, args) = parser.parse_args()
+
+	if options.dev_id:
+		adapter_path = manager.FindAdapter(options.dev_id)
+	else:
+		adapter_path = manager.DefaultAdapter()
+
+	adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
 
 	bus.add_signal_receiver(device_found,

@@ -3,15 +3,29 @@
 import sys
 import dbus
 import re
+from optparse import OptionParser, make_option
 
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
 
-adapter = dbus.Interface(bus.get_object("org.bluez", manager.DefaultAdapter()),
+option_list = [
+		make_option("-i", "--device", action="store",
+				type="string", dest="dev_id"),
+		]
+parser = OptionParser(option_list=option_list)
+
+(options, args) = parser.parse_args()
+
+if options.dev_id:
+	adapter_path = manager.FindAdapter(options.dev_id)
+else:
+	adapter_path = manager.DefaultAdapter()
+
+adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
 
-if (len(sys.argv) < 2):
+if (len(args) < 1):
 	print "Usage: %s <command>" % (sys.argv[0])
 	print ""
 	print "  list"
@@ -25,41 +39,41 @@ if (len(sys.argv) < 2):
 	print "  blocked <address> [yes/no]"
 	sys.exit(1)
 
-if (sys.argv[1] == "list"):
+if (args[0] == "list"):
 	list = adapter.ListDevices()
 	print list
 	sys.exit(0)
 
-if (sys.argv[1] == "create"):
-	if (len(sys.argv) < 3):
+if (args[0] == "create"):
+	if (len(args) < 2):
 		print "Need address parameter"
 	else:
-		device = adapter.CreateDevice(sys.argv[2])
+		device = adapter.CreateDevice(args[1])
 		print device
 	sys.exit(0)
 
-if (sys.argv[1] == "remove"):
-	if (len(sys.argv) < 3):
+if (args[0] == "remove"):
+	if (len(args) < 2):
 		print "Need address or object path parameter"
 	else:
 		try:
-			path = adapter.FindDevice(sys.argv[2])
+			path = adapter.FindDevice(args[1])
 		except:
-			path = sys.argv[2]
+			path = args[1]
 		adapter.RemoveDevice(path)
 	sys.exit(0)
 
-if (sys.argv[1] == "discover"):
-	if (len(sys.argv) < 3):
+if (args[0] == "discover"):
+	if (len(args) < 2):
 		print "Need address parameter"
 	else:
-		path = adapter.FindDevice(sys.argv[2])
+		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
-		if (len(sys.argv) < 4):
+		if (len(args) < 3):
 			pattern = ""
 		else:
-			pattern = sys.argv[3]
+			pattern = args[2]
 		services = device.DiscoverServices(pattern);
 		for key in services.keys():
 			p = re.compile(">.*?<")
@@ -69,79 +83,79 @@ if (sys.argv[1] == "discover"):
 			print
 	sys.exit(0)
 
-if (sys.argv[1] == "class"):
-	if (len(sys.argv) < 3):
+if (args[0] == "class"):
+	if (len(args) < 2):
 		print "Need address parameter"
 	else:
-		path = adapter.FindDevice(sys.argv[2])
+		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		properties = device.GetProperties()
 		print "0x%06x" % (properties["Class"])
 	sys.exit(0)
 
-if (sys.argv[1] == "name"):
-	if (len(sys.argv) < 3):
+if (args[0] == "name"):
+	if (len(args) < 2):
 		print "Need address parameter"
 	else:
-		path = adapter.FindDevice(sys.argv[2])
+		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		properties = device.GetProperties()
 		print properties["Name"]
 	sys.exit(0)
 
-if (sys.argv[1] == "alias"):
-	if (len(sys.argv) < 3):
+if (args[0] == "alias"):
+	if (len(args) < 2):
 		print "Need address parameter"
 	else:
-		path = adapter.FindDevice(sys.argv[2])
+		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
-		if (len(sys.argv) < 4):
+		if (len(args) < 3):
 			properties = device.GetProperties()
 			print properties["Alias"]
 		else:
-			device.SetProperty("Alias", sys.argv[3])
+			device.SetProperty("Alias", args[2])
 	sys.exit(0)
 
-if (sys.argv[1] == "trusted"):
-	if (len(sys.argv) < 3):
+if (args[0] == "trusted"):
+	if (len(args) < 2):
 		print "Need address parameter"
 	else:
-		path = adapter.FindDevice(sys.argv[2])
+		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
-		if (len(sys.argv) < 4):
+		if (len(args) < 3):
 			properties = device.GetProperties()
 			print properties["Trusted"]
 		else:
-			if (sys.argv[3] == "yes"):
+			if (args[2] == "yes"):
 				value = dbus.Boolean(1)
-			elif (sys.argv[3] == "no"):
+			elif (args[2] == "no"):
 				value = dbus.Boolean(0)
 			else:
-				value = dbus.Boolean(sys.argv[3])
+				value = dbus.Boolean(args[2])
 			device.SetProperty("Trusted", value)
 	sys.exit(0)
 
-if (sys.argv[1] == "blocked"):
-	if (len(sys.argv) < 3):
+if (args[0] == "blocked"):
+	if (len(args) < 2):
 		print "Need address parameter"
 	else:
-		path = adapter.FindDevice(sys.argv[2])
+		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
-		if (len(sys.argv) < 4):
+		if (len(args) < 3):
 			properties = device.GetProperties()
 			print properties["Blocked"]
 		else:
-			if (sys.argv[3] == "yes"):
+			if (args[2] == "yes"):
 				value = dbus.Boolean(1)
-			elif (sys.argv[3] == "no"):
+			elif (args[2] == "no"):
 				value = dbus.Boolean(0)
 			else:
-				value = dbus.Boolean(sys.argv[3])
+				value = dbus.Boolean(args[2])
 			device.SetProperty("Blocked", value)
 	sys.exit(0)
 

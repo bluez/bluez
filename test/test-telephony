@@ -2,16 +2,32 @@
 
 import sys
 import dbus
+from optparse import OptionParser, make_option
 
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
-adapter = dbus.Interface(bus.get_object("org.bluez", manager.DefaultAdapter()),
-				"org.bluez.Adapter")
+
+option_list = [
+		make_option("-i", "--device", action="store",
+				type="string", dest="dev_id"),
+		]
+parser = OptionParser(option_list=option_list)
+
+(options, args) = parser.parse_args()
+
+if options.dev_id:
+	adapter_path = manager.FindAdapter(options.dev_id)
+else:
+	adapter_path = manager.DefaultAdapter()
+
+adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
+							"org.bluez.Adapter")
+
 test = dbus.Interface(bus.get_object("org.bluez", "/org/bluez/test"),
 			"org.bluez.TelephonyTest")
 
-if len(sys.argv) < 2:
+if len(args) < 1:
 	print """Usage: %s <command>
 
 	connect <bdaddr>
@@ -31,127 +47,127 @@ if len(sys.argv) < 2:
 	""" % sys.argv[0]
 	sys.exit(1)
 
-if sys.argv[1] == "connect":
-	if len(sys.argv) < 3:
+if args[0] == "connect":
+	if len(args) < 2:
 		print "Need device address parameter"
 		sys.exit(1)
-	device = adapter.FindDevice(sys.argv[2])
+	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
 					"org.bluez.Headset")
 	headset.Connect()
 	sys.exit(0)
 
-if sys.argv[1] == "disconnect":
-	if len(sys.argv) < 3:
+if args[0] == "disconnect":
+	if len(args) < 2:
 		print "Need device address parameter"
 		sys.exit(1)
-	device = adapter.FindDevice(sys.argv[2])
+	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
 					"org.bluez.Headset")
 	headset.Disconnect()
 	sys.exit(0)
 
-if sys.argv[1] == "speakergain":
-	if len(sys.argv) < 3:
+if args[0] == "speakergain":
+	if len(args) < 2:
 		print "Need device address parameter"
 		sys.exit(1)
-	device = adapter.FindDevice(sys.argv[2])
+	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
 					"org.bluez.Headset")
-	if len(sys.argv) > 3:
-		headset.SetProperty('SpeakerGain', dbus.UInt16(sys.argv[3]))
+	if len(args) > 2:
+		headset.SetProperty('SpeakerGain', dbus.UInt16(args[2]))
 	else:
 		props = headset.GetProperties()
 		print props['SpeakerGain']
 
 	sys.exit(0)
 
-if sys.argv[1] == "microphonegain":
-	if len(sys.argv) < 3:
+if args[0] == "microphonegain":
+	if len(args) < 2:
 		print "Need device address parameter"
 		sys.exit(1)
-	device = adapter.FindDevice(sys.argv[2])
+	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
 					"org.bluez.Headset")
-	if len(sys.argv) > 3:
-		headset.SetProperty('MicrophoneGain', dbus.UInt16(sys.argv[3]))
+	if len(args) > 2:
+		headset.SetProperty('MicrophoneGain', dbus.UInt16(args[2]))
 	else:
 		props = headset.GetProperties()
 		print props['MicrophoneGain']
 
 	sys.exit(0)
 
-if sys.argv[1] == "play":
-	if len(sys.argv) < 3:
+if args[0] == "play":
+	if len(args) < 2:
 		print "Need device address parameter"
 		sys.exit(1)
-	device = adapter.FindDevice(sys.argv[2])
+	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
 					"org.bluez.Headset")
 	headset.Play()
 
 	sys.exit(0)
 
-if sys.argv[1] == "stop":
-	if len(sys.argv) < 3:
+if args[0] == "stop":
+	if len(args) < 2:
 		print "Need device address parameter"
 		sys.exit(1)
-	device = adapter.FindDevice(sys.argv[2])
+	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
 					"org.bluez.Headset")
 	headset.Stop()
 
 	sys.exit(0)
 
-if sys.argv[1] == "outgoing":
-	if len(sys.argv) > 2:
-		test.OutgoingCall(sys.argv[2])
+if args[0] == "outgoing":
+	if len(args) > 1:
+		test.OutgoingCall(args[1])
 	else:
 		print "Need number parameter"
 	sys.exit(0)
 
-if sys.argv[1] == "incoming":
-	if len(sys.argv) > 2:
-		test.IncomingCall(sys.argv[2])
+if args[0] == "incoming":
+	if len(args) > 1:
+		test.IncomingCall(args[1])
 	else:
 		print "Need number parameter"
 	sys.exit(0)
 
-if sys.argv[1] == "cancel":
+if args[0] == "cancel":
 	test.CancelCall()
 	sys.exit(0)
 
-if sys.argv[1] == "signal":
-	if len(sys.argv) > 2:
-		test.SignalStrength(sys.argv[2])
+if args[0] == "signal":
+	if len(args) > 1:
+		test.SignalStrength(args[1])
 	else:
 		print "Need signal strength parameter"
 	sys.exit(0)
 
-if sys.argv[1] == "battery":
-	if len(sys.argv) > 2:
-		test.BatteryLevel(sys.argv[2])
+if args[0] == "battery":
+	if len(args) > 1:
+		test.BatteryLevel(args[1])
 	else:
 		print "Need battery level parameter"
 	sys.exit(0)
 
-if sys.argv[1] == "roaming":
-	if len(sys.argv) > 2:
-		test.RoamingStatus(sys.argv[2] == "yes" or False)
+if args[0] == "roaming":
+	if len(args) > 1:
+		test.RoamingStatus(args[1] == "yes" or False)
 	else:
 		print "Need yes/no parameter"
 	sys.exit(0)
 
-if sys.argv[1] == "registration":
-	if len(sys.argv) > 2:
-		test.RegistrationStatus(sys.argv[2] == "yes" or False)
+if args[0] == "registration":
+	if len(args) > 1:
+		test.RegistrationStatus(args[1] == "yes" or False)
 	else:
 		print "Need yes/no parameter"
 	sys.exit(0)
 
-if sys.argv[1] == "subscriber":
-	if len(sys.argv) > 2:
-		test.SetSubscriberNumber(sys.argv[2])
+if args[0] == "subscriber":
+	if len(args) > 1:
+		test.SetSubscriberNumber(args[1])
 	else:
 		print "Need number parameter"
 	sys.exit(0)

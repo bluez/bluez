@@ -3,15 +3,29 @@
 import sys
 import dbus
 import time
+from optparse import OptionParser, make_option
 
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
 
-adapter = dbus.Interface(bus.get_object("org.bluez", manager.DefaultAdapter()),
+option_list = [
+		make_option("-i", "--device", action="store",
+				type="string", dest="dev_id"),
+		]
+parser = OptionParser(option_list=option_list)
+
+(options, args) = parser.parse_args()
+
+if options.dev_id:
+	adapter_path = manager.FindAdapter(options.dev_id)
+else:
+	adapter_path = manager.DefaultAdapter()
+
+adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
 
-if (len(sys.argv) < 2):
+if (len(args) < 1):
 	print "Usage: %s <command>" % (sys.argv[0])
 	print ""
 	print "  address"
@@ -24,80 +38,80 @@ if (len(sys.argv) < 2):
 	print "  discovering"
 	sys.exit(1)
 
-if (sys.argv[1] == "address"):
+if (args[0] == "address"):
 	properties = adapter.GetProperties()
 	print properties["Address"]
 	sys.exit(0)
 
-if (sys.argv[1] == "name"):
-	if (len(sys.argv) < 3):
+if (args[0] == "name"):
+	if (len(args) < 2):
 		properties = adapter.GetProperties()
 		print properties["Name"]
 	else:
-		adapter.SetProperty("Name", sys.argv[2])
+		adapter.SetProperty("Name", args[1])
 	sys.exit(0)
 
-if (sys.argv[1] == "powered"):
-	if (len(sys.argv) < 3):
+if (args[0] == "powered"):
+	if (len(args) < 2):
 		properties = adapter.GetProperties()
 		print properties["Powered"]
 	else:
-		if (sys.argv[2] == "on"):
+		if (args[1] == "on"):
 			value = dbus.Boolean(1)
-		elif (sys.argv[2] == "off"):
+		elif (args[1] == "off"):
 			value = dbus.Boolean(0)
 		else:
-			value = dbus.Boolean(sys.argv[2])
+			value = dbus.Boolean(args[1])
 		adapter.SetProperty("Powered", value)
 	sys.exit(0)
 
-if (sys.argv[1] == "pairable"):
-	if (len(sys.argv) < 3):
+if (args[0] == "pairable"):
+	if (len(args) < 2):
 		properties = adapter.GetProperties()
 		print properties["Pairable"]
 	else:
-		if (sys.argv[2] == "on"):
+		if (args[1] == "on"):
 			value = dbus.Boolean(1)
-		elif (sys.argv[2] == "off"):
+		elif (args[1] == "off"):
 			value = dbus.Boolean(0)
 		else:
-			value = dbus.Boolean(sys.argv[2])
+			value = dbus.Boolean(args[1])
 		adapter.SetProperty("Pairable", value)
 	sys.exit(0)
 
-if (sys.argv[1] == "pairabletimeout"):
-	if (len(sys.argv) < 3):
+if (args[0] == "pairabletimeout"):
+	if (len(args) < 2):
 		properties = adapter.GetProperties()
 		print properties["PairableTimeout"]
 	else:
-		timeout = dbus.UInt32(sys.argv[2])
+		timeout = dbus.UInt32(args[1])
 		adapter.SetProperty("PairableTimeout", timeout)
 	sys.exit(0)
 
-if (sys.argv[1] == "discoverable"):
-	if (len(sys.argv) < 3):
+if (args[0] == "discoverable"):
+	if (len(args) < 2):
 		properties = adapter.GetProperties()
 		print properties["Discoverable"]
 	else:
-		if (sys.argv[2] == "on"):
+		if (args[1] == "on"):
 			value = dbus.Boolean(1)
-		elif (sys.argv[2] == "off"):
+		elif (args[1] == "off"):
 			value = dbus.Boolean(0)
 		else:
-			value = dbus.Boolean(sys.argv[2])
+			value = dbus.Boolean(args[1])
 		adapter.SetProperty("Discoverable", value)
 	sys.exit(0)
 
-if (sys.argv[1] == "discoverabletimeout"):
-	if (len(sys.argv) < 3):
+if (args[0] == "discoverabletimeout"):
+	if (len(args) < 2):
 		properties = adapter.GetProperties()
 		print properties["DiscoverableTimeout"]
 	else:
-		timeout = dbus.UInt32(sys.argv[2])
+		timeout = dbus.UInt32(args[1])
 		adapter.SetProperty("DiscoverableTimeout", timeout)
 	sys.exit(0)
 
-if (sys.argv[1] == "discovering"):
+if (args[0] == "discovering"):
 	properties = adapter.GetProperties()
 	print properties["Discovering"]
 	sys.exit(0)
