@@ -57,7 +57,7 @@ void error(const char *format, ...)
 	va_end(ap);
 }
 
-void debug(const char *format, ...)
+void log_debug(const char *format, ...)
 {
 	va_list ap;
 
@@ -185,7 +185,7 @@ void obex_debug(int evt, int cmd, int rsp)
 		rspstr = obex_response[i].name;
 	}
 
-	debug("%s(0x%x), %s(0x%x), %s(0x%x)", evtstr, evt, cmdstr, cmd,
+	log_debug("%s(0x%x), %s(0x%x), %s(0x%x)", evtstr, evt, cmdstr, cmd,
 								rspstr, rsp);
 }
 

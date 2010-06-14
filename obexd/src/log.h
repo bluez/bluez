@@ -23,7 +23,7 @@
 
 void info(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void error(const char *format, ...) __attribute__((format(printf, 1, 2)));
-void debug(const char *format, ...) __attribute__((format(printf, 1, 2)));
+void log_debug(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void obex_debug(int evt, int cmd, int rsp);
 
 void log_init(const char *ident, const char *debug, int log_option);
@@ -52,5 +52,5 @@ struct log_debug_desc {
 		.file = __FILE__, .flags = LOG_DEBUG_FLAG_DEFAULT, \
 	}; \
 	if (__log_debug_desc.flags & LOG_DEBUG_FLAG_PRINT) \
-		debug("%s:%s() " fmt,  __FILE__, __FUNCTION__ , ## arg); \
+		log_debug("%s:%s() " fmt,  __FILE__, __FUNCTION__ , ## arg); \
 } while (0)
