@@ -34,7 +34,7 @@
 #include "obex.h"
 #include "server.h"
 #include "transport.h"
-#include "logging.h"
+#include "log.h"
 
 static GSList *drivers = NULL;
 

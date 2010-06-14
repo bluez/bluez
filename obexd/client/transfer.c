@@ -35,7 +35,7 @@
 #include <gdbus.h>
 #include <gw-obex.h>
 
-#include "logging.h"
+#include "log.h"
 #include "transfer.h"
 #include "session.h"
 

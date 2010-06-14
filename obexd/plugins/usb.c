@@ -46,7 +46,7 @@
 #include "obex.h"
 #include "transport.h"
 #include "service.h"
-#include "logging.h"
+#include "log.h"
 
 static GIOChannel *usb_io = NULL;
 static guint usb_reconnecting = 0;

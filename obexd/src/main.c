@@ -45,7 +45,7 @@
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
 
-#include "logging.h"
+#include "log.h"
 #include "obexd.h"
 #include "obex.h"
 #include "obex-priv.h"
@@ -66,11 +66,11 @@ static void sig_term(int sig)
 
 static void sig_debug(int sig)
 {
-	toggle_debug();
+	log_enable_debug();
 }
 
 static gboolean option_detach = TRUE;
-static gboolean option_debug = FALSE;
+static char *option_debug = NULL;
 
 static char *option_root = NULL;
 static char *option_root_setup = NULL;
@@ -84,12 +84,24 @@ static gboolean option_pcsuite = FALSE;
 static gboolean option_symlinks = FALSE;
 static gboolean option_syncevolution = FALSE;
 
+static gboolean parse_debug(const char *key, const char *value,
+				gpointer user_data, GError **error)
+{
+	if (value)
+		option_debug = g_strdup(value);
+	else
+		option_debug = g_strdup("*");
+
+	return TRUE;
+}
+
 static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Don't run as daemon in background" },
-	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
-				"Enable debug information output" },
+	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
+				G_OPTION_ARG_CALLBACK, parse_debug,
+				"Enable debug information output", "DEBUG" },
 	{ "root", 'r', 0, G_OPTION_ARG_STRING, &option_root,
 				"Specify root folder location", "PATH" },
 	{ "root-setup", 'S', 0, G_OPTION_ARG_STRING, &option_root_setup,
@@ -167,7 +179,7 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 	GError *err = NULL;
 	struct sigaction sa;
-	int log_option = LOG_NDELAY | LOG_PID;
+	int log_option = 0;
 
 #ifdef NEED_THREADS
 	if (g_thread_supported() == FALSE)
@@ -204,12 +216,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	openlog("obexd", log_option, LOG_DAEMON);
+	log_init("obexd", option_debug, log_option);
 
-	if (option_debug == TRUE) {
-		info("Enabling debug information");
-		enable_debug();
-	}
+	DBG("Entering main loop");
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 

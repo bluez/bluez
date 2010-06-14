@@ -32,7 +32,7 @@
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
 
-#include "logging.h"
+#include "log.h"
 #include "obex.h"
 #include "mimetype.h"
 

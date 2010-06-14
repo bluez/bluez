@@ -34,7 +34,7 @@
 
 #include "obexd.h"
 #include "plugin.h"
-#include "logging.h"
+#include "log.h"
 
 /*
  * Plugins that are using libraries with threads and their own mainloop

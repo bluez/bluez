@@ -41,7 +41,7 @@
 #include <openobex/obex_const.h>
 
 #include "plugin.h"
-#include "logging.h"
+#include "log.h"
 #include "obex.h"
 #include "service.h"
 #include "phonebook.h"

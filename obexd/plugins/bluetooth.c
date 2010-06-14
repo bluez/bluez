@@ -40,7 +40,7 @@
 #include "obex.h"
 #include "transport.h"
 #include "service.h"
-#include "logging.h"
+#include "log.h"
 #include "btio.h"
 
 #define BT_RX_MTU 32767

@@ -45,7 +45,7 @@
 #include <openobex/obex_const.h>
 
 #include "plugin.h"
-#include "logging.h"
+#include "log.h"
 #include "obex.h"
 #include "mimetype.h"
 #include "service.h"

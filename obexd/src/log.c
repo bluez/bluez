@@ -31,14 +31,9 @@
 
 #include <openobex/obex.h>
 
-#include "logging.h"
+#include <glib.h>
 
-static volatile int debug_enabled = 0;
-
-static inline void vinfo(const char *format, va_list ap)
-{
-	vsyslog(LOG_INFO, format, ap);
-}
+#include "log.h"
 
 void info(const char *format, ...)
 {
@@ -46,7 +41,7 @@ void info(const char *format, ...)
 
 	va_start(ap, format);
 
-	vinfo(format, ap);
+	vsyslog(LOG_INFO, format, ap);
 
 	va_end(ap);
 }
@@ -66,47 +61,11 @@ void debug(const char *format, ...)
 {
 	va_list ap;
 
-	if (!debug_enabled)
-		return;
-
 	va_start(ap, format);
 
 	vsyslog(LOG_DEBUG, format, ap);
 
 	va_end(ap);
-}
-
-void toggle_debug(void)
-{
-	debug_enabled = (debug_enabled + 1) % 2;
-}
-
-void enable_debug(void)
-{
-	debug_enabled = 1;
-}
-
-void disable_debug(void)
-{
-	debug_enabled = 0;
-}
-
-void start_logging(const char *ident, const char *message, ...)
-{
-	va_list ap;
-
-	openlog(ident, LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
-
-	va_start(ap, message);
-
-	vinfo(message, ap);
-
-	va_end(ap);
-}
-
-void stop_logging(void)
-{
-	closelog();
 }
 
 static struct {
@@ -164,7 +123,7 @@ static struct {
 	{ OBEX_RSP_CONTINUE,			"CONTINUE"		},
 	{ OBEX_RSP_SWITCH_PRO,			"SWITCH_PRO"		},
 	{ OBEX_RSP_SUCCESS,			"SUCCESS"		},
-	{ OBEX_RSP_CREATED, 			"CREATED"		},
+	{ OBEX_RSP_CREATED,			"CREATED"		},
 	{ OBEX_RSP_ACCEPTED,			"ACCEPTED"		},
 	{ OBEX_RSP_NON_AUTHORITATIVE,		"NON_AUTHORITATIVE"	},
 	{ OBEX_RSP_NO_CONTENT,			"NO_CONTENT"		},
@@ -208,9 +167,6 @@ void obex_debug(int evt, int cmd, int rsp)
 	const char *evtstr = NULL, *cmdstr = NULL, *rspstr = NULL;
 	int i;
 
-	if (!debug_enabled)
-		return;
-
 	for (i = 0; obex_event[i].evt != 0xFF; i++) {
 		if (obex_event[i].evt != evt)
 			continue;
@@ -231,4 +187,72 @@ void obex_debug(int evt, int cmd, int rsp)
 
 	debug("%s(0x%x), %s(0x%x), %s(0x%x)", evtstr, evt, cmdstr, cmd,
 								rspstr, rsp);
+}
+
+extern struct log_debug_desc __start___debug[];
+extern struct log_debug_desc __stop___debug[];
+
+static gchar **enabled = NULL;
+
+int debug_enabled = FALSE;
+
+static gboolean is_enabled(struct log_debug_desc *desc)
+{
+	int i;
+
+	if (enabled == NULL)
+		return 0;
+
+	for (i = 0; enabled[i] != NULL; i++) {
+		if (desc->name != NULL && g_pattern_match_simple(enabled[i],
+							desc->name) == TRUE)
+			return 1;
+		if (desc->file != NULL && g_pattern_match_simple(enabled[i],
+							desc->file) == TRUE)
+			return 1;
+	}
+
+	return 0;
+}
+
+void log_enable_debug()
+{
+	struct log_debug_desc *desc;
+
+	for (desc = __start___debug; desc < __stop___debug; desc++)
+		desc->flags |= LOG_DEBUG_FLAG_PRINT;
+}
+
+void log_init(const char *ident, const char *debug, int log_option)
+{
+	int option = log_option | LOG_NDELAY | LOG_PID;
+	struct log_debug_desc *desc;
+	const char *name = NULL, *file = NULL;
+
+	if (debug != NULL)
+		enabled = g_strsplit_set(debug, ":, ", 0);
+
+	for (desc = __start___debug; desc < __stop___debug; desc++) {
+		if (file != NULL || name != NULL) {
+			if (g_strcmp0(desc->file, file) == 0) {
+				if (desc->name == NULL)
+					desc->name = name;
+			} else
+				file = NULL;
+		}
+
+		if (is_enabled(desc))
+			desc->flags |= LOG_DEBUG_FLAG_PRINT;
+	}
+
+	openlog(ident, option, LOG_DAEMON);
+
+	syslog(LOG_INFO, "%s version %s", ident, VERSION);
+}
+
+void log_cleanup(void)
+{
+	closelog();
+
+	g_strfreev(enabled);
 }

@@ -37,7 +37,7 @@
 #include "plugin.h"
 #include "obex.h"
 #include "service.h"
-#include "logging.h"
+#include "log.h"
 #include "dbus.h"
 
 #define VCARD_TYPE "text/x-vcard"

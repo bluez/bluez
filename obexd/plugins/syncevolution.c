@@ -41,7 +41,7 @@
 #include "obex.h"
 #include "service.h"
 #include "mimetype.h"
-#include "logging.h"
+#include "log.h"
 #include "dbus.h"
 #include "btio.h"
 #include "obexd.h"

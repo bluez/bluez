@@ -40,7 +40,7 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "logging.h"
+#include "log.h"
 #include "pbap.h"
 #include "sync.h"
 #include "transfer.h"

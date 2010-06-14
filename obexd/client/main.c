@@ -34,7 +34,7 @@
 #include <glib.h>
 #include <gdbus.h>
 
-#include "logging.h"
+#include "log.h"
 #include "transfer.h"
 #include "session.h"
 
@@ -544,12 +544,24 @@ static GDBusMethodTable client_methods[] = {
 
 static GMainLoop *event_loop = NULL;
 
-static gboolean option_debug = FALSE;
+static char *option_debug = NULL;
 static gboolean option_stderr = FALSE;
 
+static gboolean parse_debug(const char *key, const char *value,
+				gpointer user_data, GError **error)
+{
+	if (value)
+		option_debug = g_strdup(value);
+	else
+		option_debug = g_strdup("*");
+
+	return TRUE;
+}
+
 static GOptionEntry options[] = {
-	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
-				"Enable debug information output" },
+	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
+				G_OPTION_ARG_CALLBACK, parse_debug,
+				"Enable debug information output", "DEBUG" },
 	{ "stderr", 's', 0, G_OPTION_ARG_NONE, &option_stderr,
 				"Write log information to stderr" },
 	{ NULL },
@@ -567,7 +579,7 @@ int main(int argc, char *argv[])
 	DBusConnection *conn;
 	DBusError derr;
 	GError *gerr = NULL;
-	int log_option;
+	int log_option = 0;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -598,19 +610,14 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	event_loop = g_main_loop_new(NULL, FALSE);
-
-	log_option = LOG_NDELAY | LOG_PID;
-
 	if (option_stderr == TRUE)
 		log_option |= LOG_PERROR;
 
-	openlog("obex-client", log_option, LOG_DAEMON);
+	event_loop = g_main_loop_new(NULL, FALSE);
 
-	if (option_debug == TRUE) {
-		info("Enabling debug information");
-		enable_debug();
-	}
+	log_init("obex-client", option_debug, log_option);
+
+	DBG("Entering main loop");
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
