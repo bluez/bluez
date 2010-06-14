@@ -52,7 +52,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"NOTACALL\" \"false\" "	\
-	"\"false\" "							\
+	"\"false\" ?c "							\
 	"WHERE { "							\
 		"?c a nco:PersonContact . "				\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
@@ -82,7 +82,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) nmo:receivedDate(?call) "	\
-	"nmo:isSent(?call) nmo:isAnswered(?call)"			\
+	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
@@ -120,7 +120,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) nmo:receivedDate(?call) "	\
-	"nmo:isSent(?call) nmo:isAnswered(?call)"			\
+	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
@@ -156,7 +156,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) nmo:receivedDate(?call) "	\
-	"nmo:isSent(?call) nmo:isAnswered(?call)"			\
+	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
@@ -192,7 +192,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) nmo:receivedDate(?call) "	\
-	"nmo:isSent(?call) nmo:isAnswered(?call)"			\
+	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
 	"{ "								\
 		"?call a nmo:Call ; "					\
@@ -248,7 +248,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"NOTACALL\" \"false\" "	\
-	"\"false\" "							\
+	"\"false\" <%s> "							\
 	"WHERE { "							\
 		"<%s> a nco:Contact . "					\
 	"OPTIONAL { <%s> nco:hasPhoneNumber ?h . } "			\
@@ -417,7 +417,6 @@ static void query_reply(DBusPendingCall *call, void *user_data)
 
 	while (dbus_message_iter_get_arg_type(&element) != DBUS_TYPE_INVALID) {
 		char **node;
-		int i;
 
 		if (dbus_message_iter_get_arg_type(&element) !=
 						DBUS_TYPE_ARRAY) {
@@ -426,15 +425,8 @@ static void query_reply(DBusPendingCall *call, void *user_data)
 		}
 
 		node = string_array_from_iter(element, pending->num_fields);
-
-		/* Ignoring empty responses */
-		for (i = 0; i < pending->num_fields; i++) {
-			if (node[i][0] != '\0') {
-				pending->callback(node, pending->num_fields,
+		pending->callback(node, pending->num_fields,
 							pending->user_data);
-				break;
-			}
-		}
 
 		g_free(node);
 
@@ -554,7 +546,7 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	struct phonebook_contact *contact;
 	struct phonebook_number *number;
 	GString *vcards = data->vcards;
-	int last_index;
+	int last_index, i;
 
 	DBG("reply %p", reply);
 
@@ -564,6 +556,15 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	/* We are doing a PullvCardEntry, no need for those checks */
 	if (data->vcardentry)
 		goto add_entry;
+
+	/* Last four fields are always present, ignoring them */
+	for (i = 0; i < num_fields - 4; i++)
+		if (reply[i][0] != '\0')
+			break;
+
+	if (i == num_fields - 4 && g_str_equal(reply[19],
+					TRACKER_DEFAULT_CONTACT_ME) == FALSE)
+		return;
 
 	data->index++;
 
@@ -635,16 +636,21 @@ static void add_to_cache(char **reply, int num_fields, void *user_data)
 	if (reply == NULL)
 		goto done;
 
-	for (i = 1; i < 6; i++)
-		if (reply[i][0] != '\0') {
-			formatted = g_strdup_printf("%s;%s;%s;%s;%s",
-					reply[1], reply[2], reply[3], reply[4],
-					reply[5]);
+	/* the first element is the URI, always not empty */
+	for (i = 1; i < num_fields; i++)
+		if (reply[i][0] != '\0')
 			break;
-		}
+
+	if (i == num_fields && g_str_equal(reply[0],
+					TRACKER_DEFAULT_CONTACT_ME) == FALSE)
+		return;
 
 	if (i == 6)
 		formatted = g_strdup(reply[6]);
+	else
+		formatted = g_strdup_printf("%s;%s;%s;%s;%s",
+					reply[1], reply[2], reply[3], reply[4],
+					reply[5]);
 
 	/* The owner vCard must have the 0 handle */
 	if (strcmp(reply[0], TRACKER_DEFAULT_CONTACT_ME) == 0)
@@ -766,7 +772,7 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 	data->user_data = user_data;
 	data->cb = cb;
 
-	return query_tracker(query, 19, pull_contacts, data);
+	return query_tracker(query, 20, pull_contacts, data);
 }
 
 int phonebook_get_entry(const char *folder, const char *id,
@@ -787,9 +793,9 @@ int phonebook_get_entry(const char *folder, const char *id,
 	data->vcardentry = TRUE;
 
 	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id, id,
-						id, id, id, id, id, id);
+						id, id, id, id, id, id, id);
 
-	ret = query_tracker(query, 19, pull_contacts, data);
+	ret = query_tracker(query, 20, pull_contacts, data);
 
 	g_free(query);
 
