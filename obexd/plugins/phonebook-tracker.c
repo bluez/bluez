@@ -527,12 +527,12 @@ static void set_call_type(struct phonebook_contact *contact,
 	sent = g_str_equal(is_sent, "true");
 	answered = g_str_equal(is_answered, "true");
 
-	if (sent == FALSE)
+	if (sent == FALSE) {
 		if (answered == FALSE)
 			contact->calltype = CALL_TYPE_MISSED;
 		else
 			contact->calltype = CALL_TYPE_INCOMING;
-	else
+	} else
 		contact->calltype = CALL_TYPE_OUTGOING;
 
 	/* Tracker gives time in the ISO 8601 format, UTC time */
@@ -558,12 +558,13 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 		goto add_entry;
 
 	/* Last four fields are always present, ignoring them */
-	for (i = 0; i < num_fields - 4; i++)
+	for (i = 0; i < num_fields - 4; i++) {
 		if (reply[i][0] != '\0')
 			break;
+	}
 
-	if (i == num_fields - 4 && g_str_equal(reply[19],
-					TRACKER_DEFAULT_CONTACT_ME) == FALSE)
+	if (i == num_fields - 4 &&
+			!g_str_equal(reply[19], TRACKER_DEFAULT_CONTACT_ME))
 		return;
 
 	data->index++;
@@ -637,12 +638,13 @@ static void add_to_cache(char **reply, int num_fields, void *user_data)
 		goto done;
 
 	/* the first element is the URI, always not empty */
-	for (i = 1; i < num_fields; i++)
+	for (i = 1; i < num_fields; i++) {
 		if (reply[i][0] != '\0')
 			break;
+	}
 
-	if (i == num_fields && g_str_equal(reply[0],
-					TRACKER_DEFAULT_CONTACT_ME) == FALSE)
+	if (i == num_fields &&
+			!g_str_equal(reply[0], TRACKER_DEFAULT_CONTACT_ME))
 		return;
 
 	if (i == 6)
