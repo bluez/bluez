@@ -56,6 +56,18 @@
 #define DEFAULT_RX_MTU 32767
 #define DEFAULT_TX_MTU 32767
 
+/* Challenge request */
+#define NONCE_TAG 0x00
+#define OPTIONS_TAG 0x01 /* Optional */
+#define REALM_TAG 0x02 /* Optional */
+
+#define NONCE_LEN 16
+
+/* Challenge response */
+#define DIGEST_TAG 0x00
+#define USER_ID_TAG 0x01 /* Optional */
+#define DIGEST_NONCE_TAG 0x02 /* Optional */
+
 /* Connection ID */
 static uint32_t cid = 0x0000;
 
@@ -66,6 +78,12 @@ typedef struct {
 	uint8_t  flags;
 	uint16_t mtu;
 } __attribute__ ((packed)) obex_connect_hdr_t;
+
+struct auth_header {
+	uint8_t tag;
+	uint8_t len;
+	uint8_t val[0];
+} __attribute__ ((packed));
 
 static void os_set_response(obex_object_t *obj, int err)
 {
@@ -216,6 +234,53 @@ static time_t parse_iso8610(const char *val, int size)
 	return time;
 }
 
+static uint8_t *extract_nonce(const uint8_t *buffer, unsigned int hlen)
+{
+	struct auth_header *hdr;
+	uint8_t *nonce = NULL;
+	uint32_t len = 0;
+
+	while (len < hlen) {
+		hdr = (void *) buffer + len;
+
+		switch (hdr->tag) {
+		case NONCE_TAG:
+			if (hdr->len != NONCE_LEN)
+				return NULL;
+
+			nonce = hdr->val;
+			break;
+		}
+
+		len += hdr->len + sizeof(struct auth_header);
+	}
+
+	return nonce;
+}
+
+static uint8_t *challenge_response(const uint8_t *nonce)
+{
+	GChecksum *md5;
+	uint8_t *result;
+	size_t size;
+
+	result = g_new0(uint8_t, NONCE_LEN);
+
+	md5 = g_checksum_new(G_CHECKSUM_MD5);
+	if (md5 == NULL)
+		return result;
+
+	g_checksum_update(md5, nonce, NONCE_LEN);
+	g_checksum_update(md5, (uint8_t *) ":BlueZ", 6);
+
+	size = NONCE_LEN;
+	g_checksum_get_digest(md5, result, &size);
+
+	g_checksum_free(md5);
+
+	return result;
+}
+
 static void cmd_connect(struct obex_session *os,
 			obex_t *obex, obex_object_t *obj)
 {
@@ -225,7 +290,7 @@ static void cmd_connect(struct obex_session *os,
 	unsigned int hlen, newsize;
 	uint16_t mtu;
 	uint8_t hi;
-	const uint8_t *target = NULL, *who = NULL;
+	const uint8_t *target = NULL, *who = NULL, *nonce = NULL;
 	unsigned int target_size = 0, who_size = 0;
 	int err;
 
@@ -259,6 +324,15 @@ static void cmd_connect(struct obex_session *os,
 			target = hd.bs;
 			target_size = hlen;
 			break;
+		case OBEX_HDR_AUTHCHAL:
+			if (nonce) {
+				debug("Ignoring multiple challenge headers");
+				break;
+			}
+
+			nonce = extract_nonce(hd.bs, hlen);
+			debug("AUTH CHALLENGE REQUEST");
+			break;
 		}
 	}
 
@@ -289,6 +363,21 @@ static void cmd_connect(struct obex_session *os,
 		OBEX_ObjectAddHeader(obex, obj,
 				OBEX_HDR_CONNECTION, hd, 4,
 				OBEX_FL_FIT_ONE_PACKET);
+	}
+
+	if (err == 0 && nonce) {
+		uint8_t challenge[18];
+		struct auth_header *hdr = (struct auth_header *) challenge;
+		uint8_t *response = challenge_response(nonce);
+
+		hdr->tag = DIGEST_TAG;
+		hdr->len = NONCE_LEN;
+		memcpy(hdr->val, response, NONCE_LEN);
+
+		g_free(response);
+
+		hd.bs = challenge;
+		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_AUTHRESP, hd, 18, 0);
 	}
 
 	os_set_response(obj, err);
