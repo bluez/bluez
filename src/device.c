@@ -2267,11 +2267,7 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 
 	DBG("%s: requesting agent authentication", device->path);
 
-	agent = device->agent;
-
-	if (!agent)
-		agent = adapter_get_agent(device->adapter);
-
+	agent = device_get_agent(device);
 	if (!agent) {
 		error("No agent available for %u request", type);
 		return -EPERM;
