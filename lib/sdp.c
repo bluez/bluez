@@ -4769,13 +4769,32 @@ int sdp_get_supp_feat(const sdp_record_t *rec, sdp_list_t **seqp)
 
 		if (d->dtd < SDP_SEQ8 || d->dtd > SDP_SEQ32)
 			goto fail;
+
 		subseq = NULL;
+
 		for (dd = d->val.dataseq; dd; dd = dd->next) {
 			sdp_data_t *data;
-			if (dd->dtd != SDP_UINT8 && dd->dtd != SDP_UINT16 &&
-						dd->dtd != SDP_TEXT_STR8)
+			void *val;
+			int length;
+
+			switch (dd->dtd) {
+			case SDP_URL_STR8:
+			case SDP_URL_STR16:
+			case SDP_TEXT_STR8:
+			case SDP_TEXT_STR16:
+				val = dd->val.str;
+				length = dd->unitSize - sizeof(uint8_t);
+				break;
+			case SDP_UINT8:
+			case SDP_UINT16:
+				val = &dd->val;
+				length = 0;
+				break;
+			default:
 				goto fail;
-			data = sdp_data_alloc(dd->dtd, &dd->val);
+			}
+
+			data = sdp_data_alloc_with_length(dd->dtd, val, length);
 			if (data)
 				subseq = sdp_list_append(subseq, data);
 		}
