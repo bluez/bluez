@@ -1909,6 +1909,64 @@ typedef struct {
 } __attribute__ ((packed)) evt_remote_host_features_notify;
 #define EVT_REMOTE_HOST_FEATURES_NOTIFY_SIZE 14
 
+#define EVT_LE_META_EVENT	0x3E
+typedef struct {
+	uint8_t		subevent;
+	uint8_t		data[0];
+} __attribute__ ((packed)) evt_le_meta_event;
+#define EVT_LE_META_EVENT_SIZE 1
+
+#define EVT_LE_CONN_COMPLETE	0x01
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		role;
+	uint8_t		peer_bdaddr_type;
+	bdaddr_t	peer_bdaddr;
+	uint16_t	interval;
+	uint16_t	latency;
+	uint16_t	supervision_timeout;
+	uint8_t		master_clock_accuracy;
+} __attribute__ ((packed)) evt_le_connection_complete;
+#define EVT_LE_CONN_COMPLETE_SIZE 18
+
+#define EVT_LE_ADVERTISING_REPORT	0x02
+typedef struct {
+	uint8_t		evt_type;
+	uint8_t		bdaddr_type;
+	bdaddr_t	bdaddr;
+	uint8_t		length;
+	uint8_t		data[31];
+	uint8_t		rssi;
+} __attribute__ ((packed)) le_advertising_info;
+#define LE_ADVERTISING_INFO_SIZE 41
+
+#define EVT_LE_CONN_UPDATE_COMPLETE	0x03
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint16_t	interval;
+	uint16_t	latency;
+	uint16_t	supervision_timeout;
+} __attribute__ ((packed)) evt_le_connection_update_complete;
+#define EVT_LE_CONN_UPDATE_COMPLETE_SIZE 9
+
+#define EVT_LE_READ_REMOTE_USED_FEATURES_COMPLETE	0x04
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+	uint8_t		features[8];
+} __attribute__ ((packed)) evt_le_read_remote_used_features_complete;
+#define EVT_LE_READ_REMOTE_USED_FEATURES_COMPLETE_SIZE 11
+
+#define EVT_LE_LTK_REQUEST	0x05
+typedef struct {
+	uint16_t	handle;
+	uint64_t	random;
+	uint16_t	diversifier;
+} __attribute__ ((packed)) evt_le_long_term_key_request;
+#define EVT_LE_LTK_REQUEST_SIZE 12
+
 #define EVT_TESTING			0xFE
 
 #define EVT_VENDOR			0xFF
