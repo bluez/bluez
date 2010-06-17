@@ -1311,9 +1311,12 @@ static void hal_battery_level_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_message_get_args(reply, NULL,
+	if (!dbus_message_get_args(reply, NULL,
 				DBUS_TYPE_INT32, &level,
-				DBUS_TYPE_INVALID);
+				DBUS_TYPE_INVALID)) {
+		error("Unexpected args in hald reply");
+		goto done;
+	}
 
 	*value = (int) level;
 
