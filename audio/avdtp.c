@@ -804,7 +804,8 @@ static gboolean stream_timeout(gpointer user_data)
 	struct avdtp_stream *stream = user_data;
 	struct avdtp *session = stream->session;
 
-	avdtp_close(session, stream, FALSE);
+	if (avdtp_close(session, stream, FALSE) < 0)
+		error("stream_timeout: closing AVDTP stream failed");
 
 	stream->idle_timer = 0;
 
