@@ -351,11 +351,17 @@ static sdp_record_t *hfp_ag_record(uint8_t ch, uint32_t feat)
 	sdp_data_t *channel, *features;
 	uint8_t netid = 0x01;
 	uint16_t sdpfeat;
-	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
+	sdp_data_t *network;
 
 	record = sdp_record_alloc();
 	if (!record)
 		return NULL;
+
+	network = sdp_data_alloc(SDP_UINT8, &netid);
+	if (!network) {
+		sdp_record_free(record);
+		return NULL;
+	}
 
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
