@@ -74,7 +74,7 @@ static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
 	}
 
 	plugins = g_slist_append(plugins, plugin);
-	debug("Plugin %s loaded", desc->name);
+	DBG("Plugin %s loaded", desc->name);
 
 	return TRUE;
 }
@@ -90,12 +90,12 @@ gboolean plugin_init(void)
 	if (strlen(PLUGINDIR) == 0)
 		return FALSE;
 
-	debug("Loading builtin plugins");
+	DBG("Loading builtin plugins");
 
 	for (i = 0; __obex_builtin[i]; i++)
 		add_plugin(NULL,  __obex_builtin[i]);
 
-	debug("Loading plugins %s", PLUGINDIR);
+	DBG("Loading plugins %s", PLUGINDIR);
 
 	dir = g_dir_open(PLUGINDIR, 0, NULL);
 	if (!dir)
@@ -142,7 +142,7 @@ void plugin_cleanup(void)
 {
 	GSList *list;
 
-	debug("Cleanup plugins");
+	DBG("Cleanup plugins");
 
 	for (list = plugins; list; list = list->next) {
 		struct obex_plugin *plugin = list->data;

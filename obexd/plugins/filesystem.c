@@ -399,7 +399,7 @@ static GString *append_listing(GString *object, const char *name,
 			ret = lstat(fullname, &fstat);
 
 		if (ret < 0) {
-			debug("%s: %s(%d)", root ? "stat" : "lstat",
+			DBG("%s: %s(%d)", root ? "stat" : "lstat",
 					strerror(errno), errno);
 			g_free(filename);
 			g_free(fullname);

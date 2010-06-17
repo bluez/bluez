@@ -78,14 +78,14 @@ static void usb_disconnect(struct obex_server *server)
 	g_io_channel_shutdown(usb_io, TRUE, NULL);
 	g_io_channel_unref(usb_io);
 	usb_io = NULL;
-	debug("usb: disconnected");
+	DBG("disconnected");
 }
 
 static gboolean usb_reconnect(void *data)
 {
 	struct obex_server *server = data;
 
-	debug("usb: reconnecting");
+	DBG("reconnecting");
 	usb_reconnecting = 0;
 	usb_connect(server);
 
@@ -156,7 +156,7 @@ static int usb_connect(struct obex_server *server)
 	usb_watch = g_io_add_watch(usb_io, G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 					usb_watchdog, server);
 
-	debug("usb: Successfully opened %s", USB_DEVNODE);
+	DBG("Successfully opened %s", USB_DEVNODE);
 
 	return 0;
 

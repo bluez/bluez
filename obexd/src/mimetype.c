@@ -183,7 +183,7 @@ int obex_mime_type_driver_register(struct obex_mime_type_driver *driver)
 	if (driver->set_io_watch == NULL)
 		driver->set_io_watch = set_io_watch;
 
-	debug("driver %p mimetype %s registered", driver, driver->mimetype);
+	DBG("driver %p mimetype %s registered", driver, driver->mimetype);
 
 	drivers = g_slist_append(drivers, driver);
 
@@ -197,7 +197,7 @@ void obex_mime_type_driver_unregister(struct obex_mime_type_driver *driver)
 		return;
 	}
 
-	debug("driver %p mimetype %s unregistered", driver, driver->mimetype);
+	DBG("driver %p mimetype %s unregistered", driver, driver->mimetype);
 
 	drivers = g_slist_remove(drivers, driver);
 }

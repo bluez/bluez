@@ -79,7 +79,7 @@ static void on_backup_dbus_notify(DBusPendingCall *pending_call,
 	const char *filename;
 	int error_code;
 
-	debug("backup: Notification received for pending call - %s", obj->cmd);
+	DBG("Notification received for pending call - %s", obj->cmd);
 
 	reply = dbus_pending_call_steal_reply(pending_call);
 
@@ -90,15 +90,14 @@ static void on_backup_dbus_notify(DBusPendingCall *pending_call,
 		obj->error_code = error_code;
 
 		if (filename) {
-			debug("backup: Notification - file path = %s,"
-					"error_code = %d", filename,
-					error_code);
+			DBG("Notification - file path = %s, error_code = %d",
+					filename, error_code);
 			if (error_code == 0)
 				obj->fd = open(filename,obj->oflag,obj->mode);
 		}
 
 	} else
-		debug("backup: Notification timed out or connection got closed");
+		DBG("Notification timed out or connection got closed");
 
 	if (reply)
 		dbus_message_unref(reply);
@@ -109,14 +108,14 @@ static void on_backup_dbus_notify(DBusPendingCall *pending_call,
 	obj->conn = NULL;
 
 	if (obj->fd >= 0) {
-		debug("backup: File opened, setting io flags, cmd = %s",
+		DBG("File opened, setting io flags, cmd = %s",
 				obj->cmd);
 		if (obj->oflag == O_RDONLY)
 			obex_object_set_io_flags(user_data, G_IO_IN, 0);
 		else
 			obex_object_set_io_flags(user_data, G_IO_OUT, 0);
 	} else {
-		debug("backup: File open error, setting io error, cmd = %s",
+		DBG("File open error, setting io error, cmd = %s",
 				obj->cmd);
 		obex_object_set_io_flags(user_data, G_IO_ERR, -EPERM);
 	}
@@ -176,7 +175,7 @@ static void *backup_open(const char *name, int oflag, mode_t mode,
 {
 	struct backup_object *obj = g_new0(struct backup_object, 1);
 
-	debug("backup: open(), cmd = %s", name);
+	DBG("cmd = %s", name);
 
 	obj->cmd = g_path_get_basename(name);
 	obj->oflag = oflag;
@@ -202,7 +201,7 @@ static int backup_close(void *object)
 	struct backup_object *obj = object;
 	size_t size = 0;
 
-	debug("backup: close(), cmd = %s", obj->cmd);
+	DBG("cmd = %s", obj->cmd);
 
 	if (obj->fd != -1)
 		close(obj->fd);
@@ -229,17 +228,17 @@ static ssize_t backup_read(void *object, void *buf, size_t count, uint8_t *hi)
 	*hi = OBEX_HDR_BODY;
 
 	if (obj->pending_call) {
-		debug("backup: read(), cmd = %s, IN WAITING STAGE", obj->cmd);
+		DBG("cmd = %s, IN WAITING STAGE", obj->cmd);
 		return -EAGAIN;
 	}
 
 	if (obj->fd != -1) {
-		debug("backup: read(), cmd = %s, READING DATA", obj->cmd);
+		DBG("cmd = %s, READING DATA", obj->cmd);
 		ret = read(obj->fd, buf, count);
 		if (ret < 0)
 			ret = -errno;
 	} else {
-		debug("backup: read(), cmd = %s, PERMANENT FAILURE", obj->cmd);
+		DBG("cmd = %s, PERMANENT FAILURE", obj->cmd);
 		ret = obj->error_code?(-obj->error_code):(-ENOENT);
 	}
 
@@ -252,21 +251,21 @@ static ssize_t backup_write(void *object, const void *buf, size_t count)
 	ssize_t ret = 0;
 
 	if (obj->pending_call) {
-		debug("backup: write(), cmd = %s, IN WAITING STAGE", obj->cmd);
+		DBG("cmd = %s, IN WAITING STAGE", obj->cmd);
 		return -EAGAIN;
 	}
 
 	if (obj->fd != -1) {
 		ret = write(obj->fd, buf, count);
 
-		debug("backup: write(), cmd = %s, WRITTING", obj->cmd);
+		DBG("cmd = %s, WRITTING", obj->cmd);
 
 		if (ret < 0) {
-			debug("backup: write() error, cmd = %s", obj->cmd);
+			error("backup: cmd = %s", obj->cmd);
 			ret = -errno;
 		}
 	} else {
-		debug("backup: write() error, cmd = %s", obj->cmd);
+		error("backup: cmd = %s", obj->cmd);
 		ret = obj->error_code ? -obj->error_code : -ENOENT;
 	}
 

@@ -170,7 +170,7 @@ static void connect_cb(DBusPendingCall *call, void *user_data)
 		goto failed;
 	}
 
-	debug("Got conn object %s from syncevolution", path);
+	DBG("Got conn object %s from syncevolution", path);
 	context->conn_obj = g_strdup(path);
 
 	context->reply_watch = g_dbus_add_signal_watch(conn, NULL, path,

@@ -301,7 +301,7 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 
 	/* Check flag "Backup" */
 	if ((nonhdr[0] & 0x01) == 0x01) {
-		debug("Set to parent path");
+		DBG("Set to parent path");
 
 		if (root)
 			return -EPERM;
@@ -310,18 +310,18 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 		set_folder(ftp, fullname);
 		g_free(fullname);
 
-		debug("Set to parent path: %s", ftp->folder);
+		DBG("Set to parent path: %s", ftp->folder);
 
 		return 0;
 	}
 
 	if (!name) {
-		debug("Set path failed: name missing!");
+		DBG("Set path failed: name missing!");
 		return -EINVAL;
 	}
 
 	if (strlen(name) == 0) {
-		debug("Set to root");
+		DBG("Set to root");
 		set_folder(ftp, root_folder);
 		return 0;
 	}
@@ -334,7 +334,7 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 
 	fullname = g_build_filename(ftp->folder, name, NULL);
 
-	debug("Fullname: %s", fullname);
+	DBG("Fullname: %s", fullname);
 
 	if (root && obex_get_symlinks(os))
 		err = stat(fullname, &dstat);
@@ -347,7 +347,7 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 		if (err == -ENOENT)
 			goto not_found;
 
-		debug("%s: %s(%d)", root ? "stat" : "lstat",
+		DBG("%s: %s(%d)", root ? "stat" : "lstat",
 				strerror(-err), -err);
 
 		goto done;
@@ -370,7 +370,7 @@ not_found:
 
 	if (mkdir(fullname, 0755) <  0) {
 		err = -errno;
-		debug("mkdir: %s(%d)", strerror(-err), -err);
+		DBG("mkdir: %s(%d)", strerror(-err), -err);
 		goto done;
 	}
 

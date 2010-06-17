@@ -221,7 +221,7 @@ static gboolean read_dir(void *user_data)
 	dp = opendir(dummy->folder);
 	if (dp == NULL) {
 		int err = errno;
-		debug("opendir(): %s(%d)", strerror(err), err);
+		DBG("opendir(): %s(%d)", strerror(err), err);
 		goto done;
 	}
 
@@ -494,7 +494,7 @@ int phonebook_get_entry(const char *folder, const char *id,
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
 		int err = errno;
-		debug("open(): %s(%d)", strerror(err), err);
+		DBG("open(): %s(%d)", strerror(err), err);
 		return -ENOENT;
 	}
 
@@ -522,7 +522,7 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 
 	if (dp == NULL) {
 		int err = errno;
-		debug("opendir(): %s(%d)", strerror(err), err);
+		DBG("opendir(): %s(%d)", strerror(err), err);
 		return -ENOENT;
 	}
 

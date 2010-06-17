@@ -184,7 +184,7 @@ static void dbus_message_iter_append_dict_entry(DBusMessageIter *dict,
 
 static void agent_disconnected(DBusConnection *conn, void *user_data)
 {
-	debug("Agent exited");
+	DBG("Agent exited");
 	agent_free(agent);
 	agent = NULL;
 }
@@ -210,7 +210,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 	agent->watch_id = g_dbus_add_disconnect_watch(conn, sender,
 					agent_disconnected, NULL, NULL);
 
-	debug("Agent registered");
+	DBG("Agent registered");
 
 	return dbus_message_new_method_return(msg);
 }
@@ -240,7 +240,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	agent_free(agent);
 	agent = NULL;
 
-	debug("Agent unregistered");
+	DBG("Agent unregistered");
 
 	return dbus_message_new_method_return(msg);
 }
@@ -491,7 +491,7 @@ static void agent_reply(DBusPendingCall *call, void *user_data)
 				DBUS_TYPE_INVALID)) {
 		/* Splits folder and name */
 		const char *slash = strrchr(name, '/');
-		debug("Agent replied with %s", name);
+		DBG("Agent replied with %s", name);
 		if (!slash) {
 			agent->new_name = g_strdup(name);
 			agent->new_folder = NULL;

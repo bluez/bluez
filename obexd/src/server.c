@@ -65,13 +65,13 @@ int obex_server_init(uint16_t service, const char *folder,
 
 	drivers = obex_service_driver_list(service);
 	if (drivers == NULL) {
-		debug("No service driver registered");
+		DBG("No service driver registered");
 		return -EINVAL;
 	}
 
 	transports = obex_transport_driver_list();
 	if (transports == NULL) {
-		debug("No transport driver registered");
+		DBG("No transport driver registered");
 		return -EINVAL;
 	}
 
@@ -95,7 +95,7 @@ int obex_server_init(uint16_t service, const char *folder,
 
 		server->transport_data = transport->start(server, &err);
 		if (server->transport_data == NULL) {
-			debug("Unable to start %s transport: %s (%d)",
+			DBG("Unable to start %s transport: %s (%d)",
 					transport->name, strerror(err), err);
 			obex_server_free(server);
 			continue;

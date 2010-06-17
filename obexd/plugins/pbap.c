@@ -431,7 +431,7 @@ static void cache_entry_done(void *user_data)
 
 	id = cache_find(&pbap->cache, pbap->find_handle);
 	if (id == NULL) {
-		debug("Entry %d not found on cache", pbap->find_handle);
+		DBG("Entry %d not found on cache", pbap->find_handle);
 		obex_object_set_io_flags(pbap, G_IO_ERR, -ENOENT);
 		return;
 	}

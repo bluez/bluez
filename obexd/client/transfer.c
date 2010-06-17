@@ -200,7 +200,7 @@ struct transfer_data *transfer_register(struct session_data *session,
 		return NULL;
 	}
 
-	debug("Transfer(%p) registered %s", transfer, transfer->path);
+	DBG("Transfer(%p) registered %s", transfer, transfer->path);
 
 done:
 	session->pending = g_slist_append(session->pending, transfer);
@@ -216,7 +216,7 @@ void transfer_unregister(struct transfer_data *transfer)
 		g_dbus_unregister_interface(session->conn,
 			transfer->path, TRANSFER_INTERFACE);
 
-		debug("Transfer(%p) unregistered %s", transfer,
+		DBG("Transfer(%p) unregistered %s", transfer,
 					transfer->path);
 	}
 

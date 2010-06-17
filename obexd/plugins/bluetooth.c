@@ -91,7 +91,7 @@ static void add_record_reply(DBusPendingCall *call, void *user_data)
 
 		service->handle = handle;
 
-		debug("bluetooth: Registered: %s, handle: 0x%x",
+		DBG("Registered: %s, handle: 0x%x",
 				service->driver->name, service->handle);
 	}
 
@@ -223,7 +223,7 @@ static DBusPendingCall *find_adapter(const char *pattern,
 	DBusMessage *msg;
 	DBusPendingCall *call;
 
-	debug("bluetooth: FindAdapter(%s)", pattern);
+	DBG("FindAdapter(%s)", pattern);
 
 	msg = dbus_message_new_method_call("org.bluez", "/",
 					"org.bluez.Manager", "FindAdapter");
@@ -332,7 +332,7 @@ static void service_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	debug("bluetooth: RequestAuthorization succeeded");
+	DBG("RequestAuthorization succeeded");
 
 	if (!bt_io_accept(io, connect_event, service, NULL, &err)) {
 		error("%s", err->message);
@@ -381,7 +381,7 @@ static void find_adapter_reply(DBusPendingCall *call, void *user_data)
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 
-	debug("bluetooth: FindAdapter -> %s", path);
+	DBG("FindAdapter -> %s", path);
 	pending->adapter_path = g_strdup(path);
 	dbus_message_unref(reply);
 
@@ -400,7 +400,7 @@ static void find_adapter_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_unref(msg);
 
-	debug("bluetooth: RequestAuthorization(%s, %x)", paddr,
+	DBG("RequestAuthorization(%s, %x)", paddr,
 			pending->service->handle);
 
 	if (!dbus_pending_call_set_notify(pcall, service_reply, pending,
@@ -519,7 +519,7 @@ static GIOChannel *start(struct obex_server *server,
 				service->channel, err->message);
 		g_error_free(err);
 	} else
-		debug("bluetooth: listening on channel %d", service->channel);
+		DBG("listening on channel %d", service->channel);
 
 	return io;
 }

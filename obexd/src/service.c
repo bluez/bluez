@@ -87,7 +87,7 @@ int obex_service_driver_register(struct obex_service_driver *driver)
 		return -EPERM;
 	}
 
-	debug("driver %p service %s registered", driver, driver->name);
+	DBG("driver %p service %s registered", driver, driver->name);
 
 	/* Drivers that support who has priority */
 	if (driver->who)
@@ -105,7 +105,7 @@ void obex_service_driver_unregister(struct obex_service_driver *driver)
 		return;
 	}
 
-	debug("driver %p service %s unregistered", driver, driver->name);
+	DBG("driver %p service %s unregistered", driver, driver->name);
 
 	drivers = g_slist_remove(drivers, driver);
 }

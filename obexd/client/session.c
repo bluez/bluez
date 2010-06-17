@@ -90,7 +90,7 @@ struct session_data *session_ref(struct session_data *session)
 {
 	g_atomic_int_inc(&session->refcount);
 
-	debug("session_ref(%p): ref=%d", session, session->refcount);
+	DBG("%p: ref=%d", session, session->refcount);
 
 	return session;
 }
@@ -156,12 +156,12 @@ static void session_unregistered(struct session_data *session)
 	g_dbus_unregister_interface(session->conn, session->path,
 					SESSION_INTERFACE);
 
-	debug("Session(%p) unregistered %s", session, session->path);
+	DBG("Session(%p) unregistered %s", session, session->path);
 }
 
 static void session_free(struct session_data *session)
 {
-	debug("session_free(%p)", session);
+	DBG("%p", session);
 
 	if (session->agent)
 		agent_release(session);
@@ -194,7 +194,7 @@ void session_unref(struct session_data *session)
 
 	ret = g_atomic_int_dec_and_test(&session->refcount);
 
-	debug("session_unref(%p): ref=%d", session, session->refcount);
+	DBG("%p: ref=%d", session, session->refcount);
 
 	if (ret == FALSE)
 		return;
@@ -520,7 +520,7 @@ void session_shutdown(struct session_data *session)
 {
 	struct transfer_data *transfer;
 
-	debug("session_shutdown(%p)", session);
+	DBG("%p", session);
 	transfer = session->pending ? session->pending->data : NULL;
 
 	session_ref(session);
@@ -819,7 +819,7 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 			DBUS_TYPE_STRING, &name,
 			DBUS_TYPE_INVALID);
 
-	debug("Agent.Request() reply: %s", name);
+	DBG("Agent.Request() reply: %s", name);
 
 	if (strlen(name)) {
 		g_free(pending->transfer->name);
@@ -870,7 +870,7 @@ static int session_request(struct session_data *session, session_callback_t cb,
 
 	dbus_pending_call_set_notify(call, session_request_reply, session, NULL);
 
-	debug("Agent.Request(\"%s\")", transfer->path);
+	DBG("Agent.Request(\"%s\")", transfer->path);
 
 	return 0;
 }
@@ -920,7 +920,7 @@ static void session_notify_complete(struct session_data *session,
 
 done:
 
-	debug("Transfer(%p) complete", transfer);
+	DBG("Transfer(%p) complete", transfer);
 
 	session_terminate_transfer(session, transfer);
 }
@@ -1003,7 +1003,7 @@ static void session_notify_progress(struct session_data *session,
 	g_dbus_send_message(session->conn, message);
 
 done:
-	debug("Transfer(%p) progress: %ld bytes", transfer,
+	DBG("Transfer(%p) progress: %ld bytes", transfer,
 			(long int ) transferred);
 
 	if (transferred == transfer->size)
@@ -1331,7 +1331,7 @@ int session_register(struct session_data *session)
 		return -EIO;
 	}
 
-	debug("Session(%p) registered %s", session, session->path);
+	DBG("Session(%p) registered %s", session, session->path);
 
 	return 0;
 }

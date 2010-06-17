@@ -157,7 +157,7 @@ static gboolean root_folder_setup(char *root, char *root_setup)
 	if (root_setup == NULL)
 		return FALSE;
 
-	debug("Setting up %s using %s", root, root_setup);
+	DBG("Setting up %s using %s", root, root_setup);
 
 	if (!g_spawn_sync(NULL, argv, NULL, 0, NULL, NULL, NULL, NULL,
 							&status, NULL)) {

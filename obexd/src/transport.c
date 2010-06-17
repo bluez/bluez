@@ -71,7 +71,7 @@ int obex_transport_driver_register(struct obex_transport_driver *driver)
 		return -EPERM;
 	}
 
-	debug("driver %p transport %s registered", driver, driver->name);
+	DBG("driver %p transport %s registered", driver, driver->name);
 
 	drivers = g_slist_prepend(drivers, driver);
 
@@ -85,7 +85,7 @@ void obex_transport_driver_unregister(struct obex_transport_driver *driver)
 		return;
 	}
 
-	debug("driver %p transport %s unregistered", driver, driver->name);
+	DBG("driver %p transport %s unregistered", driver, driver->name);
 
 	drivers = g_slist_remove(drivers, driver);
 }
