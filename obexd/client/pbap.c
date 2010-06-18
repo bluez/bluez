@@ -246,7 +246,7 @@ static gint pbap_set_path(struct session_data *session, const char *path)
 	if (!path)
 		return OBEX_RSP_BAD_REQUEST;
 
-	if (pbapdata->path != NULL && 	g_str_equal(pbapdata->path, path))
+	if (pbapdata->path != NULL && g_str_equal(pbapdata->path, path))
 		return 0;
 
 	if (gw_obex_chdir(session->obex, "", &err) == FALSE) {
@@ -338,7 +338,7 @@ static void pull_phonebook_callback(struct session_data *session,
 	char *buf = "";
 
 	if (session->msg == NULL)
-		return;
+		goto done;
 
 	reply = dbus_message_new_method_return(session->msg);
 
@@ -353,6 +353,9 @@ static void pull_phonebook_callback(struct session_data *session,
 	g_dbus_send_message(session->conn, reply);
 	dbus_message_unref(session->msg);
 	session->msg = NULL;
+
+done:
+	transfer_unregister(transfer);
 }
 
 static void phonebook_size_callback(struct session_data *session,
@@ -364,7 +367,7 @@ static void phonebook_size_callback(struct session_data *session,
 	guint8 new_missed_calls;
 
 	if (session->msg == NULL)
-		return;
+		goto done;
 
 	reply = dbus_message_new_method_return(session->msg);
 
@@ -378,6 +381,9 @@ static void phonebook_size_callback(struct session_data *session,
 	g_dbus_send_message(session->conn, reply);
 	dbus_message_unref(session->msg);
 	session->msg = NULL;
+
+done:
+	transfer_unregister(transfer);
 }
 
 static void pull_vcard_listing_callback(struct session_data *session,
@@ -390,7 +396,7 @@ static void pull_vcard_listing_callback(struct session_data *session,
 	int i;
 
 	if (session->msg == NULL)
-		return;
+		goto complete;
 
 	reply = dbus_message_new_method_return(session->msg);
 
@@ -421,6 +427,8 @@ done:
 	g_dbus_send_message(session->conn, reply);
 	dbus_message_unref(session->msg);
 	session->msg = NULL;
+complete:
+	transfer_unregister(transfer);
 }
 
 static DBusMessage *pull_phonebook(struct session_data *session,
