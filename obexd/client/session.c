@@ -71,7 +71,7 @@ struct session_callback {
 	void *data;
 };
 
-struct agent_pending {
+struct pending_data {
 	DBusPendingCall *call;
 	session_callback_t cb;
 	struct transfer_data *transfer;
@@ -81,7 +81,7 @@ struct agent_data {
 	char *name;
 	char *path;
 	guint watch;
-	struct agent_pending *pending;
+	struct pending_data *pending;
 };
 
 static void session_prepare_put(struct session_data *session, void *data);
@@ -95,7 +95,7 @@ struct session_data *session_ref(struct session_data *session)
 	return session;
 }
 
-static void free_pending(struct agent_pending *pending)
+static void free_pending(struct pending_data *pending)
 {
 	if (pending->call)
 		dbus_pending_call_unref(pending->call);
@@ -800,7 +800,7 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 {
 	struct session_data *session = user_data;
 	struct agent_data *agent = session->agent;
-	struct agent_pending *pending = agent->pending;
+	struct pending_data *pending = agent->pending;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	const char *name;
 	DBusError derr;
@@ -834,16 +834,30 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 	return;
 }
 
+static gboolean session_request_proceed(gpointer data)
+{
+	struct pending_data *pending = data;
+	struct transfer_data *transfer = pending->transfer;
+
+	pending->cb(transfer->session, transfer);
+	free_pending(pending);
+
+	return FALSE;
+}
+
 static int session_request(struct session_data *session, session_callback_t cb,
 				struct transfer_data *transfer)
 {
 	struct agent_data *agent = session->agent;
 	DBusMessage *message;
-	DBusPendingCall *call;
-	struct agent_pending *pending;
+	struct pending_data *pending;
+
+	pending = g_new0(struct pending_data, 1);
+	pending->cb = cb;
+	pending->transfer = transfer;
 
 	if (agent == NULL || transfer->path == NULL) {
-		cb(session, transfer);
+		g_idle_add(session_request_proceed, pending);
 		return 0;
 	}
 
@@ -854,21 +868,18 @@ static int session_request(struct session_data *session, session_callback_t cb,
 			DBUS_TYPE_OBJECT_PATH, &transfer->path,
 			DBUS_TYPE_INVALID);
 
-
-	if (!dbus_connection_send_with_reply(session->conn, message, &call, -1)) {
+	if (!dbus_connection_send_with_reply(session->conn, message,
+						&pending->call, -1)) {
 		dbus_message_unref(message);
 		return -ENOMEM;
 	}
 
-	dbus_message_unref(message);
-
-	pending = g_new0(struct agent_pending, 1);
-	pending->call = call;
-	pending->cb = cb;
-	pending->transfer = transfer;
 	agent->pending = pending;
 
-	dbus_pending_call_set_notify(call, session_request_reply, session, NULL);
+	dbus_message_unref(message);
+
+	dbus_pending_call_set_notify(pending->call, session_request_reply,
+					session, NULL);
 
 	DBG("Agent.Request(\"%s\")", transfer->path);
 
@@ -1030,31 +1041,43 @@ fail:
 static void session_prepare_get(struct session_data *session, void *data)
 {
 	struct transfer_data *transfer = data;
+	int err;
 
-	if (transfer_get(transfer, transfer_progress, session) < 0)
-		transfer_unregister(transfer);
+	err = transfer_get(transfer, transfer_progress, session);
+	if (err < 0) {
+		session_notify_error(session, transfer, strerror(-err));
+		return;
+	}
+
+	DBG("Transfer(%p) started", transfer);
 }
 
 int session_get(struct session_data *session, const char *type,
 		const char *filename, const char *targetname,
-		const guint8  *apparam, gint apparam_size,
+		const guint8 *apparam, gint apparam_size,
 		session_callback_t func)
 {
 	struct transfer_data *transfer;
-	struct transfer_params *params;
+	struct transfer_params *params = NULL;
 	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	params = g_new0(struct transfer_params, 1);
-	params->data = apparam;
-	params->size = apparam_size;
+	if (apparam != NULL) {
+		params = g_new0(struct transfer_params, 1);
+		params->data = g_new(guint8, apparam_size);
+		memcpy(params->data, apparam, apparam_size);
+		params->size = apparam_size;
+	}
 
 	transfer = transfer_register(session, filename, targetname, type,
 					params);
 	if (transfer == NULL) {
-		g_free(params);
+		if (params != NULL) {
+			g_free(params->data);
+			g_free(params);
+		}
 		return -EIO;
 	}
 
@@ -1349,9 +1372,15 @@ void session_set_data(struct session_data *session, void *priv)
 static void session_prepare_put(struct session_data *session, void *data)
 {
 	struct transfer_data *transfer = data;
+	int err;
 
-	if (transfer_put(transfer, transfer_progress, session) < 0)
-		transfer_unregister(transfer);
+	err = transfer_put(transfer, transfer_progress, session);
+	if (err < 0) {
+		session_notify_error(session, transfer, strerror(-err));
+		return;
+	}
+
+	DBG("Transfer(%p) started", transfer);
 }
 
 int session_put(struct session_data *session, char *buf, const char *targetname)
