@@ -158,7 +158,11 @@ static void transfer_free(struct transfer_data *transfer)
 
 	session_unref(session);
 
-	g_free(transfer->params);
+	if (transfer->params != NULL) {
+		g_free(transfer->params->data);
+		g_free(transfer->params);
+	}
+
 	g_free(transfer->callback);
 	g_free(transfer->filename);
 	g_free(transfer->name);
@@ -251,7 +255,8 @@ static void get_xfer_listing_progress(GwObexXfer *xfer,
 		bsize = transfer->buffer_len - transfer->filled;
 		if (bsize < 1) {
 			transfer->buffer_len += DEFAULT_BUFFER_SIZE;
-			transfer->buffer = g_realloc(transfer->buffer, transfer->buffer_len);
+			transfer->buffer = g_realloc(transfer->buffer,
+						transfer->buffer_len);
 		}
 
 		transfer->buffer[transfer->filled] = '\0';
@@ -407,13 +412,14 @@ int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
 		return -EALREADY;
 
 	if (g_strcmp0(transfer->type, "x-bt/vcard-listing") == 0 ||
+			g_strcmp0(transfer->type, "x-bt/phonebook") == 0 ||
 			g_strcmp0(transfer->type, "x-obex/folder-listing") == 0)
 		cb = get_xfer_listing_progress;
 	else {
 		int fd = open(transfer->name ? : transfer->filename,
 				O_WRONLY | O_CREAT, 0600);
 
-		if (transfer->fd < 0) {
+		if (fd < 0) {
 			error("open(): %s(%d)", strerror(errno), errno);
 			return -errno;
 		}

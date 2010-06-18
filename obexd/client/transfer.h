@@ -24,7 +24,7 @@
 #include <gw-obex.h>
 
 struct transfer_params {
-	const guint8 *data;
+	guint8 *data;
 	gint size;
 };
 
