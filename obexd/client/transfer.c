@@ -146,6 +146,8 @@ static void transfer_free(struct transfer_data *transfer)
 {
 	struct session_data *session = transfer->session;
 
+	DBG("%p", transfer);
+
 	if (transfer->xfer) {
 		gw_obex_xfer_close(transfer->xfer, NULL);
 		gw_obex_xfer_free(transfer->xfer);
@@ -204,9 +206,9 @@ struct transfer_data *transfer_register(struct session_data *session,
 		return NULL;
 	}
 
-	DBG("Transfer(%p) registered %s", transfer, transfer->path);
-
 done:
+	DBG("%p registered %s", transfer, transfer->path);
+
 	session->pending = g_slist_append(session->pending, transfer);
 
 	return transfer;
@@ -219,10 +221,9 @@ void transfer_unregister(struct transfer_data *transfer)
 	if (transfer->path) {
 		g_dbus_unregister_interface(session->conn,
 			transfer->path, TRANSFER_INTERFACE);
-
-		DBG("Transfer(%p) unregistered %s", transfer,
-					transfer->path);
 	}
+
+	DBG("%p unregistered %s", transfer, transfer->path);
 
 	transfer_free(transfer);
 }
@@ -244,12 +245,13 @@ static void get_xfer_listing_progress(GwObexXfer *xfer,
 
 	if (gw_obex_xfer_read(xfer, transfer->buffer + transfer->filled,
 			bsize, &bread, &transfer->err) == FALSE)
-		goto done;
+		goto fail;
 
 	transfer->filled += bread;
 
 	if (gw_obex_xfer_object_done(xfer)) {
-		if (transfer->buffer[transfer->filled - 1] == '\0')
+		if (transfer->filled > 0 &&
+				transfer->buffer[transfer->filled - 1] == '\0')
 			goto done;
 
 		bsize = transfer->buffer_len - transfer->filled;
@@ -267,6 +269,7 @@ static void get_xfer_listing_progress(GwObexXfer *xfer,
 
 done:
 	transfer->size = strlen(transfer->buffer);
+fail:
 	if (callback)
 		callback->func(transfer, transfer->size, transfer->err,
 				callback->data);
@@ -411,9 +414,9 @@ int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
 	if (transfer->xfer != NULL)
 		return -EALREADY;
 
-	if (g_strcmp0(transfer->type, "x-bt/vcard-listing") == 0 ||
-			g_strcmp0(transfer->type, "x-bt/phonebook") == 0 ||
-			g_strcmp0(transfer->type, "x-obex/folder-listing") == 0)
+	if (transfer->type != NULL &&
+			(strncmp(transfer->type, "x-obex/", 7) == 0 ||
+			strncmp(transfer->type, "x-bt/", 5) == 0))
 		cb = get_xfer_listing_progress;
 	else {
 		int fd = open(transfer->name ? : transfer->filename,
