@@ -337,6 +337,9 @@ static void pull_phonebook_callback(struct session_data *session,
 	DBusMessage *reply;
 	char *buf = "";
 
+	if (session->msg == NULL)
+		return;
+
 	reply = dbus_message_new_method_return(session->msg);
 
 	if (transfer->filled > 0)
@@ -360,6 +363,9 @@ static void phonebook_size_callback(struct session_data *session,
 	guint16 phone_book_size;
 	guint8 new_missed_calls;
 
+	if (session->msg == NULL)
+		return;
+
 	reply = dbus_message_new_method_return(session->msg);
 
 	read_return_apparam(session, &phone_book_size, &new_missed_calls);
@@ -382,6 +388,9 @@ static void pull_vcard_listing_callback(struct session_data *session,
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
 	int i;
+
+	if (session->msg == NULL)
+		return;
 
 	reply = dbus_message_new_method_return(session->msg);
 
@@ -710,7 +719,8 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 
 	if (!pbapdata->path)
 		return g_dbus_create_error(message,
-				ERROR_INF ".Forbidden", "Call Select first of all");
+				ERROR_INF ".Forbidden",
+				"Call Select first of all");
 
 	if (dbus_message_get_args(message, NULL,
 			DBUS_TYPE_STRING, &name,
