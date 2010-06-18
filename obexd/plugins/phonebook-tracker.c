@@ -218,7 +218,7 @@
 			"?c nco:hasAffiliation ?a . "			\
 			"?a nco:hasPhoneNumber ?w . "			\
 		"} "							\
-	"} } "
+	"} } ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define COMBINED_CALLS_LIST						\
 	"SELECT ?c nco:nameFamily(?c) nco:nameGiven(?c) "		\
@@ -237,7 +237,7 @@
 		"nmo:isSent false . "					\
 		"?c a nco:Contact . "					\
 		"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "		\
-	"} } "
+	"} } ORDER BY DESC(nmo:receivedDate(?call))"
 
 
 #define CONTACTS_QUERY_FROM_URI						\
