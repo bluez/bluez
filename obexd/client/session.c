@@ -45,6 +45,7 @@
 #include "sync.h"
 #include "transfer.h"
 #include "session.h"
+#include "btio.h"
 
 #define AGENT_INTERFACE  "org.openobex.Agent"
 
@@ -202,16 +203,17 @@ void session_unref(struct session_data *session)
 	session_free(session);
 }
 
-static gboolean rfcomm_callback(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct callback_data *callback = user_data;
 	struct session_data *session = callback->session;
 	GwObex *obex;
 	int fd;
 
-	if (cond & (G_IO_NVAL | G_IO_ERR))
+	if (err != NULL) {
+		error("%s", err->message);
 		goto done;
+	}
 
 	fd = g_io_channel_unix_get_fd(io);
 
@@ -227,63 +229,26 @@ done:
 	session_unref(callback->session);
 
 	g_free(callback);
-
-	return FALSE;
 }
 
 static int rfcomm_connect(const bdaddr_t *src,
 				const bdaddr_t *dst, uint8_t channel,
-					GIOFunc function, gpointer user_data)
+					BtIOConnect function, gpointer user_data)
 {
 	GIOChannel *io;
-	struct sockaddr_rc addr;
-	int sk;
+	GError *err = NULL;
 
-	sk = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	if (sk < 0)
-		return -EIO;
+	io = bt_io_connect(BT_IO_RFCOMM, function, user_data, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, src,
+				BT_IO_OPT_DEST_BDADDR, dst,
+				BT_IO_OPT_CHANNEL, channel,
+				BT_IO_OPT_INVALID);
+	if (io != NULL)
+		return 0;
 
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, src);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		close(sk);
-		return -EIO;
-	}
-
-	io = g_io_channel_unix_new(sk);
-	if (io == NULL) {
-		close(sk);
-		return -ENOMEM;
-	}
-
-	if (g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK,
-						NULL) != G_IO_STATUS_NORMAL) {
-		g_io_channel_unref(io);
-		close(sk);
-		return -EPERM;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.rc_family = AF_BLUETOOTH;
-	bacpy(&addr.rc_bdaddr, dst);
-	addr.rc_channel = channel;
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		if (errno != EAGAIN && errno != EINPROGRESS) {
-			g_io_channel_unref(io);
-			close(sk);
-			return -EIO;
-		}
-	}
-
-	g_io_add_watch(io, G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-							function, user_data);
-
-	g_io_channel_unref(io);
-
-	return 0;
+	error("%s", err->message);
+	g_error_free(err);
+	return -EIO;
 }
 
 static void search_callback(uint8_t type, uint16_t status,
