@@ -152,7 +152,7 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 					const char *number, int type,
 					enum phonebook_number_type category)
 {
-	char *intl = "", *category_string = "";
+	const char *intl = "", *category_string = "";
 	char buf[128];
 
 	/* TEL is a mandatory field, include even if empty */
