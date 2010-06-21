@@ -152,7 +152,7 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 					const char *number, int type,
 					enum phonebook_number_type category)
 {
-	char *pref = "", *intl = "", *category_string = "";
+	char *intl = "", *category_string = "";
 	char buf[128];
 
 	/* TEL is a mandatory field, include even if empty */
@@ -163,31 +163,41 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 
 	switch (category) {
 	case TEL_TYPE_HOME:
-		category_string = "HOME,VOICE";
+		if (format == FORMAT_VCARD21)
+			category_string = "HOME;VOICE";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=HOME;TYPE=VOICE";
 		break;
 	case TEL_TYPE_MOBILE:
-		category_string = "CELL,VOICE";
+		if (format == FORMAT_VCARD21)
+			category_string = "CELL;VOICE";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=CELL;TYPE=VOICE";
 		break;
 	case TEL_TYPE_FAX:
-		category_string = "FAX";
+		if (format == FORMAT_VCARD21)
+			category_string = "FAX";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=FAX";
 		break;
 	case TEL_TYPE_WORK:
-		category_string = "WORK,VOICE";
+		if (format == FORMAT_VCARD21)
+			category_string = "WORK;VOICE";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=WORK;TYPE=VOICE";
 		break;
 	case TEL_TYPE_OTHER:
-		category_string = "VOICE";
+		if (format == FORMAT_VCARD21)
+			category_string = "VOICE";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=VOICE";
 		break;
 	}
 
 	if ((type == TYPE_INTERNATIONAL) && (number[0] != '+'))
 		intl = "+";
 
-	if (format == FORMAT_VCARD30)
-		snprintf(buf, sizeof(buf), "TEL;TYPE=\%s%s:\%s\%s", pref,
-				category_string, intl, number);
-	else if (format == FORMAT_VCARD21)
-		snprintf(buf, sizeof(buf), "TEL;\%s%s:\%s\%s", pref,
-				category_string, intl, number);
+	snprintf(buf, sizeof(buf), "TEL;%s:%s\%s", category_string, intl, number);
 
 	vcard_printf(vcards, buf, number);
 }
