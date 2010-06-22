@@ -242,6 +242,7 @@ static int rfcomm_connect(const bdaddr_t *src,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_DEST_BDADDR, dst,
 				BT_IO_OPT_CHANNEL, channel,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
 	if (io != NULL)
 		return 0;
