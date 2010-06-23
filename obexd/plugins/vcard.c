@@ -273,6 +273,12 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 
 	vcard_printf_begin(vcards, format);
 
+	if (filter & FILTER_N)
+		vcard_printf_name(vcards, contact);
+
+	if (filter & FILTER_FN)
+		vcard_printf_fullname(vcards, contact->fullname);
+
 	if (filter & FILTER_TEL) {
 		GSList *l;
 
@@ -283,12 +289,6 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 								number->type);
 		}
 	}
-
-	if (filter & FILTER_N)
-		vcard_printf_name(vcards, contact);
-
-	if (filter & FILTER_FN)
-		vcard_printf_fullname(vcards, contact->fullname);
 
 	if (filter & FILTER_EMAIL)
 		vcard_printf_email(vcards, contact->email);
