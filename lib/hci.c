@@ -2591,3 +2591,94 @@ int hci_read_clock(int dd, uint16_t handle, uint8_t which, uint32_t *clock, uint
 	*accuracy = rp.accuracy;
 	return 0;
 }
+
+int hci_le_set_scan_enable(int dd, uint8_t enable, uint8_t filter_dup)
+{
+	struct hci_request rq;
+	le_set_scan_enable_cp scan_cp;
+	uint8_t status;
+
+	memset(&scan_cp, 0, sizeof(scan_cp));
+	scan_cp.enable = enable;
+	scan_cp.filter_dup = filter_dup;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CONTROLLER;
+	rq.ocf = OCF_CTL_LE_SET_SCAN_ENABLE;
+	rq.cparam = &scan_cp;
+	rq.clen = SET_SCAN_ENABLE_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, 100) < 0)
+		return -1;
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_le_set_scan_parameters(int dd, uint8_t type,
+					uint16_t interval, uint16_t window,
+					uint8_t own_type, uint8_t filter)
+{
+	struct hci_request rq;
+	le_set_scan_parameters_cp param_cp;
+	uint8_t status;
+
+	memset(&param_cp, 0, sizeof(param_cp));
+	param_cp.type = type;
+	param_cp.interval = interval;
+	param_cp.window = window;
+	param_cp.own_bdaddr_type = own_type;
+	param_cp.filter = filter;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CONTROLLER;
+	rq.ocf = OCF_CTL_LE_SET_SCAN_PARAMETERS;
+	rq.cparam = &param_cp;
+	rq.clen = SET_SCAN_PARAMETERS_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, 100) < 0)
+		return -1;
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
+int hci_le_set_advertise_enable(int dd, uint8_t enable)
+{
+	struct hci_request rq;
+	le_set_advertise_enable_cp adv_cp;
+	uint8_t status;
+
+	memset(&adv_cp, 0, sizeof(adv_cp));
+	adv_cp.enable = enable;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CONTROLLER;
+	rq.ocf = OCF_CTL_LE_SET_ADVERTISE_ENABLE;
+	rq.cparam = &adv_cp;
+	rq.clen = SET_ADVERTISE_ENABLE_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, 100) < 0)
+		return -1;
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
