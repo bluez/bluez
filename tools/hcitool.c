@@ -2354,6 +2354,123 @@ static void cmd_clock(int dev_id, int argc, char **argv)
 	hci_close_dev(dd);
 }
 
+static int print_advertising_devices(int dd)
+{
+	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr;
+	struct hci_filter nf, of;
+	socklen_t olen;
+	hci_event_hdr *hdr;
+	int num, len;
+
+	olen = sizeof(of);
+	if (getsockopt(dd, SOL_HCI, HCI_FILTER, &of, &olen) < 0) {
+		printf("Could not get socket options\n");
+		return -1;
+	}
+
+	hci_filter_clear(&nf);
+	hci_filter_set_ptype(HCI_EVENT_PKT, &nf);
+	hci_filter_set_event(EVT_LE_META_EVENT, &nf);
+
+	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &nf, sizeof(nf)) < 0) {
+		printf("Could not set socket options\n");
+		return -1;
+	}
+
+	/* Wait for 10 report events */
+	num = 10;
+	while (num--) {
+		evt_le_meta_event *meta;
+		le_advertising_info *info;
+		char addr[18];
+
+		while ((len = read(dd, buf, sizeof(buf))) < 0) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			goto done;
+		}
+
+		hdr = (void *) (buf + 1);
+		ptr = buf + (1 + HCI_EVENT_HDR_SIZE);
+		len -= (1 + HCI_EVENT_HDR_SIZE);
+
+		meta = (void *) ptr;
+
+		if (meta->subevent != 0x02)
+			goto done;
+
+		/* Ignoring multiple reports */
+		info = (le_advertising_info *) (meta->data + 1);
+		ba2str(&info->bdaddr, addr);
+		printf("%s\n", addr);
+	}
+
+done:
+	setsockopt(dd, SOL_HCI, HCI_FILTER, &of, sizeof(of));
+
+	if (len < 0)
+		return -1;
+
+	return 0;
+}
+
+static struct option lescan_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lescan_help =
+	"Usage:\n"
+	"\tlescan\n";
+
+static void cmd_lescan(int dev_id, int argc, char **argv)
+{
+	int err, opt, dd;
+
+	for_each_opt(opt, lescan_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lescan_help);
+			return;
+		}
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	err = hci_le_set_scan_parameters(dd, 0x01, 0x0010, 0x0010,
+								0x00, 0x00);
+	if (err < 0) {
+		perror("Set scan parameters failed");
+		exit(1);
+	}
+
+	err = hci_le_set_scan_enable(dd, 0x01, 0x00);
+	if (err < 0) {
+		perror("Enable scan failed");
+		exit(1);
+	}
+
+	printf("LE Scan ...\n");
+
+	err = print_advertising_devices(dd);
+	if (err < 0) {
+		perror("Could not receive advertising events");
+		exit(1);
+	}
+
+	err = hci_le_set_scan_enable(dd, 0x00, 0x00);
+	if (err < 0) {
+		perror("Disable scan failed");
+		exit(1);
+	}
+
+	hci_close_dev(dd);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
@@ -2383,6 +2500,7 @@ static struct {
 	{ "key",    cmd_key,    "Change connection link key"           },
 	{ "clkoff", cmd_clkoff, "Read clock offset"                    },
 	{ "clock",  cmd_clock,  "Read local or remote clock"           },
+	{ "lescan", cmd_lescan, "Start LE scan"                        },
 	{ NULL, NULL, 0 }
 };
 
