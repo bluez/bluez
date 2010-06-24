@@ -50,21 +50,24 @@ static void sbc_typefind(GstTypeFind *tf, gpointer ignore)
 	sbc_t sbc;
 	guint8 *data = gst_type_find_peek(tf, 0, 32);
 
-	if (sbc_init(&sbc, 0) < 0)
+	if (data == NULL)
 		return;
 
-	if (data == NULL || *data != 0x9c)	/* SBC syncword */
+	if (sbc_init(&sbc, 0) < 0)
 		return;
 
 	aux = g_new(guint8, 32);
 	memcpy(aux, data, 32);
-	sbc_parse(&sbc, aux, 32);
-	g_free(aux);
-	caps = gst_sbc_parse_caps_from_sbc(&sbc);
-	sbc_finish(&sbc);
+	if (sbc_parse(&sbc, aux, 32) < 0)
+		goto done;
 
+	caps = gst_sbc_parse_caps_from_sbc(&sbc);
 	gst_type_find_suggest(tf, GST_TYPE_FIND_POSSIBLE, caps);
 	gst_caps_unref(caps);
+
+done:
+	g_free(aux);
+	sbc_finish(&sbc);
 }
 
 static gchar *sbc_exts[] = { "sbc", NULL };
