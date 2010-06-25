@@ -1706,6 +1706,8 @@ static void mcap_connect_mcl_cb(GIOChannel *chan, GError *conn_err,
 	mcl->req = MCL_AVAILABLE;
 	mcl->ctrl |= MCAP_CTRL_STD_OP;
 
+	mcap_sync_init(mcl);
+
 	if (mcl->ctrl & MCAP_CTRL_CACHED)
 		mcap_uncache_mcl(mcl);
 	else {
@@ -1844,6 +1846,8 @@ static void set_mcl_conf(GIOChannel *chan, struct mcap_mcl *mcl)
 	mcl->req = MCL_AVAILABLE;
 	mcl->cc = g_io_channel_ref(chan);
 	mcl->ctrl |= MCAP_CTRL_STD_OP;
+
+	mcap_sync_init(mcl);
 
 	reconn = (mcl->ctrl & MCAP_CTRL_CACHED);
 	if (reconn)

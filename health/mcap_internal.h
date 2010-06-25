@@ -79,6 +79,8 @@ struct mcap_instance {
 	gpointer		user_data;		/* Data to be provided in callbacks */
 };
 
+struct mcap_csp;
+
 struct mcap_mcl {
 	struct mcap_instance	*ms;		/* MCAP instance where this MCL belongs */
 	bdaddr_t		addr;		/* Device address */
@@ -95,6 +97,7 @@ struct mcap_mcl {
 	guint			ref;		/* References counter */
 	uint8_t			ctrl;		/* MCL control flag */
 	uint16_t		next_mdl;	/* id used to create next MDL */
+	struct mcap_csp		*csp;		/* CSP control structure */
 };
 
 #define	MCAP_CTRL_CACHED	0x01	/* MCL is cached */
@@ -116,6 +119,7 @@ struct mcap_mdl {
 int mcap_send_data(int sock, const void *buf, uint32_t size);
 
 void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
+void mcap_sync_init(struct mcap_mcl *mcl);
 
 #ifdef __cplusplus
 }

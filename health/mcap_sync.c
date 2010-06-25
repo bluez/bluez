@@ -29,6 +29,7 @@
 #include "btio.h"
 #include <stdint.h>
 #include <netinet/in.h>
+#include <time.h>
 
 #include "config.h"
 #include "log.h"
@@ -37,6 +38,22 @@
 #include "mcap.h"
 #include "mcap_lib.h"
 #include "mcap_internal.h"
+
+struct mcap_csp {
+	uint64_t		base_tmstamp;	/* CSP base timestamp */
+	struct timespec		base_time;	/* CSP base time when timestamp set */
+	guint			local_caps;	/* CSP-Master: have got remote caps */
+	guint			remote_caps;	/* CSP-Slave: remote master got caps */
+	guint			rem_req_acc;	/* CSP-Slave: accuracy required by master */
+	guint			ind_expected;	/* CSP-Master: indication expected */
+	MCAPCtrl		csp_req;	/* CSP-Master: Request control flag */
+	guint			ind_timer;	/* CSP-Slave: indication timer */
+	guint			set_timer;	/* CSP-Slave: delayed set timer */
+	void			*set_data;	/* CSP-Slave: delayed set data */
+	gint			dev_id;		/* CSP-Slave: device ID */
+	gint			dev_hci_fd;	/* CSP-Slave fd to read BT clock */
+	void			*csp_priv_data;	/* CSP-Master: In-flight request data */
+};
 
 static int send_unsupported_cap_req(struct mcap_mcl *mcl)
 {
@@ -98,4 +115,27 @@ void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 							MCAP_MD_SYNC_INFO_IND);
 		break;
 	}
+}
+
+static void reset_tmstamp(struct mcap_csp *csp, struct timespec *base_time,
+				uint64_t new_tmstamp)
+{
+	csp->base_tmstamp = new_tmstamp;
+	if (base_time)
+		csp->base_time = *base_time;
+	else
+		clock_gettime(CLOCK_MONOTONIC, &csp->base_time);
+}
+
+void mcap_sync_init(struct mcap_mcl *mcl)
+{
+	mcl->csp = g_new0(struct mcap_csp, 1);
+
+	mcl->csp->rem_req_acc = 10000; /* safe divisor */
+	mcl->csp->set_data = NULL;
+	mcl->csp->dev_id = -1;
+	mcl->csp->dev_hci_fd = -1;
+	mcl->csp->csp_priv_data = NULL;
+
+	reset_tmstamp(mcl->csp, NULL, 0);
 }
