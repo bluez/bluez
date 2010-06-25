@@ -3,10 +3,12 @@
  *  MCAP for BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2010 GSyC/LibreSoft, Universidad Rey Juan Carlos.
+ *  Copyright (C) 2010 Signove
  *
  *  Authors:
  *  Santiago Carot-Nemesio <sancane at gmail.com>
  *  Jose Antonio Santos-Cadenas <santoscadenas at gmail.com>
+ *  Elvis Pfützenreuter <epx at signove.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -82,6 +84,12 @@ extern "C" {
 #define MCAP_MDEPID_INITIAL		0x00
 #define MCAP_MDEPID_FINAL		0x7F
 
+/* CSP special values */
+#define MCAP_BTCLOCK_IMMEDIATE		0xffffffffUL
+#define MCAP_TMSTAMP_DONTSET		0xffffffffffffffffULL
+#define MCAP_BTCLOCK_MAX		0x0fffffff
+#define MCAP_BTCLOCK_FIELD		(MCAP_BTCLOCK_MAX + 1)
+
 /*
  * MCAP Request Packet Format
  */
@@ -121,10 +129,15 @@ typedef struct {
 typedef struct {
 	uint8_t		op;
 	uint8_t		rc;
-	uint8_t		btclock;
-	uint16_t	sltime;
-	uint16_t	timestnr;
-	uint16_t	timestna;
+} __attribute__ ((packed)) mcap_md_sync_rsp;
+
+typedef struct {
+        uint8_t         op;
+	uint8_t         rc;
+	uint8_t         btclock;
+        uint16_t        sltime;
+	uint16_t        timestnr;
+	uint16_t        timestna;
 } __attribute__ ((packed)) mcap_md_sync_cap_rsp;
 
 typedef struct {

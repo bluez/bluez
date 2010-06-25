@@ -3,10 +3,12 @@
  *  MCAP for BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2010 GSyC/LibreSoft, Universidad Rey Juan Carlos.
+ *  Copyright (C) 2010 Signove
  *
  *  Authors:
  *  Santiago Carot-Nemesio <sancane at gmail.com>
  *  Jose Antonio Santos-Cadenas <santoscadenas at gmail.com>
+ *  Elvis Pfützenreuter <epx at signove.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +30,7 @@
 #include <stdint.h>
 #include <netinet/in.h>
 
+#include "config.h"
 #include "log.h"
 
 #include <bluetooth/bluetooth.h>
@@ -35,26 +38,33 @@
 #include "mcap_lib.h"
 #include "mcap_internal.h"
 
-typedef struct {
-	uint8_t         op;
-	uint8_t         rc;
-} __attribute__ ((packed)) mcap_md_sync_error_rsp;
-
-static int mcap_sync_send_cmd(struct mcap_mcl *mcl, uint8_t oc, uint8_t rc)
+static int send_unsupported_cap_req(struct mcap_mcl *mcl)
 {
-	mcap_md_sync_error_rsp *cmd;
+	mcap_md_sync_cap_rsp *cmd;
 	int sock, sent;
 
-	if (mcl->cc == NULL)
-		return -1;
+	cmd = g_new0(mcap_md_sync_cap_rsp, 1);
+	cmd->op = MCAP_MD_SYNC_CAP_RSP;
+	cmd->rc = MCAP_REQUEST_NOT_SUPPORTED;
 
 	sock = g_io_channel_unix_get_fd(mcl->cc);
+	sent = mcap_send_data(sock, cmd, sizeof(*cmd));
+	g_free(cmd);
 
-	cmd = g_malloc(sizeof(mcap_md_sync_error_rsp));
-	cmd->op = oc;
-	cmd->rc = rc;
+	return sent;
+}
 
-	sent = mcap_send_data(sock, cmd, sizeof(mcap_md_sync_error_rsp));
+static int send_unsupported_set_req(struct mcap_mcl *mcl)
+{
+	mcap_md_sync_set_rsp *cmd;
+	int sock, sent;
+
+	cmd = g_new0(mcap_md_sync_set_rsp, 1);
+	cmd->op = MCAP_MD_SYNC_SET_RSP;
+	cmd->rc = MCAP_REQUEST_NOT_SUPPORTED;
+
+	sock = g_io_channel_unix_get_fd(mcl->cc);
+	sent = mcap_send_data(sock, cmd, sizeof(*cmd));
 	g_free(cmd);
 
 	return sent;
@@ -67,8 +77,7 @@ void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		DBG("TODO: received MCAP_MD_SYNC_CAP_REQ: %d",
 							MCAP_MD_SYNC_CAP_REQ);
 		/* Not implemented yet. Reply with unsupported request */
-		mcap_sync_send_cmd(mcl, MCAP_MD_SYNC_CAP_RSP,
-						MCAP_REQUEST_NOT_SUPPORTED);
+		send_unsupported_cap_req(mcl);
 		break;
 	case MCAP_MD_SYNC_CAP_RSP:
 		DBG("TODO: received MCAP_MD_SYNC_CAP_RSP: %d",
@@ -78,8 +87,7 @@ void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		DBG("TODO: received MCAP_MD_SYNC_SET_REQ: %d",
 							MCAP_MD_SYNC_SET_REQ);
 		/* Not implemented yet. Reply with unsupported request */
-		mcap_sync_send_cmd(mcl, MCAP_MD_SYNC_SET_RSP,
-						MCAP_REQUEST_NOT_SUPPORTED);
+		send_unsupported_set_req(mcl);
 		break;
 	case MCAP_MD_SYNC_SET_RSP:
 		DBG("TODO: received MCAP_MD_SYNC_SET_RSP: %d",
