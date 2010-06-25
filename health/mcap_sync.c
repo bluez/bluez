@@ -62,6 +62,23 @@ struct mcap_csp {
 
 #define MCAP_BTCLOCK_HALF (MCAP_BTCLOCK_FIELD / 2)
 
+/* Ripped from lib/sdp.c */
+
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define ntoh64(x) (x)
+#else
+static inline uint64_t ntoh64(uint64_t n)
+{
+        uint64_t h;
+        uint64_t tmp = ntohl(n & 0x00000000ffffffff);
+        h = ntohl(n >> 32);
+        h |= tmp << 32;
+        return h;
+}
+#endif
+
+#define hton64(x)     ntoh64(x)
+
 /*
 static int send_unsupported_cap_req(struct mcap_mcl *mcl)
 {
@@ -78,7 +95,6 @@ static int send_unsupported_cap_req(struct mcap_mcl *mcl)
 
 	return sent;
 }
-*/
 
 static int send_unsupported_set_req(struct mcap_mcl *mcl)
 {
@@ -95,8 +111,10 @@ static int send_unsupported_set_req(struct mcap_mcl *mcl)
 
 	return sent;
 }
+*/
 
 static void proc_sync_cap_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
+static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
 
 void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 {
@@ -109,10 +127,7 @@ void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 							MCAP_MD_SYNC_CAP_RSP);
 		break;
 	case MCAP_MD_SYNC_SET_REQ:
-		DBG("TODO: received MCAP_MD_SYNC_SET_REQ: %d",
-							MCAP_MD_SYNC_SET_REQ);
-		/* Not implemented yet. Reply with unsupported request */
-		send_unsupported_set_req(mcl);
+		proc_sync_set_req(mcl, cmd, len);
 		break;
 	case MCAP_MD_SYNC_SET_RSP:
 		DBG("TODO: received MCAP_MD_SYNC_SET_RSP: %d",
@@ -153,7 +168,6 @@ static uint64_t time_us(struct timespec *tv)
 	return tv->tv_sec * 1000000 + tv->tv_nsec / 1000;
 }
 
-/*
 static int64_t bt2us(int bt)
 {
 	return bt * 312.5;
@@ -161,7 +175,7 @@ static int64_t bt2us(int bt)
 
 static int bt2ms(int bt)
 {
-	return bt * 0.3125;
+	return bt * 312.5 / 1000;
 }
 
 static int btoffset(uint32_t btclk1, uint32_t btclk2)
@@ -180,7 +194,17 @@ static int btdiff(uint32_t btclk1, uint32_t btclk2)
 {
 	return btoffset(btclk1, btclk2);
 }
-*/
+
+static gboolean valid_btclock(uint32_t btclk)
+{
+	return btclk <= MCAP_BTCLOCK_MAX;
+}
+
+static gboolean switched_role(struct mcap_mcl *mcl)
+{
+	/* FIXME implement */
+	return FALSE;
+}
 
 static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 						uint16_t* btaccuracy)
@@ -221,7 +245,7 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 	if (!mcl)
 		hci_close_dev(fd);
 
-	return result;
+	return !result;
 }
 
 uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
@@ -264,6 +288,10 @@ static void initialize_caps(struct mcap_mcl *mcl)
 
 	_caps.ts_res = time_us(&t1);
 	_caps.ts_acc = 20; /* ppm, estimated */
+
+	/* A little exercise before measuing latency */
+	clock_gettime(CLOCK_MONOTONIC, &t1);
+	read_btclock(mcl, &btclock, &btaccuracy);
 
 	/* Do clock read a number of times and measure latency */
 	avg = 0;
@@ -349,18 +377,207 @@ static void proc_sync_cap_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	required_accuracy = ntohs(req->timest);
 	our_accuracy = caps(mcl)->ts_acc;
 
-	if (required_accuracy < our_accuracy) {
+	if (required_accuracy < our_accuracy || required_accuracy < 1) {
 		send_sync_cap_rsp(mcl, MCAP_RESOURCE_UNAVAILABLE,
 					0, 0, 0, 0);
 		return;
 	}
 
-	if (read_btclock(mcl, &btclock, &btres)) {
+	if (!read_btclock(mcl, &btclock, &btres)) {
 		send_sync_cap_rsp(mcl, MCAP_RESOURCE_UNAVAILABLE,
 					0, 0, 0, 0);
 		return;
 	}
+
+	mcl->csp->remote_caps = 1;
+	mcl->csp->rem_req_acc = required_accuracy;
 
 	send_sync_cap_rsp(mcl, MCAP_SUCCESS, btres, caps(mcl)->latency / 1000,
 				caps(mcl)->ts_res, our_accuracy);
+}
+
+static int send_sync_set_rsp(struct mcap_mcl *mcl, uint8_t rspcode,
+			uint32_t btclock, uint64_t timestamp,
+			uint16_t tmstampres)
+{
+	mcap_md_sync_set_rsp *rsp;
+	int sock, sent;
+
+	rsp = g_new0(mcap_md_sync_set_rsp, 1);
+
+	rsp->op = MCAP_MD_SYNC_SET_RSP;
+	rsp->rc = rspcode;
+	rsp->btclock = htonl(btclock);
+	rsp->timestst = hton64(timestamp);
+	rsp->timestsa = htons(tmstampres);
+
+	sock = g_io_channel_unix_get_fd(mcl->cc);
+	sent = mcap_send_data(sock, rsp, sizeof(*rsp));
+	g_free(rsp);
+
+	return sent;
+}
+
+static void proc_sync_set_req_phase2(struct mcap_mcl *mcl, uint8_t update,
+		uint32_t sched_btclock, uint64_t new_tmstamp, int ind_freq);
+
+static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	mcap_md_sync_set_req *req;
+	uint32_t sched_btclock, cur_btclock;
+	uint16_t btres;
+	uint8_t update;
+	uint64_t timestamp;
+	int phase2_delay, ind_freq;
+
+	if (len != sizeof(mcap_md_sync_set_req)) {
+		send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE, 0, 0, 0);
+		return;
+	}
+
+	req = (mcap_md_sync_set_req*) cmd;
+	sched_btclock = ntohl(req->btclock);
+	update = req->timestui;
+	timestamp = ntoh64(req->timestst);
+
+	if (sched_btclock != MCAP_BTCLOCK_IMMEDIATE &&
+			!valid_btclock(sched_btclock)) {
+		send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE, 0, 0, 0);
+		return;
+	}
+
+	if (update > 1) {
+		send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE, 0, 0, 0);
+		return;
+	}
+
+	if (!mcl->csp->remote_caps) {
+		/* Remote side did not ask our capabilities yet */
+		send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE, 0, 0, 0);
+		return;
+	}
+
+	if (!read_btclock(mcl, &cur_btclock, &btres)) {
+		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
+		return;
+	}
+
+	if (sched_btclock == MCAP_BTCLOCK_IMMEDIATE) {
+		phase2_delay = 0;
+	} else {
+		phase2_delay = btdiff(cur_btclock, sched_btclock);
+
+		if (phase2_delay < 0) {
+			/* can not reset in the past tense */
+			send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE,
+						0, 0, 0);
+			return;
+		}
+
+		/* Convert to miliseconds */
+		phase2_delay = bt2ms(phase2_delay);
+
+		if (phase2_delay > 61*1000) {
+			/* More than 60 seconds in the future */
+			send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE,
+						0, 0, 0);
+			return;
+		} else if (phase2_delay < (signed) caps(mcl)->latency / 1000) {
+			/* Too fast for us to do in time */
+			send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE,
+						0, 0, 0);
+			return;
+		}
+	}
+
+	if (update) {
+		/* Indication frequency: required accuracy divided by ours */
+		/* Converted to milisseconds */
+		ind_freq = (1000 * mcl->csp->rem_req_acc) / caps(mcl)->ts_acc;
+
+		if (ind_freq < MAX((signed) caps(mcl)->latency * 2 / 1000,
+					100)) {
+			/* Too frequent, we can't handle */
+			send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE,
+						0, 0, 0);
+			return;
+		}
+
+		DBG("MCAP CSP: indication every %dms", ind_freq);
+	} else {
+		ind_freq = 0;
+	}
+
+	/* FIXME call w/ phase2_delay */
+	proc_sync_set_req_phase2(mcl, update, sched_btclock, timestamp,
+				ind_freq);
+}
+
+static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
+				struct timespec *base_time,
+				uint64_t *timestamp)
+{
+	unsigned int latency = caps(mcl)->preempt_thresh + 1;
+	int retry = 5;
+	uint16_t btres;
+	struct timespec t0;
+
+	while (latency > caps(mcl)->preempt_thresh && --retry >= 0) {
+
+		clock_gettime(CLOCK_MONOTONIC, &t0);
+
+		if (!read_btclock(mcl, btclock, &btres))
+			return FALSE;
+
+		clock_gettime(CLOCK_MONOTONIC, base_time);
+
+		/* Tries to detect preemption between clock_gettime
+		   and read_btclock by measuring transaction time
+		*/
+		latency = time_us(base_time) - time_us(&t0);
+	}
+
+	*timestamp = mcap_get_timestamp(mcl, base_time);
+
+	return TRUE;
+}
+
+static void proc_sync_set_req_phase2(struct mcap_mcl *mcl, uint8_t update,
+		uint32_t sched_btclock, uint64_t new_tmstamp, int ind_freq)
+{
+	uint32_t btclock;
+	uint64_t tmstamp;
+	struct timespec base_time;
+	uint16_t tmstampacc;
+	gboolean reset;
+	int delay;
+
+	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp)) {
+		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
+		return;
+	}
+
+	if (switched_role(mcl)) {
+		send_sync_set_rsp(mcl, MCAP_INVALID_OPERATION, 0, 0, 0);
+		return;
+	}
+
+	reset = (new_tmstamp != MCAP_TMSTAMP_DONTSET);
+
+	if (reset) {
+		if (sched_btclock != MCAP_BTCLOCK_IMMEDIATE) {
+			delay = bt2us(btdiff(sched_btclock, btclock));
+			new_tmstamp += delay;
+
+			DBG("MCAP CSP: reset w/ delay %dus, compensated",
+				delay);
+		}
+
+		reset_tmstamp(mcl->csp, &base_time, new_tmstamp);
+		tmstamp = new_tmstamp;
+	}
+
+	tmstampacc = caps(mcl)->latency + caps(mcl)->ts_acc;
+
+	send_sync_set_rsp(mcl, MCAP_SUCCESS, btclock, tmstamp, tmstampacc);
 }
