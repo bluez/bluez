@@ -548,6 +548,12 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		ind_freq = 0;
 	}
 
+	if (mcl->csp->ind_timer) {
+		/* Old indications are no longer sent */
+		g_source_remove(mcl->csp->ind_timer);
+		mcl->csp->ind_timer = 0;
+	}
+
 	if (!mcl->csp->set_data)
 		mcl->csp->set_data = g_new0(struct sync_set_data, 1);
 
@@ -594,6 +600,8 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 
 	return TRUE;
 }
+
+static gboolean sync_send_indication(gpointer user_data);
 
 static gboolean proc_sync_set_req_phase2(gpointer user_data)
 {
@@ -652,7 +660,52 @@ static gboolean proc_sync_set_req_phase2(gpointer user_data)
 
 	tmstampacc = caps(mcl)->latency + caps(mcl)->ts_acc;
 
+	if (mcl->csp->ind_timer) {
+		g_source_remove(mcl->csp->ind_timer);
+		mcl->csp->ind_timer = 0;
+	}
+
+	if (update)
+		mcl->csp->ind_timer = g_timeout_add(ind_freq,
+						sync_send_indication,
+						mcl);
+
 	send_sync_set_rsp(mcl, MCAP_SUCCESS, btclock, tmstamp, tmstampacc);
 
+	/* First indication is immediate */
+	if (update)
+		sync_send_indication(mcl);
+
 	return FALSE;
+}
+
+static gboolean sync_send_indication(gpointer user_data)
+{
+	struct mcap_mcl *mcl;
+	mcap_md_sync_info_ind *cmd;
+	uint32_t btclock;
+	uint64_t tmstamp;
+	struct timespec base_time;
+	int sock, sent;
+
+	if (!user_data)
+		return FALSE;
+
+	mcl = user_data;
+
+	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp))
+		return FALSE;
+
+	cmd = g_new0(mcap_md_sync_info_ind, 1);
+
+	cmd->op = MCAP_MD_SYNC_INFO_IND;
+	cmd->btclock = htonl(btclock);
+	cmd->timestst = hton64(tmstamp);
+	cmd->timestsa = htons(caps(mcl)->latency);
+
+	sock = g_io_channel_unix_get_fd(mcl->cc);
+	sent = mcap_send_data(sock, cmd, sizeof(*cmd));
+	g_free(cmd);
+
+	return !sent;
 }
