@@ -62,6 +62,9 @@ struct mcap_csp {
 
 #define MCAP_BTCLOCK_HALF (MCAP_BTCLOCK_FIELD / 2)
 
+/* Could be CLOCK_REALTIME as well */
+#define CLK CLOCK_MONOTONIC
+
 /* Ripped from lib/sdp.c */
 
 #if __BYTE_ORDER == __BIG_ENDIAN
@@ -147,7 +150,7 @@ static void reset_tmstamp(struct mcap_csp *csp, struct timespec *base_time,
 	if (base_time)
 		csp->base_time = *base_time;
 	else
-		clock_gettime(CLOCK_MONOTONIC, &csp->base_time);
+		clock_gettime(CLK, &csp->base_time);
 }
 
 void mcap_sync_init(struct mcap_mcl *mcl)
@@ -257,7 +260,7 @@ uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
 	if (given_time)
 		now = *given_time;
 	else
-		clock_gettime(CLOCK_MONOTONIC, &now);
+		clock_gettime(CLK, &now);
 
 	tmstamp = time_us(&now) - time_us(&mcl->csp->base_time)
 		+ mcl->csp->base_tmstamp;
@@ -284,21 +287,21 @@ static void initialize_caps(struct mcap_mcl *mcl)
 	uint16_t btaccuracy;
 	int i;
 
-	clock_getres(CLOCK_MONOTONIC, &t1);
+	clock_getres(CLK, &t1);
 
 	_caps.ts_res = time_us(&t1);
 	_caps.ts_acc = 20; /* ppm, estimated */
 
 	/* A little exercise before measuing latency */
-	clock_gettime(CLOCK_MONOTONIC, &t1);
+	clock_gettime(CLK, &t1);
 	read_btclock(mcl, &btclock, &btaccuracy);
 
 	/* Do clock read a number of times and measure latency */
 	avg = 0;
 	for (i = 0; i < 20; ++i) {
-		clock_gettime(CLOCK_MONOTONIC, &t1);
+		clock_gettime(CLK, &t1);
 		read_btclock(mcl, &btclock, &btaccuracy);
-		clock_gettime(CLOCK_MONOTONIC, &t2);
+		clock_gettime(CLK, &t2);
 
 		latency = time_us(&t2) - time_us(&t1);
 		latencies[i] = latency;
@@ -524,12 +527,12 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 
 	while (latency > caps(mcl)->preempt_thresh && --retry >= 0) {
 
-		clock_gettime(CLOCK_MONOTONIC, &t0);
+		clock_gettime(CLK, &t0);
 
 		if (!read_btclock(mcl, btclock, &btres))
 			return FALSE;
 
-		clock_gettime(CLOCK_MONOTONIC, base_time);
+		clock_gettime(CLK, base_time);
 
 		/* Tries to detect preemption between clock_gettime
 		   and read_btclock by measuring transaction time
