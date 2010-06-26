@@ -714,6 +714,8 @@ static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 
 	g_slist_foreach(mcl->mdls, (GFunc) shutdown_mdl, NULL);
 
+	mcap_sync_stop(mcl);
+
 	mcl->state = MCL_IDLE;
 
 	if (save)

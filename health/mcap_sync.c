@@ -166,6 +166,36 @@ void mcap_sync_init(struct mcap_mcl *mcl)
 	reset_tmstamp(mcl->csp, NULL, 0);
 }
 
+void mcap_sync_stop(struct mcap_mcl *mcl)
+{
+	if (!mcl->csp)
+		return;
+
+	if (mcl->csp->dev_hci_fd > -1)
+		hci_close_dev(mcl->csp->dev_hci_fd);
+
+	if (mcl->csp->ind_timer)
+		g_source_remove(mcl->csp->ind_timer);
+
+	if (mcl->csp->set_timer)
+		g_source_remove(mcl->csp->set_timer);
+
+	if (mcl->csp->set_data)
+		g_free(mcl->csp->set_data);
+
+	if (mcl->csp->csp_priv_data)
+		g_free(mcl->csp->csp_priv_data);
+
+	mcl->csp->dev_hci_fd = -1;
+	mcl->csp->ind_timer = 0;
+	mcl->csp->set_timer = 0;
+	mcl->csp->set_data = NULL;
+	mcl->csp->csp_priv_data = NULL;
+
+	g_free(mcl->csp);
+	mcl->csp = NULL;
+}
+
 static uint64_t time_us(struct timespec *tv)
 {
 	return tv->tv_sec * 1000000 + tv->tv_nsec / 1000;

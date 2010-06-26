@@ -120,6 +120,7 @@ int mcap_send_data(int sock, const void *buf, uint32_t size);
 
 void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
 void mcap_sync_init(struct mcap_mcl *mcl);
+void mcap_sync_stop(struct mcap_mcl *mcl);
 uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
 				struct timespec *given_time);
 
