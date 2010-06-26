@@ -564,6 +564,10 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	set_data->timestamp = timestamp;
 	set_data->ind_freq = ind_freq;
 
+	/* TODO is there some way to schedule a call based directly on
+	   a BT clock value, instead of this estimation that uses
+	   the SO clock? */
+
 	if (phase2_delay > 0)
 		mcl->csp->set_timer = g_timeout_add(phase2_delay,
 						proc_sync_set_req_phase2,
