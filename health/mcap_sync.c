@@ -451,8 +451,14 @@ static int send_sync_set_rsp(struct mcap_mcl *mcl, uint8_t rspcode,
 	return sent;
 }
 
-static void proc_sync_set_req_phase2(struct mcap_mcl *mcl, uint8_t update,
-		uint32_t sched_btclock, uint64_t new_tmstamp, int ind_freq);
+static gboolean proc_sync_set_req_phase2(gpointer user_data);
+
+struct sync_set_data {
+	uint8_t update;
+	uint32_t sched_btclock;
+	uint64_t timestamp;
+	int ind_freq;
+};
 
 static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 {
@@ -461,6 +467,7 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	uint16_t btres;
 	uint8_t update;
 	uint64_t timestamp;
+	struct sync_set_data *set_data;
 	int phase2_delay, ind_freq;
 
 	if (len != sizeof(mcap_md_sync_set_req)) {
@@ -541,9 +548,22 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		ind_freq = 0;
 	}
 
-	/* FIXME call w/ phase2_delay */
-	proc_sync_set_req_phase2(mcl, update, sched_btclock, timestamp,
-				ind_freq);
+	if (!mcl->csp->set_data)
+		mcl->csp->set_data = g_new0(struct sync_set_data, 1);
+
+	set_data = (struct sync_set_data *) mcl->csp->set_data;
+
+	set_data->update = update;
+	set_data->sched_btclock = sched_btclock;
+	set_data->timestamp = timestamp;
+	set_data->ind_freq = ind_freq;
+
+	if (phase2_delay > 0)
+		mcl->csp->set_timer = g_timeout_add(phase2_delay,
+						proc_sync_set_req_phase2,
+						mcl);
+	else
+		proc_sync_set_req_phase2(mcl);
 }
 
 static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
@@ -575,9 +595,15 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 	return TRUE;
 }
 
-static void proc_sync_set_req_phase2(struct mcap_mcl *mcl, uint8_t update,
-		uint32_t sched_btclock, uint64_t new_tmstamp, int ind_freq)
+static gboolean proc_sync_set_req_phase2(gpointer user_data)
 {
+	struct mcap_mcl *mcl;
+	struct sync_set_data *data;
+	uint8_t update;
+	uint32_t sched_btclock;
+	uint64_t new_tmstamp;
+	int ind_freq;
+
 	uint32_t btclock;
 	uint64_t tmstamp;
 	struct timespec base_time;
@@ -585,14 +611,28 @@ static void proc_sync_set_req_phase2(struct mcap_mcl *mcl, uint8_t update,
 	gboolean reset;
 	int delay;
 
+	if (!user_data)
+		return FALSE;
+
+	mcl = user_data;
+
+	if (!mcl->csp->set_data)
+		return FALSE;
+
+	data = mcl->csp->set_data;
+	update = data->update;
+	sched_btclock = data->sched_btclock;
+	new_tmstamp = data->timestamp;
+	ind_freq = data->ind_freq;
+
 	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp)) {
 		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
-		return;
+		return FALSE;
 	}
 
 	if (switched_role(mcl)) {
 		send_sync_set_rsp(mcl, MCAP_INVALID_OPERATION, 0, 0, 0);
-		return;
+		return FALSE;
 	}
 
 	reset = (new_tmstamp != MCAP_TMSTAMP_DONTSET);
@@ -613,4 +653,6 @@ static void proc_sync_set_req_phase2(struct mcap_mcl *mcl, uint8_t update,
 	tmstampacc = caps(mcl)->latency + caps(mcl)->ts_acc;
 
 	send_sync_set_rsp(mcl, MCAP_SUCCESS, btclock, tmstamp, tmstampacc);
+
+	return FALSE;
 }
