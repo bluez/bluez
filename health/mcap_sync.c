@@ -233,25 +233,32 @@ static gboolean valid_btclock(uint32_t btclk)
 	return btclk <= MCAP_BTCLOCK_MAX;
 }
 
-static gboolean switched_role(struct mcap_mcl *mcl)
+static int mcl_hci_fd(struct mcap_mcl *mcl)
 {
-	/* FIXME implement */
-	return FALSE;
+	if (mcl->csp->dev_hci_fd < 0) {
+		if (mcl->csp->dev_id < 0) {
+			mcl->csp->dev_id = hci_get_route(&mcl->addr);
+		}
+		mcl->csp->dev_hci_fd = hci_open_dev(mcl->csp->dev_id);
+	}
+	return mcl->csp->dev_hci_fd;
+}
+
+static void mcl_hci_fd_close(struct mcap_mcl *mcl)
+{
+	hci_close_dev(mcl->csp->dev_hci_fd);
+	mcl->csp->dev_hci_fd = -1;
 }
 
 static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 						uint16_t* btaccuracy)
 {
-	int fd, dev_id, result, handle, which;
+	int fd, result, handle, which;
 	struct hci_conn_info_req *cr;
 
 	if (mcl) {
-		if (mcl->csp->dev_hci_fd < 0) {
-			dev_id = hci_get_route(&mcl->addr);
-			mcl->csp->dev_hci_fd = hci_open_dev(dev_id);
-		}
-		fd = mcl->csp->dev_hci_fd;
 		which = 1;
+		fd = mcl_hci_fd(mcl);
 
 		cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
 		bacpy(&cr->bdaddr, &mcl->addr);
@@ -267,8 +274,7 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 		g_free(cr);
 
 	} else {
-		dev_id = hci_get_route(NULL);
-		fd = hci_open_dev(dev_id);
+		fd = hci_open_dev(hci_get_route(NULL));
 		which = 0;
 		handle = 0;
 	}
@@ -279,6 +285,19 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 		hci_close_dev(fd);
 
 	return !result;
+}
+
+static gboolean get_btrole(struct mcap_mcl *mcl)
+{
+	int fd = mcl_hci_fd(mcl);
+	struct hci_dev_info di = {dev_id: mcl->csp->dev_id};
+
+	if (ioctl(fd, HCIGETDEVINFO, (void *) &di)) {
+		mcl_hci_fd_close(mcl);
+		return FALSE;
+        }
+
+	return di.link_mode == HCI_LM_MASTER;
 }
 
 uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
@@ -458,6 +477,7 @@ struct sync_set_data {
 	uint32_t sched_btclock;
 	uint64_t timestamp;
 	int ind_freq;
+	gboolean role;
 };
 
 static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
@@ -563,6 +583,7 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	set_data->sched_btclock = sched_btclock;
 	set_data->timestamp = timestamp;
 	set_data->ind_freq = ind_freq;
+	set_data->role = get_btrole(mcl);
 
 	/* TODO is there some way to schedule a call based directly on
 	   a BT clock value, instead of this estimation that uses
@@ -615,6 +636,7 @@ static gboolean proc_sync_set_req_phase2(gpointer user_data)
 	uint32_t sched_btclock;
 	uint64_t new_tmstamp;
 	int ind_freq;
+	int role;
 
 	uint32_t btclock;
 	uint64_t tmstamp;
@@ -636,13 +658,14 @@ static gboolean proc_sync_set_req_phase2(gpointer user_data)
 	sched_btclock = data->sched_btclock;
 	new_tmstamp = data->timestamp;
 	ind_freq = data->ind_freq;
+	role = data->role;
 
 	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp)) {
 		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
 		return FALSE;
 	}
 
-	if (switched_role(mcl)) {
+	if (get_btrole(mcl) != role) {
 		send_sync_set_rsp(mcl, MCAP_INVALID_OPERATION, 0, 0, 0);
 		return FALSE;
 	}
