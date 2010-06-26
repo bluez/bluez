@@ -65,6 +65,7 @@ typedef enum {
 struct mcap_instance;
 struct mcap_mcl;
 struct mcap_mdl;
+struct sync_info_ind_data;
 
 /************ Callbacks ************/
 
@@ -89,6 +90,28 @@ typedef uint8_t (* mcap_remote_mdl_reconn_req_cb) (struct mcap_mdl *mdl,
 typedef void (* mcap_mcl_event_cb) (struct mcap_mcl *mcl, gpointer data);
 typedef void (* mcap_mcl_connect_cb) (struct mcap_mcl *mcl, GError *err,
 								gpointer data);
+
+/* CSP callbacks */
+
+typedef void (* mcap_info_ind_event_cb) (struct mcap_mcl *mcl,
+					struct sync_info_ind_data *data);
+
+typedef void (* mcap_sync_cap_cb) (struct mcap_mcl *mcl,
+					uint8_t mcap_err,
+					uint8_t btclockres,
+					uint16_t synclead,
+					uint16_t tmstampres,
+					uint16_t tmstampacc,
+					GError *err,
+					gpointer data);
+
+typedef void (* mcap_sync_set_cb) (struct mcap_mcl *mcl,
+					uint8_t mcap_err,
+					uint32_t btclock,
+					uint64_t timestamp,
+					uint16_t accuracy,
+					GError *err,
+					gpointer data);
 
 /************ Operations ************/
 
@@ -142,6 +165,26 @@ void mcap_mcl_get_addr(struct mcap_mcl *mcl, bdaddr_t *addr);
 struct mcap_mcl *mcap_mcl_ref(struct mcap_mcl *mcl);
 void mcap_mcl_unref(struct mcap_mcl *mcl);
 
+/* CSP operations */
+
+uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
+				struct timespec *given_time);
+uint32_t mcap_get_btclock(struct mcap_mcl *mcl);
+
+void mcap_sync_cap_req(struct mcap_mcl *mcl,
+			uint16_t reqacc,
+			GError **err,
+			mcap_sync_cap_cb cb,
+			gpointer user_data);
+
+void mcap_sync_set_req(struct mcap_mcl *mcl,
+			uint8_t update,
+			uint32_t btclock,
+			uint64_t timestamp,
+			GError **err,
+			mcap_sync_set_cb cb,
+			gpointer user_data);
+
 /* MCAP main operations */
 
 struct mcap_instance *mcap_create_instance(bdaddr_t *src,
@@ -151,6 +194,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 					mcap_mcl_event_cb mcl_reconnected,
 					mcap_mcl_event_cb mcl_disconnected,
 					mcap_mcl_event_cb mcl_uncached,
+					mcap_info_ind_event_cb mcl_sync_info_ind,
 					gpointer user_data,
 					GError **gerr);
 

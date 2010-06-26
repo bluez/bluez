@@ -118,6 +118,21 @@ static int send_unsupported_set_req(struct mcap_mcl *mcl)
 
 static void proc_sync_cap_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
 static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
+static void proc_sync_cap_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
+static void proc_sync_set_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
+static void proc_sync_info_ind(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
+
+#define MCAP_CSP_ERROR g_quark_from_static_string("mcap-csp-error-quark")
+
+struct mcap_sync_cap_cbdata {
+	mcap_sync_cap_cb	cb;
+	gpointer		user_data;
+};
+
+struct mcap_sync_set_cbdata {
+	mcap_sync_set_cb	cb;
+	gpointer		user_data;
+};
 
 void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 {
@@ -126,19 +141,16 @@ void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		proc_sync_cap_req(mcl, cmd, len);
 		break;
 	case MCAP_MD_SYNC_CAP_RSP:
-		DBG("TODO: received MCAP_MD_SYNC_CAP_RSP: %d",
-							MCAP_MD_SYNC_CAP_RSP);
+		proc_sync_cap_rsp(mcl, cmd, len);
 		break;
 	case MCAP_MD_SYNC_SET_REQ:
 		proc_sync_set_req(mcl, cmd, len);
 		break;
 	case MCAP_MD_SYNC_SET_RSP:
-		DBG("TODO: received MCAP_MD_SYNC_SET_RSP: %d",
-							MCAP_MD_SYNC_SET_RSP);
+		proc_sync_set_rsp(mcl, cmd, len);
 		break;
 	case MCAP_MD_SYNC_INFO_IND:
-		DBG("TODO: received MCAP_MD_SYNC_INFO_IND :%d",
-							MCAP_MD_SYNC_INFO_IND);
+		proc_sync_info_ind(mcl, cmd, len);
 		break;
 	}
 }
@@ -315,6 +327,18 @@ uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
 		+ mcl->csp->base_tmstamp;
 
 	return tmstamp;
+}
+
+uint32_t mcap_get_btclock(struct mcap_mcl *mcl)
+{
+	uint32_t btclock;
+	uint16_t accuracy;
+
+	if (!read_btclock(mcl, &btclock, &accuracy)) {
+		btclock = 0xffffffff;
+	}
+
+	return btclock;
 }
 
 struct csp_caps {
@@ -738,4 +762,207 @@ static gboolean sync_send_indication(gpointer user_data)
 	g_free(cmd);
 
 	return !sent;
+}
+
+static void proc_sync_cap_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	mcap_md_sync_cap_rsp *rsp;
+	uint8_t mcap_err;
+	uint8_t btclockres;
+	uint16_t synclead;
+	uint16_t tmstampres;
+	uint16_t tmstampacc;
+
+	struct mcap_sync_cap_cbdata *cbdata;
+	mcap_sync_cap_cb cb;
+	gpointer user_data;
+
+	if (mcl->csp->csp_req != MCAP_MD_SYNC_CAP_REQ) {
+		DBG("CSP: got unexpected cap respose");
+		return;
+	}
+
+	if (!mcl->csp->csp_priv_data) {
+		DBG("CSP: no priv data for cap respose");
+		return;
+	}
+
+	cbdata = mcl->csp->csp_priv_data;
+	cb = cbdata->cb;
+	user_data = cbdata->user_data;
+	g_free(cbdata);
+
+	mcl->csp->csp_priv_data = NULL;
+	mcl->csp->csp_req = 0;
+
+	if (len != sizeof(mcap_md_sync_cap_rsp)) {
+		DBG("CSP: got corrupted cap respose");
+		return;
+	}
+
+	rsp = (mcap_md_sync_cap_rsp*) cmd;
+	mcap_err = rsp->rc;
+	btclockres = rsp->btclock;
+	synclead = ntohs(rsp->sltime);
+	tmstampres = ntohs(rsp->timestnr);
+	tmstampacc = ntohs(rsp->timestna);
+
+	if (!mcap_err)
+		mcl->csp->local_caps = TRUE;
+
+	cb(mcl, mcap_err, btclockres, synclead, tmstampres, tmstampacc, NULL,
+		user_data);
+}
+
+static void proc_sync_set_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	mcap_md_sync_set_rsp *rsp;
+	uint8_t mcap_err;
+	uint32_t btclock;
+	uint64_t timestamp;
+	uint16_t accuracy;
+
+	struct mcap_sync_set_cbdata *cbdata;
+	mcap_sync_set_cb cb;
+	gpointer user_data;
+
+	if (mcl->csp->csp_req != MCAP_MD_SYNC_SET_REQ) {
+		DBG("CSP: got unexpected set respose");
+		return;
+	}
+
+	if (!mcl->csp->csp_priv_data) {
+		DBG("CSP: no priv data for set respose");
+		return;
+	}
+
+	cbdata = mcl->csp->csp_priv_data;
+	cb = cbdata->cb;
+	user_data = cbdata->user_data;
+	g_free(cbdata);
+
+	mcl->csp->csp_priv_data = NULL;
+	mcl->csp->csp_req = 0;
+
+	if (len != sizeof(mcap_md_sync_set_rsp)) {
+		DBG("CSP: got corrupted set respose");
+		return;
+	}
+
+	rsp = (mcap_md_sync_set_rsp*) cmd;
+	mcap_err = rsp->rc;
+	btclock = ntohl(rsp->btclock);
+	timestamp = ntoh64(rsp->timestst);
+	accuracy = ntohs(rsp->timestsa);
+
+	if (!mcap_err && !valid_btclock(btclock))
+		mcap_err = MCAP_ERROR_INVALID_ARGS;
+
+	cb(mcl, mcap_err, btclock, timestamp, accuracy, NULL, user_data);
+}
+
+static void proc_sync_info_ind(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	mcap_md_sync_info_ind *req;
+	struct sync_info_ind_data data;
+	uint32_t btclock;
+
+	if (!mcl->csp->ind_expected) {
+		DBG("CSP: received unexpected info indication");
+		return;
+	}
+
+	if (len != sizeof(mcap_md_sync_info_ind))
+		return;
+
+	req = (mcap_md_sync_info_ind*) cmd;
+
+	btclock = ntohl(req->btclock);
+
+	if (!valid_btclock(btclock))
+		return;
+
+	data.btclock = btclock;
+	data.timestamp = ntoh64(req->timestst);
+	data.accuracy = ntohs(req->timestsa);
+
+	if (mcl->ms->mcl_sync_infoind_cb)
+		mcl->ms->mcl_sync_infoind_cb(mcl, &data);
+}
+
+void mcap_sync_cap_req(struct mcap_mcl *mcl, uint16_t reqacc, GError **err,
+			mcap_sync_cap_cb cb, gpointer user_data)
+{
+	struct mcap_sync_cap_cbdata *cbdata;
+	mcap_md_sync_cap_req *cmd;
+	int sock;
+
+	if (mcl->csp->csp_req) {
+		g_set_error(err,
+			MCAP_CSP_ERROR,
+			MCAP_ERROR_RESOURCE_UNAVAILABLE,
+			"Pending CSP request");
+		return;
+	}
+
+	mcl->csp->csp_req = MCAP_MD_SYNC_CAP_REQ;
+	cmd = g_new0(mcap_md_sync_cap_req, 1);
+
+	cmd->op = MCAP_MD_SYNC_CAP_REQ;
+	cmd->timest = htons(reqacc);
+
+	cbdata = g_new0(struct mcap_sync_cap_cbdata, 1);
+	cbdata->cb = cb;
+	cbdata->user_data = user_data;
+	mcl->csp->csp_priv_data = cbdata;
+
+	sock = g_io_channel_unix_get_fd(mcl->cc);
+	mcap_send_data(sock, cmd, sizeof(*cmd));
+
+	g_free(cmd);
+}
+
+void mcap_sync_set_req(struct mcap_mcl *mcl, uint8_t update, uint32_t btclock,
+			uint64_t timestamp, GError **err, mcap_sync_set_cb cb,
+			gpointer user_data)
+{
+	mcap_md_sync_set_req *cmd;
+	struct mcap_sync_set_cbdata *cbdata;
+	int sock;
+
+	if (!mcl->csp->local_caps) {
+		g_set_error(err,
+			MCAP_CSP_ERROR,
+			MCAP_ERROR_RESOURCE_UNAVAILABLE,
+			"Did not get CSP caps from slave yet");
+		return;
+	}
+
+	if (mcl->csp->csp_req) {
+		g_set_error(err,
+			MCAP_CSP_ERROR,
+			MCAP_ERROR_RESOURCE_UNAVAILABLE,
+			"Pending CSP request");
+		return;
+	}
+
+	mcl->csp->csp_req = MCAP_MD_SYNC_SET_REQ;
+	cmd = g_new0(mcap_md_sync_set_req, 1);
+
+	cmd->op = MCAP_MD_SYNC_SET_REQ;
+	cmd->timestui = update;
+	cmd->btclock = htonl(btclock);
+	cmd->timestst = hton64(timestamp);
+
+	mcl->csp->ind_expected = update;
+
+	cbdata = g_new0(struct mcap_sync_set_cbdata, 1);
+	cbdata->cb = cb;
+	cbdata->user_data = user_data;
+	mcl->csp->csp_priv_data = cbdata;
+
+	sock = g_io_channel_unix_get_fd(mcl->cc);
+	mcap_send_data(sock, cmd, sizeof(*cmd));
+
+	g_free(cmd);
 }

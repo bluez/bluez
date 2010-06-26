@@ -76,6 +76,7 @@ struct mcap_instance {
 	mcap_mcl_event_cb	mcl_reconnected_cb;	/* Old MCL has been reconnected */
 	mcap_mcl_event_cb	mcl_disconnected_cb;	/* MCL disconnected */
 	mcap_mcl_event_cb	mcl_uncached_cb;	/* MCL has been removed from MCAP cache */
+	mcap_info_ind_event_cb	mcl_sync_infoind_cb;	/* (CSP Master) Received info indication */
 	gpointer		user_data;		/* Data to be provided in callbacks */
 };
 
@@ -116,13 +117,17 @@ struct mcap_mdl {
 	MDLState		state;		/* MDL state */
 };
 
+struct sync_info_ind_data {
+	uint32_t	btclock;
+	uint64_t	timestamp;
+	uint16_t	accuracy;
+};
+
 int mcap_send_data(int sock, const void *buf, uint32_t size);
 
 void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
 void mcap_sync_init(struct mcap_mcl *mcl);
 void mcap_sync_stop(struct mcap_mcl *mcl);
-uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
-				struct timespec *given_time);
 
 #ifdef __cplusplus
 }

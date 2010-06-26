@@ -1923,6 +1923,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 					mcap_mcl_event_cb mcl_reconnected,
 					mcap_mcl_event_cb mcl_disconnected,
 					mcap_mcl_event_cb mcl_uncached,
+					mcap_info_ind_event_cb mcl_sync_info_ind,
 					gpointer user_data,
 					GError **gerr)
 {
@@ -1951,6 +1952,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 	ms->mcl_reconnected_cb = mcl_reconnected;
 	ms->mcl_disconnected_cb = mcl_disconnected;
 	ms->mcl_uncached_cb = mcl_uncached;
+	ms->mcl_sync_infoind_cb = mcl_sync_info_ind;
 	ms->user_data = user_data;
 
 	/* Listen incoming connections in control channel */
