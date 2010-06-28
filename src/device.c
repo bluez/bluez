@@ -513,7 +513,8 @@ static int device_block(DBusConnection *conn, struct btd_device *device)
 	return 0;
 }
 
-static int device_unblock(DBusConnection *conn, struct btd_device *device)
+static int device_unblock(DBusConnection *conn, struct btd_device *device,
+							gboolean silent)
 {
 	int dev_id, dd, err;
 	bdaddr_t src;
@@ -543,10 +544,12 @@ static int device_unblock(DBusConnection *conn, struct btd_device *device)
 	if (err < 0)
 		error("write_blocked(): %s (%d)", strerror(-err), -err);
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Blocked",
+	if (!silent) {
+		emit_property_changed(conn, device->path,
+					DEVICE_INTERFACE, "Blocked",
 					DBUS_TYPE_BOOLEAN, &device->blocked);
-
-	device_probe_drivers(device, device->uuids);
+		device_probe_drivers(device, device->uuids);
+	}
 
 	return 0;
 }
@@ -560,7 +563,7 @@ static DBusMessage *set_blocked(DBusConnection *conn, DBusMessage *msg,
 	if (value)
 		err = device_block(conn, device);
 	else
-		err = device_unblock(conn, device);
+		err = device_unblock(conn, device, FALSE);
 
 	switch (-err) {
 	case 0:
@@ -1100,6 +1103,7 @@ static void device_remove_stored(struct btd_device *device)
 {
 	bdaddr_t src;
 	char addr[18];
+	DBusConnection *conn = get_dbus_connection();
 
 	adapter_get_address(device->adapter, &src);
 	ba2str(&device->bdaddr, addr);
@@ -1109,6 +1113,9 @@ static void device_remove_stored(struct btd_device *device)
 	delete_entry(&src, "profiles", addr);
 	delete_entry(&src, "trusts", addr);
 	delete_all_records(&src, &device->bdaddr);
+
+	if (device->blocked)
+		device_unblock(conn, device, TRUE);
 }
 
 void device_remove(struct btd_device *device, gboolean remove_stored)
