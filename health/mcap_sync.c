@@ -590,7 +590,7 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	   the SO clock? */
 
 	if (phase2_delay > 0)
-		mcl->csp->set_timer = g_timeout_add(phase2_delay,
+		mcl->csp->set_timer = g_timeout_add(phase2_delay + 1,
 						proc_sync_set_req_phase2,
 						mcl);
 	else
@@ -675,10 +675,14 @@ static gboolean proc_sync_set_req_phase2(gpointer user_data)
 	if (reset) {
 		if (sched_btclock != MCAP_BTCLOCK_IMMEDIATE) {
 			delay = bt2us(btdiff(sched_btclock, btclock));
-			new_tmstamp += delay;
-
-			DBG("MCAP CSP: reset w/ delay %dus, compensated",
-				delay);
+			if (delay >= 0 || ((new_tmstamp - delay) > 0)) {
+				new_tmstamp += delay;
+				DBG("CSP: reset w/ delay %dus, compensated",
+					delay);
+			} else {
+				DBG("CSP: reset w/ delay %dus, uncompensated",
+					delay);
+			}
 		}
 
 		reset_tmstamp(mcl->csp, &base_time, new_tmstamp);
@@ -693,7 +697,7 @@ static gboolean proc_sync_set_req_phase2(gpointer user_data)
 	}
 
 	if (update)
-		mcl->csp->ind_timer = g_timeout_add(ind_freq,
+		mcl->csp->ind_timer = g_timeout_add(ind_freq + 1,
 						sync_send_indication,
 						mcl);
 
