@@ -213,7 +213,7 @@ static int bt2ms(int bt)
 
 static int btoffset(uint32_t btclk1, uint32_t btclk2)
 {
-	int offset = ((signed) btclk2) - ((signed) btclk1);
+	int offset = btclk2 - btclk1;
 
 	if (offset <= -MCAP_BTCLOCK_HALF)
 		offset += MCAP_BTCLOCK_FIELD;
@@ -318,10 +318,10 @@ uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
 }
 
 struct csp_caps {
-	uint16_t ts_acc;		/* timestamp accuracy */
-	uint16_t ts_res;		/* timestamp resolution */
-	uint32_t latency;		/* Read BT clock latency */
-	uint32_t preempt_thresh;	/* Preemption threshold for latency */
+	int ts_acc;		/* timestamp accuracy */
+	int ts_res;		/* timestamp resolution */
+	int latency;		/* Read BT clock latency */
+	int preempt_thresh;	/* Preemption threshold for latency */
 };
 
 static struct csp_caps _caps;
@@ -542,7 +542,7 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 			send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE,
 						0, 0, 0);
 			return;
-		} else if (phase2_delay < (signed) caps(mcl)->latency / 1000) {
+		} else if (phase2_delay < caps(mcl)->latency / 1000) {
 			/* Too fast for us to do in time */
 			send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE,
 						0, 0, 0);
@@ -555,8 +555,7 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		/* Converted to milisseconds */
 		ind_freq = (1000 * mcl->csp->rem_req_acc) / caps(mcl)->ts_acc;
 
-		if (ind_freq < MAX((signed) caps(mcl)->latency * 2 / 1000,
-					100)) {
+		if (ind_freq < MAX(caps(mcl)->latency * 2 / 1000, 100)) {
 			/* Too frequent, we can't handle */
 			send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE,
 						0, 0, 0);
@@ -601,7 +600,7 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 				struct timespec *base_time,
 				uint64_t *timestamp)
 {
-	unsigned int latency = caps(mcl)->preempt_thresh + 1;
+	int latency = caps(mcl)->preempt_thresh + 1;
 	int retry = 5;
 	uint16_t btres;
 	struct timespec t0;
