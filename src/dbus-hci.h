@@ -50,8 +50,6 @@ gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					struct btd_device **device,
 					gboolean create);
 
-DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status);
-
 const char *class_to_icon(uint32_t class);
 
 void set_dbus_connection(DBusConnection *conn);
