@@ -81,7 +81,6 @@ struct bonding_req {
 	DBusConnection *conn;
 	DBusMessage *msg;
 	GIOChannel *io;
-	guint io_id;
 	guint listener_id;
 	struct btd_device *device;
 };
@@ -788,11 +787,6 @@ static void bonding_request_cancel(struct bonding_req *bonding)
 {
 	if (!bonding->io)
 		return;
-
-	if (bonding->io_id) {
-		g_source_remove(bonding->io_id);
-		bonding->io_id = 0;
-	}
 
 	g_io_channel_shutdown(bonding->io, TRUE, NULL);
 	g_io_channel_unref(bonding->io);
@@ -1807,9 +1801,6 @@ static void bonding_request_free(struct bonding_req *bonding)
 	if (bonding->conn)
 		dbus_connection_unref(bonding->conn);
 
-	if (bonding->io_id)
-		g_source_remove(bonding->io_id);
-
 	if (bonding->io)
 		g_io_channel_unref(bonding->io);
 
@@ -1890,17 +1881,6 @@ proceed:
 	return bonding;
 }
 
-static gboolean bonding_io_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
-{
-	struct btd_device *device = user_data;
-
-	device->bonding->io_id = 0;
-	device_cancel_bonding(device, HCI_CONNECTION_TERMINATED);
-
-	return FALSE;
-}
-
 static int device_authentication_requested(struct btd_device *device,
 						int handle)
 {
@@ -1961,11 +1941,9 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		return;
 	}
 
-	if (err) {
-		error("Unable to connect: %s", err->message);
-		status = HCI_CONNECTION_TERMINATED;
-		goto cleanup;
-	}
+	if (err)
+		/* Wait proper error to be propagated by bonding complete */
+		return;
 
 	if (!bt_io_get(io, BT_IO_L2RAW, &err,
 			BT_IO_OPT_HANDLE, &handle,
@@ -1980,17 +1958,10 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	if (status != 0)
 		goto failed;
 
-	device->bonding->io_id = g_io_add_watch(io,
-					G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-					bonding_io_cb, device);
-
 	return;
 
 failed:
 	g_io_channel_shutdown(io, TRUE, NULL);
-
-cleanup:
-	device->bonding->io_id = 0;
 	device_cancel_bonding(device, status);
 }
 
