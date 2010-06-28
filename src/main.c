@@ -334,7 +334,8 @@ void btd_stop_exit_timer(void)
 	last_adapter_timeout = 0;
 }
 
-static gboolean parse_debug(const char *key, const char *value, gpointer user_data, GError **error)
+static gboolean parse_debug(const char *key, const char *value,
+				gpointer user_data, GError **error)
 {
 	if (value)
 		option_debug = g_strdup(value);
