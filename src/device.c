@@ -1891,8 +1891,9 @@ static int device_authentication_requested(struct btd_device *device,
 
 	dd = hci_open_dev(adapter_get_dev_id(device->adapter));
 	if (dd < 0) {
-		error("Unable to open adapter: %s(%d)", strerror(errno), errno);
-		return -errno;
+		int err = -errno;
+		error("Unable to open adapter: %s(%d)", strerror(-err), -err);
+		return err;
 	}
 
 	memset(&rp, 0, sizeof(rp));
@@ -1910,10 +1911,11 @@ static int device_authentication_requested(struct btd_device *device,
 	rq.event  = EVT_CMD_STATUS;
 
 	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
+		int err = -errno;
 		error("Unable to send HCI request: %s (%d)",
-					strerror(errno), errno);
+					strerror(-err), -err);
 		hci_close_dev(dd);
-		return -errno;
+		return err;
 	}
 
 	if (rp.status) {
