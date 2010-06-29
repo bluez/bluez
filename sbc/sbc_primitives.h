@@ -63,6 +63,10 @@ struct sbc_encoder_state {
 	void (*sbc_calc_scalefactors)(int32_t sb_sample_f[16][2][8],
 			uint32_t scale_factor[2][8],
 			int blocks, int channels, int subbands);
+	/* Scale factors calculation with joint stereo support */
+	int (*sbc_calc_scalefactors_j)(int32_t sb_sample_f[16][2][8],
+			uint32_t scale_factor[2][8],
+			int blocks, int subbands);
 	const char *implementation_info;
 };
 
