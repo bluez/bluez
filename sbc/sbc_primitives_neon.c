@@ -237,10 +237,68 @@ static inline void sbc_analyze_4b_8s_neon(int16_t *x,
 	_sbc_analyze_eight_neon(x + 0, out, analysis_consts_fixed8_simd_even);
 }
 
+static void sbc_calc_scalefactors_neon(
+	int32_t sb_sample_f[16][2][8],
+	uint32_t scale_factor[2][8],
+	int blocks, int channels, int subbands)
+{
+	int ch, sb;
+	for (ch = 0; ch < channels; ch++) {
+		for (sb = 0; sb < subbands; sb += 4) {
+			int blk = blocks;
+			int32_t *in = &sb_sample_f[0][ch][sb];
+			asm volatile (
+				"vmov.s32  q0, %[c1]\n"
+				"vmov.s32  q1, %[c1]\n"
+			"1:\n"
+				"vld1.32   {d16, d17}, [%[in], :128], %[inc]\n"
+				"vabs.s32  q8,  q8\n"
+				"vld1.32   {d18, d19}, [%[in], :128], %[inc]\n"
+				"vabs.s32  q9,  q9\n"
+				"vld1.32   {d20, d21}, [%[in], :128], %[inc]\n"
+				"vabs.s32  q10, q10\n"
+				"vld1.32   {d22, d23}, [%[in], :128], %[inc]\n"
+				"vabs.s32  q11, q11\n"
+				"vcgt.s32  q12, q8,  #0\n"
+				"vcgt.s32  q13, q9,  #0\n"
+				"vcgt.s32  q14, q10, #0\n"
+				"vcgt.s32  q15, q11, #0\n"
+				"vadd.s32  q8,  q8,  q12\n"
+				"vadd.s32  q9,  q9,  q13\n"
+				"vadd.s32  q10, q10, q14\n"
+				"vadd.s32  q11, q11, q15\n"
+				"vorr.s32  q0,  q0,  q8\n"
+				"vorr.s32  q1,  q1,  q9\n"
+				"vorr.s32  q0,  q0,  q10\n"
+				"vorr.s32  q1,  q1,  q11\n"
+				"subs      %[blk], %[blk], #4\n"
+				"bgt       1b\n"
+				"vorr.s32  q0,  q0, q1\n"
+				"vmov.s32  q15, %[c2]\n"
+				"vclz.s32  q0,  q0\n"
+				"vsub.s32  q0,  q15, q0\n"
+				"vst1.32   {d0, d1}, [%[out], :128]\n"
+			:
+			  [blk]    "+r" (blk),
+			  [in]     "+r" (in)
+			:
+			  [inc]     "r" ((char *) &sb_sample_f[1][0][0] -
+					 (char *) &sb_sample_f[0][0][0]),
+			  [out]     "r" (&scale_factor[ch][sb]),
+			  [c1]      "i" (1 << SCALE_OUT_BITS),
+			  [c2]      "i" (31 - SCALE_OUT_BITS)
+			: "d0", "d1", "d2", "d3", "d16", "d17", "d18", "d19",
+			  "d20", "d21", "d22", "d23", "d24", "d25", "d26",
+			  "d27", "d28", "d29", "d30", "d31", "cc", "memory");
+		}
+	}
+}
+
 void sbc_init_primitives_neon(struct sbc_encoder_state *state)
 {
 	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_neon;
 	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_neon;
+	state->sbc_calc_scalefactors = sbc_calc_scalefactors_neon;
 	state->implementation_info = "NEON";
 }
 

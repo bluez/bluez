@@ -78,7 +78,7 @@ struct sbc_frame {
 	uint8_t joint;
 
 	/* only the lower 4 bits of every element are to be used */
-	uint32_t scale_factor[2][8];
+	uint32_t SBC_ALIGNED scale_factor[2][8];
 
 	/* raw integer subband samples in the frame */
 	int32_t SBC_ALIGNED sb_sample_f[16][2][8];
