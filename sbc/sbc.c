@@ -743,7 +743,7 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
  * -99 not implemented
  */
 
-static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(uint8_t *data,
+static SBC_ALWAYS_INLINE ssize_t sbc_pack_frame_internal(uint8_t *data,
 					struct sbc_frame *frame, size_t len,
 					int frame_subbands, int frame_channels,
 					int joint)
@@ -860,7 +860,7 @@ static SBC_ALWAYS_INLINE int sbc_pack_frame_internal(uint8_t *data,
 	return data_ptr - data;
 }
 
-static int sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len,
+static ssize_t sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len,
 								int joint)
 {
 	if (frame->subbands == 4) {
@@ -1005,10 +1005,11 @@ ssize_t sbc_decode(sbc_t *sbc, const void *input, size_t input_len,
 }
 
 ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
-			void *output, size_t output_len, size_t *written)
+			void *output, size_t output_len, ssize_t *written)
 {
 	struct sbc_priv *priv;
-	int framelen, samples;
+	int samples;
+	ssize_t framelen;
 	int (*sbc_enc_process_input)(int position,
 			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 			int nsamples, int nchannels);

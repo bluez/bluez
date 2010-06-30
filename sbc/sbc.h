@@ -92,7 +92,7 @@ ssize_t sbc_decode(sbc_t *sbc, const void *input, size_t input_len,
 
 /* Encodes ONE input block into ONE output block */
 ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
-			void *output, size_t output_len, size_t *written);
+			void *output, size_t output_len, ssize_t *written);
 
 /* Returns the output block size in bytes */
 size_t sbc_get_frame_length(sbc_t *sbc);

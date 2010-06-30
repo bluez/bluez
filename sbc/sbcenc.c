@@ -50,7 +50,7 @@ static void encode(char *filename, int subbands, int bitpool, int joint,
 	struct au_header au_hdr;
 	sbc_t sbc;
 	int fd, size, srate, codesize, nframes;
-	size_t encoded;
+	ssize_t encoded;
 	ssize_t len;
 
 	if (sizeof(au_hdr) != 24) {
