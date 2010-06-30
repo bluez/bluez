@@ -521,6 +521,19 @@ static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 	if (pairable == adapter->pairable)
 		goto done;
 
+	if (!(adapter->scan_mode & SCAN_INQUIRY))
+		goto store;
+
+	mode = (pairable && adapter->discov_timeout > 0 &&
+				adapter->discov_timeout <= 60) ?
+					MODE_LIMITED : MODE_DISCOVERABLE;
+
+	err = set_mode(adapter, mode);
+	if (err < 0 && msg)
+		return failed_strerror(msg, -err);
+
+store:
+
 	adapter->pairable = pairable;
 
 	write_device_pairable(&adapter->bdaddr, pairable);
@@ -532,17 +545,6 @@ static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 	if (pairable && adapter->pairable_timeout)
 		adapter_set_pairable_timeout(adapter,
 						adapter->pairable_timeout);
-
-	if (!(adapter->scan_mode & SCAN_INQUIRY))
-		goto done;
-
-	mode = (pairable && adapter->discov_timeout > 0 &&
-				adapter->discov_timeout <= 60) ?
-					MODE_LIMITED : MODE_DISCOVERABLE;
-
-	err = set_mode(adapter, mode);
-	if (err < 0 && msg)
-		return failed_strerror(msg, -err);
 
 done:
 	return msg ? dbus_message_new_method_return(msg) : NULL;
