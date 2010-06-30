@@ -38,6 +38,8 @@ src/bluetooth.exp
 src/bluetooth.ver
 audio/telephony.c
 scripts/bluetooth.rules
+scripts/97-bluetooth.rules
+scripts/97-bluetooth-hid2hci.rules
 
 sbc/sbcdec
 sbc/sbcenc
