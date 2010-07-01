@@ -40,8 +40,12 @@ if (len(args) < 1):
 	sys.exit(1)
 
 if (args[0] == "list"):
-	list = adapter.ListDevices()
-	print list
+	for path in adapter.ListDevices():
+		device = dbus.Interface(bus.get_object("org.bluez", path),
+							"org.bluez.Device")
+		properties = device.GetProperties()
+		print "%s %s" % (properties["Address"], properties["Alias"])
+
 	sys.exit(0)
 
 if (args[0] == "create"):
