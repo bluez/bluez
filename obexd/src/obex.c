@@ -556,26 +556,8 @@ static gboolean handle_async_io(void *object, int flags, int err,
 		ret = obex_read_stream(os, os->obex, os->obj);
 
 proceed:
-	switch (ret) {
-	case -EINVAL:
-		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_BAD_REQUEST,
-				OBEX_RSP_BAD_REQUEST);
-		break;
-	case -EPERM:
-		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_FORBIDDEN,
-					OBEX_RSP_FORBIDDEN);
-		break;
-	case -ENOENT:
-		OBEX_ObjectSetRsp(os->obj, OBEX_RSP_NOT_FOUND,
-							OBEX_RSP_NOT_FOUND);
-		break;
-	default:
-		if (ret < 0)
-			OBEX_ObjectSetRsp(os->obj,
-					OBEX_RSP_INTERNAL_SERVER_ERROR,
-					OBEX_RSP_INTERNAL_SERVER_ERROR);
-		break;
-	}
+	if (ret < 0)
+		os_set_response(os->obj, ret);
 
 	OBEX_ResumeRequest(os->obex);
 
@@ -957,6 +939,7 @@ static void obex_event(obex_t *obex, obex_object_t *obj, int mode,
 					int evt, int cmd, int rsp)
 {
 	struct obex_session *os;
+	int err;
 
 	obex_debug(evt, cmd, rsp);
 
@@ -1045,42 +1028,25 @@ static void obex_event(obex_t *obex, obex_object_t *obj, int mode,
 		}
 		break;
 	case OBEX_EV_STREAMAVAIL:
-		switch (obex_read_stream(os, obex, obj)) {
-		case 0:
-			break;
-		case -EPERM:
-			OBEX_ObjectSetRsp(obj,
-				OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-			break;
-		case -EAGAIN:
+		err = obex_read_stream(os, obex, obj);
+		if (err == -EAGAIN) {
 			OBEX_SuspendRequest(obex, obj);
 			os->obj = obj;
 			os->driver->set_io_watch(os->object, handle_async_io,
 									os);
-			break;
-		default:
-			OBEX_ObjectSetRsp(obj,
-				OBEX_RSP_INTERNAL_SERVER_ERROR,
-				OBEX_RSP_INTERNAL_SERVER_ERROR);
-			break;
-		}
+		} else if (err < 0)
+			os_set_response(obj, err);
 
 		break;
 	case OBEX_EV_STREAMEMPTY:
-		switch (obex_write_stream(os, obex, obj)) {
-		case -EPERM:
-			OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN,
-							OBEX_RSP_FORBIDDEN);
-			break;
-		case -EAGAIN:
+		err = obex_write_stream(os, obex, obj);
+		if (err == -EAGAIN) {
 			OBEX_SuspendRequest(obex, obj);
 			os->obj = obj;
 			os->driver->set_io_watch(os->object, handle_async_io,
 									os);
-			break;
-		default:
-			break;
-		}
+		} else if (err < 0)
+			os_set_response(obj, err);
 
 		break;
 	case OBEX_EV_LINKERR:
@@ -1100,6 +1066,8 @@ static void obex_handle_destroy(void *user_data)
 {
 	struct obex_session *os;
 	obex_t *obex = user_data;
+
+	DBG("");
 
 	os = OBEX_GetUserData(obex);
 
