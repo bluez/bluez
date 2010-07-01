@@ -277,15 +277,14 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 		cr->type = ACL_LINK;
 
 		if (ioctl(fd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-			hci_close_dev(fd);
-			g_free(cr);
-			return FALSE;
+			mcl = NULL;
+		} else {
+			handle = htobs(cr->conn_info->handle);
 		}
-
-		handle = htobs(cr->conn_info->handle);
 		g_free(cr);
+	}
 
-	} else {
+	if (!mcl) {
 		fd = hci_open_dev(hci_get_route(NULL));
 		which = 0;
 		handle = 0;
