@@ -73,7 +73,7 @@ int read_device_alias(const char *src, const char *dst, char *alias, size_t size
 
 	free(tmp);
 
-	return err;
+	return err < 0 ? -EIO : 0;
 }
 
 int write_device_alias(const char *src, const char *dst, const char *alias)
