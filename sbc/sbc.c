@@ -160,7 +160,8 @@ static uint8_t sbc_crc8(const uint8_t *data, size_t len)
  * Takes a pointer to the frame in question, a pointer to the bits array and
  * the sampling frequency (as 2 bit integer)
  */
-static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
+static SBC_ALWAYS_INLINE void sbc_calculate_bits_internal(
+		const struct sbc_frame *frame, int (*bits)[8], int subbands)
 {
 	uint8_t sf = frame->frequency;
 
@@ -171,17 +172,17 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 		for (ch = 0; ch < frame->channels; ch++) {
 			max_bitneed = 0;
 			if (frame->allocation == SNR) {
-				for (sb = 0; sb < frame->subbands; sb++) {
+				for (sb = 0; sb < subbands; sb++) {
 					bitneed[ch][sb] = frame->scale_factor[ch][sb];
 					if (bitneed[ch][sb] > max_bitneed)
 						max_bitneed = bitneed[ch][sb];
 				}
 			} else {
-				for (sb = 0; sb < frame->subbands; sb++) {
+				for (sb = 0; sb < subbands; sb++) {
 					if (frame->scale_factor[ch][sb] == 0)
 						bitneed[ch][sb] = -5;
 					else {
-						if (frame->subbands == 4)
+						if (subbands == 4)
 							loudness = frame->scale_factor[ch][sb] - sbc_offset4[sf][sb];
 						else
 							loudness = frame->scale_factor[ch][sb] - sbc_offset8[sf][sb];
@@ -202,7 +203,7 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 				bitslice--;
 				bitcount += slicecount;
 				slicecount = 0;
-				for (sb = 0; sb < frame->subbands; sb++) {
+				for (sb = 0; sb < subbands; sb++) {
 					if ((bitneed[ch][sb] > bitslice + 1) && (bitneed[ch][sb] < bitslice + 16))
 						slicecount++;
 					else if (bitneed[ch][sb] == bitslice + 1)
@@ -215,7 +216,7 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 				bitslice--;
 			}
 
-			for (sb = 0; sb < frame->subbands; sb++) {
+			for (sb = 0; sb < subbands; sb++) {
 				if (bitneed[ch][sb] < bitslice + 2)
 					bits[ch][sb] = 0;
 				else {
@@ -225,7 +226,8 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 				}
 			}
 
-			for (sb = 0; bitcount < frame->bitpool && sb < frame->subbands; sb++) {
+			for (sb = 0; bitcount < frame->bitpool &&
+							sb < subbands; sb++) {
 				if ((bits[ch][sb] >= 2) && (bits[ch][sb] < 16)) {
 					bits[ch][sb]++;
 					bitcount++;
@@ -235,7 +237,8 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 				}
 			}
 
-			for (sb = 0; bitcount < frame->bitpool && sb < frame->subbands; sb++) {
+			for (sb = 0; bitcount < frame->bitpool &&
+							sb < subbands; sb++) {
 				if (bits[ch][sb] < 16) {
 					bits[ch][sb]++;
 					bitcount++;
@@ -251,7 +254,7 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 		max_bitneed = 0;
 		if (frame->allocation == SNR) {
 			for (ch = 0; ch < 2; ch++) {
-				for (sb = 0; sb < frame->subbands; sb++) {
+				for (sb = 0; sb < subbands; sb++) {
 					bitneed[ch][sb] = frame->scale_factor[ch][sb];
 					if (bitneed[ch][sb] > max_bitneed)
 						max_bitneed = bitneed[ch][sb];
@@ -259,11 +262,11 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 			}
 		} else {
 			for (ch = 0; ch < 2; ch++) {
-				for (sb = 0; sb < frame->subbands; sb++) {
+				for (sb = 0; sb < subbands; sb++) {
 					if (frame->scale_factor[ch][sb] == 0)
 						bitneed[ch][sb] = -5;
 					else {
-						if (frame->subbands == 4)
+						if (subbands == 4)
 							loudness = frame->scale_factor[ch][sb] - sbc_offset4[sf][sb];
 						else
 							loudness = frame->scale_factor[ch][sb] - sbc_offset8[sf][sb];
@@ -286,7 +289,7 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 			bitcount += slicecount;
 			slicecount = 0;
 			for (ch = 0; ch < 2; ch++) {
-				for (sb = 0; sb < frame->subbands; sb++) {
+				for (sb = 0; sb < subbands; sb++) {
 					if ((bitneed[ch][sb] > bitslice + 1) && (bitneed[ch][sb] < bitslice + 16))
 						slicecount++;
 					else if (bitneed[ch][sb] == bitslice + 1)
@@ -301,7 +304,7 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 		}
 
 		for (ch = 0; ch < 2; ch++) {
-			for (sb = 0; sb < frame->subbands; sb++) {
+			for (sb = 0; sb < subbands; sb++) {
 				if (bitneed[ch][sb] < bitslice + 2) {
 					bits[ch][sb] = 0;
 				} else {
@@ -325,7 +328,8 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 			if (ch == 1) {
 				ch = 0;
 				sb++;
-				if (sb >= frame->subbands) break;
+				if (sb >= subbands)
+					break;
 			} else
 				ch = 1;
 		}
@@ -340,13 +344,22 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
 			if (ch == 1) {
 				ch = 0;
 				sb++;
-				if (sb >= frame->subbands) break;
+				if (sb >= subbands)
+					break;
 			} else
 				ch = 1;
 		}
 
 	}
 
+}
+
+static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
+{
+	if (frame->subbands == 4)
+		sbc_calculate_bits_internal(frame, bits, 4);
+	else
+		sbc_calculate_bits_internal(frame, bits, 8);
 }
 
 /*
