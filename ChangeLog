@@ -1,3 +1,12 @@
+ver 4.67:
+	Fix issue with authentication reply when bonding already completed.
+	Fix issue with not canceling authentication when bonding fails.
+	Fix issue with changed combination keys and temporary storage.
+	Fix issue with sdp_get_supp_feat library function.
+	Fix issue with missing unblock on device removal.
+	Fix issue with not waiting for mode change completion.
+	Add ARMv6 optimized version of analysis filter for SBC encoder.
+
 ver 4.66:
 	Fix regression with full debug enabling via SIGUSR2.
 	Fix redundant speaker/microphone gains being sent.
