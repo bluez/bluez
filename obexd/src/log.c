@@ -166,6 +166,17 @@ void obex_debug(int evt, int cmd, int rsp)
 {
 	const char *evtstr = NULL, *cmdstr = NULL, *rspstr = NULL;
 	int i;
+	static int lastevt, lastcmd;
+
+	if (evt < 0)
+		evt = lastevt;
+	else
+		lastevt = evt;
+
+	if (cmd < 0)
+		cmd = lastcmd;
+	else
+		lastcmd = cmd;
 
 	for (i = 0; obex_event[i].evt != 0xFF; i++) {
 		if (obex_event[i].evt != evt)

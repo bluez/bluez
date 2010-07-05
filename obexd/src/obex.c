@@ -126,6 +126,8 @@ static void os_set_response(obex_object_t *obj, int err)
 		lastrsp = OBEX_RSP_INTERNAL_SERVER_ERROR;
 	}
 
+	obex_debug(-1, -1, rsp);
+
 	OBEX_ObjectSetRsp(obj, rsp, lastrsp);
 }
 
