@@ -247,6 +247,9 @@ static void script_exited(GPid pid, int status, void *data)
 	char buf[128];
 
 	object->pid = -1;
+	object->watch = 0;
+
+	DBG("pid: %d status: %d", pid, status);
 
 	if (WEXITSTATUS(status) != EXIT_SUCCESS) {
 		memset(buf, 0, sizeof(buf));
@@ -271,6 +274,8 @@ static int capability_exec(const char **argv, int *output, int *err)
 		g_error_free(gerr);
 		return -EPERM;
 	}
+
+	DBG("executing %s pid %d", argv[0], pid);
 
 	return pid;
 }
@@ -512,19 +517,30 @@ static ssize_t capability_read(void *object, void *buf, size_t count,
 static int capability_close(void *object)
 {
 	struct capability_object *obj = object;
+	int err = 0;
 
-	if (obj->pid >= 0) {
+	if (obj->pid < 0)
+		goto done;
+
+	if (obj->watch)
 		g_source_remove(obj->watch);
-		kill(obj->pid, SIGTERM);
-		g_spawn_close_pid(obj->pid);
+
+	g_spawn_close_pid(obj->pid);
+
+	DBG("kill: pid %d", obj->pid);
+	err = kill(obj->pid, SIGTERM);
+	if (err < 0) {
+		err = -errno;
+		error("kill: %s (%d)", strerror(-err), -err);
 	}
 
+done:
 	if (obj->buffer != NULL)
 		g_string_free(obj->buffer, TRUE);
 
 	g_free(obj);
 
-	return 0;
+	return err;
 }
 
 static struct obex_mime_type_driver file = {
