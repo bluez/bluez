@@ -559,9 +559,9 @@ static gboolean handle_async_io(void *object, int flags, int err,
 
 proceed:
 	if (ret < 0)
-		os_set_response(os->obj, ret);
-
-	OBEX_ResumeRequest(os->obex);
+		OBEX_CancelRequest(os->obex, TRUE);
+	else
+		OBEX_ResumeRequest(os->obex);
 
 	return FALSE;
 }
