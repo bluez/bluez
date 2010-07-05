@@ -25,18 +25,36 @@
 #include <config.h>
 #endif
 
-#include <errno.h>
-
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <gdbus.h>
-
-#include "log.h"
 #include "../src/adapter.h"
+#include "../src/device.h"
 
 #include "manager.h"
+#include "client.h"
 
-static DBusConnection *connection = NULL;
+#define GATT_UUID	"00001801-0000-1000-8000-00805f9b34fb"
+
+static DBusConnection *connection;
+
+static int client_probe(struct btd_device *device, GSList *uuids)
+{
+	const char *path = device_get_path(device);
+
+	return attrib_client_register(path);
+}
+
+static void client_remove(struct btd_device *device)
+{
+	const char *path = device_get_path(device);
+
+	attrib_client_unregister(path);
+}
+
+static struct btd_device_driver client_driver = {
+	.name = "gatt-client",
+	.uuids = BTD_UUIDS(GATT_UUID),
+	.probe = client_probe,
+	.remove = client_remove,
+};
 
 static int server_probe(struct btd_adapter *adapter)
 {
@@ -57,7 +75,10 @@ int attrib_manager_init(DBusConnection *conn)
 {
 	connection = dbus_connection_ref(conn);
 
+	attrib_client_init(connection);
+
 	btd_register_adapter_driver(&attrib_server_driver);
+	btd_register_device_driver(&client_driver);
 
 	return 0;
 }
@@ -65,6 +86,8 @@ int attrib_manager_init(DBusConnection *conn)
 void attrib_manager_exit(void)
 {
 	btd_unregister_adapter_driver(&attrib_server_driver);
+	btd_unregister_device_driver(&client_driver);
 
+	attrib_client_exit();
 	dbus_connection_unref(connection);
 }

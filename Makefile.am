@@ -170,7 +170,8 @@ endif
 
 if ATTRIBPLUGIN
 builtin_modules += attrib
-builtin_sources += attrib/main.c attrib/manager.h attrib/manager.c
+builtin_sources += attrib/main.c attrib/manager.h attrib/manager.c \
+		attrib/client.h attrib/client.c
 endif
 
 builtin_modules += hciops
