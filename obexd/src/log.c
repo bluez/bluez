@@ -73,8 +73,6 @@ extern struct obex_debug_desc __stop___debug[];
 
 static gchar **enabled = NULL;
 
-int debug_enabled = FALSE;
-
 static gboolean is_enabled(struct obex_debug_desc *desc)
 {
 	int i;
@@ -94,7 +92,7 @@ static gboolean is_enabled(struct obex_debug_desc *desc)
 	return 0;
 }
 
-void log_enable_debug()
+void __obex_log_enable_debug()
 {
 	struct obex_debug_desc *desc;
 
@@ -102,9 +100,9 @@ void log_enable_debug()
 		desc->flags |= OBEX_DEBUG_FLAG_PRINT;
 }
 
-void log_init(const char *ident, const char *debug, int log_option)
+void __obex_log_init(const char *debug, int detach)
 {
-	int option = log_option | LOG_NDELAY | LOG_PID;
+	int option = LOG_NDELAY | LOG_PID;
 	struct obex_debug_desc *desc;
 	const char *name = NULL, *file = NULL;
 
@@ -124,12 +122,15 @@ void log_init(const char *ident, const char *debug, int log_option)
 			desc->flags |= OBEX_DEBUG_FLAG_PRINT;
 	}
 
-	openlog(ident, option, LOG_DAEMON);
+	if (!detach)
+		option |= LOG_PERROR;
 
-	syslog(LOG_INFO, "%s version %s", ident, VERSION);
+	openlog("obexd", option, LOG_DAEMON);
+
+	syslog(LOG_INFO, "OBEX daemon %s", VERSION);
 }
 
-void log_cleanup(void)
+void __obex_log_cleanup(void)
 {
 	closelog();
 

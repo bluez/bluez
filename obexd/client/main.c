@@ -579,7 +579,6 @@ int main(int argc, char *argv[])
 	DBusConnection *conn;
 	DBusError derr;
 	GError *gerr = NULL;
-	int log_option = 0;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -610,12 +609,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (option_stderr == TRUE)
-		log_option |= LOG_PERROR;
-
 	event_loop = g_main_loop_new(NULL, FALSE);
 
-	log_init("obex-client", option_debug, log_option);
+	__obex_log_init(option_debug, option_stderr);
 
 	DBG("Entering main loop");
 
@@ -631,6 +627,8 @@ int main(int argc, char *argv[])
 	dbus_connection_unref(conn);
 
 	g_main_loop_unref(event_loop);
+
+	__obex_log_cleanup();
 
 	return 0;
 }

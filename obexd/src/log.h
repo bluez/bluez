@@ -23,11 +23,12 @@
 
 void info(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void error(const char *format, ...) __attribute__((format(printf, 1, 2)));
+
 void obex_debug(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
-void log_init(const char *ident, const char *debug, int log_option);
-void log_cleanup(void);
-void log_enable_debug(void);
+void __obex_log_init(const char *debug, int detach);
+void __obex_log_cleanup(void);
+void __obex_log_enable_debug(void);
 
 struct obex_debug_desc {
 	const char *name;

@@ -66,7 +66,7 @@ static void sig_term(int sig)
 
 static void sig_debug(int sig)
 {
-	log_enable_debug();
+	__obex_log_enable_debug();
 }
 
 static gboolean option_detach = TRUE;
@@ -179,7 +179,6 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 	GError *err = NULL;
 	struct sigaction sa;
-	int log_option = 0;
 
 #ifdef NEED_THREADS
 	if (g_thread_supported() == FALSE)
@@ -205,8 +204,7 @@ int main(int argc, char *argv[])
 			perror("Can't start daemon");
 			exit(1);
 		}
-	} else
-		log_option |= LOG_PERROR;
+	}
 
 	if (option_opp == FALSE && option_ftp == FALSE &&
 				option_pbap == FALSE &&
@@ -216,7 +214,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	log_init("obexd", option_debug, log_option);
+	__obex_log_init(option_debug, option_detach);
 
 	DBG("Entering main loop");
 
@@ -298,7 +296,7 @@ int main(int argc, char *argv[])
 	g_free(option_capability);
 	g_free(option_root);
 
-	closelog();
+	__obex_log_cleanup();
 
 	return 0;
 }
