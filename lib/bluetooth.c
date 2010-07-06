@@ -474,6 +474,12 @@ char *bt_compidtostr(int compid)
 		return "Belkin International, Inc.";
 	case 93:
 		return "Realtek Semiconductor Corporation";
+	case 94:
+		return "Stonestreet One, LLC";
+	case 95:
+		return "Wicentric, Inc.";
+	case 96:
+		return "RivieraWaves S.A.S";
 	case 65535:
 		return "internal use";
 	default:
