@@ -239,7 +239,7 @@ static ssize_t backup_read(void *object, void *buf, size_t count, uint8_t *hi)
 			ret = -errno;
 	} else {
 		DBG("cmd = %s, PERMANENT FAILURE", obj->cmd);
-		ret = obj->error_code?(-obj->error_code):(-ENOENT);
+		ret = obj->error_code ? -obj->error_code : -ENOENT;
 	}
 
 	return ret;
