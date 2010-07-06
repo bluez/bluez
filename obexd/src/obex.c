@@ -729,7 +729,7 @@ int obex_get_stream_start(struct obex_session *os, const char *filename)
 {
 	int err;
 	void *object;
-	size_t size;
+	size_t size = OBJECT_SIZE_UNKNOWN;
 
 	object = os->driver->open(filename, O_RDONLY, 0, os->service_data,
 								&size, &err);

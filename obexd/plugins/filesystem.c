@@ -323,9 +323,6 @@ static void *capability_open(const char *name, int oflag, mode_t mode,
 
 	object->watch = g_child_watch_add(object->pid, script_exited, object);
 
-	if (size)
-		*size = 1;
-
 done:
 	if (err)
 		*err = 0;

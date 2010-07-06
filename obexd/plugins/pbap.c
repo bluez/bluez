@@ -698,9 +698,6 @@ static void *vobject_pull_open(const char *name, int oflag, mode_t mode,
 	if (ret < 0)
 		goto fail;
 
-	if (size)
-		*size = OBJECT_SIZE_UNKNOWN;
-
 	return pbap;
 
 fail:
@@ -737,9 +734,6 @@ static void *vobject_list_open(const char *name, int oflag, mode_t mode,
 		goto fail;
 
 done:
-	if (size)
-		*size = OBJECT_SIZE_UNKNOWN;
-
 	return pbap;
 
 fail:
@@ -788,9 +782,6 @@ static void *vobject_vcard_open(const char *name, int oflag, mode_t mode,
 done:
 	if (ret < 0)
 		goto fail;
-
-	if (size)
-		*size = OBJECT_SIZE_UNKNOWN;
 
 	return pbap;
 
