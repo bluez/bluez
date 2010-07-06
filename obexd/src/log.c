@@ -57,7 +57,7 @@ void error(const char *format, ...)
 	va_end(ap);
 }
 
-void log_debug(const char *format, ...)
+void obex_debug(const char *format, ...)
 {
 	va_list ap;
 
@@ -68,146 +68,14 @@ void log_debug(const char *format, ...)
 	va_end(ap);
 }
 
-static struct {
-	int evt;
-	const char *name;
-} obex_event[] = {
-	/* Progress has been made */
-	{ OBEX_EV_PROGRESS,	"PROGRESS"	},
-	/* An incoming request is about to come */
-	{ OBEX_EV_REQHINT,	"REQHINT"	},
-	/* An incoming request has arrived */
-	{ OBEX_EV_REQ,		"REQ"		},
-	/* Request has finished */
-	{ OBEX_EV_REQDONE,	"REQDONE"	},
-	/* Link has been disconnected */
-	{ OBEX_EV_LINKERR,	"LINKERR"	},
-	/* Malformed data encountered */
-	{ OBEX_EV_PARSEERR,	"PARSEERR"	},
-	/* Connection accepted */
-	{ OBEX_EV_ACCEPTHINT,	"ACCEPTHINT"	},
-	/* Request was aborted */
-	{ OBEX_EV_ABORT,	"ABORT"		},
-	/* Need to feed more data when sending a stream */
-	{ OBEX_EV_STREAMEMPTY,	"STREAMEMPTY"	},
-	/* Time to pick up data when receiving a stream */
-	{ OBEX_EV_STREAMAVAIL,	"STREAMAVAIL"	},
-	/* Unexpected data, not fatal */
-	{ OBEX_EV_UNEXPECTED,	"UNEXPECTED"	},
-	/* First packet of an incoming request has been parsed */
-	{ OBEX_EV_REQCHECK,	"REQCHECK"	},
-	{ 0xFF,			NULL		},
-};
-
-/* Possible commands */
-static struct {
-	int cmd;
-	const char *name;
-} obex_command[] = {
-	{ OBEX_CMD_CONNECT,	"CONNECT"	},
-	{ OBEX_CMD_DISCONNECT,	"DISCONNECT"	},
-	{ OBEX_CMD_PUT,		"PUT"		},
-	{ OBEX_CMD_GET,		"GET"		},
-	{ OBEX_CMD_SETPATH,	"SETPATH"	},
-	{ OBEX_CMD_SESSION,	"SESSION"	},
-	{ OBEX_CMD_ABORT,	"ABORT"		},
-	{ OBEX_FINAL,		"FINAL"		},
-	{ 0xFF,			NULL		},
-};
-
-/* Possible Response */
-static struct {
-	int rsp;
-	const char *name;
-} obex_response[] = {
-	{ OBEX_RSP_CONTINUE,			"CONTINUE"		},
-	{ OBEX_RSP_SWITCH_PRO,			"SWITCH_PRO"		},
-	{ OBEX_RSP_SUCCESS,			"SUCCESS"		},
-	{ OBEX_RSP_CREATED,			"CREATED"		},
-	{ OBEX_RSP_ACCEPTED,			"ACCEPTED"		},
-	{ OBEX_RSP_NON_AUTHORITATIVE,		"NON_AUTHORITATIVE"	},
-	{ OBEX_RSP_NO_CONTENT,			"NO_CONTENT"		},
-	{ OBEX_RSP_RESET_CONTENT,		"RESET_CONTENT"		},
-	{ OBEX_RSP_PARTIAL_CONTENT,		"PARTIAL_CONTENT"	},
-	{ OBEX_RSP_MULTIPLE_CHOICES,		"MULTIPLE_CHOICES"	},
-	{ OBEX_RSP_MOVED_PERMANENTLY,		"MOVED_PERMANENTLY"	},
-	{ OBEX_RSP_MOVED_TEMPORARILY,		"MOVED_TEMPORARILY"	},
-	{ OBEX_RSP_SEE_OTHER,			"SEE_OTHER"		},
-	{ OBEX_RSP_NOT_MODIFIED,		"NOT_MODIFIED"		},
-	{ OBEX_RSP_USE_PROXY,			"USE_PROXY"		},
-	{ OBEX_RSP_BAD_REQUEST,			"BAD_REQUEST"		},
-	{ OBEX_RSP_UNAUTHORIZED,		"UNAUTHORIZED"		},
-	{ OBEX_RSP_PAYMENT_REQUIRED,		"PAYMENT_REQUIRED"	},
-	{ OBEX_RSP_FORBIDDEN,			"FORBIDDEN"		},
-	{ OBEX_RSP_NOT_FOUND,			"NOT_FOUND"		},
-	{ OBEX_RSP_METHOD_NOT_ALLOWED,		"METHOD_NOT_ALLOWED"	},
-	{ OBEX_RSP_NOT_ACCEPTABLE,		"NOT_ACCEPTABLE"	},
-	{ OBEX_RSP_PROXY_AUTH_REQUIRED,		"PROXY_AUTH_REQUIRED"	},
-	{ OBEX_RSP_REQUEST_TIME_OUT,		"REQUEST_TIME_OUT"	},
-	{ OBEX_RSP_CONFLICT,			"CONFLICT"		},
-	{ OBEX_RSP_GONE,			"GONE"			},
-	{ OBEX_RSP_LENGTH_REQUIRED,		"LENGTH_REQUIRED"	},
-	{ OBEX_RSP_PRECONDITION_FAILED,		"PRECONDITION_FAILED"	},
-	{ OBEX_RSP_REQ_ENTITY_TOO_LARGE,	"REQ_ENTITY_TOO_LARGE"	},
-	{ OBEX_RSP_REQ_URL_TOO_LARGE,		"REQ_URL_TOO_LARGE"	},
-	{ OBEX_RSP_UNSUPPORTED_MEDIA_TYPE,	"UNSUPPORTED_MEDIA_TYPE"},
-	{ OBEX_RSP_INTERNAL_SERVER_ERROR,	"INTERNAL_SERVER_ERROR"	},
-	{ OBEX_RSP_NOT_IMPLEMENTED,		"NOT_IMPLEMENTED"	},
-	{ OBEX_RSP_BAD_GATEWAY,			"BAD_GATEWAY"		},
-	{ OBEX_RSP_SERVICE_UNAVAILABLE,		"SERVICE_UNAVAILABLE"	},
-	{ OBEX_RSP_GATEWAY_TIMEOUT,		"GATEWAY_TIMEOUT"	},
-	{ OBEX_RSP_VERSION_NOT_SUPPORTED,	"VERSION_NOT_SUPPORTED"	},
-	{ OBEX_RSP_DATABASE_FULL,		"DATABASE_FULL"		},
-	{ OBEX_RSP_DATABASE_LOCKED,		"DATABASE_LOCKED"	},
-	{ 0xFF,					NULL			},
-};
-
-void obex_debug(int evt, int cmd, int rsp)
-{
-	const char *evtstr = NULL, *cmdstr = NULL, *rspstr = NULL;
-	int i;
-	static int lastevt, lastcmd;
-
-	if (evt < 0)
-		evt = lastevt;
-	else
-		lastevt = evt;
-
-	if (cmd < 0)
-		cmd = lastcmd;
-	else
-		lastcmd = cmd;
-
-	for (i = 0; obex_event[i].evt != 0xFF; i++) {
-		if (obex_event[i].evt != evt)
-			continue;
-		evtstr = obex_event[i].name;
-	}
-
-	for (i = 0; obex_command[i].cmd != 0xFF; i++) {
-		if (obex_command[i].cmd != cmd)
-			continue;
-		cmdstr = obex_command[i].name;
-	}
-
-	for (i = 0; obex_response[i].rsp != 0xFF; i++) {
-		if (obex_response[i].rsp != rsp)
-			continue;
-		rspstr = obex_response[i].name;
-	}
-
-	log_debug("%s(0x%x), %s(0x%x), %s(0x%x)", evtstr, evt, cmdstr, cmd,
-								rspstr, rsp);
-}
-
-extern struct log_debug_desc __start___debug[];
-extern struct log_debug_desc __stop___debug[];
+extern struct obex_debug_desc __start___debug[];
+extern struct obex_debug_desc __stop___debug[];
 
 static gchar **enabled = NULL;
 
 int debug_enabled = FALSE;
 
-static gboolean is_enabled(struct log_debug_desc *desc)
+static gboolean is_enabled(struct obex_debug_desc *desc)
 {
 	int i;
 
@@ -228,16 +96,16 @@ static gboolean is_enabled(struct log_debug_desc *desc)
 
 void log_enable_debug()
 {
-	struct log_debug_desc *desc;
+	struct obex_debug_desc *desc;
 
 	for (desc = __start___debug; desc < __stop___debug; desc++)
-		desc->flags |= LOG_DEBUG_FLAG_PRINT;
+		desc->flags |= OBEX_DEBUG_FLAG_PRINT;
 }
 
 void log_init(const char *ident, const char *debug, int log_option)
 {
 	int option = log_option | LOG_NDELAY | LOG_PID;
-	struct log_debug_desc *desc;
+	struct obex_debug_desc *desc;
 	const char *name = NULL, *file = NULL;
 
 	if (debug != NULL)
@@ -253,7 +121,7 @@ void log_init(const char *ident, const char *debug, int log_option)
 		}
 
 		if (is_enabled(desc))
-			desc->flags |= LOG_DEBUG_FLAG_PRINT;
+			desc->flags |= OBEX_DEBUG_FLAG_PRINT;
 	}
 
 	openlog(ident, option, LOG_DAEMON);
