@@ -1,0 +1,97 @@
+BlueZ D-Bus Attribute API description
+*************************************
+
+Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
+
+
+Attribute hierarchy
+===================
+
+Service		org.bluez
+Interface	org.bluez.Service
+		org.bluez.Characteristic
+Object path	[prefix]/{hci0}/{service0}
+		[prefix]/{hci0}/{device0}/{service0}/{characteristic0,...}
+		[prefix]/{hci0}/{device0}/{service1}/{characteristic0,...}
+
+Service details
+---------------
+
+One service object path for every remote SDP record or service in the
+attribute database. One service object path for every local SDP record
+or service from attribute database.
+
+Local services are children of the adapter object path. Remote services
+are children of the remote device object path. This doesn't solve the
+problem where local atttributes can have different instances based on
+the remote device.
+
+In general the idea is to also represent SDP records as services so that
+new style application can just use the service interfaces to retrieve the
+needed information. That way the usage of SDP and GATT would be mostly
+fully transparent and a differentiation becomes unimportant in the future.
+
+A service consists of some generic service information and a set of
+characteristics. All characteristic are presented as object path as well.
+
+Properties
+----------
+	string Name (mandatory)
+
+		General name of service
+
+	string Description (optional)
+
+		Description of service
+
+	string UUID (mandatory)
+
+		UUID of service. Service class value for SDP and GATT UUID
+		for attribute based services.
+
+	array{object} Characteristics
+
+		This list contains the characteristics owned by this specific
+		service and other characteristics from service includes. That
+		way no complicated service includes array is needed.
+
+		string UUID
+		string Name
+		string Description
+		struct Format (type, name, exponet etc.)
+
+		array{byte} Value
+		string Representation (of the binary Value)
+
+		object Service (the original service in case of includes)
+
+		At this point only GetProperties() method call should be
+		supported for simplicity. Changing characteristics is up
+		to future support.
+
+		The object path of the characteristics might be split
+		over multiple service objects, because of includes.
+
+	array[(object, dict)] GetCharacteristics()
+
+		Array of tuples with object path as identifier. An alternativ
+		is doing dict of dict since the object path is unique and the
+		order of characteristics is irrelevant. However it might be
+		good to actually present an order here.
+
+		See Characteristics properties for dictionary details.
+
+	RegisterCharacteristicsWatcher(object path)
+
+		Register a watcher for changes in specific characteristics
+		to monitor changes.
+
+		A watcher will be registered for this service and will
+		notifier about any changed characteristics in the service.
+		This also notifies about any included characteristics.
+
+		Method for the watch objects still need to be defined.
+
+	UnregisterCharacteristicsWatcher(object path)
+
+		Unregister a watcher.
