@@ -34,6 +34,7 @@
 
 #include "manager.h"
 #include "client.h"
+#include "example.h"
 
 #define GATT_UUID	"00001801-0000-1000-8000-00805f9b34fb"
 
@@ -87,38 +88,28 @@ static struct btd_device_driver client_driver = {
 	.remove = client_remove,
 };
 
-static int server_probe(struct btd_adapter *adapter)
-{
-	return 0;
-}
-
-static void server_remove(struct btd_adapter *adapter)
-{
-}
-
-static struct btd_adapter_driver attrib_server_driver = {
-	.name = "attribute-server",
-	.probe = server_probe,
-	.remove = server_remove,
-};
-
 int attrib_manager_init(DBusConnection *conn)
 {
 	connection = dbus_connection_ref(conn);
 
 	attrib_client_init(connection);
 
-	btd_register_adapter_driver(&attrib_server_driver);
 	btd_register_device_driver(&client_driver);
 
-	return 0;
+	/*
+	 * FIXME: Add config file option to allow
+	 * enable/disable the GATT server and client.
+	 */
+
+	return server_example_init();
 }
 
 void attrib_manager_exit(void)
 {
-	btd_unregister_adapter_driver(&attrib_server_driver);
 	btd_unregister_device_driver(&client_driver);
 
+	server_example_exit();
 	attrib_client_exit();
+
 	dbus_connection_unref(connection);
 }
