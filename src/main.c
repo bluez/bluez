@@ -50,6 +50,7 @@
 
 #include "hcid.h"
 #include "sdpd.h"
+#include "attrib-server.h"
 #include "adapter.h"
 #include "dbus-hci.h"
 #include "dbus-common.h"
@@ -452,6 +453,8 @@ int main(int argc, char *argv[])
 	}
 
 	start_sdp_server(mtu, main_opts.deviceid, SDP_SERVER_COMPAT);
+	if (attrib_server_init() < 0)
+		error("Can't initialize attribute server");
 
 	/* Loading plugins has to be done after D-Bus has been setup since
 	 * the plugins might wanna expose some paths on the bus. However the
@@ -480,6 +483,7 @@ int main(int argc, char *argv[])
 
 	plugin_cleanup();
 
+	attrib_server_exit();
 	stop_sdp_server();
 
 	agent_exit();

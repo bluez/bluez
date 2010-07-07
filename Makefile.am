@@ -195,6 +195,7 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/security.c src/rfkill.c src/hcid.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \
 			src/sdpd-service.c src/sdpd-database.c \
+			src/attrib-server.h src/attrib-server.c \
 			src/sdp-xml.h src/sdp-xml.c src/btio.h src/btio.c \
 			src/textfile.h src/textfile.c \
 			src/glib-helper.h src/glib-helper.c \
