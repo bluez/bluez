@@ -263,8 +263,21 @@ static void os_set_response(obex_object_t *obj, int err)
 	OBEX_ObjectSetRsp(obj, rsp, lastrsp);
 }
 
+static void os_session_mark_aborted(struct obex_session *os)
+{
+	/* the session was already cancelled/aborted or size in unknown */
+	if (os->aborted || os->size == OBJECT_SIZE_UNKNOWN)
+		return;
+
+	os->aborted = (os->size != os->offset);
+}
+
 static void os_reset_session(struct obex_session *os)
 {
+	os_session_mark_aborted(os);
+	if (os->service->reset)
+		os->service->reset(os, os->service_data);
+
 	if (os->object) {
 		os->driver->set_io_watch(os->object, NULL, NULL);
 		os->driver->close(os->object);
@@ -298,16 +311,6 @@ static void os_reset_session(struct obex_session *os)
 	os->offset = 0;
 	os->size = OBJECT_SIZE_DELETE;
 	os->finished = 0;
-}
-
-static void os_session_mark_aborted(struct obex_session *os)
-{
-	/* the session was alredy cancelled/aborted */
-	if (os->aborted)
-		return;
-
-	os->aborted = os->size == OBJECT_SIZE_UNKNOWN ? FALSE :
-							os->size != os->offset;
 }
 
 static void obex_session_free(struct obex_session *os)
@@ -1087,8 +1090,6 @@ static void obex_event_cb(obex_t *obex, obex_object_t *obj, int mode,
 		break;
 	case OBEX_EV_ABORT:
 		os->aborted = TRUE;
-		if (os->service->reset)
-			os->service->reset(os, os->service_data);
 		os_reset_session(os);
 		OBEX_ObjectSetRsp(obj, OBEX_RSP_SUCCESS, OBEX_RSP_SUCCESS);
 		break;
@@ -1103,9 +1104,6 @@ static void obex_event_cb(obex_t *obex, obex_object_t *obj, int mode,
 		case OBEX_CMD_GET:
 		case OBEX_CMD_SETPATH:
 		default:
-			os_session_mark_aborted(os);
-			if (os->service->reset)
-				os->service->reset(os, os->service_data);
 			os_reset_session(os);
 			break;
 		}
