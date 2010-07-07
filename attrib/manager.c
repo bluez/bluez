@@ -37,9 +37,22 @@ static DBusConnection *connection;
 
 static int client_probe(struct btd_device *device, GSList *uuids)
 {
+	struct btd_adapter *adapter = device_get_adapter(device);
 	const char *path = device_get_path(device);
+	bdaddr_t sba, dba;
 
-	return attrib_client_register(path);
+	/*
+	 * Entry point for BR/EDR GATT probe. LE scanning and primary service
+	 * search will be handled temporaly inside the gatt plugin. For the
+	 * final solution all LE operations should be moved to the "core",
+	 * otherwise it will not be possible serialize/schedule BR/EDR device
+	 * discovery and LE scanning.
+	 */
+
+	adapter_get_address(adapter, &sba);
+	device_get_address(device, &dba);
+
+	return attrib_client_register(&sba, &dba, path);
 }
 
 static void client_remove(struct btd_device *device)

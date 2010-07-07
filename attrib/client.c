@@ -28,6 +28,8 @@
 
 #include <glib.h>
 
+#include <bluetooth/bluetooth.h>
+
 #include "log.h"
 #include "gdbus.h"
 
@@ -35,7 +37,45 @@
 
 #define CHAR_INTERFACE "org.bluez.Characteristic"
 
+struct gatt_service {
+	int id;
+	bdaddr_t sba;
+	bdaddr_t dba;
+	char *path;
+	GSList *chars;
+};
+
+struct characteristic {
+	char *path;
+};
+
+static int service_id = 0;
+static int char_id = 0;
+static GSList *services = NULL;
+
 static DBusConnection *connection;
+
+static void characteristic_free(void *user_data)
+{
+	struct characteristic *chr = user_data;
+
+	g_free(chr->path);
+	g_free(chr);
+}
+
+static void gatt_service_free(void *user_data)
+{
+	struct gatt_service *gatt = user_data;
+
+	g_slist_foreach(gatt->chars, (GFunc) characteristic_free, NULL);
+	g_free(gatt->path);
+	g_free(gatt);
+}
+
+static int gatt_path_cmp(const struct gatt_service *gatt, const char *path)
+{
+	return strcmp(gatt->path, path);
+}
 
 static DBusMessage *get_characteristics(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -64,15 +104,37 @@ static GDBusMethodTable char_methods[] = {
 	{ }
 };
 
-int attrib_client_register(const char *path)
+int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path)
 {
-	if (g_dbus_register_interface(connection, path,
-				CHAR_INTERFACE,
-				char_methods, NULL, NULL,
-				NULL, NULL) == FALSE) {
+	struct gatt_service *gatt;
+	struct characteristic *chr;
+
+	/*
+	 * Registering fake services/characteristics. The following
+	 * paths/interfaces shall be registered after discover primary
+	 * services only.
+	 */
+
+	gatt = g_new0(struct gatt_service, 1);
+	gatt->id = service_id;
+	gatt->path = g_strdup(path);
+	bacpy(&gatt->sba, sba);
+	bacpy(&gatt->dba, dba);
+
+	chr = g_new0(struct characteristic, 1);
+	chr->path = g_strdup_printf("%s/service%d/characteristic%d",
+						path, service_id, char_id);
+	gatt->chars = g_slist_append(gatt->chars, chr);
+
+	if (!g_dbus_register_interface(connection, chr->path, CHAR_INTERFACE,
+						char_methods, NULL, NULL, chr,
+						characteristic_free)) {
 		error("D-Bus failed to register %s interface", CHAR_INTERFACE);
+		gatt_service_free(gatt);
 		return -1;
 	}
+
+	services = g_slist_append(services, gatt);
 
 	DBG("Registered interface %s on path %s", CHAR_INTERFACE, path);
 
@@ -81,15 +143,28 @@ int attrib_client_register(const char *path)
 
 void attrib_client_unregister(const char *path)
 {
-	g_dbus_unregister_interface(connection, path, CHAR_INTERFACE);
+	struct gatt_service *gatt;
+	GSList *l;
 
-	DBG("Unregistered interface %s on path %s", CHAR_INTERFACE, path);
+	l = g_slist_find_custom(services, path, (GCompareFunc) gatt_path_cmp);
+	if (!l)
+		return;
+
+	gatt = l->data;
+	services = g_slist_remove(services, gatt);
+	gatt_service_free(gatt);
 }
 
 int attrib_client_init(DBusConnection *conn)
 {
 
 	connection = dbus_connection_ref(conn);
+
+	/*
+	 * FIXME: if the adapter supports BLE start scanning. Temporary
+	 * solution, this approach doesn't allow to control scanning based
+	 * on the discoverable property.
+	 */
 
 	return 0;
 }
