@@ -270,7 +270,8 @@ static void os_reset_session(struct obex_session *os)
 		os->driver->close(os->object);
 		os->object = NULL;
 		os->obj = NULL;
-		if (os->aborted && os->cmd == OBEX_CMD_PUT && os->path)
+		if (os->aborted && os->cmd == OBEX_CMD_PUT && os->path &&
+				os->driver->remove)
 			os->driver->remove(os->path);
 	}
 
