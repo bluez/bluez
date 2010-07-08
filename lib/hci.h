@@ -1350,11 +1350,10 @@ typedef struct {
 typedef struct {
 	uint16_t	interval;
 	uint16_t	window;
-	uint16_t	initiator_filter;
+	uint8_t		initiator_filter;
 	uint8_t		peer_bdaddr_type;
 	bdaddr_t	peer_bdaddr;
 	uint8_t		own_bdaddr_type;
-	bdaddr_t	own_bdaddr;
 	uint16_t	min_interval;
 	uint16_t	max_interval;
 	uint16_t	latency;
@@ -1362,7 +1361,7 @@ typedef struct {
 	uint16_t	min_ce_length;
 	uint16_t	max_ce_length;
 } __attribute__ ((packed)) le_create_connection_cp;
-#define LE_CREATE_CONN_CP_SIZE 32
+#define LE_CREATE_CONN_CP_SIZE 25
 
 #define OCF_LE_CREATE_CONN_CANCEL		0x000E
 
