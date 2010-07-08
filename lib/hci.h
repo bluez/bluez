@@ -1300,34 +1300,34 @@ typedef struct {
 	uint8_t		chan_map;
 	uint8_t		filter;
 } __attribute__ ((packed)) le_set_advertising_parameters_cp;
-#define SET_ADVERTISING_PARAMETERS_CP_SIZE 15
+#define LE_SET_ADVERTISING_PARAMETERS_CP_SIZE 15
 
 #define OCF_LE_READ_ADVERTISING_CHANNEL_TX_POWER	0x0007
 typedef struct {
 	uint8_t		status;
 	uint8_t		level;
 } __attribute__ ((packed)) le_read_advertising_channel_tx_power_rp;
-#define READ_ADVERTISING_CHANNEL_TX_POWER_RP_SIZE 2
+#define LE_READ_ADVERTISING_CHANNEL_TX_POWER_RP_SIZE 2
 
 #define OCF_LE_SET_ADVERTISING_DATA		0x0008
 typedef struct {
 	uint8_t		length;
 	uint8_t		data[31];
 } __attribute__ ((packed)) le_set_advertising_data_cp;
-#define SET_ADVERTISING_DATA_CP_SIZE 32
+#define LE_SET_ADVERTISING_DATA_CP_SIZE 32
 
 #define OCF_LE_SET_SCAN_RESPONSE_DATA		0x0009
 typedef struct {
 	uint8_t		length;
 	uint8_t		data[31];
 } __attribute__ ((packed)) le_set_scan_response_data_cp;
-#define SET_SCAN_RESPONSE_DATA_CP_SIZE 32
+#define LE_SET_SCAN_RESPONSE_DATA_CP_SIZE 32
 
 #define OCF_LE_SET_ADVERTISE_ENABLE		0x000A
 typedef struct {
 	uint8_t		enable;
 } __attribute__ ((packed)) le_set_advertise_enable_cp;
-#define SET_ADVERTISE_ENABLE_CP_SIZE 1
+#define LE_SET_ADVERTISE_ENABLE_CP_SIZE 1
 
 #define OCF_LE_SET_SCAN_PARAMETERS		0x000B
 typedef struct {
@@ -1337,14 +1337,14 @@ typedef struct {
 	uint8_t		own_bdaddr_type;
 	uint8_t		filter;
 } __attribute__ ((packed)) le_set_scan_parameters_cp;
-#define SET_SCAN_PARAMETERS_CP_SIZE 7
+#define LE_SET_SCAN_PARAMETERS_CP_SIZE 7
 
 #define OCF_LE_SET_SCAN_ENABLE			0x000C
 typedef struct {
 	uint8_t		enable;
 	uint8_t		filter_dup;
 } __attribute__ ((packed)) le_set_scan_enable_cp;
-#define SET_SCAN_ENABLE_CP_SIZE 2
+#define LE_SET_SCAN_ENABLE_CP_SIZE 2
 
 #define OCF_LE_CREATE_CONN			0x000D
 typedef struct {
