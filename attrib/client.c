@@ -32,6 +32,7 @@
 
 #include "log.h"
 #include "gdbus.h"
+#include "btio.h"
 
 #include "client.h"
 
@@ -42,6 +43,7 @@ struct gatt_service {
 	bdaddr_t sba;
 	bdaddr_t dba;
 	char *path;
+	GIOChannel *io;
 	GSList *chars;
 };
 
@@ -104,10 +106,30 @@ static GDBusMethodTable char_methods[] = {
 	{ }
 };
 
-int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path)
+static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+
+	if (gerr) {
+		error("%s", gerr->message);
+		goto fail;
+	}
+
+	DBG("GATT connection established.");
+
+	return;
+fail:
+	g_io_channel_unref(gatt->io);
+	gatt->io = NULL;
+}
+
+int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
+									int psm)
 {
 	struct gatt_service *gatt;
 	struct characteristic *chr;
+	GError *gerr = NULL;
+	GIOChannel *io;
 
 	/*
 	 * Registering fake services/characteristics. The following
@@ -133,6 +155,21 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path)
 		gatt_service_free(gatt);
 		return -1;
 	}
+
+	io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, &gerr,
+					BT_IO_OPT_SOURCE_BDADDR, sba,
+					BT_IO_OPT_DEST_BDADDR, dba,
+					BT_IO_OPT_PSM, psm,
+					BT_IO_OPT_INVALID);
+
+	if (!io) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+		gatt_service_free(gatt);
+		return -1;
+	}
+
+	gatt->io = io;
 
 	services = g_slist_append(services, gatt);
 

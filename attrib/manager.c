@@ -25,6 +25,10 @@
 #include <config.h>
 #endif
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
+
 #include "../src/adapter.h"
 #include "../src/device.h"
 
@@ -39,7 +43,10 @@ static int client_probe(struct btd_device *device, GSList *uuids)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const char *path = device_get_path(device);
+	const sdp_record_t *rec;
+	sdp_list_t *list;
 	bdaddr_t sba, dba;
+	int psm;
 
 	/*
 	 * Entry point for BR/EDR GATT probe. LE scanning and primary service
@@ -49,10 +56,21 @@ static int client_probe(struct btd_device *device, GSList *uuids)
 	 * discovery and LE scanning.
 	 */
 
+	rec = btd_device_get_record(device, GATT_UUID);
+	if (!rec)
+		return -1;
+
+	if (sdp_get_access_protos(rec, &list) < 0)
+		return -1;
+
+	psm = sdp_get_proto_port(list, L2CAP_UUID);
+	if (psm < 0)
+		return -1;
+
 	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba);
 
-	return attrib_client_register(&sba, &dba, path);
+	return attrib_client_register(&sba, &dba, path, psm);
 }
 
 static void client_remove(struct btd_device *device)
