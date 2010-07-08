@@ -1392,8 +1392,8 @@ typedef struct {
 #define OCF_LE_CONN_UPDATE			0x0013
 typedef struct {
 	uint16_t	handle;
-	uint16_t	conn_min_interval;
-	uint16_t	conn_max_interval;
+	uint16_t	min_interval;
+	uint16_t	max_interval;
 	uint16_t	latency;
 	uint16_t	supervision_timeout;
 	uint16_t	min_ce_length;
