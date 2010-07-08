@@ -2471,6 +2471,71 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 	hci_close_dev(dd);
 }
 
+static struct option lecc_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lecc_help =
+	"Usage:\n"
+	"\tlecc <bdaddr>\n";
+
+static void cmd_lecc(int dev_id, int argc, char **argv)
+{
+	int err, opt, dd;
+	bdaddr_t bdaddr;
+	uint16_t interval, latency, max_ce_length, max_interval, min_ce_length;
+	uint16_t min_interval, supervision_timeout, window;
+	uint8_t initiator_filter, own_bdaddr_type, peer_bdaddr_type;
+
+	for_each_opt(opt, lecc_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lecc_help);
+			return;
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf("%s", lecc_help);
+		return;
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	interval = htobs(0x0004);
+	window = htobs(0x0004);
+	initiator_filter = 0x00;
+	peer_bdaddr_type = 0x00;
+	own_bdaddr_type = 0x00;
+	min_interval = htobs(0x000F);
+	max_interval = htobs(0x000F);
+	latency = htobs(0x0000);
+	supervision_timeout = htobs(0x0C80);
+	min_ce_length = htobs(0x0001);
+	max_ce_length = htobs(0x0001);
+
+	err = hci_le_create_conn(dd, interval, window, initiator_filter,
+			peer_bdaddr_type, bdaddr, own_bdaddr_type, min_interval,
+			max_interval, latency, supervision_timeout,
+			min_ce_length, max_ce_length);
+	if (err < 0) {
+		perror("Could not create connection");
+		exit(1);
+	}
+
+	hci_close_dev(dd);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
@@ -2501,6 +2566,7 @@ static struct {
 	{ "clkoff", cmd_clkoff, "Read clock offset"                    },
 	{ "clock",  cmd_clock,  "Read local or remote clock"           },
 	{ "lescan", cmd_lescan, "Start LE scan"                        },
+	{ "lecc",   cmd_lecc,   "Create a LE Connection",              },
 	{ NULL, NULL, 0 }
 };
 
