@@ -2441,7 +2441,7 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	err = hci_le_set_scan_parameters(dd, 0x01, 0x0010, 0x0010,
+	err = hci_le_set_scan_parameters(dd, 0x01, htobs(0x0010), htobs(0x0010),
 								0x00, 0x00);
 	if (err < 0) {
 		perror("Set scan parameters failed");
