@@ -1260,15 +1260,15 @@ typedef struct {
 #define WRITE_SIMPLE_PAIRING_DEBUG_MODE_RP_SIZE 1
 
 /* LE commands */
-#define OGF_LE_CONTROLLER	0x08
+#define OGF_LE_CTL		0x08
 
-#define OCF_CTL_LE_SET_EVENT_MASK	0x0001
+#define OCF_LE_SET_EVENT_MASK			0x0001
 typedef struct {
 	uint64_t	event_mask;
 } __attribute__ ((packed)) le_set_event_mask_cp;
 #define LE_SET_EVENT_MASK_CP_SIZE 8
 
-#define OCF_CTL_LE_READ_BUFFER_SIZE	0x0002
+#define OCF_LE_READ_BUFFER_SIZE			0x0002
 typedef struct {
 	uint8_t		status;
 	uint16_t	pkt_len;
@@ -1276,20 +1276,20 @@ typedef struct {
 } __attribute__ ((packed)) le_read_buffer_size_rp;
 #define LE_READ_BUFFER_SIZE_RP_SIZE 4
 
-#define OCF_CTL_LE_READ_LOCAL_SUPPORTED_FEATURES	0x0003
+#define OCF_LE_READ_LOCAL_SUPPORTED_FEATURES	0x0003
 typedef struct {
 	uint8_t		status;
 	uint8_t		features[8];
 } __attribute__ ((packed)) le_read_local_supported_features_rp;
 #define LE_READ_LOCAL_SUPPORTED_FEATURES_RP_SIZE 9
 
-#define OCF_CTL_LE_SET_RANDOM_ADDRESS	0x0005
+#define OCF_LE_SET_RANDOM_ADDRESS		0x0005
 typedef struct {
 	bdaddr_t	bdaddr;
 } __attribute__ ((packed)) le_set_random_address_cp;
 #define LE_SET_RANDOM_ADDRESS_CP_SIZE 6
 
-#define OCF_CTL_LE_SET_ADVERTISING_PARAMETERS	0x0006
+#define OCF_LE_SET_ADVERTISING_PARAMETERS	0x0006
 typedef struct {
 	uint16_t	min_interval;
 	uint16_t	max_interval;
@@ -1302,34 +1302,34 @@ typedef struct {
 } __attribute__ ((packed)) le_set_advertising_parameters_cp;
 #define SET_ADVERTISING_PARAMETERS_CP_SIZE 15
 
-#define OCF_CTL_LE_READ_ADVERTISING_CHANNEL_TX_POWER	0x0007
+#define OCF_LE_READ_ADVERTISING_CHANNEL_TX_POWER	0x0007
 typedef struct {
 	uint8_t		status;
 	uint8_t		level;
 } __attribute__ ((packed)) le_read_advertising_channel_tx_power_rp;
 #define READ_ADVERTISING_CHANNEL_TX_POWER_RP_SIZE 2
 
-#define OCF_CTL_LE_SET_ADVERTISING_DATA	0x0008
+#define OCF_LE_SET_ADVERTISING_DATA		0x0008
 typedef struct {
 	uint8_t		length;
 	uint8_t		data[31];
 } __attribute__ ((packed)) le_set_advertising_data_cp;
 #define SET_ADVERTISING_DATA_CP_SIZE 32
 
-#define OCF_CTL_LE_SET_SCAN_RESPONSE_DATA	0x0009
+#define OCF_LE_SET_SCAN_RESPONSE_DATA		0x0009
 typedef struct {
 	uint8_t		length;
 	uint8_t		data[31];
 } __attribute__ ((packed)) le_set_scan_response_data_cp;
 #define SET_SCAN_RESPONSE_DATA_CP_SIZE 32
 
-#define OCF_CTL_LE_SET_ADVERTISE_ENABLE	0x000A
+#define OCF_LE_SET_ADVERTISE_ENABLE		0x000A
 typedef struct {
 	uint8_t		enable;
 } __attribute__ ((packed)) le_set_advertise_enable_cp;
 #define SET_ADVERTISE_ENABLE_CP_SIZE 1
 
-#define OCF_CTL_LE_SET_SCAN_PARAMETERS	0x000B
+#define OCF_LE_SET_SCAN_PARAMETERS		0x000B
 typedef struct {
 	uint8_t		type;
 	uint16_t	interval;
@@ -1339,14 +1339,14 @@ typedef struct {
 } __attribute__ ((packed)) le_set_scan_parameters_cp;
 #define SET_SCAN_PARAMETERS_CP_SIZE 7
 
-#define OCF_CTL_LE_SET_SCAN_ENABLE	0x000C
+#define OCF_LE_SET_SCAN_ENABLE			0x000C
 typedef struct {
 	uint8_t		enable;
 	uint8_t		filter_dup;
 } __attribute__ ((packed)) le_set_scan_enable_cp;
 #define SET_SCAN_ENABLE_CP_SIZE 2
 
-#define OCF_CTL_LE_CREATE_CONN	0x000D
+#define OCF_LE_CREATE_CONN			0x000D
 typedef struct {
 	uint16_t	interval;
 	uint16_t	window;
@@ -1364,32 +1364,32 @@ typedef struct {
 } __attribute__ ((packed)) le_create_connection_cp;
 #define LE_CREATE_CONN_CP_SIZE 32
 
-#define OCF_CTL_LE_CREATE_CONN_CANCEL	0x000E
+#define OCF_LE_CREATE_CONN_CANCEL		0x000E
 
-#define OCF_CTL_LE_READ_WHITE_LIST_SIZE	0x000F
+#define OCF_LE_READ_WHITE_LIST_SIZE		0x000F
 typedef struct {
 	uint8_t		status;
 	uint8_t		size;
 } __attribute__ ((packed)) le_read_white_list_size_rp;
 #define LE_READ_WHITE_LIST_SIZE_RP_SIZE 2
 
-#define OCF_CTL_LE_CLEAR_WHITE_LIST	0x0010
+#define OCF_LE_CLEAR_WHITE_LIST			0x0010
 
-#define OCF_CTL_LE_ADD_DEVICE_TO_WHITE_LIST	0x0011
+#define OCF_LE_ADD_DEVICE_TO_WHITE_LIST		0x0011
 typedef struct {
 	uint8_t		bdaddr_type;
 	bdaddr_t	bdaddr;
 } __attribute__ ((packed)) le_add_device_to_white_list_cp;
 #define LE_ADD_DEVICE_TO_WHITE_LIST_CP_SIZE 7
 
-#define OCF_CTL_LE_REMOVE_DEVICE_FROM_WHITE_LIST	0x0012
+#define OCF_LE_REMOVE_DEVICE_FROM_WHITE_LIST	0x0012
 typedef struct {
 	uint8_t		bdaddr_type;
 	bdaddr_t	bdaddr;
 } __attribute__ ((packed)) le_remove_device_from_white_list_cp;
 #define LE_REMOVE_DEVICE_FROM_WHITE_LIST_CP_SIZE 7
 
-#define OCF_CTL_LE_CONN_UPDATE	0x0013
+#define OCF_LE_CONN_UPDATE			0x0013
 typedef struct {
 	uint16_t	handle;
 	uint16_t	conn_min_interval;
@@ -1401,13 +1401,13 @@ typedef struct {
 } __attribute__ ((packed)) le_connection_update_cp;
 #define LE_CONN_UPDATE_CP_SIZE 14
 
-#define OCF_CTL_LE_SET_HOST_CHANNEL_CLASSIFICATION	0x0014
+#define OCF_LE_SET_HOST_CHANNEL_CLASSIFICATION	0x0014
 typedef struct {
 	uint8_t		map[5];
 } __attribute__ ((packed)) le_set_host_channel_classification_cp;
 #define LE_SET_HOST_CHANNEL_CLASSIFICATION_CP_SIZE 5
 
-#define OCF_CTL_LE_READ_CHANNEL_MAP	0x0015
+#define OCF_LE_READ_CHANNEL_MAP			0x0015
 typedef struct {
 	uint16_t	handle;
 } __attribute__ ((packed)) le_read_channel_map_cp;
@@ -1419,13 +1419,13 @@ typedef struct {
 } __attribute__ ((packed)) le_read_channel_map_rp;
 #define LE_READ_CHANNEL_MAP_RP_SIZE 8
 
-#define OCF_CTL_LE_READ_REMOTE_USED_FEATURES	0x0016
+#define OCF_LE_READ_REMOTE_USED_FEATURES	0x0016
 typedef struct {
 	uint16_t	handle;
 } __attribute__ ((packed)) le_read_remote_used_features_cp;
 #define LE_READ_REMOTE_USED_FEATURES_CP_SIZE 2
 
-#define OCF_CTL_LE_ENCRYPT			0x0017
+#define OCF_LE_ENCRYPT				0x0017
 typedef struct {
 	uint8_t		key[16];
 	uint8_t		plaintext[16];
@@ -1437,14 +1437,14 @@ typedef struct {
 } __attribute__ ((packed)) le_encrypt_rp;
 #define LE_ENCRYPT_RP_SIZE 17
 
-#define OCF_CTL_LE_RAND			0x0018
+#define OCF_LE_RAND				0x0018
 typedef struct {
 	uint8_t		status;
 	uint64_t	random;
 } __attribute__ ((packed)) le_rand_rp;
 #define LE_RAND_RP_SIZE 9
 
-#define OCF_CTL_LE_START_ENCRYPTION		0x0019
+#define OCF_LE_START_ENCRYPTION			0x0019
 typedef struct {
 	uint16_t	handle;
 	uint64_t	random;
@@ -1453,20 +1453,19 @@ typedef struct {
 } __attribute__ ((packed)) le_start_encryption_cp;
 #define LE_START_ENCRYPTION_CP_SIZE 28
 
-#define OCF_CTL_LE_LTK_REPLY	0x001A
+#define OCF_LE_LTK_REPLY			0x001A
 typedef struct {
 	uint16_t	handle;
 	uint8_t		key[16];
 } __attribute__ ((packed)) le_ltk_reply_cp;
 #define LE_LTK_REQUEST_REPLY_CP_SIZE 18
-
 typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
 } __attribute__ ((packed)) le_ltk_reply_rp;
 #define LE_LTK_REPLY_RP_SIZE 3
 
-#define OCF_CTL_LE_LTK_NEG_REPLY	0x001B
+#define OCF_LE_LTK_NEG_REPLY			0x001B
 typedef struct {
 	uint16_t	handle;
 } __attribute__ ((packed)) le_ltk_neg_reply_cp;
@@ -1477,20 +1476,20 @@ typedef struct {
 } __attribute__ ((packed)) le_ltk_neg_reply_rp;
 #define LE_LTK_NEG_REPLY_RP_SIZE 3
 
-#define OCF_CTL_LE_READ_SUPPORTED_STATES	0x001C
+#define OCF_LE_READ_SUPPORTED_STATES		0x001C
 typedef struct {
 	uint8_t		status;
 	uint64_t	states;
 } __attribute__ ((packed)) le_read_supported_states_rp;
 #define LE_READ_SUPPORTED_STATES_RP_SIZE 9
 
-#define OCF_CTL_LE_RECEIVER_TEST		0x001D
+#define OCF_LE_RECEIVER_TEST			0x001D
 typedef struct {
 	uint8_t		rx_freq;
 } __attribute__ ((packed)) le_receiver_test_cp;
 #define LE_RECEIVER_TEST_CP_SIZE 1
 
-#define OCF_CTL_LE_TRANSMITTER_TEST		0x001E
+#define OCF_LE_TRANSMITTER_TEST			0x001E
 typedef struct {
 	uint8_t		frequency;
 	uint8_t		length;
@@ -1498,7 +1497,7 @@ typedef struct {
 } __attribute__ ((packed)) le_transmitter_test_cp;
 #define LE_TRANSMITTER_TEST_CP_SIZE 3
 
-#define OCF_CTL_LE_TEST_END			0x001F
+#define OCF_LE_TEST_END				0x001F
 typedef struct {
 	uint8_t		status;
 	uint16_t	num_pkts;

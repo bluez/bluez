@@ -2603,8 +2603,8 @@ int hci_le_set_scan_enable(int dd, uint8_t enable, uint8_t filter_dup)
 	scan_cp.filter_dup = filter_dup;
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_LE_CONTROLLER;
-	rq.ocf = OCF_CTL_LE_SET_SCAN_ENABLE;
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_SCAN_ENABLE;
 	rq.cparam = &scan_cp;
 	rq.clen = SET_SCAN_ENABLE_CP_SIZE;
 	rq.rparam = &status;
@@ -2637,8 +2637,8 @@ int hci_le_set_scan_parameters(int dd, uint8_t type,
 	param_cp.filter = filter;
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_LE_CONTROLLER;
-	rq.ocf = OCF_CTL_LE_SET_SCAN_PARAMETERS;
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_SCAN_PARAMETERS;
 	rq.cparam = &param_cp;
 	rq.clen = SET_SCAN_PARAMETERS_CP_SIZE;
 	rq.rparam = &status;
@@ -2665,8 +2665,8 @@ int hci_le_set_advertise_enable(int dd, uint8_t enable)
 	adv_cp.enable = enable;
 
 	memset(&rq, 0, sizeof(rq));
-	rq.ogf = OGF_LE_CONTROLLER;
-	rq.ocf = OCF_CTL_LE_SET_ADVERTISE_ENABLE;
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_ADVERTISE_ENABLE;
 	rq.cparam = &adv_cp;
 	rq.clen = SET_ADVERTISE_ENABLE_CP_SIZE;
 	rq.rparam = &status;
