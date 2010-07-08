@@ -2695,3 +2695,48 @@ int hci_le_set_advertise_enable(int dd, uint8_t enable)
 
 	return 0;
 }
+
+int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
+		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
+		bdaddr_t peer_bdaddr, uint8_t own_bdaddr_type,
+		uint16_t min_interval, 	uint16_t max_interval,
+		uint16_t latency, uint16_t supervision_timeout,
+		uint16_t min_ce_length, uint16_t max_ce_length)
+{
+	struct hci_request rq;
+	le_create_connection_cp create_conn_cp;
+	evt_le_connection_complete conn_complete_rp;
+
+	memset(&create_conn_cp, 0, sizeof(create_conn_cp));
+	create_conn_cp.interval = interval;
+	create_conn_cp.window = window;
+	create_conn_cp.initiator_filter = initiator_filter;
+	create_conn_cp.peer_bdaddr_type = peer_bdaddr_type;
+	create_conn_cp.peer_bdaddr = peer_bdaddr;
+	create_conn_cp.own_bdaddr_type = own_bdaddr_type;
+	create_conn_cp.min_interval = min_interval;
+	create_conn_cp.max_interval = max_interval;
+	create_conn_cp.latency = latency;
+	create_conn_cp.supervision_timeout = supervision_timeout;
+	create_conn_cp.min_ce_length = min_ce_length;
+	create_conn_cp.max_ce_length = max_ce_length;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_CREATE_CONN;
+	rq.event = EVT_LE_CONN_COMPLETE;
+	rq.cparam = &create_conn_cp;
+	rq.clen = LE_CREATE_CONN_CP_SIZE;
+	rq.rparam = &conn_complete_rp;
+	rq.rlen = EVT_CONN_COMPLETE_SIZE;
+
+	if (hci_send_req(dd, &rq, 1000) < 0)
+		return -1;
+
+	if (conn_complete_rp.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
