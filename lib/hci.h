@@ -1269,7 +1269,6 @@ typedef struct {
 #define LE_SET_EVENT_MASK_CP_SIZE 8
 
 #define OCF_CTL_LE_READ_BUFFER_SIZE	0x0002
-
 typedef struct {
 	uint8_t		status;
 	uint16_t	pkt_len;
@@ -1368,7 +1367,6 @@ typedef struct {
 #define OCF_CTL_LE_CREATE_CONN_CANCEL	0x000E
 
 #define OCF_CTL_LE_READ_WHITE_LIST_SIZE	0x000F
-
 typedef struct {
 	uint8_t		status;
 	uint8_t		size;
