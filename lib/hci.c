@@ -1093,6 +1093,7 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 	hci_filter_set_ptype(HCI_EVENT_PKT,  &nf);
 	hci_filter_set_event(EVT_CMD_STATUS, &nf);
 	hci_filter_set_event(EVT_CMD_COMPLETE, &nf);
+	hci_filter_set_event(EVT_LE_META_EVENT, &nf);
 	hci_filter_set_event(r->event, &nf);
 	hci_filter_set_opcode(opcode, &nf);
 	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &nf, sizeof(nf)) < 0)
@@ -1106,6 +1107,7 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 		evt_cmd_complete *cc;
 		evt_cmd_status *cs;
 		evt_remote_name_req_complete *rn;
+		evt_le_meta_event *me;
 		remote_name_req_cp *cp;
 		int len;
 
@@ -1184,6 +1186,17 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 
 			r->rlen = MIN(len, r->rlen);
 			memcpy(r->rparam, ptr, r->rlen);
+			goto done;
+
+		case EVT_LE_META_EVENT:
+			me = (void *) ptr;
+
+			if (me->subevent != r->event)
+				continue;
+
+			len -= 1;
+			r->rlen = MIN(len, r->rlen);
+			memcpy(r->rparam, me->data, r->rlen);
 			goto done;
 
 		default:
