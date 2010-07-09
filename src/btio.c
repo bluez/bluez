@@ -57,6 +57,7 @@ struct set_opts {
 	uint16_t imtu;
 	uint16_t omtu;
 	int master;
+	uint8_t mode;
 };
 
 struct connect {
@@ -474,10 +475,10 @@ static gboolean get_sec_level(int sock, BtIOType type, int *level,
 	return TRUE;
 }
 
-static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
-				uint16_t omtu, int master, GError **err)
+static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu, uint16_t omtu,
+					uint8_t mode, int master, GError **err)
 {
-	if (imtu || omtu) {
+	if (imtu || omtu || mode) {
 		struct l2cap_options l2o;
 		socklen_t len;
 
@@ -493,6 +494,8 @@ static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
 			l2o.imtu = imtu;
 		if (omtu)
 			l2o.omtu = omtu;
+		if (mode)
+			l2o.mode = mode;
 
 		if (setsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
 							sizeof(l2o)) < 0) {
@@ -629,6 +632,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 	opts->defer = DEFAULT_DEFER_TIMEOUT;
 	opts->master = -1;
 	opts->sec_level = BT_IO_SEC_MEDIUM;
+	opts->mode = L2CAP_MODE_BASIC;
 
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
@@ -677,6 +681,9 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 			break;
 		case BT_IO_OPT_MASTER:
 			opts->master = va_arg(args, gboolean);
+			break;
+		case BT_IO_OPT_MODE:
+			opts->mode = va_arg(args, int);
 			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
@@ -1088,7 +1095,7 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
 	case BT_IO_L2RAW:
 	case BT_IO_L2CAP:
 		return l2cap_set(sock, opts.sec_level, opts.imtu, opts.omtu,
-							opts.master, err);
+						opts.mode, opts.master, err);
 	case BT_IO_RFCOMM:
 		return rfcomm_set(sock, opts.sec_level, opts.master, err);
 	case BT_IO_SCO:
@@ -1129,7 +1136,7 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 		if (l2cap_bind(sock, &opts->src,
 					server ? opts->psm : 0, err) < 0)
 			goto failed;
-		if (!l2cap_set(sock, opts->sec_level, 0, 0, -1, err))
+		if (!l2cap_set(sock, opts->sec_level, 0, 0, 0, -1, err))
 			goto failed;
 		break;
 	case BT_IO_L2CAP:
@@ -1142,7 +1149,7 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 					server ? opts->psm : 0, err) < 0)
 			goto failed;
 		if (!l2cap_set(sock, opts->sec_level, opts->imtu, opts->omtu,
-							opts->master, err))
+						opts->mode, opts->master, err))
 			goto failed;
 		break;
 	case BT_IO_RFCOMM:
