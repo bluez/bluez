@@ -558,6 +558,10 @@ static int obex_read_stream(struct obex_session *os, obex_t *obex,
 	int32_t len = 0;
 	const uint8_t *buffer;
 
+	DBG("name=%s type=%s rx_mtu=%d file=%p",
+		os->name ? os->name : "", os->type ? os->type : "",
+		os->rx_mtu, os->object);
+
 	if (os->aborted)
 		return -EPERM;
 
@@ -620,7 +624,7 @@ static int obex_write_stream(struct obex_session *os,
 	unsigned int flags;
 	uint8_t hi;
 
-	DBG("obex_write_stream: name=%s type=%s tx_mtu=%d file=%p",
+	DBG("name=%s type=%s tx_mtu=%d file=%p",
 		os->name ? os->name : "", os->type ? os->type : "",
 		os->tx_mtu, os->object);
 
