@@ -627,6 +627,45 @@ static int hciops_stop_discovery(int index)
 	return err;
 }
 
+static int hciops_start_scanning(int index)
+{
+	int dd, err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_le_set_scan_parameters(dd, 0x01, htobs(0x0010),
+					htobs(0x0010), 0x00, 0x00) < 0) {
+		err = -errno;
+		goto fail;
+	}
+
+	if (hci_le_set_scan_enable(dd, 0x01, 0x00) < 0)
+		err = -errno;
+
+fail:
+	hci_close_dev(dd);
+
+	return err;
+}
+
+static int hciops_stop_scanning(int index)
+{
+	int dd, err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_le_set_scan_enable(dd, 0x00, 0x00) < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	remote_name_req_cp cp;
@@ -1282,6 +1321,8 @@ static struct btd_adapter_ops hci_ops = {
 	.set_limited_discoverable = hciops_set_limited_discoverable,
 	.start_discovery = hciops_start_discovery,
 	.stop_discovery = hciops_stop_discovery,
+	.start_scanning = hciops_start_scanning,
+	.stop_scanning = hciops_stop_scanning,
 	.resolve_name = hciops_resolve_name,
 	.cancel_resolve_name = hciops_cancel_resolve_name,
 	.set_name = hciops_set_name,

@@ -973,6 +973,22 @@ static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)
 	write_remote_class(sba, &evt->bdaddr, class);
 }
 
+static inline void le_metaevent(int dev, bdaddr_t *sba, void *ptr)
+{
+	evt_le_meta_event *meta = ptr;
+	le_advertising_info *info;
+	char addr[18];
+
+	DBG("LE Meta Event");
+
+	if (meta->subevent != 0x02)
+		return;
+
+	info = (le_advertising_info *) (meta->data + 1);
+	ba2str(&info->bdaddr, addr);
+	DBG("%s\n", addr);
+}
+
 static void delete_channel(GIOChannel *chan)
 {
 	int i;
@@ -1085,6 +1101,9 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 
 	case EVT_CONN_REQUEST:
 		conn_request(dev, &di->bdaddr, ptr);
+		break;
+	case EVT_LE_META_EVENT:
+		le_metaevent(dev, &di->bdaddr, ptr);
 		break;
 	}
 

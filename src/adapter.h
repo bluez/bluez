@@ -186,6 +186,9 @@ struct btd_adapter_ops {
 						gboolean limited);
 	int (*start_discovery) (int index, gboolean periodic);
 	int (*stop_discovery) (int index);
+	int (*start_scanning) (int index);
+	int (*stop_scanning) (int index);
+
 	int (*resolve_name) (int index, bdaddr_t *bdaddr);
 	int (*cancel_resolve_name) (int index, bdaddr_t *bdaddr);
 	int (*set_name) (int index, const char *name);
