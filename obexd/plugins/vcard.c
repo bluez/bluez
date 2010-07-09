@@ -133,9 +133,43 @@ static void vcard_printf_begin(GString *vcards, uint8_t format)
 		vcard_printf(vcards, "VERSION:2.1");
 }
 
+/* check if there is at least one contact field with personal data present */
+static gboolean contact_fields_present(struct phonebook_contact * contact)
+{
+	if (contact->family && strlen(contact->family) > 0)
+		return TRUE;
+
+	if (contact->given && strlen(contact->given) > 0)
+		return TRUE;
+
+	if (contact->additional && strlen(contact->additional) > 0)
+		return TRUE;
+
+	if (contact->prefix && strlen(contact->prefix) > 0)
+		return TRUE;
+
+	if (contact->suffix && strlen(contact->suffix) > 0)
+		return TRUE;
+
+	/* none of the personal data fields are present*/
+	return FALSE;
+}
+
 static void vcard_printf_name(GString *vcards,
 					struct phonebook_contact *contact)
 {
+	if (contact_fields_present(contact) == FALSE) {
+		/* If fields are empty, add only 'N:' as parameter.
+		 * This is crucial for some devices (Nokia BH-903) which
+		 * have problems with history listings and can't determine
+		 * that a parameter is really empty if there are unnecessary
+		 * characters after 'N:' (e.g. 'N:;;;;').
+		 * We need to add only'N:' param - without semicolons.
+		 */
+		vcard_printf(vcards, "N:");
+		return;
+	}
+
 	vcard_printf(vcards, "N:%s;%s;%s;%s;%s", contact->family,
 				contact->given, contact->additional,
 				contact->prefix, contact->suffix);
