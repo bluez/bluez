@@ -1264,7 +1264,7 @@ typedef struct {
 
 #define OCF_LE_SET_EVENT_MASK			0x0001
 typedef struct {
-	uint64_t	event_mask;
+	uint8_t		mask[8];
 } __attribute__ ((packed)) le_set_event_mask_cp;
 #define LE_SET_EVENT_MASK_CP_SIZE 8
 
