@@ -167,23 +167,26 @@ void mcap_mcl_unref(struct mcap_mcl *mcl);
 
 /* CSP operations */
 
+void mcap_enable_csp(struct mcap_instance *ms);
+void mcap_disable_csp(struct mcap_instance *ms);
+
 uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
 				struct timespec *given_time);
 uint32_t mcap_get_btclock(struct mcap_mcl *mcl);
 
 void mcap_sync_cap_req(struct mcap_mcl *mcl,
 			uint16_t reqacc,
-			GError **err,
 			mcap_sync_cap_cb cb,
-			gpointer user_data);
+			gpointer user_data,
+			GError **err);
 
 void mcap_sync_set_req(struct mcap_mcl *mcl,
 			uint8_t update,
 			uint32_t btclock,
 			uint64_t timestamp,
-			GError **err,
 			mcap_sync_set_cb cb,
-			gpointer user_data);
+			gpointer user_data,
+			GError **err);
 
 /* MCAP main operations */
 

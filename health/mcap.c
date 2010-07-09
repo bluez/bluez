@@ -1954,6 +1954,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 	ms->mcl_uncached_cb = mcl_uncached;
 	ms->mcl_sync_infoind_cb = mcl_sync_info_ind;
 	ms->user_data = user_data;
+	ms->csp_enabled = FALSE;
 
 	/* Listen incoming connections in control channel */
 	ms->ccio = bt_io_listen(BT_IO_L2CAP, connect_mcl_event_cb, NULL, ms,

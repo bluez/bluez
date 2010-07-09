@@ -61,8 +61,6 @@ struct mcap_csp {
 };
 
 #define MCAP_BTCLOCK_HALF (MCAP_BTCLOCK_FIELD / 2)
-
-/* Could be CLOCK_REALTIME as well */
 #define CLK CLOCK_MONOTONIC
 
 /* Ripped from lib/sdp.c */
@@ -82,7 +80,6 @@ static inline uint64_t ntoh64(uint64_t n)
 
 #define hton64(x)     ntoh64(x)
 
-/*
 static int send_unsupported_cap_req(struct mcap_mcl *mcl)
 {
 	mcap_md_sync_cap_rsp *cmd;
@@ -114,7 +111,6 @@ static int send_unsupported_set_req(struct mcap_mcl *mcl)
 
 	return sent;
 }
-*/
 
 static void proc_sync_cap_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
 static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
@@ -136,6 +132,18 @@ struct mcap_sync_set_cbdata {
 
 void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 {
+	if (!mcl->ms->csp_enabled || !mcl->csp) {
+		switch (cmd[0]) {
+		case MCAP_MD_SYNC_CAP_REQ:
+			send_unsupported_cap_req(mcl);
+			break;
+		case MCAP_MD_SYNC_SET_REQ:
+			send_unsupported_set_req(mcl);
+			break;
+		}
+		return;
+	}
+
 	switch (cmd[0]) {
 	case MCAP_MD_SYNC_CAP_REQ:
 		proc_sync_cap_req(mcl, cmd, len);
@@ -167,6 +175,11 @@ static void reset_tmstamp(struct mcap_csp *csp, struct timespec *base_time,
 
 void mcap_sync_init(struct mcap_mcl *mcl)
 {
+	if (!mcl->ms->csp_enabled) {
+		mcl->csp = NULL;
+		return;
+	}
+
 	mcl->csp = g_new0(struct mcap_csp, 1);
 
 	mcl->csp->rem_req_acc = 10000; /* safe divisor */
@@ -317,6 +330,9 @@ uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
 	struct timespec now;
 	uint64_t tmstamp;
 
+	if (!mcl->csp)
+		return MCAP_TMSTAMP_DONTSET;
+
 	if (given_time)
 		now = *given_time;
 	else
@@ -332,6 +348,9 @@ uint32_t mcap_get_btclock(struct mcap_mcl *mcl)
 {
 	uint32_t btclock;
 	uint16_t accuracy;
+
+	if (!mcl->csp)
+		return MCAP_BTCLOCK_IMMEDIATE;
 
 	if (!read_btclock(mcl, &btclock, &accuracy)) {
 		btclock = 0xffffffff;
@@ -889,12 +908,21 @@ static void proc_sync_info_ind(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		mcl->ms->mcl_sync_infoind_cb(mcl, &data);
 }
 
-void mcap_sync_cap_req(struct mcap_mcl *mcl, uint16_t reqacc, GError **err,
-			mcap_sync_cap_cb cb, gpointer user_data)
+void mcap_sync_cap_req(struct mcap_mcl *mcl, uint16_t reqacc,
+			mcap_sync_cap_cb cb, gpointer user_data,
+			GError **err)
 {
 	struct mcap_sync_cap_cbdata *cbdata;
 	mcap_md_sync_cap_req *cmd;
 	int sock;
+
+	if (!mcl->ms->csp_enabled || !mcl->csp) {
+		g_set_error(err,
+			MCAP_CSP_ERROR,
+			MCAP_ERROR_RESOURCE_UNAVAILABLE,
+			"CSP not enabled for the instance");
+		return;
+	}
 
 	if (mcl->csp->csp_req) {
 		g_set_error(err,
@@ -922,12 +950,20 @@ void mcap_sync_cap_req(struct mcap_mcl *mcl, uint16_t reqacc, GError **err,
 }
 
 void mcap_sync_set_req(struct mcap_mcl *mcl, uint8_t update, uint32_t btclock,
-			uint64_t timestamp, GError **err, mcap_sync_set_cb cb,
-			gpointer user_data)
+			uint64_t timestamp, mcap_sync_set_cb cb,
+			gpointer user_data, GError **err)
 {
 	mcap_md_sync_set_req *cmd;
 	struct mcap_sync_set_cbdata *cbdata;
 	int sock;
+
+	if (!mcl->ms->csp_enabled || !mcl->csp) {
+		g_set_error(err,
+			MCAP_CSP_ERROR,
+			MCAP_ERROR_RESOURCE_UNAVAILABLE,
+			"CSP not enabled for the instance");
+		return;
+	}
 
 	if (!mcl->csp->local_caps) {
 		g_set_error(err,
@@ -964,4 +1000,14 @@ void mcap_sync_set_req(struct mcap_mcl *mcl, uint8_t update, uint32_t btclock,
 	mcap_send_data(sock, cmd, sizeof(*cmd));
 
 	g_free(cmd);
+}
+
+void mcap_enable_csp(struct mcap_instance *ms)
+{
+	ms->csp_enabled = TRUE;
+}
+
+void mcap_disable_csp(struct mcap_instance *ms)
+{
+	ms->csp_enabled = FALSE;
 }
