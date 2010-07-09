@@ -1485,7 +1485,7 @@ typedef struct {
 
 #define OCF_LE_RECEIVER_TEST			0x001D
 typedef struct {
-	uint8_t		rx_freq;
+	uint8_t		frequency;
 } __attribute__ ((packed)) le_receiver_test_cp;
 #define LE_RECEIVER_TEST_CP_SIZE 1
 
