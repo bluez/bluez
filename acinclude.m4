@@ -182,6 +182,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	udevrules_enable=yes
 	configfiles_enable=yes
 	telephony_driver=dummy
+	maemo6_enable=no
 
 	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization], [disable code optimization]), [
 		optimization_enable=${enableval}
@@ -293,6 +294,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_SUBST([TELEPHONY_DRIVER], [telephony-${telephony_driver}.c])
 
+	AC_ARG_ENABLE(maemo6, AC_HELP_STRING([--enable-maemo6], [compile with maemo6 plugin]), [
+		maemo6_enable=${enableval}
+	])
+
 	if (test "${fortify_enable}" = "yes"); then
 		CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
 	fi
@@ -340,4 +345,5 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(UDEVRULES, test "${udevrules_enable}" = "yes")
 	AM_CONDITIONAL(CONFIGFILES, test "${configfiles_enable}" = "yes")
+	AM_CONDITIONAL(MAEMO6PLUGIN, test "${maemo6_enable}" = "yes")
 ])

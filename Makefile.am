@@ -178,6 +178,11 @@ builtin_sources += plugins/hal.c
 builtin_modules += storage
 builtin_sources += plugins/storage.c
 
+if MAEMO6PLUGIN
+builtin_modules += maemo6
+builtin_sources += plugins/maemo6.c
+endif
+
 sbin_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
