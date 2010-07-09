@@ -2485,7 +2485,7 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 	int err, opt, dd;
 	bdaddr_t bdaddr;
 	uint16_t interval, latency, max_ce_length, max_interval, min_ce_length;
-	uint16_t min_interval, supervision_timeout, window;
+	uint16_t min_interval, supervision_timeout, window, handle;
 	uint8_t initiator_filter, own_bdaddr_type, peer_bdaddr_type;
 
 	for_each_opt(opt, lecc_options, NULL) {
@@ -2527,11 +2527,13 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 	err = hci_le_create_conn(dd, interval, window, initiator_filter,
 			peer_bdaddr_type, bdaddr, own_bdaddr_type, min_interval,
 			max_interval, latency, supervision_timeout,
-			min_ce_length, max_ce_length);
+			min_ce_length, max_ce_length, &handle, 25000);
 	if (err < 0) {
 		perror("Could not create connection");
 		exit(1);
 	}
+
+	printf("Connection handle %d\n", handle);
 
 	hci_close_dev(dd);
 }

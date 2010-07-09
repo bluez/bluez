@@ -2701,7 +2701,8 @@ int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
 		bdaddr_t peer_bdaddr, uint8_t own_bdaddr_type,
 		uint16_t min_interval, 	uint16_t max_interval,
 		uint16_t latency, uint16_t supervision_timeout,
-		uint16_t min_ce_length, uint16_t max_ce_length)
+		uint16_t min_ce_length, uint16_t max_ce_length,
+		uint16_t *handle, int to)
 {
 	struct hci_request rq;
 	le_create_connection_cp create_conn_cp;
@@ -2730,13 +2731,16 @@ int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
 	rq.rparam = &conn_complete_rp;
 	rq.rlen = EVT_CONN_COMPLETE_SIZE;
 
-	if (hci_send_req(dd, &rq, 1000) < 0)
+	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 
 	if (conn_complete_rp.status) {
 		errno = EIO;
 		return -1;
 	}
+
+	if (handle)
+		*handle = conn_complete_rp.handle;
 
 	return 0;
 }
