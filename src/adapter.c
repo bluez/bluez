@@ -3259,6 +3259,17 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter)
 	return adapter_ops->set_powered(adapter->dev_id, TRUE);
 }
 
+int btd_adapter_switch_online(struct btd_adapter *adapter)
+{
+	if (!adapter_ops)
+		return -EINVAL;
+
+	if (adapter->up)
+		return 0;
+
+	return adapter_ops->set_powered(adapter->dev_id, TRUE);
+}
+
 int btd_adapter_switch_offline(struct btd_adapter *adapter)
 {
 	if (!adapter_ops)
