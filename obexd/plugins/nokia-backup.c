@@ -151,19 +151,21 @@ static gboolean send_backup_dbus_message(const char *oper,
 					DBUS_TYPE_INT32, &file_size,
 					DBUS_TYPE_INVALID);
 
-	ret = dbus_connection_send_with_reply(conn, msg, &pending_call,
-						BACKUP_DBUS_TIMEOUT);
-
-	dbus_message_unref(msg);
-
-	if (ret && (strcmp(oper, "open") == 0)) {
-		obj->conn = conn;
-		obj->pending_call = pending_call;
-		ret = dbus_pending_call_set_notify(pending_call,
+	if (strcmp(oper, "open") == 0) {
+		ret = dbus_connection_send_with_reply(conn, msg, &pending_call,
+							BACKUP_DBUS_TIMEOUT);
+		dbus_message_unref(msg);
+		if (ret) {
+			obj->conn = conn;
+			obj->pending_call = pending_call;
+			ret = dbus_pending_call_set_notify(pending_call,
 							on_backup_dbus_notify,
 							obj, NULL);
+		} else
+			dbus_connection_unref(conn);
 	} else {
-		dbus_pending_call_unref(pending_call);
+		ret = dbus_connection_send(conn, msg, NULL);
+		dbus_message_unref(msg);
 		dbus_connection_unref(conn);
 	}
 
