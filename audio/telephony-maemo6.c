@@ -1233,33 +1233,31 @@ static void update_signal_strength(int32_t signals_bar)
 
 	if (signals_bar < 0)
 		signals_bar = 0;
-	else if (signals_bar > 100) {
+	else if (signals_bar > 5) {
 		DBG("signals_bar greater than expected: %u", signals_bar);
-		signals_bar = 100;
+		signals_bar = 5;
 	}
 
 	if (net.signals_bar == signals_bar)
 		return;
 
-	/* A simple conversion from 0-100 to 0-5 (used by HFP) */
-	signal = (signals_bar + 20) / 21;
+	/* no need in any conversion */
+	signal = signals_bar;
 
 	telephony_update_indicator(maemo_indicators, "signal", signal);
 
 	net.signals_bar = signals_bar;
-
-	DBG("telephony-maemo6: signal strength updated: %u/100, %d/5", signals_bar, signal);
+	DBG("telephony-maemo6: signal strength updated: %d/5", signal);
 }
 
 static void handle_signal_strength_changed(DBusMessage *msg)
 {
-	int32_t signals_bar, rssi_in_dbm;
+	int32_t signals_bar;
 
 	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_INT32, &signals_bar,
-					DBUS_TYPE_INT32, &rssi_in_dbm,
 					DBUS_TYPE_INVALID)) {
-		error("Unexpected parameters in SignalStrengthChanged");
+		error("Unexpected parameters in SignalBarsChanged");
 		return;
 	}
 
@@ -1530,7 +1528,7 @@ static void get_property_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_get_basic(&sub, &name);
 		update_operator_name(name);
 	} else if (g_strcmp0(prop, "SignalBars") == 0) {
-		uint32_t signal_bars;
+		int32_t signal_bars; /* signal bars can be -1 */
 
 		dbus_message_iter_get_basic(&sub, &signal_bars);
 		update_signal_strength(signal_bars);
@@ -1899,7 +1897,7 @@ static DBusHandlerResult signal_filter(DBusConnection *conn,
 				"OperatorNameChanged"))
 		handle_operator_name_changed(msg);
 	else if (dbus_message_is_signal(msg, CSD_CSNET_SIGNAL,
-				"SignalStrengthChanged"))
+				"SignalBarsChanged"))
 		handle_signal_strength_changed(msg);
 	else if (dbus_message_is_signal(msg, "org.freedesktop.Hal.Device",
 					"PropertyModified"))
