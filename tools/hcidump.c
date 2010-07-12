@@ -899,7 +899,6 @@ static struct option main_options[] = {
 	{ "ppp",		1, 0, 'P' },
 	{ "pppdump",		1, 0, 'D' },
 	{ "audio",		1, 0, 'A' },
-	{ "verbose",		0, 0, 'V' },
 	{ "novendor",		0, 0, 'Y' },
 	{ "nopermcheck",	0, 0, 'Z' },
 	{ "ipv4",		0, 0, '4' },
