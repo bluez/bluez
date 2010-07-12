@@ -1000,10 +1000,6 @@ int main(int argc, char *argv[])
 			audio_file = strdup(optarg);
 			break;
 
-		case 'V':
-			flags |= DUMP_VERBOSE;
-			break;
-
 		case 'Y':
 			flags |= DUMP_NOVENDOR;
 			break;
@@ -1046,11 +1042,13 @@ int main(int argc, char *argv[])
 
 	switch (mode) {
 	case PARSE:
+		flags |= DUMP_VERBOSE;
 		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
 		process_frames(device, open_socket(device, flags), -1, flags);
 		break;
 
 	case READ:
+		flags |= DUMP_VERBOSE;
 		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
 		read_dump(open_file(dump_file, mode, flags));
 		break;
