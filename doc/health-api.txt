@@ -1,0 +1,168 @@
+BlueZ D-Bus Health API description
+**********************************
+
+	Santiago Carot-Nemesio <sancane@gmail.com>
+	José Antonio Santos-Cadenas <santoscadenas@gmail.com>
+	Elvis Pfützenreuter <epx@signove.com>
+
+Health Device Profile hierarchy
+===============================
+
+Service		org.bluez
+Interface	org.bluez.HealthManager
+Object path	/org/bluez/
+
+Methods:
+
+	object	RegisterApplication(object agent, dict config)
+
+		Returns the path of the new registered application. The agent
+		parameter is the path of the object with the callbacks to
+		notify events (see org.bluez.HealthAgent at the end
+		of this document).
+
+		Dict is defined as bellow:
+		{
+			"DataType": uint16, (mandatory)
+			"Role" : ("Source" or "Sink"), (mandatory)
+			"Description" : string, (optional)
+			"ChannelType" : ("Reliable" or "Streaming")
+						(just for Sources, optional)
+		}
+
+		Application will be closed by the call or implicitly when the
+		programs leaves the bus.
+
+		Possible errors: org.bluez.Error.InvalidArguments
+
+	void	UnregisterApplication(object application)
+
+		Closes the HDP application identified by the object path. Also
+		application will be closed if the process that started it leaves
+		the bus.
+
+		Possible errors: org.bluez.Error.InvalidArguments
+				org.bluez.Error.NotFound
+
+--------------------------------------------------------------------------------
+
+Service		org.bluez
+Interface	org.bluez.HealthApplication
+Object path	[variable prefix]/health_app_ZZZZ
+
+Methods:
+
+	void Echo(object service)
+
+		Sends an echo petition to the remote service. Returns True if
+		response matches with the buffer sent. If some error is detected
+		False value is returned and the associated MCL is closed.
+
+		Possible errors: org.bluez.Error.InvalidArguments
+				org.bluez.Error.OutOfRange
+
+	object CreateChannel(object service, string type)
+
+		Creates a new data channel with the indicated config to the
+		remote Service.
+		The configuration should indicate the channel quality of
+		service using one of this values "Reliable", "Streaming", "Any".
+
+		Returns the object path that identifies the data channel that
+		is already connected.
+
+		Possible errors: org.bluez.Error.InvalidArguments
+				org.bluez.Error.HealthError
+
+	void DestroyChannel(object channel)
+
+		Destroys the data channel object.
+
+		Possible errors: org.bluez.Error.InvalidArguments
+				orb.bluez.Error.NotFound
+
+--------------------------------------------------------------------------------
+
+Service		org.bluez
+Interface	org.bluez.HealthService
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/hdp_YYYY
+
+--------------------------------------------------------------------------------
+
+Service		org.bluez
+Interface	org.bluez.HealthChannel
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/
+							hdp_YYYY/channel_ZZ
+
+Methods:
+
+	dict GetProperties()
+
+		Returns all properties for the interface. See the properties
+		section for available properties.
+
+	fd Acquire()
+
+		Returns the file descriptor for this data channel. If the data
+		channel is not connected it will also reconnect.
+
+		Possible errors: org.bluez.Error.NotConnected
+
+	void Release()
+
+		Releases the fd. Application should also need to close() it.
+
+Properties:
+
+	string Type (read only)
+
+		The quality of service of the data channel. ("Reliable" or
+		"Streaming")
+
+	object Service (read only)
+
+		Identifies the Remote Service that is connected with. Maps with
+		a HealthService object.
+
+HealthAgent hierarchy
+=====================
+
+(this object is implemented by the HDP user in order to receive notifications)
+
+Service		unique name
+Interface	org.bluez.HealthAgent
+Object path	freely definable
+
+Methods:
+
+	void Release()
+
+		This method gets called when the service daemon unregisters the
+		agent. An agent can use it to do cleanup tasks. There is no need
+		to unregister the agent, because when this method gets called it
+		has already been unregistered.
+
+	void ServiceDiscovered(object service)
+
+		This method is called when a device containing an HDP
+		application is paired or when the method Update of the
+		HealthManager is called and new HealthServices are discovered.
+		The method will be called once for each HealthService.
+
+	void ServiceRemoved(object service)
+
+		This is called if during an Update some HealthServices
+		have disappeared. The method is called once for each removed
+		HealthService.
+
+	void ChannelConnected(object channel)
+
+		This method is called when a new data channel is created or when
+		a known data channel is reconnected.
+
+	void ChannelDeleted(object channel)
+
+		This method is called when a data channel is deleted.
+
+		After this call the data channel path will not be valid and can
+		be reused for future creation of data channels.
