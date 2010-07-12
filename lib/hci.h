@@ -1457,7 +1457,7 @@ typedef struct {
 	uint16_t	handle;
 	uint8_t		key[16];
 } __attribute__ ((packed)) le_ltk_reply_cp;
-#define LE_LTK_REQUEST_REPLY_CP_SIZE 18
+#define LE_LTK_REPLY_CP_SIZE 18
 typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
