@@ -302,6 +302,7 @@ static void sig_debug(int sig)
 
 static gchar *option_debug = NULL;
 static gboolean option_detach = TRUE;
+static gboolean option_version = FALSE;
 static gboolean option_udev = FALSE;
 
 static guint last_adapter_timeout = 0;
@@ -352,6 +353,8 @@ static GOptionEntry options[] = {
 	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
 				G_OPTION_ARG_CALLBACK, parse_debug,
 				"Enable debug information output", "DEBUG" },
+	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
+				"Show version information and exit" },
 	{ "udev", 'u', 0, G_OPTION_ARG_NONE, &option_udev,
 				"Run from udev mode of operation" },
 	{ NULL },
@@ -386,6 +389,13 @@ int main(int argc, char *argv[])
 		} else
 			g_printerr("An unknown error occurred\n");
 		exit(1);
+	}
+
+	g_option_context_free(context);
+
+	if (option_version == TRUE) {
+		printf("%s\n", VERSION);
+		exit(0);
 	}
 
 	if (option_udev == TRUE) {
