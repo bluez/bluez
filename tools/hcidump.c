@@ -876,6 +876,7 @@ static void usage(void)
 	"  -4, --ipv4                 Use IPv4 as transport\n"
 	"  -6  --ipv6                 Use IPv6 as transport\n"
 	"  -h, --help                 Give this help list\n"
+	"  -v, --version              Give version information\n"
 	"      --usage                Give a short usage message\n"
 	);
 }
@@ -904,6 +905,7 @@ static struct option main_options[] = {
 	{ "ipv4",		0, 0, '4' },
 	{ "ipv6",		0, 0, '6' },
 	{ "help",		0, 0, 'h' },
+	{ "version",		0, 0, 'v' },
 	{ 0 }
 };
 
@@ -916,9 +918,7 @@ int main(int argc, char *argv[])
 	int defcompid = DEFAULT_COMPID;
 	int opt, pppdump_fd = -1, audio_fd = -1;
 
-	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
-
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:d:taxXRC:H:O:P:D:A:BVYZN46h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:d:taxXRC:H:O:P:D:A:BVYZN46hv", main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -1014,6 +1014,10 @@ int main(int argc, char *argv[])
 			af = AF_INET6;
 			break;
 
+		case 'v':
+			printf("%s\n", VERSION);
+			exit(0);
+
 		case 'h':
 		default:
 			usage();
@@ -1024,6 +1028,8 @@ int main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 	optind = 0;
+
+	printf("HCI sniffer - Bluetooth packet analyzer ver %s\n", VERSION);
 
 	if (argc > 0)
 		filter = parse_filter(argc, argv);
