@@ -872,7 +872,6 @@ static void usage(void)
 	"  -P, --ppp=channel          Channel for PPP\n"
 	"  -D, --pppdump=file         Extract PPP traffic\n"
 	"  -A, --audio=file           Extract SCO audio data\n"
-	"  -V, --verbose              Verbose decoding\n"
 	"  -Y, --novendor             No vendor commands or events\n"
 	"  -4, --ipv4                 Use IPv4 as transport\n"
 	"  -6  --ipv6                 Use IPv6 as transport\n"
