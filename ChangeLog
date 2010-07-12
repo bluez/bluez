@@ -1,3 +1,10 @@
+ver 4.68:
+	Fix initialization of adapters in RAW mode.
+	Fix signal strength for HFP in Maemo's telephony support.
+	Add support for following the radio state via Maemo's MCE.
+	Add initial set of LE commands and events definitions.
+	Add mode option for L2CAP sockets to the BtIO API.
+
 ver 4.67:
 	Fix issue with authentication reply when bonding already completed.
 	Fix issue with not canceling authentication when bonding fails.
