@@ -76,7 +76,7 @@ static void at_child_exit(void)
 		error("unable to write to child pipe");
 }
 
-static void configure_device(int index)
+static void device_devup_setup(int index)
 {
 	struct hci_dev_info di;
 	uint16_t policy;
@@ -111,6 +111,12 @@ static void configure_device(int index)
 				OCF_WRITE_DEFAULT_LINK_POLICY, 2, &policy);
 
 	hci_close_dev(dd);
+
+	start_security_manager(index);
+
+	/* Return value 1 means ioctl(DEVDOWN) was performed */
+	if (manager_start_adapter(index) == 1)
+		stop_security_manager(index);
 }
 
 static void init_device(int index)
@@ -200,17 +206,6 @@ static void device_devreg_setup(int index)
 
 	if (!hci_test_bit(HCI_RAW, &di.flags))
 		manager_register_adapter(index, devup);
-}
-
-static void device_devup_setup(int index)
-{
-	configure_device(index);
-
-	start_security_manager(index);
-
-	/* Return value 1 means ioctl(DEVDOWN) was performed */
-	if (manager_start_adapter(index) == 1)
-		stop_security_manager(index);
 }
 
 static void device_event(int event, int index)
