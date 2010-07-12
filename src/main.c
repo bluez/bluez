@@ -347,12 +347,12 @@ static gboolean parse_debug(const char *key, const char *value,
 }
 
 static GOptionEntry options[] = {
-	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
-				G_OPTION_ARG_NONE, &option_detach,
-				"Don't run as daemon in background" },
 	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
 				G_OPTION_ARG_CALLBACK, parse_debug,
-				"Enable debug information output", "DEBUG" },
+				"Specify debug options to enable", "DEBUG" },
+	{ "nodetach", 'n', G_OPTION_FLAG_REVERSE,
+				G_OPTION_ARG_NONE, &option_detach,
+				"Don't run as daemon in background" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
 	{ "udev", 'u', 0, G_OPTION_ARG_NONE, &option_udev,
