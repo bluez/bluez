@@ -14,7 +14,7 @@ Object path	/org/bluez/
 
 Methods:
 
-	object	RegisterApplication(object agent, dict config)
+	object	CreateApplication(dict config, object agent)
 
 		Returns the path of the new registered application. The agent
 		parameter is the path of the object with the callbacks to
@@ -35,7 +35,7 @@ Methods:
 
 		Possible errors: org.bluez.Error.InvalidArguments
 
-	void	UnregisterApplication(object application)
+	void	DestroyApplication(object application)
 
 		Closes the HDP application identified by the object path. Also
 		application will be closed if the process that started it leaves
