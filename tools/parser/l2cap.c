@@ -847,7 +847,7 @@ static void l2cap_parse(int level, struct frame *frm)
 				}
 				printf(" ReqSeq %d", (ctrl & 0x3f00) >> 8);
 				if (ctrl & 0x80)
-					printf(" Retransmission Disable");
+					printf(" F-bit");
 				printf("\n");
 			}
 		}
