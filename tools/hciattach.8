@@ -11,6 +11,7 @@ hciattach \- attach serial devices via UART HCI to BlueZ stack
 .RB [\| \-s
 .IR speed \|]
 .RB [\| \-l \|]
+.RB [\| \-r \|]
 .I tty
 .IR type \||\| id
 .I speed
@@ -39,6 +40,9 @@ Specify an initial speed instead of the hardware default.
 .TP
 .B \-l
 List all available configurations.
+.TP
+.B \-r
+Set the HCI device into raw mode (the kernel and bluetoothd will ignore it).
 .TP
 .I tty
 This specifies the serial device to attach. A leading

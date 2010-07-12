@@ -1097,10 +1097,14 @@ static struct uart_t * get_by_type(char *type)
 }
 
 /* Initialize UART driver */
-static int init_uart(char *dev, struct uart_t *u, int send_break)
+static int init_uart(char *dev, struct uart_t *u, int send_break, int raw)
 {
 	struct termios ti;
 	int fd, i;
+	unsigned long flags = 0;
+
+	if (raw)
+		flags |= 1 << HCI_UART_RAW_DEVICE;
 
 	fd = open(dev, O_RDWR | O_NOCTTY);
 	if (fd < 0) {
@@ -1159,6 +1163,11 @@ static int init_uart(char *dev, struct uart_t *u, int send_break)
 		return -1;
 	}
 
+	if (flags && ioctl(fd, HCIUARTSETFLAGS, flags) < 0) {
+		perror("Can't set UART flags");
+		return -1;
+	}
+
 	if (ioctl(fd, HCIUARTSETPROTO, u->proto) < 0) {
 		perror("Can't set device");
 		return -1;
@@ -1174,14 +1183,14 @@ static void usage(void)
 {
 	printf("hciattach - HCI UART driver initialization utility\n");
 	printf("Usage:\n");
-	printf("\thciattach [-n] [-p] [-b] [-t timeout] [-s initial_speed] <tty> <type | id> [speed] [flow|noflow] [bdaddr]\n");
+	printf("\thciattach [-n] [-p] [-b] [-r] [-t timeout] [-s initial_speed] <tty> <type | id> [speed] [flow|noflow] [bdaddr]\n");
 	printf("\thciattach -l\n");
 }
 
 int main(int argc, char *argv[])
 {
 	struct uart_t *u = NULL;
-	int detach, printpid, opt, i, n, ld, err;
+	int detach, printpid, raw, opt, i, n, ld, err;
 	int to = 10;
 	int init_speed = 0;
 	int send_break = 0;
@@ -1193,8 +1202,9 @@ int main(int argc, char *argv[])
 
 	detach = 1;
 	printpid = 0;
+	raw = 0;
 
-	while ((opt=getopt(argc, argv, "bnpt:s:l")) != EOF) {
+	while ((opt=getopt(argc, argv, "bnpt:s:lr")) != EOF) {
 		switch(opt) {
 		case 'b':
 			send_break = 1;
@@ -1222,6 +1232,10 @@ int main(int argc, char *argv[])
 							uart[i].m_id, uart[i].p_id);
 			}
 			exit(0);
+
+		case 'r':
+			raw = 1;
+			break;
 
 		default:
 			usage();
@@ -1300,7 +1314,7 @@ int main(int argc, char *argv[])
 	alarm(to);
 	bcsp_max_retries = to;
 
-	n = init_uart(dev, u, send_break);
+	n = init_uart(dev, u, send_break, raw);
 	if (n < 0) {
 		perror("Can't initialize device");
 		exit(1);
