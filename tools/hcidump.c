@@ -83,7 +83,6 @@ enum {
 static int  snap_len = SNAP_LEN;
 static int  mode = PARSE;
 static int  permcheck = 1;
-static int  noappend = 0;
 static char *dump_file = NULL;
 static char *pppdump_file = NULL;
 static char *audio_file = NULL;
@@ -474,12 +473,9 @@ static int open_file(char *file, int mode, unsigned long flags)
 	struct btsnoop_hdr *hdr = (struct btsnoop_hdr *) buf;
 	int fd, len, open_flags;
 
-	if (mode == WRITE || mode == PPPDUMP || mode == AUDIO) {
-		if (noappend || flags & DUMP_BTSNOOP)
-			open_flags = O_WRONLY | O_CREAT | O_TRUNC;
-		else
-			open_flags = O_WRONLY | O_CREAT | O_APPEND;
-	} else
+	if (mode == WRITE || mode == PPPDUMP || mode == AUDIO)
+		open_flags = O_WRONLY | O_CREAT | O_TRUNC;
+	else
 		open_flags = O_RDONLY;
 
 	fd = open(file, open_flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -882,7 +878,6 @@ static void usage(void)
 	"  -B, --btsnoop              Use BTSnoop file format\n"
 	"  -V, --verbose              Verbose decoding\n"
 	"  -Y, --novendor             No vendor commands or events\n"
-	"  -N, --noappend             No appending to existing files\n"
 	"  -4, --ipv4                 Use IPv4 as transport\n"
 	"  -6  --ipv6                 Use IPv6 as transport\n"
 	"  -h, --help                 Give this help list\n"
@@ -913,7 +908,6 @@ static struct option main_options[] = {
 	{ "verbose",		0, 0, 'V' },
 	{ "novendor",		0, 0, 'Y' },
 	{ "nopermcheck",	0, 0, 'Z' },
-	{ "noappend",		0, 0, 'N' },
 	{ "ipv4",		0, 0, '4' },
 	{ "ipv6",		0, 0, '6' },
 	{ "help",		0, 0, 'h' },
@@ -1025,10 +1019,6 @@ int main(int argc, char *argv[])
 
 		case 'Z':
 			permcheck = 0;
-			break;
-
-		case 'N':
-			noappend = 1;
 			break;
 
 		case '4':
