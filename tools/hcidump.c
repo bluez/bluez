@@ -178,9 +178,6 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
 	if (sock < 0)
 		return -1;
 
-	if (mode == SERVER)
-		flags |= DUMP_BTSNOOP;
-
 	if (snap_len < SNAP_LEN)
 		snap_len = SNAP_LEN;
 
@@ -875,7 +872,6 @@ static void usage(void)
 	"  -P, --ppp=channel          Channel for PPP\n"
 	"  -D, --pppdump=file         Extract PPP traffic\n"
 	"  -A, --audio=file           Extract SCO audio data\n"
-	"  -B, --btsnoop              Use BTSnoop file format\n"
 	"  -V, --verbose              Verbose decoding\n"
 	"  -Y, --novendor             No vendor commands or events\n"
 	"  -4, --ipv4                 Use IPv4 as transport\n"
@@ -904,7 +900,6 @@ static struct option main_options[] = {
 	{ "ppp",		1, 0, 'P' },
 	{ "pppdump",		1, 0, 'D' },
 	{ "audio",		1, 0, 'A' },
-	{ "btsnoop",		0, 0, 'B' },
 	{ "verbose",		0, 0, 'V' },
 	{ "novendor",		0, 0, 'Y' },
 	{ "nopermcheck",	0, 0, 'Z' },
@@ -1005,10 +1000,6 @@ int main(int argc, char *argv[])
 			audio_file = strdup(optarg);
 			break;
 
-		case 'B':
-			flags |= DUMP_BTSNOOP;
-			break;
-
 		case 'V':
 			flags |= DUMP_VERBOSE;
 			break;
@@ -1065,11 +1056,13 @@ int main(int argc, char *argv[])
 		break;
 
 	case WRITE:
+		flags |= DUMP_BTSNOOP;
 		process_frames(device, open_socket(device, flags),
 				open_file(dump_file, mode, flags), flags);
 		break;
 
 	case SERVER:
+		flags |= DUMP_BTSNOOP;
 		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
 		run_server(device, dump_addr, dump_port, flags);
 		break;
