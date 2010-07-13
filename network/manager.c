@@ -63,7 +63,6 @@ static void read_config(const char *file)
 	keyfile = g_key_file_new();
 
 	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
-		error("Parsing %s failed: %s", file, err->message);
 		g_clear_error(&err);
 		goto done;
 	}
