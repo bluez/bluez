@@ -2538,6 +2538,56 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 	hci_close_dev(dd);
 }
 
+static struct option ledc_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *ledc_help =
+	"Usage:\n"
+	"\tledc <handle> [reason]\n";
+
+static void cmd_ledc(int dev_id, int argc, char **argv)
+{
+	int err, opt, dd;
+	uint16_t handle;
+	uint8_t reason;
+
+	for_each_opt(opt, ledc_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", ledc_help);
+			return;
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
+		printf("%s", ledc_help);
+		return;
+	}
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	handle = atoi(argv[0]);
+
+	reason = (argc > 1) ? atoi(argv[1]) : HCI_OE_USER_ENDED_CONNECTION;
+
+	err = hci_disconnect(dd, handle, reason, 10000);
+	if (err < 0) {
+		perror("Could not disconnect");
+		exit(1);
+	}
+
+	hci_close_dev(dd);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int dev_id, int argc, char **argv);
@@ -2569,6 +2619,7 @@ static struct {
 	{ "clock",  cmd_clock,  "Read local or remote clock"           },
 	{ "lescan", cmd_lescan, "Start LE scan"                        },
 	{ "lecc",   cmd_lecc,   "Create a LE Connection",              },
+	{ "ledc",   cmd_ledc,   "Disconnect a LE Connection",          },
 	{ NULL, NULL, 0 }
 };
 
