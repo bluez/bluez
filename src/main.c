@@ -410,8 +410,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	g_option_context_free(context);
-
 	if (option_detach == TRUE && option_udev == FALSE) {
 		if (daemon(0, 0)) {
 			perror("Can't start daemon");
