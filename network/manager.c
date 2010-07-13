@@ -44,15 +44,7 @@
 
 static DBusConnection *connection = NULL;
 
-static struct network_conf {
-	gboolean connection_enabled;
-	gboolean server_enabled;
-	gboolean security;
-} conf = {
-	.connection_enabled = TRUE,
-	.server_enabled = TRUE,
-	.security = TRUE,
-};
+static gboolean conf_security = TRUE;
 
 static void read_config(const char *file)
 {
@@ -66,7 +58,7 @@ static void read_config(const char *file)
 		goto done;
 	}
 
-	conf.security = !g_key_file_get_boolean(keyfile, "General",
+	conf_security = !g_key_file_get_boolean(keyfile, "General",
 						"DisableSecurity", &err);
 	if (err) {
 		DBG("%s: %s", file, err->message);
@@ -77,7 +69,7 @@ done:
 	g_key_file_free(keyfile);
 
 	DBG("Config options: Security=%s",
-				conf.security ? "true" : "false");
+				conf_security ? "true" : "false");
 }
 
 static int network_probe(struct btd_device *device, GSList *uuids, uint16_t id)
@@ -194,7 +186,7 @@ int network_manager_init(DBusConnection *conn)
 	 * field that defines which service the source is connecting to.
 	 */
 
-	if (server_init(conn, conf.security) < 0)
+	if (server_init(conn, conf_security) < 0)
 		return -1;
 
 	/* Register network server if it doesn't exist */
@@ -214,15 +206,13 @@ int network_manager_init(DBusConnection *conn)
 
 void network_manager_exit(void)
 {
-	if (conf.server_enabled)
-		server_exit();
+	server_exit();
 
-	if (conf.connection_enabled) {
-		btd_unregister_device_driver(&network_panu_driver);
-		btd_unregister_device_driver(&network_gn_driver);
-		btd_unregister_device_driver(&network_nap_driver);
-		connection_exit();
-	}
+	btd_unregister_device_driver(&network_panu_driver);
+	btd_unregister_device_driver(&network_gn_driver);
+	btd_unregister_device_driver(&network_nap_driver);
+
+	connection_exit();
 
 	btd_unregister_adapter_driver(&network_server_driver);
 
