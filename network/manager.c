@@ -58,29 +58,12 @@ static void read_config(const char *file)
 {
 	GKeyFile *keyfile;
 	GError *err = NULL;
-	char **disabled;
 
 	keyfile = g_key_file_new();
 
 	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
 		g_clear_error(&err);
 		goto done;
-	}
-
-	disabled = g_key_file_get_string_list(keyfile, "General",
-						"Disable", NULL, &err);
-	if (err) {
-		DBG("%s: %s", file, err->message);
-		g_clear_error(&err);
-	} else {
-		int i;
-		for (i = 0; disabled[i] != NULL; i++) {
-			if (g_str_equal(disabled[i], "Connection"))
-				conf.connection_enabled = FALSE;
-			else if (g_str_equal(disabled[i], "Server"))
-				conf.server_enabled = FALSE;
-		}
-		g_strfreev(disabled);
 	}
 
 	conf.security = !g_key_file_get_boolean(keyfile, "General",
