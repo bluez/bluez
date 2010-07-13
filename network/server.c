@@ -53,9 +53,7 @@
 #include "common.h"
 #include "server.h"
 
-#define NETWORK_PEER_INTERFACE "org.bluez.NetworkPeer"
-#define NETWORK_HUB_INTERFACE "org.bluez.NetworkHub"
-#define NETWORK_ROUTER_INTERFACE "org.bluez.NetworkRouter"
+#define NETWORK_SERVER_INTERFACE "org.bluez.NetworkServer"
 #define SETUP_TIMEOUT		1
 
 /* Pending Authorization */
@@ -78,7 +76,6 @@ struct network_server {
 	char		*iface;		/* DBus interface */
 	char		*name;		/* Server service name */
 	char		*range;		/* IP Address range */
-	gboolean	enable;		/* Enable flag */
 	uint32_t	record_id;	/* Service record id */
 	uint16_t	id;		/* Service class identifier */
 	GSList		*sessions;	/* Active connections */
@@ -277,10 +274,6 @@ static int server_connadd(struct network_server *ns,
 	char devname[16];
 	int err, nsk;
 
-	/* Server can be disabled in the meantime */
-	if (ns->enable == FALSE)
-		return -EPERM;
-
 	memset(devname, 0, sizeof(devname));
 	strcpy(devname, "bnep%d");
 
@@ -415,7 +408,7 @@ static gboolean bnep_setup(GIOChannel *chan,
 		goto reply;
 
 	ns = find_server(na->servers, dst_role);
-	if (!ns || ns->enable == FALSE) {
+	if (!ns) {
 		error("Server unavailable: (0x%x)", dst_role);
 		goto reply;
 	}
@@ -568,164 +561,30 @@ static inline DBusMessage *invalid_arguments(DBusMessage *msg,
 				description);
 }
 
-static DBusMessage *enable(DBusConnection *conn,
-			DBusMessage *msg, void *data)
-{
-	struct network_server *ns = data;
-	DBusMessage *reply;
-
-	if (ns->enable)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".AlreadyExist",
-						"Server already enabled");
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	/* Add the service record */
-	ns->record_id = register_server_record(ns);
-	if (!ns->record_id) {
-		dbus_message_unref(reply);
-		return failed(msg, "Service record registration failed");
-	}
-
-	ns->enable = TRUE;
-
-	return reply;
-}
-
-static DBusMessage *disable(DBusConnection *conn,
+static DBusMessage *register_server(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	struct network_server *ns = data;
+	//struct network_server *ns = data;
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return NULL;
 
-	if (!ns->enable)
-		return failed(msg, "Not enabled");
-
-	/* Remove the service record */
-	if (ns->record_id) {
-		remove_record_from_server(ns->record_id);
-		ns->record_id = 0;
-	}
-
-	ns->enable = FALSE;
-
-	g_slist_foreach(ns->sessions, (GFunc) session_free, NULL);
-	g_slist_free(ns->sessions);
-
 	return reply;
 }
 
-static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
-				const char *name, void *data)
-{
-	struct network_server *ns = data;
-	DBusMessage *reply;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	if (!name || (strlen(name) == 0))
-		return invalid_arguments(msg, "Invalid name");
-
-	if (ns->name)
-		g_free(ns->name);
-	ns->name = g_strdup(name);
-
-	if (ns->enable && ns->record_id) {
-		uint32_t handle = register_server_record(ns);
-		if (!handle) {
-			dbus_message_unref(reply);
-			return failed(msg,
-				"Service record attribute update failed");
-		}
-
-		remove_record_from_server(ns->record_id);
-		ns->record_id = handle;
-	}
-
-	return reply;
-}
-
-static DBusMessage *get_properties(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct network_server *ns = data;
-	DBusMessage *reply;
-	DBusMessageIter iter;
-	DBusMessageIter dict;
-	const char *uuid;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &ns->name);
-
-	uuid = bnep_uuid(ns->id);
-	dict_append_entry(&dict, "Uuid", DBUS_TYPE_STRING, &uuid);
-
-	dict_append_entry(&dict, "Enabled", DBUS_TYPE_BOOLEAN, &ns->enable);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
-}
-
-static DBusMessage *set_property(DBusConnection *conn,
+static DBusMessage *unregister_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	DBusMessageIter iter;
-	DBusMessageIter sub;
-	const char *property;
+	//struct network_server *ns = data;
+	DBusMessage *reply;
 
-	if (!dbus_message_iter_init(msg, &iter))
-		return invalid_arguments(msg, "Not a dict");
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
 
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
-		return invalid_arguments(msg, "Key not a string");
-
-	dbus_message_iter_get_basic(&iter, &property);
-	dbus_message_iter_next(&iter);
-
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
-		return invalid_arguments(msg, "Value not a variant");
-	dbus_message_iter_recurse(&iter, &sub);
-
-	if (g_str_equal("Name", property)) {
-		const char *name;
-
-		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
-			return invalid_arguments(msg, "Value not string");
-		dbus_message_iter_get_basic(&sub, &name);
-
-		return set_name(conn, msg, name, data);
-	} else if (g_str_equal("Enabled", property)) {
-		gboolean enabled;
-
-		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
-			return invalid_arguments(msg, "Value not boolean");
-		dbus_message_iter_get_basic(&sub, &enabled);
-
-		return enabled ? enable(conn, msg, data) :
-				disable(conn, msg, data);
-	}
-
-	return invalid_arguments(msg, "Property does not exist");
+	return reply;
 }
 
 static void adapter_free(struct network_adapter *na)
@@ -785,13 +644,8 @@ static void path_unregister(void *data)
 }
 
 static GDBusMethodTable server_methods[] = {
-	{ "SetProperty",	"sv",	"",	set_property },
-	{ "GetProperties",	"",	"a{sv}",get_properties },
-	{ }
-};
-
-static GDBusSignalTable server_signals[] = {
-	{ "PropertyChanged",		"sv"		},
+	{ "Register",	"ss",	"",	register_server		},
+	{ "Unregister",	"s",	"",	unregister_server	},
 	{ }
 };
 
@@ -847,24 +701,16 @@ int server_register(struct btd_adapter *adapter)
 	ns = g_new0(struct network_server, 1);
 
 	switch (id) {
-	case BNEP_SVC_PANU:
-		ns->iface = g_strdup(NETWORK_PEER_INTERFACE);
-		ns->name = g_strdup("BlueZ PANU service");
-		break;
-	case BNEP_SVC_GN:
-		ns->iface = g_strdup(NETWORK_HUB_INTERFACE);
-		ns->name = g_strdup("BlueZ GN service");
-		break;
 	case BNEP_SVC_NAP:
-		ns->iface = g_strdup(NETWORK_ROUTER_INTERFACE);
-		ns->name = g_strdup("BlueZ NAP service");
+		ns->iface = g_strdup(NETWORK_SERVER_INTERFACE);
+		ns->name = g_strdup("Network service");
 		break;
 	}
 
 	path = adapter_get_path(adapter);
 
 	if (!g_dbus_register_interface(connection, path, ns->iface,
-					server_methods, server_signals, NULL,
+					server_methods, NULL, NULL,
 					ns, path_unregister)) {
 		error("D-Bus failed to register %s interface",
 				ns->iface);
@@ -876,7 +722,6 @@ int server_register(struct btd_adapter *adapter)
 	ns->id = id;
 	ns->na = na;
 	ns->record_id = register_server_record(ns);
-	ns->enable = TRUE;
 	na->servers = g_slist_append(na->servers, ns);
 
 	DBG("Registered interface %s on path %s", ns->iface, path);
