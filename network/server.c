@@ -80,6 +80,7 @@ struct network_server {
 	uint16_t	id;		/* Service class identifier */
 	GSList		*sessions;	/* Active connections */
 	struct network_adapter *na;	/* Adapter reference */
+	guint		watch_id;	/* Client service watch */
 };
 
 static DBusConnection *connection = NULL;
@@ -570,6 +571,21 @@ static inline DBusMessage *invalid_arguments(DBusMessage *msg,
 				description);
 }
 
+static void server_disconnect(DBusConnection *conn, void *user_data)
+{
+	struct network_server *ns = user_data;
+
+	ns->watch_id = 0;
+
+	if (ns->record_id) {
+		remove_record_from_server(ns->record_id);
+		ns->record_id = 0;
+	}
+
+	g_free(ns->bridge);
+	ns->bridge = NULL;
+}
+
 static DBusMessage *register_server(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
@@ -598,6 +614,10 @@ static DBusMessage *register_server(DBusConnection *conn,
 	g_free(ns->bridge);
 	ns->bridge = g_strdup(bridge);
 
+	ns->watch_id = g_dbus_add_disconnect_watch(conn,
+					dbus_message_get_sender(msg),
+					server_disconnect, ns, NULL);
+
 	return reply;
 }
 
@@ -619,13 +639,9 @@ static DBusMessage *unregister_server(DBusConnection *conn,
 	if (!reply)
 		return NULL;
 
-	if (ns->record_id) {
-		remove_record_from_server(ns->record_id);
-		ns->record_id = 0;
-	}
+	g_dbus_remove_watch(conn, ns->watch_id);
 
-	g_free(ns->bridge);
-	ns->bridge = NULL;
+	server_disconnect(conn, ns);
 
 	return reply;
 }
