@@ -81,37 +81,3 @@ Methods		void Register(string uuid, string bridge)
 
 			All servers will be automatically unregistered when
 			the calling application terminates.
-
-
-Network Hub/Peer/Router hierarchy
-=================
-
-Service		org.bluez
-Interface	org.bluez.network.{Hub, Peer, Router}
-Object path	/org/bluez/{hci0,hci1,...}
-
-Methods		dict GetProperties()
-
-			Returns all properties for the GN/PANU/NAP server. See the
-			properties section for available properties.
-
-		void SetProperty(string name, variant value)
-
-			Changes the value of the specified property. Only
-			properties that are listed a read-write are changeable.
-			On success this will emit a PropertyChanged signal.
-
-			Possible Errors: org.bluez.Error.DoesNotExist
-					 org.bluez.Error.InvalidArguments
-
-Properties	string Name[readwrite]
-
-			The Bluetooth network server name.
-
-		boolean Enable[readwrite]
-
-			Indicates if the server is Enabled/Disabled.
-
-		string Uuid[readonly]
-
-			The Bluetooth network server UUID 128 identification.
