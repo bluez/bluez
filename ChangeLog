@@ -1,3 +1,9 @@
+ver 4.69:
+	Fix issue with calling g_option_context_free() twice.
+	Fix inconsistencies with initial LE commands and events.
+	Add support for telephony ClearLastNumber method.
+	Add support for network server interface.
+
 ver 4.68:
 	Fix initialization of adapters in RAW mode.
 	Fix signal strength for HFP in Maemo's telephony support.
