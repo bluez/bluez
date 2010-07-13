@@ -75,6 +75,11 @@ Methods		void Register(string uuid, string bridge)
 
 			Valid UUIDs are "gn", "panu" or "nap".
 
+			Initially no network server SDP is provided. Only
+			after this method a SDP record will be available
+			and the BNEP server will be ready for incoming
+			connections.
+
 		void Unregister(string uuid)
 
 			Unregister the server for provided UUID.
