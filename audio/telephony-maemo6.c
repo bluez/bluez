@@ -1841,9 +1841,9 @@ static DBusMessage *clear_lastnumber(DBusConnection *conn, DBusMessage *msg,
 }
 
 static GDBusMethodTable telephony_maemo_methods[] = {
-	{"SetCallerId",		"s",	"",	set_callerid,
-						G_DBUS_METHOD_FLAG_ASYNC},
-	{"ClearLastNumber",	"",	"",	clear_lastnumber},
+	{ "SetCallerId",	"s",	"",	set_callerid,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "ClearLastNumber",	"",	"",	clear_lastnumber },
 	{ }
 };
 
