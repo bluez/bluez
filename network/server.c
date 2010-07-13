@@ -480,6 +480,7 @@ reject:
 static void confirm_event(GIOChannel *chan, gpointer user_data)
 {
 	struct network_adapter *na = user_data;
+	struct network_server *ns;
 	int perr;
 	bdaddr_t src, dst;
 	char address[18];
@@ -502,6 +503,16 @@ static void confirm_event(GIOChannel *chan, gpointer user_data)
 		error("Refusing connect from %s: setup in progress", address);
 		goto drop;
 	}
+
+	ns = find_server(na->servers, BNEP_SVC_NAP);
+	if (!ns)
+		goto drop;
+
+	if (!ns->record_id)
+		goto drop;
+
+	if (!ns->bridge)
+		goto drop;
 
 	na->setup = g_new0(struct network_session, 1);
 	bacpy(&na->setup->dst, &dst);
@@ -738,7 +749,6 @@ int server_register(struct btd_adapter *adapter)
 	struct network_adapter *na;
 	struct network_server *ns;
 	const char *path;
-	uint16_t id = BNEP_SVC_NAP;
 
 	na = find_adapter(adapters, adapter);
 	if (!na) {
@@ -748,18 +758,14 @@ int server_register(struct btd_adapter *adapter)
 		adapters = g_slist_append(adapters, na);
 	}
 
-	ns = find_server(na->servers, id);
+	ns = find_server(na->servers, BNEP_SVC_NAP);
 	if (ns)
 		return 0;
 
 	ns = g_new0(struct network_server, 1);
 
-	switch (id) {
-	case BNEP_SVC_NAP:
-		ns->iface = g_strdup(NETWORK_SERVER_INTERFACE);
-		ns->name = g_strdup("Network service");
-		break;
-	}
+	ns->iface = g_strdup(NETWORK_SERVER_INTERFACE);
+	ns->name = g_strdup("Network service");
 
 	path = adapter_get_path(adapter);
 
@@ -773,7 +779,7 @@ int server_register(struct btd_adapter *adapter)
 	}
 
 	adapter_get_address(adapter, &ns->src);
-	ns->id = id;
+	ns->id = BNEP_SVC_NAP;
 	ns->na = na;
 	ns->record_id = 0;
 	na->servers = g_slist_append(na->servers, ns);
