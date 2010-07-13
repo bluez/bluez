@@ -37,19 +37,10 @@
 
 #include "adapter.h"
 #include "device.h"
-#include "bridge.h"
 #include "manager.h"
 #include "common.h"
 #include "connection.h"
 #include "server.h"
-
-#define IFACE_PREFIX "bnep%d"
-#define GN_IFACE  "pan0"
-#define NAP_IFACE "pan1"
-
-static struct btd_adapter_driver network_panu_server_driver;
-static struct btd_adapter_driver network_gn_server_driver;
-static struct btd_adapter_driver network_nap_server_driver;
 
 static DBusConnection *connection = NULL;
 
@@ -57,33 +48,11 @@ static struct network_conf {
 	gboolean connection_enabled;
 	gboolean server_enabled;
 	gboolean security;
-	char *iface_prefix;
-	char *panu_script;
-	char *gn_script;
-	char *nap_script;
-	char *gn_iface;
-	char *nap_iface;
 } conf = {
 	.connection_enabled = TRUE,
 	.server_enabled = TRUE,
 	.security = TRUE,
-	.iface_prefix = NULL,
-	.panu_script = NULL,
-	.gn_script = NULL,
-	.nap_script = NULL,
-	.gn_iface = NULL,
-	.nap_iface = NULL
 };
-
-static void conf_cleanup(void)
-{
-	g_free(conf.iface_prefix);
-	g_free(conf.panu_script);
-	g_free(conf.gn_script);
-	g_free(conf.nap_script);
-	g_free(conf.gn_iface);
-	g_free(conf.nap_iface);
-}
 
 static void read_config(const char *file)
 {
@@ -122,67 +91,11 @@ static void read_config(const char *file)
 		g_clear_error(&err);
 	}
 
-#if 0
-	conf.panu_script = g_key_file_get_string(keyfile, "PANU Role",
-						"Script", &err);
-	if (err) {
-		DBG("%s: %s", file, err->message);
-		g_clear_error(&err);
-	}
-
-	conf.gn_script = g_key_file_get_string(keyfile, "GN Role",
-						"Script", &err);
-	if (err) {
-		DBG("%s: %s", file, err->message);
-		g_clear_error(&err);
-	}
-
-	conf.nap_script = g_key_file_get_string(keyfile, "NAP Role",
-						"Script", &err);
-	if (err) {
-		DBG("%s: %s", file, err->message);
-		g_clear_error(&err);
-	}
-#endif
-
-	conf.iface_prefix = g_key_file_get_string(keyfile, "PANU Role",
-						"Interface", &err);
-	if (err) {
-		DBG("%s: %s", file, err->message);
-		g_clear_error(&err);
-	}
-
-	conf.gn_iface = g_key_file_get_string(keyfile, "GN Role",
-						"Interface", &err);
-	if (err) {
-		DBG("%s: %s", file, err->message);
-		g_clear_error(&err);
-	}
-
-	conf.nap_iface = g_key_file_get_string(keyfile, "NAP Role",
-						"Interface", &err);
-	if (err) {
-		DBG("%s: %s", file, err->message);
-		g_clear_error(&err);
-	}
-
 done:
 	g_key_file_free(keyfile);
 
-	if (!conf.iface_prefix)
-		conf.iface_prefix = g_strdup(IFACE_PREFIX);
-
-	if (!conf.gn_iface)
-		conf.gn_iface = g_strdup(GN_IFACE);
-	if (!conf.nap_iface)
-		conf.nap_iface = g_strdup(NAP_IFACE);
-
-	DBG("Config options: InterfacePrefix=%s, PANU_Script=%s, "
-		"GN_Script=%s, NAP_Script=%s, GN_Interface=%s, "
-		"NAP_Interface=%s, Security=%s",
-		conf.iface_prefix, conf.panu_script, conf.gn_script,
-		conf.nap_script, conf.gn_iface, conf.nap_iface,
-		conf.security ? "true" : "false");
+	DBG("Config options: Security=%s",
+				conf.security ? "true" : "false");
 }
 
 static int network_probe(struct btd_device *device, GSList *uuids, uint16_t id)
@@ -238,55 +151,22 @@ static void nap_remove(struct btd_device *device)
 	network_remove(device, BNEP_SVC_NAP);
 }
 
-static int network_server_probe(struct btd_adapter *adapter, uint16_t id)
+static int network_server_probe(struct btd_adapter *adapter)
 {
 	const gchar *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
 
-	if (!conf.server_enabled)
-		return 0;
-
-	return server_register(adapter, id);
+	return server_register(adapter);
 }
 
-static void network_server_remove(struct btd_adapter *adapter, uint16_t id)
+static void network_server_remove(struct btd_adapter *adapter)
 {
 	const gchar *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
 
-	server_unregister(adapter, id);
-}
-
-static int panu_server_probe(struct btd_adapter *adapter)
-{
-	return network_server_probe(adapter, BNEP_SVC_PANU);
-}
-
-static int gn_server_probe(struct btd_adapter *adapter)
-{
-	return network_server_probe(adapter, BNEP_SVC_GN);
-}
-
-static int nap_server_probe(struct btd_adapter *adapter)
-{
-	return network_server_probe(adapter, BNEP_SVC_NAP);
-}
-
-static void panu_server_remove(struct btd_adapter *adapter)
-{
-	network_server_remove(adapter, BNEP_SVC_PANU);
-}
-
-static void gn_server_remove(struct btd_adapter *adapter)
-{
-	network_server_remove(adapter, BNEP_SVC_GN);
-}
-
-static void nap_server_remove(struct btd_adapter *adapter)
-{
-	network_server_remove(adapter, BNEP_SVC_NAP);
+	server_unregister(adapter);
 }
 
 static struct btd_device_driver network_panu_driver = {
@@ -310,29 +190,17 @@ static struct btd_device_driver network_nap_driver = {
 	.remove	= nap_remove,
 };
 
-static struct btd_adapter_driver network_panu_server_driver = {
-	.name	= "network-panu-server",
-	.probe	= panu_server_probe,
-	.remove	= panu_server_remove,
-};
-
-static struct btd_adapter_driver network_gn_server_driver = {
-	.name	= "network-gn-server",
-	.probe	= gn_server_probe,
-	.remove	= gn_server_remove,
-};
-
-static struct btd_adapter_driver network_nap_server_driver = {
-	.name	= "network-nap-server",
-	.probe	= nap_server_probe,
-	.remove	= nap_server_remove,
+static struct btd_adapter_driver network_server_driver = {
+	.name	= "network-server",
+	.probe	= network_server_probe,
+	.remove	= network_server_remove,
 };
 
 int network_manager_init(DBusConnection *conn)
 {
 	read_config(CONFIGDIR "/network.conf");
 
-	if (bnep_init(conf.panu_script, conf.gn_script, conf.nap_script)) {
+	if (bnep_init()) {
 		error("Can't init bnep module");
 		return -1;
 	}
@@ -343,20 +211,14 @@ int network_manager_init(DBusConnection *conn)
 	 * (setup connection request) contains the destination service
 	 * field that defines which service the source is connecting to.
 	 */
-	if (bridge_init(conf.gn_iface, conf.nap_iface) < 0) {
-		error("Can't init bridge module");
-		return -1;
-	}
 
-	if (server_init(conn, conf.iface_prefix, conf.security) < 0)
+	if (server_init(conn, conf.security) < 0)
 		return -1;
 
-	/* Register PANU, GN and NAP servers if they don't exist */
-	btd_register_adapter_driver(&network_panu_server_driver);
-	btd_register_adapter_driver(&network_gn_server_driver);
-	btd_register_adapter_driver(&network_nap_server_driver);
+	/* Register network server if it doesn't exist */
+	btd_register_adapter_driver(&network_server_driver);
 
-	if (connection_init(conn, conf.iface_prefix) < 0)
+	if (connection_init(conn) < 0)
 		return -1;
 
 	btd_register_device_driver(&network_panu_driver);
@@ -380,14 +242,10 @@ void network_manager_exit(void)
 		connection_exit();
 	}
 
-	btd_unregister_adapter_driver(&network_panu_server_driver);
-	btd_unregister_adapter_driver(&network_gn_server_driver);
-	btd_unregister_adapter_driver(&network_nap_server_driver);
+	btd_unregister_adapter_driver(&network_server_driver);
 
 	dbus_connection_unref(connection);
 	connection = NULL;
 
 	bnep_cleanup();
-	bridge_cleanup();
-	conf_cleanup();
 }

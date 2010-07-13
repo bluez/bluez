@@ -50,7 +50,6 @@
 #include "btio.h"
 #include "glib-helper.h"
 
-#include "bridge.h"
 #include "common.h"
 #include "server.h"
 
@@ -88,7 +87,6 @@ struct network_server {
 
 static DBusConnection *connection = NULL;
 static GSList *adapters = NULL;
-static const char *prefix = NULL;
 static gboolean security = TRUE;
 
 static struct network_adapter *find_adapter(GSList *list,
@@ -275,16 +273,16 @@ static int server_connadd(struct network_server *ns,
 				struct network_session *session,
 				uint16_t dst_role)
 {
+	const char *bridge = "tether";
 	char devname[16];
-	const char *bridge;
 	int err, nsk;
 
 	/* Server can be disabled in the meantime */
 	if (ns->enable == FALSE)
 		return -EPERM;
 
-	memset(devname, 0, 16);
-	strncpy(devname, prefix, sizeof(devname) - 1);
+	memset(devname, 0, sizeof(devname));
+	strcpy(devname, "bnep%d");
 
 	nsk = g_io_channel_unix_get_fd(session->io);
 	err = bnep_connadd(nsk, dst_role, devname);
@@ -293,18 +291,13 @@ static int server_connadd(struct network_server *ns,
 
 	info("Added new connection: %s", devname);
 
-	bridge = bridge_get_name(ns->id);
-	if (bridge) {
-		if (bridge_add_interface(ns->id, devname) < 0) {
-			error("Can't add %s to the bridge %s: %s(%d)",
-					devname, bridge, strerror(errno),
-					errno);
-			return -EPERM;
-		}
+	if (bnep_add_to_bridge(devname, bridge) < 0) {
+		error("Can't add %s to the bridge %s: %s(%d)",
+				devname, bridge, strerror(errno), errno);
+		return -EPERM;
+	}
 
-		bnep_if_up(devname, 0);
-	} else
-		bnep_if_up(devname, ns->id);
+	bnep_if_up(devname);
 
 	ns->sessions = g_slist_append(ns->sessions, session);
 
@@ -322,8 +315,8 @@ static uint16_t bnep_setup_chk(uint16_t dst_role, uint16_t src_role)
 		return BNEP_CONN_INVALID_SRC;
 	case BNEP_SVC_PANU:
 		if (src_role == BNEP_SVC_PANU ||
-			src_role == BNEP_SVC_GN ||
-			src_role == BNEP_SVC_NAP)
+				src_role == BNEP_SVC_GN ||
+				src_role == BNEP_SVC_NAP)
 			return 0;
 
 		return BNEP_CONN_INVALID_SRC;
@@ -526,24 +519,16 @@ drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
-int server_init(DBusConnection *conn, const char *iface_prefix,
-		gboolean secure)
+int server_init(DBusConnection *conn, gboolean secure)
 {
 	security = secure;
 	connection = dbus_connection_ref(conn);
-	prefix = iface_prefix;
-
-	if (bridge_create(BNEP_SVC_GN) < 0)
-		error("Can't create GN bridge");
 
 	return 0;
 }
 
-void server_exit()
+void server_exit(void)
 {
-	if (bridge_remove(BNEP_SVC_GN) < 0)
-		error("Can't remove GN bridge");
-
 	dbus_connection_unref(connection);
 	connection = NULL;
 }
@@ -840,11 +825,12 @@ static struct network_adapter *create_adapter(struct btd_adapter *adapter)
 	return na;
 }
 
-int server_register(struct btd_adapter *adapter, uint16_t id)
+int server_register(struct btd_adapter *adapter)
 {
 	struct network_adapter *na;
 	struct network_server *ns;
 	const char *path;
+	uint16_t id = BNEP_SVC_NAP;
 
 	na = find_adapter(adapters, adapter);
 	if (!na) {
@@ -898,10 +884,11 @@ int server_register(struct btd_adapter *adapter, uint16_t id)
 	return 0;
 }
 
-int server_unregister(struct btd_adapter *adapter, uint16_t id)
+int server_unregister(struct btd_adapter *adapter)
 {
 	struct network_adapter *na;
 	struct network_server *ns;
+	uint16_t id = BNEP_SVC_NAP;
 
 	na = find_adapter(adapters, adapter);
 	if (!na)

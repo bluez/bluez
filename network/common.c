@@ -34,6 +34,7 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <net/if.h>
+#include <linux/sockios.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
@@ -45,7 +46,6 @@
 #include "common.h"
 
 static int ctl;
-static GSList *pids;
 
 static struct {
 	const char	*name;		/* Friendly name */
@@ -57,34 +57,6 @@ static struct {
 	{ "nap",	NAP_UUID,	BNEP_SVC_NAP	},
 	{ NULL }
 };
-
-static const char *panu = NULL;
-static const char *gn = NULL;
-static const char *nap = NULL;
-
-struct bnep_data {
-	char *devname;
-	char *script;
-	int pid;
-};
-
-static gint find_devname(gconstpointer a, gconstpointer b)
-{
-	struct bnep_data *data = (struct bnep_data *) a;
-	const char *devname = b;
-
-	return strcmp(data->devname, devname);
-}
-
-static void script_exited(GPid pid, gint status, gpointer data)
-{
-	if (WIFEXITED(status))
-		DBG("%d exited with status %d", pid, WEXITSTATUS(status));
-	else
-		DBG("%d was killed by signal %d", pid, WTERMSIG(status));
-
-	g_spawn_close_pid(pid);
-}
 
 uint16_t bnep_service_id(const char *svc)
 {
@@ -131,8 +103,7 @@ const char *bnep_name(uint16_t id)
 	return NULL;
 }
 
-int bnep_init(const char *panu_script, const char *gn_script,
-		const char *nap_script)
+int bnep_init(void)
 {
 	ctl = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_BNEP);
 
@@ -143,9 +114,6 @@ int bnep_init(const char *panu_script, const char *gn_script,
 		return -err;
 	}
 
-	panu = panu_script;
-	gn = gn_script;
-	nap = nap_script;
 	return 0;
 }
 
@@ -219,155 +187,76 @@ int bnep_connadd(int sk, uint16_t role, char *dev)
 	return 0;
 }
 
-static void bnep_setup(gpointer data)
+int bnep_if_up(const char *devname)
 {
-}
-
-static int bnep_exec(const char **argv)
-{
-	int pid;
-	GSpawnFlags flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
-
-	if (!g_spawn_async(NULL, (char **) argv, NULL, flags, bnep_setup, NULL,
-				&pid, NULL)) {
-		error("Unable to execute %s %s", argv[0], argv[1]);
-		return -EINVAL;
-	}
-
-	return pid;
-}
-
-int bnep_if_up(const char *devname, uint16_t id)
-{
-	int sd, err;
 	struct ifreq ifr;
-	const char *argv[5];
-	struct bnep_data *bnep = NULL;
-	GSList *l;
+	int sk, err;
 
-	/* Check if a script is running */
-	l = g_slist_find_custom(pids, devname, find_devname);
-	if (l) {
-		bnep = l->data;
+	sk = socket(AF_INET, SOCK_DGRAM, 0);
 
-		if (bnep->script && !strcmp(bnep->script, "avahi-autoipd")) {
-			argv[0] = bnep->script;
-			argv[1] = devname;
-			argv[2] = "--refresh";
-			argv[3] = NULL;
-
-			bnep->pid = bnep_exec(argv);
-		}
-	}
-
-	sd = socket(AF_INET, SOCK_DGRAM, 0);
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, devname, IF_NAMESIZE - 1);
 
 	ifr.ifr_flags |= IFF_UP;
 	ifr.ifr_flags |= IFF_MULTICAST;
 
-	if ((ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr)) < 0) {
-		err = errno;
-		error("Could not bring up %s. %s(%d)", devname, strerror(err),
-			err);
-		return -err;
+	err = ioctl(sk, SIOCSIFFLAGS, (caddr_t) &ifr);
+
+	close(sk);
+
+	if (err < 0) {
+		error("Could not bring up %s", devname);
+		return err;
 	}
 
-	if (bnep)
-		return bnep->pid;
-
-	bnep = g_new0(struct bnep_data, 1);
-	bnep->devname = g_strdup(devname);
-
-	if (!id)
-		goto done;
-
-	if (id == BNEP_SVC_PANU)
-		bnep->script = g_strdup(panu);
-	else if (id == BNEP_SVC_GN)
-		bnep->script = g_strdup(gn);
-	else
-		bnep->script = g_strdup(nap);
-
-	if (!bnep->script)
-		goto done;
-
-	argv[0] = bnep->script;
-	argv[1] = devname;
-
-	if (!strcmp(bnep->script, "avahi-autoipd")) {
-		argv[2] = "--no-drop-root";
-		argv[3] = "--no-chroot";
-		argv[4] = NULL;
-	} else
-		argv[2] = NULL;
-
-	bnep->pid = bnep_exec(argv);
-	g_child_watch_add(bnep->pid, script_exited, bnep);
-
-done:
-	pids = g_slist_append(pids, bnep);
-
-	return bnep->pid;
+	return 0;
 }
 
 int bnep_if_down(const char *devname)
 {
-	int sd, err, pid;
 	struct ifreq ifr;
-	struct bnep_data *bnep;
-	GSList *l;
-	GSpawnFlags flags;
-	const char *argv[4];
+	int sk, err;
 
-	l = g_slist_find_custom(pids, devname, find_devname);
-	if (!l)
-		return 0;
+	sk = socket(AF_INET, SOCK_DGRAM, 0);
 
-	bnep = l->data;
-
-	if (!bnep->pid)
-		goto done;
-
-	if (bnep->script && !strcmp(bnep->script, "avahi-autoipd")) {
-		argv[0] = bnep->script;
-		argv[1] = devname;
-		argv[2] = "--kill";
-		argv[3] = NULL;
-
-		flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH;
-		g_spawn_async(NULL, (char **) argv, NULL, flags, bnep_setup,
-				(gpointer) devname, &pid, NULL);
-
-		goto done;
-	}
-
-	/* Kill script */
-	err = kill(bnep->pid, SIGTERM);
-	if (err < 0)
-		error("kill(%d, SIGTERM): %s (%d)", bnep->pid,
-			strerror(errno), errno);
-
-done:
-	sd = socket(AF_INET, SOCK_DGRAM, 0);
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, devname, IF_NAMESIZE - 1);
 
 	ifr.ifr_flags &= ~IFF_UP;
 
 	/* Bring down the interface */
-	ioctl(sd, SIOCSIFFLAGS, (caddr_t) &ifr);
+	err = ioctl(sk, SIOCSIFFLAGS, (caddr_t) &ifr);
 
-	pids = g_slist_remove(pids, bnep);
+	close(sk);
 
-	if (bnep->devname)
-		g_free(bnep->devname);
+	return 0;
+}
 
-	if (bnep->script)
-		g_free(bnep->script);
+int bnep_add_to_bridge(const char *devname, const char *bridge)
+{
+	int ifindex = if_nametoindex(devname);
+	struct ifreq ifr;
+	int sk, err;
 
-	g_free(bnep);
+	if (!devname || !bridge)
+		return -EINVAL;
+
+	sk = socket(AF_INET, SOCK_STREAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
+	ifr.ifr_ifindex = ifindex;
+
+	err = ioctl(sk, SIOCBRADDIF, &ifr);
+
+	close(sk);
+
+	if (err < 0)
+		return err;
+
+	info("bridge %s: interface %s added", bridge, devname);
 
 	return 0;
 }

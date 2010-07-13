@@ -82,7 +82,6 @@ struct __service_16 {
 } __attribute__ ((packed));
 
 static DBusConnection *connection = NULL;
-static const char *prefix = NULL;
 static GSList *peers = NULL;
 
 static struct network_peer *find_peer(GSList *list, const char *path)
@@ -174,8 +173,8 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 
 	bnep_if_down(nc->dev);
 	nc->state = DISCONNECTED;
-	memset(nc->dev, 0, 16);
-	strncpy(nc->dev, prefix, sizeof(nc->dev) - 1);
+	memset(nc->dev, 0, sizeof(nc->dev));
+	strcpy(nc->dev, "bnep%d");
 
 	return FALSE;
 }
@@ -289,7 +288,7 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	bnep_if_up(nc->dev, nc->id);
+	bnep_if_up(nc->dev);
 	pdev = nc->dev;
 	uuid = bnep_uuid(nc->id);
 
@@ -632,8 +631,8 @@ int connection_register(struct btd_device *device, const char *path,
 
 	nc = g_new0(struct network_conn, 1);
 	nc->id = id;
-	memset(nc->dev, 0, 16);
-	strncpy(nc->dev, prefix, sizeof(nc->dev) - 1);
+	memset(nc->dev, 0, sizeof(nc->dev));
+	strcpy(nc->dev, "bnep%d");
 	nc->state = DISCONNECTED;
 	nc->peer = peer;
 
@@ -642,17 +641,15 @@ int connection_register(struct btd_device *device, const char *path,
 	return 0;
 }
 
-int connection_init(DBusConnection *conn, const char *iface_prefix)
+int connection_init(DBusConnection *conn)
 {
 	connection = dbus_connection_ref(conn);
-	prefix = iface_prefix;
 
 	return 0;
 }
 
-void connection_exit()
+void connection_exit(void)
 {
 	dbus_connection_unref(connection);
 	connection = NULL;
-	prefix = NULL;
 }

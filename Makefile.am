@@ -160,7 +160,6 @@ builtin_sources += network/main.c \
 			network/manager.h network/manager.c \
 			network/common.h network/common.c \
 			network/server.h network/server.c \
-			network/bridge.h network/bridge.c \
 			network/connection.h network/connection.c
 endif
 
