@@ -75,7 +75,7 @@ struct network_server {
 	bdaddr_t	src;		/* Bluetooth Local Address */
 	char		*iface;		/* DBus interface */
 	char		*name;		/* Server service name */
-	char		*range;		/* IP Address range */
+	char		*bridge;	/* Bridge name */
 	uint32_t	record_id;	/* Service record id */
 	uint16_t	id;		/* Service class identifier */
 	GSList		*sessions;	/* Active connections */
@@ -270,7 +270,6 @@ static int server_connadd(struct network_server *ns,
 				struct network_session *session,
 				uint16_t dst_role)
 {
-	const char *bridge = "tether";
 	char devname[16];
 	int err, nsk;
 
@@ -284,9 +283,9 @@ static int server_connadd(struct network_server *ns,
 
 	info("Added new connection: %s", devname);
 
-	if (bnep_add_to_bridge(devname, bridge) < 0) {
+	if (bnep_add_to_bridge(devname, ns->bridge) < 0) {
 		error("Can't add %s to the bridge %s: %s(%d)",
-				devname, bridge, strerror(errno), errno);
+				devname, ns->bridge, strerror(errno), errno);
 		return -EPERM;
 	}
 
@@ -410,6 +409,16 @@ static gboolean bnep_setup(GIOChannel *chan,
 	ns = find_server(na->servers, dst_role);
 	if (!ns) {
 		error("Server unavailable: (0x%x)", dst_role);
+		goto reply;
+	}
+
+	if (!ns->record_id) {
+		error("Service record not available");
+		goto reply;
+	}
+
+	if (!ns->bridge) {
+		error("Bridge interface not configured");
 		goto reply;
 	}
 
@@ -564,12 +573,30 @@ static inline DBusMessage *invalid_arguments(DBusMessage *msg,
 static DBusMessage *register_server(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
-	//struct network_server *ns = data;
+	struct network_server *ns = data;
 	DBusMessage *reply;
+	const char *uuid, *bridge;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &uuid,
+				DBUS_TYPE_STRING, &bridge, DBUS_TYPE_INVALID))
+		return NULL;
+
+	if (g_strcmp0(uuid, "nap"))
+		return failed(msg, "Invalid UUID");
+
+	if (ns->record_id)
+		return failed(msg, "Already registered");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return NULL;
+
+	ns->record_id = register_server_record(ns);
+	if (!ns->record_id)
+		return failed(msg, "SDP record registration failed");
+
+	g_free(ns->bridge);
+	ns->bridge = g_strdup(bridge);
 
 	return reply;
 }
@@ -577,12 +604,28 @@ static DBusMessage *register_server(DBusConnection *conn,
 static DBusMessage *unregister_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	//struct network_server *ns = data;
+	struct network_server *ns = data;
 	DBusMessage *reply;
+	const char *uuid;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &uuid,
+							DBUS_TYPE_INVALID))
+		return NULL;
+
+	if (g_strcmp0(uuid, "nap"))
+		return failed(msg, "Invalid UUID");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return NULL;
+
+	if (ns->record_id) {
+		remove_record_from_server(ns->record_id);
+		ns->record_id = 0;
+	}
+
+	g_free(ns->bridge);
+	ns->bridge = NULL;
 
 	return reply;
 }
@@ -608,14 +651,9 @@ static void server_free(struct network_server *ns)
 	if (ns->record_id)
 		remove_record_from_server(ns->record_id);
 
-	if (ns->iface)
-		g_free(ns->iface);
-
-	if (ns->name)
-		g_free(ns->name);
-
-	if (ns->range)
-		g_free(ns->range);
+	g_free(ns->iface);
+	g_free(ns->name);
+	g_free(ns->bridge);
 
 	if (ns->sessions) {
 		g_slist_foreach(ns->sessions, (GFunc) session_free, NULL);
@@ -721,7 +759,7 @@ int server_register(struct btd_adapter *adapter)
 	adapter_get_address(adapter, &ns->src);
 	ns->id = id;
 	ns->na = na;
-	ns->record_id = register_server_record(ns);
+	ns->record_id = 0;
 	na->servers = g_slist_append(na->servers, ns);
 
 	DBG("Registered interface %s on path %s", ns->iface, path);
