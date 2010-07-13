@@ -337,7 +337,7 @@ static gint adapter_address_cmp(gconstpointer a, gconstpointer b)
 	adapter_get_address(adapter, &bdaddr);
 	ba2str(&bdaddr, addr);
 
-	return strcmp(addr, address);
+	return strcasecmp(addr, address);
 }
 
 struct btd_adapter *manager_find_adapter(const bdaddr_t *sba)
