@@ -140,7 +140,7 @@ static sdp_record_t *server_record_new(const char *name, uint16_t id)
 	uint16_t security_desc = (security ? 0x0001 : 0x0000);
 	uint16_t net_access_type = 0xfffe;
 	uint32_t max_net_access_rate = 0;
-	const char *desc = "BlueZ PAN service";
+	const char *desc = "Network service";
 	sdp_record_t *record;
 
 	record = sdp_record_alloc();
