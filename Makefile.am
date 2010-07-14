@@ -79,6 +79,8 @@ sbc_sbcdec_LDADD = sbc/libsbc.la
 sbc_sbcenc_SOURCES = sbc/sbcenc.c sbc/formats.h
 sbc_sbcenc_LDADD = sbc/libsbc.la
 
+attrib_sources = attrib/att.h attrib/att.c attrib/gattrib.h attrib/gattrib.c
+
 if SNDFILE
 noinst_PROGRAMS += sbc/sbctester
 
@@ -170,7 +172,8 @@ endif
 
 if ATTRIBPLUGIN
 builtin_modules += attrib
-builtin_sources += attrib/main.c attrib/manager.h attrib/manager.c \
+builtin_sources += $(attrib_sources) attrib/main.c \
+		attrib/manager.h attrib/manager.c \
 		attrib/client.h attrib/client.c \
 		attrib/example.h attrib/example.c
 endif
