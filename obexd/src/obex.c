@@ -275,7 +275,7 @@ static void os_session_mark_aborted(struct obex_session *os)
 static void os_reset_session(struct obex_session *os)
 {
 	os_session_mark_aborted(os);
-	if (os->service->reset)
+	if (os->service && os->service->reset)
 		os->service->reset(os, os->service_data);
 
 	if (os->object) {
