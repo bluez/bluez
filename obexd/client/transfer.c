@@ -235,19 +235,26 @@ static void get_xfer_listing_progress(GwObexXfer *xfer,
 	struct transfer_callback *callback = transfer->callback;
 	gint bsize, bread;
 
-	bsize = transfer->buffer_len - transfer->filled;
+	do {
+		bsize = transfer->buffer_len - transfer->filled;
 
-	if (bsize < DEFAULT_BUFFER_SIZE) {
-		transfer->buffer_len += DEFAULT_BUFFER_SIZE;
-		transfer->buffer = g_realloc(transfer->buffer, transfer->buffer_len);
-		bsize += DEFAULT_BUFFER_SIZE;
-	}
+		if (bsize < DEFAULT_BUFFER_SIZE) {
+			transfer->buffer_len += DEFAULT_BUFFER_SIZE;
+			transfer->buffer = g_realloc(transfer->buffer, transfer->buffer_len);
+			bsize += DEFAULT_BUFFER_SIZE;
+		}
 
-	if (gw_obex_xfer_read(xfer, transfer->buffer + transfer->filled,
-			bsize, &bread, &transfer->err) == FALSE)
-		goto fail;
+		if (gw_obex_xfer_read(xfer, transfer->buffer + transfer->filled,
+			bsize, &bread, &transfer->err) == FALSE) {
+			if (transfer->err == GW_OBEX_ERROR_NO_DATA) {
+				transfer->err = 0;
+				break;
+			} else
+				goto fail;
+		}
 
-	transfer->filled += bread;
+		transfer->filled += bread;
+	} while (bread != 0);
 
 	if (gw_obex_xfer_object_done(xfer)) {
 		if (transfer->filled > 0 &&
