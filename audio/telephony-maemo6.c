@@ -976,7 +976,7 @@ static void handle_create_requested(DBusMessage *msg)
 static void handle_call_status(DBusMessage *msg, const char *call_path)
 {
 	struct csd_call *call;
-	dbus_uint32_t status, cause_type, cause;
+	dbus_uint32_t status, cause_type, cause, prev_status;
 	int callheld = telephony_get_indicator(maemo_indicators, "callheld");
 
 	if (!dbus_message_get_args(msg, NULL,
@@ -1000,10 +1000,11 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		return;
 	}
 
+	prev_status = call->status;
 	DBG("Call %s changed from %s to %s", call_path,
-		call_status_str[call->status], call_status_str[status]);
+		call_status_str[prev_status], call_status_str[status]);
 
-	if (call->status == (int) status) {
+	if (prev_status == status) {
 		DBG("Ignoring CSD Call state change to existing state");
 		return;
 	}
@@ -1043,6 +1044,14 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 						EV_CALLSETUP_ALERTING);
 		break;
 	case CSD_CALL_STATUS_MT_ALERTING:
+		/* Some headsets expect incoming call notification before they
+		 * can send ATA command. When call changed status from waiting
+		 * to alerting we need to send missing notification. Otherwise
+		 * headsets like Nokia BH-108 or BackBeat 903 are unable to
+		 * answer incoming call that was previously waiting. */
+		if (prev_status == CSD_CALL_STATUS_WAITING)
+			telephony_incoming_call_ind(call->number,
+						number_type(call->number));
 		break;
 	case CSD_CALL_STATUS_WAITING:
 		break;
