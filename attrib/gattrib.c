@@ -27,7 +27,7 @@
 
 struct _GAttrib {
 	GIOChannel *io;
-	guint refs;
+	gint refs;
 };
 
 GAttrib *g_attrib_new(GIOChannel *io)
@@ -43,7 +43,12 @@ GAttrib *g_attrib_new(GIOChannel *io)
 
 GAttrib *g_attrib_ref(GAttrib *attrib)
 {
-	return NULL;
+	if (!attrib)
+		return NULL;
+
+	g_atomic_int_inc(&attrib->refs);
+
+	return attrib;
 }
 
 void g_attrib_unref(GAttrib *attrib)
