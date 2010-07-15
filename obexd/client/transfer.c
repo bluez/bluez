@@ -228,35 +228,58 @@ void transfer_unregister(struct transfer_data *transfer)
 	transfer_free(transfer);
 }
 
-static void get_xfer_listing_progress(GwObexXfer *xfer,
-					gpointer user_data)
+static gboolean transfer_read(struct transfer_data *transfer, GwObexXfer *xfer)
 {
-	struct transfer_data *transfer = user_data;
-	struct transfer_callback *callback = transfer->callback;
 	gint bsize, bread;
 
+	/* check if object size is available */
+	if (transfer->size == 0)
+		transfer->size = gw_obex_xfer_object_size(xfer);
+
+	/* read all buffered data */
 	do {
 		bsize = transfer->buffer_len - transfer->filled;
 
 		if (bsize < DEFAULT_BUFFER_SIZE) {
 			transfer->buffer_len += DEFAULT_BUFFER_SIZE;
-			transfer->buffer = g_realloc(transfer->buffer, transfer->buffer_len);
+			transfer->buffer = g_realloc(transfer->buffer,
+							transfer->buffer_len);
 			bsize += DEFAULT_BUFFER_SIZE;
 		}
 
-		if (gw_obex_xfer_read(xfer, transfer->buffer + transfer->filled,
-			bsize, &bread, &transfer->err) == FALSE) {
+		if (gw_obex_xfer_read(xfer, transfer->buffer +
+				transfer->filled, bsize, &bread,
+				&transfer->err) == FALSE) {
 			if (transfer->err == GW_OBEX_ERROR_NO_DATA) {
 				transfer->err = 0;
-				break;
+				return TRUE;
 			} else
-				goto fail;
+				return FALSE;
 		}
 
 		transfer->filled += bread;
+		transfer->transferred += bread;
 	} while (bread != 0);
 
+	/* set size to transferred if object is done and size is unknown */
+	if (gw_obex_xfer_object_done(xfer) == TRUE &&
+			transfer->size == GW_OBEX_UNKNOWN_LENGTH)
+		transfer->size = transfer->transferred;
+
+	return TRUE;
+}
+
+static void get_buf_xfer_progress(GwObexXfer *xfer,
+					gpointer user_data)
+{
+	struct transfer_data *transfer = user_data;
+	struct transfer_callback *callback = transfer->callback;
+
+	if (transfer_read(transfer, xfer) == FALSE)
+		goto fail;
+
 	if (gw_obex_xfer_object_done(xfer)) {
+		int bsize;
 		if (transfer->filled > 0 &&
 				transfer->buffer[transfer->filled - 1] == '\0')
 			goto done;
@@ -286,42 +309,21 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
 	struct transfer_data *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
-	gint bsize, bread;
-	gboolean ret;
 
-	if (transfer->buffer_len == 0) {
-		transfer->buffer_len = DEFAULT_BUFFER_SIZE;
-		transfer->buffer = g_new0(char, DEFAULT_BUFFER_SIZE);
-	}
-
-	bsize = transfer->buffer_len - transfer->filled;
-
-	ret = gw_obex_xfer_read(xfer, transfer->buffer + transfer->filled,
-					bsize, &bread, &transfer->err);
-	if (ret == FALSE)
+	if (transfer_read(transfer, xfer) == FALSE)
 		goto done;
-
-	transfer->filled += bread;
-	transfer->transferred += bread;
-	if (transfer->size == 0)
-		transfer->size = gw_obex_xfer_object_size(xfer);
 
 	if (transfer->fd > 0) {
 		gint w;
 
-		w = write(transfer->fd, transfer->buffer, bread);
+		w = write(transfer->fd, transfer->buffer, transfer->filled);
 		if (w < 0) {
 			transfer->err = -errno;
 			goto done;
 		}
 
-		transfer->filled = 0;
+		transfer->filled -= w;
 	}
-
-	if (transfer->transferred == transfer->size)
-		goto done;
-
-	gw_obex_xfer_flush(xfer, NULL);
 
 done:
 	if (callback)
@@ -424,7 +426,7 @@ int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
 	if (transfer->type != NULL &&
 			(strncmp(transfer->type, "x-obex/", 7) == 0 ||
 			strncmp(transfer->type, "x-bt/", 5) == 0))
-		cb = get_xfer_listing_progress;
+		cb = get_buf_xfer_progress;
 	else {
 		int fd = open(transfer->name ? : transfer->filename,
 				O_WRONLY | O_CREAT, 0600);
