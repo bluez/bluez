@@ -53,6 +53,13 @@ GAttrib *g_attrib_ref(GAttrib *attrib)
 
 void g_attrib_unref(GAttrib *attrib)
 {
+	if (!attrib)
+		return;
+
+	if (g_atomic_int_dec_and_test(&attrib->refs) == FALSE)
+		return;
+
+	g_free(attrib);
 }
 
 guint g_attrib_send(GAttrib *attrib, guint8 opcode, const guint8 *pdu,
