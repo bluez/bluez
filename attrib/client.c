@@ -29,11 +29,15 @@
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include "log.h"
 #include "gdbus.h"
 #include "btio.h"
 
+#include "att.h"
+#include "gattrib.h"
 #include "client.h"
 
 #define CHAR_INTERFACE "org.bluez.Characteristic"
@@ -45,6 +49,9 @@ struct gatt_service {
 	char *path;
 	GIOChannel *io;
 	GSList *chars;
+	GAttrib *attrib;
+	int psm;
+	guint atid;
 };
 
 struct characteristic {
@@ -70,6 +77,7 @@ static void gatt_service_free(void *user_data)
 	struct gatt_service *gatt = user_data;
 
 	g_slist_foreach(gatt->chars, (GFunc) characteristic_free, NULL);
+	g_attrib_unref(gatt->attrib);
 	g_free(gatt->path);
 	g_free(gatt);
 }
@@ -106,9 +114,55 @@ static GDBusMethodTable char_methods[] = {
 	{ }
 };
 
+static guint gatt_discover_primary(GAttrib *attrib, uint16_t start,
+		uint16_t end, GAttribResultFunc func, gpointer user_data)
+{
+	uint8_t pdu[ATT_MTU];
+	uuid_t uuid;
+	guint16 plen;
+
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+
+	plen = att_read_by_grp_type_encode(start, end,
+					&uuid, pdu, sizeof(pdu));
+	if (plen == 0)
+		return 0;
+
+	return g_attrib_send(attrib, ATT_OP_READ_BY_GROUP_REQ,
+					pdu, plen, func, user_data, NULL);
+}
+
+static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+
+	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
+		DBG("Discover all primary services finished.");
+		/* FIXME: Register primary services */
+		return;
+	}
+
+	if (status != 0) {
+		error("Discover all primary services failed.");
+		goto fail;
+	}
+
+	if (pdu[0] != ATT_OP_READ_BY_GROUP_RESP) {
+		error("Protocol error");
+		goto fail;
+	}
+
+	DBG("Read by Group Type Response received");
+fail:
+	gatt_service_free(gatt);
+}
+
 static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
+	GAttrib *attrib;
+	guint atid;
 
 	if (gerr) {
 		error("%s", gerr->message);
@@ -117,10 +171,23 @@ static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 
 	DBG("GATT connection established.");
 
+	attrib = g_attrib_new(chan);
+
+	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, gatt);
+	if (atid == 0) {
+		g_attrib_unref(attrib);
+		goto fail;
+	}
+
+	gatt->attrib = attrib;
+	gatt->atid = atid;
+
+	services = g_slist_append(services, gatt);
+
 	return;
 fail:
 	g_io_channel_unref(gatt->io);
-	gatt->io = NULL;
+	gatt_service_free(gatt);
 }
 
 int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
@@ -142,6 +209,7 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	gatt->path = g_strdup(path);
 	bacpy(&gatt->sba, sba);
 	bacpy(&gatt->dba, dba);
+	gatt->psm = psm;
 
 	chr = g_new0(struct characteristic, 1);
 	chr->path = g_strdup_printf("%s/service%d/characteristic%d",
@@ -156,10 +224,22 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 		return -1;
 	}
 
+	if (psm < 0) {
+		/*
+		 * FIXME: when PSM is not given means that L2CAP fixed
+		 * channel shall be used. For this case, ATT CID(0x0004).
+		 */
+
+		DBG("GATT over LE");
+
+		return 0;
+	}
+
 	io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, sba,
 					BT_IO_OPT_DEST_BDADDR, dba,
 					BT_IO_OPT_PSM, psm,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
 
 	if (!io) {
@@ -170,8 +250,6 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	}
 
 	gatt->io = io;
-
-	services = g_slist_append(services, gatt);
 
 	DBG("Registered interface %s on path %s", CHAR_INTERFACE, path);
 

@@ -110,9 +110,11 @@ extern "C" {
 #define ATT_CHAR_PROPER_EXT_PROPER		0x80
 
 
-int att_read_by_grp_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
+#define ATT_MTU					256
+
+uint16_t att_read_by_grp_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);
-int att_find_by_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
+uint16_t att_find_by_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);
 #ifdef __cplusplus
 }
