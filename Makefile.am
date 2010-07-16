@@ -248,7 +248,7 @@ audio_libasound_module_ctl_bluetooth_la_LIBADD = lib/libbluetooth.la @ALSA_LIBS@
 audio_libasound_module_ctl_bluetooth_la_CFLAGS = @ALSA_CFLAGS@
 
 if CONFIGFILES
-alsaconfdir = $(sysconfdir)/alsa
+alsaconfdir = $(datadir)/alsa
 
 alsaconf_DATA = audio/bluetooth.conf
 endif
