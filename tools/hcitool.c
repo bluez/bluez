@@ -2435,6 +2435,9 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 		}
 	}
 
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		perror("Could not open device");
@@ -2504,6 +2507,9 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 		return;
 	}
 
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
 		perror("Could not open device");
@@ -2568,6 +2574,9 @@ static void cmd_ledc(int dev_id, int argc, char **argv)
 		printf("%s", ledc_help);
 		return;
 	}
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
 
 	dd = hci_open_dev(dev_id);
 	if (dd < 0) {
