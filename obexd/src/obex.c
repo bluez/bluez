@@ -1385,13 +1385,16 @@ int obex_aparam_write(struct obex_session *os,
 			OBEX_HDR_APPARAM, hd, size, 0);
 }
 
-int memcmp0(const void *a, const void *b, size_t n)
+int memncmp0(const void *a, size_t na, const void *b, size_t nb)
 {
+	if (na != nb)
+		return na - nb;
+
 	if (a == NULL)
 		return -(a != b);
 
 	if (b == NULL)
 		return a != b;
 
-	return memcmp(a, b, n);
+	return memcmp(a, b, na);
 }

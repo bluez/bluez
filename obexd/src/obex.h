@@ -64,4 +64,4 @@ const char *obex_option_root_folder(void);
 gboolean obex_option_symlinks(void);
 
 /* Just a thin wrapper around memcmp to deal with NULL values */
-int memcmp0(const void *a, const void *b, size_t n);
+int memncmp0(const void *a, size_t na, const void *b, size_t nb);

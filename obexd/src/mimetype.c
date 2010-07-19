@@ -126,10 +126,10 @@ static struct obex_mime_type_driver *find_driver(const uint8_t *target,
 	for (l = drivers; l; l = l->next) {
 		struct obex_mime_type_driver *driver = l->data;
 
-		if (memcmp0(target, driver->target, TARGET_SIZE))
+		if (memncmp0(target, TARGET_SIZE, driver->target, TARGET_SIZE))
 			continue;
 
-		if (memcmp0(who, driver->who, who_size))
+		if (memncmp0(who, who_size, driver->who, driver->who_size))
 			continue;
 
 		if (g_strcmp0(mimetype, driver->mimetype) == 0)
