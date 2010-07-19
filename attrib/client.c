@@ -49,6 +49,7 @@ struct gatt_service {
 	char *path;
 	GIOChannel *io;
 	GSList *chars;
+	GSList *primary;
 	GAttrib *attrib;
 	int psm;
 	guint atid;
@@ -77,6 +78,7 @@ static void gatt_service_free(void *user_data)
 	struct gatt_service *gatt = user_data;
 
 	g_slist_foreach(gatt->chars, (GFunc) characteristic_free, NULL);
+	g_slist_foreach(gatt->primary, (GFunc) bt_free, NULL);
 	g_attrib_unref(gatt->attrib);
 	g_free(gatt->path);
 	g_free(gatt);
@@ -136,6 +138,9 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
+	unsigned int i;
+	uint16_t start, end;
+	uint8_t length;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
 		DBG("Discover all primary services finished.");
@@ -154,6 +159,51 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	}
 
 	DBG("Read by Group Type Response received");
+
+	length = pdu[1];
+	for (i = 2, end = 0; i < plen; i += length) {
+		uuid_t *uuid;
+		uint16_t *p16;
+
+		p16 = (void *) &pdu[i];
+		start = btohs(*p16);
+		p16++;
+		end = btohs(*p16);
+		p16++;
+		uuid = bt_malloc(sizeof(uuid_t));
+		if (length == 6) {
+			uint16_t u16 = btohs(*p16);
+			uuid = sdp_uuid16_create(uuid, u16);
+
+			DBG("Service => start: 0x%04x, end: 0x%04x, "
+					"uuid: 0x%04x", start, end, u16);
+		} else if (length == 20) {
+			/* FIXME: endianness */
+			uuid = sdp_uuid128_create(uuid, p16);
+		} else {
+			DBG("ATT: Invalid Length field");
+			goto fail;
+		}
+
+		gatt->primary = g_slist_append(gatt->primary, uuid);
+	}
+
+	if (end == 0) {
+		DBG("ATT: Invalid PDU format");
+		goto fail;
+	}
+
+	/*
+	 * Discover all primary services sub-procedure shall send another
+	 * Read by Group Type Request until Error Response is received and
+	 * the Error Code is set to Attribute Not Found.
+	 */
+	gatt->atid = gatt_discover_primary(gatt->attrib,
+				end + 1, 0xffff, primary_cb, gatt);
+	if (gatt->atid == 0)
+		goto fail;
+
+	return;
 fail:
 	gatt_service_free(gatt);
 }
