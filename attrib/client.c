@@ -32,6 +32,7 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include "glib-helper.h"
 #include "log.h"
 #include "gdbus.h"
 #include "btio.h"
@@ -59,6 +60,13 @@ struct characteristic {
 	char *path;
 };
 
+struct primary {
+	uuid_t *uuid;
+	uint16_t start;
+	uint16_t end;
+	char *path;
+};
+
 static int service_id = 0;
 static int char_id = 0;
 static GSList *services = NULL;
@@ -73,12 +81,21 @@ static void characteristic_free(void *user_data)
 	g_free(chr);
 }
 
+static void primary_free(void *user_data)
+{
+	struct primary *prim = user_data;
+
+	g_free(prim->path);
+	g_free(prim->uuid);
+	g_free(prim);
+}
+
 static void gatt_service_free(void *user_data)
 {
 	struct gatt_service *gatt = user_data;
 
 	g_slist_foreach(gatt->chars, (GFunc) characteristic_free, NULL);
-	g_slist_foreach(gatt->primary, (GFunc) bt_free, NULL);
+	g_slist_foreach(gatt->primary, (GFunc) primary_free, NULL);
 	g_attrib_unref(gatt->attrib);
 	g_free(gatt->path);
 	g_free(gatt);
@@ -139,8 +156,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 {
 	struct gatt_service *gatt = user_data;
 	unsigned int i;
-	uint16_t start, end;
 	uint8_t length;
+	uint16_t end, start;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
 		DBG("Discover all primary services finished.");
@@ -163,6 +180,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	length = pdu[1];
 	for (i = 2, end = 0; i < plen; i += length) {
+		struct primary *prim;
 		uuid_t *uuid;
 		uint16_t *p16;
 
@@ -186,7 +204,12 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			goto fail;
 		}
 
-		gatt->primary = g_slist_append(gatt->primary, uuid);
+		prim = g_new0(struct primary, 1);
+		prim->start = start;
+		prim->end = end;
+		prim->uuid = uuid;
+
+		gatt->primary = g_slist_append(gatt->primary, prim);
 	}
 
 	if (end == 0) {
