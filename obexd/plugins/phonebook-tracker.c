@@ -124,7 +124,8 @@
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
-		"nmo:isSent false . "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered true ."					\
 		"?c a nco:Contact . "					\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
 	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
@@ -143,7 +144,8 @@
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
-		"nmo:isSent false . "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered true ."					\
 		"?c a nco:Contact . "					\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
