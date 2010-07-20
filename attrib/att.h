@@ -114,11 +114,21 @@ extern "C" {
 
 #define ATT_MTU					256
 
+struct att_data_list {
+	uint16_t num;
+	uint16_t len;
+	uint8_t **data;
+};
+
+void att_data_list_free(struct att_data_list *list);
+
 const char *att_ecode2str(uint8_t status);
 uint16_t att_read_by_grp_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);
 uint16_t att_find_by_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);
+struct att_data_list *att_read_by_grp_type_decode(const uint8_t *pdu, int len);
+
 #ifdef __cplusplus
 }
 #endif

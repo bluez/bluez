@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
@@ -73,6 +74,17 @@ const char *att_ecode2str(uint8_t status)
 	}
 }
 
+void att_data_list_free(struct att_data_list *list)
+{
+	int i;
+
+	for (i = 0; i < list->num; i++)
+		free(list->data[i]);
+
+	free(list->data);
+	free(list);
+}
+
 uint16_t att_read_by_grp_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len)
 {
@@ -98,6 +110,31 @@ uint16_t att_read_by_grp_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
 	*p16 = htobs(uuid->value.uuid16);
 
 	return 7;
+}
+
+struct att_data_list *att_read_by_grp_type_decode(const uint8_t *pdu, int len)
+{
+	struct att_data_list *list;
+	const uint8_t *ptr;
+	int i;
+
+	if (pdu[0] != ATT_OP_READ_BY_GROUP_RESP)
+		return NULL;
+
+	list = malloc(sizeof(struct att_data_list));
+	list->len = pdu[1];
+	list->num = len / list->len;
+
+	list->data = malloc(sizeof(uint8_t *) * list->num);
+	ptr = &pdu[2];
+
+	for (i = 0; i < list->num; i++) {
+		list->data[i] = malloc(sizeof(uint8_t) * list->len);
+		memcpy(list->data[i], ptr, list->len);
+		ptr += list->len;
+	}
+
+	return list;
 }
 
 uint16_t att_find_by_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
