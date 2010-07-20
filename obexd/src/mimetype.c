@@ -118,6 +118,7 @@ static int set_io_watch(void *object, obex_object_io_func func,
 }
 
 static struct obex_mime_type_driver *find_driver(const uint8_t *target,
+				unsigned int target_size,
 				const char *mimetype, const uint8_t *who,
 				unsigned int who_size)
 {
@@ -126,7 +127,7 @@ static struct obex_mime_type_driver *find_driver(const uint8_t *target,
 	for (l = drivers; l; l = l->next) {
 		struct obex_mime_type_driver *driver = l->data;
 
-		if (memncmp0(target, TARGET_SIZE, driver->target, TARGET_SIZE))
+		if (memncmp0(target, target_size, driver->target, driver->target_size))
 			continue;
 
 		if (memncmp0(who, who_size, driver->who, driver->who_size))
@@ -140,27 +141,28 @@ static struct obex_mime_type_driver *find_driver(const uint8_t *target,
 }
 
 struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
+				unsigned int target_size,
 				const char *mimetype, const uint8_t *who,
 				unsigned int who_size)
 {
 	struct obex_mime_type_driver *driver;
 
-	driver = find_driver(target, mimetype, who, who_size);
+	driver = find_driver(target, target_size, mimetype, who, who_size);
 	if (driver == NULL) {
 		if (who != NULL) {
 			/* Fallback to non-who specific */
-			driver = find_driver(target, mimetype, NULL, 0);
+			driver = find_driver(target, target_size, mimetype, NULL, 0);
 			if (driver != NULL)
 				return driver;
 		}
 
 		if (mimetype != NULL)
 			/* Fallback to target default */
-			driver = find_driver(target, NULL, NULL, 0);
+			driver = find_driver(target, target_size, NULL, NULL, 0);
 
 		if (driver == NULL)
 			/* Fallback to general default */
-			driver = find_driver(NULL, NULL, NULL, 0);
+			driver = find_driver(NULL, 0, NULL, NULL, 0);
 	}
 
 	return driver;
@@ -173,7 +175,7 @@ int obex_mime_type_driver_register(struct obex_mime_type_driver *driver)
 		return -EINVAL;
 	}
 
-	if (find_driver(driver->target, driver->mimetype,
+	if (find_driver(driver->target, driver->target_size, driver->mimetype,
 					driver->who, driver->who_size)) {
 		error("Permission denied: %s could not be registered",
 				driver->mimetype);

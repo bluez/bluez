@@ -550,6 +550,7 @@ static struct obex_mime_type_driver file = {
 
 static struct obex_mime_type_driver capability = {
 	.target = FTP_TARGET,
+	.target_size = TARGET_SIZE,
 	.mimetype = "x-obex/capability",
 	.open = capability_open,
 	.close = capability_close,
@@ -558,6 +559,7 @@ static struct obex_mime_type_driver capability = {
 
 static struct obex_mime_type_driver folder = {
 	.target = FTP_TARGET,
+	.target_size = TARGET_SIZE,
 	.mimetype = "x-obex/folder-listing",
 	.open = folder_open,
 	.close = string_free,
@@ -566,6 +568,7 @@ static struct obex_mime_type_driver folder = {
 
 static struct obex_mime_type_driver pcsuite = {
 	.target = FTP_TARGET,
+	.target_size = TARGET_SIZE,
 	.who = PCSUITE_WHO,
 	.who_size = PCSUITE_WHO_SIZE,
 	.mimetype = "x-obex/folder-listing",

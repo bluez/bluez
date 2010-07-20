@@ -276,6 +276,7 @@ static ssize_t backup_write(void *object, const void *buf, size_t count)
 
 static struct obex_mime_type_driver backup = {
 	.target = FTP_TARGET,
+	.target_size = TARGET_SIZE
 	.mimetype = "application/vnd.nokia-backup",
 	.open = backup_open,
 	.close = backup_close,

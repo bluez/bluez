@@ -763,7 +763,9 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 			os->type = g_strndup((const char *) hd.bs, hlen);
 			DBG("OBEX_HDR_TYPE: %s", os->type);
 			os->driver = obex_mime_type_driver_find(
-						os->service->target, os->type,
+						os->service->target,
+						os->service->target_size,
+						os->type,
 						os->service->who,
 						os->service->who_size);
 			break;
@@ -772,6 +774,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 
 	if (os->type == NULL)
 		os->driver = obex_mime_type_driver_find(os->service->target,
+							os->service->target_size,
 							NULL,
 							os->service->who,
 							os->service->who_size);
@@ -977,7 +980,9 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 			os->type = g_strndup((const char *) hd.bs, hlen);
 			DBG("OBEX_HDR_TYPE: %s", os->type);
 			os->driver = obex_mime_type_driver_find(
-						os->service->target, os->type,
+						os->service->target,
+						os->service->target_size,
+						os->type,
 						os->service->who,
 						os->service->who_size);
 			break;
@@ -1001,6 +1006,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 
 	if (os->type == NULL)
 		os->driver = obex_mime_type_driver_find(os->service->target,
+							os->service->target_size,
 							NULL,
 							os->service->who,
 							os->service->who_size);

@@ -861,6 +861,7 @@ static int vobject_close(void *object)
 
 static struct obex_mime_type_driver mime_pull = {
 	.target = PBAP_TARGET,
+	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/phonebook",
 	.open = vobject_pull_open,
 	.close = vobject_close,
@@ -869,6 +870,7 @@ static struct obex_mime_type_driver mime_pull = {
 
 static struct obex_mime_type_driver mime_list = {
 	.target = PBAP_TARGET,
+	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/vcard-listing",
 	.open = vobject_list_open,
 	.close = vobject_close,
@@ -877,6 +879,7 @@ static struct obex_mime_type_driver mime_list = {
 
 static struct obex_mime_type_driver mime_vcard = {
 	.target = PBAP_TARGET,
+	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/vcard",
 	.open = vobject_vcard_open,
 	.close = vobject_close,
