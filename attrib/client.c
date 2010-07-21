@@ -149,7 +149,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	}
 
 	if (status != 0) {
-		error("Discover all primary services failed.");
+		error("Discover all primary services failed: %s",
+						att_ecode2str(status));
 		goto fail;
 	}
 
