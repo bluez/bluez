@@ -142,3 +142,55 @@ uint16_t att_find_by_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
 {
 	return 0;
 }
+
+uint16_t att_read_by_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
+							uint8_t *pdu, int len)
+{
+	uint16_t *p16;
+
+	/* FIXME: UUID128 is not supported */
+
+	if (!uuid)
+		return 0;
+
+	if (uuid->type != SDP_UUID16)
+		return 0;
+
+	if (len < 7)
+		return 0;
+
+	pdu[0] = ATT_OP_READ_BY_TYPE_REQ;
+	p16 = (void *) &pdu[1];
+	*p16 = htobs(start);
+	p16++;
+	*p16 = htobs(end);
+	p16++;
+	*p16 = htobs(uuid->value.uuid16);
+
+	return 7;
+}
+
+struct att_data_list *add_read_by_type_decode(const uint8_t *pdu, int len)
+{
+	struct att_data_list *list;
+	const uint8_t *ptr;
+	int i;
+
+	if (pdu[0] != ATT_OP_READ_BY_TYPE_RESP)
+		return NULL;
+
+	list = malloc(sizeof(struct att_data_list));
+	list->len = pdu[1];
+	list->num = len / list->len;
+
+	list->data = malloc(sizeof(uint8_t *) * list->num);
+	ptr = &pdu[2];
+
+	for (i = 0; i < list->num; i++) {
+		list->data[i] = malloc(sizeof(uint8_t) * list->len);
+		memcpy(list->data[i], ptr, list->len);
+		ptr += list->len;
+	}
+
+	return list;
+}

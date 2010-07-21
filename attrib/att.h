@@ -128,6 +128,9 @@ uint16_t att_read_by_grp_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
 uint16_t att_find_by_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);
 struct att_data_list *att_read_by_grp_type_decode(const uint8_t *pdu, int len);
+uint16_t att_read_by_type_encode(uint16_t start, uint16_t end, uuid_t *uuid,
+							uint8_t *pdu, int len);
+struct att_data_list *add_read_by_type_decode(const uint8_t *pdu, int len);
 
 #ifdef __cplusplus
 }
