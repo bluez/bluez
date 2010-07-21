@@ -68,6 +68,15 @@ static inline void ntoh128(uint128_t *src, uint128_t *dst)
 	for (i = 0; i < 16; i++)
 		dst->data[i] = src->data[i];
 }
+
+static inline void btoh128(uint128_t *src, uint128_t *dst)
+{
+	int i;
+	for (i = 0; i < 16; i++)
+		dst->data[15 - i] = src->data[i];
+
+}
+
 #else
 static inline uint64_t ntoh64(uint64_t n)
 {
@@ -77,16 +86,24 @@ static inline uint64_t ntoh64(uint64_t n)
 	h |= tmp << 32;
 	return h;
 }
+
 static inline void ntoh128(uint128_t *src, uint128_t *dst)
 {
 	int i;
 	for (i = 0; i < 16; i++)
 		dst->data[15 - i] = src->data[i];
 }
+
+static inline void btoh128(uint128_t *src, uint128_t *dst)
+{
+	memcpy(src, dst, sizeof(uint128_t));
+}
+
 #endif
 
 #define hton64(x)     ntoh64(x)
 #define hton128(x, y) ntoh128(x, y)
+#define htob128(x, y) btoh128(x, y)
 
 #define BASE_UUID "00000000-0000-1000-8000-00805F9B34FB"
 
