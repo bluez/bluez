@@ -25,7 +25,28 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+#include <stdint.h>
+#include <string.h>
+#include <glib.h>
+
+#include <bluetooth/sdp.h>
+
 #include "attrib-server.h"
+
+static GSList *database = NULL;
+
+struct attribute {
+	uint16_t handle;
+	uuid_t uuid;
+	int len;
+	uint8_t data[0];
+};
+
+static int handle_cmp(struct attribute *a, uint16_t *handle)
+{
+	return a->handle - *handle;
+}
 
 int attrib_server_init(void)
 {
@@ -34,4 +55,39 @@ int attrib_server_init(void)
 
 void attrib_server_exit(void)
 {
+	g_slist_foreach(database, (GFunc) g_free, NULL);
+	g_slist_free(database);
+}
+
+int attrib_db_add(uint16_t handle, uuid_t *uuid, const uint8_t *value, int len)
+{
+	struct attribute *a;
+
+	/* FIXME: handle conflicts */
+
+	a = g_malloc0(sizeof(struct attribute) + len);
+	a->handle = handle;
+	memcpy(&a->uuid, uuid, sizeof(uuid_t));
+	a->len = len;
+	memcpy(a->data, value, len);
+
+	database = g_slist_append(database, a);
+
+	return 0;
+}
+
+int attrib_db_del(uint16_t handle)
+{
+	struct attribute *a;
+	GSList *l;
+
+	l = g_slist_find_custom(database, &handle, (GCompareFunc) handle_cmp);
+	if (!l)
+		return -ENOENT;
+
+	a = l->data;
+	database = g_slist_remove(database, a);
+	g_free(a);
+
+	return 0;
 }
