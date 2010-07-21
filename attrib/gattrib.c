@@ -116,7 +116,7 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	}
 
 	if (buf[0] == ATT_OP_ERROR) {
-		status = buf[1];
+		status = buf[4];
 		goto done;
 	}
 
