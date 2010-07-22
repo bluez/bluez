@@ -27,6 +27,7 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include "att.h"
 
@@ -110,6 +111,34 @@ uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, uuid_t *uuid,
 	*p16 = htobs(uuid->value.uuid16);
 
 	return 7;
+}
+
+uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
+						uint16_t *end, uuid_t *uuid)
+{
+	uint16_t *p16;
+
+	if (pdu == NULL)
+		return 0;
+
+	if (start == NULL || end == NULL || uuid == NULL)
+		return 0;
+
+	if (pdu[0] != ATT_OP_READ_BY_GROUP_REQ)
+		return 0;
+
+	if (len < 7)
+		return 0;
+
+	p16 = (void *) &pdu[1];
+	*start = btohs(*p16);
+	p16++;
+	*end = btohs(*p16);
+	p16++;
+
+	sdp_uuid16_create(uuid, btohs(*p16));
+
+	return len;
 }
 
 struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len)

@@ -118,6 +118,8 @@ void att_data_list_free(struct att_data_list *list);
 const char *att_ecode2str(uint8_t status);
 uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);
+uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
+						uint16_t *end, uuid_t *uuid);
 uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);
 struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len);
