@@ -51,12 +51,15 @@ struct gatt_service {
 	GIOChannel *io;
 	GSList *chars;
 	GSList *primary;
+	/* FIXME: remove this when we have a command queue */
+	GSList *cur_prim;
 	GAttrib *attrib;
 	int psm;
 	guint atid;
 };
 
 struct characteristic {
+	uuid_t *uuid;
 	char *path;
 };
 
@@ -65,6 +68,7 @@ struct primary {
 	uint16_t start;
 	uint16_t end;
 	char *path;
+	GSList *chars;
 };
 
 static int service_id = 0;
@@ -150,6 +154,70 @@ static guint gatt_discover_primary(GAttrib *attrib, uint16_t start,
 					pdu, plen, func, user_data, NULL);
 }
 
+static guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
+				GAttribResultFunc func, gpointer user_data)
+{
+	uint8_t pdu[ATT_MTU];
+	uuid_t uuid;
+	guint16 plen;
+
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+
+	plen = enc_read_by_type_req(start, end, &uuid, pdu, sizeof(pdu));
+	if (plen == 0)
+		return 0;
+
+	return g_attrib_send(attrib, ATT_OP_READ_BY_TYPE_REQ,
+					pdu, plen, func, user_data, NULL);
+}
+
+static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+	struct att_data_list *list;
+	int i;
+
+	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
+		struct primary *prim;
+
+		if (gatt->cur_prim == NULL)
+			return;
+
+		gatt->cur_prim = gatt->cur_prim->next;
+
+		/* Fetch characteristics of the NEXT primary service */
+		prim = gatt->cur_prim->data;
+		gatt_discover_char(gatt->attrib, prim->start, prim->end,
+						char_discovered_cb, gatt);
+		return;
+	}
+
+	if (status != 0) {
+		DBG("Discover all characteristics failed: %s",
+						att_ecode2str(status));
+
+		goto fail;
+	}
+
+	DBG("Read by Type Response received");
+
+	list = dec_read_by_type_resp(pdu, plen);
+	if (list == NULL)
+		return;
+
+	for (i = 0; i < list->num; i++) {
+		/* FIXME: parse each data element */
+	}
+
+	att_data_list_free(list);
+
+	return;
+
+fail:
+	gatt_service_free(gatt);
+}
+
 static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
@@ -159,8 +227,16 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	uint16_t end, start;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
-		DBG("Discover all primary services finished.");
-		/* FIXME: Register primary services */
+		struct primary *prim;
+
+		if (gatt->primary == NULL)
+			return;
+
+		gatt->cur_prim = gatt->primary;
+		prim = gatt->cur_prim->data;
+
+		gatt_discover_char(gatt->attrib, prim->start, prim->end,
+						char_discovered_cb, gatt);
 		return;
 	}
 
@@ -323,8 +399,6 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	}
 
 	gatt->io = io;
-
-	DBG("Registered interface %s on path %s", CHAR_INTERFACE, path);
 
 	return 0;
 }
