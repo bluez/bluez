@@ -52,6 +52,10 @@
 #define RELATIVE_HUMIDITY_UUID		0xA009
 #define FMT_PERCENT_UUID		0xA00A
 #define BLUETOOTH_SIG_UUID		0xA00B
+#define MANUFACTURER_NAME_UUID		0xA00C
+#define MANUFACTURER_SERIAL_UUID	0xA00D
+#define VENDOR_SPECIFIC_SVC_UUID	0xA00E
+#define VENDOR_SPECIFIC_TYPE_UUID	0xA00F
 
 static uint32_t handle = 0;
 
@@ -124,6 +128,10 @@ static int register_attributes(void)
 	const char *devname = "Example Device";
 	const char *desc_out_temp = "Outside Temperature";
 	const char *desc_out_hum = "Outside Relative Humidity";
+	const char *manufacturer_name1 = "ACME Temperature Sensor";
+	const char *manufacturer_name2 = "ACME Weighing Scales";
+	const char *serial1 = "237495-3282-A";
+	const char *serial2 = "11267-2327A00239";
 	uint8_t atval[256];
 	uuid_t uuid;
 	int len;
@@ -293,6 +301,111 @@ static int register_attributes(void)
 	len = strlen(desc_out_hum);
 	strncpy((char *) atval, desc_out_hum, len);
 	attrib_db_add(0x0214, &uuid, atval, len);
+
+	/* Secondary Service: Manufacturer Service */
+	sdp_uuid16_create(&uuid, GATT_SND_SVC_UUID);
+	u16 = htons(MANUFACTURER_SVC_UUID);
+	atval[0] = u16 >> 8;
+	atval[1] = u16;
+	attrib_db_add(0x0500, &uuid, atval, 2);
+
+	/* Manufacturer name characteristic definition */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(MANUFACTURER_NAME_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x05;
+	atval[2] = 0x02;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0501, &uuid, atval, 5);
+
+	/* Manufacturer name characteristic value */
+	sdp_uuid16_create(&uuid, MANUFACTURER_NAME_UUID);
+	len = strlen(manufacturer_name1);
+	strncpy((char *) atval, manufacturer_name1, len);
+	attrib_db_add(0x0502, &uuid, atval, len);
+
+	/* Manufacturer serial number characteristic */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(MANUFACTURER_SERIAL_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x05;
+	atval[2] = 0x04;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0503, &uuid, atval, 5);
+
+	/* Manufacturer serial number characteristic value */
+	sdp_uuid16_create(&uuid, MANUFACTURER_SERIAL_UUID);
+	len = strlen(serial1);
+	strncpy((char *) atval, serial1, len);
+	attrib_db_add(0x0504, &uuid, atval, len);
+
+	/* Secondary Service: Manufacturer Service */
+	sdp_uuid16_create(&uuid, GATT_SND_SVC_UUID);
+	u16 = htons(MANUFACTURER_SVC_UUID);
+	atval[0] = u16 >> 8;
+	atval[1] = u16;
+	attrib_db_add(0x0505, &uuid, atval, 2);
+
+	/* Manufacturer name characteristic definition */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(MANUFACTURER_NAME_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x05;
+	atval[2] = 0x07;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0506, &uuid, atval, 5);
+
+	/* Secondary Service: Vendor Specific Service */
+	sdp_uuid16_create(&uuid, GATT_SND_SVC_UUID);
+	u16 = htons(VENDOR_SPECIFIC_SVC_UUID);
+	atval[0] = u16 >> 8;
+	atval[1] = u16;
+	attrib_db_add(0x0550, &uuid, atval, 2);
+
+	/* Vendor Specific Type characteristic definition */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(VENDOR_SPECIFIC_TYPE_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x05;
+	atval[2] = 0x68;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0560, &uuid, atval, 5);
+
+	/* Vendor Specific Type characteristic value */
+	sdp_uuid16_create(&uuid, VENDOR_SPECIFIC_TYPE_UUID);
+	atval[0] = 0x56;
+	atval[1] = 0x65;
+	atval[2] = 0x6E;
+	atval[3] = 0x64;
+	atval[4] = 0x6F;
+	atval[5] = 0x72;
+	attrib_db_add(0x0568, &uuid, atval, 6);
+
+	/* Manufacturer name attribute */
+	sdp_uuid16_create(&uuid, MANUFACTURER_NAME_UUID);
+	len = strlen(manufacturer_name2);
+	strncpy((char *) atval, manufacturer_name2, len);
+	attrib_db_add(0x0507, &uuid, atval, len);
+
+	/* Characteristic: serial number */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(MANUFACTURER_SERIAL_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x05;
+	atval[2] = 0x09;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0508, &uuid, atval, 5);
+
+	/* Serial number characteristic value */
+	sdp_uuid16_create(&uuid, MANUFACTURER_SERIAL_UUID);
+	len = strlen(serial2);
+	strncpy((char *) atval, serial2, len);
+	attrib_db_add(0x0509, &uuid, atval, len);
 
 	return 0;
 }
