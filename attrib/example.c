@@ -40,9 +40,18 @@
 
 #define ATT_PSM 27
 
+/* FIXME: Not defined by SIG? UUID128? */
 #define OPCODES_SUPPORTED_UUID          0xA001
 #define BATTERY_STATE_SVC_UUID		0xA002
 #define BATTERY_STATE_UUID		0xA003
+#define THERM_HUMIDITY_SVC_UUID		0xA004
+#define MANUFACTURER_SVC_UUID		0xA005
+#define TEMPERATURE_UUID		0xA006
+#define FMT_CELSIUS_UUID		0xA007
+#define FMT_OUTSIDE_UUID		0xA008
+#define RELATIVE_HUMIDITY_UUID		0xA009
+#define FMT_PERCENT_UUID		0xA00A
+#define BLUETOOTH_SIG_UUID		0xA00B
 
 static uint32_t handle = 0;
 
@@ -113,6 +122,8 @@ static sdp_record_t *server_record_new(void)
 static int register_attributes(void)
 {
 	const char *devname = "Example Device";
+	const char *desc_out_temp = "Outside Temperature";
+	const char *desc_out_hum = "Outside Relative Humidity";
 	uint8_t atval[256];
 	uuid_t uuid;
 	int len;
@@ -187,6 +198,101 @@ static int register_attributes(void)
 	atval[0] = 0x04;
 	attrib_db_add(0x0110, &uuid, atval, 1);
 
+	/* Thermometer: primary service definition */
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	u16 = htons(THERM_HUMIDITY_SVC_UUID);
+	atval[0] = u16 >> 8;
+	atval[1] = u16;
+	attrib_db_add(0x0200, &uuid, atval, 2);
+
+	/* Thermometer: Include */
+	sdp_uuid16_create(&uuid, GATT_INCLUDE_UUID);
+	u16 = htons(MANUFACTURER_SVC_UUID);
+	atval[0] = 0x05;
+	atval[1] = 0x00;
+	atval[2] = 0x05;
+	atval[3] = 0x04;
+	atval[4] = u16 >> 8;
+	atval[5] = u16;
+	attrib_db_add(0x0201, &uuid, atval, 6);
+
+	/* Thermometer: Include */
+	atval[0] = 0x05;
+	atval[1] = 0x50;
+	atval[2] = 0x05;
+	atval[3] = 0x68;
+	attrib_db_add(0x0202, &uuid, atval, 4);
+
+	/* Thermometer: temperature characteristic */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(TEMPERATURE_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x02;
+	atval[2] = 0x04;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0203, &uuid, atval, 5);
+
+	/* Thermometer: temperature characteristic value */
+	sdp_uuid16_create(&uuid, TEMPERATURE_UUID);
+	atval[0] = 0x02;
+	atval[1] = 0x8A;
+	attrib_db_add(0x0204, &uuid, atval, 2);
+
+	/* Thermometer: temperature characteristic format */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_FMT_UUID);
+	u16 = htons(FMT_CELSIUS_UUID);
+	atval[0] = 0x0E;
+	atval[1] = 0xFE;
+	atval[2] = u16 >> 8;
+	atval[3] = u16;
+	atval[4] = 0x01;
+	u16 = htons(FMT_OUTSIDE_UUID);
+	atval[5] = u16 >> 8;
+	atval[6] = u16;
+	attrib_db_add(0x0205, &uuid, atval, 7);
+
+	/* Thermometer: characteristic user description */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_USER_DESC_UUID);
+	len = strlen(desc_out_temp);
+	strncpy((char *) atval, desc_out_temp, len);
+	attrib_db_add(0x0206, &uuid, atval, len);
+
+	/* Thermometer: relative humidity characteristic */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(RELATIVE_HUMIDITY_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x02;
+	atval[2] = 0x12;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0210, &uuid, atval, 5);
+
+	/* Thermometer: relative humidity value */
+	sdp_uuid16_create(&uuid, RELATIVE_HUMIDITY_UUID);
+	atval[0] = 0x27;
+	attrib_db_add(0x0212, &uuid, atval, 1);
+
+	/* Thermometer: relative humidity characteristic format */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_FMT_UUID);
+	u16 = htons(FMT_PERCENT_UUID);
+	atval[0] = 0x04;
+	atval[1] = 0x00;
+	atval[2] = u16 >> 8;
+	atval[3] = u16;
+	u16 = htons(BLUETOOTH_SIG_UUID);
+	atval[4] = u16 >> 8;
+	atval[5] = u16;
+	u16 = htons(FMT_OUTSIDE_UUID);
+	atval[6] = u16 >> 8;
+	atval[7] = u16;
+	attrib_db_add(0x0213, &uuid, atval, 8);
+
+	/* Thermometer: characteristic user description */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_USER_DESC_UUID);
+	len = strlen(desc_out_hum);
+	strncpy((char *) atval, desc_out_hum, len);
+	attrib_db_add(0x0214, &uuid, atval, len);
 
 	return 0;
 }
