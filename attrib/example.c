@@ -40,6 +40,8 @@
 
 #define ATT_PSM 27
 
+#define OPCODES_SUPPORTED_UUID          0xA001
+
 static uint32_t handle = 0;
 
 static sdp_record_t *server_record_new(void)
@@ -136,6 +138,29 @@ static int register_attributes(void)
 	len = strlen(devname);
 	strncpy((char *) atval, devname, len);
 	attrib_db_add(0x0006, &uuid, atval, len);
+
+	/* GATT service: primary service definition */
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	u16 = htons(GENERIC_ATTRIB_PROFILE_ID);
+	atval[0] = u16 >> 8;
+	atval[1] = u16;
+	attrib_db_add(0x0010, &uuid, atval, 2);
+
+	/* GATT service: attributes opcodes characteristic */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(OPCODES_SUPPORTED_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x00;
+	atval[2] = 0x12;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0011, &uuid, atval, 5);
+
+	/* GATT service: attribute opcodes supported */
+	sdp_uuid16_create(&uuid, OPCODES_SUPPORTED_UUID);
+	atval[0] = 0x01;
+	atval[1] = 0xFF;
+	attrib_db_add(0x0012, &uuid, atval, 2);
 
 	return 0;
 }
