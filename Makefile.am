@@ -173,7 +173,7 @@ endif
 
 if ATTRIBPLUGIN
 builtin_modules += attrib
-builtin_sources += $(attrib_sources) attrib/main.c \
+builtin_sources += attrib/main.c \
 		attrib/manager.h attrib/manager.c \
 		attrib/client.h attrib/client.c \
 		attrib/example.h attrib/example.c
@@ -196,6 +196,7 @@ endif
 sbin_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
+			$(attrib_sources) \
 			src/main.c src/log.h src/log.c \
 			src/security.c src/rfkill.c src/hcid.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \
@@ -333,7 +334,8 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ \
 		-DBLUETOOTH_PLUGIN_BUILTIN -DPLUGINDIR=\""$(plugindir)"\"
 
 INCLUDES = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
-			-I$(srcdir)/audio -I$(srcdir)/sbc -I$(srcdir)/gdbus
+			-I$(srcdir)/audio -I$(srcdir)/sbc -I$(srcdir)/gdbus \
+			-I$(srcdir)/attrib
 
 
 pkgconfigdir = $(libdir)/pkgconfig
