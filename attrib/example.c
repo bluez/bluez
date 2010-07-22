@@ -26,12 +26,16 @@
 #include <config.h>
 #endif
 
+#include <arpa/inet.h>
+
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
 #include "sdpd.h"
 #include "log.h"
+#include "attrib-server.h"
 
+#include "att.h"
 #include "example.h"
 
 #define ATT_PSM 27
@@ -102,6 +106,40 @@ static sdp_record_t *server_record_new(void)
 	return record;
 }
 
+static int register_attributes(void)
+{
+	const char *devname = "Example Device";
+	uint8_t atval[256];
+	uuid_t uuid;
+	int len;
+	uint16_t u16;
+
+	/* GAP service: primary service definition */
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	u16 = htons(GENERIC_ACCESS_PROFILE_ID);
+	atval[0] = u16 >> 8;
+	atval[1] = u16;
+	attrib_db_add(0x0001, &uuid, atval, 2);
+
+	/* GAP service: device name characteristic */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(GATT_CHARAC_DEVICE_NAME);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x00;
+	atval[2] = 0x06;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0004, &uuid, atval, 5);
+
+	/* GAP service: device name attribute */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
+	len = strlen(devname);
+	strncpy((char *) atval, devname, len);
+	attrib_db_add(0x0006, &uuid, atval, len);
+
+	return 0;
+}
+
 int server_example_init(void)
 {
 	sdp_record_t *record;
@@ -126,7 +164,7 @@ int server_example_init(void)
 
 	handle = record->handle;
 
-	return 0;
+	return register_attributes();
 }
 
 void server_example_exit(void)
