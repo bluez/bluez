@@ -72,6 +72,10 @@
 	"WHERE { "							\
 		"?c a nco:PersonContact . "				\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
+	"OPTIONAL { "							\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?h . "				\
+	"} "								\
 	"}"
 
 #define MISSED_CALLS_QUERY						\
