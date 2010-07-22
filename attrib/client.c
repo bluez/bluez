@@ -138,23 +138,6 @@ static GDBusMethodTable char_methods[] = {
 	{ }
 };
 
-static guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
-				GAttribResultFunc func, gpointer user_data)
-{
-	uint8_t pdu[ATT_MTU];
-	uuid_t uuid;
-	guint16 plen;
-
-	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
-
-	plen = enc_read_by_type_req(start, end, &uuid, pdu, sizeof(pdu));
-	if (plen == 0)
-		return 0;
-
-	return g_attrib_send(attrib, ATT_OP_READ_BY_TYPE_REQ,
-					pdu, plen, func, user_data, NULL);
-}
-
 static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
