@@ -142,8 +142,7 @@ static guint gatt_discover_primary(GAttrib *attrib, uint16_t start,
 
 	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 
-	plen = att_read_by_grp_type_encode(start, end,
-					&uuid, pdu, sizeof(pdu));
+	plen = enc_read_by_grp_req(start, end, &uuid, pdu, sizeof(pdu));
 	if (plen == 0)
 		return 0;
 
