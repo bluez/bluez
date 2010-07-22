@@ -79,7 +79,8 @@ sbc_sbcdec_LDADD = sbc/libsbc.la
 sbc_sbcenc_SOURCES = sbc/sbcenc.c sbc/formats.h
 sbc_sbcenc_LDADD = sbc/libsbc.la
 
-attrib_sources = attrib/att.h attrib/att.c attrib/gattrib.h attrib/gattrib.c
+attrib_sources = attrib/att.h attrib/att.c attrib/gatt.h attrib/gatt.c \
+		attrib/gattrib.h attrib/gattrib.c
 
 if SNDFILE
 noinst_PROGRAMS += sbc/sbctester

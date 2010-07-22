@@ -39,6 +39,7 @@
 
 #include "att.h"
 #include "gattrib.h"
+#include "gatt.h"
 #include "client.h"
 
 #define CHAR_INTERFACE "org.bluez.Characteristic"
@@ -136,23 +137,6 @@ static GDBusMethodTable char_methods[] = {
 						unregister_watcher	},
 	{ }
 };
-
-static guint gatt_discover_primary(GAttrib *attrib, uint16_t start,
-		uint16_t end, GAttribResultFunc func, gpointer user_data)
-{
-	uint8_t pdu[ATT_MTU];
-	uuid_t uuid;
-	guint16 plen;
-
-	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-
-	plen = enc_read_by_grp_req(start, end, &uuid, pdu, sizeof(pdu));
-	if (plen == 0)
-		return 0;
-
-	return g_attrib_send(attrib, ATT_OP_READ_BY_GROUP_REQ,
-					pdu, plen, func, user_data, NULL);
-}
 
 static guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 				GAttribResultFunc func, gpointer user_data)
