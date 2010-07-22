@@ -41,6 +41,8 @@
 #define ATT_PSM 27
 
 #define OPCODES_SUPPORTED_UUID          0xA001
+#define BATTERY_STATE_SVC_UUID		0xA002
+#define BATTERY_STATE_UUID		0xA003
 
 static uint32_t handle = 0;
 
@@ -161,6 +163,30 @@ static int register_attributes(void)
 	atval[0] = 0x01;
 	atval[1] = 0xFF;
 	attrib_db_add(0x0012, &uuid, atval, 2);
+
+	/* Battery state service: primary service definition */
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	u16 = htons(BATTERY_STATE_SVC_UUID);
+	atval[0] = u16 >> 8;
+	atval[1] = u16;
+	attrib_db_add(0x0100, &uuid, atval, 2);
+
+	/* Battery: battery state characteristic */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	u16 = htons(BATTERY_STATE_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x01;
+	atval[2] = 0x10;
+	atval[3] = u16 >> 8;
+	atval[4] = u16;
+	attrib_db_add(0x0106, &uuid, atval, 5);
+
+	/* Battery: battery state attribute */
+	sdp_uuid16_create(&uuid, BATTERY_STATE_UUID);
+	u16 = htons(BATTERY_STATE_UUID);
+	atval[0] = 0x04;
+	attrib_db_add(0x0110, &uuid, atval, 1);
+
 
 	return 0;
 }
