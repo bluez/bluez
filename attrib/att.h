@@ -21,13 +21,6 @@
  *
  */
 
-#ifndef __ATT_H
-#define __ATT_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* GATT Profile Attribute types */
 #define GATT_PRIM_SVC_UUID		0x2800
 #define GATT_SND_SVC_UUID		0x2801
@@ -131,9 +124,3 @@ struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len);
 uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);
 struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, int len);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __ATT_H */
