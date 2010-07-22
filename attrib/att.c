@@ -141,6 +141,27 @@ uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
 	return len;
 }
 
+uint16_t enc_read_by_grp_resp(struct att_data_list *list, uint8_t *pdu, int len)
+{
+	int i;
+	uint16_t w;
+	uint8_t *ptr;
+
+	if (list == NULL)
+		return 0;
+
+	pdu[0] = ATT_OP_READ_BY_GROUP_RESP;
+
+	ptr = &pdu[1];
+
+	for (i = 0, w = 0; i < list->num && w < len; i++, w += list->len) {
+		memcpy(ptr, list->data[i], list->len);
+		ptr += list->len;
+	}
+
+	return w;
+}
+
 struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len)
 {
 	struct att_data_list *list;
