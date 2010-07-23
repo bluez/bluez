@@ -36,13 +36,21 @@ struct _GAttrib {
 	GIOChannel *io;
 	gint refs;
 	gint mtu;
-	struct command *command;
+	guint id;
+	struct command *response;
+	struct event *event;
 };
 
 struct command {
-	guint id;
 	guint8 expected;
-	GAttribResultFunc result;
+	GAttribResultFunc func;
+	gpointer user_data;
+	GDestroyNotify notify;
+};
+
+struct event {
+	guint8 expected;
+	GAttribNotifyFunc func;
 	gpointer user_data;
 	GDestroyNotify notify;
 };
@@ -93,13 +101,16 @@ void g_attrib_unref(GAttrib *attrib)
 	if (g_atomic_int_dec_and_test(&attrib->refs) == FALSE)
 		return;
 
-	g_free(attrib->command);
+	g_free(attrib->response);
+	g_free(attrib->event);
 	g_free(attrib);
 }
 
 static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 {
-	struct command *command = data;
+	struct _GAttrib *attrib = data;
+	struct command *response = attrib->response;
+	struct event *event = attrib->event;
 	uint8_t buf[512];
 	gsize len;
 	guint8 status;
@@ -115,12 +126,18 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 		goto done;
 	}
 
+	if (event && (event->expected == GATTRIB_ALL_EVENTS
+					|| event->expected == buf[0])) {
+		event->func(buf, len, event->user_data);
+		return TRUE;
+	}
+
 	if (buf[0] == ATT_OP_ERROR) {
 		status = buf[4];
 		goto done;
 	}
 
-	if (buf[0] != command->expected) {
+	if (buf[0] != response->expected) {
 		status = ATT_ECODE_IO;
 		goto done;
 	}
@@ -128,14 +145,16 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	status = 0;
 
 done:
-	command->result(status, buf, len, command->user_data);
+	if (response->func)
+		response->func(status, buf, len, response->user_data);
 
 	return TRUE;
 }
 
 static void command_destroy(gpointer user_data)
 {
-	struct command *command = user_data;
+	struct _GAttrib *attrib = user_data;
+	struct command *command = attrib->response;
 
 	if (command->notify)
 		command->notify(command->user_data);
@@ -143,28 +162,42 @@ static void command_destroy(gpointer user_data)
 	g_free(command);
 }
 
+static void event_destroy(gpointer user_data)
+{
+	struct _GAttrib *attrib = user_data;
+	struct event *event = attrib->event;
+
+	if (event->notify)
+		event->notify(event->user_data);
+
+	g_free(event);
+}
+
 guint g_attrib_send(GAttrib *attrib, guint8 opcode, const guint8 *pdu,
 				guint16 len, GAttribResultFunc func,
 				gpointer user_data, GDestroyNotify notify)
 {
-	struct command *command;
+	struct command *response;
 	gsize written;
 
-	command = g_new0(struct command, 1);
+	response = g_new0(struct command, 1);
 
-	command->result = func;
-	command->notify = notify;
-	command->user_data = user_data;
-	command->expected = opcode2expected(opcode);
+	response->func = func;
+	response->notify = notify;
+	response->user_data = user_data;
+	response->expected = opcode2expected(opcode);
 
-	command->id = g_io_add_watch_full(attrib->io,
+	if (attrib->id == 0)
+		attrib->id = g_io_add_watch_full(attrib->io,
 			G_PRIORITY_DEFAULT,
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			received_data, command, command_destroy);
+			received_data, attrib, command_destroy);
+
+	attrib->response = response;
 
 	g_io_channel_write(attrib->io, (gchar *) pdu, len, &written);
 
-	return command->id;
+	return attrib->id;
 }
 
 gboolean g_attrib_cancel(GAttrib *attrib, guint id)
@@ -184,10 +217,29 @@ gboolean g_attrib_set_debug(GAttrib *attrib,
 }
 
 guint g_attrib_register(GAttrib *attrib, guint8 opcode,
-		GAttribNotifyFunc func, gpointer user_data,
-					GDestroyNotify notify)
+				GAttribNotifyFunc func, gpointer user_data,
+				GDestroyNotify notify)
 {
-	return 0;
+	struct event *event;
+
+	/* FIXME: event should be a list */
+
+	event = g_new0(struct event, 1);
+
+	event->expected = opcode;
+	event->func = func;
+	event->user_data = user_data;
+	event->notify = notify;
+
+	if (attrib->id == 0)
+		attrib->id = g_io_add_watch_full(attrib->io,
+			G_PRIORITY_DEFAULT,
+			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			received_data, attrib, event_destroy);
+
+	attrib->event = event;
+
+	return attrib->id;
 }
 
 gboolean g_attrib_unregister(GAttrib *attrib, guint id)

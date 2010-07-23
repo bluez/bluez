@@ -27,6 +27,8 @@
 extern "C" {
 #endif
 
+#define GATTRIB_ALL_EVENTS 0xFF
+
 struct _GAttrib;
 typedef struct _GAttrib GAttrib;
 
