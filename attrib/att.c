@@ -247,20 +247,70 @@ struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, int len)
 
 uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len)
 {
-	return 0;
+	uint16_t *p16;
+
+	if (pdu == NULL)
+		return 0;
+
+	if (len < 3)
+		return 0;
+
+	pdu[0] = ATT_OP_READ_REQ;
+
+	p16 = (void *) &pdu[1];
+	*p16 = htobs(handle);
+
+	return 3;
 }
 
 uint16_t dec_read_req(const uint8_t *pdu, uint16_t *handle)
 {
-	return 0;
+	uint16_t *p16;
+
+	if (pdu == NULL)
+		return 0;
+
+	if (handle == NULL)
+		return 0;
+
+	if (pdu[0] != ATT_OP_READ_REQ)
+		return 0;
+
+	p16 = (void *) &pdu[1];
+	*handle = btohs(*p16);
+
+	return 3;
 }
 
 uint16_t enc_read_resp(uint8_t *value, int vlen, uint8_t *pdu, int len)
 {
-	return 0;
+	if (pdu == NULL)
+		return 0;
+
+	if (len < vlen + 1)
+		return 0;
+
+	pdu[0] = ATT_OP_READ_RESP;
+
+	memcpy(pdu + 1, value, vlen);
+
+	return vlen + 1;
 }
 
 uint16_t dec_read_resp(const uint8_t *pdu, int len, uint8_t *value, int *vlen)
 {
-	return 0;
+	if (pdu == NULL)
+		return 0;
+
+	if (value == NULL || vlen == NULL)
+		return 0;
+
+	if (pdu[0] != ATT_OP_READ_RESP)
+		return 0;
+
+	memcpy(value, pdu + 1, len - 1);
+
+	*vlen = len - 1;
+
+	return len;
 }
