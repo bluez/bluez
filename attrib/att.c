@@ -64,7 +64,7 @@ const char *att_ecode2str(uint8_t status)
 		return "Request attribute has encountered an unlikely error";
 	case ATT_ECODE_INSUFF_ENC:
 		return "Encryption required before read/write";
-	case ATT_ECODE_UNSUPP_GRP_SIZE:
+	case ATT_ECODE_UNSUPP_GRP_TYPE:
 		return "Attribute type is not a supported grouping attribute";
 	case ATT_ECODE_INSUFF_RESOURCES:
 		return "Insufficient Resources to complete the request";
@@ -313,4 +313,22 @@ uint16_t dec_read_resp(const uint8_t *pdu, int len, uint8_t *value, int *vlen)
 	*vlen = len - 1;
 
 	return len;
+}
+
+uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
+							uint8_t *pdu, int len)
+{
+	uint16_t u16;
+
+	if (len < 5)
+		return 0;
+
+	u16 = htobs(handle);
+	pdu[0] = ATT_OP_ERROR;
+	pdu[1] = opcode;
+	pdu[2] = u16 >> 8;
+	pdu[3] = u16;
+	pdu[4] = status;
+
+	return 5;
 }

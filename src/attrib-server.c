@@ -36,6 +36,7 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include "log.h"
 #include "btio.h"
@@ -70,6 +71,97 @@ struct gatt_server {
 
 struct gatt_server *attrib_server = NULL;
 struct gatt_server *unix_server = NULL;
+
+static uuid_t prim_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_PRIM_SVC_UUID };
+static uuid_t snd_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_SND_SVC_UUID };
+
+static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
+							uint8_t *pdu, int len)
+{
+	struct att_data_list *adl;
+	struct attribute *a;
+	GSList *l, *groups;
+	uint16_t length, last = 0;
+	int i;
+
+	/*
+	 * Only <<Primary Service>> and <<Secondary Service>> grouping
+	 * types may be used in the Read By Group Type Request.
+	 * FIXME: Attribute types shall be compared as 128-bit UUID.
+	 */
+
+	if (sdp_uuid_cmp(uuid, &prim_uuid) != 0 &&
+		sdp_uuid_cmp(uuid, &snd_uuid) != 0)
+		return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ, 0x0000,
+					ATT_ECODE_UNSUPP_GRP_TYPE, pdu, len);
+
+	for (l = database, groups = NULL; l; l = l->next) {
+		a = l->data;
+
+		if (a->handle < start)
+			continue;
+
+		last = a->handle;
+		if (a->handle >= end)
+			break;
+
+		if (sdp_uuid_cmp(&a->uuid, &prim_uuid)  != 0 &&
+				sdp_uuid_cmp(&a->uuid, &snd_uuid) != 0)
+			continue;
+
+		if (sdp_uuid_cmp(&a->uuid, uuid) != 0)
+			continue;
+
+		/* Attribute Grouping Type found */
+		groups = g_slist_append(groups, a);
+	}
+
+	if (groups == NULL)
+		return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ, 0x0000,
+					ATT_ECODE_ATTR_NOT_FOUND, pdu, len);
+
+	length = g_slist_length(groups);
+
+	adl = g_new0(struct att_data_list, 1);
+	adl->len = 6;		/* Length of each element */
+	adl->num = length;	/* Number of primary or secondary services */
+	adl->data = g_malloc(length * sizeof(uint8_t *));
+
+	for (i = 0, l = groups; l; l = l->next, i++) {
+		struct attribute *next;
+		uint16_t *u16;
+
+		adl->data[i] = g_malloc(adl->len);
+		u16 = (void *) adl->data[i];
+		a = l->data;
+
+		/* Attribute Handle */
+		*u16 = htobs(a->handle);
+		u16++;
+
+		next = (struct attribute *) l->next;
+		if (next == NULL) {
+			*u16 = htobs(last);
+			u16++;
+			memcpy(u16, a->data, a->len);
+			break;
+		}
+
+		/* End Group Handle */
+		*u16 = htobs(next->handle - 1);
+		u16++;
+
+		/* Attribute Value */
+		memcpy(u16, a->data, a->len);
+	}
+
+	length = enc_read_by_grp_resp(adl, pdu, len);
+
+	att_data_list_free(adl);
+	g_slist_free(groups);
+
+	return length;
+}
 
 static void channel_destroy(void *user_data)
 {
@@ -108,10 +200,46 @@ static int handle_cmp(struct attribute *a, uint16_t *handle)
 	return a->handle - *handle;
 }
 
-static void channel_handler(const uint8_t *pdu, uint16_t len,
+static void channel_handler(const uint8_t *ipdu, uint16_t len,
 							gpointer user_data)
 {
+	struct gatt_channel *channel = user_data;
+	uint8_t opdu[ATT_MTU];
+	uint16_t length, start, end;
+	uuid_t uuid;
+	uint8_t status = 0;
 
+	switch(ipdu[0]) {
+	case ATT_OP_READ_BY_GROUP_REQ:
+		length = dec_read_by_grp_req(ipdu, len, &start, &end, &uuid);
+		if (length == 0) {
+			status = ATT_ECODE_INVALID_PDU;
+			goto done;
+		}
+
+		length = read_by_group(start, end, &uuid, opdu, sizeof(opdu));
+		break;
+	case ATT_OP_MTU_REQ:
+	case ATT_OP_FIND_INFO_REQ:
+	case ATT_OP_FIND_BY_TYPE_REQ:
+	case ATT_OP_READ_BY_TYPE_REQ:
+	case ATT_OP_READ_REQ:
+	case ATT_OP_READ_BLOB_REQ:
+	case ATT_OP_READ_MULTI_REQ:
+	case ATT_OP_WRITE_REQ:
+	case ATT_OP_PREP_WRITE_REQ:
+	case ATT_OP_EXEC_WRITE_REQ:
+	default:
+		status = ATT_ECODE_REQ_NOT_SUPP;
+		goto done;
+	}
+
+done:
+	if (status)
+		length = enc_error_resp(ipdu[0], 0x0000, status, opdu, sizeof(opdu));
+
+	g_attrib_send(channel->attrib, opdu[0], opdu, length,
+							NULL, NULL, NULL);
 }
 
 static void connect_event(GIOChannel *io, GError *err, void *user_data)
@@ -207,6 +335,7 @@ int attrib_server_init(void)
 					attrib_server, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, BDADDR_ANY,
 					BT_IO_OPT_PSM, GATT_PSM,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
 
 	if (attrib_server->listen == NULL) {

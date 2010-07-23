@@ -89,7 +89,7 @@
 #define ATT_ECODE_INVAL_ATTR_VALUE_LEN		0x0D
 #define ATT_ECODE_UNLIKELY			0x0E
 #define ATT_ECODE_INSUFF_ENC			0x0F
-#define ATT_ECODE_UNSUPP_GRP_SIZE		0x10
+#define ATT_ECODE_UNSUPP_GRP_TYPE		0x10
 #define ATT_ECODE_INSUFF_RESOURCES		0x11
 /* Application error */
 #define ATT_ECODE_IO				0xFF
@@ -131,3 +131,5 @@ uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len);
 uint16_t dec_read_req(const uint8_t *pdu, uint16_t *handle);
 uint16_t enc_read_resp(uint8_t *value, int vlen, uint8_t *pdu, int len);
 uint16_t dec_read_resp(const uint8_t *pdu, int len, uint8_t *value, int *vlen);
+uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
+							uint8_t *pdu, int len);
