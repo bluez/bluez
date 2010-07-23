@@ -57,9 +57,9 @@ struct attribute {
 };
 
 struct gatt_channel {
-	GIOChannel *io;
 	bdaddr_t src;
 	bdaddr_t dst;
+	GAttrib *attrib;
 	guint id;
 };
 
@@ -75,8 +75,8 @@ static void channel_destroy(void *user_data)
 {
 	struct gatt_channel *channel = user_data;
 
-	if (channel->io)
-		g_io_channel_unref(channel->io);
+	g_attrib_unregister_all(channel->attrib);
+	g_attrib_unref(channel->attrib);
 
 	attrib_server->channels = g_slist_remove(attrib_server->channels,
 								channel);
@@ -95,10 +95,8 @@ static void server_free(struct gatt_server *server)
 	for (l = server->channels; l; l = l->next) {
 		struct gatt_channel *channel = l->data;
 
-		g_source_remove(channel->id);
-
-		if (channel->io)
-			g_io_channel_unref(channel->io);
+		g_attrib_unregister_all(channel->attrib);
+		g_attrib_unref(channel->attrib);
 	}
 
 	g_slist_free(server->channels);
@@ -110,18 +108,10 @@ static int handle_cmp(struct attribute *a, uint16_t *handle)
 	return a->handle - *handle;
 }
 
-static gboolean channel_handler(GIOChannel *io, GIOCondition cond, gpointer data)
+static void channel_handler(const uint8_t *pdu, uint16_t len,
+							gpointer user_data)
 {
-	if (cond & G_IO_NVAL) {
-		return FALSE;
-	}
 
-	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		error("Hangup or error on GATT socket");
-		return FALSE;
-	}
-
-	return TRUE;
 }
 
 static void connect_event(GIOChannel *io, GError *err, void *user_data)
@@ -142,8 +132,8 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 			BT_IO_OPT_DEST_BDADDR, &channel->dst,
 			BT_IO_OPT_INVALID);
 
-	channel->id = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+	channel->attrib = g_attrib_new(io);
+	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
 				channel_handler, channel, channel_destroy);
 
 	server->channels = g_slist_append(server->channels, channel);
@@ -195,9 +185,8 @@ static gboolean unix_io_accept(GIOChannel *chan, GIOCondition cond,
 	g_io_channel_set_close_on_unref(io, TRUE);
 	bacpy(&channel->src, BDADDR_ANY);
 	bacpy(&channel->dst, BDADDR_ANY);
-	channel->io = io;
-	channel->id = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
-				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+	channel->attrib = g_attrib_new(io);
+	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
 				channel_handler, channel, channel_destroy);
 
 	server->channels = g_slist_append(server->channels, channel);
