@@ -151,15 +151,16 @@ uint16_t enc_read_by_grp_resp(struct att_data_list *list, uint8_t *pdu, int len)
 		return 0;
 
 	pdu[0] = ATT_OP_READ_BY_GROUP_RESP;
+	pdu[1] = list->len;
 
-	ptr = &pdu[1];
+	ptr = &pdu[2];
 
-	for (i = 0, w = 0; i < list->num && w < len; i++, w += list->len) {
+	for (i = 0, w = 2; i < list->num && w < len; i++, w += list->len) {
 		memcpy(ptr, list->data[i], list->len);
 		ptr += list->len;
 	}
 
-	return w + 1;
+	return w;
 }
 
 struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len)
