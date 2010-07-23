@@ -172,6 +172,11 @@ builtin_sources += plugins/service.c
 endif
 
 if ATTRIBPLUGIN
+bin_PROGRAMS += attrib/gatttool
+
+attrib_gatttool_SOURCES = attrib/gatttool.c
+attrib_gatttool_LDADD = lib/libbluetooth.la @GLIB_LIBS@
+
 builtin_modules += attrib
 builtin_sources += attrib/main.c \
 		attrib/manager.h attrib/manager.c \
