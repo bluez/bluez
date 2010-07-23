@@ -25,16 +25,61 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <glib.h>
+#include <unistd.h>
+#include <sys/un.h>
+#include <sys/socket.h>
+
+#define GATT_UNIX_PATH "/var/run/gatt"
 
 static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
 
+static int unix_connect(const char *address)
+{
+	struct sockaddr_un addr;
+	int sk, err;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = PF_UNIX;
+	strncpy(addr.sun_path, address, sizeof(addr.sun_path) - 1);
+
+	sk = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sk < 0) {
+		err = errno;
+		g_printerr("Unix socket(%s) create failed: %s(%d)\n", address,
+				strerror(err), err);
+		return -err;
+	}
+
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = errno;
+		g_printerr("Unix socket(%s) connect failed: %s(%d)\n", address,
+				strerror(err), err);
+		close(sk);
+		return -err;
+	}
+
+	return sk;
+}
+
 static gboolean primary(const gchar *name, const gchar *value,
 					gpointer user_data, GError **gerr)
 {
+	int sk;
+
+	/* FIXME: implement option to select between unix/btio socket */
+	sk = unix_connect(GATT_UNIX_PATH);
+	if (sk < 0)
+		return FALSE;
+
+	/* FIXME: implement "discover all primary services */
+
+	close(sk);
+
 	return TRUE;
 }
 
