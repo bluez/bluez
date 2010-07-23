@@ -139,16 +139,14 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 		*u16 = htobs(a->handle);
 		u16++;
 
-		next = (struct attribute *) l->next;
-		if (next == NULL) {
+		/* End Group Handle */
+		if (l->next == NULL) {
 			*u16 = htobs(last);
-			u16++;
-			memcpy(u16, a->data, a->len);
-			break;
+		} else {
+			next = l->next->data;
+			*u16 = htobs(next->handle - 1);
 		}
 
-		/* End Group Handle */
-		*u16 = htobs(next->handle - 1);
 		u16++;
 
 		/* Attribute Value */
