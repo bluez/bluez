@@ -132,6 +132,10 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 		return TRUE;
 	}
 
+	/* We have an event registered but it didn't match, wait for the next */
+	if (response == NULL)
+		return TRUE;
+
 	if (buf[0] == ATT_OP_ERROR) {
 		status = buf[4];
 		goto done;
@@ -145,7 +149,7 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	status = 0;
 
 done:
-	if (response->func)
+	if (response && response->func)
 		response->func(status, buf, len, response->user_data);
 
 	return TRUE;
