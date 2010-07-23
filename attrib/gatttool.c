@@ -29,6 +29,8 @@
 
 static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
+static int opt_start = 0x0001;
+static int opt_end = 0xffff;
 
 static gboolean primary(const gchar *name, const gchar *value,
 					gpointer user_data, GError **gerr)
@@ -41,6 +43,14 @@ static gboolean characteristics(const gchar *name, const gchar *value,
 {
 	return TRUE;
 }
+
+static GOptionEntry primary_options[] = {
+	{ "start", 's' , 0, G_OPTION_ARG_INT, &opt_start,
+		"Starting handle(optional)", "0x0000" },
+	{ "end", 'e' , 0, G_OPTION_ARG_INT, &opt_end,
+		"Ending handle(optional)", "0xffff" },
+	{ NULL },
+};
 
 static GOptionEntry gatt_options[] = {
 	{ "primary", 0, G_OPTION_FLAG_NO_ARG, G_OPTION_ARG_CALLBACK, primary,
@@ -61,7 +71,7 @@ static GOptionEntry options[] = {
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
-	GOptionGroup *gatt_group;
+	GOptionGroup *gatt_group, *primary_group;
 	GError *gerr = NULL;
 
 	context = g_option_context_new(NULL);
@@ -72,6 +82,13 @@ int main(int argc, char *argv[])
 				"Show all GATT commands", NULL, NULL);
 	g_option_context_add_group(context, gatt_group);
 	g_option_group_add_entries(gatt_group, gatt_options);
+
+	/* Primary Services arguments */
+	primary_group = g_option_group_new("primary",
+			"Discover primary services arguments",
+			"Show all Primary arguments", NULL, NULL);
+	g_option_context_add_group(context, primary_group);
+	g_option_group_add_entries(primary_group, primary_options);
 
 	if (g_option_context_parse(context, &argc, &argv, &gerr) == FALSE) {
 		g_printerr("%s\n", gerr->message);
