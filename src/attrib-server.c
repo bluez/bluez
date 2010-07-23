@@ -28,7 +28,11 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include <glib.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
@@ -40,6 +44,7 @@
 
 #include "attrib-server.h"
 
+#define GATT_UNIX_PATH "/var/run/gatt"
 #define GATT_PSM 27
 
 static GSList *database = NULL;
@@ -64,6 +69,7 @@ struct gatt_server {
 };
 
 struct gatt_server *attrib_server = NULL;
+struct gatt_server *unix_server = NULL;
 
 static void channel_destroy(void *user_data)
 {
@@ -89,10 +95,10 @@ static void server_free(struct gatt_server *server)
 	for (l = server->channels; l; l = l->next) {
 		struct gatt_channel *channel = l->data;
 
+		g_source_remove(channel->id);
+
 		if (channel->io)
 			g_io_channel_unref(channel->io);
-
-		g_source_remove(channel->id);
 	}
 
 	g_slist_free(server->channels);
@@ -158,10 +164,55 @@ static void confirm_event(GIOChannel *io, void *user_data)
 	return;
 }
 
+static gboolean unix_io_accept(GIOChannel *chan, GIOCondition cond,
+							gpointer user_data)
+{
+	struct gatt_server *server = user_data;
+	struct gatt_channel *channel;
+	struct sockaddr_un addr;
+	GIOChannel *io;
+	socklen_t len;
+	int sk, nsk;
+
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		g_io_channel_unref(chan);
+		return FALSE;
+	}
+
+	len = sizeof(addr);
+	sk = g_io_channel_unix_get_fd(chan);
+	nsk = accept(sk, (struct sockaddr *) &addr, &len);
+	if (nsk < 0) {
+		int err = errno;
+		error("GATT UNIX socket connection failed: %s(%d)",
+							strerror(err), err);
+		return TRUE;
+	}
+
+	channel = g_new0(struct gatt_channel, 1);
+
+	io = g_io_channel_unix_new(nsk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+	bacpy(&channel->src, BDADDR_ANY);
+	bacpy(&channel->dst, BDADDR_ANY);
+	channel->io = io;
+	channel->id = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+				channel_handler, channel, channel_destroy);
+
+	server->channels = g_slist_append(server->channels, channel);
+
+	return TRUE;
+}
+
 int attrib_server_init(void)
 {
+	GIOChannel *io;
 	GError *gerr = NULL;
+	struct sockaddr_un unaddr;
+	int err, sk;
 
+	/* BR/EDR socket */
 	attrib_server = g_new0(struct gatt_server, 1);
 	attrib_server->listen = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
 					attrib_server, NULL, &gerr,
@@ -175,7 +226,49 @@ int attrib_server_init(void)
 		return -1;
 	}
 
+	/* Unix socket */
+	sk = socket(PF_UNIX, SOCK_STREAM, 0);
+	if (sk < 0) {
+		err = errno;
+		error("opening GATT UNIX socket: %s(%d)", strerror(err), err);
+		return -1;
+	}
+
+	memset(&unaddr, 0, sizeof(unaddr));
+	unaddr.sun_family = AF_UNIX;
+	strcpy(unaddr.sun_path, GATT_UNIX_PATH);
+
+	unlink(unaddr.sun_path);
+
+	if (bind(sk, (struct sockaddr *) &unaddr, sizeof(unaddr)) < 0) {
+		err = errno;
+		error("binding GATT UNIX socket: %s(%d)", strerror(err), err);
+		goto fail;
+	}
+
+	if (listen(sk, 5) < 0) {
+		err = errno;
+		error("listen GATT UNIX socket: %s(%d)", strerror(err), err);
+		goto fail;
+	}
+
+	chmod(GATT_UNIX_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
+							S_IROTH | S_IWOTH);
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	unix_server = g_new0(struct gatt_server, 1);
+	unix_server->listen = io;
+	g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+						unix_io_accept, unix_server);
+
 	return 0;
+
+fail:
+	close(sk);
+
+	return -1;
 
 }
 
@@ -185,6 +278,7 @@ void attrib_server_exit(void)
 	g_slist_free(database);
 
 	server_free(attrib_server);
+	server_free(unix_server);
 }
 
 int attrib_db_add(uint16_t handle, uuid_t *uuid, const uint8_t *value, int len)
