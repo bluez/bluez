@@ -159,7 +159,7 @@ uint16_t enc_read_by_grp_resp(struct att_data_list *list, uint8_t *pdu, int len)
 		ptr += list->len;
 	}
 
-	return w;
+	return w + 1;
 }
 
 struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len)
