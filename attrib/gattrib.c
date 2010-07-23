@@ -101,8 +101,8 @@ void g_attrib_unref(GAttrib *attrib)
 	if (g_atomic_int_dec_and_test(&attrib->refs) == FALSE)
 		return;
 
-	g_free(attrib->response);
-	g_free(attrib->event);
+	g_source_remove(attrib->id);
+
 	g_free(attrib);
 }
 
