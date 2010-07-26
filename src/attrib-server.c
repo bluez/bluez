@@ -65,13 +65,9 @@ struct gatt_channel {
 	guint id;
 };
 
-struct gatt_server {
-	GIOChannel *listen;
-	GSList *channels;
-};
-
-struct gatt_server *attrib_server = NULL;
-struct gatt_server *unix_server = NULL;
+static GIOChannel *unix_io = NULL;
+static GIOChannel *l2cap_io = NULL;
+static GSList *clients = NULL;
 
 static uuid_t prim_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_PRIM_SVC_UUID };
 static uuid_t snd_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_SND_SVC_UUID };
@@ -169,29 +165,9 @@ static void channel_destroy(void *user_data)
 	g_attrib_unregister_all(channel->attrib);
 	g_attrib_unref(channel->attrib);
 
-	attrib_server->channels = g_slist_remove(attrib_server->channels,
-								channel);
+	clients = g_slist_remove(clients, channel);
+
 	g_free(channel);
-}
-
-static void server_free(struct gatt_server *server)
-{
-	GSList *l;
-
-	DBG("server %p", server);
-
-	if (server->listen)
-		g_io_channel_unref(server->listen);
-
-	for (l = server->channels; l; l = l->next) {
-		struct gatt_channel *channel = l->data;
-
-		g_attrib_unregister_all(channel->attrib);
-		g_attrib_unref(channel->attrib);
-	}
-
-	g_slist_free(server->channels);
-	g_free(server);
 }
 
 static int handle_cmp(struct attribute *a, uint16_t *handle)
@@ -243,7 +219,6 @@ done:
 
 static void connect_event(GIOChannel *io, GError *err, void *user_data)
 {
-	struct gatt_server *server = user_data;
 	struct gatt_channel *channel;
 	GError *gerr = NULL;
 
@@ -263,16 +238,14 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
 				channel_handler, channel, channel_destroy);
 
-	server->channels = g_slist_append(server->channels, channel);
+	clients = g_slist_append(clients, channel);
 }
 
 static void confirm_event(GIOChannel *io, void *user_data)
 {
-	struct gatt_server *server = user_data;
 	GError *gerr = NULL;
 
-	if (bt_io_accept(io, connect_event, server, NULL,
-							&gerr) == FALSE) {
+	if (bt_io_accept(io, connect_event, NULL, NULL, &gerr) == FALSE) {
 		error("bt_io_accept: %s", gerr->message);
 		g_error_free(gerr);
 		g_io_channel_unref(io);
@@ -284,7 +257,6 @@ static void confirm_event(GIOChannel *io, void *user_data)
 static gboolean unix_io_accept(GIOChannel *chan, GIOCondition cond,
 							gpointer user_data)
 {
-	struct gatt_server *server = user_data;
 	struct gatt_channel *channel;
 	struct sockaddr_un addr;
 	GIOChannel *io;
@@ -319,28 +291,26 @@ static gboolean unix_io_accept(GIOChannel *chan, GIOCondition cond,
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
 				channel_handler, channel, channel_destroy);
 
-	server->channels = g_slist_append(server->channels, channel);
+	clients = g_slist_append(clients, channel);
 
 	return TRUE;
 }
 
 int attrib_server_init(void)
 {
-	GIOChannel *io;
 	GError *gerr = NULL;
 	struct sockaddr_un unaddr;
 	int err, sk;
 
 	/* BR/EDR socket */
-	attrib_server = g_new0(struct gatt_server, 1);
-	attrib_server->listen = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
-					attrib_server, NULL, &gerr,
+	l2cap_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
+					NULL, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, BDADDR_ANY,
 					BT_IO_OPT_PSM, GATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
 
-	if (attrib_server->listen == NULL) {
+	if (l2cap_io == NULL) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
 		return -1;
@@ -375,13 +345,11 @@ int attrib_server_init(void)
 	chmod(GATT_UNIX_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
 							S_IROTH | S_IWOTH);
 
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
+	unix_io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(unix_io, TRUE);
 
-	unix_server = g_new0(struct gatt_server, 1);
-	unix_server->listen = io;
-	g_io_add_watch(io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-						unix_io_accept, unix_server);
+	g_io_add_watch(unix_io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+						unix_io_accept, NULL);
 
 	return 0;
 
@@ -394,11 +362,24 @@ fail:
 
 void attrib_server_exit(void)
 {
+	GSList *l;
+
 	g_slist_foreach(database, (GFunc) g_free, NULL);
 	g_slist_free(database);
 
-	server_free(attrib_server);
-	server_free(unix_server);
+	if (unix_io)
+		g_io_channel_unref(unix_io);
+
+	if (l2cap_io)
+		g_io_channel_unref(l2cap_io);
+
+	for (l = clients; l; l = l->next) {
+		struct gatt_channel *channel = l->data;
+
+		g_source_remove(channel->id);
+	}
+
+	g_slist_free(clients);
 }
 
 int attrib_db_add(uint16_t handle, uuid_t *uuid, const uint8_t *value, int len)
