@@ -54,14 +54,29 @@ typedef enum {
 
 struct mcap_instance;
 struct mcap_mcl;
+struct mcap_mdl;
 
 /************ Callbacks ************/
+
+/* mdl callbacks */
+
+typedef void (* mcap_mdl_event_cb) (struct mcap_mdl *mdl, gpointer data);
+
+/* Next function should return an MCAP appropriate response code */
+typedef uint8_t (* mcap_remote_mdl_conn_req_cb) (struct mcap_mcl *mcl,
+						uint8_t mdepid, uint16_t mdlid,
+						uint8_t *conf, gpointer data);
+typedef uint8_t (* mcap_remote_mdl_reconn_req_cb) (struct mcap_mdl *mdl,
+						gpointer data);
 
 /* mcl callbacks */
 
 typedef void (* mcap_mcl_event_cb) (struct mcap_mcl *mcl, gpointer data);
 
 /************ Operations ************/
+
+struct mcap_mcl *mcap_mcl_ref(struct mcap_mcl *mcl);
+void mcap_mcl_unref(struct mcap_mcl *mcl);
 
 /* MCAP main operations */
 

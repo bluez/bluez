@@ -31,6 +31,33 @@
 extern "C" {
 #endif
 
+typedef enum {
+	MCL_CONNECTED,
+	MCL_PENDING,
+	MCL_ACTIVE,
+	MCL_IDLE
+} MCLState;
+
+typedef enum {
+	MCL_ACCEPTOR,
+	MCL_INITIATOR
+} MCLRole;
+
+typedef enum {
+	MCL_AVAILABLE,
+	MCL_WAITING_RSP
+} MCAPCtrl;
+
+struct mcap_mdl_cb {
+	mcap_mdl_event_cb		mdl_connected;	/* Remote device has created a MDL */
+	mcap_mdl_event_cb		mdl_closed;	/* Remote device has closed a MDL */
+	mcap_mdl_event_cb		mdl_deleted;	/* Remote device requested deleting a MDL */
+	mcap_mdl_event_cb		mdl_aborted;	/* Remote device aborted the mdl creation */
+	mcap_remote_mdl_conn_req_cb	mdl_conn_req;	/* Remote device requested creating a MDL */
+	mcap_remote_mdl_reconn_req_cb	mdl_reconn_req;	/* Remote device requested reconnecting a MDL */
+	gpointer			user_data;	/* User data */
+};
+
 struct mcap_instance {
 	bdaddr_t		src;			/* Source address */
 	GIOChannel		*ccio;			/* Control Channel IO */
@@ -44,6 +71,31 @@ struct mcap_instance {
 	mcap_mcl_event_cb	mcl_uncached_cb;	/* MCL has been removed from MCAP cache */
 	gpointer		user_data;		/* Data to be provided in callbacks */
 };
+
+struct mcap_mcl {
+	struct mcap_instance	*ms;		/* MCAP instance where this MCL belongs */
+	bdaddr_t		addr;		/* Device address */
+	GIOChannel		*cc;		/* MCAP Control Channel IO */
+	guint			wid;		/* MCL Watcher id */
+	GSList			*mdls;		/* List of Data Channels shorted by mdlid */
+	MCLState		state;		/* Current MCL State */
+	MCLRole			role;		/* Initiator or acceptor of this MCL */
+	MCAPCtrl		req;		/* Request control flag */
+	void			*priv_data;	/* Temporal data to manage responses */
+	struct mcap_mdl_cb	*cb;		/* MDL callbacks */
+	guint			tid;		/* Timer id for waiting for a response */
+	uint8_t			*lcmd;		/* Last command sent */
+	guint			ref;		/* References counter */
+	uint8_t			ctrl;		/* MCL control flag */
+	uint16_t		next_mdl;	/* id used to create next MDL */
+};
+
+#define	MCAP_CTRL_CACHED	0x01	/* MCL is cached */
+#define	MCAP_CTRL_STD_OP	0x02	/* Support for standard op codes */
+#define	MCAP_CTRL_SYNC_OP	0x04	/* Support for synchronization commands */
+#define	MCAP_CTRL_CONN		0x08	/* MCL is in connecting process */
+#define	MCAP_CTRL_FREE		0x10	/* MCL is marked as releasable */
+#define	MCAP_CTRL_NOCACHE	0x20	/* MCL is marked as not cacheable */
 
 #ifdef __cplusplus
 }
