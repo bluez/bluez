@@ -104,6 +104,12 @@ gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/object.c gdbus/watch.c
 builtin_modules =
 builtin_sources =
 builtin_nodist =
+mcap_sources =
+
+if MCAP
+mcap_sources += health/mcap_lib.h      \
+		health/mcap.h health/mcap.c
+endif
 
 if PNATPLUGIN
 builtin_modules += pnat
@@ -202,6 +208,7 @@ sbin_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			$(attrib_sources) \
+			$(mcap_sources) \
 			src/main.c src/log.h src/log.c \
 			src/security.c src/rfkill.c src/hcid.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \
@@ -343,6 +350,9 @@ INCLUDES = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/audio -I$(srcdir)/sbc -I$(srcdir)/gdbus \
 			-I$(srcdir)/attrib
 
+if MCAP
+	INCLUDES += -I$(builddir)/health
+endif
 
 pkgconfigdir = $(libdir)/pkgconfig
 
