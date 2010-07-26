@@ -126,6 +126,10 @@ uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len);
 uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);
+uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
+						uint16_t *end, uuid_t *uuid);
+uint16_t enc_read_by_type_resp(struct att_data_list *list, uint8_t *pdu,
+								int len);
 struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, int len);
 uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len);
 uint16_t dec_read_req(const uint8_t *pdu, uint16_t *handle);

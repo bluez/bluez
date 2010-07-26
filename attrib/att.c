@@ -221,6 +221,56 @@ uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 	return 7;
 }
 
+uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
+						uint16_t *end, uuid_t *uuid)
+{
+	uint16_t *p16;
+
+	if (pdu == NULL)
+		return 0;
+
+	if (start == NULL || end == NULL || uuid == NULL)
+		return 0;
+
+	if (len < 7)
+		return 0;
+
+	if (pdu[0] != ATT_OP_READ_BY_TYPE_REQ)
+		return 0;
+
+	p16 = (void *) &pdu[1];
+	*start = btohs(*p16);
+	p16++;
+	*end = btohs(*p16);
+	p16++;
+	sdp_uuid16_create(uuid, btohs(*p16));
+
+	return 7;
+}
+
+uint16_t enc_read_by_type_resp(struct att_data_list *list, uint8_t *pdu, int len)
+{
+	uint8_t *ptr;
+	int i, w;
+
+	if (list == NULL)
+		return 0;
+
+	if (pdu == NULL)
+		return 0;
+
+	pdu[0] = ATT_OP_READ_BY_TYPE_RESP;
+	pdu[1] = list->len;
+	ptr = (void *) &pdu[2];
+
+	for (i = 0, w = 2; i < list->num && w < len; i++, w += list->len) {
+		memcpy(ptr, list->data[i], list->len);
+		ptr += list->len;
+	}
+
+	return w;
+}
+
 struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, int len)
 {
 	struct att_data_list *list;
