@@ -39,6 +39,7 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "log.h"
+#include "glib-helper.h"
 #include "btio.h"
 #include "att.h"
 #include "gattrib.h"
@@ -305,10 +306,13 @@ static gboolean unix_io_accept(GIOChannel *chan, GIOCondition cond,
 		return TRUE;
 	}
 
+	set_nonblocking(nsk);
+
 	channel = g_new0(struct gatt_channel, 1);
 
 	io = g_io_channel_unix_new(nsk);
 	g_io_channel_set_close_on_unref(io, TRUE);
+	g_io_channel_set_encoding(io, NULL, NULL);
 	bacpy(&channel->src, BDADDR_ANY);
 	bacpy(&channel->dst, BDADDR_ANY);
 	channel->attrib = g_attrib_new(io);
