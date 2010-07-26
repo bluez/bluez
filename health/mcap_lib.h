@@ -52,6 +52,16 @@ typedef enum {
 	MCAP_ERROR_FAILED
 } McapError;
 
+typedef enum {
+	MCAP_MDL_CB_INVALID,
+	MCAP_MDL_CB_CONNECTED,		/* mcap_mdl_event_cb */
+	MCAP_MDL_CB_CLOSED,		/* mcap_mdl_event_cb */
+	MCAP_MDL_CB_DELETED,		/* mcap_mdl_event_cb */
+	MCAP_MDL_CB_ABORTED,		/* mcap_mdl_event_cb */
+	MCAP_MDL_CB_REMOTE_CONN_REQ,	/* mcap_remote_mdl_conn_req_cb */
+	MCAP_MDL_CB_REMOTE_RECONN_REQ	/* mcap_remote_mdl_reconn_req_cb */
+} McapMclCb;
+
 struct mcap_instance;
 struct mcap_mcl;
 struct mcap_mdl;
@@ -61,6 +71,11 @@ struct mcap_mdl;
 /* mdl callbacks */
 
 typedef void (* mcap_mdl_event_cb) (struct mcap_mdl *mdl, gpointer data);
+typedef void (* mcap_mdl_operation_conf_cb) (struct mcap_mdl *mdl, uint8_t conf,
+						GError *err, gpointer data);
+typedef void (* mcap_mdl_operation_cb) (struct mcap_mdl *mdl, GError *err,
+						gpointer data);
+typedef void (* mcap_mdl_notify_cb) (GError *err, gpointer data);
 
 /* Next function should return an MCAP appropriate response code */
 typedef uint8_t (* mcap_remote_mdl_conn_req_cb) (struct mcap_mcl *mcl,
@@ -72,8 +87,23 @@ typedef uint8_t (* mcap_remote_mdl_reconn_req_cb) (struct mcap_mdl *mdl,
 /* mcl callbacks */
 
 typedef void (* mcap_mcl_event_cb) (struct mcap_mcl *mcl, gpointer data);
+typedef void (* mcap_mcl_connect_cb) (struct mcap_mcl *mcl, GError *err,
+								gpointer data);
 
 /************ Operations ************/
+
+/* Mcl operations*/
+
+gboolean mcap_create_mcl(struct mcap_instance *ms,
+				const bdaddr_t *addr,
+				uint16_t ccpsm,
+				mcap_mcl_connect_cb connect_cb,
+				gpointer user_data,
+				GError **err);
+void mcap_close_mcl(struct mcap_mcl *mcl, gboolean cache);
+gboolean mcap_mcl_set_cb(struct mcap_mcl *mcl, gpointer user_data,
+					GError **gerr, McapMclCb cb1, ...);
+void mcap_mcl_get_addr(struct mcap_mcl *mcl, bdaddr_t *addr);
 
 struct mcap_mcl *mcap_mcl_ref(struct mcap_mcl *mcl);
 void mcap_mcl_unref(struct mcap_mcl *mcl);
