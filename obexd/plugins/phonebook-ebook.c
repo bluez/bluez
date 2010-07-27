@@ -107,7 +107,7 @@ static char *evcard_to_string(EVCard *evcard, unsigned int format,
 	 * Mandatory attributes for vCard 2.1 are VERSION ,N and TEL.
 	 * Mandatory attributes for vCard 3.0 are VERSION, N, FN and TEL
 	 */
-	filter = format == EVC_FORMAT_VCARD_30 ? filter | 0x85: filter | 0x87;
+	filter = format == EVC_FORMAT_VCARD_30 ? filter | 0x87: filter | 0x85;
 
 	evcard2 = e_vcard_new();
 	for (i = 0; i < 29; i++) {
