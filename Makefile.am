@@ -196,6 +196,13 @@ builtin_sources += attrib/main.c \
 		attrib/example.h attrib/example.c
 endif
 
+if HEALTHPLUGIN
+builtin_modules += health
+builtin_sources += health/hdp_main.c health/hdp_types.h \
+			health/hdp_manager.h health/hdp_manager.c \
+			health/hdp.h health/hdp.c
+endif
+
 builtin_modules += hciops
 builtin_sources += plugins/hciops.c
 
