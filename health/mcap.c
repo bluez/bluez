@@ -39,6 +39,7 @@
 #include "mcap_lib.h"
 #include "mcap_internal.h"
 
+#define RESPONSE_TIMER	6	/* seconds */
 #define MAX_CACHED	10	/* 10 devices */
 
 #define MCAP_ERROR g_quark_from_static_string("mcap-error-quark")
@@ -54,6 +55,18 @@ struct connect_mcl {
 	gpointer		user_data;	/* Callback user data */
 };
 
+typedef union {
+	mcap_mdl_operation_cb		op;
+	mcap_mdl_operation_conf_cb	op_conf;
+	mcap_mdl_notify_cb		notify;
+} mcap_cb_type;
+
+struct mcap_mdl_op_cb {
+	struct mcap_mdl		*mdl;		/* MDL for this operation */
+	mcap_cb_type		cb;		/* Operation callback */
+	gpointer		user_data;	/* Callback user data */
+};
+
 /* MCAP finite state machine functions */
 static void proc_req_connected(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t l);
 static void proc_req_pending(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t l);
@@ -64,6 +77,8 @@ static void (*proc_req[])(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len) = {
 	proc_req_pending,
 	proc_req_active
 };
+
+static void mcap_cache_mcl(struct mcap_mcl *mcl);
 
 static void default_mdl_connected_cb(struct mcap_mdl *mdl, gpointer data)
 {
@@ -115,6 +130,44 @@ static void set_default_cb(struct mcap_mcl *mcl)
 	mcl->cb->mdl_reconn_req = default_mdl_reconn_req_cb;
 }
 
+static gboolean mcap_send_std_opcode(struct mcap_mcl *mcl, void *cmd,
+						uint32_t size, GError **err)
+{
+	if (mcl->state == MCL_IDLE) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_FAILED,
+							"MCL is not connected");
+		return FALSE;
+	}
+
+	if (mcl->req != MCL_AVAILABLE) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_RESOURCE_UNAVAILABLE,
+							"Pending request");
+		return FALSE;
+	}
+
+	if (!(mcl->ctrl & MCAP_CTRL_STD_OP)) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_REQUEST_NOT_SUPPORTED,
+				"Remote does not support standard opcodes");
+		return FALSE;
+	}
+
+	if (mcl->state == MCL_PENDING) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_INVALID_OPERATION,
+			"Not Std Op. Codes can be sent in PENDING State");
+		return FALSE;
+	}
+
+	if (mcap_send_data(g_io_channel_unix_get_fd(mcl->cc), cmd, size) < 0) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_FAILED,
+					"Command can't be sent, write error");
+		return FALSE;
+	}
+
+	mcl->lcmd = cmd;
+	mcl->req = MCL_WAITING_RSP;
+	return TRUE;
+}
+
 static void mcap_notify_error(struct mcap_mcl *mcl, GError *err)
 {
 	/* TODO: implement mcap_notify_error */
@@ -157,6 +210,133 @@ static int mcap_send_cmd(struct mcap_mcl *mcl, uint8_t oc, uint8_t rc,
 	sent = mcap_send_data(sock, rsp, sizeof(mcap_rsp) + len);
 	g_free(rsp);
 	return sent;
+}
+
+static struct mcap_mdl *get_mdl(struct mcap_mcl *mcl, uint16_t mdlid)
+{
+	GSList *l;
+	struct mcap_mdl *mdl;
+
+	for (l = mcl->mdls; l; l = l->next) {
+		mdl = l->data;
+		if (mdlid == mdl->mdlid)
+			return mdl;
+	}
+
+	return NULL;
+}
+
+static uint16_t generate_mdlid(struct mcap_mcl *mcl)
+{
+	uint16_t mdlid = mcl->next_mdl;
+	struct mcap_mdl *mdl;
+
+	do {
+		mdl = get_mdl(mcl, mdlid);
+		if (!mdl) {
+			mcl->next_mdl = (mdlid % MCAP_MDLID_FINAL) + 1;
+			return mdlid;
+		} else
+			mdlid = (mdlid % MCAP_MDLID_FINAL) + 1;
+	} while (mdlid != mcl->next_mdl);
+
+	/* No more mdlids availables */
+	return 0;
+}
+
+static mcap_md_create_mdl_req *create_mdl_req(uint16_t mdl_id, uint8_t mdep,
+								uint8_t conf)
+{
+	mcap_md_create_mdl_req *req_mdl;
+
+	req_mdl = g_new0(mcap_md_create_mdl_req, 1);
+
+	req_mdl->op = MCAP_MD_CREATE_MDL_REQ;
+	req_mdl->mdl = htons(mdl_id);
+	req_mdl->mdep = mdep;
+	req_mdl->conf = conf;
+
+	return req_mdl;
+}
+
+static gint compare_mdl(gconstpointer a, gconstpointer b)
+{
+	const struct mcap_mdl *mdla = a;
+	const struct mcap_mdl *mdlb = b;
+
+	if (mdla->mdlid == mdlb->mdlid)
+		return 0;
+	else if (mdla->mdlid < mdlb->mdlid)
+		return -1;
+	else
+		return 1;
+}
+
+static gboolean wait_response_timer(gpointer data)
+{
+	struct mcap_mcl *mcl = data;
+
+	GError *gerr = NULL;
+
+	RELEASE_TIMER(mcl);
+
+	g_set_error(&gerr, MCAP_ERROR, MCAP_ERROR_FAILED,
+					"Timeout waiting response");
+
+	mcap_notify_error(mcl, gerr);
+
+	g_error_free(gerr);
+	mcl->ms->mcl_disconnected_cb(mcl, mcl->ms->user_data);
+	mcap_cache_mcl(mcl);
+	return FALSE;
+}
+
+gboolean mcap_create_mdl(struct mcap_mcl *mcl,
+				uint8_t mdepid,
+				uint8_t conf,
+				mcap_mdl_operation_conf_cb connect_cb,
+				gpointer user_data,
+				GError **err)
+{
+	struct mcap_mdl *mdl;
+	struct mcap_mdl_op_cb *con;
+	mcap_md_create_mdl_req *cmd;
+	uint16_t id;
+
+	id = generate_mdlid(mcl);
+	if (!id) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_FAILED,
+					"Not more mdlids available");
+		return FALSE;
+	}
+
+	mdl = g_new0(struct mcap_mdl, 1);
+	mdl->mcl = mcl;
+	mdl->mdlid = id;
+	mdl->mdep_id = mdepid;
+	mdl->state = MDL_WAITING;
+
+	con = g_new0(struct mcap_mdl_op_cb, 1);
+	con->mdl = mdl;
+	con->cb.op_conf = connect_cb;
+	con->user_data = user_data;
+
+	cmd = create_mdl_req(id, mdepid, conf);
+	if (!mcap_send_std_opcode(mcl, cmd, sizeof(mcap_md_create_mdl_req),
+									err)) {
+		g_free(mdl);
+		g_free(con);
+		g_free(cmd);
+		return FALSE;
+	}
+
+	mcl->state = MCL_ACTIVE;
+	mcl->priv_data = con;
+
+	mcl->mdls = g_slist_insert_sorted(mcl->mdls, mdl, compare_mdl);
+	mcl->tid = g_timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
+									mcl);
+	return TRUE;
 }
 
 static struct mcap_mcl *find_mcl(GSList *list, const bdaddr_t *addr)

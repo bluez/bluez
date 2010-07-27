@@ -92,6 +92,15 @@ typedef void (* mcap_mcl_connect_cb) (struct mcap_mcl *mcl, GError *err,
 
 /************ Operations ************/
 
+/* Mdl operations*/
+
+gboolean mcap_create_mdl(struct mcap_mcl *mcl,
+				uint8_t mdepid,
+				uint8_t conf,
+				mcap_mdl_operation_conf_cb connect_cb,
+				gpointer user_data,
+				GError **err);
+
 /* Mcl operations*/
 
 gboolean mcap_create_mcl(struct mcap_instance *ms,

@@ -48,6 +48,13 @@ typedef enum {
 	MCL_WAITING_RSP
 } MCAPCtrl;
 
+typedef enum {
+	MDL_WAITING,
+	MDL_CONNECTED,
+	MDL_DELETING,
+	MDL_CLOSED
+} MDLState;
+
 struct mcap_mdl_cb {
 	mcap_mdl_event_cb		mdl_connected;	/* Remote device has created a MDL */
 	mcap_mdl_event_cb		mdl_closed;	/* Remote device has closed a MDL */
@@ -96,6 +103,15 @@ struct mcap_mcl {
 #define	MCAP_CTRL_CONN		0x08	/* MCL is in connecting process */
 #define	MCAP_CTRL_FREE		0x10	/* MCL is marked as releasable */
 #define	MCAP_CTRL_NOCACHE	0x20	/* MCL is marked as not cacheable */
+
+struct mcap_mdl {
+	struct mcap_mcl		*mcl;		/* MCL where this MDL belongs */
+	GIOChannel		*dc;		/* MCAP Data Channel IO */
+	guint			wid;		/* MDL Watcher id */
+	uint16_t		mdlid;		/* MDL id */
+	uint8_t			mdep_id;	/* MCAP Data End Point */
+	MDLState		state;		/* MDL state */
+};
 
 int mcap_send_data(int sock, const uint8_t *buf, uint32_t size);
 

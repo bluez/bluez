@@ -74,6 +74,17 @@ extern "C" {
 #define MCAP_ALL_MDLIDS			0xFFFF
 
 /*
+ * MCAP Request Packet Format
+ */
+
+typedef struct {
+	uint8_t		op;
+	uint16_t	mdl;
+	uint8_t		mdep;
+	uint8_t		conf;
+} __attribute__ ((packed)) mcap_md_create_mdl_req;
+
+/*
  * MCAP Response Packet Format
  */
 
