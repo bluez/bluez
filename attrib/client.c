@@ -35,6 +35,7 @@
 #include "log.h"
 #include "gdbus.h"
 #include "btio.h"
+#include "storage.h"
 
 #include "att.h"
 #include "gattrib.h"
@@ -231,6 +232,46 @@ fail:
 	gatt_service_free(gatt);
 }
 
+static char *primary_list_to_string(GSList *primary_list)
+{
+	GString *services;
+	GSList *l;
+
+	services = g_string_new(NULL);
+
+	for (l = primary_list; l; l = l->next) {
+		struct primary *primary = l->data;
+		uuid_t *uuid128;
+		char service[64];
+		char uuidstr[MAX_LEN_UUID_STR];
+
+		memset(service, 0, sizeof(service));
+
+		uuid128 = sdp_uuid_to_uuid128(primary->uuid);
+		sdp_uuid2strn(uuid128, uuidstr, MAX_LEN_UUID_STR);
+
+		bt_free(uuid128);
+
+		snprintf(service, sizeof(service), "%d#%d#%s ", primary->start,
+							primary->end, uuidstr);
+
+		services = g_string_append(services, service);
+	}
+
+	return g_string_free(services, FALSE);
+}
+
+static void store_primary_services(struct gatt_service *gatt)
+{
+       char *services;
+
+       services = primary_list_to_string(gatt->primary);
+
+       write_device_services(&gatt->sba, &gatt->dba, services);
+
+       g_free(services);
+}
+
 static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
@@ -245,6 +286,9 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		if (gatt->primary == NULL)
 			return;
 
+		store_primary_services(gatt);
+
+		/* Start Characteristic Discovery */
 		gatt->cur_prim = gatt->primary;
 		prim = gatt->cur_prim->data;
 

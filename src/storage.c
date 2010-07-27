@@ -1237,3 +1237,17 @@ int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
 
 	return textfile_caseput(filename, addr, "");
 }
+
+int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
+							const char *services)
+{
+       char filename[PATH_MAX + 1], addr[18];
+
+       create_filename(filename, PATH_MAX, sba, "primary");
+
+       create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+       ba2str(dba, addr);
+
+       return textfile_put(filename, addr, services);
+}
