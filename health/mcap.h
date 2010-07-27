@@ -31,6 +31,11 @@
 extern "C" {
 #endif
 
+#define MCAP_VERSION	0x0100	/* current version 01.00 */
+
+/* bytes to get MCAP Supported Procedures */
+#define MCAP_SUP_PROC	0x06
+
 /* maximum transmission unit for channels */
 #define MCAP_CC_MTU	48
 #define MCAP_DC_MTU	L2CAP_DEFAULT_MTU
