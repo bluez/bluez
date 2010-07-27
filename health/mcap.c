@@ -1167,7 +1167,15 @@ resp:
 
 static void invalid_req_state(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 {
-	/* TODO: Implements invalid_req_state */
+	uint16_t mdlr;
+
+	error("Invalid cmd received (op code = %d) in state %d", cmd[0],
+								mcl->state);
+	/* Get previously mdlid sent to generate an appropriate
+	 * response if it is possible */
+	mdlr = len < sizeof(mcap_md_req) ? MCAP_MDLID_RESERVED :
+					ntohs(((mcap_md_req *) cmd)->mdl);
+	mcap_send_cmd(mcl, cmd[0]+1, MCAP_INVALID_OPERATION, mdlr, NULL, 0);
 }
 
 /* Function used to process commands depending of MCL state */
