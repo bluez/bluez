@@ -158,6 +158,73 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 	return length;
 }
 
+static uint16_t read_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
+							uint8_t *pdu, int len)
+{
+	struct att_data_list *adl;
+	GSList *l, *types;
+	struct attribute *a;
+	uint16_t num, length;
+	int i;
+
+	for (l = database, length = 0, types = NULL; l; l = l->next) {
+		a = l->data;
+
+		if (a->handle < start)
+			continue;
+
+		if (a->handle >= end)
+			break;
+
+		if (sdp_uuid_cmp(&a->uuid, uuid)  != 0)
+			continue;
+
+		/* All elements must have the same length */
+		if (length == 0)
+			length = a->len;
+		else if (a->len != length)
+			break;
+
+		types = g_slist_append(types, a);
+	}
+
+	if (types == NULL)
+		return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, 0x0000,
+					ATT_ECODE_ATTR_NOT_FOUND, pdu, len);
+
+	num = g_slist_length(types);
+
+	/* Handle length plus attribute value length */
+	length += 2;
+
+	adl = g_new0(struct att_data_list, 1);
+	adl->len = length;	/* Length of each element */
+	adl->num = num;		/* Number of primary or secondary services */
+	adl->data = g_malloc(num * sizeof(uint8_t *));
+
+	for (i = 0, l = types; l; i++, l = l->next) {
+		uint16_t *u16;
+
+		adl->data[i] = g_malloc(length);
+		u16 = (void *) adl->data[i];
+		a = l->data;
+
+		/* Attribute Handle */
+		*u16 = htobs(a->handle);
+		u16++;
+
+		/* Attribute Value */
+		memcpy(u16, a->data, a->len);
+	}
+
+	length = enc_read_by_type_resp(adl, pdu, len);
+
+	att_data_list_free(adl);
+	g_slist_free(types);
+
+	return length;
+}
+
 static void channel_destroy(void *user_data)
 {
 	struct gatt_channel *channel = user_data;
@@ -194,10 +261,18 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 
 		length = read_by_group(start, end, &uuid, opdu, sizeof(opdu));
 		break;
+	case ATT_OP_READ_BY_TYPE_REQ:
+		length = dec_read_by_type_req(ipdu, len, &start, &end, &uuid);
+		if (length == 0) {
+			status = ATT_ECODE_INVALID_PDU;
+			goto done;
+		}
+
+		length = read_by_type(start, end, &uuid, opdu, sizeof(opdu));
+		break;
 	case ATT_OP_MTU_REQ:
 	case ATT_OP_FIND_INFO_REQ:
 	case ATT_OP_FIND_BY_TYPE_REQ:
-	case ATT_OP_READ_BY_TYPE_REQ:
 	case ATT_OP_READ_REQ:
 	case ATT_OP_READ_BLOB_REQ:
 	case ATT_OP_READ_MULTI_REQ:
