@@ -106,6 +106,10 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl,
 				mcap_mdl_operation_cb connect_cb,
 				gpointer user_data,
 				GError **err);
+gboolean mcap_mdl_abort(struct mcap_mdl *mdl,
+				mcap_mdl_notify_cb abort_cb,
+				gpointer user_data,
+				GError **err);
 
 /* Mcl operations*/
 
