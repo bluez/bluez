@@ -892,21 +892,36 @@ static int pbap_init(void)
 
 	err = phonebook_init();
 	if (err < 0)
-		return err;
+		goto fail_pb_init;
 
 	err = obex_mime_type_driver_register(&mime_pull);
 	if (err < 0)
-		return err;
+		goto fail_mime_pull;
 
 	err = obex_mime_type_driver_register(&mime_list);
 	if (err < 0)
-		return err;
+		goto fail_mime_list;
 
 	err = obex_mime_type_driver_register(&mime_vcard);
 	if (err < 0)
-		return err;
+		goto fail_mime_vcard;
 
-	return obex_service_driver_register(&pbap);
+	err = obex_service_driver_register(&pbap);
+	if (err < 0)
+			goto fail_pbap_reg;
+
+	return 0;
+
+fail_pbap_reg:
+	obex_mime_type_driver_unregister(&mime_vcard);
+fail_mime_vcard:
+	obex_mime_type_driver_unregister(&mime_list);
+fail_mime_list:
+	obex_mime_type_driver_unregister(&mime_pull);
+fail_mime_pull:
+	phonebook_exit();
+fail_pb_init:
+	return err;
 }
 
 static void pbap_exit(void)
