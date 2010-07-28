@@ -37,6 +37,9 @@ static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
+static gboolean opt_primary = FALSE;
+static gboolean opt_characteristics = FALSE;
+static GMainLoop *event_loop;
 
 static int unix_connect(const char *address)
 {
@@ -66,8 +69,7 @@ static int unix_connect(const char *address)
 	return sk;
 }
 
-static gboolean primary(const gchar *name, const gchar *value,
-					gpointer user_data, GError **gerr)
+static gboolean primary(gpointer user_data)
 {
 	int sk;
 
@@ -77,16 +79,9 @@ static gboolean primary(const gchar *name, const gchar *value,
 		return FALSE;
 
 	/* FIXME: implement "discover all primary services */
+	g_main_loop_quit(event_loop);
 
-	close(sk);
-
-	return TRUE;
-}
-
-static gboolean characteristics(const gchar *name, const gchar *value,
-					gpointer user_data, GError **gerr)
-{
-	return TRUE;
+	return FALSE;
 }
 
 static GOptionEntry primary_options[] = {
@@ -98,10 +93,10 @@ static GOptionEntry primary_options[] = {
 };
 
 static GOptionEntry gatt_options[] = {
-	{ "primary", 0, G_OPTION_FLAG_NO_ARG, G_OPTION_ARG_CALLBACK, primary,
-		"Primary Service Discovery", NULL},
-	{ "characteristics", 0, G_OPTION_FLAG_NO_ARG, G_OPTION_ARG_CALLBACK,
-		characteristics, "Characteristics Discovery", NULL},
+	{ "primary", 0, 0, G_OPTION_ARG_NONE, &opt_primary,
+		"Primary Service Discovery", NULL },
+	{ "characteristics", 0, 0, G_OPTION_ARG_NONE, &opt_characteristics,
+		"Characteristics Discovery", NULL },
 	{ NULL },
 };
 
@@ -139,6 +134,11 @@ int main(int argc, char *argv[])
 		g_printerr("%s\n", gerr->message);
 		g_error_free(gerr);
 	}
+
+	event_loop = g_main_loop_new(NULL, FALSE);
+	if (opt_primary)
+		g_idle_add(primary, NULL);
+	g_main_loop_run(event_loop);
 
 	g_option_context_free(context);
 
