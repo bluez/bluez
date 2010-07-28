@@ -51,13 +51,6 @@
 
 static GSList *database = NULL;
 
-struct attribute {
-	uint16_t handle;
-	uuid_t uuid;
-	int len;
-	uint8_t data[0];
-};
-
 struct gatt_channel {
 	bdaddr_t src;
 	bdaddr_t dst;

@@ -107,6 +107,13 @@
 
 #define ATT_MTU					256
 
+struct attribute {
+	uint16_t handle;
+	uuid_t uuid;
+	int len;
+	uint8_t data[0];
+};
+
 struct att_data_list {
 	uint16_t num;
 	uint16_t len;

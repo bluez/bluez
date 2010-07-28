@@ -32,7 +32,6 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "glib-helper.h"
 #include "log.h"
 #include "gdbus.h"
 #include "btio.h"
@@ -45,12 +44,10 @@
 #define CHAR_INTERFACE "org.bluez.Characteristic"
 
 struct gatt_service {
-	int id;
 	bdaddr_t sba;
 	bdaddr_t dba;
 	char *path;
 	GIOChannel *io;
-	GSList *chars;
 	GSList *primary;
 	/* FIXME: remove this when we have a command queue */
 	GSList *cur_prim;
@@ -60,20 +57,19 @@ struct gatt_service {
 };
 
 struct characteristic {
-	uuid_t *uuid;
 	char *path;
+	struct attribute *decl;		/* Characteristics declaration */
+	struct attribute *value;	/* Characteristic value */
+	GSList *desc;			/* Characteristic descriptors */
 };
 
 struct primary {
 	uuid_t *uuid;
 	uint16_t start;
 	uint16_t end;
-	char *path;
 	GSList *chars;
 };
 
-static int service_id = 0;
-static int char_id = 0;
 static GSList *services = NULL;
 
 static DBusConnection *connection;
@@ -83,6 +79,10 @@ static void characteristic_free(void *user_data)
 	struct characteristic *chr = user_data;
 
 	g_free(chr->path);
+	g_free(chr->decl);
+	g_free(chr->value);
+	g_slist_foreach(chr->desc, (GFunc) g_free, NULL);
+	g_slist_free(chr->desc);
 	g_free(chr);
 }
 
@@ -90,7 +90,7 @@ static void primary_free(void *user_data)
 {
 	struct primary *prim = user_data;
 
-	g_free(prim->path);
+	g_slist_foreach(prim->chars, (GFunc) characteristic_free, NULL);
 	g_free(prim->uuid);
 	g_free(prim);
 }
@@ -99,7 +99,6 @@ static void gatt_service_free(void *user_data)
 {
 	struct gatt_service *gatt = user_data;
 
-	g_slist_foreach(gatt->chars, (GFunc) characteristic_free, NULL);
 	g_slist_foreach(gatt->primary, (GFunc) primary_free, NULL);
 	g_attrib_unref(gatt->attrib);
 	g_free(gatt->path);
@@ -138,18 +137,36 @@ static GDBusMethodTable char_methods[] = {
 	{ }
 };
 
+static void register_characteristics(struct gatt_service *gatt)
+{
+	GSList *lp, *lc;
+
+	for (lp = gatt->primary; lp; lp = lp->next) {
+		struct primary *prim = lp->data;
+		for (lc = prim->chars; lc; lc = lc->next) {
+			struct characteristic *chr = lc->data;
+			g_dbus_register_interface(connection, chr->path,
+						CHAR_INTERFACE, char_methods,
+						NULL, NULL, chr, NULL);
+			DBG("Registered: %s", chr->path);
+		}
+	}
+}
+
 static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
 	struct att_data_list *list;
+	struct primary *prim;
+	uint16_t last;
 	int i;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
-		struct primary *prim;
-
-		if (gatt->cur_prim == NULL)
+		if (gatt->cur_prim == NULL || gatt->cur_prim->next == NULL) {
+			register_characteristics(gatt);
 			return;
+		}
 
 		gatt->cur_prim = gatt->cur_prim->next;
 
@@ -173,11 +190,40 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	if (list == NULL)
 		return;
 
-	for (i = 0; i < list->num; i++) {
-		/* FIXME: parse each data element */
+	prim = gatt->cur_prim->data;
+
+	for (i = 0, last = 0; i < list->num; i++) {
+		struct characteristic *chr;
+		struct attribute *decl;
+		uint16_t *u16, length;
+
+		u16 = (uint16_t *) list->data[i];
+
+		chr = g_new0(struct characteristic, 1);
+
+		/* Each element contains: handle and attribute value */
+		length = list->len - sizeof(*u16);
+		decl = g_malloc0(sizeof(struct attribute) + length);
+		decl->handle = btohs(*u16);
+		sdp_uuid16_create(&decl->uuid, GATT_CHARAC_UUID);
+		decl->len = length;
+		u16++;
+		memcpy(decl->data, u16, length);
+
+		chr->path = g_strdup_printf("%s/service%04x/characteristic%04x",
+					gatt->path, prim->start, decl->handle);
+
+		chr->decl = decl;
+		prim->chars = g_slist_append(prim->chars, chr);
+
+		last = decl->handle;
 	}
 
 	att_data_list_free(list);
+
+	/* Fetch remaining characteristics for the CURRENT primary service */
+	gatt_discover_char(gatt->attrib, last + 1, prim->end,
+					char_discovered_cb, gatt);
 
 	return;
 
@@ -236,8 +282,6 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			uint16_t u16 = btohs(*p16);
 			uuid = sdp_uuid16_create(uuid, u16);
 
-			DBG("Service => start: 0x%04x, end: 0x%04x, "
-					"uuid: 0x%04x", start, end, u16);
 		} else if (length == 20) {
 			/* FIXME: endianness */
 			uuid = sdp_uuid128_create(uuid, p16);
@@ -285,8 +329,6 @@ static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 		goto fail;
 	}
 
-	DBG("GATT connection established.");
-
 	attrib = g_attrib_new(chan);
 
 	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, gatt);
@@ -310,7 +352,6 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 									int psm)
 {
 	struct gatt_service *gatt;
-	struct characteristic *chr;
 	GError *gerr = NULL;
 	GIOChannel *io;
 
@@ -321,24 +362,10 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	 */
 
 	gatt = g_new0(struct gatt_service, 1);
-	gatt->id = service_id;
 	gatt->path = g_strdup(path);
 	bacpy(&gatt->sba, sba);
 	bacpy(&gatt->dba, dba);
 	gatt->psm = psm;
-
-	chr = g_new0(struct characteristic, 1);
-	chr->path = g_strdup_printf("%s/service%d/characteristic%d",
-						path, service_id, char_id);
-	gatt->chars = g_slist_append(gatt->chars, chr);
-
-	if (!g_dbus_register_interface(connection, chr->path, CHAR_INTERFACE,
-						char_methods, NULL, NULL, chr,
-						characteristic_free)) {
-		error("D-Bus failed to register %s interface", CHAR_INTERFACE);
-		gatt_service_free(gatt);
-		return -1;
-	}
 
 	if (psm < 0) {
 		/*
