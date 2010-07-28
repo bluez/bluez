@@ -80,6 +80,7 @@ int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
 							gboolean blocked);
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 							const char *services);
+char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba);
 
 #define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"
 

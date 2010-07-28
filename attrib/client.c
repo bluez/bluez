@@ -26,6 +26,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
@@ -33,6 +34,7 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "log.h"
+#include "glib-helper.h"
 #include "gdbus.h"
 #include "btio.h"
 #include "storage.h"
@@ -261,6 +263,42 @@ static char *primary_list_to_string(GSList *primary_list)
 	return g_string_free(services, FALSE);
 }
 
+static GSList *string_to_primary_list(const char *str)
+{
+	GSList *l = NULL;
+	char **services;
+	int i;
+
+	if (str == NULL)
+		return NULL;
+
+	services = g_strsplit(str, " ", 0);
+	if (services == NULL)
+		return NULL;
+
+	for (i = 0; services[i]; i++) {
+		struct primary *prim;
+		char uuidstr[MAX_LEN_UUID_STR + 1];
+		int ret;
+
+		prim = g_new0(struct primary, 1);
+		prim->uuid = g_new0(uuid_t, 1);
+
+		ret = sscanf(services[i], "%hd#%hd#%s", &prim->start,
+					&prim->end, (char *) &uuidstr);
+		if (ret < 3)
+			continue;
+
+		bt_string2uuid(prim->uuid, uuidstr);
+
+		l = g_slist_append(l, prim);
+	}
+
+	g_strfreev(services);
+
+	return l;
+}
+
 static void store_primary_services(struct gatt_service *gatt)
 {
        char *services;
@@ -270,6 +308,34 @@ static void store_primary_services(struct gatt_service *gatt)
        write_device_services(&gatt->sba, &gatt->dba, services);
 
        g_free(services);
+}
+
+static gboolean load_primary_services(struct gatt_service *gatt)
+{
+	GSList *primary_list;
+	char *str;
+
+	if (gatt->primary) {
+		DBG("Services already loaded");
+		return FALSE;
+	}
+
+	str = read_device_services(&gatt->sba, &gatt->dba);
+	if (str == NULL)
+		return FALSE;
+
+	primary_list = string_to_primary_list(str);
+
+	free(str);
+
+	if (primary_list == NULL)
+		return FALSE;
+
+	gatt->primary = primary_list;
+
+	/* FIXME: register interfaces here */
+
+	return TRUE;
 }
 
 static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -410,6 +476,11 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	bacpy(&gatt->sba, sba);
 	bacpy(&gatt->dba, dba);
 	gatt->psm = psm;
+
+	if (load_primary_services(gatt)) {
+		DBG("Primary services loaded");
+		return 0;
+	}
 
 	if (psm < 0) {
 		/*
