@@ -36,6 +36,12 @@
 #include <bluetooth/l2cap.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
+
+#include "att.h"
+#include "gattrib.h"
+#include "gatt.h"
 
 #define GATT_UNIX_PATH "/var/run/gatt"
 #define GATT_PSM 27
@@ -135,21 +141,93 @@ static int unix_connect(const char *address)
 	return sk;
 }
 
+static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
+		gpointer user_data)
+{
+	GAttrib *attrib = user_data;
+	unsigned int i;
+	uint8_t length;
+	uint16_t end, start;
+	guint atid;
+
+	if (status == ATT_ECODE_ATTR_NOT_FOUND)
+		goto done;
+
+	if (status != 0) {
+		g_printerr("Discover all primary services failed: %s\n",
+						att_ecode2str(status));
+		goto done;
+	}
+
+	if (pdu[0] != ATT_OP_READ_BY_GROUP_RESP) {
+		g_printerr("Protocol error\n");
+		goto done;
+	}
+
+	length = pdu[1];
+	for (i = 2, end = 0; i < plen; i += length) {
+		uint16_t *p16;
+
+		p16 = (void *) &pdu[i];
+		start = btohs(*p16);
+		p16++;
+		end = btohs(*p16);
+		p16++;
+		if (length == 6) {
+			uint16_t u16 = btohs(*p16);
+
+			g_print("Service => start: 0x%04x, end: 0x%04x, "
+					"uuid: 0x%04x\n", start, end, u16);
+		} else if (length == 20) {
+			/* FIXME: endianness */
+		} else {
+			g_printerr("ATT: Invalid Length field\n");
+			goto done;
+		}
+	}
+
+	if (end == 0) {
+		g_printerr("ATT: Invalid PDU format\n");
+		goto done;
+	}
+
+	/*
+	 * Discover all primary services sub-procedure shall send another
+	 * Read by Group Type Request until Error Response is received and
+	 * the Error Code is set to Attribute Not Found.
+	 */
+	atid = gatt_discover_primary(attrib,
+				end + 1, 0xffff, primary_cb, attrib);
+	if (atid == 0)
+		g_printerr("Discovery primary failed\n");
+
+done:
+	g_main_loop_quit(event_loop);
+}
+
 static gboolean primary(gpointer user_data)
 {
 	int sk;
+	guint atid;
+	GIOChannel *chan;
+	GAttrib *attrib;
 
 	if (opt_unix)
 		sk = unix_connect(GATT_UNIX_PATH);
 	else
 		sk = l2cap_connect();
-	if (sk < 0)
-		goto error;
+	if (sk < 0) {
+		g_main_loop_quit(event_loop);
+		return FALSE;
+	}
 
-	/* FIXME: implement "discover all primary services */
+	chan = g_io_channel_unix_new(sk);
+	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
+	attrib = g_attrib_new(chan);
 
-error:
-	g_main_loop_quit(event_loop);
+	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, attrib);
+	if (atid == 0)
+		g_attrib_unref(attrib);
 
 	return FALSE;
 }
