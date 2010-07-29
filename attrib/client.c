@@ -258,7 +258,7 @@ static char *primary_list_to_string(GSList *primary_list)
 
 		bt_free(uuid128);
 
-		snprintf(service, sizeof(service), "%d#%d#%s ", primary->start,
+		snprintf(service, sizeof(service), "%04X#%04X#%s ", primary->start,
 							primary->end, uuidstr);
 
 		services = g_string_append(services, service);
@@ -290,7 +290,7 @@ static GSList *string_to_primary_list(char *gatt_path, const char *str)
 		prim->path = g_strdup_printf("%s/service%04x", gatt_path,
 								prim->start);
 
-		ret = sscanf(services[i], "%hd#%hd#%s", &prim->start,
+		ret = sscanf(services[i], "%04hX#%04hX#%s", &prim->start,
 					&prim->end, (char *) &uuidstr);
 		if (ret < 3)
 			continue;
