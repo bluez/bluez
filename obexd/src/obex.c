@@ -1095,7 +1095,7 @@ static void obex_event_cb(obex_t *obex, obex_object_t *obj, int mode,
 
 	switch (evt) {
 	case OBEX_EV_PROGRESS:
-		if (os->service->progress)
+		if (os->service && os->service->progress)
 			os->service->progress(os, os->service_data);
 		break;
 	case OBEX_EV_ABORT:
