@@ -40,10 +40,10 @@ struct session_data {
 	int target_len;
 	uuid_t uuid;		/* Bluetooth Service Class */
 	gchar *path;		/* Session path */
-	int sock;
 	DBusConnection *conn;
 	DBusMessage *msg;
 	GwObex *obex;
+	GIOChannel *io;
 	struct agent_data *agent;
 	struct session_callback *callback;
 	gchar *owner;		/* Session owner */

@@ -173,8 +173,10 @@ static void session_free(struct session_data *session)
 	if (session->obex != NULL)
 		gw_obex_close(session->obex);
 
-	if (session->sock > 2)
-		close(session->sock);
+	if (session->io != NULL) {
+		g_io_channel_shutdown(session->io, TRUE, NULL);
+		g_io_channel_unref(session->io);
+	}
 
 	if (session->path)
 		session_unregistered(session);
@@ -215,13 +217,17 @@ static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 		goto done;
 	}
 
+	/* do not close when gw_obex is using the fd */
+	g_io_channel_set_close_on_unref(session->io, FALSE);
+	g_io_channel_unref(session->io);
+	session->io = NULL;
+
 	fd = g_io_channel_unix_get_fd(io);
 
 	obex = gw_obex_setup_fd(fd, session->target,
 			session->target_len, NULL, NULL);
 
-	callback->session->sock = fd;
-	callback->session->obex = obex;
+	session->obex = obex;
 
 done:
 	callback->func(callback->session, callback->data);
@@ -231,9 +237,9 @@ done:
 	g_free(callback);
 }
 
-static int rfcomm_connect(const bdaddr_t *src,
-				const bdaddr_t *dst, uint8_t channel,
-					BtIOConnect function, gpointer user_data)
+static GIOChannel *rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
+					uint8_t channel, BtIOConnect function,
+					gpointer user_data)
 {
 	GIOChannel *io;
 	GError *err = NULL;
@@ -245,11 +251,11 @@ static int rfcomm_connect(const bdaddr_t *src,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
 	if (io != NULL)
-		return 0;
+		return io;
 
 	error("%s", err->message);
 	g_error_free(err);
-	return -EIO;
+	return NULL;
 }
 
 static void search_callback(uint8_t type, uint16_t status,
@@ -309,8 +315,11 @@ static void search_callback(uint8_t type, uint16_t status,
 
 	callback->session->channel = channel;
 
-	if (rfcomm_connect(&callback->session->src, &callback->session->dst,
-					channel, rfcomm_callback, callback) == 0) {
+	callback->session->io = rfcomm_connect(&callback->session->src,
+						&callback->session->dst,
+						channel, rfcomm_callback,
+						callback);
+	if (callback->session->io != NULL) {
 		sdp_close(callback->sdp);
 		return;
 	}
@@ -418,7 +427,6 @@ struct session_data *session_create(const char *source,
 		return NULL;
 
 	session->refcount = 1;
-	session->sock = -1;
 	session->channel = channel;
 
 	session->conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
@@ -465,8 +473,11 @@ struct session_data *session_create(const char *source,
 	callback->data = user_data;
 
 	if (session->channel > 0) {
-		err = rfcomm_connect(&session->src, &session->dst,
-				session->channel, rfcomm_callback, callback);
+		session->io = rfcomm_connect(&session->src, &session->dst,
+							session->channel,
+							rfcomm_callback,
+							callback);
+		err = (session->io == NULL) ? -EINVAL : 0;
 	} else {
 		callback->sdp = service_connect(&session->src, &session->dst,
 						service_callback, callback);
