@@ -155,6 +155,48 @@ static void register_characteristics(struct gatt_service *gatt)
 	}
 }
 
+static char *characteristic_list_to_string(GSList *chars)
+{
+	GString *characteristics;
+	GSList *l;
+
+	characteristics = g_string_new(NULL);
+
+	for (l = chars; l; l = l->next) {
+		struct characteristic *chr = l->data;
+		uuid_t *uuid128;
+		char chr_str[64];
+		char uuidstr[MAX_LEN_UUID_STR];
+
+		memset(chr_str, 0, sizeof(chr_str));
+
+		uuid128 = sdp_uuid_to_uuid128(&chr->type);
+		sdp_uuid2strn(uuid128, uuidstr, MAX_LEN_UUID_STR);
+
+		bt_free(uuid128);
+
+		snprintf(chr_str, sizeof(chr_str), "%04X#%02X#%04X#%s ",
+				chr->handle, chr->perm, chr->end, uuidstr);
+
+		characteristics = g_string_append(characteristics, chr_str);
+	}
+
+	return g_string_free(characteristics, FALSE);
+}
+
+static void store_characteristics(struct gatt_service *gatt,
+		struct primary *prim)
+{
+	char *characteristics;
+
+	characteristics = characteristic_list_to_string(prim->chars);
+
+	write_device_characteristics(&gatt->sba, &gatt->dba, prim->start,
+							characteristics);
+
+	g_free(characteristics);
+}
+
 static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
@@ -169,6 +211,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			register_characteristics(gatt);
 			return;
 		}
+
+		store_characteristics(gatt, gatt->cur_prim->data);
 
 		gatt->cur_prim = gatt->cur_prim->next;
 
