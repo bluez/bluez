@@ -31,4 +31,44 @@
 #define HDP_SOURCE_UUID		"00001401-0000-1000-8000-00805F9B34FB"
 #define HDP_SINK_UUID		"00001402-0000-1000-8000-00805F9B34FB"
 
+#define MANAGER_PATH		"/org/bluez"
+
+#define HEALTH_MANAGER		"org.bluez.HealthManager"
+
+#define HDP_MDEP_ECHO		0x00
+#define HDP_MDEP_INITIAL	0x01
+#define HDP_MDEP_FINAL		0x7F
+
+#define HDP_ERROR		g_quark_from_static_string("hdp-error-quark")
+
+#define HDP_NO_PREFERENCE_DC	0x00
+#define HDP_RELIABLE_DC		0x01
+#define HDP_STREAMING_DC	0x02
+
+#define HDP_SINK_ROLE_AS_STRING		"sink"
+#define HDP_SOURCE_ROLE_AS_STRING	"source"
+
+typedef enum {
+	HDP_SOURCE = 0x00,
+	HDP_SINK = 0x01
+} HdpRole;
+
+typedef enum {
+	HDP_DIC_PARSE_ERROR,
+	HDP_DIC_ENTRY_PARSE_ERROR,
+	HDP_UNSPECIFIED_ERROR,
+	HDP_UNKNOWN_ERROR
+} HdpError;
+
+struct hdp_application {
+	char			*path;		/* The path of the application */
+	uint16_t		data_type;	/* Data type handled for this application */
+	gboolean		data_type_set;	/* Flag for dictionary parsing */
+	uint8_t			role;		/* Role of this application */
+	gboolean		role_set;	/* Flag for dictionary parsing */
+	char			*description;	/* Options description for SDP record */
+	uint8_t			id;		/* The identification is also the mdepid */
+	char			*oname;		/* Name of the owner application */
+};
+
 #endif /* __HDP_TYPES_H__ */

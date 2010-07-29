@@ -200,7 +200,8 @@ if HEALTHPLUGIN
 builtin_modules += health
 builtin_sources += health/hdp_main.c health/hdp_types.h \
 			health/hdp_manager.h health/hdp_manager.c \
-			health/hdp.h health/hdp.c
+			health/hdp.h health/hdp.c \
+			health/hdp_util.h health/hdp_util.c
 endif
 
 builtin_modules += hciops
