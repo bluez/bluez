@@ -83,6 +83,8 @@ int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba);
 int write_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 					uint16_t handle, const char *chars);
+char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
+							uint16_t handle);
 
 #define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"
 
