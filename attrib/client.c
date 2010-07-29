@@ -61,12 +61,14 @@ struct gatt_service {
 
 struct characteristic {
 	char *path;
-	struct attribute *decl;		/* Characteristics declaration */
-	struct attribute *value;	/* Characteristic value */
-	GSList *desc;			/* Characteristic descriptors */
+	uint16_t handle;
+	uint16_t end;
+	uint8_t perm;
+	uuid_t type;
 };
 
 struct primary {
+	char *path;
 	uuid_t *uuid;
 	uint16_t start;
 	uint16_t end;
@@ -82,10 +84,6 @@ static void characteristic_free(void *user_data)
 	struct characteristic *chr = user_data;
 
 	g_free(chr->path);
-	g_free(chr->decl);
-	g_free(chr->value);
-	g_slist_foreach(chr->desc, (GFunc) g_free, NULL);
-	g_slist_free(chr->desc);
 	g_free(chr);
 }
 
@@ -95,6 +93,7 @@ static void primary_free(void *user_data)
 
 	g_slist_foreach(prim->chars, (GFunc) characteristic_free, NULL);
 	g_free(prim->uuid);
+	g_free(prim->path);
 	g_free(prim);
 }
 
@@ -162,7 +161,7 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	struct gatt_service *gatt = user_data;
 	struct att_data_list *list;
 	struct primary *prim;
-	uint16_t last;
+	uint16_t last, *previous_end = NULL;
 	int i;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
@@ -196,31 +195,36 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	prim = gatt->cur_prim->data;
 
 	for (i = 0, last = 0; i < list->num; i++) {
+		uint8_t *decl = list->data[i];
 		struct characteristic *chr;
-		struct attribute *decl;
-		uint16_t *u16, length;
-
-		u16 = (uint16_t *) list->data[i];
+		uint16_t *u16;
 
 		chr = g_new0(struct characteristic, 1);
+		chr->perm = decl[2];
+		u16 = (void *) &decl[3];
+		chr->handle = btohs(*u16);
+		chr->path = g_strdup_printf("%s/characteristic%04x", prim->path,
+								chr->handle);
+		if (list->len == 7) {
+			u16 = (void *) &decl[5];
+			sdp_uuid16_create(&chr->type, btohs(*u16));
+		} else {
+			/* FIXME: UUID128 */
+		}
 
-		/* Each element contains: handle and attribute value */
-		length = list->len - sizeof(*u16);
-		decl = g_malloc0(sizeof(struct attribute) + length);
-		decl->handle = btohs(*u16);
-		sdp_uuid16_create(&decl->uuid, GATT_CHARAC_UUID);
-		decl->len = length;
-		u16++;
-		memcpy(decl->data, u16, length);
+		if (previous_end) {
+			u16 = (void *) &decl[0];
+			*previous_end = btohs(*u16) - 1;
+		}
 
-		chr->path = g_strdup_printf("%s/service%04x/characteristic%04x",
-					gatt->path, prim->start, decl->handle);
+		last = chr->handle;
+		previous_end = &chr->end;
 
-		chr->decl = decl;
 		prim->chars = g_slist_append(prim->chars, chr);
-
-		last = decl->handle;
 	}
+
+	if (previous_end)
+		*previous_end = prim->start - 1;
 
 	att_data_list_free(list);
 
@@ -263,7 +267,7 @@ static char *primary_list_to_string(GSList *primary_list)
 	return g_string_free(services, FALSE);
 }
 
-static GSList *string_to_primary_list(const char *str)
+static GSList *string_to_primary_list(char *gatt_path, const char *str)
 {
 	GSList *l = NULL;
 	char **services;
@@ -283,6 +287,8 @@ static GSList *string_to_primary_list(const char *str)
 
 		prim = g_new0(struct primary, 1);
 		prim->uuid = g_new0(uuid_t, 1);
+		prim->path = g_strdup_printf("%s/service%04x", gatt_path,
+								prim->start);
 
 		ret = sscanf(services[i], "%hd#%hd#%s", &prim->start,
 					&prim->end, (char *) &uuidstr);
@@ -324,7 +330,7 @@ static gboolean load_primary_services(struct gatt_service *gatt)
 	if (str == NULL)
 		return FALSE;
 
-	primary_list = string_to_primary_list(str);
+	primary_list = string_to_primary_list(gatt->path, str);
 
 	free(str);
 
@@ -404,6 +410,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		prim->start = start;
 		prim->end = end;
 		prim->uuid = uuid;
+		prim->path = g_strdup_printf("%s/service%04x", gatt->path,
+								prim->start);
 
 		gatt->primary = g_slist_append(gatt->primary, prim);
 	}
