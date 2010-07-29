@@ -174,7 +174,7 @@ struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len)
 
 	list = malloc(sizeof(struct att_data_list));
 	list->len = pdu[1];
-	list->num = len / list->len;
+	list->num = (len - 2) / list->len;
 
 	list->data = malloc(sizeof(uint8_t *) * list->num);
 	ptr = &pdu[2];
@@ -282,7 +282,7 @@ struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, int len)
 
 	list = malloc(sizeof(struct att_data_list));
 	list->len = pdu[1];
-	list->num = len / list->len;
+	list->num = (len - 2) / list->len;
 
 	list->data = malloc(sizeof(uint8_t *) * list->num);
 	ptr = &pdu[2];
