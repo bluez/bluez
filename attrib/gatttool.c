@@ -55,6 +55,12 @@ static gboolean opt_primary = FALSE;
 static gboolean opt_characteristics = FALSE;
 static GMainLoop *event_loop;
 
+struct characteristic_data {
+	GAttrib *attrib;
+	uint16_t start;
+	uint16_t end;
+};
+
 static int l2cap_connect(void)
 {
 	struct sockaddr_l2 addr;
@@ -232,6 +238,90 @@ static gboolean primary(gpointer user_data)
 	return FALSE;
 }
 
+static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct characteristic_data *char_data = user_data;
+	struct att_data_list *list;
+	uint16_t last = char_data->start;
+	int i;
+
+	if (status == ATT_ECODE_ATTR_NOT_FOUND)
+		goto done;
+
+	if (status != 0) {
+		g_printerr("Discover all characteristics failed\n");
+		goto done;
+	}
+
+	list = dec_read_by_type_resp(pdu, plen);
+	if (list == NULL)
+		return;
+
+	for (i = 0; i < list->num; i++) {
+		uint16_t *u16, length;
+		uint8_t *data;
+		int j;
+
+		u16 = (uint16_t *) list->data[i];
+
+		/* Each element contains: handle and attribute value */
+		length = list->len - sizeof(*u16);
+		last = btohs(*u16);
+		u16++;
+		g_print("handle = 0x%04x, length = %02x", last, length);
+		g_print(" data: ");
+		for (j = 0; j < length; j++) {
+			data = (uint8_t *)u16 + j;
+			g_print("%02x ", *data);
+		}
+		g_print("\n");
+	}
+
+	att_data_list_free(list);
+
+	/* Fetch remaining characteristics for the CURRENT primary service */
+	gatt_discover_char(char_data->attrib, last + 1, char_data->end,
+					char_discovered_cb, char_data);
+
+done:
+	g_main_loop_quit(event_loop);
+}
+
+static gboolean characteristics(gpointer user_data)
+{
+	struct characteristic_data *char_data;
+	GAttrib *attrib;
+	GIOChannel *chan;
+	guint atid;
+	int sk;
+
+	if (opt_unix)
+		sk = unix_connect(GATT_UNIX_PATH);
+	else
+		sk = l2cap_connect();
+	if (sk < 0) {
+		g_main_loop_quit(event_loop);
+		return FALSE;
+	}
+
+	chan = g_io_channel_unix_new(sk);
+	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
+	attrib = g_attrib_new(chan);
+
+	char_data = g_new(struct characteristic_data, 1);
+	char_data->attrib = attrib;
+	char_data->start = opt_start;
+	char_data->end = opt_end;
+
+	atid = gatt_discover_char(attrib, opt_start, opt_end,
+			char_discovered_cb, char_data);
+	if (atid == 0)
+		g_attrib_unref(attrib);
+
+	return FALSE;
+}
+
 static GOptionEntry primary_char_options[] = {
 	{ "start", 's' , 0, G_OPTION_ARG_INT, &opt_start,
 		"Starting handle(optional)", "0x0000" },
@@ -287,8 +377,13 @@ int main(int argc, char *argv[])
 	}
 
 	event_loop = g_main_loop_new(NULL, FALSE);
+
 	if (opt_primary)
 		g_idle_add(primary, NULL);
+
+	if (opt_characteristics)
+		g_idle_add(characteristics, NULL);
+
 	g_main_loop_run(event_loop);
 
 	g_option_context_free(context);
