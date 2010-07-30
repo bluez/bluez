@@ -102,6 +102,7 @@ void g_attrib_unref(GAttrib *attrib)
 		return;
 
 	g_source_remove(attrib->id);
+	g_io_channel_unref(attrib->io);
 
 	g_free(attrib);
 }

@@ -208,6 +208,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		g_printerr("Discovery primary failed\n");
 
 done:
+	g_attrib_unref(attrib);
 	g_main_loop_quit(event_loop);
 }
 
@@ -229,6 +230,7 @@ static gboolean primary(gpointer user_data)
 
 	chan = g_io_channel_unix_new(sk);
 	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
+	g_io_channel_set_close_on_unref(chan, TRUE);
 	attrib = g_attrib_new(chan);
 
 	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, attrib);
@@ -285,6 +287,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 					char_discovered_cb, char_data);
 
 done:
+	g_attrib_unref(char_data->attrib);
+	g_free(char_data);
 	g_main_loop_quit(event_loop);
 }
 
@@ -307,6 +311,7 @@ static gboolean characteristics(gpointer user_data)
 
 	chan = g_io_channel_unix_new(sk);
 	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
+	g_io_channel_set_close_on_unref(chan, TRUE);
 	attrib = g_attrib_new(chan);
 
 	char_data = g_new(struct characteristic_data, 1);
