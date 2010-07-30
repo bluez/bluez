@@ -271,9 +271,13 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		length = list->len - sizeof(*u16);
 		last = btohs(*u16);
 		u16++;
-		g_print("handle = 0x%04x, length = %02x", last, length);
-		g_print(" data: ");
-		for (j = 0; j < length; j++) {
+
+		data = (uint8_t *)u16;
+		g_print("handle = 0x%04x, length = %d, ", last, length);
+		g_print("permission = %02x, char value handle = %02x %02x, ",
+					*data, *(data + 1), *(data + 2));
+		g_print("uuid = ");
+		for (j = 3; j < length; j++) {
 			data = (uint8_t *)u16 + j;
 			g_print("%02x ", *data);
 		}
