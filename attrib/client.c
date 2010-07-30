@@ -69,7 +69,7 @@ struct characteristic {
 
 struct primary {
 	char *path;
-	uuid_t *uuid;
+	uuid_t uuid;
 	uint16_t start;
 	uint16_t end;
 	GSList *chars;
@@ -92,7 +92,6 @@ static void primary_free(void *user_data)
 	struct primary *prim = user_data;
 
 	g_slist_foreach(prim->chars, (GFunc) characteristic_free, NULL);
-	g_free(prim->uuid);
 	g_free(prim->path);
 	g_free(prim);
 }
@@ -391,7 +390,7 @@ static char *primary_list_to_string(GSList *primary_list)
 
 		memset(service, 0, sizeof(service));
 
-		uuid128 = sdp_uuid_to_uuid128(primary->uuid);
+		uuid128 = sdp_uuid_to_uuid128(&primary->uuid);
 		sdp_uuid2strn(uuid128, uuidstr, MAX_LEN_UUID_STR);
 
 		bt_free(uuid128);
@@ -424,7 +423,6 @@ static GSList *string_to_primary_list(char *gatt_path, const char *str)
 		int ret;
 
 		prim = g_new0(struct primary, 1);
-		prim->uuid = g_new0(uuid_t, 1);
 		prim->path = g_strdup_printf("%s/service%04x", gatt_path,
 								prim->start);
 
@@ -433,7 +431,7 @@ static GSList *string_to_primary_list(char *gatt_path, const char *str)
 		if (ret < 3)
 			continue;
 
-		bt_string2uuid(prim->uuid, uuidstr);
+		bt_string2uuid(&prim->uuid, uuidstr);
 
 		l = g_slist_append(l, prim);
 	}
@@ -526,7 +524,6 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	length = pdu[1];
 	for (i = 2, end = 0; i < plen; i += length) {
 		struct primary *prim;
-		uuid_t *uuid;
 		uint16_t *p16;
 
 		p16 = (void *) &pdu[i];
@@ -534,23 +531,24 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		p16++;
 		end = btohs(*p16);
 		p16++;
-		uuid = bt_malloc(sizeof(uuid_t));
-		if (length == 6) {
-			uint16_t u16 = btohs(*p16);
-			uuid = sdp_uuid16_create(uuid, u16);
-
-		} else if (length == 20) {
-			/* FIXME: endianness */
-			uuid = sdp_uuid128_create(uuid, p16);
-		} else {
-			DBG("ATT: Invalid Length field");
-			goto fail;
-		}
 
 		prim = g_new0(struct primary, 1);
 		prim->start = start;
 		prim->end = end;
-		prim->uuid = uuid;
+
+		if (length == 6) {
+			uint16_t u16 = btohs(*p16);
+			sdp_uuid16_create(&prim->uuid, u16);
+
+		} else if (length == 20) {
+			/* FIXME: endianness */
+			sdp_uuid128_create(&prim->uuid, p16);
+		} else {
+			DBG("ATT: Invalid Length field");
+			g_free(prim);
+			goto fail;
+		}
+
 		prim->path = g_strdup_printf("%s/service%04x", gatt->path,
 								prim->start);
 
