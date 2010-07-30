@@ -148,8 +148,8 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(GATT_CHARAC_DEVICE_NAME);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x00;
-	atval[2] = 0x06;
+	atval[1] = 0x06;
+	atval[2] = 0x00;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0004, &uuid, atval, 5);
@@ -171,16 +171,16 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(OPCODES_SUPPORTED_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x00;
-	atval[2] = 0x12;
+	atval[1] = 0x12;
+	atval[2] = 0x00;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0011, &uuid, atval, 5);
 
 	/* GATT service: attribute opcodes supported */
 	sdp_uuid16_create(&uuid, OPCODES_SUPPORTED_UUID);
-	atval[0] = 0x01;
-	atval[1] = 0xFF;
+	atval[0] = 0xFF;
+	atval[1] = 0x01;
 	attrib_db_add(0x0012, &uuid, atval, 2);
 
 	/* Battery state service: primary service definition */
@@ -194,8 +194,8 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(BATTERY_STATE_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x01;
-	atval[2] = 0x10;
+	atval[1] = 0x10;
+	atval[2] = 0x01;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0106, &uuid, atval, 5);
@@ -216,35 +216,35 @@ static int register_attributes(void)
 	/* Thermometer: Include */
 	sdp_uuid16_create(&uuid, GATT_INCLUDE_UUID);
 	u16 = htons(MANUFACTURER_SVC_UUID);
-	atval[0] = 0x05;
-	atval[1] = 0x00;
-	atval[2] = 0x05;
-	atval[3] = 0x04;
+	atval[0] = 0x00;
+	atval[1] = 0x05;
+	atval[2] = 0x04;
+	atval[3] = 0x05;
 	atval[4] = u16 >> 8;
 	atval[5] = u16;
 	attrib_db_add(0x0201, &uuid, atval, 6);
 
 	/* Thermometer: Include */
-	atval[0] = 0x05;
-	atval[1] = 0x50;
-	atval[2] = 0x05;
-	atval[3] = 0x68;
+	atval[0] = 0x50;
+	atval[1] = 0x05;
+	atval[2] = 0x68;
+	atval[3] = 0x05;
 	attrib_db_add(0x0202, &uuid, atval, 4);
 
 	/* Thermometer: temperature characteristic */
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(TEMPERATURE_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x02;
-	atval[2] = 0x04;
+	atval[1] = 0x04;
+	atval[2] = 0x02;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0203, &uuid, atval, 5);
 
 	/* Thermometer: temperature characteristic value */
 	sdp_uuid16_create(&uuid, TEMPERATURE_UUID);
-	atval[0] = 0x02;
-	atval[1] = 0x8A;
+	atval[0] = 0x8A;
+	atval[1] = 0x02;
 	attrib_db_add(0x0204, &uuid, atval, 2);
 
 	/* Thermometer: temperature characteristic format */
@@ -270,8 +270,8 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(RELATIVE_HUMIDITY_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x02;
-	atval[2] = 0x12;
+	atval[1] = 0x12;
+	atval[2] = 0x02;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0210, &uuid, atval, 5);
@@ -313,8 +313,8 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(MANUFACTURER_NAME_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x05;
-	atval[2] = 0x02;
+	atval[1] = 0x02;
+	atval[2] = 0x05;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0501, &uuid, atval, 5);
@@ -329,8 +329,8 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(MANUFACTURER_SERIAL_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x05;
-	atval[2] = 0x04;
+	atval[1] = 0x04;
+	atval[2] = 0x05;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0503, &uuid, atval, 5);
@@ -352,8 +352,8 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(MANUFACTURER_NAME_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x05;
-	atval[2] = 0x07;
+	atval[1] = 0x07;
+	atval[2] = 0x05;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0506, &uuid, atval, 5);
@@ -369,8 +369,8 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(VENDOR_SPECIFIC_TYPE_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x05;
-	atval[2] = 0x68;
+	atval[1] = 0x68;
+	atval[2] = 0x05;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0560, &uuid, atval, 5);
@@ -395,8 +395,8 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	u16 = htons(MANUFACTURER_SERIAL_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	atval[1] = 0x05;
-	atval[2] = 0x09;
+	atval[1] = 0x09;
+	atval[2] = 0x05;
 	atval[3] = u16 >> 8;
 	atval[4] = u16;
 	attrib_db_add(0x0508, &uuid, atval, 5);
