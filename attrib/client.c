@@ -362,7 +362,7 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	}
 
 	if (previous_end)
-		*previous_end = prim->start - 1;
+		*previous_end = prim->end;
 
 	att_data_list_free(list);
 
