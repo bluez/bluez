@@ -184,6 +184,47 @@ static char *characteristic_list_to_string(GSList *chars)
 	return g_string_free(characteristics, FALSE);
 }
 
+static GSList *string_to_characteristic_list(const char *prim_path,
+							const char *str)
+{
+	GSList *l = NULL;
+	char **chars;
+	int i;
+
+	if (str == NULL)
+		return NULL;
+
+	chars = g_strsplit(str, " ", 0);
+	if (chars == NULL)
+		return NULL;
+
+	for (i = 0; chars[i]; i++) {
+		struct characteristic *chr;
+		char uuidstr[MAX_LEN_UUID_STR + 1];
+		int ret;
+
+		chr = g_new0(struct characteristic, 1);
+
+		ret = sscanf(chars[i], "%04hX#%02hhX#%04hX#%s", &chr->handle,
+				&chr->perm, &chr->end, uuidstr);
+		if (ret < 4) {
+			g_free(chr);
+			continue;
+		}
+
+		chr->path = g_strdup_printf("%s/characteristic%04x", prim_path,
+								chr->handle);
+
+		bt_string2uuid(&chr->type, uuidstr);
+
+		l = g_slist_append(l, chr);
+	}
+
+	g_strfreev(chars);
+
+	return l;
+}
+
 static void store_characteristics(struct gatt_service *gatt,
 		struct primary *prim)
 {
@@ -195,6 +236,35 @@ static void store_characteristics(struct gatt_service *gatt,
 							characteristics);
 
 	g_free(characteristics);
+}
+
+static void load_characteristics(gpointer data, gpointer user_data)
+{
+	struct primary *prim = data;
+	struct gatt_service *gatt = user_data;
+	GSList *chrs_list;
+	char *str;
+
+	if (prim->chars) {
+		DBG("Characteristics already loaded");
+		return;
+	}
+
+	str = read_device_characteristics(&gatt->sba, &gatt->dba, prim->start);
+	if (str == NULL)
+		return;
+
+	chrs_list = string_to_characteristic_list(prim->path, str);
+
+	free(str);
+
+	if (chrs_list == NULL)
+		return;
+
+
+	prim->chars = chrs_list;
+
+	return;
 }
 
 static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -335,7 +405,7 @@ static GSList *string_to_primary_list(char *gatt_path, const char *str)
 								prim->start);
 
 		ret = sscanf(services[i], "%04hX#%04hX#%s", &prim->start,
-					&prim->end, (char *) &uuidstr);
+					&prim->end, uuidstr);
 		if (ret < 3)
 			continue;
 
@@ -383,6 +453,7 @@ static gboolean load_primary_services(struct gatt_service *gatt)
 
 	gatt->primary = primary_list;
 
+	g_slist_foreach(gatt->primary, load_characteristics, gatt);
 	/* FIXME: register interfaces here */
 
 	return TRUE;
