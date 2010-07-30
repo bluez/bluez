@@ -34,8 +34,9 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "log.h"
-#include "glib-helper.h"
 #include "gdbus.h"
+#include "glib-helper.h"
+#include "dbus-common.h"
 #include "btio.h"
 #include "storage.h"
 
@@ -144,7 +145,37 @@ static GDBusMethodTable prim_methods[] = {
 static DBusMessage *get_properties(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return dbus_message_new_method_return(msg);
+	struct characteristic *chr = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	const char *name = "";
+	char *uuid;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	uuid = bt_uuid2string(&chr->type);
+	dict_append_entry(&dict, "UUID", DBUS_TYPE_STRING, &uuid);
+	g_free(uuid);
+
+	/* FIXME: Translate UUID to name. */
+	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &name);
+	dict_append_entry(&dict, "Description", DBUS_TYPE_STRING, &name);
+
+	/* FIXME: Missing Format, Value and Representation */
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
 }
 
 static GDBusMethodTable char_methods[] = {
