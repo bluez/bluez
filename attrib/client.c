@@ -130,7 +130,7 @@ static DBusMessage *unregister_watcher(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static GDBusMethodTable char_methods[] = {
+static GDBusMethodTable prim_methods[] = {
 	{ "GetCharacteristics",	"",	"a{oa{sv}}", get_characteristics},
 	{ "RegisterCharacteristicsWatcher",	"o", "",
 						register_watcher	},
@@ -138,6 +138,30 @@ static GDBusMethodTable char_methods[] = {
 						unregister_watcher	},
 	{ }
 };
+
+static DBusMessage *get_properties(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
+static GDBusMethodTable char_methods[] = {
+	{ "GetProperties",	"",	"a{sv}", get_properties },
+	{ }
+};
+
+static void register_primary(struct gatt_service *gatt)
+{
+	GSList *l;
+
+	for (l = gatt->primary; l; l = l->next) {
+		struct primary *prim = l->data;
+		g_dbus_register_interface(connection, prim->path,
+				CHAR_INTERFACE, prim_methods,
+				NULL, NULL, prim, NULL);
+		DBG("Registered: %s", prim->path);
+	}
+}
 
 static void register_characteristics(struct gatt_service *gatt)
 {
@@ -474,6 +498,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			return;
 
 		store_primary_services(gatt);
+		register_primary(gatt);
 
 		/* Start Characteristic Discovery */
 		gatt->cur_prim = gatt->primary;
