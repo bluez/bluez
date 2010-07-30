@@ -476,9 +476,10 @@ static gboolean load_primary_services(struct gatt_service *gatt)
 		return FALSE;
 
 	gatt->primary = primary_list;
+	register_primary(gatt);
 
 	g_slist_foreach(gatt->primary, load_characteristics, gatt);
-	/* FIXME: register interfaces here */
+	register_characteristics(gatt);
 
 	return TRUE;
 }
