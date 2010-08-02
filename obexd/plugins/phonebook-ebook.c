@@ -97,8 +97,8 @@ static char *evcard_to_string(EVCard *evcard, unsigned int format,
 							uint64_t filter)
 {
 	EVCard *evcard2;
+	GList *l;
 	char *vcard;
-	unsigned int i;
 
 	if (!filter)
 		return e_vcard_to_string(evcard, format);
@@ -109,18 +109,27 @@ static char *evcard_to_string(EVCard *evcard, unsigned int format,
 	 */
 	filter = format == EVC_FORMAT_VCARD_30 ? filter | 0x87: filter | 0x85;
 
+	l = e_vcard_get_attributes(evcard);
 	evcard2 = e_vcard_new();
-	for (i = 0; i < 29; i++) {
-		EVCardAttribute *attrib;
+	for (; l; l = g_list_next(l)) {
+		EVCardAttribute *attrib = l->data;
+		const char *name;
+		int i;
 
-		if (!(filter & (1 << i)))
-			continue;
-
-		attrib = e_vcard_get_attribute(evcard, attribute_mask[i]);
 		if (!attrib)
 			continue;
 
-		e_vcard_add_attribute(evcard2, e_vcard_attribute_copy(attrib));
+		name = e_vcard_attribute_get_name(attrib);
+
+		for (i = 0; attribute_mask[i] != NULL; i++) {
+			if (!(filter & (1 << i)))
+				continue;
+			if (g_strcmp0(name, attribute_mask[i]) != 0)
+				continue;
+
+			e_vcard_add_attribute(evcard2,
+					e_vcard_attribute_copy(attrib));
+		}
 	}
 
 	vcard = e_vcard_to_string(evcard2, format);
