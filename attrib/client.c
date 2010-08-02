@@ -52,8 +52,6 @@ struct gatt_service {
 	char *path;
 	GIOChannel *io;
 	GSList *primary;
-	/* FIXME: remove this when we have a command queue */
-	GSList *cur_prim;
 	GAttrib *attrib;
 	int psm;
 	guint atid;
@@ -73,6 +71,11 @@ struct primary {
 	uint16_t start;
 	uint16_t end;
 	GSList *chars;
+};
+
+struct discovered_data {
+	struct gatt_service *gatt;
+	struct primary *prim;
 };
 
 static GSList *services = NULL;
@@ -204,22 +207,17 @@ static void store_characteristics(struct gatt_service *gatt,
 	g_free(characteristics);
 }
 
-static void register_characteristics(struct gatt_service *gatt)
+static void register_characteristics(struct gatt_service *gatt,
+							struct primary *prim)
 {
-	GSList *lp, *lc;
+	GSList *lc;
 
-	for (lp = gatt->primary; lp; lp = lp->next) {
-		struct primary *prim = lp->data;
-
-		store_characteristics(gatt, prim);
-
-		for (lc = prim->chars; lc; lc = lc->next) {
-			struct characteristic *chr = lc->data;
-			g_dbus_register_interface(connection, chr->path,
-						CHAR_INTERFACE, char_methods,
-						NULL, NULL, chr, NULL);
-			DBG("Registered: %s", chr->path);
-		}
+	for (lc = prim->chars; lc; lc = lc->next) {
+		struct characteristic *chr = lc->data;
+		g_dbus_register_interface(connection, chr->path,
+				CHAR_INTERFACE, char_methods,
+				NULL, NULL, chr, NULL);
+		DBG("Registered: %s", chr->path);
 	}
 }
 
@@ -287,8 +285,8 @@ static void load_characteristics(gpointer data, gpointer user_data)
 	if (chrs_list == NULL)
 		return;
 
-
 	prim->chars = chrs_list;
+	register_characteristics(gatt, prim);
 
 	return;
 }
@@ -296,24 +294,17 @@ static void load_characteristics(gpointer data, gpointer user_data)
 static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
-	struct gatt_service *gatt = user_data;
+	struct discovered_data *current = user_data;
+	struct gatt_service *gatt = current->gatt;
+	struct primary *prim = current->prim;
 	struct att_data_list *list;
-	struct primary *prim;
 	uint16_t last, *previous_end = NULL;
 	int i;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
-		if (gatt->cur_prim == NULL || gatt->cur_prim->next == NULL) {
-			register_characteristics(gatt);
-			return;
-		}
-
-		gatt->cur_prim = gatt->cur_prim->next;
-
-		/* Fetch characteristics of the NEXT primary service */
-		prim = gatt->cur_prim->data;
-		gatt_discover_char(gatt->attrib, prim->start, prim->end,
-						char_discovered_cb, gatt);
+		store_characteristics(gatt, prim);
+		register_characteristics(gatt, prim);
+		g_free(current);
 		return;
 	}
 
@@ -327,10 +318,10 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	DBG("Read by Type Response received");
 
 	list = dec_read_by_type_resp(pdu, plen);
-	if (list == NULL)
+	if (list == NULL) {
+		g_free(current);
 		return;
-
-	prim = gatt->cur_prim->data;
+	}
 
 	for (i = 0, last = 0; i < list->num; i++) {
 		uint8_t *decl = list->data[i];
@@ -368,11 +359,12 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	/* Fetch remaining characteristics for the CURRENT primary service */
 	gatt_discover_char(gatt->attrib, last + 1, prim->end,
-					char_discovered_cb, gatt);
+						char_discovered_cb, current);
 
 	return;
 
 fail:
+	g_free(current);
 	gatt_service_free(gatt);
 }
 
@@ -478,9 +470,22 @@ static gboolean load_primary_services(struct gatt_service *gatt)
 	register_primary(gatt);
 
 	g_slist_foreach(gatt->primary, load_characteristics, gatt);
-	register_characteristics(gatt);
 
 	return TRUE;
+}
+
+static void discover_all_char(gpointer data, gpointer user_data)
+{
+	struct discovered_data *current;
+	struct gatt_service *gatt = user_data;
+	struct primary *prim = data;
+
+	current = g_new0(struct discovered_data, 1);
+	current->gatt = gatt;
+	current->prim = prim;
+
+	gatt_discover_char(gatt->attrib, prim->start, prim->end,
+						char_discovered_cb, current);
 }
 
 static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -492,20 +497,14 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	uint16_t end, start;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
-		struct primary *prim;
-
 		if (gatt->primary == NULL)
 			return;
 
 		store_primary_services(gatt);
 		register_primary(gatt);
 
-		/* Start Characteristic Discovery */
-		gatt->cur_prim = gatt->primary;
-		prim = gatt->cur_prim->data;
+		g_slist_foreach(gatt->primary, discover_all_char, gatt);
 
-		gatt_discover_char(gatt->attrib, prim->start, prim->end,
-						char_discovered_cb, gatt);
 		return;
 	}
 
