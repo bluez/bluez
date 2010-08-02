@@ -63,3 +63,14 @@ guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 	return g_attrib_send(attrib, ATT_OP_READ_BY_TYPE_REQ,
 					pdu, plen, func, user_data, NULL);
 }
+
+guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
+							gpointer user_data)
+{
+	uint8_t pdu[ATT_MTU];
+	guint16 plen;
+
+	plen = enc_read_req(handle, pdu, sizeof(pdu));
+	return g_attrib_send(attrib, ATT_OP_READ_REQ, pdu, plen, func,
+							user_data, NULL);
+}

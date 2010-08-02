@@ -218,6 +218,26 @@ static uint16_t read_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 	return length;
 }
 
+static int handle_cmp(struct attribute *a, uint16_t *handle)
+{
+	return a->handle - *handle;
+}
+
+static uint16_t read_value(uint16_t handle, uint8_t *pdu, int len)
+{
+	struct attribute *a;
+	GSList *l;
+
+	l = g_slist_find_custom(database, &handle, (GCompareFunc) handle_cmp);
+	if (!l)
+		return enc_error_resp(ATT_OP_READ_REQ, handle,
+					ATT_ECODE_INVALID_HANDLE, pdu, len);
+
+	a = l->data;
+
+	return enc_read_resp(a->data, a->len, pdu, len);
+}
+
 static void channel_destroy(void *user_data)
 {
 	struct gatt_channel *channel = user_data;
@@ -228,11 +248,6 @@ static void channel_destroy(void *user_data)
 	clients = g_slist_remove(clients, channel);
 
 	g_free(channel);
-}
-
-static int handle_cmp(struct attribute *a, uint16_t *handle)
-{
-	return a->handle - *handle;
 }
 
 static void channel_handler(const uint8_t *ipdu, uint16_t len,
@@ -263,10 +278,18 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 
 		length = read_by_type(start, end, &uuid, opdu, sizeof(opdu));
 		break;
+	case ATT_OP_READ_REQ:
+		length = dec_read_req(ipdu, &start);
+		if (length == 0) {
+			status = ATT_ECODE_INVALID_PDU;
+			goto done;
+		}
+
+		length = read_value(start, opdu, sizeof(opdu));
+		break;
 	case ATT_OP_MTU_REQ:
 	case ATT_OP_FIND_INFO_REQ:
 	case ATT_OP_FIND_BY_TYPE_REQ:
-	case ATT_OP_READ_REQ:
 	case ATT_OP_READ_BLOB_REQ:
 	case ATT_OP_READ_MULTI_REQ:
 	case ATT_OP_WRITE_REQ:
