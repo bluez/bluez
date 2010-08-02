@@ -89,7 +89,7 @@ GAttrib *g_attrib_new(GIOChannel *io)
 	g_io_channel_set_encoding(io, NULL, NULL);
 
 	attrib = g_new0(struct _GAttrib, 1);
-	attrib->io = io;
+	attrib->io = g_io_channel_ref(io);
 	attrib->refs = 1;
 	attrib->mtu = 512;
 	attrib->queue = g_queue_new();
@@ -116,6 +116,14 @@ void g_attrib_unref(GAttrib *attrib)
 		return;
 
 	g_queue_free(attrib->queue);
+
+	if (attrib->read_watch > 0)
+		g_source_remove(attrib->read_watch);
+
+	if (attrib->write_watch > 0)
+		g_source_remove(attrib->write_watch);
+
+	g_io_channel_unref(attrib->io);
 
 	g_free(attrib);
 }
