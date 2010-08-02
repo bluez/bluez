@@ -50,9 +50,11 @@ static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
+static int opt_handle = 0x0001;
 static gboolean opt_unix = FALSE;
 static gboolean opt_primary = FALSE;
 static gboolean opt_characteristics = FALSE;
+static gboolean opt_char_value_read = FALSE;
 static GMainLoop *event_loop;
 
 struct characteristic_data {
@@ -331,6 +333,12 @@ static gboolean characteristics(gpointer user_data)
 	return FALSE;
 }
 
+static gboolean characteristics_value(gpointer user_data)
+{
+	g_main_loop_quit(event_loop);
+	return FALSE;
+}
+
 static GOptionEntry primary_char_options[] = {
 	{ "start", 's' , 0, G_OPTION_ARG_INT, &opt_start,
 		"Starting handle(optional)", "0x0000" },
@@ -339,11 +347,19 @@ static GOptionEntry primary_char_options[] = {
 	{ NULL },
 };
 
+static GOptionEntry char_value_read_options[] = {
+	{ "handle", 'a' , 0, G_OPTION_ARG_INT, &opt_handle,
+		"Read characteristic by handle", "0xXXXX" },
+	{NULL},
+};
+
 static GOptionEntry gatt_options[] = {
 	{ "primary", 0, 0, G_OPTION_ARG_NONE, &opt_primary,
 		"Primary Service Discovery", NULL },
 	{ "characteristics", 0, 0, G_OPTION_ARG_NONE, &opt_characteristics,
 		"Characteristics Discovery", NULL },
+	{ "char-value-read", 0, 0, G_OPTION_ARG_NONE, &opt_char_value_read,
+		"Characteristics Value Read", NULL },
 	{ NULL },
 };
 
@@ -360,7 +376,7 @@ static GOptionEntry options[] = {
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
-	GOptionGroup *gatt_group, *params_group;
+	GOptionGroup *gatt_group, *params_group, *char_value_read_group;
 	GError *gerr = NULL;
 
 	context = g_option_context_new(NULL);
@@ -380,6 +396,15 @@ int main(int argc, char *argv[])
 	g_option_context_add_group(context, params_group);
 	g_option_group_add_entries(params_group, primary_char_options);
 
+	/* Characteristics value by read argument */
+	char_value_read_group = g_option_group_new("char-value",
+			"Characteristics Value Read arguments",
+			"Show all Characteristics Value Read arguments",
+							NULL, NULL);
+	g_option_context_add_group(context, char_value_read_group);
+	g_option_group_add_entries(char_value_read_group,
+			char_value_read_options);
+
 	if (g_option_context_parse(context, &argc, &argv, &gerr) == FALSE) {
 		g_printerr("%s\n", gerr->message);
 		g_error_free(gerr);
@@ -392,6 +417,9 @@ int main(int argc, char *argv[])
 
 	if (opt_characteristics)
 		g_idle_add(characteristics, NULL);
+
+	if (opt_char_value_read)
+		g_idle_add(characteristics_value, NULL);
 
 	g_main_loop_run(event_loop);
 
