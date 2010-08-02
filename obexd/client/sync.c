@@ -72,7 +72,7 @@ static DBusMessage *sync_setlocation(DBusConnection *connection,
 }
 
 static void sync_getphonebook_callback(struct session_data *session,
-						void *user_data)
+					GError *err, void *user_data)
 {
 	struct transfer_data *transfer = session->pending->data;
 	DBusMessage *reply;

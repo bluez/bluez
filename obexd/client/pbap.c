@@ -331,7 +331,7 @@ static void read_return_apparam(struct session_data *session,
 }
 
 static void pull_phonebook_callback(struct session_data *session,
-					void *user_data)
+					GError *err, void *user_data)
 {
 	struct transfer_data *transfer = session->pending->data;
 	DBusMessage *reply;
@@ -359,7 +359,7 @@ done:
 }
 
 static void phonebook_size_callback(struct session_data *session,
-					void *user_data)
+					GError *err, void *user_data)
 {
 	struct transfer_data *transfer = session->pending->data;
 	DBusMessage *reply;
@@ -387,7 +387,7 @@ done:
 }
 
 static void pull_vcard_listing_callback(struct session_data *session,
-					void *user_data)
+					GError *err, void *user_data)
 {
 	struct transfer_data *transfer = session->pending->data;
 	GMarkupParseContext *ctxt;

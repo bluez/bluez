@@ -53,7 +53,7 @@ struct session_data {
 };
 
 typedef void (*session_callback_t) (struct session_data *session,
-							void *user_data);
+					GError *err, void *user_data);
 
 struct session_data *session_create(const char *source,
 			const char *destination, const char *target,

@@ -54,6 +54,8 @@
 
 #define FTP_INTERFACE  "org.openobex.FileTransfer"
 
+#define OBEX_IO_ERROR obex_io_error_quark()
+
 static guint64 counter = 0;
 
 static unsigned char pcsuite_uuid[] = { 0x00, 0x00, 0x50, 0x05, 0x00, 0x00,
@@ -85,7 +87,13 @@ struct agent_data {
 	struct pending_data *pending;
 };
 
-static void session_prepare_put(struct session_data *session, void *data);
+static void session_prepare_put(struct session_data *session, GError *err,
+								void *data);
+
+static GQuark obex_io_error_quark(void)
+{
+	return g_quark_from_static_string("obex-io-error-quark");
+}
 
 struct session_data *session_ref(struct session_data *session)
 {
@@ -230,7 +238,7 @@ static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 	session->obex = obex;
 
 done:
-	callback->func(callback->session, callback->data);
+	callback->func(callback->session, err, callback->data);
 
 	session_unref(callback->session);
 
@@ -265,6 +273,7 @@ static void search_callback(uint8_t type, uint16_t status,
 	unsigned int scanned, bytesleft = size;
 	int seqlen = 0;
 	uint8_t dataType, channel = 0;
+	GError *gerr = NULL;
 
 	if (status || type != SDP_SVC_SEARCH_ATTR_RSP)
 		goto failed;
@@ -327,7 +336,11 @@ static void search_callback(uint8_t type, uint16_t status,
 failed:
 	sdp_close(callback->sdp);
 
-	callback->func(callback->session, callback->data);
+	g_set_error(&gerr, OBEX_IO_ERROR, -EIO,
+					"Unable to find service record");
+	callback->func(callback->session, gerr, callback->data);
+	g_clear_error(&gerr);
+
 	session_unref(callback->session);
 	g_free(callback);
 }
@@ -352,6 +365,7 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 	struct callback_data *callback = user_data;
 	sdp_list_t *search, *attrid;
 	uint32_t range = 0x0000ffff;
+	GError *gerr = NULL;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR))
 		goto failed;
@@ -380,7 +394,11 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 failed:
 	sdp_close(callback->sdp);
 
-	callback->func(callback->session, callback->data);
+	g_set_error(&gerr, OBEX_IO_ERROR, -EIO,
+					"Unable to find service record");
+	callback->func(callback->session, gerr, callback->data);
+	g_clear_error(&gerr);
+
 	session_unref(callback->session);
 	g_free(callback);
 	return FALSE;
@@ -728,7 +746,7 @@ static const GMarkupParser parser = {
 };
 
 static void list_folder_callback(struct session_data *session,
-					void *user_data)
+					GError *err, void *user_data)
 {
 	struct transfer_data *transfer = session->pending->data;
 	GMarkupParseContext *ctxt;
@@ -768,7 +786,8 @@ done:
 	session->msg = NULL;
 }
 
-static void get_file_callback(struct session_data *session, void *user_data)
+static void get_file_callback(struct session_data *session, GError *err,
+							void *user_data)
 {
 
 }
@@ -803,7 +822,7 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 		pending->transfer->name = g_strdup(name);
 	}
 
-	pending->cb(session, pending->transfer);
+	pending->cb(session, NULL, pending->transfer);
 	dbus_message_unref(reply);
 	free_pending(pending);
 	agent->pending = NULL;
@@ -816,7 +835,7 @@ static gboolean session_request_proceed(gpointer data)
 	struct pending_data *pending = data;
 	struct transfer_data *transfer = pending->transfer;
 
-	pending->cb(transfer->session, transfer);
+	pending->cb(transfer->session, NULL, transfer);
 	free_pending(pending);
 
 	return FALSE;
@@ -864,12 +883,13 @@ static int session_request(struct session_data *session, session_callback_t cb,
 }
 
 static void session_terminate_transfer(struct session_data *session,
-					struct transfer_data *transfer)
+					struct transfer_data *transfer,
+					GError *gerr)
 {
 	struct session_callback *callback = session->callback;
 
 	if (callback) {
-		callback->func(session, callback->data);
+		callback->func(session, gerr, callback->data);
 		return;
 	}
 
@@ -910,12 +930,12 @@ done:
 
 	DBG("Transfer(%p) complete", transfer);
 
-	session_terminate_transfer(session, transfer);
+	session_terminate_transfer(session, transfer, NULL);
 }
 
 static void session_notify_error(struct session_data *session,
 				struct transfer_data *transfer,
-				const char *err)
+				GError *err)
 {
 	struct agent_data *agent = session->agent;
 	DBusMessage *message;
@@ -925,7 +945,7 @@ static void session_notify_error(struct session_data *session,
 
 		reply = g_dbus_create_error(session->msg,
 					"org.openobex.Error.Failed",
-					err);
+					err->message);
 		g_dbus_send_message(session->conn, reply);
 
 		dbus_message_unref(session->msg);
@@ -944,15 +964,15 @@ static void session_notify_error(struct session_data *session,
 
 	dbus_message_append_args(message,
 			DBUS_TYPE_OBJECT_PATH, &transfer->path,
-			DBUS_TYPE_STRING, &err,
+			DBUS_TYPE_STRING, &err->message,
 			DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(session->conn, message);
 
 done:
-	error("Transfer(%p) Error: %s", transfer, err);
+	error("Transfer(%p) Error: %s", transfer, err->message);
 
-	session_terminate_transfer(session, transfer);
+	session_terminate_transfer(session, transfer, err);
 }
 
 static void session_notify_progress(struct session_data *session,
@@ -1002,6 +1022,7 @@ static void transfer_progress(struct transfer_data *transfer, gint64 transferred
 				int err, void *user_data)
 {
 	struct session_data *session = user_data;
+	GError *gerr = NULL;
 
 	if (err != 0)
 		goto fail;
@@ -1011,18 +1032,25 @@ static void transfer_progress(struct transfer_data *transfer, gint64 transferred
 	return;
 
 fail:
-	session_notify_error(session, transfer,
+	g_set_error(&gerr, OBEX_IO_ERROR, err, "%s",
 			err > 0 ? OBEX_ResponseToString(err) : strerror(-err));
+	session_notify_error(session, transfer, gerr);
+	g_clear_error(&gerr);
 }
 
-static void session_prepare_get(struct session_data *session, void *data)
+static void session_prepare_get(struct session_data *session,
+				GError *err, void *data)
 {
 	struct transfer_data *transfer = data;
-	int err;
+	int ret;
 
-	err = transfer_get(transfer, transfer_progress, session);
-	if (err < 0) {
-		session_notify_error(session, transfer, strerror(-err));
+	ret = transfer_get(transfer, transfer_progress, session);
+	if (ret < 0) {
+		GError *gerr = NULL;
+
+		g_set_error(&gerr, OBEX_IO_ERROR, ret, "%s", strerror(-ret));
+		session_notify_error(session, transfer, gerr);
+		g_clear_error(&gerr);
 		return;
 	}
 
@@ -1346,14 +1374,20 @@ void session_set_data(struct session_data *session, void *priv)
 	session->priv = priv;
 }
 
-static void session_prepare_put(struct session_data *session, void *data)
+static void session_prepare_put(struct session_data *session,
+				GError *err, void *data)
 {
 	struct transfer_data *transfer = data;
-	int err;
+	int ret;
 
-	err = transfer_put(transfer, transfer_progress, session);
-	if (err < 0) {
-		session_notify_error(session, transfer, strerror(-err));
+	ret = transfer_put(transfer, transfer_progress, session);
+	if (ret < 0) {
+		GError *gerr = NULL;
+
+		g_set_error(&gerr, OBEX_IO_ERROR, ret, "%s (%d)",
+							strerror(-ret), -ret);
+		session_notify_error(session, transfer, gerr);
+		g_clear_error(&gerr);
 		return;
 	}
 
