@@ -333,9 +333,54 @@ static gboolean characteristics(gpointer user_data)
 	return FALSE;
 }
 
+static void char_value_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	GAttrib *attrib = user_data;
+	uint8_t value[ATT_MTU];
+	int i, vlen;
+
+	if (status != 0) {
+		g_printerr("Characteristic value read failed: %s\n",
+							att_ecode2str(status));
+		goto done;
+	}
+	if (!dec_read_resp(pdu, plen, value, &vlen)) {
+		g_printerr("Protocol error\n");
+		goto done;
+	}
+	g_print("Characteristic value: ");
+	for (i = 0; i < vlen; i++)
+		g_print("%02x ", value[i]);
+	g_print("\n");
+
+done:
+	g_attrib_unref(attrib);
+	g_main_loop_quit(event_loop);
+}
+
 static gboolean characteristics_value(gpointer user_data)
 {
-	g_main_loop_quit(event_loop);
+	GIOChannel *chan;
+	GAttrib *attrib;
+	int sk;
+
+	if (opt_unix)
+		sk = unix_connect(GATT_UNIX_PATH);
+	else
+		sk = l2cap_connect();
+	if (sk < 0) {
+		g_main_loop_quit(event_loop);
+		return FALSE;
+	}
+
+	chan = g_io_channel_unix_new(sk);
+	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
+	g_io_channel_set_close_on_unref(chan, TRUE);
+	attrib = g_attrib_new(chan);
+
+	gatt_read_char(attrib, opt_handle, char_value_cb, attrib);
+
 	return FALSE;
 }
 
