@@ -162,22 +162,6 @@ static void register_primary(struct gatt_service *gatt)
 	}
 }
 
-static void register_characteristics(struct gatt_service *gatt)
-{
-	GSList *lp, *lc;
-
-	for (lp = gatt->primary; lp; lp = lp->next) {
-		struct primary *prim = lp->data;
-		for (lc = prim->chars; lc; lc = lc->next) {
-			struct characteristic *chr = lc->data;
-			g_dbus_register_interface(connection, chr->path,
-						CHAR_INTERFACE, char_methods,
-						NULL, NULL, chr, NULL);
-			DBG("Registered: %s", chr->path);
-		}
-	}
-}
-
 static char *characteristic_list_to_string(GSList *chars)
 {
 	GString *characteristics;
@@ -205,6 +189,38 @@ static char *characteristic_list_to_string(GSList *chars)
 	}
 
 	return g_string_free(characteristics, FALSE);
+}
+
+static void store_characteristics(struct gatt_service *gatt,
+		struct primary *prim)
+{
+	char *characteristics;
+
+	characteristics = characteristic_list_to_string(prim->chars);
+
+	write_device_characteristics(&gatt->sba, &gatt->dba, prim->start,
+							characteristics);
+
+	g_free(characteristics);
+}
+
+static void register_characteristics(struct gatt_service *gatt)
+{
+	GSList *lp, *lc;
+
+	for (lp = gatt->primary; lp; lp = lp->next) {
+		struct primary *prim = lp->data;
+
+		store_characteristics(gatt, prim);
+
+		for (lc = prim->chars; lc; lc = lc->next) {
+			struct characteristic *chr = lc->data;
+			g_dbus_register_interface(connection, chr->path,
+						CHAR_INTERFACE, char_methods,
+						NULL, NULL, chr, NULL);
+			DBG("Registered: %s", chr->path);
+		}
+	}
 }
 
 static GSList *string_to_characteristic_list(const char *prim_path,
@@ -246,19 +262,6 @@ static GSList *string_to_characteristic_list(const char *prim_path,
 	g_strfreev(chars);
 
 	return l;
-}
-
-static void store_characteristics(struct gatt_service *gatt,
-		struct primary *prim)
-{
-	char *characteristics;
-
-	characteristics = characteristic_list_to_string(prim->chars);
-
-	write_device_characteristics(&gatt->sba, &gatt->dba, prim->start,
-							characteristics);
-
-	g_free(characteristics);
 }
 
 static void load_characteristics(gpointer data, gpointer user_data)
@@ -304,8 +307,6 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			register_characteristics(gatt);
 			return;
 		}
-
-		store_characteristics(gatt, gatt->cur_prim->data);
 
 		gatt->cur_prim = gatt->cur_prim->next;
 
