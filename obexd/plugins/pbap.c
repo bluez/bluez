@@ -555,7 +555,7 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 
 	DBG("name %s type %s pbap %p", name, type, pbap);
 
-	if (type == NULL)
+	if (type == NULL || name == NULL)
 		return -EBADR;
 
 	rsize = obex_aparam_read(os, obj, &buffer);
@@ -689,6 +689,11 @@ static void *vobject_pull_open(const char *name, int oflag, mode_t mode,
 		goto fail;
 	}
 
+	if (name == NULL) {
+		ret = -EBADR;
+		goto fail;
+	}
+
 	if (pbap->params->maxlistcount == 0)
 		cb = phonebook_size_result;
 	else
@@ -717,6 +722,11 @@ static void *vobject_list_open(const char *name, int oflag, mode_t mode,
 
 	if (oflag != O_RDONLY) {
 		ret = -EPERM;
+		goto fail;
+	}
+
+	if (name == NULL) {
+		ret = -EBADR;
 		goto fail;
 	}
 
@@ -758,7 +768,7 @@ static void *vobject_vcard_open(const char *name, int oflag, mode_t mode,
 		goto fail;
 	}
 
-	if (sscanf(name, "%u.vcf", &handle) != 1) {
+	if (name == NULL || sscanf(name, "%u.vcf", &handle) != 1) {
 		ret = -EBADR;
 		goto fail;
 	}
