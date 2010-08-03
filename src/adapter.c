@@ -2351,8 +2351,6 @@ int adapter_start(struct btd_adapter *adapter)
 
 	memcpy(dev->features, features, 8);
 
-	adapter_ops->read_name(adapter->dev_id);
-
 	if (!(features[6] & LMP_SIMPLE_PAIR))
 		goto setup;
 
