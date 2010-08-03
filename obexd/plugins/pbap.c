@@ -555,7 +555,7 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 
 	DBG("name %s type %s pbap %p", name, type, pbap);
 
-	if (type == NULL || name == NULL)
+	if (type == NULL)
 		return -EBADR;
 
 	rsize = obex_aparam_read(os, obj, &buffer);
@@ -592,6 +592,9 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 		path = g_strdup(name);
 		*stream = TRUE;
 	} else
+		return -EBADR;
+
+	if (path == NULL)
 		return -EBADR;
 
 	pbap->params = params;
