@@ -522,8 +522,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
+	struct att_data_list *list;
 	unsigned int i;
-	uint8_t length;
 	uint16_t end, start;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
@@ -544,19 +544,22 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		goto fail;
 	}
 
-	if (pdu[0] != ATT_OP_READ_BY_GROUP_RESP) {
+	list = dec_read_by_grp_resp(pdu, plen);
+	if (list == NULL) {
 		error("Protocol error");
 		goto fail;
 	}
 
 	DBG("Read by Group Type Response received");
 
-	length = pdu[1];
-	for (i = 2, end = 0; i < plen; i += length) {
+	for (i = 0, end = 0; i < list->num; i++) {
 		struct primary *prim;
 		uint16_t *p16;
 
-		p16 = (void *) &pdu[i];
+		p16 = (uint16_t *) list->data[i];
+
+		/* Each element contains: attribute handle, end group handle
+		 * and attribute value */
 		start = btohs(*p16);
 		p16++;
 		end = btohs(*p16);
@@ -566,16 +569,17 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		prim->start = start;
 		prim->end = end;
 
-		if (length == 6) {
+		if (list->len == 6) {
 			uint16_t u16 = btohs(*p16);
 			sdp_uuid16_create(&prim->uuid, u16);
 
-		} else if (length == 20) {
+		} else if (list->len == 20) {
 			/* FIXME: endianness */
 			sdp_uuid128_create(&prim->uuid, p16);
 		} else {
 			DBG("ATT: Invalid Length field");
 			g_free(prim);
+			att_data_list_free(list);
 			goto fail;
 		}
 
@@ -584,6 +588,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 		gatt->primary = g_slist_append(gatt->primary, prim);
 	}
+
+	att_data_list_free(list);
 
 	if (end == 0) {
 		DBG("ATT: Invalid PDU format");
@@ -601,6 +607,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		goto fail;
 
 	return;
+
 fail:
 	gatt_service_free(gatt);
 }
