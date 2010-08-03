@@ -153,9 +153,9 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		gpointer user_data)
 {
 	GAttrib *attrib = user_data;
+	struct att_data_list *list;
 	unsigned int i;
-	uint8_t length;
-	uint16_t end, start;
+	uint16_t end;
 	guint atid;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND)
@@ -167,37 +167,40 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		goto done;
 	}
 
-	if (pdu[0] != ATT_OP_READ_BY_GROUP_RESP) {
-		g_printerr("Protocol error\n");
+	list = dec_read_by_grp_resp(pdu, plen);
+	if (list == NULL)
 		goto done;
-	}
 
-	length = pdu[1];
-	for (i = 2, end = 0; i < plen; i += length) {
-		uint16_t *p16;
+	for (i = 0, end = 0; i < list->num; i++) {
+		uint16_t *u16, length, start;
+		int j;
 
-		p16 = (void *) &pdu[i];
-		start = btohs(*p16);
-		p16++;
-		end = btohs(*p16);
-		p16++;
-		if (length == 6) {
-			uint16_t u16 = btohs(*p16);
+		u16 = (uint16_t *) list->data[i];
 
-			g_print("Service => start: 0x%04x, end: 0x%04x, "
-					"uuid: 0x%04x\n", start, end, u16);
-		} else if (length == 20) {
-			/* FIXME: endianness */
-		} else {
-			g_printerr("ATT: Invalid Length field\n");
-			goto done;
+		/* Each element contains: attribute handle, end group handle
+		 * and attribute value */
+		length = list->len - 2 * sizeof(*u16);
+		start = btohs(*u16);
+		u16++;
+		end = btohs(*u16);
+		u16++;
+
+		g_print("attr handle = 0x%04x, end grp handle = 0x%04x, ",
+								start, end);
+		g_print("attr value (UUID) = ");
+		if (length == 2)
+			g_print("0x%04x\n", btohs(*u16));
+		else {
+			uint8_t *value = (uint8_t *) u16;
+
+			/* FIXME: pretty print 128-bit UUIDs */
+			for (j = 0; j < length; j++)
+				g_print("%02x ", value[j]);
+			g_print("\n");
 		}
 	}
 
-	if (end == 0) {
-		g_printerr("ATT: Invalid PDU format\n");
-		goto done;
-	}
+	att_data_list_free(list);
 
 	/*
 	 * Discover all primary services sub-procedure shall send another
