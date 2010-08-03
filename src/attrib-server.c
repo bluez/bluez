@@ -160,6 +160,10 @@ static uint16_t read_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 	uint16_t num, length;
 	int i;
 
+	if (start > end || start == 0x0000)
+		return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, start,
+					ATT_ECODE_INVALID_HANDLE, pdu, len);
+
 	for (l = database, length = 0, types = NULL; l; l = l->next) {
 		a = l->data;
 
@@ -182,7 +186,7 @@ static uint16_t read_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 	}
 
 	if (types == NULL)
-		return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, 0x0000,
+		return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, start,
 					ATT_ECODE_ATTR_NOT_FOUND, pdu, len);
 
 	num = g_slist_length(types);
