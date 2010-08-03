@@ -993,6 +993,9 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 	if (!adapter->up) {
 		strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
 		write_local_name(&adapter->bdaddr, name);
+		emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Name",
+					DBUS_TYPE_STRING, &name);
 	} else {
 		int err = adapter_ops->set_name(adapter->dev_id, name);
 		if (err < 0)
