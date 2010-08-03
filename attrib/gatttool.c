@@ -149,6 +149,25 @@ static int unix_connect(const char *address)
 	return sk;
 }
 
+static GIOChannel *do_connect(void)
+{
+	GIOChannel *chan;
+	int sk;
+
+	if (opt_unix)
+		sk = unix_connect(GATT_UNIX_PATH);
+	else
+		sk = l2cap_connect();
+	if (sk < 0)
+		return NULL;
+
+	chan = g_io_channel_unix_new(sk);
+	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
+	g_io_channel_set_close_on_unref(chan, TRUE);
+
+	return chan;
+}
+
 static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		gpointer user_data)
 {
@@ -219,23 +238,16 @@ done:
 
 static gboolean primary(gpointer user_data)
 {
-	int sk;
 	guint atid;
 	GIOChannel *chan;
 	GAttrib *attrib;
 
-	if (opt_unix)
-		sk = unix_connect(GATT_UNIX_PATH);
-	else
-		sk = l2cap_connect();
-	if (sk < 0) {
+	chan = do_connect();
+	if (chan == NULL) {
 		g_main_loop_quit(event_loop);
 		return FALSE;
 	}
 
-	chan = g_io_channel_unix_new(sk);
-	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
-	g_io_channel_set_close_on_unref(chan, TRUE);
 	attrib = g_attrib_new(chan);
 
 	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, attrib);
@@ -307,22 +319,14 @@ static gboolean characteristics(gpointer user_data)
 	GAttrib *attrib;
 	GIOChannel *chan;
 	guint atid;
-	int sk;
 
-	if (opt_unix)
-		sk = unix_connect(GATT_UNIX_PATH);
-	else
-		sk = l2cap_connect();
-	if (sk < 0) {
+	chan = do_connect();
+	if (chan == NULL) {
 		g_main_loop_quit(event_loop);
 		return FALSE;
 	}
 
-	chan = g_io_channel_unix_new(sk);
-	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
-	g_io_channel_set_close_on_unref(chan, TRUE);
 	attrib = g_attrib_new(chan);
-
 	char_data = g_new(struct characteristic_data, 1);
 	char_data->attrib = attrib;
 	char_data->start = opt_start;
@@ -366,20 +370,13 @@ static gboolean characteristics_value(gpointer user_data)
 {
 	GIOChannel *chan;
 	GAttrib *attrib;
-	int sk;
 
-	if (opt_unix)
-		sk = unix_connect(GATT_UNIX_PATH);
-	else
-		sk = l2cap_connect();
-	if (sk < 0) {
+	chan = do_connect();
+	if (chan == NULL) {
 		g_main_loop_quit(event_loop);
 		return FALSE;
 	}
 
-	chan = g_io_channel_unix_new(sk);
-	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
-	g_io_channel_set_close_on_unref(chan, TRUE);
 	attrib = g_attrib_new(chan);
 
 	gatt_read_char(attrib, opt_handle, char_value_cb, attrib);
