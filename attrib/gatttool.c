@@ -90,7 +90,8 @@ static int l2cap_connect(void)
 	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if (sk < 0) {
 		err = errno;
-		g_printerr("L2CAP socket create failed: %s(%d)\n", strerror(err), err);
+		g_printerr("L2CAP socket create failed: %s(%d)\n",
+							strerror(err), err);
 		return -err;
 	}
 
@@ -100,7 +101,8 @@ static int l2cap_connect(void)
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		err = errno;
-		g_printerr("L2CAP socket bind failed: %s(%d)\n", strerror(err), err);
+		g_printerr("L2CAP socket bind failed: %s(%d)\n",
+							strerror(err), err);
 		close(sk);
 		return -err;
 	}
@@ -113,7 +115,8 @@ static int l2cap_connect(void)
 	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
 	if (err < 0) {
 		err = errno;
-		g_printerr("L2CAP socket connect failed: %s(%d)\n", strerror(err), err);
+		g_printerr("L2CAP socket connect failed: %s(%d)\n",
+							strerror(err), err);
 		close(sk);
 		return -err;
 	}
@@ -134,14 +137,14 @@ static int unix_connect(const char *address)
 	if (sk < 0) {
 		err = errno;
 		g_printerr("Unix socket(%s) create failed: %s(%d)\n", address,
-				strerror(err), err);
+							strerror(err), err);
 		return -err;
 	}
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		err = errno;
 		g_printerr("Unix socket(%s) connect failed: %s(%d)\n", address,
-				strerror(err), err);
+							strerror(err), err);
 		close(sk);
 		return -err;
 	}
@@ -169,7 +172,7 @@ static GIOChannel *do_connect(void)
 }
 
 static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
-		gpointer user_data)
+							gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 	struct att_data_list *list;
@@ -182,7 +185,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	if (status != 0) {
 		g_printerr("Discover all primary services failed: %s\n",
-						att_ecode2str(status));
+							att_ecode2str(status));
 		goto done;
 	}
 
@@ -226,8 +229,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	 * Read by Group Type Request until Error Response is received and
 	 * the Error Code is set to Attribute Not Found.
 	 */
-	atid = gatt_discover_primary(attrib,
-				end + 1, 0xffff, primary_cb, attrib);
+	atid = gatt_discover_primary(attrib, end + 1, 0xffff, primary_cb,
+								attrib);
 	if (atid == 0)
 		g_printerr("Discovery primary failed\n");
 
@@ -250,7 +253,8 @@ static gboolean primary(gpointer user_data)
 
 	attrib = g_attrib_new(chan);
 
-	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, attrib);
+	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb,
+								attrib);
 	if (atid == 0)
 		g_attrib_unref(attrib);
 
@@ -305,7 +309,7 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	/* Fetch remaining characteristics for the CURRENT primary service */
 	gatt_discover_char(char_data->attrib, last + 1, char_data->end,
-					char_discovered_cb, char_data);
+						char_discovered_cb, char_data);
 
 done:
 	g_attrib_unref(char_data->attrib);
@@ -333,7 +337,7 @@ static gboolean characteristics(gpointer user_data)
 	char_data->end = opt_end;
 
 	atid = gatt_discover_char(attrib, opt_start, opt_end,
-			char_discovered_cb, char_data);
+						char_discovered_cb, char_data);
 	if (atid == 0)
 		g_attrib_unref(attrib);
 
@@ -429,7 +433,7 @@ int main(int argc, char *argv[])
 
 	/* GATT commands */
 	gatt_group = g_option_group_new("gatt", "GATT commands",
-				"Show all GATT commands", NULL, NULL);
+					"Show all GATT commands", NULL, NULL);
 	g_option_context_add_group(context, gatt_group);
 	g_option_group_add_entries(gatt_group, gatt_options);
 
@@ -437,7 +441,7 @@ int main(int argc, char *argv[])
 	params_group = g_option_group_new("params",
 			"Primary Services/Characteristics arguments",
 			"Show all Primary Services/Characteristics arguments",
-							NULL, NULL);
+			NULL, NULL);
 	g_option_context_add_group(context, params_group);
 	g_option_group_add_entries(params_group, primary_char_options);
 
@@ -445,10 +449,10 @@ int main(int argc, char *argv[])
 	char_value_read_group = g_option_group_new("char-value",
 			"Characteristics Value Read arguments",
 			"Show all Characteristics Value Read arguments",
-							NULL, NULL);
+			NULL, NULL);
 	g_option_context_add_group(context, char_value_read_group);
 	g_option_group_add_entries(char_value_read_group,
-			char_value_read_options);
+						char_value_read_options);
 
 	if (g_option_context_parse(context, &argc, &argv, &gerr) == FALSE) {
 		g_printerr("%s\n", gerr->message);
