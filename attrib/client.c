@@ -238,8 +238,7 @@ static void store_characteristics(struct gatt_service *gatt,
 	g_free(characteristics);
 }
 
-static void register_characteristics(struct gatt_service *gatt,
-							struct primary *prim)
+static void register_characteristics(struct primary *prim)
 {
 	GSList *lc;
 
@@ -317,7 +316,7 @@ static void load_characteristics(gpointer data, gpointer user_data)
 		return;
 
 	prim->chars = chrs_list;
-	register_characteristics(gatt, prim);
+	register_characteristics(prim);
 
 	return;
 }
@@ -334,7 +333,7 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
 		store_characteristics(gatt, prim);
-		register_characteristics(gatt, prim);
+		register_characteristics(prim);
 		g_free(current);
 		return;
 	}
