@@ -54,7 +54,7 @@ static int opt_handle = 0x0001;
 static gboolean opt_unix = FALSE;
 static gboolean opt_primary = FALSE;
 static gboolean opt_characteristics = FALSE;
-static gboolean opt_char_value_read = FALSE;
+static gboolean opt_char_read = FALSE;
 static GMainLoop *event_loop;
 
 struct characteristic_data {
@@ -178,7 +178,6 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	struct att_data_list *list;
 	unsigned int i;
 	uint16_t end;
-	guint atid;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND)
 		goto done;
@@ -229,10 +228,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	 * Read by Group Type Request until Error Response is received and
 	 * the Error Code is set to Attribute Not Found.
 	 */
-	atid = gatt_discover_primary(attrib, end + 1, 0xffff, primary_cb,
-								attrib);
-	if (atid == 0)
-		g_printerr("Discovery primary failed\n");
+	gatt_discover_primary(attrib, end + 1, opt_end, primary_cb, attrib);
 
 done:
 	g_main_loop_quit(event_loop);
@@ -242,7 +238,7 @@ static gboolean primary(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 
-	gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, attrib);
+	gatt_discover_primary(attrib, opt_start, opt_end, primary_cb, attrib);
 
 	return FALSE;
 }
@@ -259,7 +255,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		goto done;
 
 	if (status != 0) {
-		g_printerr("Discover all characteristics failed\n");
+		g_printerr("Discover all characteristics failed: %s\n",
+							att_ecode2str(status));
 		goto done;
 	}
 
@@ -318,14 +315,14 @@ static gboolean characteristics(gpointer user_data)
 	return FALSE;
 }
 
-static void char_value_cb(guint8 status, const guint8 *pdu, guint16 plen,
+static void char_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	uint8_t value[ATT_MTU];
 	int i, vlen;
 
 	if (status != 0) {
-		g_printerr("Characteristic value read failed: %s\n",
+		g_printerr("Characteristic value/descriptor read failed: %s\n",
 							att_ecode2str(status));
 		goto done;
 	}
@@ -333,7 +330,7 @@ static void char_value_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		g_printerr("Protocol error\n");
 		goto done;
 	}
-	g_print("Characteristic value: ");
+	g_print("Characteristic value/descriptor: ");
 	for (i = 0; i < vlen; i++)
 		g_print("%02x ", value[i]);
 	g_print("\n");
@@ -342,26 +339,26 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static gboolean characteristics_value(gpointer user_data)
+static gboolean characteristics_read(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 
-	gatt_read_char(attrib, opt_handle, char_value_cb, attrib);
+	gatt_read_char(attrib, opt_handle, char_read_cb, attrib);
 
 	return FALSE;
 }
 
 static GOptionEntry primary_char_options[] = {
 	{ "start", 's' , 0, G_OPTION_ARG_INT, &opt_start,
-		"Starting handle(optional)", "0x0000" },
+		"Starting handle(optional)", "0x0001" },
 	{ "end", 'e' , 0, G_OPTION_ARG_INT, &opt_end,
 		"Ending handle(optional)", "0xffff" },
 	{ NULL },
 };
 
-static GOptionEntry char_value_read_options[] = {
+static GOptionEntry char_read_options[] = {
 	{ "handle", 'a' , 0, G_OPTION_ARG_INT, &opt_handle,
-		"Read characteristic by handle", "0xXXXX" },
+		"Read characteristic by handle(optional)", "0x0001" },
 	{NULL},
 };
 
@@ -370,8 +367,8 @@ static GOptionEntry gatt_options[] = {
 		"Primary Service Discovery", NULL },
 	{ "characteristics", 0, 0, G_OPTION_ARG_NONE, &opt_characteristics,
 		"Characteristics Discovery", NULL },
-	{ "char-value-read", 0, 0, G_OPTION_ARG_NONE, &opt_char_value_read,
-		"Characteristics Value Read", NULL },
+	{ "char-read", 0, 0, G_OPTION_ARG_NONE, &opt_char_read,
+		"Characteristics Value/Descriptor Read", NULL },
 	{ NULL },
 };
 
@@ -388,7 +385,7 @@ static GOptionEntry options[] = {
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
-	GOptionGroup *gatt_group, *params_group, *char_value_read_group;
+	GOptionGroup *gatt_group, *params_group, *char_read_group;
 	GError *gerr = NULL;
 	GAttrib *attrib;
 	GIOChannel *chan;
@@ -411,14 +408,13 @@ int main(int argc, char *argv[])
 	g_option_context_add_group(context, params_group);
 	g_option_group_add_entries(params_group, primary_char_options);
 
-	/* Characteristics value by read argument */
-	char_value_read_group = g_option_group_new("char-value",
-			"Characteristics Value Read arguments",
-			"Show all Characteristics Value Read arguments",
-			NULL, NULL);
-	g_option_context_add_group(context, char_value_read_group);
-	g_option_group_add_entries(char_value_read_group,
-						char_value_read_options);
+	/* Characteristics value/descriptor read arguments */
+	char_read_group = g_option_group_new("char-read",
+		"Characteristics Value/Descriptor Read arguments",
+		"Show all Characteristics Value/Descriptor Read arguments",
+		NULL, NULL);
+	g_option_context_add_group(context, char_read_group);
+	g_option_group_add_entries(char_read_group, char_read_options);
 
 	if (g_option_context_parse(context, &argc, &argv, &gerr) == FALSE) {
 		g_printerr("%s\n", gerr->message);
@@ -436,8 +432,8 @@ int main(int argc, char *argv[])
 		callback = primary;
 	else if (opt_characteristics)
 		callback = characteristics;
-	else if (opt_char_value_read)
-		callback = characteristics_value;
+	else if (opt_char_read)
+		callback = characteristics_read;
 
 	g_idle_add(callback, attrib);
 
