@@ -222,6 +222,80 @@ static uint16_t read_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 	return length;
 }
 
+static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
+{
+	struct attribute *a;
+	struct att_data_list *adl;
+	GSList *l, *info;
+	uint8_t format, last_type = SDP_UUID_UNSPEC;
+	uint16_t length, num;
+	int i;
+
+	if (start > end || start == 0x0000)
+		return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, start,
+					ATT_ECODE_INVALID_HANDLE, pdu, len);
+
+	for (l = database, info = NULL, num = 0; l; l = l->next) {
+		a = l->data;
+
+		if (a->handle < start)
+			continue;
+
+		if (a->handle > end)
+			break;
+
+		if (last_type == SDP_UUID_UNSPEC)
+			last_type = a->uuid.type;
+
+		if (a->uuid.type != last_type)
+			break;
+
+		info = g_slist_append(info, a);
+		num++;
+
+		last_type = a->uuid.type;
+	}
+
+	if (info == NULL)
+		return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, start,
+					ATT_ECODE_ATTR_NOT_FOUND, pdu, len);
+
+	if (last_type == SDP_UUID16) {
+		length = 2;
+		format = 0x01;
+	} else if (last_type == SDP_UUID128) {
+		length = 16;
+		format = 0x02;
+	}
+
+	adl = g_new0(struct att_data_list, 1);
+	adl->len = length + 2;	/* Length of each element */
+	adl->num = num;		/* Number of primary or secondary services */
+	adl->data = g_malloc(num * sizeof(uint8_t *));
+
+	for (i = 0, l = info; l; i++, l = l->next) {
+		uint16_t *u16;
+
+		adl->data[i] = g_malloc(adl->len);
+		u16 = (void *) adl->data[i];
+		a = l->data;
+
+		/* Attribute Handle */
+		*u16 = htobs(a->handle);
+		u16++;
+
+		/* Attribute Value */
+		memcpy(u16, &a->uuid.value, length);
+	}
+
+	length = enc_find_info_resp(format, adl, pdu, len);
+
+	att_data_list_free(adl);
+	g_slist_free(info);
+
+	return length;
+}
+
 static int handle_cmp(struct attribute *a, uint16_t *handle)
 {
 	return a->handle - *handle;
@@ -293,6 +367,14 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 		break;
 	case ATT_OP_MTU_REQ:
 	case ATT_OP_FIND_INFO_REQ:
+		length = dec_find_info_req(ipdu, len, &start, &end);
+		if (length == 0) {
+			status = ATT_ECODE_INVALID_PDU;
+			goto done;
+		}
+
+		length = find_info(start, end, opdu, sizeof(opdu));
+		break;
 	case ATT_OP_FIND_BY_TYPE_REQ:
 	case ATT_OP_READ_BLOB_REQ:
 	case ATT_OP_READ_MULTI_REQ:
