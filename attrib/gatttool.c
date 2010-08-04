@@ -265,27 +265,30 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		return;
 
 	for (i = 0; i < list->num; i++) {
-		uint16_t *u16, length;
-		uint8_t *data;
-		int j;
+		uint16_t *u16;
+		uint8_t *u8;
 
-		u16 = (uint16_t *) list->data[i];
-
-		/* Each element contains: handle and attribute value */
-		length = list->len - sizeof(*u16);
+		u8 = list->data[i];
+		u16 = (uint16_t *) u8;
 		last = btohs(*u16);
-		u16++;
+		u16 = (void *) &u8[3];
 
-		data = (uint8_t *)u16;
-		g_print("handle = 0x%04x, length = %d, ", last, length);
-		g_print("permission = %02x, char value handle = %02x %02x, ",
-					*data, *(data + 1), *(data + 2));
+		g_print("handle = 0x%04x, char properties = 0x%02x, "
+			"char value handle = 0x%04x, ", last, u8[2],
+			btohs(*u16));
+
 		g_print("uuid = ");
-		for (j = 3; j < length; j++) {
-			data = (uint8_t *)u16 + j;
-			g_print("%02x ", *data);
+		if (list->len == 7) {
+			u16 = (void *) &u8[5];
+			g_print("0x%04x\n", btohs(*u16));
+		} else {
+			int j;
+
+			/* FIXME: pretty print 128-bit UUIDs */
+			for (j = 5; j < list->len; j++)
+				g_print("%02x ", u8[j]);
+			g_print("\n");
 		}
-		g_print("\n");
 	}
 
 	att_data_list_free(list);
