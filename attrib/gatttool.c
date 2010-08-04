@@ -235,28 +235,14 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		g_printerr("Discovery primary failed\n");
 
 done:
-	g_attrib_unref(attrib);
 	g_main_loop_quit(event_loop);
 }
 
 static gboolean primary(gpointer user_data)
 {
-	guint atid;
-	GIOChannel *chan;
-	GAttrib *attrib;
+	GAttrib *attrib = user_data;
 
-	chan = do_connect();
-	if (chan == NULL) {
-		g_main_loop_quit(event_loop);
-		return FALSE;
-	}
-
-	attrib = g_attrib_new(chan);
-
-	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb,
-								attrib);
-	if (atid == 0)
-		g_attrib_unref(attrib);
+	gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, attrib);
 
 	return FALSE;
 }
@@ -312,34 +298,22 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 						char_discovered_cb, char_data);
 
 done:
-	g_attrib_unref(char_data->attrib);
 	g_free(char_data);
 	g_main_loop_quit(event_loop);
 }
 
 static gboolean characteristics(gpointer user_data)
 {
+	GAttrib *attrib = user_data;
 	struct characteristic_data *char_data;
-	GAttrib *attrib;
-	GIOChannel *chan;
-	guint atid;
 
-	chan = do_connect();
-	if (chan == NULL) {
-		g_main_loop_quit(event_loop);
-		return FALSE;
-	}
-
-	attrib = g_attrib_new(chan);
 	char_data = g_new(struct characteristic_data, 1);
 	char_data->attrib = attrib;
 	char_data->start = opt_start;
 	char_data->end = opt_end;
 
-	atid = gatt_discover_char(attrib, opt_start, opt_end,
-						char_discovered_cb, char_data);
-	if (atid == 0)
-		g_attrib_unref(attrib);
+	gatt_discover_char(attrib, opt_start, opt_end, char_discovered_cb,
+								char_data);
 
 	return FALSE;
 }
@@ -347,7 +321,6 @@ static gboolean characteristics(gpointer user_data)
 static void char_value_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
-	GAttrib *attrib = user_data;
 	uint8_t value[ATT_MTU];
 	int i, vlen;
 
@@ -366,22 +339,12 @@ static void char_value_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	g_print("\n");
 
 done:
-	g_attrib_unref(attrib);
 	g_main_loop_quit(event_loop);
 }
 
 static gboolean characteristics_value(gpointer user_data)
 {
-	GIOChannel *chan;
-	GAttrib *attrib;
-
-	chan = do_connect();
-	if (chan == NULL) {
-		g_main_loop_quit(event_loop);
-		return FALSE;
-	}
-
-	attrib = g_attrib_new(chan);
+	GAttrib *attrib = user_data;
 
 	gatt_read_char(attrib, opt_handle, char_value_cb, attrib);
 
@@ -427,6 +390,8 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 	GOptionGroup *gatt_group, *params_group, *char_value_read_group;
 	GError *gerr = NULL;
+	GAttrib *attrib;
+	GIOChannel *chan;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -461,18 +426,25 @@ int main(int argc, char *argv[])
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 
+	chan = do_connect();
+	if (chan == NULL)
+		return 1;
+	attrib = g_attrib_new(chan);
+
 	if (opt_primary)
-		g_idle_add(primary, NULL);
+		g_idle_add(primary, attrib);
 
 	if (opt_characteristics)
-		g_idle_add(characteristics, NULL);
+		g_idle_add(characteristics, attrib);
 
 	if (opt_char_value_read)
-		g_idle_add(characteristics_value, NULL);
+		g_idle_add(characteristics_value, attrib);
 
 	g_main_loop_run(event_loop);
 
 	g_option_context_free(context);
+
+	g_attrib_unref(attrib);
 
 	return 0;
 }
