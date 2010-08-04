@@ -446,13 +446,17 @@ static GSList *string_to_primary_list(char *gatt_path, const char *str)
 		int ret;
 
 		prim = g_new0(struct primary, 1);
-		prim->path = g_strdup_printf("%s/service%04x", gatt_path,
-								prim->start);
 
 		ret = sscanf(services[i], "%04hX#%04hX#%s", &prim->start,
 							&prim->end, uuidstr);
-		if (ret < 3)
+
+		if (ret < 3) {
+			g_free(prim);
 			continue;
+		}
+
+		prim->path = g_strdup_printf("%s/service%04x", gatt_path,
+								prim->start);
 
 		bt_string2uuid(&prim->uuid, uuidstr);
 
