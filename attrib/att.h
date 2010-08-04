@@ -144,3 +144,10 @@ uint16_t enc_read_resp(uint8_t *value, int vlen, uint8_t *pdu, int len);
 uint16_t dec_read_resp(const uint8_t *pdu, int len, uint8_t *value, int *vlen);
 uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
 							uint8_t *pdu, int len);
+uint16_t enc_find_info_req(uint16_t start, uint16_t end, uint8_t *pdu, int len);
+uint16_t dec_find_info_req(const uint8_t *pdu, int len, uint16_t *start,
+								uint16_t *end);
+uint16_t enc_find_info_resp(uint8_t format, struct att_data_list *list,
+							uint8_t *pdu, int len);
+struct att_data_list *dec_find_info_resp(const uint8_t *pdu, int len,
+							uint8_t *format);

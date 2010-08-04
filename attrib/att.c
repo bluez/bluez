@@ -383,3 +383,110 @@ uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
 
 	return 5;
 }
+
+uint16_t enc_find_info_req(uint16_t start, uint16_t end, uint8_t *pdu, int len)
+{
+	uint16_t *p16;
+
+	if (pdu == NULL)
+		return 0;
+
+	if (len < 5)
+		return 0;
+
+	pdu[0] = ATT_OP_FIND_INFO_REQ;
+	p16 = (void *) &pdu[1];
+	*p16 = htobs(start);
+	p16++;
+	*p16 = htobs(end);
+
+	return 5;
+}
+
+uint16_t dec_find_info_req(const uint8_t *pdu, int len, uint16_t *start,
+								uint16_t *end)
+{
+	uint16_t *p16;
+
+	if (pdu == NULL)
+		return 0;
+
+	if (len < 5)
+		return 0;
+
+	if (start == NULL || end == NULL)
+		return 0;
+
+	if (pdu[0] != ATT_OP_FIND_INFO_REQ)
+		return 0;
+
+	p16 = (void *) &pdu[1];
+	*start = btohs(*p16);
+	p16++;
+	*end = btohs(*p16);
+
+	return 5;
+}
+
+uint16_t enc_find_info_resp(uint8_t format, struct att_data_list *list,
+							uint8_t *pdu, int len)
+{
+	uint8_t *ptr;
+	int i, w;
+
+	if (pdu == NULL)
+		return 0;
+
+	if (list == NULL || len < 2)
+		return 0;
+
+	pdu[0] = ATT_OP_FIND_INFO_RESP;
+	pdu[1] = format;
+	ptr = (void *) &pdu[2];
+
+	for (i = 0, w = 2; i < list->num && w < len; i++, w += list->len) {
+		memcpy(ptr, list->data[i], list->len);
+		ptr += list->len;
+	}
+
+	return w;
+}
+
+struct att_data_list *dec_find_info_resp(const uint8_t *pdu, int len,
+							uint8_t *format)
+{
+	struct att_data_list *list;
+	uint8_t *ptr;
+	int i;
+
+	if (pdu == NULL)
+		return 0;
+
+	if (format == NULL)
+		return 0;
+
+	if (pdu[0] != ATT_OP_FIND_INFO_RESP)
+		return 0;
+
+	*format = pdu[1];
+
+	list = malloc(sizeof(struct att_data_list));
+
+	if (*format == 0x01)
+		list->len = 4;
+	else if (*format == 0x02)
+		list->len = 18;
+
+	list->num = (len - 2) / list->len;
+	list->data = malloc(sizeof(uint8_t *) * list->num);
+
+	ptr = (void *) &pdu[2];
+
+	for (i = 0; i < list->num; i++) {
+		list->data[i] = malloc(list->len);
+		memcpy(list->data[i], ptr, list->len);
+		ptr += list->len;
+	}
+
+	return list;
+}
