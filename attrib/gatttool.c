@@ -392,6 +392,7 @@ int main(int argc, char *argv[])
 	GError *gerr = NULL;
 	GAttrib *attrib;
 	GIOChannel *chan;
+	GSourceFunc callback;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -432,13 +433,13 @@ int main(int argc, char *argv[])
 	attrib = g_attrib_new(chan);
 
 	if (opt_primary)
-		g_idle_add(primary, attrib);
+		callback = primary;
+	else if (opt_characteristics)
+		callback = characteristics;
+	else if (opt_char_value_read)
+		callback = characteristics_value;
 
-	if (opt_characteristics)
-		g_idle_add(characteristics, attrib);
-
-	if (opt_char_value_read)
-		g_idle_add(characteristics_value, attrib);
+	g_idle_add(callback, attrib);
 
 	g_main_loop_run(event_loop);
 
