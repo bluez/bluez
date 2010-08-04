@@ -115,10 +115,73 @@ static int gatt_path_cmp(const struct gatt_service *gatt, const char *path)
 	return strcmp(gatt->path, path);
 }
 
+static void append_char_dict(DBusMessageIter *iter, struct characteristic *chr)
+{
+	DBusMessageIter dict;
+	const char *name = "";
+	char *uuid;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	uuid = bt_uuid2string(&chr->type);
+	dict_append_entry(&dict, "UUID", DBUS_TYPE_STRING, &uuid);
+	g_free(uuid);
+
+	/* FIXME: Translate UUID to name. */
+	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &name);
+	dict_append_entry(&dict, "Description", DBUS_TYPE_STRING, &name);
+
+	/* FIXME: Missing Format, Value and Representation */
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
 static DBusMessage *get_characteristics(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return dbus_message_new_method_return(msg);
+	struct primary *prim = data;
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+	GSList *l;
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_OBJECT_PATH_AS_STRING
+			DBUS_TYPE_ARRAY_AS_STRING
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &array);
+
+	for (l = prim->chars; l; l = l->next) {
+		struct characteristic *chr = l->data;
+		DBusMessageIter sub;
+
+		DBG("path %s", chr->path);
+
+		dbus_message_iter_open_container(&array, DBUS_TYPE_DICT_ENTRY,
+								NULL, &sub);
+
+		dbus_message_iter_append_basic(&sub, DBUS_TYPE_OBJECT_PATH,
+								&chr->path);
+
+		append_char_dict(&sub, chr);
+
+		dbus_message_iter_close_container(&array, &sub);
+	}
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return reply;
 }
 
 static DBusMessage *register_watcher(DBusConnection *conn,
@@ -148,9 +211,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	struct characteristic *chr = data;
 	DBusMessage *reply;
 	DBusMessageIter iter;
-	DBusMessageIter dict;
-	const char *name = "";
-	char *uuid;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -158,22 +218,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &iter);
 
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	uuid = bt_uuid2string(&chr->type);
-	dict_append_entry(&dict, "UUID", DBUS_TYPE_STRING, &uuid);
-	g_free(uuid);
-
-	/* FIXME: Translate UUID to name. */
-	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &name);
-	dict_append_entry(&dict, "Description", DBUS_TYPE_STRING, &name);
-
-	/* FIXME: Missing Format, Value and Representation */
-
-	dbus_message_iter_close_container(&iter, &dict);
+	append_char_dict(&iter, chr);
 
 	return reply;
 }
