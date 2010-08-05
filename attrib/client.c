@@ -58,6 +58,14 @@ struct gatt_service {
 	guint atid;
 };
 
+struct format {
+	guint8 format;
+	guint8 exponent;
+	guint16 unit;
+	guint8 namespace;
+	guint16 desc;
+} __attribute__ ((packed));
+
 struct characteristic {
 	char *path;
 	uint16_t handle;
@@ -66,6 +74,9 @@ struct characteristic {
 	uuid_t type;
 	char *name;
 	char *desc;
+	struct format *format;
+	uint8_t *value;
+	int vlen;
 };
 
 struct primary {
@@ -95,6 +106,10 @@ static void characteristic_free(void *user_data)
 	struct characteristic *chr = user_data;
 
 	g_free(chr->path);
+	g_free(chr->desc);
+	g_free(chr->format);
+	g_free(chr->value);
+	g_free(chr->name);
 	g_free(chr);
 }
 
@@ -139,7 +154,14 @@ static void append_char_dict(DBusMessageIter *iter, struct characteristic *chr)
 
 	/* FIXME: Translate UUID to name. */
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &name);
-	dict_append_entry(&dict, "Description", DBUS_TYPE_STRING, &name);
+
+	if (chr->desc)
+		dict_append_entry(&dict, "Description", DBUS_TYPE_STRING,
+								&chr->desc);
+
+	if (chr->value)
+		dict_append_array(&dict, "Value", DBUS_TYPE_BYTE, &chr->value,
+								chr->vlen);
 
 	/* FIXME: Missing Format, Value and Representation */
 
@@ -373,16 +395,76 @@ static void load_characteristics(gpointer data, gpointer user_data)
 	return;
 }
 
+static void update_char_desc(guint8 status, const guint8 *pdu,
+					guint16 len, gpointer user_data)
+{
+	struct characteristic *chr = user_data;
+
+	if (status != 0)
+		return;
+
+	g_free(chr->desc);
+
+	chr->desc = g_malloc(len);
+	memcpy(chr->desc, pdu + 1, len - 1);
+	chr->desc[len - 1] = '\0';
+}
+
+static void update_char_format(guint8 status, const guint8 *pdu,
+					guint16 len, gpointer user_data)
+{
+	struct characteristic *chr = user_data;
+
+	if (status != 0)
+		return;
+
+	if (len < 8)
+		return;
+
+	g_free(chr->format);
+
+	chr->format = g_new0(struct format, 1);
+	memcpy(chr->format, pdu + 1, 7);
+}
+
+static void update_char_value(guint8 status, const guint8 *pdu,
+					guint16 len, gpointer user_data)
+{
+	struct characteristic *chr = user_data;
+
+	if (status != 0)
+		return;
+
+	g_free(chr->value);
+
+	chr->vlen = len - 1;
+	chr->value = g_malloc(chr->vlen);
+	memcpy(chr->value, pdu + 1, chr->vlen);
+}
+
+static int uuid_desc16_cmp(uuid_t *uuid, guint16 desc)
+{
+	uuid_t u16;
+
+	sdp_uuid16_create(&u16, desc);
+
+	return sdp_uuid_cmp(uuid, &u16);
+}
+
 static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	struct descriptor_data *current = user_data;
+	struct gatt_service *gatt = current->gatt;
+	struct characteristic *chr = current->chr;
 	struct att_data_list *list;
 	guint8 format;
 	int i;
 
-	if (status != 0)
-		goto fail;
+	if (status != 0) {
+		g_free(current);
+		return;
+	}
 
 	DBG("Find Information Response received");
 
@@ -404,12 +486,22 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		if (format == 0x01) {
 			u16 = (void *) &info[2];
 			sdp_uuid16_create(&uuid, btohs(*u16));
-		}
+		} else
+			continue;
 
-		/* FIXME: do something useful here */
+		if (uuid_desc16_cmp(&uuid, GATT_CHARAC_USER_DESC_UUID) == 0)
+			gatt_read_char(gatt->attrib, handle,
+					update_char_desc, chr);
+
+		else if (uuid_desc16_cmp(&uuid, GATT_CHARAC_FMT_UUID) == 0)
+			gatt_read_char(gatt->attrib, handle,
+					update_char_format, chr);
+
+		gatt_read_char(gatt->attrib, chr->handle, update_char_value,
+									chr);
 	}
 
-fail:
+	att_data_list_free(list);
 	g_free(current);
 }
 
