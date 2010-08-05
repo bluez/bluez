@@ -64,6 +64,8 @@ struct characteristic {
 	uint16_t end;
 	uint8_t perm;
 	uuid_t type;
+	char *name;
+	char *desc;
 };
 
 struct primary {
@@ -77,6 +79,11 @@ struct primary {
 struct discovered_data {
 	struct gatt_service *gatt;
 	struct primary *prim;
+};
+
+struct descriptor_data {
+	struct gatt_service *gatt;
+	struct characteristic *chr;
 };
 
 static GSList *services = NULL;
@@ -366,6 +373,60 @@ static void load_characteristics(gpointer data, gpointer user_data)
 	return;
 }
 
+static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct descriptor_data *current = user_data;
+	struct att_data_list *list;
+	guint8 format;
+	int i;
+
+	if (status != 0)
+		goto fail;
+
+	DBG("Find Information Response received");
+
+	list = dec_find_info_resp(pdu, plen, &format);
+	if (list == NULL) {
+		g_free(current);
+		return;
+	}
+
+	for (i = 0; i < list->num; i++) {
+		guint16 handle;
+		uuid_t uuid;
+		guint16 *u16;
+		uint8_t *info = list->data[i];
+
+		u16 = (void *) info;
+		handle = btohs(*u16);
+
+		if (format == 0x01) {
+			u16 = (void *) &info[2];
+			sdp_uuid16_create(&uuid, btohs(*u16));
+		}
+
+		/* FIXME: do something useful here */
+	}
+
+fail:
+	g_free(current);
+}
+
+static void find_all_descriptors(gpointer data, gpointer user_data)
+{
+	struct descriptor_data *current;
+	struct characteristic *chr = data;
+	struct gatt_service *gatt = user_data;
+
+	current = g_new0(struct descriptor_data, 1);
+	current->gatt = gatt;
+	current->chr = chr;
+
+	gatt_find_info(gatt->attrib, chr->handle, chr->end, descriptor_cb,
+								current);
+}
+
 static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
@@ -379,6 +440,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
 		store_characteristics(gatt, prim);
 		register_characteristics(prim);
+
+		g_slist_foreach(prim->chars, find_all_descriptors, gatt);
 		g_free(current);
 		return;
 	}
