@@ -1060,7 +1060,7 @@ static void adapter_update_devices(struct btd_adapter *adapter)
 
 	emit_array_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Devices",
-					DBUS_TYPE_OBJECT_PATH, &devices);
+					DBUS_TYPE_OBJECT_PATH, &devices, i);
 	g_free(devices);
 }
 
@@ -1078,7 +1078,7 @@ static void adapter_emit_uuids_updated(struct btd_adapter *adapter)
 	}
 
 	emit_array_property_changed(connection, adapter->path,
-			ADAPTER_INTERFACE, "UUIDs", DBUS_TYPE_STRING, &uuids);
+			ADAPTER_INTERFACE, "UUIDs", DBUS_TYPE_STRING, &uuids, i);
 
 	g_strfreev(uuids);
 }

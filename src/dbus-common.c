@@ -204,7 +204,8 @@ static void append_variant(DBusMessageIter *iter, int type, void *val)
 	dbus_message_iter_close_container(iter, &value);
 }
 
-static void append_array_variant(DBusMessageIter *iter, int type, void *val)
+static void append_array_variant(DBusMessageIter *iter, int type, void *val,
+							int n_elements)
 {
 	DBusMessageIter variant, array;
 	char type_sig[2] = { type, '\0' };
@@ -218,7 +219,7 @@ static void append_array_variant(DBusMessageIter *iter, int type, void *val)
 	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
 						type_sig, &array);
 
-	for (i = 0; (*str_array)[i]; i++)
+	for (i = 0; i < n_elements; i++)
 		dbus_message_iter_append_basic(&array, type,
 						&((*str_array)[i]));
 
@@ -258,7 +259,7 @@ void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
 
-	append_array_variant(&entry, type, val);
+	append_array_variant(&entry, type, val, n_elements);
 
 	dbus_message_iter_close_container(dict, &entry);
 }
@@ -293,7 +294,7 @@ dbus_bool_t emit_array_property_changed(DBusConnection *conn,
 					const char *path,
 					const char *interface,
 					const char *name,
-					int type, void *value)
+					int type, void *value, int num)
 {
 	DBusMessage *signal;
 	DBusMessageIter iter;
@@ -310,7 +311,7 @@ dbus_bool_t emit_array_property_changed(DBusConnection *conn,
 
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
 
-	append_array_variant(&iter, type, value);
+	append_array_variant(&iter, type, value, num);
 
 	return g_dbus_send_message(conn, signal);
 }

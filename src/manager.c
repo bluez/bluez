@@ -248,18 +248,19 @@ static void manager_update_adapters(void)
 	int i;
 
 	array = g_new0(char *, g_slist_length(adapters) + 1);
-	for (i = 0, list = adapters; list; list = list->next, i++) {
+	for (i = 0, list = adapters; list; list = list->next) {
 		struct btd_adapter *adapter = list->data;
 
 		if (!adapter_is_ready(adapter))
 			continue;
 
 		array[i] = (char *) adapter_get_path(adapter);
+		i++;
 	}
 
 	emit_array_property_changed(connection, "/",
 					MANAGER_INTERFACE, "Adapters",
-					DBUS_TYPE_OBJECT_PATH, &array);
+					DBUS_TYPE_OBJECT_PATH, &array, i);
 
 	g_free(array);
 }
