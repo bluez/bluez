@@ -58,6 +58,7 @@ static gboolean opt_characteristics = FALSE;
 static gboolean opt_char_read = FALSE;
 static gboolean opt_listen = FALSE;
 static guint listen_watch = 0;
+static gboolean opt_char_desc = FALSE;
 static GMainLoop *event_loop;
 
 struct characteristic_data {
@@ -383,6 +384,11 @@ static gboolean characteristics_read(gpointer user_data)
 	return FALSE;
 }
 
+static gboolean characteristics_desc(gpointer user_data)
+{
+	return FALSE;
+}
+
 static GOptionEntry primary_char_options[] = {
 	{ "start", 's' , 0, G_OPTION_ARG_INT, &opt_start,
 		"Starting handle(optional)", "0x0001" },
@@ -404,6 +410,8 @@ static GOptionEntry gatt_options[] = {
 		"Characteristics Discovery", NULL },
 	{ "char-read", 0, 0, G_OPTION_ARG_NONE, &opt_char_read,
 		"Characteristics Value/Descriptor Read", NULL },
+	{ "char-desc", 0, 0, G_OPTION_ARG_NONE, &opt_char_desc,
+		"Characteristics Descriptor Discovery", NULL },
 	{ "listen", 0, 0, G_OPTION_ARG_NONE, &opt_listen,
 		"Listen for notifications", NULL },
 	{ NULL },
@@ -465,6 +473,8 @@ int main(int argc, char *argv[])
 		callback = characteristics;
 	else if (opt_char_read)
 		callback = characteristics_read;
+	else if (opt_char_desc)
+		callback = characteristics_desc;
 	else {
 		gchar *help = g_option_context_get_help(context, TRUE, NULL);
 		g_print("%s\n", help);
