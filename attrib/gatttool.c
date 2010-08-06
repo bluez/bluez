@@ -394,6 +394,7 @@ int main(int argc, char *argv[])
 	GAttrib *attrib;
 	GIOChannel *chan;
 	GSourceFunc callback;
+	int ret = 0;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -425,27 +426,39 @@ int main(int argc, char *argv[])
 		g_error_free(gerr);
 	}
 
-	event_loop = g_main_loop_new(NULL, FALSE);
-
-	chan = do_connect();
-	if (chan == NULL)
-		return 1;
-	attrib = g_attrib_new(chan);
-
 	if (opt_primary)
 		callback = primary;
 	else if (opt_characteristics)
 		callback = characteristics;
 	else if (opt_char_read)
 		callback = characteristics_read;
+	else {
+		gchar *help = g_option_context_get_help(context, TRUE, NULL);
+		g_print("%s\n", help);
+		g_free(help);
+		ret = 1;
+		goto done;
+	}
+
+	chan = do_connect();
+	if (chan == NULL) {
+		ret = 1;
+		goto done;
+	}
+
+	attrib = g_attrib_new(chan);
+
+	event_loop = g_main_loop_new(NULL, FALSE);
 
 	g_idle_add(callback, attrib);
 
 	g_main_loop_run(event_loop);
-
-	g_option_context_free(context);
+	g_main_loop_unref(event_loop);
 
 	g_attrib_unref(attrib);
 
-	return 0;
+done:
+	g_option_context_free(context);
+
+	return ret;
 }
