@@ -58,7 +58,7 @@ extern "C" {
 
 /* HCI controller types */
 #define HCI_BREDR	0x00
-#define HCI_80211	0x01
+#define HCI_AMP		0x01
 
 /* HCI device flags */
 enum {
