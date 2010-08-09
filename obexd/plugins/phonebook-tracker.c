@@ -76,7 +76,7 @@
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?h . "				\
 	"} "								\
-	"}"
+	"} GROUP BY ?c"
 
 #define MISSED_CALLS_QUERY						\
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
