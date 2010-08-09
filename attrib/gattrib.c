@@ -83,21 +83,6 @@ static gboolean is_response(guint8 opcode)
 	return opcode % 2 == 1;
 }
 
-GAttrib *g_attrib_new(GIOChannel *io)
-{
-	struct _GAttrib *attrib;
-
-	g_io_channel_set_encoding(io, NULL, NULL);
-
-	attrib = g_new0(struct _GAttrib, 1);
-	attrib->io = g_io_channel_ref(io);
-	attrib->refs = 1;
-	attrib->mtu = 512;
-	attrib->queue = g_queue_new();
-
-	return attrib;
-}
-
 GAttrib *g_attrib_ref(GAttrib *attrib)
 {
 	if (!attrib)
@@ -236,12 +221,6 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond, gpointer data)
 		return TRUE;
 	}
 
-	if (attrib->read_watch == 0)
-		attrib->read_watch = g_io_add_watch_full(attrib->io,
-			G_PRIORITY_DEFAULT,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			received_data, attrib, destroy_receiver);
-
 	return FALSE;
 }
 
@@ -260,6 +239,26 @@ static void wake_up_sender(struct _GAttrib *attrib)
 			G_PRIORITY_DEFAULT,
 			G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			can_write_data, attrib, destroy_sender);
+}
+
+GAttrib *g_attrib_new(GIOChannel *io)
+{
+	struct _GAttrib *attrib;
+
+	g_io_channel_set_encoding(io, NULL, NULL);
+
+	attrib = g_new0(struct _GAttrib, 1);
+	attrib->io = g_io_channel_ref(io);
+	attrib->refs = 1;
+	attrib->mtu = 512;
+	attrib->queue = g_queue_new();
+
+	attrib->read_watch = g_io_add_watch_full(attrib->io,
+			G_PRIORITY_DEFAULT,
+			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+			received_data, attrib, destroy_receiver);
+
+	return attrib;
 }
 
 guint g_attrib_send(GAttrib *attrib, guint8 opcode, const guint8 *pdu,
@@ -316,12 +315,6 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode,
 	event->user_data = user_data;
 	event->notify = notify;
 	event->id = ++attrib->next_evt_id;
-
-	if (attrib->read_watch == 0)
-		attrib->read_watch = g_io_add_watch_full(attrib->io,
-			G_PRIORITY_DEFAULT,
-			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			received_data, attrib, destroy_receiver);
 
 	attrib->events = g_slist_append(attrib->events, event);
 
