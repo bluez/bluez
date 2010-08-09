@@ -348,7 +348,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = bluez.pc
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-udevrules
+DISTCHECK_CONFIGURE_FLAGS = --disable-udevrules --enable-attrib
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
