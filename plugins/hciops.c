@@ -85,7 +85,7 @@ static void device_devup_setup(int index)
 	if (hci_devinfo(index, &di) < 0)
 		return;
 
-	if (hci_test_bit(HCI_RAW, &di.flags))
+	if (ignore_device(&di))
 		return;
 
 	dd = hci_open_dev(index);
@@ -122,6 +122,7 @@ static void device_devup_setup(int index)
 static void init_device(int index)
 {
 	struct hci_dev_req dr;
+	struct hci_dev_info di;
 	pid_t pid;
 	int dd, err;
 
@@ -159,12 +160,17 @@ static void init_device(int index)
 					index, strerror(err), err);
 	}
 
-	/* Set link policy */
-	dr.dev_opt = main_opts.link_policy;
-	if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0 &&
+	/* Set link policy for BR/EDR HCI devices */
+	if (hci_devinfo(index, &di) < 0)
+		goto fail;
+
+	if (!ignore_device(&di)) {
+		dr.dev_opt = main_opts.link_policy;
+		if (ioctl(dd, HCISETLINKPOL, (unsigned long) &dr) < 0 &&
 							errno != ENETDOWN) {
-		error("Can't set link policy on hci%d: %s (%d)",
-					index, strerror(errno), errno);
+			error("Can't set link policy on hci%d: %s (%d)",
+						index, strerror(errno), errno);
+		}
 	}
 
 	/* Start HCI device */
@@ -196,7 +202,7 @@ static void device_devreg_setup(int index)
 
 	devup = hci_test_bit(HCI_UP, &di.flags);
 
-	if (!hci_test_bit(HCI_RAW, &di.flags))
+	if (!ignore_device(&di))
 		manager_register_adapter(index, devup);
 }
 

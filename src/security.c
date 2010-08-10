@@ -999,7 +999,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 
 	ioctl(dev, HCIGETDEVINFO, (void *) di);
 
-	if (hci_test_bit(HCI_RAW, &di->flags))
+	if (ignore_device(di))
 		return TRUE;
 
 	switch (eh->evt) {
@@ -1185,7 +1185,7 @@ void start_security_manager(int hdev)
 	io_data[hdev].channel = chan;
 	io_data[hdev].pin_length = -1;
 
-	if (hci_test_bit(HCI_RAW, &di->flags))
+	if (ignore_device(di))
 		return;
 
 	bacpy(&cp.bdaddr, BDADDR_ANY);

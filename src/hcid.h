@@ -23,6 +23,9 @@
  *
  */
 
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+
 /* When all services should trust a remote device */
 #define GLOBAL_TRUST "[all]"
 
@@ -99,3 +102,8 @@ void rfkill_exit(void);
 
 void __probe_servers(const char *adapter);
 void __remove_servers(const char *adapter);
+
+static inline int ignore_device(struct hci_dev_info *di)
+{
+	return hci_test_bit(HCI_RAW, &di->flags) || di->type >> 4 != HCI_BREDR;
+}
