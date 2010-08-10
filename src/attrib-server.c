@@ -233,7 +233,7 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 	int i;
 
 	if (start > end || start == 0x0000)
-		return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, start,
+		return enc_error_resp(ATT_OP_FIND_INFO_REQ, start,
 					ATT_ECODE_INVALID_HANDLE, pdu, len);
 
 	for (l = database, info = NULL, num = 0; l; l = l->next) {
@@ -258,7 +258,7 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 	}
 
 	if (info == NULL)
-		return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, start,
+		return enc_error_resp(ATT_OP_FIND_INFO_REQ, start,
 					ATT_ECODE_ATTR_NOT_FOUND, pdu, len);
 
 	if (last_type == SDP_UUID16) {
