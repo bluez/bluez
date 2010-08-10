@@ -384,8 +384,55 @@ static gboolean characteristics_read(gpointer user_data)
 	return FALSE;
 }
 
+static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct att_data_list *list;
+	guint8 format;
+	int i;
+
+	if (status != 0) {
+		g_printerr("Discover all characteristic descriptors failed: "
+						"%s\n", att_ecode2str(status));
+		goto done;
+	}
+
+	list = dec_find_info_resp(pdu, plen, &format);
+	if (list == NULL)
+		goto done;
+
+	for (i = 0; i < list->num; i++) {
+		char uuidstr[MAX_LEN_UUID_STR];
+		uint16_t handle;
+		uint8_t *value;
+		uuid_t uuid;
+
+		value = list->data[i];
+		handle = att_get_u16((uint16_t *) value);
+
+		if (format == 0x01)
+			sdp_uuid16_create(&uuid, att_get_u16((uint16_t *)
+								&value[2]));
+		else
+			sdp_uuid128_create(&uuid, &value[2]);
+
+		sdp_uuid2strn(&uuid, uuidstr, MAX_LEN_UUID_STR);
+		g_print("handle = 0x%04x, uuid = %s\n", handle, uuidstr);
+	}
+
+	att_data_list_free(list);
+
+done:
+	if (opt_listen == FALSE)
+		g_main_loop_quit(event_loop);
+}
+
 static gboolean characteristics_desc(gpointer user_data)
 {
+	GAttrib *attrib = user_data;
+
+	gatt_find_info(attrib, opt_start, opt_end, char_desc_cb, NULL);
+
 	return FALSE;
 }
 
