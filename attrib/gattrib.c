@@ -140,15 +140,41 @@ GAttrib *g_attrib_ref(GAttrib *attrib)
 	return attrib;
 }
 
+static void command_destroy(struct command *cmd)
+{
+	if (cmd->notify)
+		cmd->notify(cmd->user_data);
+
+	g_free(cmd->pdu);
+	g_free(cmd);
+}
+
+static void event_destroy(struct event *evt)
+{
+	if (evt->notify)
+		evt->notify(evt->user_data);
+
+	g_free(evt);
+}
+
 void g_attrib_unref(GAttrib *attrib)
 {
+	GSList *l;
+	struct command *c;
+
 	if (!attrib)
 		return;
 
 	if (g_atomic_int_dec_and_test(&attrib->refs) == FALSE)
 		return;
 
-	g_queue_free(attrib->queue);
+	while ((c = g_queue_pop_head(attrib->queue)))
+		command_destroy(c);
+
+	for (l = attrib->events; l; l = l->next)
+		event_destroy(l->data);
+
+	g_slist_free(attrib->events);
 
 	if (attrib->read_watch > 0)
 		g_source_remove(attrib->read_watch);
@@ -166,15 +192,6 @@ static void destroy_receiver(gpointer data)
 	struct _GAttrib *attrib = data;
 
 	attrib->read_watch = 0;
-}
-
-static void command_destroy(struct command *cmd)
-{
-	if (cmd->notify)
-		cmd->notify(cmd->user_data);
-
-	g_free(cmd->pdu);
-	g_free(cmd);
 }
 
 static void wake_up_sender(struct _GAttrib *attrib);
