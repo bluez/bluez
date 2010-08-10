@@ -84,7 +84,6 @@ static int l2cap_connect(void)
 			hci_devba(atoi(opt_src + 3), &sba);
 		else
 			str2ba(opt_src, &sba);
-		g_free(opt_src);
 	} else
 		bacpy(&sba, BDADDR_ANY);
 
@@ -231,6 +230,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	 */
 	gatt_discover_primary(attrib, end + 1, opt_end, primary_cb, attrib);
 
+	return;
+
 done:
 	g_main_loop_quit(event_loop);
 }
@@ -297,6 +298,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	/* Fetch remaining characteristics for the CURRENT primary service */
 	gatt_discover_char(char_data->attrib, last + 1, char_data->end,
 						char_discovered_cb, char_data);
+
+	return;
 
 done:
 	g_free(char_data);
@@ -455,10 +458,13 @@ int main(int argc, char *argv[])
 	g_main_loop_run(event_loop);
 	g_main_loop_unref(event_loop);
 
+	g_io_channel_unref(chan);
 	g_attrib_unref(attrib);
 
 done:
 	g_option_context_free(context);
+	g_free(opt_src);
+	g_free(opt_dst);
 
 	return ret;
 }
