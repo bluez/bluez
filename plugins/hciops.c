@@ -122,7 +122,6 @@ static void device_devup_setup(int index)
 static void init_device(int index)
 {
 	struct hci_dev_req dr;
-	struct hci_dev_info di;
 	pid_t pid;
 	int dd, err;
 
@@ -175,13 +174,6 @@ static void init_device(int index)
 		goto fail;
 	}
 
-	if (hci_devinfo(index, &di) < 0)
-		goto fail;
-
-	if (hci_test_bit(HCI_RAW, &di.flags))
-		goto done;
-
-done:
 	hci_close_dev(dd);
 	exit(0);
 
