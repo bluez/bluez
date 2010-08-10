@@ -66,21 +66,67 @@ struct event {
 
 static guint8 opcode2expected(guint8 opcode)
 {
-	/* These opcodes don't require response */
-	if (opcode == ATT_OP_HANDLE_NOTIFY ||
-			opcode == ATT_OP_SIGNED_WRITE_CMD)
-		return 0;
+	switch (opcode) {
+	case ATT_OP_MTU_REQ:
+		return ATT_OP_MTU_RESP;
 
-	/* Nothing expected, already a response */
-	if (opcode % 2)
-		return 0;
+	case ATT_OP_FIND_INFO_REQ:
+		return ATT_OP_FIND_INFO_RESP;
 
-	return opcode | 1;
+	case ATT_OP_FIND_BY_TYPE_REQ:
+		return ATT_OP_FIND_BY_TYPE_RESP;
+
+	case ATT_OP_READ_BY_TYPE_REQ:
+		return ATT_OP_READ_BY_TYPE_RESP;
+
+	case ATT_OP_READ_REQ:
+		return ATT_OP_READ_RESP;
+
+	case ATT_OP_READ_BLOB_REQ:
+		return ATT_OP_READ_BLOB_RESP;
+
+	case ATT_OP_READ_MULTI_REQ:
+		return ATT_OP_READ_MULTI_RESP;
+
+	case ATT_OP_READ_BY_GROUP_REQ:
+		return ATT_OP_READ_BY_GROUP_RESP;
+
+	case ATT_OP_WRITE_REQ:
+		return ATT_OP_WRITE_RESP;
+
+	case ATT_OP_PREP_WRITE_REQ:
+		return ATT_OP_PREP_WRITE_RESP;
+
+	case ATT_OP_EXEC_WRITE_REQ:
+		return ATT_OP_EXEC_WRITE_RESP;
+
+	case ATT_OP_HANDLE_IND:
+		return ATT_OP_HANDLE_CNF;
+	}
+
+	return 0;
 }
 
 static gboolean is_response(guint8 opcode)
 {
-	return opcode % 2 == 1;
+	switch (opcode) {
+	case ATT_OP_ERROR:
+	case ATT_OP_MTU_RESP:
+	case ATT_OP_FIND_INFO_RESP:
+	case ATT_OP_FIND_BY_TYPE_RESP:
+	case ATT_OP_READ_BY_TYPE_RESP:
+	case ATT_OP_READ_RESP:
+	case ATT_OP_READ_BLOB_RESP:
+	case ATT_OP_READ_MULTI_RESP:
+	case ATT_OP_READ_BY_GROUP_RESP:
+	case ATT_OP_WRITE_RESP:
+	case ATT_OP_PREP_WRITE_RESP:
+	case ATT_OP_EXEC_WRITE_RESP:
+	case ATT_OP_HANDLE_CNF:
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 GAttrib *g_attrib_ref(GAttrib *attrib)
