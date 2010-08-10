@@ -51,6 +51,7 @@ struct command {
 	guint8 *pdu;
 	guint16 len;
 	guint8 expected;
+	gboolean sent;
 	GAttribResultFunc func;
 	gpointer user_data;
 	GDestroyNotify notify;
@@ -167,6 +168,15 @@ static void destroy_receiver(gpointer data)
 	attrib->read_watch = 0;
 }
 
+static void command_destroy(struct command *cmd)
+{
+	if (cmd->notify)
+		cmd->notify(cmd->user_data);
+
+	g_free(cmd->pdu);
+	g_free(cmd);
+}
+
 static void wake_up_sender(struct _GAttrib *attrib);
 
 static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
@@ -219,14 +229,11 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	status = 0;
 
 done:
-	if (cmd && cmd->func) {
-		cmd->func(status, buf, len, cmd->user_data);
+	if (cmd) {
+		if (cmd->func)
+			cmd->func(status, buf, len, cmd->user_data);
 
-		if (cmd->notify)
-			cmd->notify(cmd->user_data);
-
-		g_free(cmd->pdu);
-		g_free(cmd);
+		command_destroy(cmd);
 	}
 
 	if (g_queue_is_empty(attrib->queue) == FALSE)
@@ -257,19 +264,16 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	g_io_channel_flush(io, NULL);
 
 	if (cmd->expected == 0) {
-		if (cmd->notify)
-			cmd->notify(cmd->user_data);
-
 		g_queue_pop_head(attrib->queue);
+		command_destroy(cmd);
 
-		g_free(cmd->pdu);
-		g_free(cmd);
 		return TRUE;
 	}
 
+	cmd->sent = TRUE;
+
 	return FALSE;
 }
-
 
 static void destroy_sender(gpointer data)
 {
@@ -332,13 +336,64 @@ guint g_attrib_send(GAttrib *attrib, guint8 opcode, const guint8 *pdu,
 	return c->id;
 }
 
+static gint command_cmp_by_id(gconstpointer a, gconstpointer b)
+{
+	const struct command *cmd = a;
+	guint id = GPOINTER_TO_UINT(b);
+
+	return cmd->id - id;
+}
+
 gboolean g_attrib_cancel(GAttrib *attrib, guint id)
 {
+	GList *l;
+	struct command *cmd;
+
+	if (attrib == NULL || attrib->queue == NULL)
+		return FALSE;
+
+	l = g_queue_find_custom(attrib->queue, GUINT_TO_POINTER(id),
+							command_cmp_by_id);
+	if (l == NULL)
+		return FALSE;
+
+	cmd = l->data;
+
+	if (cmd == g_queue_peek_head(attrib->queue) && cmd->sent)
+		cmd->func = NULL;
+	else {
+		g_queue_remove(attrib->queue, cmd);
+		command_destroy(cmd);
+	}
+
 	return TRUE;
 }
 
 gboolean g_attrib_cancel_all(GAttrib *attrib)
 {
+	struct command *c, *head = NULL;
+	gboolean first = TRUE;
+
+	if (attrib == NULL || attrib->queue == NULL)
+		return FALSE;
+
+	while ((c = g_queue_pop_head(attrib->queue))) {
+		if (first && c->sent) {
+			/* If the command was sent ignore its callback ... */
+			c->func = NULL;
+			head = c;
+			continue;
+		}
+
+		first = FALSE;
+		command_destroy(c);
+	}
+
+	if (head) {
+		/* ... and put it back in the queue */
+		g_queue_push_head(attrib->queue, head);
+	}
+
 	return TRUE;
 }
 
