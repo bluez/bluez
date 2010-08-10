@@ -497,16 +497,13 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		else if (uuid_desc16_cmp(&uuid, GATT_CHARAC_FMT_UUID) == 0)
 			gatt_read_char(gatt->attrib, handle,
 					update_char_format, chr);
-
-		gatt_read_char(gatt->attrib, chr->handle, update_char_value,
-									chr);
 	}
 
 	att_data_list_free(list);
 	g_free(current);
 }
 
-static void find_all_descriptors(gpointer data, gpointer user_data)
+static void update_all_chars(gpointer data, gpointer user_data)
 {
 	struct descriptor_data *current;
 	struct characteristic *chr = data;
@@ -518,6 +515,7 @@ static void find_all_descriptors(gpointer data, gpointer user_data)
 
 	gatt_find_info(gatt->attrib, chr->handle + 1, chr->end, descriptor_cb,
 								current);
+	gatt_read_char(gatt->attrib, chr->handle, update_char_value, chr);
 }
 
 static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -534,7 +532,7 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		store_characteristics(gatt, prim);
 		register_characteristics(prim);
 
-		g_slist_foreach(prim->chars, find_all_descriptors, gatt);
+		g_slist_foreach(prim->chars, update_all_chars, gatt);
 		g_free(current);
 		return;
 	}
