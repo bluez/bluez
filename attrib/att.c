@@ -378,8 +378,7 @@ uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
 	u16 = htobs(handle);
 	pdu[0] = ATT_OP_ERROR;
 	pdu[1] = opcode;
-	pdu[2] = u16 >> 8;
-	pdu[3] = u16;
+	memcpy(&pdu[2], &u16, sizeof(u16));
 	pdu[4] = status;
 
 	return 5;
