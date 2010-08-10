@@ -516,7 +516,7 @@ static void find_all_descriptors(gpointer data, gpointer user_data)
 	current->gatt = gatt;
 	current->chr = chr;
 
-	gatt_find_info(gatt->attrib, chr->handle, chr->end, descriptor_cb,
+	gatt_find_info(gatt->attrib, chr->handle + 1, chr->end, descriptor_cb,
 								current);
 }
 
