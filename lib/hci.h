@@ -2108,6 +2108,63 @@ typedef struct {
 } __attribute__ ((packed)) evt_le_long_term_key_request;
 #define EVT_LE_LTK_REQUEST_SIZE 12
 
+#define EVT_PHYSICAL_LINK_COMPLETE		0x40
+typedef struct {
+	uint8_t		status;
+	uint8_t		handle;
+} __attribute__ ((packed)) evt_physical_link_complete;
+#define EVT_PHYSICAL_LINK_COMPLETE_SIZE 2
+
+#define EVT_CHANNEL_SELECTED		0x41
+
+#define EVT_DISCONNECT_PHYSICAL_LINK_COMPLETE	0x42
+typedef struct {
+	uint8_t		status;
+	uint8_t		handle;
+	uint8_t		reason;
+} __attribute__ ((packed)) evt_disconn_physical_link_complete;
+#define EVT_DISCONNECT_PHYSICAL_LINK_COMPLETE_SIZE 3
+
+#define EVT_PHYSICAL_LINK_LOSS_EARLY_WARNING	0x43
+typedef struct {
+	uint8_t		handle;
+	uint8_t		reason;
+} __attribute__ ((packed)) evt_physical_link_loss_warning;
+#define EVT_PHYSICAL_LINK_LOSS_WARNING_SIZE 2
+
+#define EVT_PHYSICAL_LINK_RECOVERY		0x44
+typedef struct {
+	uint8_t		handle;
+} __attribute__ ((packed)) evt_physical_link_recovery;
+#define EVT_PHYSICAL_LINK_RECOVERY_SIZE 1
+
+#define EVT_LOGICAL_LINK_COMPLETE		0x45
+typedef struct {
+	uint8_t		status;
+	uint16_t	log_handle;
+	uint8_t		handle;
+	uint8_t		tx_flow_id;
+} __attribute__ ((packed)) evt_logical_link_complete;
+#define EVT_LOGICAL_LINK_COMPLETE_SIZE 5
+
+#define EVT_DISCONNECT_LOGICAL_LINK_COMPLETE	0x46
+
+#define EVT_FLOW_SPEC_MODIFY_COMPLETE		0x47
+typedef struct {
+	uint8_t		status;
+	uint16_t	handle;
+} __attribute__ ((packed)) evt_flow_spec_modify_complete;
+#define EVT_FLOW_SPEC_MODIFY_COMPLETE_SIZE 3
+
+#define EVT_NUMBER_COMPLETED_BLOCKS		0x48
+
+#define EVT_AMP_STATUS_CHANGE			0x4D
+typedef struct {
+	uint8_t		status;
+	uint8_t		amp_status;
+} __attribute__ ((packed)) evt_amp_status_change;
+#define EVT_AMP_STATUS_CHANGE_SIZE 2
+
 #define EVT_TESTING			0xFE
 
 #define EVT_VENDOR			0xFF
