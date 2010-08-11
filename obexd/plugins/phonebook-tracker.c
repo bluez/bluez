@@ -620,6 +620,7 @@ static GString *gen_vcards(GSList *contacts,
 
 		g_free(c_data->id);
 		phonebook_contact_free(c_data->contact);
+		g_free(c_data);
 	}
 
 	return vcards;
