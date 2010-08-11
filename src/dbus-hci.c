@@ -746,8 +746,7 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	else if (!bonding && old_key_type == 0xff)
 		hcid_dbus_bonding_process_complete(local, peer, 0);
 
-	if (temporary)
-		device_set_temporary(device, TRUE);
+	device_set_temporary(device, temporary);
 
 	return 0;
 }
