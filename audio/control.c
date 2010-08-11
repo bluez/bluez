@@ -437,7 +437,7 @@ static void avctp_set_state(struct control *control, avctp_state_t new_state)
 {
 	GSList *l;
 	struct audio_device *dev = control->dev;
-	avdtp_session_state_t old_state = control->state;
+	avctp_state_t old_state = control->state;
 	gboolean value;
 
 	switch (new_state) {
