@@ -66,7 +66,7 @@ void device_set_secmode3_conn(struct btd_device *device, gboolean enable);
 DBusMessage *device_create_bonding(struct btd_device *device,
 				DBusConnection *conn, DBusMessage *msg,
 				const char *agent_path, uint8_t capability);
-void device_remove_bondind(struct btd_device *device, DBusConnection *connection);
+void device_remove_bonding(struct btd_device *device);
 void device_bonding_complete(struct btd_device *device, uint8_t status);
 void device_simple_pairing_complete(struct btd_device *device, uint8_t status);
 gboolean device_is_creating(struct btd_device *device, const char *sender);

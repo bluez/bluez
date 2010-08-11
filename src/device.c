@@ -1056,7 +1056,7 @@ void device_get_name(struct btd_device *device, char *name, size_t len)
 	strncpy(name, device->name, len);
 }
 
-static void device_remove_bonding(struct btd_device *device)
+void device_remove_bonding(struct btd_device *device)
 {
 	char filename[PATH_MAX + 1];
 	char srcaddr[18], dstaddr[18];

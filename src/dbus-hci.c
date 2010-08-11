@@ -700,6 +700,13 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	/* Clear any previous debug key */
 	device_set_debug_key(device, NULL);
 
+	/* If this is not the first link key set a flag so a subsequent auth
+	 * complete event doesn't trigger SDP and remove any stored key */
+	if (old_key_type != 0xff) {
+		device_set_renewed_key(device, TRUE);
+		device_remove_bonding(device);
+	}
+
 	/* Store the link key only in runtime memory if it's a debug
 	 * key, else store the link key persistently if one of the
 	 * following is true:
@@ -733,11 +740,6 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 		}
 	} else
 		temporary = TRUE;
-
-	/* If this is not the first link key set a flag so a subsequent auth
-	 * complete event doesn't trigger SDP */
-	if (old_key_type != 0xff)
-		device_set_renewed_key(device, TRUE);
 
 	if (!device_is_connected(device))
 		device_set_secmode3_conn(device, TRUE);
