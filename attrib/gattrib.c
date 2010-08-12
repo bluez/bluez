@@ -333,7 +333,10 @@ GAttrib *g_attrib_new(GIOChannel *io)
 
 	g_io_channel_set_encoding(io, NULL, NULL);
 
-	attrib = g_new0(struct _GAttrib, 1);
+	attrib = g_try_new0(struct _GAttrib, 1);
+	if (attrib == NULL)
+		return NULL;
+
 	attrib->io = g_io_channel_ref(io);
 	attrib->refs = 1;
 	attrib->mtu = 512;
@@ -353,7 +356,10 @@ guint g_attrib_send(GAttrib *attrib, guint8 opcode, const guint8 *pdu,
 {
 	struct command *c;
 
-	c = g_new0(struct command, 1);
+	c = g_try_new0(struct command, 1);
+	if (c == NULL)
+		return 0;
+
 	c->opcode = opcode;
 	c->expected = opcode2expected(opcode);
 	c->pdu = g_malloc(len);
@@ -445,7 +451,9 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode,
 {
 	struct event *event;
 
-	event = g_new0(struct event, 1);
+	event = g_try_new0(struct event, 1);
+	if (event == NULL)
+		return 0;
 
 	event->expected = opcode;
 	event->func = func;
