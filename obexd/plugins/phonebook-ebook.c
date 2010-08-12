@@ -152,7 +152,7 @@ static void ebookpull_cb(EBook *book, EBookStatus estatus, GList *contacts,
 	}
 
 	/*
-	 * When MaxListCount s zero, PCE wants to know the number of used
+	 * When MaxListCount is zero, PCE wants to know the number of used
 	 * indexes in the phonebook of interest. All other parameters that
 	 * may be present in the request shall be ignored.
 	 */

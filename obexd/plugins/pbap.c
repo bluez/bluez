@@ -921,7 +921,7 @@ static int pbap_init(void)
 
 	err = obex_service_driver_register(&pbap);
 	if (err < 0)
-			goto fail_pbap_reg;
+		goto fail_pbap_reg;
 
 	return 0;
 
