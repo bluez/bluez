@@ -98,6 +98,11 @@ struct descriptor_data {
 	struct characteristic *chr;
 };
 
+struct desc_fmt_data {
+	struct descriptor_data desc_data;
+	uint16_t handle;
+};
+
 static GSList *services = NULL;
 
 static DBusConnection *connection;
@@ -396,10 +401,35 @@ static void load_characteristics(gpointer data, gpointer user_data)
 	return;
 }
 
+static void store_attribute(struct gatt_service *gatt, uint16_t handle,
+				uint16_t type, uint8_t *value, gsize len)
+{
+	uuid_t uuid;
+	char *str, *uuidstr, *tmp;
+	guint i;
+
+	str = g_malloc0(MAX_LEN_UUID_STR + len * 2 + 1);
+
+	sdp_uuid16_create(&uuid, type);
+	uuidstr = bt_uuid2string(&uuid);
+	strcpy(str, uuidstr);
+	g_free(uuidstr);
+
+	str[MAX_LEN_UUID_STR - 1] = '#';
+
+	for (i = 0, tmp = str + MAX_LEN_UUID_STR; i < len; i++, tmp += 2)
+		sprintf(tmp, "%02X", value[i]);
+
+	write_device_attribute(&gatt->sba, &gatt->dba, handle, str);
+	g_free(str);
+}
+
 static void update_char_desc(guint8 status, const guint8 *pdu,
 					guint16 len, gpointer user_data)
 {
-	struct characteristic *chr = user_data;
+	struct desc_fmt_data *data = user_data;
+	struct gatt_service *gatt = data->desc_data.gatt;
+	struct characteristic *chr = data->desc_data.chr;
 
 	if (status != 0)
 		return;
@@ -409,12 +439,18 @@ static void update_char_desc(guint8 status, const guint8 *pdu,
 	chr->desc = g_malloc(len);
 	memcpy(chr->desc, pdu + 1, len - 1);
 	chr->desc[len - 1] = '\0';
+
+	store_attribute(gatt, data->handle, GATT_CHARAC_USER_DESC_UUID,
+						(void *) chr->desc, len);
+	g_free(data);
 }
 
 static void update_char_format(guint8 status, const guint8 *pdu,
 					guint16 len, gpointer user_data)
 {
-	struct characteristic *chr = user_data;
+	struct desc_fmt_data *data = user_data;
+	struct gatt_service *gatt = data->desc_data.gatt;
+	struct characteristic *chr = data->desc_data.chr;
 
 	if (status != 0)
 		return;
@@ -426,6 +462,10 @@ static void update_char_format(guint8 status, const guint8 *pdu,
 
 	chr->format = g_new0(struct format, 1);
 	memcpy(chr->format, pdu + 1, 7);
+
+	store_attribute(gatt, data->handle, GATT_CHARAC_FMT_UUID,
+				(void *) chr->format, sizeof(*chr->format));
+	g_free(data);
 }
 
 static void update_char_value(guint8 status, const guint8 *pdu,
@@ -457,7 +497,6 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 {
 	struct descriptor_data *current = user_data;
 	struct gatt_service *gatt = current->gatt;
-	struct characteristic *chr = current->chr;
 	struct att_data_list *list;
 	guint8 format;
 	int i;
@@ -479,6 +518,7 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		guint16 handle;
 		uuid_t uuid;
 		uint8_t *info = list->data[i];
+		struct desc_fmt_data *attr_data;
 
 		handle = att_get_u16((uint16_t *) info);
 
@@ -488,13 +528,18 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		} else
 			continue;
 
+		attr_data = g_new0(struct desc_fmt_data, 1);
+		attr_data->desc_data = *current;
+		attr_data->handle = handle;
+
 		if (uuid_desc16_cmp(&uuid, GATT_CHARAC_USER_DESC_UUID) == 0)
 			gatt_read_char(gatt->attrib, handle,
-					update_char_desc, chr);
-
+					update_char_desc, attr_data);
 		else if (uuid_desc16_cmp(&uuid, GATT_CHARAC_FMT_UUID) == 0)
 			gatt_read_char(gatt->attrib, handle,
-					update_char_format, chr);
+					update_char_format, attr_data);
+		else
+			g_free(attr_data);
 	}
 
 	att_data_list_free(list);
