@@ -44,8 +44,6 @@
 
 #define TRACKER_DEFAULT_CONTACT_ME "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#default-contact-me"
 #define CONTACTS_ID_COL 19
-#define PHONE_ID_HOME 0
-#define PHONE_ID_WORK 3
 
 #define CONTACTS_QUERY_ALL						\
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
@@ -697,8 +695,8 @@ add_entry:
 
 add_numbers:
 	/* Adding phone numbers to contact struct */
-	add_phone_number(contact, reply[0], PHONE_ID_HOME);
-	add_phone_number(contact, reply[8], PHONE_ID_WORK);
+	add_phone_number(contact, reply[0], TEL_TYPE_HOME);
+	add_phone_number(contact, reply[8], TEL_TYPE_WORK);
 
 	DBG("contact %p", contact);
 
