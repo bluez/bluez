@@ -175,8 +175,11 @@ static void ebookpull_cb(EBook *book, EBookStatus estatus, GList *contacts,
 						data->params->filter);
 
 		string = g_string_append(string, vcard);
+		string = g_string_append(string, "\r\n");
 		g_free(vcard);
 	}
+	DBG("collected %d vcards", count);
+
 
 done:
 	data->cb(string->str, string->len, count, 0, data->user_data);
