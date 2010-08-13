@@ -188,3 +188,10 @@ struct btd_adapter_ops {
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
 void btd_adapter_cleanup_ops(struct btd_adapter_ops *btd_adapter_ops);
 int adapter_ops_setup(void);
+
+typedef void (*btd_adapter_powered_cb) (struct btd_adapter *adapter,
+						gboolean powered);
+void btd_adapter_register_powered_callback(struct btd_adapter *adapter,
+						btd_adapter_powered_cb cb);
+void btd_adapter_unregister_powered_callback(struct btd_adapter *adapter,
+						btd_adapter_powered_cb cb);

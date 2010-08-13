@@ -135,6 +135,8 @@ struct btd_adapter {
 	gboolean cache_enable;
 
 	gint ref;
+
+	GSList *powered_callbacks;
 };
 
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
@@ -2203,6 +2205,18 @@ static void adapter_disable_cod_cache(struct btd_adapter *adapter)
 		adapter->pending_cod = adapter->wanted_cod;
 }
 
+static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
+						gboolean powered)
+{
+	GSList *l;
+
+	for (l = adapter->powered_callbacks; l; l = l->next) {
+		btd_adapter_powered_cb cb = l->data;
+
+		cb(adapter, powered);
+       }
+}
+
 static int adapter_up(struct btd_adapter *adapter, const char *mode)
 {
 	char srcaddr[18];
@@ -2282,6 +2296,8 @@ proceed:
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
+
+	call_adapter_powered_callbacks(adapter, TRUE);
 
 	adapter_disable_cod_cache(adapter);
 
@@ -2486,6 +2502,8 @@ int adapter_stop(struct btd_adapter *adapter)
 	adapter->state = DISCOVER_TYPE_NONE;
 	adapter->cache_enable = TRUE;
 	adapter->pending_cod = 0;
+
+	call_adapter_powered_callbacks(adapter, FALSE);
 
 	info("Adapter %s has been disabled", adapter->path);
 
@@ -3421,4 +3439,18 @@ int adapter_ops_setup(void)
 		return -EINVAL;
 
 	return adapter_ops->setup();
+}
+
+void btd_adapter_register_powered_callback(struct btd_adapter *adapter,
+						btd_adapter_powered_cb cb)
+{
+	adapter->powered_callbacks =
+			g_slist_append(adapter->powered_callbacks, cb);
+}
+
+void btd_adapter_unregister_powered_callback(struct btd_adapter *adapter,
+						btd_adapter_powered_cb cb)
+{
+	adapter->powered_callbacks =
+			g_slist_remove(adapter->powered_callbacks, cb);
 }
