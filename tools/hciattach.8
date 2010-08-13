@@ -122,7 +122,20 @@ the serial link (
 set by default. To force no flow control use
 .B noflow
 instead.
+.TP
+.I sleep
+Enables hardware specific power management feature. If
+.I sleep
+is appended to the list of options then this feature is enabled. To disable
+this feature use
+.B nosleep
+instead.
+All above mentioned device types have
+.B nosleep
+set by default.
 
+Note: This option will only be valid for hardware which support
+hardware specific power management enable option from host.
 .TP
 .I bdaddr
 The

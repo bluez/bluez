@@ -63,12 +63,15 @@ struct uart_t {
 	int  init_speed;
 	int  speed;
 	int  flags;
+	int  pm;
 	char *bdaddr;
 	int  (*init) (int fd, struct uart_t *u, struct termios *ti);
 	int  (*post) (int fd, struct uart_t *u, struct termios *ti);
 };
 
 #define FLOW_CTL	0x0001
+#define ENABLE_PM	1
+#define DISABLE_PM	0
 
 static volatile sig_atomic_t __io_canceled = 0;
 
@@ -1006,72 +1009,100 @@ static int bcm2035(int fd, struct uart_t *u, struct termios *ti)
 }
 
 struct uart_t uart[] = {
-	{ "any",        0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, NULL     },
-	{ "ericsson",   0x0000, 0x0000, HCI_UART_H4,   57600,  115200, FLOW_CTL, NULL, ericsson },
-	{ "digi",       0x0000, 0x0000, HCI_UART_H4,   9600,   115200, FLOW_CTL, NULL, digi     },
+	{ "any",        0x0000, 0x0000, HCI_UART_H4,   115200, 115200,
+				FLOW_CTL, DISABLE_PM, NULL, NULL     },
 
-	{ "bcsp",       0x0000, 0x0000, HCI_UART_BCSP, 115200, 115200, 0,        NULL, bcsp     },
+	{ "ericsson",   0x0000, 0x0000, HCI_UART_H4,   57600,  115200,
+				FLOW_CTL, DISABLE_PM, NULL, ericsson },
+
+	{ "digi",       0x0000, 0x0000, HCI_UART_H4,   9600,   115200,
+				FLOW_CTL, DISABLE_PM, NULL, digi     },
+
+	{ "bcsp",       0x0000, 0x0000, HCI_UART_BCSP, 115200, 115200,
+				0, DISABLE_PM, NULL, bcsp     },
 
 	/* Xircom PCMCIA cards: Credit Card Adapter and Real Port Adapter */
-	{ "xircom",     0x0105, 0x080a, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, NULL     },
+	{ "xircom",     0x0105, 0x080a, HCI_UART_H4,   115200, 115200,
+				FLOW_CTL, DISABLE_PM,  NULL, NULL     },
 
 	/* CSR Casira serial adapter or BrainBoxes serial dongle (BL642) */
-	{ "csr",        0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, csr      },
+	{ "csr",        0x0000, 0x0000, HCI_UART_H4,   115200, 115200,
+				FLOW_CTL, DISABLE_PM, NULL, csr      },
 
 	/* BrainBoxes PCMCIA card (BL620) */
-	{ "bboxes",     0x0160, 0x0002, HCI_UART_H4,   115200, 460800, FLOW_CTL, NULL, csr      },
+	{ "bboxes",     0x0160, 0x0002, HCI_UART_H4,   115200, 460800,
+				FLOW_CTL, DISABLE_PM, NULL, csr      },
 
 	/* Silicon Wave kits */
-	{ "swave",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, swave    },
+	{ "swave",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200,
+				FLOW_CTL, DISABLE_PM, NULL, swave    },
 
 	/* Texas Instruments Bluelink (BRF) modules */
-	{ "texas",      0x0000, 0x0000, HCI_UART_LL,   115200, 115200, FLOW_CTL, NULL, texas,    texas2 },
-	{ "texasalt",   0x0000, 0x0000, HCI_UART_LL,   115200, 115200, FLOW_CTL, NULL, texasalt, NULL   },
+	{ "texas",      0x0000, 0x0000, HCI_UART_LL,   115200, 115200,
+				FLOW_CTL, DISABLE_PM, NULL, texas,    texas2 },
+
+	{ "texasalt",   0x0000, 0x0000, HCI_UART_LL,   115200, 115200,
+				FLOW_CTL, DISABLE_PM, NULL, texasalt, NULL   },
 
 	/* ST Microelectronics minikits based on STLC2410/STLC2415 */
-	{ "st",         0x0000, 0x0000, HCI_UART_H4,    57600, 115200, FLOW_CTL, NULL, st       },
+	{ "st",         0x0000, 0x0000, HCI_UART_H4,    57600, 115200,
+				FLOW_CTL, DISABLE_PM,  NULL, st       },
 
 	/* ST Microelectronics minikits based on STLC2500 */
-	{ "stlc2500",   0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, "00:80:E1:00:AB:BA", stlc2500 },
+	{ "stlc2500",   0x0000, 0x0000, HCI_UART_H4, 115200, 115200,
+			FLOW_CTL, DISABLE_PM, "00:80:E1:00:AB:BA", stlc2500 },
 
 	/* Philips generic Ericsson IP core based */
-	{ "philips",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, NULL     },
+	{ "philips",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200,
+				FLOW_CTL, DISABLE_PM, NULL, NULL     },
 
 	/* Philips BGB2xx Module */
-	{ "bgb2xx",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, "BD:B2:10:00:AB:BA", bgb2xx },
+	{ "bgb2xx",    0x0000, 0x0000, HCI_UART_H4,   115200, 115200,
+			FLOW_CTL, DISABLE_PM, "BD:B2:10:00:AB:BA", bgb2xx },
 
 	/* Sphinx Electronics PICO Card */
-	{ "picocard",   0x025e, 0x1000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, NULL     },
+	{ "picocard",   0x025e, 0x1000, HCI_UART_H4, 115200, 115200,
+				FLOW_CTL, DISABLE_PM, NULL, NULL     },
 
 	/* Inventel BlueBird Module */
-	{ "inventel",   0x0000, 0x0000, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, NULL     },
+	{ "inventel",   0x0000, 0x0000, HCI_UART_H4, 115200, 115200,
+				FLOW_CTL, DISABLE_PM, NULL, NULL     },
 
 	/* COM One Platinium Bluetooth PC Card */
-	{ "comone",     0xffff, 0x0101, HCI_UART_BCSP, 115200, 115200, 0,        NULL, bcsp     },
+	{ "comone",     0xffff, 0x0101, HCI_UART_BCSP, 115200, 115200,
+				0, DISABLE_PM,  NULL, bcsp     },
 
 	/* TDK Bluetooth PC Card and IBM Bluetooth PC Card II */
-	{ "tdk",        0x0105, 0x4254, HCI_UART_BCSP, 115200, 115200, 0,        NULL, bcsp     },
+	{ "tdk",        0x0105, 0x4254, HCI_UART_BCSP, 115200, 115200,
+				0, DISABLE_PM, NULL, bcsp     },
 
 	/* Socket Bluetooth CF Card (Rev G) */
-	{ "socket",     0x0104, 0x0096, HCI_UART_BCSP, 230400, 230400, 0,        NULL, bcsp     },
+	{ "socket",     0x0104, 0x0096, HCI_UART_BCSP, 230400, 230400,
+				0, DISABLE_PM, NULL, bcsp     },
 
 	/* 3Com Bluetooth Card (Version 3.0) */
-	{ "3com",       0x0101, 0x0041, HCI_UART_H4,   115200, 115200, FLOW_CTL, NULL, csr      },
+	{ "3com",       0x0101, 0x0041, HCI_UART_H4,   115200, 115200,
+				FLOW_CTL, DISABLE_PM, NULL, csr      },
 
 	/* AmbiCom BT2000C Bluetooth PC/CF Card */
-	{ "bt2000c",    0x022d, 0x2000, HCI_UART_H4,    57600, 460800, FLOW_CTL, NULL, csr      },
+	{ "bt2000c",    0x022d, 0x2000, HCI_UART_H4,    57600, 460800,
+				FLOW_CTL, DISABLE_PM, NULL, csr      },
 
 	/* Zoom Bluetooth PCMCIA Card */
-	{ "zoom",       0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        NULL, bcsp     },
+	{ "zoom",       0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200,
+				0, DISABLE_PM, NULL, bcsp     },
 
 	/* Sitecom CN-504 PCMCIA Card */
-	{ "sitecom",    0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        NULL, bcsp     },
+	{ "sitecom",    0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200,
+				0, DISABLE_PM, NULL, bcsp     },
 
 	/* Billionton PCBTC1 PCMCIA Card */
-	{ "billionton", 0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200, 0,        NULL, bcsp     },
+	{ "billionton", 0x0279, 0x950b, HCI_UART_BCSP, 115200, 115200,
+				0, DISABLE_PM, NULL, bcsp     },
 
 	/* Broadcom BCM2035 */
-	{ "bcm2035",    0x0A5C, 0x2035, HCI_UART_H4,   115200, 460800, FLOW_CTL, NULL, bcm2035  },
+	{ "bcm2035",    0x0A5C, 0x2035, HCI_UART_H4,   115200, 460800,
+				FLOW_CTL, DISABLE_PM, NULL, bcm2035  },
 
 	{ NULL, 0 }
 };
@@ -1290,6 +1321,13 @@ int main(int argc, char *argv[])
 			break;
 
 		case 4:
+			if (!strcmp("sleep", argv[optind]))
+				u->pm = ENABLE_PM;
+			else
+				u->pm = DISABLE_PM;
+			break;
+
+		case 5:
 			u->bdaddr = argv[optind];
 			break;
 		}
