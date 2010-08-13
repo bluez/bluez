@@ -295,11 +295,6 @@ static void vcard_printf_end(GString *vcards)
 void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 					uint64_t filter, uint8_t format)
 {
-	/* There's really nothing to do */
-	if ((contact->numbers == NULL && (contact->fullname == NULL ||
-						contact->fullname[0] == '\0')))
-		return;
-
 	if (format == FORMAT_VCARD30)
 		filter |= (FILTER_VERSION | FILTER_FN | FILTER_N | FILTER_TEL);
 	else if (format == FORMAT_VCARD21)
