@@ -30,8 +30,6 @@
 #include <glib.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/un.h>
-#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
@@ -44,7 +42,6 @@
 #include "gattrib.h"
 #include "gatt.h"
 
-#define GATT_UNIX_PATH "/var/run/gatt"
 #define GATT_PSM 27
 
 static gchar *opt_src = NULL;
@@ -52,7 +49,6 @@ static gchar *opt_dst = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
 static int opt_handle = 0x0001;
-static gboolean opt_unix = FALSE;
 static gboolean opt_primary = FALSE;
 static gboolean opt_characteristics = FALSE;
 static gboolean opt_char_read = FALSE;
@@ -127,43 +123,12 @@ static int l2cap_connect(void)
 	return sk;
 }
 
-static int unix_connect(const char *address)
-{
-	struct sockaddr_un addr;
-	int sk, err;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = PF_UNIX;
-	strncpy(addr.sun_path, address, sizeof(addr.sun_path) - 1);
-
-	sk = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (sk < 0) {
-		err = errno;
-		g_printerr("Unix socket(%s) create failed: %s(%d)\n", address,
-							strerror(err), err);
-		return -err;
-	}
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = errno;
-		g_printerr("Unix socket(%s) connect failed: %s(%d)\n", address,
-							strerror(err), err);
-		close(sk);
-		return -err;
-	}
-
-	return sk;
-}
-
 static GIOChannel *do_connect(void)
 {
 	GIOChannel *chan;
 	int sk;
 
-	if (opt_unix)
-		sk = unix_connect(GATT_UNIX_PATH);
-	else
-		sk = l2cap_connect();
+	sk = l2cap_connect();
 	if (sk < 0)
 		return NULL;
 
@@ -465,8 +430,6 @@ static GOptionEntry gatt_options[] = {
 };
 
 static GOptionEntry options[] = {
-	{ "unix", 'u', 0, G_OPTION_ARG_NONE, &opt_unix,
-		"Connect to server using Unix socket" , NULL },
 	{ "adapter", 'i', 0, G_OPTION_ARG_STRING, &opt_src,
 		"Specify local adapter interface", "hciX" },
 	{ "device", 'b', 0, G_OPTION_ARG_STRING, &opt_dst,
