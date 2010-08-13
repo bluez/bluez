@@ -637,6 +637,103 @@ fail:
 	gatt_service_free(gatt);
 }
 
+static void *attr_data_from_string(const char *str)
+{
+	uint8_t *data;
+	int size, i;
+	char tmp[3];
+
+	size = strlen(str) / 2;
+	data = g_try_malloc0(size);
+	if (data == NULL)
+		return NULL;
+
+	tmp[2] = '\0';
+	for (i = 0; i < size; i++) {
+		memcpy(tmp, str + (i * 2), 2);
+		data[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	return data;
+}
+
+static int find_primary(gconstpointer a, gconstpointer b)
+{
+	const struct primary *primary = a;
+	uint16_t handle = GPOINTER_TO_UINT(b);
+
+	if (handle < primary->start)
+		return -1;
+
+	if (handle > primary->end)
+		return -1;
+
+	return 0;
+}
+
+static int find_characteristic(gconstpointer a, gconstpointer b)
+{
+	const struct characteristic *chr = a;
+	uint16_t handle = GPOINTER_TO_UINT(b);
+
+	if (handle < chr->handle)
+		return -1;
+
+	if (handle > chr->end)
+		return -1;
+
+	return 0;
+}
+
+static void load_attribute_data(char *key, char *value, void *data)
+{
+	struct gatt_service *gatt = data;
+	struct characteristic *chr;
+	struct primary *primary;
+	char addr[18], dst[18];
+	uint16_t handle;
+	uuid_t uuid;
+	GSList *l;
+	guint h;
+
+	if (sscanf(key, "%17s#%04hX", addr, &handle) < 2)
+		return;
+
+	ba2str(&gatt->dba, dst);
+
+	if (strcmp(addr, dst) != 0)
+		return;
+
+	h = handle;
+
+	l = g_slist_find_custom(gatt->primary, GUINT_TO_POINTER(h),
+								find_primary);
+	if (!l)
+		return;
+
+	primary = l->data;
+
+	l = g_slist_find_custom(primary->chars, GUINT_TO_POINTER(h),
+							find_characteristic);
+	if (!l)
+		return;
+
+	chr = l->data;
+
+	/* value[] contains "<UUID>#<data>", but bt_string2uuid() expects a
+	 * string containing only the UUID. To avoid creating a new buffer,
+	 * "truncate" the string in place before calling bt_string2uuid(). */
+	value[MAX_LEN_UUID_STR - 1] = '\0';
+	if (bt_string2uuid(&uuid, value) < 0)
+		return;
+
+	/* Fill the characteristic field according to the attribute type. */
+	if (uuid_desc16_cmp(&uuid, GATT_CHARAC_USER_DESC_UUID) == 0)
+		chr->desc = attr_data_from_string(value + MAX_LEN_UUID_STR);
+	else if (uuid_desc16_cmp(&uuid, GATT_CHARAC_FMT_UUID) == 0)
+		chr->format = attr_data_from_string(value + MAX_LEN_UUID_STR);
+}
+
 static char *primary_list_to_string(GSList *primary_list)
 {
 	GString *services;
@@ -743,6 +840,7 @@ static gboolean load_primary_services(struct gatt_service *gatt)
 	register_primary(gatt);
 
 	g_slist_foreach(gatt->primary, load_characteristics, gatt);
+	read_device_attributes(&gatt->sba, load_attribute_data, gatt);
 
 	return TRUE;
 }
