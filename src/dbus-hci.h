@@ -32,6 +32,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle
 void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t status);
 void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t status);
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local);
+void hcid_dbus_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status);
 void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local);
 void hcid_dbus_read_simple_pairing_mode_complete(bdaddr_t *local, void *ptr);
 void hcid_dbus_returned_link_key(bdaddr_t *local, bdaddr_t *peer);

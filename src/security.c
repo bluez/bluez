@@ -586,6 +586,8 @@ static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
 
 	state = adapter_get_state(adapter);
 
+	DBG("adapter->state %#x", state);
+
 	/* Disable name resolution for non D-Bus clients */
 	if (!adapter_has_discov_sessions(adapter))
 		state &= ~RESOLVE_NAME;
@@ -638,17 +640,22 @@ static void inquiry_complete(bdaddr_t *local, uint8_t status, gboolean periodic)
 	 *
 	 * Keep in mind that non D-Bus requests can arrive.
 	 */
+
+	state = adapter_get_state(adapter);
+	DBG("adapter->state %#x", state);
+
 	if (periodic) {
-		state = adapter_get_state(adapter);
 		state &= ~PERIODIC_INQUIRY;
 		adapter_set_state(adapter, state);
 		return;
 	}
 
+	state &= ~STD_INQUIRY;
+	adapter_set_state(adapter, state);
+
 	if (adapter_resolve_names(adapter) == 0)
 		return;
 
-	state = adapter_get_state(adapter);
 	/*
 	 * workaround to identify situation when there is no devices around
 	 * but periodic inquiry is active.
@@ -717,6 +724,9 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
 		inquiry_complete(sba, status, FALSE);
+		break;
+	case cmd_opcode_pack(OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE):
+		hcid_dbus_le_set_scan_enable_complete(sba, status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME):
 		adapter_setname_complete(sba, status);
@@ -986,7 +996,7 @@ static inline void le_metaevent(int dev, bdaddr_t *sba, void *ptr)
 
 	info = (le_advertising_info *) (meta->data + 1);
 	ba2str(&info->bdaddr, addr);
-	DBG("%s\n", addr);
+	hcid_dbus_inquiry_result(sba, &info->bdaddr, 0, 0, NULL);
 }
 
 static void delete_channel(GIOChannel *chan)

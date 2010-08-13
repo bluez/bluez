@@ -1232,9 +1232,32 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 	return adapter_create_device(conn, adapter, address);
 }
 
-static int adapter_start_inquiry(struct btd_adapter *adapter)
+static gboolean stop_inquiry(gpointer user_data)
 {
+	struct btd_adapter *adapter = user_data;
+
+	DBG("");
+
+	adapter_ops->stop_discovery(adapter->dev_id);
+
+	return FALSE;
+}
+
+static gboolean stop_scanning(gpointer user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	adapter_ops->stop_scanning(adapter->dev_id);
+
+	return FALSE;
+}
+
+static int start_discovery(struct btd_adapter *adapter)
+{
+	struct hci_dev *dev = &adapter->dev;
 	gboolean periodic = TRUE;
+	GSourceFunc stop;
+	int err;
 
 	/* Do not start if suspended */
 	if (adapter->state & SUSPENDED_INQUIRY)
@@ -1245,7 +1268,23 @@ static int adapter_start_inquiry(struct btd_adapter *adapter)
 
 	pending_remote_name_cancel(adapter);
 
-	return adapter_ops->start_discovery(adapter->dev_id, periodic);
+	/* BR/EDR only? */
+	if (!(dev->features[4] & LMP_LE))
+		return adapter_ops->start_discovery(adapter->dev_id, periodic);
+
+	/* Dual mode or LE only */
+	if (dev->features[4] & LMP_NO_BREDR) {
+		err = adapter_ops->start_scanning(adapter->dev_id);
+		stop = stop_scanning;
+	} else {
+		err = adapter_ops->start_discovery(adapter->dev_id, FALSE);
+		stop = stop_inquiry;
+	}
+
+	if (err == 0)
+		g_timeout_add(5120, stop, adapter);
+
+	return err;
 }
 
 static DBusMessage *adapter_start_discovery(DBusConnection *conn,
@@ -1271,7 +1310,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	if (main_opts.name_resolv)
 		adapter->state |= RESOLVE_NAME;
 
-	err = adapter_start_inquiry(adapter);
+	err = start_discovery(adapter);
 	if (err < 0)
 		return failed_strerror(msg, -err);
 
@@ -1376,7 +1415,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 				DBUS_TYPE_UINT32, &adapter->pairable_timeout);
 
 
-	if (adapter->state & PERIODIC_INQUIRY || adapter->state & STD_INQUIRY)
+	if (adapter->state & (PERIODIC_INQUIRY | STD_INQUIRY | LE_SCAN))
 		value = TRUE;
 	else
 		value = FALSE;
@@ -2391,12 +2430,6 @@ static void reply_pending_requests(struct btd_adapter *adapter)
 			device_cancel_bonding(device,
 						HCI_OE_USER_ENDED_CONNECTION);
 	}
-
-	if (adapter->state & STD_INQUIRY || adapter->state & PERIODIC_INQUIRY) {
-		/* Cancel inquiry initiated by D-Bus client */
-		if (adapter->disc_sessions)
-			adapter_ops->stop_discovery(adapter->dev_id);
-	}
 }
 
 static void unload_drivers(struct btd_adapter *adapter)
@@ -2626,17 +2659,23 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	if (adapter->state == state)
 		return;
 
-	if (state & PERIODIC_INQUIRY || state & STD_INQUIRY)
-		discov_active = TRUE;
+	if (adapter->state & STD_INQUIRY) {
+		if (adapter_ops->start_scanning(adapter->dev_id) < 0)
+			return;
+
+		g_timeout_add(5120, stop_scanning, adapter);
+	}
+
+	discov_active = state & (PERIODIC_INQUIRY | STD_INQUIRY | LE_SCAN)
+					? TRUE : FALSE;
+
+	if (discov_active == FALSE)
+		adapter_update_oor_devices(adapter);
 	else if (adapter->disc_sessions && main_opts.discov_interval)
 		adapter->scheduler_id = g_timeout_add_seconds(
 						main_opts.discov_interval,
-						(GSourceFunc) adapter_start_inquiry,
+						(GSourceFunc) start_discovery,
 						adapter);
-
-	/* Send out of range */
-	if (!discov_active)
-		adapter_update_oor_devices(adapter);
 
 	emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discovering",
@@ -3146,7 +3185,7 @@ void adapter_resume_discovery(struct btd_adapter *adapter)
 	DBG("Resuming discovery");
 
 	adapter->state &= ~SUSPENDED_INQUIRY;
-	adapter_start_inquiry(adapter);
+	start_discovery(adapter);
 }
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)

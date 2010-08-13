@@ -35,7 +35,8 @@
 #define DISCOVER_TYPE_NONE	0x00
 #define STD_INQUIRY		0x01
 #define PERIODIC_INQUIRY	0x02
-#define SUSPENDED_INQUIRY	0x04
+#define LE_SCAN			0x04
+#define SUSPENDED_INQUIRY	0x08
 
 /* Actions executed after inquiry complete */
 #define RESOLVE_NAME		0x10

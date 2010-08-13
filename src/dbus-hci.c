@@ -388,7 +388,9 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	struct remote_dev_info *dev, match;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
+#if 0
 	int state;
+#endif
 	dbus_bool_t legacy;
 	unsigned char features[8];
 
@@ -404,7 +406,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 	if (data)
 		write_remote_eir(local, peer, data);
-
+#if 0
+	/* FIXME: Use HCI flags to identify this scenario */
 	/*
 	 * workaround to identify situation when the daemon started and
 	 * a standard inquiry or periodic inquiry was already running
@@ -415,7 +418,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		state |= PERIODIC_INQUIRY;
 		adapter_set_state(adapter, state);
 	}
-
+#endif
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
@@ -728,6 +731,33 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 		return;
 
 	btd_adapter_read_scan_enable(adapter);
+}
+
+void hcid_dbus_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
+{
+	struct btd_adapter *adapter;
+	int state;
+
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("No matching adapter found");
+		return;
+	}
+
+	if (status) {
+		error("Can't enabled/disable LE scan");
+		return;
+	}
+
+	state = adapter_get_state(adapter);
+
+	/* Enabling or disabling ? */
+	if (state == LE_SCAN)
+		state &= ~LE_SCAN;
+	else
+		state |= LE_SCAN;
+
+	adapter_set_state(adapter, state);
 }
 
 void hcid_dbus_read_simple_pairing_mode_complete(bdaddr_t *local, void *ptr)
