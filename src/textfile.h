@@ -36,7 +36,8 @@ int textfile_casedel(const char *pathname, const char *key);
 char *textfile_get(const char *pathname, const char *key);
 char *textfile_caseget(const char *pathname, const char *key);
 
-int textfile_foreach(const char *pathname,
-		void (*func)(char *key, char *value, void *data), void *data);
+typedef void (*textfile_cb) (char *key, char *value, void *data);
+
+int textfile_foreach(const char *pathname, textfile_cb func, void *data);
 
 #endif /* __TEXTFILE_H */
