@@ -96,7 +96,7 @@
 	"} GROUP BY ?c"
 
 #define MISSED_CALLS_QUERY						\
-	"SELECT ?v nco:fullname(?c) "					\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
@@ -115,10 +115,6 @@
 		"?h a nco:FaxNumber ; "					\
 		"nco:phoneNumber ?f . "					\
 		"}"							\
-		"OPTIONAL {"						\
-		"?h a nco:VoicePhoneNumber ; "				\
-		"nco:phoneNumber ?v"					\
-		"} "							\
 	"} "								\
 	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
 	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
@@ -143,7 +139,7 @@
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define INCOMING_CALLS_QUERY						\
-	"SELECT ?v nco:fullname(?c) "					\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
@@ -162,10 +158,6 @@
 		"?h a nco:FaxNumber ; "					\
 		"nco:phoneNumber ?f . "					\
 		"}"							\
-		"OPTIONAL {"						\
-		"?h a nco:VoicePhoneNumber ; "				\
-		"nco:phoneNumber ?v"					\
-		"} "							\
 	"} "								\
 	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
 	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
@@ -190,7 +182,7 @@
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define OUTGOING_CALLS_QUERY						\
-	"SELECT ?v nco:fullname(?c) "					\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
@@ -208,10 +200,6 @@
 		"?h a nco:FaxNumber ; "					\
 		"nco:phoneNumber ?f . "					\
 		"}"							\
-		"OPTIONAL {"						\
-		"?h a nco:VoicePhoneNumber ; "				\
-		"nco:phoneNumber ?v"					\
-		"} "							\
 	"} "								\
 	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
 	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
@@ -235,7 +223,7 @@
 	"} ORDER BY DESC(nmo:sentDate(?call))"
 
 #define COMBINED_CALLS_QUERY						\
-	"SELECT ?v nco:fullname(?c) "					\
+	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
 	"nco:nameFamily(?c) nco:nameGiven(?c) "				\
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
@@ -254,10 +242,6 @@
 		"?h a nco:FaxNumber ; "					\
 		"nco:phoneNumber ?f . "					\
 		"}"							\
-		"OPTIONAL {"						\
-		"?h a nco:VoicePhoneNumber ; "				\
-		"nco:phoneNumber ?v"					\
-		"} "							\
 	"} "								\
 		"OPTIONAL { ?c nco:hasEmailAddress ?e . } "		\
 		"OPTIONAL { ?c nco:hasPostalAddress ?p . } "		\
@@ -275,10 +259,6 @@
 		"?h a nco:FaxNumber ; "					\
 		"nco:phoneNumber ?f . "					\
 		"}"							\
-		"OPTIONAL {"						\
-		"?h a nco:VoicePhoneNumber ; "				\
-		"nco:phoneNumber ?v"					\
-		"} "							\
 	"} "								\
 		"OPTIONAL { ?c nco:hasEmailAddress ?e . } "		\
 		"OPTIONAL { ?c nco:hasPostalAddress ?p . } "		\
