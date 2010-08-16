@@ -238,7 +238,7 @@ static gboolean create_tty(struct dun_server *server)
 {
 	struct dun_client *client = &server->client;
 	struct rfcomm_dev_req req;
-	int dev, sk = g_io_channel_unix_get_fd(client->io);
+	int sk = g_io_channel_unix_get_fd(client->io);
 
 	memset(&req, 0, sizeof(req));
 	req.dev_id = -1;
@@ -251,13 +251,14 @@ static gboolean create_tty(struct dun_server *server)
 			BT_IO_OPT_DEST_CHANNEL, &req.channel,
 			BT_IO_OPT_INVALID);
 
-	dev = ioctl(sk, RFCOMMCREATEDEV, &req);
-	if (dev < 0) {
+	client->tty_id = ioctl(sk, RFCOMMCREATEDEV, &req);
+	if (client->tty_id < 0) {
 		error("Can't create RFCOMM TTY: %s", strerror(errno));
 		return FALSE;
 	}
 
-	snprintf(client->tty_name, PATH_MAX - 1, "/dev/rfcomm%d", dev);
+	snprintf(client->tty_name, PATH_MAX - 1, "/dev/rfcomm%d",
+							client->tty_id);
 
 	client->tty_tries = TTY_TRIES;
 
