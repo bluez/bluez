@@ -43,11 +43,13 @@
 #define MCE_SIGNAL_IF			"com.nokia.mce.signal"
 #define MCE_REQUEST_PATH		"/com/nokia/mce/request"
 #define MCE_SIGNAL_PATH			"/com/nokia/mce/signal"
+#define MCE_RADIO_STATES_CHANGE_REQ	"req_radio_states_change"
 #define MCE_RADIO_STATES_GET		"get_radio_states"
 #define MCE_RADIO_STATES_SIG		"radio_states_ind"
 
 static guint watch_id;
 static DBusConnection *conn = NULL;
+static gboolean mce_bt_set = FALSE;
 
 static gboolean mce_signal_callback(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
@@ -66,7 +68,11 @@ static gboolean mce_signal_callback(DBusConnection *connection,
 		dbus_message_iter_get_basic(&args, &sigvalue);
 		DBG("got signal with value %u", sigvalue);
 
-		if (sigvalue & MCE_RADIO_STATE_BLUETOOTH)
+		/* set the adapter according to the mce signal
+		   and remember the value */
+		mce_bt_set = sigvalue & MCE_RADIO_STATE_BLUETOOTH;
+
+		if (mce_bt_set)
 			btd_adapter_switch_online(adapter);
 		else
 			btd_adapter_switch_offline(adapter);
@@ -102,11 +108,46 @@ static void read_radio_states_cb(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	if (radio_states & MCE_RADIO_STATE_BLUETOOTH)
+	DBG("radio_states: %d", radio_states);
+
+	mce_bt_set = radio_states & MCE_RADIO_STATE_BLUETOOTH;
+
+	if (mce_bt_set)
 		btd_adapter_switch_online(adapter);
+	else
+		btd_adapter_switch_offline(adapter);
 
 done:
 	dbus_message_unref(reply);
+}
+
+static void adapter_powered(struct btd_adapter *adapter, gboolean powered)
+{
+	DBusMessage *msg;
+	dbus_uint32_t radio_states = 0;
+	dbus_uint32_t radio_mask = MCE_RADIO_STATE_BLUETOOTH;
+
+	DBG("adapter_powered called with %d", powered);
+
+	/* nothing to do if the states match */
+	if (mce_bt_set == powered)
+		return;
+
+	/* set the mce value according to the state of the adapter */
+	msg = dbus_message_new_method_call(MCE_SERVICE, MCE_REQUEST_PATH,
+				MCE_REQUEST_IF, MCE_RADIO_STATES_CHANGE_REQ);
+
+	if (powered)
+		radio_states = MCE_RADIO_STATE_BLUETOOTH;
+
+	dbus_message_append_args(msg, DBUS_TYPE_UINT32, &radio_states,
+				DBUS_TYPE_UINT32, &radio_mask,
+				DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send(conn, msg, NULL))
+		error("calling %s failed", MCE_RADIO_STATES_CHANGE_REQ);
+
+	dbus_message_unref(msg);
 }
 
 static int mce_probe(struct btd_adapter *adapter)
@@ -132,6 +173,9 @@ static int mce_probe(struct btd_adapter *adapter)
 	watch_id = g_dbus_add_signal_watch(conn, NULL, MCE_SIGNAL_PATH,
 					MCE_SIGNAL_IF, MCE_RADIO_STATES_SIG,
 					mce_signal_callback, adapter, NULL);
+
+	btd_adapter_register_powered_callback(adapter, adapter_powered);
+
 	return 0;
 }
 
@@ -141,6 +185,8 @@ static void mce_remove(struct btd_adapter *adapter)
 
 	if (watch_id > 0)
 		g_dbus_remove_watch(conn, watch_id);
+
+	btd_adapter_unregister_powered_callback(adapter, adapter_powered);
 }
 
 static struct btd_adapter_driver mce_driver = {
