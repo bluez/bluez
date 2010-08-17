@@ -54,7 +54,7 @@ static const uint8_t SYNCML_TARGET[SYNCML_TARGET_SIZE] = {
 			0x53, 0x59, 0x4E, 0x43, 0x4D, 0x4C, 0x2D, 0x53,
 			0x59, 0x4E, 0x43 };
 
-#define SYNCEVOLUTION_CHANNEL  16
+#define SYNCEVOLUTION_CHANNEL  19
 
 #define SYNCEVOLUTION_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\
 <record>								\
