@@ -155,6 +155,26 @@ static gboolean contact_fields_present(struct phonebook_contact * contact)
 	return FALSE;
 }
 
+static gboolean address_fields_present(struct phonebook_contact *contact)
+{
+	if (contact->pobox && strlen(contact->pobox))
+		return TRUE;
+	if (contact->extended && strlen(contact->extended))
+		return TRUE;
+	if (contact->street && strlen(contact->street))
+		return TRUE;
+	if (contact->locality && strlen(contact->locality))
+		return TRUE;
+	if (contact->region && strlen(contact->region))
+		return TRUE;
+	if (contact->postal && strlen(contact->postal))
+		return TRUE;
+	if (contact->country && strlen(contact->country))
+		return TRUE;
+
+	return FALSE;
+}
+
 static void vcard_printf_name(GString *vcards,
 					struct phonebook_contact *contact)
 {
@@ -253,6 +273,11 @@ static void vcard_printf_email(GString *vcards, const char *email)
 
 static void vcard_printf_adr(GString *vcards, struct phonebook_contact *contact)
 {
+	if (address_fields_present(contact) == FALSE) {
+		vcard_printf(vcards, "ADR:");
+		return;
+	}
+
 	vcard_printf(vcards, "ADR:%s;%s;%s;%s;%s;%s;%s", contact->pobox,
 					contact->extended, contact->street,
 					contact->locality, contact->region,
