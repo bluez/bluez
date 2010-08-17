@@ -237,7 +237,7 @@ struct capability_object {
 	int pid;
 	int output;
 	int err;
-	unsigned int watch;
+	gboolean aborted;
 	GString *buffer;
 };
 
@@ -247,9 +247,19 @@ static void script_exited(GPid pid, int status, void *data)
 	char buf[128];
 
 	object->pid = -1;
-	object->watch = 0;
 
 	DBG("pid: %d status: %d", pid, status);
+
+	g_spawn_close_pid(pid);
+
+	/* free the object if aborted */
+	if (object->aborted) {
+		if (object->buffer != NULL)
+			g_string_free(object->buffer, TRUE);
+
+		g_free(object);
+		return;
+	}
 
 	if (WEXITSTATUS(status) != EXIT_SUCCESS) {
 		memset(buf, 0, sizeof(buf));
@@ -258,8 +268,6 @@ static void script_exited(GPid pid, int status, void *data)
 		obex_object_set_io_flags(data, G_IO_ERR, -EPERM);
 	} else
 		obex_object_set_io_flags(data, G_IO_IN, 0);
-
-	g_spawn_close_pid(pid);
 }
 
 static int capability_exec(const char **argv, int *output, int *err)
@@ -321,7 +329,8 @@ static void *capability_open(const char *name, int oflag, mode_t mode,
 	if (object->pid < 0)
 		goto fail;
 
-	object->watch = g_child_watch_add(object->pid, script_exited, object);
+	/* Watch cannot be removed while the process is still running */
+	g_child_watch_add(object->pid, script_exited, object);
 
 done:
 	if (err)
@@ -519,17 +528,16 @@ static int capability_close(void *object)
 	if (obj->pid < 0)
 		goto done;
 
-	if (obj->watch)
-		g_source_remove(obj->watch);
-
-	g_spawn_close_pid(obj->pid);
-
 	DBG("kill: pid %d", obj->pid);
 	err = kill(obj->pid, SIGTERM);
 	if (err < 0) {
 		err = -errno;
 		error("kill: %s (%d)", strerror(-err), -err);
+		goto done;
 	}
+
+	obj->aborted = TRUE;
+	return 0;
 
 done:
 	if (obj->buffer != NULL)
