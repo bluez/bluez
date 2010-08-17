@@ -186,3 +186,4 @@ uint16_t enc_find_info_resp(uint8_t format, struct att_data_list *list,
 							uint8_t *pdu, int len);
 struct att_data_list *dec_find_info_resp(const uint8_t *pdu, int len,
 							uint8_t *format);
+uint16_t enc_notification(struct attribute *a, uint8_t *pdu, int len);

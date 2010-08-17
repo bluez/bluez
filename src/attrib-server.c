@@ -474,6 +474,29 @@ static gboolean unix_io_accept(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 }
 
+static gboolean send_notification(gpointer user_data)
+{
+	uint8_t pdu[ATT_MTU];
+	uint16_t *handle = user_data;
+	struct attribute *a;
+	GSList *l;
+	uint16_t length;
+
+	l = g_slist_find_custom(database, handle, (GCompareFunc) handle_cmp);
+	if (!l)
+		return FALSE;
+
+	a = l->data;
+
+	length = enc_notification(a, pdu, sizeof(pdu));
+	for (l = clients; l; l = l->next) {
+		struct gatt_channel *channel = l->data;
+		g_attrib_send(channel->attrib, pdu[0], pdu, length, NULL, NULL, NULL);
+	}
+
+	return FALSE;
+}
+
 int attrib_server_init(void)
 {
 	GError *gerr = NULL;
@@ -573,6 +596,44 @@ int attrib_db_add(uint16_t handle, uuid_t *uuid, const uint8_t *value, int len)
 	memcpy(a->data, value, len);
 
 	database = g_slist_append(database, a);
+
+	return 0;
+}
+
+int attrib_db_update(uint16_t handle, uuid_t *uuid, const uint8_t *value,
+								int len)
+{
+	struct attribute *a;
+	GSList *l;
+	uint16_t *hdl;
+
+	l = g_slist_find_custom(database, &handle, (GCompareFunc) handle_cmp);
+	if (!l)
+		return -ENOENT;
+
+	hdl = g_try_malloc0(sizeof(uint16_t));
+	if (hdl == NULL)
+		return -ENOMEM;
+
+	*hdl = handle;
+
+	a = g_try_realloc(l->data, sizeof(struct attribute) + len);
+	if (a == NULL) {
+		g_free(hdl);
+		return -ENOMEM;
+	}
+
+	l->data = a;
+	a->handle = handle;
+	memcpy(&a->uuid, uuid, sizeof(uuid_t));
+	a->len = len;
+	memcpy(a->data, value, len);
+
+	/*
+	 * Characteristic configuration descriptor is not being used yet.
+	 * If the attribute changes, all connected clients will be notified.
+	 */
+	g_idle_add_full(G_PRIORITY_DEFAULT, send_notification, hdl, g_free);
 
 	return 0;
 }

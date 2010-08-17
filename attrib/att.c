@@ -454,3 +454,18 @@ struct att_data_list *dec_find_info_resp(const uint8_t *pdu, int len,
 
 	return list;
 }
+
+uint16_t enc_notification(struct attribute *a, uint8_t *pdu, int len)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (len < (a->len + 3))
+		return 0;
+
+	pdu[0] = ATT_OP_HANDLE_NOTIFY;
+	att_put_u16(a->handle, &pdu[1]);
+	memcpy(&pdu[3], a->data, a->len);
+
+	return a->len + 3;
+}
