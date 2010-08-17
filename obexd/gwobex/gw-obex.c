@@ -343,7 +343,7 @@ GwObex *gw_obex_setup_fd(int fd, const gchar *uuid, gint uuid_len,
     ctx->mutex = g_mutex_new();
 #endif
 
-    OBEX_SetCustomData(handle, ctx);
+    OBEX_SetUserData(handle, ctx);
 
     debug("Connecting to OBEX service\n");
     if (!gw_obex_connect(ctx, uuid, uuid_len)) {
