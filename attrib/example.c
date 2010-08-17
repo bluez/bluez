@@ -32,6 +32,8 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include <glib.h>
+
 #include "sdpd.h"
 #include "log.h"
 #include "attrib-server.h"
@@ -122,6 +124,23 @@ static sdp_record_t *server_record_new(void)
 	sdp_list_free(aproto, NULL);
 
 	return record;
+}
+
+static gboolean change_humidity(gpointer user_data)
+{
+	static uint8_t humidity =  0x28;
+	uuid_t uuid;
+	uint8_t atval[1];
+
+	/*
+	 * Thermometer: relative humidity value. Humidity is
+	 * being increased every 10 seconds.
+	 */
+	atval[0] = humidity++;
+	sdp_uuid16_create(&uuid, RELATIVE_HUMIDITY_UUID);
+	attrib_db_update(0x0212, &uuid, atval, 1);
+
+	return TRUE;
 }
 
 static int register_attributes(void)
@@ -281,6 +300,8 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, RELATIVE_HUMIDITY_UUID);
 	atval[0] = 0x27;
 	attrib_db_add(0x0212, &uuid, atval, 1);
+
+	g_timeout_add_seconds(10, change_humidity, NULL);
 
 	/* Thermometer: relative humidity characteristic format */
 	sdp_uuid16_create(&uuid, GATT_CHARAC_FMT_UUID);
