@@ -72,7 +72,6 @@ struct dun_client {
 	char tty_name[PATH_MAX];
 
 	GPid pnatd_pid;
-	guint pnatd_watch;
 };
 
 struct dun_server {
@@ -103,15 +102,8 @@ static void disconnect(struct dun_server *server)
 		client->io_watch = 0;
 	}
 
-	if (client->pnatd_watch > 0) {
-		g_source_remove(client->pnatd_watch);
-		client->pnatd_watch = 0;
-		if (client->pnatd_pid > 0)
-			kill(client->pnatd_pid, SIGTERM);
-	}
-
 	if (client->pnatd_pid > 0) {
-		g_spawn_close_pid(client->pnatd_pid);
+		kill(client->pnatd_pid, SIGTERM);
 		client->pnatd_pid = 0;
 	}
 
@@ -162,8 +154,13 @@ static void pnatd_exit(GPid pid, gint status, gpointer user_data)
         else
                 DBG("pnatd (%d) was killed by signal %d", pid,
 							WTERMSIG(status));
+	g_spawn_close_pid(pid);
 
-	client->pnatd_watch = 0;
+	if (pid != client->pnatd_pid)
+		return;
+
+	/* So disconnect() doesn't send SIGTERM to a non-existing process */
+	client->pnatd_pid = 0;
 
 	disconnect(server);
 }
@@ -186,7 +183,12 @@ static gboolean start_pnatd(struct dun_server *server)
 	DBG("pnatd started for %s with pid %d", client->tty_name, pid);
 
 	client->pnatd_pid = pid;
-	client->pnatd_watch = g_child_watch_add(pid, pnatd_exit, server);
+
+	/* We do not store the GSource id since g_remove_source doesn't
+	 * make sense for a child watch. If the callback gets removed
+	 * waitpid won't be called and the child remains as a zombie)
+	 */
+	g_child_watch_add(pid, pnatd_exit, server);
 
 	return TRUE;
 }
