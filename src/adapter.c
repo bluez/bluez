@@ -2502,6 +2502,7 @@ int adapter_stop(struct btd_adapter *adapter)
 	adapter->state = DISCOVER_TYPE_NONE;
 	adapter->cache_enable = TRUE;
 	adapter->pending_cod = 0;
+	adapter->off_requested = FALSE;
 
 	call_adapter_powered_callbacks(adapter, FALSE);
 
