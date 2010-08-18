@@ -121,6 +121,40 @@ struct att_data_list {
 	uint8_t **data;
 };
 
+/* These functions do byte conversion */
+static inline uint8_t att_get_u8(void *ptr)
+{
+	uint8_t *u8_ptr = ptr;
+	return bt_get_unaligned(u8_ptr);
+}
+
+static inline uint16_t att_get_u16(void *ptr)
+{
+	uint16_t *u16_ptr = ptr;
+	return btohs(bt_get_unaligned(u16_ptr));
+}
+
+static inline uint32_t att_get_u32(void *ptr)
+{
+	uint32_t *u32_ptr = ptr;
+	return btohl(bt_get_unaligned(u32_ptr));
+}
+
+static inline void att_put_u8(uint8_t src, void *dst)
+{
+	bt_put_unaligned(src, (uint8_t *) dst);
+}
+
+static inline void att_put_u16(uint16_t src, void *dst)
+{
+	bt_put_unaligned(htobs(src), (uint16_t *) dst);
+}
+
+static inline void att_put_u32(uint16_t src, void *dst)
+{
+	bt_put_unaligned(htobl(src), (uint32_t *) dst);
+}
+
 void att_data_list_free(struct att_data_list *list);
 
 const char *att_ecode2str(uint8_t status);

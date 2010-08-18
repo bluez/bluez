@@ -90,8 +90,6 @@ void att_data_list_free(struct att_data_list *list)
 uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len)
 {
-	uint16_t *p16;
-
 	/* FIXME: UUID128 is not supported */
 
 	if (!uuid)
@@ -104,12 +102,9 @@ uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, uuid_t *uuid,
 		return 0;
 
 	pdu[0] = ATT_OP_READ_BY_GROUP_REQ;
-	p16 = (void *) &pdu[1];
-	*p16 = htobs(start);
-	p16++;
-	*p16 = htobs(end);
-	p16++;
-	*p16 = htobs(uuid->value.uuid16);
+	att_put_u16(start, &pdu[1]);
+	att_put_u16(end, &pdu[3]);
+	att_put_u16(uuid->value.uuid16, &pdu[5]);
 
 	return 7;
 }
@@ -117,8 +112,6 @@ uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, uuid_t *uuid,
 uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
 						uint16_t *end, uuid_t *uuid)
 {
-	uint16_t *p16;
-
 	if (pdu == NULL)
 		return 0;
 
@@ -131,13 +124,9 @@ uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
 	if (len < 7)
 		return 0;
 
-	p16 = (void *) &pdu[1];
-	*start = btohs(*p16);
-	p16++;
-	*end = btohs(*p16);
-	p16++;
-
-	sdp_uuid16_create(uuid, btohs(*p16));
+	*start = att_get_u16((uint16_t *) &pdu[1]);
+	*end = att_get_u16((uint16_t *) &pdu[3]);
+	sdp_uuid16_create(uuid, att_get_u16((uint16_t *) &pdu[5]));
 
 	return len;
 }
@@ -198,8 +187,6 @@ uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len)
 {
-	uint16_t *p16;
-
 	/* FIXME: UUID128 is not supported */
 
 	if (!uuid)
@@ -212,12 +199,9 @@ uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 		return 0;
 
 	pdu[0] = ATT_OP_READ_BY_TYPE_REQ;
-	p16 = (void *) &pdu[1];
-	*p16 = htobs(start);
-	p16++;
-	*p16 = htobs(end);
-	p16++;
-	*p16 = htobs(uuid->value.uuid16);
+	att_put_u16(start, &pdu[1]);
+	att_put_u16(end, &pdu[3]);
+	att_put_u16(uuid->value.uuid16, &pdu[5]);
 
 	return 7;
 }
@@ -225,8 +209,6 @@ uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
 						uint16_t *end, uuid_t *uuid)
 {
-	uint16_t *p16;
-
 	if (pdu == NULL)
 		return 0;
 
@@ -239,12 +221,9 @@ uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
 	if (pdu[0] != ATT_OP_READ_BY_TYPE_REQ)
 		return 0;
 
-	p16 = (void *) &pdu[1];
-	*start = btohs(*p16);
-	p16++;
-	*end = btohs(*p16);
-	p16++;
-	sdp_uuid16_create(uuid, btohs(*p16));
+	*start = att_get_u16((uint16_t *) &pdu[1]);
+	*end = att_get_u16((uint16_t *) &pdu[3]);
+	sdp_uuid16_create(uuid, att_get_u16((uint16_t *) &pdu[5]));
 
 	return 7;
 }
@@ -262,7 +241,7 @@ uint16_t enc_read_by_type_resp(struct att_data_list *list, uint8_t *pdu, int len
 
 	pdu[0] = ATT_OP_READ_BY_TYPE_RESP;
 	pdu[1] = list->len;
-	ptr = (void *) &pdu[2];
+	ptr = &pdu[2];
 
 	for (i = 0, w = 2; i < list->num && w < len; i++, w += list->len) {
 		memcpy(ptr, list->data[i], list->len);
@@ -299,8 +278,6 @@ struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, int len)
 
 uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len)
 {
-	uint16_t *p16;
-
 	if (pdu == NULL)
 		return 0;
 
@@ -308,17 +285,13 @@ uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len)
 		return 0;
 
 	pdu[0] = ATT_OP_READ_REQ;
-
-	p16 = (void *) &pdu[1];
-	*p16 = htobs(handle);
+	att_put_u16(handle, &pdu[1]);
 
 	return 3;
 }
 
 uint16_t dec_read_req(const uint8_t *pdu, uint16_t *handle)
 {
-	uint16_t *p16;
-
 	if (pdu == NULL)
 		return 0;
 
@@ -328,8 +301,7 @@ uint16_t dec_read_req(const uint8_t *pdu, uint16_t *handle)
 	if (pdu[0] != ATT_OP_READ_REQ)
 		return 0;
 
-	p16 = (void *) &pdu[1];
-	*handle = btohs(*p16);
+	*handle = att_get_u16((uint16_t *) &pdu[1]);
 
 	return 3;
 }
@@ -386,8 +358,6 @@ uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
 
 uint16_t enc_find_info_req(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 {
-	uint16_t *p16;
-
 	if (pdu == NULL)
 		return 0;
 
@@ -395,10 +365,8 @@ uint16_t enc_find_info_req(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 		return 0;
 
 	pdu[0] = ATT_OP_FIND_INFO_REQ;
-	p16 = (void *) &pdu[1];
-	*p16 = htobs(start);
-	p16++;
-	*p16 = htobs(end);
+	att_put_u16(start, &pdu[1]);
+	att_put_u16(end, &pdu[3]);
 
 	return 5;
 }
@@ -406,8 +374,6 @@ uint16_t enc_find_info_req(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 uint16_t dec_find_info_req(const uint8_t *pdu, int len, uint16_t *start,
 								uint16_t *end)
 {
-	uint16_t *p16;
-
 	if (pdu == NULL)
 		return 0;
 
@@ -420,10 +386,8 @@ uint16_t dec_find_info_req(const uint8_t *pdu, int len, uint16_t *start,
 	if (pdu[0] != ATT_OP_FIND_INFO_REQ)
 		return 0;
 
-	p16 = (void *) &pdu[1];
-	*start = btohs(*p16);
-	p16++;
-	*end = btohs(*p16);
+	*start = att_get_u16((uint16_t *) &pdu[1]);
+	*end = att_get_u16((uint16_t *) &pdu[3]);
 
 	return 5;
 }

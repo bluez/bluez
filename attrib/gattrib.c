@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 
+#include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 
 #include "att.h"
