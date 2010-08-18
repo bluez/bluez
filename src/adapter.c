@@ -3454,3 +3454,15 @@ void btd_adapter_unregister_powered_callback(struct btd_adapter *adapter,
 	adapter->powered_callbacks =
 			g_slist_remove(adapter->powered_callbacks, cb);
 }
+
+int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
+							gboolean enable)
+{
+	if (!adapter_ops)
+		return -EINVAL;
+
+	if (!adapter->up)
+		return -EINVAL;
+
+	return adapter_ops->set_fast_connectable(adapter->dev_id, enable);
+}

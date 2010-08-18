@@ -196,3 +196,9 @@ void btd_adapter_register_powered_callback(struct btd_adapter *adapter,
 						btd_adapter_powered_cb cb);
 void btd_adapter_unregister_powered_callback(struct btd_adapter *adapter,
 						btd_adapter_powered_cb cb);
+
+/* If TRUE, enables fast connectabe, i.e. reduces page scan interval and changes
+ * type. If FALSE, disables fast connectable, i.e. sets page scan interval and
+ * type to default values. Valid for both connectable and discoverable modes. */
+int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
+							gboolean enable);
