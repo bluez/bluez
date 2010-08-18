@@ -48,3 +48,7 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 					gboolean create);
 
 gboolean manager_allow_headset_connection(struct audio_device *device);
+
+/* TRUE to enable fast connectable and FALSE to disable fast connectable for all
+ * audio adapters. */
+void manager_set_fast_connectable(gboolean enable);

@@ -1290,3 +1290,17 @@ gboolean manager_allow_headset_connection(struct audio_device *device)
 
 	return TRUE;
 }
+
+void manager_set_fast_connectable(gboolean enable)
+{
+	GSList *l;
+
+	for (l = adapters; l != NULL; l = l->next) {
+		struct audio_adapter *adapter = l->data;
+
+		if (btd_adapter_set_fast_connectable(adapter->btd_adapter,
+								enable))
+			error("Changing fast connectable for hci%d failed",
+				adapter_get_dev_id(adapter->btd_adapter));
+	}
+}
