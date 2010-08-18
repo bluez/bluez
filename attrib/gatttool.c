@@ -56,6 +56,8 @@ static gboolean opt_unix = FALSE;
 static gboolean opt_primary = FALSE;
 static gboolean opt_characteristics = FALSE;
 static gboolean opt_char_read = FALSE;
+static gboolean opt_listen = FALSE;
+static guint listen_watch = 0;
 static GMainLoop *event_loop;
 
 struct characteristic_data {
@@ -230,7 +232,38 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	return;
 
 done:
-	g_main_loop_quit(event_loop);
+	if (opt_listen == FALSE)
+		g_main_loop_quit(event_loop);
+}
+
+static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
+{
+	uint16_t handle, i;
+
+	handle = att_get_u16((uint16_t *) &pdu[1]);
+
+	switch (pdu[0]) {
+	case ATT_OP_HANDLE_NOTIFY:
+		g_print("attr handle = 0x%04x value: ", handle);
+		for (i = 3; i < len; i++)
+			g_print("%02x ", pdu[i]);
+
+		g_print("\n");
+		break;
+	case ATT_OP_HANDLE_IND:
+		break;
+	}
+}
+
+static gboolean listen_start(gpointer user_data)
+{
+	GAttrib *attrib = user_data;
+	uint8_t events = ATT_OP_HANDLE_NOTIFY;
+
+	listen_watch = g_attrib_register(attrib, events, events_handler,
+								NULL, NULL);
+
+	return FALSE;
 }
 
 static gboolean primary(gpointer user_data)
@@ -296,7 +329,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 done:
 	g_free(char_data);
-	g_main_loop_quit(event_loop);
+	if (opt_listen == FALSE)
+		g_main_loop_quit(event_loop);
 }
 
 static gboolean characteristics(gpointer user_data)
@@ -336,7 +370,8 @@ static void char_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	g_print("\n");
 
 done:
-	g_main_loop_quit(event_loop);
+	if (opt_listen == FALSE)
+		g_main_loop_quit(event_loop);
 }
 
 static gboolean characteristics_read(gpointer user_data)
@@ -369,6 +404,8 @@ static GOptionEntry gatt_options[] = {
 		"Characteristics Discovery", NULL },
 	{ "char-read", 0, 0, G_OPTION_ARG_NONE, &opt_char_read,
 		"Characteristics Value/Descriptor Read", NULL },
+	{ "listen", 0, 0, G_OPTION_ARG_NONE, &opt_listen,
+		"Listen for notifications", NULL },
 	{ NULL },
 };
 
@@ -446,9 +483,16 @@ int main(int argc, char *argv[])
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 
+	if (opt_listen)
+		g_idle_add(listen_start, attrib);
+
 	g_idle_add(callback, attrib);
 
 	g_main_loop_run(event_loop);
+
+	if (listen_watch)
+		g_attrib_unregister(attrib, listen_watch);
+
 	g_main_loop_unref(event_loop);
 
 	g_io_channel_unref(chan);
