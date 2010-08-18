@@ -1041,6 +1041,8 @@ typedef struct {
 #define OCF_READ_PAGE_SCAN_TYPE		0x0046
 
 #define OCF_WRITE_PAGE_SCAN_TYPE	0x0047
+	#define PAGE_SCAN_TYPE_STANDARD		0x00
+	#define PAGE_SCAN_TYPE_INTERLACED	0x01
 
 #define OCF_READ_AFH_MODE		0x0048
 typedef struct {
