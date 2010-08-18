@@ -509,6 +509,56 @@ uint16_t enc_notification(struct attribute *a, uint8_t *pdu, int len)
 	return a->len + 3;
 }
 
+uint16_t enc_indication(struct attribute *a, uint8_t *pdu, int len)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (len < (a->len + 3))
+		return 0;
+
+	pdu[0] = ATT_OP_HANDLE_IND;
+	att_put_u16(a->handle, &pdu[1]);
+	memcpy(&pdu[3], a->data, a->len);
+
+	return a->len + 3;
+}
+
+struct attribute *dec_indication(const uint8_t *pdu, int len)
+{
+	struct attribute *a;
+
+	if (pdu == NULL)
+		return NULL;
+
+	if (pdu[0] != ATT_OP_HANDLE_IND)
+		return NULL;
+
+	a = malloc(sizeof(struct attribute) + len - 3);
+	if (a == NULL)
+		return NULL;
+
+	a->len = len - 3;
+
+	a->handle = att_get_u16((uint16_t *) &pdu[1]);
+	memcpy(a->data, &pdu[3], a->len);
+
+	return a;
+}
+
+uint16_t enc_confirmation(uint8_t *pdu, int len)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (len < 1)
+		return 0;
+
+	pdu[0] = ATT_OP_HANDLE_CNF;
+
+	return 1;
+}
+
 uint16_t enc_mtu_req(uint16_t mtu, uint8_t *pdu, int len)
 {
 	if (pdu == NULL)
