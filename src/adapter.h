@@ -183,6 +183,7 @@ struct btd_adapter_ops {
 	int (*set_name) (int index, const char *name);
 	int (*read_name) (int index);
 	int (*set_class) (int index, uint32_t class);
+	int (*set_fast_connectable) (int index, gboolean enable);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
