@@ -95,6 +95,7 @@ static struct {
 };
 
 static gboolean sco_hci = TRUE;
+static gboolean fast_connectable = FALSE;
 
 static GSList *active_devices = NULL;
 
@@ -2262,6 +2263,19 @@ uint32_t headset_config_init(GKeyFile *config)
 		g_free(str);
 	}
 
+	/* Init fast connectable option */
+	str = g_key_file_get_string(config, "Headset", "FastConnectable",
+					&err);
+	if (err) {
+		DBG("audio.conf: %s", err->message);
+		g_clear_error(&err);
+	} else {
+		fast_connectable = strcmp(str, "true") == 0;
+		if (fast_connectable)
+			manager_set_fast_connectable(FALSE);
+		g_free(str);
+	}
+
 	return ag.features;
 }
 
@@ -2743,6 +2757,9 @@ int telephony_incoming_call_ind(const char *number, int type)
 	struct headset *hs;
 	struct headset_slc *slc;
 
+	if (fast_connectable)
+		manager_set_fast_connectable(TRUE);
+
 	if (!active_devices)
 		return -ENODEV;
 
@@ -2781,6 +2798,9 @@ int telephony_incoming_call_ind(const char *number, int type)
 int telephony_calling_stopped_ind(void)
 {
 	struct audio_device *dev;
+
+	if (fast_connectable)
+		manager_set_fast_connectable(FALSE);
 
 	if (ag.ring_timer) {
 		g_source_remove(ag.ring_timer);
