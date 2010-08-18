@@ -38,6 +38,7 @@
 #define HCI_UART_3WIRE	2
 #define HCI_UART_H4DS	3
 #define HCI_UART_LL	4
+#define HCI_UART_ATH3K  5
 
 #define HCI_UART_RAW_DEVICE	0
 
@@ -49,3 +50,5 @@ int texas_post(int fd, struct termios *ti);
 int texasalt_init(int fd, int speed, struct termios *ti);
 int stlc2500_init(int fd, bdaddr_t *bdaddr);
 int bgb2xx_init(int dd, bdaddr_t *bdaddr);
+int ath3k_init(int fd, char *bdaddr, int speed);
+int ath3k_post(int fd, int pm);

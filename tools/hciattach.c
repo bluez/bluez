@@ -302,6 +302,16 @@ static int texasalt(int fd, struct uart_t *u, struct termios *ti)
 	return texasalt_init(fd, u->speed, ti);
 }
 
+static int ath3k_ps(int fd, struct uart_t *u, struct termios *ti)
+{
+	return ath3k_init(fd, u->bdaddr, u->speed);
+}
+
+static int ath3k_pm(int fd, struct uart_t *u, struct termios *ti)
+{
+	return ath3k_post(fd, u->pm);
+}
+
 static int read_check(int fd, void *buf, int count)
 {
 	int res;
@@ -1104,6 +1114,8 @@ struct uart_t uart[] = {
 	{ "bcm2035",    0x0A5C, 0x2035, HCI_UART_H4,   115200, 460800,
 				FLOW_CTL, DISABLE_PM, NULL, bcm2035  },
 
+	{ "ath3k",    0x0000, 0x0000, HCI_UART_ATH3K, 115200, 115200,
+			FLOW_CTL, DISABLE_PM, NULL, ath3k_ps, ath3k_pm  },
 	{ NULL, 0 }
 };
 
