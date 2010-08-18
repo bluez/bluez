@@ -50,6 +50,7 @@
 static guint watch_id;
 static DBusConnection *conn = NULL;
 static gboolean mce_bt_set = FALSE;
+static gboolean collision = FALSE;
 
 static gboolean mce_signal_callback(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
@@ -112,6 +113,13 @@ static void read_radio_states_cb(DBusPendingCall *call, void *user_data)
 
 	mce_bt_set = radio_states & MCE_RADIO_STATE_BLUETOOTH;
 
+	/* check if the adapter has not completed the initial power
+	 * cycle, if so delay action to mce_notify_powered */
+	collision = mce_bt_set && adapter_powering_down(adapter);
+
+	if (collision)
+		goto done;
+
 	if (mce_bt_set)
 		btd_adapter_switch_online(adapter);
 	else
@@ -128,6 +136,19 @@ static void adapter_powered(struct btd_adapter *adapter, gboolean powered)
 	dbus_uint32_t radio_mask = MCE_RADIO_STATE_BLUETOOTH;
 
 	DBG("adapter_powered called with %d", powered);
+
+	/* check if the plugin got the get_radio_states reply from the
+	 * mce when the adapter was not yet down during the power
+	 * cycling when bluetoothd is started */
+	if (collision) {
+		error("maemo6: powered state collision");
+		collision = FALSE;
+
+		if (mce_bt_set)
+			btd_adapter_switch_online(adapter);
+
+		return;
+	}
 
 	/* nothing to do if the states match */
 	if (mce_bt_set == powered)
