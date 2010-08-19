@@ -478,15 +478,13 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	for (i = 0; i < list->num; i++) {
 		guint16 handle;
 		uuid_t uuid;
-		guint16 *u16;
 		uint8_t *info = list->data[i];
 
-		u16 = (void *) info;
-		handle = btohs(*u16);
+		handle = att_get_u16((uint16_t *) info);
 
 		if (format == 0x01) {
-			u16 = (void *) &info[2];
-			sdp_uuid16_create(&uuid, btohs(*u16));
+			sdp_uuid16_create(&uuid, att_get_u16((uint16_t *)
+								&info[2]));
 		} else
 			continue;
 
@@ -555,24 +553,21 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	for (i = 0, last = 0; i < list->num; i++) {
 		uint8_t *decl = list->data[i];
 		struct characteristic *chr;
-		uint16_t *u16;
 
 		chr = g_new0(struct characteristic, 1);
 		chr->perm = decl[2];
-		u16 = (void *) &decl[3];
-		chr->handle = btohs(*u16);
+		chr->handle = att_get_u16((uint16_t *) &decl[3]);
 		chr->path = g_strdup_printf("%s/characteristic%04x", prim->path,
 								chr->handle);
 		if (list->len == 7) {
-			u16 = (void *) &decl[5];
-			sdp_uuid16_create(&chr->type, btohs(*u16));
+			sdp_uuid16_create(&chr->type,
+					att_get_u16((uint16_t *) &decl[5]));
 		} else {
 			/* FIXME: UUID128 */
 		}
 
 		if (previous_end) {
-			u16 = (void *) &decl[0];
-			*previous_end = btohs(*u16) - 1;
+			*previous_end = att_get_u16((uint16_t *) decl);
 		}
 
 		last = chr->handle;
@@ -757,28 +752,24 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	for (i = 0, end = 0; i < list->num; i++) {
 		struct primary *prim;
-		uint16_t *p16;
-
-		p16 = (uint16_t *) list->data[i];
+		uint8_t *info = list->data[i];
 
 		/* Each element contains: attribute handle, end group handle
 		 * and attribute value */
-		start = btohs(*p16);
-		p16++;
-		end = btohs(*p16);
-		p16++;
+		start = att_get_u16((uint16_t *) info);
+		end = att_get_u16((uint16_t *) &info[2]);
 
 		prim = g_new0(struct primary, 1);
 		prim->start = start;
 		prim->end = end;
 
 		if (list->len == 6) {
-			uint16_t u16 = btohs(*p16);
-			sdp_uuid16_create(&prim->uuid, u16);
+			sdp_uuid16_create(&prim->uuid,
+					att_get_u16((uint16_t *) &info[4]));
 
 		} else if (list->len == 20) {
 			/* FIXME: endianness */
-			sdp_uuid128_create(&prim->uuid, p16);
+			sdp_uuid128_create(&prim->uuid, &info[4]);
 		} else {
 			DBG("ATT: Invalid Length field");
 			g_free(prim);
