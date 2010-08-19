@@ -691,7 +691,7 @@ static DBusMessage *pbap_select(DBusConnection *connection,
 	if (err)
 		return g_dbus_create_error(message,
 				ERROR_INF ".Failed",
-				OBEX_ResponseToString(err));
+				"%s", OBEX_ResponseToString(err));
 
 	return dbus_message_new_method_return(message);
 }

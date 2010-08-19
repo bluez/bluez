@@ -77,7 +77,7 @@ static void create_callback(struct session_data *session, GError *err,
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed",
-					err->message);
+					"%s", err->message);
 		g_dbus_send_message(data->connection, error);
 		shutdown_session(session);
 		goto done;
@@ -239,7 +239,7 @@ static void pull_complete_callback(struct session_data *session,
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed",
-					err->message);
+					"%s", err->message);
 		g_dbus_send_message(data->connection, error);
 		goto done;
 	}
@@ -263,7 +263,7 @@ static void pull_session_callback(struct session_data *session,
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed",
-					err->message);
+					"%s", err->message);
 		g_dbus_send_message(data->connection, error);
 		shutdown_session(session);
 		goto done;
@@ -435,7 +435,7 @@ static void capabilities_complete_callback(struct session_data *session,
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed",
-					err->message);
+					"%s", err->message);
 		g_dbus_send_message(data->connection, error);
 		goto done;
 	}
@@ -465,7 +465,7 @@ static void capability_session_callback(struct session_data *session,
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed",
-					err->message);
+					"%s", err->message);
 		g_dbus_send_message(data->connection, error);
 		shutdown_session(session);
 		goto done;

@@ -945,7 +945,7 @@ static void session_notify_error(struct session_data *session,
 
 		reply = g_dbus_create_error(session->msg,
 					"org.openobex.Error.Failed",
-					err->message);
+					"%s", err->message);
 		g_dbus_send_message(session->conn, reply);
 
 		dbus_message_unref(session->msg);
@@ -1116,7 +1116,7 @@ static DBusMessage *change_folder(DBusConnection *connection,
 	if (gw_obex_chdir(session->obex, folder, &err) == FALSE) {
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
-				OBEX_ResponseToString(err));
+				"%s", OBEX_ResponseToString(err));
 	}
 
 	return dbus_message_new_method_return(message);
@@ -1138,7 +1138,7 @@ static DBusMessage *create_folder(DBusConnection *connection,
 	if (gw_obex_mkdir(session->obex, folder, &err) == FALSE)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
-				OBEX_ResponseToString(err));
+				"%s", OBEX_ResponseToString(err));
 
 	return dbus_message_new_method_return(message);
 }
@@ -1243,7 +1243,7 @@ static DBusMessage *delete(DBusConnection *connection,
 	if (gw_obex_delete(session->obex, file, &err) == FALSE) {
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
-				OBEX_ResponseToString(err));
+				"%s", OBEX_ResponseToString(err));
 	}
 
 	return dbus_message_new_method_return(message);
