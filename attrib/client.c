@@ -52,7 +52,6 @@ struct gatt_service {
 	bdaddr_t sba;
 	bdaddr_t dba;
 	char *path;
-	GIOChannel *io;
 	GSList *primary;
 	GAttrib *attrib;
 	int psm;
@@ -975,7 +974,6 @@ static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 
 	return;
 fail:
-	g_io_channel_unref(gatt->io);
 	gatt_service_free(gatt);
 }
 
@@ -1027,8 +1025,6 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 		gatt_service_free(gatt);
 		return -1;
 	}
-
-	gatt->io = io;
 
 	return 0;
 }
