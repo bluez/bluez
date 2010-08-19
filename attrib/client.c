@@ -85,6 +85,7 @@ struct primary {
 	uint16_t start;
 	uint16_t end;
 	GSList *chars;
+	GSList *watchers;
 };
 
 struct discovered_data {
@@ -100,6 +101,12 @@ struct descriptor_data {
 struct desc_fmt_data {
 	struct descriptor_data desc_data;
 	uint16_t handle;
+};
+
+struct watcher {
+	guint id;
+	char *name;
+	struct primary *prim;
 };
 
 static GSList *services = NULL;
@@ -118,9 +125,23 @@ static void characteristic_free(void *user_data)
 	g_free(chr);
 }
 
+static void watcher_free(void *user_data)
+{
+	struct watcher *watcher = user_data;
+
+	g_free(watcher->name);
+	g_free(watcher);
+}
+
 static void primary_free(void *user_data)
 {
 	struct primary *prim = user_data;
+	GSList *l;
+
+	for (l = prim->watchers; l; l = l->next) {
+		struct watcher *watcher = l->data;
+		g_dbus_remove_watch(connection, watcher->id);
+	}
 
 	g_slist_foreach(prim->chars, (GFunc) characteristic_free, NULL);
 	g_free(prim->path);
@@ -174,6 +195,16 @@ static void append_char_dict(DBusMessageIter *iter, struct characteristic *chr)
 	/* FIXME: Missing Format, Value and Representation */
 
 	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void watcher_exit(DBusConnection *conn, void *user_data)
+{
+	struct watcher *watcher = user_data;
+	struct primary *prim = watcher->prim;
+
+	DBG("%s watcher %s exited", prim->path, watcher->name);
+
+	prim->watchers = g_slist_remove(prim->watchers, watcher);
 }
 
 static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
@@ -253,6 +284,18 @@ static DBusMessage *get_characteristics(DBusConnection *conn,
 static DBusMessage *register_watcher(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	const char *sender = dbus_message_get_sender(msg);
+	struct primary *prim = data;
+	struct watcher *watcher;
+
+	watcher = g_new0(struct watcher, 1);
+	watcher->name = g_strdup(sender);
+	watcher->prim = prim;
+	watcher->id = g_dbus_add_disconnect_watch(conn, sender, watcher_exit,
+							watcher, watcher_free);
+
+	prim->watchers = g_slist_append(prim->watchers, watcher);
+
 	return dbus_message_new_method_return(msg);
 }
 
