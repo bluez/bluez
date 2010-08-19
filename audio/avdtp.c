@@ -537,6 +537,12 @@ static gboolean avdtp_send(struct avdtp *session, uint8_t transaction,
 		return try_send(sock, session->buf, sizeof(single) + len);
 	}
 
+	/* Check if there is enough space to start packet */
+	if (session->omtu < sizeof(start)) {
+		error("No enough space to fragment packet");
+		return FALSE;
+	}
+
 	/* Count the number of needed fragments */
 	cont_fragments = (len - (session->omtu - sizeof(start))) /
 					(session->omtu - sizeof(cont)) + 1;
