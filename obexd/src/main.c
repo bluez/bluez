@@ -80,6 +80,7 @@ static gboolean option_autoaccept = FALSE;
 static gboolean option_opp = FALSE;
 static gboolean option_ftp = FALSE;
 static gboolean option_pbap = FALSE;
+static gboolean option_irmc = FALSE;
 static gboolean option_pcsuite = FALSE;
 static gboolean option_symlinks = FALSE;
 static gboolean option_syncevolution = FALSE;
@@ -120,6 +121,8 @@ static GOptionEntry options[] = {
 				"Enable Phonebook Access server" },
 	{ "pcsuite", 's', 0, G_OPTION_ARG_NONE, &option_pcsuite,
 				"Enable PC Suite Services server" },
+	{ "irmc", 'i', 0, G_OPTION_ARG_NONE, &option_irmc,
+				"Enable IrMCSync server" },
 	{ "syncevolution", 'e', 0, G_OPTION_ARG_NONE, &option_syncevolution,
 				"Enable OBEX server for SyncEvolution" },
 	{ NULL },
@@ -208,9 +211,10 @@ int main(int argc, char *argv[])
 
 	if (option_opp == FALSE && option_ftp == FALSE &&
 				option_pbap == FALSE &&
+				option_irmc == FALSE &&
 				option_syncevolution == FALSE) {
 		fprintf(stderr, "No server selected (use either "
-				"--opp, --ftp, --pbap or --syncevolution)\n");
+				"--opp, --ftp, --pbap, --irmc or --syncevolution)\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -264,6 +268,10 @@ int main(int argc, char *argv[])
 	if (option_pcsuite == TRUE)
 		obex_server_init(OBEX_PCSUITE, option_root, TRUE,
 				option_autoaccept, option_symlinks,
+				option_capability);
+
+	if (option_irmc == TRUE)
+		obex_server_init(OBEX_IRMC, NULL, TRUE, FALSE, FALSE,
 				option_capability);
 
 	if (option_syncevolution == TRUE)
