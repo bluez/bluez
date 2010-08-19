@@ -1027,7 +1027,7 @@ static DBusMessage *volume_up(DBusConnection *conn, DBusMessage *msg,
 	err = avctp_send_passthrough(control, VOL_UP_OP);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							strerror(-err));
+							"%s", strerror(-err));
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1057,7 +1057,7 @@ static DBusMessage *volume_down(DBusConnection *conn, DBusMessage *msg,
 	err = avctp_send_passthrough(control, VOL_DOWN_OP);
 	if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							strerror(-err));
+							"%s", strerror(-err));
 
 	return dbus_message_new_method_return(msg);
 }

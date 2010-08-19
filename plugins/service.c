@@ -359,7 +359,7 @@ static inline DBusMessage *failed(DBusMessage *msg)
 static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-			strerror(err));
+							"%s", strerror(err));
 }
 
 static inline DBusMessage *not_authorized(DBusMessage *msg)
@@ -442,7 +442,7 @@ static DBusMessage *update_record(DBusConnection *conn, DBusMessage *msg,
 		error("Failed to update the service record");
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".Failed",
-				strerror(EIO));
+				"%s", strerror(EIO));
 	}
 
 	return dbus_message_new_method_return(msg);
@@ -481,7 +481,7 @@ static DBusMessage *update_xml_record(DBusConnection *conn,
 		sdp_record_free(sdp_record);
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".Failed",
-				strerror(EIO));
+				"%s", strerror(EIO));
 	}
 
 	return update_record(conn, msg, serv_adapter, handle, sdp_record);

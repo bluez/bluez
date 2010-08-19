@@ -178,7 +178,8 @@ static inline DBusMessage *no_such_adapter(DBusMessage *msg)
 
 static inline DBusMessage *in_progress(DBusMessage *msg, const char *str)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress", str);
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
+								"%s", str);
 }
 
 static void browse_request_free(struct browse_req *req)
@@ -381,7 +382,7 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 	if (err < 0)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".Failed",
-				strerror(-err));
+				"%s", strerror(-err));
 
 	g_free(device->alias);
 	device->alias = g_str_equal(alias, "") ? NULL : g_strdup(alias);
@@ -413,7 +414,7 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 	if (err < 0)
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".Failed",
-				strerror(-err));
+				"%s", strerror(-err));
 
 	device->trusted = value;
 
@@ -2034,7 +2035,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 		DBusMessage *reply;
 		reply = g_dbus_create_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
-				err->message);
+				"%s", err->message);
 		error("bt_io_connect: %s", err->message);
 		g_error_free(err);
 		return reply;

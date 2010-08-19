@@ -137,20 +137,20 @@ static inline DBusMessage *does_not_exist(DBusMessage *msg,
 					const char *description)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExist",
-				description);
+							"%s", description);
 }
 
 static inline DBusMessage *invalid_arguments(DBusMessage *msg,
 					const char *description)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
-				description);
+							"%s", description);
 }
 
 static inline DBusMessage *failed(DBusMessage *msg, const char *description)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-				description);
+							"%s", description);
 }
 
 static void add_lang_attr(sdp_record_t *r)

@@ -141,7 +141,7 @@ static inline DBusMessage *connection_attempt_failed(DBusMessage *msg,
 {
 	return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
-				err ? err : "Connection attempt failed");
+				"%s", err ? err : "Connection attempt failed");
 }
 
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,

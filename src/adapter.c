@@ -157,12 +157,13 @@ static inline DBusMessage *adapter_not_ready(DBusMessage *msg)
 static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							strerror(err));
+							"%s", strerror(err));
 }
 
 static inline DBusMessage *not_in_progress(DBusMessage *msg, const char *str)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotInProgress", str);
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotInProgress",
+								"%s", str);
 }
 
 static inline DBusMessage *not_authorized(DBusMessage *msg)

@@ -572,14 +572,14 @@ static uint32_t register_server_record(struct network_server *ns)
 static inline DBusMessage *failed(DBusMessage *msg, const char *description)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-				description);
+							"%s", description);
 }
 
 static inline DBusMessage *invalid_arguments(DBusMessage *msg,
 					const char *description)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
-				description);
+							"%s", description);
 }
 
 static void server_disconnect(DBusConnection *conn, void *user_data)

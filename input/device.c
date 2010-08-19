@@ -343,7 +343,7 @@ static inline DBusMessage *connection_attempt_failed(DBusMessage *msg,
 {
 	return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
-				err ? err : "Connection attempt failed");
+				"%s", err ? err : "Connection attempt failed");
 }
 
 static void rfcomm_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
@@ -982,7 +982,7 @@ static DBusMessage *input_device_connect(DBusConnection *conn,
 static DBusMessage *create_errno_message(DBusMessage *msg, int err)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							strerror(err));
+							"%s", strerror(err));
 }
 
 static DBusMessage *input_device_disconnect(DBusConnection *conn,
