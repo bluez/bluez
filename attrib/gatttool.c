@@ -193,29 +193,26 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		goto done;
 
 	for (i = 0, end = 0; i < list->num; i++) {
-		uint16_t *u16, length, start;
+		uint8_t *value = list->data[i];
+		uint8_t length;
+		uint16_t start;
 		int j;
-
-		u16 = (uint16_t *) list->data[i];
 
 		/* Each element contains: attribute handle, end group handle
 		 * and attribute value */
-		length = list->len - 2 * sizeof(*u16);
-		start = btohs(*u16);
-		u16++;
-		end = btohs(*u16);
-		u16++;
+		length = list->len - 2 * sizeof(uint16_t);
+		start = att_get_u16((uint16_t *) value);
+		end = att_get_u16((uint16_t *) &value[2]);
 
 		g_print("attr handle = 0x%04x, end grp handle = 0x%04x, ",
 								start, end);
 		g_print("attr value (UUID) = ");
 		if (length == 2)
-			g_print("0x%04x\n", btohs(*u16));
+			g_print("0x%04x\n", att_get_u16((uint16_t *)
+							&value[4]));
 		else {
-			uint8_t *value = (uint8_t *) u16;
-
 			/* FIXME: pretty print 128-bit UUIDs */
-			for (j = 0; j < length; j++)
+			for (j = 4; j < length; j++)
 				g_print("%02x ", value[j]);
 			g_print("\n");
 		}
@@ -267,28 +264,24 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		return;
 
 	for (i = 0; i < list->num; i++) {
-		uint16_t *u16;
-		uint8_t *u8;
+		uint8_t *value = list->data[i];
 
-		u8 = list->data[i];
-		u16 = (uint16_t *) u8;
-		last = btohs(*u16);
-		u16 = (void *) &u8[3];
+		last = att_get_u16((uint16_t *) value);
 
 		g_print("handle = 0x%04x, char properties = 0x%02x, "
-			"char value handle = 0x%04x, ", last, u8[2],
-			btohs(*u16));
+			"char value handle = 0x%04x, ", last, value[2],
+			att_get_u16((uint16_t *) &value[3]));
 
 		g_print("uuid = ");
 		if (list->len == 7) {
-			u16 = (void *) &u8[5];
-			g_print("0x%04x\n", btohs(*u16));
+			g_print("0x%04x\n", att_get_u16((uint16_t *)
+							&value[5]));
 		} else {
 			int j;
 
 			/* FIXME: pretty print 128-bit UUIDs */
 			for (j = 5; j < list->len; j++)
-				g_print("%02x ", u8[j]);
+				g_print("%02x ", value[j]);
 			g_print("\n");
 		}
 	}
