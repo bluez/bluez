@@ -161,10 +161,11 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		goto done;
 
 	for (i = 0, end = 0; i < list->num; i++) {
+		char uuidstr[MAX_LEN_UUID_STR];
 		uint8_t *value = list->data[i];
 		uint8_t length;
 		uint16_t start;
-		int j;
+		uuid_t uuid;
 
 		/* Each element contains: attribute handle, end group handle
 		 * and attribute value */
@@ -174,16 +175,14 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 		g_print("attr handle = 0x%04x, end grp handle = 0x%04x, ",
 								start, end);
-		g_print("attr value (UUID) = ");
 		if (length == 2)
-			g_print("0x%04x\n", att_get_u16((uint16_t *)
-							&value[4]));
-		else {
-			/* FIXME: pretty print 128-bit UUIDs */
-			for (j = 4; j < length; j++)
-				g_print("%02x ", value[j]);
-			g_print("\n");
-		}
+			sdp_uuid16_create(&uuid, att_get_u16((uint16_t *)
+								&value[4]));
+		else
+			sdp_uuid128_create(&uuid, value + 4);
+
+		sdp_uuid2strn(&uuid, uuidstr, MAX_LEN_UUID_STR);
+		g_print("attr value (UUID) = %s\n", uuidstr);
 	}
 
 	att_data_list_free(list);
@@ -264,6 +263,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	for (i = 0; i < list->num; i++) {
 		uint8_t *value = list->data[i];
+		char uuidstr[MAX_LEN_UUID_STR];
+		uuid_t uuid;
 
 		last = att_get_u16((uint16_t *) value);
 
@@ -271,18 +272,14 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			"char value handle = 0x%04x, ", last, value[2],
 			att_get_u16((uint16_t *) &value[3]));
 
-		g_print("uuid = ");
-		if (list->len == 7) {
-			g_print("0x%04x\n", att_get_u16((uint16_t *)
-							&value[5]));
-		} else {
-			int j;
+		if (list->len == 7)
+			sdp_uuid16_create(&uuid, att_get_u16((uint16_t *)
+								&value[5]));
+		else
+			sdp_uuid128_create(&uuid, value + 5);
 
-			/* FIXME: pretty print 128-bit UUIDs */
-			for (j = 5; j < list->len; j++)
-				g_print("%02x ", value[j]);
-			g_print("\n");
-		}
+		sdp_uuid2strn(&uuid, uuidstr, MAX_LEN_UUID_STR);
+		g_print("uuid = %s\n", uuidstr);
 	}
 
 	att_data_list_free(list);
