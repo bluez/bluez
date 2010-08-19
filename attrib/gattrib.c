@@ -44,6 +44,8 @@ struct _GAttrib {
 	GSList *events;
 	guint next_cmd_id;
 	guint next_evt_id;
+	GAttribDisconnectFunc disconnect;
+	gpointer disc_user_data;
 };
 
 struct command {
@@ -188,11 +190,24 @@ void g_attrib_unref(GAttrib *attrib)
 	g_free(attrib);
 }
 
+gboolean g_attrib_set_disconnect_function(GAttrib *attrib,
+		GAttribDisconnectFunc disconnect, gpointer user_data)
+{
+	if (attrib == NULL)
+		return FALSE;
+
+	attrib->disconnect = disconnect;
+	attrib->disc_user_data = user_data;
+
+	return TRUE;
+}
+
 static void destroy_receiver(gpointer data)
 {
 	struct _GAttrib *attrib = data;
 
-	attrib->read_watch = 0;
+	if (attrib->disconnect)
+		attrib->disconnect(attrib->disc_user_data);
 }
 
 static void wake_up_sender(struct _GAttrib *attrib);
@@ -267,8 +282,12 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	GError *gerr = NULL;
 	gsize len;
 
-	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		if (attrib->disconnect)
+			attrib->disconnect(attrib->disc_user_data);
+
 		return FALSE;
+	}
 
 	cmd = g_queue_peek_head(attrib->queue);
 	if (cmd == NULL)
@@ -304,9 +323,8 @@ static void wake_up_sender(struct _GAttrib *attrib)
 {
 	if (attrib->write_watch == 0)
 		attrib->write_watch = g_io_add_watch_full(attrib->io,
-			G_PRIORITY_DEFAULT,
-			G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			can_write_data, attrib, destroy_sender);
+			G_PRIORITY_DEFAULT, G_IO_OUT, can_write_data,
+			attrib, destroy_sender);
 }
 
 GAttrib *g_attrib_new(GIOChannel *io)
