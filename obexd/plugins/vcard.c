@@ -344,8 +344,12 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 		}
 	}
 
-	if (filter & FILTER_EMAIL)
-		vcard_printf_email(vcards, contact->email);
+	if (filter & FILTER_EMAIL) {
+		GSList *l;
+
+		for (l = contact->emails; l; l = l->next)
+			vcard_printf_email(vcards, l->data);
+	}
 
 	if (filter & FILTER_ADR)
 		vcard_printf_adr(vcards, contact);
@@ -372,11 +376,13 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_slist_foreach(contact->numbers, number_free, NULL);
 	g_slist_free(contact->numbers);
 
+	g_slist_foreach(contact->emails, (GFunc) g_free, NULL);
+	g_slist_free(contact->emails);
+
 	g_free(contact->fullname);
 	g_free(contact->given);
 	g_free(contact->family);
 	g_free(contact->additional);
-	g_free(contact->email);
 	g_free(contact->prefix);
 	g_free(contact->suffix);
 	g_free(contact->pobox);

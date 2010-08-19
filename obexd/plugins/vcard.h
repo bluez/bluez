@@ -45,7 +45,7 @@ struct phonebook_contact {
 	char *family;
 	char *additional;
 	GSList *numbers;
-	char *email;
+	GSList *emails;
 	char *prefix;
 	char *suffix;
 	char *pobox;
