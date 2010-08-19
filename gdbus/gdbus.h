@@ -100,7 +100,8 @@ gboolean g_dbus_unregister_interface(DBusConnection *connection,
 					const char *path, const char *name);
 
 DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
-						const char *format, ...);
+						const char *format, ...)
+					__attribute__((format(printf, 3, 4)));
 DBusMessage *g_dbus_create_error_valist(DBusMessage *message, const char *name,
 					const char *format, va_list args);
 DBusMessage *g_dbus_create_reply(DBusMessage *message, int type, ...);
