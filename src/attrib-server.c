@@ -357,9 +357,12 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 	return length;
 }
 
-static int handle_cmp(struct attribute *a, uint16_t *handle)
+static int handle_cmp(gconstpointer a, gconstpointer b)
 {
-	return a->handle - *handle;
+	const struct attribute *attrib = a;
+	uint16_t handle = GPOINTER_TO_UINT(b);
+
+	return attrib->handle - handle;
 }
 
 static int attribute_cmp(gconstpointer a1, gconstpointer a2)
@@ -374,8 +377,9 @@ static uint16_t read_value(uint16_t handle, uint8_t *pdu, int len)
 {
 	struct attribute *a;
 	GSList *l;
+	guint h = handle;
 
-	l = g_slist_find_custom(database, &handle, (GCompareFunc) handle_cmp);
+	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
 	if (!l)
 		return enc_error_resp(ATT_OP_READ_REQ, handle,
 					ATT_ECODE_INVALID_HANDLE, pdu, len);
@@ -508,7 +512,7 @@ static gboolean send_notification(gpointer user_data)
 	GSList *l;
 	uint16_t length;
 
-	l = g_slist_find_custom(database, handle, (GCompareFunc) handle_cmp);
+	l = g_slist_find_custom(database, handle, handle_cmp);
 	if (!l)
 		return FALSE;
 
@@ -604,8 +608,9 @@ int attrib_db_update(uint16_t handle, uuid_t *uuid, const uint8_t *value,
 	struct attribute *a;
 	GSList *l;
 	uint16_t *hdl;
+	guint h = handle;
 
-	l = g_slist_find_custom(database, &handle, (GCompareFunc) handle_cmp);
+	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
 	if (!l)
 		return -ENOENT;
 
@@ -640,8 +645,9 @@ int attrib_db_del(uint16_t handle)
 {
 	struct attribute *a;
 	GSList *l;
+	guint h = handle;
 
-	l = g_slist_find_custom(database, &handle, (GCompareFunc) handle_cmp);
+	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
 	if (!l)
 		return -ENOENT;
 

@@ -137,8 +137,11 @@ static void gatt_service_free(void *user_data)
 	g_free(gatt);
 }
 
-static int gatt_path_cmp(const struct gatt_service *gatt, const char *path)
+static int gatt_path_cmp(gconstpointer a, gconstpointer b)
 {
+	const struct gatt_service *gatt = a;
+	const char *path = b;
+
 	return strcmp(gatt->path, path);
 }
 
@@ -1034,7 +1037,7 @@ void attrib_client_unregister(const char *path)
 	struct gatt_service *gatt;
 	GSList *l;
 
-	l = g_slist_find_custom(services, path, (GCompareFunc) gatt_path_cmp);
+	l = g_slist_find_custom(services, path, gatt_path_cmp);
 	if (!l)
 		return;
 
