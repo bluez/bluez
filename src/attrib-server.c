@@ -362,6 +362,14 @@ static int handle_cmp(struct attribute *a, uint16_t *handle)
 	return a->handle - *handle;
 }
 
+static int attribute_cmp(gconstpointer a1, gconstpointer a2)
+{
+	const struct attribute *attrib1 = a1;
+	const struct attribute *attrib2 = a2;
+
+	return attrib1->handle - attrib2->handle;
+}
+
 static uint16_t read_value(uint16_t handle, uint8_t *pdu, int len)
 {
 	struct attribute *a;
@@ -585,7 +593,7 @@ int attrib_db_add(uint16_t handle, uuid_t *uuid, const uint8_t *value, int len)
 	a->len = len;
 	memcpy(a->data, value, len);
 
-	database = g_slist_append(database, a);
+	database = g_slist_insert_sorted(database, a, attribute_cmp);
 
 	return 0;
 }
