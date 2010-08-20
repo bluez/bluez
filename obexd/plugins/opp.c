@@ -83,7 +83,6 @@
   <attribute id=\"0x0303\">					\
     <sequence>							\
       <uint8 value=\"0x01\"/>					\
-      <uint8 value=\"0x01\"/>					\
       <uint8 value=\"0x02\"/>					\
       <uint8 value=\"0x03\"/>					\
       <uint8 value=\"0x04\"/>					\
