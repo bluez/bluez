@@ -139,7 +139,6 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 	/*
 	 * Only <<Primary Service>> and <<Secondary Service>> grouping
 	 * types may be used in the Read By Group Type Request.
-	 * FIXME: Attribute types shall be compared as 128-bit UUID.
 	 */
 
 	if (sdp_uuid_cmp(uuid, &prim_uuid) != 0 &&
