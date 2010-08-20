@@ -321,6 +321,30 @@ static void vcard_printf_email(GString *vcards, const char *email)
 	}
 }
 
+static gboolean org_fields_present(struct phonebook_contact *contact)
+{
+	if (contact->company && strlen(contact->company))
+		return TRUE;
+
+	if (contact->department && strlen(contact->department))
+		return TRUE;
+
+	if (contact->title && strlen(contact->title))
+		return TRUE;
+
+	return FALSE;
+}
+
+static void vcard_printf_org(GString *vcards,
+					struct phonebook_contact *contact)
+{
+	if (org_fields_present(contact) == FALSE)
+		return;
+
+	vcard_printf(vcards, "ORG:%s;%s;%s", contact->company,
+				contact->department, contact->title);
+}
+
 static void vcard_printf_adr(GString *vcards, struct phonebook_contact *contact)
 {
 	if (address_fields_present(contact) == FALSE) {
@@ -418,6 +442,9 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	if (filter & FILTER_PHOTO)
 		vcard_printf_tag(vcards, "PHOTO", NULL, contact->photo);
 
+	if (filter & FILTER_ORG)
+		vcard_printf_org(vcards, contact);
+
 	if (filter & FILTER_X_IRMC_CALL_DATETIME)
 		vcard_printf_datetime(vcards, contact);
 
@@ -460,6 +487,9 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_free(contact->nickname);
 	g_free(contact->website);
 	g_free(contact->photo);
+	g_free(contact->company);
+	g_free(contact->department);
+	g_free(contact->title);
 	g_free(contact->datetime);
 	g_free(contact);
 }
