@@ -43,16 +43,16 @@
 #define TRACKER_RESOURCES_INTERFACE "org.freedesktop.Tracker1.Resources"
 
 #define TRACKER_DEFAULT_CONTACT_ME "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#default-contact-me"
-#define CONTACTS_ID_COL 21
-#define PULL_QUERY_COL_AMOUNT 22
+#define CONTACTS_ID_COL 25
+#define PULL_QUERY_COL_AMOUNT 26
 #define COL_HOME_NUMBER 0
 #define COL_HOME_EMAIL 7
 #define COL_WORK_NUMBER 8
 #define COL_FAX_NUMBER 16
 #define COL_WORK_EMAIL 17
-#define COL_DATE 18
-#define COL_SENT 19
-#define COL_ANSWERED 20
+#define COL_DATE 22
+#define COL_SENT 23
+#define COL_ANSWERED 24
 
 #define CONTACTS_QUERY_ALL						\
 	"SELECT ?v nco:fullname(?c) "					\
@@ -62,6 +62,8 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:photo(?c) "						\
 	"\"NOTACALL\" \"false\" \"false\" ?c "				\
 	"WHERE { "							\
 		"?c a nco:PersonContact . "				\
@@ -106,6 +108,8 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:photo(?c) "						\
 	"nmo:receivedDate(?call) "					\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
@@ -151,6 +155,8 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:photo(?c) "						\
 	"nmo:receivedDate(?call) "					\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
@@ -196,6 +202,8 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew)"	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:photo(?c) "						\
 	"nmo:receivedDate(?call) "					\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
@@ -239,6 +247,8 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:photo(?c) "						\
 	"nmo:receivedDate(?call) "					\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
@@ -306,6 +316,8 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f  nco:emailAddress(?ew)"	\
+	"nco:birthDate(<%s>) nco:nickname(<%s>) nco:websiteUrl(<%s>) "	\
+	"nco:photo(<%s>) "						\
 	"\"NOTACALL\" \"false\" \"false\" <%s> "			\
 	"WHERE { "							\
 		"<%s> a nco:Contact . "					\
@@ -774,6 +786,10 @@ add_entry:
 	contact->region = g_strdup(reply[13]);
 	contact->postal = g_strdup(reply[14]);
 	contact->country = g_strdup(reply[15]);
+	contact->birthday = g_strdup(reply[18]);
+	contact->nickname = g_strdup(reply[19]);
+	contact->website = g_strdup(reply[20]);
+	contact->photo = g_strdup(reply[21]);
 
 	set_call_type(contact, reply[COL_DATE], reply[COL_SENT],
 			reply[COL_ANSWERED]);
@@ -978,7 +994,8 @@ int phonebook_get_entry(const char *folder, const char *id,
 	data->vcardentry = TRUE;
 
 	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id, id,
-						id, id, id, id, id, id, id);
+						id, id, id, id, id, id, id,
+						id, id, id, id);
 
 	ret = query_tracker(query, PULL_QUERY_COL_AMOUNT, pull_contacts, data);
 

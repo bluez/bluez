@@ -55,6 +55,10 @@ struct phonebook_contact {
 	char *region;
 	char *postal;
 	char *country;
+	char *birthday;
+	char *nickname;
+	char *website;
+	char *photo;
 	char *datetime;
 	int calltype;
 };

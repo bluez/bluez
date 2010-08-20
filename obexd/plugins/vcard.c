@@ -256,6 +256,56 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 	vcard_printf(vcards, buf, number);
 }
 
+static void vcard_printf_tag(GString *vcards, const char *tag,
+					const char *category, const char *fld)
+{
+	char *separator = "", *type = "";
+	char buf[LEN_MAX];
+
+	if (tag == NULL || strlen(tag) == 0)
+		return;
+
+	if (fld == NULL || strlen(fld) == 0)
+		return;
+
+	if (category && strlen(category)) {
+		separator = ";";
+		type = "TYPE=";
+	} else {
+		category = "";
+	}
+
+	snprintf(buf, LEN_MAX, "%s%s%s%s", tag, separator, type, category);
+
+	vcard_printf(vcards, "%s:%s", buf, fld);
+}
+
+static void vcard_printf_slash_tag(GString *vcards, const char *tag,
+					const char *category, const char *fld)
+{
+	int len;
+	char *separator = "", *type = "";
+	char buf[LEN_MAX], field[LEN_MAX];
+
+	if (tag == NULL || strlen(tag) == 0)
+		return;
+
+	if (fld == NULL || (len = strlen(fld)) == 0)
+		return;
+
+	if (category && strlen(category)) {
+		separator = ";";
+		type = "TYPE=";
+	} else {
+		category = "";
+	}
+
+	snprintf(buf, LEN_MAX, "%s%s%s%s", tag, separator, type, category);
+
+	add_slash(field, fld, LEN_MAX, len);
+	vcard_printf(vcards, "%s:%s", buf, field);
+}
+
 static void vcard_printf_email(GString *vcards, const char *email)
 {
 	int len = 0;
@@ -354,6 +404,20 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	if (filter & FILTER_ADR)
 		vcard_printf_adr(vcards, contact);
 
+	if (filter & FILTER_BDAY)
+		vcard_printf_tag(vcards, "BDAY", NULL, contact->birthday);
+
+	if (filter & FILTER_NICKNAME)
+		vcard_printf_slash_tag(vcards, "NICKNAME", NULL,
+							contact->nickname);
+
+	if (filter & FILTER_URL)
+		vcard_printf_slash_tag(vcards, "URL", "INTERNET",
+							contact->website);
+
+	if (filter & FILTER_PHOTO)
+		vcard_printf_tag(vcards, "PHOTO", NULL, contact->photo);
+
 	if (filter & FILTER_X_IRMC_CALL_DATETIME)
 		vcard_printf_datetime(vcards, contact);
 
@@ -392,6 +456,10 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_free(contact->region);
 	g_free(contact->postal);
 	g_free(contact->country);
+	g_free(contact->birthday);
+	g_free(contact->nickname);
+	g_free(contact->website);
+	g_free(contact->photo);
 	g_free(contact->datetime);
 	g_free(contact);
 }
