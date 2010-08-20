@@ -56,7 +56,6 @@ static gboolean opt_primary = FALSE;
 static gboolean opt_characteristics = FALSE;
 static gboolean opt_char_read = FALSE;
 static gboolean opt_listen = FALSE;
-static guint listen_watch = 0;
 static gboolean opt_char_desc = FALSE;
 static GMainLoop *event_loop;
 
@@ -239,30 +238,40 @@ done:
 
 static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
-	uint16_t handle, i;
+	GAttrib *attrib = user_data;
+	uint8_t opdu[ATT_MAX_MTU];
+	uint16_t handle, i, olen = 0;
 
 	handle = att_get_u16((uint16_t *) &pdu[1]);
 
 	switch (pdu[0]) {
 	case ATT_OP_HANDLE_NOTIFY:
+	case ATT_OP_HANDLE_IND:
 		g_print("attr handle = 0x%04x value: ", handle);
 		for (i = 3; i < len; i++)
 			g_print("%02x ", pdu[i]);
 
 		g_print("\n");
-		break;
-	case ATT_OP_HANDLE_IND:
+
+		if (pdu[0] == ATT_OP_HANDLE_NOTIFY)
+			break;
+
+		olen = enc_confirmation(opdu, sizeof(opdu));
 		break;
 	}
+
+	if (olen > 0)
+		g_attrib_send(attrib, opdu[0], opdu, olen, NULL, NULL, NULL);
 }
 
 static gboolean listen_start(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
-	uint8_t events = ATT_OP_HANDLE_NOTIFY;
 
-	listen_watch = g_attrib_register(attrib, events, events_handler,
-								NULL, NULL);
+	g_attrib_register(attrib, ATT_OP_HANDLE_NOTIFY, events_handler,
+							attrib, NULL);
+	g_attrib_register(attrib, ATT_OP_HANDLE_IND, events_handler,
+							attrib, NULL);
 
 	return FALSE;
 }
@@ -458,7 +467,7 @@ static GOptionEntry gatt_options[] = {
 	{ "char-desc", 0, 0, G_OPTION_ARG_NONE, &opt_char_desc,
 		"Characteristics Descriptor Discovery", NULL },
 	{ "listen", 0, 0, G_OPTION_ARG_NONE, &opt_listen,
-		"Listen for notifications", NULL },
+		"Listen for notifications and indications", NULL },
 	{ NULL },
 };
 
@@ -545,8 +554,7 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(event_loop);
 
-	if (listen_watch)
-		g_attrib_unregister(attrib, listen_watch);
+	g_attrib_unregister_all(attrib);
 
 	g_main_loop_unref(event_loop);
 

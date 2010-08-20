@@ -1170,6 +1170,8 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	bacpy(&gatt->dba, dba);
 	gatt->psm = psm;
 
+	/* FIXME: we should also listen for incoming connections */
+
 	if (load_primary_services(gatt)) {
 		DBG("Primary services loaded");
 		return 0;
