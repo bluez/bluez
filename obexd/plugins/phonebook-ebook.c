@@ -295,6 +295,9 @@ int phonebook_init(void)
 {
 	GError *gerr = NULL;
 
+	if (ebook)
+		return 0;
+
 	g_type_init();
 
 	ebook = e_book_new_default_addressbook(&gerr);
@@ -318,6 +321,7 @@ void phonebook_exit(void)
 {
 	if (ebook)
 		g_object_unref(ebook);
+	ebook = NULL;
 }
 
 char *phonebook_set_folder(const char *current_folder,

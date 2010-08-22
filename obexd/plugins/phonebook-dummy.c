@@ -86,6 +86,9 @@ static void query_free(void *user_data)
 
 int phonebook_init(void)
 {
+	if (root_folder)
+		return 0;
+
 	/* FIXME: It should NOT be hard-coded */
 	root_folder = g_build_filename(getenv("HOME"), "phonebook", NULL);
 
@@ -95,6 +98,7 @@ int phonebook_init(void)
 void phonebook_exit(void)
 {
 	g_free(root_folder);
+	root_folder = NULL;
 }
 
 static int handle_cmp(gconstpointer a, gconstpointer b)
