@@ -306,19 +306,39 @@ static void vcard_printf_slash_tag(GString *vcards, const char *tag,
 	vcard_printf(vcards, "%s:%s", buf, field);
 }
 
-static void vcard_printf_email(GString *vcards, const char *email)
+static void vcard_printf_email(GString *vcards, uint8_t format,
+					const char *address,
+					enum phonebook_email_type category)
 {
+	const char *category_string = "";
+	char field[LEN_MAX];
 	int len = 0;
 
-	if (email)
-		len = strlen(email);
+	if (!address || !(len = strlen(address)))
+		return;
 
-	if (len) {
-		char field[LEN_MAX];
-		add_slash(field, email, LEN_MAX, len);
-		vcard_printf(vcards,
-				"EMAIL;TYPE=INTERNET:%s", field);
+	switch (category){
+	case EMAIL_TYPE_HOME:
+		if (format == FORMAT_VCARD21)
+			category_string = "INTERNET;HOME";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=INTERNET;TYPE=HOME";
+		break;
+	case EMAIL_TYPE_WORK:
+		if (format == FORMAT_VCARD21)
+			category_string = "INTERNET;WORK";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=INTERNET;TYPE=WORK";
+		break;
+	default:
+		if (format == FORMAT_VCARD21)
+			category_string = "INTERNET";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=INTERNET";
 	}
+
+	add_slash(field, address, LEN_MAX, len);
+	vcard_printf(vcards,"EMAIL;%s:%s", category_string, field);
 }
 
 static gboolean org_fields_present(struct phonebook_contact *contact)
@@ -421,8 +441,11 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	if (filter & FILTER_EMAIL) {
 		GSList *l;
 
-		for (l = contact->emails; l; l = l->next)
-			vcard_printf_email(vcards, l->data);
+		for (l = contact->emails; l; l = l->next){
+			struct phonebook_email *email = l->data;
+
+			vcard_printf_email(vcards, format, email->address, email->type);
+		}
 	}
 
 	if (filter & FILTER_ADR)
@@ -459,6 +482,14 @@ static void number_free(gpointer data, gpointer user_data)
 	g_free(number);
 }
 
+static void email_free(gpointer data, gpointer user_data)
+{
+	struct phonebook_email *email = data;
+
+	g_free(email->address);
+	g_free(email);
+}
+
 void phonebook_contact_free(struct phonebook_contact *contact)
 {
 	if (contact == NULL)
@@ -467,7 +498,7 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_slist_foreach(contact->numbers, number_free, NULL);
 	g_slist_free(contact->numbers);
 
-	g_slist_foreach(contact->emails, (GFunc) g_free, NULL);
+	g_slist_foreach(contact->emails, email_free, NULL);
 	g_slist_free(contact->emails);
 
 	g_free(contact->fullname);

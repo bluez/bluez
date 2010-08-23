@@ -27,6 +27,12 @@ enum phonebook_number_type {
 	TEL_TYPE_OTHER,
 };
 
+enum phonebook_email_type {
+	EMAIL_TYPE_HOME,
+	EMAIL_TYPE_WORK,
+	EMAIL_TYPE_OTHER,
+};
+
 enum phonebook_call_type {
 	CALL_TYPE_NOT_A_CALL,
 	CALL_TYPE_MISSED,
@@ -37,6 +43,11 @@ enum phonebook_call_type {
 struct phonebook_number {
 	char *tel;
 	int type;
+};
+
+struct phonebook_email {
+	char *address;
+	int  type;
 };
 
 struct phonebook_contact {

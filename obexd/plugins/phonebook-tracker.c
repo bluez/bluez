@@ -687,27 +687,38 @@ static void add_phone_number(struct phonebook_contact *contact,
 	contact->numbers = g_slist_append(contact->numbers, number);
 }
 
-static gchar *find_email(GSList *emails, const char *email)
+static struct phonebook_email *find_email(GSList *emails, const char *address,
+								int type)
 {
 	GSList *l;
 
-	for (l = emails; l; l = l->next)
-		if (g_strcmp0(l->data, email) == 0)
-			return l->data;
+	for (l = emails; l; l = l->next) {
+		struct phonebook_email *email = l->data;
+		if (g_strcmp0(email->address, address) == 0 &&
+						email->type == type)
+			return email;
+	}
 
 	return NULL;
 }
 
-static void add_email(struct phonebook_contact *contact, const char *email)
+static void add_email(struct phonebook_contact *contact, const char *address,
+								int type)
 {
-	if (email == NULL || strlen(email) == 0)
+	struct phonebook_email *email;
+
+	if (address == NULL || strlen(address) == 0)
 		return;
 
 	/* Not adding email if there is already added with the same value */
-	if (find_email(contact->emails, email))
+	if (find_email(contact->emails, address, type))
 		return;
 
-	contact->emails = g_slist_append(contact->emails, g_strdup(email));
+	email = g_new0(struct phonebook_email, 1);
+	email->address = g_strdup(address);
+	email->type = type;
+
+	contact->emails = g_slist_append(contact->emails, email);
 }
 
 static GString *gen_vcards(GSList *contacts,
@@ -817,8 +828,8 @@ add_numbers:
 	add_phone_number(contact, reply[COL_FAX_NUMBER], TEL_TYPE_FAX);
 
 	/* Adding emails */
-	add_email(contact, reply[COL_HOME_EMAIL]);
-	add_email(contact, reply[COL_WORK_EMAIL]);
+	add_email(contact, reply[COL_HOME_EMAIL], EMAIL_TYPE_HOME);
+	add_email(contact, reply[COL_WORK_EMAIL], EMAIL_TYPE_WORK);
 
 	DBG("contact %p", contact);
 
