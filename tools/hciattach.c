@@ -312,6 +312,11 @@ static int ath3k_pm(int fd, struct uart_t *u, struct termios *ti)
 	return ath3k_post(fd, u->pm);
 }
 
+static int qualcomm(int fd, struct uart_t *u, struct termios *ti)
+{
+	return qualcomm_init(fd, u->speed, ti, u->bdaddr);
+}
+
 static int read_check(int fd, void *buf, int count)
 {
 	int res;
@@ -1116,6 +1121,11 @@ struct uart_t uart[] = {
 
 	{ "ath3k",    0x0000, 0x0000, HCI_UART_ATH3K, 115200, 115200,
 			FLOW_CTL, DISABLE_PM, NULL, ath3k_ps, ath3k_pm  },
+
+	/* QUALCOMM BTS */
+	{ "qualcomm",   0x0000, 0x0000, HCI_UART_H4,   115200, 115200,
+			FLOW_CTL, DISABLE_PM, NULL, qualcomm, NULL },
+
 	{ NULL, 0 }
 };
 
