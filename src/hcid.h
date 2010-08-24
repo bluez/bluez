@@ -64,6 +64,7 @@ struct main_opts {
 	gboolean	reverse_sdp;
 	gboolean	name_resolv;
 	gboolean	debug_keys;
+	gboolean	attrib_server;
 
 	uint8_t		scan;
 	uint8_t		mode;

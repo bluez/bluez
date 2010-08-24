@@ -209,6 +209,13 @@ static void parse_config(GKeyFile *config)
 	else
 		main_opts.debug_keys = boolean;
 
+	boolean = g_key_file_get_boolean(config, "General",
+						"AttributeServer", &err);
+	if (err)
+		g_clear_error(&err);
+	else
+		main_opts.attrib_server = boolean;
+
 	main_opts.link_mode = HCI_LM_ACCEPT;
 
 	main_opts.link_policy = HCI_LP_RSWITCH | HCI_LP_SNIFF |
@@ -453,8 +460,11 @@ int main(int argc, char *argv[])
 	}
 
 	start_sdp_server(mtu, main_opts.deviceid, SDP_SERVER_COMPAT);
-	if (attrib_server_init() < 0)
-		error("Can't initialize attribute server");
+
+	if (main_opts.attrib_server) {
+		if (attrib_server_init() < 0)
+			error("Can't initialize attribute server");
+	}
 
 	/* Loading plugins has to be done after D-Bus has been setup since
 	 * the plugins might wanna expose some paths on the bus. However the
@@ -483,7 +493,9 @@ int main(int argc, char *argv[])
 
 	plugin_cleanup();
 
-	attrib_server_exit();
+	if (main_opts.attrib_server)
+		attrib_server_exit();
+
 	stop_sdp_server();
 
 	agent_exit();
