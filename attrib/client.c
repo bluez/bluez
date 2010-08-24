@@ -297,6 +297,9 @@ static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 		g_attrib_register(gatt->attrib,
 					ATT_OP_HANDLE_NOTIFY,
 					events_handler, gatt, NULL);
+		g_attrib_register(gatt->attrib,
+					ATT_OP_HANDLE_IND,
+					events_handler, gatt, NULL);
 		return;
 	}
 
