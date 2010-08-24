@@ -27,6 +27,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <stdlib.h>
 #include <glib.h>
 
@@ -169,6 +170,14 @@ static int gatt_path_cmp(gconstpointer a, gconstpointer b)
 	return strcmp(gatt->path, path);
 }
 
+static int characteristic_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct characteristic *chr = a;
+	uint16_t handle = GPOINTER_TO_UINT(b);
+
+	return chr->handle - handle;
+}
+
 static void append_char_dict(DBusMessageIter *iter, struct characteristic *chr)
 {
 	DBusMessageIter dict;
@@ -210,15 +219,54 @@ static void watcher_exit(DBusConnection *conn, void *user_data)
 	prim->watchers = g_slist_remove(prim->watchers, watcher);
 }
 
+static int characteristic_set_value(struct characteristic *chr,
+					const uint8_t *value, uint16_t len)
+{
+	uint8_t *newvalue;
+
+	newvalue = g_try_malloc0(len);
+	if (newvalue == NULL)
+		return -ENOMEM;
+
+	memcpy(newvalue, value, len);
+	g_free(chr->value);
+	chr->vlen = len;
+	chr->value = newvalue;
+
+	return 0;
+}
+
 static void events_handler(const uint8_t *pdu, uint16_t len,
 							gpointer user_data)
 {
+	struct gatt_service *gatt = user_data;
+	struct characteristic *chr;
+	struct primary *prim;
+	GSList *lprim, *lchr;
+	guint handle = att_get_u16((uint16_t *) &pdu[1]);
+
+	for (lprim = gatt->primary, prim = NULL, chr = NULL; lprim;
+						lprim = lprim->next) {
+		prim = lprim->data;
+
+		lchr = g_slist_find_custom(prim->chars,
+				GUINT_TO_POINTER(handle), characteristic_cmp);
+		if (lchr) {
+			chr = lchr->data;
+			break;
+		}
+	}
+
+	if (chr == NULL) {
+		DBG("Attribute handle 0x%02x not found", handle);
+		return;
+	}
+
 	switch (pdu[0]) {
 	case ATT_OP_HANDLE_NOTIFY:
-		DBG("Notification");
-		break;
 	case ATT_OP_HANDLE_IND:
-		DBG("Indication");
+		if (characteristic_set_value(chr, pdu + 2, len - 2) < 0)
+			DBG("Can't change Characteristic %0x02x", handle);
 		break;
 	}
 }
