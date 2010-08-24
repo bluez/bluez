@@ -39,6 +39,7 @@
 #include "log.h"
 #include "glib-helper.h"
 #include "btio.h"
+#include "sdpd.h"
 #include "att.h"
 #include "gattrib.h"
 
@@ -57,9 +58,74 @@ struct gatt_channel {
 
 static GIOChannel *l2cap_io = NULL;
 static GSList *clients = NULL;
+static uint32_t handle = 0;
 
 static uuid_t prim_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_PRIM_SVC_UUID };
 static uuid_t snd_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_SND_SVC_UUID };
+
+static sdp_record_t *server_record_new(void)
+{
+	sdp_list_t *svclass_id, *apseq, *proto[2], *profiles, *root, *aproto;
+	uuid_t root_uuid, proto_uuid, gatt_uuid, l2cap;
+	sdp_profile_desc_t profile;
+	sdp_record_t *record;
+	sdp_data_t *psm, *sh, *eh;
+	uint16_t lp = GATT_PSM, start = 0x0001, end = 0xffff;
+
+	record = sdp_record_alloc();
+	if (record == NULL)
+		return NULL;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(record, root);
+	sdp_list_free(root, NULL);
+
+	sdp_uuid16_create(&gatt_uuid, GENERIC_ATTRIB_SVCLASS_ID);
+	svclass_id = sdp_list_append(NULL, &gatt_uuid);
+	sdp_set_service_classes(record, svclass_id);
+	sdp_list_free(svclass_id, NULL);
+
+	sdp_uuid16_create(&profile.uuid, GENERIC_ATTRIB_PROFILE_ID);
+	profile.version = 0x0100;
+	profiles = sdp_list_append(NULL, &profile);
+	sdp_set_profile_descs(record, profiles);
+	sdp_list_free(profiles, NULL);
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(NULL, &l2cap);
+	psm = sdp_data_alloc(SDP_UINT16, &lp);
+	proto[0] = sdp_list_append(proto[0], psm);
+	apseq = sdp_list_append(NULL, proto[0]);
+
+	sdp_uuid16_create(&proto_uuid, ATT_UUID);
+	proto[1] = sdp_list_append(NULL, &proto_uuid);
+	sh = sdp_data_alloc(SDP_UINT16, &start);
+	proto[1] = sdp_list_append(proto[1], sh);
+	eh = sdp_data_alloc(SDP_UINT16, &end);
+	proto[1] = sdp_list_append(proto[1], eh);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(NULL, apseq);
+	sdp_set_access_protos(record, aproto);
+
+	sdp_set_info_attr(record, "Generic Attribute Profile", "BlueZ", NULL);
+
+	sdp_set_url_attr(record, "http://www.bluez.org/",
+			"http://www.bluez.org/", "http://www.bluez.org/");
+
+	sdp_set_service_id(record, gatt_uuid);
+
+	sdp_data_free(psm);
+	sdp_data_free(sh);
+	sdp_data_free(eh);
+	sdp_list_free(proto[0], NULL);
+	sdp_list_free(proto[1], NULL);
+	sdp_list_free(apseq, NULL);
+	sdp_list_free(aproto, NULL);
+
+	return record;
+}
 
 static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len)
@@ -453,6 +519,7 @@ static gboolean send_notification(gpointer user_data)
 int attrib_server_init(void)
 {
 	GError *gerr = NULL;
+	sdp_record_t *record;
 
 	/* BR/EDR socket */
 	l2cap_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
@@ -467,6 +534,20 @@ int attrib_server_init(void)
 		g_error_free(gerr);
 		return -1;
 	}
+
+	record = server_record_new();
+	if (record == NULL) {
+		error("Unable to create GATT service record");
+		return -1;
+	}
+
+	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+		error("Failed to register GATT service record");
+		sdp_record_free(record);
+		return -1;
+	}
+
+	handle = record->handle;
 
 	return 0;
 }
@@ -486,6 +567,9 @@ void attrib_server_exit(void)
 
 		g_source_remove(channel->id);
 	}
+
+	if (handle)
+		remove_record_from_server(handle);
 
 	g_slist_free(clients);
 }

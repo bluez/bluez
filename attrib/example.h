@@ -23,4 +23,3 @@
  */
 
 int server_example_init(void);
-void server_example_exit(void);
