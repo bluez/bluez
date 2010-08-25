@@ -172,12 +172,20 @@ static int gatt_path_cmp(gconstpointer a, gconstpointer b)
 	return strcmp(gatt->path, path);
 }
 
-static int characteristic_cmp(gconstpointer a, gconstpointer b)
+static int characteristic_handle_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct characteristic *chr = a;
 	uint16_t handle = GPOINTER_TO_UINT(b);
 
 	return chr->handle - handle;
+}
+
+static int characteristic_path_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct characteristic *chr = a;
+	const char *path = b;
+
+	return g_strcmp0(chr->path, path);
 }
 
 static void append_char_dict(DBusMessageIter *iter, struct characteristic *chr)
@@ -273,7 +281,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 		prim = lprim->data;
 
 		lchr = g_slist_find_custom(prim->chars,
-				GUINT_TO_POINTER(handle), characteristic_cmp);
+			GUINT_TO_POINTER(handle), characteristic_handle_cmp);
 		if (lchr) {
 			chr = lchr->data;
 			break;
@@ -406,6 +414,10 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID))
 		return NULL;
+
+	if (!g_slist_find_custom(prim->chars, path, characteristic_path_cmp))
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+								"Invalid path");
 
 	/*
 	 * FIXME: If the service doesn't support Client Characteristic
