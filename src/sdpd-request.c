@@ -667,7 +667,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	mlen = scanned + sizeof(uint32_t) + sizeof(uint16_t) + 1;
 	// ensure we don't read past buffer
 	if (plen < mlen || plen != mlen + *(uint8_t *)pdata) {
-		status = SDP_INVALID_SYNTAX;
+		status = SDP_INVALID_PDU_SIZE;
 		goto done;
 	}
 
