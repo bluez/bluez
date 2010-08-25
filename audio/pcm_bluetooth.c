@@ -237,9 +237,11 @@ iter_sleep:
 		ret = poll(fds, 2, poll_timeout);
 
 		if (ret < 0) {
-			SNDERR("poll error: %s (%d)", strerror(errno), errno);
-			if (errno != EINTR)
+			if (errno != EINTR) {
+				SNDERR("poll error: %s (%d)", strerror(errno),
+								errno);
 				break;
+			}
 		} else if (ret > 0) {
 			ret = (fds[0].revents) ? 0 : 1;
 			SNDERR("poll fd %d revents %d", ret, fds[ret].revents);
