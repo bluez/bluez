@@ -463,6 +463,8 @@ static char *extract_eir_name(uint8_t *data, uint8_t *type)
 	switch (*type) {
 	case 0x08:
 	case 0x09:
+		if (!g_utf8_validate((char *) (data + 2), data[0] - 1, NULL))
+			return strdup("");
 		return strndup((char *) (data + 2), data[0] - 1);
 	}
 
