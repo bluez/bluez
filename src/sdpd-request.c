@@ -818,7 +818,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	plen = ntohs(((sdp_pdu_hdr_t *)(req->buf))->plen);
 	if (plen < totscanned || plen != totscanned + *(uint8_t *)pdata) {
-		status = SDP_INVALID_SYNTAX;
+		status = SDP_INVALID_PDU_SIZE;
 		goto done;
 	}
 
