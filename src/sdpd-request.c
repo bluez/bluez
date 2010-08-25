@@ -684,6 +684,15 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	SDPDBG("max_rsp_size : %d", max_rsp_size);
 
 	/*
+	 * Check that max_rsp_size is within valid range
+	 * a minimum size of 0x0007 has to be used for data field
+	 */
+	if (max_rsp_size < 0x0007) {
+		status = SDP_INVALID_SYNTAX;
+		goto done;
+	}
+
+	/*
 	 * Calculate Attribute size acording to MTU
 	 * We can send only (MTU - sizeof(sdp_pdu_hdr_t) - sizeof(sdp_cont_state_t))
 	 */
