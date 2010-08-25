@@ -1050,8 +1050,11 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 	}
 
 	/* Check if we have any left over data from the last write */
-	if (data->count > 0 && (bytes_left - data->count) >= a2dp->codesize) {
-		int additional_bytes_needed = a2dp->codesize - data->count;
+	if (data->count > 0) {
+		unsigned int additional_bytes_needed =
+						a2dp->codesize - data->count;
+		if (additional_bytes_needed > bytes_left)
+			goto out;
 
 		memcpy(data->buffer + data->count, buff,
 						additional_bytes_needed);
@@ -1122,6 +1125,7 @@ static snd_pcm_sframes_t bluetooth_a2dp_write(snd_pcm_ioplug_t *io,
 		}
 	}
 
+out:
 	/* Copy the extra to our temp buffer for the next write */
 	if (bytes_left > 0) {
 		memcpy(data->buffer + data->count, buff, bytes_left);
