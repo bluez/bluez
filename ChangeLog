@@ -1,3 +1,16 @@
+ver 0.70:
+	Fix incoming call indication handling when in WAITING state.
+	Fix various SDP related qualification test case issues.
+	Fix logic to write EIR when SDP records are changed.
+	Fix UTF-8 validity check for remote names in EIR.
+	Add support for UUID-128 extended inquiry response.
+	Add service UUIDs from EIR to the DeviceFound signal.
+	Add fast connectable feature for Handsfree profile.
+	Add HCI command and event definitions for AMP support.
+	Add firmware download support for Qualcommh devices.
+	Add host level support for Atheros AR300x device.
+	Add initial support of ATT and GATT for basic rate.
+
 ver 4.69:
 	Fix issue with calling g_option_context_free() twice.
 	Fix inconsistencies with initial LE commands and events.
