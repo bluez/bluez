@@ -266,6 +266,7 @@ static void update_watchers(struct primary *prim, struct characteristic *chr)
 				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
 				&chr->value, chr->vlen, DBUS_TYPE_INVALID);
 
+		dbus_message_set_no_reply(msg, TRUE);
 		g_dbus_send_message(connection, msg);
 	}
 }
