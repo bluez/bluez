@@ -110,6 +110,7 @@ struct desc_fmt_data {
 struct watcher {
 	guint id;
 	char *name;
+	char *path;
 	struct primary *prim;
 };
 
@@ -133,6 +134,7 @@ static void watcher_free(void *user_data)
 {
 	struct watcher *watcher = user_data;
 
+	g_free(watcher->path);
 	g_free(watcher->name);
 	g_free(watcher);
 }
@@ -236,6 +238,27 @@ static int characteristic_set_value(struct characteristic *chr,
 	return 0;
 }
 
+static void update_watchers(struct primary *prim, struct characteristic *chr)
+{
+	GSList *l;
+
+	for (l = prim->watchers; l; l = l->next) {
+		DBusMessage *msg;
+		struct watcher *w = l->data;
+
+		msg = dbus_message_new_method_call(w->name, w->path,
+					"org.bluez.Watcher", "ValueChanged");
+		if (msg == NULL)
+			return;
+
+		dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &chr->path,
+				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+				&chr->value, chr->vlen, DBUS_TYPE_INVALID);
+
+		g_dbus_send_message(connection, msg);
+	}
+}
+
 static void events_handler(const uint8_t *pdu, uint16_t len,
 							gpointer user_data)
 {
@@ -267,6 +290,8 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	case ATT_OP_HANDLE_IND:
 		if (characteristic_set_value(chr, pdu + 2, len - 2) < 0)
 			DBG("Can't change Characteristic %0x02x", handle);
+
+		update_watchers(prim, chr);
 		break;
 	}
 }
@@ -371,11 +396,16 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 	struct watcher *watcher;
 	GError *gerr = NULL;
 	GIOChannel *io;
+	char *path;
 
 	if (gatt->attrib != NULL) {
 		gatt->attrib = g_attrib_ref(gatt->attrib);
 		goto done;
 	}
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID))
+		return NULL;
 
 	/*
 	 * FIXME: If the service doesn't support Client Characteristic
@@ -409,6 +439,7 @@ done:
 	watcher = g_new0(struct watcher, 1);
 	watcher->name = g_strdup(sender);
 	watcher->prim = prim;
+	watcher->path = g_strdup(path);
 	watcher->id = g_dbus_add_disconnect_watch(conn, sender, watcher_exit,
 							watcher, watcher_free);
 
