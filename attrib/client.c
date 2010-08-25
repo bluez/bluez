@@ -254,6 +254,9 @@ static void update_watchers(struct primary *prim, struct characteristic *chr)
 		DBusMessage *msg;
 		struct watcher *w = l->data;
 
+		if (g_strcmp0(w->path, chr->path) != 0)
+			continue;
+
 		msg = dbus_message_new_method_call(w->name, w->path,
 					"org.bluez.Watcher", "ValueChanged");
 		if (msg == NULL)
