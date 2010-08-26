@@ -256,7 +256,7 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 	vcard_printf(vcards, buf, number);
 }
 
-static void vcard_printf_tag(GString *vcards, const char *tag,
+static void vcard_printf_tag(GString *vcards, uint8_t format, const char *tag,
 					const char *category, const char *fld)
 {
 	char *separator = "", *type = "";
@@ -265,12 +265,15 @@ static void vcard_printf_tag(GString *vcards, const char *tag,
 	if (tag == NULL || strlen(tag) == 0)
 		return;
 
-	if (fld == NULL || strlen(fld) == 0)
+	if (fld == NULL || strlen(fld) == 0){
+		vcard_printf(vcards, "%s:", tag);
 		return;
+	}
 
 	if (category && strlen(category)) {
 		separator = ";";
-		type = "TYPE=";
+		if (format == FORMAT_VCARD30)
+			type = "TYPE=";
 	} else {
 		category = "";
 	}
@@ -280,8 +283,9 @@ static void vcard_printf_tag(GString *vcards, const char *tag,
 	vcard_printf(vcards, "%s:%s", buf, fld);
 }
 
-static void vcard_printf_slash_tag(GString *vcards, const char *tag,
-					const char *category, const char *fld)
+static void vcard_printf_slash_tag(GString *vcards, uint8_t format,
+					const char *tag, const char *category,
+					const char *fld)
 {
 	int len;
 	char *separator = "", *type = "";
@@ -290,12 +294,15 @@ static void vcard_printf_slash_tag(GString *vcards, const char *tag,
 	if (tag == NULL || strlen(tag) == 0)
 		return;
 
-	if (fld == NULL || (len = strlen(fld)) == 0)
+	if (fld == NULL || (len = strlen(fld)) == 0){
+		vcard_printf(vcards, "%s:", tag);
 		return;
+	}
 
 	if (category && strlen(category)) {
 		separator = ";";
-		type = "TYPE=";
+		if (format == FORMAT_VCARD30)
+			type = "TYPE=";
 	} else {
 		category = "";
 	}
@@ -314,9 +321,10 @@ static void vcard_printf_email(GString *vcards, uint8_t format,
 	char field[LEN_MAX];
 	int len = 0;
 
-	if (!address || !(len = strlen(address)))
+	if (!address || !(len = strlen(address))){
+		vcard_printf(vcards, "EMAIL:");
 		return;
-
+	}
 	switch (category){
 	case EMAIL_TYPE_HOME:
 		if (format == FORMAT_VCARD21)
@@ -358,8 +366,10 @@ static gboolean org_fields_present(struct phonebook_contact *contact)
 static void vcard_printf_org(GString *vcards,
 					struct phonebook_contact *contact)
 {
-	if (org_fields_present(contact) == FALSE)
+	if (org_fields_present(contact) == FALSE){
+		vcard_printf(vcards, "ORG:");
 		return;
+	}
 
 	vcard_printf(vcards, "ORG:%s;%s;%s", contact->company,
 				contact->department, contact->title);
@@ -428,9 +438,13 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 		vcard_printf_fullname(vcards, contact->fullname);
 
 	if (filter & FILTER_TEL) {
-		GSList *l;
+		GSList *l = contact->numbers;
 
-		for (l = contact->numbers; l; l = l->next) {
+		if (g_slist_length(l) == 0)
+			vcard_printf_number(vcards, format, NULL, 1,
+							TEL_TYPE_OTHER);
+
+		for (; l; l = l->next) {
 			struct phonebook_number *number = l->data;
 
 			vcard_printf_number(vcards, format, number->tel, 1,
@@ -439,9 +453,13 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	}
 
 	if (filter & FILTER_EMAIL) {
-		GSList *l;
+		GSList *l = contact->emails;
 
-		for (l = contact->emails; l; l = l->next){
+		if (g_slist_length(l) == 0)
+			vcard_printf_email(vcards, format, NULL,
+							EMAIL_TYPE_OTHER);
+
+		for (; l; l = l->next){
 			struct phonebook_email *email = l->data;
 
 			vcard_printf_email(vcards, format, email->address, email->type);
@@ -452,18 +470,18 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 		vcard_printf_adr(vcards, contact);
 
 	if (filter & FILTER_BDAY)
-		vcard_printf_tag(vcards, "BDAY", NULL, contact->birthday);
+		vcard_printf_tag(vcards, format, "BDAY", NULL, contact->birthday);
 
 	if (filter & FILTER_NICKNAME)
-		vcard_printf_slash_tag(vcards, "NICKNAME", NULL,
+		vcard_printf_slash_tag(vcards, format, "NICKNAME", NULL,
 							contact->nickname);
 
 	if (filter & FILTER_URL)
-		vcard_printf_slash_tag(vcards, "URL", "INTERNET",
+		vcard_printf_slash_tag(vcards, format, "URL", "INTERNET",
 							contact->website);
 
 	if (filter & FILTER_PHOTO)
-		vcard_printf_tag(vcards, "PHOTO", NULL, contact->photo);
+		vcard_printf_tag(vcards, format, "PHOTO", NULL, contact->photo);
 
 	if (filter & FILTER_ORG)
 		vcard_printf_org(vcards, contact);
