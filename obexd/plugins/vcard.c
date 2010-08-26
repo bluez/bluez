@@ -251,7 +251,8 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 	if ((type == TYPE_INTERNATIONAL) && (number[0] != '+'))
 		intl = "+";
 
-	snprintf(buf, sizeof(buf), "TEL;%s:%s\%s", category_string, intl, number);
+	snprintf(buf, sizeof(buf), "TEL;%s:%s\%s", category_string,
+								intl, number);
 
 	vcard_printf(vcards, buf, number);
 }
@@ -375,7 +376,8 @@ static void vcard_printf_org(GString *vcards,
 				contact->department, contact->title);
 }
 
-static void vcard_printf_adr(GString *vcards, struct phonebook_contact *contact)
+static void vcard_printf_adr(GString *vcards,
+					struct phonebook_contact *contact)
 {
 	if (address_fields_present(contact) == FALSE) {
 		vcard_printf(vcards, "ADR:");
@@ -461,8 +463,8 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 
 		for (; l; l = l->next){
 			struct phonebook_email *email = l->data;
-
-			vcard_printf_email(vcards, format, email->address, email->type);
+			vcard_printf_email(vcards, format, email->address,
+								email->type);
 		}
 	}
 
@@ -470,7 +472,8 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 		vcard_printf_adr(vcards, contact);
 
 	if (filter & FILTER_BDAY)
-		vcard_printf_tag(vcards, format, "BDAY", NULL, contact->birthday);
+		vcard_printf_tag(vcards, format, "BDAY", NULL,
+						contact->birthday);
 
 	if (filter & FILTER_NICKNAME)
 		vcard_printf_slash_tag(vcards, format, "NICKNAME", NULL,
@@ -481,7 +484,8 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 							contact->website);
 
 	if (filter & FILTER_PHOTO)
-		vcard_printf_tag(vcards, format, "PHOTO", NULL, contact->photo);
+		vcard_printf_tag(vcards, format, "PHOTO", NULL,
+							contact->photo);
 
 	if (filter & FILTER_ORG)
 		vcard_printf_org(vcards, contact);
