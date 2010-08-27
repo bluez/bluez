@@ -133,6 +133,7 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 	struct att_data_list *adl;
 	struct attribute *a;
 	GSList *l, *groups;
+	int last_size = 0;
 	uint16_t length, last = 0;
 	int i;
 
@@ -163,6 +164,13 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 		if (sdp_uuid_cmp(&a->uuid, uuid) != 0)
 			continue;
 
+		if (last_size == 0)
+			last_size = a->len;
+		else if (a->len != last_size) {
+			last--;
+			break;
+		}
+
 		/* Attribute Grouping Type found */
 		groups = g_slist_append(groups, a);
 	}
@@ -174,7 +182,7 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 	length = g_slist_length(groups);
 
 	adl = g_new0(struct att_data_list, 1);
-	adl->len = 6;		/* Length of each element */
+	adl->len = last_size + 4;	/* Length of each element */
 	adl->num = length;	/* Number of primary or secondary services */
 	adl->data = g_malloc(length * sizeof(uint8_t *));
 
