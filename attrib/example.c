@@ -56,6 +56,8 @@
 #define MANUFACTURER_SERIAL_UUID	0xA00D
 #define VENDOR_SPECIFIC_SVC_UUID	0xA00E
 #define VENDOR_SPECIFIC_TYPE_UUID	0xA00F
+#define FMT_KILOGRAM_UUID		0xA010
+#define FMT_HANGING_UUID		0xA011
 
 static gboolean change_humidity(gpointer user_data)
 {
@@ -79,10 +81,17 @@ static int register_attributes(void)
 	const char *devname = "Example Device";
 	const char *desc_out_temp = "Outside Temperature";
 	const char *desc_out_hum = "Outside Relative Humidity";
+	const char *desc_weight = "Rucksack Weight";
 	const char *manufacturer_name1 = "ACME Temperature Sensor";
 	const char *manufacturer_name2 = "ACME Weighing Scales";
 	const char *serial1 = "237495-3282-A";
 	const char *serial2 = "11267-2327A00239";
+	const unsigned char char_weight_uuid[] = { 0x80, 0x88, 0xF2, 0x18, 0x90,
+		0x2C, 0x45, 0x0B, 0xB6, 0xC4, 0x62, 0x89, 0x1E, 0x8C, 0x25,
+		0xE9 };
+	const unsigned char prim_weight_uuid[] = { 0x4F, 0x0A, 0xC0, 0x96, 0x35,
+		0xD4, 0x49, 0x11, 0x96, 0x31, 0xDE, 0xA8, 0xDC, 0x74, 0xEE,
+		0xFE };
 	uint8_t atval[256];
 	uuid_t uuid;
 	int len;
@@ -359,6 +368,59 @@ static int register_attributes(void)
 	len = strlen(serial2);
 	strncpy((char *) atval, serial2, len);
 	attrib_db_add(0x0509, &uuid, atval, len);
+
+	/* Weight service: primary service definition */
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	memcpy(atval, prim_weight_uuid, 16);
+	attrib_db_add(0x0680, &uuid, atval, 16);
+
+	/* Weight: include */
+	sdp_uuid16_create(&uuid, GATT_INCLUDE_UUID);
+	u16 = htons(MANUFACTURER_SVC_UUID);
+	atval[0] = 0x05;
+	atval[1] = 0x05;
+	atval[2] = 0x09;
+	atval[3] = 0x05;
+	atval[4] = u16 >> 8;
+	atval[5] = u16;
+	attrib_db_add(0x0681, &uuid, atval, 6);
+
+	/* Weight: characteristic */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	atval[1] = 0x83;
+	atval[2] = 0x06;
+	memcpy(atval + 3, char_weight_uuid, 16);
+	attrib_db_add(0x0682, &uuid, atval, 19);
+
+	/* Weight: characteristic value */
+	sdp_uuid128_create(&uuid, char_weight_uuid);
+	atval[0] = 0x82;
+	atval[1] = 0x55;
+	atval[2] = 0x00;
+	atval[3] = 0x00;
+	attrib_db_add(0x0683, &uuid, atval, 4);
+
+	/* Weight: characteristic format */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_FMT_UUID);
+	u16 = htons(FMT_KILOGRAM_UUID);
+	atval[0] = 0x08;
+	atval[1] = 0xFD;
+	atval[2] = u16 >> 8;
+	atval[3] = u16;
+	u16 = htons(BLUETOOTH_SIG_UUID);
+	atval[4] = u16 >> 8;
+	atval[5] = u16;
+	u16 = htons(FMT_HANGING_UUID);
+	atval[6] = u16 >> 8;
+	atval[7] = u16;
+	attrib_db_add(0x0684, &uuid, atval, 8);
+
+	/* Weight: characteristic user description */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_USER_DESC_UUID);
+	len = strlen(desc_weight);
+	strncpy((char *) atval, desc_weight, len);
+	attrib_db_add(0x0685, &uuid, atval, len);
 
 	return 0;
 }
