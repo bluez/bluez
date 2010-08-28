@@ -55,6 +55,11 @@ typedef void (* GDBusDestroyFunction) (void *user_data);
 typedef DBusMessage * (* GDBusMethodFunction) (DBusConnection *connection,
 					DBusMessage *message, void *user_data);
 
+typedef guint32 GDBusPendingReply;
+
+typedef void (* GDBusSecurityFunction) (DBusConnection *connection,
+			DBusMessage *message, GDBusPendingReply pending);
+
 typedef enum {
 	G_DBUS_METHOD_FLAG_DEPRECATED = (1 << 0),
 	G_DBUS_METHOD_FLAG_NOREPLY    = (1 << 1),
@@ -75,6 +80,7 @@ typedef struct {
 	const char *reply;
 	GDBusMethodFunction function;
 	GDBusMethodFlags flags;
+	unsigned int privilege;
 } GDBusMethodTable;
 
 typedef struct {
@@ -89,6 +95,11 @@ typedef struct {
 	GDBusPropertyFlags flags;
 } GDBusPropertyTable;
 
+typedef struct {
+	unsigned int privilege;
+	GDBusSecurityFunction function;
+} GDBusSecurityTable;
+
 gboolean g_dbus_register_interface(DBusConnection *connection,
 					const char *path, const char *name,
 					const GDBusMethodTable *methods,
@@ -98,6 +109,14 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 					GDBusDestroyFunction destroy);
 gboolean g_dbus_unregister_interface(DBusConnection *connection,
 					const char *path, const char *name);
+
+gboolean g_dbus_register_security(const GDBusSecurityTable *security);
+gboolean g_dbus_unregister_security(const GDBusSecurityTable *security);
+
+void g_dbus_pending_success(DBusConnection *connection,
+					GDBusPendingReply pending);
+void g_dbus_pending_error(DBusConnection *connection,
+				GDBusPendingReply pending, DBusMessage *error);
 
 DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
 						const char *format, ...)
