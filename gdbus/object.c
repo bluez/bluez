@@ -271,28 +271,45 @@ void g_dbus_pending_success(DBusConnection *connection,
         }
 }
 
-void g_dbus_pending_error(DBusConnection *connection,
-				GDBusPendingReply pending, DBusMessage *error)
+void g_dbus_pending_error_valist(DBusConnection *connection,
+				GDBusPendingReply pending, const char *name,
+					const char *format, va_list args)
 {
 	GSList *list;
 
         for (list = pending_security; list; list = list->next) {
 		struct security_data *secdata = list->data;
+		DBusMessage *reply;
 
 		if (secdata->pending != pending)
 			continue;
 
 		pending_security = g_slist_remove(pending_security, secdata);
 
-		if (error != NULL) {
-			dbus_connection_send(connection, error, NULL);
-			dbus_message_unref(error);
+		reply = g_dbus_create_error_valist(secdata->message,
+							name, format, args);
+		if (reply != NULL) {
+			dbus_connection_send(connection, reply, NULL);
+			dbus_message_unref(reply);
 		}
 
 		dbus_message_unref(secdata->message);
 		g_free(secdata);
 		return;
         }
+}
+
+void g_dbus_pending_error(DBusConnection *connection,
+				GDBusPendingReply pending,
+				const char *name, const char *format, ...)
+{
+	va_list args;
+
+	va_start(args, format);
+
+	g_dbus_pending_error_valist(connection, pending, name, format, args);
+
+	va_end(args);
 }
 
 static gboolean check_privilege(DBusConnection *conn, DBusMessage *msg,
@@ -315,7 +332,7 @@ static gboolean check_privilege(DBusConnection *conn, DBusMessage *msg,
 
 		pending_security = g_slist_prepend(pending_security, secdata);
 
-		security->function(conn, secdata->message, secdata->pending);
+		security->function(conn, secdata->pending);
 
 		return TRUE;
 	}

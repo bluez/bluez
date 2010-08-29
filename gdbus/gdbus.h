@@ -58,7 +58,7 @@ typedef DBusMessage * (* GDBusMethodFunction) (DBusConnection *connection,
 typedef guint32 GDBusPendingReply;
 
 typedef void (* GDBusSecurityFunction) (DBusConnection *connection,
-			DBusMessage *message, GDBusPendingReply pending);
+						GDBusPendingReply pending);
 
 typedef enum {
 	G_DBUS_METHOD_FLAG_DEPRECATED = (1 << 0),
@@ -116,7 +116,12 @@ gboolean g_dbus_unregister_security(const GDBusSecurityTable *security);
 void g_dbus_pending_success(DBusConnection *connection,
 					GDBusPendingReply pending);
 void g_dbus_pending_error(DBusConnection *connection,
-				GDBusPendingReply pending, DBusMessage *error);
+				GDBusPendingReply pending,
+				const char *name, const char *format, ...)
+					__attribute__((format(printf, 4, 5)));
+void g_dbus_pending_error_valist(DBusConnection *connection,
+				GDBusPendingReply pending, const char *name,
+					const char *format, va_list args);
 
 DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
 						const char *format, ...)
