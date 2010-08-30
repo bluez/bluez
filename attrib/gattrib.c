@@ -471,12 +471,54 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode,
 	return event->id;
 }
 
+static gint event_cmp_by_id(gconstpointer a, gconstpointer b)
+{
+	const struct event *evt = a;
+	guint id = GPOINTER_TO_UINT(b);
+
+	return evt->id - id;
+}
+
 gboolean g_attrib_unregister(GAttrib *attrib, guint id)
 {
+	struct event *evt;
+	GSList *l;
+
+	l = g_slist_find_custom(attrib->events, GUINT_TO_POINTER(id),
+							event_cmp_by_id);
+	if (l == NULL)
+		return FALSE;
+
+	evt = l->data;
+
+	attrib->events = g_slist_remove(attrib->events, evt);
+
+	if (evt->notify)
+		evt->notify(evt->user_data);
+
+	g_free(evt);
+
 	return TRUE;
 }
 
 gboolean g_attrib_unregister_all(GAttrib *attrib)
 {
+	GSList *l;
+
+	if (attrib->events == NULL)
+		return FALSE;
+
+	for (l = attrib->events; l; l = l->next) {
+		struct event *evt = l->data;
+
+		if (evt->notify)
+			evt->notify(evt->user_data);
+
+		g_free(evt);
+	}
+
+	g_slist_free(attrib->events);
+	attrib->events = NULL;
+
 	return TRUE;
 }
