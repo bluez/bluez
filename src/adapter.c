@@ -137,6 +137,8 @@ struct btd_adapter {
 	gint ref;
 
 	GSList *powered_callbacks;
+
+	gboolean name_stored;
 };
 
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
@@ -965,17 +967,21 @@ void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 
 	strncpy((char *) dev->name, (char *) rp.name, MAX_NAME_LENGTH);
 
-	write_local_name(bdaddr, (char *) dev->name);
+	if (!adapter->name_stored) {
+		write_local_name(bdaddr, (char *) dev->name);
+
+		name = g_strdup((char *) dev->name);
+
+		if (connection)
+			emit_property_changed(connection, adapter->path,
+						ADAPTER_INTERFACE, "Name",
+						DBUS_TYPE_STRING, &name);
+		g_free(name);
+	}
+
+	adapter->name_stored = FALSE;
 
 	update_ext_inquiry_response(adapter);
-
-	name = g_strdup((char *) dev->name);
-
-	if (connection)
-		emit_property_changed(connection, adapter->path,
-					ADAPTER_INTERFACE, "Name",
-					DBUS_TYPE_STRING, &name);
-	g_free(name);
 }
 
 void adapter_setname_complete(bdaddr_t *local, uint8_t status)
@@ -1013,16 +1019,18 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 	if (strncmp(name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
 		goto done;
 
-	if (!adapter->up) {
-		strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
-		write_local_name(&adapter->bdaddr, name);
-		emit_property_changed(connection, adapter->path,
+	strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
+	write_local_name(&adapter->bdaddr, name);
+	emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Name",
 					DBUS_TYPE_STRING, &name);
-	} else {
+
+	if (adapter->up) {
 		int err = adapter_ops->set_name(adapter->dev_id, name);
 		if (err < 0)
 			return failed_strerror(msg, err);
+
+		adapter->name_stored = TRUE;
 	}
 
 done:
@@ -2523,6 +2531,7 @@ int adapter_stop(struct btd_adapter *adapter)
 	adapter->cache_enable = TRUE;
 	adapter->pending_cod = 0;
 	adapter->off_requested = FALSE;
+	adapter->name_stored = FALSE;
 
 	call_adapter_powered_callbacks(adapter, FALSE);
 
