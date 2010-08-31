@@ -2079,10 +2079,9 @@ typedef struct {
 	uint8_t		bdaddr_type;
 	bdaddr_t	bdaddr;
 	uint8_t		length;
-	uint8_t		data[31];
-	uint8_t		rssi;
+	uint8_t		data[0];
 } __attribute__ ((packed)) le_advertising_info;
-#define LE_ADVERTISING_INFO_SIZE 41
+#define LE_ADVERTISING_INFO_SIZE 9
 
 #define EVT_LE_CONN_UPDATE_COMPLETE	0x03
 typedef struct {
