@@ -987,16 +987,22 @@ static inline void le_metaevent(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_le_meta_event *meta = ptr;
 	le_advertising_info *info;
-	char addr[18];
+	uint8_t *rssi, num, i;
 
 	DBG("LE Meta Event");
 
-	if (meta->subevent != 0x02)
+	if (meta->subevent != EVT_LE_ADVERTISING_REPORT)
 		return;
 
+	num = meta->data[0];
 	info = (le_advertising_info *) (meta->data + 1);
-	ba2str(&info->bdaddr, addr);
-	hcid_dbus_inquiry_result(sba, &info->bdaddr, 0, 0, NULL);
+
+	for (i = 0; i < num; i++) {
+		/* RSSI is last byte of the advertising report event */
+		rssi = info->data + info->length;
+		hcid_dbus_inquiry_result(sba, &info->bdaddr, 0, *rssi, NULL);
+		info = (le_advertising_info *) (rssi + 1);
+	}
 }
 
 static void delete_channel(GIOChannel *chan)
