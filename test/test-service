@@ -22,8 +22,8 @@ if options.dev_id:
 else:
 	adapter_path = manager.DefaultAdapter()
 
-adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-							"org.bluez.Adapter")
+service = dbus.Interface(bus.get_object("org.bluez", adapter_path),
+						"org.bluez.Service")
 
 if (len(args) < 1):
 	print "Usage: %s <command>" % (sys.argv[0])
@@ -38,7 +38,7 @@ if (args[0] == "addrecord"):
 		f = open(args[1])
 		record = f.read()
 		f.close()
-		handle = adapter.AddRecord(record)
+		handle = service.AddRecord(record)
 		print "0x%x" % (handle)
 		time.sleep(120)
 	sys.exit(0)
