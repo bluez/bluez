@@ -202,23 +202,31 @@ uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len)
 {
-	/* FIXME: UUID128 is not supported */
+	uint16_t length;
 
 	if (!uuid)
 		return 0;
 
-	if (uuid->type != SDP_UUID16)
+	if (uuid->type == SDP_UUID16)
+		length = 2;
+	else if (uuid->type == SDP_UUID128)
+		length = 16;
+	else
 		return 0;
 
-	if (len < 7)
+	if (len < 5 + length)
 		return 0;
 
 	pdu[0] = ATT_OP_READ_BY_TYPE_REQ;
 	att_put_u16(start, &pdu[1]);
 	att_put_u16(end, &pdu[3]);
-	att_put_u16(uuid->value.uuid16, &pdu[5]);
 
-	return 7;
+	if (uuid->type == SDP_UUID16)
+		att_put_u16(uuid->value.uuid16, &pdu[5]);
+	else
+		memcpy(&pdu[5], &uuid->value.uuid128, length);
+
+	return 5 + length;
 }
 
 uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
@@ -238,9 +246,13 @@ uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
 
 	*start = att_get_u16((uint16_t *) &pdu[1]);
 	*end = att_get_u16((uint16_t *) &pdu[3]);
-	sdp_uuid16_create(uuid, att_get_u16((uint16_t *) &pdu[5]));
 
-	return 7;
+	if (len == 7)
+		sdp_uuid16_create(uuid, att_get_u16((uint16_t *) &pdu[5]));
+	else
+		sdp_uuid128_create(uuid, &pdu[5]);
+
+	return len;
 }
 
 uint16_t enc_read_by_type_resp(struct att_data_list *list, uint8_t *pdu, int len)
