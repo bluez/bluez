@@ -569,8 +569,7 @@ proceed:
 		return;
 
 	state = adapter_get_state(adapter);
-	state &= ~PERIODIC_INQUIRY;
-	state &= ~STD_INQUIRY;
+	state &= ~RESOLVE_NAME;
 	adapter_set_state(adapter, state);
 }
 
@@ -752,7 +751,7 @@ void hcid_dbus_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
 	state = adapter_get_state(adapter);
 
 	/* Enabling or disabling ? */
-	if (state == LE_SCAN)
+	if (state & LE_SCAN)
 		state &= ~LE_SCAN;
 	else
 		state |= LE_SCAN;

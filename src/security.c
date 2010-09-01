@@ -652,25 +652,6 @@ static void inquiry_complete(bdaddr_t *local, uint8_t status, gboolean periodic)
 
 	state &= ~STD_INQUIRY;
 	adapter_set_state(adapter, state);
-
-	if (adapter_resolve_names(adapter) == 0)
-		return;
-
-	/*
-	 * workaround to identify situation when there is no devices around
-	 * but periodic inquiry is active.
-	 */
-	if (!(state & STD_INQUIRY) && !(state & PERIODIC_INQUIRY)) {
-		state |= PERIODIC_INQUIRY;
-		adapter_set_state(adapter, state);
-		return;
-	}
-
-	/* reset the discover type to be able to handle D-Bus and non D-Bus
-	 * requests */
-	state &= ~STD_INQUIRY;
-	state &= ~PERIODIC_INQUIRY;
-	adapter_set_state(adapter, state);
 }
 
 static inline void remote_features_notify(int dev, bdaddr_t *sba, void *ptr)

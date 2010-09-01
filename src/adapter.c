@@ -1270,6 +1270,9 @@ static int start_discovery(struct btd_adapter *adapter)
 
 	pending_remote_name_cancel(adapter);
 
+	if (main_opts.name_resolv)
+		adapter->state |= RESOLVE_NAME;
+
 	/* BR/EDR only? */
 	if (le_capable(adapter) == FALSE)
 		return adapter_ops->start_discovery(adapter->dev_id,
@@ -1306,9 +1309,6 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 
 	if (adapter->disc_sessions)
 		goto done;
-
-	if (main_opts.name_resolv)
-		adapter->state |= RESOLVE_NAME;
 
 	err = start_discovery(adapter);
 	if (err < 0)
@@ -2663,7 +2663,7 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	previous = adapter->state;
 	adapter->state = state;
 
-	switch (state) {
+	switch (state & 0x0f) {
 	case STD_INQUIRY:
 		discov_active = TRUE;
 		break;
@@ -2698,9 +2698,11 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		break;
 	}
 
-	if (discov_active == FALSE)
+	if (discov_active == FALSE) {
 		adapter_update_oor_devices(adapter);
-	else if (adapter->disc_sessions && main_opts.discov_interval)
+		if (state & RESOLVE_NAME && adapter_resolve_names(adapter) == 0)
+			return;
+	} else if (adapter->disc_sessions && main_opts.discov_interval)
 		adapter->scheduler_id = g_timeout_add_seconds(
 						main_opts.discov_interval,
 						(GSourceFunc) start_discovery,
