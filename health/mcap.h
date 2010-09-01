@@ -108,6 +108,46 @@ typedef struct {
 	uint16_t	mdl;
 } __attribute__ ((packed)) mcap_rsp;
 
+/*
+ * MCAP Clock Synchronization Protocol
+ */
+
+typedef struct {
+	uint8_t		op;
+	uint16_t	timest;
+} __attribute__ ((packed)) mcap_md_sync_cap_req;
+
+typedef struct {
+	uint8_t		op;
+	uint8_t		rc;
+	uint8_t		btclock;
+	uint16_t	sltime;
+	uint16_t	timestnr;
+	uint16_t	timestna;
+} __attribute__ ((packed)) mcap_md_sync_cap_rsp;
+
+typedef struct {
+	uint8_t		op;
+	uint8_t		timestui;
+	uint32_t	btclock;
+	uint64_t	timestst;
+} __attribute__ ((packed)) mcap_md_sync_set_req;
+
+typedef struct {
+	int8_t		op;
+	uint8_t		rc;
+	uint32_t	btclock;
+	uint64_t	timestst;
+	uint16_t	timestsa;
+} __attribute__ ((packed)) mcap_md_sync_set_rsp;
+
+typedef struct {
+	uint8_t		op;
+	uint32_t	btclock;
+	uint64_t	timestst;
+	uint16_t	timestsa;
+} __attribute__ ((packed)) mcap_md_sync_info_ind;
+
 #ifdef __cplusplus
 }
 #endif

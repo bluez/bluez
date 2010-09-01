@@ -108,7 +108,8 @@ mcap_sources =
 
 if MCAP
 mcap_sources += health/mcap_lib.h health/mcap_internal.h \
-		health/mcap.h health/mcap.c
+		health/mcap.h health/mcap.c \
+		health/mcap_sync.c
 endif
 
 if PNATPLUGIN

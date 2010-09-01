@@ -1509,7 +1509,7 @@ static void proc_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 
 	if (cmd[0] >= MCAP_MD_SYNC_CAP_REQ &&
 					cmd[0] <= MCAP_MD_SYNC_INFO_IND) {
-		/* TODO: proc_sync_cmd(mcl, cmd, len);*/
+		proc_sync_cmd(mcl, cmd, len);
 		return;
 	}
 
