@@ -1284,14 +1284,16 @@ static int start_discovery(struct btd_adapter *adapter)
 
 	/* BR/EDR only? */
 	if (le_capable(adapter) == FALSE)
-		return adapter_ops->start_discovery(adapter->dev_id, periodic);
+		return adapter_ops->start_discovery(adapter->dev_id,
+							0x08, periodic);
 
 	/* Dual mode or LE only */
 	if (bredr_capable(adapter) == FALSE) {
 		err = adapter_ops->start_scanning(adapter->dev_id);
 		stop = stop_scanning;
 	} else {
-		err = adapter_ops->start_discovery(adapter->dev_id, FALSE);
+		err = adapter_ops->start_discovery(adapter->dev_id,
+							0x04, FALSE);
 		stop = stop_inquiry;
 	}
 

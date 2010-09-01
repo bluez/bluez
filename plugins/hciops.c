@@ -561,7 +561,7 @@ fail:
 	return err;
 }
 
-static int hciops_start_discovery(int index, gboolean periodic)
+static int hciops_start_discovery(int index, uint8_t length, gboolean periodic)
 {
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int dd, err;
@@ -577,7 +577,7 @@ static int hciops_start_discovery(int index, gboolean periodic)
 		memcpy(&cp.lap, lap, 3);
 		cp.max_period = htobs(24);
 		cp.min_period = htobs(16);
-		cp.length  = 0x04;
+		cp.length  = length;
 		cp.num_rsp = 0x00;
 
 		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_PERIODIC_INQUIRY,
@@ -587,7 +587,7 @@ static int hciops_start_discovery(int index, gboolean periodic)
 
 		memset(&inq_cp, 0, sizeof(inq_cp));
 		memcpy(&inq_cp.lap, lap, 3);
-		inq_cp.length = 0x04;
+		inq_cp.length = length;
 		inq_cp.num_rsp = 0x00;
 
 		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_INQUIRY,
