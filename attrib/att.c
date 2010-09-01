@@ -240,6 +240,9 @@ uint16_t enc_read_by_type_resp(struct att_data_list *list, uint8_t *pdu, int len
 	if (pdu == NULL)
 		return 0;
 
+	if (len < list->len + 2)
+		return 0;
+
 	pdu[0] = ATT_OP_READ_BY_TYPE_RESP;
 	pdu[1] = list->len;
 	ptr = &pdu[2];
