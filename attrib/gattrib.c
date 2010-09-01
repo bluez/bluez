@@ -173,21 +173,21 @@ void g_attrib_unref(GAttrib *attrib)
 
 	while ((c = g_queue_pop_head(attrib->queue)))
 		command_destroy(c);
+	attrib->queue = NULL;
 
 	for (l = attrib->events; l; l = l->next)
 		event_destroy(l->data);
 
 	g_slist_free(attrib->events);
+	attrib->events = NULL;
 
-	if (attrib->read_watch > 0)
-		g_source_remove(attrib->read_watch);
+	g_io_channel_unref(attrib->io);
 
 	if (attrib->write_watch > 0)
 		g_source_remove(attrib->write_watch);
 
-	g_io_channel_unref(attrib->io);
-
-	g_free(attrib);
+	if (attrib->read_watch > 0)
+		g_source_remove(attrib->read_watch);
 }
 
 gboolean g_attrib_set_disconnect_function(GAttrib *attrib,
@@ -208,6 +208,8 @@ static void destroy_receiver(gpointer data)
 
 	if (attrib->disconnect)
 		attrib->disconnect(attrib->disc_user_data);
+
+	g_free(attrib);
 }
 
 static void wake_up_sender(struct _GAttrib *attrib);
@@ -262,15 +264,15 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	status = 0;
 
 done:
+	if (attrib->queue && g_queue_is_empty(attrib->queue) == FALSE)
+		wake_up_sender(attrib);
+
 	if (cmd) {
 		if (cmd->func)
 			cmd->func(status, buf, len, cmd->user_data);
 
 		command_destroy(cmd);
 	}
-
-	if (g_queue_is_empty(attrib->queue) == FALSE)
-		wake_up_sender(attrib);
 
 	return TRUE;
 }
