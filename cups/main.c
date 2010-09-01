@@ -62,8 +62,10 @@ struct context_data {
 };
 
 static void element_start(GMarkupParseContext *context,
-		const gchar *element_name, const gchar **attribute_names,
-		const gchar **attribute_values, gpointer user_data, GError **err)
+				const gchar *element_name,
+				const gchar **attribute_names,
+				const gchar **attribute_values,
+				gpointer user_data, GError **err)
 {
 	struct context_data *ctx_data = user_data;
 
@@ -73,11 +75,11 @@ static void element_start(GMarkupParseContext *context,
 	if (!strcmp(element_name, "attribute")) {
 		int i;
 		for (i = 0; attribute_names[i]; i++) {
-			if (!strcmp(attribute_names[i], "id")) {
-				if (strtol(attribute_values[i], 0, 0) == ATTRID_1284ID)
-					ctx_data->found = TRUE;
-				break;
-			}
+			if (strcmp(attribute_names[i], "id") != 0)
+				continue;
+			if (strtol(attribute_values[i], 0, 0) == ATTRID_1284ID)
+				ctx_data->found = TRUE;
+			break;
 		}
 		return;
 	}
@@ -153,7 +155,8 @@ static char *device_get_ieee1284_id(const char *adapter, const char *device)
 	dbus_message_iter_recurse(&reply_iter, &reply_iter_entry);
 
 	/* Hopefully we only get one handle, or take a punt */
-	while (dbus_message_iter_get_arg_type(&reply_iter_entry) == DBUS_TYPE_DICT_ENTRY) {
+	while (dbus_message_iter_get_arg_type(&reply_iter_entry) ==
+							DBUS_TYPE_DICT_ENTRY) {
 		guint32 key;
 		DBusMessageIter dict_entry;
 
@@ -185,18 +188,19 @@ static char *device_get_ieee1284_id(const char *adapter, const char *device)
 	return id;
 }
 
-static void print_printer_details(const char *name, const char *bdaddr, const char *id)
+static void print_printer_details(const char *name, const char *bdaddr,
+								const char *id)
 {
 	char *uri, *escaped;
 
 	escaped = g_strdelimit(g_strdup(name), "\"", '\'');
 	uri = g_strdup_printf("bluetooth://%c%c%c%c%c%c%c%c%c%c%c%c",
-		 bdaddr[0], bdaddr[1],
-		 bdaddr[3], bdaddr[4],
-		 bdaddr[6], bdaddr[7],
-		 bdaddr[9], bdaddr[10],
-		 bdaddr[12], bdaddr[13],
-		 bdaddr[15], bdaddr[16]);
+				bdaddr[0], bdaddr[1],
+				bdaddr[3], bdaddr[4],
+				bdaddr[6], bdaddr[7],
+				bdaddr[9], bdaddr[10],
+				bdaddr[12], bdaddr[13],
+				bdaddr[15], bdaddr[16]);
 	printf("direct %s \"%s\" \"%s (Bluetooth)\"", uri, escaped, escaped);
 	if (id != NULL)
 		printf(" \"%s\"\n", id);
@@ -206,7 +210,8 @@ static void print_printer_details(const char *name, const char *bdaddr, const ch
 	g_free(uri);
 }
 
-static void add_device_to_list(const char *name, const char *bdaddr, const char *id)
+static void add_device_to_list(const char *name, const char *bdaddr,
+								const char *id)
 {
 	struct cups_device *device;
 	GSList *l;
@@ -236,7 +241,8 @@ static void add_device_to_list(const char *name, const char *bdaddr, const char 
 	print_printer_details(device->name, device->bdaddr, device->id);
 }
 
-static gboolean parse_device_properties(DBusMessageIter *reply_iter, char **name, char **bdaddr)
+static gboolean parse_device_properties(DBusMessageIter *reply_iter,
+						char **name, char **bdaddr)
 {
 	guint32 class = 0;
 	DBusMessageIter reply_iter_entry;
@@ -246,7 +252,8 @@ static gboolean parse_device_properties(DBusMessageIter *reply_iter, char **name
 
 	dbus_message_iter_recurse(reply_iter, &reply_iter_entry);
 
-	while (dbus_message_iter_get_arg_type(&reply_iter_entry) == DBUS_TYPE_DICT_ENTRY) {
+	while (dbus_message_iter_get_arg_type(&reply_iter_entry) ==
+							DBUS_TYPE_DICT_ENTRY) {
 		const char *key;
 		DBusMessageIter dict_entry, iter_dict_val;
 
@@ -301,8 +308,8 @@ static gboolean device_is_printer(const char *adapter, const char *device_path, 
 	gboolean retval;
 
 	message = dbus_message_new_method_call("org.bluez", device_path,
-					       "org.bluez.Device",
-					       "GetProperties");
+							"org.bluez.Device",
+							"GetProperties");
 
 	reply = dbus_connection_send_with_reply_and_block(conn,
 							message, -1, NULL);
@@ -321,7 +328,8 @@ static gboolean device_is_printer(const char *adapter, const char *device_path, 
 	return retval;
 }
 
-static void remote_device_found(const char *adapter, const char *bdaddr, const char *name)
+static void remote_device_found(const char *adapter, const char *bdaddr,
+							const char *name)
 {
 	DBusMessage *message, *reply, *adapter_reply;
 	DBusMessageIter iter;
@@ -332,21 +340,23 @@ static void remote_device_found(const char *adapter, const char *bdaddr, const c
 
 	if (adapter == NULL) {
 		message = dbus_message_new_method_call("org.bluez", "/",
-						       "org.bluez.Manager",
-						       "DefaultAdapter");
+							"org.bluez.Manager",
+							"DefaultAdapter");
 
 		adapter_reply = dbus_connection_send_with_reply_and_block(conn,
-								  message, -1, NULL);
+							message, -1, NULL);
 
 		dbus_message_unref(message);
 
-		if (dbus_message_get_args(adapter_reply, NULL, DBUS_TYPE_OBJECT_PATH, &adapter, DBUS_TYPE_INVALID) == FALSE)
+		if (dbus_message_get_args(adapter_reply, NULL,
+					DBUS_TYPE_OBJECT_PATH, &adapter,
+					DBUS_TYPE_INVALID) == FALSE)
 			return;
 	}
 
 	message = dbus_message_new_method_call("org.bluez", adapter,
-					       "org.bluez.Adapter",
-					       "FindDevice");
+							"org.bluez.Adapter",
+							"FindDevice");
 	dbus_message_iter_init_append(message, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
 
@@ -360,23 +370,24 @@ static void remote_device_found(const char *adapter, const char *bdaddr, const c
 
 	if (!reply) {
 		message = dbus_message_new_method_call("org.bluez", adapter,
-						       "org.bluez.Adapter",
-						       "CreateDevice");
+							"org.bluez.Adapter",
+							"CreateDevice");
 		dbus_message_iter_init_append(message, &iter);
 		dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
 
 		reply = dbus_connection_send_with_reply_and_block(conn,
-								  message, -1, NULL);
+							message, -1, NULL);
 
 		dbus_message_unref(message);
 
 		if (!reply)
 			return;
 	}
-	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH, &object_path,
-				  DBUS_TYPE_INVALID) == FALSE) {
+
+	if (dbus_message_get_args(reply, NULL,
+					DBUS_TYPE_OBJECT_PATH, &object_path,
+					DBUS_TYPE_INVALID) == FALSE)
 		return;
-	}
 
 	id = device_get_ieee1284_id(adapter, object_path);
 	add_device_to_list(name, bdaddr, id);
@@ -396,7 +407,7 @@ static void remote_device_disappeared(const char *bdaddr)
 	GSList *l;
 
 	for (l = device_list; l != NULL; l = l->next) {
-		struct cups_device *device = (struct cups_device *) l->data;
+		struct cups_device *device = l->data;
 
 		if (strcmp(device->bdaddr, bdaddr) == 0) {
 			g_free(device->name);
@@ -414,15 +425,15 @@ static gboolean list_known_printers(const char *adapter)
 	DBusError error;
 	DBusMessage *message, *reply;
 
-	message = dbus_message_new_method_call ("org.bluez", adapter,
+	message = dbus_message_new_method_call("org.bluez", adapter,
 						"org.bluez.Adapter",
 						"ListDevices");
 	if (message == NULL)
 		return FALSE;
 
 	dbus_error_init(&error);
-	reply = dbus_connection_send_with_reply_and_block(conn,
-							message, -1, &error);
+	reply = dbus_connection_send_with_reply_and_block(conn, message,
+								-1, &error);
 
 	dbus_message_unref(message);
 
@@ -436,7 +447,8 @@ static gboolean list_known_printers(const char *adapter)
 	}
 
 	dbus_message_iter_recurse(&reply_iter, &iter_array);
-	while (dbus_message_iter_get_arg_type(&iter_array) == DBUS_TYPE_OBJECT_PATH) {
+	while (dbus_message_iter_get_arg_type(&iter_array) ==
+						DBUS_TYPE_OBJECT_PATH) {
 		const char *object_path;
 		char *name = NULL;
 		char *bdaddr = NULL;
@@ -459,7 +471,8 @@ static gboolean list_known_printers(const char *adapter)
 	return FALSE;
 }
 
-static DBusHandlerResult filter_func(DBusConnection *connection, DBusMessage *message, void *user_data)
+static DBusHandlerResult filter_func(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
 {
 	if (dbus_message_is_signal(message, "org.bluez.Adapter",
 						"DeviceFound")) {
@@ -477,7 +490,7 @@ static DBusHandlerResult filter_func(DBusConnection *connection, DBusMessage *me
 		g_free (name);
 	} else if (dbus_message_is_signal(message, "org.bluez.Adapter",
 						"DeviceDisappeared")) {
-		char *bdaddr;
+		const char *bdaddr;
 
 		dbus_message_get_args(message, NULL,
 					DBUS_TYPE_STRING, &bdaddr,
@@ -554,7 +567,8 @@ static gboolean list_printers(void)
 	}
 
 	dbus_message_iter_init(reply, &reply_iter);
-	if (dbus_message_iter_get_arg_type(&reply_iter) != DBUS_TYPE_OBJECT_PATH) {
+	if (dbus_message_iter_get_arg_type(&reply_iter) !=
+						DBUS_TYPE_OBJECT_PATH) {
 		dbus_message_unref(reply);
 		dbus_connection_unref(conn);
 		return FALSE;
@@ -663,11 +677,11 @@ static gboolean print_ieee1284(const char *bdaddr)
 		if (!reply)
 			return FALSE;
 	}
+
 	if (dbus_message_get_args(reply, NULL,
-			DBUS_TYPE_OBJECT_PATH, &object_path,
-			DBUS_TYPE_INVALID) == FALSE) {
+					DBUS_TYPE_OBJECT_PATH, &object_path,
+					DBUS_TYPE_INVALID) == FALSE)
 		return FALSE;
-	}
 
 	id = device_get_ieee1284_id(adapter, object_path);
 	if (id == NULL)
@@ -727,7 +741,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc < 6 || argc > 7) {
-		fprintf(stderr, "Usage: bluetooth job-id user title copies options [file]\n");
+		fprintf(stderr, "Usage: bluetooth job-id user title copies"
+				" options [file]\n");
 		fprintf(stderr, "       bluetooth --get-deviceid [bdaddr]\n");
 		return CUPS_BACKEND_FAILED;
 	}
@@ -759,7 +774,7 @@ int main(int argc, char *argv[])
 		ptr += 2;
 	}
 	sprintf(device, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
-		b[0], b[1], b[2], b[3], b[4], b[5]);
+			b[0], b[1], b[2], b[3], b[4], b[5]);
 
 	str2ba(device, &bdaddr);
 
@@ -780,9 +795,10 @@ int main(int argc, char *argv[])
 
 	cups_class = getenv("CLASS");
 
-	fprintf(stderr, "DEBUG: %s device %s service %s fd %d copies %d class %s\n",
+	fprintf(stderr,
+		"DEBUG: %s device %s service %s fd %d copies %d class %s\n",
 			argv[0], device, service, fd, copies,
-					cups_class ? cups_class : "(none)");
+			cups_class ? cups_class : "(none)");
 
 	fputs("STATE: +connecting-to-device\n", stderr);
 
