@@ -100,6 +100,12 @@ gboolean mcap_create_mdl(struct mcap_mcl *mcl,
 				mcap_mdl_operation_conf_cb connect_cb,
 				gpointer user_data,
 				GError **err);
+gboolean mcap_connect_mdl(struct mcap_mdl *mdl,
+				BtIOType BtType,
+				uint16_t dcpsm,
+				mcap_mdl_operation_cb connect_cb,
+				gpointer user_data,
+				GError **err);
 
 /* Mcl operations*/
 
