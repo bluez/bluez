@@ -1310,6 +1310,29 @@ static int hciops_read_ssp_mode(int index)
 	return err;
 }
 
+static int hciops_write_le_host(int index, uint8_t le, uint8_t simul)
+{
+	write_le_host_supported_cp cp;
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.le = le;
+	cp.simul = simul;
+
+	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_LE_HOST_SUPPORTED,
+					WRITE_LE_HOST_SUPPORTED_CP_SIZE, &cp);
+	if (err < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1352,6 +1375,7 @@ static struct btd_adapter_ops hci_ops = {
 	.get_auth_info = hciops_get_auth_info,
 	.read_scan_enable = hciops_read_scan_enable,
 	.read_ssp_mode = hciops_read_ssp_mode,
+	.write_le_host = hciops_write_le_host,
 };
 
 static int hciops_init(void)

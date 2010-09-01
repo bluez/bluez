@@ -1225,6 +1225,13 @@ typedef struct {
 } __attribute__ ((packed)) write_best_effort_flush_timeout_rp;
 #define WRITE_BEST_EFFORT_FLUSH_TIMEOUT_RP_SIZE 1
 
+#define OCF_WRITE_LE_HOST_SUPPORTED	0x006D
+typedef struct {
+	uint8_t		le;
+	uint8_t		simul;
+} __attribute__ ((packed)) write_le_host_supported_cp;
+#define WRITE_LE_HOST_SUPPORTED_CP_SIZE 2
+
 /* Informational Parameters */
 #define OGF_INFO_PARAM		0x04
 

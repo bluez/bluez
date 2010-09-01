@@ -2009,6 +2009,15 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 	if (dev->features[7] & LMP_INQ_TX_PWR)
 		adapter_ops->read_inq_tx_pwr(adapter->dev_id);
 
+	if (dev->features[4] & LMP_LE) {
+		err = adapter_ops->write_le_host(adapter->dev_id, 0x01, 0x00);
+		if (err < 0) {
+			error("Can't write LE host supported for %s: %s(%d)",
+					adapter->path, strerror(-err), -err);
+			return err;
+		}
+	}
+
 	if (read_local_name(&adapter->bdaddr, name) < 0)
 		expand_name(name, MAX_NAME_LENGTH, main_opts.name,
 							adapter->dev_id);

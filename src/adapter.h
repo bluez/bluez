@@ -221,6 +221,7 @@ struct btd_adapter_ops {
 	int (*get_auth_info) (int index, bdaddr_t *bdaddr, uint8_t *auth);
 	int (*read_scan_enable) (int index);
 	int (*read_ssp_mode) (int index);
+	int (*write_le_host) (int index, uint8_t le, uint8_t simul);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
