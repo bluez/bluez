@@ -24,19 +24,29 @@
  *
  */
 
-#ifndef __MCAP_H
-#define __MCAP_H
+#ifndef __MCAP_INTERNAL_H
+#define __MCAP_INTERNAL_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* maximum transmission unit for channels */
-#define MCAP_CC_MTU	48
-#define MCAP_DC_MTU	L2CAP_DEFAULT_MTU
+struct mcap_instance {
+	bdaddr_t		src;			/* Source address */
+	GIOChannel		*ccio;			/* Control Channel IO */
+	GIOChannel		*dcio;			/* Data Channel IO */
+	GSList			*mcls;			/* MCAP instance list */
+	GSList			*cached;		/* List with all cached MCLs (MAX_CACHED macro) */
+	BtIOSecLevel		sec;			/* Security level */
+	mcap_mcl_event_cb	mcl_connected_cb;	/* New MCL connected */
+	mcap_mcl_event_cb	mcl_reconnected_cb;	/* Old MCL has been reconnected */
+	mcap_mcl_event_cb	mcl_disconnected_cb;	/* MCL disconnected */
+	mcap_mcl_event_cb	mcl_uncached_cb;	/* MCL has been removed from MCAP cache */
+	gpointer		user_data;		/* Data to be provided in callbacks */
+};
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __MCAP_H */
+#endif /* __MCAP_INTERNAL_H */

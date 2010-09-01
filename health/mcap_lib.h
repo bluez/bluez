@@ -31,10 +31,37 @@
 extern "C" {
 #endif
 
+typedef enum {
+/* MCAP Error Response Codes */
+	MCAP_ERROR_INVALID_OP_CODE = 1,
+	MCAP_ERROR_INVALID_PARAM_VALUE,
+	MCAP_ERROR_INVALID_MDEP,
+	MCAP_ERROR_MDEP_BUSY,
+	MCAP_ERROR_INVALID_MDL,
+	MCAP_ERROR_MDL_BUSY,
+	MCAP_ERROR_INVALID_OPERATION,
+	MCAP_ERROR_RESOURCE_UNAVAILABLE,
+	MCAP_ERROR_UNSPECIFIED_ERROR,
+	MCAP_ERROR_REQUEST_NOT_SUPPORTED,
+	MCAP_ERROR_CONFIGURATION_REJECTED,
+/* MCAP Internal Errors */
+	MCAP_ERROR_INVALID_ARGS,
+	MCAP_ERROR_ALREADY_EXISTS,
+	MCAP_ERROR_REQ_IGNORED,
+	MCAP_ERROR_MCL_CLOSED,
+	MCAP_ERROR_FAILED
+} McapError;
+
 struct mcap_instance;
 struct mcap_mcl;
 
+/************ Callbacks ************/
+
+/* mcl callbacks */
+
 typedef void (* mcap_mcl_event_cb) (struct mcap_mcl *mcl, gpointer data);
+
+/************ Operations ************/
 
 /* MCAP main operations */
 
@@ -49,6 +76,9 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 					GError **gerr);
 
 void mcap_release_instance(struct mcap_instance *mi);
+
+uint16_t mcap_get_ctrl_psm(struct mcap_instance *mi, GError **err);
+uint16_t mcap_get_data_psm(struct mcap_instance *mi, GError **err);
 
 #ifdef __cplusplus
 }
