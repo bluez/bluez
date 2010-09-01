@@ -40,6 +40,12 @@ enum phonebook_call_type {
 	CALL_TYPE_OUTGOING,
 };
 
+enum phonebook_address_type {
+	ADDR_TYPE_HOME,
+	ADDR_TYPE_WORK,
+	ADDR_TYPE_OTHER,
+};
+
 struct phonebook_number {
 	char *tel;
 	int type;
@@ -48,6 +54,11 @@ struct phonebook_number {
 struct phonebook_email {
 	char *address;
 	int  type;
+};
+
+struct phonebook_address {
+	char *addr;
+	int type;
 };
 
 struct phonebook_contact {
@@ -59,7 +70,7 @@ struct phonebook_contact {
 	GSList *emails;
 	char *prefix;
 	char *suffix;
-	char *address;
+	GSList *addresses;
 	char *birthday;
 	char *nickname;
 	char *website;
@@ -75,3 +86,5 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 					uint64_t filter, uint8_t format);
 
 void phonebook_contact_free(struct phonebook_contact *contact);
+
+gboolean address_fields_present(const char *address);

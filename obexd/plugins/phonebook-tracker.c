@@ -43,16 +43,17 @@
 #define TRACKER_RESOURCES_INTERFACE "org.freedesktop.Tracker1.Resources"
 
 #define TRACKER_DEFAULT_CONTACT_ME "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#default-contact-me"
-#define CONTACTS_ID_COL 28
-#define PULL_QUERY_COL_AMOUNT 29
+#define CONTACTS_ID_COL 35
+#define PULL_QUERY_COL_AMOUNT 36
 #define COL_HOME_NUMBER 0
 #define COL_HOME_EMAIL 7
 #define COL_WORK_NUMBER 8
 #define COL_FAX_NUMBER 16
 #define COL_WORK_EMAIL 17
-#define COL_DATE 25
-#define COL_SENT 26
-#define COL_ANSWERED 27
+#define COL_DATE 32
+#define COL_SENT 33
+#define COL_ANSWERED 34
+#define ADDR_FIELD_AMOUNT 7
 
 #define CONTACTS_QUERY_ALL						\
 	"SELECT ?v nco:fullname(?c) "					\
@@ -64,7 +65,9 @@
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
 	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
-	"nco:role(?a) "							\
+	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
+	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
+	"nco:postalcode(?pw) nco:country(?pw) "				\
 	"\"NOTACALL\" \"false\" \"false\" ?c "				\
 	"WHERE { "							\
 		"?c a nco:PersonContact . "				\
@@ -84,6 +87,7 @@
 		"?c nco:hasAffiliation ?a . "				\
 		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
+		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
 	"} "								\
 	"}"
@@ -112,7 +116,9 @@
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
 	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
-	"nco:role(?a) "							\
+	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
+	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
+	"nco:postalcode(?pw) nco:country(?pw) "				\
 	"nmo:receivedDate(?call) "					\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
@@ -133,6 +139,7 @@
 		"?c nco:hasAffiliation ?a . "				\
 		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
+		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
 	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
@@ -161,7 +168,9 @@
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
 	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
-	"nco:role(?a) "							\
+	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
+	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
+	"nco:postalcode(?pw) nco:country(?pw) "				\
 	"nmo:receivedDate(?call) "					\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
@@ -182,6 +191,7 @@
 		"?c nco:hasAffiliation ?a . "				\
 		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
+		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
 	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
@@ -210,7 +220,9 @@
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew)"	\
 	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
-	"nco:role(?a) "							\
+	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
+	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
+	"nco:postalcode(?pw) nco:country(?pw) "				\
 	"nmo:receivedDate(?call) "					\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
@@ -230,6 +242,7 @@
 		"?c nco:hasAffiliation ?a . "				\
 		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
+		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
 	"} "								\
 	"} ORDER BY DESC(nmo:sentDate(?call))"
@@ -257,7 +270,9 @@
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
 	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
-	"nco:role(?a) "							\
+	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
+	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
+	"nco:postalcode(?pw) nco:country(?pw) "				\
 	"nmo:receivedDate(?call) "					\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
@@ -277,6 +292,7 @@
 	"OPTIONAL { ?c nco:hasAffiliation ?a . "			\
 		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
+		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
 	"} "								\
 	"} UNION { "							\
@@ -295,6 +311,7 @@
 	"OPTIONAL { ?c nco:hasAffiliation ?a . "			\
 		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
+		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
 	"} "								\
 	"} } ORDER BY DESC(nmo:receivedDate(?call))"
@@ -329,7 +346,9 @@
 	"nco:postalcode(?p) nco:country(?p) ?f  nco:emailAddress(?ew)"	\
 	"nco:birthDate(<%s>) nco:nickname(<%s>) nco:websiteUrl(<%s>) "	\
 	"nco:photo(<%s>) nco:fullname(?o) nco:department(?a) "		\
-	"nco:role(?a) "							\
+	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
+	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
+	"nco:postalcode(?pw) nco:country(?pw) "				\
 	"\"NOTACALL\" \"false\" \"false\" <%s> "			\
 	"WHERE { "							\
 		"<%s> a nco:Contact . "					\
@@ -349,6 +368,7 @@
 		"<%s> nco:hasAffiliation ?a . "				\
 		"OPTIONAL { ?a nco:hasPhoneNumber ?w . }" 		\
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . }"		\
+		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
 	"} "								\
 	"}"
@@ -721,6 +741,41 @@ static void add_email(struct phonebook_contact *contact, const char *address,
 	contact->emails = g_slist_append(contact->emails, email);
 }
 
+static struct phonebook_address *find_address(GSList *addresses,
+					const char *address, int type)
+{
+	GSList *l;
+
+	for (l = addresses; l; l = l->next) {
+		struct phonebook_address *addr = l->data;
+		if (g_strcmp0(addr->addr, address) == 0 &&
+						addr->type == type)
+			return addr;
+	}
+
+	return NULL;
+}
+
+static void add_address(struct phonebook_contact *contact,
+					const char *address, int type)
+{
+	struct phonebook_address *addr;
+
+	if (address == NULL || address_fields_present(address) == FALSE)
+		return;
+
+	/* Not adding address if there is already added with the same value */
+	if (find_address(contact->addresses, address, type))
+		return;
+
+	addr = g_new0(struct phonebook_address, 1);
+
+	addr->addr = g_strdup(address);
+	addr->type = type;
+
+	contact->addresses = g_slist_append(contact->addresses, addr);
+}
+
 static GString *gen_vcards(GSList *contacts,
 					const struct apparam_field *params)
 {
@@ -753,6 +808,7 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	GString *vcards;
 	int last_index, i;
 	gboolean cdata_present = FALSE;
+	char *home_addr, *work_addr;
 
 	DBG("reply %p", reply);
 
@@ -803,9 +859,6 @@ add_entry:
 	contact->additional = g_strdup(reply[4]);
 	contact->prefix = g_strdup(reply[5]);
 	contact->suffix = g_strdup(reply[6]);
-	contact->address = g_strdup_printf("%s;%s;%s;%s;%s;%s;%s",
-				reply[9], reply[10], reply[11], reply[12],
-				reply[13], reply[14], reply[15]);
 	contact->birthday = g_strdup(reply[18]);
 	contact->nickname = g_strdup(reply[19]);
 	contact->website = g_strdup(reply[20]);
@@ -826,6 +879,18 @@ add_numbers:
 	/* Adding emails */
 	add_email(contact, reply[COL_HOME_EMAIL], EMAIL_TYPE_HOME);
 	add_email(contact, reply[COL_WORK_EMAIL], EMAIL_TYPE_WORK);
+
+	/* Adding addresses */
+	home_addr = g_strdup_printf("%s;%s;%s;%s;%s;%s;%s",
+				reply[9], reply[10], reply[11], reply[12],
+				reply[13], reply[14], reply[15]);
+
+	work_addr = g_strdup_printf("%s;%s;%s;%s;%s;%s;%s",
+				reply[25], reply[26], reply[27], reply[28],
+				reply[29], reply[30], reply[31]);
+
+	add_address(contact, home_addr, ADDR_TYPE_HOME);
+	add_address(contact, work_addr, ADDR_TYPE_WORK);
 
 	DBG("contact %p", contact);
 

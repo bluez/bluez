@@ -156,21 +156,20 @@ static gboolean contact_fields_present(struct phonebook_contact * contact)
 	return FALSE;
 }
 
-static gboolean address_fields_present(struct phonebook_contact *contact)
+gboolean address_fields_present(const char *address)
 {
-	gchar **address_fields = g_strsplit(contact->address, ";",
-							ADDR_FIELD_AMOUNT);
-	int i = 0;
+	gchar **fields = g_strsplit(address, ";", ADDR_FIELD_AMOUNT);
+	int i;
 
-	for (; i < ADDR_FIELD_AMOUNT; ++i) {
+	for (i = 0; i < ADDR_FIELD_AMOUNT; ++i) {
 
-		if (strlen(address_fields[i]) != 0) {
-			g_strfreev(address_fields);
+		if (strlen(fields[i]) != 0) {
+			g_strfreev(fields);
 			return TRUE;
 		}
 	}
 
-	g_strfreev(address_fields);
+	g_strfreev(fields);
 
 	return FALSE;
 }
@@ -376,15 +375,54 @@ static void vcard_printf_org(GString *vcards,
 				contact->department, contact->title);
 }
 
-static void vcard_printf_adr(GString *vcards,
-					struct phonebook_contact *contact)
+static void vcard_printf_address(GString *vcards, uint8_t format,
+					const char *address,
+					enum phonebook_address_type category)
 {
-	if (address_fields_present(contact) == FALSE) {
+	char buf[LEN_MAX];
+	char field[ADDR_FIELD_AMOUNT][LEN_MAX];
+	const char *category_string = "";
+	int len, i;
+	gchar **address_fields;
+
+	if (!address || address_fields_present(address) == FALSE) {
 		vcard_printf(vcards, "ADR:");
 		return;
 	}
 
-	vcard_printf(vcards, "ADR:%s", contact->address);
+	switch (category) {
+	case ADDR_TYPE_HOME:
+		if (format == FORMAT_VCARD21)
+			category_string = "HOME";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=HOME";
+		break;
+	case ADDR_TYPE_WORK:
+		if (format == FORMAT_VCARD21)
+			category_string = "WORK";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=WORK";
+		break;
+	default:
+		if (format == FORMAT_VCARD21)
+			category_string = "OTHER";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=OTHER";
+		break;
+	}
+
+	address_fields = g_strsplit(address, ";", ADDR_FIELD_AMOUNT);
+
+	for (i = 0; i < ADDR_FIELD_AMOUNT; ++i) {
+		len = strlen(address_fields[i]);
+		add_slash(field[i], address_fields[i], LEN_MAX, len);
+	}
+
+	snprintf(buf, LEN_MAX, "%s;%s;%s;%s;%s;%s;%s",
+	field[0], field[1], field[2], field[3], field[4], field[5], field[6]);
+	g_strfreev(address_fields);
+
+	vcard_printf(vcards,"ADR;%s:%s", category_string, buf);
 }
 
 static void vcard_printf_datetime(GString *vcards,
@@ -465,8 +503,19 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 		}
 	}
 
-	if (filter & FILTER_ADR)
-		vcard_printf_adr(vcards, contact);
+	if (filter & FILTER_ADR) {
+		GSList *l = contact->addresses;
+
+		if (g_slist_length(l) == 0)
+			vcard_printf_address(vcards, format, NULL,
+							ADDR_TYPE_OTHER);
+
+		for (; l; l = l->next) {
+			struct phonebook_address *addr = l->data;
+			vcard_printf_address(vcards, format, addr->addr,
+								addr->type);
+		}
+	}
 
 	if (filter & FILTER_BDAY)
 		vcard_printf_tag(vcards, format, "BDAY", NULL,
@@ -509,6 +558,14 @@ static void email_free(gpointer data, gpointer user_data)
 	g_free(email);
 }
 
+static void address_free(gpointer data, gpointer user_data)
+{
+	struct phonebook_address *addr = data;
+
+	g_free(addr->addr);
+	g_free(addr);
+}
+
 void phonebook_contact_free(struct phonebook_contact *contact)
 {
 	if (contact == NULL)
@@ -520,13 +577,15 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_slist_foreach(contact->emails, email_free, NULL);
 	g_slist_free(contact->emails);
 
+	g_slist_foreach(contact->addresses, address_free, NULL);
+	g_slist_free(contact->addresses);
+
 	g_free(contact->fullname);
 	g_free(contact->given);
 	g_free(contact->family);
 	g_free(contact->additional);
 	g_free(contact->prefix);
 	g_free(contact->suffix);
-	g_free(contact->address);
 	g_free(contact->birthday);
 	g_free(contact->nickname);
 	g_free(contact->website);
