@@ -1247,17 +1247,6 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 	return adapter_create_device(conn, adapter, address);
 }
 
-static gboolean stop_inquiry(gpointer user_data)
-{
-	struct btd_adapter *adapter = user_data;
-
-	DBG("");
-
-	adapter_ops->stop_discovery(adapter->dev_id);
-
-	return FALSE;
-}
-
 static gboolean stop_scanning(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
@@ -1270,7 +1259,6 @@ static gboolean stop_scanning(gpointer user_data)
 static int start_discovery(struct btd_adapter *adapter)
 {
 	gboolean periodic = TRUE;
-	GSourceFunc stop;
 	int err;
 
 	/* Do not start if suspended */
@@ -1288,18 +1276,14 @@ static int start_discovery(struct btd_adapter *adapter)
 							0x08, periodic);
 
 	/* Dual mode or LE only */
-	if (bredr_capable(adapter) == FALSE) {
-		err = adapter_ops->start_scanning(adapter->dev_id);
-		stop = stop_scanning;
-	} else {
-		err = adapter_ops->start_discovery(adapter->dev_id,
+	if (bredr_capable(adapter))
+		return adapter_ops->start_discovery(adapter->dev_id,
 							0x04, FALSE);
-		stop = stop_inquiry;
-	}
 
+	err = adapter_ops->start_scanning(adapter->dev_id);
 	if (err == 0)
-		adapter->stop_discov_id = g_timeout_add(5120, stop, adapter);
-
+		adapter->stop_discov_id = g_timeout_add(5120, stop_scanning,
+								adapter);
 	return err;
 }
 
