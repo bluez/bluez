@@ -468,6 +468,9 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 
 	vcard_printf_begin(vcards, format);
 
+	if (filter & FILTER_UID)
+		vcard_printf_tag(vcards, format, "UID", NULL, contact->uid);
+
 	if (filter & FILTER_N)
 		vcard_printf_name(vcards, contact);
 
@@ -580,6 +583,7 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_slist_foreach(contact->addresses, address_free, NULL);
 	g_slist_free(contact->addresses);
 
+	g_free(contact->uid);
 	g_free(contact->fullname);
 	g_free(contact->given);
 	g_free(contact->family);

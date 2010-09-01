@@ -62,6 +62,7 @@ struct phonebook_address {
 };
 
 struct phonebook_contact {
+	char *uid;
 	char *fullname;
 	char *given;
 	char *family;

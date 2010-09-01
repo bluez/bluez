@@ -866,6 +866,7 @@ add_entry:
 	contact->company = g_strdup(reply[22]);
 	contact->department = g_strdup(reply[23]);
 	contact->title = g_strdup(reply[24]);
+	contact->uid = g_strdup(reply[CONTACTS_ID_COL]);
 
 	set_call_type(contact, reply[COL_DATE], reply[COL_SENT],
 			reply[COL_ANSWERED]);
