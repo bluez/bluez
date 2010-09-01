@@ -180,28 +180,25 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 
 	for (i = 0, l = groups; l; l = l->next, i++) {
 		struct attribute *next;
-		uint16_t *u16;
+		uint8_t *value;
 
-		adl->data[i] = g_malloc(adl->len);
-		u16 = (void *) adl->data[i];
 		a = l->data;
 
-		/* Attribute Handle */
-		*u16 = htobs(a->handle);
-		u16++;
+		adl->data[i] = g_malloc(adl->len);
+		value = (void *) adl->data[i];
+
+		att_put_u16(a->handle, value);
 
 		/* End Group Handle */
 		if (l->next == NULL) {
-			*u16 = htobs(last);
+			att_put_u16(last, &value[2]);
 		} else {
 			next = l->next->data;
-			*u16 = htobs(next->handle - 1);
+			att_put_u16(next->handle - 1, &value[2]);
 		}
 
-		u16++;
-
 		/* Attribute Value */
-		memcpy(u16, a->data, a->len);
+		memcpy(&value[4], a->data, a->len);
 	}
 
 	length = enc_read_by_grp_resp(adl, pdu, len);
@@ -261,18 +258,17 @@ static uint16_t read_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 	adl->data = g_malloc(num * sizeof(uint8_t *));
 
 	for (i = 0, l = types; l; i++, l = l->next) {
-		uint16_t *u16;
+		uint8_t *value;
 
-		adl->data[i] = g_malloc(length);
-		u16 = (void *) adl->data[i];
 		a = l->data;
+		adl->data[i] = g_malloc(length);
 
-		/* Attribute Handle */
-		*u16 = htobs(a->handle);
-		u16++;
+		value = (void *) adl->data[i];
+
+		att_put_u16(a->handle, value);
 
 		/* Attribute Value */
-		memcpy(u16, a->data, a->len);
+		memcpy(&value[2], a->data, a->len);
 	}
 
 	length = enc_read_by_type_resp(adl, pdu, len);
@@ -335,18 +331,17 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 	adl->data = g_malloc(num * sizeof(uint8_t *));
 
 	for (i = 0, l = info; l; i++, l = l->next) {
-		uint16_t *u16;
+		uint8_t *value;
 
-		adl->data[i] = g_malloc(adl->len);
-		u16 = (void *) adl->data[i];
 		a = l->data;
+		adl->data[i] = g_malloc(adl->len);
 
-		/* Attribute Handle */
-		*u16 = htobs(a->handle);
-		u16++;
+		value = (void *) adl->data[i];
+
+		att_put_u16(a->handle, value);
 
 		/* Attribute Value */
-		memcpy(u16, &a->uuid.value, length);
+		memcpy(&value[2], &a->uuid.value, length);
 	}
 
 	length = enc_find_info_resp(format, adl, pdu, len);
