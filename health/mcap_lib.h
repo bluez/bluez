@@ -104,6 +104,14 @@ gboolean mcap_reconnect_mdl(struct mcap_mdl *mdl,
 				mcap_mdl_operation_cb reconnect_cb,
 				gpointer user_data,
 				GError **err);
+gboolean mcap_delete_all_mdls(struct mcap_mcl *mcl,
+				mcap_mdl_notify_cb delete_cb,
+				gpointer user_data,
+				GError **err);
+gboolean mcap_delete_mdl(struct mcap_mdl *mdl,
+				mcap_mdl_notify_cb delete_cb,
+				gpointer user_data,
+				GError **err);
 gboolean mcap_connect_mdl(struct mcap_mdl *mdl,
 				BtIOType BtType,
 				uint16_t dcpsm,

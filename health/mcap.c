@@ -514,6 +514,94 @@ gboolean mcap_reconnect_mdl(struct mcap_mdl *mdl,
 	return TRUE;
 }
 
+static gboolean send_delete_req(struct mcap_mcl *mcl,
+						struct mcap_mdl_op_cb *con,
+						uint16_t mdlid,
+						GError **err)
+{
+	mcap_md_req *cmd;
+
+	cmd = create_req(MCAP_MD_DELETE_MDL_REQ, mdlid);
+	if (!mcap_send_std_opcode(mcl, cmd, sizeof(mcap_md_req), err)) {
+		g_free(cmd);
+		return FALSE;
+	}
+
+	mcl->priv_data = con;
+
+	mcl->tid = g_timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
+									mcl);
+	return TRUE;
+}
+
+gboolean mcap_delete_all_mdls(struct mcap_mcl *mcl,
+					mcap_mdl_notify_cb delete_cb,
+					gpointer user_data, GError **err)
+{
+	GSList *l;
+	struct mcap_mdl *mdl;
+	struct mcap_mdl_op_cb *con;
+
+	DBG("MCL in state: %d", mcl->state);
+	if (!mcl->mdls) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_FAILED,
+				"There are not MDLs created");
+		return FALSE;
+	}
+
+	for (l = mcl->mdls; l; l = l->next) {
+		mdl = l->data;
+		if (mdl->state != MDL_WAITING)
+			mdl->state = MDL_DELETING;
+	}
+
+	con = g_new0(struct mcap_mdl_op_cb, 1);
+	con->mdl = NULL;
+	con->cb.notify = delete_cb;
+	con->user_data = user_data;
+
+
+	if (!send_delete_req(mcl, con, MCAP_ALL_MDLIDS, err)) {
+		g_free(con);
+		return FALSE;
+	}
+	return TRUE;
+}
+
+gboolean mcap_delete_mdl(struct mcap_mdl *mdl, mcap_mdl_notify_cb delete_cb,
+					gpointer user_data, GError **err)
+{
+	struct mcap_mcl *mcl= mdl->mcl;
+	struct mcap_mdl_op_cb *con;
+	GSList *l;
+
+	l = g_slist_find(mcl->mdls, mdl);
+
+	if (!l) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_INVALID_MDL,
+					"%s" , error2str(MCAP_INVALID_MDEP));
+		return FALSE;
+	}
+
+	if (mdl->state == MDL_WAITING) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_FAILED,
+							"Mdl is not created");
+		return FALSE;
+	}
+	mdl->state = MDL_DELETING;
+
+	con = g_new0(struct mcap_mdl_op_cb, 1);
+	con->mdl = mdl;
+	con->cb.notify = delete_cb;
+	con->user_data = user_data;
+
+	if (!send_delete_req(mcl, con, mdl->mdlid, err)) {
+		g_free(con);
+		return FALSE;
+	}
+	return TRUE;
+}
+
 gboolean mcap_mdl_abort(struct mcap_mdl *mdl, mcap_mdl_notify_cb abort_cb,
 					gpointer user_data, GError **err)
 {
@@ -802,6 +890,18 @@ void mcap_mcl_get_addr(struct mcap_mcl *mcl, bdaddr_t *addr)
 	bacpy(addr, &mcl->addr);
 }
 
+static void mcap_del_mdl(gpointer elem, gpointer user_data)
+{
+	struct mcap_mdl *mdl = elem;
+	gboolean notify = *(gboolean *) user_data;
+
+	shutdown_mdl(mdl);
+	if (notify)
+		mdl->mcl->cb->mdl_deleted(mdl, mdl->mcl->cb->user_data);
+
+	g_free(mdl);
+}
+
 static gboolean check_cmd_req_length(struct mcap_mcl *mcl, void *cmd,
 				uint32_t rlen, uint32_t explen, uint8_t rspcod)
 {
@@ -996,7 +1096,57 @@ static void process_md_abort_mdl_req(struct mcap_mcl *mcl, void *cmd,
 static void process_md_delete_mdl_req(struct mcap_mcl *mcl, void *cmd,
 								uint32_t len)
 {
-	/* TODO: Implement process_md_delete_mdl_req */
+	mcap_md_req *req;
+	struct mcap_mdl *mdl, *aux;
+	uint16_t mdlid;
+	gboolean notify;
+	GSList *l;
+
+	if (!check_cmd_req_length(mcl, cmd, len, sizeof(mcap_md_req),
+							MCAP_MD_DELETE_MDL_RSP))
+		return;
+
+	req = cmd;
+	mdlid = ntohs(req->mdl);
+	if (mdlid == MCAP_ALL_MDLIDS) {
+		notify = FALSE;
+		g_slist_foreach(mcl->mdls, mcap_del_mdl, &notify);
+		g_slist_free(mcl->mdls);
+		mcl->mdls = NULL;
+		mcl->state = MCL_CONNECTED;
+		/* NULL mdl means ALL_MDLS */
+		mcl->cb->mdl_deleted(NULL, mcl->cb->user_data);
+		goto resp;
+	}
+
+	if (mdlid < MCAP_MDLID_INITIAL || mdlid > MCAP_MDLID_FINAL) {
+		mcap_send_cmd(mcl, MCAP_MD_DELETE_MDL_RSP, MCAP_INVALID_MDL,
+								mdlid, NULL, 0);
+		return;
+	}
+
+	for (l = mcl->mdls, mdl = NULL; l; l = l->next) {
+		aux = l->data;
+		if (aux->mdlid == mdlid) {
+			mdl = aux;
+			break;
+		}
+	}
+
+	if (!mdl || mdl->state == MDL_WAITING) {
+		mcap_send_cmd(mcl, MCAP_MD_DELETE_MDL_RSP, MCAP_INVALID_MDL,
+								mdlid, NULL, 0);
+		return;
+	}
+
+	mcl->mdls = g_slist_remove(mcl->mdls, mdl);
+	update_mcl_state(mcl);
+	notify = TRUE;
+	mcap_del_mdl(mdl, &notify);
+
+resp:
+	mcap_send_cmd(mcl, MCAP_MD_DELETE_MDL_RSP, MCAP_SUCCESS, mdlid,
+								NULL, 0);
 }
 
 static void invalid_req_state(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
@@ -1229,11 +1379,65 @@ static gboolean process_md_abort_mdl_rsp(struct mcap_mcl *mcl,
 	return close;
 }
 
+static void restore_mdl(gpointer elem, gpointer data)
+{
+	struct mcap_mdl *mdl = elem;
+
+	if (mdl->state == MDL_DELETING) {
+		if (mdl->dc)
+			mdl->state = MDL_CONNECTED;
+		else
+			mdl->state = MDL_CLOSED;
+	} else if (mdl->state == MDL_CLOSED)
+		mdl->mcl->cb->mdl_closed(mdl, mdl->mcl->cb->user_data);
+}
+
 static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, uint8_t *cmd,
 								uint32_t len)
 {
-	/* TODO: Implement process_md_delete_mdl_rsp */
-	return TRUE;
+	struct mcap_mdl_op_cb *del = mcl->priv_data;
+	struct mcap_mdl *mdl = del->mdl;
+	mcap_mdl_notify_cb deleted_cb = del->cb.notify;
+	gpointer user_data = del->user_data;
+	mcap_md_req *cmdlast = (mcap_md_req *) mcl->lcmd;
+	uint16_t mdlid = ntohs(cmdlast->mdl);
+	GError *gerr = NULL;
+	gboolean close;
+	gboolean notify = FALSE;
+
+	g_free(mcl->priv_data);
+	mcl->priv_data = NULL;
+
+	close = check_err_rsp(mcl, cmd, len, sizeof(mcap_rsp), &gerr);
+
+	g_free(mcl->lcmd);
+	mcl->lcmd = NULL;
+	mcl->req = MCL_AVAILABLE;
+
+	if (gerr) {
+		if (mdl)
+			restore_mdl(mdl, NULL);
+		else
+			g_slist_foreach(mcl->mdls, restore_mdl, NULL);
+		deleted_cb(gerr, user_data);
+		g_error_free(gerr);
+		return close;
+	}
+
+	if (mdlid == MCAP_ALL_MDLIDS) {
+		g_slist_foreach(mcl->mdls, mcap_del_mdl, &notify);
+		g_slist_free(mcl->mdls);
+		mcl->mdls = NULL;
+		mcl->state = MCL_CONNECTED;
+		goto end;
+	}
+
+	mcl->mdls = g_slist_remove(mcl->mdls, mdl);
+	update_mcl_state(mcl);
+	mcap_del_mdl(mdl, &notify);
+end:
+	deleted_cb(gerr, user_data);
+	return close;
 }
 
 static void proc_response(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
