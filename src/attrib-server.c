@@ -400,9 +400,6 @@ static void channel_destroy(void *user_data)
 {
 	struct gatt_channel *channel = user_data;
 
-	g_attrib_unregister_all(channel->attrib);
-	g_attrib_unref(channel->attrib);
-
 	clients = g_slist_remove(clients, channel);
 
 	g_free(channel);
@@ -502,8 +499,12 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 	}
 
 	channel->attrib = g_attrib_new(io);
+	g_io_channel_unref(io);
+
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
-				channel_handler, channel, channel_destroy);
+				channel_handler, channel, NULL);
+	g_attrib_set_disconnect_function(channel->attrib, channel_destroy,
+								channel);
 
 	clients = g_slist_append(clients, channel);
 }
