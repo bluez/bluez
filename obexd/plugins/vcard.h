@@ -59,13 +59,7 @@ struct phonebook_contact {
 	GSList *emails;
 	char *prefix;
 	char *suffix;
-	char *pobox;
-	char *extended;
-	char *street;
-	char *locality;
-	char *region;
-	char *postal;
-	char *country;
+	char *address;
 	char *birthday;
 	char *nickname;
 	char *website;

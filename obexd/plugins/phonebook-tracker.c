@@ -803,13 +803,9 @@ add_entry:
 	contact->additional = g_strdup(reply[4]);
 	contact->prefix = g_strdup(reply[5]);
 	contact->suffix = g_strdup(reply[6]);
-	contact->pobox = g_strdup(reply[9]);
-	contact->extended = g_strdup(reply[10]);
-	contact->street = g_strdup(reply[11]);
-	contact->locality = g_strdup(reply[12]);
-	contact->region = g_strdup(reply[13]);
-	contact->postal = g_strdup(reply[14]);
-	contact->country = g_strdup(reply[15]);
+	contact->address = g_strdup_printf("%s;%s;%s;%s;%s;%s;%s",
+				reply[9], reply[10], reply[11], reply[12],
+				reply[13], reply[14], reply[15]);
 	contact->birthday = g_strdup(reply[18]);
 	contact->nickname = g_strdup(reply[19]);
 	contact->website = g_strdup(reply[20]);

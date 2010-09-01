@@ -31,6 +31,7 @@
 
 #include "vcard.h"
 
+#define ADDR_FIELD_AMOUNT 7
 #define LEN_MAX 128
 #define TYPE_INTERNATIONAL 145
 
@@ -157,20 +158,19 @@ static gboolean contact_fields_present(struct phonebook_contact * contact)
 
 static gboolean address_fields_present(struct phonebook_contact *contact)
 {
-	if (contact->pobox && strlen(contact->pobox))
-		return TRUE;
-	if (contact->extended && strlen(contact->extended))
-		return TRUE;
-	if (contact->street && strlen(contact->street))
-		return TRUE;
-	if (contact->locality && strlen(contact->locality))
-		return TRUE;
-	if (contact->region && strlen(contact->region))
-		return TRUE;
-	if (contact->postal && strlen(contact->postal))
-		return TRUE;
-	if (contact->country && strlen(contact->country))
-		return TRUE;
+	gchar **address_fields = g_strsplit(contact->address, ";",
+							ADDR_FIELD_AMOUNT);
+	int i = 0;
+
+	for (; i < ADDR_FIELD_AMOUNT; ++i) {
+
+		if (strlen(address_fields[i]) != 0) {
+			g_strfreev(address_fields);
+			return TRUE;
+		}
+	}
+
+	g_strfreev(address_fields);
 
 	return FALSE;
 }
@@ -384,10 +384,7 @@ static void vcard_printf_adr(GString *vcards,
 		return;
 	}
 
-	vcard_printf(vcards, "ADR:%s;%s;%s;%s;%s;%s;%s", contact->pobox,
-					contact->extended, contact->street,
-					contact->locality, contact->region,
-					contact->postal, contact->country);
+	vcard_printf(vcards, "ADR:%s", contact->address);
 }
 
 static void vcard_printf_datetime(GString *vcards,
@@ -529,13 +526,7 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_free(contact->additional);
 	g_free(contact->prefix);
 	g_free(contact->suffix);
-	g_free(contact->pobox);
-	g_free(contact->extended);
-	g_free(contact->street);
-	g_free(contact->locality);
-	g_free(contact->region);
-	g_free(contact->postal);
-	g_free(contact->country);
+	g_free(contact->address);
 	g_free(contact->birthday);
 	g_free(contact->nickname);
 	g_free(contact->website);
