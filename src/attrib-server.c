@@ -493,6 +493,13 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 			BT_IO_OPT_SOURCE_BDADDR, &channel->src,
 			BT_IO_OPT_DEST_BDADDR, &channel->dst,
 			BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		g_free(channel);
+		g_io_channel_shutdown(io, TRUE, NULL);
+		return;
+	}
 
 	channel->attrib = g_attrib_new(io);
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
