@@ -97,6 +97,10 @@ struct mcap_mcl {
 #define	MCAP_CTRL_FREE		0x10	/* MCL is marked as releasable */
 #define	MCAP_CTRL_NOCACHE	0x20	/* MCL is marked as not cacheable */
 
+int mcap_send_data(int sock, const uint8_t *buf, uint32_t size);
+
+void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
+
 #ifdef __cplusplus
 }
 #endif

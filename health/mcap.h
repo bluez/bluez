@@ -35,6 +35,24 @@ extern "C" {
 #define MCAP_CC_MTU	48
 #define MCAP_DC_MTU	L2CAP_DEFAULT_MTU
 
+/* MCAP Standard Op Codes */
+#define MCAP_ERROR_RSP			0x00
+#define MCAP_MD_CREATE_MDL_REQ		0x01
+#define MCAP_MD_CREATE_MDL_RSP		0x02
+#define MCAP_MD_RECONNECT_MDL_REQ	0x03
+#define MCAP_MD_RECONNECT_MDL_RSP	0x04
+#define MCAP_MD_ABORT_MDL_REQ		0x05
+#define MCAP_MD_ABORT_MDL_RSP		0x06
+#define MCAP_MD_DELETE_MDL_REQ		0x07
+#define MCAP_MD_DELETE_MDL_RSP		0x08
+
+/* MCAP Clock Sync Op Codes */
+#define MCAP_MD_SYNC_CAP_REQ		0x11
+#define MCAP_MD_SYNC_CAP_RSP		0x12
+#define MCAP_MD_SYNC_SET_REQ		0x13
+#define MCAP_MD_SYNC_SET_RSP		0x14
+#define MCAP_MD_SYNC_INFO_IND		0x15
+
 /* MCAP Response codes */
 #define MCAP_SUCCESS			0x00
 #define MCAP_INVALID_OP_CODE		0x01
@@ -54,6 +72,16 @@ extern "C" {
 #define MCAP_MDLID_INITIAL		0x0001
 #define MCAP_MDLID_FINAL		0xFEFF
 #define MCAP_ALL_MDLIDS			0xFFFF
+
+/*
+ * MCAP Response Packet Format
+ */
+
+typedef struct {
+	uint8_t		op;
+	uint8_t		rc;
+	uint16_t	mdl;
+} __attribute__ ((packed)) mcap_rsp;
 
 #ifdef __cplusplus
 }

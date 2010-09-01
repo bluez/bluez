@@ -30,6 +30,7 @@
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "btio.h"
 #include <bluetooth/bluetooth.h>
@@ -37,6 +38,8 @@
 #include "mcap.h"
 #include "mcap_lib.h"
 #include "mcap_internal.h"
+
+#define MAX_CACHED	10	/* 10 devices */
 
 #define MCAP_ERROR g_quark_from_static_string("mcap-error-quark")
 
@@ -49,6 +52,17 @@ struct connect_mcl {
 	struct mcap_mcl		*mcl;		/* MCL for this operation */
 	mcap_mcl_connect_cb	connect_cb;	/* Connect callback */
 	gpointer		user_data;	/* Callback user data */
+};
+
+/* MCAP finite state machine functions */
+static void proc_req_connected(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t l);
+static void proc_req_pending(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t l);
+static void proc_req_active(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t l);
+
+static void (*proc_req[])(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len) = {
+	proc_req_connected,
+	proc_req_pending,
+	proc_req_active
 };
 
 static void default_mdl_connected_cb(struct mcap_mdl *mdl, gpointer data)
@@ -99,6 +113,50 @@ static void set_default_cb(struct mcap_mcl *mcl)
 	mcl->cb->mdl_aborted = default_mdl_aborted_cb;
 	mcl->cb->mdl_conn_req = default_mdl_conn_req_cb;
 	mcl->cb->mdl_reconn_req = default_mdl_reconn_req_cb;
+}
+
+static void mcap_notify_error(struct mcap_mcl *mcl, GError *err)
+{
+	/* TODO: implement mcap_notify_error */
+}
+
+int mcap_send_data(int sock, const uint8_t *buf, uint32_t size)
+{
+	uint32_t sent = 0;
+
+	while (sent < size) {
+		int n = write(sock, buf + sent, size - sent);
+		if (n < 0)
+			return -1;
+		sent += n;
+	}
+	return 0;
+}
+
+static int mcap_send_cmd(struct mcap_mcl *mcl, uint8_t oc, uint8_t rc,
+					uint16_t mdl, uint8_t *data, size_t len)
+{
+	mcap_rsp *cmd;
+	uint8_t *rsp;
+	int sock, sent;
+
+	if (mcl->cc == NULL)
+		return -1;
+
+	sock = g_io_channel_unix_get_fd(mcl->cc);
+
+	rsp = g_malloc(sizeof(mcap_rsp) + len);
+	cmd = (mcap_rsp *) rsp;
+	cmd->op = oc;
+	cmd->rc = rc;
+	cmd->mdl = htons(mdl);
+
+	if (data && len > 0)
+		memcpy(rsp + sizeof(mcap_rsp), data, len);
+
+	sent = mcap_send_data(sock, rsp, sizeof(mcap_rsp) + len);
+	g_free(rsp);
+	return sent;
 }
 
 static struct mcap_mcl *find_mcl(GSList *list, const bdaddr_t *addr)
@@ -172,6 +230,46 @@ static void mcap_mcl_check_del(struct mcap_mcl *mcl)
 		mcap_mcl_shutdown(mcl);
 	else
 		mcap_mcl_unref(mcl);
+}
+
+static void mcap_cache_mcl(struct mcap_mcl *mcl)
+{
+	GSList *l;
+	struct mcap_mcl *last;
+	int len;
+
+	if (mcl->ctrl & MCAP_CTRL_CACHED)
+		return;
+
+	mcl->ms->mcls = g_slist_remove(mcl->ms->mcls, mcl);
+
+	if ((mcl->ctrl & MCAP_CTRL_NOCACHE) || (mcl->ref < 2)) {
+		mcap_mcl_unref(mcl);
+		return;
+	}
+
+	DBG("Caching MCL");
+
+	len = g_slist_length(mcl->ms->cached);
+	if (len == MAX_CACHED) {
+		/* Remove the latest cached mcl */
+		l = g_slist_last(mcl->ms->cached);
+		last = l->data;
+		mcl->ms->cached = g_slist_remove(mcl->ms->cached, last);
+		last->ctrl &= ~MCAP_CTRL_CACHED;
+		if (last->ctrl & MCAP_CTRL_CONN) {
+			/* If connection process is not success this MCL will be
+			 * freed next time that close_mcl is invoked */
+			last->ctrl |= MCAP_CTRL_FREE;
+		} else {
+			last->ms->mcl_uncached_cb(last, last->ms->user_data);
+			mcap_mcl_unref(last);
+		}
+	}
+
+	mcl->ms->cached = g_slist_prepend(mcl->ms->cached, mcl);
+	mcl->ctrl |= MCAP_CTRL_CACHED;
+	mcap_mcl_shutdown(mcl);
 }
 
 static void mcap_uncache_mcl(struct mcap_mcl *mcl)
@@ -312,10 +410,103 @@ void mcap_mcl_get_addr(struct mcap_mcl *mcl, bdaddr_t *addr)
 	bacpy(addr, &mcl->addr);
 }
 
+/* Function used to process commands depending of MCL state */
+static void proc_req_connected(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	/* TODO: Implement proc_req_connected */
+}
+
+static void proc_req_pending(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	/* TODO: Implement proc_req_pending */
+}
+
+static void proc_req_active(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	/* TODO: Implement proc_req_active */
+}
+
+static void proc_response(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	/* TODO: Implement proc_response */
+}
+
+static void proc_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	GError *gerr = NULL;
+
+	if (cmd[0] > MCAP_MD_SYNC_INFO_IND ||
+					(cmd[0] > MCAP_MD_DELETE_MDL_RSP &&
+					cmd[0] < MCAP_MD_SYNC_CAP_REQ)) {
+		error("Unknown cmd received (op code = %d)", cmd[0]);
+		mcap_send_cmd(mcl, MCAP_ERROR_RSP, MCAP_INVALID_OP_CODE,
+						MCAP_MDLID_RESERVED, NULL, 0);
+		return;
+	}
+
+	if (cmd[0] >= MCAP_MD_SYNC_CAP_REQ &&
+					cmd[0] <= MCAP_MD_SYNC_INFO_IND) {
+		/* TODO: proc_sync_cmd(mcl, cmd, len);*/
+		return;
+	}
+
+	if (!(mcl->ctrl & MCAP_CTRL_STD_OP)) {
+		/* In case the remote device doesn't work correctly */
+		error("Remote device does not support opcodes, cmd ignored");
+		return;
+	}
+
+	if (mcl->req == MCL_WAITING_RSP) {
+		if (cmd[0] & 0x01) {
+			/* Request arrived when a response is expected */
+			if (mcl->role == MCL_INITIATOR)
+				/* ignore */
+				return;
+			/* Initiator will ignore our last request */
+			RELEASE_TIMER(mcl);
+			mcl->req = MCL_AVAILABLE;
+			g_set_error(&gerr, MCAP_ERROR, MCAP_ERROR_REQ_IGNORED,
+				"Initiator sent a request with more priority");
+			mcap_notify_error(mcl, gerr);
+			proc_req[mcl->state](mcl, cmd, len);
+			return;
+		}
+		proc_response(mcl, cmd, len);
+	} else if (cmd[0] & 0x01)
+		proc_req[mcl->state](mcl, cmd, len);
+}
+
 static gboolean mcl_control_cb(GIOChannel *chan, GIOCondition cond,
 								gpointer data)
 {
-	/* TODO: Create mcl_control_cb */
+	GError *gerr = NULL;
+
+	struct mcap_mcl *mcl = data;
+	int sk, len;
+	uint8_t buf[MCAP_CC_MTU];
+
+	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
+		goto fail;
+
+	sk = g_io_channel_unix_get_fd(chan);
+	len = read(sk, buf, sizeof(buf));
+	if (len < 0)
+		goto fail;
+
+	proc_cmd(mcl, buf, (uint32_t) len);
+	return TRUE;
+fail:
+	if (mcl->state != MCL_IDLE) {
+		if (mcl->req == MCL_WAITING_RSP) {
+			/* notify error in pending callback */
+			g_set_error(&gerr, MCAP_ERROR, MCAP_ERROR_MCL_CLOSED,
+								"MCL closed");
+			mcap_notify_error(mcl, gerr);
+			g_error_free(gerr);
+		}
+		mcl->ms->mcl_disconnected_cb(mcl, mcl->ms->user_data);
+	}
+	mcap_cache_mcl(mcl);
 	return FALSE;
 }
 
