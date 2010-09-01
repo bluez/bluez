@@ -98,6 +98,7 @@ struct btd_adapter {
 	char *path;			/* adapter object path */
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
 	guint discov_timeout_id;	/* discoverable timeout id */
+	guint stop_discov_id;		/* stop inquiry/scanning id */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
 	guint pairable_timeout_id;	/* pairable timeout id */
 	uint32_t pairable_timeout;	/* pairable time(sec) */
@@ -232,6 +233,20 @@ static void update_ext_inquiry_response(struct btd_adapter *adapter)
 	if (ret < 0)
 		error("Can't write extended inquiry response: %s (%d)",
 						strerror(-ret), -ret);
+}
+
+static gboolean bredr_capable(struct btd_adapter *adapter)
+{
+	struct hci_dev *dev = &adapter->dev;
+
+	return (dev->features[4] & LMP_NO_BREDR) == 0 ? TRUE : FALSE;
+}
+
+static gboolean le_capable(struct btd_adapter *adapter)
+{
+	struct hci_dev *dev = &adapter->dev;
+
+	return (dev->features[4] & LMP_LE) ? TRUE : FALSE;
 }
 
 static int adapter_set_service_classes(struct btd_adapter *adapter,
@@ -1254,7 +1269,6 @@ static gboolean stop_scanning(gpointer user_data)
 
 static int start_discovery(struct btd_adapter *adapter)
 {
-	struct hci_dev *dev = &adapter->dev;
 	gboolean periodic = TRUE;
 	GSourceFunc stop;
 	int err;
@@ -1269,11 +1283,11 @@ static int start_discovery(struct btd_adapter *adapter)
 	pending_remote_name_cancel(adapter);
 
 	/* BR/EDR only? */
-	if (!(dev->features[4] & LMP_LE))
+	if (le_capable(adapter) == FALSE)
 		return adapter_ops->start_discovery(adapter->dev_id, periodic);
 
 	/* Dual mode or LE only */
-	if (dev->features[4] & LMP_NO_BREDR) {
+	if (bredr_capable(adapter) == FALSE) {
 		err = adapter_ops->start_scanning(adapter->dev_id);
 		stop = stop_scanning;
 	} else {
@@ -1282,7 +1296,7 @@ static int start_discovery(struct btd_adapter *adapter)
 	}
 
 	if (err == 0)
-		g_timeout_add(5120, stop, adapter);
+		adapter->stop_discov_id = g_timeout_add(5120, stop, adapter);
 
 	return err;
 }
@@ -2653,21 +2667,50 @@ void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 
 void adapter_set_state(struct btd_adapter *adapter, int state)
 {
-	gboolean discov_active = FALSE;
 	const char *path = adapter->path;
+	gboolean discov_active;
+	int previous;
 
 	if (adapter->state == state)
 		return;
 
-	if (adapter->state & STD_INQUIRY) {
-		if (adapter_ops->start_scanning(adapter->dev_id) < 0)
+	previous = adapter->state;
+	adapter->state = state;
+
+	switch (state) {
+	case STD_INQUIRY:
+		discov_active = TRUE;
+		break;
+	case PERIODIC_INQUIRY:
+		discov_active = TRUE;
+		break;
+	case LE_SCAN:
+		/* Scanning enabled */
+		adapter->stop_discov_id = g_timeout_add(5120,
+						stop_scanning, adapter);
+
+		/* For dual mode: don't send "Discovering = TRUE"  */
+		if (bredr_capable(adapter) == TRUE)
 			return;
 
-		g_timeout_add(5120, stop_scanning, adapter);
-	}
+		/* LE only */
+		discov_active = TRUE;
 
-	discov_active = state & (PERIODIC_INQUIRY | STD_INQUIRY | LE_SCAN)
-					? TRUE : FALSE;
+		break;
+	case DISCOVER_TYPE_NONE:
+		/* Interleave: from inquiry to scanning */
+		if (le_capable(adapter) == TRUE && (previous & STD_INQUIRY)) {
+			adapter_ops->start_scanning(adapter->dev_id);
+			return;
+		}
+
+		/* BR/EDR only: inquiry finished */
+		discov_active = FALSE;
+		break;
+	default:
+		discov_active = FALSE;
+		break;
+	}
 
 	if (discov_active == FALSE)
 		adapter_update_oor_devices(adapter);
@@ -2681,7 +2724,6 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 				ADAPTER_INTERFACE, "Discovering",
 				DBUS_TYPE_BOOLEAN, &discov_active);
 
-	adapter->state = state;
 }
 
 int adapter_get_state(struct btd_adapter *adapter)
