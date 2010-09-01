@@ -454,6 +454,9 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 		goto done;
 	}
 
+	if (length == 0)
+		status = ATT_ECODE_IO;
+
 done:
 	if (status)
 		length = enc_error_resp(ipdu[0], 0x0000, status, opdu, sizeof(opdu));
