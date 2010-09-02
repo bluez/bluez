@@ -316,8 +316,11 @@ uint16_t enc_read_resp(uint8_t *value, int vlen, uint8_t *pdu, int len)
 	if (pdu == NULL)
 		return 0;
 
-	if (len < vlen + 1)
-		return 0;
+	/* If the attribute value length is longer than the allowed PDU size,
+	 * send only the octets that fit on the PDU. The remaining octets can
+	 * be requested using the Read Blob Request. */
+	if (vlen > len - 1)
+		vlen = len - 1;
 
 	pdu[0] = ATT_OP_READ_RESP;
 
