@@ -63,6 +63,10 @@ class Agent(dbus.service.Object):
 					in_signature="s", out_signature="")
 	def ConfirmModeChange(self, mode):
 		print "ConfirmModeChange (%s)" % (mode)
+		authorize = raw_input("Authorize mode change (yes/no): ")
+		if (authorize == "yes"):
+			return
+		raise Rejected("Mode change by user")
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="", out_signature="")
