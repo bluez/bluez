@@ -73,6 +73,10 @@ extern "C" {
 #define MCAP_MDLID_FINAL		0xFEFF
 #define MCAP_ALL_MDLIDS			0xFFFF
 
+/* MDEP IDs */
+#define MCAP_MDEPID_INITIAL		0x00
+#define MCAP_MDEPID_FINAL		0x7F
+
 /*
  * MCAP Request Packet Format
  */
@@ -83,6 +87,11 @@ typedef struct {
 	uint8_t		mdep;
 	uint8_t		conf;
 } __attribute__ ((packed)) mcap_md_create_mdl_req;
+
+typedef struct {
+	uint8_t		op;
+	uint16_t	mdl;
+} __attribute__ ((packed)) mcap_md_req;
 
 /*
  * MCAP Response Packet Format
