@@ -2040,10 +2040,9 @@ uint16_t mcap_get_ctrl_psm(struct mcap_instance *mi, GError **err)
 		return 0;
 	}
 
-	bt_io_get(mi->ccio, BT_IO_L2CAP, err,
+	if (!bt_io_get(mi->ccio, BT_IO_L2CAP, err,
 			BT_IO_OPT_PSM, &lpsm,
-			BT_IO_OPT_INVALID);
-	if (*err)
+			BT_IO_OPT_INVALID))
 		return 0;
 
 	return lpsm;
@@ -2059,10 +2058,9 @@ uint16_t mcap_get_data_psm(struct mcap_instance *mi, GError **err)
 		return 0;
 	}
 
-	bt_io_get(mi->dcio, BT_IO_L2CAP, err,
+	if (!bt_io_get(mi->dcio, BT_IO_L2CAP, err,
 			BT_IO_OPT_PSM, &lpsm,
-			BT_IO_OPT_INVALID);
-	if (*err)
+			BT_IO_OPT_INVALID))
 		return 0;
 
 	return lpsm;
