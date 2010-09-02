@@ -312,7 +312,7 @@ int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 int pending_remote_name_cancel(struct btd_adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
-	int err = 0;
+	int err;
 
 	/* find the pending remote name request */
 	memset(&match, 0, sizeof(struct remote_dev_info));

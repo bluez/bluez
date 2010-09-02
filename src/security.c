@@ -586,30 +586,19 @@ static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
 
 	state = adapter_get_state(adapter);
 
-	DBG("adapter->state %#x", state);
-
 	/* Disable name resolution for non D-Bus clients */
 	if (!adapter_has_discov_sessions(adapter))
 		state &= ~RESOLVE_NAME;
 
 	if (periodic) {
 		state |= PERIODIC_INQUIRY;
-		adapter_set_state(adapter, state);
-		return;
-	}
 
-	state |= STD_INQUIRY;
-	adapter_set_state(adapter, state);
-
-	/*
-	 * Cancel pending remote name request and clean the device list
-	 * when inquiry is supported in periodic inquiry idle state.
-	 */
-	if (adapter_get_state(adapter) & PERIODIC_INQUIRY) {
 		pending_remote_name_cancel(adapter);
-
 		clear_found_devices_list(adapter);
-	}
+	} else
+		state |= STD_INQUIRY;
+
+	adapter_set_state(adapter, state);
 }
 
 static void inquiry_complete(bdaddr_t *local, uint8_t status, gboolean periodic)
