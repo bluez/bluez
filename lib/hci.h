@@ -268,6 +268,11 @@ enum {
 #define LMP_EPC		0x04
 #define LMP_EXT_FEAT	0x80
 
+/* Extended LMP features */
+#define LMP_SSP			0x01
+#define LMP_LE_SUPPORTED	0x02
+#define LMP_SIMULT_LE_BREDR	0x04
+
 /* Link policies */
 #define HCI_LP_RSWITCH	0x0001
 #define HCI_LP_HOLD	0x0002
