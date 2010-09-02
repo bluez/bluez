@@ -640,6 +640,8 @@ static int hidp_add_connection(const struct input_device *idev,
 		fake->disconnect = fake_hid_disconnect;
 		fake->priv = fake_hid;
 		err = fake_hid_connadd(fake, iconn->intr_io, fake_hid);
+		if (err == 0)
+			fake->flags |= FI_FLAG_CONNECTED;
 		goto cleanup;
 	}
 
