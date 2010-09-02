@@ -484,3 +484,69 @@ uint16_t enc_notification(struct attribute *a, uint8_t *pdu, int len)
 
 	return a->len + 3;
 }
+
+uint16_t enc_mtu_req(uint16_t mtu, uint8_t *pdu, int len)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (len < 3)
+		return 0;
+
+	pdu[0] = ATT_OP_MTU_REQ;
+	att_put_u16(mtu, &pdu[1]);
+
+	return 3;
+}
+
+uint16_t dec_mtu_req(const uint8_t *pdu, int len, uint16_t *mtu)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (mtu == NULL)
+		return 0;
+
+	if (len < 3)
+		return 0;
+
+	if (pdu[0] != ATT_OP_MTU_REQ)
+		return 0;
+
+	*mtu = att_get_u16((uint16_t *) &pdu[1]);
+
+	return 3;
+}
+
+uint16_t enc_mtu_resp(uint16_t mtu, uint8_t *pdu, int len)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (len < 3)
+		return 0;
+
+	pdu[0] = ATT_OP_MTU_RESP;
+	att_put_u16(mtu, &pdu[1]);
+
+	return 3;
+}
+
+uint16_t dec_mtu_resp(const uint8_t *pdu, int len, uint16_t *mtu)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (mtu == NULL)
+		return 0;
+
+	if (len < 3)
+		return 0;
+
+	if (pdu[0] != ATT_OP_MTU_RESP)
+		return 0;
+
+	*mtu = att_get_u16((uint16_t *) &pdu[1]);
+
+	return 3;
+}

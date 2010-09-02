@@ -187,3 +187,8 @@ uint16_t enc_find_info_resp(uint8_t format, struct att_data_list *list,
 struct att_data_list *dec_find_info_resp(const uint8_t *pdu, int len,
 							uint8_t *format);
 uint16_t enc_notification(struct attribute *a, uint8_t *pdu, int len);
+
+uint16_t enc_mtu_req(uint16_t mtu, uint8_t *pdu, int len);
+uint16_t dec_mtu_req(const uint8_t *pdu, int len, uint16_t *mtu);
+uint16_t enc_mtu_resp(uint16_t mtu, uint8_t *pdu, int len);
+uint16_t dec_mtu_resp(const uint8_t *pdu, int len, uint16_t *mtu);
