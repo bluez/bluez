@@ -742,8 +742,12 @@ static void session_free(struct session_req *req)
 
 	session_remove(req);
 
-	if (req->msg)
+	if (req->msg) {
 		dbus_message_unref(req->msg);
+		if (req->mode)
+			agent_cancel(req->adapter->agent);
+	}
+
 	if (req->conn)
 		dbus_connection_unref(req->conn);
 	g_free(req->owner);
