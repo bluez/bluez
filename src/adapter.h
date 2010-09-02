@@ -70,6 +70,7 @@ struct hci_dev {
 	int ignore;
 
 	uint8_t  features[8];
+	uint8_t  extfeatures[8];
 	uint8_t  lmp_ver;
 	uint16_t lmp_subver;
 	uint16_t hci_rev;
@@ -129,6 +130,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
 void adapter_setname_complete(bdaddr_t *local, uint8_t status);
 void adapter_update_tx_power(bdaddr_t *bdaddr, uint8_t status, void *ptr);
 void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr);
+void adapter_update_ext_features(struct btd_adapter *adapter, uint8_t *features);
 void adapter_service_insert(const bdaddr_t *bdaddr, void *rec);
 void adapter_service_remove(const bdaddr_t *bdaddr, void *rec);
 sdp_list_t *adapter_get_services(struct btd_adapter *adapter);

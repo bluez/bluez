@@ -246,7 +246,8 @@ static gboolean le_capable(struct btd_adapter *adapter)
 {
 	struct hci_dev *dev = &adapter->dev;
 
-	return (dev->features[4] & LMP_LE) ? TRUE : FALSE;
+	return (dev->features[4] & LMP_LE &&
+			dev->extfeatures[0] & LMP_LE_SUPPORTED) ? TRUE : FALSE;
 }
 
 static int adapter_set_service_classes(struct btd_adapter *adapter,
@@ -994,6 +995,13 @@ void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 	adapter->name_stored = FALSE;
 
 	update_ext_inquiry_response(adapter);
+}
+
+void adapter_update_ext_features(struct btd_adapter *adapter, uint8_t *features)
+{
+	struct hci_dev *dev = &adapter->dev;
+
+	memcpy(dev->extfeatures, features, 8);
 }
 
 void adapter_setname_complete(bdaddr_t *local, uint8_t status)

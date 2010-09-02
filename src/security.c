@@ -666,6 +666,46 @@ static inline void remote_features_notify(int dev, bdaddr_t *sba, void *ptr)
 	write_features_info(sba, &evt->bdaddr, NULL, evt->features);
 }
 
+static void write_le_host_complete(bdaddr_t *sba, uint8_t status)
+{
+	struct btd_adapter *adapter;
+	int dd, err;
+	uint16_t dev_id;
+	uint8_t max, features[8];
+
+	if (status)
+		return;
+
+	adapter = manager_find_adapter(sba);
+	if (!adapter) {
+		error("No matching adapter found");
+		return;
+	}
+
+	dev_id = adapter_get_dev_id(adapter);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		err = errno;
+		error("Unable to open hci%d: %s(%d)", dev_id, strerror(err), err);
+		return;
+	}
+
+	if (hci_read_local_ext_features(dd, 0x01, &max, features,
+						HCI_REQ_TIMEOUT) < 0) {
+		err = errno;
+		error("Can't read local extended features: %s (%d)",
+							strerror(err), err);
+		hci_close_dev(dd);
+
+		return;
+	}
+
+	hci_close_dev(dd);
+
+	adapter_update_ext_features(adapter, features);
+}
+
 static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_status *evt = ptr;
@@ -705,6 +745,9 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
 		inquiry_complete(sba, status, FALSE);
+		break;
+	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_LE_HOST_SUPPORTED):
+		write_le_host_complete(sba, status);
 		break;
 	case cmd_opcode_pack(OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE):
 		hcid_dbus_le_set_scan_enable_complete(sba, status);
