@@ -635,12 +635,16 @@ static int hidp_add_connection(const struct input_device *idev,
 
 	fake_hid = get_fake_hid(req->vendor, req->product);
 	if (fake_hid) {
+		err = 0;
 		fake = g_new0(struct fake_input, 1);
 		fake->connect = fake_hid_connect;
 		fake->disconnect = fake_hid_disconnect;
 		fake->priv = fake_hid;
-		err = fake_hid_connadd(fake, iconn->intr_io, fake_hid);
-		if (err == 0)
+		fake->idev = idev;
+		fake = fake_hid_connadd(fake, iconn->intr_io, fake_hid);
+		if (fake == NULL)
+			err = -ENOMEM;
+		else
 			fake->flags |= FI_FLAG_CONNECTED;
 		goto cleanup;
 	}

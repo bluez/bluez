@@ -39,6 +39,7 @@ struct fake_input {
 	gboolean	(*connect) (struct input_conn *iconn, GError **err);
 	int		(*disconnect) (struct input_conn *iconn);
 	void		*priv;
+	const struct input_device *idev;
 };
 
 int fake_input_register(DBusConnection *conn, struct btd_device *device,
