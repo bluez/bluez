@@ -698,21 +698,16 @@ static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 	}
 
 	g_slist_foreach(mcl->mdls, (GFunc) shutdown_mdl, NULL);
-	if (!save) {
-		g_slist_foreach(mcl->mdls, (GFunc) g_free, NULL);
-		g_slist_free(mcl->mdls);
-		mcl->mdls = NULL;
-	}
-
-	if (mcl->cb && !save) {
-		g_free(mcl->cb);
-		mcl->cb = NULL;
-	}
 
 	mcl->state = MCL_IDLE;
 
 	if (save)
 		return;
+
+	g_slist_foreach(mcl->mdls, (GFunc) g_free, NULL);
+	g_slist_free(mcl->mdls);
+
+	g_free(mcl->cb);
 
 	g_free(mcl);
 }
