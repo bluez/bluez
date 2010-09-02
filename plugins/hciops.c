@@ -561,7 +561,7 @@ fail:
 	return err;
 }
 
-static int hciops_start_discovery(int index, uint8_t length, gboolean periodic)
+static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 {
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int dd, err;
@@ -602,7 +602,7 @@ static int hciops_start_discovery(int index, uint8_t length, gboolean periodic)
 	return err;
 }
 
-static int hciops_stop_discovery(int index)
+static int hciops_stop_inquiry(int index)
 {
 	struct hci_dev_info di;
 	int dd, err;
@@ -1342,8 +1342,8 @@ static struct btd_adapter_ops hci_ops = {
 	.set_connectable = hciops_connectable,
 	.set_discoverable = hciops_discoverable,
 	.set_limited_discoverable = hciops_set_limited_discoverable,
-	.start_discovery = hciops_start_discovery,
-	.stop_discovery = hciops_stop_discovery,
+	.start_inquiry = hciops_start_inquiry,
+	.stop_inquiry = hciops_stop_inquiry,
 	.start_scanning = hciops_start_scanning,
 	.stop_scanning = hciops_stop_scanning,
 	.resolve_name = hciops_resolve_name,

@@ -722,7 +722,7 @@ static void stop_discovery(struct btd_adapter *adapter)
 	}
 
 	if (adapter->state & (PERIODIC_INQUIRY | STD_INQUIRY))
-		adapter_ops->stop_discovery(adapter->dev_id);
+		adapter_ops->stop_inquiry(adapter->dev_id);
 	else if (adapter->state & LE_SCAN)
 		adapter_ops->stop_scanning(adapter->dev_id);
 }
@@ -1291,12 +1291,12 @@ static int start_discovery(struct btd_adapter *adapter)
 
 	/* BR/EDR only? */
 	if (le_capable(adapter) == FALSE)
-		return adapter_ops->start_discovery(adapter->dev_id,
+		return adapter_ops->start_inquiry(adapter->dev_id,
 							0x08, periodic);
 
 	/* Dual mode or LE only */
 	if (bredr_capable(adapter))
-		return adapter_ops->start_discovery(adapter->dev_id,
+		return adapter_ops->start_inquiry(adapter->dev_id,
 							0x04, FALSE);
 
 	err = adapter_ops->start_scanning(adapter->dev_id);
@@ -2430,7 +2430,7 @@ setup:
 
 	if (!adapter->initialized && adapter->already_up) {
 		DBG("Stopping Inquiry at adapter startup");
-		adapter_ops->stop_discovery(adapter->dev_id);
+		adapter_ops->stop_inquiry(adapter->dev_id);
 	}
 
 	err = adapter_up(adapter, mode);
