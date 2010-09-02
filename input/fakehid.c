@@ -272,7 +272,7 @@ failed:
 }
 
 static int ps3remote_setup_uinput(struct fake_input *fake,
-				  struct fake_hid *fake_hid)
+						struct fake_hid *fake_hid)
 {
 	struct uinput_dev dev;
 	int i;
@@ -371,7 +371,8 @@ struct fake_hid *get_fake_hid(uint16_t vendor, uint16_t product)
 	return NULL;
 }
 
-struct fake_input *fake_hid_connadd(struct fake_input *fake, GIOChannel *intr_io,
+struct fake_input *fake_hid_connadd(struct fake_input *fake,
+						GIOChannel *intr_io,
 						struct fake_hid *fake_hid)
 {
 	GList *l;
@@ -381,7 +382,7 @@ struct fake_input *fake_hid_connadd(struct fake_input *fake, GIOChannel *intr_io
 	for (l = fake_hid->devices; l != NULL; l = l->next) {
 		old = l->data;
 		if (old->idev == fake->idev) {
-			g_free (fake);
+			g_free(fake);
 			fake = old;
 			fake_hid->connect(fake, NULL);
 			break;
