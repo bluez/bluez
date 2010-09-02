@@ -2706,8 +2706,12 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 
 		break;
 	case DISCOVER_TYPE_NONE:
-		/* Interleave: from inquiry to scanning */
-		if (le_capable(adapter) == TRUE && (previous & STD_INQUIRY)) {
+		/*
+		 * Interleave: from inquiry to scanning. Interleave is not
+		 * applicable to requests triggered by external applications.
+		 */
+		if (adapter->disc_sessions && le_capable(adapter) == TRUE
+						&& (previous & STD_INQUIRY)) {
 			adapter_ops->start_scanning(adapter->dev_id);
 			return;
 		}
