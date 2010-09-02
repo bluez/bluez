@@ -649,6 +649,22 @@ static struct mcap_mcl *find_mcl(GSList *list, const bdaddr_t *addr)
 	return NULL;
 }
 
+int mcap_mdl_get_fd(struct mcap_mdl *mdl)
+{
+	if (!mdl || mdl->state != MDL_CONNECTED)
+		return -ENOTCONN;
+
+	return g_io_channel_unix_get_fd(mdl->dc);
+}
+
+uint16_t mcap_mdl_get_mdlid(struct mcap_mdl *mdl)
+{
+	if (!mdl)
+		return MCAP_MDLID_RESERVED;
+
+	return mdl->mdlid;
+}
+
 static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 {
 	gboolean save = ((!(mcl->ctrl & MCAP_CTRL_FREE)) && cache_requested);

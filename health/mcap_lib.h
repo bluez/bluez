@@ -123,6 +123,9 @@ gboolean mcap_mdl_abort(struct mcap_mdl *mdl,
 				gpointer user_data,
 				GError **err);
 
+int mcap_mdl_get_fd(struct mcap_mdl *mdl);
+uint16_t mcap_mdl_get_mdlid(struct mcap_mdl *mdl);
+
 /* Mcl operations*/
 
 gboolean mcap_create_mcl(struct mcap_instance *ms,
