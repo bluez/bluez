@@ -197,6 +197,7 @@ static gboolean mcap_send_std_opcode(struct mcap_mcl *mcl, void *cmd,
 
 	mcl->lcmd = cmd;
 	mcl->req = MCL_WAITING_RSP;
+
 	return TRUE;
 }
 
@@ -309,6 +310,7 @@ int mcap_send_data(int sock, const uint8_t *buf, uint32_t size)
 			return -1;
 		sent += n;
 	}
+
 	return 0;
 }
 
@@ -335,6 +337,7 @@ static int mcap_send_cmd(struct mcap_mcl *mcl, uint8_t oc, uint8_t rc,
 
 	sent = mcap_send_data(sock, rsp, sizeof(mcap_rsp) + len);
 	g_free(rsp);
+
 	return sent;
 }
 
@@ -426,6 +429,7 @@ static gboolean wait_response_timer(gpointer data)
 	g_error_free(gerr);
 	mcl->ms->mcl_disconnected_cb(mcl, mcl->ms->user_data);
 	mcap_cache_mcl(mcl);
+
 	return FALSE;
 }
 
@@ -565,6 +569,7 @@ gboolean mcap_delete_all_mdls(struct mcap_mcl *mcl,
 		g_free(con);
 		return FALSE;
 	}
+
 	return TRUE;
 }
 
@@ -588,6 +593,7 @@ gboolean mcap_delete_mdl(struct mcap_mdl *mdl, mcap_mdl_notify_cb delete_cb,
 							"Mdl is not created");
 		return FALSE;
 	}
+
 	mdl->state = MDL_DELETING;
 
 	con = g_new0(struct mcap_mdl_op_cb, 1);
@@ -599,6 +605,7 @@ gboolean mcap_delete_mdl(struct mcap_mdl *mdl, mcap_mdl_notify_cb delete_cb,
 		g_free(con);
 		return FALSE;
 	}
+
 	return TRUE;
 }
 
@@ -881,6 +888,7 @@ static gboolean parse_set_opts(struct mcap_mdl_cb *mdl_cb, GError **err,
 		mdl_cb->mdl_reconn_req = c->mdl_reconn_req;
 
 	g_free(c);
+
 	return TRUE;
 }
 
@@ -1320,6 +1328,7 @@ static gboolean process_md_create_mdl_rsp(struct mcap_mcl *mcl,
 
 	connect_cb(mdl, *param, gerr, user_data);
 	return close;
+
 fail:
 	connect_cb(NULL, 0, gerr, user_data);
 	mcl->mdls = g_slist_remove(mcl->mdls, mdl);
@@ -1400,6 +1409,7 @@ static gboolean process_md_abort_mdl_rsp(struct mcap_mcl *mcl,
 		g_error_free(gerr);
 
 	update_mcl_state(mcl);
+
 	return close;
 }
 
@@ -1453,14 +1463,14 @@ static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, uint8_t *cmd,
 		g_slist_free(mcl->mdls);
 		mcl->mdls = NULL;
 		mcl->state = MCL_CONNECTED;
-		goto end;
+	} else {
+		mcl->mdls = g_slist_remove(mcl->mdls, mdl);
+		update_mcl_state(mcl);
+		mcap_del_mdl(mdl, &notify);
 	}
 
-	mcl->mdls = g_slist_remove(mcl->mdls, mdl);
-	update_mcl_state(mcl);
-	mcap_del_mdl(mdl, &notify);
-end:
 	deleted_cb(gerr, user_data);
+
 	return close;
 }
 
@@ -1587,8 +1597,10 @@ static void mcap_connect_mdl_cb(GIOChannel *chan, GError *conn_err,
 	cb(mdl, conn_err, user_data);
 }
 
-gboolean mcap_connect_mdl(struct mcap_mdl *mdl, BtIOType BtType, uint16_t dcpsm,
-	mcap_mdl_operation_cb connect_cb, gpointer user_data, GError **err)
+gboolean mcap_connect_mdl(struct mcap_mdl *mdl, BtIOType BtType,
+					uint16_t dcpsm,
+					mcap_mdl_operation_cb connect_cb,
+					gpointer user_data, GError **err)
 {
 	struct mcap_mdl_op_cb *con;
 
@@ -1619,6 +1631,7 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl, BtIOType BtType, uint16_t dcpsm,
 		g_free(con);
 		return FALSE;
 	}
+
 	return TRUE;
 }
 
@@ -1626,7 +1639,6 @@ static gboolean mcl_control_cb(GIOChannel *chan, GIOCondition cond,
 								gpointer data)
 {
 	GError *gerr = NULL;
-
 	struct mcap_mcl *mcl = data;
 	int sk, len;
 	uint8_t buf[MCAP_CC_MTU];
@@ -1641,6 +1653,7 @@ static gboolean mcl_control_cb(GIOChannel *chan, GIOCondition cond,
 
 	proc_cmd(mcl, buf, (uint32_t) len);
 	return TRUE;
+
 fail:
 	if (mcl->state != MCL_IDLE) {
 		if (mcl->req == MCL_WAITING_RSP) {
@@ -1781,6 +1794,7 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 		mcap_mcl_check_del(mcl);
 		return FALSE;
 	}
+
 	return TRUE;
 }
 
@@ -1819,6 +1833,7 @@ static void confirm_dc_event_cb(GIOChannel *chan, gpointer user_data)
 			return;
 		}
 	}
+
 drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
 }
@@ -1979,8 +1994,10 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 		g_free(ms);
 		return NULL;
 	}
+
 	/* Initialize random seed to generate mdlids for this instance */
 	srand(time(NULL));
+
 	return ms;
 }
 
@@ -2033,6 +2050,7 @@ uint16_t mcap_get_ctrl_psm(struct mcap_instance *mi, GError **err)
 			BT_IO_OPT_INVALID);
 	if (*err)
 		return 0;
+
 	return lpsm;
 }
 
@@ -2051,5 +2069,6 @@ uint16_t mcap_get_data_psm(struct mcap_instance *mi, GError **err)
 			BT_IO_OPT_INVALID);
 	if (*err)
 		return 0;
+
 	return lpsm;
 }
