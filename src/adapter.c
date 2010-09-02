@@ -698,7 +698,7 @@ static uint8_t get_needed_mode(struct btd_adapter *adapter, uint8_t mode)
 	return mode;
 }
 
-static void adapter_stop_inquiry(struct btd_adapter *adapter)
+static void stop_discovery(struct btd_adapter *adapter)
 {
 	pending_remote_name_cancel(adapter);
 
@@ -710,13 +710,21 @@ static void adapter_stop_inquiry(struct btd_adapter *adapter)
 
 	/* Reset if suspended, otherwise remove timer (software scheduler)
 	   or request inquiry to stop */
-	if (adapter->state & SUSPENDED_INQUIRY)
+	if (adapter->state & SUSPENDED_INQUIRY) {
 		adapter->state &= ~SUSPENDED_INQUIRY;
-	else if (adapter->scheduler_id) {
+		return;
+	}
+
+	if (adapter->scheduler_id) {
 		g_source_remove(adapter->scheduler_id);
 		adapter->scheduler_id = 0;
-	} else
+		return;
+	}
+
+	if (adapter->state & (PERIODIC_INQUIRY | STD_INQUIRY))
 		adapter_ops->stop_discovery(adapter->dev_id);
+	else if (adapter->state & LE_SCAN)
+		adapter_ops->stop_scanning(adapter->dev_id);
 }
 
 static void session_remove(struct session_req *req)
@@ -755,7 +763,7 @@ static void session_remove(struct session_req *req)
 
 		clear_found_devices_list(adapter);
 
-		adapter_stop_inquiry(adapter);
+		stop_discovery(adapter);
 	}
 }
 
@@ -2474,6 +2482,8 @@ int adapter_stop(struct btd_adapter *adapter)
 	/* check pending requests */
 	reply_pending_requests(adapter);
 
+	stop_discovery(adapter);
+
 	if (adapter->disc_sessions) {
 		g_slist_foreach(adapter->disc_sessions, (GFunc) session_free,
 				NULL);
@@ -2482,11 +2492,6 @@ int adapter_stop(struct btd_adapter *adapter)
 	}
 
 	clear_found_devices_list(adapter);
-
-	if (adapter->oor_devices) {
-		g_slist_free(adapter->oor_devices);
-		adapter->oor_devices = NULL;
-	}
 
 	while (adapter->connections) {
 		struct btd_device *device = adapter->connections->data;
@@ -3220,7 +3225,7 @@ void adapter_suspend_discovery(struct btd_adapter *adapter)
 
 	DBG("Suspending discovery");
 
-	adapter_stop_inquiry(adapter);
+	stop_discovery(adapter);
 	adapter->state |= SUSPENDED_INQUIRY;
 }
 
