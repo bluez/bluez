@@ -107,7 +107,7 @@ struct btd_adapter {
 	uint8_t global_mode;		/* last valid global mode */
 	struct session_req *pending_mode;
 	int state;			/* standard inq, periodic inq, name
-					 * resloving */
+					 * resolving, suspended discovery */
 	GSList *found_devices;
 	GSList *oor_devices;		/* out of range device list */
 	struct agent *agent;		/* For the new API */
@@ -685,6 +685,27 @@ static uint8_t get_needed_mode(struct btd_adapter *adapter, uint8_t mode)
 	return mode;
 }
 
+static void adapter_stop_inquiry(struct btd_adapter *adapter)
+{
+	pending_remote_name_cancel(adapter);
+
+	/* Clear out of range device list */
+	if (adapter->oor_devices) {
+		g_slist_free(adapter->oor_devices);
+		adapter->oor_devices = NULL;
+	}
+
+	/* Reset if suspended, otherwise remove timer (software scheduler)
+	   or request inquiry to stop */
+	if (adapter->state & SUSPENDED_INQUIRY)
+		adapter->state &= ~SUSPENDED_INQUIRY;
+	else if (adapter->scheduler_id) {
+		g_source_remove(adapter->scheduler_id);
+		adapter->scheduler_id = 0;
+	} else
+		adapter_ops->stop_discovery(adapter->dev_id);
+}
+
 static void session_remove(struct session_req *req)
 {
 	struct btd_adapter *adapter = req->adapter;
@@ -719,19 +740,9 @@ static void session_remove(struct session_req *req)
 
 		DBG("Stopping discovery");
 
-		pending_remote_name_cancel(adapter);
-
 		clear_found_devices_list(adapter);
 
-		g_slist_free(adapter->oor_devices);
-		adapter->oor_devices = NULL;
-
-		if (adapter->scheduler_id) {
-			g_source_remove(adapter->scheduler_id);
-			adapter->scheduler_id = 0;
-		}
-
-		adapter_ops->stop_discovery(adapter->dev_id);
+		adapter_stop_inquiry(adapter);
 	}
 }
 
@@ -1218,6 +1229,10 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 static int adapter_start_inquiry(struct btd_adapter *adapter)
 {
 	gboolean periodic = TRUE;
+
+	/* Do not start if suspended */
+	if (adapter->state & SUSPENDED_INQUIRY)
+		return 0;
 
 	if (main_opts.discov_interval)
 		periodic = FALSE;
@@ -3163,6 +3178,29 @@ gboolean adapter_has_discov_sessions(struct btd_adapter *adapter)
 		return FALSE;
 
 	return TRUE;
+}
+
+void adapter_suspend_discovery(struct btd_adapter *adapter)
+{
+	if (adapter->disc_sessions == NULL ||
+			adapter->state & SUSPENDED_INQUIRY)
+		return;
+
+	DBG("Suspending discovery");
+
+	adapter_stop_inquiry(adapter);
+	adapter->state |= SUSPENDED_INQUIRY;
+}
+
+void adapter_resume_discovery(struct btd_adapter *adapter)
+{
+	if (adapter->disc_sessions == NULL)
+		return;
+
+	DBG("Resuming discovery");
+
+	adapter->state &= ~SUSPENDED_INQUIRY;
+	adapter_start_inquiry(adapter);
 }
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
