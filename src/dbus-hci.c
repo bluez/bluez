@@ -388,9 +388,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	struct remote_dev_info *dev, match;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
-#if 0
 	int state;
-#endif
 	dbus_bool_t legacy;
 	unsigned char features[8];
 
@@ -406,19 +404,18 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 	if (data)
 		write_remote_eir(local, peer, data);
-#if 0
-	/* FIXME: Use HCI flags to identify this scenario */
+
 	/*
-	 * workaround to identify situation when the daemon started and
-	 * a standard inquiry or periodic inquiry was already running
+	 * Workaround to identify periodic inquiry: inquiry complete event is
+	 * sent after each window, however there isn't an event to indicate the
+	 * beginning of a new periodic inquiry window.
 	 */
-	if (!(adapter_get_state(adapter) & STD_INQUIRY) &&
-			!(adapter_get_state(adapter) & PERIODIC_INQUIRY)) {
-		state = adapter_get_state(adapter);
+	state = adapter_get_state(adapter);
+	if (!(state & (STD_INQUIRY | LE_SCAN | PERIODIC_INQUIRY))) {
 		state |= PERIODIC_INQUIRY;
 		adapter_set_state(adapter, state);
 	}
-#endif
+
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;

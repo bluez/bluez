@@ -615,28 +615,8 @@ static void inquiry_complete(bdaddr_t *local, uint8_t status, gboolean periodic)
 		return;
 	}
 
-	/*
-	 * The following scenarios can happen:
-	 * 1. standard inquiry: always send discovery completed signal
-	 * 2. standard inquiry + name resolving: send discovery completed
-	 *    after name resolving
-	 * 3. periodic inquiry: skip discovery completed signal
-	 * 4. periodic inquiry + standard inquiry: always send discovery
-	 *    completed signal
-	 *
-	 * Keep in mind that non D-Bus requests can arrive.
-	 */
-
 	state = adapter_get_state(adapter);
-	DBG("adapter->state %#x", state);
-
-	if (periodic) {
-		state &= ~PERIODIC_INQUIRY;
-		adapter_set_state(adapter, state);
-		return;
-	}
-
-	state &= ~STD_INQUIRY;
+	state &= ~(STD_INQUIRY | PERIODIC_INQUIRY);
 	adapter_set_state(adapter, state);
 }
 
