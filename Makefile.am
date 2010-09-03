@@ -403,5 +403,5 @@ lib/bluetooth/%.h: lib/%.h
 	$(AM_V_at)$(MKDIR_P) lib/bluetooth
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
-clean-local: lib/bluetooth
-	@$(RM) -r $<
+clean-local:
+	$(RM) -r lib/bluetooth
