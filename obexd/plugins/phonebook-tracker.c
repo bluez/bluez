@@ -842,13 +842,11 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 
 	data->index++;
 
-	/* Just interested in knowing the phonebook size */
-	if (!data->vcardentry && params->maxlistcount == 0)
-		return;
-
 	last_index = params->liststartoffset + params->maxlistcount;
 
-	if (data->index <= params->liststartoffset || data->index > last_index)
+	if ((data->index <= params->liststartoffset ||
+			data->index > last_index) &&
+			params->maxlistcount > 0)
 		return;
 
 add_entry:
@@ -910,8 +908,9 @@ done:
 	vcards = gen_vcards(data->contacts, params);
 
 	if (num_fields == 0)
-		data->cb(vcards->str, vcards->len, data->index, 0,
-							data->user_data);
+		data->cb(vcards->str, vcards->len,
+				g_slist_length(data->contacts), 0,
+				data->user_data);
 
 	g_slist_free(data->contacts);
 	g_string_free(vcards, TRUE);
