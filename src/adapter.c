@@ -688,12 +688,13 @@ static uint8_t get_needed_mode(struct btd_adapter *adapter, uint8_t mode)
 	return mode;
 }
 
-static void stop_discovery(struct btd_adapter *adapter)
+static void stop_discovery(struct btd_adapter *adapter, gboolean suspend)
 {
 	pending_remote_name_cancel(adapter);
 
-	/* Clear out of range device list */
-	if (adapter->found_devices) {
+	if (suspend == FALSE) {
+		g_slist_foreach(adapter->found_devices,
+				(GFunc) dev_info_free, NULL);
 		g_slist_free(adapter->found_devices);
 		adapter->found_devices = NULL;
 	}
@@ -756,7 +757,7 @@ static void session_remove(struct session_req *req)
 
 		DBG("Stopping discovery");
 
-		stop_discovery(adapter);
+		stop_discovery(adapter, FALSE);
 	}
 }
 
@@ -2261,6 +2262,31 @@ static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
        }
 }
 
+static void emit_device_disappeared(gpointer data, gpointer user_data)
+{
+	struct remote_dev_info *dev = data;
+	struct btd_adapter *adapter = user_data;
+	char address[18];
+	const char *paddr = address;
+
+	ba2str(&dev->bdaddr, address);
+
+	g_dbus_emit_signal(connection, adapter->path,
+			ADAPTER_INTERFACE, "DeviceDisappeared",
+			DBUS_TYPE_STRING, &paddr,
+			DBUS_TYPE_INVALID);
+
+	adapter->found_devices = g_slist_remove(adapter->found_devices, dev);
+}
+
+static void update_oor_devices(struct btd_adapter *adapter)
+{
+	g_slist_foreach(adapter->oor_devices, emit_device_disappeared, adapter);
+	g_slist_foreach(adapter->oor_devices, (GFunc) dev_info_free, NULL);
+	g_slist_free(adapter->oor_devices);
+	adapter->oor_devices =  g_slist_copy(adapter->found_devices);
+}
+
 static int adapter_up(struct btd_adapter *adapter, const char *mode)
 {
 	char srcaddr[18];
@@ -2475,7 +2501,7 @@ int adapter_stop(struct btd_adapter *adapter)
 	/* check pending requests */
 	reply_pending_requests(adapter);
 
-	stop_discovery(adapter);
+	stop_discovery(adapter, FALSE);
 
 	if (adapter->disc_sessions) {
 		g_slist_foreach(adapter->disc_sessions, (GFunc) session_free,
@@ -2678,8 +2704,6 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 
 	switch (state & 0x0f) {
 	case STD_INQUIRY:
-		discov_active = TRUE;
-		break;
 	case PERIODIC_INQUIRY:
 		discov_active = TRUE;
 		break;
@@ -2706,7 +2730,6 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 			adapter_ops->start_scanning(adapter->dev_id);
 			return;
 		}
-
 		/* BR/EDR only: inquiry finished */
 		discov_active = FALSE;
 		break;
@@ -2716,7 +2739,7 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	}
 
 	if (discov_active == FALSE) {
-		adapter_update_oor_devices(adapter);
+		update_oor_devices(adapter);
 		if (state & RESOLVE_NAME && adapter_resolve_names(adapter) == 0)
 			return;
 	} else if (adapter->disc_sessions && main_opts.discov_interval)
@@ -3025,33 +3048,6 @@ int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 	return 0;
 }
 
-void adapter_update_oor_devices(struct btd_adapter *adapter)
-{
-	GSList *l;
-
-	for (l = adapter->oor_devices; l; l = l->next) {
-		char address[18];
-		const char *paddr = address;
-		struct remote_dev_info *dev = l->data;
-
-		ba2str(&dev->bdaddr, address);
-
-		g_dbus_emit_signal(connection, adapter->path,
-				ADAPTER_INTERFACE, "DeviceDisappeared",
-				DBUS_TYPE_STRING, &paddr,
-				DBUS_TYPE_INVALID);
-
-		adapter->found_devices = g_slist_remove(adapter->found_devices,
-							dev);
-		dev_info_free(dev);
-	}
-
-	g_slist_free(adapter->oor_devices);
-	adapter->oor_devices = NULL;
-
-	adapter->oor_devices = g_slist_copy(adapter->found_devices);
-}
-
 static void set_mode_complete(struct btd_adapter *adapter)
 {
 	struct session_req *pending;
@@ -3220,7 +3216,7 @@ void adapter_suspend_discovery(struct btd_adapter *adapter)
 
 	DBG("Suspending discovery");
 
-	stop_discovery(adapter);
+	stop_discovery(adapter, TRUE);
 	adapter->state |= SUSPENDED_INQUIRY;
 }
 
