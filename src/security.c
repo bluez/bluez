@@ -590,12 +590,9 @@ static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
 	if (!adapter_has_discov_sessions(adapter))
 		state &= ~RESOLVE_NAME;
 
-	if (periodic) {
+	if (periodic)
 		state |= PERIODIC_INQUIRY;
-
-		pending_remote_name_cancel(adapter);
-		clear_found_devices_list(adapter);
-	} else
+	else
 		state |= STD_INQUIRY;
 
 	adapter_set_state(adapter, state);

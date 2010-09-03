@@ -203,16 +203,6 @@ static void dev_info_free(struct remote_dev_info *dev)
 	g_free(dev);
 }
 
-void clear_found_devices_list(struct btd_adapter *adapter)
-{
-	if (!adapter->found_devices)
-		return;
-
-	g_slist_foreach(adapter->found_devices, (GFunc) dev_info_free, NULL);
-	g_slist_free(adapter->found_devices);
-	adapter->found_devices = NULL;
-}
-
 static void update_ext_inquiry_response(struct btd_adapter *adapter)
 {
 	uint8_t data[240];
@@ -309,7 +299,7 @@ int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 	return err;
 }
 
-int pending_remote_name_cancel(struct btd_adapter *adapter)
+static int pending_remote_name_cancel(struct btd_adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
 	int err;
@@ -703,6 +693,11 @@ static void stop_discovery(struct btd_adapter *adapter)
 	pending_remote_name_cancel(adapter);
 
 	/* Clear out of range device list */
+	if (adapter->found_devices) {
+		g_slist_free(adapter->found_devices);
+		adapter->found_devices = NULL;
+	}
+
 	if (adapter->oor_devices) {
 		g_slist_free(adapter->oor_devices);
 		adapter->oor_devices = NULL;
@@ -760,8 +755,6 @@ static void session_remove(struct session_req *req)
 			return;
 
 		DBG("Stopping discovery");
-
-		clear_found_devices_list(adapter);
 
 		stop_discovery(adapter);
 	}
@@ -2491,8 +2484,6 @@ int adapter_stop(struct btd_adapter *adapter)
 		adapter->disc_sessions = NULL;
 	}
 
-	clear_found_devices_list(adapter);
-
 	while (adapter->connections) {
 		struct btd_device *device = adapter->connections->data;
 		adapter_remove_connection(adapter, device, 0);
@@ -2729,7 +2720,7 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		if (state & RESOLVE_NAME && adapter_resolve_names(adapter) == 0)
 			return;
 	} else if (adapter->disc_sessions && main_opts.discov_interval)
-		adapter->scheduler_id = g_timeout_add_seconds(
+			adapter->scheduler_id = g_timeout_add_seconds(
 						main_opts.discov_interval,
 						(GSourceFunc) start_discovery,
 						adapter);
