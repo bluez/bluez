@@ -111,6 +111,8 @@ static void device_free(struct audio_device *dev)
 	btd_device_unref(dev->btd_dev);
 
 	if (priv) {
+		if (priv->auths)
+			audio_device_cancel_authorization(dev, NULL, NULL);
 		if (priv->control_timer)
 			g_source_remove(priv->control_timer);
 		if (priv->avdtp_timer)
