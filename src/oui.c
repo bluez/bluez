@@ -38,23 +38,15 @@
 
 /* http://standards.ieee.org/regauth/oui/oui.txt */
 
-#define OUIFILE "/var/lib/misc/oui.txt"
-
 char *ouitocomp(const char *oui)
 {
 	struct stat st;
 	char *str, *map, *off, *end;
 	int fd;
 
-	fd = open("oui.txt", O_RDONLY);
-	if (fd < 0) {
-		fd = open(OUIFILE, O_RDONLY);
-		if (fd < 0) {
-			fd = open("/usr/share/misc/oui.txt", O_RDONLY);
-			if (fd < 0)
-				return NULL;
-		}
-	}
+	fd = open(OUIFILE, O_RDONLY);
+	if (fd < 0)
+		return NULL;
 
 	if (fstat(fd, &st) < 0) {
 		close(fd);
