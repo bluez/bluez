@@ -94,13 +94,14 @@ static void disconnect(struct dun_server *server)
 	if (!client->io)
 		return;
 
-	g_io_channel_unref(client->io);
-	client->io = NULL;
-
 	if (client->io_watch > 0) {
 		g_source_remove(client->io_watch);
 		client->io_watch = 0;
 	}
+
+	g_io_channel_shutdown(client->io, TRUE, NULL);
+	g_io_channel_unref(client->io);
+	client->io = NULL;
 
 	if (client->pnatd_pid > 0) {
 		kill(client->pnatd_pid, SIGTERM);
