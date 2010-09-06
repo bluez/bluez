@@ -1069,13 +1069,13 @@ int telephony_init(void)
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
-	registration_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-					OFONO_NETWORKREG_INTERFACE,
+	registration_watch = g_dbus_add_signal_watch(connection, OFONO_BUS_NAME,
+					NULL, OFONO_NETWORKREG_INTERFACE,
 					"PropertyChanged",
 					handle_registration_property_changed,
 					NULL, NULL);
 
-	voice_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	voice_watch = g_dbus_add_signal_watch(connection, OFONO_BUS_NAME, NULL,
 					OFONO_VCMANAGER_INTERFACE,
 					"PropertyChanged",
 					handle_vcmanager_property_changed,
