@@ -386,18 +386,19 @@ static DBusHandlerResult service_filter(DBusConnection *connection,
 				cb->conn_func(connection, cb->user_data);
 		}
 
+		/* Only auto remove if it is a bus name watch */
+		if (data->argument[0] == ':' &&
+				(!cb->conn_func || !cb->disc_func)) {
+			filter_data_remove_callback(data, cb);
+			continue;
+		}
+
 		/* Check if the watch was removed/freed by the callback
 		 * function */
 		if (!g_slist_find(data->callbacks, cb))
 			continue;
 
 		data->callbacks = g_slist_remove(data->callbacks, cb);
-
-		if (!cb->conn_func || !cb->disc_func) {
-			g_free(cb);
-			continue;
-		}
-
 		data->processed = g_slist_append(data->processed, cb);
 	}
 
