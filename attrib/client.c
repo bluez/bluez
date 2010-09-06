@@ -527,8 +527,13 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		if (format == 0x01) {
 			sdp_uuid16_create(&uuid, att_get_u16((uint16_t *)
 								&info[2]));
-		} else
+		} else {
+			/* Currently, only "user description" and "presentation
+			 * format" descriptors are used, and both have 16-bit
+			 * UUIDs. Therefore there is no need to support format
+			 * 0x02 yet. */
 			continue;
+		}
 
 		attr_data = g_new0(struct desc_fmt_data, 1);
 		attr_data->desc_data = *current;
@@ -603,9 +608,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		if (list->len == 7) {
 			sdp_uuid16_create(&chr->type,
 					att_get_u16((uint16_t *) &decl[5]));
-		} else {
-			/* FIXME: UUID128 */
-		}
+		} else
+			sdp_uuid128_create(&chr->type, &decl[5]);
 
 		if (previous_end) {
 			*previous_end = att_get_u16((uint16_t *) decl);
