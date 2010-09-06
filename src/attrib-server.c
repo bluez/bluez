@@ -137,6 +137,10 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 	uint16_t length, last = 0;
 	int i;
 
+	if (start > end || start == 0x0000)
+		return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ, start,
+					ATT_ECODE_INVALID_HANDLE, pdu, len);
+
 	/*
 	 * Only <<Primary Service>> and <<Secondary Service>> grouping
 	 * types may be used in the Read By Group Type Request.
