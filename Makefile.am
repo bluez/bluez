@@ -194,8 +194,15 @@ endif
 builtin_modules += hciops
 builtin_sources += plugins/hciops.c
 
+if HAL
 builtin_modules += hal
 builtin_sources += plugins/hal.c
+else
+builtin_modules += formfactor
+builtin_sources += plugins/formfactor.c
+endif
+
+EXTRA_DIST += plugins/hal.c plugins/formfactor.c
 
 builtin_modules += storage
 builtin_sources += plugins/storage.c
