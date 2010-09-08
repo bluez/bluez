@@ -2725,6 +2725,10 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	case STATE_STDINQ:
 	case STATE_PINQ:
 		discov_active = TRUE;
+
+		/* Started a new session while resolving names ? */
+		if (previous & STATE_RESOLVNAME)
+			return;
 		break;
 	case STATE_LE_SCAN:
 		/* Scanning enabled */
