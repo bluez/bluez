@@ -31,15 +31,20 @@
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter"
 
-/* Discover types */
-#define DISCOVER_TYPE_NONE	0x00
-#define STD_INQUIRY		0x01
-#define PERIODIC_INQUIRY	0x02
-#define LE_SCAN			0x04
-#define SUSPENDED_INQUIRY	0x08
+/* Discover states */
+#define STATE_IDLE		0x00
+#define STATE_LE_SCAN		0x01
+#define STATE_STDINQ		0x02
+#define STATE_PINQ		0x04
+#define STATE_RESOLVNAME	0x08
+#define STATE_SUSPENDED		0x10
 
-/* Actions executed after inquiry complete */
-#define RESOLVE_NAME		0x10
+/* Supported host/controller discover type */
+#define DISC_LE			0x01
+#define DISC_STDINQ		0x02
+#define DISC_INTERLEAVE	(DISC_LE | DISC_STDINQ)
+#define DISC_PINQ		0x04
+#define DISC_RESOLVNAME		0x08
 
 #define MAX_NAME_LENGTH		248
 
@@ -111,6 +116,7 @@ const gchar *adapter_get_path(struct btd_adapter *adapter);
 void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 void adapter_set_state(struct btd_adapter *adapter, int state);
 int adapter_get_state(struct btd_adapter *adapter);
+int adapter_get_discover_type(struct btd_adapter *adapter);
 gboolean adapter_is_ready(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
 						struct remote_dev_info *match);

@@ -586,14 +586,10 @@ static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
 
 	state = adapter_get_state(adapter);
 
-	/* Disable name resolution for non D-Bus clients */
-	if (!adapter_has_discov_sessions(adapter))
-		state &= ~RESOLVE_NAME;
-
 	if (periodic)
-		state |= PERIODIC_INQUIRY;
+		state |= STATE_PINQ;
 	else
-		state |= STD_INQUIRY;
+		state |= STATE_STDINQ;
 
 	adapter_set_state(adapter, state);
 }
@@ -616,7 +612,7 @@ static void inquiry_complete(bdaddr_t *local, uint8_t status, gboolean periodic)
 	}
 
 	state = adapter_get_state(adapter);
-	state &= ~(STD_INQUIRY | PERIODIC_INQUIRY);
+	state &= ~(STATE_STDINQ | STATE_PINQ);
 	adapter_set_state(adapter, state);
 }
 

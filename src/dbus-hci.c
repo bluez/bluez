@@ -411,8 +411,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	 * beginning of a new periodic inquiry window.
 	 */
 	state = adapter_get_state(adapter);
-	if (!(state & (STD_INQUIRY | LE_SCAN | PERIODIC_INQUIRY))) {
-		state |= PERIODIC_INQUIRY;
+	if (!(state & (STATE_STDINQ | STATE_LE_SCAN | STATE_PINQ))) {
+		state |= STATE_PINQ;
 		adapter_set_state(adapter, state);
 	}
 
@@ -429,7 +429,8 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	}
 
 	/* the inquiry result can be triggered by NON D-Bus client */
-	if (adapter_get_state(adapter) & RESOLVE_NAME)
+	if (adapter_get_discover_type(adapter) & DISC_RESOLVNAME &&
+				adapter_has_discov_sessions(adapter))
 		name_status = NAME_REQUIRED;
 	else
 		name_status = NAME_NOT_REQUIRED;
@@ -566,7 +567,7 @@ proceed:
 		return;
 
 	state = adapter_get_state(adapter);
-	state &= ~RESOLVE_NAME;
+	state &= ~STATE_RESOLVNAME;
 	adapter_set_state(adapter, state);
 }
 
@@ -748,10 +749,10 @@ void hcid_dbus_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
 	state = adapter_get_state(adapter);
 
 	/* Enabling or disabling ? */
-	if (state & LE_SCAN)
-		state &= ~LE_SCAN;
+	if (state & STATE_LE_SCAN)
+		state &= ~STATE_LE_SCAN;
 	else
-		state |= LE_SCAN;
+		state |= STATE_LE_SCAN;
 
 	adapter_set_state(adapter, state);
 }

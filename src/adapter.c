@@ -225,21 +225,6 @@ static void update_ext_inquiry_response(struct btd_adapter *adapter)
 						strerror(-ret), -ret);
 }
 
-static gboolean bredr_capable(struct btd_adapter *adapter)
-{
-	struct hci_dev *dev = &adapter->dev;
-
-	return (dev->features[4] & LMP_NO_BREDR) == 0 ? TRUE : FALSE;
-}
-
-static gboolean le_capable(struct btd_adapter *adapter)
-{
-	struct hci_dev *dev = &adapter->dev;
-
-	return (dev->features[4] & LMP_LE &&
-			dev->extfeatures[0] & LMP_LE_SUPPORTED) ? TRUE : FALSE;
-}
-
 static int adapter_set_service_classes(struct btd_adapter *adapter,
 							uint8_t value)
 {
@@ -706,8 +691,8 @@ static void stop_discovery(struct btd_adapter *adapter, gboolean suspend)
 
 	/* Reset if suspended, otherwise remove timer (software scheduler)
 	   or request inquiry to stop */
-	if (adapter->state & SUSPENDED_INQUIRY) {
-		adapter->state &= ~SUSPENDED_INQUIRY;
+	if (adapter->state & STATE_SUSPENDED) {
+		adapter->state &= ~STATE_SUSPENDED;
 		return;
 	}
 
@@ -717,9 +702,9 @@ static void stop_discovery(struct btd_adapter *adapter, gboolean suspend)
 		return;
 	}
 
-	if (adapter->state & (PERIODIC_INQUIRY | STD_INQUIRY))
+	if (adapter->state & (STATE_PINQ | STATE_STDINQ))
 		adapter_ops->stop_inquiry(adapter->dev_id);
-	else if (adapter->state & LE_SCAN)
+	else if (adapter->state & STATE_LE_SCAN)
 		adapter_ops->stop_scanning(adapter->dev_id);
 }
 
@@ -1268,39 +1253,36 @@ static gboolean stop_scanning(gpointer user_data)
 
 static int start_discovery(struct btd_adapter *adapter)
 {
-	gboolean periodic = TRUE;
-	int err;
+	int err, type;
 
 	/* Do not start if suspended */
-	if (adapter->state & SUSPENDED_INQUIRY)
+	if (adapter->state & STATE_SUSPENDED)
 		return 0;
 
 	/* Postpone discovery if still resolving names */
-	if (adapter->state & RESOLVE_NAME)
+	if (adapter->state & STATE_RESOLVNAME)
 		return 1;
-
-	if (main_opts.discov_interval)
-		periodic = FALSE;
-
 	pending_remote_name_cancel(adapter);
 
-	if (main_opts.name_resolv)
-		adapter->state |= RESOLVE_NAME;
+	type = adapter_get_discover_type(adapter) & ~DISC_RESOLVNAME;
 
-	/* BR/EDR only? */
-	if (le_capable(adapter) == FALSE)
-		return adapter_ops->start_inquiry(adapter->dev_id,
-							0x08, periodic);
+	switch (type) {
+	case DISC_STDINQ:
+	case DISC_INTERLEAVE:
+		err = adapter_ops->start_inquiry(adapter->dev_id,
+							0x08, FALSE);
+		break;
+	case DISC_PINQ:
+		err = adapter_ops->start_inquiry(adapter->dev_id,
+							0x08, TRUE);
+		break;
+	case DISC_LE:
+		err = adapter_ops->start_scanning(adapter->dev_id);
+		break;
+	default:
+		err = -1;
+	}
 
-	/* Dual mode or LE only */
-	if (bredr_capable(adapter))
-		return adapter_ops->start_inquiry(adapter->dev_id,
-							0x04, FALSE);
-
-	err = adapter_ops->start_scanning(adapter->dev_id);
-	if (err == 0)
-		adapter->stop_discov_id = g_timeout_add(5120, stop_scanning,
-								adapter);
 	return err;
 }
 
@@ -1429,7 +1411,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 				DBUS_TYPE_UINT32, &adapter->pairable_timeout);
 
 
-	if (adapter->state & (PERIODIC_INQUIRY | STD_INQUIRY | LE_SCAN))
+	if (adapter->state & (STATE_PINQ | STATE_STDINQ | STATE_LE_SCAN))
 		value = TRUE;
 	else
 		value = FALSE;
@@ -2291,6 +2273,41 @@ static void update_oor_devices(struct btd_adapter *adapter)
 	adapter->oor_devices =  g_slist_copy(adapter->found_devices);
 }
 
+static gboolean bredr_capable(struct btd_adapter *adapter)
+{
+	struct hci_dev *dev = &adapter->dev;
+
+	return (dev->features[4] & LMP_NO_BREDR) == 0 ? TRUE : FALSE;
+}
+
+static gboolean le_capable(struct btd_adapter *adapter)
+{
+	struct hci_dev *dev = &adapter->dev;
+
+	return (dev->features[4] & LMP_LE &&
+			dev->extfeatures[0] & LMP_LE_SUPPORTED) ? TRUE : FALSE;
+}
+
+int adapter_get_discover_type(struct btd_adapter *adapter)
+{
+	gboolean le, bredr;
+	int type;
+
+	le = le_capable(adapter);
+	bredr = bredr_capable(adapter);
+
+	if (le)
+		type = bredr ? DISC_INTERLEAVE : DISC_LE;
+	else
+		type = main_opts.discov_interval ? DISC_STDINQ :
+							DISC_PINQ;
+
+	if (main_opts.name_resolv)
+		type |= DISC_RESOLVNAME;
+
+	return type;
+}
+
 static int adapter_up(struct btd_adapter *adapter, const char *mode)
 {
 	char srcaddr[18];
@@ -2304,7 +2321,7 @@ static int adapter_up(struct btd_adapter *adapter, const char *mode)
 	adapter->up = 1;
 	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
 	adapter->pairable_timeout = get_pairable_timeout(srcaddr);
-	adapter->state = DISCOVER_TYPE_NONE;
+	adapter->state = STATE_IDLE;
 	adapter->mode = MODE_CONNECTABLE;
 	adapter->cache_enable = TRUE;
 	scan_mode = SCAN_PAGE;
@@ -2540,7 +2557,7 @@ int adapter_stop(struct btd_adapter *adapter)
 	adapter->up = 0;
 	adapter->scan_mode = SCAN_DISABLED;
 	adapter->mode = MODE_OFF;
-	adapter->state = DISCOVER_TYPE_NONE;
+	adapter->state = STATE_IDLE;
 	adapter->cache_enable = TRUE;
 	adapter->pending_cod = 0;
 	adapter->off_requested = FALSE;
@@ -2638,8 +2655,6 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id,
 	}
 
 	adapter->dev_id = id;
-	if (main_opts.name_resolv)
-		adapter->state |= RESOLVE_NAME;
 	adapter->path = g_strdup(path);
 	adapter->already_up = devup;
 
@@ -2706,12 +2721,12 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	previous = adapter->state;
 	adapter->state = state;
 
-	switch (state & 0x0f) {
-	case STD_INQUIRY:
-	case PERIODIC_INQUIRY:
+	switch (state) {
+	case STATE_STDINQ:
+	case STATE_PINQ:
 		discov_active = TRUE;
 		break;
-	case LE_SCAN:
+	case STATE_LE_SCAN:
 		/* Scanning enabled */
 		adapter->stop_discov_id = g_timeout_add(5120,
 						stop_scanning, adapter);
@@ -2724,13 +2739,14 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		discov_active = TRUE;
 
 		break;
-	case DISCOVER_TYPE_NONE:
+	case STATE_IDLE:
 		/*
 		 * Interleave: from inquiry to scanning. Interleave is not
 		 * applicable to requests triggered by external applications.
 		 */
-		if (adapter->disc_sessions && le_capable(adapter) == TRUE
-						&& (previous & STD_INQUIRY)) {
+		if (adapter->disc_sessions &&
+				(adapter_get_discover_type(adapter) & DISC_LE) &&
+				(previous & STATE_STDINQ)) {
 			adapter_ops->start_scanning(adapter->dev_id);
 			return;
 		}
@@ -2744,8 +2760,12 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 
 	if (discov_active == FALSE) {
 		update_oor_devices(adapter);
-		if (state & RESOLVE_NAME && adapter_resolve_names(adapter) == 0)
-			return;
+		if (adapter_get_discover_type(adapter) & DISC_RESOLVNAME) {
+			if (adapter_resolve_names(adapter) == 0) {
+				adapter->state |= STATE_RESOLVNAME;
+				return;
+			}
+		}
 	} else if (adapter->disc_sessions && main_opts.discov_interval)
 			adapter->scheduler_id = g_timeout_add_seconds(
 						main_opts.discov_interval,
@@ -3214,13 +3234,13 @@ gboolean adapter_has_discov_sessions(struct btd_adapter *adapter)
 void adapter_suspend_discovery(struct btd_adapter *adapter)
 {
 	if (adapter->disc_sessions == NULL ||
-			adapter->state & SUSPENDED_INQUIRY)
+			adapter->state & STATE_SUSPENDED)
 		return;
 
 	DBG("Suspending discovery");
 
 	stop_discovery(adapter, TRUE);
-	adapter->state |= SUSPENDED_INQUIRY;
+	adapter->state |= STATE_SUSPENDED;
 }
 
 void adapter_resume_discovery(struct btd_adapter *adapter)
@@ -3230,7 +3250,7 @@ void adapter_resume_discovery(struct btd_adapter *adapter)
 
 	DBG("Resuming discovery");
 
-	adapter->state &= ~SUSPENDED_INQUIRY;
+	adapter->state &= ~STATE_SUSPENDED;
 	start_discovery(adapter);
 }
 
