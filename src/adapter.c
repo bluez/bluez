@@ -1275,6 +1275,10 @@ static int start_discovery(struct btd_adapter *adapter)
 	if (adapter->state & SUSPENDED_INQUIRY)
 		return 0;
 
+	/* Postpone discovery if still resolving names */
+	if (adapter->state & RESOLVE_NAME)
+		return 1;
+
 	if (main_opts.discov_interval)
 		periodic = FALSE;
 
@@ -2751,7 +2755,6 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discovering",
 				DBUS_TYPE_BOOLEAN, &discov_active);
-
 }
 
 int adapter_get_state(struct btd_adapter *adapter)
