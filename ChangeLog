@@ -1,4 +1,4 @@
-ver 0.70:
+ver 4.70:
 	Fix incoming call indication handling when in WAITING state.
 	Fix various SDP related qualification test case issues.
 	Fix logic to write EIR when SDP records are changed.
