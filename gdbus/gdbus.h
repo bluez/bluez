@@ -58,6 +58,8 @@ typedef DBusMessage * (* GDBusMethodFunction) (DBusConnection *connection,
 typedef guint32 GDBusPendingReply;
 
 typedef void (* GDBusSecurityFunction) (DBusConnection *connection,
+						const char *action,
+						gboolean interaction,
 						GDBusPendingReply pending);
 
 typedef enum {
@@ -73,6 +75,12 @@ typedef enum {
 typedef enum {
 	G_DBUS_PROPERTY_FLAG_DEPRECATED = (1 << 0),
 } GDBusPropertyFlags;
+
+typedef enum {
+	G_DBUS_SECURITY_FLAG_DEPRECATED        = (1 << 0),
+	G_DBUS_SECURITY_FLAG_BUILTIN           = (1 << 1),
+	G_DBUS_SECURITY_FLAG_ALLOW_INTERACTION = (1 << 2),
+} GDBusSecurityFlags;
 
 typedef struct {
 	const char *name;
@@ -97,6 +105,8 @@ typedef struct {
 
 typedef struct {
 	unsigned int privilege;
+	const char *action;
+	GDBusSecurityFlags flags;
 	GDBusSecurityFunction function;
 } GDBusSecurityTable;
 

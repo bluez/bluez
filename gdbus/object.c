@@ -317,9 +317,10 @@ static gboolean check_privilege(DBusConnection *conn, DBusMessage *msg,
 {
 	const GDBusSecurityTable *security;
 
-	for (security = security_table; security && security->function &&
-					security->privilege; security++) {
+	for (security = security_table; security && security->privilege;
+								security++) {
 		struct security_data *secdata;
+		gboolean interaction;
 
 		if (security->privilege != method->privilege)
 			continue;
@@ -332,7 +333,14 @@ static gboolean check_privilege(DBusConnection *conn, DBusMessage *msg,
 
 		pending_security = g_slist_prepend(pending_security, secdata);
 
-		security->function(conn, secdata->pending);
+		if (security->flags & G_DBUS_SECURITY_FLAG_ALLOW_INTERACTION)
+			interaction = TRUE;
+		else
+			interaction = FALSE;
+
+		if (security->function)
+			security->function(conn, security->action,
+						interaction, secdata->pending);
 
 		return TRUE;
 	}
