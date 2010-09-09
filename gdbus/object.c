@@ -312,6 +312,46 @@ void g_dbus_pending_error(DBusConnection *connection,
 	va_end(args);
 }
 
+int polkit_check_authorization(DBusConnection *conn,
+				const char *action, gboolean interaction,
+				void (*function) (dbus_bool_t authorized,
+							void *user_data),
+						void *user_data, int timeout);
+
+struct builtin_security_data {
+	DBusConnection *conn;
+	GDBusPendingReply pending;
+};
+
+static void builtin_security_result(dbus_bool_t authorized, void *user_data)
+{
+	struct builtin_security_data *data = user_data;
+
+	if (authorized == TRUE)
+		g_dbus_pending_success(data->conn, data->pending);
+	else
+		g_dbus_pending_error(data->conn, data->pending,
+						DBUS_ERROR_AUTH_FAILED, NULL);
+
+	g_free(data);
+}
+
+static void builtin_security_function(DBusConnection *conn,
+						const char *action,
+						gboolean interaction,
+						GDBusPendingReply pending)
+{
+	struct builtin_security_data *data;
+
+	data = g_new0(struct builtin_security_data, 1);
+	data->conn = conn;
+	data->pending = pending;
+
+	if (polkit_check_authorization(conn, action, interaction,
+				builtin_security_result, data, 30000) < 0)
+		g_dbus_pending_error(conn, pending, NULL, NULL);
+}
+
 static gboolean check_privilege(DBusConnection *conn, DBusMessage *msg,
 			const GDBusMethodTable *method, void *iface_user_data)
 {
@@ -338,8 +378,12 @@ static gboolean check_privilege(DBusConnection *conn, DBusMessage *msg,
 		else
 			interaction = FALSE;
 
-		if (security->function)
+		if (!(security->flags & G_DBUS_SECURITY_FLAG_BUILTIN) &&
+							security->function)
 			security->function(conn, security->action,
+						interaction, secdata->pending);
+		else
+			builtin_security_function(conn, security->action,
 						interaction, secdata->pending);
 
 		return TRUE;
