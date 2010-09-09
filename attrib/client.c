@@ -1029,6 +1029,8 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 		return -1;
 	}
 
+	g_io_channel_unref(io);
+
 	return 0;
 }
 
