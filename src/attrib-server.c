@@ -424,7 +424,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 							gpointer user_data)
 {
 	struct gatt_channel *channel = user_data;
-	uint8_t opdu[ATT_MTU];
+	uint8_t opdu[ATT_MAX_MTU];
 	uint16_t length, start, end;
 	uuid_t uuid;
 	uint8_t status = 0;
@@ -539,7 +539,7 @@ static void confirm_event(GIOChannel *io, void *user_data)
 
 static gboolean send_notification(gpointer user_data)
 {
-	uint8_t pdu[ATT_MTU];
+	uint8_t pdu[ATT_MAX_MTU];
 	uint16_t *handle = user_data;
 	struct attribute *a;
 	GSList *l;

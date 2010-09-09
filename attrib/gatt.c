@@ -34,7 +34,7 @@
 guint gatt_discover_primary(GAttrib *attrib, uint16_t start,
 		uint16_t end, GAttribResultFunc func, gpointer user_data)
 {
-	uint8_t pdu[ATT_MTU];
+	uint8_t pdu[ATT_DEFAULT_MTU];
 	uuid_t uuid;
 	guint16 plen;
 
@@ -51,7 +51,7 @@ guint gatt_discover_primary(GAttrib *attrib, uint16_t start,
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 				GAttribResultFunc func, gpointer user_data)
 {
-	uint8_t pdu[ATT_MTU];
+	uint8_t pdu[ATT_DEFAULT_MTU];
 	uuid_t uuid;
 	guint16 plen;
 
@@ -68,7 +68,7 @@ guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 							gpointer user_data)
 {
-	uint8_t pdu[ATT_MTU];
+	uint8_t pdu[ATT_DEFAULT_MTU];
 	guint16 plen;
 
 	plen = enc_read_req(handle, pdu, sizeof(pdu));
@@ -79,7 +79,7 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
 				GAttribResultFunc func, gpointer user_data)
 {
-	uint8_t pdu[ATT_MTU];
+	uint8_t pdu[ATT_DEFAULT_MTU];
 	guint16 plen;
 
 	plen = enc_find_info_req(start, end, pdu, sizeof(pdu));

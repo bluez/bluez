@@ -106,7 +106,8 @@
 #define ATT_CHAR_PROPER_EXT_PROPER		0x80
 
 
-#define ATT_MTU					256
+#define ATT_MAX_MTU				256
+#define ATT_DEFAULT_MTU				23
 
 struct attribute {
 	uint16_t handle;

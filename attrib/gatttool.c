@@ -315,7 +315,7 @@ static gboolean characteristics(gpointer user_data)
 static void char_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
-	uint8_t value[ATT_MTU];
+	uint8_t value[ATT_MAX_MTU];
 	int i, vlen;
 
 	if (status != 0) {
