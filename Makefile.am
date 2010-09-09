@@ -99,7 +99,8 @@ plugins_netlink_la_CFLAGS = -fvisibility=hidden @DBUS_CFLAGS@ \
 					@GLIB_CFLAGS@ @NETLINK_CFLAGS@
 endif
 
-gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/object.c gdbus/watch.c
+gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
+					gdbus/object.c gdbus/polkit.c
 
 builtin_modules =
 builtin_sources =
