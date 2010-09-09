@@ -1,3 +1,17 @@
+ver 4.71:
+	Fix compilation when SBC support in not enabled.
+	Fix crash with RequestSession and application disconnects.
+	Fix memory leak and possible crash when removing audio device.
+	Fix issue with closing stream of locked sep when reconfiguring.
+	Fix issue where discovery could interfere with bonding.
+	Fix issue with Connected status when PS3 BD remote connects.
+	Fix issue with lifetime of fake input devices.
+	Add support for compile time option of oui.txt path.
+	Add support for printing IEEE1284 device ID for CUPS.
+	Add plugin for setting adapter class via DMI.
+	Add more features for attribute protocol and profile.
+	Add initial support for MCAP.
+
 ver 4.70:
 	Fix incoming call indication handling when in WAITING state.
 	Fix various SDP related qualification test case issues.
