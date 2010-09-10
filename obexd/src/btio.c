@@ -1297,4 +1297,3 @@ GQuark bt_io_error_quark(void)
 {
 	return g_quark_from_static_string("bt-io-error-quark");
 }
-
