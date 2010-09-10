@@ -53,6 +53,7 @@ struct gatt_channel {
 	bdaddr_t src;
 	bdaddr_t dst;
 	GAttrib *attrib;
+	guint mtu;
 	guint id;
 };
 
@@ -437,7 +438,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 			goto done;
 		}
 
-		length = read_by_group(start, end, &uuid, opdu, sizeof(opdu));
+		length = read_by_group(start, end, &uuid, opdu, channel->mtu);
 		break;
 	case ATT_OP_READ_BY_TYPE_REQ:
 		length = dec_read_by_type_req(ipdu, len, &start, &end, &uuid);
@@ -446,7 +447,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 			goto done;
 		}
 
-		length = read_by_type(start, end, &uuid, opdu, sizeof(opdu));
+		length = read_by_type(start, end, &uuid, opdu, channel->mtu);
 		break;
 	case ATT_OP_READ_REQ:
 		length = dec_read_req(ipdu, &start);
@@ -455,7 +456,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 			goto done;
 		}
 
-		length = read_value(start, opdu, sizeof(opdu));
+		length = read_value(start, opdu, channel->mtu);
 		break;
 	case ATT_OP_MTU_REQ:
 	case ATT_OP_FIND_INFO_REQ:
@@ -465,7 +466,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 			goto done;
 		}
 
-		length = find_info(start, end, opdu, sizeof(opdu));
+		length = find_info(start, end, opdu, channel->mtu);
 		break;
 	case ATT_OP_FIND_BY_TYPE_REQ:
 	case ATT_OP_READ_BLOB_REQ:
@@ -483,7 +484,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 
 done:
 	if (status)
-		length = enc_error_resp(ipdu[0], 0x0000, status, opdu, sizeof(opdu));
+		length = enc_error_resp(ipdu[0], 0x0000, status, opdu, channel->mtu);
 
 	g_attrib_send(channel->attrib, opdu[0], opdu, length,
 							NULL, NULL, NULL);
@@ -514,6 +515,8 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 	}
 
 	channel->attrib = g_attrib_new(io);
+	channel->mtu = ATT_DEFAULT_MTU;
+
 	g_io_channel_unref(io);
 
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
@@ -551,9 +554,10 @@ static gboolean send_notification(gpointer user_data)
 
 	a = l->data;
 
-	length = enc_notification(a, pdu, sizeof(pdu));
 	for (l = clients; l; l = l->next) {
 		struct gatt_channel *channel = l->data;
+
+		length = enc_notification(a, pdu, channel->mtu);
 		g_attrib_send(channel->attrib, pdu[0], pdu, length, NULL, NULL, NULL);
 	}
 
