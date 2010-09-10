@@ -210,8 +210,6 @@ static void append_array_variant(DBusMessageIter *iter, int type, void *val,
 	DBusMessageIter variant, array;
 	char type_sig[2] = { type, '\0' };
 	char array_sig[3] = { DBUS_TYPE_ARRAY, type, '\0' };
-	const char ***str_array = val;
-	int i;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
 						array_sig, &variant);
@@ -219,9 +217,17 @@ static void append_array_variant(DBusMessageIter *iter, int type, void *val,
 	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
 						type_sig, &array);
 
-	for (i = 0; i < n_elements; i++)
-		dbus_message_iter_append_basic(&array, type,
-						&((*str_array)[i]));
+	if (dbus_type_is_fixed(type) == TRUE) {
+		dbus_message_iter_append_fixed_array(&array, type, val,
+							n_elements);
+	} else if (type == DBUS_TYPE_STRING || type == DBUS_TYPE_OBJECT_PATH) {
+		const char ***str_array = val;
+		int i;
+
+		for (i = 0; i < n_elements; i++)
+			dbus_message_iter_append_basic(&array, type,
+							&((*str_array)[i]));
+	}
 
 	dbus_message_iter_close_container(&variant, &array);
 
