@@ -412,6 +412,14 @@ static uint16_t read_value(uint16_t handle, uint8_t *pdu, int len)
 	return enc_read_resp(a->data, a->len, pdu, len);
 }
 
+static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
+		uint8_t *pdu, int len)
+{
+	channel->mtu = MIN(mtu, ATT_MAX_MTU);
+
+	return enc_mtu_resp(channel->mtu, pdu, len);
+}
+
 static void channel_destroy(void *user_data)
 {
 	struct gatt_channel *channel = user_data;
@@ -426,7 +434,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 {
 	struct gatt_channel *channel = user_data;
 	uint8_t opdu[ATT_MAX_MTU];
-	uint16_t length, start, end;
+	uint16_t length, start, end, mtu;
 	uuid_t uuid;
 	uint8_t status = 0;
 
@@ -459,6 +467,14 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 		length = read_value(start, opdu, channel->mtu);
 		break;
 	case ATT_OP_MTU_REQ:
+		length = dec_mtu_req(ipdu, len, &mtu);
+		if (length == 0) {
+			status = ATT_ECODE_INVALID_PDU;
+			goto done;
+		}
+
+		length = mtu_exchange(channel, mtu, opdu, channel->mtu);
+		break;
 	case ATT_OP_FIND_INFO_REQ:
 		length = dec_find_info_req(ipdu, len, &start, &end);
 		if (length == 0) {
