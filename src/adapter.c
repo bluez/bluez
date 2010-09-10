@@ -1262,6 +1262,7 @@ static int start_discovery(struct btd_adapter *adapter)
 	/* Postpone discovery if still resolving names */
 	if (adapter->state & STATE_RESOLVNAME)
 		return 1;
+
 	pending_remote_name_cancel(adapter);
 
 	type = adapter_get_discover_type(adapter) & ~DISC_RESOLVNAME;
@@ -2713,13 +2714,15 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 {
 	const char *path = adapter->path;
 	gboolean discov_active;
-	int previous;
+	int previous, type;
 
 	if (adapter->state == state)
 		return;
 
 	previous = adapter->state;
 	adapter->state = state;
+
+	type = adapter_get_discover_type(adapter);
 
 	switch (state) {
 	case STATE_STDINQ:
@@ -2748,9 +2751,8 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		 * Interleave: from inquiry to scanning. Interleave is not
 		 * applicable to requests triggered by external applications.
 		 */
-		if (adapter->disc_sessions &&
-				(adapter_get_discover_type(adapter) & DISC_LE) &&
-				(previous & STATE_STDINQ)) {
+		if (adapter->disc_sessions && (type & DISC_INTERLEAVE) &&
+						(previous & STATE_STDINQ)) {
 			adapter_ops->start_scanning(adapter->dev_id);
 			return;
 		}
@@ -2764,7 +2766,7 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 
 	if (discov_active == FALSE) {
 		update_oor_devices(adapter);
-		if (adapter_get_discover_type(adapter) & DISC_RESOLVNAME) {
+		if (type & DISC_RESOLVNAME) {
 			if (adapter_resolve_names(adapter) == 0) {
 				adapter->state |= STATE_RESOLVNAME;
 				return;

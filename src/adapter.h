@@ -42,9 +42,9 @@
 /* Supported host/controller discover type */
 #define DISC_LE			0x01
 #define DISC_STDINQ		0x02
-#define DISC_INTERLEAVE	(DISC_LE | DISC_STDINQ)
-#define DISC_PINQ		0x04
-#define DISC_RESOLVNAME		0x08
+#define DISC_INTERLEAVE		0x04
+#define DISC_PINQ		0x08
+#define DISC_RESOLVNAME		0x10
 
 #define MAX_NAME_LENGTH		248
 
