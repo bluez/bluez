@@ -1,0 +1,24 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import dbus
+import dbus.service
+import gobject
+from dbus.mainloop.glib import DBusGMainLoop
+import sys
+
+DBusGMainLoop(set_as_default=True)
+loop = gobject.MainLoop()
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object("org.bluez", "/org/bluez"),
+						"org.bluez.HealthManager")
+app_path = manager.CreateApplication({"DataType": dbus.types.UInt16(1),
+					"Role": "source"})
+
+print app_path
+print "Push Enter for finishing"
+sys.stdin.readline()
+
+manager.DestroyApplication(app_path)
