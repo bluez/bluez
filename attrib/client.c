@@ -573,14 +573,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	uint16_t last, *previous_end = NULL;
 	int i;
 
-	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
-		store_characteristics(gatt, prim);
-		register_characteristics(prim);
-
-		g_slist_foreach(prim->chars, update_all_chars, gatt);
-		g_free(current);
-		return;
-	}
+	if (status == ATT_ECODE_ATTR_NOT_FOUND)
+		goto done;
 
 	if (status != 0) {
 		DBG("Discover all characteristics failed: %s",
@@ -628,10 +622,21 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	att_data_list_free(list);
 
+	if (last >= prim->end)
+		goto done;
+
 	/* Fetch remaining characteristics for the CURRENT primary service */
 	gatt_discover_char(gatt->attrib, last + 1, prim->end,
 						char_discovered_cb, current);
 
+	return;
+
+done:
+	store_characteristics(gatt, prim);
+	register_characteristics(prim);
+
+	g_slist_foreach(prim->chars, update_all_chars, gatt);
+	g_free(current);
 	return;
 
 fail:
