@@ -863,7 +863,7 @@ add_entry:
 	contact->photo = g_strdup(reply[21]);
 	contact->company = g_strdup(reply[22]);
 	contact->department = g_strdup(reply[23]);
-	contact->title = g_strdup(reply[24]);
+	contact->role = g_strdup(reply[24]);
 	contact->uid = g_strdup(reply[32]);
 
 	set_call_type(contact, reply[COL_DATE], reply[COL_SENT],

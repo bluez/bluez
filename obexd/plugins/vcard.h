@@ -78,7 +78,7 @@ struct phonebook_contact {
 	char *photo;
 	char *company;
 	char *department;
-	char *title;
+	char *role;
 	char *datetime;
 	int calltype;
 };

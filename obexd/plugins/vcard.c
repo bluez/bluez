@@ -357,9 +357,6 @@ static gboolean org_fields_present(struct phonebook_contact *contact)
 	if (contact->department && strlen(contact->department))
 		return TRUE;
 
-	if (contact->title && strlen(contact->title))
-		return TRUE;
-
 	return FALSE;
 }
 
@@ -371,8 +368,8 @@ static void vcard_printf_org(GString *vcards,
 		return;
 	}
 
-	vcard_printf(vcards, "ORG:%s;%s;%s", contact->company,
-				contact->department, contact->title);
+	vcard_printf(vcards, "ORG:%s;%s", contact->company,
+				contact->department);
 }
 
 static void vcard_printf_address(GString *vcards, uint8_t format,
@@ -539,6 +536,9 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	if (filter & FILTER_ORG)
 		vcard_printf_org(vcards, contact);
 
+	if (filter & FILTER_ROLE)
+		vcard_printf_tag(vcards, format, "ROLE", NULL, contact->role);
+
 	if (filter & FILTER_X_IRMC_CALL_DATETIME)
 		vcard_printf_datetime(vcards, contact);
 
@@ -596,7 +596,7 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_free(contact->photo);
 	g_free(contact->company);
 	g_free(contact->department);
-	g_free(contact->title);
+	g_free(contact->role);
 	g_free(contact->datetime);
 	g_free(contact);
 }
