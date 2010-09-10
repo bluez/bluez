@@ -702,10 +702,10 @@ static void stop_discovery(struct btd_adapter *adapter, gboolean suspend)
 		return;
 	}
 
-	if (adapter->state & (STATE_PINQ | STATE_STDINQ))
-		adapter_ops->stop_inquiry(adapter->dev_id);
-	else if (adapter->state & STATE_LE_SCAN)
+	if (adapter->state & STATE_LE_SCAN)
 		adapter_ops->stop_scanning(adapter->dev_id);
+	else
+		adapter_ops->stop_inquiry(adapter->dev_id);
 }
 
 static void session_remove(struct session_req *req)
