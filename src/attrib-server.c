@@ -56,6 +56,13 @@ struct gatt_channel {
 	guint id;
 };
 
+struct group_elem {
+	uint16_t handle;
+	uint16_t end;
+	uint8_t *data;
+	uint16_t len;
+};
+
 static GIOChannel *l2cap_io = NULL;
 static GSList *clients = NULL;
 static uint32_t handle = 0;
@@ -132,9 +139,9 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 {
 	struct att_data_list *adl;
 	struct attribute *a;
+	struct group_elem *cur, *old = NULL;
 	GSList *l, *groups;
-	int last_size = 0;
-	uint16_t length, last = 0;
+	uint16_t length, last_handle, last_size = 0;
 	int i;
 
 	if (start > end || start == 0x0000)
@@ -151,37 +158,53 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 		return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ, 0x0000,
 					ATT_ECODE_UNSUPP_GRP_TYPE, pdu, len);
 
+	last_handle = end;
 	for (l = database, groups = NULL; l; l = l->next) {
 		a = l->data;
 
 		if (a->handle < start)
 			continue;
 
-		last = a->handle;
 		if (a->handle >= end)
 			break;
 
-		if (sdp_uuid_cmp(&a->uuid, &prim_uuid)  != 0 &&
-				sdp_uuid_cmp(&a->uuid, &snd_uuid) != 0)
-			continue;
-
-		if (sdp_uuid_cmp(&a->uuid, uuid) != 0)
-			continue;
-
-		if (last_size == 0)
-			last_size = a->len;
-		else if (a->len != last_size) {
-			last--;
-			break;
+		/* The old group ends when a new one starts */
+		if (old && (sdp_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
+				sdp_uuid_cmp(&a->uuid, &snd_uuid) == 0)) {
+			old->end = last_handle;
+			old = NULL;
 		}
 
+		if (sdp_uuid_cmp(&a->uuid, uuid) != 0) {
+			/* Still inside a service, update its last handle */
+			if (old)
+				last_handle = a->handle;
+			continue;
+		}
+
+		if (last_size && (last_size != a->len))
+			break;
+
+		cur = g_new0(struct group_elem, 1);
+		cur->handle = a->handle;
+		cur->data = a->data;
+		cur->len = a->len;
+
 		/* Attribute Grouping Type found */
-		groups = g_slist_append(groups, a);
+		groups = g_slist_append(groups, cur);
+
+		last_size = a->len;
+		old = cur;
 	}
 
 	if (groups == NULL)
 		return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ, start,
 					ATT_ECODE_ATTR_NOT_FOUND, pdu, len);
+
+	if (l == NULL)
+		cur->end = a->handle;
+	else
+		cur->end = last_handle;
 
 	length = g_slist_length(groups);
 
@@ -191,31 +214,23 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 	adl->data = g_malloc(length * sizeof(uint8_t *));
 
 	for (i = 0, l = groups; l; l = l->next, i++) {
-		struct attribute *next;
 		uint8_t *value;
 
-		a = l->data;
+		cur = l->data;
 
 		adl->data[i] = g_malloc(adl->len);
 		value = (void *) adl->data[i];
 
-		att_put_u16(a->handle, value);
-
-		/* End Group Handle */
-		if (l->next == NULL) {
-			att_put_u16(last, &value[2]);
-		} else {
-			next = l->next->data;
-			att_put_u16(next->handle - 1, &value[2]);
-		}
-
+		att_put_u16(cur->handle, value);
+		att_put_u16(cur->end, &value[2]);
 		/* Attribute Value */
-		memcpy(&value[4], a->data, a->len);
+		memcpy(&value[4], cur->data, cur->len);
 	}
 
 	length = enc_read_by_grp_resp(adl, pdu, len);
 
 	att_data_list_free(adl);
+	g_slist_foreach(groups, (GFunc) g_free, NULL);
 	g_slist_free(groups);
 
 	return length;
