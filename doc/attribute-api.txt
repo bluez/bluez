@@ -115,6 +115,47 @@ Interface	org.bluez.Characteristic
 Object path	[prefix]/{hci0}/{device0}/{service0}/{characteristic0,...}
 		[prefix]/{hci0}/{device0}/{service1}/{characteristic0,...}
 
-Methods
+Methods		dict GetProperties()
 
-Properties
+			Returns all properties for the characteristic. See the
+			properties section for available properties.
+
+
+Properties 	string UUID [readonly]
+
+			UUID128 of this characteristic.
+
+		string Name [readonly]
+
+			Optional field containing a friendly name for the
+			Characteristic UUID.
+
+		string Description [readonly]
+
+			Textual optional characteristic descriptor describing
+			the Characteristic Value.
+
+		struct Format [readonly]
+
+			Optional Characteristic descriptor which defines the
+			format of the Characteristic Value. For numeric
+			values, the actual value can be value * 10^Exponent.
+			NameSpace and Description are defined on the Assigned
+			Number Specification.
+
+			  uint8  | Format: format of the value
+			  uint8  | Exponent: Field to determine how the value is
+			         | further formatted.
+			  uint16 | Unit: unit of the characteristic
+			  uint8  | NameSpace: Name space of description.
+			  uint16 | Description: Description of the characteristic defined
+			         | in a high layer profile.
+
+		array{byte} Value [readwrite]
+
+			Raw value of the Characteristic Value attribute.
+
+		string Representation (of the binary Value) [readonly]
+
+			Friendly representation of the Characteristic Value
+			based on the format attribute.
