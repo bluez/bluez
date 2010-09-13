@@ -102,6 +102,8 @@ endif
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 					gdbus/object.c gdbus/polkit.c
 
+btio_sources = btio/btio.h btio/btio.c
+
 builtin_modules =
 builtin_sources =
 builtin_nodist =
@@ -216,14 +218,14 @@ endif
 sbin_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
-			$(attrib_sources) \
+			$(attrib_sources) $(btio_sources) \
 			$(mcap_sources) \
 			src/main.c src/log.h src/log.c \
 			src/security.c src/rfkill.c src/hcid.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \
 			src/sdpd-service.c src/sdpd-database.c \
 			src/attrib-server.h src/attrib-server.c \
-			src/sdp-xml.h src/sdp-xml.c src/btio.h src/btio.c \
+			src/sdp-xml.h src/sdp-xml.c \
 			src/textfile.h src/textfile.c \
 			src/glib-helper.h src/glib-helper.c \
 			src/oui.h src/oui.c src/uinput.h src/ppoll.h \
@@ -357,7 +359,7 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ \
 
 INCLUDES = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/audio -I$(srcdir)/sbc -I$(srcdir)/gdbus \
-			-I$(srcdir)/attrib
+			-I$(srcdir)/attrib -I$(srcdir)/btio
 
 if MCAP
 	INCLUDES += -I$(builddir)/health

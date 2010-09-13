@@ -170,7 +170,7 @@ test_bdaddr_LDADD = lib/libbluetooth.la
 
 test_agent_LDADD = @DBUS_LIBS@
 
-test_btiotest_SOURCES = test/btiotest.c src/btio.h src/btio.c
+test_btiotest_SOURCES = test/btiotest.c btio/btio.h btio/btio.c
 test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth.la
 
 test_test_textfile_SOURCES = test/test-textfile.c src/textfile.h src/textfile.c
