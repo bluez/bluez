@@ -681,3 +681,9 @@ uint8_t media_endpoint_get_codec(struct media_endpoint *endpoint)
 {
 	return endpoint->codec;
 }
+
+struct media_transport *media_endpoint_get_transport(
+					struct media_endpoint *endpoint)
+{
+	return endpoint->transport;
+}

@@ -673,3 +673,17 @@ const char *media_transport_get_path(struct media_transport *transport)
 {
 	return transport->path;
 }
+
+void media_transport_update_delay(struct media_transport *transport,
+							uint16_t delay)
+{
+	/* Check if delay really changed */
+	if (transport->delay == delay)
+		return;
+
+	transport->delay = delay;
+
+	emit_property_changed(transport->conn, transport->path,
+				MEDIA_TRANSPORT_INTERFACE, "Delay",
+				DBUS_TYPE_UINT16, &transport->delay);
+}

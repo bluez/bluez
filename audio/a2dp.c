@@ -44,6 +44,7 @@
 #include "source.h"
 #include "unix.h"
 #include "media.h"
+#include "transport.h"
 #include "a2dp.h"
 #include "sdpd.h"
 
@@ -600,9 +601,9 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 }
 
 static gboolean endpoint_getcap_ind(struct avdtp *session,
-				struct avdtp_local_sep *sep,
-				gboolean get_all,
-				GSList **caps, uint8_t *err, void *user_data)
+					struct avdtp_local_sep *sep,
+					gboolean get_all, GSList **caps,
+					uint8_t *err, void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct avdtp_service_capability *media_transport, *media_codec;
@@ -1031,6 +1032,28 @@ static gboolean delayreport_ind(struct avdtp *session,
 	return TRUE;
 }
 
+static gboolean endpoint_delayreport_ind(struct avdtp *session,
+						struct avdtp_local_sep *sep,
+						uint8_t rseid, uint16_t delay,
+						uint8_t *err, void *user_data)
+{
+	struct a2dp_sep *a2dp_sep = user_data;
+	struct media_transport *transport;
+
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
+		DBG("Sink %p: DelayReport_Ind", sep);
+	else
+		DBG("Source %p: DelayReport_Ind", sep);
+
+	transport = media_endpoint_get_transport(a2dp_sep->endpoint);
+	if (transport == NULL)
+		return FALSE;
+
+	media_transport_update_delay(transport, delay);
+
+	return TRUE;
+}
+
 static void reconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			struct avdtp_stream *stream, struct avdtp_error *err,
 			void *user_data)
@@ -1115,7 +1138,7 @@ static struct avdtp_sep_ind endpoint_ind = {
 	.close			= close_ind,
 	.abort			= abort_ind,
 	.reconfigure		= reconf_ind,
-	.delayreport		= delayreport_ind,
+	.delayreport		= endpoint_delayreport_ind,
 };
 
 static sdp_record_t *a2dp_record(uint8_t type, uint16_t avdtp_ver)
