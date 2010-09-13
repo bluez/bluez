@@ -62,20 +62,20 @@ struct set_opts {
 
 struct connect {
 	BtIOConnect connect;
-	void *user_data;
+	gpointer user_data;
 	GDestroyNotify destroy;
 };
 
 struct accept {
 	BtIOConnect connect;
-	void *user_data;
+	gpointer user_data;
 	GDestroyNotify destroy;
 };
 
 struct server {
 	BtIOConnect connect;
 	BtIOConfirm confirm;
-	void *user_data;
+	gpointer user_data;
 	GDestroyNotify destroy;
 };
 
@@ -115,7 +115,7 @@ static gboolean check_nval(GIOChannel *io)
 }
 
 static gboolean accept_cb(GIOChannel *io, GIOCondition cond,
-							void *user_data)
+							gpointer user_data)
 {
 	struct accept *accept = user_data;
 	GError *err = NULL;
@@ -136,7 +136,7 @@ static gboolean accept_cb(GIOChannel *io, GIOCondition cond,
 }
 
 static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
-							void *user_data)
+							gpointer user_data)
 {
 	struct connect *conn = user_data;
 	GError *gerr = NULL;
@@ -169,7 +169,7 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 }
 
 static gboolean server_cb(GIOChannel *io, GIOCondition cond,
-							void *user_data)
+							gpointer user_data)
 {
 	struct server *server = user_data;
 	int srv_sock, cli_sock;
@@ -201,7 +201,7 @@ static gboolean server_cb(GIOChannel *io, GIOCondition cond,
 }
 
 static void server_add(GIOChannel *io, BtIOConnect connect,
-				BtIOConfirm confirm, void *user_data,
+				BtIOConfirm confirm, gpointer user_data,
 				GDestroyNotify destroy)
 {
 	struct server *server;
@@ -219,7 +219,7 @@ static void server_add(GIOChannel *io, BtIOConnect connect,
 }
 
 static void connect_add(GIOChannel *io, BtIOConnect connect,
-				void *user_data, GDestroyNotify destroy)
+				gpointer user_data, GDestroyNotify destroy)
 {
 	struct connect *conn;
 	GIOCondition cond;
@@ -234,7 +234,7 @@ static void connect_add(GIOChannel *io, BtIOConnect connect,
 					(GDestroyNotify) connect_remove);
 }
 
-static void accept_add(GIOChannel *io, BtIOConnect connect, void *user_data,
+static void accept_add(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 							GDestroyNotify destroy)
 {
 	struct accept *accept;
@@ -1046,7 +1046,7 @@ static gboolean get_valist(GIOChannel *io, BtIOType type, GError **err,
 	return FALSE;
 }
 
-gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, void *user_data,
+gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 					GDestroyNotify destroy, GError **err)
 {
 	int sock;
@@ -1195,7 +1195,7 @@ failed:
 }
 
 GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
-				void *user_data, GDestroyNotify destroy,
+				gpointer user_data, GDestroyNotify destroy,
 				GError **gerr, BtIOOption opt1, ...)
 {
 	GIOChannel *io;
@@ -1249,7 +1249,7 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 }
 
 GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
-				BtIOConfirm confirm, void *user_data,
+				BtIOConfirm confirm, gpointer user_data,
 				GDestroyNotify destroy, GError **err,
 				BtIOOption opt1, ...)
 {
