@@ -140,12 +140,15 @@ uint16_t enc_read_by_grp_resp(struct att_data_list *list, uint8_t *pdu, int len)
 	if (list == NULL)
 		return 0;
 
+	if (len < list->len + 2)
+		return 0;
+
 	pdu[0] = ATT_OP_READ_BY_GROUP_RESP;
 	pdu[1] = list->len;
 
 	ptr = &pdu[2];
 
-	for (i = 0, w = 2; i < list->num && w + list->len < len; i++) {
+	for (i = 0, w = 2; i < list->num && w + list->len <= len; i++) {
 		memcpy(ptr, list->data[i], list->len);
 		ptr += list->len;
 		w += list->len;
@@ -247,7 +250,7 @@ uint16_t enc_read_by_type_resp(struct att_data_list *list, uint8_t *pdu, int len
 	pdu[1] = list->len;
 	ptr = &pdu[2];
 
-	for (i = 0, w = 2; i < list->num && w + list->len < len; i++) {
+	for (i = 0, w = 2; i < list->num && w + list->len <= len; i++) {
 		memcpy(ptr, list->data[i], list->len);
 		ptr += list->len;
 		w += list->len;
@@ -409,14 +412,17 @@ uint16_t enc_find_info_resp(uint8_t format, struct att_data_list *list,
 	if (pdu == NULL)
 		return 0;
 
-	if (list == NULL || len < 2)
+	if (list == NULL)
+		return 0;
+
+	if (len < list->len + 2)
 		return 0;
 
 	pdu[0] = ATT_OP_FIND_INFO_RESP;
 	pdu[1] = format;
 	ptr = (void *) &pdu[2];
 
-	for (i = 0, w = 2; i < list->num && w + list->len < len; i++) {
+	for (i = 0, w = 2; i < list->num && w + list->len <= len; i++) {
 		memcpy(ptr, list->data[i], list->len);
 		ptr += list->len;
 		w += list->len;
