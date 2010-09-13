@@ -180,7 +180,7 @@ static uint16_t read_by_group(uint16_t start, uint16_t end, uuid_t *uuid,
 	}
 
 	if (groups == NULL)
-		return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ, 0x0000,
+		return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ, start,
 					ATT_ECODE_ATTR_NOT_FOUND, pdu, len);
 
 	length = g_slist_length(groups);
