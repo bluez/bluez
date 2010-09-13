@@ -3,17 +3,6 @@ BlueZ D-Bus Attribute API description
 
 Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
 
-
-Attribute hierarchy
-===================
-
-Service		org.bluez
-Interface	org.bluez.Service
-		org.bluez.Characteristic
-Object path	[prefix]/{hci0}/{service0}
-		[prefix]/{hci0}/{device0}/{service0}/{characteristic0,...}
-		[prefix]/{hci0}/{device0}/{service1}/{characteristic0,...}
-
 Service details
 ---------------
 
@@ -34,64 +23,98 @@ fully transparent and a differentiation becomes unimportant in the future.
 A service consists of some generic service information and a set of
 characteristics. All characteristic are presented as object path as well.
 
+
+Local Service hierarchy
+=======================
+
+Service		org.bluez
+Interface	org.bluez.Service
+		org.bluez.Characteristic
+Object path	[prefix]/{hci0}/{service0, service1, ...}
+
+Methods
+
 Properties
-----------
-	string Name (mandatory)
 
-		General name of service
 
-	string Description (optional)
+Device Service hierarchy
+========================
 
-		Description of service
+Service		org.bluez
+Interface	org.bluez.Characteristic
+Object path	[prefix]/{hci0}/{service0, service1, ...}
 
-	string UUID (mandatory)
+Methods		array[(object, dict)] GetCharacteristics()
 
-		UUID of service. Service class value for SDP and GATT UUID
-		for attribute based services.
+			Array of tuples with object path as identifier. An
+			alternative is doing dict of dict since the object
+			path is unique and the order of characteristics is
+			irrelevant. However it might be good to actually
+			present an order here.
 
-	array{object} Characteristics
+			See Characteristics properties for dictionary details.
 
-		This list contains the characteristics owned by this specific
-		service and other characteristics from service includes. That
-		way no complicated service includes array is needed.
+		RegisterCharacteristicsWatcher(object path)
 
-		string UUID
-		string Name
-		string Description
-		struct Format (type, name, exponet etc.)
+			Register a watcher for changes in specific characteristics
+			to monitor changes.
 
-		array{byte} Value
-		string Representation (of the binary Value)
+			A watcher will be registered for this service and will
+			notifier about any changed characteristics in the service.
+			This also notifies about any included characteristics.
 
-		object Service (the original service in case of includes)
+			Method for the watch objects still need to be defined.
 
-		At this point only GetProperties() method call should be
-		supported for simplicity. Changing characteristics is up
-		to future support.
+		UnregisterCharacteristicsWatcher(object path)
 
-		The object path of the characteristics might be split
-		over multiple service objects, because of includes.
+			Unregister a watcher.
 
-	array[(object, dict)] GetCharacteristics()
+Properties	string Name (mandatory) [readonly]
 
-		Array of tuples with object path as identifier. An alternativ
-		is doing dict of dict since the object path is unique and the
-		order of characteristics is irrelevant. However it might be
-		good to actually present an order here.
+			General name of service
 
-		See Characteristics properties for dictionary details.
+		string Description (optional) [readonly]
 
-	RegisterCharacteristicsWatcher(object path)
+			Description of service
 
-		Register a watcher for changes in specific characteristics
-		to monitor changes.
+		string UUID (mandatory) [readonly]
 
-		A watcher will be registered for this service and will
-		notifier about any changed characteristics in the service.
-		This also notifies about any included characteristics.
+			UUID of service. Service class value for SDP and GATT
+			UUID for attribute based services.
 
-		Method for the watch objects still need to be defined.
+		array{object} Characteristics [readonly]
 
-	UnregisterCharacteristicsWatcher(object path)
+			This list contains the characteristics owned by this
+			specific service and other characteristics from service
+			includes. That way no complicated service includes array
+			is needed.
 
-		Unregister a watcher.
+			string UUID
+			string Name
+			string Description
+			struct Format (type, name, exponet etc.)
+
+			array{byte} Value
+			string Representation (of the binary Value)
+
+			object Service (the original service in case of includes)
+
+			At this point only GetProperties() method call should be
+			supported for simplicity. Changing characteristics is up
+			to future support.
+
+			The object path of the characteristics might be split
+			over multiple service objects, because of includes.
+
+
+Device Characteristic hierarchy
+===============================
+
+Service		org.bluez
+Interface	org.bluez.Characteristic
+Object path	[prefix]/{hci0}/{device0}/{service0}/{characteristic0,...}
+		[prefix]/{hci0}/{device0}/{service1}/{characteristic0,...}
+
+Methods
+
+Properties
