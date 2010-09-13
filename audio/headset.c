@@ -2701,6 +2701,16 @@ gboolean headset_get_nrec(struct audio_device *dev)
 	return hs->slc->nrec;
 }
 
+gboolean headset_get_inband(struct audio_device *dev)
+{
+	struct headset *hs = dev->headset;
+
+	if (!hs->slc)
+		return TRUE;
+
+	return hs->slc->inband_ring;
+}
+
 gboolean headset_get_sco_hci(struct audio_device *dev)
 {
 	return sco_hci;

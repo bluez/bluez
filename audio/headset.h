@@ -90,6 +90,7 @@ int headset_get_channel(struct audio_device *dev);
 
 int headset_get_sco_fd(struct audio_device *dev);
 gboolean headset_get_nrec(struct audio_device *dev);
+gboolean headset_get_inband(struct audio_device *dev);
 gboolean headset_get_sco_hci(struct audio_device *dev);
 
 gboolean headset_is_active(struct audio_device *dev);
