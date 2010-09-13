@@ -448,6 +448,9 @@ static GstStructure *gst_avdtp_sink_parse_sbc_caps(
 	GValue *list;
 	gboolean mono, stereo;
 
+	if (sbc == NULL)
+		return NULL;
+
 	structure = gst_structure_empty_new("audio/x-sbc");
 	value = g_value_init(g_new0(GValue, 1), G_TYPE_STRING);
 
