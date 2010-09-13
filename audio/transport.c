@@ -76,8 +76,6 @@ struct media_transport {
 	uint16_t		imtu;		/* Transport input mtu */
 	uint16_t		omtu;		/* Transport output mtu */
 	uint16_t		delay;		/* Transport delay (a2dp only) */
-	gboolean		nrec;		/* Transport nrec (hfp only) */
-	gboolean		inband;		/* Transport inband ringtone support (hfp only) */
 	gboolean		read_lock;
 	gboolean		write_lock;
 	gboolean		in_use;
@@ -523,10 +521,13 @@ static void get_properties_a2dp(struct media_transport *transport,
 static void get_properties_headset(struct media_transport *transport,
 						DBusMessageIter *dict)
 {
-	dict_append_entry(dict, "NREC", DBUS_TYPE_BOOLEAN, &transport->nrec);
+	gboolean nrec, inband;
 
-	dict_append_entry(dict, "InbandRingtone", DBUS_TYPE_BOOLEAN,
-							&transport->inband);
+	nrec = headset_get_nrec(transport->device);
+	dict_append_entry(dict, "NREC", DBUS_TYPE_BOOLEAN, &nrec);
+
+	inband = headset_get_inband(transport->device);
+	dict_append_entry(dict, "InbandRingtone", DBUS_TYPE_BOOLEAN, &inband);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
