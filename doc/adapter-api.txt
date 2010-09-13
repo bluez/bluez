@@ -19,8 +19,7 @@ Methods		dict GetProperties()
 			Returns all properties for the adapter. See the
 			properties section for available properties.
 
-			Possible Errors: org.bluez.Error.DoesNotExist
-					 org.bluez.Error.InvalidArguments
+			Possible Errors: org.bluez.Error.NotReady
 
 		void SetProperty(string name, variant value)
 
@@ -28,8 +27,7 @@ Methods		dict GetProperties()
 			properties that are listed a read-write are changeable.
 			On success this will emit a PropertyChanged signal.
 
-			Possible Errors: org.bluez.Error.DoesNotExist
-					 org.bluez.Error.InvalidArguments
+			Possible Errors: org.bluez.Error.InvalidArguments
 
 		void RequestSession()
 
