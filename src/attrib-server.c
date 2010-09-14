@@ -559,12 +559,12 @@ static void confirm_event(GIOChannel *io, void *user_data)
 static gboolean send_notification(gpointer user_data)
 {
 	uint8_t pdu[ATT_MAX_MTU];
-	uint16_t *handle = user_data;
+	guint handle = GPOINTER_TO_UINT(user_data);
 	struct attribute *a;
 	GSList *l;
 	uint16_t length;
 
-	l = g_slist_find_custom(database, handle, handle_cmp);
+	l = g_slist_find_custom(database, GUINT_TO_POINTER(handle), handle_cmp);
 	if (!l)
 		return FALSE;
 
@@ -660,24 +660,15 @@ int attrib_db_update(uint16_t handle, uuid_t *uuid, const uint8_t *value,
 {
 	struct attribute *a;
 	GSList *l;
-	uint16_t *hdl;
 	guint h = handle;
 
 	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
 	if (!l)
 		return -ENOENT;
 
-	hdl = g_try_malloc0(sizeof(uint16_t));
-	if (hdl == NULL)
-		return -ENOMEM;
-
-	*hdl = handle;
-
 	a = g_try_realloc(l->data, sizeof(struct attribute) + len);
-	if (a == NULL) {
-		g_free(hdl);
+	if (a == NULL)
 		return -ENOMEM;
-	}
 
 	l->data = a;
 	a->handle = handle;
@@ -689,7 +680,7 @@ int attrib_db_update(uint16_t handle, uuid_t *uuid, const uint8_t *value,
 	 * Characteristic configuration descriptor is not being used yet.
 	 * If the attribute changes, all connected clients will be notified.
 	 */
-	g_idle_add_full(G_PRIORITY_DEFAULT, send_notification, hdl, g_free);
+	g_idle_add(send_notification, GUINT_TO_POINTER(h));
 
 	return 0;
 }
