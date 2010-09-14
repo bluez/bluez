@@ -246,19 +246,25 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 
 	switch (pdu[0]) {
 	case ATT_OP_HANDLE_NOTIFY:
-	case ATT_OP_HANDLE_IND:
-		g_print("attr handle = 0x%04x value: ", handle);
-		for (i = 3; i < len; i++)
-			g_print("%02x ", pdu[i]);
-
-		g_print("\n");
-
-		if (pdu[0] == ATT_OP_HANDLE_NOTIFY)
-			break;
-
-		olen = enc_confirmation(opdu, sizeof(opdu));
+		g_print("Notification handle = 0x%04x value: ", handle);
 		break;
+	case ATT_OP_HANDLE_IND:
+		g_print("Indication   handle = 0x%04x value: ", handle);
+		break;
+	default:
+		g_print("Invalid opcode\n");
+		return;
 	}
+
+	for (i = 3; i < len; i++)
+		g_print("%02x ", pdu[i]);
+
+	g_print("\n");
+
+	if (pdu[0] == ATT_OP_HANDLE_NOTIFY)
+		return;
+
+	olen = enc_confirmation(opdu, sizeof(opdu));
 
 	if (olen > 0)
 		g_attrib_send(attrib, opdu[0], opdu, olen, NULL, NULL, NULL);
