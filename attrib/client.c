@@ -278,7 +278,9 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	struct characteristic *chr;
 	struct primary *prim;
 	GSList *lprim, *lchr;
+	uint8_t opdu[ATT_MAX_MTU];
 	guint handle = att_get_u16((uint16_t *) &pdu[1]);
+	uint16_t olen;
 
 	for (lprim = gatt->primary, prim = NULL, chr = NULL; lprim;
 						lprim = lprim->next) {
@@ -298,8 +300,11 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	}
 
 	switch (pdu[0]) {
-	case ATT_OP_HANDLE_NOTIFY:
 	case ATT_OP_HANDLE_IND:
+		olen = enc_confirmation(opdu, sizeof(opdu));
+		g_attrib_send(gatt->attrib, opdu[0], opdu, olen,
+						NULL, NULL, NULL);
+	case ATT_OP_HANDLE_NOTIFY:
 		if (characteristic_set_value(chr, pdu + 2, len - 2) < 0)
 			DBG("Can't change Characteristic %0x02x", handle);
 
