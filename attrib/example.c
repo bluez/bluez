@@ -59,19 +59,16 @@
 #define FMT_KILOGRAM_UUID		0xA010
 #define FMT_HANGING_UUID		0xA011
 
-static gboolean change_humidity(gpointer user_data)
+static gboolean change_battery_state(gpointer user_data)
 {
-	static uint8_t humidity =  0x28;
+	static uint8_t state =  0x05;
 	uuid_t uuid;
 	uint8_t atval[1];
 
-	/*
-	 * Thermometer: relative humidity value. Humidity is
-	 * being increased every 10 seconds.
-	 */
-	atval[0] = humidity++;
-	sdp_uuid16_create(&uuid, RELATIVE_HUMIDITY_UUID);
-	attrib_db_update(0x0212, &uuid, atval, 1);
+	/* Battery state is being increased every 10 seconds. */
+	atval[0] = state++;
+	sdp_uuid16_create(&uuid, BATTERY_STATE_UUID);
+	attrib_db_update(0x0110, &uuid, atval, 1);
 
 	return TRUE;
 }
@@ -166,6 +163,8 @@ static int register_attributes(void)
 	atval[0] = 0x04;
 	attrib_db_add(0x0110, &uuid, atval, 1);
 
+	g_timeout_add_seconds(10, change_battery_state, NULL);
+
 	/* Thermometer: primary service definition */
 	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	u16 = htons(THERM_HUMIDITY_SVC_UUID);
@@ -240,8 +239,6 @@ static int register_attributes(void)
 	sdp_uuid16_create(&uuid, RELATIVE_HUMIDITY_UUID);
 	atval[0] = 0x27;
 	attrib_db_add(0x0212, &uuid, atval, 1);
-
-	g_timeout_add_seconds(10, change_humidity, NULL);
 
 	/* Thermometer: relative humidity characteristic format */
 	sdp_uuid16_create(&uuid, GATT_CHARAC_FMT_UUID);
