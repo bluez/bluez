@@ -290,9 +290,8 @@ struct avdtp_local_sep *avdtp_register_sep(const bdaddr_t *src, uint8_t type,
 						void *user_data);
 
 /* Find a matching pair of local and remote SEP ID's */
-int avdtp_get_seps(struct avdtp *session, uint8_t type, uint8_t media,
-			uint8_t codec, struct avdtp_local_sep **lsep,
-			struct avdtp_remote_sep **rsep);
+struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,
+						struct avdtp_local_sep *lsep);
 
 int avdtp_unregister_sep(struct avdtp_local_sep *sep);
 

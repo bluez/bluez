@@ -1191,22 +1191,36 @@ static struct avdtp_local_sep *find_local_sep_by_seid(struct avdtp_server *serve
 	return NULL;
 }
 
-static struct avdtp_local_sep *find_local_sep(struct avdtp_server *server,
-						uint8_t type,
-						uint8_t media_type,
-						uint8_t codec)
+struct avdtp_remote_sep *avdtp_find_remote_sep(struct avdtp *session,
+						struct avdtp_local_sep *lsep)
 {
 	GSList *l;
 
-	for (l = server->seps; l != NULL; l = g_slist_next(l)) {
-		struct avdtp_local_sep *sep = l->data;
+	if (lsep->info.inuse)
+		return NULL;
 
-		if (sep->info.inuse)
+	for (l = session->seps; l != NULL; l = g_slist_next(l)) {
+		struct avdtp_remote_sep *sep = l->data;
+		struct avdtp_service_capability *cap;
+		struct avdtp_media_codec_capability *codec_data;
+
+		/* Type must be different: source <-> sink */
+		if (sep->type == lsep->info.type)
 			continue;
 
-		if (sep->info.type == type &&
-				sep->info.media_type == media_type &&
-				sep->codec == codec)
+		if (sep->media_type != lsep->info.media_type)
+			continue;
+
+		if (!sep->codec)
+			continue;
+
+		cap = sep->codec;
+		codec_data = (void *) cap->data;
+
+		if (codec_data->media_codec_type != lsep->codec)
+			continue;
+
+		if (sep->stream == NULL)
 			return sep;
 	}
 
@@ -3214,49 +3228,6 @@ int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 	return err;
 }
 
-int avdtp_get_seps(struct avdtp *session, uint8_t acp_type, uint8_t media_type,
-			uint8_t codec, struct avdtp_local_sep **lsep,
-			struct avdtp_remote_sep **rsep)
-{
-	GSList *l;
-	uint8_t int_type;
-
-	int_type = acp_type == AVDTP_SEP_TYPE_SINK ?
-				AVDTP_SEP_TYPE_SOURCE : AVDTP_SEP_TYPE_SINK;
-
-	*lsep = find_local_sep(session->server, int_type, media_type, codec);
-	if (!*lsep)
-		return -EINVAL;
-
-	for (l = session->seps; l != NULL; l = g_slist_next(l)) {
-		struct avdtp_remote_sep *sep = l->data;
-		struct avdtp_service_capability *cap;
-		struct avdtp_media_codec_capability *codec_data;
-
-		if (sep->type != acp_type)
-			continue;
-
-		if (sep->media_type != media_type)
-			continue;
-
-		if (!sep->codec)
-			continue;
-
-		cap = sep->codec;
-		codec_data = (void *) cap->data;
-
-		if (codec_data->media_codec_type != codec)
-			continue;
-
-		if (!sep->stream) {
-			*rsep = sep;
-			return 0;
-		}
-	}
-
-	return -EINVAL;
-}
-
 gboolean avdtp_stream_remove_cb(struct avdtp *session,
 				struct avdtp_stream *stream,
 				unsigned int id)
@@ -3354,8 +3325,14 @@ int avdtp_set_configuration(struct avdtp *session,
 	new_stream->lsep = lsep;
 	new_stream->rseid = rsep->seid;
 
-	if (rsep->delay_reporting && lsep->delay_reporting)
+	if (rsep->delay_reporting && lsep->delay_reporting) {
+		struct avdtp_service_capability *delay_reporting;
+
+		delay_reporting = avdtp_service_cap_new(AVDTP_DELAY_REPORTING,
+								NULL, 0);
+		caps = g_slist_append(caps, delay_reporting);
 		new_stream->delay_reporting = TRUE;
+	}
 
 	g_slist_foreach(caps, copy_capabilities, &new_stream->caps);
 
@@ -3624,6 +3601,9 @@ int avdtp_unregister_sep(struct avdtp_local_sep *sep)
 
 	if (sep->stream)
 		release_stream(sep->stream, sep->stream->session);
+
+	DBG("SEP %p unregistered: type:%d codec:%d seid:%d", sep,
+			sep->info.type, sep->codec, sep->info.seid);
 
 	g_free(sep);
 

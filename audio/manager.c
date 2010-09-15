@@ -61,6 +61,7 @@
 #include "device.h"
 #include "error.h"
 #include "avdtp.h"
+#include "media.h"
 #include "a2dp.h"
 #include "headset.h"
 #include "gateway.h"
@@ -71,6 +72,10 @@
 #include "sdpd.h"
 #include "telephony.h"
 #include "unix.h"
+
+#ifndef DBUS_TYPE_UNIX_FD
+#define DBUS_TYPE_UNIX_FD -1
+#endif
 
 typedef enum {
 	HEADSET	= 1 << 0,
@@ -115,6 +120,7 @@ static struct enabled_interfaces enabled = {
 	.source		= FALSE,
 	.control	= TRUE,
 	.socket		= TRUE,
+	.media		= FALSE
 };
 
 static struct audio_adapter *find_adapter(GSList *list,
@@ -1015,6 +1021,38 @@ static void avrcp_server_remove(struct btd_adapter *adapter)
 	audio_adapter_unref(adp);
 }
 
+static int media_server_probe(struct btd_adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+	bdaddr_t src;
+
+	DBG("path %s", path);
+
+	adp = audio_adapter_get(adapter);
+	if (!adp)
+		return -EINVAL;
+
+	adapter_get_address(adapter, &src);
+
+	return media_register(connection, path, &src);
+}
+
+static void media_server_remove(struct btd_adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = find_adapter(adapters, adapter);
+	if (!adp)
+		return;
+
+	media_unregister(path);
+	audio_adapter_unref(adp);
+}
+
 static struct btd_device_driver audio_driver = {
 	.name	= "audio",
 	.uuids	= BTD_UUIDS(HSP_HS_UUID, HFP_HS_UUID, HSP_AG_UUID, HFP_AG_UUID,
@@ -1048,6 +1086,12 @@ static struct btd_adapter_driver avrcp_server_driver = {
 	.remove	= avrcp_server_remove,
 };
 
+static struct btd_adapter_driver media_server_driver = {
+	.name	= "media",
+	.probe	= media_server_probe,
+	.remove	= media_server_remove,
+};
+
 int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 							gboolean *enable_sco)
 {
@@ -1078,6 +1122,8 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.control = TRUE;
 		else if (g_str_equal(list[i], "Socket"))
 			enabled.socket = TRUE;
+		else if (g_str_equal(list[i], "Media"))
+			enabled.media = TRUE;
 	}
 	g_strfreev(list);
 
@@ -1096,6 +1142,8 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.control = FALSE;
 		else if (g_str_equal(list[i], "Socket"))
 			enabled.socket = FALSE;
+		else if (g_str_equal(list[i], "Media"))
+			enabled.media = FALSE;
 	}
 	g_strfreev(list);
 
@@ -1125,6 +1173,9 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 proceed:
 	if (enabled.socket)
 		unix_init();
+
+	if (enabled.media)
+		btd_register_adapter_driver(&media_server_driver);
 
 	if (enabled.headset) {
 		telephony_init();
@@ -1163,6 +1214,9 @@ void audio_manager_exit(void)
 
 	if (enabled.socket)
 		unix_exit();
+
+	if (enabled.media)
+		btd_unregister_adapter_driver(&media_server_driver);
 
 	if (enabled.headset) {
 		btd_unregister_adapter_driver(&headset_server_driver);

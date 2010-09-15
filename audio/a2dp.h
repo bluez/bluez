@@ -121,6 +121,10 @@ struct mpeg_codec_cap {
 
 struct a2dp_sep;
 
+
+typedef void (*a2dp_select_cb_t) (struct avdtp *session,
+					struct a2dp_sep *sep, GSList *caps,
+					void *user_data);
 typedef void (*a2dp_config_cb_t) (struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
 					struct avdtp_error *err,
@@ -132,7 +136,17 @@ typedef void (*a2dp_stream_cb_t) (struct avdtp *session,
 int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config);
 void a2dp_unregister(const bdaddr_t *src);
 
+struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
+				uint8_t codec, gboolean delay_reporting,
+				struct media_endpoint *endpoint);
+void a2dp_remove_sep(struct a2dp_sep *sep);
+
 struct a2dp_sep *a2dp_get(struct avdtp *session, struct avdtp_remote_sep *sep);
+
+unsigned int a2dp_select_capabilities(struct avdtp *session,
+					uint8_t type, const char *sender,
+					a2dp_select_cb_t cb,
+					void *user_data);
 unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_config_cb_t cb, GSList *caps,
 				void *user_data);
@@ -145,5 +159,6 @@ gboolean a2dp_cancel(struct audio_device *dev, unsigned int id);
 gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session);
 gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session);
 gboolean a2dp_sep_get_lock(struct a2dp_sep *sep);
+struct avdtp_stream *a2dp_sep_get_stream(struct a2dp_sep *sep);
 struct a2dp_sep *a2dp_get_sep(struct avdtp *session,
 				struct avdtp_stream *stream);

@@ -40,6 +40,7 @@
 
 #include "device.h"
 #include "avdtp.h"
+#include "media.h"
 #include "a2dp.h"
 #include "error.h"
 #include "sink.h"
@@ -343,146 +344,30 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	}
 }
 
-static uint8_t default_bitpool(uint8_t freq, uint8_t mode)
+static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
+			GSList *caps, void *user_data)
 {
-	switch (freq) {
-	case SBC_SAMPLING_FREQ_16000:
-	case SBC_SAMPLING_FREQ_32000:
-		return 53;
-	case SBC_SAMPLING_FREQ_44100:
-		switch (mode) {
-		case SBC_CHANNEL_MODE_MONO:
-		case SBC_CHANNEL_MODE_DUAL_CHANNEL:
-			return 31;
-		case SBC_CHANNEL_MODE_STEREO:
-		case SBC_CHANNEL_MODE_JOINT_STEREO:
-			return 53;
-		default:
-			error("Invalid channel mode %u", mode);
-			return 53;
-		}
-	case SBC_SAMPLING_FREQ_48000:
-		switch (mode) {
-		case SBC_CHANNEL_MODE_MONO:
-		case SBC_CHANNEL_MODE_DUAL_CHANNEL:
-			return 29;
-		case SBC_CHANNEL_MODE_STEREO:
-		case SBC_CHANNEL_MODE_JOINT_STEREO:
-			return 51;
-		default:
-			error("Invalid channel mode %u", mode);
-			return 51;
-		}
-	default:
-		error("Invalid sampling freq %u", freq);
-		return 53;
-	}
-}
+	struct sink *sink = user_data;
+	struct pending_request *pending;
+	int id;
 
-static gboolean select_sbc_params(struct sbc_codec_cap *cap,
-					struct sbc_codec_cap *supported)
-{
-	unsigned int max_bitpool, min_bitpool;
+	pending = sink->connect;
+	pending->id = 0;
 
-	memset(cap, 0, sizeof(struct sbc_codec_cap));
+	id = a2dp_config(session, sep, stream_setup_complete, caps, sink);
+	if (id == 0)
+		goto failed;
 
-	cap->cap.media_type = AVDTP_MEDIA_TYPE_AUDIO;
-	cap->cap.media_codec_type = A2DP_CODEC_SBC;
+	pending->id = id;
+	return;
 
-	if (supported->frequency & SBC_SAMPLING_FREQ_44100)
-		cap->frequency = SBC_SAMPLING_FREQ_44100;
-	else if (supported->frequency & SBC_SAMPLING_FREQ_48000)
-		cap->frequency = SBC_SAMPLING_FREQ_48000;
-	else if (supported->frequency & SBC_SAMPLING_FREQ_32000)
-		cap->frequency = SBC_SAMPLING_FREQ_32000;
-	else if (supported->frequency & SBC_SAMPLING_FREQ_16000)
-		cap->frequency = SBC_SAMPLING_FREQ_16000;
-	else {
-		error("No supported frequencies");
-		return FALSE;
-	}
-
-	if (supported->channel_mode & SBC_CHANNEL_MODE_JOINT_STEREO)
-		cap->channel_mode = SBC_CHANNEL_MODE_JOINT_STEREO;
-	else if (supported->channel_mode & SBC_CHANNEL_MODE_STEREO)
-		cap->channel_mode = SBC_CHANNEL_MODE_STEREO;
-	else if (supported->channel_mode & SBC_CHANNEL_MODE_DUAL_CHANNEL)
-		cap->channel_mode = SBC_CHANNEL_MODE_DUAL_CHANNEL;
-	else if (supported->channel_mode & SBC_CHANNEL_MODE_MONO)
-		cap->channel_mode = SBC_CHANNEL_MODE_MONO;
-	else {
-		error("No supported channel modes");
-		return FALSE;
-	}
-
-	if (supported->block_length & SBC_BLOCK_LENGTH_16)
-		cap->block_length = SBC_BLOCK_LENGTH_16;
-	else if (supported->block_length & SBC_BLOCK_LENGTH_12)
-		cap->block_length = SBC_BLOCK_LENGTH_12;
-	else if (supported->block_length & SBC_BLOCK_LENGTH_8)
-		cap->block_length = SBC_BLOCK_LENGTH_8;
-	else if (supported->block_length & SBC_BLOCK_LENGTH_4)
-		cap->block_length = SBC_BLOCK_LENGTH_4;
-	else {
-		error("No supported block lengths");
-		return FALSE;
-	}
-
-	if (supported->subbands & SBC_SUBBANDS_8)
-		cap->subbands = SBC_SUBBANDS_8;
-	else if (supported->subbands & SBC_SUBBANDS_4)
-		cap->subbands = SBC_SUBBANDS_4;
-	else {
-		error("No supported subbands");
-		return FALSE;
-	}
-
-	if (supported->allocation_method & SBC_ALLOCATION_LOUDNESS)
-		cap->allocation_method = SBC_ALLOCATION_LOUDNESS;
-	else if (supported->allocation_method & SBC_ALLOCATION_SNR)
-		cap->allocation_method = SBC_ALLOCATION_SNR;
-
-	min_bitpool = MAX(MIN_BITPOOL, supported->min_bitpool);
-	max_bitpool = MIN(default_bitpool(cap->frequency, cap->channel_mode),
-							supported->max_bitpool);
-
-	cap->min_bitpool = min_bitpool;
-	cap->max_bitpool = max_bitpool;
-
-	return TRUE;
-}
-
-static gboolean select_capabilities(struct avdtp *session,
-					struct avdtp_remote_sep *rsep,
-					GSList **caps)
-{
-	struct avdtp_service_capability *media_transport, *media_codec;
-	struct sbc_codec_cap sbc_cap;
-
-	media_codec = avdtp_get_codec(rsep);
-	if (!media_codec)
-		return FALSE;
-
-	select_sbc_params(&sbc_cap, (struct sbc_codec_cap *) media_codec->data);
-
-	media_transport = avdtp_service_cap_new(AVDTP_MEDIA_TRANSPORT,
-						NULL, 0);
-
-	*caps = g_slist_append(*caps, media_transport);
-
-	media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, &sbc_cap,
-						sizeof(sbc_cap));
-
-	*caps = g_slist_append(*caps, media_codec);
-
-	if (avdtp_get_delay_reporting(rsep)) {
-		struct avdtp_service_capability *delay_reporting;
-		delay_reporting = avdtp_service_cap_new(AVDTP_DELAY_REPORTING,
-								NULL, 0);
-		*caps = g_slist_append(*caps, delay_reporting);
-	}
-
-	return TRUE;
+failed:
+	if (pending->msg)
+		error_failed(pending->conn, pending->msg, "Stream setup failed");
+	pending_request_free(sink->dev, pending);
+	sink->connect = NULL;
+	avdtp_unref(sink->session);
+	sink->session = NULL;
 }
 
 static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp_error *err,
@@ -490,10 +375,6 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 {
 	struct sink *sink = user_data;
 	struct pending_request *pending;
-	struct avdtp_local_sep *lsep;
-	struct avdtp_remote_sep *rsep;
-	struct a2dp_sep *sep;
-	GSList *caps = NULL;
 	int id;
 
 	pending = sink->connect;
@@ -515,24 +396,8 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 
 	DBG("Discovery complete");
 
-	if (avdtp_get_seps(session, AVDTP_SEP_TYPE_SINK, AVDTP_MEDIA_TYPE_AUDIO,
-				A2DP_CODEC_SBC, &lsep, &rsep) < 0) {
-		error("No matching ACP and INT SEPs found");
-		goto failed;
-	}
-
-	if (!select_capabilities(session, rsep, &caps)) {
-		error("Unable to select remote SEP capabilities");
-		goto failed;
-	}
-
-	sep = a2dp_get(session, rsep);
-	if (!sep) {
-		error("Unable to get a local source SEP");
-		goto failed;
-	}
-
-	id = a2dp_config(sink->session, sep, stream_setup_complete, caps, sink);
+	id = a2dp_select_capabilities(sink->session, AVDTP_SEP_TYPE_SINK, NULL,
+						select_complete, sink);
 	if (id == 0)
 		goto failed;
 

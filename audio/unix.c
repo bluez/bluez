@@ -44,6 +44,7 @@
 #include "device.h"
 #include "manager.h"
 #include "avdtp.h"
+#include "media.h"
 #include "a2dp.h"
 #include "headset.h"
 #include "sink.h"
