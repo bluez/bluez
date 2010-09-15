@@ -213,7 +213,59 @@ static void destroy_receiver(gpointer data)
 		attrib->disconnect(attrib->disc_user_data);
 }
 
-static void wake_up_sender(struct _GAttrib *attrib);
+static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
+								gpointer data)
+{
+	struct _GAttrib *attrib = data;
+	struct command *cmd;
+	GError *gerr = NULL;
+	gsize len;
+	GIOStatus iostat;
+
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		if (attrib->disconnect)
+			attrib->disconnect(attrib->disc_user_data);
+
+		return FALSE;
+	}
+
+	cmd = g_queue_peek_head(attrib->queue);
+	if (cmd == NULL)
+		return FALSE;
+
+	iostat = g_io_channel_write_chars(io, (gchar *) cmd->pdu, cmd->len,
+								&len, &gerr);
+	if (iostat != G_IO_STATUS_NORMAL)
+		return FALSE;
+
+	g_io_channel_flush(io, NULL);
+
+	if (cmd->expected == 0) {
+		g_queue_pop_head(attrib->queue);
+		command_destroy(cmd);
+
+		return TRUE;
+	}
+
+	cmd->sent = TRUE;
+
+	return FALSE;
+}
+
+static void destroy_sender(gpointer data)
+{
+	struct _GAttrib *attrib = data;
+
+	attrib->write_watch = 0;
+}
+
+static void wake_up_sender(struct _GAttrib *attrib)
+{
+	if (attrib->write_watch == 0)
+		attrib->write_watch = g_io_add_watch_full(attrib->io,
+			G_PRIORITY_DEFAULT, G_IO_OUT, can_write_data,
+			attrib, destroy_sender);
+}
 
 static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 {
@@ -277,60 +329,6 @@ done:
 	}
 
 	return TRUE;
-}
-
-static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
-								gpointer data)
-{
-	struct _GAttrib *attrib = data;
-	struct command *cmd;
-	GError *gerr = NULL;
-	gsize len;
-	GIOStatus iostat;
-
-	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
-		if (attrib->disconnect)
-			attrib->disconnect(attrib->disc_user_data);
-
-		return FALSE;
-	}
-
-	cmd = g_queue_peek_head(attrib->queue);
-	if (cmd == NULL)
-		return FALSE;
-
-	iostat = g_io_channel_write_chars(io, (gchar *) cmd->pdu, cmd->len,
-								&len, &gerr);
-	if (iostat != G_IO_STATUS_NORMAL)
-		return FALSE;
-
-	g_io_channel_flush(io, NULL);
-
-	if (cmd->expected == 0) {
-		g_queue_pop_head(attrib->queue);
-		command_destroy(cmd);
-
-		return TRUE;
-	}
-
-	cmd->sent = TRUE;
-
-	return FALSE;
-}
-
-static void destroy_sender(gpointer data)
-{
-	struct _GAttrib *attrib = data;
-
-	attrib->write_watch = 0;
-}
-
-static void wake_up_sender(struct _GAttrib *attrib)
-{
-	if (attrib->write_watch == 0)
-		attrib->write_watch = g_io_add_watch_full(attrib->io,
-			G_PRIORITY_DEFAULT, G_IO_OUT, can_write_data,
-			attrib, destroy_sender);
 }
 
 GAttrib *g_attrib_new(GIOChannel *io)
