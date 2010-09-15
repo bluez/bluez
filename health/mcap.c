@@ -234,6 +234,15 @@ static void shutdown_mdl(struct mcap_mdl *mdl)
 	}
 }
 
+static void free_mdl(struct mcap_mdl *mdl)
+{
+	if (!mdl)
+		return;
+
+	mcap_mcl_unref(mdl->mcl);
+	g_free(mdl);
+}
+
 static gint cmp_mdl_state(gconstpointer a, gconstpointer b)
 {
 	const struct mcap_mdl *mdl = a;
@@ -263,7 +272,7 @@ static void mcap_notify_error(struct mcap_mcl *mcl, GError *err)
 		l = g_slist_find_custom(mcl->mdls, &st, cmp_mdl_state);
 		mdl = l->data;
 		mcl->mdls = g_slist_remove(mcl->mdls, mdl);
-		g_free(mdl);
+		free_mdl(mdl);
 		update_mcl_state(mcl);
 		con->cb.op_conf(NULL, 0, err, con->user_data);
 		break;
@@ -453,7 +462,7 @@ gboolean mcap_create_mdl(struct mcap_mcl *mcl,
 	}
 
 	mdl = g_new0(struct mcap_mdl, 1);
-	mdl->mcl = mcl;
+	mdl->mcl = mcap_mcl_ref(mcl);
 	mdl->mdlid = id;
 	mdl->mdep_id = mdepid;
 	mdl->state = MDL_WAITING;
@@ -466,7 +475,7 @@ gboolean mcap_create_mdl(struct mcap_mcl *mcl,
 	cmd = create_mdl_req(id, mdepid, conf);
 	if (!mcap_send_std_opcode(mcl, cmd, sizeof(mcap_md_create_mdl_req),
 									err)) {
-		g_free(mdl);
+		free_mdl(mdl);
 		g_free(con);
 		g_free(cmd);
 		return FALSE;
@@ -704,12 +713,9 @@ static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 	if (save)
 		return;
 
-	g_slist_foreach(mcl->mdls, (GFunc) g_free, NULL);
+	g_slist_foreach(mcl->mdls, (GFunc) free_mdl, NULL);
 	g_slist_free(mcl->mdls);
-
-	g_free(mcl->cb);
-
-	g_free(mcl);
+	mcl->mdls = NULL;
 }
 
 static void mcap_mcl_shutdown(struct mcap_mcl *mcl)
@@ -741,7 +747,9 @@ static void mcap_cache_mcl(struct mcap_mcl *mcl)
 
 	mcl->ms->mcls = g_slist_remove(mcl->ms->mcls, mcl);
 
-	if ((mcl->ctrl & MCAP_CTRL_NOCACHE) || (mcl->ref < 2)) {
+	if (mcl->ctrl & MCAP_CTRL_NOCACHE) {
+		mcl->ms->cached = g_slist_remove(mcl->ms->cached, mcl);
+		mcap_mcl_release(mcl);
 		mcap_mcl_unref(mcl);
 		return;
 	}
@@ -756,13 +764,14 @@ static void mcap_cache_mcl(struct mcap_mcl *mcl)
 		mcl->ms->cached = g_slist_remove(mcl->ms->cached, last);
 		last->ctrl &= ~MCAP_CTRL_CACHED;
 		if (last->ctrl & MCAP_CTRL_CONN) {
-			/* If connection process is not success this MCL will be
-			 * freed next time that close_mcl is invoked */
+			/* We have to release this MCL if */
+			/* connection is not succesful    */
 			last->ctrl |= MCAP_CTRL_FREE;
 		} else {
+			mcap_mcl_release(last);
 			last->ms->mcl_uncached_cb(last, last->ms->user_data);
-			mcap_mcl_unref(last);
 		}
+		mcap_mcl_unref(last);
 	}
 
 	mcl->ms->cached = g_slist_prepend(mcl->ms->cached, mcl);
@@ -788,16 +797,26 @@ void mcap_close_mcl(struct mcap_mcl *mcl, gboolean cache)
 	if (!mcl)
 		return;
 
+	if (mcl->ctrl & MCAP_CTRL_FREE) {
+		mcap_mcl_release(mcl);
+		return;
+	}
+
+	if (!cache)
+		mcl->ctrl |= MCAP_CTRL_NOCACHE;
+
 	if (mcl->cc) {
 		g_io_channel_shutdown(mcl->cc, TRUE, NULL);
 		g_io_channel_unref(mcl->cc);
 		mcl->cc = NULL;
+		mcl->state = MCL_IDLE;
+	} else if ((mcl->ctrl & MCAP_CTRL_CACHED) &&
+					(mcl->ctrl & MCAP_CTRL_NOCACHE)) {
+		mcl->ctrl &= ~MCAP_CTRL_CACHED;
+		mcl->ms->cached = g_slist_remove(mcl->ms->cached, mcl);
+		mcap_mcl_release(mcl);
+		mcap_mcl_unref(mcl);
 	}
-
-	mcl->state = MCL_IDLE;
-
-	if (!cache)
-		mcl->ctrl |= MCAP_CTRL_NOCACHE;
 }
 
 struct mcap_mcl *mcap_mcl_ref(struct mcap_mcl *mcl)
@@ -815,19 +834,13 @@ void mcap_mcl_unref(struct mcap_mcl *mcl)
 
 	DBG("mcap_mcl_unref(%p): ref=%d", mcl, mcl->ref);
 
-	if ((mcl->ctrl & MCAP_CTRL_CACHED) && (mcl->ref < 2)) {
-		/* Free space in cache memory due any other profile has a local
-		 * copy of current MCL stored in cache */
-		DBG("Remove from cache (%p): ref=%d", mcl, mcl->ref);
-		mcl->ms->cached = g_slist_remove(mcl->ms->cached, mcl);
-		mcap_mcl_release(mcl);
-		return;
-	}
-
 	if (mcl->ref > 0)
 		return;
 
 	mcap_mcl_release(mcl);
+
+	g_free(mcl->cb);
+	g_free(mcl);
 }
 
 static gboolean parse_set_opts(struct mcap_mdl_cb *mdl_cb, GError **err,
@@ -918,7 +931,7 @@ static void mcap_del_mdl(gpointer elem, gpointer user_data)
 	if (notify)
 		mdl->mcl->cb->mdl_deleted(mdl, mdl->mcl->cb->user_data);
 
-	g_free(mdl);
+	free_mdl(mdl);
 }
 
 static gboolean check_cmd_req_length(struct mcap_mcl *mcl, void *cmd,
@@ -1005,7 +1018,7 @@ static void process_md_create_mdl_req(struct mcap_mcl *mcl, void *cmd,
 
 	if (!mdl) {
 		mdl = g_new0(struct mcap_mdl, 1);
-		mdl->mcl = mcl;
+		mdl->mcl = mcap_mcl_ref(mcl);
 		mdl->mdlid = mdl_id;
 		mcl->mdls = g_slist_insert_sorted(mcl->mdls, mdl, compare_mdl);
 	} else if (mdl->state == MDL_CONNECTED) {
@@ -1327,7 +1340,7 @@ static gboolean process_md_create_mdl_rsp(struct mcap_mcl *mcl,
 fail:
 	connect_cb(NULL, 0, gerr, user_data);
 	mcl->mdls = g_slist_remove(mcl->mdls, mdl);
-	g_free(mdl);
+	free_mdl(mdl);
 	g_error_free(gerr);
 	update_mcl_state(mcl);
 	return close;
@@ -1367,7 +1380,7 @@ static gboolean process_md_reconnect_mdl_rsp(struct mcap_mcl *mcl,
 	/* Remove cached mdlid */
 	mcl->mdls = g_slist_remove(mcl->mdls, mdl);
 	mcl->cb->mdl_deleted(mdl, mcl->cb->user_data);
-	g_free(mdl);
+	free_mdl(mdl);
 
 	return close;
 }
@@ -1397,7 +1410,7 @@ static gboolean process_md_abort_mdl_rsp(struct mcap_mcl *mcl,
 
 	if (len >= sizeof(mcap_rsp) && rsp->rc == MCAP_INVALID_MDL) {
 		mcl->mdls = g_slist_remove(mcl->mdls, mdl);
-		g_free(mdl);
+		free_mdl(mdl);
 	}
 
 	if (!gerr)
@@ -1679,9 +1692,10 @@ static void mcap_connect_mcl_cb(GIOChannel *chan, GError *conn_err,
 	mcl->ctrl &= ~MCAP_CTRL_CONN;
 
 	if (conn_err) {
-		if (mcl->ctrl & MCAP_CTRL_FREE)
+		if (mcl->ctrl & MCAP_CTRL_FREE) {
+			mcap_mcl_release(mcl);
 			mcl->ms->mcl_uncached_cb(mcl, mcl->ms->user_data);
-		mcap_mcl_check_del(mcl);
+		}
 		connect_cb(NULL, conn_err, data);
 		return;
 	}
@@ -1691,10 +1705,6 @@ static void mcap_connect_mcl_cb(GIOChannel *chan, GError *conn_err,
 	aux = find_mcl(mcl->ms->mcls, &mcl->addr);
 	if (aux) {
 		/* Double MCL connection case */
-		if (aux != mcl) {
-			/* This MCL was not in cache */
-			mcap_mcl_unref(mcl);
-		}
 		error("MCL error: Device %s is already connected", dstaddr);
 		g_set_error(&gerr, MCAP_ERROR, MCAP_ERROR_ALREADY_EXISTS,
 					"MCL %s is already connected", dstaddr);
@@ -1710,18 +1720,16 @@ static void mcap_connect_mcl_cb(GIOChannel *chan, GError *conn_err,
 
 	if (mcl->ctrl & MCAP_CTRL_CACHED)
 		mcap_uncache_mcl(mcl);
-	else
-		mcl->ms->mcls = g_slist_prepend(mcl->ms->mcls, mcl);
+	else {
+		mcl->ctrl &= ~MCAP_CTRL_FREE;
+		mcl->ms->mcls = g_slist_prepend(mcl->ms->mcls,
+							mcap_mcl_ref(mcl));
+	}
 
 	mcl->wid = g_io_add_watch(mcl->cc,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) mcl_control_cb, mcl);
 	connect_cb(mcl, gerr, data);
-
-	if (mcl->ref == 1) {
-		mcl->ms->mcls = g_slist_remove(mcl->ms->mcls, mcl);
-		mcap_mcl_unref(mcl);
-	}
 }
 
 static void connect_dc_event_cb(GIOChannel *chan, GError *err,
@@ -1764,12 +1772,11 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 		bacpy(&mcl->addr, addr);
 		set_default_cb(mcl);
 		mcl->next_mdl = (rand() % MCAP_MDLID_FINAL) + 1;
-		mcl = mcap_mcl_ref(mcl);
 	} else
 		mcl->ctrl |= MCAP_CTRL_CONN;
 
 	con = g_new0(struct connect_mcl, 1);
-	con->mcl = mcl;
+	con->mcl = mcap_mcl_ref(mcl);
 	con->connect_cb = connect_cb;
 	con->user_data = user_data;
 
@@ -1782,11 +1789,13 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 				BT_IO_OPT_SEC_LEVEL, ms->sec,
 				BT_IO_OPT_INVALID);
 	if (!mcl->cc) {
-		g_free(con);
 		mcl->ctrl &= ~MCAP_CTRL_CONN;
-		if (mcl->ctrl & MCAP_CTRL_FREE)
+		if (mcl->ctrl & MCAP_CTRL_FREE) {
+			mcap_mcl_release(mcl);
 			mcl->ms->mcl_uncached_cb(mcl, mcl->ms->user_data);
-		mcap_mcl_check_del(mcl);
+		}
+		mcap_mcl_unref(con->mcl);
+		g_free(con);
 		return FALSE;
 	}
 
@@ -1854,7 +1863,8 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *err,
 	if (reconn)
 		mcap_uncache_mcl(mcl);
 	else
-		mcl->ms->mcls = g_slist_prepend(mcl->ms->mcls, mcl);
+		mcl->ms->mcls = g_slist_prepend(mcl->ms->mcls,
+							mcap_mcl_ref(mcl));
 
 	mcl->wid = g_io_add_watch(mcl->cc,
 			G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
@@ -1865,11 +1875,6 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *err,
 		mcl->ms->mcl_reconnected_cb(mcl, mcl->ms->user_data);
 	else
 		mcl->ms->mcl_connected_cb(mcl, mcl->ms->user_data);
-
-	if (mcl->ref == 1) {
-		mcl->ms->mcls = g_slist_remove(mcl->ms->mcls, mcl);
-		mcap_mcl_unref(mcl);
-	}
 }
 
 static void confirm_mcl_event_cb(GIOChannel *chan, gpointer user_data)
@@ -2016,14 +2021,16 @@ void mcap_release_instance(struct mcap_instance *mi)
 	}
 
 	for (l = mi->mcls; l; l = l->next) {
-		mcap_mcl_shutdown(l->data);
+		mcap_mcl_release(l->data);
 		mcap_mcl_unref(l->data);
 	}
 	g_slist_free(mi->mcls);
 	mi->mcls = NULL;
 
-	for (l = mi->cached; l; l = l->next)
+	for (l = mi->cached; l; l = l->next) {
+		mcap_mcl_release(l->data);
 		mcap_mcl_unref(l->data);
+	}
 	g_slist_free(mi->cached);
 	mi->cached = NULL;
 
