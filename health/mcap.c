@@ -728,14 +728,6 @@ static void mcap_mcl_release(struct mcap_mcl *mcl)
 	close_mcl(mcl, FALSE);
 }
 
-static void mcap_mcl_check_del(struct mcap_mcl *mcl)
-{
-	if (mcl->ctrl & MCAP_CTRL_CACHED)
-		mcap_mcl_shutdown(mcl);
-	else
-		mcap_mcl_unref(mcl);
-}
-
 static void mcap_cache_mcl(struct mcap_mcl *mcl)
 {
 	GSList *l;
@@ -1586,7 +1578,6 @@ static void mcap_connect_mdl_cb(GIOChannel *chan, GError *conn_err,
 	mcap_mdl_operation_cb cb = con->cb.op;
 	gpointer user_data = con->user_data;
 
-	g_free(con);
 	DBG("mdl connect callback");
 
 	if (conn_err) {
@@ -1626,7 +1617,7 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl, BtIOType BtType,
 	/* TODO: Check if BtIOType is ERTM or Streaming before continue */
 
 	mdl->dc = bt_io_connect(BtType, mcap_connect_mdl_cb, con,
-				NULL, err,
+				g_free, err,
 				BT_IO_OPT_SOURCE_BDADDR, &mdl->mcl->ms->src,
 				BT_IO_OPT_DEST_BDADDR, &mdl->mcl->addr,
 				BT_IO_OPT_PSM, dcpsm,
@@ -1687,8 +1678,6 @@ static void mcap_connect_mcl_cb(GIOChannel *chan, GError *conn_err,
 	gpointer data = con->user_data;
 	GError *gerr = NULL;
 
-	g_free(con);
-
 	mcl->ctrl &= ~MCAP_CTRL_CONN;
 
 	if (conn_err) {
@@ -1747,6 +1736,14 @@ static void connect_dc_event_cb(GIOChannel *chan, GError *err,
 	mcl->cb->mdl_connected(mdl, mcl->cb->user_data);
 }
 
+static void mcl_io_destroy(gpointer data)
+{
+	struct connect_mcl *con = data;
+
+	mcap_mcl_unref(con->mcl);
+	g_free(con);
+}
+
 gboolean mcap_create_mcl(struct mcap_instance *ms,
 				const bdaddr_t *addr,
 				uint16_t ccpsm,
@@ -1772,8 +1769,9 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 		bacpy(&mcl->addr, addr);
 		set_default_cb(mcl);
 		mcl->next_mdl = (rand() % MCAP_MDLID_FINAL) + 1;
-	} else
-		mcl->ctrl |= MCAP_CTRL_CONN;
+	}
+
+	mcl->ctrl |= MCAP_CTRL_CONN;
 
 	con = g_new0(struct connect_mcl, 1);
 	con->mcl = mcap_mcl_ref(mcl);
@@ -1781,7 +1779,7 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 	con->user_data = user_data;
 
 	mcl->cc = bt_io_connect(BT_IO_L2CAP, mcap_connect_mcl_cb, con,
-				NULL, err,
+				mcl_io_destroy, err,
 				BT_IO_OPT_SOURCE_BDADDR, &ms->src,
 				BT_IO_OPT_DEST_BDADDR, addr,
 				BT_IO_OPT_PSM, ccpsm,
@@ -1848,10 +1846,8 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *err,
 	struct mcap_mcl *mcl = user_data;
 	gboolean reconn;
 
-	if (err) {
-		mcap_mcl_check_del(mcl);
+	if (err)
 		return;
-	}
 
 	mcl->state = MCL_CONNECTED;
 	mcl->role = MCL_ACCEPTOR;
@@ -1875,6 +1871,13 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *err,
 		mcl->ms->mcl_reconnected_cb(mcl, mcl->ms->user_data);
 	else
 		mcl->ms->mcl_connected_cb(mcl, mcl->ms->user_data);
+}
+
+static void mcl_io_accept_destroy(gpointer data)
+{
+	struct mcap_mcl *mcl = data;
+
+	mcap_mcl_unref(mcl);
 }
 
 static void confirm_mcl_event_cb(GIOChannel *chan, gpointer user_data)
@@ -1910,10 +1913,10 @@ static void confirm_mcl_event_cb(GIOChannel *chan, gpointer user_data)
 		bacpy(&mcl->addr, &dst);
 		set_default_cb(mcl);
 		mcl->next_mdl = (rand() % MCAP_MDLID_FINAL) + 1;
-		mcl = mcap_mcl_ref(mcl);
 	}
 
-	if (!bt_io_accept(chan, connect_mcl_event_cb, mcl, NULL, &err)) {
+	if (!bt_io_accept(chan, connect_mcl_event_cb, mcap_mcl_ref(mcl),
+						mcl_io_accept_destroy, &err)) {
 		error("mcap accept error: %s", err->message);
 		if (!(mcl->ctrl & MCAP_CTRL_CACHED))
 			mcap_mcl_unref(mcl);
