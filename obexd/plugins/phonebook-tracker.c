@@ -43,16 +43,16 @@
 #define TRACKER_RESOURCES_INTERFACE "org.freedesktop.Tracker1.Resources"
 
 #define TRACKER_DEFAULT_CONTACT_ME "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#default-contact-me"
-#define CONTACTS_ID_COL 36
-#define PULL_QUERY_COL_AMOUNT 37
+#define CONTACTS_ID_COL 37
+#define PULL_QUERY_COL_AMOUNT 38
 #define COL_HOME_NUMBER 0
 #define COL_HOME_EMAIL 7
 #define COL_WORK_NUMBER 8
 #define COL_FAX_NUMBER 16
 #define COL_WORK_EMAIL 17
-#define COL_DATE 33
-#define COL_SENT 34
-#define COL_ANSWERED 35
+#define COL_DATE 34
+#define COL_SENT 35
+#define COL_ANSWERED 36
 #define ADDR_FIELD_AMOUNT 7
 
 #define CONTACTS_QUERY_ALL						\
@@ -68,7 +68,7 @@
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"\"NOTACALL\" \"false\" \"false\" ?c "				\
+	"nco:title(?a) \"NOTACALL\" \"false\" \"false\" ?c "		\
 	"WHERE { "							\
 		"?c a nco:PersonContact . "				\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . 				\
@@ -119,7 +119,7 @@
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"nmo:receivedDate(?call) "					\
+	"nco:title(?a) nmo:receivedDate(?call) "			\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
@@ -171,7 +171,7 @@
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"nmo:receivedDate(?call) "					\
+	"nco:title(?a) nmo:receivedDate(?call) "			\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
@@ -223,7 +223,7 @@
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"nmo:receivedDate(?call) "					\
+	"nco:title(?a) nmo:receivedDate(?call) "			\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
 		"?call a nmo:Call ; "					\
@@ -273,7 +273,7 @@
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"nmo:receivedDate(?call) "					\
+	"nco:title(?a) nmo:receivedDate(?call) "			\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
 	"WHERE { "							\
 	"{ "								\
@@ -349,7 +349,7 @@
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(<%s>) "	\
-	"\"NOTACALL\" \"false\" \"false\" <%s> "			\
+	"nco:title(?a) \"NOTACALL\" \"false\" \"false\" <%s> "		\
 	"WHERE { "							\
 		"<%s> a nco:Contact . "					\
 	"OPTIONAL { <%s> nco:hasPhoneNumber ?h . 			\
@@ -865,6 +865,7 @@ add_entry:
 	contact->department = g_strdup(reply[23]);
 	contact->role = g_strdup(reply[24]);
 	contact->uid = g_strdup(reply[32]);
+	contact->title = g_strdup(reply[33]);
 
 	set_call_type(contact, reply[COL_DATE], reply[COL_SENT],
 			reply[COL_ANSWERED]);

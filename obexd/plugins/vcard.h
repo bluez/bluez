@@ -79,6 +79,7 @@ struct phonebook_contact {
 	char *company;
 	char *department;
 	char *role;
+	char *title;
 	char *datetime;
 	int calltype;
 };

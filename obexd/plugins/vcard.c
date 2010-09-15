@@ -539,6 +539,9 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	if (filter & FILTER_ROLE)
 		vcard_printf_tag(vcards, format, "ROLE", NULL, contact->role);
 
+	if (filter & FILTER_TITLE)
+		vcard_printf_tag(vcards, format, "TITLE", NULL, contact->title);
+
 	if (filter & FILTER_X_IRMC_CALL_DATETIME)
 		vcard_printf_datetime(vcards, contact);
 
@@ -597,6 +600,7 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_free(contact->company);
 	g_free(contact->department);
 	g_free(contact->role);
+	g_free(contact->title);
 	g_free(contact->datetime);
 	g_free(contact);
 }
