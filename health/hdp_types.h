@@ -71,4 +71,13 @@ struct hdp_application {
 	char			*oname;		/* Name of the owner application */
 };
 
+struct hdp_adapter {
+	struct btd_adapter	*btd_adapter;	/* Bluetooth adapter */
+	struct mcap_instance	*mi;		/* Mcap instance in */
+	uint16_t		ccpsm;		/* Control channel psm */
+	uint16_t		dcpsm;		/* Data channel psm */
+	uint32_t		sdp_handler;	/* SDP record handler */
+	uint32_t		record_state;	/* Service record state */
+};
+
 #endif /* __HDP_TYPES_H__ */

@@ -34,7 +34,10 @@
 #include <device.h>
 #include <hdp.h>
 #include <mcap.h>
+#include <btio.h>
+#include <mcap_lib.h>
 
+#include <sdpd.h>
 #include "../src/dbus-common.h"
 
 static DBusConnection *connection = NULL;
@@ -42,12 +45,26 @@ static DBusConnection *connection = NULL;
 static GSList *applications = NULL;
 static uint8_t next_app_id = HDP_MDEP_INITIAL;
 
+static GSList *adapters;
+
+static gboolean update_adapter(struct hdp_adapter *adapter);
+
 static int cmp_app_id(gconstpointer a, gconstpointer b)
 {
 	const struct hdp_application *app = a;
 	const uint8_t *id = b;
 
 	return app->id - *id;
+}
+
+static int cmp_adapter(gconstpointer a, gconstpointer b)
+{
+	const struct hdp_adapter *hdp_adapter = a;
+	const struct btd_adapter *adapter = b;
+
+	if (hdp_adapter->btd_adapter == adapter)
+		return 0;
+	return -1;
 }
 
 static uint8_t get_app_id()
@@ -100,7 +117,7 @@ static void remove_application(struct hdp_application *app)
 	DBG("Application %s deleted", app->path);
 	free_application(app);
 
-	/* TODO: Update sdp records for each adapter */
+	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
 }
 
 static DBusMessage *manager_create_application(DBusConnection *conn,
@@ -142,7 +159,7 @@ static DBusMessage *manager_create_application(DBusConnection *conn,
 	applications = g_slist_prepend(applications, app);
 
 	/* TODO: Add a watcher for client disconnections */
-	/* TODO: Update sdp record for each adapter */
+	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
 
 	DBG("Health application created with id %s", app->path);
 	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &app->path,
@@ -180,7 +197,7 @@ static void manager_path_unregister(gpointer data)
 	g_slist_free(applications);
 	applications = NULL;
 
-	/* TODO: Update sdp records of all the adapters */
+	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
 }
 
 static GDBusMethodTable health_manager_methods[] = {
@@ -189,19 +206,126 @@ static GDBusMethodTable health_manager_methods[] = {
 	{ NULL }
 };
 
+static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
+{
+	/* struct hdp_adapter *hdp_adapter = data; */
+	/* TODO: Implement mcl_connected */
+}
+
+static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
+{
+	/* struct hdp_adapter *hdp_adapter = data; */
+	/* TODO: Implement mcl_reconnected */
+}
+
+static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
+{
+	/* struct hdp_adapter *hdp_adapter = data; */
+	/* TODO: Implement mcl_disconnected */
+}
+
+static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
+{
+	/* struct hdp_adapter *hdp_adapter = data; */
+	/* TODO: Implement mcl_uncached */
+}
+
+static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
+{
+	GError *err = NULL;
+	bdaddr_t addr;
+
+	if (!applications) {
+		if (hdp_adapter->mi) {
+			mcap_release_instance(hdp_adapter->mi);
+			hdp_adapter->mi = NULL;
+		}
+		goto update;
+	}
+
+	if (hdp_adapter->mi)
+		goto update;
+
+	adapter_get_address(hdp_adapter->btd_adapter, &addr);
+	hdp_adapter->mi = mcap_create_instance(&addr, BT_IO_SEC_HIGH, 0, 0,
+					mcl_connected, mcl_reconnected,
+					mcl_disconnected, mcl_uncached,
+					NULL, /* CSP is not used by now */
+					hdp_adapter, &err);
+
+	if (!hdp_adapter->mi) {
+		error("Error creating the MCAP instance: %s", err->message);
+		g_error_free(err);
+		return FALSE;
+	}
+
+	hdp_adapter->ccpsm = mcap_get_ctrl_psm(hdp_adapter->mi, &err);
+	if (err) {
+		error("Error getting MCAP control PSM: %s", err->message);
+		goto fail;
+	}
+
+	hdp_adapter->dcpsm = mcap_get_data_psm(hdp_adapter->mi, &err);
+	if (err) {
+		error("Error getting MCAP data PSM: %s", err->message);
+		goto fail;
+	}
+
+update:
+	/*
+	if (hdp_update_sdp_record(hdp_adapter, applications))
+		return TRUE;
+	error("Error updating the SDP record");
+	*/
+	DBG("TODO: Register in sdp");
+	return TRUE;
+
+fail:
+	if (hdp_adapter->mi)
+		mcap_release_instance(hdp_adapter->mi);
+	if (err)
+		g_error_free(err);
+	return FALSE;
+}
+
 int hdp_adapter_register(DBusConnection *conn, struct btd_adapter *adapter)
 {
-	const char *path = adapter_get_path(adapter);
+	struct hdp_adapter *hdp_adapter;
 
-	DBG("New health adapter %s", path);
+	hdp_adapter = g_new0(struct hdp_adapter, 1);
+	hdp_adapter->btd_adapter = btd_adapter_ref(adapter);
+
+	if(!update_adapter(hdp_adapter))
+		goto fail;
+
+	adapters = g_slist_append(adapters, hdp_adapter);
+
 	return 0;
+
+fail:
+	btd_adapter_unref(hdp_adapter->btd_adapter);
+	g_free(hdp_adapter);
+	return -1;
 }
 
 void hdp_adapter_unregister(struct btd_adapter *adapter)
 {
-	const char *path = adapter_get_path(adapter);
+	struct hdp_adapter *hdp_adapter;
+	GSList *l;
 
-	DBG("Health adapter %s removed", path);
+	l = g_slist_find_custom(adapters, adapter, cmp_adapter);
+
+	if (!l)
+		return;
+
+	hdp_adapter = l->data;
+	adapters = g_slist_remove(adapters, hdp_adapter);
+	if (hdp_adapter->sdp_handler)
+		remove_record_from_server(hdp_adapter->sdp_handler);
+	if (hdp_adapter->mi)
+		mcap_release_instance(hdp_adapter->mi);
+	btd_adapter_unref(hdp_adapter->btd_adapter);
+	g_free(hdp_adapter);
 }
 
 int hdp_device_register(DBusConnection *conn, struct btd_device *device)
