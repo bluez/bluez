@@ -275,6 +275,7 @@ static void mcl_hci_fd_close(struct mcap_mcl *mcl)
 	mcl->csp->dev_hci_fd = -1;
 }
 
+/* This call may fail; either deal with retry or use read_btclock_retry */
 static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 						uint16_t* btaccuracy)
 {
@@ -290,7 +291,7 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 		cr->type = ACL_LINK;
 
 		if (ioctl(fd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-			mcl = NULL;
+			return FALSE;
 		} else {
 			handle = htobs(cr->conn_info->handle);
 		}
@@ -309,6 +310,21 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 		hci_close_dev(fd);
 
 	return !result;
+}
+
+
+static gboolean read_btclock_retry(struct mcap_mcl *mcl, uint32_t *btclock,
+							uint16_t* btaccuracy)
+{
+	int retries = 5;
+
+	while (--retries >= 0) {
+		if (read_btclock(mcl, btclock, btaccuracy))
+			return TRUE;
+		DBG("CSP: retrying to read bt clock...");
+	}
+
+	return FALSE;
 }
 
 static gboolean get_btrole(struct mcap_mcl *mcl)
@@ -352,9 +368,8 @@ uint32_t mcap_get_btclock(struct mcap_mcl *mcl)
 	if (!mcl->csp)
 		return MCAP_BTCLOCK_IMMEDIATE;
 
-	if (!read_btclock(mcl, &btclock, &accuracy)) {
+	if (!read_btclock_retry(mcl, &btclock, &accuracy))
 		btclock = 0xffffffff;
-	}
 
 	return btclock;
 }
@@ -364,6 +379,7 @@ struct csp_caps {
 	int ts_res;		/* timestamp resolution */
 	int latency;		/* Read BT clock latency */
 	int preempt_thresh;	/* Preemption threshold for latency */
+	int syncleadtime_ms;	/* SyncLeadTime in ms */
 };
 
 static struct csp_caps _caps;
@@ -381,17 +397,23 @@ static void initialize_caps(struct mcap_mcl *mcl)
 	clock_getres(CLK, &t1);
 
 	_caps.ts_res = time_us(&t1);
+	if (_caps.ts_res < 1)
+		_caps.ts_res = 1;
+
 	_caps.ts_acc = 20; /* ppm, estimated */
 
 	/* A little exercise before measuing latency */
 	clock_gettime(CLK, &t1);
-	read_btclock(mcl, &btclock, &btaccuracy);
+	read_btclock_retry(mcl, &btclock, &btaccuracy);
 
 	/* Do clock read a number of times and measure latency */
 	avg = 0;
 	for (i = 0; i < 20; ++i) {
 		clock_gettime(CLK, &t1);
-		read_btclock(mcl, &btclock, &btaccuracy);
+		if (!read_btclock(mcl, &btclock, &btaccuracy)) {
+			--i;
+			continue;
+		}
 		clock_gettime(CLK, &t2);
 
 		latency = time_us(&t2) - time_us(&t1);
@@ -417,6 +439,7 @@ static void initialize_caps(struct mcap_mcl *mcl)
 
 	_caps.latency = latency;
 	_caps.preempt_thresh = latency * 4;
+	_caps.syncleadtime_ms = latency * 50 / 1000;
 
 	csp_caps_initialized = TRUE;
 }
@@ -441,6 +464,7 @@ static int send_sync_cap_rsp(struct mcap_mcl *mcl, uint8_t rspcode,
 
 	rsp->op = MCAP_MD_SYNC_CAP_RSP;
 	rsp->rc = rspcode;
+
 	rsp->btclock = btclockres;
 	rsp->sltime = htons(synclead);
 	rsp->timestnr = htons(tmstampres);
@@ -477,7 +501,7 @@ static void proc_sync_cap_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		return;
 	}
 
-	if (!read_btclock(mcl, &btclock, &btres)) {
+	if (!read_btclock_retry(mcl, &btclock, &btres)) {
 		send_sync_cap_rsp(mcl, MCAP_RESOURCE_UNAVAILABLE,
 					0, 0, 0, 0);
 		return;
@@ -486,7 +510,8 @@ static void proc_sync_cap_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	mcl->csp->remote_caps = 1;
 	mcl->csp->rem_req_acc = required_accuracy;
 
-	send_sync_cap_rsp(mcl, MCAP_SUCCESS, btres, caps(mcl)->latency / 1000,
+	send_sync_cap_rsp(mcl, MCAP_SUCCESS, btres,
+				caps(mcl)->syncleadtime_ms,
 				caps(mcl)->ts_res, our_accuracy);
 }
 
@@ -522,6 +547,8 @@ struct sync_set_data {
 	gboolean role;
 };
 
+static gboolean sync_send_indication(gpointer user_data);
+
 static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 {
 	mcap_md_sync_set_req *req;
@@ -530,7 +557,7 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	uint8_t update;
 	uint64_t timestamp;
 	struct sync_set_data *set_data;
-	int phase2_delay, ind_freq;
+	int phase2_delay, ind_freq, when;
 
 	if (len != sizeof(mcap_md_sync_set_req)) {
 		send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE, 0, 0, 0);
@@ -559,7 +586,7 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		return;
 	}
 
-	if (!read_btclock(mcl, &cur_btclock, &btres)) {
+	if (!read_btclock_retry(mcl, &cur_btclock, &btres)) {
 		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
 		return;
 	}
@@ -604,7 +631,7 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 			return;
 		}
 
-		DBG("MCAP CSP: indication every %dms", ind_freq);
+		DBG("CSP: indication every %dms", ind_freq);
 	} else {
 		ind_freq = 0;
 	}
@@ -630,12 +657,19 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	   a BT clock value, instead of this estimation that uses
 	   the SO clock? */
 
-	if (phase2_delay > 0)
-		mcl->csp->set_timer = g_timeout_add(phase2_delay + 1,
+	if (phase2_delay > 0) {
+		when = phase2_delay + caps(mcl)->syncleadtime_ms;
+		mcl->csp->set_timer = g_timeout_add(when,
 						proc_sync_set_req_phase2,
 						mcl);
-	else
+	} else {
 		proc_sync_set_req_phase2(mcl);
+	}
+
+	/* First indication is immediate */
+	if (update) {
+		sync_send_indication(mcl);
+	}
 }
 
 static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
@@ -652,7 +686,7 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 		clock_gettime(CLK, &t0);
 
 		if (!read_btclock(mcl, btclock, &btres))
-			return FALSE;
+			continue;
 
 		clock_gettime(CLK, base_time);
 
@@ -666,8 +700,6 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 
 	return TRUE;
 }
-
-static gboolean sync_send_indication(gpointer user_data);
 
 static gboolean proc_sync_set_req_phase2(gpointer user_data)
 {
@@ -737,14 +769,16 @@ static gboolean proc_sync_set_req_phase2(gpointer user_data)
 		mcl->csp->ind_timer = 0;
 	}
 
-	if (update)
-		mcl->csp->ind_timer = g_timeout_add(ind_freq + 1,
+	if (update) {
+		int when = ind_freq + caps(mcl)->syncleadtime_ms;
+		mcl->csp->ind_timer = g_timeout_add(when,
 						sync_send_indication,
 						mcl);
+	}
 
 	send_sync_set_rsp(mcl, MCAP_SUCCESS, btclock, tmstamp, tmstampacc);
 
-	/* First indication is immediate */
+	/* First indication after set is immediate */
 	if (update)
 		sync_send_indication(mcl);
 
