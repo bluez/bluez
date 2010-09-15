@@ -44,9 +44,11 @@
 
 #define MCAP_ERROR g_quark_from_static_string("mcap-error-quark")
 
-#define RELEASE_TIMER(__mcl) do {	\
-	g_source_remove(__mcl->tid);	\
-	__mcl->tid = 0;			\
+#define RELEASE_TIMER(__mcl) do {		\
+	if (__mcl->tid) {			\
+		g_source_remove(__mcl->tid);	\
+		__mcl->tid = 0;			\
+	}					\
 } while(0)
 
 struct connect_mcl {
@@ -225,7 +227,10 @@ static void shutdown_mdl(struct mcap_mdl *mdl)
 {
 	mdl->state = MDL_CLOSED;
 
-	g_source_remove(mdl->wid);
+	if (mdl->wid) {
+		g_source_remove(mdl->wid);
+		mdl->wid = 0;
+	}
 
 	if (mdl->dc) {
 		g_io_channel_shutdown(mdl->dc, TRUE, NULL);
@@ -685,9 +690,7 @@ static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 {
 	gboolean save = ((!(mcl->ctrl & MCAP_CTRL_FREE)) && cache_requested);
 
-	if (mcl->tid) {
-		RELEASE_TIMER(mcl);
-	}
+	RELEASE_TIMER(mcl);
 
 	if (mcl->cc) {
 		g_io_channel_shutdown(mcl->cc, TRUE, NULL);
@@ -695,7 +698,11 @@ static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 		mcl->cc = NULL;
 	}
 
-	g_source_remove(mcl->wid);
+	if (mcl->wid) {
+		g_source_remove(mcl->wid);
+		mcl->wid = 0;
+	}
+
 	if (mcl->lcmd) {
 		g_free(mcl->lcmd);
 		mcl->lcmd = NULL;
