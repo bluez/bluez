@@ -35,6 +35,12 @@
 
 #define HEALTH_MANAGER		"org.bluez.HealthManager"
 
+#define HDP_VERSION		0x0100
+
+#define HDP_SERVICE_NAME	"Bluez HDP"
+#define HDP_SERVICE_DSC		"A Bluez health device profile implementation"
+#define HDP_SERVICE_PROVIDER	"Bluez"
+
 #define HDP_MDEP_ECHO		0x00
 #define HDP_MDEP_INITIAL	0x01
 #define HDP_MDEP_FINAL		0x7F
@@ -59,6 +65,10 @@ typedef enum {
 	HDP_UNSPECIFIED_ERROR,
 	HDP_UNKNOWN_ERROR
 } HdpError;
+
+enum data_specs {
+	DATA_EXCHANGE_SPEC_11073 = 0x01
+};
 
 struct hdp_application {
 	char			*path;		/* The path of the application */

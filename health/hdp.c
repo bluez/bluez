@@ -272,13 +272,9 @@ static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 	}
 
 update:
-	/*
 	if (hdp_update_sdp_record(hdp_adapter, applications))
 		return TRUE;
 	error("Error updating the SDP record");
-	*/
-	DBG("TODO: Register in sdp");
-	return TRUE;
 
 fail:
 	if (hdp_adapter->mi)

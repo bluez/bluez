@@ -28,5 +28,6 @@
 #define __HDP_UTIL_H__
 
 struct hdp_application *hdp_get_app_config(DBusMessageIter *iter, GError **err);
+gboolean hdp_update_sdp_record(struct hdp_adapter *adapter, GSList *app_list);
 
 #endif /* __HDP_UTIL_H__ */
