@@ -1728,10 +1728,8 @@ static void mcap_connect_mcl_cb(GIOChannel *chan, GError *conn_err,
 	connect_cb(mcl, gerr, data);
 }
 
-static void connect_dc_event_cb(GIOChannel *chan, GError *err,
-							gpointer user_data)
+static void set_mdl_properties(GIOChannel *chan, struct mcap_mdl *mdl)
 {
-	struct mcap_mdl *mdl = user_data;
 	struct mcap_mcl *mcl = mdl->mcl;
 
 	mdl->state = MDL_CONNECTED;
@@ -1807,7 +1805,8 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 	return TRUE;
 }
 
-static void confirm_dc_event_cb(GIOChannel *chan, gpointer user_data)
+static void connect_dc_event_cb(GIOChannel *chan, GError *gerr,
+							gpointer user_data)
 {
 	struct mcap_instance *ms = user_data;
 	struct mcap_mcl *mcl;
@@ -1815,6 +1814,9 @@ static void confirm_dc_event_cb(GIOChannel *chan, gpointer user_data)
 	GError *err = NULL;
 	bdaddr_t dst;
 	GSList *l;
+
+	if (gerr)
+		return;
 
 	bt_io_get(chan, BT_IO_L2CAP, &err,
 			BT_IO_OPT_DEST_BDADDR, &dst,
@@ -1832,13 +1834,7 @@ static void confirm_dc_event_cb(GIOChannel *chan, gpointer user_data)
 	for (l = mcl->mdls; l; l = l->next) {
 		mdl = l->data;
 		if (mdl->state == MDL_WAITING) {
-			if (!bt_io_accept(chan, connect_dc_event_cb, mdl, NULL,
-									&err)) {
-				error("MDL accept error %s", err->message);
-				mdl->state = MDL_CLOSED;
-				g_error_free(err);
-				goto drop;
-			}
+			set_mdl_properties(chan, mdl);
 			return;
 		}
 	}
@@ -1847,14 +1843,9 @@ drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
-static void connect_mcl_event_cb(GIOChannel *chan, GError *err,
-							gpointer user_data)
+static void set_mcl_conf(GIOChannel *chan, struct mcap_mcl *mcl)
 {
-	struct mcap_mcl *mcl = user_data;
 	gboolean reconn;
-
-	if (err)
-		return;
 
 	mcl->state = MCL_CONNECTED;
 	mcl->role = MCL_ACCEPTOR;
@@ -1880,20 +1871,17 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *err,
 		mcl->ms->mcl_connected_cb(mcl, mcl->ms->user_data);
 }
 
-static void mcl_io_accept_destroy(gpointer data)
-{
-	struct mcap_mcl *mcl = data;
-
-	mcap_mcl_unref(mcl);
-}
-
-static void confirm_mcl_event_cb(GIOChannel *chan, gpointer user_data)
+static void connect_mcl_event_cb(GIOChannel *chan, GError *gerr,
+							gpointer user_data)
 {
 	struct mcap_instance *ms = user_data;
 	struct mcap_mcl *mcl;
 	bdaddr_t dst;
 	char address[18], srcstr[18];
 	GError *err = NULL;
+
+	if (gerr)
+		return;
 
 	bt_io_get(chan, BT_IO_L2CAP, &err,
 			BT_IO_OPT_DEST_BDADDR, &dst,
@@ -1922,14 +1910,7 @@ static void confirm_mcl_event_cb(GIOChannel *chan, gpointer user_data)
 		mcl->next_mdl = (rand() % MCAP_MDLID_FINAL) + 1;
 	}
 
-	if (!bt_io_accept(chan, connect_mcl_event_cb, mcap_mcl_ref(mcl),
-						mcl_io_accept_destroy, &err)) {
-		error("mcap accept error: %s", err->message);
-		if (!(mcl->ctrl & MCAP_CTRL_CACHED))
-			mcap_mcl_unref(mcl);
-		g_error_free(err);
-		goto drop;
-	}
+	set_mcl_conf(chan, mcl);
 
 	return;
 drop:
@@ -1975,7 +1956,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 	ms->user_data = user_data;
 
 	/* Listen incoming connections in control channel */
-	ms->ccio = bt_io_listen(BT_IO_L2CAP, NULL, confirm_mcl_event_cb, ms,
+	ms->ccio = bt_io_listen(BT_IO_L2CAP, connect_mcl_event_cb, NULL, ms,
 				NULL, gerr,
 				BT_IO_OPT_SOURCE_BDADDR, &ms->src,
 				BT_IO_OPT_PSM, ccpsm,
@@ -1989,7 +1970,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 	}
 
 	/* Listen incoming connections in data channels */
-	ms->dcio = bt_io_listen(BT_IO_L2CAP, NULL, confirm_dc_event_cb, ms,
+	ms->dcio = bt_io_listen(BT_IO_L2CAP, connect_dc_event_cb, NULL, ms,
 				NULL, gerr,
 				BT_IO_OPT_SOURCE_BDADDR, &ms->src,
 				BT_IO_OPT_PSM, dcpsm,
