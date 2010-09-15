@@ -362,7 +362,7 @@ INCLUDES = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/attrib -I$(srcdir)/btio
 
 if MCAP
-	INCLUDES += -I$(builddir)/health
+INCLUDES += -I$(builddir)/health
 endif
 
 pkgconfigdir = $(libdir)/pkgconfig
