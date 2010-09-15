@@ -1412,7 +1412,7 @@ static gboolean process_md_abort_mdl_rsp(struct mcap_mcl *mcl,
 		free_mdl(mdl);
 	}
 
-	if (!gerr)
+	if (gerr)
 		g_error_free(gerr);
 
 	update_mcl_state(mcl);
