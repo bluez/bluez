@@ -314,12 +314,13 @@ static void mcap_notify_error(struct mcap_mcl *mcl, GError *err)
 	mcl->lcmd = NULL;
 }
 
-int mcap_send_data(int sock, const uint8_t *buf, uint32_t size)
+int mcap_send_data(int sock, const void *buf, uint32_t size)
 {
+	const uint8_t *buf_b = buf;
 	uint32_t sent = 0;
 
 	while (sent < size) {
-		int n = write(sock, buf + sent, size - sent);
+		int n = write(sock, buf_b + sent, size - sent);
 		if (n < 0)
 			return -1;
 		sent += n;

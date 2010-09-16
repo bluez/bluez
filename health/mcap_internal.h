@@ -113,7 +113,7 @@ struct mcap_mdl {
 	MDLState		state;		/* MDL state */
 };
 
-int mcap_send_data(int sock, const uint8_t *buf, uint32_t size);
+int mcap_send_data(int sock, const void *buf, uint32_t size);
 
 void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
 
