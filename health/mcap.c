@@ -1236,23 +1236,22 @@ static void proc_req_active(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 }
 
 /* Function used to process replies */
-static gboolean check_err_rsp(struct mcap_mcl *mcl, uint8_t *cmd,
+static gboolean check_err_rsp(struct mcap_mcl *mcl, mcap_rsp *rsp,
 				uint32_t rlen, uint32_t len, GError **gerr)
 {
 	mcap_md_req *cmdlast = (mcap_md_req *) mcl->lcmd;
 	gint err = MCAP_ERROR_FAILED;
 	gboolean close = FALSE;
-	mcap_rsp *rsp;
 	char *msg;
 
-	if (cmd[0] == MCAP_ERROR_RSP) {
+	if (rsp->op == MCAP_ERROR_RSP) {
 		msg = "MCAP_ERROR_RSP received";
 		close = FALSE;
 		goto fail;
 	}
 
 	/* Check if the response matches with the last request */
-	if (rlen < sizeof(mcap_rsp) || (mcl->lcmd[0] + 1) != cmd[0]) {
+	if (rlen < sizeof(mcap_rsp) || (mcl->lcmd[0] + 1) != rsp->op) {
 		msg = "Protocol error";
 		close = FALSE;
 		goto fail;
@@ -1264,7 +1263,6 @@ static gboolean check_err_rsp(struct mcap_mcl *mcl, uint8_t *cmd,
 		goto fail;
 	}
 
-	rsp = (mcap_rsp *) cmd;
 	if (rsp->mdl != cmdlast->mdl) {
 		msg = "MDLID received doesn't match with MDLID sent";
 		close = TRUE;
@@ -1297,7 +1295,7 @@ fail:
 }
 
 static gboolean process_md_create_mdl_rsp(struct mcap_mcl *mcl,
-						uint8_t *cmd, uint32_t len)
+						mcap_rsp *rsp, uint32_t len)
 {
 	mcap_md_create_mdl_req *cmdlast = (mcap_md_create_mdl_req *) mcl->lcmd;
 	struct mcap_mdl_op_cb *conn = mcl->priv_data;
@@ -1307,12 +1305,11 @@ static gboolean process_md_create_mdl_rsp(struct mcap_mcl *mcl,
 	uint8_t conf = cmdlast->conf;
 	gboolean close;
 	GError *gerr = NULL;
-	uint8_t *param;
 
 	g_free(mcl->priv_data);
 	mcl->priv_data = NULL;
 
-	close = check_err_rsp(mcl, cmd, len, sizeof(mcap_rsp) + 1, &gerr);
+	close = check_err_rsp(mcl, rsp, len, sizeof(mcap_rsp) + 1, &gerr);
 	g_free(mcl->lcmd);
 	mcl->lcmd = NULL;
 	mcl->req = MCL_AVAILABLE;
@@ -1320,16 +1317,15 @@ static gboolean process_md_create_mdl_rsp(struct mcap_mcl *mcl,
 	if (gerr)
 		goto fail;
 
-	param = cmd + sizeof(mcap_rsp);
 	/* Check if preferences changed */
-	if (conf != 0x00 && *param != conf) {
+	if (conf != 0x00 && rsp->data[0] != conf) {
 		g_set_error(&gerr, MCAP_ERROR, MCAP_ERROR_FAILED,
 						"Configuration changed");
 		close = TRUE;
 		goto fail;
 	}
 
-	connect_cb(mdl, *param, gerr, user_data);
+	connect_cb(mdl, rsp->data[0], gerr, user_data);
 	return close;
 
 fail:
@@ -1342,20 +1338,19 @@ fail:
 }
 
 static gboolean process_md_reconnect_mdl_rsp(struct mcap_mcl *mcl,
-						uint8_t *cmd, uint32_t len)
+						mcap_rsp *rsp, uint32_t len)
 {
 	struct mcap_mdl_op_cb *reconn = mcl->priv_data;
 	mcap_mdl_operation_cb reconn_cb = reconn->cb.op;
 	gpointer user_data = reconn->user_data;
 	struct mcap_mdl *mdl = reconn->mdl;
-	mcap_rsp *rsp = (mcap_rsp *) cmd;
 	GError *gerr = NULL;
 	gboolean close;
 
 	g_free(mcl->priv_data);
 	mcl->priv_data = NULL;
 
-	close = check_err_rsp(mcl, cmd, len, sizeof(mcap_rsp), &gerr);
+	close = check_err_rsp(mcl, rsp, len, sizeof(mcap_rsp), &gerr);
 
 	g_free(mcl->lcmd);
 	mcl->lcmd = NULL;
@@ -1381,20 +1376,19 @@ static gboolean process_md_reconnect_mdl_rsp(struct mcap_mcl *mcl,
 }
 
 static gboolean process_md_abort_mdl_rsp(struct mcap_mcl *mcl,
-						uint8_t *cmd, uint32_t len)
+						mcap_rsp *rsp, uint32_t len)
 {
 	struct mcap_mdl_op_cb *abrt = mcl->priv_data;
 	mcap_mdl_notify_cb abrt_cb = abrt->cb.notify;
 	gpointer user_data = abrt->user_data;
 	struct mcap_mdl *mdl = abrt->mdl;
-	mcap_rsp *rsp = (mcap_rsp *) cmd;
 	GError *gerr = NULL;
 	gboolean close;
 
 	g_free(mcl->priv_data);
 	mcl->priv_data = NULL;
 
-	close = check_err_rsp(mcl, cmd, len, sizeof(mcap_rsp), &gerr);
+	close = check_err_rsp(mcl, rsp, len, sizeof(mcap_rsp), &gerr);
 
 	g_free(mcl->lcmd);
 	mcl->lcmd = NULL;
@@ -1429,7 +1423,7 @@ static void restore_mdl(gpointer elem, gpointer data)
 		mdl->mcl->cb->mdl_closed(mdl, mdl->mcl->cb->user_data);
 }
 
-static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, uint8_t *cmd,
+static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, mcap_rsp *rsp,
 								uint32_t len)
 {
 	struct mcap_mdl_op_cb *del = mcl->priv_data;
@@ -1445,7 +1439,7 @@ static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, uint8_t *cmd,
 	g_free(mcl->priv_data);
 	mcl->priv_data = NULL;
 
-	close = check_err_rsp(mcl, cmd, len, sizeof(mcap_rsp), &gerr);
+	close = check_err_rsp(mcl, rsp, len, sizeof(mcap_rsp), &gerr);
 
 	g_free(mcl->lcmd);
 	mcl->lcmd = NULL;
@@ -1477,26 +1471,28 @@ static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, uint8_t *cmd,
 	return close;
 }
 
-static void proc_response(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+static void proc_response(struct mcap_mcl *mcl, void *buf, uint32_t len)
 {
+	mcap_rsp *rsp = buf;
 	gboolean close;
+
 	RELEASE_TIMER(mcl);
 
 	switch (mcl->lcmd[0] + 1) {
 	case MCAP_MD_CREATE_MDL_RSP:
-		close = process_md_create_mdl_rsp(mcl, cmd, len);
+		close = process_md_create_mdl_rsp(mcl, rsp, len);
 		break;
 	case MCAP_MD_RECONNECT_MDL_RSP:
-		close = process_md_reconnect_mdl_rsp(mcl, cmd, len);
+		close = process_md_reconnect_mdl_rsp(mcl, rsp, len);
 		break;
 	case MCAP_MD_ABORT_MDL_RSP:
-		close = process_md_abort_mdl_rsp(mcl, cmd, len);
+		close = process_md_abort_mdl_rsp(mcl, rsp, len);
 		break;
 	case MCAP_MD_DELETE_MDL_RSP:
-		close = process_md_delete_mdl_rsp(mcl, cmd, len);
+		close = process_md_delete_mdl_rsp(mcl, rsp, len);
 		break;
 	default:
-		DBG("Unknown cmd response received (op code = %d)",cmd[0]);
+		DBG("Unknown cmd response received (op code = %d)", rsp->op);
 		close = TRUE;
 		break;
 	}
