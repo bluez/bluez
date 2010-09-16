@@ -627,12 +627,6 @@ static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
 	dict_append_entry(&dict, "Device", DBUS_TYPE_OBJECT_PATH,
 						&transport->device->path);
 
-	dict_append_entry(&dict, "ReadLock", DBUS_TYPE_BOOLEAN,
-						&transport->read_lock);
-
-	dict_append_entry(&dict, "WriteLock", DBUS_TYPE_BOOLEAN,
-						&transport->write_lock);
-
 	dict_append_entry(&dict, "IMTU", DBUS_TYPE_UINT16,
 						&transport->imtu);
 
