@@ -1242,7 +1242,6 @@ static gboolean check_err_rsp(struct mcap_mcl *mcl, uint8_t *cmd,
 	mcap_md_req *cmdlast = (mcap_md_req *) mcl->lcmd;
 	gint err = MCAP_ERROR_FAILED;
 	gboolean close = FALSE;
-	uint16_t rmdl, smdl;
 	mcap_rsp *rsp;
 	char *msg;
 
@@ -1266,9 +1265,7 @@ static gboolean check_err_rsp(struct mcap_mcl *mcl, uint8_t *cmd,
 	}
 
 	rsp = (mcap_rsp *) cmd;
-	smdl = ntohs(cmdlast->mdl);
-	rmdl = ntohs(rsp->mdl);
-	if (rmdl != smdl) {
+	if (rsp->mdl != cmdlast->mdl) {
 		msg = "MDLID received doesn't match with MDLID sent";
 		close = TRUE;
 		goto fail;
