@@ -278,12 +278,10 @@ static void mcl_hci_fd_close(struct mcap_mcl *mcl)
 static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 							uint16_t *btaccuracy)
 {
-	int fd, result, handle, which;
+	int fd, ret, handle, which;
 	struct hci_conn_info_req *cr;
 
 	if (mcl) {
-		int ret;
-
 		which = 1;
 		fd = mcl_hci_fd(mcl);
 
@@ -304,12 +302,12 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 		handle = 0;
 	}
 
-	result = hci_read_clock(fd, handle, which, btclock, btaccuracy, 1000);
+	ret = hci_read_clock(fd, handle, which, btclock, btaccuracy, 1000);
 
 	if (!mcl)
 		hci_close_dev(fd);
 
-	return !result;
+	return ret < 0 ? FALSE : TRUE;
 }
 
 
