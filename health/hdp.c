@@ -43,6 +43,7 @@
 static DBusConnection *connection = NULL;
 
 static GSList *applications = NULL;
+static GSList *devices = NULL;
 static uint8_t next_app_id = HDP_MDEP_INITIAL;
 
 static GSList *adapters;
@@ -63,6 +64,16 @@ static int cmp_adapter(gconstpointer a, gconstpointer b)
 	const struct btd_adapter *adapter = b;
 
 	if (hdp_adapter->btd_adapter == adapter)
+		return 0;
+	return -1;
+}
+
+static int cmp_device(gconstpointer a, gconstpointer b)
+{
+	const struct hdp_device *hdp_device = a;
+	const struct btd_device *device = b;
+
+	if (hdp_device->dev == device)
 		return 0;
 	return -1;
 }
@@ -101,6 +112,21 @@ static gboolean set_app_path(struct hdp_application *app)
 
 	return TRUE;
 };
+
+static void free_health_device(struct hdp_device *device)
+{
+	if (device->conn) {
+		dbus_connection_unref(device->conn);
+		device->conn = NULL;
+	}
+
+	if (device->dev) {
+		btd_device_unref(device->dev);
+		device->dev = NULL;
+	}
+
+	g_free(device);
+}
 
 static void free_application(struct hdp_application *app)
 {
@@ -324,19 +350,119 @@ void hdp_adapter_unregister(struct btd_adapter *adapter)
 	g_free(hdp_adapter);
 }
 
+static DBusMessage *device_echo(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+					"Echo function not implemented");
+}
+
+static DBusMessage *device_create_channel(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+				"CreateChannel function not implemented");
+}
+
+static DBusMessage *device_destroy_channel(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+				"DestroyChannel function not implemented");
+}
+
+static void health_device_destroy(void *data)
+{
+	struct hdp_device *device = data;
+
+	DBG("Unregistered interface %s on path %s", HEALTH_DEVICE,
+						device_get_path(device->dev));
+	devices = g_slist_remove(devices, device);
+	free_health_device(device);
+}
+
+static GDBusMethodTable health_device_methods[] = {
+	{"Echo",		"",	"b",	device_echo,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{"CreateChannel",	"os",	"o",	device_create_channel,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{"DestroyChannel",	"o",	"",	device_destroy_channel,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ NULL }
+};
+
+static GDBusSignalTable health_device_signals[] = {
+	{"ChannelConnected",		"o"		},
+	{"ChannelDeleted",		"o"		},
+	{"PropertyChanged",		"sv"		},
+	{ NULL }
+};
+
+static struct hdp_device *create_health_device(DBusConnection *conn,
+						struct btd_device *device)
+{
+	struct btd_adapter *adapter = device_get_adapter(device);
+	const gchar *path = device_get_path(device);
+	struct hdp_device *dev;
+	GSList *l;
+
+	dev = g_new0(struct hdp_device, 1);
+	dev->conn = dbus_connection_ref(conn);
+	dev->dev = btd_device_ref(device);
+	l = g_slist_find_custom(adapters, adapter, cmp_adapter);
+
+	if (!l)
+		goto fail;
+
+	dev->hdp_adapter = l->data;
+
+	if (!g_dbus_register_interface(conn, path,
+					HEALTH_DEVICE,
+					health_device_methods,
+					health_device_signals, NULL,
+					dev, health_device_destroy)) {
+		error("D-Bus failed to register %s interface", HEALTH_DEVICE);
+		goto fail;
+	}
+
+	DBG("Registered interface %s on path %s", HEALTH_DEVICE, path);
+	return dev;
+
+fail:
+	free_health_device(dev);
+	return NULL;
+}
+
 int hdp_device_register(DBusConnection *conn, struct btd_device *device)
 {
-	const char *path = device_get_path(device);
+	struct hdp_device *hdev;
+	GSList *l;
 
-	DBG("New health device %s", path);
+	l = g_slist_find_custom(devices, device, cmp_device);
+	if (l)
+		return 0;
+
+	hdev = create_health_device(conn, device);
+	if (!hdev)
+		return -1;
+
+	devices = g_slist_prepend(devices, hdev);
 	return 0;
 }
 
 void hdp_device_unregister(struct btd_device *device)
 {
-	const char *path = device_get_path(device);
+	struct hdp_device *hdp_dev;
+	const char *path;
+	GSList *l;
 
-	DBG("Health device %s removed", path);
+	l = g_slist_find_custom(devices, device, cmp_device);
+	if (!l)
+		return;
+
+	hdp_dev = l->data;
+	path = device_get_path(hdp_dev->dev);
+	g_dbus_unregister_interface(hdp_dev->conn, path, HEALTH_DEVICE);
 }
 
 int hdp_manager_start(DBusConnection *conn)

@@ -34,6 +34,7 @@
 #define MANAGER_PATH		"/org/bluez"
 
 #define HEALTH_MANAGER		"org.bluez.HealthManager"
+#define HEALTH_DEVICE		"org.bluez.HealthDevice"
 
 #define HDP_VERSION		0x0100
 
@@ -88,6 +89,12 @@ struct hdp_adapter {
 	uint16_t		dcpsm;		/* Data channel psm */
 	uint32_t		sdp_handler;	/* SDP record handler */
 	uint32_t		record_state;	/* Service record state */
+};
+
+struct hdp_device {
+	DBusConnection		*conn;		/* For name listener handling */
+	struct btd_device	*dev;		/* Device reference */
+	struct hdp_adapter	*hdp_adapter;	/* hdp_adapater */
 };
 
 #endif /* __HDP_TYPES_H__ */
