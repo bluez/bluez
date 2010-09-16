@@ -333,7 +333,6 @@ static int mcap_send_cmd(struct mcap_mcl *mcl, uint8_t oc, uint8_t rc,
 					uint16_t mdl, uint8_t *data, size_t len)
 {
 	mcap_rsp *cmd;
-	uint8_t *rsp;
 	int sock, sent;
 
 	if (mcl->cc == NULL)
@@ -341,17 +340,16 @@ static int mcap_send_cmd(struct mcap_mcl *mcl, uint8_t oc, uint8_t rc,
 
 	sock = g_io_channel_unix_get_fd(mcl->cc);
 
-	rsp = g_malloc(sizeof(mcap_rsp) + len);
-	cmd = (mcap_rsp *) rsp;
+	cmd = g_malloc(sizeof(mcap_rsp) + len);
 	cmd->op = oc;
 	cmd->rc = rc;
 	cmd->mdl = htons(mdl);
 
 	if (data && len > 0)
-		memcpy(rsp + sizeof(mcap_rsp), data, len);
+		memcpy(cmd->data, data, len);
 
-	sent = mcap_send_data(sock, rsp, sizeof(mcap_rsp) + len);
-	g_free(rsp);
+	sent = mcap_send_data(sock, cmd, sizeof(mcap_rsp) + len);
+	g_free(cmd);
 
 	return sent;
 }

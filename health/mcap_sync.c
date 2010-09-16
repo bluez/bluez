@@ -43,7 +43,6 @@ typedef struct {
 static int mcap_sync_send_cmd(struct mcap_mcl *mcl, uint8_t oc, uint8_t rc)
 {
 	mcap_md_sync_error_rsp *cmd;
-	uint8_t *rsp;
 	int sock, sent;
 
 	if (mcl->cc == NULL)
@@ -51,13 +50,13 @@ static int mcap_sync_send_cmd(struct mcap_mcl *mcl, uint8_t oc, uint8_t rc)
 
 	sock = g_io_channel_unix_get_fd(mcl->cc);
 
-	rsp = g_malloc(sizeof(mcap_md_sync_error_rsp));
-	cmd = (mcap_md_sync_error_rsp *)rsp;
+	cmd = g_malloc(sizeof(mcap_md_sync_error_rsp));
 	cmd->op = oc;
 	cmd->rc = rc;
 
-	sent = mcap_send_data(sock, rsp, sizeof(mcap_md_sync_error_rsp));
-	g_free(rsp);
+	sent = mcap_send_data(sock, cmd, sizeof(mcap_md_sync_error_rsp));
+	g_free(cmd);
+
 	return sent;
 }
 

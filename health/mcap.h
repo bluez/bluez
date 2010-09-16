@@ -106,6 +106,7 @@ typedef struct {
 	uint8_t		op;
 	uint8_t		rc;
 	uint16_t	mdl;
+	uint8_t		data[0];
 } __attribute__ ((packed)) mcap_rsp;
 
 /*
