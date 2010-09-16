@@ -45,19 +45,19 @@
 #include "mcap_internal.h"
 
 struct mcap_csp {
-	uint64_t		base_tmstamp;	/* CSP base timestamp */
-	struct timespec		base_time;	/* CSP base time when timestamp set */
-	guint			local_caps;	/* CSP-Master: have got remote caps */
-	guint			remote_caps;	/* CSP-Slave: remote master got caps */
-	guint			rem_req_acc;	/* CSP-Slave: accuracy required by master */
-	guint			ind_expected;	/* CSP-Master: indication expected */
-	MCAPCtrl		csp_req;	/* CSP-Master: Request control flag */
-	guint			ind_timer;	/* CSP-Slave: indication timer */
-	guint			set_timer;	/* CSP-Slave: delayed set timer */
-	void			*set_data;	/* CSP-Slave: delayed set data */
-	gint			dev_id;		/* CSP-Slave: device ID */
-	gint			dev_hci_fd;	/* CSP-Slave fd to read BT clock */
-	void			*csp_priv_data;	/* CSP-Master: In-flight request data */
+	uint64_t	base_tmstamp;	/* CSP base timestamp */
+	struct timespec	base_time;	/* CSP base time when timestamp set */
+	guint		local_caps;	/* CSP-Master: have got remote caps */
+	guint		remote_caps;	/* CSP-Slave: remote master got caps */
+	guint		rem_req_acc;	/* CSP-Slave: accuracy required by master */
+	guint		ind_expected;	/* CSP-Master: indication expected */
+	MCAPCtrl	csp_req;	/* CSP-Master: Request control flag */
+	guint		ind_timer;	/* CSP-Slave: indication timer */
+	guint		set_timer;	/* CSP-Slave: delayed set timer */
+	void		*set_data;	/* CSP-Slave: delayed set data */
+	gint		dev_id;		/* CSP-Slave: device ID */
+	gint		dev_hci_fd;	/* CSP-Slave fd to read BT clock */
+	void		*csp_priv_data;	/* CSP-Master: In-flight request data */
 };
 
 #define MCAP_BTCLOCK_HALF (MCAP_BTCLOCK_FIELD / 2)
@@ -261,9 +261,8 @@ static gboolean valid_btclock(uint32_t btclk)
 static int mcl_hci_fd(struct mcap_mcl *mcl)
 {
 	if (mcl->csp->dev_hci_fd < 0) {
-		if (mcl->csp->dev_id < 0) {
+		if (mcl->csp->dev_id < 0)
 			mcl->csp->dev_id = hci_get_route(&mcl->addr);
-		}
 		mcl->csp->dev_hci_fd = hci_open_dev(mcl->csp->dev_id);
 	}
 	return mcl->csp->dev_hci_fd;
@@ -277,7 +276,7 @@ static void mcl_hci_fd_close(struct mcap_mcl *mcl)
 
 /* This call may fail; either deal with retry or use read_btclock_retry */
 static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
-						uint16_t* btaccuracy)
+							uint16_t *btaccuracy)
 {
 	int fd, result, handle, which;
 	struct hci_conn_info_req *cr;
@@ -290,11 +289,10 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 		bacpy(&cr->bdaddr, &mcl->addr);
 		cr->type = ACL_LINK;
 
-		if (ioctl(fd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		if (ioctl(fd, HCIGETCONNINFO, (unsigned long) cr) < 0)
 			return FALSE;
-		} else {
+		else
 			handle = htobs(cr->conn_info->handle);
-		}
 		g_free(cr);
 	}
 
@@ -314,7 +312,7 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 
 
 static gboolean read_btclock_retry(struct mcap_mcl *mcl, uint32_t *btclock,
-							uint16_t* btaccuracy)
+							uint16_t *btaccuracy)
 {
 	int retries = 5;
 
@@ -330,7 +328,7 @@ static gboolean read_btclock_retry(struct mcap_mcl *mcl, uint32_t *btclock,
 static gboolean get_btrole(struct mcap_mcl *mcl)
 {
 	int fd = mcl_hci_fd(mcl);
-	struct hci_dev_info di = {dev_id: mcl->csp->dev_id};
+	struct hci_dev_info di = { dev_id: mcl->csp->dev_id };
 
 	if (ioctl(fd, HCIGETDEVINFO, (void *) &di)) {
 		mcl_hci_fd_close(mcl);
@@ -430,11 +428,12 @@ static void initialize_caps(struct mcap_mcl *mcl)
 
 	/* Calculate corrected average, without 'freak' latencies */
 	latency = 0;
-	for (i = 0; i < 20; ++i)
+	for (i = 0; i < 20; ++i) {
 		if (latencies[i] > (avg + dev * 6))
 			latency += avg;
 		else
 			latency += latencies[i];
+	}
 	latency /= 20;
 
 	_caps.latency = latency;
@@ -491,7 +490,7 @@ static void proc_sync_cap_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		return;
 	}
 
-	req = (mcap_md_sync_cap_req*) cmd;
+	req = (mcap_md_sync_cap_req *) cmd;
 	required_accuracy = ntohs(req->timest);
 	our_accuracy = caps(mcl)->ts_acc;
 
@@ -564,7 +563,7 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		return;
 	}
 
-	req = (mcap_md_sync_set_req*) cmd;
+	req = (mcap_md_sync_set_req *) cmd;
 	sched_btclock = ntohl(req->btclock);
 	update = req->timestui;
 	timestamp = ntoh64(req->timestst);
@@ -654,8 +653,8 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	set_data->role = get_btrole(mcl);
 
 	/* TODO is there some way to schedule a call based directly on
-	   a BT clock value, instead of this estimation that uses
-	   the SO clock? */
+	 * a BT clock value, instead of this estimation that uses
+	 * the SO clock? */
 
 	if (phase2_delay > 0) {
 		when = phase2_delay + caps(mcl)->syncleadtime_ms;
@@ -691,8 +690,8 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 		clock_gettime(CLK, base_time);
 
 		/* Tries to detect preemption between clock_gettime
-		   and read_btclock by measuring transaction time
-		*/
+		 * and read_btclock by measuring transaction time
+		 */
 		latency = time_us(base_time) - time_us(&t0);
 	}
 
@@ -710,7 +709,6 @@ static gboolean proc_sync_set_req_phase2(gpointer user_data)
 	uint64_t new_tmstamp;
 	int ind_freq;
 	int role;
-
 	uint32_t btclock;
 	uint64_t tmstamp;
 	struct timespec base_time;
@@ -824,7 +822,6 @@ static void proc_sync_cap_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	uint16_t synclead;
 	uint16_t tmstampres;
 	uint16_t tmstampacc;
-
 	struct mcap_sync_cap_cbdata *cbdata;
 	mcap_sync_cap_cb cb;
 	gpointer user_data;
@@ -852,7 +849,7 @@ static void proc_sync_cap_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		return;
 	}
 
-	rsp = (mcap_md_sync_cap_rsp*) cmd;
+	rsp = (mcap_md_sync_cap_rsp *) cmd;
 	mcap_err = rsp->rc;
 	btclockres = rsp->btclock;
 	synclead = ntohs(rsp->sltime);
@@ -873,7 +870,6 @@ static void proc_sync_set_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	uint32_t btclock;
 	uint64_t timestamp;
 	uint16_t accuracy;
-
 	struct mcap_sync_set_cbdata *cbdata;
 	mcap_sync_set_cb cb;
 	gpointer user_data;
@@ -901,7 +897,7 @@ static void proc_sync_set_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		return;
 	}
 
-	rsp = (mcap_md_sync_set_rsp*) cmd;
+	rsp = (mcap_md_sync_set_rsp *) cmd;
 	mcap_err = rsp->rc;
 	btclock = ntohl(rsp->btclock);
 	timestamp = ntoh64(rsp->timestst);
@@ -927,7 +923,7 @@ static void proc_sync_info_ind(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	if (len != sizeof(mcap_md_sync_info_ind))
 		return;
 
-	req = (mcap_md_sync_info_ind*) cmd;
+	req = (mcap_md_sync_info_ind *) cmd;
 
 	btclock = ntohl(req->btclock);
 
