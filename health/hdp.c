@@ -130,7 +130,8 @@ static void free_health_device(struct hdp_device *device)
 
 static void free_application(struct hdp_application *app)
 {
-	/* TODO: Remove watcher when done */
+	if (app->dbus_watcher)
+		g_dbus_remove_watch(connection, app->dbus_watcher);
 
 	g_free(app->oname);
 	g_free(app->description);
@@ -144,6 +145,17 @@ static void remove_application(struct hdp_application *app)
 	free_application(app);
 
 	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
+}
+
+static void client_disconnected(DBusConnection *conn, void *user_data)
+{
+	struct hdp_application *app = user_data;
+
+	DBG("Client disconnected from the bus, deleting hdp application");
+	applications = g_slist_remove(applications, app);
+
+	app->dbus_watcher = 0; /* Watcher shouldn't be freed in this case */
+	remove_application(app);
 }
 
 static DBusMessage *manager_create_application(DBusConnection *conn,
@@ -184,7 +196,8 @@ static DBusMessage *manager_create_application(DBusConnection *conn,
 
 	applications = g_slist_prepend(applications, app);
 
-	/* TODO: Add a watcher for client disconnections */
+	app->dbus_watcher = g_dbus_add_disconnect_watch(conn, name,
+						client_disconnected, app, NULL);
 	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
 
 	DBG("Health application created with id %s", app->path);
