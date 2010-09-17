@@ -420,10 +420,11 @@ static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 	return enc_mtu_resp(channel->mtu, pdu, len);
 }
 
-static void channel_destroy(void *user_data)
+static void channel_disconnect(void *user_data)
 {
 	struct gatt_channel *channel = user_data;
 
+	g_attrib_unref(channel->attrib);
 	clients = g_slist_remove(clients, channel);
 
 	g_free(channel);
@@ -537,7 +538,8 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
 				channel_handler, channel, NULL);
-	g_attrib_set_disconnect_function(channel->attrib, channel_destroy,
+
+	g_attrib_set_disconnect_function(channel->attrib, channel_disconnect,
 								channel);
 
 	clients = g_slist_append(clients, channel);
@@ -654,12 +656,13 @@ void attrib_server_exit(void)
 		struct gatt_channel *channel = l->data;
 
 		g_source_remove(channel->id);
+		g_attrib_unref(channel->attrib);
 	}
+
+	g_slist_free(clients);
 
 	if (handle)
 		remove_record_from_server(handle);
-
-	g_slist_free(clients);
 }
 
 int attrib_db_add(uint16_t handle, uuid_t *uuid, const uint8_t *value, int len)

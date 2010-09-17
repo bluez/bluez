@@ -316,12 +316,19 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data);
 
+static void attrib_destroy(gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+
+	gatt->attrib = NULL;
+}
+
 static void attrib_disconnect(gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
 
+	/* Remote initiated disconnection only */
 	g_attrib_unref(gatt->attrib);
-	gatt->attrib = NULL;
 }
 
 static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
@@ -452,9 +459,8 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 	g_io_channel_unref(io);
 	gatt->listen = TRUE;
 
-	if (prim->watchers == NULL)
-		g_attrib_set_disconnect_function(gatt->attrib,
-						attrib_disconnect, gatt);
+	g_attrib_set_destroy_function(gatt->attrib, attrib_destroy, gatt);
+	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect, gatt);
 
 done:
 	watcher = g_new0(struct watcher, 1);
@@ -1260,6 +1266,7 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	gatt->attrib = g_attrib_new(io);
 	g_io_channel_unref(io);
 
+	g_attrib_set_destroy_function(gatt->attrib, attrib_destroy, gatt);
 	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect,
 									gatt);
 

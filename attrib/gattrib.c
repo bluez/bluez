@@ -175,6 +175,7 @@ void g_attrib_unref(GAttrib *attrib)
 
 	while ((c = g_queue_pop_head(attrib->queue)))
 		command_destroy(c);
+
 	attrib->queue = NULL;
 
 	for (l = attrib->events; l; l = l->next)
@@ -186,10 +187,11 @@ void g_attrib_unref(GAttrib *attrib)
 	if (attrib->write_watch > 0)
 		g_source_remove(attrib->write_watch);
 
-	if (attrib->read_watch > 0)
+	if (attrib->read_watch > 0) {
 		g_source_remove(attrib->read_watch);
+		g_io_channel_unref(attrib->io);
+	}
 
-	g_io_channel_unref(attrib->io);
 
 	if (attrib->destroy)
 		attrib->destroy(attrib->destroy_user_data);
@@ -219,16 +221,6 @@ gboolean g_attrib_set_destroy_function(GAttrib *attrib,
 	attrib->destroy_user_data = user_data;
 
 	return TRUE;
-}
-
-static void destroy_receiver(gpointer data)
-{
-	struct _GAttrib *attrib = data;
-
-	attrib->read_watch = 0;
-
-	if (attrib->disconnect)
-		attrib->disconnect(attrib->disc_user_data);
 }
 
 static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
@@ -294,8 +286,12 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	gsize len;
 	GIOStatus iostat;
 
-	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		attrib->read_watch = 0;
+		if (attrib->disconnect)
+			attrib->disconnect(attrib->disc_user_data);
 		return FALSE;
+	}
 
 	memset(buf, 0, sizeof(buf));
 
@@ -363,10 +359,9 @@ GAttrib *g_attrib_new(GIOChannel *io)
 	attrib->mtu = 512;
 	attrib->queue = g_queue_new();
 
-	attrib->read_watch = g_io_add_watch_full(attrib->io,
-			G_PRIORITY_DEFAULT,
+	attrib->read_watch = g_io_add_watch(attrib->io,
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-			received_data, attrib, destroy_receiver);
+			received_data, attrib);
 
 	return g_attrib_ref(attrib);
 }
