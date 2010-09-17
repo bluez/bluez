@@ -42,7 +42,8 @@ Device Service hierarchy
 
 Service		org.bluez
 Interface	org.bluez.Characteristic
-Object path	[prefix]/{hci0}/{service0, service1, ...}
+Object path	[prefix]/{hci0}/{device0}/{service0, service1, ...}
+		[prefix]/{hci0}/{device1}/{service0, service1, ...}
 
 Methods		array[(object, dict)] GetCharacteristics()
 
