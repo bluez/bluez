@@ -44,7 +44,9 @@ struct _GAttrib {
 	GSList *events;
 	guint next_cmd_id;
 	guint next_evt_id;
+	GDestroyNotify destroy;
 	GAttribDisconnectFunc disconnect;
+	gpointer destroy_user_data;
 	gpointer disc_user_data;
 };
 
@@ -188,6 +190,10 @@ void g_attrib_unref(GAttrib *attrib)
 		g_source_remove(attrib->read_watch);
 
 	g_io_channel_unref(attrib->io);
+
+	if (attrib->destroy)
+		attrib->destroy(attrib->destroy_user_data);
+
 	g_free(attrib);
 }
 
@@ -199,6 +205,18 @@ gboolean g_attrib_set_disconnect_function(GAttrib *attrib,
 
 	attrib->disconnect = disconnect;
 	attrib->disc_user_data = user_data;
+
+	return TRUE;
+}
+
+gboolean g_attrib_set_destroy_function(GAttrib *attrib,
+		GDestroyNotify destroy, gpointer user_data)
+{
+	if (attrib == NULL)
+		return FALSE;
+
+	attrib->destroy = destroy;
+	attrib->destroy_user_data = user_data;
 
 	return TRUE;
 }
