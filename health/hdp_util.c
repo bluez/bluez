@@ -64,9 +64,8 @@ static gboolean parse_dict_entry(struct dict_entry_func dict_context[],
 	dbus_message_iter_next(&entry);
 	/* Find function and call it */
 	for (i = 0, df = dict_context[0]; df.key; i++, df = dict_context[i]) {
-		if (g_ascii_strcasecmp(df.key, key) == 0) {
+		if (g_ascii_strcasecmp(df.key, key) == 0)
 			return df.func(&entry, user_data, err);
-		}
 	}
 
 	g_set_error(err, HDP_ERROR, HDP_DIC_ENTRY_PARSE_ERROR,
@@ -289,12 +288,10 @@ static gboolean set_sdp_services_uuid(sdp_record_t *record, HdpRole role)
 	sdp_get_service_classes(record, &svc_list);
 
 	if (role == HDP_SOURCE) {
-		if (sdp_list_find(svc_list, &svc_uuid_source, sdp_uuid_cmp) ==
-									NULL)
+		if (!sdp_list_find(svc_list, &svc_uuid_source, sdp_uuid_cmp))
 			svc_list = sdp_list_append(svc_list, &svc_uuid_source);
 	} else if (role == HDP_SINK) {
-		if (sdp_list_find(svc_list, &svc_uuid_sink, sdp_uuid_cmp) ==
-									NULL)
+		if (!sdp_list_find(svc_list, &svc_uuid_sink, sdp_uuid_cmp))
 			svc_list = sdp_list_append(svc_list, &svc_uuid_sink);
 	}
 
@@ -649,6 +646,7 @@ gboolean hdp_update_sdp_record(struct hdp_adapter *adapter, GSList *app_list)
 	sdp_record = sdp_record_alloc();
 	if (!sdp_record)
 		return FALSE;
+
 	if (adapter->sdp_handler)
 		sdp_record->handle = adapter->sdp_handler;
 	else

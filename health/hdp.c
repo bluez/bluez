@@ -65,6 +65,7 @@ static int cmp_adapter(gconstpointer a, gconstpointer b)
 
 	if (hdp_adapter->btd_adapter == adapter)
 		return 0;
+
 	return -1;
 }
 
@@ -75,6 +76,7 @@ static int cmp_device(gconstpointer a, gconstpointer b)
 
 	if (hdp_device->dev == device)
 		return 0;
+
 	return -1;
 }
 
@@ -201,6 +203,7 @@ static DBusMessage *manager_create_application(DBusConnection *conn,
 	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
 
 	DBG("Health application created with id %s", app->path);
+
 	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &app->path,
 							DBUS_TYPE_INVALID);
 }

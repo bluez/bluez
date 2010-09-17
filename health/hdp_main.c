@@ -34,7 +34,7 @@
 #include "plugin.h"
 #include "hdp_manager.h"
 
-static DBusConnection *connection;
+static DBusConnection *connection = NULL;
 
 static int hdp_init(void)
 {
@@ -46,6 +46,7 @@ static int hdp_init(void)
 		dbus_connection_unref(connection);
 		return -EIO;
 	}
+
 	return 0;
 }
 
@@ -54,6 +55,7 @@ static void hdp_exit(void)
 	hdp_manager_exit();
 
 	dbus_connection_unref(connection);
+	connection = NULL;
 }
 
 BLUETOOTH_PLUGIN_DEFINE(health, VERSION,
