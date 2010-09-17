@@ -139,6 +139,10 @@ Properties	string Address [readonly]
 			List of 128-bit UUIDs that represents the available
 			remote services.
 
+		array{object} Services [readonly]
+
+			List of characteristics based services.
+
 		boolean Paired [readonly]
 
 			Indicates if the remote device is paired.
