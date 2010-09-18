@@ -176,7 +176,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	network_enable=yes
 	service_enable=yes
 	health_enable=no
-	mcap_enable=no
 	pnat_enable=no
 	attrib_enable=no
 	tracer_enable=no
@@ -229,10 +228,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(health, AC_HELP_STRING([--enable-health], [enable health plugin]), [
 		health_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(mcap, AC_HELP_STRING([--enable-mcap], [enable mcap support]), [
-		mcap_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(pnat, AC_HELP_STRING([--enable-pnat], [enable pnat plugin]), [
@@ -358,7 +353,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(NETWORKPLUGIN, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(SERVICEPLUGIN, test "${service_enable}" = "yes")
 	AM_CONDITIONAL(HEALTHPLUGIN, test "${health_enable}" = "yes")
-	AM_CONDITIONAL(MCAP, test "${mcap_enable}" = "yes" || test "${health_enable}" = "yes")
+	AM_CONDITIONAL(MCAP, test "${health_enable}" = "yes")
 	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes")
 	AM_CONDITIONAL(ATTRIBPLUGIN, test "${attrib_enable}" = "yes")
 	AM_CONDITIONAL(ECHOPLUGIN, test "no" = "yes")
