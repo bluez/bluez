@@ -172,7 +172,7 @@ static void media_owner_remove(struct media_owner *owner)
 	if (transport->owners == NULL)
 		transport->suspend(transport);
 
-	DBG("Renderer removed: sender=%s accesstype=%s", owner->name,
+	DBG("Owner removed: sender=%s accesstype=%s", owner->name,
 							owner->accesstype);
 
 	g_free(owner->name);
@@ -410,7 +410,7 @@ static struct media_owner *media_owner_create(
 							owner, NULL);
 	transport->owners = g_slist_append(transport->owners, owner);
 
-	DBG("Renderer created: sender=%s accesstype=%s", owner->name,
+	DBG("Owner created: sender=%s accesstype=%s", owner->name,
 			accesstype);
 
 	return owner;
