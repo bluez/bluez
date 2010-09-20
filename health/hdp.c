@@ -91,6 +91,15 @@ static gint cmp_dev_addr(gconstpointer a, gconstpointer dst)
 	return bacmp(&addr, dst);
 }
 
+static gint cmp_dev_mcl(gconstpointer a, gconstpointer mcl)
+{
+	const struct hdp_device *device = a;
+
+	if (mcl == device->mcl)
+		return 0;
+	return -1;
+}
+
 static uint8_t get_app_id()
 {
 	GSList *l;
@@ -296,8 +305,16 @@ static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 {
-	/* struct hdp_adapter *hdp_adapter = data; */
-	/* TODO: Implement mcl_disconnected */
+	struct hdp_device *hdp_device;
+	GSList *l;
+
+	l = g_slist_find_custom(devices, mcl, cmp_dev_mcl);
+	if (!l)
+		return;
+
+	hdp_device = l->data;
+	hdp_device->mcl_conn = FALSE;
+	DBG("Mcl disconnected %s", device_get_path(hdp_device->dev));
 }
 
 static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
