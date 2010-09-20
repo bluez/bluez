@@ -49,6 +49,8 @@ static uint8_t next_app_id = HDP_MDEP_INITIAL;
 static GSList *adapters;
 
 static gboolean update_adapter(struct hdp_adapter *adapter);
+static struct hdp_device *create_health_device(DBusConnection *conn,
+						struct btd_device *device);
 
 static int cmp_app_id(gconstpointer a, gconstpointer b)
 {
@@ -78,6 +80,15 @@ static int cmp_device(gconstpointer a, gconstpointer b)
 		return 0;
 
 	return -1;
+}
+
+static gint cmp_dev_addr(gconstpointer a, gconstpointer dst)
+{
+	const struct hdp_device *device = a;
+	bdaddr_t addr;
+
+	device_get_address(device->dev, &addr);
+	return bacmp(&addr, dst);
 }
 
 static uint8_t get_app_id()
@@ -250,8 +261,31 @@ static GDBusMethodTable health_manager_methods[] = {
 
 static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 {
-	/* struct hdp_adapter *hdp_adapter = data; */
-	/* TODO: Implement mcl_connected */
+	struct hdp_adapter *hdp_adapter = data;
+	struct hdp_device *hdp_device;
+	struct btd_device *device;
+	bdaddr_t addr;
+	char str[18];
+	GSList *l;
+
+	mcap_mcl_get_addr(mcl, &addr);
+	l = g_slist_find_custom(devices, &addr, cmp_dev_addr);
+	if (!l) {
+		ba2str(&addr, str);
+		device = adapter_get_device(connection,
+					hdp_adapter->btd_adapter, str);
+		if (!device)
+			return;
+		hdp_device = create_health_device(connection, device);
+		if (!hdp_device)
+			return;
+		devices = g_slist_append(devices, hdp_device);
+	} else
+		hdp_device = l->data;
+	hdp_device->mcl = mcap_mcl_ref(mcl);
+	hdp_device->mcl_conn = TRUE;
+
+	DBG("New mcl connected from  %s", device_get_path(hdp_device->dev));
 }
 
 static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
@@ -422,6 +456,8 @@ static struct hdp_device *create_health_device(DBusConnection *conn,
 	struct hdp_device *dev;
 	GSList *l;
 
+	if (!device)
+		return NULL;
 	dev = g_new0(struct hdp_device, 1);
 	dev->conn = dbus_connection_ref(conn);
 	dev->dev = btd_device_ref(device);
@@ -461,6 +497,8 @@ int hdp_device_register(DBusConnection *conn, struct btd_device *device)
 	hdev = create_health_device(conn, device);
 	if (!hdev)
 		return -1;
+
+	hdev->sdp_present = TRUE;
 
 	devices = g_slist_prepend(devices, hdev);
 	return 0;

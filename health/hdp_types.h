@@ -96,6 +96,9 @@ struct hdp_device {
 	DBusConnection		*conn;		/* For name listener handling */
 	struct btd_device	*dev;		/* Device reference */
 	struct hdp_adapter	*hdp_adapter;	/* hdp_adapater */
+	struct mcap_mcl		*mcl;		/* The mcap control channel */
+	gboolean		mcl_conn;	/* Mcl status */
+	gboolean		sdp_present;	/* Has an sdp record */
 };
 
 #endif /* __HDP_TYPES_H__ */
