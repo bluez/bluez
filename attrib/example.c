@@ -59,6 +59,8 @@
 #define FMT_KILOGRAM_UUID		0xA010
 #define FMT_HANGING_UUID		0xA011
 
+static guint timeout_id = 0;
+
 static gboolean change_battery_state(gpointer user_data)
 {
 	static uint8_t state =  0x05;
@@ -163,7 +165,7 @@ static int register_attributes(void)
 	atval[0] = 0x04;
 	attrib_db_add(0x0110, &uuid, atval, 1);
 
-	g_timeout_add_seconds(10, change_battery_state, NULL);
+	timeout_id = g_timeout_add_seconds(10, change_battery_state, NULL);
 
 	/* Thermometer: primary service definition */
 	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
@@ -425,4 +427,9 @@ static int register_attributes(void)
 int server_example_init(void)
 {
 	return register_attributes();
+}
+
+void server_example_exit(void)
+{
+	g_source_remove(timeout_id);
 }

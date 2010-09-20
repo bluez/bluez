@@ -109,6 +109,7 @@ void attrib_manager_exit(void)
 {
 	btd_unregister_device_driver(&client_driver);
 
+	server_example_exit();
 	attrib_client_exit();
 
 	dbus_connection_unref(connection);
