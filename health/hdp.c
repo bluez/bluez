@@ -357,6 +357,22 @@ static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 	DBG("Mcl uncached %s", path);
 }
 
+static void device_unref_mcl(struct hdp_device *hdp_device)
+{
+	const char *path;
+
+	if (hdp_device->mcl)
+		mcap_mcl_unref(hdp_device->mcl);
+	hdp_device->mcl = NULL;
+	hdp_device->mcl_conn = FALSE;
+
+	if (hdp_device->sdp_present)
+		return;
+
+	path = device_get_path(hdp_device->dev);
+	g_dbus_unregister_interface(hdp_device->conn, path, HEALTH_DEVICE);
+}
+
 static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 {
 	GError *err = NULL;
@@ -366,6 +382,8 @@ static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 		if (hdp_adapter->mi) {
 			mcap_release_instance(hdp_adapter->mi);
 			hdp_adapter->mi = NULL;
+			g_slist_foreach(devices, (GFunc) device_unref_mcl,
+									NULL);
 		}
 		goto update;
 	}
