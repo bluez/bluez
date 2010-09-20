@@ -560,8 +560,11 @@ int hdp_device_register(DBusConnection *conn, struct btd_device *device)
 	GSList *l;
 
 	l = g_slist_find_custom(devices, device, cmp_device);
-	if (l)
+	if (l) {
+		hdev = l->data;
+		hdev->sdp_present = TRUE;
 		return 0;
+	}
 
 	hdev = create_health_device(conn, device);
 	if (!hdev)
