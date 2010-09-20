@@ -92,18 +92,9 @@ struct primary {
 	GSList *watchers;
 };
 
-struct discovered_data {
-	struct gatt_service *gatt;
+struct query_data {
 	struct primary *prim;
-};
-
-struct descriptor_data {
-	struct gatt_service *gatt;
 	struct characteristic *chr;
-};
-
-struct desc_fmt_data {
-	struct descriptor_data desc_data;
 	uint16_t handle;
 };
 
@@ -677,12 +668,12 @@ static void store_attribute(struct gatt_service *gatt, uint16_t handle,
 static void update_char_desc(guint8 status, const guint8 *pdu,
 					guint16 len, gpointer user_data)
 {
-	struct desc_fmt_data *data = user_data;
-	struct gatt_service *gatt = data->desc_data.gatt;
-	struct characteristic *chr = data->desc_data.chr;
+	struct query_data *current = user_data;
+	struct gatt_service *gatt = current->prim->gatt;
+	struct characteristic *chr = current->chr;
 
 	if (status != 0)
-		return;
+		goto done;
 
 	g_free(chr->desc);
 
@@ -690,47 +681,57 @@ static void update_char_desc(guint8 status, const guint8 *pdu,
 	memcpy(chr->desc, pdu + 1, len - 1);
 	chr->desc[len - 1] = '\0';
 
-	store_attribute(gatt, data->handle, GATT_CHARAC_USER_DESC_UUID,
+	store_attribute(gatt, current->handle, GATT_CHARAC_USER_DESC_UUID,
 						(void *) chr->desc, len);
-	g_free(data);
+done:
+	g_attrib_unref(gatt->attrib);
+	g_free(current);
 }
 
 static void update_char_format(guint8 status, const guint8 *pdu,
 					guint16 len, gpointer user_data)
 {
-	struct desc_fmt_data *data = user_data;
-	struct gatt_service *gatt = data->desc_data.gatt;
-	struct characteristic *chr = data->desc_data.chr;
+	struct query_data *current = user_data;
+	struct gatt_service *gatt = current->prim->gatt;
+	struct characteristic *chr = current->chr;
 
 	if (status != 0)
-		return;
+		goto done;
 
 	if (len < 8)
-		return;
+		goto done;
 
 	g_free(chr->format);
 
 	chr->format = g_new0(struct format, 1);
 	memcpy(chr->format, pdu + 1, 7);
 
-	store_attribute(gatt, data->handle, GATT_CHARAC_FMT_UUID,
+	store_attribute(gatt, current->handle, GATT_CHARAC_FMT_UUID,
 				(void *) chr->format, sizeof(*chr->format));
-	g_free(data);
+
+done:
+	g_attrib_unref(gatt->attrib);
+	g_free(current);
 }
 
 static void update_char_value(guint8 status, const guint8 *pdu,
 					guint16 len, gpointer user_data)
 {
-	struct characteristic *chr = user_data;
+	struct query_data *current = user_data;
+	struct gatt_service *gatt = current->prim->gatt;
+	struct characteristic *chr = current->chr;
 
 	if (status != 0)
-		return;
+		goto done;
 
 	g_free(chr->value);
 
 	chr->vlen = len - 1;
 	chr->value = g_malloc(chr->vlen);
 	memcpy(chr->value, pdu + 1, chr->vlen);
+done:
+	g_attrib_unref(gatt->attrib);
+	g_free(current);
 }
 
 static int uuid_desc16_cmp(uuid_t *uuid, guint16 desc)
@@ -745,30 +746,26 @@ static int uuid_desc16_cmp(uuid_t *uuid, guint16 desc)
 static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
-	struct descriptor_data *current = user_data;
-	struct gatt_service *gatt = current->gatt;
+	struct query_data *current = user_data;
+	struct gatt_service *gatt = current->prim->gatt;
 	struct att_data_list *list;
 	guint8 format;
 	int i;
 
-	if (status != 0) {
-		g_free(current);
-		return;
-	}
+	if (status != 0)
+		goto done;
 
 	DBG("Find Information Response received");
 
 	list = dec_find_info_resp(pdu, plen, &format);
-	if (list == NULL) {
-		g_free(current);
-		return;
-	}
+	if (list == NULL)
+		goto done;
 
 	for (i = 0; i < list->num; i++) {
 		guint16 handle;
 		uuid_t uuid;
 		uint8_t *info = list->data[i];
-		struct desc_fmt_data *attr_data;
+		struct query_data *qfmt;
 
 		handle = att_get_u16((uint16_t *) info);
 
@@ -782,46 +779,58 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			 * 0x02 yet. */
 			continue;
 		}
+		qfmt = g_new0(struct query_data, 1);
+		qfmt->prim = current->prim;
+		qfmt->chr = current->chr;
+		qfmt->handle = handle;
 
-		attr_data = g_new0(struct desc_fmt_data, 1);
-		attr_data->desc_data = *current;
-		attr_data->handle = handle;
-
-		if (uuid_desc16_cmp(&uuid, GATT_CHARAC_USER_DESC_UUID) == 0)
+		if (uuid_desc16_cmp(&uuid, GATT_CHARAC_USER_DESC_UUID) == 0) {
+			gatt->attrib = g_attrib_ref(gatt->attrib);
+			gatt_read_char(gatt->attrib, handle, update_char_desc,
+									qfmt);
+		} else if (uuid_desc16_cmp(&uuid, GATT_CHARAC_FMT_UUID) == 0) {
+			gatt->attrib = g_attrib_ref(gatt->attrib);
 			gatt_read_char(gatt->attrib, handle,
-					update_char_desc, attr_data);
-		else if (uuid_desc16_cmp(&uuid, GATT_CHARAC_FMT_UUID) == 0)
-			gatt_read_char(gatt->attrib, handle,
-					update_char_format, attr_data);
-		else
-			g_free(attr_data);
+						update_char_format, qfmt);
+		} else
+			g_free(qfmt);
 	}
 
 	att_data_list_free(list);
+done:
+	g_attrib_unref(gatt->attrib);
 	g_free(current);
 }
 
 static void update_all_chars(gpointer data, gpointer user_data)
 {
-	struct descriptor_data *current;
+	struct query_data *qdesc, *qvalue;
 	struct characteristic *chr = data;
-	struct gatt_service *gatt = user_data;
+	struct primary *prim = user_data;
+	struct gatt_service *gatt = prim->gatt;
 
-	current = g_new0(struct descriptor_data, 1);
-	current->gatt = gatt;
-	current->chr = chr;
+	qdesc = g_new0(struct query_data, 1);
+	qdesc->prim = prim;
+	qdesc->chr = chr;
 
+	gatt->attrib = g_attrib_ref(gatt->attrib);
 	gatt_find_info(gatt->attrib, chr->handle + 1, chr->end, descriptor_cb,
-								current);
-	gatt_read_char(gatt->attrib, chr->handle, update_char_value, chr);
+								qdesc);
+
+	qvalue = g_new0(struct query_data, 1);
+	qvalue->prim = prim;
+	qvalue->chr = chr;
+
+	gatt->attrib = g_attrib_ref(gatt->attrib);
+	gatt_read_char(gatt->attrib, chr->handle, update_char_value, qvalue);
 }
 
 static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
-	struct discovered_data *current = user_data;
-	struct gatt_service *gatt = current->gatt;
+	struct query_data *current = user_data;
 	struct primary *prim = current->prim;
+	struct gatt_service *gatt = prim->gatt;
 	struct att_data_list *list;
 	uint16_t last, *previous_end = NULL;
 	int i;
@@ -839,10 +848,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	DBG("Read by Type Response received");
 
 	list = dec_read_by_type_resp(pdu, plen);
-	if (list == NULL) {
-		g_free(current);
-		return;
-	}
+	if (list == NULL)
+		goto fail;
 
 	for (i = 0, last = 0; i < list->num; i++) {
 		uint8_t *decl = list->data[i];
@@ -887,13 +894,11 @@ done:
 	store_characteristics(gatt, prim);
 	register_characteristics(prim);
 
-	g_slist_foreach(prim->chars, update_all_chars, gatt);
-	g_free(current);
-	return;
+	g_slist_foreach(prim->chars, update_all_chars, prim);
 
 fail:
-	g_free(current);
 	g_attrib_unref(gatt->attrib);
+	g_free(current);
 }
 
 static void *attr_data_from_string(const char *str)
@@ -1108,16 +1113,16 @@ static gboolean load_primary_services(struct gatt_service *gatt)
 
 static void discover_all_char(gpointer data, gpointer user_data)
 {
-	struct discovered_data *current;
+	struct query_data *qchr;
 	struct gatt_service *gatt = user_data;
 	struct primary *prim = data;
 
-	current = g_new0(struct discovered_data, 1);
-	current->gatt = gatt;
-	current->prim = prim;
+	qchr = g_new0(struct query_data, 1);
+	qchr->prim = prim;
 
+	gatt->attrib = g_attrib_ref(gatt->attrib);
 	gatt_discover_char(gatt->attrib, prim->start, prim->end,
-						char_discovered_cb, current);
+						char_discovered_cb, qchr);
 }
 
 static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -1130,26 +1135,25 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
 		if (gatt->primary == NULL)
-			return;
+			goto done;
 
 		store_primary_services(gatt);
 		register_primary(gatt);
 
 		g_slist_foreach(gatt->primary, discover_all_char, gatt);
-
-		return;
+		goto done;
 	}
 
 	if (status != 0) {
 		error("Discover all primary services failed: %s",
 						att_ecode2str(status));
-		goto fail;
+		goto done;
 	}
 
 	list = dec_read_by_grp_resp(pdu, plen);
 	if (list == NULL) {
 		error("Protocol error");
-		goto fail;
+		goto done;
 	}
 
 	DBG("Read by Group Type Response received");
@@ -1179,7 +1183,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			DBG("ATT: Invalid Length field");
 			g_free(prim);
 			att_data_list_free(list);
-			goto fail;
+			goto done;
 		}
 
 		prim->path = g_strdup_printf("%s/service%04x", gatt->path,
@@ -1192,7 +1196,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	if (end == 0) {
 		DBG("ATT: Invalid PDU format");
-		goto fail;
+		goto done;
 	}
 
 	/*
@@ -1200,14 +1204,10 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	 * Read by Group Type Request until Error Response is received and
 	 * the Error Code is set to Attribute Not Found.
 	 */
+	gatt->attrib = g_attrib_ref(gatt->attrib);
 	gatt->atid = gatt_discover_primary(gatt->attrib,
 				end + 1, 0xffff, primary_cb, gatt);
-	if (gatt->atid == 0)
-		goto fail;
-
-	return;
-
-fail:
+done:
 	g_attrib_unref(gatt->attrib);
 }
 
