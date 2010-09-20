@@ -48,6 +48,11 @@
 #include "glib-helper.h"
 #include "storage.h"
 
+struct match {
+	GSList *keys;
+	char *pattern;
+};
+
 static inline int create_filename(char *buf, size_t size,
 				const bdaddr_t *bdaddr, const char *name)
 {
@@ -1250,6 +1255,69 @@ int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 	ba2str(dba, addr);
 
 	return textfile_put(filename, addr, services);
+}
+
+static void filter_keys(char *key, char *value, void *data)
+{
+	struct match *match = data;
+	const char *address = match->pattern;
+
+	/* Each key contains: MAC#handle*/
+	if (g_strncasecmp(key, address, 17) == 0)
+		match->keys = g_slist_append(match->keys, g_strdup(key));
+}
+
+int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba)
+{
+	GSList *l;
+	struct match match;
+	char filename[PATH_MAX + 1], address[18];
+	int err;
+
+	create_filename(filename, PATH_MAX, sba, "primary");
+
+	memset(address, 0, sizeof(address));
+	ba2str(dba, address);
+
+	err = textfile_del(filename, address);
+	if (err < 0)
+		return err;
+
+	/* Deleting all characteristics of a given address */
+	memset(&match, 0, sizeof(match));
+	match.pattern = address;
+
+	create_filename(filename, PATH_MAX, sba, "characteristic");
+	err = textfile_foreach(filename, filter_keys, &match);
+	if (err < 0)
+		return err;
+
+	for (l = match.keys; l; l = l->next) {
+		const char *key = l->data;
+		textfile_del(filename, key);
+	}
+
+	g_slist_foreach(match.keys, (GFunc) g_free, NULL);
+	g_slist_free(match.keys);
+
+	/* Deleting all attributes values of a given address */
+	memset(&match, 0, sizeof(match));
+	match.pattern = address;
+
+	create_filename(filename, PATH_MAX, sba, "attributes");
+	err = textfile_foreach(filename, filter_keys, &match);
+	if (err < 0)
+		return err;
+
+	for (l = match.keys; l; l = l->next) {
+		const char *key = l->data;
+		textfile_del(filename, key);
+	}
+
+	g_slist_foreach(match.keys, (GFunc) g_free, NULL);
+	g_slist_free(match.keys);
+
+	return 0;
 }
 
 char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba)
