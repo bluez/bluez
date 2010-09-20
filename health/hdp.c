@@ -147,6 +147,11 @@ static void free_health_device(struct hdp_device *device)
 		device->dev = NULL;
 	}
 
+	if (device->mcl) {
+		mcap_mcl_unref(device->mcl);
+		device->mcl = NULL;
+	}
+
 	g_free(device);
 }
 
@@ -328,8 +333,28 @@ static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 
 static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 {
-	/* struct hdp_adapter *hdp_adapter = data; */
-	/* TODO: Implement mcl_uncached */
+	struct hdp_device *hdp_device;
+	const char *path;
+	GSList *l;
+
+	l = g_slist_find_custom(devices, mcl, cmp_dev_mcl);
+	if (!l)
+		return;
+
+	hdp_device = l->data;
+	mcap_mcl_unref(mcl);
+	hdp_device->mcl = NULL;
+
+	if (hdp_device->sdp_present)
+		return;
+
+	/* Because remote device hasn't announced an HDP record */
+	/* the Bluetooth daemon won't notify when the device shall */
+	/* be removed. Then we have to remove the HealthDevice */
+	/* interface manually */
+	path = device_get_path(hdp_device->dev);
+	g_dbus_unregister_interface(hdp_device->conn, path, HEALTH_DEVICE);
+	DBG("Mcl uncached %s", path);
 }
 
 static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
