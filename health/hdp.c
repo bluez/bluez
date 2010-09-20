@@ -299,8 +299,17 @@ static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 
 static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 {
-	/* struct hdp_adapter *hdp_adapter = data; */
-	/* TODO: Implement mcl_reconnected */
+	struct hdp_device *hdp_device;
+	GSList *l;
+
+	l = g_slist_find_custom(devices, mcl, cmp_dev_mcl);
+	if (!l)
+		return;
+
+	hdp_device = l->data;
+	hdp_device->mcl_conn = TRUE;
+
+	DBG("MCL reconnected %s", device_get_path(hdp_device->dev));
 }
 
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
