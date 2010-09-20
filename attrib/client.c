@@ -105,7 +105,7 @@ struct watcher {
 	struct primary *prim;
 };
 
-static GSList *services = NULL;
+static GSList *gatt_services = NULL;
 
 static DBusConnection *connection;
 
@@ -380,8 +380,6 @@ static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 		goto fail;
 
 	gatt->atid = atid;
-
-	services = g_slist_append(services, gatt);
 
 	return;
 fail:
@@ -1285,6 +1283,8 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	bacpy(&gatt->dba, dba);
 	gatt->psm = psm;
 
+	gatt_services = g_slist_append(gatt_services, gatt);
+
 	/* FIXME: we should also listen for incoming connections */
 
 	if (load_primary_services(gatt)) {
@@ -1330,14 +1330,26 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 void attrib_client_unregister(const char *path)
 {
 	struct gatt_service *gatt;
-	GSList *l;
+	GSList *l, *lp, *lc;
 
-	l = g_slist_find_custom(services, path, gatt_path_cmp);
+	l = g_slist_find_custom(gatt_services, path, gatt_path_cmp);
 	if (!l)
 		return;
 
 	gatt = l->data;
-	services = g_slist_remove(services, gatt);
+	gatt_services = g_slist_remove(gatt_services, gatt);
+
+	for (lp = gatt->primary; lp; lp = lp->next) {
+		struct primary *prim = lp->data;
+		for (lc = prim->chars; lc; lc = lc->next) {
+			struct characteristic *chr = lc->data;
+			g_dbus_unregister_interface(connection, chr->path,
+								CHAR_INTERFACE);
+		}
+		g_dbus_unregister_interface(connection, prim->path,
+								CHAR_INTERFACE);
+	}
+
 	gatt_service_free(gatt);
 }
 
