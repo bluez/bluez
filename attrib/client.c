@@ -214,10 +214,13 @@ static void watcher_exit(DBusConnection *conn, void *user_data)
 {
 	struct watcher *watcher = user_data;
 	struct primary *prim = watcher->prim;
+	struct gatt_service *gatt = prim->gatt;
 
 	DBG("%s watcher %s exited", prim->path, watcher->name);
 
 	prim->watchers = g_slist_remove(prim->watchers, watcher);
+
+	g_attrib_unref(gatt->attrib);
 }
 
 static int characteristic_set_value(struct characteristic *chr,
