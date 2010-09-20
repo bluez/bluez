@@ -590,9 +590,9 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		return;
 	}
 
-	if (sched_btclock == MCAP_BTCLOCK_IMMEDIATE) {
+	if (sched_btclock == MCAP_BTCLOCK_IMMEDIATE)
 		phase2_delay = 0;
-	} else {
+	else {
 		phase2_delay = btdiff(cur_btclock, sched_btclock);
 
 		if (phase2_delay < 0) {
@@ -631,9 +631,8 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		}
 
 		DBG("CSP: indication every %dms", ind_freq);
-	} else {
+	} else
 		ind_freq = 0;
-	}
 
 	if (mcl->csp->ind_timer) {
 		/* Old indications are no longer sent */
@@ -661,14 +660,12 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		mcl->csp->set_timer = g_timeout_add(when,
 						proc_sync_set_req_phase2,
 						mcl);
-	} else {
+	} else
 		proc_sync_set_req_phase2(mcl);
-	}
 
 	/* First indication is immediate */
-	if (update) {
+	if (update)
 		sync_send_indication(mcl);
-	}
 }
 
 static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
@@ -749,11 +746,10 @@ static gboolean proc_sync_set_req_phase2(gpointer user_data)
 			if (delay >= 0 || ((new_tmstamp - delay) > 0)) {
 				new_tmstamp += delay;
 				DBG("CSP: reset w/ delay %dus, compensated",
-					delay);
-			} else {
+									delay);
+			} else
 				DBG("CSP: reset w/ delay %dus, uncompensated",
-					delay);
-			}
+									delay);
 		}
 
 		reset_tmstamp(mcl->csp, &base_time, new_tmstamp);
@@ -860,7 +856,7 @@ static void proc_sync_cap_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 		mcl->csp->local_caps = TRUE;
 
 	cb(mcl, mcap_err, btclockres, synclead, tmstampres, tmstampacc, NULL,
-		user_data);
+								user_data);
 }
 
 static void proc_sync_set_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
