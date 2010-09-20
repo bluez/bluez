@@ -46,7 +46,7 @@ Service		unique name
 Interface	org.bluez.MediaEndpoint
 Object path	freely definable
 
-Methods		void SetConfiguration(object transport, array{byte} configuration)
+Methods		void SetConfiguration(object transport, dict properties)
 
 			Set configuration for the transport.
 

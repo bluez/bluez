@@ -602,23 +602,14 @@ static void get_properties_headset(struct media_transport *transport,
 	dict_append_entry(dict, "InbandRingtone", DBUS_TYPE_BOOLEAN, &inband);
 }
 
-static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+void transport_get_properties(struct media_transport *transport,
+							DBusMessageIter *iter)
 {
-	struct media_transport *transport = data;
-	DBusMessage *reply;
-	DBusMessageIter iter;
 	DBusMessageIter dict;
 	const char *uuid;
 	uint8_t codec;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
@@ -645,7 +636,23 @@ static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
 	if (transport->get_properties)
 		transport->get_properties(transport, &dict);
 
-	dbus_message_iter_close_container(&iter, &dict);
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	struct media_transport *transport = data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	transport_get_properties(transport, &iter);
 
 	return reply;
 }

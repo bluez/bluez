@@ -529,6 +529,7 @@ gboolean media_endpoint_set_configuration(struct media_endpoint *endpoint,
 	DBusMessage *msg, *reply;
 	DBusError err;
 	const char *path;
+	DBusMessageIter iter;
 
 	if (endpoint->transport != NULL || endpoint->request != NULL)
 		return FALSE;
@@ -548,11 +549,12 @@ gboolean media_endpoint_set_configuration(struct media_endpoint *endpoint,
 		return FALSE;
 	}
 
+	dbus_message_iter_init_append(msg, &iter);
+
 	path = media_transport_get_path(endpoint->transport);
-	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &path,
-					DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-					&configuration, size,
-					DBUS_TYPE_INVALID);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
+
+	transport_get_properties(endpoint->transport, &iter);
 
 	if (cb != NULL)
 		return media_endpoint_async_call(conn, msg, endpoint, cb, user_data);

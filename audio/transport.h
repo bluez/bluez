@@ -34,3 +34,5 @@ void media_transport_remove(struct media_transport *transport);
 const char *media_transport_get_path(struct media_transport *transport);
 void media_transport_update_delay(struct media_transport *transport,
 							uint16_t delay);
+void transport_get_properties(struct media_transport *transport,
+							DBusMessageIter *iter);
