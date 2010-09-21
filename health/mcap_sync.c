@@ -360,7 +360,7 @@ uint32_t mcap_get_btclock(struct mcap_mcl *mcl)
 	return btclock;
 }
 
-static void initialize_caps(struct mcap_mcl *mcl)
+static gboolean initialize_caps(struct mcap_mcl *mcl)
 {
 	struct timespec t1, t2;
 	int latencies[20];
@@ -368,6 +368,7 @@ static void initialize_caps(struct mcap_mcl *mcl)
 	uint32_t btclock;
 	uint16_t btaccuracy;
 	int i;
+	int retries;
 
 	clock_getres(CLK, &t1);
 
@@ -383,10 +384,12 @@ static void initialize_caps(struct mcap_mcl *mcl)
 
 	/* Do clock read a number of times and measure latency */
 	avg = 0;
-	for (i = 0; i < 20; ++i) {
+	retries = 10;
+	for (i = 0; i < 20 && retries > 0; ++i) {
 		clock_gettime(CLK, &t1);
 		if (!read_btclock(mcl, &btclock, &btaccuracy)) {
 			--i;
+			--retries;
 			continue;
 		}
 		clock_gettime(CLK, &t2);
@@ -395,9 +398,12 @@ static void initialize_caps(struct mcap_mcl *mcl)
 		latencies[i] = latency;
 		avg += latency;
 	}
-	avg /= 20;
 
-	/* Calculate deviation */
+	if (retries <= 0)
+		return FALSE;
+
+	/* Calculate average and deviation */
+	avg /= 20;
 	dev = 0;
 	for (i = 0; i < 20; ++i)
 		dev += abs(latencies[i] - avg);
@@ -418,12 +424,16 @@ static void initialize_caps(struct mcap_mcl *mcl)
 	_caps.syncleadtime_ms = latency * 50 / 1000;
 
 	csp_caps_initialized = TRUE;
+	return TRUE;
 }
 
 static struct csp_caps *caps(struct mcap_mcl *mcl)
 {
 	if (!csp_caps_initialized)
-		initialize_caps(mcl);
+		if (!initialize_caps(mcl)) {
+			/* Temporary failure in reading BT clock */
+			return NULL;
+		}
 
 	return &_caps;
 }
@@ -461,6 +471,12 @@ static void proc_sync_cap_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 
 	if (len != sizeof(mcap_md_sync_cap_req)) {
 		send_sync_cap_rsp(mcl, MCAP_INVALID_PARAM_VALUE,
+					0, 0, 0, 0);
+		return;
+	}
+
+	if (!caps(mcl)) {
+		send_sync_cap_rsp(mcl, MCAP_RESOURCE_UNAVAILABLE,
 					0, 0, 0, 0);
 		return;
 	}
@@ -514,10 +530,15 @@ static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
 				struct timespec *base_time,
 				uint64_t *timestamp)
 {
-	int latency = caps(mcl)->preempt_thresh + 1;
+	int latency;
 	int retry = 5;
 	uint16_t btres;
 	struct timespec t0;
+
+	if (!caps(mcl))
+		return FALSE;
+
+	latency = caps(mcl)->preempt_thresh + 1;
 
 	while (latency > caps(mcl)->preempt_thresh && --retry >= 0) {
 
@@ -552,6 +573,9 @@ static gboolean sync_send_indication(gpointer user_data)
 		return FALSE;
 
 	mcl = user_data;
+
+	if (!caps(mcl))
+		return FALSE;
 
 	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp))
 		return FALSE;
@@ -599,6 +623,11 @@ static gboolean proc_sync_set_req_phase2(gpointer user_data)
 	new_tmstamp = data->timestamp;
 	ind_freq = data->ind_freq;
 	role = data->role;
+
+	if (!caps(mcl)) {
+		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
+		return FALSE;
+	}
 
 	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp)) {
 		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
@@ -685,6 +714,11 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	if (!mcl->csp->remote_caps) {
 		/* Remote side did not ask our capabilities yet */
 		send_sync_set_rsp(mcl, MCAP_INVALID_PARAM_VALUE, 0, 0, 0);
+		return;
+	}
+
+	if (!caps(mcl)) {
+		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
 		return;
 	}
 
