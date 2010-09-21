@@ -176,6 +176,35 @@ static void append_char_dict(DBusMessageIter *iter, struct characteristic *chr)
 	dbus_message_iter_close_container(iter, &dict);
 }
 
+static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+	GAttrib *attrib;
+	guint atid;
+
+	if (gerr) {
+		error("%s", gerr->message);
+		goto fail;
+	}
+
+	attrib = g_attrib_new(chan);
+
+	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, gatt);
+	if (atid == 0) {
+		g_attrib_unref(attrib);
+		goto fail;
+	}
+
+	gatt->attrib = attrib;
+	gatt->atid = atid;
+
+	services = g_slist_append(services, gatt);
+
+	return;
+fail:
+	gatt_service_free(gatt);
+}
+
 static DBusMessage *get_characteristics(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -956,35 +985,6 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	return;
 
-fail:
-	gatt_service_free(gatt);
-}
-
-static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
-{
-	struct gatt_service *gatt = user_data;
-	GAttrib *attrib;
-	guint atid;
-
-	if (gerr) {
-		error("%s", gerr->message);
-		goto fail;
-	}
-
-	attrib = g_attrib_new(chan);
-
-	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, gatt);
-	if (atid == 0) {
-		g_attrib_unref(attrib);
-		goto fail;
-	}
-
-	gatt->attrib = attrib;
-	gatt->atid = atid;
-
-	services = g_slist_append(services, gatt);
-
-	return;
 fail:
 	gatt_service_free(gatt);
 }
