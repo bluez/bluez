@@ -111,15 +111,6 @@ static inline uint64_t ntoh64(uint64_t n)
 static gboolean csp_caps_initialized = FALSE;
 struct csp_caps _caps;
 
-static void proc_sync_cap_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
-static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
-static void proc_sync_cap_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
-static void proc_sync_set_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
-static void proc_sync_info_ind(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len);
-
-static gboolean sync_send_indication(gpointer user_data);
-static gboolean proc_sync_set_req_phase2(gpointer user_data);
-
 static int send_sync_cmd(struct mcap_mcl *mcl, const void *buf, uint32_t size)
 {
 	int sock;
@@ -159,39 +150,6 @@ static int send_unsupported_set_req(struct mcap_mcl *mcl)
 	g_free(cmd);
 
 	return sent;
-}
-
-void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
-{
-	if (!mcl->ms->csp_enabled || !mcl->csp) {
-		switch (cmd[0]) {
-		case MCAP_MD_SYNC_CAP_REQ:
-			send_unsupported_cap_req(mcl);
-			break;
-		case MCAP_MD_SYNC_SET_REQ:
-			send_unsupported_set_req(mcl);
-			break;
-		}
-		return;
-	}
-
-	switch (cmd[0]) {
-	case MCAP_MD_SYNC_CAP_REQ:
-		proc_sync_cap_req(mcl, cmd, len);
-		break;
-	case MCAP_MD_SYNC_CAP_RSP:
-		proc_sync_cap_rsp(mcl, cmd, len);
-		break;
-	case MCAP_MD_SYNC_SET_REQ:
-		proc_sync_set_req(mcl, cmd, len);
-		break;
-	case MCAP_MD_SYNC_SET_RSP:
-		proc_sync_set_rsp(mcl, cmd, len);
-		break;
-	case MCAP_MD_SYNC_INFO_IND:
-		proc_sync_info_ind(mcl, cmd, len);
-		break;
-	}
 }
 
 static void reset_tmstamp(struct mcap_csp *csp, struct timespec *base_time,
@@ -552,6 +510,147 @@ static int send_sync_set_rsp(struct mcap_mcl *mcl, uint8_t rspcode,
 	return sent;
 }
 
+static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
+				struct timespec *base_time,
+				uint64_t *timestamp)
+{
+	int latency = caps(mcl)->preempt_thresh + 1;
+	int retry = 5;
+	uint16_t btres;
+	struct timespec t0;
+
+	while (latency > caps(mcl)->preempt_thresh && --retry >= 0) {
+
+		clock_gettime(CLK, &t0);
+
+		if (!read_btclock(mcl, btclock, &btres))
+			continue;
+
+		clock_gettime(CLK, base_time);
+
+		/* Tries to detect preemption between clock_gettime
+		 * and read_btclock by measuring transaction time
+		 */
+		latency = time_us(base_time) - time_us(&t0);
+	}
+
+	*timestamp = mcap_get_timestamp(mcl, base_time);
+
+	return TRUE;
+}
+
+static gboolean sync_send_indication(gpointer user_data)
+{
+	struct mcap_mcl *mcl;
+	mcap_md_sync_info_ind *cmd;
+	uint32_t btclock;
+	uint64_t tmstamp;
+	struct timespec base_time;
+	int sent;
+
+	if (!user_data)
+		return FALSE;
+
+	mcl = user_data;
+
+	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp))
+		return FALSE;
+
+	cmd = g_new0(mcap_md_sync_info_ind, 1);
+
+	cmd->op = MCAP_MD_SYNC_INFO_IND;
+	cmd->btclock = htonl(btclock);
+	cmd->timestst = hton64(tmstamp);
+	cmd->timestsa = htons(caps(mcl)->latency);
+
+	sent = send_sync_cmd(mcl, cmd, sizeof(*cmd));
+	g_free(cmd);
+
+	return !sent;
+}
+
+static gboolean proc_sync_set_req_phase2(gpointer user_data)
+{
+	struct mcap_mcl *mcl;
+	struct sync_set_data *data;
+	uint8_t update;
+	uint32_t sched_btclock;
+	uint64_t new_tmstamp;
+	int ind_freq;
+	int role;
+	uint32_t btclock;
+	uint64_t tmstamp;
+	struct timespec base_time;
+	uint16_t tmstampacc;
+	gboolean reset;
+	int delay;
+
+	if (!user_data)
+		return FALSE;
+
+	mcl = user_data;
+
+	if (!mcl->csp->set_data)
+		return FALSE;
+
+	data = mcl->csp->set_data;
+	update = data->update;
+	sched_btclock = data->sched_btclock;
+	new_tmstamp = data->timestamp;
+	ind_freq = data->ind_freq;
+	role = data->role;
+
+	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp)) {
+		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
+		return FALSE;
+	}
+
+	if (get_btrole(mcl) != role) {
+		send_sync_set_rsp(mcl, MCAP_INVALID_OPERATION, 0, 0, 0);
+		return FALSE;
+	}
+
+	reset = (new_tmstamp != MCAP_TMSTAMP_DONTSET);
+
+	if (reset) {
+		if (sched_btclock != MCAP_BTCLOCK_IMMEDIATE) {
+			delay = bt2us(btdiff(sched_btclock, btclock));
+			if (delay >= 0 || ((new_tmstamp - delay) > 0)) {
+				new_tmstamp += delay;
+				DBG("CSP: reset w/ delay %dus, compensated",
+									delay);
+			} else
+				DBG("CSP: reset w/ delay %dus, uncompensated",
+									delay);
+		}
+
+		reset_tmstamp(mcl->csp, &base_time, new_tmstamp);
+		tmstamp = new_tmstamp;
+	}
+
+	tmstampacc = caps(mcl)->latency + caps(mcl)->ts_acc;
+
+	if (mcl->csp->ind_timer) {
+		g_source_remove(mcl->csp->ind_timer);
+		mcl->csp->ind_timer = 0;
+	}
+
+	if (update) {
+		int when = ind_freq + caps(mcl)->syncleadtime_ms;
+		mcl->csp->ind_timer = g_timeout_add(when,
+						sync_send_indication,
+						mcl);
+	}
+
+	send_sync_set_rsp(mcl, MCAP_SUCCESS, btclock, tmstamp, tmstampacc);
+
+	/* First indication after set is immediate */
+	if (update)
+		sync_send_indication(mcl);
+
+	return FALSE;
+}
+
 static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 {
 	mcap_md_sync_set_req *req;
@@ -670,147 +769,6 @@ static void proc_sync_set_req(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	/* First indication is immediate */
 	if (update)
 		sync_send_indication(mcl);
-}
-
-static gboolean get_all_clocks(struct mcap_mcl *mcl, uint32_t *btclock,
-				struct timespec *base_time,
-				uint64_t *timestamp)
-{
-	int latency = caps(mcl)->preempt_thresh + 1;
-	int retry = 5;
-	uint16_t btres;
-	struct timespec t0;
-
-	while (latency > caps(mcl)->preempt_thresh && --retry >= 0) {
-
-		clock_gettime(CLK, &t0);
-
-		if (!read_btclock(mcl, btclock, &btres))
-			continue;
-
-		clock_gettime(CLK, base_time);
-
-		/* Tries to detect preemption between clock_gettime
-		 * and read_btclock by measuring transaction time
-		 */
-		latency = time_us(base_time) - time_us(&t0);
-	}
-
-	*timestamp = mcap_get_timestamp(mcl, base_time);
-
-	return TRUE;
-}
-
-static gboolean proc_sync_set_req_phase2(gpointer user_data)
-{
-	struct mcap_mcl *mcl;
-	struct sync_set_data *data;
-	uint8_t update;
-	uint32_t sched_btclock;
-	uint64_t new_tmstamp;
-	int ind_freq;
-	int role;
-	uint32_t btclock;
-	uint64_t tmstamp;
-	struct timespec base_time;
-	uint16_t tmstampacc;
-	gboolean reset;
-	int delay;
-
-	if (!user_data)
-		return FALSE;
-
-	mcl = user_data;
-
-	if (!mcl->csp->set_data)
-		return FALSE;
-
-	data = mcl->csp->set_data;
-	update = data->update;
-	sched_btclock = data->sched_btclock;
-	new_tmstamp = data->timestamp;
-	ind_freq = data->ind_freq;
-	role = data->role;
-
-	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp)) {
-		send_sync_set_rsp(mcl, MCAP_UNSPECIFIED_ERROR, 0, 0, 0);
-		return FALSE;
-	}
-
-	if (get_btrole(mcl) != role) {
-		send_sync_set_rsp(mcl, MCAP_INVALID_OPERATION, 0, 0, 0);
-		return FALSE;
-	}
-
-	reset = (new_tmstamp != MCAP_TMSTAMP_DONTSET);
-
-	if (reset) {
-		if (sched_btclock != MCAP_BTCLOCK_IMMEDIATE) {
-			delay = bt2us(btdiff(sched_btclock, btclock));
-			if (delay >= 0 || ((new_tmstamp - delay) > 0)) {
-				new_tmstamp += delay;
-				DBG("CSP: reset w/ delay %dus, compensated",
-									delay);
-			} else
-				DBG("CSP: reset w/ delay %dus, uncompensated",
-									delay);
-		}
-
-		reset_tmstamp(mcl->csp, &base_time, new_tmstamp);
-		tmstamp = new_tmstamp;
-	}
-
-	tmstampacc = caps(mcl)->latency + caps(mcl)->ts_acc;
-
-	if (mcl->csp->ind_timer) {
-		g_source_remove(mcl->csp->ind_timer);
-		mcl->csp->ind_timer = 0;
-	}
-
-	if (update) {
-		int when = ind_freq + caps(mcl)->syncleadtime_ms;
-		mcl->csp->ind_timer = g_timeout_add(when,
-						sync_send_indication,
-						mcl);
-	}
-
-	send_sync_set_rsp(mcl, MCAP_SUCCESS, btclock, tmstamp, tmstampacc);
-
-	/* First indication after set is immediate */
-	if (update)
-		sync_send_indication(mcl);
-
-	return FALSE;
-}
-
-static gboolean sync_send_indication(gpointer user_data)
-{
-	struct mcap_mcl *mcl;
-	mcap_md_sync_info_ind *cmd;
-	uint32_t btclock;
-	uint64_t tmstamp;
-	struct timespec base_time;
-	int sent;
-
-	if (!user_data)
-		return FALSE;
-
-	mcl = user_data;
-
-	if (!get_all_clocks(mcl, &btclock, &base_time, &tmstamp))
-		return FALSE;
-
-	cmd = g_new0(mcap_md_sync_info_ind, 1);
-
-	cmd->op = MCAP_MD_SYNC_INFO_IND;
-	cmd->btclock = htonl(btclock);
-	cmd->timestst = hton64(tmstamp);
-	cmd->timestsa = htons(caps(mcl)->latency);
-
-	sent = send_sync_cmd(mcl, cmd, sizeof(*cmd));
-	g_free(cmd);
-
-	return !sent;
 }
 
 static void proc_sync_cap_rsp(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
@@ -935,6 +893,39 @@ static void proc_sync_info_ind(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 
 	if (mcl->ms->mcl_sync_infoind_cb)
 		mcl->ms->mcl_sync_infoind_cb(mcl, &data);
+}
+
+void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
+{
+	if (!mcl->ms->csp_enabled || !mcl->csp) {
+		switch (cmd[0]) {
+		case MCAP_MD_SYNC_CAP_REQ:
+			send_unsupported_cap_req(mcl);
+			break;
+		case MCAP_MD_SYNC_SET_REQ:
+			send_unsupported_set_req(mcl);
+			break;
+		}
+		return;
+	}
+
+	switch (cmd[0]) {
+	case MCAP_MD_SYNC_CAP_REQ:
+		proc_sync_cap_req(mcl, cmd, len);
+		break;
+	case MCAP_MD_SYNC_CAP_RSP:
+		proc_sync_cap_rsp(mcl, cmd, len);
+		break;
+	case MCAP_MD_SYNC_SET_REQ:
+		proc_sync_set_req(mcl, cmd, len);
+		break;
+	case MCAP_MD_SYNC_SET_RSP:
+		proc_sync_set_rsp(mcl, cmd, len);
+		break;
+	case MCAP_MD_SYNC_INFO_IND:
+		proc_sync_info_ind(mcl, cmd, len);
+		break;
+	}
 }
 
 void mcap_sync_cap_req(struct mcap_mcl *mcl, uint16_t reqacc,
