@@ -179,6 +179,31 @@ static int characteristic_path_cmp(gconstpointer a, gconstpointer b)
 	return g_strcmp0(chr->path, path);
 }
 
+static int watcher_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct watcher *watcher = a;
+	const struct watcher *match = b;
+	int ret;
+
+	ret = g_strcmp0(watcher->name, match->name);
+	if (ret != 0)
+		return ret;
+
+	return g_strcmp0(watcher->path, match->path);
+}
+
+static inline DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
+			"Invalid arguments in method call");
+}
+
+static inline DBusMessage *not_authorized(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAuthorized",
+			"Not authorized");
+}
+
 static void append_char_dict(DBusMessageIter *iter, struct characteristic *chr)
 {
 	DBusMessageIter dict;
@@ -421,7 +446,7 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID))
-		return NULL;
+		return invalid_args(msg);
 
 	if (!g_slist_find_custom(prim->chars, path, characteristic_path_cmp))
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
@@ -475,6 +500,29 @@ done:
 static DBusMessage *unregister_watcher(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	const char *sender = dbus_message_get_sender(msg);
+	struct primary *prim = data;
+	struct watcher *watcher, *match;
+	GSList *l;
+	char *path;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID))
+		return invalid_args(msg);
+
+	match = g_new0(struct watcher, 1);
+	match->name = g_strdup(sender);
+	match->path = g_strdup(path);
+	l = g_slist_find_custom(prim->watchers, match, watcher_cmp);
+	watcher_free(match);
+	if (!l)
+		return not_authorized(msg);
+
+	watcher = l->data;
+	g_dbus_remove_watch(conn, watcher->id);
+	prim->watchers = g_slist_remove(prim->watchers, watcher);
+	watcher_free(watcher);
+
 	return dbus_message_new_method_return(msg);
 }
 
