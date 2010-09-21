@@ -210,7 +210,8 @@ static void watcher_exit(DBusConnection *conn, void *user_data)
 	prim->watchers = g_slist_remove(prim->watchers, watcher);
 }
 
-static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
+static void events_handler(const uint8_t *pdu, uint16_t len,
+							gpointer user_data)
 {
 	switch (pdu[0]) {
 	case ATT_OP_HANDLE_NOTIFY:
@@ -350,7 +351,8 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 	gatt->listen = TRUE;
 
 	if (prim->watchers == NULL)
-		g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect, gatt);
+		g_attrib_set_disconnect_function(gatt->attrib,
+						attrib_disconnect, gatt);
 
 done:
 	watcher = g_new0(struct watcher, 1);
@@ -740,8 +742,8 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		chr = g_new0(struct characteristic, 1);
 		chr->perm = decl[2];
 		chr->handle = att_get_u16((uint16_t *) &decl[3]);
-		chr->path = g_strdup_printf("%s/characteristic%04x", prim->path,
-								chr->handle);
+		chr->path = g_strdup_printf("%s/characteristic%04x",
+						prim->path, chr->handle);
 		if (list->len == 7) {
 			sdp_uuid16_create(&chr->type,
 					att_get_u16((uint16_t *) &decl[5]));
@@ -911,7 +913,8 @@ static char *primary_list_to_string(GSList *primary_list)
 	return g_string_free(services, FALSE);
 }
 
-static GSList *string_to_primary_list(struct gatt_service *gatt, const char *str)
+static GSList *string_to_primary_list(struct gatt_service *gatt,
+							const char *str)
 {
 	GSList *l = NULL;
 	char **services;
@@ -1100,7 +1103,7 @@ fail:
 }
 
 int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
-									int psm)
+								int psm)
 {
 	struct gatt_service *gatt;
 	GError *gerr = NULL;
@@ -1152,7 +1155,8 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	gatt->attrib = g_attrib_new(io);
 	g_io_channel_unref(io);
 
-	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect, gatt);
+	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect,
+									gatt);
 
 	return 0;
 }

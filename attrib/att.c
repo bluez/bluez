@@ -142,7 +142,8 @@ uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
 	return len;
 }
 
-uint16_t enc_read_by_grp_resp(struct att_data_list *list, uint8_t *pdu, int len)
+uint16_t enc_read_by_grp_resp(struct att_data_list *list, uint8_t *pdu,
+								int len)
 {
 	int i;
 	uint16_t w;

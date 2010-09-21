@@ -220,17 +220,18 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	struct _GAttrib *attrib = data;
 	struct command *cmd = NULL;
 	GSList *l;
-	uint8_t buf[512];
+	uint8_t buf[512], status;
 	gsize len;
-	guint8 status;
+	GIOStatus iostat;
 
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		return FALSE;
 
 	memset(buf, 0, sizeof(buf));
 
-	if (g_io_channel_read_chars(io, (gchar *) buf, sizeof(buf), &len, NULL)
-							!= G_IO_STATUS_NORMAL) {
+	iostat = g_io_channel_read_chars(io, (gchar *) buf, sizeof(buf),
+								&len, NULL);
+	if (iostat != G_IO_STATUS_NORMAL) {
 		status = ATT_ECODE_IO;
 		goto done;
 	}
@@ -278,12 +279,14 @@ done:
 	return TRUE;
 }
 
-static gboolean can_write_data(GIOChannel *io, GIOCondition cond, gpointer data)
+static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
+								gpointer data)
 {
 	struct _GAttrib *attrib = data;
 	struct command *cmd;
 	GError *gerr = NULL;
 	gsize len;
+	GIOStatus iostat;
 
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
 		if (attrib->disconnect)
@@ -296,10 +299,10 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	if (cmd == NULL)
 		return FALSE;
 
-	if (g_io_channel_write_chars(io, (gchar *) cmd->pdu, cmd->len, &len,
-						&gerr) != G_IO_STATUS_NORMAL) {
+	iostat = g_io_channel_write_chars(io, (gchar *) cmd->pdu, cmd->len,
+								&len, &gerr);
+	if (iostat != G_IO_STATUS_NORMAL)
 		return FALSE;
-	}
 
 	g_io_channel_flush(io, NULL);
 
