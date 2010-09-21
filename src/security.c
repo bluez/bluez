@@ -1161,6 +1161,7 @@ void start_security_manager(int hdev)
 	hci_filter_set_event(EVT_CONN_REQUEST, &flt);
 	hci_filter_set_event(EVT_CONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_DISCONN_COMPLETE, &flt);
+	hci_filter_set_event(EVT_LE_META_EVENT, &flt);
 	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		error("Can't set filter on hci%d: %s (%d)",
 						hdev, strerror(errno), errno);

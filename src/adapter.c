@@ -1949,6 +1949,9 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 						 * Features Notification */
 		}
 
+		if (dev->features[4] & LMP_LE)
+			events[7] |= 0x20;
+
 		adapter_ops->set_event_mask(adapter->dev_id, events,
 							sizeof(events));
 	}
