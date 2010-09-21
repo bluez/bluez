@@ -45,6 +45,7 @@
 #define GATT_PSM 27
 /* Minimum MTU for L2CAP connections over BR/EDR */
 #define ATT_MIN_MTU_L2CAP 48
+#define GATT_CID 4
 
 static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
@@ -57,6 +58,7 @@ static gboolean opt_characteristics = FALSE;
 static gboolean opt_char_read = FALSE;
 static gboolean opt_listen = FALSE;
 static gboolean opt_char_desc = FALSE;
+static gboolean opt_le = FALSE;
 static GMainLoop *event_loop;
 
 struct characteristic_data {
@@ -65,7 +67,7 @@ struct characteristic_data {
 	uint16_t end;
 };
 
-static int l2cap_connect(void)
+static int l2cap_connect(gboolean le)
 {
 	struct sockaddr_l2 addr;
 	bdaddr_t sba, dba;
@@ -144,7 +146,10 @@ static int l2cap_connect(void)
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, &dba);
-	addr.l2_psm = htobs(GATT_PSM);
+	if (le)
+		addr.l2_cid = htobs(GATT_CID);
+	else
+		addr.l2_psm = htobs(GATT_PSM);
 
 	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
 	if (err < 0) {
@@ -158,12 +163,12 @@ static int l2cap_connect(void)
 	return sk;
 }
 
-static GIOChannel *do_connect(void)
+static GIOChannel *do_connect(gboolean le)
 {
 	GIOChannel *chan;
 	int sk;
 
-	sk = l2cap_connect();
+	sk = l2cap_connect(le);
 	if (sk < 0)
 		return NULL;
 
@@ -474,6 +479,8 @@ static GOptionEntry gatt_options[] = {
 		"Characteristics Descriptor Discovery", NULL },
 	{ "listen", 0, 0, G_OPTION_ARG_NONE, &opt_listen,
 		"Listen for notifications and indications", NULL },
+	{ "le", 0, 0, G_OPTION_ARG_NONE, &opt_le,
+		"Use Bluetooth Low Energy transport", NULL },
 	{ NULL },
 };
 
@@ -543,7 +550,7 @@ int main(int argc, char *argv[])
 		goto done;
 	}
 
-	chan = do_connect();
+	chan = do_connect(opt_le);
 	if (chan == NULL) {
 		ret = 1;
 		goto done;
