@@ -39,6 +39,7 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "att.h"
+#include "btio.h"
 #include "gattrib.h"
 #include "gatt.h"
 
@@ -67,26 +68,30 @@ struct characteristic_data {
 	uint16_t end;
 };
 
-static int l2cap_connect(gboolean le)
+static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
-	struct sockaddr_l2 addr;
-	bdaddr_t sba, dba;
-	int err, sk;
+	if (err)
+		g_printerr("%s", err->message);
+}
 
-	/* Remote device */
-	if (opt_dst == NULL) {
-		g_printerr("Remote Bluetooth address required\n");
-		return -EINVAL;
-	}
+static GIOChannel *do_connect(gboolean le)
+{
+	GIOChannel *chan;
+	bdaddr_t sba, dba;
 
 	/* This check is required because currently setsockopt() returns no
 	 * errors for MTU values smaller than the allowed minimum. */
 	if (opt_mtu != 0 && opt_mtu < ATT_MIN_MTU_L2CAP) {
 		g_printerr("MTU cannot be smaller than %d\n",
 							ATT_MIN_MTU_L2CAP);
-		return -EINVAL;
+		return NULL;
 	}
 
+	/* Remote device */
+	if (opt_dst == NULL) {
+		g_printerr("Remote Bluetooth address required\n");
+		return NULL;
+	}
 	str2ba(opt_dst, &dba);
 
 	/* Local adapter */
@@ -98,83 +103,22 @@ static int l2cap_connect(gboolean le)
 	} else
 		bacpy(&sba, BDADDR_ANY);
 
-	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
-	if (sk < 0) {
-		err = errno;
-		g_printerr("L2CAP socket create failed: %s(%d)\n",
-							strerror(err), err);
-		return -err;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, &sba);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = errno;
-		g_printerr("L2CAP socket bind failed: %s(%d)\n",
-							strerror(err), err);
-		close(sk);
-		return -err;
-	}
-
-	if (opt_mtu > 0) {
-		struct l2cap_options l2o;
-		socklen_t len;
-
-		memset(&l2o, 0, sizeof(l2o));
-		len = sizeof(l2o);
-		if (getsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o, &len) < 0) {
-			err = errno;
-			g_printerr("getsockopt(L2CAP_OPTIONS): %s(%d)\n",
-							strerror(err), err);
-			return -err;
-		}
-
-		l2o.imtu = opt_mtu;
-		l2o.omtu = opt_mtu;
-
-		if (setsockopt(sk, SOL_L2CAP, L2CAP_OPTIONS, &l2o,
-							sizeof(l2o)) < 0) {
-			err = errno;
-			g_printerr("setsockopt(L2CAP_OPTIONS): %s(%d)\n",
-							strerror(err), err);
-			return -err;
-		}
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.l2_family = AF_BLUETOOTH;
-	bacpy(&addr.l2_bdaddr, &dba);
 	if (le)
-		addr.l2_cid = htobs(GATT_CID);
+		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, NULL,
+				BT_IO_OPT_SOURCE_BDADDR, &sba,
+				BT_IO_OPT_DEST_BDADDR, &dba,
+				BT_IO_OPT_CID, GATT_CID,
+				BT_IO_OPT_OMTU, opt_mtu,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_INVALID);
 	else
-		addr.l2_psm = htobs(GATT_PSM);
-
-	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
-	if (err < 0) {
-		err = errno;
-		g_printerr("L2CAP socket connect failed: %s(%d)\n",
-							strerror(err), err);
-		close(sk);
-		return -err;
-	}
-
-	return sk;
-}
-
-static GIOChannel *do_connect(gboolean le)
-{
-	GIOChannel *chan;
-	int sk;
-
-	sk = l2cap_connect(le);
-	if (sk < 0)
-		return NULL;
-
-	chan = g_io_channel_unix_new(sk);
-	g_io_channel_set_flags(chan, G_IO_FLAG_NONBLOCK, NULL);
-	g_io_channel_set_close_on_unref(chan, TRUE);
+		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, NULL,
+				BT_IO_OPT_SOURCE_BDADDR, &sba,
+				BT_IO_OPT_DEST_BDADDR, &dba,
+				BT_IO_OPT_PSM, GATT_PSM,
+				BT_IO_OPT_OMTU, opt_mtu,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_INVALID);
 
 	return chan;
 }
