@@ -46,6 +46,7 @@
 #include "attrib-server.h"
 
 #define GATT_PSM 27
+#define GATT_CID 4
 
 static GSList *database = NULL;
 
@@ -65,6 +66,7 @@ struct group_elem {
 };
 
 static GIOChannel *l2cap_io = NULL;
+static GIOChannel *le_io = NULL;
 static GSList *clients = NULL;
 static uint32_t handle = 0;
 
@@ -625,6 +627,20 @@ int attrib_server_init(void)
 		return -1;
 	}
 
+	/* LE socket */
+	le_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
+					NULL, NULL, &gerr,
+					BT_IO_OPT_SOURCE_BDADDR, BDADDR_ANY,
+					BT_IO_OPT_CID, GATT_CID,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_INVALID);
+
+	if (le_io == NULL) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+		/* Doesn't have LE support, continue */
+	}
+
 	record = server_record_new();
 	if (record == NULL) {
 		error("Unable to create GATT service record");
@@ -651,6 +667,9 @@ void attrib_server_exit(void)
 
 	if (l2cap_io)
 		g_io_channel_unref(l2cap_io);
+
+	if (le_io)
+		g_io_channel_unref(le_io);
 
 	for (l = clients; l; l = l->next) {
 		struct gatt_channel *channel = l->data;
