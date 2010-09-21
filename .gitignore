@@ -34,7 +34,6 @@ bluez.pc
 lib/bluetooth
 src/builtin.h
 src/bluetoothd
-src/bluetooth.exp
 src/bluetooth.ver
 audio/telephony.c
 scripts/bluetooth.rules

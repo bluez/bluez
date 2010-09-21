@@ -258,7 +258,7 @@ builtin_files = src/builtin.h $(builtin_nodist)
 
 nodist_src_bluetoothd_SOURCES = $(builtin_files)
 
-CLEANFILES += src/bluetooth.ver src/bluetooth.exp $(builtin_files)
+CLEANFILES += $(builtin_files)
 
 man_MANS = src/bluetoothd.8
 
@@ -391,18 +391,6 @@ src/plugin.$(OBJEXT): src/builtin.h
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
-
-src/bluetooth.exp: $(src_bluetoothd_OBJECTS)
-	$(AM_V_GEN)$(NM) $^ | $(AWK) '{ print $$3 }' | sort -u | \
-				$(EGREP) -e '^btd_' -e '^g_dbus_' > $@
-	$(AM_V_at)echo -e "info" >> $@
-	$(AM_V_at)echo -e "error" >> $@
-	$(AM_V_at)echo -e "debug" >> $@
-
-src/bluetooth.ver: src/bluetooth.exp
-	$(AM_V_at)echo "{ global:" > $@
-	$(AM_V_GEN)$(SED) -e "s/\(.*\)/\1;/" $< >> $@
-	$(AM_V_at)echo "local: *; };" >> $@
 
 audio/telephony.c: audio/@TELEPHONY_DRIVER@
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@

@@ -65,5 +65,5 @@ if (test "${enable_netlink}" = "yes"); then
 fi
 AM_CONDITIONAL(NETLINK, test "${enable_netlink}" = "yes")
 
-AC_OUTPUT(Makefile scripts/bluetooth.rules doc/version.xml
+AC_OUTPUT(Makefile scripts/bluetooth.rules doc/version.xml src/bluetooth.ver
 					src/bluetoothd.8 bluez.pc)
