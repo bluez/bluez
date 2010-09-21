@@ -181,13 +181,14 @@ void g_attrib_unref(GAttrib *attrib)
 	g_slist_free(attrib->events);
 	attrib->events = NULL;
 
-	g_io_channel_unref(attrib->io);
-
 	if (attrib->write_watch > 0)
 		g_source_remove(attrib->write_watch);
 
 	if (attrib->read_watch > 0)
 		g_source_remove(attrib->read_watch);
+
+	g_io_channel_unref(attrib->io);
+	g_free(attrib);
 }
 
 gboolean g_attrib_set_disconnect_function(GAttrib *attrib,
@@ -206,10 +207,10 @@ static void destroy_receiver(gpointer data)
 {
 	struct _GAttrib *attrib = data;
 
+	attrib->read_watch = 0;
+
 	if (attrib->disconnect)
 		attrib->disconnect(attrib->disc_user_data);
-
-	g_free(attrib);
 }
 
 static void wake_up_sender(struct _GAttrib *attrib);
@@ -340,7 +341,6 @@ GAttrib *g_attrib_new(GIOChannel *io)
 		return NULL;
 
 	attrib->io = g_io_channel_ref(io);
-	attrib->refs = 1;
 	attrib->mtu = 512;
 	attrib->queue = g_queue_new();
 
@@ -349,7 +349,7 @@ GAttrib *g_attrib_new(GIOChannel *io)
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			received_data, attrib, destroy_receiver);
 
-	return attrib;
+	return g_attrib_ref(attrib);
 }
 
 guint g_attrib_send(GAttrib *attrib, guint8 opcode, const guint8 *pdu,
