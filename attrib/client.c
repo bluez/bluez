@@ -36,6 +36,7 @@
 
 #include "log.h"
 #include "gdbus.h"
+#include "error.h"
 #include "glib-helper.h"
 #include "dbus-common.h"
 #include "btio.h"
@@ -56,6 +57,7 @@ struct gatt_service {
 	GAttrib *attrib;
 	int psm;
 	guint atid;
+	gboolean listen;
 };
 
 struct format {
@@ -80,6 +82,7 @@ struct characteristic {
 };
 
 struct primary {
+	struct gatt_service *gatt;
 	char *path;
 	uuid_t uuid;
 	uint16_t start;
@@ -207,10 +210,32 @@ static void watcher_exit(DBusConnection *conn, void *user_data)
 	prim->watchers = g_slist_remove(prim->watchers, watcher);
 }
 
+static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
+{
+	switch (pdu[0]) {
+	case ATT_OP_HANDLE_NOTIFY:
+		DBG("Notification");
+		break;
+	case ATT_OP_HANDLE_IND:
+		DBG("Indication");
+		break;
+	}
+}
+
+static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data);
+
+static void attrib_disconnect(gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+
+	g_attrib_unref(gatt->attrib);
+	gatt->attrib = NULL;
+}
+
 static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
-	GAttrib *attrib;
 	guint atid;
 
 	if (gerr) {
@@ -218,22 +243,26 @@ static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 		goto fail;
 	}
 
-	attrib = g_attrib_new(chan);
-
-	atid = gatt_discover_primary(attrib, 0x0001, 0xffff, primary_cb, gatt);
-	if (atid == 0) {
-		g_attrib_unref(attrib);
-		goto fail;
+	/* Listen mode: used for notification and indication */
+	if (gatt->listen == TRUE) {
+		g_attrib_register(gatt->attrib,
+					ATT_OP_HANDLE_NOTIFY,
+					events_handler, gatt, NULL);
+		return;
 	}
 
-	gatt->attrib = attrib;
+	atid = gatt_discover_primary(gatt->attrib, 0x0001, 0xffff, primary_cb,
+									gatt);
+	if (atid == 0)
+		goto fail;
+
 	gatt->atid = atid;
 
 	services = g_slist_append(services, gatt);
 
 	return;
 fail:
-	gatt_service_free(gatt);
+	g_attrib_unref(gatt->attrib);
 }
 
 static DBusMessage *get_characteristics(DBusConnection *conn,
@@ -286,8 +315,44 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 {
 	const char *sender = dbus_message_get_sender(msg);
 	struct primary *prim = data;
+	struct gatt_service *gatt = prim->gatt;
 	struct watcher *watcher;
+	GError *gerr = NULL;
+	GIOChannel *io;
 
+	if (gatt->attrib != NULL) {
+		gatt->attrib = g_attrib_ref(gatt->attrib);
+		goto done;
+	}
+
+	/*
+	 * FIXME: If the service doesn't support Client Characteristic
+	 * Configuration it is necessary to poll the server from time
+	 * to time checking for modifications.
+	 */
+	io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, &gerr,
+			BT_IO_OPT_SOURCE_BDADDR, &gatt->sba,
+			BT_IO_OPT_DEST_BDADDR, &gatt->dba,
+			BT_IO_OPT_PSM, gatt->psm,
+			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+			BT_IO_OPT_INVALID);
+	if (!io) {
+		DBusMessage *reply;
+		reply = g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							"%s", gerr->message);
+		g_error_free(gerr);
+
+		return reply;
+	}
+
+	gatt->attrib = g_attrib_new(io);
+	g_io_channel_unref(io);
+	gatt->listen = TRUE;
+
+	if (prim->watchers == NULL)
+		g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect, gatt);
+
+done:
 	watcher = g_new0(struct watcher, 1);
 	watcher->name = g_strdup(sender);
 	watcher->prim = prim;
@@ -717,7 +782,7 @@ done:
 
 fail:
 	g_free(current);
-	gatt_service_free(gatt);
+	g_attrib_unref(gatt->attrib);
 }
 
 static void *attr_data_from_string(const char *str)
@@ -846,7 +911,7 @@ static char *primary_list_to_string(GSList *primary_list)
 	return g_string_free(services, FALSE);
 }
 
-static GSList *string_to_primary_list(char *gatt_path, const char *str)
+static GSList *string_to_primary_list(struct gatt_service *gatt, const char *str)
 {
 	GSList *l = NULL;
 	char **services;
@@ -865,6 +930,7 @@ static GSList *string_to_primary_list(char *gatt_path, const char *str)
 		int ret;
 
 		prim = g_new0(struct primary, 1);
+		prim->gatt = gatt;
 
 		ret = sscanf(services[i], "%04hX#%04hX#%s", &prim->start,
 							&prim->end, uuidstr);
@@ -874,7 +940,7 @@ static GSList *string_to_primary_list(char *gatt_path, const char *str)
 			continue;
 		}
 
-		prim->path = g_strdup_printf("%s/service%04x", gatt_path,
+		prim->path = g_strdup_printf("%s/service%04x", gatt->path,
 								prim->start);
 
 		bt_string2uuid(&prim->uuid, uuidstr);
@@ -912,7 +978,7 @@ static gboolean load_primary_services(struct gatt_service *gatt)
 	if (str == NULL)
 		return FALSE;
 
-	primary_list = string_to_primary_list(gatt->path, str);
+	primary_list = string_to_primary_list(gatt, str);
 
 	free(str);
 
@@ -986,6 +1052,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		end = att_get_u16((uint16_t *) &info[2]);
 
 		prim = g_new0(struct primary, 1);
+		prim->gatt = gatt;
 		prim->start = start;
 		prim->end = end;
 
@@ -1029,7 +1096,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	return;
 
 fail:
-	gatt_service_free(gatt);
+	g_attrib_unref(gatt->attrib);
 }
 
 int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
@@ -1046,6 +1113,7 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	 */
 
 	gatt = g_new0(struct gatt_service, 1);
+	gatt->listen = FALSE;
 	gatt->path = g_strdup(path);
 	bacpy(&gatt->sba, sba);
 	bacpy(&gatt->dba, dba);
@@ -1081,7 +1149,10 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 		return -1;
 	}
 
+	gatt->attrib = g_attrib_new(io);
 	g_io_channel_unref(io);
+
+	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect, gatt);
 
 	return 0;
 }
