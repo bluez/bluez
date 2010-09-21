@@ -335,6 +335,9 @@ static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 		goto fail;
 	}
 
+	if (gatt->attrib == NULL)
+		return;
+
 	/* Listen mode: used for notification and indication */
 	if (gatt->listen == TRUE) {
 		g_attrib_register(gatt->attrib,
