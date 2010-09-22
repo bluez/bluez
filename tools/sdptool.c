@@ -1477,8 +1477,7 @@ static int add_headset_ag(sdp_session_t *session, svc_info_t *si)
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t record;
 	uint8_t u8 = si->channel ? si->channel : 7;
-	uint16_t u16 = 0x17;
-	sdp_data_t *channel, *features;
+	sdp_data_t *channel;
 	uint8_t netid = si->network ? si->network : 0x01; // ???? profile document
 	sdp_data_t *network = sdp_data_alloc(SDP_UINT8, &netid);
 	int ret = 0;
@@ -1510,9 +1509,6 @@ static int add_headset_ag(sdp_session_t *session, svc_info_t *si)
 	channel = sdp_data_alloc(SDP_UINT8, &u8);
 	proto[1] = sdp_list_append(proto[1], channel);
 	apseq = sdp_list_append(apseq, proto[1]);
-
-	features = sdp_data_alloc(SDP_UINT16, &u16);
-	sdp_attr_add(&record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
 	aproto = sdp_list_append(0, apseq);
 	sdp_set_access_protos(&record, aproto);
