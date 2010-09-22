@@ -49,6 +49,8 @@
 #define CLK CLOCK_MONOTONIC
 
 #define MCAP_CSP_ERROR g_quark_from_static_string("mcap-csp-error-quark")
+#define MAX_RETRIES	10
+#define SAMPLE_COUNT	20
 
 struct mcap_csp {
 	uint64_t	base_tmstamp;	/* CSP base timestamp */
@@ -329,7 +331,7 @@ uint32_t mcap_get_btclock(struct mcap_mcl *mcl)
 static gboolean initialize_caps(struct mcap_mcl *mcl)
 {
 	struct timespec t1, t2;
-	int latencies[20];
+	int latencies[SAMPLE_COUNT];
 	int latency, avg, dev;
 	uint32_t btclock;
 	uint16_t btaccuracy;
@@ -351,8 +353,8 @@ static gboolean initialize_caps(struct mcap_mcl *mcl)
 	/* Do clock read a number of times and measure latency */
 	avg = 0;
 	i = 0;
-	retries = 10;
-	while ((i < 20) && (retries > 0)) {
+	retries = MAX_RETRIES;
+	while ((i < SAMPLE_COUNT) && (retries > 0)) {
 		clock_gettime(CLK, &t1);
 		if (!read_btclock(mcl, &btclock, &btaccuracy)) {
 			retries--;
@@ -370,21 +372,21 @@ static gboolean initialize_caps(struct mcap_mcl *mcl)
 		return FALSE;
 
 	/* Calculate average and deviation */
-	avg /= 20;
+	avg /= SAMPLE_COUNT;
 	dev = 0;
-	for (i = 0; i < 20; ++i)
+	for (i = 0; i < SAMPLE_COUNT; ++i)
 		dev += abs(latencies[i] - avg);
-	dev /= 20;
+	dev /= SAMPLE_COUNT;
 
 	/* Calculate corrected average, without 'freak' latencies */
 	latency = 0;
-	for (i = 0; i < 20; ++i) {
+	for (i = 0; i < SAMPLE_COUNT; ++i) {
 		if (latencies[i] > (avg + dev * 6))
 			latency += avg;
 		else
 			latency += latencies[i];
 	}
-	latency /= 20;
+	latency /= SAMPLE_COUNT;
 
 	_caps.latency = latency;
 	_caps.preempt_thresh = latency * 4;
