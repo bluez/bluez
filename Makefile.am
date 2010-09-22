@@ -141,7 +141,7 @@ builtin_sources += audio/main.c \
 			audio/unix.h audio/unix.c \
 			audio/media.h audio/media.c \
 			audio/transport.h audio/transport.c \
-			audio/telephony.h
+			audio/telephony.h audio/a2dp-codecs.h
 builtin_nodist += audio/telephony.c
 
 noinst_LIBRARIES = audio/libtelephony.a
