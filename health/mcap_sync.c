@@ -350,12 +350,12 @@ static gboolean initialize_caps(struct mcap_mcl *mcl)
 
 	/* Do clock read a number of times and measure latency */
 	avg = 0;
+	i = 0;
 	retries = 10;
-	for (i = 0; i < 20 && retries > 0; ++i) {
+	while ((i < 20) && (retries > 0)) {
 		clock_gettime(CLK, &t1);
 		if (!read_btclock(mcl, &btclock, &btaccuracy)) {
-			--i;
-			--retries;
+			retries--;
 			continue;
 		}
 		clock_gettime(CLK, &t2);
@@ -363,6 +363,7 @@ static gboolean initialize_caps(struct mcap_mcl *mcl)
 		latency = time_us(&t2) - time_us(&t1);
 		latencies[i] = latency;
 		avg += latency;
+		i++;
 	}
 
 	if (retries <= 0)
