@@ -621,6 +621,7 @@ void media_endpoint_clear_configuration(struct media_endpoint *endpoint)
 {
 	DBusConnection *conn;
 	DBusMessage *msg;
+	const char *path;
 
 	if (endpoint->transport == NULL)
 		return;
@@ -632,18 +633,21 @@ void media_endpoint_clear_configuration(struct media_endpoint *endpoint)
 
 	conn = endpoint->adapter->conn;
 
-	media_transport_remove(endpoint->transport);
-	endpoint->transport = NULL;
-
 	msg = dbus_message_new_method_call(endpoint->sender, endpoint->path,
 						MEDIA_ENDPOINT_INTERFACE,
 						"ClearConfiguration");
 	if (msg == NULL) {
 		error("Couldn't allocate D-Bus message");
-		return;
+		goto done;
 	}
 
+	path = media_transport_get_path(endpoint->transport);
+	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
 	g_dbus_send_message(conn, msg);
+done:
+	media_transport_remove(endpoint->transport);
+	endpoint->transport = NULL;
 }
 
 void media_endpoint_release(struct media_endpoint *endpoint)

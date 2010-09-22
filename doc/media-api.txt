@@ -62,9 +62,9 @@ Methods		void SetConfiguration(object transport, dict properties)
 			configuration since on success the configuration is
 			send back as parameter of SetConfiguration.
 
-		void ClearConfiguration()
+		void ClearConfiguration(object transport)
 
-			Clear any configuration set.
+			Clear transport configuration.
 
 		void Release()
 
