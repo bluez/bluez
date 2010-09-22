@@ -1,3 +1,17 @@
+ver 4.72:
+	Fix memory leak while connecting BTIO channels.
+	Fix crash with GStreamer plugin if SBC is not supported.
+	Fix issue with GATT server stop sending notifications.
+	Fix issue with GATT and dealing with the minimum MTU size.
+	Fix issue with file descriptor leak in GATT client.
+	Add support for UUID 128-bit handling in attribute client.
+	Add support for encoders/decoders for MTU Exchange.
+	Add support for the MTU Exchange procedure to the server.
+	Add support for a per channel MTU to the ATT server.
+	Add support for Characteristic interface.
+	Add support for new Media API and framework.
+	Add initial support for HDP plugin.
+
 ver 4.71:
 	Fix compilation when SBC support in not enabled.
 	Fix crash with RequestSession and application disconnects.
