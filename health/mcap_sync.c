@@ -354,7 +354,7 @@ static gboolean initialize_caps(struct mcap_mcl *mcl)
 	avg = 0;
 	i = 0;
 	retries = MAX_RETRIES;
-	while ((i < SAMPLE_COUNT) && (retries > 0)) {
+	while (i < SAMPLE_COUNT && retries > 0) {
 		clock_gettime(CLK, &t1);
 		if (!read_btclock(mcl, &btclock, &btaccuracy)) {
 			retries--;
