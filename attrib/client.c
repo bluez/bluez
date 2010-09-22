@@ -482,7 +482,8 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 	gatt->listen = TRUE;
 
 	g_attrib_set_destroy_function(gatt->attrib, attrib_destroy, gatt);
-	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect, gatt);
+	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect,
+									gatt);
 
 done:
 	watcher = g_new0(struct watcher, 1);
@@ -535,8 +536,8 @@ static GDBusMethodTable prim_methods[] = {
 	{ }
 };
 
-static DBusMessage *get_properties(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
+								void *data)
 {
 	struct characteristic *chr = data;
 	DBusMessage *reply;
@@ -601,7 +602,7 @@ static char *characteristic_list_to_string(GSList *chars)
 }
 
 static void store_characteristics(struct gatt_service *gatt,
-		struct primary *prim)
+							struct primary *prim)
 {
 	char *characteristics;
 
@@ -719,8 +720,8 @@ static void store_attribute(struct gatt_service *gatt, uint16_t handle,
 	g_free(str);
 }
 
-static void update_char_desc(guint8 status, const guint8 *pdu,
-					guint16 len, gpointer user_data)
+static void update_char_desc(guint8 status, const guint8 *pdu, guint16 len,
+							gpointer user_data)
 {
 	struct query_data *current = user_data;
 	struct gatt_service *gatt = current->prim->gatt;
@@ -742,8 +743,8 @@ done:
 	g_free(current);
 }
 
-static void update_char_format(guint8 status, const guint8 *pdu,
-					guint16 len, gpointer user_data)
+static void update_char_format(guint8 status, const guint8 *pdu, guint16 len,
+								gpointer user_data)
 {
 	struct query_data *current = user_data;
 	struct gatt_service *gatt = current->prim->gatt;
@@ -869,7 +870,7 @@ static void update_all_chars(gpointer data, gpointer user_data)
 
 	gatt->attrib = g_attrib_ref(gatt->attrib);
 	gatt_find_info(gatt->attrib, chr->handle + 1, chr->end, descriptor_cb,
-								qdesc);
+									qdesc);
 
 	qvalue = g_new0(struct query_data, 1);
 	qvalue->prim = prim;
