@@ -961,7 +961,7 @@ void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 
 	dev = &adapter->dev;
 
-	memcpy(&rp, ptr, MAX_NAME_LENGTH);
+	memcpy(&rp, ptr, sizeof(rp));
 	if (strncmp((char *) rp.name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
 		return;
 
