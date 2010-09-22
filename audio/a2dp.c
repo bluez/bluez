@@ -1226,7 +1226,7 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 {
 	int sbc_srcs = 1, sbc_sinks = 1;
 	int mpeg12_srcs = 0, mpeg12_sinks = 0;
-	gboolean source = TRUE, sink = FALSE, delay_reporting;
+	gboolean source = TRUE, sink = FALSE, socket = TRUE, delay_reporting;
 	char *str;
 	GError *err = NULL;
 	int i;
@@ -1258,7 +1258,18 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 			source = FALSE;
 		if (strstr(str, "Source"))
 			sink = FALSE;
+		if (strstr(str, "Socket"))
+			socket = FALSE;
 		g_free(str);
+	}
+
+	/* Don't register any local sep if Socket is disabled */
+	if (socket == FALSE) {
+		sbc_srcs = 0;
+		sbc_sinks = 0;
+		mpeg12_srcs = 0;
+		mpeg12_sinks = 0;
+		goto proceed;
 	}
 
 	str = g_key_file_get_string(config, "A2DP", "SBCSources", &err);
