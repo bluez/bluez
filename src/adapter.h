@@ -187,6 +187,9 @@ struct btd_adapter_ops {
 	int (*read_name) (int index);
 	int (*set_class) (int index, uint32_t class);
 	int (*set_fast_connectable) (int index, gboolean enable);
+	int (*read_clock) (int index, int handle, int which, int timeout,
+				 uint32_t *clock, uint16_t *accuracy);
+	int (*get_conn_handle) (int index, const bdaddr_t *bdaddr, int *handle);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
@@ -205,3 +208,9 @@ void btd_adapter_unregister_powered_callback(struct btd_adapter *adapter,
  * type to default values. Valid for both connectable and discoverable modes. */
 int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 							gboolean enable);
+
+int btd_adapter_read_clock(struct btd_adapter *adapter, int handle, int which,
+						int timeout, uint32_t *clock,
+						uint16_t *accuracy);
+int btd_adapter_get_conn_handle(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, int *handle);

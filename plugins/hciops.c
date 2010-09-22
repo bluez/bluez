@@ -748,6 +748,48 @@ static int hciops_fast_connectable(int index, gboolean enable)
 	return err;
 }
 
+static int hciops_read_clock(int index, int handle, int which, int timeout,
+				uint32_t *clock, uint16_t *accuracy)
+{
+	int dd, err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	if (hci_read_clock(dd, handle, which, clock, accuracy, timeout))
+		err = errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
+static int hciops_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
+{
+	struct hci_conn_info_req *cr;
+	int dd, err = 0;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -EIO;
+
+	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
+	bacpy(&cr->bdaddr, bdaddr);
+	cr->type = ACL_LINK;
+
+	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr))
+		err = errno;
+
+	if (!err)
+		*handle = htobs(cr->conn_info->handle);
+
+	hci_close_dev(dd);
+	g_free(cr);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -765,6 +807,8 @@ static struct btd_adapter_ops hci_ops = {
 	.read_name = hciops_read_name,
 	.set_class = hciops_set_class,
 	.set_fast_connectable = hciops_fast_connectable,
+	.read_clock = hciops_read_clock,
+	.get_conn_handle = hciops_conn_handle,
 };
 
 static int hciops_init(void)
