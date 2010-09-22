@@ -106,8 +106,8 @@ static void device_devup_setup(int index)
 
 	/* Set default link policy */
 	policy = htobs(main_opts.link_policy);
-	hci_send_cmd(dd, OGF_LINK_POLICY,
-				OCF_WRITE_DEFAULT_LINK_POLICY, 2, &policy);
+	hci_send_cmd(dd, OGF_LINK_POLICY, OCF_WRITE_DEFAULT_LINK_POLICY,
+								2, &policy);
 
 	hci_close_dev(dd);
 
@@ -153,7 +153,7 @@ static void init_device(int index)
 	dr.dev_opt = main_opts.link_mode;
 	if (ioctl(dd, HCISETLINKMODE, (unsigned long) &dr) < 0)
 		error("Can't set link mode on hci%d: %s (%d)",
-					index, strerror(errno), errno);
+						index, strerror(errno), errno);
 
 	/* Set link policy for BR/EDR HCI devices */
 	if (hci_devinfo(index, &di) < 0)
@@ -232,22 +232,22 @@ static int init_known_adapters(int ctl)
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
 	int i, err;
+	size_t req_size;
 
-	dl = g_try_malloc0(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t));
+	req_size = HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t);
+
+	dl = g_try_malloc0(req_size);
 	if (!dl) {
-		err = -errno;
-		error("Can't allocate devlist buffer: %s (%d)",
-							strerror(-err), -err);
-		return err;
+		error("Can't allocate devlist buffer");
+		return -ENOMEM;
 	}
 
 	dl->dev_num = HCI_MAX_DEV;
 	dr = dl->dev_req;
 
-	if (ioctl(ctl, HCIGETDEVLIST, (void *) dl) < 0) {
+	if (ioctl(ctl, HCIGETDEVLIST, dl) < 0) {
 		err = -errno;
-		error("Can't get device list: %s (%d)",
-							strerror(-err), -err);
+		error("Can't get device list: %s (%d)", strerror(-err), -err);
 		g_free(dl);
 		return err;
 	}
@@ -282,7 +282,7 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond,
 			return TRUE;
 
 		error("Read from control socket failed: %s (%d)",
-							strerror(errno), errno);
+						strerror(errno), errno);
 		return FALSE;
 	}
 
@@ -615,11 +615,10 @@ static int hciops_stop_discovery(int index)
 		return -EIO;
 
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
-		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_INQUIRY_CANCEL,
-				0, 0);
+		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_INQUIRY_CANCEL, 0, 0);
 	else
 		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY,
-				0, 0);
+									0, 0);
 	if (err < 0)
 		err = -errno;
 
@@ -642,7 +641,7 @@ static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 	cp.pscan_rep_mode = 0x02;
 
 	err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
-					REMOTE_NAME_REQ_CP_SIZE, &cp);
+						REMOTE_NAME_REQ_CP_SIZE, &cp);
 	if (err < 0)
 		err = -errno;
 
@@ -745,7 +744,7 @@ static int hciops_fast_connectable(int index, gboolean enable)
 }
 
 static int hciops_read_clock(int index, int handle, int which, int timeout,
-				uint32_t *clock, uint16_t *accuracy)
+					uint32_t *clock, uint16_t *accuracy)
 {
 	int dd, err = 0;
 
