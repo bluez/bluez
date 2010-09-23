@@ -91,7 +91,9 @@ struct dev_priv {
 	guint control_timer;
 	guint avdtp_timer;
 	guint headset_timer;
+	guint dc_id;
 
+	gboolean disconnecting;
 	gboolean authorized;
 	guint auth_idle_id;
 };
@@ -123,6 +125,9 @@ static void device_free(struct audio_device *dev)
 			dbus_message_unref(priv->dc_req);
 		if (priv->conn_req)
 			dbus_message_unref(priv->conn_req);
+		if (priv->dc_id)
+			device_remove_disconnect_watch(dev->btd_dev,
+							priv->dc_id);
 		g_free(priv);
 	}
 
@@ -143,52 +148,6 @@ static const char *state2str(audio_state_t state)
 		error("Invalid audio state %d", state);
 		return NULL;
 	}
-}
-
-static void device_set_state(struct audio_device *dev, audio_state_t new_state)
-{
-	struct dev_priv *priv = dev->priv;
-	const char *state_str;
-	DBusMessage *reply = NULL;
-
-	state_str = state2str(new_state);
-	if (!state_str)
-		return;
-
-	if (new_state == AUDIO_STATE_DISCONNECTED)
-		priv->authorized = FALSE;
-
-	if (dev->priv->state == new_state) {
-		DBG("state change attempted from %s to %s",
-							state_str, state_str);
-		return;
-	}
-
-	dev->priv->state = new_state;
-
-	if (priv->dc_req && new_state == AUDIO_STATE_DISCONNECTED) {
-		reply = dbus_message_new_method_return(priv->dc_req);
-		dbus_message_unref(priv->dc_req);
-		priv->dc_req = NULL;
-		g_dbus_send_message(dev->conn, reply);
-	}
-
-	if (priv->conn_req && new_state != AUDIO_STATE_CONNECTING) {
-		if (new_state == AUDIO_STATE_CONNECTED)
-			reply = dbus_message_new_method_return(priv->conn_req);
-		else
-			reply = g_dbus_create_error(priv->conn_req,
-							ERROR_INTERFACE
-							".ConnectFailed",
-							"Connecting failed");
-		dbus_message_unref(priv->conn_req);
-		priv->conn_req = NULL;
-		g_dbus_send_message(dev->conn, reply);
-	}
-
-	emit_property_changed(dev->conn, dev->path,
-				AUDIO_INTERFACE, "State",
-				DBUS_TYPE_STRING, &state_str);
 }
 
 static gboolean control_connect_timeout(gpointer user_data)
@@ -225,6 +184,91 @@ static void device_remove_control_timer(struct audio_device *dev)
 	if (dev->priv->control_timer)
 		g_source_remove(dev->priv->control_timer);
 	dev->priv->control_timer = 0;
+}
+
+static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
+				void *user_data)
+{
+	struct audio_device *dev = user_data;
+	struct dev_priv *priv = dev->priv;
+
+	if (priv->state == AUDIO_STATE_DISCONNECTED)
+		return;
+
+	if (priv->disconnecting)
+		return;
+
+	priv->disconnecting = TRUE;
+
+	if (dev->control) {
+		device_remove_control_timer(dev);
+		avrcp_disconnect(dev);
+	}
+
+	if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
+		sink_shutdown(dev->sink);
+	else if (priv->hs_state != HEADSET_STATE_DISCONNECTED)
+		headset_shutdown(dev);
+	else
+		priv->disconnecting = FALSE;
+}
+
+static void device_set_state(struct audio_device *dev, audio_state_t new_state)
+{
+	struct dev_priv *priv = dev->priv;
+	const char *state_str;
+	DBusMessage *reply = NULL;
+
+	state_str = state2str(new_state);
+	if (!state_str)
+		return;
+
+	if (new_state == AUDIO_STATE_DISCONNECTED) {
+		priv->authorized = FALSE;
+
+		if (priv->dc_id) {
+			device_remove_disconnect_watch(dev->btd_dev,
+							priv->dc_id);
+			priv->dc_id = 0;
+		}
+	} else if (new_state == AUDIO_STATE_CONNECTED)
+		priv->dc_id = device_add_disconnect_watch(dev->btd_dev,
+						disconnect_cb, dev, NULL);
+
+	if (dev->priv->state == new_state) {
+		DBG("state change attempted from %s to %s",
+							state_str, state_str);
+		return;
+	}
+
+	dev->priv->state = new_state;
+
+	if (new_state == AUDIO_STATE_DISCONNECTED) {
+		if (priv->dc_req) {
+			reply = dbus_message_new_method_return(priv->dc_req);
+			dbus_message_unref(priv->dc_req);
+			priv->dc_req = NULL;
+			g_dbus_send_message(dev->conn, reply);
+		}
+		priv->disconnecting = FALSE;
+	}
+
+	if (priv->conn_req && new_state != AUDIO_STATE_CONNECTING) {
+		if (new_state == AUDIO_STATE_CONNECTED)
+			reply = dbus_message_new_method_return(priv->conn_req);
+		else
+			reply = g_dbus_create_error(priv->conn_req,
+							ERROR_INTERFACE
+							".ConnectFailed",
+							"Connecting failed");
+		dbus_message_unref(priv->conn_req);
+		priv->conn_req = NULL;
+		g_dbus_send_message(dev->conn, reply);
+	}
+
+	emit_property_changed(dev->conn, dev->path,
+				AUDIO_INTERFACE, "State",
+				DBUS_TYPE_STRING, &state_str);
 }
 
 static gboolean avdtp_connect_timeout(gpointer user_data)
@@ -348,7 +392,7 @@ static void device_sink_cb(struct audio_device *dev,
 			avrcp_disconnect(dev);
 		}
 		if (priv->hs_state != HEADSET_STATE_DISCONNECTED &&
-								priv->dc_req) {
+				(priv->dc_req || priv->disconnecting)) {
 			headset_shutdown(dev);
 			break;
 		}
@@ -427,8 +471,8 @@ static void device_headset_cb(struct audio_device *dev,
 	switch (new_state) {
 	case HEADSET_STATE_DISCONNECTED:
 		device_remove_avdtp_timer(dev);
-		if (priv->sink_state != SINK_STATE_DISCONNECTED &&
-						dev->sink && priv->dc_req) {
+		if (priv->sink_state != SINK_STATE_DISCONNECTED && dev->sink &&
+				(priv->dc_req || priv->disconnecting)) {
 			sink_shutdown(dev->sink);
 			break;
 		}

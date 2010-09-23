@@ -62,7 +62,6 @@ struct source {
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	unsigned int cb_id;
-	guint dc_id;
 	guint retry_id;
 	avdtp_session_state_t session_state;
 	avdtp_state_t stream_state;
@@ -133,12 +132,6 @@ static void avdtp_state_callback(struct audio_device *dev,
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
-		if (source->state != SOURCE_STATE_CONNECTING &&
-				source->dc_id) {
-			device_remove_disconnect_watch(dev->btd_dev,
-							source->dc_id);
-			source->dc_id = 0;
-		}
 		source_set_state(dev, SOURCE_STATE_DISCONNECTED);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTING:
@@ -162,17 +155,6 @@ static void pending_request_free(struct audio_device *dev,
 		a2dp_cancel(dev, pending->id);
 
 	g_free(pending);
-}
-
-static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
-				void *user_data)
-{
-	struct audio_device *device = user_data;
-	struct source *source = device->source;
-
-	DBG("Source: disconnect %s", device->path);
-
-	avdtp_close(source->session, source->stream, TRUE);
 }
 
 static void stream_state_changed(struct avdtp_stream *stream,
@@ -201,12 +183,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 			pending_request_free(dev, p);
 		}
 
-		if (source->dc_id) {
-			device_remove_disconnect_watch(dev->btd_dev,
-							source->dc_id);
-			source->dc_id = 0;
-		}
-
 		if (source->session) {
 			avdtp_unref(source->session);
 			source->session = NULL;
@@ -215,12 +191,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		source->cb_id = 0;
 		break;
 	case AVDTP_STATE_OPEN:
-		if (old_state == AVDTP_STATE_CONFIGURED &&
-				source->state == SOURCE_STATE_CONNECTING) {
-			source->dc_id = device_add_disconnect_watch(dev->btd_dev,
-								disconnect_cb,
-								dev, NULL);
-		}
 		source_set_state(dev, SOURCE_STATE_CONNECTED);
 		break;
 	case AVDTP_STATE_STREAMING:
@@ -535,9 +505,6 @@ static void source_free(struct audio_device *dev)
 	if (source->cb_id)
 		avdtp_stream_remove_cb(source->session, source->stream,
 					source->cb_id);
-
-	if (source->dc_id)
-		device_remove_disconnect_watch(dev->btd_dev, source->dc_id);
 
 	if (source->session)
 		avdtp_unref(source->session);
