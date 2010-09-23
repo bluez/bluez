@@ -1031,6 +1031,7 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 			return failed_strerror(msg, err);
 
 		adapter->name_stored = TRUE;
+		update_ext_inquiry_response(adapter);
 	}
 
 done:
