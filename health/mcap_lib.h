@@ -122,18 +122,22 @@ gboolean mcap_create_mdl(struct mcap_mcl *mcl,
 				uint8_t conf,
 				mcap_mdl_operation_conf_cb connect_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err);
 gboolean mcap_reconnect_mdl(struct mcap_mdl *mdl,
 				mcap_mdl_operation_cb reconnect_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err);
 gboolean mcap_delete_all_mdls(struct mcap_mcl *mcl,
 				mcap_mdl_notify_cb delete_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err);
 gboolean mcap_delete_mdl(struct mcap_mdl *mdl,
 				mcap_mdl_notify_cb delete_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err);
 gboolean mcap_connect_mdl(struct mcap_mdl *mdl,
 				BtIOType BtType,
@@ -145,6 +149,7 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl,
 gboolean mcap_mdl_abort(struct mcap_mdl *mdl,
 				mcap_mdl_notify_cb abort_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err);
 
 int mcap_mdl_get_fd(struct mcap_mdl *mdl);

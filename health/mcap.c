@@ -263,6 +263,17 @@ static gint cmp_mdl_state(gconstpointer a, gconstpointer b)
 		return 1;
 }
 
+static void free_mcl_priv_data(struct mcap_mcl *mcl)
+{
+	struct mcap_mdl_op_cb *op = mcl->priv_data;
+
+	if (op->destroy)
+		op->destroy(op->user_data);
+
+	g_free(mcl->priv_data);
+	mcl->priv_data = NULL;
+}
+
 static void mcap_notify_error(struct mcap_mcl *mcl, GError *err)
 {
 	struct mcap_mdl_op_cb *con = mcl->priv_data;
@@ -309,9 +320,7 @@ static void mcap_notify_error(struct mcap_mcl *mcl, GError *err)
 		break;
 	}
 
-	g_free(mcl->priv_data);
-	mcl->priv_data = NULL;
-
+	free_mcl_priv_data(mcl);
 	g_free(mcl->lcmd);
 	mcl->lcmd = NULL;
 }
@@ -453,6 +462,7 @@ gboolean mcap_create_mdl(struct mcap_mcl *mcl,
 				uint8_t conf,
 				mcap_mdl_operation_conf_cb connect_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err)
 {
 	struct mcap_mdl *mdl;
@@ -476,6 +486,7 @@ gboolean mcap_create_mdl(struct mcap_mcl *mcl,
 	con = g_new0(struct mcap_mdl_op_cb, 1);
 	con->mdl = mdl;
 	con->cb.op_conf = connect_cb;
+	con->destroy = destroy;
 	con->user_data = user_data;
 
 	cmd = create_mdl_req(id, mdepid, conf);
@@ -499,6 +510,7 @@ gboolean mcap_create_mdl(struct mcap_mcl *mcl,
 gboolean mcap_reconnect_mdl(struct mcap_mdl *mdl,
 				mcap_mdl_operation_cb reconnect_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err)
 {
 	struct mcap_mdl_op_cb *con;
@@ -523,6 +535,7 @@ gboolean mcap_reconnect_mdl(struct mcap_mdl *mdl,
 
 	con->mdl = mdl;
 	con->cb.op = reconnect_cb;
+	con->destroy = destroy;
 	con->user_data = user_data;
 
 	mcl->state = MCL_ACTIVE;
@@ -555,7 +568,9 @@ static gboolean send_delete_req(struct mcap_mcl *mcl,
 
 gboolean mcap_delete_all_mdls(struct mcap_mcl *mcl,
 					mcap_mdl_notify_cb delete_cb,
-					gpointer user_data, GError **err)
+					gpointer user_data,
+					GDestroyNotify destroy,
+					GError **err)
 {
 	GSList *l;
 	struct mcap_mdl *mdl;
@@ -577,6 +592,7 @@ gboolean mcap_delete_all_mdls(struct mcap_mcl *mcl,
 	con = g_new0(struct mcap_mdl_op_cb, 1);
 	con->mdl = NULL;
 	con->cb.notify = delete_cb;
+	con->destroy = destroy;
 	con->user_data = user_data;
 
 
@@ -589,7 +605,9 @@ gboolean mcap_delete_all_mdls(struct mcap_mcl *mcl,
 }
 
 gboolean mcap_delete_mdl(struct mcap_mdl *mdl, mcap_mdl_notify_cb delete_cb,
-					gpointer user_data, GError **err)
+							gpointer user_data,
+							GDestroyNotify destroy,
+							GError **err)
 {
 	struct mcap_mcl *mcl= mdl->mcl;
 	struct mcap_mdl_op_cb *con;
@@ -614,6 +632,7 @@ gboolean mcap_delete_mdl(struct mcap_mdl *mdl, mcap_mdl_notify_cb delete_cb,
 	con = g_new0(struct mcap_mdl_op_cb, 1);
 	con->mdl = mdl;
 	con->cb.notify = delete_cb;
+	con->destroy = destroy;
 	con->user_data = user_data;
 
 	if (!send_delete_req(mcl, con, mdl->mdlid, err)) {
@@ -625,7 +644,9 @@ gboolean mcap_delete_mdl(struct mcap_mdl *mdl, mcap_mdl_notify_cb delete_cb,
 }
 
 gboolean mcap_mdl_abort(struct mcap_mdl *mdl, mcap_mdl_notify_cb abort_cb,
-					gpointer user_data, GError **err)
+							gpointer user_data,
+							GDestroyNotify destroy,
+							GError **err)
 {
 	struct mcap_mdl_op_cb *con;
 	struct mcap_mcl *mcl = mdl->mcl;
@@ -647,6 +668,7 @@ gboolean mcap_mdl_abort(struct mcap_mdl *mdl, mcap_mdl_notify_cb abort_cb,
 
 	con->mdl = mdl;
 	con->cb.notify = abort_cb;
+	con->destroy = destroy;
 	con->user_data = user_data;
 
 	mcl->priv_data = con;
@@ -1310,9 +1332,6 @@ static gboolean process_md_create_mdl_rsp(struct mcap_mcl *mcl,
 	gboolean close;
 	GError *gerr = NULL;
 
-	g_free(mcl->priv_data);
-	mcl->priv_data = NULL;
-
 	close = check_err_rsp(mcl, rsp, len, sizeof(mcap_rsp) + 1, &gerr);
 	g_free(mcl->lcmd);
 	mcl->lcmd = NULL;
@@ -1351,9 +1370,6 @@ static gboolean process_md_reconnect_mdl_rsp(struct mcap_mcl *mcl,
 	GError *gerr = NULL;
 	gboolean close;
 
-	g_free(mcl->priv_data);
-	mcl->priv_data = NULL;
-
 	close = check_err_rsp(mcl, rsp, len, sizeof(mcap_rsp), &gerr);
 
 	g_free(mcl->lcmd);
@@ -1388,9 +1404,6 @@ static gboolean process_md_abort_mdl_rsp(struct mcap_mcl *mcl,
 	struct mcap_mdl *mdl = abrt->mdl;
 	GError *gerr = NULL;
 	gboolean close;
-
-	g_free(mcl->priv_data);
-	mcl->priv_data = NULL;
 
 	close = check_err_rsp(mcl, rsp, len, sizeof(mcap_rsp), &gerr);
 
@@ -1440,9 +1453,6 @@ static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, mcap_rsp *rsp,
 	gboolean close;
 	gboolean notify = FALSE;
 
-	g_free(mcl->priv_data);
-	mcl->priv_data = NULL;
-
 	close = check_err_rsp(mcl, rsp, len, sizeof(mcap_rsp), &gerr);
 
 	g_free(mcl->lcmd);
@@ -1485,15 +1495,19 @@ static void proc_response(struct mcap_mcl *mcl, void *buf, uint32_t len)
 	switch (mcl->lcmd[0] + 1) {
 	case MCAP_MD_CREATE_MDL_RSP:
 		close = process_md_create_mdl_rsp(mcl, rsp, len);
+		free_mcl_priv_data(mcl);
 		break;
 	case MCAP_MD_RECONNECT_MDL_RSP:
 		close = process_md_reconnect_mdl_rsp(mcl, rsp, len);
+		free_mcl_priv_data(mcl);
 		break;
 	case MCAP_MD_ABORT_MDL_RSP:
 		close = process_md_abort_mdl_rsp(mcl, rsp, len);
+		free_mcl_priv_data(mcl);
 		break;
 	case MCAP_MD_DELETE_MDL_RSP:
 		close = process_md_delete_mdl_rsp(mcl, rsp, len);
+		free_mcl_priv_data(mcl);
 		break;
 	default:
 		DBG("Unknown cmd response received (op code = %d)", rsp->op);
