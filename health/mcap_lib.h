@@ -140,6 +140,7 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl,
 				uint16_t dcpsm,
 				mcap_mdl_operation_cb connect_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err);
 gboolean mcap_mdl_abort(struct mcap_mdl *mdl,
 				mcap_mdl_notify_cb abort_cb,
@@ -156,6 +157,7 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 				uint16_t ccpsm,
 				mcap_mcl_connect_cb connect_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err);
 void mcap_close_mcl(struct mcap_mcl *mcl, gboolean cache);
 gboolean mcap_mcl_set_cb(struct mcap_mcl *mcl, gpointer user_data,

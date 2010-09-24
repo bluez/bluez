@@ -54,6 +54,7 @@
 struct connect_mcl {
 	struct mcap_mcl		*mcl;		/* MCL for this operation */
 	mcap_mcl_connect_cb	connect_cb;	/* Connect callback */
+	GDestroyNotify		destroy;	/* Destroy callback */
 	gpointer		user_data;	/* Callback user data */
 };
 
@@ -66,6 +67,7 @@ typedef union {
 struct mcap_mdl_op_cb {
 	struct mcap_mdl		*mdl;		/* MDL for this operation */
 	mcap_cb_type		cb;		/* Operation callback */
+	GDestroyNotify		destroy;	/* Destroy callback */
 	gpointer		user_data;	/* Callback user data */
 };
 
@@ -1597,10 +1599,22 @@ static void mcap_connect_mdl_cb(GIOChannel *chan, GError *conn_err,
 	cb(mdl, conn_err, user_data);
 }
 
+static void mdl_io_destroy(gpointer data)
+{
+	struct mcap_mdl_op_cb *con = data;
+
+	if (con->destroy)
+		con->destroy(con->user_data);
+
+	g_free(con);
+}
+
 gboolean mcap_connect_mdl(struct mcap_mdl *mdl, BtIOType BtType,
 					uint16_t dcpsm,
 					mcap_mdl_operation_cb connect_cb,
-					gpointer user_data, GError **err)
+					gpointer user_data,
+					GDestroyNotify destroy,
+					GError **err)
 {
 	struct mcap_mdl_op_cb *con;
 
@@ -1613,12 +1627,13 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl, BtIOType BtType,
 	con = g_new0(struct mcap_mdl_op_cb, 1);
 	con->mdl = mdl;
 	con->cb.op = connect_cb;
+	con->destroy = destroy;
 	con->user_data = user_data;
 
 	/* TODO: Check if BtIOType is ERTM or Streaming before continue */
 
 	mdl->dc = bt_io_connect(BtType, mcap_connect_mdl_cb, con,
-				g_free, err,
+				mdl_io_destroy, err,
 				BT_IO_OPT_SOURCE_BDADDR, &mdl->mcl->ms->src,
 				BT_IO_OPT_DEST_BDADDR, &mdl->mcl->addr,
 				BT_IO_OPT_PSM, dcpsm,
@@ -1742,6 +1757,8 @@ static void mcl_io_destroy(gpointer data)
 	struct connect_mcl *con = data;
 
 	mcap_mcl_unref(con->mcl);
+	if (con->destroy)
+		con->destroy(con->user_data);
 	g_free(con);
 }
 
@@ -1750,6 +1767,7 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 				uint16_t ccpsm,
 				mcap_mcl_connect_cb connect_cb,
 				gpointer user_data,
+				GDestroyNotify destroy,
 				GError **err)
 {
 	struct mcap_mcl *mcl;
@@ -1777,6 +1795,7 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 	con = g_new0(struct connect_mcl, 1);
 	con->mcl = mcap_mcl_ref(mcl);
 	con->connect_cb = connect_cb;
+	con->destroy = destroy;
 	con->user_data = user_data;
 
 	mcl->cc = bt_io_connect(BT_IO_L2CAP, mcap_connect_mcl_cb, con,
