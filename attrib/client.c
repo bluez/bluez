@@ -72,7 +72,18 @@ struct format {
 	guint16 desc;
 } __attribute__ ((packed));
 
+struct primary {
+	struct gatt_service *gatt;
+	char *path;
+	uuid_t uuid;
+	uint16_t start;
+	uint16_t end;
+	GSList *chars;
+	GSList *watchers;
+};
+
 struct characteristic {
+	struct primary *prim;
 	char *path;
 	uint16_t handle;
 	uint16_t end;
@@ -83,16 +94,6 @@ struct characteristic {
 	struct format *format;
 	uint8_t *value;
 	int vlen;
-};
-
-struct primary {
-	struct gatt_service *gatt;
-	char *path;
-	uuid_t uuid;
-	uint16_t start;
-	uint16_t end;
-	GSList *chars;
-	GSList *watchers;
 };
 
 struct query_data {
@@ -536,6 +537,31 @@ static GDBusMethodTable prim_methods[] = {
 	{ }
 };
 
+static DBusMessage *set_value(DBusConnection *conn, DBusMessage *msg,
+			DBusMessageIter *iter, struct characteristic *chr)
+{
+	DBusMessageIter sub;
+	uint8_t *value;
+	int len;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY ||
+			dbus_message_iter_get_element_type(iter) != DBUS_TYPE_BYTE)
+		return invalid_args(msg);
+
+	dbus_message_iter_recurse(iter, &sub);
+
+	dbus_message_iter_get_fixed_array(&sub, &value, &len);
+
+	/* FIXME: missing set the new value */
+
+	g_free(chr->value);
+	chr->value = g_malloc(len);
+	memcpy(chr->value, value, len);
+	chr->vlen = len;
+
+	return dbus_message_new_method_return(msg);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -554,8 +580,38 @@ static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
+static DBusMessage *set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct characteristic *chr = data;
+	DBusMessageIter iter;
+	DBusMessageIter sub;
+	const char *property;
+
+	if (!dbus_message_iter_init(msg, &iter))
+		return invalid_args(msg);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return invalid_args(msg);
+
+	dbus_message_iter_get_basic(&iter, &property);
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
+		return invalid_args(msg);
+
+	dbus_message_iter_recurse(&iter, &sub);
+
+	if (g_str_equal("Value", property))
+		return set_value(conn, msg, &sub, chr);
+
+	return invalid_args(msg);
+}
+
 static GDBusMethodTable char_methods[] = {
 	{ "GetProperties",	"",	"a{sv}", get_properties },
+	{ "SetProperty",	"sv",	"",	set_property,
+						G_DBUS_METHOD_FLAG_ASYNC},
 	{ }
 };
 
@@ -629,7 +685,7 @@ static void register_characteristics(struct primary *prim)
 	}
 }
 
-static GSList *string_to_characteristic_list(const char *prim_path,
+static GSList *string_to_characteristic_list(struct primary *prim,
 							const char *str)
 {
 	GSList *l = NULL;
@@ -657,8 +713,9 @@ static GSList *string_to_characteristic_list(const char *prim_path,
 			continue;
 		}
 
-		chr->path = g_strdup_printf("%s/characteristic%04x", prim_path,
-								chr->handle);
+		chr->prim = prim;
+		chr->path = g_strdup_printf("%s/characteristic%04x",
+						prim->path, chr->handle);
 
 		bt_string2uuid(&chr->type, uuidstr);
 
@@ -686,7 +743,7 @@ static void load_characteristics(gpointer data, gpointer user_data)
 	if (str == NULL)
 		return;
 
-	chrs_list = string_to_characteristic_list(prim->path, str);
+	chrs_list = string_to_characteristic_list(prim, str);
 
 	free(str);
 
@@ -913,6 +970,7 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		struct characteristic *chr;
 
 		chr = g_new0(struct characteristic, 1);
+		chr->prim = prim;
 		chr->perm = decl[2];
 		chr->handle = att_get_u16((uint16_t *) &decl[3]);
 		chr->path = g_strdup_printf("%s/characteristic%04x",
