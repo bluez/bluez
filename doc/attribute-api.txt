@@ -99,6 +99,13 @@ Methods		dict GetProperties()
 			Returns all properties for the characteristic. See the
 			properties section for available properties.
 
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			read-write properties can be changed. On success
+			this will emit a PropertyChanged signal.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
 
 Properties 	string UUID [readonly]
 
