@@ -45,15 +45,10 @@ Interface	org.bluez.Characteristic
 Object path	[prefix]/{hci0}/{device0}/{service0, service1, ...}
 		[prefix]/{hci0}/{device1}/{service0, service1, ...}
 
-Methods		array[(object, dict)] GetCharacteristics()
+Methods 	dict GetProperties()
 
-			Array of tuples with object path as identifier. An
-			alternative is doing dict of dict since the object
-			path is unique and the order of characteristics is
-			irrelevant. However it might be good to actually
-			present an order here.
-
-			See Characteristics properties for dictionary details.
+			Returns all properties for the interface. See the
+			Properties section for the available properties.
 
 		RegisterCharacteristicsWatcher(object path)
 
@@ -89,23 +84,6 @@ Properties	string Name (mandatory) [readonly]
 			specific service and other characteristics from service
 			includes. That way no complicated service includes array
 			is needed.
-
-			string UUID
-			string Name
-			string Description
-			struct Format (type, name, exponet etc.)
-
-			array{byte} Value
-			string Representation (of the binary Value)
-
-			object Service (the original service in case of includes)
-
-			At this point only GetProperties() method call should be
-			supported for simplicity. Changing characteristics is up
-			to future support.
-
-			The object path of the characteristics might be split
-			over multiple service objects, because of includes.
 
 
 Device Characteristic hierarchy
