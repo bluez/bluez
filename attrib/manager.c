@@ -43,11 +43,8 @@ static DBusConnection *connection;
 
 static int client_probe(struct btd_device *device, GSList *uuids)
 {
-	struct btd_adapter *adapter = device_get_adapter(device);
-	const char *path = device_get_path(device);
 	const sdp_record_t *rec;
 	sdp_list_t *list;
-	bdaddr_t sba, dba;
 	int psm;
 
 	/*
@@ -69,17 +66,12 @@ static int client_probe(struct btd_device *device, GSList *uuids)
 	if (psm < 0)
 		return -1;
 
-	adapter_get_address(adapter, &sba);
-	device_get_address(device, &dba);
-
-	return attrib_client_register(&sba, &dba, path, psm);
+	return attrib_client_register(device, psm);
 }
 
 static void client_remove(struct btd_device *device)
 {
-	const char *path = device_get_path(device);
-
-	attrib_client_unregister(path);
+	attrib_client_unregister(device);
 }
 
 static struct btd_device_driver client_driver = {

@@ -113,6 +113,7 @@ struct btd_device {
 	char		*alias;
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
+	GSList		*services;		/* Primary services path */
 	GSList		*drivers;		/* List of driver_data */
 	GSList		*watches;		/* List of disconnect_data */
 	gboolean	temporary;
@@ -230,6 +231,9 @@ static void device_free(gpointer user_data)
 				agent_is_busy(agent, device->authr)))
 		agent_cancel(agent);
 
+	g_slist_foreach(device->services, (GFunc) g_free, NULL);
+	g_slist_free(device->services);
+
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
 	g_slist_free(device->uuids);
 
@@ -271,7 +275,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter dict;
 	bdaddr_t src;
 	char name[MAX_NAME_LENGTH + 1], srcaddr[18], dstaddr[18];
-	char **uuids;
+	char **str;
 	const char *ptr;
 	dbus_bool_t boolean;
 	uint32_t class;
@@ -343,11 +347,18 @@ static DBusMessage *get_properties(DBusConnection *conn,
 				&boolean);
 
 	/* UUIDs */
-	uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
+	str = g_new0(char *, g_slist_length(device->uuids) + 1);
 	for (i = 0, l = device->uuids; l; l = l->next, i++)
-		uuids[i] = l->data;
-	dict_append_array(&dict, "UUIDs", DBUS_TYPE_STRING, &uuids, i);
-	g_free(uuids);
+		str[i] = l->data;
+	dict_append_array(&dict, "UUIDs", DBUS_TYPE_STRING, &str, i);
+	g_free(str);
+
+	/* Services */
+	str = g_new0(char *, g_slist_length(device->services) + 1);
+	for (i = 0, l = device->services; l; l = l->next, i++)
+		str[i] = l->data;
+	dict_append_array(&dict, "Services", DBUS_TYPE_OBJECT_PATH, &str, i);
+	g_free(str);
 
 	/* Adapter */
 	ptr = adapter_get_path(adapter);
@@ -2340,6 +2351,14 @@ void device_set_authorizing(struct btd_device *device, gboolean auth)
 void device_set_renewed_key(struct btd_device *device, gboolean renewed)
 {
 	device->renewed_key = renewed;
+}
+
+void device_add_service(struct btd_device *device, const char *path)
+{
+	if (g_slist_find_custom(device->services, path, (GCompareFunc) strcmp))
+		return;
+
+	device->services = g_slist_append(device->services, g_strdup(path));
 }
 
 void btd_device_add_uuid(struct btd_device *device, const char *uuid)

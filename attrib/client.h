@@ -24,6 +24,5 @@
 
 int attrib_client_init(DBusConnection *conn);
 void attrib_client_exit(void);
-int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
-								int psm);
-void attrib_client_unregister(const char *path);
+int attrib_client_register(struct btd_device *device, int psm);
+void attrib_client_unregister(struct btd_device *device);

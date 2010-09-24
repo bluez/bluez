@@ -35,6 +35,8 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include "adapter.h"
+#include "device.h"
 #include "log.h"
 #include "gdbus.h"
 #include "error.h"
@@ -51,6 +53,7 @@
 #define CHAR_INTERFACE "org.bluez.Characteristic"
 
 struct gatt_service {
+	struct btd_device *dev;
 	bdaddr_t sba;
 	bdaddr_t dba;
 	char *path;
@@ -157,12 +160,12 @@ static void gatt_service_free(void *user_data)
 	g_free(gatt);
 }
 
-static int gatt_path_cmp(gconstpointer a, gconstpointer b)
+static int gatt_dev_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct gatt_service *gatt = a;
-	const char *path = b;
+	const struct btd_device *dev = b;
 
-	return strcmp(gatt->path, path);
+	return gatt->dev == dev;
 }
 
 static int characteristic_handle_cmp(gconstpointer a, gconstpointer b)
@@ -566,6 +569,8 @@ static void register_primary(struct gatt_service *gatt)
 				CHAR_INTERFACE, prim_methods,
 				NULL, NULL, prim, NULL);
 		DBG("Registered: %s", prim->path);
+
+		device_add_service(gatt->dev, prim->path);
 	}
 }
 
@@ -1263,12 +1268,14 @@ done:
 	g_attrib_unref(gatt->attrib);
 }
 
-int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
-								int psm)
+int attrib_client_register(struct btd_device *device, int psm)
 {
+	struct btd_adapter *adapter = device_get_adapter(device);
+	const char *path = device_get_path(device);
 	struct gatt_service *gatt;
 	GError *gerr = NULL;
 	GIOChannel *io;
+	bdaddr_t sba, dba;
 
 	/*
 	 * Registering fake services/characteristics. The following
@@ -1276,11 +1283,15 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	 * services only.
 	 */
 
+	adapter_get_address(adapter, &sba);
+	device_get_address(device, &dba);
+
 	gatt = g_new0(struct gatt_service, 1);
+	gatt->dev = device;
 	gatt->listen = FALSE;
 	gatt->path = g_strdup(path);
-	bacpy(&gatt->sba, sba);
-	bacpy(&gatt->dba, dba);
+	bacpy(&gatt->sba, &sba);
+	bacpy(&gatt->dba, &dba);
 	gatt->psm = psm;
 
 	gatt_services = g_slist_append(gatt_services, gatt);
@@ -1304,8 +1315,8 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	}
 
 	io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, sba,
-					BT_IO_OPT_DEST_BDADDR, dba,
+					BT_IO_OPT_SOURCE_BDADDR, &sba,
+					BT_IO_OPT_DEST_BDADDR, &dba,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
@@ -1327,12 +1338,12 @@ int attrib_client_register(bdaddr_t *sba, bdaddr_t *dba, const char *path,
 	return 0;
 }
 
-void attrib_client_unregister(const char *path)
+void attrib_client_unregister(struct btd_device *device)
 {
 	struct gatt_service *gatt;
 	GSList *l, *lp, *lc;
 
-	l = g_slist_find_custom(gatt_services, path, gatt_path_cmp);
+	l = g_slist_find_custom(gatt_services, device, gatt_dev_cmp);
 	if (!l)
 		return;
 
