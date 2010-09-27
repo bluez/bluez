@@ -50,18 +50,15 @@ Methods 	dict GetProperties()
 			Returns all properties for the interface. See the
 			Properties section for the available properties.
 
-		RegisterCharacteristicsWatcher(object path)
+		RegisterCharacteristicsWatcher(object agent)
 
-			Register a watcher for changes in specific characteristics
-			to monitor changes.
+			Register a watcher to monitor characteristic changes.
 
 			A watcher will be registered for this service and will
-			notifier about any changed characteristics in the service.
+			notify about any changed characteristics in the service.
 			This also notifies about any included characteristics.
 
-			Method for the watch objects still need to be defined.
-
-		UnregisterCharacteristicsWatcher(object path)
+		UnregisterCharacteristicsWatcher(object agent)
 
 			Unregister a watcher.
 
