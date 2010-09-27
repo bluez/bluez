@@ -536,8 +536,6 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 	channel->attrib = g_attrib_new(io);
 	channel->mtu = ATT_DEFAULT_MTU;
 
-	g_io_channel_unref(io);
-
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
 				channel_handler, channel, NULL);
 
@@ -674,8 +672,8 @@ void attrib_server_exit(void)
 	for (l = clients; l; l = l->next) {
 		struct gatt_channel *channel = l->data;
 
-		g_source_remove(channel->id);
 		g_attrib_unref(channel->attrib);
+		g_free(channel);
 	}
 
 	g_slist_free(clients);
