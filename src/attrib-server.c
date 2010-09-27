@@ -663,11 +663,15 @@ void attrib_server_exit(void)
 	g_slist_foreach(database, (GFunc) g_free, NULL);
 	g_slist_free(database);
 
-	if (l2cap_io)
+	if (l2cap_io) {
 		g_io_channel_unref(l2cap_io);
+		g_io_channel_shutdown(l2cap_io, FALSE, NULL);
+	}
 
-	if (le_io)
+	if (le_io) {
 		g_io_channel_unref(le_io);
+		g_io_channel_shutdown(le_io, FALSE, NULL);
+	}
 
 	for (l = clients; l; l = l->next) {
 		struct gatt_channel *channel = l->data;
