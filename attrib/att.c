@@ -308,6 +308,51 @@ struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, int len)
 	return list;
 }
 
+uint16_t enc_write_cmd(uint16_t handle, const uint8_t *value, int vlen,
+							uint8_t *pdu, int len)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (len < 3)
+		return 0;
+
+	if (vlen > len - 3)
+		vlen = len - 3;
+
+	pdu[0] = ATT_OP_WRITE_CMD;
+	att_put_u16(handle, &pdu[1]);
+
+	if (vlen > 0) {
+		memcpy(pdu + 3, value, vlen);
+		return 3 + vlen;
+	}
+
+	return 3;
+}
+
+uint16_t dec_write_cmd(const uint8_t *pdu, int len, uint16_t *handle,
+						uint8_t *value, int *vlen)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (value == NULL || vlen == NULL || handle == NULL)
+		return 0;
+
+	if (len < 3)
+		return 0;
+
+	if (pdu[0] != ATT_OP_WRITE_CMD)
+		return 0;
+
+	*handle = att_get_u16((uint16_t *) &pdu[1]);
+	memcpy(value, pdu + 3, len - 3);
+	*vlen = len - 3;
+
+	return len;
+}
+
 uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len)
 {
 	if (pdu == NULL)
