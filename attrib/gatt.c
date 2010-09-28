@@ -89,3 +89,14 @@ guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
 	return g_attrib_send(attrib, ATT_OP_FIND_INFO_REQ, pdu, plen, func,
 							user_data, NULL);
 }
+
+guint gatt_write_cmd(GAttrib *attrib, uint16_t handle, uint8_t *value, int vlen,
+				GDestroyNotify notify, gpointer user_data)
+{
+	uint8_t pdu[ATT_DEFAULT_MTU];
+	guint16 plen;
+
+	plen = enc_write_cmd(handle, value, vlen, pdu, sizeof(pdu));
+	return g_attrib_send(attrib, ATT_OP_WRITE_CMD, pdu, plen, NULL,
+							user_data, notify);
+}
