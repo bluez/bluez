@@ -82,6 +82,7 @@ struct session_req {
 	guint			id;		/* Listener id */
 	uint8_t			mode;		/* Requested mode */
 	int			refcount;	/* Session refcount */
+	gboolean		got_reply;	/* Agent reply received */
 };
 
 struct service_auth {
@@ -757,7 +758,7 @@ static void session_free(struct session_req *req)
 
 	if (req->msg) {
 		dbus_message_unref(req->msg);
-		if (req->mode && req->adapter->agent)
+		if (!req->got_reply && req->mode && req->adapter->agent)
 			agent_cancel(req->adapter->agent);
 	}
 
@@ -793,6 +794,8 @@ static void confirm_mode_cb(struct agent *agent, DBusError *derr, void *data)
 	struct session_req *req = data;
 	int err;
 	DBusMessage *reply;
+
+	req->got_reply = TRUE;
 
 	if (derr && dbus_error_is_set(derr)) {
 		reply = dbus_message_new_error(req->msg, derr->name,
