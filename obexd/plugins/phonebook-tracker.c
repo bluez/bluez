@@ -43,16 +43,17 @@
 #define TRACKER_RESOURCES_INTERFACE "org.freedesktop.Tracker1.Resources"
 
 #define TRACKER_DEFAULT_CONTACT_ME "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#default-contact-me"
-#define CONTACTS_ID_COL 37
-#define PULL_QUERY_COL_AMOUNT 38
+#define CONTACTS_ID_COL 38
+#define PULL_QUERY_COL_AMOUNT 39
 #define COL_HOME_NUMBER 0
 #define COL_HOME_EMAIL 7
 #define COL_WORK_NUMBER 8
 #define COL_FAX_NUMBER 16
 #define COL_WORK_EMAIL 17
-#define COL_DATE 34
-#define COL_SENT 35
-#define COL_ANSWERED 36
+#define COL_OTHER_NUMBER 34
+#define COL_DATE 35
+#define COL_SENT 36
+#define COL_ANSWERED 37
 #define ADDR_FIELD_AMOUNT 7
 
 #define CONTACTS_QUERY_ALL						\
@@ -68,7 +69,8 @@
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"nco:title(?a) \"NOTACALL\" \"false\" \"false\" ?c "		\
+	"nco:title(?a) nco:phoneNumber(?t) "				\
+	"\"NOTACALL\" \"false\" \"false\" ?c "				\
 	"WHERE { "							\
 		"?c a nco:PersonContact . "				\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . 				\
@@ -113,35 +115,21 @@
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
+	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
 	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"nco:title(?a) nmo:receivedDate(?call) "			\
-	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
+	"nco:title(?a) nco:phoneNumber(?t) nmo:receivedDate(?call) "	\
+	"nmo:isSent(?call) nmo:isAnswered(?call) ?x "			\
 	"WHERE { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
 		"?call a nmo:Call ; "					\
-		"nmo:from ?c ; "					\
+		"nmo:from ?x ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?c a nco:Contact . "					\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . "			\
-		"OPTIONAL {"						\
-		"?h a nco:FaxNumber ; "					\
-		"nco:phoneNumber ?f . "					\
-		"}"							\
-	"} "								\
-	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
-	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
-	"OPTIONAL { "							\
-		"?c nco:hasAffiliation ?a . "				\
-		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
-		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
-		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
-		"OPTIONAL { ?a nco:org ?o . } "				\
-	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define MISSED_CALLS_LIST						\
@@ -165,35 +153,21 @@
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
+	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
 	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"nco:title(?a) nmo:receivedDate(?call) "			\
-	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
+	"nco:title(?a) nco:phoneNumber(?t) nmo:receivedDate(?call) "	\
+	"nmo:isSent(?call) nmo:isAnswered(?call) ?x "			\
 	"WHERE { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
 		"?call a nmo:Call ; "					\
-		"nmo:from ?c ; "					\
+		"nmo:from ?x ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered true ."					\
-		"?c a nco:Contact . "					\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . "			\
-		"OPTIONAL {"						\
-		"?h a nco:FaxNumber ; "					\
-		"nco:phoneNumber ?f . "					\
-		"}"							\
-	"} "								\
-	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
-	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
-	"OPTIONAL { "							\
-		"?c nco:hasAffiliation ?a . "				\
-		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
-		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
-		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
-		"OPTIONAL { ?a nco:org ?o . } "				\
-	"} "								\
 	"} ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define INCOMING_CALLS_LIST						\
@@ -217,34 +191,20 @@
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew)"	\
+	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew)"	\
 	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"nco:title(?a) nmo:receivedDate(?call) "			\
-	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
+	"nco:title(?a) nco:phoneNumber(?t) nmo:receivedDate(?call) "	\
+	"nmo:isSent(?call) nmo:isAnswered(?call) ?x "			\
 	"WHERE { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
 		"?call a nmo:Call ; "					\
-		"nmo:to ?c ; "						\
+		"nmo:to ?x ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:Contact . "					\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . "			\
-		"OPTIONAL {"						\
-		"?h a nco:FaxNumber ; "					\
-		"nco:phoneNumber ?f . "					\
-		"}"							\
-	"} "								\
-	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
-	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
-	"OPTIONAL { "							\
-		"?c nco:hasAffiliation ?a . "				\
-		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
-		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
-		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
-		"OPTIONAL { ?a nco:org ?o . } "				\
-	"} "								\
 	"} ORDER BY DESC(nmo:sentDate(?call))"
 
 #define OUTGOING_CALLS_LIST						\
@@ -267,53 +227,27 @@
 	"nco:nameHonorificSuffix(?c) nco:emailAddress(?e) "		\
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
-	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
+	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
 	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
-	"nco:title(?a) nmo:receivedDate(?call) "			\
-	"nmo:isSent(?call) nmo:isAnswered(?call) ?c "			\
+	"nco:title(?a) nco:phoneNumber(?t) nmo:receivedDate(?call) "	\
+	"nmo:isSent(?call) nmo:isAnswered(?call) ?x "			\
 	"WHERE { "							\
 	"{ "								\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
 		"?call a nmo:Call ; "					\
-		"nmo:to ?c ; "						\
+		"nmo:to ?x ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:Contact . "					\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . "			\
-		"OPTIONAL {"						\
-		"?h a nco:FaxNumber ; "					\
-		"nco:phoneNumber ?f . "					\
-		"}"							\
-	"} "								\
-	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
-	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
-	"OPTIONAL { ?c nco:hasAffiliation ?a . "			\
-		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
-		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
-		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
-		"OPTIONAL { ?a nco:org ?o . } "				\
-	"} "								\
 	"} UNION { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
 		"?call a nmo:Call ; "					\
-		"nmo:from ?c ; "					\
+		"nmo:from ?x ; "					\
 		"nmo:isSent false . "					\
-		"?c a nco:Contact . "					\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . "			\
-		"OPTIONAL {"						\
-		"?h a nco:FaxNumber ; "					\
-		"nco:phoneNumber ?f . "					\
-		"}"							\
-	"} "								\
-	"OPTIONAL { ?c nco:hasEmailAddress ?e . } "			\
-	"OPTIONAL { ?c nco:hasPostalAddress ?p . } "			\
-	"OPTIONAL { ?c nco:hasAffiliation ?a . "			\
-		"OPTIONAL { ?a nco:hasPhoneNumber ?w . } " 		\
-		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
-		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
-		"OPTIONAL { ?a nco:org ?o . } "				\
-	"} "								\
 	"} } ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define COMBINED_CALLS_LIST						\
@@ -349,7 +283,8 @@
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(<%s>) "	\
-	"nco:title(?a) \"NOTACALL\" \"false\" \"false\" <%s> "		\
+	"nco:title(?a) nco:phoneNumber(?t) "				\
+	"\"NOTACALL\" \"false\" \"false\" <%s> "			\
 	"WHERE { "							\
 		"<%s> a nco:Contact . "					\
 	"OPTIONAL { <%s> nco:hasPhoneNumber ?h . 			\
@@ -875,6 +810,7 @@ add_numbers:
 	add_phone_number(contact, reply[COL_HOME_NUMBER], TEL_TYPE_HOME);
 	add_phone_number(contact, reply[COL_WORK_NUMBER], TEL_TYPE_WORK);
 	add_phone_number(contact, reply[COL_FAX_NUMBER], TEL_TYPE_FAX);
+	add_phone_number(contact, reply[COL_OTHER_NUMBER], TEL_TYPE_OTHER);
 
 	/* Adding emails */
 	add_email(contact, reply[COL_HOME_EMAIL], EMAIL_TYPE_HOME);

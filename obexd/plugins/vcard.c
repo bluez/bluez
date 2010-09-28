@@ -241,9 +241,9 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 		break;
 	case TEL_TYPE_OTHER:
 		if (format == FORMAT_VCARD21)
-			category_string = "VOICE";
+			category_string = "OTHER;VOICE";
 		else if (format == FORMAT_VCARD30)
-			category_string = "TYPE=VOICE";
+			category_string = "TYPE=OTHER;TYPE=VOICE";
 		break;
 	}
 
