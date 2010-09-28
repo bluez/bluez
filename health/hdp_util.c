@@ -36,6 +36,9 @@
 #include <sdp_lib.h>
 #include <glib-helper.h>
 
+#include <btio.h>
+#include <mcap_lib.h>
+
 typedef gboolean (*parse_item_f)(DBusMessageIter *iter, gpointer user_data,
 								GError **err);
 
@@ -56,6 +59,7 @@ struct conn_mcl_data {
 	gpointer		data;
 	hdp_continue_proc_f	func;
 	GDestroyNotify		destroy;
+	struct hdp_device	*dev;
 };
 
 static gboolean parse_dict_entry(struct dict_entry_func dict_context[],
@@ -834,6 +838,73 @@ gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
 	return TRUE;
 }
 
+static gboolean get_prot_desc_entry(sdp_data_t *entry, int type, guint16 *val)
+{
+	sdp_data_t *iter;
+	int proto;
+
+	if (!entry || (entry->dtd != SDP_SEQ8 && entry->dtd != SDP_SEQ16 &&
+						entry->dtd != SDP_SEQ32))
+		return FALSE;
+
+	iter = entry->val.dataseq;
+	if (!(iter->dtd & SDP_UUID_UNSPEC))
+		return FALSE;
+
+	proto = sdp_uuid_to_proto(&iter->val.uuid);
+	if (proto != type)
+		return FALSE;
+
+	if (!val)
+		return TRUE;
+
+	iter = iter->next;
+	if (iter->dtd != SDP_UINT16)
+		return FALSE;
+
+	*val = iter->val.uint16;
+	return TRUE;
+}
+
+static gboolean hdp_get_prot_desc_list(const sdp_record_t *rec, guint16 *psm,
+							guint16 *version)
+{
+	sdp_data_t *pdl, *p0, *p1;
+
+	if (!psm && !version)
+		return TRUE;
+
+	pdl = sdp_data_get(rec, SDP_ATTR_PROTO_DESC_LIST);
+	if (pdl->dtd != SDP_SEQ8 && pdl->dtd != SDP_SEQ16 &&
+							pdl->dtd != SDP_SEQ32)
+		return FALSE;
+
+	p0 = pdl->val.dataseq;
+	if (!get_prot_desc_entry(p0, L2CAP_UUID, psm))
+		return FALSE;
+
+	p1 = p0->next;
+	if (!get_prot_desc_entry(p1, MCAP_CTRL_UUID, version))
+		return FALSE;
+
+	return TRUE;
+}
+
+static guint16 get_ccpsm(sdp_list_t *recs, uint16_t *ccpsm)
+{
+	sdp_list_t *l;
+	sdp_record_t *rec;
+
+	for (l = recs; l; l = l->next) {
+		rec = l->data;
+
+		if (hdp_get_prot_desc_list(rec, ccpsm, NULL))
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void free_con_mcl_data(gpointer data)
 {
 	struct conn_mcl_data *conn_data = data;
@@ -844,13 +915,55 @@ static void free_con_mcl_data(gpointer data)
 	g_free(conn_data);
 }
 
-static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
+static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 {
-	struct conn_mcl_data *conn_data = user_data;
+	struct conn_mcl_data *conn_data = data;
 	GError *gerr = NULL;
 
-	/* TODO: Implement this function */
-	g_set_error(&gerr, HDP_ERROR, HDP_UNSPECIFIED_ERROR, "Not implmented");
+	if (err)
+		conn_data->func(conn_data->data, err);
+
+	/* TODO: implement create_mcl_cb */
+	g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+					"create_mcl_cb not implemented");
+	conn_data->func(conn_data->data, gerr);
+	g_error_free(gerr);
+}
+
+static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
+{
+	struct conn_mcl_data *new_data, *conn_data = user_data;
+	GError *gerr = NULL;
+	bdaddr_t dst;
+	uint16_t ccpsm;
+
+	if (err || !recs) {
+		g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+					"Error getting remote SDP records");
+		goto fail;
+	}
+
+	if (!get_ccpsm(recs, &ccpsm)) {
+		g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+				"Can't get remote PSM for control channel");
+		goto fail;
+	}
+
+	new_data = g_new0(struct conn_mcl_data, 1);
+	new_data->data = conn_data->data;
+	new_data->func = conn_data->func;
+	new_data->destroy = conn_data->destroy;
+	new_data->dev = conn_data->dev;
+
+	device_get_address(conn_data->dev->dev, &dst);
+	if (!mcap_create_mcl(conn_data->dev->hdp_adapter->mi, &dst, ccpsm,
+						create_mcl_cb, new_data,
+						free_con_mcl_data, &gerr)) {
+		g_free(new_data);
+		goto fail;
+	}
+	return;
+fail:
 	conn_data->func(conn_data->data, gerr);
 	g_error_free(gerr);
 }
@@ -874,6 +987,7 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 	conn_data->func = func;
 	conn_data->data = data;
 	conn_data->destroy = destroy;
+	conn_data->dev = device;
 
 	bt_string2uuid(&uuid, HDP_UUID);
 	if (bt_search_service(&src, &dst, &uuid, search_cb, conn_data,
