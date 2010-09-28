@@ -196,13 +196,47 @@
 	"nco:title(?a) nco:phoneNumber(?t) nmo:receivedDate(?call) "	\
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?x "			\
 	"WHERE { "							\
+	"{ "								\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?h . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered true . "				\
+		"?c a nco:PersonContact . "				\
+		"?c nco:hasPhoneNumber ?h . "				\
+		"OPTIONAL { ?c nco:hasEmailAddress ?e . } "		\
+		"OPTIONAL { ?c nco:hasPostalAddress ?p . } "		\
+		"OPTIONAL { "						\
+			"?c nco:hasAffiliation ?a . "			\
+			"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "	\
+			"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "	\
+			"OPTIONAL { ?a nco:org ?o . } "			\
+		"} "							\
+	"} UNION { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?w . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered true . "				\
+		"?c a nco:PersonContact . "				\
+		"OPTIONAL { ?c nco:hasEmailAddress ?e . } "		\
+		"OPTIONAL { ?c nco:hasPostalAddress ?p . } "		\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?w . "				\
+		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
+		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
+		"OPTIONAL { ?a nco:org ?o . } "				\
+	"} UNION { "							\
 		"?x a nco:Contact . "					\
 		"?x nco:hasPhoneNumber ?t . "				\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?x ; "					\
 		"nmo:isSent false ; "					\
-		"nmo:isAnswered true ."					\
-	"} ORDER BY DESC(nmo:receivedDate(?call))"
+		"nmo:isAnswered true . "				\
+	"} "								\
+	"} ORDER BY DESC(nmo:receivedDate(?call)) "
 
 #define INCOMING_CALLS_LIST						\
 	"SELECT ?c nco:nameFamily(?c) "					\
