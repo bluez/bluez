@@ -495,17 +495,59 @@ static void free_hdp_create_dc(gpointer data)
 	g_free(dc_data);
 }
 
-static void device_create_dc_cb(gpointer user_data, GError *err)
+static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
+						GError *err, gpointer data)
 {
-	struct hdp_create_dc *data = user_data;
+	struct hdp_create_dc *user_data = data;
 	DBusMessage *reply;
 
-	/* TODO: Implement this function */
-	reply = g_dbus_create_error(data->msg,
-					ERROR_INTERFACE ".Not implemented",
-					"This function is not yet implemented");
+	if (err) {
+		reply = g_dbus_create_error(user_data->msg,
+					ERROR_INTERFACE ".HealthError",
+					"%s", err->message);
+		g_dbus_send_message(user_data->conn, reply);
+		return;
+	}
+
+	/* TODO: Register a new org.bluez.HealthChannel interface */
+	reply = g_dbus_create_error(user_data->msg,
+					ERROR_INTERFACE ".HealthError",
+					"Function is not implemented");
+	g_dbus_send_message(user_data->conn, reply);
+}
+
+static void device_create_dc_cb(gpointer user_data, GError *err)
+{
+	struct hdp_create_dc *dc_data, *data = user_data;
+	DBusMessage *reply;
+	GError *gerr = NULL;
+
+	if (err) {
+		reply = g_dbus_create_error(data->msg,
+					ERROR_INTERFACE ".HealthError",
+					"%s", err->message);
+		g_dbus_send_message(data->conn, reply);
+		return;
+	}
+
+	dc_data = g_new0(struct hdp_create_dc, 1);
+	dc_data->dev = data->dev;
+	dc_data->config = data->config;
+	dc_data->app = data->app;
+	dc_data->msg = dbus_message_ref(data->msg);
+	dc_data->conn = dbus_connection_ref(data->conn);
+	dc_data->mdep = data->mdep;
+
+	if (mcap_create_mdl(data->dev->mcl, data->mdep, data->config,
+						device_create_mdl_cb, dc_data,
+						free_hdp_create_dc, &gerr))
+		return;
+
+	reply = g_dbus_create_error(data->msg, ERROR_INTERFACE ".HealthError",
+							"%s", gerr->message);
+	free_hdp_create_dc(dc_data);
+	g_error_free(gerr);
 	g_dbus_send_message(data->conn, reply);
-	return;
 }
 
 static void device_get_mdep_cb(uint8_t mdep, gpointer data, GError *err)
