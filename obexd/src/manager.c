@@ -648,7 +648,8 @@ void manager_emit_transfer_progress(struct obex_session *os)
 
 void manager_emit_transfer_completed(struct obex_session *os)
 {
-	emit_transfer_completed(os->cid, !os->aborted);
+	if (os->object)
+		emit_transfer_completed(os->cid, !os->aborted);
 }
 
 DBusConnection *obex_dbus_get_connection(void)
