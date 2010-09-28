@@ -379,8 +379,10 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 		transfer->filled += len;
 
-		if (transfer->filled == 0)
+		if (transfer->filled == 0) {
+			gw_obex_xfer_flush(xfer, &err);
 			goto done;
+		}
 
 		if (gw_obex_xfer_write(xfer, transfer->buffer,
 					transfer->filled,
