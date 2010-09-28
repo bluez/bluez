@@ -27,7 +27,14 @@
 #ifndef __HDP_UTIL_H__
 #define __HDP_UTIL_H__
 
+typedef void (*hdp_continue_mdep_f)(uint8_t mdep, gpointer user_data,
+								GError *err);
+
 struct hdp_application *hdp_get_app_config(DBusMessageIter *iter, GError **err);
 gboolean hdp_update_sdp_record(struct hdp_adapter *adapter, GSList *app_list);
+gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
+				hdp_continue_mdep_f func,
+				gpointer data, GDestroyNotify destroy,
+				GError **err);
 
 #endif /* __HDP_UTIL_H__ */

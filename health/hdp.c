@@ -53,10 +53,12 @@ static struct hdp_device *create_health_device(DBusConnection *conn,
 						struct btd_device *device);
 
 struct hdp_create_dc {
+	DBusConnection		*conn;
+	DBusMessage		*msg;
+	struct hdp_application	*app;
 	struct hdp_device	*dev;
 	uint8_t			config;
 	uint8_t			mdep;
-	struct hdp_application	*app;
 };
 
 static int cmp_app_id(gconstpointer a, gconstpointer b)
@@ -483,6 +485,20 @@ static DBusMessage *device_echo(DBusConnection *conn,
 					"Echo function not implemented");
 }
 
+static void free_hdp_create_dc(gpointer data)
+{
+	struct hdp_create_dc *dc_data = data;
+
+	dbus_message_unref(dc_data->msg);
+	dbus_connection_unref(dc_data->conn);
+
+	g_free(dc_data);
+}
+
+static void device_get_mdep_cb(uint8_t mdep, gpointer data, GError *err)
+{
+}
+
 static DBusMessage *device_create_channel(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -524,17 +540,17 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 	data->dev = device;
 	data->config = config;
 	data->app = l->data;
+	data->msg = dbus_message_ref(msg);
+	data->conn = dbus_connection_ref(conn);
 
-	/*TODO: GET Remote mdep*/
-/*
-	if (hdp_get_mdep(device, l->data, msg, device_get_mdep_cb, data, g_free,
-									&err))
+	if (hdp_get_mdep(device, l->data, device_get_mdep_cb, data,
+						free_hdp_create_dc, &err))
 		return NULL;
-*/
 
 	reply = g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
 							"%s", err->message);
 	g_error_free(err);
+	free_hdp_create_dc(data);
 	return reply;
 }
 

@@ -26,6 +26,7 @@
 #include <gdbus.h>
 
 #include <adapter.h>
+#include <device.h>
 #include <stdint.h>
 #include <hdp_types.h>
 #include <hdp_util.h>
@@ -33,6 +34,7 @@
 
 #include <sdpd.h>
 #include <sdp_lib.h>
+#include <glib-helper.h>
 
 typedef gboolean (*parse_item_f)(DBusMessageIter *iter, gpointer user_data,
 								GError **err);
@@ -40,6 +42,13 @@ typedef gboolean (*parse_item_f)(DBusMessageIter *iter, gpointer user_data,
 struct dict_entry_func {
 	char		*key;
 	parse_item_f	func;
+};
+
+struct get_mdep_data {
+	struct hdp_application	*app;
+	gpointer		data;
+	hdp_continue_mdep_f	func;
+	GDestroyNotify		destroy;
 };
 
 static gboolean parse_dict_entry(struct dict_entry_func dict_context[],
@@ -687,4 +696,54 @@ fail:
 	if (sdp_record)
 		sdp_record_free(sdp_record);
 	return FALSE;
+}
+
+static void get_mdep_cb(sdp_list_t *recs, int err, gpointer user_data)
+{
+	struct get_mdep_data *mdep_data = user_data;
+	GError *gerr = NULL;
+
+	g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+							"Not implemented yet");
+	mdep_data->func(0, mdep_data->data, gerr);
+	g_error_free(gerr);
+}
+
+static void free_mdep_data(gpointer data)
+{
+	struct get_mdep_data *mdep_data = data;
+
+	if (mdep_data->destroy)
+		mdep_data->destroy(mdep_data->data);
+
+	g_free(mdep_data);
+}
+
+gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
+				hdp_continue_mdep_f func, gpointer data,
+				GDestroyNotify destroy, GError **err)
+{
+	struct get_mdep_data *mdep_data;
+	bdaddr_t dst, src;
+	uuid_t uuid;
+
+	device_get_address(device->dev, &dst);
+	adapter_get_address(device_get_adapter(device->dev), &src);
+
+	mdep_data = g_new0(struct get_mdep_data, 1);
+	mdep_data->app = app;
+	mdep_data->func = func;
+	mdep_data->data = data;
+	mdep_data->destroy = destroy;
+
+	bt_string2uuid(&uuid, HDP_UUID);
+	if (bt_search_service(&src, &dst, &uuid, get_mdep_cb, mdep_data,
+							free_mdep_data)) {
+		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
+						"Can't get remote SDP record");
+		g_free(mdep_data);
+		return FALSE;
+	}
+
+	return TRUE;
 }
