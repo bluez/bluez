@@ -497,6 +497,24 @@ static void free_hdp_create_dc(gpointer data)
 
 static void device_get_mdep_cb(uint8_t mdep, gpointer data, GError *err)
 {
+	struct hdp_create_dc *user_data = data;
+	DBusMessage *reply;
+
+	if (err) {
+		reply = g_dbus_create_error(user_data->msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"%s", err->message);
+		g_dbus_send_message(user_data->conn, reply);
+		return;
+	}
+
+	user_data->mdep = mdep;
+
+	/* TODO: Check if MCL is connected */
+	reply = g_dbus_create_error(user_data->msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"%s", err->message);
+	g_dbus_send_message(user_data->conn, reply);
 }
 
 static DBusMessage *device_create_channel(DBusConnection *conn,
