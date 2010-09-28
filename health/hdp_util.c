@@ -705,15 +705,94 @@ fail:
 	return FALSE;
 }
 
+static gboolean check_role(uint8_t rec_role, uint8_t app_role)
+{
+	if ((rec_role == HDP_SINK && app_role == HDP_SOURCE) ||
+			(rec_role == HDP_SOURCE && app_role == HDP_SINK))
+		return TRUE;
+
+	return FALSE;
+}
+
+static gboolean get_mdep_from_rec(const sdp_record_t *rec, uint8_t role,
+				uint16_t d_type, uint8_t *mdep, char **desc)
+{
+	sdp_data_t *list, *feat, *data_type, *mdepid, *role_t, *desc_t;
+
+	if (!desc && !mdep)
+		return TRUE;
+
+	list = sdp_data_get(rec, SDP_ATTR_SUPPORTED_FEATURES_LIST);
+
+	if (list->dtd != SDP_SEQ8 && list->dtd != SDP_SEQ16 &&
+							list->dtd != SDP_SEQ32)
+		return FALSE;
+
+	for (feat = list->val.dataseq; feat; feat = feat->next) {
+		if (feat->dtd != SDP_SEQ8 && feat->dtd != SDP_SEQ16 &&
+						feat->dtd != SDP_SEQ32)
+			continue;
+
+		mdepid = feat->val.dataseq;
+		if (!mdepid)
+			continue;
+
+		data_type = mdepid->next;
+		if (!data_type)
+			continue;
+
+		role_t = data_type->next;
+		if (!role_t)
+			continue;
+
+		desc_t = role_t->next;
+
+		if (data_type->dtd != SDP_UINT16 || mdepid->dtd != SDP_UINT8 ||
+						role_t->dtd != SDP_UINT8)
+			continue;
+
+		if (data_type->val.uint16 != d_type ||
+					!check_role(role_t->val.uint8, role))
+			continue;
+
+		if (mdep)
+			*mdep = mdepid->val.uint8;
+
+		if (desc  && desc_t && (desc_t->dtd == SDP_TEXT_STR8 ||
+					desc_t->dtd == SDP_TEXT_STR16  ||
+					desc_t->dtd == SDP_TEXT_STR32))
+			*desc = g_strdup(desc_t->val.str);
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void get_mdep_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct get_mdep_data *mdep_data = user_data;
 	GError *gerr = NULL;
+	uint8_t mdep;
 
-	g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
-							"Not implemented yet");
-	mdep_data->func(0, mdep_data->data, gerr);
-	g_error_free(gerr);
+	if (err || !recs) {
+		g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+					"Error getting remote SDP records");
+		mdep_data->func(0, mdep_data->data, gerr);
+		g_error_free(gerr);
+		return;
+	}
+
+	if (!get_mdep_from_rec(recs->data, mdep_data->app->role,
+				mdep_data->app->data_type, &mdep, NULL)) {
+		g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+					"No matching MDEP found");
+		mdep_data->func(0, mdep_data->data, gerr);
+		g_error_free(gerr);
+		return;
+	}
+
+	mdep_data->func(mdep, mdep_data->data, NULL);
 }
 
 static void free_mdep_data(gpointer data)
