@@ -51,6 +51,13 @@ struct get_mdep_data {
 	GDestroyNotify		destroy;
 };
 
+struct conn_mcl_data {
+	struct hdp_application	*app;
+	gpointer		data;
+	hdp_continue_proc_f	func;
+	GDestroyNotify		destroy;
+};
+
 static gboolean parse_dict_entry(struct dict_entry_func dict_context[],
 							DBusMessageIter *iter,
 							GError **err,
@@ -745,5 +752,56 @@ gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
 		return FALSE;
 	}
 
+	return TRUE;
+}
+
+static void free_con_mcl_data(gpointer data)
+{
+	struct conn_mcl_data *conn_data = data;
+
+	if (conn_data->destroy)
+		conn_data->destroy(conn_data->data);
+
+	g_free(conn_data);
+}
+
+static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
+{
+	struct conn_mcl_data *conn_data = user_data;
+	GError *gerr = NULL;
+
+	/* TODO: Implement this function */
+	g_set_error(&gerr, HDP_ERROR, HDP_UNSPECIFIED_ERROR, "Not implmented");
+	conn_data->func(conn_data->data, gerr);
+	g_error_free(gerr);
+}
+
+gboolean hdp_establish_mcl(struct hdp_device *device,
+						struct hdp_application *app,
+						hdp_continue_proc_f func,
+						gpointer data,
+						GDestroyNotify destroy,
+						GError **err)
+{
+	struct conn_mcl_data *conn_data;
+	bdaddr_t dst, src;
+	uuid_t uuid;
+
+	device_get_address(device->dev, &dst);
+	adapter_get_address(device_get_adapter(device->dev), &src);
+
+	conn_data = g_new0(struct conn_mcl_data, 1);
+	conn_data->app = app;
+	conn_data->func = func;
+	conn_data->data = data;
+	conn_data->destroy = destroy;
+
+	bt_string2uuid(&uuid, HDP_UUID);
+	if (bt_search_service(&src, &dst, &uuid, search_cb, conn_data,
+							free_con_mcl_data)) {
+		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
+						"Can't get remote SDP record");
+		return FALSE;
+	}
 	return TRUE;
 }

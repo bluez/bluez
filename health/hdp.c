@@ -495,25 +495,56 @@ static void free_hdp_create_dc(gpointer data)
 	g_free(dc_data);
 }
 
+static void device_create_dc_cb(gpointer user_data, GError *err)
+{
+	struct hdp_create_dc *data = user_data;
+	DBusMessage *reply;
+
+	/* TODO: Implement this function */
+	reply = g_dbus_create_error(data->msg,
+					ERROR_INTERFACE ".Not implemented",
+					"This function is not yet implemented");
+	g_dbus_send_message(data->conn, reply);
+	return;
+}
+
 static void device_get_mdep_cb(uint8_t mdep, gpointer data, GError *err)
 {
-	struct hdp_create_dc *user_data = data;
+	struct hdp_create_dc *dc_data, *user_data = data;
 	DBusMessage *reply;
+	GError *gerr = NULL;
 
 	if (err) {
 		reply = g_dbus_create_error(user_data->msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"%s", err->message);
+						ERROR_INTERFACE ".HealthError",
+						"%s", err->message);
 		g_dbus_send_message(user_data->conn, reply);
 		return;
 	}
 
-	user_data->mdep = mdep;
+	dc_data = g_new0(struct hdp_create_dc, 1);
+	dc_data->dev = user_data->dev;
+	dc_data->config = user_data->config;
+	dc_data->app = user_data->app;
+	dc_data->msg = dbus_message_ref(user_data->msg);
+	dc_data->conn = dbus_connection_ref(user_data->conn);
+	dc_data->mdep = mdep;
 
-	/* TODO: Check if MCL is connected */
+	if (user_data->dev->mcl_conn) {
+		device_create_dc_cb(dc_data, NULL);
+		free_hdp_create_dc(dc_data);
+		return;
+	}
+
+	if (hdp_establish_mcl(dc_data->dev, dc_data->app, device_create_dc_cb,
+					dc_data, free_hdp_create_dc, &gerr))
+		return;
+
 	reply = g_dbus_create_error(user_data->msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"%s", err->message);
+						ERROR_INTERFACE ".HealthError",
+						"%s", gerr->message);
+	free_hdp_create_dc(dc_data);
+	g_error_free(gerr);
 	g_dbus_send_message(user_data->conn, reply);
 }
 
