@@ -452,7 +452,6 @@ static void vcard_printf_datetime(GString *vcards,
 static void vcard_printf_end(GString *vcards)
 {
 	vcard_printf(vcards, "END:VCARD");
-	vcard_printf(vcards, "");
 }
 
 void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
