@@ -52,6 +52,13 @@ static gboolean update_adapter(struct hdp_adapter *adapter);
 static struct hdp_device *create_health_device(DBusConnection *conn,
 						struct btd_device *device);
 
+struct hdp_create_dc {
+	struct hdp_device	*dev;
+	uint8_t			config;
+	uint8_t			mdep;
+	struct hdp_application	*app;
+};
+
 static int cmp_app_id(gconstpointer a, gconstpointer b)
 {
 	const struct hdp_application *app = a;
@@ -479,8 +486,56 @@ static DBusMessage *device_echo(DBusConnection *conn,
 static DBusMessage *device_create_channel(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
-				"CreateChannel function not implemented");
+	struct hdp_device *device = user_data;
+	struct hdp_create_dc *data;
+	char *app_path, *conf;
+	DBusMessage *reply;
+	GError *err = NULL;
+	uint8_t config;
+	GSList *l;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &app_path,
+							DBUS_TYPE_STRING, &conf,
+							DBUS_TYPE_INVALID)) {
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+	}
+
+	l = g_slist_find_custom(applications, app_path, cmp_app);
+	if (!l)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call, "
+					"no such application");
+
+	if (g_ascii_strcasecmp("Reliable", conf) == 0)
+		config = HDP_RELIABLE_DC;
+	else if (g_ascii_strcasecmp("Streaming", conf) == 0)
+		config = HDP_STREAMING_DC;
+	else if (g_ascii_strcasecmp("Any", conf) == 0)
+		config = HDP_NO_PREFERENCE_DC;
+	else
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+
+	data = g_new0(struct hdp_create_dc, 1);
+	data->dev = device;
+	data->config = config;
+	data->app = l->data;
+
+	/*TODO: GET Remote mdep*/
+/*
+	if (hdp_get_mdep(device, l->data, msg, device_get_mdep_cb, data, g_free,
+									&err))
+		return NULL;
+*/
+
+	reply = g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+							"%s", err->message);
+	g_error_free(err);
+	return reply;
 }
 
 static DBusMessage *device_destroy_channel(DBusConnection *conn,
