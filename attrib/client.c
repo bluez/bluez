@@ -177,14 +177,6 @@ static int characteristic_handle_cmp(gconstpointer a, gconstpointer b)
 	return chr->handle - handle;
 }
 
-static int characteristic_path_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct characteristic *chr = a;
-	const char *path = b;
-
-	return g_strcmp0(chr->path, path);
-}
-
 static int watcher_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct watcher *watcher = a;
@@ -448,10 +440,6 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID))
 		return invalid_args(msg);
-
-	if (!g_slist_find_custom(prim->chars, path, characteristic_path_cmp))
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-								"Invalid path");
 
 	if (gatt->attrib != NULL) {
 		gatt->attrib = g_attrib_ref(gatt->attrib);
