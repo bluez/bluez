@@ -934,16 +934,18 @@ static struct conn_mcl_data *con_mcl_data_ref(struct conn_mcl_data *conn_data)
 static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 {
 	struct conn_mcl_data *conn_data = data;
-	GError *gerr = NULL;
+	struct hdp_device *device = conn_data->dev;
 
-	if (err)
+	if (err) {
 		conn_data->func(conn_data->data, err);
+		return;
+	}
 
-	/* TODO: implement create_mcl_cb */
-	g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
-					"create_mcl_cb not implemented");
-	conn_data->func(conn_data->data, gerr);
-	g_error_free(gerr);
+	if (!device->mcl)
+		device->mcl = mcap_mcl_ref(mcl);
+	device->mcl_conn = TRUE;
+
+	conn_data->func(conn_data->data, NULL);
 }
 
 static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
