@@ -55,6 +55,7 @@ struct get_mdep_data {
 };
 
 struct conn_mcl_data {
+	int			refs;
 	struct hdp_application	*app;
 	gpointer		data;
 	hdp_continue_proc_f	func;
@@ -905,14 +906,29 @@ static guint16 get_ccpsm(sdp_list_t *recs, uint16_t *ccpsm)
 	return FALSE;
 }
 
-static void free_con_mcl_data(gpointer data)
+static void con_mcl_data_unref(gpointer data)
 {
 	struct conn_mcl_data *conn_data = data;
+
+	if (!conn_data)
+		return;
+
+	if (--conn_data->refs > 0)
+		return;
 
 	if (conn_data->destroy)
 		conn_data->destroy(conn_data->data);
 
 	g_free(conn_data);
+}
+
+static struct conn_mcl_data *con_mcl_data_ref(struct conn_mcl_data *conn_data)
+{
+	if (!conn_data)
+		return NULL;
+
+	conn_data->refs++;
+	return conn_data;
 }
 
 static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
@@ -932,7 +948,7 @@ static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 
 static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
-	struct conn_mcl_data *new_data, *conn_data = user_data;
+	struct conn_mcl_data *conn_data = user_data;
 	GError *gerr = NULL;
 	bdaddr_t dst;
 	uint16_t ccpsm;
@@ -949,17 +965,13 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto fail;
 	}
 
-	new_data = g_new0(struct conn_mcl_data, 1);
-	new_data->data = conn_data->data;
-	new_data->func = conn_data->func;
-	new_data->destroy = conn_data->destroy;
-	new_data->dev = conn_data->dev;
+	conn_data = con_mcl_data_ref(conn_data);
 
 	device_get_address(conn_data->dev->dev, &dst);
 	if (!mcap_create_mcl(conn_data->dev->hdp_adapter->mi, &dst, ccpsm,
-						create_mcl_cb, new_data,
-						free_con_mcl_data, &gerr)) {
-		g_free(new_data);
+						create_mcl_cb, conn_data,
+						con_mcl_data_unref, &gerr)) {
+		con_mcl_data_unref(conn_data);
 		goto fail;
 	}
 	return;
@@ -983,6 +995,7 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 	adapter_get_address(device_get_adapter(device->dev), &src);
 
 	conn_data = g_new0(struct conn_mcl_data, 1);
+	conn_data->refs = 1;
 	conn_data->app = app;
 	conn_data->func = func;
 	conn_data->data = data;
@@ -991,7 +1004,7 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 
 	bt_string2uuid(&uuid, HDP_UUID);
 	if (bt_search_service(&src, &dst, &uuid, search_cb, conn_data,
-							free_con_mcl_data)) {
+							con_mcl_data_unref)) {
 		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
 						"Can't get remote SDP record");
 		return FALSE;
