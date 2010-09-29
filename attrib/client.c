@@ -426,24 +426,14 @@ static DBusMessage *get_characteristics(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *register_watcher(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static int l2cap_connect(struct gatt_service *gatt, GError **gerr,
+								gboolean listen)
 {
-	const char *sender = dbus_message_get_sender(msg);
-	struct primary *prim = data;
-	struct gatt_service *gatt = prim->gatt;
-	struct watcher *watcher;
-	GError *gerr = NULL;
 	GIOChannel *io;
-	char *path;
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID))
-		return invalid_args(msg);
 
 	if (gatt->attrib != NULL) {
 		gatt->attrib = g_attrib_ref(gatt->attrib);
-		goto done;
+		return 0;
 	}
 
 	/*
@@ -451,13 +441,40 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 	 * Configuration it is necessary to poll the server from time
 	 * to time checking for modifications.
 	 */
-	io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, &gerr,
+	io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &gatt->sba,
 			BT_IO_OPT_DEST_BDADDR, &gatt->dba,
 			BT_IO_OPT_PSM, gatt->psm,
 			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 			BT_IO_OPT_INVALID);
-	if (!io) {
+	if (!io)
+		return -1;
+
+	gatt->attrib = g_attrib_new(io);
+	g_io_channel_unref(io);
+	gatt->listen = listen;
+
+	g_attrib_set_destroy_function(gatt->attrib, attrib_destroy, gatt);
+	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect,
+									gatt);
+
+	return 0;
+}
+
+static DBusMessage *register_watcher(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const char *sender = dbus_message_get_sender(msg);
+	struct primary *prim = data;
+	struct watcher *watcher;
+	GError *gerr = NULL;
+	char *path;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID))
+		return invalid_args(msg);
+
+	if (l2cap_connect(prim->gatt, &gerr, TRUE) < 0) {
 		DBusMessage *reply;
 		reply = g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 							"%s", gerr->message);
@@ -466,15 +483,6 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 		return reply;
 	}
 
-	gatt->attrib = g_attrib_new(io);
-	g_io_channel_unref(io);
-	gatt->listen = TRUE;
-
-	g_attrib_set_destroy_function(gatt->attrib, attrib_destroy, gatt);
-	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect,
-									gatt);
-
-done:
 	watcher = g_new0(struct watcher, 1);
 	watcher->name = g_strdup(sender);
 	watcher->prim = prim;
