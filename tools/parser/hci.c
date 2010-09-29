@@ -381,7 +381,7 @@ static char *cmd_testing_str[CMD_TESTING_NUM + 1] = {
 	"Unknown",
 };
 
-#define CMD_LE_NUM 30
+#define CMD_LE_NUM 31
 static char *cmd_le_str[CMD_LE_NUM + 1] = {
 	"Unknown",
 	"LE Set Event Mask",
@@ -403,7 +403,7 @@ static char *cmd_le_str[CMD_LE_NUM + 1] = {
 	"LE Add Device To White List",
 	"LE Remove Device From White List",
 	"LE Connection Update",
-	"LE Set Host Channel Classification"
+	"LE Set Host Channel Classification",
 	"LE Read Channel Map",
 	"LE Read Remote Used Features",
 	"LE Encrypt",
