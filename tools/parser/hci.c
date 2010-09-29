@@ -3239,7 +3239,9 @@ static inline void evt_le_conn_complete_dump(int level, struct frame *frm)
 	evt_le_connection_complete *evt = frm->ptr;
 
 	p_indent(level, frm);
-	printf("status 0x%2.2x handle %d\n", evt->status, btohs(evt->handle));
+	printf("status 0x%2.2x handle %d, role %s\n",
+					evt->status, btohs(evt->handle),
+					evt->role ? "slave" : "master");
 }
 
 static inline void le_meta_ev_dump(int level, struct frame *frm)
