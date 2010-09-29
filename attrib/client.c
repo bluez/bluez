@@ -536,7 +536,9 @@ static GDBusMethodTable prim_methods[] = {
 static DBusMessage *set_value(DBusConnection *conn, DBusMessage *msg,
 			DBusMessageIter *iter, struct characteristic *chr)
 {
+	struct gatt_service *gatt = chr->prim->gatt;
 	DBusMessageIter sub;
+	GError *gerr = NULL;
 	uint8_t *value;
 	int len;
 
@@ -548,7 +550,16 @@ static DBusMessage *set_value(DBusConnection *conn, DBusMessage *msg,
 
 	dbus_message_iter_get_fixed_array(&sub, &value, &len);
 
-	/* FIXME: missing set the new value */
+	if (l2cap_connect(gatt, &gerr, FALSE) < 0) {
+		DBusMessage *reply;
+		reply = g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
+							"%s", gerr->message);
+		g_error_free(gerr);
+
+		return reply;
+	}
+
+	gatt_write_cmd(gatt->attrib, chr->handle, value, len, NULL, NULL);
 
 	g_free(chr->value);
 	chr->value = g_malloc(len);
