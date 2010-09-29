@@ -805,6 +805,24 @@ static int hciops_write_eir_data(int index, uint8_t *data)
 	return ret;
 }
 
+static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_read_bd_addr(dd, bdaddr, HCI_REQ_TIMEOUT) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -825,6 +843,7 @@ static struct btd_adapter_ops hci_ops = {
 	.read_clock = hciops_read_clock,
 	.get_conn_handle = hciops_conn_handle,
 	.write_eir_data = hciops_write_eir_data,
+	.read_bdaddr = hciops_read_bdaddr,
 };
 
 static int hciops_init(void)

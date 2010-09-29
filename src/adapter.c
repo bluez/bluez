@@ -1911,31 +1911,6 @@ static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
 	return 0;
 }
 
-static int adapter_read_bdaddr(uint16_t dev_id, bdaddr_t *bdaddr)
-{
-	int dd, err;
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		err = -errno;
-		error("Can't open device hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		return err;
-	}
-
-	if (hci_read_bd_addr(dd, bdaddr, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
-		error("Can't read address for hci%d: %s (%d)",
-					dev_id, strerror(errno), errno);
-		hci_close_dev(dd);
-		return err;
-	}
-
-	hci_close_dev(dd);
-
-	return 0;
-}
-
 static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 {
 	struct hci_dev *dev = &adapter->dev;
@@ -2352,7 +2327,7 @@ int adapter_start(struct btd_adapter *adapter)
 
 		DBG("Adapter %s without an address", adapter->path);
 
-		err = adapter_read_bdaddr(adapter->dev_id, &di.bdaddr);
+		err = adapter_ops->read_bdaddr(adapter->dev_id, &di.bdaddr);
 		if (err < 0)
 			return err;
 	}
