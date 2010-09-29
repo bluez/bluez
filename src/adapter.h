@@ -190,6 +190,7 @@ struct btd_adapter_ops {
 	int (*read_clock) (int index, int handle, int which, int timeout,
 				 uint32_t *clock, uint16_t *accuracy);
 	int (*get_conn_handle) (int index, const bdaddr_t *bdaddr, int *handle);
+	int (*write_eir_data) (int index, uint8_t *data);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);

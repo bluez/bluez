@@ -214,30 +214,24 @@ void clear_found_devices_list(struct btd_adapter *adapter)
 
 static void update_ext_inquiry_response(struct btd_adapter *adapter)
 {
-	uint8_t fec = 0, data[240];
+	uint8_t data[240];
 	struct hci_dev *dev = &adapter->dev;
-	int dd;
+	int ret;
 
 	if (!(dev->features[6] & LMP_EXT_INQ))
 		return;
 
 	memset(data, 0, sizeof(data));
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return;
-
 	if (dev->ssp_mode > 0)
 		create_ext_inquiry_response((char *) dev->name,
 						adapter->tx_power,
 						adapter->services, data);
 
-	if (hci_write_ext_inquiry_response(dd, fec, data,
-						HCI_REQ_TIMEOUT) < 0)
+	ret = adapter_ops->write_eir_data(adapter->dev_id, data);
+	if (ret < 0)
 		error("Can't write extended inquiry response: %s (%d)",
-						strerror(errno), errno);
-
-	hci_close_dev(dd);
+						strerror(-ret), -ret);
 }
 
 static int adapter_set_service_classes(struct btd_adapter *adapter,

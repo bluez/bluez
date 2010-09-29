@@ -786,6 +786,25 @@ fail:
 	return err;
 }
 
+static int hciops_write_eir_data(int index, uint8_t *data)
+{
+	uint8_t fec = 0;
+	int ret, dd;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_write_ext_inquiry_response(dd, fec, data, HCI_REQ_TIMEOUT) < 0)
+		ret = -errno;
+	else
+		ret = 0;
+
+	hci_close_dev(dd);
+
+	return ret;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -805,6 +824,7 @@ static struct btd_adapter_ops hci_ops = {
 	.set_fast_connectable = hciops_fast_connectable,
 	.read_clock = hciops_read_clock,
 	.get_conn_handle = hciops_conn_handle,
+	.write_eir_data = hciops_write_eir_data,
 };
 
 static int hciops_init(void)
