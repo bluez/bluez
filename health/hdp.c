@@ -36,7 +36,7 @@
 #include <mcap.h>
 #include <btio.h>
 #include <mcap_lib.h>
-
+#include <l2cap.h>
 #include <sdpd.h>
 #include "../src/dbus-common.h"
 
@@ -63,6 +63,13 @@ struct hdp_create_dc {
 	struct hdp_device	*dev;
 	uint8_t			config;
 	uint8_t			mdep;
+	guint			ref;
+};
+
+struct hdp_connect_dc {
+	DBusConnection		*conn;
+	DBusMessage		*msg;
+	struct hdp_channel	*hdp_chann;
 	guint			ref;
 };
 
@@ -94,6 +101,36 @@ static void hdp_create_data_unref(struct hdp_create_dc *dc_data)
 
 	free_hdp_create_dc(dc_data);
 }
+
+static void free_hdp_conn_dc(struct hdp_connect_dc *conn_data)
+{
+	dbus_message_unref(conn_data->msg);
+	dbus_connection_unref(conn_data->conn);
+
+	g_free(conn_data);
+}
+
+static struct hdp_connect_dc *hdp_conn_data_ref(struct hdp_connect_dc *conn_data)
+{
+	conn_data->ref++;
+
+	DBG("hdp_conn_data_ref(%p): ref=%d", conn_data, conn_data->ref);
+
+	return conn_data;
+}
+
+static void hdp_conn_data_unref(struct hdp_connect_dc *conn_data)
+{
+	conn_data->ref--;
+
+	DBG("hdp_conn_data_ref(%p): ref=%d", conn_data, conn_data->ref);
+
+	if (conn_data->ref > 0)
+		return;
+
+	free_hdp_conn_dc(conn_data);
+}
+
 static int cmp_app_id(gconstpointer a, gconstpointer b)
 {
 	const struct hdp_application *app = a;
@@ -629,12 +666,79 @@ static void destroy_create_dc_data(gpointer data)
 	hdp_create_data_unref(dc_data);
 }
 
+static void hdp_connect_dc_destroy(gpointer data)
+{
+	struct hdp_connect_dc *hdp_conn = data;
+
+	hdp_conn_data_unref(hdp_conn);
+}
+
+static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
+{
+	struct hdp_connect_dc *hdp_conn =  data;
+	struct hdp_channel *hdp_chann = hdp_conn->hdp_chann;
+	DBusMessage *reply;
+
+	if (err) {
+		/* TODO: Send abort request */
+		reply = g_dbus_create_error(hdp_conn->msg,
+						ERROR_INTERFACE ".HealthError",
+						"%s", err->message);
+		g_dbus_send_message(hdp_conn->conn, reply);
+		return;
+	}
+
+	hdp_chann->mdl_conn = TRUE;
+	reply = g_dbus_create_reply(hdp_conn->msg,
+					DBUS_TYPE_OBJECT_PATH, &hdp_chann->path,
+					DBUS_TYPE_INVALID);
+	g_dbus_send_message(hdp_conn->conn, reply);
+}
+
+static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
+{
+	struct hdp_connect_dc *hdp_conn = user_data;
+	struct hdp_channel *hdp_chann = hdp_conn->hdp_chann;
+	GError *gerr = NULL;
+	DBusMessage *reply;
+	uint8_t mode;
+
+	if (err) {
+		/* TODO: Send abort request */
+		reply = g_dbus_create_error(hdp_conn->msg,
+					ERROR_INTERFACE ".HealthError",
+					"%s", err->message);
+		g_dbus_send_message(hdp_conn->conn, reply);
+		return;
+	}
+
+	if (hdp_chann->config == HDP_RELIABLE_DC)
+		mode = L2CAP_MODE_ERTM;
+	else
+		mode = L2CAP_MODE_STREAMING;
+
+	if (mcap_connect_mdl(hdp_chann->mdl, mode, dcpsm, hdp_mdl_conn_cb,
+						hdp_conn_data_ref(hdp_conn),
+						hdp_connect_dc_destroy, &gerr))
+		return;
+
+	/* TODO: Send abort request */
+	reply = g_dbus_create_error(hdp_conn->msg,
+						ERROR_INTERFACE ".HealthError",
+						"%s", gerr->message);
+	g_error_free(gerr);
+	hdp_conn_data_unref(hdp_conn);
+	g_dbus_send_message(hdp_conn->conn, reply);
+}
+
 static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 						GError *err, gpointer data)
 {
 	struct hdp_create_dc *user_data = data;
+	struct hdp_connect_dc *hdp_conn;
 	struct hdp_channel *hdp_chann;
 	DBusMessage *reply;
+	GError *gerr = NULL;
 
 	if (err) {
 		reply = g_dbus_create_error(user_data->msg,
@@ -644,8 +748,10 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 		return;
 	}
 
+	/*TODO: Check config and requested config before continue */
+
 	hdp_chann = g_new0(struct hdp_channel, 1);
-	hdp_chann->config = user_data->config;
+	hdp_chann->config = conf;
 	hdp_chann->mdep = user_data->mdep;
 	hdp_chann->app = user_data->app;
 	hdp_chann->mdl = mdl;
@@ -664,16 +770,28 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 					ERROR_INTERFACE ".HealthError",
 					"Can't register HEALTH_CHANNEL");
 		g_dbus_send_message(user_data->conn, reply);
-		g_free(hdp_chann);
+		hdp_connect_dc_destroy(hdp_chann);
 		return;
 	}
 
 	user_data->dev->channels = g_slist_append(user_data->dev->channels,
 								hdp_chann);
-	/* TODO: Connect the data channel */
+	hdp_conn = g_new0(struct hdp_connect_dc, 1);
+	hdp_conn->msg = dbus_message_ref(user_data->msg);
+	hdp_conn->conn = dbus_connection_ref(user_data->conn);
+	hdp_conn->hdp_chann = hdp_chann;
+
+	if (hdp_get_dcpsm(hdp_chann->dev, hdp_get_dcpsm_cb,
+						hdp_conn_data_ref(hdp_conn),
+						hdp_connect_dc_destroy, &gerr))
+		return;
+
+	/* TODO: Send abort request */
 	reply = g_dbus_create_error(user_data->msg,
-					ERROR_INTERFACE ".HealthError",
-					"Function is not implemented");
+						ERROR_INTERFACE ".HealthError",
+						"%s", gerr->message);
+	g_error_free(gerr);
+	hdp_conn_data_unref(hdp_conn);
 	g_dbus_send_message(user_data->conn, reply);
 }
 
