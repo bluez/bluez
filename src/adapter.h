@@ -193,6 +193,7 @@ struct btd_adapter_ops {
 	int (*write_eir_data) (int index, uint8_t *data);
 	int (*read_bdaddr) (int index, bdaddr_t *bdaddr);
 	int (*set_event_mask) (int index, uint8_t *events, size_t count);
+	int (*write_inq_mode) (int index, uint8_t mode);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);

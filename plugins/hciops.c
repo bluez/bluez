@@ -842,6 +842,24 @@ static int hciops_set_event_mask(int index, uint8_t *events, size_t count)
 	return err;
 }
 
+static int hciops_write_inq_mode(int index, uint8_t mode)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_write_inquiry_mode(dd, mode, HCI_REQ_TIMEOUT) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -864,6 +882,7 @@ static struct btd_adapter_ops hci_ops = {
 	.write_eir_data = hciops_write_eir_data,
 	.read_bdaddr = hciops_read_bdaddr,
 	.set_event_mask = hciops_set_event_mask,
+	.write_inq_mode = hciops_write_inq_mode,
 };
 
 static int hciops_init(void)

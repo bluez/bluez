@@ -1965,10 +1965,10 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 	if (inqmode < 1)
 		goto done;
 
-	if (hci_write_inquiry_mode(dd, inqmode, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
+	err = adapter_ops->write_inq_mode(adapter->dev_id, inqmode);
+	if (err < 0) {
 		error("Can't write inquiry mode for %s: %s (%d)",
-					adapter->path, strerror(errno), errno);
+					adapter->path, strerror(-err), -err);
 		hci_close_dev(dd);
 		return err;
 	}
