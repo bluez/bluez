@@ -460,7 +460,23 @@ static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 
 static void hdp_mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 {
-	DBG("TODO: implement this function");
+	struct hdp_device *dev = data;
+
+	DBG("hdp_mcap_mdl_aborted_cb");
+	if (!dev->ndc)
+		return;
+
+	dev->ndc->mdl = mdl;
+
+	if (!g_slist_find(dev->channels, dev->ndc))
+		dev->channels = g_slist_prepend(dev->channels, dev->ndc);
+
+	g_dbus_emit_signal(dev->conn, device_get_path(dev->dev), HEALTH_DEVICE,
+					"ChannelConnected",
+					DBUS_TYPE_OBJECT_PATH, &dev->ndc->path,
+					DBUS_TYPE_INVALID);
+
+	dev->ndc = NULL;
 }
 
 static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
