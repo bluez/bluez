@@ -52,7 +52,7 @@ static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
-static int opt_handle = 0x0001;
+static int opt_handle = -1;
 static int opt_mtu = 0;
 static gboolean opt_primary = FALSE;
 static gboolean opt_characteristics = FALSE;
@@ -341,6 +341,12 @@ static gboolean characteristics_read(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 
+	if (opt_handle <= 0) {
+		g_printerr("A valid handle is required\n");
+		g_main_loop_quit(event_loop);
+		return FALSE;
+	}
+
 	gatt_read_char(attrib, opt_handle, char_read_cb, attrib);
 
 	return FALSE;
@@ -408,7 +414,7 @@ static GOptionEntry primary_char_options[] = {
 
 static GOptionEntry char_read_options[] = {
 	{ "handle", 'a' , 0, G_OPTION_ARG_INT, &opt_handle,
-		"Read characteristic by handle(optional)", "0x0001" },
+		"Read characteristic by handle(required)", "0x0001" },
 	{NULL},
 };
 
