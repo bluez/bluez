@@ -1638,7 +1638,7 @@ static void mdl_io_destroy(gpointer data)
 	g_free(con);
 }
 
-gboolean mcap_connect_mdl(struct mcap_mdl *mdl, BtIOType BtType,
+gboolean mcap_connect_mdl(struct mcap_mdl *mdl, uint8_t mode,
 					uint16_t dcpsm,
 					mcap_mdl_operation_cb connect_cb,
 					gpointer user_data,
@@ -1653,6 +1653,12 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl, BtIOType BtType,
 		return FALSE;
 	}
 
+	if ((mode != L2CAP_MODE_ERTM) && (mode != L2CAP_MODE_STREAMING)) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_INVALID_ARGS,
+						"Invalid MDL configuration");
+		return FALSE;
+	}
+
 	con = g_new0(struct mcap_mdl_op_cb, 1);
 	con->mdl = mdl;
 	con->cb.op = connect_cb;
@@ -1661,13 +1667,14 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl, BtIOType BtType,
 
 	/* TODO: Check if BtIOType is ERTM or Streaming before continue */
 
-	mdl->dc = bt_io_connect(BtType, mcap_connect_mdl_cb, con,
+	mdl->dc = bt_io_connect(BT_IO_L2CAP, mcap_connect_mdl_cb, con,
 				mdl_io_destroy, err,
 				BT_IO_OPT_SOURCE_BDADDR, &mdl->mcl->ms->src,
 				BT_IO_OPT_DEST_BDADDR, &mdl->mcl->addr,
 				BT_IO_OPT_PSM, dcpsm,
 				BT_IO_OPT_MTU, MCAP_DC_MTU,
 				BT_IO_OPT_SEC_LEVEL, mdl->mcl->ms->sec,
+				BT_IO_OPT_MODE, mode,
 				BT_IO_OPT_INVALID);
 	if (!mdl->dc) {
 		DBG("MDL Connection error");

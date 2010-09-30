@@ -140,7 +140,7 @@ gboolean mcap_delete_mdl(struct mcap_mdl *mdl,
 				GDestroyNotify destroy,
 				GError **err);
 gboolean mcap_connect_mdl(struct mcap_mdl *mdl,
-				BtIOType BtType,
+				uint8_t mode,
 				uint16_t dcpsm,
 				mcap_mdl_operation_cb connect_cb,
 				gpointer user_data,
