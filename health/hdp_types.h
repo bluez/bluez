@@ -102,6 +102,7 @@ struct hdp_device {
 	gboolean		mcl_conn;	/* Mcl status */
 	gboolean		sdp_present;	/* Has an sdp record */
 	GSList			*channels;	/* Data Channel list */
+	struct hdp_channel	*ndc;		/* Data channel being negotiated*/
 };
 
 struct hdp_channel {

@@ -179,6 +179,14 @@ static gint cmp_dev_mcl(gconstpointer a, gconstpointer mcl)
 	return -1;
 }
 
+static gint cmp_chan_mdlid(gconstpointer a, gconstpointer b)
+{
+	const struct hdp_channel *chan = a;
+	const uint16_t *mdlid = b;
+
+	return chan->mdlid - *mdlid;
+}
+
 static uint8_t get_app_id()
 {
 	GSList *l;
@@ -358,6 +366,77 @@ static GDBusMethodTable health_manager_methods[] = {
 	{ NULL }
 };
 
+static DBusMessage *channel_get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+						"Function is not implemented");
+}
+
+static DBusMessage *channel_acquire(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+						"Function is not implemented");
+}
+
+static DBusMessage *channel_release(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+						"Function is not implemented");
+}
+
+static void health_channel_destroy(void *data)
+{
+	/* TODO: Unregister Health Channel */
+	DBG("TODO: Destroy Health Channel");
+}
+
+static GDBusMethodTable health_channels_methods[] = {
+	{"GetProperties","",	"a{sv}",	channel_get_properties },
+	{"Acquire",	"",	"h",		channel_acquire,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{"Release",	"",	"",		channel_release },
+	{ NULL }
+};
+
+static struct hdp_channel *create_channel(struct hdp_device *dev,
+						uint8_t config,
+						struct mcap_mdl *mdl,
+						uint16_t mdlid,
+						struct hdp_application *app,
+						GError **err)
+{
+	struct hdp_channel *hdp_chann;
+
+	hdp_chann = g_new0(struct hdp_channel, 1);
+	hdp_chann->config = config;
+	hdp_chann->dev = dev;
+	hdp_chann->mdep = app->id;
+	hdp_chann->mdl = mdl;
+	hdp_chann->mdlid = mdlid;
+	hdp_chann->app = app;
+
+	hdp_chann->path = g_strdup_printf("%s/chan%d",
+					device_get_path(hdp_chann->dev->dev),
+					hdp_chann->mdlid);
+
+	if (!g_dbus_register_interface(dev->conn, hdp_chann->path,
+					HEALTH_CHANNEL,
+					health_channels_methods, NULL, NULL,
+					hdp_chann, health_channel_destroy)) {
+		g_set_error(err, HDP_ERROR, HDP_UNSPECIFIED_ERROR,
+					"Can't register the channel interface");
+		g_free(hdp_chann);
+		return NULL;
+	}
+
+	dev->channels = g_slist_append(dev->channels, hdp_chann);
+
+	return hdp_chann;
+}
+
 static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 {
 	DBG("TODO: implement this function");
@@ -381,8 +460,34 @@ static void hdp_mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 				uint16_t mdlid, uint8_t *conf, void *data)
 {
-	DBG("TODO: implement this function");
-	return MCAP_MDEP_BUSY;
+	struct hdp_device *dev = data;
+	struct hdp_application *app;
+	struct hdp_channel *chan;
+	char *path;
+	GSList *l;
+
+	DBG("Data channel request");
+	l = g_slist_find_custom(applications, &mdepid, cmp_app_id);
+	if (!l)
+		return MCAP_INVALID_MDEP;
+
+	app = l->data;
+
+	/* TODO: check configuration */
+
+	l = g_slist_find_custom(dev->channels, &mdlid, cmp_chan_mdlid);
+	if (l) {
+		chan = l->data;
+		path = g_strdup(chan->path);
+		g_dbus_unregister_interface(dev->conn, path, HEALTH_CHANNEL);
+		g_free(path);
+	}
+
+	dev->ndc = create_channel(dev, *conf, NULL, mdlid, app, NULL);
+	if (!dev->ndc)
+		return MCAP_MDL_BUSY;
+
+	return MCAP_SUCCESS;
 }
 
 static uint8_t hdp_mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
@@ -617,41 +722,6 @@ void hdp_adapter_unregister(struct btd_adapter *adapter)
 	g_free(hdp_adapter);
 }
 
-static DBusMessage *channel_get_properties (DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
-						"Function is not implemented");
-}
-
-static DBusMessage *channel_acquire (DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
-						"Function is not implemented");
-}
-
-static DBusMessage *channel_destroy (DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
-						"Function is not implemented");
-}
-
-static void health_channel_destroy(void *data)
-{
-	/* TODO: Unregister Health Channel */
-	DBG("TODO: Destroy Health Channel");
-}
-
-static GDBusMethodTable health_channels_methods[] = {
-	{"GetProperties","",	"a{sv}",	channel_get_properties },
-	{"Acquire",	"",	"h",		channel_acquire,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{"Release",	"",	"",		channel_destroy },
-	{ NULL }
-};
-
 static DBusMessage *device_echo(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -736,9 +806,9 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 {
 	struct hdp_create_dc *user_data = data;
 	struct hdp_connect_dc *hdp_conn;
-	struct hdp_channel *hdp_chann;
-	DBusMessage *reply;
+	struct hdp_channel *hdp_chan;
 	GError *gerr = NULL;
+	DBusMessage *reply;
 
 	if (err) {
 		reply = g_dbus_create_error(user_data->msg,
@@ -750,38 +820,25 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 
 	/*TODO: Check config and requested config before continue */
 
-	hdp_chann = g_new0(struct hdp_channel, 1);
-	hdp_chann->config = conf;
-	hdp_chann->mdep = user_data->mdep;
-	hdp_chann->app = user_data->app;
-	hdp_chann->mdl = mdl;
-	hdp_chann->mdlid = mcap_mdl_get_mdlid(mdl);
-
-	hdp_chann->path = g_strdup_printf("%s/hdp_%d/channel_%d",
-					device_get_path(hdp_chann->dev->dev),
-					hdp_chann->app->id, hdp_chann->mdlid);
-
-	if (!g_dbus_register_interface(user_data->conn, hdp_chann->path,
-					HEALTH_CHANNEL,
-					health_channels_methods, NULL, NULL,
-					hdp_chann, health_channel_destroy)) {
+	hdp_chan = create_channel(user_data->dev, conf, mdl,
+							mcap_mdl_get_mdlid(mdl),
+							user_data->app, &gerr);
+	if (!hdp_chan) {
 		/* TODO: Send abort request and then delete the data channel */
 		reply = g_dbus_create_error(user_data->msg,
-					ERROR_INTERFACE ".HealthError",
-					"Can't register HEALTH_CHANNEL");
+						ERROR_INTERFACE ".HealthError",
+						"%s", gerr->message);
 		g_dbus_send_message(user_data->conn, reply);
-		hdp_connect_dc_destroy(hdp_chann);
+		g_error_free(gerr);
 		return;
 	}
 
-	user_data->dev->channels = g_slist_append(user_data->dev->channels,
-								hdp_chann);
 	hdp_conn = g_new0(struct hdp_connect_dc, 1);
 	hdp_conn->msg = dbus_message_ref(user_data->msg);
 	hdp_conn->conn = dbus_connection_ref(user_data->conn);
-	hdp_conn->hdp_chann = hdp_chann;
+	hdp_conn->hdp_chann = hdp_chan;
 
-	if (hdp_get_dcpsm(hdp_chann->dev, hdp_get_dcpsm_cb,
+	if (hdp_get_dcpsm(hdp_chan->dev, hdp_get_dcpsm_cb,
 						hdp_conn_data_ref(hdp_conn),
 						hdp_connect_dc_destroy, &gerr))
 		return;
