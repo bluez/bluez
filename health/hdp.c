@@ -315,6 +315,61 @@ static GDBusMethodTable health_manager_methods[] = {
 	{ NULL }
 };
 
+static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
+{
+	DBG("TODO: implement this function");
+}
+
+static void hdp_mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
+{
+	DBG("TODO: implement this function");
+}
+
+static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
+{
+	DBG("TODO: implement this function");
+}
+
+static void hdp_mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
+{
+	DBG("TODO: implement this function");
+}
+
+static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
+				uint16_t mdlid, uint8_t *conf, void *data)
+{
+	DBG("TODO: implement this function");
+	return MCAP_MDEP_BUSY;
+}
+
+static uint8_t hdp_mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
+{
+	DBG("TODO: implement this function");
+	return MCAP_MDEP_BUSY;
+}
+
+gboolean hdp_set_mcl_cb(struct hdp_device *device, GError **err)
+{
+	gboolean ret;
+
+	ret =  mcap_mcl_set_cb(device->mcl, device, err,
+		MCAP_MDL_CB_CONNECTED, hdp_mcap_mdl_connected_cb,
+		MCAP_MDL_CB_CLOSED, hdp_mcap_mdl_closed_cb,
+		MCAP_MDL_CB_DELETED, hdp_mcap_mdl_deleted_cb,
+		MCAP_MDL_CB_ABORTED, hdp_mcap_mdl_aborted_cb,
+		MCAP_MDL_CB_REMOTE_CONN_REQ, hdp_mcap_mdl_conn_req_cb,
+		MCAP_MDL_CB_REMOTE_RECONN_REQ, hdp_mcap_mdl_reconn_req_cb,
+		MCAP_MDL_CB_INVALID);
+
+	if (ret)
+		return TRUE;
+
+	error("Can't set mcl callbacks, closing mcl");
+	mcap_close_mcl(device->mcl, TRUE);
+	device->mcl_conn = FALSE;
+	return FALSE;
+}
+
 static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 {
 	struct hdp_adapter *hdp_adapter = data;
@@ -342,6 +397,8 @@ static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 	hdp_device->mcl_conn = TRUE;
 
 	DBG("New mcl connected from  %s", device_get_path(hdp_device->dev));
+
+	hdp_set_mcl_cb(hdp_device, NULL);
 }
 
 static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
@@ -357,6 +414,8 @@ static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 	hdp_device->mcl_conn = TRUE;
 
 	DBG("MCL reconnected %s", device_get_path(hdp_device->dev));
+
+	hdp_set_mcl_cb(hdp_device, NULL);
 }
 
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)

@@ -31,6 +31,7 @@
 #include <hdp_types.h>
 #include <hdp_util.h>
 #include <mcap.h>
+#include <hdp.h>
 
 #include <sdpd.h>
 #include <sdp_lib.h>
@@ -985,6 +986,7 @@ static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 {
 	struct conn_mcl_data *conn_data = data;
 	struct hdp_device *device = conn_data->dev;
+	GError *gerr = NULL;
 
 	if (err) {
 		conn_data->func(conn_data->data, err);
@@ -995,7 +997,11 @@ static void create_mcl_cb(struct mcap_mcl *mcl, GError *err, gpointer data)
 		device->mcl = mcap_mcl_ref(mcl);
 	device->mcl_conn = TRUE;
 
-	conn_data->func(conn_data->data, NULL);
+	hdp_set_mcl_cb(device, &gerr);
+
+	conn_data->func(conn_data->data, gerr);
+	if (gerr)
+		g_error_free(gerr);
 }
 
 static void search_cb(sdp_list_t *recs, int err, gpointer user_data)

@@ -31,3 +31,5 @@ void hdp_device_unregister(struct btd_device *device);
 
 int hdp_manager_start(DBusConnection *conn);
 void hdp_manager_stop();
+
+gboolean hdp_set_mcl_cb(struct hdp_device *device, GError **err);
