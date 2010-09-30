@@ -473,7 +473,32 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 
 	app = l->data;
 
-	/* TODO: check configuration */
+	/* Check if is the first dc if so,
+	* only reliable configuration is allowed */
+	switch (*conf) {
+	case HDP_NO_PREFERENCE_DC:
+		if (app->role == HDP_SINK)
+			return MCAP_CONFIGURATION_REJECTED;
+		else if (app->chan_type_set)
+			*conf = app->chan_type;
+		else
+			*conf = HDP_RELIABLE_DC;
+		break;
+	case HDP_STREAMING_DC:
+		if (!dev->fr || app->role == HDP_SOURCE)
+			return MCAP_CONFIGURATION_REJECTED;
+	case HDP_RELIABLE_DC:
+		if (app->role == HDP_SOURCE)
+			return MCAP_CONFIGURATION_REJECTED;
+		break;
+	default:
+		/* Special case defined in HDP spec 3.4. When an invalid
+		* configuration is received we shall close the MCL when
+		* we are still processing the callback. */
+		mcap_close_mcl(dev->mcl, FALSE);
+		dev->mcl_conn = FALSE;
+		return MCAP_CONFIGURATION_REJECTED; /* not processed */
+	}
 
 	l = g_slist_find_custom(dev->channels, &mdlid, cmp_chan_mdlid);
 	if (l) {
@@ -485,7 +510,7 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 
 	dev->ndc = create_channel(dev, *conf, NULL, mdlid, app, NULL);
 	if (!dev->ndc)
-		return MCAP_MDL_BUSY;
+		return MCAP_MDEP_BUSY;
 
 	return MCAP_SUCCESS;
 }

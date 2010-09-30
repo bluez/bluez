@@ -252,15 +252,15 @@ static gboolean parse_chan_type(DBusMessageIter *iter, gpointer data,
 		return FALSE;
 	}
 
-	dbus_message_iter_get_basic(value, &app->data_type);
-	if (app->data_type < HDP_RELIABLE_DC ||
-					app->data_type > HDP_STREAMING_DC) {
+	dbus_message_iter_get_basic(value, &app->chan_type);
+	if (app->chan_type < HDP_RELIABLE_DC ||
+					app->chan_type > HDP_STREAMING_DC) {
 		g_set_error(err, HDP_ERROR, HDP_DIC_ENTRY_PARSE_ERROR,
 						"Invalid value for data type");
 		return FALSE;
 	}
 
-	app->data_type_set = TRUE;
+	app->chan_type_set = TRUE;
 	return TRUE;
 }
 

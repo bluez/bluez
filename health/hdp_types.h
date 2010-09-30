@@ -79,6 +79,8 @@ struct hdp_application {
 	gboolean		data_type_set;	/* Flag for dictionary parsing */
 	uint8_t			role;		/* Role of this application */
 	gboolean		role_set;	/* Flag for dictionary parsing */
+	uint8_t			chan_type;	/* QoS preferred by source applications */
+	gboolean		chan_type_set;	/* Flag for dictionary parsing */
 	char			*description;	/* Options description for SDP record */
 	uint8_t			id;		/* The identification is also the mdepid */
 	char			*oname;		/* Name of the owner application */
@@ -102,7 +104,8 @@ struct hdp_device {
 	gboolean		mcl_conn;	/* Mcl status */
 	gboolean		sdp_present;	/* Has an sdp record */
 	GSList			*channels;	/* Data Channel list */
-	struct hdp_channel	*ndc;		/* Data channel being negotiated*/
+	struct hdp_channel	*ndc;		/* Data channel being negotiated */
+	struct hdp_channel	*fr;		/* First reliable data channel */
 };
 
 struct hdp_channel {
