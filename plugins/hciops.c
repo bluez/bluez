@@ -879,6 +879,42 @@ static int hciops_read_inq_tx_pwr(int index)
 	return err;
 }
 
+static int hciops_block_device(int index, bdaddr_t *bdaddr)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (ioctl(dd, HCIBLOCKADDR, bdaddr) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
+static int hciops_unblock_device(int index, bdaddr_t *bdaddr)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (ioctl(dd, HCIUNBLOCKADDR, bdaddr) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -903,6 +939,8 @@ static struct btd_adapter_ops hci_ops = {
 	.set_event_mask = hciops_set_event_mask,
 	.write_inq_mode = hciops_write_inq_mode,
 	.read_inq_tx_pwr = hciops_read_inq_tx_pwr,
+	.block_device = hciops_block_device,
+	.unblock_device = hciops_unblock_device,
 };
 
 static int hciops_init(void)

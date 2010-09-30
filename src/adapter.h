@@ -195,6 +195,8 @@ struct btd_adapter_ops {
 	int (*set_event_mask) (int index, uint8_t *events, size_t count);
 	int (*write_inq_mode) (int index, uint8_t mode);
 	int (*read_inq_tx_pwr) (int index);
+	int (*block_device) (int index, bdaddr_t *bdaddr);
+	int (*unblock_device) (int index, bdaddr_t *bdaddr);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
@@ -219,3 +221,6 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, int handle, int which,
 						uint16_t *accuracy);
 int btd_adapter_get_conn_handle(struct btd_adapter *adapter,
 				const bdaddr_t *bdaddr, int *handle);
+
+int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
+int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);

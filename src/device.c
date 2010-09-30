@@ -464,30 +464,20 @@ fail:
 
 static int device_block(DBusConnection *conn, struct btd_device *device)
 {
-	int dev_id, dd, err;
+	int err;
 	bdaddr_t src;
 
 	if (device->blocked)
 		return 0;
-
-	dev_id = adapter_get_dev_id(device->adapter);
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0)
-		return -errno;
 
 	if (device->handle)
 		do_disconnect(device);
 
 	g_slist_foreach(device->drivers, (GFunc) driver_remove, device);
 
-	if (ioctl(dd, HCIBLOCKADDR, &device->bdaddr) < 0) {
-		err = -errno;
-		hci_close_dev(dd);
+	err = btd_adapter_block_address(device->adapter, &device->bdaddr);
+	if (err < 0)
 		return err;
-	}
-
-	hci_close_dev(dd);
 
 	device->blocked = TRUE;
 
@@ -508,25 +498,15 @@ static int device_block(DBusConnection *conn, struct btd_device *device)
 static int device_unblock(DBusConnection *conn, struct btd_device *device,
 							gboolean silent)
 {
-	int dev_id, dd, err;
+	int err;
 	bdaddr_t src;
 
 	if (!device->blocked)
 		return 0;
 
-	dev_id = adapter_get_dev_id(device->adapter);
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0)
-		return -errno;
-
-	if (ioctl(dd, HCIUNBLOCKADDR, &device->bdaddr) < 0) {
-		err = -errno;
-		hci_close_dev(dd);
+	err = btd_adapter_unblock_address(device->adapter, &device->bdaddr);
+	if (err < 0)
 		return err;
-	}
-
-	hci_close_dev(dd);
 
 	device->blocked = FALSE;
 
