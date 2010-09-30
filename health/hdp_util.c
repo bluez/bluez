@@ -63,6 +63,12 @@ struct conn_mcl_data {
 	struct hdp_device	*dev;
 };
 
+struct get_dcpsm_data {
+	gpointer		data;
+	hdp_continue_dcpsm_f	func;
+	GDestroyNotify		destroy;
+};
+
 static gboolean parse_dict_entry(struct dict_entry_func dict_context[],
 							DBusMessageIter *iter,
 							GError **err,
@@ -891,7 +897,33 @@ static gboolean hdp_get_prot_desc_list(const sdp_record_t *rec, guint16 *psm,
 	return TRUE;
 }
 
-static guint16 get_ccpsm(sdp_list_t *recs, uint16_t *ccpsm)
+static gboolean hdp_get_add_prot_desc_list(const sdp_record_t *rec,
+								guint16 *psm)
+{
+	sdp_data_t *pdl, *p0, *p1;
+
+	if (!psm)
+		return TRUE;
+
+	pdl = sdp_data_get(rec, SDP_ATTR_ADD_PROTO_DESC_LIST);
+	if (pdl->dtd != SDP_SEQ8)
+		return FALSE;
+	pdl = pdl->val.dataseq;
+	if (pdl->dtd != SDP_SEQ8)
+		return FALSE;
+
+	p0 = pdl->val.dataseq;
+
+	if (!get_prot_desc_entry(p0, L2CAP_UUID, psm))
+		return FALSE;
+	p1 = p0->next;
+	if (!get_prot_desc_entry(p1, MCAP_DATA_UUID, NULL))
+		return FALSE;
+
+	return TRUE;
+}
+
+static gboolean get_ccpsm(sdp_list_t *recs, uint16_t *ccpsm)
 {
 	sdp_list_t *l;
 	sdp_record_t *rec;
@@ -900,6 +932,21 @@ static guint16 get_ccpsm(sdp_list_t *recs, uint16_t *ccpsm)
 		rec = l->data;
 
 		if (hdp_get_prot_desc_list(rec, ccpsm, NULL))
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+static gboolean get_dcpsm(sdp_list_t *recs, uint16_t *dcpsm)
+{
+	sdp_list_t *l;
+	sdp_record_t *rec;
+
+	for (l = recs; l; l = l->next) {
+		rec = l->data;
+
+		if (hdp_get_add_prot_desc_list(rec, dcpsm))
 			return TRUE;
 	}
 
@@ -1012,6 +1059,73 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 							destroy_con_mcl_data)) {
 		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
 						"Can't get remote SDP record");
+		g_free(conn_data);
+		return FALSE;
+	}
+	return TRUE;
+}
+
+static void get_dcpsm_cb(sdp_list_t *recs, int err, gpointer data)
+{
+	struct get_dcpsm_data *dcpsm_data = data;
+	GError *gerr = NULL;
+	uint16_t dcpsm;
+
+	if (err || !recs) {
+		g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+					"Error getting remote SDP records");
+		goto fail;
+	}
+
+	if (!get_dcpsm(recs, &dcpsm)) {
+		g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+				"Can't get remote PSM for data channel");
+		goto fail;
+	}
+
+	dcpsm_data->func(dcpsm, dcpsm_data->data, NULL);
+	return;
+fail:
+	dcpsm_data->func(0, dcpsm_data->data, gerr);
+	g_error_free(gerr);
+}
+
+static void free_dcpsm_data(gpointer data)
+{
+	struct get_dcpsm_data *dcpsm_data = data;
+
+	if (!dcpsm_data)
+		return;
+
+	if (dcpsm_data->destroy)
+		dcpsm_data->destroy(dcpsm_data->data);
+
+	g_free(dcpsm_data);
+}
+
+gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
+							gpointer data,
+							GDestroyNotify destroy,
+							GError **err)
+{
+	struct get_dcpsm_data *dcpsm_data;
+	bdaddr_t dst, src;
+	uuid_t uuid;
+
+	device_get_address(device->dev, &dst);
+	adapter_get_address(device_get_adapter(device->dev), &src);
+
+	dcpsm_data = g_new0(struct get_dcpsm_data, 1);
+	dcpsm_data->func = func;
+	dcpsm_data->data = data;
+	dcpsm_data->destroy = destroy;
+
+	bt_string2uuid(&uuid, HDP_UUID);
+	if (bt_search_service(&src, &dst, &uuid, get_dcpsm_cb, dcpsm_data,
+							free_dcpsm_data)) {
+		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
+						"Can't get remote SDP record");
+		g_free(dcpsm_data);
 		return FALSE;
 	}
 	return TRUE;

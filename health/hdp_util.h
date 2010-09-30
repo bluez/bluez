@@ -29,6 +29,8 @@
 
 typedef void (*hdp_continue_mdep_f)(uint8_t mdep, gpointer user_data,
 								GError *err);
+typedef void (*hdp_continue_dcpsm_f)(uint16_t dcpsm, gpointer user_data,
+								GError *err);
 typedef void (*hdp_continue_proc_f)(gpointer user_data, GError *err);
 
 struct hdp_application *hdp_get_app_config(DBusMessageIter *iter, GError **err);
@@ -44,4 +46,10 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 						gpointer data,
 						GDestroyNotify destroy,
 						GError **err);
+
+gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
+							gpointer data,
+							GDestroyNotify destroy,
+							GError **err);
+
 #endif /* __HDP_UTIL_H__ */
