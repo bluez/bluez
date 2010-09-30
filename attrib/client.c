@@ -263,26 +263,23 @@ static int characteristic_set_value(struct characteristic *chr,
 	return 0;
 }
 
-static void update_watchers(struct primary *prim, struct characteristic *chr)
+static void update_watchers(gpointer data, gpointer user_data)
 {
-	GSList *l;
+	struct watcher *w = data;
+	struct characteristic *chr = user_data;
+	DBusMessage *msg;
 
-	for (l = prim->watchers; l; l = l->next) {
-		DBusMessage *msg;
-		struct watcher *w = l->data;
+	msg = dbus_message_new_method_call(w->name, w->path,
+				"org.bluez.Watcher", "ValueChanged");
+	if (msg == NULL)
+		return;
 
-		msg = dbus_message_new_method_call(w->name, w->path,
-					"org.bluez.Watcher", "ValueChanged");
-		if (msg == NULL)
-			return;
+	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &chr->path,
+			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+			&chr->value, chr->vlen, DBUS_TYPE_INVALID);
 
-		dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &chr->path,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-				&chr->value, chr->vlen, DBUS_TYPE_INVALID);
-
-		dbus_message_set_no_reply(msg, TRUE);
-		g_dbus_send_message(connection, msg);
-	}
+	dbus_message_set_no_reply(msg, TRUE);
+	g_dbus_send_message(connection, msg);
 }
 
 static void events_handler(const uint8_t *pdu, uint16_t len,
@@ -322,7 +319,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 		if (characteristic_set_value(chr, pdu + 2, len - 2) < 0)
 			DBG("Can't change Characteristic %0x02x", handle);
 
-		update_watchers(prim, chr);
+		g_slist_foreach(prim->watchers, update_watchers, chr);
 		break;
 	}
 }
