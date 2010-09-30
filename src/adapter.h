@@ -188,7 +188,7 @@ struct btd_adapter_ops {
 	int (*set_class) (int index, uint32_t class);
 	int (*set_fast_connectable) (int index, gboolean enable);
 	int (*read_clock) (int index, int handle, int which, int timeout,
-				 uint32_t *clock, uint16_t *accuracy);
+					uint32_t *clock, uint16_t *accuracy);
 	int (*get_conn_handle) (int index, const bdaddr_t *bdaddr, int *handle);
 	int (*write_eir_data) (int index, uint8_t *data);
 	int (*read_bdaddr) (int index, bdaddr_t *bdaddr);
