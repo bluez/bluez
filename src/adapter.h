@@ -197,6 +197,7 @@ struct btd_adapter_ops {
 	int (*read_inq_tx_pwr) (int index);
 	int (*block_device) (int index, bdaddr_t *bdaddr);
 	int (*unblock_device) (int index, bdaddr_t *bdaddr);
+	int (*get_conn_list) (int index, GSList **conns);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);

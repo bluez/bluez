@@ -915,6 +915,39 @@ static int hciops_unblock_device(int index, bdaddr_t *bdaddr)
 	return err;
 }
 
+static int hciops_get_conn_list(int index, GSList **conns)
+{
+	struct hci_conn_list_req *cl;
+	struct hci_conn_info *ci;
+	int dd, err, i;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
+
+	cl->dev_id = index;
+	cl->conn_num = 10;
+	ci = cl->conn_info;
+
+	if (ioctl(dd, HCIGETCONNLIST, cl) < 0) {
+		err = -errno;
+		goto fail;
+	}
+
+	err = 0;
+	*conns = NULL;
+
+	for (i = 0; i < cl->conn_num; i++, ci++)
+		*conns = g_slist_append(*conns, g_memdup(ci, sizeof(*ci)));
+
+fail:
+	hci_close_dev(dd);
+	g_free(cl);
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -941,6 +974,7 @@ static struct btd_adapter_ops hci_ops = {
 	.read_inq_tx_pwr = hciops_read_inq_tx_pwr,
 	.block_device = hciops_block_device,
 	.unblock_device = hciops_unblock_device,
+	.get_conn_list = hciops_get_conn_list,
 };
 
 static int hciops_init(void)

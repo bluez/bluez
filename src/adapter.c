@@ -2119,27 +2119,18 @@ static void load_drivers(struct btd_adapter *adapter)
 
 static void load_connections(struct btd_adapter *adapter)
 {
-	struct hci_conn_list_req *cl = NULL;
-	struct hci_conn_info *ci;
-	int i, dd;
+	GSList *l, *conns;
+	int err;
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0)
-		return;
-
-	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
-
-	cl->dev_id = adapter->dev_id;
-	cl->conn_num = 10;
-	ci = cl->conn_info;
-
-	if (ioctl(dd, HCIGETCONNLIST, cl) != 0) {
-		g_free(cl);
-		hci_close_dev(dd);
+	err = adapter_ops->get_conn_list(adapter->dev_id, &conns);
+	if (err < 0) {
+		error("Unable to fetch existing connections: %s (%d)",
+							strerror(-err), -err);
 		return;
 	}
 
-	for (i = 0; i < cl->conn_num; i++, ci++) {
+	for (l = conns; l != NULL; l = g_slist_next(l)) {
+		struct hci_conn_info *ci = l->data;
 		struct btd_device *device;
 		char address[18];
 
@@ -2149,8 +2140,8 @@ static void load_connections(struct btd_adapter *adapter)
 			adapter_add_connection(adapter, device, ci->handle);
 	}
 
-	g_free(cl);
-	hci_close_dev(dd);
+	g_slist_foreach(conns, (GFunc) g_free, NULL);
+	g_slist_free(conns);
 }
 
 static int get_discoverable_timeout(const char *src)
