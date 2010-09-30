@@ -40,6 +40,10 @@
 #include <sdpd.h>
 #include "../src/dbus-common.h"
 
+#ifndef DBUS_TYPE_UNIX_FD
+	#define DBUS_TYPE_UNIX_FD -1
+#endif
+
 static DBusConnection *connection = NULL;
 
 static GSList *applications = NULL;
@@ -507,6 +511,41 @@ void hdp_adapter_unregister(struct btd_adapter *adapter)
 	g_free(hdp_adapter);
 }
 
+static DBusMessage *channel_get_properties (DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+						"Function is not implemented");
+}
+
+static DBusMessage *channel_acquire (DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+						"Function is not implemented");
+}
+
+static DBusMessage *channel_destroy (DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+						"Function is not implemented");
+}
+
+static void health_channel_destroy(void *data)
+{
+	/* TODO: Unregister Health Channel */
+	DBG("TODO: Destroy Health Channel");
+}
+
+static GDBusMethodTable health_channels_methods[] = {
+	{"GetProperties","",	"a{sv}",	channel_get_properties },
+	{"Acquire",	"",	"h",		channel_acquire,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{"Release",	"",	"",		channel_destroy },
+	{ NULL }
+};
+
 static DBusMessage *device_echo(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -525,6 +564,7 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 						GError *err, gpointer data)
 {
 	struct hdp_create_dc *user_data = data;
+	struct hdp_channel *hdp_chann;
 	DBusMessage *reply;
 
 	if (err) {
@@ -535,7 +575,33 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 		return;
 	}
 
-	/* TODO: Register a new org.bluez.HealthChannel interface */
+	hdp_chann = g_new0(struct hdp_channel, 1);
+	hdp_chann->config = user_data->config;
+	hdp_chann->mdep = user_data->mdep;
+	hdp_chann->app = user_data->app;
+	hdp_chann->mdl = mdl;
+	hdp_chann->mdlid = mcap_mdl_get_mdlid(mdl);
+
+	hdp_chann->path = g_strdup_printf("%s/hdp_%d/channel_%d",
+					device_get_path(hdp_chann->dev->dev),
+					hdp_chann->app->id, hdp_chann->mdlid);
+
+	if (!g_dbus_register_interface(user_data->conn, hdp_chann->path,
+					HEALTH_CHANNEL,
+					health_channels_methods, NULL, NULL,
+					hdp_chann, health_channel_destroy)) {
+		/* TODO: Send abort request and then delete the data channel */
+		reply = g_dbus_create_error(user_data->msg,
+					ERROR_INTERFACE ".HealthError",
+					"Can't register HEALTH_CHANNEL");
+		g_dbus_send_message(user_data->conn, reply);
+		g_free(hdp_chann);
+		return;
+	}
+
+	user_data->dev->channels = g_slist_append(user_data->dev->channels,
+								hdp_chann);
+	/* TODO: Connect the data channel */
 	reply = g_dbus_create_error(user_data->msg,
 					ERROR_INTERFACE ".HealthError",
 					"Function is not implemented");

@@ -35,6 +35,7 @@
 
 #define HEALTH_MANAGER		"org.bluez.HealthManager"
 #define HEALTH_DEVICE		"org.bluez.HealthDevice"
+#define HEALTH_CHANNEL		"org.bluez.HealthChannel"
 
 #define HDP_VERSION		0x0100
 
@@ -100,6 +101,18 @@ struct hdp_device {
 	struct mcap_mcl		*mcl;		/* The mcap control channel */
 	gboolean		mcl_conn;	/* Mcl status */
 	gboolean		sdp_present;	/* Has an sdp record */
+	GSList			*channels;	/* Data Channel list */
+};
+
+struct hdp_channel {
+	struct hdp_device	*dev;		/* Device where this channel belongs */
+	struct hdp_application	*app;		/* Application */
+	struct mcap_mdl		*mdl;		/* The data channel reference */
+	char			*path;		/* The path of the channel */
+	uint8_t			config;		/* Channel configuration */
+	uint8_t			mdep;		/* Remote MDEP */
+	uint16_t		mdlid;		/* Data channel Id */
+	gboolean		mdl_conn;	/* MDL status */
 };
 
 #endif /* __HDP_TYPES_H__ */
