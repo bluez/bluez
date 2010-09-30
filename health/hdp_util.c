@@ -906,10 +906,8 @@ static guint16 get_ccpsm(sdp_list_t *recs, uint16_t *ccpsm)
 	return FALSE;
 }
 
-static void con_mcl_data_unref(gpointer data)
+static void con_mcl_data_unref(struct conn_mcl_data *conn_data)
 {
-	struct conn_mcl_data *conn_data = data;
-
 	if (!conn_data)
 		return;
 
@@ -920,6 +918,11 @@ static void con_mcl_data_unref(gpointer data)
 		conn_data->destroy(conn_data->data);
 
 	g_free(conn_data);
+}
+
+static void destroy_con_mcl_data(gpointer data)
+{
+	con_mcl_data_unref(data);
 }
 
 static struct conn_mcl_data *con_mcl_data_ref(struct conn_mcl_data *conn_data)
@@ -972,7 +975,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	device_get_address(conn_data->dev->dev, &dst);
 	if (!mcap_create_mcl(conn_data->dev->hdp_adapter->mi, &dst, ccpsm,
 						create_mcl_cb, conn_data,
-						con_mcl_data_unref, &gerr)) {
+						destroy_con_mcl_data, &gerr)) {
 		con_mcl_data_unref(conn_data);
 		goto fail;
 	}
@@ -1006,7 +1009,7 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 
 	bt_string2uuid(&uuid, HDP_UUID);
 	if (bt_search_service(&src, &dst, &uuid, search_cb, conn_data,
-							con_mcl_data_unref)) {
+							destroy_con_mcl_data)) {
 		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
 						"Can't get remote SDP record");
 		return FALSE;

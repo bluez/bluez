@@ -59,8 +59,37 @@ struct hdp_create_dc {
 	struct hdp_device	*dev;
 	uint8_t			config;
 	uint8_t			mdep;
+	guint			ref;
 };
 
+static void free_hdp_create_dc(struct hdp_create_dc *dc_data)
+{
+	dbus_message_unref(dc_data->msg);
+	dbus_connection_unref(dc_data->conn);
+
+	g_free(dc_data);
+}
+
+static struct hdp_create_dc *hdp_create_data_ref(struct hdp_create_dc *dc_data)
+{
+	dc_data->ref++;
+
+	DBG("hdp_create_data_ref(%p): ref=%d", dc_data, dc_data->ref);
+
+	return dc_data;
+}
+
+static void hdp_create_data_unref(struct hdp_create_dc *dc_data)
+{
+	dc_data->ref--;
+
+	DBG("hdp_create_data_ref(%p): ref=%d", dc_data, dc_data->ref);
+
+	if (dc_data->ref > 0)
+		return;
+
+	free_hdp_create_dc(dc_data);
+}
 static int cmp_app_id(gconstpointer a, gconstpointer b)
 {
 	const struct hdp_application *app = a;
@@ -485,14 +514,11 @@ static DBusMessage *device_echo(DBusConnection *conn,
 					"Echo function not implemented");
 }
 
-static void free_hdp_create_dc(gpointer data)
+static void destroy_create_dc_data(gpointer data)
 {
 	struct hdp_create_dc *dc_data = data;
 
-	dbus_message_unref(dc_data->msg);
-	dbus_connection_unref(dc_data->conn);
-
-	g_free(dc_data);
+	hdp_create_data_unref(dc_data);
 }
 
 static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
@@ -530,22 +556,16 @@ static void device_create_dc_cb(gpointer user_data, GError *err)
 		return;
 	}
 
-	dc_data = g_new0(struct hdp_create_dc, 1);
-	dc_data->dev = data->dev;
-	dc_data->config = data->config;
-	dc_data->app = data->app;
-	dc_data->msg = dbus_message_ref(data->msg);
-	dc_data->conn = dbus_connection_ref(data->conn);
-	dc_data->mdep = data->mdep;
+	dc_data = hdp_create_data_ref(data);
 
-	if (mcap_create_mdl(data->dev->mcl, data->mdep, data->config,
+	if (mcap_create_mdl(dc_data->dev->mcl, dc_data->mdep, dc_data->config,
 						device_create_mdl_cb, dc_data,
-						free_hdp_create_dc, &gerr))
+						destroy_create_dc_data, &gerr))
 		return;
 
 	reply = g_dbus_create_error(data->msg, ERROR_INTERFACE ".HealthError",
 							"%s", gerr->message);
-	free_hdp_create_dc(dc_data);
+	hdp_create_data_unref(dc_data);
 	g_error_free(gerr);
 	g_dbus_send_message(data->conn, reply);
 }
@@ -564,28 +584,23 @@ static void device_get_mdep_cb(uint8_t mdep, gpointer data, GError *err)
 		return;
 	}
 
-	dc_data = g_new0(struct hdp_create_dc, 1);
-	dc_data->dev = user_data->dev;
-	dc_data->config = user_data->config;
-	dc_data->app = user_data->app;
-	dc_data->msg = dbus_message_ref(user_data->msg);
-	dc_data->conn = dbus_connection_ref(user_data->conn);
+	dc_data = hdp_create_data_ref(user_data);
 	dc_data->mdep = mdep;
 
 	if (user_data->dev->mcl_conn) {
 		device_create_dc_cb(dc_data, NULL);
-		free_hdp_create_dc(dc_data);
+		hdp_create_data_unref(dc_data);
 		return;
 	}
 
 	if (hdp_establish_mcl(dc_data->dev, dc_data->app, device_create_dc_cb,
-					dc_data, free_hdp_create_dc, &gerr))
+					dc_data, destroy_create_dc_data, &gerr))
 		return;
 
 	reply = g_dbus_create_error(user_data->msg,
 						ERROR_INTERFACE ".HealthError",
 						"%s", gerr->message);
-	free_hdp_create_dc(dc_data);
+	hdp_create_data_unref(dc_data);
 	g_error_free(gerr);
 	g_dbus_send_message(user_data->conn, reply);
 }
@@ -634,14 +649,15 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 	data->msg = dbus_message_ref(msg);
 	data->conn = dbus_connection_ref(conn);
 
-	if (hdp_get_mdep(device, l->data, device_get_mdep_cb, data,
-						free_hdp_create_dc, &err))
+	if (hdp_get_mdep(device, l->data, device_get_mdep_cb,
+						hdp_create_data_ref(data),
+						destroy_create_dc_data, &err))
 		return NULL;
 
 	reply = g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
 							"%s", err->message);
 	g_error_free(err);
-	free_hdp_create_dc(data);
+	hdp_create_data_unref(data);
 	return reply;
 }
 
