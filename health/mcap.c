@@ -1841,6 +1841,7 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 				BT_IO_OPT_PSM, ccpsm,
 				BT_IO_OPT_MTU, MCAP_CC_MTU,
 				BT_IO_OPT_SEC_LEVEL, ms->sec,
+				BT_IO_OPT_MODE, L2CAP_MODE_ERTM,
 				BT_IO_OPT_INVALID);
 	if (!mcl->cc) {
 		mcl->ctrl &= ~MCAP_CTRL_CONN;
