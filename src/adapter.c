@@ -1916,17 +1916,9 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 	struct hci_dev *dev = &adapter->dev;
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
 	uint8_t inqmode;
-	int err , dd;
+	int err;
 	char name[MAX_NAME_LENGTH + 1];
 	uint8_t cls[3];
-
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0) {
-		err = -errno;
-		error("Can't open device hci%d: %s (%d)", adapter->dev_id,
-						strerror(errno), errno);
-		return err;
-	}
 
 	if (dev->lmp_ver > 1) {
 		if (dev->features[5] & LMP_SNIFF_SUBR)
@@ -1963,19 +1955,17 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 
 	inqmode = get_inquiry_mode(dev);
 	if (inqmode < 1)
-		goto done;
+		return 0;
 
 	err = adapter_ops->write_inq_mode(adapter->dev_id, inqmode);
 	if (err < 0) {
 		error("Can't write inquiry mode for %s: %s (%d)",
 					adapter->path, strerror(-err), -err);
-		hci_close_dev(dd);
 		return err;
 	}
 
 	if (dev->features[7] & LMP_INQ_TX_PWR)
-		hci_send_cmd(dd, OGF_HOST_CTL,
-				OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL);
+		adapter_ops->read_inq_tx_pwr(adapter->dev_id);
 
 	if (read_local_name(&adapter->bdaddr, name) < 0)
 		expand_name(name, MAX_NAME_LENGTH, main_opts.name,
@@ -1994,12 +1984,11 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 		if (class)
 			memcpy(cls, &class, 3);
 		else
-			goto done;
+			return 0;
 	}
 
 	btd_adapter_set_class(adapter, cls[1], cls[0]);
-done:
-	hci_close_dev(dd);
+
 	return 0;
 }
 
