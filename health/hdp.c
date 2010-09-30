@@ -177,6 +177,15 @@ static gboolean set_app_path(struct hdp_application *app)
 	return TRUE;
 };
 
+static void device_unref_mcl(struct hdp_device *hdp_device)
+{
+	if (!hdp_device->mcl)
+		return;
+	mcap_mcl_unref(hdp_device->mcl);
+	hdp_device->mcl = NULL;
+	hdp_device->mcl_conn = FALSE;
+}
+
 static void free_health_device(struct hdp_device *device)
 {
 	if (device->conn) {
@@ -189,10 +198,7 @@ static void free_health_device(struct hdp_device *device)
 		device->dev = NULL;
 	}
 
-	if (device->mcl) {
-		mcap_mcl_unref(device->mcl);
-		device->mcl = NULL;
-	}
+	device_unref_mcl(device);
 
 	g_free(device);
 }
@@ -443,8 +449,7 @@ static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 		return;
 
 	hdp_device = l->data;
-	mcap_mcl_unref(mcl);
-	hdp_device->mcl = NULL;
+	device_unref_mcl(hdp_device);
 
 	if (hdp_device->sdp_present)
 		return;
@@ -458,20 +463,26 @@ static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 	DBG("Mcl uncached %s", path);
 }
 
-static void device_unref_mcl(struct hdp_device *hdp_device)
+static void check_devices_mcl()
 {
+	struct hdp_device *dev;
+	GSList *l, *to_delete = NULL;
 	const char *path;
 
-	if (hdp_device->mcl)
-		mcap_mcl_unref(hdp_device->mcl);
-	hdp_device->mcl = NULL;
-	hdp_device->mcl_conn = FALSE;
+	for (l = devices; l; l = l->next) {
+		dev = l->data;
+		device_unref_mcl(dev);
 
-	if (hdp_device->sdp_present)
-		return;
+		if (!dev->sdp_present)
+			to_delete = g_slist_append(to_delete, dev);
+	}
 
-	path = device_get_path(hdp_device->dev);
-	g_dbus_unregister_interface(hdp_device->conn, path, HEALTH_DEVICE);
+	for (l = to_delete; l; l = l->next) {
+		path = device_get_path(dev->dev);
+		g_dbus_unregister_interface(dev->conn, path, HEALTH_DEVICE);
+	}
+
+	g_slist_free(to_delete);
 }
 
 static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
@@ -483,8 +494,7 @@ static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 		if (hdp_adapter->mi) {
 			mcap_release_instance(hdp_adapter->mi);
 			hdp_adapter->mi = NULL;
-			g_slist_foreach(devices, (GFunc) device_unref_mcl,
-									NULL);
+			check_devices_mcl();
 		}
 		goto update;
 	}
