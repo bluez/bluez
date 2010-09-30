@@ -389,8 +389,14 @@ static DBusMessage *channel_release(DBusConnection *conn,
 
 static void health_channel_destroy(void *data)
 {
-	/* TODO: Unregister Health Channel */
-	DBG("TODO: Destroy Health Channel");
+	struct hdp_channel *hdp_chan = data;
+	struct hdp_device *dev = hdp_chan->dev;
+
+	DBG("Destroy Health Channel %s", hdp_chan->path);
+	dev->channels = g_slist_remove(dev->channels, hdp_chan);
+
+	g_free(hdp_chan->path);
+	g_free(hdp_chan);
 }
 
 static GDBusMethodTable health_channels_methods[] = {
@@ -428,7 +434,7 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 					hdp_chann, health_channel_destroy)) {
 		g_set_error(err, HDP_ERROR, HDP_UNSPECIFIED_ERROR,
 					"Can't register the channel interface");
-		g_free(hdp_chann);
+		health_channel_destroy(hdp_chann);
 		return NULL;
 	}
 
