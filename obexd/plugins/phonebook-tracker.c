@@ -64,7 +64,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
-	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
@@ -116,7 +116,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
-	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
@@ -188,7 +188,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
-	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
@@ -260,7 +260,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew)"	\
-	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
@@ -328,7 +328,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
-	"nco:birthDate(?c) nco:nickname(?c) nco:websiteUrl(?c) "	\
+	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
 	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
@@ -443,7 +443,7 @@
 	"nco:phoneNumber(?w) nco:pobox(?p) nco:extendedAddress(?p) "	\
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f  nco:emailAddress(?ew)"	\
-	"nco:birthDate(<%s>) nco:nickname(<%s>) nco:websiteUrl(<%s>) "	\
+	"nco:birthDate(<%s>) nco:nickname(<%s>) nco:url(<%s>) "		\
 	"nco:photo(<%s>) nco:fullname(?o) nco:department(?a) "		\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
