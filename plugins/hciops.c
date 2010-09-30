@@ -823,6 +823,25 @@ static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 	return err;
 }
 
+static int hciops_set_event_mask(int index, uint8_t *events, size_t count)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
+						count, events) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -844,6 +863,7 @@ static struct btd_adapter_ops hci_ops = {
 	.get_conn_handle = hciops_conn_handle,
 	.write_eir_data = hciops_write_eir_data,
 	.read_bdaddr = hciops_read_bdaddr,
+	.set_event_mask = hciops_set_event_mask,
 };
 
 static int hciops_init(void)

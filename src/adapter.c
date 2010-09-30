@@ -1957,8 +1957,8 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 						 * Features Notification */
 		}
 
-		hci_send_cmd(dd, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
-						sizeof(events), events);
+		adapter_ops->set_event_mask(adapter->dev_id, events,
+							sizeof(events));
 	}
 
 	inqmode = get_inquiry_mode(dev);
