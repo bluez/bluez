@@ -71,7 +71,7 @@ static gboolean mce_signal_callback(DBusConnection *connection,
 
 		/* set the adapter according to the mce signal
 		   and remember the value */
-		mce_bt_set = sigvalue & MCE_RADIO_STATE_BLUETOOTH;
+		mce_bt_set = !!(sigvalue & MCE_RADIO_STATE_BLUETOOTH);
 
 		if (mce_bt_set)
 			btd_adapter_switch_online(adapter);
