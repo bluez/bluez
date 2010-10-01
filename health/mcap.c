@@ -672,7 +672,6 @@ gboolean mcap_mdl_abort(struct mcap_mdl *mdl, mcap_mdl_notify_cb abort_cb,
 	con->user_data = user_data;
 
 	mcl->priv_data = con;
-
 	mcl->tid = g_timeout_add_seconds(RESPONSE_TIMER, wait_response_timer,
 									mcl);
 	return TRUE;
@@ -731,10 +730,8 @@ static void close_mcl(struct mcap_mcl *mcl, gboolean cache_requested)
 		mcl->lcmd = NULL;
 	}
 
-	if (mcl->priv_data) {
-		g_free(mcl->priv_data);
-		mcl->priv_data = NULL;
-	}
+	if (mcl->priv_data)
+		free_mcl_priv_data(mcl);
 
 	g_slist_foreach(mcl->mdls, (GFunc) shutdown_mdl, NULL);
 
@@ -1485,8 +1482,26 @@ static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, mcap_rsp *rsp,
 	return close;
 }
 
+static void post_process_rsp(struct mcap_mcl *mcl, struct mcap_mdl_op_cb *op)
+{
+	if (op->destroy)
+		op->destroy(op->user_data);
+
+	if (mcl->priv_data != op) {
+		/* Queued MCAP request in some callback. */
+		/* We sould not delete the mcl private data */
+		g_free(op);
+	} else {
+		/* This is not queued requets. It's safe */
+		/* delete the mcl private data here. */
+		g_free(mcl->priv_data);
+		mcl->priv_data = NULL;
+	}
+}
+
 static void proc_response(struct mcap_mcl *mcl, void *buf, uint32_t len)
 {
+	struct mcap_mdl_op_cb *op = mcl->priv_data;
 	mcap_rsp *rsp = buf;
 	gboolean close;
 
@@ -1495,19 +1510,19 @@ static void proc_response(struct mcap_mcl *mcl, void *buf, uint32_t len)
 	switch (mcl->lcmd[0] + 1) {
 	case MCAP_MD_CREATE_MDL_RSP:
 		close = process_md_create_mdl_rsp(mcl, rsp, len);
-		free_mcl_priv_data(mcl);
+		post_process_rsp(mcl, op);
 		break;
 	case MCAP_MD_RECONNECT_MDL_RSP:
 		close = process_md_reconnect_mdl_rsp(mcl, rsp, len);
-		free_mcl_priv_data(mcl);
+		post_process_rsp(mcl, op);
 		break;
 	case MCAP_MD_ABORT_MDL_RSP:
 		close = process_md_abort_mdl_rsp(mcl, rsp, len);
-		free_mcl_priv_data(mcl);
+		post_process_rsp(mcl, op);
 		break;
 	case MCAP_MD_DELETE_MDL_RSP:
 		close = process_md_delete_mdl_rsp(mcl, rsp, len);
-		free_mcl_priv_data(mcl);
+		post_process_rsp(mcl, op);
 		break;
 	default:
 		DBG("Unknown cmd response received (op code = %d)", rsp->op);
