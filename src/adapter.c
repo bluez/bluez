@@ -2351,11 +2351,10 @@ int adapter_start(struct btd_adapter *adapter)
 	dev->lmp_subver = ver.lmp_subver;
 	dev->manufacturer = ver.manufacturer;
 
-	if (hci_read_local_features(dd, features, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
+	err = adapter_ops->read_local_features(adapter->dev_id, features);
+	if (err < 0) {
 		error("Can't read features for %s: %s (%d)",
-					adapter->path, strerror(errno), errno);
-		hci_close_dev(dd);
+					adapter->path, strerror(-err), -err);
 		return err;
 	}
 

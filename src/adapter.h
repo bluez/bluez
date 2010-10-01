@@ -201,6 +201,7 @@ struct btd_adapter_ops {
 	int (*unblock_device) (int index, bdaddr_t *bdaddr);
 	int (*get_conn_list) (int index, GSList **conns);
 	int (*read_local_version) (int index, struct hci_version *ver);
+	int (*read_local_features) (int index, uint8_t *features);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);

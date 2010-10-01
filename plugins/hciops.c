@@ -966,6 +966,24 @@ static int hciops_read_local_version(int index, struct hci_version *ver)
 	return err;
 }
 
+static int hciops_read_local_features(int index, uint8_t *features)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_read_local_features(dd, features, HCI_REQ_TIMEOUT) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -994,6 +1012,7 @@ static struct btd_adapter_ops hci_ops = {
 	.unblock_device = hciops_unblock_device,
 	.get_conn_list = hciops_get_conn_list,
 	.read_local_version = hciops_read_local_version,
+	.read_local_features = hciops_read_local_features,
 };
 
 static int hciops_init(void)
