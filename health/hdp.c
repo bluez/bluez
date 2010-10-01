@@ -67,7 +67,7 @@ struct hdp_create_dc {
 	guint			ref;
 };
 
-struct hdp_connect_dc {
+struct hdp_tmp_dc_data {
 	DBusConnection		*conn;
 	DBusMessage		*msg;
 	struct hdp_channel	*hdp_chann;
@@ -103,33 +103,33 @@ static void hdp_create_data_unref(struct hdp_create_dc *dc_data)
 	free_hdp_create_dc(dc_data);
 }
 
-static void free_hdp_conn_dc(struct hdp_connect_dc *conn_data)
+static void free_hdp_conn_dc(struct hdp_tmp_dc_data *data)
 {
-	dbus_message_unref(conn_data->msg);
-	dbus_connection_unref(conn_data->conn);
+	dbus_message_unref(data->msg);
+	dbus_connection_unref(data->conn);
 
-	g_free(conn_data);
+	g_free(data);
 }
 
-static struct hdp_connect_dc *hdp_conn_data_ref(struct hdp_connect_dc *conn_data)
+static struct hdp_tmp_dc_data *hdp_tmp_dc_data_ref(struct hdp_tmp_dc_data *data)
 {
-	conn_data->ref++;
+	data->ref++;
 
-	DBG("hdp_conn_data_ref(%p): ref=%d", conn_data, conn_data->ref);
+	DBG("hdp_conn_data_ref(%p): ref=%d", data, data->ref);
 
-	return conn_data;
+	return data;
 }
 
-static void hdp_conn_data_unref(struct hdp_connect_dc *conn_data)
+static void hdp_tmp_dc_data_unref(struct hdp_tmp_dc_data *data)
 {
-	conn_data->ref--;
+	data->ref--;
 
-	DBG("hdp_conn_data_ref(%p): ref=%d", conn_data, conn_data->ref);
+	DBG("hdp_conn_data_ref(%p): ref=%d", data, data->ref);
 
-	if (conn_data->ref > 0)
+	if (data->ref > 0)
 		return;
 
-	free_hdp_conn_dc(conn_data);
+	free_hdp_conn_dc(data);
 }
 
 static int cmp_app_id(gconstpointer a, gconstpointer b)
@@ -186,6 +186,14 @@ static gint cmp_chan_mdlid(gconstpointer a, gconstpointer b)
 	const uint16_t *mdlid = b;
 
 	return chan->mdlid - *mdlid;
+}
+
+static gint cmp_chan_path(gconstpointer a, gconstpointer b)
+{
+	const struct hdp_channel *chan = a;
+	const char *path = b;
+
+	return g_ascii_strcasecmp(chan->path, path);
 }
 
 static gint cmp_chan_mdl(gconstpointer a, gconstpointer mdl)
@@ -913,16 +921,16 @@ static void abort_and_del_mdl_cb(GError *err, gpointer data)
 	}
 }
 
-static void hdp_connect_dc_destroy(gpointer data)
+static void hdp_tmp_dc_data_destroy(gpointer data)
 {
-	struct hdp_connect_dc *hdp_conn = data;
+	struct hdp_tmp_dc_data *hdp_conn = data;
 
-	hdp_conn_data_unref(hdp_conn);
+	hdp_tmp_dc_data_unref(hdp_conn);
 }
 
 static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 {
-	struct hdp_connect_dc *hdp_conn =  data;
+	struct hdp_tmp_dc_data *hdp_conn =  data;
 	struct hdp_channel *hdp_chann = hdp_conn->hdp_chann;
 	DBusMessage *reply;
 	GError *gerr = NULL;
@@ -953,7 +961,7 @@ static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 
 static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
 {
-	struct hdp_connect_dc *hdp_conn = user_data;
+	struct hdp_tmp_dc_data *hdp_conn = user_data;
 	struct hdp_channel *hdp_chann = hdp_conn->hdp_chann;
 	GError *gerr = NULL;
 	DBusMessage *reply;
@@ -970,8 +978,8 @@ static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
 		mode = L2CAP_MODE_STREAMING;
 
 	if (mcap_connect_mdl(hdp_chann->mdl, mode, dcpsm, hdp_mdl_conn_cb,
-						hdp_conn_data_ref(hdp_conn),
-						hdp_connect_dc_destroy, &gerr))
+						hdp_tmp_dc_data_ref(hdp_conn),
+						hdp_tmp_dc_data_destroy, &gerr))
 		return;
 
 fail:
@@ -983,7 +991,7 @@ fail:
 					DBUS_TYPE_OBJECT_PATH, &hdp_chann->path,
 					DBUS_TYPE_INVALID);
 	g_dbus_send_message(hdp_conn->conn, reply);
-	hdp_conn_data_unref(hdp_conn);
+	hdp_tmp_dc_data_unref(hdp_conn);
 
 	/* Send abort request because remote side is now in PENDING state */
 	if (!mcap_mdl_abort(hdp_chann->mdl, abort_mdl_cb, hdp_chann, NULL,
@@ -997,7 +1005,7 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 						GError *err, gpointer data)
 {
 	struct hdp_create_dc *user_data = data;
-	struct hdp_connect_dc *hdp_conn;
+	struct hdp_tmp_dc_data *hdp_conn;
 	struct hdp_channel *hdp_chan;
 	GError *gerr = NULL;
 	DBusMessage *reply;
@@ -1031,14 +1039,14 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 	if (!hdp_chan)
 		goto fail;
 
-	hdp_conn = g_new0(struct hdp_connect_dc, 1);
+	hdp_conn = g_new0(struct hdp_tmp_dc_data, 1);
 	hdp_conn->msg = dbus_message_ref(user_data->msg);
 	hdp_conn->conn = dbus_connection_ref(user_data->conn);
 	hdp_conn->hdp_chann = hdp_chan;
 
 	if (hdp_get_dcpsm(hdp_chan->dev, hdp_get_dcpsm_cb,
-						hdp_conn_data_ref(hdp_conn),
-						hdp_connect_dc_destroy, &gerr))
+						hdp_tmp_dc_data_ref(hdp_conn),
+						hdp_tmp_dc_data_destroy, &gerr))
 		return;
 
 	error("%s", gerr->message);
@@ -1049,7 +1057,7 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 					DBUS_TYPE_OBJECT_PATH, &hdp_chan->path,
 					DBUS_TYPE_INVALID);
 	g_dbus_send_message(hdp_conn->conn, reply);
-	hdp_conn_data_unref(hdp_conn);
+	hdp_tmp_dc_data_unref(hdp_conn);
 
 	/* Send abort request because remote side is now in PENDING state */
 	if (!mcap_mdl_abort(hdp_chan->mdl, abort_mdl_cb, hdp_chan, NULL,
@@ -1209,11 +1217,65 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 	return reply;
 }
 
+static void hdp_mdl_delete_cb(GError *err, gpointer data)
+{
+	/*TODO: Implement this function */
+}
+
+static void hdp_continue_del_cb(gpointer user_data, GError *err)
+{
+	/*TODO: Implement this function */
+}
+
 static DBusMessage *device_destroy_channel(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
-				"DestroyChannel function not implemented");
+	struct hdp_device *device = user_data;
+	struct hdp_tmp_dc_data *del_data;
+	struct hdp_channel *hdp_chan;
+	DBusMessage *reply;
+	GError *err = NULL;
+	char *path;
+	GSList *l;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID)){
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+	}
+
+	l = g_slist_find_custom(device->channels, path, cmp_chan_path);
+	if (!l)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call, "
+					"no such channel");
+	hdp_chan = l->data;
+	del_data = g_new0(struct hdp_tmp_dc_data, 1);
+	del_data->msg = dbus_message_ref(msg);
+	del_data->conn = dbus_connection_ref(conn);
+	del_data->hdp_chann = hdp_chan;
+
+	if (device->mcl_conn) {
+		if (mcap_delete_mdl(hdp_chan->mdl, hdp_mdl_delete_cb,
+						hdp_tmp_dc_data_ref(del_data),
+						hdp_tmp_dc_data_destroy, &err))
+			return NULL;
+		goto fail;
+	}
+
+	if (hdp_establish_mcl(device, hdp_chan->app, hdp_continue_del_cb,
+						hdp_tmp_dc_data_ref(del_data),
+						hdp_tmp_dc_data_destroy, &err))
+		return NULL;
+
+fail:
+	reply = g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+							"%s", err->message);
+	hdp_tmp_dc_data_unref(del_data);
+	g_error_free(err);
+	return reply;
 }
 
 static void health_device_destroy(void *data)
