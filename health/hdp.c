@@ -387,8 +387,38 @@ static GDBusMethodTable health_manager_methods[] = {
 static DBusMessage *channel_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
-						"Function is not implemented");
+	struct hdp_channel *chan = user_data;
+	DBusMessageIter iter, dict;
+	DBusMessage *reply;
+	const char *path;
+	char *type;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	path = device_get_path(chan->dev->dev);
+	dict_append_entry(&dict, "Device", DBUS_TYPE_OBJECT_PATH, &path);
+
+	if (chan->config == HDP_RELIABLE_DC)
+		type = g_strdup("Reliable");
+	else
+		type = g_strdup("Streaming");
+
+	dict_append_entry(&dict, "Type", DBUS_TYPE_STRING, &type);
+
+	g_free(type);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
 }
 
 static DBusMessage *channel_acquire(DBusConnection *conn,
