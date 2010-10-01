@@ -1186,6 +1186,33 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 	return err;
 }
 
+static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
+{
+	struct hci_auth_info_req req;
+	int err, dd;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	memset(&req, 0, sizeof(req));
+	bacpy(&req.bdaddr, bdaddr);
+
+	if (ioctl(dd, HCIGETAUTHINFO, (unsigned long) &req) < 0) {
+		err = -errno;
+		goto fail;
+	}
+
+	err = 0;
+
+	if (auth)
+		*auth = req.type;
+
+fail:
+	hci_close_dev(dd);
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1223,6 +1250,7 @@ static struct btd_adapter_ops hci_ops = {
 	.pincode_reply = hciops_pincode_reply,
 	.confirm_reply = hciops_confirm_reply,
 	.passkey_reply = hciops_passkey_reply,
+	.get_auth_info = hciops_get_auth_info,
 };
 
 static int hciops_init(void)

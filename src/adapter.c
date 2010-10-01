@@ -3516,3 +3516,9 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 {
 	return adapter_ops->passkey_reply(adapter->dev_id, bdaddr, passkey);
 }
+
+int btd_adapter_get_auth_info(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+								uint8_t *auth)
+{
+	return adapter_ops->get_auth_info(adapter->dev_id, bdaddr, auth);
+}

@@ -230,42 +230,6 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	btd_adapter_passkey_reply(adapter, &bdaddr, passkey);
 }
 
-static int get_auth_requirements(bdaddr_t *local, bdaddr_t *remote,
-							uint8_t *auth)
-{
-	struct hci_auth_info_req req;
-	char addr[18];
-	int err, dd, dev_id;
-
-	ba2str(local, addr);
-
-	dev_id = hci_devid(addr);
-	if (dev_id < 0)
-		return dev_id;
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0)
-		return dd;
-
-	memset(&req, 0, sizeof(req));
-	bacpy(&req.bdaddr, remote);
-
-	err = ioctl(dd, HCIGETAUTHINFO, (unsigned long) &req);
-	if (err < 0) {
-		DBG("HCIGETAUTHINFO failed: %s (%d)",
-					strerror(errno), errno);
-		hci_close_dev(dd);
-		return err;
-	}
-
-	hci_close_dev(dd);
-
-	if (auth)
-		*auth = req.type;
-
-	return 0;
-}
-
 int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct btd_adapter *adapter;
@@ -277,7 +241,7 @@ int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	if (get_auth_requirements(sba, dba, &loc_auth) < 0) {
+	if (btd_adapter_get_auth_info(adapter, dba, &loc_auth) < 0) {
 		error("Unable to get local authentication requirements");
 		goto fail;
 	}
@@ -632,7 +596,7 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 			return 0;
 	}
 
-	get_auth_requirements(local, peer, &local_auth);
+	btd_adapter_get_auth_info(adapter, peer, &local_auth);
 	remote_auth = device_get_auth(device);
 	bonding = device_is_bonding(device, NULL);
 
@@ -855,12 +819,14 @@ int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	struct btd_device *device;
 	struct agent *agent = NULL;
 	uint8_t agent_cap;
+	int err;
 
 	if (!get_adapter_and_device(local, remote, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	if (get_auth_requirements(local, remote, auth) < 0)
-		return -1;
+	err = btd_adapter_get_auth_info(adapter, remote, auth);
+	if (err < 0)
+		return err;
 
 	DBG("initial authentication requirement is 0x%02x", *auth);
 
