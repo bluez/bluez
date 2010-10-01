@@ -649,6 +649,27 @@ static gboolean endpoint_getcap_ind(struct avdtp *session,
 	return TRUE;
 }
 
+static void endpoint_open_cb(struct media_endpoint *endpoint, void *ret,
+						int size, void *user_data)
+{
+	struct a2dp_setup *setup = user_data;
+	int err;
+
+	if (ret == NULL) {
+		setup->stream = NULL;
+		finalize_config_errno(setup, -EPERM);
+		return;
+	}
+
+	err = avdtp_open(setup->session, setup->stream);
+	if (err == 0)
+		return;
+
+	error("Error on avdtp_open %s (%d)", strerror(-err), -err);
+	setup->stream = NULL;
+	finalize_config_errno(setup, err);
+}
+
 static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream,
 				struct avdtp_error *err, void *user_data)
@@ -697,11 +718,14 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 		if (media_endpoint_set_configuration(a2dp_sep->endpoint, dev,
 						codec->data, service->length -
-						sizeof(*codec), NULL, NULL) ==
-						FALSE) {
-			setup->stream = NULL;
-			finalize_config_errno(setup, -EPERM);
-		}
+						sizeof(*codec),
+						endpoint_open_cb, setup) ==
+						TRUE)
+			return;
+
+		setup->stream = NULL;
+		finalize_config_errno(setup, -EPERM);
+		return;
 	}
 
 	ret = avdtp_open(session, stream);
