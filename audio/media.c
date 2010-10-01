@@ -542,8 +542,7 @@ gboolean media_endpoint_set_configuration(struct media_endpoint *endpoint,
 					void *user_data)
 {
 	DBusConnection *conn;
-	DBusMessage *msg, *reply;
-	DBusError err;
+	DBusMessage *msg;
 	const char *path;
 	DBusMessageIter iter;
 
@@ -572,36 +571,7 @@ gboolean media_endpoint_set_configuration(struct media_endpoint *endpoint,
 
 	transport_get_properties(endpoint->transport, &iter);
 
-	if (cb != NULL)
-		return media_endpoint_async_call(conn, msg, endpoint, cb, user_data);
-
-	dbus_error_init(&err);
-
-	DBG("Calling %s: name = %s path = %s", dbus_message_get_member(msg),
-			dbus_message_get_destination(msg),
-			dbus_message_get_path(msg));
-
-	/* FIXME: remove once we can reply setconf asynchronously */
-	reply = dbus_connection_send_with_reply_and_block(conn, msg,
-							REQUEST_TIMEOUT, &err);
-
-	dbus_message_unref(msg);
-
-	if (reply) {
-		dbus_message_unref(reply);
-		return TRUE;
-	}
-
-	if (dbus_error_is_set(&err)) {
-		error("Endpoint replied with an error: %s", err.name);
-
-		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
-			media_endpoint_clear_configuration(endpoint);
-
-		dbus_error_free(&err);
-	}
-
-	return FALSE;
+	return media_endpoint_async_call(conn, msg, endpoint, cb, user_data);
 }
 
 gboolean media_endpoint_select_configuration(struct media_endpoint *endpoint,
