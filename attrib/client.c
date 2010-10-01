@@ -93,7 +93,7 @@ struct characteristic {
 	char *desc;
 	struct format *format;
 	uint8_t *value;
-	int vlen;
+	size_t vlen;
 };
 
 struct query_data {
@@ -247,18 +247,14 @@ static void watcher_exit(DBusConnection *conn, void *user_data)
 }
 
 static int characteristic_set_value(struct characteristic *chr,
-					const uint8_t *value, uint16_t len)
+					const uint8_t *value, size_t vlen)
 {
-	uint8_t *newvalue;
-
-	newvalue = g_try_malloc0(len);
-	if (newvalue == NULL)
+	chr->value = g_try_realloc(chr->value, vlen);
+	if (chr->value == NULL)
 		return -ENOMEM;
 
-	memcpy(newvalue, value, len);
-	g_free(chr->value);
-	chr->vlen = len;
-	chr->value = newvalue;
+	memcpy(chr->value, value, vlen);
+	chr->vlen = vlen;
 
 	return 0;
 }
@@ -316,7 +312,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 		g_attrib_send(gatt->attrib, opdu[0], opdu, olen,
 						NULL, NULL, NULL);
 	case ATT_OP_HANDLE_NOTIFY:
-		if (characteristic_set_value(chr, pdu + 2, len - 2) < 0)
+		if (characteristic_set_value(chr, &pdu[3], len - 3) < 0)
 			DBG("Can't change Characteristic %0x02x", handle);
 
 		g_slist_foreach(prim->watchers, update_watchers, chr);
@@ -558,10 +554,7 @@ static DBusMessage *set_value(DBusConnection *conn, DBusMessage *msg,
 
 	gatt_write_cmd(gatt->attrib, chr->handle, value, len, NULL, NULL);
 
-	g_free(chr->value);
-	chr->value = g_malloc(len);
-	memcpy(chr->value, value, len);
-	chr->vlen = len;
+	characteristic_set_value(chr, value, len);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -839,15 +832,9 @@ static void update_char_value(guint8 status, const guint8 *pdu,
 	struct gatt_service *gatt = current->prim->gatt;
 	struct characteristic *chr = current->chr;
 
-	if (status != 0)
-		goto done;
+	if (status == 0)
+		characteristic_set_value(chr, pdu + 1, len - 1);
 
-	g_free(chr->value);
-
-	chr->vlen = len - 1;
-	chr->value = g_malloc(chr->vlen);
-	memcpy(chr->value, pdu + 1, chr->vlen);
-done:
 	g_attrib_unref(gatt->attrib);
 	g_free(current);
 }
