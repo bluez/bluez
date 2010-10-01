@@ -401,8 +401,21 @@ static DBusMessage *channel_acquire(DBusConnection *conn,
 static DBusMessage *channel_release(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
-						"Function is not implemented");
+	struct hdp_channel *hdp_chann = user_data;
+	int fd;
+
+	if (!hdp_chann->mdl_conn)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	fd = mcap_mdl_get_fd(hdp_chann->mdl);
+	if (fd < 0) {
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+							"Can't close channel");
+	}
+
+	close(fd);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static void health_channel_destroy(void *data)
