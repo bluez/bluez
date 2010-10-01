@@ -187,6 +187,15 @@ static gint cmp_chan_mdlid(gconstpointer a, gconstpointer b)
 	return chan->mdlid - *mdlid;
 }
 
+static gint cmp_chan_mdl(gconstpointer a, gconstpointer mdl)
+{
+	const struct hdp_channel *chan = a;
+
+	if (chan->mdl == mdl)
+		return 0;
+	return -1;
+}
+
 static uint8_t get_app_id()
 {
 	GSList *l;
@@ -473,7 +482,17 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 
 static void hdp_mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
 {
-	DBG("TODO: implement this function");
+	struct hdp_device *dev = data;
+	struct hdp_channel *chan;
+	GSList *l;
+
+	DBG("hdp_mcap_mdl_closed_cb");
+	l = g_slist_find_custom(dev->channels, mdl, cmp_chan_mdl);
+	if (!l)
+		return;
+
+	chan = l->data;
+	chan->mdl_conn = FALSE;
 }
 
 static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
