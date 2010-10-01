@@ -3510,3 +3510,9 @@ int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 {
 	return adapter_ops->confirm_reply(adapter->dev_id, bdaddr, success);
 }
+
+int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							uint32_t passkey)
+{
+	return adapter_ops->passkey_reply(adapter->dev_id, bdaddr, passkey);
+}

@@ -42,6 +42,9 @@
 
 #define MAX_NAME_LENGTH		248
 
+/* Invalid SSP passkey value used to indicate negative replies */
+#define INVALID_PASSKEY		0xffffffff
+
 typedef enum {
 	NAME_ANY,
 	NAME_NOT_REQUIRED, /* used by get remote name without name resolving */
@@ -210,6 +213,7 @@ struct btd_adapter_ops {
 							uint8_t *status);
 	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin);
 	int (*confirm_reply) (int index, bdaddr_t *bdaddr, gboolean success);
+	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint32_t passkey);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
@@ -250,3 +254,5 @@ int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							const char *pin);
 int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							gboolean success);
+int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							uint32_t passkey);

@@ -1160,6 +1160,32 @@ static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 	return err;
 }
 
+static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (passkey != INVALID_PASSKEY) {
+		user_passkey_reply_cp cp;
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.bdaddr, bdaddr);
+		cp.passkey = passkey;
+
+		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_REPLY,
+					USER_PASSKEY_REPLY_CP_SIZE, &cp);
+	} else
+		err = hci_send_cmd(dd, OGF_LINK_CTL,
+					OCF_USER_PASSKEY_NEG_REPLY, 6, bdaddr);
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1196,6 +1222,7 @@ static struct btd_adapter_ops hci_ops = {
 	.request_authentication = hciops_request_authentication,
 	.pincode_reply = hciops_pincode_reply,
 	.confirm_reply = hciops_confirm_reply,
+	.passkey_reply = hciops_passkey_reply,
 };
 
 static int hciops_init(void)

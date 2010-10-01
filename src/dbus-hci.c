@@ -220,31 +220,14 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 {
 	struct btd_device *device = user_data;
 	struct btd_adapter *adapter = device_get_adapter(device);
-	user_passkey_reply_cp cp;
-	bdaddr_t dba;
-	int dd;
-	uint16_t dev_id = adapter_get_dev_id(adapter);
+	bdaddr_t bdaddr;
 
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("Unable to open hci%d", dev_id);
-		return;
-	}
-
-	device_get_address(device, &dba);
-
-	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, &dba);
-	cp.passkey = passkey;
+	device_get_address(device, &bdaddr);
 
 	if (err)
-		hci_send_cmd(dd, OGF_LINK_CTL,
-				OCF_USER_PASSKEY_NEG_REPLY, 6, &dba);
-	else
-		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_REPLY,
-					USER_PASSKEY_REPLY_CP_SIZE, &cp);
+		passkey = INVALID_PASSKEY;
 
-	hci_close_dev(dd);
+	btd_adapter_passkey_reply(adapter, &bdaddr, passkey);
 }
 
 static int get_auth_requirements(bdaddr_t *local, bdaddr_t *remote,
