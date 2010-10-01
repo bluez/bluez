@@ -1145,6 +1145,7 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct hdp_device *device = user_data;
+	struct hdp_application *app;
 	struct hdp_create_dc *data;
 	char *app_path, *conf;
 	DBusMessage *reply;
@@ -1166,6 +1167,7 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call, "
 					"no such application");
+	app = l->data;
 
 	if (g_ascii_strcasecmp("Reliable", conf) == 0)
 		config = HDP_RELIABLE_DC;
@@ -1178,10 +1180,20 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
 
+	if (app->role == HDP_SINK && config != HDP_NO_PREFERENCE_DC)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Configuration not valid for sinks");
+
+	if (app->role == HDP_SOURCE && config == HDP_NO_PREFERENCE_DC)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Configuration not valid for sources");
+
 	data = g_new0(struct hdp_create_dc, 1);
 	data->dev = device;
 	data->config = config;
-	data->app = l->data;
+	data->app = app;
 	data->msg = dbus_message_ref(msg);
 	data->conn = dbus_connection_ref(conn);
 
