@@ -623,8 +623,22 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 
 static uint8_t hdp_mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
 {
-	DBG("TODO: implement this function");
-	return MCAP_MDEP_BUSY;
+	struct hdp_device *dev = data;
+	struct hdp_channel *chan;
+	GSList *l;
+
+	l = g_slist_find_custom(dev->channels, mdl, cmp_chan_mdl);
+	if (!l)
+		return MCAP_INVALID_MDL;
+
+	chan = l->data;
+
+	if (!dev->fr && (chan->config != HDP_RELIABLE_DC))
+		return MCAP_UNSPECIFIED_ERROR;
+
+	dev->ndc = chan;
+
+	return MCAP_SUCCESS;
 }
 
 gboolean hdp_set_mcl_cb(struct hdp_device *device, GError **err)
