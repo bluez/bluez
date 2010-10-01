@@ -1135,6 +1135,31 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 	return err;
 }
 
+static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
+{
+	int dd, err;
+	user_confirm_reply_cp cp;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+
+	if (success)
+		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
+					USER_CONFIRM_REPLY_CP_SIZE, &cp);
+	else
+		err = hci_send_cmd(dd, OGF_LINK_CTL,
+					OCF_USER_CONFIRM_NEG_REPLY,
+					USER_CONFIRM_REPLY_CP_SIZE, &cp);
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1170,6 +1195,7 @@ static struct btd_adapter_ops hci_ops = {
 	.remove_bonding = hciops_remove_bonding,
 	.request_authentication = hciops_request_authentication,
 	.pincode_reply = hciops_pincode_reply,
+	.confirm_reply = hciops_confirm_reply,
 };
 
 static int hciops_init(void)

@@ -3504,3 +3504,9 @@ int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 {
 	return adapter_ops->pincode_reply(adapter->dev_id, bdaddr, pin);
 }
+
+int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							gboolean success)
+{
+	return adapter_ops->confirm_reply(adapter->dev_id, bdaddr, success);
+}

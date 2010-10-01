@@ -199,29 +199,11 @@ int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 static int confirm_reply(struct btd_adapter *adapter,
 				struct btd_device *device, gboolean success)
 {
-	int dd;
-	user_confirm_reply_cp cp;
-	uint16_t dev_id = adapter_get_dev_id(adapter);
+	bdaddr_t bdaddr;
 
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("Unable to open hci%d", dev_id);
-		return dd;
-	}
+	device_get_address(device, &bdaddr);
 
-	memset(&cp, 0, sizeof(cp));
-	device_get_address(device, &cp.bdaddr);
-
-	if (success)
-		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
-					USER_CONFIRM_REPLY_CP_SIZE, &cp);
-	else
-		hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
-					USER_CONFIRM_REPLY_CP_SIZE, &cp);
-
-	hci_close_dev(dd);
-
-	return 0;
+	return btd_adapter_confirm_reply(adapter, &bdaddr, success);
 }
 
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
