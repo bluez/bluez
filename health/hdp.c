@@ -1010,29 +1010,26 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 		return;
 	}
 
-	/*TODO: Check config and requested config before continue */
+	if (user_data->config == HDP_NO_PREFERENCE_DC) {
+		if (!user_data->dev->fr && (conf != HDP_RELIABLE_DC)) {
+			g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+					"Data channel aborted, fist data "
+					"channel should be reliable");
+			goto fail;
+		} else if (conf == HDP_NO_PREFERENCE_DC ||
+						conf > HDP_STREAMING_DC) {
+			g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+							"Data channel aborted, "
+							"configuration error");
+			goto fail;
+		}
+	}
 
 	hdp_chan = create_channel(user_data->dev, conf, mdl,
 							mcap_mdl_get_mdlid(mdl),
 							user_data->app, &gerr);
-	if (!hdp_chan) {
-		reply = g_dbus_create_error(user_data->msg,
-						ERROR_INTERFACE ".HealthError",
-						"%s", gerr->message);
-		g_dbus_send_message(user_data->conn, reply);
-		g_error_free(gerr);
-		gerr = NULL;
-
-		/* Send abort request because remote side is now in PENDING */
-		/* state. Then we have to delete it because we couldn't */
-		/* register the HealthChannel interface */
-		if (!mcap_mdl_abort(mdl, abort_and_del_mdl_cb, mdl, NULL,
-								&gerr)) {
-			error("%s", gerr->message);
-			g_error_free(gerr);
-		}
-		return;
-	}
+	if (!hdp_chan)
+		goto fail;
 
 	hdp_conn = g_new0(struct hdp_connect_dc, 1);
 	hdp_conn->msg = dbus_message_ref(user_data->msg);
@@ -1057,6 +1054,25 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 	/* Send abort request because remote side is now in PENDING state */
 	if (!mcap_mdl_abort(hdp_chan->mdl, abort_mdl_cb, hdp_chan, NULL,
 								&gerr)) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+	}
+
+	return;
+
+fail:
+
+	reply = g_dbus_create_error(user_data->msg,
+						ERROR_INTERFACE ".HealthError",
+						"%s", gerr->message);
+	g_dbus_send_message(user_data->conn, reply);
+	g_error_free(gerr);
+	gerr = NULL;
+
+	/* Send abort request because remote side is now in PENDING */
+	/* state. Then we have to delete it because we couldn't */
+	/* register the HealthChannel interface */
+	if (!mcap_mdl_abort(mdl, abort_and_del_mdl_cb, mdl, NULL, &gerr)) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
 	}
