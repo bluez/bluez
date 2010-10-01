@@ -3498,3 +3498,9 @@ int btd_adapter_request_authentication(struct btd_adapter *adapter,
 	return adapter_ops->request_authentication(adapter->dev_id,
 							handle, status);
 }
+
+int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							const char *pin)
+{
+	return adapter_ops->pincode_reply(adapter->dev_id, bdaddr, pin);
+}

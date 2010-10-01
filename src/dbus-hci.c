@@ -160,45 +160,23 @@ const char *class_to_icon(uint32_t class)
  *
  *****************************************************************/
 
-static void pincode_cb(struct agent *agent, DBusError *err,
+static void pincode_cb(struct agent *agent, DBusError *derr,
 				const char *pincode, struct btd_device *device)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	pin_code_reply_cp pr;
 	bdaddr_t sba, dba;
-	size_t len;
-	int dev;
-	uint16_t dev_id = adapter_get_dev_id(adapter);
+	int err;
 
-	dev = hci_open_dev(dev_id);
-	if (dev < 0) {
-		error("hci_open_dev(%d): %s (%d)", dev_id,
-				strerror(errno), errno);
+	device_get_address(device, &dba);
+
+	err = btd_adapter_pincode_reply(adapter, &dba, derr ? pincode : NULL);
+	if (err < 0) {
+		error("pincode_reply: %s (%d)", strerror(-err), -err);
 		return;
 	}
 
-	adapter_get_address(adapter, &sba);
-	device_get_address(device, &dba);
-
-	if (err) {
-		hci_send_cmd(dev, OGF_LINK_CTL,
-				OCF_PIN_CODE_NEG_REPLY, 6, &dba);
-		goto done;
-	}
-
-	len = strlen(pincode);
-
-	set_pin_length(&sba, len);
-
-	memset(&pr, 0, sizeof(pr));
-	bacpy(&pr.bdaddr, &dba);
-	memcpy(pr.pin_code, pincode, len);
-	pr.pin_len = len;
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
-						PIN_CODE_REPLY_CP_SIZE, &pr);
-
-done:
-	hci_close_dev(dev);
+	if (derr == NULL)
+		set_pin_length(&sba, strlen(pincode));
 }
 
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
