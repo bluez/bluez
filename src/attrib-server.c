@@ -414,6 +414,22 @@ static uint16_t read_value(uint16_t handle, uint8_t *pdu, int len)
 	return enc_read_resp(a->data, a->len, pdu, len);
 }
 
+static void write_value(uint16_t handle, const uint8_t *value, int vlen)
+{
+	struct attribute *a;
+	GSList *l;
+	guint h = handle;
+	uuid_t uuid;
+
+	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
+	if (!l)
+		return;
+
+	a = l->data;
+	memcpy(&uuid, &a->uuid, sizeof(uuid_t));
+	attrib_db_update(handle, &uuid, value, vlen);
+}
+
 static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 		uint8_t *pdu, int len)
 {
@@ -436,10 +452,11 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 							gpointer user_data)
 {
 	struct gatt_channel *channel = user_data;
-	uint8_t opdu[ATT_MAX_MTU];
+	uint8_t opdu[ATT_MAX_MTU], value[ATT_MAX_MTU];
 	uint16_t length, start, end, mtu;
 	uuid_t uuid;
 	uint8_t status = 0;
+	int vlen;
 
 	switch(ipdu[0]) {
 	case ATT_OP_READ_BY_GROUP_REQ:
@@ -487,6 +504,11 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 
 		length = find_info(start, end, opdu, channel->mtu);
 		break;
+	case ATT_OP_WRITE_CMD:
+		length = dec_write_cmd(ipdu, len, &start, value, &vlen);
+		if (length > 0)
+			write_value(start, value, vlen);
+		return;
 	case ATT_OP_FIND_BY_TYPE_REQ:
 	case ATT_OP_READ_BLOB_REQ:
 	case ATT_OP_READ_MULTI_REQ:
