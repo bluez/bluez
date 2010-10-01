@@ -2363,17 +2363,7 @@ int adapter_start(struct btd_adapter *adapter)
 	if (!(features[6] & LMP_SIMPLE_PAIR))
 		goto setup;
 
-	if (ioctl(dd, HCIGETAUTHINFO, NULL) < 0 && errno != EINVAL)
-		hci_write_simple_pairing_mode(dd, 0x01, HCI_REQ_TIMEOUT);
-
-	if (hci_read_simple_pairing_mode(dd, &dev->ssp_mode,
-						HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
-		error("Can't read simple pairing mode on %s: %s (%d)",
-					adapter->path, strerror(errno), errno);
-		/* Fall through since some chips have broken
-		 * read_simple_pairing_mode behavior */
-	}
+	adapter_ops->init_ssp_mode(adapter->dev_id, &dev->ssp_mode);
 
 setup:
 	hci_send_cmd(dd, OGF_LINK_POLICY, OCF_READ_DEFAULT_LINK_POLICY,

@@ -984,6 +984,27 @@ static int hciops_read_local_features(int index, uint8_t *features)
 	return err;
 }
 
+static int hciops_init_ssp_mode(int index, uint8_t *mode)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (ioctl(dd, HCIGETAUTHINFO, NULL) < 0 && errno != EINVAL)
+		hci_write_simple_pairing_mode(dd, 0x01, HCI_REQ_TIMEOUT);
+
+	if (hci_read_simple_pairing_mode(dd, mode, HCI_REQ_TIMEOUT) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1013,6 +1034,7 @@ static struct btd_adapter_ops hci_ops = {
 	.get_conn_list = hciops_get_conn_list,
 	.read_local_version = hciops_read_local_version,
 	.read_local_features = hciops_read_local_features,
+	.init_ssp_mode = hciops_init_ssp_mode,
 };
 
 static int hciops_init(void)

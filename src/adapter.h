@@ -202,6 +202,7 @@ struct btd_adapter_ops {
 	int (*get_conn_list) (int index, GSList **conns);
 	int (*read_local_version) (int index, struct hci_version *ver);
 	int (*read_local_features) (int index, uint8_t *features);
+	int (*init_ssp_mode) (int index, uint8_t *ssp_mode);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
