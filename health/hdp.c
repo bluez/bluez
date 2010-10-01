@@ -1224,7 +1224,29 @@ static void hdp_mdl_delete_cb(GError *err, gpointer data)
 
 static void hdp_continue_del_cb(gpointer user_data, GError *err)
 {
-	/*TODO: Implement this function */
+	struct hdp_tmp_dc_data *del_data = user_data;
+	GError *gerr = NULL;
+	DBusMessage *reply;
+
+	if (err) {
+		reply = g_dbus_create_error(del_data->msg,
+					ERROR_INTERFACE ".HealthError",
+					"%s", err->message);
+		g_dbus_send_message(del_data->conn, reply);
+		return;
+	}
+
+	if (mcap_delete_mdl(del_data->hdp_chann->mdl, hdp_mdl_delete_cb,
+						hdp_tmp_dc_data_ref(del_data),
+						hdp_tmp_dc_data_destroy, &gerr))
+			return;
+
+	reply = g_dbus_create_error(del_data->msg,
+						ERROR_INTERFACE ".HealthError",
+						"%s", gerr->message);
+	hdp_tmp_dc_data_unref(del_data);
+	g_error_free(gerr);
+	g_dbus_send_message(del_data->conn, reply);
 }
 
 static DBusMessage *device_destroy_channel(DBusConnection *conn,
