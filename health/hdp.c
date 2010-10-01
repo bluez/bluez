@@ -1219,7 +1219,26 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 
 static void hdp_mdl_delete_cb(GError *err, gpointer data)
 {
-	/*TODO: Implement this function */
+	struct hdp_tmp_dc_data *del_data = data;
+	DBusMessage *reply;
+	char *path;
+
+	if (err) {
+		if (err->code != MCAP_INVALID_MDL) {
+			reply = g_dbus_create_error(del_data->msg,
+					ERROR_INTERFACE ".HealthError",
+					"%s", err->message);
+			g_dbus_send_message(del_data->conn, reply);
+			return;
+		}
+	}
+
+	path = g_strdup(del_data->hdp_chann->path);
+	g_dbus_unregister_interface(del_data->conn, path, HEALTH_CHANNEL);
+	g_free(path);
+
+	reply = g_dbus_create_reply(del_data->msg, DBUS_TYPE_INVALID);
+	g_dbus_send_message(del_data->conn, reply);
 }
 
 static void hdp_continue_del_cb(gpointer user_data, GError *err)
