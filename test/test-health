@@ -14,7 +14,7 @@ bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object("org.bluez", "/org/bluez"),
 						"org.bluez.HealthManager")
-app_path = manager.CreateApplication({"DataType": dbus.types.UInt16(1),
+app_path = manager.CreateApplication({"DataType": dbus.types.UInt16(4103),
 					"Role": "source"})
 
 print app_path

@@ -1,0 +1,83 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import dbus
+import dbus.service
+import gobject
+from dbus.mainloop.glib import DBusGMainLoop
+import sys
+
+DBusGMainLoop(set_as_default=True)
+loop = gobject.MainLoop()
+
+bus = dbus.SystemBus()
+
+hdp_manager = dbus.Interface(bus.get_object("org.bluez", "/org/bluez"),
+						"org.bluez.HealthManager")
+app_path = hdp_manager.CreateApplication({"DataType": dbus.types.UInt16(4103),
+					"Role": "sink"})
+
+print app_path
+
+manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+						"org.bluez.Manager")
+
+adapters = manager.ListAdapters()
+
+i = 1
+for ad in adapters:
+	print "%d. %s" % (i, ad)
+	i = i + 1
+
+print "Select an adapter: ",
+select = None
+while select == None:
+	try:
+		pos = int(sys.stdin.readline()) - 1
+		if pos < 0:
+			raise TypeError
+		select = adapters[pos]
+	except (TypeError, IndexError, ValueError):
+		print "Wrong selection, try again: ",
+	except KeyboardInterrupt:
+		sys.exit()
+
+adapter =  dbus.Interface(bus.get_object("org.bluez", select),
+						"org.bluez.Adapter")
+
+devices = adapter.ListDevices()
+
+if len(devices) == 0:
+	print "No devices available"
+	sys.exit()
+
+i = 1
+for dev in devices:
+	print "%d. %s" % (i, dev)
+	i = i + 1
+
+print "Select a device: ",
+select = None
+while select == None:
+	try:
+		pos = int(sys.stdin.readline()) - 1
+		if pos < 0:
+			raise TypeError
+		select = devices[pos]
+	except (TypeError, IndexError, ValueError):
+		print "Wrong selection, try again: ",
+	except KeyboardInterrupt:
+		sys.exit()
+
+print "Connecting to %s" % (select)
+device = dbus.Interface(bus.get_object("org.bluez", select),
+					"org.bluez.HealthDevice")
+
+chan = device.CreateChannel(app_path, "Any")
+
+print chan
+
+print "Push Enter for finishing"
+sys.stdin.readline()
+
+hdp_manager.DestroyApplication(app_path)
