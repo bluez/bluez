@@ -206,6 +206,8 @@ struct btd_adapter_ops {
 	int (*read_link_policy) (int index);
 	int (*disconnect) (int index, uint16_t handle);
 	int (*remove_bonding) (int index, bdaddr_t *bdaddr);
+	int (*request_authentication) (int index, uint16_t handle,
+							uint8_t *status);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
@@ -238,3 +240,6 @@ int btd_adapter_disconnect_device(struct btd_adapter *adapter,
 							uint16_t handle);
 
 int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr);
+
+int btd_adapter_request_authentication(struct btd_adapter *adapter,
+					uint16_t handle, uint8_t *status);

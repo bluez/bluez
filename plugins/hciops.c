@@ -1067,6 +1067,47 @@ static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 	return err;
 }
 
+static int hciops_request_authentication(int index, uint16_t handle,
+							uint8_t *status)
+{
+	struct hci_request rq;
+	auth_requested_cp cp;
+	evt_cmd_status rp;
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	memset(&rp, 0, sizeof(rp));
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = htobs(handle);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf    = OGF_LINK_CTL;
+	rq.ocf    = OCF_AUTH_REQUESTED;
+	rq.cparam = &cp;
+	rq.clen   = AUTH_REQUESTED_CP_SIZE;
+	rq.rparam = &rp;
+	rq.rlen   = EVT_CMD_STATUS_SIZE;
+	rq.event  = EVT_CMD_STATUS;
+
+	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
+		err = -errno;
+		goto fail;
+	}
+
+	if (status)
+		*status = rp.status;
+
+	err = 0;
+
+fail:
+	hci_close_dev(dd);
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1100,6 +1141,7 @@ static struct btd_adapter_ops hci_ops = {
 	.read_link_policy = hciops_read_link_policy,
 	.disconnect = hciops_disconnect,
 	.remove_bonding = hciops_remove_bonding,
+	.request_authentication = hciops_request_authentication,
 };
 
 static int hciops_init(void)

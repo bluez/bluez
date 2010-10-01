@@ -1853,54 +1853,23 @@ proceed:
 	return bonding;
 }
 
-static int device_authentication_requested(struct btd_device *device,
-						int handle)
+static uint8_t device_authentication_requested(struct btd_device *device,
+								int handle)
 {
-	struct hci_request rq;
-	auth_requested_cp cp;
-	evt_cmd_status rp;
-	int dd;
+	uint8_t status;
+	int err;
 
-	dd = hci_open_dev(adapter_get_dev_id(device->adapter));
-	if (dd < 0) {
-		int err = -errno;
-		error("Unable to open adapter: %s(%d)", strerror(-err), -err);
-		return err;
-	}
-
-	memset(&rp, 0, sizeof(rp));
-
-	memset(&cp, 0, sizeof(cp));
-	cp.handle = htobs(handle);
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_AUTH_REQUESTED;
-	rq.cparam = &cp;
-	rq.clen   = AUTH_REQUESTED_CP_SIZE;
-	rq.rparam = &rp;
-	rq.rlen   = EVT_CMD_STATUS_SIZE;
-	rq.event  = EVT_CMD_STATUS;
-
-	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
-		int err = -errno;
-		error("Unable to send HCI request: %s (%d)",
-					strerror(-err), -err);
-		hci_close_dev(dd);
-		return err;
-	}
-
-	if (rp.status) {
-		error("HCI_Authentication_Requested failed with status 0x%02x",
-				rp.status);
-		hci_close_dev(dd);
-		return rp.status;
+	err = btd_adapter_request_authentication(device->adapter, handle,
+								&status);
+	if (err < 0) {
+		error("Sending authentication request failed: %s (%d)",
+							strerror(-err), -err);
+		return HCI_UNSPECIFIED_ERROR;
 	}
 
 	info("Authentication requested");
 
-	hci_close_dev(dd);
-	return 0;
+	return status;
 }
 
 static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
