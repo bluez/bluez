@@ -1037,7 +1037,6 @@ void device_remove_bonding(struct btd_device *device)
 {
 	char filename[PATH_MAX + 1];
 	char srcaddr[18], dstaddr[18];
-	int dd, dev_id;
 	bdaddr_t bdaddr;
 
 	adapter_get_address(device->adapter, &bdaddr);
@@ -1050,16 +1049,7 @@ void device_remove_bonding(struct btd_device *device)
 	/* Delete the link key from storage */
 	textfile_casedel(filename, dstaddr);
 
-	dev_id = adapter_get_dev_id(device->adapter);
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0)
-		return;
-
-	/* Delete the link key from the Bluetooth chip */
-	hci_delete_stored_link_key(dd, &device->bdaddr, 0, HCI_REQ_TIMEOUT);
-
-	hci_close_dev(dd);
+	btd_adapter_remove_bonding(device->adapter, &device->bdaddr);
 }
 
 static void device_remove_stored(struct btd_device *device)

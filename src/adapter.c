@@ -3486,3 +3486,8 @@ int btd_adapter_disconnect_device(struct btd_adapter *adapter, uint16_t handle)
 {
 	return adapter_ops->disconnect(adapter->dev_id, handle);
 }
+
+int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
+{
+	return adapter_ops->remove_bonding(adapter->dev_id, bdaddr);
+}

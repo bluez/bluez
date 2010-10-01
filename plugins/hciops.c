@@ -1048,6 +1048,25 @@ static int hciops_disconnect(int index, uint16_t handle)
 	return err;
 }
 
+static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	/* Delete the link key from the Bluetooth chip */
+	if (hci_delete_stored_link_key(dd, bdaddr, 0, HCI_REQ_TIMEOUT) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1080,6 +1099,7 @@ static struct btd_adapter_ops hci_ops = {
 	.init_ssp_mode = hciops_init_ssp_mode,
 	.read_link_policy = hciops_read_link_policy,
 	.disconnect = hciops_disconnect,
+	.remove_bonding = hciops_remove_bonding,
 };
 
 static int hciops_init(void)
