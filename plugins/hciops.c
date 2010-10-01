@@ -1024,6 +1024,30 @@ static int hciops_read_link_policy(int index)
 	return err;
 }
 
+static int hciops_disconnect(int index, uint16_t handle)
+{
+	int dd, err;
+	disconnect_cp cp;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = htobs(handle);
+	cp.reason = HCI_OE_USER_ENDED_CONNECTION;
+
+	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_DISCONNECT,
+						DISCONNECT_CP_SIZE, &cp) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1055,6 +1079,7 @@ static struct btd_adapter_ops hci_ops = {
 	.read_local_features = hciops_read_local_features,
 	.init_ssp_mode = hciops_init_ssp_mode,
 	.read_link_policy = hciops_read_link_policy,
+	.disconnect = hciops_disconnect,
 };
 
 static int hciops_init(void)

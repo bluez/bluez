@@ -3481,3 +3481,8 @@ int btd_adapter_get_conn_handle(struct btd_adapter *adapter,
 
 	return adapter_ops->get_conn_handle(adapter->dev_id, bdaddr, handle);
 }
+
+int btd_adapter_disconnect_device(struct btd_adapter *adapter, uint16_t handle)
+{
+	return adapter_ops->disconnect(adapter->dev_id, handle);
+}

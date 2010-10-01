@@ -450,26 +450,11 @@ static void driver_remove(struct btd_driver_data *driver_data,
 static gboolean do_disconnect(gpointer user_data)
 {
 	struct btd_device *device = user_data;
-	disconnect_cp cp;
-	int dd;
-	uint16_t dev_id = adapter_get_dev_id(device->adapter);
 
 	device->disconn_timer = 0;
 
-	dd = hci_open_dev(dev_id);
-	if (dd < 0)
-		goto fail;
+	btd_adapter_disconnect_device(device->adapter, device->handle);
 
-	memset(&cp, 0, sizeof(cp));
-	cp.handle = htobs(device->handle);
-	cp.reason = HCI_OE_USER_ENDED_CONNECTION;
-
-	hci_send_cmd(dd, OGF_LINK_CTL, OCF_DISCONNECT,
-			DISCONNECT_CP_SIZE, &cp);
-
-	close(dd);
-
-fail:
 	return FALSE;
 }
 
