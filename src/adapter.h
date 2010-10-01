@@ -24,6 +24,8 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <dbus/dbus.h>
 #include <glib.h>
 
@@ -198,6 +200,7 @@ struct btd_adapter_ops {
 	int (*block_device) (int index, bdaddr_t *bdaddr);
 	int (*unblock_device) (int index, bdaddr_t *bdaddr);
 	int (*get_conn_list) (int index, GSList **conns);
+	int (*read_local_version) (int index, struct hci_version *ver);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);

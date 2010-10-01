@@ -2339,11 +2339,10 @@ int adapter_start(struct btd_adapter *adapter)
 		return err;
 	}
 
-	if (hci_read_local_version(dd, &ver, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
+	err = adapter_ops->read_local_version(adapter->dev_id, &ver);
+	if (err < 0) {
 		error("Can't read version info for %s: %s (%d)",
-					adapter->path, strerror(errno), errno);
-		hci_close_dev(dd);
+					adapter->path, strerror(-err), -err);
 		return err;
 	}
 
