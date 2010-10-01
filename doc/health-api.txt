@@ -51,6 +51,13 @@ Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods:
 
+	dict GetProperties()
+
+		Returns all properties for the interface. See the properties
+		section for available properties.
+
+		Posible errors: org.bluez.Error.NotAllowed
+
 	Boolean Echo()
 
 		Sends an echo petition to the remote service. Returns True if

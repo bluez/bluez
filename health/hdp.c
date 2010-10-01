@@ -1319,6 +1319,36 @@ fail:
 	return reply;
 }
 
+static DBusMessage *device_get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct hdp_device *device = user_data;
+	DBusMessageIter iter, dict;
+	DBusMessage *reply;
+	char *path;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	if (device->fr)
+		path = g_strdup(device->fr->path);
+	else
+		path = g_strdup("");
+	dict_append_entry(&dict, "MainChannel", DBUS_TYPE_STRING, &path);
+	g_free(path);
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
+}
+
 static void health_device_destroy(void *data)
 {
 	struct hdp_device *device = data;
@@ -1336,6 +1366,7 @@ static GDBusMethodTable health_device_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{"DestroyChannel",	"o",	"",	device_destroy_channel,
 						G_DBUS_METHOD_FLAG_ASYNC },
+	{"GetProperties",	"",	"a{sv}", device_get_properties},
 	{ NULL }
 };
 
