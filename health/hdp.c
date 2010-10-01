@@ -39,6 +39,7 @@
 #include <l2cap.h>
 #include <sdpd.h>
 #include "../src/dbus-common.h"
+#include <unistd.h>
 
 #ifndef DBUS_TYPE_UNIX_FD
 	#define DBUS_TYPE_UNIX_FD -1
@@ -452,6 +453,18 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 	return hdp_chann;
 }
 
+static void close_channel(gpointer a, gpointer b)
+{
+	struct hdp_channel *chan = a;
+	int fd;
+
+	if (!chan->mdl_conn)
+		return;
+
+	fd = mcap_mdl_get_fd(chan->mdl);
+	close(fd);
+}
+
 static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct hdp_device *dev = data;
@@ -497,7 +510,36 @@ static void hdp_mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
 
 static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 {
-	DBG("TODO: implement this function");
+	struct hdp_device *dev = data;
+	struct hdp_channel *chan;
+	char *path, *empty_path;
+	GSList *l;
+
+	DBG("hdp_mcap_mdl_deleted_cb");
+	l = g_slist_find_custom(dev->channels, mdl, cmp_chan_mdl);
+	if (!l)
+		return;
+
+	chan = l->data;
+	chan->mdl_conn = FALSE;
+
+	g_dbus_emit_signal(dev->conn, device_get_path(dev->dev), HEALTH_DEVICE,
+					"ChannelDeleted",
+					DBUS_TYPE_OBJECT_PATH, &chan->path,
+					DBUS_TYPE_INVALID);
+
+	if (chan == dev->fr) {
+		g_slist_foreach(dev->channels, close_channel, NULL);
+		dev->fr = NULL;
+		empty_path = "";
+		emit_property_changed(dev->conn, device_get_path(dev->dev),
+					HEALTH_DEVICE, "MainChannel",
+					DBUS_TYPE_OBJECT_PATH, &empty_path);
+	}
+
+	path = g_strdup(chan->path);
+	g_dbus_unregister_interface(dev->conn, path, HEALTH_CHANNEL);
+	g_free(path);
 }
 
 static void hdp_mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
