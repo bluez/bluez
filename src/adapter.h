@@ -203,6 +203,7 @@ struct btd_adapter_ops {
 	int (*read_local_version) (int index, struct hci_version *ver);
 	int (*read_local_features) (int index, uint8_t *features);
 	int (*init_ssp_mode) (int index, uint8_t *ssp_mode);
+	int (*read_link_policy) (int index);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);

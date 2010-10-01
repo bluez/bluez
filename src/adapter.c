@@ -2297,7 +2297,7 @@ int adapter_start(struct btd_adapter *adapter)
 	struct hci_dev_info di;
 	struct hci_version ver;
 	uint8_t features[8];
-	int dd, err;
+	int err;
 	char mode[14], address[18];
 
 	if (hci_devinfo(adapter->dev_id, &di) < 0)
@@ -2331,14 +2331,6 @@ int adapter_start(struct btd_adapter *adapter)
 			strcpy(mode, "connectable");
 	}
 
-	dd = hci_open_dev(adapter->dev_id);
-	if (dd < 0) {
-		err = -errno;
-		error("Can't open adapter %s: %s (%d)",
-					adapter->path, strerror(errno), errno);
-		return err;
-	}
-
 	err = adapter_ops->read_local_version(adapter->dev_id, &ver);
 	if (err < 0) {
 		error("Can't read version info for %s: %s (%d)",
@@ -2366,9 +2358,7 @@ int adapter_start(struct btd_adapter *adapter)
 	adapter_ops->init_ssp_mode(adapter->dev_id, &dev->ssp_mode);
 
 setup:
-	hci_send_cmd(dd, OGF_LINK_POLICY, OCF_READ_DEFAULT_LINK_POLICY,
-								0, NULL);
-	hci_close_dev(dd);
+	adapter_ops->read_link_policy(adapter->dev_id);
 
 	adapter->current_cod = 0;
 

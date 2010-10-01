@@ -1005,6 +1005,25 @@ static int hciops_init_ssp_mode(int index, uint8_t *mode)
 	return err;
 }
 
+static int hciops_read_link_policy(int index)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_send_cmd(dd, OGF_LINK_POLICY, OCF_READ_DEFAULT_LINK_POLICY,
+								0, NULL) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1035,6 +1054,7 @@ static struct btd_adapter_ops hci_ops = {
 	.read_local_version = hciops_read_local_version,
 	.read_local_features = hciops_read_local_features,
 	.init_ssp_mode = hciops_init_ssp_mode,
+	.read_link_policy = hciops_read_link_policy,
 };
 
 static int hciops_init(void)
