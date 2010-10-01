@@ -68,7 +68,7 @@ struct group_elem {
 static GIOChannel *l2cap_io = NULL;
 static GIOChannel *le_io = NULL;
 static GSList *clients = NULL;
-static uint32_t handle = 0;
+static uint32_t sdp_handle = 0;
 
 static uuid_t prim_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_PRIM_SVC_UUID };
 static uuid_t snd_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_SND_SVC_UUID };
@@ -651,7 +651,7 @@ int attrib_server_init(void)
 		return -1;
 	}
 
-	handle = record->handle;
+	sdp_handle = record->handle;
 
 	return 0;
 }
@@ -682,8 +682,8 @@ void attrib_server_exit(void)
 
 	g_slist_free(clients);
 
-	if (handle)
-		remove_record_from_server(handle);
+	if (sdp_handle)
+		remove_record_from_server(sdp_handle);
 }
 
 int attrib_db_add(uint16_t handle, uuid_t *uuid, const uint8_t *value, int len)
