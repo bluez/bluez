@@ -799,11 +799,43 @@ static DBusMessage *device_echo(DBusConnection *conn,
 					"Echo function not implemented");
 }
 
+static void delete_mdl_cb(GError *err, gpointer data)
+{
+	if (err)
+		error("Deleting error: %s", err->message);
+}
+
 static void destroy_create_dc_data(gpointer data)
 {
 	struct hdp_create_dc *dc_data = data;
 
 	hdp_create_data_unref(dc_data);
+}
+
+static void abort_mdl_cb(GError *err, gpointer data)
+{
+	if (err)
+		error("Aborting error: %s", err->message);
+}
+
+static void abort_and_del_mdl_cb(GError *err, gpointer data)
+{
+	struct mcap_mdl *mdl = data;
+	GError *gerr = NULL;
+
+	if (err) {
+		error("%s", err->message);
+		if (err->code == MCAP_INVALID_MDL) {
+			/* MDL is removed from MCAP so we don't */
+			/* need to delete it. */
+			return;
+		}
+	}
+
+	if (!mcap_delete_mdl(mdl, delete_mdl_cb, mdl, NULL, &gerr)) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+	}
 }
 
 static void hdp_connect_dc_destroy(gpointer data)
@@ -818,13 +850,22 @@ static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 	struct hdp_connect_dc *hdp_conn =  data;
 	struct hdp_channel *hdp_chann = hdp_conn->hdp_chann;
 	DBusMessage *reply;
+	GError *gerr = NULL;
 
 	if (err) {
-		/* TODO: Send abort request */
-		reply = g_dbus_create_error(hdp_conn->msg,
-						ERROR_INTERFACE ".HealthError",
-						"%s", err->message);
+		error("%s", err->message);
+		reply = g_dbus_create_reply(hdp_conn->msg,
+					DBUS_TYPE_OBJECT_PATH, &hdp_chann->path,
+					DBUS_TYPE_INVALID);
 		g_dbus_send_message(hdp_conn->conn, reply);
+
+		/* Send abort request because remote side */
+		/* is now in PENDING state */
+		if (!mcap_mdl_abort(hdp_chann->mdl, abort_mdl_cb, hdp_chann,
+								NULL, &gerr)) {
+			error("%s", gerr->message);
+			g_error_free(gerr);
+		}
 		return;
 	}
 
@@ -844,12 +885,8 @@ static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
 	uint8_t mode;
 
 	if (err) {
-		/* TODO: Send abort request */
-		reply = g_dbus_create_error(hdp_conn->msg,
-					ERROR_INTERFACE ".HealthError",
-					"%s", err->message);
-		g_dbus_send_message(hdp_conn->conn, reply);
-		return;
+		error("%s", err->message);
+		goto fail;
 	}
 
 	if (hdp_chann->config == HDP_RELIABLE_DC)
@@ -862,13 +899,23 @@ static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
 						hdp_connect_dc_destroy, &gerr))
 		return;
 
-	/* TODO: Send abort request */
-	reply = g_dbus_create_error(hdp_conn->msg,
-						ERROR_INTERFACE ".HealthError",
-						"%s", gerr->message);
+fail:
+	error("%s", gerr->message);
 	g_error_free(gerr);
-	hdp_conn_data_unref(hdp_conn);
+	gerr = NULL;
+
+	reply = g_dbus_create_reply(hdp_conn->msg,
+					DBUS_TYPE_OBJECT_PATH, &hdp_chann->path,
+					DBUS_TYPE_INVALID);
 	g_dbus_send_message(hdp_conn->conn, reply);
+	hdp_conn_data_unref(hdp_conn);
+
+	/* Send abort request because remote side is now in PENDING state */
+	if (!mcap_mdl_abort(hdp_chann->mdl, abort_mdl_cb, hdp_chann, NULL,
+								&gerr)) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+	}
 }
 
 static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
@@ -894,12 +941,21 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 							mcap_mdl_get_mdlid(mdl),
 							user_data->app, &gerr);
 	if (!hdp_chan) {
-		/* TODO: Send abort request and then delete the data channel */
 		reply = g_dbus_create_error(user_data->msg,
 						ERROR_INTERFACE ".HealthError",
 						"%s", gerr->message);
 		g_dbus_send_message(user_data->conn, reply);
 		g_error_free(gerr);
+		gerr = NULL;
+
+		/* Send abort request because remote side is now in PENDING */
+		/* state. Then we have to delete it because we couldn't */
+		/* register the HealthChannel interface */
+		if (!mcap_mdl_abort(mdl, abort_and_del_mdl_cb, mdl, NULL,
+								&gerr)) {
+			error("%s", gerr->message);
+			g_error_free(gerr);
+		}
 		return;
 	}
 
@@ -913,13 +969,22 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 						hdp_connect_dc_destroy, &gerr))
 		return;
 
-	/* TODO: Send abort request */
-	reply = g_dbus_create_error(user_data->msg,
-						ERROR_INTERFACE ".HealthError",
-						"%s", gerr->message);
+	error("%s", gerr->message);
 	g_error_free(gerr);
+	gerr = NULL;
+
+	reply = g_dbus_create_reply(hdp_conn->msg,
+					DBUS_TYPE_OBJECT_PATH, &hdp_chan->path,
+					DBUS_TYPE_INVALID);
+	g_dbus_send_message(hdp_conn->conn, reply);
 	hdp_conn_data_unref(hdp_conn);
-	g_dbus_send_message(user_data->conn, reply);
+
+	/* Send abort request because remote side is now in PENDING state */
+	if (!mcap_mdl_abort(hdp_chan->mdl, abort_mdl_cb, hdp_chan, NULL,
+								&gerr)) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+	}
 }
 
 static void device_create_dc_cb(gpointer user_data, GError *err)
