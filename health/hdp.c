@@ -428,16 +428,58 @@ static void hdp_tmp_dc_data_destroy(gpointer data)
 	hdp_tmp_dc_data_unref(hdp_conn);
 }
 
+static void hdp_get_dcpsm_reconn_cb(uint16_t dcpsm, gpointer data, GError *err)
+{
+	DBusMessage *reply;
+	struct hdp_tmp_dc_data *dc_data = data;
+
+	reply = g_dbus_create_error(dc_data->msg,
+						ERROR_INTERFACE ".HealthError",
+						"Not implemented yet");
+	g_dbus_send_message(dc_data->conn, reply);
+}
+
+static void abort_mdl_cb(GError *err, gpointer data)
+{
+	if (err)
+		error("Aborting error: %s", err->message);
+}
+
 static void device_reconnect_mdl_cb(struct mcap_mdl *mdl, GError *err,
 								gpointer data)
 {
 	struct hdp_tmp_dc_data *dc_data = data;
+	GError *gerr = NULL;
 	DBusMessage *reply;
 
+	if (err) {
+		reply = g_dbus_create_error(dc_data->msg,
+					ERROR_INTERFACE ".HealthError",
+					"Cannot reconnect: %s", err->message);
+		g_dbus_send_message(dc_data->conn, reply);
+		return;
+	}
+
+	if (hdp_get_dcpsm(dc_data->hdp_chann->dev, hdp_get_dcpsm_reconn_cb,
+						hdp_tmp_dc_data_ref(dc_data),
+						hdp_tmp_dc_data_destroy, &gerr))
+		return;
+
+	error("%s", gerr->message);
+
 	reply = g_dbus_create_error(dc_data->msg,
-						ERROR_INTERFACE ".HealthError",
-						"Not yet implemented");
+					ERROR_INTERFACE ".HealthError",
+					"Cannot reconnect: %s", gerr->message);
 	g_dbus_send_message(dc_data->conn, reply);
+	g_error_free(gerr);
+	gerr = NULL;
+
+	/* Send abort request because remote side is now in PENDING state */
+	if (!mcap_mdl_abort(dc_data->hdp_chann->mdl, abort_mdl_cb,
+					dc_data->hdp_chann, NULL, &gerr)) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+	}
 }
 
 static DBusMessage *channel_acquire_continue(struct hdp_tmp_dc_data *data,
@@ -1021,12 +1063,6 @@ static void destroy_create_dc_data(gpointer data)
 	struct hdp_create_dc *dc_data = data;
 
 	hdp_create_data_unref(dc_data);
-}
-
-static void abort_mdl_cb(GError *err, gpointer data)
-{
-	if (err)
-		error("Aborting error: %s", err->message);
 }
 
 static void abort_and_del_mdl_cb(GError *err, gpointer data)
