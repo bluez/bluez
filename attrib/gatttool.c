@@ -354,10 +354,61 @@ static gboolean characteristics_read(gpointer user_data)
 	return FALSE;
 }
 
+static size_t attr_data_from_string(const char *str, uint8_t **data)
+{
+	char tmp[3];
+	size_t size, i;
+
+	size = strlen(str) / 2;
+	*data = g_try_malloc0(size);
+	if (*data == NULL)
+		return 0;
+
+	tmp[2] = '\0';
+	for (i = 0; i < size; i++) {
+		memcpy(tmp, str + (i * 2), 2);
+		(*data)[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	return size;
+}
+
+static void mainloop_quit(gpointer user_data)
+{
+	uint8_t *value = user_data;
+
+	g_free(value);
+	g_main_loop_quit(event_loop);
+}
+
 static gboolean characteristics_write(gpointer user_data)
 {
-	g_main_loop_quit(event_loop);
+	GAttrib *attrib = user_data;
+	uint8_t *value;
+	size_t len;
 
+	if (opt_handle <= 0) {
+		g_printerr("A valid handle is required\n");
+		goto error;
+	}
+
+	if (opt_value == NULL || opt_value[0] == '\0') {
+		g_printerr("A value is required\n");
+		goto error;
+	}
+
+	len = attr_data_from_string(opt_value, &value);
+	if (len == 0) {
+		g_printerr("Invalid value\n");
+		goto error;
+	}
+
+	gatt_write_cmd(attrib, opt_handle, value, len, mainloop_quit, value);
+
+	return FALSE;
+
+error:
+	g_main_loop_quit(event_loop);
 	return FALSE;
 }
 
