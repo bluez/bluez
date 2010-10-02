@@ -1082,6 +1082,12 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 	if (!hdp_chan)
 		goto fail;
 
+	g_dbus_emit_signal(user_data->conn, device_get_path(hdp_chan->dev->dev),
+					HEALTH_DEVICE,
+					"ChannelConnected",
+					DBUS_TYPE_OBJECT_PATH, &hdp_chan->path,
+					DBUS_TYPE_INVALID);
+
 	hdp_conn = g_new0(struct hdp_tmp_dc_data, 1);
 	hdp_conn->msg = dbus_message_ref(user_data->msg);
 	hdp_conn->conn = dbus_connection_ref(user_data->conn);
