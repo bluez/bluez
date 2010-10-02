@@ -421,11 +421,63 @@ static DBusMessage *channel_get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static void hdp_tmp_dc_data_destroy(gpointer data)
+{
+	struct hdp_tmp_dc_data *hdp_conn = data;
+
+	hdp_tmp_dc_data_unref(hdp_conn);
+}
+
+static DBusMessage *channel_acquire_continue(struct hdp_tmp_dc_data *data,
+								GError *err)
+{
+	/* TODO: Get the file descriptor or reconnect if needed */
+
+	return g_dbus_create_error(data->msg, ERROR_INTERFACE ".HealthError",
+						"Function is not implemented");
+}
+
+static void channel_acquire_cb(gpointer data, GError *err)
+{
+	struct hdp_tmp_dc_data *dc_data = data;
+	DBusMessage *reply;
+
+	reply = channel_acquire_continue(data, err);
+
+	if (reply)
+		g_dbus_send_message(dc_data->conn, reply);
+}
+
 static DBusMessage *channel_acquire(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
-						"Function is not implemented");
+	struct hdp_channel *chan = user_data;
+	struct hdp_tmp_dc_data *dc_data;
+	GError *gerr = NULL;
+	DBusMessage *reply;
+
+	dc_data = g_new0(struct hdp_tmp_dc_data, 1);
+	dc_data->conn = dbus_connection_ref(conn);
+	dc_data->msg = dbus_message_ref(msg);
+	dc_data->hdp_chann = chan;
+
+	if (chan->dev->mcl_conn) {
+		reply = channel_acquire_continue(hdp_tmp_dc_data_ref(dc_data),
+									NULL);
+		hdp_tmp_dc_data_unref(dc_data);
+		return reply;
+	}
+
+	if (hdp_establish_mcl(chan->dev, chan->app, channel_acquire_cb,
+						hdp_tmp_dc_data_ref(dc_data),
+						hdp_tmp_dc_data_destroy, &gerr))
+		return NULL;
+
+	reply = g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
+					"%s", gerr->message);
+	hdp_tmp_dc_data_unref(dc_data);
+	g_error_free(gerr);
+	return reply;
 }
 
 static DBusMessage *channel_release(DBusConnection *conn,
@@ -962,13 +1014,6 @@ static void abort_and_del_mdl_cb(GError *err, gpointer data)
 		error("%s", gerr->message);
 		g_error_free(gerr);
 	}
-}
-
-static void hdp_tmp_dc_data_destroy(gpointer data)
-{
-	struct hdp_tmp_dc_data *hdp_conn = data;
-
-	hdp_tmp_dc_data_unref(hdp_conn);
 }
 
 static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
