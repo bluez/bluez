@@ -1064,7 +1064,7 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 	if (user_data->config == HDP_NO_PREFERENCE_DC) {
 		if (!user_data->dev->fr && (conf != HDP_RELIABLE_DC)) {
 			g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
-					"Data channel aborted, fist data "
+					"Data channel aborted, first data "
 					"channel should be reliable");
 			goto fail;
 		} else if (conf == HDP_NO_PREFERENCE_DC ||
