@@ -50,6 +50,7 @@
 
 static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
+static gchar *opt_value = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
 static int opt_handle = -1;
@@ -60,6 +61,7 @@ static gboolean opt_char_read = FALSE;
 static gboolean opt_listen = FALSE;
 static gboolean opt_char_desc = FALSE;
 static gboolean opt_le = FALSE;
+static gboolean opt_char_write = FALSE;
 static GMainLoop *event_loop;
 
 struct characteristic_data {
@@ -352,6 +354,13 @@ static gboolean characteristics_read(gpointer user_data)
 	return FALSE;
 }
 
+static gboolean characteristics_write(gpointer user_data)
+{
+	g_main_loop_quit(event_loop);
+
+	return FALSE;
+}
+
 static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
@@ -412,9 +421,12 @@ static GOptionEntry primary_char_options[] = {
 	{ NULL },
 };
 
-static GOptionEntry char_read_options[] = {
+static GOptionEntry char_rw_options[] = {
 	{ "handle", 'a' , 0, G_OPTION_ARG_INT, &opt_handle,
-		"Read characteristic by handle(required)", "0x0001" },
+		"Read/Write characteristic by handle(required)", "0x0001" },
+	{ "value", 'n' , 0, G_OPTION_ARG_STRING, &opt_value,
+		"Write characteristic value (required for write operation)",
+		"0x0001" },
 	{NULL},
 };
 
@@ -425,6 +437,8 @@ static GOptionEntry gatt_options[] = {
 		"Characteristics Discovery", NULL },
 	{ "char-read", 0, 0, G_OPTION_ARG_NONE, &opt_char_read,
 		"Characteristics Value/Descriptor Read", NULL },
+	{ "char-write", 0, 0, G_OPTION_ARG_NONE, &opt_char_write,
+		"Characteristics Value Write", NULL },
 	{ "char-desc", 0, 0, G_OPTION_ARG_NONE, &opt_char_desc,
 		"Characteristics Descriptor Discovery", NULL },
 	{ "listen", 0, 0, G_OPTION_ARG_NONE, &opt_listen,
@@ -447,7 +461,7 @@ static GOptionEntry options[] = {
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
-	GOptionGroup *gatt_group, *params_group, *char_read_group;
+	GOptionGroup *gatt_group, *params_group, *char_rw_group;
 	GError *gerr = NULL;
 	GAttrib *attrib;
 	GIOChannel *chan;
@@ -471,13 +485,14 @@ int main(int argc, char *argv[])
 	g_option_context_add_group(context, params_group);
 	g_option_group_add_entries(params_group, primary_char_options);
 
-	/* Characteristics value/descriptor read arguments */
-	char_read_group = g_option_group_new("char-read",
-		"Characteristics Value/Descriptor Read arguments",
-		"Show all Characteristics Value/Descriptor Read arguments",
+	/* Characteristics value/descriptor read/write arguments */
+	char_rw_group = g_option_group_new("char-read-write",
+		"Characteristics Value/Descriptor Read/Write arguments",
+		"Show all Characteristics Value/Descriptor Read/Write "
+		"arguments",
 		NULL, NULL);
-	g_option_context_add_group(context, char_read_group);
-	g_option_group_add_entries(char_read_group, char_read_options);
+	g_option_context_add_group(context, char_rw_group);
+	g_option_group_add_entries(char_rw_group, char_rw_options);
 
 	if (g_option_context_parse(context, &argc, &argv, &gerr) == FALSE) {
 		g_printerr("%s\n", gerr->message);
@@ -490,6 +505,8 @@ int main(int argc, char *argv[])
 		callback = characteristics;
 	else if (opt_char_read)
 		callback = characteristics_read;
+	else if (opt_char_write)
+		callback = characteristics_write;
 	else if (opt_char_desc)
 		callback = characteristics_desc;
 	else {
