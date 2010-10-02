@@ -428,13 +428,46 @@ static void hdp_tmp_dc_data_destroy(gpointer data)
 	hdp_tmp_dc_data_unref(hdp_conn);
 }
 
+static void device_reconnect_mdl_cb(struct mcap_mdl *mdl, GError *err,
+								gpointer data)
+{
+	struct hdp_tmp_dc_data *dc_data = data;
+	DBusMessage *reply;
+
+	reply = g_dbus_create_error(dc_data->msg,
+						ERROR_INTERFACE ".HealthError",
+						"Not yet implemented");
+	g_dbus_send_message(dc_data->conn, reply);
+}
+
 static DBusMessage *channel_acquire_continue(struct hdp_tmp_dc_data *data,
 								GError *err)
 {
-	/* TODO: Get the file descriptor or reconnect if needed */
+	DBusMessage *reply;
+	GError *gerr = NULL;
+	int fd;
 
-	return g_dbus_create_error(data->msg, ERROR_INTERFACE ".HealthError",
-						"Function is not implemented");
+	if (err) {
+		return g_dbus_create_error(data->msg,
+						ERROR_INTERFACE ".HealthError",
+						"%s", err->message);
+	}
+
+	fd = mcap_mdl_get_fd(data->hdp_chann->mdl);
+	if (fd > 0)
+		return g_dbus_create_reply(data->msg, DBUS_TYPE_UNIX_FD, &fd,
+							DBUS_TYPE_INVALID);
+
+	hdp_tmp_dc_data_ref(data);
+	if (mcap_reconnect_mdl(data->hdp_chann->mdl, device_reconnect_mdl_cb,
+					data, hdp_tmp_dc_data_destroy, &gerr))
+		return NULL;
+
+	hdp_tmp_dc_data_unref(data);
+	reply = g_dbus_create_error(data->msg, ERROR_INTERFACE ".HealthError",
+					"Cannot reconnect: %s", gerr->message);
+	g_error_free(gerr);
+	return reply;
 }
 
 static void channel_acquire_cb(gpointer data, GError *err)
