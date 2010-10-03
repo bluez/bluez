@@ -889,6 +889,13 @@ static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 	hdp_set_mcl_cb(hdp_device, NULL);
 }
 
+static void set_chann_disconnected(gpointer data, gpointer user_data)
+{
+	struct hdp_channel *chan = data;
+
+	chan->mdl_conn = FALSE;
+}
+
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 {
 	struct hdp_device *hdp_device;
@@ -900,6 +907,9 @@ static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 
 	hdp_device = l->data;
 	hdp_device->mcl_conn = FALSE;
+
+	g_slist_foreach(hdp_device->channels, set_chann_disconnected, NULL);
+
 	DBG("Mcl disconnected %s", device_get_path(hdp_device->dev));
 }
 
