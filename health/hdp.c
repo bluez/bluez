@@ -68,10 +68,11 @@ struct hdp_create_dc {
 };
 
 struct hdp_tmp_dc_data {
-	DBusConnection		*conn;
-	DBusMessage		*msg;
-	struct hdp_channel	*hdp_chann;
-	guint			ref;
+	DBusConnection			*conn;
+	DBusMessage			*msg;
+	struct hdp_channel		*hdp_chann;
+	guint				ref;
+	mcap_mdl_operation_cb		cb;
 };
 
 static void free_hdp_create_dc(struct hdp_create_dc *dc_data)
@@ -428,7 +429,13 @@ static void hdp_tmp_dc_data_destroy(gpointer data)
 	hdp_tmp_dc_data_unref(hdp_conn);
 }
 
-static void hdp_get_dcpsm_reconn_cb(uint16_t dcpsm, gpointer data, GError *err)
+static void abort_mdl_cb(GError *err, gpointer data)
+{
+	if (err)
+		error("Aborting error: %s", err->message);
+}
+
+static void hdp_mdl_reconn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 {
 	DBusMessage *reply;
 	struct hdp_tmp_dc_data *dc_data = data;
@@ -439,10 +446,32 @@ static void hdp_get_dcpsm_reconn_cb(uint16_t dcpsm, gpointer data, GError *err)
 	g_dbus_send_message(dc_data->conn, reply);
 }
 
-static void abort_mdl_cb(GError *err, gpointer data)
+static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
 {
-	if (err)
-		error("Aborting error: %s", err->message);
+	struct hdp_tmp_dc_data *hdp_conn = user_data;
+	struct hdp_channel *hdp_chann = hdp_conn->hdp_chann;
+	GError *gerr = NULL;
+	uint8_t mode;
+
+	if (err) {
+		hdp_conn->cb(hdp_chann->mdl, err, hdp_conn);
+		return;
+	}
+
+	if (hdp_chann->config == HDP_RELIABLE_DC)
+		mode = L2CAP_MODE_ERTM;
+	else
+		mode = L2CAP_MODE_STREAMING;
+
+	if (mcap_connect_mdl(hdp_chann->mdl, mode, dcpsm, hdp_conn->cb,
+						hdp_tmp_dc_data_ref(hdp_conn),
+						hdp_tmp_dc_data_destroy, &gerr))
+		return;
+
+	hdp_tmp_dc_data_unref(hdp_conn);
+	hdp_conn->cb(hdp_chann->mdl, err, hdp_conn);
+	g_error_free(gerr);
+	gerr = NULL;
 }
 
 static void device_reconnect_mdl_cb(struct mcap_mdl *mdl, GError *err,
@@ -460,7 +489,9 @@ static void device_reconnect_mdl_cb(struct mcap_mdl *mdl, GError *err,
 		return;
 	}
 
-	if (hdp_get_dcpsm(dc_data->hdp_chann->dev, hdp_get_dcpsm_reconn_cb,
+	dc_data->cb = hdp_mdl_reconn_cb;
+
+	if (hdp_get_dcpsm(dc_data->hdp_chann->dev, hdp_get_dcpsm_cb,
 						hdp_tmp_dc_data_ref(dc_data),
 						hdp_tmp_dc_data_destroy, &gerr))
 		return;
@@ -1126,48 +1157,6 @@ static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 	g_dbus_send_message(hdp_conn->conn, reply);
 }
 
-static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
-{
-	struct hdp_tmp_dc_data *hdp_conn = user_data;
-	struct hdp_channel *hdp_chann = hdp_conn->hdp_chann;
-	GError *gerr = NULL;
-	DBusMessage *reply;
-	uint8_t mode;
-
-	if (err) {
-		error("%s", err->message);
-		goto fail;
-	}
-
-	if (hdp_chann->config == HDP_RELIABLE_DC)
-		mode = L2CAP_MODE_ERTM;
-	else
-		mode = L2CAP_MODE_STREAMING;
-
-	if (mcap_connect_mdl(hdp_chann->mdl, mode, dcpsm, hdp_mdl_conn_cb,
-						hdp_tmp_dc_data_ref(hdp_conn),
-						hdp_tmp_dc_data_destroy, &gerr))
-		return;
-
-fail:
-	error("%s", gerr->message);
-	g_error_free(gerr);
-	gerr = NULL;
-
-	reply = g_dbus_create_reply(hdp_conn->msg,
-					DBUS_TYPE_OBJECT_PATH, &hdp_chann->path,
-					DBUS_TYPE_INVALID);
-	g_dbus_send_message(hdp_conn->conn, reply);
-	hdp_tmp_dc_data_unref(hdp_conn);
-
-	/* Send abort request because remote side is now in PENDING state */
-	if (!mcap_mdl_abort(hdp_chann->mdl, abort_mdl_cb, hdp_chann, NULL,
-								&gerr)) {
-		error("%s", gerr->message);
-		g_error_free(gerr);
-	}
-}
-
 static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 						GError *err, gpointer data)
 {
@@ -1216,6 +1205,7 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 	hdp_conn->msg = dbus_message_ref(user_data->msg);
 	hdp_conn->conn = dbus_connection_ref(user_data->conn);
 	hdp_conn->hdp_chann = hdp_chan;
+	hdp_conn->cb = hdp_mdl_conn_cb;
 
 	if (hdp_get_dcpsm(hdp_chan->dev, hdp_get_dcpsm_cb,
 						hdp_tmp_dc_data_ref(hdp_conn),
