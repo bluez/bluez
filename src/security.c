@@ -687,6 +687,21 @@ static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 		start_inquiry(sba, evt->status, FALSE);
 }
 
+static void read_scan_complete(bdaddr_t *sba, uint8_t status, void *ptr)
+{
+	struct btd_adapter *adapter;
+	read_scan_enable_rp *rp = ptr;
+
+	adapter = manager_find_adapter(sba);
+
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
+
+	adapter_mode_changed(adapter, rp->status);
+}
+
 static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_complete *evt = ptr;
@@ -708,6 +723,10 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE):
 		hcid_dbus_setscan_enable_complete(sba);
+		break;
+	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_SCAN_ENABLE):
+		ptr += sizeof(evt_cmd_complete);
+		read_scan_complete(sba, status, ptr);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV):
 		adapter_set_class_complete(sba, status);

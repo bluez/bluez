@@ -215,6 +215,7 @@ struct btd_adapter_ops {
 	int (*confirm_reply) (int index, bdaddr_t *bdaddr, gboolean success);
 	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint32_t passkey);
 	int (*get_auth_info) (int index, bdaddr_t *bdaddr, uint8_t *auth);
+	int (*read_scan_enable) (int index);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
@@ -260,3 +261,5 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 
 int btd_adapter_get_auth_info(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 								uint8_t *auth);
+
+int btd_adapter_read_scan_enable(struct btd_adapter *adapter);

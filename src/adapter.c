@@ -3522,3 +3522,8 @@ int btd_adapter_get_auth_info(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 {
 	return adapter_ops->get_auth_info(adapter->dev_id, bdaddr, auth);
 }
+
+int btd_adapter_read_scan_enable(struct btd_adapter *adapter)
+{
+	return adapter_ops->read_scan_enable(adapter->dev_id);
+}

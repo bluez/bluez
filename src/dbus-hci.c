@@ -717,10 +717,6 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 {
 	struct btd_adapter *adapter;
-	read_scan_enable_rp rp;
-	struct hci_request rq;
-	int dd = -1;
-	uint16_t dev_id;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -731,38 +727,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	if (adapter_powering_down(adapter))
 		return;
 
-	dev_id = adapter_get_dev_id(adapter);
-
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("HCI device open failed: hci%d", dev_id);
-		return;
-	}
-
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_HOST_CTL;
-	rq.ocf    = OCF_READ_SCAN_ENABLE;
-	rq.rparam = &rp;
-	rq.rlen   = READ_SCAN_ENABLE_RP_SIZE;
-	rq.event  = EVT_CMD_COMPLETE;
-
-	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
-		error("Sending read scan enable command failed: %s (%d)",
-				strerror(errno), errno);
-		goto failed;
-	}
-
-	if (rp.status) {
-		error("Getting scan enable failed with status 0x%02x",
-				rp.status);
-		goto failed;
-	}
-
-	adapter_mode_changed(adapter, rp.enable);
-
-failed:
-	if (dd >= 0)
-		hci_close_dev(dd);
+	btd_adapter_read_scan_enable(adapter);
 }
 
 void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)

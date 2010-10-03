@@ -1213,6 +1213,24 @@ fail:
 	return err;
 }
 
+static int hciops_read_scan_enable(int index)
+{
+	int err, dd;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_SCAN_ENABLE, 0, NULL) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1251,6 +1269,7 @@ static struct btd_adapter_ops hci_ops = {
 	.confirm_reply = hciops_confirm_reply,
 	.passkey_reply = hciops_passkey_reply,
 	.get_auth_info = hciops_get_auth_info,
+	.read_scan_enable = hciops_read_scan_enable,
 };
 
 static int hciops_init(void)
