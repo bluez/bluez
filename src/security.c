@@ -699,7 +699,7 @@ static void read_scan_complete(bdaddr_t *sba, uint8_t status, void *ptr)
 		return;
 	}
 
-	adapter_mode_changed(adapter, rp->status);
+	adapter_mode_changed(adapter, rp->enable);
 }
 
 static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
