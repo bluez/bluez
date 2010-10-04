@@ -379,7 +379,7 @@ uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len)
 	return min_len;
 }
 
-uint16_t dec_read_req(const uint8_t *pdu, uint16_t *handle)
+uint16_t dec_read_req(const uint8_t *pdu, int len, uint16_t *handle)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(*handle);
 
@@ -387,6 +387,9 @@ uint16_t dec_read_req(const uint8_t *pdu, uint16_t *handle)
 		return 0;
 
 	if (handle == NULL)
+		return 0;
+
+	if (len < min_len)
 		return 0;
 
 	if (pdu[0] != ATT_OP_READ_REQ)

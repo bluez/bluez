@@ -179,7 +179,7 @@ uint16_t dec_write_cmd(const uint8_t *pdu, int len, uint16_t *handle,
 						uint8_t *value, int *vlen);
 struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, int len);
 uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len);
-uint16_t dec_read_req(const uint8_t *pdu, uint16_t *handle);
+uint16_t dec_read_req(const uint8_t *pdu, int len, uint16_t *handle);
 uint16_t enc_read_resp(uint8_t *value, int vlen, uint8_t *pdu, int len);
 uint16_t dec_read_resp(const uint8_t *pdu, int len, uint8_t *value, int *vlen);
 uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,

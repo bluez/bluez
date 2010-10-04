@@ -478,7 +478,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 		length = read_by_type(start, end, &uuid, opdu, channel->mtu);
 		break;
 	case ATT_OP_READ_REQ:
-		length = dec_read_req(ipdu, &start);
+		length = dec_read_req(ipdu, len, &start);
 		if (length == 0) {
 			status = ATT_ECODE_INVALID_PDU;
 			goto done;
