@@ -33,6 +33,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t
 void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t status);
 void hcid_dbus_setscan_enable_complete(bdaddr_t *local);
 void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local);
+void hcid_dbus_read_simple_pairing_mode_complete(bdaddr_t *local, void *ptr);
 void hcid_dbus_returned_link_key(bdaddr_t *local, bdaddr_t *peer);
 int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 						uint8_t *cap, uint8_t *auth);

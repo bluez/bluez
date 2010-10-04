@@ -3527,3 +3527,8 @@ int btd_adapter_read_scan_enable(struct btd_adapter *adapter)
 {
 	return adapter_ops->read_scan_enable(adapter->dev_id);
 }
+
+int btd_adapter_read_ssp_mode(struct btd_adapter *adapter)
+{
+	return adapter_ops->read_ssp_mode(adapter->dev_id);
+}

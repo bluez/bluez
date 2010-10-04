@@ -730,13 +730,13 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	btd_adapter_read_scan_enable(adapter);
 }
 
-void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
+void hcid_dbus_read_simple_pairing_mode_complete(bdaddr_t *local, void *ptr)
 {
+	read_simple_pairing_mode_rp *rp = ptr;
 	struct btd_adapter *adapter;
-	int dd;
-	uint8_t mode;
-	uint16_t dev_id;
-	const gchar *path;
+
+	if (rp->status)
+		return;
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -744,26 +744,20 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 		return;
 	}
 
-	dev_id = adapter_get_dev_id(adapter);
-	path = adapter_get_path(adapter);
+	adapter_update_ssp_mode(adapter, rp->mode);
+}
 
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("HCI adapter open failed: %s", path);
+void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
+{
+	struct btd_adapter *adapter;
+
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
+		error("No matching adapter found");
 		return;
 	}
 
-	if (hci_read_simple_pairing_mode(dd, &mode,
-						HCI_REQ_TIMEOUT) < 0) {
-		error("Can't read simple pairing mode for %s: %s(%d)",
-					path, strerror(errno), errno);
-		hci_close_dev(dd);
-		return;
-	}
-
-	hci_close_dev(dd);
-
-	adapter_update_ssp_mode(adapter, mode);
+	btd_adapter_read_ssp_mode(adapter);
 }
 
 void hcid_dbus_returned_link_key(bdaddr_t *local, bdaddr_t *peer)

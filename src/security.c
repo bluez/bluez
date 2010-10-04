@@ -734,6 +734,10 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE):
 		hcid_dbus_write_simple_pairing_mode_complete(sba);
 		break;
+	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_SIMPLE_PAIRING_MODE):
+		ptr += sizeof(evt_cmd_complete);
+		hcid_dbus_read_simple_pairing_mode_complete(sba, ptr);
+		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_LOCAL_NAME):
 		ptr += sizeof(evt_cmd_complete);
 		adapter_update_local_name(sba, status, ptr);

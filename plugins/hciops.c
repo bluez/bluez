@@ -986,22 +986,29 @@ static int hciops_read_local_features(int index, uint8_t *features)
 
 static int hciops_init_ssp_mode(int index, uint8_t *mode)
 {
+	write_simple_pairing_mode_cp cp;
 	int dd, err;
 
 	dd = hci_open_dev(index);
 	if (dd < 0)
 		return -errno;
 
-	if (ioctl(dd, HCIGETAUTHINFO, NULL) < 0 && errno != EINVAL)
-		hci_write_simple_pairing_mode(dd, 0x01, HCI_REQ_TIMEOUT);
+	if (ioctl(dd, HCIGETAUTHINFO, NULL) < 0 && errno == EINVAL) {
+		err = 0;
+		goto done;
+	}
 
-	if (hci_read_simple_pairing_mode(dd, mode, HCI_REQ_TIMEOUT) < 0)
+	memset(&cp, 0, sizeof(cp));
+	cp.mode = 0x01;
+
+	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE,
+				WRITE_SIMPLE_PAIRING_MODE_CP_SIZE, &cp) < 0)
 		err = -errno;
 	else
 		err = 0;
 
+done:
 	hci_close_dev(dd);
-
 	return err;
 }
 
@@ -1231,6 +1238,25 @@ static int hciops_read_scan_enable(int index)
 	return err;
 }
 
+static int hciops_read_ssp_mode(int index)
+{
+	int dd, err;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_SIMPLE_PAIRING_MODE,
+								0, NULL) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1270,6 +1296,7 @@ static struct btd_adapter_ops hci_ops = {
 	.passkey_reply = hciops_passkey_reply,
 	.get_auth_info = hciops_get_auth_info,
 	.read_scan_enable = hciops_read_scan_enable,
+	.read_ssp_mode = hciops_read_ssp_mode,
 };
 
 static int hciops_init(void)
