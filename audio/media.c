@@ -129,6 +129,17 @@ static void media_endpoint_exit(DBusConnection *connection, void *user_data)
 	media_endpoint_remove(endpoint);
 }
 
+static void headset_setconf_cb(struct media_endpoint *endpoint, void *ret,
+						int size, void *user_data)
+{
+	struct audio_device *dev = user_data;
+
+	if (ret != NULL)
+		return;
+
+	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+}
+
 static void headset_state_changed(struct audio_device *dev,
 					headset_state_t old_state,
 					headset_state_t new_state,
@@ -148,7 +159,8 @@ static void headset_state_changed(struct audio_device *dev,
 		if (old_state != HEADSET_STATE_PLAY_IN_PROGRESS &&
 				old_state != HEADSET_STATE_PLAYING)
 			media_endpoint_set_configuration(endpoint, dev, NULL,
-								0, NULL, NULL);
+							0, headset_setconf_cb,
+									dev);
 		break;
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
 		break;
@@ -481,7 +493,8 @@ static void endpoint_reply(DBusPendingCall *call, void *user_data)
 done:
 	dbus_message_unref(reply);
 
-	request->cb(endpoint, ret, size, request->user_data);
+	if (request->cb)
+		request->cb(endpoint, ret, size, request->user_data);
 
 	endpoint_request_free(request);
 	endpoint->request = NULL;
