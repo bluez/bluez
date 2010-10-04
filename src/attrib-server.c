@@ -45,7 +45,7 @@
 
 #include "attrib-server.h"
 
-#define GATT_PSM 27
+#define GATT_PSM 0x1f
 #define GATT_CID 4
 
 static GSList *database = NULL;

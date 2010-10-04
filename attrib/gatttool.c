@@ -43,7 +43,7 @@
 #include "gattrib.h"
 #include "gatt.h"
 
-#define GATT_PSM 27
+#define GATT_PSM 0x1f
 /* Minimum MTU for L2CAP connections over BR/EDR */
 #define ATT_MIN_MTU_L2CAP 48
 #define GATT_CID 4
