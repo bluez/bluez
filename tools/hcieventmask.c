@@ -111,6 +111,9 @@ int main(int argc, char *argv[])
 						 * Features Notification */
 		}
 
+		if (di.features[4] & LMP_LE)
+			events[7] |= 0x20;
+
 		if (di.features[6] & LMP_LE_BREDR)
 			events[7] |= 0x20;
 	}
