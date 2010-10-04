@@ -616,6 +616,36 @@ static char *airmode2str(uint8_t mode)
 	}
 }
 
+static const char *bdaddrtype2str(uint8_t type)
+{
+	switch (type) {
+	case 0x00:
+		return "Public";
+	case 0x01:
+		return "Random";
+	default:
+		return "Reserved";
+	}
+}
+
+static const char *evttype2str(uint8_t type)
+{
+	switch (type) {
+	case 0x00:
+		return "ADV_IND - Connectable undirected advertising";
+	case 0x01:
+		return "ADV_DIRECT_IND - Connectable directed advertising";
+	case 0x02:
+		return "ADV_SCAN_IND - Scannable undirected advertising";
+	case 0x03:
+		return "ADV_NONCONN_IND - Non connectable undirected advertising";
+	case 0x04:
+		return "SCAN_RSP - Scan Response";
+	default:
+		return "Reserved";
+	}
+}
+
 static char *keytype2str(uint8_t type)
 {
 	switch (type) {
@@ -3244,6 +3274,36 @@ static inline void evt_le_conn_complete_dump(int level, struct frame *frm)
 					evt->role ? "slave" : "master");
 }
 
+static inline void evt_le_advertising_report_dump(int level, struct frame *frm)
+{
+	uint8_t num = get_u8(frm);
+	char addr[18];
+	int i;
+
+	for (i = 0; i < num; i++) {
+		le_advertising_info *info = frm->ptr;
+		void *ptr = frm->ptr;
+		uint32_t len = frm->len;
+
+		p_ba2str(&info->bdaddr, addr);
+
+		p_indent(level, frm);
+		printf("%s (%d)\n", evttype2str(info->evt_type), info->evt_type);
+
+		p_indent(level, frm);
+		printf("bdaddr %s (%s) rssi %d\n", addr,
+				bdaddrtype2str(info->bdaddr_type), info->rssi);
+
+		frm->ptr += 9;
+		frm->len -= 9;
+
+		ext_inquiry_response_dump(level, frm);
+
+		frm->ptr = ptr + LE_ADVERTISING_INFO_SIZE;
+		frm->len = len - LE_ADVERTISING_INFO_SIZE;
+	}
+}
+
 static inline void le_meta_ev_dump(int level, struct frame *frm)
 {
 	evt_le_meta_event *mevt = frm->ptr;
@@ -3260,6 +3320,9 @@ static inline void le_meta_ev_dump(int level, struct frame *frm)
 	switch (mevt->subevent) {
 	case EVT_LE_CONN_COMPLETE:
 		evt_le_conn_complete_dump(level + 1, frm);
+		break;
+	case EVT_LE_ADVERTISING_REPORT:
+		evt_le_advertising_report_dump(level + 1, frm);
 		break;
 	default:
 		raw_dump(level, frm);
