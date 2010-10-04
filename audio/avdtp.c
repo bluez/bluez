@@ -1409,7 +1409,14 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 		}
 		break;
 	case AVDTP_SEP_TYPE_SINK:
-		/* Do source_init() here when it's implemented */
+		if (!dev->source) {
+			btd_device_add_uuid(dev->btd_dev, A2DP_SOURCE_UUID);
+			if (!dev->sink) {
+				error("Unable to get a audio source object");
+				err = AVDTP_BAD_STATE;
+				goto failed;
+			}
+		}
 		break;
 	}
 
