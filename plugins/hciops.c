@@ -848,13 +848,18 @@ static int hciops_set_event_mask(int index, uint8_t *events, size_t count)
 
 static int hciops_write_inq_mode(int index, uint8_t mode)
 {
+	write_inquiry_mode_cp cp;
 	int dd, err;
 
 	dd = hci_open_dev(index);
 	if (dd < 0)
 		return -errno;
 
-	if (hci_write_inquiry_mode(dd, mode, HCI_REQ_TIMEOUT) < 0)
+	memset(&cp, 0, sizeof(cp));
+	cp.mode = mode;
+
+	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
+					WRITE_INQUIRY_MODE_CP_SIZE, &cp) < 0)
 		err = -errno;
 	else
 		err = 0;
