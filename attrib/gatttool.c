@@ -63,6 +63,7 @@ static gboolean opt_char_desc = FALSE;
 static gboolean opt_le = FALSE;
 static gboolean opt_char_write = FALSE;
 static GMainLoop *event_loop;
+static gboolean got_error = FALSE;
 
 struct characteristic_data {
 	GAttrib *attrib;
@@ -72,14 +73,18 @@ struct characteristic_data {
 
 static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
-	if (err)
-		g_printerr("%s", err->message);
+	if (err) {
+		g_printerr("%s\n", err->message);
+		got_error = TRUE;
+		g_main_loop_quit(event_loop);
+	}
 }
 
 static GIOChannel *do_connect(gboolean le)
 {
 	GIOChannel *chan;
 	bdaddr_t sba, dba;
+	GError *err = NULL;
 
 	/* This check is required because currently setsockopt() returns no
 	 * errors for MTU values smaller than the allowed minimum. */
@@ -106,7 +111,7 @@ static GIOChannel *do_connect(gboolean le)
 		bacpy(&sba, BDADDR_ANY);
 
 	if (le)
-		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, NULL,
+		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &sba,
 				BT_IO_OPT_DEST_BDADDR, &dba,
 				BT_IO_OPT_CID, GATT_CID,
@@ -114,13 +119,19 @@ static GIOChannel *do_connect(gboolean le)
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
 	else
-		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, NULL,
+		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &sba,
 				BT_IO_OPT_DEST_BDADDR, &dba,
 				BT_IO_OPT_PSM, GATT_PSM,
 				BT_IO_OPT_OMTU, opt_mtu,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
+
+	if (err) {
+		g_printerr("%s\n", err->message);
+		g_error_free(err);
+		return NULL;
+	}
 
 	return chan;
 }
@@ -517,7 +528,6 @@ int main(int argc, char *argv[])
 	GAttrib *attrib;
 	GIOChannel *chan;
 	GSourceFunc callback;
-	int ret = 0;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -564,13 +574,13 @@ int main(int argc, char *argv[])
 		gchar *help = g_option_context_get_help(context, TRUE, NULL);
 		g_print("%s\n", help);
 		g_free(help);
-		ret = 1;
+		got_error = TRUE;
 		goto done;
 	}
 
 	chan = do_connect(opt_le);
 	if (chan == NULL) {
-		ret = 1;
+		got_error = TRUE;
 		goto done;
 	}
 
@@ -597,5 +607,8 @@ done:
 	g_free(opt_src);
 	g_free(opt_dst);
 
-	return ret;
+	if (got_error)
+		exit(EXIT_FAILURE);
+	else
+		exit(EXIT_SUCCESS);
 }
