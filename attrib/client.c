@@ -286,7 +286,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	struct primary *prim;
 	GSList *lprim, *lchr;
 	uint8_t opdu[ATT_MAX_MTU];
-	guint handle = att_get_u16((uint16_t *) &pdu[1]);
+	guint handle = att_get_u16(&pdu[1]);
 	uint16_t olen;
 
 	for (lprim = gatt->primary, prim = NULL, chr = NULL; lprim;
@@ -872,11 +872,10 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		uint8_t *info = list->data[i];
 		struct query_data *qfmt;
 
-		handle = att_get_u16((uint16_t *) info);
+		handle = att_get_u16(info);
 
 		if (format == 0x01) {
-			sdp_uuid16_create(&uuid, att_get_u16((uint16_t *)
-								&info[2]));
+			sdp_uuid16_create(&uuid, att_get_u16(&info[2]));
 		} else {
 			/* Currently, only "user description" and "presentation
 			 * format" descriptors are used, and both have 16-bit
@@ -963,17 +962,17 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		chr = g_new0(struct characteristic, 1);
 		chr->prim = prim;
 		chr->perm = decl[2];
-		chr->handle = att_get_u16((uint16_t *) &decl[3]);
+		chr->handle = att_get_u16(&decl[3]);
 		chr->path = g_strdup_printf("%s/characteristic%04x",
 						prim->path, chr->handle);
 		if (list->len == 7) {
 			sdp_uuid16_create(&chr->type,
-					att_get_u16((uint16_t *) &decl[5]));
+					att_get_u16(&decl[5]));
 		} else
 			sdp_uuid128_create(&chr->type, &decl[5]);
 
 		if (previous_end) {
-			*previous_end = att_get_u16((uint16_t *) decl);
+			*previous_end = att_get_u16(decl);
 		}
 
 		last = chr->handle;
@@ -1270,8 +1269,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 		/* Each element contains: attribute handle, end group handle
 		 * and attribute value */
-		start = att_get_u16((uint16_t *) info);
-		end = att_get_u16((uint16_t *) &info[2]);
+		start = att_get_u16(info);
+		end = att_get_u16(&info[2]);
 
 		prim = g_new0(struct primary, 1);
 		prim->gatt = gatt;
@@ -1280,7 +1279,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 		if (list->len == 6) {
 			sdp_uuid16_create(&prim->uuid,
-					att_get_u16((uint16_t *) &info[4]));
+					att_get_u16(&info[4]));
 
 		} else if (list->len == 20) {
 			/* FIXME: endianness */

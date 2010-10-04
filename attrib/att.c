@@ -132,10 +132,10 @@ uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
 	if (len < 7)
 		return 0;
 
-	*start = att_get_u16((uint16_t *) &pdu[1]);
-	*end = att_get_u16((uint16_t *) &pdu[3]);
+	*start = att_get_u16(&pdu[1]);
+	*end = att_get_u16(&pdu[3]);
 	if (len == 7)
-		sdp_uuid16_create(uuid, att_get_u16((uint16_t *) &pdu[5]));
+		sdp_uuid16_create(uuid, att_get_u16(&pdu[5]));
 	else
 		sdp_uuid128_create(uuid, &pdu[5]);
 
@@ -245,11 +245,11 @@ uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
 	if (pdu[0] != ATT_OP_READ_BY_TYPE_REQ)
 		return 0;
 
-	*start = att_get_u16((uint16_t *) &pdu[1]);
-	*end = att_get_u16((uint16_t *) &pdu[3]);
+	*start = att_get_u16(&pdu[1]);
+	*end = att_get_u16(&pdu[3]);
 
 	if (len == 7)
-		sdp_uuid16_create(uuid, att_get_u16((uint16_t *) &pdu[5]));
+		sdp_uuid16_create(uuid, att_get_u16(&pdu[5]));
 	else
 		sdp_uuid128_create(uuid, &pdu[5]);
 
@@ -346,7 +346,7 @@ uint16_t dec_write_cmd(const uint8_t *pdu, int len, uint16_t *handle,
 	if (pdu[0] != ATT_OP_WRITE_CMD)
 		return 0;
 
-	*handle = att_get_u16((uint16_t *) &pdu[1]);
+	*handle = att_get_u16(&pdu[1]);
 	memcpy(value, pdu + 3, len - 3);
 	*vlen = len - 3;
 
@@ -378,7 +378,7 @@ uint16_t dec_read_req(const uint8_t *pdu, uint16_t *handle)
 	if (pdu[0] != ATT_OP_READ_REQ)
 		return 0;
 
-	*handle = att_get_u16((uint16_t *) &pdu[1]);
+	*handle = att_get_u16(&pdu[1]);
 
 	return 3;
 }
@@ -466,8 +466,8 @@ uint16_t dec_find_info_req(const uint8_t *pdu, int len, uint16_t *start,
 	if (pdu[0] != ATT_OP_FIND_INFO_REQ)
 		return 0;
 
-	*start = att_get_u16((uint16_t *) &pdu[1]);
-	*end = att_get_u16((uint16_t *) &pdu[3]);
+	*start = att_get_u16(&pdu[1]);
+	*end = att_get_u16(&pdu[3]);
 
 	return 5;
 }
@@ -585,7 +585,7 @@ struct attribute *dec_indication(const uint8_t *pdu, int len)
 
 	a->len = len - 3;
 
-	a->handle = att_get_u16((uint16_t *) &pdu[1]);
+	a->handle = att_get_u16(&pdu[1]);
 	memcpy(a->data, &pdu[3], a->len);
 
 	return a;
@@ -632,7 +632,7 @@ uint16_t dec_mtu_req(const uint8_t *pdu, int len, uint16_t *mtu)
 	if (pdu[0] != ATT_OP_MTU_REQ)
 		return 0;
 
-	*mtu = att_get_u16((uint16_t *) &pdu[1]);
+	*mtu = att_get_u16(&pdu[1]);
 
 	return 3;
 }
@@ -665,7 +665,7 @@ uint16_t dec_mtu_resp(const uint8_t *pdu, int len, uint16_t *mtu)
 	if (pdu[0] != ATT_OP_MTU_RESP)
 		return 0;
 
-	*mtu = att_get_u16((uint16_t *) &pdu[1]);
+	*mtu = att_get_u16(&pdu[1]);
 
 	return 3;
 }
