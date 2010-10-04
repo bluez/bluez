@@ -371,6 +371,8 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE)
 		sink_new_stream(dev, session, stream);
+	else
+		source_new_stream(dev, session, stream);
 
 	return TRUE;
 }
