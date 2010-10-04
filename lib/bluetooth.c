@@ -480,6 +480,10 @@ char *bt_compidtostr(int compid)
 		return "Wicentric, Inc.";
 	case 96:
 		return "RivieraWaves S.A.S";
+	case 97:
+		return "RDA Microelectronics";
+	case 98:
+		return "Gibson Guitars";
 	case 65535:
 		return "internal use";
 	default:
