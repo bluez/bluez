@@ -1233,6 +1233,7 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 	hdp_conn->conn = dbus_connection_ref(user_data->conn);
 	hdp_conn->hdp_chann = hdp_chan;
 	hdp_conn->cb = hdp_mdl_conn_cb;
+	hdp_chan->mdep = user_data->mdep;
 
 	if (hdp_get_dcpsm(hdp_chan->dev, hdp_get_dcpsm_cb,
 						hdp_tmp_dc_data_ref(hdp_conn),
