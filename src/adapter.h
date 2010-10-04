@@ -131,7 +131,6 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
 void adapter_setname_complete(bdaddr_t *local, uint8_t status);
 void adapter_update_tx_power(bdaddr_t *bdaddr, uint8_t status, void *ptr);
 void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr);
-void adapter_update_ext_features(struct btd_adapter *adapter, uint8_t *features);
 void adapter_service_insert(const bdaddr_t *bdaddr, void *rec);
 void adapter_service_remove(const bdaddr_t *bdaddr, void *rec);
 sdp_list_t *adapter_get_services(struct btd_adapter *adapter);
@@ -212,6 +211,7 @@ struct btd_adapter_ops {
 	int (*get_conn_list) (int index, GSList **conns);
 	int (*read_local_version) (int index, struct hci_version *ver);
 	int (*read_local_features) (int index, uint8_t *features);
+	int (*read_local_ext_features) (int index);
 	int (*init_ssp_mode) (int index, uint8_t *ssp_mode);
 	int (*read_link_policy) (int index);
 	int (*disconnect) (int index, uint16_t handle);
@@ -274,3 +274,6 @@ int btd_adapter_get_auth_info(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 int btd_adapter_read_scan_enable(struct btd_adapter *adapter);
 
 int btd_adapter_read_ssp_mode(struct btd_adapter *adapter);
+int btd_adapter_read_local_ext_features(struct btd_adapter *adapter);
+void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
+						const uint8_t *features);

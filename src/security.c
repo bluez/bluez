@@ -631,9 +631,6 @@ static inline void remote_features_notify(int dev, bdaddr_t *sba, void *ptr)
 static void write_le_host_complete(bdaddr_t *sba, uint8_t status)
 {
 	struct btd_adapter *adapter;
-	int dd, err;
-	uint16_t dev_id;
-	uint8_t max, features[8];
 
 	if (status)
 		return;
@@ -644,28 +641,28 @@ static void write_le_host_complete(bdaddr_t *sba, uint8_t status)
 		return;
 	}
 
-	dev_id = adapter_get_dev_id(adapter);
+	btd_adapter_read_local_ext_features(adapter);
+}
 
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		err = errno;
-		error("Unable to open hci%d: %s(%d)", dev_id, strerror(err), err);
+static void read_local_ext_features_complete(bdaddr_t *sba,
+				const read_local_ext_features_rp *rp)
+{
+	struct btd_adapter *adapter;
+
+	if (rp->status)
+		return;
+
+	adapter = manager_find_adapter(sba);
+	if (!adapter) {
+		error("No matching adapter found");
 		return;
 	}
 
-	if (hci_read_local_ext_features(dd, 0x01, &max, features,
-						HCI_REQ_TIMEOUT) < 0) {
-		err = errno;
-		error("Can't read local extended features: %s (%d)",
-							strerror(err), err);
-		hci_close_dev(dd);
-
+	/* Local Extended feature page number is 1 */
+	if (rp->page_num != 1)
 		return;
-	}
 
-	hci_close_dev(dd);
-
-	adapter_update_ext_features(adapter, features);
+	btd_adapter_update_local_ext_features(adapter, rp->features);
 }
 
 static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
@@ -699,6 +696,10 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 	uint8_t status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
 
 	switch (opcode) {
+	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_LOCAL_EXT_FEATURES):
+		ptr += sizeof(evt_cmd_complete);
+		read_local_ext_features_complete(sba, ptr);
+		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PERIODIC_INQUIRY):
 		start_inquiry(sba, status, TRUE);
 		break;

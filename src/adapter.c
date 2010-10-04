@@ -984,13 +984,6 @@ void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 	update_ext_inquiry_response(adapter);
 }
 
-void adapter_update_ext_features(struct btd_adapter *adapter, uint8_t *features)
-{
-	struct hci_dev *dev = &adapter->dev;
-
-	memcpy(dev->extfeatures, features, 8);
-}
-
 void adapter_setname_complete(bdaddr_t *local, uint8_t status)
 {
 	struct btd_adapter *adapter;
@@ -3642,4 +3635,17 @@ int btd_adapter_read_scan_enable(struct btd_adapter *adapter)
 int btd_adapter_read_ssp_mode(struct btd_adapter *adapter)
 {
 	return adapter_ops->read_ssp_mode(adapter->dev_id);
+}
+
+int btd_adapter_read_local_ext_features(struct btd_adapter *adapter)
+{
+	return adapter_ops->read_local_ext_features(adapter->dev_id);
+}
+
+void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
+						const uint8_t *features)
+{
+	struct hci_dev *dev = &adapter->dev;
+
+	memcpy(dev->extfeatures, features, 8);
 }

@@ -1032,6 +1032,25 @@ static int hciops_read_local_features(int index, uint8_t *features)
 	return err;
 }
 
+static int hciops_read_local_ext_features(int index)
+{
+	int dd, err;
+	uint8_t page_num = 1;
+
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
+	err = hci_send_cmd(dd, OGF_INFO_PARAM, OCF_READ_LOCAL_EXT_FEATURES,
+								1, &page_num);
+	if (err < 0)
+		err = -errno;
+
+	hci_close_dev(dd);
+
+	return err;
+}
+
 static int hciops_init_ssp_mode(int index, uint8_t *mode)
 {
 	write_simple_pairing_mode_cp cp;
@@ -1364,6 +1383,7 @@ static struct btd_adapter_ops hci_ops = {
 	.get_conn_list = hciops_get_conn_list,
 	.read_local_version = hciops_read_local_version,
 	.read_local_features = hciops_read_local_features,
+	.read_local_ext_features = hciops_read_local_ext_features,
 	.init_ssp_mode = hciops_init_ssp_mode,
 	.read_link_policy = hciops_read_link_policy,
 	.disconnect = hciops_disconnect,
