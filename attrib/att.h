@@ -123,21 +123,21 @@ struct att_data_list {
 };
 
 /* These functions do byte conversion */
-static inline uint8_t att_get_u8(void *ptr)
+static inline uint8_t att_get_u8(const void *ptr)
 {
-	uint8_t *u8_ptr = ptr;
+	const uint8_t *u8_ptr = ptr;
 	return bt_get_unaligned(u8_ptr);
 }
 
-static inline uint16_t att_get_u16(void *ptr)
+static inline uint16_t att_get_u16(const void *ptr)
 {
-	uint16_t *u16_ptr = ptr;
+	const uint16_t *u16_ptr = ptr;
 	return btohs(bt_get_unaligned(u16_ptr));
 }
 
-static inline uint32_t att_get_u32(void *ptr)
+static inline uint32_t att_get_u32(const void *ptr)
 {
-	uint32_t *u32_ptr = ptr;
+	const uint32_t *u32_ptr = ptr;
 	return btohl(bt_get_unaligned(u32_ptr));
 }
 
