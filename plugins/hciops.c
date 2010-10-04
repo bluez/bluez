@@ -1066,14 +1066,19 @@ static int hciops_disconnect(int index, uint16_t handle)
 
 static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 {
+	delete_stored_link_key_cp cp;
 	int dd, err;
 
 	dd = hci_open_dev(index);
 	if (dd < 0)
 		return -errno;
 
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+
 	/* Delete the link key from the Bluetooth chip */
-	if (hci_delete_stored_link_key(dd, bdaddr, 0, HCI_REQ_TIMEOUT) < 0)
+	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_DELETE_STORED_LINK_KEY,
+				DELETE_STORED_LINK_KEY_CP_SIZE, &cp) < 0)
 		err = -errno;
 	else
 		err = 0;
