@@ -788,21 +788,25 @@ fail:
 
 static int hciops_write_eir_data(int index, uint8_t *data)
 {
-	uint8_t fec = 0;
-	int ret, dd;
+	write_ext_inquiry_response_cp cp;
+	int err, dd;
 
 	dd = hci_open_dev(index);
 	if (dd < 0)
 		return -errno;
 
-	if (hci_write_ext_inquiry_response(dd, fec, data, HCI_REQ_TIMEOUT) < 0)
-		ret = -errno;
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.data, data, 240);
+
+	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_EXT_INQUIRY_RESPONSE,
+				WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &cp) < 0)
+		err = -errno;
 	else
-		ret = 0;
+		err = 0;
 
 	hci_close_dev(dd);
 
-	return ret;
+	return err;
 }
 
 static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
