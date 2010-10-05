@@ -1,3 +1,7 @@
+ver 4.75:
+	Fix use of uninitialized variable on legacy pairing.
+	Fix mismatch of attribute protocol opcode.
+
 ver 4.74:
 	Fix regression for Legacy Pairing.
 	Fix wrong PSM value for attribute protocol.
