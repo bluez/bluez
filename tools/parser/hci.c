@@ -3291,16 +3291,16 @@ static inline void evt_le_advertising_report_dump(int level, struct frame *frm)
 		printf("%s (%d)\n", evttype2str(info->evt_type), info->evt_type);
 
 		p_indent(level, frm);
-		printf("bdaddr %s (%s) rssi %d\n", addr,
-				bdaddrtype2str(info->bdaddr_type), info->rssi);
+		printf("bdaddr %s (%s)\n", addr,
+					bdaddrtype2str(info->bdaddr_type));
 
-		frm->ptr += 9;
-		frm->len -= 9;
+		frm->ptr += LE_ADVERTISING_INFO_SIZE;
+		frm->len -= LE_ADVERTISING_INFO_SIZE;
 
 		ext_inquiry_response_dump(level, frm);
 
-		frm->ptr = ptr + LE_ADVERTISING_INFO_SIZE;
-		frm->len = len - LE_ADVERTISING_INFO_SIZE;
+		frm->ptr = ptr + 1;
+		frm->len = len - 1;
 	}
 }
 
