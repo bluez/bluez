@@ -40,12 +40,6 @@ ATT/GATT
   Priority: Low
   Complexity: C1
 
-- Add command line support for specifying psm with gatttool (e.g. --psm
-  37)
-
-  Priority: Medium
-  Complexity: C1
-
 - Add command line support to use medium instead of (default) low
   security level with gatttool (--sec-level)
 
