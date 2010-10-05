@@ -43,7 +43,7 @@ ATT/GATT
 - Add command line support for specifying psm with gatttool (e.g. --psm
   37)
 
-  Priority: Med
+  Priority: Medium
   Complexity: C1
 
 - Add command line support to use medium instead of (default) low
@@ -54,6 +54,6 @@ ATT/GATT
 
 - Add ATT/GATT parsing to hcidump
 
-  Priority: Med
+  Priority: Medium
   Complexity: C2
 
