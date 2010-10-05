@@ -167,6 +167,7 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
 	bdaddr_t sba, dba;
 	int err;
 
+	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba);
 
 	err = btd_adapter_pincode_reply(adapter, &dba, derr ? NULL : pincode);
