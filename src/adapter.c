@@ -2279,7 +2279,7 @@ static gboolean le_capable(struct btd_adapter *adapter)
 	struct hci_dev *dev = &adapter->dev;
 
 	return (dev->features[4] & LMP_LE &&
-			dev->extfeatures[0] & LMP_LE_SUPPORTED) ? TRUE : FALSE;
+			dev->extfeatures[0] & LMP_HOST_LE) ? TRUE : FALSE;
 }
 
 int adapter_get_discover_type(struct btd_adapter *adapter)
