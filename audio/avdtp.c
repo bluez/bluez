@@ -690,33 +690,30 @@ static void set_disconnect_timer(struct avdtp *session)
 						session);
 }
 
-void avdtp_error_init(struct avdtp_error *err, uint8_t type, int id)
+void avdtp_error_init(struct avdtp_error *err, uint8_t category, int id)
 {
-	err->type = type;
-	switch (type) {
-	case AVDTP_ERROR_ERRNO:
+	err->category = category;
+
+	if (category == AVDTP_ERRNO)
 		err->err.posix_errno = id;
-		break;
-	case AVDTP_ERROR_ERROR_CODE:
+	else
 		err->err.error_code = id;
-		break;
-	}
 }
 
-avdtp_error_type_t avdtp_error_type(struct avdtp_error *err)
+uint8_t avdtp_error_category(struct avdtp_error *err)
 {
-	return err->type;
+	return err->category;
 }
 
 int avdtp_error_error_code(struct avdtp_error *err)
 {
-	assert(err->type == AVDTP_ERROR_ERROR_CODE);
+	assert(err->category != AVDTP_ERRNO);
 	return err->err.error_code;
 }
 
 int avdtp_error_posix_errno(struct avdtp_error *err)
 {
-	assert(err->type == AVDTP_ERROR_ERRNO);
+	assert(err->category == AVDTP_ERRNO);
 	return err->err.posix_errno;
 }
 
@@ -851,7 +848,7 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 	if (io == NULL) {
 		if (!stream->open_acp && sep->cfm && sep->cfm->open) {
 			struct avdtp_error err;
-			avdtp_error_init(&err, AVDTP_ERROR_ERRNO, EIO);
+			avdtp_error_init(&err, AVDTP_ERRNO, EIO);
 			sep->cfm->open(session, sep, NULL, &err,
 					sep->user_data);
 		}
@@ -919,7 +916,7 @@ static void handle_unanswered_req(struct avdtp *session,
 	req = session->req;
 	session->req = NULL;
 
-	avdtp_error_init(&err, AVDTP_ERROR_ERRNO, EIO);
+	avdtp_error_init(&err, AVDTP_ERRNO, EIO);
 
 	lsep = stream->lsep;
 
@@ -979,7 +976,7 @@ static void avdtp_sep_set_state(struct avdtp *session,
 	}
 
 	if (sep->state == state) {
-		avdtp_error_init(&err, AVDTP_ERROR_ERRNO, EIO);
+		avdtp_error_init(&err, AVDTP_ERRNO, EIO);
 		DBG("stream state change failed: %s", avdtp_strerror(&err));
 		err_ptr = &err;
 	} else {
@@ -1041,7 +1038,7 @@ static void finalize_discovery(struct avdtp *session, int err)
 {
 	struct avdtp_error avdtp_err;
 
-	avdtp_error_init(&avdtp_err, AVDTP_ERROR_ERRNO, err);
+	avdtp_error_init(&avdtp_err, AVDTP_ERRNO, err);
 
 	if (!session->discov_cb)
 		return;
@@ -2450,7 +2447,7 @@ static int cancel_request(struct avdtp *session, int err)
 	req = session->req;
 	session->req = NULL;
 
-	avdtp_error_init(&averr, AVDTP_ERROR_ERRNO, err);
+	avdtp_error_init(&averr, AVDTP_ERRNO, err);
 
 	seid = req_get_seid(req);
 	if (seid)
@@ -2890,23 +2887,20 @@ static gboolean seid_rej_to_err(struct seid_rej *rej, unsigned int size,
 		return FALSE;
 	}
 
-	avdtp_error_init(err, AVDTP_ERROR_ERROR_CODE, rej->error);
+	avdtp_error_init(err, 0x00, rej->error);
 
 	return TRUE;
 }
 
 static gboolean conf_rej_to_err(struct conf_rej *rej, unsigned int size,
-				struct avdtp_error *err, uint8_t *category)
+				struct avdtp_error *err)
 {
 	if (size < sizeof(struct conf_rej)) {
 		error("Too small packet for conf_rej");
 		return FALSE;
 	}
 
-	avdtp_error_init(err, AVDTP_ERROR_ERROR_CODE, rej->error);
-
-	if (category)
-		*category = rej->category;
+	avdtp_error_init(err, rej->category, rej->error);
 
 	return TRUE;
 }
@@ -2920,7 +2914,7 @@ static gboolean stream_rej_to_err(struct stream_rej *rej, unsigned int size,
 		return FALSE;
 	}
 
-	avdtp_error_init(err, AVDTP_ERROR_ERROR_CODE, rej->error);
+	avdtp_error_init(err, 0x00, rej->error);
 
 	if (acp_seid)
 		*acp_seid = rej->acp_seid;
@@ -2934,7 +2928,7 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 					void *buf, int size)
 {
 	struct avdtp_error err;
-	uint8_t acp_seid, category;
+	uint8_t acp_seid;
 	struct avdtp_local_sep *sep = stream ? stream->lsep : NULL;
 
 	switch (signal_id) {
@@ -2961,7 +2955,7 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 					sep->user_data);
 		return TRUE;
 	case AVDTP_SET_CONFIGURATION:
-		if (!conf_rej_to_err(buf, size, &err, &category))
+		if (!conf_rej_to_err(buf, size, &err))
 			return FALSE;
 		error("SET_CONFIGURATION request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
@@ -2970,7 +2964,7 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 							&err, sep->user_data);
 		return TRUE;
 	case AVDTP_RECONFIGURE:
-		if (!conf_rej_to_err(buf, size, &err, &category))
+		if (!conf_rej_to_err(buf, size, &err))
 			return FALSE;
 		error("RECONFIGURE request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
@@ -3639,7 +3633,7 @@ static GIOChannel *avdtp_server_socket(const bdaddr_t *src, gboolean master)
 
 const char *avdtp_strerror(struct avdtp_error *err)
 {
-	if (err->type == AVDTP_ERROR_ERRNO)
+	if (err->category == AVDTP_ERRNO)
 		return strerror(err->err.posix_errno);
 
 	switch(err->err.error_code) {

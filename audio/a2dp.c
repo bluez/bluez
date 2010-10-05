@@ -180,7 +180,7 @@ static gboolean finalize_config_errno(struct a2dp_setup *s, int err)
 {
 	struct avdtp_error avdtp_err;
 
-	avdtp_error_init(&avdtp_err, AVDTP_ERROR_ERRNO, -err);
+	avdtp_error_init(&avdtp_err, AVDTP_ERRNO, -err);
 	s->err = err ? &avdtp_err : NULL;
 
 	return finalize_config(s);
@@ -230,7 +230,7 @@ static gboolean finalize_suspend_errno(struct a2dp_setup *s, int err)
 {
 	struct avdtp_error avdtp_err;
 
-	avdtp_error_init(&avdtp_err, AVDTP_ERROR_ERRNO, -err);
+	avdtp_error_init(&avdtp_err, AVDTP_ERRNO, -err);
 	s->err = err ? &avdtp_err : NULL;
 
 	return finalize_suspend(s);
@@ -899,7 +899,7 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	} else if (avdtp_start(session, a2dp_sep->stream) < 0) {
 		struct avdtp_error start_err;
 		error("avdtp_start failed");
-		avdtp_error_init(&start_err, AVDTP_ERROR_ERRNO, EIO);
+		avdtp_error_init(&start_err, AVDTP_ERRNO, EIO);
 		setup->err = err;
 		finalize_suspend(setup);
 	}

@@ -23,11 +23,6 @@
  */
 
 typedef enum {
-	AVDTP_ERROR_ERRNO,
-	AVDTP_ERROR_ERROR_CODE
-} avdtp_error_type_t;
-
-typedef enum {
 	AVDTP_SESSION_STATE_DISCONNECTED,
 	AVDTP_SESSION_STATE_CONNECTING,
 	AVDTP_SESSION_STATE_CONNECTED
@@ -38,7 +33,7 @@ struct avdtp_stream;
 struct avdtp_local_sep;
 struct avdtp_remote_sep;
 struct avdtp_error {
-	avdtp_error_type_t type;
+	uint8_t category;
 	union {
 		uint8_t error_code;
 		int posix_errno;
@@ -54,6 +49,7 @@ struct avdtp_error {
 #define AVDTP_MULTIPLEXING			0x06
 #define AVDTP_MEDIA_CODEC			0x07
 #define AVDTP_DELAY_REPORTING			0x08
+#define AVDTP_ERRNO				0xff
 
 /* AVDTP error definitions */
 #define AVDTP_BAD_HEADER_FORMAT			0x01
@@ -299,7 +295,7 @@ avdtp_state_t avdtp_sep_get_state(struct avdtp_local_sep *sep);
 
 void avdtp_error_init(struct avdtp_error *err, uint8_t type, int id);
 const char *avdtp_strerror(struct avdtp_error *err);
-avdtp_error_type_t avdtp_error_type(struct avdtp_error *err);
+uint8_t avdtp_error_category(struct avdtp_error *err);
 int avdtp_error_error_code(struct avdtp_error *err);
 int avdtp_error_posix_errno(struct avdtp_error *err);
 

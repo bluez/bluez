@@ -266,7 +266,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 
 	avdtp_unref(source->session);
 	source->session = NULL;
-	if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
+	if (avdtp_error_category(err) == AVDTP_ERRNO
 			&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
 		DBG("connect:connect XCASE detected");
 		source->retry_id = g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
@@ -323,7 +323,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	if (err) {
 		avdtp_unref(source->session);
 		source->session = NULL;
-		if (avdtp_error_type(err) == AVDTP_ERROR_ERRNO
+		if (avdtp_error_category(err) == AVDTP_ERRNO
 				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
 			DBG("connect:connect XCASE detected");
 			source->retry_id =
