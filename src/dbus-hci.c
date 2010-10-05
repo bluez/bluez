@@ -167,17 +167,26 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
 	bdaddr_t sba, dba;
 	int err;
 
-	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba);
 
-	err = btd_adapter_pincode_reply(adapter, &dba, derr ? NULL : pincode);
-	if (err < 0) {
-		error("pincode_reply: %s (%d)", strerror(-err), -err);
+	if (derr) {
+		err = btd_adapter_pincode_reply(adapter, &dba, NULL);
+		if (err < 0)
+			goto fail;
 		return;
 	}
 
-	if (derr == NULL)
-		set_pin_length(&sba, strlen(pincode));
+	err = btd_adapter_pincode_reply(adapter, &dba, pincode);
+	if (err < 0)
+		goto fail;
+
+	adapter_get_address(adapter, &sba);
+	set_pin_length(&sba, strlen(pincode));
+
+	return;
+
+fail:
+	error("Sending PIN code reply failed: %s (%d)", strerror(-err), -err);
 }
 
 int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
