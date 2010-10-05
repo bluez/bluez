@@ -23,6 +23,7 @@ ATT/GATT
 
   Priority: Medium
   Complexity: C2
+  Owner: Claudio Takahasi <claudio.takahasi@openbossa.org>
 
 - gatttool should wait for req responses before quitting (some servers
   require a small sleep even with cmd's)
