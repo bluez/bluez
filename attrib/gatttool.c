@@ -183,6 +183,10 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	att_data_list_free(list);
 
+	/* Don't go beyond the maximum handle value */
+	if (end == 0xffff)
+		goto done;
+
 	/*
 	 * Discover all primary services sub-procedure shall send another
 	 * Read by Group Type Request until Error Response is received and
