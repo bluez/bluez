@@ -64,7 +64,7 @@
 #define ATT_OP_READ_BY_GROUP_RESP	0x11
 #define ATT_OP_WRITE_REQ		0x12
 #define ATT_OP_WRITE_RESP		0x13
-#define ATT_OP_WRITE_CMD		0x14
+#define ATT_OP_WRITE_CMD		0x52
 #define ATT_OP_PREP_WRITE_REQ		0x16
 #define ATT_OP_PREP_WRITE_RESP		0x17
 #define ATT_OP_EXEC_WRITE_REQ		0x18
@@ -72,7 +72,7 @@
 #define ATT_OP_HANDLE_NOTIFY		0x1B
 #define ATT_OP_HANDLE_IND		0x1D
 #define ATT_OP_HANDLE_CNF		0x1E
-#define ATT_OP_SIGNED_WRITE_CMD		0x94
+#define ATT_OP_SIGNED_WRITE_CMD		0xD2
 
 /* Error codes for Error response PDU */
 #define ATT_ECODE_INVALID_HANDLE		0x01
