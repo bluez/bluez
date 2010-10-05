@@ -23,7 +23,6 @@
  *
  */
 
-
 #ifndef __HDP_TYPES_H__
 #define __HDP_TYPES_H__
 

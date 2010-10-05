@@ -23,7 +23,6 @@
  *
  */
 
-
 #ifndef __HDP_UTIL_H__
 #define __HDP_UTIL_H__
 
