@@ -1,3 +1,11 @@
+ver 4.74:
+	Fix regression for Legacy Pairing.
+	Fix wrong PSM value for attribute protocol.
+	Fix issue with RSSI field in advertising reports.
+	Add support for Add BR/EDR and LE interleaved discovery.
+	Add support for GATT write characteristic value option.
+	Add support for specifying download address for AR300x.
+
 ver 4.73:
 	Fix problem with EIR data when setting the name.
 	Fix reading local name from command complete event.
