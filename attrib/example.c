@@ -161,9 +161,14 @@ static int register_attributes(void)
 
 	/* Battery: battery state attribute */
 	sdp_uuid16_create(&uuid, BATTERY_STATE_UUID);
-	u16 = htons(BATTERY_STATE_UUID);
 	atval[0] = 0x04;
 	attrib_db_add(0x0110, &uuid, atval, 1);
+
+	/* Battery: Client Characteristic Configuration */
+	sdp_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
+	atval[0] = 0x00;
+	atval[1] = 0x00;
+	attrib_db_add(0x0111, &uuid, atval, 2);
 
 	timeout_id = g_timeout_add_seconds(10, change_battery_state, NULL);
 
