@@ -2000,7 +2000,8 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 		adapter_ops->read_inq_tx_pwr(adapter->dev_id);
 
 	if (dev->features[4] & LMP_LE) {
-		err = adapter_ops->write_le_host(adapter->dev_id, 0x01, 0x00);
+		uint8_t simul = (dev->features[6] & LMP_LE_BREDR) ? 0x01 : 0x00;
+		err = adapter_ops->write_le_host(adapter->dev_id, 0x01, simul);
 		if (err < 0) {
 			error("Can't write LE host supported for %s: %s(%d)",
 					adapter->path, strerror(-err), -err);
