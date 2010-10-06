@@ -128,6 +128,10 @@ typedef void (*avdtp_stream_state_cb) (struct avdtp_stream *stream,
 					struct avdtp_error *err,
 					void *user_data);
 
+typedef void (*avdtp_set_configuration_cb) (struct avdtp *session,
+						struct avdtp_stream *stream,
+						struct avdtp_error *err);
+
 /* Callbacks for when a reply is received to a command that we sent */
 struct avdtp_sep_cfm {
 	void (*set_configuration) (struct avdtp *session,
@@ -175,8 +179,9 @@ struct avdtp_sep_ind {
 	gboolean (*set_configuration) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
 					struct avdtp_stream *stream,
-					GSList *caps, uint8_t *err,
-					uint8_t *category, void *user_data);
+					GSList *caps,
+					avdtp_set_configuration_cb cb,
+					void *user_data);
 	gboolean (*get_configuration) (struct avdtp *session,
 					struct avdtp_local_sep *lsep,
 					uint8_t *err, void *user_data);

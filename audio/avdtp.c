@@ -1359,6 +1359,35 @@ failed:
 							&err, sizeof(err));
 }
 
+static void setconf_cb(struct avdtp *session, struct avdtp_stream *stream,
+						struct avdtp_error *err)
+{
+	struct conf_rej rej;
+	struct avdtp_local_sep *sep;
+
+	if (err != NULL) {
+		rej.error = AVDTP_UNSUPPORTED_CONFIGURATION;
+		rej.category = err->err.error_code;
+		avdtp_send(session, session->in.transaction,
+				AVDTP_MSG_TYPE_REJECT, AVDTP_SET_CONFIGURATION,
+				&rej, sizeof(rej));
+		return;
+	}
+
+	if (!avdtp_send(session, session->in.transaction, AVDTP_MSG_TYPE_ACCEPT,
+					AVDTP_SET_CONFIGURATION, NULL, 0)) {
+		stream_free(stream);
+		return;
+	}
+
+	sep = stream->lsep;
+	sep->stream = stream;
+	sep->info.inuse = 1;
+	session->streams = g_slist_append(session->streams, stream);
+
+	avdtp_sep_set_state(session, sep, AVDTP_STATE_CONFIGURED);
+}
+
 static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 				struct setconf_req *req, unsigned int size)
 {
@@ -1441,23 +1470,26 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 
 	if (sep->ind && sep->ind->set_configuration) {
 		if (!sep->ind->set_configuration(session, sep, stream,
-							stream->caps, &err,
-							&category,
-							sep->user_data))
+							stream->caps,
+							setconf_cb,
+							sep->user_data)) {
+			err = AVDTP_UNSUPPORTED_CONFIGURATION;
+			category = 0x00;
 			goto failed_stream;
-	}
-
-	if (!avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT,
+		}
+	} else {
+		if (!avdtp_send(session, transaction, AVDTP_MSG_TYPE_ACCEPT,
 					AVDTP_SET_CONFIGURATION, NULL, 0)) {
-		stream_free(stream);
-		return FALSE;
+			stream_free(stream);
+			return FALSE;
+		}
+
+		sep->stream = stream;
+		sep->info.inuse = 1;
+		session->streams = g_slist_append(session->streams, stream);
+
+		avdtp_sep_set_state(session, sep, AVDTP_STATE_CONFIGURED);
 	}
-
-	sep->stream = stream;
-	sep->info.inuse = 1;
-	session->streams = g_slist_append(session->streams, stream);
-
-	avdtp_sep_set_state(session, sep, AVDTP_STATE_CONFIGURED);
 
 	return TRUE;
 
