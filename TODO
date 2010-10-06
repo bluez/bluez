@@ -49,6 +49,15 @@ ATT/GATT
   Priority: Low
   Complexity: C2
 
+- Attribute server should process queued GATT/ATT commands if the
+  client disconnects. The client can simply send a command and quit,
+  without wait for a response(ex: Write Command). For this scenario
+  that the client disconnects the link quickly the queued received
+  command is ignored.
+
+  Priority: Low
+  Complecity: C1
+
 - Long reads/writes don't work (consisting of multiple request packets)
 
   Priority: Low
