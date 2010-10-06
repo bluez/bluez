@@ -1226,7 +1226,8 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 {
 	int sbc_srcs = 1, sbc_sinks = 1;
 	int mpeg12_srcs = 0, mpeg12_sinks = 0;
-	gboolean source = TRUE, sink = FALSE, socket = TRUE, delay_reporting;
+	gboolean source = TRUE, sink = FALSE, socket = TRUE;
+	gboolean delay_reporting = FALSE;
 	char *str;
 	GError *err = NULL;
 	int i;
@@ -1330,8 +1331,10 @@ proceed:
 		servers = g_slist_append(servers, server);
 	}
 
-	delay_reporting = g_key_file_get_boolean(config, "A2DP",
+	if (config)
+		delay_reporting = g_key_file_get_boolean(config, "A2DP",
 						"DelayReporting", NULL);
+
 	if (delay_reporting)
 		server->version = 0x0103;
 	else
