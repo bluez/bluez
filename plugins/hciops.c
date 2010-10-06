@@ -50,6 +50,9 @@ static int child_pipe[2] = { -1, -1 };
 static guint child_io_id = 0;
 static guint ctl_io_id = 0;
 
+static int max_dev = -1;
+static int *devs = NULL;
+
 static gboolean child_exit(GIOChannel *io, GIOCondition cond, void *user_data)
 {
 	int status, fd = g_io_channel_unix_get_fd(io);
@@ -80,7 +83,6 @@ static void device_devup_setup(int index)
 {
 	struct hci_dev_info di;
 	uint16_t policy;
-	int dd;
 
 	if (hci_devinfo(index, &di) < 0)
 		return;
@@ -88,28 +90,19 @@ static void device_devup_setup(int index)
 	if (ignore_device(&di))
 		return;
 
-	dd = hci_open_dev(index);
-	if (dd < 0) {
-		error("Can't open device hci%d: %s (%d)", index,
-						strerror(errno), errno);
-		return;
-	}
-
 	/* Set page timeout */
 	if ((main_opts.flags & (1 << HCID_SET_PAGETO))) {
 		write_page_timeout_cp cp;
 
 		cp.timeout = htobs(main_opts.pageto);
-		hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
+		hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
 
 	/* Set default link policy */
 	policy = htobs(main_opts.link_policy);
-	hci_send_cmd(dd, OGF_LINK_POLICY, OCF_WRITE_DEFAULT_LINK_POLICY,
-								2, &policy);
-
-	hci_close_dev(dd);
+	hci_send_cmd(devs[index], OGF_LINK_POLICY,
+				OCF_WRITE_DEFAULT_LINK_POLICY, 2, &policy);
 
 	start_security_manager(index);
 
@@ -122,8 +115,22 @@ static void init_device(int index)
 {
 	struct hci_dev_req dr;
 	struct hci_dev_info di;
-	pid_t pid;
 	int dd;
+	pid_t pid;
+
+	dd = hci_open_dev(index);
+	if (dd < 0) {
+		error("Unable to open hci%d: %s (%d)", index,
+						strerror(errno), errno);
+		return;
+	}
+
+	if (index > max_dev) {
+		max_dev = index;
+		devs = g_realloc(devs, sizeof(int *) * (max_dev + 1));
+	}
+
+	devs[index] = dd;
 
 	/* Do initialization in the separate process */
 	pid = fork();
@@ -137,13 +144,6 @@ static void init_device(int index)
 		default:
 			DBG("child %d forked", pid);
 			return;
-	}
-
-	dd = hci_open_dev(index);
-	if (dd < 0) {
-		error("Can't open device hci%d: %s (%d)",
-					index, strerror(errno), errno);
-		exit(1);
 	}
 
 	memset(&dr, 0, sizeof(dr));
@@ -211,6 +211,8 @@ static void device_event(int event, int index)
 
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", index);
+		hci_close_dev(devs[index]);
+		devs[index] = -1;
 		manager_unregister_adapter(index);
 		break;
 
@@ -344,8 +346,7 @@ static int hciops_setup(void)
 	hci_filter_clear(&flt);
 	hci_filter_set_ptype(HCI_EVENT_PKT, &flt);
 	hci_filter_set_event(EVT_STACK_INTERNAL, &flt);
-	if (setsockopt(sock, SOL_HCI, HCI_FILTER, &flt,
-							sizeof(flt)) < 0) {
+	if (setsockopt(sock, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		err = -errno;
 		error("Can't set filter: %s (%d)", strerror(-err), -err);
 		return err;
@@ -354,11 +355,9 @@ static int hciops_setup(void)
 	memset(&addr, 0, sizeof(addr));
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = HCI_DEV_NONE;
-	if (bind(sock, (struct sockaddr *) &addr,
-							sizeof(addr)) < 0) {
+	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		err = -errno;
-		error("Can't bind HCI socket: %s (%d)",
-							strerror(-err), -err);
+		error("Can't bind HCI socket: %s (%d)", strerror(-err), -err);
 		return err;
 	}
 
@@ -375,6 +374,17 @@ static int hciops_setup(void)
 
 static void hciops_cleanup(void)
 {
+	int i;
+
+	for (i = 0; i <= max_dev; i++) {
+		if (devs[i] >= 0)
+			hci_close_dev(devs[i]);
+	}
+
+	g_free(devs);
+	devs = NULL;
+	max_dev = -1;
+
 	if (child_io_id) {
 		g_source_remove(child_io_id);
 		child_io_id = 0;
@@ -398,37 +408,26 @@ static void hciops_cleanup(void)
 
 static int hciops_start(int index)
 {
-	int dd;
-	int err = 0;
+	int err;
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
+	if (ioctl(devs[index], HCIDEVUP, index) == 0)
+		return 0;
 
-	if (ioctl(dd, HCIDEVUP, index) == 0)
-		goto done; /* on success */
+	if (errno == EALREADY)
+		return 0;
 
-	if (errno != EALREADY) {
-		err = -errno;
-		error("Can't init device hci%d: %s (%d)",
-				index, strerror(-err), -err);
-	}
+	err = -errno;
+	error("Can't init device hci%d: %s (%d)",
+					index, strerror(-err), -err);
 
-done:
-	hci_close_dev(dd);
 	return err;
 }
 
 static int hciops_stop(int index)
 {
-	int dd;
 	int err = 0;
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
-
-	if (ioctl(dd, HCIDEVDOWN, index) == 0)
+	if (ioctl(devs[index], HCIDEVDOWN, index) == 0)
 		goto done; /* on success */
 
 	if (errno != EALREADY) {
@@ -438,99 +437,61 @@ static int hciops_stop(int index)
 	}
 
 done:
-	hci_close_dev(dd);
 	return err;
 }
 
 static int hciops_powered(int index, gboolean powered)
 {
-	int dd, err;
 	uint8_t mode = SCAN_DISABLED;
 
 	if (powered)
 		return hciops_start(index);
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
-
-	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-					1, &mode);
-	if (err < 0) {
-		err = -errno;
-		hci_close_dev(dd);
-		return err;
-	}
-
-	hci_close_dev(dd);
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
+		return -errno;
 
 	return hciops_stop(index);
 }
 
 static int hciops_connectable(int index)
 {
-	int dd, err;
 	uint8_t mode = SCAN_PAGE;
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
+		return -errno;
 
-	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-					1, &mode);
-	if (err < 0)
-		err = -errno;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_discoverable(int index)
 {
-	int dd, err;
 	uint8_t mode = (SCAN_PAGE | SCAN_INQUIRY);
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+								1, &mode) < 0)
+		return -errno;
 
-	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-					1, &mode);
-	if (err < 0)
-		err = -errno;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_set_class(int index, uint32_t class)
 {
-	int dd, err;
 	write_class_of_dev_cp cp;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
 
 	memcpy(cp.dev_class, &class, 3);
 
-	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
-					WRITE_CLASS_OF_DEV_CP_SIZE, &cp);
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
+					WRITE_CLASS_OF_DEV_CP_SIZE, &cp) < 0)
+		return -errno;
 
-	if (err < 0)
-		err = -errno;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_set_limited_discoverable(int index, uint32_t class,
 							gboolean limited)
 {
-	int dd, err;
 	int num = (limited ? 2 : 1);
 	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
 	write_current_iac_lap_cp cp;
@@ -539,36 +500,21 @@ static int hciops_set_limited_discoverable(int index, uint32_t class,
 	 * 1: giac
 	 * 2: giac + liac
 	 */
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
-
 	memset(&cp, 0, sizeof(cp));
 	cp.num_current_iac = num;
 	memcpy(&cp.lap, lap, num * 3);
 
-	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_CURRENT_IAC_LAP,
-			(num * 3 + 1), &cp);
-	if (err < 0) {
-		err = -errno;
-		goto fail;
-	}
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_CURRENT_IAC_LAP,
+						(num * 3 + 1), &cp) < 0)
+		return -errno;
 
-	err = hciops_set_class(index, class);
-
-fail:
-	hci_close_dev(dd);
-	return err;
+	return hciops_set_class(index, class);
 }
 
 static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 {
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
+	int err;
 
 	if (periodic) {
 		periodic_inquiry_cp cp;
@@ -580,8 +526,9 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 		cp.length  = length;
 		cp.num_rsp = 0x00;
 
-		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_PERIODIC_INQUIRY,
-					PERIODIC_INQUIRY_CP_SIZE, &cp);
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+						OCF_PERIODIC_INQUIRY,
+						PERIODIC_INQUIRY_CP_SIZE, &cp);
 	} else {
 		inquiry_cp inq_cp;
 
@@ -590,14 +537,12 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 		inq_cp.length = length;
 		inq_cp.num_rsp = 0x00;
 
-		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_INQUIRY,
-					INQUIRY_CP_SIZE, &inq_cp);
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+					OCF_INQUIRY, INQUIRY_CP_SIZE, &inq_cp);
 	}
 
 	if (err < 0)
 		err = -errno;
-
-	hci_close_dev(dd);
 
 	return err;
 }
@@ -605,154 +550,97 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 static int hciops_stop_inquiry(int index)
 {
 	struct hci_dev_info di;
-	int dd, err;
+	int err;
 
 	if (hci_devinfo(index, &di) < 0)
 		return -errno;
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
-
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
-		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_INQUIRY_CANCEL, 0, 0);
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+						OCF_INQUIRY_CANCEL, 0, 0);
 	else
-		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY,
-									0, 0);
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
 	if (err < 0)
 		err = -errno;
-
-	hci_close_dev(dd);
 
 	return err;
 }
 
 static int hciops_start_scanning(int index)
 {
-	int dd, err = 0;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_le_set_scan_parameters(devs[index], 0x01, htobs(0x0010),
+					htobs(0x0010), 0x00, 0x00) < 0)
 		return -errno;
 
-	if (hci_le_set_scan_parameters(dd, 0x01, htobs(0x0010),
-					htobs(0x0010), 0x00, 0x00) < 0) {
-		err = -errno;
-		goto fail;
-	}
+	if (hci_le_set_scan_enable(devs[index], 0x01, 0x00) < 0)
+		return -errno;
 
-	if (hci_le_set_scan_enable(dd, 0x01, 0x00) < 0)
-		err = -errno;
-
-fail:
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_stop_scanning(int index)
 {
-	int dd, err = 0;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_le_set_scan_enable(devs[index], 0x00, 0x00) < 0)
 		return -errno;
 
-	if (hci_le_set_scan_enable(dd, 0x00, 0x00) < 0)
-		err = -errno;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	remote_name_req_cp cp;
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
 	cp.pscan_rep_mode = 0x02;
 
-	err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
-						REMOTE_NAME_REQ_CP_SIZE, &cp);
-	if (err < 0)
-		err = -errno;
+	if (hci_send_cmd(devs[index], OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
+					REMOTE_NAME_REQ_CP_SIZE, &cp) < 0)
+		return -errno;
 
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_set_name(int index, const char *name)
 {
 	change_local_name_cp cp;
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
 
 	memset(&cp, 0, sizeof(cp));
 	strncpy((char *) cp.name, name, sizeof(cp.name));
 
-	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
-					CHANGE_LOCAL_NAME_CP_SIZE, &cp);
-	if (err < 0)
-		err = -errno;
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
+				CHANGE_LOCAL_NAME_CP_SIZE, &cp) < 0)
+		return -errno;
 
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_read_name(int index)
 {
-	int dd, err;
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_READ_LOCAL_NAME,
+								0, 0) < 0)
+		return -errno;
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
-
-	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_LOCAL_NAME, 0, 0);
-	if (err < 0)
-		err = -errno;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	remote_name_req_cancel_cp cp;
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
 
-	err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ_CANCEL,
-					REMOTE_NAME_REQ_CANCEL_CP_SIZE, &cp);
-	if (err < 0)
-		err = -errno;
+	if (hci_send_cmd(devs[index], OGF_LINK_CTL, OCF_REMOTE_NAME_REQ_CANCEL,
+				REMOTE_NAME_REQ_CANCEL_CP_SIZE, &cp) < 0)
+		return -errno;
 
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_fast_connectable(int index, gboolean enable)
 {
-	int dd, err = 0;
 	write_page_activity_cp cp;
 	uint8_t type;
 
@@ -766,61 +654,44 @@ static int hciops_fast_connectable(int index, gboolean enable)
 
 	cp.window = 0x0012;	/* default 11.25 msec page scan window */
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
-
-	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_PAGE_ACTIVITY,
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_PAGE_ACTIVITY,
 					WRITE_PAGE_ACTIVITY_CP_SIZE, &cp) < 0)
-		err = -errno;
-	else if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_PAGE_SCAN_TYPE,
-								1, &type) < 0)
-		err = -errno;
+		return -errno;
+	else if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+				OCF_WRITE_PAGE_SCAN_TYPE, 1, &type) < 0)
+		return -errno;
 
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_read_clock(int index, int handle, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy)
 {
-	int dd, err = 0;
+	if (hci_read_clock(devs[index], handle, which, clock, accuracy,
+								timeout) < 0)
+		return -errno;
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
-
-	if (hci_read_clock(dd, handle, which, clock, accuracy, timeout) < 0)
-		err = -errno;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 {
+	int err;
 	struct hci_conn_info_req *cr;
-	int dd, err = 0;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -EIO;
 
 	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
 	bacpy(&cr->bdaddr, bdaddr);
 	cr->type = ACL_LINK;
 
-	if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+	if (ioctl(devs[index], HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		err = -errno;
 		goto fail;
 	}
 
+	err = 0;
 	*handle = htobs(cr->conn_info->handle);
 
 fail:
-	hci_close_dev(dd);
 	g_free(cr);
 	return err;
 }
@@ -828,150 +699,79 @@ fail:
 static int hciops_write_eir_data(int index, uint8_t *data)
 {
 	write_ext_inquiry_response_cp cp;
-	int err, dd;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
 
 	memset(&cp, 0, sizeof(cp));
 	memcpy(cp.data, data, 240);
 
-	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_EXT_INQUIRY_RESPONSE,
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+				OCF_WRITE_EXT_INQUIRY_RESPONSE,
 				WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &cp) < 0)
-		err = -errno;
-	else
-		err = 0;
+		return -errno;
 
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_read_bd_addr(devs[index], bdaddr, HCI_REQ_TIMEOUT) < 0)
 		return -errno;
 
-	if (hci_read_bd_addr(dd, bdaddr, HCI_REQ_TIMEOUT) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_set_event_mask(int index, uint8_t *events, size_t count)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_SET_EVENT_MASK,
+							count, events) < 0)
 		return -errno;
 
-	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
-						count, events) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_write_inq_mode(int index, uint8_t mode)
 {
 	write_inquiry_mode_cp cp;
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.mode = mode;
 
-	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
 					WRITE_INQUIRY_MODE_CP_SIZE, &cp) < 0)
-		err = -errno;
-	else
-		err = 0;
+		return -errno;
 
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_read_inq_tx_pwr(int index)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+			OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL) < 0)
 		return -errno;
 
-	if (hci_send_cmd(dd, OGF_HOST_CTL,
-			OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_block_device(int index, bdaddr_t *bdaddr)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (ioctl(devs[index], HCIBLOCKADDR, bdaddr) < 0)
 		return -errno;
 
-	if (ioctl(dd, HCIBLOCKADDR, bdaddr) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_unblock_device(int index, bdaddr_t *bdaddr)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (ioctl(devs[index], HCIUNBLOCKADDR, bdaddr) < 0)
 		return -errno;
 
-	if (ioctl(dd, HCIUNBLOCKADDR, bdaddr) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_get_conn_list(int index, GSList **conns)
 {
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
-	int dd, err, i;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
+	int err, i;
 
 	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
 
@@ -979,7 +779,7 @@ static int hciops_get_conn_list(int index, GSList **conns)
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(dd, HCIGETCONNLIST, cl) < 0) {
+	if (ioctl(devs[index], HCIGETCONNLIST, cl) < 0) {
 		err = -errno;
 		goto fail;
 	}
@@ -991,159 +791,93 @@ static int hciops_get_conn_list(int index, GSList **conns)
 		*conns = g_slist_append(*conns, g_memdup(ci, sizeof(*ci)));
 
 fail:
-	hci_close_dev(dd);
 	g_free(cl);
 	return err;
 }
 
 static int hciops_read_local_version(int index, struct hci_version *ver)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_read_local_version(devs[index], ver, HCI_REQ_TIMEOUT) < 0)
 		return -errno;
 
-	if (hci_read_local_version(dd, ver, HCI_REQ_TIMEOUT) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_read_local_features(int index, uint8_t *features)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_read_local_features(devs[index], features,
+							HCI_REQ_TIMEOUT) < 0)
 		return -errno;
 
-	if (hci_read_local_features(dd, features, HCI_REQ_TIMEOUT) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return  0;
 }
 
 static int hciops_read_local_ext_features(int index)
 {
-	int dd, err;
 	uint8_t page_num = 1;
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_send_cmd(devs[index], OGF_INFO_PARAM,
+				OCF_READ_LOCAL_EXT_FEATURES, 1, &page_num) < 0)
 		return -errno;
 
-	err = hci_send_cmd(dd, OGF_INFO_PARAM, OCF_READ_LOCAL_EXT_FEATURES,
-								1, &page_num);
-	if (err < 0)
-		err = -errno;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_init_ssp_mode(int index, uint8_t *mode)
 {
 	write_simple_pairing_mode_cp cp;
-	int dd, err;
 
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
-
-	if (ioctl(dd, HCIGETAUTHINFO, NULL) < 0 && errno == EINVAL) {
-		err = 0;
-		goto done;
-	}
+	if (ioctl(devs[index], HCIGETAUTHINFO, NULL) < 0 && errno == EINVAL)
+		return 0;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.mode = 0x01;
 
-	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE,
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+				OCF_WRITE_SIMPLE_PAIRING_MODE,
 				WRITE_SIMPLE_PAIRING_MODE_CP_SIZE, &cp) < 0)
-		err = -errno;
-	else
-		err = 0;
+		return -errno;
 
-done:
-	hci_close_dev(dd);
-	return err;
+	return 0;
 }
 
 static int hciops_read_link_policy(int index)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_send_cmd(devs[index], OGF_LINK_POLICY,
+				OCF_READ_DEFAULT_LINK_POLICY, 0, NULL) < 0)
 		return -errno;
 
-	if (hci_send_cmd(dd, OGF_LINK_POLICY, OCF_READ_DEFAULT_LINK_POLICY,
-								0, NULL) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_disconnect(int index, uint16_t handle)
 {
-	int dd, err;
 	disconnect_cp cp;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = htobs(handle);
 	cp.reason = HCI_OE_USER_ENDED_CONNECTION;
 
-	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_DISCONNECT,
+	if (hci_send_cmd(devs[index], OGF_LINK_CTL, OCF_DISCONNECT,
 						DISCONNECT_CP_SIZE, &cp) < 0)
-		err = -errno;
-	else
-		err = 0;
+		return -errno;
 
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 {
 	delete_stored_link_key_cp cp;
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
 
 	/* Delete the link key from the Bluetooth chip */
-	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_DELETE_STORED_LINK_KEY,
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_DELETE_STORED_LINK_KEY,
 				DELETE_STORED_LINK_KEY_CP_SIZE, &cp) < 0)
-		err = -errno;
-	else
-		err = 0;
+		return -errno;
 
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_request_authentication(int index, uint16_t handle,
@@ -1152,11 +886,6 @@ static int hciops_request_authentication(int index, uint16_t handle,
 	struct hci_request rq;
 	auth_requested_cp cp;
 	evt_cmd_status rp;
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
 
 	memset(&rp, 0, sizeof(rp));
 
@@ -1172,28 +901,18 @@ static int hciops_request_authentication(int index, uint16_t handle,
 	rq.rlen   = EVT_CMD_STATUS_SIZE;
 	rq.event  = EVT_CMD_STATUS;
 
-	if (hci_send_req(dd, &rq, HCI_REQ_TIMEOUT) < 0) {
-		err = -errno;
-		goto fail;
-	}
+	if (hci_send_req(devs[index], &rq, HCI_REQ_TIMEOUT) < 0)
+		return -errno;
 
 	if (status)
 		*status = rp.status;
 
-	err = 0;
-
-fail:
-	hci_close_dev(dd);
-	return err;
+	return 0;
 }
 
 static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
+	int err;
 
 	if (pin) {
 		pin_code_reply_cp pr;
@@ -1203,49 +922,45 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 		bacpy(&pr.bdaddr, bdaddr);
 		memcpy(pr.pin_code, pin, len);
 		pr.pin_len = len;
-		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+						OCF_PIN_CODE_REPLY,
 						PIN_CODE_REPLY_CP_SIZE, &pr);
 	} else
-		err = hci_send_cmd(dd, OGF_LINK_CTL,
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
 					OCF_PIN_CODE_NEG_REPLY, 6, bdaddr);
 
-	hci_close_dev(dd);
+	if (err < 0)
+		err = -errno;
 
 	return err;
 }
 
 static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 {
-	int dd, err;
+	int err;
 	user_confirm_reply_cp cp;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
 
 	if (success)
-		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_CONFIRM_REPLY,
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+					OCF_USER_CONFIRM_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 	else
-		err = hci_send_cmd(dd, OGF_LINK_CTL,
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
 					OCF_USER_CONFIRM_NEG_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 
-	hci_close_dev(dd);
+	if (err < 0)
+		err = -errno;
 
 	return err;
 }
 
 static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
+	int err;
 
 	if (passkey != INVALID_PASSKEY) {
 		user_passkey_reply_cp cp;
@@ -1254,13 +969,15 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 		bacpy(&cp.bdaddr, bdaddr);
 		cp.passkey = passkey;
 
-		err = hci_send_cmd(dd, OGF_LINK_CTL, OCF_USER_PASSKEY_REPLY,
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+					OCF_USER_PASSKEY_REPLY,
 					USER_PASSKEY_REPLY_CP_SIZE, &cp);
 	} else
-		err = hci_send_cmd(dd, OGF_LINK_CTL,
+		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
 					OCF_USER_PASSKEY_NEG_REPLY, 6, bdaddr);
 
-	hci_close_dev(dd);
+	if (err < 0)
+		err = -errno;
 
 	return err;
 }
@@ -1268,88 +985,51 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
 {
 	struct hci_auth_info_req req;
-	int err, dd;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
 
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, bdaddr);
 
-	if (ioctl(dd, HCIGETAUTHINFO, (unsigned long) &req) < 0) {
-		err = -errno;
-		goto fail;
-	}
-
-	err = 0;
+	if (ioctl(devs[index], HCIGETAUTHINFO, (unsigned long) &req) < 0)
+		return -errno;
 
 	if (auth)
 		*auth = req.type;
 
-fail:
-	hci_close_dev(dd);
-	return err;
+	return 0;
 }
 
 static int hciops_read_scan_enable(int index)
 {
-	int err, dd;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_READ_SCAN_ENABLE,
+								0, NULL) < 0)
 		return -errno;
 
-	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_SCAN_ENABLE, 0, NULL) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_read_ssp_mode(int index)
 {
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+				OCF_READ_SIMPLE_PAIRING_MODE, 0, NULL) < 0)
 		return -errno;
 
-	if (hci_send_cmd(dd, OGF_HOST_CTL, OCF_READ_SIMPLE_PAIRING_MODE,
-								0, NULL) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static int hciops_write_le_host(int index, uint8_t le, uint8_t simul)
 {
 	write_le_host_supported_cp cp;
-	int dd, err;
-
-	dd = hci_open_dev(index);
-	if (dd < 0)
-		return -errno;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.le = le;
 	cp.simul = simul;
 
-	err = hci_send_cmd(dd, OGF_HOST_CTL, OCF_WRITE_LE_HOST_SUPPORTED,
-					WRITE_LE_HOST_SUPPORTED_CP_SIZE, &cp);
-	if (err < 0)
-		err = -errno;
+	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+				OCF_WRITE_LE_HOST_SUPPORTED,
+				WRITE_LE_HOST_SUPPORTED_CP_SIZE, &cp) < 0)
+		return -errno;
 
-	hci_close_dev(dd);
-
-	return err;
+	return 0;
 }
 
 static struct btd_adapter_ops hci_ops = {
