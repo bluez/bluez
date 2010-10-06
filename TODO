@@ -52,3 +52,12 @@ ATT/GATT
   Priority: Medium
   Complexity: C2
 
+- GATT server: fix MTU exchange
+
+  Priority: Medium
+  Complexity: C2
+
+- GATT server: fix read by UUID (read by handle works)
+
+  Priority: Medium
+  Complexity: C2
