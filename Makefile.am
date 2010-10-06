@@ -90,15 +90,6 @@ endif
 attrib_sources = attrib/att.h attrib/att.c attrib/gatt.h attrib/gatt.c \
 		attrib/gattrib.h attrib/gattrib.c
 
-if NETLINK
-plugin_LTLIBRARIES += plugins/netlink.la
-
-plugins_netlink_la_LIBADD = @NETLINK_LIBS@
-plugins_netlink_la_LDFLAGS = -module -avoid-version -no-undefined
-plugins_netlink_la_CFLAGS = -fvisibility=hidden @DBUS_CFLAGS@ \
-					@GLIB_CFLAGS@ @NETLINK_CFLAGS@
-endif
-
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 					gdbus/object.c gdbus/polkit.c
 

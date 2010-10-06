@@ -55,15 +55,5 @@ if (test "${enable_capng}" = "yes"); then
 	AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
 fi
 
-AC_ARG_ENABLE(netlink, AC_HELP_STRING([--enable-netlink],
-		[enable netlink support]), [enable_netlink=${enableval}])
-if (test "${enable_netlink}" = "yes"); then
-	PKG_CHECK_MODULES(NETLINK, libnl-1, dummy=yes,
-				AC_MSG_ERROR(Netlink library is required))
-	AC_SUBST(NETLINK_CFLAGS)
-	AC_SUBST(NETLINK_LIBS)
-fi
-AM_CONDITIONAL(NETLINK, test "${enable_netlink}" = "yes")
-
 AC_OUTPUT(Makefile scripts/bluetooth.rules doc/version.xml src/bluetooth.ver
 					src/bluetoothd.8 bluez.pc)
