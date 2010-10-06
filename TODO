@@ -32,6 +32,13 @@ ATT/GATT
   Priority: Low
   Complexity: C1
 
+- Attribute server shall implement attribute permission verification,
+  returning an error code if necessary. See Volume 3, Part F, 3.2.5
+  for more information.
+
+  Priority: Low
+  Complexity: C2
+
 - Long reads/writes don't work (consisting of multiple request packets)
 
   Priority: Low
