@@ -220,7 +220,7 @@ sbin_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			$(attrib_sources) $(btio_sources) \
-			$(mcap_sources) \
+			$(mcap_sources) src/bluetooth.ver \
 			src/main.c src/log.h src/log.c \
 			src/security.c src/rfkill.c src/hcid.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \
@@ -242,8 +242,9 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 src_bluetoothd_LDADD = lib/libbluetooth.la @GLIB_LIBS@ @DBUS_LIBS@ \
 							@CAPNG_LIBS@ -ldl
 src_bluetoothd_LDFLAGS = -Wl,--export-dynamic \
-					-Wl,--version-script=src/bluetooth.ver
-src_bluetoothd_DEPENDENCIES = src/bluetooth.ver lib/libbluetooth.la
+				-Wl,--version-script=$(srcdir)/src/bluetooth.ver
+
+src_bluetoothd_DEPENDENCIES = lib/libbluetooth.la
 
 builtin_files = src/builtin.h $(builtin_nodist)
 

@@ -55,5 +55,5 @@ if (test "${enable_capng}" = "yes"); then
 	AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
 fi
 
-AC_OUTPUT(Makefile scripts/bluetooth.rules doc/version.xml src/bluetooth.ver
+AC_OUTPUT(Makefile scripts/bluetooth.rules doc/version.xml
 					src/bluetoothd.8 bluez.pc)
