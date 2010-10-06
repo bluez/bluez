@@ -16,8 +16,9 @@ fi
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--libexecdir=/lib \
-		--enable-netlink \
 		--enable-capng \
+		--enable-attrib \
+		--enable-health \
 		--enable-tracer \
 		--enable-tools \
 		--enable-bccmd \
