@@ -208,11 +208,11 @@ static gint cmp_chan_mdl(gconstpointer a, gconstpointer mdl)
 
 static uint8_t get_app_id()
 {
-	GSList *l;
 	uint8_t id = next_app_id;
 
 	do {
-		l = g_slist_find_custom(applications, &id, cmp_app_id);
+		GSList *l = g_slist_find_custom(applications, &id, cmp_app_id);
+
 		if (!l) {
 			next_app_id = (id % HDP_MDEP_FINAL) + 1;
 			return id;
@@ -245,6 +245,7 @@ static void device_unref_mcl(struct hdp_device *hdp_device)
 {
 	if (!hdp_device->mcl)
 		return;
+
 	mcap_mcl_unref(hdp_device->mcl);
 	hdp_device->mcl = NULL;
 	hdp_device->mcl_conn = FALSE;
@@ -491,8 +492,8 @@ static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
 		mode = L2CAP_MODE_STREAMING;
 
 	if (mcap_connect_mdl(hdp_chann->mdl, mode, dcpsm, hdp_conn->cb,
-						hdp_tmp_dc_data_ref(hdp_conn),
-						hdp_tmp_dc_data_destroy, &gerr))
+					hdp_tmp_dc_data_ref(hdp_conn),
+					hdp_tmp_dc_data_destroy, &gerr))
 		return;
 
 	hdp_tmp_dc_data_unref(hdp_conn);
@@ -519,8 +520,8 @@ static void device_reconnect_mdl_cb(struct mcap_mdl *mdl, GError *err,
 	dc_data->cb = hdp_mdl_reconn_cb;
 
 	if (hdp_get_dcpsm(dc_data->hdp_chann->dev, hdp_get_dcpsm_cb,
-						hdp_tmp_dc_data_ref(dc_data),
-						hdp_tmp_dc_data_destroy, &gerr))
+					hdp_tmp_dc_data_ref(dc_data),
+					hdp_tmp_dc_data_destroy, &gerr))
 		return;
 
 	error("%s", gerr->message);
@@ -567,6 +568,7 @@ static DBusMessage *channel_acquire_continue(struct hdp_tmp_dc_data *data,
 	reply = g_dbus_create_error(data->msg, ERROR_INTERFACE ".HealthError",
 					"Cannot reconnect: %s", gerr->message);
 	g_error_free(gerr);
+
 	return reply;
 }
 
@@ -610,6 +612,7 @@ static DBusMessage *channel_acquire(DBusConnection *conn,
 					"%s", gerr->message);
 	hdp_tmp_dc_data_unref(dc_data);
 	g_error_free(gerr);
+
 	return reply;
 }
 
@@ -881,7 +884,7 @@ gboolean hdp_set_mcl_cb(struct hdp_device *device, GError **err)
 {
 	gboolean ret;
 
-	ret =  mcap_mcl_set_cb(device->mcl, device, err,
+	ret = mcap_mcl_set_cb(device->mcl, device, err,
 		MCAP_MDL_CB_CONNECTED, hdp_mcap_mdl_connected_cb,
 		MCAP_MDL_CB_CLOSED, hdp_mcap_mdl_closed_cb,
 		MCAP_MDL_CB_DELETED, hdp_mcap_mdl_deleted_cb,
@@ -896,6 +899,7 @@ gboolean hdp_set_mcl_cb(struct hdp_device *device, GError **err)
 	error("Can't set mcl callbacks, closing mcl");
 	mcap_close_mcl(device->mcl, TRUE);
 	device->mcl_conn = FALSE;
+
 	return FALSE;
 }
 
@@ -922,6 +926,7 @@ static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 		devices = g_slist_append(devices, hdp_device);
 	} else
 		hdp_device = l->data;
+
 	hdp_device->mcl = mcap_mcl_ref(mcl);
 	hdp_device->mcl_conn = TRUE;
 
@@ -1260,7 +1265,6 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 	return;
 
 fail:
-
 	reply = g_dbus_create_error(user_data->msg,
 						ERROR_INTERFACE ".HealthError",
 						"%s", gerr->message);
@@ -1414,14 +1418,12 @@ static void hdp_mdl_delete_cb(GError *err, gpointer data)
 	DBusMessage *reply;
 	char *path;
 
-	if (err) {
-		if (err->code != MCAP_INVALID_MDL) {
-			reply = g_dbus_create_error(del_data->msg,
-					ERROR_INTERFACE ".HealthError",
-					"%s", err->message);
-			g_dbus_send_message(del_data->conn, reply);
-			return;
-		}
+	if (err && err->code != MCAP_INVALID_MDL) {
+		reply = g_dbus_create_error(del_data->msg,
+						ERROR_INTERFACE ".HealthError",
+						"%s", err->message);
+		g_dbus_send_message(del_data->conn, reply);
+		return;
 	}
 
 	path = g_strdup(del_data->hdp_chann->path);
@@ -1578,6 +1580,7 @@ static struct hdp_device *create_health_device(DBusConnection *conn,
 
 	if (!device)
 		return NULL;
+
 	dev = g_new0(struct hdp_device, 1);
 	dev->conn = dbus_connection_ref(conn);
 	dev->dev = btd_device_ref(device);

@@ -200,6 +200,7 @@ static gboolean parse_role(DBusMessageIter *iter, gpointer data, GError **err)
 	}
 
 	app->role_set = TRUE;
+
 	return TRUE;
 }
 
@@ -261,6 +262,7 @@ static gboolean parse_chan_type(DBusMessageIter *iter, gpointer data,
 	}
 
 	app->chan_type_set = TRUE;
+
 	return TRUE;
 }
 
@@ -329,6 +331,7 @@ static gboolean set_sdp_services_uuid(sdp_record_t *record, HdpRole role)
 	}
 
 	sdp_list_free(svc_list, NULL);
+
 	return TRUE;
 }
 
@@ -440,6 +443,7 @@ static gboolean register_service_profiles(sdp_record_t *sdp_record)
 		ret = TRUE;
 
 	sdp_list_free(profile_list, NULL);
+
 	return ret;
 }
 
@@ -871,6 +875,7 @@ static gboolean get_prot_desc_entry(sdp_data_t *entry, int type, guint16 *val)
 		return FALSE;
 
 	*val = iter->val.uint16;
+
 	return TRUE;
 }
 
@@ -1062,12 +1067,13 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 
 	bt_string2uuid(&uuid, HDP_UUID);
 	if (bt_search_service(&src, &dst, &uuid, search_cb, conn_data,
-							destroy_con_mcl_data)) {
+						destroy_con_mcl_data)) {
 		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
 						"Can't get remote SDP record");
 		g_free(conn_data);
 		return FALSE;
 	}
+
 	return TRUE;
 }
 
@@ -1091,6 +1097,7 @@ static void get_dcpsm_cb(sdp_list_t *recs, int err, gpointer data)
 
 	dcpsm_data->func(dcpsm, dcpsm_data->data, NULL);
 	return;
+
 fail:
 	dcpsm_data->func(0, dcpsm_data->data, gerr);
 	g_error_free(gerr);
@@ -1134,5 +1141,6 @@ gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
 		g_free(dcpsm_data);
 		return FALSE;
 	}
+
 	return TRUE;
 }
