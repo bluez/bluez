@@ -32,6 +32,16 @@ ATT/GATT
   Priority: Low
   Complexity: C1
 
+- Client needs to export a property in the Device Characteristic hierarchy
+  to manage characteristic value changes reports in the remote device.
+  Currently, Client Characteristic Configuration attribute is not exposed
+  as an object. The user needs to use gatttool to change the value of the
+  this attribute to receive notification/indications. Export this attribute
+  as a property is a proposal that needs further discussion.
+
+  Priority: Low
+  Complexity: C1
+
 - Attribute server shall implement attribute permission verification,
   returning an error code if necessary. See Volume 3, Part F, 3.2.5
   for more information.
