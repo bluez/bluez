@@ -25,55 +25,6 @@ ATT/GATT
   Complexity: C2
   Owner: Claudio Takahasi <claudio.takahasi@openbossa.org>
 
-- gatttool should have the ability to wait for req responses before
-  quitting (some servers require a small sleep even with cmd's). Maybe a
-  --delay-exit or --timeout command line switch.
-
-  Priority: Low
-  Complexity: C1
-
-- Client needs to export a property in the Device Characteristic hierarchy
-  to manage characteristic value changes reports in the remote device.
-  Currently, Client Characteristic Configuration attribute is not exposed
-  as an object. The user needs to use gatttool to change the value of the
-  this attribute to receive notification/indications. Export this attribute
-  as a property is a proposal that needs further discussion.
-
-  Priority: Low
-  Complexity: C1
-
-- Attribute server shall implement attribute permission verification,
-  returning an error code if necessary. See Volume 3, Part F, 3.2.5
-  for more information.
-
-  Priority: Low
-  Complexity: C2
-
-- Attribute server should process queued GATT/ATT commands if the
-  client disconnects. The client can simply send a command and quit,
-  without wait for a response(ex: Write Command). For this scenario
-  that the client disconnects the link quickly the queued received
-  command is ignored.
-
-  Priority: Low
-  Complecity: C1
-
-- Long reads/writes don't work (consisting of multiple request packets)
-
-  Priority: Low
-  Complexity: C2
-
-- Add sdp discovery support to gattool with BR (--sdp, default is 0x1f)
-
-  Priority: Low
-  Complexity: C1
-
-- Add command line support to use medium instead of (default) low
-  security level with gatttool (--sec-level)
-
-  Priority: Low
-  Complexity: C1
-
 - Add ATT/GATT parsing to hcidump
 
   Priority: Medium
@@ -95,4 +46,53 @@ ATT/GATT
   current "single operation at a time" mode.
 
   Priority: Medium
+  Complexity: C2
+
+- gatttool should have the ability to wait for req responses before
+  quitting (some servers require a small sleep even with cmd's). Maybe a
+  --delay-exit or --timeout command line switch.
+
+  Priority: Low
+  Complexity: C1
+
+- Client needs to export a property in the Device Characteristic hierarchy
+  to manage characteristic value changes reports in the remote device.
+  Currently, Client Characteristic Configuration attribute is not exposed
+  as an object. The user needs to use gatttool to change the value of the
+  this attribute to receive notification/indications. Export this attribute
+  as a property is a proposal that needs further discussion.
+
+  Priority: Low
+  Complexity: C1
+
+- Attribute server should process queued GATT/ATT commands if the
+  client disconnects. The client can simply send a command and quit,
+  without wait for a response(ex: Write Command). For this scenario
+  that the client disconnects the link quickly the queued received
+  command is ignored.
+
+  Priority: Low
+  Complecity: C1
+
+- Add sdp discovery support to gattool with BR (--sdp, default is 0x1f)
+
+  Priority: Low
+  Complexity: C1
+
+- Add command line support to use medium instead of (default) low
+  security level with gatttool (--sec-level)
+
+  Priority: Low
+  Complexity: C1
+
+- Long reads/writes don't work (consisting of multiple request packets)
+
+  Priority: Low
+  Complexity: C2
+
+- Attribute server shall implement attribute permission verification,
+  returning an error code if necessary. See Volume 3, Part F, 3.2.5
+  for more information.
+
+  Priority: Low
   Complexity: C2
