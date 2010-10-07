@@ -814,6 +814,29 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 	GSList *l;
 
 	DBG("Data channel request");
+
+	if (mdepid == 0) {
+		/* Is an echo channel */
+		switch (*conf) {
+		case HDP_NO_PREFERENCE_DC:
+			*conf = HDP_RELIABLE_DC;
+		case HDP_RELIABLE_DC:
+			break;
+		case HDP_STREAMING_DC:
+			return MCAP_CONFIGURATION_REJECTED;
+		default:
+			/* Special case defined in HDP spec 3.4. When an invalid
+			* configuration is received we shall close the MCL when
+			* we are still processing the callback. */
+			mcap_close_mcl(dev->mcl, FALSE);
+			dev->mcl_conn = FALSE;
+			return MCAP_CONFIGURATION_REJECTED; /* not processed */
+		}
+
+		dev->ndc = new_channel(dev, *conf, NULL, mdlid, NULL);
+		return MCAP_SUCCESS;
+	}
+
 	l = g_slist_find_custom(applications, &mdepid, cmp_app_id);
 	if (!l)
 		return MCAP_INVALID_MDEP;
