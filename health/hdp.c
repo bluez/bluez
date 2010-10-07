@@ -649,6 +649,35 @@ static GDBusMethodTable health_channels_methods[] = {
 	{ NULL }
 };
 
+static struct hdp_channel *new_channel(struct hdp_device *dev,
+						uint8_t config,
+						struct mcap_mdl *mdl,
+						uint16_t mdlid,
+						struct hdp_application *app)
+{
+	struct hdp_channel *hdp_chann;
+
+	hdp_chann = g_new0(struct hdp_channel, 1);
+	hdp_chann->config = config;
+	hdp_chann->dev = dev;
+	hdp_chann->mdl = mdl;
+	hdp_chann->mdlid = mdlid;
+	hdp_chann->app = app;
+
+	if (app)
+		hdp_chann->mdep = app->id;
+	else
+		hdp_chann->mdep = 0;
+
+	hdp_chann->path = g_strdup_printf("%s/chan%d",
+					device_get_path(hdp_chann->dev->dev),
+					hdp_chann->mdlid);
+
+	dev->channels = g_slist_append(dev->channels, hdp_chann);
+
+	return hdp_chann;
+}
+
 static struct hdp_channel *create_channel(struct hdp_device *dev,
 						uint8_t config,
 						struct mcap_mdl *mdl,
@@ -658,17 +687,7 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 {
 	struct hdp_channel *hdp_chann;
 
-	hdp_chann = g_new0(struct hdp_channel, 1);
-	hdp_chann->config = config;
-	hdp_chann->dev = dev;
-	hdp_chann->mdep = app->id;
-	hdp_chann->mdl = mdl;
-	hdp_chann->mdlid = mdlid;
-	hdp_chann->app = app;
-
-	hdp_chann->path = g_strdup_printf("%s/chan%d",
-					device_get_path(hdp_chann->dev->dev),
-					hdp_chann->mdlid);
+	hdp_chann = new_channel(dev, config, mdl, mdlid, app);
 
 	if (!g_dbus_register_interface(dev->conn, hdp_chann->path,
 					HEALTH_CHANNEL,
@@ -679,8 +698,6 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 		health_channel_destroy(hdp_chann);
 		return NULL;
 	}
-
-	dev->channels = g_slist_append(dev->channels, hdp_chann);
 
 	return hdp_chann;
 }
