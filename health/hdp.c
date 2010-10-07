@@ -461,8 +461,6 @@ static void hdp_mdl_reconn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 		return;
 	}
 
-	chan->mdl_conn = TRUE;
-
 	fd = mcap_mdl_get_fd(dc_data->hdp_chann->mdl);
 	if (fd <= 0)
 		reply = g_dbus_create_error(dc_data->msg,
@@ -622,14 +620,9 @@ static DBusMessage *channel_release(DBusConnection *conn,
 	struct hdp_channel *hdp_chann = user_data;
 	int fd;
 
-	if (!hdp_chann->mdl_conn)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
 	fd = mcap_mdl_get_fd(hdp_chann->mdl);
-	if (fd < 0) {
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".HealthError",
-							"Can't close channel");
-	}
+	if (fd < 0)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
 	close(fd);
 
@@ -697,10 +690,10 @@ static void close_channel(gpointer a, gpointer b)
 	struct hdp_channel *chan = a;
 	int fd;
 
-	if (!chan->mdl_conn)
+	fd = mcap_mdl_get_fd(chan->mdl);
+	if (fd < 0)
 		return;
 
-	fd = mcap_mdl_get_fd(chan->mdl);
 	close(fd);
 }
 
@@ -722,7 +715,6 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 					DBUS_TYPE_OBJECT_PATH, &dev->ndc->path,
 					DBUS_TYPE_INVALID);
 
-	dev->ndc->mdl_conn = TRUE;
 	if (!dev->fr)
 		dev->fr = dev->ndc;
 	dev->ndc = NULL;
@@ -734,17 +726,11 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 
 static void hdp_mcap_mdl_closed_cb(struct mcap_mdl *mdl, void *data)
 {
-	struct hdp_device *dev = data;
-	struct hdp_channel *chan;
-	GSList *l;
+	/* struct hdp_device *dev = data; */
 
 	DBG("hdp_mcap_mdl_closed_cb");
-	l = g_slist_find_custom(dev->channels, mdl, cmp_chan_mdl);
-	if (!l)
-		return;
 
-	chan = l->data;
-	chan->mdl_conn = FALSE;
+	/* Nothing to do */
 }
 
 static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
@@ -760,7 +746,6 @@ static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 		return;
 
 	chan = l->data;
-	chan->mdl_conn = FALSE;
 
 	g_dbus_emit_signal(dev->conn, device_get_path(dev->dev), HEALTH_DEVICE,
 					"ChannelDeleted",
@@ -952,13 +937,6 @@ static void mcl_reconnected(struct mcap_mcl *mcl, gpointer data)
 	hdp_set_mcl_cb(hdp_device, NULL);
 }
 
-static void set_chann_disconnected(gpointer data, gpointer user_data)
-{
-	struct hdp_channel *chan = data;
-
-	chan->mdl_conn = FALSE;
-}
-
 static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 {
 	struct hdp_device *hdp_device;
@@ -970,8 +948,6 @@ static void mcl_disconnected(struct mcap_mcl *mcl, gpointer data)
 
 	hdp_device = l->data;
 	hdp_device->mcl_conn = FALSE;
-
-	g_slist_foreach(hdp_device->channels, set_chann_disconnected, NULL);
 
 	DBG("Mcl disconnected %s", device_get_path(hdp_device->dev));
 }
@@ -1182,7 +1158,6 @@ static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 		return;
 	}
 
-	hdp_chann->mdl_conn = TRUE;
 	reply = g_dbus_create_reply(hdp_conn->msg,
 					DBUS_TYPE_OBJECT_PATH, &hdp_chann->path,
 					DBUS_TYPE_INVALID);

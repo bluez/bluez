@@ -115,7 +115,6 @@ struct hdp_channel {
 	uint8_t			config;		/* Channel configuration */
 	uint8_t			mdep;		/* Remote MDEP */
 	uint16_t		mdlid;		/* Data channel Id */
-	gboolean		mdl_conn;	/* MDL status */
 };
 
 #endif /* __HDP_TYPES_H__ */
