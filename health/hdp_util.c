@@ -57,7 +57,6 @@ struct get_mdep_data {
 
 struct conn_mcl_data {
 	int			refs;
-	struct hdp_application	*app;
 	gpointer		data;
 	hdp_continue_proc_f	func;
 	GDestroyNotify		destroy;
@@ -1044,7 +1043,6 @@ fail:
 }
 
 gboolean hdp_establish_mcl(struct hdp_device *device,
-						struct hdp_application *app,
 						hdp_continue_proc_f func,
 						gpointer data,
 						GDestroyNotify destroy,
@@ -1059,7 +1057,6 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 
 	conn_data = g_new0(struct conn_mcl_data, 1);
 	conn_data->refs = 1;
-	conn_data->app = app;
 	conn_data->func = func;
 	conn_data->data = data;
 	conn_data->destroy = destroy;

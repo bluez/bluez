@@ -601,7 +601,7 @@ static DBusMessage *channel_acquire(DBusConnection *conn,
 		return reply;
 	}
 
-	if (hdp_establish_mcl(chan->dev, chan->app, channel_acquire_cb,
+	if (hdp_establish_mcl(chan->dev, channel_acquire_cb,
 						hdp_tmp_dc_data_ref(dc_data),
 						hdp_tmp_dc_data_destroy, &gerr))
 		return NULL;
@@ -1307,7 +1307,7 @@ static void device_get_mdep_cb(uint8_t mdep, gpointer data, GError *err)
 		return;
 	}
 
-	if (hdp_establish_mcl(dc_data->dev, dc_data->app, device_create_dc_cb,
+	if (hdp_establish_mcl(dc_data->dev, device_create_dc_cb,
 					dc_data, destroy_create_dc_data, &gerr))
 		return;
 
@@ -1474,7 +1474,7 @@ static DBusMessage *device_destroy_channel(DBusConnection *conn,
 		goto fail;
 	}
 
-	if (hdp_establish_mcl(device, hdp_chan->app, hdp_continue_del_cb,
+	if (hdp_establish_mcl(device, hdp_continue_del_cb,
 						hdp_tmp_dc_data_ref(del_data),
 						hdp_tmp_dc_data_destroy, &err))
 		return NULL;

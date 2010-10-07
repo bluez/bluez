@@ -40,7 +40,6 @@ gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
 				GError **err);
 
 gboolean hdp_establish_mcl(struct hdp_device *device,
-						struct hdp_application *app,
 						hdp_continue_proc_f func,
 						gpointer data,
 						GDestroyNotify destroy,
