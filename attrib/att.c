@@ -363,6 +363,56 @@ uint16_t dec_write_cmd(const uint8_t *pdu, int len, uint16_t *handle,
 	return len;
 }
 
+uint16_t enc_write_req(uint16_t handle, const uint8_t *value, int vlen,
+							uint8_t *pdu, int len)
+{
+	const uint16_t min_len = sizeof(pdu[0]) + sizeof(handle);
+
+	if (pdu == NULL)
+		return 0;
+
+	if (len < min_len)
+		return 0;
+
+	if (vlen > len - min_len)
+		vlen = len - min_len;
+
+	pdu[0] = ATT_OP_WRITE_REQ;
+	att_put_u16(handle, &pdu[1]);
+
+	if (vlen > 0) {
+		memcpy(&pdu[3], value, vlen);
+		return min_len + vlen;
+	}
+
+	return min_len;
+}
+
+uint16_t dec_write_req(const uint8_t *pdu, int len, uint16_t *handle,
+						uint8_t *value, int *vlen)
+{
+	const uint16_t min_len = sizeof(pdu[0]) + sizeof(*handle);
+
+	if (pdu == NULL)
+		return 0;
+
+	if (value == NULL || vlen == NULL || handle == NULL)
+		return 0;
+
+	if (len < min_len)
+		return 0;
+
+	if (pdu[0] != ATT_OP_WRITE_REQ)
+		return 0;
+
+	*handle = att_get_u16(&pdu[1]);
+	*vlen = len - min_len;
+	if (*vlen > 0)
+		memcpy(value, pdu + min_len, *vlen);
+
+	return len;
+}
+
 uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(handle);

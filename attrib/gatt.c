@@ -76,6 +76,17 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 							user_data, NULL);
 }
 
+guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
+			int vlen, GAttribResultFunc func, gpointer user_data)
+{
+	uint8_t pdu[ATT_DEFAULT_MTU];
+	guint16 plen;
+
+	plen = enc_write_req(handle, value, vlen, pdu, sizeof(pdu));
+	return g_attrib_send(attrib, ATT_OP_WRITE_REQ, pdu, plen, func,
+							user_data, NULL);
+}
+
 guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
 				GAttribResultFunc func, gpointer user_data)
 {

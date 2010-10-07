@@ -504,6 +504,17 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 
 		length = find_info(start, end, opdu, channel->mtu);
 		break;
+	case ATT_OP_WRITE_REQ:
+		length = dec_write_req(ipdu, len, &start, value, &vlen);
+		if (length == 0) {
+			status = ATT_ECODE_INVALID_PDU;
+			goto done;
+		}
+
+		write_value(start, value, vlen);
+		opdu[0] = ATT_OP_WRITE_RESP;
+		length = sizeof(opdu[0]);
+		break;
 	case ATT_OP_WRITE_CMD:
 		length = dec_write_cmd(ipdu, len, &start, value, &vlen);
 		if (length > 0)
@@ -512,7 +523,6 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 	case ATT_OP_FIND_BY_TYPE_REQ:
 	case ATT_OP_READ_BLOB_REQ:
 	case ATT_OP_READ_MULTI_REQ:
-	case ATT_OP_WRITE_REQ:
 	case ATT_OP_PREP_WRITE_REQ:
 	case ATT_OP_EXEC_WRITE_REQ:
 	default:
