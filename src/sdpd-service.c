@@ -204,7 +204,7 @@ static void eir_generate_uuid128(sdp_list_t *list,
 		for (i = 0; i < index; i++) {
 			for (k = 0; k < SIZEOF_UUID128; k++) {
 				if (uuid128[i * SIZEOF_UUID128 + k] !=
-					uuid128_data[SIZEOF_UUID128 - k])
+					uuid128_data[SIZEOF_UUID128 - 1 - k])
 					break;
 			}
 			if (k == SIZEOF_UUID128)
