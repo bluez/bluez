@@ -1007,6 +1007,9 @@ add_numbers:
 	add_address(contact, home_addr, ADDR_TYPE_HOME);
 	add_address(contact, work_addr, ADDR_TYPE_WORK);
 
+	g_free(home_addr);
+	g_free(work_addr);
+
 	DBG("contact %p", contact);
 
 	/* Adding contacts data to wrapper struct - this data will be used to
