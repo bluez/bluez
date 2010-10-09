@@ -714,24 +714,28 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct hdp_device *dev = data;
+	struct hdp_channel *chan;
 
 	DBG("hdp_mcap_mdl_connected_cb");
 	if (!dev->ndc)
 		return;
 
-	dev->ndc->mdl = mdl;
+	chan = dev->ndc;
+	chan->mdl = mdl;
+	dev->ndc = NULL;
 
-	if (!g_slist_find(dev->channels, dev->ndc))
-		dev->channels = g_slist_prepend(dev->channels, dev->ndc);
+	if (!g_slist_find(dev->channels, chan))
+		dev->channels = g_slist_prepend(dev->channels, chan);
 
 	g_dbus_emit_signal(dev->conn, device_get_path(dev->dev), HEALTH_DEVICE,
 					"ChannelConnected",
-					DBUS_TYPE_OBJECT_PATH, &dev->ndc->path,
+					DBUS_TYPE_OBJECT_PATH, &chan->path,
 					DBUS_TYPE_INVALID);
 
-	if (!dev->fr)
-		dev->fr = dev->ndc;
-	dev->ndc = NULL;
+	if (dev->fr)
+		return;
+
+	dev->fr = chan;
 
 	emit_property_changed(dev->conn, device_get_path(dev->dev),
 					HEALTH_DEVICE, "MainChannel",
