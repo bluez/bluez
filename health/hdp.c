@@ -633,9 +633,18 @@ static void health_channel_destroy(void *data)
 {
 	struct hdp_channel *hdp_chan = data;
 	struct hdp_device *dev = hdp_chan->dev;
+	char *empty_path;
 
 	DBG("Destroy Health Channel %s", hdp_chan->path);
 	dev->channels = g_slist_remove(dev->channels, hdp_chan);
+
+	if (hdp_chan == dev->fr) {
+		dev->fr = NULL;
+		empty_path = "";
+		emit_property_changed(dev->conn, device_get_path(dev->dev),
+					HEALTH_DEVICE, "MainChannel",
+					DBUS_TYPE_OBJECT_PATH, &empty_path);
+	}
 
 	g_free(hdp_chan->path);
 	g_free(hdp_chan);
@@ -702,18 +711,6 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 	return hdp_chann;
 }
 
-static void close_channel(gpointer a, gpointer b)
-{
-	struct hdp_channel *chan = a;
-	int fd;
-
-	fd = mcap_mdl_get_fd(chan->mdl);
-	if (fd < 0)
-		return;
-
-	close(fd);
-}
-
 static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct hdp_device *dev = data;
@@ -754,7 +751,7 @@ static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct hdp_device *dev = data;
 	struct hdp_channel *chan;
-	char *path, *empty_path;
+	char *path;
 	GSList *l;
 
 	DBG("hdp_mcap_mdl_deleted_cb");
@@ -768,15 +765,6 @@ static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 					"ChannelDeleted",
 					DBUS_TYPE_OBJECT_PATH, &chan->path,
 					DBUS_TYPE_INVALID);
-
-	if (chan == dev->fr) {
-		g_slist_foreach(dev->channels, close_channel, NULL);
-		dev->fr = NULL;
-		empty_path = "";
-		emit_property_changed(dev->conn, device_get_path(dev->dev),
-					HEALTH_DEVICE, "MainChannel",
-					DBUS_TYPE_OBJECT_PATH, &empty_path);
-	}
 
 	path = g_strdup(chan->path);
 	g_dbus_unregister_interface(dev->conn, path, HEALTH_CHANNEL);
