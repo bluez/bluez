@@ -2019,6 +2019,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 				BT_IO_OPT_PSM, ccpsm,
 				BT_IO_OPT_MTU, MCAP_CC_MTU,
 				BT_IO_OPT_SEC_LEVEL, sec,
+				BT_IO_OPT_MODE, L2CAP_MODE_ERTM,
 				BT_IO_OPT_INVALID);
 	if (!ms->ccio) {
 		error("%s", (*gerr)->message);
