@@ -3210,7 +3210,6 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 
 	/* clean pending HCI cmds */
 	device_get_address(device, &bdaddr);
-	hci_req_queue_remove(adapter->dev_id, &bdaddr);
 
 	if (device_is_authenticating(device))
 		device_cancel_authentication(device, TRUE);
@@ -3649,4 +3648,16 @@ void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 	struct hci_dev *dev = &adapter->dev;
 
 	memcpy(dev->extfeatures, features, 8);
+}
+
+int btd_adapter_get_remote_name(struct btd_adapter *adapter, bdaddr_t *bdaddr)
+{
+	return adapter_ops->resolve_name(adapter->dev_id, bdaddr);
+}
+
+int btd_adapter_get_remote_version(struct btd_adapter *adapter,
+					uint16_t handle, gboolean delayed)
+{
+	return adapter_ops->get_remote_version(adapter->dev_id, handle,
+								delayed);
 }

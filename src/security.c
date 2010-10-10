@@ -80,139 +80,6 @@ struct g_io_info {
 
 static struct g_io_info io_data[HCI_MAX_DEV];
 
-static GSList *hci_req_queue = NULL;
-
-static struct hci_req_data *hci_req_data_new(int dev_id, const bdaddr_t *dba,
-					uint16_t ogf, uint16_t ocf, int event,
-					const void *cparam, int clen)
-{
-	struct hci_req_data *data;
-
-	data = g_new0(struct hci_req_data, 1);
-
-	data->cparam = g_malloc(clen);
-	memcpy(data->cparam, cparam, clen);
-
-	bacpy(&data->dba, dba);
-
-	data->dev_id = dev_id;
-	data->status = REQ_PENDING;
-	data->ogf    = ogf;
-	data->ocf    = ocf;
-	data->event  = event;
-	data->clen   = clen;
-
-	return data;
-}
-
-static int hci_req_find_by_devid(const void *data, const void *user_data)
-{
-	const struct hci_req_data *req = data;
-	const int *dev_id = user_data;
-
-	return (*dev_id - req->dev_id);
-}
-
-static void hci_req_queue_process(int dev_id)
-{
-	int dd, ret_val;
-
-	/* send the next pending cmd */
-	dd = hci_open_dev(dev_id);
-	if (dd < 0) {
-		error("hci_open_dev(%d): %s (%d)", dev_id, strerror(errno),
-									errno);
-		return;
-	}
-
-	do {
-		struct hci_req_data *data;
-		GSList *l = g_slist_find_custom(hci_req_queue, &dev_id,
-							hci_req_find_by_devid);
-
-		if (!l)
-			break;
-
-		data = l->data;
-		data->status = REQ_SENT;
-
-		ret_val = hci_send_cmd(dd, data->ogf, data->ocf,
-						data->clen, data->cparam);
-		if (ret_val < 0) {
-			hci_req_queue = g_slist_remove(hci_req_queue, data);
-			g_free(data->cparam);
-			g_free(data);
-		}
-
-	} while (ret_val < 0);
-
-	hci_close_dev(dd);
-}
-
-static void hci_req_queue_append(struct hci_req_data *data)
-{
-	GSList *l;
-	struct hci_req_data *match;
-
-	hci_req_queue = g_slist_append(hci_req_queue, data);
-
-	l = g_slist_find_custom(hci_req_queue, &data->dev_id,
-							hci_req_find_by_devid);
-	match = l->data;
-
-	if (match->status == REQ_SENT)
-		return;
-
-	hci_req_queue_process(data->dev_id);
-}
-
-void hci_req_queue_remove(int dev_id, bdaddr_t *dba)
-{
-	GSList *cur, *next;
-	struct hci_req_data *req;
-
-	for (cur = hci_req_queue; cur != NULL; cur = next) {
-		req = cur->data;
-		next = cur->next;
-		if ((req->dev_id != dev_id) || (bacmp(&req->dba, dba)))
-			continue;
-
-		hci_req_queue = g_slist_remove(hci_req_queue, req);
-		g_free(req->cparam);
-		g_free(req);
-	}
-}
-
-static void check_pending_hci_req(int dev_id, int event)
-{
-	struct hci_req_data *data;
-	GSList *l;
-
-	if (!hci_req_queue)
-		return;
-
-	/* find the first element(pending)*/
-	l = g_slist_find_custom(hci_req_queue, &dev_id, hci_req_find_by_devid);
-
-	if (!l)
-		return;
-
-	data = l->data;
-
-	/* skip if there is pending confirmation */
-	if (data->status == REQ_SENT) {
-		if (data->event != event)
-			return;
-
-		/* remove the confirmed cmd */
-		hci_req_queue = g_slist_remove(hci_req_queue, data);
-		g_free(data->cparam);
-		g_free(data);
-	}
-
-	hci_req_queue_process(dev_id);
-}
-
 static int get_handle(int dev, bdaddr_t *sba, bdaddr_t *dba, uint16_t *handle)
 {
 	struct hci_conn_list_req *cl;
@@ -882,9 +749,14 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 {
 	evt_conn_complete *evt = ptr;
 	char filename[PATH_MAX];
-	remote_name_req_cp cp_name;
-	struct hci_req_data *data;
 	char local_addr[18], peer_addr[18], *str;
+	struct btd_adapter *adapter;
+
+	adapter = manager_find_adapter(sba);
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
 
 	if (evt->link_type != ACL_LINK)
 		return;
@@ -897,17 +769,7 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 
 	update_lastused(sba, &evt->bdaddr);
 
-	/* Request remote name */
-	memset(&cp_name, 0, sizeof(cp_name));
-	bacpy(&cp_name.bdaddr, &evt->bdaddr);
-	cp_name.pscan_rep_mode = 0x02;
-
-	data = hci_req_data_new(dev_id, &evt->bdaddr, OGF_LINK_CTL,
-				OCF_REMOTE_NAME_REQ,
-				EVT_REMOTE_NAME_REQ_COMPLETE,
-				&cp_name, REMOTE_NAME_REQ_CP_SIZE);
-
-	hci_req_queue_append(data);
+	btd_adapter_get_remote_name(adapter, &evt->bdaddr);
 
 	/* check if the remote version needs be requested */
 	ba2str(sba, local_addr);
@@ -917,19 +779,10 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 							"manufacturers");
 
 	str = textfile_get(filename, peer_addr);
-	if (!str) {
-		read_remote_version_cp cp;
-
-		memset(&cp, 0, sizeof(cp));
-		cp.handle = evt->handle;
-
-		data = hci_req_data_new(dev_id, &evt->bdaddr, OGF_LINK_CTL,
-					OCF_READ_REMOTE_VERSION,
-					EVT_READ_REMOTE_VERSION_COMPLETE,
-					&cp, READ_REMOTE_VERSION_CP_SIZE);
-
-		hci_req_queue_append(data);
-	} else
+	if (!str)
+		btd_adapter_get_remote_version(adapter, btohs(evt->handle),
+									TRUE);
+	else
 		free(str);
 }
 
@@ -1108,12 +961,6 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 	case EVT_LE_META_EVENT:
 		le_metaevent(dev, &di->bdaddr, ptr);
 		break;
-	}
-
-	/* Check for pending command request */
-	check_pending_hci_req(di->dev_id, eh->evt);
-
-	switch (eh->evt) {
 	case EVT_PIN_CODE_REQ:
 		pin_code_request(dev, &di->bdaddr, (bdaddr_t *) ptr);
 		break;

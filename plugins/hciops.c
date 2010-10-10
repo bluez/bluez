@@ -1042,6 +1042,46 @@ static int hciops_write_le_host(int index, uint8_t le, uint8_t simul)
 	return 0;
 }
 
+struct remote_version_req {
+	int index;
+	uint16_t handle;
+};
+
+static gboolean get_remote_version(gpointer user_data)
+{
+	struct remote_version_req *req = user_data;
+	read_remote_version_cp cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = htobs(req->handle);
+
+	hci_send_cmd(SK(req->index), OGF_LINK_CTL, OCF_READ_REMOTE_VERSION,
+					READ_REMOTE_VERSION_CP_SIZE, &cp);
+
+	return FALSE;
+}
+
+static int hciops_get_remote_version(int index, uint16_t handle,
+							gboolean delayed)
+{
+	struct remote_version_req *req;
+
+	req = g_new0(struct remote_version_req, 1);
+	req->handle = handle;
+	req->index = index;
+
+	if (!delayed) {
+		get_remote_version(req);
+		g_free(req);
+		return 0;
+	}
+
+	g_timeout_add_seconds_full(G_PRIORITY_DEFAULT, 1, get_remote_version,
+								req, g_free);
+
+	return 0;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -1086,6 +1126,7 @@ static struct btd_adapter_ops hci_ops = {
 	.read_scan_enable = hciops_read_scan_enable,
 	.read_ssp_mode = hciops_read_ssp_mode,
 	.write_le_host = hciops_write_le_host,
+	.get_remote_version = hciops_get_remote_version,
 };
 
 static int hciops_init(void)
