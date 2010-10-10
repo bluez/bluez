@@ -50,8 +50,18 @@ static int child_pipe[2] = { -1, -1 };
 static guint child_io_id = 0;
 static guint ctl_io_id = 0;
 
+#define SK(index) devs[(index)].sk
+
 static int max_dev = -1;
-static int *devs = NULL;
+static struct dev_info {
+	int sk;
+} *devs = NULL;
+
+static void init_dev_info(int index, int sk)
+{
+	memset(&devs[index], 0, sizeof(struct dev_info));
+	SK(index) = sk;
+}
 
 static gboolean child_exit(GIOChannel *io, GIOCondition cond, void *user_data)
 {
@@ -95,13 +105,13 @@ static void device_devup_setup(int index)
 		write_page_timeout_cp cp;
 
 		cp.timeout = htobs(main_opts.pageto);
-		hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
+		hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
 
 	/* Set default link policy */
 	policy = htobs(main_opts.link_policy);
-	hci_send_cmd(devs[index], OGF_LINK_POLICY,
+	hci_send_cmd(SK(index), OGF_LINK_POLICY,
 				OCF_WRITE_DEFAULT_LINK_POLICY, 2, &policy);
 
 	start_security_manager(index);
@@ -127,10 +137,10 @@ static void init_device(int index)
 
 	if (index > max_dev) {
 		max_dev = index;
-		devs = g_realloc(devs, sizeof(int *) * (max_dev + 1));
+		devs = g_realloc(devs, sizeof(devs[0]) * (max_dev + 1));
 	}
 
-	devs[index] = dd;
+	init_dev_info(index, dd);
 
 	/* Do initialization in the separate process */
 	pid = fork();
@@ -211,8 +221,8 @@ static void device_event(int event, int index)
 
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", index);
-		hci_close_dev(devs[index]);
-		devs[index] = -1;
+		hci_close_dev(SK(index));
+		init_dev_info(index, -1);
 		manager_unregister_adapter(index);
 		break;
 
@@ -377,8 +387,8 @@ static void hciops_cleanup(void)
 	int i;
 
 	for (i = 0; i <= max_dev; i++) {
-		if (devs[i] >= 0)
-			hci_close_dev(devs[i]);
+		if (SK(i) >= 0)
+			hci_close_dev(SK(i));
 	}
 
 	g_free(devs);
@@ -410,7 +420,7 @@ static int hciops_start(int index)
 {
 	int err;
 
-	if (ioctl(devs[index], HCIDEVUP, index) == 0)
+	if (ioctl(SK(index), HCIDEVUP, index) == 0)
 		return 0;
 
 	if (errno == EALREADY)
@@ -427,7 +437,7 @@ static int hciops_stop(int index)
 {
 	int err = 0;
 
-	if (ioctl(devs[index], HCIDEVDOWN, index) == 0)
+	if (ioctl(SK(index), HCIDEVDOWN, index) == 0)
 		goto done; /* on success */
 
 	if (errno != EALREADY) {
@@ -447,7 +457,7 @@ static int hciops_powered(int index, gboolean powered)
 	if (powered)
 		return hciops_start(index);
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
 		return -errno;
 
@@ -458,7 +468,7 @@ static int hciops_connectable(int index)
 {
 	uint8_t mode = SCAN_PAGE;
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
 		return -errno;
 
@@ -469,7 +479,7 @@ static int hciops_discoverable(int index)
 {
 	uint8_t mode = (SCAN_PAGE | SCAN_INQUIRY);
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 								1, &mode) < 0)
 		return -errno;
 
@@ -482,7 +492,7 @@ static int hciops_set_class(int index, uint32_t class)
 
 	memcpy(cp.dev_class, &class, 3);
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
 					WRITE_CLASS_OF_DEV_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -504,7 +514,7 @@ static int hciops_set_limited_discoverable(int index, uint32_t class,
 	cp.num_current_iac = num;
 	memcpy(&cp.lap, lap, num * 3);
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_CURRENT_IAC_LAP,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_CURRENT_IAC_LAP,
 						(num * 3 + 1), &cp) < 0)
 		return -errno;
 
@@ -526,7 +536,7 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 		cp.length  = length;
 		cp.num_rsp = 0x00;
 
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 						OCF_PERIODIC_INQUIRY,
 						PERIODIC_INQUIRY_CP_SIZE, &cp);
 	} else {
@@ -537,7 +547,7 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 		inq_cp.length = length;
 		inq_cp.num_rsp = 0x00;
 
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 					OCF_INQUIRY, INQUIRY_CP_SIZE, &inq_cp);
 	}
 
@@ -556,10 +566,10 @@ static int hciops_stop_inquiry(int index)
 		return -errno;
 
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 						OCF_INQUIRY_CANCEL, 0, 0);
 	else
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
 	if (err < 0)
 		err = -errno;
@@ -569,11 +579,11 @@ static int hciops_stop_inquiry(int index)
 
 static int hciops_start_scanning(int index)
 {
-	if (hci_le_set_scan_parameters(devs[index], 0x01, htobs(0x0010),
+	if (hci_le_set_scan_parameters(SK(index), 0x01, htobs(0x0010),
 					htobs(0x0010), 0x00, 0x00) < 0)
 		return -errno;
 
-	if (hci_le_set_scan_enable(devs[index], 0x01, 0x00) < 0)
+	if (hci_le_set_scan_enable(SK(index), 0x01, 0x00) < 0)
 		return -errno;
 
 	return 0;
@@ -581,7 +591,7 @@ static int hciops_start_scanning(int index)
 
 static int hciops_stop_scanning(int index)
 {
-	if (hci_le_set_scan_enable(devs[index], 0x00, 0x00) < 0)
+	if (hci_le_set_scan_enable(SK(index), 0x00, 0x00) < 0)
 		return -errno;
 
 	return 0;
@@ -595,7 +605,7 @@ static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 	bacpy(&cp.bdaddr, bdaddr);
 	cp.pscan_rep_mode = 0x02;
 
-	if (hci_send_cmd(devs[index], OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
+	if (hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
 					REMOTE_NAME_REQ_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -609,7 +619,7 @@ static int hciops_set_name(int index, const char *name)
 	memset(&cp, 0, sizeof(cp));
 	strncpy((char *) cp.name, name, sizeof(cp.name));
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
 				CHANGE_LOCAL_NAME_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -618,7 +628,7 @@ static int hciops_set_name(int index, const char *name)
 
 static int hciops_read_name(int index)
 {
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_READ_LOCAL_NAME,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_READ_LOCAL_NAME,
 								0, 0) < 0)
 		return -errno;
 
@@ -632,7 +642,7 @@ static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
 
-	if (hci_send_cmd(devs[index], OGF_LINK_CTL, OCF_REMOTE_NAME_REQ_CANCEL,
+	if (hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_REMOTE_NAME_REQ_CANCEL,
 				REMOTE_NAME_REQ_CANCEL_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -654,10 +664,10 @@ static int hciops_fast_connectable(int index, gboolean enable)
 
 	cp.window = 0x0012;	/* default 11.25 msec page scan window */
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_PAGE_ACTIVITY,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_PAGE_ACTIVITY,
 					WRITE_PAGE_ACTIVITY_CP_SIZE, &cp) < 0)
 		return -errno;
-	else if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+	else if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 				OCF_WRITE_PAGE_SCAN_TYPE, 1, &type) < 0)
 		return -errno;
 
@@ -667,7 +677,7 @@ static int hciops_fast_connectable(int index, gboolean enable)
 static int hciops_read_clock(int index, int handle, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy)
 {
-	if (hci_read_clock(devs[index], handle, which, clock, accuracy,
+	if (hci_read_clock(SK(index), handle, which, clock, accuracy,
 								timeout) < 0)
 		return -errno;
 
@@ -683,7 +693,7 @@ static int hciops_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 	bacpy(&cr->bdaddr, bdaddr);
 	cr->type = ACL_LINK;
 
-	if (ioctl(devs[index], HCIGETCONNINFO, (unsigned long) cr) < 0) {
+	if (ioctl(SK(index), HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		err = -errno;
 		goto fail;
 	}
@@ -703,7 +713,7 @@ static int hciops_write_eir_data(int index, uint8_t *data)
 	memset(&cp, 0, sizeof(cp));
 	memcpy(cp.data, data, 240);
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 				OCF_WRITE_EXT_INQUIRY_RESPONSE,
 				WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &cp) < 0)
 		return -errno;
@@ -713,7 +723,7 @@ static int hciops_write_eir_data(int index, uint8_t *data)
 
 static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 {
-	if (hci_read_bd_addr(devs[index], bdaddr, HCI_REQ_TIMEOUT) < 0)
+	if (hci_read_bd_addr(SK(index), bdaddr, HCI_REQ_TIMEOUT) < 0)
 		return -errno;
 
 	return 0;
@@ -721,7 +731,7 @@ static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 
 static int hciops_set_event_mask(int index, uint8_t *events, size_t count)
 {
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_SET_EVENT_MASK,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_SET_EVENT_MASK,
 							count, events) < 0)
 		return -errno;
 
@@ -735,7 +745,7 @@ static int hciops_write_inq_mode(int index, uint8_t mode)
 	memset(&cp, 0, sizeof(cp));
 	cp.mode = mode;
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
 					WRITE_INQUIRY_MODE_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -744,7 +754,7 @@ static int hciops_write_inq_mode(int index, uint8_t mode)
 
 static int hciops_read_inq_tx_pwr(int index)
 {
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 			OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL) < 0)
 		return -errno;
 
@@ -753,7 +763,7 @@ static int hciops_read_inq_tx_pwr(int index)
 
 static int hciops_block_device(int index, bdaddr_t *bdaddr)
 {
-	if (ioctl(devs[index], HCIBLOCKADDR, bdaddr) < 0)
+	if (ioctl(SK(index), HCIBLOCKADDR, bdaddr) < 0)
 		return -errno;
 
 	return 0;
@@ -761,7 +771,7 @@ static int hciops_block_device(int index, bdaddr_t *bdaddr)
 
 static int hciops_unblock_device(int index, bdaddr_t *bdaddr)
 {
-	if (ioctl(devs[index], HCIUNBLOCKADDR, bdaddr) < 0)
+	if (ioctl(SK(index), HCIUNBLOCKADDR, bdaddr) < 0)
 		return -errno;
 
 	return 0;
@@ -779,7 +789,7 @@ static int hciops_get_conn_list(int index, GSList **conns)
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(devs[index], HCIGETCONNLIST, cl) < 0) {
+	if (ioctl(SK(index), HCIGETCONNLIST, cl) < 0) {
 		err = -errno;
 		goto fail;
 	}
@@ -797,7 +807,7 @@ fail:
 
 static int hciops_read_local_version(int index, struct hci_version *ver)
 {
-	if (hci_read_local_version(devs[index], ver, HCI_REQ_TIMEOUT) < 0)
+	if (hci_read_local_version(SK(index), ver, HCI_REQ_TIMEOUT) < 0)
 		return -errno;
 
 	return 0;
@@ -805,7 +815,7 @@ static int hciops_read_local_version(int index, struct hci_version *ver)
 
 static int hciops_read_local_features(int index, uint8_t *features)
 {
-	if (hci_read_local_features(devs[index], features,
+	if (hci_read_local_features(SK(index), features,
 							HCI_REQ_TIMEOUT) < 0)
 		return -errno;
 
@@ -816,7 +826,7 @@ static int hciops_read_local_ext_features(int index)
 {
 	uint8_t page_num = 1;
 
-	if (hci_send_cmd(devs[index], OGF_INFO_PARAM,
+	if (hci_send_cmd(SK(index), OGF_INFO_PARAM,
 				OCF_READ_LOCAL_EXT_FEATURES, 1, &page_num) < 0)
 		return -errno;
 
@@ -827,13 +837,13 @@ static int hciops_init_ssp_mode(int index, uint8_t *mode)
 {
 	write_simple_pairing_mode_cp cp;
 
-	if (ioctl(devs[index], HCIGETAUTHINFO, NULL) < 0 && errno == EINVAL)
+	if (ioctl(SK(index), HCIGETAUTHINFO, NULL) < 0 && errno == EINVAL)
 		return 0;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.mode = 0x01;
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 				OCF_WRITE_SIMPLE_PAIRING_MODE,
 				WRITE_SIMPLE_PAIRING_MODE_CP_SIZE, &cp) < 0)
 		return -errno;
@@ -843,7 +853,7 @@ static int hciops_init_ssp_mode(int index, uint8_t *mode)
 
 static int hciops_read_link_policy(int index)
 {
-	if (hci_send_cmd(devs[index], OGF_LINK_POLICY,
+	if (hci_send_cmd(SK(index), OGF_LINK_POLICY,
 				OCF_READ_DEFAULT_LINK_POLICY, 0, NULL) < 0)
 		return -errno;
 
@@ -858,7 +868,7 @@ static int hciops_disconnect(int index, uint16_t handle)
 	cp.handle = htobs(handle);
 	cp.reason = HCI_OE_USER_ENDED_CONNECTION;
 
-	if (hci_send_cmd(devs[index], OGF_LINK_CTL, OCF_DISCONNECT,
+	if (hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_DISCONNECT,
 						DISCONNECT_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -873,7 +883,7 @@ static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 	bacpy(&cp.bdaddr, bdaddr);
 
 	/* Delete the link key from the Bluetooth chip */
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_DELETE_STORED_LINK_KEY,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_DELETE_STORED_LINK_KEY,
 				DELETE_STORED_LINK_KEY_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -901,7 +911,7 @@ static int hciops_request_authentication(int index, uint16_t handle,
 	rq.rlen   = EVT_CMD_STATUS_SIZE;
 	rq.event  = EVT_CMD_STATUS;
 
-	if (hci_send_req(devs[index], &rq, HCI_REQ_TIMEOUT) < 0)
+	if (hci_send_req(SK(index), &rq, HCI_REQ_TIMEOUT) < 0)
 		return -errno;
 
 	if (status)
@@ -922,11 +932,11 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 		bacpy(&pr.bdaddr, bdaddr);
 		memcpy(pr.pin_code, pin, len);
 		pr.pin_len = len;
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 						OCF_PIN_CODE_REPLY,
 						PIN_CODE_REPLY_CP_SIZE, &pr);
 	} else
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 					OCF_PIN_CODE_NEG_REPLY, 6, bdaddr);
 
 	if (err < 0)
@@ -944,11 +954,11 @@ static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 	bacpy(&cp.bdaddr, bdaddr);
 
 	if (success)
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 					OCF_USER_CONFIRM_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 	else
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 					OCF_USER_CONFIRM_NEG_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 
@@ -969,11 +979,11 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 		bacpy(&cp.bdaddr, bdaddr);
 		cp.passkey = passkey;
 
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 					OCF_USER_PASSKEY_REPLY,
 					USER_PASSKEY_REPLY_CP_SIZE, &cp);
 	} else
-		err = hci_send_cmd(devs[index], OGF_LINK_CTL,
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
 					OCF_USER_PASSKEY_NEG_REPLY, 6, bdaddr);
 
 	if (err < 0)
@@ -989,7 +999,7 @@ static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, bdaddr);
 
-	if (ioctl(devs[index], HCIGETAUTHINFO, (unsigned long) &req) < 0)
+	if (ioctl(SK(index), HCIGETAUTHINFO, (unsigned long) &req) < 0)
 		return -errno;
 
 	if (auth)
@@ -1000,7 +1010,7 @@ static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
 
 static int hciops_read_scan_enable(int index)
 {
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL, OCF_READ_SCAN_ENABLE,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_READ_SCAN_ENABLE,
 								0, NULL) < 0)
 		return -errno;
 
@@ -1009,7 +1019,7 @@ static int hciops_read_scan_enable(int index)
 
 static int hciops_read_ssp_mode(int index)
 {
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 				OCF_READ_SIMPLE_PAIRING_MODE, 0, NULL) < 0)
 		return -errno;
 
@@ -1024,7 +1034,7 @@ static int hciops_write_le_host(int index, uint8_t le, uint8_t simul)
 	cp.le = le;
 	cp.simul = simul;
 
-	if (hci_send_cmd(devs[index], OGF_HOST_CTL,
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 				OCF_WRITE_LE_HOST_SUPPORTED,
 				WRITE_LE_HOST_SUPPORTED_CP_SIZE, &cp) < 0)
 		return -errno;
