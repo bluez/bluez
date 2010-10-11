@@ -115,6 +115,8 @@ struct hdp_channel {
 	uint8_t			config;		/* Channel configuration */
 	uint8_t			mdep;		/* Remote MDEP */
 	uint16_t		mdlid;		/* Data channel Id */
+	int			wid;		/* Watcher for echo channels */
+	gboolean		echo_done;	/* Is a echo channel and was already done */
 };
 
 #endif /* __HDP_TYPES_H__ */

@@ -646,6 +646,9 @@ static void health_channel_destroy(void *data)
 					DBUS_TYPE_OBJECT_PATH, &empty_path);
 	}
 
+	if (hdp_chan->wid)
+		g_source_remove(hdp_chan->wid);
+
 	g_free(hdp_chan->path);
 	g_free(hdp_chan);
 }
@@ -711,10 +714,48 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 	return hdp_chann;
 }
 
+static gboolean serve_echo(GIOChannel *io_chan, GIOCondition cond,
+								gpointer data)
+{
+	struct hdp_channel *chan = data;
+	uint8_t buf[MCAP_DC_MTU];
+	int fd, len, count, w;
+
+	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
+		chan->wid = 0;
+		return FALSE;
+	}
+
+	if (chan->echo_done)
+		goto fail;
+
+	chan->echo_done = TRUE;
+
+	fd = g_io_channel_unix_get_fd(io_chan);
+	len = read(fd, buf, sizeof(buf));
+
+	count = 0;
+	while (count < len) {
+		w = write(fd, buf, (len - count));
+		if (w < 0)
+			goto fail;
+		count += w;
+	}
+
+	return TRUE;
+
+fail:
+	mcap_close_mcl(chan->dev->mcl, FALSE);
+	chan->wid = 0;
+	return FALSE;
+}
+
 static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct hdp_device *dev = data;
 	struct hdp_channel *chan;
+	GIOChannel *io_chan;
+	int fd;
 
 	DBG("hdp_mcap_mdl_connected_cb");
 	if (!dev->ndc)
@@ -726,6 +767,20 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 
 	if (!g_slist_find(dev->channels, chan))
 		dev->channels = g_slist_prepend(dev->channels, chan);
+
+	if (chan->mdep == HDP_MDEP_ECHO) {
+		fd = mcap_mdl_get_fd(chan->mdl);
+		if (fd < 0)
+			return;
+
+		chan->echo_done = FALSE;
+		io_chan = g_io_channel_unix_new(fd);
+		chan->wid = g_io_add_watch(io_chan,
+				G_IO_ERR | G_IO_HUP | G_IO_NVAL | G_IO_IN,
+				serve_echo, chan);
+		g_io_channel_unref(io_chan);
+		return;
+	}
 
 	g_dbus_emit_signal(dev->conn, device_get_path(dev->dev), HEALTH_DEVICE,
 					"ChannelConnected",
