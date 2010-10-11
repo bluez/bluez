@@ -765,13 +765,15 @@ static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 
 	chan = l->data;
 
-	g_dbus_emit_signal(dev->conn, device_get_path(dev->dev), HEALTH_DEVICE,
-					"ChannelDeleted",
+	if (chan->mdep != HDP_MDEP_ECHO)
+		g_dbus_emit_signal(dev->conn, device_get_path(dev->dev),
+					HEALTH_DEVICE, "ChannelDeleted",
 					DBUS_TYPE_OBJECT_PATH, &chan->path,
 					DBUS_TYPE_INVALID);
 
 	path = g_strdup(chan->path);
-	g_dbus_unregister_interface(dev->conn, path, HEALTH_CHANNEL);
+	if (!g_dbus_unregister_interface(dev->conn, path, HEALTH_CHANNEL))
+		health_channel_destroy(chan);
 	g_free(path);
 }
 
@@ -788,8 +790,9 @@ static void hdp_mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 	if (!g_slist_find(dev->channels, dev->ndc))
 		dev->channels = g_slist_prepend(dev->channels, dev->ndc);
 
-	g_dbus_emit_signal(dev->conn, device_get_path(dev->dev), HEALTH_DEVICE,
-					"ChannelConnected",
+	if (dev->ndc->mdep != HDP_MDEP_ECHO)
+		g_dbus_emit_signal(dev->conn, device_get_path(dev->dev),
+					HEALTH_DEVICE, "ChannelConnected",
 					DBUS_TYPE_OBJECT_PATH, &dev->ndc->path,
 					DBUS_TYPE_INVALID);
 
@@ -889,7 +892,8 @@ static uint8_t hdp_mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
 
 	chan = l->data;
 
-	if (!dev->fr && (chan->config != HDP_RELIABLE_DC))
+	if (!dev->fr && (chan->config != HDP_RELIABLE_DC) &&
+						(chan->mdep != HDP_MDEP_ECHO))
 		return MCAP_UNSPECIFIED_ERROR;
 
 	dev->ndc = chan;
