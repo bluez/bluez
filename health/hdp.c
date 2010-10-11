@@ -1068,6 +1068,22 @@ static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 	DBG("Mcl uncached %s", path);
 }
 
+static void remove_channels(struct hdp_device *dev)
+{
+	struct hdp_channel *chan;
+	char *path;
+
+	while (dev->channels) {
+		chan = dev->channels->data;
+
+		path = g_strdup(chan->path);
+		if (!g_dbus_unregister_interface(dev->conn, path,
+								HEALTH_CHANNEL))
+			health_channel_destroy(chan);
+		g_free(path);
+	}
+}
+
 static void check_devices_mcl()
 {
 	struct hdp_device *dev;
@@ -1080,6 +1096,8 @@ static void check_devices_mcl()
 
 		if (!dev->sdp_present)
 			to_delete = g_slist_append(to_delete, dev);
+
+		remove_channels(dev);
 	}
 
 	for (l = to_delete; l; l = l->next) {
@@ -1090,17 +1108,22 @@ static void check_devices_mcl()
 	g_slist_free(to_delete);
 }
 
+static void release_adapter_instance(struct hdp_adapter *hdp_adapter)
+{
+	if (!hdp_adapter->mi)
+		return;
+	mcap_release_instance(hdp_adapter->mi);
+	hdp_adapter->mi = NULL;
+	check_devices_mcl();
+}
+
 static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 {
 	GError *err = NULL;
 	bdaddr_t addr;
 
 	if (!applications) {
-		if (hdp_adapter->mi) {
-			mcap_release_instance(hdp_adapter->mi);
-			hdp_adapter->mi = NULL;
-			check_devices_mcl();
-		}
+		release_adapter_instance(hdp_adapter);
 		goto update;
 	}
 
@@ -1138,8 +1161,7 @@ update:
 	error("Error updating the SDP record");
 
 fail:
-	if (hdp_adapter->mi)
-		mcap_release_instance(hdp_adapter->mi);
+	release_adapter_instance(hdp_adapter);
 	if (err)
 		g_error_free(err);
 	return FALSE;
@@ -1179,8 +1201,7 @@ void hdp_adapter_unregister(struct btd_adapter *adapter)
 	adapters = g_slist_remove(adapters, hdp_adapter);
 	if (hdp_adapter->sdp_handler)
 		remove_record_from_server(hdp_adapter->sdp_handler);
-	if (hdp_adapter->mi)
-		mcap_release_instance(hdp_adapter->mi);
+	release_adapter_instance(hdp_adapter);
 	btd_adapter_unref(hdp_adapter->btd_adapter);
 	g_free(hdp_adapter);
 }
