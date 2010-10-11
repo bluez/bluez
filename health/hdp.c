@@ -1480,6 +1480,12 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Configuration not valid for sources");
 
+	if (!device->fr && config == HDP_STREAMING_DC)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Configuration not valid, first "
+					"channel should be reliable");
+
 	data = g_new0(struct hdp_create_dc, 1);
 	data->dev = device;
 	data->config = config;
