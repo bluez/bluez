@@ -27,6 +27,7 @@
 
 #include "log.h"
 #include "error.h"
+#include <stdlib.h>
 #include <stdint.h>
 #include <hdp_types.h>
 #include <hdp_util.h>
@@ -44,6 +45,8 @@
 #ifndef DBUS_TYPE_UNIX_FD
 	#define DBUS_TYPE_UNIX_FD -1
 #endif
+
+#define HDP_ECHO_LEN	15
 
 static DBusConnection *connection = NULL;
 
@@ -1231,12 +1234,27 @@ static void destroy_create_dc_data(gpointer data)
 	hdp_create_data_unref(dc_data);
 }
 
+static void *generate_echo_packet()
+{
+	uint8_t *buf;
+	int i;
+
+	buf = g_malloc(HDP_ECHO_LEN);
+	srand(time(NULL));
+
+	for(i = 0; i < HDP_ECHO_LEN; i++)
+		buf[i] = rand() % UINT8_MAX;
+
+	return buf;
+}
+
 static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 								gpointer data)
 {
 	struct hdp_tmp_dc_data *hdp_conn =  data;
 	GError *gerr = NULL;
 	DBusMessage *reply;
+	void *buf;
 	int fd;
 
 	if (err) {
@@ -1265,7 +1283,10 @@ static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 		return;
 	}
 
-	/* TODO: Generate buffer with random data and send it */
+	buf = generate_echo_packet();
+	send_echo_data(fd, buf, HDP_ECHO_LEN);
+
+	/* TODO: Check received data */
 }
 
 static void delete_mdl_cb(GError *err, gpointer data)
