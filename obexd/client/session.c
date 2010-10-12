@@ -1274,10 +1274,8 @@ int session_send(struct session_data *session, const char *filename,
 
 	transfer = transfer_register(session, filename, targetname, NULL,
 					NULL);
-	if (transfer == NULL) {
-		err = -EINVAL;
-		goto fail;
-	}
+	if (transfer == NULL)
+		return -EINVAL;
 
 	/* Transfer should start if it is the first in the pending list */
 	if (transfer != session->pending->data)
