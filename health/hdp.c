@@ -46,6 +46,7 @@
 	#define DBUS_TYPE_UNIX_FD -1
 #endif
 
+#define ECHO_TIMEOUT	1 /* second */
 #define HDP_ECHO_LEN	15
 
 static DBusConnection *connection = NULL;
@@ -1252,7 +1253,38 @@ static void *generate_echo_packet()
 static gboolean check_echo(GIOChannel *io_chan, GIOCondition cond,
 								gpointer data)
 {
-	/* TODO: Implement this function */
+	struct hdp_tmp_dc_data *hdp_conn =  data;
+	uint8_t buf[MCAP_DC_MTU];
+	DBusMessage *reply;
+	gboolean value;
+	int fd, len;
+
+	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
+		goto fail;
+
+	fd = g_io_channel_unix_get_fd(io_chan);
+	len = read(fd, buf, sizeof(buf));
+
+	if (len != HDP_ECHO_LEN)
+		goto fail;
+
+	if (memcmp(buf, hdp_conn->hdp_chann->buf, len) == 0) {
+		value = TRUE;
+		goto end;
+	}
+
+fail:
+	mcap_close_mcl(hdp_conn->hdp_chann->dev->mcl, FALSE);
+	hdp_conn->hdp_chann->wid = 0;
+	value = FALSE;
+
+end:
+	reply = g_dbus_create_reply(hdp_conn->msg, DBUS_TYPE_BOOLEAN, &value,
+							DBUS_TYPE_INVALID);
+	g_dbus_send_message(hdp_conn->conn, reply);
+	hdp_tmp_dc_data_unref(hdp_conn);
+
+	/* TODO: Delete this data channel */
 	return FALSE;
 }
 
