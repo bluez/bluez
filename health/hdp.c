@@ -1389,7 +1389,7 @@ fail:
 
 static void device_create_dc_cb(gpointer user_data, GError *err)
 {
-	struct hdp_create_dc *dc_data, *data = user_data;
+	struct hdp_create_dc *data = user_data;
 	DBusMessage *reply;
 	GError *gerr = NULL;
 
@@ -1401,16 +1401,16 @@ static void device_create_dc_cb(gpointer user_data, GError *err)
 		return;
 	}
 
-	dc_data = hdp_create_data_ref(data);
+	hdp_create_data_ref(data);
 
-	if (mcap_create_mdl(dc_data->dev->mcl, dc_data->mdep, dc_data->config,
-						device_create_mdl_cb, dc_data,
+	if (mcap_create_mdl(data->dev->mcl, data->mdep, data->config,
+						device_create_mdl_cb, data,
 						destroy_create_dc_data, &gerr))
 		return;
 
 	reply = g_dbus_create_error(data->msg, ERROR_INTERFACE ".HealthError",
 							"%s", gerr->message);
-	hdp_create_data_unref(dc_data);
+	hdp_create_data_unref(data);
 	g_error_free(gerr);
 	g_dbus_send_message(data->conn, reply);
 }
