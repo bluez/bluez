@@ -914,7 +914,8 @@ static void handle_incoming_call(DBusMessage *msg)
 	telephony_update_indicator(maemo_indicators, "callsetup",
 					EV_CALLSETUP_INCOMING);
 
-	if (find_call_with_status(CSD_CALL_STATUS_ACTIVE))
+	if (find_call_with_status(CSD_CALL_STATUS_ACTIVE) ||
+			find_call_with_status(CSD_CALL_STATUS_HOLD))
 		telephony_call_waiting_ind(call->number,
 						number_type(call->number));
 	else
