@@ -668,6 +668,9 @@ add_header:
 	case OBEX_HDR_APPARAM:
 		flags =  0;
 		break;
+	default:
+		error("read(): unkown header type %u", hi);
+		return -EIO;
 	}
 
 	OBEX_ObjectAddHeader(obex, obj, hi, hd, len, flags);
