@@ -587,7 +587,9 @@ static int obex_read_stream(struct obex_session *os, obex_t *obex,
 	os->buf = g_realloc(os->buf, os->pending + size);
 	memcpy(os->buf + os->pending, buffer, size);
 	os->pending += size;
-	if (os->object == NULL) {
+
+	/* only write if both object and driver are valid */
+	if (os->object == NULL || os->driver == NULL) {
 		DBG("Stored %u bytes into temporary buffer", os->pending);
 		return 0;
 	}
