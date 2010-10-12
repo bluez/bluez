@@ -721,12 +721,27 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 	return hdp_chann;
 }
 
+static int send_echo_data(int sock, const void *buf, uint32_t size)
+{
+	const uint8_t *buf_b = buf;
+	uint32_t sent = 0;
+
+	while (sent < size) {
+		int n = write(sock, buf_b + sent, size - sent);
+		if (n < 0)
+			return -1;
+		sent += n;
+	}
+
+	return 0;
+}
+
 static gboolean serve_echo(GIOChannel *io_chan, GIOCondition cond,
 								gpointer data)
 {
 	struct hdp_channel *chan = data;
 	uint8_t buf[MCAP_DC_MTU];
-	int fd, len, count, w;
+	int fd, len;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
 		chan->wid = 0;
@@ -741,15 +756,8 @@ static gboolean serve_echo(GIOChannel *io_chan, GIOCondition cond,
 	fd = g_io_channel_unix_get_fd(io_chan);
 	len = read(fd, buf, sizeof(buf));
 
-	count = 0;
-	while (count < len) {
-		w = write(fd, buf, (len - count));
-		if (w < 0)
-			goto fail;
-		count += w;
-	}
-
-	return TRUE;
+	if (send_echo_data(fd, buf, len)  >= 0)
+		return TRUE;
 
 fail:
 	mcap_close_mcl(chan->dev->mcl, FALSE);
@@ -1226,14 +1234,38 @@ static void destroy_create_dc_data(gpointer data)
 static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 								gpointer data)
 {
-	struct hdp_create_dc *user_data = data;
+	struct hdp_tmp_dc_data *hdp_conn =  data;
+	GError *gerr = NULL;
 	DBusMessage *reply;
+	int fd;
 
-	/* TODO: Implement this function */
-	reply = g_dbus_create_error(user_data->msg,
+	if (err) {
+		reply = g_dbus_create_error(hdp_conn->msg,
 						ERROR_INTERFACE ".HealthError",
-						"Function not implemented");
-	g_dbus_send_message(user_data->conn, reply);
+						"%s", err->message);
+		g_dbus_send_message(hdp_conn->conn, reply);
+
+		/* Send abort request because remote side is */
+		/* now in PENDING state (TODO: ...and delete it) */
+		if (!mcap_mdl_abort(hdp_conn->hdp_chann->mdl, abort_mdl_cb,
+					hdp_conn->hdp_chann, NULL, &gerr)) {
+			error("%s", gerr->message);
+			g_error_free(gerr);
+		}
+		return;
+	}
+
+	fd = mcap_mdl_get_fd(hdp_conn->hdp_chann->mdl);
+	if (fd < 0) {
+		reply = g_dbus_create_error(hdp_conn->msg,
+						ERROR_INTERFACE ".HealthError",
+						"Can't write in echo channel");
+		g_dbus_send_message(hdp_conn->conn, reply);
+		/* TODO delete echo data channel */
+		return;
+	}
+
+	/* TODO: Generate buffer with random data and send it */
 }
 
 static void delete_mdl_cb(GError *err, gpointer data)
