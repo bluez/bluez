@@ -880,7 +880,7 @@ int obex_get_stream_start(struct obex_session *os, const char *filename)
 								&size, &err);
 	if (object == NULL) {
 		error("open(%s): %s (%d)", filename, strerror(-err), -err);
-		goto fail;
+		return err;
 	}
 
 	os->object = object;
@@ -891,12 +891,6 @@ int obex_get_stream_start(struct obex_session *os, const char *filename)
 		os->buf = g_malloc0(os->tx_mtu);
 
 	return 0;
-
-fail:
-	if (object)
-		os->driver->close(object);
-
-	return err;
 }
 
 int obex_put_stream_start(struct obex_session *os, const char *filename)
