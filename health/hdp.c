@@ -657,6 +657,7 @@ static void health_channel_destroy(void *data)
 		g_source_remove(hdp_chan->wid);
 
 	g_free(hdp_chan->path);
+	g_free(hdp_chan->buf);
 	g_free(hdp_chan);
 }
 
@@ -1248,13 +1249,20 @@ static void *generate_echo_packet()
 	return buf;
 }
 
+static gboolean check_echo(GIOChannel *io_chan, GIOCondition cond,
+								gpointer data)
+{
+	/* TODO: Implement this function */
+	return FALSE;
+}
+
 static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 								gpointer data)
 {
 	struct hdp_tmp_dc_data *hdp_conn =  data;
 	GError *gerr = NULL;
 	DBusMessage *reply;
-	void *buf;
+	GIOChannel *io;
 	int fd;
 
 	if (err) {
@@ -1283,10 +1291,16 @@ static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 		return;
 	}
 
-	buf = generate_echo_packet();
-	send_echo_data(fd, buf, HDP_ECHO_LEN);
+	hdp_conn->hdp_chann->buf = generate_echo_packet();
+	send_echo_data(fd, hdp_conn->hdp_chann->buf, HDP_ECHO_LEN);
 
-	/* TODO: Check received data */
+	io = g_io_channel_unix_new(fd);
+	hdp_conn->hdp_chann->wid = g_io_add_watch(io,
+			G_IO_ERR | G_IO_HUP | G_IO_NVAL | G_IO_IN,
+			check_echo, hdp_tmp_dc_data_ref(hdp_conn));
+
+	/* TODO: add echo timeout */
+	g_io_channel_unref(io);
 }
 
 static void delete_mdl_cb(GError *err, gpointer data)
