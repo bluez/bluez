@@ -141,12 +141,14 @@ static gboolean parse_data_type(DBusMessageIter *iter, gpointer data,
 								GError **err)
 {
 	struct hdp_application *app = data;
-	DBusMessageIter *value, variant;
+	DBusMessageIter *value;
 	int ctype;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	value = iter;
 	if (ctype == DBUS_TYPE_VARIANT) {
+		DBusMessageIter variant;
+
 		/* Get value inside the variable */
 		dbus_message_iter_recurse(iter, &variant);
 		ctype = dbus_message_iter_get_arg_type(&variant);
@@ -167,13 +169,14 @@ static gboolean parse_data_type(DBusMessageIter *iter, gpointer data,
 static gboolean parse_role(DBusMessageIter *iter, gpointer data, GError **err)
 {
 	struct hdp_application *app = data;
-	DBusMessageIter value;
 	DBusMessageIter *string;
 	int ctype;
 	const char *role;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	if (ctype == DBUS_TYPE_VARIANT) {
+		DBusMessageIter value;
+
 		/* Get value inside the variable */
 		dbus_message_iter_recurse(iter, &value);
 		ctype = dbus_message_iter_get_arg_type(&value);
@@ -206,12 +209,14 @@ static gboolean parse_role(DBusMessageIter *iter, gpointer data, GError **err)
 static gboolean parse_desc(DBusMessageIter *iter, gpointer data, GError **err)
 {
 	struct hdp_application *app = data;
-	DBusMessageIter *string, variant;
+	DBusMessageIter *string;
 	int ctype;
 	const char *desc;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	if (ctype == DBUS_TYPE_VARIANT) {
+		DBusMessageIter variant;
+
 		/* Get value inside the variable */
 		dbus_message_iter_recurse(iter, &variant);
 		ctype = dbus_message_iter_get_arg_type(&variant);
@@ -234,12 +239,14 @@ static gboolean parse_chan_type(DBusMessageIter *iter, gpointer data,
 								GError **err)
 {
 	struct hdp_application *app = data;
-	DBusMessageIter *value, variant;
+	DBusMessageIter *value;
 	int ctype;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	value = iter;
 	if (ctype == DBUS_TYPE_VARIANT) {
+		DBusMessageIter variant;
+
 		/* Get value inside the variable */
 		dbus_message_iter_recurse(iter, &variant);
 		ctype = dbus_message_iter_get_arg_type(&variant);
@@ -294,11 +301,11 @@ fail:
 
 static gboolean is_app_role(GSList *app_list, HdpRole role)
 {
-	struct hdp_application *app;
 	GSList *l;
 
 	for (l = app_list; l; l = l->next) {
-		app = l->data;
+		struct hdp_application *app = l->data;
+
 		if (app->role == role)
 			return TRUE;
 	}
@@ -732,7 +739,7 @@ static gboolean check_role(uint8_t rec_role, uint8_t app_role)
 static gboolean get_mdep_from_rec(const sdp_record_t *rec, uint8_t role,
 				uint16_t d_type, uint8_t *mdep, char **desc)
 {
-	sdp_data_t *list, *feat, *data_type, *mdepid, *role_t, *desc_t;
+	sdp_data_t *list, *feat;
 
 	if (!desc && !mdep)
 		return TRUE;
@@ -744,6 +751,8 @@ static gboolean get_mdep_from_rec(const sdp_record_t *rec, uint8_t role,
 		return FALSE;
 
 	for (feat = list->val.dataseq; feat; feat = feat->next) {
+		sdp_data_t *data_type, *mdepid, *role_t, *desc_t;
+
 		if (feat->dtd != SDP_SEQ8 && feat->dtd != SDP_SEQ16 &&
 						feat->dtd != SDP_SEQ32)
 			continue;
@@ -931,10 +940,9 @@ static gboolean hdp_get_add_prot_desc_list(const sdp_record_t *rec,
 static gboolean get_ccpsm(sdp_list_t *recs, uint16_t *ccpsm)
 {
 	sdp_list_t *l;
-	sdp_record_t *rec;
 
 	for (l = recs; l; l = l->next) {
-		rec = l->data;
+		sdp_record_t *rec = l->data;
 
 		if (hdp_get_prot_desc_list(rec, ccpsm, NULL))
 			return TRUE;
@@ -946,10 +954,9 @@ static gboolean get_ccpsm(sdp_list_t *recs, uint16_t *ccpsm)
 static gboolean get_dcpsm(sdp_list_t *recs, uint16_t *dcpsm)
 {
 	sdp_list_t *l;
-	sdp_record_t *rec;
 
 	for (l = recs; l; l = l->next) {
-		rec = l->data;
+		sdp_record_t *rec = l->data;
 
 		if (hdp_get_add_prot_desc_list(rec, dcpsm))
 			return TRUE;
