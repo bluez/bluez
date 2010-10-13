@@ -726,6 +726,41 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 	return hdp_chann;
 }
 
+static void remove_channels(struct hdp_device *dev)
+{
+	struct hdp_channel *chan;
+	char *path;
+
+	while (dev->channels) {
+		chan = dev->channels->data;
+
+		path = g_strdup(chan->path);
+		if (!g_dbus_unregister_interface(dev->conn, path,
+								HEALTH_CHANNEL))
+			health_channel_destroy(chan);
+		g_free(path);
+	}
+}
+
+static void close_device_con(struct hdp_device *dev, gboolean cache)
+{
+	mcap_close_mcl(dev->mcl, cache);
+	dev->mcl_conn = FALSE;
+
+	if (cache)
+		return;
+
+	device_unref_mcl(dev);
+	remove_channels(dev);
+
+	if (!dev->sdp_present) {
+		const char *path;
+
+		path = device_get_path(dev->dev);
+		g_dbus_unregister_interface(dev->conn, path, HEALTH_DEVICE);
+	}
+}
+
 static int send_echo_data(int sock, const void *buf, uint32_t size)
 {
 	const uint8_t *buf_b = buf;
@@ -765,7 +800,7 @@ static gboolean serve_echo(GIOChannel *io_chan, GIOCondition cond,
 		return TRUE;
 
 fail:
-	mcap_close_mcl(chan->dev->mcl, FALSE);
+	close_device_con(chan->dev, FALSE);
 	chan->wid = 0;
 	return FALSE;
 }
@@ -897,8 +932,7 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 			/* Special case defined in HDP spec 3.4. When an invalid
 			* configuration is received we shall close the MCL when
 			* we are still processing the callback. */
-			mcap_close_mcl(dev->mcl, FALSE);
-			dev->mcl_conn = FALSE;
+			close_device_con(dev, FALSE);
 			return MCAP_CONFIGURATION_REJECTED; /* not processed */
 		}
 
@@ -934,8 +968,7 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 		/* Special case defined in HDP spec 3.4. When an invalid
 		* configuration is received we shall close the MCL when
 		* we are still processing the callback. */
-		mcap_close_mcl(dev->mcl, FALSE);
-		dev->mcl_conn = FALSE;
+		close_device_con(dev, FALSE);
 		return MCAP_CONFIGURATION_REJECTED; /* not processed */
 	}
 
@@ -994,8 +1027,7 @@ gboolean hdp_set_mcl_cb(struct hdp_device *device, GError **err)
 		return TRUE;
 
 	error("Can't set mcl callbacks, closing mcl");
-	mcap_close_mcl(device->mcl, TRUE);
-	device->mcl_conn = FALSE;
+	close_device_con(device, TRUE);
 
 	return FALSE;
 }
@@ -1088,22 +1120,6 @@ static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 	path = device_get_path(hdp_device->dev);
 	g_dbus_unregister_interface(hdp_device->conn, path, HEALTH_DEVICE);
 	DBG("Mcl uncached %s", path);
-}
-
-static void remove_channels(struct hdp_device *dev)
-{
-	struct hdp_channel *chan;
-	char *path;
-
-	while (dev->channels) {
-		chan = dev->channels->data;
-
-		path = g_strdup(chan->path);
-		if (!g_dbus_unregister_interface(dev->conn, path,
-								HEALTH_CHANNEL))
-			health_channel_destroy(chan);
-		g_free(path);
-	}
 }
 
 static void check_devices_mcl()
@@ -1274,7 +1290,7 @@ static gboolean check_echo(GIOChannel *io_chan, GIOCondition cond,
 	}
 
 fail:
-	mcap_close_mcl(hdp_conn->hdp_chann->dev->mcl, FALSE);
+	close_device_con(hdp_conn->hdp_chann->dev, FALSE);
 	hdp_conn->hdp_chann->wid = 0;
 	value = FALSE;
 
