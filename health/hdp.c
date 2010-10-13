@@ -1303,6 +1303,24 @@ static void delete_echo_channel(struct hdp_channel *chan)
 	/* TODO: Decide if more action is required here */
 }
 
+static void abort_echo_channel_cb(GError *err, gpointer data)
+{
+	struct hdp_channel *chan = data;
+
+	if (err && err->code != MCAP_ERROR_INVALID_OPERATION) {
+		error("Aborting error: %s", err->message);
+		if (err->code == MCAP_INVALID_MDL) {
+			/* MDL is removed from MCAP so we can */
+			/* free the data channel without sending */
+			/* a MD_DELETE_MDL_REQ */
+			health_channel_destroy(chan);
+		}
+		return;
+	}
+
+	delete_echo_channel(chan);
+}
+
 static void destroy_create_dc_data(gpointer data)
 {
 	struct hdp_create_dc *dc_data = data;
@@ -1402,9 +1420,10 @@ static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 						"%s", err->message);
 		g_dbus_send_message(hdp_conn->conn, reply);
 
-		/* Send abort request because remote side is */
-		/* now in PENDING state (TODO: ...and delete it) */
-		if (!mcap_mdl_abort(hdp_conn->hdp_chann->mdl, abort_mdl_cb,
+		/* Send abort request because remote */
+		/* side is now in PENDING state. */
+		if (!mcap_mdl_abort(hdp_conn->hdp_chann->mdl,
+					abort_echo_channel_cb,
 					hdp_conn->hdp_chann, NULL, &gerr)) {
 			error("%s", gerr->message);
 			g_error_free(gerr);
