@@ -590,54 +590,6 @@ static void confirm_event(GIOChannel *io, void *user_data)
 	return;
 }
 
-static gboolean send_notification(gpointer user_data)
-{
-	uint8_t pdu[ATT_MAX_MTU];
-	guint handle = GPOINTER_TO_UINT(user_data);
-	struct attribute *a;
-	GSList *l;
-	uint16_t length;
-
-	l = g_slist_find_custom(database, GUINT_TO_POINTER(handle), handle_cmp);
-	if (!l)
-		return FALSE;
-
-	a = l->data;
-
-	for (l = clients; l; l = l->next) {
-		struct gatt_channel *channel = l->data;
-
-		length = enc_notification(a, pdu, channel->mtu);
-		g_attrib_send(channel->attrib, pdu[0], pdu, length, NULL, NULL, NULL);
-	}
-
-	return FALSE;
-}
-
-static gboolean send_indication(gpointer user_data)
-{
-	uint8_t pdu[ATT_MAX_MTU];
-	guint handle = GPOINTER_TO_UINT(user_data);
-	struct attribute *a;
-	GSList *l;
-	uint16_t length;
-
-	l = g_slist_find_custom(database, GUINT_TO_POINTER(handle), handle_cmp);
-	if (!l)
-		return FALSE;
-
-	a = l->data;
-
-	for (l = clients; l; l = l->next) {
-		struct gatt_channel *channel = l->data;
-
-		length = enc_indication(a, pdu, channel->mtu);
-		g_attrib_send(channel->attrib, pdu[0], pdu, length, NULL, NULL, NULL);
-	}
-
-	return FALSE;
-}
-
 int attrib_server_init(void)
 {
 	GError *gerr = NULL;
@@ -757,14 +709,12 @@ int attrib_db_update(uint16_t handle, uuid_t *uuid, const uint8_t *value,
 	memcpy(a->data, value, len);
 
 	/*
-	 * Characteristic configuration descriptor is not being used yet.
-	 * If the attribute changes, all connected clients will be notified.
-	 * For testing purposes, we send a Notification and a Indication for
-	 * each update.
+	 * <<Client/Server Characteristic Configuration>> descriptors are
+	 * not supported yet. If a given attribute changes, the attribute
+	 * server shall report the new values using the mechanism selected
+	 * by the client. Notification/Indication shall not be automatically
+	 * sent if the client didn't request them.
 	 */
-	g_idle_add(send_notification, GUINT_TO_POINTER(h));
-
-	g_idle_add(send_indication, GUINT_TO_POINTER(h));
 
 	return 0;
 }

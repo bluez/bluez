@@ -18,13 +18,6 @@ Background
 ATT/GATT
 ========
 
-- Sample server shouldn't send any indications or notifications without
-  the client requesting them
-
-  Priority: Medium
-  Complexity: C2
-  Owner: Claudio Takahasi <claudio.takahasi@openbossa.org>
-
 - Add ATT/GATT parsing to hcidump
 
   Priority: Medium
