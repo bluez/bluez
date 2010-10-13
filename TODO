@@ -78,6 +78,14 @@ ATT/GATT
   Priority: Low
   Complexity: C1
 
+- Implement Server characteristic Configuration support in the attribute
+  server to manage characteristic value broadcasting. There is a single
+  instance of the Server Characteristic Configuration for all clients.
+  See Volume 3, Part G, section 3.3.3.4 for more information.
+
+  Priority: Low
+  Complexity: C1
+
 - Long reads/writes don't work (consisting of multiple request packets)
 
   Priority: Low
