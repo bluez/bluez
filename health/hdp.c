@@ -704,11 +704,12 @@ static GDBusMethodTable health_channels_methods[] = {
 	{ NULL }
 };
 
-static struct hdp_channel *new_channel(struct hdp_device *dev,
+static struct hdp_channel *create_channel(struct hdp_device *dev,
 						uint8_t config,
 						struct mcap_mdl *mdl,
 						uint16_t mdlid,
-						struct hdp_application *app)
+						struct hdp_application *app,
+						GError **err)
 {
 	struct hdp_channel *hdp_chann;
 
@@ -729,20 +730,6 @@ static struct hdp_channel *new_channel(struct hdp_device *dev,
 					hdp_chann->mdlid);
 
 	dev->channels = g_slist_append(dev->channels, hdp_chann);
-
-	return hdp_chann;
-}
-
-static struct hdp_channel *create_channel(struct hdp_device *dev,
-						uint8_t config,
-						struct mcap_mdl *mdl,
-						uint16_t mdlid,
-						struct hdp_application *app,
-						GError **err)
-{
-	struct hdp_channel *hdp_chann;
-
-	hdp_chann = new_channel(dev, config, mdl, mdlid, app);
 
 	if (hdp_chann->mdep == HDP_MDEP_ECHO)
 		return hdp_chann;
@@ -964,7 +951,7 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 			return MCAP_CONFIGURATION_REJECTED; /* not processed */
 		}
 
-		dev->ndc = new_channel(dev, *conf, NULL, mdlid, NULL);
+		dev->ndc = create_channel(dev, *conf, NULL, mdlid, NULL, NULL);
 		return MCAP_SUCCESS;
 	}
 
