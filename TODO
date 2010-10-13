@@ -14,6 +14,20 @@ Background
   Higher complexity tasks should be refined into several lower complexity tasks
   once the task is better understood.
 
+LE Generic Access Profile
+=========================
+
+- Device Name Characteristic is a GAP characteristic for Low Energy. This
+  characteristic shall be integrated/used in the discovery procedure. The
+  ideia is to report the value of this characteristic using DeviceFound signals.
+  Discussion with the community is needed before to start this task. Other GAP
+  characteristics for LE needs to follow a similar approach. It is not clear
+  if all GAP characteristics can be exposed using properties instead of a primary
+  service characteristics.
+  See Volume 3, Part C, section 12.1 for more information.
+
+  Priority: Low
+  Complexity: C2
 
 ATT/GATT
 ========
