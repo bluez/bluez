@@ -60,6 +60,11 @@ static GSList *adapters;
 static gboolean update_adapter(struct hdp_adapter *adapter);
 static struct hdp_device *create_health_device(DBusConnection *conn,
 						struct btd_device *device);
+struct hdp_echo_data {
+	int		wid;		/* Watcher for echo channels */
+	gboolean	echo_done;	/* Is a echo was already done */
+	gpointer	buf;		/* echo packet sent */
+};
 
 struct hdp_create_dc {
 	DBusConnection			*conn;
@@ -636,6 +641,20 @@ static DBusMessage *channel_release(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static void free_echo_data(struct hdp_echo_data *edata)
+{
+	if (!edata)
+		return;
+
+	if (edata->wid)
+		g_source_remove(edata->wid);
+
+	if (edata->buf)
+		g_free(edata->buf);
+
+	g_free(edata);
+}
+
 static void health_channel_destroy(void *data)
 {
 	struct hdp_channel *hdp_chan = data;
@@ -660,11 +679,10 @@ static void health_channel_destroy(void *data)
 					DBUS_TYPE_OBJECT_PATH, &empty_path);
 	}
 
-	if (hdp_chan->wid)
-		g_source_remove(hdp_chan->wid);
+	if (hdp_chan->mdep == HDP_MDEP_ECHO)
+		free_echo_data(hdp_chan->edata);
 
 	g_free(hdp_chan->path);
-	g_free(hdp_chan->buf);
 	g_free(hdp_chan);
 }
 
@@ -694,7 +712,7 @@ static struct hdp_channel *new_channel(struct hdp_device *dev,
 	if (app)
 		hdp_chann->mdep = app->id;
 	else
-		hdp_chann->mdep = 0;
+		hdp_chann->edata = g_new0(struct hdp_echo_data, 1);
 
 	hdp_chann->path = g_strdup_printf("%s/chan%d",
 					device_get_path(hdp_chann->dev->dev),
@@ -790,14 +808,14 @@ static gboolean serve_echo(GIOChannel *io_chan, GIOCondition cond,
 	int fd, len;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
-		chan->wid = 0;
+		chan->edata->wid = 0;
 		return FALSE;
 	}
 
-	if (chan->echo_done)
+	if (chan->edata->echo_done)
 		goto fail;
 
-	chan->echo_done = TRUE;
+	chan->edata->echo_done = TRUE;
 
 	fd = g_io_channel_unix_get_fd(io_chan);
 	len = read(fd, buf, sizeof(buf));
@@ -807,7 +825,7 @@ static gboolean serve_echo(GIOChannel *io_chan, GIOCondition cond,
 
 fail:
 	close_device_con(chan->dev, FALSE);
-	chan->wid = 0;
+	chan->edata->wid = 0;
 	return FALSE;
 }
 
@@ -835,9 +853,9 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 		if (fd < 0)
 			return;
 
-		chan->echo_done = FALSE;
+		chan->edata->echo_done = FALSE;
 		io = g_io_channel_unix_new(fd);
-		chan->wid = g_io_add_watch(io,
+		chan->edata->wid = g_io_add_watch(io,
 				G_IO_ERR | G_IO_HUP | G_IO_NVAL | G_IO_IN,
 				serve_echo, chan);
 		g_io_channel_unref(io);
@@ -1270,6 +1288,7 @@ static gboolean check_echo(GIOChannel *io_chan, GIOCondition cond,
 								gpointer data)
 {
 	struct hdp_tmp_dc_data *hdp_conn =  data;
+	struct hdp_echo_data *edata = hdp_conn->hdp_chann->edata;
 	uint8_t buf[MCAP_DC_MTU];
 	DBusMessage *reply;
 	gboolean value;
@@ -1284,14 +1303,14 @@ static gboolean check_echo(GIOChannel *io_chan, GIOCondition cond,
 	if (len != HDP_ECHO_LEN)
 		goto fail;
 
-	if (memcmp(buf, hdp_conn->hdp_chann->buf, len) == 0) {
+	if (memcmp(buf, edata->buf, len) == 0) {
 		value = TRUE;
 		goto end;
 	}
 
 fail:
 	close_device_con(hdp_conn->hdp_chann->dev, FALSE);
-	hdp_conn->hdp_chann->wid = 0;
+	edata->wid = 0;
 	value = FALSE;
 
 end:
@@ -1308,6 +1327,7 @@ static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 								gpointer data)
 {
 	struct hdp_tmp_dc_data *hdp_conn =  data;
+	struct hdp_echo_data *edata;
 	GError *gerr = NULL;
 	DBusMessage *reply;
 	GIOChannel *io;
@@ -1339,11 +1359,12 @@ static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 		return;
 	}
 
-	hdp_conn->hdp_chann->buf = generate_echo_packet();
-	send_echo_data(fd, hdp_conn->hdp_chann->buf, HDP_ECHO_LEN);
+	edata = hdp_conn->hdp_chann->edata;
+	edata->buf = generate_echo_packet();
+	send_echo_data(fd, edata->buf, HDP_ECHO_LEN);
 
 	io = g_io_channel_unix_new(fd);
-	hdp_conn->hdp_chann->wid = g_io_add_watch(io,
+	edata->wid = g_io_add_watch(io,
 			G_IO_ERR | G_IO_HUP | G_IO_NVAL | G_IO_IN,
 			check_echo, hdp_tmp_dc_data_ref(hdp_conn));
 
