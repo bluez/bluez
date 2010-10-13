@@ -1273,6 +1273,36 @@ void hdp_adapter_unregister(struct btd_adapter *adapter)
 	g_free(hdp_adapter);
 }
 
+static void delete_echo_channel_cb(GError *err, gpointer chan)
+{
+	if (err && err->code != MCAP_INVALID_MDL) {
+		/* TODO: Decide if more action is required here */
+		error("Error deleting echo channel: %s", err->message);
+		return;
+	}
+
+	health_channel_destroy(chan);
+}
+
+static void delete_echo_channel(struct hdp_channel *chan)
+{
+	GError *err = NULL;
+
+	if (!chan->dev->mcl_conn) {
+		error("Echo channel cannot be deleted: mcl closed");
+		return;
+	}
+
+	if (mcap_delete_mdl(chan->mdl, delete_echo_channel_cb, chan, NULL,
+									&err))
+		return;
+
+	error("Error deleting the echo channel: %s", err->message);
+	g_error_free(err);
+
+	/* TODO: Decide if more action is required here */
+}
+
 static void destroy_create_dc_data(gpointer data)
 {
 	struct hdp_create_dc *dc_data = data;
@@ -1299,6 +1329,7 @@ static gboolean check_echo(GIOChannel *io_chan, GIOCondition cond,
 {
 	struct hdp_tmp_dc_data *hdp_conn =  data;
 	struct hdp_echo_data *edata = hdp_conn->hdp_chann->edata;
+	struct hdp_channel *chan = hdp_conn->hdp_chann;
 	uint8_t buf[MCAP_DC_MTU];
 	DBusMessage *reply;
 	gboolean value;
@@ -1332,9 +1363,10 @@ end:
 	edata->buf = NULL;
 
 	if (!value)
-		close_device_con(hdp_conn->hdp_chann->dev, FALSE);
+		close_device_con(chan->dev, FALSE);
+	else
+		delete_echo_channel(chan);
 
-	/* TODO: Delete this data channel */
 	return FALSE;
 }
 
@@ -1386,7 +1418,7 @@ static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 						ERROR_INTERFACE ".HealthError",
 						"Can't write in echo channel");
 		g_dbus_send_message(hdp_conn->conn, reply);
-		/* TODO delete echo data channel */
+		delete_echo_channel(hdp_conn->hdp_chann);
 		return;
 	}
 
