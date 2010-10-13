@@ -705,7 +705,7 @@ static char *iso8601_utc_to_localtime(const char *datetime)
 
 	memset(&tm, 0, sizeof(tm));
 
-	nr = sscanf(datetime, "%04u-%02u-%02uT%02u:%02u:%02u%c",
+	nr = sscanf(datetime, "%04u%02u%02uT%02u%02u%02u%c",
 			&tm.tm_year, &tm.tm_mon, &tm.tm_mday,
 			&tm.tm_hour, &tm.tm_min, &tm.tm_sec,
 			&tz);
@@ -726,7 +726,7 @@ static char *iso8601_utc_to_localtime(const char *datetime)
 
 	local = localtime(&time);
 
-	strftime(localdate, sizeof(localdate), "%Y-%m-%dT%H:%M:%S", local);
+	strftime(localdate, sizeof(localdate), "%Y%m%dT%H%M%S", local);
 
 	return g_strdup(localdate);
 }
