@@ -498,6 +498,7 @@ void telephony_last_dialed_number_req(void *telephony_device)
 void telephony_terminate_call_req(void *telephony_device)
 {
 	struct csd_call *call;
+	struct csd_call *alerting;
 	int err;
 
 	call = find_call_with_status(CSD_CALL_STATUS_ACTIVE);
@@ -511,7 +512,10 @@ void telephony_terminate_call_req(void *telephony_device)
 		return;
 	}
 
-	if (call->conference)
+	alerting = find_call_with_status(CSD_CALL_STATUS_MO_ALERTING);
+	if (call->on_hold && alerting)
+		err = release_call(alerting);
+	else if (call->conference)
 		err = release_conference();
 	else
 		err = release_call(call);
