@@ -89,3 +89,12 @@ ATT/GATT
 
   Priority: Low
   Complexity: C2
+
+- Implement Client Characteristic Configuration support in the attribute
+  server to manage indications and notications. This is a per client attribute
+  to control how the client wants to receive reports of changes in a given
+  characteristic value.
+  See Volume 3, Part G, section 3.3.3.3 for more information
+
+  Priority: Low
+  Complexity: C2
