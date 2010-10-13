@@ -1437,6 +1437,18 @@ static void restore_mdl(gpointer elem, gpointer data)
 		mdl->mcl->cb->mdl_closed(mdl, mdl->mcl->cb->user_data);
 }
 
+static void check_mdl_del_err(struct mcap_mdl *mdl, mcap_rsp *rsp)
+{
+	if (rsp->rc != MCAP_ERROR_INVALID_MDL) {
+		restore_mdl(mdl, NULL);
+		return;
+	}
+
+	/* MDL does not exist in remote side, we can delete it */
+	mdl->mcl->mdls = g_slist_remove(mdl->mcl->mdls, mdl);
+	free_mdl(mdl);
+}
+
 static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, mcap_rsp *rsp,
 								uint32_t len)
 {
@@ -1458,7 +1470,7 @@ static gboolean process_md_delete_mdl_rsp(struct mcap_mcl *mcl, mcap_rsp *rsp,
 
 	if (gerr) {
 		if (mdl)
-			restore_mdl(mdl, NULL);
+			check_mdl_del_err(mdl, rsp);
 		else
 			g_slist_foreach(mcl->mdls, restore_mdl, NULL);
 		deleted_cb(gerr, user_data);
