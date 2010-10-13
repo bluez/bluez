@@ -95,6 +95,7 @@ static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct watch_info *info = data;
 	unsigned int flags = 0;
+	DBusDispatchStatus status;
 
 	dbus_connection_ref(info->conn);
 
@@ -104,6 +105,9 @@ static gboolean watch_func(GIOChannel *chan, GIOCondition cond, gpointer data)
 	if (cond & G_IO_ERR) flags |= DBUS_WATCH_ERROR;
 
 	dbus_watch_handle(info->watch, flags);
+
+	status = dbus_connection_get_dispatch_status(info->conn);
+	queue_dispatch(info->conn, status);
 
 	dbus_connection_unref(info->conn);
 
