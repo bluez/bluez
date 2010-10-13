@@ -644,6 +644,12 @@ static void health_channel_destroy(void *data)
 	DBG("Destroy Health Channel %s", hdp_chan->path);
 	dev->channels = g_slist_remove(dev->channels, hdp_chan);
 
+	if (hdp_chan->mdep != HDP_MDEP_ECHO)
+		g_dbus_emit_signal(dev->conn, device_get_path(dev->dev),
+					HEALTH_DEVICE, "ChannelDeleted",
+					DBUS_TYPE_OBJECT_PATH, &hdp_chan->path,
+					DBUS_TYPE_INVALID);
+
 	if (hdp_chan == dev->fr) {
 		char *empty_path;
 
@@ -875,12 +881,6 @@ static void hdp_mcap_mdl_deleted_cb(struct mcap_mdl *mdl, void *data)
 		return;
 
 	chan = l->data;
-
-	if (chan->mdep != HDP_MDEP_ECHO)
-		g_dbus_emit_signal(dev->conn, device_get_path(dev->dev),
-					HEALTH_DEVICE, "ChannelDeleted",
-					DBUS_TYPE_OBJECT_PATH, &chan->path,
-					DBUS_TYPE_INVALID);
 
 	path = g_strdup(chan->path);
 	if (!g_dbus_unregister_interface(dev->conn, path, HEALTH_CHANNEL))
