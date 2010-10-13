@@ -1499,8 +1499,7 @@ static void update_operator_name(const char *name)
 		return;
 
 	g_free(net.operator_name);
-	net.operator_name = g_strdup(name);
-
+	net.operator_name = g_strndup(name, 16);
 	DBG("telephony-maemo6: operator name updated: %s", name);
 }
 
