@@ -1677,8 +1677,6 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl, uint8_t mode,
 	con->destroy = destroy;
 	con->user_data = user_data;
 
-	/* TODO: Check if BtIOType is ERTM or Streaming before continue */
-
 	mdl->dc = bt_io_connect(BT_IO_L2CAP, mcap_connect_mdl_cb, con,
 				mdl_io_destroy, err,
 				BT_IO_OPT_SOURCE_BDADDR, &mdl->mcl->ms->src,
