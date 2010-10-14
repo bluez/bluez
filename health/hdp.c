@@ -1474,6 +1474,7 @@ static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 {
 	struct hdp_tmp_dc_data *hdp_conn =  data;
 	struct hdp_channel *hdp_chann = hdp_conn->hdp_chann;
+	struct hdp_device *dev = hdp_chann->dev;
 	DBusMessage *reply;
 	GError *gerr = NULL;
 
@@ -1498,6 +1499,15 @@ static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 					DBUS_TYPE_OBJECT_PATH, &hdp_chann->path,
 					DBUS_TYPE_INVALID);
 	g_dbus_send_message(hdp_conn->conn, reply);
+
+	if (dev->fr)
+		return;
+
+	dev->fr = hdp_chann;
+
+	emit_property_changed(dev->conn, device_get_path(dev->dev),
+					HEALTH_DEVICE, "MainChannel",
+					DBUS_TYPE_OBJECT_PATH, &dev->fr->path);
 }
 
 static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
