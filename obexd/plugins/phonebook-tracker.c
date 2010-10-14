@@ -924,6 +924,11 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	gboolean cdata_present = FALSE;
 	char *home_addr, *work_addr;
 
+	if (num_fields < 0) {
+		data->cb(NULL, 0, num_fields, 0, data->user_data);
+		goto fail;
+	}
+
 	DBG("reply %p", reply);
 
 	if (reply == NULL)
@@ -1031,8 +1036,9 @@ done:
 				g_slist_length(data->contacts), 0,
 				data->user_data);
 
-	g_slist_free(data->contacts);
 	g_string_free(vcards, TRUE);
+fail:
+	g_slist_free(data->contacts);
 	g_free(data);
 }
 
@@ -1042,7 +1048,7 @@ static void add_to_cache(char **reply, int num_fields, void *user_data)
 	char *formatted;
 	int i;
 
-	if (reply == NULL)
+	if (reply == NULL || num_fields < 0)
 		goto done;
 
 	/* the first element is the URI, always not empty */
@@ -1075,7 +1081,7 @@ static void add_to_cache(char **reply, int num_fields, void *user_data)
 	return;
 
 done:
-	if (num_fields == 0)
+	if (num_fields <= 0)
 		cache->ready_cb(cache->user_data);
 
 	g_free(cache);

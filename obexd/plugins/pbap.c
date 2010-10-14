@@ -228,6 +228,9 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	struct aparam_header *hdr = (struct aparam_header *) aparam;
 	uint16_t phonebooksize;
 
+	if (vcards < 0)
+		vcards = 0;
+
 	DBG("vcards %d", vcards);
 
 	phonebooksize = htons(vcards);
@@ -247,6 +250,11 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	struct pbap_session *pbap = user_data;
 
 	DBG("");
+
+	if (vcards < 0) {
+		obex_object_set_io_flags(pbap, G_IO_ERR, -ENOENT);
+		return;
+	}
 
 	if (!pbap->buffer)
 		pbap->buffer = g_string_new_len(buffer, bufsize);
@@ -389,6 +397,13 @@ static void cache_ready_notify(void *user_data)
 		pbap->buffer = g_string_new_len(aparam, sizeof(aparam));
 		goto done;
 	}
+
+	if (pbap->cache.entries == NULL) {
+		pbap->cache.valid = TRUE;
+		obex_object_set_io_flags(pbap, G_IO_ERR, -ENOENT);
+		return;
+	}
+
 	/*
 	 * Don't free the sorted list content: this list contains
 	 * only the reference for the "real" cache entry.
