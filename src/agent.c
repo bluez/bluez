@@ -706,6 +706,7 @@ static int request_fallback(struct agent_request *req,
 		return -EINVAL;
 
 	dbus_pending_call_cancel(req->call);
+	dbus_pending_call_unref(req->call);
 
 	msg = dbus_message_copy(req->msg);
 
