@@ -351,8 +351,12 @@ static gboolean register_service_protocols(struct hdp_adapter *adapter,
 {
 	gboolean ret;
 	uuid_t l2cap_uuid, mcap_c_uuid;
-	sdp_list_t *l2cap_list, *proto_list, *mcap_list, *access_proto_list;
-	sdp_data_t *psm, *mcap_ver;
+	sdp_list_t *l2cap_list,
+		*proto_list = NULL,
+		*mcap_list = NULL,
+		*access_proto_list = NULL;
+	sdp_data_t *psm = NULL,
+		*mcap_ver = NULL;
 	uint16_t version = MCAP_VERSION;
 
 	/* set l2cap information */
@@ -464,7 +468,10 @@ static gboolean register_service_aditional_protocols(
 {
 	gboolean ret;
 	uuid_t l2cap_uuid, mcap_d_uuid;
-	sdp_list_t *l2cap_list, *proto_list, *mcap_list, *access_proto_list;
+	sdp_list_t *l2cap_list,
+		*proto_list = NULL,
+		*mcap_list = NULL,
+		*access_proto_list = NULL;
 	sdp_data_t *psm = NULL;
 
 	/* set l2cap information */
@@ -534,8 +541,11 @@ end:
 
 static sdp_list_t *app_to_sdplist(struct hdp_application *app)
 {
-	sdp_data_t *mdepid, *dtype, *role, *desc;
-	sdp_list_t *f_list;
+	sdp_data_t *mdepid,
+		*dtype = NULL,
+		*role = NULL,
+		*desc = NULL;
+	sdp_list_t *f_list = NULL;
 
 	mdepid = sdp_data_alloc(SDP_UINT8, &app->id);
 	if (!mdepid)
