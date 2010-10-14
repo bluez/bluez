@@ -683,7 +683,7 @@ static void health_channel_destroy(void *data)
 		char *empty_path;
 
 		dev->fr = NULL;
-		empty_path = "";
+		empty_path = "/";
 		emit_property_changed(dev->conn, device_get_path(dev->dev),
 					HEALTH_DEVICE, "MainChannel",
 					DBUS_TYPE_OBJECT_PATH, &empty_path);
