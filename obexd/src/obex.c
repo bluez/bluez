@@ -678,7 +678,6 @@ add_header:
 	if (len == 0) {
 		g_free(os->buf);
 		os->buf = NULL;
-		return len;
 	}
 
 	os->offset += len;
@@ -818,7 +817,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		OBEX_ObjectAddHeader (obex, obj, OBEX_HDR_BODY,
 				hd, 0, OBEX_FL_STREAM_START);
 
-		/* Try to write to stream and suspend the stream immidiately
+		/* Try to write to stream and suspend the stream immediately
 		 * if no data available to send. */
 		err = obex_write_stream(os, obex, obj);
 		if (err == -EAGAIN) {
