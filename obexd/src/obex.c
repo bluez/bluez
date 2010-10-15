@@ -683,7 +683,7 @@ add_header:
 
 	os->offset += len;
 
-	return len;
+	return 0;
 }
 
 static gboolean handle_async_io(void *object, int flags, int err,
