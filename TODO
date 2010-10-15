@@ -14,8 +14,17 @@ Background
   Higher complexity tasks should be refined into several lower complexity tasks
   once the task is better understood.
 
-LE Generic Access Profile
-=========================
+Low Energy
+==========
+
+- Avoid Characteristic discovery for non connectable devices. Proper parsing
+  of LE Advertising Report Event is missing. Event_Type field needs to be
+  extracted and its value shall be considered before to start the LE
+  connection on the channel 4. Characteristic discovery should not be
+  started for non connectable devices.
+
+  Priority: Medium
+  Complexity: C2
 
 - Device Name Characteristic is a GAP characteristic for Low Energy. This
   characteristic shall be integrated/used in the discovery procedure. The
