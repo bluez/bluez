@@ -555,7 +555,7 @@ static int obex_read_stream(struct obex_session *os, obex_t *obex,
 						obex_object_t *obj)
 {
 	int size;
-	int32_t len = 0;
+	ssize_t len = 0;
 	const uint8_t *buffer;
 
 	DBG("name=%s type=%s rx_mtu=%d file=%p",
@@ -596,7 +596,7 @@ static int obex_read_stream(struct obex_session *os, obex_t *obex,
 
 write:
 	while (os->pending > 0) {
-		int w;
+		ssize_t w;
 
 		w = os->driver->write(os->object, os->buf + len,
 					os->pending);
@@ -622,7 +622,7 @@ static int obex_write_stream(struct obex_session *os,
 {
 	obex_headerdata_t hd;
 	uint8_t *ptr;
-	int32_t len;
+	ssize_t len;
 	unsigned int flags;
 	uint8_t hi;
 
@@ -644,7 +644,7 @@ static int obex_write_stream(struct obex_session *os,
 
 	len = os->driver->read(os->object, os->buf, os->tx_mtu, &hi);
 	if (len < 0) {
-		error("read(): %s (%d)", strerror(-len), -len);
+		error("read(): %s (%zd)", strerror(-len), -len);
 		if (len == -EAGAIN)
 			return len;
 		else if (len == -ENOSTR)
