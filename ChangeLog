@@ -1,3 +1,15 @@
+ver 4.76:
+	Fix issue in telephony driver with hanging up held call.
+	Fix issue in telephony driver with notifications when on hold.
+	Fix issue with blocking on setconf confirmation callback.
+	Fix issue with not always signaling new streams as sinks.
+	Fix issue with errors in case of endpoint request timeout.
+	Fix issue with HFP/HSP microphone and speaker gain values.
+	Add source if the device attempt to configure local sink stream.
+	Add PSM option for GATT/ATT over BR/EDR on gatttool.
+	Add support for GATT/ATT Attribute Write Request.
+	Update MCAP and HDP support.
+
 ver 4.75:
 	Fix use of uninitialized variable on legacy pairing.
 	Fix mismatch of attribute protocol opcode.
