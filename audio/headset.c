@@ -1376,6 +1376,8 @@ void headset_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	DBG("%s: Connected to %s", dev->path, hs_address);
 
 	hs->slc = g_new0(struct headset_slc, 1);
+	hs->slc->sp_gain = 15;
+	hs->slc->mic_gain = 15;
 	hs->slc->nrec = TRUE;
 
 	/* In HFP mode wait for Service Level Connection */
