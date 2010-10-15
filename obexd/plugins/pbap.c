@@ -398,12 +398,6 @@ static void cache_ready_notify(void *user_data)
 		goto done;
 	}
 
-	if (pbap->cache.entries == NULL) {
-		pbap->cache.valid = TRUE;
-		obex_object_set_io_flags(pbap, G_IO_ERR, -ENOENT);
-		return;
-	}
-
 	/*
 	 * Don't free the sorted list content: this list contains
 	 * only the reference for the "real" cache entry.
@@ -411,6 +405,12 @@ static void cache_ready_notify(void *user_data)
 	sorted = sort_entries(pbap->cache.entries, pbap->params->order,
 			pbap->params->searchattrib,
 			(const char *) pbap->params->searchval);
+
+	if (sorted == NULL) {
+		pbap->cache.valid = TRUE;
+		obex_object_set_io_flags(pbap, G_IO_ERR, -ENOENT);
+		return;
+	}
 
 	/* Computing offset considering first entry of the phonebook */
 	l = g_slist_nth(sorted, pbap->params->liststartoffset);
