@@ -240,6 +240,7 @@ static gboolean parse_chan_type(DBusMessageIter *iter, gpointer data,
 {
 	struct hdp_application *app = data;
 	DBusMessageIter *value;
+	char *chan_type;
 	int ctype;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
@@ -253,15 +254,19 @@ static gboolean parse_chan_type(DBusMessageIter *iter, gpointer data,
 		value = &variant;
 	}
 
-	if (ctype != DBUS_TYPE_UINT16) {
+	if (ctype != DBUS_TYPE_STRING) {
 		g_set_error(err, HDP_ERROR, HDP_DIC_ENTRY_PARSE_ERROR,
-			"Final value for channel type should be a uint16");
+			"Final value for channel type should be an string");
 		return FALSE;
 	}
 
-	dbus_message_iter_get_basic(value, &app->chan_type);
-	if (app->chan_type < HDP_RELIABLE_DC ||
-					app->chan_type > HDP_STREAMING_DC) {
+	dbus_message_iter_get_basic(value, &chan_type);
+
+	if (g_ascii_strcasecmp("Reliable", chan_type) == 0)
+		app->chan_type = HDP_RELIABLE_DC;
+	else if (g_ascii_strcasecmp("Streaming", chan_type) == 0)
+		app->chan_type = HDP_STREAMING_DC;
+	else {
 		g_set_error(err, HDP_ERROR, HDP_DIC_ENTRY_PARSE_ERROR,
 						"Invalid value for data type");
 		return FALSE;
