@@ -50,8 +50,10 @@ void obex_object_set_io_flags(void *object, int flags, int err)
 {
 	GSList *l;
 
-	for (l = watches; l; l = l->next) {
+	for (l = watches; l;) {
 		struct io_watch *watch = l->data;
+
+		l = l->next;
 
 		if (watch->object != object)
 			continue;
