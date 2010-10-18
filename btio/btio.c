@@ -839,6 +839,9 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 			}
 			memcpy(va_arg(args, uint8_t *), dev_class, 3);
 			break;
+		case BT_IO_OPT_MODE:
+			*(va_arg(args, uint8_t *)) = l2o.mode;
+			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
 					"Unknown option %d", opt);
