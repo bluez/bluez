@@ -702,9 +702,10 @@ static gboolean handle_async_io(void *object, int flags, int err,
 		ret = obex_read_stream(os, os->obex, os->obj);
 
 proceed:
-	if (ret < 0)
+	if (ret < 0) {
+		os_set_response(os->obj, err);
 		OBEX_CancelRequest(os->obex, TRUE);
-	else
+	} else
 		OBEX_ResumeRequest(os->obex);
 
 	return FALSE;
