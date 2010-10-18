@@ -1193,8 +1193,8 @@ static void check_devices_mcl()
 
 		if (!dev->sdp_present)
 			to_delete = g_slist_append(to_delete, dev);
-
-		remove_channels(dev);
+		else
+			remove_channels(dev);
 	}
 
 	for (l = to_delete; l; l = l->next) {
@@ -1961,6 +1961,9 @@ static void health_device_destroy(void *data)
 
 	DBG("Unregistered interface %s on path %s", HEALTH_DEVICE,
 						device_get_path(device->dev));
+
+	remove_channels(device);
+
 	devices = g_slist_remove(devices, device);
 	free_health_device(device);
 }
