@@ -826,6 +826,40 @@ fail:
 	return FALSE;
 }
 
+static gboolean check_channel_conf(struct hdp_channel *chan)
+{
+	GError *err = NULL;
+	GIOChannel *io;
+	uint8_t mode;
+	int fd;
+
+	fd = mcap_mdl_get_fd(chan->mdl);
+	if (fd < 0)
+		return FALSE;
+	io = g_io_channel_unix_new(fd);
+
+	if (!bt_io_get(io, BT_IO_L2CAP, &err,
+			BT_IO_OPT_MODE, &mode,
+			BT_IO_OPT_INVALID)) {
+		error("Error: %s", err->message);
+		g_io_channel_unref(io);
+		g_error_free(err);
+		return FALSE;
+	}
+
+	g_io_channel_unref(io);
+
+	switch (chan->config) {
+	case HDP_RELIABLE_DC:
+		return mode == L2CAP_MODE_ERTM;
+	case L2CAP_MODE_STREAMING:
+		return mode == L2CAP_MODE_STREAMING;
+	default:
+		error("Error: Connected with unknown configuration");
+		return FALSE;
+	}
+}
+
 static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct hdp_device *dev = data;
@@ -841,6 +875,11 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 
 	if (!g_slist_find(dev->channels, chan))
 		dev->channels = g_slist_prepend(dev->channels, chan);
+
+	if (!check_channel_conf(chan)) {
+		/* TODO: Close MDL */
+		return;
+	}
 
 	if (chan->mdep == HDP_MDEP_ECHO) {
 		GIOChannel *io;
