@@ -89,6 +89,9 @@ struct agent_data {
 
 static void session_prepare_put(struct session_data *session, GError *err,
 								void *data);
+static void session_terminate_transfer(struct session_data *session,
+					struct transfer_data *transfer,
+					GError *gerr);
 
 static GQuark obex_io_error_quark(void)
 {
@@ -803,11 +806,18 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
+		GError *gerr = NULL;
+
 		error("Replied with an error: %s, %s",
 				derr.name, derr.message);
 		dbus_error_free(&derr);
 		dbus_message_unref(reply);
-		transfer_unregister(pending->transfer);
+
+		g_set_error(&gerr, OBEX_IO_ERROR, -ECANCELED, "%s",
+								derr.message);
+		session_terminate_transfer(session, pending->transfer, gerr);
+		g_clear_error(&gerr);
+
 		return;
 	}
 
