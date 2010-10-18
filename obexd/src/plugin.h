@@ -37,6 +37,6 @@ struct obex_plugin_desc {
 		extern struct obex_plugin_desc obex_plugin_desc \
 				__attribute__ ((visibility("default"))); \
 		struct obex_plugin_desc obex_plugin_desc = { \
-			name, init, exit \
+			#name, init, exit \
 		};
 #endif
