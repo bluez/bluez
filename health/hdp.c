@@ -629,17 +629,23 @@ static DBusMessage *channel_acquire(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *channel_release(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static void close_mdl(struct hdp_channel *hdp_chann)
 {
-	struct hdp_channel *hdp_chann = user_data;
 	int fd;
 
 	fd = mcap_mdl_get_fd(hdp_chann->mdl);
 	if (fd < 0)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		return;
 
 	close(fd);
+}
+
+static DBusMessage *channel_release(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct hdp_channel *hdp_chann = user_data;
+
+	close_mdl(hdp_chann);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -852,7 +858,7 @@ static gboolean check_channel_conf(struct hdp_channel *chan)
 	switch (chan->config) {
 	case HDP_RELIABLE_DC:
 		return mode == L2CAP_MODE_ERTM;
-	case L2CAP_MODE_STREAMING:
+	case HDP_STREAMING_DC:
 		return mode == L2CAP_MODE_STREAMING;
 	default:
 		error("Error: Connected with unknown configuration");
@@ -877,7 +883,7 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 		dev->channels = g_slist_prepend(dev->channels, chan);
 
 	if (!check_channel_conf(chan)) {
-		/* TODO: Close MDL */
+		close_mdl(chan);
 		return;
 	}
 
