@@ -360,7 +360,7 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
 	struct transfer_data *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
-	gint written, err = 0;
+	gint written;
 
 	if (transfer->buffer_len == 0) {
 		transfer->buffer_len = DEFAULT_BUFFER_SIZE;
@@ -373,20 +373,20 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 		len = read(transfer->fd, transfer->buffer + transfer->filled,
 				transfer->buffer_len - transfer->filled);
 		if (len < 0) {
-			err = -errno;
+			transfer->err = -errno;
 			goto done;
 		}
 
 		transfer->filled += len;
 
 		if (transfer->filled == 0) {
-			gw_obex_xfer_close(xfer, &err);
+			gw_obex_xfer_close(xfer, &transfer->err);
 			goto done;
 		}
 
 		if (gw_obex_xfer_write(xfer, transfer->buffer,
 					transfer->filled,
-					&written, &err) == FALSE)
+					&written, &transfer->err) == FALSE)
 			goto done;
 
 		transfer->filled -= written;
@@ -397,7 +397,7 @@ static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 
 done:
 	if (callback)
-		callback->func(transfer, transfer->transferred, err,
+		callback->func(transfer, transfer->transferred, transfer->err,
 				callback->data);
 }
 
