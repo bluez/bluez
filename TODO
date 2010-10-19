@@ -26,6 +26,20 @@ Low Energy
   Priority: Medium
   Complexity: C2
 
+- Advertising management. Adapter interface needs to be changed to manage
+  connection modes, adapter type and advertising policy. See Volume 3,
+  Part C, section 9.3. If Attribute Server is enabled the LE capable
+  adapter shall to start advertising. Further investigation is necessary
+  to define which connectable mode needs to be supported: Non-connectable,
+  directed connectable and undirected connectable. Basically, two connectable
+  scenarios shall be addressed:
+  1. GATT client is disconnected, but intends to become a Peripheral to
+     receive indications/notifications.
+  2. GATT server intends to accept connections.
+
+  Priority: Medium
+  Complexity: C2
+
 - Device Name Characteristic is a GAP characteristic for Low Energy. This
   characteristic shall be integrated/used in the discovery procedure. The
   ideia is to report the value of this characteristic using DeviceFound signals.
