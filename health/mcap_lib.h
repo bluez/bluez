@@ -213,6 +213,9 @@ void mcap_release_instance(struct mcap_instance *mi);
 uint16_t mcap_get_ctrl_psm(struct mcap_instance *mi, GError **err);
 uint16_t mcap_get_data_psm(struct mcap_instance *mi, GError **err);
 
+gboolean mcap_set_data_chan_mode(struct mcap_instance *mi, uint8_t mode,
+								GError **err);
+
 #ifdef __cplusplus
 }
 #endif

@@ -2131,3 +2131,16 @@ uint16_t mcap_get_data_psm(struct mcap_instance *mi, GError **err)
 
 	return lpsm;
 }
+
+gboolean mcap_set_data_chan_mode(struct mcap_instance *mi, uint8_t mode,
+								GError **err)
+{
+	if (!(mi && mi->dcio)) {
+		g_set_error(err, MCAP_ERROR, MCAP_ERROR_INVALID_ARGS,
+						"Invalid MCAP instance");
+		return FALSE;
+	}
+
+	return bt_io_set(mi->dcio, BT_IO_L2CAP, err, BT_IO_OPT_MODE, mode,
+							BT_IO_OPT_INVALID);
+}
