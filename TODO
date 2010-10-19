@@ -137,3 +137,10 @@ ATT/GATT
 
   Priority: Low
   Complexity: C2
+
+- gattrib needs to be extended to handle Attribute Protocol Transactions
+  timeout. See Volume 3, Part F, section 3.3.3 and Part G, section 4.14
+  for more information.
+
+  Priority: Low
+  Complexity: C2
