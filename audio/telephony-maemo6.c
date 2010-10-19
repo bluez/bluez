@@ -784,8 +784,11 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 
 	switch (cmd[0]) {
 	case '0':
-		foreach_call_with_status(CSD_CALL_STATUS_HOLD, release_call);
-		foreach_call_with_status(CSD_CALL_STATUS_WAITING,
+		if (find_call_with_status(CSD_CALL_STATUS_WAITING))
+			foreach_call_with_status(CSD_CALL_STATUS_WAITING,
+								release_call);
+		else
+			foreach_call_with_status(CSD_CALL_STATUS_HOLD,
 								release_call);
 		break;
 	case '1':
