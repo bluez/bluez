@@ -40,6 +40,20 @@ Low Energy
   Priority: Medium
   Complexity: C2
 
+- Define Auto Connection Establishment Procedure. Some profiles such as
+  Proximity requires an active link to identify path lost situation. It is
+  necessary to define how to manage connections, it seems that White List
+  is appropriated to address auto connections, however is not clear if the
+  this procedure shall be a profile specific detail or if the remote device
+  object can expose a property "WhiteList", maybe "Trusted" property can be
+  also used for this purpose. Another alternative is to define a method to
+  allow application to request/register the wanted scanning/connection
+  parameters. Before start this task, a RFC/PATCH shall be sent to the ML.
+  See Volume 3, Part C, section 9.3.5 for more information.
+
+  Priority: Medium
+  Complexity: C2
+
 - Device Name Characteristic is a GAP characteristic for Low Energy. This
   characteristic shall be integrated/used in the discovery procedure. The
   ideia is to report the value of this characteristic using DeviceFound signals.
