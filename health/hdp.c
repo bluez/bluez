@@ -1574,6 +1574,11 @@ static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 					DBUS_TYPE_INVALID);
 	g_dbus_send_message(hdp_conn->conn, reply);
 
+	if (!check_channel_conf(hdp_chann)) {
+		close_mdl(hdp_chann);
+		return;
+	}
+
 	if (dev->fr)
 		return;
 
