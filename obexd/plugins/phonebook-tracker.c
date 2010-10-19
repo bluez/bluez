@@ -705,18 +705,21 @@ static char *iso8601_utc_to_localtime(const char *datetime)
 
 	memset(&tm, 0, sizeof(tm));
 
-	nr = sscanf(datetime, "%04u%02u%02uT%02u%02u%02u%c",
+	nr = sscanf(datetime, "%04u-%02u-%02uT%02u:%02u:%02u%c",
 			&tm.tm_year, &tm.tm_mon, &tm.tm_mday,
 			&tm.tm_hour, &tm.tm_min, &tm.tm_sec,
 			&tz);
 	if (nr < 6) {
 		/* Invalid time format */
+		error("sscanf(): %s (%d)", strerror(errno), errno);
 		return g_strdup("");
 	}
 
 	/* Time already in localtime */
-	if (nr == 6)
-		return g_strdup(datetime);
+	if (nr == 6) {
+		strftime(localdate, sizeof(localdate), "%Y%m%dT%H%M%S", &tm);
+		return g_strdup(localdate);
+	}
 
 	tm.tm_year -= 1900;	/* Year since 1900 */
 	tm.tm_mon--;		/* Months since January, values 0-11 */
