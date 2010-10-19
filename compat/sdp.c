@@ -152,7 +152,6 @@ int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp
 			&vendor, &product, &version, &subclass, &country,
 			&parser, desc, &req->flags, &pos);
 
-	free(str);
 
 	req->vendor   = vendor;
 	req->product  = product;
@@ -163,6 +162,7 @@ int get_stored_device_info(const bdaddr_t *src, const bdaddr_t *dst, struct hidp
 
 	snprintf(req->name, 128, "%s", str + pos);
 
+	free(str);
 	req->rd_size = strlen(desc) / 2;
 	req->rd_data = malloc(req->rd_size);
 	if (!req->rd_data) {
