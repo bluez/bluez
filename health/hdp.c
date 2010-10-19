@@ -970,11 +970,18 @@ static void hdp_mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 	dev->ndc = NULL;
 }
 
+static uint8_t hdp2l2cap_mode(uint8_t hdp_mode)
+{
+	return hdp_mode == HDP_STREAMING_DC ? L2CAP_MODE_STREAMING :
+								L2CAP_MODE_ERTM;
+}
+
 static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 				uint16_t mdlid, uint8_t *conf, void *data)
 {
 	struct hdp_device *dev = data;
 	struct hdp_application *app;
+	GError *err = NULL;
 	GSList *l;
 
 	DBG("Data channel request");
@@ -994,6 +1001,13 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 			* we are still processing the callback. */
 			close_device_con(dev, FALSE);
 			return MCAP_CONFIGURATION_REJECTED; /* not processed */
+		}
+
+		if (!mcap_set_data_chan_mode(dev->hdp_adapter->mi,
+						L2CAP_MODE_ERTM, &err)) {
+			error("Error: %s", err->message);
+			g_error_free(err);
+			return MCAP_MDL_BUSY;
 		}
 
 		dev->ndc = create_channel(dev, *conf, NULL, mdlid, NULL, NULL);
@@ -1042,6 +1056,13 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 		g_free(path);
 	}
 
+	if (!mcap_set_data_chan_mode(dev->hdp_adapter->mi,
+						hdp2l2cap_mode(*conf), &err)) {
+		error("Error: %s", err->message);
+		g_error_free(err);
+		return MCAP_MDL_BUSY;
+	}
+
 	dev->ndc = create_channel(dev, *conf, NULL, mdlid, app, NULL);
 	if (!dev->ndc)
 		return MCAP_MDL_BUSY;
@@ -1053,6 +1074,7 @@ static uint8_t hdp_mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
 {
 	struct hdp_device *dev = data;
 	struct hdp_channel *chan;
+	GError *err = NULL;
 	GSList *l;
 
 	l = g_slist_find_custom(dev->channels, mdl, cmp_chan_mdl);
@@ -1064,6 +1086,13 @@ static uint8_t hdp_mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
 	if (!dev->fr && (chan->config != HDP_RELIABLE_DC) &&
 						(chan->mdep != HDP_MDEP_ECHO))
 		return MCAP_UNSPECIFIED_ERROR;
+
+	if (!mcap_set_data_chan_mode(dev->hdp_adapter->mi,
+					hdp2l2cap_mode(chan->config), &err)) {
+		error("Error: %s", err->message);
+		g_error_free(err);
+		return MCAP_MDL_BUSY;
+	}
 
 	dev->ndc = chan;
 
