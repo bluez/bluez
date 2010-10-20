@@ -166,7 +166,9 @@ static void adapter_powered(struct btd_adapter *adapter, gboolean powered)
 				DBUS_TYPE_UINT32, &radio_mask,
 				DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send(conn, msg, NULL))
+	if (dbus_connection_send(conn, msg, NULL))
+		mce_bt_set = powered;
+	else
 		error("calling %s failed", MCE_RADIO_STATES_CHANGE_REQ);
 
 	dbus_message_unref(msg);
