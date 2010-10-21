@@ -172,13 +172,34 @@
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
+	"{"								\
+		"?c a nco:Contact . "					\
+		"?c nco:hasPhoneNumber ?h . "				\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered false ."				\
-		"?c a nco:Contact . "					\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
-	"} ORDER BY DESC(nmo:receivedDate(?call))"
+	"}UNION{"							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?h . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered false ."				\
+		"?c a nco:PersonContact . "				\
+		"?c nco:hasPhoneNumber ?h . "				\
+	"} UNION { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?h . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered false ."				\
+		"?c a nco:PersonContact . "				\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?h . "				\
+	"} "								\
+	"} GROUP BY ?call ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define INCOMING_CALLS_QUERY						\
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
@@ -244,13 +265,34 @@
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
+	"{"								\
+		"?c a nco:Contact . "					\
+		"?c nco:hasPhoneNumber ?h . "				\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?c ; "					\
 		"nmo:isSent false ; "					\
 		"nmo:isAnswered true ."					\
-		"?c a nco:Contact . "					\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
-	"} ORDER BY DESC(nmo:receivedDate(?call))"
+	"} UNION { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?h ."				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered true ."					\
+		"?c a nco:PersonContact . "				\
+		"?c nco:hasPhoneNumber ?h ."				\
+	"}UNION { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?h ."				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered true ."					\
+		"?c a nco:PersonContact . "				\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?h . "				\
+	"}"								\
+	"} GROUP BY ?call ORDER BY DESC(nmo:receivedDate(?call))"
 
 #define OUTGOING_CALLS_QUERY						\
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
@@ -313,12 +355,31 @@
 	"nco:nameHonorificPrefix(?c) nco:nameHonorificSuffix(?c) "	\
 	"nco:phoneNumber(?h) "						\
 	"WHERE { "							\
+	"{"								\
+		"?c a nco:Contact . "					\
+		"?c nco:hasPhoneNumber ?h . "				\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?c ; "						\
 		"nmo:isSent true . "					\
-		"?c a nco:Contact . "					\
-	"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "			\
-	"} ORDER BY DESC(nmo:sentDate(?call))"
+	"} UNION {"							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?h . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:to ?x ; "						\
+		"nmo:isSent true . "					\
+		"?c a nco:PersonContact . "				\
+		"?c nco:hasPhoneNumber ?h . "				\
+	"} UNION {"							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?h . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:to ?x ; "						\
+		"nmo:isSent true . "					\
+		"?c a nco:PersonContact . "				\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?h . "				\
+	"}"								\
+	"} GROUP BY ?call ORDER BY DESC(nmo:sentDate(?call))"
 
 #define COMBINED_CALLS_QUERY						\
 	"SELECT nco:phoneNumber(?h) nco:fullname(?c) "			\
@@ -420,19 +481,54 @@
 	"nco:nameAdditional(?c) nco:nameHonorificPrefix(?c) "		\
 	"nco:nameHonorificSuffix(?c) nco:phoneNumber(?h) "		\
 	"WHERE { "							\
-	"{ "								\
-		"?call a nmo:Call ; "					\
-		"nmo:to ?c ; "						\
-		"nmo:isSent true . "					\
-		"?c a nco:Contact . "					\
-		"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "		\
-	"} UNION { "							\
-		"?call a nmo:Call ; "					\
-		"nmo:from ?c ; "					\
-		"nmo:isSent false . "					\
-		"?c a nco:Contact . "					\
-		"OPTIONAL { ?c nco:hasPhoneNumber ?h . } "		\
-	"} } ORDER BY DESC(nmo:receivedDate(?call))"
+	"	{ "							\
+			"?c a nco:Contact . "				\
+			"?c nco:hasPhoneNumber ?h . "			\
+			"?call a nmo:Call ; "				\
+			"nmo:to ?c ; "					\
+			"nmo:isSent true . "				\
+		"} UNION {"						\
+			"?x a nco:Contact . "				\
+			"?x nco:hasPhoneNumber ?h . "			\
+			"?call a nmo:Call ; "				\
+			"nmo:to ?x ; "					\
+			"nmo:isSent true . "				\
+			"?c a nco:PersonContact . "			\
+			"?c nco:hasPhoneNumber ?h . "			\
+		"} UNION {"						\
+			"?x a nco:Contact . "				\
+			"?x nco:hasPhoneNumber ?h . "			\
+			"?call a nmo:Call ; "				\
+			"nmo:to ?x ; "					\
+			"nmo:isSent true . "				\
+			"?c a nco:PersonContact . "			\
+			"?c nco:hasAffiliation ?a . "			\
+			"?a nco:hasPhoneNumber ?h . "			\
+		"}UNION {"						\
+			"?c a nco:Contact . "				\
+			"?c nco:hasPhoneNumber ?h . "			\
+			"?call a nmo:Call ; "				\
+			"nmo:from ?c ; "				\
+			"nmo:isSent false . "				\
+		"} UNION {"						\
+			"?x a nco:Contact . "				\
+			"?x nco:hasPhoneNumber ?h . "			\
+			"?call a nmo:Call ; "				\
+			"nmo:from ?x ; "				\
+			"nmo:isSent false . "				\
+			"?c a nco:PersonContact . "			\
+			"?c nco:hasPhoneNumber ?h . "			\
+		"} UNION {"						\
+			"?x a nco:Contact . "				\
+			"?x nco:hasPhoneNumber ?h . "			\
+			"?call a nmo:Call ; "				\
+			"nmo:from ?x ; "				\
+			"nmo:isSent false . "				\
+			"?c a nco:PersonContact . "			\
+			"?c nco:hasAffiliation ?a . "			\
+			"?a nco:hasPhoneNumber ?h . "			\
+		"}"							\
+	"} GROUP BY ?call ORDER BY DESC(nmo:receivedDate(?call))"
 
 
 #define CONTACTS_QUERY_FROM_URI						\
