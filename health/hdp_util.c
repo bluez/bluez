@@ -351,12 +351,9 @@ static gboolean register_service_protocols(struct hdp_adapter *adapter,
 {
 	gboolean ret;
 	uuid_t l2cap_uuid, mcap_c_uuid;
-	sdp_list_t *l2cap_list,
-		*proto_list = NULL,
-		*mcap_list = NULL,
-		*access_proto_list = NULL;
-	sdp_data_t *psm = NULL,
-		*mcap_ver = NULL;
+	sdp_list_t *l2cap_list, *proto_list = NULL, *mcap_list = NULL;
+	sdp_list_t *access_proto_list = NULL;
+	sdp_data_t *psm = NULL, *mcap_ver = NULL;
 	uint16_t version = MCAP_VERSION;
 
 	/* set l2cap information */
@@ -468,10 +465,8 @@ static gboolean register_service_aditional_protocols(
 {
 	gboolean ret;
 	uuid_t l2cap_uuid, mcap_d_uuid;
-	sdp_list_t *l2cap_list,
-		*proto_list = NULL,
-		*mcap_list = NULL,
-		*access_proto_list = NULL;
+	sdp_list_t *l2cap_list, *proto_list = NULL, *mcap_list = NULL;
+	sdp_list_t *access_proto_list = NULL;
 	sdp_data_t *psm = NULL;
 
 	/* set l2cap information */
