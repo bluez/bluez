@@ -181,8 +181,9 @@ static gboolean parse_role(DBusMessageIter *iter, gpointer data, GError **err)
 		dbus_message_iter_recurse(iter, &value);
 		ctype = dbus_message_iter_get_arg_type(&value);
 		string = &value;
-	} else
+	} else {
 		string = iter;
+	}
 
 	if (ctype != DBUS_TYPE_STRING) {
 		g_set_error(err, HDP_ERROR, HDP_UNSPECIFIED_ERROR,
@@ -191,11 +192,11 @@ static gboolean parse_role(DBusMessageIter *iter, gpointer data, GError **err)
 	}
 
 	dbus_message_iter_get_basic(string, &role);
-	if (g_ascii_strcasecmp(role, HDP_SINK_ROLE_AS_STRING) == 0)
+	if (g_ascii_strcasecmp(role, HDP_SINK_ROLE_AS_STRING) == 0) {
 		app->role = HDP_SINK;
-	else if (g_ascii_strcasecmp(role, HDP_SOURCE_ROLE_AS_STRING) == 0)
+	} else if (g_ascii_strcasecmp(role, HDP_SOURCE_ROLE_AS_STRING) == 0) {
 		app->role = HDP_SOURCE;
-	else {
+	} else {
 		g_set_error(err, HDP_ERROR, HDP_UNSPECIFIED_ERROR,
 			"Role value should be \"source\" or \"sink\"");
 		return FALSE;
@@ -221,8 +222,9 @@ static gboolean parse_desc(DBusMessageIter *iter, gpointer data, GError **err)
 		dbus_message_iter_recurse(iter, &variant);
 		ctype = dbus_message_iter_get_arg_type(&variant);
 		string = &variant;
-	} else
+	} else {
 		string = iter;
+	}
 
 	if (ctype != DBUS_TYPE_STRING) {
 		g_set_error(err, HDP_ERROR, HDP_DIC_ENTRY_PARSE_ERROR,
@@ -395,12 +397,12 @@ static gboolean register_service_protocols(struct hdp_adapter *adapter,
 		goto end;
 	}
 
-	if (!sdp_list_append( mcap_list, mcap_ver)) {
+	if (!sdp_list_append(mcap_list, mcap_ver)) {
 		ret = FALSE;
 		goto end;
 	}
 
-	if (!sdp_list_append( proto_list, mcap_list)) {
+	if (!sdp_list_append(proto_list, mcap_list)) {
 		ret = FALSE;
 		goto end;
 	}
@@ -442,7 +444,7 @@ static gboolean register_service_profiles(sdp_record_t *sdp_record)
 	sdp_profile_desc_t hdp_profile;
 
 	/* set hdp information */
-	sdp_uuid16_create( &hdp_profile.uuid, HDP_SVCLASS_ID);
+	sdp_uuid16_create(&hdp_profile.uuid, HDP_SVCLASS_ID);
 	hdp_profile.version = HDP_VERSION;
 	profile_list = sdp_list_append(NULL, &hdp_profile);
 	if (!profile_list)
@@ -459,7 +461,7 @@ static gboolean register_service_profiles(sdp_record_t *sdp_record)
 	return ret;
 }
 
-static gboolean register_service_aditional_protocols(
+static gboolean register_service_additional_protocols(
 						struct hdp_adapter *adapter,
 						sdp_record_t *sdp_record)
 {
@@ -502,7 +504,7 @@ static gboolean register_service_aditional_protocols(
 		goto end;
 	}
 
-	if (!sdp_list_append( proto_list, mcap_list)) {
+	if (!sdp_list_append(proto_list, mcap_list)) {
 		ret = FALSE;
 		goto end;
 	}
@@ -709,7 +711,7 @@ gboolean hdp_update_sdp_record(struct hdp_adapter *adapter, GSList *app_list)
 		goto fail;
 	if (!register_service_profiles(sdp_record))
 		goto fail;
-	if (!register_service_aditional_protocols(adapter, sdp_record))
+	if (!register_service_additional_protocols(adapter, sdp_record))
 		goto fail;
 
 	sdp_set_info_attr(sdp_record, HDP_SERVICE_NAME, HDP_SERVICE_PROVIDER,

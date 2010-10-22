@@ -69,7 +69,7 @@ struct sync_info_ind_data;
 
 /************ Callbacks ************/
 
-/* mdl callbacks */
+/* MDL callbacks */
 
 typedef void (* mcap_mdl_event_cb) (struct mcap_mdl *mdl, gpointer data);
 typedef void (* mcap_mdl_operation_conf_cb) (struct mcap_mdl *mdl, uint8_t conf,
@@ -85,7 +85,7 @@ typedef uint8_t (* mcap_remote_mdl_conn_req_cb) (struct mcap_mcl *mcl,
 typedef uint8_t (* mcap_remote_mdl_reconn_req_cb) (struct mcap_mdl *mdl,
 						gpointer data);
 
-/* mcl callbacks */
+/* MCL callbacks */
 
 typedef void (* mcap_mcl_event_cb) (struct mcap_mcl *mcl, gpointer data);
 typedef void (* mcap_mcl_connect_cb) (struct mcap_mcl *mcl, GError *err,
@@ -115,7 +115,7 @@ typedef void (* mcap_sync_set_cb) (struct mcap_mcl *mcl,
 
 /************ Operations ************/
 
-/* Mdl operations*/
+/* MDL operations */
 
 gboolean mcap_create_mdl(struct mcap_mcl *mcl,
 				uint8_t mdepid,
@@ -155,7 +155,7 @@ gboolean mcap_mdl_abort(struct mcap_mdl *mdl,
 int mcap_mdl_get_fd(struct mcap_mdl *mdl);
 uint16_t mcap_mdl_get_mdlid(struct mcap_mdl *mdl);
 
-/* Mcl operations*/
+/* MCL operations */
 
 gboolean mcap_create_mcl(struct mcap_instance *ms,
 				const bdaddr_t *addr,
