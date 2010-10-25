@@ -55,6 +55,7 @@
 #define COL_SENT 36
 #define COL_ANSWERED 37
 #define ADDR_FIELD_AMOUNT 7
+#define CONTACT_ID_PREFIX "contact:"
 
 #define CONTACTS_QUERY_ALL						\
 	"SELECT ?v nco:fullname(?c) "					\
@@ -568,6 +569,16 @@
 		"OPTIONAL { ?a nco:org ?o . } "				\
 	"} "								\
 	"}"
+
+#define CONTACTS_OTHER_QUERY_FROM_URI					\
+	"SELECT \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" "\
+	"\"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" "	\
+	"\"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" "	\
+	"nco:phoneNumber(?t) \"NOTACALL\" \"false\" \"false\" <%s> "	\
+	"WHERE { "							\
+		"<%s> a nco:Contact . "					\
+		"<%s> nco:hasPhoneNumber ?t . "				\
+	"} "
 
 typedef void (*reply_list_foreach_t) (char **reply, int num_fields,
 		void *user_data);
@@ -1305,9 +1316,13 @@ int phonebook_get_entry(const char *folder, const char *id,
 	data->cb = cb;
 	data->vcardentry = TRUE;
 
-	query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id, id,
-						id, id, id, id, id, id, id,
+	if (strncmp(id, CONTACT_ID_PREFIX, strlen(CONTACT_ID_PREFIX)) == 0)
+		query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id,
+						id, id, id, id, id, id, id, id,
 						id, id, id, id, id);
+	else
+		query = g_strdup_printf(CONTACTS_OTHER_QUERY_FROM_URI,
+								id, id, id);
 
 	ret = query_tracker(query, PULL_QUERY_COL_AMOUNT, pull_contacts, data);
 
