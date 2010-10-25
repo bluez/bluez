@@ -1026,7 +1026,7 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 	case HDP_NO_PREFERENCE_DC:
 		if (app->role == HDP_SINK)
 			return MCAP_CONFIGURATION_REJECTED;
-		else if (app->chan_type_set)
+		else if (dev->fr && app->chan_type_set)
 			*conf = app->chan_type;
 		else
 			*conf = HDP_RELIABLE_DC;
