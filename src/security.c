@@ -56,22 +56,6 @@
 #include "storage.h"
 #include "manager.h"
 
-typedef enum {
-	REQ_PENDING,
-	REQ_SENT
-} req_status_t;
-
-struct hci_req_data {
-	int dev_id;
-	int event;
-	req_status_t status;
-	bdaddr_t dba;
-	uint16_t ogf;
-	uint16_t ocf;
-	void *cparam;
-	int clen;
-};
-
 struct g_io_info {
 	GIOChannel	*channel;
 	int		watch_id;
