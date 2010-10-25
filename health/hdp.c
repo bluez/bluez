@@ -339,7 +339,7 @@ static DBusMessage *manager_create_application(DBusConnection *conn,
 					"Can't get sender name");
 	}
 
-	if (!set_app_path(app)){
+	if (!set_app_path(app)) {
 		free_application(app);
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".HealthError",

@@ -350,7 +350,7 @@ static gboolean initialize_caps(struct mcap_mcl *mcl)
 	clock_gettime(CLK, &t1);
 	read_btclock_retry(mcl, &btclock, &btaccuracy);
 
-	/* Do clock read a number of times and measure latency */
+	/* Read clock a number of times and measure latency */
 	avg = 0;
 	i = 0;
 	retries = MAX_RETRIES;
