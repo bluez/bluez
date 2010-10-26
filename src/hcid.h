@@ -86,9 +86,6 @@ void plugin_cleanup(void);
 void rfkill_init(void);
 void rfkill_exit(void);
 
-void __probe_servers(const char *adapter);
-void __remove_servers(const char *adapter);
-
 static inline int ignore_device(struct hci_dev_info *di)
 {
 	return hci_test_bit(HCI_RAW, &di->flags) || di->type >> 4 != HCI_BREDR;
