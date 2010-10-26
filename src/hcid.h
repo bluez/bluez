@@ -85,9 +85,6 @@ extern struct main_opts main_opts;
 
 char *expand_name(char *dst, int size, char *str, int dev_id);
 
-void start_security_manager(int hdev);
-void stop_security_manager(int hdev);
-
 void btd_start_exit_timer(void);
 void btd_stop_exit_timer(void);
 
