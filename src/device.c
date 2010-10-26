@@ -64,6 +64,9 @@
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		2
 
+/* When all services should trust a remote device */
+#define GLOBAL_TRUST "[all]"
+
 struct btd_driver_data {
 	guint id;
 	struct btd_device_driver *driver;

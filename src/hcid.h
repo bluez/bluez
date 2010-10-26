@@ -26,9 +26,6 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-/* When all services should trust a remote device */
-#define GLOBAL_TRUST "[all]"
-
 /*
  * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device
