@@ -83,8 +83,6 @@ enum {
 
 extern struct main_opts main_opts;
 
-char *expand_name(char *dst, int size, char *str, int dev_id);
-
 void btd_start_exit_timer(void);
 void btd_stop_exit_timer(void);
 
