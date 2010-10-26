@@ -46,5 +46,3 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey);
 int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t *key, uint8_t key_type,
 				int pin_length, uint8_t old_key_type);
-
-const char *class_to_icon(uint32_t class);
