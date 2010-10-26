@@ -1430,9 +1430,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	/* UUIDs */
 	uuids = g_new0(char *, sdp_list_len(adapter->services) + 1);
 
-	for (i = 0, list = adapter->services; list; list = list->next, i++) {
+	for (i = 0, list = adapter->services; list; list = list->next) {
 		sdp_record_t *rec = list->data;
-		uuids[i] = bt_uuid2string(&rec->svclass);
+		char *uuid;
+
+		uuid = bt_uuid2string(&rec->svclass);
+		if (uuid)
+			uuids[i++] = uuid;
 	}
 
 	dict_append_array(&dict, "UUIDs", DBUS_TYPE_STRING, &uuids, i);
