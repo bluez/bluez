@@ -3669,3 +3669,9 @@ int btd_adapter_get_remote_version(struct btd_adapter *adapter,
 	return adapter_ops->get_remote_version(adapter->dev_id, handle,
 								delayed);
 }
+
+int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+					bt_hci_result_t cb, gpointer user_data)
+{
+	return adapter_ops->encrypt_link(adapter->dev_id, bdaddr, cb, user_data);
+}

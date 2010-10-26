@@ -177,6 +177,8 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter);
 int btd_adapter_switch_online(struct btd_adapter *adapter);
 int btd_adapter_switch_offline(struct btd_adapter *adapter);
 
+typedef void (*bt_hci_result_t) (uint8_t status, gpointer user_data);
+
 struct btd_adapter_ops {
 	int (*setup) (void);
 	void (*cleanup) (void);
@@ -227,6 +229,8 @@ struct btd_adapter_ops {
 	int (*write_le_host) (int index, uint8_t le, uint8_t simul);
 	int (*get_remote_version) (int index, uint16_t handle,
 						gboolean delayed);
+	int (*encrypt_link) (int index, bdaddr_t *bdaddr, bt_hci_result_t cb,
+							gpointer user_data);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
@@ -284,3 +288,6 @@ int btd_adapter_get_remote_name(struct btd_adapter *adapter,
 int btd_adapter_get_remote_version(struct btd_adapter *adapter,
 							uint16_t handle,
 							gboolean delayed);
+
+int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+				bt_hci_result_t cb, gpointer user_data);

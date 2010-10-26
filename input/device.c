@@ -59,7 +59,6 @@
 #include "device.h"
 #include "error.h"
 #include "fakehid.h"
-#include "glib-helper.h"
 #include "btio.h"
 
 #define INPUT_DEVICE_INTERFACE "org.bluez.Input"
@@ -654,12 +653,15 @@ static int hidp_add_connection(const struct input_device *idev,
 
 	/* Encryption is mandatory for keyboards */
 	if (req->subclass & 0x40) {
-		err = bt_acl_encrypt(&idev->src, &idev->dst, encrypt_completed, req);
+		struct btd_adapter *adapter = device_get_adapter(idev->device);
+
+		err = btd_adapter_encrypt_link(adapter, (bdaddr_t *) &idev->dst,
+						encrypt_completed, req);
 		if (err == 0) {
 			/* Waiting async encryption */
 			return 0;
 		} else if (err != -EALREADY) {
-			error("bt_acl_encrypt(): %s(%d)", strerror(-err), -err);
+			error("encrypt_link: %s (%d)", strerror(-err), -err);
 			goto cleanup;
 		}
 	}
