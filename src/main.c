@@ -46,6 +46,8 @@
 
 #include <dbus/dbus.h>
 
+#include <gdbus.h>
+
 #include "log.h"
 
 #include "hcid.h"
@@ -60,6 +62,8 @@
 #ifdef HAVE_CAPNG
 #include <cap-ng.h>
 #endif
+
+#define BLUEZ_NAME "org.bluez"
 
 #define LAST_ADAPTER_EXIT_TIMEOUT 30
 
@@ -343,6 +347,44 @@ void btd_stop_exit_timer(void)
 	last_adapter_timeout = 0;
 }
 
+static void disconnect_dbus(void)
+{
+	DBusConnection *conn = get_dbus_connection();
+
+	if (!conn || !dbus_connection_get_is_connected(conn))
+		return;
+
+	manager_cleanup(conn, "/");
+
+	set_dbus_connection(NULL);
+
+	dbus_connection_unref(conn);
+}
+
+static int connect_dbus(void)
+{
+	DBusConnection *conn;
+	DBusError err;
+
+	dbus_error_init(&err);
+
+	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, BLUEZ_NAME, &err);
+	if (!conn) {
+		if (dbus_error_is_set(&err)) {
+			dbus_error_free(&err);
+			return -EIO;
+		}
+		return -EALREADY;
+	}
+
+	if (!manager_init(conn, "/"))
+		return -EIO;
+
+	set_dbus_connection(conn);
+
+	return 0;
+}
+
 static gboolean parse_debug(const char *key, const char *value,
 				gpointer user_data, GError **error)
 {
@@ -410,7 +452,7 @@ int main(int argc, char *argv[])
 		int err;
 
 		option_detach = TRUE;
-		err = hcid_dbus_init();
+		err = connect_dbus();
 		if (err < 0) {
 			if (err == -EALREADY)
 				exit(0);
@@ -448,7 +490,7 @@ int main(int argc, char *argv[])
 	agent_init();
 
 	if (option_udev == FALSE) {
-		if (hcid_dbus_init() < 0) {
+		if (connect_dbus() < 0) {
 			error("Unable to get on D-Bus");
 			exit(1);
 		}
@@ -485,7 +527,7 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(event_loop);
 
-	hcid_dbus_exit();
+	disconnect_dbus();
 
 	rfkill_exit();
 

@@ -23,9 +23,6 @@
 
 #define MAX_PATH_LENGTH 64
 
-void hcid_dbus_exit(void);
-int hcid_dbus_init(void);
-
 void dict_append_entry(DBusMessageIter *dict,
 			const char *key, int type, void *val);
 
