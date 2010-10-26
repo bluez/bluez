@@ -803,8 +803,6 @@ static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)
 				| (evt->dev_class[2] << 16);
 
 	hcid_dbus_remote_class(sba, &evt->bdaddr, class);
-
-	write_remote_class(sba, &evt->bdaddr, class);
 }
 
 static inline void le_metaevent(int dev, bdaddr_t *sba, void *ptr)

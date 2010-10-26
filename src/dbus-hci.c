@@ -525,6 +525,8 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	if (old_class == class)
 		return;
 
+	write_remote_class(local, peer, class);
+
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
 
