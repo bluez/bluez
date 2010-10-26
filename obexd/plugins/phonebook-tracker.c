@@ -531,7 +531,6 @@
 		"}"							\
 	"} GROUP BY ?call ORDER BY DESC(nmo:receivedDate(?call))"
 
-
 #define CONTACTS_QUERY_FROM_URI						\
 	"SELECT ?v nco:fullname(<%s>) "					\
 	"nco:nameFamily(<%s>) nco:nameGiven(<%s>) "			\
