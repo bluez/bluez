@@ -25,7 +25,6 @@
 
 void hcid_dbus_exit(void);
 int hcid_dbus_init(void);
-void hcid_dbus_unregister(void);
 
 void dict_append_entry(DBusMessageIter *dict,
 			const char *key, int type, void *val);

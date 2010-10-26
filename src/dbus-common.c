@@ -116,40 +116,6 @@ static void disconnect_callback(DBusConnection *conn, void *user_data)
 				system_bus_reconnect, NULL);
 }
 
-void hcid_dbus_unregister(void)
-{
-	DBusConnection *conn = get_dbus_connection();
-	char **children;
-	int i;
-	uint16_t dev_id;
-
-	if (!conn || !dbus_connection_get_is_connected(conn))
-		return;
-
-	/* Unregister all paths in Adapter path hierarchy */
-	if (!dbus_connection_list_registered(conn, "/", &children))
-		return;
-
-	for (i = 0; children[i]; i++) {
-		char path[MAX_PATH_LENGTH];
-		struct btd_adapter *adapter;
-
-		if (children[i][0] != 'h')
-			continue;
-
-		snprintf(path, sizeof(path), "/%s", children[i]);
-
-		adapter = manager_find_adapter_by_path(path);
-		if (!adapter)
-			continue;
-
-		dev_id = adapter_get_dev_id(adapter);
-		manager_unregister_adapter(dev_id);
-	}
-
-	dbus_free_string_array(children);
-}
-
 void hcid_dbus_exit(void)
 {
 	DBusConnection *conn = get_dbus_connection();
