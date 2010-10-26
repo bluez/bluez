@@ -548,6 +548,17 @@ void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	struct btd_device *device;
 	struct remote_dev_info match, *dev_info;
 
+	if (status == 0) {
+		char *end;
+
+		/* It's ok to cast end between const and non-const since
+		 * we know it points to inside of name which is non-const */
+		if (!g_utf8_validate(name, -1, (const char **) &end))
+			*end = '\0';
+
+		write_device_name(local, peer, name);
+	}
+
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
 

@@ -600,23 +600,14 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_remote_name_req_complete *evt = ptr;
-	bdaddr_t dba;
 	char name[MAX_NAME_LENGTH + 1];
 
 	memset(name, 0, sizeof(name));
-	bacpy(&dba, &evt->bdaddr);
 
-	if (!evt->status) {
-		char *end;
+	if (!evt->status)
 		memcpy(name, evt->name, MAX_NAME_LENGTH);
-		/* It's ok to cast end between const and non-const since
-		 * we know it points to inside of name which is non-const */
-		if (!g_utf8_validate(name, -1, (const char **) &end))
-			*end = '\0';
-		write_device_name(sba, &dba, name);
-	}
 
-	hcid_dbus_remote_name(sba, &dba, evt->status, name);
+	hcid_dbus_remote_name(sba, &evt->bdaddr, evt->status, name);
 }
 
 static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
