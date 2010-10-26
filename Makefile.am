@@ -222,7 +222,7 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			$(attrib_sources) $(btio_sources) \
 			$(mcap_sources) src/bluetooth.ver \
 			src/main.c src/log.h src/log.c \
-			src/security.c src/rfkill.c src/hcid.h src/sdpd.h \
+			src/rfkill.c src/hcid.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \
 			src/sdpd-service.c src/sdpd-database.c \
 			src/attrib-server.h src/attrib-server.c \
