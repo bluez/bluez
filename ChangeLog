@@ -1,3 +1,11 @@
+ver 4.77:
+	Fix issue with device name and accessing already freed memory.
+	Fix issue with handling CHLD=0 command for handsfree.
+	Fix issue with manager properties and no adapters.
+	Fix issue with properties and broken service records.
+	Fix issue with A2DP playback and sample rate changes.
+	Update MCAP and HDP support.
+
 ver 4.76:
 	Fix issue in telephony driver with hanging up held call.
 	Fix issue in telephony driver with notifications when on hold.
