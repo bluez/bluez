@@ -1028,6 +1028,9 @@ static gboolean a2dp_reconfigure(gpointer data)
 	struct a2dp_sep *sep = setup->sep;
 	int posix_err;
 
+	if (!setup->rsep)
+		setup->rsep = avdtp_find_remote_sep(setup->session, sep->lsep);
+
 	posix_err = avdtp_set_configuration(setup->session, setup->rsep,
 						sep->lsep,
 						setup->client_caps,
