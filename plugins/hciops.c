@@ -48,6 +48,8 @@
 #include "device.h"
 #include "manager.h"
 
+#define HCI_REQ_TIMEOUT         5000
+
 static int child_pipe[2] = { -1, -1 };
 
 static guint child_io_id = 0;
