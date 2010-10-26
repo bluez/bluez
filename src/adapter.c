@@ -1099,9 +1099,13 @@ static void adapter_emit_uuids_updated(struct btd_adapter *adapter)
 
 	uuids = g_new0(char *, sdp_list_len(adapter->services) + 1);
 
-	for (i = 0, list = adapter->services; list; list = list->next, i++) {
+	for (i = 0, list = adapter->services; list; list = list->next) {
+		char *uuid;
 		sdp_record_t *rec = list->data;
-		uuids[i] = bt_uuid2string(&rec->svclass);
+
+		uuid = bt_uuid2string(&rec->svclass);
+		if (uuid)
+			uuids[i++] = uuid;
 	}
 
 	emit_array_property_changed(connection, adapter->path,
