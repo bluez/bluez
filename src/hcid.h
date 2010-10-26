@@ -85,8 +85,6 @@ extern struct main_opts main_opts;
 
 char *expand_name(char *dst, int size, char *str, int dev_id);
 
-void hci_req_queue_remove(int dev_id, bdaddr_t *dba);
-
 void start_security_manager(int hdev);
 void stop_security_manager(int hdev);
 
