@@ -67,6 +67,8 @@
 
 #define LAST_ADAPTER_EXIT_TIMEOUT 30
 
+#define DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
+
 struct main_opts main_opts;
 
 static GKeyFile *load_config(const char *file)
@@ -233,7 +235,7 @@ static void init_defaults(void)
 	main_opts.scan	= SCAN_PAGE;
 	main_opts.mode	= MODE_CONNECTABLE;
 	main_opts.name	= g_strdup("BlueZ");
-	main_opts.discovto	= HCID_DEFAULT_DISCOVERABLE_TIMEOUT;
+	main_opts.discovto	= DEFAULT_DISCOVERABLE_TIMEOUT;
 	main_opts.remember_powered = TRUE;
 	main_opts.reverse_sdp = TRUE;
 	main_opts.name_resolv = TRUE;

@@ -42,8 +42,6 @@
 #define MODE_LIMITED		0x03
 #define MODE_UNKNOWN		0xff
 
-#define HCID_DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
-
 /* Timeout for hci_send_req (milliseconds) */
 #define HCI_REQ_TIMEOUT		5000
 
