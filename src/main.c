@@ -52,7 +52,7 @@
 #include "sdpd.h"
 #include "attrib-server.h"
 #include "adapter.h"
-#include "dbus-hci.h"
+#include "event.h"
 #include "dbus-common.h"
 #include "agent.h"
 #include "manager.h"

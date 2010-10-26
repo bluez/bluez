@@ -52,7 +52,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "dbus-common.h"
-#include "dbus-hci.h"
+#include "event.h"
 #include "error.h"
 #include "glib-helper.h"
 #include "agent.h"
@@ -864,7 +864,7 @@ static void device_set_connected(struct btd_device *device,
 
 		device->secmode3 = FALSE;
 
-		hcid_dbus_bonding_process_complete(&sba, &device->bdaddr, 0);
+		btd_event_bonding_process_complete(&sba, &device->bdaddr, 0);
 	}
 }
 

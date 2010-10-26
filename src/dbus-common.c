@@ -46,7 +46,7 @@
 
 #include "manager.h"
 #include "adapter.h"
-#include "dbus-hci.h"
+#include "event.h"
 #include "dbus-common.h"
 
 #define BLUEZ_NAME "org.bluez"

@@ -35,7 +35,6 @@
 #include "plugin.h"
 #include "adapter.h"
 #include "log.h"
-#include "dbus-hci.h"
 
 #define DMI_CHASSIS_FILE "/sys/class/dmi/id/chassis_type"
 #define DMI_CHASSIS_FILE_FALLBACK "/sys/devices/virtual/dmi/id/chassis_type"

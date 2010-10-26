@@ -57,7 +57,7 @@
 #include "dbus-common.h"
 #include "agent.h"
 #include "storage.h"
-#include "dbus-hci.h"
+#include "event.h"
 
 static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					struct btd_adapter **adapter,
@@ -124,7 +124,7 @@ fail:
 	error("Sending PIN code reply failed: %s (%d)", strerror(-err), -err);
 }
 
-int hcid_dbus_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
+int btd_event_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -175,7 +175,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	btd_adapter_passkey_reply(adapter, &bdaddr, passkey);
 }
 
-int hcid_dbus_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
+int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -240,7 +240,7 @@ fail:
 	return confirm_reply(adapter, device, FALSE);
 }
 
-int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
+int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -252,7 +252,7 @@ int hcid_dbus_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 								passkey_cb);
 }
 
-int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
+int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -264,7 +264,7 @@ int hcid_dbus_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 								passkey, NULL);
 }
 
-void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
+void btd_event_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 								uint8_t status)
 {
 	struct btd_adapter *adapter;
@@ -288,7 +288,7 @@ void hcid_dbus_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_bonding_complete(device, status);
 }
 
-void hcid_dbus_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
+void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 								uint8_t status)
 {
 	struct btd_adapter *adapter;
@@ -323,7 +323,7 @@ static char *extract_eir_name(uint8_t *data, uint8_t *type)
 	return NULL;
 }
 
-void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
+void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				int8_t rssi, uint8_t *data)
 {
 	char filename[PATH_MAX + 1];
@@ -427,7 +427,7 @@ void hcid_dbus_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	g_free(alias);
 }
 
-void hcid_dbus_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
+void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
 							gboolean legacy)
 {
 	struct btd_adapter *adapter;
@@ -448,7 +448,7 @@ void hcid_dbus_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
 		dev->legacy = legacy;
 }
 
-void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
+void btd_event_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 {
 	uint32_t old_class = 0;
 	struct btd_adapter *adapter;
@@ -475,7 +475,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 				DBUS_TYPE_UINT32, &class);
 }
 
-void hcid_dbus_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
+void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 				char *name)
 {
 	struct btd_adapter *adapter;
@@ -530,7 +530,7 @@ proceed:
 	adapter_set_state(adapter, state);
 }
 
-int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
+int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t *key, uint8_t key_type,
 				int pin_length, uint8_t old_key_type)
 {
@@ -612,14 +612,14 @@ int hcid_dbus_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	if (!device_is_connected(device))
 		device_set_secmode3_conn(device, TRUE);
 	else if (!bonding && old_key_type == 0xff)
-		hcid_dbus_bonding_process_complete(local, peer, 0);
+		btd_event_bonding_process_complete(local, peer, 0);
 
 	device_set_temporary(device, temporary);
 
 	return 0;
 }
 
-void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
+void btd_event_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 				bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;
@@ -645,7 +645,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 	adapter_add_connection(adapter, device, handle);
 }
 
-void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
+void btd_event_disconn_complete(bdaddr_t *local, uint8_t status,
 				uint16_t handle, uint8_t reason)
 {
 	struct btd_adapter *adapter;
@@ -673,7 +673,7 @@ void hcid_dbus_disconn_complete(bdaddr_t *local, uint8_t status,
 
 /* Section reserved to device HCI callbacks */
 
-void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
+void btd_event_setscan_enable_complete(bdaddr_t *local)
 {
 	struct btd_adapter *adapter;
 
@@ -689,7 +689,7 @@ void hcid_dbus_setscan_enable_complete(bdaddr_t *local)
 	btd_adapter_read_scan_enable(adapter);
 }
 
-void hcid_dbus_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
+void btd_event_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
 {
 	struct btd_adapter *adapter;
 	int state;
@@ -716,7 +716,7 @@ void hcid_dbus_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
 	adapter_set_state(adapter, state);
 }
 
-void hcid_dbus_read_simple_pairing_mode_complete(bdaddr_t *local, void *ptr)
+void btd_event_read_simple_pairing_mode_complete(bdaddr_t *local, void *ptr)
 {
 	read_simple_pairing_mode_rp *rp = ptr;
 	struct btd_adapter *adapter;
@@ -733,7 +733,7 @@ void hcid_dbus_read_simple_pairing_mode_complete(bdaddr_t *local, void *ptr)
 	adapter_update_ssp_mode(adapter, rp->mode);
 }
 
-void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
+void btd_event_write_simple_pairing_mode_complete(bdaddr_t *local)
 {
 	struct btd_adapter *adapter;
 
@@ -746,7 +746,7 @@ void hcid_dbus_write_simple_pairing_mode_complete(bdaddr_t *local)
 	btd_adapter_read_ssp_mode(adapter);
 }
 
-void hcid_dbus_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
+void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -757,7 +757,7 @@ void hcid_dbus_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
 	device_set_paired(device, TRUE);
 }
 
-int hcid_dbus_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
+int btd_event_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 						uint8_t *cap, uint8_t *auth)
 {
 	struct btd_adapter *adapter;
@@ -859,7 +859,7 @@ done:
 	return 0;
 }
 
-int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
+int btd_event_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
 						uint8_t cap, uint8_t auth)
 {
 	struct btd_adapter *adapter;
