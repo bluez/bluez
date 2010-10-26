@@ -59,7 +59,7 @@
 #include "storage.h"
 #include "dbus-hci.h"
 
-gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
+static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					struct btd_adapter **adapter,
 					struct btd_device **device,
 					gboolean create)

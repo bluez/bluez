@@ -161,11 +161,14 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	uint8_t type;
 	int err;
 
-	if (!get_adapter_and_device(sba, dba, &adapter, &device, FALSE))
-		device = NULL;
-
 	ba2str(sba, sa); ba2str(dba, da);
 	info("link_key_request (sba=%s, dba=%s)", sa, da);
+
+	adapter = manager_find_adapter(sba);
+	if (adapter)
+		device = adapter_find_device(adapter, da);
+	else
+		device = NULL;
 
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, dba);
