@@ -53,6 +53,8 @@
 
 #define RECONNECT_RETRY_TIMEOUT	5000
 
+static DBusConnection *connection = NULL;
+
 static gboolean system_bus_reconnect(void *data)
 {
 	DBusConnection *conn = get_dbus_connection();
@@ -320,4 +322,14 @@ dbus_bool_t emit_array_property_changed(DBusConnection *conn,
 	append_array_variant(&iter, type, value, num);
 
 	return g_dbus_send_message(conn, signal);
+}
+
+void set_dbus_connection(DBusConnection *conn)
+{
+	connection = conn;
+}
+
+DBusConnection *get_dbus_connection(void)
+{
+	return connection;
 }

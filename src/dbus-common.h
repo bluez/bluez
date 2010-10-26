@@ -44,3 +44,6 @@ dbus_bool_t emit_array_property_changed(DBusConnection *conn,
 					const char *interface,
 					const char *name,
 					int type, void *value, int num);
+
+void set_dbus_connection(DBusConnection *conn);
+DBusConnection *get_dbus_connection(void);

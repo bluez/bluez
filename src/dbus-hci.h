@@ -53,7 +53,3 @@ gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					gboolean create);
 
 const char *class_to_icon(uint32_t class);
-
-void set_dbus_connection(DBusConnection *conn);
-
-DBusConnection *get_dbus_connection(void);

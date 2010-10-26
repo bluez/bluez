@@ -59,13 +59,12 @@
 #include "storage.h"
 #include "dbus-hci.h"
 
-static DBusConnection *connection = NULL;
-
 gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					struct btd_adapter **adapter,
 					struct btd_device **device,
 					gboolean create)
 {
+	DBusConnection *conn = get_dbus_connection();
 	char peer_addr[18];
 
 	*adapter = manager_find_adapter(src);
@@ -77,7 +76,7 @@ gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 	ba2str(dst, peer_addr);
 
 	if (create)
-		*device = adapter_get_device(connection, *adapter, peer_addr);
+		*device = adapter_get_device(conn, *adapter, peer_addr);
 	else
 		*device = adapter_find_device(*adapter, peer_addr);
 
@@ -519,6 +518,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	const gchar *dev_path;
+	DBusConnection *conn = get_dbus_connection();
 
 	read_remote_class(local, peer, &old_class);
 
@@ -533,7 +533,7 @@ void hcid_dbus_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 
 	dev_path = device_get_path(device);
 
-	emit_property_changed(connection, dev_path, DEVICE_INTERFACE, "Class",
+	emit_property_changed(conn, dev_path, DEVICE_INTERFACE, "Class",
 				DBUS_TYPE_UINT32, &class);
 }
 
@@ -675,6 +675,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
+	DBusConnection *conn = get_dbus_connection();
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
@@ -687,8 +688,7 @@ void hcid_dbus_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		if (device_is_bonding(device, NULL))
 			device_bonding_complete(device, status);
 		if (device_is_temporary(device))
-			adapter_remove_device(connection, adapter, device,
-								secmode3);
+			adapter_remove_device(conn, adapter, device, secmode3);
 		return;
 	}
 
@@ -923,18 +923,4 @@ int hcid_dbus_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
 	device_set_auth(device, auth);
 
 	return 0;
-}
-
-/* Most of the functions in this module require easy access to a connection so
- * we keep it global here and provide these access functions the other (few)
- * modules that require access to it */
-
-void set_dbus_connection(DBusConnection *conn)
-{
-	connection = conn;
-}
-
-DBusConnection *get_dbus_connection(void)
-{
-	return connection;
 }
