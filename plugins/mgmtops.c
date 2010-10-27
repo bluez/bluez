@@ -35,6 +35,10 @@
 
 #include <glib.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/mgmt.h>
+
 #include "plugin.h"
 #include "log.h"
 #include "manager.h"
@@ -42,13 +46,95 @@
 #include "device.h"
 #include "event.h"
 
+#define MGMT_BUF_SIZE 1024
+
+static int mgmt_sock = -1;
+static guint mgmt_watch = 0;
+
+static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
+{
+	char buf[MGMT_BUF_SIZE];
+	int sk;
+	ssize_t ret;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		error("Error on management socket");
+		return FALSE;
+	}
+
+	ret = read(sk, buf, sizeof(buf));
+	if (ret < 0) {
+		error("Unable to read from management socket: %s (%d)",
+						strerror(errno), errno);
+		return TRUE;
+	}
+
+	DBG("Received %zd bytes from management socket", ret);
+
+	return TRUE;
+}
+
 static int mgmt_setup(void)
 {
-	return -EINVAL;
+	struct hci_mgmt_hdr hdr;
+	struct sockaddr_hci addr;
+	GIOChannel *io;
+	GIOCondition condition;
+	int dd, err;
+
+	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (dd < 0)
+		return -errno;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.hci_family = AF_BLUETOOTH;
+	addr.hci_dev = HCI_DEV_NONE;
+	addr.hci_channel = HCI_CHANNEL_CONTROL;
+
+	if (bind(dd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = -errno;
+		goto fail;
+	}
+
+	memset(&hdr, 0, sizeof(hdr));
+	hdr.opcode = HCI_MGMT_OP_READ_VERSION;
+	if (write(dd, &hdr, sizeof(hdr)) < 0) {
+		err = -errno;
+		goto fail;
+	}
+
+	io = g_io_channel_unix_new(dd);
+	condition = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
+	mgmt_watch = g_io_add_watch(io, condition, mgmt_event, NULL);
+	g_io_channel_unref(io);
+
+	mgmt_sock = dd;
+
+	info("Bluetooth Management interface initialized");
+
+	return 0;
+
+fail:
+	close(dd);
+	return err;
 }
 
 static void mgmt_cleanup(void)
 {
+	if (mgmt_sock >= 0) {
+		close(mgmt_sock);
+		mgmt_sock = -1;
+	}
+
+	if (mgmt_watch > 0) {
+		g_source_remove(mgmt_watch);
+		mgmt_watch = 0;
+	}
 }
 
 static int mgmt_start(int index)
