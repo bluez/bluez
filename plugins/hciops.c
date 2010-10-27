@@ -2343,6 +2343,7 @@ static int hciops_init(void)
 {
 	return btd_register_adapter_ops(&hci_ops, FALSE);
 }
+
 static void hciops_exit(void)
 {
 	btd_adapter_cleanup_ops(&hci_ops);
