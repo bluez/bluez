@@ -195,8 +195,8 @@ builtin_sources += health/hdp_main.c health/hdp_types.h \
 			health/hdp_util.h health/hdp_util.c
 endif
 
-builtin_modules += hciops
-builtin_sources += plugins/hciops.c
+builtin_modules += hciops mgmtops
+builtin_sources += plugins/hciops.c plugins/mgmtops.c
 
 if HAL
 builtin_modules += hal
