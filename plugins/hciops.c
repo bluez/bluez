@@ -1446,11 +1446,11 @@ static void device_event(int event, int index)
 	}
 }
 
-static int init_known_adapters(int ctl)
+static gboolean init_known_adapters(gpointer user_data)
 {
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
-	int i, err;
+	int i, err, ctl = GPOINTER_TO_INT(user_data);
 	size_t req_size;
 
 	req_size = HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t);
@@ -1458,7 +1458,7 @@ static int init_known_adapters(int ctl)
 	dl = g_try_malloc0(req_size);
 	if (!dl) {
 		error("Can't allocate devlist buffer");
-		return -ENOMEM;
+		return FALSE;
 	}
 
 	dl->dev_num = HCI_MAX_DEV;
@@ -1468,7 +1468,7 @@ static int init_known_adapters(int ctl)
 		err = -errno;
 		error("Can't get device list: %s (%d)", strerror(-err), -err);
 		g_free(dl);
-		return err;
+		return FALSE;
 	}
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
@@ -1479,7 +1479,8 @@ static int init_known_adapters(int ctl)
 	}
 
 	g_free(dl);
-	return 0;
+
+	return FALSE;
 }
 
 static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond,
@@ -1585,8 +1586,9 @@ static int hciops_setup(void)
 
 	g_io_channel_unref(ctl_io);
 
-	/* Initialize already connected devices */
-	return init_known_adapters(sock);
+	g_idle_add(init_known_adapters, GINT_TO_POINTER(sock));
+
+	return 0;
 }
 
 static void hciops_cleanup(void)
