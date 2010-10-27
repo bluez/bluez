@@ -935,8 +935,6 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 
 	update_lastused(sba, &evt->bdaddr);
 
-	btd_adapter_get_remote_name(adapter, &evt->bdaddr);
-
 	/* check if the remote version needs be requested */
 	ba2str(sba, local_addr);
 	ba2str(&evt->bdaddr, peer_addr);
