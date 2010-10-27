@@ -128,6 +128,13 @@
 	"WHERE { "							\
 	"{ "								\
 		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered false . "				\
+	"} UNION { "							\
+		"?x a nco:Contact . "					\
 		"?x nco:hasPhoneNumber ?h . "				\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?x ; "					\
@@ -158,15 +165,8 @@
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
 		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
-	"} UNION { "							\
-		"?x a nco:Contact . "					\
-		"?x nco:hasPhoneNumber ?t . "				\
-		"?call a nmo:Call ; "					\
-		"nmo:from ?x ; "					\
-		"nmo:isSent false ; "					\
-		"nmo:isAnswered false . "				\
 	"} "								\
-	"} ORDER BY DESC(nmo:receivedDate(?call)) "
+	"} GROUP BY ?call ORDER BY DESC(nmo:receivedDate(?call)) "
 
 #define MISSED_CALLS_LIST						\
 	"SELECT ?c nco:nameFamily(?c) "					\
@@ -221,6 +221,13 @@
 	"WHERE { "							\
 	"{ "								\
 		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered true . "				\
+	"} UNION { "							\
+		"?x a nco:Contact . "					\
 		"?x nco:hasPhoneNumber ?h . "				\
 		"?call a nmo:Call ; "					\
 		"nmo:from ?x ; "					\
@@ -251,15 +258,8 @@
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
 		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
-	"} UNION { "							\
-		"?x a nco:Contact . "					\
-		"?x nco:hasPhoneNumber ?t . "				\
-		"?call a nmo:Call ; "					\
-		"nmo:from ?x ; "					\
-		"nmo:isSent false ; "					\
-		"nmo:isAnswered true . "				\
 	"} "								\
-	"} ORDER BY DESC(nmo:receivedDate(?call)) "
+	"} GROUP BY ?call ORDER BY DESC(nmo:receivedDate(?call)) "
 
 #define INCOMING_CALLS_LIST						\
 	"SELECT ?c nco:nameFamily(?c) "					\
@@ -314,6 +314,12 @@
 	"WHERE { "							\
 	"{ "								\
 		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:to ?x ; "						\
+		"nmo:isSent true . "					\
+	"} UNION { "							\
+		"?x a nco:Contact . "					\
 		"?x nco:hasPhoneNumber ?h . "				\
 		"?call a nmo:Call ; "					\
 		"nmo:to ?x ; "						\
@@ -342,14 +348,8 @@
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
 		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
-	"} UNION { "							\
-		"?x a nco:Contact . "					\
-		"?x nco:hasPhoneNumber ?t . "				\
-		"?call a nmo:Call ; "					\
-		"nmo:to ?x ; "						\
-		"nmo:isSent true . "					\
 	"} "								\
-	"} ORDER BY DESC(nmo:sentDate(?call)) "
+	"} GROUP BY ?call ORDER BY DESC(nmo:sentDate(?call)) "
 
 #define OUTGOING_CALLS_LIST						\
 	"SELECT ?c nco:nameFamily(?c) "					\
@@ -400,7 +400,12 @@
 	"nmo:isSent(?call) nmo:isAnswered(?call) ?x "			\
 	"WHERE { "							\
 	"{ "								\
-		"{ "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:to ?x ; "						\
+		"nmo:isSent true . "					\
+	"} UNION { "							\
 		"?x a nco:Contact . "					\
 		"?x nco:hasPhoneNumber ?h . "				\
 		"?call a nmo:Call ; "					\
@@ -415,30 +420,28 @@
 			"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "	\
 			"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "	\
 			"OPTIONAL { ?a nco:org ?o . } "			\
-		"} "							\
-		"} UNION { "						\
-		"?x a nco:Contact . "					\
-		"?x nco:hasPhoneNumber ?w . "				\
-		"?call a nmo:Call ; "					\
-		"nmo:to ?x ; "						\
-		"nmo:isSent true . "					\
-		"?c a nco:PersonContact . "				\
-		"OPTIONAL { ?c nco:hasEmailAddress ?e . } "		\
-		"OPTIONAL { ?c nco:hasPostalAddress ?p . } "		\
-		"?c nco:hasAffiliation ?a . "				\
-		"?a nco:hasPhoneNumber ?w . "				\
-		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
-		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
-		"OPTIONAL { ?a nco:org ?o . } "				\
-		"} UNION { "						\
-		"?x a nco:Contact . "					\
-		"?x nco:hasPhoneNumber ?t . "				\
-		"?call a nmo:Call ; "					\
-		"nmo:to ?x ; "						\
-		"nmo:isSent true . "					\
 		"} "							\
 	"} UNION { "							\
-		"{ "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?w . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:to ?x ; "						\
+		"nmo:isSent true . "					\
+		"?c a nco:PersonContact . "				\
+		"OPTIONAL { ?c nco:hasEmailAddress ?e . } "		\
+		"OPTIONAL { ?c nco:hasPostalAddress ?p . } "		\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?w . "				\
+		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
+		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
+		"OPTIONAL { ?a nco:org ?o . } "				\
+	"} UNION { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?t . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false . "					\
+	"} UNION { "							\
 		"?x a nco:Contact . "					\
 		"?x nco:hasPhoneNumber ?h . "				\
 		"?call a nmo:Call ; "					\
@@ -454,7 +457,7 @@
 			"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "	\
 			"OPTIONAL { ?a nco:org ?o . } "			\
 		"} "							\
-		"} UNION { "						\
+	"} UNION { "							\
 		"?x a nco:Contact . "					\
 		"?x nco:hasPhoneNumber ?w . "				\
 		"?call a nmo:Call ; "					\
@@ -468,15 +471,8 @@
 		"OPTIONAL { ?a nco:hasEmailAddress ?ew . } "		\
 		"OPTIONAL { ?a nco:hasPostalAddress ?pw . } "		\
 		"OPTIONAL { ?a nco:org ?o . } "				\
-		"} UNION { "						\
-		"?x a nco:Contact . "					\
-		"?x nco:hasPhoneNumber ?t . "				\
-		"?call a nmo:Call ; "					\
-		"nmo:from ?x ; "					\
-		"nmo:isSent false . "					\
-		"} "							\
 	"} "								\
-	"} ORDER BY DESC(nmo:receivedDate(?call)) "
+	"} GROUP BY ?call ORDER BY DESC(nmo:receivedDate(?call)) "
 
 #define COMBINED_CALLS_LIST						\
 	"SELECT ?c nco:nameFamily(?c) nco:nameGiven(?c) "		\
