@@ -233,7 +233,7 @@ struct btd_adapter_ops {
 							gpointer user_data);
 };
 
-int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops);
+int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);
 void btd_adapter_cleanup_ops(struct btd_adapter_ops *btd_adapter_ops);
 int adapter_ops_setup(void);
 

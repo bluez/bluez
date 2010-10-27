@@ -2341,7 +2341,7 @@ static struct btd_adapter_ops hci_ops = {
 
 static int hciops_init(void)
 {
-	return btd_register_adapter_ops(&hci_ops);
+	return btd_register_adapter_ops(&hci_ops, FALSE);
 }
 static void hciops_exit(void)
 {

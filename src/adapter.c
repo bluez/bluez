@@ -72,6 +72,8 @@
 static DBusConnection *connection = NULL;
 static GSList *adapter_drivers = NULL;
 
+static GSList *ops_candidates = NULL;
+
 const struct btd_adapter_ops *adapter_ops = NULL;
 
 struct session_req {
@@ -3574,31 +3576,48 @@ int btd_adapter_switch_offline(struct btd_adapter *adapter)
 	return adapter_ops->set_powered(adapter->dev_id, FALSE);
 }
 
-int btd_register_adapter_ops(struct btd_adapter_ops *btd_adapter_ops)
+int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority)
 {
-	/* Already registered */
-	if (adapter_ops)
-		return -EALREADY;
-
-	if (btd_adapter_ops->setup == NULL)
+	if (ops->setup == NULL)
 		return -EINVAL;
 
-	adapter_ops = btd_adapter_ops;
+	if (priority)
+		ops_candidates = g_slist_prepend(ops_candidates, ops);
+	else
+		ops_candidates = g_slist_append(ops_candidates, ops);
 
 	return 0;
 }
 
-void btd_adapter_cleanup_ops(struct btd_adapter_ops *btd_adapter_ops)
+void btd_adapter_cleanup_ops(struct btd_adapter_ops *ops)
 {
-	adapter_ops->cleanup();
+	ops_candidates = g_slist_remove(ops_candidates, ops);
+	ops->cleanup();
+
+	if (adapter_ops == ops)
+		adapter_ops = NULL;
 }
 
 int adapter_ops_setup(void)
 {
-	if (!adapter_ops)
+	GSList *l;
+	int ret;
+
+	if (!ops_candidates)
 		return -EINVAL;
 
-	return adapter_ops->setup();
+	for (l = ops_candidates; l != NULL; l = g_slist_next(l)) {
+		struct btd_adapter_ops *ops = l->data;
+
+		ret = ops->setup();
+		if (ret < 0)
+			continue;
+
+		adapter_ops = ops;
+		break;
+	}
+
+	return ret;
 }
 
 void btd_adapter_register_powered_callback(struct btd_adapter *adapter,
