@@ -949,24 +949,10 @@ static struct phonebook_contact *find_contact(GSList *contacts, const char *id)
 static struct phonebook_number *find_phone(GSList *numbers, const char *phone,
 								int type)
 {
-	GSList *l = numbers;
+	GSList *l;
 	struct phonebook_number *pb_num;
 
-	if (g_slist_length(l) == 1 && (pb_num = l->data) &&
-					g_strcmp0(pb_num->tel, phone) == 0) {
-
-		if ((type == TEL_TYPE_HOME || type == TEL_TYPE_WORK) &&
-					pb_num->type == TEL_TYPE_OTHER)	{
-			pb_num->type = type;
-			return pb_num;
-		}
-
-		if (type == TEL_TYPE_OTHER && (pb_num->type == TEL_TYPE_HOME ||
-					pb_num->type == TEL_TYPE_WORK))
-			return pb_num;
-	}
-
-	for (; l; l = l->next) {
+	for (l = numbers; l; l = l->next) {
 		pb_num = l->data;
 		/* Returning phonebook number if phone values and type values
 		 * are equal */
