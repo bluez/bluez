@@ -82,41 +82,50 @@ static gboolean add_plugin(void *handle, struct bluetooth_plugin_desc *desc)
 	return TRUE;
 }
 
-static gboolean is_disabled(const char *name, char **list)
+static gboolean enable_plugin(const char *name, char **conf_disable,
+					char **cli_enable, char **cli_disable)
 {
-	int i;
-
-	if (list == NULL)
-		return FALSE;
-
-	for (i = 0; list[i] != NULL; i++) {
-		char *str;
-		gboolean equal;
-
-		if (g_str_equal(name, list[i]))
-			return TRUE;
-
-		str = g_strdup_printf("%s.so", list[i]);
-
-		equal = g_str_equal(str, name);
-
-		g_free(str);
-
-		if (equal)
-			return TRUE;
+	if (conf_disable) {
+		for (; *conf_disable; conf_disable++)
+			if (g_pattern_match_simple(*conf_disable, name))
+				break;
+		if (*conf_disable) {
+			info("Excluding (conf) %s", name);
+			return FALSE;
+		}
 	}
 
-	return FALSE;
+	if (cli_disable) {
+		for (; *cli_disable; cli_disable++)
+			if (g_pattern_match_simple(*cli_disable, name))
+				break;
+		if (*cli_disable) {
+			info("Excluding (cli) %s", name);
+			return FALSE;
+		}
+	}
+
+	if (cli_enable) {
+		for (; *cli_enable; cli_enable++)
+			if (g_pattern_match_simple(*cli_enable, name))
+				break;
+		if (!*cli_enable) {
+			info("Ignoring (cli) %s", name);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
 
 #include "builtin.h"
 
-gboolean plugin_init(GKeyFile *config)
+gboolean plugin_init(GKeyFile *config, const char *enable, const char *disable)
 {
 	GSList *list;
 	GDir *dir;
 	const gchar *file;
-	gchar **disabled;
+	char **conf_disabled, **cli_disabled, **cli_enabled;
 	unsigned int i;
 
 	/* Make a call to BtIO API so its symbols got resolved before the
@@ -124,33 +133,40 @@ gboolean plugin_init(GKeyFile *config)
 	bt_io_error_quark();
 
 	if (config)
-		disabled = g_key_file_get_string_list(config, "General",
+		conf_disabled = g_key_file_get_string_list(config, "General",
 							"DisablePlugins",
 							NULL, NULL);
 	else
-		disabled = NULL;
+		conf_disabled = NULL;
+
+	if (enable)
+		cli_enabled = g_strsplit_set(enable, ", ", -1);
+	else
+		cli_enabled = NULL;
+
+	if (disable)
+		cli_disabled = g_strsplit_set(disable, ", ", -1);
+	else
+		cli_disabled = NULL;
 
 	DBG("Loading builtin plugins");
 
 	for (i = 0; __bluetooth_builtin[i]; i++) {
-		if (is_disabled(__bluetooth_builtin[i]->name, disabled))
+		if (!enable_plugin(__bluetooth_builtin[i]->name, conf_disabled,
+						cli_enabled, cli_disabled))
 			continue;
 
 		add_plugin(NULL,  __bluetooth_builtin[i]);
 	}
 
-	if (strlen(PLUGINDIR) == 0) {
-		g_strfreev(disabled);
+	if (strlen(PLUGINDIR) == 0)
 		goto start;
-	}
 
 	DBG("Loading plugins %s", PLUGINDIR);
 
 	dir = g_dir_open(PLUGINDIR, 0, NULL);
-	if (!dir) {
-		g_strfreev(disabled);
+	if (!dir)
 		goto start;
-	}
 
 	while ((file = g_dir_read_name(dir)) != NULL) {
 		struct bluetooth_plugin_desc *desc;
@@ -159,9 +175,6 @@ gboolean plugin_init(GKeyFile *config)
 
 		if (g_str_has_prefix(file, "lib") == TRUE ||
 				g_str_has_suffix(file, ".so") == FALSE)
-			continue;
-
-		if (is_disabled(file, disabled))
 			continue;
 
 		filename = g_build_filename(PLUGINDIR, file, NULL);
@@ -183,13 +196,17 @@ gboolean plugin_init(GKeyFile *config)
 			continue;
 		}
 
+		if (!enable_plugin(desc->name, conf_disabled,
+						cli_enabled, cli_disabled)) {
+			dlclose(handle);
+			continue;
+		}
+
 		if (add_plugin(handle, desc) == FALSE)
 			dlclose(handle);
 	}
 
 	g_dir_close(dir);
-
-	g_strfreev(disabled);
 
 start:
 	for (list = plugins; list; list = list->next) {
@@ -202,6 +219,10 @@ start:
 
 		plugin->active = TRUE;
 	}
+
+	g_strfreev(conf_disabled);
+	g_strfreev(cli_enabled);
+	g_strfreev(cli_disabled);
 
 	return TRUE;
 }
