@@ -417,7 +417,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 
 		handleSize = 0;
 		for (; list && rsp_count < expected; list = list->next) {
-			sdp_record_t *rec = (sdp_record_t *) list->data;
+			sdp_record_t *rec = list->data;
 
 			SDPDBG("Checking svcRec : 0x%x", rec->handle);
 
@@ -567,7 +567,7 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, sdp_buf_t *buf)
 
 		if (aid->dtd == SDP_UINT16) {
 			uint16_t attr = bt_get_unaligned((uint16_t *)&aid->uint16);
-			sdp_data_t *a = (sdp_data_t *)sdp_data_get(rec, attr);
+			sdp_data_t *a = sdp_data_get(rec, attr);
 			if (a)
 				sdp_append_to_pdu(buf, a);
 		} else if (aid->dtd == SDP_UINT32) {
@@ -861,7 +861,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 		/* no continuation state -> create new response */
 		sdp_list_t *p;
 		for (p = svcList; p; p = p->next) {
-			sdp_record_t *rec = (sdp_record_t *) p->data;
+			sdp_record_t *rec = p->data;
 			if (sdp_match_uuid(pattern, rec->pattern) > 0 &&
 					sdp_check_access(rec->handle, &req->device)) {
 				rsp_count++;

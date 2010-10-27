@@ -105,7 +105,7 @@ static void update_adapter_svclass_list(struct btd_adapter *adapter)
 	uint8_t val = 0;
 
 	for (; list; list = list->next) {
-		sdp_record_t *rec = (sdp_record_t *) list->data;
+		sdp_record_t *rec = list->data;
 
 		if (rec->svclass.type != SDP_UUID16)
 			continue;
@@ -188,7 +188,7 @@ static void eir_generate_uuid128(sdp_list_t *list,
 	uuid128 = ptr + 2;
 
 	for (; list; list = list->next) {
-		sdp_record_t *rec = (sdp_record_t *) list->data;
+		sdp_record_t *rec = list->data;
 		uint8_t *uuid128_data = rec->svclass.value.uuid128.data;
 
 		if (rec->svclass.type != SDP_UUID128)
@@ -287,7 +287,7 @@ void create_ext_inquiry_response(const char *name,
 
 	/* Group all UUID16 types */
 	for (; list; list = list->next) {
-		sdp_record_t *rec = (sdp_record_t *) list->data;
+		sdp_record_t *rec = list->data;
 
 		if (rec->svclass.type != SDP_UUID16)
 			continue;
@@ -394,8 +394,8 @@ void register_server_service(void)
 	 * to the server on command line. Now defaults to 1.0
 	 * Build the version number sequence first
 	 */
-	versions = (void **)malloc(sdpServerVnumEntries * sizeof(void *));
-	versionDTDs = (void **)malloc(sdpServerVnumEntries * sizeof(void *));
+	versions = malloc(sdpServerVnumEntries * sizeof(void *));
+	versionDTDs = malloc(sdpServerVnumEntries * sizeof(void *));
 	dtd = SDP_UINT16;
 	for (i = 0; i < sdpServerVnumEntries; i++) {
 		uint16_t *version = malloc(sizeof(uint16_t));

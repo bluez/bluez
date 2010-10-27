@@ -57,8 +57,8 @@ typedef struct {
  */
 int record_sort(const void *r1, const void *r2)
 {
-	const sdp_record_t *rec1 = (const sdp_record_t *) r1;
-	const sdp_record_t *rec2 = (const sdp_record_t *) r2;
+	const sdp_record_t *rec1 = r1;
+	const sdp_record_t *rec2 = r2;
 
 	if (!rec1 || !rec2) {
 		error("NULL RECORD LIST FATAL");
@@ -70,8 +70,8 @@ int record_sort(const void *r1, const void *r2)
 
 static int access_sort(const void *r1, const void *r2)
 {
-	const sdp_access_t *rec1 = (const sdp_access_t *) r1;
-	const sdp_access_t *rec2 = (const sdp_access_t *) r2;
+	const sdp_access_t *rec1 = r1;
+	const sdp_access_t *rec2 = r2;
 
 	if (!rec1 || !rec2) {
 		error("NULL RECORD LIST FATAL");
@@ -110,7 +110,7 @@ void sdp_svcdb_collect_all(int sock)
 	sdp_list_t *p, *q;
 
 	for (p = socket_index, q = 0; p; ) {
-		sdp_indexed_t *item = (sdp_indexed_t *) p->data;
+		sdp_indexed_t *item = p->data;
 		if (item->sock == sock) {
 			sdp_list_t *next = p->next;
 			sdp_record_remove(item->record->handle);
@@ -136,7 +136,7 @@ void sdp_svcdb_collect(sdp_record_t *rec)
 	sdp_list_t *p, *q;
 
 	for (p = socket_index, q = 0; p; q = p, p = p->next) {
-		sdp_indexed_t *item = (sdp_indexed_t *) p->data;
+		sdp_indexed_t *item = p->data;
 		if (rec == item->record) {
 			free(item);
 			if (q)
@@ -151,8 +151,8 @@ void sdp_svcdb_collect(sdp_record_t *rec)
 
 static int compare_indices(const void *i1, const void *i2)
 {
-	const sdp_indexed_t *s1 = (const sdp_indexed_t *) i1;
-	const sdp_indexed_t *s2 = (const sdp_indexed_t *) i2;
+	const sdp_indexed_t *s1 = i1;
+	const sdp_indexed_t *s2 = i2;
 	return s1->sock - s2->sock;
 }
 
@@ -230,7 +230,7 @@ sdp_record_t *sdp_record_find(uint32_t handle)
 		return 0;
 	}
 
-	return (sdp_record_t *) p->data;
+	return p->data;
 }
 
 /*
@@ -247,13 +247,13 @@ int sdp_record_remove(uint32_t handle)
 		return -1;
 	}
 
-	r = (sdp_record_t *) p->data;
+	r = p->data;
 	if (r)
 		service_db = sdp_list_remove(service_db, r);
 
 	p = access_locate(handle);
 	if (p) {
-		a = (sdp_access_t *) p->data;
+		a = p->data;
 		if (a) {
 			adapter_service_remove(&a->device, r);
 			access_db = sdp_list_remove(access_db, a);
@@ -285,7 +285,7 @@ int sdp_check_access(uint32_t handle, bdaddr_t *device)
 	if (!p)
 		return 1;
 
-	a = (sdp_access_t *) p->data;
+	a = p->data;
 	if (!a)
 		return 1;
 

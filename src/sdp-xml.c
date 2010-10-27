@@ -259,7 +259,7 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 
 		if (hex) {
 			appender(data, "encoding=\"hex\" ");
-			strBuf = (char *) malloc(sizeof(char)
+			strBuf = malloc(sizeof(char)
 						 * ((value->unitSize-1) * 2 + 1));
 
 			/* Unit Size seems to include the size for dtd
@@ -276,9 +276,8 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 		else {
 			int j;
 			/* escape the XML disallowed chars */
-			strBuf = (char *)
-				malloc(sizeof(char) *
-				(value->unitSize + 1 + num_chars_to_escape * 4));
+			strBuf = malloc(sizeof(char) *
+					(value->unitSize + 1 + num_chars_to_escape * 4));
 			for (i = 0, j = 0; i < length; i++) {
 				if (value->val.str[i] == '&') {
 					strBuf[j++] = '&';
@@ -375,8 +374,8 @@ struct conversion_data {
 
 static void convert_raw_attr_to_xml_func(void *val, void *data)
 {
-	struct conversion_data *cd = (struct conversion_data *) data;
-	sdp_data_t *value = (sdp_data_t *) val;
+	struct conversion_data *cd = data;
+	sdp_data_t *value = val;
 	char buf[STRBUFSIZE];
 
 	buf[STRBUFSIZE - 1] = '\0';
