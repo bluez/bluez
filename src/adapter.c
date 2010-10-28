@@ -586,34 +586,26 @@ done:
 
 	DBG("%s", modestr);
 
-	if (msg != NULL)
-		/* Wait for mode change to reply */
-		adapter->pending_mode = create_session(adapter, connection,
-							msg, new_mode, NULL);
-	else
+	if (msg != NULL) {
+		/* Limited to Discoverable and vice-versa doesn't cause any
+		   change to scan mode */
+		if (g_str_equal(modestr, mode2str(adapter->mode)) == TRUE) {
+			DBusMessage *reply;
+
+			reply = g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+			g_dbus_send_message(connection, reply);
+		} else
+			/* Wait for mode change to reply */
+			adapter->pending_mode = create_session(adapter,
+								connection,
+								msg, new_mode,
+								NULL);
+	} else
 		/* Nothing to reply just write the new mode */
 		adapter->mode = new_mode;
 
 	return 0;
-}
-
-static DBusMessage *set_powered(DBusConnection *conn, DBusMessage *msg,
-				gboolean powered, void *data)
-{
-	struct btd_adapter *adapter = data;
-	uint8_t mode;
-	int err;
-
-	mode = powered ? get_mode(&adapter->bdaddr, "on") : MODE_OFF;
-
-	if (mode == adapter->mode)
-		return dbus_message_new_method_return(msg);
-
-	err = set_mode(adapter, mode, msg);
-	if (err < 0)
-		return failed_strerror(msg, -err);
-
-	return NULL;
 }
 
 static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
@@ -637,7 +629,32 @@ static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
 	if (err < 0)
 		return failed_strerror(msg, -err);
 
-	return 0;
+	return NULL;
+}
+
+static DBusMessage *set_powered(DBusConnection *conn, DBusMessage *msg,
+				gboolean powered, void *data)
+{
+	struct btd_adapter *adapter = data;
+	uint8_t mode;
+	int err;
+
+	if (powered) {
+		mode = get_mode(&adapter->bdaddr, "on");
+		return set_discoverable(conn, msg, mode == MODE_DISCOVERABLE,
+									data);
+	}
+
+	mode = MODE_OFF;
+
+	if (mode == adapter->mode)
+		return dbus_message_new_method_return(msg);
+
+	err = set_mode(adapter, mode, msg);
+	if (err < 0)
+		return failed_strerror(msg, -err);
+
+	return NULL;
 }
 
 static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
