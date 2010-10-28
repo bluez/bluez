@@ -751,6 +751,15 @@ static void *vobject_list_open(const char *name, int oflag, mode_t mode,
 	/* PullvCardListing always get the contacts from the cache */
 
 	if (pbap->cache.valid) {
+		/*
+		 * Valid cache and empty buffer mean that cache was already
+		 * created within a single session, but no data is available.
+		 */
+		if (!pbap->buffer) {
+			ret = -ENOENT;
+			goto fail;
+		}
+
 		cache_ready_notify(pbap);
 		goto done;
 	}
