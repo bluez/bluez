@@ -535,6 +535,7 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
 			DBusMessage *msg)
 {
 	int err;
+	const char *modestr;
 
 	if (adapter->pending_mode != NULL)
 		return -EALREADY;
@@ -543,6 +544,8 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
 		err = adapter_ops->set_powered(adapter->dev_id, TRUE);
 		if (err < 0)
 			return err;
+
+		goto done;
 	}
 
 	if (adapter->up && new_mode == MODE_OFF) {
@@ -578,18 +581,18 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
 	}
 
 done:
-	DBG("%s", mode2str(new_mode));
+	modestr = mode2str(new_mode);
+	write_device_mode(&adapter->bdaddr, modestr);
+
+	DBG("%s", modestr);
 
 	if (msg != NULL)
 		/* Wait for mode change to reply */
 		adapter->pending_mode = create_session(adapter, connection,
 							msg, new_mode, NULL);
-	else {
+	else
 		/* Nothing to reply just write the new mode */
-		const char *modestr = mode2str(new_mode);
 		adapter->mode = new_mode;
-		write_device_mode(&adapter->bdaddr, modestr);
-	}
 
 	return 0;
 }
@@ -2602,11 +2605,11 @@ static void set_mode_complete(struct btd_adapter *adapter)
 
 	DBG("%s", modestr);
 
-	/* Only store if the mode matches the pending */
-	if (err == 0)
+	/* restore if the mode doesn't matches the pending */
+	if (err != 0) {
 		write_device_mode(&adapter->bdaddr, modestr);
-	else
 		error("unable to set mode: %s", mode2str(pending->mode));
+	}
 
 	session_unref(pending);
 }
