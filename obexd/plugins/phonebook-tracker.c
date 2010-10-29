@@ -1094,6 +1094,16 @@ fail:
 	g_free(data);
 }
 
+static void add_affiliation(char **field, const char *value)
+{
+	if (strlen(*field) > 0 || value == NULL || strlen(value) == 0)
+		return;
+
+	g_free(*field);
+
+	*field = g_strdup(value);
+}
+
 static void pull_contacts(char **reply, int num_fields, void *user_data)
 {
 	struct phonebook_data *data = user_data;
@@ -1195,6 +1205,13 @@ add_numbers:
 
 	g_free(home_addr);
 	g_free(work_addr);
+
+	/* Adding fields connected by nco:hasAffiliation - they may be in
+	 * separate replies */
+	add_affiliation(&contact->title, reply[33]);
+	add_affiliation(&contact->company, reply[22]);
+	add_affiliation(&contact->department, reply[23]);
+	add_affiliation(&contact->role, reply[24]);
 
 	DBG("contact %p", contact);
 
