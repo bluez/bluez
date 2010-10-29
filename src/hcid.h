@@ -39,7 +39,6 @@
 #define MODE_OFF		0x00
 #define MODE_CONNECTABLE	0x01
 #define MODE_DISCOVERABLE	0x02
-#define MODE_LIMITED		0x03
 #define MODE_UNKNOWN		0xff
 
 struct main_opts {
