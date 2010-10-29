@@ -672,6 +672,8 @@ gboolean sink_shutdown(struct sink *sink)
 	if (!sink->stream)
 		return FALSE;
 
+	avdtp_set_device_disconnect(sink->session, TRUE);
+
 	if (avdtp_close(sink->session, sink->stream, FALSE) < 0)
 		return FALSE;
 
