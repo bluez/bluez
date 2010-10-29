@@ -775,7 +775,6 @@ static void bonding_request_cancel(struct bonding_req *bonding)
 
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 {
-	GSList *l;
 	DBusConnection *conn = get_dbus_connection();
 
 	if (device->bonding)
@@ -791,21 +790,17 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	if (device->disconn_timer)
 		return;
 
-	l = device->watches;
-	while (l) {
-		struct btd_disconnect_data *data = l->data;
-
-		l = l->next;
+	while (device->watches) {
+		struct btd_disconnect_data *data = device->watches->data;
 
 		if (data->watch)
 			/* temporary is set if device is going to be removed */
 			data->watch(device, device->temporary,
-					data->user_data);
-	}
+							data->user_data);
 
-	g_slist_foreach(device->watches, (GFunc) g_free, NULL);
-	g_slist_free(device->watches);
-	device->watches = NULL;
+		device->watches = g_slist_remove(device->watches, data);
+		g_free(data);
+	}
 
 	device->disconn_timer = g_timeout_add_seconds(DISCONNECT_TIMER,
 						do_disconnect, device);
