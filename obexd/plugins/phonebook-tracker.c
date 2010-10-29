@@ -630,7 +630,7 @@
 	"}"
 
 typedef void (*reply_list_foreach_t) (char **reply, int num_fields,
-		void *user_data);
+							void *user_data);
 
 struct pending_reply {
 	reply_list_foreach_t callback;
@@ -755,8 +755,10 @@ static char **string_array_from_iter(DBusMessageIter iter, int array_len)
 	while (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_INVALID) {
 		char *arg;
 
-		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
-			goto error;
+		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING) {
+			g_free(result);
+			return NULL;
+		}
 
 		dbus_message_iter_get_basic(&sub, &arg);
 
@@ -767,11 +769,6 @@ static char **string_array_from_iter(DBusMessageIter iter, int array_len)
 	}
 
 	return result;
-
-error:
-	g_free(result);
-
-	return NULL;
 }
 
 static void query_reply(DBusPendingCall *call, void *user_data)
@@ -935,10 +932,9 @@ static void set_call_type(struct phonebook_contact *contact,
 static struct phonebook_contact *find_contact(GSList *contacts, const char *id)
 {
 	GSList *l;
-	struct contact_data *c_data;
 
 	for (l = contacts; l; l = l->next) {
-		c_data = l->data;
+		struct contact_data *c_data = l->data;
 		if (g_strcmp0(c_data->id, id) == 0)
 			return c_data->contact;
 	}
@@ -950,10 +946,9 @@ static struct phonebook_number *find_phone(GSList *numbers, const char *phone,
 								int type)
 {
 	GSList *l;
-	struct phonebook_number *pb_num;
 
 	for (l = numbers; l; l = l->next) {
-		pb_num = l->data;
+		struct phonebook_number *pb_num = l->data;
 		/* Returning phonebook number if phone values and type values
 		 * are equal */
 		if (g_strcmp0(pb_num->tel, phone) == 0 && pb_num->type == type)
@@ -1056,13 +1051,12 @@ static GString *gen_vcards(GSList *contacts,
 {
 	GSList *l;
 	GString *vcards;
-	struct contact_data *c_data;
 
 	vcards = g_string_new(NULL);
 
 	/* Generating VCARD string from contacts and freeing used contacts */
 	for (l = contacts; l; l = l->next) {
-		c_data = l->data;
+		struct contact_data *c_data = l->data;
 		phonebook_add_contact(vcards, c_data->contact,
 					params->filter, params->format);
 
@@ -1074,7 +1068,7 @@ static GString *gen_vcards(GSList *contacts,
 	return vcards;
 }
 
-static void pull_contacts_size (char **reply, int num_fields, void *user_data)
+static void pull_contacts_size(char **reply, int num_fields, void *user_data)
 {
 	struct phonebook_data *data = user_data;
 
@@ -1145,9 +1139,8 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 			break;
 	}
 
-	if (i == num_fields - 4 &&
-			!g_str_equal(reply[CONTACTS_ID_COL],
-					TRACKER_DEFAULT_CONTACT_ME))
+	if (i == num_fields - 4 && !g_str_equal(reply[CONTACTS_ID_COL],
+						TRACKER_DEFAULT_CONTACT_ME))
 		return;
 
 	data->index++;
@@ -1155,8 +1148,8 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	last_index = params->liststartoffset + params->maxlistcount;
 
 	if ((data->index <= params->liststartoffset ||
-			data->index > last_index) &&
-			params->maxlistcount > 0)
+						data->index > last_index) &&
+						params->maxlistcount > 0)
 		return;
 
 add_entry:
@@ -1178,7 +1171,7 @@ add_entry:
 	contact->title = g_strdup(reply[33]);
 
 	set_call_type(contact, reply[COL_DATE], reply[COL_SENT],
-			reply[COL_ANSWERED]);
+							reply[COL_ANSWERED]);
 
 add_numbers:
 	/* Adding phone numbers to contact struct */
@@ -1231,8 +1224,8 @@ done:
 
 	if (num_fields == 0)
 		data->cb(vcards->str, vcards->len,
-				g_slist_length(data->contacts), 0,
-				data->user_data);
+					g_slist_length(data->contacts), 0,
+					data->user_data);
 
 	g_string_free(vcards, TRUE);
 fail:
@@ -1295,7 +1288,7 @@ void phonebook_exit(void)
 }
 
 char *phonebook_set_folder(const char *current_folder, const char *new_folder,
-							uint8_t flags, int *err)
+						uint8_t flags, int *err)
 {
 	char *tmp1, *tmp2, *base, *path = NULL;
 	gboolean root, child;
@@ -1356,10 +1349,12 @@ char *phonebook_set_folder(const char *current_folder, const char *new_folder,
 	}
 
 done:
-	if (ret || !folder_is_valid(path)) {
+	if (path && !folder_is_valid(path))
+		ret = -ENOENT;
+
+	if (ret < 0) {
 		g_free(path);
 		path = NULL;
-		ret = ret ? ret : -ENOENT;
 	}
 
 	if (err)
