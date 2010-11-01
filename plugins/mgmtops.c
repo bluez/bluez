@@ -51,11 +51,30 @@
 static int mgmt_sock = -1;
 static guint mgmt_watch = 0;
 
+static void mgmt_cmd_complete(int sk, void *buf, size_t len)
+{
+	DBG("");
+}
+
+static void mgmt_cmd_status(int sk, void *buf, size_t len)
+{
+	DBG("");
+}
+
+static void mgmt_controller_error(int sk, void *buf, size_t len)
+{
+	DBG("");
+}
+
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
+	struct hci_mgmt_hdr *hdr = (void *) buf;
 	int sk;
 	ssize_t ret;
+	uint16_t len, opcode;
+
+	DBG("cond %d", cond);
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -75,6 +94,34 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 	}
 
 	DBG("Received %zd bytes from management socket", ret);
+
+	if (ret < HCI_MGMT_HDR_SIZE) {
+		error("Too small Management packet");
+		return TRUE;
+	}
+
+	opcode = btohs(bt_get_unaligned(&hdr->opcode));
+	len = btohs(bt_get_unaligned(&hdr->len));
+
+	if (ret != HCI_MGMT_HDR_SIZE + len) {
+		error("Packet length mismatch. ret %zd len %u", ret, len);
+		return TRUE;
+	}
+
+	switch (opcode) {
+	case HCI_MGMT_EV_CMD_COMPLETE:
+		mgmt_cmd_complete(sk, buf, ret);
+		break;
+	case HCI_MGMT_EV_CMD_STATUS:
+		mgmt_cmd_status(sk, buf, ret);
+		break;
+	case HCI_MGMT_EV_CONTROLLER_ERROR:
+		mgmt_controller_error(sk, buf, ret);
+		break;
+	default:
+		error("Unknown Management opcode %u", opcode);
+		break;
+	}
 
 	return TRUE;
 }
