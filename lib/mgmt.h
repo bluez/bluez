@@ -40,7 +40,14 @@ struct mgmt_read_version_rp {
 #define MGMT_READ_VERSION_RP_SIZE	4
 
 #define MGMT_OP_READ_FEATURES		0x0002
+
 #define MGMT_OP_READ_INDEX_LIST		0x0003
+struct mgmt_read_index_list_rp {
+	uint16_t num_controllers;
+	uint16_t index[0];
+} __packed;
+#define MGMT_READ_INDEX_LIST_RP_SIZE	2
+
 #define MGMT_OP_READ_INFO		0x0004
 #define MGMT_OP_READ_STATISTICS		0x0005
 #define MGMT_OP_READ_MODE		0x0006

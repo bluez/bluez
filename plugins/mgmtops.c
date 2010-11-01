@@ -53,6 +53,7 @@ static guint mgmt_watch = 0;
 
 static void read_version_complete(int sk, void *buf, size_t len)
 {
+	struct mgmt_hdr hdr;
 	struct mgmt_read_version_rp *rp = buf;
 	uint16_t revision;
 
@@ -65,6 +66,39 @@ static void read_version_complete(int sk, void *buf, size_t len)
 
 	DBG("status %u version %u revision %u", rp->status, rp->version,
 								revision);
+
+	memset(&hdr, 0, sizeof(hdr));
+	hdr.opcode = MGMT_OP_READ_INDEX_LIST;
+	if (write(sk, &hdr, sizeof(hdr)) < 0)
+		error("Unable to read controller index list: %s (%d)",
+						strerror(errno), errno);
+}
+
+static void read_index_list_complete(int sk, void *buf, size_t len)
+{
+	struct mgmt_read_index_list_rp *rp = buf;
+	uint16_t num;
+	int i;
+
+	if (len < MGMT_READ_INDEX_LIST_RP_SIZE) {
+		error("Too small read index list complete event");
+		return;
+	}
+
+	num = btohs(bt_get_unaligned(&rp->num_controllers));
+
+	if (num * sizeof(uint16_t) + MGMT_READ_INDEX_LIST_RP_SIZE != len) {
+		error("Incorrect packet size for index list event");
+		return;
+	}
+
+	for (i = 0; i < num; i++) {
+		uint16_t index;
+
+		index = btohs(bt_get_unaligned(&rp->index[i]));
+
+		DBG("Found controller %u", index);
+	}
 }
 
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
@@ -84,6 +118,9 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 	switch (opcode) {
 	case MGMT_OP_READ_VERSION:
 		read_version_complete(sk, ev->data, len - sizeof(*ev));
+		break;
+	case MGMT_OP_READ_INDEX_LIST:
+		read_index_list_complete(sk, ev->data, len - sizeof(*ev));
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
