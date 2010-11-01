@@ -51,9 +51,44 @@
 static int mgmt_sock = -1;
 static guint mgmt_watch = 0;
 
+static void read_version_complete(int sk, void *buf, size_t len)
+{
+	struct hci_mgmt_read_version_rp *rp = buf;
+	uint16_t revision;
+
+	if (len < HCI_MGMT_READ_VERSION_RP_SIZE) {
+		error("Too small read version complete event");
+		return;
+	}
+
+	revision = btohs(bt_get_unaligned(&rp->revision));
+
+	DBG("status %u version %u revision %u", rp->status, rp->version,
+								revision);
+}
+
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 {
+	struct hci_mgmt_cmd_complete_ev *ev = buf;
+	uint16_t opcode;
+
 	DBG("");
+
+	if (len < sizeof(*ev)) {
+		error("Too small management command complete event packet");
+		return;
+	}
+
+	opcode = btohs(bt_get_unaligned(&ev->opcode));
+
+	switch (opcode) {
+	case HCI_MGMT_OP_READ_VERSION:
+		read_version_complete(sk, ev->data, len - sizeof(*ev));
+		break;
+	default:
+		error("Unknown command complete for opcode %u", opcode);
+		break;
+	}
 }
 
 static void mgmt_cmd_status(int sk, void *buf, size_t len)
