@@ -48,6 +48,16 @@
 
 #define MGMT_BUF_SIZE 1024
 
+static int max_index = -1;
+static struct controller_info {
+	gboolean valid;
+	gboolean notified;
+	uint8_t status;
+	uint8_t type;
+	bdaddr_t bdaddr;
+	uint8_t features[8];
+} *controllers = NULL;
+
 static int mgmt_sock = -1;
 static guint mgmt_watch = 0;
 
@@ -76,6 +86,19 @@ static void read_version_complete(int sk, void *buf, size_t len)
 						strerror(errno), errno);
 }
 
+static void add_controller(uint16_t index)
+{
+	if (index > max_index) {
+		size_t size = sizeof(struct controller_info) * (index + 1);
+		max_index = index;
+		controllers = g_realloc(controllers, size);
+	}
+
+	memset(&controllers[index], 0, sizeof(struct controller_info));
+
+	controllers[index].valid = TRUE;
+}
+
 static void read_index_list_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_read_index_list_rp *rp = buf;
@@ -100,6 +123,8 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 		index = btohs(bt_get_unaligned(&rp->index[i]));
 
 		DBG("Found controller %u", index);
+
+		add_controller(index);
 	}
 }
 
@@ -247,6 +272,10 @@ fail:
 
 static void mgmt_cleanup(void)
 {
+	g_free(controllers);
+	controllers = NULL;
+	max_index = -1;
+
 	if (mgmt_sock >= 0) {
 		close(mgmt_sock);
 		mgmt_sock = -1;
