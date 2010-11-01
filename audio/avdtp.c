@@ -1034,8 +1034,6 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		/* Remove pending commands for this stream from the queue */
 		cleanup_queue(session, stream);
 		stream_free(stream);
-		if (session->ref == 1 && !session->streams)
-			set_disconnect_timer(session);
 		break;
 	default:
 		break;
