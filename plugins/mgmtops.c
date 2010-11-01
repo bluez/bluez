@@ -99,6 +99,23 @@ static void add_controller(uint16_t index)
 	controllers[index].valid = TRUE;
 }
 
+static void read_info(int sk, uint16_t index)
+{
+	char buf[MGMT_HDR_SIZE + MGMT_READ_INFO_CP_SIZE];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_read_info_cp *cp = (void *) &buf[sizeof(*hdr)];
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = MGMT_OP_READ_INFO;
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+
+	if (write(sk, buf, sizeof(buf)) < 0)
+		error("Unable to send read_info command: %s (%d)",
+						strerror(errno), errno);
+}
+
 static void read_index_list_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_read_index_list_rp *rp = buf;
@@ -125,7 +142,43 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 		DBG("Found controller %u", index);
 
 		add_controller(index);
+		read_info(sk, index);
 	}
+}
+
+static void read_info_complete(int sk, void *buf, size_t len)
+{
+	struct mgmt_read_info_rp *rp = buf;
+	struct controller_info *info;
+	uint16_t index;
+	char addr[18];
+
+	if (len < MGMT_READ_INFO_RP_SIZE) {
+		error("Too small read info complete event");
+		return;
+	}
+
+	if (rp->status != 0) {
+		error("Reading controller info failed: %s (%u)",
+					strerror(rp->status), rp->status);
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&rp->index));
+	if (index > max_index) {
+		error("Unexpected index %u in read info complete", index);
+		return;
+	}
+
+	info = &controllers[index];
+	info->status = rp->status;
+	info->type = rp->type;
+	bacpy(&info->bdaddr, &rp->bdaddr);
+	memcpy(info->features, rp->features, 8);
+
+	ba2str(&info->bdaddr, addr);
+	DBG("hci%u addr %s status %u type %u", index, addr, info->status,
+								info->type);
 }
 
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
@@ -149,6 +202,8 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 	case MGMT_OP_READ_INDEX_LIST:
 		read_index_list_complete(sk, ev->data, len - sizeof(*ev));
 		break;
+	case MGMT_OP_READ_INFO:
+		read_info_complete(sk, ev->data, len - sizeof(*ev));
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;
