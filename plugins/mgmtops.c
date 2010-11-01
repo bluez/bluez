@@ -64,8 +64,7 @@ static void read_version_complete(int sk, void *buf, size_t len)
 
 	revision = btohs(bt_get_unaligned(&rp->revision));
 
-	DBG("status %u version %u revision %u", rp->status, rp->version,
-								revision);
+	DBG("version %u revision %u", rp->version, revision);
 
 	memset(&hdr, 0, sizeof(hdr));
 	hdr.opcode = MGMT_OP_READ_INDEX_LIST;

@@ -33,11 +33,10 @@ struct mgmt_hdr {
 
 #define MGMT_OP_READ_VERSION		0x0001
 struct mgmt_read_version_rp {
-	uint8_t status;
 	uint8_t version;
 	uint16_t revision;
 } __packed;
-#define MGMT_READ_VERSION_RP_SIZE	4
+#define MGMT_READ_VERSION_RP_SIZE	3
 
 #define MGMT_OP_READ_FEATURES		0x0002
 
