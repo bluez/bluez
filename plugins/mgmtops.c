@@ -53,10 +53,10 @@ static guint mgmt_watch = 0;
 
 static void read_version_complete(int sk, void *buf, size_t len)
 {
-	struct hci_mgmt_read_version_rp *rp = buf;
+	struct mgmt_read_version_rp *rp = buf;
 	uint16_t revision;
 
-	if (len < HCI_MGMT_READ_VERSION_RP_SIZE) {
+	if (len < MGMT_READ_VERSION_RP_SIZE) {
 		error("Too small read version complete event");
 		return;
 	}
@@ -69,7 +69,7 @@ static void read_version_complete(int sk, void *buf, size_t len)
 
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 {
-	struct hci_mgmt_cmd_complete_ev *ev = buf;
+	struct mgmt_cmd_complete_ev *ev = buf;
 	uint16_t opcode;
 
 	DBG("");
@@ -82,7 +82,7 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 	opcode = btohs(bt_get_unaligned(&ev->opcode));
 
 	switch (opcode) {
-	case HCI_MGMT_OP_READ_VERSION:
+	case MGMT_OP_READ_VERSION:
 		read_version_complete(sk, ev->data, len - sizeof(*ev));
 		break;
 	default:
@@ -104,7 +104,7 @@ static void mgmt_controller_error(int sk, void *buf, size_t len)
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
-	struct hci_mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_hdr *hdr = (void *) buf;
 	int sk;
 	ssize_t ret;
 	uint16_t len, opcode;
@@ -130,7 +130,7 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 
 	DBG("Received %zd bytes from management socket", ret);
 
-	if (ret < HCI_MGMT_HDR_SIZE) {
+	if (ret < MGMT_HDR_SIZE) {
 		error("Too small Management packet");
 		return TRUE;
 	}
@@ -138,20 +138,20 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 	opcode = btohs(bt_get_unaligned(&hdr->opcode));
 	len = btohs(bt_get_unaligned(&hdr->len));
 
-	if (ret != HCI_MGMT_HDR_SIZE + len) {
+	if (ret != MGMT_HDR_SIZE + len) {
 		error("Packet length mismatch. ret %zd len %u", ret, len);
 		return TRUE;
 	}
 
 	switch (opcode) {
-	case HCI_MGMT_EV_CMD_COMPLETE:
-		mgmt_cmd_complete(sk, buf + HCI_MGMT_HDR_SIZE, len);
+	case MGMT_EV_CMD_COMPLETE:
+		mgmt_cmd_complete(sk, buf + MGMT_HDR_SIZE, len);
 		break;
-	case HCI_MGMT_EV_CMD_STATUS:
-		mgmt_cmd_status(sk, buf + HCI_MGMT_HDR_SIZE, len);
+	case MGMT_EV_CMD_STATUS:
+		mgmt_cmd_status(sk, buf + MGMT_HDR_SIZE, len);
 		break;
-	case HCI_MGMT_EV_CONTROLLER_ERROR:
-		mgmt_controller_error(sk, buf + HCI_MGMT_HDR_SIZE, len);
+	case MGMT_EV_CONTROLLER_ERROR:
+		mgmt_controller_error(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);
@@ -163,7 +163,7 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 
 static int mgmt_setup(void)
 {
-	struct hci_mgmt_hdr hdr;
+	struct mgmt_hdr hdr;
 	struct sockaddr_hci addr;
 	GIOChannel *io;
 	GIOCondition condition;
@@ -184,7 +184,7 @@ static int mgmt_setup(void)
 	}
 
 	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = HCI_MGMT_OP_READ_VERSION;
+	hdr.opcode = MGMT_OP_READ_VERSION;
 	if (write(dd, &hdr, sizeof(hdr)) < 0) {
 		err = -errno;
 		goto fail;

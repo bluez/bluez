@@ -25,33 +25,33 @@
 #define __packed __attribute__((packed))
 #endif
 
-struct hci_mgmt_hdr {
+struct mgmt_hdr {
 	uint16_t opcode;
 	uint16_t len;
 } __packed;
-#define HCI_MGMT_HDR_SIZE	4
+#define MGMT_HDR_SIZE	4
 
-#define HCI_MGMT_OP_READ_VERSION	0x0001
-struct hci_mgmt_read_version_rp {
+#define MGMT_OP_READ_VERSION		0x0001
+struct mgmt_read_version_rp {
 	uint8_t status;
 	uint8_t version;
 	uint16_t revision;
 } __packed;
-#define HCI_MGMT_READ_VERSION_RP_SIZE	4
+#define MGMT_READ_VERSION_RP_SIZE	4
 
-#define HCI_MGMT_OP_READ_FEATURES	0x0002
-#define HCI_MGMT_OP_READ_INDEX_LIST	0x0003
-#define HCI_MGMT_OP_READ_INFO		0x0004
-#define HCI_MGMT_OP_READ_STATISTICS	0x0005
-#define HCI_MGMT_OP_READ_MODE		0x0006
-#define HCI_MGMT_OP_WRITE_MODE		0x0007
+#define MGMT_OP_READ_FEATURES		0x0002
+#define MGMT_OP_READ_INDEX_LIST		0x0003
+#define MGMT_OP_READ_INFO		0x0004
+#define MGMT_OP_READ_STATISTICS		0x0005
+#define MGMT_OP_READ_MODE		0x0006
+#define MGMT_OP_WRITE_MODE		0x0007
 
-#define HCI_MGMT_EV_CMD_COMPLETE	0x0001
-struct hci_mgmt_cmd_complete_ev {
+#define MGMT_EV_CMD_COMPLETE		0x0001
+struct mgmt_cmd_complete_ev {
 	uint16_t opcode;
 	uint8_t data[0];
 } __packed;
-#define HCI_MGMT_CMD_COMPLETE_SIZE	2
+#define MGMT_CMD_COMPLETE_SIZE		2
 
-#define HCI_MGMT_EV_CMD_STATUS		0x0002
-#define HCI_MGMT_EV_CONTROLLER_ERROR	0x0003
+#define MGMT_EV_CMD_STATUS		0x0002
+#define MGMT_EV_CONTROLLER_ERROR	0x0003
