@@ -39,6 +39,10 @@ struct mgmt_read_version_rp {
 #define MGMT_READ_VERSION_RP_SIZE	3
 
 #define MGMT_OP_READ_FEATURES		0x0002
+struct mgmt_read_features_rp {
+	uint8_t features[8];
+} __packed;
+#define MGMT_READ_FEATURES_RP_SIZE	8
 
 #define MGMT_OP_READ_INDEX_LIST		0x0003
 struct mgmt_read_index_list_rp {
@@ -48,6 +52,19 @@ struct mgmt_read_index_list_rp {
 #define MGMT_READ_INDEX_LIST_RP_SIZE	2
 
 #define MGMT_OP_READ_INFO		0x0004
+struct mgmt_read_info_cp {
+	uint16_t index;
+} __packed;
+#define MGMT_READ_INFO_CP_SIZE		2
+struct mgmt_read_info_rp {
+	uint8_t status;
+	uint16_t index;
+	uint8_t type;
+	bdaddr_t addr;
+	uint8_t features[8];
+} __packed;
+#define MGMT_READ_INFO_RP_SIZE		18
+
 #define MGMT_OP_READ_STATISTICS		0x0005
 #define MGMT_OP_READ_MODE		0x0006
 #define MGMT_OP_WRITE_MODE		0x0007
