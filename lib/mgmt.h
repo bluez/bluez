@@ -60,7 +60,7 @@ struct mgmt_read_info_rp {
 	uint8_t status;
 	uint16_t index;
 	uint8_t type;
-	bdaddr_t addr;
+	bdaddr_t bdaddr;
 	uint8_t features[8];
 } __packed;
 #define MGMT_READ_INFO_RP_SIZE		18
