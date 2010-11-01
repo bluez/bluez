@@ -51,20 +51,23 @@
 static int mgmt_sock = -1;
 static guint mgmt_watch = 0;
 
+static uint8_t mgmt_version = 0;
+static uint16_t mgmt_revision = 0;
+
 static void read_version_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_hdr hdr;
 	struct mgmt_read_version_rp *rp = buf;
-	uint16_t revision;
 
 	if (len < MGMT_READ_VERSION_RP_SIZE) {
 		error("Too small read version complete event");
 		return;
 	}
 
-	revision = btohs(bt_get_unaligned(&rp->revision));
+	mgmt_revision = btohs(bt_get_unaligned(&rp->revision));
+	mgmt_version = rp->version;
 
-	DBG("version %u revision %u", rp->version, revision);
+	DBG("version %u revision %u", mgmt_version, mgmt_revision);
 
 	memset(&hdr, 0, sizeof(hdr));
 	hdr.opcode = MGMT_OP_READ_INDEX_LIST;
