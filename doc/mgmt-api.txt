@@ -29,8 +29,7 @@ Read Management Version Information Command
 
 	Command Code:		0x0001
 	Command Parameters:
-	Return Parameters:	Status (1 Octet)
-				Version (1 Octets
+	Return Parameters:	Version (1 Octets)
 				Revision (2 Octets)
 
 Read Management Supported Features Command
@@ -38,8 +37,7 @@ Read Management Supported Features Command
 
 	Command Code:		0x0002
 	Command Parameters:
-	Return Parameters:	Status (1 Octet)
-				Features (8 Octets)
+	Return Parameters:	Features (8 Octets)
 
 		Feature Bit 0:	Controller Support
 		Feature Bit 1:	Tracing Support
@@ -49,8 +47,7 @@ Read Controller Index List Command
 
 	Command Code:		0x0003
 	Command Parameters:
-	Return Paramters:	Status (1 Octet)
-				Num_Controllers (2 Octets)
+	Return Paramters:	Num_Controllers (2 Octets)
 				Controller_Index[i] (2 Octets)
 
 Read Controller Information Command
