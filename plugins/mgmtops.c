@@ -140,68 +140,68 @@ static void mgmt_cleanup(void)
 static int mgmt_start(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_stop(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_powered(int index, gboolean powered)
 {
 	DBG("index %d powered %d", index, powered);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_connectable(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_discoverable(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_set_class(int index, uint32_t class)
 {
 	DBG("index %d class %u", index, class);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_set_limited_discoverable(int index, uint32_t class,
 							gboolean limited)
 {
 	DBG("index %d class %u, limited %d", index, class, limited);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_start_inquiry(int index, uint8_t length, gboolean periodic)
 {
 	DBG("index %d length %u periodic %d", index, length, periodic);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_stop_inquiry(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_start_scanning(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_stop_scanning(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_resolve_name(int index, bdaddr_t *bdaddr)
@@ -211,19 +211,19 @@ static int mgmt_resolve_name(int index, bdaddr_t *bdaddr)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_set_name(int index, const char *name)
 {
 	DBG("index %d, name %s", index, name);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_name(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_cancel_resolve_name(int index, bdaddr_t *bdaddr)
@@ -233,13 +233,13 @@ static int mgmt_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_fast_connectable(int index, gboolean enable)
 {
 	DBG("index %d enable %d", index, enable);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_clock(int index, int handle, int which, int timeout,
@@ -247,7 +247,7 @@ static int mgmt_read_clock(int index, int handle, int which, int timeout,
 {
 	DBG("index %d handle %d which %d timeout %d", index, handle,
 							which, timeout);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
@@ -257,13 +257,13 @@ static int mgmt_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_write_eir_data(int index, uint8_t *data)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr)
@@ -273,25 +273,25 @@ static int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_set_event_mask(int index, uint8_t *events, size_t count)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_write_inq_mode(int index, uint8_t mode)
 {
 	DBG("index %d mode %u", index, mode);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_inq_tx_pwr(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_block_device(int index, bdaddr_t *bdaddr)
@@ -301,7 +301,7 @@ static int mgmt_block_device(int index, bdaddr_t *bdaddr)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_unblock_device(int index, bdaddr_t *bdaddr)
@@ -311,49 +311,49 @@ static int mgmt_unblock_device(int index, bdaddr_t *bdaddr)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_get_conn_list(int index, GSList **conns)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_local_version(int index, struct hci_version *ver)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_local_features(int index, uint8_t *features)
 {
 	DBG("index %d", index);
-	return  0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_local_ext_features(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_init_ssp_mode(int index, uint8_t *mode)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_link_policy(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_disconnect(int index, uint16_t handle)
 {
 	DBG("index %d handle %u", index, handle);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_remove_bonding(int index, bdaddr_t *bdaddr)
@@ -363,14 +363,14 @@ static int mgmt_remove_bonding(int index, bdaddr_t *bdaddr)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_request_authentication(int index, uint16_t handle,
 							uint8_t *status)
 {
 	DBG("index %d handle %u", index, handle);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
@@ -380,7 +380,7 @@ static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s pin %s", index, addr, pin);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
@@ -390,7 +390,7 @@ static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s success %d", index, addr, success);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
@@ -400,7 +400,7 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s passkey %06u", index, addr, passkey);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
@@ -410,32 +410,32 @@ static int mgmt_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_scan_enable(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_read_ssp_mode(int index)
 {
 	DBG("index %d", index);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_write_le_host(int index, uint8_t le, uint8_t simul)
 {
 	DBG("index %d le %u simul %u", index, le, simul);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_get_remote_version(int index, uint16_t handle,
 							gboolean delayed)
 {
 	DBG("index %d handle %u delayed %d", index, handle, delayed);
-	return 0;
+	return -ENOSYS;
 }
 
 static int mgmt_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
@@ -446,7 +446,7 @@ static int mgmt_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 	ba2str(dst, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return 0;
+	return -ENOSYS;
 }
 
 static struct btd_adapter_ops mgmt_ops = {
