@@ -110,13 +110,13 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 
 	switch (opcode) {
 	case HCI_MGMT_EV_CMD_COMPLETE:
-		mgmt_cmd_complete(sk, buf, ret);
+		mgmt_cmd_complete(sk, buf + HCI_MGMT_HDR_SIZE, len);
 		break;
 	case HCI_MGMT_EV_CMD_STATUS:
-		mgmt_cmd_status(sk, buf, ret);
+		mgmt_cmd_status(sk, buf + HCI_MGMT_HDR_SIZE, len);
 		break;
 	case HCI_MGMT_EV_CONTROLLER_ERROR:
-		mgmt_controller_error(sk, buf, ret);
+		mgmt_controller_error(sk, buf + HCI_MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);
