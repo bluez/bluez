@@ -603,22 +603,11 @@ done:
 
 	DBG("%s", modestr);
 
-	if (msg != NULL) {
-		/* Limited to Discoverable and vice-versa doesn't cause any
-		   change to scan mode */
-		if (g_str_equal(modestr, mode2str(adapter->mode)) == TRUE) {
-			DBusMessage *reply;
-
-			reply = g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
-			g_dbus_send_message(connection, reply);
-		} else
-			/* Wait for mode change to reply */
-			adapter->pending_mode = create_session(adapter,
-								connection,
-								msg, new_mode,
-								NULL);
-	} else
+	if (msg != NULL)
+		/* Wait for mode change to reply */
+		adapter->pending_mode = create_session(adapter, connection,
+							msg, new_mode, NULL);
+	else
 		/* Nothing to reply just write the new mode */
 		adapter->mode = new_mode;
 
