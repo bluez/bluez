@@ -171,9 +171,6 @@ static int get_by_type(struct ftp_session *ftp, const char *type)
 	if (g_strcmp0(type, CAP_TYPE) == 0)
 		return obex_get_stream_start(os, capability);
 
-	if (g_strcmp0(type, LST_TYPE) == 0)
-		return obex_get_stream_start(os, ftp->folder);
-
 	path = g_build_filename(ftp->folder, name, NULL);
 	err = obex_get_stream_start(os, path);
 
