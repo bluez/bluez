@@ -119,8 +119,7 @@ Properties:
 
 Service		org.bluez
 Interface	org.bluez.HealthChannel
-Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/
-							hdp_YYYY/channel_ZZ
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/chanZZZ
 
 Only the process that created the data channel or the creator of the
 HealthApplication that received it will be able to call this methods.
