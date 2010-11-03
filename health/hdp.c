@@ -423,6 +423,9 @@ static DBusMessage *channel_get_properties(DBusConnection *conn,
 	path = device_get_path(chan->dev->dev);
 	dict_append_entry(&dict, "Device", DBUS_TYPE_OBJECT_PATH, &path);
 
+	path = chan->app->path;
+	dict_append_entry(&dict, "Application", DBUS_TYPE_OBJECT_PATH, &path);
+
 	if (chan->config == HDP_RELIABLE_DC)
 		type = g_strdup("Reliable");
 	else
