@@ -711,15 +711,15 @@ struct media_transport *media_transport_create(DBusConnection *conn,
 	transport->fd = -1;
 
 	uuid = media_endpoint_get_uuid(endpoint);
-	if (g_strcmp0(uuid, A2DP_SOURCE_UUID) == 0 ||
-			g_strcmp0(uuid, A2DP_SINK_UUID) == 0) {
+	if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0 ||
+			strcasecmp(uuid, A2DP_SINK_UUID) == 0) {
 		transport->resume = resume_a2dp;
 		transport->suspend = suspend_a2dp;
 		transport->cancel = cancel_a2dp;
 		transport->get_properties = get_properties_a2dp;
 		transport->set_property = set_property_a2dp;
-	} else if (g_strcmp0(uuid, HFP_AG_UUID) == 0 ||
-			g_strcmp0(uuid, HSP_AG_UUID) == 0) {
+	} else if (strcasecmp(uuid, HFP_AG_UUID) == 0 ||
+			strcasecmp(uuid, HSP_AG_UUID) == 0) {
 		transport->resume = resume_headset;
 		transport->suspend = suspend_headset;
 		transport->cancel = cancel_headset;

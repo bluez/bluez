@@ -190,19 +190,19 @@ static struct media_endpoint *media_endpoint_create(struct media_adapter *adapte
 	endpoint->size = size;
 	endpoint->adapter = adapter;
 
-	if (g_strcmp0(uuid, A2DP_SOURCE_UUID) == 0) {
+	if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0) {
 		endpoint->sep = a2dp_add_sep(&adapter->src,
 					AVDTP_SEP_TYPE_SOURCE, codec,
 					delay_reporting, endpoint);
 		if (endpoint->sep == NULL)
 			goto failed;
-	} else if (g_strcmp0(uuid, A2DP_SINK_UUID) == 0) {
+	} else if (strcasecmp(uuid, A2DP_SINK_UUID) == 0) {
 		endpoint->sep = a2dp_add_sep(&adapter->src,
 						AVDTP_SEP_TYPE_SINK, codec,
 						delay_reporting, endpoint);
 		if (endpoint->sep == NULL)
 			goto failed;
-	} else if (g_strcmp0(uuid, HFP_AG_UUID) == 0 ||
+	} else if (strcasecmp(uuid, HFP_AG_UUID) == 0 ||
 					g_strcmp0(uuid, HSP_AG_UUID) == 0)
 		endpoint->hs_watch = headset_add_state_cb(headset_state_changed,
 								endpoint);
