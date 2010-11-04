@@ -56,10 +56,12 @@ static guint child_io_id = 0;
 static guint ctl_io_id = 0;
 
 #define SK(index) devs[(index)].sk
+#define BDADDR(index) devs[(index)].bdaddr
 
 static int max_dev = -1;
 static struct dev_info {
 	int sk;
+	bdaddr_t bdaddr;
 } *devs = NULL;
 
 static int ignore_device(struct hci_dev_info *di)
@@ -1310,6 +1312,8 @@ static void device_devup_setup(int index)
 	if (ignore_device(&di))
 		return;
 
+	bacpy(&BDADDR(index), &di.bdaddr);
+
 	/* Set page timeout */
 	if ((main_opts.flags & (1 << HCID_SET_PAGETO))) {
 		write_page_timeout_cp cp;
@@ -1935,9 +1939,7 @@ static int hciops_write_eir_data(int index, uint8_t *data)
 
 static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 {
-	if (hci_read_bd_addr(SK(index), bdaddr, HCI_REQ_TIMEOUT) < 0)
-		return -errno;
-
+	bacpy(bdaddr, &BDADDR(index));
 	return 0;
 }
 
