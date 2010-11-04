@@ -2471,27 +2471,21 @@ proceed:
 int adapter_start(struct btd_adapter *adapter)
 {
 	struct hci_dev *dev = &adapter->dev;
-	struct hci_dev_info di;
 	struct hci_version ver;
 	uint8_t features[8];
 	int err;
 	char mode[14], address[18];
 
-	if (hci_devinfo(adapter->dev_id, &di) < 0)
-		return -errno;
-
-	if (!bacmp(&di.bdaddr, BDADDR_ANY)) {
+	if (!bacmp(&adapter->bdaddr, BDADDR_ANY)) {
 		int err;
 
 		DBG("Adapter %s without an address", adapter->path);
 
-		err = adapter_ops->read_bdaddr(adapter->dev_id, &di.bdaddr);
+		err = adapter_ops->read_bdaddr(adapter->dev_id, &adapter->bdaddr);
 		if (err < 0)
 			return err;
 	}
 
-	bacpy(&adapter->bdaddr, &di.bdaddr);
-	memcpy(dev->features, di.features, 8);
 	ba2str(&adapter->bdaddr, address);
 
 	err = read_device_mode(address, mode, sizeof(mode));
