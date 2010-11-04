@@ -1342,13 +1342,9 @@ int attrib_client_register(struct btd_device *device, int psm)
 	bacpy(&gatt->dba, &dba);
 	gatt->psm = psm;
 
-	gatt_services = g_slist_append(gatt_services, gatt);
-
-	/* FIXME: we should also listen for incoming connections */
-
 	if (load_primary_services(gatt)) {
 		DBG("Primary services loaded");
-		return 0;
+		goto done;
 	}
 
 	if (psm < 0) {
@@ -1384,6 +1380,9 @@ int attrib_client_register(struct btd_device *device, int psm)
 	g_attrib_set_destroy_function(gatt->attrib, attrib_destroy, gatt);
 	g_attrib_set_disconnect_function(gatt->attrib, attrib_disconnect,
 									gatt);
+
+done:
+	gatt_services = g_slist_append(gatt_services, gatt);
 
 	return 0;
 }
