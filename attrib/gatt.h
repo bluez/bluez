@@ -22,6 +22,8 @@
  *
  */
 
+#define GATT_CID 4
+
 guint gatt_discover_primary(GAttrib *attrib, uint16_t start,
 		uint16_t end, GAttribResultFunc func, gpointer user_data);
 

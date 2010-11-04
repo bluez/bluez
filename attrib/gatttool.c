@@ -45,7 +45,6 @@
 
 /* Minimum MTU for L2CAP connections over BR/EDR */
 #define ATT_MIN_MTU_L2CAP 48
-#define GATT_CID 4
 
 static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;

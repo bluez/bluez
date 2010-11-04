@@ -1352,22 +1352,24 @@ int attrib_client_register(struct btd_device *device, int psm)
 	}
 
 	if (psm < 0) {
-		/*
-		 * FIXME: when PSM is not given means that L2CAP fixed
-		 * channel shall be used. For this case, ATT CID(0x0004).
-		 */
+		io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, &gerr,
+					BT_IO_OPT_SOURCE_BDADDR, &sba,
+					BT_IO_OPT_DEST_BDADDR, &dba,
+					BT_IO_OPT_CID, GATT_CID,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_INVALID);
 
-		DBG("GATT over LE");
-
-		return 0;
-	}
-
-	io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, &gerr,
+			DBG("GATT over Low Energy");
+	} else {
+		io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, &sba,
 					BT_IO_OPT_DEST_BDADDR, &dba,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
+
+		DBG("GATT over Basic Rate");
+	}
 
 	if (!io) {
 		error("%s", gerr->message);
