@@ -52,10 +52,11 @@ static int max_index = -1;
 static struct controller_info {
 	gboolean valid;
 	gboolean notified;
-	uint8_t status;
 	uint8_t type;
 	bdaddr_t bdaddr;
 	uint8_t features[8];
+	gboolean enabled;
+	uint8_t mode;
 } *controllers = NULL;
 
 static int mgmt_sock = -1;
@@ -116,6 +117,23 @@ static void read_info(int sk, uint16_t index)
 						strerror(errno), errno);
 }
 
+static void read_mode(int sk, uint16_t index)
+{
+	char buf[MGMT_HDR_SIZE + MGMT_READ_MODE_CP_SIZE];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_read_mode_cp *cp = (void *) &buf[sizeof(*hdr)];
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = MGMT_OP_READ_MODE;
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+
+	if (write(sk, buf, sizeof(buf)) < 0)
+		error("Unable to send read_mode command: %s (%d)",
+						strerror(errno), errno);
+}
+
 static void read_index_list_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_read_index_list_rp *rp = buf;
@@ -171,14 +189,45 @@ static void read_info_complete(int sk, void *buf, size_t len)
 	}
 
 	info = &controllers[index];
-	info->status = rp->status;
 	info->type = rp->type;
 	bacpy(&info->bdaddr, &rp->bdaddr);
 	memcpy(info->features, rp->features, 8);
 
 	ba2str(&info->bdaddr, addr);
-	DBG("hci%u addr %s status %u type %u", index, addr, info->status,
-								info->type);
+	DBG("hci%u addr %s type %u", index, addr, info->type);
+
+	read_mode(sk, index);
+}
+
+static void read_mode_complete(int sk, void *buf, size_t len)
+{
+	struct mgmt_read_mode_rp *rp = buf;
+	struct controller_info *info;
+	uint16_t index;
+
+	if (len < MGMT_READ_MODE_RP_SIZE) {
+		error("Too small read mode complete event (%zu != %d)",
+						len, MGMT_READ_MODE_RP_SIZE);
+		return;
+	}
+
+	if (rp->status != 0) {
+		error("Reading controller mode failed: %s (%u)",
+					strerror(rp->status), rp->status);
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&rp->index));
+	if (index > max_index) {
+		error("Unexpected index %u in read mode complete", index);
+		return;
+	}
+
+	info = &controllers[index];
+	info->enabled = rp->enabled ? TRUE : FALSE;
+	info->mode = rp->mode;
+
+	DBG("hci%u enabled %u mode %u", index, info->enabled, info->mode);
 }
 
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
@@ -204,6 +253,10 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 		break;
 	case MGMT_OP_READ_INFO:
 		read_info_complete(sk, ev->data, len - sizeof(*ev));
+		break;
+	case MGMT_OP_READ_MODE:
+		read_mode_complete(sk, ev->data, len - sizeof(*ev));
+		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;

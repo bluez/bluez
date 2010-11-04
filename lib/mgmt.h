@@ -66,7 +66,20 @@ struct mgmt_read_info_rp {
 #define MGMT_READ_INFO_RP_SIZE		18
 
 #define MGMT_OP_READ_STATISTICS		0x0005
+
 #define MGMT_OP_READ_MODE		0x0006
+struct mgmt_read_mode_cp {
+	uint16_t index;
+} __packed;
+#define MGMT_READ_MODE_CP_SIZE		2
+struct mgmt_read_mode_rp {
+	uint8_t status;
+	uint16_t index;
+	uint8_t enabled;
+	uint8_t mode;
+} __packed;
+#define MGMT_READ_MODE_RP_SIZE		5
+
 #define MGMT_OP_WRITE_MODE		0x0007
 
 #define MGMT_EV_CMD_COMPLETE		0x0001
