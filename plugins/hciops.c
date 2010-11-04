@@ -62,6 +62,11 @@ static struct dev_info {
 	int sk;
 } *devs = NULL;
 
+static int ignore_device(struct hci_dev_info *di)
+{
+	return hci_test_bit(HCI_RAW, &di->flags) || di->type >> 4 != HCI_BREDR;
+}
+
 static void init_dev_info(int index, int sk)
 {
 	memset(&devs[index], 0, sizeof(struct dev_info));

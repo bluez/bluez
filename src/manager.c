@@ -63,7 +63,7 @@ const char *manager_get_base_path(void)
 
 void manager_update_svc(struct btd_adapter* adapter, uint8_t svc)
 {
-	adapter_update(adapter, svc);
+	adapter_set_service_classes(adapter, svc);
 }
 
 static inline DBusMessage *invalid_args(DBusMessage *msg)

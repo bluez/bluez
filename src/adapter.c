@@ -285,8 +285,7 @@ static void update_ext_inquiry_response(struct btd_adapter *adapter)
 						strerror(-ret), -ret);
 }
 
-static int adapter_set_service_classes(struct btd_adapter *adapter,
-							uint8_t value)
+int adapter_set_service_classes(struct btd_adapter *adapter, uint8_t value)
 {
 	int err;
 
@@ -2481,11 +2480,6 @@ int adapter_start(struct btd_adapter *adapter)
 	if (hci_devinfo(adapter->dev_id, &di) < 0)
 		return -errno;
 
-	if (ignore_device(&di)) {
-		dev->ignore = 1;
-		return -1;
-	}
-
 	if (!bacmp(&di.bdaddr, BDADDR_ANY)) {
 		int err;
 
@@ -2681,18 +2675,6 @@ int adapter_stop(struct btd_adapter *adapter)
 	info("Adapter %s has been disabled", adapter->path);
 
 	set_mode_complete(adapter);
-
-	return 0;
-}
-
-int adapter_update(struct btd_adapter *adapter, uint8_t new_svc)
-{
-	struct hci_dev *dev = &adapter->dev;
-
-	if (dev->ignore)
-		return 0;
-
-	adapter_set_service_classes(adapter, new_svc);
 
 	return 0;
 }

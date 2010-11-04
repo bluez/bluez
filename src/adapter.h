@@ -72,8 +72,6 @@ struct remote_dev_info {
 };
 
 struct hci_dev {
-	int ignore;
-
 	uint8_t  features[8];
 	uint8_t  extfeatures[8];
 	uint8_t  lmp_ver;
@@ -89,7 +87,7 @@ int adapter_start(struct btd_adapter *adapter);
 
 int adapter_stop(struct btd_adapter *adapter);
 
-int adapter_update(struct btd_adapter *adapter, uint8_t cls);
+int adapter_set_service_classes(struct btd_adapter *adapter, uint8_t value);
 
 int adapter_update_ssp_mode(struct btd_adapter *adapter, uint8_t mode);
 
