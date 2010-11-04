@@ -27,7 +27,6 @@
 
 #include <stdlib.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -111,25 +110,6 @@ static void cache_sdp_session(bdaddr_t *src, bdaddr_t *dst,
 	cached->timer = g_timeout_add_seconds(CACHE_TIMEOUT,
 						cached_session_expired,
 						cached);
-}
-
-int set_nonblocking(int fd)
-{
-	long arg;
-
-	arg = fcntl(fd, F_GETFL);
-	if (arg < 0)
-		return -errno;
-
-	/* Return if already nonblocking */
-	if (arg & O_NONBLOCK)
-		return 0;
-
-	arg |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, arg) < 0)
-		return -errno;
-
-	return 0;
 }
 
 struct search_context {

@@ -27,6 +27,7 @@
 #endif
 
 #include <stdio.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdlib.h>
@@ -113,6 +114,25 @@ static void client_free(struct unix_client *client)
 
 	g_free(client->interface);
 	g_free(client);
+}
+
+static int set_nonblocking(int fd)
+{
+	long arg;
+
+	arg = fcntl(fd, F_GETFL);
+	if (arg < 0)
+		return -errno;
+
+	/* Return if already nonblocking */
+	if (arg & O_NONBLOCK)
+		return 0;
+
+	arg |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, arg) < 0)
+		return -errno;
+
+	return 0;
 }
 
 /* Pass file descriptor through local domain sockets (AF_LOCAL, formerly

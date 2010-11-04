@@ -21,8 +21,6 @@
  *
  */
 
-int set_nonblocking(int fd);
-
 typedef void (*bt_callback_t) (sdp_list_t *recs, int err, gpointer user_data);
 typedef void (*bt_destroy_t) (gpointer user_data);
 
