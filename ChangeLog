@@ -1,3 +1,12 @@
+ver 4.78:
+	Fix various issues with AVDTP timer handling.
+	Fix various issues with handling of mode changes.
+	Fix issue with audio disconnect watch in connecting state.
+	Fix issue with handling call waiting indicators in telephony.
+	Fix issue with handling UUID parameter and RegisterEndpoint.
+	Add initial support for Bluetooth Management interface.
+	Add support for Application property to HealthChannel.
+
 ver 4.77:
 	Fix issue with device name and accessing already freed memory.
 	Fix issue with handling CHLD=0 command for handsfree.
