@@ -313,12 +313,32 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 
 static void mgmt_cmd_status(int sk, void *buf, size_t len)
 {
-	DBG("");
+	struct mgmt_cmd_status_ev *ev = buf;
+	uint16_t opcode;
+
+	if (len < sizeof(*ev)) {
+		error("Too small management command status event packet");
+		return;
+	}
+
+	opcode = btohs(bt_get_unaligned(&ev->opcode));
+
+	DBG("status %u opcode %u", ev->status, opcode);
 }
 
 static void mgmt_controller_error(int sk, void *buf, size_t len)
 {
-	DBG("");
+	struct mgmt_controller_error_ev *ev = buf;
+	uint16_t index;
+
+	if (len < sizeof(*ev)) {
+		error("Too small management controller error event packet");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+
+	DBG("index %u error_code %u", index, ev->error_code);
 }
 
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)

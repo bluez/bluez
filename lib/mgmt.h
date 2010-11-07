@@ -90,7 +90,18 @@ struct mgmt_cmd_complete_ev {
 #define MGMT_CMD_COMPLETE_SIZE		2
 
 #define MGMT_EV_CMD_STATUS		0x0002
+struct mgmt_cmd_status_ev {
+	uint8_t status;
+	uint16_t opcode;
+} __packed;
+#define MGMT_CMD_STATUS_SIZE		3
+
 #define MGMT_EV_CONTROLLER_ERROR	0x0003
+struct mgmt_controller_error_ev {
+	uint16_t index;
+	uint8_t error_code;
+} __packed;
+#define MGMT_CONTROLLER_ERROR_SIZE	3
 
 #define MGMT_EV_INDEX_ADDED		0x0004
 struct mgmt_index_added_ev {
