@@ -32,6 +32,7 @@ Read Management Version Information Command
 	Return Parameters:	Version (1 Octets)
 				Revision (2 Octets)
 
+
 Read Management Supported Features Command
 ==========================================
 
@@ -42,6 +43,7 @@ Read Management Supported Features Command
 		Feature Bit 0:	Controller Support
 		Feature Bit 1:	Tracing Support
 
+
 Read Controller Index List Command
 ==================================
 
@@ -49,6 +51,7 @@ Read Controller Index List Command
 	Command Parameters:
 	Return Paramters:	Num_Controllers (2 Octets)
 				Controller_Index[i] (2 Octets)
+
 
 Read Controller Information Command
 ===================================
@@ -65,6 +68,7 @@ Read Controller Information Command
 				0x01 Bluetooth (BR/EDR)
 				0x02 802.11 (AMP)
 
+
 Read Controller Statistics Command
 ==================================
 
@@ -73,6 +77,7 @@ Read Controller Statistics Command
 	Return Paramters:	Status (1 Octet)
 				Controller_Index (2 Octets)
 				....
+
 
 Read Controller Mode Command
 ============================
@@ -92,6 +97,7 @@ Read Controller Mode Command
 				0x02 Connectable (pairing allowed)
 				0x03 Discoverable (pairing forbidden)
 				0x04 Discoverable (pairing allowed)
+
 
 Write Controller Mode Command
 =============================
@@ -113,6 +119,7 @@ Read Tracing Buffer Size Command
 
 		Buffer Size in Kilobytes
 
+
 Write Tracing Buffer Size Command
 =================================
 
@@ -121,6 +128,7 @@ Write Tracing Buffer Size Command
 	Return Parameters:	Status (1 Octet)
 
 		Buffer Size in Kilobytes
+
 
 Read Controller Tracing Filter Command
 =======================================
@@ -139,6 +147,7 @@ Read Controller Tracing Filter Command
 				0x02 Command, Event and ACL tracing
 				0x03 Command, Event, ACL and SCO tracing
 
+
 Write Controller Tracing Filter Command
 =======================================
 
@@ -152,12 +161,11 @@ Write Controller Tracing Filter Command
 				Controller_Index (2 Octets)
 
 
-
 Command Complete Event
 ======================
 
 Event Code		0x0001
-Event Parameters	Command_Opcode
+Event Parameters	Command_Opcode (2 Octets)
 			Return_Parameters
 
 
@@ -165,11 +173,26 @@ Command Status Event
 ====================
 
 Event Code		0x0002
-Event Parameters	Status
-			Command_Opcode
+Event Parameters	Status (1 Octet)
+			Command_Opcode (2 Octets)
+
 
 Controller Error Event
 ======================
 
 Event Code		0x0003
-Event Parameters	Error_Code
+Event Parameters	Error_Code (1 Octet)
+
+
+Index Added Event
+=================
+
+Event Code		0x0004
+Event Parameters	Controller_Index (2 Octets)
+
+
+Index Removed Event
+===================
+
+Event Code		0x0005
+Event Parameters	Controller_Index (2 Octets)
