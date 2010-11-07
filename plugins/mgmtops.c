@@ -68,9 +68,9 @@ static uint16_t mgmt_revision = 0;
 static void read_version_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_hdr hdr;
-	struct mgmt_read_version_rp *rp = buf;
+	struct mgmt_rp_read_version *rp = buf;
 
-	if (len < MGMT_READ_VERSION_RP_SIZE) {
+	if (len < sizeof(*rp)) {
 		error("Too small read version complete event");
 		return;
 	}
@@ -104,9 +104,9 @@ static void add_controller(uint16_t index)
 
 static void read_info(int sk, uint16_t index)
 {
-	char buf[MGMT_HDR_SIZE + MGMT_READ_INFO_CP_SIZE];
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_read_info)];
 	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_read_info_cp *cp = (void *) &buf[sizeof(*hdr)];
+	struct mgmt_cp_read_info *cp = (void *) &buf[sizeof(*hdr)];
 
 	memset(buf, 0, sizeof(buf));
 	hdr->opcode = MGMT_OP_READ_INFO;
@@ -121,10 +121,10 @@ static void read_info(int sk, uint16_t index)
 
 static void mgmt_index_added(int sk, void *buf, size_t len)
 {
-	struct mgmt_index_added_ev *ev = buf;
+	struct mgmt_ev_index_added *ev = buf;
 	uint16_t index;
 
-	if (len < MGMT_INDEX_ADDED_SIZE) {
+	if (len < sizeof(*ev)) {
 		error("Too small index added event");
 		return;
 	}
@@ -152,10 +152,10 @@ static void remove_controller(uint16_t index)
 
 static void mgmt_index_removed(int sk, void *buf, size_t len)
 {
-	struct mgmt_index_removed_ev *ev = buf;
+	struct mgmt_ev_index_removed *ev = buf;
 	uint16_t index;
 
-	if (len < MGMT_INDEX_REMOVED_SIZE) {
+	if (len < sizeof(*ev)) {
 		error("Too small index removed event");
 		return;
 	}
@@ -167,9 +167,9 @@ static void mgmt_index_removed(int sk, void *buf, size_t len)
 
 static void read_mode(int sk, uint16_t index)
 {
-	char buf[MGMT_HDR_SIZE + MGMT_READ_MODE_CP_SIZE];
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_read_mode)];
 	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_read_mode_cp *cp = (void *) &buf[sizeof(*hdr)];
+	struct mgmt_cp_read_mode *cp = (void *) &buf[sizeof(*hdr)];
 
 	memset(buf, 0, sizeof(buf));
 	hdr->opcode = MGMT_OP_READ_MODE;
@@ -184,18 +184,18 @@ static void read_mode(int sk, uint16_t index)
 
 static void read_index_list_complete(int sk, void *buf, size_t len)
 {
-	struct mgmt_read_index_list_rp *rp = buf;
+	struct mgmt_rp_read_index_list *rp = buf;
 	uint16_t num;
 	int i;
 
-	if (len < MGMT_READ_INDEX_LIST_RP_SIZE) {
+	if (len < sizeof(*rp)) {
 		error("Too small read index list complete event");
 		return;
 	}
 
 	num = btohs(bt_get_unaligned(&rp->num_controllers));
 
-	if (num * sizeof(uint16_t) + MGMT_READ_INDEX_LIST_RP_SIZE != len) {
+	if (num * sizeof(uint16_t) + sizeof(*rp) != len) {
 		error("Incorrect packet size for index list event");
 		return;
 	}
@@ -212,12 +212,12 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 
 static void read_info_complete(int sk, void *buf, size_t len)
 {
-	struct mgmt_read_info_rp *rp = buf;
+	struct mgmt_rp_read_info *rp = buf;
 	struct controller_info *info;
 	uint16_t index;
 	char addr[18];
 
-	if (len < MGMT_READ_INFO_RP_SIZE) {
+	if (len < sizeof(*rp)) {
 		error("Too small read info complete event");
 		return;
 	}
@@ -247,13 +247,13 @@ static void read_info_complete(int sk, void *buf, size_t len)
 
 static void read_mode_complete(int sk, void *buf, size_t len)
 {
-	struct mgmt_read_mode_rp *rp = buf;
+	struct mgmt_rp_read_mode *rp = buf;
 	struct controller_info *info;
 	uint16_t index;
 
-	if (len < MGMT_READ_MODE_RP_SIZE) {
+	if (len < sizeof(*rp)) {
 		error("Too small read mode complete event (%zu != %d)",
-						len, MGMT_READ_MODE_RP_SIZE);
+							len, sizeof(*rp));
 		return;
 	}
 
@@ -280,7 +280,7 @@ static void read_mode_complete(int sk, void *buf, size_t len)
 
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 {
-	struct mgmt_cmd_complete_ev *ev = buf;
+	struct mgmt_ev_cmd_complete *ev = buf;
 	uint16_t opcode;
 
 	DBG("");
@@ -313,7 +313,7 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 
 static void mgmt_cmd_status(int sk, void *buf, size_t len)
 {
-	struct mgmt_cmd_status_ev *ev = buf;
+	struct mgmt_ev_cmd_status *ev = buf;
 	uint16_t opcode;
 
 	if (len < sizeof(*ev)) {
@@ -328,7 +328,7 @@ static void mgmt_cmd_status(int sk, void *buf, size_t len)
 
 static void mgmt_controller_error(int sk, void *buf, size_t len)
 {
-	struct mgmt_controller_error_ev *ev = buf;
+	struct mgmt_ev_controller_error *ev = buf;
 	uint16_t index;
 
 	if (len < sizeof(*ev)) {

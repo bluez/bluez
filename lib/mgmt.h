@@ -32,85 +32,73 @@ struct mgmt_hdr {
 #define MGMT_HDR_SIZE	4
 
 #define MGMT_OP_READ_VERSION		0x0001
-struct mgmt_read_version_rp {
+struct mgmt_rp_read_version {
 	uint8_t version;
 	uint16_t revision;
 } __packed;
-#define MGMT_READ_VERSION_RP_SIZE	3
 
 #define MGMT_OP_READ_FEATURES		0x0002
-struct mgmt_read_features_rp {
+struct mgmt_rp_read_features {
 	uint8_t features[8];
 } __packed;
-#define MGMT_READ_FEATURES_RP_SIZE	8
 
 #define MGMT_OP_READ_INDEX_LIST		0x0003
-struct mgmt_read_index_list_rp {
+struct mgmt_rp_read_index_list {
 	uint16_t num_controllers;
 	uint16_t index[0];
 } __packed;
-#define MGMT_READ_INDEX_LIST_RP_SIZE	2
 
 #define MGMT_OP_READ_INFO		0x0004
-struct mgmt_read_info_cp {
+struct mgmt_cp_read_info {
 	uint16_t index;
 } __packed;
-#define MGMT_READ_INFO_CP_SIZE		2
-struct mgmt_read_info_rp {
+struct mgmt_rp_read_info {
 	uint8_t status;
 	uint16_t index;
 	uint8_t type;
 	bdaddr_t bdaddr;
 	uint8_t features[8];
 } __packed;
-#define MGMT_READ_INFO_RP_SIZE		18
 
 #define MGMT_OP_READ_STATISTICS		0x0005
 
 #define MGMT_OP_READ_MODE		0x0006
-struct mgmt_read_mode_cp {
+struct mgmt_cp_read_mode {
 	uint16_t index;
 } __packed;
-#define MGMT_READ_MODE_CP_SIZE		2
-struct mgmt_read_mode_rp {
+struct mgmt_rp_read_mode {
 	uint8_t status;
 	uint16_t index;
 	uint8_t enabled;
 	uint8_t mode;
 } __packed;
-#define MGMT_READ_MODE_RP_SIZE		5
 
 #define MGMT_OP_WRITE_MODE		0x0007
 
 #define MGMT_EV_CMD_COMPLETE		0x0001
-struct mgmt_cmd_complete_ev {
+struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
 	uint8_t data[0];
 } __packed;
-#define MGMT_CMD_COMPLETE_SIZE		2
 
 #define MGMT_EV_CMD_STATUS		0x0002
-struct mgmt_cmd_status_ev {
+struct mgmt_ev_cmd_status {
 	uint8_t status;
 	uint16_t opcode;
 } __packed;
-#define MGMT_CMD_STATUS_SIZE		3
 
 #define MGMT_EV_CONTROLLER_ERROR	0x0003
-struct mgmt_controller_error_ev {
+struct mgmt_ev_controller_error {
 	uint16_t index;
 	uint8_t error_code;
 } __packed;
-#define MGMT_CONTROLLER_ERROR_SIZE	3
 
 #define MGMT_EV_INDEX_ADDED		0x0004
-struct mgmt_index_added_ev {
+struct mgmt_ev_index_added {
 	uint16_t index;
 } __packed;
-#define MGMT_INDEX_ADDED_SIZE		2
 
 #define MGMT_EV_INDEX_REMOVED		0x0005
-struct mgmt_index_removed_ev {
+struct mgmt_ev_index_removed {
 	uint16_t index;
 } __packed;
-#define MGMT_INDEX_REMOVED_SIZE		2
