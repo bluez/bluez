@@ -98,6 +98,8 @@ static void add_controller(uint16_t index)
 	memset(&controllers[index], 0, sizeof(struct controller_info));
 
 	controllers[index].valid = TRUE;
+
+	DBG("Added controller %u", index);
 }
 
 static void read_info(int sk, uint16_t index)
@@ -115,6 +117,52 @@ static void read_info(int sk, uint16_t index)
 	if (write(sk, buf, sizeof(buf)) < 0)
 		error("Unable to send read_info command: %s (%d)",
 						strerror(errno), errno);
+}
+
+static void mgmt_index_added(int sk, void *buf, size_t len)
+{
+	struct mgmt_index_added_ev *ev = buf;
+	uint16_t index;
+
+	if (len < MGMT_INDEX_ADDED_SIZE) {
+		error("Too small index added event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+
+	add_controller(index);
+	read_info(sk, index);
+}
+
+static void remove_controller(uint16_t index)
+{
+	if (index > max_index)
+		return;
+
+	if (!controllers[index].valid)
+		return;
+
+	manager_unregister_adapter(index);
+
+	memset(&controllers[index], 0, sizeof(struct controller_info));
+
+	DBG("Removed controller %u", index);
+}
+
+static void mgmt_index_removed(int sk, void *buf, size_t len)
+{
+	struct mgmt_index_removed_ev *ev = buf;
+	uint16_t index;
+
+	if (len < MGMT_INDEX_REMOVED_SIZE) {
+		error("Too small index removed event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+
+	remove_controller(index);
 }
 
 static void read_mode(int sk, uint16_t index)
@@ -156,8 +204,6 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 		uint16_t index;
 
 		index = btohs(bt_get_unaligned(&rp->index[i]));
-
-		DBG("Found controller %u", index);
 
 		add_controller(index);
 		read_info(sk, index);
@@ -228,6 +274,8 @@ static void read_mode_complete(int sk, void *buf, size_t len)
 	info->mode = rp->mode;
 
 	DBG("hci%u enabled %u mode %u", index, info->enabled, info->mode);
+
+	manager_register_adapter(index, info->enabled);
 }
 
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
@@ -324,6 +372,12 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_CONTROLLER_ERROR:
 		mgmt_controller_error(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_INDEX_ADDED:
+		mgmt_index_added(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_INDEX_REMOVED:
+		mgmt_index_removed(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);

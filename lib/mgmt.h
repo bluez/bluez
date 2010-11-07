@@ -91,3 +91,15 @@ struct mgmt_cmd_complete_ev {
 
 #define MGMT_EV_CMD_STATUS		0x0002
 #define MGMT_EV_CONTROLLER_ERROR	0x0003
+
+#define MGMT_EV_INDEX_ADDED		0x0004
+struct mgmt_index_added_ev {
+	uint16_t index;
+} __packed;
+#define MGMT_INDEX_ADDED_SIZE		2
+
+#define MGMT_EV_INDEX_REMOVED		0x0005
+struct mgmt_index_removed_ev {
+	uint16_t index;
+} __packed;
+#define MGMT_INDEX_REMOVED_SIZE		2
