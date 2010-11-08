@@ -378,7 +378,8 @@ static void link_key_request(int index, bdaddr_t *dba)
 
 	DBG("kernel auth requirements = 0x%02x", req.type);
 
-	if (main_opts.debug_keys && device && device_get_debug_key(device, key))
+	if (main_opts.debug_keys && device &&
+					device_get_debug_key(device, key))
 		type = 0x03;
 	else if (read_link_key(&BDADDR(index), dba, key, &type) < 0 ||
 								type == 0x03) {
@@ -631,7 +632,8 @@ static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
 	adapter_set_state(adapter, state);
 }
 
-static void inquiry_complete(bdaddr_t *local, uint8_t status, gboolean periodic)
+static void inquiry_complete(bdaddr_t *local, uint8_t status,
+							gboolean periodic)
 {
 	struct btd_adapter *adapter;
 	int state;
@@ -801,7 +803,8 @@ static inline void cmd_complete(int index, void *ptr)
 		ptr += sizeof(evt_cmd_complete);
 		adapter_update_local_name(&BDADDR(index), status, ptr);
 		break;
-	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL):
+	case cmd_opcode_pack(OGF_HOST_CTL,
+					OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL):
 		ptr += sizeof(evt_cmd_complete);
 		adapter_update_tx_power(&BDADDR(index), status, ptr);
 		break;
@@ -1192,6 +1195,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 static void start_hci_dev(int index)
 {
 	GIOChannel *chan = CHANNEL(index);
+	GIOCondition cond;
 	struct hci_filter flt;
 
 	if (chan)
@@ -1236,10 +1240,10 @@ static void start_hci_dev(int index)
 	}
 
 	chan = g_io_channel_unix_new(SK(index));
-	WATCH_ID(index) = g_io_add_watch_full(chan, G_PRIORITY_LOW,
-						G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-						io_security_event, GINT_TO_POINTER(index),
-						NULL);
+	cond = G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR;
+	WATCH_ID(index) = g_io_add_watch_full(chan, G_PRIORITY_LOW, cond,
+						io_security_event,
+						GINT_TO_POINTER(index), NULL);
 	CHANNEL(index) = chan;
 	PIN_LENGTH(index) = -1;
 
@@ -2008,8 +2012,7 @@ static int hciops_read_local_version(int index, struct hci_version *ver)
 
 static int hciops_read_local_features(int index, uint8_t *features)
 {
-	if (hci_read_local_features(SK(index), features,
-							HCI_REQ_TIMEOUT) < 0)
+	if (hci_read_local_features(SK(index), features, HCI_REQ_TIMEOUT) < 0)
 		return -errno;
 
 	return  0;
