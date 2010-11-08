@@ -601,11 +601,17 @@ static int mgmt_write_eir_data(int index, uint8_t *data)
 static int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr)
 {
 	char addr[18];
+	struct controller_info *info = &controllers[index];
 
-	ba2str(bdaddr, addr);
+	ba2str(&info->bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return -ENOSYS;
+	if (!info->valid)
+		return -ENODEV;
+
+	bacpy(bdaddr, &info->bdaddr);
+
+	return 0;
 }
 
 static int mgmt_set_event_mask(int index, uint8_t *events, size_t count)
