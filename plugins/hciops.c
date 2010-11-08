@@ -718,7 +718,7 @@ static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
 
 	READY(index) = TRUE;
 
-	info("Got bdaddr for hci%d", index);
+	DBG("Got bdaddr for hci%d", index);
 
 	if (UP(index))
 		manager_start_adapter(index);
