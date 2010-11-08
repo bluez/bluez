@@ -671,8 +671,19 @@ static int mgmt_get_conn_list(int index, GSList **conns)
 
 static int mgmt_read_local_version(int index, struct hci_version *ver)
 {
+	struct controller_info *info = &controllers[index];
+
 	DBG("index %d", index);
-	return -ENOSYS;
+
+	if (!info->valid)
+		return -ENODEV;
+
+	memset(ver, 0, sizeof(*ver));
+	ver->manufacturer = info->manufacturer;
+	ver->hci_ver = info->hci_ver;
+	ver->hci_rev = info->hci_rev;
+
+	return 0;
 }
 
 static int mgmt_read_local_features(int index, uint8_t *features)
