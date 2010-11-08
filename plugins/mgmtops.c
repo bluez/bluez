@@ -276,6 +276,9 @@ static void read_mode_complete(int sk, void *buf, size_t len)
 	DBG("hci%u enabled %u mode %u", index, info->enabled, info->mode);
 
 	manager_register_adapter(index, info->enabled);
+
+	if (info->enabled)
+		manager_start_adapter(index);
 }
 
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
