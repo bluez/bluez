@@ -411,8 +411,6 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	set_pin_length(&sba, len);
-
 	cb(agent, NULL, pin, req->user_data);
 
 done:

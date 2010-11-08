@@ -116,7 +116,6 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
 		goto fail;
 
 	adapter_get_address(adapter, &sba);
-	set_pin_length(&sba, strlen(pincode));
 
 	return;
 

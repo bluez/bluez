@@ -77,8 +77,6 @@ extern struct main_opts main_opts;
 void btd_start_exit_timer(void);
 void btd_stop_exit_timer(void);
 
-void set_pin_length(bdaddr_t *sba, int length);
-
 gboolean plugin_init(GKeyFile *config, const char *enable,
 							const char *disable);
 void plugin_cleanup(void);

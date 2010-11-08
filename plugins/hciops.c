@@ -263,21 +263,19 @@ static int hciops_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 
 /* Start of HCI event callbacks */
 
-static int get_handle(int dev, bdaddr_t *sba, bdaddr_t *dba, uint16_t *handle)
+static int get_handle(int index, bdaddr_t *dba, uint16_t *handle)
 {
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
-	char addr[18];
 	int i;
 
 	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
 
-	ba2str(sba, addr);
-	cl->dev_id = hci_devid(addr);
+	cl->dev_id = index;
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(dev, HCIGETCONNLIST, (void *) cl) < 0) {
+	if (ioctl(SK(index), HCIGETCONNLIST, (void *) cl) < 0) {
 		g_free(cl);
 		return -EIO;
 	}
@@ -295,21 +293,19 @@ static int get_handle(int dev, bdaddr_t *sba, bdaddr_t *dba, uint16_t *handle)
 	return -ENOENT;
 }
 
-static inline int get_bdaddr(int dev, bdaddr_t *sba, uint16_t handle, bdaddr_t *dba)
+static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
 {
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
-	char addr[18];
 	int i;
 
 	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
 
-	ba2str(sba, addr);
-	cl->dev_id = hci_devid(addr);
+	cl->dev_id = index;
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(dev, HCIGETCONNLIST, (void *) cl) < 0) {
+	if (ioctl(SK(index), HCIGETCONNLIST, (void *) cl) < 0) {
 		g_free(cl);
 		return -EIO;
 	}
@@ -350,7 +346,7 @@ static inline void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 
 /* Link Key handling */
 
-static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
+static void link_key_request(int index, bdaddr_t *dba)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -360,10 +356,10 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	uint8_t type;
 	int err;
 
-	ba2str(sba, sa); ba2str(dba, da);
+	ba2str(&BDADDR(index), sa); ba2str(dba, da);
 	info("link_key_request (sba=%s, dba=%s)", sa, da);
 
-	adapter = manager_find_adapter(sba);
+	adapter = manager_find_adapter(&BDADDR(index));
 	if (adapter)
 		device = adapter_find_device(adapter, da);
 	else
@@ -372,7 +368,7 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, dba);
 
-	err = ioctl(dev, HCIGETAUTHINFO, (unsigned long) &req);
+	err = ioctl(SK(index), HCIGETAUTHINFO, (unsigned long) &req);
 	if (err < 0) {
 		if (errno != EINVAL)
 			DBG("HCIGETAUTHINFO failed %s (%d)",
@@ -384,9 +380,11 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 
 	if (main_opts.debug_keys && device && device_get_debug_key(device, key))
 		type = 0x03;
-	else if (read_link_key(sba, dba, key, &type) < 0 || type == 0x03) {
+	else if (read_link_key(&BDADDR(index), dba, key, &type) < 0 ||
+								type == 0x03) {
 		/* Link key not found */
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY, 6, dba);
+		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
+								6, dba);
 		return;
 	}
 
@@ -397,7 +395,7 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	/* Don't use unauthenticated combination keys if MITM is
 	 * required */
 	if (type == 0x04 && req.type != 0xff && (req.type & 0x01))
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
+		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
 								6, dba);
 	else {
 		link_key_reply_cp lr;
@@ -405,63 +403,57 @@ static void link_key_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		memcpy(lr.link_key, key, 16);
 		bacpy(&lr.bdaddr, dba);
 
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
+		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
 						LINK_KEY_REPLY_CP_SIZE, &lr);
 	}
 }
 
-static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
+static void link_key_notify(int index, void *ptr)
 {
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
 	char sa[18], da[18];
-	int dev_id, err;
+	int err;
 	unsigned char old_key[16];
 	uint8_t old_key_type;
 
-	ba2str(sba, sa); ba2str(dba, da);
+	ba2str(&BDADDR(index), sa); ba2str(dba, da);
 	info("link_key_notify (sba=%s, dba=%s, type=%d)", sa, da,
 							evt->key_type);
 
-	err = read_link_key(sba, dba, old_key, &old_key_type);
+	err = read_link_key(&BDADDR(index), dba, old_key, &old_key_type);
 	if (err < 0)
 		old_key_type = 0xff;
 
-	dev_id = hci_devid(sa);
-	if (dev_id < 0)
-		err = -errno;
-	else {
-		err = btd_event_link_key_notify(sba, dba, evt->link_key,
-						evt->key_type,
-						PIN_LENGTH(dev_id),
-						old_key_type);
-		PIN_LENGTH(dev_id) = -1;
-	}
+	err = btd_event_link_key_notify(&BDADDR(index), dba, evt->link_key,
+					evt->key_type, PIN_LENGTH(index),
+					old_key_type);
+	PIN_LENGTH(index) = -1;
 
 	if (err < 0) {
 		uint16_t handle;
 
 		if (err == -ENODEV)
-			btd_event_bonding_process_complete(sba, dba,
+			btd_event_bonding_process_complete(&BDADDR(index), dba,
 							HCI_OE_LOW_RESOURCES);
 		else
-			btd_event_bonding_process_complete(sba, dba,
+			btd_event_bonding_process_complete(&BDADDR(index), dba,
 							HCI_MEMORY_FULL);
 
-		if (get_handle(dev, sba, dba, &handle) == 0) {
+		if (get_handle(index, dba, &handle) == 0) {
 			disconnect_cp cp;
 
 			memset(&cp, 0, sizeof(cp));
 			cp.handle = htobs(handle);
 			cp.reason = HCI_OE_LOW_RESOURCES;
 
-			hci_send_cmd(dev, OGF_LINK_CTL, OCF_DISCONNECT,
+			hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_DISCONNECT,
 						DISCONNECT_CP_SIZE, &cp);
 		}
 	}
 }
 
-static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
+static void return_link_keys(int index, void *ptr)
 {
 	evt_return_link_keys *evt = ptr;
 	uint8_t num = evt->num_keys;
@@ -470,7 +462,7 @@ static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
 	bdaddr_t dba;
 	int i;
 
-	ba2str(sba, sa);
+	ba2str(&BDADDR(index), sa);
 	ptr++;
 
 	for (i = 0; i < num; i++) {
@@ -479,7 +471,7 @@ static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
 
 		info("return_link_keys (sba=%s, dba=%s)", sa, da);
 
-		btd_event_returned_link_key(sba, &dba);
+		btd_event_returned_link_key(&BDADDR(index), &dba);
 
 		ptr += 22;
 	}
@@ -487,51 +479,55 @@ static void return_link_keys(int dev, bdaddr_t *sba, void *ptr)
 
 /* Simple Pairing handling */
 
-static void user_confirm_request(int dev, bdaddr_t *sba, void *ptr)
+static void user_confirm_request(int index, void *ptr)
 {
 	evt_user_confirm_request *req = ptr;
 
-	if (btd_event_user_confirm(sba, &req->bdaddr,
+	if (btd_event_user_confirm(&BDADDR(index), &req->bdaddr,
 					btohl(req->passkey)) < 0)
-		hci_send_cmd(dev, OGF_LINK_CTL,
+		hci_send_cmd(SK(index), OGF_LINK_CTL,
 				OCF_USER_CONFIRM_NEG_REPLY, 6, ptr);
 }
 
-static void user_passkey_request(int dev, bdaddr_t *sba, void *ptr)
+static void user_passkey_request(int index, void *ptr)
 {
 	evt_user_passkey_request *req = ptr;
 
-	if (btd_event_user_passkey(sba, &req->bdaddr) < 0)
-		hci_send_cmd(dev, OGF_LINK_CTL,
+	if (btd_event_user_passkey(&BDADDR(index), &req->bdaddr) < 0)
+		hci_send_cmd(SK(index), OGF_LINK_CTL,
 				OCF_USER_PASSKEY_NEG_REPLY, 6, ptr);
 }
 
-static void user_passkey_notify(int dev, bdaddr_t *sba, void *ptr)
+static void user_passkey_notify(int index, void *ptr)
 {
 	evt_user_passkey_notify *req = ptr;
 
-	btd_event_user_notify(sba, &req->bdaddr, btohl(req->passkey));
+	btd_event_user_notify(&BDADDR(index), &req->bdaddr,
+						btohl(req->passkey));
 }
 
-static void remote_oob_data_request(int dev, bdaddr_t *sba, void *ptr)
+static void remote_oob_data_request(int index, void *ptr)
 {
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_REMOTE_OOB_DATA_NEG_REPLY, 6, ptr);
+	hci_send_cmd(SK(index), OGF_LINK_CTL,
+				OCF_REMOTE_OOB_DATA_NEG_REPLY, 6, ptr);
 }
 
-static void io_capa_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
+static void io_capa_request(int index, void *ptr)
 {
+	bdaddr_t *dba = ptr;
 	char sa[18], da[18];
 	uint8_t cap, auth;
 
-	ba2str(sba, sa); ba2str(dba, da);
+	ba2str(&BDADDR(index), sa); ba2str(dba, da);
 	info("io_capa_request (sba=%s, dba=%s)", sa, da);
 
-	if (btd_event_get_io_cap(sba, dba, &cap, &auth) < 0) {
+	if (btd_event_get_io_cap(&BDADDR(index), dba, &cap, &auth) < 0) {
 		io_capability_neg_reply_cp cp;
 		memset(&cp, 0, sizeof(cp));
 		bacpy(&cp.bdaddr, dba);
 		cp.reason = HCI_PAIRING_NOT_ALLOWED;
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_IO_CAPABILITY_NEG_REPLY,
+		hci_send_cmd(SK(index), OGF_LINK_CTL,
+					OCF_IO_CAPABILITY_NEG_REPLY,
 					IO_CAPABILITY_NEG_REPLY_CP_SIZE, &cp);
 	} else {
 		io_capability_reply_cp cp;
@@ -540,38 +536,26 @@ static void io_capa_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 		cp.capability = cap;
 		cp.oob_data = 0x00;
 		cp.authentication = auth;
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_IO_CAPABILITY_REPLY,
+		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_IO_CAPABILITY_REPLY,
 					IO_CAPABILITY_REPLY_CP_SIZE, &cp);
 	}
 }
 
-static void io_capa_response(int dev, bdaddr_t *sba, void *ptr)
+static void io_capa_response(int index, void *ptr)
 {
 	evt_io_capability_response *evt = ptr;
 	char sa[18], da[18];
 
-	ba2str(sba, sa); ba2str(&evt->bdaddr, da);
+	ba2str(&BDADDR(index), sa); ba2str(&evt->bdaddr, da);
 	info("io_capa_response (sba=%s, dba=%s)", sa, da);
 
-	btd_event_set_io_cap(sba, &evt->bdaddr,
+	btd_event_set_io_cap(&BDADDR(index), &evt->bdaddr,
 				evt->capability, evt->authentication);
 }
 
 /* PIN code handling */
 
-void set_pin_length(bdaddr_t *sba, int length)
-{
-	char addr[18];
-	int dev_id;
-
-	ba2str(sba, addr);
-	dev_id = hci_devid(addr);
-
-	if (dev_id >= 0)
-		PIN_LENGTH(dev_id) = length;
-}
-
-static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
+static void pin_code_request(int index, bdaddr_t *dba)
 {
 	pin_code_reply_cp pr;
 	struct hci_conn_info_req *cr;
@@ -582,31 +566,31 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 	memset(&pr, 0, sizeof(pr));
 	bacpy(&pr.bdaddr, dba);
 
-	ba2str(sba, sa); ba2str(dba, da);
+	ba2str(&BDADDR(index), sa); ba2str(dba, da);
 	info("pin_code_request (sba=%s, dba=%s)", sa, da);
 
 	cr = g_malloc0(sizeof(*cr) + sizeof(*ci));
 
 	bacpy(&cr->bdaddr, dba);
 	cr->type = ACL_LINK;
-	if (ioctl(dev, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+	if (ioctl(SK(index), HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		error("Can't get conn info: %s (%d)", strerror(errno), errno);
 		goto reject;
 	}
 	ci = cr->conn_info;
 
 	memset(pin, 0, sizeof(pin));
-	pinlen = read_pin_code(sba, dba, pin);
+	pinlen = read_pin_code(&BDADDR(index), dba, pin);
 
 	if (pinlen > 0) {
-		set_pin_length(sba, pinlen);
+		PIN_LENGTH(index) = pinlen;
 		memcpy(pr.pin_code, pin, pinlen);
 		pr.pin_len = pinlen;
-		hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
-				PIN_CODE_REPLY_CP_SIZE, &pr);
+		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
+						PIN_CODE_REPLY_CP_SIZE, &pr);
 	} else {
 		/* Request PIN from passkey agent */
-		if (btd_event_request_pin(dev, sba, ci) < 0)
+		if (btd_event_request_pin(SK(index), &BDADDR(index), ci) < 0)
 			goto reject;
 	}
 
@@ -617,7 +601,7 @@ static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
 reject:
 	g_free(cr);
 
-	hci_send_cmd(dev, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
+	hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 }
 
 static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
@@ -669,16 +653,18 @@ static void inquiry_complete(bdaddr_t *local, uint8_t status, gboolean periodic)
 	adapter_set_state(adapter, state);
 }
 
-static inline void remote_features_notify(int dev, bdaddr_t *sba, void *ptr)
+static inline void remote_features_notify(int index, void *ptr)
 {
 	evt_remote_host_features_notify *evt = ptr;
 
 	if (evt->features[0] & 0x01)
-		btd_event_set_legacy_pairing(sba, &evt->bdaddr, FALSE);
+		btd_event_set_legacy_pairing(&BDADDR(index), &evt->bdaddr,
+									FALSE);
 	else
-		btd_event_set_legacy_pairing(sba, &evt->bdaddr, TRUE);
+		btd_event_set_legacy_pairing(&BDADDR(index), &evt->bdaddr,
+									TRUE);
 
-	write_features_info(sba, &evt->bdaddr, NULL, evt->features);
+	write_features_info(&BDADDR(index), &evt->bdaddr, NULL, evt->features);
 }
 
 static void write_le_host_complete(bdaddr_t *sba, uint8_t status)
@@ -736,21 +722,21 @@ static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
 		manager_start_adapter(index);
 }
 
-static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
+static inline void cmd_status(int index, void *ptr)
 {
 	evt_cmd_status *evt = ptr;
 	uint16_t opcode = btohs(evt->opcode);
 
 	if (opcode == cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY))
-		start_inquiry(sba, evt->status, FALSE);
+		start_inquiry(&BDADDR(index), evt->status, FALSE);
 }
 
-static void read_scan_complete(bdaddr_t *sba, uint8_t status, void *ptr)
+static void read_scan_complete(int index, uint8_t status, void *ptr)
 {
 	struct btd_adapter *adapter;
 	read_scan_enable_rp *rp = ptr;
 
-	adapter = manager_find_adapter(sba);
+	adapter = manager_find_adapter(&BDADDR(index));
 
 	if (!adapter) {
 		error("Unable to find matching adapter");
@@ -760,7 +746,7 @@ static void read_scan_complete(bdaddr_t *sba, uint8_t status, void *ptr)
 	adapter_mode_changed(adapter, rp->enable);
 }
 
-static inline void cmd_complete(int index, bdaddr_t *sba, void *ptr)
+static inline void cmd_complete(int index, void *ptr)
 {
 	evt_cmd_complete *evt = ptr;
 	uint16_t opcode = btohs(evt->opcode);
@@ -769,59 +755,60 @@ static inline void cmd_complete(int index, bdaddr_t *sba, void *ptr)
 	switch (opcode) {
 	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_LOCAL_EXT_FEATURES):
 		ptr += sizeof(evt_cmd_complete);
-		read_local_ext_features_complete(sba, ptr);
+		read_local_ext_features_complete(&BDADDR(index), ptr);
 		break;
 	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_BD_ADDR):
 		ptr += sizeof(evt_cmd_complete);
 		read_bd_addr_complete(index, ptr);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PERIODIC_INQUIRY):
-		start_inquiry(sba, status, TRUE);
+		start_inquiry(&BDADDR(index), status, TRUE);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY):
-		inquiry_complete(sba, status, TRUE);
+		inquiry_complete(&BDADDR(index), status, TRUE);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
-		inquiry_complete(sba, status, FALSE);
+		inquiry_complete(&BDADDR(index), status, FALSE);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_LE_HOST_SUPPORTED):
-		write_le_host_complete(sba, status);
+		write_le_host_complete(&BDADDR(index), status);
 		break;
 	case cmd_opcode_pack(OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE):
-		btd_event_le_set_scan_enable_complete(sba, status);
+		btd_event_le_set_scan_enable_complete(&BDADDR(index), status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME):
-		adapter_setname_complete(sba, status);
+		adapter_setname_complete(&BDADDR(index), status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE):
-		btd_event_setscan_enable_complete(sba);
+		btd_event_setscan_enable_complete(&BDADDR(index));
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_SCAN_ENABLE):
 		ptr += sizeof(evt_cmd_complete);
-		read_scan_complete(sba, status, ptr);
+		read_scan_complete(index, status, ptr);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV):
-		adapter_set_class_complete(sba, status);
+		adapter_set_class_complete(&BDADDR(index), status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE):
-		btd_event_write_simple_pairing_mode_complete(sba);
+		btd_event_write_simple_pairing_mode_complete(&BDADDR(index));
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_SIMPLE_PAIRING_MODE):
 		ptr += sizeof(evt_cmd_complete);
-		btd_event_read_simple_pairing_mode_complete(sba, ptr);
+		btd_event_read_simple_pairing_mode_complete(&BDADDR(index),
+									ptr);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_LOCAL_NAME):
 		ptr += sizeof(evt_cmd_complete);
-		adapter_update_local_name(sba, status, ptr);
+		adapter_update_local_name(&BDADDR(index), status, ptr);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL):
 		ptr += sizeof(evt_cmd_complete);
-		adapter_update_tx_power(sba, status, ptr);
+		adapter_update_tx_power(&BDADDR(index), status, ptr);
 		break;
 	};
 }
 
-static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
+static inline void remote_name_information(int index, void *ptr)
 {
 	evt_remote_name_req_complete *evt = ptr;
 	char name[MAX_NAME_LENGTH + 1];
@@ -831,10 +818,10 @@ static inline void remote_name_information(int dev, bdaddr_t *sba, void *ptr)
 	if (!evt->status)
 		memcpy(name, evt->name, MAX_NAME_LENGTH);
 
-	btd_event_remote_name(sba, &evt->bdaddr, evt->status, name);
+	btd_event_remote_name(&BDADDR(index), &evt->bdaddr, evt->status, name);
 }
 
-static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
+static inline void remote_version_information(int index, void *ptr)
 {
 	evt_read_remote_version_complete *evt = ptr;
 	bdaddr_t dba;
@@ -842,34 +829,34 @@ static inline void remote_version_information(int dev, bdaddr_t *sba, void *ptr)
 	if (evt->status)
 		return;
 
-	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0)
+	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
 		return;
 
-	write_version_info(sba, &dba, btohs(evt->manufacturer),
+	write_version_info(&BDADDR(index), &dba, btohs(evt->manufacturer),
 				evt->lmp_ver, btohs(evt->lmp_subver));
 }
 
-static inline void inquiry_result(int dev, bdaddr_t *sba, int plen, void *ptr)
+static inline void inquiry_result(int index, int plen, void *ptr)
 {
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
 
 	for (i = 0; i < num; i++) {
 		inquiry_info *info = ptr;
-		uint32_t class = info->dev_class[0]
-			| (info->dev_class[1] << 8)
-			| (info->dev_class[2] << 16);
+		uint32_t class = info->dev_class[0] |
+						(info->dev_class[1] << 8) |
+						(info->dev_class[2] << 16);
 
-		btd_event_inquiry_result(sba, &info->bdaddr, class, 0, NULL);
+		btd_event_inquiry_result(&BDADDR(index), &info->bdaddr, class,
+								0, NULL);
 
-		update_lastseen(sba, &info->bdaddr);
+		update_lastseen(&BDADDR(index), &info->bdaddr);
 
 		ptr += INQUIRY_INFO_SIZE;
 	}
 }
 
-static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba,
-							int plen, void *ptr)
+static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 {
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
@@ -881,13 +868,13 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba,
 		for (i = 0; i < num; i++) {
 			inquiry_info_with_rssi_and_pscan_mode *info = ptr;
 			uint32_t class = info->dev_class[0]
-				| (info->dev_class[1] << 8)
-				| (info->dev_class[2] << 16);
+						| (info->dev_class[1] << 8)
+						| (info->dev_class[2] << 16);
 
-			btd_event_inquiry_result(sba, &info->bdaddr,
+			btd_event_inquiry_result(&BDADDR(index), &info->bdaddr,
 						class, info->rssi, NULL);
 
-			update_lastseen(sba, &info->bdaddr);
+			update_lastseen(&BDADDR(index), &info->bdaddr);
 
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
@@ -895,21 +882,20 @@ static inline void inquiry_result_with_rssi(int dev, bdaddr_t *sba,
 		for (i = 0; i < num; i++) {
 			inquiry_info_with_rssi *info = ptr;
 			uint32_t class = info->dev_class[0]
-				| (info->dev_class[1] << 8)
-				| (info->dev_class[2] << 16);
+						| (info->dev_class[1] << 8)
+						| (info->dev_class[2] << 16);
 
-			btd_event_inquiry_result(sba, &info->bdaddr,
+			btd_event_inquiry_result(&BDADDR(index), &info->bdaddr,
 						class, info->rssi, NULL);
 
-			update_lastseen(sba, &info->bdaddr);
+			update_lastseen(&BDADDR(index), &info->bdaddr);
 
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}
 	}
 }
 
-static inline void extended_inquiry_result(int dev, bdaddr_t *sba,
-							int plen, void *ptr)
+static inline void extended_inquiry_result(int index, int plen, void *ptr)
 {
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
@@ -917,20 +903,19 @@ static inline void extended_inquiry_result(int dev, bdaddr_t *sba,
 	for (i = 0; i < num; i++) {
 		extended_inquiry_info *info = ptr;
 		uint32_t class = info->dev_class[0]
-			| (info->dev_class[1] << 8)
-			| (info->dev_class[2] << 16);
+					| (info->dev_class[1] << 8)
+					| (info->dev_class[2] << 16);
 
-		btd_event_inquiry_result(sba, &info->bdaddr, class,
+		btd_event_inquiry_result(&BDADDR(index), &info->bdaddr, class,
 						info->rssi, info->data);
 
-		update_lastseen(sba, &info->bdaddr);
+		update_lastseen(&BDADDR(index), &info->bdaddr);
 
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
 }
 
-static inline void remote_features_information(int dev, bdaddr_t *sba,
-								void *ptr)
+static inline void remote_features_information(int index, void *ptr)
 {
 	evt_read_remote_features_complete *evt = ptr;
 	bdaddr_t dba;
@@ -938,20 +923,20 @@ static inline void remote_features_information(int dev, bdaddr_t *sba,
 	if (evt->status)
 		return;
 
-	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0)
+	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
 		return;
 
-	write_features_info(sba, &dba, evt->features, NULL);
+	write_features_info(&BDADDR(index), &dba, evt->features, NULL);
 }
 
-static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
+static inline void conn_complete(int index, void *ptr)
 {
 	evt_conn_complete *evt = ptr;
 	char filename[PATH_MAX];
 	char local_addr[18], peer_addr[18], *str;
 	struct btd_adapter *adapter;
 
-	adapter = manager_find_adapter(sba);
+	adapter = manager_find_adapter(&BDADDR(index));
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
@@ -960,16 +945,16 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 	if (evt->link_type != ACL_LINK)
 		return;
 
-	btd_event_conn_complete(sba, evt->status, btohs(evt->handle),
-				&evt->bdaddr);
+	btd_event_conn_complete(&BDADDR(index), evt->status,
+					btohs(evt->handle), &evt->bdaddr);
 
 	if (evt->status)
 		return;
 
-	update_lastused(sba, &evt->bdaddr);
+	update_lastused(&BDADDR(index), &evt->bdaddr);
 
 	/* check if the remote version needs be requested */
-	ba2str(sba, local_addr);
+	ba2str(&BDADDR(index), local_addr);
 	ba2str(&evt->bdaddr, peer_addr);
 
 	create_name(filename, sizeof(filename), STORAGEDIR, local_addr,
@@ -983,42 +968,43 @@ static inline void conn_complete(int dev, int dev_id, bdaddr_t *sba, void *ptr)
 		free(str);
 }
 
-static inline void disconn_complete(int dev, bdaddr_t *sba, void *ptr)
+static inline void disconn_complete(int index, void *ptr)
 {
 	evt_disconn_complete *evt = ptr;
 
-	btd_event_disconn_complete(sba, evt->status, btohs(evt->handle),
-					evt->reason);
+	btd_event_disconn_complete(&BDADDR(index), evt->status,
+					btohs(evt->handle), evt->reason);
 }
 
-static inline void auth_complete(int dev, bdaddr_t *sba, void *ptr)
+static inline void auth_complete(int index, void *ptr)
 {
 	evt_auth_complete *evt = ptr;
 	bdaddr_t dba;
 
-	if (get_bdaddr(dev, sba, btohs(evt->handle), &dba) < 0)
+	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
 		return;
 
-	btd_event_bonding_process_complete(sba, &dba, evt->status);
+	btd_event_bonding_process_complete(&BDADDR(index), &dba, evt->status);
 }
 
-static inline void simple_pairing_complete(int dev, bdaddr_t *sba, void *ptr)
+static inline void simple_pairing_complete(int index, void *ptr)
 {
 	evt_simple_pairing_complete *evt = ptr;
 
-	btd_event_simple_pairing_complete(sba, &evt->bdaddr, evt->status);
+	btd_event_simple_pairing_complete(&BDADDR(index), &evt->bdaddr,
+								evt->status);
 }
 
-static inline void conn_request(int dev, bdaddr_t *sba, void *ptr)
+static inline void conn_request(int index, void *ptr)
 {
 	evt_conn_request *evt = ptr;
 	uint32_t class = evt->dev_class[0] | (evt->dev_class[1] << 8)
 				| (evt->dev_class[2] << 16);
 
-	btd_event_remote_class(sba, &evt->bdaddr, class);
+	btd_event_remote_class(&BDADDR(index), &evt->bdaddr, class);
 }
 
-static inline void le_metaevent(int dev, bdaddr_t *sba, void *ptr)
+static inline void le_metaevent(int index, void *ptr)
 {
 	evt_le_meta_event *meta = ptr;
 	le_advertising_info *info;
@@ -1035,7 +1021,8 @@ static inline void le_metaevent(int dev, bdaddr_t *sba, void *ptr)
 	for (i = 0; i < num; i++) {
 		/* RSSI is last byte of the advertising report event */
 		rssi = info->data + info->length;
-		btd_event_inquiry_result(sba, &info->bdaddr, 0, *rssi, NULL);
+		btd_event_inquiry_result(&BDADDR(index), &info->bdaddr, 0,
+								*rssi, NULL);
 		info = (le_advertising_info *) (rssi + 1);
 	}
 }
@@ -1059,8 +1046,8 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 								gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
-	int type, dev, index = GPOINTER_TO_INT(data);
-	struct hci_dev_info dev_info, *di = &dev_info;
+	int type, index = GPOINTER_TO_INT(data);
+	struct hci_dev_info di;
 	size_t len;
 	hci_event_hdr *eh;
 	GIOError err;
@@ -1086,119 +1073,116 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 	eh = (hci_event_hdr *) ptr;
 	ptr += HCI_EVENT_HDR_SIZE;
 
-	memset(di, 0, sizeof(*di));
-	if (hci_devinfo(index, di) == 0)
-		bacpy(&BDADDR(index), &di->bdaddr);
-	else
-		bacpy(&di->bdaddr, &BDADDR(index));
+	memset(&di, 0, sizeof(di));
+	if (hci_devinfo(index, &di) == 0) {
+		bacpy(&BDADDR(index), &di.bdaddr);
 
-	if (ignore_device(di))
-		return TRUE;
-
-	dev = g_io_channel_unix_get_fd(chan);
+		if (ignore_device(&di))
+			return TRUE;
+	}
 
 	switch (eh->evt) {
 	case EVT_CMD_STATUS:
-		cmd_status(dev, &di->bdaddr, ptr);
+		cmd_status(index, ptr);
 		break;
 
 	case EVT_CMD_COMPLETE:
-		cmd_complete(di->dev_id, &di->bdaddr, ptr);
+		cmd_complete(index, ptr);
 		break;
 
 	case EVT_REMOTE_NAME_REQ_COMPLETE:
-		remote_name_information(dev, &di->bdaddr, ptr);
+		remote_name_information(index, ptr);
 		break;
 
 	case EVT_READ_REMOTE_VERSION_COMPLETE:
-		remote_version_information(dev, &di->bdaddr, ptr);
+		remote_version_information(index, ptr);
 		break;
 
 	case EVT_READ_REMOTE_FEATURES_COMPLETE:
-		remote_features_information(dev, &di->bdaddr, ptr);
+		remote_features_information(index, ptr);
 		break;
 
 	case EVT_REMOTE_HOST_FEATURES_NOTIFY:
-		remote_features_notify(dev, &di->bdaddr, ptr);
+		remote_features_notify(index, ptr);
 		break;
 
 	case EVT_INQUIRY_COMPLETE:
 		evt = (evt_cmd_status *) ptr;
-		inquiry_complete(&di->bdaddr, evt->status, FALSE);
+		inquiry_complete(&BDADDR(index), evt->status, FALSE);
 		break;
 
 	case EVT_INQUIRY_RESULT:
-		inquiry_result(dev, &di->bdaddr, eh->plen, ptr);
+		inquiry_result(index, eh->plen, ptr);
 		break;
 
 	case EVT_INQUIRY_RESULT_WITH_RSSI:
-		inquiry_result_with_rssi(dev, &di->bdaddr, eh->plen, ptr);
+		inquiry_result_with_rssi(index, eh->plen, ptr);
 		break;
 
 	case EVT_EXTENDED_INQUIRY_RESULT:
-		extended_inquiry_result(dev, &di->bdaddr, eh->plen, ptr);
+		extended_inquiry_result(index, eh->plen, ptr);
 		break;
 
 	case EVT_CONN_COMPLETE:
-		conn_complete(dev, di->dev_id, &di->bdaddr, ptr);
+		conn_complete(index, ptr);
 		break;
 
 	case EVT_DISCONN_COMPLETE:
-		disconn_complete(dev, &di->bdaddr, ptr);
+		disconn_complete(index, ptr);
 		break;
 
 	case EVT_AUTH_COMPLETE:
-		auth_complete(dev, &di->bdaddr, ptr);
+		auth_complete(index, ptr);
 		break;
 
 	case EVT_SIMPLE_PAIRING_COMPLETE:
-		simple_pairing_complete(dev, &di->bdaddr, ptr);
+		simple_pairing_complete(index, ptr);
 		break;
 
 	case EVT_CONN_REQUEST:
-		conn_request(dev, &di->bdaddr, ptr);
+		conn_request(index, ptr);
 		break;
 	case EVT_LE_META_EVENT:
-		le_metaevent(dev, &di->bdaddr, ptr);
+		le_metaevent(index, ptr);
 		break;
 	case EVT_PIN_CODE_REQ:
-		pin_code_request(dev, &di->bdaddr, (bdaddr_t *) ptr);
+		pin_code_request(index, (bdaddr_t *) ptr);
 		break;
 
 	case EVT_LINK_KEY_REQ:
-		link_key_request(dev, &di->bdaddr, (bdaddr_t *) ptr);
+		link_key_request(index, (bdaddr_t *) ptr);
 		break;
 
 	case EVT_LINK_KEY_NOTIFY:
-		link_key_notify(dev, &di->bdaddr, ptr);
+		link_key_notify(index, ptr);
 		break;
 
 	case EVT_RETURN_LINK_KEYS:
-		return_link_keys(dev, &di->bdaddr, ptr);
+		return_link_keys(index, ptr);
 		break;
 
 	case EVT_IO_CAPABILITY_REQUEST:
-		io_capa_request(dev, &di->bdaddr, (bdaddr_t *) ptr);
+		io_capa_request(index, ptr);
 		break;
 
 	case EVT_IO_CAPABILITY_RESPONSE:
-		io_capa_response(dev, &di->bdaddr, ptr);
+		io_capa_response(index, ptr);
 		break;
 
 	case EVT_USER_CONFIRM_REQUEST:
-		user_confirm_request(dev, &di->bdaddr, ptr);
+		user_confirm_request(index, ptr);
 		break;
 
 	case EVT_USER_PASSKEY_REQUEST:
-		user_passkey_request(dev, &di->bdaddr, ptr);
+		user_passkey_request(index, ptr);
 		break;
 
 	case EVT_USER_PASSKEY_NOTIFY:
-		user_passkey_notify(dev, &di->bdaddr, ptr);
+		user_passkey_notify(index, ptr);
 		break;
 
 	case EVT_REMOTE_OOB_DATA_REQUEST:
-		remote_oob_data_request(dev, &di->bdaddr, ptr);
+		remote_oob_data_request(index, ptr);
 		break;
 	}
 
@@ -2136,6 +2120,8 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 	if (pin) {
 		pin_code_reply_cp pr;
 		size_t len = strlen(pin);
+
+		PIN_LENGTH(index) = len;
 
 		memset(&pr, 0, sizeof(pr));
 		bacpy(&pr.bdaddr, bdaddr);
