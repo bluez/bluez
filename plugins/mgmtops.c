@@ -55,6 +55,9 @@ static struct controller_info {
 	uint8_t type;
 	bdaddr_t bdaddr;
 	uint8_t features[8];
+	uint16_t manufacturer;
+	uint8_t hci_ver;
+	uint16_t hci_rev;
 	gboolean enabled;
 	uint8_t mode;
 } *controllers = NULL;
@@ -238,9 +241,14 @@ static void read_info_complete(int sk, void *buf, size_t len)
 	info->type = rp->type;
 	bacpy(&info->bdaddr, &rp->bdaddr);
 	memcpy(info->features, rp->features, 8);
+	info->manufacturer = btohs(bt_get_unaligned(&rp->manufacturer));
+	info->hci_ver = rp->hci_ver;
+	info->hci_rev = btohs(bt_get_unaligned(&rp->hci_rev));
 
 	ba2str(&info->bdaddr, addr);
-	DBG("hci%u addr %s type %u", index, addr, info->type);
+	DBG("hci%u addr %s type %u manufacturer %d hci ver %d:%d",
+				index, addr, info->type, info->manufacturer,
+				info->hci_ver, info->hci_rev);
 
 	read_mode(sk, index);
 }

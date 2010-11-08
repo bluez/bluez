@@ -58,6 +58,9 @@ struct mgmt_rp_read_info {
 	uint8_t type;
 	bdaddr_t bdaddr;
 	uint8_t features[8];
+	uint16_t manufacturer;
+	uint8_t hci_ver;
+	uint16_t hci_rev;
 } __packed;
 
 #define MGMT_OP_READ_STATISTICS		0x0005
