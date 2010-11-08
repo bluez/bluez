@@ -63,6 +63,9 @@ Read Controller Information Command
 				Controller_Type (1 Octet)
 				BD_ADDR (6 Octets)
 				Supported_Features (8 Octets)
+				Manufacturer (2 Octets)
+				HCI_Version (1 Octet)
+				HCI_Revision (2 Octets)
 
 		Controller_Type:0x00 Reserved
 				0x01 Bluetooth (BR/EDR)
