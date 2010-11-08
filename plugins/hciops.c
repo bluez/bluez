@@ -59,6 +59,9 @@ static guint ctl_io_id = 0;
 #define BDADDR(index) devs[(index)].bdaddr
 #define UP(index) devs[(index)].up
 #define READY(index) devs[(index)].ready
+#define CHANNEL(index) devs[(index)].channel
+#define WATCH_ID(index) devs[(index)].watch_id
+#define PIN_LENGTH(index) devs[(index)].pin_length
 
 static int max_dev = -1;
 static struct dev_info {
@@ -66,6 +69,10 @@ static struct dev_info {
 	bdaddr_t bdaddr;
 	gboolean up;
 	gboolean ready;
+
+	GIOChannel *channel;
+	guint watch_id;
+	int pin_length;
 } *devs = NULL;
 
 static int ignore_device(struct hci_dev_info *di)
@@ -77,6 +84,7 @@ static void init_dev_info(int index, int sk)
 {
 	memset(&devs[index], 0, sizeof(struct dev_info));
 	SK(index) = sk;
+	PIN_LENGTH(index) = -1;
 }
 
 /* Async HCI command handling with callback support */
@@ -255,14 +263,6 @@ static int hciops_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 
 /* Start of HCI event callbacks */
 
-struct g_io_info {
-	GIOChannel	*channel;
-	guint		watch_id;
-	int		pin_length;
-};
-
-static struct g_io_info io_data[HCI_MAX_DEV];
-
 static int get_handle(int dev, bdaddr_t *sba, bdaddr_t *dba, uint16_t *handle)
 {
 	struct hci_conn_list_req *cl;
@@ -433,9 +433,9 @@ static void link_key_notify(int dev, bdaddr_t *sba, void *ptr)
 	else {
 		err = btd_event_link_key_notify(sba, dba, evt->link_key,
 						evt->key_type,
-						io_data[dev_id].pin_length,
+						PIN_LENGTH(dev_id),
 						old_key_type);
-		io_data[dev_id].pin_length = -1;
+		PIN_LENGTH(dev_id) = -1;
 	}
 
 	if (err < 0) {
@@ -568,7 +568,7 @@ void set_pin_length(bdaddr_t *sba, int length)
 	dev_id = hci_devid(addr);
 
 	if (dev_id >= 0)
-		io_data[dev_id].pin_length = length;
+		PIN_LENGTH(dev_id) = length;
 }
 
 static void pin_code_request(int dev, bdaddr_t *sba, bdaddr_t *dba)
@@ -732,10 +732,8 @@ static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
 
 	info("Got bdaddr for hci%d", index);
 
-	if (!UP(index))
-		return;
-
-	manager_start_adapter(index);
+	if (UP(index))
+		manager_start_adapter(index);
 }
 
 static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
@@ -1042,56 +1040,41 @@ static inline void le_metaevent(int dev, bdaddr_t *sba, void *ptr)
 	}
 }
 
-static void stop_hci_dev(int hdev)
+static void stop_hci_dev(int index)
 {
-	GIOChannel *chan = io_data[hdev].channel;
+	GIOChannel *chan = CHANNEL(index);
 
 	if (!chan)
 		return;
 
-	info("Stopping hci%d event socket", hdev);
+	info("Stopping hci%d event socket", index);
 
-	g_source_remove(io_data[hdev].watch_id);
-	g_io_channel_unref(io_data[hdev].channel);
-	io_data[hdev].watch_id = 0;
-	io_data[hdev].channel = NULL;
-	io_data[hdev].pin_length = -1;
-}
-
-static void delete_channel(GIOChannel *chan)
-{
-	int i;
-
-	/* Look for the GIOChannel in the table */
-	for (i = 0; i < HCI_MAX_DEV; i++)
-		if (io_data[i].channel == chan) {
-			stop_hci_dev(i);
-			return;
-		}
-
-	error("IO channel not found in the io_data table");
+	g_source_remove(WATCH_ID(index));
+	g_io_channel_unref(CHANNEL(index));
+	hci_close_dev(SK(index));
+	init_dev_info(index, -1);
 }
 
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 								gpointer data)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
-	struct hci_dev_info *di = data;
-	int type, dev;
+	int type, dev, index = GPOINTER_TO_INT(data);
+	struct hci_dev_info dev_info, *di = &dev_info;
 	size_t len;
 	hci_event_hdr *eh;
 	GIOError err;
 	evt_cmd_status *evt;
 
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
-		delete_channel(chan);
+		stop_hci_dev(index);
 		return FALSE;
 	}
 
 	if ((err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len))) {
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
-		delete_channel(chan);
+		stop_hci_dev(index);
 		return FALSE;
 	}
 
@@ -1103,12 +1086,16 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 	eh = (hci_event_hdr *) ptr;
 	ptr += HCI_EVENT_HDR_SIZE;
 
-	dev = g_io_channel_unix_get_fd(chan);
-
-	ioctl(dev, HCIGETDEVINFO, (void *) di);
+	memset(di, 0, sizeof(*di));
+	if (hci_devinfo(index, di) == 0)
+		bacpy(&BDADDR(index), &di->bdaddr);
+	else
+		bacpy(&di->bdaddr, &BDADDR(index));
 
 	if (ignore_device(di))
 		return TRUE;
+
+	dev = g_io_channel_unix_get_fd(chan);
 
 	switch (eh->evt) {
 	case EVT_CMD_STATUS:
@@ -1220,8 +1207,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 
 static void start_hci_dev(int index)
 {
-	GIOChannel *chan = io_data[index].channel;
-	struct hci_dev_info *di;
+	GIOChannel *chan = CHANNEL(index);
 	struct hci_filter flt;
 
 	if (chan)
@@ -1265,20 +1251,13 @@ static void start_hci_dev(int index)
 		return;
 	}
 
-	di = g_new(struct hci_dev_info, 1);
-	if (hci_devinfo(index, di) < 0) {
-		error("Can't get device info: %s (%d)",
-						strerror(errno), errno);
-		g_free(di);
-		return;
-	}
-
 	chan = g_io_channel_unix_new(SK(index));
-	io_data[index].watch_id = g_io_add_watch_full(chan, G_PRIORITY_LOW,
+	WATCH_ID(index) = g_io_add_watch_full(chan, G_PRIORITY_LOW,
 						G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-						io_security_event, di, (GDestroyNotify) g_free);
-	io_data[index].channel = chan;
-	io_data[index].pin_length = -1;
+						io_security_event, GINT_TO_POINTER(index),
+						NULL);
+	CHANNEL(index) = chan;
+	PIN_LENGTH(index) = -1;
 
 }
 
@@ -1448,8 +1427,7 @@ static void device_event(int event, int index)
 
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", index);
-		hci_close_dev(SK(index));
-		init_dev_info(index, -1);
+		stop_hci_dev(index);
 		manager_unregister_adapter(index);
 		break;
 
