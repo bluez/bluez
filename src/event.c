@@ -28,6 +28,7 @@
 
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <ctype.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -562,12 +563,18 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	struct remote_dev_info match, *dev_info;
 
 	if (status == 0) {
-		char *end;
+		if (!g_utf8_validate(name, -1, NULL)) {
+			int i;
 
-		/* It's ok to cast end between const and non-const since
-		 * we know it points to inside of name which is non-const */
-		if (!g_utf8_validate(name, -1, (const char **) &end))
-			*end = '\0';
+			/* Assume ASCII, and replace all non-ASCII with
+			 * spaces */
+			for (i = 0; name[i] != '\0'; i++) {
+				if (!isascii(name[i]))
+					name[i] = ' ';
+			}
+			/* Remove leading and trailing whitespace characters */
+			g_strstrip(name);
+		}
 
 		write_device_name(local, peer, name);
 	}
