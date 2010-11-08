@@ -677,8 +677,16 @@ static int mgmt_read_local_version(int index, struct hci_version *ver)
 
 static int mgmt_read_local_features(int index, uint8_t *features)
 {
+	struct controller_info *info = &controllers[index];
+
 	DBG("index %d", index);
-	return -ENOSYS;
+
+	if (!info->valid)
+		return -ENODEV;
+
+	memcpy(features, info->features, 8);
+
+	return 0;
 }
 
 static int mgmt_read_local_ext_features(int index)
