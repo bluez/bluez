@@ -57,11 +57,15 @@ static guint ctl_io_id = 0;
 
 #define SK(index) devs[(index)].sk
 #define BDADDR(index) devs[(index)].bdaddr
+#define UP(index) devs[(index)].up
+#define READY(index) devs[(index)].ready
 
 static int max_dev = -1;
 static struct dev_info {
 	int sk;
 	bdaddr_t bdaddr;
+	gboolean up;
+	gboolean ready;
 } *devs = NULL;
 
 static int ignore_device(struct hci_dev_info *di)
@@ -714,6 +718,26 @@ static void read_local_ext_features_complete(bdaddr_t *sba,
 	btd_adapter_update_local_ext_features(adapter, rp->features);
 }
 
+static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
+{
+	if (rp->status)
+		return;
+
+	bacpy(&BDADDR(index), &rp->bdaddr);
+
+	if (READY(index))
+		return;
+
+	READY(index) = TRUE;
+
+	info("Got bdaddr for hci%d", index);
+
+	if (!UP(index))
+		return;
+
+	manager_start_adapter(index);
+}
+
 static inline void cmd_status(int dev, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_status *evt = ptr;
@@ -738,7 +762,7 @@ static void read_scan_complete(bdaddr_t *sba, uint8_t status, void *ptr)
 	adapter_mode_changed(adapter, rp->enable);
 }
 
-static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
+static inline void cmd_complete(int index, bdaddr_t *sba, void *ptr)
 {
 	evt_cmd_complete *evt = ptr;
 	uint16_t opcode = btohs(evt->opcode);
@@ -748,6 +772,10 @@ static inline void cmd_complete(int dev, bdaddr_t *sba, void *ptr)
 	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_LOCAL_EXT_FEATURES):
 		ptr += sizeof(evt_cmd_complete);
 		read_local_ext_features_complete(sba, ptr);
+		break;
+	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_BD_ADDR):
+		ptr += sizeof(evt_cmd_complete);
+		read_bd_addr_complete(index, ptr);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PERIODIC_INQUIRY):
 		start_inquiry(sba, status, TRUE);
@@ -1088,7 +1116,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 		break;
 
 	case EVT_CMD_COMPLETE:
-		cmd_complete(dev, &di->bdaddr, ptr);
+		cmd_complete(di->dev_id, &di->bdaddr, ptr);
 		break;
 
 	case EVT_REMOTE_NAME_REQ_COMPLETE:
@@ -1190,24 +1218,16 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 }
 
-static void init_hci_dev(int hdev)
+static void start_hci_dev(int index)
 {
-	GIOChannel *chan = io_data[hdev].channel;
+	GIOChannel *chan = io_data[index].channel;
 	struct hci_dev_info *di;
 	struct hci_filter flt;
-	read_stored_link_key_cp cp;
-	int dev;
 
 	if (chan)
 		return;
 
-	info("Starting security manager %d", hdev);
-
-	if ((dev = hci_open_dev(hdev)) < 0) {
-		error("Can't open device hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
-		return;
-	}
+	info("Listening for HCI events on hci%d", index);
 
 	/* Set filter */
 	hci_filter_clear(&flt);
@@ -1239,38 +1259,27 @@ static void init_hci_dev(int hdev)
 	hci_filter_set_event(EVT_CONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_DISCONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_LE_META_EVENT, &flt);
-	if (setsockopt(dev, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
+	if (setsockopt(SK(index), SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		error("Can't set filter on hci%d: %s (%d)",
-						hdev, strerror(errno), errno);
-		close(dev);
+						index, strerror(errno), errno);
 		return;
 	}
 
 	di = g_new(struct hci_dev_info, 1);
-	if (hci_devinfo(hdev, di) < 0) {
+	if (hci_devinfo(index, di) < 0) {
 		error("Can't get device info: %s (%d)",
-							strerror(errno), errno);
-		close(dev);
+						strerror(errno), errno);
 		g_free(di);
 		return;
 	}
 
-	chan = g_io_channel_unix_new(dev);
-	g_io_channel_set_close_on_unref(chan, TRUE);
-	io_data[hdev].watch_id = g_io_add_watch_full(chan, G_PRIORITY_LOW,
+	chan = g_io_channel_unix_new(SK(index));
+	io_data[index].watch_id = g_io_add_watch_full(chan, G_PRIORITY_LOW,
 						G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 						io_security_event, di, (GDestroyNotify) g_free);
-	io_data[hdev].channel = chan;
-	io_data[hdev].pin_length = -1;
+	io_data[index].channel = chan;
+	io_data[index].pin_length = -1;
 
-	if (ignore_device(di))
-		return;
-
-	bacpy(&cp.bdaddr, BDADDR_ANY);
-	cp.read_all = 1;
-
-	hci_send_cmd(dev, OGF_HOST_CTL, OCF_READ_STORED_LINK_KEY,
-			READ_STORED_LINK_KEY_CP_SIZE, (void *) &cp);
 }
 
 /* End of HCI event callbacks */
@@ -1305,6 +1314,7 @@ static void device_devup_setup(int index)
 {
 	struct hci_dev_info di;
 	uint16_t policy;
+	read_stored_link_key_cp cp;
 
 	if (hci_devinfo(index, &di) < 0)
 		return;
@@ -1328,11 +1338,13 @@ static void device_devup_setup(int index)
 	hci_send_cmd(SK(index), OGF_LINK_POLICY,
 				OCF_WRITE_DEFAULT_LINK_POLICY, 2, &policy);
 
-	init_hci_dev(index);
+	bacpy(&cp.bdaddr, BDADDR_ANY);
+	cp.read_all = 1;
+	hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_READ_STORED_LINK_KEY,
+			READ_STORED_LINK_KEY_CP_SIZE, (void *) &cp);
 
-	/* Return value 1 means ioctl(DEVDOWN) was performed */
-	if (manager_start_adapter(index) == 1)
-		stop_hci_dev(index);
+	if (READY(index))
+		manager_start_adapter(index);
 }
 
 static void init_device(int index)
@@ -1355,6 +1367,7 @@ static void init_device(int index)
 	}
 
 	init_dev_info(index, dd);
+	start_hci_dev(index);
 
 	/* Do initialization in the separate process */
 	pid = fork();
@@ -1442,13 +1455,17 @@ static void device_event(int event, int index)
 
 	case HCI_DEV_UP:
 		info("HCI dev %d up", index);
+		UP(index) = TRUE;
 		device_devup_setup(index);
 		break;
 
 	case HCI_DEV_DOWN:
 		info("HCI dev %d down", index);
-		manager_stop_adapter(index);
-		stop_hci_dev(index);
+		UP(index) = FALSE;
+		if (READY(index)) {
+			manager_stop_adapter(index);
+			READY(index) = FALSE;
+		}
 		break;
 	}
 }
