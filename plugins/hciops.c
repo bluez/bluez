@@ -253,7 +253,7 @@ static int hciops_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 
 struct g_io_info {
 	GIOChannel	*channel;
-	int		watch_id;
+	guint		watch_id;
 	int		pin_length;
 };
 
@@ -1025,7 +1025,7 @@ static void stop_hci_dev(int hdev)
 
 	g_source_remove(io_data[hdev].watch_id);
 	g_io_channel_unref(io_data[hdev].channel);
-	io_data[hdev].watch_id = -1;
+	io_data[hdev].watch_id = 0;
 	io_data[hdev].channel = NULL;
 	io_data[hdev].pin_length = -1;
 }
