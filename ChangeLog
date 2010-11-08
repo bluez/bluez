@@ -1,3 +1,7 @@
+ver 4.79:
+	Fix issue with adapter initialization race condition.
+	Update new Bluetooth Management interface support.
+
 ver 4.78:
 	Fix various issues with AVDTP timer handling.
 	Fix various issues with handling of mode changes.
