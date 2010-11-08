@@ -798,6 +798,10 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 			data->watch(device, device->temporary,
 							data->user_data);
 
+		/* Check if the watch has been removed by callback function */
+		if (!g_slist_find(device->watches, data))
+			continue;
+
 		device->watches = g_slist_remove(device->watches, data);
 		g_free(data);
 	}
