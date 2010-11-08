@@ -590,7 +590,7 @@ static void pin_code_request(int index, bdaddr_t *dba)
 						PIN_CODE_REPLY_CP_SIZE, &pr);
 	} else {
 		/* Request PIN from passkey agent */
-		if (btd_event_request_pin(SK(index), &BDADDR(index), ci) < 0)
+		if (btd_event_request_pin(&BDADDR(index), ci) < 0)
 			goto reject;
 	}
 

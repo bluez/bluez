@@ -123,7 +123,7 @@ fail:
 	error("Sending PIN code reply failed: %s (%d)", strerror(-err), -err);
 }
 
-int btd_event_request_pin(int dev, bdaddr_t *sba, struct hci_conn_info *ci)
+int btd_event_request_pin(bdaddr_t *sba, struct hci_conn_info *ci)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
