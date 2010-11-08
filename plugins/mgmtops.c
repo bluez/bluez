@@ -252,7 +252,7 @@ static void read_mode_complete(int sk, void *buf, size_t len)
 	uint16_t index;
 
 	if (len < sizeof(*rp)) {
-		error("Too small read mode complete event (%zu != %d)",
+		error("Too small read mode complete event (%zu != %zu)",
 							len, sizeof(*rp));
 		return;
 	}
