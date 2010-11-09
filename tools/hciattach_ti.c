@@ -514,6 +514,13 @@ int texas_post(int fd, struct termios *ti)
 		return -1;
 	}
 
+	if (ioctl(dd, HCIDEVUP, dev_id) < 0 && errno != EALREADY) {
+		fprintf(stderr, "Can't init device hci%d: %s (%d)", dev_id,
+							strerror(errno), errno);
+		hci_close_dev(dd);
+		return -1;
+	}
+
 	ret = brf_do_script(dd, ti, NULL);
 
 	hci_close_dev(dd);
