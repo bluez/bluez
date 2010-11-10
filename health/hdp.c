@@ -376,6 +376,12 @@ static DBusMessage *manager_destroy_application(DBusConnection *conn,
 
 	l = g_slist_find_custom(applications, path, cmp_app);
 
+	if (!l)
+		return g_dbus_create_error(msg,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call, "
+					"no such application");
+
 	app = l->data;
 	applications = g_slist_remove(applications, app);
 
