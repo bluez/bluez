@@ -40,6 +40,7 @@
 #include "glib-helper.h"
 #include "btio.h"
 #include "sdpd.h"
+#include "hcid.h"
 #include "att.h"
 #include "gattrib.h"
 
@@ -622,6 +623,9 @@ int attrib_server_init(void)
 	}
 
 	sdp_handle = record->handle;
+
+	if (!main_opts.le)
+		return 0;
 
 	/* LE socket */
 	le_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
