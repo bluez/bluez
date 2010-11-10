@@ -1464,8 +1464,10 @@ static gboolean init_known_adapters(gpointer user_data)
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		device_event(HCI_DEV_REG, dr->dev_id);
 
-		if (hci_test_bit(HCI_UP, &dr->dev_opt))
+		if (hci_test_bit(HCI_UP, &dr->dev_opt)) {
+			READY(dr->dev_id) = TRUE;
 			device_event(HCI_DEV_UP, dr->dev_id);
+		}
 	}
 
 	g_free(dl);
