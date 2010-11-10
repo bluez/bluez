@@ -259,6 +259,7 @@ static void device_unref_mcl(struct hdp_device *hdp_device)
 	if (!hdp_device->mcl)
 		return;
 
+	mcap_close_mcl(hdp_device->mcl, FALSE);
 	mcap_mcl_unref(hdp_device->mcl);
 	hdp_device->mcl = NULL;
 	hdp_device->mcl_conn = FALSE;
