@@ -457,10 +457,16 @@ static void vcard_printf_end(GString *vcards)
 void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 					uint64_t filter, uint8_t format)
 {
-	if (format == FORMAT_VCARD30)
+	if (format == FORMAT_VCARD30 && filter)
 		filter |= (FILTER_VERSION | FILTER_FN | FILTER_N | FILTER_TEL);
-	else if (format == FORMAT_VCARD21)
+	else if (format == FORMAT_VCARD21 && filter)
 		filter |= (FILTER_VERSION | FILTER_N | FILTER_TEL);
+	else
+		filter = (FILTER_VERSION | FILTER_UID | FILTER_N | FILTER_FN |
+				FILTER_TEL | FILTER_EMAIL | FILTER_ADR |
+				FILTER_BDAY | FILTER_NICKNAME | FILTER_URL |
+				FILTER_PHOTO | FILTER_ORG | FILTER_ROLE |
+				FILTER_TITLE | FILTER_X_IRMC_CALL_DATETIME);
 
 	vcard_printf_begin(vcards, format);
 
