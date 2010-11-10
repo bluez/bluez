@@ -609,6 +609,20 @@ int attrib_server_init(void)
 		return -1;
 	}
 
+	record = server_record_new();
+	if (record == NULL) {
+		error("Unable to create GATT service record");
+		goto failed;
+	}
+
+	if (add_record_to_server(BDADDR_ANY, record) < 0) {
+		error("Failed to register GATT service record");
+		sdp_record_free(record);
+		goto failed;
+	}
+
+	sdp_handle = record->handle;
+
 	/* LE socket */
 	le_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
 					NULL, NULL, &gerr,
@@ -623,21 +637,13 @@ int attrib_server_init(void)
 		/* Doesn't have LE support, continue */
 	}
 
-	record = server_record_new();
-	if (record == NULL) {
-		error("Unable to create GATT service record");
-		return -1;
-	}
-
-	if (add_record_to_server(BDADDR_ANY, record) < 0) {
-		error("Failed to register GATT service record");
-		sdp_record_free(record);
-		return -1;
-	}
-
-	sdp_handle = record->handle;
-
 	return 0;
+
+failed:
+	g_io_channel_unref(l2cap_io);
+	l2cap_io = NULL;
+
+	return -1;
 }
 
 void attrib_server_exit(void)
