@@ -541,12 +541,19 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return -ENODEV;
 
+	remote_auth = device_get_auth(device);
+
 	new_key_type = key_type;
 
 	if (key_type == 0x06) {
 		if (device_get_debug_key(device, NULL))
 			old_key_type = 0x03;
-		if (old_key_type != 0xff)
+		/* Some buggy controller combinations generate a changed
+		 * combination key for legacy pairing even when there's no
+		 * previous key */
+		if (remote_auth == 0xff && old_key_type == 0xff)
+			new_key_type = key_type = 0x00;
+		else if (old_key_type != 0xff)
 			new_key_type = old_key_type;
 		else
 			/* This is Changed Combination Link Key for
@@ -555,7 +562,6 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	}
 
 	btd_adapter_get_auth_info(adapter, peer, &local_auth);
-	remote_auth = device_get_auth(device);
 	bonding = device_is_bonding(device, NULL);
 
 	DBG("key type 0x%02x old key type 0x%02x new key type 0x%02x",
