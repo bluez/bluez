@@ -72,6 +72,8 @@ static char *type2str(uint8_t type)
 		return "ACL";
 	case ESCO_LINK:
 		return "eSCO";
+	case LE_LINK:
+		return "LE";
 	default:
 		return "Unknown";
 	}
