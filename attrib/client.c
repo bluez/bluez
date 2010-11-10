@@ -158,6 +158,7 @@ static void gatt_service_free(void *user_data)
 	g_slist_free(gatt->primary);
 	g_attrib_unref(gatt->attrib);
 	g_free(gatt->path);
+	btd_device_unref(gatt->dev);
 	g_free(gatt);
 }
 
@@ -1335,7 +1336,7 @@ int attrib_client_register(struct btd_device *device, int psm)
 	device_get_address(device, &dba);
 
 	gatt = g_new0(struct gatt_service, 1);
-	gatt->dev = device;
+	gatt->dev = btd_device_ref(device);
 	gatt->listen = FALSE;
 	gatt->path = g_strdup(path);
 	bacpy(&gatt->sba, &sba);
