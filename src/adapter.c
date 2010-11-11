@@ -2977,14 +2977,13 @@ static char **get_eir_uuids(uint8_t *eir_data, size_t *uuid_count)
 	unsigned int i;
 
 	while (len < EIR_DATA_LENGTH - 1) {
-		uint8_t type = eir_data[1];
 		uint8_t field_len = eir_data[0];
 
 		/* Check for the end of EIR */
 		if (field_len == 0)
 			break;
 
-		switch (type) {
+		switch (eir_data[1]) {
 		case EIR_UUID16_SOME:
 		case EIR_UUID16_ALL:
 			uuid16_count = field_len / 2;
