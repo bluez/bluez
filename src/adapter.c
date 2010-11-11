@@ -3109,10 +3109,9 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	g_strfreev(uuids);
 }
 
-void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-				int8_t rssi, uint32_t class, const char *name,
-				const char *alias, gboolean legacy,
-				name_status_t name_status, uint8_t *eir_data)
+static struct remote_dev_info *get_found_dev(struct btd_adapter *adapter,
+						const bdaddr_t *bdaddr,
+						gboolean *new_dev)
 {
 	struct remote_dev_info *dev, match;
 
@@ -3122,30 +3121,44 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 
 	dev = adapter_search_found_devices(adapter, &match);
 	if (dev) {
+		*new_dev = FALSE;
 		/* Out of range list update */
 		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
 							dev);
-
-		if (rssi == dev->rssi)
-			return;
-
-		goto done;
+	} else {
+		*new_dev = TRUE;
+		dev = g_new0(struct remote_dev_info, 1);
+		bacpy(&dev->bdaddr, bdaddr);
+		adapter->found_devices = g_slist_prepend(adapter->found_devices,
+									dev);
 	}
 
-	dev = g_new0(struct remote_dev_info, 1);
+	return dev;
+}
 
-	bacpy(&dev->bdaddr, bdaddr);
-	dev->class = class;
-	if (name)
-		dev->name = g_strdup(name);
-	if (alias)
-		dev->alias = g_strdup(alias);
-	dev->legacy = legacy;
-	dev->name_status = name_status;
+void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+				int8_t rssi, uint32_t class, const char *name,
+				const char *alias, gboolean legacy,
+				name_status_t name_status, uint8_t *eir_data)
+{
+	struct remote_dev_info *dev;
+	gboolean new_dev;
 
-	adapter->found_devices = g_slist_prepend(adapter->found_devices, dev);
+	dev = get_found_dev(adapter, bdaddr, &new_dev);
 
-done:
+	if (new_dev) {
+		if (name)
+			dev->name = g_strdup(name);
+
+		if (alias)
+			dev->alias = g_strdup(alias);
+
+		dev->class = class;
+		dev->legacy = legacy;
+		dev->name_status = name_status;
+	} else if (dev->rssi == rssi)
+		return;
+
 	dev->rssi = rssi;
 
 	adapter->found_devices = g_slist_sort(adapter->found_devices,
