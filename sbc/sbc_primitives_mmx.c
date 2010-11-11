@@ -101,7 +101,7 @@ static inline void sbc_analyze_four_mmx(const int16_t *in, int32_t *out,
 		:
 		: "r" (in), "r" (consts), "r" (&round_c), "r" (out),
 			"i" (SBC_PROTO_FIXED4_SCALE)
-		: "memory");
+		: "cc", "memory");
 }
 
 static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
@@ -243,7 +243,7 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		:
 		: "r" (in), "r" (consts), "r" (&round_c), "r" (out),
 			"i" (SBC_PROTO_FIXED8_SCALE)
-		: "memory");
+		: "cc", "memory");
 }
 
 static inline void sbc_analyze_4b_4s_mmx(int16_t *x, int32_t *out,
@@ -323,7 +323,7 @@ static void sbc_calc_scalefactors_mmx(
 				"r" (&scale_factor[ch][sb]),
 				"r" (&consts),
 				"i" (SCALE_OUT_BITS)
-			: "memory");
+			: "cc", "memory");
 		}
 	}
 	asm volatile ("emms\n");
