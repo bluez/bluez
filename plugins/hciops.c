@@ -1778,24 +1778,42 @@ static int hciops_stop_inquiry(int index)
 	return err;
 }
 
-static int hciops_start_scanning(int index)
+static int le_set_scan_enable(int index, uint8_t enable)
 {
-	if (hci_le_set_scan_parameters(SK(index), 0x01, htobs(0x0010),
-					htobs(0x0010), 0x00, 0x00) < 0)
-		return -errno;
+	le_set_scan_enable_cp cp;
 
-	if (hci_le_set_scan_enable(SK(index), 0x01, 0x00) < 0)
+	memset(&cp, 0, sizeof(cp));
+	cp.enable = enable;
+	cp.filter_dup = 0;
+
+	if (hci_send_cmd(SK(index), OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE,
+				LE_SET_SCAN_ENABLE_CP_SIZE, &cp) < 0)
 		return -errno;
 
 	return 0;
 }
 
-static int hciops_stop_scanning(int index)
+static int hciops_start_scanning(int index)
 {
-	if (hci_le_set_scan_enable(SK(index), 0x00, 0x00) < 0)
+	le_set_scan_parameters_cp cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.type = 0x01;			/* Active scanning */
+	cp.interval = htobs(0x0010);
+	cp.window = htobs(0x0010);
+	cp.own_bdaddr_type = 0;		/* Public address */
+	cp.filter = 0;			/* Accept all adv packets */
+
+	if (hci_send_cmd(SK(index), OGF_LE_CTL, OCF_LE_SET_SCAN_PARAMETERS,
+				LE_SET_SCAN_PARAMETERS_CP_SIZE, &cp) < 0)
 		return -errno;
 
-	return 0;
+	return le_set_scan_enable(index, 1);
+}
+
+static int hciops_stop_scanning(int index)
+{
+	return le_set_scan_enable(index, 0);
 }
 
 static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
