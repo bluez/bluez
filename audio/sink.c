@@ -351,6 +351,12 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	struct pending_request *pending;
 	int id;
 
+	if (!sink->connect) {
+		avdtp_unref(sink->session);
+		sink->session = NULL;
+		return;
+	}
+
 	pending = sink->connect;
 
 	if (err) {
@@ -669,10 +675,30 @@ gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 
 gboolean sink_shutdown(struct sink *sink)
 {
-	if (!sink->stream)
+	if (!sink->session)
 		return FALSE;
 
 	avdtp_set_device_disconnect(sink->session, TRUE);
+
+	/* cancel pending connect */
+	if (sink->connect) {
+		struct pending_request *pending = sink->connect;
+
+		if (pending->msg)
+			error_failed(pending->conn, pending->msg,
+							"Stream setup failed");
+		pending_request_free(sink->dev, pending);
+		sink->connect = NULL;
+
+		return TRUE;
+	}
+
+	/* disconnect already ongoing */
+	if (sink->disconnect)
+		return TRUE;
+
+	if (!sink->stream)
+		return FALSE;
 
 	if (avdtp_close(sink->session, sink->stream, FALSE) < 0)
 		return FALSE;
