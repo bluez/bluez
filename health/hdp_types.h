@@ -107,6 +107,7 @@ struct hdp_device {
 	GSList			*channels;	/* Data Channel list */
 	struct hdp_channel	*ndc;		/* Data channel being negotiated */
 	struct hdp_channel	*fr;		/* First reliable data channel */
+	gint			ref;		/* Reference counting */
 };
 
 struct hdp_echo_data;

@@ -93,6 +93,7 @@ static void free_hdp_create_dc(struct hdp_create_dc *dc_data)
 	dbus_message_unref(dc_data->msg);
 	dbus_connection_unref(dc_data->conn);
 	hdp_application_unref(dc_data->app);
+	health_device_unref(dc_data->dev);
 
 	g_free(dc_data);
 }
@@ -700,6 +701,7 @@ static void health_channel_destroy(void *data)
 		free_echo_data(hdp_chan->edata);
 
 	hdp_application_unref(hdp_chan->app);
+	health_device_unref(hdp_chan->dev);
 	g_free(hdp_chan->path);
 	g_free(hdp_chan);
 }
@@ -723,7 +725,7 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 
 	hdp_chann = g_new0(struct hdp_channel, 1);
 	hdp_chann->config = config;
-	hdp_chann->dev = dev;
+	hdp_chann->dev = health_device_ref(dev);
 	hdp_chann->mdl = mdl;
 	hdp_chann->mdlid = mdlid;
 	hdp_chann->app = hdp_application_ref(app);
@@ -1723,7 +1725,7 @@ static DBusMessage *device_echo(DBusConnection *conn,
 	GError *err = NULL;
 
 	data = g_new0(struct hdp_create_dc, 1);
-	data->dev = device;
+	data->dev = health_device_ref(device);
 	data->mdep = HDP_MDEP_ECHO;
 	data->config = HDP_RELIABLE_DC;
 	data->msg = dbus_message_ref(msg);
@@ -1842,7 +1844,7 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 					"channel should be reliable");
 
 	data = g_new0(struct hdp_create_dc, 1);
-	data->dev = device;
+	data->dev = health_device_ref(device);
 	data->config = config;
 	data->app = hdp_application_ref(app);
 	data->msg = dbus_message_ref(msg);
@@ -2001,7 +2003,7 @@ static void health_device_destroy(void *data)
 	remove_channels(device);
 
 	devices = g_slist_remove(devices, device);
-	free_health_device(device);
+	health_device_unref(device);
 }
 
 static GDBusMethodTable health_device_methods[] = {
@@ -2036,8 +2038,9 @@ static struct hdp_device *create_health_device(DBusConnection *conn,
 	dev = g_new0(struct hdp_device, 1);
 	dev->conn = dbus_connection_ref(conn);
 	dev->dev = btd_device_ref(device);
-	l = g_slist_find_custom(adapters, adapter, cmp_adapter);
+	health_device_ref(dev);
 
+	l = g_slist_find_custom(adapters, adapter, cmp_adapter);
 	if (!l)
 		goto fail;
 
@@ -2056,7 +2059,7 @@ static struct hdp_device *create_health_device(DBusConnection *conn,
 	return dev;
 
 fail:
-	free_health_device(dev);
+	health_device_unref(dev);
 	return NULL;
 }
 
@@ -2120,4 +2123,25 @@ void hdp_manager_stop()
 
 	dbus_connection_unref(connection);
 	DBG("Stopped Health manager");
+}
+
+struct hdp_device *health_device_ref(struct hdp_device *hdp_dev)
+{
+	hdp_dev->ref++;
+
+	DBG("health_device_ref(%p): ref=%d", hdp_dev, hdp_dev->ref);
+
+	return hdp_dev;
+}
+
+void health_device_unref(struct hdp_device *hdp_dev)
+{
+	hdp_dev->ref--;
+
+	DBG("health_device_unref(%p): ref=%d", hdp_dev, hdp_dev->ref);
+
+	if (hdp_dev->ref > 0)
+		return;
+
+	free_health_device(hdp_dev);
 }

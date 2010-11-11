@@ -992,6 +992,7 @@ static void con_mcl_data_unref(struct conn_mcl_data *conn_data)
 	if (conn_data->destroy)
 		conn_data->destroy(conn_data->data);
 
+	health_device_unref(conn_data->dev);
 	g_free(conn_data);
 }
 
@@ -1083,7 +1084,7 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 	conn_data->func = func;
 	conn_data->data = data;
 	conn_data->destroy = destroy;
-	conn_data->dev = device;
+	conn_data->dev = health_device_ref(device);
 
 	bt_string2uuid(&uuid, HDP_UUID);
 	if (bt_search_service(&src, &dst, &uuid, search_cb, conn_data,
