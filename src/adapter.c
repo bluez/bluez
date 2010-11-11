@@ -2962,7 +2962,8 @@ static void emit_device_found(const char *path, const char *address,
 	g_dbus_send_message(connection, signal);
 }
 
-static char **get_eir_uuids(uint8_t *eir_data, size_t *uuid_count)
+static char **get_eir_uuids(uint8_t *eir_data, size_t eir_length,
+							size_t *uuid_count)
 {
 	uint16_t len = 0;
 	char **uuids;
@@ -2976,7 +2977,10 @@ static char **get_eir_uuids(uint8_t *eir_data, size_t *uuid_count)
 	uuid_t service;
 	unsigned int i;
 
-	while (len < EIR_DATA_LENGTH - 1) {
+	if (eir_data == NULL || eir_length == 0)
+		return NULL;
+
+	while (len < eir_length - 1) {
 		uint8_t field_len = eir_data[0];
 
 		/* Check for the end of EIR */
@@ -3006,7 +3010,7 @@ static char **get_eir_uuids(uint8_t *eir_data, size_t *uuid_count)
 	}
 
 	/* Bail out if got incorrect length */
-	if (len > EIR_DATA_LENGTH)
+	if (len > eir_length)
 		return NULL;
 
 	total = uuid16_count + uuid32_count + uuid128_count;
@@ -3056,7 +3060,8 @@ static char **get_eir_uuids(uint8_t *eir_data, size_t *uuid_count)
 }
 
 void adapter_emit_device_found(struct btd_adapter *adapter,
-				struct remote_dev_info *dev, uint8_t *eir_data)
+				struct remote_dev_info *dev,
+				uint8_t *eir_data, size_t eir_length)
 {
 	struct btd_device *device;
 	char peer_addr[18], local_addr[18];
@@ -3086,8 +3091,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 		alias = g_strdup(dev->alias);
 
 	/* Extract UUIDs from extended inquiry response if any*/
-	if (eir_data != NULL)
-		uuids = get_eir_uuids(eir_data, &uuid_count);
+	uuids = get_eir_uuids(eir_data, eir_length, &uuid_count);
 
 	emit_device_found(adapter->path, paddr,
 			"Address", DBUS_TYPE_STRING, &paddr,
@@ -3147,7 +3151,7 @@ done:
 	adapter->found_devices = g_slist_sort(adapter->found_devices,
 						(GCompareFunc) dev_rssi_cmp);
 
-	adapter_emit_device_found(adapter, dev, eir_data);
+	adapter_emit_device_found(adapter, dev, eir_data, EIR_DATA_LENGTH);
 }
 
 int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr)

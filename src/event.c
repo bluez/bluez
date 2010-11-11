@@ -510,7 +510,7 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	if (dev_info) {
 		g_free(dev_info->name);
 		dev_info->name = g_strdup(name);
-		adapter_emit_device_found(adapter, dev_info, NULL);
+		adapter_emit_device_found(adapter, dev_info, NULL, 0);
 	}
 
 	if (device)
