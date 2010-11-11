@@ -254,10 +254,8 @@ static void irmc_disconnect(struct obex_session *os, void *user_data)
 		g_free(irmc->params);
 	}
 
-	if (irmc->buffer) {
-		string_free(irmc->buffer);
-		irmc->buffer = NULL;
-	}
+	if (irmc->buffer)
+		g_string_free(irmc->buffer, TRUE);
 
 	g_free(irmc);
 }
@@ -355,7 +353,7 @@ static void *irmc_open_pb(const char *name, struct irmc_session *irmc,
 		irmc->buffer = mybuf;
 	else {
 		irmc->buffer = g_string_append(irmc->buffer, mybuf->str);
-		string_free(mybuf);
+		g_string_free(mybuf, TRUE);
 	}
 
 	return irmc;
@@ -433,7 +431,7 @@ static int irmc_close(void *object)
 	DBG("");
 
 	if (irmc->buffer) {
-		string_free(irmc->buffer);
+		g_string_free(irmc->buffer, TRUE);
 		irmc->buffer = NULL;
 	}
 
