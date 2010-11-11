@@ -69,6 +69,10 @@ struct remote_dev_info {
 	char *alias;
 	dbus_bool_t legacy;
 	name_status_t name_status;
+	gboolean le;
+	/* LE adv data */
+	uint8_t evt_type;
+	uint8_t bdaddr_type;
 };
 
 struct hci_dev {
@@ -118,6 +122,8 @@ int adapter_get_discover_type(struct btd_adapter *adapter);
 gboolean adapter_is_ready(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
 						struct remote_dev_info *match);
+void adapter_update_device_from_info(struct btd_adapter *adapter,
+						le_advertising_info *info);
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				int8_t rssi, uint32_t class, const char *name,
 				const char *alias, gboolean legacy,

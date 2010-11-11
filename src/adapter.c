@@ -3000,6 +3000,31 @@ static struct remote_dev_info *get_found_dev(struct btd_adapter *adapter,
 	return dev;
 }
 
+void adapter_update_device_from_info(struct btd_adapter *adapter,
+						le_advertising_info *info)
+{
+	struct remote_dev_info *dev;
+	bdaddr_t bdaddr;
+	gboolean new_dev;
+	int8_t rssi;
+
+	rssi = *(info->data + info->length);
+	bdaddr = info->bdaddr;
+
+	dev = get_found_dev(adapter, &bdaddr, &new_dev);
+
+	if (new_dev) {
+		dev->le = TRUE;
+		dev->evt_type = info->evt_type;
+	} else if (dev->rssi == rssi)
+		return;
+
+	dev->rssi = rssi;
+
+	adapter->found_devices = g_slist_sort(adapter->found_devices,
+						(GCompareFunc) dev_rssi_cmp);
+}
+
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				int8_t rssi, uint32_t class, const char *name,
 				const char *alias, gboolean legacy,
@@ -3017,6 +3042,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 		if (alias)
 			dev->alias = g_strdup(alias);
 
+		dev->le = FALSE;
 		dev->class = class;
 		dev->legacy = legacy;
 		dev->name_status = name_status;

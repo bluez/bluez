@@ -1259,7 +1259,7 @@ static inline void le_metaevent(int index, void *ptr)
 {
 	evt_le_meta_event *meta = ptr;
 	le_advertising_info *info;
-	uint8_t *rssi, num, i;
+	uint8_t num, i;
 
 	DBG("LE Meta Event");
 
@@ -1270,11 +1270,8 @@ static inline void le_metaevent(int index, void *ptr)
 	info = (le_advertising_info *) (meta->data + 1);
 
 	for (i = 0; i < num; i++) {
-		/* RSSI is last byte of the advertising report event */
-		rssi = info->data + info->length;
-		btd_event_inquiry_result(&BDADDR(index), &info->bdaddr, 0,
-								*rssi, NULL);
-		info = (le_advertising_info *) (rssi + 1);
+		btd_event_advertising_report(&BDADDR(index), info);
+		info = (le_advertising_info *) (info->data + info->length + 1);
 	}
 }
 

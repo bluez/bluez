@@ -322,6 +322,19 @@ static char *extract_eir_name(uint8_t *data, uint8_t *type)
 	return NULL;
 }
 
+void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
+{
+	struct btd_adapter *adapter;
+
+	adapter = manager_find_adapter(local);
+	if (adapter == NULL) {
+		error("No matching adapter found");
+		return;
+	}
+
+	adapter_update_device_from_info(adapter, info);
+}
+
 void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				int8_t rssi, uint8_t *data)
 {
