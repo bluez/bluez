@@ -73,6 +73,7 @@ enum data_specs {
 };
 
 struct hdp_application {
+	DBusConnection		*conn;		/* For dbus watcher */
 	char			*path;		/* The path of the application */
 	uint16_t		data_type;	/* Data type handled for this application */
 	gboolean		data_type_set;	/* Flag for dictionary parsing */
@@ -84,6 +85,7 @@ struct hdp_application {
 	uint8_t			id;		/* The identification is also the mdepid */
 	char			*oname;		/* Name of the owner application */
 	int			dbus_watcher;	/* Watch for clients disconnection */
+	gint			ref;		/* Reference counter */
 };
 
 struct hdp_adapter {

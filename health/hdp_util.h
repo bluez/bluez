@@ -50,4 +50,7 @@ gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
 							GDestroyNotify destroy,
 							GError **err);
 
+struct hdp_application *hdp_application_ref(struct hdp_application *app);
+void hdp_application_unref(struct hdp_application *app);
+
 #endif /* __HDP_UTIL_H__ */

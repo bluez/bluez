@@ -40,6 +40,8 @@
 #include <btio.h>
 #include <mcap_lib.h>
 
+#include <log.h>
+
 typedef gboolean (*parse_item_f)(DBusMessageIter *iter, gpointer user_data,
 								GError **err);
 
@@ -292,6 +294,7 @@ struct hdp_application *hdp_get_app_config(DBusMessageIter *iter, GError **err)
 	struct hdp_application *app;
 
 	app = g_new0(struct hdp_application, 1);
+	app->ref = 1;
 	if (!parse_dict(dict_parser, iter, err, app))
 		goto fail;
 	if (!app->data_type_set || !app->role_set) {
@@ -302,7 +305,7 @@ struct hdp_application *hdp_get_app_config(DBusMessageIter *iter, GError **err)
 	return app;
 
 fail:
-	g_free(app);
+	hdp_application_unref(app);
 	return NULL;
 }
 
@@ -837,6 +840,7 @@ static void free_mdep_data(gpointer data)
 
 	if (mdep_data->destroy)
 		mdep_data->destroy(mdep_data->data);
+	hdp_application_unref(mdep_data->app);
 
 	g_free(mdep_data);
 }
@@ -853,7 +857,7 @@ gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
 	adapter_get_address(device_get_adapter(device->dev), &src);
 
 	mdep_data = g_new0(struct get_mdep_data, 1);
-	mdep_data->app = app;
+	mdep_data->app = hdp_application_ref(app);
 	mdep_data->func = func;
 	mdep_data->data = data;
 	mdep_data->destroy = destroy;
@@ -1159,4 +1163,42 @@ gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
 	}
 
 	return TRUE;
+}
+
+static void hdp_free_application(struct hdp_application *app)
+{
+	if (app->dbus_watcher)
+		g_dbus_remove_watch(app->conn, app->dbus_watcher);
+
+	if (app->conn)
+		dbus_connection_unref(app->conn);
+	g_free(app->oname);
+	g_free(app->description);
+	g_free(app->path);
+	g_free(app);
+}
+
+struct hdp_application *hdp_application_ref(struct hdp_application *app)
+{
+	if (!app)
+		return NULL;
+
+	app->ref++;
+
+	DBG("health_application_ref(%p): ref=%d", app, app->ref);
+	return app;
+}
+
+void hdp_application_unref(struct hdp_application *app)
+{
+	if (!app)
+		return;
+
+	app->ref --;
+
+	DBG("health_application_unref(%p): ref=%d", app, app->ref);
+	if (app->ref > 0)
+		return;
+
+	hdp_free_application(app);
 }

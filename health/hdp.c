@@ -92,6 +92,7 @@ static void free_hdp_create_dc(struct hdp_create_dc *dc_data)
 {
 	dbus_message_unref(dc_data->msg);
 	dbus_connection_unref(dc_data->conn);
+	hdp_application_unref(dc_data->app);
 
 	g_free(dc_data);
 }
@@ -282,21 +283,10 @@ static void free_health_device(struct hdp_device *device)
 	g_free(device);
 }
 
-static void free_application(struct hdp_application *app)
-{
-	if (app->dbus_watcher)
-		g_dbus_remove_watch(connection, app->dbus_watcher);
-
-	g_free(app->oname);
-	g_free(app->description);
-	g_free(app->path);
-	g_free(app);
-}
-
 static void remove_application(struct hdp_application *app)
 {
 	DBG("Application %s deleted", app->path);
-	free_application(app);
+	hdp_application_unref(app);
 
 	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
 }
@@ -334,20 +324,21 @@ static DBusMessage *manager_create_application(DBusConnection *conn,
 
 	name = dbus_message_get_sender(msg);
 	if (!name) {
-		free_application(app);
+		hdp_application_unref(app);
 		return g_dbus_create_error(msg,
 					ERROR_INTERFACE ".HealthError",
 					"Can't get sender name");
 	}
 
 	if (!set_app_path(app)) {
-		free_application(app);
+		hdp_application_unref(app);
 		return g_dbus_create_error(msg,
 				ERROR_INTERFACE ".HealthError",
 				"Can't get a valid id for the application");
 	}
 
 	app->oname = g_strdup(name);
+	app->conn = dbus_connection_ref(conn);
 
 	applications = g_slist_prepend(applications, app);
 
@@ -393,7 +384,7 @@ static DBusMessage *manager_destroy_application(DBusConnection *conn,
 
 static void manager_path_unregister(gpointer data)
 {
-	g_slist_foreach(applications, (GFunc) free_application, NULL);
+	g_slist_foreach(applications, (GFunc) hdp_application_unref, NULL);
 
 	g_slist_free(applications);
 	applications = NULL;
@@ -708,6 +699,7 @@ static void health_channel_destroy(void *data)
 	if (hdp_chan->mdep == HDP_MDEP_ECHO)
 		free_echo_data(hdp_chan->edata);
 
+	hdp_application_unref(hdp_chan->app);
 	g_free(hdp_chan->path);
 	g_free(hdp_chan);
 }
@@ -734,7 +726,7 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 	hdp_chann->dev = dev;
 	hdp_chann->mdl = mdl;
 	hdp_chann->mdlid = mdlid;
-	hdp_chann->app = app;
+	hdp_chann->app = hdp_application_ref(app);
 
 	if (app)
 		hdp_chann->mdep = app->id;
@@ -1852,7 +1844,7 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 	data = g_new0(struct hdp_create_dc, 1);
 	data->dev = device;
 	data->config = config;
-	data->app = app;
+	data->app = hdp_application_ref(app);
 	data->msg = dbus_message_ref(msg);
 	data->conn = dbus_connection_ref(conn);
 	data->cb = hdp_mdl_conn_cb;
