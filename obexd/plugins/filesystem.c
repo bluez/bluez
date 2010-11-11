@@ -474,7 +474,7 @@ static void *pcsuite_open(const char *name, int oflag, mode_t mode,
 	return append_listing(object, name, TRUE, size, err);
 }
 
-int string_free(void *object)
+static int string_free(void *object)
 {
 	GString *string = object;
 

@@ -21,5 +21,4 @@
  *
  */
 
-int string_free(void *object);
 ssize_t string_read(void *object, void *buf, size_t count);
