@@ -121,6 +121,7 @@ struct hdp_channel {
 	uint8_t			mdep;		/* Remote MDEP */
 	uint16_t		mdlid;		/* Data channel Id */
 	struct hdp_echo_data	*edata;		/* private data used by echo channels */
+	gint			ref;		/* Reference counter */
 };
 
 #endif /* __HDP_TYPES_H__ */
