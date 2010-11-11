@@ -612,7 +612,6 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 	if (path == NULL)
 		return -EBADR;
 
-	pbap->params = params;
 	ret = obex_get_stream_start(os, path);
 
 	g_free(path);
