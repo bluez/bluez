@@ -125,7 +125,6 @@ struct aparam_header {
 struct cache {
 	gboolean valid;
 	uint32_t index;
-	char *folder;
 	GSList *entries;
 };
 
@@ -214,7 +213,6 @@ static const char *cache_find(struct cache *cache, uint32_t handle)
 
 static void cache_clear(struct cache *cache)
 {
-	g_free(cache->folder);
 	g_slist_foreach(cache->entries, (GFunc) cache_entry_free, NULL);
 	g_slist_free(cache->entries);
 	cache->entries = NULL;
