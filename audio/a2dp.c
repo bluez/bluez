@@ -160,7 +160,7 @@ static gboolean finalize_config(struct a2dp_setup *s)
 	struct avdtp_stream *stream = s->err ? NULL : s->stream;
 
 	setup_ref(s);
-	for (l = s->cb; l != NULL; ){
+	for (l = s->cb; l != NULL; ) {
 		struct a2dp_setup_cb *cb = l->data;
 
 		l = l->next;
