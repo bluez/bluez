@@ -190,7 +190,7 @@ EXTRA_DIST += test/apitest test/hsplay test/hsmicro test/dbusdef.py \
 		test/test-service test/test-serial test/test-telephony \
 		test/test-network test/simple-agent test/simple-service \
 		test/simple-endpoint test/test-audio test/test-input \
-		test/service-record.dtd test/service-did.xml \
+		test/test-attrib test/service-record.dtd test/service-did.xml \
 		test/service-spp.xml test/service-opp.xml test/service-ftp.xml
 
 
