@@ -210,7 +210,6 @@ struct btd_adapter_ops {
 	int (*read_local_version) (int index, struct hci_version *ver);
 	int (*read_local_features) (int index, uint8_t *features);
 	int (*read_local_ext_features) (int index);
-	int (*init_ssp_mode) (int index, uint8_t *ssp_mode);
 	int (*read_link_policy) (int index);
 	int (*disconnect) (int index, uint16_t handle);
 	int (*remove_bonding) (int index, bdaddr_t *bdaddr);

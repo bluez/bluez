@@ -2433,12 +2433,6 @@ int adapter_start(struct btd_adapter *adapter)
 
 	memcpy(dev->features, features, 8);
 
-	if (!(features[6] & LMP_SIMPLE_PAIR))
-		goto setup;
-
-	adapter_ops->init_ssp_mode(adapter->dev_id, &dev->ssp_mode);
-
-setup:
 	adapter_ops->read_link_policy(adapter->dev_id);
 
 	adapter->current_cod = 0;

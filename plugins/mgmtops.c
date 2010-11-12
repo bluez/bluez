@@ -688,12 +688,6 @@ static int mgmt_read_local_ext_features(int index)
 	return -ENOSYS;
 }
 
-static int mgmt_init_ssp_mode(int index, uint8_t *mode)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
 static int mgmt_read_link_policy(int index)
 {
 	DBG("index %d", index);
@@ -828,7 +822,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.read_local_version = mgmt_read_local_version,
 	.read_local_features = mgmt_read_local_features,
 	.read_local_ext_features = mgmt_read_local_ext_features,
-	.init_ssp_mode = mgmt_init_ssp_mode,
 	.read_link_policy = mgmt_read_link_policy,
 	.disconnect = mgmt_disconnect,
 	.remove_bonding = mgmt_remove_bonding,

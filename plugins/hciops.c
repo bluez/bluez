@@ -253,6 +253,24 @@ static uint8_t get_inquiry_mode(int index)
 	return 0;
 }
 
+static int init_ssp_mode(int index)
+{
+	write_simple_pairing_mode_cp cp;
+
+	if (ioctl(SK(index), HCIGETAUTHINFO, NULL) < 0 && errno == EINVAL)
+		return 0;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.mode = 0x01;
+
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
+				OCF_WRITE_SIMPLE_PAIRING_MODE,
+				WRITE_SIMPLE_PAIRING_MODE_CP_SIZE, &cp) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static void start_adapter(int index)
 {
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
@@ -293,6 +311,9 @@ static void start_adapter(int index)
 		hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_SET_EVENT_MASK,
 						sizeof(events), events);
 	}
+
+	if (FEATURES(index)[6] & LMP_SIMPLE_PAIR)
+		init_ssp_mode(index);
 
 	inqmode = get_inquiry_mode(index);
 	if (inqmode)
@@ -2208,24 +2229,6 @@ static int hciops_read_local_ext_features(int index)
 	return 0;
 }
 
-static int hciops_init_ssp_mode(int index, uint8_t *mode)
-{
-	write_simple_pairing_mode_cp cp;
-
-	if (ioctl(SK(index), HCIGETAUTHINFO, NULL) < 0 && errno == EINVAL)
-		return 0;
-
-	memset(&cp, 0, sizeof(cp));
-	cp.mode = 0x01;
-
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
-				OCF_WRITE_SIMPLE_PAIRING_MODE,
-				WRITE_SIMPLE_PAIRING_MODE_CP_SIZE, &cp) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_read_link_policy(int index)
 {
 	if (hci_send_cmd(SK(index), OGF_LINK_POLICY,
@@ -2488,7 +2491,6 @@ static struct btd_adapter_ops hci_ops = {
 	.read_local_version = hciops_read_local_version,
 	.read_local_features = hciops_read_local_features,
 	.read_local_ext_features = hciops_read_local_ext_features,
-	.init_ssp_mode = hciops_init_ssp_mode,
 	.read_link_policy = hciops_read_link_policy,
 	.disconnect = hciops_disconnect,
 	.remove_bonding = hciops_remove_bonding,
