@@ -98,7 +98,7 @@ struct mcap_mcl {
 	struct mcap_mdl_cb	*cb;		/* MDL callbacks */
 	guint			tid;		/* Timer id for waiting for a response */
 	uint8_t			*lcmd;		/* Last command sent */
-	guint			ref;		/* References counter */
+	gint			ref;		/* References counter */
 	uint8_t			ctrl;		/* MCL control flag */
 	uint16_t		next_mdl;	/* id used to create next MDL */
 	struct mcap_csp		*csp;		/* CSP control structure */
