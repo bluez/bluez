@@ -583,12 +583,12 @@ static void device_reconnect_mdl_cb(struct mcap_mdl *mdl, GError *err,
 					ERROR_INTERFACE ".HealthError",
 					"Cannot reconnect: %s", gerr->message);
 	g_dbus_send_message(dc_data->conn, reply);
+	hdp_tmp_dc_data_unref(dc_data);
 	g_error_free(gerr);
 	gerr = NULL;
 
 	/* Send abort request because remote side is now in PENDING state */
-	if (!mcap_mdl_abort(dc_data->hdp_chann->mdl, abort_mdl_cb,
-					NULL, NULL, &gerr)) {
+	if (!mcap_mdl_abort(mdl, abort_mdl_cb, NULL, NULL, &gerr)) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
 	}
@@ -1714,8 +1714,7 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 	hdp_tmp_dc_data_unref(hdp_conn);
 
 	/* Send abort request because remote side is now in PENDING state */
-	if (!mcap_mdl_abort(hdp_chan->mdl, abort_mdl_cb, NULL, NULL,
-								&gerr)) {
+	if (!mcap_mdl_abort(mdl, abort_mdl_cb, NULL, NULL, &gerr)) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
 	}
