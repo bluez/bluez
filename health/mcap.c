@@ -1502,10 +1502,10 @@ static void post_process_rsp(struct mcap_mcl *mcl, struct mcap_mdl_op_cb *op)
 
 	if (mcl->priv_data != op) {
 		/* Queued MCAP request in some callback. */
-		/* We sould not delete the mcl private data */
+		/* We should not delete the mcl private data */
 		g_free(op);
 	} else {
-		/* This is not queued requets. It's safe */
+		/* This is not a queued request. It's safe */
 		/* delete the mcl private data here. */
 		g_free(mcl->priv_data);
 		mcl->priv_data = NULL;
