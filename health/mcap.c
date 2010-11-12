@@ -1413,6 +1413,7 @@ static gboolean process_md_abort_mdl_rsp(struct mcap_mcl *mcl,
 
 	if (len >= sizeof(mcap_rsp) && rsp->rc == MCAP_INVALID_MDL) {
 		mcl->mdls = g_slist_remove(mcl->mdls, mdl);
+		mcl->cb->mdl_deleted(mdl, mcl->cb->user_data);
 		free_mdl(mdl);
 	}
 
