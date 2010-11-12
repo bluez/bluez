@@ -879,6 +879,23 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 		start_adapter(index);
 }
 
+static void read_tx_power_complete(int index, void *ptr)
+{
+	read_inq_response_tx_power_level_rp *rp = ptr;
+	struct btd_adapter *adapter;
+
+	if (rp->status)
+		return;
+
+	adapter = manager_find_adapter(&BDADDR(index));
+	if (!adapter) {
+		error("No matching adapter found");
+		return;
+	}
+
+	adapter_update_tx_power(adapter, rp->level);
+}
+
 static void read_simple_pairing_mode_complete(int index, void *ptr)
 {
 	read_simple_pairing_mode_rp *rp = ptr;
@@ -1028,7 +1045,7 @@ static inline void cmd_complete(int index, void *ptr)
 	case cmd_opcode_pack(OGF_HOST_CTL,
 					OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL):
 		ptr += sizeof(evt_cmd_complete);
-		adapter_update_tx_power(&BDADDR(index), status, ptr);
+		read_tx_power_complete(index, ptr);
 		break;
 	};
 }

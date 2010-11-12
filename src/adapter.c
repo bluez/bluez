@@ -998,20 +998,9 @@ void adapter_set_class_complete(bdaddr_t *bdaddr, uint8_t status)
 		adapter->pending_cod = adapter->wanted_cod;
 }
 
-void adapter_update_tx_power(bdaddr_t *bdaddr, uint8_t status, void *ptr)
+void adapter_update_tx_power(struct btd_adapter *adapter, int8_t tx_power)
 {
-	struct btd_adapter *adapter;
-
-	if (status)
-		return;
-
-	adapter = manager_find_adapter(bdaddr);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
-
-	adapter->tx_power = *((int8_t *) ptr);
+	adapter->tx_power = tx_power;
 
 	DBG("inquiry respone tx power level is %d", adapter->tx_power);
 
