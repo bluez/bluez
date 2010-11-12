@@ -625,24 +625,6 @@ static int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_set_event_mask(int index, uint8_t *events, size_t count)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
-static int mgmt_write_inq_mode(int index, uint8_t mode)
-{
-	DBG("index %d mode %u", index, mode);
-	return -ENOSYS;
-}
-
-static int mgmt_read_inq_tx_pwr(int index)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
 static int mgmt_block_device(int index, bdaddr_t *bdaddr)
 {
 	char addr[18];
@@ -840,9 +822,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.get_conn_handle = mgmt_conn_handle,
 	.write_eir_data = mgmt_write_eir_data,
 	.read_bdaddr = mgmt_read_bdaddr,
-	.set_event_mask = mgmt_set_event_mask,
-	.write_inq_mode = mgmt_write_inq_mode,
-	.read_inq_tx_pwr = mgmt_read_inq_tx_pwr,
 	.block_device = mgmt_block_device,
 	.unblock_device = mgmt_unblock_device,
 	.get_conn_list = mgmt_get_conn_list,

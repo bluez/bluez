@@ -208,6 +208,103 @@ failed:
 	return FALSE;
 }
 
+static int write_inq_mode(int index, uint8_t mode)
+{
+	write_inquiry_mode_cp cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.mode = mode;
+
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
+					WRITE_INQUIRY_MODE_CP_SIZE, &cp) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static uint8_t get_inquiry_mode(int index)
+{
+	if (FEATURES(index)[6] & LMP_EXT_INQ)
+		return 2;
+
+	if (FEATURES(index)[3] & LMP_RSSI_INQ)
+		return 1;
+
+	if (VER(index).manufacturer == 11 && VER(index).hci_rev == 0x00 &&
+					VER(index).lmp_subver == 0x0757)
+		return 1;
+
+	if (VER(index).manufacturer == 15) {
+		if (VER(index).hci_rev == 0x03 &&
+					VER(index).lmp_subver == 0x6963)
+			return 1;
+		if (VER(index).hci_rev == 0x09 &&
+					VER(index).lmp_subver == 0x6963)
+			return 1;
+		if (VER(index).hci_rev == 0x00 &&
+					VER(index).lmp_subver == 0x6965)
+			return 1;
+	}
+
+	if (VER(index).manufacturer == 31 && VER(index).hci_rev == 0x2005 &&
+					VER(index).lmp_subver == 0x1805)
+		return 1;
+
+	return 0;
+}
+
+static void start_adapter(int index)
+{
+	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
+	uint8_t inqmode;
+
+	if (VER(index).lmp_ver > 1) {
+		if (FEATURES(index)[5] & LMP_SNIFF_SUBR)
+			events[5] |= 0x20;
+
+		if (FEATURES(index)[5] & LMP_PAUSE_ENC)
+			events[5] |= 0x80;
+
+		if (FEATURES(index)[6] & LMP_EXT_INQ)
+			events[5] |= 0x40;
+
+		if (FEATURES(index)[6] & LMP_NFLUSH_PKTS)
+			events[7] |= 0x01;
+
+		if (FEATURES(index)[7] & LMP_LSTO)
+			events[6] |= 0x80;
+
+		if (FEATURES(index)[6] & LMP_SIMPLE_PAIR) {
+			events[6] |= 0x01;	/* IO Capability Request */
+			events[6] |= 0x02;	/* IO Capability Response */
+			events[6] |= 0x04;	/* User Confirmation Request */
+			events[6] |= 0x08;	/* User Passkey Request */
+			events[6] |= 0x10;	/* Remote OOB Data Request */
+			events[6] |= 0x20;	/* Simple Pairing Complete */
+			events[7] |= 0x04;	/* User Passkey Notification */
+			events[7] |= 0x08;	/* Keypress Notification */
+			events[7] |= 0x10;	/* Remote Host Supported
+						 * Features Notification */
+		}
+
+		if (FEATURES(index)[4] & LMP_LE)
+			events[7] |= 0x20;	/* LE Meta-Event */
+
+		hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_SET_EVENT_MASK,
+						sizeof(events), events);
+	}
+
+	inqmode = get_inquiry_mode(index);
+	if (inqmode)
+		write_inq_mode(index, inqmode);
+
+	if (FEATURES(index)[7] & LMP_INQ_TX_PWR)
+		hci_send_cmd(SK(index), OGF_HOST_CTL,
+				OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL);
+
+	manager_start_adapter(index);
+}
+
 static int hciops_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 							gpointer user_data)
 {
@@ -721,7 +818,7 @@ static void read_local_version_complete(int index,
 	DBG("Got version for hci%d", index);
 
 	if (!PENDING(index) && UP(index))
-		manager_start_adapter(index);
+		start_adapter(index);
 }
 
 static void read_local_features_complete(int index,
@@ -740,7 +837,7 @@ static void read_local_features_complete(int index,
 	DBG("Got features for hci%d", index);
 
 	if (!PENDING(index) && UP(index))
-		manager_start_adapter(index);
+		start_adapter(index);
 }
 
 static void read_local_name_complete(int index, read_local_name_rp *rp)
@@ -758,7 +855,7 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 	DBG("Got name for hci%d", index);
 
 	if (!PENDING(index) && UP(index))
-		manager_start_adapter(index);
+		start_adapter(index);
 }
 
 static void read_local_ext_features_complete(bdaddr_t *sba,
@@ -797,7 +894,7 @@ static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
 	DBG("Got bdaddr for hci%d", index);
 
 	if (!PENDING(index) && UP(index))
-		manager_start_adapter(index);
+		start_adapter(index);
 }
 
 static inline void cmd_status(int index, void *ptr)
@@ -1396,7 +1493,7 @@ static void device_devup_setup(int index)
 			READ_STORED_LINK_KEY_CP_SIZE, (void *) &cp);
 
 	if (!PENDING(index))
-		manager_start_adapter(index);
+		start_adapter(index);
 }
 
 static void init_pending(int index)
@@ -2044,38 +2141,6 @@ static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int hciops_set_event_mask(int index, uint8_t *events, size_t count)
-{
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_SET_EVENT_MASK,
-							count, events) < 0)
-		return -errno;
-
-	return 0;
-}
-
-static int hciops_write_inq_mode(int index, uint8_t mode)
-{
-	write_inquiry_mode_cp cp;
-
-	memset(&cp, 0, sizeof(cp));
-	cp.mode = mode;
-
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
-					WRITE_INQUIRY_MODE_CP_SIZE, &cp) < 0)
-		return -errno;
-
-	return 0;
-}
-
-static int hciops_read_inq_tx_pwr(int index)
-{
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
-			OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_block_device(int index, bdaddr_t *bdaddr)
 {
 	if (ioctl(SK(index), HCIBLOCKADDR, bdaddr) < 0)
@@ -2417,9 +2482,6 @@ static struct btd_adapter_ops hci_ops = {
 	.get_conn_handle = hciops_conn_handle,
 	.write_eir_data = hciops_write_eir_data,
 	.read_bdaddr = hciops_read_bdaddr,
-	.set_event_mask = hciops_set_event_mask,
-	.write_inq_mode = hciops_write_inq_mode,
-	.read_inq_tx_pwr = hciops_read_inq_tx_pwr,
 	.block_device = hciops_block_device,
 	.unblock_device = hciops_unblock_device,
 	.get_conn_list = hciops_get_conn_list,

@@ -204,9 +204,6 @@ struct btd_adapter_ops {
 	int (*get_conn_handle) (int index, const bdaddr_t *bdaddr, int *handle);
 	int (*write_eir_data) (int index, uint8_t *data);
 	int (*read_bdaddr) (int index, bdaddr_t *bdaddr);
-	int (*set_event_mask) (int index, uint8_t *events, size_t count);
-	int (*write_inq_mode) (int index, uint8_t mode);
-	int (*read_inq_tx_pwr) (int index);
 	int (*block_device) (int index, bdaddr_t *bdaddr);
 	int (*unblock_device) (int index, bdaddr_t *bdaddr);
 	int (*get_conn_list) (int index, GSList **conns);

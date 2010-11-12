@@ -1992,92 +1992,12 @@ static GDBusSignalTable adapter_signals[] = {
 	{ }
 };
 
-static inline uint8_t get_inquiry_mode(struct hci_dev *dev)
-{
-	if (dev->features[6] & LMP_EXT_INQ)
-		return 2;
-
-	if (dev->features[3] & LMP_RSSI_INQ)
-		return 1;
-
-	if (dev->manufacturer == 11 &&
-			dev->hci_rev == 0x00 && dev->lmp_subver == 0x0757)
-		return 1;
-
-	if (dev->manufacturer == 15) {
-		if (dev->hci_rev == 0x03 && dev->lmp_subver == 0x6963)
-			return 1;
-		if (dev->hci_rev == 0x09 && dev->lmp_subver == 0x6963)
-			return 1;
-		if (dev->hci_rev == 0x00 && dev->lmp_subver == 0x6965)
-			return 1;
-	}
-
-	if (dev->manufacturer == 31 &&
-			dev->hci_rev == 0x2005 && dev->lmp_subver == 0x1805)
-		return 1;
-
-	return 0;
-}
-
 static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 {
 	struct hci_dev *dev = &adapter->dev;
-	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
-	uint8_t inqmode;
 	int err;
 	char name[MAX_NAME_LENGTH + 1];
 	uint8_t cls[3];
-
-	if (dev->lmp_ver > 1) {
-		if (dev->features[5] & LMP_SNIFF_SUBR)
-			events[5] |= 0x20;
-
-		if (dev->features[5] & LMP_PAUSE_ENC)
-			events[5] |= 0x80;
-
-		if (dev->features[6] & LMP_EXT_INQ)
-			events[5] |= 0x40;
-
-		if (dev->features[6] & LMP_NFLUSH_PKTS)
-			events[7] |= 0x01;
-
-		if (dev->features[7] & LMP_LSTO)
-			events[6] |= 0x80;
-
-		if (dev->features[6] & LMP_SIMPLE_PAIR) {
-			events[6] |= 0x01;	/* IO Capability Request */
-			events[6] |= 0x02;	/* IO Capability Response */
-			events[6] |= 0x04;	/* User Confirmation Request */
-			events[6] |= 0x08;	/* User Passkey Request */
-			events[6] |= 0x10;	/* Remote OOB Data Request */
-			events[6] |= 0x20;	/* Simple Pairing Complete */
-			events[7] |= 0x04;	/* User Passkey Notification */
-			events[7] |= 0x08;	/* Keypress Notification */
-			events[7] |= 0x10;	/* Remote Host Supported
-						 * Features Notification */
-		}
-
-		if (dev->features[4] & LMP_LE)
-			events[7] |= 0x20;	/* LE Meta-Event */
-
-		adapter_ops->set_event_mask(adapter->dev_id, events,
-							sizeof(events));
-	}
-
-	inqmode = get_inquiry_mode(dev);
-	if (inqmode < 1)
-		return 0;
-
-	err = adapter_ops->write_inq_mode(adapter->dev_id, inqmode);
-	if (err < 0) {
-		error("Can't write inquiry mode for %s: %s (%d)",
-					adapter->path, strerror(-err), -err);
-		return err;
-	}
-
-	if (dev->features[7] & LMP_INQ_TX_PWR)
-		adapter_ops->read_inq_tx_pwr(adapter->dev_id);
 
 	if ((dev->features[4] & LMP_LE) && main_opts.le) {
 		uint8_t simul = (dev->features[6] & LMP_LE_BREDR) ? 0x01 : 0x00;
