@@ -70,7 +70,6 @@ enum {
 #define BDADDR(index) devs[(index)].bdaddr
 #define FEATURES(index) devs[(index)].features
 #define VER(index) devs[(index)].ver
-#define NAME(index) devs[(index)].name
 #define UP(index) devs[(index)].up
 #define PENDING(index) devs[(index)].pending
 #define CHANNEL(index) devs[(index)].channel
@@ -83,7 +82,6 @@ static struct dev_info {
 	bdaddr_t bdaddr;
 	uint8_t features[8];
 	struct hci_version ver;
-	char name[248];
 
 	gboolean up;
 	unsigned long pending;
@@ -749,8 +747,6 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 {
 	if (rp->status)
 		return;
-
-	memcpy(NAME(index), rp->name, 248);
 
 	if (!PENDING(index)) {
 		adapter_update_local_name(&BDADDR(index), rp);
