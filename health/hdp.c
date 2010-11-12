@@ -1290,8 +1290,10 @@ static void release_adapter_instance(struct hdp_adapter *hdp_adapter)
 {
 	if (!hdp_adapter->mi)
 		return;
+
 	check_devices_mcl();
 	mcap_release_instance(hdp_adapter->mi);
+	mcap_instance_unref(hdp_adapter->mi);
 	hdp_adapter->mi = NULL;
 }
 

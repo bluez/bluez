@@ -207,8 +207,10 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 					mcap_info_ind_event_cb mcl_sync_info_ind,
 					gpointer user_data,
 					GError **gerr);
-
 void mcap_release_instance(struct mcap_instance *mi);
+
+struct mcap_instance *mcap_instance_ref(struct mcap_instance *mi);
+void mcap_instance_unref(struct mcap_instance *mi);
 
 uint16_t mcap_get_ctrl_psm(struct mcap_instance *mi, GError **err);
 uint16_t mcap_get_data_psm(struct mcap_instance *mi, GError **err);

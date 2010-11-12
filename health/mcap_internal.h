@@ -78,6 +78,7 @@ struct mcap_instance {
 	mcap_mcl_event_cb	mcl_uncached_cb;	/* MCL has been removed from MCAP cache */
 	mcap_info_ind_event_cb	mcl_sync_infoind_cb;	/* (CSP Master) Received info indication */
 	gpointer		user_data;		/* Data to be provided in callbacks */
+	gint			ref;			/* Reference counter */
 
 	gboolean		csp_enabled;		/* CSP: functionality enabled */
 };

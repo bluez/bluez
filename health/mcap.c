@@ -859,7 +859,7 @@ void mcap_mcl_unref(struct mcap_mcl *mcl)
 		return;
 
 	mcap_mcl_release(mcl);
-
+	mcap_instance_unref(mcl->ms);
 	g_free(mcl->cb);
 	g_free(mcl);
 }
@@ -1830,7 +1830,7 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 	mcl = find_mcl(ms->cached, addr);
 	if (!mcl) {
 		mcl = g_new0(struct mcap_mcl, 1);
-		mcl->ms = ms;
+		mcl->ms = mcap_instance_ref(ms);
 		mcl->state = MCL_IDLE;
 		bacpy(&mcl->addr, addr);
 		set_default_cb(mcl);
@@ -1969,7 +1969,7 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *gerr,
 	mcl = find_mcl(ms->cached, &dst);
 	if (!mcl) {
 		mcl = g_new0(struct mcap_mcl, 1);
-		mcl->ms = ms;
+		mcl->ms = mcap_instance_ref(ms);
 		bacpy(&mcl->addr, &dst);
 		set_default_cb(mcl);
 		mcl->next_mdl = (rand() % MCAP_MDLID_FINAL) + 1;
@@ -2058,7 +2058,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 	/* Initialize random seed to generate mdlids for this instance */
 	srand(time(NULL));
 
-	return ms;
+	return mcap_instance_ref(ms);;
 }
 
 void mcap_release_instance(struct mcap_instance *mi)
@@ -2084,6 +2084,7 @@ void mcap_release_instance(struct mcap_instance *mi)
 		mcap_mcl_release(l->data);
 		mcap_mcl_unref(l->data);
 	}
+
 	g_slist_free(mi->mcls);
 	mi->mcls = NULL;
 
@@ -2091,9 +2092,30 @@ void mcap_release_instance(struct mcap_instance *mi)
 		mcap_mcl_release(l->data);
 		mcap_mcl_unref(l->data);
 	}
+
 	g_slist_free(mi->cached);
 	mi->cached = NULL;
+}
 
+struct mcap_instance *mcap_instance_ref(struct mcap_instance *mi)
+{
+	mi->ref++;
+
+	DBG("mcap_instance_ref(%p): ref=%d", mi, mi->ref);
+
+	return mi;
+}
+
+void mcap_instance_unref(struct mcap_instance *mi)
+{
+	mi->ref--;
+
+	DBG("mcap_instance_unref(%p): ref=%d", mi, mi->ref);
+
+	if (mi->ref > 0)
+		return;
+
+	mcap_release_instance(mi);
 	g_free(mi);
 }
 
