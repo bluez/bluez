@@ -128,7 +128,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 				uint8_t *eir_data, size_t eir_length);
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
 void adapter_update_tx_power(struct btd_adapter *adapter, int8_t tx_power);
-void adapter_update_local_name(bdaddr_t *bdaddr, void *ptr);
+void adapter_update_local_name(struct btd_adapter *adapter, const char *name);
 void adapter_service_insert(const bdaddr_t *bdaddr, void *rec);
 void adapter_service_remove(const bdaddr_t *bdaddr, void *rec);
 sdp_list_t *adapter_get_services(struct btd_adapter *adapter);

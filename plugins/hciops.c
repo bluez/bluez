@@ -861,13 +861,22 @@ static void read_local_features_complete(int index,
 		start_adapter(index);
 }
 
+static void update_name(int index, const char *name)
+{
+	struct btd_adapter *adapter;
+
+	adapter = manager_find_adapter(&BDADDR(index));
+	if (adapter)
+		adapter_update_local_name(adapter, name);
+}
+
 static void read_local_name_complete(int index, read_local_name_rp *rp)
 {
 	if (rp->status)
 		return;
 
 	if (!PENDING(index)) {
-		adapter_update_local_name(&BDADDR(index), rp);
+		update_name(index, (char *) rp->name);
 		return;
 	}
 

@@ -1007,37 +1007,24 @@ void adapter_update_tx_power(struct btd_adapter *adapter, int8_t tx_power)
 	update_ext_inquiry_response(adapter);
 }
 
-void adapter_update_local_name(bdaddr_t *bdaddr, void *ptr)
+void adapter_update_local_name(struct btd_adapter *adapter, const char *name)
 {
-	read_local_name_rp rp;
-	struct hci_dev *dev;
-	struct btd_adapter *adapter;
-	gchar *name;
+	struct hci_dev *dev = &adapter->dev;
 
-	adapter = manager_find_adapter(bdaddr);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
-
-	dev = &adapter->dev;
-
-	memcpy(&rp, ptr, sizeof(rp));
-	if (strncmp((char *) rp.name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
+	if (strncmp(name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
 		return;
 
-	strncpy((char *) dev->name, (char *) rp.name, MAX_NAME_LENGTH);
+	strncpy((char *) dev->name, name, MAX_NAME_LENGTH);
 
 	if (!adapter->name_stored) {
-		write_local_name(bdaddr, (char *) dev->name);
+		char *ptr = (char *) dev->name;
 
-		name = g_strdup((char *) dev->name);
+		write_local_name(&adapter->bdaddr, (char *) dev->name);
 
 		if (connection)
 			emit_property_changed(connection, adapter->path,
 						ADAPTER_INTERFACE, "Name",
-						DBUS_TYPE_STRING, &name);
-		g_free(name);
+						DBUS_TYPE_STRING, &ptr);
 	}
 
 	adapter->name_stored = FALSE;
