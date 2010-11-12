@@ -308,8 +308,8 @@ int adapter_set_service_classes(struct btd_adapter *adapter, uint8_t value)
 
 	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
 	if (err < 0)
-		error("Adapter class update failed: %s(%d)",
-						strerror(err), err);
+		error("Adapter class update failed: %s (%d)",
+						strerror(-err), -err);
 	else
 		adapter->pending_cod = adapter->wanted_cod;
 
@@ -334,8 +334,8 @@ int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 
 	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
 	if (err < 0)
-		error("Adapter class update failed: %s(%d)",
-						strerror(err), err);
+		error("Adapter class update failed: %s (%d)",
+						strerror(-err), -err);
 	else
 		adapter->pending_cod = adapter->wanted_cod;
 
@@ -2180,8 +2180,8 @@ static void adapter_disable_cod_cache(struct btd_adapter *adapter)
 
 	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
 	if (err < 0)
-		error("Adapter class update failed: %s(%d)",
-						strerror(err), err);
+		error("Adapter class update failed: %s (%d)",
+						strerror(-err), -err);
 	else
 		adapter->pending_cod = adapter->wanted_cod;
 }
