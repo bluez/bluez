@@ -33,7 +33,6 @@ void btd_event_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t
 void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t status);
 void btd_event_setscan_enable_complete(bdaddr_t *local);
 void btd_event_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status);
-void btd_event_write_simple_pairing_mode_complete(bdaddr_t *local);
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer);
 int btd_event_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
 						uint8_t *cap, uint8_t *auth);
