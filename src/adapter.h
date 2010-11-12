@@ -220,7 +220,6 @@ struct btd_adapter_ops {
 	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint32_t passkey);
 	int (*get_auth_info) (int index, bdaddr_t *bdaddr, uint8_t *auth);
 	int (*read_scan_enable) (int index);
-	int (*read_ssp_mode) (int index);
 	int (*write_le_host) (int index, uint8_t le, uint8_t simul);
 	int (*get_remote_version) (int index, uint16_t handle,
 						gboolean delayed);
@@ -274,7 +273,6 @@ int btd_adapter_get_auth_info(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 
 int btd_adapter_read_scan_enable(struct btd_adapter *adapter);
 
-int btd_adapter_read_ssp_mode(struct btd_adapter *adapter);
 int btd_adapter_read_local_ext_features(struct btd_adapter *adapter);
 void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 						const uint8_t *features);

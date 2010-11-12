@@ -738,19 +738,6 @@ void btd_event_read_simple_pairing_mode_complete(bdaddr_t *local, void *ptr)
 	adapter_update_ssp_mode(adapter, rp->mode);
 }
 
-void btd_event_write_simple_pairing_mode_complete(bdaddr_t *local)
-{
-	struct btd_adapter *adapter;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	btd_adapter_read_ssp_mode(adapter);
-}
-
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;

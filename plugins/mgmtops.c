@@ -763,12 +763,6 @@ static int mgmt_read_scan_enable(int index)
 	return -ENOSYS;
 }
 
-static int mgmt_read_ssp_mode(int index)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
 static int mgmt_write_le_host(int index, uint8_t le, uint8_t simul)
 {
 	DBG("index %d le %u simul %u", index, le, simul);
@@ -831,7 +825,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.passkey_reply = mgmt_passkey_reply,
 	.get_auth_info = mgmt_get_auth_info,
 	.read_scan_enable = mgmt_read_scan_enable,
-	.read_ssp_mode = mgmt_read_ssp_mode,
 	.write_le_host = mgmt_write_le_host,
 	.get_remote_version = mgmt_get_remote_version,
 	.encrypt_link = mgmt_encrypt_link,

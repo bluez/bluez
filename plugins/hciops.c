@@ -994,7 +994,9 @@ static inline void cmd_complete(int index, void *ptr)
 		adapter_set_class_complete(&BDADDR(index), status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE):
-		btd_event_write_simple_pairing_mode_complete(&BDADDR(index));
+		if (!status)
+			hci_send_cmd(SK(index), OGF_HOST_CTL,
+					OCF_READ_SIMPLE_PAIRING_MODE, 0, NULL);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_SIMPLE_PAIRING_MODE):
 		ptr += sizeof(evt_cmd_complete);
@@ -2397,15 +2399,6 @@ static int hciops_read_scan_enable(int index)
 	return 0;
 }
 
-static int hciops_read_ssp_mode(int index)
-{
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
-				OCF_READ_SIMPLE_PAIRING_MODE, 0, NULL) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_write_le_host(int index, uint8_t le, uint8_t simul)
 {
 	write_le_host_supported_cp cp;
@@ -2500,7 +2493,6 @@ static struct btd_adapter_ops hci_ops = {
 	.passkey_reply = hciops_passkey_reply,
 	.get_auth_info = hciops_get_auth_info,
 	.read_scan_enable = hciops_read_scan_enable,
-	.read_ssp_mode = hciops_read_ssp_mode,
 	.write_le_host = hciops_write_le_host,
 	.get_remote_version = hciops_get_remote_version,
 	.encrypt_link = hciops_encrypt_link,
