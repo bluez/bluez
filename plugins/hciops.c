@@ -55,10 +55,22 @@ static int child_pipe[2] = { -1, -1 };
 static guint child_io_id = 0;
 static guint ctl_io_id = 0;
 
+/* Commands sent by kernel on starting an adapter */
+enum {
+	PENDING_BDADDR,
+	PENDING_VERSION,
+	PENDING_FEATURES,
+};
+
+#define set_bit(nr, addr) (*(addr) |= (1 << (nr)))
+#define clear_bit(nr, addr) (*(addr) &= ~(1 << (nr)))
+
 #define SK(index) devs[(index)].sk
 #define BDADDR(index) devs[(index)].bdaddr
+#define FEATURES(index) devs[(index)].features
+#define VER(index) devs[(index)].ver
 #define UP(index) devs[(index)].up
-#define READY(index) devs[(index)].ready
+#define PENDING(index) devs[(index)].pending
 #define CHANNEL(index) devs[(index)].channel
 #define WATCH_ID(index) devs[(index)].watch_id
 #define PIN_LENGTH(index) devs[(index)].pin_length
@@ -67,8 +79,11 @@ static int max_dev = -1;
 static struct dev_info {
 	int sk;
 	bdaddr_t bdaddr;
+	uint8_t features[8];
+	struct hci_version ver;
+
 	gboolean up;
-	gboolean ready;
+	unsigned long pending;
 
 	GIOChannel *channel;
 	guint watch_id;
@@ -685,6 +700,48 @@ static void write_le_host_complete(bdaddr_t *sba, uint8_t status)
 	btd_adapter_read_local_ext_features(adapter);
 }
 
+static void read_local_version_complete(int index,
+				const read_local_version_rp *rp)
+{
+	if (rp->status)
+		return;
+
+	VER(index).manufacturer = btohs(bt_get_unaligned(&rp->manufacturer));
+	VER(index).hci_ver = rp->hci_ver;
+	VER(index).hci_rev = btohs(bt_get_unaligned(&rp->hci_rev));
+	VER(index).lmp_ver = rp->lmp_ver;
+	VER(index).lmp_subver = btohs(bt_get_unaligned(&rp->lmp_subver));
+
+	if (!PENDING(index))
+		return;
+
+	clear_bit(PENDING_VERSION, &PENDING(index));
+
+	DBG("Got version for hci%d", index);
+
+	if (!PENDING(index) && UP(index))
+		manager_start_adapter(index);
+}
+
+static void read_local_features_complete(int index,
+				const read_local_features_rp *rp)
+{
+	if (rp->status)
+		return;
+
+	memcpy(FEATURES(index), rp->features, 8);
+
+	if (!PENDING(index))
+		return;
+
+	clear_bit(PENDING_FEATURES, &PENDING(index));
+
+	DBG("Got features for hci%d", index);
+
+	if (!PENDING(index) && UP(index))
+		manager_start_adapter(index);
+}
+
 static void read_local_ext_features_complete(bdaddr_t *sba,
 				const read_local_ext_features_rp *rp)
 {
@@ -713,14 +770,14 @@ static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
 
 	bacpy(&BDADDR(index), &rp->bdaddr);
 
-	if (READY(index))
+	if (!PENDING(index))
 		return;
 
-	READY(index) = TRUE;
+	clear_bit(PENDING_BDADDR, &PENDING(index));
 
 	DBG("Got bdaddr for hci%d", index);
 
-	if (UP(index))
+	if (!PENDING(index) && UP(index))
 		manager_start_adapter(index);
 }
 
@@ -755,6 +812,14 @@ static inline void cmd_complete(int index, void *ptr)
 	uint8_t status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
 
 	switch (opcode) {
+	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_LOCAL_VERSION):
+		ptr += sizeof(evt_cmd_complete);
+		read_local_version_complete(index, ptr);
+		break;
+	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_LOCAL_FEATURES):
+		ptr += sizeof(evt_cmd_complete);
+		read_local_features_complete(index, ptr);
+		break;
 	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_LOCAL_EXT_FEATURES):
 		ptr += sizeof(evt_cmd_complete);
 		read_local_ext_features_complete(&BDADDR(index), ptr);
@@ -1290,6 +1355,7 @@ static void device_devup_setup(int index)
 		return;
 
 	bacpy(&BDADDR(index), &di.bdaddr);
+	memcpy(FEATURES(index), di.features, 8);
 
 	/* Set page timeout */
 	if ((main_opts.flags & (1 << HCID_SET_PAGETO))) {
@@ -1310,8 +1376,15 @@ static void device_devup_setup(int index)
 	hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_READ_STORED_LINK_KEY,
 			READ_STORED_LINK_KEY_CP_SIZE, (void *) &cp);
 
-	if (READY(index))
+	if (!PENDING(index))
 		manager_start_adapter(index);
+}
+
+static void init_pending(int index)
+{
+	set_bit(PENDING_BDADDR, &PENDING(index));
+	set_bit(PENDING_VERSION, &PENDING(index));
+	set_bit(PENDING_FEATURES, &PENDING(index));
 }
 
 static void init_device(int index)
@@ -1334,6 +1407,7 @@ static void init_device(int index)
 	}
 
 	init_dev_info(index, dd);
+	init_pending(index);
 	start_hci_dev(index);
 
 	/* Do initialization in the separate process */
@@ -1428,9 +1502,9 @@ static void device_event(int event, int index)
 	case HCI_DEV_DOWN:
 		info("HCI dev %d down", index);
 		UP(index) = FALSE;
-		if (READY(index)) {
+		if (!PENDING(index)) {
 			manager_stop_adapter(index);
-			READY(index) = FALSE;
+			init_pending(index);
 		}
 		break;
 	}
@@ -1464,10 +1538,14 @@ static gboolean init_known_adapters(gpointer user_data)
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		device_event(HCI_DEV_REG, dr->dev_id);
 
-		if (hci_test_bit(HCI_UP, &dr->dev_opt)) {
-			READY(dr->dev_id) = TRUE;
-			device_event(HCI_DEV_UP, dr->dev_id);
-		}
+		if (!hci_test_bit(HCI_UP, &dr->dev_opt))
+			continue;
+
+		PENDING(dr->dev_id) = 0;
+		set_bit(PENDING_VERSION, &PENDING(dr->dev_id));
+		hci_send_cmd(SK(dr->dev_id), OGF_INFO_PARAM,
+					OCF_READ_LOCAL_VERSION, 0, NULL);
+		device_event(HCI_DEV_UP, dr->dev_id);
 	}
 
 	g_free(dl);
@@ -2024,17 +2102,13 @@ fail:
 
 static int hciops_read_local_version(int index, struct hci_version *ver)
 {
-	if (hci_read_local_version(SK(index), ver, HCI_REQ_TIMEOUT) < 0)
-		return -errno;
-
+	memcpy(ver, &VER(index), sizeof(*ver));
 	return 0;
 }
 
 static int hciops_read_local_features(int index, uint8_t *features)
 {
-	if (hci_read_local_features(SK(index), features, HCI_REQ_TIMEOUT) < 0)
-		return -errno;
-
+	memcpy(features, FEATURES(index), 8);
 	return  0;
 }
 
