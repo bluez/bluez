@@ -2479,8 +2479,6 @@ int adapter_start(struct btd_adapter *adapter)
 	if (!bacmp(&adapter->bdaddr, BDADDR_ANY)) {
 		int err;
 
-		DBG("Adapter %s without an address", adapter->path);
-
 		err = adapter_ops->read_bdaddr(adapter->dev_id, &adapter->bdaddr);
 		if (err < 0)
 			return err;
