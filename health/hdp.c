@@ -148,7 +148,7 @@ static void hdp_create_data_unref(struct hdp_create_dc *dc_data)
 {
 	dc_data->ref--;
 
-	DBG("hdp_create_data_ref(%p): ref=%d", dc_data, dc_data->ref);
+	DBG("hdp_create_data_unref(%p): ref=%d", dc_data, dc_data->ref);
 
 	if (dc_data->ref > 0)
 		return;
@@ -178,7 +178,7 @@ static void hdp_tmp_dc_data_unref(struct hdp_tmp_dc_data *data)
 {
 	data->ref--;
 
-	DBG("hdp_conn_data_ref(%p): ref=%d", data, data->ref);
+	DBG("hdp_conn_data_unref(%p): ref=%d", data, data->ref);
 
 	if (data->ref > 0)
 		return;
