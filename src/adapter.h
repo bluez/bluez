@@ -80,7 +80,7 @@ struct hci_dev {
 	uint16_t manufacturer;
 
 	uint8_t  ssp_mode;
-	uint8_t  name[MAX_NAME_LENGTH];
+	char     name[MAX_NAME_LENGTH + 1];
 };
 
 int adapter_start(struct btd_adapter *adapter);

@@ -275,8 +275,7 @@ static void update_ext_inquiry_response(struct btd_adapter *adapter)
 	memset(data, 0, sizeof(data));
 
 	if (dev->ssp_mode > 0)
-		create_ext_inquiry_response((char *) dev->name,
-						adapter->tx_power,
+		create_ext_inquiry_response(dev->name, adapter->tx_power,
 						adapter->services, data);
 
 	ret = adapter_ops->write_eir_data(adapter->dev_id, data);
@@ -1011,20 +1010,20 @@ void adapter_update_local_name(struct btd_adapter *adapter, const char *name)
 {
 	struct hci_dev *dev = &adapter->dev;
 
-	if (strncmp(name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
+	if (strncmp(name, dev->name, MAX_NAME_LENGTH) == 0)
 		return;
 
-	strncpy((char *) dev->name, name, MAX_NAME_LENGTH);
+	strncpy(dev->name, name, MAX_NAME_LENGTH);
 
 	if (!adapter->name_stored) {
-		char *ptr = (char *) dev->name;
+		char *name_ptr = dev->name;
 
-		write_local_name(&adapter->bdaddr, (char *) dev->name);
+		write_local_name(&adapter->bdaddr, dev->name);
 
 		if (connection)
 			emit_property_changed(connection, adapter->path,
 						ADAPTER_INTERFACE, "Name",
-						DBUS_TYPE_STRING, &ptr);
+						DBUS_TYPE_STRING, &name_ptr);
 	}
 
 	adapter->name_stored = FALSE;
@@ -1037,20 +1036,21 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_adapter *adapter = data;
 	struct hci_dev *dev = &adapter->dev;
+	char *name_ptr = dev->name;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
 		error("Name change failed: supplied name isn't valid UTF-8");
 		return invalid_args(msg);
 	}
 
-	if (strncmp(name, (char *) dev->name, MAX_NAME_LENGTH) == 0)
+	if (strncmp(name, dev->name, MAX_NAME_LENGTH) == 0)
 		goto done;
 
-	strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
+	strncpy(dev->name, name, MAX_NAME_LENGTH);
 	write_local_name(&adapter->bdaddr, name);
 	emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Name",
-					DBUS_TYPE_STRING, &name);
+					DBUS_TYPE_STRING, &name_ptr);
 
 	if (adapter->up) {
 		int err = adapter_ops->set_name(adapter->dev_id, name);
