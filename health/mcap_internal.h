@@ -84,6 +84,7 @@ struct mcap_instance {
 };
 
 struct mcap_csp;
+struct mcap_mdl_op_cb;
 
 struct mcap_mcl {
 	struct mcap_instance	*ms;		/* MCAP instance where this MCL belongs */
@@ -94,7 +95,7 @@ struct mcap_mcl {
 	MCLState		state;		/* Current MCL State */
 	MCLRole			role;		/* Initiator or acceptor of this MCL */
 	MCAPCtrl		req;		/* Request control flag */
-	void			*priv_data;	/* Temporal data to manage responses */
+	struct mcap_mdl_op_cb	*priv_data;	/* Temporal data to manage responses */
 	struct mcap_mdl_cb	*cb;		/* MDL callbacks */
 	guint			tid;		/* Timer id for waiting for a response */
 	uint8_t			*lcmd;		/* Last command sent */
@@ -118,6 +119,7 @@ struct mcap_mdl {
 	uint16_t		mdlid;		/* MDL id */
 	uint8_t			mdep_id;	/* MCAP Data End Point */
 	MDLState		state;		/* MDL state */
+	gint			ref;		/* References counter */
 };
 
 struct sync_info_ind_data {

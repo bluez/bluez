@@ -155,6 +155,9 @@ gboolean mcap_mdl_abort(struct mcap_mdl *mdl,
 int mcap_mdl_get_fd(struct mcap_mdl *mdl);
 uint16_t mcap_mdl_get_mdlid(struct mcap_mdl *mdl);
 
+struct mcap_mdl *mcap_mdl_ref(struct mcap_mdl *mdl);
+void mcap_mdl_unref(struct mcap_mdl *mdl);
+
 /* MCL operations */
 
 gboolean mcap_create_mcl(struct mcap_instance *ms,

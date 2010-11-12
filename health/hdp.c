@@ -105,6 +105,7 @@ static void free_health_channel(struct hdp_channel *chan)
 	if (chan->mdep == HDP_MDEP_ECHO)
 		free_echo_data(chan->edata);
 
+	mcap_mdl_unref(chan->mdl);
 	hdp_application_unref(chan->app);
 	health_device_unref(chan->dev);
 	g_free(chan->path);
@@ -763,7 +764,7 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 	hdp_chann = g_new0(struct hdp_channel, 1);
 	hdp_chann->config = config;
 	hdp_chann->dev = health_device_ref(dev);
-	hdp_chann->mdl = mdl;
+	hdp_chann->mdl = mcap_mdl_ref(mdl);
 	hdp_chann->mdlid = mdlid;
 	hdp_chann->app = hdp_application_ref(app);
 
@@ -920,7 +921,7 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 		return;
 
 	chan = dev->ndc;
-	chan->mdl = mdl;
+	chan->mdl = mcap_mdl_ref(mdl);
 
 	if (!g_slist_find(dev->channels, chan))
 		dev->channels = g_slist_prepend(dev->channels,
@@ -1004,7 +1005,7 @@ static void hdp_mcap_mdl_aborted_cb(struct mcap_mdl *mdl, void *data)
 	if (!dev->ndc)
 		return;
 
-	dev->ndc->mdl = mdl;
+	dev->ndc->mdl = mcap_mdl_ref(mdl);
 
 	if (!g_slist_find(dev->channels, dev->ndc))
 		dev->channels = g_slist_prepend(dev->channels,
@@ -1735,9 +1736,11 @@ fail:
 	/* Send abort request because remote side is now in PENDING */
 	/* state. Then we have to delete it because we couldn't */
 	/* register the HealthChannel interface */
-	if (!mcap_mdl_abort(mdl, abort_and_del_mdl_cb, mdl, NULL, &gerr)) {
+	if (!mcap_mdl_abort(mdl, abort_and_del_mdl_cb, mcap_mdl_ref(mdl), NULL,
+								&gerr)) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
+		mcap_mdl_unref(mdl);
 	}
 }
 
