@@ -127,7 +127,6 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 				struct remote_dev_info *dev,
 				uint8_t *eir_data, size_t eir_length);
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
-void adapter_setname_complete(bdaddr_t *local, uint8_t status);
 void adapter_update_tx_power(bdaddr_t *bdaddr, uint8_t status, void *ptr);
 void adapter_update_local_name(bdaddr_t *bdaddr, void *ptr);
 void adapter_service_insert(const bdaddr_t *bdaddr, void *rec);
