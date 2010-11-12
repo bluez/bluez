@@ -124,6 +124,34 @@ static struct a2dp_setup *setup_ref(struct a2dp_setup *setup)
 	return setup;
 }
 
+static struct audio_device *a2dp_get_dev(struct avdtp *session)
+{
+	bdaddr_t src, dst;
+
+	avdtp_get_peers(session, &src, &dst);
+
+	return manager_find_device(NULL, &src, &dst, NULL, FALSE);
+}
+
+static struct a2dp_setup *setup_new(struct avdtp *session)
+{
+	struct audio_device *dev;
+	struct a2dp_setup *setup;
+
+	dev = a2dp_get_dev(session);
+	if (!dev) {
+		error("Unable to create setup");
+		return NULL;
+	}
+
+	setup = g_new0(struct a2dp_setup, 1);
+	setup->session = avdtp_ref(session);
+	setup->dev = a2dp_get_dev(session);
+	setups = g_slist_append(setups, setup);
+
+	return setup;
+}
+
 static void setup_free(struct a2dp_setup *s)
 {
 	DBG("%p", s);
@@ -143,15 +171,6 @@ static void setup_unref(struct a2dp_setup *setup)
 
 	if (setup->ref <= 0)
 		setup_free(setup);
-}
-
-static struct audio_device *a2dp_get_dev(struct avdtp *session)
-{
-	bdaddr_t src, dst;
-
-	avdtp_get_peers(session, &src, &dst);
-
-	return manager_find_device(NULL, &src, &dst, NULL, FALSE);
 }
 
 static gboolean finalize_config(struct a2dp_setup *s)
@@ -285,6 +304,20 @@ static struct a2dp_setup *find_setup_by_session(struct avdtp *session)
 	return NULL;
 }
 
+static struct a2dp_setup *a2dp_setup_get(struct avdtp *session)
+{
+	struct a2dp_setup *setup;
+
+	setup = find_setup_by_session(session);
+	if (!setup) {
+		setup = setup_new(session);
+		if (!setup)
+			return NULL;
+	}
+
+	return setup_ref(setup);
+}
+
 static struct a2dp_setup *find_setup_by_dev(struct audio_device *dev)
 {
 	GSList *l;
@@ -369,7 +402,6 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 					void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
-	struct audio_device *dev;
 	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
@@ -377,19 +409,10 @@ static gboolean sbc_setconf_ind(struct avdtp *session,
 	else
 		DBG("Source %p: Set_Configuration_Ind", sep);
 
-	dev = a2dp_get_dev(session);
-	if (!dev)
+	setup = a2dp_setup_get(session);
+	if (!setup)
 		return FALSE;
 
-	setup = find_setup_by_session(session);
-	if (!setup) {
-		setup = g_new0(struct a2dp_setup, 1);
-		setup->session = avdtp_ref(session);
-		setup->dev = dev;
-		setups = g_slist_append(setups, setup);
-	}
-
-	setup_ref(setup);
 	a2dp_sep->stream = stream;
 	setup->sep = a2dp_sep;
 	setup->stream = stream;
@@ -507,7 +530,6 @@ static gboolean mpeg_setconf_ind(struct avdtp *session,
 					void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
-	struct audio_device *dev;
 	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
@@ -515,19 +537,10 @@ static gboolean mpeg_setconf_ind(struct avdtp *session,
 	else
 		DBG("Source %p: Set_Configuration_Ind", sep);
 
-	dev = a2dp_get_dev(session);
-	if (!dev)
+	setup = a2dp_setup_get(session);
+	if (!setup)
 		return FALSE;
 
-	setup = find_setup_by_session(session);
-	if (!setup) {
-		setup = g_new0(struct a2dp_setup, 1);
-		setup->session = avdtp_ref(session);
-		setup->dev = dev;
-		setups = g_slist_append(setups, setup);
-	}
-
-	setup_ref(setup);
 	a2dp_sep->stream = stream;
 	setup->sep = a2dp_sep;
 	setup->stream = stream;
@@ -629,7 +642,6 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 						void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
-	struct audio_device *dev;
 	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
@@ -637,19 +649,10 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 	else
 		DBG("Source %p: Set_Configuration_Ind", sep);
 
-	dev = a2dp_get_dev(session);
-	if (!dev)
+	setup = a2dp_setup_get(session);
+	if (!session)
 		return FALSE;
 
-	setup = find_setup_by_session(session);
-	if (!setup) {
-		setup = g_new0(struct a2dp_setup, 1);
-		setup->session = avdtp_ref(session);
-		setup->dev = dev;
-		setups = g_slist_append(setups, setup);
-	}
-
-	setup_ref(setup);
 	a2dp_sep->stream = stream;
 	setup->sep = a2dp_sep;
 	setup->stream = stream;
@@ -680,9 +683,10 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 			goto done;
 		}
 
-		ret = media_endpoint_set_configuration(a2dp_sep->endpoint, dev,
-					codec->data, cap->length - sizeof(*codec),
-					endpoint_setconf_cb, setup);
+		ret = media_endpoint_set_configuration(a2dp_sep->endpoint,
+						setup->dev, codec->data,
+						cap->length - sizeof(*codec),
+						endpoint_setconf_cb, setup);
 		if (ret)
 			return TRUE;
 
@@ -1901,20 +1905,15 @@ unsigned int a2dp_select_capabilities(struct avdtp *session,
 		return 0;
 	}
 
+	setup = a2dp_setup_get(session);
+	if (!setup)
+		return 0;
+
 	cb_data = g_new0(struct a2dp_setup_cb, 1);
 	cb_data->select_cb = cb;
 	cb_data->user_data = user_data;
 	cb_data->id = ++cb_id;
 
-	setup = find_setup_by_session(session);
-	if (!setup) {
-		setup = g_new0(struct a2dp_setup, 1);
-		setup->session = avdtp_ref(session);
-		setup->dev = a2dp_get_dev(session);
-		setups = g_slist_append(setups, setup);
-	}
-
-	setup_ref(setup);
 	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->sep = sep;
 	setup->rsep = avdtp_find_remote_sep(session, sep->lsep);
@@ -1992,20 +1991,15 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 
 	DBG("a2dp_config: selected SEP %p", sep->lsep);
 
+	setup = a2dp_setup_get(session);
+	if (!setup)
+		return 0;
+
 	cb_data = g_new0(struct a2dp_setup_cb, 1);
 	cb_data->config_cb = cb;
 	cb_data->user_data = user_data;
 	cb_data->id = ++cb_id;
 
-	setup = find_setup_by_session(session);
-	if (!setup) {
-		setup = g_new0(struct a2dp_setup, 1);
-		setup->session = avdtp_ref(session);
-		setup->dev = a2dp_get_dev(session);
-		setups = g_slist_append(setups, setup);
-	}
-
-	setup_ref(setup);
 	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->sep = sep;
 	setup->stream = sep->stream;
@@ -2085,20 +2079,15 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 	struct a2dp_setup_cb *cb_data;
 	struct a2dp_setup *setup;
 
+	setup = a2dp_setup_get(session);
+	if (!setup)
+		return 0;
+
 	cb_data = g_new0(struct a2dp_setup_cb, 1);
 	cb_data->resume_cb = cb;
 	cb_data->user_data = user_data;
 	cb_data->id = ++cb_id;
 
-	setup = find_setup_by_session(session);
-	if (!setup) {
-		setup = g_new0(struct a2dp_setup, 1);
-		setup->session = avdtp_ref(session);
-		setup->dev = a2dp_get_dev(session);
-		setups = g_slist_append(setups, setup);
-	}
-
-	setup_ref(setup);
 	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->sep = sep;
 	setup->stream = sep->stream;
@@ -2144,20 +2133,15 @@ unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
 	struct a2dp_setup_cb *cb_data;
 	struct a2dp_setup *setup;
 
+	setup = a2dp_setup_get(session);
+	if (!setup)
+		return 0;
+
 	cb_data = g_new0(struct a2dp_setup_cb, 1);
 	cb_data->suspend_cb = cb;
 	cb_data->user_data = user_data;
 	cb_data->id = ++cb_id;
 
-	setup = find_setup_by_session(session);
-	if (!setup) {
-		setup = g_new0(struct a2dp_setup, 1);
-		setup->session = avdtp_ref(session);
-		setup->dev = a2dp_get_dev(session);
-		setups = g_slist_append(setups, setup);
-	}
-
-	setup_ref(setup);
 	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->sep = sep;
 	setup->stream = sep->stream;
