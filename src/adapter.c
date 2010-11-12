@@ -1018,15 +1018,12 @@ void adapter_update_tx_power(bdaddr_t *bdaddr, uint8_t status, void *ptr)
 	update_ext_inquiry_response(adapter);
 }
 
-void adapter_update_local_name(bdaddr_t *bdaddr, uint8_t status, void *ptr)
+void adapter_update_local_name(bdaddr_t *bdaddr, void *ptr)
 {
 	read_local_name_rp rp;
 	struct hci_dev *dev;
 	struct btd_adapter *adapter;
 	gchar *name;
-
-	if (status)
-		return;
 
 	adapter = manager_find_adapter(bdaddr);
 	if (!adapter) {
