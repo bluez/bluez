@@ -196,7 +196,6 @@ struct btd_adapter_ops {
 	int (*resolve_name) (int index, bdaddr_t *bdaddr);
 	int (*cancel_resolve_name) (int index, bdaddr_t *bdaddr);
 	int (*set_name) (int index, const char *name);
-	int (*read_name) (int index);
 	int (*set_class) (int index, uint32_t class);
 	int (*set_fast_connectable) (int index, gboolean enable);
 	int (*read_clock) (int index, int handle, int which, int timeout,

@@ -1056,27 +1056,6 @@ void adapter_update_local_name(bdaddr_t *bdaddr, void *ptr)
 	update_ext_inquiry_response(adapter);
 }
 
-void adapter_setname_complete(bdaddr_t *local, uint8_t status)
-{
-	struct btd_adapter *adapter;
-	int err;
-
-	if (status)
-		return;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	err = adapter_ops->read_name(adapter->dev_id);
-	if (err < 0)
-		error("Sending getting name command failed: %s (%d)",
-						strerror(errno), errno);
-
-}
-
 static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 					const char *name, void *data)
 {

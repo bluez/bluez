@@ -563,12 +563,6 @@ static int mgmt_set_name(int index, const char *name)
 	return -ENOSYS;
 }
 
-static int mgmt_read_name(int index)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
 static int mgmt_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	char addr[18];
@@ -803,7 +797,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.resolve_name = mgmt_resolve_name,
 	.cancel_resolve_name = mgmt_cancel_resolve_name,
 	.set_name = mgmt_set_name,
-	.read_name = mgmt_read_name,
 	.set_class = mgmt_set_class,
 	.set_fast_connectable = mgmt_fast_connectable,
 	.read_clock = mgmt_read_clock,

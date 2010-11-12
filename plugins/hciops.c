@@ -981,7 +981,9 @@ static inline void cmd_complete(int index, void *ptr)
 		btd_event_le_set_scan_enable_complete(&BDADDR(index), status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME):
-		adapter_setname_complete(&BDADDR(index), status);
+		if (!status)
+			hci_send_cmd(SK(index), OGF_HOST_CTL,
+						OCF_READ_LOCAL_NAME, 0, 0);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE):
 		btd_event_setscan_enable_complete(&BDADDR(index));
@@ -2063,15 +2065,6 @@ static int hciops_set_name(int index, const char *name)
 	return 0;
 }
 
-static int hciops_read_name(int index)
-{
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_READ_LOCAL_NAME,
-								0, 0) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	remote_name_req_cancel_cp cp;
@@ -2471,7 +2464,6 @@ static struct btd_adapter_ops hci_ops = {
 	.resolve_name = hciops_resolve_name,
 	.cancel_resolve_name = hciops_cancel_resolve_name,
 	.set_name = hciops_set_name,
-	.read_name = hciops_read_name,
 	.set_class = hciops_set_class,
 	.set_fast_connectable = hciops_fast_connectable,
 	.read_clock = hciops_read_clock,
