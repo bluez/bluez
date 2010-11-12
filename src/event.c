@@ -721,23 +721,6 @@ void btd_event_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
 	adapter_set_state(adapter, state);
 }
 
-void btd_event_read_simple_pairing_mode_complete(bdaddr_t *local, void *ptr)
-{
-	read_simple_pairing_mode_rp *rp = ptr;
-	struct btd_adapter *adapter;
-
-	if (rp->status)
-		return;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	adapter_update_ssp_mode(adapter, rp->mode);
-}
-
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;

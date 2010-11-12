@@ -879,6 +879,23 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 		start_adapter(index);
 }
 
+static void read_simple_pairing_mode_complete(int index, void *ptr)
+{
+	read_simple_pairing_mode_rp *rp = ptr;
+	struct btd_adapter *adapter;
+
+	if (rp->status)
+		return;
+
+	adapter = manager_find_adapter(&BDADDR(index));
+	if (!adapter) {
+		error("No matching adapter found");
+		return;
+	}
+
+	adapter_update_ssp_mode(adapter, rp->mode);
+}
+
 static void read_local_ext_features_complete(bdaddr_t *sba,
 				const read_local_ext_features_rp *rp)
 {
@@ -1002,8 +1019,7 @@ static inline void cmd_complete(int index, void *ptr)
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_SIMPLE_PAIRING_MODE):
 		ptr += sizeof(evt_cmd_complete);
-		btd_event_read_simple_pairing_mode_complete(&BDADDR(index),
-									ptr);
+		read_simple_pairing_mode_complete(index, ptr);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_LOCAL_NAME):
 		ptr += sizeof(evt_cmd_complete);
