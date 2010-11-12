@@ -457,7 +457,7 @@ static gboolean wait_response_timer(gpointer data)
 	mcap_notify_error(mcl, gerr);
 
 	g_error_free(gerr);
-	mcl->ms->mcl_disconnected_cb(mcl, mcl->ms->user_data);
+	mcl->mi->mcl_disconnected_cb(mcl, mcl->mi->user_data);
 	mcap_cache_mcl(mcl);
 
 	return FALSE;
@@ -774,10 +774,10 @@ static void mcap_cache_mcl(struct mcap_mcl *mcl)
 	if (mcl->ctrl & MCAP_CTRL_CACHED)
 		return;
 
-	mcl->ms->mcls = g_slist_remove(mcl->ms->mcls, mcl);
+	mcl->mi->mcls = g_slist_remove(mcl->mi->mcls, mcl);
 
 	if (mcl->ctrl & MCAP_CTRL_NOCACHE) {
-		mcl->ms->cached = g_slist_remove(mcl->ms->cached, mcl);
+		mcl->mi->cached = g_slist_remove(mcl->mi->cached, mcl);
 		mcap_mcl_release(mcl);
 		mcap_mcl_unref(mcl);
 		return;
@@ -785,12 +785,12 @@ static void mcap_cache_mcl(struct mcap_mcl *mcl)
 
 	DBG("Caching MCL");
 
-	len = g_slist_length(mcl->ms->cached);
+	len = g_slist_length(mcl->mi->cached);
 	if (len == MAX_CACHED) {
 		/* Remove the latest cached mcl */
-		l = g_slist_last(mcl->ms->cached);
+		l = g_slist_last(mcl->mi->cached);
 		last = l->data;
-		mcl->ms->cached = g_slist_remove(mcl->ms->cached, last);
+		mcl->mi->cached = g_slist_remove(mcl->mi->cached, last);
 		last->ctrl &= ~MCAP_CTRL_CACHED;
 		if (last->ctrl & MCAP_CTRL_CONN) {
 			/* We have to release this MCL if */
@@ -798,12 +798,12 @@ static void mcap_cache_mcl(struct mcap_mcl *mcl)
 			last->ctrl |= MCAP_CTRL_FREE;
 		} else {
 			mcap_mcl_release(last);
-			last->ms->mcl_uncached_cb(last, last->ms->user_data);
+			last->mi->mcl_uncached_cb(last, last->mi->user_data);
 		}
 		mcap_mcl_unref(last);
 	}
 
-	mcl->ms->cached = g_slist_prepend(mcl->ms->cached, mcl);
+	mcl->mi->cached = g_slist_prepend(mcl->mi->cached, mcl);
 	mcl->ctrl |= MCAP_CTRL_CACHED;
 	mcap_mcl_shutdown(mcl);
 }
@@ -815,8 +815,8 @@ static void mcap_uncache_mcl(struct mcap_mcl *mcl)
 
 	DBG("Got MCL from cache");
 
-	mcl->ms->cached = g_slist_remove(mcl->ms->cached, mcl);
-	mcl->ms->mcls = g_slist_prepend(mcl->ms->mcls, mcl);
+	mcl->mi->cached = g_slist_remove(mcl->mi->cached, mcl);
+	mcl->mi->mcls = g_slist_prepend(mcl->mi->mcls, mcl);
 	mcl->ctrl &= ~MCAP_CTRL_CACHED;
 	mcl->ctrl &= ~MCAP_CTRL_FREE;
 }
@@ -842,7 +842,7 @@ void mcap_close_mcl(struct mcap_mcl *mcl, gboolean cache)
 	} else if ((mcl->ctrl & MCAP_CTRL_CACHED) &&
 					(mcl->ctrl & MCAP_CTRL_NOCACHE)) {
 		mcl->ctrl &= ~MCAP_CTRL_CACHED;
-		mcl->ms->cached = g_slist_remove(mcl->ms->cached, mcl);
+		mcl->mi->cached = g_slist_remove(mcl->mi->cached, mcl);
 		mcap_mcl_release(mcl);
 		mcap_mcl_unref(mcl);
 	}
@@ -867,7 +867,7 @@ void mcap_mcl_unref(struct mcap_mcl *mcl)
 		return;
 
 	mcap_mcl_release(mcl);
-	mcap_instance_unref(mcl->ms);
+	mcap_instance_unref(mcl->mi);
 	g_free(mcl->cb);
 	g_free(mcl);
 }
@@ -1549,7 +1549,7 @@ static void proc_response(struct mcap_mcl *mcl, void *buf, uint32_t len)
 	}
 
 	if (close) {
-		mcl->ms->mcl_disconnected_cb(mcl, mcl->ms->user_data);
+		mcl->mi->mcl_disconnected_cb(mcl, mcl->mi->user_data);
 		mcap_cache_mcl(mcl);
 	}
 }
@@ -1675,11 +1675,11 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl, uint8_t mode,
 
 	mdl->dc = bt_io_connect(BT_IO_L2CAP, mcap_connect_mdl_cb, con,
 				(GDestroyNotify) free_mcap_mdl_op, err,
-				BT_IO_OPT_SOURCE_BDADDR, &mdl->mcl->ms->src,
+				BT_IO_OPT_SOURCE_BDADDR, &mdl->mcl->mi->src,
 				BT_IO_OPT_DEST_BDADDR, &mdl->mcl->addr,
 				BT_IO_OPT_PSM, dcpsm,
 				BT_IO_OPT_MTU, MCAP_DC_MTU,
-				BT_IO_OPT_SEC_LEVEL, mdl->mcl->ms->sec,
+				BT_IO_OPT_SEC_LEVEL, mdl->mcl->mi->sec,
 				BT_IO_OPT_MODE, mode,
 				BT_IO_OPT_INVALID);
 	if (!mdl->dc) {
@@ -1721,7 +1721,7 @@ fail:
 			mcap_notify_error(mcl, gerr);
 			g_error_free(gerr);
 		}
-		mcl->ms->mcl_disconnected_cb(mcl, mcl->ms->user_data);
+		mcl->mi->mcl_disconnected_cb(mcl, mcl->mi->user_data);
 	}
 	mcap_cache_mcl(mcl);
 	return FALSE;
@@ -1742,7 +1742,7 @@ static void mcap_connect_mcl_cb(GIOChannel *chan, GError *conn_err,
 	if (conn_err) {
 		if (mcl->ctrl & MCAP_CTRL_FREE) {
 			mcap_mcl_release(mcl);
-			mcl->ms->mcl_uncached_cb(mcl, mcl->ms->user_data);
+			mcl->mi->mcl_uncached_cb(mcl, mcl->mi->user_data);
 		}
 		connect_cb(NULL, conn_err, data);
 		return;
@@ -1750,7 +1750,7 @@ static void mcap_connect_mcl_cb(GIOChannel *chan, GError *conn_err,
 
 	ba2str(&mcl->addr, dstaddr);
 
-	aux = find_mcl(mcl->ms->mcls, &mcl->addr);
+	aux = find_mcl(mcl->mi->mcls, &mcl->addr);
 	if (aux) {
 		/* Double MCL connection case */
 		error("MCL error: Device %s is already connected", dstaddr);
@@ -1772,7 +1772,7 @@ static void mcap_connect_mcl_cb(GIOChannel *chan, GError *conn_err,
 		mcap_uncache_mcl(mcl);
 	else {
 		mcl->ctrl &= ~MCAP_CTRL_FREE;
-		mcl->ms->mcls = g_slist_prepend(mcl->ms->mcls,
+		mcl->mi->mcls = g_slist_prepend(mcl->mi->mcls,
 							mcap_mcl_ref(mcl));
 	}
 
@@ -1805,7 +1805,7 @@ static void mcl_io_destroy(gpointer data)
 	g_free(con);
 }
 
-gboolean mcap_create_mcl(struct mcap_instance *ms,
+gboolean mcap_create_mcl(struct mcap_instance *mi,
 				const bdaddr_t *addr,
 				uint16_t ccpsm,
 				mcap_mcl_connect_cb connect_cb,
@@ -1816,17 +1816,17 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 	struct mcap_mcl *mcl;
 	struct connect_mcl *con;
 
-	mcl = find_mcl(ms->mcls, addr);
+	mcl = find_mcl(mi->mcls, addr);
 	if (mcl) {
 		g_set_error(err, MCAP_ERROR, MCAP_ERROR_ALREADY_EXISTS,
 					"MCL is already connected.");
 		return FALSE;
 	}
 
-	mcl = find_mcl(ms->cached, addr);
+	mcl = find_mcl(mi->cached, addr);
 	if (!mcl) {
 		mcl = g_new0(struct mcap_mcl, 1);
-		mcl->ms = mcap_instance_ref(ms);
+		mcl->mi = mcap_instance_ref(mi);
 		mcl->state = MCL_IDLE;
 		bacpy(&mcl->addr, addr);
 		set_default_cb(mcl);
@@ -1843,18 +1843,18 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 
 	mcl->cc = bt_io_connect(BT_IO_L2CAP, mcap_connect_mcl_cb, con,
 				mcl_io_destroy, err,
-				BT_IO_OPT_SOURCE_BDADDR, &ms->src,
+				BT_IO_OPT_SOURCE_BDADDR, &mi->src,
 				BT_IO_OPT_DEST_BDADDR, addr,
 				BT_IO_OPT_PSM, ccpsm,
 				BT_IO_OPT_MTU, MCAP_CC_MTU,
-				BT_IO_OPT_SEC_LEVEL, ms->sec,
+				BT_IO_OPT_SEC_LEVEL, mi->sec,
 				BT_IO_OPT_MODE, L2CAP_MODE_ERTM,
 				BT_IO_OPT_INVALID);
 	if (!mcl->cc) {
 		mcl->ctrl &= ~MCAP_CTRL_CONN;
 		if (mcl->ctrl & MCAP_CTRL_FREE) {
 			mcap_mcl_release(mcl);
-			mcl->ms->mcl_uncached_cb(mcl, mcl->ms->user_data);
+			mcl->mi->mcl_uncached_cb(mcl, mcl->mi->user_data);
 		}
 		mcap_mcl_unref(con->mcl);
 		g_free(con);
@@ -1867,7 +1867,7 @@ gboolean mcap_create_mcl(struct mcap_instance *ms,
 static void connect_dc_event_cb(GIOChannel *chan, GError *gerr,
 							gpointer user_data)
 {
-	struct mcap_instance *ms = user_data;
+	struct mcap_instance *mi = user_data;
 	struct mcap_mcl *mcl;
 	struct mcap_mdl *mdl;
 	GError *err = NULL;
@@ -1886,7 +1886,7 @@ static void connect_dc_event_cb(GIOChannel *chan, GError *gerr,
 		goto drop;
 	}
 
-	mcl = find_mcl(ms->mcls, &dst);
+	mcl = find_mcl(mi->mcls, &dst);
 	if (!mcl || mcl->state != MCL_PENDING)
 		goto drop;
 
@@ -1918,7 +1918,7 @@ static void set_mcl_conf(GIOChannel *chan, struct mcap_mcl *mcl)
 	if (reconn)
 		mcap_uncache_mcl(mcl);
 	else
-		mcl->ms->mcls = g_slist_prepend(mcl->ms->mcls,
+		mcl->mi->mcls = g_slist_prepend(mcl->mi->mcls,
 							mcap_mcl_ref(mcl));
 
 	mcl->wid = g_io_add_watch(mcl->cc,
@@ -1927,15 +1927,15 @@ static void set_mcl_conf(GIOChannel *chan, struct mcap_mcl *mcl)
 
 	/* Callback to report new MCL */
 	if (reconn)
-		mcl->ms->mcl_reconnected_cb(mcl, mcl->ms->user_data);
+		mcl->mi->mcl_reconnected_cb(mcl, mcl->mi->user_data);
 	else
-		mcl->ms->mcl_connected_cb(mcl, mcl->ms->user_data);
+		mcl->mi->mcl_connected_cb(mcl, mcl->mi->user_data);
 }
 
 static void connect_mcl_event_cb(GIOChannel *chan, GError *gerr,
 							gpointer user_data)
 {
-	struct mcap_instance *ms = user_data;
+	struct mcap_instance *mi = user_data;
 	struct mcap_mcl *mcl;
 	bdaddr_t dst;
 	char address[18], srcstr[18];
@@ -1954,18 +1954,18 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *gerr,
 		goto drop;
 	}
 
-	ba2str(&ms->src, srcstr);
-	mcl = find_mcl(ms->mcls, &dst);
+	ba2str(&mi->src, srcstr);
+	mcl = find_mcl(mi->mcls, &dst);
 	if (mcl) {
 		error("Control channel already created with %s on adapter %s",
 				address, srcstr);
 		goto drop;
 	}
 
-	mcl = find_mcl(ms->cached, &dst);
+	mcl = find_mcl(mi->cached, &dst);
 	if (!mcl) {
 		mcl = g_new0(struct mcap_mcl, 1);
-		mcl->ms = mcap_instance_ref(ms);
+		mcl->mi = mcap_instance_ref(mi);
 		bacpy(&mcl->addr, &dst);
 		set_default_cb(mcl);
 		mcl->next_mdl = (rand() % MCAP_MDLID_FINAL) + 1;
@@ -1990,7 +1990,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 					gpointer user_data,
 					GError **gerr)
 {
-	struct mcap_instance *ms;
+	struct mcap_instance *mi;
 
 	if (sec < BT_IO_SEC_MEDIUM) {
 		g_set_error(gerr, MCAP_ERROR, MCAP_ERROR_INVALID_ARGS,
@@ -2006,55 +2006,55 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 		return NULL;
 	}
 
-	ms = g_new0(struct mcap_instance, 1);
+	mi = g_new0(struct mcap_instance, 1);
 
-	bacpy(&ms->src, src);
+	bacpy(&mi->src, src);
 
-	ms->sec = sec;
-	ms->mcl_connected_cb = mcl_connected;
-	ms->mcl_reconnected_cb = mcl_reconnected;
-	ms->mcl_disconnected_cb = mcl_disconnected;
-	ms->mcl_uncached_cb = mcl_uncached;
-	ms->mcl_sync_infoind_cb = mcl_sync_info_ind;
-	ms->user_data = user_data;
-	ms->csp_enabled = FALSE;
+	mi->sec = sec;
+	mi->mcl_connected_cb = mcl_connected;
+	mi->mcl_reconnected_cb = mcl_reconnected;
+	mi->mcl_disconnected_cb = mcl_disconnected;
+	mi->mcl_uncached_cb = mcl_uncached;
+	mi->mcl_sync_infoind_cb = mcl_sync_info_ind;
+	mi->user_data = user_data;
+	mi->csp_enabled = FALSE;
 
 	/* Listen incoming connections in control channel */
-	ms->ccio = bt_io_listen(BT_IO_L2CAP, connect_mcl_event_cb, NULL, ms,
+	mi->ccio = bt_io_listen(BT_IO_L2CAP, connect_mcl_event_cb, NULL, mi,
 				NULL, gerr,
-				BT_IO_OPT_SOURCE_BDADDR, &ms->src,
+				BT_IO_OPT_SOURCE_BDADDR, &mi->src,
 				BT_IO_OPT_PSM, ccpsm,
 				BT_IO_OPT_MTU, MCAP_CC_MTU,
 				BT_IO_OPT_SEC_LEVEL, sec,
 				BT_IO_OPT_MODE, L2CAP_MODE_ERTM,
 				BT_IO_OPT_INVALID);
-	if (!ms->ccio) {
+	if (!mi->ccio) {
 		error("%s", (*gerr)->message);
-		g_free(ms);
+		g_free(mi);
 		return NULL;
 	}
 
 	/* Listen incoming connections in data channels */
-	ms->dcio = bt_io_listen(BT_IO_L2CAP, connect_dc_event_cb, NULL, ms,
+	mi->dcio = bt_io_listen(BT_IO_L2CAP, connect_dc_event_cb, NULL, mi,
 				NULL, gerr,
-				BT_IO_OPT_SOURCE_BDADDR, &ms->src,
+				BT_IO_OPT_SOURCE_BDADDR, &mi->src,
 				BT_IO_OPT_PSM, dcpsm,
 				BT_IO_OPT_MTU, MCAP_DC_MTU,
 				BT_IO_OPT_SEC_LEVEL, sec,
 				BT_IO_OPT_INVALID);
-	if (!ms->dcio) {
-		g_io_channel_shutdown(ms->ccio, TRUE, NULL);
-		g_io_channel_unref(ms->ccio);
-		ms->ccio = NULL;
+	if (!mi->dcio) {
+		g_io_channel_shutdown(mi->ccio, TRUE, NULL);
+		g_io_channel_unref(mi->ccio);
+		mi->ccio = NULL;
 		error("%s", (*gerr)->message);
-		g_free(ms);
+		g_free(mi);
 		return NULL;
 	}
 
 	/* Initialize random seed to generate mdlids for this instance */
 	srand(time(NULL));
 
-	return mcap_instance_ref(ms);;
+	return mcap_instance_ref(mi);;
 }
 
 void mcap_release_instance(struct mcap_instance *mi)

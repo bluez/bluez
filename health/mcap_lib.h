@@ -160,7 +160,7 @@ void mcap_mdl_unref(struct mcap_mdl *mdl);
 
 /* MCL operations */
 
-gboolean mcap_create_mcl(struct mcap_instance *ms,
+gboolean mcap_create_mcl(struct mcap_instance *mi,
 				const bdaddr_t *addr,
 				uint16_t ccpsm,
 				mcap_mcl_connect_cb connect_cb,
@@ -177,8 +177,8 @@ void mcap_mcl_unref(struct mcap_mcl *mcl);
 
 /* CSP operations */
 
-void mcap_enable_csp(struct mcap_instance *ms);
-void mcap_disable_csp(struct mcap_instance *ms);
+void mcap_enable_csp(struct mcap_instance *mi);
+void mcap_disable_csp(struct mcap_instance *mi);
 
 uint64_t mcap_get_timestamp(struct mcap_mcl *mcl,
 				struct timespec *given_time);

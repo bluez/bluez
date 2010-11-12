@@ -165,7 +165,7 @@ static void reset_tmstamp(struct mcap_csp *csp, struct timespec *base_time,
 
 void mcap_sync_init(struct mcap_mcl *mcl)
 {
-	if (!mcl->ms->csp_enabled) {
+	if (!mcl->mi->csp_enabled) {
 		mcl->csp = NULL;
 		return;
 	}
@@ -249,7 +249,7 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 	int ret, handle, which = 1;
 	struct btd_adapter *adapter;
 
-	adapter = manager_find_adapter(&mcl->ms->src);
+	adapter = manager_find_adapter(&mcl->mi->src);
 
 	if (!adapter)
 		return FALSE;
@@ -894,13 +894,13 @@ static void proc_sync_info_ind(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 	data.timestamp = ntoh64(req->timestst);
 	data.accuracy = ntohs(req->timestsa);
 
-	if (mcl->ms->mcl_sync_infoind_cb)
-		mcl->ms->mcl_sync_infoind_cb(mcl, &data);
+	if (mcl->mi->mcl_sync_infoind_cb)
+		mcl->mi->mcl_sync_infoind_cb(mcl, &data);
 }
 
 void proc_sync_cmd(struct mcap_mcl *mcl, uint8_t *cmd, uint32_t len)
 {
-	if (!mcl->ms->csp_enabled || !mcl->csp) {
+	if (!mcl->mi->csp_enabled || !mcl->csp) {
 		switch (cmd[0]) {
 		case MCAP_MD_SYNC_CAP_REQ:
 			send_unsupported_cap_req(mcl);
@@ -938,7 +938,7 @@ void mcap_sync_cap_req(struct mcap_mcl *mcl, uint16_t reqacc,
 	struct mcap_sync_cap_cbdata *cbdata;
 	mcap_md_sync_cap_req *cmd;
 
-	if (!mcl->ms->csp_enabled || !mcl->csp) {
+	if (!mcl->mi->csp_enabled || !mcl->csp) {
 		g_set_error(err,
 			MCAP_CSP_ERROR,
 			MCAP_ERROR_RESOURCE_UNAVAILABLE,
@@ -977,7 +977,7 @@ void mcap_sync_set_req(struct mcap_mcl *mcl, uint8_t update, uint32_t btclock,
 	mcap_md_sync_set_req *cmd;
 	struct mcap_sync_set_cbdata *cbdata;
 
-	if (!mcl->ms->csp_enabled || !mcl->csp) {
+	if (!mcl->mi->csp_enabled || !mcl->csp) {
 		g_set_error(err,
 			MCAP_CSP_ERROR,
 			MCAP_ERROR_RESOURCE_UNAVAILABLE,
@@ -1021,12 +1021,12 @@ void mcap_sync_set_req(struct mcap_mcl *mcl, uint8_t update, uint32_t btclock,
 	g_free(cmd);
 }
 
-void mcap_enable_csp(struct mcap_instance *ms)
+void mcap_enable_csp(struct mcap_instance *mi)
 {
-	ms->csp_enabled = TRUE;
+	mi->csp_enabled = TRUE;
 }
 
-void mcap_disable_csp(struct mcap_instance *ms)
+void mcap_disable_csp(struct mcap_instance *mi)
 {
-	ms->csp_enabled = FALSE;
+	mi->csp_enabled = FALSE;
 }

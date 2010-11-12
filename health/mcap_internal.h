@@ -87,7 +87,7 @@ struct mcap_csp;
 struct mcap_mdl_op_cb;
 
 struct mcap_mcl {
-	struct mcap_instance	*ms;		/* MCAP instance where this MCL belongs */
+	struct mcap_instance	*mi;		/* MCAP instance where this MCL belongs */
 	bdaddr_t		addr;		/* Device address */
 	GIOChannel		*cc;		/* MCAP Control Channel IO */
 	guint			wid;		/* MCL Watcher id */
