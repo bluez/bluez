@@ -529,17 +529,16 @@ gboolean mcap_reconnect_mdl(struct mcap_mdl *mdl,
 					"MDL is not closed");
 		return FALSE;
 	}
-	con = g_new0(struct mcap_mdl_op_cb, 1);
 
 	cmd = create_req(MCAP_MD_RECONNECT_MDL_REQ, mdl->mdlid);
 	if (!mcap_send_std_opcode(mcl, cmd, sizeof(mcap_md_req), err)) {
-		g_free(con);
 		g_free(cmd);
 		return FALSE;
 	}
 
 	mdl->state = MDL_WAITING;
 
+	con = g_new0(struct mcap_mdl_op_cb, 1);
 	con->mdl = mcap_mdl_ref(mdl);
 	con->cb.op = reconnect_cb;
 	con->destroy = destroy;
@@ -666,14 +665,13 @@ gboolean mcap_mdl_abort(struct mcap_mdl *mdl, mcap_mdl_notify_cb abort_cb,
 		return FALSE;
 	}
 
-	con = g_new0(struct mcap_mdl_op_cb, 1);
 	cmd = create_req(MCAP_MD_ABORT_MDL_REQ, mdl->mdlid);
 	if (!mcap_send_std_opcode(mcl, cmd, sizeof(mcap_md_req), err)) {
-		g_free(con);
 		g_free(cmd);
 		return FALSE;
 	}
 
+	con = g_new0(struct mcap_mdl_op_cb, 1);
 	con->mdl = mcap_mdl_ref(mdl);
 	con->cb.notify = abort_cb;
 	con->destroy = destroy;
