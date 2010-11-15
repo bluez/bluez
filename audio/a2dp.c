@@ -2195,8 +2195,10 @@ gboolean a2dp_cancel(struct audio_device *dev, unsigned int id)
 		}
 	}
 
-	if (!cb_data)
+	if (!cb_data) {
 		error("a2dp_cancel: no matching callback with id %u", id);
+		return FALSE;
+	}
 
 	setup->cb = g_slist_remove(setup->cb, cb_data);
 	g_free(cb_data);
