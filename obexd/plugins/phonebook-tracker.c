@@ -113,7 +113,7 @@
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
 	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
-	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
+	"?file nco:fullname(?o) nco:department(?a) "			\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
@@ -124,6 +124,10 @@
 	"\"NOTACALL\" \"false\" \"false\" ?c "				\
 	"WHERE { "							\
 		"?c a nco:PersonContact . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 	"OPTIONAL { ?c nco:hasPhoneNumber ?h . "			\
 		"OPTIONAL {"						\
 		"?h a nco:FaxNumber ; "					\
@@ -179,7 +183,7 @@
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
 	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
-	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
+	"?file nco:fullname(?o) nco:department(?a) "			\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
@@ -199,6 +203,10 @@
 		"nmo:isAnswered false . "				\
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasPhoneNumber ?t . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 		"OPTIONAL { "						\
 			"?t a nco:CellPhoneNumber ; "			\
 				"nco:phoneNumber ?vc . "		\
@@ -230,6 +238,10 @@
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?tmp . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 		"OPTIONAL { "						\
 			"?a rdfs:label \"Work\" . "			\
 			"?tmp nco:phoneNumber ?w . "			\
@@ -323,7 +335,7 @@
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
 	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
-	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
+	"?file nco:fullname(?o) nco:department(?a) "			\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
@@ -343,6 +355,10 @@
 		"nmo:isAnswered true . "				\
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasPhoneNumber ?t . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 		"OPTIONAL { "						\
 			"?t a nco:CellPhoneNumber ; "			\
 				"nco:phoneNumber ?vc . "		\
@@ -374,6 +390,10 @@
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?tmp . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 		"OPTIONAL { "						\
 			"?a rdfs:label \"Work\" . "			\
 			"?tmp nco:phoneNumber ?w . "			\
@@ -466,7 +486,7 @@
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
 	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
-	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
+	"?file nco:fullname(?o) nco:department(?a) "			\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
@@ -485,6 +505,10 @@
 		"nmo:isSent true . "					\
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasPhoneNumber ?t . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 		"OPTIONAL { "						\
 			"?t a nco:CellPhoneNumber ; "			\
 				"nco:phoneNumber ?vc . "		\
@@ -515,6 +539,10 @@
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?tmp . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 		"OPTIONAL { "						\
 			"?a rdfs:label \"Work\" . "			\
 			"?tmp nco:phoneNumber ?w . "			\
@@ -603,7 +631,7 @@
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) \"\" nco:emailAddress(?ew) "\
 	"nco:birthDate(?c) nco:nickname(?c) nco:url(?c) "		\
-	"nco:photo(?c) nco:fullname(?o) nco:department(?a) "		\
+	"?file nco:fullname(?o) nco:department(?a) "			\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(?c) "	\
@@ -622,6 +650,10 @@
 		"nmo:isSent true . "					\
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasPhoneNumber ?t . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 		"OPTIONAL { "						\
 			"?t a nco:CellPhoneNumber ; "			\
 				"nco:phoneNumber ?vc . "		\
@@ -652,6 +684,10 @@
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?tmp . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 		"OPTIONAL { "						\
 			"?a rdfs:label \"Work\" . "			\
 			"?tmp nco:phoneNumber ?w . "			\
@@ -705,6 +741,10 @@
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasPhoneNumber ?t . "				\
 		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
+		"OPTIONAL { "						\
 			"?t a nco:CellPhoneNumber ; "			\
 				"nco:phoneNumber ?vc . "		\
 		"} "							\
@@ -734,6 +774,10 @@
 		"?c a nco:PersonContact . "				\
 		"?c nco:hasAffiliation ?a . "				\
 		"?a nco:hasPhoneNumber ?tmp . "				\
+		"OPTIONAL { "						\
+			"?c a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 		"OPTIONAL { "						\
 			"?a rdfs:label \"Work\" . "			\
 			"?tmp nco:phoneNumber ?w . "			\
@@ -844,7 +888,7 @@
 	"nco:streetAddress(?p) nco:locality(?p) nco:region(?p) "	\
 	"nco:postalcode(?p) nco:country(?p) ?f nco:emailAddress(?ew) "	\
 	"nco:birthDate(<%s>) nco:nickname(<%s>) nco:url(<%s>) "		\
-	"nco:photo(<%s>) nco:fullname(?o) nco:department(?a) "		\
+	"?file nco:fullname(?o) nco:department(?a) "			\
 	"nco:role(?a) nco:pobox(?pw) nco:extendedAddress(?pw) "		\
 	"nco:streetAddress(?pw) nco:locality(?pw) nco:region(?pw) "	\
 	"nco:postalcode(?pw) nco:country(?pw) nco:contactUID(<%s>) "	\
@@ -855,6 +899,10 @@
 	"\"NOTACALL\" \"false\" \"false\" <%s> "			\
 	"WHERE { "							\
 		"<%s> a nco:PersonContact . "				\
+		"OPTIONAL { "						\
+			"<%s> a nco:PersonContact ; nco:photo ?pht . "	\
+			"?pht a nfo:FileDataObject ; nie:url ?file . "	\
+		"} "							\
 	"OPTIONAL { <%s> nco:hasPhoneNumber ?h . "			\
 		"OPTIONAL {"						\
 		"?h a nco:FaxNumber ; "					\
