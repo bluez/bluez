@@ -1361,6 +1361,7 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 	int last_index, i;
 	gboolean cdata_present = FALSE;
 	char *home_addr, *work_addr, *other_addr;
+	static char *temp_id = NULL;
 
 	if (num_fields < 0) {
 		data->cb(NULL, 0, num_fields, 0, data->user_data);
@@ -1396,7 +1397,11 @@ static void pull_contacts(char **reply, int num_fields, void *user_data)
 						TRACKER_DEFAULT_CONTACT_ME))
 		return;
 
-	data->index++;
+	if (g_strcmp0(temp_id, reply[CONTACTS_ID_COL])) {
+		data->index++;
+		g_free(temp_id);
+		temp_id = g_strdup(reply[CONTACTS_ID_COL]);
+	}
 
 	last_index = params->liststartoffset + params->maxlistcount;
 
@@ -1495,6 +1500,8 @@ done:
 fail:
 	g_slist_free(data->contacts);
 	g_free(data);
+	g_free(temp_id);
+	temp_id = NULL;
 }
 
 static void add_to_cache(char **reply, int num_fields, void *user_data)
