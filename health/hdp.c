@@ -82,11 +82,9 @@ struct hdp_tmp_dc_data {
 };
 
 struct hdp_echo_data {
-	int			wid;		/* Watcher for echo channels */
 	gboolean		echo_done;	/* Is a echo was already done */
 	gpointer		buf;		/* echo packet sent */
 	uint			tid;		/* echo timeout */
-	struct hdp_tmp_dc_data	*hdp_conn;	/* temporal data */
 };
 
 static struct hdp_channel *hdp_channel_ref(struct hdp_channel *chan)
@@ -102,8 +100,10 @@ static struct hdp_channel *hdp_channel_ref(struct hdp_channel *chan)
 
 static void free_health_channel(struct hdp_channel *chan)
 {
-	if (chan->mdep == HDP_MDEP_ECHO)
+	if (chan->mdep == HDP_MDEP_ECHO) {
 		free_echo_data(chan->edata);
+		chan->edata = NULL;
+	}
 
 	mcap_mdl_unref(chan->mdl);
 	hdp_application_unref(chan->app);
@@ -699,12 +699,6 @@ static void free_echo_data(struct hdp_echo_data *edata)
 	if (edata->tid)
 		g_source_remove(edata->tid);
 
-	if (edata->wid)
-		g_source_remove(edata->wid);
-
-	if (edata->hdp_conn)
-		hdp_tmp_dc_data_unref(edata->hdp_conn);
-
 	if (edata->buf)
 		g_free(edata->buf);
 
@@ -859,7 +853,6 @@ static gboolean serve_echo(GIOChannel *io_chan, GIOCondition cond,
 	int fd, len;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
-		chan->edata->wid = 0;
 		hdp_channel_unref(chan);
 		return FALSE;
 	}
@@ -877,7 +870,6 @@ static gboolean serve_echo(GIOChannel *io_chan, GIOCondition cond,
 
 fail:
 	close_device_con(chan->dev, FALSE);
-	chan->edata->wid = 0;
 	hdp_channel_unref(chan);
 	return FALSE;
 }
@@ -947,8 +939,7 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 
 		chan->edata->echo_done = FALSE;
 		io = g_io_channel_unix_new(fd);
-		chan->edata->wid = g_io_add_watch(io,
-				G_IO_ERR | G_IO_HUP | G_IO_NVAL | G_IO_IN,
+		g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL | G_IO_IN,
 				serve_echo, hdp_channel_ref(chan));
 		g_io_channel_unref(io);
 		goto end;
@@ -1498,9 +1489,6 @@ end:
 	g_dbus_send_message(hdp_conn->conn, reply);
 	g_source_remove(edata->tid);
 	edata->tid = 0;
-	edata->wid = 0;
-	hdp_tmp_dc_data_unref(edata->hdp_conn);
-	edata->hdp_conn = NULL;
 	g_free(edata->buf);
 	edata->buf = NULL;
 
@@ -1508,6 +1496,7 @@ end:
 		close_device_con(chan->dev, FALSE);
 	else
 		delete_echo_channel(chan);
+	hdp_tmp_dc_data_unref(hdp_conn);
 
 	return FALSE;
 }
@@ -1519,12 +1508,15 @@ static gboolean echo_timeout(gpointer data)
 	int fd;
 
 	error("Error: Echo request timeout");
+	chan->edata->tid = 0;
+
 	fd = mcap_mdl_get_fd(chan->mdl);
 	if (fd < 0)
 		return FALSE;
 
 	io = g_io_channel_unix_new(fd);
 	g_io_channel_shutdown(io, TRUE, NULL);
+
 	return FALSE;
 }
 
@@ -1573,13 +1565,13 @@ static void hdp_echo_connect_cb(struct mcap_mdl *mdl, GError *err,
 	send_echo_data(fd, edata->buf, HDP_ECHO_LEN);
 
 	io = g_io_channel_unix_new(fd);
-	edata->hdp_conn = hdp_tmp_dc_data_ref(hdp_conn);
-	edata->wid = g_io_add_watch(io,
-			G_IO_ERR | G_IO_HUP | G_IO_NVAL | G_IO_IN,
-			check_echo, hdp_conn);
+	g_io_add_watch(io, G_IO_ERR | G_IO_HUP | G_IO_NVAL | G_IO_IN,
+			check_echo, hdp_tmp_dc_data_ref(hdp_conn));
 
-	edata->tid = g_timeout_add_seconds(ECHO_TIMEOUT, echo_timeout,
-							hdp_conn->hdp_chann);
+	edata->tid  = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT,
+					ECHO_TIMEOUT, echo_timeout,
+					hdp_channel_ref(hdp_conn->hdp_chann),
+					(GDestroyNotify) hdp_channel_unref);
 
 	g_io_channel_unref(io);
 }
