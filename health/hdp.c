@@ -1042,8 +1042,7 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 
 	DBG("Data channel request");
 
-	if (mdepid == 0) {
-		/* Is an echo channel */
+	if (mdepid == HDP_MDEP_ECHO) {
 		switch (*conf) {
 		case HDP_NO_PREFERENCE_DC:
 			*conf = HDP_RELIABLE_DC;
