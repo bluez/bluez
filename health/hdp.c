@@ -761,16 +761,21 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 {
 	struct hdp_channel *hdp_chann;
 
+	if (!dev)
+		return NULL;
+
 	hdp_chann = g_new0(struct hdp_channel, 1);
 	hdp_chann->config = config;
 	hdp_chann->dev = health_device_ref(dev);
-	hdp_chann->mdl = mcap_mdl_ref(mdl);
 	hdp_chann->mdlid = mdlid;
-	hdp_chann->app = hdp_application_ref(app);
 
-	if (app)
+	if (mdl)
+		hdp_chann->mdl = mcap_mdl_ref(mdl);
+
+	if (app) {
 		hdp_chann->mdep = app->id;
-	else
+		hdp_chann->app = hdp_application_ref(app);
+	} else
 		hdp_chann->edata = g_new0(struct hdp_echo_data, 1);
 
 	hdp_chann->path = g_strdup_printf("%s/chan%d",
