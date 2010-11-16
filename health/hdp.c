@@ -813,6 +813,9 @@ static void remove_channels(struct hdp_device *dev)
 
 static void close_device_con(struct hdp_device *dev, gboolean cache)
 {
+	if (!dev->mcl)
+		return;
+
 	mcap_close_mcl(dev->mcl, cache);
 	dev->mcl_conn = FALSE;
 
@@ -1151,6 +1154,9 @@ static uint8_t hdp_mcap_mdl_reconn_req_cb(struct mcap_mdl *mdl, void *data)
 gboolean hdp_set_mcl_cb(struct hdp_device *device, GError **err)
 {
 	gboolean ret;
+
+	if (!device->mcl)
+		return FALSE;
 
 	ret = mcap_mcl_set_cb(device->mcl, device, err,
 		MCAP_MDL_CB_CONNECTED, hdp_mcap_mdl_connected_cb,
@@ -1757,16 +1763,23 @@ static void device_create_dc_cb(gpointer user_data, GError *err)
 		return;
 	}
 
+	if (!data->dev->mcl) {
+		g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+				"Mcl was closed");
+		goto fail;
+	}
+
 	hdp_create_data_ref(data);
 
 	if (mcap_create_mdl(data->dev->mcl, data->mdep, data->config,
 						device_create_mdl_cb, data,
 						destroy_create_dc_data, &gerr))
 		return;
+	hdp_create_data_unref(data);
 
+fail:
 	reply = g_dbus_create_error(data->msg, ERROR_INTERFACE ".HealthError",
 							"%s", gerr->message);
-	hdp_create_data_unref(data);
 	g_error_free(gerr);
 	g_dbus_send_message(data->conn, reply);
 }
@@ -1788,7 +1801,7 @@ static DBusMessage *device_echo(DBusConnection *conn,
 	data->cb = hdp_echo_connect_cb;
 	hdp_create_data_ref(data);
 
-	if (device->mcl_conn) {
+	if (device->mcl_conn && device->mcl) {
 		if (mcap_create_mdl(device->mcl, data->mdep, data->config,
 						device_create_mdl_cb, data,
 						destroy_create_dc_data, &err))
