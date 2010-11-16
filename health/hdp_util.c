@@ -1039,6 +1039,12 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	bdaddr_t dst;
 	uint16_t ccpsm;
 
+	if (!conn_data->dev->hdp_adapter->mi) {
+		g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
+						"Mcap instance released");
+		goto fail;
+	}
+
 	if (err || !recs) {
 		g_set_error(&gerr, HDP_ERROR, HDP_CONNECTION_ERROR,
 					"Error getting remote SDP records");
