@@ -1067,6 +1067,9 @@ static uint8_t hdp_mcap_mdl_conn_req_cb(struct mcap_mcl *mcl, uint8_t mdepid,
 		}
 
 		dev->ndc = create_channel(dev, *conf, NULL, mdlid, NULL, NULL);
+		if (!dev->ndc)
+			return MCAP_MDL_BUSY;
+
 		return MCAP_SUCCESS;
 	}
 
