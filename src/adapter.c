@@ -2974,6 +2974,25 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	if (device)
 		paired = device_is_paired(device);
 
+	/* Extract UUIDs from extended inquiry response if any */
+	dev->services = get_eir_uuids(eir_data, eir_length, dev->services);
+	uuid_count = g_slist_length(dev->services);
+
+	if (dev->services)
+		uuids = strlist2array(dev->services);
+
+	if (dev->le) {
+		emit_device_found(adapter->path, paddr,
+				"Address", DBUS_TYPE_STRING, &paddr,
+				"RSSI", DBUS_TYPE_INT16, &rssi,
+				"Name", DBUS_TYPE_STRING, &dev->name,
+				"Paired", DBUS_TYPE_BOOLEAN, &paired,
+				"UUIDs", DBUS_TYPE_ARRAY, &uuids, uuid_count,
+				NULL);
+		g_strfreev(uuids);
+		return;
+	}
+
 	icon = class_to_icon(dev->class);
 
 	if (!dev->alias) {
@@ -2985,12 +3004,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	} else
 		alias = g_strdup(dev->alias);
 
-	/* Extract UUIDs from extended inquiry response if any */
-	dev->services = get_eir_uuids(eir_data, eir_length, dev->services);
-	uuid_count = g_slist_length(dev->services);
-
 	if (dev->services) {
-		uuids = strlist2array(dev->services);
 		g_slist_foreach(dev->services, (GFunc) g_free, NULL);
 		g_slist_free(dev->services);
 		dev->services = NULL;
@@ -3071,6 +3085,10 @@ void adapter_update_device_from_info(struct btd_adapter *adapter,
 			dev->name = tmp_name;
 		}
 	}
+
+	/* FIXME: check if other information was changed before emitting the
+	 * signal */
+	adapter_emit_device_found(adapter, dev, info->data, info->length);
 }
 
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
