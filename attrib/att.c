@@ -198,9 +198,77 @@ struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len)
 }
 
 uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
-							uint8_t *pdu, int len)
+			const uint8_t *value, int vlen, uint8_t *pdu, int len)
 {
-	return 0;
+	uint16_t min_len = sizeof(pdu[0]) + sizeof(start) + sizeof(end) +
+							sizeof(uint16_t);
+
+	if (pdu == NULL)
+		return 0;
+
+	if (!uuid)
+		return 0;
+
+	if (uuid->type != SDP_UUID16)
+		return 0;
+
+	if (len < min_len)
+		return 0;
+
+	if (vlen > len - min_len)
+		vlen = len - min_len;
+
+	pdu[0] = ATT_OP_FIND_BY_TYPE_REQ;
+	att_put_u16(start, &pdu[1]);
+	att_put_u16(end, &pdu[3]);
+	att_put_u16(uuid->value.uuid16, &pdu[5]);
+
+	if (vlen > 0) {
+		memcpy(&pdu[7], value, vlen);
+		return min_len + vlen;
+	}
+
+	return min_len;
+}
+
+uint16_t dec_find_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
+			uint16_t *end, uuid_t *uuid, uint8_t *value, int *vlen)
+{
+	int valuelen;
+	uint16_t min_len = sizeof(pdu[0]) + sizeof(*start) +
+						sizeof(*end) + sizeof(uint16_t);
+
+	if (pdu == NULL)
+		return 0;
+
+	if (len < min_len)
+		return 0;
+
+	if (pdu[0] != ATT_OP_FIND_BY_TYPE_REQ)
+		return 0;
+
+	/* First requested handle number */
+	if (start)
+		*start = att_get_u16(&pdu[1]);
+
+	/* Last requested handle number */
+	if (end)
+		*end = att_get_u16(&pdu[3]);
+
+	/* Always UUID16 */
+	if (uuid)
+		sdp_uuid16_create(uuid, att_get_u16(&pdu[5]));
+
+	valuelen = len - min_len;
+
+	/* Attribute value to find */
+	if (valuelen > 0 && value)
+		memcpy(value, pdu + min_len, valuelen);
+
+	if (vlen)
+		*vlen = valuelen;
+
+	return len;
 }
 
 uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
