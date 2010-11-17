@@ -467,6 +467,24 @@ static inline gboolean is_uuid128(const char *string)
 			string[23] == '-');
 }
 
+static int string2uuid16(uuid_t *uuid, const char *string)
+{
+	int length = strlen(string);
+	char *endptr = NULL;
+	uint16_t u16;
+
+	if (length != 4 && length != 6)
+		return -EINVAL;
+
+	u16 = strtol(string, &endptr, 16);
+	if (endptr && *endptr == '\0') {
+		sdp_uuid16_create(uuid, u16);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 char *bt_name2string(const char *pattern)
 {
 	uuid_t uuid;
@@ -530,9 +548,9 @@ int bt_string2uuid(uuid_t *uuid, const char *string)
 			sdp_uuid16_create(uuid, class);
 			return 0;
 		}
-	}
 
-	return -1;
+		return string2uuid16(uuid, string);
+	}
 }
 
 gchar *bt_list2string(GSList *list)
