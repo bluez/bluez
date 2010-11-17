@@ -123,12 +123,6 @@ ATT/GATT
   Priority: Low
   Complexity: C1
 
-- Add command line support to use medium instead of (default) low
-  security level with gatttool (--sec-level)
-
-  Priority: Low
-  Complexity: C1
-
 - Implement Server characteristic Configuration support in the attribute
   server to manage characteristic value broadcasting. There is a single
   instance of the Server Characteristic Configuration for all clients.
