@@ -31,21 +31,44 @@
 #include "gattrib.h"
 #include "gatt.h"
 
-guint gatt_discover_primary(GAttrib *attrib, uint16_t start,
-		uint16_t end, GAttribResultFunc func, gpointer user_data)
+guint gatt_discover_primary(GAttrib *attrib, uint16_t start, uint16_t end,
+		uuid_t *uuid, GAttribResultFunc func, gpointer user_data)
 {
 	uint8_t pdu[ATT_DEFAULT_MTU];
-	uuid_t uuid;
+	uuid_t prim;
 	guint16 plen;
+	uint8_t op;
 
-	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	sdp_uuid16_create(&prim, GATT_PRIM_SVC_UUID);
 
-	plen = enc_read_by_grp_req(start, end, &uuid, pdu, sizeof(pdu));
+	if (uuid == NULL) {
+
+		/* Discover all primary services */
+		op = ATT_OP_READ_BY_GROUP_REQ;
+		plen = enc_read_by_grp_req(start, end, &prim, pdu, sizeof(pdu));
+	} else {
+		const void *value;
+		int vlen;
+
+		/* Discover primary service by service UUID */
+		op = ATT_OP_FIND_BY_TYPE_REQ;
+
+		if (uuid->type == SDP_UUID16) {
+			value = &uuid->value.uuid16;
+			vlen = sizeof(uuid->value.uuid16);
+		} else {
+			value = &uuid->value.uuid128;
+			vlen = sizeof(uuid->value.uuid128);
+		}
+
+		plen = enc_find_by_type_req(start, end, &prim, value, vlen,
+							pdu, sizeof(pdu));
+	}
+
 	if (plen == 0)
 		return 0;
 
-	return g_attrib_send(attrib, ATT_OP_READ_BY_GROUP_REQ,
-					pdu, plen, func, user_data, NULL);
+	return g_attrib_send(attrib, op, pdu, plen, func, user_data, NULL);
 }
 
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,

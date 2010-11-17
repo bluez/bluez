@@ -200,7 +200,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	 * Read by Group Type Request until Error Response is received and
 	 * the Error Code is set to Attribute Not Found.
 	 */
-	gatt_discover_primary(attrib, end + 1, opt_end, primary_cb, attrib);
+	gatt_discover_primary(attrib, end + 1, opt_end, NULL, primary_cb,
+								attrib);
 
 	return;
 
@@ -259,7 +260,8 @@ static gboolean primary(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 
-	gatt_discover_primary(attrib, opt_start, opt_end, primary_cb, attrib);
+	gatt_discover_primary(attrib, opt_start, opt_end, NULL, primary_cb,
+								attrib);
 
 	return FALSE;
 }

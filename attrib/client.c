@@ -363,8 +363,8 @@ static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 		return;
 	}
 
-	atid = gatt_discover_primary(gatt->attrib, 0x0001, 0xffff, primary_cb,
-									gatt);
+	atid = gatt_discover_primary(gatt->attrib, 0x0001, 0xffff, NULL,
+							primary_cb, gatt);
 	if (atid == 0)
 		goto fail;
 
@@ -1311,8 +1311,8 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	 * the Error Code is set to Attribute Not Found.
 	 */
 	gatt->attrib = g_attrib_ref(gatt->attrib);
-	gatt->atid = gatt_discover_primary(gatt->attrib,
-				end + 1, 0xffff, primary_cb, gatt);
+	gatt->atid = gatt_discover_primary(gatt->attrib, end + 1, 0xffff, NULL,
+							primary_cb, gatt);
 done:
 	g_attrib_unref(gatt->attrib);
 }
