@@ -301,27 +301,6 @@ void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
-static char *extract_eir_name(uint8_t *data, uint8_t *type)
-{
-	if (!data || !type)
-		return NULL;
-
-	if (data[0] == 0)
-		return NULL;
-
-	*type = data[1];
-
-	switch (*type) {
-	case 0x08:
-	case 0x09:
-		if (!g_utf8_validate((char *) (data + 2), data[0] - 1, NULL))
-			return strdup("");
-		return strndup((char *) (data + 2), data[0] - 1);
-	}
-
-	return NULL;
-}
-
 void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 {
 	struct btd_adapter *adapter;
@@ -410,7 +389,7 @@ void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	} else
 		legacy = TRUE;
 
-	tmp_name = extract_eir_name(data, &name_type);
+	tmp_name = bt_extract_eir_name(data, &name_type);
 	if (tmp_name) {
 		if (name_type == 0x09) {
 			write_device_name(local, peer, tmp_name);

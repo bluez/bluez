@@ -3023,6 +3023,15 @@ void adapter_update_device_from_info(struct btd_adapter *adapter,
 
 	adapter->found_devices = g_slist_sort(adapter->found_devices,
 						(GCompareFunc) dev_rssi_cmp);
+
+	if (info->length) {
+		uint8_t type;
+		char *tmp_name = bt_extract_eir_name(info->data, &type);
+		if (tmp_name) {
+			g_free(dev->name);
+			dev->name = tmp_name;
+		}
+	}
 }
 
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,

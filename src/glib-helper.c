@@ -43,6 +43,7 @@
 #include <glib.h>
 
 #include "glib-helper.h"
+#include "sdpd.h"
 
 /* Number of seconds to keep a sdp_session_t in the cache */
 #define CACHE_TIMEOUT 2
@@ -575,4 +576,25 @@ GSList *bt_string2list(const gchar *str)
 	g_free(uuids);
 
 	return l;
+}
+
+char *bt_extract_eir_name(uint8_t *data, uint8_t *type)
+{
+	if (!data || !type)
+		return NULL;
+
+	if (data[0] == 0)
+		return NULL;
+
+	*type = data[1];
+
+	switch (*type) {
+	case EIR_NAME_SHORT:
+	case EIR_NAME_COMPLETE:
+		if (!g_utf8_validate((char *) (data + 2), data[0] - 1, NULL))
+			return strdup("");
+		return strndup((char *) (data + 2), data[0] - 1);
+	}
+
+	return NULL;
 }
