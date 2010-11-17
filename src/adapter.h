@@ -71,6 +71,7 @@ struct remote_dev_info {
 	name_status_t name_status;
 	gboolean le;
 	/* LE adv data */
+	GSList *services;
 	uint8_t evt_type;
 	uint8_t bdaddr_type;
 };
