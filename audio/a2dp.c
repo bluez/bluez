@@ -77,6 +77,7 @@ struct a2dp_sep {
 };
 
 struct a2dp_setup_cb {
+	struct a2dp_setup *setup;
 	a2dp_select_cb_t select_cb;
 	a2dp_config_cb_t config_cb;
 	a2dp_stream_cb_t resume_cb;
@@ -155,6 +156,7 @@ static struct a2dp_setup *setup_new(struct avdtp *session)
 static void setup_free(struct a2dp_setup *s)
 {
 	DBG("%p", s);
+
 	setups = g_slist_remove(setups, s);
 	if (s->session)
 		avdtp_unref(s->session);
@@ -169,8 +171,31 @@ static void setup_unref(struct a2dp_setup *setup)
 
 	DBG("%p: ref=%d", setup, setup->ref);
 
-	if (setup->ref <= 0)
-		setup_free(setup);
+	if (setup->ref > 0)
+		return;
+
+	setup_free(setup);
+}
+
+static struct a2dp_setup_cb *setup_cb_new(struct a2dp_setup *setup)
+{
+	struct a2dp_setup_cb *cb;
+
+	cb = g_new0(struct a2dp_setup_cb, 1);
+	cb->setup = setup;
+	cb->id = ++cb_id;
+
+	setup->cb = g_slist_append(setup->cb, cb);
+	return cb;
+}
+
+static void setup_cb_free(struct a2dp_setup_cb *cb)
+{
+	struct a2dp_setup *setup = cb->setup;
+
+	setup->cb = g_slist_remove(setup->cb, cb);
+	setup_unref(cb->setup);
+	g_free(cb);
 }
 
 static gboolean finalize_config(struct a2dp_setup *s)
@@ -178,7 +203,6 @@ static gboolean finalize_config(struct a2dp_setup *s)
 	GSList *l;
 	struct avdtp_stream *stream = s->err ? NULL : s->stream;
 
-	setup_ref(s);
 	for (l = s->cb; l != NULL; ) {
 		struct a2dp_setup_cb *cb = l->data;
 
@@ -189,12 +213,8 @@ static gboolean finalize_config(struct a2dp_setup *s)
 
 		cb->config_cb(s->session, s->sep, stream, s->err,
 							cb->user_data);
-		s->cb = g_slist_remove(s->cb, cb);
-		g_free(cb);
-		setup_unref(s);
+		setup_cb_free(cb);
 	}
-
-	setup_unref(s);
 
 	return FALSE;
 }
@@ -213,8 +233,6 @@ static gboolean finalize_resume(struct a2dp_setup *s)
 {
 	GSList *l;
 
-	setup_ref(s);
-
 	for (l = s->cb; l != NULL; ) {
 		struct a2dp_setup_cb *cb = l->data;
 
@@ -224,12 +242,8 @@ static gboolean finalize_resume(struct a2dp_setup *s)
 			continue;
 
 		cb->resume_cb(s->session, s->err, cb->user_data);
-		s->cb = g_slist_remove(s->cb, cb);
-		g_free(cb);
-		setup_unref(s);
+		setup_cb_free(cb);
 	}
-
-	setup_unref(s);
 
 	return FALSE;
 }
@@ -238,7 +252,6 @@ static gboolean finalize_suspend(struct a2dp_setup *s)
 {
 	GSList *l;
 
-	setup_ref(s);
 	for (l = s->cb; l != NULL; ) {
 		struct a2dp_setup_cb *cb = l->data;
 
@@ -248,12 +261,9 @@ static gboolean finalize_suspend(struct a2dp_setup *s)
 			continue;
 
 		cb->suspend_cb(s->session, s->err, cb->user_data);
-		s->cb = g_slist_remove(s->cb, cb);
-		g_free(cb);
-		setup_unref(s);
+		setup_cb_free(cb);
 	}
 
-	setup_unref(s);
 	return FALSE;
 }
 
@@ -271,7 +281,6 @@ static gboolean finalize_select(struct a2dp_setup *s, GSList *caps)
 {
 	GSList *l;
 
-	setup_ref(s);
 	for (l = s->cb; l != NULL; ) {
 		struct a2dp_setup_cb *cb = l->data;
 
@@ -281,12 +290,9 @@ static gboolean finalize_select(struct a2dp_setup *s, GSList *caps)
 			continue;
 
 		cb->select_cb(s->session, s->sep, caps, cb->user_data);
-		s->cb = g_slist_remove(s->cb, cb);
-		g_free(cb);
-		setup_unref(s);
+		setup_cb_free(cb);
 	}
 
-	setup_unref(s);
 	return FALSE;
 }
 
@@ -390,6 +396,8 @@ done:
 
 	if (err)
 		g_free(err);
+
+	setup_unref(setup);
 
 	return FALSE;
 }
@@ -1909,12 +1917,10 @@ unsigned int a2dp_select_capabilities(struct avdtp *session,
 	if (!setup)
 		return 0;
 
-	cb_data = g_new0(struct a2dp_setup_cb, 1);
+	cb_data = setup_cb_new(setup);
 	cb_data->select_cb = cb;
 	cb_data->user_data = user_data;
-	cb_data->id = ++cb_id;
 
-	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->sep = sep;
 	setup->rsep = avdtp_find_remote_sep(session, sep->lsep);
 
@@ -1947,8 +1953,7 @@ unsigned int a2dp_select_capabilities(struct avdtp *session,
 		return cb_data->id;
 
 fail:
-	setup_unref(setup);
-	cb_id--;
+	setup_cb_free(cb_data);
 	return 0;
 
 }
@@ -1995,12 +2000,10 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 	if (!setup)
 		return 0;
 
-	cb_data = g_new0(struct a2dp_setup_cb, 1);
+	cb_data = setup_cb_new(setup);
 	cb_data->config_cb = cb;
 	cb_data->user_data = user_data;
-	cb_data->id = ++cb_id;
 
-	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->sep = sep;
 	setup->stream = sep->stream;
 	setup->client_caps = caps;
@@ -2068,8 +2071,7 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 	return cb_data->id;
 
 failed:
-	setup_unref(setup);
-	cb_id--;
+	setup_cb_free(cb_data);
 	return 0;
 }
 
@@ -2083,12 +2085,10 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 	if (!setup)
 		return 0;
 
-	cb_data = g_new0(struct a2dp_setup_cb, 1);
+	cb_data = setup_cb_new(setup);
 	cb_data->resume_cb = cb;
 	cb_data->user_data = user_data;
-	cb_data->id = ++cb_id;
 
-	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->sep = sep;
 	setup->stream = sep->stream;
 
@@ -2122,8 +2122,7 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 	return cb_data->id;
 
 failed:
-	setup_unref(setup);
-	cb_id--;
+	setup_cb_free(cb_data);
 	return 0;
 }
 
@@ -2137,12 +2136,10 @@ unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
 	if (!setup)
 		return 0;
 
-	cb_data = g_new0(struct a2dp_setup_cb, 1);
+	cb_data = setup_cb_new(setup);
 	cb_data->suspend_cb = cb;
 	cb_data->user_data = user_data;
-	cb_data->id = ++cb_id;
 
-	setup->cb = g_slist_append(setup->cb, cb_data);
 	setup->sep = sep;
 	setup->stream = sep->stream;
 
@@ -2169,46 +2166,39 @@ unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
 	return cb_data->id;
 
 failed:
-	setup_unref(setup);
-	cb_id--;
+	setup_cb_free(cb_data);
 	return 0;
 }
 
 gboolean a2dp_cancel(struct audio_device *dev, unsigned int id)
 {
-	struct a2dp_setup_cb *cb_data;
 	struct a2dp_setup *setup;
 	GSList *l;
-
-	DBG("a2dp_cancel()");
 
 	setup = find_setup_by_dev(dev);
 	if (!setup)
 		return FALSE;
 
-	for (cb_data = NULL, l = setup->cb; l != NULL; l = g_slist_next(l)) {
+	for (l = setup->cb; l != NULL; l = g_slist_next(l)) {
 		struct a2dp_setup_cb *cb = l->data;
 
-		if (cb->id == id) {
-			cb_data = cb;
-			break;
+		if (cb->id != id)
+			continue;
+
+		setup_ref(setup);
+		setup_cb_free(cb);
+
+		if (!setup->cb) {
+			DBG("aborting setup %p", setup);
+			avdtp_abort(setup->session, setup->stream);
+			return TRUE;
 		}
-	}
 
-	if (!cb_data) {
-		error("a2dp_cancel: no matching callback with id %u", id);
-		return FALSE;
-	}
-
-	setup->cb = g_slist_remove(setup->cb, cb_data);
-	g_free(cb_data);
-
-	if (setup->cb)
+		setup_unref(setup);
 		return TRUE;
+	}
 
-	avdtp_abort(setup->session, setup->stream);
-
-	return TRUE;
+	return FALSE;
 }
 
 gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session)
