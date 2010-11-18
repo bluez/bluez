@@ -338,31 +338,37 @@ static int hciops_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 	uint32_t link_mode;
 	uint16_t handle;
 
+	dd = hci_open_dev(index);
+	if (dd < 0)
+		return -errno;
+
 	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
 	cr->type = ACL_LINK;
 	bacpy(&cr->bdaddr, dst);
 
-	err = ioctl(SK(index), HCIGETCONNINFO, cr);
+	err = ioctl(dd, HCIGETCONNINFO, cr);
 	link_mode = cr->conn_info->link_mode;
 	handle = cr->conn_info->handle;
 	g_free(cr);
 
-	if (err < 0)
-		return -errno;
+	if (err < 0) {
+		err = -errno;
+		goto fail;
+	}
 
-	if (link_mode & HCI_LM_ENCRYPT)
-		return -EALREADY;
+	if (link_mode & HCI_LM_ENCRYPT) {
+		err = -EALREADY;
+		goto fail;
+	}
 
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = htobs(handle);
 
-	if (hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_AUTH_REQUESTED,
-				AUTH_REQUESTED_CP_SIZE, &cp) < 0)
-		return -errno;
-
-	dd = dup(SK(index));
-	if (dd < 0)
-		return -errno;
+	if (hci_send_cmd(dd, OGF_LINK_CTL, OCF_AUTH_REQUESTED,
+				AUTH_REQUESTED_CP_SIZE, &cp) < 0) {
+		err = -errno;
+		goto fail;
+	}
 
 	cmd = g_new0(struct hci_cmd_data, 1);
 	cmd->handle = handle;
@@ -379,11 +385,10 @@ static int hciops_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &nf, sizeof(nf)) < 0) {
 		err = -errno;
 		g_free(cmd);
-		close(dd);
-		return -err;
+		goto fail;
 	}
 
-	io = g_io_channel_unix_new(dup(SK(index)));
+	io = g_io_channel_unix_new(dd);
 	g_io_channel_set_close_on_unref(io, FALSE);
 	g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
 			G_IO_HUP | G_IO_ERR | G_IO_NVAL | G_IO_IN,
@@ -391,6 +396,10 @@ static int hciops_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 	g_io_channel_unref(io);
 
 	return 0;
+
+fail:
+	close(dd);
+	return err;
 }
 
 /* End async HCI command handling */
