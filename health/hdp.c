@@ -1433,8 +1433,8 @@ static void abort_echo_channel_cb(GError *err, gpointer data)
 			/* MDL is removed from MCAP so we can */
 			/* free the data channel without sending */
 			/* a MD_DELETE_MDL_REQ */
-			//TODO review the above comment
-// 			hdp_channel_unref(chan);
+			/* TODO review the above comment */
+			/* hdp_channel_unref(chan); */
 		}
 		return;
 	}
