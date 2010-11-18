@@ -41,6 +41,7 @@
 #include "att.h"
 #include "btio.h"
 #include "gattrib.h"
+#include "glib-helper.h"
 #include "gatt.h"
 
 /* Minimum MTU for L2CAP connections over BR/EDR */
@@ -50,6 +51,7 @@ static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
 static gchar *opt_value = NULL;
 static gchar *opt_sec_level = "low";
+static uuid_t *opt_uuid = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
 static int opt_handle = -1;
@@ -144,7 +146,7 @@ static GIOChannel *do_connect(gboolean le)
 	return chan;
 }
 
-static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
+static void primary_all_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	GAttrib *attrib = user_data;
@@ -200,14 +202,44 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	 * Read by Group Type Request until Error Response is received and
 	 * the Error Code is set to Attribute Not Found.
 	 */
-	gatt_discover_primary(attrib, end + 1, opt_end, NULL, primary_cb,
-								attrib);
 
+	gatt_discover_primary(attrib, end + 1, opt_end, NULL, primary_all_cb,
+								attrib);
 	return;
 
 done:
 	if (opt_listen == FALSE)
 		g_main_loop_quit(event_loop);
+}
+
+static void primary_by_uuid_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	GSList *ranges, *l;
+
+	if (status != 0) {
+		g_printerr("Discover primary services by UUID failed: %s\n",
+							att_ecode2str(status));
+		goto done;
+	}
+
+	ranges = dec_find_by_type_resp(pdu, plen);
+	if (ranges == NULL) {
+		g_printerr("Protocol error!\n");
+		goto done;
+	}
+
+	for (l = ranges; l; l = l->next) {
+		struct att_range *range = l->data;
+		g_print("Starting handle: %04x Ending handle: %04x\n",
+						range->start, range->end);
+	}
+
+	g_slist_foreach(ranges, (GFunc) g_free, NULL);
+	g_slist_free(ranges);
+
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
@@ -260,8 +292,12 @@ static gboolean primary(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 
-	gatt_discover_primary(attrib, opt_start, opt_end, NULL, primary_cb,
-								attrib);
+	if (opt_uuid)
+		gatt_discover_primary(attrib, opt_start, opt_end, opt_uuid,
+						primary_by_uuid_cb, attrib);
+	else
+		gatt_discover_primary(attrib, opt_start, opt_end, NULL,
+						primary_all_cb, attrib);
 
 	return FALSE;
 }
@@ -486,11 +522,29 @@ static gboolean characteristics_desc(gpointer user_data)
 	return FALSE;
 }
 
+static gboolean parse_uuid(const char *key, const char *value,
+				gpointer user_data, GError **error)
+{
+	if (!value)
+		return FALSE;
+
+	opt_uuid = g_try_malloc(sizeof(uuid_t));
+	if (opt_uuid == NULL)
+		return FALSE;
+
+	if (bt_string2uuid(opt_uuid, value) < 0)
+		return FALSE;
+
+	return TRUE;
+}
+
 static GOptionEntry primary_char_options[] = {
 	{ "start", 's' , 0, G_OPTION_ARG_INT, &opt_start,
 		"Starting handle(optional)", "0x0001" },
 	{ "end", 'e' , 0, G_OPTION_ARG_INT, &opt_end,
 		"Ending handle(optional)", "0xffff" },
+	{ "uuid", 'u', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK,
+		parse_uuid, "UUID16 or UUID128(optional)", "0x1801"},
 	{ NULL },
 };
 
@@ -621,6 +675,7 @@ done:
 	g_option_context_free(context);
 	g_free(opt_src);
 	g_free(opt_dst);
+	g_free(opt_uuid);
 
 	if (got_error)
 		exit(EXIT_FAILURE);

@@ -178,7 +178,8 @@ if ATTRIBPLUGIN
 bin_PROGRAMS += attrib/gatttool
 
 attrib_gatttool_SOURCES = attrib/gatttool.c attrib/att.c attrib/gatt.c \
-			  attrib/gattrib.c btio/btio.c
+			  attrib/gattrib.c btio/btio.c \
+			  src/glib-helper.h src/glib-helper.c
 attrib_gatttool_LDADD = lib/libbluetooth.la @GLIB_LIBS@
 
 builtin_modules += attrib
