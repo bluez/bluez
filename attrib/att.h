@@ -122,6 +122,11 @@ struct att_data_list {
 	uint8_t **data;
 };
 
+struct att_range {
+	uint16_t start;
+	uint16_t end;
+};
+
 /* These functions do byte conversion */
 static inline uint8_t att_get_u8(const void *ptr)
 {
@@ -168,6 +173,8 @@ uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 			const uint8_t *value, int vlen, uint8_t *pdu, int len);
 uint16_t dec_find_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
 		uint16_t *end, uuid_t *uuid, uint8_t *value, int *vlen);
+uint16_t enc_find_by_type_resp(GSList *ranges, uint8_t *pdu, int len);
+GSList *dec_find_by_type_resp(const uint8_t *pdu, int len);
 struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len);
 uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 							uint8_t *pdu, int len);

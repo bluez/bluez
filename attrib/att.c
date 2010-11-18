@@ -30,6 +30,8 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include <glib.h>
+
 #include "att.h"
 
 const char *att_ecode2str(uint8_t status)
@@ -269,6 +271,50 @@ uint16_t dec_find_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
 		*vlen = valuelen;
 
 	return len;
+}
+
+uint16_t enc_find_by_type_resp(GSList *matches, uint8_t *pdu, int len)
+{
+	GSList *l;
+	uint16_t offset;
+
+	if (pdu == NULL || len < 5)
+		return 0;
+
+	pdu[0] = ATT_OP_FIND_BY_TYPE_RESP;
+
+	for (l = matches, offset = 1; l && len >= (offset + 4);
+					l = l->next, offset += 4) {
+		struct att_range *range = l->data;
+
+		att_put_u16(range->start, &pdu[offset]);
+		att_put_u16(range->end, &pdu[offset + 2]);
+	}
+
+	return offset;
+}
+
+GSList *dec_find_by_type_resp(const uint8_t *pdu, int len)
+{
+	struct att_range *range;
+	GSList *matches;
+	int offset;
+
+	if (pdu == NULL || len < 5)
+		return NULL;
+
+	if (pdu[0] != ATT_OP_FIND_BY_TYPE_RESP)
+		return NULL;
+
+	for (offset = 1, matches = NULL; len >= (offset + 4); offset += 4) {
+		range = malloc(sizeof(struct att_range));
+		range->start = att_get_u16(&pdu[offset]);
+		range->end = att_get_u16(&pdu[offset + 2]);
+
+		matches = g_slist_append(matches, range);
+	}
+
+	return matches;
 }
 
 uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
