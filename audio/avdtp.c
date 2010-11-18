@@ -2632,8 +2632,10 @@ static int send_request(struct avdtp *session, gboolean priority,
 {
 	struct pending_req *req;
 
-	if (stream && stream->abort_int && signal_id != AVDTP_ABORT)
+	if (stream && stream->abort_int && signal_id != AVDTP_ABORT) {
+		DBG("Unable to send requests while aborting");
 		return -EINVAL;
+	}
 
 	req = g_new0(struct pending_req, 1);
 	req->signal_id = signal_id;
@@ -3546,8 +3548,7 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream)
 	if (!g_slist_find(session->streams, stream))
 		return -EINVAL;
 
-	if (stream->lsep->state == AVDTP_STATE_IDLE ||
-			stream->lsep->state == AVDTP_STATE_ABORTING)
+	if (stream->lsep->state == AVDTP_STATE_ABORTING)
 		return -EINVAL;
 
 	if (session->req && stream == session->req->stream)
