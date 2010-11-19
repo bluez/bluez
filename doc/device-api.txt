@@ -185,7 +185,7 @@ Properties	string Address [readonly]
 
 		object Adapter [readonly]
 
-			The object path of the adpater the device belongs to.
+			The object path of the adapter the device belongs to.
 
 		boolean LegacyPairing [readonly]
 
