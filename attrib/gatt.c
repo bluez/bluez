@@ -74,13 +74,22 @@ guint gatt_discover_primary(GAttrib *attrib, uint16_t start, uint16_t end,
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 				GAttribResultFunc func, gpointer user_data)
 {
-	uint8_t pdu[ATT_DEFAULT_MTU];
 	uuid_t uuid;
-	guint16 plen;
 
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 
-	plen = enc_read_by_type_req(start, end, &uuid, pdu, sizeof(pdu));
+	return gatt_read_char_by_uuid(attrib, start, end, &uuid, func,
+							user_data);
+}
+
+guint gatt_read_char_by_uuid(GAttrib *attrib, uint16_t start, uint16_t end,
+					uuid_t *uuid, GAttribResultFunc func,
+					gpointer user_data)
+{
+	uint8_t pdu[ATT_DEFAULT_MTU];
+	guint16 plen;
+
+	plen = enc_read_by_type_req(start, end, uuid, pdu, sizeof(pdu));
 	if (plen == 0)
 		return 0;
 

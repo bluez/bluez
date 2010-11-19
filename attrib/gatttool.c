@@ -398,9 +398,48 @@ done:
 		g_main_loop_quit(event_loop);
 }
 
+static void char_read_by_uuid_cb(guint8 status, const guint8 *pdu,
+					guint16 plen, gpointer user_data)
+{
+	struct att_data_list *list;
+	int i;
+
+	if (status != 0) {
+		g_printerr("Read characteristics by UUID failed: %s\n",
+							att_ecode2str(status));
+		goto done;
+	}
+
+	list = dec_read_by_type_resp(pdu, plen);
+	if (list == NULL)
+		goto done;
+
+	for (i = 0; i < list->num; i++) {
+		uint8_t *value = list->data[i];
+		int j;
+
+		g_print("handle: 0x%04x \t value: ", att_get_u16(value));
+		value += 2;
+		for (j = 0; j < list->len - 2; j++, value++)
+			g_print("%02x ", *value);
+		g_print("\n");
+	}
+
+	att_data_list_free(list);
+
+done:
+	g_main_loop_quit(event_loop);
+}
+
 static gboolean characteristics_read(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
+
+	if (opt_uuid != NULL) {
+		gatt_read_char_by_uuid(attrib, opt_start, opt_end, opt_uuid,
+						char_read_by_uuid_cb, attrib);
+		return FALSE;
+	}
 
 	if (opt_handle <= 0) {
 		g_printerr("A valid handle is required\n");
