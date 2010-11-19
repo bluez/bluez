@@ -884,6 +884,8 @@ int ath3k_post(int fd, int pm)
 	int dev_id, dd;
 	struct timespec tm = { 0, 50000 };
 
+	sleep(1);
+
 	dev_id = ioctl(fd, HCIUARTGETDEVICE, 0);
 	if (dev_id < 0) {
 		perror("cannot get device id");
@@ -896,11 +898,15 @@ int ath3k_post(int fd, int pm)
 		return dd;
 	}
 
-	sleep(2);
+	if (ioctl(dd, HCIDEVUP, dev_id) < 0 && errno != EALREADY) {
+		perror("hci down:Power management Disabled");
+		hci_close_dev(dd);
+		return -1;
+	}
 
 	/* send vendor specific command with Sleep feature Enabled */
 	if (hci_send_cmd(dd, OGF_VENDOR_CMD, HCI_SLEEP_CMD_OCF,	1, &pm) < 0)
-		perror("Power management Disabled");
+		perror("PM command failed, power management Disabled");
 
 	nanosleep(&tm, NULL);
 	hci_close_dev(dd);
