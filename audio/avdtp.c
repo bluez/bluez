@@ -792,7 +792,7 @@ static void stream_free(struct avdtp_stream *stream)
 		g_source_remove(stream->timer);
 
 	if (stream->io)
-		g_io_channel_unref(stream->io);
+		close_stream(stream);
 
 	if (stream->io_id)
 		g_source_remove(stream->io_id);
@@ -2434,7 +2434,7 @@ drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
-static int l2cap_connect(struct avdtp *session)
+static GIOChannel *l2cap_connect(struct avdtp *session)
 {
 	GError *err = NULL;
 	GIOChannel *io;
@@ -2448,12 +2448,10 @@ static int l2cap_connect(struct avdtp *session)
 	if (!io) {
 		error("%s", err->message);
 		g_error_free(err);
-		return -EIO;
+		return NULL;
 	}
 
-	g_io_channel_unref(io);
-
-	return 0;
+	return io;
 }
 
 static void queue_request(struct avdtp *session, struct pending_req *req,
@@ -2588,8 +2586,8 @@ static int send_req(struct avdtp *session, gboolean priority,
 	int err;
 
 	if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
-		err = l2cap_connect(session);
-		if (err < 0)
+		session->io = l2cap_connect(session);
+		if (!session->io)
 			goto failed;
 		avdtp_set_state(session, AVDTP_SESSION_STATE_CONNECTING);
 	}
@@ -2767,7 +2765,8 @@ static gboolean avdtp_open_resp(struct avdtp *session, struct avdtp_stream *stre
 {
 	struct avdtp_local_sep *sep = stream->lsep;
 
-	if (l2cap_connect(session) < 0) {
+	stream->io = l2cap_connect(session);
+	if (!stream->io) {
 		avdtp_sep_set_state(session, sep, AVDTP_STATE_IDLE);
 		return FALSE;
 	}
