@@ -3004,12 +3004,6 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	} else
 		alias = g_strdup(dev->alias);
 
-	if (dev->services) {
-		g_slist_foreach(dev->services, (GFunc) g_free, NULL);
-		g_slist_free(dev->services);
-		dev->services = NULL;
-	}
-
 	emit_device_found(adapter->path, paddr,
 			"Address", DBUS_TYPE_STRING, &paddr,
 			"Class", DBUS_TYPE_UINT32, &dev->class,
