@@ -893,7 +893,25 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 
 	DBG("Got name for hci%d", index);
 
-	if (!PENDING(index) && UP(index))
+	if (!UP(index))
+		return;
+
+	/* Even though it shouldn't happen (assuming the kernel behaves
+	 * properly) it seems like we might miss the very first
+	 * initialization commands that the kernel sends. So check for
+	 * it here (since read_local_name is one of the last init
+	 * commands) and resend the first ones if we haven't seen
+	 * their results yet */
+
+	if (hci_test_bit(PENDING_FEATURES, &PENDING(index)))
+		hci_send_cmd(SK(index), OGF_INFO_PARAM,
+					OCF_READ_LOCAL_FEATURES, 0, NULL);
+
+	if (hci_test_bit(PENDING_VERSION, &PENDING(index)))
+		hci_send_cmd(SK(index), OGF_INFO_PARAM,
+					OCF_READ_LOCAL_VERSION, 0, NULL);
+
+	if (!PENDING(index))
 		start_adapter(index);
 }
 
