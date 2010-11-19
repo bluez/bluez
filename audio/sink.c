@@ -80,6 +80,13 @@ static GSList *sink_callbacks = NULL;
 
 static unsigned int avdtp_callback_id = 0;
 
+static char *str_state[] = {
+	"SINK_STATE_DISCONNECTED",
+	"SINK_STATE_CONNECTING",
+	"SINK_STATE_CONNECTED",
+	"SINK_STATE_PLAYING",
+};
+
 static const char *state2str(sink_state_t state)
 {
 	switch (state) {
@@ -111,6 +118,9 @@ static void sink_set_state(struct audio_device *dev, sink_state_t new_state)
 		emit_property_changed(dev->conn, dev->path,
 					AUDIO_SINK_INTERFACE, "State",
 					DBUS_TYPE_STRING, &state_str);
+
+	DBG("State changed %s: %s -> %s", dev->path, str_state[old_state],
+		str_state[new_state]);
 
 	for (l = sink_callbacks; l != NULL; l = l->next) {
 		struct sink_state_callback *cb = l->data;
