@@ -74,6 +74,7 @@ struct remote_dev_info {
 	GSList *services;
 	uint8_t evt_type;
 	uint8_t bdaddr_type;
+	uint8_t flags;
 };
 
 struct hci_dev {

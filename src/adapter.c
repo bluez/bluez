@@ -3053,6 +3053,18 @@ static struct remote_dev_info *get_found_dev(struct btd_adapter *adapter,
 	return dev;
 }
 
+static uint8_t extract_eir_flags(uint8_t *eir_data)
+{
+	if (eir_data[0] == 0)
+		return 0;
+
+	if (eir_data[1] != EIR_FLAGS)
+		return 0;
+
+	/* For now, only one octet is used for flags */
+	return eir_data[2];
+}
+
 void adapter_update_device_from_info(struct btd_adapter *adapter,
 						le_advertising_info *info)
 {
@@ -3084,6 +3096,8 @@ void adapter_update_device_from_info(struct btd_adapter *adapter,
 			g_free(dev->name);
 			dev->name = tmp_name;
 		}
+
+		dev->flags = extract_eir_flags(info->data);
 	}
 
 	/* FIXME: check if other information was changed before emitting the
