@@ -70,7 +70,8 @@ struct remote_dev_info {
 	dbus_bool_t legacy;
 	name_status_t name_status;
 	gboolean le;
-	/* LE adv data */
+	char **uuids;
+	size_t uuid_count;
 	GSList *services;
 	uint8_t evt_type;
 	uint8_t bdaddr_type;
