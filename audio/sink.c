@@ -700,6 +700,9 @@ gboolean sink_shutdown(struct sink *sink)
 		pending_request_free(sink->dev, pending);
 		sink->connect = NULL;
 
+		avdtp_unref(sink->session);
+		sink->session = NULL;
+
 		return TRUE;
 	}
 
