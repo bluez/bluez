@@ -1138,6 +1138,8 @@ void avdtp_unref(struct avdtp *session)
 			g_io_channel_shutdown(session->io, TRUE, NULL);
 			g_io_channel_unref(session->io);
 			session->io = NULL;
+			avdtp_set_state(session,
+					AVDTP_SESSION_STATE_DISCONNECTED);
 		}
 
 		if (session->io)
