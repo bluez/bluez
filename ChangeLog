@@ -1,3 +1,20 @@
+ver 4.80:
+	Fix legacy link key storing for some buggy adapters.
+	Fix invalid memory access when EIR field length is zero.
+	Fix adapter initialization to wait for kernel HCI commands.
+	Fix initialization of adapters which are already up.
+	Fix possible race condition when initializing adapters.
+	Fix possible crashes when attempting to connect AVDTP.
+	Fix not aborting sink stream configuration on disconnect.
+	Fix not indicating disconnected state when connecting to AVDTP.
+	Fix not dropping AVDTP session when canceling stream setup.
+	Fix AVDTP abort not being send when the state is idle.
+	Fix regression with Low Energy and interleave discovery.
+	Add a new configuration option to disable Low Energy support.
+	Add iwmmxt optimization for SBC for ARM PXA series CPUs.
+	Update support for GATT Primary Service Discovery.
+	Update MCAP and HDP support.
+
 ver 4.79:
 	Fix issue with adapter initialization race condition.
 	Update new Bluetooth Management interface support.
