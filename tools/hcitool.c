@@ -46,6 +46,9 @@
 #include "textfile.h"
 #include "oui.h"
 
+/* Unofficial value, might still change */
+#define LE_LINK		0x03
+
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, NULL)) != -1)
 
 static void usage(void);
