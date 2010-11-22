@@ -148,7 +148,7 @@ Methods		dict GetProperties()
 
 			This registers the adapter wide agent.
 
-			The object path defines the path the of the agent
+			The object path defines the path of the agent
 			that will be called when user input is needed.
 
 			If an application disconnects from the bus all
