@@ -921,7 +921,8 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 		return;
 
 	chan = dev->ndc;
-	chan->mdl = mcap_mdl_ref(mdl);
+	if (!chan->mdl)
+		chan->mdl = mcap_mdl_ref(mdl);
 
 	if (!g_slist_find(dev->channels, chan))
 		dev->channels = g_slist_prepend(dev->channels,
