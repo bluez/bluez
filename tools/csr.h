@@ -22,6 +22,7 @@
  */
 
 #include <stdint.h>
+#include <termios.h>
 
 #define CSR_VARID_PS_CLR_ALL			0x000b	/* valueless */
 #define CSR_VARID_PS_FACTORY_SET		0x000c	/* valueless */
@@ -519,7 +520,7 @@ int csr_read_usb(uint16_t varid, uint8_t *value, uint16_t length);
 int csr_write_usb(uint16_t varid, uint8_t *value, uint16_t length);
 void csr_close_usb(void);
 
-int csr_open_bcsp(char *device);
+int csr_open_bcsp(char *device, speed_t bcsp_rate);
 int csr_read_bcsp(uint16_t varid, uint8_t *value, uint16_t length);
 int csr_write_bcsp(uint16_t varid, uint8_t *value, uint16_t length);
 void csr_close_bcsp(void);
