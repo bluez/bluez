@@ -144,9 +144,16 @@ static int uart_speed(int s)
 
 int set_speed(int fd, struct termios *ti, int speed)
 {
-	cfsetospeed(ti, uart_speed(speed));
-	cfsetispeed(ti, uart_speed(speed));
-	return tcsetattr(fd, TCSANOW, ti);
+	if (cfsetospeed(ti, uart_speed(speed)) < 0)
+		return -errno;
+
+	if (cfsetispeed(ti, uart_speed(speed)) < 0)
+		return -errno;
+
+	if (tcsetattr(fd, TCSANOW, ti) < 0)
+		return -errno;
+
+	return 0;
 }
 
 /*
