@@ -50,6 +50,7 @@ int texas_post(int fd, struct termios *ti);
 int texasalt_init(int fd, int speed, struct termios *ti);
 int stlc2500_init(int fd, bdaddr_t *bdaddr);
 int bgb2xx_init(int dd, bdaddr_t *bdaddr);
-int ath3k_init(int fd, char *bdaddr, int speed);
+int ath3k_init(int fd, int speed, int init_speed, char *bdaddr,
+						struct termios *ti);
 int ath3k_post(int fd, int pm);
 int qualcomm_init(int fd, int speed, struct termios *ti, const char *bdaddr);

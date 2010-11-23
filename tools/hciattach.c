@@ -311,7 +311,7 @@ static int texasalt(int fd, struct uart_t *u, struct termios *ti)
 
 static int ath3k_ps(int fd, struct uart_t *u, struct termios *ti)
 {
-	return ath3k_init(fd, u->bdaddr, u->speed);
+	return ath3k_init(fd, u->speed, u->init_speed, u->bdaddr, ti);
 }
 
 static int ath3k_pm(int fd, struct uart_t *u, struct termios *ti)
