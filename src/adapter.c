@@ -1694,6 +1694,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 	struct remote_dev_info *dev, match;
 	const gchar *address;
 	gboolean le;
+	int err;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -1720,7 +1721,9 @@ static DBusMessage *create_device(DBusConnection *conn,
 	if (!device)
 		return NULL;
 
-	device_browse(device, conn, msg, NULL, FALSE);
+	err = device_browse(device, conn, msg, NULL, FALSE);
+	if (err < 0)
+		return failed_strerror(msg, -err);
 
 	return NULL;
 }
