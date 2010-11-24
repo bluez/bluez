@@ -45,6 +45,16 @@
 #include "sdpd.h"
 #include "log.h"
 
+typedef struct {
+	uint32_t timestamp;
+	union {
+		uint16_t maxBytesSent;
+		uint16_t lastIndexSent;
+	} cStateValue;
+} sdp_cont_state_t;
+
+#define SDP_CONT_STATE_SIZE (sizeof(uint8_t) + sizeof(sdp_cont_state_t))
+
 #define MIN(x, y) ((x) < (y)) ? (x): (y)
 
 typedef struct _sdp_cstate_list sdp_cstate_list_t;
@@ -58,7 +68,7 @@ struct _sdp_cstate_list {
 static sdp_cstate_list_t *cstates;
 
 // FIXME: should probably remove it when it's found
-sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate)
+static sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate)
 {
 	sdp_cstate_list_t *p;
 
