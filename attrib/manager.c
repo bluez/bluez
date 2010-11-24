@@ -44,15 +44,19 @@ static DBusConnection *connection;
 static int client_probe(struct btd_device *device, GSList *uuids)
 {
 	const sdp_record_t *rec;
-	sdp_list_t *list;
 	int psm = -1;
 
 	rec = btd_device_get_record(device, GATT_UUID);
 	if (rec) {
+		sdp_list_t *list;
 		if (sdp_get_access_protos(rec, &list) < 0)
 			return -1;
 
 		psm = sdp_get_proto_port(list, L2CAP_UUID);
+
+		sdp_list_foreach(list, (sdp_list_func_t) sdp_list_free, NULL);
+		sdp_list_free(list, NULL);
+
 		if (psm < 0)
 			return -1;
 	}
