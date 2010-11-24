@@ -45,26 +45,17 @@ static int client_probe(struct btd_device *device, GSList *uuids)
 {
 	const sdp_record_t *rec;
 	sdp_list_t *list;
-	int psm;
-
-	/*
-	 * Entry point for BR/EDR GATT probe. LE scanning and primary service
-	 * search will be handled temporaly inside the gatt plugin. For the
-	 * final solution all LE operations should be moved to the "core",
-	 * otherwise it will not be possible serialize/schedule BR/EDR device
-	 * discovery and LE scanning.
-	 */
+	int psm = -1;
 
 	rec = btd_device_get_record(device, GATT_UUID);
-	if (!rec)
-		return -1;
+	if (rec) {
+		if (sdp_get_access_protos(rec, &list) < 0)
+			return -1;
 
-	if (sdp_get_access_protos(rec, &list) < 0)
-		return -1;
-
-	psm = sdp_get_proto_port(list, L2CAP_UUID);
-	if (psm < 0)
-		return -1;
+		psm = sdp_get_proto_port(list, L2CAP_UUID);
+		if (psm < 0)
+			return -1;
+	}
 
 	return attrib_client_register(device, psm);
 }

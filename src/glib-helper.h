@@ -22,6 +22,7 @@
  */
 
 typedef void (*bt_callback_t) (sdp_list_t *recs, int err, gpointer user_data);
+typedef void (*bt_primary_t) (GSList *l, int err, gpointer user_data);
 typedef void (*bt_destroy_t) (gpointer user_data);
 
 int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
@@ -31,6 +32,10 @@ int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 			uuid_t *uuid, bt_callback_t cb, void *user_data,
 			bt_destroy_t destroy);
 int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst);
+
+int bt_discover_primary(const bdaddr_t *src, const bdaddr_t *dst, int psm,
+					bt_primary_t cb, void *user_data,
+					bt_destroy_t destroy);
 
 gchar *bt_uuid2string(uuid_t *uuid);
 uint16_t bt_name2class(const char *string);

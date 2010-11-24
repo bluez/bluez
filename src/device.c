@@ -107,6 +107,7 @@ struct browse_req {
 
 struct btd_device {
 	bdaddr_t	bdaddr;
+	gboolean	le;
 	gchar		*path;
 	char		name[MAX_NAME_LENGTH + 1];
 	char		*alias;
@@ -211,7 +212,8 @@ static void browse_request_cancel(struct browse_req *req)
 
 	adapter_get_address(adapter, &src);
 
-	bt_cancel_discovery(&src, &device->bdaddr);
+	if (device->le == FALSE)
+		bt_cancel_discovery(&src, &device->bdaddr);
 
 	device->browse = NULL;
 	browse_request_free(req);
@@ -1562,29 +1564,67 @@ static void init_browse(struct browse_req *req, gboolean reverse)
 						l->data);
 }
 
-int device_browse(struct btd_device *device, DBusConnection *conn,
-			DBusMessage *msg, uuid_t *search, gboolean reverse)
+static void primary_cb(GSList *services, int err, gpointer user_data)
+{
+	struct browse_req *req = user_data;
+	struct btd_device *device = req->device;
+
+	if (err) {
+		error_failed_errno(req->conn, req->msg, -err);
+		goto done;
+	}
+
+	services_changed(req->device);
+	device_set_temporary(req->device, FALSE);
+	device_probe_drivers(req->device, services);
+
+	create_device_reply(req->device, req);
+
+done:
+	device->browse = NULL;
+	browse_request_free(req);
+}
+
+static struct browse_req *browse_primary(struct btd_device *device, int *err)
 {
 	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
 	bdaddr_t src;
-	uuid_t uuid;
-	bt_callback_t cb;
-	int err;
+	int ret;
 
-	if (device->browse)
-		return -EBUSY;
+	req = g_new0(struct browse_req, 1);
+	req->device = btd_device_ref(device);
+
+	adapter_get_address(adapter, &src);
+
+	ret = bt_discover_primary(&src, &device->bdaddr, -1, primary_cb, req,
+									NULL);
+
+	if (ret < 0) {
+		browse_request_free(req);
+		if (err)
+			*err = ret;
+
+		return NULL;
+	}
+
+	return req;
+}
+
+static struct browse_req *browse_sdp(struct btd_device *device, uuid_t *search,
+						gboolean reverse, int *err)
+{
+	struct btd_adapter *adapter = device->adapter;
+	struct browse_req *req;
+	bt_callback_t cb;
+	bdaddr_t src;
+	uuid_t uuid;
+	int ret;
 
 	adapter_get_address(adapter, &src);
 
 	req = g_new0(struct browse_req, 1);
-
-	if (conn == NULL)
-		conn = get_dbus_connection();
-
-	req->conn = dbus_connection_ref(conn);
 	req->device = btd_device_ref(device);
-
 	if (search) {
 		memcpy(&uuid, search, sizeof(uuid_t));
 		cb = search_cb;
@@ -1594,6 +1634,39 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 		cb = browse_cb;
 	}
 
+	ret = bt_search_service(&src, &device->bdaddr, &uuid, cb, req, NULL);
+	if (ret < 0) {
+		browse_request_free(req);
+		if (err)
+			*err = ret;
+
+		return NULL;
+	}
+
+	return req;
+}
+
+int device_browse(struct btd_device *device, DBusConnection *conn,
+			DBusMessage *msg, uuid_t *search, gboolean reverse)
+{
+	struct browse_req *req;
+	int err = 0;
+
+	if (device->browse)
+		return -EBUSY;
+
+	if (device->le)
+		req = browse_primary(device, &err);
+	else
+		req = browse_sdp(device, search, reverse, &err);
+
+	if (req == NULL)
+		return err;
+
+	if (conn == NULL)
+		conn = get_dbus_connection();
+
+	req->conn = dbus_connection_ref(conn);
 	device->browse = req;
 
 	if (msg) {
@@ -1606,13 +1679,6 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 						sender,
 						discover_services_req_exit,
 						req, NULL);
-	}
-
-	err = bt_search_service(&src, &device->bdaddr,
-				&uuid, cb, req, NULL);
-	if (err < 0) {
-		device->browse = NULL;
-		browse_request_free(req);
 	}
 
 	return err;

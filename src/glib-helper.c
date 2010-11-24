@@ -37,11 +37,25 @@
 
 #include <glib.h>
 
-#include "glib-helper.h"
+#include "btio.h"
+#include "gattrib.h"
+#include "att.h"
+#include "gatt.h"
 #include "sdpd.h"
+#include "glib-helper.h"
 
 /* Number of seconds to keep a sdp_session_t in the cache */
 #define CACHE_TIMEOUT 2
+
+struct gattrib_context {
+	bdaddr_t src;
+	bdaddr_t dst;
+	GAttrib *attrib;
+	bt_primary_t cb;
+	bt_destroy_t destroy;
+	gpointer user_data;
+	GSList *uuids;
+};
 
 struct cached_sdp_session {
 	bdaddr_t src;
@@ -51,6 +65,17 @@ struct cached_sdp_session {
 };
 
 static GSList *cached_sdp_sessions = NULL;
+
+static void gattrib_context_free(struct gattrib_context *ctxt)
+{
+	if (ctxt->destroy)
+		ctxt->destroy(ctxt->user_data);
+
+	g_slist_foreach(ctxt->uuids, (GFunc) g_free, NULL);
+	g_slist_free(ctxt->uuids);
+	g_attrib_unref(ctxt->attrib);
+	g_free(ctxt);
+}
 
 static gboolean cached_session_expired(gpointer user_data)
 {
@@ -113,6 +138,7 @@ struct search_context {
 	bdaddr_t		dst;
 	sdp_session_t		*session;
 	bt_callback_t		cb;
+	bt_primary_t		prim_cb;
 	bt_destroy_t		destroy;
 	gpointer		user_data;
 	uuid_t			uuid;
@@ -370,6 +396,125 @@ int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
 		sdp_close(ctxt->session);
 
 	search_context_cleanup(ctxt);
+	return 0;
+}
+
+static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct gattrib_context *ctxt = user_data;
+	struct att_data_list *list;
+	unsigned int i, err;
+	uint16_t end;
+
+	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
+		err = 0;
+		goto done;
+	}
+
+	if (status != 0) {
+		err = -EIO;
+		goto done;
+	}
+
+	list = dec_read_by_grp_resp(pdu, plen);
+	if (list == NULL) {
+		err = -EPROTO;
+		goto done;
+	}
+
+	for (i = 0, end = 0; i < list->num; i++) {
+		const uint8_t *data = list->data[i];
+		char *prim;
+		uuid_t u128, u16;
+
+		end = att_get_u16(&data[2]);
+
+		if (list->len == 6) {
+			sdp_uuid16_create(&u16,
+					att_get_u16(&data[4]));
+			sdp_uuid16_to_uuid128(&u128, &u16);
+
+		} else if (list->len == 20)
+			sdp_uuid128_create(&u128, &data[4]);
+		else
+			/* Skipping invalid data */
+			continue;
+
+		prim = bt_uuid2string(&u128);
+		ctxt->uuids = g_slist_append(ctxt->uuids, prim);
+	}
+
+	att_data_list_free(list);
+	err = 0;
+
+	if (end != 0xffff) {
+		gatt_discover_primary(ctxt->attrib, end + 1, 0xffff, NULL,
+							primary_cb, ctxt);
+		return;
+	}
+
+done:
+	ctxt->cb(ctxt->uuids, err, ctxt->user_data);
+	gattrib_context_free(ctxt);
+}
+
+static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
+{
+	struct gattrib_context *ctxt = user_data;
+
+	if (gerr) {
+		ctxt->cb(NULL, -EIO, ctxt->user_data);
+		gattrib_context_free(ctxt);
+		return;
+	}
+
+	gatt_discover_primary(ctxt->attrib, 0x0001, 0xffff, NULL, primary_cb,
+									ctxt);
+}
+
+int bt_discover_primary(const bdaddr_t *src, const bdaddr_t *dst, int psm,
+					bt_primary_t cb, void *user_data,
+					bt_destroy_t destroy)
+{
+	struct gattrib_context *ctxt;
+	GIOChannel *io;
+	GError *gerr = NULL;
+
+	ctxt = g_try_new0(struct gattrib_context, 1);
+	if (ctxt == NULL)
+		return -ENOMEM;
+
+	bacpy(&ctxt->src, src);
+	bacpy(&ctxt->dst, dst);
+	ctxt->user_data = user_data;
+	ctxt->cb = cb;
+	ctxt->destroy = destroy;
+
+	if (psm < 0)
+		io = bt_io_connect(BT_IO_L2CAP, connect_cb, ctxt, NULL, &gerr,
+				BT_IO_OPT_SOURCE_BDADDR, src,
+				BT_IO_OPT_DEST_BDADDR, dst,
+				BT_IO_OPT_CID, GATT_CID,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_INVALID);
+	else
+		io = bt_io_connect(BT_IO_L2CAP, connect_cb, ctxt, NULL, &gerr,
+				BT_IO_OPT_SOURCE_BDADDR, src,
+				BT_IO_OPT_DEST_BDADDR, dst,
+				BT_IO_OPT_PSM, psm,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_INVALID);
+
+	if (io == NULL) {
+		gattrib_context_free(ctxt);
+		return -EIO;
+	}
+
+	ctxt->attrib = g_attrib_new(io);
+
+	g_io_channel_unref(io);
+
 	return 0;
 }
 
