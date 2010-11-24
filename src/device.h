@@ -34,8 +34,9 @@ typedef enum {
 	AUTH_TYPE_AUTO,
 } auth_type_t;
 
-struct btd_device *device_create(DBusConnection *conn, struct btd_adapter *adapter,
-				const gchar *address);
+struct btd_device *device_create(DBusConnection *conn,
+					struct btd_adapter *adapter,
+					const gchar *address, gboolean le);
 void device_set_name(struct btd_device *device, const char *name);
 void device_get_name(struct btd_device *device, char *name, size_t len);
 void device_remove(struct btd_device *device, gboolean remove_stored);

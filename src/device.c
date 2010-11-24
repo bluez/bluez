@@ -965,7 +965,7 @@ void device_set_secmode3_conn(struct btd_device *device, gboolean enable)
 
 struct btd_device *device_create(DBusConnection *conn,
 					struct btd_adapter *adapter,
-					const gchar *address)
+					const gchar *address, gboolean le)
 {
 	gchar *address_up;
 	struct btd_device *device;
@@ -993,6 +993,7 @@ struct btd_device *device_create(DBusConnection *conn,
 
 	str2ba(address, &device->bdaddr);
 	device->adapter = adapter;
+	device->le = le;
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 	read_device_name(srcaddr, address, device->name);

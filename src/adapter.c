@@ -1197,15 +1197,15 @@ sdp_list_t *adapter_get_services(struct btd_adapter *adapter)
 }
 
 struct btd_device *adapter_create_device(DBusConnection *conn,
-						struct btd_adapter *adapter,
-						const char *address)
+					struct btd_adapter *adapter,
+					const char *address, gboolean le)
 {
 	struct btd_device *device;
 	const char *path;
 
 	DBG("%s", address);
 
-	device = device_create(conn, adapter, address);
+	device = device_create(conn, adapter, address, le);
 	if (!device)
 		return NULL;
 
@@ -1264,7 +1264,7 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 	if (device)
 		return device;
 
-	return adapter_create_device(conn, adapter, address);
+	return adapter_create_device(conn, adapter, address, FALSE);
 }
 
 static gboolean stop_scanning(gpointer user_data)
@@ -1691,7 +1691,9 @@ static DBusMessage *create_device(DBusConnection *conn,
 {
 	struct btd_adapter *adapter = data;
 	struct btd_device *device;
+	struct remote_dev_info *dev, match;
 	const gchar *address;
+	gboolean le;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -1707,7 +1709,14 @@ static DBusMessage *create_device(DBusConnection *conn,
 
 	DBG("%s", address);
 
-	device = adapter_create_device(conn, adapter, address);
+	memset(&match, 0, sizeof(struct remote_dev_info));
+	str2ba(address, &match.bdaddr);
+	match.name_status = NAME_ANY;
+
+	dev = adapter_search_found_devices(adapter, &match);
+	le  = dev ? dev->le : FALSE;
+
+	device = adapter_create_device(conn, adapter, address, le);
 	if (!device)
 		return NULL;
 
@@ -2001,7 +2010,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 				key, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key);
+	device = device_create(connection, adapter, key, FALSE);
 	if (!device)
 		return;
 
@@ -2024,7 +2033,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 					(GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key);
+	device = device_create(connection, adapter, key, FALSE);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -2041,7 +2050,7 @@ static void create_stored_device_from_blocked(char *key, char *value,
 				key, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key);
+	device = device_create(connection, adapter, key, FALSE);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
