@@ -2178,6 +2178,11 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 	struct agent *agent;
 	int err;
 
+	if (device->authr) {
+		error("%s: authentication already requested", device->path);
+		return -EALREADY;
+	}
+
 	DBG("%s: requesting agent authentication", device->path);
 
 	agent = device_get_agent(device);
