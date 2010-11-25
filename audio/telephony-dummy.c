@@ -417,6 +417,8 @@ int telephony_init(void)
 				AG_FEATURE_ENHANCED_CALL_STATUS |
 				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
 
+	DBG("");
+
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
 	if (g_dbus_register_interface(connection, TELEPHONY_DUMMY_PATH,
@@ -436,6 +438,10 @@ int telephony_init(void)
 
 void telephony_exit(void)
 {
+	DBG("");
+
+	g_dbus_unregister_interface(connection, TELEPHONY_DUMMY_PATH,
+						TELEPHONY_DUMMY_IFACE);
 	dbus_connection_unref(connection);
 	connection = NULL;
 }
