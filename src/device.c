@@ -874,8 +874,10 @@ void device_add_connection(struct btd_device *device, DBusConnection *conn,
 				uint16_t handle)
 {
 	if (device->handle) {
-		error("%s: Unable to add connection %u, %u already exist)",
-			device->path, handle, device->handle);
+		char addr[18];
+		ba2str(&device->bdaddr, addr);
+		error("%s: Unable to add connection %u, %u already exist",
+			addr, handle, device->handle);
 		return;
 	}
 
@@ -888,8 +890,10 @@ void device_remove_connection(struct btd_device *device, DBusConnection *conn,
 				uint16_t handle)
 {
 	if (handle && device->handle != handle) {
-		error("%s: Unable to remove connection %u, handle mismatch (%u)",
-			device->path, handle, device->handle);
+		char addr[18];
+		ba2str(&device->bdaddr, addr);
+		error("%s: connection handle mismatch %u != %u",
+						addr, handle, device->handle);
 		return;
 	}
 
@@ -1189,14 +1193,17 @@ static GSList *device_match_driver(struct btd_device *device,
 void device_probe_drivers(struct btd_device *device, GSList *profiles)
 {
 	GSList *list;
+	char addr[18];
 	int err;
 
+	ba2str(&device->bdaddr, addr);
+
 	if (device->blocked) {
-		DBG("Skipping drivers for blocked device %s", device->path);
+		DBG("Skipping drivers for blocked device %s", addr);
 		goto add_uuids;
 	}
 
-	DBG("Probe drivers for %s", device->path);
+	DBG("Probing drivers for %s", addr);
 
 	for (list = device_drivers; list; list = list->next) {
 		struct btd_device_driver *driver = list->data;
@@ -1212,9 +1219,8 @@ void device_probe_drivers(struct btd_device *device, GSList *profiles)
 
 		err = driver->probe(device, probe_uuids);
 		if (err < 0) {
-			error("probe failed with driver %s for device %s",
-					driver->name, device->path);
-
+			error("%s driver probe failed for device %s",
+							driver->name, addr);
 			g_free(driver_data);
 			g_slist_free(probe_uuids);
 			continue;
@@ -1252,7 +1258,7 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 
 	records = read_records(&src, &device->bdaddr);
 
-	DBG("Remove drivers for %s", device->path);
+	DBG("Removing drivers for %s", dstaddr);
 
 	for (list = device->drivers; list; list = next) {
 		struct btd_driver_data *driver_data = list->data;
@@ -1447,10 +1453,13 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
+	char addr[18];
+
+	ba2str(&device->bdaddr, addr);
 
 	if (err < 0) {
 		error("%s: error updating services: %s (%d)",
-				device->path, strerror(-err), -err);
+				addr, strerror(-err), -err);
 		goto send_reply;
 	}
 
@@ -1464,7 +1473,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	req->records = NULL;
 
 	if (!req->profiles_added && !req->profiles_removed) {
-		DBG("%s: No service update", device->path);
+		DBG("%s: No service update", addr);
 		goto send_reply;
 	}
 
@@ -1824,8 +1833,10 @@ static struct bonding_req *bonding_request_new(DBusConnection *conn,
 	struct bonding_req *bonding;
 	const char *name = dbus_message_get_sender(msg);
 	struct agent *agent;
+	char addr[18];
 
-	DBG("%s: requesting bonding", device->path);
+	ba2str(&device->bdaddr, addr);
+	DBG("Requesting bonding for %s", addr);
 
 	if (!agent_path)
 		goto proceed;
@@ -1842,7 +1853,7 @@ static struct bonding_req *bonding_request_new(DBusConnection *conn,
 	device->agent = agent;
 
 	DBG("Temporary agent registered for %s at %s:%s",
-			device->path, name, agent_path);
+			addr, name, agent_path);
 
 proceed:
 	bonding = g_new0(struct bonding_req, 1);
@@ -1891,8 +1902,10 @@ failed:
 static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 {
 	struct btd_device *device = user_data;
+	char addr[18];
 
-	DBG("%s: requestor exited before bonding was completed", device->path);
+	ba2str(&device->bdaddr, addr);
+	DBG("%s: requestor exited before bonding was completed", addr);
 
 	if (device->authr)
 		device_cancel_authentication(device, FALSE);
@@ -2086,11 +2099,13 @@ void device_cancel_bonding(struct btd_device *device, uint8_t status)
 {
 	struct bonding_req *bonding = device->bonding;
 	DBusMessage *reply;
+	char addr[18];
 
 	if (!bonding)
 		return;
 
-	DBG("%s: canceling bonding request", device->path);
+	ba2str(&device->bdaddr, addr);
+	DBG("Canceling bonding request for %s", addr);
 
 	if (device->authr)
 		device_cancel_authentication(device, FALSE);
@@ -2154,18 +2169,20 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 {
 	struct authentication_req *auth;
 	struct agent *agent;
+	char addr[18];
 	int err;
 
+	ba2str(&device->bdaddr, addr);
+	DBG("Requesting agent authentication for %s", addr);
+
 	if (device->authr) {
-		error("%s: authentication already requested", device->path);
+		error("Authentication already requested for %s", addr);
 		return -EALREADY;
 	}
 
-	DBG("%s: requesting agent authentication", device->path);
-
 	agent = device_get_agent(device);
 	if (!agent) {
-		error("No agent available for %u request", type);
+		error("No agent available for request type %d", type);
 		return -EPERM;
 	}
 
@@ -2246,11 +2263,13 @@ static void cancel_authentication(struct authentication_req *auth)
 void device_cancel_authentication(struct btd_device *device, gboolean aborted)
 {
 	struct authentication_req *auth = device->authr;
+	char addr[18];
 
 	if (!auth)
 		return;
 
-	DBG("%s: canceling authentication request", device->path);
+	ba2str(&device->bdaddr, addr);
+	DBG("Canceling authentication request for %s", addr);
 
 	if (auth->agent)
 		agent_cancel(auth->agent);
