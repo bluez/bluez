@@ -495,12 +495,12 @@ static void link_key_request(int index, bdaddr_t *dba)
 	struct btd_device *device;
 	struct hci_auth_info_req req;
 	unsigned char key[16];
-	char sa[18], da[18];
+	char da[18];
 	uint8_t type;
 	int err;
 
-	ba2str(&BDADDR(index), sa); ba2str(dba, da);
-	info("link_key_request (sba=%s, dba=%s)", sa, da);
+	ba2str(dba, da);
+	DBG("hci%d dba %s", index, da);
 
 	adapter = manager_find_adapter(&BDADDR(index));
 	if (adapter)
@@ -534,7 +534,7 @@ static void link_key_request(int index, bdaddr_t *dba)
 
 	/* Link key found */
 
-	DBG("link key type = 0x%02x", type);
+	DBG("link key type 0x%02x", type);
 
 	/* Don't use unauthenticated combination keys if MITM is
 	 * required */
@@ -556,14 +556,13 @@ static void link_key_notify(int index, void *ptr)
 {
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
-	char sa[18], da[18];
+	char da[18];
 	int err;
 	unsigned char old_key[16];
 	uint8_t old_key_type;
 
-	ba2str(&BDADDR(index), sa); ba2str(dba, da);
-	info("link_key_notify (sba=%s, dba=%s, type=%d)", sa, da,
-							evt->key_type);
+	ba2str(dba, da);
+	DBG("hci%d dba %s type %d", index, da, evt->key_type);
 
 	err = read_link_key(&BDADDR(index), dba, old_key, &old_key_type);
 	if (err < 0)
@@ -602,18 +601,19 @@ static void return_link_keys(int index, void *ptr)
 	evt_return_link_keys *evt = ptr;
 	uint8_t num = evt->num_keys;
 	unsigned char key[16];
-	char sa[18], da[18];
+	char da[18];
 	bdaddr_t dba;
 	int i;
 
-	ba2str(&BDADDR(index), sa);
+	DBG("hci%d num_keys %u", index, num);
+
 	ptr++;
 
 	for (i = 0; i < num; i++) {
 		bacpy(&dba, ptr); ba2str(&dba, da);
 		memcpy(key, ptr + 6, 16);
 
-		info("return_link_keys (sba=%s, dba=%s)", sa, da);
+		DBG("hci%d returned key for %s", index, da);
 
 		btd_event_returned_link_key(&BDADDR(index), &dba);
 
@@ -627,6 +627,8 @@ static void user_confirm_request(int index, void *ptr)
 {
 	evt_user_confirm_request *req = ptr;
 
+	DBG("hci%d", index);
+
 	if (btd_event_user_confirm(&BDADDR(index), &req->bdaddr,
 					btohl(req->passkey)) < 0)
 		hci_send_cmd(SK(index), OGF_LINK_CTL,
@@ -637,6 +639,8 @@ static void user_passkey_request(int index, void *ptr)
 {
 	evt_user_passkey_request *req = ptr;
 
+	DBG("hci%d", index);
+
 	if (btd_event_user_passkey(&BDADDR(index), &req->bdaddr) < 0)
 		hci_send_cmd(SK(index), OGF_LINK_CTL,
 				OCF_USER_PASSKEY_NEG_REPLY, 6, ptr);
@@ -646,12 +650,15 @@ static void user_passkey_notify(int index, void *ptr)
 {
 	evt_user_passkey_notify *req = ptr;
 
+	DBG("hci%d", index);
+
 	btd_event_user_notify(&BDADDR(index), &req->bdaddr,
 						btohl(req->passkey));
 }
 
 static void remote_oob_data_request(int index, void *ptr)
 {
+	DBG("hci%d", index);
 	hci_send_cmd(SK(index), OGF_LINK_CTL,
 				OCF_REMOTE_OOB_DATA_NEG_REPLY, 6, ptr);
 }
@@ -659,11 +666,11 @@ static void remote_oob_data_request(int index, void *ptr)
 static void io_capa_request(int index, void *ptr)
 {
 	bdaddr_t *dba = ptr;
-	char sa[18], da[18];
+	char da[18];
 	uint8_t cap, auth;
 
-	ba2str(&BDADDR(index), sa); ba2str(dba, da);
-	info("io_capa_request (sba=%s, dba=%s)", sa, da);
+	ba2str(dba, da);
+	DBG("hci%d IO capability request for %s", index, da);
 
 	if (btd_event_get_io_cap(&BDADDR(index), dba, &cap, &auth) < 0) {
 		io_capability_neg_reply_cp cp;
@@ -688,10 +695,10 @@ static void io_capa_request(int index, void *ptr)
 static void io_capa_response(int index, void *ptr)
 {
 	evt_io_capability_response *evt = ptr;
-	char sa[18], da[18];
+	char da[18];
 
-	ba2str(&BDADDR(index), sa); ba2str(&evt->bdaddr, da);
-	info("io_capa_response (sba=%s, dba=%s)", sa, da);
+	ba2str(&evt->bdaddr, da);
+	DBG("hci%d IO capability response from %s", index, da);
 
 	btd_event_set_io_cap(&BDADDR(index), &evt->bdaddr,
 				evt->capability, evt->authentication);
@@ -704,14 +711,14 @@ static void pin_code_request(int index, bdaddr_t *dba)
 	pin_code_reply_cp pr;
 	struct hci_conn_info_req *cr;
 	struct hci_conn_info *ci;
-	char sa[18], da[18], pin[17];
+	char da[18], pin[17];
 	int pinlen;
 
 	memset(&pr, 0, sizeof(pr));
 	bacpy(&pr.bdaddr, dba);
 
-	ba2str(&BDADDR(index), sa); ba2str(dba, da);
-	info("pin_code_request (sba=%s, dba=%s)", sa, da);
+	ba2str(dba, da);
+	DBG("hci%d PIN request for %s", index, da);
 
 	cr = g_malloc0(sizeof(*cr) + sizeof(*ci));
 
@@ -881,6 +888,8 @@ static void update_name(int index, const char *name)
 
 static void read_local_name_complete(int index, read_local_name_rp *rp)
 {
+	DBG("hci%d status %u", index, rp->status);
+
 	if (rp->status)
 		return;
 
@@ -920,6 +929,8 @@ static void read_tx_power_complete(int index, void *ptr)
 	read_inq_response_tx_power_level_rp *rp = ptr;
 	struct btd_adapter *adapter;
 
+	DBG("hci%d status %u", index, rp->status);
+
 	if (rp->status)
 		return;
 
@@ -937,6 +948,8 @@ static void read_simple_pairing_mode_complete(int index, void *ptr)
 	read_simple_pairing_mode_rp *rp = ptr;
 	struct btd_adapter *adapter;
 
+	DBG("hci%d status %u", index, rp->status);
+
 	if (rp->status)
 		return;
 
@@ -949,15 +962,17 @@ static void read_simple_pairing_mode_complete(int index, void *ptr)
 	adapter_update_ssp_mode(adapter, rp->mode);
 }
 
-static void read_local_ext_features_complete(bdaddr_t *sba,
+static void read_local_ext_features_complete(int index,
 				const read_local_ext_features_rp *rp)
 {
 	struct btd_adapter *adapter;
 
+	DBG("hci%d status %u", index, rp->status);
+
 	if (rp->status)
 		return;
 
-	adapter = manager_find_adapter(sba);
+	adapter = manager_find_adapter(&BDADDR(index));
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -972,6 +987,8 @@ static void read_local_ext_features_complete(bdaddr_t *sba,
 
 static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
 {
+	DBG("hci%d status %u", index, rp->status);
+
 	if (rp->status)
 		return;
 
@@ -1002,6 +1019,8 @@ static void read_scan_complete(int index, uint8_t status, void *ptr)
 	struct btd_adapter *adapter;
 	read_scan_enable_rp *rp = ptr;
 
+	DBG("hci%d status %u", index, status);
+
 	adapter = manager_find_adapter(&BDADDR(index));
 
 	if (!adapter) {
@@ -1029,7 +1048,7 @@ static inline void cmd_complete(int index, void *ptr)
 		break;
 	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_LOCAL_EXT_FEATURES):
 		ptr += sizeof(evt_cmd_complete);
-		read_local_ext_features_complete(&BDADDR(index), ptr);
+		read_local_ext_features_complete(index, ptr);
 		break;
 	case cmd_opcode_pack(OGF_INFO_PARAM, OCF_READ_BD_ADDR):
 		ptr += sizeof(evt_cmd_complete);
@@ -1091,6 +1110,8 @@ static inline void remote_name_information(int index, void *ptr)
 	evt_remote_name_req_complete *evt = ptr;
 	char name[MAX_NAME_LENGTH + 1];
 
+	DBG("hci%d status %u", index, evt->status);
+
 	memset(name, 0, sizeof(name));
 
 	if (!evt->status)
@@ -1103,6 +1124,8 @@ static inline void remote_version_information(int index, void *ptr)
 {
 	evt_read_remote_version_complete *evt = ptr;
 	bdaddr_t dba;
+
+	DBG("hci%d status %u", index, evt->status);
 
 	if (evt->status)
 		return;
@@ -1198,6 +1221,8 @@ static inline void remote_features_information(int index, void *ptr)
 	evt_read_remote_features_complete *evt = ptr;
 	bdaddr_t dba;
 
+	DBG("hci%d status %u", index, evt->status);
+
 	if (evt->status)
 		return;
 
@@ -1259,6 +1284,8 @@ static inline void auth_complete(int index, void *ptr)
 	evt_auth_complete *evt = ptr;
 	bdaddr_t dba;
 
+	DBG("hci%d status %u", index, evt->status);
+
 	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
 		return;
 
@@ -1268,6 +1295,8 @@ static inline void auth_complete(int index, void *ptr)
 static inline void simple_pairing_complete(int index, void *ptr)
 {
 	evt_simple_pairing_complete *evt = ptr;
+
+	DBG("hci%d status %u", index, evt->status);
 
 	btd_event_simple_pairing_complete(&BDADDR(index), &evt->bdaddr,
 								evt->status);
@@ -1288,7 +1317,7 @@ static inline void le_metaevent(int index, void *ptr)
 	le_advertising_info *info;
 	uint8_t num, i;
 
-	DBG("LE Meta Event");
+	DBG("hci%d LE Meta Event %u", index, meta->subevent);
 
 	if (meta->subevent != EVT_LE_ADVERTISING_REPORT)
 		return;
@@ -1555,6 +1584,8 @@ static void device_devup_setup(int index)
 	uint16_t policy;
 	read_stored_link_key_cp cp;
 
+	DBG("hci%d", index);
+
 	if (hci_devinfo(index, &di) < 0)
 		return;
 
@@ -1601,6 +1632,8 @@ static void init_device(int index)
 	struct hci_dev_info di;
 	int dd;
 	pid_t pid;
+
+	DBG("hci%d", index);
 
 	dd = hci_open_dev(index);
 	if (dd < 0) {
@@ -1674,6 +1707,8 @@ static void device_devreg_setup(int index)
 	struct hci_dev_info di;
 	gboolean devup;
 
+	DBG("hci%d", index);
+
 	init_device(index);
 
 	memset(&di, 0, sizeof(di));
@@ -1724,6 +1759,8 @@ static gboolean init_known_adapters(gpointer user_data)
 	struct hci_dev_req *dr;
 	int i, err, ctl = GPOINTER_TO_INT(user_data);
 	size_t req_size;
+
+	DBG("");
 
 	req_size = HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t);
 
@@ -1813,6 +1850,8 @@ static int hciops_setup(void)
 	GIOChannel *ctl_io, *child_io;
 	int sock, err;
 
+	DBG("");
+
 	if (child_pipe[0] != -1)
 		return -EALREADY;
 
@@ -1873,6 +1912,8 @@ static void hciops_cleanup(void)
 {
 	int i;
 
+	DBG("");
+
 	for (i = 0; i <= max_dev; i++) {
 		if (SK(i) >= 0)
 			hci_close_dev(SK(i));
@@ -1907,6 +1948,8 @@ static int hciops_start(int index)
 {
 	int err;
 
+	DBG("hci%d", index);
+
 	if (ioctl(SK(index), HCIDEVUP, index) == 0)
 		return 0;
 
@@ -1923,6 +1966,8 @@ static int hciops_start(int index)
 static int hciops_stop(int index)
 {
 	int err = 0;
+
+	DBG("hci%d", index);
 
 	if (ioctl(SK(index), HCIDEVDOWN, index) == 0)
 		goto done; /* on success */
@@ -1941,6 +1986,8 @@ static int hciops_powered(int index, gboolean powered)
 {
 	uint8_t mode = SCAN_DISABLED;
 
+	DBG("hci%d powered %d", index, powered);
+
 	if (powered)
 		return hciops_start(index);
 
@@ -1955,6 +2002,8 @@ static int hciops_connectable(int index)
 {
 	uint8_t mode = SCAN_PAGE;
 
+	DBG("hci%d", index);
+
 	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
 		return -errno;
@@ -1966,6 +2015,8 @@ static int hciops_discoverable(int index)
 {
 	uint8_t mode = (SCAN_PAGE | SCAN_INQUIRY);
 
+	DBG("hci%d", index);
+
 	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 								1, &mode) < 0)
 		return -errno;
@@ -1976,6 +2027,8 @@ static int hciops_discoverable(int index)
 static int hciops_set_class(int index, uint32_t class)
 {
 	write_class_of_dev_cp cp;
+
+	DBG("hci%d class 0x%06x", index, class);
 
 	memcpy(cp.dev_class, &class, 3);
 
@@ -1992,6 +2045,8 @@ static int hciops_set_limited_discoverable(int index, uint32_t class,
 	int num = (limited ? 2 : 1);
 	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
 	write_current_iac_lap_cp cp;
+
+	DBG("hci%d, class %06x limited %d", index, class, limited);
 
 	/*
 	 * 1: giac
@@ -2012,6 +2067,8 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 {
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int err;
+
+	DBG("hci%d length %u periodic %d", index, length, periodic);
 
 	if (periodic) {
 		periodic_inquiry_cp cp;
@@ -2049,6 +2106,8 @@ static int hciops_stop_inquiry(int index)
 	struct hci_dev_info di;
 	int err;
 
+	DBG("hci%d", index);
+
 	if (hci_devinfo(index, &di) < 0)
 		return -errno;
 
@@ -2068,6 +2127,8 @@ static int le_set_scan_enable(int index, uint8_t enable)
 {
 	le_set_scan_enable_cp cp;
 
+	DBG("hci%d enable %u", index, enable);
+
 	memset(&cp, 0, sizeof(cp));
 	cp.enable = enable;
 	cp.filter_dup = 0;
@@ -2082,6 +2143,8 @@ static int le_set_scan_enable(int index, uint8_t enable)
 static int hciops_start_scanning(int index)
 {
 	le_set_scan_parameters_cp cp;
+
+	DBG("hci%d", index);
 
 	memset(&cp, 0, sizeof(cp));
 	cp.type = 0x01;			/* Active scanning */
@@ -2099,12 +2162,18 @@ static int hciops_start_scanning(int index)
 
 static int hciops_stop_scanning(int index)
 {
+	DBG("hci%d", index);
+
 	return le_set_scan_enable(index, 0);
 }
 
 static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	remote_name_req_cp cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
@@ -2121,6 +2190,8 @@ static int hciops_set_name(int index, const char *name)
 {
 	change_local_name_cp cp;
 
+	DBG("hci%d, name %s", index, name);
+
 	memset(&cp, 0, sizeof(cp));
 	strncpy((char *) cp.name, name, sizeof(cp.name));
 
@@ -2134,6 +2205,10 @@ static int hciops_set_name(int index, const char *name)
 static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	remote_name_req_cancel_cp cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
@@ -2149,6 +2224,8 @@ static int hciops_fast_connectable(int index, gboolean enable)
 {
 	write_page_activity_cp cp;
 	uint8_t type;
+
+	DBG("hci%d enable %d", index, enable);
 
 	if (enable) {
 		type = PAGE_SCAN_TYPE_INTERLACED;
@@ -2173,6 +2250,9 @@ static int hciops_fast_connectable(int index, gboolean enable)
 static int hciops_read_clock(int index, int handle, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy)
 {
+	DBG("hci%d handle %d which %d timeout %d", index, handle, which,
+								timeout);
+
 	if (hci_read_clock(SK(index), handle, which, clock, accuracy,
 								timeout) < 0)
 		return -errno;
@@ -2184,6 +2264,10 @@ static int hciops_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 {
 	int err;
 	struct hci_conn_info_req *cr;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
 
 	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
 	bacpy(&cr->bdaddr, bdaddr);
@@ -2206,6 +2290,8 @@ static int hciops_write_eir_data(int index, uint8_t *data)
 {
 	write_ext_inquiry_response_cp cp;
 
+	DBG("hci%d", index);
+
 	memset(&cp, 0, sizeof(cp));
 	memcpy(cp.data, data, 240);
 
@@ -2219,12 +2305,18 @@ static int hciops_write_eir_data(int index, uint8_t *data)
 
 static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 {
+	DBG("hci%d", index);
 	bacpy(bdaddr, &BDADDR(index));
 	return 0;
 }
 
 static int hciops_block_device(int index, bdaddr_t *bdaddr)
 {
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
+
 	if (ioctl(SK(index), HCIBLOCKADDR, bdaddr) < 0)
 		return -errno;
 
@@ -2233,6 +2325,11 @@ static int hciops_block_device(int index, bdaddr_t *bdaddr)
 
 static int hciops_unblock_device(int index, bdaddr_t *bdaddr)
 {
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
+
 	if (ioctl(SK(index), HCIUNBLOCKADDR, bdaddr) < 0)
 		return -errno;
 
@@ -2244,6 +2341,8 @@ static int hciops_get_conn_list(int index, GSList **conns)
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
 	int err, i;
+
+	DBG("hci%d", index);
 
 	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
 
@@ -2269,12 +2368,14 @@ fail:
 
 static int hciops_read_local_version(int index, struct hci_version *ver)
 {
+	DBG("hci%d", index);
 	memcpy(ver, &VER(index), sizeof(*ver));
 	return 0;
 }
 
 static int hciops_read_local_features(int index, uint8_t *features)
 {
+	DBG("hci%d", index);
 	memcpy(features, FEATURES(index), 8);
 	return  0;
 }
@@ -2282,6 +2383,8 @@ static int hciops_read_local_features(int index, uint8_t *features)
 static int hciops_read_local_ext_features(int index)
 {
 	uint8_t page_num = 1;
+
+	DBG("hci%d", index);
 
 	if (hci_send_cmd(SK(index), OGF_INFO_PARAM,
 				OCF_READ_LOCAL_EXT_FEATURES, 1, &page_num) < 0)
@@ -2292,6 +2395,8 @@ static int hciops_read_local_ext_features(int index)
 
 static int hciops_read_link_policy(int index)
 {
+	DBG("hci%d", index);
+
 	if (hci_send_cmd(SK(index), OGF_LINK_POLICY,
 				OCF_READ_DEFAULT_LINK_POLICY, 0, NULL) < 0)
 		return -errno;
@@ -2302,6 +2407,8 @@ static int hciops_read_link_policy(int index)
 static int hciops_disconnect(int index, uint16_t handle)
 {
 	disconnect_cp cp;
+
+	DBG("hci%d handle %u", index, handle);
 
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = htobs(handle);
@@ -2317,6 +2424,10 @@ static int hciops_disconnect(int index, uint16_t handle)
 static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 {
 	delete_stored_link_key_cp cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
@@ -2333,7 +2444,7 @@ static int hciops_request_authentication(int index, uint16_t handle)
 {
 	auth_requested_cp cp;
 
-	DBG("");
+	DBG("hci%d handle %u", index, handle);
 
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = htobs(handle);
@@ -2347,7 +2458,11 @@ static int hciops_request_authentication(int index, uint16_t handle)
 
 static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 {
+	char addr[18];
 	int err;
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
 
 	if (pin) {
 		pin_code_reply_cp pr;
@@ -2374,8 +2489,12 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 
 static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 {
-	int err;
 	user_confirm_reply_cp cp;
+	char addr[18];
+	int err;
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s success %d", index, addr, success);
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
@@ -2397,7 +2516,11 @@ static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 
 static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 {
+	char addr[18];
 	int err;
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
 
 	if (passkey != INVALID_PASSKEY) {
 		user_passkey_reply_cp cp;
@@ -2422,6 +2545,10 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
 {
 	struct hci_auth_info_req req;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
 
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, bdaddr);
@@ -2437,6 +2564,8 @@ static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
 
 static int hciops_read_scan_enable(int index)
 {
+	DBG("hci%d", index);
+
 	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_READ_SCAN_ENABLE,
 								0, NULL) < 0)
 		return -errno;
@@ -2447,6 +2576,8 @@ static int hciops_read_scan_enable(int index)
 static int hciops_write_le_host(int index, uint8_t le, uint8_t simul)
 {
 	write_le_host_supported_cp cp;
+
+	DBG("hci%d le %u simul %u", index, le, simul);
 
 	memset(&cp, 0, sizeof(cp));
 	cp.le = le;
@@ -2470,6 +2601,8 @@ static gboolean get_remote_version(gpointer user_data)
 	struct remote_version_req *req = user_data;
 	read_remote_version_cp cp;
 
+	DBG("hci%d handle %u", req->index, req->handle);
+
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = htobs(req->handle);
 
@@ -2483,6 +2616,8 @@ static int hciops_get_remote_version(int index, uint16_t handle,
 							gboolean delayed)
 {
 	struct remote_version_req *req;
+
+	DBG("hci%d handle %u delayed %d", index, handle, delayed);
 
 	req = g_new0(struct remote_version_req, 1);
 	req->handle = handle;
@@ -2544,11 +2679,13 @@ static struct btd_adapter_ops hci_ops = {
 
 static int hciops_init(void)
 {
+	DBG("");
 	return btd_register_adapter_ops(&hci_ops, FALSE);
 }
 
 static void hciops_exit(void)
 {
+	DBG("");
 	btd_adapter_cleanup_ops(&hci_ops);
 }
 
