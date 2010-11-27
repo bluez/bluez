@@ -403,7 +403,7 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&err);
 	if (len > 16 || len < 1) {
-		error("Invalid passkey length from handler");
+		error("Invalid PIN length (%zu) from agent", len);
 		dbus_set_error_const(&err, "org.bluez.Error.InvalidArgs",
 					"Invalid passkey length");
 		cb(agent, &err, NULL, req->user_data);
