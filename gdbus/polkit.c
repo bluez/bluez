@@ -163,7 +163,7 @@ int polkit_check_authorization(DBusConnection *conn,
 
 	msg = dbus_message_new_method_call(AUTHORITY_DBUS, AUTHORITY_PATH,
 				AUTHORITY_INTF, "CheckAuthorization");
-	if (!msg) {
+	if (msg == NULL) {
 		dbus_free(data);
 		return -ENOMEM;
 	}
