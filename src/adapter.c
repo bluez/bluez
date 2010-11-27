@@ -3648,10 +3648,9 @@ int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 }
 
 int btd_adapter_request_authentication(struct btd_adapter *adapter,
-					uint16_t handle, uint8_t *status)
+							uint16_t handle)
 {
-	return adapter_ops->request_authentication(adapter->dev_id,
-							handle, status);
+	return adapter_ops->request_authentication(adapter->dev_id, handle);
 }
 
 int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,

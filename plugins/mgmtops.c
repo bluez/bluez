@@ -704,8 +704,7 @@ static int mgmt_remove_bonding(int index, bdaddr_t *bdaddr)
 	return -ENOSYS;
 }
 
-static int mgmt_request_authentication(int index, uint16_t handle,
-							uint8_t *status)
+static int mgmt_request_authentication(int index, uint16_t handle)
 {
 	DBG("index %d handle %u", index, handle);
 	return -ENOSYS;

@@ -1855,30 +1855,10 @@ proceed:
 	return bonding;
 }
 
-static uint8_t device_authentication_requested(struct btd_device *device,
-								int handle)
-{
-	uint8_t status;
-	int err;
-
-	err = btd_adapter_request_authentication(device->adapter, handle,
-								&status);
-	if (err < 0) {
-		error("Sending authentication request failed: %s (%d)",
-							strerror(-err), -err);
-		return HCI_UNSPECIFIED_ERROR;
-	}
-
-	info("Authentication requested");
-
-	return status;
-}
-
 static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct btd_device *device = user_data;
 	uint16_t handle;
-	int status;
 
 	if (!device->bonding) {
 		if (!err)
@@ -1895,19 +1875,17 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 			BT_IO_OPT_INVALID)) {
 		error("Unable to get connection handle: %s", err->message);
 		g_error_free(err);
-		status = -errno;
 		goto failed;
 	}
 
-	status = device_authentication_requested(device, handle);
-	if (status != 0)
+	if (btd_adapter_request_authentication(device->adapter, handle) < 0)
 		goto failed;
 
 	return;
 
 failed:
 	g_io_channel_shutdown(io, TRUE, NULL);
-	device_cancel_bonding(device, status);
+	device_cancel_bonding(device, HCI_UNSPECIFIED_ERROR);
 }
 
 static void create_bond_req_exit(DBusConnection *conn, void *user_data)

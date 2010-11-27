@@ -2329,32 +2329,18 @@ static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int hciops_request_authentication(int index, uint16_t handle,
-							uint8_t *status)
+static int hciops_request_authentication(int index, uint16_t handle)
 {
-	struct hci_request rq;
 	auth_requested_cp cp;
-	evt_cmd_status rp;
 
-	memset(&rp, 0, sizeof(rp));
+	DBG("");
 
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = htobs(handle);
 
-	memset(&rq, 0, sizeof(rq));
-	rq.ogf    = OGF_LINK_CTL;
-	rq.ocf    = OCF_AUTH_REQUESTED;
-	rq.cparam = &cp;
-	rq.clen   = AUTH_REQUESTED_CP_SIZE;
-	rq.rparam = &rp;
-	rq.rlen   = EVT_CMD_STATUS_SIZE;
-	rq.event  = EVT_CMD_STATUS;
-
-	if (hci_send_req(SK(index), &rq, HCI_REQ_TIMEOUT) < 0)
+	if (hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_AUTH_REQUESTED,
+					AUTH_REQUESTED_CP_SIZE, &cp) < 0)
 		return -errno;
-
-	if (status)
-		*status = rp.status;
 
 	return 0;
 }
