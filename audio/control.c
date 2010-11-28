@@ -40,7 +40,6 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/l2cap.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>

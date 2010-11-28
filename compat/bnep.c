@@ -34,7 +34,6 @@
 #include <sys/ioctl.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
 
 #include <netinet/in.h>

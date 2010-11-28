@@ -29,8 +29,6 @@
 #include <dbus/dbus.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
 
 #include "plugin.h"
 #include "adapter.h"

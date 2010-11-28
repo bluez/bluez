@@ -32,7 +32,6 @@
 #include <unistd.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
