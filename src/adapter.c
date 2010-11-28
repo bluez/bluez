@@ -2262,7 +2262,6 @@ int adapter_get_discover_type(struct btd_adapter *adapter)
 static int adapter_up(struct btd_adapter *adapter, const char *mode)
 {
 	char srcaddr[18];
-	uint8_t scan_mode;
 	gboolean powered, dev_down = FALSE;
 	int err;
 
@@ -2275,7 +2274,6 @@ static int adapter_up(struct btd_adapter *adapter, const char *mode)
 	adapter->state = STATE_IDLE;
 	adapter->mode = MODE_CONNECTABLE;
 	adapter->cache_enable = TRUE;
-	scan_mode = SCAN_PAGE;
 	powered = TRUE;
 
 	/* Set pairable mode */
@@ -2299,10 +2297,8 @@ static int adapter_up(struct btd_adapter *adapter, const char *mode)
 		write_device_mode(&adapter->bdaddr, onmode);
 
 		return adapter_up(adapter, onmode);
-	} else if (!g_str_equal(mode, "connectable")) {
+	} else if (!g_str_equal(mode, "connectable"))
 		adapter->mode = MODE_DISCOVERABLE;
-		scan_mode = SCAN_PAGE | SCAN_INQUIRY;
-	}
 
 proceed:
 	err = adapter_set_mode(adapter, adapter->mode);
