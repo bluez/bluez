@@ -61,9 +61,6 @@ enum {
 	PENDING_NAME,
 };
 
-#define set_bit(nr, addr) (*(addr) |= (1 << (nr)))
-#define clear_bit(nr, addr) (*(addr) &= ~(1 << (nr)))
-
 #define SK(index) devs[(index)].sk
 #define BDADDR(index) devs[(index)].bdaddr
 #define FEATURES(index) devs[(index)].features
@@ -848,7 +845,7 @@ static void read_local_version_complete(int index,
 	if (!PENDING(index))
 		return;
 
-	clear_bit(PENDING_VERSION, &PENDING(index));
+	hci_clear_bit(PENDING_VERSION, &PENDING(index));
 
 	DBG("Got version for hci%d", index);
 
@@ -867,7 +864,7 @@ static void read_local_features_complete(int index,
 	if (!PENDING(index))
 		return;
 
-	clear_bit(PENDING_FEATURES, &PENDING(index));
+	hci_clear_bit(PENDING_FEATURES, &PENDING(index));
 
 	DBG("Got features for hci%d", index);
 
@@ -896,7 +893,7 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 		return;
 	}
 
-	clear_bit(PENDING_NAME, &PENDING(index));
+	hci_clear_bit(PENDING_NAME, &PENDING(index));
 
 	DBG("Got name for hci%d", index);
 
@@ -995,7 +992,7 @@ static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
 	if (!PENDING(index))
 		return;
 
-	clear_bit(PENDING_BDADDR, &PENDING(index));
+	hci_clear_bit(PENDING_BDADDR, &PENDING(index));
 
 	DBG("Got bdaddr for hci%d", index);
 
@@ -1618,10 +1615,10 @@ static void device_devup_setup(int index)
 
 static void init_pending(int index)
 {
-	set_bit(PENDING_BDADDR, &PENDING(index));
-	set_bit(PENDING_VERSION, &PENDING(index));
-	set_bit(PENDING_FEATURES, &PENDING(index));
-	set_bit(PENDING_NAME, &PENDING(index));
+	hci_set_bit(PENDING_BDADDR, &PENDING(index));
+	hci_set_bit(PENDING_VERSION, &PENDING(index));
+	hci_set_bit(PENDING_FEATURES, &PENDING(index));
+	hci_set_bit(PENDING_NAME, &PENDING(index));
 }
 
 static void init_device(int index)
@@ -1785,7 +1782,7 @@ static gboolean init_known_adapters(gpointer user_data)
 			continue;
 
 		PENDING(dr->dev_id) = 0;
-		set_bit(PENDING_VERSION, &PENDING(dr->dev_id));
+		hci_set_bit(PENDING_VERSION, &PENDING(dr->dev_id));
 		hci_send_cmd(SK(dr->dev_id), OGF_INFO_PARAM,
 					OCF_READ_LOCAL_VERSION, 0, NULL);
 		device_event(HCI_DEV_UP, dr->dev_id);
