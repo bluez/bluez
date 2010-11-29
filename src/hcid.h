@@ -23,9 +23,6 @@
  *
  */
 
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
-
 /*
  * Scanning modes, used by DEV_SET_MODE
  * off: remote devices are not allowed to find or connect to this device
@@ -62,8 +59,6 @@ struct main_opts {
 	uint8_t		mode;
 	uint8_t		discov_interval;
 	char		deviceid[15]; /* FIXME: */
-
-	int		sock;
 };
 
 enum {
