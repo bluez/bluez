@@ -943,7 +943,7 @@
 	"nco:phoneNumber(?t) \"NOTACALL\" \"false\" \"false\" <%s> "	\
 	"WHERE { "							\
 		"<%s> a nco:Contact . "					\
-		"<%s> nco:hasPhoneNumber ?t . "				\
+		"OPTIONAL { <%s> nco:hasPhoneNumber ?t . } "		\
 	"} "
 
 #define CONTACTS_COUNT_QUERY						\
