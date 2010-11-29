@@ -1266,6 +1266,42 @@ static inline void conn_complete(int index, void *ptr)
 		free(str);
 }
 
+static inline void le_conn_complete(int index, void *ptr)
+{
+	evt_le_connection_complete *evt = ptr;
+	char filename[PATH_MAX];
+	char local_addr[18], peer_addr[18], *str;
+	struct btd_adapter *adapter;
+
+	adapter = manager_find_adapter(&BDADDR(index));
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
+
+	btd_event_conn_complete(&BDADDR(index), evt->status,
+					btohs(evt->handle), &evt->peer_bdaddr);
+
+	if (evt->status)
+		return;
+
+	update_lastused(&BDADDR(index), &evt->peer_bdaddr);
+
+	/* check if the remote version needs be requested */
+	ba2str(&BDADDR(index), local_addr);
+	ba2str(&evt->peer_bdaddr, peer_addr);
+
+	create_name(filename, sizeof(filename), STORAGEDIR, local_addr,
+							"manufacturers");
+
+	str = textfile_get(filename, peer_addr);
+	if (!str)
+		btd_adapter_get_remote_version(adapter, btohs(evt->handle),
+									TRUE);
+	else
+		free(str);
+}
+
 static inline void disconn_complete(int index, void *ptr)
 {
 	evt_disconn_complete *evt = ptr;
@@ -1306,16 +1342,10 @@ static inline void conn_request(int index, void *ptr)
 	btd_event_remote_class(&BDADDR(index), &evt->bdaddr, class);
 }
 
-static inline void le_metaevent(int index, void *ptr)
+static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 {
-	evt_le_meta_event *meta = ptr;
 	le_advertising_info *info;
 	uint8_t num, i;
-
-	DBG("hci%d LE Meta Event %u", index, meta->subevent);
-
-	if (meta->subevent != EVT_LE_ADVERTISING_REPORT)
-		return;
 
 	num = meta->data[0];
 	info = (le_advertising_info *) (meta->data + 1);
@@ -1323,6 +1353,23 @@ static inline void le_metaevent(int index, void *ptr)
 	for (i = 0; i < num; i++) {
 		btd_event_advertising_report(&BDADDR(index), info);
 		info = (le_advertising_info *) (info->data + info->length + 1);
+	}
+}
+
+static inline void le_metaevent(int index, void *ptr)
+{
+	evt_le_meta_event *meta = ptr;
+
+	DBG("hci%d LE Meta Event %u", index, meta->subevent);
+
+	switch (meta->subevent) {
+	case EVT_LE_ADVERTISING_REPORT:
+		le_advertising_report(index, meta);
+		break;
+
+	case EVT_LE_CONN_COMPLETE:
+		le_conn_complete(index, meta->data);
+		break;
 	}
 }
 
