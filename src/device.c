@@ -57,7 +57,6 @@
 #include "storage.h"
 #include "btio.h"
 
-#define DEFAULT_XML_BUF_SIZE	1024
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		2
 
