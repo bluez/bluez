@@ -2319,6 +2319,7 @@ proceed:
 		return err;
 
 	if (adapter->initialized == FALSE) {
+		sdp_init_services_list(&adapter->bdaddr);
 		load_drivers(adapter);
 		clear_blocked(adapter);
 		load_devices(adapter);

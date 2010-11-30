@@ -106,3 +106,5 @@ int remove_record_from_server(uint32_t handle);
 void create_ext_inquiry_response(const char *name,
 					int8_t tx_power, sdp_list_t *services,
 					uint8_t *data);
+
+void sdp_init_services_list(bdaddr_t *device);
