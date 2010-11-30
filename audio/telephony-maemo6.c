@@ -1963,7 +1963,7 @@ int telephony_init(void)
 	add_watch(NULL, NULL, CSD_CSNET_REGISTRATION, NULL);
 	add_watch(NULL, NULL, CSD_CSNET_OPERATOR, NULL);
 	add_watch(NULL, NULL, CSD_CSNET_SIGNAL, NULL);
-	add_watch(NULL, NULL, CSD_CSNET_SIGNAL, "modem_state_changed_ind");
+	add_watch(NULL, NULL, SSC_DBUS_IFACE, "modem_state_changed_ind");
 
 	if (send_method_call(SSC_DBUS_NAME, SSC_DBUS_PATH, SSC_DBUS_IFACE,
 					"get_modem_state", modem_state_reply,
