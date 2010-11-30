@@ -1960,9 +1960,9 @@ int telephony_init(void)
 	add_watch(NULL, NULL, CSD_CALL_INTERFACE, NULL);
 	add_watch(NULL, NULL, CSD_CALL_INSTANCE, NULL);
 	add_watch(NULL, NULL, CSD_CALL_CONFERENCE, NULL);
-	add_watch(NULL, NULL, CSD_CSNET_REGISTRATION, NULL);
-	add_watch(NULL, NULL, CSD_CSNET_OPERATOR, NULL);
-	add_watch(NULL, NULL, CSD_CSNET_SIGNAL, NULL);
+	add_watch(NULL, NULL, CSD_CSNET_REGISTRATION, "RegistrationChanged");
+	add_watch(NULL, NULL, CSD_CSNET_OPERATOR, "OperatorNameChanged");
+	add_watch(NULL, NULL, CSD_CSNET_SIGNAL, "SignalBarsChanged");
 	add_watch(NULL, NULL, SSC_DBUS_IFACE, "modem_state_changed_ind");
 
 	if (send_method_call(SSC_DBUS_NAME, SSC_DBUS_PATH, SSC_DBUS_IFACE,
