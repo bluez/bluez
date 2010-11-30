@@ -1,3 +1,9 @@
+ver 4.81:
+	Fix issue with telephony driver initialization.
+	Fix issue with adapter services list initialization.
+	Fix crash after simultaneous authentication requests.
+	Add support for primary service search on device creation.
+
 ver 4.80:
 	Fix legacy link key storing for some buggy adapters.
 	Fix invalid memory access when EIR field length is zero.
