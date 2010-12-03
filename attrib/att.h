@@ -109,9 +109,19 @@
 #define ATT_MAX_MTU				256
 #define ATT_DEFAULT_MTU				23
 
+/* Requirements for read/write operations */
+enum {
+	ATT_NONE,		/* No restrictions */
+	ATT_AUTHENTICATION,	/* Authentication required */
+	ATT_AUTHORIZATION,	/* Authorization required */
+	ATT_NOT_PERMITTED,	/* Operation not permitted */
+};
+
 struct attribute {
 	uint16_t handle;
 	uuid_t uuid;
+	int read_reqs;
+	int write_reqs;
 	int len;
 	uint8_t data[0];
 };

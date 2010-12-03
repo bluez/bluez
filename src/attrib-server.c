@@ -760,7 +760,8 @@ void attrib_server_exit(void)
 		remove_record_from_server(sdp_handle);
 }
 
-int attrib_db_add(uint16_t handle, uuid_t *uuid, const uint8_t *value, int len)
+int attrib_db_add(uint16_t handle, uuid_t *uuid, int read_reqs, int write_reqs,
+						const uint8_t *value, int len)
 {
 	struct attribute *a;
 
@@ -769,6 +770,8 @@ int attrib_db_add(uint16_t handle, uuid_t *uuid, const uint8_t *value, int len)
 	a = g_malloc0(sizeof(struct attribute) + len);
 	a->handle = handle;
 	memcpy(&a->uuid, uuid, sizeof(uuid_t));
+	a->read_reqs = read_reqs;
+	a->write_reqs = write_reqs;
 	a->len = len;
 	memcpy(a->data, value, len);
 
