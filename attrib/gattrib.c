@@ -248,8 +248,6 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
 	if (iostat != G_IO_STATUS_NORMAL)
 		return FALSE;
 
-	g_io_channel_flush(io, NULL);
-
 	if (cmd->expected == 0) {
 		g_queue_pop_head(attrib->queue);
 		command_destroy(cmd);
@@ -350,6 +348,7 @@ GAttrib *g_attrib_new(GIOChannel *io)
 	struct _GAttrib *attrib;
 
 	g_io_channel_set_encoding(io, NULL, NULL);
+	g_io_channel_set_buffered(io, FALSE);
 
 	attrib = g_try_new0(struct _GAttrib, 1);
 	if (attrib == NULL)
