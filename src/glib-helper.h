@@ -38,7 +38,6 @@ int bt_discover_primary(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 					bt_destroy_t destroy);
 
 gchar *bt_uuid2string(uuid_t *uuid);
-uint16_t bt_name2class(const char *string);
 char *bt_name2string(const char *string);
 int bt_string2uuid(uuid_t *uuid, const char *string);
 gchar *bt_list2string(GSList *list);

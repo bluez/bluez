@@ -588,7 +588,7 @@ static struct {
 	{ }
 };
 
-uint16_t bt_name2class(const char *pattern)
+static uint16_t name2class(const char *pattern)
 {
 	int i;
 
@@ -638,7 +638,7 @@ char *bt_name2string(const char *pattern)
 		return g_strdup(pattern);
 
 	/* Friendly service name format */
-	uuid16 = bt_name2class(pattern);
+	uuid16 = name2class(pattern);
 	if (uuid16)
 		goto proceed;
 
@@ -685,7 +685,7 @@ int bt_string2uuid(uuid_t *uuid, const char *string)
 
 		return 0;
 	} else {
-		uint16_t class = bt_name2class(string);
+		uint16_t class = name2class(string);
 		if (class) {
 			sdp_uuid16_create(uuid, class);
 			return 0;
