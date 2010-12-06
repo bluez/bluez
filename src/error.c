@@ -56,6 +56,12 @@ DBusMessage *btd_error_invalid_args(DBusMessage *msg)
 					"Invalid arguments in method call");
 }
 
+DBusMessage *btd_error_busy(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
+					"Operation already in progress");
+}
+
 DBusMessage *btd_error_already_exists(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg,

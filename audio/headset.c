@@ -1804,9 +1804,7 @@ static DBusMessage *hs_play(DBusConnection *conn, DBusMessage *msg,
 			hs->pending->msg = dbus_message_ref(msg);
 			return NULL;
 		}
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".InProgress",
-						"Play in Progress");
+		return btd_error_busy(msg);
 	case HEADSET_STATE_PLAYING:
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".AlreadyConnected",

@@ -390,8 +390,7 @@ static DBusMessage *source_connect(DBusConnection *conn,
 						"Unable to get a session");
 
 	if (source->connect || source->disconnect)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"%s", strerror(EBUSY));
+		return btd_error_busy(msg);
 
 	if (source->stream_state >= AVDTP_STATE_OPEN)
 		return g_dbus_create_error(msg, ERROR_INTERFACE

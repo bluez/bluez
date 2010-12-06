@@ -439,8 +439,7 @@ static DBusMessage *sink_connect(DBusConnection *conn,
 						"Unable to get a session");
 
 	if (sink->connect || sink->disconnect)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"%s", strerror(EBUSY));
+		return btd_error_busy(msg);
 
 	if (sink->stream_state >= AVDTP_STATE_OPEN)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
@@ -475,8 +474,7 @@ static DBusMessage *sink_disconnect(DBusConnection *conn,
 		return btd_error_not_connected(msg);
 
 	if (sink->connect || sink->disconnect)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"%s", strerror(EBUSY));
+		return btd_error_busy(msg);
 
 	if (sink->stream_state < AVDTP_STATE_OPEN) {
 		DBusMessage *reply = dbus_message_new_method_return(msg);

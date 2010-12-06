@@ -321,12 +321,6 @@ static inline DBusMessage *not_supported(DBusMessage *msg)
 							"Not supported");
 }
 
-static inline DBusMessage *in_progress(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
-				"Device connection already in progress");
-}
-
 static inline DBusMessage *already_connected(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyConnected",
