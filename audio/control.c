@@ -1019,9 +1019,7 @@ static DBusMessage *volume_up(DBusConnection *conn, DBusMessage *msg,
 					"Device not Connected");
 
 	if (!control->target)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".NotSupported",
-					"AVRCP Target role not supported");
+		return btd_error_not_supported(msg);
 
 	err = avctp_send_passthrough(control, VOL_UP_OP);
 	if (err < 0)
@@ -1049,9 +1047,7 @@ static DBusMessage *volume_down(DBusConnection *conn, DBusMessage *msg,
 					"Device not Connected");
 
 	if (!control->target)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".NotSupported",
-					"AVRCP Target role not supported");
+		return btd_error_not_supported(msg);
 
 	err = avctp_send_passthrough(control, VOL_DOWN_OP);
 	if (err < 0)

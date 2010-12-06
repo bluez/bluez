@@ -62,3 +62,10 @@ DBusMessage *btd_error_already_exists(DBusMessage *msg)
 				ERROR_INTERFACE ".AlreadyExists",
 				"Already Exists");
 }
+
+DBusMessage *btd_error_not_supported(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".NotSupported",
+					"Operation is not supported");
+}

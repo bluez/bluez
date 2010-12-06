@@ -538,9 +538,7 @@ static DBusMessage *set_blocked(DBusConnection *conn, DBusMessage *msg,
 	case 0:
 		return dbus_message_new_method_return(msg);
 	case EINVAL:
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".NotSupported",
-					"Kernel lacks blacklist support");
+		return btd_error_not_supported(msg);
 	default:
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 						"%s", strerror(-err));
