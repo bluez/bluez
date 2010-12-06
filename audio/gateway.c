@@ -423,9 +423,7 @@ static DBusMessage *ag_disconnect(DBusConnection *conn, DBusMessage *msg,
 		return NULL;
 
 	if (!gw->rfcomm)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
+		return  btd_error_not_connected(msg);
 
 	gateway_close(device);
 	ba2str(&device->dst, gw_addr);

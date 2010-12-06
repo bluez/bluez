@@ -69,3 +69,10 @@ DBusMessage *btd_error_not_supported(DBusMessage *msg)
 					".NotSupported",
 					"Operation is not supported");
 }
+
+DBusMessage *btd_error_not_connected(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".NotConnected",
+					"Not Connected");
+}

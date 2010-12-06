@@ -472,9 +472,7 @@ static DBusMessage *sink_disconnect(DBusConnection *conn,
 	int err;
 
 	if (!sink->session)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
+		return btd_error_not_connected(msg);
 
 	if (sink->connect || sink->disconnect)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",

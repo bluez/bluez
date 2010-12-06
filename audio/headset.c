@@ -1618,9 +1618,7 @@ static DBusMessage *hs_stop(DBusConnection *conn, DBusMessage *msg,
 	DBusMessage *reply = NULL;
 
 	if (hs->state < HEADSET_STATE_PLAY_IN_PROGRESS)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
+		return btd_error_not_connected(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1659,9 +1657,7 @@ static DBusMessage *hs_disconnect(DBusConnection *conn, DBusMessage *msg,
 	char hs_address[18];
 
 	if (hs->state == HEADSET_STATE_DISCONNECTED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
+		return btd_error_not_connected(msg);
 
 	headset_shutdown(device);
 	ba2str(&device->dst, hs_address);
@@ -1737,9 +1733,7 @@ static DBusMessage *hs_ring(DBusConnection *conn, DBusMessage *msg,
 	int err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
+		return btd_error_not_connected(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1774,9 +1768,7 @@ static DBusMessage *hs_cancel_call(DBusConnection *conn,
 	DBusMessage *reply = NULL;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
+		return btd_error_not_connected(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1808,9 +1800,7 @@ static DBusMessage *hs_play(DBusConnection *conn, DBusMessage *msg,
 	switch (hs->state) {
 	case HEADSET_STATE_DISCONNECTED:
 	case HEADSET_STATE_CONNECTING:
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
+		return btd_error_not_connected(msg);
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
 		if (hs->pending && hs->pending->msg == NULL) {
 			hs->pending->msg = dbus_message_ref(msg);
@@ -1901,9 +1891,7 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 	int err;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".NotConnected",
-						"Device not Connected");
+		return btd_error_not_connected(msg);
 
 	err = headset_set_gain(device, gain, type);
 	if (err < 0)

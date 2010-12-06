@@ -562,8 +562,7 @@ static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 	struct dev_priv *priv = dev->priv;
 
 	if (priv->state == AUDIO_STATE_DISCONNECTED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotConnected",
-						"Not connected");
+		return btd_error_not_connected(msg);
 
 	if (priv->dc_req)
 		return dbus_message_new_method_return(msg);

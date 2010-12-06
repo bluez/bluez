@@ -1014,9 +1014,7 @@ static DBusMessage *volume_up(DBusConnection *conn, DBusMessage *msg,
 		return NULL;
 
 	if (control->state != AVCTP_STATE_CONNECTED)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".NotConnected",
-					"Device not Connected");
+		return btd_error_not_connected(msg);
 
 	if (!control->target)
 		return btd_error_not_supported(msg);
@@ -1042,9 +1040,7 @@ static DBusMessage *volume_down(DBusConnection *conn, DBusMessage *msg,
 		return NULL;
 
 	if (control->state != AVCTP_STATE_CONNECTED)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".NotConnected",
-					"Device not Connected");
+		return btd_error_not_connected(msg);
 
 	if (!control->target)
 		return btd_error_not_supported(msg);

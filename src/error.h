@@ -33,3 +33,4 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 DBusMessage *btd_error_invalid_args(DBusMessage *msg);
 DBusMessage *btd_error_already_exists(DBusMessage *msg);
 DBusMessage *btd_error_not_supported(DBusMessage *msg);
+DBusMessage *btd_error_not_connected(DBusMessage *msg);
