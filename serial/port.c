@@ -57,7 +57,6 @@
 #include "port.h"
 
 #define SERIAL_PORT_INTERFACE	"org.bluez.Serial"
-#define ERROR_INVALID_ARGS	"org.bluez.Error.InvalidArguments"
 #define ERROR_DOES_NOT_EXIST	"org.bluez.Error.DoesNotExist"
 
 #define MAX_OPEN_TRIES		5
@@ -240,13 +239,6 @@ static inline DBusMessage *does_not_exist(DBusMessage *msg,
 					const char *description)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExist",
-							"%s", description);
-}
-
-static inline DBusMessage *invalid_arguments(DBusMessage *msg,
-					const char *description)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
 							"%s", description);
 }
 

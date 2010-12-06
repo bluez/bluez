@@ -146,12 +146,6 @@ struct btd_adapter {
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
 					guint interval);
 
-static inline DBusMessage *invalid_args(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
-			"Invalid arguments in method call");
-}
-
 static inline DBusMessage *adapter_not_ready(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
@@ -1041,7 +1035,7 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 
 	if (!g_utf8_validate(name, -1, NULL)) {
 		error("Name change failed: supplied name isn't valid UTF-8");
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 	}
 
 	if (strncmp(name, dev->name, MAX_NAME_LENGTH) == 0)
@@ -1488,23 +1482,23 @@ static DBusMessage *set_property(DBusConnection *conn,
 	ba2str(&adapter->bdaddr, srcaddr);
 
 	if (!dbus_message_iter_init(msg, &iter))
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	dbus_message_iter_get_basic(&iter, &property);
 	dbus_message_iter_next(&iter);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 	dbus_message_iter_recurse(&iter, &sub);
 
 	if (g_str_equal("Name", property)) {
 		const char *name;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
-			return invalid_args(msg);
+			return btd_error_invalid_args(msg);
 		dbus_message_iter_get_basic(&sub, &name);
 
 		return set_name(conn, msg, name, data);
@@ -1512,7 +1506,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		gboolean powered;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
-			return invalid_args(msg);
+			return btd_error_invalid_args(msg);
 
 		dbus_message_iter_get_basic(&sub, &powered);
 
@@ -1521,7 +1515,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		gboolean discoverable;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
-			return invalid_args(msg);
+			return btd_error_invalid_args(msg);
 
 		dbus_message_iter_get_basic(&sub, &discoverable);
 
@@ -1530,7 +1524,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		uint32_t timeout;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT32)
-			return invalid_args(msg);
+			return btd_error_invalid_args(msg);
 
 		dbus_message_iter_get_basic(&sub, &timeout);
 
@@ -1539,7 +1533,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		gboolean pairable;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
-			return invalid_args(msg);
+			return btd_error_invalid_args(msg);
 
 		dbus_message_iter_get_basic(&sub, &pairable);
 
@@ -1548,14 +1542,14 @@ static DBusMessage *set_property(DBusConnection *conn,
 		uint32_t timeout;
 
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_UINT32)
-			return invalid_args(msg);
+			return btd_error_invalid_args(msg);
 
 		dbus_message_iter_get_basic(&sub, &timeout);
 
 		return set_pairable_timeout(conn, msg, timeout, data);
 	}
 
-	return invalid_args(msg);
+	return btd_error_invalid_args(msg);
 }
 
 static DBusMessage *request_session(DBusConnection *conn,
@@ -1629,7 +1623,7 @@ static DBusMessage *list_devices(DBusConnection *conn,
 	const gchar *dev_path;
 
 	if (!dbus_message_has_signature(msg, DBUS_TYPE_INVALID_AS_STRING))
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1662,10 +1656,10 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID) == FALSE)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	if (check_address(address) < 0)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	device = adapter_find_device(adapter, address);
 	if (!device || !device_is_creating(device, NULL))
@@ -1698,10 +1692,10 @@ static DBusMessage *create_device(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID) == FALSE)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	if (check_address(address) < 0)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	if (adapter_find_device(adapter, address))
 		return g_dbus_create_error(msg,
@@ -1755,21 +1749,21 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 					DBUS_TYPE_OBJECT_PATH, &agent_path,
 					DBUS_TYPE_STRING, &capability,
 					DBUS_TYPE_INVALID) == FALSE)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	if (check_address(address) < 0)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	sender = dbus_message_get_sender(msg);
 	if (adapter->agent &&
 			agent_matches(adapter->agent, sender, agent_path)) {
 		error("Refusing adapter agent usage as device specific one");
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 	}
 
 	cap = parse_io_capability(capability);
 	if (cap == IO_CAPABILITY_INVALID)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	device = adapter_get_device(conn, adapter, address);
 	if (!device)
@@ -1797,7 +1791,7 @@ static DBusMessage *remove_device(DBusConnection *conn, DBusMessage *msg,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID) == FALSE)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	l = g_slist_find_custom(adapter->devices,
 			path, (GCompareFunc) device_path_cmp);
@@ -1835,7 +1829,7 @@ static DBusMessage *find_device(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID))
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	l = g_slist_find_custom(adapter->devices,
 			address, (GCompareFunc) device_address_cmp);
@@ -1883,7 +1877,7 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 
 	cap = parse_io_capability(capability);
 	if (cap == IO_CAPABILITY_INVALID)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	name = dbus_message_get_sender(msg);
 

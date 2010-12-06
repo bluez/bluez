@@ -353,13 +353,8 @@ static DBusMessage *manager_create_application(DBusConnection *conn,
 	dbus_message_iter_init(msg, &iter);
 	app = hdp_get_app_config(&iter, &err);
 	if (err) {
-		DBusMessage *reply;
-
-		reply = g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments: %s", err->message);
 		g_error_free(err);
-		return reply;
+		return btd_error_invalid_args(msg);
 	}
 
 	name = dbus_message_get_sender(msg);
@@ -400,11 +395,8 @@ static DBusMessage *manager_destroy_application(DBusConnection *conn,
 	GSList *l;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-						DBUS_TYPE_INVALID)){
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-	}
+						DBUS_TYPE_INVALID))
+		return btd_error_invalid_args(msg);
 
 	l = g_slist_find_custom(applications, path, cmp_app);
 
@@ -1871,18 +1863,13 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &app_path,
 							DBUS_TYPE_STRING, &conf,
-							DBUS_TYPE_INVALID)) {
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-	}
+							DBUS_TYPE_INVALID))
+		return btd_error_invalid_args(msg);
 
 	l = g_slist_find_custom(applications, app_path, cmp_app);
 	if (!l)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call, "
-					"no such application");
+		return btd_error_invalid_args(msg);
+
 	app = l->data;
 
 	if (g_ascii_strcasecmp("Reliable", conf) == 0)
@@ -1892,25 +1879,16 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 	else if (g_ascii_strcasecmp("Any", conf) == 0)
 		config = HDP_NO_PREFERENCE_DC;
 	else
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
+		return btd_error_invalid_args(msg);
 
 	if (app->role == HDP_SINK && config != HDP_NO_PREFERENCE_DC)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Configuration not valid for sinks");
+		return btd_error_invalid_args(msg);
 
 	if (app->role == HDP_SOURCE && config == HDP_NO_PREFERENCE_DC)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Configuration not valid for sources");
+		return btd_error_invalid_args(msg);
 
 	if (!device->fr && config == HDP_STREAMING_DC)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Configuration not valid, first "
-					"channel should be reliable");
+		return btd_error_invalid_args(msg);
 
 	data = g_new0(struct hdp_create_dc, 1);
 	data->dev = health_device_ref(device);
@@ -1994,17 +1972,13 @@ static DBusMessage *device_destroy_channel(DBusConnection *conn,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID)){
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
+		return btd_error_invalid_args(msg);
 	}
 
 	l = g_slist_find_custom(device->channels, path, cmp_chan_path);
 	if (!l)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call, "
-					"no such channel");
+		return btd_error_invalid_args(msg);
+
 	hdp_chan = l->data;
 	del_data = g_new0(struct hdp_tmp_dc_data, 1);
 	del_data->msg = dbus_message_ref(msg);

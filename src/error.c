@@ -48,3 +48,10 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
+
+DBusMessage *btd_error_invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".InvalidArguments",
+					"Invalid arguments in method call");
+}

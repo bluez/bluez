@@ -337,12 +337,6 @@ static void exit_callback(DBusConnection *conn, void *user_data)
 	g_free(user_record);
 }
 
-static inline DBusMessage *invalid_arguments(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-}
-
 static inline DBusMessage *not_available(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
@@ -464,7 +458,7 @@ static DBusMessage *update_xml_record(DBusConnection *conn,
 
 	len = (record ? strlen(record) : 0);
 	if (len == 0)
-		return invalid_arguments(msg);
+		return btd_error_invalid_args(msg);
 
 	user_record = find_record(serv_adapter, handle,
 				dbus_message_get_sender(msg));

@@ -138,13 +138,6 @@ static inline DBusMessage *does_not_exist(DBusMessage *msg,
 							"%s", description);
 }
 
-static inline DBusMessage *invalid_arguments(DBusMessage *msg,
-					const char *description)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
-							"%s", description);
-}
-
 static inline DBusMessage *failed(DBusMessage *msg, const char *description)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
@@ -753,17 +746,17 @@ static DBusMessage *proxy_set_serial_params(DBusConnection *conn,
 		return NULL;
 
 	if (str2speed(ratestr, &speed)  == B0)
-		return invalid_arguments(msg, "Invalid baud rate");
+		return btd_error_invalid_args(msg);
 
 	ctrl = prx->proxy_ti.c_cflag;
 	if (set_databits(databits, &ctrl) < 0)
-		return invalid_arguments(msg, "Invalid data bits");
+		return btd_error_invalid_args(msg);
 
 	if (set_stopbits(stopbits, &ctrl) < 0)
-		return invalid_arguments(msg, "Invalid stop bits");
+		return btd_error_invalid_args(msg);
 
 	if (set_parity(paritystr, &ctrl) < 0)
-		return invalid_arguments(msg, "Invalid parity");
+		return btd_error_invalid_args(msg);
 
 	prx->proxy_ti.c_cflag = ctrl;
 	prx->proxy_ti.c_cflag |= (CLOCAL | CREAD);
@@ -1055,13 +1048,13 @@ static DBusMessage *create_proxy(DBusConnection *conn,
 
 	uuid_str = bt_name2string(pattern);
 	if (!uuid_str)
-		return invalid_arguments(msg, "Invalid UUID");
+		return btd_error_invalid_args(msg);
 
 	err = register_proxy(adapter, uuid_str, address, &proxy);
 	g_free(uuid_str);
 
 	if (err == -EINVAL)
-		return invalid_arguments(msg, "Invalid address");
+		return btd_error_invalid_args(msg);
 	else if (err == -EALREADY)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyExist",
 						"Proxy already exists");

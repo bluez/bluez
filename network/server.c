@@ -573,13 +573,6 @@ static inline DBusMessage *failed(DBusMessage *msg, const char *description)
 							"%s", description);
 }
 
-static inline DBusMessage *invalid_arguments(DBusMessage *msg,
-					const char *description)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
-							"%s", description);
-}
-
 static void server_disconnect(DBusConnection *conn, void *user_data)
 {
 	struct network_server *ns = user_data;

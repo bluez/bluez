@@ -93,12 +93,6 @@ struct media_transport {
 					DBusMessageIter *value);
 };
 
-static inline DBusMessage *invalid_args(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-}
-
 static inline DBusMessage *error_failed(DBusMessage *msg, const char *desc)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed", "%s", desc);
@@ -549,16 +543,16 @@ static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 	int err;
 
 	if (!dbus_message_iter_init(msg, &iter))
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	dbus_message_iter_get_basic(&iter, &property);
 	dbus_message_iter_next(&iter);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 	dbus_message_iter_recurse(&iter, &value);
 
 	sender = dbus_message_get_sender(msg);
@@ -577,7 +571,7 @@ static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 
 	if (err < 0) {
 		if (err == -EINVAL)
-			return invalid_args(msg);
+			return btd_error_invalid_args(msg);
 		return error_failed(msg, strerror(-err));
 	}
 

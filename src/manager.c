@@ -64,13 +64,6 @@ void manager_update_svc(struct btd_adapter* adapter, uint8_t svc)
 	adapter_set_service_classes(adapter, svc);
 }
 
-static inline DBusMessage *invalid_args(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg,
-			ERROR_INTERFACE ".InvalidArguments",
-			"Invalid arguments in method call");
-}
-
 static inline DBusMessage *no_such_adapter(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg,

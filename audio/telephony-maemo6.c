@@ -38,6 +38,7 @@
 
 #include "log.h"
 #include "telephony.h"
+#include "error.h"
 
 /* SSC D-Bus definitions */
 #define SSC_DBUS_NAME  "com.nokia.phone.SSC"
@@ -1720,12 +1721,6 @@ static void csd_init(void)
 	}
 }
 
-static inline DBusMessage *invalid_args(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg,"org.bluez.Error.InvalidArguments",
-					"Invalid arguments in method call");
-}
-
 static uint32_t get_callflag(const char *callerid_setting)
 {
 	if (callerid_setting != NULL) {
@@ -1790,7 +1785,7 @@ static DBusMessage *set_callerid(DBusConnection *conn, DBusMessage *msg,
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING,
 						&callerid_setting,
 						DBUS_TYPE_INVALID) == FALSE)
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	if (g_str_equal(callerid_setting, "allowed") ||
 			g_str_equal(callerid_setting, "restricted") ||
@@ -1804,7 +1799,7 @@ static DBusMessage *set_callerid(DBusConnection *conn, DBusMessage *msg,
 
 	error("telephony-maemo6: invalid argument %s for method call"
 					" SetCallerId", callerid_setting);
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 }
 
 static DBusMessage *clear_lastnumber(DBusConnection *conn, DBusMessage *msg,

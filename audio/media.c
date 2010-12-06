@@ -323,18 +323,15 @@ static DBusMessage *register_endpoint(DBusConnection *conn, DBusMessage *msg,
 
 	dbus_message_iter_recurse(&args, &props);
 	if (dbus_message_iter_get_arg_type(&props) != DBUS_TYPE_DICT_ENTRY)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-					".Failed", "Invalid argument");
+		return btd_error_invalid_args(msg);
 
 	if (parse_properties(&props, &uuid, &delay_reporting, &codec,
 				&capabilities, &size) || uuid == NULL)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"Invalid argument");
+		return btd_error_invalid_args(msg);
 
 	if (media_endpoint_create(adapter, sender, path, uuid, delay_reporting,
 				codec, capabilities, size) == FALSE)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"Invalid argument");
+		return btd_error_invalid_args(msg);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
