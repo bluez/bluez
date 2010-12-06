@@ -485,9 +485,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 	const char *path, *name;
 
 	if (gw->agent)
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".AlreadyExists",
-					"Agent already exists");
+		return btd_error_already_exists(msg);
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID))

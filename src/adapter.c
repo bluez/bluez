@@ -1698,9 +1698,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	if (adapter_find_device(adapter, address))
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".AlreadyExists",
-				"Device already exists");
+		return btd_error_already_exists(msg);
 
 	DBG("%s", address);
 
@@ -1871,9 +1869,7 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 		return NULL;
 
 	if (adapter->agent)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".AlreadyExists",
-				"Agent already exists");
+		return btd_error_already_exists(msg);
 
 	cap = parse_io_capability(capability);
 	if (cap == IO_CAPABILITY_INVALID)

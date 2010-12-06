@@ -55,3 +55,10 @@ DBusMessage *btd_error_invalid_args(DBusMessage *msg)
 					".InvalidArguments",
 					"Invalid arguments in method call");
 }
+
+DBusMessage *btd_error_already_exists(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg,
+				ERROR_INTERFACE ".AlreadyExists",
+				"Already Exists");
+}

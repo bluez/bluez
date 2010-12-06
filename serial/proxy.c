@@ -1056,8 +1056,7 @@ static DBusMessage *create_proxy(DBusConnection *conn,
 	if (err == -EINVAL)
 		return btd_error_invalid_args(msg);
 	else if (err == -EALREADY)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyExist",
-						"Proxy already exists");
+		return btd_error_already_exists(msg);
 	else if (err < 0)
 		return g_dbus_create_error(msg, ERROR_INTERFACE "Failed",
 				"Proxy creation failed (%s)", strerror(-err));

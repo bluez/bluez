@@ -2002,9 +2002,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	str = textfile_caseget(filename, dstaddr);
 	if (str) {
 		free(str);
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".AlreadyExists",
-				"Bonding already exists");
+		return btd_error_already_exists(msg);
 	}
 
 	/* If our IO capability is NoInputNoOutput use medium security

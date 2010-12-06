@@ -603,7 +603,7 @@ static DBusMessage *register_server(DBusConnection *conn,
 		return failed(msg, "Invalid UUID");
 
 	if (ns->record_id)
-		return failed(msg, "Already registered");
+		return btd_error_already_exists(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

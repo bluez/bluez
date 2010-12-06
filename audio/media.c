@@ -318,8 +318,7 @@ static DBusMessage *register_endpoint(DBusConnection *conn, DBusMessage *msg,
 	dbus_message_iter_next(&args);
 
 	if (media_adapter_find_endpoint(adapter, sender, path, NULL) != NULL)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-				"Endpoint already registered");
+		return btd_error_already_exists(msg);
 
 	dbus_message_iter_recurse(&args, &props);
 	if (dbus_message_iter_get_arg_type(&props) != DBUS_TYPE_DICT_ENTRY)
