@@ -348,12 +348,6 @@ static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
 							"%s", strerror(err));
 }
 
-static inline DBusMessage *not_authorized(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAuthorized",
-					"Not Authorized");
-}
-
 static int add_xml_record(DBusConnection *conn, const char *sender,
 			struct service_adapter *serv_adapter,
 			const char *record, dbus_uint32_t *handle)
@@ -555,7 +549,7 @@ static void auth_cb(DBusError *derr, void *user_data)
 	if (derr) {
 		error("Access denied: %s", derr->message);
 
-		reply = not_authorized(auth->msg);
+		reply = btd_error_not_authorized(auth->msg);
 		dbus_message_unref(auth->msg);
 		g_dbus_send_message(auth->conn, reply);
 		goto done;
@@ -612,20 +606,20 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 	if (!user_record) {
 		user_record = find_record(serv_adapter_any, handle, sender);
 		if (!user_record)
-			return not_authorized(msg);
+			return btd_error_not_authorized(msg);
 	}
 
 	record = sdp_record_find(user_record->handle);
 	if (record == NULL)
-		return not_authorized(msg);
+		return btd_error_not_authorized(msg);
 
 	if (sdp_get_service_classes(record, &services) < 0) {
 		sdp_record_free(record);
-		return not_authorized(msg);
+		return btd_error_not_authorized(msg);
 	}
 
 	if (services == NULL)
-		return not_authorized(msg);
+		return btd_error_not_authorized(msg);
 
 	uuid = services->data;
 	uuid128 = sdp_uuid_to_uuid128(uuid);
@@ -634,7 +628,7 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 
 	if (sdp_uuid2strn(uuid128, uuid_str, MAX_LEN_UUID_STR) < 0) {
 		bt_free(uuid128);
-		return not_authorized(msg);
+		return btd_error_not_authorized(msg);
 	}
 	bt_free(uuid128);
 
@@ -662,7 +656,7 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 		serv_adapter->pending_list = g_slist_remove(serv_adapter->pending_list,
 									auth);
 		g_free(auth);
-		return not_authorized(msg);
+		return btd_error_not_authorized(msg);
 	}
 
 	return NULL;
@@ -690,7 +684,7 @@ static DBusMessage *cancel_authorization(DBusConnection *conn,
 
 	btd_cancel_authorization(&src, &auth->dst);
 
-	reply = not_authorized(auth->msg);
+	reply = btd_error_not_authorized(auth->msg);
 	dbus_message_unref(auth->msg);
 	g_dbus_send_message(auth->conn, reply);
 

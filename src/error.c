@@ -103,3 +103,10 @@ DBusMessage *btd_error_does_not_exist(DBusMessage *msg)
 					".DoesNotExist",
 					"Does Not Exist");
 }
+
+DBusMessage *btd_error_not_authorized(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".NotAuthorized",
+					"Operation Not Authorized");
+}

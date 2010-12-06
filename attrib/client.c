@@ -191,12 +191,6 @@ static int watcher_cmp(gconstpointer a, gconstpointer b)
 	return g_strcmp0(watcher->path, match->path);
 }
 
-static inline DBusMessage *not_authorized(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAuthorized",
-			"Not authorized");
-}
-
 static void append_char_dict(DBusMessageIter *iter, struct characteristic *chr)
 {
 	DBusMessageIter dict;
@@ -502,7 +496,7 @@ static DBusMessage *unregister_watcher(DBusConnection *conn,
 	l = g_slist_find_custom(prim->watchers, match, watcher_cmp);
 	watcher_free(match);
 	if (!l)
-		return not_authorized(msg);
+		return btd_error_not_authorized(msg);
 
 	watcher = l->data;
 	g_dbus_remove_watch(conn, watcher->id);

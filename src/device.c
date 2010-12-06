@@ -727,17 +727,13 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 
 	if (!dbus_message_is_method_call(device->browse->msg, DEVICE_INTERFACE,
 					"DiscoverServices"))
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".NotAuthorized",
-				"Not Authorized");
+		return btd_error_not_authorized(msg);
 
 	requestor = browse_request_get_requestor(device->browse);
 
 	/* only the discover requestor can cancel the inquiry process */
 	if (!requestor || !g_str_equal(requestor, sender))
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".NotAuthorized",
-				"Not Authorized");
+		return btd_error_not_authorized(msg);
 
 	discover_services_reply(device->browse, -ECANCELED, NULL);
 

@@ -164,12 +164,6 @@ static inline DBusMessage *not_in_progress(DBusMessage *msg, const char *str)
 								"%s", str);
 }
 
-static inline DBusMessage *not_authorized(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAuthorized",
-			"Not authorized");
-}
-
 static int found_device_cmp(const struct remote_dev_info *d1,
 			const struct remote_dev_info *d2)
 {
@@ -1666,7 +1660,7 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 		return not_in_progress(msg, "Device creation not in progress");
 
 	if (!device_is_creating(device, sender))
-		return not_authorized(msg);
+		return btd_error_not_authorized(msg);
 
 	device_set_temporary(device, TRUE);
 
