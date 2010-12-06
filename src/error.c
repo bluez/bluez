@@ -83,3 +83,10 @@ DBusMessage *btd_error_in_progress(DBusMessage *msg)
 					".InProgress",
 					"In Progress");
 }
+
+DBusMessage *btd_error_not_available(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".NotAvailable",
+					"Operation currently not available");
+}

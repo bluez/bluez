@@ -1792,8 +1792,7 @@ static DBusMessage *hs_play(DBusConnection *conn, DBusMessage *msg,
 	if (sco_hci) {
 		error("Refusing Headset.Play() because SCO HCI routing "
 				"is enabled");
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
-						"Operation not Available");
+		return btd_error_not_available(msg);
 	}
 
 	switch (hs->state) {
@@ -1838,8 +1837,7 @@ static DBusMessage *hs_get_speaker_gain(DBusConnection *conn,
 	dbus_uint16_t gain;
 
 	if (hs->state < HEADSET_STATE_CONNECTED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
-						"Operation not Available");
+		return btd_error_not_available(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1864,8 +1862,7 @@ static DBusMessage *hs_get_mic_gain(DBusConnection *conn,
 	dbus_uint16_t gain;
 
 	if (hs->state < HEADSET_STATE_CONNECTED || slc == NULL)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
-						"Operation not Available");
+		return btd_error_not_available(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

@@ -337,12 +337,6 @@ static void exit_callback(DBusConnection *conn, void *user_data)
 	g_free(user_record);
 }
 
-static inline DBusMessage *not_available(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
-							"Not Available");
-}
-
 static inline DBusMessage *failed(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed", "Failed");
@@ -417,9 +411,7 @@ static DBusMessage *update_record(DBusConnection *conn, DBusMessage *msg,
 
 	if (remove_record_from_server(handle) < 0) {
 		sdp_record_free(sdp_record);
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".NotAvailable",
-				"Not Available");
+		return btd_error_not_available(msg);
 	}
 
 	if (serv_adapter->adapter)
@@ -463,9 +455,7 @@ static DBusMessage *update_xml_record(DBusConnection *conn,
 	user_record = find_record(serv_adapter, handle,
 				dbus_message_get_sender(msg));
 	if (!user_record)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".NotAvailable",
-				"Not Available");
+		return btd_error_not_available(msg);
 
 	sdp_record = sdp_xml_parse_record(record, len);
 	if (!sdp_record) {
@@ -550,7 +540,7 @@ static DBusMessage *remove_service_record(DBusConnection *conn,
 	sender = dbus_message_get_sender(msg);
 
 	if (remove_record(conn, sender, serv_adapter, handle) < 0)
-		return not_available(msg);
+		return btd_error_not_available(msg);
 
 	return dbus_message_new_method_return(msg);
 }
