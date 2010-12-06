@@ -946,7 +946,7 @@ static DBusMessage *input_device_connect(DBusConnection *conn,
 		return not_supported(msg);
 
 	if (iconn->pending_connect)
-		return in_progress(msg);
+		return btd_error_in_progress(msg);
 
 	if (is_connected(iconn))
 		return already_connected(msg);

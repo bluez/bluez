@@ -519,8 +519,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	struct dev_priv *priv = dev->priv;
 
 	if (priv->state == AUDIO_STATE_CONNECTING)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
-						"Connect in Progress");
+		return btd_error_in_progress(msg);
 	else if (priv->state == AUDIO_STATE_CONNECTED)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".AlreadyConnected",

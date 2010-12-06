@@ -1695,8 +1695,7 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 	int err;
 
 	if (hs->state == HEADSET_STATE_CONNECTING)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
-						"Connect in Progress");
+		return btd_error_in_progress(msg);
 	else if (hs->state > HEADSET_STATE_CONNECTING)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".AlreadyConnected",

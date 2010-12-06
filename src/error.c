@@ -76,3 +76,10 @@ DBusMessage *btd_error_not_connected(DBusMessage *msg)
 					".NotConnected",
 					"Not Connected");
 }
+
+DBusMessage *btd_error_in_progress(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".InProgress",
+					"In Progress");
+}

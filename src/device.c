@@ -177,12 +177,6 @@ static inline DBusMessage *no_such_adapter(DBusMessage *msg)
 							"No such adapter");
 }
 
-static inline DBusMessage *in_progress(DBusMessage *msg, const char *str)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
-								"%s", str);
-}
-
 static void browse_request_free(struct browse_req *req)
 {
 	if (req->listener_id)
@@ -611,8 +605,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 	int err;
 
 	if (device->browse)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
-						"Discover in progress");
+		return btd_error_in_progress(msg);
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -1991,7 +1984,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	ba2str(&device->bdaddr, dstaddr);
 
 	if (device->bonding)
-		return in_progress(msg, "Bonding in progress");
+		return btd_error_in_progress(msg);
 
 	/* check if a link key already exists */
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
