@@ -354,12 +354,6 @@ static inline DBusMessage *not_authorized(DBusMessage *msg)
 					"Not Authorized");
 }
 
-static inline DBusMessage *does_not_exist(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExist",
-					"Does Not Exist");
-}
-
 static int add_xml_record(DBusConnection *conn, const char *sender,
 			struct service_adapter *serv_adapter,
 			const char *record, dbus_uint32_t *handle)
@@ -656,7 +650,7 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 
 	auth = next_pending(serv_adapter);
 	if (auth == NULL)
-		return does_not_exist(msg);
+		return btd_error_does_not_exist(msg);
 
 	if (serv_adapter->adapter)
 		adapter_get_address(serv_adapter->adapter, &src);
@@ -687,7 +681,7 @@ static DBusMessage *cancel_authorization(DBusConnection *conn,
 
 	auth = find_pending_by_sender(serv_adapter, sender);
 	if (auth == NULL)
-		return does_not_exist(msg);
+		return btd_error_does_not_exist(msg);
 
 	if (serv_adapter->adapter)
 		adapter_get_address(serv_adapter->adapter, &src);

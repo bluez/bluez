@@ -1794,9 +1794,8 @@ static DBusMessage *remove_device(DBusConnection *conn, DBusMessage *msg,
 	l = g_slist_find_custom(adapter->devices,
 			path, (GCompareFunc) device_path_cmp);
 	if (!l)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".DoesNotExist",
-				"Device does not exist");
+		return btd_error_does_not_exist(msg);
+
 	device = l->data;
 
 	if (device_is_temporary(device) || device_is_busy(device))
@@ -1832,9 +1831,7 @@ static DBusMessage *find_device(DBusConnection *conn, DBusMessage *msg,
 	l = g_slist_find_custom(adapter->devices,
 			address, (GCompareFunc) device_address_cmp);
 	if (!l)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".DoesNotExist",
-				"Device does not exist");
+		return btd_error_does_not_exist(msg);
 
 	device = l->data;
 
@@ -1905,9 +1902,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn, DBusMessage *msg,
 	name = dbus_message_get_sender(msg);
 
 	if (!adapter->agent || !agent_matches(adapter->agent, name, path))
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".DoesNotExist",
-					"No such agent");
+		return btd_error_does_not_exist(msg);
 
 	agent_free(adapter->agent);
 	adapter->agent = NULL;

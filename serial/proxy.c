@@ -131,13 +131,6 @@ static void proxy_free(struct serial_proxy *prx)
 	g_free(prx);
 }
 
-static inline DBusMessage *does_not_exist(DBusMessage *msg,
-					const char *description)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExist",
-							"%s", description);
-}
-
 static inline DBusMessage *failed(DBusMessage *msg, const char *description)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
@@ -1113,7 +1106,7 @@ static DBusMessage *remove_proxy(DBusConnection *conn,
 
 	l = g_slist_find_custom(adapter->proxies, path, proxy_pathcmp);
 	if (!l)
-		return does_not_exist(msg, "Invalid proxy path");
+		return btd_error_does_not_exist(msg);
 
 	prx = l->data;
 

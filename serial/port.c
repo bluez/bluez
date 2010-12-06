@@ -57,7 +57,6 @@
 #include "port.h"
 
 #define SERIAL_PORT_INTERFACE	"org.bluez.Serial"
-#define ERROR_DOES_NOT_EXIST	"org.bluez.Error.DoesNotExist"
 
 #define MAX_OPEN_TRIES		5
 #define OPEN_WAIT		300	/* ms. udev node creation retry wait */
@@ -233,13 +232,6 @@ void port_release_all(void)
 {
 	g_slist_foreach(devices, (GFunc) serial_device_free, NULL);
 	g_slist_free(devices);
-}
-
-static inline DBusMessage *does_not_exist(DBusMessage *msg,
-					const char *description)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExist",
-							"%s", description);
 }
 
 static inline DBusMessage *failed(DBusMessage *msg, const char *description)
@@ -497,7 +489,7 @@ static DBusMessage *port_connect(DBusConnection *conn,
 
 		channel = strtol(pattern, &endptr, 10);
 		if ((endptr && *endptr != '\0') || channel < 1 || channel > 30)
-			return does_not_exist(msg, "Does not match");
+			return btd_error_does_not_exist(msg);
 
 		port = create_port(device, NULL, channel);
 	}
@@ -538,7 +530,7 @@ static DBusMessage *port_disconnect(DBusConnection *conn,
 
 	port = find_port(device->ports, dev);
 	if (!port)
-		return does_not_exist(msg, "Port does not exist");
+		return btd_error_does_not_exist(msg);
 
 	if (!port->listener_id)
 		return failed(msg, "Not connected");

@@ -96,3 +96,10 @@ DBusMessage *btd_error_not_available(DBusMessage *msg)
 					".NotAvailable",
 					"Operation currently not available");
 }
+
+DBusMessage *btd_error_does_not_exist(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".DoesNotExist",
+					"Does Not Exist");
+}
