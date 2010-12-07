@@ -56,6 +56,9 @@
 #include "agent.h"
 #include "storage.h"
 
+#define ADV_TYPE_IND		0x00
+#define ADV_TYPE_DIRECT_IND	0x01
+
 #define IO_CAPABILITY_DISPLAYONLY	0x00
 #define IO_CAPABILITY_DISPLAYYESNO	0x01
 #define IO_CAPABILITY_KEYBOARDONLY	0x02
@@ -1694,6 +1697,17 @@ static device_type_t flags2type(uint8_t flags)
 		return DEVICE_TYPE_DUALMODE;
 }
 
+static gboolean event_is_connectable(uint8_t type)
+{
+	switch (type) {
+	case ADV_TYPE_IND:
+	case ADV_TYPE_DIRECT_IND:
+		return TRUE;
+	default:
+		return FALSE;
+	}
+}
+
 static DBusMessage *create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -1726,6 +1740,20 @@ static DBusMessage *create_device(DBusConnection *conn,
 	device = adapter_create_device(conn, adapter, address, type);
 	if (!device)
 		return NULL;
+
+	if (type == DEVICE_TYPE_LE && !event_is_connectable(dev->evt_type)) {
+		/* Device is not connectable */
+		const char *path = device_get_path(device);
+		DBusMessage *reply;
+
+		reply = dbus_message_new_method_return(msg);
+
+		dbus_message_append_args(reply,
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID);
+
+		return reply;
+	}
 
 	err = device_browse(device, conn, msg, NULL, FALSE);
 	if (err < 0)
