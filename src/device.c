@@ -107,7 +107,7 @@ struct browse_req {
 
 struct btd_device {
 	bdaddr_t	bdaddr;
-	gboolean	le;
+	device_type_t	type;
 	gchar		*path;
 	char		name[MAX_NAME_LENGTH + 1];
 	char		*alias;
@@ -206,7 +206,7 @@ static void browse_request_cancel(struct browse_req *req)
 
 	adapter_get_address(adapter, &src);
 
-	if (device->le == FALSE)
+	if (device->type != DEVICE_TYPE_LE)
 		bt_cancel_discovery(&src, &device->bdaddr);
 
 	device->browse = NULL;
@@ -945,8 +945,8 @@ void device_set_secmode3_conn(struct btd_device *device, gboolean enable)
 }
 
 struct btd_device *device_create(DBusConnection *conn,
-					struct btd_adapter *adapter,
-					const gchar *address, gboolean le)
+				struct btd_adapter *adapter,
+				const gchar *address, device_type_t type)
 {
 	gchar *address_up;
 	struct btd_device *device;
@@ -974,7 +974,7 @@ struct btd_device *device_create(DBusConnection *conn,
 
 	str2ba(address, &device->bdaddr);
 	device->adapter = adapter;
-	device->le = le;
+	device->type = type;
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 	read_device_name(srcaddr, address, device->name);
@@ -1637,7 +1637,7 @@ int device_browse(struct btd_device *device, DBusConnection *conn,
 	if (device->browse)
 		return -EBUSY;
 
-	if (device->le)
+	if (device->type == DEVICE_TYPE_LE)
 		req = browse_primary(device, &err);
 	else
 		req = browse_sdp(device, search, reverse, &err);

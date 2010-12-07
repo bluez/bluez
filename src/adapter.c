@@ -1184,16 +1184,17 @@ sdp_list_t *adapter_get_services(struct btd_adapter *adapter)
 	return adapter->services;
 }
 
-struct btd_device *adapter_create_device(DBusConnection *conn,
-					struct btd_adapter *adapter,
-					const char *address, gboolean le)
+static struct btd_device *adapter_create_device(DBusConnection *conn,
+						struct btd_adapter *adapter,
+						const char *address,
+						device_type_t type)
 {
 	struct btd_device *device;
 	const char *path;
 
 	DBG("%s", address);
 
-	device = device_create(conn, adapter, address, le);
+	device = device_create(conn, adapter, address, type);
 	if (!device)
 		return NULL;
 
@@ -1252,7 +1253,8 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 	if (device)
 		return device;
 
-	return adapter_create_device(conn, adapter, address, FALSE);
+	return adapter_create_device(conn, adapter, address,
+						DEVICE_TYPE_BREDR);
 }
 
 static gboolean stop_scanning(gpointer user_data)
@@ -1674,6 +1676,24 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static device_type_t flags2type(uint8_t flags)
+{
+	/* Inferring the remote type based on the EIR Flags field */
+
+	/* For LE only and dual mode the following flags must be zero */
+	if (flags & (EIR_SIM_CONTROLLER | EIR_SIM_HOST))
+		return DEVICE_TYPE_UNKNOWN;
+
+	/* Limited or General discoverable mode bit must be enabled */
+	if (!(flags & (EIR_LIM_DISC | EIR_GEN_DISC)))
+		return DEVICE_TYPE_UNKNOWN;
+
+	if (flags & EIR_BREDR_UNSUP)
+		return DEVICE_TYPE_LE;
+	else
+		return DEVICE_TYPE_DUALMODE;
+}
+
 static DBusMessage *create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -1681,8 +1701,8 @@ static DBusMessage *create_device(DBusConnection *conn,
 	struct btd_device *device;
 	struct remote_dev_info *dev, match;
 	const gchar *address;
-	gboolean le;
 	int err;
+	device_type_t type;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -1701,9 +1721,9 @@ static DBusMessage *create_device(DBusConnection *conn,
 	match.name_status = NAME_ANY;
 
 	dev = adapter_search_found_devices(adapter, &match);
-	le  = dev ? dev->le : FALSE;
+	type = dev && dev->flags ? flags2type(dev->flags) : DEVICE_TYPE_BREDR;
 
-	device = adapter_create_device(conn, adapter, address, le);
+	device = adapter_create_device(conn, adapter, address, type);
 	if (!device)
 		return NULL;
 
@@ -1992,7 +2012,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 				key, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, FALSE);
+	device = device_create(connection, adapter, key, DEVICE_TYPE_BREDR);
 	if (!device)
 		return;
 
@@ -2015,7 +2035,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 					(GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, FALSE);
+	device = device_create(connection, adapter, key, DEVICE_TYPE_BREDR);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -2032,7 +2052,7 @@ static void create_stored_device_from_blocked(char *key, char *value,
 				key, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, FALSE);
+	device = device_create(connection, adapter, key, DEVICE_TYPE_BREDR);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -3033,16 +3053,19 @@ static struct remote_dev_info *get_found_dev(struct btd_adapter *adapter,
 	return dev;
 }
 
-static uint8_t extract_eir_flags(uint8_t *eir_data)
+static gboolean extract_eir_flags(uint8_t *flags, uint8_t *eir_data)
 {
 	if (eir_data[0] == 0)
-		return 0;
+		return FALSE;
 
 	if (eir_data[1] != EIR_FLAGS)
-		return 0;
+		return FALSE;
 
 	/* For now, only one octet is used for flags */
-	return eir_data[2];
+	if (flags)
+		*flags = eir_data[2];
+
+	return TRUE;
 }
 
 void adapter_update_device_from_info(struct btd_adapter *adapter,
@@ -3077,7 +3100,7 @@ void adapter_update_device_from_info(struct btd_adapter *adapter,
 			dev->name = tmp_name;
 		}
 
-		dev->flags = extract_eir_flags(info->data);
+		extract_eir_flags(info->data, &dev->flags);
 	}
 
 	/* FIXME: check if other information was changed before emitting the
