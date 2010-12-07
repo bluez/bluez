@@ -832,10 +832,11 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 		pending->transfer->name = g_strdup(name);
 	}
 
+	agent->pending = NULL;
+
 	pending->cb(session, NULL, pending->transfer);
 	dbus_message_unref(reply);
 	free_pending(pending);
-	agent->pending = NULL;
 
 	return;
 }
