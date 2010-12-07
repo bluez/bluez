@@ -1735,7 +1735,10 @@ static DBusMessage *create_device(DBusConnection *conn,
 	match.name_status = NAME_ANY;
 
 	dev = adapter_search_found_devices(adapter, &match);
-	type = dev && dev->flags ? flags2type(dev->flags) : DEVICE_TYPE_BREDR;
+	if (dev && dev->flags)
+		type = flags2type(dev->flags);
+	else
+		type = DEVICE_TYPE_BREDR;
 
 	device = adapter_create_device(conn, adapter, address, type);
 	if (!device)
