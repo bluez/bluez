@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	__obex_log_init(option_debug, option_detach);
+	__obex_log_init("obexd", option_debug, option_detach);
 
 	DBG("Entering main loop");
 

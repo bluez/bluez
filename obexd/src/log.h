@@ -26,7 +26,7 @@ void error(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 void obex_debug(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
-void __obex_log_init(const char *debug, int detach);
+void __obex_log_init(const char *label, const char *debug, int detach);
 void __obex_log_cleanup(void);
 void __obex_log_enable_debug(void);
 
