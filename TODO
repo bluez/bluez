@@ -79,11 +79,6 @@ ATT/GATT
   Priority: Medium
   Complexity: C2
 
-- GATT server: fix read by UUID (read by handle works)
-
-  Priority: Medium
-  Complexity: C2
-
 - gatttool: add an interactive command prompt mode. Many LE devices
   expect the connection to stay up a long time and disable advertising
   after a disconnection so it's inconvenient to use gatttool in the
