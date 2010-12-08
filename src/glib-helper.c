@@ -753,8 +753,8 @@ char *bt_extract_eir_name(uint8_t *data, uint8_t *type)
 	case EIR_NAME_SHORT:
 	case EIR_NAME_COMPLETE:
 		if (!g_utf8_validate((char *) (data + 2), data[0] - 1, NULL))
-			return strdup("");
-		return strndup((char *) (data + 2), data[0] - 1);
+			return g_strdup("");
+		return g_strndup((char *) (data + 2), data[0] - 1);
 	}
 
 	return NULL;
