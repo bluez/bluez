@@ -600,7 +600,7 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 	if (find_pending_by_sender(serv_adapter, sender))
-		return failed(msg);
+		return btd_error_does_not_exist(msg);
 
 	user_record = find_record(serv_adapter, handle, sender);
 	if (!user_record) {

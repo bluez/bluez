@@ -522,9 +522,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	if (strcmp(gw->agent->path, path) != 0)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".Failed",
-				"Unknown object path");
+		return btd_error_does_not_exist(msg);
 
 	g_dbus_remove_watch(device->conn, gw->agent->watch);
 

@@ -351,8 +351,7 @@ static DBusMessage *unregister_endpoint(DBusConnection *conn, DBusMessage *msg,
 
 	endpoint = media_adapter_find_endpoint(adapter, sender, path, NULL);
 	if (endpoint == NULL)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-				"Endpoint not registered");
+		return btd_error_does_not_exist(msg);
 
 	media_endpoint_remove(endpoint);
 

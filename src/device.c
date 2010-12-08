@@ -723,9 +723,7 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 	const char *requestor;
 
 	if (!device->browse)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".Failed",
-				"No pending discovery");
+		return btd_error_does_not_exist(msg);
 
 	if (!dbus_message_is_method_call(device->browse->msg, DEVICE_INTERFACE,
 					"DiscoverServices"))
