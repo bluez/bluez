@@ -66,7 +66,7 @@
 
 #define FL_PARENT_FOLDER_ELEMENT "<parent-folder/>" EOL_CHARS
 
-#define FL_FILE_ELEMENT "<file name=\"%s\" size=\"%lu\"" \
+#define FL_FILE_ELEMENT "<file name=\"%s\" size=\"%" PRIu64 "\"" \
 			" %s accessed=\"%s\" " \
 			"modified=\"%s\" created=\"%s\"/>" EOL_CHARS
 
@@ -121,8 +121,9 @@ static char *file_stat_line(char *filename, struct stat *fstat,
 			ret = g_strdup_printf(FL_FOLDER_ELEMENT, escaped, perm,
 							atime, mtime, ctime);
 	} else if (S_ISREG(fstat->st_mode))
-		ret = g_strdup_printf(FL_FILE_ELEMENT, escaped, fstat->st_size,
-						perm, atime, mtime, ctime);
+		ret = g_strdup_printf(FL_FILE_ELEMENT, escaped,
+					(uint64_t) fstat->st_size,
+					perm, atime, mtime, ctime);
 
 	g_free(escaped);
 

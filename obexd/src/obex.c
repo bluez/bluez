@@ -590,7 +590,8 @@ static int obex_read_stream(struct obex_session *os, obex_t *obex,
 
 	/* only write if both object and driver are valid */
 	if (os->object == NULL || os->driver == NULL) {
-		DBG("Stored %u bytes into temporary buffer", os->pending);
+		DBG("Stored %" PRIu64 " bytes into temporary buffer",
+								os->pending);
 		return 0;
 	}
 
@@ -796,7 +797,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	if (err < 0)
 		goto done;
 
-	if (os->size != OBJECT_SIZE_UNKNOWN) {
+	if (os->size != OBJECT_SIZE_UNKNOWN && os->size < UINT32_MAX) {
 		hd.bq4 = os->size;
 		OBEX_ObjectAddHeader(obex, obj,
 				OBEX_HDR_LENGTH, hd, 4, 0);
@@ -1005,7 +1006,7 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 
 		case OBEX_HDR_LENGTH:
 			os->size = hd.bq4;
-			DBG("OBEX_HDR_LENGTH: %d", os->size);
+			DBG("OBEX_HDR_LENGTH: %" PRIu64, os->size);
 			break;
 		case OBEX_HDR_TIME:
 			os->time = parse_iso8610((const char *) hd.bs, hlen);

@@ -470,7 +470,7 @@ int transfer_put(struct transfer_data *transfer, transfer_callback_t func,
 	struct session_data *session = transfer->session;
 	gw_obex_xfer_cb_t cb;
 	struct stat st;
-	int fd;
+	int fd, size;
 
 	if (transfer->xfer != NULL)
 		return -EALREADY;
@@ -497,8 +497,9 @@ int transfer_put(struct transfer_data *transfer, transfer_callback_t func,
 	cb = put_xfer_progress;
 
 done:
+	size = transfer->size < UINT32_MAX ? transfer->size : 0;
 	transfer->xfer = gw_obex_put_async(session->obex, transfer->name,
-						transfer->type, transfer->size,
+						transfer->type, size,
 						-1, NULL);
 	if (transfer->xfer == NULL)
 		return -ENOTCONN;

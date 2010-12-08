@@ -33,9 +33,9 @@ struct obex_session {
 	char *path;
 	time_t time;
 	uint8_t *buf;
-	int32_t pending;
-	int32_t offset;
-	int32_t size;
+	int64_t pending;
+	int64_t offset;
+	int64_t size;
 	void *object;
 	gboolean aborted;
 	struct obex_service_driver *service;
