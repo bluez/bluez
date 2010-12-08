@@ -799,9 +799,7 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 	struct btd_device *device = user_data;
 
 	if (!device->handle)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".NotConnected",
-				"Device is not connected");
+		return btd_error_not_connected(msg);
 
 	device_request_disconnect(device, msg);
 

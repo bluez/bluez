@@ -533,7 +533,7 @@ static DBusMessage *port_disconnect(DBusConnection *conn,
 		return btd_error_does_not_exist(msg);
 
 	if (!port->listener_id)
-		return failed(msg, "Not connected");
+		return btd_error_not_connected(msg);
 
 	owner = dbus_message_get_sender(port->msg);
 	caller = dbus_message_get_sender(msg);

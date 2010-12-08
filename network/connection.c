@@ -123,12 +123,6 @@ static inline DBusMessage *already_connected(DBusMessage *msg)
 						"Device already connected");
 }
 
-static inline DBusMessage *not_connected(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"Device not connected");
-}
-
 static inline DBusMessage *not_permited(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
@@ -460,7 +454,7 @@ static DBusMessage *connection_disconnect(DBusConnection *conn,
 		return connection_cancel(conn, msg, nc);
 	}
 
-	return not_connected(msg);
+	return btd_error_not_connected(msg);
 }
 
 static DBusMessage *connection_get_properties(DBusConnection *conn,
