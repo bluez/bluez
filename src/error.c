@@ -51,8 +51,7 @@ DBusHandlerResult error_common_reply(DBusConnection *conn, DBusMessage *msg,
 
 DBusMessage *btd_error_invalid_args(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE
-					".InvalidArguments",
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
 }
 
@@ -64,49 +63,42 @@ DBusMessage *btd_error_busy(DBusMessage *msg)
 
 DBusMessage *btd_error_already_exists(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".AlreadyExists",
-				"Already Exists");
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyExists",
+					"Already Exists");
 }
 
 DBusMessage *btd_error_not_supported(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE
-					".NotSupported",
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotSupported",
 					"Operation is not supported");
 }
 
 DBusMessage *btd_error_not_connected(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE
-					".NotConnected",
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotConnected",
 					"Not Connected");
 }
 
 DBusMessage *btd_error_in_progress(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE
-					".InProgress",
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
 					"In Progress");
 }
 
 DBusMessage *btd_error_not_available(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE
-					".NotAvailable",
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAvailable",
 					"Operation currently not available");
 }
 
 DBusMessage *btd_error_does_not_exist(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE
-					".DoesNotExist",
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".DoesNotExist",
 					"Does Not Exist");
 }
 
 DBusMessage *btd_error_not_authorized(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg, ERROR_INTERFACE
-					".NotAuthorized",
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAuthorized",
 					"Operation Not Authorized");
 }
