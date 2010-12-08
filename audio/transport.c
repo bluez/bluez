@@ -443,10 +443,10 @@ static DBusMessage *acquire(DBusConnection *conn, DBusMessage *msg,
 
 	owner = media_transport_find_owner(transport, sender);
 	if (owner != NULL)
-		return error_failed(msg, strerror(EPERM));
+		return btd_error_not_authorized(msg);
 
 	if (media_transport_acquire(transport, accesstype) == FALSE)
-		return error_failed(msg, strerror(EPERM));
+		return btd_error_not_authorized(msg);
 
 	owner = media_owner_create(transport, msg, accesstype);
 	req = g_new0(struct acquire_request, 1);
@@ -476,7 +476,7 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 
 	owner = media_transport_find_owner(transport, sender);
 	if (owner == NULL)
-		return error_failed(msg, strerror(EPERM));
+		return btd_error_not_authorized(msg);
 
 	if (g_strcmp0(owner->accesstype, accesstype) == 0)
 		media_owner_remove(owner);
@@ -484,7 +484,7 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 		media_transport_release(transport, accesstype);
 		g_strdelimit(owner->accesstype, accesstype, ' ');
 	} else
-		return error_failed(msg, strerror(EPERM));
+		return btd_error_not_authorized(msg);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }

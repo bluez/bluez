@@ -728,7 +728,7 @@ static DBusMessage *proxy_set_serial_params(DBusConnection *conn,
 
 	/* Don't allow change TTY settings if it is open */
 	if (prx->local)
-		return failed(msg, "Not allowed");
+		return btd_error_not_authorized(msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_STRING, &ratestr,
@@ -1112,7 +1112,7 @@ static DBusMessage *remove_proxy(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 	if (g_strcmp0(prx->owner, sender) != 0)
-		return failed(msg, "Permission denied");
+		return btd_error_not_authorized(msg);
 
 	unregister_proxy(prx);
 

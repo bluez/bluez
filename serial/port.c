@@ -538,7 +538,7 @@ static DBusMessage *port_disconnect(DBusConnection *conn,
 	owner = dbus_message_get_sender(port->msg);
 	caller = dbus_message_get_sender(msg);
 	if (!g_str_equal(owner, caller))
-		return failed(msg, "Operation not permited");
+		return btd_error_not_authorized(msg);
 
 	port_release(port);
 

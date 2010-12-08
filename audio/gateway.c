@@ -514,8 +514,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 		goto done;
 
 	if (strcmp(gw->agent->name, dbus_message_get_sender(msg)) != 0)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"Permission denied");
+		return btd_error_not_authorized(msg);
 
 	if (!dbus_message_get_args(msg, NULL,
 				DBUS_TYPE_OBJECT_PATH, &path,

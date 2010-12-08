@@ -438,7 +438,7 @@ static DBusMessage *connection_cancel(DBusConnection *conn,
 	const char *caller = dbus_message_get_sender(msg);
 
 	if (!g_str_equal(owner, caller))
-		return not_permited(msg);
+		return btd_error_not_authorized(msg);
 
 	connection_destroy(conn, nc);
 
