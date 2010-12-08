@@ -79,6 +79,12 @@ DBusMessage *btd_error_not_connected(DBusMessage *msg)
 					"Not Connected");
 }
 
+DBusMessage *btd_error_already_connected(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyConnected",
+					"Already Connected");
+}
+
 DBusMessage *btd_error_in_progress(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",

@@ -396,7 +396,7 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 		return btd_error_not_supported(msg);
 
 	if (nc->state != DISCONNECTED)
-		return already_connected(msg);
+		return btd_error_already_connected(msg);
 
 	nc->io = bt_io_connect(BT_IO_L2CAP, connect_cb, nc,
 				NULL, &err,

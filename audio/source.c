@@ -393,9 +393,7 @@ static DBusMessage *source_connect(DBusConnection *conn,
 		return btd_error_busy(msg);
 
 	if (source->stream_state >= AVDTP_STATE_OPEN)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".AlreadyConnected",
-						"Device Already Connected");
+		return btd_error_already_connected(msg);
 
 	if (!source_setup_stream(source, NULL))
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",

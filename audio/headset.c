@@ -1697,9 +1697,7 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 	if (hs->state == HEADSET_STATE_CONNECTING)
 		return btd_error_in_progress(msg);
 	else if (hs->state > HEADSET_STATE_CONNECTING)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".AlreadyConnected",
-						"Already Connected");
+		return btd_error_already_connected(msg);
 
 	if (hs->hfp_handle && !ag.telephony_ready)
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
@@ -1806,9 +1804,7 @@ static DBusMessage *hs_play(DBusConnection *conn, DBusMessage *msg,
 		}
 		return btd_error_busy(msg);
 	case HEADSET_STATE_PLAYING:
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".AlreadyConnected",
-						"Device Already Connected");
+		return btd_error_already_connected(msg);
 	case HEADSET_STATE_CONNECTED:
 	default:
 		break;

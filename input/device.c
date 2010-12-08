@@ -315,12 +315,6 @@ failed:
 	return FALSE;
 }
 
-static inline DBusMessage *already_connected(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyConnected",
-					"Already connected to a device");
-}
-
 static inline DBusMessage *connection_attempt_failed(DBusMessage *msg,
 							const char *err)
 {
@@ -937,7 +931,7 @@ static DBusMessage *input_device_connect(DBusConnection *conn,
 		return btd_error_in_progress(msg);
 
 	if (is_connected(iconn))
-		return already_connected(msg);
+		return btd_error_already_connected(msg);
 
 	iconn->pending_connect = dbus_message_ref(msg);
 	fake = iconn->fake;

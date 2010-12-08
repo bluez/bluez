@@ -442,9 +442,7 @@ static DBusMessage *sink_connect(DBusConnection *conn,
 		return btd_error_busy(msg);
 
 	if (sink->stream_state >= AVDTP_STATE_OPEN)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".AlreadyConnected",
-						"Device Already Connected");
+		return btd_error_already_connected(msg);
 
 	if (!sink_setup_stream(sink, NULL))
 		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",

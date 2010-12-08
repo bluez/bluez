@@ -521,9 +521,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	if (priv->state == AUDIO_STATE_CONNECTING)
 		return btd_error_in_progress(msg);
 	else if (priv->state == AUDIO_STATE_CONNECTED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".AlreadyConnected",
-						"Already Connected");
+		return btd_error_already_connected(msg);
 
 	dev->auto_connect = TRUE;
 
