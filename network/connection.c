@@ -393,7 +393,7 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 	id = bnep_service_id(svc);
 	nc = find_connection(peer->connections, id);
 	if (!nc)
-		return not_supported(msg);
+		return btd_error_not_supported(msg);
 
 	if (nc->state != DISCONNECTED)
 		return already_connected(msg);

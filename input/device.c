@@ -315,12 +315,6 @@ failed:
 	return FALSE;
 }
 
-static inline DBusMessage *not_supported(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"Not supported");
-}
-
 static inline DBusMessage *already_connected(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".AlreadyConnected",
@@ -937,7 +931,7 @@ static DBusMessage *input_device_connect(DBusConnection *conn,
 
 	iconn = find_connection(idev->connections, "HID");
 	if (!iconn)
-		return not_supported(msg);
+		return btd_error_not_supported(msg);
 
 	if (iconn->pending_connect)
 		return btd_error_in_progress(msg);
