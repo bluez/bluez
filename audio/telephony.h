@@ -26,6 +26,13 @@
 #include <errno.h>
 #include <glib.h>
 
+/* Response and hold values */
+#define BTRH_NOT_SUPPORTED	-2
+#define BTRH_NONE		-1
+#define BTRH_HOLD		0
+#define BTRH_ACCEPT		1
+#define BTRH_REJECT		2
+
 /* HFP feature bits */
 #define AG_FEATURE_THREE_WAY_CALLING		0x0001
 #define AG_FEATURE_EC_ANDOR_NR			0x0002

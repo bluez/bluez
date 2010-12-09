@@ -84,7 +84,7 @@ static struct {
 	.features = 0,
 	.er_mode = 3,
 	.er_ind = 0,
-	.rh = -1,
+	.rh = BTRH_NOT_SUPPORTED,
 	.number = NULL,
 	.number_type = 0,
 	.ring_timer = 0,
@@ -891,6 +891,9 @@ static int response_and_hold(struct audio_device *device, const char *buf)
 
 	if (strlen(buf) < 8)
 		return -EINVAL;
+
+	if (ag.rh == BTRH_NOT_SUPPORTED)
+		return telephony_generic_rsp(device, CME_ERROR_NOT_SUPPORTED);
 
 	if (buf[7] == '=') {
 		telephony_response_and_hold_req(device, atoi(&buf[8]) < 0);

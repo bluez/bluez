@@ -88,14 +88,6 @@ static char *subscriber_number = NULL;
 
 static gboolean events_enabled = FALSE;
 
-/* Response and hold state
- * -1 = none
- *  0 = incoming call is put on hold in the AG
- *  1 = held incoming call is accepted in the AG
- *  2 = held incoming call is rejected in the AG
- */
-static int response_and_hold = -1;
-
 static struct indicator ofono_indicators[] =
 {
 	{ "battchg",	"0-5",	5,	TRUE },
@@ -156,11 +148,8 @@ void telephony_event_reporting_req(void *telephony_device, int ind)
 
 void telephony_response_and_hold_req(void *telephony_device, int rh)
 {
-	response_and_hold = rh;
-
-	telephony_response_and_hold_ind(response_and_hold);
-
-	telephony_response_and_hold_rsp(telephony_device, CME_ERROR_NONE);
+	telephony_response_and_hold_rsp(telephony_device,
+						CME_ERROR_NOT_SUPPORTED);
 }
 
 void telephony_last_dialed_number_req(void *telephony_device)
@@ -534,8 +523,8 @@ static void get_registration_reply(DBusPendingCall *call, void *user_data)
                 dbus_message_iter_next(&iter_entry);
         }
 
-	telephony_ready_ind(features, ofono_indicators,
-				response_and_hold, chld_str);
+	telephony_ready_ind(features, ofono_indicators, BTRH_NOT_SUPPORTED,
+								chld_str);
 
 done:
 	dbus_message_unref(reply);

@@ -210,14 +210,6 @@ static gboolean events_enabled = FALSE;
 /* Supported set of call hold operations */
 static const char *chld_str = "0,1,1x,2,2x,3,4";
 
-/* Response and hold state
- * -1 = none
- *  0 = incoming call is put on hold in the AG
- *  1 = held incoming call is accepted in the AG
- *  2 = held incoming call is rejected in the AG
- */
-static int response_and_hold = -1;
-
 static char *last_dialed_number = NULL;
 
 /* Timer for tracking call creation requests */
@@ -517,11 +509,8 @@ void telephony_event_reporting_req(void *telephony_device, int ind)
 
 void telephony_response_and_hold_req(void *telephony_device, int rh)
 {
-	response_and_hold = rh;
-
-	telephony_response_and_hold_ind(response_and_hold);
-
-	telephony_response_and_hold_rsp(telephony_device, CME_ERROR_NONE);
+	telephony_response_and_hold_rsp(telephony_device,
+						CME_ERROR_NOT_SUPPORTED);
 }
 
 void telephony_last_dialed_number_req(void *telephony_device)
@@ -2086,7 +2075,7 @@ int telephony_init(void)
 	DBG("telephony-maemo registering %s interface on path %s",
 			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
 
-	telephony_ready_ind(features, maemo_indicators, response_and_hold,
+	telephony_ready_ind(features, maemo_indicators, BTRH_NOT_SUPPORTED,
 								chld_str);
 	if (send_method_call("org.freedesktop.Hal",
 				"/org/freedesktop/Hal/Manager",
