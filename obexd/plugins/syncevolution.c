@@ -243,7 +243,8 @@ failed:
 	return NULL;
 }
 
-static int synce_put(struct obex_session *os, void *user_data)
+static int synce_put(struct obex_session *os, obex_object_t *obj,
+					void *user_data)
 {
 	return 0;
 }

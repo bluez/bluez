@@ -155,7 +155,8 @@ skip_auth:
 	return ret;
 }
 
-static int opp_put(struct obex_session *os, void *user_data)
+static int opp_put(struct obex_session *os, obex_object_t *obj,
+						void *user_data)
 {
 	const char *name = obex_get_name(os);
 	const char *folder = obex_get_root_folder(os);

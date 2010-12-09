@@ -1090,7 +1090,7 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		return;
 	}
 
-	err = os->service->put(os, os->service_data);
+	err = os->service->put(os, obj, os->service_data);
 	if (err < 0)
 		os_set_response(obj, err);
 }

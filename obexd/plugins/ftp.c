@@ -258,7 +258,8 @@ static int ftp_chkput(struct obex_session *os, void *user_data)
 	return ret;
 }
 
-static int ftp_put(struct obex_session *os, void *user_data)
+static int ftp_put(struct obex_session *os, obex_object_t *obj,
+						void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *name = obex_get_name(os);
