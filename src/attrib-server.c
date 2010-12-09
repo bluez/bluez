@@ -145,6 +145,8 @@ static uint8_t att_check_reqs(struct gatt_channel *channel, uint8_t opcode,
 	/* FIXME: currently, it is assumed an encrypted link is enough for
 	 * authentication. This will allow to enable the SMP negotiation once
 	 * it is on upstream kernel. */
+	if (!channel->encrypted)
+		channel->encrypted = g_attrib_is_encrypted(channel->attrib);
 	if (reqs == ATT_AUTHENTICATION && !channel->encrypted)
 		return ATT_ECODE_INSUFF_ENC;
 
@@ -700,7 +702,6 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 {
 	struct gatt_channel *channel;
 	GError *gerr = NULL;
-	int sec_level;
 
 	if (err) {
 		error("%s", err->message);
@@ -712,7 +713,6 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 	bt_io_get(io, BT_IO_L2CAP, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &channel->src,
 			BT_IO_OPT_DEST_BDADDR, &channel->dst,
-			BT_IO_OPT_SEC_LEVEL, &sec_level,
 			BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
@@ -724,9 +724,6 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 
 	channel->attrib = g_attrib_new(io);
 	channel->mtu = ATT_DEFAULT_MTU;
-
-	/* FIXME: the security level needs to checked on every request. */
-	channel->encrypted = sec_level > BT_IO_SEC_LOW;
 
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
 				channel_handler, channel, NULL);

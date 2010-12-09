@@ -32,6 +32,7 @@
 #include <bluetooth/sdp.h>
 
 #include "att.h"
+#include "btio.h"
 #include "gattrib.h"
 
 struct _GAttrib {
@@ -487,6 +488,18 @@ static gint event_cmp_by_id(gconstpointer a, gconstpointer b)
 	guint id = GPOINTER_TO_UINT(b);
 
 	return evt->id - id;
+}
+
+gboolean g_attrib_is_encrypted(GAttrib *attrib)
+{
+	BtIOSecLevel sec_level;
+
+	if (!bt_io_get(attrib->io, BT_IO_L2CAP, NULL,
+			BT_IO_OPT_SEC_LEVEL, &sec_level,
+			BT_IO_OPT_INVALID))
+		return FALSE;
+
+	return sec_level > BT_IO_SEC_LOW;
 }
 
 gboolean g_attrib_unregister(GAttrib *attrib, guint id)

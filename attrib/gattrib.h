@@ -63,6 +63,8 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode,
 		GAttribNotifyFunc func, gpointer user_data,
 					GDestroyNotify notify);
 
+gboolean g_attrib_is_encrypted(GAttrib *attrib);
+
 gboolean g_attrib_unregister(GAttrib *attrib, guint id);
 gboolean g_attrib_unregister_all(GAttrib *attrib);
 
