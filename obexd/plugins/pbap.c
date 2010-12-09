@@ -273,8 +273,8 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	if (!pbap->obj->buffer)
 		pbap->obj->buffer = g_string_new_len(buffer, bufsize);
 	else
-		pbap->obj->buffer = g_string_append_len(pbap->obj->buffer, buffer,
-								bufsize);
+		pbap->obj->buffer = g_string_append_len(pbap->obj->buffer,
+							buffer,	bufsize);
 
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
@@ -418,9 +418,8 @@ static int generate_response(void *user_data)
 	 * only the reference for the "real" cache entry.
 	 */
 	sorted = sort_entries(pbap->cache.entries, pbap->params->order,
-			pbap->params->searchattrib,
-			(const char *) pbap->params->searchval);
-
+				pbap->params->searchattrib,
+				(const char *) pbap->params->searchval);
 	if (sorted == NULL)
 		return -ENOENT;
 
@@ -431,12 +430,12 @@ static int generate_response(void *user_data)
 	for (; l && max; l = l->next, max--) {
 		const struct cache_entry *entry = l->data;
 
-		g_string_append_printf(pbap->obj->buffer, VCARD_LISTING_ELEMENT,
-						entry->handle, entry->name);
+		g_string_append_printf(pbap->obj->buffer,
+			VCARD_LISTING_ELEMENT, entry->handle, entry->name);
 	}
 
-	pbap->obj->buffer = g_string_append(pbap->obj->buffer, VCARD_LISTING_END);
-
+	pbap->obj->buffer = g_string_append(pbap->obj->buffer,
+							VCARD_LISTING_END);
 	g_slist_free(sorted);
 
 	return 0;
