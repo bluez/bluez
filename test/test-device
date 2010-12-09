@@ -1,11 +1,16 @@
 #!/usr/bin/python
 
+import gobject
+
 import sys
 import dbus
+import dbus.mainloop.glib
 import re
 from optparse import OptionParser, make_option
 
+dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus()
+mainloop = gobject.MainLoop()
 
 manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
 
@@ -48,13 +53,24 @@ if (args[0] == "list"):
 
 	sys.exit(0)
 
+def create_device_reply(device):
+	print "New device (%s)" % device
+	mainloop.quit()
+	sys.exit(0)
+
+def create_device_error(error):
+	print "Creating device failed: %s" % error
+	mainloop.quit()
+	sys.exit(1)
+
 if (args[0] == "create"):
 	if (len(args) < 2):
 		print "Need address parameter"
 	else:
-		device = adapter.CreateDevice(args[1])
-		print device
-	sys.exit(0)
+		adapter.CreateDevice(args[1],
+				reply_handler=create_device_reply,
+				error_handler=create_device_error)
+	mainloop.run()
 
 if (args[0] == "remove"):
 	if (len(args) < 2):
