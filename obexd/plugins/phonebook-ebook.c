@@ -45,7 +45,9 @@
 #define QUERY_NAME "(contains \"given_name\" \"%s\")"
 #define QUERY_PHONE "(contains \"phone\" \"%s\")"
 
+
 struct query_context {
+	gboolean completed;
 	const struct apparam_field *params;
 	phonebook_cb contacts_cb;
 	phonebook_entry_cb entry_cb;
@@ -142,6 +144,11 @@ static void ebookpull_cb(EBook *book, EBookStatus estatus, GList *contacts,
 	unsigned int count = 0, maxcount;
 	GList *l;
 
+	if (estatus == E_BOOK_ERROR_CANCELLED) {
+		error("E-Book operation was cancelled: status %d", estatus);
+		goto fail;
+	}
+
 	if (estatus != E_BOOK_ERROR_OK) {
 		error("E-Book query failed: status %d", estatus);
 		goto done;
@@ -178,10 +185,14 @@ static void ebookpull_cb(EBook *book, EBookStatus estatus, GList *contacts,
 
 
 done:
+	data->completed = TRUE;
 	data->contacts_cb(string->str, string->len, count, 0, data->user_data);
 
+fail:
 	g_string_free(string, TRUE);
-	g_free(data);
+
+	if (data->completed)
+		g_free(data);
 }
 
 static void ebook_entry_cb(EBook *book, EBookStatus estatus,
@@ -192,11 +203,17 @@ static void ebook_entry_cb(EBook *book, EBookStatus estatus,
 	char *vcard;
 	size_t len;
 
+	if (estatus == E_BOOK_ERROR_CANCELLED) {
+		error("E-Book operation was cancelled: status %d", estatus);
+		goto fail;
+	}
+
+	data->completed = TRUE;
+
 	if (estatus != E_BOOK_ERROR_OK) {
 		error("E-Book query failed: status %d", estatus);
 		data->contacts_cb(NULL, 0, 1, 0, data->user_data);
-		g_free(data);
-		return;
+		goto fail;
 	}
 
 	evcard = E_VCARD(contact);
@@ -209,7 +226,10 @@ static void ebook_entry_cb(EBook *book, EBookStatus estatus,
 	data->contacts_cb(vcard, len, 1, 0, data->user_data);
 
 	g_free(vcard);
-	g_free(data);
+
+fail:
+	if (data->completed)
+		g_free(data);
 }
 
 static char *evcard_name_attribute_to_string(EVCard *evcard)
@@ -248,6 +268,13 @@ static void cache_cb(EBook *book, EBookStatus estatus, GList *contacts,
 	struct query_context *data = user_data;
 	GList *l;
 
+	if (estatus == E_BOOK_ERROR_CANCELLED) {
+		error("E-Book operation was cancelled: status %d", estatus);
+		goto fail;
+	}
+
+	data->completed = TRUE;
+
 	if (estatus != E_BOOK_ERROR_OK) {
 		error("E-Book query failed: status %d", estatus);
 		goto done;
@@ -285,6 +312,10 @@ static void cache_cb(EBook *book, EBookStatus estatus, GList *contacts,
 	}
 done:
 	data->ready_cb(data->user_data);
+
+fail:
+	if (data->completed)
+		g_free(data);
 }
 
 int phonebook_init(void)
@@ -404,8 +435,21 @@ done:
 	return fullname;
 }
 
-int phonebook_pull(const char *name, const struct apparam_field *params,
-					phonebook_cb cb, void *user_data)
+void phonebook_req_finalize(void *request)
+{
+	struct query_context *data = request;
+
+	if (!data)
+		return;
+
+	if (!data->completed) {
+		data->completed = TRUE;
+		e_book_cancel_async_op(ebook, NULL);
+	}
+}
+
+void *phonebook_pull(const char *name, const struct apparam_field *params,
+				phonebook_cb cb, void *user_data, int *err)
 {
 	struct query_context *data;
 	EBookQuery *query;
@@ -421,12 +465,15 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 
 	e_book_query_unref(query);
 
-	return 0;
+	if (err)
+		*err = 0;
+
+	return data;
 }
 
-int phonebook_get_entry(const char *folder, const char *id,
-					const struct apparam_field *params,
-					phonebook_cb cb, void *user_data)
+void *phonebook_get_entry(const char *folder, const char *id,
+				const struct apparam_field *params,
+				phonebook_cb cb, void *user_data, int *err)
 {
 	struct query_context *data;
 
@@ -437,21 +484,29 @@ int phonebook_get_entry(const char *folder, const char *id,
 
 	if (e_book_async_get_contact(ebook, id, ebook_entry_cb, data)) {
 		g_free(data);
-		return -ENOENT;
+		if (err)
+			*err = -ENOENT;
+		return NULL;
 	}
 
-	return 0;
+	if (err)
+		*err = 0;
+
+	return data;
 }
 
-int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
-			phonebook_cache_ready_cb ready_cb, void *user_data)
+void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
+		phonebook_cache_ready_cb ready_cb, void *user_data, int *err)
 {
 	struct query_context *data;
 	EBookQuery *query;
 	gboolean ret;
 
-	if (g_strcmp0("/telecom/pb", name) != 0)
-		return -ENOENT;
+	if (g_strcmp0("/telecom/pb", name) != 0) {
+		if (err)
+			*err = -ENOENT;
+		return NULL;
+	}
 
 	query = e_book_query_any_field_contains("");
 
@@ -464,8 +519,13 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	e_book_query_unref(query);
 	if (ret != FALSE) {
 		g_free(data);
-		return -EFAULT;
+		if (err)
+			*err = -EFAULT;
+		return NULL;
 	}
 
-	return 0;
+	if (err)
+		*err = 0;
+
+	return data;
 }

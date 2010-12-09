@@ -447,11 +447,19 @@ done:
 	return relative;
 }
 
-int phonebook_pull(const char *name, const struct apparam_field *params,
-					phonebook_cb cb, void *user_data)
+void phonebook_req_finalize(void *request)
+{
+	guint id = GPOINTER_TO_INT(request);
+
+	g_source_remove(id);
+}
+
+void *phonebook_pull(const char *name, const struct apparam_field *params,
+				phonebook_cb cb, void *user_data, int *err)
 {
 	struct dummy_data *dummy;
 	char *filename, *folder;
+	guint ret;
 
 	/*
 	 * Main phonebook objects will be created dinamically based on the
@@ -463,14 +471,18 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 
 	if (!g_str_has_suffix(filename, ".vcf")) {
 		g_free(filename);
-		return -EBADR;
+		if (err)
+			*err = -EBADR;
+		return NULL;
 	}
 
 	folder = g_strndup(filename, strlen(filename) - 4);
 	g_free(filename);
 	if (!is_dir(folder)) {
 		g_free(folder);
-		return -ENOENT;
+		if (err)
+			*err = -ENOENT;
+		return NULL;
 	}
 
 	dummy = g_new0(struct dummy_data, 1);
@@ -480,26 +492,32 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 	dummy->folder = folder;
 	dummy->fd = -1;
 
-	g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, read_dir, dummy, dummy_free);
+	ret = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, read_dir, dummy,
+								dummy_free);
 
-	return 0;
+	if (err)
+		*err = 0;
+
+	return GINT_TO_POINTER(ret);
 }
 
-int phonebook_get_entry(const char *folder, const char *id,
-					const struct apparam_field *params,
-					phonebook_cb cb, void *user_data)
+void *phonebook_get_entry(const char *folder, const char *id,
+			const struct apparam_field *params, phonebook_cb cb,
+			void *user_data, int *err)
 {
 	struct dummy_data *dummy;
 	char *filename;
 	int fd;
+	guint ret;
 
 	filename = g_build_filename(root_folder, folder, id, NULL);
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
-		int err = errno;
-		DBG("open(): %s(%d)", strerror(err), err);
-		return -ENOENT;
+		DBG("open(): %s(%d)", strerror(errno), errno);
+		if (err)
+			*err = -ENOENT;
+		return NULL;
 	}
 
 	dummy = g_new0(struct dummy_data, 1);
@@ -508,26 +526,32 @@ int phonebook_get_entry(const char *folder, const char *id,
 	dummy->apparams = params;
 	dummy->fd = fd;
 
-	g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, read_entry, dummy, dummy_free);
+	ret = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, read_entry, dummy,
+								dummy_free);
 
-	return 0;
+	if (err)
+		*err = 0;
+
+	return GINT_TO_POINTER(ret);
 }
 
-int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
-		phonebook_cache_ready_cb ready_cb, void *user_data)
+void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
+		phonebook_cache_ready_cb ready_cb, void *user_data, int *err)
 {
 	struct cache_query *query;
 	char *foldername;
 	DIR *dp;
+	guint ret;
 
 	foldername = g_build_filename(root_folder, name, NULL);
 	dp = opendir(foldername);
 	g_free(foldername);
 
 	if (dp == NULL) {
-		int err = errno;
-		DBG("opendir(): %s(%d)", strerror(err), err);
-		return -ENOENT;
+		DBG("opendir(): %s(%d)", strerror(errno), errno);
+		if (err)
+			*err = -ENOENT;
+		return NULL;
 	}
 
 	query = g_new0(struct cache_query, 1);
@@ -536,7 +560,11 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	query->user_data = user_data;
 	query->dp = dp;
 
-	g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, create_cache, query,
+	ret = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, create_cache, query,
 								query_free);
-	return 0;
+
+	if (err)
+		*err = 0;
+
+	return GINT_TO_POINTER(ret);
 }

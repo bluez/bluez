@@ -110,6 +110,7 @@ struct irmc_session {
 	char did[DID_LEN];
 	char manu[DID_LEN];
 	char model[DID_LEN];
+	void *request;
 };
 
 #define IRMC_TARGET_SIZE 9
@@ -139,6 +140,11 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	DBG("vcards %d", vcards);
 
 	irmc->params->maxlistcount = vcards;
+
+	if (irmc->request) {
+		phonebook_req_finalize(irmc->request);
+		irmc->request = NULL;
+	}
 }
 
 static void query_result(const char *buffer, size_t bufsize, int vcards,
@@ -148,6 +154,11 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	const char *s, *t;
 
 	DBG("bufsize %zu vcards %d missed %d", bufsize, vcards, missed);
+
+	if (irmc->request) {
+		phonebook_req_finalize(irmc->request);
+		irmc->request = NULL;
+	}
 
 	/* first add a 'owner' vcard */
 	if (!irmc->buffer)
@@ -210,11 +221,8 @@ static void *irmc_connect(struct obex_session *os, int *err)
 	param->maxlistcount = 0; /* to count the number of vcards... */
 	param->filter = 0x200085; /* UID TEL N VERSION */
 	irmc->params = param;
-	phonebook_pull("telecom/pb.vcf", irmc->params, phonebook_size_result,
-									irmc);
-
-	if (err)
-		*err = 0;
+	irmc->request = phonebook_pull("telecom/pb.vcf", irmc->params,
+					phonebook_size_result, irmc, err);
 
 	return irmc;
 }
@@ -298,8 +306,8 @@ static void *irmc_open_pb(const char *name, struct irmc_session *irmc,
 
 	if (!g_strcmp0(name, ".vcf")) {
 		/* how can we tell if the vcard count call already finished? */
-		ret = phonebook_pull("telecom/pb.vcf", irmc->params,
-							query_result, irmc);
+		irmc->request = phonebook_pull("telecom/pb.vcf", irmc->params,
+						query_result, irmc, &ret);
 		if (ret < 0) {
 			DBG("phonebook_pull failed...");
 			goto fail;
@@ -433,6 +441,11 @@ static int irmc_close(void *object)
 	if (irmc->buffer) {
 		g_string_free(irmc->buffer, TRUE);
 		irmc->buffer = NULL;
+	}
+
+	if (irmc->request) {
+		phonebook_req_finalize(irmc->request);
+		irmc->request = NULL;
 	}
 
 	return 0;

@@ -807,6 +807,7 @@ struct pending_reply {
 	reply_list_foreach_t callback;
 	void *user_data;
 	int num_fields;
+	GDestroyNotify destroy;
 };
 
 struct contact_data {
@@ -996,11 +997,30 @@ done:
 	pending->callback(NULL, err, pending->user_data);
 
 	dbus_message_unref(reply);
+
+	/*
+	 * pending data is freed in query_free_data after call is unreffed.
+	 * Same holds for pending->user_data which is not freed in callback
+	 * but in query_free_data.
+	 */
+}
+
+static void query_free_data(void *user_data)
+{
+	struct pending_reply *pending = user_data;
+
+	if (!pending)
+		return;
+
+	if (pending->destroy)
+		pending->destroy(pending->user_data);
+
 	g_free(pending);
 }
 
-static int query_tracker(const char *query, int num_fields,
-				reply_list_foreach_t callback, void *user_data)
+static DBusPendingCall *query_tracker(const char *query, int num_fields,
+				reply_list_foreach_t callback, void *user_data,
+				GDestroyNotify destroy, int *err)
 {
 	struct pending_reply *pending;
 	DBusPendingCall *call;
@@ -1020,19 +1040,27 @@ static int query_tracker(const char *query, int num_fields,
 							-1) == FALSE) {
 		error("Could not send dbus message");
 		dbus_message_unref(msg);
-		return -EPERM;
+		if (err)
+			*err = -EPERM;
+		/* user_data is freed otherwise only if call was sent */
+		g_free(user_data);
+		return NULL;
 	}
 
 	pending = g_new0(struct pending_reply, 1);
 	pending->callback = callback;
 	pending->user_data = user_data;
 	pending->num_fields = num_fields;
+	pending->destroy = destroy;
 
-	dbus_pending_call_set_notify(call, query_reply, pending, NULL);
-	dbus_pending_call_unref(call);
+	dbus_pending_call_set_notify(call, query_reply, pending,
+							query_free_data);
 	dbus_message_unref(msg);
 
-	return 0;
+	if (err)
+		*err = 0;
+
+	return call;
 }
 
 static char *iso8601_utc_to_localtime(const char *datetime)
@@ -1245,7 +1273,7 @@ static void pull_contacts_size(char **reply, int num_fields, void *user_data)
 
 	if (num_fields < 0) {
 		data->cb(NULL, 0, num_fields, 0, data->user_data);
-		goto fail;
+		return;
 	}
 
 	if (reply != NULL) {
@@ -1255,8 +1283,11 @@ static void pull_contacts_size(char **reply, int num_fields, void *user_data)
 
 	data->cb(NULL, 0, data->index, 0, data->user_data);
 
-fail:
-	g_free(data);
+	/*
+	 * phonebook_data is freed in query_free_data after call is unreffed.
+	 * It is accessible by pointer from data (pending) associated to call.
+	 * Useful in cases when call was terminated.
+	 */
 }
 
 static void add_affiliation(char **field, const char *value)
@@ -1482,9 +1513,14 @@ done:
 	g_string_free(vcards, TRUE);
 fail:
 	g_slist_free(data->contacts);
-	g_free(data);
 	g_free(temp_id);
 	temp_id = NULL;
+
+	/*
+	 * phonebook_data is freed in query_free_data after call is unreffed.
+	 * It is accessible by pointer from data (pending) associated to call.
+	 * Useful in cases when call was terminated.
+	 */
 }
 
 static void add_to_cache(char **reply, int num_fields, void *user_data)
@@ -1529,7 +1565,11 @@ done:
 	if (num_fields <= 0)
 		cache->ready_cb(cache->user_data);
 
-	g_free(cache);
+	/*
+	 * cache is freed in query_free_data after call is unreffed.
+	 * It is accessible by pointer from data (pending) associated to call.
+	 * Useful in cases when call was terminated.
+	 */
 }
 
 int phonebook_init(void)
@@ -1617,8 +1657,20 @@ done:
 	return path;
 }
 
-int phonebook_pull(const char *name, const struct apparam_field *params,
-					phonebook_cb cb, void *user_data)
+void phonebook_req_finalize(void *request)
+{
+	struct DBusPendingCall *call = request;
+
+	DBG("");
+
+	if (!dbus_pending_call_get_completed(call))
+		dbus_pending_call_cancel(call);
+
+	dbus_pending_call_unref(call);
+}
+
+void *phonebook_pull(const char *name, const struct apparam_field *params,
+				phonebook_cb cb, void *user_data, int *err)
 {
 	struct phonebook_data *data;
 	const char *query;
@@ -1637,24 +1689,27 @@ int phonebook_pull(const char *name, const struct apparam_field *params,
 		pull_cb = pull_contacts;
 	}
 
-	if (query == NULL)
-		return -ENOENT;
+	if (query == NULL) {
+		if (err)
+			*err = -ENOENT;
+		return NULL;
+	}
 
 	data = g_new0(struct phonebook_data, 1);
 	data->params = params;
 	data->user_data = user_data;
 	data->cb = cb;
 
-	return query_tracker(query, col_amount, pull_cb, data);
+	return query_tracker(query, col_amount, pull_cb, data, g_free, err);
 }
 
-int phonebook_get_entry(const char *folder, const char *id,
-					const struct apparam_field *params,
-					phonebook_cb cb, void *user_data)
+void *phonebook_get_entry(const char *folder, const char *id,
+				const struct apparam_field *params,
+				phonebook_cb cb, void *user_data, int *err)
 {
 	struct phonebook_data *data;
 	char *query;
-	int ret;
+	DBusPendingCall *call;
 
 	DBG("folder %s id %s", folder, id);
 
@@ -1672,15 +1727,16 @@ int phonebook_get_entry(const char *folder, const char *id,
 		query = g_strdup_printf(CONTACTS_OTHER_QUERY_FROM_URI,
 								id, id, id);
 
-	ret = query_tracker(query, PULL_QUERY_COL_AMOUNT, pull_contacts, data);
+	call = query_tracker(query, PULL_QUERY_COL_AMOUNT, pull_contacts,
+							data, g_free, err);
 
 	g_free(query);
 
-	return ret;
+	return call;
 }
 
-int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
-			phonebook_cache_ready_cb ready_cb, void *user_data)
+void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
+		phonebook_cache_ready_cb ready_cb, void *user_data, int *err)
 {
 	struct cache_data *cache;
 	const char *query;
@@ -1688,13 +1744,16 @@ int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	DBG("name %s", name);
 
 	query = folder2query(name);
-	if (query == NULL)
-		return -ENOENT;
+	if (query == NULL) {
+		if (err)
+			*err = -ENOENT;
+		return NULL;
+	}
 
 	cache = g_new0(struct cache_data, 1);
 	cache->entry_cb = entry_cb;
 	cache->ready_cb = ready_cb;
 	cache->user_data = user_data;
 
-	return query_tracker(query, 7, add_to_cache, cache);
+	return query_tracker(query, 7, add_to_cache, cache, g_free, err);
 }

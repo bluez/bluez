@@ -147,6 +147,7 @@ struct pbap_session {
 struct pbap_object {
 	GString *buffer;
 	struct pbap_session *session;
+	void *request;
 };
 
 static const uint8_t PBAP_TARGET[TARGET_SIZE] = {
@@ -231,6 +232,11 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	struct aparam_header *hdr = (struct aparam_header *) aparam;
 	uint16_t phonebooksize;
 
+	if (pbap->obj->request) {
+		phonebook_req_finalize(pbap->obj->request);
+		pbap->obj->request = NULL;
+	}
+
 	if (vcards < 0)
 		vcards = 0;
 
@@ -253,6 +259,11 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	struct pbap_session *pbap = user_data;
 
 	DBG("");
+
+	if (pbap->obj->request) {
+		phonebook_req_finalize(pbap->obj->request);
+		pbap->obj->request = NULL;
+	}
 
 	if (vcards <= 0) {
 		obex_object_set_io_flags(pbap->obj, G_IO_ERR, -ENOENT);
@@ -466,8 +477,11 @@ static void cache_entry_done(void *user_data)
 		return;
 	}
 
-	ret = phonebook_get_entry(pbap->folder, id, pbap->params,
-						query_result, pbap);
+	/* Unref previous request, associated data will be freed. */
+	phonebook_req_finalize(pbap->obj->request);
+	/* Get new pointer to pending call. */
+	pbap->obj->request = phonebook_get_entry(pbap->folder, id,
+				pbap->params, query_result, pbap, &ret);
 	if (ret < 0)
 		obex_object_set_io_flags(pbap->obj, G_IO_ERR, ret);
 }
@@ -709,13 +723,15 @@ static struct obex_service_driver pbap = {
 	.chkput = pbap_chkput
 };
 
-static struct pbap_object *vobject_create(struct pbap_session *pbap)
+static struct pbap_object *vobject_create(struct pbap_session *pbap,
+								void *request)
 {
 	struct pbap_object *obj;
 
 	obj = g_new0(struct pbap_object, 1);
 	obj->session = pbap;
 	pbap->obj = obj;
+	obj->request = request;
 
 	return obj;
 }
@@ -726,6 +742,7 @@ static void *vobject_pull_open(const char *name, int oflag, mode_t mode,
 	struct pbap_session *pbap = context;
 	phonebook_cb cb;
 	int ret;
+	void *request;
 
 	DBG("name %s context %p maxlistcount %d", name, context,
 						pbap->params->maxlistcount);
@@ -745,11 +762,15 @@ static void *vobject_pull_open(const char *name, int oflag, mode_t mode,
 	else
 		cb = query_result;
 
-	ret = phonebook_pull(name, pbap->params, cb, pbap);
+	request = phonebook_pull(name, pbap->params, cb, pbap, &ret);
+
 	if (ret < 0)
 		goto fail;
 
-	return vobject_create(pbap);
+	if (err)
+		*err = 0;
+
+	return vobject_create(pbap, request);
 
 fail:
 	if (err)
@@ -770,6 +791,11 @@ static int vobject_close(void *object)
 	if (obj->buffer)
 		g_string_free(obj->buffer, TRUE);
 
+	if (obj->request) {
+		phonebook_req_finalize(obj->request);
+		obj->request = NULL;
+	}
+
 	g_free(obj);
 
 	return 0;
@@ -781,6 +807,7 @@ static void *vobject_list_open(const char *name, int oflag, mode_t mode,
 	struct pbap_session *pbap = context;
 	struct pbap_object *obj = NULL;
 	int ret;
+	void *request;
 
 	DBG("name %s context %p valid %d", name, context, pbap->cache.valid);
 
@@ -796,13 +823,15 @@ static void *vobject_list_open(const char *name, int oflag, mode_t mode,
 
 	/* PullvCardListing always get the contacts from the cache */
 
-	obj = vobject_create(pbap);
-
-	if (pbap->cache.valid)
+	if (pbap->cache.valid) {
+		obj = vobject_create(pbap, NULL);
 		ret = generate_response(pbap);
-	else
-		ret = phonebook_create_cache(name, cache_entry_notify,
-						cache_ready_notify, pbap);
+	} else {
+		request = phonebook_create_cache(name, cache_entry_notify,
+					cache_ready_notify, pbap, &ret);
+		if (ret == 0)
+			obj = vobject_create(pbap, request);
+	}
 	if (ret < 0)
 		goto fail;
 
@@ -828,6 +857,7 @@ static void *vobject_vcard_open(const char *name, int oflag, mode_t mode,
 	const char *id;
 	uint32_t handle;
 	int ret;
+	void *request;
 
 	DBG("name %s context %p valid %d", name, context, pbap->cache.valid);
 
@@ -843,8 +873,8 @@ static void *vobject_vcard_open(const char *name, int oflag, mode_t mode,
 
 	if (pbap->cache.valid == FALSE) {
 		pbap->find_handle = handle;
-		ret = phonebook_create_cache(pbap->folder, cache_entry_notify,
-						cache_entry_done, pbap);
+		request = phonebook_create_cache(pbap->folder,
+			cache_entry_notify, cache_entry_done, pbap, &ret);
 		goto done;
 	}
 
@@ -854,14 +884,17 @@ static void *vobject_vcard_open(const char *name, int oflag, mode_t mode,
 		goto fail;
 	}
 
-	ret = phonebook_get_entry(pbap->folder, id, pbap->params, query_result,
-									pbap);
+	request = phonebook_get_entry(pbap->folder, id, pbap->params,
+						query_result, pbap, &ret);
 
 done:
 	if (ret < 0)
 		goto fail;
 
-	return vobject_create(pbap);
+	if (err)
+		*err = 0;
+
+	return vobject_create(pbap, request);
 
 fail:
 	if (err)

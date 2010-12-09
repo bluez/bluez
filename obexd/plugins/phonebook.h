@@ -85,25 +85,46 @@ char *phonebook_set_folder(const char *current_folder,
  * PullPhoneBook never use cached entries. PCE use this function to get all
  * entries of a given folder. The back-end MUST return only the content based
  * on the application parameters requested by the client.
+ *
+ * Return value is a pointer to asynchronous request to phonebook back-end.
+ * phonebook_req_finalize MUST always be used to free associated resources.
  */
-int phonebook_pull(const char *name, const struct apparam_field *params,
-					phonebook_cb cb, void *user_data);
+void *phonebook_pull(const char *name, const struct apparam_field *params,
+				phonebook_cb cb, void *user_data, int *err);
 
 /*
  * Function used to retrieve a contact from the backend. Only contacts
  * found in the cache are requested to the back-ends. The back-end MUST
  * return only the content based on the application parameters requested
  * by the client.
+ *
+ * Return value is a pointer to asynchronous request to phonebook back-end.
+ * phonebook_req_finalize MUST always be used to free associated resources.
  */
-int phonebook_get_entry(const char *folder, const char *id,
+void *phonebook_get_entry(const char *folder, const char *id,
 				const struct apparam_field *params,
-				phonebook_cb cb, void *user_data);
+				phonebook_cb cb, void *user_data, int *err);
 
 /*
  * PBAP core will keep the contacts cache per folder. SetPhoneBook or
  * PullvCardListing can invalidate the cache if the current folder changes.
  * Cache will store only the necessary information required to reply to
- * PullvCardListing request and verify if a given contact belongs to the source.
+ * PullvCardListing request and verify if a given contact belongs to the
+ * source.
+ *
+ * Return value is a pointer to asynchronous request to phonebook back-end.
+ * phonebook_req_finalize MUST always be used to free associated resources.
  */
-int phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
-			phonebook_cache_ready_cb ready_cb, void *user_data);
+void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
+		phonebook_cache_ready_cb ready_cb, void *user_data, int *err);
+
+/*
+ * Finalizes request to phonebook back-end and deallocates associated
+ * resources. Operation is canceled if not completed. This function MUST
+ * always be used after any of phonebook_pull, phonebook_get_entry, and
+ * phonebook_create_cache invoked.
+ *
+ * request is a pointer to asynchronous operation returned by phonebook_pull,
+ * phonebook_get_entry, and phonebook_create_cache.
+ */
+void phonebook_req_finalize(void *request);
