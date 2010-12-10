@@ -1725,6 +1725,9 @@ static DBusMessage *create_device(DBusConnection *conn,
 	if (check_address(address) < 0)
 		return btd_error_invalid_args(msg);
 
+	if (!adapter->up)
+		return adapter_not_ready(msg);
+
 	if (adapter_find_device(adapter, address))
 		return btd_error_already_exists(msg);
 
@@ -1796,6 +1799,9 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 
 	if (check_address(address) < 0)
 		return btd_error_invalid_args(msg);
+
+	if (!adapter->up)
+		return adapter_not_ready(msg);
 
 	sender = dbus_message_get_sender(msg);
 	if (adapter->agent &&
