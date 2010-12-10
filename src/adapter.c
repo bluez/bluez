@@ -1762,8 +1762,10 @@ static DBusMessage *create_device(DBusConnection *conn,
 	}
 
 	err = device_browse(device, conn, msg, NULL, FALSE);
-	if (err < 0)
+	if (err < 0) {
+		adapter_remove_device(conn, adapter, device, TRUE);
 		return failed_strerror(msg, -err);
+	}
 
 	return NULL;
 }
