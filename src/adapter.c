@@ -2600,6 +2600,8 @@ static void adapter_free(gpointer user_data)
 	if (adapter->auth_idle_id)
 		g_source_remove(adapter->auth_idle_id);
 
+	sdp_list_free(adapter->services, NULL);
+
 	g_free(adapter->path);
 	g_free(adapter);
 }
