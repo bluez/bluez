@@ -55,11 +55,14 @@ static struct controller_info {
 	uint8_t type;
 	bdaddr_t bdaddr;
 	uint8_t features[8];
+	uint8_t dev_class[3];
 	uint16_t manufacturer;
 	uint8_t hci_ver;
 	uint16_t hci_rev;
 	gboolean enabled;
-	uint8_t mode;
+	gboolean discoverable;
+	gboolean pairable;
+	uint8_t sec_mode;
 } *controllers = NULL;
 
 static int mgmt_sock = -1;
@@ -168,23 +171,6 @@ static void mgmt_index_removed(int sk, void *buf, size_t len)
 	remove_controller(index);
 }
 
-static void read_mode(int sk, uint16_t index)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_read_mode)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_read_mode *cp = (void *) &buf[sizeof(*hdr)];
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = MGMT_OP_READ_MODE;
-	hdr->len = htobs(sizeof(*cp));
-
-	cp->index = htobs(index);
-
-	if (write(sk, buf, sizeof(buf)) < 0)
-		error("Unable to send read_mode command: %s (%d)",
-						strerror(errno), errno);
-}
-
 static void read_index_list_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_rp_read_index_list *rp = buf;
@@ -225,12 +211,6 @@ static void read_info_complete(int sk, void *buf, size_t len)
 		return;
 	}
 
-	if (rp->status != 0) {
-		error("Reading controller info failed: %s (%u)",
-					strerror(rp->status), rp->status);
-		return;
-	}
-
 	index = btohs(bt_get_unaligned(&rp->index));
 	if (index > max_index) {
 		error("Unexpected index %u in read info complete", index);
@@ -239,49 +219,26 @@ static void read_info_complete(int sk, void *buf, size_t len)
 
 	info = &controllers[index];
 	info->type = rp->type;
+	info->enabled = rp->powered;
+	info->discoverable = rp->discoverable;
+	info->pairable = rp->pairable;
+	info->sec_mode = rp->sec_mode;
 	bacpy(&info->bdaddr, &rp->bdaddr);
+	memcpy(info->dev_class, rp->dev_class, 3);
 	memcpy(info->features, rp->features, 8);
 	info->manufacturer = btohs(bt_get_unaligned(&rp->manufacturer));
 	info->hci_ver = rp->hci_ver;
 	info->hci_rev = btohs(bt_get_unaligned(&rp->hci_rev));
 
 	ba2str(&info->bdaddr, addr);
-	DBG("hci%u addr %s type %u manufacturer %d hci ver %d:%d",
-				index, addr, info->type, info->manufacturer,
-				info->hci_ver, info->hci_rev);
-
-	read_mode(sk, index);
-}
-
-static void read_mode_complete(int sk, void *buf, size_t len)
-{
-	struct mgmt_rp_read_mode *rp = buf;
-	struct controller_info *info;
-	uint16_t index;
-
-	if (len < sizeof(*rp)) {
-		error("Too small read mode complete event (%zu != %zu)",
-							len, sizeof(*rp));
-		return;
-	}
-
-	if (rp->status != 0) {
-		error("Reading controller mode failed: %s (%u)",
-					strerror(rp->status), rp->status);
-		return;
-	}
-
-	index = btohs(bt_get_unaligned(&rp->index));
-	if (index > max_index) {
-		error("Unexpected index %u in read mode complete", index);
-		return;
-	}
-
-	info = &controllers[index];
-	info->enabled = rp->enabled ? TRUE : FALSE;
-	info->mode = rp->mode;
-
-	DBG("hci%u enabled %u mode %u", index, info->enabled, info->mode);
+	DBG("hci%u type %u addr %s", index, info->type, addr);
+	DBG("hci%u class 0x%02x%02x%02x", index,
+		info->dev_class[2], info->dev_class[1], info->dev_class[0]);
+	DBG("hci%u manufacturer %d HCI ver %d:%d", index, info->manufacturer,
+						info->hci_ver, info->hci_rev);
+	DBG("hci%u enabled %u discoverable %u pairable %u sec_mode %u", index,
+					info->enabled, info->discoverable,
+					info->pairable, info->sec_mode);
 
 	manager_register_adapter(index, info->enabled);
 
@@ -312,9 +269,6 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 		break;
 	case MGMT_OP_READ_INFO:
 		read_info_complete(sk, ev->data, len - sizeof(*ev));
-		break;
-	case MGMT_OP_READ_MODE:
-		read_mode_complete(sk, ev->data, len - sizeof(*ev));
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);

@@ -53,10 +53,14 @@ struct mgmt_cp_read_info {
 	uint16_t index;
 } __packed;
 struct mgmt_rp_read_info {
-	uint8_t status;
 	uint16_t index;
 	uint8_t type;
+	uint8_t powered;
+	uint8_t discoverable;
+	uint8_t pairable;
+	uint8_t sec_mode;
 	bdaddr_t bdaddr;
+	uint8_t dev_class[3];
 	uint8_t features[8];
 	uint16_t manufacturer;
 	uint8_t hci_ver;
@@ -64,19 +68,6 @@ struct mgmt_rp_read_info {
 } __packed;
 
 #define MGMT_OP_READ_STATISTICS		0x0005
-
-#define MGMT_OP_READ_MODE		0x0006
-struct mgmt_cp_read_mode {
-	uint16_t index;
-} __packed;
-struct mgmt_rp_read_mode {
-	uint8_t status;
-	uint16_t index;
-	uint8_t enabled;
-	uint8_t mode;
-} __packed;
-
-#define MGMT_OP_WRITE_MODE		0x0007
 
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
