@@ -2436,8 +2436,6 @@ int adapter_start(struct btd_adapter *adapter)
 
 	memcpy(dev->features, features, 8);
 
-	adapter_ops->read_link_policy(adapter->dev_id);
-
 	adapter->current_cod = 0;
 
 	adapter_setup(adapter, mode);

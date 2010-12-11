@@ -2435,17 +2435,6 @@ static int hciops_read_local_ext_features(int index)
 	return 0;
 }
 
-static int hciops_read_link_policy(int index)
-{
-	DBG("hci%d", index);
-
-	if (hci_send_cmd(SK(index), OGF_LINK_POLICY,
-				OCF_READ_DEFAULT_LINK_POLICY, 0, NULL) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_disconnect(int index, uint16_t handle)
 {
 	disconnect_cp cp;
@@ -2705,7 +2694,6 @@ static struct btd_adapter_ops hci_ops = {
 	.read_local_version = hciops_read_local_version,
 	.read_local_features = hciops_read_local_features,
 	.read_local_ext_features = hciops_read_local_ext_features,
-	.read_link_policy = hciops_read_link_policy,
 	.disconnect = hciops_disconnect,
 	.remove_bonding = hciops_remove_bonding,
 	.request_authentication = hciops_request_authentication,
