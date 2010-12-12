@@ -428,4 +428,6 @@ void telephony_exit(void)
 						TELEPHONY_DUMMY_IFACE);
 	dbus_connection_unref(connection);
 	connection = NULL;
+
+	telephony_deinit();
 }

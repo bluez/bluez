@@ -1108,4 +1108,6 @@ void telephony_exit(void)
 
 	dbus_connection_unref(connection);
 	connection = NULL;
+
+	telephony_deinit();
 }

@@ -188,6 +188,7 @@ int telephony_incoming_call_ind(const char *number, int type);
 int telephony_calling_stopped_ind(void);
 int telephony_ready_ind(uint32_t features, const struct indicator *indicators,
 			int rh, const char *chld);
+int telephony_deinit(void);
 int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 					int mprty, const char *number,
 					int type);

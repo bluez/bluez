@@ -2802,6 +2802,18 @@ int telephony_ready_ind(uint32_t features,
 	return 0;
 }
 
+int telephony_deinit(void)
+{
+	memset(&ag, 0, sizeof(ag));
+
+	ag.er_mode = 3;
+	ag.rh = BTRH_NOT_SUPPORTED;
+
+	DBG("Telephony deinitialized");
+
+	return 0;
+}
+
 int telephony_list_current_call_ind(int idx, int dir, int status, int mode,
 					int mprty, const char *number,
 					int type)
