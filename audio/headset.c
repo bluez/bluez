@@ -2793,7 +2793,7 @@ int telephony_ready_ind(uint32_t features,
 	ag.features = features;
 	ag.indicators = indicators;
 	ag.rh = rh;
-	ag.chld = g_strdup(chld);
+	ag.chld = chld;
 
 	DBG("Telephony plugin initialized");
 
