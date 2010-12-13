@@ -58,10 +58,14 @@ Read Controller Information Command
 
 	Command Code:		0x0004
 	Command Parameters:	Controller_Index (2 Octets)
-	Return Parameters:	Status (1 Octet)
-				Controller_Index (2 Octets)
+	Return Parameters:	Controller_Index (2 Octets)
 				Controller_Type (1 Octet)
+				Powered (1 octet)
+				Discoverable (1 octed)
+				Pairable (1 octed)
+				Security_Mode (1 octed)
 				BD_ADDR (6 Octets)
+				Device_Class (3 octets)
 				Supported_Features (8 Octets)
 				Manufacturer (2 Octets)
 				HCI_Version (1 Octet)
@@ -80,36 +84,6 @@ Read Controller Statistics Command
 	Return Paramters:	Status (1 Octet)
 				Controller_Index (2 Octets)
 				....
-
-
-Read Controller Mode Command
-============================
-
-	Command Code:		0x0006
-	Command Parameters:	Controller_Index (2 Octets)
-	Return Paramters:	Status (1 Octect)
-				Controller_Index (2 Octets)
-				Enabled (1 Octet)
-				Mode (1 Octet)
-
-		Enabled:	0x00 Powered off
-				0x01 Controller Enabled
-
-		Mode:		0x00 Reserved
-				0x01 Connectable (pairing forbidden)
-				0x02 Connectable (pairing allowed)
-				0x03 Discoverable (pairing forbidden)
-				0x04 Discoverable (pairing allowed)
-
-
-Write Controller Mode Command
-=============================
-
-	Command Code:		0x0007
-	Command Parameters:	Controller_Index (2 Octets)
-				...
-	Return Parameters:	Status (1 Octet)
-				Controller_Index (2 Octets)
 
 
 Read Tracing Buffer Size Command
