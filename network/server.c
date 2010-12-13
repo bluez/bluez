@@ -566,13 +566,6 @@ static uint32_t register_server_record(struct network_server *ns)
 	return record->handle;
 }
 
-
-static inline DBusMessage *failed(DBusMessage *msg, const char *description)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"%s", description);
-}
-
 static void server_disconnect(DBusConnection *conn, void *user_data)
 {
 	struct network_server *ns = user_data;
@@ -600,7 +593,7 @@ static DBusMessage *register_server(DBusConnection *conn,
 		return NULL;
 
 	if (g_strcmp0(uuid, "nap"))
-		return failed(msg, "Invalid UUID");
+		return btd_error_failed(msg, "Invalid UUID");
 
 	if (ns->record_id)
 		return btd_error_already_exists(msg);
@@ -611,7 +604,7 @@ static DBusMessage *register_server(DBusConnection *conn,
 
 	ns->record_id = register_server_record(ns);
 	if (!ns->record_id)
-		return failed(msg, "SDP record registration failed");
+		return btd_error_failed(msg, "SDP record registration failed");
 
 	g_free(ns->bridge);
 	ns->bridge = g_strdup(bridge);
@@ -635,7 +628,7 @@ static DBusMessage *unregister_server(DBusConnection *conn,
 		return NULL;
 
 	if (g_strcmp0(uuid, "nap"))
-		return failed(msg, "Invalid UUID");
+		return btd_error_failed(msg, "Invalid UUID");
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
