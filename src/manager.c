@@ -59,11 +59,6 @@ const char *manager_get_base_path(void)
 	return base_path;
 }
 
-void manager_update_svc(struct btd_adapter* adapter, uint8_t svc)
-{
-	adapter_set_service_classes(adapter, svc);
-}
-
 static inline DBusMessage *no_such_adapter(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg,
@@ -502,5 +497,16 @@ void btd_manager_set_offline(gboolean offline)
 			btd_adapter_switch_offline(adapter);
 		else
 			btd_adapter_restore_powered(adapter);
+	}
+}
+
+void btd_manager_set_did(uint16_t vendor, uint16_t product, uint16_t version)
+{
+	GSList *l;
+
+	for (l = adapters; l != NULL; l = g_slist_next(l)) {
+		struct btd_adapter *adapter = l->data;
+
+		btd_adapter_set_did(adapter, vendor, product, version);
 	}
 }

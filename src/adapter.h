@@ -134,12 +134,12 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 				struct remote_dev_info *dev,
 				uint8_t *eir_data, size_t eir_length);
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
-void adapter_update_tx_power(struct btd_adapter *adapter, int8_t tx_power);
 void adapter_update_local_name(struct btd_adapter *adapter, const char *name);
 void adapter_service_insert(const bdaddr_t *bdaddr, void *rec);
 void adapter_service_remove(const bdaddr_t *bdaddr, void *rec);
 sdp_list_t *adapter_get_services(struct btd_adapter *adapter);
-void adapter_set_class_complete(bdaddr_t *bdaddr, uint8_t status);
+void btd_adapter_class_changed(struct btd_adapter *adapter,
+							uint32_t new_class);
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
 void adapter_add_connection(struct btd_adapter *adapter,
@@ -192,8 +192,7 @@ struct btd_adapter_ops {
 	int (*set_powered) (int index, gboolean powered);
 	int (*set_connectable) (int index);
 	int (*set_discoverable) (int index);
-	int (*set_limited_discoverable) (int index, uint32_t class,
-						gboolean limited);
+	int (*set_limited_discoverable) (int index, gboolean limited);
 	int (*start_inquiry) (int index, uint8_t length, gboolean periodic);
 	int (*stop_inquiry) (int index);
 	int (*start_scanning) (int index);
@@ -202,12 +201,11 @@ struct btd_adapter_ops {
 	int (*resolve_name) (int index, bdaddr_t *bdaddr);
 	int (*cancel_resolve_name) (int index, bdaddr_t *bdaddr);
 	int (*set_name) (int index, const char *name);
-	int (*set_class) (int index, uint32_t class);
+	int (*set_dev_class) (int index, uint8_t major, uint8_t minor);
 	int (*set_fast_connectable) (int index, gboolean enable);
 	int (*read_clock) (int index, int handle, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy);
 	int (*get_conn_handle) (int index, const bdaddr_t *bdaddr, int *handle);
-	int (*write_eir_data) (int index, uint8_t *data);
 	int (*read_bdaddr) (int index, bdaddr_t *bdaddr);
 	int (*block_device) (int index, bdaddr_t *bdaddr);
 	int (*unblock_device) (int index, bdaddr_t *bdaddr);
@@ -228,6 +226,10 @@ struct btd_adapter_ops {
 						gboolean delayed);
 	int (*encrypt_link) (int index, bdaddr_t *bdaddr, bt_hci_result_t cb,
 							gpointer user_data);
+	int (*set_did) (int index, uint16_t vendor, uint16_t product,
+							uint16_t version);
+	int (*services_updated) (int index);
+	int (*disable_cod_cache) (int index);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);
@@ -287,3 +289,8 @@ int btd_adapter_get_remote_version(struct btd_adapter *adapter,
 
 int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				bt_hci_result_t cb, gpointer user_data);
+
+int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
+					uint16_t product, uint16_t version);
+
+int btd_adapter_services_updated(struct btd_adapter *adapter);

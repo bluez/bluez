@@ -311,7 +311,7 @@ void sdp_init_services_list(bdaddr_t *device)
 {
 	sdp_list_t *p;
 
-	SDPDBG("");
+	DBG("");
 
 	for (p = access_db; p != NULL; p = p->next) {
 		sdp_access_t *access = p->data;

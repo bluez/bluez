@@ -464,16 +464,15 @@ static int mgmt_discoverable(int index)
 	return -ENOSYS;
 }
 
-static int mgmt_set_class(int index, uint32_t class)
+static int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
 {
-	DBG("index %d class %u", index, class);
+	DBG("index %d major %u minor %u", index, major, minor);
 	return -ENOSYS;
 }
 
-static int mgmt_set_limited_discoverable(int index, uint32_t class,
-							gboolean limited)
+static int mgmt_set_limited_discoverable(int index, gboolean limited)
 {
-	DBG("index %d class %u, limited %d", index, class, limited);
+	DBG("index %d limited %d", index, limited);
 	return -ENOSYS;
 }
 
@@ -548,12 +547,6 @@ static int mgmt_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return -ENOSYS;
-}
-
-static int mgmt_write_eir_data(int index, uint8_t *data)
-{
-	DBG("index %d", index);
 	return -ENOSYS;
 }
 
@@ -744,11 +737,10 @@ static struct btd_adapter_ops mgmt_ops = {
 	.resolve_name = mgmt_resolve_name,
 	.cancel_resolve_name = mgmt_cancel_resolve_name,
 	.set_name = mgmt_set_name,
-	.set_class = mgmt_set_class,
+	.set_dev_class = mgmt_set_dev_class,
 	.set_fast_connectable = mgmt_fast_connectable,
 	.read_clock = mgmt_read_clock,
 	.get_conn_handle = mgmt_conn_handle,
-	.write_eir_data = mgmt_write_eir_data,
 	.read_bdaddr = mgmt_read_bdaddr,
 	.block_device = mgmt_block_device,
 	.unblock_device = mgmt_unblock_device,

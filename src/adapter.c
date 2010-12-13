@@ -65,9 +65,6 @@
 #define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
 #define IO_CAPABILITY_INVALID		0xFF
 
-/* Limited Discoverable bit mask in CoD */
-#define LIMITED_BIT			0x002000
-
 #define check_address(address) bachk(address)
 
 static DBusConnection *connection = NULL;
@@ -100,6 +97,7 @@ struct btd_adapter {
 	int up;
 	char *path;			/* adapter object path */
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
+	uint32_t dev_class;		/* Class of Device */
 	guint discov_timeout_id;	/* discoverable timeout id */
 	guint stop_discov_id;		/* stop inquiry/scanning id */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
@@ -125,19 +123,12 @@ struct btd_adapter {
 	sdp_list_t *services;		/* Services associated to adapter */
 
 	struct hci_dev dev;		/* hci info */
-	int8_t tx_power;		/* inq response tx power level */
 	gboolean pairable;		/* pairable state */
 
 	gboolean initialized;
 	gboolean already_up;		/* adapter was already up on init */
 
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
-
-	uint32_t current_cod;		/* Adapter's current class */
-	uint32_t pending_cod;
-	uint32_t wanted_cod;		/* CoD cache */
-
-	gboolean cache_enable;
 
 	gint ref;
 
@@ -255,83 +246,10 @@ static char *expand_name(char *dst, int size, char *str, int dev_id)
 	return dst;
 }
 
-static void update_ext_inquiry_response(struct btd_adapter *adapter)
-{
-	uint8_t data[240];
-	struct hci_dev *dev = &adapter->dev;
-	int ret;
-
-	if (!(dev->features[6] & LMP_EXT_INQ))
-		return;
-
-	memset(data, 0, sizeof(data));
-
-	if (dev->ssp_mode > 0)
-		create_ext_inquiry_response(dev->name, adapter->tx_power,
-						adapter->services, data);
-
-	ret = adapter_ops->write_eir_data(adapter->dev_id, data);
-	if (ret < 0)
-		error("Can't write extended inquiry response: %s (%d)",
-						strerror(-ret), -ret);
-}
-
-int adapter_set_service_classes(struct btd_adapter *adapter, uint8_t value)
-{
-	int err;
-
-	/* Update only the service class, keep the limited bit,
-	 * major/minor class bits intact */
-	adapter->wanted_cod &= 0x00ffff;
-	adapter->wanted_cod |= (value << 16);
-
-	/* If the cache is enabled or an existing CoD write is in progress
-	 * just bail out */
-	if (adapter->cache_enable || adapter->pending_cod)
-		return 0;
-
-	/* If we already have the CoD we want, update EIR and return */
-	if (adapter->current_cod == adapter->wanted_cod) {
-		update_ext_inquiry_response(adapter);
-		return 0;
-	}
-
-	DBG("Changing service classes to 0x%06x", adapter->wanted_cod);
-
-	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
-	if (err < 0)
-		error("Adapter class update failed: %s (%d)",
-						strerror(-err), -err);
-	else
-		adapter->pending_cod = adapter->wanted_cod;
-
-	return err;
-}
-
 int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 								uint8_t minor)
 {
-	int err;
-
-	/* Update only the major and minor class bits keeping remaining bits
-	 * intact*/
-	adapter->wanted_cod &= 0xffe000;
-	adapter->wanted_cod |= ((major & 0x1f) << 8) | minor;
-
-	if (adapter->wanted_cod == adapter->current_cod ||
-			adapter->cache_enable || adapter->pending_cod)
-		return 0;
-
-	DBG("Changing Major/Minor class to 0x%06x", adapter->wanted_cod);
-
-	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
-	if (err < 0)
-		error("Adapter class update failed: %s (%d)",
-						strerror(-err), -err);
-	else
-		adapter->pending_cod = adapter->wanted_cod;
-
-	return err;
+	return adapter_ops->set_dev_class(adapter->dev_id, major, minor);
 }
 
 static int pending_remote_name_cancel(struct btd_adapter *adapter)
@@ -431,20 +349,7 @@ static void adapter_set_limited_discoverable(struct btd_adapter *adapter,
 {
 	DBG("%s", limited ? "TRUE" : "FALSE");
 
-	/* Check if limited bit needs to be set/reset */
-	if (limited)
-		adapter->wanted_cod |= LIMITED_BIT;
-	else
-		adapter->wanted_cod &= ~LIMITED_BIT;
-
-	/* If we dont need the toggling, save an unnecessary CoD write */
-	if (adapter->pending_cod ||
-			adapter->wanted_cod == adapter->current_cod)
-		return;
-
-	if (adapter_ops->set_limited_discoverable(adapter->dev_id,
-					adapter->wanted_cod, limited) == 0)
-		adapter->pending_cod = adapter->wanted_cod;
+	adapter_ops->set_limited_discoverable(adapter->dev_id, limited);
 }
 
 static void adapter_remove_discov_timeout(struct btd_adapter *adapter)
@@ -937,65 +842,21 @@ static DBusMessage *set_pairable_timeout(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-void adapter_set_class_complete(bdaddr_t *bdaddr, uint8_t status)
+void btd_adapter_class_changed(struct btd_adapter *adapter, uint32_t new_class)
 {
 	uint8_t class[3];
-	struct btd_adapter *adapter;
-	int err;
 
-	if (status)
-		return;
-
-	adapter = manager_find_adapter(bdaddr);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
-
-	if (adapter->pending_cod == 0)
-		return;
-
-	adapter->current_cod = adapter->pending_cod;
-	adapter->pending_cod = 0;
-
-	class[2] = (adapter->current_cod >> 16) & 0xff;
-	class[1] = (adapter->current_cod >> 8) & 0xff;
-	class[0] = adapter->current_cod & 0xff;
+	class[2] = (new_class >> 16) & 0xff;
+	class[1] = (new_class >> 8) & 0xff;
+	class[0] = new_class & 0xff;
 
 	write_local_class(&adapter->bdaddr, class);
 
+	adapter->dev_class = new_class;
+
 	emit_property_changed(connection, adapter->path,
 				ADAPTER_INTERFACE, "Class",
-				DBUS_TYPE_UINT32, &adapter->current_cod);
-
-	update_ext_inquiry_response(adapter);
-
-	if (adapter->wanted_cod == adapter->current_cod)
-		return;
-
-	if (adapter->wanted_cod & LIMITED_BIT &&
-			!(adapter->current_cod & LIMITED_BIT))
-		err = adapter_ops->set_limited_discoverable(adapter->dev_id,
-						adapter->wanted_cod, TRUE);
-	else if (!(adapter->wanted_cod & LIMITED_BIT) &&
-					adapter->current_cod & LIMITED_BIT)
-		err = adapter_ops->set_limited_discoverable(adapter->dev_id,
-						adapter->wanted_cod, FALSE);
-	else
-		err = adapter_ops->set_class(adapter->dev_id,
-							adapter->wanted_cod);
-
-	if (err == 0)
-		adapter->pending_cod = adapter->wanted_cod;
-}
-
-void adapter_update_tx_power(struct btd_adapter *adapter, int8_t tx_power)
-{
-	adapter->tx_power = tx_power;
-
-	DBG("inquiry respone tx power level is %d", adapter->tx_power);
-
-	update_ext_inquiry_response(adapter);
+				DBUS_TYPE_UINT32, &new_class);
 }
 
 void adapter_update_local_name(struct btd_adapter *adapter, const char *name)
@@ -1019,8 +880,6 @@ void adapter_update_local_name(struct btd_adapter *adapter, const char *name)
 	}
 
 	adapter->name_stored = FALSE;
-
-	update_ext_inquiry_response(adapter);
 }
 
 static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
@@ -1050,7 +909,6 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 			return failed_strerror(msg, err);
 
 		adapter->name_stored = TRUE;
-		update_ext_inquiry_response(adapter);
 	}
 
 done:
@@ -1407,7 +1265,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	/* Class */
 	dict_append_entry(&dict, "Class",
-				DBUS_TYPE_UINT32, &adapter->current_cod);
+				DBUS_TYPE_UINT32, &adapter->dev_class);
 
 	/* Powered */
 	value = (adapter->up && !adapter->off_requested) ? TRUE : FALSE;
@@ -2023,11 +1881,10 @@ static int adapter_setup(struct btd_adapter *adapter, const char *mode)
 	if (g_str_equal(mode, "off"))
 		strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
 
-	/* Set device class */
-	if (adapter->initialized && adapter->wanted_cod) {
-		cls[1] = (adapter->wanted_cod >> 8) & 0xff;
-		cls[0] = adapter->wanted_cod & 0xff;
-	} else if (read_local_class(&adapter->bdaddr, cls) < 0) {
+	if (adapter->initialized)
+		return 0;
+
+	if (read_local_class(&adapter->bdaddr, cls) < 0) {
 		uint32_t class = htobl(main_opts.class);
 		if (class)
 			memcpy(cls, &class, 3);
@@ -2212,31 +2069,6 @@ static int get_pairable_timeout(const char *src)
 	return main_opts.pairto;
 }
 
-static void adapter_disable_cod_cache(struct btd_adapter *adapter)
-{
-	int err;
-
-	if (!adapter)
-		return;
-
-	if (!adapter->cache_enable)
-		return;
-
-	/* Disable and flush svc cache. All successive service class updates
-	   will be written to the device */
-	adapter->cache_enable = FALSE;
-
-	if (adapter->current_cod == adapter->wanted_cod)
-		return;
-
-	err = adapter_ops->set_class(adapter->dev_id, adapter->wanted_cod);
-	if (err < 0)
-		error("Adapter class update failed: %s (%d)",
-						strerror(-err), -err);
-	else
-		adapter->pending_cod = adapter->wanted_cod;
-}
-
 static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
 						gboolean powered)
 {
@@ -2323,7 +2155,6 @@ static int adapter_up(struct btd_adapter *adapter, const char *mode)
 	adapter->pairable_timeout = get_pairable_timeout(srcaddr);
 	adapter->state = STATE_IDLE;
 	adapter->mode = MODE_CONNECTABLE;
-	adapter->cache_enable = TRUE;
 	powered = TRUE;
 
 	/* Set pairable mode */
@@ -2358,6 +2189,7 @@ proceed:
 
 	if (adapter->initialized == FALSE) {
 		sdp_init_services_list(&adapter->bdaddr);
+		btd_adapter_services_updated(adapter);
 		load_drivers(adapter);
 		clear_blocked(adapter);
 		load_devices(adapter);
@@ -2383,7 +2215,7 @@ proceed:
 
 	call_adapter_powered_callbacks(adapter, TRUE);
 
-	adapter_disable_cod_cache(adapter);
+	adapter_ops->disable_cod_cache(adapter->dev_id);
 
 	return 0;
 }
@@ -2436,7 +2268,7 @@ int adapter_start(struct btd_adapter *adapter)
 
 	memcpy(dev->features, features, 8);
 
-	adapter->current_cod = 0;
+	adapter->dev_class = 0;
 
 	adapter_setup(adapter, mode);
 
@@ -2486,6 +2318,8 @@ static void set_mode_complete(struct btd_adapter *adapter)
 	struct session_req *pending;
 	const char *modestr;
 	int err;
+
+	DBG("");
 
 	if (adapter->pending_mode == NULL)
 		return;
@@ -2569,8 +2403,6 @@ int adapter_stop(struct btd_adapter *adapter)
 	adapter->scan_mode = SCAN_DISABLED;
 	adapter->mode = MODE_OFF;
 	adapter->state = STATE_IDLE;
-	adapter->cache_enable = TRUE;
-	adapter->pending_cod = 0;
 	adapter->off_requested = FALSE;
 	adapter->name_stored = FALSE;
 
@@ -2588,8 +2420,6 @@ int adapter_update_ssp_mode(struct btd_adapter *adapter, uint8_t mode)
 	struct hci_dev *dev = &adapter->dev;
 
 	dev->ssp_mode = mode;
-
-	update_ext_inquiry_response(adapter);
 
 	return 0;
 }
@@ -2660,8 +2490,6 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id,
 	adapter->dev_id = id;
 	adapter->path = g_strdup(path);
 	adapter->already_up = devup;
-
-	adapter->tx_power = 0;
 
 	if (!g_dbus_register_interface(conn, path, ADAPTER_INTERFACE,
 			adapter_methods, adapter_signals, NULL,
@@ -3758,4 +3586,15 @@ int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 					bt_hci_result_t cb, gpointer user_data)
 {
 	return adapter_ops->encrypt_link(adapter->dev_id, bdaddr, cb, user_data);
+}
+
+int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
+					uint16_t product, uint16_t version)
+{
+	return adapter_ops->set_did(adapter->dev_id, vendor, product, version);
+}
+
+int btd_adapter_services_updated(struct btd_adapter *adapter)
+{
+	return adapter_ops->services_updated(adapter->dev_id);
 }

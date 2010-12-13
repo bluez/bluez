@@ -49,13 +49,7 @@
 #include "manager.h"
 #include "adapter.h"
 
-#define SIZEOF_UUID128 16
-
 static sdp_record_t *server = NULL;
-
-static uint16_t did_vendor = 0x0000;
-static uint16_t did_product = 0x0000;
-static uint16_t did_version = 0x0000;
 
 /*
  * List of version numbers supported by the SDP server.
@@ -99,67 +93,6 @@ static void update_db_timestamp(void)
 	sdp_attr_replace(server, SDP_ATTR_SVCDB_STATE, d);
 }
 
-static void update_adapter_svclass_list(struct btd_adapter *adapter)
-{
-	sdp_list_t *list = adapter_get_services(adapter);
-	uint8_t val = 0;
-
-	for (; list; list = list->next) {
-		sdp_record_t *rec = list->data;
-
-		if (rec->svclass.type != SDP_UUID16)
-			continue;
-
-		switch (rec->svclass.value.uuid16) {
-		case DIALUP_NET_SVCLASS_ID:
-		case CIP_SVCLASS_ID:
-			val |= 0x42;	/* Telephony & Networking */
-			break;
-		case IRMC_SYNC_SVCLASS_ID:
-		case OBEX_OBJPUSH_SVCLASS_ID:
-		case OBEX_FILETRANS_SVCLASS_ID:
-		case IRMC_SYNC_CMD_SVCLASS_ID:
-		case PBAP_PSE_SVCLASS_ID:
-			val |= 0x10;	/* Object Transfer */
-			break;
-		case HEADSET_SVCLASS_ID:
-		case HANDSFREE_SVCLASS_ID:
-			val |= 0x20;	/* Audio */
-			break;
-		case CORDLESS_TELEPHONY_SVCLASS_ID:
-		case INTERCOM_SVCLASS_ID:
-		case FAX_SVCLASS_ID:
-		case SAP_SVCLASS_ID:
-		/*
-		 * Setting the telephony bit for the handsfree audio gateway
-		 * role is not required by the HFP specification, but the
-		 * Nokia 616 carkit is just plain broken! It will refuse
-		 * pairing without this bit set.
-		 */
-		case HANDSFREE_AGW_SVCLASS_ID:
-			val |= 0x40;	/* Telephony */
-			break;
-		case AUDIO_SOURCE_SVCLASS_ID:
-		case VIDEO_SOURCE_SVCLASS_ID:
-			val |= 0x08;	/* Capturing */
-			break;
-		case AUDIO_SINK_SVCLASS_ID:
-		case VIDEO_SINK_SVCLASS_ID:
-			val |= 0x04;	/* Rendering */
-			break;
-		case PANU_SVCLASS_ID:
-		case NAP_SVCLASS_ID:
-		case GN_SVCLASS_ID:
-			val |= 0x02;	/* Networking */
-			break;
-		}
-	}
-
-	SDPDBG("Service classes 0x%02x", val);
-
-	manager_update_svc(adapter, val);
-}
-
 static void update_svclass_list(const bdaddr_t *src)
 {
 	GSList *adapters = manager_get_adapters();
@@ -171,169 +104,9 @@ static void update_svclass_list(const bdaddr_t *src)
 		adapter_get_address(adapter, &bdaddr);
 
 		if (bacmp(src, BDADDR_ANY) == 0 || bacmp(src, &bdaddr) == 0)
-			update_adapter_svclass_list(adapter);
+			btd_adapter_services_updated(adapter);
 	}
 
-}
-
-static void eir_generate_uuid128(sdp_list_t *list,
-					uint8_t *ptr, uint16_t *eir_len)
-{
-	int i, k, index = 0;
-	uint16_t len = *eir_len;
-	uint8_t *uuid128;
-	gboolean truncated = FALSE;
-
-	/* Store UUIDs in place, skip 2 bytes to write type and length later */
-	uuid128 = ptr + 2;
-
-	for (; list; list = list->next) {
-		sdp_record_t *rec = list->data;
-		uint8_t *uuid128_data = rec->svclass.value.uuid128.data;
-
-		if (rec->svclass.type != SDP_UUID128)
-			continue;
-
-		/* Stop if not enough space to put next UUID128 */
-		if ((len + 2 + SIZEOF_UUID128) > EIR_DATA_LENGTH) {
-			truncated = TRUE;
-			break;
-		}
-
-		/* Check for duplicates, EIR data is Little Endian */
-		for (i = 0; i < index; i++) {
-			for (k = 0; k < SIZEOF_UUID128; k++) {
-				if (uuid128[i * SIZEOF_UUID128 + k] !=
-					uuid128_data[SIZEOF_UUID128 - 1 - k])
-					break;
-			}
-			if (k == SIZEOF_UUID128)
-				break;
-		}
-
-		if (i < index)
-			continue;
-
-		/* EIR data is Little Endian */
-		for (k = 0; k < SIZEOF_UUID128; k++)
-			uuid128[index * SIZEOF_UUID128 + k] =
-				uuid128_data[SIZEOF_UUID128 - 1 - k];
-
-		len += SIZEOF_UUID128;
-		index++;
-	}
-
-	if (index > 0 || truncated) {
-		/* EIR Data length */
-		ptr[0] = (index * SIZEOF_UUID128) + 1;
-		/* EIR Data type */
-		ptr[1] = truncated ? EIR_UUID128_SOME : EIR_UUID128_ALL;
-		len += 2;
-		*eir_len = len;
-	}
-}
-
-void create_ext_inquiry_response(const char *name,
-					int8_t tx_power, sdp_list_t *services,
-					uint8_t *data)
-{
-	sdp_list_t *list = services;
-	uint8_t *ptr = data;
-	uint16_t eir_len = 0;
-	uint16_t uuid16[EIR_DATA_LENGTH / 2];
-	int i, index = 0;
-	gboolean truncated = FALSE;
-
-	if (name) {
-		int len = strlen(name);
-
-		/* EIR Data type */
-		if (len > 48) {
-			len = 48;
-			ptr[1] = EIR_NAME_SHORT;
-		} else
-			ptr[1] = EIR_NAME_COMPLETE;
-
-		/* EIR Data length */
-		ptr[0] = len + 1;
-
-		memcpy(ptr + 2, name, len);
-
-		eir_len += (len + 2);
-		ptr += (len + 2);
-	}
-
-	if (tx_power != 0) {
-		*ptr++ = 2;
-		*ptr++ = EIR_TX_POWER;
-		*ptr++ = (uint8_t) tx_power;
-		eir_len += 3;
-	}
-
-	if (did_vendor != 0x0000) {
-		uint16_t source = 0x0002;
-		*ptr++ = 9;
-		*ptr++ = EIR_DEVICE_ID;
-		*ptr++ = (source & 0x00ff);
-		*ptr++ = (source & 0xff00) >> 8;
-		*ptr++ = (did_vendor & 0x00ff);
-		*ptr++ = (did_vendor & 0xff00) >> 8;
-		*ptr++ = (did_product & 0x00ff);
-		*ptr++ = (did_product & 0xff00) >> 8;
-		*ptr++ = (did_version & 0x00ff);
-		*ptr++ = (did_version & 0xff00) >> 8;
-		eir_len += 10;
-	}
-
-	/* Group all UUID16 types */
-	for (; list; list = list->next) {
-		sdp_record_t *rec = list->data;
-
-		if (rec->svclass.type != SDP_UUID16)
-			continue;
-
-		if (rec->svclass.value.uuid16 < 0x1100)
-			continue;
-
-		if (rec->svclass.value.uuid16 == PNP_INFO_SVCLASS_ID)
-			continue;
-
-		/* Stop if not enough space to put next UUID16 */
-		if ((eir_len + 2 + sizeof(uint16_t)) > EIR_DATA_LENGTH) {
-			truncated = TRUE;
-			break;
-		}
-
-		/* Check for duplicates */
-		for (i = 0; i < index; i++)
-			if (uuid16[i] == rec->svclass.value.uuid16)
-				break;
-
-		if (i < index)
-			continue;
-
-		uuid16[index++] = rec->svclass.value.uuid16;
-		eir_len += sizeof(uint16_t);
-	}
-
-	if (index > 0) {
-		/* EIR Data length */
-		ptr[0] = (index * sizeof(uint16_t)) + 1;
-		/* EIR Data type */
-		ptr[1] = truncated ? EIR_UUID16_SOME : EIR_UUID16_ALL;
-
-		ptr += 2;
-		eir_len += 2;
-
-		for (i = 0; i < index; i++) {
-			*ptr++ = (uuid16[i] & 0x00ff);
-			*ptr++ = (uuid16[i] & 0xff00) >> 8;
-		}
-	}
-
-	/* Group all UUID128 types */
-	if (eir_len <= EIR_DATA_LENGTH - 2)
-		eir_generate_uuid128(services, ptr, &eir_len);
 }
 
 void register_public_browse_group(void)
@@ -430,9 +203,7 @@ void register_device_id(const uint16_t vendor, const uint16_t product,
 
 	info("Adding device id record for %04x:%04x", vendor, product);
 
-	did_vendor = vendor;
-	did_product = product;
-	did_version = version;
+	btd_manager_set_did(vendor, product, version);
 
 	record->handle = sdp_next_handle();
 

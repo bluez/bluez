@@ -63,8 +63,19 @@ enum {
 
 #define SK(index) devs[(index)].sk
 #define BDADDR(index) devs[(index)].bdaddr
+#define NAME(index) devs[(index)].name
+#define EIR(index) devs[(index)].eir
 #define FEATURES(index) devs[(index)].features
+#define SSP_MODE(index) devs[(index)].ssp_mode
+#define TX_POWER(index) devs[(index)].tx_power
+#define CURRENT_COD(index) devs[(index)].current_cod
+#define WANTED_COD(index) devs[(index)].wanted_cod
+#define PENDING_COD(index) devs[(index)].pending_cod
+#define CACHE_ENABLE(index) devs[(index)].cache_enable
 #define VER(index) devs[(index)].ver
+#define DID_VENDOR(index) devs[(index)].did_vendor
+#define DID_PRODUCT(index) devs[(index)].did_product
+#define DID_VERSION(index) devs[(index)].did_version
 #define UP(index) devs[(index)].up
 #define PENDING(index) devs[(index)].pending
 #define CHANNEL(index) devs[(index)].channel
@@ -75,8 +86,23 @@ static int max_dev = -1;
 static struct dev_info {
 	int sk;
 	bdaddr_t bdaddr;
+	char name[249];
+	uint8_t eir[240];
 	uint8_t features[8];
+	uint8_t ssp_mode;
+
+	int8_t tx_power;
+
+	uint32_t current_cod;
+	uint32_t wanted_cod;
+	uint32_t pending_cod;
+	gboolean cache_enable;
+
 	struct hci_version ver;
+
+	uint16_t did_vendor;
+	uint16_t did_product;
+	uint16_t did_version;
 
 	gboolean up;
 	unsigned long pending;
@@ -96,6 +122,7 @@ static void init_dev_info(int index, int sk)
 	memset(&devs[index], 0, sizeof(struct dev_info));
 	SK(index) = sk;
 	PIN_LENGTH(index) = -1;
+	CACHE_ENABLE(index) = TRUE;
 }
 
 /* Async HCI command handling with callback support */
@@ -318,6 +345,9 @@ static void start_adapter(int index)
 		hci_send_cmd(SK(index), OGF_HOST_CTL,
 				OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL);
 
+	CURRENT_COD(index) = 0;
+	memset(EIR(index), 0, sizeof(EIR(index)));
+
 	manager_start_adapter(index);
 }
 
@@ -395,6 +425,16 @@ static int hciops_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 fail:
 	close(dd);
 	return err;
+}
+
+static int hciops_set_did(int index, uint16_t vendor, uint16_t product,
+							uint16_t version)
+{
+	DID_VENDOR(index) = vendor;
+	DID_PRODUCT(index) = product;
+	DID_VERSION(index) = version;
+
+	return 0;
 }
 
 /* End async HCI command handling */
@@ -872,6 +912,206 @@ static void read_local_features_complete(int index,
 		start_adapter(index);
 }
 
+#define SIZEOF_UUID128 16
+
+static void eir_generate_uuid128(sdp_list_t *list,
+					uint8_t *ptr, uint16_t *eir_len)
+{
+	int i, k, uuid_count = 0;
+	uint16_t len = *eir_len;
+	uint8_t *uuid128;
+	gboolean truncated = FALSE;
+
+	/* Store UUIDs in place, skip 2 bytes to write type and length later */
+	uuid128 = ptr + 2;
+
+	for (; list; list = list->next) {
+		sdp_record_t *rec = list->data;
+		uint8_t *uuid128_data = rec->svclass.value.uuid128.data;
+
+		if (rec->svclass.type != SDP_UUID128)
+			continue;
+
+		/* Stop if not enough space to put next UUID128 */
+		if ((len + 2 + SIZEOF_UUID128) > EIR_DATA_LENGTH) {
+			truncated = TRUE;
+			break;
+		}
+
+		/* Check for duplicates, EIR data is Little Endian */
+		for (i = 0; i < uuid_count; i++) {
+			for (k = 0; k < SIZEOF_UUID128; k++) {
+				if (uuid128[i * SIZEOF_UUID128 + k] !=
+					uuid128_data[SIZEOF_UUID128 - 1 - k])
+					break;
+			}
+			if (k == SIZEOF_UUID128)
+				break;
+		}
+
+		if (i < uuid_count)
+			continue;
+
+		/* EIR data is Little Endian */
+		for (k = 0; k < SIZEOF_UUID128; k++)
+			uuid128[uuid_count * SIZEOF_UUID128 + k] =
+				uuid128_data[SIZEOF_UUID128 - 1 - k];
+
+		len += SIZEOF_UUID128;
+		uuid_count++;
+	}
+
+	if (uuid_count > 0 || truncated) {
+		/* EIR Data length */
+		ptr[0] = (uuid_count * SIZEOF_UUID128) + 1;
+		/* EIR Data type */
+		ptr[1] = truncated ? EIR_UUID128_SOME : EIR_UUID128_ALL;
+		len += 2;
+		*eir_len = len;
+	}
+}
+
+static void create_ext_inquiry_response(int index, uint8_t *data)
+{
+	sdp_list_t *services;
+	sdp_list_t *list;
+	uint8_t *ptr = data;
+	uint16_t eir_len = 0;
+	uint16_t uuid16[EIR_DATA_LENGTH / 2];
+	int i, uuid_count = 0;
+	gboolean truncated = FALSE;
+	struct btd_adapter *adapter;
+	size_t name_len;
+
+	name_len = strlen(NAME(index));
+
+	if (name_len > 0) {
+		/* EIR Data type */
+		if (name_len > 48) {
+			name_len = 48;
+			ptr[1] = EIR_NAME_SHORT;
+		} else
+			ptr[1] = EIR_NAME_COMPLETE;
+
+		/* EIR Data length */
+		ptr[0] = name_len + 1;
+
+		memcpy(ptr + 2, NAME(index), name_len);
+
+		eir_len += (name_len + 2);
+		ptr += (name_len + 2);
+	}
+
+	if (TX_POWER(index) != 0) {
+		*ptr++ = 2;
+		*ptr++ = EIR_TX_POWER;
+		*ptr++ = (uint8_t) TX_POWER(index);
+		eir_len += 3;
+	}
+
+	if (DID_VENDOR(index) != 0x0000) {
+		uint16_t source = 0x0002;
+		*ptr++ = 9;
+		*ptr++ = EIR_DEVICE_ID;
+		*ptr++ = (source & 0x00ff);
+		*ptr++ = (source & 0xff00) >> 8;
+		*ptr++ = (DID_VENDOR(index) & 0x00ff);
+		*ptr++ = (DID_VENDOR(index) & 0xff00) >> 8;
+		*ptr++ = (DID_PRODUCT(index) & 0x00ff);
+		*ptr++ = (DID_PRODUCT(index) & 0xff00) >> 8;
+		*ptr++ = (DID_VERSION(index) & 0x00ff);
+		*ptr++ = (DID_VERSION(index) & 0xff00) >> 8;
+		eir_len += 10;
+	}
+
+	adapter = manager_find_adapter(&BDADDR(index));
+	if (adapter == NULL)
+		return;
+
+	services = adapter_get_services(adapter);
+
+	/* Group all UUID16 types */
+	for (list = services; list; list = list->next) {
+		sdp_record_t *rec = list->data;
+
+		if (rec->svclass.type != SDP_UUID16)
+			continue;
+
+		if (rec->svclass.value.uuid16 < 0x1100)
+			continue;
+
+		if (rec->svclass.value.uuid16 == PNP_INFO_SVCLASS_ID)
+			continue;
+
+		/* Stop if not enough space to put next UUID16 */
+		if ((eir_len + 2 + sizeof(uint16_t)) > EIR_DATA_LENGTH) {
+			truncated = TRUE;
+			break;
+		}
+
+		/* Check for duplicates */
+		for (i = 0; i < uuid_count; i++)
+			if (uuid16[i] == rec->svclass.value.uuid16)
+				break;
+
+		if (i < uuid_count)
+			continue;
+
+		uuid16[uuid_count++] = rec->svclass.value.uuid16;
+		eir_len += sizeof(uint16_t);
+	}
+
+	if (uuid_count > 0) {
+		/* EIR Data length */
+		ptr[0] = (uuid_count * sizeof(uint16_t)) + 1;
+		/* EIR Data type */
+		ptr[1] = truncated ? EIR_UUID16_SOME : EIR_UUID16_ALL;
+
+		ptr += 2;
+		eir_len += 2;
+
+		for (i = 0; i < uuid_count; i++) {
+			*ptr++ = (uuid16[i] & 0x00ff);
+			*ptr++ = (uuid16[i] & 0xff00) >> 8;
+		}
+	}
+
+	/* Group all UUID128 types */
+	if (eir_len <= EIR_DATA_LENGTH - 2)
+		eir_generate_uuid128(services, ptr, &eir_len);
+}
+
+static void update_ext_inquiry_response(int index)
+{
+	write_ext_inquiry_response_cp cp;
+
+	DBG("hci%d", index);
+
+	if (!(FEATURES(index)[6] & LMP_EXT_INQ))
+		return;
+
+	if (SSP_MODE(index) == 0)
+		return;
+
+	if (CACHE_ENABLE(index))
+		return;
+
+	memset(&cp, 0, sizeof(cp));
+
+	create_ext_inquiry_response(index, cp.data);
+
+	if (memcmp(cp.data, EIR(index), sizeof(cp.data)) == 0)
+		return;
+
+	memcpy(EIR(index), cp.data, sizeof(cp.data));
+
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
+				OCF_WRITE_EXT_INQUIRY_RESPONSE,
+				WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &cp) < 0)
+		error("Unable to write EIR data: %s (%d)",
+						strerror(errno), errno);
+}
+
 static void update_name(int index, const char *name)
 {
 	struct btd_adapter *adapter;
@@ -879,6 +1119,8 @@ static void update_name(int index, const char *name)
 	adapter = manager_find_adapter(&BDADDR(index));
 	if (adapter)
 		adapter_update_local_name(adapter, name);
+
+	update_ext_inquiry_response(index);
 }
 
 static void read_local_name_complete(int index, read_local_name_rp *rp)
@@ -887,6 +1129,8 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 
 	if (rp->status)
 		return;
+
+	memcpy(NAME(index), rp->name, 248);
 
 	if (!PENDING(index)) {
 		update_name(index, (char *) rp->name);
@@ -922,20 +1166,14 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 static void read_tx_power_complete(int index, void *ptr)
 {
 	read_inq_response_tx_power_level_rp *rp = ptr;
-	struct btd_adapter *adapter;
 
 	DBG("hci%d status %u", index, rp->status);
 
 	if (rp->status)
 		return;
 
-	adapter = manager_find_adapter(&BDADDR(index));
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	adapter_update_tx_power(adapter, rp->level);
+	TX_POWER(index) = rp->level;
+	update_ext_inquiry_response(index);
 }
 
 static void read_simple_pairing_mode_complete(int index, void *ptr)
@@ -947,6 +1185,9 @@ static void read_simple_pairing_mode_complete(int index, void *ptr)
 
 	if (rp->status)
 		return;
+
+	SSP_MODE(index) = rp->mode;
+	update_ext_inquiry_response(index);
 
 	adapter = manager_find_adapter(&BDADDR(index));
 	if (!adapter) {
@@ -1026,6 +1267,91 @@ static void read_scan_complete(int index, uint8_t status, void *ptr)
 	adapter_mode_changed(adapter, rp->enable);
 }
 
+static int hciops_set_class(int index, uint32_t class)
+{
+	write_class_of_dev_cp cp;
+
+	DBG("hci%d class 0x%06x", index, class);
+
+	memcpy(cp.dev_class, &class, 3);
+
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
+					WRITE_CLASS_OF_DEV_CP_SIZE, &cp) < 0)
+		return -errno;
+
+	PENDING_COD(index) = class;
+
+	return 0;
+}
+
+/* Limited Discoverable bit mask in CoD */
+#define LIMITED_BIT			0x002000
+
+static int hciops_set_limited_discoverable(int index, gboolean limited)
+{
+	int num = (limited ? 2 : 1);
+	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
+	write_current_iac_lap_cp cp;
+
+	DBG("hci%d limited %d", index, limited);
+
+	/* Check if limited bit needs to be set/reset */
+	if (limited)
+		WANTED_COD(index) |= LIMITED_BIT;
+	else
+		WANTED_COD(index) &= ~LIMITED_BIT;
+
+	/* If we dont need the toggling, save an unnecessary CoD write */
+	if (PENDING_COD(index) || WANTED_COD(index) == CURRENT_COD(index))
+		return 0;
+
+	/*
+	 * 1: giac
+	 * 2: giac + liac
+	 */
+	memset(&cp, 0, sizeof(cp));
+	cp.num_current_iac = num;
+	memcpy(&cp.lap, lap, num * 3);
+
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_CURRENT_IAC_LAP,
+						(num * 3 + 1), &cp) < 0)
+		return -errno;
+
+	return hciops_set_class(index, WANTED_COD(index));
+}
+
+static void write_class_complete(int index, uint8_t status)
+{
+	struct btd_adapter *adapter;
+
+	if (status)
+		return;
+
+	if (PENDING_COD(index) == 0)
+		return;
+
+	CURRENT_COD(index) = PENDING_COD(index);
+	PENDING_COD(index) = 0;
+
+	adapter = manager_find_adapter(&BDADDR(index));
+	if (adapter)
+		btd_adapter_class_changed(adapter, CURRENT_COD(index));
+
+	update_ext_inquiry_response(index);
+
+	if (WANTED_COD(index) == CURRENT_COD(index))
+		return;
+
+	if (WANTED_COD(index) & LIMITED_BIT &&
+			!(CURRENT_COD(index) & LIMITED_BIT))
+		hciops_set_limited_discoverable(index, TRUE);
+	else if (!(WANTED_COD(index) & LIMITED_BIT) &&
+					(CURRENT_COD(index) & LIMITED_BIT))
+		hciops_set_limited_discoverable(index, FALSE);
+	else
+		hciops_set_class(index, WANTED_COD(index));
+}
+
 static inline void cmd_complete(int index, void *ptr)
 {
 	evt_cmd_complete *evt = ptr;
@@ -1077,7 +1403,7 @@ static inline void cmd_complete(int index, void *ptr)
 		read_scan_complete(index, status, ptr);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV):
-		adapter_set_class_complete(&BDADDR(index), status);
+		write_class_complete(index, status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE):
 		if (!status)
@@ -1787,6 +2113,8 @@ static void device_event(int event, int index)
 	case HCI_DEV_DOWN:
 		info("HCI dev %d down", index);
 		UP(index) = FALSE;
+		PENDING_COD(index) = 0;
+		CACHE_ENABLE(index) = TRUE;
 		if (!PENDING(index)) {
 			manager_stop_adapter(index);
 			init_pending(index);
@@ -2066,43 +2394,27 @@ static int hciops_discoverable(int index)
 	return 0;
 }
 
-static int hciops_set_class(int index, uint32_t class)
+static int hciops_set_dev_class(int index, uint8_t major, uint8_t minor)
 {
-	write_class_of_dev_cp cp;
+	int err;
 
-	DBG("hci%d class 0x%06x", index, class);
+	/* Update only the major and minor class bits keeping remaining bits
+	 * intact*/
+	WANTED_COD(index) &= 0xffe000;
+	WANTED_COD(index) |= ((major & 0x1f) << 8) | minor;
 
-	memcpy(cp.dev_class, &class, 3);
+	if (WANTED_COD(index) == CURRENT_COD(index) ||
+			CACHE_ENABLE(index) || PENDING_COD(index))
+		return 0;
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
-					WRITE_CLASS_OF_DEV_CP_SIZE, &cp) < 0)
-		return -errno;
+	DBG("Changing Major/Minor class to 0x%06x", WANTED_COD(index));
 
-	return 0;
-}
+	err = hciops_set_class(index, WANTED_COD(index));
+	if (err < 0)
+		error("Adapter class update failed: %s (%d)",
+						strerror(-err), -err);
 
-static int hciops_set_limited_discoverable(int index, uint32_t class,
-							gboolean limited)
-{
-	int num = (limited ? 2 : 1);
-	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
-	write_current_iac_lap_cp cp;
-
-	DBG("hci%d, class %06x limited %d", index, class, limited);
-
-	/*
-	 * 1: giac
-	 * 2: giac + liac
-	 */
-	memset(&cp, 0, sizeof(cp));
-	cp.num_current_iac = num;
-	memcpy(&cp.lap, lap, num * 3);
-
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_CURRENT_IAC_LAP,
-						(num * 3 + 1), &cp) < 0)
-		return -errno;
-
-	return hciops_set_class(index, class);
+	return err;
 }
 
 static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
@@ -2241,6 +2553,9 @@ static int hciops_set_name(int index, const char *name)
 				CHANGE_LOCAL_NAME_CP_SIZE, &cp) < 0)
 		return -errno;
 
+	memcpy(NAME(index), cp.name, 248);
+	update_ext_inquiry_response(index);
+
 	return 0;
 }
 
@@ -2326,23 +2641,6 @@ static int hciops_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 fail:
 	g_free(cr);
 	return err;
-}
-
-static int hciops_write_eir_data(int index, uint8_t *data)
-{
-	write_ext_inquiry_response_cp cp;
-
-	DBG("hci%d", index);
-
-	memset(&cp, 0, sizeof(cp));
-	memcpy(cp.data, data, 240);
-
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
-				OCF_WRITE_EXT_INQUIRY_RESPONSE,
-				WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &cp) < 0)
-		return -errno;
-
-	return 0;
 }
 
 static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
@@ -2666,6 +2964,124 @@ static int hciops_get_remote_version(int index, uint16_t handle,
 	return 0;
 }
 
+static int set_service_classes(int index, uint8_t value)
+{
+	int err;
+
+	/* Update only the service class, keep the limited bit,
+	 * major/minor class bits intact */
+	WANTED_COD(index) &= 0x00ffff;
+	WANTED_COD(index) |= (value << 16);
+
+	/* If the cache is enabled or an existing CoD write is in progress
+	 * just bail out */
+	if (CACHE_ENABLE(index) || PENDING_COD(index))
+		return 0;
+
+	/* If we already have the CoD we want, update EIR and return */
+	if (CURRENT_COD(index) == WANTED_COD(index)) {
+		update_ext_inquiry_response(index);
+		return 0;
+	}
+
+	DBG("Changing service classes to 0x%06x", WANTED_COD(index));
+
+	err = hciops_set_class(index, WANTED_COD(index));
+	if (err < 0)
+		error("Adapter class update failed: %s (%d)",
+						strerror(-err), -err);
+
+	return err;
+}
+
+static int hciops_services_updated(int index)
+{
+	struct btd_adapter *adapter;
+	sdp_list_t *list;
+	uint8_t val = 0;
+
+	DBG("hci%d", index);
+
+	adapter = manager_find_adapter(&BDADDR(index));
+	if (adapter == NULL)
+		return -ENODEV;
+
+	for (list = adapter_get_services(adapter); list; list = list->next) {
+		sdp_record_t *rec = list->data;
+
+		if (rec->svclass.type != SDP_UUID16)
+			continue;
+
+		switch (rec->svclass.value.uuid16) {
+		case DIALUP_NET_SVCLASS_ID:
+		case CIP_SVCLASS_ID:
+			val |= 0x42;	/* Telephony & Networking */
+			break;
+		case IRMC_SYNC_SVCLASS_ID:
+		case OBEX_OBJPUSH_SVCLASS_ID:
+		case OBEX_FILETRANS_SVCLASS_ID:
+		case IRMC_SYNC_CMD_SVCLASS_ID:
+		case PBAP_PSE_SVCLASS_ID:
+			val |= 0x10;	/* Object Transfer */
+			break;
+		case HEADSET_SVCLASS_ID:
+		case HANDSFREE_SVCLASS_ID:
+			val |= 0x20;	/* Audio */
+			break;
+		case CORDLESS_TELEPHONY_SVCLASS_ID:
+		case INTERCOM_SVCLASS_ID:
+		case FAX_SVCLASS_ID:
+		case SAP_SVCLASS_ID:
+		/*
+		 * Setting the telephony bit for the handsfree audio gateway
+		 * role is not required by the HFP specification, but the
+		 * Nokia 616 carkit is just plain broken! It will refuse
+		 * pairing without this bit set.
+		 */
+		case HANDSFREE_AGW_SVCLASS_ID:
+			val |= 0x40;	/* Telephony */
+			break;
+		case AUDIO_SOURCE_SVCLASS_ID:
+		case VIDEO_SOURCE_SVCLASS_ID:
+			val |= 0x08;	/* Capturing */
+			break;
+		case AUDIO_SINK_SVCLASS_ID:
+		case VIDEO_SINK_SVCLASS_ID:
+			val |= 0x04;	/* Rendering */
+			break;
+		case PANU_SVCLASS_ID:
+		case NAP_SVCLASS_ID:
+		case GN_SVCLASS_ID:
+			val |= 0x02;	/* Networking */
+			break;
+		}
+	}
+
+	return set_service_classes(index, val);
+}
+
+static int hciops_disable_cod_cache(int index)
+{
+	DBG("hci%d cache_enable %d", index, CACHE_ENABLE(index));
+
+	if (!CACHE_ENABLE(index))
+		return 0;
+
+	DBG("hci%d current_cod 0x%06x wanted_cod 0x%06x", index,
+					CURRENT_COD(index), WANTED_COD(index));
+
+	/* Disable and flush svc cache. All successive service class
+	 * updates * will be written to the device */
+	CACHE_ENABLE(index) = FALSE;
+
+	if (CURRENT_COD(index) == WANTED_COD(index)) {
+		update_ext_inquiry_response(index);
+		return 0;
+	}
+
+	return hciops_set_class(index, WANTED_COD(index));
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -2682,11 +3098,10 @@ static struct btd_adapter_ops hci_ops = {
 	.resolve_name = hciops_resolve_name,
 	.cancel_resolve_name = hciops_cancel_resolve_name,
 	.set_name = hciops_set_name,
-	.set_class = hciops_set_class,
+	.set_dev_class = hciops_set_dev_class,
 	.set_fast_connectable = hciops_fast_connectable,
 	.read_clock = hciops_read_clock,
 	.get_conn_handle = hciops_conn_handle,
-	.write_eir_data = hciops_write_eir_data,
 	.read_bdaddr = hciops_read_bdaddr,
 	.block_device = hciops_block_device,
 	.unblock_device = hciops_unblock_device,
@@ -2705,6 +3120,9 @@ static struct btd_adapter_ops hci_ops = {
 	.write_le_host = hciops_write_le_host,
 	.get_remote_version = hciops_get_remote_version,
 	.encrypt_link = hciops_encrypt_link,
+	.set_did = hciops_set_did,
+	.services_updated = hciops_services_updated,
+	.disable_cod_cache = hciops_disable_cod_cache,
 };
 
 static int hciops_init(void)
