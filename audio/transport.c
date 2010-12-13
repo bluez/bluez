@@ -93,11 +93,6 @@ struct media_transport {
 					DBusMessageIter *value);
 };
 
-static inline DBusMessage *error_failed(DBusMessage *msg, const char *desc)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed", "%s", desc);
-}
-
 void media_transport_remove(struct media_transport *transport)
 {
 	char *path;
@@ -572,7 +567,7 @@ static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 	if (err < 0) {
 		if (err == -EINVAL)
 			return btd_error_invalid_args(msg);
-		return error_failed(msg, strerror(-err));
+		return btd_error_failed(msg, strerror(-err));
 	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);

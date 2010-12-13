@@ -386,8 +386,7 @@ static DBusMessage *source_connect(DBusConnection *conn,
 		source->session = avdtp_get(&dev->src, &dev->dst);
 
 	if (!source->session)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"Unable to get a session");
+		return btd_error_failed(msg, "Unable to get a session");
 
 	if (source->connect || source->disconnect)
 		return btd_error_busy(msg);
@@ -396,8 +395,7 @@ static DBusMessage *source_connect(DBusConnection *conn,
 		return btd_error_already_connected(msg);
 
 	if (!source_setup_stream(source, NULL))
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"Failed to create a stream");
+		return btd_error_failed(msg, "Failed to create a stream");
 
 	dev->auto_connect = FALSE;
 
@@ -436,8 +434,7 @@ static DBusMessage *source_disconnect(DBusConnection *conn,
 
 	err = avdtp_close(source->session, source->stream, FALSE);
 	if (err < 0)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"%s", strerror(-err));
+		return btd_error_failed(msg, strerror(-err));
 
 	pending = g_new0(struct pending_request, 1);
 	pending->conn = dbus_connection_ref(conn);

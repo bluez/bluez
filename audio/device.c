@@ -271,10 +271,9 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 		if (new_state == AUDIO_STATE_CONNECTED)
 			reply = dbus_message_new_method_return(priv->conn_req);
 		else
-			reply = g_dbus_create_error(priv->conn_req,
-							ERROR_INTERFACE
-							".ConnectFailed",
-							"Connecting failed");
+			reply = btd_error_failed(priv->conn_req,
+							"Connect Failed");
+
 		dbus_message_unref(priv->conn_req);
 		priv->conn_req = NULL;
 		g_dbus_send_message(dev->conn, reply);
@@ -532,8 +531,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 		struct avdtp *session = avdtp_get(&dev->src, &dev->dst);
 
 		if (!session)
-			return g_dbus_create_error(msg, ERROR_INTERFACE
-					".Failed",
+			return btd_error_failed(msg,
 					"Failed to get AVDTP session");
 
 		sink_setup_stream(dev->sink, session);
@@ -543,9 +541,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	/* The previous calls should cause a call to the state callback to
 	 * indicate AUDIO_STATE_CONNECTING */
 	if (priv->state != AUDIO_STATE_CONNECTING)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-				".ConnectFailed",
-				"Headset connect failed");
+		return btd_error_failed(msg, "Connect Failed");
 
 	priv->conn_req = dbus_message_ref(msg);
 

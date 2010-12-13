@@ -1709,13 +1709,8 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 	device->auto_connect = FALSE;
 
 	err = rfcomm_connect(device, NULL, NULL, NULL);
-	if (err == -ECONNREFUSED)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAllowed",
-						"Too many connected devices");
-	else if (err < 0)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".ConnectAttemptFailed",
-						"Connect Attempt Failed");
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
 
 	hs->auto_dc = FALSE;
 
@@ -1747,8 +1742,7 @@ static DBusMessage *hs_ring(DBusConnection *conn, DBusMessage *msg,
 	err = headset_send(hs, "\r\nRING\r\n");
 	if (err < 0) {
 		dbus_message_unref(reply);
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"%s", strerror(-err));
+		return btd_error_failed(msg, strerror(-err));
 	}
 
 	ring_timer_cb(NULL);
@@ -1815,8 +1809,7 @@ static DBusMessage *hs_play(DBusConnection *conn, DBusMessage *msg,
 
 	err = sco_connect(device, NULL, NULL, NULL);
 	if (err < 0)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"%s", strerror(-err));
+		return btd_error_failed(msg, strerror(-err));
 
 	hs->pending->msg = dbus_message_ref(msg);
 
@@ -1900,8 +1893,7 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 		err = headset_send(hs, "\r\n+VG%c=%u\r\n", type, gain);
 		if (err < 0) {
 			dbus_message_unref(reply);
-			return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"%s", strerror(-err));
+			return btd_error_failed(msg, strerror(-err));
 		}
 	}
 

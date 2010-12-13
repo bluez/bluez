@@ -247,8 +247,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 	if (ret)
 		reply = dbus_message_new_method_return(gw->msg);
 	else
-		reply = g_dbus_create_error(gw->msg, ERROR_INTERFACE ".Failed",
-					"Can not pass file descriptor");
+		reply = btd_error_failed(gw->msg, "Can't pass file descriptor");
 
 	g_dbus_send_message(dev->conn, reply);
 
@@ -365,15 +364,15 @@ static DBusMessage *ag_connect(DBusConnection *conn, DBusMessage *msg,
 {
 	struct audio_device *au_dev = (struct audio_device *) data;
 	struct gateway *gw = au_dev->gateway;
+	int err;
 
 	if (!gw->agent)
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 				".Failed", "Agent not assigned");
 
-	if (get_records(au_dev) < 0)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-					".ConnectAttemptFailed",
-					"Connect Attempt Failed");
+	err = get_records(au_dev);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
 
 	gw->msg = dbus_message_ref(msg);
 
