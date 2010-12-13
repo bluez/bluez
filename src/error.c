@@ -114,3 +114,9 @@ DBusMessage *btd_error_no_such_adapter(DBusMessage *msg)
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
 					"No such adapter");
 }
+
+DBusMessage *btd_error_failed(DBusMessage *msg, const char *str)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE
+					".Failed", "%s", str);
+}

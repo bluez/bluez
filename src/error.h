@@ -41,3 +41,4 @@ DBusMessage *btd_error_in_progress(DBusMessage *msg);
 DBusMessage *btd_error_does_not_exist(DBusMessage *msg);
 DBusMessage *btd_error_not_authorized(DBusMessage *msg);
 DBusMessage *btd_error_no_such_adapter(DBusMessage *msg);
+DBusMessage *btd_error_failed(DBusMessage *msg, const char *str);
