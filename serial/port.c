@@ -248,7 +248,7 @@ static void open_notify(int fd, int err, struct serial_port *port)
 	if (err) {
 		/* Max tries exceeded */
 		port_release(port);
-		reply = failed(port->msg, strerror(err));
+		reply = btd_error_failed(port->msg, strerror(err));
 	} else {
 		port->fd = fd;
 		reply = g_dbus_create_reply(port->msg,
@@ -316,7 +316,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *conn_err,
 
 	if (conn_err) {
 		error("%s", conn_err->message);
-		reply = failed(port->msg, conn_err->message);
+		reply = btd_error_failed(port->msg, conn_err->message);
 		goto fail;
 	}
 
@@ -335,7 +335,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *conn_err,
 	if (port->id < 0) {
 		int err = errno;
 		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
-		reply = failed(port->msg, strerror(err));
+		reply = btd_error_failed(port->msg, strerror(err));
 		g_io_channel_shutdown(chan, TRUE, NULL);
 		goto fail;
 	}
@@ -378,13 +378,13 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	if (err < 0) {
 		error("Unable to get service record: %s (%d)", strerror(-err),
 			-err);
-		reply = failed(port->msg, strerror(-err));
+		reply = btd_error_failed(port->msg, strerror(-err));
 		goto failed;
 	}
 
 	if (!recs || !recs->data) {
 		error("No record found");
-		reply = failed(port->msg, "No record found");
+		reply = btd_error_failed(port->msg, "No record found");
 		goto failed;
 	}
 
@@ -392,7 +392,7 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	if (sdp_get_access_protos(record, &protos) < 0) {
 		error("Unable to get access protos from port record");
-		reply = failed(port->msg, "Invalid channel");
+		reply = btd_error_failed(port->msg, "Invalid channel");
 		goto failed;
 	}
 
@@ -409,7 +409,7 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 				BT_IO_OPT_INVALID);
 	if (!port->io) {
 		error("%s", gerr->message);
-		reply = failed(port->msg, gerr->message);
+		reply = btd_error_failed(port->msg, gerr->message);
 		g_error_free(gerr);
 		goto failed;
 	}
@@ -505,13 +505,11 @@ static DBusMessage *port_connect(DBusConnection *conn,
 
 	err = connect_port(port);
 	if (err < 0) {
-		DBusMessage *reply;
-
 		error("%s", strerror(-err));
 		g_dbus_remove_watch(conn, port->listener_id);
 		port->listener_id = 0;
-		reply = failed(msg, strerror(-err));
-		return reply;
+
+		return btd_error_failed(msg, strerror(-err));
 	}
 
 	return NULL;
