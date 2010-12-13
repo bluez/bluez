@@ -1267,7 +1267,7 @@ static void read_scan_complete(int index, uint8_t status, void *ptr)
 	adapter_mode_changed(adapter, rp->enable);
 }
 
-static int hciops_set_class(int index, uint32_t class)
+static int write_class(int index, uint32_t class)
 {
 	write_class_of_dev_cp cp;
 
@@ -1317,7 +1317,7 @@ static int hciops_set_limited_discoverable(int index, gboolean limited)
 						(num * 3 + 1), &cp) < 0)
 		return -errno;
 
-	return hciops_set_class(index, WANTED_COD(index));
+	return write_class(index, WANTED_COD(index));
 }
 
 static void write_class_complete(int index, uint8_t status)
@@ -1349,7 +1349,7 @@ static void write_class_complete(int index, uint8_t status)
 					(CURRENT_COD(index) & LIMITED_BIT))
 		hciops_set_limited_discoverable(index, FALSE);
 	else
-		hciops_set_class(index, WANTED_COD(index));
+		write_class(index, WANTED_COD(index));
 }
 
 static inline void cmd_complete(int index, void *ptr)
@@ -2409,7 +2409,7 @@ static int hciops_set_dev_class(int index, uint8_t major, uint8_t minor)
 
 	DBG("Changing Major/Minor class to 0x%06x", WANTED_COD(index));
 
-	err = hciops_set_class(index, WANTED_COD(index));
+	err = write_class(index, WANTED_COD(index));
 	if (err < 0)
 		error("Adapter class update failed: %s (%d)",
 						strerror(-err), -err);
@@ -2986,7 +2986,7 @@ static int set_service_classes(int index, uint8_t value)
 
 	DBG("Changing service classes to 0x%06x", WANTED_COD(index));
 
-	err = hciops_set_class(index, WANTED_COD(index));
+	err = write_class(index, WANTED_COD(index));
 	if (err < 0)
 		error("Adapter class update failed: %s (%d)",
 						strerror(-err), -err);
@@ -3079,7 +3079,7 @@ static int hciops_disable_cod_cache(int index)
 		return 0;
 	}
 
-	return hciops_set_class(index, WANTED_COD(index));
+	return write_class(index, WANTED_COD(index));
 }
 
 static struct btd_adapter_ops hci_ops = {
