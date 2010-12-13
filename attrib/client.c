@@ -457,11 +457,8 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	if (l2cap_connect(prim->gatt, &gerr, TRUE) < 0) {
-		DBusMessage *reply;
-		reply = g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"%s", gerr->message);
+		DBusMessage *reply = btd_error_failed(msg, gerr->message);
 		g_error_free(gerr);
-
 		return reply;
 	}
 
@@ -533,11 +530,8 @@ static DBusMessage *set_value(DBusConnection *conn, DBusMessage *msg,
 	dbus_message_iter_get_fixed_array(&sub, &value, &len);
 
 	if (l2cap_connect(gatt, &gerr, FALSE) < 0) {
-		DBusMessage *reply;
-		reply = g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"%s", gerr->message);
+		DBusMessage *reply = btd_error_failed(msg, gerr->message);
 		g_error_free(gerr);
-
 		return reply;
 	}
 
