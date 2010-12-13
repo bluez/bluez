@@ -157,20 +157,6 @@ static uint16_t uuid_list[] = {
 
 static GSList *device_drivers = NULL;
 
-static DBusHandlerResult error_failed(DBusConnection *conn,
-					DBusMessage *msg, const char * desc)
-{
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".Failed", desc);
-}
-
-static DBusHandlerResult error_failed_errno(DBusConnection *conn,
-						DBusMessage *msg, int err)
-{
-	const char *desc = strerror(err);
-
-	return error_failed(conn, msg, desc);
-}
-
 static void browse_request_free(struct browse_req *req)
 {
 	if (req->listener_id)
@@ -380,9 +366,7 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 	err = write_device_alias(srcaddr, dstaddr,
 			g_str_equal(alias, "") ? NULL : alias);
 	if (err < 0)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".Failed",
-				"%s", strerror(-err));
+		return btd_error_failed(msg, strerror(-err));
 
 	g_free(device->alias);
 	device->alias = g_str_equal(alias, "") ? NULL : g_strdup(alias);
@@ -412,9 +396,7 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 
 	err = write_trust(srcaddr, dstaddr, GLOBAL_TRUST, value);
 	if (err < 0)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".Failed",
-				"%s", strerror(-err));
+		return btd_error_failed(msg, strerror(-err));
 
 	device->trusted = value;
 
@@ -526,12 +508,9 @@ static DBusMessage *set_blocked(DBusConnection *conn, DBusMessage *msg,
 	case 0:
 		return dbus_message_new_method_return(msg);
 	case EINVAL:
-		return g_dbus_create_error(msg,
-					ERROR_INTERFACE ".NotSupported",
-					"Kernel lacks blacklist support");
+		return btd_error_failed(msg, "Kernel lacks blacklist support");
 	default:
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"%s", strerror(-err));
+		return btd_error_failed(msg, strerror(-err));
 	}
 }
 
@@ -627,8 +606,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 	return NULL;
 
 fail:
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-					"Discovery Failed");
+	return btd_error_failed(msg, strerror(-err));
 }
 
 static const char *browse_request_get_requestor(struct browse_req *req)
@@ -1473,7 +1451,9 @@ send_reply:
 	else if (dbus_message_is_method_call(req->msg, ADAPTER_INTERFACE,
 						"CreateDevice")) {
 		if (err < 0) {
-			error_failed_errno(req->conn, req->msg, -err);
+			DBusMessage *reply;
+			reply = btd_error_failed(req->msg, strerror(-err));
+			g_dbus_send_message(req->conn, reply);
 			goto cleanup;
 		}
 
@@ -1544,7 +1524,9 @@ static void primary_cb(GSList *services, int err, gpointer user_data)
 	struct btd_device *device = req->device;
 
 	if (err) {
-		error_failed_errno(req->conn, req->msg, -err);
+		DBusMessage *reply;
+		reply = btd_error_failed(req->msg, strerror(-err));
+		g_dbus_send_message(req->conn, reply);
 		goto done;
 	}
 
@@ -2000,9 +1982,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 				BT_IO_OPT_INVALID);
 	if (io == NULL) {
 		DBusMessage *reply;
-		reply = g_dbus_create_error(msg,
-				ERROR_INTERFACE ".ConnectionAttemptFailed",
-				"%s", err->message);
+		reply = btd_error_failed(msg, err->message);
 		error("bt_io_connect: %s", err->message);
 		g_error_free(err);
 		return reply;

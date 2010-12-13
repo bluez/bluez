@@ -146,12 +146,6 @@ static inline DBusMessage *adapter_not_ready(DBusMessage *msg)
 			"Adapter is not ready");
 }
 
-static inline DBusMessage *failed_strerror(DBusMessage *msg, int err)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"%s", strerror(err));
-}
-
 static inline DBusMessage *not_in_progress(DBusMessage *msg, const char *str)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotInProgress",
@@ -523,7 +517,7 @@ static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
 
 	err = set_mode(adapter, mode, msg);
 	if (err < 0)
-		return failed_strerror(msg, -err);
+		return btd_error_failed(msg, strerror(-err));
 
 	return NULL;
 }
@@ -548,7 +542,7 @@ static DBusMessage *set_powered(DBusConnection *conn, DBusMessage *msg,
 
 	err = set_mode(adapter, mode, msg);
 	if (err < 0)
-		return failed_strerror(msg, -err);
+		return btd_error_failed(msg, strerror(-err));
 
 	return NULL;
 }
@@ -570,7 +564,7 @@ static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 
 	err = set_mode(adapter, MODE_DISCOVERABLE, NULL);
 	if (err < 0 && msg)
-		return failed_strerror(msg, -err);
+		return btd_error_failed(msg, strerror(-err));
 
 store:
 
@@ -775,7 +769,7 @@ static void confirm_mode_cb(struct agent *agent, DBusError *derr, void *data)
 
 	err = set_mode(req->adapter, req->mode, NULL);
 	if (err < 0)
-		reply = failed_strerror(req->msg, -err);
+		reply = btd_error_failed(req->msg, strerror(-err));
 	else
 		reply = dbus_message_new_method_return(req->msg);
 
@@ -906,7 +900,7 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 	if (adapter->up) {
 		int err = adapter_ops->set_name(adapter->dev_id, name);
 		if (err < 0)
-			return failed_strerror(msg, err);
+			return btd_error_failed(msg, strerror(-err));
 
 		adapter->name_stored = TRUE;
 	}
@@ -1185,7 +1179,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 
 	err = start_discovery(adapter);
 	if (err < 0)
-		return failed_strerror(msg, -err);
+		return btd_error_failed(msg, strerror(-err));
 
 done:
 	req = create_session(adapter, conn, msg, 0,
@@ -1208,8 +1202,7 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 
 	req = find_session(adapter->disc_sessions, sender);
 	if (!req)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-				"Invalid discovery session");
+		return btd_error_failed(msg, "Invalid discovery session");
 
 	session_unref(req);
 	info("Stopping discovery");
@@ -1446,7 +1439,7 @@ static DBusMessage *request_session(DBusConnection *conn,
 					confirm_mode_cb, req, NULL);
 	if (err < 0) {
 		session_unref(req);
-		return failed_strerror(msg, -err);
+		return btd_error_failed(msg, strerror(-err));
 	}
 
 	return NULL;
@@ -1461,8 +1454,7 @@ static DBusMessage *release_session(DBusConnection *conn,
 
 	req = find_session(adapter->mode_sessions, sender);
 	if (!req)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-				"No Mode to release");
+		return btd_error_failed(msg, "Invalid Session");
 
 	session_unref(req);
 
@@ -1622,7 +1614,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 	err = device_browse(device, conn, msg, NULL, FALSE);
 	if (err < 0) {
 		adapter_remove_device(conn, adapter, device, TRUE);
-		return failed_strerror(msg, -err);
+		return btd_error_failed(msg, strerror(-err));
 	}
 
 	return NULL;
@@ -1676,8 +1668,7 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 
 	device = adapter_get_device(conn, adapter, address);
 	if (!device)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".Failed",
+		return btd_error_failed(msg,
 				"Unable to create a new device object");
 
 	return device_create_bonding(device, conn, msg, agent_path, cap);
@@ -1788,9 +1779,7 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 	agent = agent_create(adapter, name, path, cap,
 				(agent_remove_cb) agent_removed, adapter);
 	if (!agent)
-		return g_dbus_create_error(msg,
-				ERROR_INTERFACE ".Failed",
-				"Failed to create a new agent");
+		return btd_error_failed(msg, "Failed to create a new agent");
 
 	adapter->agent = agent;
 
@@ -2334,7 +2323,7 @@ static void set_mode_complete(struct btd_adapter *adapter)
 		DBusMessage *reply;
 
 		if (err < 0)
-			reply = failed_strerror(msg, -err);
+			reply = btd_error_failed(msg, strerror(-err));
 		else
 			reply = g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
