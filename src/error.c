@@ -108,3 +108,9 @@ DBusMessage *btd_error_not_authorized(DBusMessage *msg)
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotAuthorized",
 					"Operation Not Authorized");
 }
+
+DBusMessage *btd_error_no_such_adapter(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
+					"No such adapter");
+}

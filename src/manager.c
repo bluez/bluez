@@ -59,13 +59,6 @@ const char *manager_get_base_path(void)
 	return base_path;
 }
 
-static inline DBusMessage *no_such_adapter(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg,
-			ERROR_INTERFACE ".NoSuchAdapter",
-			"No such adapter");
-}
-
 static DBusMessage *default_adapter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -75,7 +68,7 @@ static DBusMessage *default_adapter(DBusConnection *conn,
 
 	adapter = manager_find_adapter_by_id(default_adapter_id);
 	if (!adapter)
-		return no_such_adapter(msg);
+		return btd_error_no_such_adapter(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -108,7 +101,7 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 		path = adapter_any_get_path();
 		if (path != NULL)
 			goto done;
-		return no_such_adapter(msg);
+		return btd_error_no_such_adapter(msg);
 	} else if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4) {
 		dev_id = atoi(pattern + 3);
 		adapter = manager_find_adapter_by_id(dev_id);
@@ -116,7 +109,7 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 		adapter = manager_find_adapter_by_address(pattern);
 
 	if (!adapter)
-		return no_such_adapter(msg);
+		return btd_error_no_such_adapter(msg);
 
 	path = adapter_get_path(adapter);
 

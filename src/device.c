@@ -171,12 +171,6 @@ static DBusHandlerResult error_failed_errno(DBusConnection *conn,
 	return error_failed(conn, msg, desc);
 }
 
-static inline DBusMessage *no_such_adapter(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NoSuchAdapter",
-							"No such adapter");
-}
-
 static void browse_request_free(struct browse_req *req)
 {
 	if (req->listener_id)
