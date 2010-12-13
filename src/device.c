@@ -605,7 +605,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 						DBUS_TYPE_INVALID) == FALSE)
-		goto fail;
+		return btd_error_invalid_args(msg);
 
 	if (strlen(pattern) == 0) {
 		err = device_browse(device, conn, msg, NULL, FALSE);
