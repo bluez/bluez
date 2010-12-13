@@ -2804,6 +2804,8 @@ int telephony_ready_ind(uint32_t features,
 
 int telephony_deinit(void)
 {
+	g_free(ag.number);
+
 	memset(&ag, 0, sizeof(ag));
 
 	ag.er_mode = 3;
