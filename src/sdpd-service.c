@@ -257,10 +257,10 @@ int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec)
 	if (rec->handle == 0xffffffff) {
 		rec->handle = sdp_next_handle();
 		if (rec->handle < 0x10000)
-			return -1;
+			return -ENOSPC;
 	} else {
 		if (sdp_record_find(rec->handle))
-			return -1;
+			return -EEXIST;
 	}
 
 	DBG("Adding record with handle 0x%05x", rec->handle);
