@@ -1151,7 +1151,7 @@ static int start_discovery(struct btd_adapter *adapter)
 		err = adapter_ops->start_scanning(adapter->dev_id);
 		break;
 	default:
-		err = -1;
+		err = -EINVAL;
 	}
 
 	return err;
