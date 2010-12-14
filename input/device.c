@@ -745,7 +745,7 @@ static int disconnect(struct input_device *idev, uint32_t flags)
 	}
 
 	if (!iconn)
-		return ENOTCONN;
+		return -ENOTCONN;
 
 	return connection_disconnect(iconn, flags);
 }
