@@ -273,7 +273,7 @@ static gboolean open_continue(gpointer user_data)
 	if (fd < 0) {
 		int err = -errno;
 		error("Could not open %s: %s (%d)",
-				port->dev, strerror(err), err);
+				port->dev, strerror(-err), -err);
 		if (!--ntries) {
 			/* Reporting error */
 			open_notify(fd, err, port);
