@@ -245,10 +245,10 @@ static void open_notify(int fd, int err, struct serial_port *port)
 	struct serial_device *device = port->device;
 	DBusMessage *reply;
 
-	if (err) {
+	if (err < 0) {
 		/* Max tries exceeded */
 		port_release(port);
-		reply = btd_error_failed(port->msg, strerror(err));
+		reply = btd_error_failed(port->msg, strerror(-err));
 	} else {
 		port->fd = fd;
 		reply = g_dbus_create_reply(port->msg,
@@ -271,7 +271,7 @@ static gboolean open_continue(gpointer user_data)
 
 	fd = open(port->dev, O_RDONLY | O_NOCTTY);
 	if (fd < 0) {
-		int err = errno;
+		int err = -errno;
 		error("Could not open %s: %s (%d)",
 				port->dev, strerror(err), err);
 		if (!--ntries) {
@@ -333,9 +333,9 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *conn_err,
 	sk = g_io_channel_unix_get_fd(chan);
 	port->id = ioctl(sk, RFCOMMCREATEDEV, &req);
 	if (port->id < 0) {
-		int err = errno;
-		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(err), err);
-		reply = btd_error_failed(port->msg, strerror(err));
+		int err = -errno;
+		error("ioctl(RFCOMMCREATEDEV): %s (%d)", strerror(-err), -err);
+		reply = btd_error_failed(port->msg, strerror(-err));
 		g_io_channel_shutdown(chan, TRUE, NULL);
 		goto fail;
 	}
