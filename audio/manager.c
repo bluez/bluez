@@ -613,7 +613,6 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 
 drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
-	g_io_channel_unref(chan);
 }
 
 static int headset_server_init(struct audio_adapter *adapter)
