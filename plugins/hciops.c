@@ -2347,7 +2347,7 @@ done:
 	return err;
 }
 
-static int hciops_powered(int index, gboolean powered)
+static int hciops_set_powered(int index, gboolean powered)
 {
 	uint8_t mode = SCAN_DISABLED;
 
@@ -3082,7 +3082,7 @@ static struct btd_adapter_ops hci_ops = {
 	.cleanup = hciops_cleanup,
 	.start = hciops_start,
 	.stop = hciops_stop,
-	.set_powered = hciops_powered,
+	.set_powered = hciops_set_powered,
 	.set_connectable = hciops_connectable,
 	.set_discoverable = hciops_discoverable,
 	.set_limited_discoverable = hciops_set_limited_discoverable,

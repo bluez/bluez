@@ -446,7 +446,7 @@ static int mgmt_stop(int index)
 	return -ENOSYS;
 }
 
-static int mgmt_powered(int index, gboolean powered)
+static int mgmt_set_powered(int index, gboolean powered)
 {
 	DBG("index %d powered %d", index, powered);
 	return -ENOSYS;
@@ -726,7 +726,7 @@ static struct btd_adapter_ops mgmt_ops = {
 	.cleanup = mgmt_cleanup,
 	.start = mgmt_start,
 	.stop = mgmt_stop,
-	.set_powered = mgmt_powered,
+	.set_powered = mgmt_set_powered,
 	.set_connectable = mgmt_connectable,
 	.set_discoverable = mgmt_discoverable,
 	.set_limited_discoverable = mgmt_set_limited_discoverable,
