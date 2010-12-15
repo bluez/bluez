@@ -838,6 +838,40 @@ static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
+static int get_send_buffer_size(int sk)
+{
+	int size;
+	socklen_t optlen = sizeof(size);
+
+	if (getsockopt(sk, SOL_SOCKET, SO_SNDBUF, &size, &optlen) < 0) {
+		int err = -errno;
+		error("getsockopt(SO_SNDBUF) failed: %s (%d)", strerror(-err),
+									-err);
+		return err;
+	}
+
+	/*
+	 * Doubled value is returned by getsockopt since kernel uses that
+	 * space for its own purposes (see man 7 socket, bookkeeping overhead
+	 * for SO_SNDBUF).
+	 */
+	return size / 2;
+}
+
+static int set_send_buffer_size(int sk, int size)
+{
+	socklen_t optlen = sizeof(size);
+
+	if (setsockopt(sk, SOL_SOCKET, SO_SNDBUF, &size, optlen) < 0) {
+		int err = -errno;
+		error("setsockopt(SO_SNDBUF) failed: %s (%d)", strerror(-err),
+									-err);
+		return err;
+	}
+
+	return 0;
+}
+
 static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 					uint16_t imtu, uint16_t omtu)
 {
@@ -865,6 +899,25 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 	stream->omtu = omtu;
 	stream->imtu = imtu;
 
+	/* only if local SEP is of type SRC */
+	if (sep->info.type == AVDTP_SEP_TYPE_SOURCE) {
+		int sk, buf_size, min_buf_size;
+
+		sk = g_io_channel_unix_get_fd(stream->io);
+		buf_size = get_send_buffer_size(sk);
+		if (buf_size < 0)
+			goto proceed;
+
+		DBG("sk %d, omtu %d, send buffer size %d", sk, omtu, buf_size);
+		min_buf_size = omtu * 2;
+		if (buf_size < min_buf_size) {
+			DBG("send buffer size to be increassed to %d",
+								min_buf_size);
+			set_send_buffer_size(sk, min_buf_size);
+		}
+	}
+
+proceed:
 	if (!stream->open_acp && sep->cfm && sep->cfm->open)
 		sep->cfm->open(session, sep, stream, NULL, sep->user_data);
 
