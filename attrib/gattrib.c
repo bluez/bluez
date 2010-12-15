@@ -177,6 +177,7 @@ void g_attrib_unref(GAttrib *attrib)
 	while ((c = g_queue_pop_head(attrib->queue)))
 		command_destroy(c);
 
+	g_queue_free(attrib->queue);
 	attrib->queue = NULL;
 
 	for (l = attrib->events; l; l = l->next)
