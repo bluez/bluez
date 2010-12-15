@@ -171,6 +171,28 @@ static void mgmt_index_removed(int sk, void *buf, size_t len)
 	remove_controller(index);
 }
 
+static void mgmt_powered(int sk, void *buf, size_t len)
+{
+	struct mgmt_ev_powered *ev = buf;
+	uint16_t index;
+
+	if (len < sizeof(*ev)) {
+		error("Too small powered event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+
+	if (index > max_index) {
+		DBG("Ignoring powered event for unknown controller %u", index);
+		return;
+	}
+
+	controllers[index].enabled = ev->powered;
+
+	DBG("Controller %u powered %s", index, ev->powered ? "on" : "off");
+}
+
 static void read_index_list_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_rp_read_index_list *rp = buf;
@@ -363,6 +385,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_INDEX_REMOVED:
 		mgmt_index_removed(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_POWERED:
+		mgmt_powered(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);

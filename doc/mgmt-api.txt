@@ -173,3 +173,10 @@ Index Removed Event
 
 Event Code		0x0005
 Event Parameters	Controller_Index (2 Octets)
+
+Controller Powered Event
+========================
+
+Event Code		0x0006
+Event Parameters	Controller_Index (2 Octets)
+			Powered (1 Octet)
