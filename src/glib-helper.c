@@ -51,11 +51,14 @@ struct gattrib_context {
 	bdaddr_t src;
 	bdaddr_t dst;
 	GAttrib *attrib;
+	GIOChannel *io;
 	bt_primary_t cb;
 	bt_destroy_t destroy;
 	gpointer user_data;
 	GSList *uuids;
 };
+
+static GSList *gattrib_list = NULL;
 
 struct cached_sdp_session {
 	bdaddr_t src;
@@ -68,12 +71,18 @@ static GSList *cached_sdp_sessions = NULL;
 
 static void gattrib_context_free(struct gattrib_context *ctxt)
 {
+	gattrib_list = g_slist_remove(gattrib_list, ctxt);
 	if (ctxt->destroy)
 		ctxt->destroy(ctxt->user_data);
 
 	g_slist_foreach(ctxt->uuids, (GFunc) g_free, NULL);
 	g_slist_free(ctxt->uuids);
 	g_attrib_unref(ctxt->attrib);
+	if (ctxt->io) {
+		g_io_channel_unref(ctxt->io);
+		g_io_channel_shutdown(ctxt->io, FALSE, NULL);
+	}
+
 	g_free(ctxt);
 }
 
@@ -138,7 +147,6 @@ struct search_context {
 	bdaddr_t		dst;
 	sdp_session_t		*session;
 	bt_callback_t		cb;
-	bt_primary_t		prim_cb;
 	bt_destroy_t		destroy;
 	gpointer		user_data;
 	uuid_t			uuid;
@@ -373,21 +381,16 @@ static gint find_by_bdaddr(gconstpointer data, gconstpointer user_data)
 					bacmp(&ctxt->src, &search->src));
 }
 
-int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
+static gint gattrib_find_by_bdaddr(gconstpointer data, gconstpointer user_data)
 {
-	struct search_context search, *ctxt;
-	GSList *match;
+	const struct gattrib_context *ctxt = data, *search = user_data;
 
-	memset(&search, 0, sizeof(search));
-	bacpy(&search.src, src);
-	bacpy(&search.dst, dst);
+	return (bacmp(&ctxt->dst, &search->dst) &&
+					bacmp(&ctxt->src, &search->src));
+}
 
-	/* Ongoing SDP Discovery */
-	match = g_slist_find_custom(context_list, &search, find_by_bdaddr);
-	if (!match)
-		return -ENODATA;
-
-	ctxt = match->data;
+static int cancel_sdp(struct search_context *ctxt)
+{
 	if (!ctxt->session)
 		return -ENOTCONN;
 
@@ -398,7 +401,46 @@ int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
 		sdp_close(ctxt->session);
 
 	search_context_cleanup(ctxt);
+
 	return 0;
+}
+
+static int cancel_gattrib(struct gattrib_context *ctxt)
+{
+	if (ctxt->attrib)
+		g_attrib_cancel_all(ctxt->attrib);
+
+	gattrib_context_free(ctxt);
+
+	return 0;
+}
+
+int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	struct search_context sdp_ctxt;
+	struct gattrib_context gatt_ctxt;
+	GSList *match;
+
+	memset(&sdp_ctxt, 0, sizeof(sdp_ctxt));
+	bacpy(&sdp_ctxt.src, src);
+	bacpy(&sdp_ctxt.dst, dst);
+
+	/* Ongoing SDP Discovery */
+	match = g_slist_find_custom(context_list, &sdp_ctxt, find_by_bdaddr);
+	if (match)
+		return cancel_sdp(match->data);
+
+	memset(&gatt_ctxt, 0, sizeof(gatt_ctxt));
+	bacpy(&gatt_ctxt.src, src);
+	bacpy(&gatt_ctxt.dst, dst);
+
+	/* Ongoing Discover All Primary Services */
+	match = g_slist_find_custom(gattrib_list, &gatt_ctxt,
+						gattrib_find_by_bdaddr);
+	if (match == NULL)
+		return -ENOTCONN;
+
+	return cancel_gattrib(match->data);
 }
 
 static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -471,6 +513,7 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		return;
 	}
 
+	ctxt->attrib = g_attrib_new(io);
 	gatt_discover_primary(ctxt->attrib, 0x0001, 0xffff, NULL, primary_cb,
 									ctxt);
 }
@@ -513,9 +556,9 @@ int bt_discover_primary(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 		return -EIO;
 	}
 
-	ctxt->attrib = g_attrib_new(io);
+	ctxt->io = io;
 
-	g_io_channel_unref(io);
+	gattrib_list = g_slist_append(gattrib_list, ctxt);
 
 	return 0;
 }

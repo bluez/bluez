@@ -186,8 +186,7 @@ static void browse_request_cancel(struct browse_req *req)
 
 	adapter_get_address(adapter, &src);
 
-	if (device->type != DEVICE_TYPE_LE)
-		bt_cancel_discovery(&src, &device->bdaddr);
+	bt_cancel_discovery(&src, &device->bdaddr);
 
 	device->browse = NULL;
 	browse_request_free(req);
@@ -1530,11 +1529,11 @@ static void primary_cb(GSList *services, int err, gpointer user_data)
 		goto done;
 	}
 
-	services_changed(req->device);
-	device_set_temporary(req->device, FALSE);
-	device_probe_drivers(req->device, services);
+	services_changed(device);
+	device_set_temporary(device, FALSE);
+	device_probe_drivers(device, services);
 
-	create_device_reply(req->device, req);
+	create_device_reply(device, req);
 
 done:
 	device->browse = NULL;
