@@ -254,10 +254,11 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 	return;
 
 fail:
-	if (gw->msg)
-		error_common_reply(dev->conn, gw->msg,
-						ERROR_INTERFACE ".Failed",
-						"Connection attempt failed");
+	if (gw->msg) {
+		DBusMessage *reply;
+		reply = btd_error_failed(gw->msg, "Connect failed");
+		g_dbus_send_message(dev->conn, reply);
+	}
 
 	change_state(dev, GATEWAY_STATE_DISCONNECTED);
 }
@@ -333,10 +334,11 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	return;
 
 fail:
-	if (gw->msg)
-		error_common_reply(dev->conn, gw->msg,
-					ERROR_INTERFACE ".NotSupported",
-					"Not supported");
+	if (gw->msg) {
+		DBusMessage *reply = btd_error_failed(gw->msg,
+					gerr ? gerr->message : strerror(-err));
+		g_dbus_send_message(dev->conn, reply);
+	}
 
 	change_state(dev, GATEWAY_STATE_DISCONNECTED);
 

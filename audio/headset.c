@@ -176,19 +176,12 @@ struct event {
 
 static GSList *headset_callbacks = NULL;
 
-static DBusHandlerResult error_not_supported(DBusConnection *conn,
-							DBusMessage *msg)
+static void error_connect_failed(DBusConnection *conn, DBusMessage *msg,
+								int err)
 {
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".NotSupported",
-							"Not supported");
-}
-
-static DBusHandlerResult error_connection_attempt_failed(DBusConnection *conn,
-						DBusMessage *msg, int err)
-{
-	return error_common_reply(conn, msg,
-			ERROR_INTERFACE ".ConnectionAttemptFailed",
-			err < 0 ? strerror(-err) : "Connection attempt failed");
+	DBusMessage *reply = btd_error_failed(msg,
+			err < 0 ? strerror(-err) : "Connect failed");
+	g_dbus_send_message(conn, reply);
 }
 
 static int rfcomm_connect(struct audio_device *device, headset_stream_cb_t cb,
@@ -567,9 +560,7 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		if (p != NULL) {
 			p->err = -errno;
 			if (p->msg)
-				error_connection_attempt_failed(dev->conn,
-								p->msg,
-								p->err);
+				error_connect_failed(dev->conn, p->msg, p->err);
 			pending_connect_finalize(dev);
 		}
 
@@ -679,7 +670,7 @@ static void hfp_slc_complete(struct audio_device *dev)
 	p->err = sco_connect(dev, NULL, NULL, NULL);
 	if (p->err < 0) {
 		if (p->msg)
-			error_connection_attempt_failed(dev->conn, p->msg, p->err);
+			error_connect_failed(dev->conn, p->msg, p->err);
 		pending_connect_finalize(dev);
 	}
 }
@@ -1397,7 +1388,7 @@ void headset_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 failed:
 	if (p && p->msg)
-		error_connection_attempt_failed(dev->conn, p->msg, p->err);
+		error_connect_failed(dev->conn, p->msg, p->err);
 	pending_connect_finalize(dev);
 	if (hs->rfcomm)
 		headset_set_state(dev, HEADSET_STATE_CONNECTED);
@@ -1454,7 +1445,7 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		error("Unable to get service record: %s (%d)",
 							strerror(-err), -err);
 		p->err = -err;
-		error_connection_attempt_failed(dev->conn, p->msg, p->err);
+		error_connect_failed(dev->conn, p->msg, p->err);
 		goto failed;
 	}
 
@@ -1503,7 +1494,7 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	if (err < 0) {
 		error("Unable to connect: %s (%d)", strerror(-err), -err);
 		p->err = -err;
-		error_connection_attempt_failed(dev->conn, p->msg, p->err);
+		error_connect_failed(dev->conn, p->msg, p->err);
 		goto failed;
 	}
 
@@ -1513,8 +1504,10 @@ failed_not_supported:
 	if (p->svclass == HANDSFREE_SVCLASS_ID &&
 			get_records(dev, NULL, NULL, NULL) == 0)
 		return;
-	if (p->msg)
-		error_not_supported(dev->conn, p->msg);
+	if (p->msg) {
+		DBusMessage *reply = btd_error_not_supported(p->msg);
+		g_dbus_send_message(dev->conn, reply);
+	}
 failed:
 	p->svclass = 0;
 	pending_connect_finalize(dev);
@@ -2667,7 +2660,7 @@ void headset_shutdown(struct audio_device *dev)
 	struct pending_connect *p = dev->headset->pending;
 
 	if (p && p->msg)
-		error_connection_attempt_failed(dev->conn, p->msg, ECANCELED);
+		error_connect_failed(dev->conn, p->msg, ECANCELED);
 
 	pending_connect_finalize(dev);
 	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);

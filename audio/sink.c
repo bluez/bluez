@@ -253,10 +253,11 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	sink->stream_state = new_state;
 }
 
-static DBusHandlerResult error_failed(DBusConnection *conn,
-					DBusMessage *msg, const char * desc)
+static void error_failed(DBusConnection *conn, DBusMessage *msg,
+							const char *desc)
 {
-	return error_common_reply(conn, msg, ERROR_INTERFACE ".Failed", desc);
+	DBusMessage *reply = btd_error_failed(msg, desc);
+	g_dbus_send_message(conn, reply);
 }
 
 static gboolean stream_setup_retry(gpointer user_data)
