@@ -234,12 +234,6 @@ void port_release_all(void)
 	g_slist_free(devices);
 }
 
-static inline DBusMessage *failed(DBusMessage *msg, const char *description)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"%s", description);
-}
-
 static void open_notify(int fd, int err, struct serial_port *port)
 {
 	struct serial_device *device = port->device;
@@ -495,7 +489,7 @@ static DBusMessage *port_connect(DBusConnection *conn,
 	}
 
 	if (port->listener_id)
-		return failed(msg, "Port already in use");
+		return btd_error_failed(msg, "Port already in use");
 
 	port->listener_id = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),

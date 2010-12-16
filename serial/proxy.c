@@ -131,12 +131,6 @@ static void proxy_free(struct serial_proxy *prx)
 	g_free(prx);
 }
 
-static inline DBusMessage *failed(DBusMessage *msg, const char *description)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"%s", description);
-}
-
 static void add_lang_attr(sdp_record_t *r)
 {
 	sdp_lang_attr_t base_lang;
@@ -551,9 +545,7 @@ static DBusMessage *proxy_enable(DBusConnection *conn,
 	int err;
 
 	err = enable_proxy(prx);
-	if (err == -EALREADY)
-		return failed(msg, "Already enabled");
-	else if (err < 0)
+	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
 	return dbus_message_new_method_return(msg);
@@ -565,7 +557,7 @@ static DBusMessage *proxy_disable(DBusConnection *conn,
 	struct serial_proxy *prx = data;
 
 	if (!prx->io)
-		return failed(msg, "Not enabled");
+		return btd_error_failed(msg, "Not enabled");
 
 	/* Remove the watches and unregister the record */
 	disable_proxy(prx);

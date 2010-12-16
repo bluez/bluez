@@ -1872,14 +1872,8 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 		return btd_error_not_connected(msg);
 
 	err = headset_set_gain(device, gain, type);
-	if (err < 0) {
-		/* Ignore if nothing has changed */
-		if (err == -EALREADY)
-			return dbus_message_new_method_return(msg);
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-						".InvalidArgument",
-						"Must be less than or equal to 15");
-	}
+	if (err < 0)
+		return btd_error_invalid_args(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)

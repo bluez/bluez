@@ -140,12 +140,6 @@ struct btd_adapter {
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
 					guint interval);
 
-static inline DBusMessage *not_in_progress(DBusMessage *msg, const char *str)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotInProgress",
-								"%s", str);
-}
-
 static int found_device_cmp(const struct remote_dev_info *d1,
 			const struct remote_dev_info *d2)
 {
@@ -1226,7 +1220,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	ba2str(&adapter->bdaddr, srcaddr);
 
 	if (check_address(srcaddr) < 0)
-		return adapter_not_ready(msg);
+		return btd_error_invalid_args(msg);
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -1505,7 +1499,7 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 
 	device = adapter_find_device(adapter, address);
 	if (!device || !device_is_creating(device, NULL))
-		return not_in_progress(msg, "Device creation not in progress");
+		return btd_error_does_not_exist(msg);
 
 	if (!device_is_creating(device, sender))
 		return btd_error_not_authorized(msg);
