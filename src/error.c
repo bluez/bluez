@@ -103,6 +103,12 @@ DBusMessage *btd_error_agent_not_available(DBusMessage *msg)
 					"Agent Not Available");
 }
 
+DBusMessage *btd_error_not_ready(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
+					"Resource Not Ready");
+}
+
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE

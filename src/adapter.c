@@ -140,12 +140,6 @@ struct btd_adapter {
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
 					guint interval);
 
-static inline DBusMessage *adapter_not_ready(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
-			"Adapter is not ready");
-}
-
 static inline DBusMessage *not_in_progress(DBusMessage *msg, const char *str)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE ".NotInProgress",
@@ -554,7 +548,7 @@ static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 	int err;
 
 	if (adapter->scan_mode == SCAN_DISABLED)
-		return adapter_not_ready(msg);
+		return btd_error_not_ready(msg);
 
 	if (pairable == adapter->pairable)
 		goto done;
@@ -1166,7 +1160,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	int err;
 
 	if (!adapter->up)
-		return adapter_not_ready(msg);
+		return btd_error_not_ready(msg);
 
 	req = find_session(adapter->disc_sessions, sender);
 	if (req) {
@@ -1198,7 +1192,7 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 	const char *sender = dbus_message_get_sender(msg);
 
 	if (!adapter->up)
-		return adapter_not_ready(msg);
+		return btd_error_not_ready(msg);
 
 	req = find_session(adapter->disc_sessions, sender);
 	if (!req)
@@ -1575,7 +1569,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	if (!adapter->up)
-		return adapter_not_ready(msg);
+		return btd_error_not_ready(msg);
 
 	if (adapter_find_device(adapter, address))
 		return btd_error_already_exists(msg);
@@ -1652,7 +1646,7 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	if (!adapter->up)
-		return adapter_not_ready(msg);
+		return btd_error_not_ready(msg);
 
 	sender = dbus_message_get_sender(msg);
 	if (adapter->agent &&

@@ -1696,8 +1696,7 @@ static DBusMessage *hs_connect(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_already_connected(msg);
 
 	if (hs->hfp_handle && !ag.telephony_ready)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotReady",
-					"Telephony subsystem not ready");
+		return btd_error_not_ready(msg);
 
 	device->auto_connect = FALSE;
 
