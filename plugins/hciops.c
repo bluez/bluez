@@ -297,7 +297,7 @@ static void start_adapter(int index)
 {
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
 	uint8_t inqmode;
-	uint16_t policy;
+	uint16_t link_policy;
 
 	if (VER(index).lmp_ver > 1) {
 		if (FEATURES(index)[5] & LMP_SNIFF_SUBR)
@@ -346,19 +346,22 @@ static void start_adapter(int index)
 		hci_send_cmd(SK(index), OGF_HOST_CTL,
 				OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL);
 
-	/* Set default link policy */
-	if (!(FEATURES(index)[0] & LMP_RSWITCH))
-		main_opts.link_policy &= ~HCI_LP_RSWITCH;
-	if (!(FEATURES(index)[0] & LMP_HOLD))
-		main_opts.link_policy &= ~HCI_LP_HOLD;
-	if (!(FEATURES(index)[0] & LMP_SNIFF))
-		main_opts.link_policy &= ~HCI_LP_SNIFF;
-	if (!(FEATURES(index)[1] & LMP_PARK))
-		main_opts.link_policy &= ~HCI_LP_PARK;
 
-	policy = htobs(main_opts.link_policy);
+	/* Set default link policy */
+	link_policy = main_opts.link_policy;
+
+	if (!(FEATURES(index)[0] & LMP_RSWITCH))
+		link_policy &= ~HCI_LP_RSWITCH;
+	if (!(FEATURES(index)[0] & LMP_HOLD))
+		link_policy &= ~HCI_LP_HOLD;
+	if (!(FEATURES(index)[0] & LMP_SNIFF))
+		link_policy &= ~HCI_LP_SNIFF;
+	if (!(FEATURES(index)[1] & LMP_PARK))
+		link_policy &= ~HCI_LP_PARK;
+
+	link_policy = htobs(link_policy);
 	hci_send_cmd(SK(index), OGF_LINK_POLICY, OCF_WRITE_DEFAULT_LINK_POLICY,
-						sizeof(policy), &policy);
+					sizeof(link_policy), &link_policy);
 
 	CURRENT_COD(index) = 0;
 	memset(EIR(index), 0, sizeof(EIR(index)));
