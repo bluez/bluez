@@ -151,16 +151,13 @@ static void headset_state_changed(struct audio_device *dev,
 
 	switch (new_state) {
 	case HEADSET_STATE_DISCONNECTED:
-		if (old_state != HEADSET_STATE_CONNECTING)
-			media_endpoint_clear_configuration(endpoint);
+		media_endpoint_clear_configuration(endpoint);
+		break;
 	case HEADSET_STATE_CONNECTING:
+		media_endpoint_set_configuration(endpoint, dev, NULL, 0,
+						headset_setconf_cb, dev);
 		break;
 	case HEADSET_STATE_CONNECTED:
-		if (old_state != HEADSET_STATE_PLAY_IN_PROGRESS &&
-				old_state != HEADSET_STATE_PLAYING)
-			media_endpoint_set_configuration(endpoint, dev, NULL,
-							0, headset_setconf_cb,
-									dev);
 		break;
 	case HEADSET_STATE_PLAY_IN_PROGRESS:
 		break;
