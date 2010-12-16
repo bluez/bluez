@@ -949,7 +949,7 @@ static int headset_set_gain(struct audio_device *device, uint16_t gain, char typ
 	case HEADSET_GAIN_SPEAKER:
 		if (slc->sp_gain == gain) {
 			DBG("Ignoring no-change in speaker gain");
-			return 0;
+			return -EALREADY;
 		}
 		name = "SpeakerGainChanged";
 		property = "SpeakerGain";
@@ -958,7 +958,7 @@ static int headset_set_gain(struct audio_device *device, uint16_t gain, char typ
 	case HEADSET_GAIN_MICROPHONE:
 		if (slc->mic_gain == gain) {
 			DBG("Ignoring no-change in microphone gain");
-			return 0;
+			return -EALREADY;
 		}
 		name = "MicrophoneGainChanged";
 		property = "MicrophoneGain";
@@ -995,7 +995,7 @@ static int signal_gain_setting(struct audio_device *device, const char *buf)
 	gain = (dbus_uint16_t) strtol(&buf[7], NULL, 10);
 
 	err = headset_set_gain(device, gain, buf[5]);
-	if (err < 0)
+	if (err < 0 && err != -EALREADY)
 		return err;
 
 	return headset_send(hs, "\r\nOK\r\n");
@@ -1873,10 +1873,14 @@ static DBusMessage *hs_set_gain(DBusConnection *conn,
 		return btd_error_not_connected(msg);
 
 	err = headset_set_gain(device, gain, type);
-	if (err < 0)
+	if (err < 0) {
+		/* Ignore if nothing has changed */
+		if (err == -EALREADY)
+			return dbus_message_new_method_return(msg);
 		return g_dbus_create_error(msg, ERROR_INTERFACE
 						".InvalidArgument",
 						"Must be less than or equal to 15");
+	}
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
