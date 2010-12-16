@@ -97,6 +97,12 @@ DBusMessage *btd_error_no_such_adapter(DBusMessage *msg)
 					"No such adapter");
 }
 
+DBusMessage *btd_error_agent_not_available(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, ERROR_INTERFACE ".AgentNotAvailable",
+					"Agent Not Available");
+}
+
 DBusMessage *btd_error_failed(DBusMessage *msg, const char *str)
 {
 	return g_dbus_create_error(msg, ERROR_INTERFACE

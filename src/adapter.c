@@ -1412,8 +1412,7 @@ static DBusMessage *request_session(DBusConnection *conn,
 	int err;
 
 	if (!adapter->agent)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-						"No agent registered");
+		return btd_error_agent_not_available(msg);
 
 	if (!adapter->mode_sessions)
 		adapter->global_mode = adapter->mode;

@@ -369,8 +369,7 @@ static DBusMessage *ag_connect(DBusConnection *conn, DBusMessage *msg,
 	int err;
 
 	if (!gw->agent)
-		return g_dbus_create_error(msg, ERROR_INTERFACE
-				".Failed", "Agent not assigned");
+		return btd_error_agent_not_available(msg);
 
 	err = get_records(au_dev);
 	if (err < 0)
