@@ -42,4 +42,3 @@ char *bt_name2string(const char *string);
 int bt_string2uuid(uuid_t *uuid, const char *string);
 gchar *bt_list2string(GSList *list);
 GSList *bt_string2list(const gchar *str);
-char *bt_extract_eir_name(uint8_t *data, uint8_t *type);

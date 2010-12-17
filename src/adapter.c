@@ -2755,7 +2755,8 @@ static void remove_same_uuid(gpointer data, gpointer user_data)
 
 void adapter_update_device_from_info(struct btd_adapter *adapter,
 						le_advertising_info *info,
-						GSList *services, uint8_t flags)
+						char *name, GSList *services,
+						uint8_t flags)
 {
 	struct remote_dev_info *dev;
 	bdaddr_t bdaddr;
@@ -2783,12 +2784,9 @@ void adapter_update_device_from_info(struct btd_adapter *adapter,
 
 	dev->flags = flags;
 
-	if (info->length) {
-		char *tmp_name = bt_extract_eir_name(info->data, NULL);
-		if (tmp_name) {
-			g_free(dev->name);
-			dev->name = tmp_name;
-		}
+	if (name) {
+		g_free(dev->name);
+		dev->name = name;
 	}
 
 	/* FIXME: check if other information was changed before emitting the

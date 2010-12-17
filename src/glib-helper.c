@@ -780,25 +780,3 @@ GSList *bt_string2list(const gchar *str)
 
 	return l;
 }
-
-char *bt_extract_eir_name(uint8_t *data, uint8_t *type)
-{
-	if (!data || !type)
-		return NULL;
-
-	if (data[0] == 0)
-		return NULL;
-
-	if (type)
-		*type = data[1];
-
-	switch (data[1]) {
-	case EIR_NAME_SHORT:
-	case EIR_NAME_COMPLETE:
-		if (!g_utf8_validate((char *) (data + 2), data[0] - 1, NULL))
-			return g_strdup("");
-		return g_strndup((char *) (data + 2), data[0] - 1);
-	}
-
-	return NULL;
-}
