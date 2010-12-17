@@ -542,6 +542,25 @@ uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len)
 	return min_len;
 }
 
+uint16_t enc_read_blob_req(uint16_t handle, uint16_t offset, uint8_t *pdu,
+									int len)
+{
+	const uint16_t min_len = sizeof(pdu[0]) + sizeof(handle) +
+							sizeof(offset);
+
+	if (pdu == NULL)
+		return 0;
+
+	if (len < min_len)
+		return 0;
+
+	pdu[0] = ATT_OP_READ_BLOB_REQ;
+	att_put_u16(handle, &pdu[1]);
+	att_put_u16(offset, &pdu[3]);
+
+	return min_len;
+}
+
 uint16_t dec_read_req(const uint8_t *pdu, int len, uint16_t *handle)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(*handle);
