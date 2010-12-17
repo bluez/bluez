@@ -23,21 +23,6 @@
  *
  */
 
-/*
- * Scanning modes, used by DEV_SET_MODE
- * off: remote devices are not allowed to find or connect to this device
- * connectable: remote devices are allowed to connect, but they are not
- *              allowed to find it.
- * discoverable: remote devices are allowed to connect and find this device
- * limited: limited discoverable - GIAC + IAC enabled and set limited
- *          bit on device class.
- */
-
-#define MODE_OFF		0x00
-#define MODE_CONNECTABLE	0x01
-#define MODE_DISCOVERABLE	0x02
-#define MODE_UNKNOWN		0xff
-
 struct main_opts {
 	char		host_name[40];
 	unsigned long	flags;

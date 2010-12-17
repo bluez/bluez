@@ -179,9 +179,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	for (i = 0, list = adapters; list; list = list->next) {
 		struct btd_adapter *adapter = list->data;
 
-		if (!adapter_is_ready(adapter))
-			continue;
-
 		array[i] = (char *) adapter_get_path(adapter);
 		i++;
 	}
@@ -231,9 +228,6 @@ static void manager_update_adapters(void)
 	for (i = 0, list = adapters; list; list = list->next) {
 		struct btd_adapter *adapter = list->data;
 
-		if (!adapter_is_ready(adapter))
-			continue;
-
 		array[i] = (char *) adapter_get_path(adapter);
 		i++;
 	}
@@ -243,6 +237,26 @@ static void manager_update_adapters(void)
 					DBUS_TYPE_OBJECT_PATH, &array, i);
 
 	g_free(array);
+}
+
+static void manager_set_default_adapter(int id)
+{
+	struct btd_adapter *adapter;
+	const gchar *path;
+
+	default_adapter_id = id;
+
+	adapter = manager_find_adapter_by_id(id);
+	if (!adapter)
+		return;
+
+	path = adapter_get_path(adapter);
+
+	g_dbus_emit_signal(connection, "/",
+			MANAGER_INTERFACE,
+			"DefaultAdapterChanged",
+			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_INVALID);
 }
 
 static void manager_remove_adapter(struct btd_adapter *adapter)
@@ -383,26 +397,48 @@ void manager_add_adapter(const char *path)
 	btd_stop_exit_timer();
 }
 
-int manager_register_adapter(int id, gboolean devup)
+struct btd_adapter *btd_manager_register_adapter(int id)
 {
 	struct btd_adapter *adapter;
+	const char *path;
 
 	adapter = manager_find_adapter_by_id(id);
 	if (adapter) {
 		error("Unable to register adapter: hci%d already exist", id);
-		return -1;
+		return NULL;
 	}
 
-	adapter = adapter_create(connection, id, devup);
+	adapter = adapter_create(connection, id);
 	if (!adapter)
-		return -1;
+		return NULL;
 
 	adapters = g_slist_append(adapters, adapter);
 
-	return 0;
+	if (!adapter_init(adapter)) {
+		btd_adapter_unref(adapter);
+		return NULL;
+	}
+
+
+	path = adapter_get_path(adapter);
+	g_dbus_emit_signal(connection, "/",
+				MANAGER_INTERFACE, "AdapterAdded",
+				DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
+
+	manager_update_adapters();
+
+	btd_stop_exit_timer();
+
+	if (default_adapter_id < 0)
+		manager_set_default_adapter(id);
+
+	DBG("Adapter %s registered", path);
+
+	return btd_adapter_ref(adapter);
 }
 
-int manager_unregister_adapter(int id)
+int btd_manager_unregister_adapter(int id)
 {
 	struct btd_adapter *adapter;
 	const gchar *path;
@@ -420,27 +456,6 @@ int manager_unregister_adapter(int id)
 	return 0;
 }
 
-int manager_start_adapter(int id)
-{
-	struct btd_adapter *adapter;
-	int ret;
-
-	adapter = manager_find_adapter_by_id(id);
-	if (!adapter) {
-		error("Getting device data failed: hci%d", id);
-		return -EINVAL;
-	}
-
-	ret = adapter_start(adapter);
-	if (ret < 0)
-		return ret;
-
-	if (default_adapter_id < 0)
-		manager_set_default_adapter(id);
-
-	return ret;
-}
-
 int manager_stop_adapter(int id)
 {
 	struct btd_adapter *adapter;
@@ -451,32 +466,12 @@ int manager_stop_adapter(int id)
 		return -EINVAL;
 	}
 
-	return adapter_stop(adapter);
+	return btd_adapter_stop(adapter);
 }
 
 int manager_get_default_adapter()
 {
 	return default_adapter_id;
-}
-
-void manager_set_default_adapter(int id)
-{
-	struct btd_adapter *adapter;
-	const gchar *path;
-
-	default_adapter_id = id;
-
-	adapter = manager_find_adapter_by_id(id);
-	if (!adapter)
-		return;
-
-	path = adapter_get_path(adapter);
-
-	g_dbus_emit_signal(connection, "/",
-			MANAGER_INTERFACE,
-			"DefaultAdapterChanged",
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
 }
 
 void btd_manager_set_offline(gboolean offline)

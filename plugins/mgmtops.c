@@ -149,7 +149,7 @@ static void remove_controller(uint16_t index)
 	if (!controllers[index].valid)
 		return;
 
-	manager_unregister_adapter(index);
+	btd_manager_unregister_adapter(index);
 
 	memset(&controllers[index], 0, sizeof(struct controller_info));
 
@@ -221,10 +221,31 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 	}
 }
 
+static int mgmt_stop(int index)
+{
+	DBG("index %d", index);
+	return -ENOSYS;
+}
+
+static int mgmt_set_discoverable(int index, gboolean discoverable)
+{
+	DBG("index %d discoverable %d", index, discoverable);
+	return -ENOSYS;
+}
+
+static int mgmt_set_pairable(int index, gboolean pairable)
+{
+	DBG("index %d pairable %d", index, pairable);
+	return -ENOSYS;
+}
+
 static void read_info_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_rp_read_info *rp = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	uint8_t mode;
+	gboolean pairable, discoverable;
 	uint16_t index;
 	char addr[18];
 
@@ -262,10 +283,30 @@ static void read_info_complete(int sk, void *buf, size_t len)
 					info->enabled, info->discoverable,
 					info->pairable, info->sec_mode);
 
-	manager_register_adapter(index, info->enabled);
+	adapter = btd_manager_register_adapter(index);
+	if (adapter == NULL) {
+		error("mgmtops: unable to register adapter");
+		return;
+	}
+
+	btd_adapter_get_state(adapter, &mode, NULL, &pairable);
+	if (mode == MODE_OFF) {
+		mgmt_stop(index);
+		return;
+	}
+
+	discoverable = (mode == MODE_DISCOVERABLE);
+
+	if (info->discoverable != discoverable)
+		mgmt_set_discoverable(index, discoverable);
+
+	if (info->pairable != pairable)
+		mgmt_set_pairable(index, pairable);
 
 	if (info->enabled)
-		manager_start_adapter(index);
+		btd_adapter_start(adapter);
+
+	btd_adapter_unref(adapter);
 }
 
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
@@ -465,27 +506,15 @@ static int mgmt_start(int index)
 	return -ENOSYS;
 }
 
-static int mgmt_stop(int index)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
 static int mgmt_set_powered(int index, gboolean powered)
 {
 	DBG("index %d powered %d", index, powered);
 	return -ENOSYS;
 }
 
-static int mgmt_connectable(int index)
+static int mgmt_set_connectable(int index, gboolean connectable)
 {
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
-static int mgmt_discoverable(int index)
-{
-	DBG("index %d", index);
+	DBG("index %d connectable %d", index, connectable);
 	return -ENOSYS;
 }
 
@@ -722,9 +751,9 @@ static int mgmt_read_scan_enable(int index)
 	return -ENOSYS;
 }
 
-static int mgmt_write_le_host(int index, uint8_t le, uint8_t simul)
+static int mgmt_enable_le(int index)
 {
-	DBG("index %d le %u simul %u", index, le, simul);
+	DBG("index %d", index);
 	return -ENOSYS;
 }
 
@@ -752,8 +781,9 @@ static struct btd_adapter_ops mgmt_ops = {
 	.start = mgmt_start,
 	.stop = mgmt_stop,
 	.set_powered = mgmt_set_powered,
-	.set_connectable = mgmt_connectable,
-	.set_discoverable = mgmt_discoverable,
+	.set_connectable = mgmt_set_connectable,
+	.set_discoverable = mgmt_set_discoverable,
+	.set_pairable = mgmt_set_pairable,
 	.set_limited_discoverable = mgmt_set_limited_discoverable,
 	.start_inquiry = mgmt_start_inquiry,
 	.stop_inquiry = mgmt_stop_inquiry,
@@ -781,7 +811,7 @@ static struct btd_adapter_ops mgmt_ops = {
 	.passkey_reply = mgmt_passkey_reply,
 	.get_auth_info = mgmt_get_auth_info,
 	.read_scan_enable = mgmt_read_scan_enable,
-	.write_le_host = mgmt_write_le_host,
+	.enable_le = mgmt_enable_le,
 	.get_remote_version = mgmt_get_remote_version,
 	.encrypt_link = mgmt_encrypt_link,
 };

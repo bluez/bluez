@@ -125,9 +125,6 @@ struct btd_adapter {
 	struct hci_dev dev;		/* hci info */
 	gboolean pairable;		/* pairable state */
 
-	gboolean initialized;
-	gboolean already_up;		/* adapter was already up on init */
-
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
 
 	gint ref;
@@ -352,7 +349,7 @@ static gboolean discov_timeout_handler(gpointer user_data)
 
 	adapter->discov_timeout_id = 0;
 
-	adapter_ops->set_connectable(adapter->dev_id);
+	adapter_ops->set_connectable(adapter->dev_id, TRUE);
 
 	return FALSE;
 }
@@ -421,9 +418,9 @@ static int adapter_set_mode(struct btd_adapter *adapter, uint8_t mode)
 	int err;
 
 	if (mode == MODE_CONNECTABLE)
-		err = adapter_ops->set_connectable(adapter->dev_id);
+		err = adapter_ops->set_connectable(adapter->dev_id, TRUE);
 	else
-		err = adapter_ops->set_discoverable(adapter->dev_id);
+		err = adapter_ops->set_discoverable(adapter->dev_id, TRUE);
 
 	if (err < 0)
 		return err;
@@ -555,8 +552,9 @@ static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_failed(msg, strerror(-err));
 
 store:
-
 	adapter->pairable = pairable;
+
+	adapter_ops->set_pairable(adapter->dev_id, pairable);
 
 	write_device_pairable(&adapter->bdaddr, pairable);
 
@@ -1832,47 +1830,6 @@ static GDBusSignalTable adapter_signals[] = {
 	{ }
 };
 
-static int adapter_setup(struct btd_adapter *adapter, const char *mode)
-{
-	struct hci_dev *dev = &adapter->dev;
-	int err;
-	char name[MAX_NAME_LENGTH + 1];
-	uint8_t cls[3];
-
-	if ((dev->features[4] & LMP_LE) && main_opts.le) {
-		uint8_t simul = (dev->features[6] & LMP_LE_BREDR) ? 0x01 : 0x00;
-		err = adapter_ops->write_le_host(adapter->dev_id, 0x01, simul);
-		if (err < 0) {
-			error("Can't write LE host supported for %s: %s(%d)",
-					adapter->path, strerror(-err), -err);
-			return err;
-		}
-	}
-
-	if (read_local_name(&adapter->bdaddr, name) < 0)
-		expand_name(name, MAX_NAME_LENGTH, main_opts.name,
-							adapter->dev_id);
-
-	adapter_ops->set_name(adapter->dev_id, name);
-	if (g_str_equal(mode, "off"))
-		strncpy((char *) adapter->dev.name, name, MAX_NAME_LENGTH);
-
-	if (adapter->initialized)
-		return 0;
-
-	if (read_local_class(&adapter->bdaddr, cls) < 0) {
-		uint32_t class = htobl(main_opts.class);
-		if (class)
-			memcpy(cls, &class, 3);
-		else
-			return 0;
-	}
-
-	btd_adapter_set_class(adapter, cls[1], cls[0]);
-
-	return 0;
-}
-
 static void create_stored_device_from_profiles(char *key, char *value,
 						void *user_data)
 {
@@ -2117,75 +2074,65 @@ int adapter_get_discover_type(struct btd_adapter *adapter)
 	return type;
 }
 
-static int adapter_up(struct btd_adapter *adapter, const char *mode)
+void btd_adapter_get_state(struct btd_adapter *adapter, uint8_t *mode,
+					uint8_t *on_mode, gboolean *pairable)
 {
-	char srcaddr[18];
-	gboolean powered, dev_down = FALSE;
-	int err;
+	char str[14], address[18];
 
-	ba2str(&adapter->bdaddr, srcaddr);
+	ba2str(&adapter->bdaddr, address);
 
-	adapter->off_requested = FALSE;
-	adapter->up = 1;
-	adapter->discov_timeout = get_discoverable_timeout(srcaddr);
-	adapter->pairable_timeout = get_pairable_timeout(srcaddr);
-	adapter->state = STATE_IDLE;
-	adapter->mode = MODE_CONNECTABLE;
-	powered = TRUE;
-
-	/* Set pairable mode */
-	if (read_device_pairable(&adapter->bdaddr, &adapter->pairable) < 0)
-		adapter->pairable = TRUE;
-
-	if (g_str_equal(mode, "off")) {
-		char onmode[14];
-
-		powered = FALSE;
-
-		if (!adapter->initialized) {
-			dev_down = TRUE;
-			goto proceed;
-		}
-
-		if (read_on_mode(srcaddr, onmode, sizeof(onmode)) < 0 ||
-						g_str_equal(onmode, "off"))
-			strcpy(onmode, "connectable");
-
-		write_device_mode(&adapter->bdaddr, onmode);
-
-		return adapter_up(adapter, onmode);
-	} else if (!g_str_equal(mode, "connectable"))
-		adapter->mode = MODE_DISCOVERABLE;
-
-proceed:
-	err = adapter_set_mode(adapter, adapter->mode);
-
-	if (err < 0)
-		return err;
-
-	if (adapter->initialized == FALSE) {
-		sdp_init_services_list(&adapter->bdaddr);
-		btd_adapter_services_updated(adapter);
-		load_drivers(adapter);
-		clear_blocked(adapter);
-		load_devices(adapter);
-
-		/* retrieve the active connections: address the scenario where
-		 * the are active connections before the daemon've started */
-		load_connections(adapter);
-
-		adapter->initialized = TRUE;
-
-		manager_add_adapter(adapter->path);
-
+	if (mode) {
+		if (main_opts.remember_powered == FALSE)
+			*mode = main_opts.mode;
+		else if (read_device_mode(address, str, sizeof(str)) < 0)
+			*mode = main_opts.mode;
+		else
+			*mode = get_mode(&adapter->bdaddr, str);
 	}
 
-	if (dev_down) {
-		adapter_ops->stop(adapter->dev_id);
-		adapter->off_requested = TRUE;
-		return 1;
-	} else
-		emit_property_changed(connection, adapter->path,
+	if (on_mode) {
+		if (main_opts.remember_powered == FALSE)
+			*on_mode = main_opts.mode;
+		else if (read_on_mode(address, str, sizeof(str)) < 0)
+			*on_mode = main_opts.mode;
+		else
+			*on_mode = get_mode(&adapter->bdaddr, str);
+	}
+
+	if (pairable)
+		*pairable = adapter->pairable;
+}
+
+void btd_adapter_start(struct btd_adapter *adapter)
+{
+	char address[18];
+	uint8_t cls[3];
+	gboolean powered;
+
+	ba2str(&adapter->bdaddr, address);
+
+	adapter->dev_class = 0;
+	adapter->off_requested = FALSE;
+	adapter->up = TRUE;
+	adapter->discov_timeout = get_discoverable_timeout(address);
+	adapter->pairable_timeout = get_pairable_timeout(address);
+	adapter->state = STATE_IDLE;
+	adapter->mode = MODE_CONNECTABLE;
+
+	if (main_opts.le)
+		adapter_ops->enable_le(adapter->dev_id);
+
+	adapter_ops->set_name(adapter->dev_id, adapter->dev.name);
+
+	if (read_local_class(&adapter->bdaddr, cls) < 0) {
+		uint32_t class = htobl(main_opts.class);
+		memcpy(cls, &class, 3);
+	}
+
+	btd_adapter_set_class(adapter, cls[1], cls[0]);
+
+	powered = TRUE;
+	emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
 
@@ -2193,71 +2140,7 @@ proceed:
 
 	adapter_ops->disable_cod_cache(adapter->dev_id);
 
-	return 0;
-}
-
-int adapter_start(struct btd_adapter *adapter)
-{
-	struct hci_dev *dev = &adapter->dev;
-	struct hci_version ver;
-	uint8_t features[8];
-	int err;
-	char mode[14], address[18];
-
-	if (!bacmp(&adapter->bdaddr, BDADDR_ANY)) {
-		int err;
-
-		err = adapter_ops->read_bdaddr(adapter->dev_id, &adapter->bdaddr);
-		if (err < 0)
-			return err;
-	}
-
-	ba2str(&adapter->bdaddr, address);
-
-	err = read_device_mode(address, mode, sizeof(mode));
-
-	if ((!adapter->initialized && !main_opts.remember_powered) || err < 0) {
-		if (!adapter->initialized && main_opts.mode == MODE_OFF)
-			strcpy(mode, "off");
-		else
-			strcpy(mode, "connectable");
-	}
-
-	err = adapter_ops->read_local_version(adapter->dev_id, &ver);
-	if (err < 0) {
-		error("Can't read version info for %s: %s (%d)",
-					adapter->path, strerror(-err), -err);
-		return err;
-	}
-
-	dev->hci_rev = ver.hci_rev;
-	dev->lmp_ver = ver.lmp_ver;
-	dev->lmp_subver = ver.lmp_subver;
-	dev->manufacturer = ver.manufacturer;
-
-	err = adapter_ops->read_local_features(adapter->dev_id, features);
-	if (err < 0) {
-		error("Can't read features for %s: %s (%d)",
-					adapter->path, strerror(-err), -err);
-		return err;
-	}
-
-	memcpy(dev->features, features, 8);
-
-	adapter->dev_class = 0;
-
-	adapter_setup(adapter, mode);
-
-	if (!adapter->initialized && adapter->already_up) {
-		DBG("Stopping Inquiry at adapter startup");
-		adapter_ops->stop_inquiry(adapter->dev_id);
-	}
-
-	err = adapter_up(adapter, mode);
-
 	info("Adapter %s has been enabled", adapter->path);
-
-	return err;
 }
 
 static void reply_pending_requests(struct btd_adapter *adapter)
@@ -2330,7 +2213,7 @@ static void set_mode_complete(struct btd_adapter *adapter)
 	session_unref(pending);
 }
 
-int adapter_stop(struct btd_adapter *adapter)
+int btd_adapter_stop(struct btd_adapter *adapter)
 {
 	gboolean powered, discoverable, pairable;
 
@@ -2445,8 +2328,66 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 	g_free(path);
 }
 
-struct btd_adapter *adapter_create(DBusConnection *conn, int id,
-				gboolean devup)
+gboolean adapter_init(struct btd_adapter *adapter)
+{
+	struct hci_version ver;
+	struct hci_dev *dev;
+	int err;
+
+	/* adapter_ops makes sure that newly registered adapters always
+	 * start off as powered */
+	adapter->up = TRUE;
+
+	adapter_ops->read_bdaddr(adapter->dev_id, &adapter->bdaddr);
+
+	if (bacmp(&adapter->bdaddr, BDADDR_ANY) == 0) {
+		error("No address available for hci%d", adapter->dev_id);
+		return FALSE;
+	}
+
+	err = adapter_ops->read_local_version(adapter->dev_id, &ver);
+	if (err < 0) {
+		error("Can't read version info for hci%d: %s (%d)",
+					adapter->dev_id, strerror(-err), -err);
+		return FALSE;
+	}
+
+	dev = &adapter->dev;
+
+	dev->hci_rev = ver.hci_rev;
+	dev->lmp_ver = ver.lmp_ver;
+	dev->lmp_subver = ver.lmp_subver;
+	dev->manufacturer = ver.manufacturer;
+
+	err = adapter_ops->read_local_features(adapter->dev_id, dev->features);
+	if (err < 0) {
+		error("Can't read features for hci%d: %s (%d)",
+					adapter->dev_id, strerror(-err), -err);
+		return FALSE;
+	}
+
+	if (read_local_name(&adapter->bdaddr, adapter->dev.name) < 0)
+		expand_name(adapter->dev.name, MAX_NAME_LENGTH, main_opts.name,
+							adapter->dev_id);
+
+	sdp_init_services_list(&adapter->bdaddr);
+	btd_adapter_services_updated(adapter);
+	load_drivers(adapter);
+	clear_blocked(adapter);
+	load_devices(adapter);
+
+	/* Set pairable mode */
+	if (read_device_pairable(&adapter->bdaddr, &adapter->pairable) < 0)
+		adapter->pairable = TRUE;
+
+	/* retrieve the active connections: address the scenario where
+	 * the are active connections before the daemon've started */
+	load_connections(adapter);
+
+	return TRUE;
+}
+
+struct btd_adapter *adapter_create(DBusConnection *conn, int id)
 {
 	char path[MAX_PATH_LENGTH];
 	struct btd_adapter *adapter;
@@ -2455,21 +2396,20 @@ struct btd_adapter *adapter_create(DBusConnection *conn, int id,
 	if (!connection)
 		connection = conn;
 
-	snprintf(path, sizeof(path), "%s/hci%d", base_path, id);
-
 	adapter = g_try_new0(struct btd_adapter, 1);
 	if (!adapter) {
-		error("adapter_create: failed to alloc memory for %s", path);
+		error("adapter_create: failed to alloc memory for hci%d", id);
 		return NULL;
 	}
 
 	adapter->dev_id = id;
+
+	snprintf(path, sizeof(path), "%s/hci%d", base_path, id);
 	adapter->path = g_strdup(path);
-	adapter->already_up = devup;
 
 	if (!g_dbus_register_interface(conn, path, ADAPTER_INTERFACE,
-			adapter_methods, adapter_signals, NULL,
-			adapter, adapter_free)) {
+					adapter_methods, adapter_signals, NULL,
+					adapter, adapter_free)) {
 		error("Adapter interface init failed on path %s", path);
 		adapter_free(adapter);
 		return NULL;
@@ -2488,12 +2428,10 @@ void adapter_remove(struct btd_adapter *adapter)
 		device_remove(l->data, FALSE);
 	g_slist_free(adapter->devices);
 
-	if (adapter->initialized)
-		unload_drivers(adapter);
+	unload_drivers(adapter);
 
 	/* Return adapter to down state if it was not up on init */
-	if (adapter->up && !adapter->already_up)
-		adapter_ops->stop(adapter->dev_id);
+	adapter_ops->restore_powered(adapter->dev_id);
 
 	btd_adapter_unref(adapter);
 }
@@ -2592,11 +2530,6 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 int adapter_get_state(struct btd_adapter *adapter)
 {
 	return adapter->state;
-}
-
-gboolean adapter_is_ready(struct btd_adapter *adapter)
-{
-	return adapter->initialized;
 }
 
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,

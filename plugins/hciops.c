@@ -72,6 +72,8 @@ enum {
 #define WANTED_COD(index) devs[(index)].wanted_cod
 #define PENDING_COD(index) devs[(index)].pending_cod
 #define CACHE_ENABLE(index) devs[(index)].cache_enable
+#define ALREADY_UP(index) devs[(index)].already_up
+#define REGISTERED(index) devs[(index)].registered
 #define VER(index) devs[(index)].ver
 #define DID_VENDOR(index) devs[(index)].did_vendor
 #define DID_PRODUCT(index) devs[(index)].did_product
@@ -97,6 +99,8 @@ static struct dev_info {
 	uint32_t wanted_cod;
 	uint32_t pending_cod;
 	gboolean cache_enable;
+	gboolean already_up;
+	gboolean registered;
 
 	struct hci_version ver;
 
@@ -117,12 +121,13 @@ static int ignore_device(struct hci_dev_info *di)
 	return hci_test_bit(HCI_RAW, &di->flags) || di->type >> 4 != HCI_BREDR;
 }
 
-static void init_dev_info(int index, int sk)
+static void init_dev_info(int index, int sk, gboolean registered)
 {
 	memset(&devs[index], 0, sizeof(struct dev_info));
 	SK(index) = sk;
 	PIN_LENGTH(index) = -1;
 	CACHE_ENABLE(index) = TRUE;
+	REGISTERED(index) = registered;
 }
 
 /* Async HCI command handling with callback support */
@@ -293,6 +298,49 @@ static int init_ssp_mode(int index)
 	return 0;
 }
 
+static int hciops_set_discoverable(int index, gboolean discoverable)
+{
+	uint8_t mode;
+
+	if (discoverable)
+		mode = (SCAN_PAGE | SCAN_INQUIRY);
+	else
+		mode = SCAN_PAGE;
+
+	DBG("hci%d discoverable %d", index, discoverable);
+
+	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+								1, &mode) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static int hciops_stop(int index)
+{
+	int err = 0;
+
+	DBG("hci%d", index);
+
+	if (ioctl(SK(index), HCIDEVDOWN, index) == 0)
+		goto done; /* on success */
+
+	if (errno != EALREADY) {
+		err = -errno;
+		error("Can't stop device hci%d: %s (%d)",
+				index, strerror(-err), -err);
+	}
+
+done:
+	return err;
+}
+
+static int hciops_set_pairable(int index, gboolean pairable)
+{
+	DBG("hci%d pairable %d", index, pairable);
+	return -ENOSYS;
+}
+
 static void start_adapter(int index)
 {
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
@@ -346,7 +394,6 @@ static void start_adapter(int index)
 		hci_send_cmd(SK(index), OGF_HOST_CTL,
 				OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL);
 
-
 	/* Set default link policy */
 	link_policy = main_opts.link_policy;
 
@@ -365,8 +412,49 @@ static void start_adapter(int index)
 
 	CURRENT_COD(index) = 0;
 	memset(EIR(index), 0, sizeof(EIR(index)));
+}
 
-	manager_start_adapter(index);
+static gboolean init_adapter(int index)
+{
+	struct btd_adapter *adapter = NULL;
+	gboolean existing_adapter = REGISTERED(index);
+	uint8_t mode, on_mode;
+	gboolean pairable, discoverable;
+
+	if (!REGISTERED(index)) {
+		adapter = btd_manager_register_adapter(index);
+		if (adapter)
+			REGISTERED(index) = TRUE;
+	} else {
+		adapter = manager_find_adapter(&BDADDR(index));
+		/* FIXME: manager_find_adapter should return a new ref */
+		btd_adapter_ref(adapter);
+	}
+
+	if (adapter == NULL)
+		return FALSE;
+
+	btd_adapter_get_state(adapter, &mode, &on_mode, &pairable);
+
+	if (existing_adapter)
+		mode = on_mode;
+
+	if (mode == MODE_OFF) {
+		hciops_stop(index);
+		goto done;
+	}
+
+	start_adapter(index);
+	btd_adapter_start(adapter);
+
+	discoverable = (mode == MODE_DISCOVERABLE);
+
+	hciops_set_discoverable(index, discoverable);
+	hciops_set_pairable(index, pairable);
+
+done:
+	btd_adapter_unref(adapter);
+	return TRUE;
 }
 
 static int hciops_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
@@ -908,7 +996,7 @@ static void read_local_version_complete(int index,
 	DBG("Got version for hci%d", index);
 
 	if (!PENDING(index) && UP(index))
-		start_adapter(index);
+		init_adapter(index);
 }
 
 static void read_local_features_complete(int index,
@@ -927,7 +1015,7 @@ static void read_local_features_complete(int index,
 	DBG("Got features for hci%d", index);
 
 	if (!PENDING(index) && UP(index))
-		start_adapter(index);
+		init_adapter(index);
 }
 
 #define SIZEOF_UUID128 16
@@ -1178,7 +1266,7 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 					OCF_READ_LOCAL_VERSION, 0, NULL);
 
 	if (!PENDING(index))
-		start_adapter(index);
+		init_adapter(index);
 }
 
 static void read_tx_power_complete(int index, void *ptr)
@@ -1256,7 +1344,7 @@ static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
 	DBG("Got bdaddr for hci%d", index);
 
 	if (!PENDING(index) && UP(index))
-		start_adapter(index);
+		init_adapter(index);
 }
 
 static inline void cmd_status(int index, void *ptr)
@@ -1729,7 +1817,7 @@ static void stop_hci_dev(int index)
 	g_source_remove(WATCH_ID(index));
 	g_io_channel_unref(CHANNEL(index));
 	hci_close_dev(SK(index));
-	init_dev_info(index, -1);
+	init_dev_info(index, -1, REGISTERED(index));
 }
 
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
@@ -1995,7 +2083,7 @@ static void device_devup_setup(int index)
 			READ_STORED_LINK_KEY_CP_SIZE, (void *) &cp);
 
 	if (!PENDING(index))
-		start_adapter(index);
+		init_adapter(index);
 }
 
 static void init_pending(int index)
@@ -2026,7 +2114,7 @@ static void init_device(int index)
 		devs = g_realloc(devs, sizeof(devs[0]) * (max_dev + 1));
 	}
 
-	init_dev_info(index, dd);
+	init_dev_info(index, dd, FALSE);
 	init_pending(index);
 	start_hci_dev(index);
 
@@ -2071,7 +2159,6 @@ fail:
 static void device_devreg_setup(int index)
 {
 	struct hci_dev_info di;
-	gboolean devup;
 
 	DBG("hci%d", index);
 
@@ -2082,10 +2169,10 @@ static void device_devreg_setup(int index)
 	if (hci_devinfo(index, &di) < 0)
 		return;
 
-	devup = hci_test_bit(HCI_UP, &di.flags);
+	if (ignore_device(&di))
+		return;
 
-	if (!ignore_device(&di))
-		manager_register_adapter(index, devup);
+	ALREADY_UP(index) = hci_test_bit(HCI_UP, &di.flags);
 }
 
 static void device_event(int event, int index)
@@ -2094,12 +2181,15 @@ static void device_event(int event, int index)
 	case HCI_DEV_REG:
 		info("HCI dev %d registered", index);
 		device_devreg_setup(index);
+		if (ALREADY_UP(index))
+			device_event(HCI_DEV_UP, index);
 		break;
 
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", index);
 		stop_hci_dev(index);
-		manager_unregister_adapter(index);
+		if (REGISTERED(index))
+			btd_manager_unregister_adapter(index);
 		break;
 
 	case HCI_DEV_UP:
@@ -2119,6 +2209,28 @@ static void device_event(int event, int index)
 		}
 		break;
 	}
+}
+
+static int hciops_stop_inquiry(int index)
+{
+	struct hci_dev_info di;
+	int err;
+
+	DBG("hci%d", index);
+
+	if (hci_devinfo(index, &di) < 0)
+		return -errno;
+
+	if (hci_test_bit(HCI_INQUIRY, &di.flags))
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+						OCF_INQUIRY_CANCEL, 0, 0);
+	else
+		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
+	if (err < 0)
+		err = -errno;
+
+	return err;
 }
 
 static gboolean init_known_adapters(gpointer user_data)
@@ -2151,8 +2263,12 @@ static gboolean init_known_adapters(gpointer user_data)
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		device_event(HCI_DEV_REG, dr->dev_id);
 
-		if (!hci_test_bit(HCI_UP, &dr->dev_opt))
+		ALREADY_UP(dr->dev_id) = hci_test_bit(HCI_UP, &dr->dev_opt);
+
+		if (!ALREADY_UP(dr->dev_id))
 			continue;
+
+		hciops_stop_inquiry(dr->dev_id);
 
 		PENDING(dr->dev_id) = 0;
 		hci_set_bit(PENDING_VERSION, &PENDING(dr->dev_id));
@@ -2331,25 +2447,6 @@ static int hciops_start(int index)
 	return err;
 }
 
-static int hciops_stop(int index)
-{
-	int err = 0;
-
-	DBG("hci%d", index);
-
-	if (ioctl(SK(index), HCIDEVDOWN, index) == 0)
-		goto done; /* on success */
-
-	if (errno != EALREADY) {
-		err = -errno;
-		error("Can't stop device hci%d: %s (%d)",
-				index, strerror(-err), -err);
-	}
-
-done:
-	return err;
-}
-
 static int hciops_set_powered(int index, gboolean powered)
 {
 	uint8_t mode = SCAN_DISABLED;
@@ -2366,11 +2463,16 @@ static int hciops_set_powered(int index, gboolean powered)
 	return hciops_stop(index);
 }
 
-static int hciops_connectable(int index)
+static int hciops_set_connectable(int index, gboolean connectable)
 {
-	uint8_t mode = SCAN_PAGE;
+	uint8_t mode;
 
-	DBG("hci%d", index);
+	if (connectable)
+		mode = SCAN_PAGE;
+	else
+		mode = 0x00;
+
+	DBG("hci%d connectable %d", index, connectable);
 
 	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
@@ -2379,22 +2481,11 @@ static int hciops_connectable(int index)
 	return 0;
 }
 
-static int hciops_discoverable(int index)
-{
-	uint8_t mode = (SCAN_PAGE | SCAN_INQUIRY);
-
-	DBG("hci%d", index);
-
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
-								1, &mode) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_set_dev_class(int index, uint8_t major, uint8_t minor)
 {
 	int err;
+
+	DBG("hci%d major %u minor %u", index, major, minor);
 
 	/* Update only the major and minor class bits keeping remaining bits
 	 * intact*/
@@ -2447,28 +2538,6 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 					OCF_INQUIRY, INQUIRY_CP_SIZE, &inq_cp);
 	}
 
-	if (err < 0)
-		err = -errno;
-
-	return err;
-}
-
-static int hciops_stop_inquiry(int index)
-{
-	struct hci_dev_info di;
-	int err;
-
-	DBG("hci%d", index);
-
-	if (hci_devinfo(index, &di) < 0)
-		return -errno;
-
-	if (hci_test_bit(HCI_INQUIRY, &di.flags))
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
-						OCF_INQUIRY_CANCEL, 0, 0);
-	else
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
-					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
 	if (err < 0)
 		err = -errno;
 
@@ -2900,15 +2969,17 @@ static int hciops_read_scan_enable(int index)
 	return 0;
 }
 
-static int hciops_write_le_host(int index, uint8_t le, uint8_t simul)
+static int hciops_enable_le(int index)
 {
 	write_le_host_supported_cp cp;
 
-	DBG("hci%d le %u simul %u", index, le, simul);
+	DBG("hci%d", index);
 
-	memset(&cp, 0, sizeof(cp));
-	cp.le = le;
-	cp.simul = simul;
+	if (!(FEATURES(index)[4] & LMP_LE))
+		return -ENOTSUP;
+
+	cp.le = 0x01;
+	cp.simul = (FEATURES(index)[6] & LMP_LE_BREDR) ? 0x01 : 0x00;
 
 	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
 				OCF_WRITE_LE_HOST_SUPPORTED,
@@ -2966,6 +3037,8 @@ static int set_service_classes(int index, uint8_t value)
 {
 	int err;
 
+	DBG("hci%d value %u", index, value);
+
 	/* Update only the service class, keep the limited bit,
 	 * major/minor class bits intact */
 	WANTED_COD(index) &= 0x00ffff;
@@ -3005,7 +3078,7 @@ static int hciops_services_updated(int index)
 		return -ENODEV;
 
 	for (list = adapter_get_services(adapter); list; list = list->next) {
-		sdp_record_t *rec = list->data;
+                sdp_record_t *rec = list->data;
 
 		if (rec->svclass.type != SDP_UUID16)
 			continue;
@@ -3080,14 +3153,23 @@ static int hciops_disable_cod_cache(int index)
 	return write_class(index, WANTED_COD(index));
 }
 
+static int hciops_restore_powered(int index)
+{
+	if (!ALREADY_UP(index) && UP(index))
+		return hciops_stop(index);
+
+	return 0;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
 	.start = hciops_start,
 	.stop = hciops_stop,
 	.set_powered = hciops_set_powered,
-	.set_connectable = hciops_connectable,
-	.set_discoverable = hciops_discoverable,
+	.set_connectable = hciops_set_connectable,
+	.set_discoverable = hciops_set_discoverable,
+	.set_pairable = hciops_set_pairable,
 	.set_limited_discoverable = hciops_set_limited_discoverable,
 	.start_inquiry = hciops_start_inquiry,
 	.stop_inquiry = hciops_stop_inquiry,
@@ -3115,12 +3197,13 @@ static struct btd_adapter_ops hci_ops = {
 	.passkey_reply = hciops_passkey_reply,
 	.get_auth_info = hciops_get_auth_info,
 	.read_scan_enable = hciops_read_scan_enable,
-	.write_le_host = hciops_write_le_host,
+	.enable_le = hciops_enable_le,
 	.get_remote_version = hciops_get_remote_version,
 	.encrypt_link = hciops_encrypt_link,
 	.set_did = hciops_set_did,
 	.services_updated = hciops_services_updated,
 	.disable_cod_cache = hciops_disable_cod_cache,
+	.restore_powered = hciops_restore_powered,
 };
 
 static int hciops_init(void)
