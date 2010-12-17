@@ -2736,21 +2736,6 @@ static struct remote_dev_info *get_found_dev(struct btd_adapter *adapter,
 	return dev;
 }
 
-static gboolean extract_eir_flags(uint8_t *flags, uint8_t *eir_data)
-{
-	if (eir_data[0] == 0)
-		return FALSE;
-
-	if (eir_data[1] != EIR_FLAGS)
-		return FALSE;
-
-	/* For now, only one octet is used for flags */
-	if (flags)
-		*flags = eir_data[2];
-
-	return TRUE;
-}
-
 static void remove_same_uuid(gpointer data, gpointer user_data)
 {
 	struct remote_dev_info *dev = user_data;
@@ -2769,7 +2754,8 @@ static void remove_same_uuid(gpointer data, gpointer user_data)
 }
 
 void adapter_update_device_from_info(struct btd_adapter *adapter,
-				le_advertising_info *info, GSList *services)
+						le_advertising_info *info,
+						GSList *services, uint8_t flags)
 {
 	struct remote_dev_info *dev;
 	bdaddr_t bdaddr;
@@ -2795,14 +2781,14 @@ void adapter_update_device_from_info(struct btd_adapter *adapter,
 	g_slist_foreach(services, remove_same_uuid, dev);
 	dev->services = g_slist_concat(dev->services, services);
 
+	dev->flags = flags;
+
 	if (info->length) {
 		char *tmp_name = bt_extract_eir_name(info->data, NULL);
 		if (tmp_name) {
 			g_free(dev->name);
 			dev->name = tmp_name;
 		}
-
-		extract_eir_flags(info->data, &dev->flags);
 	}
 
 	/* FIXME: check if other information was changed before emitting the

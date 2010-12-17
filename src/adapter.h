@@ -136,7 +136,8 @@ int adapter_get_discover_type(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
 						struct remote_dev_info *match);
 void adapter_update_device_from_info(struct btd_adapter *adapter,
-				le_advertising_info *info, GSList *services);
+						le_advertising_info *info,
+						GSList *services, uint8_t flags);
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				int8_t rssi, uint32_t class, const char *name,
 				const char *alias, gboolean legacy,

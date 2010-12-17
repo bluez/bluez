@@ -60,6 +60,7 @@
 
 struct eir_data {
 	GSList *services;
+	uint8_t flags;
 };
 
 static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
@@ -349,6 +350,9 @@ static int parse_eir_data(struct eir_data *eir, uint8_t *eir_data,
 			uuid128_count = field_len / 16;
 			uuid128 = &eir_data[2];
 			break;
+		case EIR_FLAGS:
+			eir->flags = eir_data[2];
+			break;
 		}
 
 		len += field_len + 1;
@@ -425,7 +429,8 @@ void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 		error("Error parsing advertising data: %s (%d)",
 							strerror(-err), -err);
 
-	adapter_update_device_from_info(adapter, info, eir_data.services);
+	adapter_update_device_from_info(adapter, info, eir_data.services,
+								eir_data.flags);
 }
 
 void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
