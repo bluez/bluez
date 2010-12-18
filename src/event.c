@@ -272,6 +272,9 @@ void btd_event_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
 
+	if (status == 0)
+		device_set_paired(device, TRUE);
+
 	if (!device_is_authenticating(device)) {
 		/* This means that there was no pending PIN or SSP token
 		 * request from the controller, i.e. this is not a new

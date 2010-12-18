@@ -2068,8 +2068,6 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 							device);
 		}
 	}
-
-	device_set_paired(device, TRUE);
 }
 
 gboolean device_is_creating(struct btd_device *device, const char *sender)
