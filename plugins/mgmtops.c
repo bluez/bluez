@@ -763,6 +763,32 @@ static int mgmt_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 	return -ENOSYS;
 }
 
+static int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
+							uint16_t version)
+{
+	DBG("index %d vendor %u product %u version %u",
+					index, vendor, product, version);
+	return -ENOSYS;
+}
+
+static int mgmt_services_updated(int index)
+{
+	DBG("index %d", index);
+	return -ENOSYS;
+}
+
+static int mgmt_disable_cod_cache(int index)
+{
+	DBG("index %d", index);
+	return -ENOSYS;
+}
+
+static int mgmt_restore_powered(int index)
+{
+	DBG("index %d", index);
+	return -ENOSYS;
+}
+
 static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
@@ -800,6 +826,10 @@ static struct btd_adapter_ops mgmt_ops = {
 	.enable_le = mgmt_enable_le,
 	.get_remote_version = mgmt_get_remote_version,
 	.encrypt_link = mgmt_encrypt_link,
+	.set_did = mgmt_set_did,
+	.services_updated = mgmt_services_updated,
+	.disable_cod_cache = mgmt_disable_cod_cache,
+	.restore_powered = mgmt_restore_powered,
 };
 
 static int mgmt_init(void)
