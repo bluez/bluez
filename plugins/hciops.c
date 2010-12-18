@@ -61,29 +61,6 @@ enum {
 	PENDING_NAME,
 };
 
-#define SK(index) devs[(index)].sk
-#define BDADDR(index) devs[(index)].bdaddr
-#define NAME(index) devs[(index)].name
-#define EIR(index) devs[(index)].eir
-#define FEATURES(index) devs[(index)].features
-#define SSP_MODE(index) devs[(index)].ssp_mode
-#define TX_POWER(index) devs[(index)].tx_power
-#define CURRENT_COD(index) devs[(index)].current_cod
-#define WANTED_COD(index) devs[(index)].wanted_cod
-#define PENDING_COD(index) devs[(index)].pending_cod
-#define CACHE_ENABLE(index) devs[(index)].cache_enable
-#define ALREADY_UP(index) devs[(index)].already_up
-#define REGISTERED(index) devs[(index)].registered
-#define VER(index) devs[(index)].ver
-#define DID_VENDOR(index) devs[(index)].did_vendor
-#define DID_PRODUCT(index) devs[(index)].did_product
-#define DID_VERSION(index) devs[(index)].did_version
-#define UP(index) devs[(index)].up
-#define PENDING(index) devs[(index)].pending
-#define CHANNEL(index) devs[(index)].channel
-#define WATCH_ID(index) devs[(index)].watch_id
-#define PIN_LENGTH(index) devs[(index)].pin_length
-
 static int max_dev = -1;
 static struct dev_info {
 	int sk;
@@ -111,7 +88,7 @@ static struct dev_info {
 	gboolean up;
 	unsigned long pending;
 
-	GIOChannel *channel;
+	GIOChannel *io;
 	guint watch_id;
 	int pin_length;
 } *devs = NULL;
@@ -123,11 +100,14 @@ static int ignore_device(struct hci_dev_info *di)
 
 static void init_dev_info(int index, int sk, gboolean registered)
 {
-	memset(&devs[index], 0, sizeof(struct dev_info));
-	SK(index) = sk;
-	PIN_LENGTH(index) = -1;
-	CACHE_ENABLE(index) = TRUE;
-	REGISTERED(index) = registered;
+	struct dev_info *dev = &devs[index];
+
+	memset(dev, 0, sizeof(*dev));
+
+	dev->sk = sk;
+	dev->pin_length = -1;
+	dev->cache_enable = TRUE;
+	dev->registered = registered;
 }
 
 /* Async HCI command handling with callback support */
@@ -237,12 +217,13 @@ failed:
 
 static int write_inq_mode(int index, uint8_t mode)
 {
+	struct dev_info *dev = &devs[index];
 	write_inquiry_mode_cp cp;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.mode = mode;
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE,
 					WRITE_INQUIRY_MODE_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -251,30 +232,32 @@ static int write_inq_mode(int index, uint8_t mode)
 
 static uint8_t get_inquiry_mode(int index)
 {
-	if (FEATURES(index)[6] & LMP_EXT_INQ)
+	struct dev_info *dev = &devs[index];
+
+	if (dev->features[6] & LMP_EXT_INQ)
 		return 2;
 
-	if (FEATURES(index)[3] & LMP_RSSI_INQ)
+	if (dev->features[3] & LMP_RSSI_INQ)
 		return 1;
 
-	if (VER(index).manufacturer == 11 && VER(index).hci_rev == 0x00 &&
-					VER(index).lmp_subver == 0x0757)
+	if (dev->ver.manufacturer == 11 && dev->ver.hci_rev == 0x00 &&
+					dev->ver.lmp_subver == 0x0757)
 		return 1;
 
-	if (VER(index).manufacturer == 15) {
-		if (VER(index).hci_rev == 0x03 &&
-					VER(index).lmp_subver == 0x6963)
+	if (dev->ver.manufacturer == 15) {
+		if (dev->ver.hci_rev == 0x03 &&
+					dev->ver.lmp_subver == 0x6963)
 			return 1;
-		if (VER(index).hci_rev == 0x09 &&
-					VER(index).lmp_subver == 0x6963)
+		if (dev->ver.hci_rev == 0x09 &&
+					dev->ver.lmp_subver == 0x6963)
 			return 1;
-		if (VER(index).hci_rev == 0x00 &&
-					VER(index).lmp_subver == 0x6965)
+		if (dev->ver.hci_rev == 0x00 &&
+					dev->ver.lmp_subver == 0x6965)
 			return 1;
 	}
 
-	if (VER(index).manufacturer == 31 && VER(index).hci_rev == 0x2005 &&
-					VER(index).lmp_subver == 0x1805)
+	if (dev->ver.manufacturer == 31 && dev->ver.hci_rev == 0x2005 &&
+					dev->ver.lmp_subver == 0x1805)
 		return 1;
 
 	return 0;
@@ -282,15 +265,16 @@ static uint8_t get_inquiry_mode(int index)
 
 static int init_ssp_mode(int index)
 {
+	struct dev_info *dev = &devs[index];
 	write_simple_pairing_mode_cp cp;
 
-	if (ioctl(SK(index), HCIGETAUTHINFO, NULL) < 0 && errno == EINVAL)
+	if (ioctl(dev->sk, HCIGETAUTHINFO, NULL) < 0 && errno == EINVAL)
 		return 0;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.mode = 0x01;
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
 				OCF_WRITE_SIMPLE_PAIRING_MODE,
 				WRITE_SIMPLE_PAIRING_MODE_CP_SIZE, &cp) < 0)
 		return -errno;
@@ -300,6 +284,7 @@ static int init_ssp_mode(int index)
 
 static int hciops_set_discoverable(int index, gboolean discoverable)
 {
+	struct dev_info *dev = &devs[index];
 	uint8_t mode;
 
 	if (discoverable)
@@ -309,7 +294,7 @@ static int hciops_set_discoverable(int index, gboolean discoverable)
 
 	DBG("hci%d discoverable %d", index, discoverable);
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 								1, &mode) < 0)
 		return -errno;
 
@@ -318,11 +303,12 @@ static int hciops_set_discoverable(int index, gboolean discoverable)
 
 static int hciops_stop(int index)
 {
+	struct dev_info *dev = &devs[index];
 	int err = 0;
 
 	DBG("hci%d", index);
 
-	if (ioctl(SK(index), HCIDEVDOWN, index) == 0)
+	if (ioctl(dev->sk, HCIDEVDOWN, index) == 0)
 		goto done; /* on success */
 
 	if (errno != EALREADY) {
@@ -343,27 +329,28 @@ static int hciops_set_pairable(int index, gboolean pairable)
 
 static void start_adapter(int index)
 {
+	struct dev_info *dev = &devs[index];
 	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
 	uint8_t inqmode;
 	uint16_t link_policy;
 
-	if (VER(index).lmp_ver > 1) {
-		if (FEATURES(index)[5] & LMP_SNIFF_SUBR)
+	if (dev->ver.lmp_ver > 1) {
+		if (dev->features[5] & LMP_SNIFF_SUBR)
 			events[5] |= 0x20;
 
-		if (FEATURES(index)[5] & LMP_PAUSE_ENC)
+		if (dev->features[5] & LMP_PAUSE_ENC)
 			events[5] |= 0x80;
 
-		if (FEATURES(index)[6] & LMP_EXT_INQ)
+		if (dev->features[6] & LMP_EXT_INQ)
 			events[5] |= 0x40;
 
-		if (FEATURES(index)[6] & LMP_NFLUSH_PKTS)
+		if (dev->features[6] & LMP_NFLUSH_PKTS)
 			events[7] |= 0x01;
 
-		if (FEATURES(index)[7] & LMP_LSTO)
+		if (dev->features[7] & LMP_LSTO)
 			events[6] |= 0x80;
 
-		if (FEATURES(index)[6] & LMP_SIMPLE_PAIR) {
+		if (dev->features[6] & LMP_SIMPLE_PAIR) {
 			events[6] |= 0x01;	/* IO Capability Request */
 			events[6] |= 0x02;	/* IO Capability Response */
 			events[6] |= 0x04;	/* User Confirmation Request */
@@ -376,57 +363,58 @@ static void start_adapter(int index)
 						 * Features Notification */
 		}
 
-		if (FEATURES(index)[4] & LMP_LE)
+		if (dev->features[4] & LMP_LE)
 			events[7] |= 0x20;	/* LE Meta-Event */
 
-		hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_SET_EVENT_MASK,
+		hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
 						sizeof(events), events);
 	}
 
-	if (FEATURES(index)[6] & LMP_SIMPLE_PAIR)
+	if (dev->features[6] & LMP_SIMPLE_PAIR)
 		init_ssp_mode(index);
 
 	inqmode = get_inquiry_mode(index);
 	if (inqmode)
 		write_inq_mode(index, inqmode);
 
-	if (FEATURES(index)[7] & LMP_INQ_TX_PWR)
-		hci_send_cmd(SK(index), OGF_HOST_CTL,
+	if (dev->features[7] & LMP_INQ_TX_PWR)
+		hci_send_cmd(dev->sk, OGF_HOST_CTL,
 				OCF_READ_INQ_RESPONSE_TX_POWER_LEVEL, 0, NULL);
 
 	/* Set default link policy */
 	link_policy = main_opts.link_policy;
 
-	if (!(FEATURES(index)[0] & LMP_RSWITCH))
+	if (!(dev->features[0] & LMP_RSWITCH))
 		link_policy &= ~HCI_LP_RSWITCH;
-	if (!(FEATURES(index)[0] & LMP_HOLD))
+	if (!(dev->features[0] & LMP_HOLD))
 		link_policy &= ~HCI_LP_HOLD;
-	if (!(FEATURES(index)[0] & LMP_SNIFF))
+	if (!(dev->features[0] & LMP_SNIFF))
 		link_policy &= ~HCI_LP_SNIFF;
-	if (!(FEATURES(index)[1] & LMP_PARK))
+	if (!(dev->features[1] & LMP_PARK))
 		link_policy &= ~HCI_LP_PARK;
 
 	link_policy = htobs(link_policy);
-	hci_send_cmd(SK(index), OGF_LINK_POLICY, OCF_WRITE_DEFAULT_LINK_POLICY,
+	hci_send_cmd(dev->sk, OGF_LINK_POLICY, OCF_WRITE_DEFAULT_LINK_POLICY,
 					sizeof(link_policy), &link_policy);
 
-	CURRENT_COD(index) = 0;
-	memset(EIR(index), 0, sizeof(EIR(index)));
+	dev->current_cod = 0;
+	memset(dev->eir, 0, sizeof(dev->eir));
 }
 
 static gboolean init_adapter(int index)
 {
+	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter = NULL;
-	gboolean existing_adapter = REGISTERED(index);
+	gboolean existing_adapter = dev->registered;
 	uint8_t mode, on_mode;
 	gboolean pairable, discoverable;
 
-	if (!REGISTERED(index)) {
+	if (!dev->registered) {
 		adapter = btd_manager_register_adapter(index);
 		if (adapter)
-			REGISTERED(index) = TRUE;
+			dev->registered = TRUE;
 	} else {
-		adapter = manager_find_adapter(&BDADDR(index));
+		adapter = manager_find_adapter(&dev->bdaddr);
 		/* FIXME: manager_find_adapter should return a new ref */
 		btd_adapter_ref(adapter);
 	}
@@ -536,9 +524,11 @@ fail:
 static int hciops_set_did(int index, uint16_t vendor, uint16_t product,
 							uint16_t version)
 {
-	DID_VENDOR(index) = vendor;
-	DID_PRODUCT(index) = product;
-	DID_VERSION(index) = version;
+	struct dev_info *dev = &devs[index];
+
+	dev->did_vendor = vendor;
+	dev->did_product = product;
+	dev->did_version = version;
 
 	return 0;
 }
@@ -549,6 +539,7 @@ static int hciops_set_did(int index, uint16_t vendor, uint16_t product,
 
 static int get_handle(int index, bdaddr_t *dba, uint16_t *handle)
 {
+	struct dev_info *dev = &devs[index];
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
 	int i;
@@ -559,7 +550,7 @@ static int get_handle(int index, bdaddr_t *dba, uint16_t *handle)
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(SK(index), HCIGETCONNLIST, (void *) cl) < 0) {
+	if (ioctl(dev->sk, HCIGETCONNLIST, (void *) cl) < 0) {
 		g_free(cl);
 		return -EIO;
 	}
@@ -579,6 +570,7 @@ static int get_handle(int index, bdaddr_t *dba, uint16_t *handle)
 
 static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
 {
+	struct dev_info *dev = &devs[index];
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
 	int i;
@@ -589,7 +581,7 @@ static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(SK(index), HCIGETCONNLIST, (void *) cl) < 0) {
+	if (ioctl(dev->sk, HCIGETCONNLIST, (void *) cl) < 0) {
 		g_free(cl);
 		return -EIO;
 	}
@@ -632,6 +624,7 @@ static inline void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 
 static void link_key_request(int index, bdaddr_t *dba)
 {
+	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct hci_auth_info_req req;
@@ -643,7 +636,7 @@ static void link_key_request(int index, bdaddr_t *dba)
 	ba2str(dba, da);
 	DBG("hci%d dba %s", index, da);
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (adapter)
 		device = adapter_find_device(adapter, da);
 	else
@@ -652,7 +645,7 @@ static void link_key_request(int index, bdaddr_t *dba)
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, dba);
 
-	err = ioctl(SK(index), HCIGETAUTHINFO, (unsigned long) &req);
+	err = ioctl(dev->sk, HCIGETAUTHINFO, (unsigned long) &req);
 	if (err < 0) {
 		if (errno != EINVAL)
 			DBG("HCIGETAUTHINFO failed %s (%d)",
@@ -665,10 +658,10 @@ static void link_key_request(int index, bdaddr_t *dba)
 	if (main_opts.debug_keys && device &&
 					device_get_debug_key(device, key))
 		type = 0x03;
-	else if (read_link_key(&BDADDR(index), dba, key, &type) < 0 ||
+	else if (read_link_key(&dev->bdaddr, dba, key, &type) < 0 ||
 								type == 0x03) {
 		/* Link key not found */
-		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
+		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
 								6, dba);
 		return;
 	}
@@ -680,7 +673,7 @@ static void link_key_request(int index, bdaddr_t *dba)
 	/* Don't use unauthenticated combination keys if MITM is
 	 * required */
 	if (type == 0x04 && req.type != 0xff && (req.type & 0x01))
-		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
+		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
 								6, dba);
 	else {
 		link_key_reply_cp lr;
@@ -688,13 +681,14 @@ static void link_key_request(int index, bdaddr_t *dba)
 		memcpy(lr.link_key, key, 16);
 		bacpy(&lr.bdaddr, dba);
 
-		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
+		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
 						LINK_KEY_REPLY_CP_SIZE, &lr);
 	}
 }
 
 static void link_key_notify(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
 	char da[18];
@@ -705,23 +699,23 @@ static void link_key_notify(int index, void *ptr)
 	ba2str(dba, da);
 	DBG("hci%d dba %s type %d", index, da, evt->key_type);
 
-	err = read_link_key(&BDADDR(index), dba, old_key, &old_key_type);
+	err = read_link_key(&dev->bdaddr, dba, old_key, &old_key_type);
 	if (err < 0)
 		old_key_type = 0xff;
 
-	err = btd_event_link_key_notify(&BDADDR(index), dba, evt->link_key,
-					evt->key_type, PIN_LENGTH(index),
+	err = btd_event_link_key_notify(&dev->bdaddr, dba, evt->link_key,
+					evt->key_type, dev->pin_length,
 					old_key_type);
-	PIN_LENGTH(index) = -1;
+	dev->pin_length = -1;
 
 	if (err < 0) {
 		uint16_t handle;
 
 		if (err == -ENODEV)
-			btd_event_bonding_process_complete(&BDADDR(index), dba,
+			btd_event_bonding_process_complete(&dev->bdaddr, dba,
 							HCI_OE_LOW_RESOURCES);
 		else
-			btd_event_bonding_process_complete(&BDADDR(index), dba,
+			btd_event_bonding_process_complete(&dev->bdaddr, dba,
 							HCI_MEMORY_FULL);
 
 		if (get_handle(index, dba, &handle) == 0) {
@@ -731,7 +725,7 @@ static void link_key_notify(int index, void *ptr)
 			cp.handle = htobs(handle);
 			cp.reason = HCI_OE_LOW_RESOURCES;
 
-			hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_DISCONNECT,
+			hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_DISCONNECT,
 						DISCONNECT_CP_SIZE, &cp);
 		}
 	}
@@ -739,6 +733,7 @@ static void link_key_notify(int index, void *ptr)
 
 static void return_link_keys(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_return_link_keys *evt = ptr;
 	uint8_t num = evt->num_keys;
 	unsigned char key[16];
@@ -756,7 +751,7 @@ static void return_link_keys(int index, void *ptr)
 
 		DBG("hci%d returned key for %s", index, da);
 
-		btd_event_returned_link_key(&BDADDR(index), &dba);
+		btd_event_returned_link_key(&dev->bdaddr, &dba);
 
 		ptr += 22;
 	}
@@ -766,46 +761,53 @@ static void return_link_keys(int index, void *ptr)
 
 static void user_confirm_request(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_user_confirm_request *req = ptr;
 
 	DBG("hci%d", index);
 
-	if (btd_event_user_confirm(&BDADDR(index), &req->bdaddr,
+	if (btd_event_user_confirm(&dev->bdaddr, &req->bdaddr,
 					btohl(req->passkey)) < 0)
-		hci_send_cmd(SK(index), OGF_LINK_CTL,
+		hci_send_cmd(dev->sk, OGF_LINK_CTL,
 				OCF_USER_CONFIRM_NEG_REPLY, 6, ptr);
 }
 
 static void user_passkey_request(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_user_passkey_request *req = ptr;
 
 	DBG("hci%d", index);
 
-	if (btd_event_user_passkey(&BDADDR(index), &req->bdaddr) < 0)
-		hci_send_cmd(SK(index), OGF_LINK_CTL,
+	if (btd_event_user_passkey(&dev->bdaddr, &req->bdaddr) < 0)
+		hci_send_cmd(dev->sk, OGF_LINK_CTL,
 				OCF_USER_PASSKEY_NEG_REPLY, 6, ptr);
 }
 
 static void user_passkey_notify(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_user_passkey_notify *req = ptr;
 
 	DBG("hci%d", index);
 
-	btd_event_user_notify(&BDADDR(index), &req->bdaddr,
+	btd_event_user_notify(&dev->bdaddr, &req->bdaddr,
 						btohl(req->passkey));
 }
 
 static void remote_oob_data_request(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("hci%d", index);
-	hci_send_cmd(SK(index), OGF_LINK_CTL,
+
+	hci_send_cmd(dev->sk, OGF_LINK_CTL,
 				OCF_REMOTE_OOB_DATA_NEG_REPLY, 6, ptr);
 }
 
 static void io_capa_request(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	bdaddr_t *dba = ptr;
 	char da[18];
 	uint8_t cap, auth;
@@ -813,12 +815,12 @@ static void io_capa_request(int index, void *ptr)
 	ba2str(dba, da);
 	DBG("hci%d IO capability request for %s", index, da);
 
-	if (btd_event_get_io_cap(&BDADDR(index), dba, &cap, &auth) < 0) {
+	if (btd_event_get_io_cap(&dev->bdaddr, dba, &cap, &auth) < 0) {
 		io_capability_neg_reply_cp cp;
 		memset(&cp, 0, sizeof(cp));
 		bacpy(&cp.bdaddr, dba);
 		cp.reason = HCI_PAIRING_NOT_ALLOWED;
-		hci_send_cmd(SK(index), OGF_LINK_CTL,
+		hci_send_cmd(dev->sk, OGF_LINK_CTL,
 					OCF_IO_CAPABILITY_NEG_REPLY,
 					IO_CAPABILITY_NEG_REPLY_CP_SIZE, &cp);
 	} else {
@@ -828,20 +830,21 @@ static void io_capa_request(int index, void *ptr)
 		cp.capability = cap;
 		cp.oob_data = 0x00;
 		cp.authentication = auth;
-		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_IO_CAPABILITY_REPLY,
+		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_IO_CAPABILITY_REPLY,
 					IO_CAPABILITY_REPLY_CP_SIZE, &cp);
 	}
 }
 
 static void io_capa_response(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_io_capability_response *evt = ptr;
 	char da[18];
 
 	ba2str(&evt->bdaddr, da);
 	DBG("hci%d IO capability response from %s", index, da);
 
-	btd_event_set_io_cap(&BDADDR(index), &evt->bdaddr,
+	btd_event_set_io_cap(&dev->bdaddr, &evt->bdaddr,
 				evt->capability, evt->authentication);
 }
 
@@ -849,6 +852,7 @@ static void io_capa_response(int index, void *ptr)
 
 static void pin_code_request(int index, bdaddr_t *dba)
 {
+	struct dev_info *dev = &devs[index];
 	pin_code_reply_cp pr;
 	struct hci_conn_info_req *cr;
 	struct hci_conn_info *ci;
@@ -865,24 +869,24 @@ static void pin_code_request(int index, bdaddr_t *dba)
 
 	bacpy(&cr->bdaddr, dba);
 	cr->type = ACL_LINK;
-	if (ioctl(SK(index), HCIGETCONNINFO, (unsigned long) cr) < 0) {
+	if (ioctl(dev->sk, HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		error("Can't get conn info: %s (%d)", strerror(errno), errno);
 		goto reject;
 	}
 	ci = cr->conn_info;
 
 	memset(pin, 0, sizeof(pin));
-	pinlen = read_pin_code(&BDADDR(index), dba, pin);
+	pinlen = read_pin_code(&dev->bdaddr, dba, pin);
 
 	if (pinlen > 0) {
-		PIN_LENGTH(index) = pinlen;
+		dev->pin_length = pinlen;
 		memcpy(pr.pin_code, pin, pinlen);
 		pr.pin_len = pinlen;
-		hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
+		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
 						PIN_CODE_REPLY_CP_SIZE, &pr);
 	} else {
 		/* Request PIN from passkey agent */
-		if (btd_event_request_pin(&BDADDR(index), ci) < 0)
+		if (btd_event_request_pin(&dev->bdaddr, ci) < 0)
 			goto reject;
 	}
 
@@ -893,7 +897,7 @@ static void pin_code_request(int index, bdaddr_t *dba)
 reject:
 	g_free(cr);
 
-	hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
+	hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 }
 
 static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
@@ -948,26 +952,28 @@ static void inquiry_complete(bdaddr_t *local, uint8_t status,
 
 static inline void remote_features_notify(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_remote_host_features_notify *evt = ptr;
 
 	if (evt->features[0] & 0x01)
-		btd_event_set_legacy_pairing(&BDADDR(index), &evt->bdaddr,
+		btd_event_set_legacy_pairing(&dev->bdaddr, &evt->bdaddr,
 									FALSE);
 	else
-		btd_event_set_legacy_pairing(&BDADDR(index), &evt->bdaddr,
+		btd_event_set_legacy_pairing(&dev->bdaddr, &evt->bdaddr,
 									TRUE);
 
-	write_features_info(&BDADDR(index), &evt->bdaddr, NULL, evt->features);
+	write_features_info(&dev->bdaddr, &evt->bdaddr, NULL, evt->features);
 }
 
 static void write_le_host_complete(int index, uint8_t status)
 {
+	struct dev_info *dev = &devs[index];
 	uint8_t page_num = 0x01;
 
 	if (status)
 		return;
 
-	if (hci_send_cmd(SK(index), OGF_INFO_PARAM,
+	if (hci_send_cmd(dev->sk, OGF_INFO_PARAM,
 				OCF_READ_LOCAL_EXT_FEATURES, 1, &page_num) < 0)
 		error("Unable to read extended local features: %s (%d)",
 						strerror(errno), errno);
@@ -976,42 +982,46 @@ static void write_le_host_complete(int index, uint8_t status)
 static void read_local_version_complete(int index,
 				const read_local_version_rp *rp)
 {
+	struct dev_info *dev = &devs[index];
+
 	if (rp->status)
 		return;
 
-	VER(index).manufacturer = btohs(bt_get_unaligned(&rp->manufacturer));
-	VER(index).hci_ver = rp->hci_ver;
-	VER(index).hci_rev = btohs(bt_get_unaligned(&rp->hci_rev));
-	VER(index).lmp_ver = rp->lmp_ver;
-	VER(index).lmp_subver = btohs(bt_get_unaligned(&rp->lmp_subver));
+	dev->ver.manufacturer = btohs(bt_get_unaligned(&rp->manufacturer));
+	dev->ver.hci_ver = rp->hci_ver;
+	dev->ver.hci_rev = btohs(bt_get_unaligned(&rp->hci_rev));
+	dev->ver.lmp_ver = rp->lmp_ver;
+	dev->ver.lmp_subver = btohs(bt_get_unaligned(&rp->lmp_subver));
 
-	if (!PENDING(index))
+	if (!dev->pending)
 		return;
 
-	hci_clear_bit(PENDING_VERSION, &PENDING(index));
+	hci_clear_bit(PENDING_VERSION, &dev->pending);
 
 	DBG("Got version for hci%d", index);
 
-	if (!PENDING(index) && UP(index))
+	if (!dev->pending && dev->up)
 		init_adapter(index);
 }
 
 static void read_local_features_complete(int index,
 				const read_local_features_rp *rp)
 {
+	struct dev_info *dev = &devs[index];
+
 	if (rp->status)
 		return;
 
-	memcpy(FEATURES(index), rp->features, 8);
+	memcpy(dev->features, rp->features, 8);
 
-	if (!PENDING(index))
+	if (!dev->pending)
 		return;
 
-	hci_clear_bit(PENDING_FEATURES, &PENDING(index));
+	hci_clear_bit(PENDING_FEATURES, &dev->pending);
 
 	DBG("Got features for hci%d", index);
 
-	if (!PENDING(index) && UP(index))
+	if (!dev->pending && dev->up)
 		init_adapter(index);
 }
 
@@ -1076,6 +1086,7 @@ static void eir_generate_uuid128(sdp_list_t *list,
 
 static void create_ext_inquiry_response(int index, uint8_t *data)
 {
+	struct dev_info *dev = &devs[index];
 	sdp_list_t *services;
 	sdp_list_t *list;
 	uint8_t *ptr = data;
@@ -1086,7 +1097,7 @@ static void create_ext_inquiry_response(int index, uint8_t *data)
 	struct btd_adapter *adapter;
 	size_t name_len;
 
-	name_len = strlen(NAME(index));
+	name_len = strlen(dev->name);
 
 	if (name_len > 0) {
 		/* EIR Data type */
@@ -1099,35 +1110,35 @@ static void create_ext_inquiry_response(int index, uint8_t *data)
 		/* EIR Data length */
 		ptr[0] = name_len + 1;
 
-		memcpy(ptr + 2, NAME(index), name_len);
+		memcpy(ptr + 2, dev->name, name_len);
 
 		eir_len += (name_len + 2);
 		ptr += (name_len + 2);
 	}
 
-	if (TX_POWER(index) != 0) {
+	if (dev->tx_power != 0) {
 		*ptr++ = 2;
 		*ptr++ = EIR_TX_POWER;
-		*ptr++ = (uint8_t) TX_POWER(index);
+		*ptr++ = (uint8_t) dev->tx_power;
 		eir_len += 3;
 	}
 
-	if (DID_VENDOR(index) != 0x0000) {
+	if (dev->did_vendor != 0x0000) {
 		uint16_t source = 0x0002;
 		*ptr++ = 9;
 		*ptr++ = EIR_DEVICE_ID;
 		*ptr++ = (source & 0x00ff);
 		*ptr++ = (source & 0xff00) >> 8;
-		*ptr++ = (DID_VENDOR(index) & 0x00ff);
-		*ptr++ = (DID_VENDOR(index) & 0xff00) >> 8;
-		*ptr++ = (DID_PRODUCT(index) & 0x00ff);
-		*ptr++ = (DID_PRODUCT(index) & 0xff00) >> 8;
-		*ptr++ = (DID_VERSION(index) & 0x00ff);
-		*ptr++ = (DID_VERSION(index) & 0xff00) >> 8;
+		*ptr++ = (dev->did_vendor & 0x00ff);
+		*ptr++ = (dev->did_vendor & 0xff00) >> 8;
+		*ptr++ = (dev->did_product & 0x00ff);
+		*ptr++ = (dev->did_product & 0xff00) >> 8;
+		*ptr++ = (dev->did_version & 0x00ff);
+		*ptr++ = (dev->did_version & 0xff00) >> 8;
 		eir_len += 10;
 	}
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (adapter == NULL)
 		return;
 
@@ -1186,29 +1197,30 @@ static void create_ext_inquiry_response(int index, uint8_t *data)
 
 static void update_ext_inquiry_response(int index)
 {
+	struct dev_info *dev = &devs[index];
 	write_ext_inquiry_response_cp cp;
 
 	DBG("hci%d", index);
 
-	if (!(FEATURES(index)[6] & LMP_EXT_INQ))
+	if (!(dev->features[6] & LMP_EXT_INQ))
 		return;
 
-	if (SSP_MODE(index) == 0)
+	if (dev->ssp_mode == 0)
 		return;
 
-	if (CACHE_ENABLE(index))
+	if (dev->cache_enable)
 		return;
 
 	memset(&cp, 0, sizeof(cp));
 
 	create_ext_inquiry_response(index, cp.data);
 
-	if (memcmp(cp.data, EIR(index), sizeof(cp.data)) == 0)
+	if (memcmp(cp.data, dev->eir, sizeof(cp.data)) == 0)
 		return;
 
-	memcpy(EIR(index), cp.data, sizeof(cp.data));
+	memcpy(dev->eir, cp.data, sizeof(cp.data));
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
 				OCF_WRITE_EXT_INQUIRY_RESPONSE,
 				WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &cp) < 0)
 		error("Unable to write EIR data: %s (%d)",
@@ -1217,9 +1229,10 @@ static void update_ext_inquiry_response(int index)
 
 static void update_name(int index, const char *name)
 {
+	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (adapter)
 		adapter_update_local_name(adapter, name);
 
@@ -1228,23 +1241,25 @@ static void update_name(int index, const char *name)
 
 static void read_local_name_complete(int index, read_local_name_rp *rp)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("hci%d status %u", index, rp->status);
 
 	if (rp->status)
 		return;
 
-	memcpy(NAME(index), rp->name, 248);
+	memcpy(dev->name, rp->name, 248);
 
-	if (!PENDING(index)) {
+	if (!dev->pending) {
 		update_name(index, (char *) rp->name);
 		return;
 	}
 
-	hci_clear_bit(PENDING_NAME, &PENDING(index));
+	hci_clear_bit(PENDING_NAME, &dev->pending);
 
 	DBG("Got name for hci%d", index);
 
-	if (!UP(index))
+	if (!dev->up)
 		return;
 
 	/* Even though it shouldn't happen (assuming the kernel behaves
@@ -1254,20 +1269,22 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 	 * commands) and resend the first ones if we haven't seen
 	 * their results yet */
 
-	if (hci_test_bit(PENDING_FEATURES, &PENDING(index)))
-		hci_send_cmd(SK(index), OGF_INFO_PARAM,
+	if (hci_test_bit(PENDING_FEATURES, &dev->pending))
+		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
 					OCF_READ_LOCAL_FEATURES, 0, NULL);
 
-	if (hci_test_bit(PENDING_VERSION, &PENDING(index)))
-		hci_send_cmd(SK(index), OGF_INFO_PARAM,
+	if (hci_test_bit(PENDING_VERSION, &dev->pending))
+		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
 					OCF_READ_LOCAL_VERSION, 0, NULL);
 
-	if (!PENDING(index))
+	if (!dev->pending)
 		init_adapter(index);
 }
 
 static void read_tx_power_complete(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
+
 	read_inq_response_tx_power_level_rp *rp = ptr;
 
 	DBG("hci%d status %u", index, rp->status);
@@ -1275,12 +1292,13 @@ static void read_tx_power_complete(int index, void *ptr)
 	if (rp->status)
 		return;
 
-	TX_POWER(index) = rp->level;
+	dev->tx_power = rp->level;
 	update_ext_inquiry_response(index);
 }
 
 static void read_simple_pairing_mode_complete(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	read_simple_pairing_mode_rp *rp = ptr;
 	struct btd_adapter *adapter;
 
@@ -1289,10 +1307,10 @@ static void read_simple_pairing_mode_complete(int index, void *ptr)
 	if (rp->status)
 		return;
 
-	SSP_MODE(index) = rp->mode;
+	dev->ssp_mode = rp->mode;
 	update_ext_inquiry_response(index);
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1304,6 +1322,7 @@ static void read_simple_pairing_mode_complete(int index, void *ptr)
 static void read_local_ext_features_complete(int index,
 				const read_local_ext_features_rp *rp)
 {
+	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 
 	DBG("hci%d status %u", index, rp->status);
@@ -1311,7 +1330,7 @@ static void read_local_ext_features_complete(int index,
 	if (rp->status)
 		return;
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1326,41 +1345,45 @@ static void read_local_ext_features_complete(int index,
 
 static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("hci%d status %u", index, rp->status);
 
 	if (rp->status)
 		return;
 
-	bacpy(&BDADDR(index), &rp->bdaddr);
+	bacpy(&dev->bdaddr, &rp->bdaddr);
 
-	if (!PENDING(index))
+	if (!dev->pending)
 		return;
 
-	hci_clear_bit(PENDING_BDADDR, &PENDING(index));
+	hci_clear_bit(PENDING_BDADDR, &dev->pending);
 
 	DBG("Got bdaddr for hci%d", index);
 
-	if (!PENDING(index) && UP(index))
+	if (!dev->pending && dev->up)
 		init_adapter(index);
 }
 
 static inline void cmd_status(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_cmd_status *evt = ptr;
 	uint16_t opcode = btohs(evt->opcode);
 
 	if (opcode == cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY))
-		start_inquiry(&BDADDR(index), evt->status, FALSE);
+		start_inquiry(&dev->bdaddr, evt->status, FALSE);
 }
 
 static void read_scan_complete(int index, uint8_t status, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 	read_scan_enable_rp *rp = ptr;
 
 	DBG("hci%d status %u", index, status);
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 
 	if (!adapter) {
 		error("Unable to find matching adapter");
@@ -1372,17 +1395,18 @@ static void read_scan_complete(int index, uint8_t status, void *ptr)
 
 static int write_class(int index, uint32_t class)
 {
+	struct dev_info *dev = &devs[index];
 	write_class_of_dev_cp cp;
 
 	DBG("hci%d class 0x%06x", index, class);
 
 	memcpy(cp.dev_class, &class, 3);
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
 					WRITE_CLASS_OF_DEV_CP_SIZE, &cp) < 0)
 		return -errno;
 
-	PENDING_COD(index) = class;
+	dev->pending_cod = class;
 
 	return 0;
 }
@@ -1392,6 +1416,7 @@ static int write_class(int index, uint32_t class)
 
 static int hciops_set_limited_discoverable(int index, gboolean limited)
 {
+	struct dev_info *dev = &devs[index];
 	int num = (limited ? 2 : 1);
 	uint8_t lap[] = { 0x33, 0x8b, 0x9e, 0x00, 0x8b, 0x9e };
 	write_current_iac_lap_cp cp;
@@ -1400,12 +1425,12 @@ static int hciops_set_limited_discoverable(int index, gboolean limited)
 
 	/* Check if limited bit needs to be set/reset */
 	if (limited)
-		WANTED_COD(index) |= LIMITED_BIT;
+		dev->wanted_cod |= LIMITED_BIT;
 	else
-		WANTED_COD(index) &= ~LIMITED_BIT;
+		dev->wanted_cod &= ~LIMITED_BIT;
 
 	/* If we dont need the toggling, save an unnecessary CoD write */
-	if (PENDING_COD(index) || WANTED_COD(index) == CURRENT_COD(index))
+	if (dev->pending_cod || dev->wanted_cod == dev->current_cod)
 		return 0;
 
 	/*
@@ -1416,47 +1441,49 @@ static int hciops_set_limited_discoverable(int index, gboolean limited)
 	cp.num_current_iac = num;
 	memcpy(&cp.lap, lap, num * 3);
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_CURRENT_IAC_LAP,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_WRITE_CURRENT_IAC_LAP,
 						(num * 3 + 1), &cp) < 0)
 		return -errno;
 
-	return write_class(index, WANTED_COD(index));
+	return write_class(index, dev->wanted_cod);
 }
 
 static void write_class_complete(int index, uint8_t status)
 {
+	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 
 	if (status)
 		return;
 
-	if (PENDING_COD(index) == 0)
+	if (dev->pending_cod == 0)
 		return;
 
-	CURRENT_COD(index) = PENDING_COD(index);
-	PENDING_COD(index) = 0;
+	dev->current_cod = dev->pending_cod;
+	dev->pending_cod = 0;
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (adapter)
-		btd_adapter_class_changed(adapter, CURRENT_COD(index));
+		btd_adapter_class_changed(adapter, dev->current_cod);
 
 	update_ext_inquiry_response(index);
 
-	if (WANTED_COD(index) == CURRENT_COD(index))
+	if (dev->wanted_cod == dev->current_cod)
 		return;
 
-	if (WANTED_COD(index) & LIMITED_BIT &&
-			!(CURRENT_COD(index) & LIMITED_BIT))
+	if (dev->wanted_cod & LIMITED_BIT &&
+			!(dev->current_cod & LIMITED_BIT))
 		hciops_set_limited_discoverable(index, TRUE);
-	else if (!(WANTED_COD(index) & LIMITED_BIT) &&
-					(CURRENT_COD(index) & LIMITED_BIT))
+	else if (!(dev->wanted_cod & LIMITED_BIT) &&
+					(dev->current_cod & LIMITED_BIT))
 		hciops_set_limited_discoverable(index, FALSE);
 	else
-		write_class(index, WANTED_COD(index));
+		write_class(index, dev->wanted_cod);
 }
 
 static inline void cmd_complete(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_cmd_complete *evt = ptr;
 	uint16_t opcode = btohs(evt->opcode);
 	uint8_t status = *((uint8_t *) ptr + EVT_CMD_COMPLETE_SIZE);
@@ -1479,27 +1506,27 @@ static inline void cmd_complete(int index, void *ptr)
 		read_bd_addr_complete(index, ptr);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PERIODIC_INQUIRY):
-		start_inquiry(&BDADDR(index), status, TRUE);
+		start_inquiry(&dev->bdaddr, status, TRUE);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY):
-		inquiry_complete(&BDADDR(index), status, TRUE);
+		inquiry_complete(&dev->bdaddr, status, TRUE);
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
-		inquiry_complete(&BDADDR(index), status, FALSE);
+		inquiry_complete(&dev->bdaddr, status, FALSE);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_LE_HOST_SUPPORTED):
 		write_le_host_complete(index, status);
 		break;
 	case cmd_opcode_pack(OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE):
-		btd_event_le_set_scan_enable_complete(&BDADDR(index), status);
+		btd_event_le_set_scan_enable_complete(&dev->bdaddr, status);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME):
 		if (!status)
-			hci_send_cmd(SK(index), OGF_HOST_CTL,
+			hci_send_cmd(dev->sk, OGF_HOST_CTL,
 						OCF_READ_LOCAL_NAME, 0, 0);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE):
-		btd_event_setscan_enable_complete(&BDADDR(index));
+		btd_event_setscan_enable_complete(&dev->bdaddr);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_SCAN_ENABLE):
 		ptr += sizeof(evt_cmd_complete);
@@ -1510,7 +1537,7 @@ static inline void cmd_complete(int index, void *ptr)
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SIMPLE_PAIRING_MODE):
 		if (!status)
-			hci_send_cmd(SK(index), OGF_HOST_CTL,
+			hci_send_cmd(dev->sk, OGF_HOST_CTL,
 					OCF_READ_SIMPLE_PAIRING_MODE, 0, NULL);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_SIMPLE_PAIRING_MODE):
@@ -1531,6 +1558,7 @@ static inline void cmd_complete(int index, void *ptr)
 
 static inline void remote_name_information(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_remote_name_req_complete *evt = ptr;
 	char name[MAX_NAME_LENGTH + 1];
 
@@ -1541,11 +1569,12 @@ static inline void remote_name_information(int index, void *ptr)
 	if (!evt->status)
 		memcpy(name, evt->name, MAX_NAME_LENGTH);
 
-	btd_event_remote_name(&BDADDR(index), &evt->bdaddr, evt->status, name);
+	btd_event_remote_name(&dev->bdaddr, &evt->bdaddr, evt->status, name);
 }
 
 static inline void remote_version_information(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_read_remote_version_complete *evt = ptr;
 	bdaddr_t dba;
 
@@ -1557,12 +1586,13 @@ static inline void remote_version_information(int index, void *ptr)
 	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
 		return;
 
-	write_version_info(&BDADDR(index), &dba, btohs(evt->manufacturer),
+	write_version_info(&dev->bdaddr, &dba, btohs(evt->manufacturer),
 				evt->lmp_ver, btohs(evt->lmp_subver));
 }
 
 static inline void inquiry_result(int index, int plen, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
 
@@ -1572,10 +1602,10 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 						(info->dev_class[1] << 8) |
 						(info->dev_class[2] << 16);
 
-		btd_event_inquiry_result(&BDADDR(index), &info->bdaddr, class,
+		btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr, class,
 								0, NULL);
 
-		update_lastseen(&BDADDR(index), &info->bdaddr);
+		update_lastseen(&dev->bdaddr, &info->bdaddr);
 
 		ptr += INQUIRY_INFO_SIZE;
 	}
@@ -1583,6 +1613,7 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 
 static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
 
@@ -1596,10 +1627,10 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[1] << 8)
 						| (info->dev_class[2] << 16);
 
-			btd_event_inquiry_result(&BDADDR(index), &info->bdaddr,
+			btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr,
 						class, info->rssi, NULL);
 
-			update_lastseen(&BDADDR(index), &info->bdaddr);
+			update_lastseen(&dev->bdaddr, &info->bdaddr);
 
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
@@ -1610,10 +1641,10 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[1] << 8)
 						| (info->dev_class[2] << 16);
 
-			btd_event_inquiry_result(&BDADDR(index), &info->bdaddr,
+			btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr,
 						class, info->rssi, NULL);
 
-			update_lastseen(&BDADDR(index), &info->bdaddr);
+			update_lastseen(&dev->bdaddr, &info->bdaddr);
 
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}
@@ -1622,6 +1653,7 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 
 static inline void extended_inquiry_result(int index, int plen, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
 
@@ -1631,10 +1663,10 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 					| (info->dev_class[1] << 8)
 					| (info->dev_class[2] << 16);
 
-		btd_event_inquiry_result(&BDADDR(index), &info->bdaddr, class,
+		btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr, class,
 						info->rssi, info->data);
 
-		update_lastseen(&BDADDR(index), &info->bdaddr);
+		update_lastseen(&dev->bdaddr, &info->bdaddr);
 
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
@@ -1642,6 +1674,7 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 
 static inline void remote_features_information(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_read_remote_features_complete *evt = ptr;
 	bdaddr_t dba;
 
@@ -1653,17 +1686,18 @@ static inline void remote_features_information(int index, void *ptr)
 	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
 		return;
 
-	write_features_info(&BDADDR(index), &dba, evt->features, NULL);
+	write_features_info(&dev->bdaddr, &dba, evt->features, NULL);
 }
 
 static inline void conn_complete(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_conn_complete *evt = ptr;
 	char filename[PATH_MAX];
 	char local_addr[18], peer_addr[18], *str;
 	struct btd_adapter *adapter;
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
@@ -1672,16 +1706,16 @@ static inline void conn_complete(int index, void *ptr)
 	if (evt->link_type != ACL_LINK)
 		return;
 
-	btd_event_conn_complete(&BDADDR(index), evt->status,
+	btd_event_conn_complete(&dev->bdaddr, evt->status,
 					btohs(evt->handle), &evt->bdaddr);
 
 	if (evt->status)
 		return;
 
-	update_lastused(&BDADDR(index), &evt->bdaddr);
+	update_lastused(&dev->bdaddr, &evt->bdaddr);
 
 	/* check if the remote version needs be requested */
-	ba2str(&BDADDR(index), local_addr);
+	ba2str(&dev->bdaddr, local_addr);
 	ba2str(&evt->bdaddr, peer_addr);
 
 	create_name(filename, sizeof(filename), STORAGEDIR, local_addr,
@@ -1697,27 +1731,28 @@ static inline void conn_complete(int index, void *ptr)
 
 static inline void le_conn_complete(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_le_connection_complete *evt = ptr;
 	char filename[PATH_MAX];
 	char local_addr[18], peer_addr[18], *str;
 	struct btd_adapter *adapter;
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
 	}
 
-	btd_event_conn_complete(&BDADDR(index), evt->status,
+	btd_event_conn_complete(&dev->bdaddr, evt->status,
 					btohs(evt->handle), &evt->peer_bdaddr);
 
 	if (evt->status)
 		return;
 
-	update_lastused(&BDADDR(index), &evt->peer_bdaddr);
+	update_lastused(&dev->bdaddr, &evt->peer_bdaddr);
 
 	/* check if the remote version needs be requested */
-	ba2str(&BDADDR(index), local_addr);
+	ba2str(&dev->bdaddr, local_addr);
 	ba2str(&evt->peer_bdaddr, peer_addr);
 
 	create_name(filename, sizeof(filename), STORAGEDIR, local_addr,
@@ -1733,14 +1768,16 @@ static inline void le_conn_complete(int index, void *ptr)
 
 static inline void disconn_complete(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_disconn_complete *evt = ptr;
 
-	btd_event_disconn_complete(&BDADDR(index), evt->status,
+	btd_event_disconn_complete(&dev->bdaddr, evt->status,
 					btohs(evt->handle), evt->reason);
 }
 
 static inline void auth_complete(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_auth_complete *evt = ptr;
 	bdaddr_t dba;
 
@@ -1749,30 +1786,33 @@ static inline void auth_complete(int index, void *ptr)
 	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
 		return;
 
-	btd_event_bonding_process_complete(&BDADDR(index), &dba, evt->status);
+	btd_event_bonding_process_complete(&dev->bdaddr, &dba, evt->status);
 }
 
 static inline void simple_pairing_complete(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_simple_pairing_complete *evt = ptr;
 
 	DBG("hci%d status %u", index, evt->status);
 
-	btd_event_simple_pairing_complete(&BDADDR(index), &evt->bdaddr,
+	btd_event_simple_pairing_complete(&dev->bdaddr, &evt->bdaddr,
 								evt->status);
 }
 
 static inline void conn_request(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	evt_conn_request *evt = ptr;
 	uint32_t class = evt->dev_class[0] | (evt->dev_class[1] << 8)
 				| (evt->dev_class[2] << 16);
 
-	btd_event_remote_class(&BDADDR(index), &evt->bdaddr, class);
+	btd_event_remote_class(&dev->bdaddr, &evt->bdaddr, class);
 }
 
 static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 {
+	struct dev_info *dev = &devs[index];
 	le_advertising_info *info;
 	uint8_t num, i;
 
@@ -1780,7 +1820,7 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 	info = (le_advertising_info *) (meta->data + 1);
 
 	for (i = 0; i < num; i++) {
-		btd_event_advertising_report(&BDADDR(index), info);
+		btd_event_advertising_report(&dev->bdaddr, info);
 		info = (le_advertising_info *) (info->data + info->length + 1);
 	}
 }
@@ -1804,17 +1844,18 @@ static inline void le_metaevent(int index, void *ptr)
 
 static void stop_hci_dev(int index)
 {
-	GIOChannel *chan = CHANNEL(index);
+	struct dev_info *dev = &devs[index];
+	GIOChannel *chan = dev->io;
 
 	if (!chan)
 		return;
 
 	info("Stopping hci%d event socket", index);
 
-	g_source_remove(WATCH_ID(index));
-	g_io_channel_unref(CHANNEL(index));
-	hci_close_dev(SK(index));
-	init_dev_info(index, -1, REGISTERED(index));
+	g_source_remove(dev->watch_id);
+	g_io_channel_unref(dev->io);
+	hci_close_dev(dev->sk);
+	init_dev_info(index, -1, dev->registered);
 }
 
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
@@ -1822,6 +1863,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr = buf;
 	int type, index = GPOINTER_TO_INT(data);
+	struct dev_info *dev = &devs[index];
 	struct hci_dev_info di;
 	size_t len;
 	hci_event_hdr *eh;
@@ -1850,7 +1892,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 
 	memset(&di, 0, sizeof(di));
 	if (hci_devinfo(index, &di) == 0) {
-		bacpy(&BDADDR(index), &di.bdaddr);
+		bacpy(&dev->bdaddr, &di.bdaddr);
 
 		if (ignore_device(&di))
 			return TRUE;
@@ -1883,7 +1925,7 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 
 	case EVT_INQUIRY_COMPLETE:
 		evt = (evt_cmd_status *) ptr;
-		inquiry_complete(&BDADDR(index), evt->status, FALSE);
+		inquiry_complete(&dev->bdaddr, evt->status, FALSE);
 		break;
 
 	case EVT_INQUIRY_RESULT:
@@ -1966,7 +2008,8 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 
 static void start_hci_dev(int index)
 {
-	GIOChannel *chan = CHANNEL(index);
+	struct dev_info *dev = &devs[index];
+	GIOChannel *chan = dev->io;
 	GIOCondition cond;
 	struct hci_filter flt;
 
@@ -2005,19 +2048,19 @@ static void start_hci_dev(int index)
 	hci_filter_set_event(EVT_CONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_DISCONN_COMPLETE, &flt);
 	hci_filter_set_event(EVT_LE_META_EVENT, &flt);
-	if (setsockopt(SK(index), SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
+	if (setsockopt(dev->sk, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
 		error("Can't set filter on hci%d: %s (%d)",
 						index, strerror(errno), errno);
 		return;
 	}
 
-	chan = g_io_channel_unix_new(SK(index));
+	chan = g_io_channel_unix_new(dev->sk);
 	cond = G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR;
-	WATCH_ID(index) = g_io_add_watch_full(chan, G_PRIORITY_LOW, cond,
+	dev->watch_id = g_io_add_watch_full(chan, G_PRIORITY_LOW, cond,
 						io_security_event,
 						GINT_TO_POINTER(index), NULL);
-	CHANNEL(index) = chan;
-	PIN_LENGTH(index) = -1;
+	dev->io = chan;
+	dev->pin_length = -1;
 
 }
 
@@ -2051,6 +2094,7 @@ static void at_child_exit(void)
 
 static void device_devup_setup(int index)
 {
+	struct dev_info *dev = &devs[index];
 	struct hci_dev_info di;
 	read_stored_link_key_cp cp;
 
@@ -2062,33 +2106,35 @@ static void device_devup_setup(int index)
 	if (ignore_device(&di))
 		return;
 
-	bacpy(&BDADDR(index), &di.bdaddr);
-	memcpy(FEATURES(index), di.features, 8);
+	bacpy(&dev->bdaddr, &di.bdaddr);
+	memcpy(dev->features, di.features, 8);
 
 	/* Set page timeout */
 	if ((main_opts.flags & (1 << HCID_SET_PAGETO))) {
 		write_page_timeout_cp cp;
 
 		cp.timeout = htobs(main_opts.pageto);
-		hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
+		hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_WRITE_PAGE_TIMEOUT,
 					WRITE_PAGE_TIMEOUT_CP_SIZE, &cp);
 	}
 
 	bacpy(&cp.bdaddr, BDADDR_ANY);
 	cp.read_all = 1;
-	hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_READ_STORED_LINK_KEY,
+	hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_READ_STORED_LINK_KEY,
 			READ_STORED_LINK_KEY_CP_SIZE, (void *) &cp);
 
-	if (!PENDING(index))
+	if (!dev->pending)
 		init_adapter(index);
 }
 
 static void init_pending(int index)
 {
-	hci_set_bit(PENDING_BDADDR, &PENDING(index));
-	hci_set_bit(PENDING_VERSION, &PENDING(index));
-	hci_set_bit(PENDING_FEATURES, &PENDING(index));
-	hci_set_bit(PENDING_NAME, &PENDING(index));
+	struct dev_info *dev = &devs[index];
+
+	hci_set_bit(PENDING_BDADDR, &dev->pending);
+	hci_set_bit(PENDING_VERSION, &dev->pending);
+	hci_set_bit(PENDING_FEATURES, &dev->pending);
+	hci_set_bit(PENDING_NAME, &dev->pending);
 }
 
 static void init_device(int index)
@@ -2169,7 +2215,7 @@ static void device_devreg_setup(int index)
 	if (ignore_device(&di))
 		return;
 
-	ALREADY_UP(index) = hci_test_bit(HCI_UP, &di.flags);
+	devs[index].already_up = hci_test_bit(HCI_UP, &di.flags);
 }
 
 static void device_event(int event, int index)
@@ -2178,29 +2224,29 @@ static void device_event(int event, int index)
 	case HCI_DEV_REG:
 		info("HCI dev %d registered", index);
 		device_devreg_setup(index);
-		if (ALREADY_UP(index))
+		if (devs[index].already_up)
 			device_event(HCI_DEV_UP, index);
 		break;
 
 	case HCI_DEV_UNREG:
 		info("HCI dev %d unregistered", index);
 		stop_hci_dev(index);
-		if (REGISTERED(index))
+		if (devs[index].registered)
 			btd_manager_unregister_adapter(index);
 		break;
 
 	case HCI_DEV_UP:
 		info("HCI dev %d up", index);
-		UP(index) = TRUE;
+		devs[index].up = TRUE;
 		device_devup_setup(index);
 		break;
 
 	case HCI_DEV_DOWN:
 		info("HCI dev %d down", index);
-		UP(index) = FALSE;
-		PENDING_COD(index) = 0;
-		CACHE_ENABLE(index) = TRUE;
-		if (!PENDING(index)) {
+		devs[index].up = FALSE;
+		devs[index].pending_cod = 0;
+		devs[index].cache_enable = TRUE;
+		if (!devs[index].pending) {
 			manager_stop_adapter(index);
 			init_pending(index);
 		}
@@ -2210,6 +2256,7 @@ static void device_event(int event, int index)
 
 static int hciops_stop_inquiry(int index)
 {
+	struct dev_info *dev = &devs[index];
 	struct hci_dev_info di;
 	int err;
 
@@ -2219,10 +2266,10 @@ static int hciops_stop_inquiry(int index)
 		return -errno;
 
 	if (hci_test_bit(HCI_INQUIRY, &di.flags))
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 						OCF_INQUIRY_CANCEL, 0, 0);
 	else
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
 	if (err < 0)
 		err = -errno;
@@ -2258,18 +2305,22 @@ static gboolean init_known_adapters(gpointer user_data)
 	}
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
+		struct dev_info *dev;
+
 		device_event(HCI_DEV_REG, dr->dev_id);
 
-		ALREADY_UP(dr->dev_id) = hci_test_bit(HCI_UP, &dr->dev_opt);
+		dev = &devs[dr->dev_id];
 
-		if (!ALREADY_UP(dr->dev_id))
+		dev->already_up = hci_test_bit(HCI_UP, &dr->dev_opt);
+
+		if (!dev->already_up)
 			continue;
 
 		hciops_stop_inquiry(dr->dev_id);
 
-		PENDING(dr->dev_id) = 0;
-		hci_set_bit(PENDING_VERSION, &PENDING(dr->dev_id));
-		hci_send_cmd(SK(dr->dev_id), OGF_INFO_PARAM,
+		dev->pending = 0;
+		hci_set_bit(PENDING_VERSION, &dev->pending);
+		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
 					OCF_READ_LOCAL_VERSION, 0, NULL);
 		device_event(HCI_DEV_UP, dr->dev_id);
 	}
@@ -2396,8 +2447,10 @@ static void hciops_cleanup(void)
 	DBG("");
 
 	for (i = 0; i <= max_dev; i++) {
-		if (SK(i) >= 0)
-			hci_close_dev(SK(i));
+		struct dev_info *dev = &devs[i];
+
+		if (dev->sk >= 0)
+			hci_close_dev(dev->sk);
 	}
 
 	g_free(devs);
@@ -2427,11 +2480,12 @@ static void hciops_cleanup(void)
 
 static int hciops_start(int index)
 {
+	struct dev_info *dev = &devs[index];
 	int err;
 
 	DBG("hci%d", index);
 
-	if (ioctl(SK(index), HCIDEVUP, index) == 0)
+	if (ioctl(dev->sk, HCIDEVUP, index) == 0)
 		return 0;
 
 	if (errno == EALREADY)
@@ -2446,6 +2500,7 @@ static int hciops_start(int index)
 
 static int hciops_set_powered(int index, gboolean powered)
 {
+	struct dev_info *dev = &devs[index];
 	uint8_t mode = SCAN_DISABLED;
 
 	DBG("hci%d powered %d", index, powered);
@@ -2453,7 +2508,7 @@ static int hciops_set_powered(int index, gboolean powered)
 	if (powered)
 		return hciops_start(index);
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
 					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
 		return -errno;
 
@@ -2462,6 +2517,7 @@ static int hciops_set_powered(int index, gboolean powered)
 
 static int hciops_set_connectable(int index, gboolean connectable)
 {
+	struct dev_info *dev = &devs[index];
 	uint8_t mode;
 
 	if (connectable)
@@ -2471,7 +2527,7 @@ static int hciops_set_connectable(int index, gboolean connectable)
 
 	DBG("hci%d connectable %d", index, connectable);
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
 					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
 		return -errno;
 
@@ -2480,22 +2536,23 @@ static int hciops_set_connectable(int index, gboolean connectable)
 
 static int hciops_set_dev_class(int index, uint8_t major, uint8_t minor)
 {
+	struct dev_info *dev = &devs[index];
 	int err;
 
 	DBG("hci%d major %u minor %u", index, major, minor);
 
 	/* Update only the major and minor class bits keeping remaining bits
 	 * intact*/
-	WANTED_COD(index) &= 0xffe000;
-	WANTED_COD(index) |= ((major & 0x1f) << 8) | minor;
+	dev->wanted_cod &= 0xffe000;
+	dev->wanted_cod |= ((major & 0x1f) << 8) | minor;
 
-	if (WANTED_COD(index) == CURRENT_COD(index) ||
-			CACHE_ENABLE(index) || PENDING_COD(index))
+	if (dev->wanted_cod == dev->current_cod ||
+			dev->cache_enable || dev->pending_cod)
 		return 0;
 
-	DBG("Changing Major/Minor class to 0x%06x", WANTED_COD(index));
+	DBG("Changing Major/Minor class to 0x%06x", dev->wanted_cod);
 
-	err = write_class(index, WANTED_COD(index));
+	err = write_class(index, dev->wanted_cod);
 	if (err < 0)
 		error("Adapter class update failed: %s (%d)",
 						strerror(-err), -err);
@@ -2505,6 +2562,7 @@ static int hciops_set_dev_class(int index, uint8_t major, uint8_t minor)
 
 static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 {
+	struct dev_info *dev = &devs[index];
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int err;
 
@@ -2520,7 +2578,7 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 		cp.length  = length;
 		cp.num_rsp = 0x00;
 
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 						OCF_PERIODIC_INQUIRY,
 						PERIODIC_INQUIRY_CP_SIZE, &cp);
 	} else {
@@ -2531,7 +2589,7 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 		inq_cp.length = length;
 		inq_cp.num_rsp = 0x00;
 
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 					OCF_INQUIRY, INQUIRY_CP_SIZE, &inq_cp);
 	}
 
@@ -2543,6 +2601,7 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 
 static int le_set_scan_enable(int index, uint8_t enable)
 {
+	struct dev_info *dev = &devs[index];
 	le_set_scan_enable_cp cp;
 
 	DBG("hci%d enable %u", index, enable);
@@ -2551,7 +2610,7 @@ static int le_set_scan_enable(int index, uint8_t enable)
 	cp.enable = enable;
 	cp.filter_dup = 0;
 
-	if (hci_send_cmd(SK(index), OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE,
+	if (hci_send_cmd(dev->sk, OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE,
 				LE_SET_SCAN_ENABLE_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -2560,6 +2619,7 @@ static int le_set_scan_enable(int index, uint8_t enable)
 
 static int hciops_start_scanning(int index)
 {
+	struct dev_info *dev = &devs[index];
 	le_set_scan_parameters_cp cp;
 
 	DBG("hci%d", index);
@@ -2571,7 +2631,7 @@ static int hciops_start_scanning(int index)
 	cp.own_bdaddr_type = 0;		/* Public address */
 	cp.filter = 0;			/* Accept all adv packets */
 
-	if (hci_send_cmd(SK(index), OGF_LE_CTL, OCF_LE_SET_SCAN_PARAMETERS,
+	if (hci_send_cmd(dev->sk, OGF_LE_CTL, OCF_LE_SET_SCAN_PARAMETERS,
 				LE_SET_SCAN_PARAMETERS_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -2587,6 +2647,7 @@ static int hciops_stop_scanning(int index)
 
 static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 {
+	struct dev_info *dev = &devs[index];
 	remote_name_req_cp cp;
 	char addr[18];
 
@@ -2597,7 +2658,7 @@ static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 	bacpy(&cp.bdaddr, bdaddr);
 	cp.pscan_rep_mode = 0x02;
 
-	if (hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
+	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
 					REMOTE_NAME_REQ_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -2606,6 +2667,7 @@ static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
 
 static int hciops_set_name(int index, const char *name)
 {
+	struct dev_info *dev = &devs[index];
 	change_local_name_cp cp;
 
 	DBG("hci%d, name %s", index, name);
@@ -2613,11 +2675,11 @@ static int hciops_set_name(int index, const char *name)
 	memset(&cp, 0, sizeof(cp));
 	strncpy((char *) cp.name, name, sizeof(cp.name));
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
 				CHANGE_LOCAL_NAME_CP_SIZE, &cp) < 0)
 		return -errno;
 
-	memcpy(NAME(index), cp.name, 248);
+	memcpy(dev->name, cp.name, 248);
 	update_ext_inquiry_response(index);
 
 	return 0;
@@ -2625,6 +2687,7 @@ static int hciops_set_name(int index, const char *name)
 
 static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 {
+	struct dev_info *dev = &devs[index];
 	remote_name_req_cancel_cp cp;
 	char addr[18];
 
@@ -2634,7 +2697,7 @@ static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
 
-	if (hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_REMOTE_NAME_REQ_CANCEL,
+	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ_CANCEL,
 				REMOTE_NAME_REQ_CANCEL_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -2643,6 +2706,7 @@ static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 
 static int hciops_fast_connectable(int index, gboolean enable)
 {
+	struct dev_info *dev = &devs[index];
 	write_page_activity_cp cp;
 	uint8_t type;
 
@@ -2658,10 +2722,10 @@ static int hciops_fast_connectable(int index, gboolean enable)
 
 	cp.window = 0x0012;	/* default 11.25 msec page scan window */
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_WRITE_PAGE_ACTIVITY,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_WRITE_PAGE_ACTIVITY,
 					WRITE_PAGE_ACTIVITY_CP_SIZE, &cp) < 0)
 		return -errno;
-	else if (hci_send_cmd(SK(index), OGF_HOST_CTL,
+	else if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
 				OCF_WRITE_PAGE_SCAN_TYPE, 1, &type) < 0)
 		return -errno;
 
@@ -2671,10 +2735,12 @@ static int hciops_fast_connectable(int index, gboolean enable)
 static int hciops_read_clock(int index, int handle, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("hci%d handle %d which %d timeout %d", index, handle, which,
 								timeout);
 
-	if (hci_read_clock(SK(index), handle, which, clock, accuracy,
+	if (hci_read_clock(dev->sk, handle, which, clock, accuracy,
 								timeout) < 0)
 		return -errno;
 
@@ -2683,9 +2749,10 @@ static int hciops_read_clock(int index, int handle, int which, int timeout,
 
 static int hciops_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 {
-	int err;
+	struct dev_info *dev = &devs[index];
 	struct hci_conn_info_req *cr;
 	char addr[18];
+	int err;
 
 	ba2str(bdaddr, addr);
 	DBG("hci%d dba %s", index, addr);
@@ -2694,7 +2761,7 @@ static int hciops_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 	bacpy(&cr->bdaddr, bdaddr);
 	cr->type = ACL_LINK;
 
-	if (ioctl(SK(index), HCIGETCONNINFO, (unsigned long) cr) < 0) {
+	if (ioctl(dev->sk, HCIGETCONNINFO, (unsigned long) cr) < 0) {
 		err = -errno;
 		goto fail;
 	}
@@ -2709,19 +2776,24 @@ fail:
 
 static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("hci%d", index);
-	bacpy(bdaddr, &BDADDR(index));
+
+	bacpy(bdaddr, &dev->bdaddr);
+
 	return 0;
 }
 
 static int hciops_block_device(int index, bdaddr_t *bdaddr)
 {
+	struct dev_info *dev = &devs[index];
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("hci%d dba %s", index, addr);
 
-	if (ioctl(SK(index), HCIBLOCKADDR, bdaddr) < 0)
+	if (ioctl(dev->sk, HCIBLOCKADDR, bdaddr) < 0)
 		return -errno;
 
 	return 0;
@@ -2729,12 +2801,13 @@ static int hciops_block_device(int index, bdaddr_t *bdaddr)
 
 static int hciops_unblock_device(int index, bdaddr_t *bdaddr)
 {
+	struct dev_info *dev = &devs[index];
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("hci%d dba %s", index, addr);
 
-	if (ioctl(SK(index), HCIUNBLOCKADDR, bdaddr) < 0)
+	if (ioctl(dev->sk, HCIUNBLOCKADDR, bdaddr) < 0)
 		return -errno;
 
 	return 0;
@@ -2742,6 +2815,7 @@ static int hciops_unblock_device(int index, bdaddr_t *bdaddr)
 
 static int hciops_get_conn_list(int index, GSList **conns)
 {
+	struct dev_info *dev = &devs[index];
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
 	int err, i;
@@ -2754,7 +2828,7 @@ static int hciops_get_conn_list(int index, GSList **conns)
 	cl->conn_num = 10;
 	ci = cl->conn_info;
 
-	if (ioctl(SK(index), HCIGETCONNLIST, cl) < 0) {
+	if (ioctl(dev->sk, HCIGETCONNLIST, cl) < 0) {
 		err = -errno;
 		goto fail;
 	}
@@ -2772,20 +2846,29 @@ fail:
 
 static int hciops_read_local_version(int index, struct hci_version *ver)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("hci%d", index);
-	memcpy(ver, &VER(index), sizeof(*ver));
+
+	memcpy(ver, &dev->ver, sizeof(*ver));
+
 	return 0;
 }
 
 static int hciops_read_local_features(int index, uint8_t *features)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("hci%d", index);
-	memcpy(features, FEATURES(index), 8);
+
+	memcpy(features, dev->features, 8);
+
 	return  0;
 }
 
 static int hciops_disconnect(int index, uint16_t handle)
 {
+	struct dev_info *dev = &devs[index];
 	disconnect_cp cp;
 
 	DBG("hci%d handle %u", index, handle);
@@ -2794,7 +2877,7 @@ static int hciops_disconnect(int index, uint16_t handle)
 	cp.handle = htobs(handle);
 	cp.reason = HCI_OE_USER_ENDED_CONNECTION;
 
-	if (hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_DISCONNECT,
+	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_DISCONNECT,
 						DISCONNECT_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -2803,6 +2886,7 @@ static int hciops_disconnect(int index, uint16_t handle)
 
 static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 {
+	struct dev_info *dev = &devs[index];
 	delete_stored_link_key_cp cp;
 	char addr[18];
 
@@ -2813,7 +2897,7 @@ static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 	bacpy(&cp.bdaddr, bdaddr);
 
 	/* Delete the link key from the Bluetooth chip */
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_DELETE_STORED_LINK_KEY,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_DELETE_STORED_LINK_KEY,
 				DELETE_STORED_LINK_KEY_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -2822,6 +2906,7 @@ static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 
 static int hciops_request_authentication(int index, uint16_t handle)
 {
+	struct dev_info *dev = &devs[index];
 	auth_requested_cp cp;
 
 	DBG("hci%d handle %u", index, handle);
@@ -2829,7 +2914,7 @@ static int hciops_request_authentication(int index, uint16_t handle)
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = htobs(handle);
 
-	if (hci_send_cmd(SK(index), OGF_LINK_CTL, OCF_AUTH_REQUESTED,
+	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_AUTH_REQUESTED,
 					AUTH_REQUESTED_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -2838,6 +2923,7 @@ static int hciops_request_authentication(int index, uint16_t handle)
 
 static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 {
+	struct dev_info *dev = &devs[index];
 	char addr[18];
 	int err;
 
@@ -2848,17 +2934,17 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 		pin_code_reply_cp pr;
 		size_t len = strlen(pin);
 
-		PIN_LENGTH(index) = len;
+		dev->pin_length = len;
 
 		memset(&pr, 0, sizeof(pr));
 		bacpy(&pr.bdaddr, bdaddr);
 		memcpy(pr.pin_code, pin, len);
 		pr.pin_len = len;
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 						OCF_PIN_CODE_REPLY,
 						PIN_CODE_REPLY_CP_SIZE, &pr);
 	} else
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 					OCF_PIN_CODE_NEG_REPLY, 6, bdaddr);
 
 	if (err < 0)
@@ -2869,6 +2955,7 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 
 static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 {
+	struct dev_info *dev = &devs[index];
 	user_confirm_reply_cp cp;
 	char addr[18];
 	int err;
@@ -2880,11 +2967,11 @@ static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 	bacpy(&cp.bdaddr, bdaddr);
 
 	if (success)
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 					OCF_USER_CONFIRM_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 	else
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 					OCF_USER_CONFIRM_NEG_REPLY,
 					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 
@@ -2896,6 +2983,7 @@ static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 
 static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 {
+	struct dev_info *dev = &devs[index];
 	char addr[18];
 	int err;
 
@@ -2909,11 +2997,11 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 		bacpy(&cp.bdaddr, bdaddr);
 		cp.passkey = passkey;
 
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 					OCF_USER_PASSKEY_REPLY,
 					USER_PASSKEY_REPLY_CP_SIZE, &cp);
 	} else
-		err = hci_send_cmd(SK(index), OGF_LINK_CTL,
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 					OCF_USER_PASSKEY_NEG_REPLY, 6, bdaddr);
 
 	if (err < 0)
@@ -2924,6 +3012,7 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 
 static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
 {
+	struct dev_info *dev = &devs[index];
 	struct hci_auth_info_req req;
 	char addr[18];
 
@@ -2933,7 +3022,7 @@ static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, bdaddr);
 
-	if (ioctl(SK(index), HCIGETAUTHINFO, (unsigned long) &req) < 0)
+	if (ioctl(dev->sk, HCIGETAUTHINFO, (unsigned long) &req) < 0)
 		return -errno;
 
 	if (auth)
@@ -2944,9 +3033,11 @@ static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
 
 static int hciops_read_scan_enable(int index)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("hci%d", index);
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL, OCF_READ_SCAN_ENABLE,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_READ_SCAN_ENABLE,
 								0, NULL) < 0)
 		return -errno;
 
@@ -2955,17 +3046,18 @@ static int hciops_read_scan_enable(int index)
 
 static int hciops_enable_le(int index)
 {
+	struct dev_info *dev = &devs[index];
 	write_le_host_supported_cp cp;
 
 	DBG("hci%d", index);
 
-	if (!(FEATURES(index)[4] & LMP_LE))
+	if (!(dev->features[4] & LMP_LE))
 		return -ENOTSUP;
 
 	cp.le = 0x01;
-	cp.simul = (FEATURES(index)[6] & LMP_LE_BREDR) ? 0x01 : 0x00;
+	cp.simul = (dev->features[6] & LMP_LE_BREDR) ? 0x01 : 0x00;
 
-	if (hci_send_cmd(SK(index), OGF_HOST_CTL,
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
 				OCF_WRITE_LE_HOST_SUPPORTED,
 				WRITE_LE_HOST_SUPPORTED_CP_SIZE, &cp) < 0)
 		return -errno;
@@ -2981,6 +3073,7 @@ struct remote_version_req {
 static gboolean get_remote_version(gpointer user_data)
 {
 	struct remote_version_req *req = user_data;
+	struct dev_info *dev = &devs[req->index];
 	read_remote_version_cp cp;
 
 	DBG("hci%d handle %u", req->index, req->handle);
@@ -2988,7 +3081,7 @@ static gboolean get_remote_version(gpointer user_data)
 	memset(&cp, 0, sizeof(cp));
 	cp.handle = htobs(req->handle);
 
-	hci_send_cmd(SK(req->index), OGF_LINK_CTL, OCF_READ_REMOTE_VERSION,
+	hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_READ_REMOTE_VERSION,
 					READ_REMOTE_VERSION_CP_SIZE, &cp);
 
 	return FALSE;
@@ -3019,29 +3112,30 @@ static int hciops_get_remote_version(int index, uint16_t handle,
 
 static int set_service_classes(int index, uint8_t value)
 {
+	struct dev_info *dev = &devs[index];
 	int err;
 
 	DBG("hci%d value %u", index, value);
 
 	/* Update only the service class, keep the limited bit,
 	 * major/minor class bits intact */
-	WANTED_COD(index) &= 0x00ffff;
-	WANTED_COD(index) |= (value << 16);
+	dev->wanted_cod &= 0x00ffff;
+	dev->wanted_cod |= (value << 16);
 
 	/* If the cache is enabled or an existing CoD write is in progress
 	 * just bail out */
-	if (CACHE_ENABLE(index) || PENDING_COD(index))
+	if (dev->cache_enable || dev->pending_cod)
 		return 0;
 
 	/* If we already have the CoD we want, update EIR and return */
-	if (CURRENT_COD(index) == WANTED_COD(index)) {
+	if (dev->current_cod == dev->wanted_cod) {
 		update_ext_inquiry_response(index);
 		return 0;
 	}
 
-	DBG("Changing service classes to 0x%06x", WANTED_COD(index));
+	DBG("Changing service classes to 0x%06x", dev->wanted_cod);
 
-	err = write_class(index, WANTED_COD(index));
+	err = write_class(index, dev->wanted_cod);
 	if (err < 0)
 		error("Adapter class update failed: %s (%d)",
 						strerror(-err), -err);
@@ -3051,13 +3145,14 @@ static int set_service_classes(int index, uint8_t value)
 
 static int hciops_services_updated(int index)
 {
+	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 	sdp_list_t *list;
 	uint8_t val = 0;
 
 	DBG("hci%d", index);
 
-	adapter = manager_find_adapter(&BDADDR(index));
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (adapter == NULL)
 		return -ENODEV;
 
@@ -3117,29 +3212,33 @@ static int hciops_services_updated(int index)
 
 static int hciops_disable_cod_cache(int index)
 {
-	DBG("hci%d cache_enable %d", index, CACHE_ENABLE(index));
+	struct dev_info *dev = &devs[index];
 
-	if (!CACHE_ENABLE(index))
+	DBG("hci%d cache_enable %d", index, dev->cache_enable);
+
+	if (!dev->cache_enable)
 		return 0;
 
 	DBG("hci%d current_cod 0x%06x wanted_cod 0x%06x", index,
-					CURRENT_COD(index), WANTED_COD(index));
+					dev->current_cod, dev->wanted_cod);
 
 	/* Disable and flush svc cache. All successive service class
 	 * updates * will be written to the device */
-	CACHE_ENABLE(index) = FALSE;
+	dev->cache_enable = FALSE;
 
-	if (CURRENT_COD(index) == WANTED_COD(index)) {
+	if (dev->current_cod == dev->wanted_cod) {
 		update_ext_inquiry_response(index);
 		return 0;
 	}
 
-	return write_class(index, WANTED_COD(index));
+	return write_class(index, dev->wanted_cod);
 }
 
 static int hciops_restore_powered(int index)
 {
-	if (!ALREADY_UP(index) && UP(index))
+	struct dev_info *dev = &devs[index];
+
+	if (!dev->already_up && dev->up)
 		return hciops_stop(index);
 
 	return 0;
