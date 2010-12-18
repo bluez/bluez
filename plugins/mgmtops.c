@@ -677,12 +677,6 @@ static int mgmt_read_local_features(int index, uint8_t *features)
 	return 0;
 }
 
-static int mgmt_read_local_ext_features(int index)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
 static int mgmt_disconnect(int index, uint16_t handle)
 {
 	DBG("index %d handle %u", index, handle);
@@ -802,7 +796,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.get_conn_list = mgmt_get_conn_list,
 	.read_local_version = mgmt_read_local_version,
 	.read_local_features = mgmt_read_local_features,
-	.read_local_ext_features = mgmt_read_local_ext_features,
 	.disconnect = mgmt_disconnect,
 	.remove_bonding = mgmt_remove_bonding,
 	.request_authentication = mgmt_request_authentication,

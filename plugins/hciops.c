@@ -960,20 +960,17 @@ static inline void remote_features_notify(int index, void *ptr)
 	write_features_info(&BDADDR(index), &evt->bdaddr, NULL, evt->features);
 }
 
-static void write_le_host_complete(bdaddr_t *sba, uint8_t status)
+static void write_le_host_complete(int index, uint8_t status)
 {
-	struct btd_adapter *adapter;
+	uint8_t page_num = 0x01;
 
 	if (status)
 		return;
 
-	adapter = manager_find_adapter(sba);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	btd_adapter_read_local_ext_features(adapter);
+	if (hci_send_cmd(SK(index), OGF_INFO_PARAM,
+				OCF_READ_LOCAL_EXT_FEATURES, 1, &page_num) < 0)
+		error("Unable to read extended local features: %s (%d)",
+						strerror(errno), errno);
 }
 
 static void read_local_version_complete(int index,
@@ -1491,7 +1488,7 @@ static inline void cmd_complete(int index, void *ptr)
 		inquiry_complete(&BDADDR(index), status, FALSE);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_LE_HOST_SUPPORTED):
-		write_le_host_complete(&BDADDR(index), status);
+		write_le_host_complete(index, status);
 		break;
 	case cmd_opcode_pack(OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE):
 		btd_event_le_set_scan_enable_complete(&BDADDR(index), status);
@@ -2787,19 +2784,6 @@ static int hciops_read_local_features(int index, uint8_t *features)
 	return  0;
 }
 
-static int hciops_read_local_ext_features(int index)
-{
-	uint8_t page_num = 1;
-
-	DBG("hci%d", index);
-
-	if (hci_send_cmd(SK(index), OGF_INFO_PARAM,
-				OCF_READ_LOCAL_EXT_FEATURES, 1, &page_num) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_disconnect(int index, uint16_t handle)
 {
 	disconnect_cp cp;
@@ -3188,7 +3172,6 @@ static struct btd_adapter_ops hci_ops = {
 	.get_conn_list = hciops_get_conn_list,
 	.read_local_version = hciops_read_local_version,
 	.read_local_features = hciops_read_local_features,
-	.read_local_ext_features = hciops_read_local_ext_features,
 	.disconnect = hciops_disconnect,
 	.remove_bonding = hciops_remove_bonding,
 	.request_authentication = hciops_request_authentication,

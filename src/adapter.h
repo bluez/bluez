@@ -222,7 +222,6 @@ struct btd_adapter_ops {
 	int (*get_conn_list) (int index, GSList **conns);
 	int (*read_local_version) (int index, struct hci_version *ver);
 	int (*read_local_features) (int index, uint8_t *features);
-	int (*read_local_ext_features) (int index);
 	int (*disconnect) (int index, uint16_t handle);
 	int (*remove_bonding) (int index, bdaddr_t *bdaddr);
 	int (*request_authentication) (int index, uint16_t handle);
@@ -289,7 +288,6 @@ int btd_adapter_get_auth_info(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 
 int btd_adapter_read_scan_enable(struct btd_adapter *adapter);
 
-int btd_adapter_read_local_ext_features(struct btd_adapter *adapter);
 void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 						const uint8_t *features);
 int btd_adapter_get_remote_name(struct btd_adapter *adapter,
