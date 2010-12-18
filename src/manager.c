@@ -419,7 +419,6 @@ struct btd_adapter *btd_manager_register_adapter(int id)
 		return NULL;
 	}
 
-
 	path = adapter_get_path(adapter);
 	g_dbus_emit_signal(connection, "/",
 				MANAGER_INTERFACE, "AdapterAdded",
