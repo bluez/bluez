@@ -789,6 +789,12 @@ static int mgmt_restore_powered(int index)
 	return -ENOSYS;
 }
 
+static int mgmt_load_keys(int index, GSList *keys)
+{
+	DBG("index %d keys %d", index, g_slist_length(keys));
+	return -ENOSYS;
+}
+
 static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
@@ -830,6 +836,7 @@ static struct btd_adapter_ops mgmt_ops = {
 	.services_updated = mgmt_services_updated,
 	.disable_cod_cache = mgmt_disable_cod_cache,
 	.restore_powered = mgmt_restore_powered,
+	.load_keys = mgmt_load_keys,
 };
 
 static int mgmt_init(void)

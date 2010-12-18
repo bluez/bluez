@@ -66,6 +66,13 @@ typedef enum {
 
 struct btd_adapter;
 
+struct link_key_info {
+	bdaddr_t bdaddr;
+	unsigned char key[16];
+	uint8_t type;
+	int pin_len;
+};
+
 struct remote_dev_info {
 	bdaddr_t bdaddr;
 	int8_t rssi;
@@ -239,6 +246,7 @@ struct btd_adapter_ops {
 	int (*services_updated) (int index);
 	int (*disable_cod_cache) (int index);
 	int (*restore_powered) (int index);
+	int (*load_keys) (int index, GSList *keys);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);

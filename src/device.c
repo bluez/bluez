@@ -2380,6 +2380,9 @@ gboolean device_set_debug_key(struct btd_device *device, uint8_t *key)
 
 gboolean device_get_debug_key(struct btd_device *device, uint8_t *key)
 {
+	if (main_opts.debug_keys == FALSE)
+		return FALSE;
+
 	if (!device->has_debug_key)
 		return FALSE;
 

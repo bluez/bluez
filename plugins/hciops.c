@@ -90,6 +90,8 @@ static struct dev_info {
 
 	GIOChannel *io;
 	guint watch_id;
+
+	GSList *keys;
 	int pin_length;
 } *devs = NULL;
 
@@ -534,12 +536,27 @@ static int hciops_set_did(int index, uint16_t vendor, uint16_t product,
 
 /* Start of HCI event callbacks */
 
-static int get_handle(int index, bdaddr_t *dba, uint16_t *handle)
+static int disconnect_handle(int index, uint16_t handle, uint8_t reason)
+{
+	struct dev_info *dev = &devs[index];
+	disconnect_cp cp;
+
+	memset(&cp, 0, sizeof(cp)); cp.handle = htobs(handle);
+	cp.reason = reason;
+
+	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_DISCONNECT,
+						DISCONNECT_CP_SIZE, &cp) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static int disconnect_addr(int index, bdaddr_t *dba, uint8_t reason)
 {
 	struct dev_info *dev = &devs[index];
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
-	int i;
+	int i, err;
 
 	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
 
@@ -548,21 +565,22 @@ static int get_handle(int index, bdaddr_t *dba, uint16_t *handle)
 	ci = cl->conn_info;
 
 	if (ioctl(dev->sk, HCIGETCONNLIST, (void *) cl) < 0) {
-		g_free(cl);
-		return -EIO;
+		err = -errno;
+		goto failed;
 	}
+
+	err = -ENOENT;
 
 	for (i = 0; i < cl->conn_num; i++, ci++) {
 		if (bacmp(&ci->bdaddr, dba) == 0) {
-			*handle = ci->handle;
-			g_free(cl);
-			return 0;
+			err = disconnect_handle(index, ci->handle, reason);
+			break;
 		}
 	}
 
+failed:
 	g_free(cl);
-
-	return -ENOENT;
+	return err;
 }
 
 static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
@@ -625,6 +643,8 @@ static void link_key_request(int index, bdaddr_t *dba)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct hci_auth_info_req req;
+	GSList *match;
+	struct link_key_info *key_info;
 	unsigned char key[16];
 	char da[18];
 	uint8_t type;
@@ -652,11 +672,23 @@ static void link_key_request(int index, bdaddr_t *dba)
 
 	DBG("kernel auth requirements = 0x%02x", req.type);
 
-	if (main_opts.debug_keys && device &&
-					device_get_debug_key(device, key))
+	match = g_slist_find_custom(dev->keys, dba, (GCompareFunc) bacmp);
+	if (match)
+		key_info = match->data;
+	else
+		key_info = NULL;
+
+	DBG("Matching key %s", key_info ? "found" : "not found");
+
+	if (key_info) {
+		memcpy(key, key_info->key, sizeof(key));
+		type = key_info->type;
+	} else
+		type = 0xff;
+
+	if (device && device_get_debug_key(device, key))
 		type = 0x03;
-	else if (read_link_key(&dev->bdaddr, dba, key, &type) < 0 ||
-								type == 0x03) {
+	else if (key_info == NULL || key_info->type == 0x03) {
 		/* Link key not found */
 		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
 								6, dba);
@@ -688,44 +720,54 @@ static void link_key_notify(int index, void *ptr)
 	struct dev_info *dev = &devs[index];
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
+	struct link_key_info *key_info;
+	GSList *match;
+	uint8_t old_key_type, reason;
 	char da[18];
 	int err;
-	unsigned char old_key[16];
-	uint8_t old_key_type;
 
 	ba2str(dba, da);
 	DBG("hci%d dba %s type %d", index, da, evt->key_type);
 
-	err = read_link_key(&dev->bdaddr, dba, old_key, &old_key_type);
-	if (err < 0)
+	match = g_slist_find_custom(dev->keys, dba, (GCompareFunc) bacmp);
+	if (match)
+		key_info = match->data;
+	else
+		key_info = NULL;
+
+	if (key_info == NULL) {
+		key_info = g_new0(struct link_key_info, 1);
+		bacpy(&key_info->bdaddr, &evt->bdaddr);
 		old_key_type = 0xff;
+	} else {
+		dev->keys = g_slist_remove(dev->keys, key_info);
+		old_key_type = key_info->type;
+	}
+
+	memcpy(key_info->key, evt->link_key, sizeof(evt->link_key));
+	key_info->type = evt->key_type;
+	key_info->pin_len = dev->pin_length;
 
 	err = btd_event_link_key_notify(&dev->bdaddr, dba, evt->link_key,
 					evt->key_type, dev->pin_length,
 					old_key_type);
 	dev->pin_length = -1;
 
-	if (err < 0) {
-		uint16_t handle;
-
-		if (err == -ENODEV)
-			btd_event_bonding_process_complete(&dev->bdaddr, dba,
-							HCI_OE_LOW_RESOURCES);
-		else
-			btd_event_bonding_process_complete(&dev->bdaddr, dba,
-							HCI_MEMORY_FULL);
-
-		if (get_handle(index, dba, &handle) == 0) {
-			disconnect_cp cp;
-
-			memset(&cp, 0, sizeof(cp));
-			cp.handle = htobs(handle);
-			cp.reason = HCI_OE_LOW_RESOURCES;
-
-			hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_DISCONNECT,
-						DISCONNECT_CP_SIZE, &cp);
-		}
+	if (err == 0) {
+		dev->keys = g_slist_append(dev->keys, key_info);
+		return;
 	}
+
+	g_free(key_info);
+
+	if (err == -ENODEV)
+		reason = HCI_OE_LOW_RESOURCES;
+	else
+		reason = HCI_MEMORY_FULL;
+
+	btd_event_bonding_process_complete(&dev->bdaddr, dba, reason);
+
+	disconnect_addr(index, dba, reason);
 }
 
 static void return_link_keys(int index, void *ptr)
@@ -1842,16 +1884,23 @@ static inline void le_metaevent(int index, void *ptr)
 static void stop_hci_dev(int index)
 {
 	struct dev_info *dev = &devs[index];
-	GIOChannel *chan = dev->io;
 
-	if (!chan)
+	if (dev->sk < 0)
 		return;
 
 	info("Stopping hci%d event socket", index);
 
-	g_source_remove(dev->watch_id);
-	g_io_channel_unref(dev->io);
+	if (dev->watch_id > 0)
+		g_source_remove(dev->watch_id);
+
+	if (dev->io != NULL)
+		g_io_channel_unref(dev->io);
+
 	hci_close_dev(dev->sk);
+
+	g_slist_foreach(dev->keys, (GFunc) g_free, NULL);
+	g_slist_free(dev->keys);
+
 	init_dev_info(index, -1, dev->registered);
 }
 
@@ -2443,12 +2492,8 @@ static void hciops_cleanup(void)
 
 	DBG("");
 
-	for (i = 0; i <= max_dev; i++) {
-		struct dev_info *dev = &devs[i];
-
-		if (dev->sk >= 0)
-			hci_close_dev(dev->sk);
-	}
+	for (i = 0; i <= max_dev; i++)
+		stop_hci_dev(i);
 
 	g_free(devs);
 	devs = NULL;
@@ -2868,10 +2913,17 @@ static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 {
 	struct dev_info *dev = &devs[index];
 	delete_stored_link_key_cp cp;
+	GSList *match;
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("hci%d dba %s", index, addr);
+
+	match = g_slist_find_custom(dev->keys, bdaddr, (GCompareFunc) bacmp);
+	if (match) {
+		g_free(match->data);
+		dev->keys = g_slist_delete_link(dev->keys, match);
+	}
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.bdaddr, bdaddr);
@@ -3224,6 +3276,20 @@ static int hciops_restore_powered(int index)
 	return 0;
 }
 
+static int hciops_load_keys(int index, GSList *keys)
+{
+	struct dev_info *dev = &devs[index];
+
+	DBG("hci%d keys %d", index, g_slist_length(keys));
+
+	if (dev->keys != NULL)
+		return -EEXIST;
+
+	dev->keys = keys;
+
+	return 0;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -3265,6 +3331,7 @@ static struct btd_adapter_ops hci_ops = {
 	.services_updated = hciops_services_updated,
 	.disable_cod_cache = hciops_disable_cod_cache,
 	.restore_powered = hciops_restore_powered,
+	.load_keys = hciops_load_keys,
 };
 
 static int hciops_init(void)

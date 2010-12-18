@@ -1857,11 +1857,53 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	g_slist_free(uuids);
 }
 
+struct adapter_keys {
+	struct btd_adapter *adapter;
+	GSList *keys;
+};
+
+static struct link_key_info *get_key_info(const char *addr, const char *value)
+{
+	struct link_key_info *info;
+	char tmp[3];
+	int i;
+
+	if (strlen(value) < 36) {
+		error("Unexpectedly short (%zu) link key line", strlen(value));
+		return NULL;
+	}
+
+	info = g_new0(struct link_key_info, 1);
+
+	str2ba(addr, &info->bdaddr);
+
+	memset(tmp, 0, sizeof(tmp));
+
+	for (i = 0; i < 16; i++) {
+		memcpy(tmp, value + (i * 2), 2);
+		info->key[i] = (uint8_t) strtol(tmp, NULL, 16);
+	}
+
+	memcpy(tmp, value + 33, 2);
+	info->type = (uint8_t) strtol(tmp, NULL, 10);
+
+	memcpy(tmp, value + 35, 2);
+	info->pin_len = strtol(tmp, NULL, 10);
+
+	return info;
+}
+
 static void create_stored_device_from_linkkeys(char *key, char *value,
 							void *user_data)
 {
-	struct btd_adapter *adapter = user_data;
+	struct adapter_keys *keys = user_data;
+	struct btd_adapter *adapter = keys->adapter;
 	struct btd_device *device;
+	struct link_key_info *info;
+
+	info = get_key_info(key, value);
+	if (info)
+		keys->keys = g_slist_append(keys->keys, info);
 
 	if (g_slist_find_custom(adapter->devices, key,
 					(GCompareFunc) device_address_cmp))
@@ -1895,6 +1937,8 @@ static void load_devices(struct btd_adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
 	char srcaddr[18];
+	struct adapter_keys keys = { adapter, NULL };
+	int err;
 
 	ba2str(&adapter->bdaddr, srcaddr);
 
@@ -1903,8 +1947,15 @@ static void load_devices(struct btd_adapter *adapter)
 								adapter);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "linkkeys");
-	textfile_foreach(filename, create_stored_device_from_linkkeys,
-								adapter);
+	textfile_foreach(filename, create_stored_device_from_linkkeys, &keys);
+
+	err = adapter_ops->load_keys(adapter->dev_id, keys.keys);
+	if (err < 0) {
+		error("Unable to load keys to adapter_ops: %s (%d)",
+							strerror(-err), -err);
+		g_slist_foreach(keys.keys, (GFunc) g_free, NULL);
+		g_slist_free(keys.keys);
+	}
 
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "blocked");
 	textfile_foreach(filename, create_stored_device_from_blocked, adapter);
