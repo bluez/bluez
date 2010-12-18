@@ -441,12 +441,15 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
 {
 	int err;
 	const char *modestr;
+	gboolean discoverable;
 
 	if (adapter->pending_mode != NULL)
 		return -EALREADY;
 
+	discoverable = new_mode == MODE_DISCOVERABLE;
+
 	if (!adapter->up && new_mode != MODE_OFF) {
-		err = adapter_ops->set_powered(adapter->dev_id, TRUE);
+		err = adapter_ops->power_on(adapter->dev_id, discoverable);
 		if (err < 0)
 			return err;
 
@@ -454,7 +457,7 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
 	}
 
 	if (adapter->up && new_mode == MODE_OFF) {
-		err = adapter_ops->set_powered(adapter->dev_id, FALSE);
+		err = adapter_ops->power_off(adapter->dev_id);
 		if (err < 0)
 			return err;
 
@@ -3286,6 +3289,7 @@ gboolean adapter_powering_down(struct btd_adapter *adapter)
 int btd_adapter_restore_powered(struct btd_adapter *adapter)
 {
 	char mode[14], address[18];
+	gboolean discoverable;
 
 	if (!adapter_ops)
 		return -EINVAL;
@@ -3301,18 +3305,24 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter)
 						g_str_equal(mode, "off"))
 		return 0;
 
-	return adapter_ops->set_powered(adapter->dev_id, TRUE);
+	discoverable = get_mode(&adapter->bdaddr, mode) == MODE_DISCOVERABLE;
+
+	return adapter_ops->power_on(adapter->dev_id, discoverable);
 }
 
 int btd_adapter_switch_online(struct btd_adapter *adapter)
 {
+	gboolean discoverable;
+
 	if (!adapter_ops)
 		return -EINVAL;
 
 	if (adapter->up)
 		return 0;
 
-	return adapter_ops->set_powered(adapter->dev_id, TRUE);
+	discoverable = get_mode(&adapter->bdaddr, "on") == MODE_DISCOVERABLE;
+
+	return adapter_ops->power_on(adapter->dev_id, discoverable);
 }
 
 int btd_adapter_switch_offline(struct btd_adapter *adapter)
@@ -3323,7 +3333,7 @@ int btd_adapter_switch_offline(struct btd_adapter *adapter)
 	if (!adapter->up)
 		return 0;
 
-	return adapter_ops->set_powered(adapter->dev_id, FALSE);
+	return adapter_ops->power_off(adapter->dev_id);
 }
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority)

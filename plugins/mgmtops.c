@@ -221,7 +221,7 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 	}
 }
 
-static int mgmt_stop(int index)
+static int mgmt_power_off(int index)
 {
 	DBG("index %d", index);
 	return -ENOSYS;
@@ -291,7 +291,7 @@ static void read_info_complete(int sk, void *buf, size_t len)
 
 	btd_adapter_get_state(adapter, &mode, NULL, &pairable);
 	if (mode == MODE_OFF) {
-		mgmt_stop(index);
+		mgmt_power_off(index);
 		return;
 	}
 
@@ -500,15 +500,9 @@ static void mgmt_cleanup(void)
 	}
 }
 
-static int mgmt_start(int index)
+static int mgmt_power_on(int index, gboolean discoverable)
 {
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
-static int mgmt_set_powered(int index, gboolean powered)
-{
-	DBG("index %d powered %d", index, powered);
+	DBG("index %d discoverable %d", index, discoverable);
 	return -ENOSYS;
 }
 
@@ -772,9 +766,8 @@ static int mgmt_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
-	.start = mgmt_start,
-	.stop = mgmt_stop,
-	.set_powered = mgmt_set_powered,
+	.power_on = mgmt_power_on,
+	.power_off = mgmt_power_off,
 	.set_connectable = mgmt_set_connectable,
 	.set_discoverable = mgmt_set_discoverable,
 	.set_pairable = mgmt_set_pairable,

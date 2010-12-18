@@ -301,30 +301,27 @@ static int hciops_set_discoverable(int index, gboolean discoverable)
 	return 0;
 }
 
-static int hciops_stop(int index)
-{
-	struct dev_info *dev = &devs[index];
-	int err = 0;
-
-	DBG("hci%d", index);
-
-	if (ioctl(dev->sk, HCIDEVDOWN, index) == 0)
-		goto done; /* on success */
-
-	if (errno != EALREADY) {
-		err = -errno;
-		error("Can't stop device hci%d: %s (%d)",
-				index, strerror(-err), -err);
-	}
-
-done:
-	return err;
-}
-
 static int hciops_set_pairable(int index, gboolean pairable)
 {
 	DBG("hci%d pairable %d", index, pairable);
 	return -ENOSYS;
+}
+
+static int hciops_power_off(int index)
+{
+	struct dev_info *dev = &devs[index];
+	uint8_t mode = SCAN_DISABLED;
+
+	DBG("hci%d", index);
+
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
+					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
+		return -errno;
+
+	if (ioctl(dev->sk, HCIDEVDOWN, index) < 0 && errno != EALREADY)
+		return -errno;
+
+	return 0;
 }
 
 static void start_adapter(int index)
@@ -428,7 +425,7 @@ static gboolean init_adapter(int index)
 		mode = on_mode;
 
 	if (mode == MODE_OFF) {
-		hciops_stop(index);
+		hciops_power_off(index);
 		goto done;
 	}
 
@@ -2478,7 +2475,7 @@ static void hciops_cleanup(void)
 	}
 }
 
-static int hciops_start(int index)
+static int hciops_power_on(int index, gboolean discoverable)
 {
 	struct dev_info *dev = &devs[index];
 	int err;
@@ -2496,23 +2493,6 @@ static int hciops_start(int index)
 					index, strerror(-err), -err);
 
 	return err;
-}
-
-static int hciops_set_powered(int index, gboolean powered)
-{
-	struct dev_info *dev = &devs[index];
-	uint8_t mode = SCAN_DISABLED;
-
-	DBG("hci%d powered %d", index, powered);
-
-	if (powered)
-		return hciops_start(index);
-
-	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
-					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
-		return -errno;
-
-	return hciops_stop(index);
 }
 
 static int hciops_set_connectable(int index, gboolean connectable)
@@ -3239,7 +3219,7 @@ static int hciops_restore_powered(int index)
 	struct dev_info *dev = &devs[index];
 
 	if (!dev->already_up && dev->up)
-		return hciops_stop(index);
+		return hciops_power_off(index);
 
 	return 0;
 }
@@ -3247,9 +3227,8 @@ static int hciops_restore_powered(int index)
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
-	.start = hciops_start,
-	.stop = hciops_stop,
-	.set_powered = hciops_set_powered,
+	.power_on = hciops_power_on,
+	.power_off = hciops_power_off,
 	.set_connectable = hciops_set_connectable,
 	.set_discoverable = hciops_set_discoverable,
 	.set_pairable = hciops_set_pairable,
