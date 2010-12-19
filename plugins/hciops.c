@@ -1586,7 +1586,7 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 						(info->dev_class[1] << 8) |
 						(info->dev_class[2] << 16);
 
-		btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr, class,
+		btd_event_device_found(&dev->bdaddr, &info->bdaddr, class,
 								0, NULL);
 		ptr += INQUIRY_INFO_SIZE;
 	}
@@ -1608,7 +1608,7 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[1] << 8)
 						| (info->dev_class[2] << 16);
 
-			btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr,
+			btd_event_device_found(&dev->bdaddr, &info->bdaddr,
 						class, info->rssi, NULL);
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
@@ -1619,7 +1619,7 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[1] << 8)
 						| (info->dev_class[2] << 16);
 
-			btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr,
+			btd_event_device_found(&dev->bdaddr, &info->bdaddr,
 						class, info->rssi, NULL);
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}
@@ -1638,7 +1638,7 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 					| (info->dev_class[1] << 8)
 					| (info->dev_class[2] << 16);
 
-		btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr, class,
+		btd_event_device_found(&dev->bdaddr, &info->bdaddr, class,
 						info->rssi, info->data);
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}

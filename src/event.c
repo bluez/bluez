@@ -476,7 +476,7 @@ static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 	write_lastused_info(sba, dba, tm);
 }
 
-void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
+void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				int8_t rssi, uint8_t *data)
 {
 	char filename[PATH_MAX + 1];
