@@ -536,51 +536,52 @@ static int hciops_set_did(int index, uint16_t vendor, uint16_t product,
 
 /* Start of HCI event callbacks */
 
-static int disconnect_handle(int index, uint16_t handle, uint8_t reason)
+static int get_handle(int index, const bdaddr_t *bdaddr, uint16_t *handle)
 {
 	struct dev_info *dev = &devs[index];
-	disconnect_cp cp;
+	struct hci_conn_info_req *cr;
+	char addr[18];
+	int err;
 
-	memset(&cp, 0, sizeof(cp)); cp.handle = htobs(handle);
-	cp.reason = reason;
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
 
-	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_DISCONNECT,
-						DISCONNECT_CP_SIZE, &cp) < 0)
-		return -errno;
+	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
+	bacpy(&cr->bdaddr, bdaddr);
+	cr->type = ACL_LINK;
 
-	return 0;
+	if (ioctl(dev->sk, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		err = -errno;
+		goto fail;
+	}
+
+	err = 0;
+	*handle = cr->conn_info->handle;
+
+fail:
+	g_free(cr);
+	return err;
 }
 
 static int disconnect_addr(int index, bdaddr_t *dba, uint8_t reason)
 {
-	struct dev_info *dev = &devs[index];
-	struct hci_conn_list_req *cl;
-	struct hci_conn_info *ci;
-	int i, err;
+	disconnect_cp cp;
+	uint16_t handle;
+	int err;
 
-	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
+	err = get_handle(index, dba, &handle);
+	if (err < 0)
+		return err;
 
-	cl->dev_id = index;
-	cl->conn_num = 10;
-	ci = cl->conn_info;
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = htobs(handle);
+	cp.reason = reason;
 
-	if (ioctl(dev->sk, HCIGETCONNLIST, (void *) cl) < 0) {
-		err = -errno;
-		goto failed;
-	}
+	if (hci_send_cmd(devs[index].sk, OGF_LINK_CTL, OCF_DISCONNECT,
+						DISCONNECT_CP_SIZE, &cp) < 0)
+		return -errno;
 
-	err = -ENOENT;
-
-	for (i = 0; i < cl->conn_num; i++, ci++) {
-		if (bacmp(&ci->bdaddr, dba) == 0) {
-			err = disconnect_handle(index, ci->handle, reason);
-			break;
-		}
-	}
-
-failed:
-	g_free(cl);
-	return err;
+	return 0;
 }
 
 static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
@@ -611,33 +612,6 @@ static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
 	g_free(cl);
 
 	return -ENOENT;
-}
-
-static int get_handle(int index, const bdaddr_t *bdaddr, uint16_t *handle)
-{
-	struct dev_info *dev = &devs[index];
-	struct hci_conn_info_req *cr;
-	char addr[18];
-	int err;
-
-	ba2str(bdaddr, addr);
-	DBG("hci%d dba %s", index, addr);
-
-	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
-	bacpy(&cr->bdaddr, bdaddr);
-	cr->type = ACL_LINK;
-
-	if (ioctl(dev->sk, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		err = -errno;
-		goto fail;
-	}
-
-	err = 0;
-	*handle = cr->conn_info->handle;
-
-fail:
-	g_free(cr);
-	return err;
 }
 
 /* Link Key handling */
