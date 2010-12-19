@@ -41,6 +41,5 @@ struct btd_adapter *btd_manager_register_adapter(int id);
 int btd_manager_unregister_adapter(int id);
 int manager_stop_adapter(int id);
 void manager_add_adapter(const char *path);
-void manager_update_svc(struct btd_adapter *adapter, uint8_t svc);
 void btd_manager_set_offline(gboolean offline);
 void btd_manager_set_did(uint16_t vendor, uint16_t product, uint16_t version);
