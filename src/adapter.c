@@ -3024,10 +3024,9 @@ static gboolean auth_idle_cb(gpointer user_data)
 	return FALSE;
 }
 
-static int btd_adapter_authorize(struct btd_adapter *adapter,
-					const bdaddr_t *dst,
-					const char *uuid,
-					service_auth_cb cb, void *user_data)
+static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
+					const char *uuid, service_auth_cb cb,
+					void *user_data)
 {
 	struct service_auth *auth;
 	struct btd_device *device;
@@ -3082,37 +3081,31 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
 }
 
 int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
-		const char *uuid, service_auth_cb cb, void *user_data)
+					const char *uuid, service_auth_cb cb,
+					void *user_data)
 {
 	struct btd_adapter *adapter;
-	GSList *adapters;
+	GSList *l;
 
-	if (src == NULL || dst == NULL)
-		return -EINVAL;
+	if (bacmp(src, BDADDR_ANY) != 0) {
+		adapter = manager_find_adapter(src);
+		if (!adapter)
+			return -EPERM;
 
-	if (bacmp(src, BDADDR_ANY) != 0)
-		goto proceed;
+		return adapter_authorize(adapter, dst, uuid, cb, user_data);
+	}
 
-	/* Handle request authorization for ANY adapter */
-	adapters = manager_get_adapters();
-
-	for (; adapters; adapters = adapters->next) {
+	for (l = manager_get_adapters(); l != NULL; l = g_slist_next(l)) {
 		int err;
-		adapter = adapters->data;
 
-		err = btd_adapter_authorize(adapter, dst, uuid, cb, user_data);
+		adapter = l->data;
+
+		err = adapter_authorize(adapter, dst, uuid, cb, user_data);
 		if (err == 0)
 			return 0;
 	}
 
 	return -EPERM;
-
-proceed:
-	adapter = manager_find_adapter(src);
-	if (!adapter)
-		return -EPERM;
-
-	return btd_adapter_authorize(adapter, dst, uuid, cb, user_data);
 }
 
 int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
