@@ -105,8 +105,11 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 	} else if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4) {
 		dev_id = atoi(pattern + 3);
 		adapter = manager_find_adapter_by_id(dev_id);
-	} else
-		adapter = manager_find_adapter_by_address(pattern);
+	} else {
+		bdaddr_t bdaddr;
+		str2ba(pattern, &bdaddr);
+		adapter = manager_find_adapter(&bdaddr);
+	}
 
 	if (!adapter)
 		return btd_error_no_such_adapter(msg);
@@ -322,35 +325,11 @@ static gint adapter_cmp(gconstpointer a, gconstpointer b)
 	return bacmp(&src, bdaddr);
 }
 
-static gint adapter_address_cmp(gconstpointer a, gconstpointer b)
-{
-	struct btd_adapter *adapter = (struct btd_adapter *) a;
-	const char *address = b;
-	bdaddr_t bdaddr;
-	char addr[18];
-
-	adapter_get_address(adapter, &bdaddr);
-	ba2str(&bdaddr, addr);
-
-	return strcasecmp(addr, address);
-}
-
 struct btd_adapter *manager_find_adapter(const bdaddr_t *sba)
 {
 	GSList *match;
 
 	match = g_slist_find_custom(adapters, sba, adapter_cmp);
-	if (!match)
-		return NULL;
-
-	return match->data;
-}
-
-struct btd_adapter *manager_find_adapter_by_address(const char *address)
-{
-	GSList *match;
-
-	match = g_slist_find_custom(adapters, address, adapter_address_cmp);
 	if (!match)
 		return NULL;
 
