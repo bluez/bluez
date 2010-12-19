@@ -3495,11 +3495,6 @@ void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 	memcpy(dev->extfeatures, features, 8);
 }
 
-int btd_adapter_get_remote_name(struct btd_adapter *adapter, bdaddr_t *bdaddr)
-{
-	return adapter_ops->resolve_name(adapter->dev_id, bdaddr);
-}
-
 int btd_adapter_get_remote_version(struct btd_adapter *adapter,
 					uint16_t handle, gboolean delayed)
 {

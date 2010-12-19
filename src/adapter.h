@@ -292,8 +292,6 @@ int btd_adapter_read_scan_enable(struct btd_adapter *adapter);
 
 void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 						const uint8_t *features);
-int btd_adapter_get_remote_name(struct btd_adapter *adapter,
-							bdaddr_t *bdaddr);
 int btd_adapter_get_remote_version(struct btd_adapter *adapter,
 							uint16_t handle,
 							gboolean delayed);
