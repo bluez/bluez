@@ -305,15 +305,6 @@ static gint adapter_id_cmp(gconstpointer a, gconstpointer b)
 	return dev_id == id ? 0 : -1;
 }
 
-static gint adapter_path_cmp(gconstpointer a, gconstpointer b)
-{
-	struct btd_adapter *adapter = (struct btd_adapter *) a;
-	const char *path = b;
-	const gchar *adapter_path = adapter_get_path(adapter);
-
-	return strcmp(adapter_path, path);
-}
-
 static gint adapter_cmp(gconstpointer a, gconstpointer b)
 {
 	struct btd_adapter *adapter = (struct btd_adapter *) a;
@@ -330,17 +321,6 @@ struct btd_adapter *manager_find_adapter(const bdaddr_t *sba)
 	GSList *match;
 
 	match = g_slist_find_custom(adapters, sba, adapter_cmp);
-	if (!match)
-		return NULL;
-
-	return match->data;
-}
-
-struct btd_adapter *manager_find_adapter_by_path(const char *path)
-{
-	GSList *match;
-
-	match = g_slist_find_custom(adapters, path, adapter_path_cmp);
 	if (!match)
 		return NULL;
 
