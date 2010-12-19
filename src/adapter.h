@@ -127,7 +127,6 @@ int adapter_resolve_names(struct btd_adapter *adapter);
 struct btd_adapter *adapter_create(DBusConnection *conn, int id);
 gboolean adapter_init(struct btd_adapter *adapter);
 void adapter_remove(struct btd_adapter *adapter);
-uint8_t btd_adapter_get_init_mode(struct btd_adapter *adapter);
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter);
 const gchar *adapter_get_path(struct btd_adapter *adapter);
 void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
