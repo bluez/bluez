@@ -77,6 +77,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 				const char *agent_path, uint8_t capability);
 void device_remove_bonding(struct btd_device *device);
 void device_bonding_complete(struct btd_device *device, uint8_t status);
+void device_authentication_complete(struct btd_device *device);
 void device_simple_pairing_complete(struct btd_device *device, uint8_t status);
 gboolean device_is_creating(struct btd_device *device, const char *sender);
 gboolean device_is_bonding(struct btd_device *device, const char *sender);

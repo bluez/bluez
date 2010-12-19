@@ -529,7 +529,7 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	struct btd_device *device;
 	struct btd_adapter *adapter;
 	uint8_t local_auth = 0xff, remote_auth, new_key_type;
-	gboolean bonding, temporary = FALSE;
+	gboolean temporary = FALSE;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return -ENODEV;
@@ -555,7 +555,6 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	}
 
 	btd_adapter_get_auth_info(adapter, peer, &local_auth);
-	bonding = device_is_bonding(device, NULL);
 
 	DBG("key type 0x%02x old key type 0x%02x new key type 0x%02x",
 					key_type, old_key_type, new_key_type);
@@ -609,8 +608,12 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 	if (!device_is_connected(device))
 		device_set_secmode3_conn(device, TRUE);
-	else if (!bonding && old_key_type == 0xff)
-		btd_event_bonding_process_complete(local, peer, 0);
+	else if (!device_is_bonding(device, NULL)) {
+		if (old_key_type == 0xff)
+			btd_event_bonding_process_complete(local, peer, 0);
+		else
+			device_authentication_complete(device);
+	}
 
 	device_set_temporary(device, temporary);
 
