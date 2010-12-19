@@ -432,20 +432,6 @@ int manager_stop_adapter(int id)
 	return btd_adapter_stop(adapter);
 }
 
-void btd_manager_set_offline(gboolean offline)
-{
-	GSList *l;
-
-	for (l = adapters; l != NULL; l = g_slist_next(l)) {
-		struct btd_adapter *adapter = l->data;
-
-		if (offline)
-			btd_adapter_switch_offline(adapter);
-		else
-			btd_adapter_restore_powered(adapter);
-	}
-}
-
 void btd_manager_set_did(uint16_t vendor, uint16_t product, uint16_t version)
 {
 	GSList *l;
