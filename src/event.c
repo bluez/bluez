@@ -56,6 +56,7 @@
 #include "agent.h"
 #include "storage.h"
 #include "event.h"
+#include "sdpd.h"
 
 static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					struct btd_adapter **adapter,
@@ -302,9 +303,107 @@ void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
+static GSList *get_eir_uuids(uint8_t *eir_data, size_t eir_length)
+{
+	uint16_t len = 0;
+	size_t total;
+	size_t uuid16_count = 0;
+	size_t uuid32_count = 0;
+	size_t uuid128_count = 0;
+	GSList *list = NULL;
+	uint8_t *uuid16 = NULL;
+	uint8_t *uuid32 = NULL;
+	uint8_t *uuid128 = NULL;
+	uuid_t service;
+	char *uuid_str;
+	unsigned int i;
+
+	if (eir_data == NULL || eir_length == 0)
+		return list;
+
+	while (len < eir_length - 1) {
+		uint8_t field_len = eir_data[0];
+
+		/* Check for the end of EIR */
+		if (field_len == 0)
+			break;
+
+		switch (eir_data[1]) {
+		case EIR_UUID16_SOME:
+		case EIR_UUID16_ALL:
+			uuid16_count = field_len / 2;
+			uuid16 = &eir_data[2];
+			break;
+		case EIR_UUID32_SOME:
+		case EIR_UUID32_ALL:
+			uuid32_count = field_len / 4;
+			uuid32 = &eir_data[2];
+			break;
+		case EIR_UUID128_SOME:
+		case EIR_UUID128_ALL:
+			uuid128_count = field_len / 16;
+			uuid128 = &eir_data[2];
+			break;
+		}
+
+		len += field_len + 1;
+		eir_data += field_len + 1;
+	}
+
+	/* Bail out if got incorrect length */
+	if (len > eir_length)
+		return list;
+
+	total = uuid16_count + uuid32_count + uuid128_count;
+
+	if (!total)
+		return list;
+
+	/* Generate uuids in SDP format (EIR data is Little Endian) */
+	service.type = SDP_UUID16;
+	for (i = 0; i < uuid16_count; i++) {
+		uint16_t val16 = uuid16[1];
+
+		val16 = (val16 << 8) + uuid16[0];
+		service.value.uuid16 = val16;
+		uuid_str = bt_uuid2string(&service);
+		list = g_slist_append(list, uuid_str);
+		uuid16 += 2;
+	}
+
+	service.type = SDP_UUID32;
+	for (i = uuid16_count; i < uuid32_count + uuid16_count; i++) {
+		uint32_t val32 = uuid32[3];
+		int k;
+
+		for (k = 2; k >= 0; k--)
+			val32 = (val32 << 8) + uuid32[k];
+
+		service.value.uuid32 = val32;
+		uuid_str = bt_uuid2string(&service);
+		list = g_slist_append(list, uuid_str);
+		uuid32 += 4;
+	}
+
+	service.type = SDP_UUID128;
+	for (i = uuid32_count + uuid16_count; i < total; i++) {
+		int k;
+
+		for (k = 0; k < 16; k++)
+			service.value.uuid128.data[k] = uuid128[16 - k - 1];
+
+		uuid_str = bt_uuid2string(&service);
+		list = g_slist_append(list, uuid_str);
+		uuid128 += 16;
+	}
+
+	return list;
+}
+
 void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 {
 	struct btd_adapter *adapter;
+	GSList *services = NULL;
 
 	adapter = manager_find_adapter(local);
 	if (adapter == NULL) {
@@ -312,7 +411,10 @@ void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 		return;
 	}
 
-	adapter_update_device_from_info(adapter, info);
+	/* Extract UUIDs from advertising data if any */
+	services = get_eir_uuids(info->data, info->length);
+
+	adapter_update_device_from_info(adapter, info, services);
 }
 
 void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
@@ -325,6 +427,7 @@ void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	struct remote_dev_info *dev, match;
 	uint8_t name_type = 0x00;
 	name_status_t name_status;
+	GSList *services = NULL;
 	int state;
 	dbus_bool_t legacy;
 	unsigned char features[8];
@@ -353,6 +456,9 @@ void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		adapter_set_state(adapter, state);
 	}
 
+	/* Extract UUIDs from extended inquiry response if any */
+	services = get_eir_uuids(data, EIR_DATA_LENGTH);
+
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, peer);
 	match.name_status = NAME_SENT;
@@ -361,7 +467,7 @@ void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	if (dev) {
 		adapter_update_found_devices(adapter, peer, rssi, class,
 						NULL, NULL, dev->legacy,
-						NAME_NOT_REQUIRED, data);
+						services, NAME_NOT_REQUIRED);
 		return;
 	}
 
@@ -413,7 +519,7 @@ void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 	/* add in the list to track name sent/pending */
 	adapter_update_found_devices(adapter, peer, rssi, class, name, alias,
-					legacy, name_status, data);
+						legacy, services, name_status);
 
 	g_free(name);
 	g_free(alias);
@@ -503,7 +609,7 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 	if (dev_info) {
 		g_free(dev_info->name);
 		dev_info->name = g_strdup(name);
-		adapter_emit_device_found(adapter, dev_info, NULL, 0);
+		adapter_emit_device_found(adapter, dev_info);
 	}
 
 	if (device)
