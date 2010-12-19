@@ -445,6 +445,28 @@ void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 					eir_data.services, eir_data.flags);
 }
 
+static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
+{
+	time_t t;
+	struct tm *tm;
+
+	t = time(NULL);
+	tm = gmtime(&t);
+
+	write_lastseen_info(sba, dba, tm);
+}
+
+static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
+{
+	time_t t;
+	struct tm *tm;
+
+	t = time(NULL);
+	tm = gmtime(&t);
+
+	write_lastused_info(sba, dba, tm);
+}
+
 void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				int8_t rssi, uint8_t *data)
 {
@@ -467,6 +489,7 @@ void btd_event_inquiry_result(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		return;
 	}
 
+	update_lastseen(local, peer);
 	write_remote_class(local, peer, class);
 
 	if (data)
@@ -776,7 +799,9 @@ void btd_event_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		if (device_is_temporary(device))
 			adapter_remove_device(conn, adapter, device, secmode3);
 		return;
-	}
+	} else
+		update_lastused(local, peer);
+
 
 	/* add in the device connetions list */
 	adapter_add_connection(adapter, device, handle);

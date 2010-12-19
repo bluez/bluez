@@ -613,28 +613,6 @@ static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
 	return -ENOENT;
 }
 
-static inline void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
-{
-	time_t t;
-	struct tm *tm;
-
-	t = time(NULL);
-	tm = gmtime(&t);
-
-	write_lastseen_info(sba, dba, tm);
-}
-
-static inline void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
-{
-	time_t t;
-	struct tm *tm;
-
-	t = time(NULL);
-	tm = gmtime(&t);
-
-	write_lastused_info(sba, dba, tm);
-}
-
 /* Link Key handling */
 
 static void link_key_request(int index, bdaddr_t *dba)
@@ -1643,9 +1621,6 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 
 		btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr, class,
 								0, NULL);
-
-		update_lastseen(&dev->bdaddr, &info->bdaddr);
-
 		ptr += INQUIRY_INFO_SIZE;
 	}
 }
@@ -1668,9 +1643,6 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 
 			btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr,
 						class, info->rssi, NULL);
-
-			update_lastseen(&dev->bdaddr, &info->bdaddr);
-
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
 	} else {
@@ -1682,9 +1654,6 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 
 			btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr,
 						class, info->rssi, NULL);
-
-			update_lastseen(&dev->bdaddr, &info->bdaddr);
-
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}
 	}
@@ -1704,9 +1673,6 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 
 		btd_event_inquiry_result(&dev->bdaddr, &info->bdaddr, class,
 						info->rssi, info->data);
-
-		update_lastseen(&dev->bdaddr, &info->bdaddr);
-
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
 }
@@ -1751,8 +1717,6 @@ static inline void conn_complete(int index, void *ptr)
 	if (evt->status)
 		return;
 
-	update_lastused(&dev->bdaddr, &evt->bdaddr);
-
 	/* check if the remote version needs be requested */
 	ba2str(&dev->bdaddr, local_addr);
 	ba2str(&evt->bdaddr, peer_addr);
@@ -1787,8 +1751,6 @@ static inline void le_conn_complete(int index, void *ptr)
 
 	if (evt->status)
 		return;
-
-	update_lastused(&dev->bdaddr, &evt->peer_bdaddr);
 
 	/* check if the remote version needs be requested */
 	ba2str(&dev->bdaddr, local_addr);
