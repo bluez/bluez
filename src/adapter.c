@@ -980,24 +980,14 @@ static void adapter_emit_uuids_updated(struct btd_adapter *adapter)
 static void adapter_service_ins_rem(const bdaddr_t *bdaddr, void *rec,
 							gboolean insert)
 {
-	struct btd_adapter *adapter;
-	GSList *adapters;
+	GSList *l;
 
-	adapters = NULL;
+	for (l = manager_get_adapters(); l != NULL; l = g_slist_next(l)) {
+		struct btd_adapter *adapter = l->data;
 
-	if (bacmp(bdaddr, BDADDR_ANY) != 0) {
-		/* Only one adapter */
-		adapter = manager_find_adapter(bdaddr);
-		if (!adapter)
-			return;
-
-		adapters = g_slist_append(adapters, adapter);
-	} else
-		/* Emit D-Bus msg to all adapters */
-		adapters = manager_get_adapters();
-
-	for (; adapters; adapters = adapters->next) {
-		adapter = adapters->data;
+		if (bacmp(bdaddr, BDADDR_ANY) != 0 &&
+				bacmp(bdaddr, &adapter->bdaddr) != 0)
+			continue;
 
 		if (insert == TRUE)
 			adapter->services = sdp_list_insert_sorted(
