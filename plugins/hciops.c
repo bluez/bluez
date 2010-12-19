@@ -2704,15 +2704,16 @@ static int hciops_fast_connectable(int index, gboolean enable)
 	return 0;
 }
 
-static int hciops_read_clock(int index, int handle, int which, int timeout,
-					uint32_t *clock, uint16_t *accuracy)
+static int hciops_read_clock(int index, uint16_t handle, int which,
+						int timeout, uint32_t *clock,
+						uint16_t *accuracy)
 {
 	struct dev_info *dev = &devs[index];
 
 	DBG("hci%d handle %d which %d timeout %d", index, handle, which,
 								timeout);
 
-	if (hci_read_clock(dev->sk, handle, which, clock, accuracy,
+	if (hci_read_clock(dev->sk, htobs(handle), which, clock, accuracy,
 								timeout) < 0)
 		return -errno;
 
@@ -2739,7 +2740,7 @@ static int hciops_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 	}
 
 	err = 0;
-	*handle = htobs(cr->conn_info->handle);
+	*handle = cr->conn_info->handle;
 
 fail:
 	g_free(cr);

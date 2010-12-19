@@ -580,7 +580,7 @@ static int mgmt_fast_connectable(int index, gboolean enable)
 	return -ENOSYS;
 }
 
-static int mgmt_read_clock(int index, int handle, int which, int timeout,
+static int mgmt_read_clock(int index, uint16_t handle, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy)
 {
 	DBG("index %d handle %d which %d timeout %d", index, handle,

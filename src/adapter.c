@@ -3307,8 +3307,9 @@ int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 	return adapter_ops->set_fast_connectable(adapter->dev_id, enable);
 }
 
-int btd_adapter_read_clock(struct btd_adapter *adapter, int handle, int which,
-			int timeout, uint32_t *clock, uint16_t *accuracy)
+int btd_adapter_read_clock(struct btd_adapter *adapter, uint16_t handle,
+				int which, int timeout, uint32_t *clock,
+				uint16_t *accuracy)
 {
 	if (!adapter_ops)
 		return -EINVAL;
