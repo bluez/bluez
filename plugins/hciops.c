@@ -613,6 +613,33 @@ static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
 	return -ENOENT;
 }
 
+static int get_handle(int index, const bdaddr_t *bdaddr, uint16_t *handle)
+{
+	struct dev_info *dev = &devs[index];
+	struct hci_conn_info_req *cr;
+	char addr[18];
+	int err;
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
+
+	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
+	bacpy(&cr->bdaddr, bdaddr);
+	cr->type = ACL_LINK;
+
+	if (ioctl(dev->sk, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+		err = -errno;
+		goto fail;
+	}
+
+	err = 0;
+	*handle = cr->conn_info->handle;
+
+fail:
+	g_free(cr);
+	return err;
+}
+
 /* Link Key handling */
 
 static void link_key_request(int index, bdaddr_t *dba)
@@ -2704,47 +2731,27 @@ static int hciops_fast_connectable(int index, gboolean enable)
 	return 0;
 }
 
-static int hciops_read_clock(int index, uint16_t handle, int which,
+static int hciops_read_clock(int index, bdaddr_t *bdaddr, int which,
 						int timeout, uint32_t *clock,
 						uint16_t *accuracy)
 {
 	struct dev_info *dev = &devs[index];
+	uint16_t handle = 0;
+	char addr[18];
+	int ret;
 
-	DBG("hci%d handle %d which %d timeout %d", index, handle, which,
-								timeout);
+	ba2str(bdaddr, addr);
+	DBG("hci%d addr %s which %d timeout %d", index, addr, which, timeout);
+
+	ret = get_handle(index, bdaddr, &handle);
+	if (ret < 0)
+		return ret;
 
 	if (hci_read_clock(dev->sk, htobs(handle), which, clock, accuracy,
 								timeout) < 0)
 		return -errno;
 
 	return 0;
-}
-
-static int hciops_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
-{
-	struct dev_info *dev = &devs[index];
-	struct hci_conn_info_req *cr;
-	char addr[18];
-	int err;
-
-	ba2str(bdaddr, addr);
-	DBG("hci%d dba %s", index, addr);
-
-	cr = g_malloc0(sizeof(*cr) + sizeof(struct hci_conn_info));
-	bacpy(&cr->bdaddr, bdaddr);
-	cr->type = ACL_LINK;
-
-	if (ioctl(dev->sk, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		err = -errno;
-		goto fail;
-	}
-
-	err = 0;
-	*handle = cr->conn_info->handle;
-
-fail:
-	g_free(cr);
-	return err;
 }
 
 static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
@@ -3212,7 +3219,6 @@ static struct btd_adapter_ops hci_ops = {
 	.set_dev_class = hciops_set_dev_class,
 	.set_fast_connectable = hciops_fast_connectable,
 	.read_clock = hciops_read_clock,
-	.get_conn_handle = hciops_conn_handle,
 	.read_bdaddr = hciops_read_bdaddr,
 	.block_device = hciops_block_device,
 	.unblock_device = hciops_unblock_device,

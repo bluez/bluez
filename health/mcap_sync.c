@@ -246,7 +246,7 @@ static gboolean valid_btclock(uint32_t btclk)
 static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 							uint16_t *btaccuracy)
 {
-	int ret, handle, which = 1;
+	int which = 1;
 	struct btd_adapter *adapter;
 
 	adapter = manager_find_adapter(&mcl->mi->src);
@@ -254,13 +254,11 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 	if (!adapter)
 		return FALSE;
 
-	if (btd_adapter_get_conn_handle(adapter, &mcl->addr, &handle))
+	if (btd_adapter_read_clock(adapter, &mcl->addr, which, 1000,
+						btclock, btaccuracy) < 0)
 		return FALSE;
 
-	ret = btd_adapter_read_clock(adapter, handle, which, 1000, btclock,
-								btaccuracy);
-
-	return ret < 0 ? FALSE : TRUE;
+	return TRUE;
 }
 
 static gboolean read_btclock_retry(struct mcap_mcl *mcl, uint32_t *btclock,

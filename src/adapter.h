@@ -215,9 +215,8 @@ struct btd_adapter_ops {
 	int (*set_name) (int index, const char *name);
 	int (*set_dev_class) (int index, uint8_t major, uint8_t minor);
 	int (*set_fast_connectable) (int index, gboolean enable);
-	int (*read_clock) (int index, uint16_t handle, int which, int timeout,
+	int (*read_clock) (int index, bdaddr_t *bdaddr, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy);
-	int (*get_conn_handle) (int index, const bdaddr_t *bdaddr, int *handle);
 	int (*read_bdaddr) (int index, bdaddr_t *bdaddr);
 	int (*block_device) (int index, bdaddr_t *bdaddr);
 	int (*unblock_device) (int index, bdaddr_t *bdaddr);
@@ -260,11 +259,9 @@ void btd_adapter_unregister_powered_callback(struct btd_adapter *adapter,
 int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 							gboolean enable);
 
-int btd_adapter_read_clock(struct btd_adapter *adapter, uint16_t handle,
+int btd_adapter_read_clock(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				int which, int timeout, uint32_t *clock,
 				uint16_t *accuracy);
-int btd_adapter_get_conn_handle(struct btd_adapter *adapter,
-				const bdaddr_t *bdaddr, int *handle);
 
 int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);

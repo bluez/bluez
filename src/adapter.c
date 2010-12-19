@@ -3307,7 +3307,7 @@ int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 	return adapter_ops->set_fast_connectable(adapter->dev_id, enable);
 }
 
-int btd_adapter_read_clock(struct btd_adapter *adapter, uint16_t handle,
+int btd_adapter_read_clock(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				int which, int timeout, uint32_t *clock,
 				uint16_t *accuracy)
 {
@@ -3317,20 +3317,8 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, uint16_t handle,
 	if (!adapter->up)
 		return -EINVAL;
 
-	return adapter_ops->read_clock(adapter->dev_id, handle, which,
+	return adapter_ops->read_clock(adapter->dev_id, bdaddr, which,
 						timeout, clock, accuracy);
-}
-
-int btd_adapter_get_conn_handle(struct btd_adapter *adapter,
-				const bdaddr_t *bdaddr, int *handle)
-{
-	if (!adapter_ops)
-		return -EINVAL;
-
-	if (!adapter->up)
-		return -EINVAL;
-
-	return adapter_ops->get_conn_handle(adapter->dev_id, bdaddr, handle);
 }
 
 int btd_adapter_disconnect_device(struct btd_adapter *adapter, uint16_t handle)

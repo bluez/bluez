@@ -580,20 +580,14 @@ static int mgmt_fast_connectable(int index, gboolean enable)
 	return -ENOSYS;
 }
 
-static int mgmt_read_clock(int index, uint16_t handle, int which, int timeout,
+static int mgmt_read_clock(int index, bdaddr_t *bdaddr, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy)
-{
-	DBG("index %d handle %d which %d timeout %d", index, handle,
-							which, timeout);
-	return -ENOSYS;
-}
-
-static int mgmt_conn_handle(int index, const bdaddr_t *bdaddr, int *handle)
 {
 	char addr[18];
 
 	ba2str(bdaddr, addr);
-	DBG("index %d addr %s", index, addr);
+	DBG("index %d addr %s which %d timeout %d", index, addr, which,
+								timeout);
 
 	return -ENOSYS;
 }
@@ -807,7 +801,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.set_dev_class = mgmt_set_dev_class,
 	.set_fast_connectable = mgmt_fast_connectable,
 	.read_clock = mgmt_read_clock,
-	.get_conn_handle = mgmt_conn_handle,
 	.read_bdaddr = mgmt_read_bdaddr,
 	.block_device = mgmt_block_device,
 	.unblock_device = mgmt_unblock_device,
