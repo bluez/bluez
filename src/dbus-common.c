@@ -42,8 +42,8 @@
 
 #include "log.h"
 
-#include "manager.h"
 #include "adapter.h"
+#include "manager.h"
 #include "event.h"
 #include "dbus-common.h"
 

@@ -47,8 +47,8 @@
 #include "textfile.h"
 
 #include "hcid.h"
-#include "manager.h"
 #include "adapter.h"
+#include "manager.h"
 #include "device.h"
 #include "error.h"
 #include "glib-helper.h"

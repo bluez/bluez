@@ -36,8 +36,8 @@
 #include <glib.h>
 
 #include "log.h"
-#include "manager.h"
 #include "adapter.h"
+#include "manager.h"
 #include "hcid.h"
 
 enum rfkill_type {

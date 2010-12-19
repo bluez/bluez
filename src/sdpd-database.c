@@ -41,6 +41,7 @@
 #include "sdpd.h"
 #include "log.h"
 #include "adapter.h"
+#include "manager.h"
 
 static sdp_list_t *service_db;
 static sdp_list_t *access_db;
@@ -169,6 +170,7 @@ void sdp_svcdb_set_collectable(sdp_record_t *record, int sock)
  */
 void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec)
 {
+	struct btd_adapter *adapter;
 	sdp_access_t *dev;
 
 	SDPDBG("Adding rec : 0x%lx", (long) rec);
@@ -185,7 +187,14 @@ void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec)
 
 	access_db = sdp_list_insert_sorted(access_db, dev, access_sort);
 
-	adapter_service_insert(device, rec);
+	if (bacmp(device, BDADDR_ANY) == 0) {
+		manager_foreach_adapter(adapter_service_insert, rec);
+		return;
+	}
+
+	adapter = manager_find_adapter(device);
+	if (adapter)
+		adapter_service_insert(adapter, rec);
 }
 
 static sdp_list_t *record_locate(uint32_t handle)
@@ -252,14 +261,20 @@ int sdp_record_remove(uint32_t handle)
 		service_db = sdp_list_remove(service_db, r);
 
 	p = access_locate(handle);
-	if (p) {
-		a = p->data;
-		if (a) {
-			adapter_service_remove(&a->device, r);
-			access_db = sdp_list_remove(access_db, a);
-			access_free(a);
-		}
-	}
+	if (p == NULL || p->data == NULL)
+		return 0;
+
+	a = p->data;
+
+	if (bacmp(&a->device, BDADDR_ANY) != 0) {
+		struct btd_adapter *adapter = manager_find_adapter(&a->device);
+		if (adapter)
+			adapter_service_remove(adapter, r);
+	} else
+		manager_foreach_adapter(adapter_service_remove, r);
+
+	access_db = sdp_list_remove(access_db, a);
+	access_free(a);
 
 	return 0;
 }
@@ -326,6 +341,6 @@ void sdp_init_services_list(bdaddr_t *device)
 
 		SDPDBG("adding record with handle %x", access->handle);
 
-		adapter_service_insert(device, rec);
+		manager_foreach_adapter(adapter_service_insert, rec);
 	}
 }

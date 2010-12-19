@@ -380,6 +380,11 @@ struct btd_adapter *manager_find_adapter_by_id(int id)
 	return match->data;
 }
 
+void manager_foreach_adapter(adapter_cb func, gpointer user_data)
+{
+	g_slist_foreach(adapters, (GFunc) func, user_data);
+}
+
 GSList *manager_get_adapters(void)
 {
 	return adapters;

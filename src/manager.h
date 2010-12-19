@@ -27,6 +27,8 @@
 
 #define MANAGER_INTERFACE "org.bluez.Manager"
 
+typedef void (*adapter_cb) (struct btd_adapter *adapter, gpointer user_data);
+
 dbus_bool_t manager_init(DBusConnection *conn, const char *path);
 void manager_cleanup(DBusConnection *conn, const char *path);
 
@@ -35,6 +37,7 @@ struct btd_adapter *manager_find_adapter(const bdaddr_t *sba);
 struct btd_adapter *manager_find_adapter_by_address(const char *address);
 struct btd_adapter *manager_find_adapter_by_path(const char *path);
 struct btd_adapter *manager_find_adapter_by_id(int id);
+void manager_foreach_adapter(adapter_cb func, gpointer user_data);
 GSList *manager_get_adapters(void);
 struct btd_adapter *btd_manager_register_adapter(int id);
 int btd_manager_unregister_adapter(int id);

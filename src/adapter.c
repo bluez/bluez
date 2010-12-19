@@ -46,8 +46,8 @@
 
 #include "hcid.h"
 #include "sdpd.h"
-#include "manager.h"
 #include "adapter.h"
+#include "manager.h"
 #include "device.h"
 #include "dbus-common.h"
 #include "event.h"
@@ -974,43 +974,17 @@ static void adapter_emit_uuids_updated(struct btd_adapter *adapter)
 	g_strfreev(uuids);
 }
 
-/*
- * adapter_services_inc_rem - Insert or remove UUID from adapter
- */
-static void adapter_service_ins_rem(const bdaddr_t *bdaddr, void *rec,
-							gboolean insert)
+void adapter_service_insert(struct btd_adapter *adapter, void *rec)
 {
-	GSList *l;
-
-	for (l = manager_get_adapters(); l != NULL; l = g_slist_next(l)) {
-		struct btd_adapter *adapter = l->data;
-
-		if (bacmp(bdaddr, BDADDR_ANY) != 0 &&
-				bacmp(bdaddr, &adapter->bdaddr) != 0)
-			continue;
-
-		if (insert == TRUE)
-			adapter->services = sdp_list_insert_sorted(
-							adapter->services, rec,
-							record_sort);
-		else
-			adapter->services = sdp_list_remove(adapter->services,
-									rec);
-
-		adapter_emit_uuids_updated(adapter);
-	}
+	adapter->services = sdp_list_insert_sorted(adapter->services, rec,
+								record_sort);
+	adapter_emit_uuids_updated(adapter);
 }
 
-void adapter_service_insert(const bdaddr_t *bdaddr, void *rec)
+void adapter_service_remove(struct btd_adapter *adapter, void *rec)
 {
-	/* TRUE to include service*/
-	adapter_service_ins_rem(bdaddr, rec, TRUE);
-}
-
-void adapter_service_remove(const bdaddr_t *bdaddr, void *rec)
-{
-	/* FALSE to remove service*/
-	adapter_service_ins_rem(bdaddr, rec, FALSE);
+	adapter->services = sdp_list_remove(adapter->services, rec);
+	adapter_emit_uuids_updated(adapter);
 }
 
 sdp_list_t *adapter_get_services(struct btd_adapter *adapter)
@@ -1971,9 +1945,8 @@ static void clear_blocked(struct btd_adapter *adapter)
 						strerror(-err), -err);
 }
 
-static void probe_driver(gpointer data, gpointer user_data)
+static void probe_driver(struct btd_adapter *adapter, gpointer user_data)
 {
-	struct btd_adapter *adapter = data;
 	struct btd_adapter_driver *driver = user_data;
 	int err;
 
@@ -3117,15 +3090,12 @@ void adapter_resume_discovery(struct btd_adapter *adapter)
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 {
-	GSList *adapters;
-
 	adapter_drivers = g_slist_append(adapter_drivers, driver);
 
 	if (driver->probe == NULL)
 		return 0;
 
-	adapters = manager_get_adapters();
-	g_slist_foreach(adapters, probe_driver, driver);
+	manager_foreach_adapter(probe_driver, driver);
 
 	return 0;
 }

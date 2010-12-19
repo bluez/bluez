@@ -41,8 +41,8 @@
 
 #include "plugin.h"
 #include "log.h"
-#include "manager.h"
 #include "adapter.h"
+#include "manager.h"
 #include "device.h"
 #include "event.h"
 

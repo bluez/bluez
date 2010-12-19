@@ -46,8 +46,8 @@
 
 #include "sdpd.h"
 #include "log.h"
-#include "manager.h"
 #include "adapter.h"
+#include "manager.h"
 
 static sdp_record_t *server = NULL;
 
@@ -95,18 +95,15 @@ static void update_db_timestamp(void)
 
 static void update_svclass_list(const bdaddr_t *src)
 {
-	GSList *adapters = manager_get_adapters();
-
-	for (; adapters; adapters = adapters->next) {
-		struct btd_adapter *adapter = adapters->data;
-		bdaddr_t bdaddr;
-
-		adapter_get_address(adapter, &bdaddr);
-
-		if (bacmp(src, BDADDR_ANY) == 0 || bacmp(src, &bdaddr) == 0)
+	if (bacmp(src, BDADDR_ANY) != 0) {
+		struct btd_adapter *adapter = manager_find_adapter(src);
+		if (adapter)
 			btd_adapter_services_updated(adapter);
+		return;
 	}
 
+	manager_foreach_adapter((adapter_cb) btd_adapter_services_updated,
+								NULL);
 }
 
 void register_public_browse_group(void)

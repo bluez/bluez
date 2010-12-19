@@ -48,8 +48,8 @@
 
 #include "glib-helper.h"
 #include "btio.h"
-#include "../src/manager.h"
 #include "../src/adapter.h"
+#include "../src/manager.h"
 #include "../src/device.h"
 
 #include "log.h"
