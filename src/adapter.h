@@ -109,8 +109,6 @@ int btd_adapter_stop(struct btd_adapter *adapter);
 void btd_adapter_get_state(struct btd_adapter *adapter, uint8_t *mode,
 					uint8_t *on_mode, gboolean *pairable);
 
-int adapter_set_service_classes(struct btd_adapter *adapter, uint8_t value);
-
 int adapter_update_ssp_mode(struct btd_adapter *adapter, uint8_t mode);
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
