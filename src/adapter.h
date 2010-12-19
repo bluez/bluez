@@ -233,8 +233,6 @@ struct btd_adapter_ops {
 	int (*get_auth_info) (int index, bdaddr_t *bdaddr, uint8_t *auth);
 	int (*read_scan_enable) (int index);
 	int (*enable_le) (int index);
-	int (*get_remote_version) (int index, uint16_t handle,
-						gboolean delayed);
 	int (*encrypt_link) (int index, bdaddr_t *bdaddr, bt_hci_result_t cb,
 							gpointer user_data);
 	int (*set_did) (int index, uint16_t vendor, uint16_t product,
@@ -293,9 +291,6 @@ int btd_adapter_read_scan_enable(struct btd_adapter *adapter);
 
 void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 						const uint8_t *features);
-int btd_adapter_get_remote_version(struct btd_adapter *adapter,
-							uint16_t handle,
-							gboolean delayed);
 
 int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				bt_hci_result_t cb, gpointer user_data);

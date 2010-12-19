@@ -3392,13 +3392,6 @@ void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 	memcpy(dev->extfeatures, features, 8);
 }
 
-int btd_adapter_get_remote_version(struct btd_adapter *adapter,
-					uint16_t handle, gboolean delayed)
-{
-	return adapter_ops->get_remote_version(adapter->dev_id, handle,
-								delayed);
-}
-
 int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 					bt_hci_result_t cb, gpointer user_data)
 {

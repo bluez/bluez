@@ -745,13 +745,6 @@ static int mgmt_enable_le(int index)
 	return -ENOSYS;
 }
 
-static int mgmt_get_remote_version(int index, uint16_t handle,
-							gboolean delayed)
-{
-	DBG("index %d handle %u delayed %d", index, handle, delayed);
-	return -ENOSYS;
-}
-
 static int mgmt_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 							gpointer user_data)
 {
@@ -830,7 +823,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.get_auth_info = mgmt_get_auth_info,
 	.read_scan_enable = mgmt_read_scan_enable,
 	.enable_le = mgmt_enable_le,
-	.get_remote_version = mgmt_get_remote_version,
 	.encrypt_link = mgmt_encrypt_link,
 	.set_did = mgmt_set_did,
 	.services_updated = mgmt_services_updated,

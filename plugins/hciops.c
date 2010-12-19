@@ -1661,19 +1661,46 @@ static inline void remote_features_information(int index, void *ptr)
 	write_features_info(&dev->bdaddr, &dba, evt->features, NULL);
 }
 
+struct remote_version_req {
+	int index;
+	uint16_t handle;
+};
+
+static gboolean __get_remote_version(gpointer user_data)
+{
+	struct remote_version_req *req = user_data;
+	struct dev_info *dev = &devs[req->index];
+	read_remote_version_cp cp;
+
+	DBG("hci%d handle %u", req->index, req->handle);
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = htobs(req->handle);
+
+	hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_READ_REMOTE_VERSION,
+					READ_REMOTE_VERSION_CP_SIZE, &cp);
+
+	return FALSE;
+}
+
+static void get_remote_version(int index, uint16_t handle)
+{
+	struct remote_version_req *req;
+
+	req = g_new0(struct remote_version_req, 1);
+	req->handle = handle;
+	req->index = index;
+
+	g_timeout_add_seconds_full(G_PRIORITY_DEFAULT, 1, __get_remote_version,
+								req, g_free);
+}
+
 static inline void conn_complete(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_conn_complete *evt = ptr;
 	char filename[PATH_MAX];
 	char local_addr[18], peer_addr[18], *str;
-	struct btd_adapter *adapter;
-
-	adapter = manager_find_adapter(&dev->bdaddr);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
 
 	if (evt->link_type != ACL_LINK)
 		return;
@@ -1693,8 +1720,7 @@ static inline void conn_complete(int index, void *ptr)
 
 	str = textfile_get(filename, peer_addr);
 	if (!str)
-		btd_adapter_get_remote_version(adapter, btohs(evt->handle),
-									TRUE);
+		get_remote_version(index, btohs(evt->handle));
 	else
 		free(str);
 }
@@ -1705,13 +1731,6 @@ static inline void le_conn_complete(int index, void *ptr)
 	evt_le_connection_complete *evt = ptr;
 	char filename[PATH_MAX];
 	char local_addr[18], peer_addr[18], *str;
-	struct btd_adapter *adapter;
-
-	adapter = manager_find_adapter(&dev->bdaddr);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
 
 	btd_event_conn_complete(&dev->bdaddr, evt->status,
 					btohs(evt->handle), &evt->peer_bdaddr);
@@ -1728,8 +1747,7 @@ static inline void le_conn_complete(int index, void *ptr)
 
 	str = textfile_get(filename, peer_addr);
 	if (!str)
-		btd_adapter_get_remote_version(adapter, btohs(evt->handle),
-									TRUE);
+		get_remote_version(index, btohs(evt->handle));
 	else
 		free(str);
 }
@@ -3026,51 +3044,6 @@ static int hciops_enable_le(int index)
 	return 0;
 }
 
-struct remote_version_req {
-	int index;
-	uint16_t handle;
-};
-
-static gboolean get_remote_version(gpointer user_data)
-{
-	struct remote_version_req *req = user_data;
-	struct dev_info *dev = &devs[req->index];
-	read_remote_version_cp cp;
-
-	DBG("hci%d handle %u", req->index, req->handle);
-
-	memset(&cp, 0, sizeof(cp));
-	cp.handle = htobs(req->handle);
-
-	hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_READ_REMOTE_VERSION,
-					READ_REMOTE_VERSION_CP_SIZE, &cp);
-
-	return FALSE;
-}
-
-static int hciops_get_remote_version(int index, uint16_t handle,
-							gboolean delayed)
-{
-	struct remote_version_req *req;
-
-	DBG("hci%d handle %u delayed %d", index, handle, delayed);
-
-	req = g_new0(struct remote_version_req, 1);
-	req->handle = handle;
-	req->index = index;
-
-	if (!delayed) {
-		get_remote_version(req);
-		g_free(req);
-		return 0;
-	}
-
-	g_timeout_add_seconds_full(G_PRIORITY_DEFAULT, 1, get_remote_version,
-								req, g_free);
-
-	return 0;
-}
-
 static int set_service_classes(int index, uint8_t value)
 {
 	struct dev_info *dev = &devs[index];
@@ -3254,7 +3227,6 @@ static struct btd_adapter_ops hci_ops = {
 	.get_auth_info = hciops_get_auth_info,
 	.read_scan_enable = hciops_read_scan_enable,
 	.enable_le = hciops_enable_le,
-	.get_remote_version = hciops_get_remote_version,
 	.encrypt_link = hciops_encrypt_link,
 	.set_did = hciops_set_did,
 	.services_updated = hciops_services_updated,
