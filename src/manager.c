@@ -432,11 +432,6 @@ int manager_stop_adapter(int id)
 	return btd_adapter_stop(adapter);
 }
 
-int manager_get_default_adapter()
-{
-	return default_adapter_id;
-}
-
 void btd_manager_set_offline(gboolean offline)
 {
 	GSList *l;
