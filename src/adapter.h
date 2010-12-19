@@ -168,7 +168,6 @@ void btd_adapter_unref(struct btd_adapter *adapter);
 int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 							uint8_t minor);
 
-
 struct btd_adapter_driver {
 	const char *name;
 	int (*probe) (struct btd_adapter *adapter);
