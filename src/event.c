@@ -129,18 +129,27 @@ fail:
 	error("Sending PIN code reply failed: %s (%d)", strerror(-err), -err);
 }
 
-int btd_event_request_pin(bdaddr_t *sba, struct hci_conn_info *ci)
+int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
+	char pin[17];
+	int pinlen;
 
-	if (!get_adapter_and_device(sba, &ci->bdaddr, &adapter, &device, TRUE))
+	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
 	/* Check if the adapter is not pairable and if there isn't a bonding in
 	 * progress */
 	if (!adapter_is_pairable(adapter) && !device_is_bonding(device, NULL))
 		return -EPERM;
+
+	memset(pin, 0, sizeof(pin));
+	pinlen = read_pin_code(sba, dba, pin);
+	if (pinlen > 0) {
+		btd_adapter_pincode_reply(adapter, dba, pin);
+		return 0;
+	}
 
 	return device_request_authentication(device, AUTH_TYPE_PINCODE, 0,
 								pincode_cb);

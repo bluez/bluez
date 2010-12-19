@@ -870,51 +870,18 @@ static void io_capa_response(int index, void *ptr)
 static void pin_code_request(int index, bdaddr_t *dba)
 {
 	struct dev_info *dev = &devs[index];
-	pin_code_reply_cp pr;
-	struct hci_conn_info_req *cr;
-	struct hci_conn_info *ci;
-	char da[18], pin[17];
-	int pinlen;
+	char addr[18];
+	int err;
 
-	memset(&pr, 0, sizeof(pr));
-	bacpy(&pr.bdaddr, dba);
+	ba2str(dba, addr);
+	DBG("hci%d PIN request for %s", index, addr);
 
-	ba2str(dba, da);
-	DBG("hci%d PIN request for %s", index, da);
-
-	cr = g_malloc0(sizeof(*cr) + sizeof(*ci));
-
-	bacpy(&cr->bdaddr, dba);
-	cr->type = ACL_LINK;
-	if (ioctl(dev->sk, HCIGETCONNINFO, (unsigned long) cr) < 0) {
-		error("Can't get conn info: %s (%d)", strerror(errno), errno);
-		goto reject;
+	err = btd_event_request_pin(&dev->bdaddr, dba);
+	if (err < 0) {
+		error("PIN code negative reply: %s", strerror(-err));
+		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY,
+								6, dba);
 	}
-	ci = cr->conn_info;
-
-	memset(pin, 0, sizeof(pin));
-	pinlen = read_pin_code(&dev->bdaddr, dba, pin);
-
-	if (pinlen > 0) {
-		dev->pin_length = pinlen;
-		memcpy(pr.pin_code, pin, pinlen);
-		pr.pin_len = pinlen;
-		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_PIN_CODE_REPLY,
-						PIN_CODE_REPLY_CP_SIZE, &pr);
-	} else {
-		/* Request PIN from passkey agent */
-		if (btd_event_request_pin(&dev->bdaddr, ci) < 0)
-			goto reject;
-	}
-
-	g_free(cr);
-
-	return;
-
-reject:
-	g_free(cr);
-
-	hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 }
 
 static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
