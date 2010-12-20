@@ -2764,23 +2764,18 @@ static void remove_same_uuid(gpointer data, gpointer user_data)
 }
 
 void adapter_update_device_from_info(struct btd_adapter *adapter,
-						le_advertising_info *info,
-						char *name, GSList *services,
-						uint8_t flags)
+						bdaddr_t bdaddr, int8_t rssi,
+						uint8_t evt_type, char *name,
+						GSList *services, uint8_t flags)
 {
 	struct remote_dev_info *dev;
-	bdaddr_t bdaddr;
 	gboolean new_dev;
-	int8_t rssi;
-
-	rssi = *(info->data + info->length);
-	bdaddr = info->bdaddr;
 
 	dev = get_found_dev(adapter, &bdaddr, &new_dev);
 
 	if (new_dev) {
 		dev->le = TRUE;
-		dev->evt_type = info->evt_type;
+		dev->evt_type = evt_type;
 	} else if (dev->rssi == rssi)
 		return;
 

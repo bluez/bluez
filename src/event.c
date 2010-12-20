@@ -435,6 +435,7 @@ void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 {
 	struct btd_adapter *adapter;
 	struct eir_data eir_data;
+	int8_t rssi;
 	int err;
 
 	adapter = manager_find_adapter(local);
@@ -450,7 +451,10 @@ void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 		error("Error parsing advertising data: %s (%d)",
 							strerror(-err), -err);
 
-	adapter_update_device_from_info(adapter, info, eir_data.name,
+	rssi = *(info->data + info->length);
+
+	adapter_update_device_from_info(adapter, info->bdaddr, rssi,
+					info->evt_type, eir_data.name,
 					eir_data.services, eir_data.flags);
 }
 
