@@ -1778,7 +1778,7 @@ static void usage(void)
 	printf("hciconfig - HCI device configuration utility\n");
 	printf("Usage:\n"
 		"\thciconfig\n"
-		"\thciconfig [-a] hciX [command]\n");
+		"\thciconfig [-a] hciX [command ...]\n");
 	printf("Commands:\n");
 	for (i=0; command[i].cmd; i++)
 		printf("\t%-10s %-8s\t%s\n", command[i].cmd,
@@ -1841,7 +1841,8 @@ int main(int argc, char *argv[])
 
 	while (argc > 0) {
 		for (i = 0; command[i].cmd; i++) {
-			if (strncmp(command[i].cmd, *argv, 5))
+			if (strncmp(command[i].cmd,
+					*argv, strlen(command[i].cmd)))
 				continue;
 
 			if (command[i].opt) {
@@ -1852,6 +1853,11 @@ int main(int argc, char *argv[])
 			cmd = 1;
 			break;
 		}
+
+		if (command[i].cmd == 0)
+			fprintf(stderr, "Warning: unknown command - \"%s\"\n",
+					*argv);
+
 		argc--; argv++;
 	}
 
