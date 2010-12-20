@@ -56,6 +56,15 @@
 #include "agent.h"
 #include "storage.h"
 
+/* Flags Descriptions */
+#define EIR_LIM_DISC                0x01 /* LE Limited Discoverable Mode */
+#define EIR_GEN_DISC                0x02 /* LE General Discoverable Mode */
+#define EIR_BREDR_UNSUP             0x04 /* BR/EDR Not Supported */
+#define EIR_SIM_CONTROLLER          0x08 /* Simultaneous LE and BR/EDR to Same
+					    Device Capable (Controller) */
+#define EIR_SIM_HOST                0x10 /* Simultaneous LE and BR/EDR to Same
+					    Device Capable (Host) */
+
 #define ADV_TYPE_IND		0x00
 #define ADV_TYPE_DIRECT_IND	0x01
 
