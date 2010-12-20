@@ -727,8 +727,10 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	if (device->bonding)
 		bonding_request_cancel(device->bonding);
 
-	if (device->browse)
+	if (device->browse) {
+		discover_services_reply(device->browse, -ECANCELED, NULL);
 		browse_request_cancel(device->browse);
+	}
 
 	if (msg)
 		device->disconnects = g_slist_append(device->disconnects,
@@ -1035,8 +1037,10 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	if (device->bonding)
 		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
 
-	if (device->browse)
+	if (device->browse) {
+		discover_services_reply(device->browse, -ECANCELED, NULL);
 		browse_request_cancel(device->browse);
+	}
 
 	if (device->handle)
 		do_disconnect(device);
