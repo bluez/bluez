@@ -1214,10 +1214,9 @@ static void update_ext_inquiry_response(int index)
 
 static void update_name(int index, const char *name)
 {
-	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 
-	adapter = manager_find_adapter(&dev->bdaddr);
+	adapter = manager_find_adapter_by_id(index);
 	if (adapter)
 		adapter_update_local_name(adapter, name);
 
@@ -1283,7 +1282,6 @@ static void read_tx_power_complete(int index, void *ptr)
 
 static void read_simple_pairing_mode_complete(int index, void *ptr)
 {
-	struct dev_info *dev = &devs[index];
 	read_simple_pairing_mode_rp *rp = ptr;
 	struct btd_adapter *adapter;
 
@@ -1295,7 +1293,7 @@ static void read_simple_pairing_mode_complete(int index, void *ptr)
 	dev->ssp_mode = rp->mode;
 	update_ext_inquiry_response(index);
 
-	adapter = manager_find_adapter(&dev->bdaddr);
+	adapter = manager_find_adapter_by_id(index);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1307,7 +1305,6 @@ static void read_simple_pairing_mode_complete(int index, void *ptr)
 static void read_local_ext_features_complete(int index,
 				const read_local_ext_features_rp *rp)
 {
-	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 
 	DBG("hci%d status %u", index, rp->status);
@@ -1315,7 +1312,7 @@ static void read_local_ext_features_complete(int index,
 	if (rp->status)
 		return;
 
-	adapter = manager_find_adapter(&dev->bdaddr);
+	adapter = manager_find_adapter_by_id(index);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
@@ -1362,14 +1359,12 @@ static inline void cmd_status(int index, void *ptr)
 
 static void read_scan_complete(int index, uint8_t status, void *ptr)
 {
-	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 	read_scan_enable_rp *rp = ptr;
 
 	DBG("hci%d status %u", index, status);
 
-	adapter = manager_find_adapter(&dev->bdaddr);
-
+	adapter = manager_find_adapter_by_id(index);
 	if (!adapter) {
 		error("Unable to find matching adapter");
 		return;
@@ -2243,9 +2238,9 @@ static void device_event(int event, int index)
 		if (!devs[index].pending) {
 			struct btd_adapter *adapter;
 
-			adapter = manager_find_adapter(&devs[index].bdaddr);
+			adapter = manager_find_adapter_by_id(index);
 			if (adapter)
-				btd_adapter_stop(index);
+				btd_adapter_stop(adapter);
 
 			init_pending(index);
 		}
@@ -3066,14 +3061,13 @@ static int set_service_classes(int index, uint8_t value)
 
 static int hciops_services_updated(int index)
 {
-	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter;
 	sdp_list_t *list;
 	uint8_t val = 0;
 
 	DBG("hci%d", index);
 
-	adapter = manager_find_adapter(&dev->bdaddr);
+	adapter = manager_find_adapter_by_id(index);
 	if (adapter == NULL)
 		return -ENODEV;
 
