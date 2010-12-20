@@ -620,8 +620,6 @@ static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
 static void link_key_request(int index, bdaddr_t *dba)
 {
 	struct dev_info *dev = &devs[index];
-	struct btd_adapter *adapter;
-	struct btd_device *device;
 	struct hci_auth_info_req req;
 	GSList *match;
 	struct link_key_info *key_info;
@@ -632,12 +630,6 @@ static void link_key_request(int index, bdaddr_t *dba)
 
 	ba2str(dba, da);
 	DBG("hci%d dba %s", index, da);
-
-	adapter = manager_find_adapter(&dev->bdaddr);
-	if (adapter)
-		device = adapter_find_device(adapter, da);
-	else
-		device = NULL;
 
 	memset(&req, 0, sizeof(req));
 	bacpy(&req.bdaddr, dba);
