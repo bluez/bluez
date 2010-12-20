@@ -1282,6 +1282,7 @@ static void read_tx_power_complete(int index, void *ptr)
 
 static void read_simple_pairing_mode_complete(int index, void *ptr)
 {
+	struct dev_info *dev = &devs[index];
 	read_simple_pairing_mode_rp *rp = ptr;
 	struct btd_adapter *adapter;
 
@@ -1293,7 +1294,7 @@ static void read_simple_pairing_mode_complete(int index, void *ptr)
 	dev->ssp_mode = rp->mode;
 	update_ext_inquiry_response(index);
 
-	adapter = manager_find_adapter_by_id(index);
+	adapter = manager_find_adapter(&dev->bdaddr);
 	if (!adapter) {
 		error("No matching adapter found");
 		return;
