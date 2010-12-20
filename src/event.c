@@ -527,6 +527,7 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	/* if found: don't send the name again */
 	dev = adapter_search_found_devices(adapter, &match);
 	if (dev) {
+		g_free(eir_data.name);
 		adapter_update_found_devices(adapter, peer, rssi, class,
 						NULL, NULL, dev->legacy,
 						eir_data.services,
