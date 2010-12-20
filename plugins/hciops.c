@@ -2241,7 +2241,12 @@ static void device_event(int event, int index)
 		devs[index].pending_cod = 0;
 		devs[index].cache_enable = TRUE;
 		if (!devs[index].pending) {
-			manager_stop_adapter(index);
+			struct btd_adapter *adapter;
+
+			adapter = manager_find_adapter(&devs[index].bdaddr);
+			if (adapter)
+				btd_adapter_stop(index);
+
 			init_pending(index);
 		}
 		break;

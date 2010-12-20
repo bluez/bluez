@@ -419,19 +419,6 @@ int btd_manager_unregister_adapter(int id)
 	return 0;
 }
 
-int manager_stop_adapter(int id)
-{
-	struct btd_adapter *adapter;
-
-	adapter = manager_find_adapter_by_id(id);
-	if (!adapter) {
-		error("Getting device data failed: hci%d", id);
-		return -EINVAL;
-	}
-
-	return btd_adapter_stop(adapter);
-}
-
 void btd_manager_set_did(uint16_t vendor, uint16_t product, uint16_t version)
 {
 	GSList *l;
