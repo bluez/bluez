@@ -173,6 +173,7 @@ static void mgmt_index_removed(int sk, void *buf, size_t len)
 
 static void mgmt_powered(int sk, void *buf, size_t len)
 {
+	struct btd_adapter *adapter;
 	struct mgmt_ev_powered *ev = buf;
 	uint16_t index;
 
@@ -191,6 +192,17 @@ static void mgmt_powered(int sk, void *buf, size_t len)
 	controllers[index].enabled = ev->powered;
 
 	DBG("Controller %u powered %s", index, ev->powered ? "on" : "off");
+
+	adapter = manager_find_adapter(&controllers[index].bdaddr);
+	if (adapter == NULL) {
+		DBG("Adapter not found");
+		return;
+	}
+
+	if (ev->powered)
+		btd_adapter_start(adapter);
+	else
+		btd_adapter_stop(adapter);
 }
 
 static void read_index_list_complete(int sk, void *buf, size_t len)
@@ -223,8 +235,22 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 
 static int mgmt_power_off(int index)
 {
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_power_off)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_power_off *cp = (void *) &buf[sizeof(*hdr)];
+
 	DBG("index %d", index);
-	return -ENOSYS;
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = MGMT_OP_POWER_OFF;
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_set_discoverable(int index, gboolean discoverable)
@@ -502,8 +528,25 @@ static void mgmt_cleanup(void)
 
 static int mgmt_power_on(int index, gboolean discoverable)
 {
+	struct controller_info *info = &controllers[index];
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_power_on)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_power_on *cp = (void *) &buf[sizeof(*hdr)];
+
 	DBG("index %d discoverable %d", index, discoverable);
-	return -ENOSYS;
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = MGMT_OP_POWER_ON;
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+	cp->discoverable = discoverable;
+	cp->pairable = info->pairable;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_set_connectable(int index, gboolean connectable)
