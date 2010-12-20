@@ -91,6 +91,7 @@ static struct dev_info {
 	GIOChannel *io;
 	guint watch_id;
 
+	gboolean debug_keys;
 	GSList *keys;
 	int pin_length;
 } *devs = NULL;
@@ -665,9 +666,7 @@ static void link_key_request(int index, bdaddr_t *dba)
 	} else
 		type = 0xff;
 
-	if (device && device_get_debug_key(device, key))
-		type = 0x03;
-	else if (key_info == NULL || key_info->type == 0x03) {
+	if (key_info == NULL || (!dev->debug_keys && key_info->type == 0x03)) {
 		/* Link key not found */
 		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
 								6, dba);
@@ -3160,16 +3159,18 @@ static int hciops_restore_powered(int index)
 	return 0;
 }
 
-static int hciops_load_keys(int index, GSList *keys)
+static int hciops_load_keys(int index, GSList *keys, gboolean debug_keys)
 {
 	struct dev_info *dev = &devs[index];
 
-	DBG("hci%d keys %d", index, g_slist_length(keys));
+	DBG("hci%d keys %d debug_keys %d", index, g_slist_length(keys),
+								debug_keys);
 
 	if (dev->keys != NULL)
 		return -EEXIST;
 
 	dev->keys = keys;
+	dev->debug_keys = debug_keys;
 
 	return 0;
 }

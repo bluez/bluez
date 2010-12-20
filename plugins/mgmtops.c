@@ -819,9 +819,10 @@ static int mgmt_restore_powered(int index)
 	return -ENOSYS;
 }
 
-static int mgmt_load_keys(int index, GSList *keys)
+static int mgmt_load_keys(int index, GSList *keys, gboolean debug_keys)
 {
-	DBG("index %d keys %d", index, g_slist_length(keys));
+	DBG("index %d keys %d debug_keys %d", index, g_slist_length(keys),
+								debug_keys);
 	return -ENOSYS;
 }
 

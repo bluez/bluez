@@ -708,8 +708,6 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	new_key_type = key_type;
 
 	if (key_type == 0x06) {
-		if (device_get_debug_key(device, NULL))
-			old_key_type = 0x03;
 		/* Some buggy controller combinations generate a changed
 		 * combination key for legacy pairing even when there's no
 		 * previous key */
@@ -731,9 +729,6 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	DBG("local auth 0x%02x and remote auth 0x%02x",
 					local_auth, remote_auth);
 
-	/* Clear any previous debug key */
-	device_set_debug_key(device, NULL);
-
 	/* If this is not the first link key set a flag so a subsequent auth
 	 * complete event doesn't trigger SDP and remove any stored key */
 	if (old_key_type != 0xff) {
@@ -741,9 +736,11 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 		device_remove_bonding(device);
 	}
 
-	/* Store the link key only in runtime memory if it's a debug
-	 * key, else store the link key persistently if one of the
-	 * following is true:
+	/* Skip the storage check if this is a debug key */
+	if (new_key_type == 0x03)
+		goto proceed;
+
+	/* Store the link key persistently if one of the following is true:
 	 * 1. this is a legacy link key
 	 * 2. this is a changed combination key and there was a previously
 	 *    stored one
@@ -754,11 +751,7 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	 * If none of the above match only keep the link key around for
 	 * this connection and set the temporary flag for the device.
 	 */
-	if (new_key_type == 0x03) {
-		DBG("Storing debug key in runtime memory");
-		device_set_debug_key(device, key);
-	} else if (key_type < 0x03 ||
-				(key_type == 0x06 && old_key_type != 0xff) ||
+	if (key_type < 0x03 || (key_type == 0x06 && old_key_type != 0xff) ||
 				(local_auth > 0x01 && remote_auth > 0x01) ||
 				(local_auth == 0x02 || local_auth == 0x03) ||
 				(remote_auth == 0x02 || remote_auth == 0x03)) {
@@ -775,6 +768,7 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	} else
 		temporary = TRUE;
 
+proceed:
 	if (!device_is_connected(device))
 		device_set_secmode3_conn(device, TRUE);
 	else if (!device_is_bonding(device, NULL)) {

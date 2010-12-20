@@ -239,7 +239,7 @@ struct btd_adapter_ops {
 	int (*services_updated) (int index);
 	int (*disable_cod_cache) (int index);
 	int (*restore_powered) (int index);
-	int (*load_keys) (int index, GSList *keys);
+	int (*load_keys) (int index, GSList *keys, gboolean debug_keys);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);

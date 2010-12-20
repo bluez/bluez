@@ -143,9 +143,6 @@ struct btd_device {
 
 	gboolean	authorizing;
 	gint		ref;
-
-	gboolean	has_debug_key;
-	uint8_t		debug_key[16];
 };
 
 static uint16_t uuid_list[] = {
@@ -2364,33 +2361,6 @@ const sdp_record_t *btd_device_get_record(struct btd_device *device,
 		return NULL;
 
 	return find_record_in_list(device->tmp_records, uuid);
-}
-
-gboolean device_set_debug_key(struct btd_device *device, uint8_t *key)
-{
-	if (key == NULL) {
-		device->has_debug_key = FALSE;
-		return TRUE;
-	}
-
-	memcpy(device->debug_key, key, 16);
-	device->has_debug_key = TRUE;
-
-	return TRUE;
-}
-
-gboolean device_get_debug_key(struct btd_device *device, uint8_t *key)
-{
-	if (main_opts.debug_keys == FALSE)
-		return FALSE;
-
-	if (!device->has_debug_key)
-		return FALSE;
-
-	if (key != NULL)
-		memcpy(key, device->debug_key, 16);
-
-	return TRUE;
 }
 
 int btd_register_device_driver(struct btd_device_driver *driver)

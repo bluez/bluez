@@ -1913,7 +1913,8 @@ static void load_devices(struct btd_adapter *adapter)
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "linkkeys");
 	textfile_foreach(filename, create_stored_device_from_linkkeys, &keys);
 
-	err = adapter_ops->load_keys(adapter->dev_id, keys.keys);
+	err = adapter_ops->load_keys(adapter->dev_id, keys.keys,
+							main_opts.debug_keys);
 	if (err < 0) {
 		error("Unable to load keys to adapter_ops: %s (%d)",
 							strerror(-err), -err);
