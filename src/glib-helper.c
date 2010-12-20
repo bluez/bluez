@@ -363,16 +363,6 @@ int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 	return 0;
 }
 
-int bt_discover_services(const bdaddr_t *src, const bdaddr_t *dst,
-		bt_callback_t cb, void *user_data, bt_destroy_t destroy)
-{
-	uuid_t uuid;
-
-	sdp_uuid16_create(&uuid, PUBLIC_BROWSE_GROUP);
-
-	return bt_search_service(src, dst, &uuid, cb, user_data, destroy);
-}
-
 static gint find_by_bdaddr(gconstpointer data, gconstpointer user_data)
 {
 	const struct search_context *ctxt = data, *search = user_data;
