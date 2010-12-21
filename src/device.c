@@ -2382,7 +2382,7 @@ void device_set_renewed_key(struct btd_device *device, gboolean renewed)
 	device->renewed_key = renewed;
 }
 
-void device_add_service(struct btd_device *device, const char *path)
+void btd_device_add_service(struct btd_device *device, const char *path)
 {
 	if (g_slist_find_custom(device->services, path, (GCompareFunc) strcmp))
 		return;

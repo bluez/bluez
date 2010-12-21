@@ -606,7 +606,7 @@ static void register_primary(struct gatt_service *gatt)
 				NULL, NULL, prim, NULL);
 		DBG("Registered: %s", prim->path);
 
-		device_add_service(gatt->dev, prim->path);
+		btd_device_add_service(gatt->dev, prim->path);
 	}
 }
 

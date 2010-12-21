@@ -55,7 +55,7 @@ void device_probe_drivers(struct btd_device *device, GSList *profiles);
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
 						const char *uuid);
 GSList *btd_device_get_primaries(struct btd_device *device);
-void device_add_service(struct btd_device *device, const char *path);
+void btd_device_add_service(struct btd_device *device, const char *path);
 void device_add_primary(struct btd_device *device, struct att_primary *prim);
 void btd_device_add_uuid(struct btd_device *device, const char *uuid);
 struct btd_adapter *device_get_adapter(struct btd_device *device);
