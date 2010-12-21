@@ -1463,8 +1463,16 @@ send_reply:
 	}
 
 cleanup:
-	if (!device->temporary)
+	if (!device->temporary) {
+		bdaddr_t sba, dba;
+
+		adapter_get_address(device->adapter, &sba);
+		device_get_address(device, &dba);
+
 		store_profiles(device);
+		write_device_type(&sba, &dba, device->type);
+	}
+
 	device->browse = NULL;
 	browse_request_free(req);
 }
@@ -1575,6 +1583,7 @@ static void primary_cb(GSList *services, int err, gpointer user_data)
 	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba);
 
+	write_device_type(&sba, &dba, device->type);
 	write_device_services(&sba, &dba, str);
 	g_free(str);
 
