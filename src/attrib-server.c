@@ -724,6 +724,7 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 
 	channel->attrib = g_attrib_new(io);
 	channel->mtu = ATT_DEFAULT_MTU;
+	g_io_channel_unref(io);
 
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
 				channel_handler, channel, NULL);
@@ -802,6 +803,11 @@ int attrib_server_init(void)
 failed:
 	g_io_channel_unref(l2cap_io);
 	l2cap_io = NULL;
+
+	if (le_io) {
+		g_io_channel_unref(le_io);
+		le_io = NULL;
+	}
 
 	return -1;
 }
