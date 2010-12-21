@@ -41,11 +41,11 @@
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
+#include "device.h"
 #include "plugin.h"
 #include "log.h"
 #include "storage.h"
 #include "event.h"
-#include "device.h"
 #include "manager.h"
 
 static int child_pipe[2] = { -1, -1 };

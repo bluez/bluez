@@ -45,6 +45,8 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "textfile.h"
+#include "adapter.h"
+#include "device.h"
 #include "glib-helper.h"
 #include "storage.h"
 
@@ -1390,4 +1392,42 @@ int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data)
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	return textfile_foreach(filename, func, data);
+}
+
+int write_device_type(const bdaddr_t *sba, const bdaddr_t *dba,
+						device_type_t type)
+{
+	char filename[PATH_MAX + 1], addr[18], chars[3];
+
+	create_filename(filename, PATH_MAX, sba, "types");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(dba, addr);
+
+	snprintf(chars, sizeof(chars), "%2.2X", type);
+
+	return textfile_put(filename, addr, chars);
+}
+
+device_type_t read_device_type(const bdaddr_t *sba, const bdaddr_t *dba)
+{
+	char filename[PATH_MAX + 1], addr[18], *chars;
+	device_type_t type;
+
+	create_filename(filename, PATH_MAX, sba, "types");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(dba, addr);
+
+	chars = textfile_caseget(filename, addr);
+	if (chars == NULL)
+		return DEVICE_TYPE_UNKNOWN;
+
+	type = strtol(chars, NULL, 16);
+
+	free(chars);
+
+	return type;
 }

@@ -53,6 +53,8 @@
 
 #include "error.h"
 #include "manager.h"
+#include "adapter.h"
+#include "device.h"
 #include "storage.h"
 #include "port.h"
 

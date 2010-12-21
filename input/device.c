@@ -46,11 +46,11 @@
 #include "textfile.h"
 #include "uinput.h"
 
-#include "../src/storage.h"
 #include "../src/adapter.h"
+#include "../src/device.h"
+#include "../src/storage.h"
 #include "../src/manager.h"
 #include "../src/dbus-common.h"
-#include "../src/device.h"
 
 #include "device.h"
 #include "error.h"
