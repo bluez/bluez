@@ -349,51 +349,6 @@ fail:
 	g_attrib_unref(gatt->attrib);
 }
 
-static DBusMessage *get_characteristics(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct primary *prim = data;
-	DBusMessage *reply;
-	DBusMessageIter iter, array;
-	GSList *l;
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_OBJECT_PATH_AS_STRING
-			DBUS_TYPE_ARRAY_AS_STRING
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &array);
-
-	for (l = prim->chars; l; l = l->next) {
-		struct characteristic *chr = l->data;
-		DBusMessageIter sub;
-
-		DBG("path %s", chr->path);
-
-		dbus_message_iter_open_container(&array, DBUS_TYPE_DICT_ENTRY,
-								NULL, &sub);
-
-		dbus_message_iter_append_basic(&sub, DBUS_TYPE_OBJECT_PATH,
-								&chr->path);
-
-		append_char_dict(&sub, chr);
-
-		dbus_message_iter_close_container(&array, &sub);
-	}
-
-	dbus_message_iter_close_container(&iter, &array);
-
-	return reply;
-}
-
 static int l2cap_connect(struct gatt_service *gatt, GError **gerr,
 								gboolean listen)
 {
@@ -987,7 +942,6 @@ static DBusMessage *discover_char(DBusConnection *conn, DBusMessage *msg,
 }
 
 static GDBusMethodTable prim_methods[] = {
-	{ "GetCharacteristics",	"",	"a{oa{sv}}", get_characteristics},
 	{ "Discover",		"",	"",		discover_char	},
 	{ "RegisterCharacteristicsWatcher",	"o", "",
 						register_watcher	},
