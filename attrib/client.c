@@ -167,7 +167,7 @@ static int gatt_dev_cmp(gconstpointer a, gconstpointer b)
 	const struct gatt_service *gatt = a;
 	const struct btd_device *dev = b;
 
-	return gatt->dev == dev;
+	return gatt->dev != dev;
 }
 
 static int characteristic_handle_cmp(gconstpointer a, gconstpointer b)
