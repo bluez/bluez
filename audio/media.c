@@ -42,6 +42,7 @@
 #include "transport.h"
 #include "a2dp.h"
 #include "headset.h"
+#include "manager.h"
 
 #ifndef DBUS_TYPE_UNIX_FD
 #define DBUS_TYPE_UNIX_FD -1
@@ -200,10 +201,18 @@ static struct media_endpoint *media_endpoint_create(struct media_adapter *adapte
 		if (endpoint->sep == NULL)
 			goto failed;
 	} else if (strcasecmp(uuid, HFP_AG_UUID) == 0 ||
-					g_strcmp0(uuid, HSP_AG_UUID) == 0)
+					g_strcmp0(uuid, HSP_AG_UUID) == 0) {
+		struct audio_device *dev;
+
 		endpoint->hs_watch = headset_add_state_cb(headset_state_changed,
 								endpoint);
-	else
+		dev = manager_find_device(NULL, &adapter->src, BDADDR_ANY,
+						AUDIO_HEADSET_INTERFACE, TRUE);
+		if (dev)
+			media_endpoint_set_configuration(endpoint, dev, NULL,
+							0, headset_setconf_cb,
+							dev);
+	} else
 		goto failed;
 
 	endpoint->watch = g_dbus_add_disconnect_watch(adapter->conn, sender,
