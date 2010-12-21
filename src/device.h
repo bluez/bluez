@@ -66,6 +66,7 @@ gboolean device_is_trusted(struct btd_device *device);
 void device_set_paired(struct btd_device *device, gboolean paired);
 void device_set_temporary(struct btd_device *device, gboolean temporary);
 void device_set_cap(struct btd_device *device, uint8_t cap);
+void device_set_type(struct btd_device *device, device_type_t type);
 uint8_t device_get_cap(struct btd_device *device);
 void device_set_auth(struct btd_device *device, uint8_t auth);
 uint8_t device_get_auth(struct btd_device *device);

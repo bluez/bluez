@@ -1767,6 +1767,14 @@ uint8_t device_get_auth(struct btd_device *device)
 	return device->auth;
 }
 
+void device_set_type(struct btd_device *device, device_type_t type)
+{
+	if (!device)
+		return;
+
+	device->type = type;
+}
+
 static gboolean start_discovery(gpointer user_data)
 {
 	struct btd_device *device = user_data;

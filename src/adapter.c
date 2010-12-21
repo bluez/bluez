@@ -1906,6 +1906,31 @@ static void create_stored_device_from_blocked(char *key, char *value,
 	}
 }
 
+static void create_stored_device_from_types(char *key, char *value,
+							void *user_data)
+{
+	GSList *l;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	uint8_t type;
+
+	type = strtol(value, NULL, 16);
+
+	l = g_slist_find_custom(adapter->devices,
+				key, (GCompareFunc) device_address_cmp);
+	if (l) {
+		device = l->data;
+		device_set_type(device, type);
+		return;
+	}
+
+	device = device_create(connection, adapter, key, type);
+	if (device) {
+		device_set_temporary(device, FALSE);
+		adapter->devices = g_slist_append(adapter->devices, device);
+	}
+}
+
 static void load_devices(struct btd_adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
@@ -1933,6 +1958,9 @@ static void load_devices(struct btd_adapter *adapter)
 
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "blocked");
 	textfile_foreach(filename, create_stored_device_from_blocked, adapter);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "types");
+	textfile_foreach(filename, create_stored_device_from_types, adapter);
 }
 
 int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
