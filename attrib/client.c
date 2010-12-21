@@ -497,15 +497,6 @@ static DBusMessage *unregister_watcher(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static GDBusMethodTable prim_methods[] = {
-	{ "GetCharacteristics",	"",	"a{oa{sv}}", get_characteristics},
-	{ "RegisterCharacteristicsWatcher",	"o", "",
-						register_watcher	},
-	{ "UnregisterCharacteristicsWatcher",	"o", "",
-						unregister_watcher	},
-	{ }
-};
-
 static DBusMessage *set_value(DBusConnection *conn, DBusMessage *msg,
 			DBusMessageIter *iter, struct characteristic *chr)
 {
@@ -971,20 +962,39 @@ fail:
 	g_free(current);
 }
 
-static void discover_all_char(gpointer data, gpointer user_data)
+static DBusMessage *discover_char(DBusConnection *conn, DBusMessage *msg,
+								void *data)
 {
-	struct query_data *qchr;
-	struct gatt_service *gatt = user_data;
 	struct primary *prim = data;
 	struct att_primary *att = prim->att;
+	struct gatt_service *gatt = prim->gatt;
+	struct query_data *qchr;
+	GError *gerr = NULL;
+
+	if (l2cap_connect(prim->gatt, &gerr, FALSE) < 0) {
+		DBusMessage *reply = btd_error_failed(msg, gerr->message);
+		g_error_free(gerr);
+		return reply;
+	}
 
 	qchr = g_new0(struct query_data, 1);
 	qchr->prim = prim;
 
-	gatt->attrib = g_attrib_ref(gatt->attrib);
 	gatt_discover_char(gatt->attrib, att->start, att->end,
 						char_discovered_cb, qchr);
+
+	return dbus_message_new_method_return(msg);
 }
+
+static GDBusMethodTable prim_methods[] = {
+	{ "GetCharacteristics",	"",	"a{oa{sv}}", get_characteristics},
+	{ "Discover",		"",	"",		discover_char	},
+	{ "RegisterCharacteristicsWatcher",	"o", "",
+						register_watcher	},
+	{ "UnregisterCharacteristicsWatcher",	"o", "",
+						unregister_watcher	},
+	{ }
+};
 
 static void register_primaries(struct gatt_service *gatt, GSList *primaries)
 {
@@ -1030,10 +1040,6 @@ int attrib_client_register(struct btd_device *device, int psm)
 	gatt->psm = psm;
 
 	register_primaries(gatt, primaries);
-
-	/* FIXME: just to avoid breaking the build */
-	if (FALSE)
-		discover_all_char(NULL, NULL);
 
 	gatt_services = g_slist_append(gatt_services, gatt);
 
