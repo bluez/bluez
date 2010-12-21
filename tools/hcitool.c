@@ -197,7 +197,7 @@ static char *get_minor_device_name(int major, int minor)
 	case 0:	/* misc */
 		return "";
 	case 1:	/* computer */
-		switch(minor) {
+		switch (minor) {
 		case 0:
 			return "Uncategorized";
 		case 1:
@@ -215,7 +215,7 @@ static char *get_minor_device_name(int major, int minor)
 		}
 		break;
 	case 2:	/* phone */
-		switch(minor) {
+		switch (minor) {
 		case 0:
 			return "Uncategorized";
 		case 1:
@@ -235,7 +235,7 @@ static char *get_minor_device_name(int major, int minor)
 	case 3:	/* lan access */
 		if (minor == 0)
 			return "Uncategorized";
-		switch(minor / 8) {
+		switch (minor / 8) {
 		case 0:
 			return "Fully available";
 		case 1:
@@ -255,7 +255,7 @@ static char *get_minor_device_name(int major, int minor)
 		}
 		break;
 	case 4:	/* audio/video */
-		switch(minor) {
+		switch (minor) {
 		case 0:
 			return "Uncategorized";
 		case 1:
@@ -297,7 +297,7 @@ static char *get_minor_device_name(int major, int minor)
 	case 5:	/* peripheral */ {
 		static char cls_str[48]; cls_str[0] = 0;
 
-		switch(minor & 48) {
+		switch (minor & 48) {
 		case 16:
 			strncpy(cls_str, "Keyboard", sizeof(cls_str));
 			break;
@@ -308,10 +308,10 @@ static char *get_minor_device_name(int major, int minor)
 			strncpy(cls_str, "Combo keyboard/pointing device", sizeof(cls_str));
 			break;
 		}
-		if((minor & 15) && (strlen(cls_str) > 0))
+		if ((minor & 15) && (strlen(cls_str) > 0))
 			strcat(cls_str, "/");
 
-		switch(minor & 15) {
+		switch (minor & 15) {
 		case 0:
 			break;
 		case 1:
@@ -336,7 +336,7 @@ static char *get_minor_device_name(int major, int minor)
 			strncat(cls_str, "(reserved)", sizeof(cls_str) - strlen(cls_str));
 			break;
 		}
-		if(strlen(cls_str) > 0)
+		if (strlen(cls_str) > 0)
 			return cls_str;
 	}
 	case 6:	/* imaging */
@@ -350,7 +350,7 @@ static char *get_minor_device_name(int major, int minor)
 			return "Printer";
 		break;
 	case 7: /* wearable */
-		switch(minor) {
+		switch (minor) {
 		case 1:
 			return "Wrist Watch";
 		case 2:
@@ -364,7 +364,7 @@ static char *get_minor_device_name(int major, int minor)
 		}
 		break;
 	case 8: /* toy */
-		switch(minor) {
+		switch (minor) {
 		case 1:
 			return "Robot";
 		case 2:

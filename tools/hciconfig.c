@@ -57,7 +57,8 @@ static void print_dev_list(int ctl, int flags)
 	struct hci_dev_req *dr;
 	int i;
 
-	if (!(dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) + sizeof(uint16_t)))) {
+	if (!(dl = malloc(HCI_MAX_DEV * sizeof(struct hci_dev_req) +
+		sizeof(uint16_t)))) {
 		perror("Can't allocate memory");
 		exit(1);
 	}
@@ -501,7 +502,7 @@ static char *get_minor_device_name(int major, int minor)
 	case 0:	/* misc */
 		return "";
 	case 1:	/* computer */
-		switch(minor) {
+		switch (minor) {
 		case 0:
 			return "Uncategorized";
 		case 1:
@@ -519,7 +520,7 @@ static char *get_minor_device_name(int major, int minor)
 		}
 		break;
 	case 2:	/* phone */
-		switch(minor) {
+		switch (minor) {
 		case 0:
 			return "Uncategorized";
 		case 1:
@@ -539,7 +540,7 @@ static char *get_minor_device_name(int major, int minor)
 	case 3:	/* lan access */
 		if (minor == 0)
 			return "Uncategorized";
-		switch(minor / 8) {
+		switch (minor / 8) {
 		case 0:
 			return "Fully available";
 		case 1:
@@ -559,7 +560,7 @@ static char *get_minor_device_name(int major, int minor)
 		}
 		break;
 	case 4:	/* audio/video */
-		switch(minor) {
+		switch (minor) {
 		case 0:
 			return "Uncategorized";
 		case 1:
@@ -603,7 +604,7 @@ static char *get_minor_device_name(int major, int minor)
 
 		cls_str[0] = '\0';
 
-		switch(minor & 48) {
+		switch (minor & 48) {
 		case 16:
 			strncpy(cls_str, "Keyboard", sizeof(cls_str));
 			break;
@@ -614,10 +615,10 @@ static char *get_minor_device_name(int major, int minor)
 			strncpy(cls_str, "Combo keyboard/pointing device", sizeof(cls_str));
 			break;
 		}
-		if((minor & 15) && (strlen(cls_str) > 0))
+		if ((minor & 15) && (strlen(cls_str) > 0))
 			strcat(cls_str, "/");
 
-		switch(minor & 15) {
+		switch (minor & 15) {
 		case 0:
 			break;
 		case 1:
@@ -642,7 +643,7 @@ static char *get_minor_device_name(int major, int minor)
 			strncat(cls_str, "(reserved)", sizeof(cls_str) - strlen(cls_str));
 			break;
 		}
-		if(strlen(cls_str) > 0)
+		if (strlen(cls_str) > 0)
 			return cls_str;
 	}
 	case 6:	/* imaging */
@@ -656,7 +657,7 @@ static char *get_minor_device_name(int major, int minor)
 			return "Printer";
 		break;
 	case 7: /* wearable */
-		switch(minor) {
+		switch (minor) {
 		case 1:
 			return "Wrist Watch";
 		case 2:
@@ -670,7 +671,7 @@ static char *get_minor_device_name(int major, int minor)
 		}
 		break;
 	case 8: /* toy */
-		switch(minor) {
+		switch (minor) {
 		case 1:
 			return "Robot";
 		case 2:
@@ -754,10 +755,24 @@ static void cmd_class(int ctl, int hdev, char *opt)
 
 static void cmd_voice(int ctl, int hdev, char *opt)
 {
-	static char *icf[] = { "Linear", "u-Law", "A-Law", "Reserved" };
-	static char *idf[] = { "1's complement", "2's complement", "Sign-Magnitude", "Reserved" };
-	static char *iss[] = { "8 bit", "16 bit" };
-	static char *acf[] = { "CVSD", "u-Law", "A-Law", "Reserved" };
+	static char *icf[] = {	"Linear",
+				"u-Law",
+				"A-Law",
+				"Reserved" };
+
+	static char *idf[] = {	"1's complement",
+				"2's complement",
+				"Sign-Magnitude",
+				"Reserved" };
+
+	static char *iss[] = {	"8 bit",
+				"16 bit" };
+
+	static char *acf[] = {	"CVSD",
+				"u-Law",
+				"A-Law",
+				"Reserved" };
+
 	int s = hci_open_dev(hdev);
 
 	if (s < 0) {
@@ -787,15 +802,19 @@ static void cmd_voice(int ctl, int hdev, char *opt)
 			((vs & 0x03fc) == 0x0060) ? " (Default Condition)" : "");
 		printf("\tInput Coding: %s\n", icf[ic]);
 		printf("\tInput Data Format: %s\n", idf[(vs & 0xc0) >> 6]);
+
 		if (!ic) {
-			printf("\tInput Sample Size: %s\n", iss[(vs & 0x20) >> 5]);
-			printf("\t# of bits padding at MSB: %d\n", (vs & 0x1c) >> 2);
+			printf("\tInput Sample Size: %s\n",
+				iss[(vs & 0x20) >> 5]);
+			printf("\t# of bits padding at MSB: %d\n",
+				(vs & 0x1c) >> 2);
 		}
 		printf("\tAir Coding Format: %s\n", acf[vs & 0x03]);
 	}
 }
 
-static int get_link_key(const bdaddr_t *local, const bdaddr_t *peer, uint8_t *key)
+static int get_link_key(const bdaddr_t *local, const bdaddr_t *peer,
+			uint8_t *key)
 {
 	char filename[PATH_MAX + 1], addr[18], tmp[3], *str;
 	int i;
@@ -1356,8 +1375,10 @@ static void cmd_page_parms(int ctl, int hdev, char *opt)
 
 		window   = btohs(rp.window);
 		interval = btohs(rp.interval);
-		printf("\tPage interval: %u slots (%.2f ms), window: %u slots (%.2f ms)\n",
-				interval, (float)interval * 0.625, window, (float)window * 0.625);
+		printf("\tPage interval: %u slots (%.2f ms), "
+			"window: %u slots (%.2f ms)\n",
+			interval, (float)interval * 0.625,
+			window, (float)window * 0.625);
 	}
 }
 
@@ -1441,7 +1462,7 @@ static void cmd_afh_mode(int ctl, int hdev, char *opt)
 
 		if (hci_write_afh_mode(dd, mode, 2000) < 0) {
 			fprintf(stderr, "Can't set AFH mode on hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
+					hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
@@ -1449,7 +1470,7 @@ static void cmd_afh_mode(int ctl, int hdev, char *opt)
 
 		if (hci_read_afh_mode(dd, &mode, 1000) < 0) {
 			fprintf(stderr, "Can't read AFH mode on hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
+					hdev, strerror(errno), errno);
 			exit(1);
 		}
 
@@ -1474,7 +1495,7 @@ static void cmd_ssp_mode(int ctl, int hdev, char *opt)
 
 		if (hci_write_simple_pairing_mode(dd, mode, 2000) < 0) {
 			fprintf(stderr, "Can't set Simple Pairing mode on hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
+					hdev, strerror(errno), errno);
 			exit(1);
 		}
 	} else {
@@ -1482,12 +1503,13 @@ static void cmd_ssp_mode(int ctl, int hdev, char *opt)
 
 		if (hci_read_simple_pairing_mode(dd, &mode, 1000) < 0) {
 			fprintf(stderr, "Can't read Simple Pairing mode on hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
+					hdev, strerror(errno), errno);
 			exit(1);
 		}
 
 		print_dev_hdr(&di);
-		printf("\tSimple Pairing mode: %s\n", mode == 1 ? "Enabled" : "Disabled");
+		printf("\tSimple Pairing mode: %s\n",
+			mode == 1 ? "Enabled" : "Disabled");
 	}
 }
 
@@ -1505,7 +1527,8 @@ static void print_rev_ericsson(int dd)
 	rq.rlen   = sizeof(buf);
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
-		printf("\nCan't read revision info: %s (%d)\n", strerror(errno), errno);
+		printf("\nCan't read revision info: %s (%d)\n",
+			strerror(errno), errno);
 		return;
 	}
 
@@ -1551,7 +1574,8 @@ static void print_rev_digianswer(int dd)
 	rq.rlen   = sizeof(buf);
 
 	if (hci_send_req(dd, &rq, 1000) < 0) {
-		printf("\nCan't read revision info: %s (%d)\n", strerror(errno), errno);
+		printf("\nCan't read revision info: %s (%d)\n",
+			strerror(errno), errno);
 		return;
 	}
 
@@ -1560,7 +1584,8 @@ static void print_rev_digianswer(int dd)
 
 static void print_rev_broadcom(uint16_t hci_rev, uint16_t lmp_subver)
 {
-	printf("\tFirmware %d.%d / %d\n", hci_rev & 0xff, lmp_subver >> 8, lmp_subver & 0xff);
+	printf("\tFirmware %d.%d / %d\n",
+		hci_rev & 0xff, lmp_subver >> 8, lmp_subver & 0xff);
 }
 
 static void print_rev_avm(uint16_t hci_rev, uint16_t lmp_subver)
@@ -1780,7 +1805,7 @@ static void usage(void)
 		"\thciconfig\n"
 		"\thciconfig [-a] hciX [command ...]\n");
 	printf("Commands:\n");
-	for (i=0; command[i].cmd; i++)
+	for (i = 0; command[i].cmd; i++)
 		printf("\t%-10s %-8s\t%s\n", command[i].cmd,
 		command[i].opt ? command[i].opt : " ",
 		command[i].doc);
@@ -1794,10 +1819,10 @@ static struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	int opt, ctl, i, cmd=0;
+	int opt, ctl, i, cmd = 0;
 
-	while ((opt=getopt_long(argc, argv, "ah", main_options, NULL)) != -1) {
-		switch(opt) {
+	while ((opt = getopt_long(argc, argv, "ah", main_options, NULL)) != -1) {
+		switch (opt) {
 		case 'a':
 			all = 1;
 			break;

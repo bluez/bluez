@@ -128,7 +128,8 @@ static int hci_str2uint(hci_map *map, char *str, unsigned int *val)
 	while ((t = strsep(&ptr, ","))) {
 		for (m = map; m->str; m++) {
 			if (!strcasecmp(m->str,t)) {
-				*val = (unsigned int) m->val; set = 1;
+				*val = (unsigned int) m->val;
+				set = 1;
 				break;
 			}
 		}
@@ -771,7 +772,8 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 
 		while (m->str) {
 			if (m->val & features[i])
-				size += strlen(m->str) + (pref ? strlen(pref) : 0) + 1;
+				size += strlen(m->str) +
+						(pref ? strlen(pref) : 0) + 1;
 			m++;
 		}
 	}
@@ -793,7 +795,8 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 		while (m->str) {
 			if (m->val & features[i]) {
 				if (strlen(off) + strlen(m->str) > maxwidth) {
-					ptr += sprintf(ptr, "\n%s", pref ? pref : "");
+					ptr += sprintf(ptr, "\n%s",
+							pref ? pref : "");
 					off = ptr;
 				}
 				ptr += sprintf(ptr, "%s ", m->str);
@@ -806,8 +809,8 @@ char *lmp_featurestostr(uint8_t *features, char *pref, int width)
 }
 
 /* HCI functions that do not require open device */
-
-int hci_for_each_dev(int flag, int (*func)(int dd, int dev_id, long arg), long arg)
+int hci_for_each_dev(int flag, int (*func)(int dd, int dev_id, long arg),
+			long arg)
 {
 	struct hci_dev_list_req *dl;
 	struct hci_dev_req *dr;
@@ -941,7 +944,8 @@ int hci_devba(int dev_id, bdaddr_t *bdaddr)
 	return 0;
 }
 
-int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap, inquiry_info **ii, long flags)
+int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap,
+		inquiry_info **ii, long flags)
 {
 	struct hci_inquiry_req *ir;
 	uint8_t num_rsp = nrsp;
@@ -1128,7 +1132,8 @@ int hci_send_req(int dd, struct hci_request *r, int to)
 			}
 
 			to -= 10;
-			if (to < 0) to = 0;
+			if (to < 0)
+				to = 0;
 
 		}
 
@@ -1221,7 +1226,9 @@ done:
 	return 0;
 }
 
-int hci_create_connection(int dd, const bdaddr_t *bdaddr, uint16_t ptype, uint16_t clkoffset, uint8_t rswitch, uint16_t *handle, int to)
+int hci_create_connection(int dd, const bdaddr_t *bdaddr, uint16_t ptype,
+				uint16_t clkoffset, uint8_t rswitch,
+				uint16_t *handle, int to)
 {
 	evt_conn_complete rp;
 	create_conn_cp cp;
@@ -1328,7 +1335,10 @@ int hci_write_local_name(int dd, const char *name, int to)
 	return 0;
 }
 
-int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr, uint8_t pscan_rep_mode, uint16_t clkoffset, int len, char *name, int to)
+int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr,
+						uint8_t pscan_rep_mode,
+						uint16_t clkoffset,
+						int len, char *name, int to)
 {
 	evt_remote_name_req_complete rn;
 	remote_name_req_cp cp;
@@ -1361,9 +1371,11 @@ int hci_read_remote_name_with_clock_offset(int dd, const bdaddr_t *bdaddr, uint8
 	return 0;
 }
 
-int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name, int to)
+int hci_read_remote_name(int dd, const bdaddr_t *bdaddr, int len, char *name,
+				int to)
 {
-	return hci_read_remote_name_with_clock_offset(dd, bdaddr, 0x02, 0x0000, len, name, to);
+	return hci_read_remote_name_with_clock_offset(dd, bdaddr, 0x02, 0x0000,
+							len, name, to);
 }
 
 int hci_read_remote_name_cancel(int dd, const bdaddr_t *bdaddr, int to)
@@ -1386,7 +1398,8 @@ int hci_read_remote_name_cancel(int dd, const bdaddr_t *bdaddr, int to)
 	return 0;
 }
 
-int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver, int to)
+int hci_read_remote_version(int dd, uint16_t handle, struct hci_version *ver,
+				int to)
 {
 	evt_read_remote_version_complete rp;
 	read_remote_version_cp cp;
@@ -1450,7 +1463,9 @@ int hci_read_remote_features(int dd, uint16_t handle, uint8_t *features, int to)
 	return 0;
 }
 
-int hci_read_remote_ext_features(int dd, uint16_t handle, uint8_t page, uint8_t *max_page, uint8_t *features, int to)
+int hci_read_remote_ext_features(int dd, uint16_t handle, uint8_t page,
+					uint8_t *max_page, uint8_t *features,
+					int to)
 {
 	evt_read_remote_ext_features_complete rp;
 	read_remote_ext_features_cp cp;
@@ -1593,7 +1608,8 @@ int hci_read_local_features(int dd, uint8_t *features, int to)
 	return 0;
 }
 
-int hci_read_local_ext_features(int dd, uint8_t page, uint8_t *max_page, uint8_t *features, int to)
+int hci_read_local_ext_features(int dd, uint8_t page, uint8_t *max_page,
+				uint8_t *features, int to)
 {
 	read_local_ext_features_cp cp;
 	read_local_ext_features_rp rp;
@@ -1934,7 +1950,8 @@ int hci_switch_role(int dd, bdaddr_t *bdaddr, uint8_t role, int to)
 	return 0;
 }
 
-int hci_park_mode(int dd, uint16_t handle, uint16_t max_interval, uint16_t min_interval, int to)
+int hci_park_mode(int dd, uint16_t handle, uint16_t max_interval,
+			uint16_t min_interval, int to)
 {
 	park_mode_cp cp;
 	evt_mode_change rp;
@@ -2332,7 +2349,8 @@ int hci_write_inquiry_transmit_power_level(int dd, int8_t level, int to)
 	return 0;
 }
 
-int hci_read_transmit_power_level(int dd, uint16_t handle, uint8_t type, int8_t *level, int to)
+int hci_read_transmit_power_level(int dd, uint16_t handle, uint8_t type,
+					int8_t *level, int to)
 {
 	read_transmit_power_level_cp cp;
 	read_transmit_power_level_rp rp;
@@ -2416,7 +2434,8 @@ int hci_write_link_policy(int dd, uint16_t handle, uint16_t policy, int to)
 	return 0;
 }
 
-int hci_read_link_supervision_timeout(int dd, uint16_t handle, uint16_t *timeout, int to)
+int hci_read_link_supervision_timeout(int dd, uint16_t handle,
+					uint16_t *timeout, int to)
 {
 	read_link_supervision_timeout_rp rp;
 	struct hci_request rq;
@@ -2441,7 +2460,8 @@ int hci_read_link_supervision_timeout(int dd, uint16_t handle, uint16_t *timeout
 	return 0;
 }
 
-int hci_write_link_supervision_timeout(int dd, uint16_t handle, uint16_t timeout, int to)
+int hci_write_link_supervision_timeout(int dd, uint16_t handle,
+					uint16_t timeout, int to)
 {
 	write_link_supervision_timeout_cp cp;
 	write_link_supervision_timeout_rp rp;
@@ -2498,7 +2518,8 @@ int hci_set_afh_classification(int dd, uint8_t *map, int to)
 	return 0;
 }
 
-int hci_read_link_quality(int dd, uint16_t handle, uint8_t *link_quality, int to)
+int hci_read_link_quality(int dd, uint16_t handle, uint8_t *link_quality,
+				int to)
 {
 	read_link_quality_rp rp;
 	struct hci_request rq;
@@ -2548,7 +2569,8 @@ int hci_read_rssi(int dd, uint16_t handle, int8_t *rssi, int to)
 	return 0;
 }
 
-int hci_read_afh_map(int dd, uint16_t handle, uint8_t *mode, uint8_t *map, int to)
+int hci_read_afh_map(int dd, uint16_t handle, uint8_t *mode, uint8_t *map,
+			int to)
 {
 	read_afh_map_rp rp;
 	struct hci_request rq;
@@ -2574,7 +2596,8 @@ int hci_read_afh_map(int dd, uint16_t handle, uint8_t *mode, uint8_t *map, int t
 	return 0;
 }
 
-int hci_read_clock(int dd, uint16_t handle, uint8_t which, uint32_t *clock, uint16_t *accuracy, int to)
+int hci_read_clock(int dd, uint16_t handle, uint8_t which, uint32_t *clock,
+			uint16_t *accuracy, int to)
 {
 	read_clock_cp cp;
 	read_clock_rp rp;
