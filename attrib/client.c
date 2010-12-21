@@ -970,6 +970,7 @@ static void register_primaries(struct gatt_service *gatt, GSList *primaries)
 		DBG("Registered: %s", prim->path);
 
 		gatt->primary = g_slist_append(gatt->primary, prim);
+		btd_device_add_service(gatt->dev, prim->path);
 		load_characteristics(prim, gatt);
 	}
 }
