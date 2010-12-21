@@ -623,9 +623,7 @@ static void link_key_request(int index, bdaddr_t *dba)
 	struct hci_auth_info_req req;
 	GSList *match;
 	struct link_key_info *key_info;
-	unsigned char key[16];
 	char da[18];
-	uint8_t type;
 	int err;
 
 	ba2str(dba, da);
@@ -652,12 +650,6 @@ static void link_key_request(int index, bdaddr_t *dba)
 
 	DBG("Matching key %s", key_info ? "found" : "not found");
 
-	if (key_info) {
-		memcpy(key, key_info->key, sizeof(key));
-		type = key_info->type;
-	} else
-		type = 0xff;
-
 	if (key_info == NULL || (!dev->debug_keys && key_info->type == 0x03)) {
 		/* Link key not found */
 		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
@@ -667,17 +659,17 @@ static void link_key_request(int index, bdaddr_t *dba)
 
 	/* Link key found */
 
-	DBG("link key type 0x%02x", type);
+	DBG("link key type 0x%02x", key_info->type);
 
 	/* Don't use unauthenticated combination keys if MITM is
 	 * required */
-	if (type == 0x04 && req.type != 0xff && (req.type & 0x01))
+	if (key_info->type == 0x04 && req.type != 0xff && (req.type & 0x01))
 		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
 								6, dba);
 	else {
 		link_key_reply_cp lr;
 
-		memcpy(lr.link_key, key, 16);
+		memcpy(lr.link_key, key_info->key, 16);
 		bacpy(&lr.bdaddr, dba);
 
 		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_LINK_KEY_REPLY,
