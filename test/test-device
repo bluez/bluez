@@ -36,6 +36,7 @@ if (len(args) < 1):
 	print "  list"
 	print "  create <address>"
 	print "  remove <address|path>"
+	print "  disconnect <address>"
 	print "  discover <address> [pattern]"
 	print "  class <address>"
 	print "  name <address>"
@@ -81,6 +82,16 @@ if (args[0] == "remove"):
 		except:
 			path = args[1]
 		adapter.RemoveDevice(path)
+	sys.exit(0)
+
+if (args[0] == "disconnect"):
+	if (len(args) < 2):
+		print "Need address parameter"
+	else:
+		path = adapter.FindDevice(args[1])
+		device = dbus.Interface(bus.get_object("org.bluez", path),
+							"org.bluez.Device")
+		device.Disconnect()
 	sys.exit(0)
 
 if (args[0] == "discover"):
