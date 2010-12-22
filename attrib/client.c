@@ -1086,35 +1086,6 @@ static void load_attribute_data(char *key, char *value, void *data)
 		chr->format = attr_data_from_string(value + MAX_LEN_UUID_STR);
 }
 
-static char *primary_list_to_string(GSList *primary_list)
-{
-	GString *services;
-	GSList *l;
-
-	services = g_string_new(NULL);
-
-	for (l = primary_list; l; l = l->next) {
-		struct primary *primary = l->data;
-		uuid_t *uuid128;
-		char service[64];
-		char uuidstr[MAX_LEN_UUID_STR];
-
-		memset(service, 0, sizeof(service));
-
-		uuid128 = sdp_uuid_to_uuid128(&primary->uuid);
-		sdp_uuid2strn(uuid128, uuidstr, MAX_LEN_UUID_STR);
-
-		bt_free(uuid128);
-
-		snprintf(service, sizeof(service), "%04X#%04X#%s ",
-				primary->start, primary->end, uuidstr);
-
-		services = g_string_append(services, service);
-	}
-
-	return g_string_free(services, FALSE);
-}
-
 static GSList *string_to_primary_list(struct gatt_service *gatt,
 							const char *str)
 {
@@ -1156,17 +1127,6 @@ static GSList *string_to_primary_list(struct gatt_service *gatt,
 	g_strfreev(services);
 
 	return l;
-}
-
-static void store_primary_services(struct gatt_service *gatt)
-{
-       char *services;
-
-       services = primary_list_to_string(gatt->primary);
-
-       write_device_services(&gatt->sba, &gatt->dba, services);
-
-       g_free(services);
 }
 
 static gboolean load_primary_services(struct gatt_service *gatt)
@@ -1225,7 +1185,6 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		if (gatt->primary == NULL)
 			goto done;
 
-		store_primary_services(gatt);
 		register_primary(gatt);
 
 		g_slist_foreach(gatt->primary, discover_all_char, gatt);

@@ -45,6 +45,7 @@
 #include "log.h"
 #include "textfile.h"
 
+#include "att.h"
 #include "hcid.h"
 #include "adapter.h"
 #include "device.h"
@@ -1518,10 +1519,36 @@ static void init_browse(struct browse_req *req, gboolean reverse)
 						l->data);
 }
 
+static char *primary_list_to_string(GSList *primary_list)
+{
+	GString *services;
+	GSList *l;
+
+	services = g_string_new(NULL);
+
+	for (l = primary_list; l; l = l->next) {
+		struct att_primary *primary = l->data;
+		char service[64];
+
+		memset(service, 0, sizeof(service));
+
+		snprintf(service, sizeof(service), "%04X#%04X#%s ",
+				primary->start, primary->end, primary->uuid);
+
+		services = g_string_append(services, service);
+	}
+
+	return g_string_free(services, FALSE);
+}
+
 static void primary_cb(GSList *services, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
+	struct btd_adapter *adapter = device->adapter;
+	GSList *l, *uuids = NULL;
+	bdaddr_t dba, sba;
+	char *str;
 
 	if (err) {
 		DBusMessage *reply;
@@ -1532,9 +1559,24 @@ static void primary_cb(GSList *services, int err, gpointer user_data)
 
 	services_changed(device);
 	device_set_temporary(device, FALSE);
-	device_probe_drivers(device, services);
+
+	for (l = services; l; l = l->next) {
+		struct att_primary *prim = l->data;
+		uuids = g_slist_append(uuids, prim->uuid);
+	}
+
+	device_probe_drivers(device, uuids);
+	g_slist_free(uuids);
 
 	create_device_reply(device, req);
+
+	str = primary_list_to_string(services);
+
+	adapter_get_address(adapter, &sba);
+	device_get_address(device, &dba);
+
+	write_device_services(&sba, &dba, str);
+	g_free(str);
 
 done:
 	device->browse = NULL;

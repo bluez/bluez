@@ -55,7 +55,7 @@ struct gattrib_context {
 	bt_primary_t cb;
 	bt_destroy_t destroy;
 	gpointer user_data;
-	GSList *uuids;
+	GSList *primaries;
 };
 
 static GSList *gattrib_list = NULL;
@@ -75,8 +75,8 @@ static void gattrib_context_free(struct gattrib_context *ctxt)
 	if (ctxt->destroy)
 		ctxt->destroy(ctxt->user_data);
 
-	g_slist_foreach(ctxt->uuids, (GFunc) g_free, NULL);
-	g_slist_free(ctxt->uuids);
+	g_slist_foreach(ctxt->primaries, (GFunc) g_free, NULL);
+	g_slist_free(ctxt->primaries);
 	g_attrib_unref(ctxt->attrib);
 	if (ctxt->io) {
 		g_io_channel_unref(ctxt->io);
@@ -439,7 +439,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	struct gattrib_context *ctxt = user_data;
 	struct att_data_list *list;
 	unsigned int i, err;
-	uint16_t end;
+	uint16_t start, end;
 
 	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
 		err = 0;
@@ -459,9 +459,10 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	for (i = 0, end = 0; i < list->num; i++) {
 		const uint8_t *data = list->data[i];
-		char *prim;
+		struct att_primary *primary;
 		uuid_t u128, u16;
 
+		start = att_get_u16(&data[0]);
 		end = att_get_u16(&data[2]);
 
 		if (list->len == 6) {
@@ -475,8 +476,15 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 			/* Skipping invalid data */
 			continue;
 
-		prim = bt_uuid2string(&u128);
-		ctxt->uuids = g_slist_append(ctxt->uuids, prim);
+		primary = g_try_new0(struct att_primary, 1);
+		if (!primary) {
+			err = -ENOMEM;
+			goto done;
+		}
+		primary->start = start;
+		primary->end = end;
+		sdp_uuid2strn(&u128, primary->uuid, sizeof(primary->uuid));
+		ctxt->primaries = g_slist_append(ctxt->primaries, primary);
 	}
 
 	att_data_list_free(list);
@@ -489,7 +497,7 @@ static void primary_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	}
 
 done:
-	ctxt->cb(ctxt->uuids, err, ctxt->user_data);
+	ctxt->cb(ctxt->primaries, err, ctxt->user_data);
 	gattrib_context_free(ctxt);
 }
 
