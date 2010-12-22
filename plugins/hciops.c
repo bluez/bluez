@@ -2583,8 +2583,10 @@ static int hciops_start_scanning(int index)
 
 	memset(&cp, 0, sizeof(cp));
 	cp.type = 0x01;			/* Active scanning */
-	cp.interval = htobs(0x0010);
-	cp.window = htobs(0x0010);
+	/* The recommended value for scan interval and window is 11.25 msec.
+	 * It is calculated by: time = n * 0.625 msec */
+	cp.interval = htobs(0x0012);
+	cp.window = htobs(0x0012);
 	cp.own_bdaddr_type = 0;		/* Public address */
 	cp.filter = 0;			/* Accept all adv packets */
 
