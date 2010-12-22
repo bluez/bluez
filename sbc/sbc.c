@@ -978,6 +978,9 @@ ssize_t sbc_decode(sbc_t *sbc, const void *input, size_t input_len,
 
 		priv->frame.codesize = sbc_get_codesize(sbc);
 		priv->frame.length = framelen;
+	} else if (priv->frame.bitpool != sbc->bitpool) {
+		priv->frame.length = framelen;
+		sbc->bitpool = priv->frame.bitpool;
 	}
 
 	if (!output)
@@ -1050,6 +1053,9 @@ ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 
 		sbc_encoder_init(&priv->enc_state, &priv->frame);
 		priv->init = 1;
+	} else if (priv->frame.bitpool != sbc->bitpool) {
+		priv->frame.length = sbc_get_frame_length(sbc);
+		priv->frame.bitpool = sbc->bitpool;
 	}
 
 	/* input must be large enough to encode a complete frame */
@@ -1120,7 +1126,7 @@ size_t sbc_get_frame_length(sbc_t *sbc)
 	struct sbc_priv *priv;
 
 	priv = sbc->priv;
-	if (priv->init)
+	if (priv->init && priv->frame.bitpool == sbc->bitpool)
 		return priv->frame.length;
 
 	subbands = sbc->subbands ? 8 : 4;
