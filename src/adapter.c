@@ -2829,12 +2829,20 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	}
 
 	if (dev->le) {
+		gboolean broadcaster;
+
+		if (dev->flags & (EIR_LIM_DISC | EIR_GEN_DISC))
+			broadcaster = FALSE;
+		else
+			broadcaster = TRUE;
+
 		emit_device_found(adapter->path, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
 				"RSSI", DBUS_TYPE_INT16, &rssi,
 				"Name", DBUS_TYPE_STRING, &dev->name,
 				"Paired", DBUS_TYPE_BOOLEAN, &paired,
 				"UUIDs", DBUS_TYPE_ARRAY, &dev->uuids,
+				"Broadcaster", DBUS_TYPE_BOOLEAN, &broadcaster,
 				dev->uuid_count, NULL);
 		return;
 	}

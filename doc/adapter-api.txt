@@ -185,7 +185,8 @@ Signals		PropertyChanged(string name, variant value)
 			The dictionary can contain basically the same values
 			that are returned by the GetProperties method
 			from the org.bluez.Device interface. In addition there
-			can be values for the RSSI and the TX power level.
+			can be values for the RSSI, the TX power level and
+			Broadcaster role.
 
 		DeviceDisappeared(string address)
 
