@@ -588,7 +588,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	if (strlen(pattern) == 0) {
-		err = device_browse(device, conn, msg, NULL, FALSE);
+		err = device_browse_sdp(device, conn, msg, NULL, FALSE);
 		if (err < 0)
 			goto fail;
 	} else {
@@ -599,7 +599,7 @@ static DBusMessage *discover_services(DBusConnection *conn,
 
 		sdp_uuid128_to_uuid(&uuid);
 
-		err = device_browse(device, conn, msg, &uuid, FALSE);
+		err = device_browse_sdp(device, conn, msg, &uuid, FALSE);
 		if (err < 0)
 			goto fail;
 	}
@@ -990,6 +990,11 @@ void device_set_name(struct btd_device *device, const char *name)
 void device_get_name(struct btd_device *device, char *name, size_t len)
 {
 	strncpy(name, device->name, len);
+}
+
+device_type_t device_get_type(struct btd_device *device)
+{
+	return device->type;
 }
 
 void device_remove_bonding(struct btd_device *device)
@@ -1599,41 +1604,62 @@ done:
 	browse_request_free(req);
 }
 
-static struct browse_req *browse_primary(struct btd_device *device, int *err)
+int device_browse_primary(struct btd_device *device, DBusConnection *conn,
+				DBusMessage *msg, gboolean secure)
 {
 	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
 	bdaddr_t src;
-	int ret;
+	int err;
+
+	if (device->browse)
+		return -EBUSY;
 
 	req = g_new0(struct browse_req, 1);
 	req->device = btd_device_ref(device);
 
 	adapter_get_address(adapter, &src);
 
-	ret = bt_discover_primary(&src, &device->bdaddr, -1, primary_cb, req,
-									NULL);
-
-	if (ret < 0) {
+	err = bt_discover_primary(&src, &device->bdaddr, -1, primary_cb, req,
+							secure, NULL);
+	if (err < 0) {
 		browse_request_free(req);
-		if (err)
-			*err = ret;
-
-		return NULL;
+		return err;
 	}
 
-	return req;
+	if (conn == NULL)
+		conn = get_dbus_connection();
+
+	req->conn = dbus_connection_ref(conn);
+	device->browse = req;
+
+	if (msg) {
+		const char *sender = dbus_message_get_sender(msg);
+
+		req->msg = dbus_message_ref(msg);
+		/* Track the request owner to cancel it
+		 * automatically if the owner exits */
+		req->listener_id = g_dbus_add_disconnect_watch(conn,
+						sender,
+						discover_services_req_exit,
+						req, NULL);
+	}
+
+	return err;
 }
 
-static struct browse_req *browse_sdp(struct btd_device *device, uuid_t *search,
-						gboolean reverse, int *err)
+int device_browse_sdp(struct btd_device *device, DBusConnection *conn,
+			DBusMessage *msg, uuid_t *search, gboolean reverse)
 {
 	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
 	bt_callback_t cb;
 	bdaddr_t src;
 	uuid_t uuid;
-	int ret;
+	int err;
+
+	if (device->browse)
+		return -EBUSY;
 
 	adapter_get_address(adapter, &src);
 
@@ -1648,34 +1674,11 @@ static struct browse_req *browse_sdp(struct btd_device *device, uuid_t *search,
 		cb = browse_cb;
 	}
 
-	ret = bt_search_service(&src, &device->bdaddr, &uuid, cb, req, NULL);
-	if (ret < 0) {
+	err = bt_search_service(&src, &device->bdaddr, &uuid, cb, req, NULL);
+	if (err < 0) {
 		browse_request_free(req);
-		if (err)
-			*err = ret;
-
-		return NULL;
-	}
-
-	return req;
-}
-
-int device_browse(struct btd_device *device, DBusConnection *conn,
-			DBusMessage *msg, uuid_t *search, gboolean reverse)
-{
-	struct browse_req *req;
-	int err = 0;
-
-	if (device->browse)
-		return -EBUSY;
-
-	if (device->type == DEVICE_TYPE_LE)
-		req = browse_primary(device, &err);
-	else
-		req = browse_sdp(device, search, reverse, &err);
-
-	if (req == NULL)
 		return err;
+	}
 
 	if (conn == NULL)
 		conn = get_dbus_connection();
@@ -1786,7 +1789,7 @@ static gboolean start_discovery(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 
-	device_browse(device, NULL, NULL, NULL, TRUE);
+	device_browse_sdp(device, NULL, NULL, NULL, TRUE);
 
 	device->discov_timer = 0;
 
@@ -2123,7 +2126,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 			device->discov_timer = 0;
 		}
 
-		device_browse(device, bonding->conn, bonding->msg,
+		device_browse_sdp(device, bonding->conn, bonding->msg,
 				NULL, FALSE);
 
 		bonding_request_free(bonding);

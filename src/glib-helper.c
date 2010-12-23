@@ -517,9 +517,11 @@ static void connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 
 int bt_discover_primary(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 					bt_primary_t cb, void *user_data,
+					gboolean secure,
 					bt_destroy_t destroy)
 {
 	struct gattrib_context *ctxt;
+	BtIOSecLevel sec_level;
 	GIOChannel *io;
 
 	ctxt = g_try_new0(struct gattrib_context, 1);
@@ -532,19 +534,24 @@ int bt_discover_primary(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 	ctxt->cb = cb;
 	ctxt->destroy = destroy;
 
+	if (secure == TRUE)
+		sec_level = BT_IO_SEC_HIGH;
+	else
+		sec_level = BT_IO_SEC_LOW;
+
 	if (psm < 0)
 		io = bt_io_connect(BT_IO_L2CAP, connect_cb, ctxt, NULL, NULL,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_DEST_BDADDR, dst,
 				BT_IO_OPT_CID, GATT_CID,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
 	else
 		io = bt_io_connect(BT_IO_L2CAP, connect_cb, ctxt, NULL, NULL,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_DEST_BDADDR, dst,
 				BT_IO_OPT_PSM, psm,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
 
 	if (io == NULL) {

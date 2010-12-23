@@ -32,6 +32,7 @@ int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst);
 
 int bt_discover_primary(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 					bt_primary_t cb, void *user_data,
+					gboolean secure,
 					bt_destroy_t destroy);
 
 gchar *bt_uuid2string(uuid_t *uuid);

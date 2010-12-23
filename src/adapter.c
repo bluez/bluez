@@ -1520,15 +1520,48 @@ static gboolean event_is_connectable(uint8_t type)
 	}
 }
 
+static struct btd_device *create_device_internal(DBusConnection *conn,
+						struct btd_adapter *adapter,
+						const gchar *address,
+						gboolean force, int *err)
+{
+	struct remote_dev_info *dev, match;
+	struct btd_device *device;
+	device_type_t type;
+
+	memset(&match, 0, sizeof(struct remote_dev_info));
+	str2ba(address, &match.bdaddr);
+	match.name_status = NAME_ANY;
+
+	dev = adapter_search_found_devices(adapter, &match);
+	if (dev && dev->flags)
+		type = flags2type(dev->flags);
+	else
+		type = DEVICE_TYPE_BREDR;
+
+	if (!force && type == DEVICE_TYPE_LE &&
+					!event_is_connectable(dev->evt_type)) {
+		if (err)
+			*err = -ENOTCONN;
+
+		return NULL;
+	}
+
+	device = adapter_create_device(conn, adapter, address, type);
+	if (!device && err)
+		*err = -ENOMEM;
+
+	return device;
+}
+
 static DBusMessage *create_device(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct btd_adapter *adapter = data;
 	struct btd_device *device;
-	struct remote_dev_info *dev, match;
 	const gchar *address;
+	DBusMessage *reply;
 	int err;
-	device_type_t type;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 						DBUS_TYPE_INVALID) == FALSE)
@@ -1545,41 +1578,36 @@ static DBusMessage *create_device(DBusConnection *conn,
 
 	DBG("%s", address);
 
-	memset(&match, 0, sizeof(struct remote_dev_info));
-	str2ba(address, &match.bdaddr);
-	match.name_status = NAME_ANY;
-
-	dev = adapter_search_found_devices(adapter, &match);
-	if (dev && dev->flags)
-		type = flags2type(dev->flags);
-	else
-		type = DEVICE_TYPE_BREDR;
-
-	device = adapter_create_device(conn, adapter, address, type);
+	device = create_device_internal(conn, adapter, address, TRUE, &err);
 	if (!device)
-		return NULL;
+		goto failed;
 
-	if (type == DEVICE_TYPE_LE && !event_is_connectable(dev->evt_type)) {
-		/* Device is not connectable */
-		const char *path = device_get_path(device);
-		DBusMessage *reply;
+	if (device_get_type(device) != DEVICE_TYPE_LE)
+		err = device_browse_sdp(device, conn, msg, NULL, FALSE);
+	else
+		err = device_browse_primary(device, conn, msg, FALSE);
 
-		reply = dbus_message_new_method_return(msg);
-
-		dbus_message_append_args(reply,
-					DBUS_TYPE_OBJECT_PATH, &path,
-					DBUS_TYPE_INVALID);
-
-		return reply;
-	}
-
-	err = device_browse(device, conn, msg, NULL, FALSE);
 	if (err < 0) {
 		adapter_remove_device(conn, adapter, device, TRUE);
 		return btd_error_failed(msg, strerror(-err));
 	}
 
 	return NULL;
+
+failed:
+	if (err == -ENOTCONN) {
+		/* Device is not connectable */
+		const char *path = device_get_path(device);
+
+		reply = dbus_message_new_method_return(msg);
+
+		dbus_message_append_args(reply,
+				DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
+	} else
+		reply = btd_error_failed(msg, strerror(-err));
+
+	return reply;
 }
 
 static uint8_t parse_io_capability(const char *capability)
@@ -1604,6 +1632,7 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 	struct btd_device *device;
 	const gchar *address, *agent_path, *capability, *sender;
 	uint8_t cap;
+	int err;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_OBJECT_PATH, &agent_path,
@@ -1628,12 +1657,23 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 	if (cap == IO_CAPABILITY_INVALID)
 		return btd_error_invalid_args(msg);
 
-	device = adapter_get_device(conn, adapter, address);
-	if (!device)
-		return btd_error_failed(msg,
-				"Unable to create a new device object");
+	device = adapter_find_device(adapter, address);
+	if (!device) {
+		device = create_device_internal(conn, adapter, address,
+								FALSE, &err);
+		if (!device)
+			return btd_error_failed(msg, strerror(-err));
+	}
 
-	return device_create_bonding(device, conn, msg, agent_path, cap);
+	if (device_get_type(device) != DEVICE_TYPE_LE)
+		return device_create_bonding(device, conn, msg,
+							agent_path, cap);
+
+	err = device_browse_primary(device, conn, msg, TRUE);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return NULL;
 }
 
 static gint device_path_cmp(struct btd_device *device, const gchar *path)
