@@ -76,14 +76,14 @@ Read Controller Information Command
 				0x02 802.11 (AMP)
 
 
-Read Controller Statistics Command
-==================================
+Set Powered Command
+===================
 
 	Command Code:		0x0005
 	Command Parameters:	Controller_Index (2 Octets)
-	Return Paramters:	Status (1 Octet)
-				Controller_Index (2 Octets)
-				....
+				Powered (1 Octet)
+	Return Paramters:	Controller_Index (2 Octets)
+
 
 
 Read Tracing Buffer Size Command

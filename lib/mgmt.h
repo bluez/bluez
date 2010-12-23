@@ -67,16 +67,10 @@ struct mgmt_rp_read_info {
 	uint16_t hci_rev;
 } __packed;
 
-#define MGMT_OP_POWER_ON		0x0005
-struct mgmt_cp_power_on {
+#define MGMT_OP_SET_POWERED		0x0005
+struct mgmt_cp_set_powered {
 	uint16_t index;
-	uint8_t discoverable;
-	uint8_t pairable;
-} __packed;
-
-#define MGMT_OP_POWER_OFF		0x0006
-struct mgmt_cp_power_off {
-	uint16_t index;
+	uint8_t powered;
 } __packed;
 
 #define MGMT_EV_CMD_COMPLETE		0x0001

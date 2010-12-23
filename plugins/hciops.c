@@ -2452,12 +2452,15 @@ static void hciops_cleanup(void)
 	}
 }
 
-static int hciops_power_on(int index, gboolean discoverable)
+static int hciops_set_powered(int index, gboolean powered)
 {
 	struct dev_info *dev = &devs[index];
 	int err;
 
-	DBG("hci%d", index);
+	DBG("hci%d powered %d", index, powered);
+
+	if (powered == FALSE)
+		return hciops_power_off(index);
 
 	if (ioctl(dev->sk, HCIDEVUP, index) == 0)
 		return 0;
@@ -3164,8 +3167,7 @@ static int hciops_load_keys(int index, GSList *keys, gboolean debug_keys)
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
-	.power_on = hciops_power_on,
-	.power_off = hciops_power_off,
+	.set_powered = hciops_set_powered,
 	.set_connectable = hciops_set_connectable,
 	.set_discoverable = hciops_set_discoverable,
 	.set_pairable = hciops_set_pairable,

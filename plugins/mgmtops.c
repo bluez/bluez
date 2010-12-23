@@ -233,26 +233,6 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 	}
 }
 
-static int mgmt_power_off(int index)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_power_off)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_power_off *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("index %d", index);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = MGMT_OP_POWER_OFF;
-	hdr->len = htobs(sizeof(*cp));
-
-	cp->index = htobs(index);
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int mgmt_set_discoverable(int index, gboolean discoverable)
 {
 	DBG("index %d discoverable %d", index, discoverable);
@@ -263,6 +243,27 @@ static int mgmt_set_pairable(int index, gboolean pairable)
 {
 	DBG("index %d pairable %d", index, pairable);
 	return -ENOSYS;
+}
+
+static int mgmt_set_powered(int index, gboolean powered)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_powered)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_powered *cp = (void *) &buf[sizeof(*hdr)];
+
+	DBG("index %d powered %d", index, powered);
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = MGMT_OP_SET_POWERED;
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+	cp->powered = powered;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static void read_info_complete(int sk, void *buf, size_t len)
@@ -317,7 +318,7 @@ static void read_info_complete(int sk, void *buf, size_t len)
 
 	btd_adapter_get_state(adapter, &mode, NULL, &pairable);
 	if (mode == MODE_OFF) {
-		mgmt_power_off(index);
+		mgmt_set_powered(index, FALSE);
 		return;
 	}
 
@@ -524,29 +525,6 @@ static void mgmt_cleanup(void)
 		g_source_remove(mgmt_watch);
 		mgmt_watch = 0;
 	}
-}
-
-static int mgmt_power_on(int index, gboolean discoverable)
-{
-	struct controller_info *info = &controllers[index];
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_power_on)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_power_on *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("index %d discoverable %d", index, discoverable);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = MGMT_OP_POWER_ON;
-	hdr->len = htobs(sizeof(*cp));
-
-	cp->index = htobs(index);
-	cp->discoverable = discoverable;
-	cp->pairable = info->pairable;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
 }
 
 static int mgmt_set_connectable(int index, gboolean connectable)
@@ -829,8 +807,7 @@ static int mgmt_load_keys(int index, GSList *keys, gboolean debug_keys)
 static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
-	.power_on = mgmt_power_on,
-	.power_off = mgmt_power_off,
+	.set_powered = mgmt_set_powered,
 	.set_connectable = mgmt_set_connectable,
 	.set_discoverable = mgmt_set_discoverable,
 	.set_pairable = mgmt_set_pairable,

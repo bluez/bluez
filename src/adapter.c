@@ -459,7 +459,7 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
 	discoverable = new_mode == MODE_DISCOVERABLE;
 
 	if (!adapter->up && new_mode != MODE_OFF) {
-		err = adapter_ops->power_on(adapter->dev_id, discoverable);
+		err = adapter_ops->set_powered(adapter->dev_id, TRUE);
 		if (err < 0)
 			return err;
 
@@ -467,7 +467,7 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
 	}
 
 	if (adapter->up && new_mode == MODE_OFF) {
-		err = adapter_ops->power_off(adapter->dev_id);
+		err = adapter_ops->set_powered(adapter->dev_id, FALSE);
 		if (err < 0)
 			return err;
 
@@ -3318,7 +3318,7 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter)
 
 	discoverable = get_mode(&adapter->bdaddr, mode) == MODE_DISCOVERABLE;
 
-	return adapter_ops->power_on(adapter->dev_id, discoverable);
+	return adapter_ops->set_powered(adapter->dev_id, TRUE);
 }
 
 int btd_adapter_switch_online(struct btd_adapter *adapter)
@@ -3333,7 +3333,7 @@ int btd_adapter_switch_online(struct btd_adapter *adapter)
 
 	discoverable = get_mode(&adapter->bdaddr, "on") == MODE_DISCOVERABLE;
 
-	return adapter_ops->power_on(adapter->dev_id, discoverable);
+	return adapter_ops->set_powered(adapter->dev_id, TRUE);
 }
 
 int btd_adapter_switch_offline(struct btd_adapter *adapter)
@@ -3344,7 +3344,7 @@ int btd_adapter_switch_offline(struct btd_adapter *adapter)
 	if (!adapter->up)
 		return 0;
 
-	return adapter_ops->power_off(adapter->dev_id);
+	return adapter_ops->set_powered(adapter->dev_id, FALSE);
 }
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority)

@@ -199,8 +199,7 @@ typedef void (*bt_hci_result_t) (uint8_t status, gpointer user_data);
 struct btd_adapter_ops {
 	int (*setup) (void);
 	void (*cleanup) (void);
-	int (*power_on) (int index, gboolean powered);
-	int (*power_off) (int index);
+	int (*set_powered) (int index, gboolean powered);
 	int (*set_connectable) (int index, gboolean connectable);
 	int (*set_discoverable) (int index, gboolean discoverable);
 	int (*set_pairable) (int index, gboolean pairable);
