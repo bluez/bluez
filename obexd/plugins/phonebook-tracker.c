@@ -109,7 +109,7 @@
 "tracker:coalesce(nco:locality(?aff_addr), \"\"), \";\","		\
 "tracker:coalesce(nco:region(?aff_addr), \"\"), \";\","			\
 "tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \";\","		\
-"tracker:coalesce(nco:country(?aff_addr), \"\") ),\";\")"		\
+"tracker:coalesce(nco:country(?aff_addr), \"\") ),\"\30\")"		\
 "WHERE {"								\
 "?_role nco:hasPostalAddress ?aff_addr"					\
 "}) "									\
@@ -191,7 +191,7 @@
 	"tracker:coalesce(nco:locality(?aff_addr), \"\"), \";\","	\
 	"tracker:coalesce(nco:region(?aff_addr), \"\"), \";\","		\
 	"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \";\","	\
-	"tracker:coalesce(nco:country(?aff_addr), \"\") ),\";\")"	\
+	"tracker:coalesce(nco:country(?aff_addr), \"\") ),\"\30\")"	\
 	"WHERE {"							\
 	"?_role nco:hasPostalAddress ?aff_addr"				\
 	"}) "								\
@@ -337,7 +337,7 @@
 	"tracker:coalesce(nco:locality(?aff_addr), \"\"), \";\","	\
 	"tracker:coalesce(nco:region(?aff_addr), \"\"), \";\","		\
 	"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \";\","	\
-	"tracker:coalesce(nco:country(?aff_addr), \"\") ),\";\")"	\
+	"tracker:coalesce(nco:country(?aff_addr), \"\") ),\"\30\")"	\
 	"WHERE {"							\
 	"?_role nco:hasPostalAddress ?aff_addr"				\
 	"}) "								\
@@ -482,7 +482,7 @@
 	"tracker:coalesce(nco:locality(?aff_addr), \"\"), \";\","	\
 	"tracker:coalesce(nco:region(?aff_addr), \"\"), \";\","		\
 	"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \";\","	\
-	"tracker:coalesce(nco:country(?aff_addr), \"\") ),\";\")"	\
+	"tracker:coalesce(nco:country(?aff_addr), \"\") ),\"\30\")"	\
 	"WHERE {"							\
 	"?_role nco:hasPostalAddress ?aff_addr"				\
 	"}) "								\
@@ -621,7 +621,7 @@
 	"tracker:coalesce(nco:locality(?aff_addr), \"\"), \";\","	\
 	"tracker:coalesce(nco:region(?aff_addr), \"\"), \";\","		\
 	"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \";\","	\
-	"tracker:coalesce(nco:country(?aff_addr), \"\") ),\";\")"	\
+	"tracker:coalesce(nco:country(?aff_addr), \"\") ),\"\30\")"	\
 	"WHERE {"							\
 	"?_role nco:hasPostalAddress ?aff_addr"				\
 	"}) "								\
@@ -813,7 +813,7 @@
 "tracker:coalesce(nco:locality(?aff_addr), \"\"), \";\","		\
 "tracker:coalesce(nco:region(?aff_addr), \"\"), \";\","			\
 "tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \";\","		\
-"tracker:coalesce(nco:country(?aff_addr), \"\") ),\";\")"		\
+"tracker:coalesce(nco:country(?aff_addr), \"\") ),\"\30\")"		\
 "WHERE {"								\
 "?_role nco:hasPostalAddress ?aff_addr"					\
 "}) "									\
