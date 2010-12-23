@@ -75,7 +75,6 @@ static void gattrib_context_free(struct gattrib_context *ctxt)
 	if (ctxt->destroy)
 		ctxt->destroy(ctxt->user_data);
 
-	g_slist_foreach(ctxt->primaries, (GFunc) g_free, NULL);
 	g_slist_free(ctxt->primaries);
 	g_attrib_unref(ctxt->attrib);
 	if (ctxt->io) {

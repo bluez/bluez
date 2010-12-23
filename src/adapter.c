@@ -1994,14 +1994,14 @@ static void create_stored_device_from_primary(char *key, char *value,
 	for (l = services, uuids = NULL; l; l = l->next) {
 		struct att_primary *prim = l->data;
 		uuids = g_slist_append(uuids, prim->uuid);
+
+		device_add_primary(device, prim);
 	}
 
 	device_probe_drivers(device, uuids);
 
-	g_slist_free(uuids);
-
-	g_slist_foreach(services, (GFunc) g_free, NULL);
 	g_slist_free(services);
+	g_slist_free(uuids);
 }
 
 static void load_devices(struct btd_adapter *adapter)

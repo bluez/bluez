@@ -115,6 +115,7 @@ struct btd_device {
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*services;		/* Primary services path */
+	GSList		*primaries;		/* List of primary services */
 	GSList		*drivers;		/* List of driver_data */
 	GSList		*watches;		/* List of disconnect_data */
 	gboolean	temporary;
@@ -208,6 +209,9 @@ static void device_free(gpointer user_data)
 
 	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
 	g_slist_free(device->uuids);
+
+	g_slist_foreach(device->primaries, (GFunc) g_free, NULL);
+	g_slist_free(device->primaries);
 
 	if (device->tmp_records)
 		sdp_list_free(device->tmp_records,
@@ -1571,6 +1575,7 @@ static void primary_cb(GSList *services, int err, gpointer user_data)
 	for (l = services; l; l = l->next) {
 		struct att_primary *prim = l->data;
 		uuids = g_slist_append(uuids, prim->uuid);
+		device_add_primary(device, prim);
 	}
 
 	device_probe_drivers(device, uuids);
@@ -2381,6 +2386,16 @@ void device_add_service(struct btd_device *device, const char *path)
 		return;
 
 	device->services = g_slist_append(device->services, g_strdup(path));
+}
+
+void device_add_primary(struct btd_device *device, struct att_primary *prim)
+{
+	device->primaries = g_slist_append(device->primaries, prim);
+}
+
+GSList *btd_device_get_primaries(struct btd_device *device)
+{
+	return device->primaries;
 }
 
 void btd_device_add_uuid(struct btd_device *device, const char *uuid)
