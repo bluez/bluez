@@ -2641,13 +2641,14 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	}
 
 	if (discov_active == FALSE) {
-		update_oor_devices(adapter);
 		if (type & DISC_RESOLVNAME) {
 			if (adapter_resolve_names(adapter) == 0) {
 				adapter->state |= STATE_RESOLVNAME;
 				return;
 			}
 		}
+
+		update_oor_devices(adapter);
 	} else if (adapter->disc_sessions && main_opts.discov_interval)
 			adapter->scheduler_id = g_timeout_add_seconds(
 						main_opts.discov_interval,
