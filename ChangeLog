@@ -1,3 +1,13 @@
+ver 4.83:
+	Fix issue with already connected HFP/HSP endpoints.
+	Fix missing reply when create device is canceled.
+	Fix memory leak within the attribute server.
+	Fix memory leak with unused extended inquiry name.
+	Fix setting paired state when device->authr is false.
+	Fix clearing authentication request for renewed keys.
+	Add support for storing link keys in runtime memory.
+	Update support for primary service discovery.
+
 ver 4.82:
 	Fix crash with mmap of files with multiples of page size.
 	Fix HFP response and hold (AT+BTRH) command response.
