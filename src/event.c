@@ -444,7 +444,6 @@ void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 		return;
 	}
 
-	/* Extract UUIDs from advertising data if any */
 	memset(&eir_data, 0, sizeof(eir_data));
 	err = parse_eir_data(&eir_data, info->data, info->length);
 	if (err < 0)
@@ -518,7 +517,6 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		adapter_set_state(adapter, state);
 	}
 
-	/* Extract UUIDs from extended inquiry response if any */
 	memset(&eir_data, 0, sizeof(eir_data));
 	err = parse_eir_data(&eir_data, data, EIR_DATA_LENGTH);
 	if (err < 0)
