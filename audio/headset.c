@@ -1445,7 +1445,8 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		error("Unable to get service record: %s (%d)",
 							strerror(-err), -err);
 		p->err = -err;
-		error_connect_failed(dev->conn, p->msg, p->err);
+		if (p->msg)
+			error_connect_failed(dev->conn, p->msg, p->err);
 		goto failed;
 	}
 
