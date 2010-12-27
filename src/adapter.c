@@ -3009,6 +3009,8 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 	const gchar *path = adapter_get_path(adapter);
 	gboolean discoverable, pairable;
 
+	DBG("old 0x%02x new 0x%02x", adapter->scan_mode, scan_mode);
+
 	if (adapter->scan_mode == scan_mode)
 		return;
 
