@@ -61,7 +61,6 @@ typedef enum {
 	NAME_NOT_REQUIRED, /* used by get remote name without name resolving */
 	NAME_REQUIRED,      /* remote name needs be resolved       */
 	NAME_REQUESTED,    /* HCI remote name request was sent    */
-	NAME_SENT          /* D-Bus signal RemoteNameUpdated sent */
 } name_status_t;
 
 struct btd_adapter;

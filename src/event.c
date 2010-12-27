@@ -487,7 +487,6 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char local_addr[18], peer_addr[18], *alias, *name;
-	struct remote_dev_info *dev, match;
 	name_status_t name_status;
 	struct eir_data eir_data;
 	int state, err;
@@ -524,20 +523,6 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	err = parse_eir_data(&eir_data, data, EIR_DATA_LENGTH);
 	if (err < 0)
 		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
-
-	memset(&match, 0, sizeof(struct remote_dev_info));
-	bacpy(&match.bdaddr, peer);
-	match.name_status = NAME_SENT;
-	/* if found: don't send the name again */
-	dev = adapter_search_found_devices(adapter, &match);
-	if (dev) {
-		g_free(eir_data.name);
-		adapter_update_found_devices(adapter, peer, rssi, class,
-						NULL, NULL, dev->legacy,
-						eir_data.services,
-						NAME_NOT_REQUIRED);
-		return;
-	}
 
 	/* the inquiry result can be triggered by NON D-Bus client */
 	if (adapter_get_discover_type(adapter) & DISC_RESOLVNAME &&
@@ -581,10 +566,6 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		}
 	}
 
-	if (name && eir_data.name_complete)
-		name_status = NAME_SENT;
-
-	/* add in the list to track name sent/pending */
 	adapter_update_found_devices(adapter, peer, rssi, class, name, alias,
 					legacy, eir_data.services, name_status);
 
