@@ -422,7 +422,7 @@ static gboolean init_adapter(int index)
 	if (adapter == NULL)
 		return FALSE;
 
-	btd_adapter_get_state(adapter, &mode, &on_mode, &pairable);
+	btd_adapter_get_mode(adapter, &mode, &on_mode, &pairable);
 
 	if (existing_adapter)
 		mode = on_mode;

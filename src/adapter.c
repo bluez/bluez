@@ -2247,7 +2247,7 @@ int adapter_get_discover_type(struct btd_adapter *adapter)
 	return type;
 }
 
-void btd_adapter_get_state(struct btd_adapter *adapter, uint8_t *mode,
+void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 					uint8_t *on_mode, gboolean *pairable)
 {
 	char str[14], address[18];

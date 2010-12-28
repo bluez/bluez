@@ -316,7 +316,7 @@ static void read_info_complete(int sk, void *buf, size_t len)
 		return;
 	}
 
-	btd_adapter_get_state(adapter, &mode, NULL, &pairable);
+	btd_adapter_get_mode(adapter, &mode, NULL, &pairable);
 	if (mode == MODE_OFF) {
 		mgmt_set_powered(index, FALSE);
 		return;

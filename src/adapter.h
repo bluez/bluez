@@ -105,7 +105,7 @@ void btd_adapter_start(struct btd_adapter *adapter);
 
 int btd_adapter_stop(struct btd_adapter *adapter);
 
-void btd_adapter_get_state(struct btd_adapter *adapter, uint8_t *mode,
+void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 					uint8_t *on_mode, gboolean *pairable);
 
 int adapter_update_ssp_mode(struct btd_adapter *adapter, uint8_t mode);
