@@ -1,3 +1,9 @@
+ver 4.84:
+	Fix issue with wrong parameters and device found signals.
+	Fix issue with leaking EIR data if RSSI does not change.
+	Fix issue with adapter initialization state.
+	Fix issue with closing of SDP server sockets.
+
 ver 4.83:
 	Fix issue with already connected HFP/HSP endpoints.
 	Fix missing reply when create device is canceled.
