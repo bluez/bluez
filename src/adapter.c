@@ -2923,10 +2923,18 @@ static void remove_same_uuid(gpointer data, gpointer user_data)
 	}
 }
 
+static void dev_prepend_uuid(gpointer data, gpointer user_data)
+{
+	struct remote_dev_info *dev = user_data;
+	char *new_uuid = data;
+
+	dev->services = g_slist_prepend(dev->services, g_strdup(new_uuid));
+}
+
 void adapter_update_device_from_info(struct btd_adapter *adapter,
-						bdaddr_t bdaddr, int8_t rssi,
-						uint8_t evt_type, char *name,
-						GSList *services, uint8_t flags)
+					bdaddr_t bdaddr, int8_t rssi,
+					uint8_t evt_type, const char *name,
+					GSList *services, uint8_t flags)
 {
 	struct remote_dev_info *dev;
 	gboolean new_dev;
@@ -2945,13 +2953,13 @@ void adapter_update_device_from_info(struct btd_adapter *adapter,
 						(GCompareFunc) dev_rssi_cmp);
 
 	g_slist_foreach(services, remove_same_uuid, dev);
-	dev->services = g_slist_concat(dev->services, services);
+	g_slist_foreach(services, dev_prepend_uuid, dev);
 
 	dev->flags = flags;
 
 	if (name) {
 		g_free(dev->name);
-		dev->name = name;
+		dev->name = g_strdup(name);
 	}
 
 	/* FIXME: check if other information was changed before emitting the
@@ -2989,7 +2997,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 						(GCompareFunc) dev_rssi_cmp);
 
 	g_slist_foreach(services, remove_same_uuid, dev);
-	dev->services = g_slist_concat(dev->services, services);
+	g_slist_foreach(services, dev_prepend_uuid, dev);
 
 	adapter_emit_device_found(adapter, dev);
 }

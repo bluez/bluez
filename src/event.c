@@ -431,6 +431,13 @@ static int parse_eir_data(struct eir_data *eir, uint8_t *eir_data,
 	return 0;
 }
 
+static void free_eir_data(struct eir_data *eir)
+{
+	g_slist_foreach(eir->services, (GFunc) g_free, NULL);
+	g_slist_free(eir->services);
+	g_free(eir->name);
+}
+
 void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 {
 	struct btd_adapter *adapter;
@@ -455,6 +462,8 @@ void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 	adapter_update_device_from_info(adapter, info->bdaddr, rssi,
 					info->evt_type, eir_data.name,
 					eir_data.services, eir_data.flags);
+
+	free_eir_data(&eir_data);
 }
 
 static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
@@ -491,6 +500,7 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	int state, err;
 	dbus_bool_t legacy;
 	unsigned char features[8];
+	const char *dev_name;
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -517,11 +527,6 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		adapter_set_state(adapter, state);
 	}
 
-	memset(&eir_data, 0, sizeof(eir_data));
-	err = parse_eir_data(&eir_data, data, EIR_DATA_LENGTH);
-	if (err < 0)
-		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
-
 	/* the inquiry result can be triggered by NON D-Bus client */
 	if (adapter_get_discover_type(adapter) & DISC_RESOLVNAME &&
 				adapter_has_discov_sessions(adapter))
@@ -547,28 +552,30 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	} else
 		legacy = TRUE;
 
-	if (eir_data.name) {
+	memset(&eir_data, 0, sizeof(eir_data));
+	err = parse_eir_data(&eir_data, data, EIR_DATA_LENGTH);
+	if (err < 0)
+		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
+
+	/* Complete EIR names are always used. Shortened EIR names are only
+	 * used if there is no name already in storage. */
+	dev_name = name;
+	if (eir_data.name != NULL) {
 		if (eir_data.name_complete) {
 			write_device_name(local, peer, eir_data.name);
 			name_status = NAME_NOT_REQUIRED;
-
-			if (name)
-				g_free(name);
-
-			name = eir_data.name;
-		} else {
-			if (name)
-				free(eir_data.name);
-			else
-				name = eir_data.name;
-		}
+			dev_name = eir_data.name;
+		} else if (name == NULL)
+			dev_name = eir_data.name;
 	}
 
-	adapter_update_found_devices(adapter, peer, rssi, class, name, alias,
-					legacy, eir_data.services, name_status);
+	adapter_update_found_devices(adapter, peer, rssi, class, dev_name,
+					alias, legacy, eir_data.services,
+					name_status);
 
-	g_free(name);
-	g_free(alias);
+	free_eir_data(&eir_data);
+	free(name);
+	free(alias);
 }
 
 void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
