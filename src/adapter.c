@@ -134,6 +134,7 @@ struct btd_adapter {
 
 	struct hci_dev dev;		/* hci info */
 	gboolean pairable;		/* pairable state */
+	gboolean initialized;
 
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
 
@@ -2263,9 +2264,14 @@ void btd_adapter_get_state(struct btd_adapter *adapter, uint8_t *mode,
 	}
 
 	if (on_mode) {
-		if (main_opts.remember_powered == FALSE)
-			*on_mode = main_opts.mode;
-		else if (read_on_mode(address, str, sizeof(str)) < 0)
+		if (main_opts.remember_powered == FALSE) {
+			if (adapter->initialized)
+				*on_mode = get_mode(&adapter->bdaddr, "on");
+			else {
+				*on_mode = main_opts.mode;
+				adapter->initialized = TRUE;
+			}
+		} else if (read_on_mode(address, str, sizeof(str)) < 0)
 			*on_mode = main_opts.mode;
 		else
 			*on_mode = get_mode(&adapter->bdaddr, str);
