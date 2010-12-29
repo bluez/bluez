@@ -805,11 +805,10 @@ void btd_event_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 		if (device_is_temporary(device))
 			adapter_remove_device(conn, adapter, device, secmode3);
 		return;
-	} else
-		update_lastused(local, peer);
+	}
 
+	update_lastused(local, peer);
 
-	/* add in the device connetions list */
 	adapter_add_connection(adapter, device, handle);
 }
 
