@@ -300,6 +300,7 @@ static void mgmt_discoverable(int sk, void *buf, size_t len)
 	struct controller_info *info;
 	struct btd_adapter *adapter;
 	uint16_t index;
+	uint8_t mode;
 
 	if (len < sizeof(*ev)) {
 		error("Too small discoverable event");
@@ -320,8 +321,18 @@ static void mgmt_discoverable(int sk, void *buf, size_t len)
 	info->discoverable = ev->discoverable ? TRUE : FALSE;
 
 	adapter = manager_find_adapter(&info->bdaddr);
-	if (adapter)
-		adapter_mode_changed(adapter, ev->discoverable ? 0x03 : 0x02);
+	if (!adapter)
+		return;
+
+	if (info->connectable)
+		mode = SCAN_PAGE;
+	else
+		mode = 0;
+
+	if (info->discoverable)
+		mode |= SCAN_INQUIRY;
+
+	adapter_mode_changed(adapter, mode);
 }
 
 static void mgmt_connectable(int sk, void *buf, size_t len)
@@ -501,6 +512,7 @@ static void set_discoverable_complete(int sk, void *buf, size_t len)
 	struct controller_info *info;
 	struct btd_adapter *adapter;
 	uint16_t index;
+	uint8_t mode;
 
 	if (len < sizeof(*rp)) {
 		error("Too small set discoverable complete event");
@@ -521,8 +533,16 @@ static void set_discoverable_complete(int sk, void *buf, size_t len)
 	info->discoverable = rp->discoverable ? TRUE : FALSE;
 
 	adapter = manager_find_adapter(&info->bdaddr);
-	if (adapter)
-		adapter_mode_changed(adapter, rp->discoverable ? 0x03 : 0x02);
+	if (!adapter)
+		return;
+
+	/* set_discoverable will always also change page scanning */
+	mode = SCAN_PAGE;
+
+	if (info->discoverable)
+		mode |= SCAN_INQUIRY;
+
+	adapter_mode_changed(adapter, mode);
 }
 
 static void set_connectable_complete(int sk, void *buf, size_t len)
