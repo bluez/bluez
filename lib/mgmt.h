@@ -68,35 +68,16 @@ struct mgmt_rp_read_info {
 	uint16_t hci_rev;
 } __packed;
 
+struct mgmt_mode {
+	uint16_t index;
+	uint8_t val;
+} __packed;
+
 #define MGMT_OP_SET_POWERED		0x0005
-struct mgmt_cp_set_powered {
-	uint16_t index;
-	uint8_t powered;
-} __packed;
-struct mgmt_rp_set_powered {
-	uint16_t index;
-	uint8_t powered;
-} __packed;
 
 #define MGMT_OP_SET_DISCOVERABLE	0x0006
-struct mgmt_cp_set_discoverable {
-	uint16_t index;
-	uint8_t discoverable;
-} __packed;
-struct mgmt_rp_set_discoverable {
-	uint16_t index;
-	uint8_t discoverable;
-} __packed;
 
 #define MGMT_OP_SET_CONNECTABLE		0x0007
-struct mgmt_cp_set_connectable {
-	uint16_t index;
-	uint8_t connectable;
-} __packed;
-struct mgmt_rp_set_connectable {
-	uint16_t index;
-	uint8_t connectable;
-} __packed;
 
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
@@ -127,19 +108,7 @@ struct mgmt_ev_index_removed {
 } __packed;
 
 #define MGMT_EV_POWERED			0x0006
-struct mgmt_ev_powered {
-	uint16_t index;
-	uint8_t powered;
-} __packed;
 
 #define MGMT_EV_DISCOVERABLE		0x0007
-struct mgmt_ev_discoverable {
-	uint16_t index;
-	uint8_t discoverable;
-} __packed;
 
 #define MGMT_EV_CONNECTABLE		0x0008
-struct mgmt_ev_connectable {
-	uint16_t index;
-	uint8_t connectable;
-} __packed;
