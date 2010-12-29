@@ -171,9 +171,75 @@ static void mgmt_index_removed(int sk, void *buf, size_t len)
 	remove_controller(index);
 }
 
-static void mgmt_powered(int sk, void *buf, size_t len)
+static int mgmt_set_discoverable(int index, gboolean discoverable)
 {
 	struct btd_adapter *adapter;
+
+	DBG("index %d discoverable %d", index, discoverable);
+
+	adapter = manager_find_adapter_by_id(index);
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return -ENODEV;
+	}
+
+	adapter_mode_changed(adapter, discoverable ? 0x03 : 0x02);
+
+	return -ENOSYS;
+}
+
+static int mgmt_set_pairable(int index, gboolean pairable)
+{
+	DBG("index %d pairable %d", index, pairable);
+	return -ENOSYS;
+}
+
+static int mgmt_update_mode(int index, uint8_t powered)
+{
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+	gboolean pairable, discoverable;
+	uint8_t mode, on_mode;
+
+	if (index > max_index) {
+		error("Unexpected index %u", index);
+		return -ENODEV;
+	}
+
+	info = &controllers[index];
+
+	info->enabled = powered;
+	info->pairable = FALSE;
+	info->discoverable = FALSE;
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (adapter == NULL) {
+		DBG("Adapter not found");
+		return -ENODEV;
+	}
+
+	if (!powered) {
+		btd_adapter_stop(adapter);
+		return 0;
+	}
+
+	btd_adapter_start(adapter);
+
+	btd_adapter_get_mode(adapter, &mode, &on_mode, &pairable);
+
+	if (mode == MODE_OFF)
+		mode = on_mode;
+
+	discoverable = (on_mode == MODE_DISCOVERABLE);
+
+	mgmt_set_discoverable(index, discoverable);
+	mgmt_set_pairable(index, pairable);
+
+	return 0;
+}
+
+static void mgmt_powered(int sk, void *buf, size_t len)
+{
 	struct mgmt_ev_powered *ev = buf;
 	uint16_t index;
 
@@ -184,25 +250,9 @@ static void mgmt_powered(int sk, void *buf, size_t len)
 
 	index = btohs(bt_get_unaligned(&ev->index));
 
-	if (index > max_index) {
-		DBG("Ignoring powered event for unknown controller %u", index);
-		return;
-	}
-
-	controllers[index].enabled = ev->powered;
-
 	DBG("Controller %u powered %s", index, ev->powered ? "on" : "off");
 
-	adapter = manager_find_adapter(&controllers[index].bdaddr);
-	if (adapter == NULL) {
-		DBG("Adapter not found");
-		return;
-	}
-
-	if (ev->powered)
-		btd_adapter_start(adapter);
-	else
-		btd_adapter_stop(adapter);
+	mgmt_update_mode(index, ev->powered);
 }
 
 static void read_index_list_complete(int sk, void *buf, size_t len)
@@ -231,18 +281,6 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 		add_controller(index);
 		read_info(sk, index);
 	}
-}
-
-static int mgmt_set_discoverable(int index, gboolean discoverable)
-{
-	DBG("index %d discoverable %d", index, discoverable);
-	return -ENOSYS;
-}
-
-static int mgmt_set_pairable(int index, gboolean pairable)
-{
-	DBG("index %d pairable %d", index, pairable);
-	return -ENOSYS;
 }
 
 static int mgmt_set_powered(int index, gboolean powered)
@@ -336,6 +374,23 @@ static void read_info_complete(int sk, void *buf, size_t len)
 	btd_adapter_unref(adapter);
 }
 
+static void set_powered_complete(int sk, void *buf, size_t len)
+{
+	struct mgmt_rp_set_powered *rp = buf;
+	uint16_t index;
+
+	if (len < sizeof(*rp)) {
+		error("Too small set powered complete event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&rp->index));
+
+	DBG("hci%d powered %u", index, rp->powered);
+
+	mgmt_update_mode(index, rp->powered);
+}
+
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -359,6 +414,9 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 		break;
 	case MGMT_OP_READ_INFO:
 		read_info_complete(sk, ev->data, len - sizeof(*ev));
+		break;
+	case MGMT_OP_SET_POWERED:
+		set_powered_complete(sk, ev->data, len - sizeof(*ev));
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);

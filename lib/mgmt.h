@@ -72,6 +72,10 @@ struct mgmt_cp_set_powered {
 	uint16_t index;
 	uint8_t powered;
 } __packed;
+struct mgmt_rp_set_powered {
+	uint16_t index;
+	uint8_t powered;
+} __packed;
 
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
