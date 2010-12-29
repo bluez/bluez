@@ -60,6 +60,7 @@ static struct controller_info {
 	uint8_t hci_ver;
 	uint16_t hci_rev;
 	gboolean enabled;
+	gboolean connectable;
 	gboolean discoverable;
 	gboolean pairable;
 	uint8_t sec_mode;
@@ -171,6 +172,27 @@ static void mgmt_index_removed(int sk, void *buf, size_t len)
 	remove_controller(index);
 }
 
+static int mgmt_set_connectable(int index, gboolean connectable)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_connectable)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_connectable *cp = (void *) &buf[sizeof(*hdr)];
+
+	DBG("index %d connectable %d", index, connectable);
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = MGMT_OP_SET_CONNECTABLE;
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+	cp->connectable = connectable;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static int mgmt_set_discoverable(int index, gboolean discoverable)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_discoverable)];
@@ -221,6 +243,7 @@ static int mgmt_update_mode(int index, uint8_t powered)
 	}
 
 	if (!powered) {
+		info->connectable = FALSE;
 		info->pairable = FALSE;
 		info->discoverable = FALSE;
 
@@ -234,7 +257,20 @@ static int mgmt_update_mode(int index, uint8_t powered)
 
 	discoverable = (on_mode == MODE_DISCOVERABLE);
 
-	mgmt_set_discoverable(index, discoverable);
+	if (on_mode == MODE_DISCOVERABLE && !info->discoverable)
+		mgmt_set_discoverable(index, TRUE);
+	else if (on_mode == MODE_CONNECTABLE && !info->connectable)
+		mgmt_set_connectable(index, TRUE);
+	else {
+		uint8_t mode = 0;
+
+		if (info->connectable)
+			mode |= SCAN_PAGE;
+		if (info->discoverable)
+			mode |= SCAN_INQUIRY;
+
+		adapter_mode_changed(adapter, mode);
+	}
 
 	mgmt_set_pairable(index, pairable);
 
@@ -286,6 +322,47 @@ static void mgmt_discoverable(int sk, void *buf, size_t len)
 	adapter = manager_find_adapter(&info->bdaddr);
 	if (adapter)
 		adapter_mode_changed(adapter, ev->discoverable ? 0x03 : 0x02);
+}
+
+static void mgmt_connectable(int sk, void *buf, size_t len)
+{
+	struct mgmt_ev_connectable *ev = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+	uint16_t index;
+	uint8_t mode;
+
+	if (len < sizeof(*ev)) {
+		error("Too small connectable event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+
+	DBG("Controller %u connectable %u", index, ev->connectable);
+
+	if (index > max_index) {
+		error("Unexpected index %u in connectable event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	info->connectable = ev->connectable ? TRUE : FALSE;
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (!adapter)
+		return;
+
+	if (info->discoverable)
+		mode = SCAN_INQUIRY;
+	else
+		mode = 0;
+
+	if (info->connectable)
+		mode |= SCAN_PAGE;
+
+	adapter_mode_changed(adapter, mode);
 }
 
 static void read_index_list_complete(int sk, void *buf, size_t len)
@@ -360,6 +437,7 @@ static void read_info_complete(int sk, void *buf, size_t len)
 	info = &controllers[index];
 	info->type = rp->type;
 	info->enabled = rp->powered;
+	info->connectable = rp->connectable;
 	info->discoverable = rp->discoverable;
 	info->pairable = rp->pairable;
 	info->sec_mode = rp->sec_mode;
@@ -392,7 +470,10 @@ static void read_info_complete(int sk, void *buf, size_t len)
 		return;
 	}
 
-	mgmt_update_mode(index, TRUE);
+	if (info->enabled)
+		mgmt_update_mode(index, TRUE);
+	else
+		mgmt_set_powered(index, TRUE);
 
 	btd_adapter_unref(adapter);
 }
@@ -444,6 +525,36 @@ static void set_discoverable_complete(int sk, void *buf, size_t len)
 		adapter_mode_changed(adapter, rp->discoverable ? 0x03 : 0x02);
 }
 
+static void set_connectable_complete(int sk, void *buf, size_t len)
+{
+	struct mgmt_rp_set_connectable *rp = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+	uint16_t index;
+
+	if (len < sizeof(*rp)) {
+		error("Too small set connectable complete event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&rp->index));
+
+	DBG("hci%d connectable %u", index, rp->connectable);
+
+	if (index > max_index) {
+		error("Unexpected index %u in connectable complete", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	info->connectable = rp->connectable ? TRUE : FALSE;
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (adapter)
+		adapter_mode_changed(adapter, rp->connectable ? SCAN_PAGE : 0);
+}
+
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -473,6 +584,9 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 		break;
 	case MGMT_OP_SET_DISCOVERABLE:
 		set_discoverable_complete(sk, ev->data, len - sizeof(*ev));
+		break;
+	case MGMT_OP_SET_CONNECTABLE:
+		set_connectable_complete(sk, ev->data, len - sizeof(*ev));
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
@@ -573,6 +687,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_DISCOVERABLE:
 		mgmt_discoverable(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_CONNECTABLE:
+		mgmt_connectable(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);
