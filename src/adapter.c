@@ -360,7 +360,7 @@ static gboolean discov_timeout_handler(gpointer user_data)
 
 	adapter->discov_timeout_id = 0;
 
-	adapter_ops->set_connectable(adapter->dev_id, TRUE);
+	adapter_ops->set_discoverable(adapter->dev_id, FALSE);
 
 	return FALSE;
 }
@@ -429,7 +429,7 @@ static int adapter_set_mode(struct btd_adapter *adapter, uint8_t mode)
 	int err;
 
 	if (mode == MODE_CONNECTABLE)
-		err = adapter_ops->set_connectable(adapter->dev_id, TRUE);
+		err = adapter_ops->set_discoverable(adapter->dev_id, FALSE);
 	else
 		err = adapter_ops->set_discoverable(adapter->dev_id, TRUE);
 

@@ -199,7 +199,6 @@ struct btd_adapter_ops {
 	int (*setup) (void);
 	void (*cleanup) (void);
 	int (*set_powered) (int index, gboolean powered);
-	int (*set_connectable) (int index, gboolean connectable);
 	int (*set_discoverable) (int index, gboolean discoverable);
 	int (*set_pairable) (int index, gboolean pairable);
 	int (*set_limited_discoverable) (int index, gboolean limited);

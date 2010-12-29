@@ -527,12 +527,6 @@ static void mgmt_cleanup(void)
 	}
 }
 
-static int mgmt_set_connectable(int index, gboolean connectable)
-{
-	DBG("index %d connectable %d", index, connectable);
-	return -ENOSYS;
-}
-
 static int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
 {
 	DBG("index %d major %u minor %u", index, major, minor);
@@ -808,7 +802,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
 	.set_powered = mgmt_set_powered,
-	.set_connectable = mgmt_set_connectable,
 	.set_discoverable = mgmt_set_discoverable,
 	.set_pairable = mgmt_set_pairable,
 	.set_limited_discoverable = mgmt_set_limited_discoverable,

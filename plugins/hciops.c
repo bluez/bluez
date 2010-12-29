@@ -2475,25 +2475,6 @@ static int hciops_set_powered(int index, gboolean powered)
 	return err;
 }
 
-static int hciops_set_connectable(int index, gboolean connectable)
-{
-	struct dev_info *dev = &devs[index];
-	uint8_t mode;
-
-	if (connectable)
-		mode = SCAN_PAGE;
-	else
-		mode = 0x00;
-
-	DBG("hci%d connectable %d", index, connectable);
-
-	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
-					OCF_WRITE_SCAN_ENABLE, 1, &mode) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_set_dev_class(int index, uint8_t major, uint8_t minor)
 {
 	struct dev_info *dev = &devs[index];
@@ -3168,7 +3149,6 @@ static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
 	.set_powered = hciops_set_powered,
-	.set_connectable = hciops_set_connectable,
 	.set_discoverable = hciops_set_discoverable,
 	.set_pairable = hciops_set_pairable,
 	.set_limited_discoverable = hciops_set_limited_discoverable,
