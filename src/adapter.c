@@ -638,16 +638,31 @@ static uint8_t get_needed_mode(struct btd_adapter *adapter, uint8_t mode)
 	return mode;
 }
 
+static GSList *remove_bredr(GSList *all)
+{
+	GSList *l, *le;
+
+	for (l = all, le = NULL; l; l = l->next) {
+		struct remote_dev_info *dev = l->data;
+		if (dev->le == FALSE) {
+			dev_info_free(dev);
+			continue;
+		}
+
+		le = g_slist_append(le, dev);
+	}
+
+	g_slist_free(all);
+
+	return le;
+}
+
 static void stop_discovery(struct btd_adapter *adapter, gboolean suspend)
 {
 	pending_remote_name_cancel(adapter);
 
-	if (suspend == FALSE) {
-		g_slist_foreach(adapter->found_devices,
-				(GFunc) dev_info_free, NULL);
-		g_slist_free(adapter->found_devices);
-		adapter->found_devices = NULL;
-	}
+	if (suspend == FALSE)
+		adapter->found_devices = remove_bredr(adapter->found_devices);
 
 	if (adapter->oor_devices) {
 		g_slist_free(adapter->oor_devices);
@@ -1140,6 +1155,13 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 
 	if (adapter->disc_sessions)
 		goto done;
+
+	g_slist_foreach(adapter->found_devices, (GFunc) dev_info_free, NULL);
+	g_slist_free(adapter->found_devices);
+	adapter->found_devices = NULL;
+
+	g_slist_free(adapter->oor_devices);
+	adapter->oor_devices = NULL;
 
 	err = start_discovery(adapter);
 	if (err < 0)
@@ -2474,6 +2496,11 @@ static void adapter_free(gpointer user_data)
 		g_source_remove(adapter->auth_idle_id);
 
 	sdp_list_free(adapter->services, NULL);
+
+	g_slist_foreach(adapter->found_devices, (GFunc) dev_info_free, NULL);
+	g_slist_free(adapter->found_devices);
+
+	g_slist_free(adapter->oor_devices);
 
 	g_free(adapter->path);
 	g_free(adapter);
