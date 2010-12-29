@@ -209,7 +209,7 @@ static int mgmt_set_pairable(int index, gboolean pairable)
 	return -ENOSYS;
 }
 
-static int mgmt_update_mode(int index, uint8_t powered)
+static int mgmt_update_powered(int index, uint8_t powered)
 {
 	struct controller_info *info;
 	struct btd_adapter *adapter;
@@ -280,7 +280,7 @@ static void mgmt_powered(int sk, void *buf, size_t len)
 
 	DBG("Controller %u powered %u", index, ev->val);
 
-	mgmt_update_mode(index, ev->val);
+	mgmt_update_powered(index, ev->val);
 }
 
 static void mgmt_discoverable(int sk, void *buf, size_t len)
@@ -456,7 +456,7 @@ static void read_info_complete(int sk, void *buf, size_t len)
 	}
 
 	if (info->enabled)
-		mgmt_update_mode(index, TRUE);
+		mgmt_update_powered(index, TRUE);
 	else
 		mgmt_set_powered(index, TRUE);
 
@@ -477,7 +477,7 @@ static void set_powered_complete(int sk, void *buf, size_t len)
 
 	DBG("hci%d powered %u", index, rp->val);
 
-	mgmt_update_mode(index, rp->val);
+	mgmt_update_powered(index, rp->val);
 }
 
 static void set_discoverable_complete(int sk, void *buf, size_t len)
