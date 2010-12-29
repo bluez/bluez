@@ -173,19 +173,23 @@ static void mgmt_index_removed(int sk, void *buf, size_t len)
 
 static int mgmt_set_discoverable(int index, gboolean discoverable)
 {
-	struct btd_adapter *adapter;
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_discoverable)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_discoverable *cp = (void *) &buf[sizeof(*hdr)];
 
 	DBG("index %d discoverable %d", index, discoverable);
 
-	adapter = manager_find_adapter_by_id(index);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return -ENODEV;
-	}
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = MGMT_OP_SET_DISCOVERABLE;
+	hdr->len = htobs(sizeof(*cp));
 
-	adapter_mode_changed(adapter, discoverable ? 0x03 : 0x02);
+	cp->index = htobs(index);
+	cp->discoverable = discoverable;
 
-	return -ENOSYS;
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_set_pairable(int index, gboolean pairable)
@@ -199,7 +203,7 @@ static int mgmt_update_mode(int index, uint8_t powered)
 	struct controller_info *info;
 	struct btd_adapter *adapter;
 	gboolean pairable, discoverable;
-	uint8_t mode, on_mode;
+	uint8_t on_mode;
 
 	if (index > max_index) {
 		error("Unexpected index %u", index);
@@ -209,8 +213,6 @@ static int mgmt_update_mode(int index, uint8_t powered)
 	info = &controllers[index];
 
 	info->enabled = powered;
-	info->pairable = FALSE;
-	info->discoverable = FALSE;
 
 	adapter = manager_find_adapter(&info->bdaddr);
 	if (adapter == NULL) {
@@ -219,20 +221,21 @@ static int mgmt_update_mode(int index, uint8_t powered)
 	}
 
 	if (!powered) {
+		info->pairable = FALSE;
+		info->discoverable = FALSE;
+
 		btd_adapter_stop(adapter);
 		return 0;
 	}
 
 	btd_adapter_start(adapter);
 
-	btd_adapter_get_mode(adapter, &mode, &on_mode, &pairable);
-
-	if (mode == MODE_OFF)
-		mode = on_mode;
+	btd_adapter_get_mode(adapter, NULL, &on_mode, &pairable);
 
 	discoverable = (on_mode == MODE_DISCOVERABLE);
 
 	mgmt_set_discoverable(index, discoverable);
+
 	mgmt_set_pairable(index, pairable);
 
 	return 0;
@@ -250,9 +253,39 @@ static void mgmt_powered(int sk, void *buf, size_t len)
 
 	index = btohs(bt_get_unaligned(&ev->index));
 
-	DBG("Controller %u powered %s", index, ev->powered ? "on" : "off");
+	DBG("Controller %u powered %u", index, ev->powered);
 
 	mgmt_update_mode(index, ev->powered);
+}
+
+static void mgmt_discoverable(int sk, void *buf, size_t len)
+{
+	struct mgmt_ev_discoverable *ev = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+	uint16_t index;
+
+	if (len < sizeof(*ev)) {
+		error("Too small discoverable event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+
+	DBG("Controller %u discoverable %u", index, ev->discoverable);
+
+	if (index > max_index) {
+		error("Unexpected index %u in discoverable event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	info->discoverable = ev->discoverable ? TRUE : FALSE;
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (adapter)
+		adapter_mode_changed(adapter, ev->discoverable ? 0x03 : 0x02);
 }
 
 static void read_index_list_complete(int sk, void *buf, size_t len)
@@ -310,7 +343,6 @@ static void read_info_complete(int sk, void *buf, size_t len)
 	struct controller_info *info;
 	struct btd_adapter *adapter;
 	uint8_t mode;
-	gboolean pairable, discoverable;
 	uint16_t index;
 	char addr[18];
 
@@ -354,22 +386,13 @@ static void read_info_complete(int sk, void *buf, size_t len)
 		return;
 	}
 
-	btd_adapter_get_mode(adapter, &mode, NULL, &pairable);
+	btd_adapter_get_mode(adapter, &mode, NULL, NULL);
 	if (mode == MODE_OFF) {
 		mgmt_set_powered(index, FALSE);
 		return;
 	}
 
-	discoverable = (mode == MODE_DISCOVERABLE);
-
-	if (info->discoverable != discoverable)
-		mgmt_set_discoverable(index, discoverable);
-
-	if (info->pairable != pairable)
-		mgmt_set_pairable(index, pairable);
-
-	if (info->enabled)
-		btd_adapter_start(adapter);
+	mgmt_update_mode(index, TRUE);
 
 	btd_adapter_unref(adapter);
 }
@@ -389,6 +412,36 @@ static void set_powered_complete(int sk, void *buf, size_t len)
 	DBG("hci%d powered %u", index, rp->powered);
 
 	mgmt_update_mode(index, rp->powered);
+}
+
+static void set_discoverable_complete(int sk, void *buf, size_t len)
+{
+	struct mgmt_rp_set_discoverable *rp = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+	uint16_t index;
+
+	if (len < sizeof(*rp)) {
+		error("Too small set discoverable complete event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&rp->index));
+
+	DBG("hci%d discoverable %u", index, rp->discoverable);
+
+	if (index > max_index) {
+		error("Unexpected index %u in discoverable complete", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	info->discoverable = rp->discoverable ? TRUE : FALSE;
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (adapter)
+		adapter_mode_changed(adapter, rp->discoverable ? 0x03 : 0x02);
 }
 
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
@@ -417,6 +470,9 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 		break;
 	case MGMT_OP_SET_POWERED:
 		set_powered_complete(sk, ev->data, len - sizeof(*ev));
+		break;
+	case MGMT_OP_SET_DISCOVERABLE:
+		set_discoverable_complete(sk, ev->data, len - sizeof(*ev));
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
@@ -514,6 +570,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_POWERED:
 		mgmt_powered(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_DISCOVERABLE:
+		mgmt_discoverable(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);
