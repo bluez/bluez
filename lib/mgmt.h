@@ -79,6 +79,8 @@ struct mgmt_mode {
 
 #define MGMT_OP_SET_CONNECTABLE		0x0007
 
+#define MGMT_OP_SET_PAIRABLE		0x0008
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -112,3 +114,5 @@ struct mgmt_ev_index_removed {
 #define MGMT_EV_DISCOVERABLE		0x0007
 
 #define MGMT_EV_CONNECTABLE		0x0008
+
+#define MGMT_EV_PAIRABLE		0x0009

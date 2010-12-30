@@ -151,6 +151,8 @@ void adapter_service_insert(struct btd_adapter *adapter, void *rec);
 void adapter_service_remove(struct btd_adapter *adapter, void *rec);
 void btd_adapter_class_changed(struct btd_adapter *adapter,
 							uint32_t new_class);
+void btd_adapter_pairable_changed(struct btd_adapter *adapter,
+							gboolean pairable);
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
 void adapter_add_connection(struct btd_adapter *adapter,

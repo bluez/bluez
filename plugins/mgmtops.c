@@ -206,7 +206,7 @@ static int mgmt_set_discoverable(int index, gboolean discoverable)
 static int mgmt_set_pairable(int index, gboolean pairable)
 {
 	DBG("index %d pairable %d", index, pairable);
-	return -ENOSYS;
+	return mgmt_set_mode(index, MGMT_OP_SET_PAIRABLE, pairable);
 }
 
 static int mgmt_update_powered(int index, uint8_t powered)
@@ -261,7 +261,8 @@ static int mgmt_update_powered(int index, uint8_t powered)
 		adapter_mode_changed(adapter, mode);
 	}
 
-	mgmt_set_pairable(index, pairable);
+	if (info->pairable != pairable)
+		mgmt_set_pairable(index, pairable);
 
 	return 0;
 }
@@ -363,6 +364,38 @@ static void mgmt_connectable(int sk, void *buf, size_t len)
 		mode |= SCAN_PAGE;
 
 	adapter_mode_changed(adapter, mode);
+}
+
+static void mgmt_pairable(int sk, void *buf, size_t len)
+{
+	struct mgmt_mode *ev = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+	uint16_t index;
+
+	if (len < sizeof(*ev)) {
+		error("Too small pairable event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+
+	DBG("Controller %u pairable %u", index, ev->val);
+
+	if (index > max_index) {
+		error("Unexpected index %u in pairable event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	info->pairable = ev->val ? TRUE : FALSE;
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (!adapter)
+		return;
+
+	btd_adapter_pairable_changed(adapter, info->pairable);
 }
 
 static void read_index_list_complete(int sk, void *buf, size_t len)
@@ -549,6 +582,38 @@ static void set_connectable_complete(int sk, void *buf, size_t len)
 		adapter_mode_changed(adapter, rp->val ? SCAN_PAGE : 0);
 }
 
+static void set_pairable_complete(int sk, void *buf, size_t len)
+{
+	struct mgmt_mode *rp = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+	uint16_t index;
+
+	if (len < sizeof(*rp)) {
+		error("Too small set pairable complete event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&rp->index));
+
+	DBG("hci%d pairable %u", index, rp->val);
+
+	if (index > max_index) {
+		error("Unexpected index %u in pairable complete", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	info->pairable = rp->val ? TRUE : FALSE;
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (!adapter)
+		return;
+
+	btd_adapter_pairable_changed(adapter, info->pairable);
+}
+
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -581,6 +646,9 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 		break;
 	case MGMT_OP_SET_CONNECTABLE:
 		set_connectable_complete(sk, ev->data, len - sizeof(*ev));
+		break;
+	case MGMT_OP_SET_PAIRABLE:
+		set_pairable_complete(sk, ev->data, len - sizeof(*ev));
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
@@ -684,6 +752,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_CONNECTABLE:
 		mgmt_connectable(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_PAIRABLE:
+		mgmt_pairable(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);

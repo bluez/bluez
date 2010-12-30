@@ -310,8 +310,15 @@ static int hciops_set_discoverable(int index, gboolean discoverable)
 
 static int hciops_set_pairable(int index, gboolean pairable)
 {
+	struct btd_adapter *adapter;
+
 	DBG("hci%d pairable %d", index, pairable);
-	return -ENOSYS;
+
+	adapter = manager_find_adapter(&devs[index].bdaddr);
+	if (adapter)
+		btd_adapter_pairable_changed(adapter, pairable);
+
+	return 0;
 }
 
 static int hciops_power_off(int index)

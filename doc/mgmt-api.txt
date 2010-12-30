@@ -107,6 +107,15 @@ Set Connectable Command
 				Connectable (1 Octet)
 
 
+Set Pairable Command
+====================
+
+	Command Code:		0x0008
+	Command Parameters:	Controller_Index (2 Octets)
+				Pairable (1 Octet)
+	Return Paramters:	Controller_Index (2 Octets)
+				Pairable (1 Octet)
+
 
 Read Tracing Buffer Size Command
 ================================
@@ -216,3 +225,10 @@ Controller Connectable Event
 Event Code		0x0008
 Event Parameters	Controller_Index (2 Octets)
 			Connectable (1 Octet)
+
+Controller Pairable Event
+=========================
+
+Event Code		0x0009
+Event Parameters	Controller_Index (2 Octets)
+			Pairable (1 Octet)
