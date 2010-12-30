@@ -202,6 +202,14 @@ void g_attrib_unref(GAttrib *attrib)
 	g_free(attrib);
 }
 
+GIOChannel *g_attrib_get_channel(GAttrib *attrib)
+{
+	if (!attrib)
+		return NULL;
+
+	return attrib->io;
+}
+
 gboolean g_attrib_set_disconnect_function(GAttrib *attrib,
 		GAttribDisconnectFunc disconnect, gpointer user_data)
 {
