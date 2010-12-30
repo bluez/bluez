@@ -693,18 +693,29 @@ static void update_char_desc(guint8 status, const guint8 *pdu, guint16 len,
 	struct gatt_service *gatt = current->prim->gatt;
 	struct characteristic *chr = current->chr;
 
-	if (status != 0)
-		goto done;
+	if (status == 0) {
 
-	g_free(chr->desc);
+		g_free(chr->desc);
 
-	chr->desc = g_malloc(len);
-	memcpy(chr->desc, pdu + 1, len - 1);
-	chr->desc[len - 1] = '\0';
+		chr->desc = g_malloc(len);
+		memcpy(chr->desc, pdu + 1, len - 1);
+		chr->desc[len - 1] = '\0';
 
-	store_attribute(gatt, current->handle, GATT_CHARAC_USER_DESC_UUID,
-						(void *) chr->desc, len);
-done:
+		store_attribute(gatt, current->handle,
+				GATT_CHARAC_USER_DESC_UUID,
+				(void *) chr->desc, len);
+	} else if (status == ATT_ECODE_INSUFF_ENC) {
+		GIOChannel *io = g_attrib_get_channel(gatt->attrib);
+
+		if (bt_io_set(io, BT_IO_L2CAP, NULL,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_HIGH,
+				BT_IO_OPT_INVALID)) {
+			gatt_read_char(gatt->attrib, current->handle,
+					update_char_desc, current);
+			return;
+		}
+	}
+
 	g_attrib_unref(gatt->attrib);
 	g_free(current);
 }
