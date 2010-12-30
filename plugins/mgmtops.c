@@ -1001,7 +1001,13 @@ static int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
 	return -ENOSYS;
 }
 
-static int mgmt_services_updated(int index)
+static int mgmt_add_uuid(int index, uuid_t *uuid)
+{
+	DBG("index %d", index);
+	return -ENOSYS;
+}
+
+static int mgmt_remove_uuid(int index, uuid_t *uuid)
 {
 	DBG("index %d", index);
 	return -ENOSYS;
@@ -1060,7 +1066,8 @@ static struct btd_adapter_ops mgmt_ops = {
 	.enable_le = mgmt_enable_le,
 	.encrypt_link = mgmt_encrypt_link,
 	.set_did = mgmt_set_did,
-	.services_updated = mgmt_services_updated,
+	.add_uuid = mgmt_add_uuid,
+	.remove_uuid = mgmt_remove_uuid,
 	.disable_cod_cache = mgmt_disable_cod_cache,
 	.restore_powered = mgmt_restore_powered,
 	.load_keys = mgmt_load_keys,

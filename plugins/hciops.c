@@ -35,6 +35,8 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -94,6 +96,8 @@ static struct dev_info {
 	gboolean debug_keys;
 	GSList *keys;
 	int pin_length;
+
+	GSList *uuids;
 } *devs = NULL;
 
 static int ignore_device(struct hci_dev_info *di)
@@ -995,8 +999,7 @@ static void read_local_features_complete(int index,
 
 #define SIZEOF_UUID128 16
 
-static void eir_generate_uuid128(sdp_list_t *list,
-					uint8_t *ptr, uint16_t *eir_len)
+static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
 {
 	int i, k, uuid_count = 0;
 	uint16_t len = *eir_len;
@@ -1007,10 +1010,10 @@ static void eir_generate_uuid128(sdp_list_t *list,
 	uuid128 = ptr + 2;
 
 	for (; list; list = list->next) {
-		sdp_record_t *rec = list->data;
-		uint8_t *uuid128_data = rec->svclass.value.uuid128.data;
+		uuid_t *uuid = list->data;
+		uint8_t *uuid128_data = uuid->value.uuid128.data;
 
-		if (rec->svclass.type != SDP_UUID128)
+		if (uuid->type != SDP_UUID128)
 			continue;
 
 		/* Stop if not enough space to put next UUID128 */
@@ -1055,14 +1058,12 @@ static void eir_generate_uuid128(sdp_list_t *list,
 static void create_ext_inquiry_response(int index, uint8_t *data)
 {
 	struct dev_info *dev = &devs[index];
-	sdp_list_t *services;
-	sdp_list_t *list;
+	GSList *l;
 	uint8_t *ptr = data;
 	uint16_t eir_len = 0;
 	uint16_t uuid16[EIR_DATA_LENGTH / 2];
 	int i, uuid_count = 0;
 	gboolean truncated = FALSE;
-	struct btd_adapter *adapter;
 	size_t name_len;
 
 	name_len = strlen(dev->name);
@@ -1106,23 +1107,17 @@ static void create_ext_inquiry_response(int index, uint8_t *data)
 		eir_len += 10;
 	}
 
-	adapter = manager_find_adapter(&dev->bdaddr);
-	if (adapter == NULL)
-		return;
-
-	services = adapter_get_services(adapter);
-
 	/* Group all UUID16 types */
-	for (list = services; list; list = list->next) {
-		sdp_record_t *rec = list->data;
+	for (l = dev->uuids; l != NULL; l = g_slist_next(l)) {
+		uuid_t *uuid = l->data;
 
-		if (rec->svclass.type != SDP_UUID16)
+		if (uuid->type != SDP_UUID16)
 			continue;
 
-		if (rec->svclass.value.uuid16 < 0x1100)
+		if (uuid->value.uuid16 < 0x1100)
 			continue;
 
-		if (rec->svclass.value.uuid16 == PNP_INFO_SVCLASS_ID)
+		if (uuid->value.uuid16 == PNP_INFO_SVCLASS_ID)
 			continue;
 
 		/* Stop if not enough space to put next UUID16 */
@@ -1133,13 +1128,13 @@ static void create_ext_inquiry_response(int index, uint8_t *data)
 
 		/* Check for duplicates */
 		for (i = 0; i < uuid_count; i++)
-			if (uuid16[i] == rec->svclass.value.uuid16)
+			if (uuid16[i] == uuid->value.uuid16)
 				break;
 
 		if (i < uuid_count)
 			continue;
 
-		uuid16[uuid_count++] = rec->svclass.value.uuid16;
+		uuid16[uuid_count++] = uuid->value.uuid16;
 		eir_len += sizeof(uint16_t);
 	}
 
@@ -1160,7 +1155,7 @@ static void create_ext_inquiry_response(int index, uint8_t *data)
 
 	/* Group all UUID128 types */
 	if (eir_len <= EIR_DATA_LENGTH - 2)
-		eir_generate_uuid128(services, ptr, &eir_len);
+		eir_generate_uuid128(dev->uuids, ptr, &eir_len);
 }
 
 static void update_ext_inquiry_response(int index)
@@ -1827,6 +1822,9 @@ static void stop_hci_dev(int index)
 
 	g_slist_foreach(dev->keys, (GFunc) g_free, NULL);
 	g_slist_free(dev->keys);
+
+	g_slist_foreach(dev->uuids, (GFunc) g_free, NULL);
+	g_slist_free(dev->uuids);
 
 	init_dev_info(index, -1, dev->registered);
 }
@@ -2996,10 +2994,73 @@ static int hciops_enable_le(int index)
 	return 0;
 }
 
-static int set_service_classes(int index, uint8_t value)
+static uint8_t get_uuid_mask(uint16_t uuid16)
+{
+	switch (uuid16) {
+	case DIALUP_NET_SVCLASS_ID:
+	case CIP_SVCLASS_ID:
+		return 0x42;	/* Telephony & Networking */
+	case IRMC_SYNC_SVCLASS_ID:
+	case OBEX_OBJPUSH_SVCLASS_ID:
+	case OBEX_FILETRANS_SVCLASS_ID:
+	case IRMC_SYNC_CMD_SVCLASS_ID:
+	case PBAP_PSE_SVCLASS_ID:
+		return 0x10;	/* Object Transfer */
+	case HEADSET_SVCLASS_ID:
+	case HANDSFREE_SVCLASS_ID:
+		return 0x20;	/* Audio */
+	case CORDLESS_TELEPHONY_SVCLASS_ID:
+	case INTERCOM_SVCLASS_ID:
+	case FAX_SVCLASS_ID:
+	case SAP_SVCLASS_ID:
+	/*
+	 * Setting the telephony bit for the handsfree audio gateway
+	 * role is not required by the HFP specification, but the
+	 * Nokia 616 carkit is just plain broken! It will refuse
+	 * pairing without this bit set.
+	 */
+	case HANDSFREE_AGW_SVCLASS_ID:
+		return 0x40;	/* Telephony */
+	case AUDIO_SOURCE_SVCLASS_ID:
+	case VIDEO_SOURCE_SVCLASS_ID:
+		return 0x08;	/* Capturing */
+	case AUDIO_SINK_SVCLASS_ID:
+	case VIDEO_SINK_SVCLASS_ID:
+		return 0x04;	/* Rendering */
+	case PANU_SVCLASS_ID:
+	case NAP_SVCLASS_ID:
+	case GN_SVCLASS_ID:
+		return 0x02;	/* Networking */
+	default:
+		return 0;
+	}
+}
+
+static uint8_t generate_service_class(int index)
 {
 	struct dev_info *dev = &devs[index];
+	GSList *l;
+	uint8_t val = 0;
+
+	for (l = dev->uuids; l != NULL; l = g_slist_next(l)) {
+		uuid_t *uuid = l->data;
+
+		if (uuid->type != SDP_UUID16)
+			continue;
+
+		val |= get_uuid_mask(uuid->value.uuid16);
+	}
+
+	return val;
+}
+
+static int update_service_classes(int index)
+{
+	struct dev_info *dev = &devs[index];
+	uint8_t value;
 	int err;
+
+	value = generate_service_class(index);
 
 	DBG("hci%d value %u", index, value);
 
@@ -3029,70 +3090,31 @@ static int set_service_classes(int index, uint8_t value)
 	return err;
 }
 
-static int hciops_services_updated(int index)
+static int hciops_add_uuid(int index, uuid_t *uuid)
 {
-	struct btd_adapter *adapter;
-	sdp_list_t *list;
-	uint8_t val = 0;
+	struct dev_info *dev = &devs[index];
 
 	DBG("hci%d", index);
 
-	adapter = manager_find_adapter_by_id(index);
-	if (adapter == NULL)
-		return -ENODEV;
+	dev->uuids = g_slist_append(dev->uuids, g_memdup(uuid, sizeof(*uuid)));
 
-	for (list = adapter_get_services(adapter); list; list = list->next) {
-                sdp_record_t *rec = list->data;
+	return update_service_classes(index);
+}
 
-		if (rec->svclass.type != SDP_UUID16)
-			continue;
+static int hciops_remove_uuid(int index, uuid_t *uuid)
+{
+	struct dev_info *dev = &devs[index];
+	GSList *match;
 
-		switch (rec->svclass.value.uuid16) {
-		case DIALUP_NET_SVCLASS_ID:
-		case CIP_SVCLASS_ID:
-			val |= 0x42;	/* Telephony & Networking */
-			break;
-		case IRMC_SYNC_SVCLASS_ID:
-		case OBEX_OBJPUSH_SVCLASS_ID:
-		case OBEX_FILETRANS_SVCLASS_ID:
-		case IRMC_SYNC_CMD_SVCLASS_ID:
-		case PBAP_PSE_SVCLASS_ID:
-			val |= 0x10;	/* Object Transfer */
-			break;
-		case HEADSET_SVCLASS_ID:
-		case HANDSFREE_SVCLASS_ID:
-			val |= 0x20;	/* Audio */
-			break;
-		case CORDLESS_TELEPHONY_SVCLASS_ID:
-		case INTERCOM_SVCLASS_ID:
-		case FAX_SVCLASS_ID:
-		case SAP_SVCLASS_ID:
-		/*
-		 * Setting the telephony bit for the handsfree audio gateway
-		 * role is not required by the HFP specification, but the
-		 * Nokia 616 carkit is just plain broken! It will refuse
-		 * pairing without this bit set.
-		 */
-		case HANDSFREE_AGW_SVCLASS_ID:
-			val |= 0x40;	/* Telephony */
-			break;
-		case AUDIO_SOURCE_SVCLASS_ID:
-		case VIDEO_SOURCE_SVCLASS_ID:
-			val |= 0x08;	/* Capturing */
-			break;
-		case AUDIO_SINK_SVCLASS_ID:
-		case VIDEO_SINK_SVCLASS_ID:
-			val |= 0x04;	/* Rendering */
-			break;
-		case PANU_SVCLASS_ID:
-		case NAP_SVCLASS_ID:
-		case GN_SVCLASS_ID:
-			val |= 0x02;	/* Networking */
-			break;
-		}
+	match = g_slist_find_custom(dev->uuids, uuid, sdp_uuid_cmp);
+	if (match) {
+		g_free(match->data);
+		dev->uuids = g_slist_delete_link(dev->uuids, match);
 	}
 
-	return set_service_classes(index, val);
+	DBG("hci%d", index);
+
+	return update_service_classes(index);
 }
 
 static int hciops_disable_cod_cache(int index)
@@ -3179,7 +3201,8 @@ static struct btd_adapter_ops hci_ops = {
 	.enable_le = hciops_enable_le,
 	.encrypt_link = hciops_encrypt_link,
 	.set_did = hciops_set_did,
-	.services_updated = hciops_services_updated,
+	.add_uuid = hciops_add_uuid,
+	.remove_uuid = hciops_remove_uuid,
 	.disable_cod_cache = hciops_disable_cod_cache,
 	.restore_powered = hciops_restore_powered,
 	.load_keys = hciops_load_keys,

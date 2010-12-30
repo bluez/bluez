@@ -1000,22 +1000,43 @@ static void adapter_emit_uuids_updated(struct btd_adapter *adapter)
 	g_strfreev(uuids);
 }
 
-void adapter_service_insert(struct btd_adapter *adapter, void *rec)
+static int uuid_cmp(const void *a, const void *b)
 {
+	const sdp_record_t *rec = a;
+	const uuid_t *uuid = b;
+
+	return sdp_uuid_cmp(&rec->svclass, uuid);
+}
+
+void adapter_service_insert(struct btd_adapter *adapter, void *r)
+{
+	sdp_record_t *rec = r;
+	gboolean new_uuid;
+
+	if (sdp_list_find(adapter->services, &rec->svclass, uuid_cmp) == NULL)
+		new_uuid = TRUE;
+	else
+		new_uuid = FALSE;
+
 	adapter->services = sdp_list_insert_sorted(adapter->services, rec,
 								record_sort);
+
+	if (new_uuid)
+		adapter_ops->add_uuid(adapter->dev_id, &rec->svclass);
+
 	adapter_emit_uuids_updated(adapter);
 }
 
-void adapter_service_remove(struct btd_adapter *adapter, void *rec)
+void adapter_service_remove(struct btd_adapter *adapter, void *r)
 {
+	sdp_record_t *rec = r;
+
 	adapter->services = sdp_list_remove(adapter->services, rec);
-	adapter_emit_uuids_updated(adapter);
-}
 
-sdp_list_t *adapter_get_services(struct btd_adapter *adapter)
-{
-	return adapter->services;
+	if (sdp_list_find(adapter->services, &rec->svclass, uuid_cmp) == NULL)
+		adapter_ops->remove_uuid(adapter->dev_id, &rec->svclass);
+
+	adapter_emit_uuids_updated(adapter);
 }
 
 static struct btd_device *adapter_create_device(DBusConnection *conn,
@@ -2576,7 +2597,6 @@ gboolean adapter_init(struct btd_adapter *adapter)
 							adapter->dev_id);
 
 	sdp_init_services_list(&adapter->bdaddr);
-	btd_adapter_services_updated(adapter);
 	load_drivers(adapter);
 	clear_blocked(adapter);
 	load_devices(adapter);
@@ -3582,9 +3602,4 @@ int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
 					uint16_t product, uint16_t version)
 {
 	return adapter_ops->set_did(adapter->dev_id, vendor, product, version);
-}
-
-int btd_adapter_services_updated(struct btd_adapter *adapter)
-{
-	return adapter_ops->services_updated(adapter->dev_id);
 }
