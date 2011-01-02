@@ -829,10 +829,8 @@ static int vobject_close(void *object)
 	if (obj->aparams)
 		g_byte_array_free(obj->aparams, TRUE);
 
-	if (obj->request) {
+	if (obj->request)
 		phonebook_req_finalize(obj->request);
-		obj->request = NULL;
-	}
 
 	g_free(obj);
 

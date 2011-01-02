@@ -961,7 +961,6 @@ struct pending_reply {
 	reply_list_foreach_t callback;
 	void *user_data;
 	int num_fields;
-	GDestroyNotify destroy;
 };
 
 struct contact_data {
@@ -1158,15 +1157,11 @@ static void query_free_data(void *user_data)
 	if (!pending)
 		return;
 
-	if (pending->destroy)
-		pending->destroy(pending->user_data);
-
 	g_free(pending);
 }
 
 static DBusPendingCall *query_tracker(const char *query, int num_fields,
-				reply_list_foreach_t callback, void *user_data,
-				GDestroyNotify destroy, int *err)
+		reply_list_foreach_t callback, void *user_data, int *err)
 {
 	struct pending_reply *pending;
 	DBusPendingCall *call;
@@ -1195,7 +1190,6 @@ static DBusPendingCall *query_tracker(const char *query, int num_fields,
 	pending->callback = callback;
 	pending->user_data = user_data;
 	pending->num_fields = num_fields;
-	pending->destroy = destroy;
 
 	dbus_pending_call_set_notify(call, query_reply, pending,
 							query_free_data);
@@ -1938,8 +1932,7 @@ done:
 	}
 
 	dbus_pending_call_unref(data->call);
-	data->call = query_tracker(query, col_amount, pull_cb, data, NULL,
-								&err);
+	data->call = query_tracker(query, col_amount, pull_cb, data, &err);
 	if (err < 0)
 		data->cb(NULL, 0, err, 0, data->user_data);
 }
@@ -1978,8 +1971,7 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 	data->params = params;
 	data->user_data = user_data;
 	data->cb = cb;
-	data->call = query_tracker(query, col_amount, pull_cb, data, NULL,
-									err);
+	data->call = query_tracker(query, col_amount, pull_cb, data, err);
 
 	return data;
 }
@@ -2008,7 +2000,7 @@ void *phonebook_get_entry(const char *folder, const char *id,
 								id, id, id);
 
 	data->call = query_tracker(query, PULL_QUERY_COL_AMOUNT, pull_contacts,
-							data, NULL, err);
+								data, err);
 
 	g_free(query);
 
@@ -2034,7 +2026,7 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	data->entry_cb = entry_cb;
 	data->ready_cb = ready_cb;
 	data->user_data = user_data;
-	data->call = query_tracker(query, 7, add_to_cache, data, NULL, err);
+	data->call = query_tracker(query, 7, add_to_cache, data, err);
 
 	return data;
 }
