@@ -147,6 +147,7 @@ struct pbap_session {
 struct pbap_object {
 	GString *buffer;
 	GByteArray *aparams;
+	gboolean firstpacket;
 	struct pbap_session *session;
 	void *request;
 };
@@ -240,6 +241,13 @@ static GByteArray *append_aparam_header(GByteArray *buf, uint8_t tag,
 
 		return g_byte_array_append(buf,	aparam,
 			sizeof(struct aparam_header) + PHONEBOOKSIZE_LEN);
+	case NEWMISSEDCALLS_TAG:
+		hdr->tag = NEWMISSEDCALLS_TAG;
+		hdr->len = NEWMISSEDCALLS_LEN;
+		memcpy(hdr->val, val, NEWMISSEDCALLS_LEN);
+
+		return g_byte_array_append(buf,	aparam,
+			sizeof(struct aparam_header) + NEWMISSEDCALLS_LEN);
 	default:
 		return buf;
 	}
@@ -267,6 +275,13 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 	pbap->obj->aparams = append_aparam_header(pbap->obj->aparams,
 					PHONEBOOKSIZE_TAG, &phonebooksize);
 
+	if (missed > 0)	{
+		DBG("missed %d", missed);
+
+		pbap->obj->aparams = append_aparam_header(pbap->obj->aparams,
+						NEWMISSEDCALLS_TAG, &missed);
+	}
+
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
 
@@ -292,6 +307,16 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	else
 		pbap->obj->buffer = g_string_append_len(pbap->obj->buffer,
 							buffer,	bufsize);
+
+	if (missed > 0)	{
+		DBG("missed %d", missed);
+
+		pbap->obj->firstpacket = TRUE;
+
+		pbap->obj->aparams = g_byte_array_new();
+		pbap->obj->aparams = append_aparam_header(pbap->obj->aparams,
+						NEWMISSEDCALLS_TAG, &missed);
+	}
 
 	obex_object_set_io_flags(pbap->obj, G_IO_IN, 0);
 }
@@ -489,9 +514,7 @@ static void cache_entry_done(void *user_data)
 		return;
 	}
 
-	/* Unref previous request, associated data will be freed. */
 	phonebook_req_finalize(pbap->obj->request);
-	/* Get new pointer to pending call. */
 	pbap->obj->request = phonebook_get_entry(pbap->folder, id,
 				pbap->params, query_result, pbap, &ret);
 	if (ret < 0)
@@ -933,7 +956,7 @@ static ssize_t array_read(GByteArray *array, void *buf, size_t count)
 }
 
 static ssize_t vobject_pull_read(void *object, void *buf, size_t count,
-								uint8_t *hi)
+					uint8_t *hi, unsigned int *flags)
 {
 	struct pbap_object *obj = object;
 	struct pbap_session *pbap = obj->session;
@@ -947,16 +970,27 @@ static ssize_t vobject_pull_read(void *object, void *buf, size_t count,
 	if (pbap->params->maxlistcount == 0) {
 		/* PhoneBookSize */
 		*hi = OBEX_HDR_APPARAM;
+		if (flags)
+			*flags = 0;
+		return array_read(obj->aparams, buf, count);
+	} else if (obj->firstpacket) {
+		/* NewMissedCalls */
+		*hi = OBEX_HDR_APPARAM;
+		obj->firstpacket = FALSE;
+		if (flags)
+			*flags = OBEX_FL_FIT_ONE_PACKET;
 		return array_read(obj->aparams, buf, count);
 	} else {
 		/* Stream data */
 		*hi = OBEX_HDR_BODY;
+		if (flags)
+			*flags = 0;
 		return string_read(obj->buffer, buf, count);
 	}
 }
 
 static ssize_t vobject_list_read(void *object, void *buf, size_t count,
-								uint8_t *hi)
+					uint8_t *hi, unsigned int *flags)
 {
 	struct pbap_object *obj = object;
 	struct pbap_session *pbap = obj->session;
@@ -968,6 +1002,9 @@ static ssize_t vobject_list_read(void *object, void *buf, size_t count,
 	if (!pbap->cache.valid)
 		return -EAGAIN;
 
+	if (flags)
+		*flags = 0;
+
 	if (pbap->params->maxlistcount == 0) {
 		*hi = OBEX_HDR_APPARAM;
 		return array_read(obj->aparams, buf, count);
@@ -978,7 +1015,7 @@ static ssize_t vobject_list_read(void *object, void *buf, size_t count,
 }
 
 static ssize_t vobject_vcard_read(void *object, void *buf, size_t count,
-								uint8_t *hi)
+					uint8_t *hi, unsigned int *flags)
 {
 	struct pbap_object *obj = object;
 
@@ -986,6 +1023,9 @@ static ssize_t vobject_vcard_read(void *object, void *buf, size_t count,
 
 	if (!obj->buffer)
 		return -EAGAIN;
+
+	if (flags)
+		*flags = 0;
 
 	*hi = OBEX_HDR_BODY;
 	return string_read(obj->buffer, buf, count);

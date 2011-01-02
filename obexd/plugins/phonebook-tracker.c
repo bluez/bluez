@@ -919,6 +919,41 @@
 	"}"								\
 	"}"
 
+#define NEW_MISSED_CALLS_LIST						\
+	"SELECT ?c "							\
+	"nco:phoneNumber(?h) "						\
+	"nmo:isRead(?call) "						\
+	"WHERE { "							\
+	"{"								\
+		"?c a nco:Contact . "					\
+		"?c nco:hasPhoneNumber ?h . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?c ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered false ."				\
+	"}UNION{"							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?h . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered false ."				\
+		"?c a nco:PersonContact . "				\
+		"?c nco:hasPhoneNumber ?h . "				\
+	"} UNION { "							\
+		"?x a nco:Contact . "					\
+		"?x nco:hasPhoneNumber ?h . "				\
+		"?call a nmo:Call ; "					\
+		"nmo:from ?x ; "					\
+		"nmo:isSent false ; "					\
+		"nmo:isAnswered false ."				\
+		"?c a nco:PersonContact . "				\
+		"?c nco:hasAffiliation ?a . "				\
+		"?a nco:hasPhoneNumber ?h . "				\
+	"} "								\
+	"} GROUP BY ?call ORDER BY DESC(nmo:receivedDate(?call)) "	\
+	"LIMIT 40"
+
 typedef void (*reply_list_foreach_t) (char **reply, int num_fields,
 							void *user_data);
 
@@ -943,6 +978,8 @@ struct phonebook_data {
 	GSList *contacts;
 	phonebook_cache_ready_cb ready_cb;
 	phonebook_entry_cb entry_cb;
+	int newmissedcalls;
+	DBusPendingCall *call;
 };
 
 struct phonebook_index {
@@ -1111,11 +1148,7 @@ done:
 
 	dbus_message_unref(reply);
 
-	/*
-	 * pending data is freed in query_free_data after call is unreffed.
-	 * Same holds for pending->user_data which is not freed in callback
-	 * but in query_free_data.
-	 */
+	/* pending data is freed in query_free_data after call is unreffed. */
 }
 
 static void query_free_data(void *user_data)
@@ -1155,8 +1188,6 @@ static DBusPendingCall *query_tracker(const char *query, int num_fields,
 		dbus_message_unref(msg);
 		if (err)
 			*err = -EPERM;
-		/* user_data is freed otherwise only if call was sent */
-		g_free(user_data);
 		return NULL;
 	}
 
@@ -1394,12 +1425,11 @@ static void pull_contacts_size(char **reply, int num_fields, void *user_data)
 		return;
 	}
 
-	data->cb(NULL, 0, data->index, 0, data->user_data);
+	data->cb(NULL, 0, data->index, data->newmissedcalls, data->user_data);
 
 	/*
-	 * phonebook_data is freed in query_free_data after call is unreffed.
-	 * It is accessible by pointer from data (pending) associated to call.
-	 * Useful in cases when call was terminated.
+	 * phonebook_data is freed in phonebook_req_finalize. Useful in
+	 * cases when call is terminated.
 	 */
 }
 
@@ -1682,19 +1712,17 @@ done:
 
 	if (num_fields == 0)
 		data->cb(vcards->str, vcards->len,
-					g_slist_length(data->contacts), 0,
-					data->user_data);
+					g_slist_length(data->contacts),
+					data->newmissedcalls, data->user_data);
 
 	g_string_free(vcards, TRUE);
 fail:
-	g_slist_free(data->contacts);
 	g_free(temp_id);
 	temp_id = NULL;
 
 	/*
-	 * phonebook_data is freed in query_free_data after call is unreffed.
-	 * It is accessible by pointer from data (pending) associated to call.
-	 * Useful in cases when call was terminated.
+	 * phonebook_data is freed in phonebook_req_finalize. Useful in
+	 * cases when call is terminated.
 	 */
 }
 
@@ -1741,9 +1769,8 @@ done:
 		data->ready_cb(data->user_data);
 
 	/*
-	 * data is freed in query_free_data after call is unreffed.
-	 * It is accessible by pointer from data (pending) associated to call.
-	 * Useful in cases when call was terminated.
+	 * phonebook_data is freed in phonebook_req_finalize. Useful in
+	 * cases when call is terminated.
 	 */
 }
 
@@ -1834,14 +1861,87 @@ done:
 
 void phonebook_req_finalize(void *request)
 {
-	struct DBusPendingCall *call = request;
+	struct phonebook_data *data = request;
 
 	DBG("");
 
-	if (!dbus_pending_call_get_completed(call))
-		dbus_pending_call_cancel(call);
+	if (!data)
+		return;
 
-	dbus_pending_call_unref(call);
+	if (!dbus_pending_call_get_completed(data->call))
+		dbus_pending_call_cancel(data->call);
+
+	dbus_pending_call_unref(data->call);
+
+	g_slist_free(data->contacts);
+	g_free(data);
+}
+
+static gboolean find_checked_number(GSList *numbers, const char *number)
+{
+	GSList *l;
+
+	for (l = numbers; l; l = l->next) {
+		GString *ph_num = l->data;
+		if (g_strcmp0(ph_num->str, number) == 0)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+static void gstring_free_helper(gpointer data, gpointer user_data)
+{
+	g_string_free(data, TRUE);
+}
+
+static void pull_newmissedcalls(char **reply, int num_fields, void *user_data)
+{
+	struct phonebook_data *data = user_data;
+	reply_list_foreach_t pull_cb;
+	int col_amount, err;
+	const char *query;
+
+	if (num_fields < 0 || reply == NULL)
+		goto done;
+
+	if (!find_checked_number(data->contacts, reply[1])) {
+		if (g_strcmp0(reply[2], "false") == 0)
+			data->newmissedcalls++;
+		else {
+			GString *number = g_string_new(reply[1]);
+			data->contacts = g_slist_append(data->contacts,
+								number);
+		}
+	}
+	return;
+
+done:
+	DBG("newmissedcalls %d", data->newmissedcalls);
+	g_slist_foreach(data->contacts, gstring_free_helper, NULL);
+	g_slist_free(data->contacts);
+	data->contacts = NULL;
+
+	if (num_fields < 0) {
+		data->cb(NULL, 0, num_fields, 0, data->user_data);
+		return;
+	}
+
+	if (data->params->maxlistcount == 0) {
+		query = name2count_query("telecom/mch.vcf");
+		col_amount = COUNT_QUERY_COL_AMOUNT;
+		pull_cb = pull_contacts_size;
+	} else {
+		query = name2query("telecom/mch.vcf");
+		col_amount = PULL_QUERY_COL_AMOUNT;
+		pull_cb = pull_contacts;
+	}
+
+	dbus_pending_call_unref(data->call);
+	data->call = query_tracker(query, col_amount, pull_cb, data, NULL,
+								&err);
+	if (err < 0)
+		data->cb(NULL, 0, err, 0, data->user_data);
 }
 
 void *phonebook_pull(const char *name, const struct apparam_field *params,
@@ -1854,7 +1954,11 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 
 	DBG("name %s", name);
 
-	if (params->maxlistcount == 0) {
+	if (g_strcmp0(name, "telecom/mch.vcf") == 0) {
+		query = NEW_MISSED_CALLS_LIST;
+		col_amount = PULL_QUERY_COL_AMOUNT;
+		pull_cb = pull_newmissedcalls;
+	} else if (params->maxlistcount == 0) {
 		query = name2count_query(name);
 		col_amount = COUNT_QUERY_COL_AMOUNT;
 		pull_cb = pull_contacts_size;
@@ -1874,8 +1978,10 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 	data->params = params;
 	data->user_data = user_data;
 	data->cb = cb;
+	data->call = query_tracker(query, col_amount, pull_cb, data, NULL,
+									err);
 
-	return query_tracker(query, col_amount, pull_cb, data, g_free, err);
+	return data;
 }
 
 void *phonebook_get_entry(const char *folder, const char *id,
@@ -1884,7 +1990,6 @@ void *phonebook_get_entry(const char *folder, const char *id,
 {
 	struct phonebook_data *data;
 	char *query;
-	DBusPendingCall *call;
 
 	DBG("folder %s id %s", folder, id);
 
@@ -1902,12 +2007,12 @@ void *phonebook_get_entry(const char *folder, const char *id,
 		query = g_strdup_printf(CONTACTS_OTHER_QUERY_FROM_URI,
 								id, id, id);
 
-	call = query_tracker(query, PULL_QUERY_COL_AMOUNT, pull_contacts,
-							data, g_free, err);
+	data->call = query_tracker(query, PULL_QUERY_COL_AMOUNT, pull_contacts,
+							data, NULL, err);
 
 	g_free(query);
 
-	return call;
+	return data;
 }
 
 void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
@@ -1929,6 +2034,7 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	data->entry_cb = entry_cb;
 	data->ready_cb = ready_cb;
 	data->user_data = user_data;
+	data->call = query_tracker(query, 7, add_to_cache, data, NULL, err);
 
-	return query_tracker(query, 7, add_to_cache, data, g_free, err);
+	return data;
 }

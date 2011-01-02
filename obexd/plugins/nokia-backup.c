@@ -222,12 +222,16 @@ static int backup_close(void *object)
 	return 0;
 }
 
-static ssize_t backup_read(void *object, void *buf, size_t count, uint8_t *hi)
+static ssize_t backup_read(void *object, void *buf, size_t count,
+					uint8_t *hi, unsigned int *flags)
 {
 	struct backup_object *obj = object;
 	ssize_t ret = 0;
 
 	*hi = OBEX_HDR_BODY;
+
+	if (flags)
+		*flags = 0;
 
 	if (obj->pending_call) {
 		DBG("cmd = %s, IN WAITING STAGE", obj->cmd);
