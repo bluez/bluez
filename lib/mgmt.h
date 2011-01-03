@@ -81,6 +81,15 @@ struct mgmt_mode {
 
 #define MGMT_OP_SET_PAIRABLE		0x0008
 
+struct mgmt_cp_uuid {
+	uint16_t index;
+	uint8_t uuid[16];
+} __packed;
+
+#define MGMT_OP_ADD_UUID		0x0009
+
+#define MGMT_OP_REMOVE_UUID		0x000A
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;

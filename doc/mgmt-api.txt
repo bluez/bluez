@@ -116,6 +116,23 @@ Set Pairable Command
 	Return Paramters:	Controller_Index (2 Octets)
 				Pairable (1 Octet)
 
+Add UUID Command
+================
+
+	Command Code:		0x0009
+	Command Parameters:	Controller_Index (2 Octets)
+				UUID (16 Octets)
+	Return Paramters:	Controller_Index (2 Octets)
+
+
+Remove UUID Command
+===================
+
+	Command Code:		0x000A
+	Command Parameters:	Controller_Index (2 Octets)
+				UUID (16 Octets)
+	Return Paramters:	Controller_Index (2 Octets)
+
 
 Read Tracing Buffer Size Command
 ================================

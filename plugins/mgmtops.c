@@ -37,6 +37,8 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 #include <bluetooth/mgmt.h>
 
 #include "plugin.h"
@@ -398,6 +400,48 @@ static void mgmt_pairable(int sk, void *buf, size_t len)
 	btd_adapter_pairable_changed(adapter, info->pairable);
 }
 
+static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
+{
+	if (uuid->type == SDP_UUID16)
+		sdp_uuid16_to_uuid128(uuid128, uuid);
+	else if (uuid->type == SDP_UUID32)
+		sdp_uuid32_to_uuid128(uuid128, uuid);
+	else
+		memcpy(uuid128, uuid, sizeof(*uuid));
+}
+
+static int mgmt_uuid_op(int index, uint16_t op, uuid_t *uuid)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_uuid)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_uuid *cp = (void *) &buf[sizeof(*hdr)];
+	uuid_t uuid128;
+
+	uuid_to_uuid128(&uuid128, uuid);
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = op;
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+	memcpy(cp->uuid, uuid128.value.uuid128.data, 16);
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static int clear_uuids(int index)
+{
+	uuid_t uuid_any;
+
+	memset(&uuid_any, 0, sizeof(uuid_any));
+	uuid_any.type = SDP_UUID128;
+
+	return mgmt_uuid_op(index, MGMT_OP_REMOVE_UUID, &uuid_any);
+}
+
 static void read_index_list_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_rp_read_index_list *rp = buf;
@@ -423,6 +467,7 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 
 		add_controller(index);
 		read_info(sk, index);
+		clear_uuids(index);
 	}
 }
 
@@ -649,6 +694,12 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 		break;
 	case MGMT_OP_SET_PAIRABLE:
 		set_pairable_complete(sk, ev->data, len - sizeof(*ev));
+		break;
+	case MGMT_OP_ADD_UUID:
+		DBG("add_uuid complete");
+		break;
+	case MGMT_OP_REMOVE_UUID:
+		DBG("remove_uuid complete");
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
@@ -1075,13 +1126,13 @@ static int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
 static int mgmt_add_uuid(int index, uuid_t *uuid)
 {
 	DBG("index %d", index);
-	return -ENOSYS;
+	return mgmt_uuid_op(index, MGMT_OP_ADD_UUID, uuid);
 }
 
 static int mgmt_remove_uuid(int index, uuid_t *uuid)
 {
 	DBG("index %d", index);
-	return -ENOSYS;
+	return mgmt_uuid_op(index, MGMT_OP_REMOVE_UUID, uuid);
 }
 
 static int mgmt_disable_cod_cache(int index)
