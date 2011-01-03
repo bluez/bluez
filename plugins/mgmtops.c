@@ -90,7 +90,7 @@ static void read_version_complete(int sk, void *buf, size_t len)
 	DBG("version %u revision %u", mgmt_version, mgmt_revision);
 
 	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = MGMT_OP_READ_INDEX_LIST;
+	hdr.opcode = htobs(MGMT_OP_READ_INDEX_LIST);
 	if (write(sk, &hdr, sizeof(hdr)) < 0)
 		error("Unable to read controller index list: %s (%d)",
 						strerror(errno), errno);
@@ -118,7 +118,7 @@ static void read_info(int sk, uint16_t index)
 	struct mgmt_cp_read_info *cp = (void *) &buf[sizeof(*hdr)];
 
 	memset(buf, 0, sizeof(buf));
-	hdr->opcode = MGMT_OP_READ_INFO;
+	hdr->opcode = htobs(MGMT_OP_READ_INFO);
 	hdr->len = htobs(sizeof(*cp));
 
 	cp->index = htobs(index);
@@ -181,7 +181,7 @@ static int mgmt_set_mode(int index, uint16_t opcode, uint8_t val)
 	struct mgmt_mode *cp = (void *) &buf[sizeof(*hdr)];
 
 	memset(buf, 0, sizeof(buf));
-	hdr->opcode = opcode;
+	hdr->opcode = htobs(opcode);
 	hdr->len = htobs(sizeof(*cp));
 
 	cp->index = htobs(index);
@@ -420,7 +420,7 @@ static int mgmt_uuid_op(int index, uint16_t op, uuid_t *uuid)
 	uuid_to_uuid128(&uuid128, uuid);
 
 	memset(buf, 0, sizeof(buf));
-	hdr->opcode = op;
+	hdr->opcode = htobs(op);
 	hdr->len = htobs(sizeof(*cp));
 
 	cp->index = htobs(index);
@@ -838,7 +838,7 @@ static int mgmt_setup(void)
 	}
 
 	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = MGMT_OP_READ_VERSION;
+	hdr.opcode = htobs(MGMT_OP_READ_VERSION);
 	if (write(dd, &hdr, sizeof(hdr)) < 0) {
 		err = -errno;
 		goto fail;
