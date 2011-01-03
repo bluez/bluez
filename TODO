@@ -54,6 +54,17 @@ Low Energy
   Priority: Medium
   Complexity: C2
 
+- Implement a tool(or extend hciconfig) to setup the advertising parameters
+  and data. Extend hciconfig passing extra arguments when enabling the
+  advertises is not the right approach, it will be almost impossible to
+  address all arguments needed in an acceptable way. For testing, we need
+  a tool to change easily the AD Flags, the UUIDs and other data that can be
+  exported through the advertising data field. Suggestions: 1) extend hciconfig
+  passing a config file when enabling advertises; 2) write a ncurses based tool
+
+  Priority: Medium
+  Complexity: C2
+
 - Device Name Characteristic is a GAP characteristic for Low Energy. This
   characteristic shall be integrated/used in the discovery procedure. The
   ideia is to report the value of this characteristic using DeviceFound signals.
