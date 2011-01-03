@@ -80,6 +80,13 @@ Low Energy
 ATT/GATT
 ========
 
+- For BR/EDR, Discover All Primary Services shall be started after SDP if the
+  remote device exports a Generic Attribute Profile service record. It is
+  applied to CreateDevice and CreatePairedDevice.
+
+  Priority: Medium
+  Complexity: C1
+
 - Add ATT/GATT parsing to hcidump
 
   Priority: Medium
