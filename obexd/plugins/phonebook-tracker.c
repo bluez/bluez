@@ -870,8 +870,7 @@
 	"SELECT COUNT(?c) "						\
 	"WHERE {"							\
 		"?c a nco:PersonContact ."				\
-		"FILTER (regex(str(?c), \"contact:\") || "		\
-		"regex(str(?c), \"nco#default-contact-me\"))"		\
+		"FILTER (regex(str(?c), \"contact:\"))"			\
 	"}"
 
 #define MISSED_CALLS_COUNT_QUERY					\
