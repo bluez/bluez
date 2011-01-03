@@ -17,15 +17,6 @@ Background
 Low Energy
 ==========
 
-- Avoid Characteristic discovery for non connectable devices. Proper parsing
-  of LE Advertising Report Event is missing. Event_Type field needs to be
-  extracted and its value shall be considered before to start the LE
-  connection on the channel 4. Characteristic discovery should not be
-  started for non connectable devices.
-
-  Priority: Medium
-  Complexity: C2
-
 - Advertising management. Adapter interface needs to be changed to manage
   connection modes, adapter type and advertising policy. See Volume 3,
   Part C, section 9.3. If Attribute Server is enabled the LE capable
