@@ -14,6 +14,15 @@ Background
   Higher complexity tasks should be refined into several lower complexity tasks
   once the task is better understood.
 
+General
+==========
+
+- Rename glib-helper file to a more convenient name. The ideia is try to keep
+  only sdp helpers functions. bt_* prefix shall be also changed.
+
+  Priority: Low
+  Complexity: C1
+
 Low Energy
 ==========
 
