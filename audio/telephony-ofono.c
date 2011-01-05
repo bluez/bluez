@@ -263,8 +263,15 @@ void telephony_terminate_call_req(void *telephony_device)
 
 void telephony_answer_call_req(void *telephony_device)
 {
-	struct voice_call *vc = find_vc_with_status(CALL_STATUS_INCOMING);
+	struct voice_call *vc;
 	int ret;
+
+	vc = find_vc_with_status(CALL_STATUS_INCOMING);
+	if (!vc)
+		vc = find_vc_with_status(CALL_STATUS_ALERTING);
+
+	if (!vc)
+		vc = find_vc_with_status(CALL_STATUS_WAITING);
 
 	if (!vc) {
 		telephony_answer_call_rsp(telephony_device,
