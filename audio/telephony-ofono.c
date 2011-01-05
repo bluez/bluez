@@ -457,6 +457,16 @@ static void call_free(struct voice_call *vc)
 {
 	DBG("%s", vc->obj_path);
 
+	if (vc->status == CALL_STATUS_ACTIVE)
+		telephony_update_indicator(ofono_indicators, "call",
+							EV_CALL_INACTIVE);
+	else
+		telephony_update_indicator(ofono_indicators, "callsetup",
+							EV_CALLSETUP_INACTIVE);
+
+	if (vc->status == CALL_STATUS_INCOMING)
+		telephony_calling_stopped_ind();
+
 	g_dbus_remove_watch(connection, vc->watch);
 	g_free(vc->obj_path);
 	g_free(vc->number);
@@ -489,14 +499,6 @@ static gboolean handle_vc_property_changed(DBusConnection *conn,
 		dbus_message_iter_get_basic(&sub, &state);
 		DBG("State %s", state);
 		if (g_str_equal(state, "disconnected")) {
-			if (vc->status == CALL_STATUS_ACTIVE)
-				telephony_update_indicator(ofono_indicators,
-						"call", EV_CALL_INACTIVE);
-			else
-				telephony_update_indicator(ofono_indicators,
-					"callsetup", EV_CALLSETUP_INACTIVE);
-			if (vc->status == CALL_STATUS_INCOMING)
-				telephony_calling_stopped_ind();
 			calls = g_slist_remove(calls, vc);
 			call_free(vc);
 		} else if (g_str_equal(state, "active")) {
