@@ -834,6 +834,7 @@ static gboolean handle_vc_property_changed(DBusConnection *conn,
 					"callsetup", EV_CALLSETUP_ALERTING);
 			vc->status = CALL_STATUS_ALERTING;
 			DBG("vc status is CALL_STATUS_ALERTING");
+			vc->originating = TRUE;
 		} else if (g_str_equal(state, "incoming")) {
 			/* state change from waiting to incoming */
 			telephony_update_indicator(ofono_indicators,
@@ -842,6 +843,7 @@ static gboolean handle_vc_property_changed(DBusConnection *conn,
 						NUMBER_TYPE_TELEPHONY);
 			vc->status = CALL_STATUS_INCOMING;
 			DBG("vc status is CALL_STATUS_INCOMING");
+			vc->originating = FALSE;
 		}
 	}
 
