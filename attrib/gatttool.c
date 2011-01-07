@@ -272,7 +272,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	olen = enc_confirmation(opdu, sizeof(opdu));
 
 	if (olen > 0)
-		g_attrib_send(attrib, opdu[0], opdu, olen, NULL, NULL, NULL);
+		g_attrib_send(attrib, 0, opdu[0], opdu, olen, NULL, NULL, NULL);
 }
 
 static gboolean listen_start(gpointer user_data)

@@ -68,7 +68,7 @@ guint gatt_discover_primary(GAttrib *attrib, uint16_t start, uint16_t end,
 	if (plen == 0)
 		return 0;
 
-	return g_attrib_send(attrib, op, pdu, plen, func, user_data, NULL);
+	return g_attrib_send(attrib, 0, op, pdu, plen, func, user_data, NULL);
 }
 
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
@@ -93,7 +93,7 @@ guint gatt_read_char_by_uuid(GAttrib *attrib, uint16_t start, uint16_t end,
 	if (plen == 0)
 		return 0;
 
-	return g_attrib_send(attrib, ATT_OP_READ_BY_TYPE_REQ,
+	return g_attrib_send(attrib, 0, ATT_OP_READ_BY_TYPE_REQ,
 					pdu, plen, func, user_data, NULL);
 }
 
@@ -104,7 +104,7 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 	guint16 plen;
 
 	plen = enc_read_req(handle, pdu, sizeof(pdu));
-	return g_attrib_send(attrib, ATT_OP_READ_REQ, pdu, plen, func,
+	return g_attrib_send(attrib, 0, ATT_OP_READ_REQ, pdu, plen, func,
 							user_data, NULL);
 }
 
@@ -115,7 +115,7 @@ guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
 	guint16 plen;
 
 	plen = enc_write_req(handle, value, vlen, pdu, sizeof(pdu));
-	return g_attrib_send(attrib, ATT_OP_WRITE_REQ, pdu, plen, func,
+	return g_attrib_send(attrib, 0, ATT_OP_WRITE_REQ, pdu, plen, func,
 							user_data, NULL);
 }
 
@@ -129,7 +129,7 @@ guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
 	if (plen == 0)
 		return 0;
 
-	return g_attrib_send(attrib, ATT_OP_FIND_INFO_REQ, pdu, plen, func,
+	return g_attrib_send(attrib, 0, ATT_OP_FIND_INFO_REQ, pdu, plen, func,
 							user_data, NULL);
 }
 
@@ -140,6 +140,6 @@ guint gatt_write_cmd(GAttrib *attrib, uint16_t handle, uint8_t *value, int vlen,
 	guint16 plen;
 
 	plen = enc_write_cmd(handle, value, vlen, pdu, sizeof(pdu));
-	return g_attrib_send(attrib, ATT_OP_WRITE_CMD, pdu, plen, NULL,
+	return g_attrib_send(attrib, 0, ATT_OP_WRITE_CMD, pdu, plen, NULL,
 							user_data, notify);
 }

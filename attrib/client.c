@@ -295,7 +295,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	switch (pdu[0]) {
 	case ATT_OP_HANDLE_IND:
 		olen = enc_confirmation(opdu, sizeof(opdu));
-		g_attrib_send(gatt->attrib, opdu[0], opdu, olen,
+		g_attrib_send(gatt->attrib, 0, opdu[0], opdu, olen,
 						NULL, NULL, NULL);
 	case ATT_OP_HANDLE_NOTIFY:
 		if (characteristic_set_value(chr, &pdu[3], len - 3) < 0)
