@@ -2099,7 +2099,7 @@ static void device_devup_setup(int index)
 	bacpy(&cp.bdaddr, BDADDR_ANY);
 	cp.read_all = 1;
 	hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_READ_STORED_LINK_KEY,
-			READ_STORED_LINK_KEY_CP_SIZE, (void *) &cp);
+					READ_STORED_LINK_KEY_CP_SIZE, &cp);
 
 	if (!dev->pending)
 		init_adapter(index);
