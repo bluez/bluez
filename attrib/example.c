@@ -61,7 +61,6 @@
 
 static int register_attributes(void)
 {
-	const char *devname = "Example Device";
 	const char *desc_out_temp = "Outside Temperature";
 	const char *desc_out_hum = "Outside Relative Humidity";
 	const char *desc_weight = "Rucksack Weight";
@@ -78,24 +77,6 @@ static int register_attributes(void)
 	uint8_t atval[256];
 	uuid_t uuid;
 	int len;
-
-	/* GAP service: primary service definition */
-	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-	att_put_u16(GENERIC_ACCESS_PROFILE_ID, &atval[0]);
-	attrib_db_add(0x0001, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
-
-	/* GAP service: device name characteristic */
-	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
-	att_put_u16(0x0006, &atval[1]);
-	att_put_u16(GATT_CHARAC_DEVICE_NAME, &atval[3]);
-	attrib_db_add(0x0004, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
-
-	/* GAP service: device name attribute */
-	sdp_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
-	len = strlen(devname);
-	strncpy((char *) atval, devname, len);
-	attrib_db_add(0x0006, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
 
 	/* GATT service: primary service definition */
 	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);

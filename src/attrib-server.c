@@ -748,6 +748,34 @@ static void confirm_event(GIOChannel *io, void *user_data)
 	return;
 }
 
+static void register_core_services(void)
+{
+	uint8_t atval[256];
+	uuid_t uuid;
+	int len;
+
+	/* GAP service: primary service definition */
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	att_put_u16(GENERIC_ACCESS_PROFILE_ID, &atval[0]);
+	attrib_db_add(0x0001, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+
+	/* GAP service: device name characteristic */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	atval[0] = ATT_CHAR_PROPER_READ;
+	att_put_u16(0x0006, &atval[1]);
+	att_put_u16(GATT_CHARAC_DEVICE_NAME, &atval[3]);
+	attrib_db_add(0x0004, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+
+	/* GAP service: device name attribute */
+	sdp_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
+	len = strlen(main_opts.name);
+	attrib_db_add(0x0006, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+					(uint8_t *) main_opts.name, len);
+
+	/* TODO: Implement Appearance characteristic. It is mandatory for
+	 * Peripheral/Central GAP roles. */
+}
+
 int attrib_server_init(void)
 {
 	GError *gerr = NULL;
@@ -780,6 +808,8 @@ int attrib_server_init(void)
 	}
 
 	sdp_handle = record->handle;
+
+	register_core_services();
 
 	if (!main_opts.le)
 		return 0;
