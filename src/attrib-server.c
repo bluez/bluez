@@ -774,6 +774,11 @@ static void register_core_services(void)
 
 	/* TODO: Implement Appearance characteristic. It is mandatory for
 	 * Peripheral/Central GAP roles. */
+
+	/* GATT service: primary service definition */
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	att_put_u16(GENERIC_ATTRIB_PROFILE_ID, &atval[0]);
+	attrib_db_add(0x0010, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
 }
 
 int attrib_server_init(void)

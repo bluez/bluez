@@ -78,24 +78,6 @@ static int register_attributes(void)
 	uuid_t uuid;
 	int len;
 
-	/* GATT service: primary service definition */
-	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-	att_put_u16(GENERIC_ATTRIB_PROFILE_ID, &atval[0]);
-	attrib_db_add(0x0010, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
-
-	/* GATT service: attributes opcodes characteristic */
-	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ;
-	att_put_u16(0x0012, &atval[1]);
-	att_put_u16(OPCODES_SUPPORTED_UUID, &atval[3]);
-	attrib_db_add(0x0011, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
-
-	/* GATT service: attribute opcodes supported */
-	sdp_uuid16_create(&uuid, OPCODES_SUPPORTED_UUID);
-	atval[0] = 0xFF;
-	atval[1] = 0x01;
-	attrib_db_add(0x0012, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
-
 	/* Battery state service: primary service definition */
 	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	att_put_u16(BATTERY_STATE_SVC_UUID, &atval[0]);
