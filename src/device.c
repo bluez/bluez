@@ -103,7 +103,6 @@ struct browse_req {
 	int search_uuid;
 	int reconnect_attempt;
 	guint listener_id;
-	guint timer;
 };
 
 struct btd_device {
