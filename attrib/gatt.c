@@ -31,10 +31,24 @@
 #include "gattrib.h"
 #include "gatt.h"
 
-guint gatt_discover_primary(GAttrib *attrib, uint16_t start, uint16_t end,
-		uuid_t *uuid, GAttribResultFunc func, gpointer user_data)
+struct discover_primary {
+	GAttrib *attrib;
+	uuid_t uuid;
+	GSList *primaries;
+	gatt_primary_t cb;
+	void *user_data;
+};
+
+static void discover_primary_free(struct discover_primary *dp)
 {
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	g_slist_free(dp->primaries);
+	g_attrib_unref(dp->attrib);
+	g_free(dp);
+}
+
+static guint16 encode_discover_primary(uint16_t start, uint16_t end,
+					uuid_t *uuid, uint8_t *pdu, size_t len)
+{
 	uuid_t prim;
 	guint16 plen;
 	uint8_t op;
@@ -42,10 +56,9 @@ guint gatt_discover_primary(GAttrib *attrib, uint16_t start, uint16_t end,
 	sdp_uuid16_create(&prim, GATT_PRIM_SVC_UUID);
 
 	if (uuid == NULL) {
-
 		/* Discover all primary services */
 		op = ATT_OP_READ_BY_GROUP_REQ;
-		plen = enc_read_by_grp_req(start, end, &prim, pdu, sizeof(pdu));
+		plen = enc_read_by_grp_req(start, end, &prim, pdu, len);
 	} else {
 		const void *value;
 		int vlen;
@@ -62,13 +75,151 @@ guint gatt_discover_primary(GAttrib *attrib, uint16_t start, uint16_t end,
 		}
 
 		plen = enc_find_by_type_req(start, end, &prim, value, vlen,
-							pdu, sizeof(pdu));
+								pdu, len);
 	}
 
+	return plen;
+}
+
+static void primary_by_uuid_cb(guint8 status, const guint8 *ipdu,
+					guint16 iplen, gpointer user_data)
+
+{
+	struct discover_primary *dp = user_data;
+	GSList *ranges, *last;
+	struct att_range *range;
+	uint8_t opdu[ATT_DEFAULT_MTU];
+	guint16 oplen;
+	int err = 0;
+
+	if (status) {
+		err = status == ATT_ECODE_ATTR_NOT_FOUND ? 0 : status;
+		goto done;
+	}
+
+	ranges = dec_find_by_type_resp(ipdu, iplen);
+	if (ranges == NULL)
+		goto done;
+
+	dp->primaries = g_slist_concat(dp->primaries, ranges);
+
+	last = g_slist_last(ranges);
+	g_slist_free(ranges);
+	range = last->data;
+
+	if (range->end == 0xffff)
+		goto done;
+
+	oplen = encode_discover_primary(range->end + 1, 0xffff, &dp->uuid,
+							opdu, sizeof(opdu));
+
+	if (oplen == 0)
+		goto done;
+
+	g_attrib_send(dp->attrib, 0, opdu[0], opdu, oplen, primary_by_uuid_cb,
+								dp, NULL);
+	return;
+
+done:
+	dp->cb(dp->primaries, err, dp->user_data);
+	discover_primary_free(dp);
+}
+
+static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
+							gpointer user_data)
+{
+	struct discover_primary *dp = user_data;
+	struct att_data_list *list;
+	unsigned int i, err;
+	uint16_t start, end;
+
+	if (status) {
+		err = status == ATT_ECODE_ATTR_NOT_FOUND ? 0 : status;
+		goto done;
+	}
+
+	list = dec_read_by_grp_resp(ipdu, iplen);
+	if (list == NULL) {
+		err = ATT_ECODE_IO;
+		goto done;
+	}
+
+	for (i = 0, end = 0; i < list->num; i++) {
+		const uint8_t *data = list->data[i];
+		struct att_primary *primary;
+		uuid_t u128, u16;
+
+		start = att_get_u16(&data[0]);
+		end = att_get_u16(&data[2]);
+
+		if (list->len == 6) {
+			sdp_uuid16_create(&u16,
+					att_get_u16(&data[4]));
+			sdp_uuid16_to_uuid128(&u128, &u16);
+
+		} else if (list->len == 20)
+			sdp_uuid128_create(&u128, &data[4]);
+		else
+			/* Skipping invalid data */
+			continue;
+
+		primary = g_try_new0(struct att_primary, 1);
+		if (!primary) {
+			err = ATT_ECODE_INSUFF_RESOURCES;
+			goto done;
+		}
+		primary->start = start;
+		primary->end = end;
+		sdp_uuid2strn(&u128, primary->uuid, sizeof(primary->uuid));
+		dp->primaries = g_slist_append(dp->primaries, primary);
+	}
+
+	att_data_list_free(list);
+	err = 0;
+
+	if (end != 0xffff) {
+		uint8_t opdu[ATT_DEFAULT_MTU];
+		guint16 oplen = encode_discover_primary(end + 1, 0xffff, NULL,
+							opdu, sizeof(opdu));
+
+		g_attrib_send(dp->attrib, 0, opdu[0], opdu, oplen,
+						primary_all_cb, dp, NULL);
+
+		return;
+	}
+
+done:
+	dp->cb(dp->primaries, err, dp->user_data);
+	discover_primary_free(dp);
+}
+
+guint gatt_discover_primary(GAttrib *attrib, uuid_t *uuid, gatt_primary_t func,
+							gpointer user_data)
+{
+	struct discover_primary *dp;
+	uint8_t pdu[ATT_DEFAULT_MTU];
+	GAttribResultFunc cb;
+	guint16 plen;
+
+	plen = encode_discover_primary(0x0001, 0xffff, uuid, pdu, sizeof(pdu));
 	if (plen == 0)
 		return 0;
 
-	return g_attrib_send(attrib, 0, op, pdu, plen, func, user_data, NULL);
+	dp = g_try_new0(struct discover_primary, 1);
+	if (dp == NULL)
+		return 0;
+
+	dp->attrib = g_attrib_ref(attrib);
+	dp->cb = func;
+	dp->user_data = user_data;
+
+	if (uuid) {
+		memcpy(&dp->uuid, uuid, sizeof(uuid_t));
+		cb = primary_by_uuid_cb;
+	} else
+		cb = primary_all_cb;
+
+	return g_attrib_send(attrib, 0, pdu[0], pdu, plen, cb, dp, NULL);
 }
 
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,

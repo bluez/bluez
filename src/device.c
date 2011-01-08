@@ -53,6 +53,8 @@
 #include "event.h"
 #include "error.h"
 #include "glib-helper.h"
+#include "gattrib.h"
+#include "gatt.h"
 #include "agent.h"
 #include "sdp-xml.h"
 #include "storage.h"
@@ -95,6 +97,8 @@ struct authentication_req {
 struct browse_req {
 	DBusConnection *conn;
 	DBusMessage *msg;
+	GAttrib *attrib;
+	GIOChannel *io;
 	struct btd_device *device;
 	GSList *match_uuids;
 	GSList *profiles_added;
@@ -170,6 +174,13 @@ static void browse_request_free(struct browse_req *req)
 	g_slist_free(req->profiles_removed);
 	if (req->records)
 		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
+
+	if (req->io) {
+		g_attrib_unref(req->attrib);
+		g_io_channel_unref(req->io);
+		g_io_channel_shutdown(req->io, FALSE, NULL);
+	}
+
 	g_free(req);
 }
 
@@ -1559,7 +1570,7 @@ static char *primary_list_to_string(GSList *primary_list)
 	return g_string_free(services, FALSE);
 }
 
-static void primary_cb(GSList *services, int err, gpointer user_data)
+static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 {
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
@@ -1568,9 +1579,9 @@ static void primary_cb(GSList *services, int err, gpointer user_data)
 	bdaddr_t dba, sba;
 	char *str;
 
-	if (err) {
+	if (status) {
 		DBusMessage *reply;
-		reply = btd_error_failed(req->msg, strerror(-err));
+		reply = btd_error_failed(req->msg, att_ecode2str(status));
 		g_dbus_send_message(req->conn, reply);
 		goto done;
 	}
@@ -1603,13 +1614,36 @@ done:
 	browse_request_free(req);
 }
 
+static void gatt_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
+{
+	struct browse_req *req = user_data;
+	struct btd_device *device = req->device;
+
+	if (gerr) {
+		DBusMessage *reply;
+
+		DBG("%s", gerr->message);
+
+		reply = btd_error_failed(req->msg, gerr->message);
+		g_dbus_send_message(req->conn, reply);
+
+		device->browse = NULL;
+		browse_request_free(req);
+
+		return;
+	}
+
+	req->attrib = g_attrib_new(io);
+	gatt_discover_primary(req->attrib, NULL, primary_cb, req);
+}
+
 int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 				DBusMessage *msg, gboolean secure)
 {
 	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
+	BtIOSecLevel sec_level;
 	bdaddr_t src;
-	int err;
 
 	if (device->browse)
 		return -EBUSY;
@@ -1619,11 +1653,18 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 
 	adapter_get_address(adapter, &src);
 
-	err = bt_discover_primary(&src, &device->bdaddr, -1, primary_cb, req,
-							secure, NULL);
-	if (err < 0) {
+	sec_level = secure ? BT_IO_SEC_HIGH : BT_IO_SEC_LOW;
+
+	req->io = bt_io_connect(BT_IO_L2CAP, gatt_connect_cb, req, NULL, NULL,
+				BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
+				BT_IO_OPT_CID, GATT_CID,
+				BT_IO_OPT_SEC_LEVEL, sec_level,
+				BT_IO_OPT_INVALID);
+
+	if (req->io == NULL ) {
 		browse_request_free(req);
-		return err;
+		return -EIO;
 	}
 
 	if (conn == NULL)
@@ -1644,7 +1685,7 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 						req, NULL);
 	}
 
-	return err;
+	return 0;
 }
 
 int device_browse_sdp(struct btd_device *device, DBusConnection *conn,
