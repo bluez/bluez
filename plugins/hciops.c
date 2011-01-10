@@ -338,48 +338,65 @@ static int hciops_power_off(int index)
 	return 0;
 }
 
+static void set_event_mask(int index)
+{
+	struct dev_info *dev = &devs[index];
+	uint8_t events[8] = { 0xff, 0x9f, 0xfb, 0xff, 0x00, 0x00, 0x00, 0x00 };
+
+	/* Events for 1.2 and newer controllers */
+	if (dev->ver.lmp_ver > 1) {
+		events[4] |= 0x01; /* Flow Specification Complete */
+		events[4] |= 0x02; /* Inquiry Result with RSSI */
+		events[4] |= 0x04; /* Read Remote Extended Features Complete */
+		events[5] |= 0x08; /* Synchronous Connection Complete */
+		events[5] |= 0x10; /* Synchronous Connection Changed */
+	}
+
+	if (dev->features[3] & LMP_RSSI_INQ)
+		events[4] |= 0x04; /* Inquiry Result with RSSI */
+
+	if (dev->features[5] & LMP_SNIFF_SUBR)
+		events[5] |= 0x20; /* Sniff Subrating */
+
+	if (dev->features[5] & LMP_PAUSE_ENC)
+		events[5] |= 0x80; /* Encryption Key Refresh Complete */
+
+	if (dev->features[6] & LMP_EXT_INQ)
+		events[5] |= 0x40; /* Extended Inquiry Result */
+
+	if (dev->features[6] & LMP_NFLUSH_PKTS)
+		events[7] |= 0x01; /* Enhanced Flush Complete */
+
+	if (dev->features[7] & LMP_LSTO)
+		events[6] |= 0x80; /* Link Supervision Timeout Changed */
+
+	if (dev->features[6] & LMP_SIMPLE_PAIR) {
+		events[6] |= 0x01;	/* IO Capability Request */
+		events[6] |= 0x02;	/* IO Capability Response */
+		events[6] |= 0x04;	/* User Confirmation Request */
+		events[6] |= 0x08;	/* User Passkey Request */
+		events[6] |= 0x10;	/* Remote OOB Data Request */
+		events[6] |= 0x20;	/* Simple Pairing Complete */
+		events[7] |= 0x04;	/* User Passkey Notification */
+		events[7] |= 0x08;	/* Keypress Notification */
+		events[7] |= 0x10;	/* Remote Host Supported
+					 * Features Notification */
+	}
+
+	if (dev->features[4] & LMP_LE)
+		events[7] |= 0x20;	/* LE Meta-Event */
+
+	hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
+						sizeof(events), events);
+}
+
 static void start_adapter(int index)
 {
 	struct dev_info *dev = &devs[index];
-	uint8_t events[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x00, 0x00 };
 	uint8_t inqmode;
 	uint16_t link_policy;
 
-	if (dev->ver.lmp_ver > 1) {
-		if (dev->features[5] & LMP_SNIFF_SUBR)
-			events[5] |= 0x20;
-
-		if (dev->features[5] & LMP_PAUSE_ENC)
-			events[5] |= 0x80;
-
-		if (dev->features[6] & LMP_EXT_INQ)
-			events[5] |= 0x40;
-
-		if (dev->features[6] & LMP_NFLUSH_PKTS)
-			events[7] |= 0x01;
-
-		if (dev->features[7] & LMP_LSTO)
-			events[6] |= 0x80;
-
-		if (dev->features[6] & LMP_SIMPLE_PAIR) {
-			events[6] |= 0x01;	/* IO Capability Request */
-			events[6] |= 0x02;	/* IO Capability Response */
-			events[6] |= 0x04;	/* User Confirmation Request */
-			events[6] |= 0x08;	/* User Passkey Request */
-			events[6] |= 0x10;	/* Remote OOB Data Request */
-			events[6] |= 0x20;	/* Simple Pairing Complete */
-			events[7] |= 0x04;	/* User Passkey Notification */
-			events[7] |= 0x08;	/* Keypress Notification */
-			events[7] |= 0x10;	/* Remote Host Supported
-						 * Features Notification */
-		}
-
-		if (dev->features[4] & LMP_LE)
-			events[7] |= 0x20;	/* LE Meta-Event */
-
-		hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_SET_EVENT_MASK,
-						sizeof(events), events);
-	}
+	set_event_mask(index);
 
 	if (dev->features[6] & LMP_SIMPLE_PAIR)
 		init_ssp_mode(index);
