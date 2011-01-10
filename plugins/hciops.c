@@ -341,7 +341,10 @@ static int hciops_power_off(int index)
 static void set_event_mask(int index)
 {
 	struct dev_info *dev = &devs[index];
-	uint8_t events[8] = { 0xff, 0x9f, 0xfb, 0xff, 0x00, 0x00, 0x00, 0x00 };
+	/* The second byte is 0xff instead of 0x9f (two reserved bits
+	 * disabled) since a Broadcom 1.2 dongle doesn't respond to the
+	 * command otherwise */
+	uint8_t events[8] = { 0xff, 0xff, 0xfb, 0xff, 0x00, 0x00, 0x00, 0x00 };
 
 	/* Events for 1.2 and newer controllers */
 	if (dev->ver.lmp_ver > 1) {
