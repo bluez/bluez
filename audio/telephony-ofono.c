@@ -719,6 +719,7 @@ static void handle_network_property(const char *property, DBusMessageIter *varia
 static int parse_network_properties(DBusMessageIter *properties)
 {
 	uint32_t features = AG_FEATURE_EC_ANDOR_NR |
+				AG_FEATURE_INBAND_RINGTONE |
 				AG_FEATURE_REJECT_A_CALL |
 				AG_FEATURE_ENHANCED_CALL_STATUS |
 				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES;
