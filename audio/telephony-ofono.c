@@ -267,21 +267,25 @@ static int release_answer_calls()
 						NULL, NULL, DBUS_TYPE_INVALID);
 }
 
+static int split_call(struct voice_call *call)
+{
+	DBG("%s", call->number);
+	return send_method_call(OFONO_BUS_NAME, modem_obj_path,
+						OFONO_VCMANAGER_INTERFACE,
+						"PrivateChat",
+						NULL, NULL,
+						DBUS_TYPE_OBJECT_PATH,
+						call->obj_path,
+						DBUS_TYPE_INVALID);
+	return -1;
+}
+
 static int swap_calls(void)
 {
 	DBG("");
 	return send_method_call(OFONO_BUS_NAME, modem_obj_path,
 						OFONO_VCMANAGER_INTERFACE,
 						"SwapCalls",
-						NULL, NULL, DBUS_TYPE_INVALID);
-}
-
-static int call_transfer(void)
-{
-	DBG("");
-	return send_method_call(OFONO_BUS_NAME, modem_obj_path,
-						OFONO_VCMANAGER_INTERFACE,
-						"Transfer",
 						NULL, NULL, DBUS_TYPE_INVALID);
 }
 
@@ -466,10 +470,21 @@ static void foreach_vc_with_status(int status,
 
 void telephony_call_hold_req(void *telephony_device, const char *cmd)
 {
+	const char *idx;
 	struct voice_call *call;
 	int err = 0;
 
 	DBG("telephony-ofono: got call hold request %s", cmd);
+
+	if (strlen(cmd) > 1)
+		idx = &cmd[1];
+	else
+		idx = NULL;
+
+	if (idx)
+		call = g_slist_nth_data(calls, strtol(idx, NULL, 0) - 1);
+	else
+		call = NULL;
 
 	switch (cmd[0]) {
 	case '0':
@@ -480,18 +495,25 @@ void telephony_call_hold_req(void *telephony_device, const char *cmd)
 			foreach_vc_with_status(CALL_STATUS_HELD, release_call);
 		break;
 	case '1':
+		if (idx) {
+			if (call)
+				err = release_call(call);
+			break;
+		}
 		err = release_answer_calls();
 		break;
 	case '2':
-		call = find_vc_with_status(CALL_STATUS_WAITING);
+		if (idx) {
+			if (call)
+				err = split_call(call);
+		} else {
+			call = find_vc_with_status(CALL_STATUS_WAITING);
 
-		if (call)
-			err = answer_call(call);
-		else
-			err = swap_calls();
-		break;
-	case '4':
-		err = call_transfer();
+			if (call)
+				err = answer_call(call);
+			else
+				err = swap_calls();
+		}
 		break;
 	default:
 		DBG("Unknown call hold request");
