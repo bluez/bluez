@@ -87,10 +87,21 @@ static GSList *adapters = NULL;
 static void endpoint_request_free(struct endpoint_request *request)
 {
 	if (request->call)
-		dbus_pending_call_cancel(request->call);
+		dbus_pending_call_unref(request->call);
 
 	dbus_message_unref(request->msg);
 	g_free(request);
+}
+
+static void media_endpoint_cancel(struct media_endpoint *endpoint)
+{
+	struct endpoint_request *request = endpoint->request;
+
+	if (request->call)
+		dbus_pending_call_cancel(request->call);
+
+	endpoint_request_free(request);
+	endpoint->request = NULL;
 }
 
 static void media_endpoint_remove(struct media_endpoint *endpoint)
@@ -109,7 +120,7 @@ static void media_endpoint_remove(struct media_endpoint *endpoint)
 		headset_remove_state_cb(endpoint->hs_watch);
 
 	if (endpoint->request)
-		endpoint_request_free(endpoint->request);
+		media_endpoint_cancel(endpoint);
 
 	if (endpoint->transport)
 		media_transport_remove(endpoint->transport);
@@ -613,10 +624,8 @@ void media_endpoint_clear_configuration(struct media_endpoint *endpoint)
 	if (endpoint->transport == NULL)
 		return;
 
-	if (endpoint->request) {
-		endpoint_request_free(endpoint->request);
-		endpoint->request = NULL;
-	}
+	if (endpoint->request)
+		media_endpoint_cancel(endpoint);
 
 	conn = endpoint->adapter->conn;
 
