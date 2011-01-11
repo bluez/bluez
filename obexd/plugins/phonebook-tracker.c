@@ -152,8 +152,12 @@
 "(SELECT fn:concat(rdf:type(?role_number),"				\
 	"\"\31\", nco:phoneNumber(?role_number))"			\
 	"WHERE {"							\
-	"?_role nco:hasPhoneNumber ?role_number "			\
-	"FILTER (?role_number = ?_number)"				\
+	"{"								\
+	"	?_role nco:hasPhoneNumber ?role_number "		\
+	"	FILTER (?role_number = ?_number)"			\
+	"} UNION { "							\
+		"?_unb_contact nco:hasPhoneNumber ?role_number . "	\
+	"}"								\
 "} GROUP BY nco:phoneNumber(?role_number) ) "				\
 	"nco:fullname(?_contact) "					\
 	"nco:nameFamily(?_contact) "					\
@@ -278,8 +282,12 @@
 "(SELECT fn:concat(rdf:type(?role_number),"				\
 	"\"\31\", nco:phoneNumber(?role_number))"			\
 	"WHERE {"							\
-	"?_role nco:hasPhoneNumber ?role_number "			\
-	"FILTER (?role_number = ?_number)"				\
+	"{"								\
+	"	?_role nco:hasPhoneNumber ?role_number "		\
+	"	FILTER (?role_number = ?_number)"			\
+	"} UNION { "							\
+		"?_unb_contact nco:hasPhoneNumber ?role_number . "	\
+	"}"								\
 "} GROUP BY nco:phoneNumber(?role_number) ) "				\
 	"nco:fullname(?_contact) "					\
 	"nco:nameFamily(?_contact) "					\
@@ -403,8 +411,12 @@
 "(SELECT fn:concat(rdf:type(?role_number),"				\
 	"\"\31\", nco:phoneNumber(?role_number))"			\
 	"WHERE {"							\
-	"?_role nco:hasPhoneNumber ?role_number "			\
-	"FILTER (?role_number = ?_number)"				\
+	"{"								\
+	"	?_role nco:hasPhoneNumber ?role_number "		\
+	"	FILTER (?role_number = ?_number)"			\
+	"} UNION { "							\
+		"?_unb_contact nco:hasPhoneNumber ?role_number . "	\
+	"}"								\
 "} GROUP BY nco:phoneNumber(?role_number) ) "				\
 	"nco:fullname(?_contact) "					\
 	"nco:nameFamily(?_contact) "					\
@@ -522,8 +534,12 @@
 "(SELECT fn:concat(rdf:type(?role_number),"				\
 	"\"\31\", nco:phoneNumber(?role_number))"			\
 	"WHERE {"							\
-	"?_role nco:hasPhoneNumber ?role_number "			\
-	"FILTER (?role_number = ?_number)"				\
+	"{"								\
+	"	?_role nco:hasPhoneNumber ?role_number "		\
+	"	FILTER (?role_number = ?_number)"			\
+	"} UNION { "							\
+		"?_unb_contact nco:hasPhoneNumber ?role_number . "	\
+	"}"								\
 "} GROUP BY nco:phoneNumber(?role_number) ) "				\
 	"nco:fullname(?_contact) "					\
 	"nco:nameFamily(?_contact) "					\
