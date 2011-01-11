@@ -1833,6 +1833,7 @@ static void select_cb(struct media_endpoint *endpoint, void *ret, int size,
 						sizeof(*cap) + size);
 
 	setup->caps = g_slist_append(setup->caps, media_codec);
+	g_free(cap);
 
 done:
 	finalize_select(setup);
