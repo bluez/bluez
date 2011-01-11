@@ -1,3 +1,10 @@
+ver 4.85:
+	Fix issue with event mask setting for older adapters.
+	Fix issue with device creation and pairing failures.
+	Add support for telephony support via oFono.
+	Add support for characteristic security level.
+	Update support for service registration.
+
 ver 4.84:
 	Fix issue with wrong parameters and device found signals.
 	Fix issue with leaking EIR data if RSSI does not change.
