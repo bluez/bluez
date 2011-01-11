@@ -1074,6 +1074,8 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 	}
 
 	client->req_id = id;
+	g_slist_free(client->caps);
+	client->caps = NULL;
 
 	return;
 
