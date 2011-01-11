@@ -895,7 +895,9 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 		return;
 	}
 
-	stream->io = g_io_channel_ref(io);
+	if (stream->io == NULL)
+		stream->io = g_io_channel_ref(io);
+
 	stream->omtu = omtu;
 	stream->imtu = imtu;
 
