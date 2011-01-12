@@ -757,10 +757,10 @@
 "ORDER BY ?_key tracker:id(<%s>)"
 
 #define CONTACTS_OTHER_QUERY_FROM_URI					\
-	"SELECT \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" "	\
-	"fn:concat(\"TYPE_OTHER\", \"\31\", nco:phoneNumber(?t)) \"\" "	\
+	"SELECT fn:concat(\"TYPE_OTHER\", \"\31\", nco:phoneNumber(?t))"\
+	"\"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" "			\
 	"\"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" \"\" "		\
-	" \"NOTACALL\" \"false\" \"false\" <%s> "	\
+	" \"NOTACALL\" \"false\" \"false\" <%s> "			\
 	"WHERE { "							\
 		"<%s> a nco:Contact . "					\
 		"OPTIONAL { <%s> nco:hasPhoneNumber ?t . } "		\
