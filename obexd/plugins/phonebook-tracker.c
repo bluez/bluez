@@ -109,7 +109,12 @@
 "}) "									\
 "nco:birthDate(?_contact) "						\
 "nco:nickname(?_contact) "						\
-"nco:url(?_contact) "							\
+"(SELECT GROUP_CONCAT(fn:concat( "					\
+	"?url_val, \"\31\", rdfs:label(?_role) "			\
+	"), \"\30\") "							\
+	"WHERE {"							\
+		"?_role nco:url ?url_val . "				\
+"})"									\
 "nie:url(nco:photo(?_contact)) "					\
 "nco:role(?_role) "							\
 "nco:contactUID(?_contact) "						\
@@ -181,7 +186,14 @@
 	"}) "								\
 	"nco:birthDate(?_contact) "					\
 	"nco:nickname(?_contact) "					\
-	"nco:url(?_contact) "						\
+"(SELECT GROUP_CONCAT(fn:concat( "					\
+	"?url_value, \"\31\", ?aff_type "				\
+	"), \"\30\") "							\
+	"WHERE {"							\
+		"?_contact nco:hasAffiliation ?c_role . "		\
+		"?c_role nco:url ?url_value . "				\
+		"?c_role rdfs:label ?aff_type . "			\
+"})"									\
 	"nie:url(nco:photo(?_contact)) "				\
 	"nco:role(?_role) "						\
 	"nco:contactUID(?_contact) "					\
@@ -311,7 +323,14 @@
 	"}) "								\
 	"nco:birthDate(?_contact) "					\
 	"nco:nickname(?_contact) "					\
-	"nco:url(?_contact) "						\
+"(SELECT GROUP_CONCAT(fn:concat( "					\
+	"?url_value, \"\31\", ?aff_type "				\
+	"), \"\30\") "							\
+	"WHERE {"							\
+		"?_contact nco:hasAffiliation ?c_role . "		\
+		"?c_role nco:url ?url_value . "				\
+		"?c_role rdfs:label ?aff_type . "			\
+"})"									\
 	"nie:url(nco:photo(?_contact)) "				\
 	"nco:role(?_role) "						\
 	"nco:contactUID(?_contact) "					\
@@ -440,7 +459,14 @@
 	"}) "								\
 	"nco:birthDate(?_contact) "					\
 	"nco:nickname(?_contact) "					\
-	"nco:url(?_contact) "						\
+"(SELECT GROUP_CONCAT(fn:concat( "					\
+	"?url_value, \"\31\", ?aff_type "				\
+	"), \"\30\") "							\
+	"WHERE {"							\
+		"?_contact nco:hasAffiliation ?c_role . "		\
+		"?c_role nco:url ?url_value . "				\
+		"?c_role rdfs:label ?aff_type . "			\
+"})"									\
 	"nie:url(nco:photo(?_contact)) "				\
 	"nco:role(?_role) "						\
 	"nco:contactUID(?_contact) "					\
@@ -563,7 +589,14 @@
 	"}) "								\
 	"nco:birthDate(?_contact) "					\
 	"nco:nickname(?_contact) "					\
-	"nco:url(?_contact) "						\
+"(SELECT GROUP_CONCAT(fn:concat( "					\
+	"?url_value, \"\31\", ?aff_type "				\
+	"), \"\30\") "							\
+	"WHERE {"							\
+		"?_contact nco:hasAffiliation ?c_role . "		\
+		"?c_role nco:url ?url_value . "				\
+		"?c_role rdfs:label ?aff_type . "			\
+"})"									\
 	"nie:url(nco:photo(?_contact)) "				\
 	"nco:role(?_role) "						\
 	"nco:contactUID(?_contact) "					\
@@ -732,7 +765,12 @@
 "}) "									\
 "nco:birthDate(<%s>) "							\
 "nco:nickname(<%s>) "							\
-"nco:url(<%s>) "							\
+"(SELECT GROUP_CONCAT(fn:concat( "					\
+	"?url_val, \"\31\", rdfs:label(?_role) "			\
+	"), \"\30\") "							\
+	"WHERE {"							\
+		"?_role nco:url ?url_val . "				\
+"})"									\
 "nie:url(nco:photo(<%s>)) "						\
 "nco:role(?_role) "							\
 "nco:contactUID(<%s>) "							\
@@ -1255,6 +1293,26 @@ static void add_address(struct phonebook_contact *contact,
 	contact->addresses = g_slist_append(contact->addresses, addr);
 }
 
+static void add_url(struct phonebook_contact *contact, const char *url_val,
+								int type)
+{
+	struct phonebook_field *url;
+
+	if (url_val == NULL || strlen(url_val) == 0)
+		return;
+
+	/* Not adding url if there is already added with the same value */
+	if (find_field(contact->urls, url_val, type))
+		return;
+
+	url = g_new0(struct phonebook_field, 1);
+
+	url->text = g_strdup(url_val);
+	url->type = type;
+
+	contact->urls = g_slist_append(contact->urls, url);
+}
+
 static GString *gen_vcards(GSList *contacts,
 					const struct apparam_field *params)
 {
@@ -1320,7 +1378,6 @@ static void contact_init(struct phonebook_contact *contact, char **reply)
 	contact->suffix = g_strdup(reply[COL_NAME_SUFFIX]);
 	contact->birthday = g_strdup(reply[COL_BIRTH_DATE]);
 	contact->nickname = g_strdup(reply[COL_NICKNAME]);
-	contact->website = g_strdup(reply[COL_URL]);
 	contact->photo = g_strdup(reply[COL_PHOTO]);
 	contact->company = g_strdup(reply[COL_ORG_NAME]);
 	contact->department = g_strdup(reply[COL_ORG_DEPARTMENT]);
@@ -1469,6 +1526,21 @@ static void contact_add_addresses(struct phonebook_contact *contact,
 	g_strfreev(aff_addr);
 }
 
+static void contact_add_urls(struct phonebook_contact *contact, char **reply)
+{
+	char **aff_url;
+	int i;
+
+	/* Addresses from affilation */
+	aff_url = g_strsplit(reply[COL_URL], MAIN_DELIM, MAX_FIELDS);
+
+	if (aff_url)
+		for(i = 0; aff_url[i] != NULL; ++i)
+			add_aff_field(contact, aff_url[i], add_url);
+
+	g_strfreev(aff_url);
+}
+
 static void contact_add_organization(struct phonebook_contact *contact,
 								char **reply)
 {
@@ -1546,6 +1618,7 @@ add_numbers:
 	contact_add_numbers(contact, reply);
 	contact_add_emails(contact, reply);
 	contact_add_addresses(contact, reply);
+	contact_add_urls(contact, reply);
 	contact_add_organization(contact, reply);
 
 	DBG("contact %p", contact);
@@ -1854,7 +1927,7 @@ void *phonebook_get_entry(const char *folder, const char *id,
 	if (strncmp(id, CONTACT_ID_PREFIX, strlen(CONTACT_ID_PREFIX)) == 0)
 		query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id,
 						id, id, id, id, id, id, id, id,
-						id, id, id);
+						id, id);
 	else
 		query = g_strdup_printf(CONTACTS_OTHER_QUERY_FROM_URI,
 								id, id, id);

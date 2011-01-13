@@ -349,6 +349,41 @@ static void vcard_printf_email(GString *vcards, uint8_t format,
 	vcard_printf(vcards,"EMAIL;%s:%s", category_string, field);
 }
 
+static void vcard_printf_url(GString *vcards, uint8_t format,
+					const char *url,
+					enum phonebook_field_type category)
+{
+	const char *category_string = "";
+
+	if (!url || strlen(url) == 0) {
+		vcard_printf(vcards, "URL:");
+		return;
+	}
+
+	switch (category) {
+	case FIELD_TYPE_HOME:
+		if (format == FORMAT_VCARD21)
+			category_string = "INTERNET;HOME";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=INTERNET;TYPE=HOME";
+		break;
+	case FIELD_TYPE_WORK:
+		if (format == FORMAT_VCARD21)
+			category_string = "INTERNET;WORK";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=INTERNET;TYPE=WORK";
+		break;
+	default:
+		if (format == FORMAT_VCARD21)
+			category_string = "INTERNET";
+		else if (format == FORMAT_VCARD30)
+			category_string = "TYPE=INTERNET";
+		break;
+	}
+
+	vcard_printf(vcards,"URL;%s:%s", category_string, url);
+}
+
 static gboolean org_fields_present(struct phonebook_contact *contact)
 {
 	if (contact->company && strlen(contact->company))
@@ -530,9 +565,18 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 		vcard_printf_slash_tag(vcards, format, "NICKNAME", NULL,
 							contact->nickname);
 
-	if (filter & FILTER_URL)
-		vcard_printf_slash_tag(vcards, format, "URL", "INTERNET",
-							contact->website);
+	if (filter & FILTER_URL) {
+		GSList *l = contact->urls;
+
+		if (g_slist_length(l) == 0)
+			vcard_printf_url(vcards, format, NULL,
+							FIELD_TYPE_OTHER);
+
+		for (; l; l = l->next) {
+			struct phonebook_field *url = l->data;
+			vcard_printf_url(vcards, format, url->text, url->type);
+		}
+	}
 
 	if (filter & FILTER_PHOTO)
 		vcard_printf_tag(vcards, format, "PHOTO", NULL,
@@ -576,6 +620,9 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_slist_foreach(contact->addresses, field_free, NULL);
 	g_slist_free(contact->addresses);
 
+	g_slist_foreach(contact->urls, field_free, NULL);
+	g_slist_free(contact->urls);
+
 	g_free(contact->uid);
 	g_free(contact->fullname);
 	g_free(contact->given);
@@ -585,7 +632,6 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	g_free(contact->suffix);
 	g_free(contact->birthday);
 	g_free(contact->nickname);
-	g_free(contact->website);
 	g_free(contact->photo);
 	g_free(contact->company);
 	g_free(contact->department);

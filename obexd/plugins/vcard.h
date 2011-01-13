@@ -58,7 +58,7 @@ struct phonebook_contact {
 	GSList *addresses;
 	char *birthday;
 	char *nickname;
-	char *website;
+	GSList *urls;
 	char *photo;
 	char *company;
 	char *department;
