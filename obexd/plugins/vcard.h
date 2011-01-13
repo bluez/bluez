@@ -27,10 +27,10 @@ enum phonebook_number_type {
 	TEL_TYPE_OTHER,
 };
 
-enum phonebook_email_type {
-	EMAIL_TYPE_HOME,
-	EMAIL_TYPE_WORK,
-	EMAIL_TYPE_OTHER,
+enum phonebook_field_type {
+	FIELD_TYPE_HOME,
+	FIELD_TYPE_WORK,
+	FIELD_TYPE_OTHER,
 };
 
 enum phonebook_call_type {
@@ -40,24 +40,8 @@ enum phonebook_call_type {
 	CALL_TYPE_OUTGOING,
 };
 
-enum phonebook_address_type {
-	ADDR_TYPE_HOME,
-	ADDR_TYPE_WORK,
-	ADDR_TYPE_OTHER,
-};
-
-struct phonebook_number {
-	char *tel;
-	int type;
-};
-
-struct phonebook_email {
-	char *address;
-	int  type;
-};
-
-struct phonebook_address {
-	char *addr;
+struct phonebook_field {
+	char *text;
 	int type;
 };
 

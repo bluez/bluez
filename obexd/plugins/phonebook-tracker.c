@@ -1178,16 +1178,16 @@ static struct phonebook_contact *find_contact(GSList *contacts, const char *id)
 	return NULL;
 }
 
-static struct phonebook_number *find_phone(GSList *numbers, const char *phone,
+static struct phonebook_field *find_phone(GSList *numbers, const char *phone,
 								int type)
 {
 	GSList *l;
 
 	for (l = numbers; l; l = l->next) {
-		struct phonebook_number *pb_num = l->data;
+		struct phonebook_field *pb_num = l->data;
 		/* Returning phonebook number if phone values and type values
 		 * are equal */
-		if (g_strcmp0(pb_num->tel, phone) == 0 && pb_num->type == type)
+		if (g_strcmp0(pb_num->text, phone) == 0 && pb_num->type == type)
 			return pb_num;
 	}
 
@@ -1197,7 +1197,7 @@ static struct phonebook_number *find_phone(GSList *numbers, const char *phone,
 static void add_phone_number(struct phonebook_contact *contact,
 						const char *phone, int type)
 {
-	struct phonebook_number *number;
+	struct phonebook_field *number;
 
 	if (phone == NULL || strlen(phone) == 0)
 		return;
@@ -1206,21 +1206,21 @@ static void add_phone_number(struct phonebook_contact *contact,
 	if (find_phone(contact->numbers, phone, type))
 		return;
 
-	number = g_new0(struct phonebook_number, 1);
-	number->tel = g_strdup(phone);
+	number = g_new0(struct phonebook_field, 1);
+	number->text = g_strdup(phone);
 	number->type = type;
 
 	contact->numbers = g_slist_append(contact->numbers, number);
 }
 
-static struct phonebook_email *find_email(GSList *emails, const char *address,
+static struct phonebook_field *find_email(GSList *emails, const char *address,
 								int type)
 {
 	GSList *l;
 
 	for (l = emails; l; l = l->next) {
-		struct phonebook_email *email = l->data;
-		if (g_strcmp0(email->address, address) == 0 &&
+		struct phonebook_field *email = l->data;
+		if (g_strcmp0(email->text, address) == 0 &&
 						email->type == type)
 			return email;
 	}
@@ -1231,7 +1231,7 @@ static struct phonebook_email *find_email(GSList *emails, const char *address,
 static void add_email(struct phonebook_contact *contact, const char *address,
 								int type)
 {
-	struct phonebook_email *email;
+	struct phonebook_field *email;
 
 	if (address == NULL || strlen(address) == 0)
 		return;
@@ -1240,21 +1240,21 @@ static void add_email(struct phonebook_contact *contact, const char *address,
 	if (find_email(contact->emails, address, type))
 		return;
 
-	email = g_new0(struct phonebook_email, 1);
-	email->address = g_strdup(address);
+	email = g_new0(struct phonebook_field, 1);
+	email->text = g_strdup(address);
 	email->type = type;
 
 	contact->emails = g_slist_append(contact->emails, email);
 }
 
-static struct phonebook_address *find_address(GSList *addresses,
+static struct phonebook_field *find_address(GSList *addresses,
 					const char *address, int type)
 {
 	GSList *l;
 
 	for (l = addresses; l; l = l->next) {
-		struct phonebook_address *addr = l->data;
-		if (g_strcmp0(addr->addr, address) == 0 &&
+		struct phonebook_field *addr = l->data;
+		if (g_strcmp0(addr->text, address) == 0 &&
 						addr->type == type)
 			return addr;
 	}
@@ -1265,7 +1265,7 @@ static struct phonebook_address *find_address(GSList *addresses,
 static void add_address(struct phonebook_contact *contact,
 					const char *address, int type)
 {
-	struct phonebook_address *addr;
+	struct phonebook_field *addr;
 
 	if (address == NULL || address_fields_present(address) == FALSE)
 		return;
@@ -1274,9 +1274,9 @@ static void add_address(struct phonebook_contact *contact,
 	if (find_address(contact->addresses, address, type))
 		return;
 
-	addr = g_new0(struct phonebook_address, 1);
+	addr = g_new0(struct phonebook_field, 1);
 
-	addr->addr = g_strdup(address);
+	addr->text = g_strdup(address);
 	addr->type = type;
 
 	contact->addresses = g_slist_append(contact->addresses, addr);
@@ -1423,14 +1423,14 @@ static void contact_add_numbers(struct phonebook_contact *contact,
 	g_strfreev(aff_numbers);
 }
 
-static enum phonebook_email_type get_email_type(const char *affilation)
+static enum phonebook_field_type get_field_type(const char *affilation)
 {
 	if (g_strcmp0(AFFILATION_HOME, affilation) == 0)
-		return EMAIL_TYPE_HOME;
+		return FIELD_TYPE_HOME;
 	else if (g_strcmp0(AFFILATION_WORK, affilation) == 0)
-		return EMAIL_TYPE_WORK;
+		return FIELD_TYPE_WORK;
 
-	return EMAIL_TYPE_OTHER;
+	return FIELD_TYPE_OTHER;
 }
 
 static void add_aff_email(struct phonebook_contact *contact, char *aff_email)
@@ -1456,7 +1456,7 @@ static void add_aff_email(struct phonebook_contact *contact, char *aff_email)
 	else
 		goto failed;
 
-	add_email(contact, email, get_email_type(type));
+	add_email(contact, email, get_field_type(type));
 
 failed:
 	g_strfreev(email_parts);
@@ -1476,16 +1476,6 @@ static void contact_add_emails(struct phonebook_contact *contact,
 			add_aff_email(contact, aff_emails[i]);
 
 	g_strfreev(aff_emails);
-}
-
-static enum phonebook_address_type get_addr_type(const char *affilation)
-{
-	if (g_strcmp0(AFFILATION_HOME, affilation) == 0)
-		return ADDR_TYPE_HOME;
-	else if (g_strcmp0(AFFILATION_WORK, affilation) == 0)
-		return ADDR_TYPE_WORK;
-
-	return ADDR_TYPE_OTHER;
 }
 
 static void add_aff_address(struct phonebook_contact *contact, char *aff_addr)
@@ -1511,7 +1501,7 @@ static void add_aff_address(struct phonebook_contact *contact, char *aff_addr)
 	else
 		goto failed;
 
-	add_address(contact, address, get_addr_type(type));
+	add_address(contact, address, get_field_type(type));
 
 failed:
 	g_strfreev(addr_parts);
@@ -1533,6 +1523,7 @@ static void contact_add_addresses(struct phonebook_contact *contact,
 
 	g_strfreev(aff_addr);
 }
+
 
 static void contact_add_organization(struct phonebook_contact *contact,
 								char **reply)

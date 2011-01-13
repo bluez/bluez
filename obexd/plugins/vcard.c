@@ -315,7 +315,7 @@ static void vcard_printf_slash_tag(GString *vcards, uint8_t format,
 
 static void vcard_printf_email(GString *vcards, uint8_t format,
 					const char *address,
-					enum phonebook_email_type category)
+					enum phonebook_field_type category)
 {
 	const char *category_string = "";
 	char field[LEN_MAX];
@@ -326,13 +326,13 @@ static void vcard_printf_email(GString *vcards, uint8_t format,
 		return;
 	}
 	switch (category){
-	case EMAIL_TYPE_HOME:
+	case FIELD_TYPE_HOME:
 		if (format == FORMAT_VCARD21)
 			category_string = "INTERNET;HOME";
 		else if (format == FORMAT_VCARD30)
 			category_string = "TYPE=INTERNET;TYPE=HOME";
 		break;
-	case EMAIL_TYPE_WORK:
+	case FIELD_TYPE_WORK:
 		if (format == FORMAT_VCARD21)
 			category_string = "INTERNET;WORK";
 		else if (format == FORMAT_VCARD30)
@@ -374,7 +374,7 @@ static void vcard_printf_org(GString *vcards,
 
 static void vcard_printf_address(GString *vcards, uint8_t format,
 					const char *address,
-					enum phonebook_address_type category)
+					enum phonebook_field_type category)
 {
 	char buf[LEN_MAX];
 	char field[ADDR_FIELD_AMOUNT][LEN_MAX];
@@ -388,13 +388,13 @@ static void vcard_printf_address(GString *vcards, uint8_t format,
 	}
 
 	switch (category) {
-	case ADDR_TYPE_HOME:
+	case FIELD_TYPE_HOME:
 		if (format == FORMAT_VCARD21)
 			category_string = "HOME";
 		else if (format == FORMAT_VCARD30)
 			category_string = "TYPE=HOME";
 		break;
-	case ADDR_TYPE_WORK:
+	case FIELD_TYPE_WORK:
 		if (format == FORMAT_VCARD21)
 			category_string = "WORK";
 		else if (format == FORMAT_VCARD30)
@@ -487,9 +487,9 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 							TEL_TYPE_OTHER);
 
 		for (; l; l = l->next) {
-			struct phonebook_number *number = l->data;
+			struct phonebook_field *number = l->data;
 
-			vcard_printf_number(vcards, format, number->tel, 1,
+			vcard_printf_number(vcards, format, number->text, 1,
 								number->type);
 		}
 	}
@@ -499,11 +499,11 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 
 		if (g_slist_length(l) == 0)
 			vcard_printf_email(vcards, format, NULL,
-							EMAIL_TYPE_OTHER);
+							FIELD_TYPE_OTHER);
 
 		for (; l; l = l->next){
-			struct phonebook_email *email = l->data;
-			vcard_printf_email(vcards, format, email->address,
+			struct phonebook_field *email = l->data;
+			vcard_printf_email(vcards, format, email->text,
 								email->type);
 		}
 	}
@@ -513,11 +513,11 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 
 		if (g_slist_length(l) == 0)
 			vcard_printf_address(vcards, format, NULL,
-							ADDR_TYPE_OTHER);
+							FIELD_TYPE_OTHER);
 
 		for (; l; l = l->next) {
-			struct phonebook_address *addr = l->data;
-			vcard_printf_address(vcards, format, addr->addr,
+			struct phonebook_field *addr = l->data;
+			vcard_printf_address(vcards, format, addr->text,
 								addr->type);
 		}
 	}
@@ -553,28 +553,13 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	vcard_printf_end(vcards);
 }
 
-static void number_free(gpointer data, gpointer user_data)
+
+static void field_free(gpointer data, gpointer user_data)
 {
-	struct phonebook_number *number = data;
+	struct phonebook_field *field = data;
 
-	g_free(number->tel);
-	g_free(number);
-}
-
-static void email_free(gpointer data, gpointer user_data)
-{
-	struct phonebook_email *email = data;
-
-	g_free(email->address);
-	g_free(email);
-}
-
-static void address_free(gpointer data, gpointer user_data)
-{
-	struct phonebook_address *addr = data;
-
-	g_free(addr->addr);
-	g_free(addr);
+	g_free(field->text);
+	g_free(field);
 }
 
 void phonebook_contact_free(struct phonebook_contact *contact)
@@ -582,13 +567,13 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 	if (contact == NULL)
 		return;
 
-	g_slist_foreach(contact->numbers, number_free, NULL);
+	g_slist_foreach(contact->numbers, field_free, NULL);
 	g_slist_free(contact->numbers);
 
-	g_slist_foreach(contact->emails, email_free, NULL);
+	g_slist_foreach(contact->emails, field_free, NULL);
 	g_slist_free(contact->emails);
 
-	g_slist_foreach(contact->addresses, address_free, NULL);
+	g_slist_foreach(contact->addresses, field_free, NULL);
 	g_slist_free(contact->addresses);
 
 	g_free(contact->uid);
