@@ -475,11 +475,12 @@ static void invalidate_parent_data(DBusConnection *conn, const char *child_path)
 	if (!strlen(parent_path))
 		goto done;
 
-	if (!dbus_connection_get_object_path_data(conn, parent_path,
-							(void *) &data)) {
-		invalidate_parent_data(conn, parent_path);
+	if (dbus_connection_get_object_path_data(conn, parent_path,
+							(void *) &data) == FALSE) {
 		goto done;
 	}
+
+	invalidate_parent_data(conn, parent_path);
 
 	if (data == NULL)
 		goto done;
