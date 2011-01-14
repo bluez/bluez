@@ -874,6 +874,7 @@ static gboolean check_channel_conf(struct hdp_channel *chan)
 	GError *err = NULL;
 	GIOChannel *io;
 	uint8_t mode;
+	uint16_t imtu, omtu;
 	int fd;
 
 	fd = mcap_mdl_get_fd(chan->mdl);
@@ -883,6 +884,8 @@ static gboolean check_channel_conf(struct hdp_channel *chan)
 
 	if (!bt_io_get(io, BT_IO_L2CAP, &err,
 			BT_IO_OPT_MODE, &mode,
+			BT_IO_OPT_IMTU, &imtu,
+			BT_IO_OPT_OMTU, &omtu,
 			BT_IO_OPT_INVALID)) {
 		error("Error: %s", err->message);
 		g_io_channel_unref(io);
@@ -894,13 +897,30 @@ static gboolean check_channel_conf(struct hdp_channel *chan)
 
 	switch (chan->config) {
 	case HDP_RELIABLE_DC:
-		return mode == L2CAP_MODE_ERTM;
+		if (mode != L2CAP_MODE_ERTM)
+			return FALSE;
+		break;
 	case HDP_STREAMING_DC:
-		return mode == L2CAP_MODE_STREAMING;
+		if (mode != L2CAP_MODE_STREAMING)
+			return FALSE;
+		break;
 	default:
 		error("Error: Connected with unknown configuration");
 		return FALSE;
 	}
+
+	DBG("MDL imtu %d omtu %d Channel imtu %d omtu %d", imtu, omtu,
+						chan->imtu, chan->omtu);
+
+	if (!chan->imtu)
+		chan->imtu = imtu;
+	if (!chan->omtu)
+		chan->omtu = omtu;
+
+	if (chan->imtu != imtu || chan->omtu != omtu)
+		return FALSE;
+
+	return TRUE;
 }
 
 static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)

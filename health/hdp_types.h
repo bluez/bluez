@@ -120,6 +120,8 @@ struct hdp_channel {
 	uint8_t			config;		/* Channel configuration */
 	uint8_t			mdep;		/* Remote MDEP */
 	uint16_t		mdlid;		/* Data channel Id */
+	uint16_t		imtu;		/* Channel incoming MTU */
+	uint16_t		omtu;		/* Channel outgoing MTU */
 	struct hdp_echo_data	*edata;		/* private data used by echo channels */
 	gint			ref;		/* Reference counter */
 };
