@@ -317,8 +317,6 @@ static void obex_session_free(struct obex_session *os)
 {
 	sessions = g_slist_remove(sessions, os);
 
-	os_reset_session(os);
-
 	if (os->io)
 		g_io_channel_unref(os->io);
 
@@ -1230,6 +1228,8 @@ static void obex_handle_destroy(void *user_data)
 	DBG("");
 
 	os = OBEX_GetUserData(obex);
+
+	os_reset_session(os);
 
 	if (os->service && os->service->disconnect)
 		os->service->disconnect(os, os->service_data);
