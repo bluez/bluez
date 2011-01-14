@@ -81,14 +81,31 @@ struct mgmt_mode {
 
 #define MGMT_OP_SET_PAIRABLE		0x0008
 
-struct mgmt_cp_uuid {
+#define MGMT_OP_ADD_UUID		0x0009
+struct mgmt_cp_add_uuid {
+	uint16_t index;
+	uint8_t uuid[16];
+	uint8_t svc_hint;
+} __packed;
+
+#define MGMT_OP_REMOVE_UUID		0x000A
+struct mgmt_cp_remove_uuid {
 	uint16_t index;
 	uint8_t uuid[16];
 } __packed;
 
-#define MGMT_OP_ADD_UUID		0x0009
+#define MGMT_OP_SET_DEV_CLASS		0x000B
+struct mgmt_cp_set_dev_class {
+	uint16_t index;
+	uint8_t major;
+	uint8_t minor;
+} __packed;
 
-#define MGMT_OP_REMOVE_UUID		0x000A
+#define MGMT_OP_SET_SERVICE_CACHE	0x000C
+struct mgmt_cp_set_service_cache {
+	uint16_t index;
+	uint8_t enable;
+} __packed;
 
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {

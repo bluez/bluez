@@ -1004,6 +1004,51 @@ static void adapter_emit_uuids_updated(struct btd_adapter *adapter)
 	g_strfreev(uuids);
 }
 
+static uint8_t get_uuid_mask(uuid_t *uuid)
+{
+	if (uuid->type != SDP_UUID16)
+		return 0;
+
+	switch (uuid->value.uuid16) {
+	case DIALUP_NET_SVCLASS_ID:
+	case CIP_SVCLASS_ID:
+		return 0x42;	/* Telephony & Networking */
+	case IRMC_SYNC_SVCLASS_ID:
+	case OBEX_OBJPUSH_SVCLASS_ID:
+	case OBEX_FILETRANS_SVCLASS_ID:
+	case IRMC_SYNC_CMD_SVCLASS_ID:
+	case PBAP_PSE_SVCLASS_ID:
+		return 0x10;	/* Object Transfer */
+	case HEADSET_SVCLASS_ID:
+	case HANDSFREE_SVCLASS_ID:
+		return 0x20;	/* Audio */
+	case CORDLESS_TELEPHONY_SVCLASS_ID:
+	case INTERCOM_SVCLASS_ID:
+	case FAX_SVCLASS_ID:
+	case SAP_SVCLASS_ID:
+	/*
+	 * Setting the telephony bit for the handsfree audio gateway
+	 * role is not required by the HFP specification, but the
+	 * Nokia 616 carkit is just plain broken! It will refuse
+	 * pairing without this bit set.
+	 */
+	case HANDSFREE_AGW_SVCLASS_ID:
+		return 0x40;	/* Telephony */
+	case AUDIO_SOURCE_SVCLASS_ID:
+	case VIDEO_SOURCE_SVCLASS_ID:
+		return 0x08;	/* Capturing */
+	case AUDIO_SINK_SVCLASS_ID:
+	case VIDEO_SINK_SVCLASS_ID:
+		return 0x04;	/* Rendering */
+	case PANU_SVCLASS_ID:
+	case NAP_SVCLASS_ID:
+	case GN_SVCLASS_ID:
+		return 0x02;	/* Networking */
+	default:
+		return 0;
+	}
+}
+
 static int uuid_cmp(const void *a, const void *b)
 {
 	const sdp_record_t *rec = a;
@@ -1025,8 +1070,10 @@ void adapter_service_insert(struct btd_adapter *adapter, void *r)
 	adapter->services = sdp_list_insert_sorted(adapter->services, rec,
 								record_sort);
 
-	if (new_uuid)
-		adapter_ops->add_uuid(adapter->dev_id, &rec->svclass);
+	if (new_uuid) {
+		uint8_t svc_hint = get_uuid_mask(&rec->svclass);
+		adapter_ops->add_uuid(adapter->dev_id, &rec->svclass, svc_hint);
+	}
 
 	adapter_emit_uuids_updated(adapter);
 }

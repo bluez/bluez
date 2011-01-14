@@ -234,7 +234,7 @@ struct btd_adapter_ops {
 							gpointer user_data);
 	int (*set_did) (int index, uint16_t vendor, uint16_t product,
 							uint16_t version);
-	int (*add_uuid) (int index, uuid_t *uuid);
+	int (*add_uuid) (int index, uuid_t *uuid, uint8_t svc_hint);
 	int (*remove_uuid) (int index, uuid_t *uuid);
 	int (*disable_cod_cache) (int index);
 	int (*restore_powered) (int index);

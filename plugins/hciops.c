@@ -63,6 +63,11 @@ enum {
 	PENDING_NAME,
 };
 
+struct uuid_info {
+	uuid_t uuid;
+	uint8_t svc_hint;
+};
+
 static int max_dev = -1;
 static struct dev_info {
 	int sk;
@@ -1037,10 +1042,10 @@ static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
 	uuid128 = ptr + 2;
 
 	for (; list; list = list->next) {
-		uuid_t *uuid = list->data;
-		uint8_t *uuid128_data = uuid->value.uuid128.data;
+		struct uuid_info *uuid = list->data;
+		uint8_t *uuid128_data = uuid->uuid.value.uuid128.data;
 
-		if (uuid->type != SDP_UUID128)
+		if (uuid->uuid.type != SDP_UUID128)
 			continue;
 
 		/* Stop if not enough space to put next UUID128 */
@@ -1136,15 +1141,15 @@ static void create_ext_inquiry_response(int index, uint8_t *data)
 
 	/* Group all UUID16 types */
 	for (l = dev->uuids; l != NULL; l = g_slist_next(l)) {
-		uuid_t *uuid = l->data;
+		struct uuid_info *uuid = l->data;
 
-		if (uuid->type != SDP_UUID16)
+		if (uuid->uuid.type != SDP_UUID16)
 			continue;
 
-		if (uuid->value.uuid16 < 0x1100)
+		if (uuid->uuid.value.uuid16 < 0x1100)
 			continue;
 
-		if (uuid->value.uuid16 == PNP_INFO_SVCLASS_ID)
+		if (uuid->uuid.value.uuid16 == PNP_INFO_SVCLASS_ID)
 			continue;
 
 		/* Stop if not enough space to put next UUID16 */
@@ -1155,13 +1160,13 @@ static void create_ext_inquiry_response(int index, uint8_t *data)
 
 		/* Check for duplicates */
 		for (i = 0; i < uuid_count; i++)
-			if (uuid16[i] == uuid->value.uuid16)
+			if (uuid16[i] == uuid->uuid.value.uuid16)
 				break;
 
 		if (i < uuid_count)
 			continue;
 
-		uuid16[uuid_count++] = uuid->value.uuid16;
+		uuid16[uuid_count++] = uuid->uuid.value.uuid16;
 		eir_len += sizeof(uint16_t);
 	}
 
@@ -3021,48 +3026,6 @@ static int hciops_enable_le(int index)
 	return 0;
 }
 
-static uint8_t get_uuid_mask(uint16_t uuid16)
-{
-	switch (uuid16) {
-	case DIALUP_NET_SVCLASS_ID:
-	case CIP_SVCLASS_ID:
-		return 0x42;	/* Telephony & Networking */
-	case IRMC_SYNC_SVCLASS_ID:
-	case OBEX_OBJPUSH_SVCLASS_ID:
-	case OBEX_FILETRANS_SVCLASS_ID:
-	case IRMC_SYNC_CMD_SVCLASS_ID:
-	case PBAP_PSE_SVCLASS_ID:
-		return 0x10;	/* Object Transfer */
-	case HEADSET_SVCLASS_ID:
-	case HANDSFREE_SVCLASS_ID:
-		return 0x20;	/* Audio */
-	case CORDLESS_TELEPHONY_SVCLASS_ID:
-	case INTERCOM_SVCLASS_ID:
-	case FAX_SVCLASS_ID:
-	case SAP_SVCLASS_ID:
-	/*
-	 * Setting the telephony bit for the handsfree audio gateway
-	 * role is not required by the HFP specification, but the
-	 * Nokia 616 carkit is just plain broken! It will refuse
-	 * pairing without this bit set.
-	 */
-	case HANDSFREE_AGW_SVCLASS_ID:
-		return 0x40;	/* Telephony */
-	case AUDIO_SOURCE_SVCLASS_ID:
-	case VIDEO_SOURCE_SVCLASS_ID:
-		return 0x08;	/* Capturing */
-	case AUDIO_SINK_SVCLASS_ID:
-	case VIDEO_SINK_SVCLASS_ID:
-		return 0x04;	/* Rendering */
-	case PANU_SVCLASS_ID:
-	case NAP_SVCLASS_ID:
-	case GN_SVCLASS_ID:
-		return 0x02;	/* Networking */
-	default:
-		return 0;
-	}
-}
-
 static uint8_t generate_service_class(int index)
 {
 	struct dev_info *dev = &devs[index];
@@ -3070,12 +3033,9 @@ static uint8_t generate_service_class(int index)
 	uint8_t val = 0;
 
 	for (l = dev->uuids; l != NULL; l = g_slist_next(l)) {
-		uuid_t *uuid = l->data;
+		struct uuid_info *uuid = l->data;
 
-		if (uuid->type != SDP_UUID16)
-			continue;
-
-		val |= get_uuid_mask(uuid->value.uuid16);
+		val |= uuid->svc_hint;
 	}
 
 	return val;
@@ -3117,13 +3077,18 @@ static int update_service_classes(int index)
 	return err;
 }
 
-static int hciops_add_uuid(int index, uuid_t *uuid)
+static int hciops_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 {
 	struct dev_info *dev = &devs[index];
+	struct uuid_info *info;
 
 	DBG("hci%d", index);
 
-	dev->uuids = g_slist_append(dev->uuids, g_memdup(uuid, sizeof(*uuid)));
+	info = g_new0(struct uuid_info, 1);
+	memcpy(&info->uuid, uuid, sizeof(*uuid));
+	info->svc_hint = svc_hint;
+
+	dev->uuids = g_slist_append(dev->uuids, info);
 
 	return update_service_classes(index);
 }

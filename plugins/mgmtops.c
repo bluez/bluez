@@ -410,17 +410,44 @@ static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 		memcpy(uuid128, uuid, sizeof(*uuid));
 }
 
-static int mgmt_uuid_op(int index, uint16_t op, uuid_t *uuid)
+static int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 {
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_uuid)];
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_add_uuid)];
 	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_uuid *cp = (void *) &buf[sizeof(*hdr)];
+	struct mgmt_cp_add_uuid *cp = (void *) &buf[sizeof(*hdr)];
 	uuid_t uuid128;
+
+	DBG("index %d", index);
 
 	uuid_to_uuid128(&uuid128, uuid);
 
 	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(op);
+	hdr->opcode = htobs(MGMT_OP_ADD_UUID);
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+	memcpy(cp->uuid, uuid128.value.uuid128.data, 16);
+	cp->svc_hint = svc_hint;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static int mgmt_remove_uuid(int index, uuid_t *uuid)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_remove_uuid)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_remove_uuid *cp = (void *) &buf[sizeof(*hdr)];
+	uuid_t uuid128;
+
+	DBG("index %d", index);
+
+	uuid_to_uuid128(&uuid128, uuid);
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_REMOVE_UUID);
 	hdr->len = htobs(sizeof(*cp));
 
 	cp->index = htobs(index);
@@ -439,7 +466,7 @@ static int clear_uuids(int index)
 	memset(&uuid_any, 0, sizeof(uuid_any));
 	uuid_any.type = SDP_UUID128;
 
-	return mgmt_uuid_op(index, MGMT_OP_REMOVE_UUID, &uuid_any);
+	return mgmt_remove_uuid(index, &uuid_any);
 }
 
 static void read_index_list_complete(int sk, void *buf, size_t len)
@@ -496,6 +523,8 @@ static void read_info_complete(int sk, void *buf, size_t len)
 		error("Unexpected index %u in read info complete", index);
 		return;
 	}
+
+	mgmt_set_mode(index, MGMT_OP_SET_SERVICE_CACHE, 1);
 
 	info = &controllers[index];
 	info->type = rp->type;
@@ -701,6 +730,12 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 	case MGMT_OP_REMOVE_UUID:
 		DBG("remove_uuid complete");
 		break;
+	case MGMT_OP_SET_DEV_CLASS:
+		DBG("set_dev_class complete");
+		break;
+	case MGMT_OP_SET_SERVICE_CACHE:
+		DBG("set_service_cache complete");
+		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;
@@ -879,8 +914,24 @@ static void mgmt_cleanup(void)
 
 static int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
 {
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_dev_class)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_dev_class *cp = (void *) &buf[sizeof(*hdr)];
+
 	DBG("index %d major %u minor %u", index, major, minor);
-	return -ENOSYS;
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_SET_DEV_CLASS);
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+	cp->major = major;
+	cp->minor = minor;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_set_limited_discoverable(int index, gboolean limited)
@@ -1123,22 +1174,10 @@ static int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
 	return -ENOSYS;
 }
 
-static int mgmt_add_uuid(int index, uuid_t *uuid)
-{
-	DBG("index %d", index);
-	return mgmt_uuid_op(index, MGMT_OP_ADD_UUID, uuid);
-}
-
-static int mgmt_remove_uuid(int index, uuid_t *uuid)
-{
-	DBG("index %d", index);
-	return mgmt_uuid_op(index, MGMT_OP_REMOVE_UUID, uuid);
-}
-
 static int mgmt_disable_cod_cache(int index)
 {
 	DBG("index %d", index);
-	return -ENOSYS;
+	return mgmt_set_mode(index, MGMT_OP_SET_SERVICE_CACHE, 0);
 }
 
 static int mgmt_restore_powered(int index)

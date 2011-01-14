@@ -122,6 +122,7 @@ Add UUID Command
 	Command Code:		0x0009
 	Command Parameters:	Controller_Index (2 Octets)
 				UUID (16 Octets)
+				SVC_Hint (1 octet)
 	Return Paramters:	Controller_Index (2 Octets)
 
 
@@ -131,6 +132,25 @@ Remove UUID Command
 	Command Code:		0x000A
 	Command Parameters:	Controller_Index (2 Octets)
 				UUID (16 Octets)
+	Return Paramters:	Controller_Index (2 Octets)
+
+
+Set Device Class
+================
+
+	Command Code:		0x000B
+	Command Parameters:	Controller_Index (2 Octets)
+				Major_Class (1 octet)
+				Minor_Class (1 octed)
+	Return Paramters:	Controller_Index (2 Octets)
+
+
+Set Service Cache Command
+=========================
+
+	Command Code:		0x000C
+	Command Parameters:	Controller_Index (2 Octets)
+				Enable (1 octet)
 	Return Paramters:	Controller_Index (2 Octets)
 
 
