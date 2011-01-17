@@ -35,7 +35,7 @@ struct discover_primary {
 	GAttrib *attrib;
 	uuid_t uuid;
 	GSList *primaries;
-	gatt_primary_t cb;
+	gatt_cb_t cb;
 	void *user_data;
 };
 
@@ -193,7 +193,7 @@ done:
 	discover_primary_free(dp);
 }
 
-guint gatt_discover_primary(GAttrib *attrib, uuid_t *uuid, gatt_primary_t func,
+guint gatt_discover_primary(GAttrib *attrib, uuid_t *uuid, gatt_cb_t func,
 							gpointer user_data)
 {
 	struct discover_primary *dp;
