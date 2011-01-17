@@ -143,6 +143,13 @@ struct att_primary {
 	uint16_t end;
 };
 
+struct att_char {
+	char uuid[MAX_LEN_UUID_STR + 1];
+	uint16_t handle;
+	uint8_t properties;
+	uint16_t value_handle;
+};
+
 /* These functions do byte conversion */
 static inline uint8_t att_get_u8(const void *ptr)
 {

@@ -85,7 +85,7 @@ struct characteristic {
 	uint16_t handle;
 	uint16_t end;
 	uint8_t perm;
-	uuid_t type;
+	char type[MAX_LEN_UUID_STR + 1];
 	char *name;
 	char *desc;
 	struct format *format;
@@ -199,7 +199,7 @@ static void append_char_dict(DBusMessageIter *iter, struct characteristic *chr)
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	uuid = bt_uuid2string(&chr->type);
+	uuid = g_strdup(chr->type);
 	dict_append_entry(&dict, "UUID", DBUS_TYPE_STRING, &uuid);
 	g_free(uuid);
 
@@ -544,19 +544,12 @@ static char *characteristic_list_to_string(GSList *chars)
 
 	for (l = chars; l; l = l->next) {
 		struct characteristic *chr = l->data;
-		uuid_t *uuid128;
 		char chr_str[64];
-		char uuidstr[MAX_LEN_UUID_STR];
 
 		memset(chr_str, 0, sizeof(chr_str));
 
-		uuid128 = sdp_uuid_to_uuid128(&chr->type);
-		sdp_uuid2strn(uuid128, uuidstr, MAX_LEN_UUID_STR);
-
-		bt_free(uuid128);
-
 		snprintf(chr_str, sizeof(chr_str), "%04X#%02X#%04X#%s ",
-				chr->handle, chr->perm, chr->end, uuidstr);
+				chr->handle, chr->perm, chr->end, chr->type);
 
 		characteristics = g_string_append(characteristics, chr_str);
 	}
@@ -607,13 +600,12 @@ static GSList *string_to_characteristic_list(struct primary *prim,
 
 	for (i = 0; chars[i]; i++) {
 		struct characteristic *chr;
-		char uuidstr[MAX_LEN_UUID_STR + 1];
 		int ret;
 
 		chr = g_new0(struct characteristic, 1);
 
 		ret = sscanf(chars[i], "%04hX#%02hhX#%04hX#%s", &chr->handle,
-				&chr->perm, &chr->end, uuidstr);
+				&chr->perm, &chr->end, chr->type);
 		if (ret < 4) {
 			g_free(chr);
 			continue;
@@ -622,8 +614,6 @@ static GSList *string_to_characteristic_list(struct primary *prim,
 		chr->prim = prim;
 		chr->path = g_strdup_printf("%s/characteristic%04x",
 						prim->path, chr->handle);
-
-		bt_string2uuid(&chr->type, uuidstr);
 
 		l = g_slist_append(l, chr);
 	}
@@ -861,54 +851,37 @@ static void update_all_chars(gpointer data, gpointer user_data)
 	gatt_read_char(gatt->attrib, chr->handle, update_char_value, qvalue);
 }
 
-static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
+static void char_discovered_cb(GSList *characteristics, guint8 status,
 							gpointer user_data)
 {
 	struct query_data *current = user_data;
 	struct primary *prim = current->prim;
 	struct att_primary *att = prim->att;
 	struct gatt_service *gatt = prim->gatt;
-	struct att_data_list *list;
-	uint16_t last, *previous_end = NULL;
-	int i;
-
-	if (status == ATT_ECODE_ATTR_NOT_FOUND)
-		goto done;
+	uint16_t *previous_end = NULL;
+	GSList *l;
 
 	if (status != 0) {
 		DBG("Discover all characteristics failed: %s",
 						att_ecode2str(status));
-
 		goto fail;
 	}
 
-	DBG("Read by Type Response received");
-
-	list = dec_read_by_type_resp(pdu, plen);
-	if (list == NULL)
-		goto fail;
-
-	for (i = 0, last = 0; i < list->num; i++) {
-		uint8_t *decl = list->data[i];
+	for (l = characteristics; l; l = l->next) {
+		struct att_char *current_chr = l->data;
 		struct characteristic *chr;
 
 		chr = g_new0(struct characteristic, 1);
 		chr->prim = prim;
-		chr->perm = decl[2];
-		chr->handle = att_get_u16(&decl[3]);
+		chr->perm = current_chr->properties;
+		chr->handle = current_chr->value_handle;
 		chr->path = g_strdup_printf("%s/characteristic%04x",
 						prim->path, chr->handle);
-		if (list->len == 7) {
-			sdp_uuid16_create(&chr->type,
-					att_get_u16(&decl[5]));
-		} else
-			sdp_uuid128_create(&chr->type, &decl[5]);
+		strncpy(chr->type, current_chr->uuid, sizeof(chr->type));
 
-		if (previous_end) {
-			*previous_end = att_get_u16(decl);
-		}
+		if (previous_end)
+			*previous_end = current_chr->handle;
 
-		last = chr->handle;
 		previous_end = &chr->end;
 
 		prim->chars = g_slist_append(prim->chars, chr);
@@ -917,18 +890,6 @@ static void char_discovered_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	if (previous_end)
 		*previous_end = att->end;
 
-	att_data_list_free(list);
-
-	if (last >= att->end)
-		goto done;
-
-	/* Fetch remaining characteristics for the CURRENT primary service */
-	gatt_discover_char(gatt->attrib, last + 1, att->end,
-						char_discovered_cb, current);
-
-	return;
-
-done:
 	store_characteristics(gatt, prim);
 	register_characteristics(prim);
 

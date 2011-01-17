@@ -39,11 +39,28 @@ struct discover_primary {
 	void *user_data;
 };
 
+struct discover_char {
+	GAttrib *attrib;
+	uuid_t uuid;
+	uint16_t end;
+	GSList *characteristics;
+	gatt_cb_t cb;
+	void *user_data;
+};
+
 static void discover_primary_free(struct discover_primary *dp)
 {
 	g_slist_free(dp->primaries);
 	g_attrib_unref(dp->attrib);
 	g_free(dp);
+}
+
+static void discover_char_free(struct discover_char *dc)
+{
+	g_slist_foreach(dc->characteristics, (GFunc) g_free, NULL);
+	g_slist_free(dc->characteristics);
+	g_attrib_unref(dc->attrib);
+	g_free(dc);
 }
 
 static guint16 encode_discover_primary(uint16_t start, uint16_t end,
@@ -222,15 +239,103 @@ guint gatt_discover_primary(GAttrib *attrib, uuid_t *uuid, gatt_cb_t func,
 	return g_attrib_send(attrib, 0, pdu[0], pdu, plen, cb, dp, NULL);
 }
 
-guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
-				GAttribResultFunc func, gpointer user_data)
+static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
+							gpointer user_data)
 {
+	struct discover_char *dc = user_data;
+	struct att_data_list *list;
+	unsigned int i, err;
+	uint8_t opdu[ATT_DEFAULT_MTU];
+	guint16 oplen;
+	uuid_t uuid;
+	uint16_t last = 0;
+
+	if (status) {
+		err = status == ATT_ECODE_ATTR_NOT_FOUND ? 0 : status;
+		goto done;
+	}
+
+	list = dec_read_by_type_resp(ipdu, iplen);
+	if (list == NULL) {
+		err = ATT_ECODE_IO;
+		goto done;
+	}
+
+	for (i = 0; i < list->num; i++) {
+		uint8_t *value = list->data[i];
+		struct att_char *chars;
+		uuid_t u128, u16;
+
+		last = att_get_u16(value);
+
+		if (list->len == 7) {
+			sdp_uuid16_create(&u16, att_get_u16(&value[5]));
+			sdp_uuid16_to_uuid128(&u128, &u16);
+		} else
+			sdp_uuid128_create(&u128, &value[5]);
+
+		chars = g_try_new0(struct att_char, 1);
+		if (!chars) {
+			err = ATT_ECODE_INSUFF_RESOURCES;
+			goto done;
+		}
+
+		chars->handle = last;
+		chars->properties = value[2];
+		chars->value_handle = att_get_u16(&value[3]);
+		sdp_uuid2strn(&u128, chars->uuid, sizeof(chars->uuid));
+		dc->characteristics = g_slist_append(dc->characteristics,
+									chars);
+	}
+
+	att_data_list_free(list);
+	err = 0;
+
+	if (last != 0) {
+		sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+
+		oplen = enc_read_by_type_req(last + 1, dc->end, &uuid, opdu,
+								sizeof(opdu));
+
+		if (oplen == 0)
+			return;
+
+		g_attrib_send(dc->attrib, 0, opdu[0], opdu, oplen,
+						char_discovered_cb, dc, NULL);
+
+		return;
+	}
+
+done:
+	dc->cb(dc->characteristics, err, dc->user_data);
+	discover_char_free(dc);
+}
+
+guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
+					gatt_cb_t func, gpointer user_data)
+{
+	uint8_t pdu[ATT_DEFAULT_MTU];
+	struct discover_char *dc;
+	guint16 plen;
 	uuid_t uuid;
 
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 
-	return gatt_read_char_by_uuid(attrib, start, end, &uuid, func,
-							user_data);
+	plen = enc_read_by_type_req(start, end, &uuid, pdu, sizeof(pdu));
+	if (plen == 0)
+		return 0;
+
+	dc = g_try_new0(struct discover_char, 1);
+	if (dc == NULL)
+		return 0;
+
+	dc->attrib = g_attrib_ref(attrib);
+	dc->cb = func;
+	dc->user_data = user_data;
+	dc->end = end;
+
+	return g_attrib_send(attrib, 0, pdu[0], pdu, plen, char_discovered_cb,
+								dc, NULL);
 }
 
 guint gatt_read_char_by_uuid(GAttrib *attrib, uint16_t start, uint16_t end,
