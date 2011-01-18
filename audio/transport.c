@@ -76,6 +76,7 @@ struct media_transport {
 	uint16_t		imtu;		/* Transport input mtu */
 	uint16_t		omtu;		/* Transport output mtu */
 	uint16_t		delay;		/* Transport delay (a2dp only) */
+	unsigned int		nrec_id;	/* Transport nrec watch (headset only) */
 	gboolean		read_lock;
 	gboolean		write_lock;
 	gboolean		in_use;
@@ -685,12 +686,25 @@ static void media_transport_free(void *data)
 	if (transport->session)
 		avdtp_unref(transport->session);
 
+	if (transport->nrec_id)
+		headset_remove_nrec_cb(transport->device, transport->nrec_id);
+
 	if (transport->conn)
 		dbus_connection_unref(transport->conn);
 
 	g_free(transport->configuration);
 	g_free(transport->path);
 	g_free(transport);
+}
+
+static void headset_nrec_changed(struct audio_device *dev, gboolean nrec,
+							void *user_data)
+{
+	struct media_transport *transport = user_data;
+
+	emit_property_changed(transport->conn, transport->path,
+				MEDIA_TRANSPORT_INTERFACE, "NREC",
+				DBUS_TYPE_BOOLEAN, &nrec);
 }
 
 struct media_transport *media_transport_create(DBusConnection *conn,
@@ -728,6 +742,9 @@ struct media_transport *media_transport_create(DBusConnection *conn,
 		transport->cancel = cancel_headset;
 		transport->get_properties = get_properties_headset;
 		transport->set_property = set_property_headset;
+		transport->nrec_id = headset_add_nrec_cb(device,
+							headset_nrec_changed,
+							transport);
 	} else
 		goto fail;
 
