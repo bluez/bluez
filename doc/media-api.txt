@@ -86,9 +86,10 @@ Methods		dict GetProperties()
 			Returns all properties for the interface. See the
 			properties section for available properties.
 
-		fd Acquire(string accesstype)
+		fd, uint16, uint16 Acquire(string accesstype)
 
-			Acquire transport file descriptor.
+			Acquire transport file descriptor and the MTU for read
+			and write respectively.
 
 			possible accesstype:
 
@@ -117,14 +118,6 @@ Signals		void PropertyChanged(string name, variant value)
 Properties	object Device [readonly]
 
 			Device object which the transport is connected to.
-
-		uint16 IMTU [readonly]
-
-			Transport input MTU.
-
-		uint16 OMTU [readonly]
-
-			Transport output MTU.
 
 		string UUID [readonly]
 

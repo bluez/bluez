@@ -181,14 +181,6 @@ static gboolean media_transport_set_fd(struct media_transport *transport,
 
 	info("%s: fd(%d) ready", transport->path, fd);
 
-	emit_property_changed(transport->conn, transport->path,
-				MEDIA_TRANSPORT_INTERFACE, "IMTU",
-				DBUS_TYPE_UINT16, &transport->imtu);
-
-	emit_property_changed(transport->conn, transport->path,
-				MEDIA_TRANSPORT_INTERFACE, "OMTU",
-				DBUS_TYPE_UINT16, &transport->omtu);
-
 	return TRUE;
 }
 
@@ -209,6 +201,7 @@ static void a2dp_resume_complete(struct avdtp *session,
 	struct avdtp_stream *stream;
 	int fd;
 	uint16_t imtu, omtu;
+	gboolean ret;
 
 	req->id = 0;
 
@@ -219,15 +212,24 @@ static void a2dp_resume_complete(struct avdtp *session,
 	if (stream == NULL)
 		goto fail;
 
-	if (avdtp_stream_get_transport(stream, &fd, &imtu, &omtu, NULL) ==
-			FALSE)
+	ret = avdtp_stream_get_transport(stream, &fd, &imtu, &omtu, NULL);
+	if (ret == FALSE)
 		goto fail;
 
 	media_transport_set_fd(transport, fd, imtu, omtu);
 
-	if (g_dbus_send_reply(transport->conn, req->msg,
-				DBUS_TYPE_UNIX_FD, &fd,
-				DBUS_TYPE_INVALID) == FALSE)
+	if (g_strstr_len(owner->accesstype, -1, "r") == NULL)
+		imtu = 0;
+
+	if (g_strstr_len(owner->accesstype, -1, "w") == NULL)
+		omtu = 0;
+
+	ret = g_dbus_send_reply(transport->conn, req->msg,
+						DBUS_TYPE_UNIX_FD, &fd,
+						DBUS_TYPE_UINT16, &imtu,
+						DBUS_TYPE_UINT16, &omtu,
+						DBUS_TYPE_INVALID);
+	if (ret == FALSE)
 		goto fail;
 
 	return;
@@ -282,6 +284,8 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	struct acquire_request *req = owner->request;
 	struct media_transport *transport = owner->transport;
 	int fd;
+	uint16_t imtu, omtu;
+	gboolean ret;
 
 	req->id = 0;
 
@@ -292,11 +296,23 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	if (fd < 0)
 		goto fail;
 
-	media_transport_set_fd(transport, fd, 48, 48);
+	imtu = 48;
+	omtu = 48;
 
-	if (g_dbus_send_reply(transport->conn, req->msg,
-				DBUS_TYPE_UNIX_FD, &fd,
-				DBUS_TYPE_INVALID) == FALSE)
+	media_transport_set_fd(transport, fd, imtu, omtu);
+
+	if (g_strstr_len(owner->accesstype, -1, "r") == NULL)
+		imtu = 0;
+
+	if (g_strstr_len(owner->accesstype, -1, "w") == NULL)
+		omtu = 0;
+
+	ret = g_dbus_send_reply(transport->conn, req->msg,
+						DBUS_TYPE_UNIX_FD, &fd,
+						DBUS_TYPE_UINT16, &imtu,
+						DBUS_TYPE_UINT16, &omtu,
+						DBUS_TYPE_INVALID);
+	if (ret == FALSE)
 		goto fail;
 
 	return;
@@ -606,12 +622,6 @@ void transport_get_properties(struct media_transport *transport,
 	/* Device */
 	dict_append_entry(&dict, "Device", DBUS_TYPE_OBJECT_PATH,
 						&transport->device->path);
-
-	dict_append_entry(&dict, "IMTU", DBUS_TYPE_UINT16,
-						&transport->imtu);
-
-	dict_append_entry(&dict, "OMTU", DBUS_TYPE_UINT16,
-						&transport->omtu);
 
 	uuid = media_endpoint_get_uuid(transport->endpoint);
 	dict_append_entry(&dict, "UUID", DBUS_TYPE_STRING, &uuid);
