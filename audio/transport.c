@@ -599,12 +599,16 @@ static void get_properties_headset(struct media_transport *transport,
 						DBusMessageIter *dict)
 {
 	gboolean nrec, inband;
+	const char *routing;
 
 	nrec = headset_get_nrec(transport->device);
 	dict_append_entry(dict, "NREC", DBUS_TYPE_BOOLEAN, &nrec);
 
 	inband = headset_get_inband(transport->device);
 	dict_append_entry(dict, "InbandRingtone", DBUS_TYPE_BOOLEAN, &inband);
+
+	routing = headset_get_sco_hci(transport->device) ? "HCI" : "PCM";
+	dict_append_entry(dict, "Routing", DBUS_TYPE_STRING, &routing);
 }
 
 void transport_get_properties(struct media_transport *transport,

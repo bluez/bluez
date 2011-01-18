@@ -152,3 +152,9 @@ Properties	object Device [readonly]
 			Optional. Indicates if the transport support sending
 			ringtones, this property is only writeable when the
 			transport was acquired by the sender.
+
+		string Routing [readonly]
+
+			Optional. Indicates where is the transport being routed
+
+			Possible Values: "HCI" or "PCM"
