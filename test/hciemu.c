@@ -439,7 +439,7 @@ static int scan_enable(uint8_t *data)
 
 	if (!(*data & SCAN_PAGE)) {
 		if (vdev.scan) {
-			g_io_channel_close(vdev.scan);
+			g_io_channel_shutdown(vdev.scan, TRUE, NULL);
 			vdev.scan = NULL;
 		}
 		return 0;
@@ -502,7 +502,7 @@ static void close_connection(struct vhci_conn *conn)
 	syslog(LOG_INFO, "Closing connection %s handle %d",
 					batostr(&conn->dest), conn->handle);
 
-	g_io_channel_close(conn->chan);
+	g_io_channel_shutdown(conn->chan, TRUE, NULL);
 	g_io_channel_unref(conn->chan);
 
 	vconn[conn->handle - 1] = NULL;
@@ -968,13 +968,16 @@ static gboolean io_hci_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[HCI_MAX_FRAME_SIZE], *ptr;
 	int type;
-	gsize len;
-	GIOError err;
+	ssize_t len;
+	int fd;
 
 	ptr = buf;
 
-	if ((err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len))) {
-		if (err == G_IO_ERROR_AGAIN)
+	fd = g_io_channel_unix_get_fd(chan);
+
+	len = read(fd, buf, sizeof(buf));
+	if (len < 0) {
+		if (errno == EAGAIN)
 			return TRUE;
 
 		syslog(LOG_ERR, "Read failed: %s (%d)", strerror(errno), errno);
