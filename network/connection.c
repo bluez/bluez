@@ -195,7 +195,7 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	struct bnep_control_rsp *rsp;
 	struct timeval timeo;
 	char pkt[BNEP_MTU];
-	gsize r;
+	ssize_t r;
 	int sk;
 	const char *pdev, *uuid;
 	gboolean connected;
@@ -208,21 +208,23 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
+	sk = g_io_channel_unix_get_fd(chan);
+
 	memset(pkt, 0, BNEP_MTU);
-	if (g_io_channel_read(chan, pkt, sizeof(pkt) - 1,
-				&r) != G_IO_ERROR_NONE) {
+	r = read(sk, pkt, sizeof(pkt) -1);
+	if (r < 0) {
 		error("IO Channel read error");
 		goto failed;
 	}
 
-	if (r <= 0) {
+	if (r == 0) {
 		error("No packet received on l2cap socket");
 		goto failed;
 	}
 
 	errno = EPROTO;
 
-	if (r < sizeof(*rsp)) {
+	if ((size_t) r < sizeof(*rsp)) {
 		error("Packet received is not bnep type");
 		goto failed;
 	}
@@ -242,8 +244,6 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 		error("bnep failed");
 		goto failed;
 	}
-
-	sk = g_io_channel_unix_get_fd(chan);
 
 	memset(&timeo, 0, sizeof(timeo));
 	timeo.tv_sec = 0;
