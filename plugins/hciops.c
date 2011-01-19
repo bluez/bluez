@@ -1868,18 +1868,21 @@ static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
 	int type, index = GPOINTER_TO_INT(data);
 	struct dev_info *dev = &devs[index];
 	struct hci_dev_info di;
-	size_t len;
+	ssize_t len;
 	hci_event_hdr *eh;
-	GIOError err;
 	evt_cmd_status *evt;
+	int fd;
 
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
 		stop_hci_dev(index);
 		return FALSE;
 	}
 
-	if ((err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len))) {
-		if (err == G_IO_ERROR_AGAIN)
+	fd = g_io_channel_unix_get_fd(chan);
+
+	len = read(fd, buf, sizeof(buf));
+	if (len < 0) {
+		if (errno == EAGAIN)
 			return TRUE;
 		stop_hci_dev(index);
 		return FALSE;
@@ -2345,15 +2348,16 @@ static gboolean io_stack_event(GIOChannel *chan, GIOCondition cond,
 	evt_stack_internal *si;
 	evt_si_device *sd;
 	hci_event_hdr *eh;
-	int type;
-	size_t len;
-	GIOError err;
+	int type, fd;
+	ssize_t len;
 
 	ptr = buf;
 
-	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
-	if (err) {
-		if (err == G_IO_ERROR_AGAIN)
+	fd = g_io_channel_unix_get_fd(chan);
+
+	len = read(fd, buf, sizeof(buf));
+	if (len < 0) {
+		if (errno == EAGAIN)
 			return TRUE;
 
 		error("Read from control socket failed: %s (%d)",
