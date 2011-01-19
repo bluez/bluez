@@ -275,8 +275,9 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	struct fake_input *fake = data;
 	const char *ok = "\r\nOK\r\n";
 	char buf[BUF_SIZE];
-	gsize bread = 0, bwritten;
+	ssize_t bread = 0, bwritten;
 	uint16_t key;
+	int fd;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -286,16 +287,19 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 		goto failed;
 	}
 
+	fd = g_io_channel_unix_get_fd(chan);
+
 	memset(buf, 0, BUF_SIZE);
-	if (g_io_channel_read(chan, buf, sizeof(buf) - 1,
-				&bread) != G_IO_ERROR_NONE) {
+	bread = read(fd, buf, sizeof(buf) - 1);
+	if (bread < 0) {
 		error("IO Channel read error");
 		goto failed;
 	}
 
 	DBG("Received: %s", buf);
 
-	if (g_io_channel_write(chan, ok, 6, &bwritten) != G_IO_ERROR_NONE) {
+	bwritten = write(fd, ok, 6);
+	if (bwritten < 0) {
 		error("IO Channel write error");
 		goto failed;
 	}

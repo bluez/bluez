@@ -214,8 +214,9 @@ static gboolean ps3remote_event(GIOChannel *chan, GIOCondition cond,
 	struct fake_input *fake = data;
 	struct uinput_event event;
 	unsigned int key, value = 0;
-	gsize size;
+	ssize_t size;
 	char buff[50];
+	int fd;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -225,10 +226,11 @@ static gboolean ps3remote_event(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	memset(buff, 0, sizeof(buff));
+	fd = g_io_channel_unix_get_fd(chan);
 
-	if (g_io_channel_read(chan, buff, sizeof(buff), &size) !=
-							G_IO_ERROR_NONE) {
+	memset(buff, 0, sizeof(buff));
+	size = read(fd, buff, sizeof(buff));
+	if (size < 0) {
 		error("IO Channel read error");
 		goto failed;
 	}
