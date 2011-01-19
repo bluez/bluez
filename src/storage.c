@@ -1265,7 +1265,7 @@ static void filter_keys(char *key, char *value, void *data)
 	const char *address = match->pattern;
 
 	/* Each key contains: MAC#handle*/
-	if (g_strncasecmp(key, address, 17) == 0)
+	if (strncasecmp(key, address, 17) == 0)
 		match->keys = g_slist_append(match->keys, g_strdup(key));
 }
 

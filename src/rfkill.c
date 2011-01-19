@@ -71,18 +71,19 @@ static gboolean rfkill_event(GIOChannel *chan,
 	struct rfkill_event *event = (void *) buf;
 	struct btd_adapter *adapter;
 	char sysname[PATH_MAX];
-	gsize len;
-	GIOError err;
+	ssize_t len;
 	int fd, id;
 
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
 		return FALSE;
 
+	fd = g_io_channel_unix_get_fd(chan);
+
 	memset(buf, 0, sizeof(buf));
 
-	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
-	if (err) {
-		if (err == G_IO_ERROR_AGAIN)
+	len = read(fd, buf, sizeof(buf));
+	if (len < 0) {
+		if (errno == EAGAIN)
 			return TRUE;
 		return FALSE;
 	}
