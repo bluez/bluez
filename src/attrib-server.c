@@ -546,6 +546,33 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 	return enc_read_resp(a->data, a->len, pdu, len);
 }
 
+static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
+					uint16_t offset, uint8_t *pdu, int len)
+{
+	struct attribute *a;
+	uint8_t status;
+	GSList *l;
+	guint h = handle;
+
+	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
+	if (!l)
+		return enc_error_resp(ATT_OP_READ_BLOB_REQ, handle,
+					ATT_ECODE_INVALID_HANDLE, pdu, len);
+
+	a = l->data;
+
+	if (a->len <= offset)
+		return enc_error_resp(ATT_OP_READ_BLOB_REQ, handle,
+					ATT_ECODE_INVALID_OFFSET, pdu, len);
+
+	status = att_check_reqs(channel, ATT_OP_READ_BLOB_REQ, a->read_reqs);
+	if (status)
+		return enc_error_resp(ATT_OP_READ_BLOB_REQ, handle, status,
+								pdu, len);
+
+	return enc_read_blob_resp(a->data, a->len, offset, pdu, len);
+}
+
 static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 						const uint8_t *value, int vlen,
 						uint8_t *pdu, int len)
@@ -599,7 +626,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 {
 	struct gatt_channel *channel = user_data;
 	uint8_t opdu[ATT_MAX_MTU], value[ATT_MAX_MTU];
-	uint16_t length, start, end, mtu;
+	uint16_t length, start, end, mtu, offset;
 	uuid_t uuid;
 	uint8_t status = 0;
 	int vlen;
@@ -633,6 +660,15 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 		}
 
 		length = read_value(channel, start, opdu, channel->mtu);
+		break;
+	case ATT_OP_READ_BLOB_REQ:
+		length = dec_read_blob_req(ipdu, len, &start, &offset);
+		if (length == 0) {
+			status = ATT_ECODE_INVALID_PDU;
+			goto done;
+		}
+
+		length = read_blob(channel, start, offset, opdu, channel->mtu);
 		break;
 	case ATT_OP_MTU_REQ:
 		length = dec_mtu_req(ipdu, len, &mtu);
@@ -679,7 +715,6 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 		length = find_by_type(start, end, &uuid, value, vlen,
 							opdu, channel->mtu);
 		break;
-	case ATT_OP_READ_BLOB_REQ:
 	case ATT_OP_READ_MULTI_REQ:
 	case ATT_OP_PREP_WRITE_REQ:
 	case ATT_OP_EXEC_WRITE_REQ:

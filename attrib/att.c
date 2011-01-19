@@ -582,6 +582,33 @@ uint16_t dec_read_req(const uint8_t *pdu, int len, uint16_t *handle)
 	return min_len;
 }
 
+uint16_t dec_read_blob_req(const uint8_t *pdu, int len, uint16_t *handle,
+							uint16_t *offset)
+{
+	const uint16_t min_len = sizeof(pdu[0]) + sizeof(*handle) +
+							sizeof(*offset);
+
+	if (pdu == NULL)
+		return 0;
+
+	if (handle == NULL)
+		return 0;
+
+	if (offset == NULL)
+		return 0;
+
+	if (len < min_len)
+		return 0;
+
+	if (pdu[0] != ATT_OP_READ_BLOB_REQ)
+		return 0;
+
+	*handle = att_get_u16(&pdu[1]);
+	*offset = att_get_u16(&pdu[3]);
+
+	return min_len;
+}
+
 uint16_t enc_read_resp(uint8_t *value, int vlen, uint8_t *pdu, int len)
 {
 	if (pdu == NULL)
@@ -596,6 +623,23 @@ uint16_t enc_read_resp(uint8_t *value, int vlen, uint8_t *pdu, int len)
 	pdu[0] = ATT_OP_READ_RESP;
 
 	memcpy(pdu + 1, value, vlen);
+
+	return vlen + 1;
+}
+
+uint16_t enc_read_blob_resp(uint8_t *value, int vlen, uint16_t offset,
+							uint8_t *pdu, int len)
+{
+	if (pdu == NULL)
+		return 0;
+
+	vlen -= offset;
+	if (vlen > len - 1)
+		vlen = len - 1;
+
+	pdu[0] = ATT_OP_READ_BLOB_RESP;
+
+	memcpy(pdu + 1, &value[offset], vlen);
 
 	return vlen + 1;
 }
