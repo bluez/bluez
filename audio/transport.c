@@ -702,6 +702,8 @@ static void headset_nrec_changed(struct audio_device *dev, gboolean nrec,
 {
 	struct media_transport *transport = user_data;
 
+	DBG("");
+
 	emit_property_changed(transport->conn, transport->path,
 				MEDIA_TRANSPORT_INTERFACE, "NREC",
 				DBUS_TYPE_BOOLEAN, &nrec);

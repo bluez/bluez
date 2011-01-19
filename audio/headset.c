@@ -143,7 +143,6 @@ struct headset_slc {
 	gboolean inband_ring;
 	gboolean nrec;
 	gboolean nrec_req;
-	GSList *nrec_cbs;
 
 	int sp_gain;
 	int mic_gain;
@@ -174,6 +173,7 @@ struct headset {
 
 	headset_lock_t lock;
 	struct headset_slc *slc;
+	GSList *nrec_cbs;
 };
 
 struct event {
@@ -1106,7 +1106,7 @@ int telephony_nr_and_ec_rsp(void *telephony_device, cme_error_t err)
 	if (err == CME_ERROR_NONE) {
 		GSList *l;
 
-		for (l = slc->nrec_cbs; l; l = l->next) {
+		for (l = hs->nrec_cbs; l; l = l->next) {
 			struct headset_nrec_callback *nrec_cb = l->data;
 
 			nrec_cb->cb(device, slc->nrec_req, nrec_cb->user_data);
@@ -2121,9 +2121,6 @@ static int headset_close_rfcomm(struct audio_device *dev)
 		hs->rfcomm = NULL;
 	}
 
-	g_slist_foreach(hs->slc->nrec_cbs, (GFunc) g_free, NULL);
-	g_slist_free(hs->slc->nrec_cbs);
-
 	g_free(hs->slc);
 	hs->slc = NULL;
 
@@ -2142,6 +2139,9 @@ static void headset_free(struct audio_device *dev)
 	close_sco(dev);
 
 	headset_close_rfcomm(dev);
+
+	g_slist_foreach(hs->nrec_cbs, (GFunc) g_free, NULL);
+	g_slist_free(hs->nrec_cbs);
 
 	g_free(hs);
 	dev->headset = NULL;
@@ -2667,15 +2667,12 @@ unsigned int headset_add_nrec_cb(struct audio_device *dev,
 	struct headset_nrec_callback *nrec_cb;
 	static unsigned int id = 0;
 
-	if (!hs->slc)
-		return 0;
-
 	nrec_cb = g_new(struct headset_nrec_callback, 1);
 	nrec_cb->cb = cb;
 	nrec_cb->user_data = user_data;
 	nrec_cb->id = ++id;
 
-	hs->slc->nrec_cbs = g_slist_prepend(hs->slc->nrec_cbs, nrec_cb);
+	hs->nrec_cbs = g_slist_prepend(hs->nrec_cbs, nrec_cb);
 
 	return nrec_cb->id;
 }
@@ -2685,14 +2682,10 @@ gboolean headset_remove_nrec_cb(struct audio_device *dev, unsigned int id)
 	struct headset *hs = dev->headset;
 	GSList *l;
 
-	if (!hs->slc)
-		return FALSE;
-
-	for (l = hs->slc->nrec_cbs; l != NULL; l = l->next) {
+	for (l = hs->nrec_cbs; l != NULL; l = l->next) {
 		struct headset_nrec_callback *cb = l->data;
 		if (cb && cb->id == id) {
-			hs->slc->nrec_cbs = g_slist_remove(hs->slc->nrec_cbs,
-									cb);
+			hs->nrec_cbs = g_slist_remove(hs->nrec_cbs, cb);
 			g_free(cb);
 			return TRUE;
 		}
