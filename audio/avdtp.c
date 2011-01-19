@@ -2091,7 +2091,8 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct avdtp *session = data;
 	struct avdtp_common_header *header;
-	gsize size;
+	ssize_t size;
+	int fd;
 
 	DBG("");
 
@@ -2103,13 +2104,14 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		goto failed;
 
-	if (g_io_channel_read(chan, session->buf, session->imtu, &size)
-							!= G_IO_ERROR_NONE) {
+	fd = g_io_channel_unix_get_fd(chan);
+	size = read(fd, session->buf, session->imtu);
+	if (size < 0) {
 		error("IO Channel read error");
 		goto failed;
 	}
 
-	if (size < sizeof(struct avdtp_common_header)) {
+	if ((size_t) size < sizeof(struct avdtp_common_header)) {
 		error("Received too small packet (%zu bytes)", size);
 		goto failed;
 	}

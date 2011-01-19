@@ -1235,8 +1235,9 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	struct headset *hs;
 	struct headset_slc *slc;
 	unsigned char buf[BUF_SIZE];
-	gsize bytes_read = 0;
-	gsize free_space;
+	ssize_t bytes_read;
+	size_t free_space;
+	int fd;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -1249,14 +1250,16 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
-	if (g_io_channel_read(chan, (gchar *) buf, sizeof(buf) - 1,
-				&bytes_read) != G_IO_ERROR_NONE)
+	fd = g_io_channel_unix_get_fd(chan);
+
+	bytes_read = read(fd, buf, sizeof(buf) - 1);
+	if (bytes_read < 0)
 		return TRUE;
 
 	free_space = sizeof(slc->buf) - slc->data_start -
 			slc->data_length - 1;
 
-	if (free_space < bytes_read) {
+	if (free_space < (size_t) bytes_read) {
 		/* Very likely that the HS is sending us garbage so
 		 * just ignore the data and disconnect */
 		error("Too much data to fit incomming buffer");
