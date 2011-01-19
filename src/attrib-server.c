@@ -242,6 +242,7 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 
 		last_size = a->len;
 		old = cur;
+		last_handle = cur->handle;
 	}
 
 	if (groups == NULL)
