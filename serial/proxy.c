@@ -200,25 +200,25 @@ static sdp_record_t *proxy_record_new(const char *uuid128, uint8_t channel)
 	return record;
 }
 
-static GIOError channel_write(GIOChannel *chan, char *buf, size_t size)
+static int channel_write(GIOChannel *chan, char *buf, size_t size)
 {
-	GIOError err = G_IO_ERROR_NONE;
-	gsize wbytes, written;
+	size_t wbytes;
+	ssize_t written;
+	int fd;
+
+	fd = g_io_channel_unix_get_fd(chan);
 
 	wbytes = written = 0;
 	while (wbytes < size) {
-		err = g_io_channel_write(chan,
-				buf + wbytes,
-				size - wbytes,
-				&written);
+		written = write(fd, buf + wbytes, size - wbytes);
 
-		if (err != G_IO_ERROR_NONE)
-			return err;
+		if (written)
+			return -errno;
 
 		wbytes += written;
 	}
 
-	return err;
+	return 0;
 }
 
 static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -226,24 +226,25 @@ static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 	char buf[BUF_SIZE];
 	struct serial_proxy *prx = data;
 	GIOChannel *dest;
-	GIOError err;
-	size_t rbytes;
+	ssize_t rbytes;
+	int fd, err;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
 	dest = (chan == prx->rfcomm) ? prx->local : prx->rfcomm;
 
+	fd = g_io_channel_unix_get_fd(chan);
+
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		/* Try forward remaining data */
 		do {
-			rbytes = 0;
-			err = g_io_channel_read(chan, buf, sizeof(buf), &rbytes);
-			if (err != G_IO_ERROR_NONE || rbytes == 0)
+			rbytes = read(fd, buf, sizeof(buf));
+			if (rbytes <= 0)
 				break;
 
 			err = channel_write(dest, buf, rbytes);
-		} while (err == G_IO_ERROR_NONE);
+		} while (err == 0);
 
 		g_io_channel_shutdown(prx->local, TRUE, NULL);
 		g_io_channel_unref(prx->local);
@@ -256,13 +257,12 @@ static gboolean forward_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 		return FALSE;
 	}
 
-	rbytes = 0;
-	err = g_io_channel_read(chan, buf, sizeof(buf), &rbytes);
-	if (err != G_IO_ERROR_NONE)
+	rbytes = read(fd, buf, sizeof(buf));
+	if (rbytes < 0)
 		return FALSE;
 
 	err = channel_write(dest, buf, rbytes);
-	if (err != G_IO_ERROR_NONE)
+	if (err != 0)
 		return FALSE;
 
 	return TRUE;
