@@ -105,7 +105,7 @@ static void primary_by_uuid_cb(guint8 status, const guint8 *ipdu,
 	struct discover_primary *dp = user_data;
 	GSList *ranges, *last;
 	struct att_range *range;
-	uint8_t opdu[ATT_DEFAULT_MTU];
+	uint8_t opdu[ATT_DEFAULT_LE_MTU];
 	guint16 oplen;
 	int err = 0;
 
@@ -195,7 +195,7 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	err = 0;
 
 	if (end != 0xffff) {
-		uint8_t opdu[ATT_DEFAULT_MTU];
+		uint8_t opdu[ATT_DEFAULT_LE_MTU];
 		guint16 oplen = encode_discover_primary(end + 1, 0xffff, NULL,
 							opdu, sizeof(opdu));
 
@@ -214,7 +214,7 @@ guint gatt_discover_primary(GAttrib *attrib, uuid_t *uuid, gatt_cb_t func,
 							gpointer user_data)
 {
 	struct discover_primary *dp;
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	GAttribResultFunc cb;
 	guint16 plen;
 
@@ -245,7 +245,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	struct discover_char *dc = user_data;
 	struct att_data_list *list;
 	unsigned int i, err;
-	uint8_t opdu[ATT_DEFAULT_MTU];
+	uint8_t opdu[ATT_DEFAULT_LE_MTU];
 	guint16 oplen;
 	uuid_t uuid;
 	uint16_t last = 0;
@@ -314,7 +314,7 @@ done:
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 					gatt_cb_t func, gpointer user_data)
 {
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	struct discover_char *dc;
 	guint16 plen;
 	uuid_t uuid;
@@ -342,7 +342,7 @@ guint gatt_read_char_by_uuid(GAttrib *attrib, uint16_t start, uint16_t end,
 					uuid_t *uuid, GAttribResultFunc func,
 					gpointer user_data)
 {
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	guint16 plen;
 
 	plen = enc_read_by_type_req(start, end, uuid, pdu, sizeof(pdu));
@@ -381,7 +381,7 @@ static void read_blob_helper(guint8 status, const guint8 *rpdu, guint16 rlen,
 							gpointer user_data)
 {
 	struct read_long_data *long_read = user_data;
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	guint8 *tmp;
 	guint16 plen;
 	guint id;
@@ -402,7 +402,7 @@ static void read_blob_helper(guint8 status, const guint8 *rpdu, guint16 rlen,
 	long_read->buffer = tmp;
 	long_read->size += rlen - 1;
 
-	if (rlen < ATT_DEFAULT_MTU)
+	if (rlen < ATT_DEFAULT_LE_MTU)
 		goto done;
 
 	plen = enc_read_blob_req(long_read->handle, long_read->size - 1,
@@ -427,11 +427,11 @@ static void read_char_helper(guint8 status, const guint8 *rpdu,
 					guint16 rlen, gpointer user_data)
 {
 	struct read_long_data *long_read = user_data;
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	guint16 plen;
 	guint id;
 
-	if (status != 0 || rlen < ATT_DEFAULT_MTU)
+	if (status != 0 || rlen < ATT_DEFAULT_LE_MTU)
 		goto done;
 
 	long_read->buffer = g_malloc(rlen);
@@ -461,7 +461,7 @@ done:
 guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 							gpointer user_data)
 {
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	guint16 plen;
 	guint id;
 	struct read_long_data *long_read;
@@ -493,7 +493,7 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
 			int vlen, GAttribResultFunc func, gpointer user_data)
 {
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	guint16 plen;
 
 	plen = enc_write_req(handle, value, vlen, pdu, sizeof(pdu));
@@ -504,7 +504,7 @@ guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
 guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
 				GAttribResultFunc func, gpointer user_data)
 {
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	guint16 plen;
 
 	plen = enc_find_info_req(start, end, pdu, sizeof(pdu));
@@ -518,7 +518,7 @@ guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
 guint gatt_write_cmd(GAttrib *attrib, uint16_t handle, uint8_t *value, int vlen,
 				GDestroyNotify notify, gpointer user_data)
 {
-	uint8_t pdu[ATT_DEFAULT_MTU];
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	guint16 plen;
 
 	plen = enc_write_cmd(handle, value, vlen, pdu, sizeof(pdu));

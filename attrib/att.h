@@ -107,7 +107,8 @@
 
 
 #define ATT_MAX_MTU				256
-#define ATT_DEFAULT_MTU				23
+#define ATT_DEFAULT_L2CAP_MTU			48
+#define ATT_DEFAULT_LE_MTU			23
 
 /* Requirements for read/write operations */
 enum {

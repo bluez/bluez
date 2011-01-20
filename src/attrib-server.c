@@ -737,6 +737,7 @@ done:
 static void connect_event(GIOChannel *io, GError *err, void *user_data)
 {
 	struct gatt_channel *channel;
+	GIOChannel **server_io = user_data;
 	GError *gerr = NULL;
 
 	if (err) {
@@ -758,8 +759,12 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 		return;
 	}
 
+	if (server_io == &l2cap_io)
+		channel->mtu = ATT_DEFAULT_L2CAP_MTU;
+	else
+		channel->mtu = ATT_DEFAULT_LE_MTU;
+
 	channel->attrib = g_attrib_new(io);
-	channel->mtu = ATT_DEFAULT_MTU;
 	g_io_channel_unref(io);
 
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
@@ -775,7 +780,7 @@ static void confirm_event(GIOChannel *io, void *user_data)
 {
 	GError *gerr = NULL;
 
-	if (bt_io_accept(io, connect_event, NULL, NULL, &gerr) == FALSE) {
+	if (bt_io_accept(io, connect_event, user_data, NULL, &gerr) == FALSE) {
 		error("bt_io_accept: %s", gerr->message);
 		g_error_free(gerr);
 		g_io_channel_unref(io);
@@ -824,7 +829,7 @@ int attrib_server_init(void)
 
 	/* BR/EDR socket */
 	l2cap_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
-					NULL, NULL, &gerr,
+					&l2cap_io, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, BDADDR_ANY,
 					BT_IO_OPT_PSM, GATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
@@ -857,7 +862,7 @@ int attrib_server_init(void)
 
 	/* LE socket */
 	le_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
-					NULL, NULL, &gerr,
+					&le_io, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, BDADDR_ANY,
 					BT_IO_OPT_CID, GATT_CID,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
