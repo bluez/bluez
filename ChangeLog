@@ -1,3 +1,10 @@
+ver 4.86:
+	Revert wrong fix for SDP PDU size error response.
+	Fix various memory leaks in A2DP and AVDTP support.
+	Add Routing property to MediaTransport interface
+	Add proper tracking mechanism to NREC status.
+	Add READ_BLOB_REQUEST support to attribute server.
+
 ver 4.85:
 	Fix issue with event mask setting for older adapters.
 	Fix issue with device creation and pairing failures.
