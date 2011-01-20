@@ -870,6 +870,13 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 	for (l = characteristics; l; l = l->next) {
 		struct att_char *current_chr = l->data;
 		struct characteristic *chr;
+		guint handle = current_chr->value_handle;
+		GSList *lchr;
+
+		lchr = g_slist_find_custom(prim->chars,
+			GUINT_TO_POINTER(handle), characteristic_handle_cmp);
+		if (lchr)
+			continue;
 
 		chr = g_new0(struct characteristic, 1);
 		chr->prim = prim;
