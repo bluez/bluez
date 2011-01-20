@@ -603,6 +603,7 @@ static int open_socket(int dev, unsigned long flags)
 	}
 
 	/* Bind socket to the HCI device */
+	memset(&addr, 0, sizeof(addr));
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = dev;
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
