@@ -427,6 +427,56 @@ static void mgmt_new_key(int sk, void *buf, size_t len)
 					ev->key.pin_len, ev->old_key_type);
 }
 
+static void mgmt_device_connected(int sk, void *buf, size_t len)
+{
+	struct mgmt_ev_device_connected *ev = buf;
+	struct controller_info *info;
+	uint16_t index;
+	char addr[18];
+
+	if (len < sizeof(*ev)) {
+		error("Too small device_connected event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+	ba2str(&ev->bdaddr, addr);
+
+	DBG("hci%u device %s connected", index, addr);
+
+	if (index > max_index) {
+		error("Unexpected index %u in device_connected event", index);
+		return;
+	}
+
+	info = &controllers[index];
+}
+
+static void mgmt_device_disconnected(int sk, void *buf, size_t len)
+{
+	struct mgmt_ev_device_disconnected *ev = buf;
+	struct controller_info *info;
+	uint16_t index;
+	char addr[18];
+
+	if (len < sizeof(*ev)) {
+		error("Too small device_disconnected event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+	ba2str(&ev->bdaddr, addr);
+
+	DBG("hci%u device %s disconnected", index, addr);
+
+	if (index > max_index) {
+		error("Unexpected index %u in device_disconnected event", index);
+		return;
+	}
+
+	info = &controllers[index];
+}
+
 static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 {
 	if (uuid->type == SDP_UUID16)
@@ -877,6 +927,12 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_NEW_KEY:
 		mgmt_new_key(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_DEVICE_CONNECTED:
+		mgmt_device_connected(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_DEVICE_DISCONNECTED:
+		mgmt_device_disconnected(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);

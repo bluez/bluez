@@ -171,3 +171,15 @@ struct mgmt_ev_new_key {
 	struct mgmt_key_info key;
 	uint8_t old_key_type;
 } __packed;
+
+#define MGMT_EV_DEVICE_CONNECTED	0x000B
+struct mgmt_ev_device_connected {
+	uint16_t index;
+	bdaddr_t bdaddr;
+} __packed;
+
+#define MGMT_EV_DEVICE_DISCONNECTED	0x000C
+struct mgmt_ev_device_disconnected {
+	uint16_t index;
+	bdaddr_t bdaddr;
+} __packed;

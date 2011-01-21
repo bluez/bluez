@@ -310,3 +310,17 @@ Event Parameters	Controller_Index (2 Octets)
 				PIN_Length (1 Octet)
 			}
 			Old_Key_Type (1 Octet)
+
+Device Connected Event
+======================
+
+Event Code		0x000B
+Event Parameters	Controller_Index (2 Octets)
+			Address (6 Octets)
+
+Device Disconnected Event
+=========================
+
+Event Code		0x000C
+Event Parameters	Controller_Index (2 Octets)
+			Address (6 Octets)
