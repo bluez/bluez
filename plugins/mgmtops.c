@@ -450,6 +450,8 @@ static void mgmt_device_connected(int sk, void *buf, size_t len)
 	}
 
 	info = &controllers[index];
+
+	btd_event_conn_complete(&info->bdaddr, 0, &ev->bdaddr);
 }
 
 static void mgmt_device_disconnected(int sk, void *buf, size_t len)
@@ -475,6 +477,8 @@ static void mgmt_device_disconnected(int sk, void *buf, size_t len)
 	}
 
 	info = &controllers[index];
+
+	btd_event_disconn_complete(&info->bdaddr, &ev->bdaddr);
 }
 
 static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
