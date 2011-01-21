@@ -66,6 +66,7 @@ static struct controller_info {
 	gboolean discoverable;
 	gboolean pairable;
 	uint8_t sec_mode;
+	GSList *connections;
 } *controllers = NULL;
 
 static int mgmt_sock = -1;
@@ -125,6 +126,23 @@ static void read_info(int sk, uint16_t index)
 
 	if (write(sk, buf, sizeof(buf)) < 0)
 		error("Unable to send read_info command: %s (%d)",
+						strerror(errno), errno);
+}
+
+static void get_connections(int sk, uint16_t index)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_get_connections)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_get_connections *cp = (void *) &buf[sizeof(*hdr)];
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_GET_CONNECTIONS);
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+
+	if (write(sk, buf, sizeof(buf)) < 0)
+		error("Unable to send get_connections command: %s (%d)",
 						strerror(errno), errno);
 }
 
@@ -601,7 +619,7 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 		index = btohs(bt_get_unaligned(&rp->index[i]));
 
 		add_controller(index);
-		read_info(sk, index);
+		get_connections(sk, index);
 		clear_uuids(index);
 	}
 }
@@ -824,6 +842,41 @@ static void disconnect_complete(int sk, void *buf, size_t len)
 	btd_event_disconn_complete(&info->bdaddr, &rp->bdaddr);
 }
 
+static void get_connections_complete(int sk, void *buf, size_t len)
+{
+	struct mgmt_rp_get_connections *rp = buf;
+	struct controller_info *info;
+	uint16_t index;
+	int i;
+
+	if (len < sizeof(*rp)) {
+		error("Too small get_connections complete event");
+		return;
+	}
+
+	if (len < (sizeof(*rp) + (rp->conn_count * sizeof(bdaddr_t)))) {
+		error("Too small get_connections complete event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&rp->index));
+
+	if (index > max_index) {
+		error("Unexpected index %u in get_connections complete",
+								index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	for (i = 0; i < rp->conn_count; i++) {
+		bdaddr_t *bdaddr = g_memdup(&rp->conn[i], sizeof(bdaddr_t));
+		info->connections = g_slist_append(info->connections, bdaddr);
+	}
+
+	read_info(sk, index);
+}
+
 static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -881,6 +934,9 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 	case MGMT_OP_DISCONNECT:
 		DBG("disconnect complete");
 		disconnect_complete(sk, ev->data, len - sizeof(*ev));
+		break;
+	case MGMT_OP_GET_CONNECTIONS:
+		get_connections_complete(sk, ev->data, len - sizeof(*ev));
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
@@ -1204,8 +1260,14 @@ static int mgmt_unblock_device(int index, bdaddr_t *bdaddr)
 
 static int mgmt_get_conn_list(int index, GSList **conns)
 {
+	struct controller_info *info = &controllers[index];
+
 	DBG("index %d", index);
-	return -ENOSYS;
+
+	*conns = info->connections;
+	info->connections = NULL;
+
+	return 0;
 }
 
 static int mgmt_read_local_version(int index, struct hci_version *ver)

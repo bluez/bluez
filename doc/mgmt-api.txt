@@ -191,6 +191,18 @@ Disconnect Command
 	Return Paramters:	Controller_Index (2 Octets)
 				Address (6 Octets)
 
+Get Connections Command
+=======================
+
+	Command Code:		0x0010
+	Command Parameters:	Controller_Index (2 Octets)
+	Return Paramters:	Controller_Index (2 Octets)
+				Connection_Count (2 Octets)
+				Address1 (6 Octets)
+				Address2 (6 Octets)
+				...
+
+
 
 Read Tracing Buffer Size Command
 ================================
