@@ -129,6 +129,16 @@ struct mgmt_cp_remove_key {
 	uint8_t disconnect;
 } __packed;
 
+#define MGMT_OP_DISCONNECT		0x000F
+struct mgmt_cp_disconnect {
+	uint16_t index;
+	bdaddr_t bdaddr;
+} __packed;
+struct mgmt_rp_disconnect {
+	uint16_t index;
+	bdaddr_t bdaddr;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;

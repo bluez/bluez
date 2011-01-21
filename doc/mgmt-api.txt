@@ -182,6 +182,16 @@ Remove Key Command
 	Return Paramters:	Controller_Index (2 Octets)
 
 
+Disconnect Command
+==================
+
+	Command Code:		0x000F
+	Command Parameters:	Controller_Index (2 Octets)
+				Address (6 Octets)
+	Return Paramters:	Controller_Index (2 Octets)
+				Address (6 Octets)
+
+
 Read Tracing Buffer Size Command
 ================================
 
