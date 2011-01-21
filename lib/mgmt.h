@@ -193,3 +193,10 @@ struct mgmt_ev_device_disconnected {
 	uint16_t index;
 	bdaddr_t bdaddr;
 } __packed;
+
+#define MGMT_EV_CONNECT_FAILED		0x000D
+struct mgmt_ev_connect_failed {
+	uint16_t index;
+	bdaddr_t bdaddr;
+	uint8_t status;
+} __packed;

@@ -334,3 +334,11 @@ Device Disconnected Event
 Event Code		0x000C
 Event Parameters	Controller_Index (2 Octets)
 			Address (6 Octets)
+
+Connect Failed Event
+====================
+
+Event Code		0x000D
+Event Parameters	Controller_Index (2 Octets)
+			Address (6 Octets)
+			Status (1 Octet)

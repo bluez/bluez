@@ -481,6 +481,33 @@ static void mgmt_device_disconnected(int sk, void *buf, size_t len)
 	btd_event_disconn_complete(&info->bdaddr, &ev->bdaddr);
 }
 
+static void mgmt_connect_failed(int sk, void *buf, size_t len)
+{
+	struct mgmt_ev_connect_failed *ev = buf;
+	struct controller_info *info;
+	uint16_t index;
+	char addr[18];
+
+	if (len < sizeof(*ev)) {
+		error("Too small connect_failed event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+	ba2str(&ev->bdaddr, addr);
+
+	DBG("hci%u %s status %u", index, addr, ev->status);
+
+	if (index > max_index) {
+		error("Unexpected index %u in connect_failed event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	btd_event_conn_complete(&info->bdaddr, ev->status, &ev->bdaddr);
+}
+
 static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 {
 	if (uuid->type == SDP_UUID16)
@@ -969,6 +996,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_DEVICE_DISCONNECTED:
 		mgmt_device_disconnected(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_CONNECT_FAILED:
+		mgmt_connect_failed(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);
