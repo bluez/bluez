@@ -947,21 +947,6 @@ struct btd_device *adapter_find_device(struct btd_adapter *adapter,
 	return device;
 }
 
-struct btd_device *adapter_find_connection(struct btd_adapter *adapter,
-						uint16_t handle)
-{
-	GSList *l;
-
-	for (l = adapter->connections; l; l = l->next) {
-		struct btd_device *device = l->data;
-
-		if (device_has_connection(device, handle))
-			return device;
-	}
-
-	return NULL;
-}
-
 static void adapter_update_devices(struct btd_adapter *adapter)
 {
 	char **devices;
@@ -2246,7 +2231,7 @@ static void load_connections(struct btd_adapter *adapter)
 		ba2str(&ci->bdaddr, address);
 		device = adapter_get_device(connection, adapter, address);
 		if (device)
-			adapter_add_connection(adapter, device, ci->handle);
+			adapter_add_connection(adapter, device);
 	}
 
 	g_slist_foreach(conns, (GFunc) g_free, NULL);
@@ -2513,7 +2498,7 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 
 	while (adapter->connections) {
 		struct btd_device *device = adapter->connections->data;
-		adapter_remove_connection(adapter, device, 0);
+		adapter_remove_connection(adapter, device);
 	}
 
 	if (adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY)) {
@@ -3191,29 +3176,29 @@ struct agent *adapter_get_agent(struct btd_adapter *adapter)
 }
 
 void adapter_add_connection(struct btd_adapter *adapter,
-				struct btd_device *device, uint16_t handle)
+						struct btd_device *device)
 {
 	if (g_slist_find(adapter->connections, device)) {
-		error("Unable to add connection %d", handle);
+		error("Device is already marked as connected");
 		return;
 	}
 
-	device_add_connection(device, connection, handle);
+	device_add_connection(device, connection);
 
 	adapter->connections = g_slist_append(adapter->connections, device);
 }
 
 void adapter_remove_connection(struct btd_adapter *adapter,
-				struct btd_device *device, uint16_t handle)
+						struct btd_device *device)
 {
 	bdaddr_t bdaddr;
 
 	if (!g_slist_find(adapter->connections, device)) {
-		error("No matching connection for handle %u", handle);
+		error("No matching connection for device");
 		return;
 	}
 
-	device_remove_connection(device, connection, handle);
+	device_remove_connection(device, connection);
 
 	adapter->connections = g_slist_remove(adapter->connections, device);
 
@@ -3594,9 +3579,9 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 						timeout, clock, accuracy);
 }
 
-int btd_adapter_disconnect_device(struct btd_adapter *adapter, uint16_t handle)
+int btd_adapter_disconnect_device(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 {
-	return adapter_ops->disconnect(adapter->dev_id, handle);
+	return adapter_ops->disconnect(adapter->dev_id, bdaddr);
 }
 
 int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
@@ -3605,9 +3590,9 @@ int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 }
 
 int btd_adapter_request_authentication(struct btd_adapter *adapter,
-							uint16_t handle)
+							bdaddr_t *bdaddr)
 {
-	return adapter_ops->request_authentication(adapter->dev_id, handle);
+	return adapter_ops->request_authentication(adapter->dev_id, bdaddr);
 }
 
 int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,

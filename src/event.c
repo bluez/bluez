@@ -785,8 +785,7 @@ proceed:
 	return 0;
 }
 
-void btd_event_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
-				bdaddr_t *peer)
+void btd_event_conn_complete(bdaddr_t *local, uint8_t status, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -809,33 +808,18 @@ void btd_event_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle,
 
 	update_lastused(local, peer);
 
-	adapter_add_connection(adapter, device, handle);
+	adapter_add_connection(adapter, device);
 }
 
-void btd_event_disconn_complete(bdaddr_t *local, uint8_t status,
-				uint16_t handle, uint8_t reason)
+void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	if (status) {
-		error("Disconnection failed: 0x%02x", status);
+	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
-	}
 
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	device = adapter_find_connection(adapter, handle);
-	if (!device) {
-		DBG("No matching connection found for handle %u", handle);
-		return;
-	}
-
-	adapter_remove_connection(adapter, device, handle);
+	adapter_remove_connection(adapter, device);
 }
 
 /* Section reserved to device HCI callbacks */

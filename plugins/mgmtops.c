@@ -1117,9 +1117,13 @@ static int mgmt_read_local_features(int index, uint8_t *features)
 	return 0;
 }
 
-static int mgmt_disconnect(int index, uint16_t handle)
+static int mgmt_disconnect(int index, bdaddr_t *bdaddr)
 {
-	DBG("index %d handle %u", index, handle);
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("index %d %s", index, addr);
+
 	return -ENOSYS;
 }
 
@@ -1147,9 +1151,13 @@ static int mgmt_remove_bonding(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_request_authentication(int index, uint16_t handle)
+static int mgmt_request_authentication(int index, bdaddr_t *bdaddr)
 {
-	DBG("index %d handle %u", index, handle);
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("index %d %s", index, addr);
+
 	return -ENOSYS;
 }
 

@@ -115,8 +115,6 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest);
 
-struct btd_device *adapter_find_connection(struct btd_adapter *adapter, uint16_t handle);
-
 void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 						struct btd_device *device,
 						gboolean remove_storage);
@@ -156,9 +154,9 @@ void btd_adapter_pairable_changed(struct btd_adapter *adapter,
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
 void adapter_add_connection(struct btd_adapter *adapter,
-				struct btd_device *device, uint16_t handle);
+						struct btd_device *device);
 void adapter_remove_connection(struct btd_adapter *adapter,
-				struct btd_device *device, uint16_t handle);
+						struct btd_device *device);
 gboolean adapter_has_discov_sessions(struct btd_adapter *adapter);
 void adapter_suspend_discovery(struct btd_adapter *adapter);
 void adapter_resume_discovery(struct btd_adapter *adapter);
@@ -221,9 +219,9 @@ struct btd_adapter_ops {
 	int (*get_conn_list) (int index, GSList **conns);
 	int (*read_local_version) (int index, struct hci_version *ver);
 	int (*read_local_features) (int index, uint8_t *features);
-	int (*disconnect) (int index, uint16_t handle);
+	int (*disconnect) (int index, bdaddr_t *bdaddr);
 	int (*remove_bonding) (int index, bdaddr_t *bdaddr);
-	int (*request_authentication) (int index, uint16_t handle);
+	int (*request_authentication) (int index, bdaddr_t *bdaddr);
 	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin);
 	int (*confirm_reply) (int index, bdaddr_t *bdaddr, gboolean success);
 	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint32_t passkey);
@@ -266,12 +264,12 @@ int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 
 int btd_adapter_disconnect_device(struct btd_adapter *adapter,
-							uint16_t handle);
+							bdaddr_t *bdaddr);
 
 int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 
 int btd_adapter_request_authentication(struct btd_adapter *adapter,
-							uint16_t handle);
+							bdaddr_t *bdaddr);
 
 int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							const char *pin);

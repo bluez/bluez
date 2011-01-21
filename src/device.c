@@ -134,7 +134,7 @@ struct btd_device {
 	uint8_t		cap;
 	uint8_t		auth;
 
-	uint16_t	handle;			/* Connection handle */
+	gboolean	connected;
 
 	/* Whether were creating a security mode 3 connection */
 	gboolean	secmode3;
@@ -328,9 +328,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Blocked", DBUS_TYPE_BOOLEAN, &boolean);
 
 	/* Connected */
-	boolean = (device->handle != 0);
 	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN,
-				&boolean);
+							&device->connected);
 
 	/* UUIDs */
 	str = g_new0(char *, g_slist_length(device->uuids) + 1);
@@ -435,7 +434,7 @@ static gboolean do_disconnect(gpointer user_data)
 
 	device->disconn_timer = 0;
 
-	btd_adapter_disconnect_device(device->adapter, device->handle);
+	btd_adapter_disconnect_device(device->adapter, &device->bdaddr);
 
 	return FALSE;
 }
@@ -448,7 +447,7 @@ static int device_block(DBusConnection *conn, struct btd_device *device)
 	if (device->blocked)
 		return 0;
 
-	if (device->handle)
+	if (device->connected)
 		do_disconnect(device);
 
 	g_slist_foreach(device->drivers, (GFunc) driver_remove, device);
@@ -783,7 +782,7 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *device = user_data;
 
-	if (!device->handle)
+	if (!device->connected)
 		return btd_error_not_connected(msg);
 
 	device_request_disconnect(device, msg);
@@ -810,7 +809,7 @@ static GDBusSignalTable device_signals[] = {
 
 gboolean device_is_connected(struct btd_device *device)
 {
-	return (device->handle != 0);
+	return device->connected;
 }
 
 static void device_set_connected(struct btd_device *device,
@@ -832,34 +831,30 @@ static void device_set_connected(struct btd_device *device,
 	}
 }
 
-void device_add_connection(struct btd_device *device, DBusConnection *conn,
-				uint16_t handle)
+void device_add_connection(struct btd_device *device, DBusConnection *conn)
 {
-	if (device->handle) {
+	if (device->connected) {
 		char addr[18];
 		ba2str(&device->bdaddr, addr);
-		error("%s: Unable to add connection %u, %u already exist",
-			addr, handle, device->handle);
+		error("Device %s is already connected", addr);
 		return;
 	}
 
-	device->handle = handle;
+	device->connected = TRUE;
 
 	device_set_connected(device, conn, TRUE);
 }
 
-void device_remove_connection(struct btd_device *device, DBusConnection *conn,
-				uint16_t handle)
+void device_remove_connection(struct btd_device *device, DBusConnection *conn)
 {
-	if (handle && device->handle != handle) {
+	if (!device->connected) {
 		char addr[18];
 		ba2str(&device->bdaddr, addr);
-		error("%s: connection handle mismatch %u != %u",
-						addr, handle, device->handle);
+		error("Device %s isn't connected", addr);
 		return;
 	}
 
-	device->handle = 0;
+	device->connected = FALSE;
 
 	if (device->disconn_timer > 0) {
 		g_source_remove(device->disconn_timer);
@@ -874,11 +869,6 @@ void device_remove_connection(struct btd_device *device, DBusConnection *conn,
 	}
 
 	device_set_connected(device, conn, FALSE);
-}
-
-gboolean device_has_connection(struct btd_device *device, uint16_t handle)
-{
-	return (handle == device->handle);
 }
 
 guint device_add_disconnect_watch(struct btd_device *device,
@@ -1064,7 +1054,7 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 		browse_request_cancel(device->browse);
 	}
 
-	if (device->handle)
+	if (device->connected)
 		do_disconnect(device);
 
 	if (remove_stored)
@@ -2016,7 +2006,8 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		goto failed;
 	}
 
-	if (btd_adapter_request_authentication(device->adapter, handle) < 0)
+	if (btd_adapter_request_authentication(device->adapter,
+							&device->bdaddr) < 0)
 		goto failed;
 
 	return;

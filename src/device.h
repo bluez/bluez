@@ -98,11 +98,8 @@ void device_set_authorizing(struct btd_device *device, gboolean auth);
 void device_set_renewed_key(struct btd_device *device, gboolean renewed);
 gboolean device_set_debug_key(struct btd_device *device, uint8_t *key);
 gboolean device_get_debug_key(struct btd_device *device, uint8_t *key);
-void device_add_connection(struct btd_device *device, DBusConnection *conn,
-				uint16_t handle);
-void device_remove_connection(struct btd_device *device, DBusConnection *conn,
-				uint16_t handle);
-gboolean device_has_connection(struct btd_device *device, uint16_t handle);
+void device_add_connection(struct btd_device *device, DBusConnection *conn);
+void device_remove_connection(struct btd_device *device, DBusConnection *conn);
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg);
 
 typedef void (*disconnect_watch) (struct btd_device *device, gboolean removal,

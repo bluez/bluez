@@ -29,8 +29,8 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer, gboolean legacy);
 void btd_event_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class);
 void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status, char *name);
-void btd_event_conn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, bdaddr_t *peer);
-void btd_event_disconn_complete(bdaddr_t *local, uint8_t status, uint16_t handle, uint8_t reason);
+void btd_event_conn_complete(bdaddr_t *local, uint8_t status, bdaddr_t *peer);
+void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer);
 void btd_event_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t status);
 void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t status);
 void btd_event_setscan_enable_complete(bdaddr_t *local);
