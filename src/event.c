@@ -695,7 +695,7 @@ proceed:
 
 int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t *key, uint8_t key_type,
-				int pin_length, uint8_t old_key_type)
+				uint8_t pin_length, uint8_t old_key_type)
 {
 	struct btd_device *device;
 	struct btd_adapter *adapter;

@@ -1975,6 +1975,7 @@ static struct link_key_info *get_key_info(const char *addr, const char *value)
 {
 	struct link_key_info *info;
 	char tmp[3];
+	long int l;
 	int i;
 
 	if (strlen(value) < 36) {
@@ -1997,7 +1998,10 @@ static struct link_key_info *get_key_info(const char *addr, const char *value)
 	info->type = (uint8_t) strtol(tmp, NULL, 10);
 
 	memcpy(tmp, value + 35, 2);
-	info->pin_len = strtol(tmp, NULL, 10);
+	l = strtol(tmp, NULL, 10);
+	if (l < 0)
+		l = 0;
+	info->pin_len = l;
 
 	return info;
 }

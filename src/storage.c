@@ -676,6 +676,8 @@ int read_pin_length(bdaddr_t *local, bdaddr_t *peer)
 	}
 
 	len = atoi(str + 35);
+	if (len < 0)
+		len = 0;
 
 	free(str);
 

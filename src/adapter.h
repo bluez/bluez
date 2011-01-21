@@ -69,7 +69,7 @@ struct link_key_info {
 	bdaddr_t bdaddr;
 	unsigned char key[16];
 	uint8_t type;
-	int pin_len;
+	uint8_t pin_len;
 };
 
 struct remote_dev_info {

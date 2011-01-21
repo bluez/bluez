@@ -100,7 +100,7 @@ static struct dev_info {
 
 	gboolean debug_keys;
 	GSList *keys;
-	int pin_length;
+	uint8_t pin_length;
 
 	GSList *uuids;
 } *devs = NULL;
@@ -117,7 +117,6 @@ static void init_dev_info(int index, int sk, gboolean registered)
 	memset(dev, 0, sizeof(*dev));
 
 	dev->sk = sk;
-	dev->pin_length = -1;
 	dev->cache_enable = TRUE;
 	dev->registered = registered;
 }
@@ -749,7 +748,7 @@ static void link_key_notify(int index, void *ptr)
 	err = btd_event_link_key_notify(&dev->bdaddr, dba, evt->link_key,
 					evt->key_type, dev->pin_length,
 					old_key_type);
-	dev->pin_length = -1;
+	dev->pin_length = 0;
 
 	if (err == 0) {
 		dev->keys = g_slist_append(dev->keys, key_info);
@@ -2066,7 +2065,7 @@ static void start_hci_dev(int index)
 						io_security_event,
 						GINT_TO_POINTER(index), NULL);
 	dev->io = chan;
-	dev->pin_length = -1;
+	dev->pin_length = 0;
 
 }
 
