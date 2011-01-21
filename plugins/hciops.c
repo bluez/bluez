@@ -2272,14 +2272,57 @@ static void device_devreg_setup(int index)
 	devs[index].already_up = hci_test_bit(HCI_UP, &di.flags);
 }
 
+static void init_conn_list(int index)
+{
+	struct dev_info *dev = &devs[index];
+	struct hci_conn_list_req *cl;
+	struct hci_conn_info *ci;
+	int err, i;
+
+	DBG("hci%d", index);
+
+	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
+
+	cl->dev_id = index;
+	cl->conn_num = 10;
+	ci = cl->conn_info;
+
+	if (ioctl(dev->sk, HCIGETCONNLIST, cl) < 0) {
+		error("Unable to get connection list: %s (%d)",
+						strerror(errno), errno);
+		goto failed;
+	}
+
+	for (i = 0; i < cl->conn_num; i++, ci++) {
+		struct acl_connection *conn;
+
+		if (ci->type != ACL_LINK)
+			continue;
+
+		conn = g_new0(struct acl_connection, 1);
+
+		bacpy(&conn->bdaddr, &ci->bdaddr);
+		conn->handle = ci->handle;
+
+		dev->connections = g_slist_append(dev->connections, conn);
+	}
+
+	err = 0;
+
+failed:
+	g_free(cl);
+}
+
 static void device_event(int event, int index)
 {
 	switch (event) {
 	case HCI_DEV_REG:
 		info("HCI dev %d registered", index);
 		device_devreg_setup(index);
-		if (devs[index].already_up)
+		if (devs[index].already_up) {
+			init_conn_list(index);
 			device_event(HCI_DEV_UP, index);
+		}
 		break;
 
 	case HCI_DEV_UNREG:
@@ -2822,33 +2865,20 @@ static int hciops_unblock_device(int index, bdaddr_t *bdaddr)
 static int hciops_get_conn_list(int index, GSList **conns)
 {
 	struct dev_info *dev = &devs[index];
-	struct hci_conn_list_req *cl;
-	struct hci_conn_info *ci;
-	int err, i;
+	GSList *l;
 
 	DBG("hci%d", index);
 
-	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
-
-	cl->dev_id = index;
-	cl->conn_num = 10;
-	ci = cl->conn_info;
-
-	if (ioctl(dev->sk, HCIGETCONNLIST, cl) < 0) {
-		err = -errno;
-		goto fail;
-	}
-
-	err = 0;
 	*conns = NULL;
 
-	for (i = 0; i < cl->conn_num; i++, ci++)
-		*conns = g_slist_append(*conns,
-				g_memdup(&ci->bdaddr, sizeof(bdaddr_t)));
+	for (l = dev->connections; l != NULL; l = g_slist_next(l)) {
+		struct acl_connection *conn = l->data;
 
-fail:
-	g_free(cl);
-	return err;
+		*conns = g_slist_append(*conns,
+				g_memdup(&conn->bdaddr, sizeof(bdaddr_t)));
+	}
+
+	return 0;
 }
 
 static int hciops_read_local_version(int index, struct hci_version *ver)
