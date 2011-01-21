@@ -154,6 +154,34 @@ Set Service Cache Command
 	Return Paramters:	Controller_Index (2 Octets)
 
 
+Load Keys Command
+=================
+
+	Command Code:		0x000D
+	Command Parameters:	Controller_Index (2 Octets)
+				Debug_Keys (1 Octet)
+				Key_Count (2 Octets)
+				Key1 {
+					Address (6 Octets)
+					Type (1 Octet)
+					Value (16 Octets)
+					PIN_Length (1 Octet)
+				}
+				Key2 { }
+				...
+	Return Paramters:	Controller_Index (2 Octets)
+
+
+Remove Key Command
+==================
+
+	Command Code:		0x000D
+	Command Parameters:	Controller_Index (2 Octets)
+				Address (6 Octets)
+				Disconnect (1 Octet)
+	Return Paramters:	Controller_Index (2 Octets)
+
+
 Read Tracing Buffer Size Command
 ================================
 
@@ -269,3 +297,16 @@ Controller Pairable Event
 Event Code		0x0009
 Event Parameters	Controller_Index (2 Octets)
 			Pairable (1 Octet)
+
+New Key Event
+=============
+
+Event Code		0x000A
+Event Parameters	Controller_Index (2 Octets)
+			Key {
+				Address (6 Octets)
+				Type (1 Octet)
+				Value (16 Octets)
+				PIN_Length (1 Octet)
+			}
+			Old_Key_Type (1 Octet)

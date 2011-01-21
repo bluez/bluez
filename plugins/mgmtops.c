@@ -400,6 +400,33 @@ static void mgmt_pairable(int sk, void *buf, size_t len)
 	btd_adapter_pairable_changed(adapter, info->pairable);
 }
 
+static void mgmt_new_key(int sk, void *buf, size_t len)
+{
+	struct mgmt_ev_new_key *ev = buf;
+	struct controller_info *info;
+	uint16_t index;
+
+	if (len < sizeof(*ev)) {
+		error("Too small new_key event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+
+	DBG("Controller %u new key of type %u", index, ev->key.type);
+
+	if (index > max_index) {
+		error("Unexpected index %u in new_key event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	btd_event_link_key_notify(&info->bdaddr, &ev->key.bdaddr,
+					ev->key.val, ev->key.type,
+					ev->key.pin_len, ev->old_key_type);
+}
+
 static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 {
 	if (uuid->type == SDP_UUID16)
@@ -736,6 +763,12 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 	case MGMT_OP_SET_SERVICE_CACHE:
 		DBG("set_service_cache complete");
 		break;
+	case MGMT_OP_LOAD_KEYS:
+		DBG("load_keys complete");
+		break;
+	case MGMT_OP_REMOVE_KEY:
+		DBG("remove_key complete");
+		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;
@@ -841,6 +874,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_PAIRABLE:
 		mgmt_pairable(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_NEW_KEY:
+		mgmt_new_key(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);
@@ -1089,12 +1125,26 @@ static int mgmt_disconnect(int index, uint16_t handle)
 
 static int mgmt_remove_bonding(int index, bdaddr_t *bdaddr)
 {
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_remove_key)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_remove_key *cp = (void *) &buf[sizeof(*hdr)];
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return -ENOSYS;
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_REMOVE_KEY);
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+	bacpy(&cp->bdaddr, bdaddr);
+	cp->disconnect = 1;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_request_authentication(int index, uint16_t handle)
@@ -1188,9 +1238,52 @@ static int mgmt_restore_powered(int index)
 
 static int mgmt_load_keys(int index, GSList *keys, gboolean debug_keys)
 {
-	DBG("index %d keys %d debug_keys %d", index, g_slist_length(keys),
-								debug_keys);
-	return -ENOSYS;
+	char *buf;
+	struct mgmt_hdr *hdr;
+	struct mgmt_cp_load_keys *cp;
+	struct mgmt_key_info *key;
+	size_t key_count, cp_size;
+	GSList *l;
+	int err;
+
+	key_count = g_slist_length(keys);
+
+	DBG("index %d keys %zu debug_keys %d", index, key_count, debug_keys);
+
+	cp_size = sizeof(*cp) + (key_count * sizeof(*key));
+
+	buf = g_try_malloc0(sizeof(*hdr) + cp_size);
+	if (buf == NULL)
+		return -ENOMEM;
+
+	memset(buf, 0, sizeof(buf));
+
+	hdr = (void *) buf;
+	hdr->opcode = htobs(MGMT_OP_LOAD_KEYS);
+	hdr->len = htobs(cp_size);
+
+	cp = (void *) (buf + sizeof(*hdr));
+	cp->index = htobs(index);
+	cp->debug_keys = debug_keys;
+	cp->key_count = htobs(key_count);
+
+	for (l = keys, key = cp->keys; l != NULL; l = g_slist_next(l), key++) {
+		struct link_key_info *info = l->data;
+
+		bacpy(&key->bdaddr, &info->bdaddr);
+		key->type = info->type;
+		memcpy(key->val, info->key, 16);
+		key->pin_len = info->pin_len;
+	}
+
+	if (write(mgmt_sock, buf, sizeof(*hdr) + cp_size) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	g_free(buf);
+
+	return err;
 }
 
 static struct btd_adapter_ops mgmt_ops = {
