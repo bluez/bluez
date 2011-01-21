@@ -410,70 +410,6 @@ int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
 	return 0;
 }
 
-int write_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
-			uint16_t mtu_result, uint16_t mtu,
-			uint16_t mask_result, uint32_t mask)
-{
-	char filename[PATH_MAX + 1], addr[18], str[18];
-
-	if (mask_result)
-		snprintf(str, sizeof(str), "%d -1", mtu_result ? -1 : mtu);
-	else
-		snprintf(str, sizeof(str), "%d 0x%08x", mtu_result ? -1 : mtu, mask);
-
-	create_filename(filename, PATH_MAX, local, "l2cap");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ba2str(peer, addr);
-	return textfile_put(filename, addr, str);
-}
-
-int read_l2cap_info(bdaddr_t *local, bdaddr_t *peer,
-			uint16_t *mtu_result, uint16_t *mtu,
-			uint16_t *mask_result, uint32_t *mask)
-{
-	char filename[PATH_MAX + 1], addr[18], *str, *space, *msk;
-
-	create_filename(filename, PATH_MAX, local, "l2cap");
-
-	ba2str(peer, addr);
-	str = textfile_get(filename, addr);
-	if (!str)
-		return -ENOENT;
-
-	space = strchr(str, ' ');
-	if (!space) {
-		free(str);
-		return -ENOENT;
-	}
-
-	msk = space + 1;
-	*space = '\0';
-
-	if (mtu_result && mtu) {
-		if (str[0] == '-')
-			*mtu_result = 0x0001;
-		else {
-			*mtu_result = 0;
-			*mtu = (uint16_t) strtol(str, NULL, 0);
-		}
-	}
-
-	if (mask_result && mask) {
-		if (msk[0] == '-')
-			*mask_result = 0x0001;
-		else {
-			*mask_result = 0;
-			*mask = (uint32_t) strtol(msk, NULL, 16);
-		}
-	}
-
-	free(str);
-
-	return 0;
-}
-
 int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer,
 					uint8_t lmp_ver, uint16_t lmp_subver)
 {
@@ -656,32 +592,6 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *
 	free(str);
 
 	return 0;
-}
-
-int read_pin_length(bdaddr_t *local, bdaddr_t *peer)
-{
-	char filename[PATH_MAX + 1], addr[18], *str;
-	int len;
-
-	create_filename(filename, PATH_MAX, local, "linkkeys");
-
-	ba2str(peer, addr);
-	str = textfile_get(filename, addr);
-	if (!str)
-		return -ENOENT;
-
-	if (strlen(str) < 36) {
-		free(str);
-		return -ENOENT;
-	}
-
-	len = atoi(str + 35);
-	if (len < 0)
-		len = 0;
-
-	free(str);
-
-	return len;
 }
 
 int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin)
