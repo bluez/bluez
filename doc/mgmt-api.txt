@@ -175,7 +175,7 @@ Load Keys Command
 Remove Key Command
 ==================
 
-	Command Code:		0x000D
+	Command Code:		0x000E
 	Command Parameters:	Controller_Index (2 Octets)
 				Address (6 Octets)
 				Disconnect (1 Octet)
