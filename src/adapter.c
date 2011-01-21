@@ -2224,11 +2224,13 @@ static void load_connections(struct btd_adapter *adapter)
 	}
 
 	for (l = conns; l != NULL; l = g_slist_next(l)) {
-		struct hci_conn_info *ci = l->data;
+		bdaddr_t *bdaddr = l->data;
 		struct btd_device *device;
 		char address[18];
 
-		ba2str(&ci->bdaddr, address);
+		ba2str(bdaddr, address);
+		DBG("Adding existing connection to %s", address);
+
 		device = adapter_get_device(connection, adapter, address);
 		if (device)
 			adapter_add_connection(adapter, device);

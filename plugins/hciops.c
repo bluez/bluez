@@ -2843,7 +2843,8 @@ static int hciops_get_conn_list(int index, GSList **conns)
 	*conns = NULL;
 
 	for (i = 0; i < cl->conn_num; i++, ci++)
-		*conns = g_slist_append(*conns, g_memdup(ci, sizeof(*ci)));
+		*conns = g_slist_append(*conns,
+				g_memdup(&ci->bdaddr, sizeof(bdaddr_t)));
 
 fail:
 	g_free(cl);
