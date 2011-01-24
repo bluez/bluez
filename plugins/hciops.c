@@ -2253,25 +2253,6 @@ fail:
 	exit(1);
 }
 
-static void device_devreg_setup(int index)
-{
-	struct hci_dev_info di;
-
-	DBG("hci%d", index);
-
-	init_device(index);
-
-	memset(&di, 0, sizeof(di));
-
-	if (hci_devinfo(index, &di) < 0)
-		return;
-
-	if (ignore_device(&di))
-		return;
-
-	devs[index].already_up = hci_test_bit(HCI_UP, &di.flags);
-}
-
 static void init_conn_list(int index)
 {
 	struct dev_info *dev = &devs[index];
@@ -2318,11 +2299,7 @@ static void device_event(int event, int index)
 	switch (event) {
 	case HCI_DEV_REG:
 		info("HCI dev %d registered", index);
-		device_devreg_setup(index);
-		if (devs[index].already_up) {
-			init_conn_list(index);
-			device_event(HCI_DEV_UP, index);
-		}
+		init_device(index);
 		break;
 
 	case HCI_DEV_UNREG:
@@ -2418,6 +2395,7 @@ static gboolean init_known_adapters(gpointer user_data)
 		if (!dev->already_up)
 			continue;
 
+		init_conn_list(dr->dev_id);
 		hciops_stop_inquiry(dr->dev_id);
 
 		dev->pending = 0;
