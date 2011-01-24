@@ -424,17 +424,25 @@ static void mgmt_new_key(int sk, void *buf, size_t len)
 	struct controller_info *info;
 	uint16_t index;
 
-	if (len < sizeof(*ev)) {
-		error("Too small new_key event");
+	if (len != sizeof(*ev)) {
+		error("new_key event size mismatch (%zu != %zu)",
+							len, sizeof(*ev));
 		return;
 	}
 
 	index = btohs(bt_get_unaligned(&ev->index));
 
-	DBG("Controller %u new key of type %u", index, ev->key.type);
+	DBG("Controller %u new key of type %u pin_len %u", index,
+					ev->key.type, ev->key.pin_len);
 
 	if (index > max_index) {
 		error("Unexpected index %u in new_key event", index);
+		return;
+	}
+
+	if (ev->key.pin_len > 16) {
+		error("Invalid PIN length (%u) in new_key event",
+							ev->key.pin_len);
 		return;
 	}
 
