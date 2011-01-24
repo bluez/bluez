@@ -1582,7 +1582,8 @@ static inline void le_set_advertising_parameters_dump(int level, struct frame *f
 	le_set_advertising_parameters_cp *cp = frm->ptr;
 
 	p_indent(level, frm);
-	printf("min 0x%04xms max 0x%04xms\n", cp->min_interval, cp->max_interval);
+	printf("min %.3fms, max %.3fms\n", btohs(cp->min_interval) * 0.625,
+			btohs(cp->max_interval) * 0.625);
 
 	p_indent(level, frm);
 	printf("type 0x%02x (%s) ownbdaddr 0x%02x (%s)\n", cp->advtype,
@@ -1608,7 +1609,8 @@ static inline void le_set_scan_parameters_dump(int level, struct frame *frm)
 		cp->type == 0x00 ? "passive" : "active");
 
 	p_indent(level, frm);
-	printf("interval %04xms window %04xms\n", cp->interval, cp->window);
+	printf("interval %.3fms window %.3fms\n", btohs(cp->interval) * 0.625,
+		btohs(cp->window) * 0.625);
 
 	p_indent(level, frm);
 	printf("own address: 0x%02x (%s) policy: %s\n", cp->own_bdaddr_type,
