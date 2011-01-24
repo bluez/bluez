@@ -534,6 +534,87 @@ static void mgmt_connect_failed(int sk, void *buf, size_t len)
 	btd_event_conn_complete(&info->bdaddr, ev->status, &ev->bdaddr);
 }
 
+static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_pin_code_reply)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	size_t buf_len;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("index %d addr %s pin %s", index, addr, pin ? pin : "<none>");
+
+	memset(buf, 0, sizeof(buf));
+
+	if (pin == NULL) {
+		struct mgmt_cp_pin_code_neg_reply *cp;
+
+		hdr->opcode = htobs(MGMT_OP_PIN_CODE_NEG_REPLY);
+		hdr->len = htobs(sizeof(*cp));
+
+		cp = (void *) &buf[sizeof(*hdr)];
+		cp->index = htobs(index);
+		bacpy(&cp->bdaddr, bdaddr);
+
+		buf_len = sizeof(*hdr) + sizeof(*cp);
+	} else {
+		struct mgmt_cp_pin_code_reply *cp;
+		size_t pin_len;
+
+		pin_len = strlen(pin);
+		if (pin_len > 16)
+			return -EINVAL;
+
+		hdr->opcode = htobs(MGMT_OP_PIN_CODE_REPLY);
+		hdr->len = htobs(sizeof(*cp));
+
+		cp = (void *) &buf[sizeof(*hdr)];
+		cp->index = htobs(index);
+		bacpy(&cp->bdaddr, bdaddr);
+		cp->pin_len = pin_len;
+		memcpy(cp->pin_code, pin, pin_len);
+
+		buf_len = sizeof(*hdr) + sizeof(*cp);
+	}
+
+	if (write(mgmt_sock, buf, buf_len) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static void mgmt_pin_code_request(int sk, void *buf, size_t len)
+{
+	struct mgmt_ev_pin_code_request *ev = buf;
+	struct controller_info *info;
+	uint16_t index;
+	char addr[18];
+	int err;
+
+	if (len < sizeof(*ev)) {
+		error("Too small pin_code_request event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+	ba2str(&ev->bdaddr, addr);
+
+	DBG("hci%u %s", index, addr);
+
+	if (index > max_index) {
+		error("Unexpected index %u in pin_code_request event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	err = btd_event_request_pin(&info->bdaddr, &ev->bdaddr);
+	if (err < 0) {
+		error("btd_event_request_pin: %s", strerror(-err));
+		mgmt_pincode_reply(index, &ev->bdaddr, NULL);
+	}
+}
+
 static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 {
 	if (uuid->type == SDP_UUID16)
@@ -1064,6 +1145,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 	case MGMT_EV_CONNECT_FAILED:
 		mgmt_connect_failed(sk, buf + MGMT_HDR_SIZE, len);
 		break;
+	case MGMT_EV_PIN_CODE_REQUEST:
+		mgmt_pin_code_request(sk, buf + MGMT_HDR_SIZE, len);
+		break;
 	default:
 		error("Unknown Management opcode %u", opcode);
 		break;
@@ -1362,16 +1446,6 @@ static int mgmt_request_authentication(int index, bdaddr_t *bdaddr)
 
 	ba2str(bdaddr, addr);
 	DBG("index %d %s", index, addr);
-
-	return -ENOSYS;
-}
-
-static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
-{
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s pin %s", index, addr, pin);
 
 	return -ENOSYS;
 }

@@ -202,6 +202,24 @@ Get Connections Command
 				Address2 (6 Octets)
 				...
 
+PIN Code Reply Command
+=======================
+
+	Command Code:		0x0011
+	Command Parameters:	Controller_Index (2 Octets)
+	Return Paramters:	Controller_Index (2 Octets)
+				Address (6 Octets)
+				PIN_Length (1 Octet)
+				PIN_Code (16 Octets)
+
+
+PIN Code Negative Reply Command
+===============================
+
+	Command Code:		0x0012
+	Command Parameters:	Controller_Index (2 Octets)
+	Return Paramters:	Controller_Index (2 Octets)
+				Address (6 Octets)
 
 
 Read Tracing Buffer Size Command
@@ -354,3 +372,10 @@ Event Code		0x000D
 Event Parameters	Controller_Index (2 Octets)
 			Address (6 Octets)
 			Status (1 Octet)
+
+PIN Code Request Event
+======================
+
+Event Code		0x000E
+Event Parameters	Controller_Index (2 Octets)
+			Address (6 Octets)
