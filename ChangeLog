@@ -1,3 +1,8 @@
+ver 4.87:
+	Fix issue with initialization when adapter is already up.
+	Fix issue with attribute server MTU and incoming connections.
+	Fix issue with duplicate characteristics after discovery.
+
 ver 4.86:
 	Revert wrong fix for SDP PDU size error response.
 	Fix various memory leaks in A2DP and AVDTP support.
