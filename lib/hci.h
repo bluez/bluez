@@ -196,6 +196,7 @@ enum {
 #define HCI_HOST_BUSY_PAIRING			0x38
 
 /* ACL flags */
+#define ACL_START_NO_FLUSH	0x00
 #define ACL_CONT		0x01
 #define ACL_START		0x02
 #define ACL_ACTIVE_BCAST	0x04

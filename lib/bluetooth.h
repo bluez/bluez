@@ -70,6 +70,11 @@ struct bt_security {
 
 #define BT_DEFER_SETUP	7
 
+#define BT_FLUSHABLE	8
+
+#define BT_FLUSHABLE_OFF	0
+#define BT_FLUSHABLE_ON		1
+
 /* Connection and socket states */
 enum {
 	BT_CONNECTED = 1, /* Equal to TCP_ESTABLISHED to make net code happy */
