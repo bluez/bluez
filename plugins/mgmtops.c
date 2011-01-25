@@ -1033,6 +1033,9 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 	case MGMT_OP_PIN_CODE_NEG_REPLY:
 		DBG("pin_code_neg_reply complete");
 		break;
+	case MGMT_OP_SET_IO_CAPABILITY:
+		DBG("set_io_capability complete");
+		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;
@@ -1579,6 +1582,27 @@ static int mgmt_load_keys(int index, GSList *keys, gboolean debug_keys)
 	return err;
 }
 
+static int mgmt_set_io_capability(int index, uint8_t io_capability)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_io_capability)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_io_capability *cp = (void *) &buf[sizeof(*hdr)];
+
+	DBG("hci%d io_capability 0x%02x", index, io_capability);
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_SET_IO_CAPABILITY);
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+	cp->io_capability = io_capability;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
@@ -1618,6 +1642,7 @@ static struct btd_adapter_ops mgmt_ops = {
 	.disable_cod_cache = mgmt_disable_cod_cache,
 	.restore_powered = mgmt_restore_powered,
 	.load_keys = mgmt_load_keys,
+	.set_io_capability = mgmt_set_io_capability,
 };
 
 static int mgmt_init(void)

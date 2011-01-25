@@ -237,6 +237,7 @@ struct btd_adapter_ops {
 	int (*disable_cod_cache) (int index);
 	int (*restore_powered) (int index);
 	int (*load_keys) (int index, GSList *keys, gboolean debug_keys);
+	int (*set_io_capability) (int index, uint8_t io_capability);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);

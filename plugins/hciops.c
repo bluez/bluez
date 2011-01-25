@@ -3215,6 +3215,11 @@ static int hciops_load_keys(int index, GSList *keys, gboolean debug_keys)
 	return 0;
 }
 
+static int hciops_set_io_capability(int index, uint8_t io_capability)
+{
+	return 0;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -3254,6 +3259,7 @@ static struct btd_adapter_ops hci_ops = {
 	.disable_cod_cache = hciops_disable_cod_cache,
 	.restore_powered = hciops_restore_powered,
 	.load_keys = hciops_load_keys,
+	.set_io_capability = hciops_set_io_capability,
 };
 
 static int hciops_init(void)

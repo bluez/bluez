@@ -1834,6 +1834,9 @@ static DBusMessage *find_device(DBusConnection *conn, DBusMessage *msg,
 
 static void agent_removed(struct agent *agent, struct btd_adapter *adapter)
 {
+	adapter_ops->set_io_capability(adapter->dev_id,
+					IO_CAPABILITY_NOINPUTNOOUTPUT);
+
 	adapter->agent = NULL;
 }
 
@@ -1867,6 +1870,8 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 
 	DBG("Agent registered for hci%d at %s:%s", adapter->dev_id, name,
 			path);
+
+	adapter_ops->set_io_capability(adapter->dev_id, cap);
 
 	return dbus_message_new_method_return(msg);
 }

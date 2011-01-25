@@ -222,6 +222,15 @@ PIN Code Negative Reply Command
 				Address (6 Octets)
 
 
+Set IO Capability Command
+=========================
+
+	Command Code:		0x0013
+	Command Parameters:	Controller_Index (2 Octets)
+				IO_Capability (1 Octet)
+	Return Paramters:	Controller_Index (2 Octets)
+
+
 Read Tracing Buffer Size Command
 ================================
 
