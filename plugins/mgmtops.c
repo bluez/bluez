@@ -1027,6 +1027,12 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 	case MGMT_OP_GET_CONNECTIONS:
 		get_connections_complete(sk, ev->data, len - sizeof(*ev));
 		break;
+	case MGMT_OP_PIN_CODE_REPLY:
+		DBG("pin_code_reply complete");
+		break;
+	case MGMT_OP_PIN_CODE_NEG_REPLY:
+		DBG("pin_code_neg_reply complete");
+		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;
