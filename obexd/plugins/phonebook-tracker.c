@@ -1922,7 +1922,8 @@ void *phonebook_get_entry(const char *folder, const char *id,
 	data->cb = cb;
 	data->vcardentry = TRUE;
 
-	if (strncmp(id, CONTACT_ID_PREFIX, strlen(CONTACT_ID_PREFIX)) == 0)
+	if (g_str_has_prefix(id, CONTACT_ID_PREFIX) == TRUE ||
+				g_strcmp0(id, TRACKER_DEFAULT_CONTACT_ME) == 0)
 		query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id,
 					id, id, id, id, id, id, id, id, id);
 	else
