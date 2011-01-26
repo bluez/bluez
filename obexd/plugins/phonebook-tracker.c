@@ -788,11 +788,9 @@
 "\"NOTACALL\" \"false\" \"false\" "					\
 "<%s> "									\
 "WHERE {"								\
-"	<%s> a nco:PersonContact ;"					\
-"	nco:nameFamily ?_key ."						\
+"	<%s> a nco:PersonContact ."					\
 "	OPTIONAL {<%s> nco:hasAffiliation ?_role .}"			\
-"}"									\
-"ORDER BY ?_key tracker:id(<%s>)"
+"}"
 
 #define CONTACTS_OTHER_QUERY_FROM_URI					\
 	"SELECT fn:concat(\"TYPE_OTHER\", \"\31\", nco:phoneNumber(?t))"\
@@ -1926,8 +1924,7 @@ void *phonebook_get_entry(const char *folder, const char *id,
 
 	if (strncmp(id, CONTACT_ID_PREFIX, strlen(CONTACT_ID_PREFIX)) == 0)
 		query = g_strdup_printf(CONTACTS_QUERY_FROM_URI, id, id, id, id,
-						id, id, id, id, id, id, id, id,
-						id, id);
+					id, id, id, id, id, id, id, id, id);
 	else
 		query = g_strdup_printf(CONTACTS_OTHER_QUERY_FROM_URI,
 								id, id, id);
