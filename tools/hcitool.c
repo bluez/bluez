@@ -2349,25 +2349,30 @@ done:
 
 static struct option lescan_options[] = {
 	{ "help",	0, 0, 'h' },
+	{ "privacy",	0, 0, 'p' },
 	{ 0, 0, 0, 0 }
 };
 
 static const char *lescan_help =
 	"Usage:\n"
-	"\tlescan\n";
+	"\tlescan [--privacy] enable privacy\n";
 
 static void cmd_lescan(int dev_id, int argc, char **argv)
 {
 	int err, opt, dd;
+	uint8_t own_type = 0x00;
 
 	for_each_opt(opt, lescan_options, NULL) {
 		switch (opt) {
+		case 'p':
+			own_type = 0x01; /* Random */
+			break;
 		default:
 			printf("%s", lescan_help);
 			return;
 		}
 	}
-	helper_arg(0, 0, &argc, &argv, lescan_help);
+	helper_arg(0, 1, &argc, &argv, lescan_help);
 
 	if (dev_id < 0)
 		dev_id = hci_get_route(NULL);
@@ -2378,8 +2383,8 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	err = hci_le_set_scan_parameters(dd, 0x01, htobs(0x0010), htobs(0x0010),
-								0x00, 0x00);
+	err = hci_le_set_scan_parameters(dd, 0x01, htobs(0x0010),
+					htobs(0x0010), own_type, 0x00);
 	if (err < 0) {
 		perror("Set scan parameters failed");
 		exit(1);
