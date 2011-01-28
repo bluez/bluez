@@ -887,7 +887,7 @@ done:
 		return;
 	}
 
-	dev->keys = g_slist_append(dev->keys, key_info);
+	dev->keys = g_slist_prepend(dev->keys, key_info);
 
 	/* If we're connected and not dedicated bonding initiators we're
 	 * done with the bonding process */
