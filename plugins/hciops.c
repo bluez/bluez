@@ -77,7 +77,6 @@ struct bt_conn {
 	uint8_t loc_auth;
 	uint8_t rem_cap;
 	uint8_t rem_auth;
-	uint8_t key_type;
 	gboolean bonding_initiator;
 	gboolean secmode3;
 	GIOChannel *io; /* For raw L2CAP socket (bonding) */
@@ -646,7 +645,6 @@ static struct bt_conn *get_connection(struct dev_info *dev, bdaddr_t *bdaddr)
 	conn->loc_cap = dev->io_capability;
 	conn->loc_auth = 0xff;
 	conn->rem_auth = 0xff;
-	conn->key_type = 0xff;
 	bacpy(&conn->bdaddr, bdaddr);
 
 	dev->connections = g_slist_append(dev->connections, conn);
@@ -814,7 +812,7 @@ static void link_key_notify(int index, void *ptr)
 	if (key_info == NULL) {
 		key_info = g_new0(struct link_key_info, 1);
 		bacpy(&key_info->bdaddr, &evt->bdaddr);
-		old_key_type = conn->key_type;
+		old_key_type = 0xff;
 	} else {
 		dev->keys = g_slist_remove(dev->keys, key_info);
 		old_key_type = key_info->type;
@@ -845,7 +843,6 @@ static void link_key_notify(int index, void *ptr)
 	}
 
 	key_info->type = key_type;
-	conn->key_type = key_type;
 
 	/* Skip the storage check if this is a debug key */
 	if (key_type == 0x03)
