@@ -201,7 +201,7 @@ static gboolean handle_signal(DBusConnection *connection,
 static void usb_stop(void *data)
 {
 	guint id = GPOINTER_TO_UINT(data);
-	g_source_remove(id);
+	g_dbus_remove_watch(connection, id);
 }
 
 static void mode_request_reply(DBusPendingCall *call, void *user_data)
