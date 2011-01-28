@@ -139,11 +139,6 @@ int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba)
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	/* Check if the adapter is not pairable and if there isn't a bonding in
-	 * progress */
-	if (!adapter_is_pairable(adapter) && !device_is_bonding(device, NULL))
-		return -EPERM;
-
 	memset(pin, 0, sizeof(pin));
 	pinlen = read_pin_code(sba, dba, pin);
 	if (pinlen > 0) {
@@ -189,52 +184,16 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	btd_adapter_passkey_reply(adapter, &bdaddr, passkey);
 }
 
-int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
+int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey,
+							gboolean auto_accept)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	struct agent *agent;
-	uint8_t rem_cap, rem_auth, loc_cap, loc_auth;
-	gboolean bonding_initiator;
 
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	if (btd_adapter_get_auth_info(adapter, dba, &loc_auth) < 0) {
-		error("Unable to get local authentication requirements");
-		goto fail;
-	}
-
-	agent = device_get_agent(device);
-	if (agent == NULL) {
-		error("No agent available for user confirmation");
-		goto fail;
-	}
-
-	loc_cap = agent_get_io_capability(agent);
-
-	DBG("confirm IO capabilities are 0x%02x", loc_cap);
-	DBG("confirm authentication requirement is 0x%02x", loc_auth);
-
-	rem_cap = device_get_cap(device);
-	rem_auth = device_get_auth(device);
-
-	DBG("remote IO capabilities are 0x%02x", rem_cap);
-	DBG("remote authentication requirement is 0x%02x", rem_auth);
-
-	/* If we require MITM but the remote device can't provide that
-	 * (it has NoInputNoOutput) then reject the confirmation
-	 * request. The only exception is when we're dedicated bonding
-	 * initiators since then we always have the MITM bit set. */
-	bonding_initiator = device_is_bonding(device, NULL);
-	if (!bonding_initiator && (loc_auth & 0x01) && rem_cap == 0x03) {
-		error("Rejecting request: remote device can't provide MITM");
-		goto fail;
-	}
-
-	/* If no side requires MITM protection; auto-accept */
-	if ((loc_auth == 0xff || !(loc_auth & 0x01) || rem_cap == 0x03) &&
-				(!(rem_auth & 0x01) || loc_cap == 0x03)) {
+	if (auto_accept) {
 		DBG("auto accept of confirmation");
 
 		/* Wait 5 milliseconds before doing auto-accept */
@@ -249,9 +208,6 @@ int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 
 	return device_request_authentication(device, AUTH_TYPE_CONFIRM,
 							passkey, confirm_cb);
-
-fail:
-	return confirm_reply(adapter, device, FALSE);
 }
 
 int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
@@ -285,7 +241,7 @@ void btd_event_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 	struct btd_device *device;
 	gboolean create;
 
-	DBG("status=%02x", status);
+	DBG("status 0x%02x", status);
 
 	create = status ? FALSE : TRUE;
 
@@ -294,9 +250,6 @@ void btd_event_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
 
 	if (!device)
 		return;
-
-	if (status == 0)
-		device_set_paired(device, TRUE);
 
 	if (!device_is_authenticating(device)) {
 		/* This means that there was no pending PIN or SSP token
@@ -695,94 +648,23 @@ proceed:
 
 int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t *key, uint8_t key_type,
-				uint8_t pin_length, uint8_t old_key_type)
+				uint8_t pin_length)
 {
-	struct btd_device *device;
 	struct btd_adapter *adapter;
-	uint8_t local_auth = 0xff, remote_auth, new_key_type;
-	gboolean temporary = FALSE;
+	struct btd_device *device;
+	int ret;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	remote_auth = device_get_auth(device);
+	DBG("storing link key of type 0x%02x", key_type);
 
-	new_key_type = key_type;
+	ret = write_link_key(local, peer, key, key_type, pin_length);
 
-	if (key_type == 0x06) {
-		/* Some buggy controller combinations generate a changed
-		 * combination key for legacy pairing even when there's no
-		 * previous key */
-		if (remote_auth == 0xff && old_key_type == 0xff)
-			new_key_type = key_type = 0x00;
-		else if (old_key_type != 0xff)
-			new_key_type = old_key_type;
-		else
-			/* This is Changed Combination Link Key for
-			 * a temporary link key.*/
-			return 0;
-	}
+	if (ret == 0 && device_is_temporary(device))
+		device_set_temporary(device, FALSE);
 
-	btd_adapter_get_auth_info(adapter, peer, &local_auth);
-
-	DBG("key type 0x%02x old key type 0x%02x new key type 0x%02x",
-					key_type, old_key_type, new_key_type);
-
-	DBG("local auth 0x%02x and remote auth 0x%02x",
-					local_auth, remote_auth);
-
-	/* If this is not the first link key set a flag so a subsequent auth
-	 * complete event doesn't trigger SDP and remove any stored key */
-	if (old_key_type != 0xff) {
-		device_set_renewed_key(device, TRUE);
-		device_remove_bonding(device);
-	}
-
-	/* Skip the storage check if this is a debug key */
-	if (new_key_type == 0x03)
-		goto proceed;
-
-	/* Store the link key persistently if one of the following is true:
-	 * 1. this is a legacy link key
-	 * 2. this is a changed combination key and there was a previously
-	 *    stored one
-	 * 3. neither local nor remote side had no-bonding as a requirement
-	 * 4. the local side had dedicated bonding as a requirement
-	 * 5. the remote side is using dedicated bonding since in that case
-	 *    also the local requirements are set to dedicated bonding
-	 * If none of the above match only keep the link key around for
-	 * this connection and set the temporary flag for the device.
-	 */
-	if (key_type < 0x03 || (key_type == 0x06 && old_key_type != 0xff) ||
-				(local_auth > 0x01 && remote_auth > 0x01) ||
-				(local_auth == 0x02 || local_auth == 0x03) ||
-				(remote_auth == 0x02 || remote_auth == 0x03)) {
-		int err;
-
-		DBG("storing link key of type 0x%02x", key_type);
-
-		err = write_link_key(local, peer, key, new_key_type,
-								pin_length);
-		if (err < 0) {
-			error("write_link_key: %s (%d)", strerror(-err), -err);
-			return err;
-		}
-	} else
-		temporary = TRUE;
-
-proceed:
-	if (!device_is_connected(device))
-		device_set_secmode3_conn(device, TRUE);
-	else if (!device_is_bonding(device, NULL)) {
-		if (old_key_type == 0xff)
-			btd_event_bonding_process_complete(local, peer, 0);
-		else
-			device_authentication_complete(device);
-	}
-
-	device_set_temporary(device, temporary);
-
-	return 0;
+	return ret;
 }
 
 void btd_event_conn_complete(bdaddr_t *local, uint8_t status, bdaddr_t *peer)
@@ -795,14 +677,10 @@ void btd_event_conn_complete(bdaddr_t *local, uint8_t status, bdaddr_t *peer)
 		return;
 
 	if (status) {
-		gboolean secmode3 = device_get_secmode3_conn(device);
-
-		device_set_secmode3_conn(device, FALSE);
-
 		if (device_is_bonding(device, NULL))
 			device_bonding_complete(device, status);
 		if (device_is_temporary(device))
-			adapter_remove_device(conn, adapter, device, secmode3);
+			adapter_remove_device(conn, adapter, device, TRUE);
 		return;
 	}
 
@@ -815,6 +693,8 @@ void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
+
+	DBG("");
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
@@ -876,121 +756,4 @@ void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
 		return;
 
 	device_set_paired(device, TRUE);
-}
-
-int btd_event_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
-						uint8_t *cap, uint8_t *auth)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	struct agent *agent = NULL;
-	uint8_t agent_cap;
-	int err;
-
-	if (!get_adapter_and_device(local, remote, &adapter, &device, TRUE))
-		return -ENODEV;
-
-	err = btd_adapter_get_auth_info(adapter, remote, auth);
-	if (err < 0)
-		return err;
-
-	DBG("initial authentication requirement is 0x%02x", *auth);
-
-	if (*auth == 0xff)
-		*auth = device_get_auth(device);
-
-	/* Check if the adapter is not pairable and if there isn't a bonding
-	 * in progress */
-	if (!adapter_is_pairable(adapter) &&
-				!device_is_bonding(device, NULL)) {
-		if (device_get_auth(device) < 0x02) {
-			DBG("Allowing no bonding in non-bondable mode");
-			/* No input, no output */
-			*cap = 0x03;
-			/* Kernel defaults to general bonding and so
-			 * overwrite for this special case. Otherwise
-			 * non-pairable test cases will fail. */
-			*auth = 0x00;
-			goto done;
-		}
-		return -EPERM;
-	}
-
-	/* For CreatePairedDevice use dedicated bonding */
-	agent = device_get_agent(device);
-	if (!agent) {
-		/* This is the non bondable mode case */
-		if (device_get_auth(device) > 0x01) {
-			DBG("Bonding request, but no agent present");
-			return -1;
-		}
-
-		/* No agent available, and no bonding case */
-		if (*auth == 0x00 || *auth == 0x04) {
-			DBG("Allowing no bonding without agent");
-			/* No input, no output */
-			*cap = 0x03;
-			/* If kernel defaults to general bonding, set it
-			 * back to no bonding */
-			*auth = 0x00;
-			goto done;
-		}
-
-		error("No agent available for IO capability");
-		return -1;
-	}
-
-	agent_cap = agent_get_io_capability(agent);
-
-	if (*auth == 0x00 || *auth == 0x04) {
-		/* If remote requests dedicated bonding follow that lead */
-		if (device_get_auth(device) == 0x02 ||
-				device_get_auth(device) == 0x03) {
-
-			/* If both remote and local IO capabilities allow MITM
-			 * then require it, otherwise don't */
-			if (device_get_cap(device) == 0x03 ||
-							agent_cap == 0x03)
-				*auth = 0x02;
-			else
-				*auth = 0x03;
-		}
-
-		/* If remote indicates no bonding then follow that. This
-		 * is important since the kernel might give general bonding
-		 * as default. */
-		if (device_get_auth(device) == 0x00 ||
-					device_get_auth(device) == 0x01)
-			*auth = 0x00;
-
-		/* If remote requires MITM then also require it, unless
-		 * our IO capability is NoInputNoOutput (so some
-		 * just-works security cases can be tested) */
-		if (device_get_auth(device) != 0xff &&
-					(device_get_auth(device) & 0x01) &&
-					agent_cap != 0x03)
-			*auth |= 0x01;
-	}
-
-	*cap = agent_get_io_capability(agent);
-
-done:
-	DBG("final authentication requirement is 0x%02x", *auth);
-
-	return 0;
-}
-
-int btd_event_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
-						uint8_t cap, uint8_t auth)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-
-	if (!get_adapter_and_device(local, remote, &adapter, &device, TRUE))
-		return -ENODEV;
-
-	device_set_cap(device, cap);
-	device_set_auth(device, auth);
-
-	return 0;
 }

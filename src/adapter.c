@@ -3200,6 +3200,8 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 {
 	bdaddr_t bdaddr;
 
+	DBG("");
+
 	if (!g_slist_find(adapter->connections, device)) {
 		error("No matching connection for device");
 		return;
@@ -3620,12 +3622,6 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 	return adapter_ops->passkey_reply(adapter->dev_id, bdaddr, passkey);
 }
 
-int btd_adapter_get_auth_info(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-								uint8_t *auth)
-{
-	return adapter_ops->get_auth_info(adapter->dev_id, bdaddr, auth);
-}
-
 int btd_adapter_read_scan_enable(struct btd_adapter *adapter)
 {
 	return adapter_ops->read_scan_enable(adapter->dev_id);
@@ -3649,4 +3645,15 @@ int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
 					uint16_t product, uint16_t version)
 {
 	return adapter_ops->set_did(adapter->dev_id, vendor, product, version);
+}
+
+int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+								uint8_t io_cap)
+{
+	return adapter_ops->create_bonding(adapter->dev_id, bdaddr, io_cap);
+}
+
+int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
+{
+	return adapter_ops->cancel_bonding(adapter->dev_id, bdaddr);
 }

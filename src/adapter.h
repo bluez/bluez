@@ -225,7 +225,6 @@ struct btd_adapter_ops {
 	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin);
 	int (*confirm_reply) (int index, bdaddr_t *bdaddr, gboolean success);
 	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint32_t passkey);
-	int (*get_auth_info) (int index, bdaddr_t *bdaddr, uint8_t *auth);
 	int (*read_scan_enable) (int index);
 	int (*enable_le) (int index);
 	int (*encrypt_link) (int index, bdaddr_t *bdaddr, bt_hci_result_t cb,
@@ -238,6 +237,8 @@ struct btd_adapter_ops {
 	int (*restore_powered) (int index);
 	int (*load_keys) (int index, GSList *keys, gboolean debug_keys);
 	int (*set_io_capability) (int index, uint8_t io_capability);
+	int (*create_bonding) (int index, bdaddr_t *bdaddr, uint8_t io_cap);
+	int (*cancel_bonding) (int index, bdaddr_t *bdaddr);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);
@@ -279,9 +280,6 @@ int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							uint32_t passkey);
 
-int btd_adapter_get_auth_info(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-								uint8_t *auth);
-
 int btd_adapter_read_scan_enable(struct btd_adapter *adapter);
 
 void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
@@ -292,3 +290,8 @@ int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 
 int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
 					uint16_t product, uint16_t version);
+
+int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							uint8_t io_cap);
+
+int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr);

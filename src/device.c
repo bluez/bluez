@@ -130,10 +130,6 @@ struct btd_device {
 	struct authentication_req *authr;	/* authentication request */
 	GSList		*disconnects;		/* disconnects message */
 
-	/* For Secure Simple Pairing */
-	uint8_t		cap;
-	uint8_t		auth;
-
 	gboolean	connected;
 
 	/* Whether were creating a security mode 3 connection */
@@ -144,7 +140,6 @@ struct btd_device {
 	gboolean	trusted;
 	gboolean	paired;
 	gboolean	blocked;
-	gboolean	renewed_key;
 
 	gboolean	authorizing;
 	gint		ref;
@@ -726,12 +721,10 @@ static DBusMessage *cancel_discover(DBusConnection *conn,
 
 static void bonding_request_cancel(struct bonding_req *bonding)
 {
-	if (!bonding->io)
-		return;
+	struct btd_device *device = bonding->device;
+	struct btd_adapter *adapter = device->adapter;
 
-	g_io_channel_shutdown(bonding->io, TRUE, NULL);
-	g_io_channel_unref(bonding->io);
-	bonding->io = NULL;
+	adapter_cancel_bonding(adapter, &device->bdaddr);
 }
 
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
@@ -812,25 +805,6 @@ gboolean device_is_connected(struct btd_device *device)
 	return device->connected;
 }
 
-static void device_set_connected(struct btd_device *device,
-					DBusConnection *conn,
-					gboolean connected)
-{
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
-				"Connected", DBUS_TYPE_BOOLEAN, &connected);
-
-	if (connected && device->secmode3) {
-		struct btd_adapter *adapter = device_get_adapter(device);
-		bdaddr_t sba;
-
-		adapter_get_address(adapter, &sba);
-
-		device->secmode3 = FALSE;
-
-		btd_event_bonding_process_complete(&sba, &device->bdaddr, 0);
-	}
-}
-
 void device_add_connection(struct btd_device *device, DBusConnection *conn)
 {
 	if (device->connected) {
@@ -842,7 +816,9 @@ void device_add_connection(struct btd_device *device, DBusConnection *conn)
 
 	device->connected = TRUE;
 
-	device_set_connected(device, conn, TRUE);
+	emit_property_changed(conn, device->path,
+					DEVICE_INTERFACE, "Connected",
+					DBUS_TYPE_BOOLEAN, &device->connected);
 }
 
 void device_remove_connection(struct btd_device *device, DBusConnection *conn)
@@ -868,7 +844,9 @@ void device_remove_connection(struct btd_device *device, DBusConnection *conn)
 		device->disconnects = g_slist_remove(device->disconnects, msg);
 	}
 
-	device_set_connected(device, conn, FALSE);
+	emit_property_changed(conn, device->path,
+					DEVICE_INTERFACE, "Connected",
+					DBUS_TYPE_BOOLEAN, &device->connected);
 }
 
 guint device_add_disconnect_watch(struct btd_device *device,
@@ -905,16 +883,6 @@ void device_remove_disconnect_watch(struct btd_device *device, guint id)
 			return;
 		}
 	}
-}
-
-gboolean device_get_secmode3_conn(struct btd_device *device)
-{
-	return device->secmode3;
-}
-
-void device_set_secmode3_conn(struct btd_device *device, gboolean enable)
-{
-	device->secmode3 = enable;
 }
 
 struct btd_device *device_create(DBusConnection *conn,
@@ -957,8 +925,6 @@ struct btd_device *device_create(DBusConnection *conn,
 
 	if (read_blocked(&src, &device->bdaddr))
 		device_block(conn, device);
-
-	device->auth = 0xff;
 
 	if (read_link_key(&src, &device->bdaddr, NULL, NULL) == 0)
 		device->paired = TRUE;
@@ -1778,33 +1744,9 @@ void device_set_temporary(struct btd_device *device, gboolean temporary)
 	if (!device)
 		return;
 
+	DBG("temporary %d", temporary);
+
 	device->temporary = temporary;
-}
-
-void device_set_cap(struct btd_device *device, uint8_t cap)
-{
-	if (!device)
-		return;
-
-	device->cap = cap;
-}
-
-uint8_t device_get_cap(struct btd_device *device)
-{
-	return device->cap;
-}
-
-void device_set_auth(struct btd_device *device, uint8_t auth)
-{
-	if (!device)
-		return;
-
-	device->auth = auth;
-}
-
-uint8_t device_get_auth(struct btd_device *device)
-{
-	return device->auth;
 }
 
 void device_set_type(struct btd_device *device, device_type_t type)
@@ -1983,40 +1925,6 @@ proceed:
 	return bonding;
 }
 
-static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
-{
-	struct btd_device *device = user_data;
-	uint16_t handle;
-
-	if (!device->bonding) {
-		if (!err)
-			g_io_channel_shutdown(io, TRUE, NULL);
-		return;
-	}
-
-	if (err)
-		/* Wait proper error to be propagated by bonding complete */
-		return;
-
-	if (!bt_io_get(io, BT_IO_L2RAW, &err,
-			BT_IO_OPT_HANDLE, &handle,
-			BT_IO_OPT_INVALID)) {
-		error("Unable to get connection handle: %s", err->message);
-		g_error_free(err);
-		goto failed;
-	}
-
-	if (btd_adapter_request_authentication(device->adapter,
-							&device->bdaddr) < 0)
-		goto failed;
-
-	return;
-
-failed:
-	g_io_channel_shutdown(io, TRUE, NULL);
-	device_cancel_bonding(device, HCI_UNSPECIFIED_ERROR);
-}
-
 static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 {
 	struct btd_device *device = user_data;
@@ -2045,9 +1953,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	struct btd_adapter *adapter = device->adapter;
 	struct bonding_req *bonding;
 	bdaddr_t src;
-	GError *err = NULL;
-	GIOChannel *io;
-	BtIOSecLevel sec_level;
+	int err;
 
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
@@ -2066,36 +1972,16 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 		return btd_error_already_exists(msg);
 	}
 
-	/* If our IO capability is NoInputNoOutput use medium security
-	 * level (i.e. don't require MITM protection) else use high
-	 * security level */
-	if (capability == 0x03)
-		sec_level = BT_IO_SEC_MEDIUM;
-	else
-		sec_level = BT_IO_SEC_HIGH;
-
-	io = bt_io_connect(BT_IO_L2RAW, bonding_connect_cb, device,
-				NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &src,
-				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
-				BT_IO_OPT_SEC_LEVEL, sec_level,
-				BT_IO_OPT_INVALID);
-	if (io == NULL) {
-		DBusMessage *reply;
-		reply = btd_error_failed(msg, err->message);
-		error("bt_io_connect: %s", err->message);
-		g_error_free(err);
-		return reply;
-	}
+	err = adapter_create_bonding(adapter, &device->bdaddr, capability);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
 
 	bonding = bonding_request_new(conn, msg, device, agent_path,
 					capability);
 	if (!bonding) {
-		g_io_channel_shutdown(io, TRUE, NULL);
+		adapter_cancel_bonding(adapter, &device->bdaddr);
 		return NULL;
 	}
-
-	bonding->io = io;
 
 	bonding->listener_id = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),
@@ -2116,7 +2002,7 @@ void device_simple_pairing_complete(struct btd_device *device, uint8_t status)
 		agent_cancel(auth->agent);
 }
 
-void device_authentication_complete(struct btd_device *device)
+static void device_authentication_complete(struct btd_device *device)
 {
 	g_free(device->authr);
 	device->authr = NULL;
@@ -2127,6 +2013,8 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 	struct bonding_req *bonding = device->bonding;
 	struct authentication_req *auth = device->authr;
 
+	DBG("bonding %p status 0x%02x", bonding, status);
+
 	if (auth && auth->type == AUTH_TYPE_NOTIFY && auth->agent)
 		agent_cancel(auth->agent);
 
@@ -2136,14 +2024,13 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 		return;
 	}
 
-	device->auth = 0xff;
-
 	device_authentication_complete(device);
 
-	if (device->renewed_key)
+	/* If we're already paired nothing more is needed */
+	if (device->paired)
 		return;
 
-	device_set_temporary(device, FALSE);
+	device_set_paired(device, TRUE);
 
 	/* If we were initiators start service discovery immediately.
 	 * However if the other end was the initator wait a few seconds
@@ -2409,11 +2296,6 @@ gboolean device_is_authorizing(struct btd_device *device)
 void device_set_authorizing(struct btd_device *device, gboolean auth)
 {
 	device->authorizing = auth;
-}
-
-void device_set_renewed_key(struct btd_device *device, gboolean renewed)
-{
-	device->renewed_key = renewed;
 }
 
 void btd_device_add_service(struct btd_device *device, const char *path)

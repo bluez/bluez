@@ -77,14 +77,11 @@ uint8_t device_get_cap(struct btd_device *device);
 void device_set_auth(struct btd_device *device, uint8_t auth);
 uint8_t device_get_auth(struct btd_device *device);
 gboolean device_is_connected(struct btd_device *device);
-gboolean device_get_secmode3_conn(struct btd_device *device);
-void device_set_secmode3_conn(struct btd_device *device, gboolean enable);
 DBusMessage *device_create_bonding(struct btd_device *device,
 				DBusConnection *conn, DBusMessage *msg,
 				const char *agent_path, uint8_t capability);
 void device_remove_bonding(struct btd_device *device);
 void device_bonding_complete(struct btd_device *device, uint8_t status);
-void device_authentication_complete(struct btd_device *device);
 void device_simple_pairing_complete(struct btd_device *device, uint8_t status);
 gboolean device_is_creating(struct btd_device *device, const char *sender);
 gboolean device_is_bonding(struct btd_device *device, const char *sender);
@@ -95,9 +92,6 @@ void device_cancel_authentication(struct btd_device *device, gboolean aborted);
 gboolean device_is_authenticating(struct btd_device *device);
 gboolean device_is_authorizing(struct btd_device *device);
 void device_set_authorizing(struct btd_device *device, gboolean auth);
-void device_set_renewed_key(struct btd_device *device, gboolean renewed);
-gboolean device_set_debug_key(struct btd_device *device, uint8_t *key);
-gboolean device_get_debug_key(struct btd_device *device, uint8_t *key);
 void device_add_connection(struct btd_device *device, DBusConnection *conn);
 void device_remove_connection(struct btd_device *device, DBusConnection *conn);
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg);

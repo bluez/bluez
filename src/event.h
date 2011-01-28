@@ -36,13 +36,9 @@ void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t 
 void btd_event_setscan_enable_complete(bdaddr_t *local);
 void btd_event_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status);
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer);
-int btd_event_get_io_cap(bdaddr_t *local, bdaddr_t *remote,
-						uint8_t *cap, uint8_t *auth);
-int btd_event_set_io_cap(bdaddr_t *local, bdaddr_t *remote,
-						uint8_t cap, uint8_t auth);
-int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey);
+int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey,
+							gboolean auto_accept);
 int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba);
 int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey);
-int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
-				uint8_t *key, uint8_t key_type,
-				uint8_t pin_length, uint8_t old_key_type);
+int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t *key,
+					uint8_t key_type, uint8_t pin_length);

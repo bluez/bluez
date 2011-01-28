@@ -42,6 +42,7 @@
 
 #include "hcid.h"
 #include "sdpd.h"
+#include "btio.h"
 #include "adapter.h"
 #include "device.h"
 #include "plugin.h"
@@ -68,13 +69,23 @@ struct uuid_info {
 	uint8_t svc_hint;
 };
 
-struct acl_connection {
+struct bt_conn {
+	struct dev_info *dev;
 	bdaddr_t bdaddr;
 	uint16_t handle;
+	uint8_t loc_cap;
+	uint8_t loc_auth;
+	uint8_t rem_cap;
+	uint8_t rem_auth;
+	uint8_t key_type;
+	gboolean bonding_initiator;
+	gboolean secmode3;
+	GIOChannel *io; /* For raw L2CAP socket (bonding) */
 };
 
 static int max_dev = -1;
 static struct dev_info {
+	int id;
 	int sk;
 	bdaddr_t bdaddr;
 	char name[249];
@@ -90,6 +101,9 @@ static struct dev_info {
 	gboolean cache_enable;
 	gboolean already_up;
 	gboolean registered;
+	gboolean pairable;
+
+	uint8_t io_capability;
 
 	struct hci_version ver;
 
@@ -123,9 +137,11 @@ static void init_dev_info(int index, int sk, gboolean registered)
 
 	memset(dev, 0, sizeof(*dev));
 
+	dev->id = index;
 	dev->sk = sk;
 	dev->cache_enable = TRUE;
 	dev->registered = registered;
+	dev->io_capability = 0x03; /* No Input No Output */
 }
 
 /* Async HCI command handling with callback support */
@@ -328,6 +344,8 @@ static int hciops_set_pairable(int index, gboolean pairable)
 	adapter = manager_find_adapter(&devs[index].bdaddr);
 	if (adapter)
 		btd_adapter_pairable_changed(adapter, pairable);
+
+	devs[index].pairable = pairable;
 
 	return 0;
 }
@@ -574,22 +592,81 @@ static int hciops_set_did(int index, uint16_t vendor, uint16_t product,
 
 /* Start of HCI event callbacks */
 
-static int get_handle(int index, const bdaddr_t *bdaddr, uint16_t *handle)
+static gint conn_handle_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct bt_conn *conn = a;
+	uint16_t handle = *((const uint16_t *) b);
+
+	return (int) conn->handle - (int) handle;
+}
+
+static struct bt_conn *find_conn_by_handle(struct dev_info *dev,
+							uint16_t handle)
+{
+	GSList *match;
+
+	match = g_slist_find_custom(dev->connections, &handle,
+							conn_handle_cmp);
+	if (match)
+		return match->data;
+
+	return NULL;
+}
+
+static gint conn_bdaddr_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct bt_conn *conn = a;
+	const bdaddr_t *bdaddr = b;
+
+	return bacmp(&conn->bdaddr, bdaddr);
+}
+
+static struct bt_conn *find_connection(struct dev_info *dev, bdaddr_t *bdaddr)
+{
+	GSList *match;
+
+	match = g_slist_find_custom(dev->connections, bdaddr, conn_bdaddr_cmp);
+	if (match)
+		return match->data;
+
+	return NULL;
+}
+
+static struct bt_conn *get_connection(struct dev_info *dev, bdaddr_t *bdaddr)
+{
+	struct bt_conn *conn;
+
+	conn = find_connection(dev, bdaddr);
+	if (conn)
+		return conn;
+
+	conn = g_new0(struct bt_conn, 1);
+
+	conn->dev = dev;
+	conn->loc_cap = dev->io_capability;
+	conn->loc_auth = 0xff;
+	conn->rem_auth = 0xff;
+	conn->key_type = 0xff;
+	bacpy(&conn->bdaddr, bdaddr);
+
+	dev->connections = g_slist_append(dev->connections, conn);
+
+	return conn;
+}
+
+static int get_handle(int index, bdaddr_t *bdaddr, uint16_t *handle)
 {
 	struct dev_info *dev = &devs[index];
-	struct acl_connection *conn;
-	GSList *match;
+	struct bt_conn *conn;
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("hci%d dba %s", index, addr);
 
-	match = g_slist_find_custom(dev->connections, bdaddr,
-							(GCompareFunc) bacmp);
-	if (match == NULL)
+	conn = find_connection(dev, bdaddr);
+	if (conn == NULL)
 		return -ENOENT;
 
-	conn = match->data;
 	*handle = conn->handle;
 
 	return 0;
@@ -616,34 +693,42 @@ static int disconnect_addr(int index, bdaddr_t *dba, uint8_t reason)
 	return 0;
 }
 
-static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
+static void bonding_complete(struct dev_info *dev, struct bt_conn *conn,
+								uint8_t status)
 {
-	struct dev_info *dev = &devs[index];
-	struct hci_conn_list_req *cl;
-	struct hci_conn_info *ci;
-	int i;
+	DBG("status 0x%02x", status);
 
-	cl = g_malloc0(10 * sizeof(*ci) + sizeof(*cl));
-
-	cl->dev_id = index;
-	cl->conn_num = 10;
-	ci = cl->conn_info;
-
-	if (ioctl(dev->sk, HCIGETCONNLIST, (void *) cl) < 0) {
-		g_free(cl);
-		return -EIO;
+	if (conn->io != NULL) {
+		g_io_channel_shutdown(conn->io, TRUE, NULL);
+		g_io_channel_unref(conn->io);
+		conn->io = NULL;
 	}
 
-	for (i = 0; i < cl->conn_num; i++, ci++)
-		if (ci->handle == handle) {
-			bacpy(dba, &ci->bdaddr);
-			g_free(cl);
-			return 0;
-		}
+	conn->bonding_initiator = FALSE;
 
-	g_free(cl);
+	btd_event_bonding_process_complete(&dev->bdaddr, &conn->bdaddr,
+								status);
+}
 
-	return -ENOENT;
+static int get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
+{
+	struct dev_info *dev = &devs[index];
+	struct hci_auth_info_req req;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", index, addr);
+
+	memset(&req, 0, sizeof(req));
+	bacpy(&req.bdaddr, bdaddr);
+
+	if (ioctl(dev->sk, HCIGETAUTHINFO, (unsigned long) &req) < 0)
+		return -errno;
+
+	if (auth)
+		*auth = req.type;
+
+	return 0;
 }
 
 /* Link Key handling */
@@ -651,27 +736,21 @@ static inline int get_bdaddr(int index, uint16_t handle, bdaddr_t *dba)
 static void link_key_request(int index, bdaddr_t *dba)
 {
 	struct dev_info *dev = &devs[index];
-	struct hci_auth_info_req req;
-	GSList *match;
 	struct link_key_info *key_info;
+	struct bt_conn *conn;
+	GSList *match;
 	char da[18];
-	int err;
 
 	ba2str(dba, da);
 	DBG("hci%d dba %s", index, da);
 
-	memset(&req, 0, sizeof(req));
-	bacpy(&req.bdaddr, dba);
+	conn = get_connection(dev, dba);
+	if (conn->handle == 0)
+		conn->secmode3 = TRUE;
 
-	err = ioctl(dev->sk, HCIGETAUTHINFO, (unsigned long) &req);
-	if (err < 0) {
-		if (errno != EINVAL)
-			DBG("HCIGETAUTHINFO failed %s (%d)",
-						strerror(errno), errno);
-		req.type = 0x00;
-	}
+	get_auth_info(index, dba, &conn->loc_auth);
 
-	DBG("kernel auth requirements = 0x%02x", req.type);
+	DBG("kernel auth requirements = 0x%02x", conn->loc_auth);
 
 	match = g_slist_find_custom(dev->keys, dba, (GCompareFunc) bacmp);
 	if (match)
@@ -694,7 +773,8 @@ static void link_key_request(int index, bdaddr_t *dba)
 
 	/* Don't use unauthenticated combination keys if MITM is
 	 * required */
-	if (key_info->type == 0x04 && req.type != 0xff && (req.type & 0x01))
+	if (key_info->type == 0x04 && conn->loc_auth != 0xff &&
+						(conn->loc_auth & 0x01))
 		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_LINK_KEY_NEG_REPLY,
 								6, dba);
 	else {
@@ -714,13 +794,16 @@ static void link_key_notify(int index, void *ptr)
 	evt_link_key_notify *evt = ptr;
 	bdaddr_t *dba = &evt->bdaddr;
 	struct link_key_info *key_info;
+	uint8_t old_key_type, key_type;
+	struct bt_conn *conn;
 	GSList *match;
-	uint8_t old_key_type, reason;
 	char da[18];
-	int err;
+	uint8_t status = 0;
 
 	ba2str(dba, da);
 	DBG("hci%d dba %s type %d", index, da, evt->key_type);
+
+	conn = get_connection(dev, &evt->bdaddr);
 
 	match = g_slist_find_custom(dev->keys, dba, (GCompareFunc) bacmp);
 	if (match)
@@ -731,7 +814,7 @@ static void link_key_notify(int index, void *ptr)
 	if (key_info == NULL) {
 		key_info = g_new0(struct link_key_info, 1);
 		bacpy(&key_info->bdaddr, &evt->bdaddr);
-		old_key_type = 0xff;
+		old_key_type = conn->key_type;
 	} else {
 		dev->keys = g_slist_remove(dev->keys, key_info);
 		old_key_type = key_info->type;
@@ -741,26 +824,78 @@ static void link_key_notify(int index, void *ptr)
 	key_info->type = evt->key_type;
 	key_info->pin_len = dev->pin_length;
 
-	err = btd_event_link_key_notify(&dev->bdaddr, dba, evt->link_key,
-					evt->key_type, dev->pin_length,
-					old_key_type);
+	key_type = evt->key_type;
+
+	DBG("key type 0x%02x old key type 0x%02x", key_type, old_key_type);
+	DBG("local auth 0x%02x and remote auth 0x%02x",
+					conn->loc_auth, conn->rem_auth);
+
+	if (key_type == 0x06) {
+		/* Some buggy controller combinations generate a changed
+		 * combination key for legacy pairing even when there's no
+		 * previous key */
+		if ((!conn || conn->rem_auth == 0xff) && old_key_type == 0xff)
+			key_type = 0x00;
+		else if (old_key_type != 0xff)
+			key_type = old_key_type;
+		else
+			/* This is Changed Combination Link Key for
+			 * a temporary link key.*/
+			goto done;
+	}
+
+	key_info->type = key_type;
+	conn->key_type = key_type;
+
+	/* Skip the storage check if this is a debug key */
+	if (key_type == 0x03)
+		goto done;
+
+	/* Store the link key persistently if one of the following is true:
+	 * 1. this is a legacy link key
+	 * 2. this is a changed combination key and there was a previously
+	 *    stored one
+	 * 3. neither local nor remote side had no-bonding as a requirement
+	 * 4. the local side had dedicated bonding as a requirement
+	 * 5. the remote side is using dedicated bonding since in that case
+	 *    also the local requirements are set to dedicated bonding
+	 * If none of the above match only keep the link key around for
+	 * this connection and set the temporary flag for the device.
+	 */
+	if (key_type < 0x03 || (key_type == 0x06 && old_key_type != 0xff) ||
+			(conn->loc_auth > 0x01 && conn->rem_auth > 0x01) ||
+			(conn->loc_auth == 0x02 || conn->loc_auth == 0x03) ||
+			(conn->rem_auth == 0x02 || conn->rem_auth == 0x03)) {
+		int err;
+
+		err = btd_event_link_key_notify(&dev->bdaddr, dba,
+						evt->link_key, key_type,
+						dev->pin_length);
+
+		if (err == -ENODEV)
+			status = HCI_OE_LOW_RESOURCES;
+		else if (err < 0)
+			status = HCI_MEMORY_FULL;
+
+		goto done;
+	}
+
+done:
 	dev->pin_length = 0;
 
-	if (err == 0) {
-		dev->keys = g_slist_append(dev->keys, key_info);
+	if (status != 0) {
+		g_free(key_info);
+		bonding_complete(dev, conn, status);
+		disconnect_addr(index, dba, status);
 		return;
 	}
 
-	g_free(key_info);
+	dev->keys = g_slist_append(dev->keys, key_info);
 
-	if (err == -ENODEV)
-		reason = HCI_OE_LOW_RESOURCES;
-	else
-		reason = HCI_MEMORY_FULL;
-
-	btd_event_bonding_process_complete(&dev->bdaddr, dba, reason);
-
-	disconnect_addr(index, dba, reason);
+	/* If we're connected and not dedicated bonding initiators we're
+	 * done with the bonding process */
+	if (!conn->bonding_initiator && conn->handle != 0)
+		bonding_complete(dev, conn, 0);
 }
 
 static void return_link_keys(int index, void *ptr)
@@ -795,13 +930,42 @@ static void user_confirm_request(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_user_confirm_request *req = ptr;
+	gboolean loc_mitm, rem_mitm, auto_accept;
+	struct bt_conn *conn;
 
 	DBG("hci%d", index);
 
+	conn = find_connection(dev, &req->bdaddr);
+	if (conn == NULL)
+		return;
+
+	loc_mitm = (conn->loc_auth & 0x01) ? TRUE : FALSE;
+	rem_mitm = (conn->rem_auth & 0x01) ? TRUE : FALSE;
+
+	/* If we require MITM but the remote device can't provide that
+	 * (it has NoInputNoOutput) then reject the confirmation
+	 * request. The only exception is when we're dedicated bonding
+	 * initiators since then we always have the MITM bit set. */
+	if (!conn->bonding_initiator && loc_mitm && conn->rem_cap == 0x03) {
+		error("Rejecting request: remote device can't provide MITM");
+		goto fail;
+	}
+
+	/* If no side requires MITM protection; auto-accept */
+	if ((conn->loc_auth == 0xff || !loc_mitm || conn->rem_cap == 0x03) &&
+					(!rem_mitm || conn->loc_cap == 0x03)) {
+		DBG("auto accept of confirmation");
+		auto_accept = TRUE;
+	} else
+		auto_accept = FALSE;
+
 	if (btd_event_user_confirm(&dev->bdaddr, &req->bdaddr,
-					btohl(req->passkey)) < 0)
-		hci_send_cmd(dev->sk, OGF_LINK_CTL,
-				OCF_USER_CONFIRM_NEG_REPLY, 6, ptr);
+				btohl(req->passkey), auto_accept) == 0)
+		return;
+
+fail:
+	hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_USER_CONFIRM_NEG_REPLY,
+								6, ptr);
 }
 
 static void user_passkey_request(int index, void *ptr)
@@ -837,18 +1001,93 @@ static void remote_oob_data_request(int index, void *ptr)
 				OCF_REMOTE_OOB_DATA_NEG_REPLY, 6, ptr);
 }
 
+static int get_io_cap(int index, bdaddr_t *bdaddr, uint8_t *cap, uint8_t *auth)
+{
+	struct dev_info *dev = &devs[index];
+	struct bt_conn *conn;
+	int err;
+
+	conn = find_connection(dev, bdaddr);
+	if (conn == NULL)
+		return -ENOENT;
+
+	err = get_auth_info(index, bdaddr, &conn->loc_auth);
+	if (err < 0)
+		return err;
+
+	DBG("initial authentication requirement is 0x%02x", conn->loc_auth);
+
+	if (!dev->pairable && !conn->bonding_initiator) {
+		if (conn->rem_auth < 0x02) {
+			DBG("Allowing no bonding in non-bondable mode");
+			/* Kernel defaults to general bonding and so
+			 * overwrite for this special case. Otherwise
+			 * non-pairable test cases will fail. */
+			conn->loc_auth = conn->rem_auth;
+			goto done;
+		}
+
+		return -EPERM;
+	}
+
+	/* If the kernel doesn't know the local requirement just mirror
+	 * the remote one */
+	if (conn->loc_auth == 0xff)
+		conn->loc_auth = conn->rem_auth;
+
+	if (conn->loc_auth == 0x00 || conn->loc_auth == 0x04) {
+		/* If remote requests dedicated bonding follow that lead */
+		if (conn->rem_auth == 0x02 || conn->rem_auth == 0x03) {
+
+			/* If both remote and local IO capabilities allow MITM
+			 * then require it, otherwise don't */
+			if (conn->rem_cap == 0x03 || conn->loc_cap == 0x03)
+				conn->loc_auth = 0x02;
+			else
+				conn->loc_auth = 0x03;
+		}
+
+		/* If remote indicates no bonding then follow that. This
+		 * is important since the kernel might give general bonding
+		 * as default. */
+		if (conn->rem_auth == 0x00 || conn->rem_auth == 0x01)
+			conn->loc_auth = 0x00;
+
+		/* If remote requires MITM then also require it, unless
+		 * our IO capability is NoInputNoOutput (so some
+		 * just-works security cases can be tested) */
+		if (conn->rem_auth != 0xff && (conn->rem_auth & 0x01) &&
+							conn->loc_cap != 0x03)
+			conn->loc_auth |= 0x01;
+	}
+
+done:
+	*cap = conn->loc_cap;
+	*auth = conn->loc_auth;
+
+	DBG("final authentication requirement is 0x%02x", *auth);
+
+	return 0;
+}
+
 static void io_capa_request(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	bdaddr_t *dba = ptr;
+	uint8_t cap, auth = 0xff;
 	char da[18];
-	uint8_t cap, auth;
+	int err;
 
 	ba2str(dba, da);
 	DBG("hci%d IO capability request for %s", index, da);
 
-	if (btd_event_get_io_cap(&dev->bdaddr, dba, &cap, &auth) < 0) {
+	err = get_io_cap(index, dba, &cap, &auth);
+	if (err < 0) {
 		io_capability_neg_reply_cp cp;
+
+		error("Getting IO capability failed: %s (%d)",
+						strerror(-err), -err);
+
 		memset(&cp, 0, sizeof(cp));
 		bacpy(&cp.bdaddr, dba);
 		cp.reason = HCI_PAIRING_NOT_ALLOWED;
@@ -871,13 +1110,17 @@ static void io_capa_response(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_io_capability_response *evt = ptr;
+	struct bt_conn *conn;
 	char da[18];
 
 	ba2str(&evt->bdaddr, da);
 	DBG("hci%d IO capability response from %s", index, da);
 
-	btd_event_set_io_cap(&dev->bdaddr, &evt->bdaddr,
-				evt->capability, evt->authentication);
+	conn = find_connection(dev, &evt->bdaddr);
+	if (conn) {
+		conn->rem_cap = evt->capability;
+		conn->rem_auth = evt->authentication;
+	}
 }
 
 /* PIN code handling */
@@ -885,18 +1128,34 @@ static void io_capa_response(int index, void *ptr)
 static void pin_code_request(int index, bdaddr_t *dba)
 {
 	struct dev_info *dev = &devs[index];
+	struct bt_conn *conn;
 	char addr[18];
 	int err;
 
 	ba2str(dba, addr);
 	DBG("hci%d PIN request for %s", index, addr);
 
+	conn = get_connection(dev, dba);
+	if (conn->handle == 0)
+		conn->secmode3 = TRUE;
+
+	/* Check if the adapter is not pairable and if there isn't a bonding in
+	 * progress */
+	if (!dev->pairable && !conn->bonding_initiator) {
+		DBG("Rejecting PIN request in non-pairable mode");
+		goto reject;
+	}
+
 	err = btd_event_request_pin(&dev->bdaddr, dba);
 	if (err < 0) {
 		error("PIN code negative reply: %s", strerror(-err));
-		hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY,
-								6, dba);
+		goto reject;
 	}
+
+	return;
+
+reject:
+	hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 }
 
 static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
@@ -1562,18 +1821,20 @@ static inline void remote_version_information(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_read_remote_version_complete *evt = ptr;
-	bdaddr_t dba;
+	struct bt_conn *conn;
 
 	DBG("hci%d status %u", index, evt->status);
 
 	if (evt->status)
 		return;
 
-	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
+	conn = find_conn_by_handle(dev, btohs(evt->handle));
+	if (conn == NULL)
 		return;
 
-	write_version_info(&dev->bdaddr, &dba, btohs(evt->manufacturer),
-				evt->lmp_ver, btohs(evt->lmp_subver));
+	write_version_info(&dev->bdaddr, &conn->bdaddr,
+				btohs(evt->manufacturer), evt->lmp_ver,
+				btohs(evt->lmp_subver));
 }
 
 static inline void inquiry_result(int index, int plen, void *ptr)
@@ -1650,17 +1911,18 @@ static inline void remote_features_information(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_read_remote_features_complete *evt = ptr;
-	bdaddr_t dba;
+	struct bt_conn *conn;
 
 	DBG("hci%d status %u", index, evt->status);
 
 	if (evt->status)
 		return;
 
-	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
+	conn = find_conn_by_handle(dev, btohs(evt->handle));
+	if (conn == NULL)
 		return;
 
-	write_features_info(&dev->bdaddr, &dba, evt->features, NULL);
+	write_features_info(&dev->bdaddr, &conn->bdaddr, evt->features, NULL);
 }
 
 struct remote_version_req {
@@ -1697,31 +1959,47 @@ static void get_remote_version(int index, uint16_t handle)
 								req, g_free);
 }
 
+static void conn_free(struct bt_conn *conn)
+{
+	if (conn->io != NULL) {
+		g_io_channel_shutdown(conn->io, TRUE, NULL);
+		g_io_channel_unref(conn->io);
+	}
+
+	g_free(conn);
+}
+
 static inline void conn_complete(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_conn_complete *evt = ptr;
 	char filename[PATH_MAX];
 	char local_addr[18], peer_addr[18], *str;
+	struct bt_conn *conn;
 
 	if (evt->link_type != ACL_LINK)
 		return;
 
+	DBG("status 0x%02x", evt->status);
+
+	conn = find_connection(dev, &evt->bdaddr);
+
 	if (evt->status == 0) {
-		struct acl_connection *conn;
-
-		conn = g_new0(struct acl_connection, 1);
-
-		bacpy(&conn->bdaddr, &evt->bdaddr);
-		conn->handle = evt->handle;
-
-		dev->connections = g_slist_append(dev->connections, conn);
+		if (conn == NULL)
+			conn = get_connection(dev, &evt->bdaddr);
+		conn->handle = btohs(evt->handle);
+	} else if (conn != NULL) {
+		dev->connections = g_slist_remove(dev->connections, conn);
+		conn_free(conn);
 	}
 
 	btd_event_conn_complete(&dev->bdaddr, evt->status, &evt->bdaddr);
 
-	if (evt->status)
+	if (evt->status != 0)
 		return;
+
+	if (conn->secmode3)
+		bonding_complete(dev, conn, 0);
 
 	/* check if the remote version needs be requested */
 	ba2str(&dev->bdaddr, local_addr);
@@ -1745,14 +2023,10 @@ static inline void le_conn_complete(int index, void *ptr)
 	char local_addr[18], peer_addr[18], *str;
 
 	if (evt->status == 0) {
-		struct acl_connection *conn;
+		struct bt_conn *conn;
 
-		conn = g_new0(struct acl_connection, 1);
-
-		bacpy(&conn->bdaddr, &evt->peer_bdaddr);
-		conn->handle = evt->handle;
-
-		dev->connections = g_slist_append(dev->connections, conn);
+		conn = get_connection(dev, &evt->peer_bdaddr);
+		conn->handle = btohs(evt->handle);
 	}
 
 	btd_event_conn_complete(&dev->bdaddr, evt->status, &evt->peer_bdaddr);
@@ -1774,52 +2048,41 @@ static inline void le_conn_complete(int index, void *ptr)
 		free(str);
 }
 
-static int conn_handle_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct acl_connection *conn = a;
-	uint16_t handle = *((uint16_t *) b);
-
-	return (int) conn->handle - (int) handle;
-}
-
 static inline void disconn_complete(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_disconn_complete *evt = ptr;
-	struct acl_connection *conn;
-	uint16_t handle;
-	GSList *match;
+	struct bt_conn *conn;
+
+	DBG("handle %u status 0x%02x", btohs(evt->handle), evt->status);
 
 	if (evt->status != 0)
 		return;
 
-	handle = btohs(evt->handle);
-	match = g_slist_find_custom(dev->connections, &handle,
-							conn_handle_cmp);
-	if (match == NULL)
+	conn = find_conn_by_handle(dev, btohs(evt->handle));
+	if (conn == NULL)
 		return;
 
-	conn = match->data;
-
-	dev->connections = g_slist_delete_link(dev->connections, match);
+	dev->connections = g_slist_remove(dev->connections, conn);
 
 	btd_event_disconn_complete(&dev->bdaddr, &conn->bdaddr);
 
-	g_free(conn);
+	conn_free(conn);
 }
 
 static inline void auth_complete(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_auth_complete *evt = ptr;
-	bdaddr_t dba;
+	struct bt_conn *conn;
 
 	DBG("hci%d status %u", index, evt->status);
 
-	if (get_bdaddr(index, btohs(evt->handle), &dba) < 0)
+	conn = find_conn_by_handle(dev, btohs(evt->handle));
+	if (conn == NULL)
 		return;
 
-	btd_event_bonding_process_complete(&dev->bdaddr, &dba, evt->status);
+	bonding_complete(dev, conn, evt->status);
 }
 
 static inline void simple_pairing_complete(int index, void *ptr)
@@ -1898,7 +2161,7 @@ static void stop_hci_dev(int index)
 	g_slist_foreach(dev->uuids, (GFunc) g_free, NULL);
 	g_slist_free(dev->uuids);
 
-	g_slist_foreach(dev->connections, (GFunc) g_free, NULL);
+	g_slist_foreach(dev->connections, (GFunc) conn_free, NULL);
 	g_slist_free(dev->connections);
 
 	init_dev_info(index, -1, dev->registered);
@@ -2270,17 +2533,13 @@ static void init_conn_list(int index)
 	}
 
 	for (i = 0; i < cl->conn_num; i++, ci++) {
-		struct acl_connection *conn;
+		struct bt_conn *conn;
 
 		if (ci->type != ACL_LINK)
 			continue;
 
-		conn = g_new0(struct acl_connection, 1);
-
-		bacpy(&conn->bdaddr, &ci->bdaddr);
+		conn = get_connection(dev, &ci->bdaddr);
 		conn->handle = ci->handle;
-
-		dev->connections = g_slist_append(dev->connections, conn);
 	}
 
 	err = 0;
@@ -2845,7 +3104,7 @@ static int hciops_get_conn_list(int index, GSList **conns)
 	*conns = NULL;
 
 	for (l = dev->connections; l != NULL; l = g_slist_next(l)) {
-		struct acl_connection *conn = l->data;
+		struct bt_conn *conn = l->data;
 
 		*conns = g_slist_append(*conns,
 				g_memdup(&conn->bdaddr, sizeof(bdaddr_t)));
@@ -3022,27 +3281,6 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 	return err;
 }
 
-static int hciops_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
-{
-	struct dev_info *dev = &devs[index];
-	struct hci_auth_info_req req;
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("hci%d dba %s", index, addr);
-
-	memset(&req, 0, sizeof(req));
-	bacpy(&req.bdaddr, bdaddr);
-
-	if (ioctl(dev->sk, HCIGETAUTHINFO, (unsigned long) &req) < 0)
-		return -errno;
-
-	if (auth)
-		*auth = req.type;
-
-	return 0;
-}
-
 static int hciops_read_scan_enable(int index)
 {
 	struct dev_info *dev = &devs[index];
@@ -3212,6 +3450,89 @@ static int hciops_load_keys(int index, GSList *keys, gboolean debug_keys)
 
 static int hciops_set_io_capability(int index, uint8_t io_capability)
 {
+	struct dev_info *dev = &devs[index];
+
+	dev->io_capability = io_capability;
+
+	return 0;
+}
+
+static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
+{
+	struct bt_conn *conn = user_data;
+	struct dev_info *dev = conn->dev;
+
+	if (!conn->io) {
+		if (!err)
+			g_io_channel_shutdown(io, TRUE, NULL);
+		return;
+	}
+
+	if (err)
+		/* Wait proper error to be propagated by bonding complete */
+		return;
+
+	if (hciops_request_authentication(dev->id, &conn->bdaddr) < 0)
+		goto failed;
+
+	return;
+
+failed:
+	bonding_complete(dev, conn, HCI_UNSPECIFIED_ERROR);
+}
+
+static int hciops_create_bonding(int index, bdaddr_t *bdaddr, uint8_t io_cap)
+{
+	struct dev_info *dev = &devs[index];
+	BtIOSecLevel sec_level;
+	struct bt_conn *conn;
+	GError *err = NULL;
+
+	conn = get_connection(dev, bdaddr);
+
+	if (conn->io != NULL)
+		return -EBUSY;
+
+	conn->loc_cap = io_cap;
+
+	/* If our IO capability is NoInputNoOutput use medium security
+	 * level (i.e. don't require MITM protection) else use high
+	 * security level */
+	if (io_cap == 0x03)
+		sec_level = BT_IO_SEC_MEDIUM;
+	else
+		sec_level = BT_IO_SEC_HIGH;
+
+	conn->io = bt_io_connect(BT_IO_L2RAW, bonding_connect_cb, conn,
+					NULL, &err,
+					BT_IO_OPT_SOURCE_BDADDR, &dev->bdaddr,
+					BT_IO_OPT_DEST_BDADDR, bdaddr,
+					BT_IO_OPT_SEC_LEVEL, sec_level,
+					BT_IO_OPT_INVALID);
+	if (conn->io == NULL) {
+		error("bt_io_connect: %s", err->message);
+		g_error_free(err);
+		return -EIO;
+	}
+
+	conn->bonding_initiator = TRUE;
+
+	return 0;
+}
+
+static int hciops_cancel_bonding(int index, bdaddr_t *bdaddr)
+{
+	struct dev_info *dev = &devs[index];
+	struct bt_conn *conn;
+
+	conn = find_connection(dev, bdaddr);
+	if (conn == NULL || conn->io == NULL)
+		return -ENOTCONN;
+
+	g_io_channel_shutdown(conn->io, TRUE, NULL);
+	g_io_channel_unref(conn->io);
+	conn->io = NULL;
+
 	return 0;
 }
 
@@ -3244,7 +3565,6 @@ static struct btd_adapter_ops hci_ops = {
 	.pincode_reply = hciops_pincode_reply,
 	.confirm_reply = hciops_confirm_reply,
 	.passkey_reply = hciops_passkey_reply,
-	.get_auth_info = hciops_get_auth_info,
 	.read_scan_enable = hciops_read_scan_enable,
 	.enable_le = hciops_enable_le,
 	.encrypt_link = hciops_encrypt_link,
@@ -3255,6 +3575,8 @@ static struct btd_adapter_ops hci_ops = {
 	.restore_powered = hciops_restore_powered,
 	.load_keys = hciops_load_keys,
 	.set_io_capability = hciops_set_io_capability,
+	.create_bonding = hciops_create_bonding,
+	.cancel_bonding = hciops_cancel_bonding,
 };
 
 static int hciops_init(void)

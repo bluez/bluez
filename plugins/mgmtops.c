@@ -450,7 +450,7 @@ static void mgmt_new_key(int sk, void *buf, size_t len)
 
 	btd_event_link_key_notify(&info->bdaddr, &ev->key.bdaddr,
 					ev->key.val, ev->key.type,
-					ev->key.pin_len, ev->old_key_type);
+					ev->key.pin_len);
 }
 
 static void mgmt_device_connected(int sk, void *buf, size_t len)
@@ -1479,16 +1479,6 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 	return -ENOSYS;
 }
 
-static int mgmt_get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)
-{
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s", index, addr);
-
-	return -ENOSYS;
-}
-
 static int mgmt_read_scan_enable(int index)
 {
 	DBG("index %d", index);
@@ -1603,6 +1593,26 @@ static int mgmt_set_io_capability(int index, uint8_t io_capability)
 	return 0;
 }
 
+static int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t io_cap)
+{
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s io_cap 0x%02x", index, addr, io_cap);
+
+	return -ENOSYS;
+}
+
+static int mgmt_cancel_bonding(int index, bdaddr_t *bdaddr)
+{
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s", index, addr);
+
+	return -ENOSYS;
+}
+
 static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
@@ -1632,7 +1642,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.pincode_reply = mgmt_pincode_reply,
 	.confirm_reply = mgmt_confirm_reply,
 	.passkey_reply = mgmt_passkey_reply,
-	.get_auth_info = mgmt_get_auth_info,
 	.read_scan_enable = mgmt_read_scan_enable,
 	.enable_le = mgmt_enable_le,
 	.encrypt_link = mgmt_encrypt_link,
@@ -1643,6 +1652,8 @@ static struct btd_adapter_ops mgmt_ops = {
 	.restore_powered = mgmt_restore_powered,
 	.load_keys = mgmt_load_keys,
 	.set_io_capability = mgmt_set_io_capability,
+	.create_bonding = mgmt_create_bonding,
+	.cancel_bonding = mgmt_cancel_bonding,
 };
 
 static int mgmt_init(void)
