@@ -2045,6 +2045,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 	 * before SDP. This is due to potential IOP issues if the other
 	 * end starts doing SDP at the same time as us */
 	if (bonding) {
+		DBG("Proceeding with service discovery");
 		/* If we are initiators remove any discovery timer and just
 		 * start discovering services directly */
 		if (device->discov_timer) {

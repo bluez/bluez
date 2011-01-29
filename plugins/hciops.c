@@ -3532,6 +3532,8 @@ static int hciops_cancel_bonding(int index, bdaddr_t *bdaddr)
 	struct dev_info *dev = &devs[index];
 	struct bt_conn *conn;
 
+	DBG("hci%d", index);
+
 	conn = find_connection(dev, bdaddr);
 	if (conn == NULL || conn->io == NULL)
 		return -ENOTCONN;
