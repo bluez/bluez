@@ -1012,8 +1012,16 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	if (device->agent)
 		agent_free(device->agent);
 
-	if (device->bonding)
-		device_cancel_bonding(device, HCI_OE_USER_ENDED_CONNECTION);
+	if (device->bonding) {
+		uint8_t status;
+
+		if (device->connected)
+			status = HCI_OE_USER_ENDED_CONNECTION;
+		else
+			status = HCI_PAGE_TIMEOUT;
+
+		device_cancel_bonding(device, status);
+	}
 
 	if (device->browse) {
 		discover_services_reply(device->browse, -ECANCELED, NULL);
