@@ -697,7 +697,9 @@ static void bonding_complete(struct dev_info *dev, struct bt_conn *conn,
 	DBG("status 0x%02x", status);
 
 	if (conn->io != NULL) {
-		g_io_channel_shutdown(conn->io, TRUE, NULL);
+		/* bonding_connect_cb takes care of the successul case */
+		if (status != 0)
+			g_io_channel_shutdown(conn->io, TRUE, NULL);
 		g_io_channel_unref(conn->io);
 		conn->io = NULL;
 	}
