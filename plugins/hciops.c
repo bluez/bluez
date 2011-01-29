@@ -1976,8 +1976,7 @@ static inline void conn_failed(int index, bdaddr_t *bdaddr, uint8_t status)
 	if (conn == NULL)
 		return;
 
-	if (conn->bonding_initiator)
-		bonding_complete(dev, conn, status);
+	bonding_complete(dev, conn, status);
 
 	dev->connections = g_slist_remove(dev->connections, conn);
 	conn_free(conn);
