@@ -704,8 +704,7 @@ static void bonding_complete(struct dev_info *dev, struct bt_conn *conn,
 
 	conn->bonding_initiator = FALSE;
 
-	btd_event_bonding_process_complete(&dev->bdaddr, &conn->bdaddr,
-								status);
+	btd_event_bonding_complete(&dev->bdaddr, &conn->bdaddr, status);
 }
 
 static int get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)

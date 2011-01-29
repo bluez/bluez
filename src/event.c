@@ -234,8 +234,8 @@ int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 								passkey, NULL);
 }
 
-void btd_event_bonding_process_complete(bdaddr_t *local, bdaddr_t *peer,
-								uint8_t status)
+void btd_event_bonding_complete(bdaddr_t *local, bdaddr_t *peer,
+							uint8_t status)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
