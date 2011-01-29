@@ -1970,7 +1970,7 @@ static inline void conn_failed(int index, bdaddr_t *bdaddr, uint8_t status)
 	struct dev_info *dev = &devs[index];
 	struct bt_conn *conn;
 
-	btd_event_conn_complete(&dev->bdaddr, status, bdaddr);
+	btd_event_conn_failed(&dev->bdaddr, bdaddr, status);
 
 	conn = find_connection(dev, bdaddr);
 	if (conn == NULL)
@@ -2004,7 +2004,7 @@ static inline void conn_complete(int index, void *ptr)
 	conn = get_connection(dev, &evt->bdaddr);
 	conn->handle = btohs(evt->handle);
 
-	btd_event_conn_complete(&dev->bdaddr, evt->status, &evt->bdaddr);
+	btd_event_conn_complete(&dev->bdaddr, &evt->bdaddr);
 
 	if (conn->secmode3)
 		bonding_complete(dev, conn, 0);
@@ -2029,18 +2029,18 @@ static inline void le_conn_complete(int index, void *ptr)
 	evt_le_connection_complete *evt = ptr;
 	char filename[PATH_MAX];
 	char local_addr[18], peer_addr[18], *str;
+	struct bt_conn *conn;
 
-	if (evt->status == 0) {
-		struct bt_conn *conn;
-
-		conn = get_connection(dev, &evt->peer_bdaddr);
-		conn->handle = btohs(evt->handle);
+	if (evt->status) {
+		btd_event_conn_failed(&dev->bdaddr, &evt->peer_bdaddr,
+								evt->status);
+		return;
 	}
 
-	btd_event_conn_complete(&dev->bdaddr, evt->status, &evt->peer_bdaddr);
+	conn = get_connection(dev, &evt->peer_bdaddr);
+	conn->handle = btohs(evt->handle);
 
-	if (evt->status)
-		return;
+	btd_event_conn_complete(&dev->bdaddr, &evt->peer_bdaddr);
 
 	/* check if the remote version needs be requested */
 	ba2str(&dev->bdaddr, local_addr);

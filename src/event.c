@@ -667,7 +667,20 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	return ret;
 }
 
-void btd_event_conn_complete(bdaddr_t *local, uint8_t status, bdaddr_t *peer)
+void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer)
+{
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+
+	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
+		return;
+
+	update_lastused(local, peer);
+
+	adapter_add_connection(adapter, device);
+}
+
+void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -676,15 +689,8 @@ void btd_event_conn_complete(bdaddr_t *local, uint8_t status, bdaddr_t *peer)
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
 
-	if (status) {
-		if (device_is_temporary(device))
-			adapter_remove_device(conn, adapter, device, TRUE);
-		return;
-	}
-
-	update_lastused(local, peer);
-
-	adapter_add_connection(adapter, device);
+	if (device_is_temporary(device))
+		adapter_remove_device(conn, adapter, device, TRUE);
 }
 
 void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer)

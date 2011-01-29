@@ -477,7 +477,7 @@ static void mgmt_device_connected(int sk, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_conn_complete(&info->bdaddr, 0, &ev->bdaddr);
+	btd_event_conn_complete(&info->bdaddr, &ev->bdaddr);
 }
 
 static void mgmt_device_disconnected(int sk, void *buf, size_t len)
@@ -531,7 +531,7 @@ static void mgmt_connect_failed(int sk, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_conn_complete(&info->bdaddr, ev->status, &ev->bdaddr);
+	btd_event_conn_failed(&info->bdaddr, &ev->bdaddr, ev->status);
 }
 
 static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
