@@ -106,6 +106,9 @@ static int send_cancel_request(struct agent_request *req)
 {
 	DBusMessage *message;
 
+	DBG("Sending Cancel request to %s, %s", req->agent->name,
+							req->agent->path);
+
 	message = dbus_message_new_method_call(req->agent->name, req->agent->path,
 						"org.bluez.Agent", "Cancel");
 	if (message == NULL) {
