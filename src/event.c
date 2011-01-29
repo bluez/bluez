@@ -677,8 +677,6 @@ void btd_event_conn_complete(bdaddr_t *local, uint8_t status, bdaddr_t *peer)
 		return;
 
 	if (status) {
-		if (device_is_bonding(device, NULL))
-			device_bonding_complete(device, status);
 		if (device_is_temporary(device))
 			adapter_remove_device(conn, adapter, device, TRUE);
 		return;

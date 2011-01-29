@@ -1965,6 +1965,24 @@ static void conn_free(struct bt_conn *conn)
 	g_free(conn);
 }
 
+static inline void conn_failed(int index, bdaddr_t *bdaddr, uint8_t status)
+{
+	struct dev_info *dev = &devs[index];
+	struct bt_conn *conn;
+
+	btd_event_conn_complete(&dev->bdaddr, status, bdaddr);
+
+	conn = find_connection(dev, bdaddr);
+	if (conn == NULL)
+		return;
+
+	if (conn->bonding_initiator)
+		bonding_complete(dev, conn, status);
+
+	dev->connections = g_slist_remove(dev->connections, conn);
+	conn_free(conn);
+}
+
 static inline void conn_complete(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
@@ -1978,21 +1996,15 @@ static inline void conn_complete(int index, void *ptr)
 
 	DBG("status 0x%02x", evt->status);
 
-	conn = find_connection(dev, &evt->bdaddr);
-
-	if (evt->status == 0) {
-		if (conn == NULL)
-			conn = get_connection(dev, &evt->bdaddr);
-		conn->handle = btohs(evt->handle);
-	} else if (conn != NULL) {
-		dev->connections = g_slist_remove(dev->connections, conn);
-		conn_free(conn);
+	if (evt->status != 0) {
+		conn_failed(index, &evt->bdaddr, evt->status);
+		return;
 	}
 
-	btd_event_conn_complete(&dev->bdaddr, evt->status, &evt->bdaddr);
+	conn = get_connection(dev, &evt->bdaddr);
+	conn->handle = btohs(evt->handle);
 
-	if (evt->status != 0)
-		return;
+	btd_event_conn_complete(&dev->bdaddr, evt->status, &evt->bdaddr);
 
 	if (conn->secmode3)
 		bonding_complete(dev, conn, 0);
