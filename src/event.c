@@ -251,16 +251,6 @@ void btd_event_bonding_complete(bdaddr_t *local, bdaddr_t *peer,
 	if (!device)
 		return;
 
-	if (!device_is_authenticating(device)) {
-		/* This means that there was no pending PIN or SSP token
-		 * request from the controller, i.e. this is not a new
-		 * pairing */
-		DBG("no pending auth request");
-		return;
-	}
-
-	/* If this is a new pairing send the appropriate reply and signal for
-	 * it and proceed with service discovery */
 	device_bonding_complete(device, status);
 }
 
