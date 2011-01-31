@@ -3546,6 +3546,26 @@ static inline void evt_le_conn_update_complete_dump(int level,
 			btohs(uevt->supervision_timeout) * 10.0);
 }
 
+static inline void evt_le_read_remote_used_features_complete_dump(int level, struct frame *frm)
+{
+	int i;
+	evt_le_read_remote_used_features_complete *revt = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x handle %d\n", revt->status, btohs(revt->handle));
+
+	if (revt->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(revt->status));
+	} else {
+		p_indent(level, frm);
+		printf("Features:");
+		for (i = 0; i < 8; i++)
+			printf(" 0x%2.2x", revt->features[i]);
+		printf("\n");
+	}
+}
+
 static inline void le_meta_ev_dump(int level, struct frame *frm)
 {
 	evt_le_meta_event *mevt = frm->ptr;
@@ -3568,6 +3588,9 @@ static inline void le_meta_ev_dump(int level, struct frame *frm)
 		break;
 	case EVT_LE_CONN_UPDATE_COMPLETE:
 		evt_le_conn_update_complete_dump(level + 1, frm);
+		break;
+	case EVT_LE_READ_REMOTE_USED_FEATURES_COMPLETE:
+		evt_le_read_remote_used_features_complete_dump(level + 1, frm);
 		break;
 	default:
 		raw_dump(level, frm);
