@@ -704,7 +704,7 @@ static char *authentication2str(uint8_t authentication)
 	}
 }
 
-static char *eventmask2str(uint8_t mask[8])
+static char *eventmask2str(const uint8_t mask[8])
 {
 	int i;
 
@@ -733,7 +733,7 @@ static char *eventmask2str(uint8_t mask[8])
 	}
 }
 
-static char *lefeatures2str(uint8_t features[8])
+static char *lefeatures2str(const uint8_t features[8])
 {
 	if (features[0] & 0x01)
 		return "Link Layer supports LE Encryption";
