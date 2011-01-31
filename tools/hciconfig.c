@@ -269,11 +269,20 @@ static void cmd_le_adv(int ctl, int hdev, char *opt)
 	rq.rlen = 1;
 
 	ret = hci_send_req(dd, &rq, 100);
-	if (status || ret < 0)
-		fprintf(stderr, "Can't set advertise mode on hci%d: %s (%d)\n",
-						hdev, strerror(errno), errno);
 
 	hci_close_dev(dd);
+
+	if (ret < 0) {
+		fprintf(stderr, "Can't set advertise mode on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (status) {
+		fprintf(stderr, "LE set advertise enable on hci%d returned status %d\n",
+						hdev, status);
+		exit(1);
+	}
 }
 
 static void cmd_le_states(int ctl, int hdev, char *opt)
@@ -302,7 +311,7 @@ static void cmd_le_states(int ctl, int hdev, char *opt)
 
 	err = hci_send_req(dd, &rq, 1000);
 
-	close(dd);
+	hci_close_dev(dd);
 
 	if (err < 0) {
 		fprintf(stderr, "Can't read LE supported states on hci%d:"
