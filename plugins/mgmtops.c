@@ -1449,16 +1449,6 @@ static int mgmt_remove_bonding(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_request_authentication(int index, bdaddr_t *bdaddr)
-{
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d %s", index, addr);
-
-	return -ENOSYS;
-}
-
 static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 {
 	char addr[18];
@@ -1638,7 +1628,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.read_local_features = mgmt_read_local_features,
 	.disconnect = mgmt_disconnect,
 	.remove_bonding = mgmt_remove_bonding,
-	.request_authentication = mgmt_request_authentication,
 	.pincode_reply = mgmt_pincode_reply,
 	.confirm_reply = mgmt_confirm_reply,
 	.passkey_reply = mgmt_passkey_reply,

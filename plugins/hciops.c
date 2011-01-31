@@ -3178,29 +3178,6 @@ static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int hciops_request_authentication(int index, bdaddr_t *bdaddr)
-{
-	struct dev_info *dev = &devs[index];
-	auth_requested_cp cp;
-	uint16_t handle;
-	int err;
-
-	DBG("hci%d", index);
-
-	err = get_handle(index, bdaddr, &handle);
-	if (err < 0)
-		return err;
-
-	memset(&cp, 0, sizeof(cp));
-	cp.handle = htobs(handle);
-
-	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_AUTH_REQUESTED,
-					AUTH_REQUESTED_CP_SIZE, &cp) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 {
 	struct dev_info *dev = &devs[index];
@@ -3466,6 +3443,29 @@ static int hciops_set_io_capability(int index, uint8_t io_capability)
 	return 0;
 }
 
+static int request_authentication(int index, bdaddr_t *bdaddr)
+{
+	struct dev_info *dev = &devs[index];
+	auth_requested_cp cp;
+	uint16_t handle;
+	int err;
+
+	DBG("hci%d", index);
+
+	err = get_handle(index, bdaddr, &handle);
+	if (err < 0)
+		return err;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = htobs(handle);
+
+	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_AUTH_REQUESTED,
+					AUTH_REQUESTED_CP_SIZE, &cp) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct bt_conn *conn = user_data;
@@ -3481,7 +3481,7 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		/* Wait proper error to be propagated by bonding complete */
 		return;
 
-	if (hciops_request_authentication(dev->id, &conn->bdaddr) < 0)
+	if (request_authentication(dev->id, &conn->bdaddr) < 0)
 		goto failed;
 
 	return;
@@ -3572,7 +3572,6 @@ static struct btd_adapter_ops hci_ops = {
 	.read_local_features = hciops_read_local_features,
 	.disconnect = hciops_disconnect,
 	.remove_bonding = hciops_remove_bonding,
-	.request_authentication = hciops_request_authentication,
 	.pincode_reply = hciops_pincode_reply,
 	.confirm_reply = hciops_confirm_reply,
 	.passkey_reply = hciops_passkey_reply,

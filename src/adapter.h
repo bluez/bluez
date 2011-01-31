@@ -221,7 +221,6 @@ struct btd_adapter_ops {
 	int (*read_local_features) (int index, uint8_t *features);
 	int (*disconnect) (int index, bdaddr_t *bdaddr);
 	int (*remove_bonding) (int index, bdaddr_t *bdaddr);
-	int (*request_authentication) (int index, bdaddr_t *bdaddr);
 	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin);
 	int (*confirm_reply) (int index, bdaddr_t *bdaddr, gboolean success);
 	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint32_t passkey);
@@ -269,9 +268,6 @@ int btd_adapter_disconnect_device(struct btd_adapter *adapter,
 							bdaddr_t *bdaddr);
 
 int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr);
-
-int btd_adapter_request_authentication(struct btd_adapter *adapter,
-							bdaddr_t *bdaddr);
 
 int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							const char *pin);
