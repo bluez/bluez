@@ -130,7 +130,8 @@ static int ignore_device(struct hci_dev_info *di)
 	return hci_test_bit(HCI_RAW, &di->flags) || di->type >> 4 != HCI_BREDR;
 }
 
-static void init_dev_info(int index, int sk, gboolean registered)
+static void init_dev_info(int index, int sk, gboolean registered,
+							gboolean already_up)
 {
 	struct dev_info *dev = &devs[index];
 
@@ -140,6 +141,7 @@ static void init_dev_info(int index, int sk, gboolean registered)
 	dev->sk = sk;
 	dev->cache_enable = TRUE;
 	dev->registered = registered;
+	dev->already_up = already_up;
 	dev->io_capability = 0x03; /* No Input No Output */
 }
 
@@ -2173,7 +2175,7 @@ static void stop_hci_dev(int index)
 	g_slist_foreach(dev->connections, (GFunc) conn_free, NULL);
 	g_slist_free(dev->connections);
 
-	init_dev_info(index, -1, dev->registered);
+	init_dev_info(index, -1, dev->registered, dev->already_up);
 }
 
 static gboolean io_security_event(GIOChannel *chan, GIOCondition cond,
@@ -2458,7 +2460,7 @@ static void init_pending(int index)
 	hci_set_bit(PENDING_NAME, &dev->pending);
 }
 
-static void init_device(int index)
+static void init_device(int index, gboolean already_up)
 {
 	struct hci_dev_req dr;
 	int dd;
@@ -2478,9 +2480,13 @@ static void init_device(int index)
 		devs = g_realloc(devs, sizeof(devs[0]) * (max_dev + 1));
 	}
 
-	init_dev_info(index, dd, FALSE);
+	init_dev_info(index, dd, FALSE, already_up);
 	init_pending(index);
 	start_hci_dev(index);
+
+	/* Avoid forking if nothing else has to be done */
+	if (already_up)
+		return;
 
 	/* Do initialization in the separate process */
 	pid = fork();
@@ -2562,7 +2568,7 @@ static void device_event(int event, int index)
 	switch (event) {
 	case HCI_DEV_REG:
 		info("HCI dev %d registered", index);
-		init_device(index);
+		init_device(index, FALSE);
 		break;
 
 	case HCI_DEV_UNREG:
@@ -2648,12 +2654,13 @@ static gboolean init_known_adapters(gpointer user_data)
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
 		struct dev_info *dev;
+		gboolean already_up;
 
-		device_event(HCI_DEV_REG, dr->dev_id);
+		already_up = hci_test_bit(HCI_UP, &dr->dev_opt);
+
+		init_device(dr->dev_id, already_up);
 
 		dev = &devs[dr->dev_id];
-
-		dev->already_up = hci_test_bit(HCI_UP, &dr->dev_opt);
 
 		if (!dev->already_up)
 			continue;
