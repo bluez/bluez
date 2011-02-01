@@ -676,7 +676,12 @@ void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
 	struct btd_device *device;
 	DBusConnection *conn = get_dbus_connection();
 
-	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
+	DBG("status 0x%02x", status);
+
+	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
+		return;
+
+	if (!device)
 		return;
 
 	if (device_is_temporary(device))
