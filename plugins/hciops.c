@@ -457,6 +457,29 @@ static void start_adapter(int index)
 	memset(dev->eir, 0, sizeof(dev->eir));
 }
 
+static int hciops_stop_inquiry(int index)
+{
+	struct dev_info *dev = &devs[index];
+	struct hci_dev_info di;
+	int err;
+
+	DBG("hci%d", index);
+
+	if (hci_devinfo(index, &di) < 0)
+		return -errno;
+
+	if (hci_test_bit(HCI_INQUIRY, &di.flags))
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
+						OCF_INQUIRY_CANCEL, 0, 0);
+	else
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
+					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
+	if (err < 0)
+		err = -errno;
+
+	return err;
+}
+
 static gboolean init_adapter(int index)
 {
 	struct dev_info *dev = &devs[index];
@@ -495,6 +518,9 @@ static gboolean init_adapter(int index)
 
 	hciops_set_discoverable(index, discoverable);
 	hciops_set_pairable(index, pairable);
+
+	if (dev->already_up)
+		hciops_stop_inquiry(index);
 
 done:
 	btd_adapter_unref(adapter);
@@ -2602,29 +2628,6 @@ static void device_event(int event, int index)
 	}
 }
 
-static int hciops_stop_inquiry(int index)
-{
-	struct dev_info *dev = &devs[index];
-	struct hci_dev_info di;
-	int err;
-
-	DBG("hci%d", index);
-
-	if (hci_devinfo(index, &di) < 0)
-		return -errno;
-
-	if (hci_test_bit(HCI_INQUIRY, &di.flags))
-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
-						OCF_INQUIRY_CANCEL, 0, 0);
-	else
-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
-					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
-	if (err < 0)
-		err = -errno;
-
-	return err;
-}
-
 static gboolean init_known_adapters(gpointer user_data)
 {
 	struct hci_dev_list_req *dl;
@@ -2666,7 +2669,6 @@ static gboolean init_known_adapters(gpointer user_data)
 			continue;
 
 		init_conn_list(dr->dev_id);
-		hciops_stop_inquiry(dr->dev_id);
 
 		dev->pending = 0;
 		hci_set_bit(PENDING_VERSION, &dev->pending);
