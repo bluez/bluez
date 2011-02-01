@@ -130,7 +130,7 @@ static int ignore_device(struct hci_dev_info *di)
 	return hci_test_bit(HCI_RAW, &di->flags) || di->type >> 4 != HCI_BREDR;
 }
 
-static void init_dev_info(int index, int sk, gboolean registered,
+static struct dev_info *init_dev_info(int index, int sk, gboolean registered,
 							gboolean already_up)
 {
 	struct dev_info *dev = &devs[index];
@@ -143,6 +143,8 @@ static void init_dev_info(int index, int sk, gboolean registered,
 	dev->registered = registered;
 	dev->already_up = already_up;
 	dev->io_capability = 0x03; /* No Input No Output */
+
+	return dev;
 }
 
 /* Async HCI command handling with callback support */
@@ -2486,8 +2488,9 @@ static void init_pending(int index)
 	hci_set_bit(PENDING_NAME, &dev->pending);
 }
 
-static void init_device(int index, gboolean already_up)
+static struct dev_info *init_device(int index, gboolean already_up)
 {
+	struct dev_info *dev;
 	struct hci_dev_req dr;
 	int dd;
 	pid_t pid;
@@ -2498,7 +2501,7 @@ static void init_device(int index, gboolean already_up)
 	if (dd < 0) {
 		error("Unable to open hci%d: %s (%d)", index,
 						strerror(errno), errno);
-		return;
+		return NULL;
 	}
 
 	if (index > max_dev) {
@@ -2506,13 +2509,13 @@ static void init_device(int index, gboolean already_up)
 		devs = g_realloc(devs, sizeof(devs[0]) * (max_dev + 1));
 	}
 
-	init_dev_info(index, dd, FALSE, already_up);
+	dev = init_dev_info(index, dd, FALSE, already_up);
 	init_pending(index);
 	start_hci_dev(index);
 
 	/* Avoid forking if nothing else has to be done */
 	if (already_up)
-		return;
+		return dev;
 
 	/* Do initialization in the separate process */
 	pid = fork();
@@ -2525,7 +2528,7 @@ static void init_device(int index, gboolean already_up)
 					index, strerror(errno), errno);
 		default:
 			DBG("child %d forked", pid);
-			return;
+			return dev;
 	}
 
 	memset(&dr, 0, sizeof(dr));
@@ -2661,9 +2664,9 @@ static gboolean init_known_adapters(gpointer user_data)
 
 		already_up = hci_test_bit(HCI_UP, &dr->dev_opt);
 
-		init_device(dr->dev_id, already_up);
-
-		dev = &devs[dr->dev_id];
+		dev = init_device(dr->dev_id, already_up);
+		if (dev == NULL)
+			continue;
 
 		if (!dev->already_up)
 			continue;
