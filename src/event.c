@@ -448,7 +448,6 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 {
 	char filename[PATH_MAX + 1];
 	struct btd_adapter *adapter;
-	struct btd_device *device;
 	char local_addr[18], peer_addr[18], *alias, *name;
 	name_status_t name_status;
 	struct eir_data eir_data;
@@ -460,7 +459,8 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
 
-	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE)) {
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
 		error("No matching adapter found");
 		return;
 	}
@@ -537,10 +537,10 @@ void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
 							gboolean legacy)
 {
 	struct btd_adapter *adapter;
-	struct btd_device *device;
 	struct remote_dev_info *dev, match;
 
-	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE)) {
+	adapter = manager_find_adapter(local);
+	if (!adapter) {
 		error("No matching adapter found");
 		return;
 	}
