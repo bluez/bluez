@@ -836,7 +836,6 @@ static void a2dp_suspend_complete(struct avdtp *session,
 	struct unix_client *client = user_data;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_stop_stream_rsp *rsp = (void *) buf;
-	struct a2dp_data *a2dp = &client->d.a2dp;
 
 	if (err)
 		goto failed;
@@ -854,15 +853,6 @@ failed:
 	error("suspend failed");
 
 	unix_ipc_error(client, BT_STOP_STREAM, EIO);
-
-	if (a2dp->sep) {
-		a2dp_sep_unlock(a2dp->sep, a2dp->session);
-		a2dp->sep = NULL;
-	}
-
-	avdtp_unref(a2dp->session);
-	a2dp->session = NULL;
-	a2dp->stream = NULL;
 }
 
 static void start_discovery(struct audio_device *dev, struct unix_client *client)
@@ -1272,9 +1262,11 @@ static void start_close(struct audio_device *dev, struct unix_client *client,
 	case TYPE_SINK:
 		a2dp = &client->d.a2dp;
 
-		if (client->cb_id > 0)
+		if (client->cb_id > 0) {
 			avdtp_stream_remove_cb(a2dp->session, a2dp->stream,
 								client->cb_id);
+			client->cb_id = 0;
+		}
 		if (a2dp->sep) {
 			a2dp_sep_unlock(a2dp->sep, a2dp->session);
 			a2dp->sep = NULL;
@@ -1283,6 +1275,7 @@ static void start_close(struct audio_device *dev, struct unix_client *client,
 			avdtp_unref(a2dp->session);
 			a2dp->session = NULL;
 		}
+		a2dp->stream = NULL;
 		break;
 	default:
 		error("No known services for device");
