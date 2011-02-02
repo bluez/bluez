@@ -194,9 +194,13 @@ static struct media_endpoint *media_endpoint_create(struct media_adapter *adapte
 	endpoint->path = g_strdup(path);
 	endpoint->uuid = g_strdup(uuid);
 	endpoint->codec = codec;
-	endpoint->capabilities = g_new(uint8_t, size);
-	memcpy(endpoint->capabilities, capabilities, size);
-	endpoint->size = size;
+
+	if (size > 0) {
+		endpoint->capabilities = g_new(uint8_t, size);
+		memcpy(endpoint->capabilities, capabilities, size);
+		endpoint->size = size;
+	}
+
 	endpoint->adapter = adapter;
 
 	if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0) {
@@ -275,6 +279,9 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 				gboolean *delay_reporting, uint8_t *codec,
 				uint8_t **capabilities, int *size)
 {
+	gboolean has_uuid = FALSE;
+	gboolean has_codec = FALSE;
+
 	while (dbus_message_iter_get_arg_type(props) == DBUS_TYPE_DICT_ENTRY) {
 		const char *key;
 		DBusMessageIter value, entry;
@@ -291,10 +298,12 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 			if (var != DBUS_TYPE_STRING)
 				return -EINVAL;
 			dbus_message_iter_get_basic(&value, uuid);
+			has_uuid = TRUE;
 		} else if (strcasecmp(key, "Codec") == 0) {
 			if (var != DBUS_TYPE_BYTE)
 				return -EINVAL;
 			dbus_message_iter_get_basic(&value, codec);
+			has_codec = TRUE;
 		} else if (strcasecmp(key, "DelayReporting") == 0) {
 			if (var != DBUS_TYPE_BOOLEAN)
 				return -EINVAL;
@@ -313,7 +322,7 @@ static int parse_properties(DBusMessageIter *props, const char **uuid,
 		dbus_message_iter_next(props);
 	}
 
-	return 0;
+	return (has_uuid && has_codec) ? 0 : -EINVAL;
 }
 
 static DBusMessage *register_endpoint(DBusConnection *conn, DBusMessage *msg,
@@ -321,11 +330,11 @@ static DBusMessage *register_endpoint(DBusConnection *conn, DBusMessage *msg,
 {
 	struct media_adapter *adapter = data;
 	DBusMessageIter args, props;
-	const char *sender, *path, *uuid = NULL;
-	gboolean delay_reporting;
+	const char *sender, *path, *uuid;
+	gboolean delay_reporting = FALSE;
 	uint8_t codec;
 	uint8_t *capabilities;
-	int size;
+	int size = 0;
 
 	sender = dbus_message_get_sender(msg);
 
@@ -342,7 +351,7 @@ static DBusMessage *register_endpoint(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args(msg);
 
 	if (parse_properties(&props, &uuid, &delay_reporting, &codec,
-				&capabilities, &size) || uuid == NULL)
+						&capabilities, &size) < 0)
 		return btd_error_invalid_args(msg);
 
 	if (media_endpoint_create(adapter, sender, path, uuid, delay_reporting,
