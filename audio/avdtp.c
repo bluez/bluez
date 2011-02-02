@@ -2666,7 +2666,6 @@ static int send_req(struct avdtp *session, gboolean priority,
 		goto failed;
 	}
 
-
 	session->req = req;
 
 	req->timeout = g_timeout_add_seconds(req->signal_id == AVDTP_ABORT ?
