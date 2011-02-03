@@ -14,7 +14,7 @@ noinst_PROGRAMS += tools/avinfo tools/ppporc \
 
 tools/kword.c: tools/parser.h
 
-tools_rfcomm_SOURCES = tools/main.c tools/parser.y tools/lexer.l \
+tools_rfcomm_SOURCES = tools/rfcomm.c tools/parser.y tools/lexer.l \
 					tools/kword.h tools/kword.c
 EXTRA_tools_rfcomm_SOURCES = tools/parser.h tools/parser.c \
 							tools/lexer.c
