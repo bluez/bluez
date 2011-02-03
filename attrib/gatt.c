@@ -121,7 +121,6 @@ static void primary_by_uuid_cb(guint8 status, const guint8 *ipdu,
 	dp->primaries = g_slist_concat(dp->primaries, ranges);
 
 	last = g_slist_last(ranges);
-	g_slist_free(ranges);
 	range = last->data;
 
 	if (range->end == 0xffff)
