@@ -1324,10 +1324,6 @@ static GString *gen_vcards(GSList *contacts,
 		struct contact_data *c_data = l->data;
 		phonebook_add_contact(vcards, c_data->contact,
 					params->filter, params->format);
-
-		g_free(c_data->id);
-		phonebook_contact_free(c_data->contact);
-		g_free(c_data);
 	}
 
 	return vcards;
@@ -1787,6 +1783,7 @@ done:
 void phonebook_req_finalize(void *request)
 {
 	struct phonebook_data *data = request;
+	GSList *l;
 
 	DBG("");
 
@@ -1797,6 +1794,15 @@ void phonebook_req_finalize(void *request)
 		dbus_pending_call_cancel(data->call);
 
 	dbus_pending_call_unref(data->call);
+
+	/* freeing list of contacts used for generating vcards */
+	for (l = data->contacts; l; l = l->next) {
+		struct contact_data *c_data = l->data;
+
+		g_free(c_data->id);
+		phonebook_contact_free(c_data->contact);
+		g_free(c_data);
+	}
 
 	g_slist_free(data->contacts);
 	g_free(data);
