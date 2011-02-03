@@ -180,7 +180,7 @@ static inline void att_put_u16(uint16_t src, void *dst)
 	bt_put_unaligned(htobs(src), (uint16_t *) dst);
 }
 
-static inline void att_put_u32(uint16_t src, void *dst)
+static inline void att_put_u32(uint32_t src, void *dst)
 {
 	bt_put_unaligned(htobl(src), (uint32_t *) dst);
 }
