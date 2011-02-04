@@ -3428,11 +3428,10 @@ const char *adapter_any_get_path(void)
 
 const char *btd_adapter_any_request_path(void)
 {
-	if (adapter_any_refcount > 0)
+	if (adapter_any_refcount++ > 0)
 		return adapter_any_path;
 
 	adapter_any_path = g_strdup_printf("%s/any", manager_get_base_path());
-	adapter_any_refcount++;
 
 	return adapter_any_path;
 }
