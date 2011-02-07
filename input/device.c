@@ -808,8 +808,6 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 
 	if (conn_err) {
 		err_msg = conn_err->message;
-		g_io_channel_unref(iconn->intr_io);
-		iconn->intr_io = NULL;
 		goto failed;
 	}
 
@@ -832,14 +830,18 @@ failed:
 	reply = btd_error_failed(iconn->pending_connect, err_msg);
 	g_dbus_send_message(idev->conn, reply);
 
-	if (iconn->ctrl_io)
-		g_io_channel_shutdown(iconn->ctrl_io, FALSE, NULL);
+	/* So we guarantee the interrupt channel is closed before the
+	 * control channel (if we only do unref GLib will close it only
+	 * after returning control to the mainloop */
+	if (!conn_err)
+		g_io_channel_shutdown(iconn->intr_io, FALSE, NULL);
 
-	if (iconn->intr_io) {
-		if (!conn_err)
-			g_io_channel_shutdown(iconn->intr_io, FALSE, NULL);
-		g_io_channel_unref(iconn->intr_io);
-		iconn->intr_io = NULL;
+	g_io_channel_unref(iconn->intr_io);
+	iconn->intr_io = NULL;
+
+	if (iconn->ctrl_io) {
+		g_io_channel_unref(iconn->ctrl_io);
+		iconn->ctrl_io = NULL;
 	}
 }
 
@@ -872,7 +874,6 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 		reply = btd_error_failed(iconn->pending_connect,
 							err->message);
 		g_error_free(err);
-		g_io_channel_shutdown(chan, TRUE, NULL);
 		goto failed;
 	}
 
@@ -881,6 +882,8 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
+	g_io_channel_unref(iconn->ctrl_io);
+	iconn->ctrl_io = NULL;
 	g_dbus_send_message(idev->conn, reply);
 	dbus_message_unref(iconn->pending_connect);
 	iconn->pending_connect = NULL;
