@@ -356,6 +356,7 @@ static int l2cap_connect(struct gatt_service *gatt, GError **gerr,
 
 	if (gatt->attrib != NULL) {
 		gatt->attrib = g_attrib_ref(gatt->attrib);
+		gatt->listen = listen;
 		return 0;
 	}
 
