@@ -18,7 +18,7 @@ Methods:
 
 		Returns the path of the new registered application.
 
-		Dict is defined as bellow:
+		Dict is defined as below:
 		{
 			"DataType": uint16, (mandatory)
 			"Role" : ("Source" or "Sink"), (mandatory)
