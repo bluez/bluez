@@ -231,6 +231,18 @@ Set IO Capability Command
 	Return Paramters:	Controller_Index (2 Octets)
 
 
+Pair Device Command
+===================
+
+	Command Code:		0x0014
+	Command Parameters:	Controller_Index (2 Octets)
+				Address (6 Octets)
+				IO_Capability (1 Octet)
+	Return Paramters:	Controller_Index (2 Octets)
+				Address (6 Octets)
+				Status (1 Octet)
+
+
 Read Tracing Buffer Size Command
 ================================
 

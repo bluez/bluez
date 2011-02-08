@@ -931,6 +931,24 @@ static void disconnect_complete(int sk, void *buf, size_t len)
 	btd_event_disconn_complete(&info->bdaddr, &rp->bdaddr);
 }
 
+static void pair_device_complete(int sk, void *buf, size_t len)
+{
+	struct mgmt_rp_pair_device *rp = buf;
+	uint16_t index;
+	char addr[18];
+
+	if (len < sizeof(*rp)) {
+		error("Too small pair_device complete event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&rp->index));
+
+	ba2str(&rp->bdaddr, addr);
+
+	DBG("hci%d %s pairing complete status %u", index, addr, rp->status);
+}
+
 static void get_connections_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_rp_get_connections *rp = buf;
@@ -1035,6 +1053,9 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 		break;
 	case MGMT_OP_SET_IO_CAPABILITY:
 		DBG("set_io_capability complete");
+		break;
+	case MGMT_OP_PAIR_DEVICE:
+		pair_device_complete(sk, ev->data, len - sizeof(*ev));
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
@@ -1585,12 +1606,26 @@ static int mgmt_set_io_capability(int index, uint8_t io_capability)
 
 static int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t io_cap)
 {
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_pair_device)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_pair_device *cp = (void *) &buf[sizeof(*hdr)];
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("hci%d bdaddr %s io_cap 0x%02x", index, addr, io_cap);
 
-	return -ENOSYS;
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_PAIR_DEVICE);
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->index = htobs(index);
+	bacpy(&cp->bdaddr, bdaddr);
+	cp->io_cap = io_cap;
+
+	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_cancel_bonding(int index, bdaddr_t *bdaddr)

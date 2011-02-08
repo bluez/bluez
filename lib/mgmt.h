@@ -169,6 +169,18 @@ struct mgmt_cp_set_io_capability {
 	uint8_t io_capability;
 } __packed;
 
+#define MGMT_OP_PAIR_DEVICE		0x0014
+struct mgmt_cp_pair_device {
+	uint16_t index;
+	bdaddr_t bdaddr;
+	uint8_t io_cap;
+} __packed;
+struct mgmt_rp_pair_device {
+	uint16_t index;
+	bdaddr_t bdaddr;
+	uint8_t status;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
