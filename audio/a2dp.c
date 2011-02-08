@@ -1099,6 +1099,9 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		return;
 	}
 
+	if (!setup->rsep)
+		setup->rsep = avdtp_stream_get_remote_sep(stream);
+
 	if (setup->reconfigure)
 		g_timeout_add(RECONFIGURE_TIMEOUT, a2dp_reconfigure, setup);
 }

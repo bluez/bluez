@@ -257,6 +257,8 @@ gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 				struct avdtp_service_capability *cap);
 gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
 					GSList *caps);
+struct avdtp_remote_sep *avdtp_stream_get_remote_sep(
+						struct avdtp_stream *stream);
 
 unsigned int avdtp_add_state_cb(avdtp_session_state_cb cb, void *user_data);
 
