@@ -87,7 +87,7 @@ static long buffer_size = 2048;
 
 /* Default addr and psm and cid */
 static bdaddr_t bdaddr;
-static unsigned short psm = 10;
+static unsigned short psm = 0x1011;
 static unsigned short cid = 0;
 
 /* Default number of frames to send (-1 = infinite) */
