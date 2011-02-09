@@ -36,6 +36,27 @@
 
 #include "parser.h"
 
+#define GATT_PRIM_SVC_UUID		0x2800
+#define GATT_SND_SVC_UUID		0x2801
+#define GATT_INCLUDE_UUID		0x2802
+#define GATT_CHARAC_UUID		0x2803
+
+#define GATT_CHARAC_DEVICE_NAME			0x2A00
+#define GATT_CHARAC_APPEARANCE			0x2A01
+#define GATT_CHARAC_PERIPHERAL_PRIV_FLAG	0x2A02
+#define GATT_CHARAC_RECONNECTION_ADDRESS	0x2A03
+#define GATT_CHARAC_PERIPHERAL_PREF_CONN	0x2A04
+#define GATT_CHARAC_SERVICE_CHANGED		0x2A05
+
+#define GATT_CHARAC_EXT_PROPER_UUID	0x2900
+#define GATT_CHARAC_USER_DESC_UUID	0x2901
+#define GATT_CLIENT_CHARAC_CFG_UUID	0x2902
+#define GATT_SERVER_CHARAC_CFG_UUID	0x2903
+#define GATT_CHARAC_FMT_UUID		0x2904
+#define GATT_CHARAC_AGREG_FMT_UUID	0x2905
+
+
+
 /* Attribute Protocol Opcodes */
 #define ATT_OP_ERROR			0x01
 #define ATT_OP_MTU_REQ			0x02
@@ -196,6 +217,46 @@ static const char * atterror2str(uint8_t err)
 	}
 }
 
+static const char *uuid2str(uint16_t uuid)
+{
+	switch (uuid) {
+	case GATT_PRIM_SVC_UUID:
+		return "GATT Primary Service";
+	case GATT_SND_SVC_UUID:
+		return "GATT Secondary Service";
+	case GATT_INCLUDE_UUID:
+		return "GATT Include";
+	case GATT_CHARAC_UUID:
+		return "GATT Characteristic";
+	case GATT_CHARAC_DEVICE_NAME:
+		return "GATT(type) Device Name";
+	case GATT_CHARAC_APPEARANCE:
+		return "GATT(type) Appearance";
+	case GATT_CHARAC_PERIPHERAL_PRIV_FLAG:
+		return "GATT(type) Peripheral Privacy Flag";
+	case GATT_CHARAC_RECONNECTION_ADDRESS:
+		return "GATT(type) Characteristic Reconnection Address";
+	case GATT_CHARAC_PERIPHERAL_PREF_CONN:
+		return "GATT(type) Characteristic Preferred Connection Parameters";
+	case GATT_CHARAC_SERVICE_CHANGED:
+		return "GATT(type) Characteristic Service Changed";
+	case GATT_CHARAC_EXT_PROPER_UUID:
+		return "GATT(desc) Characteristic Extended Properties";
+	case GATT_CHARAC_USER_DESC_UUID:
+		return "GATT(desc) User Description";
+	case GATT_CLIENT_CHARAC_CFG_UUID:
+		return "GATT(desc) Client Characteristic Configuration";
+	case GATT_SERVER_CHARAC_CFG_UUID:
+		return "GATT(desc) Server Characteristic Configuration";
+	case GATT_CHARAC_FMT_UUID:
+		return "GATT(desc) Format";
+	case GATT_CHARAC_AGREG_FMT_UUID:
+		return "GATT(desc) Aggregate Format";
+	default:
+		return "Unknown";
+	}
+}
+
 static void att_error_dump(int level, struct frame *frm)
 {
 	uint8_t op = get_u8(frm);
@@ -203,10 +264,10 @@ static void att_error_dump(int level, struct frame *frm)
 	uint8_t err = get_u8(frm);
 
 	p_indent(level, frm);
-	printf("Error: %s 0x%.2x\n", atterror2str(err), err);
+	printf("Error: %s (%d)\n", atterror2str(err), err);
 
 	p_indent(level, frm);
-	printf("opcode %d (%s) on handle 0x%2.2x\n", op, attop2str(op), handle);
+	printf("%s (0x%.2x) on handle 0x%2.2x\n", attop2str(op), op, handle);
 }
 
 static void att_mtu_req_dump(int level, struct frame *frm)
@@ -223,6 +284,50 @@ static void att_mtu_resp_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("server rx mtu %d\n", server_rx_mtu);
+}
+
+static void att_find_info_req_dump(int level, struct frame *frm)
+{
+	uint16_t start = btohs(htons(get_u16(frm)));
+	uint16_t end = btohs(htons(get_u16(frm)));
+
+	p_indent(level, frm);
+	printf("start 0x%2.2x, end 0x%2.2x\n", start, end);
+}
+
+static void att_find_info_resp_dump(int level, struct frame *frm)
+{
+	uint8_t fmt = get_u8(frm);
+
+	p_indent(level, frm);
+
+	if (fmt == 0x01) {
+		printf("format: uuid-16\n");
+
+		while (frm->len > 0) {
+			uint16_t handle = btohs(htons(get_u16(frm)));
+			uint16_t uuid = btohs(htons(get_u16(frm)));
+			p_indent(level + 1, frm);
+			printf("handle 0x%2.2x, uuid 0x%2.2x (%s)\n", handle, uuid,
+					uuid2str(uuid));
+		}
+	} else {
+		printf("format: uuid-128\n");
+
+		while (frm->len > 0) {
+			uint16_t handle = btohs(htons(get_u16(frm)));
+			int i;
+
+			p_indent(level + 1, frm);
+			printf("handle 0x%2.2x, uuid ", handle);
+			for (i = 0; i < 16; i++) {
+				printf("%02x", get_u8(frm));
+				if (i == 3 || i == 5 || i == 7 || i == 9)
+					printf("-");
+			}
+			printf("\n");
+		}
+	}
 }
 
 static void att_handle_notify_dump(int level, struct frame *frm)
@@ -259,10 +364,15 @@ void att_dump(int level, struct frame *frm)
 		case ATT_OP_MTU_RESP:
 			att_mtu_resp_dump(level + 1, frm);
 			break;
+		case ATT_OP_FIND_INFO_REQ:
+			att_find_info_req_dump(level + 1, frm);
+			break;
+		case ATT_OP_FIND_INFO_RESP:
+			att_find_info_resp_dump(level + 1, frm);
+			break;
 		case ATT_OP_HANDLE_NOTIFY:
 			att_handle_notify_dump(level + 1, frm);
 			break;
-
 		default:
 			raw_dump(level, frm);
 			break;
