@@ -77,6 +77,7 @@ struct frame {
 #define FILT_HCRP	0x0200
 #define FILT_AVDTP	0x0400
 #define FILT_AVCTP	0x0800
+#define FILT_ATT 	0x1000
 
 #define FILT_OBEX	0x00010000
 #define FILT_CAPI	0x00020000
@@ -229,6 +230,7 @@ void hidp_dump(int level, struct frame *frm);
 void hcrp_dump(int level, struct frame *frm);
 void avdtp_dump(int level, struct frame *frm);
 void avctp_dump(int level, struct frame *frm);
+void att_dump(int level, struct frame *frm);
 
 void obex_dump(int level, struct frame *frm);
 void capi_dump(int level, struct frame *frm);
