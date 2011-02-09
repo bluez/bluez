@@ -1015,12 +1015,18 @@ int telephony_transmit_dtmf_rsp(void *telephony_device, cme_error_t err)
 
 static int dtmf_tone(struct audio_device *device, const char *buf)
 {
+	char tone;
+
 	if (strlen(buf) < 8) {
 		error("Too short string for DTMF tone");
 		return -EINVAL;
 	}
 
-	telephony_transmit_dtmf_req(device, buf[7]);
+	tone = buf[7];
+	if (tone >= '#' && tone <= 'D')
+		telephony_transmit_dtmf_req(device, tone);
+	else
+		return -EINVAL;
 
 	return 0;
 }
