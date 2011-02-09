@@ -330,6 +330,14 @@ static void att_find_info_resp_dump(int level, struct frame *frm)
 	}
 }
 
+static void att_read_req_dump(int level, struct frame *frm)
+{
+	uint16_t handle = btohs(htons(get_u16(frm)));
+
+	p_indent(level, frm);
+	printf("handle 0x%2.2x\n", handle);
+}
+
 static void att_handle_notify_dump(int level, struct frame *frm)
 {
 	uint16_t handle = btohs(htons(get_u16(frm)));
@@ -369,6 +377,12 @@ void att_dump(int level, struct frame *frm)
 			break;
 		case ATT_OP_FIND_INFO_RESP:
 			att_find_info_resp_dump(level + 1, frm);
+			break;
+		case ATT_OP_READ_REQ:
+			att_read_req_dump(level + 1, frm);
+			break;
+		case ATT_OP_READ_RESP:
+			raw_dump(level + 1, frm);
 			break;
 		case ATT_OP_HANDLE_NOTIFY:
 			att_handle_notify_dump(level + 1, frm);
