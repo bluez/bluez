@@ -72,8 +72,14 @@ static GIOChannel *le_io = NULL;
 static GSList *clients = NULL;
 static uint32_t sdp_handle = 0;
 
-static uuid_t prim_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_PRIM_SVC_UUID };
-static uuid_t snd_uuid = { .type = SDP_UUID16, .value.uuid16 = GATT_SND_SVC_UUID };
+static uuid_t prim_uuid = {
+			.type = SDP_UUID16,
+			.value.uuid16 = GATT_PRIM_SVC_UUID
+};
+static uuid_t snd_uuid = {
+			.type = SDP_UUID16,
+			.value.uuid16 = GATT_SND_SVC_UUID
+};
 
 static sdp_record_t *server_record_new(void)
 {
@@ -468,11 +474,9 @@ static int find_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 
 			matches = g_slist_append(matches, range);
 		} else if (range) {
-			/*
-			 * Update the last found handle or reset the pointer
+			/* Update the last found handle or reset the pointer
 			 * to track that a new group started: Primary or
-			 * Secondary service.
-			 */
+			 * Secondary service. */
 			if (sdp_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
 					sdp_uuid_cmp(&a->uuid, &snd_uuid) == 0)
 				range = NULL;
@@ -486,10 +490,9 @@ static int find_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 			/* Avoids another iteration */
 			range->end = 0xFFFF;
 		} else if (range->end == 0) {
-			/*
-			 * Broken requests: requested End Handle is not 0xFFFF.
-			 * Given handle is in the middle of a service definition.
-			 */
+			/* Broken requests: requested End Handle is not
+			 * 0xFFFF. Given handle is in the middle of a
+			 * service definition. */
 			matches = g_slist_remove(matches, range);
 			g_free(range);
 		}
@@ -631,7 +634,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 	uint8_t status = 0;
 	int vlen;
 
-	switch(ipdu[0]) {
+	switch (ipdu[0]) {
 	case ATT_OP_READ_BY_GROUP_REQ:
 		length = dec_read_by_grp_req(ipdu, len, &start, &end, &uuid);
 		if (length == 0) {
@@ -728,7 +731,8 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 
 done:
 	if (status)
-		length = enc_error_resp(ipdu[0], 0x0000, status, opdu, channel->mtu);
+		length = enc_error_resp(ipdu[0], 0x0000, status, opdu,
+								channel->mtu);
 
 	g_attrib_send(channel->attrib, 0, opdu[0], opdu, length,
 							NULL, NULL, NULL);
