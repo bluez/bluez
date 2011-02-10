@@ -634,6 +634,8 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 	uint8_t status = 0;
 	int vlen;
 
+	DBG("op 0x%02x", ipdu[0]);
+
 	switch (ipdu[0]) {
 	case ATT_OP_READ_BY_GROUP_REQ:
 		length = dec_read_by_grp_req(ipdu, len, &start, &end, &uuid);
@@ -722,6 +724,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 	case ATT_OP_PREP_WRITE_REQ:
 	case ATT_OP_EXEC_WRITE_REQ:
 	default:
+		DBG("Unsupported request 0x%02x", ipdu[0]);
 		status = ATT_ECODE_REQ_NOT_SUPP;
 		goto done;
 	}
