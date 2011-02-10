@@ -707,4 +707,5 @@ void gateway_suspend_stream(struct audio_device *dev)
 	gw->sco = NULL;
 	gw->sco_start_cb = NULL;
 	gw->sco_start_cb_data = NULL;
+	change_state(dev, GATEWAY_STATE_CONNECTED);
 }
