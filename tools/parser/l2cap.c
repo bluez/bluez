@@ -941,7 +941,7 @@ void l2cap_dump(int level, struct frame *frm)
 	l2cap_hdr *hdr;
 	uint16_t dlen;
 
-	if (frm->flags & ACL_START) {
+	if ((frm->flags & ACL_START) || frm->flags == ACL_START_NO_FLUSH) {
 		hdr  = frm->ptr;
 		dlen = btohs(hdr->len);
 
