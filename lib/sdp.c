@@ -62,14 +62,14 @@
 
 #if __BYTE_ORDER == __BIG_ENDIAN
 #define ntoh64(x) (x)
-static inline void ntoh128(uint128_t *src, uint128_t *dst)
+static inline void ntoh128(const uint128_t *src, uint128_t *dst)
 {
 	int i;
 	for (i = 0; i < 16; i++)
 		dst->data[i] = src->data[i];
 }
 
-static inline void btoh128(uint128_t *src, uint128_t *dst)
+static inline void btoh128(const uint128_t *src, uint128_t *dst)
 {
 	int i;
 	for (i = 0; i < 16; i++)
@@ -87,14 +87,14 @@ static inline uint64_t ntoh64(uint64_t n)
 	return h;
 }
 
-static inline void ntoh128(uint128_t *src, uint128_t *dst)
+static inline void ntoh128(const uint128_t *src, uint128_t *dst)
 {
 	int i;
 	for (i = 0; i < 16; i++)
 		dst->data[15 - i] = src->data[i];
 }
 
-static inline void btoh128(uint128_t *src, uint128_t *dst)
+static inline void btoh128(const uint128_t *src, uint128_t *dst)
 {
 	memcpy(dst, src, sizeof(uint128_t));
 }
