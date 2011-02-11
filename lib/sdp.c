@@ -96,7 +96,7 @@ static inline void ntoh128(uint128_t *src, uint128_t *dst)
 
 static inline void btoh128(uint128_t *src, uint128_t *dst)
 {
-	memcpy(src, dst, sizeof(uint128_t));
+	memcpy(dst, src, sizeof(uint128_t));
 }
 
 #endif
