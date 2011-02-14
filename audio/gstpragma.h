@@ -21,4 +21,4 @@
  *
  */
 
-#pragma GCC diagnostic warning "-Wmissing-declarations"
+//#pragma GCC diagnostic warning "-Wmissing-declarations"
