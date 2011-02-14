@@ -1634,9 +1634,7 @@ add_numbers:
 done:
 	vcards = gen_vcards(data->contacts, params);
 
-	if (num_fields == 0)
-		data->cb(vcards->str, vcards->len,
-					g_slist_length(data->contacts),
+	data->cb(vcards->str, vcards->len, g_slist_length(data->contacts),
 					data->newmissedcalls, data->user_data);
 
 	g_string_free(vcards, TRUE);
