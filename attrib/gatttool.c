@@ -84,7 +84,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	}
 }
 
-static GIOChannel *do_connect(gboolean le)
+GIOChannel *do_connect(gchar *dst, gboolean le, BtIOConnect connect_cb)
 {
 	GIOChannel *chan;
 	bdaddr_t sba, dba;
@@ -100,11 +100,11 @@ static GIOChannel *do_connect(gboolean le)
 	}
 
 	/* Remote device */
-	if (opt_dst == NULL) {
+	if (dst == NULL) {
 		g_printerr("Remote Bluetooth address required\n");
 		return NULL;
 	}
-	str2ba(opt_dst, &dba);
+	str2ba(dst, &dba);
 
 	/* Local adapter */
 	if (opt_src != NULL) {
@@ -656,7 +656,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (opt_interactive) {
-		interactive();
+		interactive(opt_dst, opt_le);
 		goto done;
 	}
 
@@ -680,7 +680,7 @@ int main(int argc, char *argv[])
 		goto done;
 	}
 
-	chan = do_connect(opt_le);
+	chan = do_connect(opt_dst, opt_le, connect_cb);
 	if (chan == NULL) {
 		got_error = TRUE;
 		goto done;

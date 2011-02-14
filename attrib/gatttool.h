@@ -21,4 +21,5 @@
  *
  */
 
-int interactive(void);
+int interactive(gchar *dst, gboolean le);
+GIOChannel *do_connect(gchar *dst, gboolean le, BtIOConnect connect_cb);
