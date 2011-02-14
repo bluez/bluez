@@ -733,7 +733,7 @@ void btd_event_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
 	}
 
 	if (status) {
-		error("Can't enabled/disable LE scan");
+		error("Can't enable/disable LE scan");
 		return;
 	}
 
