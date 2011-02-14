@@ -806,6 +806,11 @@ static void *vobject_pull_open(const char *name, int oflag, mode_t mode,
 	if (ret < 0)
 		goto fail;
 
+	/* reading first part of results from backend */
+	ret = phonebook_pull_read(request);
+	if (ret < 0)
+		goto fail;
+
 	if (err)
 		*err = 0;
 
@@ -962,6 +967,7 @@ static ssize_t vobject_pull_read(void *object, void *buf, size_t count,
 {
 	struct pbap_object *obj = object;
 	struct pbap_session *pbap = obj->session;
+	int len, ret;
 
 	DBG("buffer %p maxlistcount %d", obj->buffer,
 						pbap->params->maxlistcount);
@@ -987,7 +993,21 @@ static ssize_t vobject_pull_read(void *object, void *buf, size_t count,
 		*hi = OBEX_HDR_BODY;
 		if (flags)
 			*flags = 0;
-		return string_read(obj->buffer, buf, count);
+
+		len = string_read(obj->buffer, buf, count);
+		if (len == 0 && !obj->lastpart) {
+			/* in case when buffer is empty and we know that more
+			 * data is still available in backend, requesting new
+			 * data part via phonebook_pull_read and returning
+			 * -EAGAIN to suspend request for now */
+			ret = phonebook_pull_read(obj->request);
+			if (ret)
+				return -EPERM;
+
+			return -EAGAIN;
+		}
+
+		return len;
 	}
 }
 

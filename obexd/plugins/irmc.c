@@ -197,6 +197,7 @@ static void *irmc_connect(struct obex_session *os, int *err)
 {
 	struct irmc_session *irmc;
 	struct apparam_field *param;
+	int ret;
 
 	DBG("");
 
@@ -224,6 +225,9 @@ static void *irmc_connect(struct obex_session *os, int *err)
 	irmc->params = param;
 	irmc->request = phonebook_pull("telecom/pb.vcf", irmc->params,
 					phonebook_size_result, irmc, err);
+	ret = phonebook_pull_read(irmc->request);
+	if (err)
+		*err = ret;
 
 	return irmc;
 }
@@ -313,6 +317,13 @@ static void *irmc_open_pb(const char *name, struct irmc_session *irmc,
 			DBG("phonebook_pull failed...");
 			goto fail;
 		}
+
+		ret = phonebook_pull_read(irmc->request);
+		if (ret < 0) {
+			DBG("phonebook_pull_read failed...");
+			goto fail;
+		}
+
 		return irmc;
 	}
 

@@ -918,6 +918,7 @@ struct phonebook_data {
 	phonebook_entry_cb entry_cb;
 	int newmissedcalls;
 	GCancellable *query_canc;
+	char *req_name;
 };
 
 struct phonebook_index {
@@ -1819,6 +1820,7 @@ void phonebook_req_finalize(void *request)
 	}
 
 	g_slist_free(data->contacts);
+	g_free(data->req_name);
 	g_free(data);
 }
 
@@ -1897,41 +1899,52 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 				phonebook_cb cb, void *user_data, int *err)
 {
 	struct phonebook_data *data;
-	const char *query;
-	reply_list_foreach_t pull_cb;
-	int col_amount, ret;
 
 	DBG("name %s", name);
-
-	if (g_strcmp0(name, "telecom/mch.vcf") == 0) {
-		query = NEW_MISSED_CALLS_LIST;
-		col_amount = PULL_QUERY_COL_AMOUNT;
-		pull_cb = pull_newmissedcalls;
-	} else if (params->maxlistcount == 0) {
-		query = name2count_query(name);
-		col_amount = COUNT_QUERY_COL_AMOUNT;
-		pull_cb = pull_contacts_size;
-	} else {
-		query = name2query(name);
-		col_amount = PULL_QUERY_COL_AMOUNT;
-		pull_cb = pull_contacts;
-	}
-
-	if (query == NULL) {
-		if (err)
-			*err = -ENOENT;
-		return NULL;
-	}
 
 	data = g_new0(struct phonebook_data, 1);
 	data->params = params;
 	data->user_data = user_data;
 	data->cb = cb;
-	ret = query_tracker(query, col_amount, pull_cb, data);
+	data->req_name = g_strdup(name);
+
 	if (err)
-		*err = ret;
+		*err = 0;
 
 	return data;
+}
+
+int phonebook_pull_read(void *request)
+{
+	struct phonebook_data *data = request;
+	reply_list_foreach_t pull_cb;
+	const char *query;
+	int col_amount;
+	int ret;
+
+	if(!data)
+		return -ENOENT;
+
+	if (g_strcmp0(data->req_name, "telecom/mch.vcf") == 0) {
+		query = NEW_MISSED_CALLS_LIST;
+		col_amount = PULL_QUERY_COL_AMOUNT;
+		pull_cb = pull_newmissedcalls;
+	} else if (data->params->maxlistcount == 0) {
+		query = name2count_query(data->req_name);
+		col_amount = COUNT_QUERY_COL_AMOUNT;
+		pull_cb = pull_contacts_size;
+	} else {
+		query = name2query(data->req_name);
+		col_amount = PULL_QUERY_COL_AMOUNT;
+		pull_cb = pull_contacts;
+	}
+
+	if (query == NULL)
+		return -ENOENT;
+
+	ret = query_tracker(query, col_amount, pull_cb, data);
+
+	return ret;
 }
 
 void *phonebook_get_entry(const char *folder, const char *id,

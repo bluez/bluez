@@ -453,23 +453,32 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 				phonebook_cb cb, void *user_data, int *err)
 {
 	struct query_context *data;
-	EBookQuery *query;
-
-	query = e_book_query_any_field_contains("");
 
 	data = g_new0(struct query_context, 1);
 	data->contacts_cb = cb;
 	data->params = params;
 	data->user_data = user_data;
 
-	e_book_async_get_contacts(ebook, query, ebookpull_cb, data);
-
-	e_book_query_unref(query);
-
 	if (err)
 		*err = 0;
 
 	return data;
+}
+
+int phonebook_pull_read(void *request)
+{
+	struct query_context *data = request;
+	EBookQuery *query;
+
+	if (!data)
+		return -ENOENT;
+
+	query = e_book_query_any_field_contains("");
+	e_book_async_get_contacts(ebook, query, ebookpull_cb, data);
+
+	e_book_query_unref(query);
+
+	return 0;
 }
 
 void *phonebook_get_entry(const char *folder, const char *id,

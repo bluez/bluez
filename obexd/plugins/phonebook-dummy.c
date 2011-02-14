@@ -52,6 +52,7 @@ struct dummy_data {
 	const struct apparam_field *apparams;
 	char *folder;
 	int fd;
+	guint id;
 };
 
 struct cache_query {
@@ -449,9 +450,12 @@ done:
 
 void phonebook_req_finalize(void *request)
 {
-	guint id = GPOINTER_TO_INT(request);
+	struct dummy_data *dummy = request;
 
-	g_source_remove(id);
+	/* dummy_data will be cleaned when request will be finished via
+	 * g_source_remove */
+	if (dummy && dummy->id)
+		g_source_remove(dummy->id);
 }
 
 void *phonebook_pull(const char *name, const struct apparam_field *params,
@@ -459,7 +463,6 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 {
 	struct dummy_data *dummy;
 	char *filename, *folder;
-	guint ret;
 
 	/*
 	 * Main phonebook objects will be created dinamically based on the
@@ -492,13 +495,23 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 	dummy->folder = folder;
 	dummy->fd = -1;
 
-	ret = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, read_dir, dummy,
-								dummy_free);
-
 	if (err)
 		*err = 0;
 
-	return GINT_TO_POINTER(ret);
+	return dummy;
+}
+
+int phonebook_pull_read(void *request)
+{
+	struct dummy_data *dummy = request;
+
+	if (!dummy)
+		return -ENOENT;
+
+	dummy->id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, read_dir, dummy,
+								dummy_free);
+
+	return 0;
 }
 
 void *phonebook_get_entry(const char *folder, const char *id,

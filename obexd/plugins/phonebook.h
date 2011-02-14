@@ -82,15 +82,27 @@ char *phonebook_set_folder(const char *current_folder,
 		const char *new_folder, uint8_t flags, int *err);
 
 /*
- * PullPhoneBook never use cached entries. PCE use this function to get all
- * entries of a given folder. The back-end MUST return only the content based
- * on the application parameters requested by the client.
+ * phonebook_pull should be used only to prepare pull request - prepared
+ * request data is returned by this function. Start of fetching data from
+ * back-end will be done only after calling phonebook_pull_read with this
+ * returned request given as a parameter.
  *
- * Return value is a pointer to asynchronous request to phonebook back-end.
  * phonebook_req_finalize MUST always be used to free associated resources.
  */
 void *phonebook_pull(const char *name, const struct apparam_field *params,
 				phonebook_cb cb, void *user_data, int *err);
+
+/*
+ * phonebook_pull_read should be used to start getting results from back-end.
+ * The back-end can return data as one response or can return it many parts.
+ * After obtaining one part, PBAP core need to call phonebook_pull_read with
+ * the same request again to get more results from back-end.
+ * The back-end MUST return only the content based on the application
+ * parameters requested by the client.
+ *
+ * Returns error code or 0 in case of success
+ */
+int phonebook_pull_read(void *request);
 
 /*
  * Function used to retrieve a contact from the backend. Only contacts
