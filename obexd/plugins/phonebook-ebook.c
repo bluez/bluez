@@ -186,7 +186,8 @@ static void ebookpull_cb(EBook *book, EBookStatus estatus, GList *contacts,
 
 done:
 	data->completed = TRUE;
-	data->contacts_cb(string->str, string->len, count, 0, data->user_data);
+	data->contacts_cb(string->str, string->len, count, 0, TRUE,
+							data->user_data);
 
 fail:
 	g_string_free(string, TRUE);
@@ -212,7 +213,7 @@ static void ebook_entry_cb(EBook *book, EBookStatus estatus,
 
 	if (estatus != E_BOOK_ERROR_OK) {
 		error("E-Book query failed: status %d", estatus);
-		data->contacts_cb(NULL, 0, 1, 0, data->user_data);
+		data->contacts_cb(NULL, 0, 1, 0, TRUE, data->user_data);
 		goto fail;
 	}
 
@@ -223,7 +224,7 @@ static void ebook_entry_cb(EBook *book, EBookStatus estatus,
 
 	len = vcard ? strlen(vcard) : 0;
 
-	data->contacts_cb(vcard, len, 1, 0, data->user_data);
+	data->contacts_cb(vcard, len, 1, 0, TRUE, data->user_data);
 
 	g_free(vcard);
 

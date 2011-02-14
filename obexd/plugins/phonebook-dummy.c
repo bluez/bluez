@@ -248,7 +248,7 @@ static gboolean read_dir(void *user_data)
 	closedir(dp);
 done:
 	/* FIXME: Missing vCards fields filtering */
-	dummy->cb(buffer->str, buffer->len, count, 0, dummy->user_data);
+	dummy->cb(buffer->str, buffer->len, count, 0, TRUE, dummy->user_data);
 
 	g_string_free(buffer, TRUE);
 
@@ -346,7 +346,7 @@ static gboolean read_entry(void *user_data)
 
 	/* FIXME: Missing vCards fields filtering */
 
-	dummy->cb(buffer, count, 1, 0, dummy->user_data);
+	dummy->cb(buffer, count, 1, 0, TRUE, dummy->user_data);
 
 	return FALSE;
 }

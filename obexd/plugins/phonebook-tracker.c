@@ -1334,7 +1334,7 @@ static int pull_contacts_size(const char **reply, int num_fields,
 	struct phonebook_data *data = user_data;
 
 	if (num_fields < 0) {
-		data->cb(NULL, 0, num_fields, 0, data->user_data);
+		data->cb(NULL, 0, num_fields, 0, TRUE, data->user_data);
 		return -EINTR;
 	}
 
@@ -1343,7 +1343,8 @@ static int pull_contacts_size(const char **reply, int num_fields,
 		return 0;
 	}
 
-	data->cb(NULL, 0, data->index, data->newmissedcalls, data->user_data);
+	data->cb(NULL, 0, data->index, data->newmissedcalls, TRUE,
+							data->user_data);
 
 	return 0;
 	/*
@@ -1561,7 +1562,7 @@ static int pull_contacts(const char **reply, int num_fields, void *user_data)
 	static char *temp_id = NULL;
 
 	if (num_fields < 0) {
-		data->cb(NULL, 0, num_fields, 0, data->user_data);
+		data->cb(NULL, 0, num_fields, 0, TRUE, data->user_data);
 		goto fail;
 	}
 
@@ -1641,7 +1642,7 @@ done:
 	vcards = gen_vcards(data->contacts, params);
 
 	data->cb(vcards->str, vcards->len, g_slist_length(data->contacts),
-					data->newmissedcalls, data->user_data);
+				data->newmissedcalls, TRUE, data->user_data);
 
 	g_string_free(vcards, TRUE);
 fail:
@@ -1868,7 +1869,7 @@ done:
 	data->contacts = NULL;
 
 	if (num_fields < 0) {
-		data->cb(NULL, 0, num_fields, 0, data->user_data);
+		data->cb(NULL, 0, num_fields, 0, TRUE, data->user_data);
 		return -EINTR;
 	}
 
@@ -1884,7 +1885,7 @@ done:
 
 	err = query_tracker(query, col_amount, pull_cb, data);
 	if (err < 0) {
-		data->cb(NULL, 0, err, 0, data->user_data);
+		data->cb(NULL, 0, err, 0, TRUE, data->user_data);
 
 		return -EINTR;
 	}

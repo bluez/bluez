@@ -148,6 +148,7 @@ struct pbap_object {
 	GString *buffer;
 	GByteArray *aparams;
 	gboolean firstpacket;
+	gboolean lastpart;
 	struct pbap_session *session;
 	void *request;
 };
@@ -254,7 +255,8 @@ static GByteArray *append_aparam_header(GByteArray *buf, uint8_t tag,
 }
 
 static void phonebook_size_result(const char *buffer, size_t bufsize,
-				int vcards, int missed, void *user_data)
+					int vcards, int missed,
+					gboolean lastpart, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 	uint16_t phonebooksize;
@@ -286,16 +288,18 @@ static void phonebook_size_result(const char *buffer, size_t bufsize,
 }
 
 static void query_result(const char *buffer, size_t bufsize, int vcards,
-					int missed, void *user_data)
+				int missed, gboolean lastpart, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 
 	DBG("");
 
-	if (pbap->obj->request) {
+	if (pbap->obj->request && lastpart) {
 		phonebook_req_finalize(pbap->obj->request);
 		pbap->obj->request = NULL;
 	}
+
+	pbap->obj->lastpart = lastpart;
 
 	if (vcards <= 0) {
 		obex_object_set_io_flags(pbap->obj, G_IO_ERR, -ENOENT);
