@@ -60,7 +60,7 @@
 
 struct eir_data {
 	GSList *services;
-	uint8_t flags;
+	int flags;
 	char *name;
 	gboolean name_complete;
 };
@@ -288,6 +288,8 @@ static int parse_eir_data(struct eir_data *eir, uint8_t *eir_data,
 	uuid_t service;
 	char *uuid_str;
 	unsigned int i;
+
+	eir->flags = -1;
 
 	/* No EIR data to parse */
 	if (eir_data == NULL || eir_length == 0)

@@ -3032,7 +3032,7 @@ static void dev_prepend_uuid(gpointer data, gpointer user_data)
 void adapter_update_device_from_info(struct btd_adapter *adapter,
 					bdaddr_t bdaddr, int8_t rssi,
 					uint8_t evt_type, const char *name,
-					GSList *services, uint8_t flags)
+					GSList *services, int flags)
 {
 	struct remote_dev_info *dev;
 	gboolean new_dev;
@@ -3053,7 +3053,8 @@ void adapter_update_device_from_info(struct btd_adapter *adapter,
 	g_slist_foreach(services, remove_same_uuid, dev);
 	g_slist_foreach(services, dev_prepend_uuid, dev);
 
-	dev->flags = flags;
+	if (flags >= 0)
+		dev->flags = flags;
 
 	if (name) {
 		g_free(dev->name);
