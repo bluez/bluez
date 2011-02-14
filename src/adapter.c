@@ -268,6 +268,10 @@ int adapter_resolve_names(struct btd_adapter *adapter)
 	struct remote_dev_info *dev, match;
 	int err;
 
+	/* Do not attempt to resolve more names if on suspended state */
+	if (adapter->state & STATE_SUSPENDED)
+		return 0;
+
 	memset(&match, 0, sizeof(struct remote_dev_info));
 	bacpy(&match.bdaddr, BDADDR_ANY);
 	match.name_status = NAME_REQUIRED;
