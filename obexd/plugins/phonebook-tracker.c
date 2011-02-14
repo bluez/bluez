@@ -890,7 +890,7 @@
 	"} GROUP BY ?call ORDER BY DESC(nmo:receivedDate(?call)) "	\
 	"LIMIT 40"
 
-typedef void (*reply_list_foreach_t) (const char **reply, int num_fields,
+typedef int (*reply_list_foreach_t) (const char **reply, int num_fields,
 							void *user_data);
 
 typedef void (*add_field_t) (struct phonebook_contact *contact,
@@ -1042,6 +1042,7 @@ static void async_query_cursor_next_cb(GObject *source, GAsyncResult *result,
 	GError *error = NULL;
 	gboolean success;
 	const char **node;
+	int err;
 
 	success = tracker_sparql_cursor_next_finish(
 						TRACKER_SPARQL_CURSOR(source),
@@ -1061,17 +1062,22 @@ static void async_query_cursor_next_cb(GObject *source, GAsyncResult *result,
 	}
 
 	node = string_array_from_cursor(cursor, pending->num_fields);
-	pending->callback(node, pending->num_fields, pending->user_data);
+	err = pending->callback(node, pending->num_fields, pending->user_data);
 	g_free(node);
 
-
-	/* getting next row from query results */
-	cancellable = g_cancellable_new();
-	update_cancellable(pending->user_data, cancellable);
-	tracker_sparql_cursor_next_async(cursor, cancellable,
+	/* Fetch next result only if processing current chunk ended with
+	 * success. Sometimes during processing data, we are able to determine
+	 * if there is no need to get more data from tracker - by example
+	 * stored amount of data parts is big enough for sending and we might
+	 * want to suspend processing or just some error occurred. */
+	if (!err) {
+		cancellable = g_cancellable_new();
+		update_cancellable(pending->user_data, cancellable);
+		tracker_sparql_cursor_next_async(cursor, cancellable,
 						async_query_cursor_next_cb,
 						pending);
-	return;
+		return;
+	}
 
 failed:
 	g_object_unref(cursor);
@@ -1322,23 +1328,24 @@ static GString *gen_vcards(GSList *contacts,
 	return vcards;
 }
 
-static void pull_contacts_size(const char **reply, int num_fields,
+static int pull_contacts_size(const char **reply, int num_fields,
 							void *user_data)
 {
 	struct phonebook_data *data = user_data;
 
 	if (num_fields < 0) {
 		data->cb(NULL, 0, num_fields, 0, data->user_data);
-		return;
+		return -EINTR;
 	}
 
 	if (reply != NULL) {
 		data->index = atoi(reply[0]);
-		return;
+		return 0;
 	}
 
 	data->cb(NULL, 0, data->index, data->newmissedcalls, data->user_data);
 
+	return 0;
 	/*
 	 * phonebook_data is freed in phonebook_req_finalize. Useful in
 	 * cases when call is terminated.
@@ -1542,7 +1549,7 @@ static void contact_add_organization(struct phonebook_contact *contact,
 	add_affiliation(&contact->role, reply[COL_ORG_ROLE]);
 }
 
-static void pull_contacts(const char **reply, int num_fields, void *user_data)
+static int pull_contacts(const char **reply, int num_fields, void *user_data)
 {
 	struct phonebook_data *data = user_data;
 	const struct apparam_field *params = data->params;
@@ -1585,7 +1592,7 @@ static void pull_contacts(const char **reply, int num_fields, void *user_data)
 
 	if (i == num_fields - 4 && !g_str_equal(reply[CONTACTS_ID_COL],
 						TRACKER_DEFAULT_CONTACT_ME))
-		return;
+		return 0;
 
 	if (g_strcmp0(temp_id, reply[CONTACTS_ID_COL])) {
 		data->index++;
@@ -1598,7 +1605,7 @@ static void pull_contacts(const char **reply, int num_fields, void *user_data)
 	if ((data->index <= params->liststartoffset ||
 						data->index > last_index) &&
 						params->maxlistcount > 0)
-		return;
+		return 0;
 
 add_entry:
 	contact = g_new0(struct phonebook_contact, 1);
@@ -1622,7 +1629,7 @@ add_numbers:
 		data->contacts = g_slist_append(data->contacts, contact_data);
 	}
 
-	return;
+	return 0;
 
 done:
 	vcards = gen_vcards(data->contacts, params);
@@ -1637,13 +1644,14 @@ fail:
 	g_free(temp_id);
 	temp_id = NULL;
 
+	return -EINTR;
 	/*
 	 * phonebook_data is freed in phonebook_req_finalize. Useful in
 	 * cases when call is terminated.
 	 */
 }
 
-static void add_to_cache(const char **reply, int num_fields, void *user_data)
+static int add_to_cache(const char **reply, int num_fields, void *user_data)
 {
 	struct phonebook_data *data = user_data;
 	char *formatted;
@@ -1660,7 +1668,7 @@ static void add_to_cache(const char **reply, int num_fields, void *user_data)
 
 	if (i == num_fields &&
 			!g_str_equal(reply[0], TRACKER_DEFAULT_CONTACT_ME))
-		return;
+		return 0;
 
 	if (i == 6)
 		formatted = g_strdup(reply[6]);
@@ -1679,12 +1687,13 @@ static void add_to_cache(const char **reply, int num_fields, void *user_data)
 
 	g_free(formatted);
 
-	return;
+	return 0;
 
 done:
 	if (num_fields <= 0)
 		data->ready_cb(data->user_data);
 
+	return -EINTR;
 	/*
 	 * phonebook_data is freed in phonebook_req_finalize. Useful in
 	 * cases when call is terminated.
@@ -1826,7 +1835,7 @@ static void gstring_free_helper(gpointer data, gpointer user_data)
 	g_string_free(data, TRUE);
 }
 
-static void pull_newmissedcalls(const char **reply, int num_fields,
+static int pull_newmissedcalls(const char **reply, int num_fields,
 							void *user_data)
 {
 	struct phonebook_data *data = user_data;
@@ -1846,7 +1855,7 @@ static void pull_newmissedcalls(const char **reply, int num_fields,
 								number);
 		}
 	}
-	return;
+	return 0;
 
 done:
 	DBG("newmissedcalls %d", data->newmissedcalls);
@@ -1856,7 +1865,7 @@ done:
 
 	if (num_fields < 0) {
 		data->cb(NULL, 0, num_fields, 0, data->user_data);
-		return;
+		return -EINTR;
 	}
 
 	if (data->params->maxlistcount == 0) {
@@ -1870,8 +1879,13 @@ done:
 	}
 
 	err = query_tracker(query, col_amount, pull_cb, data);
-	if (err < 0)
+	if (err < 0) {
 		data->cb(NULL, 0, err, 0, data->user_data);
+
+		return -EINTR;
+	}
+
+	return 0;
 }
 
 void *phonebook_pull(const char *name, const struct apparam_field *params,
