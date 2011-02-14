@@ -973,35 +973,13 @@ static void handle_create_requested(DBusMessage *msg)
 					EV_CALLSETUP_OUTGOING);
 }
 
-static void handle_call_status(DBusMessage *msg, const char *call_path)
+static void call_set_status(struct csd_call *call, dbus_uint32_t status)
 {
-	struct csd_call *call;
-	dbus_uint32_t status, cause_type, cause, prev_status;
+	dbus_uint32_t prev_status;
 	int callheld = telephony_get_indicator(maemo_indicators, "callheld");
 
-	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_UINT32, &status,
-					DBUS_TYPE_UINT32, &cause_type,
-					DBUS_TYPE_UINT32, &cause,
-					DBUS_TYPE_INVALID)) {
-		error("Unexpected paramters in Instance.CallStatus() signal");
-		return;
-	}
-
-	call = find_call(call_path);
-	if (!call) {
-		error("Didn't find any matching call object for %s",
-				call_path);
-		return;
-	}
-
-	if (status > 16) {
-		error("Invalid call status %u", status);
-		return;
-	}
-
 	prev_status = call->status;
-	DBG("Call %s changed from %s to %s", call_path,
+	DBG("Call %s changed from %s to %s", call->object_path,
 		call_status_str[prev_status], call_status_str[status]);
 
 	if (prev_status == status) {
@@ -1130,6 +1108,35 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 		error("Unknown call status %u", status);
 		break;
 	}
+}
+
+static void handle_call_status(DBusMessage *msg, const char *call_path)
+{
+	struct csd_call *call;
+	dbus_uint32_t status, cause_type, cause;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_UINT32, &status,
+					DBUS_TYPE_UINT32, &cause_type,
+					DBUS_TYPE_UINT32, &cause,
+					DBUS_TYPE_INVALID)) {
+		error("Unexpected paramters in Instance.CallStatus() signal");
+		return;
+	}
+
+	call = find_call(call_path);
+	if (!call) {
+		error("Didn't find any matching call object for %s",
+				call_path);
+		return;
+	}
+
+	if (status > 16) {
+		error("Invalid call status %u", status);
+		return;
+	}
+
+	call_set_status(call, status);
 }
 
 static void handle_conference(DBusMessage *msg, gboolean joined)
@@ -1470,13 +1477,12 @@ static void parse_call_list(DBusMessageIter *iter)
 		if (!call) {
 			call = g_new0(struct csd_call, 1);
 			call->object_path = g_strdup(object_path);
-			call->status = (int) status;
 			calls = g_slist_append(calls, call);
 			DBG("telephony-maemo6: new csd call instance at %s",
 								object_path);
 		}
 
-		if (call->status == CSD_CALL_STATUS_IDLE)
+		if (status == CSD_CALL_STATUS_IDLE)
 			continue;
 
 		/* CSD gives incorrect call_hold property sometimes */
@@ -1492,6 +1498,9 @@ static void parse_call_list(DBusMessageIter *iter)
 		call->conference = conf;
 		g_free(call->number);
 		call->number = g_strdup(number);
+
+		/* Update indicators */
+		call_set_status(call, status);
 
 	} while (dbus_message_iter_next(iter));
 }
