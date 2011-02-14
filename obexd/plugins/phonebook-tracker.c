@@ -1602,10 +1602,16 @@ static int pull_contacts(const char **reply, int num_fields, void *user_data)
 
 	last_index = params->liststartoffset + params->maxlistcount;
 
-	if ((data->index <= params->liststartoffset ||
-						data->index > last_index) &&
-						params->maxlistcount > 0)
+	if (data->index <= params->liststartoffset)
 		return 0;
+
+	/* max number of results achieved - need send vcards data that was
+	 * already collected and stop further data processing (these operations
+	 * will be invoked in "done" section) */
+	if (data->index > last_index && params->maxlistcount > 0) {
+		DBG("Maxlistcount achieved");
+		goto done;
+	}
 
 add_entry:
 	contact = g_new0(struct phonebook_contact, 1);
