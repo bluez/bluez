@@ -1,3 +1,15 @@
+ver 4.88:
+	Fix issue with HID channel reference count handling.
+	Fix issue with daemon exit on badly formatted AT+VTS.
+	Fix issue with crash while parsing of endpoint properties.
+	Fix issue with possible crash on AVDTP Suspend request timeout.
+	Fix issue with stopping inquiry before adapter is initialized.
+	Fix issue with creating device object when connection fails.
+	Fix issue with sending HCIDEVUP when adapter is already up.
+	Fix issue with handling bonding IO channel closing.
+	Fix agent cancellation in security mode 3 situations.
+	Update pairing code to support management interface.
+
 ver 4.87:
 	Fix issue with initialization when adapter is already up.
 	Fix issue with attribute server MTU and incoming connections.
