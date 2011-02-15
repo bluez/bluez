@@ -601,9 +601,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 	memcpy(&uuid, &a->uuid, sizeof(uuid_t));
 	attrib_db_update(handle, &uuid, value, vlen);
 
-	pdu[0] = ATT_OP_WRITE_RESP;
-
-	return sizeof(pdu[0]);
+	return enc_write_resp(pdu, len);
 }
 
 static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,

@@ -526,6 +526,27 @@ uint16_t dec_write_req(const uint8_t *pdu, int len, uint16_t *handle,
 	return len;
 }
 
+uint16_t enc_write_resp(uint8_t *pdu, int len)
+{
+	if (pdu == NULL)
+		return 0;
+
+	pdu[0] = ATT_OP_WRITE_RESP;
+
+	return sizeof(pdu[0]);
+}
+
+uint16_t dec_write_resp(const uint8_t *pdu, int len)
+{
+	if (pdu == NULL)
+		return 0;
+
+	if (pdu[0] != ATT_OP_WRITE_RESP)
+		return 0;
+
+	return len;
+}
+
 uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, int len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(handle);
