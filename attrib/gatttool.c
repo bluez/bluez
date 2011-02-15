@@ -42,6 +42,7 @@
 #include "gattrib.h"
 #include "glib-helper.h"
 #include "gatt.h"
+#include "gatttool.h"
 
 /* Minimum MTU for L2CAP connections over BR/EDR */
 #define ATT_MIN_MTU_L2CAP 48
@@ -64,6 +65,7 @@ static gboolean opt_char_desc = FALSE;
 static gboolean opt_le = FALSE;
 static gboolean opt_char_write = FALSE;
 static gboolean opt_char_write_req = FALSE;
+static gboolean opt_interactive = FALSE;
 static GMainLoop *event_loop;
 static gboolean got_error = FALSE;
 
@@ -594,6 +596,8 @@ static GOptionEntry gatt_options[] = {
 		"Listen for notifications and indications", NULL },
 	{ "le", 0, 0, G_OPTION_ARG_NONE, &opt_le,
 		"Use Bluetooth Low Energy transport", NULL },
+	{ "interactive", 'I', G_OPTION_FLAG_IN_MAIN, G_OPTION_ARG_NONE,
+		&opt_interactive, "Use interactive mode", NULL },
 	{ NULL },
 };
 
@@ -649,6 +653,11 @@ int main(int argc, char *argv[])
 	if (g_option_context_parse(context, &argc, &argv, &gerr) == FALSE) {
 		g_printerr("%s\n", gerr->message);
 		g_error_free(gerr);
+	}
+
+	if (opt_interactive) {
+		interactive();
+		goto done;
 	}
 
 	if (opt_primary)
