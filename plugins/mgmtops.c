@@ -1490,12 +1490,6 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 	return -ENOSYS;
 }
 
-static int mgmt_read_scan_enable(int index)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
 static int mgmt_enable_le(int index)
 {
 	DBG("index %d", index);
@@ -1666,7 +1660,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.pincode_reply = mgmt_pincode_reply,
 	.confirm_reply = mgmt_confirm_reply,
 	.passkey_reply = mgmt_passkey_reply,
-	.read_scan_enable = mgmt_read_scan_enable,
 	.enable_le = mgmt_enable_le,
 	.encrypt_link = mgmt_encrypt_link,
 	.set_did = mgmt_set_did,

@@ -3620,11 +3620,6 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 	return adapter_ops->passkey_reply(adapter->dev_id, bdaddr, passkey);
 }
 
-int btd_adapter_read_scan_enable(struct btd_adapter *adapter)
-{
-	return adapter_ops->read_scan_enable(adapter->dev_id);
-}
-
 void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 						const uint8_t *features)
 {

@@ -705,22 +705,6 @@ void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer)
 
 /* Section reserved to device HCI callbacks */
 
-void btd_event_setscan_enable_complete(bdaddr_t *local)
-{
-	struct btd_adapter *adapter;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	if (adapter_powering_down(adapter))
-		return;
-
-	btd_adapter_read_scan_enable(adapter);
-}
-
 void btd_event_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
 {
 	struct btd_adapter *adapter;

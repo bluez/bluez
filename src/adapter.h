@@ -224,7 +224,6 @@ struct btd_adapter_ops {
 	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin);
 	int (*confirm_reply) (int index, bdaddr_t *bdaddr, gboolean success);
 	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint32_t passkey);
-	int (*read_scan_enable) (int index);
 	int (*enable_le) (int index);
 	int (*encrypt_link) (int index, bdaddr_t *bdaddr, bt_hci_result_t cb,
 							gpointer user_data);
@@ -275,8 +274,6 @@ int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							gboolean success);
 int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							uint32_t passkey);
-
-int btd_adapter_read_scan_enable(struct btd_adapter *adapter);
 
 void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 						const uint8_t *features);

@@ -1799,7 +1799,8 @@ static inline void cmd_complete(int index, void *ptr)
 						OCF_READ_LOCAL_NAME, 0, 0);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE):
-		btd_event_setscan_enable_complete(&dev->bdaddr);
+		hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_READ_SCAN_ENABLE,
+								0, NULL);
 		break;
 	case cmd_opcode_pack(OGF_HOST_CTL, OCF_READ_SCAN_ENABLE):
 		ptr += sizeof(evt_cmd_complete);
@@ -3279,19 +3280,6 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 	return err;
 }
 
-static int hciops_read_scan_enable(int index)
-{
-	struct dev_info *dev = &devs[index];
-
-	DBG("hci%d", index);
-
-	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_READ_SCAN_ENABLE,
-								0, NULL) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_enable_le(int index)
 {
 	struct dev_info *dev = &devs[index];
@@ -3587,7 +3575,6 @@ static struct btd_adapter_ops hci_ops = {
 	.pincode_reply = hciops_pincode_reply,
 	.confirm_reply = hciops_confirm_reply,
 	.passkey_reply = hciops_passkey_reply,
-	.read_scan_enable = hciops_read_scan_enable,
 	.enable_le = hciops_enable_le,
 	.encrypt_link = hciops_encrypt_link,
 	.set_did = hciops_set_did,
