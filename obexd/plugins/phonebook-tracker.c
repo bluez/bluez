@@ -1964,6 +1964,7 @@ int phonebook_pull_read(void *request)
 	struct phonebook_data *data = request;
 	reply_list_foreach_t pull_cb;
 	const char *query;
+	char *offset_query;
 	int col_amount;
 	int ret;
 
@@ -1986,6 +1987,19 @@ int phonebook_pull_read(void *request)
 
 	if (query == NULL)
 		return -ENOENT;
+
+	if (pull_cb == pull_contacts && data->tracker_index > 0) {
+		/* Adding offset to pull query to download next parts of data
+		 * from tracker (phonebook_pull_read may be called many times
+		 * from PBAP core to fetch data partially) */
+		offset_query = g_strdup_printf(QUERY_OFFSET_FORMAT, query,
+							data->tracker_index);
+		ret = query_tracker(offset_query, col_amount, pull_cb, data);
+
+		g_free(offset_query);
+
+		return ret;
+	}
 
 	ret = query_tracker(query, col_amount, pull_cb, data);
 
