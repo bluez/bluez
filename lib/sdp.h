@@ -55,6 +55,7 @@ extern "C" {
 #define TCS_BIN_UUID	0x0005
 #define TCS_AT_UUID	0x0006
 #define OBEX_UUID	0x0008
+#define ATT_UUID	0x0007
 #define IP_UUID		0x0009
 #define FTP_UUID	0x000a
 #define HTTP_UUID	0x000c
@@ -72,7 +73,6 @@ extern "C" {
 #define MCAP_CTRL_UUID	0x001e
 #define MCAP_DATA_UUID	0x001f
 #define L2CAP_UUID	0x0100
-#define ATT_UUID	0x1801
 
 /*
  * Service class identifiers of standard services and service groups
