@@ -55,6 +55,7 @@
 #include "glib-helper.h"
 #include "agent.h"
 #include "storage.h"
+#include "attrib-server.h"
 #include "att.h"
 
 /* Flags Descriptions */
@@ -870,6 +871,12 @@ void btd_adapter_class_changed(struct btd_adapter *adapter, uint32_t new_class)
 	write_local_class(&adapter->bdaddr, class);
 
 	adapter->dev_class = new_class;
+
+	if (main_opts.attrib_server) {
+		/* Removes service class */
+		class[1] = class[1] & 0x1f;
+		attrib_gap_set(GATT_CHARAC_APPEARANCE, class, 2);
+	}
 
 	emit_property_changed(connection, adapter->path,
 				ADAPTER_INTERFACE, "Class",
