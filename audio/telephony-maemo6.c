@@ -2025,6 +2025,9 @@ void telephony_exit(void)
 	g_free(net.operator_name);
 	net.operator_name = NULL;
 
+	net.status = NETWORK_REG_STATUS_UNKOWN;
+	net.signal_bars = 0;
+
 	g_free(last_dialed_number);
 	last_dialed_number = NULL;
 
