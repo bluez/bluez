@@ -72,6 +72,8 @@ static GIOChannel *le_io = NULL;
 static GSList *clients = NULL;
 static uint32_t sdp_handle = 0;
 
+/* GAP attribute handles */
+static uint16_t name_handle = 0x0000;
 static uint16_t appearance_handle = 0x0000;
 
 static uuid_t prim_uuid = {
@@ -809,16 +811,17 @@ static void register_core_services(void)
 	attrib_db_add(0x0001, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
 
 	/* GAP service: device name characteristic */
+	name_handle = 0x0006;
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
-	att_put_u16(0x0006, &atval[1]);
+	att_put_u16(name_handle, &atval[1]);
 	att_put_u16(GATT_CHARAC_DEVICE_NAME, &atval[3]);
 	attrib_db_add(0x0004, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
 
 	/* GAP service: device name attribute */
 	sdp_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
 	len = strlen(main_opts.name);
-	attrib_db_add(0x0006, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+	attrib_db_add(name_handle, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 					(uint8_t *) main_opts.name, len);
 
 	/* GAP service: device appearance characteristic */
@@ -1011,11 +1014,14 @@ int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len)
 	uuid_t u16;
 	uint16_t handle;
 
-	/* FIXME: Missing Name, Privacy and Reconnection Address */
+	/* FIXME: Missing Privacy and Reconnection Address */
 
 	sdp_uuid16_create(&u16, uuid);
 
 	switch (uuid) {
+	case GATT_CHARAC_DEVICE_NAME:
+		handle = name_handle;
+		break;
 	case GATT_CHARAC_APPEARANCE:
 		handle = appearance_handle;
 		break;

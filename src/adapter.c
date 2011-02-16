@@ -892,6 +892,10 @@ void adapter_update_local_name(struct btd_adapter *adapter, const char *name)
 
 	strncpy(dev->name, name, MAX_NAME_LENGTH);
 
+	if (main_opts.attrib_server)
+		attrib_gap_set(GATT_CHARAC_DEVICE_NAME,
+			(const uint8_t *) dev->name, strlen(dev->name));
+
 	if (!adapter->name_stored) {
 		char *name_ptr = dev->name;
 
