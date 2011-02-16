@@ -697,7 +697,10 @@ void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer)
 
 	DBG("");
 
-	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
+	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
+		return;
+
+	if (!device)
 		return;
 
 	adapter_remove_connection(adapter, device);
