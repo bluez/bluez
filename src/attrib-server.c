@@ -802,7 +802,6 @@ static void register_core_services(void)
 {
 	uint8_t atval[256];
 	uuid_t uuid;
-	int len;
 	uint16_t appearance = 0x0000;
 
 	/* GAP service: primary service definition */
@@ -820,9 +819,8 @@ static void register_core_services(void)
 
 	/* GAP service: device name attribute */
 	sdp_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
-	len = strlen(main_opts.name);
 	attrib_db_add(name_handle, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
-					(uint8_t *) main_opts.name, len);
+								NULL, 0);
 
 	/* GAP service: device appearance characteristic */
 	appearance_handle = 0x0008;

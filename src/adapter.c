@@ -2658,6 +2658,10 @@ gboolean adapter_init(struct btd_adapter *adapter)
 		expand_name(adapter->dev.name, MAX_NAME_LENGTH, main_opts.name,
 							adapter->dev_id);
 
+	if (main_opts.attrib_server)
+		attrib_gap_set(GATT_CHARAC_DEVICE_NAME,
+			(const uint8_t *) dev->name, strlen(dev->name));
+
 	sdp_init_services_list(&adapter->bdaddr);
 	load_drivers(adapter);
 	clear_blocked(adapter);
