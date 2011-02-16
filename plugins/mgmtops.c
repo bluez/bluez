@@ -615,6 +615,69 @@ static void mgmt_pin_code_request(int sk, void *buf, size_t len)
 	}
 }
 
+static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_user_confirm_reply)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_user_confirm_reply *cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("index %d addr %s success %d", index, addr, success);
+
+	memset(buf, 0, sizeof(buf));
+
+	if (success)
+		hdr->opcode = htobs(MGMT_OP_USER_CONFIRM_REPLY);
+	else
+		hdr->opcode = htobs(MGMT_OP_USER_CONFIRM_NEG_REPLY);
+
+	hdr->len = htobs(sizeof(*cp));
+
+	cp = (void *) &buf[sizeof(*hdr)];
+	cp->index = htobs(index);
+	bacpy(&cp->bdaddr, bdaddr);
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static void mgmt_user_confirm_request(int sk, void *buf, size_t len)
+{
+	struct mgmt_ev_user_confirm_request *ev = buf;
+	struct controller_info *info;
+	uint16_t index;
+	char addr[18];
+	int err;
+
+	if (len < sizeof(*ev)) {
+		error("Too small user_confirm_request event");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+	ba2str(&ev->bdaddr, addr);
+
+	DBG("hci%u %s", index, addr);
+
+	if (index > max_index) {
+		error("Unexpected index %u in user_confirm_request event",
+									index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	err = btd_event_user_confirm(&info->bdaddr, &ev->bdaddr,
+						btohl(ev->value), FALSE);
+	if (err < 0) {
+		error("btd_event_user_confirm: %s", strerror(-err));
+		mgmt_confirm_reply(index, &ev->bdaddr, FALSE);
+	}
+}
+
 static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 {
 	if (uuid->type == SDP_UUID16)
@@ -1057,6 +1120,12 @@ static void mgmt_cmd_complete(int sk, void *buf, size_t len)
 	case MGMT_OP_PAIR_DEVICE:
 		pair_device_complete(sk, ev->data, len - sizeof(*ev));
 		break;
+	case MGMT_OP_USER_CONFIRM_REPLY:
+		DBG("user_confirm_reply complete");
+		break;
+	case MGMT_OP_USER_CONFIRM_NEG_REPLY:
+		DBG("user_confirm_net_reply complete");
+		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;
@@ -1177,6 +1246,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_PIN_CODE_REQUEST:
 		mgmt_pin_code_request(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_USER_CONFIRM_REQUEST:
+		mgmt_user_confirm_request(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);
@@ -1468,16 +1540,6 @@ static int mgmt_remove_bonding(int index, bdaddr_t *bdaddr)
 		return -errno;
 
 	return 0;
-}
-
-static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
-{
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s success %d", index, addr, success);
-
-	return -ENOSYS;
 }
 
 static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
