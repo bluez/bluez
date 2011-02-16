@@ -2028,6 +2028,9 @@ void telephony_exit(void)
 	g_free(last_dialed_number);
 	last_dialed_number = NULL;
 
+	g_slist_free(active_calls);
+	active_calls = NULL;
+
 	g_slist_foreach(calls, (GFunc) csd_call_free, NULL);
 	g_slist_free(calls);
 	calls = NULL;
