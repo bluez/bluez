@@ -499,8 +499,11 @@ static void accept_connection(uint8_t *data)
 
 static void close_connection(struct vhci_conn *conn)
 {
+	char addr[18];
+
+	ba2str(&conn->dest, addr);
 	syslog(LOG_INFO, "Closing connection %s handle %d",
-					batostr(&conn->dest), conn->handle);
+					addr, conn->handle);
 
 	g_io_channel_shutdown(conn->chan, TRUE, NULL);
 	g_io_channel_unref(conn->chan);

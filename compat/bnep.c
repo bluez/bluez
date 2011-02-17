@@ -137,9 +137,10 @@ int bnep_show_connections(void)
 	}
 
 	for (i = 0; i < req.cnum; i++) {
+		char addr[18];
+		ba2str((bdaddr_t *) ci[i].dst, addr);
 		printf("%s %s %s\n", ci[i].device,
-			batostr((bdaddr_t *) ci[i].dst),
-			bnep_svc2str(ci[i].role));
+			addr, bnep_svc2str(ci[i].role));
 	}
 	return 0;
 }
