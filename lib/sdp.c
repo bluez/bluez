@@ -64,9 +64,7 @@
 #define ntoh64(x) (x)
 static inline void ntoh128(const uint128_t *src, uint128_t *dst)
 {
-	int i;
-	for (i = 0; i < 16; i++)
-		dst->data[i] = src->data[i];
+	memcpy(dst, src, sizeof(uint128_t));
 }
 
 static inline void btoh128(const uint128_t *src, uint128_t *dst)
