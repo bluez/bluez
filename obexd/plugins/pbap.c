@@ -658,7 +658,11 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 
 	if (strcmp(type, PHONEBOOK_TYPE) == 0) {
 		/* Always contains the absolute path */
-		path = g_strdup(name);
+		if (g_path_is_absolute(name))
+			path = g_strdup(name);
+		else
+			path = g_build_filename("/", name, NULL);
+
 		*stream = (params->maxlistcount == 0 ? FALSE : TRUE);
 	} else if (strcmp(type, VCARDLISTING_TYPE) == 0) {
 		/* Always relative */

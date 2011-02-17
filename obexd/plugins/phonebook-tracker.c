@@ -934,15 +934,15 @@ static TrackerSparqlConnection *connection = NULL;
 
 static const char *name2query(const char *name)
 {
-	if (g_str_equal(name, "telecom/pb.vcf"))
+	if (g_str_equal(name, "/telecom/pb.vcf"))
 		return CONTACTS_QUERY_ALL;
-	else if (g_str_equal(name, "telecom/ich.vcf"))
+	else if (g_str_equal(name, "/telecom/ich.vcf"))
 		return INCOMING_CALLS_QUERY;
-	else if (g_str_equal(name, "telecom/och.vcf"))
+	else if (g_str_equal(name, "/telecom/och.vcf"))
 		return OUTGOING_CALLS_QUERY;
-	else if (g_str_equal(name, "telecom/mch.vcf"))
+	else if (g_str_equal(name, "/telecom/mch.vcf"))
 		return MISSED_CALLS_QUERY;
-	else if (g_str_equal(name, "telecom/cch.vcf"))
+	else if (g_str_equal(name, "/telecom/cch.vcf"))
 		return COMBINED_CALLS_QUERY;
 
 	return NULL;
@@ -950,15 +950,15 @@ static const char *name2query(const char *name)
 
 static const char *name2count_query(const char *name)
 {
-	if (g_str_equal(name, "telecom/pb.vcf"))
+	if (g_str_equal(name, "/telecom/pb.vcf"))
 		return CONTACTS_COUNT_QUERY;
-	else if (g_str_equal(name, "telecom/ich.vcf"))
+	else if (g_str_equal(name, "/telecom/ich.vcf"))
 		return INCOMING_CALLS_COUNT_QUERY;
-	else if (g_str_equal(name, "telecom/och.vcf"))
+	else if (g_str_equal(name, "/telecom/och.vcf"))
 		return OUTGOING_CALLS_COUNT_QUERY;
-	else if (g_str_equal(name, "telecom/mch.vcf"))
+	else if (g_str_equal(name, "/telecom/mch.vcf"))
 		return MISSED_CALLS_COUNT_QUERY;
-	else if (g_str_equal(name, "telecom/cch.vcf"))
+	else if (g_str_equal(name, "/telecom/cch.vcf"))
 		return COMBINED_CALLS_COUNT_QUERY;
 
 	return NULL;
@@ -1921,11 +1921,11 @@ done:
 	}
 
 	if (data->params->maxlistcount == 0) {
-		query = name2count_query("telecom/mch.vcf");
+		query = name2count_query("/telecom/mch.vcf");
 		col_amount = COUNT_QUERY_COL_AMOUNT;
 		pull_cb = pull_contacts_size;
 	} else {
-		query = name2query("telecom/mch.vcf");
+		query = name2query("/telecom/mch.vcf");
 		col_amount = PULL_QUERY_COL_AMOUNT;
 		pull_cb = pull_contacts;
 	}
@@ -1971,7 +1971,7 @@ int phonebook_pull_read(void *request)
 	if(!data)
 		return -ENOENT;
 
-	if (g_strcmp0(data->req_name, "telecom/mch.vcf") == 0) {
+	if (g_strcmp0(data->req_name, "/telecom/mch.vcf") == 0) {
 		query = NEW_MISSED_CALLS_LIST;
 		col_amount = PULL_QUERY_COL_AMOUNT;
 		pull_cb = pull_newmissedcalls;
