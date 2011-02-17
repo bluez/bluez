@@ -110,6 +110,8 @@ struct a2dp_server {
 	uint32_t source_record_id;
 	uint32_t sink_record_id;
 	uint16_t version;
+	gboolean sink_enabled;
+	gboolean source_enabled;
 };
 
 static GSList *servers = NULL;
@@ -1480,6 +1482,7 @@ proceed:
 	else
 		server->version = 0x0102;
 
+	server->source_enabled = source;
 	if (source) {
 		for (i = 0; i < sbc_srcs; i++)
 			a2dp_add_sep(src, AVDTP_SEP_TYPE_SOURCE,
@@ -1489,7 +1492,7 @@ proceed:
 			a2dp_add_sep(src, AVDTP_SEP_TYPE_SOURCE,
 					A2DP_CODEC_MPEG12, delay_reporting, NULL);
 	}
-
+	server->sink_enabled = sink;
 	if (sink) {
 		for (i = 0; i < sbc_sinks; i++)
 			a2dp_add_sep(src, AVDTP_SEP_TYPE_SINK,
@@ -1549,6 +1552,12 @@ struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
 
 	server = find_server(servers, src);
 	if (server == NULL)
+		return NULL;
+
+	if (type == AVDTP_SEP_TYPE_SINK && !server->sink_enabled)
+		return NULL;
+
+	if (type == AVDTP_SEP_TYPE_SOURCE && !server->source_enabled)
 		return NULL;
 
 	sep = g_new0(struct a2dp_sep, 1);
