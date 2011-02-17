@@ -32,7 +32,6 @@ typedef enum {
 	AUTH_TYPE_PASSKEY,
 	AUTH_TYPE_CONFIRM,
 	AUTH_TYPE_NOTIFY,
-	AUTH_TYPE_AUTO,
 } auth_type_t;
 
 typedef enum {

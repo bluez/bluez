@@ -954,11 +954,39 @@ static void return_link_keys(int index, void *ptr)
 
 /* Simple Pairing handling */
 
+static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
+{
+	struct dev_info *dev = &devs[index];
+	user_confirm_reply_cp cp;
+	char addr[18];
+	int err;
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s success %d", index, addr, success);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+
+	if (success)
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
+					OCF_USER_CONFIRM_REPLY,
+					USER_CONFIRM_REPLY_CP_SIZE, &cp);
+	else
+		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
+					OCF_USER_CONFIRM_NEG_REPLY,
+					USER_CONFIRM_REPLY_CP_SIZE, &cp);
+
+	if (err < 0)
+		err = -errno;
+
+	return err;
+}
+
 static void user_confirm_request(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_user_confirm_request *req = ptr;
-	gboolean loc_mitm, rem_mitm, auto_accept;
+	gboolean loc_mitm, rem_mitm;
 	struct bt_conn *conn;
 
 	DBG("hci%d", index);
@@ -983,12 +1011,18 @@ static void user_confirm_request(int index, void *ptr)
 	if ((conn->loc_auth == 0xff || !loc_mitm || conn->rem_cap == 0x03) &&
 					(!rem_mitm || conn->loc_cap == 0x03)) {
 		DBG("auto accept of confirmation");
-		auto_accept = TRUE;
-	} else
-		auto_accept = FALSE;
+
+		/* Wait 5 milliseconds before doing auto-accept */
+		usleep(5000);
+
+		if (hciops_confirm_reply(index, &req->bdaddr, TRUE) < 0)
+			goto fail;
+
+		return;
+	}
 
 	if (btd_event_user_confirm(&dev->bdaddr, &req->bdaddr,
-				btohl(req->passkey), auto_accept) == 0)
+						btohl(req->passkey)) == 0)
 		return;
 
 fail:
@@ -3216,34 +3250,6 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 	} else
 		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 					OCF_PIN_CODE_NEG_REPLY, 6, bdaddr);
-
-	if (err < 0)
-		err = -errno;
-
-	return err;
-}
-
-static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
-{
-	struct dev_info *dev = &devs[index];
-	user_confirm_reply_cp cp;
-	char addr[18];
-	int err;
-
-	ba2str(bdaddr, addr);
-	DBG("hci%d dba %s success %d", index, addr, success);
-
-	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
-
-	if (success)
-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
-					OCF_USER_CONFIRM_REPLY,
-					USER_CONFIRM_REPLY_CP_SIZE, &cp);
-	else
-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
-					OCF_USER_CONFIRM_NEG_REPLY,
-					USER_CONFIRM_REPLY_CP_SIZE, &cp);
 
 	if (err < 0)
 		err = -errno;

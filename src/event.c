@@ -184,27 +184,13 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	btd_adapter_passkey_reply(adapter, &bdaddr, passkey);
 }
 
-int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey,
-							gboolean auto_accept)
+int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
-
-	if (auto_accept) {
-		DBG("auto accept of confirmation");
-
-		/* Wait 5 milliseconds before doing auto-accept */
-		usleep(5000);
-
-		if (confirm_reply(adapter, device, TRUE) < 0)
-			return -EIO;
-
-		return device_request_authentication(device, AUTH_TYPE_AUTO,
-								0, NULL);
-	}
 
 	return device_request_authentication(device, AUTH_TYPE_CONFIRM,
 							passkey, confirm_cb);

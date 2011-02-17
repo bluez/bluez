@@ -671,7 +671,7 @@ static void mgmt_user_confirm_request(int sk, void *buf, size_t len)
 	info = &controllers[index];
 
 	err = btd_event_user_confirm(&info->bdaddr, &ev->bdaddr,
-						btohl(ev->value), FALSE);
+							btohl(ev->value));
 	if (err < 0) {
 		error("btd_event_user_confirm: %s", strerror(-err));
 		mgmt_confirm_reply(index, &ev->bdaddr, FALSE);

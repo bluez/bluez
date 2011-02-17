@@ -2222,9 +2222,6 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 	case AUTH_TYPE_NOTIFY:
 		err = agent_display_passkey(agent, device, passkey);
 		break;
-	case AUTH_TYPE_AUTO:
-		err = 0;
-		break;
 	default:
 		err = -EINVAL;
 	}
@@ -2263,8 +2260,7 @@ static void cancel_authentication(struct authentication_req *auth)
 		((agent_passkey_cb) auth->cb)(agent, &err, 0, device);
 		break;
 	case AUTH_TYPE_NOTIFY:
-	case AUTH_TYPE_AUTO:
-		/* User Notify/Auto doesn't require any reply */
+		/* User Notify doesn't require any reply */
 		break;
 	}
 
