@@ -22,4 +22,6 @@
  */
 
 int interactive(gchar *dst, gboolean le);
-GIOChannel *do_connect(gchar *dst, gboolean le, BtIOConnect connect_cb);
+GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
+			const gchar *sec_level, int psm, int mtu, gboolean le,
+			BtIOConnect connect_cb);

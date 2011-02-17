@@ -44,14 +44,10 @@
 #include "gatt.h"
 #include "gatttool.h"
 
-/* Minimum MTU for ATT connections */
-#define ATT_MIN_MTU_LE		23
-#define ATT_MIN_MTU_L2CAP	48
-
 static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
 static gchar *opt_value = NULL;
-static gchar *opt_sec_level = "low";
+static gchar *opt_sec_level = NULL;
 static uuid_t *opt_uuid = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
@@ -83,70 +79,6 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 		got_error = TRUE;
 		g_main_loop_quit(event_loop);
 	}
-}
-
-GIOChannel *do_connect(gchar *dst, gboolean le, BtIOConnect connect_cb)
-{
-	GIOChannel *chan;
-	bdaddr_t sba, dba;
-	GError *err = NULL;
-	BtIOSecLevel sec_level;
-
-	/* This check is required because currently setsockopt() returns no
-	 * errors for MTU values smaller than the allowed minimum. */
-	if (opt_mtu != 0 && opt_mtu < (le ? ATT_MIN_MTU_LE : ATT_MIN_MTU_L2CAP)) {
-		g_printerr("MTU cannot be smaller than %d\n",
-				(le ? ATT_MIN_MTU_LE : ATT_MIN_MTU_L2CAP));
-		return NULL;
-	}
-
-	/* Remote device */
-	if (dst == NULL) {
-		g_printerr("Remote Bluetooth address required\n");
-		return NULL;
-	}
-	str2ba(dst, &dba);
-
-	/* Local adapter */
-	if (opt_src != NULL) {
-		if (!strncmp(opt_src, "hci", 3))
-			hci_devba(atoi(opt_src + 3), &sba);
-		else
-			str2ba(opt_src, &sba);
-	} else
-		bacpy(&sba, BDADDR_ANY);
-
-	if (strcmp(opt_sec_level, "medium") == 0)
-		sec_level = BT_IO_SEC_MEDIUM;
-	else if (strcmp(opt_sec_level, "high") == 0)
-		sec_level = BT_IO_SEC_HIGH;
-	else
-		sec_level = BT_IO_SEC_LOW;
-
-	if (le)
-		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &sba,
-				BT_IO_OPT_DEST_BDADDR, &dba,
-				BT_IO_OPT_CID, GATT_CID,
-				BT_IO_OPT_OMTU, opt_mtu,
-				BT_IO_OPT_SEC_LEVEL, sec_level,
-				BT_IO_OPT_INVALID);
-	else
-		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &sba,
-				BT_IO_OPT_DEST_BDADDR, &dba,
-				BT_IO_OPT_PSM, opt_psm,
-				BT_IO_OPT_OMTU, opt_mtu,
-				BT_IO_OPT_SEC_LEVEL, sec_level,
-				BT_IO_OPT_INVALID);
-
-	if (err) {
-		g_printerr("%s\n", err->message);
-		g_error_free(err);
-		return NULL;
-	}
-
-	return chan;
 }
 
 static void primary_all_cb(GSList *services, guint8 status, gpointer user_data)
@@ -625,6 +557,8 @@ int main(int argc, char *argv[])
 	GIOChannel *chan;
 	GSourceFunc callback;
 
+	opt_sec_level = strdup("low");
+
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
 
@@ -681,7 +615,8 @@ int main(int argc, char *argv[])
 		goto done;
 	}
 
-	chan = do_connect(opt_dst, opt_le, connect_cb);
+	chan = gatt_connect(opt_src, opt_dst, opt_sec_level,
+					opt_psm, opt_mtu, opt_le, connect_cb);
 	if (chan == NULL) {
 		got_error = TRUE;
 		goto done;
@@ -710,6 +645,7 @@ done:
 	g_free(opt_src);
 	g_free(opt_dst);
 	g_free(opt_uuid);
+	g_free(opt_sec_level);
 
 	if (got_error)
 		exit(EXIT_FAILURE);

@@ -37,7 +37,11 @@ static GAttrib *attrib = NULL;
 static GMainLoop *event_loop;
 static GString *prompt;
 
+static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
+static gchar *opt_sec_level = NULL;
+static int opt_psm = 0x1f;
+static int opt_mtu = 0;
 static gboolean opt_le = FALSE;
 
 static void cmd_help(int argcp, char **argvp);
@@ -117,7 +121,8 @@ static void cmd_connect(int argcp, char **argvp)
 	}
 
 	set_state(STATE_CONNECTING);
-	iochannel = do_connect(opt_dst, opt_le, connect_cb);
+	iochannel = gatt_connect(opt_src, opt_dst, opt_sec_level, opt_psm,
+						opt_mtu, opt_le, connect_cb);
 	if (iochannel == NULL)
 		set_state(STATE_DISCONNECTED);
 
@@ -212,7 +217,9 @@ int interactive(gchar *dst, gboolean le)
 	GIOChannel *pchan;
 	gint events;
 
-	opt_dst = dst;
+	opt_sec_level = strdup("low");
+
+	opt_dst = strdup(dst);
 	opt_le = le;
 
 	prompt = g_string_new(NULL);
@@ -233,6 +240,9 @@ int interactive(gchar *dst, gboolean le)
 	g_io_channel_unref(pchan);
 	g_main_loop_unref(event_loop);
 	g_string_free(prompt, TRUE);
+
+	g_free(opt_dst);
+	g_free(opt_sec_level);
 
 	return 0;
 }
