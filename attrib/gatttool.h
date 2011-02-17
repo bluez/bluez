@@ -23,5 +23,5 @@
 
 int interactive(gchar *dst, gboolean le);
 GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
-			const gchar *sec_level, int psm, int mtu, gboolean le,
+			const gchar *sec_level, int psm, int mtu,
 			BtIOConnect connect_cb);

@@ -40,9 +40,8 @@ static GString *prompt;
 static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
 static gchar *opt_sec_level = NULL;
-static int opt_psm = 0x1f;
+static int opt_psm = 0;
 static int opt_mtu = 0;
-static gboolean opt_le = FALSE;
 
 static void cmd_help(int argcp, char **argvp);
 
@@ -69,10 +68,10 @@ static char *get_prompt(void)
 	else
 		g_string_append_printf(prompt, "[%17s]", "");
 
-	if (opt_le)
-		g_string_append(prompt, "[LE]");
-	else
+	if (opt_psm)
 		g_string_append(prompt, "[BR]");
+	else
+		g_string_append(prompt, "[LE]");
 
 	g_string_append(prompt, "> ");
 
@@ -122,7 +121,7 @@ static void cmd_connect(int argcp, char **argvp)
 
 	set_state(STATE_CONNECTING);
 	iochannel = gatt_connect(opt_src, opt_dst, opt_sec_level, opt_psm,
-						opt_mtu, opt_le, connect_cb);
+						opt_mtu, connect_cb);
 	if (iochannel == NULL)
 		set_state(STATE_DISCONNECTED);
 
@@ -212,7 +211,7 @@ static gboolean prompt_read(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 }
 
-int interactive(gchar *dst, gboolean le)
+int interactive(gchar *dst, int psm)
 {
 	GIOChannel *pchan;
 	gint events;
@@ -220,7 +219,7 @@ int interactive(gchar *dst, gboolean le)
 	opt_sec_level = strdup("low");
 
 	opt_dst = strdup(dst);
-	opt_le = le;
+	opt_psm = psm;
 
 	prompt = g_string_new(NULL);
 

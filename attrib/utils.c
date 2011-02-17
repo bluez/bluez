@@ -39,19 +39,20 @@
 #define ATT_MIN_MTU_L2CAP	48
 
 GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
-			const gchar *sec_level, int psm, int mtu, gboolean le,
-			BtIOConnect connect_cb)
+				const gchar *sec_level, int psm, int mtu,
+				BtIOConnect connect_cb)
 {
 	GIOChannel *chan;
 	bdaddr_t sba, dba;
 	GError *err = NULL;
 	BtIOSecLevel sec;
+	int minimum_mtu;
 
 	/* This check is required because currently setsockopt() returns no
 	 * errors for MTU values smaller than the allowed minimum. */
-	if (mtu != 0 && mtu < (le ? ATT_MIN_MTU_LE : ATT_MIN_MTU_L2CAP)) {
-		g_printerr("MTU cannot be smaller than %d\n",
-				(le ? ATT_MIN_MTU_LE : ATT_MIN_MTU_L2CAP));
+	minimum_mtu = psm ? ATT_MIN_MTU_L2CAP : ATT_MIN_MTU_LE;
+	if (mtu != 0 && mtu < minimum_mtu) {
+		g_printerr("MTU cannot be smaller than %d\n", minimum_mtu);
 		return NULL;
 	}
 
@@ -78,7 +79,7 @@ GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
 	else
 		sec = BT_IO_SEC_LOW;
 
-	if (le)
+	if (psm == 0)
 		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &sba,
 				BT_IO_OPT_DEST_BDADDR, &dba,

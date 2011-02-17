@@ -53,13 +53,12 @@ static int opt_start = 0x0001;
 static int opt_end = 0xffff;
 static int opt_handle = -1;
 static int opt_mtu = 0;
-static int opt_psm = 0x1f;
+static int opt_psm = 0;
 static gboolean opt_primary = FALSE;
 static gboolean opt_characteristics = FALSE;
 static gboolean opt_char_read = FALSE;
 static gboolean opt_listen = FALSE;
 static gboolean opt_char_desc = FALSE;
-static gboolean opt_le = FALSE;
 static gboolean opt_char_write = FALSE;
 static gboolean opt_char_write_req = FALSE;
 static gboolean opt_interactive = FALSE;
@@ -527,8 +526,6 @@ static GOptionEntry gatt_options[] = {
 		"Characteristics Descriptor Discovery", NULL },
 	{ "listen", 0, 0, G_OPTION_ARG_NONE, &opt_listen,
 		"Listen for notifications and indications", NULL },
-	{ "le", 0, 0, G_OPTION_ARG_NONE, &opt_le,
-		"Use Bluetooth Low Energy transport", NULL },
 	{ "interactive", 'I', G_OPTION_FLAG_IN_MAIN, G_OPTION_ARG_NONE,
 		&opt_interactive, "Use interactive mode", NULL },
 	{ NULL },
@@ -591,7 +588,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (opt_interactive) {
-		interactive(opt_dst, opt_le);
+		interactive(opt_dst, opt_psm);
 		goto done;
 	}
 
@@ -616,7 +613,7 @@ int main(int argc, char *argv[])
 	}
 
 	chan = gatt_connect(opt_src, opt_dst, opt_sec_level,
-					opt_psm, opt_mtu, opt_le, connect_cb);
+					opt_psm, opt_mtu, connect_cb);
 	if (chan == NULL) {
 		got_error = TRUE;
 		goto done;
