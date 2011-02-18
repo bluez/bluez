@@ -234,10 +234,8 @@ void btd_event_bonding_complete(bdaddr_t *local, bdaddr_t *peer,
 	if (!get_adapter_and_device(local, peer, &adapter, &device, create))
 		return;
 
-	if (!device)
-		return;
-
-	device_bonding_complete(device, status);
+	if (device)
+		device_bonding_complete(device, status);
 }
 
 void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
