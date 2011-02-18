@@ -59,6 +59,8 @@
 #define FMT_KILOGRAM_UUID		0xA010
 #define FMT_HANGING_UUID		0xA011
 
+static GSList *sdp_handles = NULL;
+
 static int register_attributes(void)
 {
 	const char *desc_out_temp = "Outside Temperature";
@@ -75,6 +77,7 @@ static int register_attributes(void)
 		0xD4, 0x49, 0x11, 0x96, 0x31, 0xDE, 0xA8, 0xDC, 0x74, 0xEE,
 		0xFE };
 	uint8_t atval[256];
+	uint32_t handle;
 	uuid_t uuid;
 	int len;
 
@@ -100,6 +103,11 @@ static int register_attributes(void)
 	atval[0] = 0x00;
 	atval[1] = 0x00;
 	attrib_db_add(0x0111, &uuid, ATT_NONE, ATT_AUTHENTICATION, atval, 2);
+
+	/* Add an SDP record for the above service */
+	handle = attrib_create_sdp(0x0100, "Battery State Service");
+	if (handle)
+		sdp_handles = g_slist_prepend(sdp_handles, GUINT_TO_POINTER(handle));
 
 	/* Thermometer: primary service definition */
 	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
@@ -172,6 +180,11 @@ static int register_attributes(void)
 	len = strlen(desc_out_hum);
 	strncpy((char *) atval, desc_out_hum, len);
 	attrib_db_add(0x0214, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
+
+	/* Add an SDP record for the above service */
+	handle = attrib_create_sdp(0x0200, "Thermometer");
+	if (handle)
+		sdp_handles = g_slist_prepend(sdp_handles, GUINT_TO_POINTER(handle));
 
 	/* Secondary Service: Manufacturer Service */
 	sdp_uuid16_create(&uuid, GATT_SND_SVC_UUID);
@@ -299,6 +312,11 @@ static int register_attributes(void)
 	strncpy((char *) atval, desc_weight, len);
 	attrib_db_add(0x0685, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
 
+	/* Add an SDP record for the above service */
+	handle = attrib_create_sdp(0x0680, "Weight Service");
+	if (handle)
+		sdp_handles = g_slist_prepend(sdp_handles, GUINT_TO_POINTER(handle));
+
 	return 0;
 }
 
@@ -309,4 +327,10 @@ int server_example_init(void)
 
 void server_example_exit(void)
 {
+	while (sdp_handles) {
+		uint32_t handle = GPOINTER_TO_UINT(sdp_handles->data);
+
+		attrib_free_sdp(handle);
+		sdp_handles = g_slist_remove(sdp_handles, sdp_handles->data);
+	}
 }

@@ -70,7 +70,8 @@ struct group_elem {
 static GIOChannel *l2cap_io = NULL;
 static GIOChannel *le_io = NULL;
 static GSList *clients = NULL;
-static uint32_t sdp_handle = 0;
+static uint32_t gatt_sdp_handle = 0;
+static uint32_t gap_sdp_handle = 0;
 
 /* GAP attribute handles */
 static uint16_t name_handle = 0x0000;
@@ -85,14 +86,19 @@ static uuid_t snd_uuid = {
 			.value.uuid16 = GATT_SND_SVC_UUID
 };
 
-static sdp_record_t *server_record_new(void)
+static sdp_record_t *server_record_new(uuid_t *uuid, uint16_t start, uint16_t end)
 {
-	sdp_list_t *svclass_id, *apseq, *proto[2], *profiles, *root, *aproto;
+	sdp_list_t *svclass_id, *apseq, *proto[2], *root, *aproto;
 	uuid_t root_uuid, proto_uuid, gatt_uuid, l2cap;
-	sdp_profile_desc_t profile;
 	sdp_record_t *record;
 	sdp_data_t *psm, *sh, *eh;
-	uint16_t lp = GATT_PSM, start = 0x0001, end = 0xffff;
+	uint16_t lp = GATT_PSM;
+
+	if (uuid == NULL)
+		return NULL;
+
+	if (start > end)
+		return NULL;
 
 	record = sdp_record_alloc();
 	if (record == NULL)
@@ -103,16 +109,9 @@ static sdp_record_t *server_record_new(void)
 	sdp_set_browse_groups(record, root);
 	sdp_list_free(root, NULL);
 
-	sdp_uuid16_create(&gatt_uuid, GENERIC_ATTRIB_SVCLASS_ID);
-	svclass_id = sdp_list_append(NULL, &gatt_uuid);
+	svclass_id = sdp_list_append(NULL, uuid);
 	sdp_set_service_classes(record, svclass_id);
 	sdp_list_free(svclass_id, NULL);
-
-	sdp_uuid16_create(&profile.uuid, GENERIC_ATTRIB_PROFILE_ID);
-	profile.version = 0x0100;
-	profiles = sdp_list_append(NULL, &profile);
-	sdp_set_profile_descs(record, profiles);
-	sdp_list_free(profiles, NULL);
 
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
 	proto[0] = sdp_list_append(NULL, &l2cap);
@@ -130,11 +129,6 @@ static sdp_record_t *server_record_new(void)
 
 	aproto = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
-
-	sdp_set_info_attr(record, "Generic Attribute Profile", "BlueZ", NULL);
-
-	sdp_set_url_attr(record, "http://www.bluez.org/",
-			"http://www.bluez.org/", "http://www.bluez.org/");
 
 	sdp_set_service_id(record, gatt_uuid);
 
@@ -530,6 +524,40 @@ static int attribute_cmp(gconstpointer a1, gconstpointer a2)
 	return attrib1->handle - attrib2->handle;
 }
 
+static struct attribute *find_primary_range(uint16_t start, uint16_t *end)
+{
+	struct attribute *attrib;
+	guint h = start;
+	GSList *l;
+
+	if (end == NULL)
+		return NULL;
+
+	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
+
+	if (!l)
+		return NULL;
+
+	attrib = l->data;
+
+	if (sdp_uuid_cmp(&attrib->uuid, &prim_uuid) != 0)
+		return NULL;
+
+	*end = start;
+
+	for (l = l->next; l; l = l->next) {
+		struct attribute *a = l->data;
+
+		if (sdp_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
+				sdp_uuid_cmp(&a->uuid, &snd_uuid) == 0)
+			break;
+
+		*end = a->handle;
+	}
+
+	return attrib;
+}
+
 static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 							uint8_t *pdu, int len)
 {
@@ -798,7 +826,7 @@ static void confirm_event(GIOChannel *io, void *user_data)
 	return;
 }
 
-static void register_core_services(void)
+static gboolean register_core_services(void)
 {
 	uint8_t atval[256];
 	uuid_t uuid;
@@ -835,17 +863,37 @@ static void register_core_services(void)
 	att_put_u16(appearance, &atval[0]);
 	attrib_db_add(appearance_handle, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, 2);
+	gap_sdp_handle = attrib_create_sdp(0x0001, "Generic Access Profile");
+
+	if (gap_sdp_handle == 0) {
+		error("Failed to register GAP service record");
+		goto failed;
+	}
 
 	/* GATT service: primary service definition */
 	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	att_put_u16(GENERIC_ATTRIB_PROFILE_ID, &atval[0]);
 	attrib_db_add(0x0010, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+
+	gatt_sdp_handle = attrib_create_sdp(0x0010,
+						"Generic Attribute Profile");
+	if (gatt_sdp_handle == 0) {
+		error("Failed to register GATT service record");
+		goto failed;
+	}
+
+	return TRUE;
+
+failed:
+	if (gap_sdp_handle)
+		remove_record_from_server(gap_sdp_handle);
+
+	return FALSE;
 }
 
 int attrib_server_init(void)
 {
 	GError *gerr = NULL;
-	sdp_record_t *record;
 
 	/* BR/EDR socket */
 	l2cap_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
@@ -861,21 +909,8 @@ int attrib_server_init(void)
 		return -1;
 	}
 
-	record = server_record_new();
-	if (record == NULL) {
-		error("Unable to create GATT service record");
+	if (!register_core_services())
 		goto failed;
-	}
-
-	if (add_record_to_server(BDADDR_ANY, record) < 0) {
-		error("Failed to register GATT service record");
-		sdp_record_free(record);
-		goto failed;
-	}
-
-	sdp_handle = record->handle;
-
-	register_core_services();
 
 	if (!main_opts.le)
 		return 0;
@@ -934,8 +969,58 @@ void attrib_server_exit(void)
 
 	g_slist_free(clients);
 
-	if (sdp_handle)
-		remove_record_from_server(sdp_handle);
+	if (gatt_sdp_handle)
+		remove_record_from_server(gatt_sdp_handle);
+
+	if (gap_sdp_handle)
+		remove_record_from_server(gap_sdp_handle);
+}
+
+uint32_t attrib_create_sdp(uint16_t handle, const char *name)
+{
+	sdp_record_t *record;
+	struct attribute *a;
+	uint16_t end = 0;
+	uuid_t svc, gap_uuid;
+
+	a = find_primary_range(handle, &end);
+
+	if (a == NULL)
+		return 0;
+
+	if (a->len == 2)
+		sdp_uuid16_create(&svc, att_get_u16(a->data));
+	else if (a->len == 16)
+		sdp_uuid128_create(&svc, a->data);
+	else
+		return 0;
+
+	record = server_record_new(&svc, handle, end);
+
+	if (record == NULL)
+		return 0;
+
+	if (name)
+		sdp_set_info_attr(record, name, "BlueZ", NULL);
+
+	sdp_uuid16_create(&gap_uuid, GENERIC_ACCESS_PROFILE_ID);
+	if (sdp_uuid_cmp(&svc, &gap_uuid) == 0) {
+		sdp_set_url_attr(record, "http://www.bluez.org/",
+				"http://www.bluez.org/",
+				"http://www.bluez.org/");
+	}
+
+	if (add_record_to_server(BDADDR_ANY, record) < 0)
+		sdp_record_free(record);
+	else
+		return record->handle;
+
+	return 0;
+}
+
+void attrib_free_sdp(uint32_t sdp_handle)
+{
+	remove_record_from_server(sdp_handle);
 }
 
 int attrib_db_add(uint16_t handle, uuid_t *uuid, int read_reqs, int write_reqs,
