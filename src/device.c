@@ -2010,7 +2010,7 @@ void device_simple_pairing_complete(struct btd_device *device, uint8_t status)
 		agent_cancel(auth->agent);
 }
 
-static void device_authentication_complete(struct btd_device *device)
+static void device_auth_req_free(struct btd_device *device)
 {
 	g_free(device->authr);
 	device->authr = NULL;
@@ -2032,7 +2032,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 		return;
 	}
 
-	device_authentication_complete(device);
+	device_auth_req_free(device);
 
 	/* If we're already paired nothing more is needed */
 	if (device->paired)
@@ -2228,7 +2228,7 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 
 	if (err < 0) {
 		error("Failed requesting authentication");
-		device_authentication_complete(device);
+		device_auth_req_free(device);
 	}
 
 	return err;
@@ -2285,7 +2285,7 @@ void device_cancel_authentication(struct btd_device *device, gboolean aborted)
 	if (!aborted)
 		cancel_authentication(auth);
 
-	device_authentication_complete(device);
+	device_auth_req_free(device);
 }
 
 gboolean device_is_authenticating(struct btd_device *device)
