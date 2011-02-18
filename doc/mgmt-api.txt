@@ -431,3 +431,12 @@ Event Code		0x000F
 Event Parameters	Controller_Index (2 Octets)
 			Address (6 Octets)
 			Value (4 Octets)
+
+
+Authentication Failed Event
+===========================
+
+Event Code		0x0010
+Event Parameters	Controller_Index (2 Octets)
+			Address (6 Octets)
+			Status (1 Octet)

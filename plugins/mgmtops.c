@@ -451,6 +451,8 @@ static void mgmt_new_key(int sk, void *buf, size_t len)
 	btd_event_link_key_notify(&info->bdaddr, &ev->key.bdaddr,
 					ev->key.val, ev->key.type,
 					ev->key.pin_len);
+
+	btd_event_bonding_complete(&info->bdaddr, &ev->key.bdaddr, 0);
 }
 
 static void mgmt_device_connected(int sk, void *buf, size_t len)
@@ -532,6 +534,9 @@ static void mgmt_connect_failed(int sk, void *buf, size_t len)
 	info = &controllers[index];
 
 	btd_event_conn_failed(&info->bdaddr, &ev->bdaddr, ev->status);
+
+	/* In the case of security mode 3 devices */
+	btd_event_bonding_complete(&info->bdaddr, &ev->bdaddr, ev->status);
 }
 
 static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
@@ -992,6 +997,9 @@ static void disconnect_complete(int sk, void *buf, size_t len)
 	info = &controllers[index];
 
 	btd_event_disconn_complete(&info->bdaddr, &rp->bdaddr);
+
+	btd_event_bonding_complete(&info->bdaddr, &rp->bdaddr,
+						HCI_CONNECTION_TERMINATED);
 }
 
 static void pair_device_complete(int sk, void *buf, size_t len)
@@ -1162,6 +1170,31 @@ static void mgmt_controller_error(int sk, void *buf, size_t len)
 	DBG("index %u error_code %u", index, ev->error_code);
 }
 
+static void mgmt_auth_failed(int sk, void *buf, size_t len)
+{
+	struct controller_info *info;
+	struct mgmt_ev_auth_failed *ev = buf;
+	uint16_t index;
+
+	if (len < sizeof(*ev)) {
+		error("Too small mgmt_auth_failed event packet");
+		return;
+	}
+
+	index = btohs(bt_get_unaligned(&ev->index));
+
+	DBG("hci%u auth failed status %u", index, ev->status);
+
+	if (index > max_index) {
+		error("Unexpected index %u in auth_failed event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	btd_event_bonding_complete(&info->bdaddr, &ev->bdaddr, ev->status);
+}
+
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
@@ -1249,6 +1282,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_USER_CONFIRM_REQUEST:
 		mgmt_user_confirm_request(sk, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_AUTH_FAILED:
+		mgmt_auth_failed(sk, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u", opcode);
