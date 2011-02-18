@@ -1042,6 +1042,8 @@ static void modem_removed(const char *path)
 
 	g_free(net.operator_name);
 	net.operator_name = NULL;
+	net.status = NETWORK_REG_STATUS_NOSERV;
+	net.signals_bar = 0;
 
 	g_free(modem_obj_path);
 	modem_obj_path = NULL;
