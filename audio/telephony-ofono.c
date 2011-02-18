@@ -935,6 +935,15 @@ static int parse_network_properties(DBusMessageIter *properties)
 				AG_FEATURE_ENHANCED_CALL_CONTROL |
 				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
 				AG_FEATURE_THREE_WAY_CALLING;
+	int i;
+
+	/* Reset indicators */
+	for (i = 0; ofono_indicators[i].desc != NULL; i++) {
+		if (g_str_equal(ofono_indicators[i].desc, "battchg"))
+			ofono_indicators[i].val = 5;
+		else
+			ofono_indicators[i].val = 0;
+	}
 
 	while (dbus_message_iter_get_arg_type(properties)
 						== DBUS_TYPE_DICT_ENTRY) {
