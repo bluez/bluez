@@ -639,7 +639,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 		uint8_t *pdu, int len)
 {
-	channel->mtu = MIN(mtu, ATT_MAX_MTU);
+	channel->mtu = MIN(mtu, channel->mtu);
 
 	return enc_mtu_resp(channel->mtu, pdu, len);
 }
