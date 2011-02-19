@@ -124,7 +124,8 @@ static int register_attributes(void)
 	/* Thermometer: Include */
 	att_put_u16(0x0550, &atval[0]);
 	att_put_u16(0x0568, &atval[2]);
-	attrib_db_add(0x0202, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 4);
+	att_put_u16(VENDOR_SPECIFIC_SVC_UUID, &atval[4]);
+	attrib_db_add(0x0202, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 6);
 
 	/* Thermometer: temperature characteristic */
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
