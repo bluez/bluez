@@ -1005,6 +1005,7 @@ static void disconnect_complete(int sk, void *buf, size_t len)
 static void pair_device_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_rp_pair_device *rp = buf;
+	struct controller_info *info;
 	uint16_t index;
 	char addr[18];
 
@@ -1018,6 +1019,15 @@ static void pair_device_complete(int sk, void *buf, size_t len)
 	ba2str(&rp->bdaddr, addr);
 
 	DBG("hci%d %s pairing complete status %u", index, addr, rp->status);
+
+	if (index > max_index) {
+		error("Unexpected index %u in pair_device complete", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	btd_event_bonding_complete(&info->bdaddr, &rp->bdaddr, rp->status);
 }
 
 static void get_connections_complete(int sk, void *buf, size_t len)
