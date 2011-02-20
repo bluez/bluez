@@ -1,3 +1,14 @@
+ver 4.89:
+	Fix issue with name resolving when discovery is suspended.
+	Fix issue with parsing flags of advertising report.
+	Fix issue with SEP handling if interface is disabled.
+	Fix issue with device object creation on disconnect event.
+	Fix issue with indicators whenever the driver is initialized.
+	Fix issue with call indicator when parsing call info reply.
+	Fix issue with crash and allowed GATT MTU was too large.
+	Add support for SDP record of Primary GATT services.
+	Add support for interactive mode for GATT utility.
+
 ver 4.88:
 	Fix issue with HID channel reference count handling.
 	Fix issue with daemon exit on badly formatted AT+VTS.
