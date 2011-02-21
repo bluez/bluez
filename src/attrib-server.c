@@ -486,13 +486,6 @@ static int find_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 		}
 	}
 
-	if (range) {
-		if (l == NULL) {
-			/* Avoids another iteration */
-			range->end = 0xFFFF;
-		}
-	}
-
 	if (matches == NULL)
 		return enc_error_resp(ATT_OP_FIND_BY_TYPE_REQ, start,
 				ATT_ECODE_ATTR_NOT_FOUND, opdu, mtu);
