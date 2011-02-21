@@ -469,6 +469,9 @@ static int find_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 
 			range = g_new0(struct att_range, 1);
 			range->start = a->handle;
+			/* It is allowed to have end group handle the same as
+			 * start handle, for groups with only one attribute. */
+			range->end = a->handle;
 
 			matches = g_slist_append(matches, range);
 		} else if (range) {
@@ -487,12 +490,6 @@ static int find_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 		if (l == NULL) {
 			/* Avoids another iteration */
 			range->end = 0xFFFF;
-		} else if (range->end == 0) {
-			/* Broken requests: requested End Handle is not
-			 * 0xFFFF. Given handle is in the middle of a
-			 * service definition. */
-			matches = g_slist_remove(matches, range);
-			g_free(range);
 		}
 	}
 
