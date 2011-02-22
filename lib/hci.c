@@ -2767,3 +2767,40 @@ int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
 
 	return 0;
 }
+
+int hci_le_conn_update(int dd, uint16_t handle, uint16_t min_interval,
+			uint16_t max_interval, uint16_t latency,
+			uint16_t supervision_timeout, int to)
+{
+	evt_le_connection_update_complete evt;
+	le_connection_update_cp cp;
+	struct hci_request rq;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.handle = handle;
+	cp.min_interval = min_interval;
+	cp.max_interval = max_interval;
+	cp.latency = latency;
+	cp.supervision_timeout = supervision_timeout;
+	cp.min_ce_length = htobs(0x0001);
+	cp.max_ce_length = htobs(0x0001);
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_CONN_UPDATE;
+	rq.cparam = &cp;
+	rq.clen = LE_CONN_UPDATE_CP_SIZE;
+	rq.event = EVT_LE_CONN_UPDATE_COMPLETE;
+	rq.rparam = &evt;
+	rq.rlen = sizeof(evt);
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (evt.status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
