@@ -217,13 +217,19 @@ static void cmd_primary(int argcp, char **argvp)
 static struct {
 	const char *cmd;
 	void (*func)(int argcp, char **argvp);
+	const char *params;
 	const char *desc;
 } commands[] = {
-	{ "help",	cmd_help,	"Show this help"},
-	{ "exit",	cmd_exit,	"Exit interactive mode"},
-	{ "connect",	cmd_connect,	"Connect to a remote device"},
-	{ "disconnect",	cmd_disconnect,	"Disconnect from a remote device"},
-	{ "primary",	cmd_primary,	"Primary Service Discovery"},
+	{ "help",		cmd_help,	"",
+		"Show this help"},
+	{ "exit",		cmd_exit,	"",
+		"Exit interactive mode" },
+	{ "connect",		cmd_connect,	"[address]",
+		"Connect to a remote device" },
+	{ "disconnect",		cmd_disconnect,	"",
+		"Disconnect from a remote device" },
+	{ "primary",		cmd_primary,	"[UUID]",
+		"Primary Service Discovery" },
 	{ NULL, NULL, NULL}
 };
 
@@ -232,7 +238,8 @@ static void cmd_help(int argcp, char **argvp)
 	int i;
 
 	for (i = 0; commands[i].cmd; i++)
-		printf("%-12s\t%s\n", commands[i].cmd, commands[i].desc);
+		printf("%-15s %-25s %s\n", commands[i].cmd,
+				commands[i].params, commands[i].desc);
 }
 
 static void parse_line(char *line_read)
