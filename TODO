@@ -72,6 +72,12 @@ Low Energy
   Priority: Medium
   Complexity: C1
 
+- Static random address setup and storage. Once this address is written
+  in the a given remote, the address can not be changed anymore.
+
+  Priority: Low
+  Complexity: C1
+
 - Device Name Characteristic is a GAP characteristic for Low Energy. This
   characteristic shall be integrated/used in the discovery procedure. The
   ideia is to report the value of this characteristic using DeviceFound signals.
