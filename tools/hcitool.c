@@ -2563,8 +2563,8 @@ static struct {
 	{ "clkoff", cmd_clkoff, "Read clock offset"                    },
 	{ "clock",  cmd_clock,  "Read local or remote clock"           },
 	{ "lescan", cmd_lescan, "Start LE scan"                        },
-	{ "lecc",   cmd_lecc,   "Create a LE Connection",              },
-	{ "ledc",   cmd_ledc,   "Disconnect a LE Connection",          },
+	{ "lecc",   cmd_lecc,   "Create a LE Connection"               },
+	{ "ledc",   cmd_ledc,   "Disconnect a LE Connection"           },
 	{ NULL, NULL, 0 }
 };
 
