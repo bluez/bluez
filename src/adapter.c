@@ -516,8 +516,10 @@ static DBusMessage *set_discoverable(DBusConnection *conn, DBusMessage *msg,
 
 	mode = discoverable ? MODE_DISCOVERABLE : MODE_CONNECTABLE;
 
-	if (mode == adapter->mode)
+	if (mode == adapter->mode) {
+		adapter->global_mode = mode;
 		return dbus_message_new_method_return(msg);
+	}
 
 	err = set_mode(adapter, mode, msg);
 	if (err < 0)
@@ -541,8 +543,10 @@ static DBusMessage *set_powered(DBusConnection *conn, DBusMessage *msg,
 
 	mode = MODE_OFF;
 
-	if (mode == adapter->mode)
+	if (mode == adapter->mode) {
+		adapter->global_mode = mode;
 		return dbus_message_new_method_return(msg);
+	}
 
 	err = set_mode(adapter, mode, msg);
 	if (err < 0)
@@ -2477,8 +2481,12 @@ static void set_mode_complete(struct btd_adapter *adapter)
 
 		if (err < 0)
 			reply = btd_error_failed(msg, strerror(-err));
-		else
+		else {
+			if (strcmp(dbus_message_get_member(msg),
+						"SetProperty") == 0)
+				adapter->global_mode = adapter->mode;
 			reply = g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		}
 
 		g_dbus_send_message(connection, reply);
 	}
