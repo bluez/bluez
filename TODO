@@ -105,14 +105,6 @@ ATT/GATT
   Priority: Medium
   Complexity: C2
 
-- gatttool: add an interactive command prompt mode. Many LE devices
-  expect the connection to stay up a long time and disable advertising
-  after a disconnection so it's inconvenient to use gatttool in the
-  current "single operation at a time" mode.
-
-  Priority: Medium
-  Complexity: C2
-
 - gatttool should have the ability to wait for req responses before
   quitting (some servers require a small sleep even with cmd's). Maybe a
   --delay-exit or --timeout command line switch.
