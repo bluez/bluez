@@ -87,7 +87,8 @@ ATT/GATT
   Priority: Medium
   Complexity: C1
 
-- Add ATT/GATT parsing to hcidump
+- ATT/GATT parsing to hcidump. Partially implemented, missing to fix
+  multiple advertises in the same event and RSSI.
 
   Priority: Medium
   Complexity: C2
