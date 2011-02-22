@@ -155,7 +155,8 @@ ATT/GATT
   Priority: Low
   Complexity: C1
 
-- Long reads/writes don't work (consisting of multiple request packets)
+- Long write is not implemented. Attribute server, client and command line
+  tool shall be changed to support this feature.
 
   Priority: Low
   Complexity: C2
