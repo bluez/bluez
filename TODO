@@ -78,6 +78,14 @@ Low Energy
   Priority: Low
   Complexity: C1
 
+- Reconnection address: Reconnection address is a non resolvable private
+  address that the central writes in the peripheral. BlueZ will support
+  multiple profiles, it is not clear how it needs to be implemented.
+  Further discussion is necessary.
+
+  Priority: Low
+  Complexity: C2
+
 - Device Name Characteristic is a GAP characteristic for Low Energy. This
   characteristic shall be integrated/used in the discovery procedure. The
   ideia is to report the value of this characteristic using DeviceFound signals.
