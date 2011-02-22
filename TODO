@@ -65,6 +65,13 @@ Low Energy
   Priority: Medium
   Complexity: C2
 
+- Privacy: When privacy is enabled in the adapter, LE scanning/connection
+  should use a private address. StartDiscovery method shall be changed and
+  new adapter property shall be added.
+
+  Priority: Medium
+  Complexity: C1
+
 - Device Name Characteristic is a GAP characteristic for Low Energy. This
   characteristic shall be integrated/used in the discovery procedure. The
   ideia is to report the value of this characteristic using DeviceFound signals.
