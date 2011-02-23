@@ -115,7 +115,8 @@ AC_DEFUN([AC_PATH_GLIB], [
 ])
 
 AC_DEFUN([AC_PATH_GSTREAMER], [
-	PKG_CHECK_MODULES(GSTREAMER, gstreamer-0.10 gstreamer-plugins-base-0.10, gstreamer_found=yes, gstreamer_found=no)
+	PKG_CHECK_MODULES(GSTREAMER, gstreamer-0.10 >= 0.10.30 gstreamer-plugins-base-0.10, gstreamer_found=yes,
+				AC_MSG_WARN(GStreamer library version 0.10.30 or later is required);gstreamer_found=no)
 	AC_SUBST(GSTREAMER_CFLAGS)
 	AC_SUBST(GSTREAMER_LIBS)
 	GSTREAMER_PLUGINSDIR=`$PKG_CONFIG --variable=pluginsdir gstreamer-0.10`
