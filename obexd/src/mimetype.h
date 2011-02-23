@@ -36,6 +36,7 @@ struct obex_mime_type_driver {
 	ssize_t (*read) (void *object, void *buf, size_t count, uint8_t *hi,
 							unsigned int *flags);
 	ssize_t (*write) (void *object, const void *buf, size_t count);
+	int (*flush) (void *object);
 	int (*remove) (const char *name);
 	int (*set_io_watch) (void *object, obex_object_io_func func,
 				void *user_data);

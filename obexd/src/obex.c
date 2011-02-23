@@ -613,6 +613,11 @@ write:
 		os->pending -= w;
 	}
 
+	/* Flush on EOS */
+	if (os->size != OBJECT_SIZE_UNKNOWN && os->size == os->offset &&
+							os->driver->flush)
+		return os->driver->flush(os->object) > 0 ? -EAGAIN : 0;
+
 	return 0;
 }
 
@@ -702,7 +707,7 @@ static gboolean handle_async_io(void *object, int flags, int err,
 
 	if (flags & (G_IO_IN | G_IO_PRI))
 		ret = obex_write_stream(os, os->obex, os->obj);
-	else if (flags & G_IO_OUT)
+	else if ((flags & G_IO_OUT) && os->pending > 0)
 		ret = obex_read_stream(os, os->obex, os->obj);
 
 proceed:
@@ -1089,8 +1094,25 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	}
 
 	err = os->service->put(os, obj, os->service_data);
-	if (err < 0)
+	if (err < 0) {
 		os_set_response(obj, err);
+		return;
+	}
+
+	/* Check if there is a body and it is not empty (size > 0), otherwise
+	   openobex won't notify us with OBEX_EV_STREAMAVAIL and it gonna reply
+	   right away */
+	if (os->size != 0)
+		return;
+
+	/* Flush immediatly since there is nothing to write so the driver
+	   has a chance to do something before we reply */
+	if (os->object && os->driver && os->driver->flush &&
+					os->driver->flush(os->object) > 0) {
+		OBEX_SuspendRequest(obex, obj);
+		os->obj = obj;
+		os->driver->set_io_watch(os->object, handle_async_io, os);
+	}
 }
 
 static void obex_event_cb(obex_t *obex, obex_object_t *obj, int mode,
