@@ -199,13 +199,14 @@ static uint8_t client_set_notifications(struct attribute *attr,
 	struct gatt_channel *channel = user_data;
 	struct attribute *last_chr_val = NULL;
 	uint16_t cfg_val;
+	uint8_t props;
 	uuid_t uuid;
 	GSList *l;
 
 	cfg_val = att_get_u16(attr->data);
 
 	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	for (l = database; l != NULL; l = l->next) {
+	for (l = database, props = 0; l != NULL; l = l->next) {
 		struct attribute *a = l->data;
 		static uint16_t handle = 0;
 
@@ -213,6 +214,7 @@ static uint8_t client_set_notifications(struct attribute *attr,
 			break;
 
 		if (sdp_uuid_cmp(&a->uuid, &uuid) == 0) {
+			props = att_get_u8(&a->data[0]);
 			handle = att_get_u16(&a->data[1]);
 			continue;
 		}
@@ -224,8 +226,11 @@ static uint8_t client_set_notifications(struct attribute *attr,
 	if (last_chr_val == NULL)
 		return 0;
 
-	/* FIXME: Characteristic properties shall be checked for
-	 * Notification/Indication permissions. */
+	if ((cfg_val & 0x0001) && !(props & ATT_CHAR_PROPER_NOTIFY))
+		return ATT_ECODE_WRITE_NOT_PERM;
+
+	if ((cfg_val & 0x0002) && !(props & ATT_CHAR_PROPER_INDICATE))
+		return ATT_ECODE_WRITE_NOT_PERM;
 
 	if (cfg_val & 0x0001)
 		channel->notify = g_slist_append(channel->notify, last_chr_val);
