@@ -307,7 +307,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 						NULL, NULL, NULL);
 	case ATT_OP_HANDLE_NOTIFY:
 		if (characteristic_set_value(chr, &pdu[3], len - 3) < 0)
-			DBG("Can't change Characteristic %0x02x", handle);
+			DBG("Can't change Characteristic 0x%02x", handle);
 
 		g_slist_foreach(prim->watchers, update_watchers, chr);
 		break;
