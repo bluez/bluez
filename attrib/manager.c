@@ -32,6 +32,7 @@
 
 #include "../src/adapter.h"
 #include "../src/device.h"
+#include "hcid.h"
 
 #include "manager.h"
 #include "client.h"
@@ -84,19 +85,20 @@ int attrib_manager_init(DBusConnection *conn)
 
 	btd_register_device_driver(&client_driver);
 
-	/*
-	 * FIXME: Add config file option to allow
-	 * enable/disable the GATT server and client.
-	 */
 
-	return server_example_init();
+	if (main_opts.attrib_server)
+		return server_example_init();
+
+	return 0;
 }
 
 void attrib_manager_exit(void)
 {
 	btd_unregister_device_driver(&client_driver);
 
-	server_example_exit();
+	if (main_opts.attrib_server)
+		server_example_exit();
+
 	attrib_client_exit();
 
 	dbus_connection_unref(connection);
