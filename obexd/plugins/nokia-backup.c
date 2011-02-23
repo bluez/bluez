@@ -278,6 +278,13 @@ static ssize_t backup_write(void *object, const void *buf, size_t count)
 	return ret;
 }
 
+static int backup_flush(void *object)
+{
+	DBG("%p", object);
+
+	return 0;
+}
+
 static struct obex_mime_type_driver backup = {
 	.target = FTP_TARGET,
 	.target_size = TARGET_SIZE,
@@ -286,6 +293,7 @@ static struct obex_mime_type_driver backup = {
 	.close = backup_close,
 	.read = backup_read,
 	.write = backup_write,
+	.flush = backup_flush,
 };
 
 static int backup_init(void)
