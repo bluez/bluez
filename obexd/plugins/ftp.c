@@ -150,6 +150,12 @@ struct ftp_session {
 	char *folder;
 };
 
+struct pcsuite_session {
+	struct ftp_session *ftp;
+	char *lock_file;
+	int fd;
+};
+
 static void set_folder(struct ftp_session *ftp, const char *new_folder)
 {
 	g_free(ftp->folder);
@@ -390,6 +396,128 @@ static void ftp_disconnect(struct obex_session *os, void *user_data)
 	g_free(ftp);
 }
 
+static void *pcsuite_connect(struct obex_session *os, int *err)
+{
+	struct pcsuite_session *pcsuite;
+	struct ftp_session *ftp;
+	int fd;
+	char *filename;
+
+	DBG("");
+
+	ftp = ftp_connect(os, err);
+	if (ftp == NULL)
+		return NULL;
+
+	filename = g_build_filename(g_get_home_dir(), ".pcsuite", NULL);
+
+	fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644);
+	if (fd < 0 && errno != EEXIST) {
+		error("open(%s): %s(%d)", filename, strerror(errno), errno);
+		goto fail;
+	}
+
+	/* Try to remove the file before retrying since it could be
+	   that some process left/crash without removing it */
+	if (fd < 0) {
+		if (remove(filename) < 0) {
+			error("remove(%s): %s(%d)", filename, strerror(errno),
+									errno);
+			goto fail;
+		}
+
+		fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644);
+		if (fd < 0) {
+			error("open(%s): %s(%d)", filename, strerror(errno),
+									errno);
+			goto fail;
+		}
+	}
+
+	DBG("%s created", filename);
+
+	pcsuite = g_new0(struct pcsuite_session, 1);
+	pcsuite->ftp = ftp;
+	pcsuite->lock_file = filename;
+	pcsuite->fd = fd;
+
+	DBG("session %p created", pcsuite);
+
+	if (err)
+		*err = 0;
+
+	return pcsuite;
+
+fail:
+	if (ftp)
+		ftp_disconnect(os, ftp);
+	if (err)
+		*err = -errno;
+
+	g_free(filename);
+
+	return NULL;
+}
+
+static int pcsuite_get(struct obex_session *os, obex_object_t *obj,
+					gboolean *stream, void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	return ftp_get(os, obj, stream, pcsuite->ftp);
+}
+
+static int pcsuite_chkput(struct obex_session *os, void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	return ftp_chkput(os, pcsuite->ftp);
+}
+
+static int pcsuite_put(struct obex_session *os, obex_object_t *obj,
+							void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	return ftp_put(os, obj, pcsuite->ftp);
+}
+
+static int pcsuite_setpath(struct obex_session *os, obex_object_t *obj,
+							void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	return ftp_setpath(os, obj, pcsuite->ftp);
+}
+
+static void pcsuite_disconnect(struct obex_session *os, void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	if (pcsuite->fd >= 0)
+		close(pcsuite->fd);
+
+	if (pcsuite->lock_file) {
+		remove(pcsuite->lock_file);
+		g_free(pcsuite->lock_file);
+	}
+
+	if (pcsuite->ftp)
+		ftp_disconnect(os, pcsuite->ftp);
+
+	g_free(pcsuite);
+}
+
 static struct obex_service_driver pcsuite = {
 	.name = "Nokia OBEX PC Suite Services",
 	.service = OBEX_PCSUITE,
@@ -399,12 +527,12 @@ static struct obex_service_driver pcsuite = {
 	.target_size = TARGET_SIZE,
 	.who = PCSUITE_WHO,
 	.who_size = PCSUITE_WHO_SIZE,
-	.connect = ftp_connect,
-	.get = ftp_get,
-	.put = ftp_put,
-	.chkput = ftp_chkput,
-	.setpath = ftp_setpath,
-	.disconnect = ftp_disconnect
+	.connect = pcsuite_connect,
+	.get = pcsuite_get,
+	.put = pcsuite_put,
+	.chkput = pcsuite_chkput,
+	.setpath = pcsuite_setpath,
+	.disconnect = pcsuite_disconnect
 };
 
 static struct obex_service_driver ftp = {
