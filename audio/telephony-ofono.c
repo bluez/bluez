@@ -1116,7 +1116,7 @@ static void get_modems_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusMessageIter iter, entry;
 
-	DBG("list_modem_reply is called\n");
+	DBG("");
 	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_error_init(&err);

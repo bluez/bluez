@@ -172,13 +172,14 @@ static void element_end(GMarkupParseContext *context,
 			int ret = sdp_attr_add(ctx_data->record, ctx_data->attr_id,
 							ctx_data->stack_head->data);
 			if (ret == -1)
-				DBG("Trouble adding attribute\n");
+				DBG("Could not add attribute 0x%04x",
+							ctx_data->attr_id);
 
 			ctx_data->stack_head->data = NULL;
 			sdp_xml_data_free(ctx_data->stack_head);
 			ctx_data->stack_head = NULL;
 		} else {
-			DBG("No data for attribute 0x%04x\n", ctx_data->attr_id);
+			DBG("No data for attribute 0x%04x", ctx_data->attr_id);
 		}
 		return;
 	}
