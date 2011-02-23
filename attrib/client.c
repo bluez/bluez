@@ -272,8 +272,16 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	struct primary *prim;
 	GSList *lprim, *lchr;
 	uint8_t opdu[ATT_MAX_MTU];
-	guint handle = att_get_u16(&pdu[1]);
+	guint handle;
 	uint16_t olen;
+
+	if (len < 3) {
+		DBG("Malformed notification/indication packet (opcode 0x%02x)",
+									pdu[0]);
+		return;
+	}
+
+	handle = att_get_u16(&pdu[1]);
 
 	for (lprim = gatt->primary, prim = NULL, chr = NULL; lprim;
 						lprim = lprim->next) {
