@@ -123,6 +123,9 @@ struct attribute {
 	uuid_t uuid;
 	int read_reqs;
 	int write_reqs;
+	uint8_t (*read_cb)(struct attribute *a, gpointer user_data);
+	uint8_t (*write_cb)(struct attribute *a, gpointer user_data);
+	gpointer cb_user_data;
 	int len;
 	uint8_t data[0];
 };

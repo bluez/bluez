@@ -229,6 +229,10 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 
 		status = att_check_reqs(channel, ATT_OP_READ_BY_GROUP_REQ,
 								a->read_reqs);
+
+		if (status == 0x00 && a->read_cb)
+			status = a->read_cb(a, a->cb_user_data);
+
 		if (status) {
 			g_slist_foreach(groups, (GFunc) g_free, NULL);
 			g_slist_free(groups);
@@ -317,6 +321,10 @@ static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 
 		status = att_check_reqs(channel, ATT_OP_READ_BY_TYPE_REQ,
 								a->read_reqs);
+
+		if (status == 0x00 && a->read_cb)
+			status = a->read_cb(a, a->cb_user_data);
+
 		if (status) {
 			g_slist_free(types);
 			return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ,
@@ -564,6 +572,10 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 	a = l->data;
 
 	status = att_check_reqs(channel, ATT_OP_READ_REQ, a->read_reqs);
+
+	if (status == 0x00 && a->read_cb)
+		status = a->read_cb(a, a->cb_user_data);
+
 	if (status)
 		return enc_error_resp(ATT_OP_READ_REQ, handle, status, pdu,
 									len);
@@ -591,6 +603,10 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 					ATT_ECODE_INVALID_OFFSET, pdu, len);
 
 	status = att_check_reqs(channel, ATT_OP_READ_BLOB_REQ, a->read_reqs);
+
+	if (status == 0x00 && a->read_cb)
+		status = a->read_cb(a, a->cb_user_data);
+
 	if (status)
 		return enc_error_resp(ATT_OP_READ_BLOB_REQ, handle, status,
 								pdu, len);
@@ -622,6 +638,13 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 
 	memcpy(&uuid, &a->uuid, sizeof(uuid_t));
 	attrib_db_update(handle, &uuid, value, vlen);
+
+	if (a->write_cb) {
+		status = a->write_cb(a, a->cb_user_data);
+		if (status)
+			return enc_error_resp(ATT_OP_WRITE_REQ, handle, status,
+								pdu, len);
+	}
 
 	return enc_write_resp(pdu, len);
 }
@@ -1013,8 +1036,8 @@ void attrib_free_sdp(uint32_t sdp_handle)
 	remove_record_from_server(sdp_handle);
 }
 
-int attrib_db_add(uint16_t handle, uuid_t *uuid, int read_reqs, int write_reqs,
-						const uint8_t *value, int len)
+struct attribute *attrib_db_add(uint16_t handle, uuid_t *uuid, int read_reqs,
+				int write_reqs, const uint8_t *value, int len)
 {
 	struct attribute *a;
 
@@ -1030,7 +1053,7 @@ int attrib_db_add(uint16_t handle, uuid_t *uuid, int read_reqs, int write_reqs,
 
 	database = g_slist_insert_sorted(database, a, attribute_cmp);
 
-	return 0;
+	return a;
 }
 
 int attrib_db_update(uint16_t handle, uuid_t *uuid, const uint8_t *value,
