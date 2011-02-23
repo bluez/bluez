@@ -158,6 +158,8 @@ struct pcsuite_session {
 
 static void set_folder(struct ftp_session *ftp, const char *new_folder)
 {
+	DBG("%p folder %s", ftp, new_folder);
+
 	g_free(ftp->folder);
 
 	ftp->folder = new_folder ? g_strdup(new_folder) : NULL;
@@ -170,6 +172,8 @@ static int get_by_type(struct ftp_session *ftp, const char *type)
 	const char *name = obex_get_name(os);
 	char *path;
 	int err;
+
+	DBG("%p name %s type %s", ftp, name, type);
 
 	if (type == NULL && name == NULL)
 		return -EBADR;
@@ -190,6 +194,8 @@ static void *ftp_connect(struct obex_session *os, int *err)
 	struct ftp_session *ftp;
 	const char *root_folder;
 
+	DBG("");
+
 	root_folder = obex_get_root_folder(os);
 
 	manager_register_session(os);
@@ -201,6 +207,8 @@ static void *ftp_connect(struct obex_session *os, int *err)
 	if (err)
 		*err = 0;
 
+	DBG("session %p created", ftp);
+
 	return ftp;
 }
 
@@ -210,6 +218,8 @@ static int ftp_get(struct obex_session *os, obex_object_t *obj,
 	struct ftp_session *ftp = user_data;
 	const char *type = obex_get_type(os);
 	int ret;
+
+	DBG("%p", ftp);
 
 	if (ftp->folder == NULL)
 		return -ENOENT;
@@ -228,6 +238,8 @@ static int ftp_delete(struct ftp_session *ftp, const char *name)
 {
 	char *path;
 	int ret = 0;
+
+	DBG("%p name %s", ftp, name);
 
 	if (!(ftp->folder && name))
 		return -EINVAL;
@@ -248,6 +260,8 @@ static int ftp_chkput(struct obex_session *os, void *user_data)
 	const char *name = obex_get_name(os);
 	char *path;
 	int ret;
+
+	DBG("%p name %s", ftp, name);
 
 	if (name == NULL)
 		return -EBADR;
@@ -270,6 +284,8 @@ static int ftp_put(struct obex_session *os, obex_object_t *obj,
 	struct ftp_session *ftp = user_data;
 	const char *name = obex_get_name(os);
 	ssize_t size = obex_get_size(os);
+
+	DBG("%p name %s size %zd", ftp, name, size);
 
 	if (ftp->folder == NULL)
 		return -EPERM;
@@ -302,6 +318,8 @@ static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
 	name = obex_get_name(os);
 	root_folder = obex_get_root_folder(os);
 	root = g_str_equal(root_folder, ftp->folder);
+
+	DBG("%p name %s", ftp, name);
 
 	/* Check flag "Backup" */
 	if ((nonhdr[0] & 0x01) == 0x01) {
@@ -389,6 +407,8 @@ done:
 static void ftp_disconnect(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
+
+	DBG("%p", ftp);
 
 	manager_unregister_session(os);
 
