@@ -965,6 +965,30 @@ static void confirm_event(GIOChannel *io, void *user_data)
 	return;
 }
 
+static void attrib_notify_clients(struct attribute *attr)
+{
+	guint handle = attr->handle;
+	GSList *l;
+
+	for (l = clients; l; l = l->next) {
+		struct gatt_channel *channel = l->data;
+
+		/* Notification */
+		if (g_slist_find_custom(channel->notify,
+					GUINT_TO_POINTER(handle), handle_cmp)) {
+			uint8_t pdu[ATT_MAX_MTU];
+			uint16_t len;
+
+			len = enc_notification(attr, pdu, channel->mtu);
+			if (len == 0)
+				continue;
+
+			g_attrib_send(channel->attrib, 0, pdu[0], pdu, len,
+							NULL, NULL, NULL);
+		}
+	}
+}
+
 static gboolean register_core_services(void)
 {
 	uint8_t atval[256];
@@ -1208,6 +1232,8 @@ int attrib_db_update(uint16_t handle, uuid_t *uuid, const uint8_t *value,
 		memcpy(&a->uuid, uuid, sizeof(uuid_t));
 	a->len = len;
 	memcpy(a->data, value, len);
+
+	attrib_notify_clients(a);
 
 	return 0;
 }
