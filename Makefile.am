@@ -143,6 +143,13 @@ audio_libtelephony_a_SOURCES = audio/telephony.h audio/telephony-dummy.c \
 				audio/telephony-maemo6.c
 endif
 
+if SAPPLUGIN
+builtin_modules += sap
+builtin_sources += sap/main.c \
+			sap/manager.h sap/manager.c \
+			sap/server.h sap/server.c
+endif
+
 if INPUTPLUGIN
 builtin_modules += input
 builtin_sources += input/main.c \
