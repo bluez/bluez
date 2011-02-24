@@ -195,7 +195,6 @@ void g_attrib_unref(GAttrib *attrib)
 		g_io_channel_unref(attrib->io);
 	}
 
-
 	if (attrib->destroy)
 		attrib->destroy(attrib->destroy_user_data);
 
