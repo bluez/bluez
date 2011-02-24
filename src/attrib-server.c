@@ -92,7 +92,7 @@ static uuid_t snd_uuid = {
 static sdp_record_t *server_record_new(uuid_t *uuid, uint16_t start, uint16_t end)
 {
 	sdp_list_t *svclass_id, *apseq, *proto[2], *root, *aproto;
-	uuid_t root_uuid, proto_uuid, gatt_uuid, l2cap;
+	uuid_t root_uuid, proto_uuid, l2cap;
 	sdp_record_t *record;
 	sdp_data_t *psm, *sh, *eh;
 	uint16_t lp = GATT_PSM;
@@ -132,8 +132,6 @@ static sdp_record_t *server_record_new(uuid_t *uuid, uint16_t start, uint16_t en
 
 	aproto = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
-
-	sdp_set_service_id(record, gatt_uuid);
 
 	sdp_data_free(psm);
 	sdp_data_free(sh);
