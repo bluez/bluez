@@ -36,12 +36,15 @@
 #include "btio.h"
 #include "gattrib.h"
 
+#define GATT_TIMEOUT 30
+
 struct _GAttrib {
 	GIOChannel *io;
 	gint refs;
 	gint mtu;
 	guint read_watch;
 	guint write_watch;
+	guint timeout_watch;
 	GQueue *queue;
 	GSList *events;
 	guint next_cmd_id;
@@ -164,16 +167,10 @@ static void event_destroy(struct event *evt)
 	g_free(evt);
 }
 
-void g_attrib_unref(GAttrib *attrib)
+static void attrib_destroy(GAttrib *attrib)
 {
 	GSList *l;
 	struct command *c;
-
-	if (!attrib)
-		return;
-
-	if (g_atomic_int_dec_and_test(&attrib->refs) == FALSE)
-		return;
 
 	while ((c = g_queue_pop_head(attrib->queue)))
 		command_destroy(c);
@@ -187,6 +184,9 @@ void g_attrib_unref(GAttrib *attrib)
 	g_slist_free(attrib->events);
 	attrib->events = NULL;
 
+	if (attrib->timeout_watch > 0)
+		g_source_remove(attrib->timeout_watch);
+
 	if (attrib->write_watch > 0)
 		g_source_remove(attrib->write_watch);
 
@@ -199,6 +199,17 @@ void g_attrib_unref(GAttrib *attrib)
 		attrib->destroy(attrib->destroy_user_data);
 
 	g_free(attrib);
+}
+
+void g_attrib_unref(GAttrib *attrib)
+{
+	if (!attrib)
+		return;
+
+	if (g_atomic_int_dec_and_test(&attrib->refs) == FALSE)
+		return;
+
+	attrib_destroy(attrib);
 }
 
 GIOChannel *g_attrib_get_channel(GAttrib *attrib)
@@ -231,6 +242,15 @@ gboolean g_attrib_set_destroy_function(GAttrib *attrib,
 	attrib->destroy_user_data = user_data;
 
 	return TRUE;
+}
+
+static gboolean disconnect_timeout(gpointer data)
+{
+	struct _GAttrib *attrib = data;
+
+	attrib_destroy(attrib);
+
+	return FALSE;
 }
 
 static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
@@ -267,6 +287,10 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
 
 	cmd->sent = TRUE;
 
+	if (attrib->timeout_watch == 0)
+		attrib->timeout_watch = g_timeout_add_seconds(GATT_TIMEOUT,
+						disconnect_timeout, attrib);
+
 	return FALSE;
 }
 
@@ -294,6 +318,11 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	gsize len;
 	GIOStatus iostat;
 	gboolean qempty;
+
+	if (attrib->timeout_watch > 0) {
+		g_source_remove(attrib->timeout_watch);
+		attrib->timeout_watch = 0;
+	}
 
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
 		attrib->read_watch = 0;
