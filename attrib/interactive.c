@@ -238,6 +238,19 @@ static void cmd_primary(int argcp, char **argvp)
 	gatt_discover_primary(attrib, &uuid, primary_by_uuid_cb, NULL);
 }
 
+static int strtohandle(const char *src)
+{
+	char *e;
+	int dst;
+
+	errno = 0;
+	dst = strtoll(src, &e, 16);
+	if (errno != 0 || *e != '\0')
+		return -EINVAL;
+
+	return dst;
+}
+
 static void cmd_char(int argcp, char **argvp)
 {
 	int start = 0x0001;
@@ -249,28 +262,22 @@ static void cmd_char(int argcp, char **argvp)
 	}
 
 	if (argcp > 1) {
-		char *e;
-
-		start = strtoll(argvp[1], &e, 16);
-		if (errno != 0 || *e != '\0') {
+		start = strtohandle(argvp[1]);
+		if (start < 0) {
 			printf("Invalid start handle: %s\n", argvp[1]);
 			return;
 		}
 	}
 
 	if (argcp > 2) {
-		char *e;
-
-		end = strtoll(argvp[2], &e, 16);
-		if (errno != 0 || *e != '\0') {
+		end = strtohandle(argvp[2]);
+		if (end < 0) {
 			printf("Invalid end handle: %s\n", argvp[2]);
 			return;
 		}
 	}
 
 	gatt_discover_char(attrib, start, end, char_cb, NULL);
-
-	return;
 }
 
 static struct {
