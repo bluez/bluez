@@ -620,6 +620,7 @@ int main(int argc, char *argv[])
 	}
 
 	attrib = g_attrib_new(chan);
+	g_io_channel_unref(chan);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 
@@ -634,7 +635,6 @@ int main(int argc, char *argv[])
 
 	g_main_loop_unref(event_loop);
 
-	g_io_channel_unref(chan);
 	g_attrib_unref(attrib);
 
 done:
