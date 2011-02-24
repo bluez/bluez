@@ -62,13 +62,17 @@ class Watcher(dbus.service.Object):
         print "Watcher: new value for %s: %s" % (char, dbus_type_to_str(newvalue))
 
 def handle_characteristics(char):
-    for (path, props) in char.GetCharacteristics().iteritems():
-        if options.char_path and path != options.char_path:
+    char.Discover()
+    for c in char.GetProperties()["Characteristics"]:
+        char = dbus.Interface(bus.get_object("org.bluez", c),
+                "org.bluez.Characteristic")
+
+        if options.char_path and c != options.char_path:
             continue
 
         if not options.set_property:
-            ret = "Characteristic: %s\nProperties:\n" % path
-            for (k, v) in props.iteritems():
+            ret = "Characteristic: %s\nProperties:\n" % c
+            for (k, v) in char.GetProperties().iteritems():
                 ret += "\t%s: %s\n" % (k, dbus_type_to_str(v))
             print ret
         elif options.set_property.get(path, None):
