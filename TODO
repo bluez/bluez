@@ -119,6 +119,13 @@ ATT/GATT
   Priority: Medium
   Complexity: C2
 
+- Implement ATT PDU validation. Malformed PDUs can cause division by zero
+  when decoding PDUs. A proper error PDU should be returned for this case.
+  See decoding function in att.c file.
+
+  Priority: Medium
+  Complexity: C1
+
 - Agent for characteristics: Agent interface should be extended to support
   authorization per characteristic if the remote is not in the trusted list.
 
