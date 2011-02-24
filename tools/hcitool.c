@@ -2429,6 +2429,8 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 	uint8_t own_type = 0x00;
 	uint8_t scan_type = 0x01;
 	uint8_t filter_type = 0;
+	uint16_t interval = htobs(0x0010);
+	uint16_t window = htobs(0x0010);
 
 	for_each_opt(opt, lescan_options, NULL) {
 		switch (opt) {
@@ -2444,6 +2446,9 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 				fprintf(stderr, "Unknown discovery procedure\n");
 				exit(1);
 			}
+
+			interval = htobs(0x0012);
+			window = htobs(0x0012);
 			break;
 		default:
 			printf("%s", lescan_help);
@@ -2461,8 +2466,8 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	err = hci_le_set_scan_parameters(dd, scan_type, htobs(0x0010),
-					htobs(0x0010), own_type, 0x00);
+	err = hci_le_set_scan_parameters(dd, scan_type, interval, window,
+							own_type, 0x00);
 	if (err < 0) {
 		perror("Set scan parameters failed");
 		exit(1);
