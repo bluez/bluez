@@ -25,11 +25,14 @@
 #define __packed __attribute__((packed))
 #endif
 
+#define MGMT_INDEX_NONE			0xFFFF
+
 struct mgmt_hdr {
 	uint16_t opcode;
+	uint16_t index;
 	uint16_t len;
 } __packed;
-#define MGMT_HDR_SIZE	4
+#define MGMT_HDR_SIZE	6
 
 #define MGMT_OP_READ_VERSION		0x0001
 struct mgmt_rp_read_version {
@@ -49,11 +52,7 @@ struct mgmt_rp_read_index_list {
 } __packed;
 
 #define MGMT_OP_READ_INFO		0x0004
-struct mgmt_cp_read_info {
-	uint16_t index;
-} __packed;
 struct mgmt_rp_read_info {
-	uint16_t index;
 	uint8_t type;
 	uint8_t powered;
 	uint8_t connectable;
@@ -69,7 +68,6 @@ struct mgmt_rp_read_info {
 } __packed;
 
 struct mgmt_mode {
-	uint16_t index;
 	uint8_t val;
 } __packed;
 
@@ -83,27 +81,23 @@ struct mgmt_mode {
 
 #define MGMT_OP_ADD_UUID		0x0009
 struct mgmt_cp_add_uuid {
-	uint16_t index;
 	uint8_t uuid[16];
 	uint8_t svc_hint;
 } __packed;
 
 #define MGMT_OP_REMOVE_UUID		0x000A
 struct mgmt_cp_remove_uuid {
-	uint16_t index;
 	uint8_t uuid[16];
 } __packed;
 
 #define MGMT_OP_SET_DEV_CLASS		0x000B
 struct mgmt_cp_set_dev_class {
-	uint16_t index;
 	uint8_t major;
 	uint8_t minor;
 } __packed;
 
 #define MGMT_OP_SET_SERVICE_CACHE	0x000C
 struct mgmt_cp_set_service_cache {
-	uint16_t index;
 	uint8_t enable;
 } __packed;
 
@@ -116,7 +110,6 @@ struct mgmt_key_info {
 
 #define MGMT_OP_LOAD_KEYS		0x000D
 struct mgmt_cp_load_keys {
-	uint16_t index;
 	uint8_t debug_keys;
 	uint16_t key_count;
 	struct mgmt_key_info keys[0];
@@ -124,34 +117,26 @@ struct mgmt_cp_load_keys {
 
 #define MGMT_OP_REMOVE_KEY		0x000E
 struct mgmt_cp_remove_key {
-	uint16_t index;
 	bdaddr_t bdaddr;
 	uint8_t disconnect;
 } __packed;
 
 #define MGMT_OP_DISCONNECT		0x000F
 struct mgmt_cp_disconnect {
-	uint16_t index;
 	bdaddr_t bdaddr;
 } __packed;
 struct mgmt_rp_disconnect {
-	uint16_t index;
 	bdaddr_t bdaddr;
 } __packed;
 
 #define MGMT_OP_GET_CONNECTIONS		0x0010
-struct mgmt_cp_get_connections {
-	uint16_t index;
-} __packed;
 struct mgmt_rp_get_connections {
-	uint16_t index;
 	uint16_t conn_count;
 	bdaddr_t conn[0];
 } __packed;
 
 #define MGMT_OP_PIN_CODE_REPLY		0x0011
 struct mgmt_cp_pin_code_reply {
-	uint16_t index;
 	bdaddr_t bdaddr;
 	uint8_t pin_len;
 	uint8_t pin_code[16];
@@ -159,35 +144,29 @@ struct mgmt_cp_pin_code_reply {
 
 #define MGMT_OP_PIN_CODE_NEG_REPLY	0x0012
 struct mgmt_cp_pin_code_neg_reply {
-	uint16_t index;
 	bdaddr_t bdaddr;
 } __packed;
 
 #define MGMT_OP_SET_IO_CAPABILITY	0x0013
 struct mgmt_cp_set_io_capability {
-	uint16_t index;
 	uint8_t io_capability;
 } __packed;
 
 #define MGMT_OP_PAIR_DEVICE		0x0014
 struct mgmt_cp_pair_device {
-	uint16_t index;
 	bdaddr_t bdaddr;
 	uint8_t io_cap;
 } __packed;
 struct mgmt_rp_pair_device {
-	uint16_t index;
 	bdaddr_t bdaddr;
 	uint8_t status;
 } __packed;
 
 #define MGMT_OP_USER_CONFIRM_REPLY	0x0015
 struct mgmt_cp_user_confirm_reply {
-	uint16_t index;
 	bdaddr_t bdaddr;
 } __packed;
 struct mgmt_rp_user_confirm_reply {
-	uint16_t index;
 	bdaddr_t bdaddr;
 	uint8_t status;
 } __packed;
@@ -208,19 +187,12 @@ struct mgmt_ev_cmd_status {
 
 #define MGMT_EV_CONTROLLER_ERROR	0x0003
 struct mgmt_ev_controller_error {
-	uint16_t index;
 	uint8_t error_code;
 } __packed;
 
 #define MGMT_EV_INDEX_ADDED		0x0004
-struct mgmt_ev_index_added {
-	uint16_t index;
-} __packed;
 
 #define MGMT_EV_INDEX_REMOVED		0x0005
-struct mgmt_ev_index_removed {
-	uint16_t index;
-} __packed;
 
 #define MGMT_EV_POWERED			0x0006
 
@@ -232,46 +204,39 @@ struct mgmt_ev_index_removed {
 
 #define MGMT_EV_NEW_KEY			0x000A
 struct mgmt_ev_new_key {
-	uint16_t index;
 	struct mgmt_key_info key;
 	uint8_t old_key_type;
 } __packed;
 
 #define MGMT_EV_DEVICE_CONNECTED	0x000B
 struct mgmt_ev_device_connected {
-	uint16_t index;
 	bdaddr_t bdaddr;
 } __packed;
 
 #define MGMT_EV_DEVICE_DISCONNECTED	0x000C
 struct mgmt_ev_device_disconnected {
-	uint16_t index;
 	bdaddr_t bdaddr;
 } __packed;
 
 #define MGMT_EV_CONNECT_FAILED		0x000D
 struct mgmt_ev_connect_failed {
-	uint16_t index;
 	bdaddr_t bdaddr;
 	uint8_t status;
 } __packed;
 
 #define MGMT_EV_PIN_CODE_REQUEST	0x000E
 struct mgmt_ev_pin_code_request {
-	uint16_t index;
 	bdaddr_t bdaddr;
 } __packed;
 
 #define MGMT_EV_USER_CONFIRM_REQUEST	0x000F
 struct mgmt_ev_user_confirm_request {
-	uint16_t index;
 	bdaddr_t bdaddr;
 	uint32_t value;
 } __packed;
 
 #define MGMT_EV_AUTH_FAILED		0x0010
 struct mgmt_ev_auth_failed {
-	uint16_t index;
 	bdaddr_t bdaddr;
 	uint8_t status;
 } __packed;
