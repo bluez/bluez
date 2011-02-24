@@ -169,6 +169,47 @@ static void char_cb(GSList *characteristics, guint8 status, gpointer user_data)
 	rl_forced_update_display();
 }
 
+static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct att_data_list *list;
+	guint8 format;
+	int i;
+
+	if (status != 0) {
+		printf("Discover all characteristic descriptors failed: "
+						"%s\n", att_ecode2str(status));
+		return;
+	}
+
+	list = dec_find_info_resp(pdu, plen, &format);
+	if (list == NULL)
+		return;
+
+	printf("\n");
+	for (i = 0; i < list->num; i++) {
+		char uuidstr[MAX_LEN_UUID_STR];
+		uint16_t handle;
+		uint8_t *value;
+		uuid_t uuid;
+
+		value = list->data[i];
+		handle = att_get_u16(value);
+
+		if (format == 0x01)
+			sdp_uuid16_create(&uuid, att_get_u16(&value[2]));
+		else
+			sdp_uuid128_create(&uuid, &value[2]);
+
+		sdp_uuid2strn(&uuid, uuidstr, MAX_LEN_UUID_STR);
+		printf("handle: 0x%04x, uuid: %s\n", handle, uuidstr);
+	}
+
+	att_data_list_free(list);
+
+	rl_forced_update_display();
+}
+
 static void cmd_exit(int argcp, char **argvp)
 {
 	rl_callback_handler_remove();
@@ -280,6 +321,35 @@ static void cmd_char(int argcp, char **argvp)
 	gatt_discover_char(attrib, start, end, char_cb, NULL);
 }
 
+static void cmd_char_desc(int argcp, char **argvp)
+{
+	int start = 0x0001;
+	int end = 0xffff;
+
+	if (conn_state != STATE_CONNECTED) {
+		printf("Command failed: disconnected\n");
+		return;
+	}
+
+	if (argcp > 1) {
+		start = strtohandle(argvp[1]);
+		if (start < 0) {
+			printf("Invalid start handle: %s\n", argvp[1]);
+			return;
+		}
+	}
+
+	if (argcp > 2) {
+		end = strtohandle(argvp[2]);
+		if (end < 0) {
+			printf("Invalid end handle: %s\n", argvp[2]);
+			return;
+		}
+	}
+
+	gatt_find_info(attrib, start, end, char_desc_cb, NULL);
+}
+
 static struct {
 	const char *cmd;
 	void (*func)(int argcp, char **argvp);
@@ -298,6 +368,8 @@ static struct {
 		"Primary Service Discovery" },
 	{ "characteristics",	cmd_char,	"[start hnd] [end hnd]",
 		"Characteristics Discovery" },
+	{ "char-desc",		cmd_char_desc,	"[start hnd] [end hnd]",
+		"Characteristics Descriptor Discovery" },
 	{ NULL, NULL, NULL}
 };
 
