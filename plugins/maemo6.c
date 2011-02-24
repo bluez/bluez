@@ -135,8 +135,14 @@ static void adapter_powered(struct btd_adapter *adapter, gboolean powered)
 	DBusMessage *msg;
 	dbus_uint32_t radio_states = 0;
 	dbus_uint32_t radio_mask = MCE_RADIO_STATE_BLUETOOTH;
+	static gboolean startup = TRUE;
 
 	DBG("adapter_powered called with %d", powered);
+
+	if (startup) {
+		startup = FALSE;
+		return;
+	}
 
 	/* check if the plugin got the get_radio_states reply from the
 	 * mce when the adapter was not yet down during the power
