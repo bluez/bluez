@@ -41,7 +41,6 @@
 struct _GAttrib {
 	GIOChannel *io;
 	gint refs;
-	gint mtu;
 	guint read_watch;
 	guint write_watch;
 	guint timeout_watch;
@@ -397,7 +396,6 @@ GAttrib *g_attrib_new(GIOChannel *io)
 		return NULL;
 
 	attrib->io = g_io_channel_ref(io);
-	attrib->mtu = 512;
 	attrib->queue = g_queue_new();
 
 	attrib->read_watch = g_io_add_watch(attrib->io,
