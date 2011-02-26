@@ -2,8 +2,8 @@
  *
  *  OBEX Server
  *
- *  Copyright (C) 2010  Nokia Corporation
- *  Copyright (C) 2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2007-2010  Nokia Corporation
+ *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -26,22 +26,21 @@
 #include <config.h>
 #endif
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <fcntl.h>
-#include <wait.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdio.h>
 
 #include <glib.h>
 #include "gdbus.h"
-
 
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
@@ -49,8 +48,56 @@
 #include "plugin.h"
 #include "log.h"
 #include "obex.h"
+#include "dbus.h"
 #include "mimetype.h"
 #include "service.h"
+#include "ftp.h"
+
+#define PCSUITE_CHANNEL 24
+#define PCSUITE_WHO_SIZE 8
+
+#define PCSUITE_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
+<record>								\
+  <attribute id=\"0x0001\">						\
+    <sequence>								\
+      <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/>		\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0004\">						\
+    <sequence>								\
+      <sequence>							\
+        <uuid value=\"0x0100\"/>					\
+      </sequence>							\
+      <sequence>							\
+        <uuid value=\"0x0003\"/>					\
+        <uint8 value=\"%u\" name=\"channel\"/>				\
+      </sequence>							\
+      <sequence>							\
+        <uuid value=\"0x0008\"/>					\
+      </sequence>							\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0005\">						\
+    <sequence>								\
+      <uuid value=\"0x1002\"/>						\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0009\">						\
+    <sequence>								\
+      <sequence>							\
+        <uuid value=\"00005005-0000-1000-8000-0002ee000001\"/>		\
+        <uint16 value=\"0x0100\" name=\"version\"/>			\
+      </sequence>							\
+    </sequence>								\
+  </attribute>								\
+									\
+  <attribute id=\"0x0100\">						\
+    <text value=\"%s\" name=\"name\"/>					\
+  </attribute>								\
+</record>"
 
 #define BACKUP_BUS_NAME		"com.nokia.backup.plugin"
 #define BACKUP_PATH		"/com/nokia/backup"
@@ -58,8 +105,156 @@
 #define BACKUP_DBUS_TIMEOUT	(1000 * 60 * 15)
 
 static const uint8_t FTP_TARGET[TARGET_SIZE] = {
-	0xF9, 0xEC, 0x7B, 0xC4,  0x95, 0x3C, 0x11, 0xD2,
-	0x98, 0x4E, 0x52, 0x54,  0x00, 0xDC, 0x9E, 0x09  };
+			0xF9, 0xEC, 0x7B, 0xC4, 0x95, 0x3C, 0x11, 0xD2,
+			0x98, 0x4E, 0x52, 0x54, 0x00, 0xDC, 0x9E, 0x09 };
+
+static const uint8_t PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
+			'P','C',' ','S','u','i','t','e' };
+
+struct pcsuite_session {
+	struct ftp_session *ftp;
+	char *lock_file;
+	int fd;
+};
+
+static void *pcsuite_connect(struct obex_session *os, int *err)
+{
+	struct pcsuite_session *pcsuite;
+	struct ftp_session *ftp;
+	int fd;
+	char *filename;
+
+	DBG("");
+
+	ftp = ftp_connect(os, err);
+	if (ftp == NULL)
+		return NULL;
+
+	filename = g_build_filename(g_get_home_dir(), ".pcsuite", NULL);
+
+	fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644);
+	if (fd < 0 && errno != EEXIST) {
+		error("open(%s): %s(%d)", filename, strerror(errno), errno);
+		goto fail;
+	}
+
+	/* Try to remove the file before retrying since it could be
+	   that some process left/crash without removing it */
+	if (fd < 0) {
+		if (remove(filename) < 0) {
+			error("remove(%s): %s(%d)", filename, strerror(errno),
+									errno);
+			goto fail;
+		}
+
+		fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644);
+		if (fd < 0) {
+			error("open(%s): %s(%d)", filename, strerror(errno),
+									errno);
+			goto fail;
+		}
+	}
+
+	DBG("%s created", filename);
+
+	pcsuite = g_new0(struct pcsuite_session, 1);
+	pcsuite->ftp = ftp;
+	pcsuite->lock_file = filename;
+	pcsuite->fd = fd;
+
+	DBG("session %p created", pcsuite);
+
+	if (err)
+		*err = 0;
+
+	return pcsuite;
+
+fail:
+	if (ftp)
+		ftp_disconnect(os, ftp);
+	if (err)
+		*err = -errno;
+
+	g_free(filename);
+
+	return NULL;
+}
+
+static int pcsuite_get(struct obex_session *os, obex_object_t *obj,
+					gboolean *stream, void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	return ftp_get(os, obj, stream, pcsuite->ftp);
+}
+
+static int pcsuite_chkput(struct obex_session *os, void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	return ftp_chkput(os, pcsuite->ftp);
+}
+
+static int pcsuite_put(struct obex_session *os, obex_object_t *obj,
+							void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	return ftp_put(os, obj, pcsuite->ftp);
+}
+
+static int pcsuite_setpath(struct obex_session *os, obex_object_t *obj,
+							void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	return ftp_setpath(os, obj, pcsuite->ftp);
+}
+
+static void pcsuite_disconnect(struct obex_session *os, void *user_data)
+{
+	struct pcsuite_session *pcsuite = user_data;
+
+	DBG("%p", pcsuite);
+
+	if (pcsuite->fd >= 0)
+		close(pcsuite->fd);
+
+	if (pcsuite->lock_file) {
+		remove(pcsuite->lock_file);
+		g_free(pcsuite->lock_file);
+	}
+
+	if (pcsuite->ftp)
+		ftp_disconnect(os, pcsuite->ftp);
+
+	g_free(pcsuite);
+}
+
+static struct obex_service_driver pcsuite = {
+	.name = "Nokia OBEX PC Suite Services",
+	.service = OBEX_PCSUITE,
+	.channel = PCSUITE_CHANNEL,
+	.record = PCSUITE_RECORD,
+	.target = FTP_TARGET,
+	.target_size = TARGET_SIZE,
+	.who = PCSUITE_WHO,
+	.who_size = PCSUITE_WHO_SIZE,
+	.connect = pcsuite_connect,
+	.get = pcsuite_get,
+	.put = pcsuite_put,
+	.chkput = pcsuite_chkput,
+	.setpath = pcsuite_setpath,
+	.disconnect = pcsuite_disconnect
+};
 
 struct backup_object{
 	gchar *cmd;
@@ -296,14 +491,25 @@ static struct obex_mime_type_driver backup = {
 	.flush = backup_flush,
 };
 
-static int backup_init(void)
+static int pcsuite_init(void)
 {
-	return obex_mime_type_driver_register(&backup);
+	int err;
+
+	err = obex_service_driver_register(&pcsuite);
+	if (err < 0)
+		return err;
+
+	err = obex_mime_type_driver_register(&backup);
+	if (err < 0)
+		obex_service_driver_unregister(&pcsuite);
+
+	return err;
 }
 
-static void backup_exit(void)
+static void pcsuite_exit(void)
 {
 	obex_mime_type_driver_unregister(&backup);
+	obex_service_driver_unregister(&pcsuite);
 }
 
-OBEX_PLUGIN_DEFINE(backup, backup_init, backup_exit)
+OBEX_PLUGIN_DEFINE(pcsuite, pcsuite_init, pcsuite_exit)

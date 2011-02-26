@@ -50,6 +50,7 @@
 #include "dbus.h"
 #include "mimetype.h"
 #include "service.h"
+#include "ftp.h"
 
 #define LST_TYPE "x-obex/folder-listing"
 #define CAP_TYPE "x-obex/capability"
@@ -189,7 +190,7 @@ static int get_by_type(struct ftp_session *ftp, const char *type)
 	return err;
 }
 
-static void *ftp_connect(struct obex_session *os, int *err)
+void *ftp_connect(struct obex_session *os, int *err)
 {
 	struct ftp_session *ftp;
 	const char *root_folder;
@@ -212,8 +213,8 @@ static void *ftp_connect(struct obex_session *os, int *err)
 	return ftp;
 }
 
-static int ftp_get(struct obex_session *os, obex_object_t *obj,
-					gboolean *stream, void *user_data)
+int ftp_get(struct obex_session *os, obex_object_t *obj, gboolean *stream,
+							void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *type = obex_get_type(os);
@@ -254,7 +255,7 @@ static int ftp_delete(struct ftp_session *ftp, const char *name)
 	return ret;
 }
 
-static int ftp_chkput(struct obex_session *os, void *user_data)
+int ftp_chkput(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *name = obex_get_name(os);
@@ -278,8 +279,7 @@ static int ftp_chkput(struct obex_session *os, void *user_data)
 	return ret;
 }
 
-static int ftp_put(struct obex_session *os, obex_object_t *obj,
-						void *user_data)
+int ftp_put(struct obex_session *os, obex_object_t *obj, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *name = obex_get_name(os);
@@ -299,8 +299,7 @@ static int ftp_put(struct obex_session *os, obex_object_t *obj,
 	return 0;
 }
 
-static int ftp_setpath(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
+int ftp_setpath(struct obex_session *os, obex_object_t *obj, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *root_folder, *name;
@@ -404,7 +403,7 @@ done:
 	return err;
 }
 
-static void ftp_disconnect(struct obex_session *os, void *user_data)
+void ftp_disconnect(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 
@@ -415,145 +414,6 @@ static void ftp_disconnect(struct obex_session *os, void *user_data)
 	g_free(ftp->folder);
 	g_free(ftp);
 }
-
-static void *pcsuite_connect(struct obex_session *os, int *err)
-{
-	struct pcsuite_session *pcsuite;
-	struct ftp_session *ftp;
-	int fd;
-	char *filename;
-
-	DBG("");
-
-	ftp = ftp_connect(os, err);
-	if (ftp == NULL)
-		return NULL;
-
-	filename = g_build_filename(g_get_home_dir(), ".pcsuite", NULL);
-
-	fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644);
-	if (fd < 0 && errno != EEXIST) {
-		error("open(%s): %s(%d)", filename, strerror(errno), errno);
-		goto fail;
-	}
-
-	/* Try to remove the file before retrying since it could be
-	   that some process left/crash without removing it */
-	if (fd < 0) {
-		if (remove(filename) < 0) {
-			error("remove(%s): %s(%d)", filename, strerror(errno),
-									errno);
-			goto fail;
-		}
-
-		fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644);
-		if (fd < 0) {
-			error("open(%s): %s(%d)", filename, strerror(errno),
-									errno);
-			goto fail;
-		}
-	}
-
-	DBG("%s created", filename);
-
-	pcsuite = g_new0(struct pcsuite_session, 1);
-	pcsuite->ftp = ftp;
-	pcsuite->lock_file = filename;
-	pcsuite->fd = fd;
-
-	DBG("session %p created", pcsuite);
-
-	if (err)
-		*err = 0;
-
-	return pcsuite;
-
-fail:
-	if (ftp)
-		ftp_disconnect(os, ftp);
-	if (err)
-		*err = -errno;
-
-	g_free(filename);
-
-	return NULL;
-}
-
-static int pcsuite_get(struct obex_session *os, obex_object_t *obj,
-					gboolean *stream, void *user_data)
-{
-	struct pcsuite_session *pcsuite = user_data;
-
-	DBG("%p", pcsuite);
-
-	return ftp_get(os, obj, stream, pcsuite->ftp);
-}
-
-static int pcsuite_chkput(struct obex_session *os, void *user_data)
-{
-	struct pcsuite_session *pcsuite = user_data;
-
-	DBG("%p", pcsuite);
-
-	return ftp_chkput(os, pcsuite->ftp);
-}
-
-static int pcsuite_put(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
-{
-	struct pcsuite_session *pcsuite = user_data;
-
-	DBG("%p", pcsuite);
-
-	return ftp_put(os, obj, pcsuite->ftp);
-}
-
-static int pcsuite_setpath(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
-{
-	struct pcsuite_session *pcsuite = user_data;
-
-	DBG("%p", pcsuite);
-
-	return ftp_setpath(os, obj, pcsuite->ftp);
-}
-
-static void pcsuite_disconnect(struct obex_session *os, void *user_data)
-{
-	struct pcsuite_session *pcsuite = user_data;
-
-	DBG("%p", pcsuite);
-
-	if (pcsuite->fd >= 0)
-		close(pcsuite->fd);
-
-	if (pcsuite->lock_file) {
-		remove(pcsuite->lock_file);
-		g_free(pcsuite->lock_file);
-	}
-
-	if (pcsuite->ftp)
-		ftp_disconnect(os, pcsuite->ftp);
-
-	g_free(pcsuite);
-}
-
-static struct obex_service_driver pcsuite = {
-	.name = "Nokia OBEX PC Suite Services",
-	.service = OBEX_PCSUITE,
-	.channel = PCSUITE_CHANNEL,
-	.record = PCSUITE_RECORD,
-	.target = FTP_TARGET,
-	.target_size = TARGET_SIZE,
-	.who = PCSUITE_WHO,
-	.who_size = PCSUITE_WHO_SIZE,
-	.connect = pcsuite_connect,
-	.get = pcsuite_get,
-	.put = pcsuite_put,
-	.chkput = pcsuite_chkput,
-	.setpath = pcsuite_setpath,
-	.disconnect = pcsuite_disconnect
-};
 
 static struct obex_service_driver ftp = {
 	.name = "File Transfer server",
@@ -572,19 +432,12 @@ static struct obex_service_driver ftp = {
 
 static int ftp_init(void)
 {
-	int err;
-
-	err = obex_service_driver_register(&ftp);
-	if (err < 0)
-		return err;
-
-	return obex_service_driver_register(&pcsuite);
+	return obex_service_driver_register(&ftp);
 }
 
 static void ftp_exit(void)
 {
 	obex_service_driver_unregister(&ftp);
-	obex_service_driver_unregister(&pcsuite);
 }
 
 OBEX_PLUGIN_DEFINE(ftp, ftp_init, ftp_exit)
