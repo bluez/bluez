@@ -73,7 +73,7 @@
 #define COL_SENT 20
 #define COL_ANSWERED 21
 #define CONTACTS_ID_COL 22
-#define CONTACT_ID_PREFIX "contact:"
+#define CONTACT_ID_PREFIX "urn:uuid:"
 
 #define FAX_NUM_TYPE "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#FaxNumber"
 #define MOBILE_NUM_TYPE "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#CellPhoneNumber"
