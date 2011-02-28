@@ -135,11 +135,10 @@
 "\"NOTACALL\" \"false\" \"false\" "					\
 "?_contact "								\
 "WHERE {"								\
-"	?_contact a nco:PersonContact ;"				\
-"	nco:nameFamily ?_key ."						\
+"	?_contact a nco:PersonContact ."				\
 "	OPTIONAL {?_contact nco:hasAffiliation ?_role .}"		\
 "}"									\
-"ORDER BY ?_key tracker:id(?_contact)"
+"ORDER BY tracker:id(?_contact)"
 
 #define CONTACTS_QUERY_ALL_LIST						\
 	"SELECT ?c nco:nameFamily(?c) "					\
