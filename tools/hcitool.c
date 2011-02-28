@@ -2564,6 +2564,52 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 	hci_close_dev(dd);
 }
 
+static struct option lewladd_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lewladd_help =
+	"Usage:\n"
+	"\tlewladd <bdaddr>\n";
+
+static void cmd_lewladd(int dev_id, int argc, char **argv)
+{
+	int err, opt, dd;
+	bdaddr_t bdaddr;
+
+	for_each_opt(opt, lewladd_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lewladd_help);
+			return;
+		}
+	}
+
+	helper_arg(1, 1, &argc, &argv, lewladd_help);
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	str2ba(argv[0], &bdaddr);
+
+	err = hci_le_add_white_list(dd, &bdaddr, LE_PUBLIC_ADDRESS, 1000);
+	hci_close_dev(dd);
+
+	if (err < 0) {
+		err = errno;
+		fprintf(stderr, "Can't add to white list: %s(%d)\n",
+							strerror(err), err);
+		exit(1);
+	}
+}
+
 static struct option ledc_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
@@ -2725,6 +2771,7 @@ static struct {
 	{ "clkoff", cmd_clkoff, "Read clock offset"                    },
 	{ "clock",  cmd_clock,  "Read local or remote clock"           },
 	{ "lescan", cmd_lescan, "Start LE scan"                        },
+	{ "lewladd", cmd_lewladd, "Add device to LE White List"        },
 	{ "lecc",   cmd_lecc,   "Create a LE Connection"               },
 	{ "ledc",   cmd_ledc,   "Disconnect a LE Connection"           },
 	{ "lecup",  cmd_lecup,  "LE Connection Update"                 },

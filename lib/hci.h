@@ -75,6 +75,12 @@ enum {
 	HCI_RAW,
 };
 
+/* LE address type */
+enum {
+	LE_PUBLIC_ADDRESS = 0x00,
+	LE_RANDOM_ADDRESS = 0x01
+};
+
 /* HCI ioctl defines */
 #define HCIDEVUP	_IOW('H', 201, int)
 #define HCIDEVDOWN	_IOW('H', 202, int)
