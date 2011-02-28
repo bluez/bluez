@@ -809,7 +809,7 @@
 	"SELECT COUNT(?c) "						\
 	"WHERE {"							\
 		"?c a nco:PersonContact ."				\
-		"FILTER (regex(str(?c), \"contact:\"))"			\
+		"FILTER (regex(str(?c), \"urn:uuid:\"))"		\
 	"}"
 
 #define MISSED_CALLS_COUNT_QUERY					\
