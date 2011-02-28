@@ -132,6 +132,7 @@ int hci_le_conn_update(int dd, uint16_t handle, uint16_t min_interval,
 			uint16_t max_interval, uint16_t latency,
 			uint16_t supervision_timeout, int to);
 int hci_le_add_white_list(int dd, const bdaddr_t *bdaddr, uint8_t type, int to);
+int hci_le_rm_white_list(int dd, const bdaddr_t *bdaddr, uint8_t type, int to);
 int hci_for_each_dev(int flag, int(*func)(int dd, int dev_id, long arg), long arg);
 int hci_get_route(bdaddr_t *bdaddr);
 
