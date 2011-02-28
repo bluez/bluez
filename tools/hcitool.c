@@ -2702,6 +2702,49 @@ static void cmd_lewlsz(int dev_id, int argc, char **argv)
 	printf("White list size: %d\n", size);
 }
 
+static struct option lewlclr_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lewlclr_help =
+	"Usage:\n"
+	"\tlewlclr\n";
+
+static void cmd_lewlclr(int dev_id, int argc, char **argv)
+{
+	int err, dd, opt;
+
+	for_each_opt(opt, lewlclr_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lewlclr_help);
+			return;
+		}
+	}
+
+	helper_arg(0, 0, &argc, &argv, lewlclr_help);
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	err = hci_le_clear_white_list(dd, 1000);
+	hci_close_dev(dd);
+
+	if (err < 0) {
+		err = errno;
+		fprintf(stderr, "Can't clear white list: %s(%d)\n",
+							strerror(err), err);
+		exit(1);
+	}
+}
+
 static struct option ledc_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
@@ -2866,6 +2909,7 @@ static struct {
 	{ "lewladd",  cmd_lewladd, "Add device to LE White List"          },
 	{ "lewlrm",   cmd_lewlrm,  "Remove device from LE White List"     },
 	{ "lewlsz",   cmd_lewlsz,  "Read size of LE White List"           },
+	{ "lewlclr",  cmd_lewlclr, "Clear LE White list"                  },
 	{ "lecc",     cmd_lecc,    "Create a LE Connection"               },
 	{ "ledc",     cmd_ledc,    "Disconnect a LE Connection"           },
 	{ "lecup",    cmd_lecup,   "LE Connection Update"                 },

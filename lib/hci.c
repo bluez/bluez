@@ -1376,6 +1376,28 @@ int hci_le_read_white_list_size(int dd, uint8_t *size, int to)
 	return 0;
 }
 
+int hci_le_clear_white_list(int dd, int to)
+{
+	struct hci_request rq;
+	uint8_t status;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_CLEAR_WHITE_LIST;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	if (hci_send_req(dd, &rq, to) < 0)
+		return -1;
+
+	if (status) {
+		errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
 int hci_read_local_name(int dd, int len, char *name, int to)
 {
 	read_local_name_rp rp;
