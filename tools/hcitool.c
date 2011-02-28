@@ -2656,6 +2656,52 @@ static void cmd_lewlrm(int dev_id, int argc, char **argv)
 	}
 }
 
+static struct option lewlsz_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
+static const char *lewlsz_help =
+	"Usage:\n"
+	"\tlewlsz\n";
+
+static void cmd_lewlsz(int dev_id, int argc, char **argv)
+{
+	int err, dd, opt;
+	uint8_t size;
+
+	for_each_opt(opt, lewlsz_options, NULL) {
+		switch (opt) {
+		default:
+			printf("%s", lewlsz_help);
+			return;
+		}
+	}
+
+	helper_arg(0, 0, &argc, &argv, lewlsz_help);
+
+	if (dev_id < 0)
+		dev_id = hci_get_route(NULL);
+
+	dd = hci_open_dev(dev_id);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	err = hci_le_read_white_list_size(dd, &size, 1000);
+	hci_close_dev(dd);
+
+	if (err < 0) {
+		err = errno;
+		fprintf(stderr, "Can't read white list size: %s(%d)\n",
+							strerror(err), err);
+		exit(1);
+	}
+
+	printf("White list size: %d\n", size);
+}
+
 static struct option ledc_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
@@ -2819,6 +2865,7 @@ static struct {
 	{ "lescan",   cmd_lescan,  "Start LE scan"                        },
 	{ "lewladd",  cmd_lewladd, "Add device to LE White List"          },
 	{ "lewlrm",   cmd_lewlrm,  "Remove device from LE White List"     },
+	{ "lewlsz",   cmd_lewlsz,  "Read size of LE White List"           },
 	{ "lecc",     cmd_lecc,    "Create a LE Connection"               },
 	{ "ledc",     cmd_ledc,    "Disconnect a LE Connection"           },
 	{ "lecup",    cmd_lecup,   "LE Connection Update"                 },
