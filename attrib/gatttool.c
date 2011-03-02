@@ -572,7 +572,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (opt_interactive) {
-		interactive(opt_dst, opt_psm);
+		interactive(opt_src, opt_dst, opt_psm);
 		goto done;
 	}
 

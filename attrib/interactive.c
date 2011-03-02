@@ -691,13 +691,14 @@ static gboolean prompt_read(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 }
 
-int interactive(const gchar *dst, int psm)
+int interactive(const gchar *src, const gchar *dst, int psm)
 {
 	GIOChannel *pchan;
 	gint events;
 
 	opt_sec_level = g_strdup("low");
 
+	opt_src = g_strdup(src);
 	opt_dst = g_strdup(dst);
 	opt_psm = psm;
 
@@ -720,6 +721,7 @@ int interactive(const gchar *dst, int psm)
 	g_main_loop_unref(event_loop);
 	g_string_free(prompt, TRUE);
 
+	g_free(opt_src);
 	g_free(opt_dst);
 	g_free(opt_sec_level);
 
