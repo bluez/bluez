@@ -538,7 +538,7 @@ int main(int argc, char *argv[])
 	GIOChannel *chan;
 	GSourceFunc callback;
 
-	opt_sec_level = strdup("low");
+	opt_sec_level = g_strdup("low");
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);

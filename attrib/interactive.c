@@ -303,7 +303,7 @@ static void cmd_connect(int argcp, char **argvp)
 
 	if (argcp > 1) {
 		g_free(opt_dst);
-		opt_dst = strdup(argvp[1]);
+		opt_dst = g_strdup(argvp[1]);
 	}
 
 	if (opt_dst == NULL) {
@@ -585,7 +585,7 @@ static void cmd_sec_level(int argcp, char **argvp)
 	}
 
 	g_free(opt_sec_level);
-	opt_sec_level = strdup(argvp[1]);
+	opt_sec_level = g_strdup(argvp[1]);
 
 	if (conn_state != STATE_CONNECTED)
 		return;
@@ -696,9 +696,9 @@ int interactive(gchar *dst, int psm)
 	GIOChannel *pchan;
 	gint events;
 
-	opt_sec_level = strdup("low");
+	opt_sec_level = g_strdup("low");
 
-	opt_dst = strdup(dst);
+	opt_dst = g_strdup(dst);
 	opt_psm = psm;
 
 	prompt = g_string_new(NULL);
