@@ -2499,12 +2499,14 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 static struct option lecc_options[] = {
 	{ "help",	0, 0, 'h' },
 	{ "random",	0, 0, 'r' },
+	{ "whitelist",	0, 0, 'w' },
 	{ 0, 0, 0, 0 }
 };
 
 static const char *lecc_help =
 	"Usage:\n"
-	"\tlecc [--random] <bdaddr>\n";
+	"\tlecc [--random] <bdaddr>\n"
+	"\tlecc --whitelist\n";
 
 static void cmd_lecc(int dev_id, int argc, char **argv)
 {
@@ -2515,18 +2517,22 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 	uint8_t initiator_filter, own_bdaddr_type, peer_bdaddr_type;
 
 	peer_bdaddr_type = LE_PUBLIC_ADDRESS;
+	initiator_filter = 0; /* Use peer address */
 
 	for_each_opt(opt, lecc_options, NULL) {
 		switch (opt) {
 		case 'r':
 			peer_bdaddr_type = LE_RANDOM_ADDRESS;
 			break;
+		case 'w':
+			initiator_filter = 0x01; /* Use white list */
+			break;
 		default:
 			printf("%s", lecc_help);
 			return;
 		}
 	}
-	helper_arg(1, 1, &argc, &argv, lecc_help);
+	helper_arg(0, 1, &argc, &argv, lecc_help);
 
 	if (dev_id < 0)
 		dev_id = hci_get_route(NULL);
@@ -2537,11 +2543,12 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	str2ba(argv[0], &bdaddr);
+	memset(&bdaddr, 0, sizeof(bdaddr_t));
+	if (argv[0])
+		str2ba(argv[0], &bdaddr);
 
 	interval = htobs(0x0004);
 	window = htobs(0x0004);
-	initiator_filter = 0x00;
 	own_bdaddr_type = 0x00;
 	min_interval = htobs(0x000F);
 	max_interval = htobs(0x000F);
