@@ -452,6 +452,20 @@ static int adapter_set_mode(struct btd_adapter *adapter, uint8_t mode)
 	return 0;
 }
 
+static struct session_req *find_session_by_msg(GSList *list, const DBusMessage *msg)
+{
+	GSList *l;
+
+	for (l = list; l; l = l->next) {
+		struct session_req *req = l->data;
+
+		if (req->msg == msg)
+			return req;
+	}
+
+	return NULL;
+}
+
 static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
 			DBusMessage *msg)
 {
@@ -496,11 +510,18 @@ done:
 
 	DBG("%s", modestr);
 
-	if (msg != NULL)
-		/* Wait for mode change to reply */
-		adapter->pending_mode = create_session(adapter, connection,
-							msg, new_mode, NULL);
-	else
+	if (msg != NULL) {
+		struct session_req *req;
+
+		req = find_session_by_msg(adapter->mode_sessions, msg);
+		if (req) {
+			adapter->pending_mode = req;
+			session_ref(req);
+		} else
+			/* Wait for mode change to reply */
+			adapter->pending_mode = create_session(adapter,
+					connection, msg, new_mode, NULL);
+	} else
 		/* Nothing to reply just write the new mode */
 		adapter->mode = new_mode;
 
@@ -795,16 +816,25 @@ static void confirm_mode_cb(struct agent *agent, DBusError *derr, void *data)
 		return;
 	}
 
-	err = set_mode(req->adapter, req->mode, NULL);
+	err = set_mode(req->adapter, req->mode, req->msg);
 	if (err < 0)
 		reply = btd_error_failed(req->msg, strerror(-err));
-	else
+	else if (!req->adapter->pending_mode)
 		reply = dbus_message_new_method_return(req->msg);
+	else
+		reply = NULL;
 
-	g_dbus_send_message(req->conn, reply);
+	if (reply) {
+		/*
+		 * Send reply immediately only if there was an error changing
+		 * mode, or change is not needed. Otherwise, reply is sent in
+		 * set_mode_complete.
+		 */
+		g_dbus_send_message(req->conn, reply);
 
-	dbus_message_unref(req->msg);
-	req->msg = NULL;
+		dbus_message_unref(req->msg);
+		req->msg = NULL;
+	}
 
 	if (!find_session(req->adapter->mode_sessions, req->owner))
 		session_unref(req);
