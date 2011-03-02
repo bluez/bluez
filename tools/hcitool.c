@@ -2514,12 +2514,12 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 	uint16_t min_interval, supervision_timeout, window, handle;
 	uint8_t initiator_filter, own_bdaddr_type, peer_bdaddr_type;
 
-	peer_bdaddr_type = 0x00; /* Public device address */
+	peer_bdaddr_type = LE_PUBLIC_ADDRESS;
 
 	for_each_opt(opt, lecc_options, NULL) {
 		switch (opt) {
 		case 'r':
-			peer_bdaddr_type = 0x01; /* Random */
+			peer_bdaddr_type = LE_RANDOM_ADDRESS;
 			break;
 		default:
 			printf("%s", lecc_help);
