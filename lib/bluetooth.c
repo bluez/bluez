@@ -118,33 +118,24 @@ int ba2oui(const bdaddr_t *ba, char *str)
 
 int bachk(const char *str)
 {
-	char tmp[18], *ptr = tmp;
-
 	if (!str)
 		return -1;
 
 	if (strlen(str) != 17)
 		return -1;
 
-	memcpy(tmp, str, 18);
-
-	while (*ptr) {
-		*ptr = toupper(*ptr);
-		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
+	while (*str) {
+		if (!isxdigit(*str++))
 			return -1;
-		ptr++;
 
-		*ptr = toupper(*ptr);
-		if (*ptr < '0'|| (*ptr > '9' && *ptr < 'A') || *ptr > 'F')
+		if (!isxdigit(*str++))
 			return -1;
-		ptr++;
 
-		*ptr = toupper(*ptr);
-		if (*ptr == 0)
+		if (*str == 0)
 			break;
-		if (*ptr != ':')
+
+		if (*str++ != ':')
 			return -1;
-		ptr++;
 	}
 
 	return 0;
