@@ -137,6 +137,7 @@
 "WHERE {"								\
 "	?_contact a nco:PersonContact ."				\
 "	OPTIONAL {?_contact nco:hasAffiliation ?_role .}"		\
+"	FILTER (regex(str(?_contact), \"urn:uuid:\"))"			\
 "}"									\
 "ORDER BY tracker:id(?_contact)"
 
