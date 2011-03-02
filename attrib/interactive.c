@@ -691,7 +691,7 @@ static gboolean prompt_read(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 }
 
-int interactive(gchar *dst, int psm)
+int interactive(const gchar *dst, int psm)
 {
 	GIOChannel *pchan;
 	gint events;
