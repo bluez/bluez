@@ -2566,20 +2566,25 @@ static void cmd_lecc(int dev_id, int argc, char **argv)
 
 static struct option lewladd_options[] = {
 	{ "help",	0, 0, 'h' },
+	{ "random",	0, 0, 'r' },
 	{ 0, 0, 0, 0 }
 };
 
 static const char *lewladd_help =
 	"Usage:\n"
-	"\tlewladd <bdaddr>\n";
+	"\tlewladd [--random] <bdaddr>\n";
 
 static void cmd_lewladd(int dev_id, int argc, char **argv)
 {
 	int err, opt, dd;
 	bdaddr_t bdaddr;
+	uint8_t bdaddr_type = LE_PUBLIC_ADDRESS;
 
 	for_each_opt(opt, lewladd_options, NULL) {
 		switch (opt) {
+		case 'r':
+			bdaddr_type = LE_RANDOM_ADDRESS;
+			break;
 		default:
 			printf("%s", lewladd_help);
 			return;
@@ -2599,7 +2604,7 @@ static void cmd_lewladd(int dev_id, int argc, char **argv)
 
 	str2ba(argv[0], &bdaddr);
 
-	err = hci_le_add_white_list(dd, &bdaddr, LE_PUBLIC_ADDRESS, 1000);
+	err = hci_le_add_white_list(dd, &bdaddr, bdaddr_type, 1000);
 	hci_close_dev(dd);
 
 	if (err < 0) {
