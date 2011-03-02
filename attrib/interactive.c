@@ -433,6 +433,7 @@ static void cmd_char_desc(int argcp, char **argvp)
 static void cmd_read_hnd(int argcp, char **argvp)
 {
 	int handle;
+	int offset = 0;
 
 	if (conn_state != STATE_CONNECTED) {
 		printf("Command failed: disconnected\n");
@@ -450,7 +451,18 @@ static void cmd_read_hnd(int argcp, char **argvp)
 		return;
 	}
 
-	gatt_read_char(attrib, handle, char_read_cb, attrib);
+	if (argcp > 2) {
+		char *e;
+
+		errno = 0;
+		offset = strtol(argvp[2], &e, 0);
+		if (errno != 0 || *e != '\0') {
+			printf("Invalid offset: %s\n", argvp[2]);
+			return;
+		}
+	}
+
+	gatt_read_char(attrib, handle, offset, char_read_cb, attrib);
 }
 
 static void cmd_read_uuid(int argcp, char **argvp)
@@ -613,7 +625,7 @@ static struct {
 		"Characteristics Discovery" },
 	{ "char-desc",		cmd_char_desc,	"[start hnd] [end hnd]",
 		"Characteristics Descriptor Discovery" },
-	{ "char-read-hnd",	cmd_read_hnd,	"<handle>",
+	{ "char-read-hnd",	cmd_read_hnd,	"<handle> [offset]",
 		"Characteristics Value/Descriptor Read by handle" },
 	{ "char-read-uuid",	cmd_read_uuid,	"<UUID> [start hnd] [end hnd]",
 		"Characteristics Value/Descriptor Read by UUID" },

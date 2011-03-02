@@ -54,6 +54,7 @@ static int opt_end = 0xffff;
 static int opt_handle = -1;
 static int opt_mtu = 0;
 static int opt_psm = 0;
+static int opt_offset = 0;
 static gboolean opt_primary = FALSE;
 static gboolean opt_characteristics = FALSE;
 static gboolean opt_char_read = FALSE;
@@ -308,7 +309,7 @@ static gboolean characteristics_read(gpointer user_data)
 		return FALSE;
 	}
 
-	gatt_read_char(attrib, opt_handle, char_read_cb, attrib);
+	gatt_read_char(attrib, opt_handle, opt_offset, char_read_cb, attrib);
 
 	return FALSE;
 }
@@ -488,6 +489,8 @@ static GOptionEntry char_rw_options[] = {
 	{ "value", 'n' , 0, G_OPTION_ARG_STRING, &opt_value,
 		"Write characteristic value (required for write operation)",
 		"0x0001" },
+	{ "offset", 'o', 0, G_OPTION_ARG_INT, &opt_offset,
+		"Offset to long read characteristic by handle", "N"},
 	{NULL},
 };
 
