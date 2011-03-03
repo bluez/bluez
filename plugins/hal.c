@@ -33,7 +33,6 @@
 #include "plugin.h"
 #include "adapter.h"
 #include "log.h"
-#include "dbus-hci.h"
 
 static void formfactor_reply(DBusPendingCall *call, void *user_data)
 {
