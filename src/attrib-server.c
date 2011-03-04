@@ -899,7 +899,7 @@ done:
 static void connect_event(GIOChannel *io, GError *err, void *user_data)
 {
 	struct gatt_channel *channel;
-	GIOChannel **server_io = user_data;
+	uint16_t cid;
 	GError *gerr = NULL;
 
 	if (err) {
@@ -912,6 +912,7 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 	bt_io_get(io, BT_IO_L2CAP, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &channel->src,
 			BT_IO_OPT_DEST_BDADDR, &channel->dst,
+			BT_IO_OPT_CID, &cid,
 			BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
@@ -921,7 +922,7 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 		return;
 	}
 
-	if (server_io == &l2cap_io)
+	if (cid != GATT_CID)
 		channel->mtu = ATT_DEFAULT_L2CAP_MTU;
 	else
 		channel->mtu = ATT_DEFAULT_LE_MTU;
@@ -1046,7 +1047,7 @@ int attrib_server_init(void)
 
 	/* BR/EDR socket */
 	l2cap_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
-					&l2cap_io, NULL, &gerr,
+					NULL, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, BDADDR_ANY,
 					BT_IO_OPT_PSM, GATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
