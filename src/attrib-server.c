@@ -59,6 +59,7 @@ struct gatt_channel {
 	GSList *indicate;
 	GAttrib *attrib;
 	guint mtu;
+	gboolean le;
 	guint id;
 	gboolean encrypted;
 };
@@ -759,9 +760,18 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 		uint8_t *pdu, int len)
 {
-	channel->mtu = MIN(mtu, channel->mtu);
+	guint old_mtu = channel->mtu;
 
-	return enc_mtu_resp(channel->mtu, pdu, len);
+	if (mtu < ATT_DEFAULT_LE_MTU)
+		channel->mtu = ATT_DEFAULT_LE_MTU;
+	else
+		channel->mtu = MIN(mtu, channel->mtu);
+
+	bt_io_set(le_io, BT_IO_L2CAP, NULL,
+			BT_IO_OPT_OMTU, channel->mtu,
+			BT_IO_OPT_INVALID);
+
+	return enc_mtu_resp(old_mtu, pdu, len);
 }
 
 static void channel_disconnect(void *user_data)
@@ -831,6 +841,11 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 		length = read_blob(channel, start, offset, opdu, channel->mtu);
 		break;
 	case ATT_OP_MTU_REQ:
+		if (!channel->le) {
+			status = ATT_ECODE_REQ_NOT_SUPP;
+			goto done;
+		}
+
 		length = dec_mtu_req(ipdu, len, &mtu);
 		if (length == 0) {
 			status = ATT_ECODE_INVALID_PDU;
@@ -913,6 +928,7 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 			BT_IO_OPT_SOURCE_BDADDR, &channel->src,
 			BT_IO_OPT_DEST_BDADDR, &channel->dst,
 			BT_IO_OPT_CID, &cid,
+			BT_IO_OPT_OMTU, &channel->mtu,
 			BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
@@ -922,10 +938,13 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 		return;
 	}
 
+	if (channel->mtu > ATT_MAX_MTU)
+		channel->mtu = ATT_MAX_MTU;
+
 	if (cid != GATT_CID)
-		channel->mtu = ATT_DEFAULT_L2CAP_MTU;
+		channel->le = FALSE;
 	else
-		channel->mtu = ATT_DEFAULT_LE_MTU;
+		channel->le = TRUE;
 
 	channel->attrib = g_attrib_new(io);
 	g_io_channel_unref(io);
