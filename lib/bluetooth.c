@@ -82,11 +82,8 @@ bdaddr_t *strtoba(const char *str)
 
 int ba2str(const bdaddr_t *ba, char *str)
 {
-	uint8_t b[6];
-
-	baswap((bdaddr_t *) b, ba);
 	return sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
-		b[0], b[1], b[2], b[3], b[4], b[5]);
+		ba->b[5], ba->b[4], ba->b[3], ba->b[2], ba->b[1], ba->b[0]);
 }
 
 int str2ba(const char *str, bdaddr_t *ba)
