@@ -1023,7 +1023,7 @@ static int getbdaddrbyname(char *str, bdaddr_t *ba)
 
 	if (n == 5) {
 		/* BD address */
-		baswap(ba, strtoba(str));
+		str2ba(str, ba);
 		return 0;
 	}
 
