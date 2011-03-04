@@ -456,10 +456,13 @@ static void do_show(void)
 
 static void do_kill(char *dst)
 {
-	if (dst)
-		bnep_kill_connection((void *) strtoba(dst));
-	else
+	if (dst) {
+		bdaddr_t *ba = strtoba(dst);
+		bnep_kill_connection((void *) ba);
+		free(ba);
+	} else {
 		bnep_kill_all_connections();
+	}
 }
 
 static void sig_hup(int sig)
