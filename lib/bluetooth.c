@@ -109,11 +109,7 @@ int str2ba(const char *str, bdaddr_t *ba)
 
 int ba2oui(const bdaddr_t *ba, char *str)
 {
-	uint8_t b[6];
-
-	baswap((bdaddr_t *) b, ba);
-
-	return sprintf(str, "%2.2X-%2.2X-%2.2X", b[0], b[1], b[2]);
+	return sprintf(str, "%2.2X-%2.2X-%2.2X", ba->b[5], ba->b[4], ba->b[3]);
 }
 
 int bachk(const char *str)
