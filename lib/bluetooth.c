@@ -63,21 +63,15 @@ char *batostr(const bdaddr_t *ba)
 
 bdaddr_t *strtoba(const char *str)
 {
-	const char *ptr = str;
-	int i;
+	bdaddr_t b;
+	bdaddr_t *ba = bt_malloc(sizeof(*ba));
 
-	uint8_t *ba = bt_malloc(sizeof(bdaddr_t));
-	if (!ba)
-		return NULL;
-
-	for (i = 0; i < 6; i++) {
-		ba[i] = (uint8_t) strtol(ptr, NULL, 16);
-		if (i != 5 && !(ptr = strchr(ptr,':')))
-			ptr = ":00:00:00:00:00";
-		ptr++;
+	if (ba) {
+		str2ba(str, &b);
+		baswap(ba, &b);
 	}
 
-	return (bdaddr_t *) ba;
+	return ba;
 }
 
 int ba2str(const bdaddr_t *ba, char *str)
