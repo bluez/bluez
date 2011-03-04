@@ -1569,9 +1569,6 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 
 	DBG("Got name for hci%d", index);
 
-	if (!dev->up)
-		return;
-
 	/* Even though it shouldn't happen (assuming the kernel behaves
 	 * properly) it seems like we might miss the very first
 	 * initialization commands that the kernel sends. So check for
