@@ -557,16 +557,12 @@ static int extract_attrs(sdp_record_t *rec, sdp_list_t *seq, sdp_buf_t *buf)
 	if (!rec)
 		return SDP_INVALID_RECORD_HANDLE;
 
-	if (seq) {
-		SDPDBG("Entries in attr seq : %d", sdp_list_len(seq));
-	} else {
-		SDPDBG("NULL attribute descriptor");
-	}
-
 	if (seq == NULL) {
 		SDPDBG("Attribute sequence is NULL");
 		return 0;
 	}
+
+	SDPDBG("Entries in attr seq : %d", sdp_list_len(seq));
 
 	sdp_gen_record_pdu(rec, &pdu);
 
