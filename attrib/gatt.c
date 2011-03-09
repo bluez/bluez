@@ -502,8 +502,12 @@ guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
 	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	guint16 plen;
 
-	plen = enc_write_req(handle, value, vlen, pdu, sizeof(pdu));
-	return g_attrib_send(attrib, 0, ATT_OP_WRITE_REQ, pdu, plen, func,
+	if (func)
+		plen = enc_write_req(handle, value, vlen, pdu, sizeof(pdu));
+	else
+		plen = enc_write_cmd(handle, value, vlen, pdu, sizeof(pdu));
+
+	return g_attrib_send(attrib, 0, pdu[0], pdu, plen, func,
 							user_data, NULL);
 }
 
