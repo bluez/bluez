@@ -2735,7 +2735,7 @@ int hci_read_clock(int dd, uint16_t handle, uint8_t which, uint32_t *clock,
 	return 0;
 }
 
-int hci_le_set_scan_enable(int dd, uint8_t enable, uint8_t filter_dup)
+int hci_le_set_scan_enable(int dd, uint8_t enable, uint8_t filter_dup, int to)
 {
 	struct hci_request rq;
 	le_set_scan_enable_cp scan_cp;
@@ -2753,7 +2753,7 @@ int hci_le_set_scan_enable(int dd, uint8_t enable, uint8_t filter_dup)
 	rq.rparam = &status;
 	rq.rlen = 1;
 
-	if (hci_send_req(dd, &rq, 100) < 0)
+	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 
 	if (status) {
@@ -2766,7 +2766,7 @@ int hci_le_set_scan_enable(int dd, uint8_t enable, uint8_t filter_dup)
 
 int hci_le_set_scan_parameters(int dd, uint8_t type,
 					uint16_t interval, uint16_t window,
-					uint8_t own_type, uint8_t filter)
+					uint8_t own_type, uint8_t filter, int to)
 {
 	struct hci_request rq;
 	le_set_scan_parameters_cp param_cp;
@@ -2787,7 +2787,7 @@ int hci_le_set_scan_parameters(int dd, uint8_t type,
 	rq.rparam = &status;
 	rq.rlen = 1;
 
-	if (hci_send_req(dd, &rq, 100) < 0)
+	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 
 	if (status) {
@@ -2798,7 +2798,7 @@ int hci_le_set_scan_parameters(int dd, uint8_t type,
 	return 0;
 }
 
-int hci_le_set_advertise_enable(int dd, uint8_t enable)
+int hci_le_set_advertise_enable(int dd, uint8_t enable, int to)
 {
 	struct hci_request rq;
 	le_set_advertise_enable_cp adv_cp;
@@ -2815,7 +2815,7 @@ int hci_le_set_advertise_enable(int dd, uint8_t enable)
 	rq.rparam = &status;
 	rq.rlen = 1;
 
-	if (hci_send_req(dd, &rq, 100) < 0)
+	if (hci_send_req(dd, &rq, to) < 0)
 		return -1;
 
 	if (status) {

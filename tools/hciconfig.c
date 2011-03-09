@@ -268,7 +268,7 @@ static void cmd_le_adv(int ctl, int hdev, char *opt)
 	rq.rparam = &status;
 	rq.rlen = 1;
 
-	ret = hci_send_req(dd, &rq, 100);
+	ret = hci_send_req(dd, &rq, 1000);
 
 	hci_close_dev(dd);
 
