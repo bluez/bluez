@@ -530,7 +530,7 @@ static void char_write_req_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	printf("Characteristic value was written successfully\n");
 }
 
-static void cmd_char_write_req(int argcp, char **argvp)
+static void cmd_char_write(int argcp, char **argvp)
 {
 	uint8_t *value;
 	size_t plen;
@@ -542,7 +542,7 @@ static void cmd_char_write_req(int argcp, char **argvp)
 	}
 
 	if (argcp < 3) {
-		printf("Usage: char-write-req <handle> <new value>\n");
+		printf("Usage: %s <handle> <new value>\n", argvp[0]);
 		return;
 	}
 
@@ -558,7 +558,11 @@ static void cmd_char_write_req(int argcp, char **argvp)
 		return;
 	}
 
-	gatt_write_char(attrib, handle, value, plen, char_write_req_cb, NULL);
+	if (g_strcmp0("char-write-req", argvp[0]) == 0)
+		gatt_write_char(attrib, handle, value, plen,
+					char_write_req_cb, NULL);
+	else
+		gatt_write_char(attrib, handle, value, plen, NULL, NULL);
 
 	g_free(value);
 }
@@ -629,8 +633,10 @@ static struct {
 		"Characteristics Value/Descriptor Read by handle" },
 	{ "char-read-uuid",	cmd_read_uuid,	"<UUID> [start hnd] [end hnd]",
 		"Characteristics Value/Descriptor Read by UUID" },
-	{ "char-write-req",	cmd_char_write_req,	"<handle> <new value>",
+	{ "char-write-req",	cmd_char_write,	"<handle> <new value>",
 		"Characteristic Value Write (Write Request)" },
+	{ "char-write-cmd",	cmd_char_write,	"<handle> <new value>",
+		"Characteristic Value Write (No response)" },
 	{ "sec-level",		cmd_sec_level,	"[low | medium | high]",
 		"Set security level. Default: low" },
 	{ NULL, NULL, NULL}
