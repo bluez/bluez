@@ -144,6 +144,8 @@ struct btd_adapter {
 	GSList *powered_callbacks;
 
 	gboolean name_stored;
+
+	GSList *loaded_drivers;
 };
 
 static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
@@ -2246,23 +2248,25 @@ static void probe_driver(struct btd_adapter *adapter, gpointer user_data)
 	if (!adapter->up)
 		return;
 
+	if (driver->probe == NULL)
+		return;
+
 	err = driver->probe(adapter);
-	if (err < 0)
+	if (err < 0) {
 		error("%s: %s (%d)", driver->name, strerror(-err), -err);
+		return;
+	}
+
+	adapter->loaded_drivers = g_slist_prepend(adapter->loaded_drivers,
+									driver);
 }
 
 static void load_drivers(struct btd_adapter *adapter)
 {
 	GSList *l;
 
-	for (l = adapter_drivers; l; l = l->next) {
-		struct btd_adapter_driver *driver = l->data;
-
-		if (driver->probe == NULL)
-			continue;
-
-		probe_driver(adapter, driver);
-	}
+	for (l = adapter_drivers; l; l = l->next)
+		probe_driver(adapter, l->data);
 }
 
 static void load_connections(struct btd_adapter *adapter)
@@ -2477,16 +2481,20 @@ static void reply_pending_requests(struct btd_adapter *adapter)
 	}
 }
 
+static void remove_driver(gpointer data, gpointer user_data)
+{
+	struct btd_adapter_driver *driver = data;
+	struct btd_adapter *adapter = user_data;
+
+	if (driver->remove)
+		driver->remove(adapter);
+}
+
 static void unload_drivers(struct btd_adapter *adapter)
 {
-	GSList *l;
-
-	for (l = adapter_drivers; l; l = l->next) {
-		struct btd_adapter_driver *driver = l->data;
-
-		if (driver->remove)
-			driver->remove(adapter);
-	}
+	g_slist_foreach(adapter->loaded_drivers, remove_driver, adapter);
+	g_slist_free(adapter->loaded_drivers);
+	adapter->loaded_drivers = NULL;
 }
 
 static void set_mode_complete(struct btd_adapter *adapter)
@@ -3326,9 +3334,16 @@ int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 	return 0;
 }
 
+static void unload_driver(struct btd_adapter *adapter, gpointer data)
+{
+	adapter->loaded_drivers = g_slist_remove(adapter->loaded_drivers, data);
+}
+
 void btd_unregister_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_remove(adapter_drivers, driver);
+
+	manager_foreach_adapter(unload_driver, driver);
 }
 
 static void agent_auth_cb(struct agent *agent, DBusError *derr,
