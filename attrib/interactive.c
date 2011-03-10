@@ -100,6 +100,41 @@ static void set_state(enum state st)
 	rl_redisplay();
 }
 
+static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
+{
+	uint8_t opdu[ATT_MAX_MTU];
+	uint16_t handle, i, olen;
+
+	handle = att_get_u16(&pdu[1]);
+
+	printf("\n");
+	switch (pdu[0]) {
+	case ATT_OP_HANDLE_NOTIFY:
+		printf("Notification handle = 0x%04x value: ", handle);
+		break;
+	case ATT_OP_HANDLE_IND:
+		printf("Indication   handle = 0x%04x value: ", handle);
+		break;
+	default:
+		printf("Invalid opcode\n");
+		return;
+	}
+
+	for (i = 3; i < len; i++)
+		printf("%02x ", pdu[i]);
+
+	printf("\n");
+	rl_forced_update_display();
+
+	if (pdu[0] == ATT_OP_HANDLE_NOTIFY)
+		return;
+
+	olen = enc_confirmation(opdu, sizeof(opdu));
+
+	if (olen > 0)
+		g_attrib_send(attrib, 0, opdu[0], opdu, olen, NULL, NULL, NULL);
+}
+
 static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	if (err) {
@@ -109,6 +144,10 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	}
 
 	attrib = g_attrib_new(iochannel);
+	g_attrib_register(attrib, ATT_OP_HANDLE_NOTIFY, events_handler,
+							attrib, NULL);
+	g_attrib_register(attrib, ATT_OP_HANDLE_IND, events_handler,
+							attrib, NULL);
 	set_state(STATE_CONNECTED);
 }
 
