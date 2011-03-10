@@ -84,6 +84,7 @@ static gboolean option_irmc = FALSE;
 static gboolean option_pcsuite = FALSE;
 static gboolean option_symlinks = FALSE;
 static gboolean option_syncevolution = FALSE;
+static gboolean option_mas = FALSE;
 
 static gboolean parse_debug(const char *key, const char *value,
 				gpointer user_data, GError **error)
@@ -125,6 +126,8 @@ static GOptionEntry options[] = {
 				"Enable PC Suite Services server" },
 	{ "syncevolution", 'e', 0, G_OPTION_ARG_NONE, &option_syncevolution,
 				"Enable OBEX server for SyncEvolution" },
+        { "mas", 'm', 0, G_OPTION_ARG_NONE, &option_mas,
+				"Enable Message Access server" },
 	{ NULL },
 };
 
@@ -212,9 +215,10 @@ int main(int argc, char *argv[])
 	if (option_opp == FALSE && option_ftp == FALSE &&
 				option_pbap == FALSE &&
 				option_irmc == FALSE &&
-				option_syncevolution == FALSE) {
+				option_syncevolution == FALSE &&
+				option_mas == FALSE) {
 		fprintf(stderr, "No server selected (use either "
-				"--opp, --ftp, --pbap, --irmc or --syncevolution)\n");
+				"--opp, --ftp, --pbap, --irmc, --mas, or --syncevolution)\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -277,6 +281,9 @@ int main(int argc, char *argv[])
 	if (option_syncevolution == TRUE)
 		obex_server_init(OBEX_SYNCEVOLUTION, NULL, TRUE, FALSE,
 							FALSE, NULL);
+
+	if (option_mas == TRUE)
+		obex_server_init(OBEX_MAS, NULL, TRUE, FALSE, FALSE, NULL);
 
 	if (!root_folder_setup(option_root, option_root_setup)) {
 		error("Unable to setup root folder %s", option_root);

@@ -36,6 +36,7 @@
 #define OBEX_IRMC	(1 << 5)
 #define OBEX_PCSUITE	(1 << 6)
 #define OBEX_SYNCEVOLUTION	(1 << 7)
+#define OBEX_MAS	(1 << 8)
 
 #define TARGET_SIZE 16
 
