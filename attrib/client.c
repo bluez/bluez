@@ -983,7 +983,7 @@ static DBusMessage *prim_get_properties(DBusConnection *conn, DBusMessage *msg,
 }
 
 static GDBusMethodTable prim_methods[] = {
-	{ "Discover",		"",	"",		discover_char	},
+	{ "DiscoverCharacteristics",	"",	"",	discover_char	},
 	{ "RegisterCharacteristicsWatcher",	"o", "",
 						register_watcher	},
 	{ "UnregisterCharacteristicsWatcher",	"o", "",
