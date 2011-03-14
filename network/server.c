@@ -394,6 +394,21 @@ static gboolean bnep_setup(GIOChannel *chan,
 		return FALSE;
 	}
 
+	/* Highest known Control command ID
+	 * is BNEP_FILTER_MULT_ADDR_RSP = 0x06 */
+	if (req->type == BNEP_CONTROL &&
+				req->ctrl > BNEP_FILTER_MULT_ADDR_RSP) {
+		uint8_t pkt[3];
+
+		pkt[0] = BNEP_CONTROL;
+		pkt[1] = BNEP_CMD_NOT_UNDERSTOOD;
+		pkt[2] = req->ctrl;
+
+		send(sk, pkt, sizeof(pkt), 0);
+
+		return FALSE;
+	}
+
 	if (req->type != BNEP_CONTROL || req->ctrl != BNEP_SETUP_CONN_REQ)
 		return FALSE;
 
