@@ -43,8 +43,8 @@ plugin_LTLIBRARIES =
 
 
 lib_headers = lib/bluetooth.h lib/hci.h lib/hci_lib.h lib/mgmt.h \
-			lib/sco.h lib/l2cap.h lib/sdp.h lib/sdp_lib.h \
-				lib/rfcomm.h lib/bnep.h lib/cmtp.h lib/hidp.h
+		lib/sco.h lib/l2cap.h lib/sdp.h lib/sdp_lib.h lib/uuid.h \
+		lib/rfcomm.h lib/bnep.h lib/cmtp.h lib/hidp.h
 local_headers = $(foreach file,$(lib_headers), lib/bluetooth/$(notdir $(file)))
 
 include_HEADERS += $(lib_headers)
@@ -52,7 +52,7 @@ include_HEADERS += $(lib_headers)
 lib_LTLIBRARIES += lib/libbluetooth.la
 
 lib_libbluetooth_la_SOURCES = $(lib_headers) \
-					lib/bluetooth.c lib/hci.c lib/sdp.c
+			      lib/bluetooth.c lib/hci.c lib/sdp.c lib/uuid.c
 lib_libbluetooth_la_LDFLAGS = -version-info 13:5:10
 lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
 
