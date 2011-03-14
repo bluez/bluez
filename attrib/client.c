@@ -59,6 +59,7 @@ struct gatt_service {
 	char *path;
 	GSList *primary;
 	GAttrib *attrib;
+	DBusMessage *msg;
 	int psm;
 	gboolean listen;
 };
@@ -335,6 +336,12 @@ static void connect_cb(GIOChannel *chan, GError *gerr, gpointer user_data)
 	struct gatt_service *gatt = user_data;
 
 	if (gerr) {
+		if (gatt->msg) {
+			DBusMessage *reply = btd_error_failed(gatt->msg,
+							gerr->message);
+			g_dbus_send_message(connection, reply);
+		}
+
 		error("%s", gerr->message);
 		goto fail;
 	}
