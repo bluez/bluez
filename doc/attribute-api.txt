@@ -50,6 +50,14 @@ Methods 	dict GetProperties()
 			Returns all properties for the interface. See the
 			Properties section for the available properties.
 
+		array{object} DiscoverCharacteristics()
+
+			Discover all characteristics that belongs in this service.
+			When it returns all the characteristics paths will be
+			already registered. It will return the characteristics paths
+			as soon as they are discovered. After that it will try to
+			read all values.
+
 		RegisterCharacteristicsWatcher(object agent)
 
 			Register a watcher to monitor characteristic changes.
