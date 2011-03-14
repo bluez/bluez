@@ -92,21 +92,6 @@ struct sync_set_data {
 	gboolean role;
 };
 
-/* Ripped from lib/sdp.c */
-
-#if __BYTE_ORDER == __BIG_ENDIAN
-#define ntoh64(x) (x)
-#else
-static inline uint64_t ntoh64(uint64_t n)
-{
-        uint64_t h;
-        uint64_t tmp = ntohl(n & 0x00000000ffffffff);
-        h = ntohl(n >> 32);
-        h |= tmp << 32;
-        return h;
-}
-#endif
-
 #define hton64(x)     ntoh64(x)
 
 static gboolean csp_caps_initialized = FALSE;

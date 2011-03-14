@@ -27,6 +27,8 @@
 #endif
 
 #include <string.h>
+#include <stdlib.h>
+#include <errno.h>
 
 #include "uuid.h"
 
@@ -125,4 +127,147 @@ int bt_uuid_cmp(const bt_uuid_t *uuid1, const bt_uuid_t *uuid2)
 	bt_uuid_to_uuid128(uuid2, &u2);
 
 	return bt_uuid128_cmp(&u1, &u2);
+}
+
+/*
+ * convert the UUID to string, copying a maximum of n characters.
+ */
+int bt_uuid_to_string(const bt_uuid_t *uuid, char *str, size_t n)
+{
+	if (!uuid) {
+		snprintf(str, n, "NULL");
+		return -EINVAL;
+	}
+
+	switch (uuid->type) {
+	case BT_UUID16:
+		snprintf(str, n, "%.4x", uuid->value.u16);
+		break;
+	case BT_UUID32:
+		snprintf(str, n, "%.8x", uuid->value.u32);
+		break;
+	case BT_UUID128: {
+		unsigned int   data0;
+		unsigned short data1;
+		unsigned short data2;
+		unsigned short data3;
+		unsigned int   data4;
+		unsigned short data5;
+
+		uint128_t nvalue;
+		const uint8_t *data = (uint8_t *) &nvalue;
+
+		hton128(&uuid->value.u128, &nvalue);
+
+		memcpy(&data0, &data[0], 4);
+		memcpy(&data1, &data[4], 2);
+		memcpy(&data2, &data[6], 2);
+		memcpy(&data3, &data[8], 2);
+		memcpy(&data4, &data[10], 4);
+		memcpy(&data5, &data[14], 2);
+
+		snprintf(str, n, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x",
+				ntohl(data0), ntohs(data1),
+				ntohs(data2), ntohs(data3),
+				ntohl(data4), ntohs(data5));
+		}
+		break;
+	default:
+		snprintf(str, n, "Type of UUID (%x) unknown.", uuid->type);
+		return -EINVAL;	/* Enum type of UUID not set */
+	}
+
+	return 0;
+}
+
+static inline int is_uuid128(const char *string)
+{
+	return (strlen(string) == 36 &&
+			string[8] == '-' &&
+			string[13] == '-' &&
+			string[18] == '-' &&
+			string[23] == '-');
+}
+
+static inline int is_uuid32(const char *string)
+{
+	return (strlen(string) == 8 || strlen(string) == 10);
+}
+
+static inline int is_uuid16(const char *string)
+{
+	return (strlen(string) == 4 || strlen(string) == 6);
+}
+
+static int bt_string_to_uuid16(bt_uuid_t *uuid, const char *string)
+{
+	uint16_t u16;
+	char *endptr = NULL;
+
+	u16 = strtol(string, &endptr, 16);
+	if (endptr && *endptr == '\0') {
+		bt_uuid16_create(uuid, u16);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int bt_string_to_uuid32(bt_uuid_t *uuid, const char *string)
+{
+	uint32_t u32;
+	char *endptr = NULL;
+
+	u32 = strtol(string, &endptr, 16);
+	if (endptr && *endptr == '\0') {
+		bt_uuid32_create(uuid, u32);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int bt_string_to_uuid128(bt_uuid_t *uuid, const char *string)
+{
+	uint32_t data0, data4;
+	uint16_t data1, data2, data3, data5;
+	uint128_t n128, u128;
+	uint8_t *val = (uint8_t *) &n128;
+
+	if (sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
+				&data0, &data1, &data2,
+				&data3, &data4, &data5) != 6)
+		return -EINVAL;
+
+	data0 = htonl(data0);
+	data1 = htons(data1);
+	data2 = htons(data2);
+	data3 = htons(data3);
+	data4 = htonl(data4);
+	data5 = htons(data5);
+
+	memcpy(&val[0], &data0, 4);
+	memcpy(&val[4], &data1, 2);
+	memcpy(&val[6], &data2, 2);
+	memcpy(&val[8], &data3, 2);
+	memcpy(&val[10], &data4, 4);
+	memcpy(&val[14], &data5, 2);
+
+	ntoh128(&n128, &u128);
+
+	bt_uuid128_create(uuid, u128);
+
+	return 0;
+}
+
+int bt_string_to_uuid(bt_uuid_t *uuid, const char *string)
+{
+	if (is_uuid128(string))
+		return bt_string_to_uuid128(uuid, string);
+	else if (is_uuid32(string))
+		return bt_string_to_uuid32(uuid, string);
+	else if (is_uuid16(string))
+		return bt_string_to_uuid16(uuid, string);
+
+	return -EINVAL;
 }

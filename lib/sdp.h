@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <bluetooth/bluetooth.h>
 
 #define SDP_UNIX_PATH "/var/run/sdp"
 #define SDP_RESPONSE_TIMEOUT	20
@@ -420,9 +421,6 @@ typedef struct {
  * Common definitions for attributes in the SDP.
  * Should the type of any of these change, you need only make a change here.
  */
-typedef struct {
-	uint8_t data[16];
-} uint128_t;
 
 typedef struct {
 	uint8_t type;

@@ -30,13 +30,11 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-
-typedef struct {
-	uint8_t data[16];
-} uint128_t;
+#include <bluetooth/bluetooth.h>
 
 typedef struct {
 	enum {
+		BT_UUID_UNSPEC = 0,
 		BT_UUID16 = 16,
 		BT_UUID32 = 32,
 		BT_UUID128 = 128,
@@ -54,6 +52,11 @@ int bt_uuid128_create(bt_uuid_t *btuuid, uint128_t value);
 
 int bt_uuid_cmp(const bt_uuid_t *uuid1, const bt_uuid_t *uuid2);
 void bt_uuid_to_uuid128(const bt_uuid_t *src, bt_uuid_t *dst);
+
+#define MAX_LEN_UUID_STR 37
+
+int bt_uuid_to_string(const bt_uuid_t *uuid, char *str, size_t n);
+int bt_string_to_uuid(bt_uuid_t *uuid, const char *string);
 
 #ifdef __cplusplus
 }
