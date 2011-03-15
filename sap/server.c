@@ -245,7 +245,7 @@ static int handle_cmd(void *data, void *buf, size_t size)
 		return -EINVAL;
 
 	if (msg->nparam != 0 && size < (sizeof(struct sap_message) +
-			sizeof(struct sap_parameter) + 4))
+					sizeof(struct sap_parameter) + 4))
 		return -EBADMSG;
 
 	switch (msg->id) {
@@ -262,7 +262,7 @@ static int handle_cmd(void *data, void *buf, size_t size)
 		transfer_atr_req(conn);
 		return 0;
 	case SAP_POWER_SIM_OFF_REQ:
-	power_sim_off_req(conn);
+		power_sim_off_req(conn);
 		return 0;
 	case SAP_POWER_SIM_ON_REQ:
 		power_sim_on_req(conn);
@@ -327,7 +327,6 @@ static gboolean sap_io_cb(GIOChannel *io, GIOCondition cond, gpointer data)
 
 	gstatus = g_io_channel_read_chars(io, buf, sizeof(buf) - 1,
 				&bytes_read, &gerr);
-
 	if (gstatus != G_IO_STATUS_NORMAL) {
 		if (gerr)
 			g_error_free(gerr);
@@ -428,7 +427,6 @@ static void connect_confirm_cb(GIOChannel *io, gpointer data)
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_INVALID);
-
 	if (gerr) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
@@ -438,7 +436,6 @@ static void connect_confirm_cb(GIOChannel *io, gpointer data)
 
 	err = btd_request_authorization(&src, &dst, SAP_UUID,
 					connect_auth_cb, conn);
-
 	if (err < 0) {
 		DBG("Authorization denied: %d %s", err,  strerror(err));
 		sap_conn_remove(conn);
@@ -577,7 +574,6 @@ int sap_server_register(const char *path, bdaddr_t *src)
 			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_HIGH,
 			BT_IO_OPT_MASTER, TRUE,
 			BT_IO_OPT_INVALID);
-
 	if (!io) {
 		error("Can't listen at channel %d.", SAP_SERVER_CHANNEL);
 		g_error_free(gerr);
