@@ -70,13 +70,6 @@ enum net_registration_status {
 #define TELEPHONY_MAEMO_PATH		"/com/nokia/MaemoTelephony"
 #define TELEPHONY_MAEMO_INTERFACE	"com.nokia.MaemoTelephony"
 
-#define CALLERID_BASE		"/var/lib/bluetooth/maemo-callerid-"
-#define ALLOWED_FLAG_FILE	"/var/lib/bluetooth/maemo-callerid-allowed"
-#define RESTRICTED_FLAG_FILE	"/var/lib/bluetooth/maemo-callerid-restricted"
-#define NONE_FLAG_FILE		"/var/lib/bluetooth/maemo-callerid-none"
-
-static uint32_t callerid = 0;
-
 /* CSD CALL plugin D-Bus definitions */
 #define CSD_CALL_BUS_NAME	"com.nokia.csd.Call"
 #define CSD_CALL_INTERFACE	"com.nokia.csd.Call"
@@ -170,8 +163,6 @@ static gboolean events_enabled = FALSE;
 
 /* Supported set of call hold operations */
 static const char *chld_str = "0,1,1x,2,2x,3,4";
-
-static char *last_dialed_number = NULL;
 
 /* Timer for tracking call creation requests */
 static guint create_request_timer = 0;
@@ -943,9 +934,6 @@ static void handle_outgoing_call(DBusMessage *msg)
 
 	g_free(call->number);
 	call->number = g_strdup(number);
-
-	g_free(last_dialed_number);
-	last_dialed_number = g_strdup(number);
 
 	if (create_request_timer) {
 		g_source_remove(create_request_timer);
@@ -1720,103 +1708,6 @@ static void csd_init(void)
 	}
 }
 
-static uint32_t get_callflag(const char *callerid_setting)
-{
-	if (callerid_setting != NULL) {
-		if (g_str_equal(callerid_setting, "allowed"))
-			return CALL_FLAG_PRESENTATION_ALLOWED;
-		else if (g_str_equal(callerid_setting, "restricted"))
-			return CALL_FLAG_PRESENTATION_RESTRICTED;
-		else
-			return CALL_FLAG_NONE;
-	} else
-		return CALL_FLAG_NONE;
-}
-
-static void generate_flag_file(const char *filename)
-{
-	int fd;
-
-	if (g_file_test(ALLOWED_FLAG_FILE, G_FILE_TEST_EXISTS) ||
-			g_file_test(RESTRICTED_FLAG_FILE, G_FILE_TEST_EXISTS) ||
-			g_file_test(NONE_FLAG_FILE, G_FILE_TEST_EXISTS))
-		return;
-
-	fd = open(filename, O_WRONLY | O_CREAT, 0);
-	if (fd >= 0)
-		close(fd);
-}
-
-static void save_callerid_to_file(const char *callerid_setting)
-{
-	char callerid_file[FILENAME_MAX];
-
-	snprintf(callerid_file, sizeof(callerid_file), "%s%s",
-					CALLERID_BASE, callerid_setting);
-
-	if (g_file_test(ALLOWED_FLAG_FILE, G_FILE_TEST_EXISTS))
-		rename(ALLOWED_FLAG_FILE, callerid_file);
-	else if (g_file_test(RESTRICTED_FLAG_FILE, G_FILE_TEST_EXISTS))
-		rename(RESTRICTED_FLAG_FILE, callerid_file);
-	else if (g_file_test(NONE_FLAG_FILE, G_FILE_TEST_EXISTS))
-		rename(NONE_FLAG_FILE, callerid_file);
-	else
-		generate_flag_file(callerid_file);
-}
-
-static uint32_t callerid_from_file(void)
-{
-	if (g_file_test(ALLOWED_FLAG_FILE, G_FILE_TEST_EXISTS))
-		return CALL_FLAG_PRESENTATION_ALLOWED;
-	else if (g_file_test(RESTRICTED_FLAG_FILE, G_FILE_TEST_EXISTS))
-		return CALL_FLAG_PRESENTATION_RESTRICTED;
-	else if (g_file_test(NONE_FLAG_FILE, G_FILE_TEST_EXISTS))
-		return CALL_FLAG_NONE;
-	else
-		return CALL_FLAG_NONE;
-}
-
-static DBusMessage *set_callerid(DBusConnection *conn, DBusMessage *msg,
-					void *data)
-{
-	const char *callerid_setting;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING,
-						&callerid_setting,
-						DBUS_TYPE_INVALID) == FALSE)
-		return btd_error_invalid_args(msg);
-
-	if (g_str_equal(callerid_setting, "allowed") ||
-			g_str_equal(callerid_setting, "restricted") ||
-			g_str_equal(callerid_setting, "none")) {
-		save_callerid_to_file(callerid_setting);
-		callerid = get_callflag(callerid_setting);
-		DBG("telephony-maemo6 setting callerid flag: %s",
-							callerid_setting);
-		return dbus_message_new_method_return(msg);
-	}
-
-	error("telephony-maemo6: invalid argument %s for method call"
-					" SetCallerId", callerid_setting);
-		return btd_error_invalid_args(msg);
-}
-
-static DBusMessage *clear_lastnumber(DBusConnection *conn, DBusMessage *msg,
-					void *data)
-{
-	g_free(last_dialed_number);
-	last_dialed_number = NULL;
-
-	return dbus_message_new_method_return(msg);
-}
-
-static GDBusMethodTable telephony_maemo_methods[] = {
-	{ "SetCallerId",	"s",	"",	set_callerid,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "ClearLastNumber",	"",	"",	clear_lastnumber },
-	{ }
-};
-
 static void handle_modem_state(DBusMessage *msg)
 {
 	const char *state;
@@ -1979,19 +1870,6 @@ int telephony_init(void)
 					NULL, DBUS_TYPE_INVALID) < 0)
 		error("Unable to send " SSC_DBUS_IFACE ".get_modem_state()");
 
-	generate_flag_file(NONE_FLAG_FILE);
-	callerid = callerid_from_file();
-
-	if (!g_dbus_register_interface(connection, TELEPHONY_MAEMO_PATH,
-			TELEPHONY_MAEMO_INTERFACE, telephony_maemo_methods,
-			NULL, NULL, NULL, NULL)) {
-		error("telephony-maemo6 interface %s init failed on path %s",
-			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
-	}
-
-	DBG("telephony-maemo6 registering %s interface on path %s",
-			TELEPHONY_MAEMO_INTERFACE, TELEPHONY_MAEMO_PATH);
-
 	/* Reset indicators */
 	for (i = 0; maemo_indicators[i].desc != NULL; i++) {
 		if (g_str_equal(maemo_indicators[i].desc, "battchg"))
@@ -2028,9 +1906,6 @@ void telephony_exit(void)
 
 	net.status = NETWORK_REG_STATUS_UNKOWN;
 	net.signal_bars = 0;
-
-	g_free(last_dialed_number);
-	last_dialed_number = NULL;
 
 	g_slist_free(active_calls);
 	active_calls = NULL;
