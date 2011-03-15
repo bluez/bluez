@@ -27,8 +27,7 @@
 #include <stdlib.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
+#include <bluetooth/uuid.h>
 
 #include <glib.h>
 
@@ -110,7 +109,7 @@ struct att_data_list *att_data_list_alloc(uint16_t num, uint16_t len)
 	return list;
 }
 
-uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, uuid_t *uuid,
+uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 							uint8_t *pdu, int len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(start) + sizeof(end);
@@ -119,9 +118,9 @@ uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, uuid_t *uuid,
 	if (!uuid)
 		return 0;
 
-	if (uuid->type == SDP_UUID16)
+	if (uuid->type == BT_UUID16)
 		length = 2;
-	else if (uuid->type == SDP_UUID128)
+	else if (uuid->type == BT_UUID128)
 		length = 16;
 	else
 		return 0;
@@ -133,16 +132,13 @@ uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, uuid_t *uuid,
 	att_put_u16(start, &pdu[1]);
 	att_put_u16(end, &pdu[3]);
 
-	if (uuid->type == SDP_UUID16)
-		att_put_u16(uuid->value.uuid16, &pdu[5]);
-	else
-		memcpy(&pdu[5], &uuid->value.uuid128, length);
+	att_put_uuid(*uuid, &pdu[5]);
 
 	return min_len + length;
 }
 
 uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
-						uint16_t *end, uuid_t *uuid)
+						uint16_t *end, bt_uuid_t *uuid)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(*start) + sizeof(*end);
 
@@ -161,9 +157,9 @@ uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
 	*start = att_get_u16(&pdu[1]);
 	*end = att_get_u16(&pdu[3]);
 	if (len == min_len + 2)
-		sdp_uuid16_create(uuid, att_get_u16(&pdu[5]));
+		*uuid = att_get_uuid16(&pdu[5]);
 	else
-		sdp_uuid128_create(uuid, &pdu[5]);
+		*uuid = att_get_uuid128(&pdu[5]);
 
 	return len;
 }
@@ -219,7 +215,7 @@ struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len)
 	return list;
 }
 
-uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
+uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 			const uint8_t *value, int vlen, uint8_t *pdu, int len)
 {
 	uint16_t min_len = sizeof(pdu[0]) + sizeof(start) + sizeof(end) +
@@ -231,7 +227,7 @@ uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 	if (!uuid)
 		return 0;
 
-	if (uuid->type != SDP_UUID16)
+	if (uuid->type != BT_UUID16)
 		return 0;
 
 	if (len < min_len)
@@ -243,7 +239,7 @@ uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 	pdu[0] = ATT_OP_FIND_BY_TYPE_REQ;
 	att_put_u16(start, &pdu[1]);
 	att_put_u16(end, &pdu[3]);
-	att_put_u16(uuid->value.uuid16, &pdu[5]);
+	att_put_uuid16(*uuid, &pdu[5]);
 
 	if (vlen > 0) {
 		memcpy(&pdu[7], value, vlen);
@@ -254,7 +250,7 @@ uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 }
 
 uint16_t dec_find_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
-			uint16_t *end, uuid_t *uuid, uint8_t *value, int *vlen)
+		uint16_t *end, bt_uuid_t *uuid, uint8_t *value, int *vlen)
 {
 	int valuelen;
 	uint16_t min_len = sizeof(pdu[0]) + sizeof(*start) +
@@ -279,7 +275,7 @@ uint16_t dec_find_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
 
 	/* Always UUID16 */
 	if (uuid)
-		sdp_uuid16_create(uuid, att_get_u16(&pdu[5]));
+		*uuid = att_get_uuid16(&pdu[5]);
 
 	valuelen = len - min_len;
 
@@ -337,7 +333,7 @@ GSList *dec_find_by_type_resp(const uint8_t *pdu, int len)
 	return matches;
 }
 
-uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
+uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 							uint8_t *pdu, int len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(start) + sizeof(end);
@@ -346,9 +342,9 @@ uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 	if (!uuid)
 		return 0;
 
-	if (uuid->type == SDP_UUID16)
+	if (uuid->type == BT_UUID16)
 		length = 2;
-	else if (uuid->type == SDP_UUID128)
+	else if (uuid->type == BT_UUID128)
 		length = 16;
 	else
 		return 0;
@@ -360,16 +356,13 @@ uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
 	att_put_u16(start, &pdu[1]);
 	att_put_u16(end, &pdu[3]);
 
-	if (uuid->type == SDP_UUID16)
-		att_put_u16(uuid->value.uuid16, &pdu[5]);
-	else
-		memcpy(&pdu[5], &uuid->value.uuid128, length);
+	att_put_uuid(*uuid, &pdu[5]);
 
 	return min_len + length;
 }
 
 uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
-						uint16_t *end, uuid_t *uuid)
+						uint16_t *end, bt_uuid_t *uuid)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(*start) + sizeof(*end);
 
@@ -389,9 +382,9 @@ uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
 	*end = att_get_u16(&pdu[3]);
 
 	if (len == min_len + 2)
-		sdp_uuid16_create(uuid, att_get_u16(&pdu[5]));
+		*uuid = att_get_uuid16(&pdu[5]);
 	else
-		sdp_uuid128_create(uuid, &pdu[5]);
+		*uuid = att_get_uuid128(&pdu[5]);
 
 	return len;
 }

@@ -120,7 +120,7 @@ enum {
 
 struct attribute {
 	uint16_t handle;
-	uuid_t uuid;
+	bt_uuid_t uuid;
 	int read_reqs;
 	int write_reqs;
 	uint8_t (*read_cb)(struct attribute *a, gpointer user_data);
@@ -173,6 +173,16 @@ static inline uint32_t att_get_u32(const void *ptr)
 	return btohl(bt_get_unaligned(u32_ptr));
 }
 
+static inline uint128_t att_get_u128(const void *ptr)
+{
+	const uint128_t *u128_ptr = ptr;
+	uint128_t dst;
+
+	btoh128(u128_ptr, &dst);
+
+	return dst;
+}
+
 static inline void att_put_u8(uint8_t src, void *dst)
 {
 	bt_put_unaligned(src, (uint8_t *) dst);
@@ -188,26 +198,71 @@ static inline void att_put_u32(uint32_t src, void *dst)
 	bt_put_unaligned(htobl(src), (uint32_t *) dst);
 }
 
+static inline void att_put_u128(uint128_t src, void *dst)
+{
+	uint128_t *d128 = dst;
+
+	htob128(&src, d128);
+}
+
+static inline void att_put_uuid16(bt_uuid_t src, void *dst)
+{
+	att_put_u16(src.value.u16, dst);
+}
+
+static inline void att_put_uuid128(bt_uuid_t src, void *dst)
+{
+	att_put_u128(src.value.u128, dst);
+}
+
+static inline void att_put_uuid(bt_uuid_t src, void *dst)
+{
+	if (src.type == BT_UUID16)
+		att_put_uuid16(src, dst);
+	else
+		att_put_uuid128(src, dst);
+}
+
+static inline bt_uuid_t att_get_uuid16(const void *ptr)
+{
+	bt_uuid_t uuid;
+
+	bt_uuid16_create(&uuid, att_get_u16(ptr));
+
+	return uuid;
+}
+
+static inline bt_uuid_t att_get_uuid128(const void *ptr)
+{
+	bt_uuid_t uuid;
+	uint128_t value;
+
+	value  = att_get_u128(ptr);
+	bt_uuid128_create(&uuid, value);
+
+	return uuid;
+}
+
 struct att_data_list *att_data_list_alloc(uint16_t num, uint16_t len);
 void att_data_list_free(struct att_data_list *list);
 
 const char *att_ecode2str(uint8_t status);
-uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, uuid_t *uuid,
+uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 							uint8_t *pdu, int len);
 uint16_t dec_read_by_grp_req(const uint8_t *pdu, int len, uint16_t *start,
-						uint16_t *end, uuid_t *uuid);
+						uint16_t *end, bt_uuid_t *uuid);
 uint16_t enc_read_by_grp_resp(struct att_data_list *list, uint8_t *pdu, int len);
-uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
+uint16_t enc_find_by_type_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 			const uint8_t *value, int vlen, uint8_t *pdu, int len);
 uint16_t dec_find_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
-		uint16_t *end, uuid_t *uuid, uint8_t *value, int *vlen);
+		uint16_t *end, bt_uuid_t *uuid, uint8_t *value, int *vlen);
 uint16_t enc_find_by_type_resp(GSList *ranges, uint8_t *pdu, int len);
 GSList *dec_find_by_type_resp(const uint8_t *pdu, int len);
 struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, int len);
-uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, uuid_t *uuid,
+uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 							uint8_t *pdu, int len);
 uint16_t dec_read_by_type_req(const uint8_t *pdu, int len, uint16_t *start,
-						uint16_t *end, uuid_t *uuid);
+						uint16_t *end, bt_uuid_t *uuid);
 uint16_t enc_read_by_type_resp(struct att_data_list *list, uint8_t *pdu,
 								int len);
 uint16_t enc_write_cmd(uint16_t handle, const uint8_t *value, int vlen,

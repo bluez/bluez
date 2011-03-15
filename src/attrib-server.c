@@ -33,6 +33,7 @@
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/uuid.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -81,13 +82,13 @@ static uint32_t gap_sdp_handle = 0;
 static uint16_t name_handle = 0x0000;
 static uint16_t appearance_handle = 0x0000;
 
-static uuid_t prim_uuid = {
-			.type = SDP_UUID16,
-			.value.uuid16 = GATT_PRIM_SVC_UUID
+static bt_uuid_t prim_uuid = {
+			.type = BT_UUID16,
+			.value.u16 = GATT_PRIM_SVC_UUID
 };
-static uuid_t snd_uuid = {
-			.type = SDP_UUID16,
-			.value.uuid16 = GATT_SND_SVC_UUID
+static bt_uuid_t snd_uuid = {
+			.type = BT_UUID16,
+			.value.u16 = GATT_SND_SVC_UUID
 };
 
 static sdp_record_t *server_record_new(uuid_t *uuid, uint16_t start, uint16_t end)
@@ -199,12 +200,12 @@ static uint8_t client_set_notifications(struct attribute *attr,
 	struct attribute *last_chr_val = NULL;
 	uint16_t cfg_val;
 	uint8_t props;
-	uuid_t uuid;
+	bt_uuid_t uuid;
 	GSList *l;
 
 	cfg_val = att_get_u16(attr->data);
 
-	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	for (l = database, props = 0; l != NULL; l = l->next) {
 		struct attribute *a = l->data;
 		static uint16_t handle = 0;
@@ -212,7 +213,7 @@ static uint8_t client_set_notifications(struct attribute *attr,
 		if (a->handle >= attr->handle)
 			break;
 
-		if (sdp_uuid_cmp(&a->uuid, &uuid) == 0) {
+		if (bt_uuid_cmp(&a->uuid, &uuid) == 0) {
 			props = att_get_u8(&a->data[0]);
 			handle = att_get_u16(&a->data[1]);
 			continue;
@@ -251,11 +252,11 @@ static struct attribute *client_cfg_attribute(struct gatt_channel *channel,
 						const uint8_t *value, int vlen)
 {
 	guint handle = orig_attr->handle;
-	uuid_t uuid;
+	bt_uuid_t uuid;
 	GSList *l;
 
-	sdp_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
-	if (sdp_uuid_cmp(&orig_attr->uuid, &uuid) != 0)
+	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
+	if (bt_uuid_cmp(&orig_attr->uuid, &uuid) != 0)
 		return NULL;
 
 	/* Value is unchanged, not need to create a private copy yet */
@@ -285,7 +286,7 @@ static struct attribute *client_cfg_attribute(struct gatt_channel *channel,
 }
 
 static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
-						uint16_t end, uuid_t *uuid,
+						uint16_t end, bt_uuid_t *uuid,
 						uint8_t *pdu, int len)
 {
 	struct att_data_list *adl;
@@ -305,8 +306,8 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 	 * types may be used in the Read By Group Type Request.
 	 */
 
-	if (sdp_uuid_cmp(uuid, &prim_uuid) != 0 &&
-		sdp_uuid_cmp(uuid, &snd_uuid) != 0)
+	if (bt_uuid_cmp(uuid, &prim_uuid) != 0 &&
+		bt_uuid_cmp(uuid, &snd_uuid) != 0)
 		return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ, 0x0000,
 					ATT_ECODE_UNSUPP_GRP_TYPE, pdu, len);
 
@@ -323,13 +324,13 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 			break;
 
 		/* The old group ends when a new one starts */
-		if (old && (sdp_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
-				sdp_uuid_cmp(&a->uuid, &snd_uuid) == 0)) {
+		if (old && (bt_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
+				bt_uuid_cmp(&a->uuid, &snd_uuid) == 0)) {
 			old->end = last_handle;
 			old = NULL;
 		}
 
-		if (sdp_uuid_cmp(&a->uuid, uuid) != 0) {
+		if (bt_uuid_cmp(&a->uuid, uuid) != 0) {
 			/* Still inside a service, update its last handle */
 			if (old)
 				last_handle = a->handle;
@@ -405,7 +406,7 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 }
 
 static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
-						uint16_t end, uuid_t *uuid,
+						uint16_t end, bt_uuid_t *uuid,
 						uint8_t *pdu, int len)
 {
 	struct att_data_list *adl;
@@ -430,7 +431,7 @@ static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 		if (a->handle >= end)
 			break;
 
-		if (sdp_uuid_cmp(&a->uuid, uuid)  != 0)
+		if (bt_uuid_cmp(&a->uuid, uuid)  != 0)
 			continue;
 
 		status = att_check_reqs(channel, ATT_OP_READ_BY_TYPE_REQ,
@@ -495,7 +496,7 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 	struct attribute *a;
 	struct att_data_list *adl;
 	GSList *l, *info;
-	uint8_t format, last_type = SDP_UUID_UNSPEC;
+	uint8_t format, last_type = BT_UUID_UNSPEC;
 	uint16_t length, num;
 	int i;
 
@@ -512,7 +513,7 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 		if (a->handle > end)
 			break;
 
-		if (last_type == SDP_UUID_UNSPEC)
+		if (last_type == BT_UUID_UNSPEC)
 			last_type = a->uuid.type;
 
 		if (a->uuid.type != last_type)
@@ -528,10 +529,10 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 		return enc_error_resp(ATT_OP_FIND_INFO_REQ, start,
 					ATT_ECODE_ATTR_NOT_FOUND, pdu, len);
 
-	if (last_type == SDP_UUID16) {
+	if (last_type == BT_UUID16) {
 		length = 2;
 		format = 0x01;
-	} else if (last_type == SDP_UUID128) {
+	} else if (last_type == BT_UUID128) {
 		length = 16;
 		format = 0x02;
 	}
@@ -548,7 +549,7 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 		att_put_u16(a->handle, value);
 
 		/* Attribute Value */
-		memcpy(&value[2], &a->uuid.value, length);
+		att_put_uuid(a->uuid, &value[2]);
 	}
 
 	length = enc_find_info_resp(format, adl, pdu, len);
@@ -559,7 +560,7 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 	return length;
 }
 
-static int find_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
+static int find_by_type(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 			const uint8_t *value, int vlen, uint8_t *opdu, int mtu)
 {
 	struct attribute *a;
@@ -582,7 +583,7 @@ static int find_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 			break;
 
 		/* Primary service? Attribute value matches? */
-		if ((sdp_uuid_cmp(&a->uuid, uuid) == 0) && (a->len == vlen) &&
+		if ((bt_uuid_cmp(&a->uuid, uuid) == 0) && (a->len == vlen) &&
 					(memcmp(a->data, value, vlen) == 0)) {
 
 			range = g_new0(struct att_range, 1);
@@ -596,8 +597,8 @@ static int find_by_type(uint16_t start, uint16_t end, uuid_t *uuid,
 			/* Update the last found handle or reset the pointer
 			 * to track that a new group started: Primary or
 			 * Secondary service. */
-			if (sdp_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
-					sdp_uuid_cmp(&a->uuid, &snd_uuid) == 0)
+			if (bt_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
+					bt_uuid_cmp(&a->uuid, &snd_uuid) == 0)
 				range = NULL;
 			else
 				range->end = a->handle;
@@ -632,7 +633,7 @@ static struct attribute *find_primary_range(uint16_t start, uint16_t *end)
 
 	attrib = l->data;
 
-	if (sdp_uuid_cmp(&attrib->uuid, &prim_uuid) != 0)
+	if (bt_uuid_cmp(&attrib->uuid, &prim_uuid) != 0)
 		return NULL;
 
 	*end = start;
@@ -640,8 +641,8 @@ static struct attribute *find_primary_range(uint16_t start, uint16_t *end)
 	for (l = l->next; l; l = l->next) {
 		struct attribute *a = l->data;
 
-		if (sdp_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
-				sdp_uuid_cmp(&a->uuid, &snd_uuid) == 0)
+		if (bt_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
+				bt_uuid_cmp(&a->uuid, &snd_uuid) == 0)
 			break;
 
 		*end = a->handle;
@@ -795,7 +796,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 	struct gatt_channel *channel = user_data;
 	uint8_t opdu[ATT_MAX_MTU], value[ATT_MAX_MTU];
 	uint16_t length, start, end, mtu, offset;
-	uuid_t uuid;
+	bt_uuid_t uuid;
 	uint8_t status = 0;
 	int vlen;
 
@@ -1014,37 +1015,37 @@ static void attrib_notify_clients(struct attribute *attr)
 static gboolean register_core_services(void)
 {
 	uint8_t atval[256];
-	uuid_t uuid;
+	bt_uuid_t uuid;
 	uint16_t appearance = 0x0000;
 
 	/* GAP service: primary service definition */
-	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	att_put_u16(GENERIC_ACCESS_PROFILE_ID, &atval[0]);
 	attrib_db_add(0x0001, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
 
 	/* GAP service: device name characteristic */
 	name_handle = 0x0006;
-	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(name_handle, &atval[1]);
 	att_put_u16(GATT_CHARAC_DEVICE_NAME, &atval[3]);
 	attrib_db_add(0x0004, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
 
 	/* GAP service: device name attribute */
-	sdp_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
+	bt_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
 	attrib_db_add(name_handle, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								NULL, 0);
 
 	/* GAP service: device appearance characteristic */
 	appearance_handle = 0x0008;
-	sdp_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(appearance_handle, &atval[1]);
 	att_put_u16(GATT_CHARAC_APPEARANCE, &atval[3]);
 	attrib_db_add(0x0007, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
 
 	/* GAP service: device appearance attribute */
-	sdp_uuid16_create(&uuid, GATT_CHARAC_APPEARANCE);
+	bt_uuid16_create(&uuid, GATT_CHARAC_APPEARANCE);
 	att_put_u16(appearance, &atval[0]);
 	attrib_db_add(appearance_handle, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, 2);
@@ -1056,7 +1057,7 @@ static gboolean register_core_services(void)
 	}
 
 	/* GATT service: primary service definition */
-	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	att_put_u16(GENERIC_ATTRIB_PROFILE_ID, &atval[0]);
 	attrib_db_add(0x0010, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
 
@@ -1213,7 +1214,7 @@ void attrib_free_sdp(uint32_t sdp_handle)
 	remove_record_from_server(sdp_handle);
 }
 
-struct attribute *attrib_db_add(uint16_t handle, uuid_t *uuid, int read_reqs,
+struct attribute *attrib_db_add(uint16_t handle, bt_uuid_t *uuid, int read_reqs,
 				int write_reqs, const uint8_t *value, int len)
 {
 	struct attribute *a;
@@ -1222,7 +1223,7 @@ struct attribute *attrib_db_add(uint16_t handle, uuid_t *uuid, int read_reqs,
 
 	a = g_malloc0(sizeof(struct attribute) + len);
 	a->handle = handle;
-	memcpy(&a->uuid, uuid, sizeof(uuid_t));
+	memcpy(&a->uuid, uuid, sizeof(bt_uuid_t));
 	a->read_reqs = read_reqs;
 	a->write_reqs = write_reqs;
 	a->len = len;
@@ -1233,7 +1234,7 @@ struct attribute *attrib_db_add(uint16_t handle, uuid_t *uuid, int read_reqs,
 	return a;
 }
 
-int attrib_db_update(uint16_t handle, uuid_t *uuid, const uint8_t *value,
+int attrib_db_update(uint16_t handle, bt_uuid_t *uuid, const uint8_t *value,
 								int len)
 {
 	struct attribute *a;
@@ -1251,7 +1252,7 @@ int attrib_db_update(uint16_t handle, uuid_t *uuid, const uint8_t *value,
 	l->data = a;
 	a->handle = handle;
 	if (uuid != &a->uuid)
-		memcpy(&a->uuid, uuid, sizeof(uuid_t));
+		memcpy(&a->uuid, uuid, sizeof(bt_uuid_t));
 	a->len = len;
 	memcpy(a->data, value, len);
 
@@ -1279,12 +1280,12 @@ int attrib_db_del(uint16_t handle)
 
 int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len)
 {
-	uuid_t u16;
+	bt_uuid_t u16;
 	uint16_t handle;
 
 	/* FIXME: Missing Privacy and Reconnection Address */
 
-	sdp_uuid16_create(&u16, uuid);
+	bt_uuid16_create(&u16, uuid);
 
 	switch (uuid) {
 	case GATT_CHARAC_DEVICE_NAME:

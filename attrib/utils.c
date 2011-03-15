@@ -27,6 +27,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/uuid.h>
 #include <bluetooth/sdp.h>
 
 #include "gattrib.h"

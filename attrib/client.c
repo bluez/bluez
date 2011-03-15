@@ -32,15 +32,13 @@
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
+#include <bluetooth/uuid.h>
 
 #include "adapter.h"
 #include "device.h"
 #include "log.h"
 #include "gdbus.h"
 #include "error.h"
-#include "glib-helper.h"
 #include "dbus-common.h"
 #include "btio.h"
 #include "storage.h"
@@ -673,16 +671,14 @@ static void load_characteristics(gpointer data, gpointer user_data)
 static void store_attribute(struct gatt_service *gatt, uint16_t handle,
 				uint16_t type, uint8_t *value, gsize len)
 {
-	uuid_t uuid;
-	char *str, *uuidstr, *tmp;
+	bt_uuid_t uuid;
+	char *str, *tmp;
 	guint i;
 
 	str = g_malloc0(MAX_LEN_UUID_STR + len * 2 + 1);
 
-	sdp_uuid16_create(&uuid, type);
-	uuidstr = bt_uuid2string(&uuid);
-	strcpy(str, uuidstr);
-	g_free(uuidstr);
+	bt_uuid16_create(&uuid, type);
+	bt_uuid_to_string(&uuid, str, MAX_LEN_UUID_STR);
 
 	str[MAX_LEN_UUID_STR - 1] = '#';
 
@@ -778,13 +774,13 @@ static void update_char_value(guint8 status, const guint8 *pdu,
 	g_free(current);
 }
 
-static int uuid_desc16_cmp(uuid_t *uuid, guint16 desc)
+static int uuid_desc16_cmp(bt_uuid_t *uuid, guint16 desc)
 {
-	uuid_t u16;
+	bt_uuid_t u16;
 
-	sdp_uuid16_create(&u16, desc);
+	bt_uuid16_create(&u16, desc);
 
-	return sdp_uuid_cmp(uuid, &u16);
+	return bt_uuid_cmp(uuid, &u16);
 }
 
 static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -807,14 +803,14 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	for (i = 0; i < list->num; i++) {
 		guint16 handle;
-		uuid_t uuid;
+		bt_uuid_t uuid;
 		uint8_t *info = list->data[i];
 		struct query_data *qfmt;
 
 		handle = att_get_u16(info);
 
 		if (format == 0x01) {
-			sdp_uuid16_create(&uuid, att_get_u16(&info[2]));
+			uuid = att_get_uuid16(&info[2]);
 		} else {
 			/* Currently, only "user description" and "presentation
 			 * format" descriptors are used, and both have 16-bit

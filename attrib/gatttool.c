@@ -34,13 +34,11 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
+#include <bluetooth/uuid.h>
 
 #include "att.h"
 #include "btio.h"
 #include "gattrib.h"
-#include "glib-helper.h"
 #include "gatt.h"
 #include "gatttool.h"
 
@@ -48,7 +46,7 @@ static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
 static gchar *opt_value = NULL;
 static gchar *opt_sec_level = NULL;
-static uuid_t *opt_uuid = NULL;
+static bt_uuid_t *opt_uuid = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
 static int opt_handle = -1;
@@ -427,17 +425,17 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		char uuidstr[MAX_LEN_UUID_STR];
 		uint16_t handle;
 		uint8_t *value;
-		uuid_t uuid;
+		bt_uuid_t uuid;
 
 		value = list->data[i];
 		handle = att_get_u16(value);
 
 		if (format == 0x01)
-			sdp_uuid16_create(&uuid, att_get_u16(&value[2]));
+			uuid = att_get_uuid16(&value[2]);
 		else
-			sdp_uuid128_create(&uuid, &value[2]);
+			uuid = att_get_uuid128(&value[2]);
 
-		sdp_uuid2strn(&uuid, uuidstr, MAX_LEN_UUID_STR);
+		bt_uuid_to_string(&uuid, uuidstr, MAX_LEN_UUID_STR);
 		g_print("handle = 0x%04x, uuid = %s\n", handle, uuidstr);
 	}
 
@@ -463,11 +461,11 @@ static gboolean parse_uuid(const char *key, const char *value,
 	if (!value)
 		return FALSE;
 
-	opt_uuid = g_try_malloc(sizeof(uuid_t));
+	opt_uuid = g_try_malloc(sizeof(bt_uuid_t));
 	if (opt_uuid == NULL)
 		return FALSE;
 
-	if (bt_string2uuid(opt_uuid, value) < 0)
+	if (bt_string_to_uuid(opt_uuid, value) < 0)
 		return FALSE;
 
 	return TRUE;

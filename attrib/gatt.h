@@ -26,7 +26,7 @@
 
 typedef void (*gatt_cb_t) (GSList *l, guint8 status, gpointer user_data);
 
-guint gatt_discover_primary(GAttrib *attrib, uuid_t *uuid, gatt_cb_t func,
+guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
 							gpointer user_data);
 
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
@@ -45,5 +45,5 @@ guint gatt_write_cmd(GAttrib *attrib, uint16_t handle, uint8_t *value, int vlen,
 				GDestroyNotify notify, gpointer user_data);
 
 guint gatt_read_char_by_uuid(GAttrib *attrib, uint16_t start, uint16_t end,
-				uuid_t *uuid, GAttribResultFunc func,
+				bt_uuid_t *uuid, GAttribResultFunc func,
 				gpointer user_data);

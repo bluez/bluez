@@ -26,8 +26,7 @@
 #include <stdio.h>
 #include <glib.h>
 
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
+#include <bluetooth/uuid.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -35,7 +34,6 @@
 #include "att.h"
 #include "btio.h"
 #include "gattrib.h"
-#include "glib-helper.h"
 #include "gatt.h"
 #include "gatttool.h"
 
@@ -54,7 +52,7 @@ struct characteristic_data {
 	uint16_t orig_start;
 	uint16_t start;
 	uint16_t end;
-	uuid_t uuid;
+	bt_uuid_t uuid;
 };
 
 static void cmd_help(int argcp, char **argvp);
@@ -237,17 +235,17 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		char uuidstr[MAX_LEN_UUID_STR];
 		uint16_t handle;
 		uint8_t *value;
-		uuid_t uuid;
+		bt_uuid_t uuid;
 
 		value = list->data[i];
 		handle = att_get_u16(value);
 
 		if (format == 0x01)
-			sdp_uuid16_create(&uuid, att_get_u16(&value[2]));
+			uuid = att_get_uuid16(&value[2]);
 		else
-			sdp_uuid128_create(&uuid, &value[2]);
+			uuid = att_get_uuid128(&value[2]);
 
-		sdp_uuid2strn(&uuid, uuidstr, MAX_LEN_UUID_STR);
+		bt_uuid_to_string(&uuid, uuidstr, MAX_LEN_UUID_STR);
 		printf("handle: 0x%04x, uuid: %s\n", handle, uuidstr);
 	}
 
@@ -378,7 +376,7 @@ static void cmd_disconnect(int argcp, char **argvp)
 
 static void cmd_primary(int argcp, char **argvp)
 {
-	uuid_t uuid;
+	bt_uuid_t uuid;
 
 	if (conn_state != STATE_CONNECTED) {
 		printf("Command failed: disconnected\n");
@@ -390,7 +388,7 @@ static void cmd_primary(int argcp, char **argvp)
 		return;
 	}
 
-	if (bt_string2uuid(&uuid, argvp[1]) < 0) {
+	if (bt_string_to_uuid(&uuid, argvp[1]) < 0) {
 		printf("Invalid UUID\n");
 		return;
 	}
@@ -509,7 +507,7 @@ static void cmd_read_uuid(int argcp, char **argvp)
 	struct characteristic_data *char_data;
 	int start = 0x0001;
 	int end = 0xffff;
-	uuid_t uuid;
+	bt_uuid_t uuid;
 
 	if (conn_state != STATE_CONNECTED) {
 		printf("Command failed: disconnected\n");
@@ -521,7 +519,7 @@ static void cmd_read_uuid(int argcp, char **argvp)
 		return;
 	}
 
-	if (bt_string2uuid(&uuid, argvp[1]) < 0) {
+	if (bt_string_to_uuid(&uuid, argvp[1]) < 0) {
 		printf("Invalid UUID\n");
 		return;
 	}
