@@ -147,7 +147,8 @@ if SAPPLUGIN
 builtin_modules += sap
 builtin_sources += sap/main.c \
 			sap/manager.h sap/manager.c \
-			sap/server.h sap/server.c
+			sap/server.h sap/server.c \
+			sap/sap.h sap/sap-dummy.c
 endif
 
 if INPUTPLUGIN
