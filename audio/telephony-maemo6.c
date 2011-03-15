@@ -475,18 +475,6 @@ void telephony_response_and_hold_req(void *telephony_device, int rh)
 						CME_ERROR_NOT_SUPPORTED);
 }
 
-void telephony_last_dialed_number_req(void *telephony_device)
-{
-	DBG("telephony-maemo6: last dialed number request");
-
-	if (last_dialed_number)
-		telephony_dial_number_req(telephony_device,
-						last_dialed_number);
-	else
-		telephony_last_dialed_number_rsp(telephony_device,
-						CME_ERROR_NOT_ALLOWED);
-}
-
 void telephony_terminate_call_req(void *telephony_device)
 {
 	struct csd_call *call;
@@ -587,6 +575,18 @@ static int send_method_call(const char *dest, const char *path,
 	dbus_message_unref(msg);
 
 	return 0;
+}
+
+void telephony_last_dialed_number_req(void *telephony_device)
+{
+	DBG("telephony-maemo6: last dialed number request");
+
+	if (last_dialed_number)
+		telephony_dial_number_req(telephony_device,
+						last_dialed_number);
+	else
+		telephony_last_dialed_number_rsp(telephony_device,
+						CME_ERROR_NOT_ALLOWED);
 }
 
 static const char *memory_dial_lookup(int location)
