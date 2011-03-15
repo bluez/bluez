@@ -240,3 +240,8 @@ Management Interface
 
   Priority: Medium
   Complexity: C1
+
+- Whitelist support (initially only for LE)
+
+  Priority: Medium
+  Complexity: C2
