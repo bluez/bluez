@@ -148,6 +148,13 @@ ATT/GATT
   Priority: Medium
   Complexity: C1
 
+- Refactor read_by_group() and read_by_type() in src/attrib-server.c
+  (they've grown simply too big). First step could be to move out the
+  long for-loops to new functions called e.g. get_groups() and get_types().
+
+  Priority: Low
+  Complexity: C1
+
 - Agent for characteristics: Agent interface should be extended to support
   authorization per characteristic if the remote is not in the trusted list.
 
